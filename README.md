@@ -57,7 +57,7 @@ Sec-WebSocket-Protocol: gameserver-v1
 
 ### Certificate files for caddy
 
-Create a folder `gameserver/certs` and create 5 certificate files (NOTE: These certificates are only used in dev environment)
+Create a folder `supremacy-gameserver/certs` and create 5 certificate files (NOTE: These certificates are only used in dev environment)
 
 ```shell
 dev.supremacygame.io-ca.crt
@@ -67,7 +67,7 @@ server.csr
 server.key
 ```
 
-The filename and the content of the files can be found in Bitwarden
+The content of the files can be found in Bitwarden
 
 ```shell
 supremacy - dev - cert - 1
