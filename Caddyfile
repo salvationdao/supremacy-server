@@ -1,0 +1,7 @@
+dev.supremacygame.io {
+    reverse_proxy /api/* localhost:8084
+    tls ./certs/dev.supremacygame.io.crt ./certs/server.key {
+        ca ./certs/dev.supremacygame.io-ca.crt
+        ca_root ./certs/dev.supremacygame.io-root.crt
+    }
+}
