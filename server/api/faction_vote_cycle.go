@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"gameserver"
-	"gameserver/battle_arena"
-	"gameserver/helpers"
 	"net/http"
+	"server"
+	"server/battle_arena"
+	"server/helpers"
 	"sort"
 	"time"
 
@@ -63,21 +63,21 @@ type FactionVotingTicker struct {
 **************/
 
 type FirstVoteAction struct {
-	FactionAction *gameserver.FactionAction
-	UserVoteMap   map[gameserver.UserID]int64
+	FactionAction *server.FactionAction
+	UserVoteMap   map[server.UserID]int64
 }
 
-type FirstVoteState map[gameserver.FactionActionID]*FirstVoteAction
+type FirstVoteState map[server.FactionActionID]*FirstVoteAction
 
 type FirstVoteResult struct {
-	factionActionID gameserver.FactionActionID
-	hubClientID     []gameserver.UserID
+	factionActionID server.FactionActionID
+	hubClientID     []server.UserID
 }
 
 type secondVoteCandidate struct {
-	Faction       *gameserver.Faction       `json:"faction"`
-	FactionAction *gameserver.FactionAction `json:"factionAction"`
-	EndTime       time.Time                 `json:"endTime"`
+	Faction       *server.Faction       `json:"faction"`
+	FactionAction *server.FactionAction `json:"factionAction"`
+	EndTime       time.Time             `json:"endTime"`
 }
 
 type secondVoteResult struct {
@@ -89,14 +89,14 @@ type secondVoteResult struct {
 * Channels *
 ***********/
 
-func (api *API) startFactionVoteCycle(faction *gameserver.Faction) {
+func (api *API) startFactionVoteCycle(faction *server.Faction) {
 	// initialise first vote stat
 	firstVoteStat := make(FirstVoteState)
 
 	// initialise first vote result
 	firstVoteResult := &FirstVoteResult{
-		factionActionID: gameserver.FactionActionID(uuid.Nil),
-		hubClientID:     []gameserver.UserID{},
+		factionActionID: server.FactionActionID(uuid.Nil),
+		hubClientID:     []server.UserID{},
 	}
 
 	// initialise second vote stat
@@ -145,7 +145,7 @@ func (api *API) startFactionVoteCycle(faction *gameserver.Faction) {
 }
 
 // startVotingCycleFactory create a function to handle voting start event
-func (api *API) startVotingCycleFactory(factionID gameserver.FactionID) func(ctx context.Context, ed *battle_arena.EventData) {
+func (api *API) startVotingCycleFactory(factionID server.FactionID) func(ctx context.Context, ed *battle_arena.EventData) {
 	fn := func(ctx context.Context, ed *battle_arena.EventData) {
 		api.startVotingCycle(factionID)
 	}
@@ -153,8 +153,8 @@ func (api *API) startVotingCycleFactory(factionID gameserver.FactionID) func(ctx
 }
 
 // startVotingCycle start the voting cycle of the faction
-func (api *API) startVotingCycle(factionID gameserver.FactionID) {
-	api.factionVoteCycle[factionID] <- func(f *gameserver.Faction, vs *VoteStage, fvs FirstVoteState, fvr *FirstVoteResult, svs *secondVoteResult, t *FactionVotingTicker) {
+func (api *API) startVotingCycle(factionID server.FactionID) {
+	api.factionVoteCycle[factionID] <- func(f *server.Faction, vs *VoteStage, fvs FirstVoteState, fvr *FirstVoteResult, svs *secondVoteResult, t *FactionVotingTicker) {
 		vs.Phase = VotePhaseVoteCooldown
 		vs.EndTime = time.Now().Add(CooldownDurationSecond * time.Second)
 
@@ -168,8 +168,8 @@ func (api *API) startVotingCycle(factionID gameserver.FactionID) {
 }
 
 // pauseVotingCycle pause the voting cycle of the faction
-func (api *API) pauseVotingCycle(factionID gameserver.FactionID) {
-	api.factionVoteCycle[factionID] <- func(f *gameserver.Faction, vs *VoteStage, fvs FirstVoteState, fvr *FirstVoteResult, svs *secondVoteResult, t *FactionVotingTicker) {
+func (api *API) pauseVotingCycle(factionID server.FactionID) {
+	api.factionVoteCycle[factionID] <- func(f *server.Faction, vs *VoteStage, fvs FirstVoteState, fvr *FirstVoteResult, svs *secondVoteResult, t *FactionVotingTicker) {
 		vs.Phase = VotePhaseHold
 
 		if t.VotingStageListener.NextTick != nil {
@@ -183,9 +183,9 @@ func (api *API) pauseVotingCycle(factionID gameserver.FactionID) {
 }
 
 // secondVoteResultBroadcasterFactory generate the function for broadcasting the second vote result
-func (api *API) secondVoteResultBroadcasterFactory(factionID gameserver.FactionID) func() (int, error) {
+func (api *API) secondVoteResultBroadcasterFactory(factionID server.FactionID) func() (int, error) {
 	fn := func() (int, error) {
-		api.factionVoteCycle[factionID] <- func(f *gameserver.Faction, vs *VoteStage, fvs FirstVoteState, fvr *FirstVoteResult, svs *secondVoteResult, t *FactionVotingTicker) {
+		api.factionVoteCycle[factionID] <- func(f *server.Faction, vs *VoteStage, fvs FirstVoteState, fvr *FirstVoteResult, svs *secondVoteResult, t *FactionVotingTicker) {
 			if vs.Phase != VotePhaseSecondVote {
 				return
 			}
@@ -215,9 +215,9 @@ func (api *API) secondVoteResultBroadcasterFactory(factionID gameserver.FactionI
 }
 
 // voteStageListenerFactory generate a vote stage listener function use in tickle
-func (api *API) voteStageListenerFactory(factionID gameserver.FactionID) func() (int, error) {
+func (api *API) voteStageListenerFactory(factionID server.FactionID) func() (int, error) {
 	fn := func() (int, error) {
-		api.factionVoteCycle[factionID] <- func(f *gameserver.Faction, vs *VoteStage, fvs FirstVoteState, fvr *FirstVoteResult, svs *secondVoteResult, t *FactionVotingTicker) {
+		api.factionVoteCycle[factionID] <- func(f *server.Faction, vs *VoteStage, fvs FirstVoteState, fvr *FirstVoteResult, svs *secondVoteResult, t *FactionVotingTicker) {
 
 			// skip if does not reach the end time or current phase is TIE
 			if vs.EndTime.After(time.Now()) || vs.Phase == VotePhaseHold || vs.Phase == VotePhaseTie {
@@ -348,7 +348,7 @@ func (api *API) voteStageListenerFactory(factionID gameserver.FactionID) func() 
 				if len(fvr.hubClientID) > 1 {
 					fvr.hubClientID = fvr.hubClientID[1:]
 				} else {
-					fvr.hubClientID = []gameserver.UserID{}
+					fvr.hubClientID = []server.UserID{}
 				}
 
 				if len(fvr.hubClientID) == 0 {
@@ -413,7 +413,7 @@ func (api *API) voteStageListenerFactory(factionID gameserver.FactionID) func() 
 			// at the end of cooldown
 			case VotePhaseVoteCooldown:
 				// TODO: query actions from battle arena server
-				actions := gameserver.FactionActions
+				actions := server.FactionActions
 
 				// initialise first vote state
 				for actionKey, fv := range fvs {
@@ -427,14 +427,14 @@ func (api *API) voteStageListenerFactory(factionID gameserver.FactionID) func() 
 				for _, action := range actions {
 					fvs[action.ID] = &FirstVoteAction{
 						FactionAction: action,
-						UserVoteMap:   make(map[gameserver.UserID]int64),
+						UserVoteMap:   make(map[server.UserID]int64),
 					}
 				}
 
 				// initialise first vote result
 				fvr = &FirstVoteResult{
-					factionActionID: gameserver.FactionActionID(uuid.Nil),
-					hubClientID:     []gameserver.UserID{},
+					factionActionID: server.FactionActionID(uuid.Nil),
+					hubClientID:     []server.UserID{},
 				}
 
 				// initialise second vote state
@@ -463,15 +463,15 @@ func (api *API) voteStageListenerFactory(factionID gameserver.FactionID) func() 
 // parseFirstVoteResult return the most voted action and the user who contribute the most vote on that action
 func parseFirstVoteResult(fvs FirstVoteState, fvr *FirstVoteResult) {
 	// initialise first vote result
-	fvr.factionActionID = gameserver.FactionActionID(uuid.Nil)
-	fvr.hubClientID = []gameserver.UserID{}
+	fvr.factionActionID = server.FactionActionID(uuid.Nil)
+	fvr.hubClientID = []server.UserID{}
 
 	type voter struct {
-		id        gameserver.UserID
+		id        server.UserID
 		totalVote int64
 	}
 	type action struct {
-		id        gameserver.FactionActionID
+		id        server.FactionActionID
 		totalVote int64
 		voters    []*voter
 	}
@@ -516,7 +516,7 @@ func parseFirstVoteResult(fvs FirstVoteState, fvr *FirstVoteResult) {
 		// if only one voter
 		if len(actionList[0].voters) == 1 {
 			fvr.factionActionID = actionList[0].id
-			fvr.hubClientID = []gameserver.UserID{actionList[0].voters[0].id}
+			fvr.hubClientID = []server.UserID{actionList[0].voters[0].id}
 			return
 		}
 
@@ -551,7 +551,7 @@ func parseFirstVoteResult(fvs FirstVoteState, fvr *FirstVoteResult) {
 	// if only one voter in current action
 	if len(actionList[0].voters) == 1 {
 		fvr.factionActionID = actionList[0].id
-		fvr.hubClientID = []gameserver.UserID{actionList[0].voters[0].id}
+		fvr.hubClientID = []server.UserID{actionList[0].voters[0].id}
 		return
 	}
 
@@ -578,12 +578,12 @@ func parseFirstVoteResult(fvs FirstVoteState, fvr *FirstVoteResult) {
 }
 
 type secondVoteResultResponse struct {
-	FactionID gameserver.FactionID `json:"factionID"`
-	Result    float64              `json:"result"`
+	FactionID server.FactionID `json:"factionID"`
+	Result    float64          `json:"result"`
 }
 
 // calc second vote result
-func calcSecondVoteResult(factionID gameserver.FactionID, svs *secondVoteResult) *secondVoteResultResponse {
+func calcSecondVoteResult(factionID server.FactionID, svs *secondVoteResult) *secondVoteResultResponse {
 	resp := &secondVoteResultResponse{
 		FactionID: factionID,
 		Result:    0.5,
@@ -600,7 +600,7 @@ func (api *API) GetSecondVotes(w http.ResponseWriter, r *http.Request) (int, err
 	resp := []*secondVoteCandidate{}
 	for _, factionVoteCycle := range api.factionVoteCycle {
 		secondVoteChan := make(chan *secondVoteCandidate)
-		factionVoteCycle <- func(f *gameserver.Faction, vs *VoteStage, fvs FirstVoteState, fvr *FirstVoteResult, svr *secondVoteResult, fvt *FactionVotingTicker) {
+		factionVoteCycle <- func(f *server.Faction, vs *VoteStage, fvs FirstVoteState, fvr *FirstVoteResult, svr *secondVoteResult, fvt *FactionVotingTicker) {
 			if vs.Phase != VotePhaseSecondVote {
 				secondVoteChan <- nil
 				return

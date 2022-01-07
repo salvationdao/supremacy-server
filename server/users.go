@@ -1,4 +1,4 @@
-package gameserver
+package server
 
 import (
 	"time"

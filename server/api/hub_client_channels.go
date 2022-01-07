@@ -2,8 +2,8 @@ package api
 
 import (
 	"fmt"
-	"gameserver"
 	"net/http"
+	"server"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/hub/v2"
@@ -18,16 +18,16 @@ import (
 ********************/
 
 type HubClientDetail struct {
-	ID        gameserver.UserID
-	FactionID gameserver.FactionID
+	ID        server.UserID
+	FactionID server.FactionID
 }
 
 // startClientTracker track client state
 func (api *API) startClientTracker(wsc *hub.Client) {
 	// initialise online client
 	hubClientDetail := &HubClientDetail{
-		ID:        gameserver.UserID(uuid.Nil),
-		FactionID: gameserver.FactionID(uuid.Nil),
+		ID:        server.UserID(uuid.Nil),
+		FactionID: server.FactionID(uuid.Nil),
 	}
 
 	go func() {
@@ -72,7 +72,7 @@ type ConnectPointState struct {
 }
 
 // startOnlineClientTracker is a channel that track online client instances
-func (api *API) startOnlineClientTracker(hubClientID gameserver.UserID, connectPoint int64) {
+func (api *API) startOnlineClientTracker(hubClientID server.UserID, connectPoint int64) {
 	clientInstanceMap := make(ClientInstanceMap)
 
 	connectPointState := &ConnectPointState{connectPoint}
@@ -95,7 +95,7 @@ func (api *API) startOnlineClientTracker(hubClientID gameserver.UserID, connectP
 }
 
 // connectPointTickleFactory generate a channel point tickle task for tickle
-func (api *API) connectPointTickleFactory(hubClientID gameserver.UserID) func() (int, error) {
+func (api *API) connectPointTickleFactory(hubClientID server.UserID) func() (int, error) {
 	fn := func() (int, error) {
 		// skip, if client is not signed in
 		if hubClientID.IsNil() {

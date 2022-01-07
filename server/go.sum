@@ -1345,8 +1345,6 @@ github.com/neelance/sourcemap v0.0.0-20151028013722-8c68805598ab/go.mod h1:Qr6/a
 github.com/neo4j/neo4j-go-driver v1.8.1-0.20200803113522-b626aa943eba/go.mod h1:ncO5VaFWh0Nrt+4KT4mOZboaczBZcLuHrG+/sUeP8gI=
 github.com/newrelic/go-agent v2.15.0+incompatible/go.mod h1:a8Fv1b/fYhFSReoTU6HDkTYIMZeSVNffmoS726Y0LzQ=
 github.com/ngdinhtoan/glide-cleanup v0.2.0/go.mod h1:UQzsmiDOb8YV3nOsCxK/c9zPpCZVNoHScRE3EO9pVMM=
-github.com/ninja-software/hub/v2 v2.0.4 h1:pD5tDiKrhwQeeGZHEBsYcTNBD1VtOo1ArYU6wDAMuTM=
-github.com/ninja-software/hub/v2 v2.0.4/go.mod h1:LHdRzCKiamdIZc8UZvtb7GSH4zfg/l4ouBDhyG6FRjs=
 github.com/ninja-software/log_helpers v1.0.1-0.20211202070223-aff11d9a6ae6 h1:YDmDWpPnibpTJsbIzGYhcgzBgXmLE9Ov4cC9fbS0rPY=
 github.com/ninja-software/log_helpers v1.0.1-0.20211202070223-aff11d9a6ae6/go.mod h1:DrC0haE5EY4HSX+cpjvJZGE4Gk/XDbSWdzhMsF3nY7Y=
 github.com/ninja-software/terror/v2 v2.0.7 h1:gV2v0TybYXQvAD3SYh6YiyuMt8rig4FwRYL81kx65xo=

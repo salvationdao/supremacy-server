@@ -2,7 +2,7 @@ package battle_arena
 
 import (
 	"context"
-	"gameserver"
+	"server"
 	"sync"
 )
 
@@ -31,9 +31,9 @@ const (
 )
 
 type EventData struct {
-	BattleArena         *gameserver.Battle
-	WarMachineDestroyed *gameserver.WarMachineDestroyed
-	FactionActions      []*gameserver.FactionAction
+	BattleArena         *server.Battle
+	WarMachineDestroyed *server.WarMachineDestroyed
+	FactionActions      []*server.FactionAction
 }
 
 type BattleArenaEvents struct {

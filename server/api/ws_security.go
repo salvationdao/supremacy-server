@@ -3,7 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"gameserver"
+	"server"
 
 	"github.com/ninja-software/hub/v2"
 	"github.com/ninja-software/hub/v2/ext/messagebus"
@@ -47,7 +47,7 @@ func (api *API) SecureUserFactionCommand(key hub.HubCommandKey, fn hub.HubComman
 }
 
 // SecureUserCommandWithPerm registers a command to the hub that will only run if the websocket has authenticated and the user has the specified permission
-func (api *API) SecureUserCommandWithPerm(key hub.HubCommandKey, fn hub.HubCommandFunc, perm gameserver.Perm) {
+func (api *API) SecureUserCommandWithPerm(key hub.HubCommandKey, fn hub.HubCommandFunc, perm server.Perm) {
 	api.Hub.Handle(key, func(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 		// TODO: Add middleware
 		//if wsc.User == nil || !wsc.User.HasPermission(perm) {

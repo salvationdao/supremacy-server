@@ -2,8 +2,8 @@ package db_test
 
 import (
 	"context"
-	"gameserver"
-	"gameserver/db"
+	"server"
+	"server/db"
 	"testing"
 
 	"github.com/gofrs/uuid"
@@ -18,7 +18,7 @@ func TestIntakes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	warMachines := []*gameserver.WarMachine{}
+	warMachines := []*server.WarMachine{}
 
 	// create `10 war machines
 	for i := 0; i < 10; i++ {
@@ -26,18 +26,18 @@ func TestIntakes(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		warMachines = append(warMachines, &gameserver.WarMachine{ID: gameserver.WarMachineID(newUUID)})
+		warMachines = append(warMachines, &server.WarMachine{ID: server.WarMachineID(newUUID)})
 	}
 
 	t.Run("insert_battle", func(t *testing.T) {
-		err = db.BattleStarted(ctx, conn, gameserver.BattleID(battleUUID), warMachines)
+		err = db.BattleStarted(ctx, conn, server.BattleID(battleUUID), warMachines)
 		if err != nil {
 			t.Fatal(err)
 		}
 	})
 	t.Run("battle_get", func(t *testing.T) {
 
-		battle, err := db.BattleGet(ctx, conn, gameserver.BattleID(battleUUID))
+		battle, err := db.BattleGet(ctx, conn, server.BattleID(battleUUID))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -61,7 +61,7 @@ func TestIntakes(t *testing.T) {
 		}
 	})
 	t.Run("insert_battle_event_war_machine_destroyed", func(t *testing.T) {
-		err := db.WarMachineDestroyed(ctx, conn, gameserver.BattleID(battleUUID), gameserver.WarMachineDestroyed{
+		err := db.WarMachineDestroyed(ctx, conn, server.BattleID(battleUUID), server.WarMachineDestroyed{
 			DestroyedWarMachineID: warMachines[0].ID,
 			KillerWarMachineID:    &warMachines[1].ID,
 			KilledBy:              "Laser Cannon",

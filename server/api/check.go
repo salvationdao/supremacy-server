@@ -3,7 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
-	"gameserver/db"
+	"server/db"
 
 	"github.com/ninja-software/terror/v2"
 )

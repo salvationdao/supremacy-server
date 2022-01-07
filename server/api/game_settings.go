@@ -3,10 +3,10 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"gameserver"
-	"gameserver/battle_arena"
-	"gameserver/helpers"
 	"net/http"
+	"server"
+	"server/battle_arena"
+	"server/helpers"
 
 	"github.com/ninja-software/hub/v2"
 )
@@ -14,8 +14,8 @@ import (
 // GetGameSettings return current game settings
 func (api *API) GetGameSettings(w http.ResponseWriter, r *http.Request) (int, error) {
 	resp := &GameSettingsResponse{
-		GameMap:     &gameserver.GameMap{},
-		WarMachines: []*gameserver.WarMachine{},
+		GameMap:     &server.GameMap{},
+		WarMachines: []*server.WarMachine{},
 	}
 
 	if api.BattleArena.GetCurrentState() != nil {
@@ -34,10 +34,10 @@ func (api *API) UpdateWarMachinePosition(ctx context.Context, ed *battle_arena.E
 		return
 	}
 
-	positions := []*gameserver.WarMachine{}
+	positions := []*server.WarMachine{}
 
 	for _, warmachine := range ed.BattleArena.WarMachines {
-		positions = append(positions, &gameserver.WarMachine{
+		positions = append(positions, &server.WarMachine{
 			ID:                 warmachine.ID,
 			WarMachinePosition: warmachine.WarMachinePosition,
 		})

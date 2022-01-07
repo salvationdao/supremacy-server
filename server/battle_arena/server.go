@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"gameserver"
-	"gameserver/passport_dummy"
 	"io/ioutil"
 	"net"
 	"net/http"
+	"server"
+	"server/passport_dummy"
 	"sync"
 	"time"
 
@@ -53,7 +53,7 @@ type BattleArena struct {
 	send     chan *GameMessage
 	ctx      context.Context
 	close    context.CancelFunc
-	battle   *gameserver.Battle
+	battle   *server.Battle
 }
 
 // NewBattleArenaClient creates a new battle arena client
@@ -114,7 +114,7 @@ func (ba *BattleArena) Serve(ctx context.Context) error {
 
 func (ba *BattleArena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c, err := websocket.Accept(w, r, &websocket.AcceptOptions{
-		Subprotocols: []string{"gameserver-v1"},
+		Subprotocols: []string{"server-v1"},
 	})
 	if err != nil {
 		ba.Log.Printf("%v", err)
@@ -122,10 +122,10 @@ func (ba *BattleArena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	defer c.Close(websocket.StatusInternalError, "the sky is falling")
 
-	if c.Subprotocol() != "gameserver-v1" {
-		ba.Log.Printf("client must speak the gameserver-v1 subprotocol")
+	if c.Subprotocol() != "server-v1" {
+		ba.Log.Printf("client must speak the server-v1 subprotocol")
 
-		c.Close(websocket.StatusPolicyViolation, "client must speak the gameserver-v1 subprotocol")
+		c.Close(websocket.StatusPolicyViolation, "client must speak the server-v1 subprotocol")
 		return
 	}
 
@@ -133,7 +133,7 @@ func (ba *BattleArena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		err := ba.sendPump(c)
 		if err != nil {
-			ba.Log.Err(err).Msgf("error sending message to gameserver")
+			ba.Log.Err(err).Msgf("error sending message to server")
 			return
 		}
 	}()

@@ -1,7 +1,7 @@
 package db
 
 import (
-	"gameserver"
+	"server"
 
 	"github.com/georgysavva/scany/pgxscan"
 
@@ -11,7 +11,7 @@ import (
 )
 
 // BattleStarted inserts a new battle into the DB
-func BattleStarted(ctx context.Context, conn Conn, battleID gameserver.BattleID, warMachines []*gameserver.WarMachine) error {
+func BattleStarted(ctx context.Context, conn Conn, battleID server.BattleID, warMachines []*server.WarMachine) error {
 	q := `INSERT INTO battle (id, war_machines)
 		VALUES ($1, $2);`
 
@@ -24,7 +24,7 @@ func BattleStarted(ctx context.Context, conn Conn, battleID gameserver.BattleID,
 }
 
 // BattleEnded sets a battle as ended
-func BattleEnded(ctx context.Context, conn Conn, battleID gameserver.BattleID, winningWarMachines []*gameserver.WarMachineID, winningCondition gameserver.BattleWinCondition) error {
+func BattleEnded(ctx context.Context, conn Conn, battleID server.BattleID, winningWarMachines []*server.WarMachineID, winningCondition server.BattleWinCondition) error {
 	q := `
 	UPDATE battle
 	SET winning_war_machines = $2, winning_condition = $3, ended_at = NOW()
@@ -39,8 +39,8 @@ func BattleEnded(ctx context.Context, conn Conn, battleID gameserver.BattleID, w
 }
 
 // BattleGet gets a battle via battle uuid
-func BattleGet(ctx context.Context, conn Conn, battleID gameserver.BattleID) (*gameserver.Battle, error) {
-	result := &gameserver.Battle{}
+func BattleGet(ctx context.Context, conn Conn, battleID server.BattleID) (*server.Battle, error) {
+	result := &server.Battle{}
 
 	q := `SELECT * FROM battle WHERE id = $1;`
 
@@ -52,10 +52,10 @@ func BattleGet(ctx context.Context, conn Conn, battleID gameserver.BattleID) (*g
 }
 
 // WarMachineDestroyed adds a battle log of BattleEventWarMachineDestroyed
-func WarMachineDestroyed(ctx context.Context, conn Conn, battleID gameserver.BattleID, warMachineDestroyedEvent gameserver.WarMachineDestroyed) error {
+func WarMachineDestroyed(ctx context.Context, conn Conn, battleID server.BattleID, warMachineDestroyedEvent server.WarMachineDestroyed) error {
 	q := `INSERT INTO battle_event (battle_id, event_type, event)
 		VALUES ($1, $2, $3);`
-	_, err := conn.Exec(ctx, q, battleID, gameserver.BattleEventWarMachineDestroyed, warMachineDestroyedEvent)
+	_, err := conn.Exec(ctx, q, battleID, server.BattleEventWarMachineDestroyed, warMachineDestroyedEvent)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -63,10 +63,10 @@ func WarMachineDestroyed(ctx context.Context, conn Conn, battleID gameserver.Bat
 }
 
 // FactionActionTriggered adds a battle log of BattleEvent
-func FactionActionTriggered(ctx context.Context, conn Conn, battleID gameserver.BattleID, factionAbilityEvent gameserver.FactionAbility) error {
+func FactionActionTriggered(ctx context.Context, conn Conn, battleID server.BattleID, factionAbilityEvent server.FactionAbility) error {
 	q := `INSERT INTO battle_event (battle_id, event_type, event)
 		VALUES ($1, $2, $3);`
-	_, err := conn.Exec(ctx, q, battleID, gameserver.BattleEventFactionAbility, factionAbilityEvent)
+	_, err := conn.Exec(ctx, q, battleID, server.BattleEventFactionAbility, factionAbilityEvent)
 	if err != nil {
 		return terror.Error(err)
 	}

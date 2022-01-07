@@ -3,8 +3,8 @@ package battle_arena
 import (
 	"context"
 	"fmt"
-	"gameserver"
-	"gameserver/db"
+	"server"
+	"server/db"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -12,9 +12,9 @@ import (
 )
 
 type ActionTriggerRequest struct {
-	BattleID        gameserver.BattleID
-	FactionID       gameserver.FactionID
-	FactionActionID gameserver.FactionActionID
+	BattleID        server.BattleID
+	FactionID       server.FactionID
+	FactionActionID server.FactionActionID
 	IsSuccess       bool
 }
 
@@ -22,8 +22,8 @@ func (ba *BattleArena) FactionActionTrigger(tat *ActionTriggerRequest) error {
 	go ba.fakeAnimation(tat.FactionID)
 
 	// get action
-	action := &gameserver.FactionAction{}
-	for _, actn := range gameserver.FactionActions {
+	action := &server.FactionAction{}
+	for _, actn := range server.FactionActions {
 		if actn.ID == tat.FactionActionID {
 			action = actn
 		}
@@ -39,7 +39,7 @@ func (ba *BattleArena) FactionActionTrigger(tat *ActionTriggerRequest) error {
 		return terror.Error(err)
 	}
 
-	err = db.FactionActionTriggered(ctx, tx, tat.BattleID, gameserver.FactionAbility{
+	err = db.FactionActionTriggered(ctx, tx, tat.BattleID, server.FactionAbility{
 		FactionID:  tat.FactionID,
 		Action:     *action,
 		Successful: tat.IsSuccess,
@@ -56,7 +56,7 @@ func (ba *BattleArena) FactionActionTrigger(tat *ActionTriggerRequest) error {
 	return nil
 }
 
-func (ba *BattleArena) fakeAnimation(factionID gameserver.FactionID) {
+func (ba *BattleArena) fakeAnimation(factionID server.FactionID) {
 	// want second
 	i := 5
 	for i > 0 {
@@ -101,27 +101,27 @@ func (ba *BattleArena) FakeWarMachinePositionUpdate() {
 * Dummy Data *
 *************/
 
-var factionActions = []*gameserver.FactionAction{
+var factionActions = []*server.FactionAction{
 	{
-		ID:                gameserver.FactionActionID(uuid.Must(uuid.NewV4())),
+		ID:                server.FactionActionID(uuid.Must(uuid.NewV4())),
 		Label:             "AIRSTRIKE",
-		Type:              gameserver.FactionActionTypeAirStrike,
+		Type:              server.FactionActionTypeAirStrike,
 		Colour:            "#428EC1",
 		SupremacyCoinCost: 60,
 		ImageUrl:          "https://i.pinimg.com/originals/b1/92/4d/b1924dce177345b5485bb5490ab3441f.jpg",
 	},
 	{
-		ID:                gameserver.FactionActionID(uuid.Must(uuid.NewV4())),
+		ID:                server.FactionActionID(uuid.Must(uuid.NewV4())),
 		Label:             "NUKE",
-		Type:              gameserver.FactionActionTypeNuke,
+		Type:              server.FactionActionTypeNuke,
 		Colour:            "#C24242",
 		SupremacyCoinCost: 60,
 		ImageUrl:          "https://images2.minutemediacdn.com/image/upload/c_crop,h_1126,w_2000,x_0,y_83/f_auto,q_auto,w_1100/v1555949079/shape/mentalfloss/581049-mesut_zengin-istock-1138195821.jpg",
 	},
 	{
-		ID:                gameserver.FactionActionID(uuid.Must(uuid.NewV4())),
+		ID:                server.FactionActionID(uuid.Must(uuid.NewV4())),
 		Label:             "HEAL",
-		Type:              gameserver.FactionActionTypeHealing,
+		Type:              server.FactionActionTypeHealing,
 		Colour:            "#30B07D",
 		SupremacyCoinCost: 60,
 		ImageUrl:          "https://i.pinimg.com/originals/ed/2f/9b/ed2f9b6e66b9efefa84d1ee423c718f0.png",

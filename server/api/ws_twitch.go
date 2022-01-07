@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"gameserver"
-	"gameserver/battle_arena"
+	"server"
+	"server/battle_arena"
 	"strings"
 	"time"
 
@@ -119,7 +119,7 @@ func (th *TwitchControllerWS) Authentication(ctx context.Context, wsc *hub.Clien
 		}
 
 		// remove client from default online client map
-		th.API.onlineClientMap[gameserver.UserID(uuid.Nil)] <- func(cim ClientInstanceMap, cps *ConnectPointState, t *tickle.Tickle) {
+		th.API.onlineClientMap[server.UserID(uuid.Nil)] <- func(cim ClientInstanceMap, cps *ConnectPointState, t *tickle.Tickle) {
 			if _, ok := cim[wsc]; ok {
 				delete(cim, wsc)
 			}
@@ -148,8 +148,8 @@ func (th *TwitchControllerWS) Authentication(ctx context.Context, wsc *hub.Clien
 type TwitchActionVoteRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		FactionActionID gameserver.FactionActionID `json:"factionActionID"`
-		PointSpend      int                        `json:"pointSpend"`
+		FactionActionID server.FactionActionID `json:"factionActionID"`
+		PointSpend      int                    `json:"pointSpend"`
 	} `json:"payload"`
 }
 
@@ -174,7 +174,7 @@ func (th *TwitchControllerWS) FactionActionFirstVote(ctx context.Context, wsc *h
 	errChan := make(chan error)
 
 	// check vote cycle of current user's faction
-	th.API.factionVoteCycle[hubClientDetail.FactionID] <- func(f *gameserver.Faction, vs *VoteStage, fvs FirstVoteState, fvr *FirstVoteResult, svs *secondVoteResult, t *FactionVotingTicker) {
+	th.API.factionVoteCycle[hubClientDetail.FactionID] <- func(f *server.Faction, vs *VoteStage, fvs FirstVoteState, fvr *FirstVoteResult, svs *secondVoteResult, t *FactionVotingTicker) {
 		if vs.Phase != VotePhaseFirstVote && vs.Phase != VotePhaseTie {
 			errChan <- terror.Error(terror.ErrForbidden, "Error - Invalid voting stage")
 			return
@@ -284,9 +284,9 @@ const HubKeyTwitchFactionActionSecondVote hub.HubCommandKey = hub.HubCommandKey(
 type TwitchActionSecondVote struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		FactionID       gameserver.FactionID       `json:"factionID"`
-		FactionActionID gameserver.FactionActionID `json:"factionActionID"`
-		IsAgreed        bool                       `json:"isAgreed"`
+		FactionID       server.FactionID       `json:"factionID"`
+		FactionActionID server.FactionActionID `json:"factionActionID"`
+		IsAgreed        bool                   `json:"isAgreed"`
 	} `json:"payload"`
 }
 
@@ -310,7 +310,7 @@ func (th *TwitchControllerWS) FactionActionSecondVote(ctx context.Context, wsc *
 
 	errChan := make(chan error)
 
-	factionVoteCycle <- func(f *gameserver.Faction, vs *VoteStage, fvs FirstVoteState, fvr *FirstVoteResult, svs *secondVoteResult, t *FactionVotingTicker) {
+	factionVoteCycle <- func(f *server.Faction, vs *VoteStage, fvs FirstVoteState, fvr *FirstVoteResult, svs *secondVoteResult, t *FactionVotingTicker) {
 		if vs.Phase != VotePhaseSecondVote {
 			errChan <- terror.Error(terror.ErrInvalidInput, "Error - Invalid voting phase")
 			return
@@ -390,7 +390,7 @@ func (th *TwitchControllerWS) ActionLocationSelect(ctx context.Context, wsc *hub
 	}
 
 	errChan := make(chan error)
-	th.API.factionVoteCycle[hubClientDetail.FactionID] <- func(f *gameserver.Faction, vs *VoteStage, fvs FirstVoteState, fvr *FirstVoteResult, svs *secondVoteResult, t *FactionVotingTicker) {
+	th.API.factionVoteCycle[hubClientDetail.FactionID] <- func(f *server.Faction, vs *VoteStage, fvs FirstVoteState, fvr *FirstVoteResult, svs *secondVoteResult, t *FactionVotingTicker) {
 		if vs.Phase != VotePhaseLocationSelect {
 			errChan <- terror.Error(terror.ErrForbidden, "Error - Invalid voting phase")
 			return
@@ -537,7 +537,7 @@ func (th *TwitchControllerWS) FactionVoteStageUpdateSubscribeHandler(ctx context
 	}
 
 	if voteCycle, ok := th.API.factionVoteCycle[hubClientDetail.FactionID]; ok {
-		voteCycle <- func(f *gameserver.Faction, vs *VoteStage, fvs FirstVoteState, fvr *FirstVoteResult, svs *secondVoteResult, t *FactionVotingTicker) {
+		voteCycle <- func(f *server.Faction, vs *VoteStage, fvs FirstVoteState, fvr *FirstVoteResult, svs *secondVoteResult, t *FactionVotingTicker) {
 			reply(vs)
 		}
 	}
@@ -564,8 +564,8 @@ func (th *TwitchControllerWS) FactionActionUpdateSubscribeHandler(ctx context.Co
 	}
 
 	if voteCycle, ok := th.API.factionVoteCycle[hubClientDetail.FactionID]; ok {
-		voteCycle <- func(f *gameserver.Faction, vs *VoteStage, fvs FirstVoteState, fvr *FirstVoteResult, svs *secondVoteResult, t *FactionVotingTicker) {
-			actions := []*gameserver.FactionAction{}
+		voteCycle <- func(f *server.Faction, vs *VoteStage, fvs FirstVoteState, fvr *FirstVoteResult, svs *secondVoteResult, t *FactionVotingTicker) {
+			actions := []*server.FactionAction{}
 			for _, firstVoteAction := range fvs {
 				actions = append(actions, firstVoteAction.FactionAction)
 			}

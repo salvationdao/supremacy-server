@@ -4,12 +4,12 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"gameserver"
-	"gameserver/api"
-	"gameserver/battle_arena"
-	"gameserver/passport_dummy"
 	"log"
 	"net/url"
+	"server"
+	"server/api"
+	"server/battle_arena"
+	"server/passport_dummy"
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -43,7 +43,7 @@ const envPrefix = "GAMESERVER"
 func main() {
 	app := &cli.App{
 		Compiled: time.Now(),
-		Usage:    "Run the gameserver server",
+		Usage:    "Run the server server",
 		Authors: []*cli.Author{
 			{
 				Name:  "Ninja Software",
@@ -174,7 +174,7 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, ba
 
 	apiAddr := ctxCLI.String("api_addr")
 
-	config := &gameserver.Config{
+	config := &server.Config{
 		CookieSecure:        ctxCLI.Bool("cookie_secure"),
 		EncryptTokens:       ctxCLI.Bool("jwt_encrypt"),
 		EncryptTokensKey:    ctxCLI.String("jwt_encrypt_key"),

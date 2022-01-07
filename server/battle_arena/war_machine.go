@@ -3,8 +3,8 @@ package battle_arena
 import (
 	"context"
 	"encoding/json"
-	"gameserver"
-	"gameserver/db"
+	"server"
+	"server/db"
 
 	"github.com/ninja-software/terror/v2"
 )
@@ -13,8 +13,8 @@ const WarMachineDestroyedCommand = BattleCommand("BATTLE:WAR_MACHINE_DESTROYED")
 
 type WarMachineDestroyedRequest struct {
 	Payload struct {
-		BattleID                 gameserver.BattleID            `json:"battleId"`
-		DestroyedWarMachineEvent gameserver.WarMachineDestroyed `json:"destroyedWarMachineEvent"`
+		BattleID                 server.BattleID            `json:"battleId"`
+		DestroyedWarMachineEvent server.WarMachineDestroyed `json:"destroyedWarMachineEvent"`
 	} `json:"payload"`
 }
 

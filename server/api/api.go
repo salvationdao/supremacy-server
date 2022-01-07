@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"gameserver"
-	"gameserver/battle_arena"
-	"gameserver/passport_dummy"
 	"net/http"
+	"server"
+	"server/battle_arena"
+	"server/passport_dummy"
 
 	"github.com/ninja-software/hub/v2/ext/messagebus"
 	"nhooyr.io/websocket"
@@ -51,10 +51,10 @@ type API struct {
 	Passport     *passport_dummy.PassportDummy
 
 	// map routines
-	factionVoteCycle map[gameserver.FactionID]chan func(*gameserver.Faction, *VoteStage, FirstVoteState, *FirstVoteResult, *secondVoteResult, *FactionVotingTicker)
+	factionVoteCycle map[server.FactionID]chan func(*server.Faction, *VoteStage, FirstVoteState, *FirstVoteResult, *secondVoteResult, *FactionVotingTicker)
 
 	hubClientDetail map[*hub.Client]chan func(*HubClientDetail)
-	onlineClientMap map[gameserver.UserID]chan func(ClientInstanceMap, *ConnectPointState, *tickle.Tickle)
+	onlineClientMap map[server.UserID]chan func(ClientInstanceMap, *ConnectPointState, *tickle.Tickle)
 }
 
 // NewAPI registers routes
@@ -67,7 +67,7 @@ func NewAPI(
 	HTMLSanitize *bluemonday.Policy,
 	conn *pgxpool.Pool,
 	twitchExtensionSecret []byte,
-	config *gameserver.Config,
+	config *server.Config,
 ) *API {
 	// initialise message bus
 	messageBus, offlineFunc := messagebus.NewMessageBus(log_helpers.NamedLogger(log, "message_bus"))
@@ -94,21 +94,21 @@ func NewAPI(
 		}),
 
 		// channel for faction voting system
-		factionVoteCycle: make(map[gameserver.FactionID]chan func(*gameserver.Faction, *VoteStage, FirstVoteState, *FirstVoteResult, *secondVoteResult, *FactionVotingTicker)),
+		factionVoteCycle: make(map[server.FactionID]chan func(*server.Faction, *VoteStage, FirstVoteState, *FirstVoteResult, *secondVoteResult, *FactionVotingTicker)),
 
 		// channel for handling hub client
 		hubClientDetail: make(map[*hub.Client]chan func(*HubClientDetail)),
-		onlineClientMap: make(map[gameserver.UserID](chan func(ClientInstanceMap, *ConnectPointState, *tickle.Tickle))),
+		onlineClientMap: make(map[server.UserID](chan func(ClientInstanceMap, *ConnectPointState, *tickle.Tickle))),
 	}
 
 	// start the default online client map
-	defaultHubClientUUID := gameserver.UserID(uuid.Nil)
+	defaultHubClientUUID := server.UserID(uuid.Nil)
 	api.onlineClientMap[defaultHubClientUUID] = make(chan func(ClientInstanceMap, *ConnectPointState, *tickle.Tickle))
 	go api.startOnlineClientTracker(defaultHubClientUUID, 0)
 
 	// get all the faction list from passport server and create channel
 	for _, faction := range passport_dummy.FakeFactions {
-		api.factionVoteCycle[faction.ID] = make(chan func(*gameserver.Faction, *VoteStage, FirstVoteState, *FirstVoteResult, *secondVoteResult, *FactionVotingTicker))
+		api.factionVoteCycle[faction.ID] = make(chan func(*server.Faction, *VoteStage, FirstVoteState, *FirstVoteResult, *secondVoteResult, *FactionVotingTicker))
 		go api.startFactionVoteCycle(faction)
 	}
 
@@ -180,7 +180,7 @@ func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client, clients
 		go api.startClientTracker(wsc)
 	}
 
-	api.onlineClientMap[gameserver.UserID(uuid.Nil)] <- func(cim ClientInstanceMap, cps *ConnectPointState, t *tickle.Tickle) {
+	api.onlineClientMap[server.UserID(uuid.Nil)] <- func(cim ClientInstanceMap, cps *ConnectPointState, t *tickle.Tickle) {
 		// register the client instance if not exists
 		if _, ok := cim[wsc]; !ok {
 			cim[wsc] = true
@@ -254,8 +254,8 @@ func (api *API) Run(ctx context.Context) error {
 }
 
 type GameSettingsResponse struct {
-	GameMap     *gameserver.GameMap      `json:"gameMap"`
-	WarMachines []*gameserver.WarMachine `json:"warMachines"`
+	GameMap     *server.GameMap      `json:"gameMap"`
+	WarMachines []*server.WarMachine `json:"warMachines"`
 }
 
 const HubKeyGameSettingsUpdated hub.HubCommandKey = hub.HubCommandKey("GAME:SETTINGS:UPDATED")
@@ -324,7 +324,7 @@ func (api *API) GetRandomFaction(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// remove from default online client map
-			api.onlineClientMap[gameserver.UserID(uuid.Nil)] <- func(cim ClientInstanceMap, cps *ConnectPointState, t *tickle.Tickle) {
+			api.onlineClientMap[server.UserID(uuid.Nil)] <- func(cim ClientInstanceMap, cps *ConnectPointState, t *tickle.Tickle) {
 				if _, ok := cim[client]; ok {
 					delete(cim, client)
 				}

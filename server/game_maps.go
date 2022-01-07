@@ -1,4 +1,4 @@
-package gameserver
+package server
 
 type GameMap struct {
 	Name          string  `json:"name"`

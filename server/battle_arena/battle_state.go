@@ -4,15 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"gameserver"
-	"gameserver/db"
-	"gameserver/passport_dummy"
+	"server"
+	"server/db"
+	"server/passport_dummy"
 	"time"
 
 	"github.com/ninja-software/terror/v2"
 )
 
-func (ba *BattleArena) GetCurrentState() *gameserver.Battle {
+func (ba *BattleArena) GetCurrentState() *server.Battle {
 	return ba.battle
 }
 
@@ -20,9 +20,9 @@ const BattleStartCommand = BattleCommand("BATTLE:START")
 
 type BattleStartRequest struct {
 	Payload struct {
-		BattleID    gameserver.BattleID      `json:"battleId"`
-		WarMachines []*gameserver.WarMachine `json:"warMachines"`
-		MapName     string                   `json:"mapName"`
+		BattleID    server.BattleID      `json:"battleId"`
+		WarMachines []*server.WarMachine `json:"warMachines"`
+		MapName     string               `json:"mapName"`
 	} `json:"payload"`
 }
 
@@ -46,9 +46,9 @@ func (ba *BattleArena) BattleStartHandler(ctx context.Context, payload []byte, r
 	}
 
 	// TODO: add get map via name
-	theMap := &gameserver.GameMap{}
+	theMap := &server.GameMap{}
 
-	for _, mp := range gameserver.FakeGameMaps {
+	for _, mp := range server.FakeGameMaps {
 		if mp.Name == req.Payload.MapName {
 			theMap = mp
 			break
@@ -73,7 +73,7 @@ func (ba *BattleArena) BattleStartHandler(ctx context.Context, payload []byte, r
 		}
 	}
 
-	ba.battle = &gameserver.Battle{
+	ba.battle = &server.Battle{
 		ID:          req.Payload.BattleID,
 		WarMachines: req.Payload.WarMachines,
 		StartedAt:   time.Now(),
@@ -112,9 +112,9 @@ const BattleEndCommand = BattleCommand("BATTLE:END")
 
 type BattleEndRequest struct {
 	Payload struct {
-		BattleID           gameserver.BattleID           `json:"battleId"`
-		WinningWarMachines []*gameserver.WarMachineID    `json:"winningWarMachines"`
-		WinCondition       gameserver.BattleWinCondition `json:"winCondition"`
+		BattleID           server.BattleID           `json:"battleId"`
+		WinningWarMachines []*server.WarMachineID    `json:"winningWarMachines"`
+		WinCondition       server.BattleWinCondition `json:"winCondition"`
 	} `json:"payload"`
 }
 

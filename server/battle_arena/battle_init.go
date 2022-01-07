@@ -2,7 +2,7 @@ package battle_arena
 
 import (
 	"context"
-	"gameserver"
+	"server"
 
 	"github.com/gofrs/uuid"
 )
@@ -12,10 +12,10 @@ const BattleCommandInitBattle BattleCommand = "BATTLE:INIT"
 func (ba *BattleArena) InitNextBattle() error {
 
 	// TODO: get the next battle details from ????
-	newBattle := &gameserver.Battle{
-		ID:          gameserver.BattleID(uuid.Must(uuid.NewV4())),
+	newBattle := &server.Battle{
+		ID:          server.BattleID(uuid.Must(uuid.NewV4())),
 		WarMachines: ba.passport.GetWarMachines(),
-		Map:         gameserver.FakeGameMaps[0],
+		Map:         server.FakeGameMaps[0],
 	}
 	ba.battle = newBattle
 
