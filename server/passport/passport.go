@@ -4,13 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"sync"
+	"time"
+
 	"github.com/antonholmquist/jason"
 	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog"
-	"io/ioutil"
 	"nhooyr.io/websocket"
-	"sync"
-	"time"
 )
 
 type Command string
@@ -20,17 +21,16 @@ type ReplyFunc func(interface{})
 type CommandFunc func(ctx context.Context, payload []byte, reply ReplyFunc) error
 
 type Request struct {
-	Key     Command `json:"key"`
-	Payload []byte  `json:"payload"`
-	context context.Context
-	cancel  context.CancelFunc
+	*Message
+	ReplyChannel chan []byte
 }
 
 type Message struct {
-	Key     Command     `json:"key"`
-	Payload interface{} `json:"payload"`
-	context context.Context
-	cancel  context.CancelFunc
+	Key           Command     `json:"key"`
+	Payload       interface{} `json:"payload"`
+	TransactionId string      `json:"transactionId"`
+	context       context.Context
+	cancel        context.CancelFunc
 }
 
 type Passport struct {
@@ -38,7 +38,7 @@ type Passport struct {
 	addr     string
 	commands map[Command]CommandFunc
 	Events   Events
-	send     chan *Message
+	send     chan *Request
 
 	clientID     string
 	clientSecret string
@@ -53,7 +53,7 @@ func NewPassport(ctx context.Context, logger *zerolog.Logger, addr, clientID, cl
 		Log:      logger,
 		addr:     addr,
 		commands: make(map[Command]CommandFunc),
-		send:     make(chan *Message),
+		send:     make(chan *Request),
 		Events:   Events{map[Event][]EventHandler{}, sync.RWMutex{}},
 
 		clientID:     clientID,
@@ -62,11 +62,6 @@ func NewPassport(ctx context.Context, logger *zerolog.Logger, addr, clientID, cl
 		ctx:   ctx,
 		close: cancel,
 	}
-
-	//err := newPP.initWebsocket(clientID, clientSecret)
-	//if err != nil {
-	//	return nil, terror.Error(err)
-	//}
 
 	return newPP, nil
 }
@@ -86,9 +81,12 @@ func (pp *Passport) Connect(ctx context.Context) error {
 	}
 	defer ws.Close(websocket.StatusInternalError, "websocket closed")
 
+	// this holds the callbacks for some requests
+	callbackChannels := make(map[string]chan []byte)
+
 	// send message
 	go func() {
-		err := pp.sendPump(ws)
+		err := pp.sendPump(ws, callbackChannels)
 		if err != nil {
 			pp.Log.Err(err).Msgf("error sending message to passport")
 			return
@@ -135,9 +133,24 @@ func (pp *Passport) Connect(ctx context.Context) error {
 			continue
 		}
 
+		transactionId, err := v.GetString("transactionId")
+		if err != nil {
+			continue
+		}
+
+		// if we have a transactionId call the channel in the callback map
+		if transactionId != "" {
+			cb, ok := callbackChannels[transactionId]
+			if ok {
+				cb <- payload
+			} else {
+				pp.Log.Warn().Msgf("missing callback for transactionId %s", transactionId)
+			}
+		}
+
 		cmdKey, err := v.GetString("key")
 		if err != nil {
-			pp.Log.Err(err).Msgf(`missing json key "key"`)
+			pp.Log.Err(err).Msgf(`error getting key from payload`)
 			continue
 		}
 
@@ -159,11 +172,23 @@ func (pp *Passport) Connect(ctx context.Context) error {
 	}
 }
 
-func (pp *Passport) sendPump(c *websocket.Conn) error {
+func (pp *Passport) sendPump(c *websocket.Conn, callbackChannels map[string]chan []byte) error {
+
 	for {
 		select {
 		case msg := <-pp.send:
-			err := writeTimeout(msg, time.Second*5, c)
+			// if we got given a tx id and a reply channel
+			if msg.ReplyChannel != nil && msg.TransactionId != "" {
+				callbackChannels[msg.TransactionId] = msg.ReplyChannel
+			}
+
+			err := writeTimeout(&Message{
+				Key:           msg.Key,
+				Payload:       msg.Payload,
+				TransactionId: msg.TransactionId,
+				context:       msg.context,
+				cancel:        msg.cancel,
+			}, time.Second*5, c)
 			if err != nil {
 				pp.close()
 				return terror.Error(err)

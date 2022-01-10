@@ -172,6 +172,8 @@ func NewAPI(
 	//			Passport	 //
 	///////////////////////////
 
+	api.Passport.Events.AddEventHandler(passport.EventUserOnlineStatus, api.PassportUserOnlineStatusHandler)
+	api.Passport.Events.AddEventHandler(passport.EventUserUpdated, api.PassportUserUpdatedHandler)
 
 	return api
 }
