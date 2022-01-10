@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"server"
 	"server/db"
-	"server/passport_dummy"
+	"server/passport"
 	"time"
 
 	"github.com/ninja-software/terror/v2"
@@ -61,7 +61,7 @@ func (ba *BattleArena) BattleStartHandler(ctx context.Context, payload []byte, r
 
 	req.Payload.WarMachines = ba.passport.GetWarMachines()
 
-	factions := passport_dummy.FakeFactions
+	factions := passport.FakeFactions
 
 	// match faction into war machine
 	for _, warMachine := range req.Payload.WarMachines {

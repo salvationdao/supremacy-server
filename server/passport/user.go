@@ -1,28 +1,11 @@
-package passport_dummy
+package passport
 
 import (
-	"math/rand"
-	"server"
-
 	"github.com/gofrs/uuid"
+	"server"
 )
 
-func RandomFaction() *server.Faction {
-	randomIndex := rand.Intn(len(FakeFactions))
-	return FakeFactions[randomIndex]
-}
-
-type PassportDummy struct {
-	authStuff string
-}
-
-func NewPassportDummy(authStuff string) *PassportDummy {
-	newPP := &PassportDummy{authStuff: authStuff}
-
-	return newPP
-}
-
-type PassportUser struct {
+type User struct {
 	ID            server.UserID   `json:"id"`
 	Faction       *server.Faction `json:"faction"`
 	ConnectPoint  int64           `json:"connectPoint"`
@@ -32,7 +15,7 @@ type PassportUser struct {
 
 var defaultNamespaceUUID = uuid.Must(uuid.FromString("8f2d7180-bbe3-47b0-96ef-ee3e64697387"))
 
-func (pp *PassportDummy) FakeUserLoginWithFaction(twitchUserID string) *server.User {
+func (pp *Passport) FakeUserLoginWithFaction(twitchUserID string) *server.User {
 	// we will auth with passport, and we'll get a passport user and convert it to a server.user
 	return &server.User{
 		ID:            server.UserID(uuid.NewV3(defaultNamespaceUUID, twitchUserID)),
@@ -44,7 +27,7 @@ func (pp *PassportDummy) FakeUserLoginWithFaction(twitchUserID string) *server.U
 	}
 }
 
-func (pp *PassportDummy) FakeUserLoginWithoutFaction(twitchUserID string) *server.User {
+func (pp *Passport) FakeUserLoginWithoutFaction(twitchUserID string) *server.User {
 	// we will auth with passport, and we'll get a passport user and convert it to a server.user
 	return &server.User{
 		ID:            server.UserID(uuid.NewV3(defaultNamespaceUUID, twitchUserID)),

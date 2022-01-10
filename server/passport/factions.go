@@ -1,10 +1,16 @@
-package passport_dummy
+package passport
 
 import (
+	"math/rand"
 	"server"
 
 	"github.com/gofrs/uuid"
 )
+
+func RandomFaction() *server.Faction {
+	randomIndex := rand.Intn(len(FakeFactions))
+	return FakeFactions[randomIndex]
+}
 
 // NOTE: This is a set of dummy functions that demonstrate passport server actions
 

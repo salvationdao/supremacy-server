@@ -2,8 +2,6 @@ module server
 
 go 1.17
 
-replace github.com/ninja-software/hub/v2 => /home/darren/go/src/github.com/ninja-software/hub
-
 require (
 	github.com/antonholmquist/jason v1.0.0
 	github.com/caddyserver/caddy/v2 v2.4.6
@@ -17,7 +15,7 @@ require (
 	github.com/golang-migrate/migrate/v4 v4.15.1
 	github.com/jackc/pgx/v4 v4.14.1
 	github.com/makiuchi-d/arelo v1.9.2
-	github.com/ninja-software/hub/v2 v2.0.4
+	github.com/ninja-software/hub/v2 v2.0.5
 	github.com/ninja-software/log_helpers v1.0.1-0.20211202070223-aff11d9a6ae6
 	github.com/ninja-software/terror/v2 v2.0.7
 	github.com/oklog/run v1.1.0
