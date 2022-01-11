@@ -31,9 +31,9 @@ const (
 )
 
 type EventData struct {
-	BattleArena         *server.Battle
-	WarMachineDestroyed *server.WarMachineDestroyed
-	FactionActions      []*server.FactionAction
+	BattleArena              *server.Battle
+	FactionAbilities         []*server.FactionAbility
+	WarMachineDestroyedEvent *server.WarMachineDestroyedEvent
 }
 
 type BattleArenaEvents struct {

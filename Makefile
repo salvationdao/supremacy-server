@@ -80,8 +80,12 @@ db-migrate-up-one:
 .PHONY: db-prepare
 db-prepare: db-drop db-migrate
 
+.PHONY: db-seed
+db-seed:
+	cd $(SERVER) && go run cmd/gameserver/main.go db --seed
+
 .PHONY: db-reset
-db-reset: db-drop db-migrate
+db-reset: db-drop db-migrate db-seed
 
 .PHONY: go-mod-download
 go-mod-download:

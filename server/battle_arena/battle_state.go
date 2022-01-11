@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"server"
 	"server/db"
-	"server/passport"
 	"time"
 
 	"github.com/ninja-software/terror/v2"
@@ -21,11 +20,12 @@ const BattleStartCommand = BattleCommand("BATTLE:START")
 type BattleStartRequest struct {
 	Payload struct {
 		BattleID    server.BattleID      `json:"battleId"`
+		GameMapID   server.GameMapID     `json:"gameMapID"`
 		WarMachines []*server.WarMachine `json:"warMachines"`
-		MapName     string               `json:"mapName"`
 	} `json:"payload"`
 }
 
+// BattleStartHandler start a new battle
 func (ba *BattleArena) BattleStartHandler(ctx context.Context, payload []byte, reply ReplyFunc) error {
 	req := &BattleStartRequest{}
 	err := json.Unmarshal(payload, req)
@@ -37,52 +37,59 @@ func (ba *BattleArena) BattleStartHandler(ctx context.Context, payload []byte, r
 		return terror.Error(fmt.Errorf("missing battle id"))
 	}
 
-	if req.Payload.MapName == "" {
-		return terror.Error(fmt.Errorf("missing map name"))
+	if req.Payload.GameMapID.IsNil() {
+		return terror.Error(fmt.Errorf("missing map id"))
 	}
 
 	if len(req.Payload.WarMachines) <= 0 {
 		return terror.Error(fmt.Errorf("cannot start battle with zero war machines"))
 	}
 
-	// TODO: add get map via name
-	theMap := &server.GameMap{}
+	// game map
+	gameMap, err := db.GameMapGet(ctx, ba.Conn, req.Payload.GameMapID)
+	if err != nil {
+		return terror.Error(err)
+	}
 
-	for _, mp := range server.FakeGameMaps {
-		if mp.Name == req.Payload.MapName {
-			theMap = mp
-			break
+	/*************************************
+	* TODO: Replace this with queue system
+	*************************************/
+	// factions
+	factions, err := db.FactionAll(ctx, ba.Conn)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	warMachines, err := db.WarMachineAll(ctx, ba.Conn)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	warMachineIDs := []server.WarMachineID{}
+	for i, warMachine := range warMachines {
+		warMachineIDs = append(warMachineIDs, warMachine.ID)
+		index := i % len(factions)
+		warMachine.Faction = factions[index]
+		warMachine.FactionID = &warMachine.Faction.ID
+		warMachine.Position = &server.Vector3{
+			X: 100 + 45*i,
+			Y: 100 + 45*i,
+			Z: 0,
 		}
+		warMachine.Rotation = 100 * i % 360
 	}
-
-	if theMap == nil {
-		return terror.Error(fmt.Errorf("unable to find map %s", req.Payload.MapName))
-	}
-
-	req.Payload.WarMachines = ba.passport.GetWarMachines()
-
-	factions := passport.FakeFactions
-
-	// match faction into war machine
-	for _, warMachine := range req.Payload.WarMachines {
-		for _, faction := range factions {
-			if warMachine.FactionID == faction.ID {
-				warMachine.Faction = faction
-				break
-			}
-		}
-	}
-
-	ba.battle = &server.Battle{
-		ID:          req.Payload.BattleID,
-		WarMachines: req.Payload.WarMachines,
-		StartedAt:   time.Now(),
-		Map:         theMap,
-	}
+	/*************************************
+	* TODO: Replace this with queue system
+	*************************************/
 
 	ba.Log.Info().Msgf("Battle starting: %s", req.Payload.BattleID)
 	for _, wm := range req.Payload.WarMachines {
 		ba.Log.Info().Msgf("War Machine: %s - %s", wm.Name, wm.ID)
+	}
+
+	battle := &server.Battle{
+		ID:        req.Payload.BattleID,
+		GameMapID: gameMap.ID,
 	}
 
 	//save to database
@@ -91,7 +98,14 @@ func (ba *BattleArena) BattleStartHandler(ctx context.Context, payload []byte, r
 		return terror.Error(err)
 	}
 
-	err = db.BattleStarted(ctx, tx, req.Payload.BattleID, req.Payload.WarMachines)
+	defer tx.Rollback(ctx)
+
+	err = db.BattleStarted(ctx, tx, battle)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	err = db.BattleWarMachineAssign(ctx, tx, battle.ID, warMachineIDs)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -100,6 +114,15 @@ func (ba *BattleArena) BattleStartHandler(ctx context.Context, payload []byte, r
 	if err != nil {
 		return terror.Error(err)
 	}
+
+	// set battle
+	ba.battle.ID = battle.ID
+	ba.battle.GameMapID = battle.GameMapID
+	ba.battle.StartedAt = battle.StartedAt
+	ba.battle.GameMap = gameMap
+	ba.battle.WarMachines = warMachines
+	ba.battle.WinningCondition = nil
+	ba.battle.EndedAt = nil
 
 	ba.Events.Trigger(ctx, EventGameStart, &EventData{BattleArena: ba.battle})
 
@@ -113,7 +136,7 @@ const BattleEndCommand = BattleCommand("BATTLE:END")
 type BattleEndRequest struct {
 	Payload struct {
 		BattleID           server.BattleID           `json:"battleId"`
-		WinningWarMachines []*server.WarMachineID    `json:"winningWarMachines"`
+		WinningWarMachines []server.WarMachineID     `json:"winningWarMachines"`
 		WinCondition       server.BattleWinCondition `json:"winCondition"`
 	} `json:"payload"`
 }
@@ -137,9 +160,19 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 		return terror.Error(err)
 	}
 
-	err = db.BattleEnded(ctx, tx, req.Payload.BattleID, req.Payload.WinningWarMachines, req.Payload.WinCondition)
+	defer tx.Rollback(ctx)
+
+	err = db.BattleEnded(ctx, tx, req.Payload.BattleID, req.Payload.WinCondition)
 	if err != nil {
 		return terror.Error(err)
+	}
+
+	// assign winner war machine
+	if len(req.Payload.WinningWarMachines) > 0 {
+		err = db.BattleWinnerWarMachinesSet(ctx, ba.Conn, req.Payload.BattleID, req.Payload.WinningWarMachines)
+		if err != nil {
+			return terror.Error(err)
+		}
 	}
 
 	err = tx.Commit(ctx)

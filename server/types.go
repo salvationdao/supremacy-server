@@ -324,55 +324,55 @@ func (id *FactionID) Scan(src interface{}) error {
 	return err
 }
 
-// FactionActionID aliases uuid.UUID.
-// Doing this prevents situations where you use FactionActionID where it doesn't belong.
-type FactionActionID uuid.UUID
+// FactionAbilityID aliases uuid.UUID.
+// Doing this prevents situations where you use FactionAbilityID where it doesn't belong.
+type FactionAbilityID uuid.UUID
 
 // IsNil returns true for a nil uuid.
-func (id FactionActionID) IsNil() bool {
-	return id == FactionActionID{}
+func (id FactionAbilityID) IsNil() bool {
+	return id == FactionAbilityID{}
 }
 
 // String aliases UUID.String which returns a canonical RFC-4122 string representation of the UUID.
 // For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.String.
-func (id FactionActionID) String() string {
+func (id FactionAbilityID) String() string {
 	return uuid.UUID(id).String()
 }
 
 // MarshalText aliases UUID.MarshalText which implements the encoding.TextMarshaler interface.
 // For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.MarshalText.
-func (id FactionActionID) MarshalText() ([]byte, error) {
+func (id FactionAbilityID) MarshalText() ([]byte, error) {
 	return uuid.UUID(id).MarshalText()
 }
 
 // UnmarshalText aliases UUID.UnmarshalText which implements the encoding.TextUnmarshaler interface.
 // For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.UnmarshalText.
-func (id *FactionActionID) UnmarshalText(text []byte) error {
+func (id *FactionAbilityID) UnmarshalText(text []byte) error {
 	// Convert to uuid.UUID
 	uid := uuid.UUID(*id)
 	// Unmarshal as uuid.UUID
 	err := uid.UnmarshalText(text)
 	// Convert back to original type
-	*id = FactionActionID(uid)
+	*id = FactionAbilityID(uid)
 	// Retrun error
 	return err
 }
 
 // Value aliases UUID.Value which implements the driver.Valuer interface.
 // For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.Value.
-func (id FactionActionID) Value() (driver.Value, error) {
+func (id FactionAbilityID) Value() (driver.Value, error) {
 	return uuid.UUID(id).Value()
 }
 
 // Scan implements the sql.Scanner interface.
 // For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.Scan.
-func (id *FactionActionID) Scan(src interface{}) error {
+func (id *FactionAbilityID) Scan(src interface{}) error {
 	// Convert to uuid.UUID
 	uid := uuid.UUID(*id)
 	// Unmarshal as uuid.UUID
 	err := uid.Scan(src)
 	// Convert back to original type
-	*id = FactionActionID(uid)
+	*id = FactionAbilityID(uid)
 	// Retrun error
 	return err
 }
@@ -424,6 +424,159 @@ func (id *WarMachineID) Scan(src interface{}) error {
 	err := uid.Scan(src)
 	// Convert back to original type
 	*id = WarMachineID(uid)
+	// Retrun error
+	return err
+}
+
+type GameMapID uuid.UUID
+
+// IsNil returns true for a nil uuid.
+func (id GameMapID) IsNil() bool {
+	return id == GameMapID{}
+}
+
+// String aliases UUID.String which returns a canonical RFC-4122 string representation of the UUID.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.String.
+func (id GameMapID) String() string {
+	return uuid.UUID(id).String()
+}
+
+// MarshalText aliases UUID.MarshalText which implements the encoding.TextMarshaler interface.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.MarshalText.
+func (id GameMapID) MarshalText() ([]byte, error) {
+	return uuid.UUID(id).MarshalText()
+}
+
+// UnmarshalText aliases UUID.UnmarshalText which implements the encoding.TextUnmarshaler interface.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.UnmarshalText.
+func (id *GameMapID) UnmarshalText(text []byte) error {
+	// Convert to uuid.UUID
+	uid := uuid.UUID(*id)
+	// Unmarshal as uuid.UUID
+	err := uid.UnmarshalText(text)
+	// Convert back to original type
+	*id = GameMapID(uid)
+	// Retrun error
+	return err
+}
+
+// Value aliases UUID.Value which implements the driver.Valuer interface.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.Value.
+func (id GameMapID) Value() (driver.Value, error) {
+	return uuid.UUID(id).Value()
+}
+
+// Scan implements the sql.Scanner interface.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.Scan.
+func (id *GameMapID) Scan(src interface{}) error {
+	// Convert to uuid.UUID
+	uid := uuid.UUID(*id)
+	// Unmarshal as uuid.UUID
+	err := uid.Scan(src)
+	// Convert back to original type
+	*id = GameMapID(uid)
+	// Retrun error
+	return err
+}
+
+type WarMachineDestroyedEventID uuid.UUID
+
+// IsNil returns true for a nil uuid.
+func (id WarMachineDestroyedEventID) IsNil() bool {
+	return id == WarMachineDestroyedEventID{}
+}
+
+// String aliases UUID.String which returns a canonical RFC-4122 string representation of the UUID.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.String.
+func (id WarMachineDestroyedEventID) String() string {
+	return uuid.UUID(id).String()
+}
+
+// MarshalText aliases UUID.MarshalText which implements the encoding.TextMarshaler interface.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.MarshalText.
+func (id WarMachineDestroyedEventID) MarshalText() ([]byte, error) {
+	return uuid.UUID(id).MarshalText()
+}
+
+// UnmarshalText aliases UUID.UnmarshalText which implements the encoding.TextUnmarshaler interface.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.UnmarshalText.
+func (id *WarMachineDestroyedEventID) UnmarshalText(text []byte) error {
+	// Convert to uuid.UUID
+	uid := uuid.UUID(*id)
+	// Unmarshal as uuid.UUID
+	err := uid.UnmarshalText(text)
+	// Convert back to original type
+	*id = WarMachineDestroyedEventID(uid)
+	// Retrun error
+	return err
+}
+
+// Value aliases UUID.Value which implements the driver.Valuer interface.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.Value.
+func (id WarMachineDestroyedEventID) Value() (driver.Value, error) {
+	return uuid.UUID(id).Value()
+}
+
+// Scan implements the sql.Scanner interface.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.Scan.
+func (id *WarMachineDestroyedEventID) Scan(src interface{}) error {
+	// Convert to uuid.UUID
+	uid := uuid.UUID(*id)
+	// Unmarshal as uuid.UUID
+	err := uid.Scan(src)
+	// Convert back to original type
+	*id = WarMachineDestroyedEventID(uid)
+	// Retrun error
+	return err
+}
+
+type FactionAbilityEventID uuid.UUID
+
+// IsNil returns true for a nil uuid.
+func (id FactionAbilityEventID) IsNil() bool {
+	return id == FactionAbilityEventID{}
+}
+
+// String aliases UUID.String which returns a canonical RFC-4122 string representation of the UUID.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.String.
+func (id FactionAbilityEventID) String() string {
+	return uuid.UUID(id).String()
+}
+
+// MarshalText aliases UUID.MarshalText which implements the encoding.TextMarshaler interface.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.MarshalText.
+func (id FactionAbilityEventID) MarshalText() ([]byte, error) {
+	return uuid.UUID(id).MarshalText()
+}
+
+// UnmarshalText aliases UUID.UnmarshalText which implements the encoding.TextUnmarshaler interface.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.UnmarshalText.
+func (id *FactionAbilityEventID) UnmarshalText(text []byte) error {
+	// Convert to uuid.UUID
+	uid := uuid.UUID(*id)
+	// Unmarshal as uuid.UUID
+	err := uid.UnmarshalText(text)
+	// Convert back to original type
+	*id = FactionAbilityEventID(uid)
+	// Retrun error
+	return err
+}
+
+// Value aliases UUID.Value which implements the driver.Valuer interface.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.Value.
+func (id FactionAbilityEventID) Value() (driver.Value, error) {
+	return uuid.UUID(id).Value()
+}
+
+// Scan implements the sql.Scanner interface.
+// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.Scan.
+func (id *FactionAbilityEventID) Scan(src interface{}) error {
+	// Convert to uuid.UUID
+	uid := uuid.UUID(*id)
+	// Unmarshal as uuid.UUID
+	err := uid.Scan(src)
+	// Convert back to original type
+	*id = FactionAbilityEventID(uid)
 	// Retrun error
 	return err
 }

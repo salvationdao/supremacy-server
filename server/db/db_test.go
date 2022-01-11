@@ -7,8 +7,11 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"server"
+	"server/db"
 	"testing"
 
+	"github.com/gofrs/uuid"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/ory/dockertest/v3/docker"
 
@@ -136,4 +139,189 @@ func dbFlush(ctx context.Context) {
       end;
     $$`
 	conn.Exec(ctx, q)
+}
+
+func TestDatabase(t *testing.T) {
+	ctx := context.Background()
+
+	// test game map
+	gameMap := &server.GameMap{
+		Name:          "test",
+		ImageUrl:      "url",
+		Width:         1,
+		Height:        1,
+		CellsX:        1,
+		CellsY:        1,
+		TopPixels:     1,
+		LeftPixels:    1,
+		Scale:         1,
+		DisabledCells: []int{1},
+	}
+
+	t.Run("Create game map", func(t *testing.T) {
+		err := db.GameMapCreate(ctx, conn, gameMap)
+		if err != nil {
+			t.Errorf("fail to create game map\n")
+			t.Fatal()
+			return
+		}
+	})
+
+	t.Run("Get game map by id", func(t *testing.T) {
+		_, err := db.GameMapGet(ctx, conn, gameMap.ID)
+		if err != nil {
+			t.Errorf("fail to get game map by id\n")
+			t.Fatal()
+			return
+		}
+	})
+
+	t.Run("Get random game map", func(t *testing.T) {
+		_, err := db.GameMapGetRandom(ctx, conn)
+		if err != nil {
+			t.Errorf("fail to get random game map\n")
+			t.Fatal()
+			return
+		}
+	})
+
+	// Test battle functions
+	battle := &server.Battle{
+		GameMapID: gameMap.ID,
+	}
+
+	t.Run("Start a new battle", func(t *testing.T) {
+		err := db.BattleStarted(ctx, conn, battle)
+		if err != nil {
+			t.Errorf("fail to start a new battle\n")
+			t.Fatal()
+			return
+		}
+	})
+
+	t.Run("Get a battle", func(t *testing.T) {
+		_, err := db.BattleGet(ctx, conn, battle.ID)
+		if err != nil {
+			fmt.Println(err)
+			t.Errorf("fail to get a battle\n")
+			t.Fatal()
+			return
+		}
+	})
+
+	t.Run("End a battle", func(t *testing.T) {
+		err := db.BattleEnded(ctx, conn, battle.ID, server.WinConditionLastAlive)
+		if err != nil {
+			t.Errorf("fail to end a battle\n")
+			t.Fatal()
+			return
+		}
+	})
+
+	warMachine := &server.WarMachine{
+		ID:              server.WarMachineID(uuid.Must(uuid.NewV4())),
+		Name:            "test machine",
+		BaseHealthPoint: 1,
+		BaseShieldPoint: 1,
+	}
+	t.Run("Create war machine", func(t *testing.T) {
+		err := db.WarMachineCreate(ctx, conn, warMachine)
+		if err != nil {
+			t.Errorf("fail to create war machine\n")
+			t.Fatal()
+			return
+		}
+	})
+
+	t.Run("Assign war machines to the battle", func(t *testing.T) {
+		err := db.BattleWarMachineAssign(ctx, conn, battle.ID, []server.WarMachineID{warMachine.ID})
+		if err != nil {
+			t.Errorf("fail to assign war machines to the battle\n")
+			t.Fatal()
+			return
+		}
+	})
+
+	// faction := &server.Faction{
+	// 	Label:  "test faction",
+	// 	Colour: "test",
+	// }
+	// t.Run("Create new faction", func(t *testing.T) {
+	// 	err := db.FactionCreate(ctx, conn, faction)
+	// 	if err != nil {
+	// 		t.Errorf("fail to create new faction\n")
+	// 		t.Fatal()
+	// 		return
+	// 	}
+	// })
+
+	// t.Run("Get faction", func(t *testing.T) {
+	// 	_, err := db.FactionGet(ctx, conn, faction.ID)
+	// 	if err != nil {
+	// 		t.Errorf("fail to get faction\n")
+	// 		t.Fatal()
+	// 		return
+	// 	}
+	// })
+
+	factionAbility := &server.FactionAbility{
+		FactionID:              server.FactionID(uuid.Must(uuid.NewV4())),
+		Label:                  "test action",
+		Type:                   "test",
+		Colour:                 "test",
+		SupremacyTokenCost:     100,
+		CooldownDurationSecond: 100,
+	}
+
+	t.Run("Create new faction action", func(t *testing.T) {
+		err := db.FactionAbilityCreate(ctx, conn, factionAbility)
+		if err != nil {
+			t.Errorf("fail to create new faction action\n")
+			t.Fatal()
+			return
+		}
+	})
+
+	warMachineDestroyedEvent := &server.WarMachineDestroyedEvent{
+		DestroyedWarMachineID: warMachine.ID,
+		KillByWarMachineID:    &warMachine.ID,
+	}
+
+	// add battle event
+	t.Run("Log war machine destroyed event", func(t *testing.T) {
+		err := db.WarMachineDestroyedEventCreate(ctx, conn, battle.ID, warMachineDestroyedEvent)
+		if err != nil {
+			fmt.Println(err)
+			t.Errorf("fail to create war machine destroyed event\n")
+			t.Fatal()
+			return
+		}
+	})
+
+	t.Run("Assign assisted war machines to a destroyed event", func(t *testing.T) {
+		err := db.WarMachineDestroyedEventAssistedWarMachineSet(ctx, conn, warMachineDestroyedEvent.ID, []server.WarMachineID{warMachine.ID})
+		if err != nil {
+			fmt.Println(err)
+			t.Errorf("fail to assign assisted war machines to war machine destroyed event\n")
+			t.Fatal()
+			return
+		}
+	})
+
+	factionAbilityEvent := &server.FactionAbilityEvent{
+		FactionAbilityID: factionAbility.ID,
+		IsTriggered:      false,
+	}
+
+	// add battle event
+	t.Run("Log faction action event", func(t *testing.T) {
+		err := db.FactionAbilityEventCreate(ctx, conn, battle.ID, factionAbilityEvent)
+		if err != nil {
+			fmt.Println(err)
+			t.Errorf("fail to log faction action event\n")
+			t.Fatal()
+			return
+		}
+	})
+
 }

@@ -26,9 +26,8 @@ type User struct {
 	UpdatedAt           time.Time  `json:"updatedAt" db:"updated_at"`
 	DeletedAt           *time.Time `json:"deletedAt" db:"deleted_at"`
 
-	PassportURL   string `json:"passportURL"`
-	ConnectPoint  int64  `json:"connectPoint"`
-	SupremacyCoin int64  `json:"supremacyCoin"`
+	PassportURL    string `json:"passportURL"`
+	SupremacyToken int64  `json:"supremacyToken"`
 	// for dev env only
 	TwitchID string `json:"twitchID" db:"twitch_id"`
 }

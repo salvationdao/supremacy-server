@@ -66,16 +66,16 @@ const MinimumConnectSecond = 10
 
 type ClientInstanceMap map[*hub.Client]bool
 
-// ConnectPointState record the state of channel point of current user
-type ConnectPointState struct {
-	ConnectPoint int64
+// SupremacyTokenState record the state of channel point of current user
+type SupremacyTokenState struct {
+	SupremacyToken int64
 }
 
 // startOnlineClientTracker is a channel that track online client instances
 func (api *API) startOnlineClientTracker(hubClientID server.UserID, connectPoint int64) {
 	clientInstanceMap := make(ClientInstanceMap)
 
-	connectPointState := &ConnectPointState{connectPoint}
+	connectPointState := &SupremacyTokenState{connectPoint}
 
 	// create a channel point tickle
 	taskTickle := tickle.New("FactionID Channel Point Ticker", MinimumConnectSecond, api.connectPointTickleFactory(hubClientID))
@@ -103,13 +103,13 @@ func (api *API) connectPointTickleFactory(hubClientID server.UserID) func() (int
 		}
 
 		// increment the client's channel point
-		api.onlineClientMap[hubClientID] <- func(cim ClientInstanceMap, cps *ConnectPointState, t *tickle.Tickle) {
+		api.onlineClientMap[hubClientID] <- func(cim ClientInstanceMap, cps *SupremacyTokenState, t *tickle.Tickle) {
 			if cps == nil {
 				return
 			}
 
-			cps.ConnectPoint += 1
-			api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchConnectPointUpdated, hubClientID)), cps.ConnectPoint)
+			cps.SupremacyToken += 1
+			api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchSupremacyTokenUpdated, hubClientID)), cps.SupremacyToken)
 		}
 
 		return http.StatusOK, nil

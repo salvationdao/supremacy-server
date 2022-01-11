@@ -70,6 +70,7 @@ func NewBattleArenaClient(ctx context.Context, logger *zerolog.Logger, conn *pgx
 		Events:   BattleArenaEvents{map[Event][]EventHandler{}, sync.RWMutex{}},
 		ctx:      ctx,
 		close:    cancel,
+		battle:   &server.Battle{},
 	}
 
 	// add the commands here
@@ -114,7 +115,7 @@ func (ba *BattleArena) Serve(ctx context.Context) error {
 
 func (ba *BattleArena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c, err := websocket.Accept(w, r, &websocket.AcceptOptions{
-		Subprotocols: []string{"server-v1"},
+		Subprotocols: []string{"gameserver-v1"},
 	})
 	if err != nil {
 		ba.Log.Printf("%v", err)
@@ -122,10 +123,10 @@ func (ba *BattleArena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	defer c.Close(websocket.StatusInternalError, "the sky is falling")
 
-	if c.Subprotocol() != "server-v1" {
-		ba.Log.Printf("client must speak the server-v1 subprotocol")
+	if c.Subprotocol() != "gameserver-v1" {
+		ba.Log.Printf("client must speak the gameserver-v1 subprotocol")
 
-		c.Close(websocket.StatusPolicyViolation, "client must speak the server-v1 subprotocol")
+		c.Close(websocket.StatusPolicyViolation, "client must speak the gameserver-v1 subprotocol")
 		return
 	}
 

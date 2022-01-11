@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"server"
 	"server/battle_arena"
@@ -50,11 +49,13 @@ type API struct {
 	MessageBus   *messagebus.MessageBus
 	Passport     *passport.Passport
 
+	factionMap map[server.FactionID]*server.Faction
+
 	// map routines
 	factionVoteCycle map[server.FactionID]chan func(*server.Faction, *VoteStage, FirstVoteState, *FirstVoteResult, *secondVoteResult, *FactionVotingTicker)
 
 	hubClientDetail map[*hub.Client]chan func(*HubClientDetail)
-	onlineClientMap map[server.UserID]chan func(ClientInstanceMap, *ConnectPointState, *tickle.Tickle)
+	onlineClientMap map[server.UserID]chan func(ClientInstanceMap, *SupremacyTokenState, *tickle.Tickle)
 }
 
 // NewAPI registers routes
@@ -62,11 +63,11 @@ func NewAPI(
 	log *zerolog.Logger,
 	battleArenaClient *battle_arena.BattleArena,
 	pp *passport.Passport,
+	factionMap map[server.FactionID]*server.Faction,
 	cancelOnPanic context.CancelFunc,
 	addr string,
 	HTMLSanitize *bluemonday.Policy,
 	conn *pgxpool.Pool,
-	twitchExtensionSecret []byte,
 	config *server.Config,
 ) *API {
 	// initialise message bus
@@ -81,6 +82,7 @@ func NewAPI(
 		MessageBus:   messageBus,
 		HTMLSanitize: HTMLSanitize,
 		BattleArena:  battleArenaClient,
+		factionMap:   factionMap,
 		Hub: hub.New(&hub.Config{
 			Log: zerologger.New(*log_helpers.NamedLogger(log, "hub library")),
 			WelcomeMsg: &hub.WelcomeMsg{
@@ -98,16 +100,16 @@ func NewAPI(
 
 		// channel for handling hub client
 		hubClientDetail: make(map[*hub.Client]chan func(*HubClientDetail)),
-		onlineClientMap: make(map[server.UserID](chan func(ClientInstanceMap, *ConnectPointState, *tickle.Tickle))),
+		onlineClientMap: make(map[server.UserID](chan func(ClientInstanceMap, *SupremacyTokenState, *tickle.Tickle))),
 	}
 
 	// start the default online client map
 	defaultHubClientUUID := server.UserID(uuid.Nil)
-	api.onlineClientMap[defaultHubClientUUID] = make(chan func(ClientInstanceMap, *ConnectPointState, *tickle.Tickle))
+	api.onlineClientMap[defaultHubClientUUID] = make(chan func(ClientInstanceMap, *SupremacyTokenState, *tickle.Tickle))
 	go api.startOnlineClientTracker(defaultHubClientUUID, 0)
 
 	// get all the faction list from passport server and create channel
-	for _, faction := range passport.FakeFactions {
+	for _, faction := range factionMap {
 		api.factionVoteCycle[faction.ID] = make(chan func(*server.Faction, *VoteStage, FirstVoteState, *FirstVoteResult, *secondVoteResult, *FactionVotingTicker))
 		go api.startFactionVoteCycle(faction)
 	}
@@ -152,12 +154,12 @@ func NewAPI(
 		r.Handle("/ws", api.Hub)
 		r.Get("/game_settings", WithError(api.GetGameSettings))
 		r.Get("/second_votes", WithError(api.GetSecondVotes))
-		r.HandleFunc("/temp-random-faction", api.GetRandomFaction)
+		// r.HandleFunc("/temp-random-faction", api.GetRandomFaction)
 		r.HandleFunc("/start", api.Start) // TODO: will be removed at a later date
 	})
 
 	_ = NewCheckController(log, conn, api)
-	_ = NewTwitchController(log, conn, api, twitchExtensionSecret)
+	_ = NewTwitchController(log, conn, api)
 	_ = NewUserController(log, conn, api)
 
 	///////////////////////////
@@ -187,7 +189,7 @@ func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client, clients
 		go api.startClientTracker(wsc)
 	}
 
-	api.onlineClientMap[server.UserID(uuid.Nil)] <- func(cim ClientInstanceMap, cps *ConnectPointState, t *tickle.Tickle) {
+	api.onlineClientMap[server.UserID(uuid.Nil)] <- func(cim ClientInstanceMap, cps *SupremacyTokenState, t *tickle.Tickle) {
 		// register the client instance if not exists
 		if _, ok := cim[wsc]; !ok {
 			cim[wsc] = true
@@ -213,7 +215,7 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 
 	shouldDeleteChan := make(chan bool)
 	// delete the online instance from the map
-	api.onlineClientMap[hubClientDetail.ID] <- func(cim ClientInstanceMap, cps *ConnectPointState, t *tickle.Tickle) {
+	api.onlineClientMap[hubClientDetail.ID] <- func(cim ClientInstanceMap, cps *SupremacyTokenState, t *tickle.Tickle) {
 		delete(cim, wsc)
 
 		if len(cim) == 0 && !hubClientDetail.ID.IsNil() {
@@ -274,7 +276,7 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 	gameSettingsData, err := json.Marshal(&BroadcastPayload{
 		Key: HubKeyGameSettingsUpdated,
 		Payload: &GameSettingsResponse{
-			GameMap:     ed.BattleArena.Map,
+			GameMap:     ed.BattleArena.GameMap,
 			WarMachines: ed.BattleArena.WarMachines,
 		},
 	})
@@ -306,44 +308,16 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 	}
 }
 
-// GetRandomFaction just a dummy end point to give a random faction to a user
-func (api *API) GetRandomFaction(w http.ResponseWriter, r *http.Request) {
-	randomFaction := passport.RandomFaction()
+// // GetRandomFaction just a dummy end point to give a random faction to a user
+// func (api *API) GetRandomFaction(w http.ResponseWriter, r *http.Request) {
+// 	randomFaction := passport.RandomFaction(api.factions)
 
-	code := r.URL.Query().Get("twitchID")
-	user := api.Passport.FakeUserLoginWithoutFaction(code)
-	// This will normally be saved on passport
-	user.Faction = randomFaction
+// 	code := r.URL.Query().Get("twitchID")
+// 	user := api.Passport.FakeUserLoginWithoutFaction(code)
+// 	// This will normally be saved on passport
+// 	user.Faction = randomFaction
 
-	// add client to new online client map
-	currentOnlineClientMap, ok := api.onlineClientMap[user.ID]
-	if !ok {
-		currentOnlineClientMap = make(chan func(ClientInstanceMap, *ConnectPointState, *tickle.Tickle))
-		api.onlineClientMap[user.ID] = currentOnlineClientMap
-		go api.startOnlineClientTracker(user.ID, user.ConnectPoint)
-	}
-
-	currentOnlineClientMap <- func(cim ClientInstanceMap, cps *ConnectPointState, t *tickle.Tickle) {
-		for client := range cim {
-			// update client faction
-			api.hubClientDetail[client] <- func(detail *HubClientDetail) {
-				detail.FactionID = user.Faction.ID
-			}
-
-			// remove from default online client map
-			api.onlineClientMap[server.UserID(uuid.Nil)] <- func(cim ClientInstanceMap, cps *ConnectPointState, t *tickle.Tickle) {
-				if _, ok := cim[client]; ok {
-					delete(cim, client)
-				}
-			}
-
-			if _, ok := cim[client]; !ok {
-				cim[client] = true
-			}
-		}
-	}
-	api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUser, user.ID)), user)
-}
+// }
 
 // Start starts the battle flow
 func (api *API) Start(w http.ResponseWriter, r *http.Request) {

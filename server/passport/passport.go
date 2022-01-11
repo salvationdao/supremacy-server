@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/antonholmquist/jason"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog"
 	"nhooyr.io/websocket"
@@ -158,6 +159,8 @@ func (pp *Passport) Connect(ctx context.Context) error {
 			pp.Log.Err(fmt.Errorf("missing key value")).Msgf("missing key/command value")
 			continue
 		}
+
+		spew.Dump(cmdKey)
 
 		// send received message to the hub to handle
 		pp.Events.Trigger(context.Background(), Event(fmt.Sprintf("PASSPORT:%s", cmdKey)), payload)

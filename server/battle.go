@@ -9,10 +9,13 @@ import (
 
 type Battle struct {
 	ID                BattleID      `json:"battleId" db:"id"`
+	GameMapID         GameMapID     `json:"gameMapID" db:"game_map_id"`
+	StartedAt         time.Time     `json:"startedAt" db:"started_at"`
+	EndedAt           *time.Time    `json:"endedAt" db:"ended_at"`
+	WinningCondition  *string       `json:"winningCondition" db:"winning_condition"`
 	WarMachines       []*WarMachine `json:"warMachines"`
 	WinningWarMachine *WarMachineID `json:"winningWarMachine"`
-	StartedAt         time.Time     `json:"startedAt" db:"started_at"`
-	Map               *GameMap      `json:"map"`
+	GameMap           *GameMap      `json:"map"`
 }
 
 type BattleState string

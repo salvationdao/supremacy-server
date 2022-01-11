@@ -1,33 +1,50 @@
 package passport
 
 import (
+	"context"
+	"encoding/json"
 	"math/rand"
 	"server"
 
-	"github.com/gofrs/uuid"
+	"github.com/ninja-software/terror/v2"
 )
 
-func RandomFaction() *server.Faction {
-	randomIndex := rand.Intn(len(FakeFactions))
-	return FakeFactions[randomIndex]
+func RandomFaction(factions map[server.FactionID]*server.Faction) *server.Faction {
+	factionList := []*server.Faction{}
+
+	for _, faction := range factions {
+		factionList = append(factionList, faction)
+	}
+
+	randomIndex := rand.Intn(len(factionList))
+	return factionList[randomIndex]
 }
 
-// NOTE: This is a set of dummy functions that demonstrate passport server actions
+type FactionAllResponse struct {
+	Factions []*server.Faction `json:"payload"`
+}
 
-var FakeFactions = []*server.Faction{
-	{
-		ID:     server.FactionID(uuid.Must(uuid.FromString("98bf7bb3-1a7c-4f21-8843-458d62884060"))),
-		Label:  "Red Mountain Offworld Mining Corporation",
-		Colour: "#BB1C2A",
-	},
-	{
-		ID:     server.FactionID(uuid.Must(uuid.FromString("7c6dde21-b067-46cf-9e56-155c88a520e2"))),
-		Label:  "Boston Cybernetics",
-		Colour: "#03AAF9",
-	},
-	{
-		ID:     server.FactionID(uuid.Must(uuid.FromString("880db344-e405-428d-84e5-6ebebab1fe6d"))),
-		Label:  "Zaibatsu Heavy Industries",
-		Colour: "#263D4D",
-	},
+// FactionAll get all the factions from passport server
+func (pp *Passport) FactionAll(ctx context.Context, txID string) ([]*server.Faction, error) {
+	ctx, cancel := context.WithCancel(ctx)
+
+	replyChannel := make(chan []byte)
+
+	pp.send <- &Request{
+		ReplyChannel: replyChannel,
+		Message: &Message{
+			Key:           "FACTION:ALL",
+			TransactionId: txID,
+			context:       ctx,
+			cancel:        cancel,
+		}}
+
+	msg := <-replyChannel
+	resp := &FactionAllResponse{}
+	err := json.Unmarshal(msg, resp)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return resp.Factions, nil
 }

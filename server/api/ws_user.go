@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"server"
+	"server/passport"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/hub/v2"
@@ -27,52 +28,67 @@ func NewUserController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *UserC
 		API:  api,
 	}
 
-	uch.API.SubscribeCommand(HubKeyUser, uch.UserSubscribeHandler)
-	uch.API.SubscribeCommand(HubKeyUserOnlineStatus, uch.OnlineStatusSubscribeHandler)
+	// TODO: delete this when passport finish user faction assign function
+	uch.API.SecureUserCommand(HubKeyUserRandomFactionUpdate, uch.UserRandomUpdateFaction)
+
+	uch.API.SecureUserSubscribeCommand(HubKeyUser, uch.UserSubscribeHandler)
+	uch.API.SecureUserSubscribeCommand(HubKeyUserOnlineStatus, uch.OnlineStatusSubscribeHandler)
 
 	return uch
 }
 
-const HubKeyUser hub.HubCommandKey = "USER:SUBSCRIBE"
+const HubKeyUserRandomFactionUpdate hub.HubCommandKey = "USER:RANDOM:FACTION:UPDATE"
 
-type UserSubscribeRequest struct {
-	*hub.HubCommandRequest
-	TransactionId string `json:"transactionId"`
-	Payload       struct {
-		ID       server.UserID `json:"id"`
-		Username string        `json:"username"` // Optional username instead of id
-	} `json:"payload"`
+func (uc *UserControllerWS) UserRandomUpdateFaction(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	clientDetail, err := uc.API.getClientDetailFromChannel(wsc)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	if !clientDetail.FactionID.IsNil() {
+		return terror.Error(terror.ErrInvalidInput, "unable to reassign new faction")
+	}
+
+	randomFaction := passport.RandomFaction(uc.API.factionMap)
+
+	err = uc.API.Passport.UserFactionUpdate(ctx, clientDetail.ID, randomFaction.ID, req.TransactionID)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	reply(true)
+
+	return nil
 }
+
+const HubKeyUser hub.HubCommandKey = "USER:SUBSCRIBE"
 
 // UserSubscribeHandler to subscribe to a user
 func (ctrlr *UserControllerWS) UserSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	req := &UserSubscribeRequest{}
+	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
-	user := &server.User{}
-	if !req.Payload.ID.IsNil() {
-		user, err = ctrlr.API.Passport.UserGetByID(ctx, req.Payload.ID, req.TransactionId)
-		if err != nil {
-			return req.TransactionID, "", terror.Error(err, "Unable to load user")
-		}
+	clientDetail, err := ctrlr.API.getClientDetailFromChannel(wsc)
+	if err != nil {
+		return "", "", terror.Error(err)
 	}
 
-	if (user == nil || user.ID.IsNil()) && req.Payload.Username != "" {
-		user, err = ctrlr.API.Passport.UserGetByUsername(ctx, req.Payload.Username, req.TransactionId)
-		if err != nil {
-			return req.TransactionID, "", terror.Error(err, "Unable to load user")
-		}
-	}
-
-	if user == nil || user.ID.IsNil() {
-		return req.TransactionID, "", terror.Error(fmt.Errorf("user still nil"), "Unable to load user")
+	user, err := ctrlr.API.Passport.UserGetByID(ctx, clientDetail.ID, req.TransactionID)
+	if err != nil {
+		return req.TransactionID, "", terror.Error(err, "Unable to load user")
 	}
 
 	reply(user)
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUser, user.ID)), nil
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUser, clientDetail.ID)), nil
 }
 
 // HubKeyUserOnlineStatus subscribes to a user's online status (returns boolean)
@@ -81,8 +97,7 @@ const HubKeyUserOnlineStatus hub.HubCommandKey = "USER:ONLINE_STATUS"
 // HubKeyUserOnlineStatusRequest to subscribe to user online status changes
 type HubKeyUserOnlineStatusRequest struct {
 	*hub.HubCommandRequest
-	TransactionId string `json:"transactionId"`
-	Payload       struct {
+	Payload struct {
 		ID       server.UserID `json:"id"`
 		Username string        `json:"username"` // Optional username instead of id
 	} `json:"payload"`
@@ -101,7 +116,7 @@ func (ctrlr *UserControllerWS) OnlineStatusSubscribeHandler(ctx context.Context,
 		return req.TransactionID, "", terror.Error(terror.ErrInvalidInput, "User ID or username is required")
 	}
 	if userID.IsNil() {
-		user, err := ctrlr.API.Passport.UserGetByUsername(ctx, req.Payload.Username, req.TransactionId)
+		user, err := ctrlr.API.Passport.UserGetByUsername(ctx, req.Payload.Username, req.TransactionID)
 		if err != nil {
 			return req.TransactionID, "", terror.Error(err, "Unable to load current user")
 		}
@@ -115,7 +130,7 @@ func (ctrlr *UserControllerWS) OnlineStatusSubscribeHandler(ctx context.Context,
 	// get gameserver online status
 	online := false
 	ctrlr.API.Hub.Clients(func(clients hub.ClientsList) {
-		for cl, _ := range clients {
+		for cl := range clients {
 			if cl.Identifier() == userID.String() {
 				online = true
 				break

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"log"
@@ -10,6 +9,7 @@ import (
 	"server/api"
 	"server/battle_arena"
 	"server/passport"
+	"server/seed"
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -81,9 +81,6 @@ func main() {
 
 					&cli.BoolFlag{Name: "cookie_secure", Value: true, EnvVars: []string{envPrefix + "_COOKIE_SECURE", "COOKIE_SECURE"}, Usage: "set cookie secure"},
 					&cli.StringFlag{Name: "google_client_id", Value: "", EnvVars: []string{envPrefix + "_GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_ID"}, Usage: "Google Client ID for OAuth functionaility."},
-
-					// Twitch server stuff
-					&cli.StringFlag{Name: "twitch_extension_secret", Value: "", EnvVars: []string{envPrefix + "_TWITCH_EXTENSION_SECRET", "_TWITCH_EXTENSION_SECRET"}, Usage: "Twitch Extension Secret for verifying tokens sent with requests"},
 
 					&cli.BoolFlag{Name: "jwt_encrypt", Value: true, EnvVars: []string{envPrefix + "_JWT_ENCRYPT", "JWT_ENCRYPT"}, Usage: "set if to encrypt jwt tokens or not"},
 					&cli.StringFlag{Name: "jwt_encrypt_key", Value: "ITF1vauAxvJlF0PLNY9btOO9ZzbUmc6X", EnvVars: []string{envPrefix + "_JWT_KEY", "JWT_KEY"}, Usage: "supports key sizes of 16, 24 or 32 bytes"},
@@ -168,6 +165,44 @@ func main() {
 					return nil
 				},
 			},
+			{
+				Name: "db",
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "database_user", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_USER"}, Usage: "The database user"},
+					&cli.StringFlag{Name: "database_pass", Value: "dev", EnvVars: []string{envPrefix + "_DATABASE_PASS"}, Usage: "The database pass"},
+					&cli.StringFlag{Name: "database_host", Value: "localhost", EnvVars: []string{envPrefix + "_DATABASE_HOST"}, Usage: "The database host"},
+					&cli.StringFlag{Name: "database_port", Value: "5437", EnvVars: []string{envPrefix + "_DATABASE_PORT"}, Usage: "The database port"},
+					&cli.StringFlag{Name: "database_name", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_NAME"}, Usage: "The database name"},
+					&cli.StringFlag{Name: "database_application_name", Value: "API Server", EnvVars: []string{envPrefix + "_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
+
+					&cli.BoolFlag{Name: "seed", EnvVars: []string{"DB_SEED"}, Usage: "seed the database"},
+				},
+				Usage: "seed the database",
+				Action: func(c *cli.Context) error {
+					databaseUser := c.String("database_user")
+					databasePass := c.String("database_pass")
+					databaseHost := c.String("database_host")
+					databasePort := c.String("database_port")
+					databaseName := c.String("database_name")
+					databaseAppName := c.String("database_application_name")
+
+					pgxconn, err := pgxconnect(
+						databaseUser,
+						databasePass,
+						databaseHost,
+						databasePort,
+						databaseName,
+						databaseAppName,
+						Version,
+					)
+					if err != nil {
+						return terror.Error(err)
+					}
+
+					seeder := seed.NewSeeder(pgxconn)
+					return seeder.Run()
+				},
+			},
 		},
 	}
 
@@ -208,22 +243,23 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, ba
 		TokenExpirationDays: ctxCLI.Int("jwt_expiry_days"),
 	}
 
-	twitchExtensionSecret := ctxCLI.String("twitch_extension_secret")
-	if twitchExtensionSecret == "" {
-		return fmt.Errorf("missing twitch extension secret")
-	}
-	secret, err := base64.StdEncoding.DecodeString(twitchExtensionSecret)
-	if err != nil {
-		return terror.Error(err, "Failed to decode twitch extension secret")
-	}
-
 	// HTML Sanitizer
 	HTMLSanitizePolicy := bluemonday.UGCPolicy()
 	HTMLSanitizePolicy.AllowAttrs("class").OnElements("img", "table", "tr", "td", "p")
 
+	factions, err := passport.FactionAll(ctx, "faction all")
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	factionMap := make(map[server.FactionID]*server.Faction)
+	for _, faction := range factions {
+		factionMap[faction.ID] = faction
+	}
+
 	// API Server
 	ctx, cancelOnPanic := context.WithCancel(ctx)
-	serverAPI := api.NewAPI(log, battleArenaClient, passport, cancelOnPanic, apiAddr, HTMLSanitizePolicy, conn, secret, config)
+	serverAPI := api.NewAPI(log, battleArenaClient, passport, factionMap, cancelOnPanic, apiAddr, HTMLSanitizePolicy, conn, config)
 	return serverAPI.Run(ctx)
 }
 

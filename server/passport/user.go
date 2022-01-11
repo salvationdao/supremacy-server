@@ -6,16 +6,43 @@ import (
 	"server"
 
 	"github.com/ninja-software/terror/v2"
-
-	"github.com/gofrs/uuid"
 )
 
 type User struct {
-	ID            server.UserID   `json:"id"`
-	Faction       *server.Faction `json:"faction"`
-	ConnectPoint  int64           `json:"connectPoint"`
-	SupremacyCoin int64           `json:"supremacyCoin"`
-	PassportURL   string          `json:"passportURL"`
+	ID             server.UserID   `json:"id"`
+	Faction        *server.Faction `json:"faction"`
+	ConnectPoint   int64           `json:"connectPoint"`
+	SupremacyToken int64           `json:"supremacyCoin"`
+	PassportURL    string          `json:"passportURL"`
+}
+
+func (pp *Passport) TwitchAuth(ctx context.Context, twitchToken string, txID string) (*server.User, error) {
+	ctx, cancel := context.WithCancel(ctx)
+
+	replyChannel := make(chan []byte)
+
+	pp.send <- &Request{
+		ReplyChannel: replyChannel,
+		Message: &Message{
+			Key: "TWITCH:AUTH",
+			Payload: struct {
+				TwitchToken string `json:"twitchToken"`
+			}{
+				TwitchToken: twitchToken,
+			},
+			TransactionId: txID,
+			context:       ctx,
+			cancel:        cancel,
+		}}
+
+	msg := <-replyChannel
+	resp := &UserGetByIDResponse{}
+	err := json.Unmarshal(msg, resp)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return &resp.User, nil
 }
 
 type UserGetByIDResponse struct {
@@ -87,26 +114,24 @@ func (pp *Passport) UserGetByUsername(ctx context.Context, username string, txID
 	}
 }
 
-var defaultNamespaceUUID = uuid.Must(uuid.FromString("8f2d7180-bbe3-47b0-96ef-ee3e64697387"))
+// UserFactionUpdate update the faction of the given user
+func (pp *Passport) UserFactionUpdate(ctx context.Context, userID server.UserID, factionID server.FactionID, txID string) error {
+	ctx, cancel := context.WithCancel(ctx)
 
-func (pp *Passport) FakeUserLoginWithFaction(twitchUserID string) *server.User {
-	// we will auth with passport, and we'll get a passport user and convert it to a server.user
-	return &server.User{
-		ID:            server.UserID(uuid.NewV3(defaultNamespaceUUID, twitchUserID)),
-		Faction:       FakeFactions[0],
-		FactionID:     FakeFactions[0].ID,
-		ConnectPoint:  12345,
-		SupremacyCoin: 12345,
-		PassportURL:   "", // url we get from passport which has a token in the url to take them to their passport page
-	}
-}
+	pp.send <- &Request{
+		Message: &Message{
+			Key: "USER:FACTION:UPDATE",
+			Payload: struct {
+				UserID    server.UserID    `json:"userID"`
+				FactionID server.FactionID `json:"factionID"`
+			}{
+				UserID:    userID,
+				FactionID: factionID,
+			},
+			TransactionId: txID,
+			context:       ctx,
+			cancel:        cancel,
+		}}
 
-func (pp *Passport) FakeUserLoginWithoutFaction(twitchUserID string) *server.User {
-	// we will auth with passport, and we'll get a passport user and convert it to a server.user
-	return &server.User{
-		ID:            server.UserID(uuid.NewV3(defaultNamespaceUUID, twitchUserID)),
-		ConnectPoint:  12345,
-		SupremacyCoin: 12345,
-		PassportURL:   "https://dev.supremacygame.io/api/temp-random-faction", // url we get from passport which has a token in the url to take them to their passport page
-	}
+	return nil
 }

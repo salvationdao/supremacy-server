@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"server"
 	"server/battle_arena"
-	"strings"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -22,31 +21,29 @@ import (
 
 // TwitchControllerWS holds handlers for checking server status
 type TwitchControllerWS struct {
-	Conn            *pgxpool.Pool
-	Log             *zerolog.Logger
-	API             *API
-	ExtensionSecret []byte
+	Conn *pgxpool.Pool
+	Log  *zerolog.Logger
+	API  *API
 }
 
 // NewTwitchController creates the check hub
-func NewTwitchController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, twitchExtensionSecret []byte) *TwitchControllerWS {
+func NewTwitchController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *TwitchControllerWS {
 	twitchHub := &TwitchControllerWS{
-		Conn:            conn,
-		Log:             log_helpers.NamedLogger(log, "twitch_hub"),
-		API:             api,
-		ExtensionSecret: twitchExtensionSecret,
+		Conn: conn,
+		Log:  log_helpers.NamedLogger(log, "twitch_hub"),
+		API:  api,
 	}
 
 	api.Command(HubKeyTwitchAuth, twitchHub.Authentication)
-	api.SecureUserCommand(HubKeyTwitchFactionActionFirstVote, twitchHub.FactionActionFirstVote)
-	api.SecureUserCommand(HubKeyTwitchFactionActionSecondVote, twitchHub.FactionActionSecondVote)
+	api.SecureUserCommand(HubKeyTwitchFactionAbilityFirstVote, twitchHub.FactionAbilityFirstVote)
+	api.SecureUserCommand(HubKeyTwitchFactionAbilitySecondVote, twitchHub.FactionAbilitySecondVote)
 	api.SecureUserFactionCommand(HubKeyTwitchActionLocationSelect, twitchHub.ActionLocationSelect)
 
 	// subscription
-	api.SecureUserSubscribeCommand(HubKeyTwitchConnectPointUpdated, twitchHub.ConnectPointUpdateSubscribeHandler)
+	api.SecureUserSubscribeCommand(HubKeyTwitchSupremacyTokenUpdated, twitchHub.SupremacyTokenUpdateSubscribeHandler)
 	api.SecureUserSubscribeCommand(HubKeyTwitchVoteWinnerAnnouncement, twitchHub.VoteWinnerAnnouncementSubscribeHandler)
 
-	api.SecureUserFactionSubscribeCommand(HubKeyTwitchFactionActionUpdated, twitchHub.FactionActionUpdateSubscribeHandler)
+	api.SecureUserFactionSubscribeCommand(HubKeyTwitchFactionAbilityUpdated, twitchHub.FactionAbilityUpdateSubscribeHandler)
 	api.SecureUserFactionSubscribeCommand(HubKeyTwitchFactionVoteStageUpdated, twitchHub.FactionVoteStageUpdateSubscribeHandler)
 	return twitchHub
 }
@@ -102,60 +99,55 @@ func (th *TwitchControllerWS) Authentication(ctx context.Context, wsc *hub.Clien
 		return terror.Error(err)
 	}
 
-	claims, err := getClaimsFromTwitchToken(req.Payload.TwitchToken, th.ExtensionSecret)
+	user, err := th.API.Passport.TwitchAuth(ctx, req.Payload.TwitchToken, req.TransactionID)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, "Unable to load user")
 	}
 
-	if strings.HasPrefix(claims.OpaqueUserID, "U") && claims.TwitchAccountID != "" {
-		// TODO: get users' identity from passport
-		//user := th.API.Passport.FakeUserLoginWithFaction(claims.UserID)
-		user := th.API.Passport.FakeUserLoginWithoutFaction(claims.TwitchAccountID)
-
-		// update client detail
-		th.API.hubClientDetail[wsc] <- func(hcd *HubClientDetail) {
-			hcd.ID = user.ID
-			hcd.FactionID = user.FactionID
-		}
-
-		// remove client from default online client map
-		th.API.onlineClientMap[server.UserID(uuid.Nil)] <- func(cim ClientInstanceMap, cps *ConnectPointState, t *tickle.Tickle) {
-			if _, ok := cim[wsc]; ok {
-				delete(cim, wsc)
-			}
-		}
-
-		// add client to new online client map
-		currentOnlineClientMap, ok := th.API.onlineClientMap[user.ID]
-		if !ok {
-			currentOnlineClientMap = make(chan func(ClientInstanceMap, *ConnectPointState, *tickle.Tickle))
-			th.API.onlineClientMap[user.ID] = currentOnlineClientMap
-			go th.API.startOnlineClientTracker(user.ID, user.ConnectPoint)
-		}
-
-		currentOnlineClientMap <- func(cim ClientInstanceMap, cps *ConnectPointState, t *tickle.Tickle) {
-			// add instance
-			if _, ok := cim[wsc]; !ok {
-				cim[wsc] = true
-			}
-		}
-
-		reply(user)
+	// update client detail
+	th.API.hubClientDetail[wsc] <- func(hcd *HubClientDetail) {
+		hcd.ID = user.ID
+		hcd.FactionID = user.FactionID
 	}
+
+	// remove client from default online client map
+	th.API.onlineClientMap[server.UserID(uuid.Nil)] <- func(cim ClientInstanceMap, cps *SupremacyTokenState, t *tickle.Tickle) {
+		if _, ok := cim[wsc]; ok {
+			delete(cim, wsc)
+		}
+	}
+
+	// add client to new online client map
+	currentOnlineClientMap, ok := th.API.onlineClientMap[user.ID]
+	if !ok {
+		currentOnlineClientMap = make(chan func(ClientInstanceMap, *SupremacyTokenState, *tickle.Tickle))
+		th.API.onlineClientMap[user.ID] = currentOnlineClientMap
+		go th.API.startOnlineClientTracker(user.ID, user.SupremacyToken)
+	}
+
+	currentOnlineClientMap <- func(cim ClientInstanceMap, cps *SupremacyTokenState, t *tickle.Tickle) {
+		// add instance
+		if _, ok := cim[wsc]; !ok {
+			cim[wsc] = true
+		}
+	}
+
+	reply(user)
+
 	return nil
 }
 
 type TwitchActionVoteRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		FactionActionID server.FactionActionID `json:"factionActionID"`
-		PointSpend      int                    `json:"pointSpend"`
+		FactionAbilityID server.FactionAbilityID `json:"factionAbilityID"`
+		PointSpend       int                     `json:"pointSpend"`
 	} `json:"payload"`
 }
 
-const HubKeyTwitchFactionActionFirstVote = hub.HubCommandKey("TWITCH:FACTION:ACTION:FIRST:VOTE")
+const HubKeyTwitchFactionAbilityFirstVote = hub.HubCommandKey("TWITCH:FACTION:ABILITY:FIRST:VOTE")
 
-func (th *TwitchControllerWS) FactionActionFirstVote(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (th *TwitchControllerWS) FactionAbilityFirstVote(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &TwitchActionVoteRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -181,7 +173,7 @@ func (th *TwitchControllerWS) FactionActionFirstVote(ctx context.Context, wsc *h
 		}
 
 		// check action exists
-		firstVoteAction, ok := fvs[req.Payload.FactionActionID]
+		firstVoteAction, ok := fvs[req.Payload.FactionAbilityID]
 		if !ok {
 			errChan <- terror.Error(terror.ErrForbidden, "Error - Action not exists")
 			return
@@ -191,17 +183,17 @@ func (th *TwitchControllerWS) FactionActionFirstVote(ctx context.Context, wsc *h
 		isSuccessPaidChan := make(chan bool)
 
 		// check current user's channel point is sufficient
-		th.API.onlineClientMap[hubClientDetail.ID] <- func(cim ClientInstanceMap, cps *ConnectPointState, t *tickle.Tickle) {
+		th.API.onlineClientMap[hubClientDetail.ID] <- func(cim ClientInstanceMap, cps *SupremacyTokenState, t *tickle.Tickle) {
 			// reduce the fund
-			if cps.ConnectPoint < int64(req.Payload.PointSpend) {
+			if cps.SupremacyToken < int64(req.Payload.PointSpend) {
 				isSuccessPaidChan <- false
 				return
 			}
 
-			cps.ConnectPoint -= int64(req.Payload.PointSpend)
+			cps.SupremacyToken -= int64(req.Payload.PointSpend)
 
 			// broadcast connect point update
-			th.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchConnectPointUpdated, hubClientDetail.ID)), cps.ConnectPoint)
+			th.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchSupremacyTokenUpdated, hubClientDetail.ID)), cps.SupremacyToken)
 
 			isSuccessPaidChan <- true
 		}
@@ -221,7 +213,7 @@ func (th *TwitchControllerWS) FactionActionFirstVote(ctx context.Context, wsc *h
 
 		currentClientVote += int64(req.Payload.PointSpend)
 		firstVoteAction.UserVoteMap[hubClientDetail.ID] = currentClientVote
-		fvs[req.Payload.FactionActionID] = firstVoteAction
+		fvs[req.Payload.FactionAbilityID] = firstVoteAction
 
 		// if TIE check winner
 		if vs.Phase == VotePhaseTie {
@@ -229,7 +221,7 @@ func (th *TwitchControllerWS) FactionActionFirstVote(ctx context.Context, wsc *h
 			parseFirstVoteResult(fvs, fvr)
 
 			// if winner exists, enter second vote
-			if !fvr.factionActionID.IsNil() && len(fvr.hubClientID) > 0 {
+			if !fvr.factionAbilityID.IsNil() && len(fvr.hubClientID) > 0 {
 				vs.Phase = VotePhaseSecondVote
 				vs.EndTime = time.Now().Add(SecondVoteDurationSecond * time.Second)
 
@@ -242,9 +234,9 @@ func (th *TwitchControllerWS) FactionActionFirstVote(ctx context.Context, wsc *h
 					Payload: &TwitchNotification{
 						Type: TwitchNotificationTypeSecondVote,
 						Data: &secondVoteCandidate{
-							Faction:       f,
-							FactionAction: firstVoteAction.FactionAction,
-							EndTime:       vs.EndTime,
+							Faction:        f,
+							FactionAbility: firstVoteAction.FactionAbility,
+							EndTime:        vs.EndTime,
 						},
 					},
 				})
@@ -257,6 +249,11 @@ func (th *TwitchControllerWS) FactionActionFirstVote(ctx context.Context, wsc *h
 							go client.Send(broadcastData)
 						}
 					})
+				}
+
+				// restart vote ticker
+				if t.VotingStageListener.NextTick == nil {
+					t.VotingStageListener.Start()
 				}
 
 				// start second vote broadcaster
@@ -279,18 +276,18 @@ func (th *TwitchControllerWS) FactionActionFirstVote(ctx context.Context, wsc *h
 	return nil
 }
 
-const HubKeyTwitchFactionActionSecondVote hub.HubCommandKey = hub.HubCommandKey("TWITCH:FACTION:ACTION:SECOND:VOTE")
+const HubKeyTwitchFactionAbilitySecondVote hub.HubCommandKey = hub.HubCommandKey("TWITCH:FACTION:ABILITY:SECOND:VOTE")
 
 type TwitchActionSecondVote struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		FactionID       server.FactionID       `json:"factionID"`
-		FactionActionID server.FactionActionID `json:"factionActionID"`
-		IsAgreed        bool                   `json:"isAgreed"`
+		FactionID        server.FactionID        `json:"factionID"`
+		FactionAbilityID server.FactionAbilityID `json:"factionAbilityID"`
+		IsAgreed         bool                    `json:"isAgreed"`
 	} `json:"payload"`
 }
 
-func (th *TwitchControllerWS) FactionActionSecondVote(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (th *TwitchControllerWS) FactionAbilitySecondVote(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &TwitchActionSecondVote{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -316,23 +313,23 @@ func (th *TwitchControllerWS) FactionActionSecondVote(ctx context.Context, wsc *
 			return
 		}
 
-		if fvr.factionActionID != req.Payload.FactionActionID {
+		if fvr.factionAbilityID != req.Payload.FactionAbilityID {
 			errChan <- terror.Error(terror.ErrInvalidInput, "Error - Invalid action id")
 			return
 		}
 
 		isSuccessPaidChan := make(chan bool)
 
-		th.API.onlineClientMap[hubClientDetail.ID] <- func(cim ClientInstanceMap, cps *ConnectPointState, t *tickle.Tickle) {
-			if cps.ConnectPoint <= 0 {
+		th.API.onlineClientMap[hubClientDetail.ID] <- func(cim ClientInstanceMap, cps *SupremacyTokenState, t *tickle.Tickle) {
+			if cps.SupremacyToken <= 0 {
 				isSuccessPaidChan <- false
 				return
 			}
 
-			cps.ConnectPoint -= 1
+			cps.SupremacyToken -= 1
 
 			// broadcast connect point update
-			th.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchConnectPointUpdated, hubClientDetail.ID)), cps.ConnectPoint)
+			th.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchSupremacyTokenUpdated, hubClientDetail.ID)), cps.SupremacyToken)
 
 			isSuccessPaidChan <- true
 		}
@@ -433,11 +430,18 @@ func (th *TwitchControllerWS) ActionLocationSelect(ctx context.Context, wsc *hub
 		// broadcast current stage to current faction users
 		th.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchFactionVoteStageUpdated, f.ID)), vs)
 
-		// signal action countered animation
-		th.API.BattleArena.FactionActionTrigger(&battle_arena.ActionTriggerRequest{
-			FactionID:       f.ID,
-			FactionActionID: fvr.factionActionID,
-			IsSuccess:       true,
+		userName := hubClientDetail.ID.String()
+		selectedX := req.Payload.XIndex
+		selectedY := req.Payload.YIndex
+
+		// signal ability animation
+		th.API.BattleArena.FactionAbilityTrigger(&battle_arena.AbilityTriggerRequest{
+			FactionID:        f.ID,
+			FactionAbilityID: fvr.factionAbilityID,
+			IsSuccess:        true,
+			TriggeredByUser:  &userName,
+			TriggeredOnCellX: &selectedX,
+			TriggeredOnCellY: &selectedY,
 		})
 
 		errChan <- nil
@@ -473,10 +477,10 @@ const HubKeyTwitchNotification hub.HubCommandKey = hub.HubCommandKey("TWITCH:NOT
 
 const HubKeyTwitchFactionSecondVoteUpdated hub.HubCommandKey = hub.HubCommandKey("TWITCH:FACTION:SECOND:VOTE:UPDATED")
 
-const HubKeyTwitchConnectPointUpdated hub.HubCommandKey = hub.HubCommandKey("TWITCH:CONNECT:POINT:UPDATED")
+const HubKeyTwitchSupremacyTokenUpdated hub.HubCommandKey = hub.HubCommandKey("TWITCH:SUPREMACY:TOKEN:UPDATED")
 
 // EvenUpdateSubscribeHandler to subscribe to game event
-func (th *TwitchControllerWS) ConnectPointUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (th *TwitchControllerWS) SupremacyTokenUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -490,11 +494,11 @@ func (th *TwitchControllerWS) ConnectPointUpdateSubscribeHandler(ctx context.Con
 	}
 
 	// return current channel point
-	th.API.onlineClientMap[hubClientDetail.ID] <- func(cim ClientInstanceMap, cps *ConnectPointState, t *tickle.Tickle) {
-		reply(cps.ConnectPoint)
+	th.API.onlineClientMap[hubClientDetail.ID] <- func(cim ClientInstanceMap, cps *SupremacyTokenState, t *tickle.Tickle) {
+		reply(cps.SupremacyToken)
 	}
 
-	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchConnectPointUpdated, hubClientDetail.ID))
+	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchSupremacyTokenUpdated, hubClientDetail.ID))
 
 	return req.TransactionID, busKey, nil
 }
@@ -547,10 +551,10 @@ func (th *TwitchControllerWS) FactionVoteStageUpdateSubscribeHandler(ctx context
 	return req.TransactionID, busKey, nil
 }
 
-const HubKeyTwitchFactionActionUpdated hub.HubCommandKey = hub.HubCommandKey("TWITCH:FACTION:ACTION:UPDATED")
+const HubKeyTwitchFactionAbilityUpdated hub.HubCommandKey = hub.HubCommandKey("TWITCH:FACTION:ABILITY:UPDATED")
 
-// FactionActionUpdateSubscribeHandler to subscribe to game event
-func (th *TwitchControllerWS) FactionActionUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+// FactionAbilityUpdateSubscribeHandler to subscribe to game event
+func (th *TwitchControllerWS) FactionAbilityUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -565,15 +569,15 @@ func (th *TwitchControllerWS) FactionActionUpdateSubscribeHandler(ctx context.Co
 
 	if voteCycle, ok := th.API.factionVoteCycle[hubClientDetail.FactionID]; ok {
 		voteCycle <- func(f *server.Faction, vs *VoteStage, fvs FirstVoteState, fvr *FirstVoteResult, svs *secondVoteResult, t *FactionVotingTicker) {
-			actions := []*server.FactionAction{}
+			abilities := []*server.FactionAbility{}
 			for _, firstVoteAction := range fvs {
-				actions = append(actions, firstVoteAction.FactionAction)
+				abilities = append(abilities, firstVoteAction.FactionAbility)
 			}
-			reply(actions)
+			reply(abilities)
 		}
 	}
 
-	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchFactionActionUpdated, hubClientDetail.FactionID))
+	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchFactionAbilityUpdated, hubClientDetail.FactionID))
 
 	return req.TransactionID, busKey, nil
 }

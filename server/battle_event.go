@@ -22,17 +22,24 @@ type BattleEvent struct {
 	CreatedAt time.Time       `json:"created_at" db:"created_at"`
 }
 
-type WarMachineDestroyed struct {
-	DestroyedWarMachineID WarMachineID    `json:"destroyedWarMachineId"`
-	KillerWarMachineID    *WarMachineID   `json:"killerWarMachineId"` // make this a pointer, possibly killed via environment or event
-	AssistedWarMachineIDs []*WarMachineID `json:"assistedWarMachineIds"`
-	KilledBy              string          `json:"killedBy"` // this will hold weapon name or event name?
+type WarMachineDestroyedEvent struct {
+	ID                     WarMachineDestroyedEventID `json:"id" db:"id"`
+	EventID                EventID                    `json:"eventID" db:"event_id"`
+	DestroyedWarMachineID  WarMachineID               `json:"destroyedWarMachineId" db:"destroyed_war_machine_id"`
+	KillByWarMachineID     *WarMachineID              `json:"killByWarMachineID,omitempty" db:"kill_by_war_machine_id,omitempty"`
+	KillByFactionAbilityID *WarMachineID              `json:"killByFactionAbilityID,omitempty" db:"kill_by_faction_ability_id,omitempty"`
+	AssistedWarMachineIDs  []WarMachineID             `json:"assistedWarMachineIds"`
+	KilledBy               string                     `json:"killedBy"` // this will hold weapon name or event name?
 }
 
-type FactionAbility struct {
-	FactionID  FactionID     `json:"factionId"`
-	Action     FactionAction `json:"action"`
-	Successful bool
+type FactionAbilityEvent struct {
+	ID               FactionAbilityEventID `json:"id" db:"id"`
+	EventID          EventID               `json:"eventID" db:"event_id"`
+	FactionAbilityID FactionAbilityID      `json:"factionAbilityID" db:"faction_ability_id"`
+	IsTriggered      bool                  `json:"isTriggered" db:"is_triggered"`
+	TriggeredByUser  *string               `json:"triggeredByUser,omitempty" db:"triggered_by_user,omitempty"`
+	TriggeredOnCellX *int                  `json:"triggeredOnCellX,omitempty" db:"triggered_on_cell_x,omitempty"`
+	TriggeredOnCellY *int                  `json:"triggeredOnCellY,omitempty" db:"triggered_on_cell_y,omitempty"`
 }
 
 type EventID uuid.UUID

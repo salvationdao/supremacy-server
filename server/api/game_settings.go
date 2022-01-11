@@ -19,7 +19,7 @@ func (api *API) GetGameSettings(w http.ResponseWriter, r *http.Request) (int, er
 	}
 
 	if api.BattleArena.GetCurrentState() != nil {
-		resp.GameMap = api.BattleArena.GetCurrentState().Map
+		resp.GameMap = api.BattleArena.GetCurrentState().GameMap
 		resp.WarMachines = api.BattleArena.GetCurrentState().WarMachines
 	}
 
@@ -38,8 +38,9 @@ func (api *API) UpdateWarMachinePosition(ctx context.Context, ed *battle_arena.E
 
 	for _, warmachine := range ed.BattleArena.WarMachines {
 		positions = append(positions, &server.WarMachine{
-			ID:                 warmachine.ID,
-			WarMachinePosition: warmachine.WarMachinePosition,
+			ID:       warmachine.ID,
+			Position: warmachine.Position,
+			Rotation: warmachine.Rotation,
 		})
 	}
 
