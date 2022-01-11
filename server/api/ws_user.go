@@ -59,14 +59,15 @@ func (ctrlr *UserControllerWS) UserSubscribeHandler(ctx context.Context, wsc *hu
 			return req.TransactionID, "", terror.Error(err, "Unable to load user")
 		}
 	}
-	if user == nil && req.Payload.Username != "" {
+
+	if (user == nil || user.ID.IsNil()) && req.Payload.Username != "" {
 		user, err = ctrlr.API.Passport.UserGetByUsername(ctx, req.Payload.Username, req.TransactionId)
 		if err != nil {
 			return req.TransactionID, "", terror.Error(err, "Unable to load user")
 		}
 	}
 
-	if user == nil {
+	if user == nil || user.ID.IsNil() {
 		return req.TransactionID, "", terror.Error(fmt.Errorf("user still nil"), "Unable to load user")
 	}
 
