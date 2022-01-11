@@ -9,7 +9,7 @@ import (
 	"server"
 	"server/api"
 	"server/battle_arena"
-	"server/passport_dummy"
+	"server/passport"
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -70,6 +70,11 @@ func main() {
 					&cli.Float64Flag{Name: "sentry_sample_rate", Value: 1, EnvVars: []string{envPrefix + "_SENTRY_SAMPLE_RATE", "SENTRY_SAMPLE_RATE"}, Usage: "The percentage of trace sample to collect (0.0-1)"},
 
 					&cli.StringFlag{Name: "battle_arena_addr", Value: ":8083", EnvVars: []string{envPrefix + "_BA_ADDR", "API_ADDR"}, Usage: ":port to run the battle arena server"},
+
+					&cli.StringFlag{Name: "passport_addr", Value: "ws://localhost:8086/api/ws", EnvVars: []string{envPrefix + "_PASSPORT_ADDR", "PASSPORT_ADDR"}, Usage: " address of the passport server, inc protocol"},
+					&cli.StringFlag{Name: "passport_client_id", Value: "gameserver", EnvVars: []string{envPrefix + "_PASSPORT_CLIENT_ID_ADDR", "PASSPORT_CLIENT_ID_ADDR"}, Usage: "game server client ID to auth with passport"},
+					&cli.StringFlag{Name: "passport_client_secret", Value: "noidea", EnvVars: []string{envPrefix + "_PASSPORT_CLIENT_SECRET_ADDR", "PASSPORT_CLIENT_SECRET_ADDR"}, Usage: "game server client secret to auth with passport"},
+
 					&cli.StringFlag{Name: "api_addr", Value: ":8084", EnvVars: []string{envPrefix + "_API_ADDR"}, Usage: ":port to run the API"},
 					&cli.StringFlag{Name: "rootpath", Value: "../web/build", EnvVars: []string{envPrefix + "_ROOTPATH"}, Usage: "folder path of index.html"},
 					&cli.StringFlag{Name: "userauth_jwtsecret", Value: "872ab3df-d7c7-4eb6-a052-4146d0f4dd15", EnvVars: []string{envPrefix + "_USERAUTH_JWTSECRET"}, Usage: "JWT secret"},
@@ -93,6 +98,10 @@ func main() {
 					databaseName := c.String("database_name")
 					databaseAppName := c.String("database_application_name")
 
+					passportAddr := c.String("passport_addr")
+					passportClientID := c.String("passport_client_id")
+					passportClientSecret := c.String("passport_client_secret")
+
 					ctx, cancel := context.WithCancel(c.Context)
 					environment := c.String("environment")
 					battleArenaAddr := c.String("battle_arena_addr")
@@ -114,20 +123,38 @@ func main() {
 						return terror.Panic(err)
 					}
 
-					passport := passport_dummy.NewPassportDummy("dummyAuthStuff")
+					pp, err := passport.NewPassport(ctx, log_helpers.NamedLogger(logger, "passport"),
+						passportAddr,
+						passportClientID,
+						passportClientSecret,
+					)
+					if err != nil {
+						logger.Err(err).Msgf("failed to create passport connection")
+						//cancel()
+						//return terror.Panic(err)
+					}
 
-					battleArenaClient := battle_arena.NewBattleArenaClient(ctx, log_helpers.NamedLogger(logger, "BattleArena"), pgxconn, passport, battleArenaAddr)
+					battleArenaClient := battle_arena.NewBattleArenaClient(ctx, log_helpers.NamedLogger(logger, "BattleArena"), pgxconn, pp, battleArenaAddr)
 
 					g := &run.Group{}
 					// Listen for os.interrupt
 					g.Add(run.SignalHandler(ctx, os.Interrupt))
-					// start the server
+
+					// Connect to passport
+					g.Add(func() error { return pp.Connect(ctx) }, func(err error) {
+						cancel()
+						panic(err)
+					})
+
+					// Start Gameserver - Gameclient server
 					g.Add(func() error { return battleArenaClient.Serve(ctx) }, func(err error) {
 						cancel()
 						panic(err)
 					})
+
+					// Start API/Client server
 					g.Add(func() error {
-						return ServeFunc(c, ctx, log_helpers.NamedLogger(logger, "API"), battleArenaClient, pgxconn, passport)
+						return ServeFunc(c, ctx, log_helpers.NamedLogger(logger, "API"), battleArenaClient, pgxconn, pp)
 					}, func(err error) {
 						cancel()
 						panic(err)
@@ -151,7 +178,7 @@ func main() {
 
 }
 
-func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, battleArenaClient *battle_arena.BattleArena, conn *pgxpool.Pool, passport *passport_dummy.PassportDummy) error {
+func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, battleArenaClient *battle_arena.BattleArena, conn *pgxpool.Pool, passport *passport.Passport) error {
 	environment := ctxCLI.String("environment")
 	sentryDSNBackend := ctxCLI.String("sentry_dsn_backend")
 	sentryServerName := ctxCLI.String("sentry_server_name")

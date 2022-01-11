@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"server"
 	"server/battle_arena"
-	"server/passport_dummy"
+	"server/passport"
 
 	"github.com/ninja-software/hub/v2/ext/messagebus"
 	"nhooyr.io/websocket"
@@ -48,7 +48,7 @@ type API struct {
 	HTMLSanitize *bluemonday.Policy
 	Hub          *hub.Hub
 	MessageBus   *messagebus.MessageBus
-	Passport     *passport_dummy.PassportDummy
+	Passport     *passport.Passport
 
 	// map routines
 	factionVoteCycle map[server.FactionID]chan func(*server.Faction, *VoteStage, FirstVoteState, *FirstVoteResult, *secondVoteResult, *FactionVotingTicker)
@@ -61,7 +61,7 @@ type API struct {
 func NewAPI(
 	log *zerolog.Logger,
 	battleArenaClient *battle_arena.BattleArena,
-	passport *passport_dummy.PassportDummy,
+	pp *passport.Passport,
 	cancelOnPanic context.CancelFunc,
 	addr string,
 	HTMLSanitize *bluemonday.Policy,
@@ -76,7 +76,7 @@ func NewAPI(
 	api := &API{
 		Log:          log_helpers.NamedLogger(log, "api"),
 		Routes:       chi.NewRouter(),
-		Passport:     passport,
+		Passport:     pp,
 		Addr:         addr,
 		MessageBus:   messageBus,
 		HTMLSanitize: HTMLSanitize,
@@ -107,7 +107,7 @@ func NewAPI(
 	go api.startOnlineClientTracker(defaultHubClientUUID, 0)
 
 	// get all the faction list from passport server and create channel
-	for _, faction := range passport_dummy.FakeFactions {
+	for _, faction := range passport.FakeFactions {
 		api.factionVoteCycle[faction.ID] = make(chan func(*server.Faction, *VoteStage, FirstVoteState, *FirstVoteResult, *secondVoteResult, *FactionVotingTicker))
 		go api.startFactionVoteCycle(faction)
 	}
@@ -167,6 +167,13 @@ func NewAPI(
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventGameStart, api.BattleStartSignal)
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventGameEnd, api.BattleEndSignal)
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventWarMachinePositionChanged, api.UpdateWarMachinePosition)
+
+	///////////////////////////
+	//			Passport	 //
+	///////////////////////////
+
+	api.Passport.Events.AddEventHandler(passport.EventUserOnlineStatus, api.PassportUserOnlineStatusHandler)
+	api.Passport.Events.AddEventHandler(passport.EventUserUpdated, api.PassportUserUpdatedHandler)
 
 	return api
 }
@@ -301,7 +308,7 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 
 // GetRandomFaction just a dummy end point to give a random faction to a user
 func (api *API) GetRandomFaction(w http.ResponseWriter, r *http.Request) {
-	randomFaction := passport_dummy.RandomFaction()
+	randomFaction := passport.RandomFaction()
 
 	code := r.URL.Query().Get("twitchID")
 	user := api.Passport.FakeUserLoginWithoutFaction(code)

@@ -1,4 +1,4 @@
-package passport_dummy
+package passport
 
 import (
 	"server"
@@ -6,7 +6,7 @@ import (
 	"github.com/gofrs/uuid"
 )
 
-func (pp *PassportDummy) GetWarMachines() []*server.WarMachine {
+func (pp *Passport) GetWarMachines() []*server.WarMachine {
 	return fakeWarMachines
 }
 

@@ -9,7 +9,7 @@ import (
 	"net"
 	"net/http"
 	"server"
-	"server/passport_dummy"
+	"server/passport"
 	"sync"
 	"time"
 
@@ -46,7 +46,7 @@ type GameMessage struct {
 type BattleArena struct {
 	Log      *zerolog.Logger
 	Conn     *pgxpool.Pool
-	passport *passport_dummy.PassportDummy
+	passport *passport.Passport
 	addr     string
 	commands map[BattleCommand]BattleCommandFunc
 	Events   BattleArenaEvents
@@ -57,7 +57,7 @@ type BattleArena struct {
 }
 
 // NewBattleArenaClient creates a new battle arena client
-func NewBattleArenaClient(ctx context.Context, logger *zerolog.Logger, conn *pgxpool.Pool, passport *passport_dummy.PassportDummy, addr string) *BattleArena {
+func NewBattleArenaClient(ctx context.Context, logger *zerolog.Logger, conn *pgxpool.Pool, passport *passport.Passport, addr string) *BattleArena {
 	ctx, cancel := context.WithCancel(ctx)
 
 	ba := &BattleArena{
