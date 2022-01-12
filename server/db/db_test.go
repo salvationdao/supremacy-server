@@ -269,7 +269,7 @@ func TestDatabase(t *testing.T) {
 		Label:                  "test action",
 		Type:                   "test",
 		Colour:                 "test",
-		SupremacyTokenCost:     100,
+		SupsCost:               100,
 		CooldownDurationSecond: 100,
 	}
 

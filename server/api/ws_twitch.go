@@ -40,7 +40,6 @@ func NewTwitchController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Twi
 	api.SecureUserFactionCommand(HubKeyTwitchActionLocationSelect, twitchHub.ActionLocationSelect)
 
 	// subscription
-	api.SecureUserSubscribeCommand(HubKeyTwitchSupremacyTokenUpdated, twitchHub.SupremacyTokenUpdateSubscribeHandler)
 	api.SecureUserSubscribeCommand(HubKeyTwitchVoteWinnerAnnouncement, twitchHub.VoteWinnerAnnouncementSubscribeHandler)
 
 	api.SecureUserFactionSubscribeCommand(HubKeyTwitchFactionAbilityUpdated, twitchHub.FactionAbilityUpdateSubscribeHandler)
@@ -111,7 +110,7 @@ func (th *TwitchControllerWS) Authentication(ctx context.Context, wsc *hub.Clien
 	}
 
 	// remove client from default online client map
-	th.API.onlineClientMap[server.UserID(uuid.Nil)] <- func(cim ClientInstanceMap, cps *SupremacyTokenState, t *tickle.Tickle) {
+	th.API.onlineClientMap[server.UserID(uuid.Nil)] <- func(cim ClientInstanceMap, t *tickle.Tickle) {
 		if _, ok := cim[wsc]; ok {
 			delete(cim, wsc)
 		}
@@ -120,12 +119,12 @@ func (th *TwitchControllerWS) Authentication(ctx context.Context, wsc *hub.Clien
 	// add client to new online client map
 	currentOnlineClientMap, ok := th.API.onlineClientMap[user.ID]
 	if !ok {
-		currentOnlineClientMap = make(chan func(ClientInstanceMap, *SupremacyTokenState, *tickle.Tickle))
+		currentOnlineClientMap = make(chan func(ClientInstanceMap, *tickle.Tickle))
 		th.API.onlineClientMap[user.ID] = currentOnlineClientMap
-		go th.API.startOnlineClientTracker(user.ID, user.SupremacyToken)
+		go th.API.startOnlineClientTracker(user.ID)
 	}
 
-	currentOnlineClientMap <- func(cim ClientInstanceMap, cps *SupremacyTokenState, t *tickle.Tickle) {
+	currentOnlineClientMap <- func(cim ClientInstanceMap, t *tickle.Tickle) {
 		// add instance
 		if _, ok := cim[wsc]; !ok {
 			cim[wsc] = true
@@ -183,17 +182,19 @@ func (th *TwitchControllerWS) FactionAbilityFirstVote(ctx context.Context, wsc *
 		isSuccessPaidChan := make(chan bool)
 
 		// check current user's channel point is sufficient
-		th.API.onlineClientMap[hubClientDetail.ID] <- func(cim ClientInstanceMap, cps *SupremacyTokenState, t *tickle.Tickle) {
-			// reduce the fund
-			if cps.SupremacyToken < int64(req.Payload.PointSpend) {
+		th.API.onlineClientMap[hubClientDetail.ID] <- func(cim ClientInstanceMap, t *tickle.Tickle) {
+			isSuccess, err := th.API.Passport.UserSupsUpdate(context.Background(), hubClientDetail.ID, int64(-req.Payload.PointSpend), "test")
+			if err != nil {
+				th.API.Log.Err(err).Msg("failed to spend sups")
 				isSuccessPaidChan <- false
 				return
 			}
 
-			cps.SupremacyToken -= int64(req.Payload.PointSpend)
-
-			// broadcast connect point update
-			th.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchSupremacyTokenUpdated, hubClientDetail.ID)), cps.SupremacyToken)
+			if !isSuccess {
+				th.API.Log.Err(err).Msg("failed to spend sups")
+				isSuccessPaidChan <- false
+				return
+			}
 
 			isSuccessPaidChan <- true
 		}
@@ -320,16 +321,19 @@ func (th *TwitchControllerWS) FactionAbilitySecondVote(ctx context.Context, wsc 
 
 		isSuccessPaidChan := make(chan bool)
 
-		th.API.onlineClientMap[hubClientDetail.ID] <- func(cim ClientInstanceMap, cps *SupremacyTokenState, t *tickle.Tickle) {
-			if cps.SupremacyToken <= 0 {
+		th.API.onlineClientMap[hubClientDetail.ID] <- func(cim ClientInstanceMap, t *tickle.Tickle) {
+			isSuccess, err := th.API.Passport.UserSupsUpdate(context.Background(), hubClientDetail.ID, -1, "test")
+			if err != nil {
+				th.API.Log.Err(err).Msg("failed to spend sups")
 				isSuccessPaidChan <- false
 				return
 			}
 
-			cps.SupremacyToken -= 1
-
-			// broadcast connect point update
-			th.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchSupremacyTokenUpdated, hubClientDetail.ID)), cps.SupremacyToken)
+			if !isSuccess {
+				th.API.Log.Err(err).Msg("failed to spend sups")
+				isSuccessPaidChan <- false
+				return
+			}
 
 			isSuccessPaidChan <- true
 		}
@@ -476,32 +480,6 @@ type TwitchNotification struct {
 const HubKeyTwitchNotification hub.HubCommandKey = hub.HubCommandKey("TWITCH:NOTIFICATION")
 
 const HubKeyTwitchFactionSecondVoteUpdated hub.HubCommandKey = hub.HubCommandKey("TWITCH:FACTION:SECOND:VOTE:UPDATED")
-
-const HubKeyTwitchSupremacyTokenUpdated hub.HubCommandKey = hub.HubCommandKey("TWITCH:SUPREMACY:TOKEN:UPDATED")
-
-// EvenUpdateSubscribeHandler to subscribe to game event
-func (th *TwitchControllerWS) SupremacyTokenUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	req := &hub.HubCommandRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return "", "", terror.Error(err, "Invalid request received")
-	}
-
-	// get hub client
-	hubClientDetail, err := th.API.getClientDetailFromChannel(wsc)
-	if err != nil {
-		return "", "", terror.Error(err)
-	}
-
-	// return current channel point
-	th.API.onlineClientMap[hubClientDetail.ID] <- func(cim ClientInstanceMap, cps *SupremacyTokenState, t *tickle.Tickle) {
-		reply(cps.SupremacyToken)
-	}
-
-	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchSupremacyTokenUpdated, hubClientDetail.ID))
-
-	return req.TransactionID, busKey, nil
-}
 
 const HubKeyTwitchVoteWinnerAnnouncement hub.HubCommandKey = hub.HubCommandKey("TWITCH:VOTE:WINNER:ANNOUNCEMENT")
 

@@ -31,8 +31,9 @@ func NewUserController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *UserC
 	// TODO: delete this when passport finish user faction assign function
 	uch.API.SecureUserCommand(HubKeyUserRandomFactionUpdate, uch.UserRandomUpdateFaction)
 
-	uch.API.SecureUserSubscribeCommand(HubKeyUser, uch.UserSubscribeHandler)
+	uch.API.SecureUserSubscribeCommand(HubKeyUserSubscribe, uch.UserSubscribeHandler)
 	uch.API.SecureUserSubscribeCommand(HubKeyUserOnlineStatus, uch.OnlineStatusSubscribeHandler)
+	uch.API.SecureUserSubscribeCommand(HubKeyUserSupsUpdated, uch.SupsUpdateSubscribeHandler)
 
 	return uch
 }
@@ -67,7 +68,7 @@ func (uc *UserControllerWS) UserRandomUpdateFaction(ctx context.Context, wsc *hu
 	return nil
 }
 
-const HubKeyUser hub.HubCommandKey = "USER:SUBSCRIBE"
+const HubKeyUserSubscribe hub.HubCommandKey = "USER:SUBSCRIBE"
 
 // UserSubscribeHandler to subscribe to a user
 func (ctrlr *UserControllerWS) UserSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
@@ -82,13 +83,7 @@ func (ctrlr *UserControllerWS) UserSubscribeHandler(ctx context.Context, wsc *hu
 		return "", "", terror.Error(err)
 	}
 
-	user, err := ctrlr.API.Passport.UserGetByID(ctx, clientDetail.ID, req.TransactionID)
-	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Unable to load user")
-	}
-
-	reply(user)
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUser, clientDetail.ID)), nil
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, clientDetail.ID)), nil
 }
 
 // HubKeyUserOnlineStatus subscribes to a user's online status (returns boolean)
@@ -142,4 +137,25 @@ func (ctrlr *UserControllerWS) OnlineStatusSubscribeHandler(ctx context.Context,
 
 	reply(online)
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserOnlineStatus, userID.String())), nil
+}
+
+const HubKeyUserSupsUpdated hub.HubCommandKey = hub.HubCommandKey("USER:SUPS:UPDATED")
+
+// EvenUpdateSubscribeHandler to subscribe to game event
+func (uc *UserControllerWS) SupsUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return "", "", terror.Error(err, "Invalid request received")
+	}
+
+	// get hub client
+	hubClientDetail, err := uc.API.getClientDetailFromChannel(wsc)
+	if err != nil {
+		return "", "", terror.Error(err)
+	}
+
+	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsUpdated, hubClientDetail.ID))
+
+	return req.TransactionID, busKey, nil
 }

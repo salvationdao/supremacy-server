@@ -68,7 +68,7 @@ CREATE TABLE faction_abilities (
     label text NOT NULL,
     type text NOT NULL,
     colour text NOT NULL,
-    supremacy_token_cost int NOT NULL,
+    sups_cost int NOT NULL,
     image_url text NOT NULL,
     cooldown_duration_second int NOT NULL
 );

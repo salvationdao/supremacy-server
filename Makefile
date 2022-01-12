@@ -25,8 +25,6 @@ tools: go-mod-tidy
 	@mkdir -p $(BIN) 
 	go get -u golang.org/x/tools/cmd/goimports
 	cd $(SERVER) && go generate -tags tools ./tools/...
-	cd $(BIN) && ./xcaddy build
-	sudo setcap cap_net_bind_service=+ep ./bin/caddy
 
 .PHONY: go-mod-tidy
 go-mod-tidy:

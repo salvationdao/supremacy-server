@@ -55,25 +55,6 @@ The game client will require these headers to connect.
 Sec-WebSocket-Protocol: gameserver-v1
 ```
 
-### Certificate files for caddy
-
-Create a folder `supremacy-gameserver/certs` and create 5 certificate files (NOTE: These certificates are only used in dev environment)
-
-```shell
-dev.supremacygame.io-ca.crt
-dev.supremacygame.io-root.crt
-dev.supremacygame.io.crt
-server.csr
-server.key
-```
-
-The content of the files can be found in Bitwarden
-
-```shell
-supremacy - dev - cert - 1
-supremacy - dev - cert - 2
-```
-
 #### From Codi
 
 ````Go. Oauth2 client. Basically a proxy server connecting all the other servers (game and passport)

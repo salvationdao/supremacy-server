@@ -24,6 +24,7 @@ const (
 	EventAuthed           Event = "PASSPORT:AUTHED"
 	EventUserOnlineStatus Event = "PASSPORT:USER:ONLINE_STATUS"
 	EventUserUpdated      Event = "PASSPORT:USER:UPDATED"
+	EventUserSupsUpdated  Event = "PASSPORT:USER:SUPS:UPDATED"
 )
 
 type EventHandler func(ctx context.Context, payload []byte)

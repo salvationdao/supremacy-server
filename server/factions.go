@@ -21,7 +21,7 @@ type FactionAbility struct {
 	Label                  string             `json:"label" db:"label"`
 	Type                   FactionAbilityType `json:"type" db:"type"`
 	Colour                 string             `json:"colour" db:"colour"`
-	SupremacyTokenCost     int                `json:"supremacyTokenCost" db:"supremacy_token_cost"`
+	SupsCost               int                `json:"supsCost" db:"sups_cost"`
 	ImageUrl               string             `json:"imageUrl" db:"image_url"`
 	CooldownDurationSecond int                `json:"cooldownDurationSecond" db:"cooldown_duration_second"`
 }

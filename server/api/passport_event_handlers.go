@@ -43,30 +43,41 @@ func (api *API) PassportUserUpdatedHandler(ctx context.Context, payload []byte) 
 	if err != nil {
 		api.Log.Err(err).Msg("error unmarshalling passport user updated handler request")
 	}
-
 	// update faction
 	if !req.Payload.User.FactionID.IsNil() {
-		// get faction
-		faction := api.factionMap[req.Payload.User.FactionID]
-
-		req.Payload.User.Faction = faction
-
 		if clientMap, ok := api.onlineClientMap[req.Payload.User.ID]; ok {
-			clientMap <- func(cim ClientInstanceMap, cps *SupremacyTokenState, t *tickle.Tickle) {
+			clientMap <- func(cim ClientInstanceMap, t *tickle.Tickle) {
 				for client, ok := range cim {
 					if ok {
 						hubClient, ok := api.hubClientDetail[client]
 						if ok {
 							hubClient <- func(hcd *HubClientDetail) {
-								hcd.FactionID = faction.ID
+								hcd.FactionID = req.Payload.User.FactionID
 							}
 						}
 					}
 				}
 			}
 		}
-
 	}
 
-	api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUser, req.Payload.User.ID)), req.Payload.User)
+	api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, req.Payload.User.ID)), req.Payload.User)
+}
+
+type PassportUserSupsUpdatedRequest struct {
+	Key     passport.Event `json:"key"`
+	Payload struct {
+		UserID server.UserID `json:"userID"`
+		Sups   int64         `json:"sups"`
+	} `json:"payload"`
+}
+
+func (api *API) PassportUserSupsUpdatedHandler(ctx context.Context, payload []byte) {
+	req := &PassportUserSupsUpdatedRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		api.Log.Err(err).Msg("error unmarshalling passport user sups updated request")
+	}
+
+	api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsUpdated, req.Payload.UserID)), req.Payload.Sups)
 }

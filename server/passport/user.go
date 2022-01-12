@@ -9,11 +9,10 @@ import (
 )
 
 type User struct {
-	ID             server.UserID   `json:"id"`
-	Faction        *server.Faction `json:"faction"`
-	ConnectPoint   int64           `json:"connectPoint"`
-	SupremacyToken int64           `json:"supremacyCoin"`
-	PassportURL    string          `json:"passportURL"`
+	ID          server.UserID   `json:"id"`
+	Faction     *server.Faction `json:"faction"`
+	Sups        int64           `json:"sups"`
+	PassportURL string          `json:"passportURL"`
 }
 
 func (pp *Passport) TwitchAuth(ctx context.Context, twitchToken string, txID string) (*server.User, error) {
@@ -68,16 +67,15 @@ func (pp *Passport) UserGetByID(ctx context.Context, userID server.UserID, txID 
 			cancel:        cancel,
 		}}
 
-	select {
-	case msg := <-replyChannel:
-		resp := &UserGetByIDResponse{}
-		err := json.Unmarshal(msg, resp)
-		if err != nil {
-			return nil, terror.Error(err)
-		}
-
-		return &resp.User, nil
+	msg := <-replyChannel
+	resp := &UserGetByIDResponse{}
+	err := json.Unmarshal(msg, resp)
+	if err != nil {
+		return nil, terror.Error(err)
 	}
+
+	return &resp.User, nil
+
 }
 
 type UserGetByUsernameResponse struct {
@@ -134,4 +132,39 @@ func (pp *Passport) UserFactionUpdate(ctx context.Context, userID server.UserID,
 		}}
 
 	return nil
+}
+
+// UserSupsUpdate update user sups
+func (pp *Passport) UserSupsUpdate(ctx context.Context, userID server.UserID, supsChange int64, txID string) (bool, error) {
+	ctx, cancel := context.WithCancel(ctx)
+
+	replyChannel := make(chan []byte)
+
+	pp.send <- &Request{
+		ReplyChannel: replyChannel,
+		Message: &Message{
+			Key: "USER:SUPS:UPDATE",
+			Payload: struct {
+				UserID     server.UserID `json:"userID"`
+				SupsChange int64         `json:"supsChange"`
+			}{
+				UserID:     userID,
+				SupsChange: supsChange,
+			},
+			TransactionId: txID,
+			context:       ctx,
+			cancel:        cancel,
+		}}
+
+	msg := <-replyChannel
+	resp := struct {
+		isSuccess bool
+	}{
+		isSuccess: true,
+	}
+	err := json.Unmarshal(msg, &resp)
+	if err != nil {
+		return false, terror.Error(err)
+	}
+	return resp.isSuccess, nil
 }

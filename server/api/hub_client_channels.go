@@ -1,13 +1,12 @@
 package api
 
 import (
-	"fmt"
+	"context"
 	"net/http"
 	"server"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/hub/v2"
-	"github.com/ninja-software/hub/v2/ext/messagebus"
 	"github.com/ninja-software/log_helpers"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-software/tickle"
@@ -66,19 +65,12 @@ const MinimumConnectSecond = 10
 
 type ClientInstanceMap map[*hub.Client]bool
 
-// SupremacyTokenState record the state of channel point of current user
-type SupremacyTokenState struct {
-	SupremacyToken int64
-}
-
 // startOnlineClientTracker is a channel that track online client instances
-func (api *API) startOnlineClientTracker(hubClientID server.UserID, connectPoint int64) {
+func (api *API) startOnlineClientTracker(hubClientID server.UserID) {
 	clientInstanceMap := make(ClientInstanceMap)
 
-	connectPointState := &SupremacyTokenState{connectPoint}
-
 	// create a channel point tickle
-	taskTickle := tickle.New("FactionID Channel Point Ticker", MinimumConnectSecond, api.connectPointTickleFactory(hubClientID))
+	taskTickle := tickle.New("FactionID Channel Point Ticker", MinimumConnectSecond, api.supsTickleFactory(hubClientID))
 	taskTickle.Log = log_helpers.NamedLogger(api.Log, "FactionID Channel Point Ticker")
 	if !hubClientID.IsNil() {
 		taskTickle.Start()
@@ -88,14 +80,14 @@ func (api *API) startOnlineClientTracker(hubClientID server.UserID, connectPoint
 		for {
 			select {
 			case fn := <-api.onlineClientMap[hubClientID]:
-				fn(clientInstanceMap, connectPointState, taskTickle)
+				fn(clientInstanceMap, taskTickle)
 			}
 		}
 	}()
 }
 
-// connectPointTickleFactory generate a channel point tickle task for tickle
-func (api *API) connectPointTickleFactory(hubClientID server.UserID) func() (int, error) {
+// supsTickleFactory generate a channel point tickle task for tickle
+func (api *API) supsTickleFactory(hubClientID server.UserID) func() (int, error) {
 	fn := func() (int, error) {
 		// skip, if client is not signed in
 		if hubClientID.IsNil() {
@@ -103,13 +95,16 @@ func (api *API) connectPointTickleFactory(hubClientID server.UserID) func() (int
 		}
 
 		// increment the client's channel point
-		api.onlineClientMap[hubClientID] <- func(cim ClientInstanceMap, cps *SupremacyTokenState, t *tickle.Tickle) {
-			if cps == nil {
-				return
+		api.onlineClientMap[hubClientID] <- func(cim ClientInstanceMap, t *tickle.Tickle) {
+
+			isSuccess, err := api.Passport.UserSupsUpdate(context.Background(), hubClientID, 1, "test")
+			if err != nil {
+				api.Log.Err(err).Msg("failed to increase sups")
 			}
 
-			cps.SupremacyToken += 1
-			api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchSupremacyTokenUpdated, hubClientID)), cps.SupremacyToken)
+			if !isSuccess {
+				api.Log.Err(err).Msg("failed to increase sups")
+			}
 		}
 
 		return http.StatusOK, nil

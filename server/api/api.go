@@ -55,7 +55,7 @@ type API struct {
 	factionVoteCycle map[server.FactionID]chan func(*server.Faction, *VoteStage, FirstVoteState, *FirstVoteResult, *secondVoteResult, *FactionVotingTicker)
 
 	hubClientDetail map[*hub.Client]chan func(*HubClientDetail)
-	onlineClientMap map[server.UserID]chan func(ClientInstanceMap, *SupremacyTokenState, *tickle.Tickle)
+	onlineClientMap map[server.UserID]chan func(ClientInstanceMap, *tickle.Tickle)
 }
 
 // NewAPI registers routes
@@ -101,13 +101,13 @@ func NewAPI(
 
 		// channel for handling hub client
 		hubClientDetail: make(map[*hub.Client]chan func(*HubClientDetail)),
-		onlineClientMap: make(map[server.UserID](chan func(ClientInstanceMap, *SupremacyTokenState, *tickle.Tickle))),
+		onlineClientMap: make(map[server.UserID](chan func(ClientInstanceMap, *tickle.Tickle))),
 	}
 
 	// start the default online client map
 	defaultHubClientUUID := server.UserID(uuid.Nil)
-	api.onlineClientMap[defaultHubClientUUID] = make(chan func(ClientInstanceMap, *SupremacyTokenState, *tickle.Tickle))
-	go api.startOnlineClientTracker(defaultHubClientUUID, 0)
+	api.onlineClientMap[defaultHubClientUUID] = make(chan func(ClientInstanceMap, *tickle.Tickle))
+	go api.startOnlineClientTracker(defaultHubClientUUID)
 
 	// get all the faction list from passport server and create channel
 	for _, faction := range factionMap {
@@ -179,6 +179,7 @@ func NewAPI(
 
 	api.Passport.Events.AddEventHandler(passport.EventUserOnlineStatus, api.PassportUserOnlineStatusHandler)
 	api.Passport.Events.AddEventHandler(passport.EventUserUpdated, api.PassportUserUpdatedHandler)
+	api.Passport.Events.AddEventHandler(passport.EventUserSupsUpdated, api.PassportUserSupsUpdatedHandler)
 
 	return api
 }
@@ -192,7 +193,7 @@ func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client, clients
 		go api.startClientTracker(wsc)
 	}
 
-	api.onlineClientMap[server.UserID(uuid.Nil)] <- func(cim ClientInstanceMap, cps *SupremacyTokenState, t *tickle.Tickle) {
+	api.onlineClientMap[server.UserID(uuid.Nil)] <- func(cim ClientInstanceMap, t *tickle.Tickle) {
 		// register the client instance if not exists
 		if _, ok := cim[wsc]; !ok {
 			cim[wsc] = true
@@ -218,7 +219,7 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 
 	shouldDeleteChan := make(chan bool)
 	// delete the online instance from the map
-	api.onlineClientMap[hubClientDetail.ID] <- func(cim ClientInstanceMap, cps *SupremacyTokenState, t *tickle.Tickle) {
+	api.onlineClientMap[hubClientDetail.ID] <- func(cim ClientInstanceMap, t *tickle.Tickle) {
 		delete(cim, wsc)
 
 		if len(cim) == 0 && !hubClientDetail.ID.IsNil() {
