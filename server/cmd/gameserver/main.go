@@ -71,6 +71,8 @@ func main() {
 
 					&cli.StringFlag{Name: "battle_arena_addr", Value: ":8083", EnvVars: []string{envPrefix + "_BA_ADDR", "API_ADDR"}, Usage: ":port to run the battle arena server"},
 
+					&cli.StringFlag{Name: "twitch_ui_web_host_url", Value: "http://localhost:8081", EnvVars: []string{"TWITCH_HOST_URL_FRONTEND"}, Usage: "Twitch url for CORS"},
+
 					&cli.StringFlag{Name: "passport_addr", Value: "ws://localhost:8086/api/ws", EnvVars: []string{envPrefix + "_PASSPORT_ADDR", "PASSPORT_ADDR"}, Usage: " address of the passport server, inc protocol"},
 					&cli.StringFlag{Name: "passport_client_id", Value: "gameserver", EnvVars: []string{envPrefix + "_PASSPORT_CLIENT_ID_ADDR", "PASSPORT_CLIENT_ID_ADDR"}, Usage: "game server client ID to auth with passport"},
 					&cli.StringFlag{Name: "passport_client_secret", Value: "noidea", EnvVars: []string{envPrefix + "_PASSPORT_CLIENT_SECRET_ADDR", "PASSPORT_CLIENT_SECRET_ADDR"}, Usage: "game server client secret to auth with passport"},
@@ -241,6 +243,7 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, ba
 		EncryptTokens:       ctxCLI.Bool("jwt_encrypt"),
 		EncryptTokensKey:    ctxCLI.String("jwt_encrypt_key"),
 		TokenExpirationDays: ctxCLI.Int("jwt_expiry_days"),
+		TwitchUIHostURL:     ctxCLI.String("twitch_ui_web_host_url"),
 	}
 
 	// HTML Sanitizer

@@ -90,7 +90,8 @@ func NewAPI(
 				Payload: nil,
 			},
 			AcceptOptions: &websocket.AcceptOptions{
-				InsecureSkipVerify: true,
+				InsecureSkipVerify: true, // TODO: set this depending on environment
+				OriginPatterns:     []string{config.TwitchUIHostURL},
 			},
 			ClientOfflineFn: offlineFunc,
 		}),
@@ -120,7 +121,9 @@ func NewAPI(
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
-	api.Routes.Use(cors.New(cors.Options{}).Handler)
+	api.Routes.Use(cors.New(cors.Options{
+		AllowedOrigins: []string{config.TwitchUIHostURL},
+	}).Handler)
 
 	// Commented out by vinnie 22/12/21 -- Looks like we don't need the auth extension atm since using a different flow
 

@@ -5,4 +5,5 @@ type Config struct {
 	EncryptTokens       bool
 	EncryptTokensKey    string
 	TokenExpirationDays int
+	TwitchUIHostURL     string
 }
