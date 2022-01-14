@@ -15,7 +15,7 @@ type User struct {
 	PassportURL string          `json:"passportURL"`
 }
 
-func (pp *Passport) TwitchAuth(ctx context.Context, twitchToken string, txID string) (*server.User, error) {
+func (pp *Passport) TwitchAuth(ctx context.Context, token string, txID string) (*server.User, error) {
 	ctx, cancel := context.WithCancel(ctx)
 
 	replyChannel := make(chan []byte)
@@ -23,11 +23,11 @@ func (pp *Passport) TwitchAuth(ctx context.Context, twitchToken string, txID str
 	pp.send <- &Request{
 		ReplyChannel: replyChannel,
 		Message: &Message{
-			Key: "TWITCH:AUTH",
+			Key: "AUTH:TWITCH",
 			Payload: struct {
-				TwitchToken string `json:"twitchToken"`
+				Token string `json:"token"`
 			}{
-				TwitchToken: twitchToken,
+				Token: token,
 			},
 			TransactionId: txID,
 			context:       ctx,
