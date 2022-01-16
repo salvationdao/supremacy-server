@@ -2,6 +2,9 @@ package server
 
 import (
 	"database/sql/driver"
+	"fmt"
+	"math/big"
+	"strings"
 
 	"github.com/gofrs/uuid"
 )
@@ -579,4 +582,36 @@ func (id *FactionAbilityEventID) Scan(src interface{}) error {
 	*id = FactionAbilityEventID(uid)
 	// Retrun error
 	return err
+}
+
+// BigInt aliases big.Int
+// We do this, so we can create .scan methods.
+type BigInt struct {
+	big.Int
+}
+
+func (b BigInt) MarshalText() ([]byte, error) {
+	return []byte(b.String()), nil
+}
+
+func (b BigInt) MarshalJSON() ([]byte, error) {
+	return []byte(b.String()), nil
+}
+
+func (b *BigInt) UnmarshalJSON(text []byte) error {
+	if text == nil {
+		*b = BigInt{}
+		return nil
+	}
+
+	removedQuotes := strings.Replace(string(text), `"`, ``, -1)
+
+	flt, _, err := big.ParseFloat(removedQuotes, 10, 84, big.ToNearestEven)
+	if err != nil {
+		return fmt.Errorf("not a valid big floot: %s", text)
+	}
+	newI, _ := flt.Int(nil)
+	b.Int = *newI
+
+	return nil
 }

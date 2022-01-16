@@ -63,7 +63,10 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Could not start resource: %s", err)
 	}
 
-	resource.Expire(60) // Tell docker to hard kill the container in 60 seconds
+	err = resource.Expire(60) // Tell docker to hard kill the container in 60 seconds
+	if err != nil {
+		log.Fatalf("Could not start resource: %s", err)
+	}
 
 	// exponential backoff-retry, because the application in the container might not be ready to accept connections yet
 	if err := pool.Retry(func() error {
@@ -120,25 +123,6 @@ func TestMain(m *testing.M) {
 	}
 
 	os.Exit(code)
-}
-
-// dbFlush clears all tables rows without deleting the schema
-func dbFlush(ctx context.Context) {
-	q := `
-    do
-    $$
-      declare
-        l_stmt text;
-      begin
-        select 'truncate ' || string_agg(format('%I.%I', schemaname, tablename), ',')
-          into l_stmt
-        from pg_tables
-        where schemaname in ('public');
-      
-        execute l_stmt;
-      end;
-    $$`
-	conn.Exec(ctx, q)
 }
 
 func TestDatabase(t *testing.T) {

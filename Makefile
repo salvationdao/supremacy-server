@@ -22,7 +22,8 @@ build:
 
 .PHONY: tools
 tools: go-mod-tidy
-	@mkdir -p $(BIN) 
+	@mkdir -p $(BIN)
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.43.0 go get -u golang.org/x/tools/cmd/goimports
 	go get -u golang.org/x/tools/cmd/goimports
 	cd $(SERVER) && go generate -tags tools ./tools/...
 

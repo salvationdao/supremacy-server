@@ -3,11 +3,13 @@ package battle_arena
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"server"
 	"server/db"
 	"time"
 
+	"github.com/jackc/pgx/v4"
 	"github.com/ninja-software/terror/v2"
 )
 
@@ -98,7 +100,12 @@ func (ba *BattleArena) BattleStartHandler(ctx context.Context, payload []byte, r
 		return terror.Error(err)
 	}
 
-	defer tx.Rollback(ctx)
+	defer func(tx pgx.Tx, ctx context.Context) {
+		err := tx.Rollback(ctx)
+		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			ba.Log.Err(err).Msg("error rolling back")
+		}
+	}(tx, ctx)
 
 	err = db.BattleStarted(ctx, tx, battle)
 	if err != nil {
@@ -160,7 +167,12 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 		return terror.Error(err)
 	}
 
-	defer tx.Rollback(ctx)
+	defer func(tx pgx.Tx, ctx context.Context) {
+		err := tx.Rollback(ctx)
+		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			ba.Log.Err(err).Msg("error rolling back")
+		}
+	}(tx, ctx)
 
 	err = db.BattleEnded(ctx, tx, req.Payload.BattleID, req.Payload.WinCondition)
 	if err != nil {

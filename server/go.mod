@@ -13,7 +13,7 @@ require (
 	github.com/golang-migrate/migrate/v4 v4.15.1
 	github.com/jackc/pgx/v4 v4.14.1
 	github.com/makiuchi-d/arelo v1.9.2
-	github.com/ninja-software/hub/v2 v2.1.0
+	github.com/ninja-software/hub/v2 v2.1.2
 	github.com/ninja-software/log_helpers v1.0.1-0.20211202070223-aff11d9a6ae6
 	github.com/ninja-software/terror/v2 v2.0.7
 	github.com/oklog/run v1.1.0
@@ -29,7 +29,7 @@ require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/jackc/pgconn v1.10.1
 	github.com/microcosm-cc/bluemonday v1.0.16
-	github.com/ninja-software/tickle v1.3.0
+	github.com/ninja-software/tickle v1.3.2
 )
 
 require (

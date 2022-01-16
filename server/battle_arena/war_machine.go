@@ -3,8 +3,11 @@ package battle_arena
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"server"
 	"server/db"
+
+	"github.com/jackc/pgx/v4"
 
 	"github.com/ninja-software/terror/v2"
 )
@@ -33,7 +36,12 @@ func (ba *BattleArena) WarMachineDestroyedHandler(ctx context.Context, payload [
 		return terror.Error(err)
 	}
 
-	defer tx.Rollback(ctx)
+	defer func(tx pgx.Tx, ctx context.Context) {
+		err := tx.Rollback(ctx)
+		if err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			ba.Log.Err(err).Msg("error rolling back")
+		}
+	}(tx, ctx)
 
 	assistedWarMachineIDs := req.Payload.DestroyedWarMachineEvent.AssistedWarMachineIDs
 

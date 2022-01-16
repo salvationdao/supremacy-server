@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"net/http"
 	"server"
 	"server/battle_arena"
 	"server/helpers"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -24,10 +26,10 @@ import (
 *************/
 
 const (
-	// CooldownInitialDurationSecond the amount of second users have to wait for the next vote comming up
+	// CooldownInitialDurationSecond the amount of second users have to wait for the next vote coming up
 	CooldownInitialDurationSecond = 5
 
-	// FirstVoteDurationSecond the amount of second users can vote the abilitys
+	// FirstVoteDurationSecond the amount of second users can vote the ability
 	FirstVoteDurationSecond = 10
 
 	// SecondVoteDurationSecond the amount of seconds users can vote the second vote
@@ -64,7 +66,7 @@ type FactionVotingTicker struct {
 
 type FirstVoteAction struct {
 	FactionAbility *server.FactionAbility
-	UserVoteMap    map[server.UserID]int64
+	UserVoteMap    map[server.UserID]map[server.TransactionReference]server.BigInt
 }
 
 type FirstVoteState map[server.FactionAbilityID]*FirstVoteAction
@@ -81,8 +83,10 @@ type secondVoteCandidate struct {
 }
 
 type secondVoteResult struct {
-	AgreedCount    int64 `json:"AgreedCount"`
-	DisagreedCount int64 `json:"DisagreedCount"`
+	AgreedCount        []server.TransactionReference `json:"AgreedCount"`
+	AgreeCountLock     sync.Mutex
+	DisagreedCount     []server.TransactionReference `json:"DisagreedCount"`
+	DisagreedCountLock sync.Mutex
 }
 
 /***********
@@ -101,8 +105,8 @@ func (api *API) startFactionVoteCycle(faction *server.Faction) {
 
 	// initialise second vote stat
 	secondVoteResult := &secondVoteResult{
-		AgreedCount:    0,
-		DisagreedCount: 0,
+		AgreedCount:    []server.TransactionReference{},
+		DisagreedCount: []server.TransactionReference{},
 	}
 
 	// initialise current vote stage
@@ -134,14 +138,10 @@ func (api *API) startFactionVoteCycle(faction *server.Faction) {
 
 	// start channel
 	go func() {
-		for {
-			select {
-			case fn := <-api.factionVoteCycle[faction.ID]:
-				fn(faction, voteStage, firstVoteStat, firstVoteResult, secondVoteResult, tickers)
-			}
+		for fn := range api.factionVoteCycle[faction.ID] {
+			fn(faction, voteStage, firstVoteStat, firstVoteResult, secondVoteResult, tickers)
 		}
 	}()
-
 }
 
 // startVotingCycleFactory create a function to handle voting start event
@@ -199,6 +199,7 @@ func (api *API) secondVoteResultBroadcasterFactory(factionID server.FactionID) f
 				Key:     HubKeyTwitchFactionSecondVoteUpdated,
 				Payload: calcSecondVoteResult(f.ID, svs),
 			})
+
 			if err == nil {
 				api.Hub.Clients(func(clients hub.ClientsList) {
 
@@ -206,7 +207,12 @@ func (api *API) secondVoteResultBroadcasterFactory(factionID server.FactionID) f
 						if !ok {
 							continue
 						}
-						go client.Send(broadcastData)
+						go func(c *hub.Client) {
+							err := c.Send(broadcastData)
+							if err != nil {
+								api.Log.Err(err).Msg("failed to send broadcast")
+							}
+						}(client)
 					}
 				})
 			}
@@ -222,8 +228,8 @@ func (api *API) secondVoteResultBroadcasterFactory(factionID server.FactionID) f
 func (api *API) voteStageListenerFactory(factionID server.FactionID) func() (int, error) {
 	fn := func() (int, error) {
 		api.factionVoteCycle[factionID] <- func(f *server.Faction, vs *VoteStage, fvs FirstVoteState, fvr *FirstVoteResult, svs *secondVoteResult, t *FactionVotingTicker) {
-
-			// skip if does not reach the end time or current phase is TIE
+			ctx := context.Background()
+			// skip if it does not reach the end time or current phase is TIE
 			if vs.EndTime.After(time.Now()) || vs.Phase == VotePhaseHold || vs.Phase == VotePhaseTie {
 				return
 			}
@@ -233,7 +239,24 @@ func (api *API) voteStageListenerFactory(factionID server.FactionID) func() (int
 
 			// at the end of first vote
 			case VotePhaseFirstVote:
-				parseFirstVoteResult(fvs, fvr)
+				// get all the tx
+				var txRefs []server.TransactionReference
+				for _, votes := range fvs {
+					for _, txMap := range votes.UserVoteMap {
+						for tx := range txMap {
+							txRefs = append(txRefs, tx)
+						}
+					}
+				}
+
+				// check the transaction status
+				transactions, err := api.Passport.CheckTransactions(ctx, txRefs)
+				if err != nil {
+					api.Log.Err(err).Msg("failed to check transactions")
+					return
+				}
+
+				parseFirstVoteResult(fvs, fvr, transactions, false)
 
 				// enter TIE phase if no result
 				if fvr.factionAbilityID.IsNil() || len(fvr.hubClientID) == 0 {
@@ -273,7 +296,12 @@ func (api *API) voteStageListenerFactory(factionID server.FactionID) func() (int
 							if !ok {
 								continue
 							}
-							go client.Send(broadcastData)
+							go func(c *hub.Client) {
+								err := c.Send(broadcastData)
+								if err != nil {
+									api.Log.Err(err).Msg("failed to send broadcast")
+								}
+							}(client)
 						}
 					})
 				}
@@ -290,7 +318,47 @@ func (api *API) voteStageListenerFactory(factionID server.FactionID) func() (int
 					t.SecondVoteResultBroadcaster.Stop()
 				}
 
-				// broadcast latest vote result to all the connected clients
+				// validate the agreed votes
+				agreeTx, err := api.Passport.CheckTransactions(ctx, svs.AgreedCount)
+				if err != nil {
+					api.Log.Err(err).Msg("failed to check transactions")
+					return
+				}
+
+				// remove the unsuccessful agreed votes
+				for i, tx := range agreeTx {
+					if tx.Status != server.TransactionSuccess {
+						for i, v := range svs.AgreedCount {
+							if v == tx.TransactionReference {
+								svs.AgreedCount = append(svs.AgreedCount[:i], svs.AgreedCount[i+1:]...)
+								break
+							}
+						}
+						svs.AgreedCount = append(svs.AgreedCount[:i], svs.AgreedCount[i+1:]...)
+					}
+				}
+
+				// validate the disagreed votes
+				disagreeTx, err := api.Passport.CheckTransactions(ctx, svs.DisagreedCount)
+				if err != nil {
+					api.Log.Err(err).Msg("failed to check transactions")
+					return
+				}
+
+				// remove the unsuccessful disagree votes
+				for i, tx := range disagreeTx {
+					if tx.Status != server.TransactionSuccess {
+						for i, v := range svs.AgreedCount {
+							if v == tx.TransactionReference {
+								svs.AgreedCount = append(svs.AgreedCount[:i], svs.AgreedCount[i+1:]...)
+								break
+							}
+						}
+						svs.AgreedCount = append(svs.AgreedCount[:i], svs.AgreedCount[i+1:]...)
+					}
+				}
+
+				// broadcast the latest vote result to all the connected clients
 				broadcastData, err := json.Marshal(&BroadcastPayload{
 					Key:     HubKeyTwitchFactionSecondVoteUpdated,
 					Payload: calcSecondVoteResult(f.ID, svs),
@@ -302,13 +370,18 @@ func (api *API) voteStageListenerFactory(factionID server.FactionID) func() (int
 							if !ok {
 								continue
 							}
-							go client.Send(broadcastData)
+							go func(c *hub.Client) {
+								err := c.Send(broadcastData)
+								if err != nil {
+									api.Log.Err(err).Msg("failed to send broadcast")
+								}
+							}(client)
 						}
 					})
 				}
 
 				// enter ability select
-				if svs.AgreedCount >= svs.DisagreedCount {
+				if len(svs.AgreedCount) >= len(svs.DisagreedCount) {
 					vs.Phase = VotePhaseLocationSelect
 					vs.EndTime = time.Now().Add(LocationSelectDurationSecond * time.Second)
 
@@ -337,7 +410,7 @@ func (api *API) voteStageListenerFactory(factionID server.FactionID) func() (int
 				// broadcast current stage to current faction users
 				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchFactionVoteStageUpdated, f.ID)), vs)
 
-				// broadcast counterred notification to all the connected clients
+				// broadcast countered notification to all the connected clients
 				broadcastData, err = json.Marshal(&BroadcastPayload{
 					Key: HubKeyTwitchNotification,
 					Payload: &TwitchNotification{
@@ -352,17 +425,26 @@ func (api *API) voteStageListenerFactory(factionID server.FactionID) func() (int
 							if !ok {
 								continue
 							}
-							go client.Send(broadcastData)
+							go func(c *hub.Client) {
+								err := c.Send(broadcastData)
+								if err != nil {
+									api.Log.Err(err).Msg("failed to send broadcast")
+								}
+							}(client)
 						}
 					})
 				}
 
 				// signal ability countered animation
-				api.BattleArena.FactionAbilityTrigger(&battle_arena.AbilityTriggerRequest{
+				err = api.BattleArena.FactionAbilityTrigger(&battle_arena.AbilityTriggerRequest{
 					FactionID:        f.ID,
 					FactionAbilityID: fvr.factionAbilityID,
 					IsSuccess:        false,
 				})
+				if err != nil {
+					api.Log.Err(err).Msg("failed to call FactionAbilityTrigger")
+					return
+				}
 
 				// at the end of ability select
 			case VotePhaseLocationSelect:
@@ -386,7 +468,7 @@ func (api *API) voteStageListenerFactory(factionID server.FactionID) func() (int
 					// broadcast current stage to current faction users
 					api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchFactionVoteStageUpdated, f.ID)), vs)
 
-					// broadcast counterred notification
+					// broadcast countered notification
 					broadcastData, err := json.Marshal(&BroadcastPayload{
 						Key: HubKeyTwitchNotification,
 						Payload: &TwitchNotification{
@@ -394,23 +476,35 @@ func (api *API) voteStageListenerFactory(factionID server.FactionID) func() (int
 							Data: fmt.Sprintf("Action %s from Faction %s have been cancelled, due to no one select the location.", fvs[fvr.factionAbilityID].FactionAbility.Label, f.Label),
 						},
 					})
-					if err == nil {
-						api.Hub.Clients(func(clients hub.ClientsList) {
-							for client, ok := range clients {
-								if !ok {
-									continue
-								}
-								go client.Send(broadcastData)
-							}
-						})
+					if err != nil {
+						api.Log.Err(err).Msg("marshal broadcast payload")
+						return
 					}
 
+					api.Hub.Clients(func(clients hub.ClientsList) {
+						for client, ok := range clients {
+							if !ok {
+								continue
+							}
+							go func(c *hub.Client) {
+								err := c.Send(broadcastData)
+								if err != nil {
+									api.Log.Err(err).Msg("failed to send broadcast")
+								}
+							}(client)
+						}
+					})
+
 					// signal ability countered animation
-					api.BattleArena.FactionAbilityTrigger(&battle_arena.AbilityTriggerRequest{
+					err = api.BattleArena.FactionAbilityTrigger(&battle_arena.AbilityTriggerRequest{
 						FactionID:        f.ID,
 						FactionAbilityID: fvr.factionAbilityID,
 						IsSuccess:        false,
 					})
+					if err != nil {
+						api.Log.Err(err).Msg("Failed to call FactionAbilityTrigger")
+						return
+					}
 
 					return
 				}
@@ -447,11 +541,11 @@ func (api *API) voteStageListenerFactory(factionID server.FactionID) func() (int
 					delete(fvs, abilityKey)
 				}
 
-				// set first vote abilitys
+				// set first vote abilities
 				for _, ability := range abilities {
 					fvs[ability.ID] = &FirstVoteAction{
 						FactionAbility: ability,
-						UserVoteMap:    make(map[server.UserID]int64),
+						UserVoteMap:    make(map[server.UserID]map[server.TransactionReference]server.BigInt),
 					}
 				}
 
@@ -462,8 +556,8 @@ func (api *API) voteStageListenerFactory(factionID server.FactionID) func() (int
 				}
 
 				// initialise second vote state
-				svs.AgreedCount = 0
-				svs.DisagreedCount = 0
+				svs.AgreedCount = []server.TransactionReference{}
+				svs.DisagreedCount = []server.TransactionReference{}
 
 				// start a new vote
 
@@ -485,40 +579,51 @@ func (api *API) voteStageListenerFactory(factionID server.FactionID) func() (int
 }
 
 // parseFirstVoteResult return the most voted ability and the user who contribute the most vote on that ability
-func parseFirstVoteResult(fvs FirstVoteState, fvr *FirstVoteResult) {
+func parseFirstVoteResult(fvs FirstVoteState, fvr *FirstVoteResult, checkedTransactions []*server.Transaction, skipCheck bool) {
 	// initialise first vote result
 	fvr.factionAbilityID = server.FactionAbilityID(uuid.Nil)
 	fvr.hubClientID = []server.UserID{}
 
 	type voter struct {
 		id        server.UserID
-		totalVote int64
+		totalVote server.BigInt
 	}
 	type ability struct {
 		id        server.FactionAbilityID
-		totalVote int64
+		totalVote server.BigInt
 		voters    []*voter
 	}
 	abilities := []*ability{}
 	for abilityID, fv := range fvs {
 		ability := &ability{
 			id:        abilityID,
-			totalVote: 0,
+			totalVote: server.BigInt{Int: *big.NewInt(0)},
 			voters:    []*voter{},
 		}
 
-		for voterID, voteCount := range fv.UserVoteMap {
+		// here we count the votes
+		for voterID, txMap := range fv.UserVoteMap {
 			voter := &voter{
 				id:        voterID,
-				totalVote: voteCount,
+				totalVote: server.BigInt{Int: *big.NewInt(0)},
 			}
-
-			ability.totalVote += voteCount
+			// tally their votes
+			for tx, voteCount := range txMap {
+				// validate transfer was successful here then add it
+				for _, chktx := range checkedTransactions {
+					if (tx == chktx.TransactionReference && chktx.Status == server.TransactionSuccess) || skipCheck {
+						voter.totalVote.Add(&voter.totalVote.Int, &voteCount.Int)
+						continue
+					}
+				}
+			}
+			// append the voter and votes total votes
+			ability.totalVote.Add(&ability.totalVote.Int, &voter.totalVote.Int)
 			ability.voters = append(ability.voters, voter)
 		}
 
 		// skip if no vote
-		if ability.totalVote == 0 {
+		if ability.totalVote.BitLen() == 0 {
 			continue
 		}
 
@@ -546,11 +651,11 @@ func parseFirstVoteResult(fvs FirstVoteState, fvr *FirstVoteResult) {
 
 		// sort voters
 		sort.Slice(abilities[0].voters, func(i, j int) bool {
-			return abilities[0].voters[i].totalVote > abilities[0].voters[j].totalVote
+			return abilities[0].voters[i].totalVote.Cmp(&abilities[0].voters[j].totalVote.Int) == 1
 		})
 
 		// exit, if tie on vote
-		if abilities[0].voters[0].totalVote == abilities[0].voters[1].totalVote {
+		if abilities[0].voters[0].totalVote.Cmp(&abilities[0].voters[1].totalVote.Int) == 0 {
 			return
 		}
 
@@ -564,11 +669,15 @@ func parseFirstVoteResult(fvs FirstVoteState, fvr *FirstVoteResult) {
 
 	// sort ability list
 	sort.Slice(abilities, func(i, j int) bool {
-		return abilities[i].totalVote > abilities[j].totalVote
+		return abilities[i].totalVote.Cmp(&abilities[j].totalVote.Int) == 1
 	})
 
 	// exit, if no voters
 	if len(abilities[0].voters) == 0 {
+		return
+	}
+	// exit, if tie on ability
+	if abilities[0].totalVote.Cmp(&abilities[1].totalVote.Int) == 0 {
 		return
 	}
 
@@ -579,18 +688,13 @@ func parseFirstVoteResult(fvs FirstVoteState, fvr *FirstVoteResult) {
 		return
 	}
 
-	// exit, if tie on ability
-	if abilities[0].totalVote == abilities[1].totalVote {
-		return
-	}
-
 	// sort voters
 	sort.Slice(abilities[0].voters, func(i, j int) bool {
-		return abilities[0].voters[i].totalVote > abilities[0].voters[j].totalVote
+		return abilities[0].voters[i].totalVote.Cmp(&abilities[0].voters[j].totalVote.Int) == 1
 	})
 
 	// exit, if tie on user vote
-	if abilities[0].voters[0].totalVote == abilities[0].voters[1].totalVote {
+	if abilities[0].voters[0].totalVote.Cmp(&abilities[0].voters[1].totalVote.Int) == 0 {
 		return
 	}
 
@@ -612,8 +716,8 @@ func calcSecondVoteResult(factionID server.FactionID, svs *secondVoteResult) *se
 		FactionID: factionID,
 		Result:    0.5,
 	}
-	if svs.AgreedCount > 0 || svs.DisagreedCount > 0 {
-		resp.Result = float64(svs.DisagreedCount) / float64(svs.AgreedCount+svs.DisagreedCount)
+	if len(svs.AgreedCount) > 0 || len(svs.DisagreedCount) > 0 {
+		resp.Result = float64(len(svs.DisagreedCount)) / float64(len(svs.AgreedCount)+len(svs.DisagreedCount))
 	}
 
 	return resp

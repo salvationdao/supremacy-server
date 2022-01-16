@@ -15,14 +15,12 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
-	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-software/hub/v2"
 	"github.com/ninja-software/hub/v2/ext/auth"
 	zerologger "github.com/ninja-software/hub/v2/ext/zerolog"
 	"github.com/ninja-software/log_helpers"
-	"github.com/ninja-software/tickle"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 )
@@ -55,7 +53,7 @@ type API struct {
 	factionVoteCycle map[server.FactionID]chan func(*server.Faction, *VoteStage, FirstVoteState, *FirstVoteResult, *secondVoteResult, *FactionVotingTicker)
 
 	hubClientDetail map[*hub.Client]chan func(*HubClientDetail)
-	onlineClientMap map[server.UserID]chan func(ClientInstanceMap, *tickle.Tickle)
+	onlineClientMap chan *ClientUpdate
 }
 
 // NewAPI registers routes
@@ -72,7 +70,6 @@ func NewAPI(
 ) *API {
 	// initialise message bus
 	messageBus, offlineFunc := messagebus.NewMessageBus(log_helpers.NamedLogger(log, "message_bus"))
-
 	// initialise api
 	api := &API{
 		Log:          log_helpers.NamedLogger(log, "api"),
@@ -95,91 +92,65 @@ func NewAPI(
 			},
 			ClientOfflineFn: offlineFunc,
 		}),
-
 		// channel for faction voting system
 		factionVoteCycle: make(map[server.FactionID]chan func(*server.Faction, *VoteStage, FirstVoteState, *FirstVoteResult, *secondVoteResult, *FactionVotingTicker)),
-
 		// channel for handling hub client
 		hubClientDetail: make(map[*hub.Client]chan func(*HubClientDetail)),
-		onlineClientMap: make(map[server.UserID](chan func(ClientInstanceMap, *tickle.Tickle))),
+		onlineClientMap: make(chan *ClientUpdate),
 	}
-
-	// start the default online client map
-	defaultHubClientUUID := server.UserID(uuid.Nil)
-	api.onlineClientMap[defaultHubClientUUID] = make(chan func(ClientInstanceMap, *tickle.Tickle))
-	go api.startOnlineClientTracker(defaultHubClientUUID)
-
-	// get all the faction list from passport server and create channel
-	for _, faction := range factionMap {
-		api.factionVoteCycle[faction.ID] = make(chan func(*server.Faction, *VoteStage, FirstVoteState, *FirstVoteResult, *secondVoteResult, *FactionVotingTicker))
-		go api.startFactionVoteCycle(faction)
-	}
-
-	// add online/offline event handlers
-	api.Hub.Events.AddEventHandler(hub.EventOnline, api.onlineEventHandler)
-	api.Hub.Events.AddEventHandler(hub.EventOffline, api.offlineEventHandler)
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
-	api.Routes.Use(cors.New(cors.Options{
-		AllowedOrigins: []string{config.TwitchUIHostURL},
-	}).Handler)
-
-	// Commented out by vinnie 22/12/21 -- Looks like we don't need the auth extension atm since using a different flow
-
-	//var err error
-	//api.Auth, err = auth.New(api.Hub, &auth.Config{
-	//	CookieSecure: config.CookieSecure,
-	//	UserGetter: &UserGetter{
-	//		Log:  log_helpers.NamedLogger(log, "user getter"),
-	//		Conn: conn,
-	//	},
-	//	Tokens: &Tokens{
-	//		Conn:                conn,
-	//		tokenExpirationDays: config.TokenExpirationDays,
-	//		encryptToken:        config.EncryptTokens,
-	//		encryptTokenKey:     config.EncryptTokensKey,
-	//	},
-	//	//Whitelist           bool
-	//})
-	//if err != nil {
-	//	log.Fatal().Msgf("failed to init hub auther: %s", err.Error())
-	//}
-
+	api.Routes.Use(cors.New(cors.Options{AllowedOrigins: []string{config.TwitchUIHostURL}}).Handler)
 	api.Routes.Handle("/metrics", promhttp.Handler())
 	api.Routes.Route("/api", func(r chi.Router) {
 		r.Group(func(r chi.Router) {
 			sentryHandler := sentryhttp.New(sentryhttp.Options{})
 			r.Use(sentryHandler.Handle)
 		})
+
 		// Web sockets are long-lived, so we don't want the sentry performance tracer running for the life-time of the connection.
 		// See roothub.ServeHTTP for the setup of sentry on this route.
 		r.Handle("/ws", api.Hub)
 		r.Get("/game_settings", WithError(api.GetGameSettings))
 		r.Get("/second_votes", WithError(api.GetSecondVotes))
-		// r.HandleFunc("/temp-random-faction", api.GetRandomFaction)
 		r.HandleFunc("/start", api.Start) // TODO: will be removed at a later date
 	})
-
+	///////////////////////////
+	//		 Controllers	 //
+	///////////////////////////
 	_ = NewCheckController(log, conn, api)
 	_ = NewTwitchController(log, conn, api)
 	_ = NewUserController(log, conn, api)
 
 	///////////////////////////
-	//		Battle Arena	 //
+	//		 Hub Events		 //
 	///////////////////////////
+	api.Hub.Events.AddEventHandler(hub.EventOnline, api.onlineEventHandler)
+	api.Hub.Events.AddEventHandler(hub.EventOffline, api.offlineEventHandler)
 
+	///////////////////////////
+	//	Battle Arena Events	 //
+	///////////////////////////
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventGameStart, api.BattleStartSignal)
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventGameEnd, api.BattleEndSignal)
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventWarMachinePositionChanged, api.UpdateWarMachinePosition)
 
 	///////////////////////////
-	//			Passport	 //
+	//	 Passport Events	 //
 	///////////////////////////
-
 	api.Passport.Events.AddEventHandler(passport.EventUserOnlineStatus, api.PassportUserOnlineStatusHandler)
 	api.Passport.Events.AddEventHandler(passport.EventUserUpdated, api.PassportUserUpdatedHandler)
 	api.Passport.Events.AddEventHandler(passport.EventUserSupsUpdated, api.PassportUserSupsUpdatedHandler)
+
+	// listen to the client online and action channel
+	go api.ClientListener()
+
+	// create the faction maps
+	for _, faction := range factionMap {
+		api.factionVoteCycle[faction.ID] = make(chan func(*server.Faction, *VoteStage, FirstVoteState, *FirstVoteResult, *secondVoteResult, *FactionVotingTicker))
+		go api.startFactionVoteCycle(faction)
+	}
 
 	return api
 }
@@ -193,54 +164,12 @@ func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client, clients
 		go api.startClientTracker(wsc)
 	}
 
-	api.onlineClientMap[server.UserID(uuid.Nil)] <- func(cim ClientInstanceMap, t *tickle.Tickle) {
-		// register the client instance if not exists
-		if _, ok := cim[wsc]; !ok {
-			cim[wsc] = true
-		}
-	}
 }
 
 func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, clients hub.ClientsList, ch hub.TriggerChan) {
-	// remove client detail from
-	_, ok := api.hubClientDetail[wsc]
-	if !ok {
-		return
-	}
-
-	hubClientDetail, err := api.getClientDetailFromChannel(wsc)
-	if err != nil {
-		api.Log.Err(err).Msg("User not found")
-		return
-	}
-
+	api.ClientOffline(wsc)
 	// clean up the map
 	delete(api.hubClientDetail, wsc)
-
-	shouldDeleteChan := make(chan bool)
-	// delete the online instance from the map
-	api.onlineClientMap[hubClientDetail.ID] <- func(cim ClientInstanceMap, t *tickle.Tickle) {
-		delete(cim, wsc)
-
-		if len(cim) == 0 && !hubClientDetail.ID.IsNil() {
-			// stop channel point tickle
-			if t.NextTick != nil {
-				t.Stop()
-			}
-			// TODO: store current channel point back to passport
-			api.Log.Info().Msgf("Store the connect point of user %s back to passport", hubClientDetail.ID)
-
-			shouldDeleteChan <- true
-			return
-		}
-		shouldDeleteChan <- false
-	}
-
-	// delete map instance if required
-	if <-shouldDeleteChan {
-
-		delete(api.onlineClientMap, hubClientDetail.ID)
-	}
 }
 
 // Run the API service
@@ -253,13 +182,11 @@ func (api *API) Run(ctx context.Context) error {
 	api.Log.Info().Msgf("Starting API Server on %v", server.Addr)
 
 	go func() {
-		select {
-		case <-ctx.Done():
-			api.Log.Info().Msg("Stopping API")
-			err := server.Shutdown(ctx)
-			if err != nil {
-				api.Log.Warn().Err(err).Msg("")
-			}
+		<-ctx.Done()
+		api.Log.Info().Msg("Stopping API")
+		err := server.Shutdown(ctx)
+		if err != nil {
+			api.Log.Warn().Err(err).Msg("")
 		}
 	}()
 
@@ -294,7 +221,12 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 			if !ok {
 				continue
 			}
-			go client.Send(gameSettingsData)
+			go func(c *hub.Client) {
+				err := c.Send(gameSettingsData)
+				if err != nil {
+					api.Log.Err(err).Msg("failed to send broadcast")
+				}
+			}(client)
 		}
 	})
 

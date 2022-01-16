@@ -1,7 +1,6 @@
 package db
 
 import (
-	"fmt"
 	"server"
 
 	"github.com/georgysavva/scany/pgxscan"
@@ -27,7 +26,6 @@ func WarMachineCreate(ctx context.Context, conn Conn, warMachine *server.WarMach
 		warMachine.BaseShieldPoint,
 	)
 	if err != nil {
-		fmt.Println(err)
 		return terror.Error(err)
 	}
 	return nil

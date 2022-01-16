@@ -42,14 +42,6 @@ func (ba *BattleArena) FactionAbilityTrigger(atr *AbilityTriggerRequest) error {
 	go ba.fakeAnimation(atr.FactionID)
 
 	ctx := context.Background()
-	// save to database
-	tx, err := ba.Conn.Begin(ctx)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	defer tx.Rollback(ctx)
-
 	factionAbilityEvent := &server.FactionAbilityEvent{
 		FactionAbilityID: atr.FactionAbilityID,
 		IsTriggered:      atr.IsSuccess,
@@ -58,12 +50,7 @@ func (ba *BattleArena) FactionAbilityTrigger(atr *AbilityTriggerRequest) error {
 		TriggeredOnCellY: atr.TriggeredOnCellY,
 	}
 
-	err = db.FactionAbilityEventCreate(ctx, tx, ba.battle.ID, factionAbilityEvent)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	err = tx.Commit(ctx)
+	err := db.FactionAbilityEventCreate(ctx, ba.Conn, ba.battle.ID, factionAbilityEvent)
 	if err != nil {
 		return terror.Error(err)
 	}

@@ -1,7 +1,6 @@
 package db
 
 import (
-	"fmt"
 	"server"
 
 	"github.com/georgysavva/scany/pgxscan"
@@ -47,7 +46,6 @@ func FactionAbilityGetRandom(ctx context.Context, conn Conn, factionID server.Fa
 	`
 	err := pgxscan.Select(ctx, conn, &result, q, factionID)
 	if err != nil {
-		fmt.Println(err)
 		return nil, terror.Error(err)
 	}
 

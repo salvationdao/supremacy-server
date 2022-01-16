@@ -57,14 +57,12 @@ func (uc *UserControllerWS) UserRandomUpdateFaction(ctx context.Context, wsc *hu
 	}
 
 	randomFaction := passport.RandomFaction(uc.API.factionMap)
-
 	err = uc.API.Passport.UserFactionUpdate(ctx, clientDetail.ID, randomFaction.ID, req.TransactionID)
 	if err != nil {
 		return terror.Error(err)
 	}
 
 	reply(true)
-
 	return nil
 }
 
@@ -72,18 +70,19 @@ const HubKeyUserSubscribe hub.HubCommandKey = "USER:SUBSCRIBE"
 
 // UserSubscribeHandler to subscribe to a user
 func (ctrlr *UserControllerWS) UserSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	req := &hub.HubCommandRequest{}
+	req := &HubKeyUserOnlineStatusRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
-	clientDetail, err := ctrlr.API.getClientDetailFromChannel(wsc)
+	user, err := ctrlr.API.Passport.UserGetByID(ctx, req.Payload.ID, req.TransactionID)
 	if err != nil {
-		return "", "", terror.Error(err)
+		return "", "", err
 	}
 
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, clientDetail.ID)), nil
+	reply(user)
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, user.ID)), nil
 }
 
 // HubKeyUserOnlineStatus subscribes to a user's online status (returns boolean)
@@ -139,9 +138,8 @@ func (ctrlr *UserControllerWS) OnlineStatusSubscribeHandler(ctx context.Context,
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserOnlineStatus, userID.String())), nil
 }
 
-const HubKeyUserSupsUpdated hub.HubCommandKey = hub.HubCommandKey("USER:SUPS:UPDATED")
+const HubKeyUserSupsUpdated = hub.HubCommandKey("USER:SUPS:UPDATED")
 
-// EvenUpdateSubscribeHandler to subscribe to game event
 func (uc *UserControllerWS) SupsUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
@@ -149,13 +147,6 @@ func (uc *UserControllerWS) SupsUpdateSubscribeHandler(ctx context.Context, wsc 
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
-	// get hub client
-	hubClientDetail, err := uc.API.getClientDetailFromChannel(wsc)
-	if err != nil {
-		return "", "", terror.Error(err)
-	}
-
-	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsUpdated, hubClientDetail.ID))
-
+	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsUpdated, wsc.Identifier()))
 	return req.TransactionID, busKey, nil
 }

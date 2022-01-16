@@ -59,7 +59,12 @@ func (api *API) UpdateWarMachinePosition(ctx context.Context, ed *battle_arena.E
 			if !ok {
 				continue
 			}
-			go client.Send(data)
+			go func(c *hub.Client) {
+				err := c.Send(data)
+				if err != nil {
+					api.Log.Err(err).Msg("failed to send broadcast")
+				}
+			}(client)
 		}
 	})
 }

@@ -12,11 +12,6 @@ import (
 	"github.com/ninja-software/terror/v2"
 )
 
-const (
-	reqsName    = "chi_requests_total"
-	latencyName = "chi_request_duration_milliseconds"
-)
-
 type ErrorMessage string
 
 const (

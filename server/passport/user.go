@@ -3,7 +3,10 @@ package passport
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"server"
+
+	"github.com/gofrs/uuid"
 
 	"github.com/ninja-software/terror/v2"
 )
@@ -11,8 +14,16 @@ import (
 type User struct {
 	ID          server.UserID   `json:"id"`
 	Faction     *server.Faction `json:"faction"`
-	Sups        int64           `json:"sups"`
+	Sups        server.BigInt   `json:"sups"`
 	PassportURL string          `json:"passportURL"`
+}
+
+type TwitchAuthResponse struct {
+	Payload TwitchAuthPayload `json:"payload"`
+}
+
+type TwitchAuthPayload struct {
+	User server.User `json:"user"`
 }
 
 func (pp *Passport) TwitchAuth(ctx context.Context, token string, txID string) (*server.User, error) {
@@ -35,13 +46,13 @@ func (pp *Passport) TwitchAuth(ctx context.Context, token string, txID string) (
 		}}
 
 	msg := <-replyChannel
-	resp := &UserGetByIDResponse{}
+	resp := &TwitchAuthResponse{}
 	err := json.Unmarshal(msg, resp)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
 
-	return &resp.User, nil
+	return &resp.Payload.User, nil
 }
 
 type UserGetByIDResponse struct {
@@ -101,15 +112,14 @@ func (pp *Passport) UserGetByUsername(ctx context.Context, username string, txID
 			cancel:        cancel,
 		}}
 
-	select {
-	case msg := <-replyChannel:
-		resp := &UserGetByUsernameResponse{}
-		err := json.Unmarshal(msg, resp)
-		if err != nil {
-			return nil, terror.Error(err)
-		}
-		return &resp.User, nil
+	msg := <-replyChannel
+
+	resp := &UserGetByUsernameResponse{}
+	err := json.Unmarshal(msg, resp)
+	if err != nil {
+		return nil, terror.Error(err)
 	}
+	return &resp.User, nil
 }
 
 // UserFactionUpdate update the faction of the given user
@@ -134,22 +144,28 @@ func (pp *Passport) UserFactionUpdate(ctx context.Context, userID server.UserID,
 	return nil
 }
 
-// UserSupsUpdate update user sups
-func (pp *Passport) UserSupsUpdate(ctx context.Context, userID server.UserID, supsChange int64, txID string) (bool, error) {
+// SendTakeSupsMessage tells the passport to transfer sups
+// THIS DOES NOT CONFIRM IF THE TRANSACTION WAS SUCCESSFUL
+// TO CONFIRM SUCCESS NEED TO CALL ENDPOINT FOR THE transactionReference (TODO: THIS)
+func (pp *Passport) SendTakeSupsMessage(ctx context.Context, userID server.UserID, supsChange server.BigInt, txID string, reason string) (server.TransactionReference, error) {
 	ctx, cancel := context.WithCancel(ctx)
 
+	supTransactionReference := uuid.Must(uuid.NewV4())
+	supTxRefString := server.TransactionReference(fmt.Sprintf("%s|%s", reason, supTransactionReference.String()))
 	replyChannel := make(chan []byte)
 
 	pp.send <- &Request{
 		ReplyChannel: replyChannel,
 		Message: &Message{
-			Key: "USER:SUPS:UPDATE",
+			Key: "SUPREMACY:TAKE_SUPS",
 			Payload: struct {
-				UserID     server.UserID `json:"userID"`
-				SupsChange int64         `json:"supsChange"`
+				Amount               server.BigInt               `json:"amount"`
+				FromUserID           server.UserID               `json:"userId"`
+				TransactionReference server.TransactionReference `json:"transactionReference"`
 			}{
-				UserID:     userID,
-				SupsChange: supsChange,
+				FromUserID:           userID,
+				Amount:               supsChange,
+				TransactionReference: supTxRefString,
 			},
 			TransactionId: txID,
 			context:       ctx,
@@ -158,13 +174,39 @@ func (pp *Passport) UserSupsUpdate(ctx context.Context, userID server.UserID, su
 
 	msg := <-replyChannel
 	resp := struct {
-		isSuccess bool
-	}{
-		isSuccess: true,
-	}
+		Payload struct {
+			IsSuccess bool `json:"isSuccess"`
+		}
+	}{}
+
 	err := json.Unmarshal(msg, &resp)
 	if err != nil {
-		return false, terror.Error(err)
+		return supTxRefString, terror.Error(err)
 	}
-	return resp.isSuccess, nil
+
+	// this doesn't mean the sup transfer was successful, it means the server was successful at getting our message
+	if !resp.Payload.IsSuccess {
+		return supTxRefString, terror.Error(fmt.Errorf("passport success resp is false"))
+	}
+
+	return supTxRefString, nil
+}
+
+// SendTickerMessage sends the client map and multipliers to the passport to handle giving out sups
+func (pp *Passport) SendTickerMessage(ctx context.Context, userMap map[int][]server.UserID) (string, error) {
+	ctx, cancel := context.WithCancel(ctx)
+
+	pp.send <- &Request{
+		Message: &Message{
+			Key: "SUPREMACY:TICKER_TICK",
+			Payload: struct {
+				UserMap map[int][]server.UserID `json:"userMap"`
+			}{
+				UserMap: userMap,
+			},
+			context: ctx,
+			cancel:  cancel,
+		}}
+
+	return "", nil
 }

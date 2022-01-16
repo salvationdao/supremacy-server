@@ -27,7 +27,7 @@ type User struct {
 	DeletedAt           *time.Time `json:"deletedAt" db:"deleted_at"`
 
 	PassportURL string `json:"passportURL"`
-	Sups        int64  `json:"sups"`
+	Sups        BigInt `json:"sups"`
 	// for dev env only
 	TwitchID string `json:"twitchID" db:"twitch_id"`
 }
@@ -39,10 +39,7 @@ type IssueToken struct {
 }
 
 func (i IssueToken) Whitelisted() bool {
-	if !i.ID.IsNil() {
-		return true
-	}
-	return false
+	return !i.ID.IsNil()
 }
 
 func (i IssueToken) TokenID() uuid.UUID {

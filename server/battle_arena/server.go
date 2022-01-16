@@ -32,8 +32,6 @@ type BattleCommandFunc func(ctx context.Context, payload []byte, reply ReplyFunc
 type Request struct {
 	BattleCommand BattleCommand `json:"battleCommand"`
 	Payload       []byte        `json:"payload"`
-	context       context.Context
-	cancel        context.CancelFunc
 }
 
 type GameMessage struct {
@@ -100,14 +98,13 @@ func (ba *BattleArena) Serve(ctx context.Context) error {
 	}
 
 	go func() {
-		select {
-		case <-ctx.Done():
-			ba.Log.Info().Msg("Stopping BattleArena Server")
-			err := s.Shutdown(ctx)
-			if err != nil {
-				ba.Log.Warn().Err(err).Msg("")
-			}
+		<-ctx.Done()
+		ba.Log.Info().Msg("Stopping BattleArena Server")
+		err := s.Shutdown(ctx)
+		if err != nil {
+			ba.Log.Warn().Err(err).Msg("")
 		}
+
 	}()
 
 	return s.Serve(l)
@@ -148,6 +145,10 @@ func (ba *BattleArena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		payload, err := ioutil.ReadAll(r)
+		if err != nil {
+			ba.Log.Err(err).Msgf(`error reading out buffer`)
+			continue
+		}
 
 		v, err := jason.NewObjectFromBytes(payload)
 		if err != nil {

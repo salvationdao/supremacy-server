@@ -93,7 +93,6 @@ func FactionAbilityEventCreate(ctx context.Context, conn Conn, battleID server.B
 		factionAbilityEvent.TriggeredOnCellY,
 	)
 	if err != nil {
-		fmt.Println(err)
 		return terror.Error(err)
 	}
 	return nil
