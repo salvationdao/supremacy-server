@@ -380,57 +380,6 @@ func (id *FactionAbilityID) Scan(src interface{}) error {
 	return err
 }
 
-type WarMachineID uuid.UUID
-
-// IsNil returns true for a nil uuid.
-func (id WarMachineID) IsNil() bool {
-	return id == WarMachineID{}
-}
-
-// String aliases UUID.String which returns a canonical RFC-4122 string representation of the UUID.
-// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.String.
-func (id WarMachineID) String() string {
-	return uuid.UUID(id).String()
-}
-
-// MarshalText aliases UUID.MarshalText which implements the encoding.TextMarshaler interface.
-// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.MarshalText.
-func (id WarMachineID) MarshalText() ([]byte, error) {
-	return uuid.UUID(id).MarshalText()
-}
-
-// UnmarshalText aliases UUID.UnmarshalText which implements the encoding.TextUnmarshaler interface.
-// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.UnmarshalText.
-func (id *WarMachineID) UnmarshalText(text []byte) error {
-	// Convert to uuid.UUID
-	uid := uuid.UUID(*id)
-	// Unmarshal as uuid.UUID
-	err := uid.UnmarshalText(text)
-	// Convert back to original type
-	*id = WarMachineID(uid)
-	// Retrun error
-	return err
-}
-
-// Value aliases UUID.Value which implements the driver.Valuer interface.
-// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.Value.
-func (id WarMachineID) Value() (driver.Value, error) {
-	return uuid.UUID(id).Value()
-}
-
-// Scan implements the sql.Scanner interface.
-// For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.Scan.
-func (id *WarMachineID) Scan(src interface{}) error {
-	// Convert to uuid.UUID
-	uid := uuid.UUID(*id)
-	// Unmarshal as uuid.UUID
-	err := uid.Scan(src)
-	// Convert back to original type
-	*id = WarMachineID(uid)
-	// Retrun error
-	return err
-}
-
 type GameMapID uuid.UUID
 
 // IsNil returns true for a nil uuid.

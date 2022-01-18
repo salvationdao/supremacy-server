@@ -28,7 +28,7 @@ func (ba *BattleArena) WarMachineDestroyedHandler(ctx context.Context, payload [
 		return terror.Error(err)
 	}
 
-	ba.Log.Info().Msgf("Battle Update: %s - War Machine Destroyed: %s", req.Payload.BattleID, req.Payload.DestroyedWarMachineEvent.DestroyedWarMachineID)
+	ba.Log.Info().Msgf("Battle Update: %s - War Machine Destroyed: %d", req.Payload.BattleID, req.Payload.DestroyedWarMachineEvent.DestroyedWarMachineID)
 
 	// save to database
 	tx, err := ba.Conn.Begin(ctx)

@@ -43,6 +43,7 @@ func NewTwitchController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Twi
 
 	api.SecureUserFactionSubscribeCommand(HubKeyTwitchFactionAbilityUpdated, twitchHub.FactionAbilityUpdateSubscribeHandler)
 	api.SecureUserFactionSubscribeCommand(HubKeyTwitchFactionVoteStageUpdated, twitchHub.FactionVoteStageUpdateSubscribeHandler)
+	api.SecureUserFactionSubscribeCommand(HubKeyTwitchFactionWarMachineQueueUpdated, twitchHub.FactionWarMachineQueueUpdateSubscribeHandler)
 	return twitchHub
 }
 
@@ -485,6 +486,37 @@ func (th *TwitchControllerWS) FactionVoteStageUpdateSubscribeHandler(ctx context
 	}
 
 	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchFactionVoteStageUpdated, hubClientDetail.FactionID))
+	return req.TransactionID, busKey, nil
+}
+
+const HubKeyTwitchFactionWarMachineQueueUpdated hub.HubCommandKey = "TWITCH:FACTION:WAR:MACHINE:QUEUE:UPDATED"
+
+func (th *TwitchControllerWS) FactionWarMachineQueueUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return "", "", terror.Error(err, "Invalid request received")
+	}
+
+	// get hub client
+	hubClientDetail, err := th.API.getClientDetailFromChannel(wsc)
+	if err != nil {
+		return "", "", terror.Error(err)
+	}
+
+	if battleQueue, ok := th.API.battleQueueMap[hubClientDetail.FactionID]; ok {
+		battleQueue <- func(wmql *warMachineQueuingList) {
+			maxLength := 5
+			if len(wmql.WarMachines) < maxLength {
+				maxLength = len(wmql.WarMachines)
+			}
+
+			reply(wmql.WarMachines[:maxLength])
+		}
+	}
+
+	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchFactionWarMachineQueueUpdated, hubClientDetail.FactionID))
+
 	return req.TransactionID, busKey, nil
 }
 

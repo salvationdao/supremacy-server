@@ -31,34 +31,14 @@ CREATE TABLE battle_events (
     created_at timestamptz NOT NULL DEFAULT NOW()
 );
 
--- war_machines record the machine id
-CREATE TABLE war_machines (
-    id uuid PRIMARY KEY NOT NULL DEFAULT gen_random_uuid (),
-    name text NOT NULL,
-    base_health_point int NOT NULL DEFAULT 100,
-    base_shield_point int NOT NULL DEFAULT 100,
-    turret_hardpoint int
-);
-
 -- battles_war_machines store the war machines attend in the battle
 CREATE TABLE battles_war_machines (
-    battle_id uuid REFERENCES battles (id),
-    war_machine_id uuid REFERENCES war_machines (id),
+    battle_id uuid NOT NULL REFERENCES battles (id),
+    war_machine_id numeric(78, 0) NOT NULL,
+    war_machine_stat jsonb NOT NULL,
+    join_as_faction_id uuid NOT NULL,
     is_winner bool NOT NULL DEFAULT FALSE,
     PRIMARY KEY (battle_id, war_machine_id)
-);
-
--- war_machine_weapons
-CREATE TABLE war_machine_weapons (
-    id uuid PRIMARY KEY NOT NULL DEFAULT gen_random_uuid (),
-    war_machine_id uuid REFERENCES war_machines (id)
-);
-
--- factions
-CREATE TABLE factions (
-    id uuid PRIMARY KEY NOT NULL DEFAULT gen_random_uuid (),
-    label text NOT NULL,
-    colour text NOT NULL
 );
 
 -- faction_abilities
@@ -77,14 +57,14 @@ CREATE TABLE faction_abilities (
 CREATE TABLE war_machine_destroyed_events (
     id uuid PRIMARY KEY NOT NULL DEFAULT gen_random_uuid (),
     event_id uuid NOT NULL REFERENCES battle_events (id),
-    destroyed_war_machine_id uuid NOT NULL REFERENCES war_machines (id),
-    kill_by_war_machine_id uuid REFERENCES war_machines (id),
+    destroyed_war_machine_id numeric(78, 0) NOT NULL,
+    kill_by_war_machine_id numeric(78, 0),
     kill_by_faction_ability_id uuid REFERENCES faction_abilities (id)
 );
 
 CREATE TABLE war_machine_destroyed_events_assisted_war_machines (
     war_machine_destroyed_event_id uuid NOT NULL REFERENCES war_machine_destroyed_events (id),
-    war_machine_id uuid NOT NULL REFERENCES war_machines (id),
+    war_machine_id numeric(78, 0) NOT NULL,
     PRIMARY KEY (war_machine_destroyed_event_id, war_machine_id)
 );
 

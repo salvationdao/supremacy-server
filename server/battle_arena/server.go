@@ -76,6 +76,7 @@ func NewBattleArenaClient(ctx context.Context, logger *zerolog.Logger, conn *pgx
 	// battle state
 	ba.Command(BattleStartCommand, ba.BattleStartHandler)
 	ba.Command(BattleEndCommand, ba.BattleEndHandler)
+
 	// war machines
 	ba.Command(WarMachineDestroyedCommand, ba.WarMachineDestroyedHandler)
 

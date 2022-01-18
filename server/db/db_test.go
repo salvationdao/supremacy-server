@@ -202,29 +202,20 @@ func TestDatabase(t *testing.T) {
 		}
 	})
 
-	warMachine := &server.WarMachine{
-		ID:              server.WarMachineID(uuid.Must(uuid.NewV4())),
-		Name:            "test machine",
-		BaseHealthPoint: 1,
-		BaseShieldPoint: 1,
-	}
-	t.Run("Create war machine", func(t *testing.T) {
-		err := db.WarMachineCreate(ctx, conn, warMachine)
-		if err != nil {
-			t.Errorf("fail to create war machine\n")
-			t.Fatal()
-			return
-		}
-	})
-
-	t.Run("Assign war machines to the battle", func(t *testing.T) {
-		err := db.BattleWarMachineAssign(ctx, conn, battle.ID, []server.WarMachineID{warMachine.ID})
-		if err != nil {
-			t.Errorf("fail to assign war machines to the battle\n")
-			t.Fatal()
-			return
-		}
-	})
+	// warMachine := &server.WarMachine{
+	// 	ID:              1,
+	// 	Name:            "test machine",
+	// 	BaseHealthPoint: 1,
+	// 	BaseShieldPoint: 1,
+	// }
+	// t.Run("Create war machine", func(t *testing.T) {
+	// 	err := db.WarMachineCreate(ctx, conn, warMachine)
+	// 	if err != nil {
+	// 		t.Errorf("fail to create war machine\n")
+	// 		t.Fatal()
+	// 		return
+	// 	}
+	// })
 
 	// faction := &server.Faction{
 	// 	Label:  "test faction",
@@ -248,6 +239,20 @@ func TestDatabase(t *testing.T) {
 	// 	}
 	// })
 
+	warMachineNFT := &server.WarMachineNFT{
+		TokenID:   1,
+		FactionID: server.FactionID(uuid.Must(uuid.FromString("60be9c52-da87-4900-8705-cc1f00a4cf82"))),
+	}
+
+	t.Run("Assign war machines to the battle", func(t *testing.T) {
+		err := db.BattleWarMachineAssign(ctx, conn, battle.ID, []*server.WarMachineNFT{warMachineNFT})
+		if err != nil {
+			t.Errorf("fail to assign war machines to the battle\n")
+			t.Fatal()
+			return
+		}
+	})
+
 	factionAbility := &server.FactionAbility{
 		FactionID:              server.FactionID(uuid.Must(uuid.NewV4())),
 		Label:                  "test action",
@@ -266,9 +271,10 @@ func TestDatabase(t *testing.T) {
 		}
 	})
 
+	warMachineID := uint64(2)
 	warMachineDestroyedEvent := &server.WarMachineDestroyedEvent{
-		DestroyedWarMachineID: warMachine.ID,
-		KillByWarMachineID:    &warMachine.ID,
+		DestroyedWarMachineID: warMachineID,
+		KillByWarMachineID:    &warMachineID,
 	}
 
 	// add battle event
@@ -283,7 +289,7 @@ func TestDatabase(t *testing.T) {
 	})
 
 	t.Run("Assign assisted war machines to a destroyed event", func(t *testing.T) {
-		err := db.WarMachineDestroyedEventAssistedWarMachineSet(ctx, conn, warMachineDestroyedEvent.ID, []server.WarMachineID{warMachine.ID})
+		err := db.WarMachineDestroyedEventAssistedWarMachineSet(ctx, conn, warMachineDestroyedEvent.ID, []uint64{warMachineID})
 		if err != nil {
 			fmt.Println(err)
 			t.Errorf("fail to assign assisted war machines to war machine destroyed event\n")

@@ -10,13 +10,8 @@ import (
 	"github.com/ninja-software/terror/v2"
 )
 
-// FactionsQuery return all the factions
-func (ba *BattleArena) FactionsQuery() ([]*server.Faction, error) {
-	factions, err := db.FactionAll(ba.ctx, ba.Conn)
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-	return factions, nil
+func (ba *BattleArena) SetFactionMap(factionMap map[server.FactionID]server.Faction) {
+	ba.battle.FactionMap = factionMap
 }
 
 // FactionAbilitiesQuery return 3 random abilities from faction

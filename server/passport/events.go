@@ -21,10 +21,13 @@ To handle this event you attached an event handler like below
 type Event string
 
 const (
-	EventAuthed           Event = "PASSPORT:AUTHED"
-	EventUserOnlineStatus Event = "PASSPORT:USER:ONLINE_STATUS"
-	EventUserUpdated      Event = "PASSPORT:USER:UPDATED"
-	EventUserSupsUpdated  Event = "PASSPORT:USER:SUPS:UPDATED"
+	EventAuthed                     Event = "PASSPORT:AUTHED"
+	EventUserOnlineStatus           Event = "PASSPORT:USER:ONLINE_STATUS"
+	EventUserUpdated                Event = "PASSPORT:USER:UPDATED"
+	EventUserSupsUpdated            Event = "PASSPORT:USER:SUPS:UPDATED"
+	EventBattleQueueJoin            Event = "PASSPORT:ASSET:QUEUE:JOIN"
+	EventBattleQueueLeave           Event = "PASSPORT:ASSET:QUEUE:LEAVE"
+	EventWarMachineQueuePositionGet Event = "PASSPORT:WAR:MACHINE:QUEUE:POSITION:GET"
 )
 
 type EventHandler func(ctx context.Context, payload []byte)

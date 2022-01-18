@@ -40,7 +40,7 @@ func WarMachineDestroyedEventCreate(ctx context.Context, conn Conn, battleID ser
 }
 
 // WarMachineDestroyedEventAssistedWarMachineSet assign assisted war machine to a war machine destroyed event
-func WarMachineDestroyedEventAssistedWarMachineSet(ctx context.Context, conn Conn, eventID server.WarMachineDestroyedEventID, warMachineIDs []server.WarMachineID) error {
+func WarMachineDestroyedEventAssistedWarMachineSet(ctx context.Context, conn Conn, eventID server.WarMachineDestroyedEventID, warMachineIDs []uint64) error {
 	q := `
 		INSERT INTO
 			war_machine_destroyed_events_assisted_war_machines (war_machine_destroyed_event_id, war_machine_id)
@@ -48,7 +48,7 @@ func WarMachineDestroyedEventAssistedWarMachineSet(ctx context.Context, conn Con
 	`
 
 	for i, warMachineID := range warMachineIDs {
-		q += fmt.Sprintf("('%s','%s')", eventID, warMachineID)
+		q += fmt.Sprintf("('%s','%d')", eventID, warMachineID)
 
 		if i < len(warMachineIDs)-1 {
 			q += ","

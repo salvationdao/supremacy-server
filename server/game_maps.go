@@ -14,16 +14,26 @@ type GameMap struct {
 	DisabledCells []int     `json:"disabledCells" db:"disabled_cells"`
 }
 
-type WarMachine struct {
-	ID              WarMachineID `json:"id" db:"id"`
-	BaseHealthPoint int          `json:"baseHealthPoint" db:"base_health_point"`
-	BaseShieldPoint int          `json:"baseShieldPoint" db:"base_shield_point"`
-	Name            string       `json:"name" db:"name"`
-	TurretHardpint  *int         `json:"turretHardpoint" db:"turret_hardpoint"`
-	FactionID       *FactionID   `json:"factionID,omitempty"`
-	Faction         *Faction     `json:"faction,omitempty"`
-	Position        *Vector3     `json:"position"`
-	Rotation        int          `json:"rotation"`
+type WarMachineNFT struct {
+	TokenID         uint64    `json:"tokenID"`
+	OwnedByID       UserID    `json:"ownedByID"`
+	Name            string    `json:"name"`
+	Description     string    `json:"description"`
+	ExternalUrl     string    `json:"externalUrl"`
+	Image           string    `json:"image"`
+	MaxHitPoint     int       `json:"maxHitPoint"`
+	RemainHitPoint  int       `json:"remainHitPoint"`
+	Speed           int       `json:"speed"`
+	Durability      int       `json:"durability"`
+	PowerGrid       int       `json:"powerGrid"`
+	CPU             int       `json:"cpu"`
+	WeaponHardpoint int       `json:"weaponHardpoint"`
+	TurretHardpoint int       `json:"turretHardpoint"`
+	UtilitySlots    int       `json:"utilitySlots"`
+	FactionID       FactionID `json:"factionID"`
+	Faction         *Faction  `json:"faction"`
+	Position        *Vector3  `json:"position"`
+	Rotation        int       `json:"rotation"`
 }
 
 type Vector3 struct {

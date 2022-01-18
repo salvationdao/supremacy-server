@@ -1,6 +1,7 @@
 package db
 
 import (
+	"encoding/json"
 	"fmt"
 	"server"
 
@@ -30,25 +31,34 @@ func BattleStarted(ctx context.Context, conn Conn, battle *server.Battle) error 
 }
 
 // BattleWarMachineAssign assign war machines into a battle
-func BattleWarMachineAssign(ctx context.Context, conn Conn, battleID server.BattleID, warMachineIDs []server.WarMachineID) error {
+func BattleWarMachineAssign(ctx context.Context, conn Conn, battleID server.BattleID, warMachineNFTs []*server.WarMachineNFT) error {
 	q := `
 		INSERT INTO 
-			battles_war_machines (battle_id, war_machine_id)
+			battles_war_machines (battle_id, war_machine_id, join_as_faction_id, war_machine_stat)
 		VALUES
 
 	`
 
-	for i, warMachineID := range warMachineIDs {
-		q += fmt.Sprintf("('%s', '%s')", battleID, warMachineID)
+	var args []interface{}
+	for i, warMachineNFT := range warMachineNFTs {
 
-		if i < len(warMachineIDs)-1 {
+		b, err := json.Marshal(warMachineNFT)
+		if err != nil {
+			return terror.Error(err)
+		}
+
+		args = append(args, b)
+
+		q += fmt.Sprintf("('%s', %d, '%s', $%d)", battleID, warMachineNFT.TokenID, warMachineNFT.FactionID, len(args))
+
+		if i < len(warMachineNFTs)-1 {
 			q += ","
 			continue
 		}
 
 		q += ";"
 	}
-	_, err := conn.Exec(ctx, q)
+	_, err := conn.Exec(ctx, q, args...)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -76,16 +86,17 @@ func BattleEnded(ctx context.Context, conn Conn, battleID server.BattleID, winni
 }
 
 // BattleWinnerWarMachinesSet set war machine as winner
-func BattleWinnerWarMachinesSet(ctx context.Context, conn Conn, battleID server.BattleID, warMachineIDs []server.WarMachineID) error {
+func BattleWinnerWarMachinesSet(ctx context.Context, conn Conn, battleID server.BattleID, warMachineIDs []uint64) error {
 	q := `
 		UPDATE
 			battles_war_machines
 		SET
 			is_winner = true
-		WHERE battle_id = $1 AND war_machine_id IN (
+		WHERE 
+			battle_id = $1 AND war_machine_id IN (
 	`
 	for i, warMachineID := range warMachineIDs {
-		q += fmt.Sprintf("'%s'", warMachineID)
+		q += fmt.Sprintf("'%d'", warMachineID)
 		if i < len(warMachineIDs)-1 {
 			q += ","
 			continue
@@ -93,7 +104,7 @@ func BattleWinnerWarMachinesSet(ctx context.Context, conn Conn, battleID server.
 		q += ")"
 	}
 
-	_, err := conn.Exec(ctx, q)
+	_, err := conn.Exec(ctx, q, battleID)
 	if err != nil {
 		return terror.Error(err)
 	}

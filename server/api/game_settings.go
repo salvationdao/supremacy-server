@@ -15,7 +15,7 @@ import (
 func (api *API) GetGameSettings(w http.ResponseWriter, r *http.Request) (int, error) {
 	resp := &GameSettingsResponse{
 		GameMap:     &server.GameMap{},
-		WarMachines: []*server.WarMachine{},
+		WarMachines: []*server.WarMachineNFT{},
 	}
 
 	if api.BattleArena.GetCurrentState() != nil {
@@ -34,11 +34,11 @@ func (api *API) UpdateWarMachinePosition(ctx context.Context, ed *battle_arena.E
 		return
 	}
 
-	positions := []*server.WarMachine{}
+	positions := []*server.WarMachineNFT{}
 
 	for _, warmachine := range ed.BattleArena.WarMachines {
-		positions = append(positions, &server.WarMachine{
-			ID:       warmachine.ID,
+		positions = append(positions, &server.WarMachineNFT{
+			TokenID:  warmachine.TokenID,
 			Position: warmachine.Position,
 			Rotation: warmachine.Rotation,
 		})

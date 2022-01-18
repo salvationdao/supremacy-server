@@ -11,7 +11,7 @@ import (
 
 const BattleCommandInitBattle BattleCommand = "BATTLE:INIT"
 
-func (ba *BattleArena) InitNextBattle() error {
+func (ba *BattleArena) InitNextBattle(warMachineNFTs []*server.WarMachineNFT) error {
 
 	// generate a new battle event
 	newBattle := &server.Battle{
@@ -23,19 +23,14 @@ func (ba *BattleArena) InitNextBattle() error {
 	if err != nil {
 		return terror.Error(err)
 	}
+
 	newBattle.GameMap = gameMap
+	newBattle.GameMapID = gameMap.ID
 
-	// assign war machines
-	// NOTE: there will be a queue system for users to register their NFTs to join the battle
-	//       currently just randomly assign faction to warmachine
-	warMachines, err := db.WarMachineAll(ba.ctx, ba.Conn)
-	if err != nil {
-		return terror.Error(err)
-	}
+	// get nft from gameserver battle queue
+	newBattle.WarMachines = warMachineNFTs
 
-	newBattle.WarMachines = warMachines
-
-	ba.Log.Info().Msgf("Initializing new battle: %s", ba.battle.ID)
+	ba.Log.Info().Msgf("Initializing new battle: %s", newBattle.ID)
 
 	// send new battle details to game client
 	ctx, cancel := context.WithCancel(ba.ctx)

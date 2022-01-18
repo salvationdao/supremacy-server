@@ -37,11 +37,11 @@ func (s *Seeder) Run() error {
 		return terror.Error(err)
 	}
 
-	fmt.Println("Seed factions")
-	err = factions(ctx, s.Conn)
-	if err != nil {
-		return terror.Error(err)
-	}
+	// fmt.Println("Seed factions")
+	// err = factions(ctx, s.Conn)
+	// if err != nil {
+	// 	return terror.Error(err)
+	// }
 
 	fmt.Println("Seed faction abilities")
 	err = factionAbilities(ctx, s.Conn)
@@ -49,11 +49,11 @@ func (s *Seeder) Run() error {
 		return terror.Error(err)
 	}
 
-	fmt.Println("Seed war machines")
-	err = warMachines(ctx, s.Conn)
-	if err != nil {
-		return terror.Error(err)
-	}
+	// fmt.Println("Seed war machines")
+	// err = warMachines(ctx, s.Conn)
+	// if err != nil {
+	// 	return terror.Error(err)
+	// }
 
 	fmt.Println("Seed complete!")
 
@@ -71,32 +71,38 @@ func gameMaps(ctx context.Context, conn *pgxpool.Pool) error {
 	return nil
 }
 
-var Factions = []*server.Faction{
-	{
-		ID:     server.FactionID(uuid.Must(uuid.FromString("98bf7bb3-1a7c-4f21-8843-458d62884060"))),
-		Label:  "Red Mountain Offworld Mining Corporation",
-		Colour: "#BB1C2A",
-	},
-	{
-		ID:     server.FactionID(uuid.Must(uuid.FromString("7c6dde21-b067-46cf-9e56-155c88a520e2"))),
-		Label:  "Boston Cybernetics",
-		Colour: "#03AAF9",
-	},
-	{
-		ID:     server.FactionID(uuid.Must(uuid.FromString("880db344-e405-428d-84e5-6ebebab1fe6d"))),
-		Label:  "Zaibatsu Heavy Industries",
-		Colour: "#263D4D",
-	},
-}
+// var Factions = []*server.Faction{
+// 	{
+// 		ID:     server.FactionID(uuid.Must(uuid.FromString("98bf7bb3-1a7c-4f21-8843-458d62884060"))),
+// 		Label:  "Red Mountain Offworld Mining Corporation",
+// 		Colour: "#BB1C2A",
+// 	},
+// 	{
+// 		ID:     server.FactionID(uuid.Must(uuid.FromString("7c6dde21-b067-46cf-9e56-155c88a520e2"))),
+// 		Label:  "Boston Cybernetics",
+// 		Colour: "#03AAF9",
+// 	},
+// 	{
+// 		ID:     server.FactionID(uuid.Must(uuid.FromString("880db344-e405-428d-84e5-6ebebab1fe6d"))),
+// 		Label:  "Zaibatsu Heavy Industries",
+// 		Colour: "#263D4D",
+// 	},
+// }
 
-func factions(ctx context.Context, conn *pgxpool.Pool) error {
-	for _, faction := range Factions {
-		err := db.FactionCreate(ctx, conn, faction)
-		if err != nil {
-			return terror.Error(err)
-		}
-	}
-	return nil
+// func factions(ctx context.Context, conn *pgxpool.Pool) error {
+// 	for _, faction := range Factions {
+// 		err := db.FactionCreate(ctx, conn, faction)
+// 		if err != nil {
+// 			return terror.Error(err)
+// 		}
+// 	}
+// 	return nil
+// }
+
+var factionIDs = []server.FactionID{
+	server.FactionID(uuid.Must(uuid.FromString("98bf7bb3-1a7c-4f21-8843-458d62884060"))),
+	server.FactionID(uuid.Must(uuid.FromString("7c6dde21-b067-46cf-9e56-155c88a520e2"))),
+	server.FactionID(uuid.Must(uuid.FromString("880db344-e405-428d-84e5-6ebebab1fe6d"))),
 }
 
 var FactionAbilities = []*server.FactionAbility{
@@ -127,9 +133,9 @@ var FactionAbilities = []*server.FactionAbility{
 }
 
 func factionAbilities(ctx context.Context, conn *pgxpool.Pool) error {
-	for _, faction := range Factions {
+	for _, factionID := range factionIDs {
 		for _, ability := range FactionAbilities {
-			ability.FactionID = faction.ID
+			ability.FactionID = factionID
 			err := db.FactionAbilityCreate(ctx, conn, ability)
 			if err != nil {
 				return terror.Error(err)
@@ -139,46 +145,46 @@ func factionAbilities(ctx context.Context, conn *pgxpool.Pool) error {
 	return nil
 }
 
-var WarMachines = []*server.WarMachine{
-	{
-		Name:            "Zeus",
-		BaseHealthPoint: 100,
-		BaseShieldPoint: 120,
-	},
-	{
-		Name:            "Poseidon",
-		BaseHealthPoint: 100,
-		BaseShieldPoint: 120,
-	},
-	{
-		Name:            "Hera",
-		BaseHealthPoint: 100,
-		BaseShieldPoint: 120,
-	},
-	{
-		Name:            "Athena",
-		BaseHealthPoint: 100,
-		BaseShieldPoint: 120,
-	},
-	{
-		Name:            "Hercules",
-		BaseHealthPoint: 100,
-		BaseShieldPoint: 120,
-	},
-	{
-		Name:            "Hephaestus",
-		BaseHealthPoint: 100,
-		BaseShieldPoint: 120,
-	},
-}
+// var WarMachines = []*server.WarMachine{
+// 	{
+// 		Name:            "Zeus",
+// 		BaseHealthPoint: 100,
+// 		BaseShieldPoint: 120,
+// 	},
+// 	{
+// 		Name:            "Poseidon",
+// 		BaseHealthPoint: 100,
+// 		BaseShieldPoint: 120,
+// 	},
+// 	{
+// 		Name:            "Hera",
+// 		BaseHealthPoint: 100,
+// 		BaseShieldPoint: 120,
+// 	},
+// 	{
+// 		Name:            "Athena",
+// 		BaseHealthPoint: 100,
+// 		BaseShieldPoint: 120,
+// 	},
+// 	{
+// 		Name:            "Hercules",
+// 		BaseHealthPoint: 100,
+// 		BaseShieldPoint: 120,
+// 	},
+// 	{
+// 		Name:            "Hephaestus",
+// 		BaseHealthPoint: 100,
+// 		BaseShieldPoint: 120,
+// 	},
+// }
 
-func warMachines(ctx context.Context, conn *pgxpool.Pool) error {
-	for _, warMachine := range WarMachines {
-		warMachine.ID = server.WarMachineID(uuid.Must(uuid.NewV4()))
-		err := db.WarMachineCreate(ctx, conn, warMachine)
-		if err != nil {
-			return terror.Error(err)
-		}
-	}
-	return nil
-}
+// func warMachines(ctx context.Context, conn *pgxpool.Pool) error {
+// 	for i, warMachine := range WarMachines {
+// 		warMachine.ID = uint64(i)
+// 		err := db.WarMachineCreate(ctx, conn, warMachine)
+// 		if err != nil {
+// 			return terror.Error(err)
+// 		}
+// 	}
+// 	return nil
+// }

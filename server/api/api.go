@@ -3,10 +3,13 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"server"
 	"server/battle_arena"
 	"server/passport"
+	"strconv"
+	"time"
 
 	"github.com/ninja-software/hub/v2/ext/messagebus"
 	"nhooyr.io/websocket"
@@ -49,11 +52,15 @@ type API struct {
 
 	factionMap map[server.FactionID]*server.Faction
 
-	// map routines
+	// map channels
 	factionVoteCycle map[server.FactionID]chan func(*server.Faction, *VoteStage, FirstVoteState, *FirstVoteResult, *secondVoteResult, *FactionVotingTicker)
 
+	// client channels
 	hubClientDetail map[*hub.Client]chan func(*HubClientDetail)
 	onlineClientMap chan *ClientUpdate
+
+	// battle queue channels
+	battleQueueMap map[server.FactionID]chan func(*warMachineQueuingList)
 }
 
 // NewAPI registers routes
@@ -97,11 +104,27 @@ func NewAPI(
 		// channel for handling hub client
 		hubClientDetail: make(map[*hub.Client]chan func(*HubClientDetail)),
 		onlineClientMap: make(chan *ClientUpdate),
+		// channel for battle queue
+		battleQueueMap: make(map[server.FactionID](chan func(*warMachineQueuingList))),
+	}
+
+	// get all the faction list from passport server
+	for _, faction := range factionMap {
+
+		// start voting cycle
+		api.factionVoteCycle[faction.ID] = make(chan func(*server.Faction, *VoteStage, FirstVoteState, *FirstVoteResult, *secondVoteResult, *FactionVotingTicker))
+		go api.startFactionVoteCycle(faction)
+
+		// start battle queue
+		api.battleQueueMap[faction.ID] = make(chan func(*warMachineQueuingList))
+		go api.startBattleQueue(faction.ID)
+
 	}
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
 	api.Routes.Use(cors.New(cors.Options{AllowedOrigins: []string{config.TwitchUIHostURL}}).Handler)
+
 	api.Routes.Handle("/metrics", promhttp.Handler())
 	api.Routes.Route("/api", func(r chi.Router) {
 		r.Group(func(r chi.Router) {
@@ -114,7 +137,6 @@ func NewAPI(
 		r.Handle("/ws", api.Hub)
 		r.Get("/game_settings", WithError(api.GetGameSettings))
 		r.Get("/second_votes", WithError(api.GetSecondVotes))
-		r.HandleFunc("/start", api.Start) // TODO: will be removed at a later date
 	})
 	///////////////////////////
 	//		 Controllers	 //
@@ -142,6 +164,9 @@ func NewAPI(
 	api.Passport.Events.AddEventHandler(passport.EventUserOnlineStatus, api.PassportUserOnlineStatusHandler)
 	api.Passport.Events.AddEventHandler(passport.EventUserUpdated, api.PassportUserUpdatedHandler)
 	api.Passport.Events.AddEventHandler(passport.EventUserSupsUpdated, api.PassportUserSupsUpdatedHandler)
+	api.Passport.Events.AddEventHandler(passport.EventBattleQueueJoin, api.PassportBattleQueueJoinHandler)
+	api.Passport.Events.AddEventHandler(passport.EventBattleQueueLeave, api.PassportBattleQueueReleaseHandler)
+	api.Passport.Events.AddEventHandler(passport.EventWarMachineQueuePositionGet, api.PassportBattleQueueReleaseHandler)
 
 	// listen to the client online and action channel
 	go api.ClientListener()
@@ -194,8 +219,8 @@ func (api *API) Run(ctx context.Context) error {
 }
 
 type GameSettingsResponse struct {
-	GameMap     *server.GameMap      `json:"gameMap"`
-	WarMachines []*server.WarMachine `json:"warMachines"`
+	GameMap     *server.GameMap         `json:"gameMap"`
+	WarMachines []*server.WarMachineNFT `json:"warMachines"`
 }
 
 const HubKeyGameSettingsUpdated hub.HubCommandKey = hub.HubCommandKey("GAME:SETTINGS:UPDATED")
@@ -242,28 +267,56 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 	for factionID := range api.factionVoteCycle {
 		go api.pauseVotingCycle(factionID)
 	}
-}
 
-// // GetRandomFaction just a dummy end point to give a random faction to a user
-// func (api *API) GetRandomFaction(w http.ResponseWriter, r *http.Request) {
-// 	randomFaction := passport.RandomFaction(api.factions)
+	// release war machine
+	for _, warMachine := range ed.BattleArena.WarMachines {
+		warMachine.Durability = 100 * warMachine.RemainHitPoint / warMachine.MaxHitPoint
+	}
 
-// 	code := r.URL.Query().Get("twitchID")
-// 	user := api.Passport.FakeUserLoginWithoutFaction(code)
-// 	// This will normally be saved on passport
-// 	user.Faction = randomFaction
+	// release war machine
+	if len(ed.BattleArena.WarMachines) > 0 {
+		api.Passport.AssetRelease(
+			context.Background(),
+			"release_asset",
+			ed.BattleArena.WarMachines,
+		)
+	}
 
-// }
-
-// Start starts the battle flow
-func (api *API) Start(w http.ResponseWriter, r *http.Request) {
+	// start a new battle after 5 second
 	go func() {
-		err := api.BattleArena.InitNextBattle()
+
+		for i := 5; i > 0; i-- {
+			fmt.Println("Countdown ", strconv.Itoa(i), " second")
+			time.Sleep(1 * time.Second)
+		}
+
+		fmt.Println("Init new game")
+
+		// get NFT
+		WarMachineList := []*server.WarMachineNFT{}
+		for factionID := range api.battleQueueMap {
+			WarMachineList = append(WarMachineList, api.GetBattleWarMachineFromQueue(factionID)...)
+		}
+
+		if len(WarMachineList) > 0 {
+			tokenIDs := []uint64{}
+			for _, warMachine := range WarMachineList {
+				tokenIDs = append(tokenIDs, warMachine.TokenID)
+			}
+
+			// set war machine lock request
+			err := api.Passport.AssetLock(ctx, "asset_lock", tokenIDs)
+			if err != nil {
+				api.Log.Err(err).Msg("Failed to lock assets")
+				return
+			}
+		}
+
+		// start another battle
+		err := api.BattleArena.InitNextBattle(WarMachineList)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+			api.Log.Err(err).Msg("Failed to initialise next battle")
 			return
 		}
 	}()
-
-	w.WriteHeader(http.StatusOK)
 }
