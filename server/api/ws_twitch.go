@@ -289,7 +289,7 @@ func (th *TwitchControllerWS) FactionAbilitySecondVote(ctx context.Context, wsc 
 		}
 
 		reason := fmt.Sprintf("battle:%s|voteaction:%s", th.API.BattleArena.CurrentBattleID(), req.Payload.FactionAbilityID)
-		supTransactionReference, err := th.API.Passport.SendTakeSupsMessage(context.Background(), hubClientDetail.ID, server.BigInt{Int: *big.NewInt(1000000000000000)}, req.TransactionID, reason)
+		supTransactionReference, err := th.API.Passport.SendTakeSupsMessage(context.Background(), hubClientDetail.ID, server.BigInt{Int: *big.NewInt(1000000000000000000)}, req.TransactionID, reason)
 		if err != nil {
 			th.API.Log.Err(err).Msg("failed to spend sups")
 			return

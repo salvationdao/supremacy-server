@@ -552,15 +552,12 @@ func (b *BigInt) UnmarshalJSON(text []byte) error {
 		*b = BigInt{}
 		return nil
 	}
-
-	removedQuotes := strings.Replace(string(text), `"`, ``, -1)
-
-	flt, _, err := big.ParseFloat(removedQuotes, 10, 84, big.ToNearestEven)
-	if err != nil {
-		return fmt.Errorf("not a valid big floot: %s", text)
+	// remove extra ""s
+	str := string(text)
+	str = strings.Replace(str, `"`, ``, -1)
+	_, ok := b.Int.SetString(str, 10)
+	if !ok {
+		return fmt.Errorf("invalid number %s", string(text))
 	}
-	newI, _ := flt.Int(nil)
-	b.Int = *newI
-
 	return nil
 }
