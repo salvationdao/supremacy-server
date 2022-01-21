@@ -13,7 +13,7 @@ require (
 	github.com/golang-migrate/migrate/v4 v4.15.1
 	github.com/jackc/pgx/v4 v4.14.1
 	github.com/makiuchi-d/arelo v1.9.2
-	github.com/ninja-software/hub/v2 v2.1.2
+	github.com/ninja-software/hub/v3 v3.0.2
 	github.com/ninja-software/log_helpers v1.0.1-0.20211202070223-aff11d9a6ae6
 	github.com/ninja-software/terror/v2 v2.0.7
 	github.com/oklog/run v1.1.0
@@ -26,7 +26,6 @@ require (
 )
 
 require (
-	github.com/davecgh/go-spew v1.1.1
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/jackc/pgconn v1.10.1
 	github.com/microcosm-cc/bluemonday v1.0.16
@@ -45,7 +44,9 @@ require (
 	github.com/cenkalti/backoff/v4 v4.1.2 // indirect
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
 	github.com/containerd/continuity v0.1.0 // indirect
+	github.com/coreos/go-oidc v2.2.1+incompatible // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.0-20210816181553-5444fa50b93d // indirect
 	github.com/docker/cli v20.10.11+incompatible // indirect
 	github.com/docker/docker v20.10.9+incompatible // indirect
@@ -89,6 +90,7 @@ require (
 	github.com/pelletier/go-toml v1.8.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/pquerna/cachecontrol v0.1.0 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.26.0 // indirect
 	github.com/prometheus/procfs v0.6.0 // indirect
@@ -113,6 +115,7 @@ require (
 	google.golang.org/genproto v0.0.0-20211118181313-81c1377c94b1 // indirect
 	google.golang.org/grpc v1.41.0 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
+	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )

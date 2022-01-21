@@ -34,7 +34,7 @@ func (pp *Passport) FactionAll(ctx context.Context, txID string) ([]*server.Fact
 		ReplyChannel: replyChannel,
 		Message: &Message{
 			Key:           "FACTION:ALL",
-			TransactionId: txID,
+			TransactionID: txID,
 			context:       ctx,
 			cancel:        cancel,
 		}}

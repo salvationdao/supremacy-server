@@ -37,7 +37,7 @@ func (pp *Passport) CommitTransactions(ctx context.Context, transactions []serve
 			}{
 				TransactionReferences: transactions,
 			},
-			TransactionId: txID.String(),
+			TransactionID: txID.String(),
 			context:       ctx,
 			cancel:        cancel,
 		}}

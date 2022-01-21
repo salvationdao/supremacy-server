@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/gofrs/uuid"
-	"github.com/ninja-software/hub/v2"
-	"github.com/ninja-software/hub/v2/ext/messagebus"
+	"github.com/ninja-software/hub/v3"
+	"github.com/ninja-software/hub/v3/ext/messagebus"
 	"github.com/ninja-software/log_helpers"
 	"github.com/ninja-software/tickle"
 	"github.com/rs/zerolog"

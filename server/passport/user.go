@@ -40,7 +40,7 @@ func (pp *Passport) TwitchAuth(ctx context.Context, token string, txID string) (
 			}{
 				Token: token,
 			},
-			TransactionId: txID,
+			TransactionID: txID,
 			context:       ctx,
 			cancel:        cancel,
 		}}
@@ -73,7 +73,7 @@ func (pp *Passport) UserGetByID(ctx context.Context, userID server.UserID, txID 
 			}{
 				ID: userID,
 			},
-			TransactionId: txID,
+			TransactionID: txID,
 			context:       ctx,
 			cancel:        cancel,
 		}}
@@ -107,7 +107,7 @@ func (pp *Passport) UserGetByUsername(ctx context.Context, username string, txID
 			}{
 				Username: username,
 			},
-			TransactionId: txID,
+			TransactionID: txID,
 			context:       ctx,
 			cancel:        cancel,
 		}}
@@ -136,7 +136,7 @@ func (pp *Passport) UserFactionUpdate(ctx context.Context, userID server.UserID,
 				UserID:    userID,
 				FactionID: factionID,
 			},
-			TransactionId: txID,
+			TransactionID: txID,
 			context:       ctx,
 			cancel:        cancel,
 		}}
@@ -160,14 +160,14 @@ func (pp *Passport) SendHoldSupsMessage(ctx context.Context, userID server.UserI
 			Key: "SUPREMACY:HOLD_SUPS",
 			Payload: struct {
 				Amount               server.BigInt               `json:"amount"`
-				FromUserID           server.UserID               `json:"userId"`
+				FromUserID           server.UserID               `json:"userID"`
 				TransactionReference server.TransactionReference `json:"transactionReference"`
 			}{
 				FromUserID:           userID,
 				Amount:               supsChange,
 				TransactionReference: supTxRefString,
 			},
-			TransactionId: txID,
+			TransactionID: txID,
 			context:       ctx,
 			cancel:        cancel,
 		}}

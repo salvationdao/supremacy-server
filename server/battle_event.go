@@ -25,10 +25,10 @@ type BattleEvent struct {
 type WarMachineDestroyedEvent struct {
 	ID                     WarMachineDestroyedEventID `json:"id" db:"id"`
 	EventID                EventID                    `json:"eventID" db:"event_id"`
-	DestroyedWarMachineID  uint64                     `json:"destroyedWarMachineId" db:"destroyed_war_machine_id"`
+	DestroyedWarMachineID  uint64                     `json:"destroyedWarMachineID" db:"destroyed_war_machine_id"`
 	KillByWarMachineID     *uint64                    `json:"killByWarMachineID,omitempty" db:"kill_by_war_machine_id,omitempty"`
 	KillByFactionAbilityID *uint64                    `json:"killByFactionAbilityID,omitempty" db:"kill_by_faction_ability_id,omitempty"`
-	AssistedWarMachineIDs  []uint64                   `json:"assistedWarMachineIds"`
+	AssistedWarMachineIDs  []uint64                   `json:"assistedWarMachineIDs"`
 	KilledBy               string                     `json:"killedBy"` // this will hold weapon name or event name?
 }
 

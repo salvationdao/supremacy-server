@@ -16,7 +16,7 @@ const WarMachineDestroyedCommand = BattleCommand("BATTLE:WAR_MACHINE_DESTROYED")
 
 type WarMachineDestroyedRequest struct {
 	Payload struct {
-		BattleID                 server.BattleID                  `json:"battleId"`
+		BattleID                 server.BattleID                  `json:"battleID"`
 		DestroyedWarMachineEvent *server.WarMachineDestroyedEvent `json:"destroyedWarMachineEvent"`
 	} `json:"payload"`
 }

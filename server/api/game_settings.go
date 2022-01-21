@@ -8,7 +8,7 @@ import (
 	"server/battle_arena"
 	"server/helpers"
 
-	"github.com/ninja-software/hub/v2"
+	"github.com/ninja-software/hub/v3"
 )
 
 // GetGameSettings return current game settings

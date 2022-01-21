@@ -8,7 +8,7 @@ import (
 	"server/passport"
 	"strconv"
 
-	"github.com/ninja-software/hub/v2/ext/messagebus"
+	"github.com/ninja-software/hub/v3/ext/messagebus"
 	"github.com/ninja-software/terror/v2"
 )
 

@@ -27,7 +27,7 @@ func (pp *Passport) AssetFreeze(ctx context.Context, txID string, assetTokenID u
 			}{
 				AssetTokenID: assetTokenID,
 			},
-			TransactionId: txID,
+			TransactionID: txID,
 			context:       ctx,
 			cancel:        cancel,
 		},
@@ -62,7 +62,7 @@ func (pp *Passport) AssetLock(ctx context.Context, txID string, assetTokenIDs []
 			}{
 				AssetTokenIDs: assetTokenIDs,
 			},
-			TransactionId: txID,
+			TransactionID: txID,
 			context:       ctx,
 			cancel:        cancel,
 		},
@@ -94,7 +94,7 @@ func (pp *Passport) AssetRelease(ctx context.Context, txID string, releasedAsset
 			}{
 				ReleasedAssets: releasedAssets,
 			},
-			TransactionId: txID,
+			TransactionID: txID,
 			context:       ctx,
 			cancel:        cancel,
 		},
@@ -123,7 +123,7 @@ func (pp *Passport) WarMachineQueuePosition(ctx context.Context, txID string, uw
 			}{
 				UserWarMachineQueuePosition: uwm,
 			},
-			TransactionId: txID,
+			TransactionID: txID,
 			context:       ctx,
 			cancel:        cancel,
 		},
@@ -142,7 +142,7 @@ func (pp *Passport) WarMachineQueuePositionClear(ctx context.Context, txID strin
 			}{
 				FactionID: factionID,
 			},
-			TransactionId: txID,
+			TransactionID: txID,
 			context:       ctx,
 			cancel:        cancel,
 		},

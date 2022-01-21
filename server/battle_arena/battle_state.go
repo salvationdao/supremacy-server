@@ -20,7 +20,7 @@ const BattleStartCommand = BattleCommand("BATTLE:START")
 
 type BattleStartRequest struct {
 	Payload struct {
-		BattleID       server.BattleID         `json:"battleId"`
+		BattleID       server.BattleID         `json:"battleID"`
 		GameMapID      server.GameMapID        `json:"gameMapID"`
 		WarMachineNFTs []*server.WarMachineNFT `json:"warMachines"`
 	} `json:"payload"`
@@ -106,7 +106,7 @@ const BattleEndCommand = BattleCommand("BATTLE:END")
 
 type BattleEndRequest struct {
 	Payload struct {
-		BattleID           server.BattleID           `json:"battleId"`
+		BattleID           server.BattleID           `json:"battleID"`
 		WinningWarMachines []uint64                  `json:"winningWarMachines"`
 		WinCondition       server.BattleWinCondition `json:"winCondition"`
 		WarMachineNFTs     []*server.WarMachineNFT   `json:"warMachines"`

@@ -11,8 +11,8 @@ import (
 
 	"github.com/golang-jwt/jwt"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/ninja-software/hub/v2"
-	"github.com/ninja-software/hub/v2/ext/messagebus"
+	"github.com/ninja-software/hub/v3"
+	"github.com/ninja-software/hub/v3/ext/messagebus"
 	"github.com/ninja-software/log_helpers"
 	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog"

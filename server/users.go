@@ -35,7 +35,7 @@ type User struct {
 // IssueToken contains token information used for login and verifying accounts
 type IssueToken struct {
 	ID     IssueTokenID `json:"id" db:"id"`
-	UserID UserID       `json:"userId" db:"user_id"`
+	UserID UserID       `json:"userID" db:"user_id"`
 }
 
 func (i IssueToken) Whitelisted() bool {

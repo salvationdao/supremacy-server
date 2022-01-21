@@ -10,7 +10,7 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-software/tickle"
 
-	"github.com/ninja-software/hub/v2"
+	"github.com/ninja-software/hub/v3"
 
 	"github.com/gofrs/uuid"
 )
@@ -87,15 +87,15 @@ listenLoop:
 			continue
 		}
 
-		userId := server.UserID(uid)
+		userID := server.UserID(uid)
 		if err != nil {
 			api.Log.Err(err).Msg("unable to marshall client identifier as uuid")
 		}
 
 		switch msg.Action {
 		case ClientOnline:
-			if _, ok := clientMultiplierMap[userId]; !ok {
-				clientMultiplierMap[userId] = []*MultiplierAction{{
+			if _, ok := clientMultiplierMap[userID]; !ok {
+				clientMultiplierMap[userID] = []*MultiplierAction{{
 					Name:            ClientOnline,
 					MultiplierValue: 100,
 					Expiry:          time.Now().AddDate(1, 0, 0),
@@ -103,8 +103,8 @@ listenLoop:
 			}
 
 		case ClientVoted:
-			if _, ok := clientMultiplierMap[userId]; !ok { // if not okay add online one
-				clientMultiplierMap[userId] = []*MultiplierAction{{
+			if _, ok := clientMultiplierMap[userID]; !ok { // if not okay add online one
+				clientMultiplierMap[userID] = []*MultiplierAction{{
 					Name:            ClientOnline,
 					MultiplierValue: 100,
 					Expiry:          time.Now().AddDate(1, 0, 0),
@@ -112,7 +112,7 @@ listenLoop:
 			}
 
 			// check for existing voting action, then bump the time if exists
-			for _, multipler := range clientMultiplierMap[userId] {
+			for _, multipler := range clientMultiplierMap[userID] {
 				if multipler.Name == ClientVoted {
 					multipler.Expiry = time.Now().Add(time.Minute * 30)
 					continue listenLoop
@@ -120,14 +120,14 @@ listenLoop:
 			}
 
 			// if voting actions didn't exist, add it
-			clientMultiplierMap[userId] = append(clientMultiplierMap[userId], &MultiplierAction{
+			clientMultiplierMap[userID] = append(clientMultiplierMap[userID], &MultiplierAction{
 				Name:            ClientVoted,
 				MultiplierValue: 50,
 				Expiry:          time.Now().Add(time.Minute * 30),
 			})
 		case ClientPickedLocation:
-			if _, ok := clientMultiplierMap[userId]; !ok { // if not okay add online one
-				clientMultiplierMap[userId] = []*MultiplierAction{{
+			if _, ok := clientMultiplierMap[userID]; !ok { // if not okay add online one
+				clientMultiplierMap[userID] = []*MultiplierAction{{
 					Name:            ClientOnline,
 					MultiplierValue: 100,
 					Expiry:          time.Now().AddDate(1, 0, 0),
@@ -135,7 +135,7 @@ listenLoop:
 			}
 
 			// check for existing voting action, then bump the time if exists
-			for _, multiplier := range clientMultiplierMap[userId] {
+			for _, multiplier := range clientMultiplierMap[userID] {
 				if multiplier.Name == ClientPickedLocation {
 					multiplier.Expiry = time.Now().Add(time.Minute * 30)
 					continue listenLoop
@@ -143,13 +143,13 @@ listenLoop:
 			}
 
 			// if voting actions didn't exist, add it
-			clientMultiplierMap[userId] = append(clientMultiplierMap[userId], &MultiplierAction{
+			clientMultiplierMap[userID] = append(clientMultiplierMap[userID], &MultiplierAction{
 				Name:            ClientPickedLocation,
 				MultiplierValue: 50,
 				Expiry:          time.Now().Add(time.Minute * 30),
 			})
 		case ClientOffline:
-			delete(clientMultiplierMap, userId)
+			delete(clientMultiplierMap, userID)
 		default:
 			api.Log.Err(fmt.Errorf("unknown client action")).Msgf("unknown client action: %s", msg.Action)
 		}

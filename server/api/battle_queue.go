@@ -6,7 +6,7 @@ import (
 	"server"
 	"server/passport"
 
-	"github.com/ninja-software/hub/v2/ext/messagebus"
+	"github.com/ninja-software/hub/v3/ext/messagebus"
 )
 
 const MaxInGameWarmachinePerFaction = 3

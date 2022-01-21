@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/ninja-software/hub/v2/ext/messagebus"
+	"github.com/ninja-software/hub/v3/ext/messagebus"
 	"nhooyr.io/websocket"
 
 	sentryhttp "github.com/getsentry/sentry-go/http"
@@ -20,9 +20,9 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/microcosm-cc/bluemonday"
-	"github.com/ninja-software/hub/v2"
-	"github.com/ninja-software/hub/v2/ext/auth"
-	zerologger "github.com/ninja-software/hub/v2/ext/zerolog"
+	"github.com/ninja-software/hub/v3"
+	"github.com/ninja-software/hub/v3/ext/auth"
+	zerologger "github.com/ninja-software/hub/v3/ext/zerolog"
 	"github.com/ninja-software/log_helpers"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"

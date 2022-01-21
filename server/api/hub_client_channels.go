@@ -4,7 +4,7 @@ import (
 	"server"
 
 	"github.com/gofrs/uuid"
-	"github.com/ninja-software/hub/v2"
+	"github.com/ninja-software/hub/v3"
 	"github.com/ninja-software/terror/v2"
 )
 

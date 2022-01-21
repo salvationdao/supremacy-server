@@ -247,7 +247,7 @@ func (ba *BattleArena) runGameCommand(ctx context.Context, c *websocket.Conn, cm
 
 		resp := struct {
 			Command BattleCommand `json:"battleCommand"`
-			//TransactionID string        `json:"transactionId"`
+			//TransactionID string        `json:"transactionID"`
 			Success bool        `json:"success"`
 			Payload interface{} `json:"payload"`
 		}{

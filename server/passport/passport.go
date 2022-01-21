@@ -28,7 +28,7 @@ type Request struct {
 type Message struct {
 	Key           Command     `json:"key"`
 	Payload       interface{} `json:"payload"`
-	TransactionId string      `json:"transactionId"`
+	TransactionID string      `json:"transactionID"`
 	context       context.Context
 	cancel        context.CancelFunc
 }
@@ -133,18 +133,18 @@ func (pp *Passport) Connect(ctx context.Context) error {
 			continue
 		}
 
-		transactionId, err := v.GetString("transactionId")
+		transactionID, err := v.GetString("transactionID")
 		if err != nil {
 			continue
 		}
 
-		// if we have a transactionId call the channel in the callback map
-		if transactionId != "" {
-			cb, ok := callbackChannels[transactionId]
+		// if we have a transactionID call the channel in the callback map
+		if transactionID != "" {
+			cb, ok := callbackChannels[transactionID]
 			if ok {
 				cb <- payload
 			} else {
-				pp.Log.Warn().Msgf("missing callback for transactionId %s", transactionId)
+				pp.Log.Warn().Msgf("missing callback for transactionID %s", transactionID)
 			}
 		}
 
@@ -178,14 +178,14 @@ func (pp *Passport) sendPump(c *websocket.Conn, callbackChannels map[string]chan
 		select {
 		case msg := <-pp.send:
 			// if we got given a tx id and a reply channel
-			if msg.ReplyChannel != nil && msg.TransactionId != "" {
-				callbackChannels[msg.TransactionId] = msg.ReplyChannel
+			if msg.ReplyChannel != nil && msg.TransactionID != "" {
+				callbackChannels[msg.TransactionID] = msg.ReplyChannel
 			}
 
 			err := writeTimeout(&Message{
 				Key:           msg.Key,
 				Payload:       msg.Payload,
-				TransactionId: msg.TransactionId,
+				TransactionID: msg.TransactionID,
 				context:       msg.context,
 				cancel:        msg.cancel,
 			}, time.Second*5, c)
