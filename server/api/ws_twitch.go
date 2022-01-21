@@ -147,7 +147,7 @@ func (th *TwitchControllerWS) FactionAbilityFirstVote(ctx context.Context, wsc *
 		}
 
 		reason := fmt.Sprintf("battle:%s|voteaction:%s", th.API.BattleArena.CurrentBattleID(), req.Payload.FactionAbilityID)
-		supTransactionReference, err := th.API.Passport.SendTakeSupsMessage(context.Background(), hubClientDetail.ID, req.Payload.PointSpend, req.TransactionID, reason)
+		supTransactionReference, err := th.API.Passport.SendHoldSupsMessage(context.Background(), hubClientDetail.ID, req.Payload.PointSpend, req.TransactionID, reason)
 		if err != nil {
 			th.API.Log.Err(err).Msg("failed to spend sups")
 			return
@@ -173,8 +173,8 @@ func (th *TwitchControllerWS) FactionAbilityFirstVote(ctx context.Context, wsc *
 				}
 			}
 
-			// check the transaction status
-			transactions, err := th.API.Passport.CheckTransactions(ctx, txRefs)
+			// commit the transactions and check status
+			transactions, err := th.API.Passport.CommitTransactions(ctx, txRefs)
 			if err != nil {
 				th.API.Log.Err(err).Msg("failed to check transactions")
 				return
@@ -289,7 +289,7 @@ func (th *TwitchControllerWS) FactionAbilitySecondVote(ctx context.Context, wsc 
 		}
 
 		reason := fmt.Sprintf("battle:%s|voteaction:%s", th.API.BattleArena.CurrentBattleID(), req.Payload.FactionAbilityID)
-		supTransactionReference, err := th.API.Passport.SendTakeSupsMessage(context.Background(), hubClientDetail.ID, server.BigInt{Int: *big.NewInt(1000000000000000000)}, req.TransactionID, reason)
+		supTransactionReference, err := th.API.Passport.SendHoldSupsMessage(context.Background(), hubClientDetail.ID, server.BigInt{Int: *big.NewInt(1000000000000000000)}, req.TransactionID, reason)
 		if err != nil {
 			th.API.Log.Err(err).Msg("failed to spend sups")
 			return

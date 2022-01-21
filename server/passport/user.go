@@ -144,10 +144,10 @@ func (pp *Passport) UserFactionUpdate(ctx context.Context, userID server.UserID,
 	return nil
 }
 
-// SendTakeSupsMessage tells the passport to transfer sups
+// SendHoldSupsMessage tells the passport to transfer sups
 // THIS DOES NOT CONFIRM IF THE TRANSACTION WAS SUCCESSFUL
 // TO CONFIRM SUCCESS NEED TO CALL ENDPOINT FOR THE transactionReference (TODO: THIS)
-func (pp *Passport) SendTakeSupsMessage(ctx context.Context, userID server.UserID, supsChange server.BigInt, txID string, reason string) (server.TransactionReference, error) {
+func (pp *Passport) SendHoldSupsMessage(ctx context.Context, userID server.UserID, supsChange server.BigInt, txID string, reason string) (server.TransactionReference, error) {
 	ctx, cancel := context.WithCancel(ctx)
 
 	supTransactionReference := uuid.Must(uuid.NewV4())
@@ -157,7 +157,7 @@ func (pp *Passport) SendTakeSupsMessage(ctx context.Context, userID server.UserI
 	pp.send <- &Request{
 		ReplyChannel: replyChannel,
 		Message: &Message{
-			Key: "SUPREMACY:TAKE_SUPS",
+			Key: "SUPREMACY:HOLD_SUPS",
 			Payload: struct {
 				Amount               server.BigInt               `json:"amount"`
 				FromUserID           server.UserID               `json:"userId"`

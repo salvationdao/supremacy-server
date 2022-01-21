@@ -10,15 +10,11 @@ import (
 	"github.com/ninja-software/terror/v2"
 )
 
-// TRANSACTION:CHECK_LIST
-
-type CheckTransactionsResponse struct {
-	Payload struct {
-		Transactions []*server.Transaction `json:"transactions"`
-	} `json:"payload"`
+type CommitTransactionsResponse struct {
+	Transactions []*server.Transaction `json:"payload"`
 }
 
-func (pp *Passport) CheckTransactions(ctx context.Context, transactions []server.TransactionReference) ([]*server.Transaction, error) {
+func (pp *Passport) CommitTransactions(ctx context.Context, transactions []server.TransactionReference) ([]*server.Transaction, error) {
 	if len(transactions) == 0 {
 		return nil, nil
 	}
@@ -35,7 +31,7 @@ func (pp *Passport) CheckTransactions(ctx context.Context, transactions []server
 	pp.send <- &Request{
 		ReplyChannel: replyChannel,
 		Message: &Message{
-			Key: "TRANSACTION:CHECK_LIST",
+			Key: "SUPREMACY:COMMIT_TRANSACTIONS",
 			Payload: struct {
 				TransactionReferences []server.TransactionReference `json:"transactionReferences"`
 			}{
@@ -47,11 +43,11 @@ func (pp *Passport) CheckTransactions(ctx context.Context, transactions []server
 		}}
 
 	msg := <-replyChannel
-	resp := &CheckTransactionsResponse{}
+	resp := &CommitTransactionsResponse{}
 	err = json.Unmarshal(msg, resp)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
 
-	return resp.Payload.Transactions, nil
+	return resp.Transactions, nil
 }

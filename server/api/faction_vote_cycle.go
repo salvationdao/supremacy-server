@@ -249,8 +249,8 @@ func (api *API) voteStageListenerFactory(factionID server.FactionID) func() (int
 					}
 				}
 
-				// check the transaction status
-				transactions, err := api.Passport.CheckTransactions(ctx, txRefs)
+				// commit the transactions and check the status
+				transactions, err := api.Passport.CommitTransactions(ctx, txRefs)
 				if err != nil {
 					api.Log.Err(err).Msg("failed to check transactions")
 					return
@@ -319,7 +319,7 @@ func (api *API) voteStageListenerFactory(factionID server.FactionID) func() (int
 				}
 
 				// validate the agreed votes
-				agreeTx, err := api.Passport.CheckTransactions(ctx, svs.AgreedCount)
+				agreeTx, err := api.Passport.CommitTransactions(ctx, svs.AgreedCount)
 				if err != nil {
 					api.Log.Err(err).Msg("failed to check transactions")
 					return
@@ -339,7 +339,7 @@ func (api *API) voteStageListenerFactory(factionID server.FactionID) func() (int
 				}
 
 				// validate the disagreed votes
-				disagreeTx, err := api.Passport.CheckTransactions(ctx, svs.DisagreedCount)
+				disagreeTx, err := api.Passport.CommitTransactions(ctx, svs.DisagreedCount)
 				if err != nil {
 					api.Log.Err(err).Msg("failed to check transactions")
 					return
