@@ -27,7 +27,6 @@ type TwitchAuthPayload struct {
 }
 
 func (pp *Passport) TwitchAuth(ctx context.Context, token string, txID string) (*server.User, error) {
-	ctx, cancel := context.WithCancel(ctx)
 
 	replyChannel := make(chan []byte)
 
@@ -42,7 +41,6 @@ func (pp *Passport) TwitchAuth(ctx context.Context, token string, txID string) (
 			},
 			TransactionID: txID,
 			context:       ctx,
-			cancel:        cancel,
 		}}
 
 	msg := <-replyChannel
@@ -60,8 +58,6 @@ type UserGetByIDResponse struct {
 }
 
 func (pp *Passport) UserGetByID(ctx context.Context, userID server.UserID, txID string) (*server.User, error) {
-	ctx, cancel := context.WithCancel(ctx)
-
 	replyChannel := make(chan []byte)
 
 	pp.send <- &Request{
@@ -75,7 +71,6 @@ func (pp *Passport) UserGetByID(ctx context.Context, userID server.UserID, txID 
 			},
 			TransactionID: txID,
 			context:       ctx,
-			cancel:        cancel,
 		}}
 
 	msg := <-replyChannel
@@ -94,7 +89,6 @@ type UserGetByUsernameResponse struct {
 }
 
 func (pp *Passport) UserGetByUsername(ctx context.Context, username string, txID string) (*server.User, error) {
-	ctx, cancel := context.WithCancel(ctx)
 
 	replyChannel := make(chan []byte)
 
@@ -109,7 +103,6 @@ func (pp *Passport) UserGetByUsername(ctx context.Context, username string, txID
 			},
 			TransactionID: txID,
 			context:       ctx,
-			cancel:        cancel,
 		}}
 
 	msg := <-replyChannel
@@ -124,7 +117,6 @@ func (pp *Passport) UserGetByUsername(ctx context.Context, username string, txID
 
 // UserFactionUpdate update the faction of the given user
 func (pp *Passport) UserFactionUpdate(ctx context.Context, userID server.UserID, factionID server.FactionID, txID string) error {
-	ctx, cancel := context.WithCancel(ctx)
 
 	pp.send <- &Request{
 		Message: &Message{
@@ -138,18 +130,13 @@ func (pp *Passport) UserFactionUpdate(ctx context.Context, userID server.UserID,
 			},
 			TransactionID: txID,
 			context:       ctx,
-			cancel:        cancel,
 		}}
 
 	return nil
 }
 
-// SendHoldSupsMessage tells the passport to transfer sups
-// THIS DOES NOT CONFIRM IF THE TRANSACTION WAS SUCCESSFUL
-// TO CONFIRM SUCCESS NEED TO CALL ENDPOINT FOR THE transactionReference (TODO: THIS)
+// SendHoldSupsMessage tells the passport to hold sups
 func (pp *Passport) SendHoldSupsMessage(ctx context.Context, userID server.UserID, supsChange server.BigInt, txID string, reason string) (server.TransactionReference, error) {
-	ctx, cancel := context.WithCancel(ctx)
-
 	supTransactionReference := uuid.Must(uuid.NewV4())
 	supTxRefString := server.TransactionReference(fmt.Sprintf("%s|%s", reason, supTransactionReference.String()))
 	replyChannel := make(chan []byte)
@@ -169,7 +156,6 @@ func (pp *Passport) SendHoldSupsMessage(ctx context.Context, userID server.UserI
 			},
 			TransactionID: txID,
 			context:       ctx,
-			cancel:        cancel,
 		}}
 
 	msg := <-replyChannel
@@ -194,8 +180,6 @@ func (pp *Passport) SendHoldSupsMessage(ctx context.Context, userID server.UserI
 
 // SendTickerMessage sends the client map and multipliers to the passport to handle giving out sups
 func (pp *Passport) SendTickerMessage(ctx context.Context, userMap map[int][]server.UserID) (string, error) {
-	ctx, cancel := context.WithCancel(ctx)
-
 	pp.send <- &Request{
 		Message: &Message{
 			Key: "SUPREMACY:TICKER_TICK",
@@ -205,7 +189,6 @@ func (pp *Passport) SendTickerMessage(ctx context.Context, userMap map[int][]ser
 				UserMap: userMap,
 			},
 			context: ctx,
-			cancel:  cancel,
 		}}
 
 	return "", nil

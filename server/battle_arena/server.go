@@ -42,6 +42,7 @@ type GameMessage struct {
 }
 
 type BattleArena struct {
+	server   *http.Server
 	Log      *zerolog.Logger
 	Conn     *pgxpool.Pool
 	passport *passport.Passport
@@ -84,7 +85,7 @@ func NewBattleArenaClient(ctx context.Context, logger *zerolog.Logger, conn *pgx
 }
 
 // Serve starts the battle arena server
-func (ba *BattleArena) Serve(ctx context.Context) error {
+func (ba *BattleArena) Serve() error {
 	// TODO: handle ctx with listen? ListenConfig.Listen.(ctx, network, addr)
 	l, err := net.Listen("tcp", ba.addr)
 	if err != nil {
@@ -92,23 +93,23 @@ func (ba *BattleArena) Serve(ctx context.Context) error {
 	}
 
 	ba.Log.Info().Msgf("Starting BattleArena Server on %v", l.Addr())
-	s := &http.Server{
+	ba.server = &http.Server{
 		Handler:      ba,
 		ReadTimeout:  time.Second * 10,
 		WriteTimeout: time.Second * 10,
 	}
 
-	go func() {
-		<-ctx.Done()
-		ba.Log.Info().Msg("Stopping BattleArena Server")
-		err := s.Shutdown(ctx)
+	return ba.server.Serve(l)
+}
+
+func (ba *BattleArena) Close() {
+	if ba.server != nil {
+		ba.Log.Info().Msg("closing battle-arena server")
+		err := ba.server.Close()
 		if err != nil {
-			ba.Log.Warn().Err(err).Msg("")
+			ba.Log.Warn().Err(err).Msgf("")
 		}
-
-	}()
-
-	return s.Serve(l)
+	}
 }
 
 func (ba *BattleArena) ServeHTTP(w http.ResponseWriter, r *http.Request) {

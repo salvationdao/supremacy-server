@@ -101,7 +101,7 @@ func main() {
 					passportClientID := c.String("passport_client_id")
 					passportClientSecret := c.String("passport_client_secret")
 
-					ctx, cancel := context.WithCancel(c.Context)
+					ctx := context.Background()
 					environment := c.String("environment")
 					battleArenaAddr := c.String("battle_arena_addr")
 					level := c.String("log_level")
@@ -118,51 +118,54 @@ func main() {
 						Version,
 					)
 					if err != nil {
-						cancel()
+						//cancel()
 						return terror.Panic(err)
 					}
 
-					pp, err := passport.NewPassport(ctx, log_helpers.NamedLogger(logger, "passport"),
+					pp := passport.NewPassport(ctx, log_helpers.NamedLogger(logger, "passport"),
 						passportAddr,
 						passportClientID,
 						passportClientSecret,
 					)
+
+					battleArenaClient := battle_arena.NewBattleArenaClient(ctx, log_helpers.NamedLogger(logger, "battle-arena"), pgxconn, pp, battleArenaAddr)
+
+					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(logger, "API"), battleArenaClient, pgxconn, pp)
 					if err != nil {
-						logger.Err(err).Msgf("failed to create passport connection")
-						//cancel()
-						//return terror.Panic(err)
+						logger.Err(err).Msg("")
 					}
 
-					battleArenaClient := battle_arena.NewBattleArenaClient(ctx, log_helpers.NamedLogger(logger, "BattleArena"), pgxconn, pp, battleArenaAddr)
-
 					g := &run.Group{}
+
 					// Listen for os.interrupt
 					g.Add(run.SignalHandler(ctx, os.Interrupt))
 
 					// Connect to passport
-					g.Add(func() error { return pp.Connect(ctx) }, func(err error) {
-						cancel()
-						panic(err)
+					g.Add(func() error {
+						return pp.Connect()
+					}, func(err error) {
+						pp.Close()
 					})
 
 					// Start Gameserver - Gameclient server
-					g.Add(func() error { return battleArenaClient.Serve(ctx) }, func(err error) {
-						cancel()
-						panic(err)
+					g.Add(func() error {
+						return battleArenaClient.Serve()
+					}, func(err error) {
+						battleArenaClient.Close()
 					})
 
 					// Start API/Client server
 					g.Add(func() error {
-						return ServeFunc(c, ctx, log_helpers.NamedLogger(logger, "API"), battleArenaClient, pgxconn, pp)
+						return api.Run()
 					}, func(err error) {
-						cancel()
-						panic(err)
+						api.Close()
 					})
 
 					err = g.Run()
 					if errors.Is(err, run.SignalError{Signal: os.Interrupt}) {
 						err = terror.Warn(err)
 					}
+
 					log_helpers.TerrorEcho(ctx, err, logger)
 					return nil
 				},
@@ -215,7 +218,7 @@ func main() {
 
 }
 
-func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, battleArenaClient *battle_arena.BattleArena, conn *pgxpool.Pool, passport *passport.Passport) error {
+func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, battleArenaClient *battle_arena.BattleArena, conn *pgxpool.Pool, passport *passport.Passport) (*api.API, error) {
 	environment := ctxCLI.String("environment")
 	sentryDSNBackend := ctxCLI.String("sentry_dsn_backend")
 	sentryServerName := ctxCLI.String("sentry_server_name")
@@ -223,16 +226,16 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, ba
 	err := log_helpers.SentryInit(sentryDSNBackend, sentryServerName, SentryVersion, environment, sentryTraceRate, log)
 	switch errors.Unwrap(err) {
 	case log_helpers.ErrSentryInitEnvironment:
-		return terror.Error(err, fmt.Sprintf("got environment %s", environment))
+		return nil, terror.Error(err, fmt.Sprintf("got environment %s", environment))
 	case log_helpers.ErrSentryInitDSN, log_helpers.ErrSentryInitVersion:
 		if terror.GetLevel(err) == terror.ErrLevelPanic {
 			// if the level is panic then in a prod environment
 			// so keep panicing
-			return terror.Panic(err)
+			return nil, terror.Panic(err)
 		}
 	default:
 		if err != nil {
-			return terror.Error(err)
+			return nil, terror.Error(err)
 		}
 	}
 
@@ -250,20 +253,9 @@ func ServeFunc(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, ba
 	HTMLSanitizePolicy := bluemonday.UGCPolicy()
 	HTMLSanitizePolicy.AllowAttrs("class").OnElements("img", "table", "tr", "td", "p")
 
-	factions, err := passport.FactionAll(ctx, "faction all")
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	factionMap := make(map[server.FactionID]*server.Faction)
-	for _, faction := range factions {
-		factionMap[faction.ID] = faction
-	}
-
 	// API Server
-	ctx, cancelOnPanic := context.WithCancel(ctx)
-	serverAPI := api.NewAPI(log, battleArenaClient, passport, factionMap, cancelOnPanic, apiAddr, HTMLSanitizePolicy, conn, config)
-	return serverAPI.Run(ctx)
+	serverAPI := api.NewAPI(log, battleArenaClient, passport, apiAddr, HTMLSanitizePolicy, conn, config)
+	return serverAPI, nil
 }
 
 func pgxconnect(
