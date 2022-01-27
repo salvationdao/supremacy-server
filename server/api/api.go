@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/ninja-software/hub/v3/ext/messagebus"
+	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"nhooyr.io/websocket"
 
 	sentryhttp "github.com/getsentry/sentry-go/http"
@@ -20,10 +20,10 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/microcosm-cc/bluemonday"
-	"github.com/ninja-software/hub/v3"
-	"github.com/ninja-software/hub/v3/ext/auth"
-	zerologger "github.com/ninja-software/hub/v3/ext/zerolog"
 	"github.com/ninja-software/log_helpers"
+	"github.com/ninja-syndicate/hub"
+	"github.com/ninja-syndicate/hub/ext/auth"
+	zerologger "github.com/ninja-syndicate/hub/ext/zerolog"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 )
@@ -40,6 +40,7 @@ type BroadcastPayload struct {
 
 // API server
 type API struct {
+	server *http.Server
 	*auth.Auth
 	Log          *zerolog.Logger
 	Routes       chi.Router
@@ -61,6 +62,8 @@ type API struct {
 
 	// battle queue channels
 	battleQueueMap map[server.FactionID]chan func(*warMachineQueuingList)
+
+	twitchJWTAuthChan chan (func(TwitchJWTAuthMap))
 }
 
 // NewAPI registers routes
@@ -68,8 +71,6 @@ func NewAPI(
 	log *zerolog.Logger,
 	battleArenaClient *battle_arena.BattleArena,
 	pp *passport.Passport,
-	factionMap map[server.FactionID]*server.Faction,
-	cancelOnPanic context.CancelFunc,
 	addr string,
 	HTMLSanitize *bluemonday.Policy,
 	conn *pgxpool.Pool,
@@ -86,7 +87,6 @@ func NewAPI(
 		MessageBus:   messageBus,
 		HTMLSanitize: HTMLSanitize,
 		BattleArena:  battleArenaClient,
-		factionMap:   factionMap,
 		Hub: hub.New(&hub.Config{
 			Log: zerologger.New(*log_helpers.NamedLogger(log, "hub library")),
 			WelcomeMsg: &hub.WelcomeMsg{
@@ -106,20 +106,12 @@ func NewAPI(
 		onlineClientMap: make(chan *ClientUpdate),
 		// channel for battle queue
 		battleQueueMap: make(map[server.FactionID](chan func(*warMachineQueuingList))),
+
+		twitchJWTAuthChan: make(chan func(TwitchJWTAuthMap)),
 	}
 
-	// get all the faction list from passport server
-	for _, faction := range factionMap {
-
-		// start voting cycle
-		api.factionVoteCycle[faction.ID] = make(chan func(*server.Faction, *VoteStage, FirstVoteState, *FirstVoteResult, *secondVoteResult, *FactionVotingTicker))
-		go api.startFactionVoteCycle(faction)
-
-		// start battle queue
-		api.battleQueueMap[faction.ID] = make(chan func(*warMachineQueuingList))
-		go api.startBattleQueue(faction.ID)
-
-	}
+	// start twitch jwt auth listener
+	go api.startTwitchJWTAuthListener()
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
@@ -161,23 +153,59 @@ func NewAPI(
 	///////////////////////////
 	//	 Passport Events	 //
 	///////////////////////////
-	api.Passport.Events.AddEventHandler(passport.EventUserOnlineStatus, api.PassportUserOnlineStatusHandler)
+	// api.Passport.Events.AddEventHandler(passport.EventUserOnlineStatus, api.PassportUserOnlineStatusHandler)
 	api.Passport.Events.AddEventHandler(passport.EventUserUpdated, api.PassportUserUpdatedHandler)
+	api.Passport.Events.AddEventHandler(passport.EventUserEnlistFaction, api.PassportUserEnlistFactionHandler)
 	api.Passport.Events.AddEventHandler(passport.EventUserSupsUpdated, api.PassportUserSupsUpdatedHandler)
 	api.Passport.Events.AddEventHandler(passport.EventBattleQueueJoin, api.PassportBattleQueueJoinHandler)
 	api.Passport.Events.AddEventHandler(passport.EventBattleQueueLeave, api.PassportBattleQueueReleaseHandler)
 	api.Passport.Events.AddEventHandler(passport.EventWarMachineQueuePositionGet, api.PassportBattleQueueReleaseHandler)
+	api.Passport.Events.AddEventHandler(passport.EventAuthRingCheck, api.AuthRingCheckHandler)
 
 	// listen to the client online and action channel
 	go api.ClientListener()
 
-	// create the faction maps
-	for _, faction := range factionMap {
-		api.factionVoteCycle[faction.ID] = make(chan func(*server.Faction, *VoteStage, FirstVoteState, *FirstVoteResult, *secondVoteResult, *FactionVotingTicker))
-		go api.startFactionVoteCycle(faction)
-	}
+	go api.SetupAfterConnections()
 
 	return api
+}
+
+func (api *API) SetupAfterConnections() {
+	ctx := context.Background()
+	var factions []*server.Faction
+	var err error
+
+	// get factions from passport, retrying every 10 seconds until we ge them.
+	for len(factions) <= 0 {
+		// since the passport spins up concurrently the passport connection may not be setup right away, so we check every second for the connection
+		for api.Passport == nil || api.Passport.Conn == nil || !api.Passport.Conn.Connected {
+			time.Sleep(1 * time.Second)
+		}
+
+		factions, err = api.Passport.FactionAll(ctx, "faction all")
+		if err != nil {
+			api.Log.Err(err).Msg("unable to get factions")
+		}
+		time.Sleep(5 * time.Second)
+	}
+
+	factionMap := make(map[server.FactionID]*server.Faction)
+	for _, faction := range factions {
+		factionMap[faction.ID] = faction
+	}
+
+	// get all the faction list from passport server
+	for _, faction := range factionMap {
+
+		// start voting cycle
+		api.factionVoteCycle[faction.ID] = make(chan func(*server.Faction, *VoteStage, FirstVoteState, *FirstVoteResult, *secondVoteResult, *FactionVotingTicker))
+		go api.startFactionVoteCycle(faction)
+
+		// start battle queue
+		api.battleQueueMap[faction.ID] = make(chan func(*warMachineQueuingList))
+		go api.startBattleQueue(faction.ID)
+
+	}
 }
 
 // Event handlers
@@ -198,24 +226,24 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 }
 
 // Run the API service
-func (api *API) Run(ctx context.Context) error {
-	server := &http.Server{
+func (api *API) Run() error {
+	api.server = &http.Server{
 		Addr:    api.Addr,
 		Handler: api.Routes,
 	}
 
-	api.Log.Info().Msgf("Starting API Server on %v", server.Addr)
+	api.Log.Info().Msgf("Starting API Server on %v", api.server.Addr)
 
-	go func() {
-		<-ctx.Done()
-		api.Log.Info().Msg("Stopping API")
-		err := server.Shutdown(ctx)
-		if err != nil {
-			api.Log.Warn().Err(err).Msg("")
-		}
-	}()
+	return api.server.ListenAndServe()
+}
 
-	return server.ListenAndServe()
+func (api *API) Close() {
+	ctx := context.Background()
+	api.Log.Info().Msg("Stopping API")
+	err := api.server.Shutdown(ctx)
+	if err != nil {
+		api.Log.Warn().Err(err).Msg("")
+	}
 }
 
 type GameSettingsResponse struct {

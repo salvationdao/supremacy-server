@@ -9,12 +9,12 @@ import (
 	"server/battle_arena"
 	"time"
 
-	"github.com/golang-jwt/jwt"
+	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/ninja-software/hub/v3"
-	"github.com/ninja-software/hub/v3/ext/messagebus"
 	"github.com/ninja-software/log_helpers"
 	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/hub"
+	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
 )
 
@@ -33,8 +33,9 @@ func NewTwitchController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Twi
 		API:  api,
 	}
 
-	api.Command(HubKeyTwitchAuth, twitchHub.Authentication)
-	api.SecureUserCommand(HubKeyTwitchFactionAbilityFirstVote, twitchHub.FactionAbilityFirstVote)
+	// api.Command(HubKeyTwitchAuth, twitchHub.Authentication)
+	api.Command(HubKeyTwitchJWTAuth, twitchHub.JWTAuth)
+	api.SecureUserFactionCommand(HubKeyTwitchFactionAbilityFirstVote, twitchHub.FactionAbilityFirstVote)
 	api.SecureUserCommand(HubKeyTwitchFactionAbilitySecondVote, twitchHub.FactionAbilitySecondVote)
 	api.SecureUserFactionCommand(HubKeyTwitchActionLocationSelect, twitchHub.ActionLocationSelect)
 
@@ -47,17 +48,6 @@ func NewTwitchController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Twi
 	return twitchHub
 }
 
-// TwitchJWTClaims is the payload of a JWT sent by the Twitch extension
-type TwitchJWTClaims struct {
-	OpaqueUserID    string `json:"opaque_user_id,omitempty"`
-	TwitchAccountID string `json:"user_id"`
-	ChannelID       string `json:"channel_id,omitempty"`
-	Role            string `json:"role"`
-	jwt.StandardClaims
-}
-
-const HubKeyTwitchAuth = hub.HubCommandKey("TWITCH:AUTH")
-
 // TwitchAuthRequest authenticate a twitch user
 type TwitchAuthRequest struct {
 	*hub.HubCommandRequest
@@ -66,41 +56,33 @@ type TwitchAuthRequest struct {
 	} `json:"payload"`
 }
 
-type UserInfo struct {
-	UserID string `json:"userID"`
-}
+const HubKeyTwitchJWTAuth = hub.HubCommandKey("TWITCH:JWT:AUTH")
 
-type TwitchAuthResponse struct {
-	UserInfo *UserInfo `json:"userInfo"`
-}
-
-func (th *TwitchControllerWS) Authentication(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (th *TwitchControllerWS) JWTAuth(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &TwitchAuthRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err)
 	}
 
-	user, err := th.API.Passport.TwitchAuth(ctx, req.Payload.TwitchToken, req.TransactionID)
-	if err != nil {
-		return terror.Error(err, "Unable to load user")
+	th.API.twitchJWTAuthChan <- func(tjm TwitchJWTAuthMap) {
+		tjm[req.Payload.TwitchToken] = wsc
 	}
 
-	wsc.SetIdentifier(user.ID.String())
+	// distroy the token in 30 second
+	go func() {
+		time.Sleep(600 * time.Second)
 
-	// update client detail
-	th.API.hubClientDetail[wsc] <- func(hcd *HubClientDetail) {
-		hcd.ID = user.ID
-		hcd.FactionID = user.FactionID
-	}
+		th.API.twitchJWTAuthChan <- func(tjm TwitchJWTAuthMap) {
+			_, ok := tjm[req.Payload.TwitchToken]
+			if ok {
+				delete(tjm, req.Payload.TwitchToken)
+			}
+		}
+	}()
 
-	if !user.FactionID.IsNil() {
-		user.Faction = th.API.factionMap[user.FactionID]
-	}
+	reply(true)
 
-	th.API.ClientOnline(wsc)
-
-	reply(user)
 	return nil
 }
 
@@ -119,6 +101,11 @@ func (th *TwitchControllerWS) FactionAbilityFirstVote(ctx context.Context, wsc *
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err)
+	}
+
+	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
+	if userID.IsNil() {
+		return terror.Error(terror.ErrInvalidInput)
 	}
 
 	hubClientDetail, err := th.API.getClientDetailFromChannel(wsc)
@@ -147,89 +134,89 @@ func (th *TwitchControllerWS) FactionAbilityFirstVote(ctx context.Context, wsc *
 		}
 
 		reason := fmt.Sprintf("battle:%s|voteaction:%s", th.API.BattleArena.CurrentBattleID(), req.Payload.FactionAbilityID)
-		supTransactionReference, err := th.API.Passport.SendHoldSupsMessage(context.Background(), hubClientDetail.ID, req.Payload.PointSpend, req.TransactionID, reason)
+		supTransactionReference, err := th.API.Passport.SendHoldSupsMessage(context.Background(), userID, req.Payload.PointSpend, req.TransactionID, reason)
 		if err != nil {
-			th.API.Log.Err(err).Msg("failed to spend sups")
+			errChan <- terror.Error(err, "Error - Failed to spend sups")
 			return
 		}
 
-		// update vote result
-		_, ok = fvs[req.Payload.FactionAbilityID].UserVoteMap[hubClientDetail.ID]
-		if !ok {
-			fvs[req.Payload.FactionAbilityID].UserVoteMap[hubClientDetail.ID] = make(map[server.TransactionReference]server.BigInt)
+		// update vote result if it is in first vote phase
+		if vs.Phase == VotePhaseFirstVote {
+			_, ok = fvs[req.Payload.FactionAbilityID].UserVoteMap[userID]
+			if !ok {
+				fvs[req.Payload.FactionAbilityID].UserVoteMap[userID] = make(map[server.TransactionReference]server.BigInt)
+			}
+
+			fvs[req.Payload.FactionAbilityID].UserVoteMap[userID][supTransactionReference] = req.Payload.PointSpend
+
+			errChan <- nil
+			return
 		}
 
-		fvs[req.Payload.FactionAbilityID].UserVoteMap[hubClientDetail.ID][supTransactionReference] = req.Payload.PointSpend
+		// if TIE, directly set user as winner once the transaction is successful
 
-		// if TIE check winner
-		if vs.Phase == VotePhaseTie {
-			// get all the tx
-			var txRefs []server.TransactionReference
-			for _, votes := range fvs {
-				for _, txMap := range votes.UserVoteMap {
-					for tx := range txMap {
-						txRefs = append(txRefs, tx)
-					}
-				}
-			}
+		// commit the transactions and check status
+		transactions, err := th.API.Passport.CommitTransactions(ctx, []server.TransactionReference{supTransactionReference})
+		if err != nil {
+			errChan <- terror.Error(err, "Error - Failed to check transactions")
+			return
+		}
 
-			// commit the transactions and check status
-			transactions, err := th.API.Passport.CommitTransactions(ctx, txRefs)
-			if err != nil {
-				th.API.Log.Err(err).Msg("failed to check transactions")
+		for _, chktx := range transactions {
+			// return if transaction failed
+			if chktx.Status == server.TransactionFailed {
+				errChan <- terror.Error(terror.ErrInvalidInput, "Error - Transaction failed")
 				return
 			}
+		}
 
-			// TODO: figure out the best way to handle the tie breaking
-			// need to skip check for now because the transaction wasn't finished in the time we checked
-			parseFirstVoteResult(fvs, fvr, transactions, true)
+		// set current user as winner
+		fvr.factionAbilityID = req.Payload.FactionAbilityID
+		fvr.hubClientID = []server.UserID{userID}
 
-			// if winner exists, enter second vote
-			if !fvr.factionAbilityID.IsNil() && len(fvr.hubClientID) > 0 {
-				vs.Phase = VotePhaseSecondVote
-				vs.EndTime = time.Now().Add(SecondVoteDurationSecond * time.Second)
+		// update vote phase
+		vs.Phase = VotePhaseSecondVote
+		vs.EndTime = time.Now().Add(SecondVoteDurationSecond * time.Second)
 
-				// broadcast current stage to current faction users
-				th.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchFactionVoteStageUpdated, f.ID)), vs)
+		// broadcast current stage to current faction users
+		th.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchFactionVoteStageUpdated, f.ID)), vs)
 
-				// broadcast second vote candidate to all the connected clients
-				broadcastData, err := json.Marshal(&BroadcastPayload{
-					Key: HubKeyTwitchNotification,
-					Payload: &TwitchNotification{
-						Type: TwitchNotificationTypeSecondVote,
-						Data: &secondVoteCandidate{
-							Faction:        f,
-							FactionAbility: fvs[req.Payload.FactionAbilityID].FactionAbility,
-							EndTime:        vs.EndTime,
-						},
-					},
-				})
-				if err == nil {
-					th.API.Hub.Clients(func(clients hub.ClientsList) {
-						for client, ok := range clients {
-							if !ok {
-								continue
-							}
-							go func(c *hub.Client) {
-								err := c.Send(broadcastData)
-								if err != nil {
-									th.API.Log.Err(err).Msg("failed to send broadcast")
-								}
-							}(client)
+		// broadcast second vote candidate to all the connected clients
+		broadcastData, err := json.Marshal(&BroadcastPayload{
+			Key: HubKeyTwitchNotification,
+			Payload: &TwitchNotification{
+				Type: TwitchNotificationTypeSecondVote,
+				Data: &secondVoteCandidate{
+					Faction:        f,
+					FactionAbility: fvs[req.Payload.FactionAbilityID].FactionAbility,
+					EndTime:        vs.EndTime,
+				},
+			},
+		})
+		if err == nil {
+			th.API.Hub.Clients(func(clients hub.ClientsList) {
+				for client, ok := range clients {
+					if !ok {
+						continue
+					}
+					go func(c *hub.Client) {
+						err := c.Send(broadcastData)
+						if err != nil {
+							th.API.Log.Err(err).Msg("failed to send broadcast")
 						}
-					})
+					}(client)
 				}
+			})
+		}
 
-				// restart vote ticker
-				if t.VotingStageListener.NextTick == nil {
-					t.VotingStageListener.Start()
-				}
+		// restart vote ticker
+		if t.VotingStageListener.NextTick == nil {
+			t.VotingStageListener.Start()
+		}
 
-				// start second vote broadcaster
-				if t.SecondVoteResultBroadcaster.NextTick == nil {
-					t.SecondVoteResultBroadcaster.Start()
-				}
-			}
+		// start second vote broadcaster
+		if t.SecondVoteResultBroadcaster.NextTick == nil {
+			t.SecondVoteResultBroadcaster.Start()
 		}
 
 		errChan <- nil
@@ -264,9 +251,9 @@ func (th *TwitchControllerWS) FactionAbilitySecondVote(ctx context.Context, wsc 
 		return terror.Error(err)
 	}
 
-	hubClientDetail, err := th.API.getClientDetailFromChannel(wsc)
-	if err != nil {
-		return terror.Error(err)
+	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
+	if userID.IsNil() {
+		return terror.Error(terror.ErrInvalidInput)
 	}
 
 	// check faction exists
@@ -289,7 +276,7 @@ func (th *TwitchControllerWS) FactionAbilitySecondVote(ctx context.Context, wsc 
 		}
 
 		reason := fmt.Sprintf("battle:%s|voteaction:%s", th.API.BattleArena.CurrentBattleID(), req.Payload.FactionAbilityID)
-		supTransactionReference, err := th.API.Passport.SendHoldSupsMessage(context.Background(), hubClientDetail.ID, server.BigInt{Int: *big.NewInt(1000000000000000000)}, req.TransactionID, reason)
+		supTransactionReference, err := th.API.Passport.SendHoldSupsMessage(context.Background(), userID, server.BigInt{Int: *big.NewInt(1000000000000000000)}, req.TransactionID, reason)
 		if err != nil {
 			th.API.Log.Err(err).Msg("failed to spend sups")
 			return
@@ -336,6 +323,11 @@ func (th *TwitchControllerWS) ActionLocationSelect(ctx context.Context, wsc *hub
 		return terror.Error(err)
 	}
 
+	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
+	if userID.IsNil() {
+		return terror.Error(terror.ErrInvalidInput)
+	}
+
 	hubClientDetail, err := th.API.getClientDetailFromChannel(wsc)
 	if err != nil {
 		return terror.Error(err)
@@ -352,7 +344,7 @@ func (th *TwitchControllerWS) ActionLocationSelect(ctx context.Context, wsc *hub
 			return
 		}
 
-		if fvr.hubClientID[0] != hubClientDetail.ID {
+		if fvr.hubClientID[0] != userID {
 			errChan <- terror.Error(terror.ErrForbidden)
 			return
 		}
@@ -362,7 +354,7 @@ func (th *TwitchControllerWS) ActionLocationSelect(ctx context.Context, wsc *hub
 			Key: HubKeyTwitchNotification,
 			Payload: &TwitchNotification{
 				Type: TwitchNotificationTypeText,
-				Data: fmt.Sprintf("User %s select x: %d, y: %d", hubClientDetail.ID, req.Payload.XIndex, req.Payload.YIndex),
+				Data: fmt.Sprintf("User %s select x: %d, y: %d", userID, req.Payload.XIndex, req.Payload.YIndex),
 			},
 		})
 		if err == nil {
@@ -394,7 +386,7 @@ func (th *TwitchControllerWS) ActionLocationSelect(ctx context.Context, wsc *hub
 		// broadcast current stage to current faction users
 		th.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchFactionVoteStageUpdated, f.ID)), vs)
 
-		userName := hubClientDetail.ID.String()
+		userName := userID.String()
 		selectedX := req.Payload.XIndex
 		selectedY := req.Payload.YIndex
 
@@ -452,13 +444,12 @@ func (th *TwitchControllerWS) VoteWinnerAnnouncementSubscribeHandler(ctx context
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
-	// get hub client
-	hubClientDetail, err := th.API.getClientDetailFromChannel(wsc)
-	if err != nil {
-		return "", "", terror.Error(err)
+	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
+	if userID.IsNil() {
+		return "", "", terror.Error(terror.ErrInvalidInput)
 	}
 
-	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchVoteWinnerAnnouncement, hubClientDetail.ID))
+	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchVoteWinnerAnnouncement, userID))
 
 	return req.TransactionID, busKey, nil
 }

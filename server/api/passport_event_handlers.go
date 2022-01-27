@@ -8,28 +8,29 @@ import (
 	"server/passport"
 	"strconv"
 
-	"github.com/ninja-software/hub/v3/ext/messagebus"
 	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/hub"
+	"github.com/ninja-syndicate/hub/ext/messagebus"
 )
 
-type PassportUserOnlineStatusRequest struct {
-	Key     passport.Event `json:"key"`
-	Payload struct {
-		UserID server.UserID `json:"userID"`
-		Status bool          `json:"status"`
-	} `json:"payload"`
-}
+// type PassportUserOnlineStatusRequest struct {
+// 	Key     passport.Event `json:"key"`
+// 	Payload struct {
+// 		UserID server.UserID `json:"userID"`
+// 		Status bool          `json:"status"`
+// 	} `json:"payload"`
+// }
 
-func (api *API) PassportUserOnlineStatusHandler(ctx context.Context, payload []byte) {
-	req := &PassportUserOnlineStatusRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		api.Log.Err(err).Msg("error unmarshalling passport user online handler request")
-	}
+// func (api *API) PassportUserOnlineStatusHandler(ctx context.Context, payload []byte) {
+// 	req := &PassportUserOnlineStatusRequest{}
+// 	err := json.Unmarshal(payload, req)
+// 	if err != nil {
+// 		api.Log.Err(err).Msg("error unmarshalling passport user online handler request")
+// 	}
 
-	// TODO: maybe add a difference between passport online and gameserver online
-	api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserOnlineStatus, req.Payload.UserID)), req.Payload.Status)
-}
+// 	// TODO: maybe add a difference between passport online and gameserver online
+// 	api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserOnlineStatus, req.Payload.UserID)), req.Payload.Status)
+// }
 
 type PassportUserUpdatedRequest struct {
 	Key     passport.Event `json:"key"`
@@ -45,7 +46,127 @@ func (api *API) PassportUserUpdatedHandler(ctx context.Context, payload []byte) 
 		api.Log.Err(err).Msg("error unmarshalling passport user updated handler request")
 	}
 
-	api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, req.Payload.User.ID)), req.Payload.User)
+	uid := req.Payload.User.ID.String()
+
+	api.Hub.Clients(func(clients hub.ClientsList) {
+		for client, ok := range clients {
+			if !ok || client.Identifier() != uid {
+				continue
+			}
+
+			go func(c *hub.Client) {
+				// update client detail
+				api.hubClientDetail[c] <- func(hcd *HubClientDetail) {
+					hcd.FirstName = req.Payload.User.FirstName
+					hcd.LastName = req.Payload.User.LastName
+					hcd.Username = req.Payload.User.Username
+
+					if hcd.FactionID == req.Payload.User.FactionID {
+						return
+					}
+
+					// if faction id has changed, send the updated user to twitch ui
+					hcd.FactionID = req.Payload.User.FactionID
+
+					user := &server.User{
+						ID:        req.Payload.User.ID,
+						FactionID: req.Payload.User.FactionID,
+					}
+
+					if !req.Payload.User.FactionID.IsNil() {
+						user.Faction = api.factionMap[req.Payload.User.FactionID]
+					}
+
+					// send
+					resp := struct {
+						Key           hub.HubCommandKey `json:"key"`
+						TransactionID string            `json:"transactionID"`
+						Payload       interface{}       `json:"payload"`
+					}{
+						Key:           HubKeyUserSubscribe,
+						TransactionID: "userUpdate",
+						Payload:       user,
+					}
+
+					b, err := json.Marshal(resp)
+					if err != nil {
+						api.Hub.Log.Err(err).Errorf("send: issue marshalling resp")
+						return
+					}
+
+					err = c.Send(b)
+					if err != nil {
+						api.Log.Err(err).Msg("Failed to send auth response back to twitch client")
+						return
+					}
+				}
+			}(client)
+		}
+	})
+}
+
+type PassportUserEnlistFactionRequest struct {
+	Key     passport.Event `json:"key"`
+	Payload struct {
+		UserID    server.UserID    `json:"userID"`
+		FactionID server.FactionID `json:"factionID"`
+	} `json:"payload"`
+}
+
+func (api *API) PassportUserEnlistFactionHandler(ctx context.Context, payload []byte) {
+	req := &PassportUserEnlistFactionRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		api.Log.Err(err).Msg("error unmarshalling passport user updated handler request")
+	}
+
+	uid := req.Payload.UserID.String()
+
+	api.Hub.Clients(func(clients hub.ClientsList) {
+		for client, ok := range clients {
+			if !ok || client.Identifier() != uid {
+				continue
+			}
+
+			go func(c *hub.Client) {
+				// update client facton id
+				api.hubClientDetail[c] <- func(hcd *HubClientDetail) {
+					hcd.FactionID = req.Payload.FactionID
+				}
+
+				faction := api.factionMap[req.Payload.FactionID]
+
+				user := &server.User{
+					ID:        req.Payload.UserID,
+					FactionID: req.Payload.FactionID,
+					Faction:   faction,
+				}
+
+				// send
+				resp := struct {
+					Key           hub.HubCommandKey `json:"key"`
+					TransactionID string            `json:"transactionID"`
+					Payload       interface{}       `json:"payload"`
+				}{
+					Key:           HubKeyUserSubscribe,
+					TransactionID: "userUpdate",
+					Payload:       user,
+				}
+
+				b, err := json.Marshal(resp)
+				if err != nil {
+					api.Hub.Log.Err(err).Errorf("send: issue marshalling resp")
+					return
+				}
+
+				err = c.Send(b)
+				if err != nil {
+					api.Log.Err(err).Msg("Failed to send auth response back to twitch client")
+					return
+				}
+			}(client)
+		}
+	})
 }
 
 type PassportUserSupsUpdatedRequest struct {
@@ -223,5 +344,85 @@ func (api *API) PassportWarMachineQueuePositionHandler(ctx context.Context, payl
 				WarMachineQueuePositions: warMachineQueuePosition,
 			},
 		})
+	}
+}
+
+type AuthedTwitchExtensionRequest struct {
+	Key     passport.Event `json:"key"`
+	Payload struct {
+		User               server.User   `json:"user"`
+		SessionID          hub.SessionID `json:"sessionID"`
+		TwitchExtensionJWT string        `json:"twitchExtensionJWT"`
+	} `json:"payload"`
+}
+
+func (api *API) AuthRingCheckHandler(ctx context.Context, payload []byte) {
+	req := &AuthedTwitchExtensionRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		api.Log.Err(err).Msg("error unmarshalling passport auth ring check")
+	}
+	api.twitchJWTAuthChan <- func(tjm TwitchJWTAuthMap) {
+		hubClient, ok := tjm[req.Payload.TwitchExtensionJWT]
+		if !ok {
+			return
+		}
+
+		hubClientDetail, ok := api.hubClientDetail[hubClient]
+		if !ok {
+			return
+		}
+
+		// set hub client detail
+		hubClientDetail <- func(hcd *HubClientDetail) {
+			hcd.FactionID = req.Payload.User.FactionID
+			hcd.Username = req.Payload.User.Username
+			hcd.FirstName = req.Payload.User.FirstName
+			hcd.LastName = req.Payload.User.LastName
+		}
+
+		// set user id
+		hubClient.SetIdentifier(req.Payload.User.ID.String())
+
+		// set user online
+		api.ClientOnline(hubClient)
+
+		// parse user response
+		user := &server.User{
+			ID: req.Payload.User.ID,
+		}
+		if !req.Payload.User.FactionID.IsNil() {
+			user.FactionID = req.Payload.User.FactionID
+			user.Faction = api.factionMap[req.Payload.User.FactionID]
+		}
+
+		// send user id and faction id back to twitch ui client
+		resp := struct {
+			Key           hub.HubCommandKey `json:"key"`
+			TransactionID string            `json:"transactionID"`
+			Payload       interface{}       `json:"payload"`
+		}{
+			Key:           HubKeyUserSubscribe,
+			TransactionID: "authRingCheck",
+			Payload:       user,
+		}
+
+		b, err := json.Marshal(resp)
+		if err != nil {
+			api.Hub.Log.Err(err).Errorf("send: issue marshalling resp")
+			return
+		}
+
+		err = hubClient.Send(b)
+		if err != nil {
+			api.Log.Err(err).Msg("Failed to send auth response back to twitch client")
+			return
+		}
+
+		// send request to passport server to upgrade the gamebar user
+		api.Passport.UpgradeUserConnection(ctx, req.Payload.SessionID, string(req.Payload.SessionID))
+
+		// delete jwt from map
+		delete(tjm, req.Payload.TwitchExtensionJWT)
 	}
 }

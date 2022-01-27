@@ -14,8 +14,6 @@ type SuccessResponse struct {
 
 // AssetFreeze tell passport to freeze user's assets
 func (pp *Passport) AssetFreeze(ctx context.Context, txID string, assetTokenID uint64) error {
-	ctx, cancel := context.WithCancel(ctx)
-
 	replyChannel := make(chan []byte)
 
 	pp.send <- &Request{
@@ -29,7 +27,6 @@ func (pp *Passport) AssetFreeze(ctx context.Context, txID string, assetTokenID u
 			},
 			TransactionID: txID,
 			context:       ctx,
-			cancel:        cancel,
 		},
 	}
 
@@ -49,8 +46,6 @@ func (pp *Passport) AssetFreeze(ctx context.Context, txID string, assetTokenID u
 
 // AssetLock tell passport to lock user's assets
 func (pp *Passport) AssetLock(ctx context.Context, txID string, assetTokenIDs []uint64) error {
-	ctx, cancel := context.WithCancel(ctx)
-
 	replyChannel := make(chan []byte)
 
 	pp.send <- &Request{
@@ -64,7 +59,6 @@ func (pp *Passport) AssetLock(ctx context.Context, txID string, assetTokenIDs []
 			},
 			TransactionID: txID,
 			context:       ctx,
-			cancel:        cancel,
 		},
 	}
 
@@ -84,8 +78,6 @@ func (pp *Passport) AssetLock(ctx context.Context, txID string, assetTokenIDs []
 
 // AssetRelease tell passport to release user's asset
 func (pp *Passport) AssetRelease(ctx context.Context, txID string, releasedAssets []*server.WarMachineNFT) {
-	ctx, cancel := context.WithCancel(ctx)
-
 	pp.send <- &Request{
 		Message: &Message{
 			Key: "SUPREMACY:ASSET:RELEASE",
@@ -96,7 +88,6 @@ func (pp *Passport) AssetRelease(ctx context.Context, txID string, releasedAsset
 			},
 			TransactionID: txID,
 			context:       ctx,
-			cancel:        cancel,
 		},
 	}
 }
@@ -113,7 +104,6 @@ type WarMachineQueuePosition struct {
 
 // WarMachineQueue
 func (pp *Passport) WarMachineQueuePosition(ctx context.Context, txID string, uwm []*UserWarMachineQueuePosition) {
-	ctx, cancel := context.WithCancel(ctx)
 
 	pp.send <- &Request{
 		Message: &Message{
@@ -125,15 +115,12 @@ func (pp *Passport) WarMachineQueuePosition(ctx context.Context, txID string, uw
 			},
 			TransactionID: txID,
 			context:       ctx,
-			cancel:        cancel,
 		},
 	}
 }
 
 // WarMachineQueue
 func (pp *Passport) WarMachineQueuePositionClear(ctx context.Context, txID string, factionID server.FactionID) {
-	ctx, cancel := context.WithCancel(ctx)
-
 	pp.send <- &Request{
 		Message: &Message{
 			Key: "SUPREMACY:WAR:MACHINE:QUEUE:POSITION:CLEAR",
@@ -144,7 +131,6 @@ func (pp *Passport) WarMachineQueuePositionClear(ctx context.Context, txID strin
 			},
 			TransactionID: txID,
 			context:       ctx,
-			cancel:        cancel,
 		},
 	}
 }

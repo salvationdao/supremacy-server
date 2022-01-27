@@ -24,10 +24,12 @@ const (
 	EventAuthed                     Event = "PASSPORT:AUTHED"
 	EventUserOnlineStatus           Event = "PASSPORT:USER:ONLINE_STATUS"
 	EventUserUpdated                Event = "PASSPORT:USER:UPDATED"
+	EventUserEnlistFaction          Event = "PASSPORT:USER:ENLIST:FACTION"
 	EventUserSupsUpdated            Event = "PASSPORT:USER:SUPS:UPDATED"
 	EventBattleQueueJoin            Event = "PASSPORT:ASSET:QUEUE:JOIN"
 	EventBattleQueueLeave           Event = "PASSPORT:ASSET:QUEUE:LEAVE"
 	EventWarMachineQueuePositionGet Event = "PASSPORT:WAR:MACHINE:QUEUE:POSITION:GET"
+	EventAuthRingCheck              Event = "PASSPORT:AUTH:RING:CHECK"
 )
 
 type EventHandler func(ctx context.Context, payload []byte)

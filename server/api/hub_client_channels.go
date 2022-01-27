@@ -4,24 +4,43 @@ import (
 	"server"
 
 	"github.com/gofrs/uuid"
-	"github.com/ninja-software/hub/v3"
 	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/hub"
 )
+
+/**********************
+* Twitch JWT Auth Map *
+**********************/
+
+type TwitchJWTAuthMap map[string]*hub.Client
+
+func (api *API) startTwitchJWTAuthListener() {
+
+	twitchJWTAuthMap := make(TwitchJWTAuthMap)
+
+	go func() {
+		for fn := range api.twitchJWTAuthChan {
+			fn(twitchJWTAuthMap)
+		}
+	}()
+
+}
 
 /********************
 * Client Detail Map *
 ********************/
 
 type HubClientDetail struct {
-	ID        server.UserID
 	FactionID server.FactionID
+	FirstName string
+	LastName  string
+	Username  string
 }
 
 // startClientTracker track client state
 func (api *API) startClientTracker(wsc *hub.Client) {
 	// initialise online client
 	hubClientDetail := &HubClientDetail{
-		ID:        server.UserID(uuid.Nil),
 		FactionID: server.FactionID(uuid.Nil),
 	}
 

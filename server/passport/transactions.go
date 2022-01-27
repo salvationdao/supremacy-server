@@ -19,13 +19,10 @@ func (pp *Passport) CommitTransactions(ctx context.Context, transactions []serve
 		return nil, nil
 	}
 
-	ctx, cancel := context.WithCancel(ctx)
-
 	replyChannel := make(chan []byte)
 
 	txID, err := uuid.NewV4()
 	if err != nil {
-		cancel()
 		return nil, terror.Error(err)
 	}
 	pp.send <- &Request{
@@ -39,7 +36,6 @@ func (pp *Passport) CommitTransactions(ctx context.Context, transactions []serve
 			},
 			TransactionID: txID.String(),
 			context:       ctx,
-			cancel:        cancel,
 		}}
 
 	msg := <-replyChannel
