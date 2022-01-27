@@ -40,6 +40,7 @@ type BroadcastPayload struct {
 
 // API server
 type API struct {
+	ctx    context.Context
 	server *http.Server
 	*auth.Auth
 	Log          *zerolog.Logger
@@ -63,11 +64,12 @@ type API struct {
 	// battle queue channels
 	battleQueueMap map[server.FactionID]chan func(*warMachineQueuingList)
 
-	twitchJWTAuthChan chan (func(TwitchJWTAuthMap))
+	twitchJWTAuthChan chan func(TwitchJWTAuthMap)
 }
 
 // NewAPI registers routes
 func NewAPI(
+	ctx context.Context,
 	log *zerolog.Logger,
 	battleArenaClient *battle_arena.BattleArena,
 	pp *passport.Passport,
@@ -76,10 +78,12 @@ func NewAPI(
 	conn *pgxpool.Pool,
 	config *server.Config,
 ) *API {
+
 	// initialise message bus
 	messageBus, offlineFunc := messagebus.NewMessageBus(log_helpers.NamedLogger(log, "message_bus"))
 	// initialise api
 	api := &API{
+		ctx:          ctx,
 		Log:          log_helpers.NamedLogger(log, "api"),
 		Routes:       chi.NewRouter(),
 		Passport:     pp,
@@ -105,7 +109,7 @@ func NewAPI(
 		hubClientDetail: make(map[*hub.Client]chan func(*HubClientDetail)),
 		onlineClientMap: make(chan *ClientUpdate),
 		// channel for battle queue
-		battleQueueMap: make(map[server.FactionID](chan func(*warMachineQueuingList))),
+		battleQueueMap: make(map[server.FactionID]chan func(*warMachineQueuingList)),
 
 		twitchJWTAuthChan: make(chan func(TwitchJWTAuthMap)),
 	}
@@ -171,7 +175,6 @@ func NewAPI(
 }
 
 func (api *API) SetupAfterConnections() {
-	ctx := context.Background()
 	var factions []*server.Faction
 	var err error
 
@@ -182,7 +185,7 @@ func (api *API) SetupAfterConnections() {
 			time.Sleep(1 * time.Second)
 		}
 
-		factions, err = api.Passport.FactionAll(ctx, "faction all")
+		factions, err = api.Passport.FactionAll(api.ctx, "faction all")
 		if err != nil {
 			api.Log.Err(err).Msg("unable to get factions")
 		}
@@ -226,13 +229,18 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 }
 
 // Run the API service
-func (api *API) Run() error {
+func (api *API) Run(ctx context.Context) error {
 	api.server = &http.Server{
 		Addr:    api.Addr,
 		Handler: api.Routes,
 	}
 
 	api.Log.Info().Msgf("Starting API Server on %v", api.server.Addr)
+
+	go func() {
+		<-ctx.Done()
+		api.Close()
+	}()
 
 	return api.server.ListenAndServe()
 }

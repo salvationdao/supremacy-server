@@ -85,7 +85,7 @@ func NewBattleArenaClient(ctx context.Context, logger *zerolog.Logger, conn *pgx
 }
 
 // Serve starts the battle arena server
-func (ba *BattleArena) Serve() error {
+func (ba *BattleArena) Serve(ctx context.Context) error {
 	// TODO: handle ctx with listen? ListenConfig.Listen.(ctx, network, addr)
 	l, err := net.Listen("tcp", ba.addr)
 	if err != nil {
@@ -98,6 +98,11 @@ func (ba *BattleArena) Serve() error {
 		ReadTimeout:  time.Second * 10,
 		WriteTimeout: time.Second * 10,
 	}
+
+	go func() {
+		<-ctx.Done()
+		ba.Close()
+	}()
 
 	return ba.server.Serve(l)
 }

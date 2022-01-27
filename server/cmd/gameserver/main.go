@@ -101,7 +101,7 @@ func main() {
 					passportClientID := c.String("passport_client_id")
 					passportClientSecret := c.String("passport_client_secret")
 
-					ctx := context.Background()
+					ctx, cancel := context.WithCancel(c.Context)
 					environment := c.String("environment")
 					battleArenaAddr := c.String("battle_arena_addr")
 					level := c.String("log_level")
@@ -118,51 +118,57 @@ func main() {
 						Version,
 					)
 					if err != nil {
-						//cancel()
+						cancel()
 						return terror.Panic(err)
-					}
-
-					pp := passport.NewPassport(ctx, log_helpers.NamedLogger(logger, "passport"),
-						passportAddr,
-						passportClientID,
-						passportClientSecret,
-					)
-
-					battleArenaClient := battle_arena.NewBattleArenaClient(ctx, log_helpers.NamedLogger(logger, "battle-arena"), pgxconn, pp, battleArenaAddr)
-
-					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(logger, "API"), battleArenaClient, pgxconn, pp)
-					if err != nil {
-						logger.Err(err).Msg("")
 					}
 
 					g := &run.Group{}
 
-					// Listen for os.interrupt
+					//Listen for os.interrupt
 					g.Add(run.SignalHandler(ctx, os.Interrupt))
 
-					// Connect to passport
+					//// Connect to passport
+					ctxPP, cancelPP := context.WithCancel(ctx)
+					pp := passport.NewPassport(ctxPP, log_helpers.NamedLogger(logger, "passport"),
+						passportAddr,
+						passportClientID,
+						passportClientSecret,
+					)
 					g.Add(func() error {
-						return pp.Connect()
+						return pp.Connect(ctxPP)
 					}, func(err error) {
-						pp.Close()
+						cancel()
+						cancelPP()
 					})
 
 					// Start Gameserver - Gameclient server
+					ctxBA, cancelBA := context.WithCancel(ctx)
+					battleArenaClient := battle_arena.NewBattleArenaClient(ctxBA, log_helpers.NamedLogger(logger, "battle-arena"), pgxconn, pp, battleArenaAddr)
 					g.Add(func() error {
-						return battleArenaClient.Serve()
+						return battleArenaClient.Serve(ctxBA)
 					}, func(err error) {
-						battleArenaClient.Close()
+						cancel()
+						cancelBA()
 					})
 
 					// Start API/Client server
+					ctxAPI, cancelAPI := context.WithCancel(ctx)
+					api, err := SetupAPI(c, ctxAPI, log_helpers.NamedLogger(logger, "API"), battleArenaClient, pgxconn, pp)
+					if err != nil {
+						cancel()
+						cancelAPI()
+						return terror.Panic(err)
+					}
 					g.Add(func() error {
-						return api.Run()
+						return api.Run(ctxAPI)
 					}, func(err error) {
-						api.Close()
+						cancel()
+						cancelAPI()
 					})
 
 					err = g.Run()
 					if errors.Is(err, run.SignalError{Signal: os.Interrupt}) {
+						cancel()
 						err = terror.Warn(err)
 					}
 
@@ -180,7 +186,7 @@ func main() {
 					&cli.StringFlag{Name: "database_name", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_NAME"}, Usage: "The database name"},
 					&cli.StringFlag{Name: "database_application_name", Value: "API Server", EnvVars: []string{envPrefix + "_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
 
-					&cli.BoolFlag{Name: "seed", EnvVars: []string{"DB_SEED"}, Usage: "seed the database"},
+					//&cli.BoolFlag{Name: "seed", EnvVars: []string{"DB_SEED"}, Usage: "seed the database"},
 				},
 				Usage: "seed the database",
 				Action: func(c *cli.Context) error {
@@ -215,7 +221,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
 }
 
 func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, battleArenaClient *battle_arena.BattleArena, conn *pgxpool.Pool, passport *passport.Passport) (*api.API, error) {
@@ -254,7 +259,7 @@ func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, bat
 	HTMLSanitizePolicy.AllowAttrs("class").OnElements("img", "table", "tr", "td", "p")
 
 	// API Server
-	serverAPI := api.NewAPI(log, battleArenaClient, passport, apiAddr, HTMLSanitizePolicy, conn, config)
+	serverAPI := api.NewAPI(ctx, log, battleArenaClient, passport, apiAddr, HTMLSanitizePolicy, conn, config)
 	return serverAPI, nil
 }
 

@@ -81,7 +81,7 @@ db-prepare: db-drop db-migrate
 
 .PHONY: db-seed
 db-seed:
-	cd $(SERVER) && go run cmd/gameserver/main.go db --seed
+	cd $(SERVER) && go run cmd/gameserver/main.go db
 
 .PHONY: db-reset
 db-reset: db-drop db-migrate db-seed

@@ -71,6 +71,7 @@ func NewPassport(ctx context.Context, logger *zerolog.Logger, addr, clientID, cl
 
 func (pp *Passport) Close() {
 	pp.Log.Info().Msg("Stopping passport connection")
+	//pp.Conn.closeChan <- fmt.Errorf("close called")
 	if pp.Conn.ws != nil {
 		err := pp.Conn.ws.Close(websocket.StatusNormalClosure, "close called")
 		if err != nil {
@@ -87,7 +88,8 @@ type Connection struct {
 	cond *sync.Cond
 }
 
-func (pp *Passport) Connect() error {
+func (pp *Passport) Connect(ctx context.Context) error {
+
 	// this holds the callbacks for some requests
 	callbackChannels := make(map[string]chan []byte)
 	pp.Conn = &Connection{
@@ -106,7 +108,7 @@ func (pp *Passport) Connect() error {
 
 			pp.Log.Info().Msgf("Attempting to connect to passport on %v", pp.addr)
 			var err error
-			pp.Conn.ws, _, err = websocket.Dial(pp.ctx, pp.addr, &websocket.DialOptions{
+			pp.Conn.ws, _, err = websocket.Dial(ctx, pp.addr, &websocket.DialOptions{
 				//HTTPClient:nil,
 				//HTTPHeader:nil,
 				//Subprotocols:nil,
@@ -138,19 +140,19 @@ func (pp *Passport) Connect() error {
 				continue
 			}
 
-			err = pp.Conn.ws.Write(pp.ctx, websocket.MessageText, authJson)
+			err = pp.Conn.ws.Write(ctx, websocket.MessageText, authJson)
 			if err != nil {
 				pp.Log.Warn().Err(err).Msg("Failed to auth with passport server, retrying in 5 seconds...")
 				time.Sleep(5 * time.Second)
 				pp.Conn.lock.Unlock()
 				continue
 			}
-			//pp.WSConnected = true
 			pp.Log.Info().Msg("Connection and auth to passport server successful")
 			pp.Conn.Connected = true
 			pp.Conn.cond.Broadcast()
 			pp.Conn.lock.Unlock()
 		}
+
 	}()
 
 	//// TODO: setup ping pong
@@ -171,60 +173,65 @@ func (pp *Passport) Connect() error {
 
 	// listening for message
 	for {
-		pp.Conn.lock.Lock()
-		for !pp.Conn.Connected {
-			pp.Conn.cond.Wait() // while not connected, wait, we wait in a loop because we cannot be sure the condition is true when signaled the release
-		}
-		pp.Conn.lock.Unlock()
-		ctx := context.Background()
-
-		_, r, err := pp.Conn.ws.Reader(ctx)
-		if err != nil {
-			pp.Conn.Connected = false
-			pp.Conn.cond.Broadcast()
-			pp.Log.Warn().Err(err).Msg("issue reading from passport connection")
-			continue
-		}
-
-		payload, err := ioutil.ReadAll(r)
-		if err != nil {
-			return terror.Error(err)
-		}
-
-		v, err := jason.NewObjectFromBytes(payload)
-		if err != nil {
-			pp.Log.Err(err).Msgf(`error making object from bytes`)
-			continue
-		}
-
-		transactionID, err := v.GetString("transactionID")
-		if err != nil {
-			continue
-		}
-
-		// if we have a transactionID call the channel in the callback map
-		if transactionID != "" {
-			cb, ok := callbackChannels[transactionID]
-			if ok {
-				cb <- payload
-			} else {
-				pp.Log.Warn().Msgf("missing callback for transactionID %s", transactionID)
+		select {
+		case <-ctx.Done():
+			pp.Close()
+			return fmt.Errorf("context canceled")
+		default:
+			pp.Conn.lock.Lock()
+			for !pp.Conn.Connected {
+				pp.Conn.cond.Wait() // while not connected, wait, we wait in a loop because we cannot be sure the condition is true when signaled the release
 			}
-		}
+			pp.Conn.lock.Unlock()
 
-		cmdKey, err := v.GetString("key")
-		if err != nil {
-			pp.Log.Err(err).Msgf(`error getting key from payload`)
-			continue
-		}
+			_, r, err := pp.Conn.ws.Reader(ctx)
+			if err != nil {
+				pp.Conn.Connected = false
+				pp.Conn.cond.Broadcast()
+				pp.Log.Warn().Err(err).Msg("issue reading from passport connection")
+				continue
+			}
 
-		if cmdKey == "" {
-			pp.Log.Err(fmt.Errorf("missing key value")).Msgf("missing key/command value")
-			continue
-		}
+			payload, err := ioutil.ReadAll(r)
+			if err != nil {
+				return terror.Error(err)
+			}
 
-		// send received message to the hub to handle
-		pp.Events.Trigger(context.Background(), Event(fmt.Sprintf("PASSPORT:%s", cmdKey)), payload)
+			v, err := jason.NewObjectFromBytes(payload)
+			if err != nil {
+				pp.Log.Err(err).Msgf(`error making object from bytes`)
+				continue
+			}
+
+			transactionID, err := v.GetString("transactionID")
+			if err != nil {
+				continue
+			}
+
+			// if we have a transactionID call the channel in the callback map
+			if transactionID != "" {
+				cb, ok := callbackChannels[transactionID]
+				if ok {
+					cb <- payload
+				} else {
+					pp.Log.Warn().Msgf("missing callback for transactionID %s", transactionID)
+				}
+			}
+
+			cmdKey, err := v.GetString("key")
+			if err != nil {
+				pp.Log.Err(err).Msgf(`error getting key from payload`)
+				continue
+			}
+
+			if cmdKey == "" {
+				pp.Log.Err(fmt.Errorf("missing key value")).Msgf("missing key/command value")
+				continue
+			}
+
+			// send received message to the hub to handle
+			pp.Events.Trigger(context.Background(), Event(fmt.Sprintf("PASSPORT:%s", cmdKey)), payload)
+		}
 	}
 }
 
