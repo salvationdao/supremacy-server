@@ -9,130 +9,22 @@ import (
 	"github.com/gofrs/uuid"
 
 	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/hub"
 )
 
-type User struct {
-	ID          server.UserID   `json:"id"`
-	Faction     *server.Faction `json:"faction"`
-	Sups        server.BigInt   `json:"sups"`
-	PassportURL string          `json:"passportURL"`
-}
-
-type TwitchAuthResponse struct {
-	Payload TwitchAuthPayload `json:"payload"`
-}
-
-type TwitchAuthPayload struct {
-	User server.User `json:"user"`
-}
-
-func (pp *Passport) TwitchAuth(ctx context.Context, token string, txID string) (*server.User, error) {
-
-	replyChannel := make(chan []byte)
-
+func (pp *Passport) UpgradeUserConnection(ctx context.Context, sessionID hub.SessionID, txID string) {
 	pp.send <- &Request{
-		ReplyChannel: replyChannel,
 		Message: &Message{
-			Key: "AUTH:TWITCH",
+			Key: "SUPREMACY:USER_CONNECTION_UPGRADE",
 			Payload: struct {
-				Token string `json:"token"`
+				SessionID hub.SessionID `json:"sessionID"`
 			}{
-				Token: token,
+				SessionID: sessionID,
 			},
 			TransactionID: txID,
 			context:       ctx,
-		}}
-
-	msg := <-replyChannel
-	resp := &TwitchAuthResponse{}
-	err := json.Unmarshal(msg, resp)
-	if err != nil {
-		return nil, terror.Error(err)
+		},
 	}
-
-	return &resp.Payload.User, nil
-}
-
-type UserGetByIDResponse struct {
-	User server.User `json:"payload"`
-}
-
-func (pp *Passport) UserGetByID(ctx context.Context, userID server.UserID, txID string) (*server.User, error) {
-	replyChannel := make(chan []byte)
-
-	pp.send <- &Request{
-		ReplyChannel: replyChannel,
-		Message: &Message{
-			Key: "USER:GET",
-			Payload: struct {
-				ID server.UserID `json:"id"`
-			}{
-				ID: userID,
-			},
-			TransactionID: txID,
-			context:       ctx,
-		}}
-
-	msg := <-replyChannel
-	resp := &UserGetByIDResponse{}
-	err := json.Unmarshal(msg, resp)
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-
-	return &resp.User, nil
-
-}
-
-type UserGetByUsernameResponse struct {
-	User server.User `json:"payload"`
-}
-
-func (pp *Passport) UserGetByUsername(ctx context.Context, username string, txID string) (*server.User, error) {
-
-	replyChannel := make(chan []byte)
-
-	pp.send <- &Request{
-		ReplyChannel: replyChannel,
-		Message: &Message{
-			Key: "USER:GET",
-			Payload: struct {
-				Username string `json:"username"`
-			}{
-				Username: username,
-			},
-			TransactionID: txID,
-			context:       ctx,
-		}}
-
-	msg := <-replyChannel
-
-	resp := &UserGetByUsernameResponse{}
-	err := json.Unmarshal(msg, resp)
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-	return &resp.User, nil
-}
-
-// UserFactionUpdate update the faction of the given user
-func (pp *Passport) UserFactionUpdate(ctx context.Context, userID server.UserID, factionID server.FactionID, txID string) error {
-
-	pp.send <- &Request{
-		Message: &Message{
-			Key: "USER:FACTION:UPDATE",
-			Payload: struct {
-				UserID    server.UserID    `json:"userID"`
-				FactionID server.FactionID `json:"factionID"`
-			}{
-				UserID:    userID,
-				FactionID: factionID,
-			},
-			TransactionID: txID,
-			context:       ctx,
-		}}
-
-	return nil
 }
 
 // SendHoldSupsMessage tells the passport to hold sups

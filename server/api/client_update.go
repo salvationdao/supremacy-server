@@ -10,7 +10,7 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-software/tickle"
 
-	"github.com/ninja-software/hub/v3"
+	"github.com/ninja-syndicate/hub"
 
 	"github.com/gofrs/uuid"
 )

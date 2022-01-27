@@ -3,8 +3,8 @@ package api
 import (
 	"context"
 
-	"github.com/ninja-software/hub/v3"
 	"github.com/ninja-software/log_helpers"
+	"github.com/ninja-syndicate/hub"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/rs/zerolog"

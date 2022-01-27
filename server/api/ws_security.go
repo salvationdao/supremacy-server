@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"server"
 
-	"github.com/ninja-software/hub/v3"
-	"github.com/ninja-software/hub/v3/ext/messagebus"
 	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/hub"
+	"github.com/ninja-syndicate/hub/ext/messagebus"
 )
 
 func (api *API) Command(key hub.HubCommandKey, fn hub.HubCommandFunc) {
@@ -18,12 +18,7 @@ func (api *API) Command(key hub.HubCommandKey, fn hub.HubCommandFunc) {
 
 func (api *API) SecureUserCommand(key hub.HubCommandKey, fn hub.HubCommandFunc) {
 	api.Hub.Handle(key, func(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-		hcd, err := api.getClientDetailFromChannel(wsc)
-		if err != nil {
-			return terror.Error(err)
-		}
-
-		if hcd.ID.IsNil() {
+		if wsc.Identifier() == "" {
 			return terror.Error(terror.ErrForbidden)
 		}
 
@@ -33,12 +28,16 @@ func (api *API) SecureUserCommand(key hub.HubCommandKey, fn hub.HubCommandFunc) 
 
 func (api *API) SecureUserFactionCommand(key hub.HubCommandKey, fn hub.HubCommandFunc) {
 	api.Hub.Handle(key, func(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+		if wsc.Identifier() == "" {
+			return terror.Error(terror.ErrForbidden)
+		}
+
 		hcd, err := api.getClientDetailFromChannel(wsc)
 		if err != nil {
 			return terror.Error(err)
 		}
 
-		if hcd.ID.IsNil() || hcd.FactionID.IsNil() {
+		if hcd.FactionID.IsNil() {
 			return terror.Error(terror.ErrForbidden)
 		}
 
@@ -79,12 +78,7 @@ func (api *API) SubscribeCommand(key hub.HubCommandKey, fn ...HubSubscribeComman
 // If fn is not provided, will use default
 func (api *API) SecureUserSubscribeCommand(key hub.HubCommandKey, fn ...HubSubscribeCommandFunc) {
 	api.SubscribeCommandWithAuthCheck(key, fn, func(wsc *hub.Client) bool {
-		hcd, err := api.getClientDetailFromChannel(wsc)
-		if err != nil {
-			return true
-		}
-
-		if hcd.ID.IsNil() {
+		if wsc.Identifier() == "" {
 			return true
 		}
 		return false
@@ -96,12 +90,16 @@ func (api *API) SecureUserSubscribeCommand(key hub.HubCommandKey, fn ...HubSubsc
 // If fn is not provided, will use default
 func (api *API) SecureUserFactionSubscribeCommand(key hub.HubCommandKey, fn ...HubSubscribeCommandFunc) {
 	api.SubscribeCommandWithAuthCheck(key, fn, func(wsc *hub.Client) bool {
+		if wsc.Identifier() == "" {
+			return true
+		}
+
 		hcd, err := api.getClientDetailFromChannel(wsc)
 		if err != nil {
 			return true
 		}
 
-		if hcd.ID.IsNil() || hcd.FactionID.IsNil() {
+		if hcd.FactionID.IsNil() {
 			return true
 		}
 		return false
@@ -129,7 +127,7 @@ func (api *API) SubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn []HubSub
 		// add subscription to the message bus
 		api.MessageBus.Sub(busKey, wsc, transactionID)
 
-		return err
+		return nil
 	})
 
 	// Unsubscribe
@@ -150,6 +148,6 @@ func (api *API) SubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn []HubSub
 			api.MessageBus.Unsub(busKey, wsc, req.TransactionID)
 		}
 
-		return err
+		return nil
 	})
 }

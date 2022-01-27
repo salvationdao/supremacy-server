@@ -14,10 +14,10 @@ import (
 	"time"
 
 	"github.com/gofrs/uuid"
-	"github.com/ninja-software/hub/v3"
-	"github.com/ninja-software/hub/v3/ext/messagebus"
 	"github.com/ninja-software/log_helpers"
 	"github.com/ninja-software/tickle"
+	"github.com/ninja-syndicate/hub"
+	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
 )
 
@@ -256,7 +256,7 @@ func (api *API) voteStageListenerFactory(factionID server.FactionID) func() (int
 					return
 				}
 
-				parseFirstVoteResult(fvs, fvr, transactions, false)
+				parseFirstVoteResult(fvs, fvr, transactions)
 
 				// enter TIE phase if no result
 				if fvr.factionAbilityID.IsNil() || len(fvr.hubClientID) == 0 {
@@ -579,11 +579,26 @@ func (api *API) voteStageListenerFactory(factionID server.FactionID) func() (int
 }
 
 // parseFirstVoteResult return the most voted ability and the user who contribute the most vote on that ability
-func parseFirstVoteResult(fvs FirstVoteState, fvr *FirstVoteResult, checkedTransactions []*server.Transaction, skipCheck bool) {
+func parseFirstVoteResult(fvs FirstVoteState, fvr *FirstVoteResult, checkedTransactions []*server.Transaction) {
 	// initialise first vote result
 	fvr.factionAbilityID = server.FactionAbilityID(uuid.Nil)
 	fvr.hubClientID = []server.UserID{}
 
+	// check there is vote exists
+	hasVote := false
+	for _, fv := range fvs {
+		if len(fv.UserVoteMap) > 0 {
+			hasVote = true
+			break
+		}
+	}
+
+	// exit check if there is no vote
+	if !hasVote {
+		return
+	}
+
+	// start parsing vote result
 	type voter struct {
 		id        server.UserID
 		totalVote server.BigInt
@@ -593,6 +608,7 @@ func parseFirstVoteResult(fvs FirstVoteState, fvr *FirstVoteResult, checkedTrans
 		totalVote server.BigInt
 		voters    []*voter
 	}
+
 	abilities := []*ability{}
 	for abilityID, fv := range fvs {
 		ability := &ability{
@@ -611,7 +627,7 @@ func parseFirstVoteResult(fvs FirstVoteState, fvr *FirstVoteResult, checkedTrans
 			for tx, voteCount := range txMap {
 				// validate transfer was successful here then add it
 				for _, chktx := range checkedTransactions {
-					if (tx == chktx.TransactionReference && chktx.Status == server.TransactionSuccess) || skipCheck {
+					if tx == chktx.TransactionReference && chktx.Status == server.TransactionSuccess {
 						voter.totalVote.Add(&voter.totalVote.Int, &voteCount.Int)
 						continue
 					}
@@ -630,18 +646,8 @@ func parseFirstVoteResult(fvs FirstVoteState, fvr *FirstVoteResult, checkedTrans
 		abilities = append(abilities, ability)
 	}
 
-	// exit, if no ability
-	if len(abilities) == 0 {
-		return
-	}
-
 	// if only one ability
 	if len(abilities) == 1 {
-		// exit, if no voters
-		if len(abilities[0].voters) == 0 {
-			return
-		}
-
 		// if only one voter
 		if len(abilities[0].voters) == 1 {
 			fvr.factionAbilityID = abilities[0].id
@@ -653,11 +659,6 @@ func parseFirstVoteResult(fvs FirstVoteState, fvr *FirstVoteResult, checkedTrans
 		sort.Slice(abilities[0].voters, func(i, j int) bool {
 			return abilities[0].voters[i].totalVote.Cmp(&abilities[0].voters[j].totalVote.Int) == 1
 		})
-
-		// exit, if tie on vote
-		if abilities[0].voters[0].totalVote.Cmp(&abilities[0].voters[1].totalVote.Int) == 0 {
-			return
-		}
 
 		// set first vote result
 		fvr.factionAbilityID = abilities[0].id
@@ -672,15 +673,6 @@ func parseFirstVoteResult(fvs FirstVoteState, fvr *FirstVoteResult, checkedTrans
 		return abilities[i].totalVote.Cmp(&abilities[j].totalVote.Int) == 1
 	})
 
-	// exit, if no voters
-	if len(abilities[0].voters) == 0 {
-		return
-	}
-	// exit, if tie on ability
-	if abilities[0].totalVote.Cmp(&abilities[1].totalVote.Int) == 0 {
-		return
-	}
-
 	// if only one voter in current ability
 	if len(abilities[0].voters) == 1 {
 		fvr.factionAbilityID = abilities[0].id
@@ -692,11 +684,6 @@ func parseFirstVoteResult(fvs FirstVoteState, fvr *FirstVoteResult, checkedTrans
 	sort.Slice(abilities[0].voters, func(i, j int) bool {
 		return abilities[0].voters[i].totalVote.Cmp(&abilities[0].voters[j].totalVote.Int) == 1
 	})
-
-	// exit, if tie on user vote
-	if abilities[0].voters[0].totalVote.Cmp(&abilities[0].voters[1].totalVote.Int) == 0 {
-		return
-	}
 
 	// set first vote result
 	fvr.factionAbilityID = abilities[0].id

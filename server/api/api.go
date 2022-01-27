@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/ninja-software/hub/v3/ext/messagebus"
+	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"nhooyr.io/websocket"
 
 	sentryhttp "github.com/getsentry/sentry-go/http"
@@ -20,10 +20,10 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/microcosm-cc/bluemonday"
-	"github.com/ninja-software/hub/v3"
-	"github.com/ninja-software/hub/v3/ext/auth"
-	zerologger "github.com/ninja-software/hub/v3/ext/zerolog"
 	"github.com/ninja-software/log_helpers"
+	"github.com/ninja-syndicate/hub"
+	"github.com/ninja-syndicate/hub/ext/auth"
+	zerologger "github.com/ninja-syndicate/hub/ext/zerolog"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 )
@@ -62,6 +62,8 @@ type API struct {
 
 	// battle queue channels
 	battleQueueMap map[server.FactionID]chan func(*warMachineQueuingList)
+
+	twitchJWTAuthChan chan (func(TwitchJWTAuthMap))
 }
 
 // NewAPI registers routes
@@ -104,7 +106,12 @@ func NewAPI(
 		onlineClientMap: make(chan *ClientUpdate),
 		// channel for battle queue
 		battleQueueMap: make(map[server.FactionID](chan func(*warMachineQueuingList))),
+
+		twitchJWTAuthChan: make(chan func(TwitchJWTAuthMap)),
 	}
+
+	// start twitch jwt auth listener
+	go api.startTwitchJWTAuthListener()
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
@@ -146,12 +153,14 @@ func NewAPI(
 	///////////////////////////
 	//	 Passport Events	 //
 	///////////////////////////
-	api.Passport.Events.AddEventHandler(passport.EventUserOnlineStatus, api.PassportUserOnlineStatusHandler)
+	// api.Passport.Events.AddEventHandler(passport.EventUserOnlineStatus, api.PassportUserOnlineStatusHandler)
 	api.Passport.Events.AddEventHandler(passport.EventUserUpdated, api.PassportUserUpdatedHandler)
+	api.Passport.Events.AddEventHandler(passport.EventUserEnlistFaction, api.PassportUserEnlistFactionHandler)
 	api.Passport.Events.AddEventHandler(passport.EventUserSupsUpdated, api.PassportUserSupsUpdatedHandler)
 	api.Passport.Events.AddEventHandler(passport.EventBattleQueueJoin, api.PassportBattleQueueJoinHandler)
 	api.Passport.Events.AddEventHandler(passport.EventBattleQueueLeave, api.PassportBattleQueueReleaseHandler)
 	api.Passport.Events.AddEventHandler(passport.EventWarMachineQueuePositionGet, api.PassportBattleQueueReleaseHandler)
+	api.Passport.Events.AddEventHandler(passport.EventAuthRingCheck, api.AuthRingCheckHandler)
 
 	// listen to the client online and action channel
 	go api.ClientListener()
