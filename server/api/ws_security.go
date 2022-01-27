@@ -78,10 +78,7 @@ func (api *API) SubscribeCommand(key hub.HubCommandKey, fn ...HubSubscribeComman
 // If fn is not provided, will use default
 func (api *API) SecureUserSubscribeCommand(key hub.HubCommandKey, fn ...HubSubscribeCommandFunc) {
 	api.SubscribeCommandWithAuthCheck(key, fn, func(wsc *hub.Client) bool {
-		if wsc.Identifier() == "" {
-			return true
-		}
-		return false
+		return wsc.Identifier() == ""
 	})
 }
 
