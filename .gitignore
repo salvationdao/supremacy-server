@@ -106,3 +106,5 @@ typings/
 
 # Ignore certs file
 certs/*
+
+server/cmd/gameserver/gameserver
