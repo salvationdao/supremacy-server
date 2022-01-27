@@ -34,10 +34,9 @@ func (pp *Passport) FactionAll(ctx context.Context, txID string) ([]*server.Fact
 			if err != nil {
 				return nil, terror.Error(err)
 			}
+			return resp.Factions, nil
 		case err := <-errChan:
-			if err != nil {
-				return nil, terror.Error(err)
-			}
+			return nil, terror.Error(err)
 		}
 	}
 }
