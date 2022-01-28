@@ -33,8 +33,6 @@ type AbilityTriggerRequest struct {
 }
 
 func (ba *BattleArena) FactionAbilityTrigger(atr *AbilityTriggerRequest) error {
-	// go ba.fakeAnimation(atr.FactionID)
-
 	ctx := context.Background()
 	factionAbilityEvent := &server.FactionAbilityEvent{
 		FactionAbilityID:  atr.FactionAbilityID,
@@ -51,21 +49,6 @@ func (ba *BattleArena) FactionAbilityTrigger(atr *AbilityTriggerRequest) error {
 
 	return nil
 }
-
-// func (ba *BattleArena) fakeAnimation(factionID server.FactionID) {
-// 	// want second
-// 	i := 5
-// 	for i > 0 {
-// 		fmt.Println("wait", i, "seconds for animation to end")
-// 		time.Sleep(1 * time.Second)
-// 		i--
-// 	}
-// 	fmt.Println("wait", i, "seconds for animation to end")
-// 	fmt.Println("----------------------------------")
-// 	fmt.Println("Restart the voting cycle")
-
-// 	ba.Events.Trigger(context.Background(), Event(fmt.Sprintf("%s:%s", factionID, EventAnamationEnd)), nil)
-// }
 
 func (ba *BattleArena) FakeWarMachinePositionUpdate() {
 	i := 1
