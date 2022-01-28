@@ -88,10 +88,20 @@ type Connection struct {
 	cond *sync.Cond
 }
 
-func (pp *Passport) Connect(ctx context.Context) error {
+type callbackChannel struct {
+	ReplyChannel chan []byte
+	errChan      chan error
+}
 
+type responseError struct {
+	Key           string `json:"key"`
+	TransactionID string `json:"transactionID"`
+	Message       string `json:"message"`
+}
+
+func (pp *Passport) Connect(ctx context.Context) error {
 	// this holds the callbacks for some requests
-	callbackChannels := make(map[string]chan []byte)
+	callbackChannels := make(map[string]*callbackChannel)
 	pp.Conn = &Connection{
 		Connected: false,
 		lock:      sync.Mutex{},
@@ -211,11 +221,26 @@ func (pp *Passport) Connect(ctx context.Context) error {
 			// if we have a transactionID call the channel in the callback map
 			if transactionID != "" {
 				cb, ok := callbackChannels[transactionID]
-				if ok {
-					cb <- payload
-				} else {
+				if !ok {
 					pp.Log.Warn().Msgf("missing callback for transactionID %s", transactionID)
+					continue
 				}
+
+				// parse whether it is an error
+				errMsg := &responseError{}
+				err := json.Unmarshal(payload, errMsg)
+				if err != nil {
+					cb.errChan <- terror.Error(err, "Invlid json response")
+					continue
+				}
+
+				if errMsg.Key == "HUB:ERROR" {
+					cb.errChan <- terror.Error(fmt.Errorf(errMsg.Message), errMsg.Message)
+					continue
+				}
+
+				cb.ReplyChannel <- payload
+				continue
 			}
 
 			cmdKey, err := v.GetString("key")
@@ -235,7 +260,7 @@ func (pp *Passport) Connect(ctx context.Context) error {
 	}
 }
 
-func (pp *Passport) sendPump(callbackChannels map[string]chan []byte) {
+func (pp *Passport) sendPump(callbackChannels map[string]*callbackChannel) {
 	for {
 		msg := <-pp.send
 		if !pp.Conn.Connected {
@@ -245,9 +270,21 @@ func (pp *Passport) sendPump(callbackChannels map[string]chan []byte) {
 			continue // if no connection then just drop the send message
 		}
 
-		// if we got given a tx id and a reply channel
-		if msg.ReplyChannel != nil && msg.TransactionID != "" {
-			callbackChannels[msg.TransactionID] = msg.ReplyChannel
+		if msg.TransactionID != "" {
+			if msg.ReplyChannel == nil {
+				msg.ErrChan <- terror.Error(fmt.Errorf("missing reply channel"))
+				continue
+			}
+
+			if msg.ErrChan == nil {
+				msg.ErrChan <- terror.Error(fmt.Errorf("missing err chan"))
+				continue
+			}
+
+			callbackChannels[msg.TransactionID] = &callbackChannel{
+				ReplyChannel: msg.ReplyChannel,
+				errChan:      msg.ErrChan,
+			}
 		}
 
 		err := writeTimeout(&Message{

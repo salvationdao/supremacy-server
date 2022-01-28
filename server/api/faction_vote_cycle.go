@@ -133,9 +133,6 @@ func (api *API) startFactionVoteCycle(faction *server.Faction) {
 		SecondVoteResultBroadcaster: secondVoteResultBroadcaster,
 	}
 
-	// add event handlers in here
-	api.BattleArena.Events.AddEventHandler(battle_arena.Event(fmt.Sprintf("%s:%s", faction.ID, battle_arena.EventAnamationEnd)), api.startVotingCycleFactory(faction.ID))
-
 	// start channel
 	go func() {
 		for fn := range api.factionVoteCycle[faction.ID] {
@@ -144,23 +141,11 @@ func (api *API) startFactionVoteCycle(faction *server.Faction) {
 	}()
 }
 
-// startVotingCycleFactory create a function to handle voting start event
-func (api *API) startVotingCycleFactory(factionID server.FactionID) func(ctx context.Context, ed *battle_arena.EventData) {
-	fn := func(ctx context.Context, ed *battle_arena.EventData) {
-		api.startVotingCycle(factionID)
-	}
-	return fn
-}
-
 // startVotingCycle start the voting cycle of the faction
 func (api *API) startVotingCycle(factionID server.FactionID) {
 	api.factionVoteCycle[factionID] <- func(f *server.Faction, vs *VoteStage, fvs FirstVoteState, fvr *FirstVoteResult, svs *secondVoteResult, t *FactionVotingTicker) {
 		vs.Phase = VotePhaseVoteCooldown
-		cooldownSecond := CooldownInitialDurationSecond
-		if !fvr.factionAbilityID.IsNil() {
-			cooldownSecond = fvs[fvr.factionAbilityID].FactionAbility.CooldownDurationSecond
-		}
-		vs.EndTime = time.Now().Add(time.Duration(cooldownSecond) * time.Second)
+		vs.EndTime = time.Now().Add(time.Duration(CooldownInitialDurationSecond) * time.Second)
 
 		// broadcast current stage to current faction users
 		api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchFactionVoteStageUpdated, f.ID)), vs)
@@ -401,12 +386,6 @@ func (api *API) voteStageListenerFactory(factionID server.FactionID) func() (int
 					return
 				}
 
-				// pause the whole voting cycle, wait until animation finish
-				vs.Phase = VotePhaseHold
-				if t.VotingStageListener.NextTick != nil {
-					t.VotingStageListener.Stop()
-				}
-
 				// broadcast current stage to current faction users
 				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchFactionVoteStageUpdated, f.ID)), vs)
 
@@ -415,7 +394,7 @@ func (api *API) voteStageListenerFactory(factionID server.FactionID) func() (int
 					Key: HubKeyTwitchNotification,
 					Payload: &TwitchNotification{
 						Type: TwitchNotificationTypeText,
-						Data: fmt.Sprintf("Action %s from Faction %s have been countered", fvs[fvr.factionAbilityID].FactionAbility.Label, f.Label),
+						Data: fmt.Sprintf("Action %s from Faction %s has been countered", fvs[fvr.factionAbilityID].FactionAbility.Label, f.Label),
 					},
 				})
 				if err == nil {
@@ -446,6 +425,13 @@ func (api *API) voteStageListenerFactory(factionID server.FactionID) func() (int
 					return
 				}
 
+				// broadcast next stage
+				vs.Phase = VotePhaseVoteCooldown
+				vs.EndTime = time.Now().Add(time.Duration(fvs[fvr.factionAbilityID].FactionAbility.CooldownDurationSecond) * time.Second)
+
+				// broadcast current stage to current faction users
+				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchFactionVoteStageUpdated, f.ID)), vs)
+
 				// at the end of ability select
 			case VotePhaseLocationSelect:
 				if len(fvr.hubClientID) > 1 {
@@ -455,12 +441,6 @@ func (api *API) voteStageListenerFactory(factionID server.FactionID) func() (int
 				}
 
 				if len(fvr.hubClientID) == 0 {
-
-					vs.Phase = VotePhaseHold
-					if t.VotingStageListener.NextTick != nil {
-						t.VotingStageListener.Stop()
-					}
-
 					if t.SecondVoteResultBroadcaster.NextTick != nil {
 						t.SecondVoteResultBroadcaster.Stop()
 					}
@@ -473,7 +453,7 @@ func (api *API) voteStageListenerFactory(factionID server.FactionID) func() (int
 						Key: HubKeyTwitchNotification,
 						Payload: &TwitchNotification{
 							Type: TwitchNotificationTypeText,
-							Data: fmt.Sprintf("Action %s from Faction %s have been cancelled, due to no one select the location.", fvs[fvr.factionAbilityID].FactionAbility.Label, f.Label),
+							Data: fmt.Sprintf("Action %s from Faction %s has been cancelled, due to no one select the location.", fvs[fvr.factionAbilityID].FactionAbility.Label, f.Label),
 						},
 					})
 					if err != nil {
@@ -505,6 +485,13 @@ func (api *API) voteStageListenerFactory(factionID server.FactionID) func() (int
 						api.Log.Err(err).Msg("Failed to call FactionAbilityTrigger")
 						return
 					}
+
+					// broadcast next stage
+					vs.Phase = VotePhaseVoteCooldown
+					vs.EndTime = time.Now().Add(time.Duration(fvs[fvr.factionAbilityID].FactionAbility.CooldownDurationSecond) * time.Second)
+
+					// broadcast current stage to current faction users
+					api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchFactionVoteStageUpdated, f.ID)), vs)
 
 					return
 				}
@@ -644,6 +631,11 @@ func parseFirstVoteResult(fvs FirstVoteState, fvr *FirstVoteResult, checkedTrans
 		}
 
 		abilities = append(abilities, ability)
+	}
+
+	// skip if there is no ability selected
+	if len(abilities) == 0 {
+		return
 	}
 
 	// if only one ability

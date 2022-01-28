@@ -95,11 +95,7 @@ func (api *API) SecureUserFactionSubscribeCommand(key hub.HubCommandKey, fn ...H
 		if err != nil {
 			return true
 		}
-
-		if hcd.FactionID.IsNil() {
-			return true
-		}
-		return false
+		return hcd.FactionID.IsNil()
 	})
 }
 

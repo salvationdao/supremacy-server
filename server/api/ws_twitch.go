@@ -354,7 +354,7 @@ func (th *TwitchControllerWS) ActionLocationSelect(ctx context.Context, wsc *hub
 			Key: HubKeyTwitchNotification,
 			Payload: &TwitchNotification{
 				Type: TwitchNotificationTypeText,
-				Data: fmt.Sprintf("User %s select x: %d, y: %d", userID, req.Payload.XIndex, req.Payload.YIndex),
+				Data: fmt.Sprintf("User %s placed %s at (x: %d, y: %d)", hubClientDetail.Username, fvs[fvr.factionAbilityID].FactionAbility.Label, req.Payload.XIndex, req.Payload.YIndex),
 			},
 		})
 		if err == nil {
@@ -373,12 +373,6 @@ func (th *TwitchControllerWS) ActionLocationSelect(ctx context.Context, wsc *hub
 			})
 		}
 
-		// pause the whole voting cycle, wait until animation finish
-		vs.Phase = VotePhaseHold
-		if t.VotingStageListener.NextTick != nil {
-			t.VotingStageListener.Stop()
-		}
-
 		if t.SecondVoteResultBroadcaster.NextTick != nil {
 			t.SecondVoteResultBroadcaster.Stop()
 		}
@@ -386,23 +380,30 @@ func (th *TwitchControllerWS) ActionLocationSelect(ctx context.Context, wsc *hub
 		// broadcast current stage to current faction users
 		th.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchFactionVoteStageUpdated, f.ID)), vs)
 
-		userName := userID.String()
+		userIDString := userID.String()
 		selectedX := req.Payload.XIndex
 		selectedY := req.Payload.YIndex
 
 		// signal ability animation
 		err = th.API.BattleArena.FactionAbilityTrigger(&battle_arena.AbilityTriggerRequest{
-			FactionID:        f.ID,
-			FactionAbilityID: fvr.factionAbilityID,
-			IsSuccess:        true,
-			TriggeredByUser:  &userName,
-			TriggeredOnCellX: &selectedX,
-			TriggeredOnCellY: &selectedY,
+			FactionID:         f.ID,
+			FactionAbilityID:  fvr.factionAbilityID,
+			IsSuccess:         true,
+			TriggeredByUserID: &userIDString,
+			TriggeredOnCellX:  &selectedX,
+			TriggeredOnCellY:  &selectedY,
 		})
 		if err != nil {
 			errChan <- terror.Error(err)
 			return
 		}
+
+		// broadcast next stage
+		vs.Phase = VotePhaseVoteCooldown
+		vs.EndTime = time.Now().Add(time.Duration(fvs[fvr.factionAbilityID].FactionAbility.CooldownDurationSecond) * time.Second)
+
+		// broadcast current stage to current faction users
+		th.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchFactionVoteStageUpdated, f.ID)), vs)
 
 		errChan <- nil
 	}

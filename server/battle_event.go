@@ -33,13 +33,13 @@ type WarMachineDestroyedEvent struct {
 }
 
 type FactionAbilityEvent struct {
-	ID               FactionAbilityEventID `json:"id" db:"id"`
-	EventID          EventID               `json:"eventID" db:"event_id"`
-	FactionAbilityID FactionAbilityID      `json:"factionAbilityID" db:"faction_ability_id"`
-	IsTriggered      bool                  `json:"isTriggered" db:"is_triggered"`
-	TriggeredByUser  *string               `json:"triggeredByUser,omitempty" db:"triggered_by_user,omitempty"`
-	TriggeredOnCellX *int                  `json:"triggeredOnCellX,omitempty" db:"triggered_on_cell_x,omitempty"`
-	TriggeredOnCellY *int                  `json:"triggeredOnCellY,omitempty" db:"triggered_on_cell_y,omitempty"`
+	ID                FactionAbilityEventID `json:"id" db:"id"`
+	EventID           EventID               `json:"eventID" db:"event_id"`
+	FactionAbilityID  FactionAbilityID      `json:"factionAbilityID" db:"faction_ability_id"`
+	IsTriggered       bool                  `json:"isTriggered" db:"is_triggered"`
+	TriggeredByUserID *string               `json:"triggeredByUserID,omitempty" db:"triggered_by_user_id,omitempty"`
+	TriggeredOnCellX  *int                  `json:"triggeredOnCellX,omitempty" db:"triggered_on_cell_x,omitempty"`
+	TriggeredOnCellY  *int                  `json:"triggeredOnCellY,omitempty" db:"triggered_on_cell_y,omitempty"`
 }
 
 type EventID uuid.UUID

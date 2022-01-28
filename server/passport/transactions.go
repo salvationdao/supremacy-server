@@ -20,6 +20,7 @@ func (pp *Passport) CommitTransactions(ctx context.Context, transactions []serve
 	}
 
 	replyChannel := make(chan []byte)
+	errChan := make(chan error)
 
 	txID, err := uuid.NewV4()
 	if err != nil {
@@ -27,6 +28,7 @@ func (pp *Passport) CommitTransactions(ctx context.Context, transactions []serve
 	}
 	pp.send <- &Request{
 		ReplyChannel: replyChannel,
+		ErrChan:      errChan,
 		Message: &Message{
 			Key: "SUPREMACY:COMMIT_TRANSACTIONS",
 			Payload: struct {
@@ -38,12 +40,17 @@ func (pp *Passport) CommitTransactions(ctx context.Context, transactions []serve
 			context:       ctx,
 		}}
 
-	msg := <-replyChannel
-	resp := &CommitTransactionsResponse{}
-	err = json.Unmarshal(msg, resp)
-	if err != nil {
-		return nil, terror.Error(err)
+	for {
+		select {
+		case msg := <-replyChannel:
+			resp := &CommitTransactionsResponse{}
+			err = json.Unmarshal(msg, resp)
+			if err != nil {
+				return nil, terror.Error(err)
+			}
+			return resp.Transactions, nil
+		case err := <-errChan:
+			return nil, terror.Error(err)
+		}
 	}
-
-	return resp.Transactions, nil
 }

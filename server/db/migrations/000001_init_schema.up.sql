@@ -74,7 +74,7 @@ CREATE TABLE faction_ability_events (
     event_id uuid NOT NULL REFERENCES battle_events (id),
     faction_ability_id uuid NOT NULL REFERENCES faction_abilities (id),
     is_triggered bool NOT NULL DEFAULT FALSE,
-    triggered_by_user text,
+    triggered_by_user_id text,
     triggered_on_cell_x int,
     triggered_on_cell_y int
 );

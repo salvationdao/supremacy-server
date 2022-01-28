@@ -2,7 +2,6 @@ package passport
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"server"
 
@@ -12,8 +11,12 @@ import (
 	"github.com/ninja-syndicate/hub"
 )
 
-func (pp *Passport) UpgradeUserConnection(ctx context.Context, sessionID hub.SessionID, txID string) {
+func (pp *Passport) UpgradeUserConnection(ctx context.Context, sessionID hub.SessionID, txID string) error {
+	replyChannel := make(chan []byte)
+	errChan := make(chan error)
 	pp.send <- &Request{
+		ReplyChannel: replyChannel,
+		ErrChan:      errChan,
 		Message: &Message{
 			Key: "SUPREMACY:USER_CONNECTION_UPGRADE",
 			Payload: struct {
@@ -25,6 +28,14 @@ func (pp *Passport) UpgradeUserConnection(ctx context.Context, sessionID hub.Ses
 			context:       ctx,
 		},
 	}
+	for {
+		select {
+		case <-replyChannel:
+			return nil
+		case err := <-errChan:
+			return terror.Error(err)
+		}
+	}
 }
 
 // SendHoldSupsMessage tells the passport to hold sups
@@ -32,9 +43,11 @@ func (pp *Passport) SendHoldSupsMessage(ctx context.Context, userID server.UserI
 	supTransactionReference := uuid.Must(uuid.NewV4())
 	supTxRefString := server.TransactionReference(fmt.Sprintf("%s|%s", reason, supTransactionReference.String()))
 	replyChannel := make(chan []byte)
+	errChan := make(chan error)
 
 	pp.send <- &Request{
 		ReplyChannel: replyChannel,
+		ErrChan:      errChan,
 		Message: &Message{
 			Key: "SUPREMACY:HOLD_SUPS",
 			Payload: struct {
@@ -49,29 +62,19 @@ func (pp *Passport) SendHoldSupsMessage(ctx context.Context, userID server.UserI
 			TransactionID: txID,
 			context:       ctx,
 		}}
-
-	msg := <-replyChannel
-	resp := struct {
-		Payload struct {
-			IsSuccess bool `json:"isSuccess"`
+	for {
+		select {
+		case <-replyChannel:
+			return supTxRefString, nil
+		case err := <-errChan:
+			return supTxRefString, terror.Error(err)
 		}
-	}{}
-
-	err := json.Unmarshal(msg, &resp)
-	if err != nil {
-		return supTxRefString, terror.Error(err)
 	}
 
-	// this doesn't mean the sup transfer was successful, it means the server was successful at getting our message
-	if !resp.Payload.IsSuccess {
-		return supTxRefString, terror.Error(fmt.Errorf("passport success resp is false"))
-	}
-
-	return supTxRefString, nil
 }
 
 // SendTickerMessage sends the client map and multipliers to the passport to handle giving out sups
-func (pp *Passport) SendTickerMessage(ctx context.Context, userMap map[int][]server.UserID) (string, error) {
+func (pp *Passport) SendTickerMessage(ctx context.Context, userMap map[int][]server.UserID) {
 	pp.send <- &Request{
 		Message: &Message{
 			Key: "SUPREMACY:TICKER_TICK",
@@ -82,6 +85,4 @@ func (pp *Passport) SendTickerMessage(ctx context.Context, userMap map[int][]ser
 			},
 			context: ctx,
 		}}
-
-	return "", nil
 }

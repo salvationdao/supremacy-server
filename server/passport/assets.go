@@ -2,7 +2,6 @@ package passport
 
 import (
 	"context"
-	"encoding/json"
 	"server"
 
 	"github.com/ninja-software/terror/v2"
@@ -15,9 +14,11 @@ type SuccessResponse struct {
 // AssetFreeze tell passport to freeze user's assets
 func (pp *Passport) AssetFreeze(ctx context.Context, txID string, assetTokenID uint64) error {
 	replyChannel := make(chan []byte)
+	errChan := make(chan error)
 
 	pp.send <- &Request{
 		ReplyChannel: replyChannel,
+		ErrChan:      errChan,
 		Message: &Message{
 			Key: "SUPREMACY:ASSET:FREEZE",
 			Payload: struct {
@@ -30,26 +31,24 @@ func (pp *Passport) AssetFreeze(ctx context.Context, txID string, assetTokenID u
 		},
 	}
 
-	msg := <-replyChannel
-	resp := &SuccessResponse{}
-	err := json.Unmarshal(msg, resp)
-	if err != nil {
-		return terror.Error(err)
+	for {
+		select {
+		case <-replyChannel:
+			return nil
+		case err := <-errChan:
+			return terror.Error(err)
+		}
 	}
-
-	if !resp.IsSuccess {
-		return terror.Error(terror.ErrInvalidInput, "Unable to freeze passport asset")
-	}
-
-	return nil
 }
 
 // AssetLock tell passport to lock user's assets
 func (pp *Passport) AssetLock(ctx context.Context, txID string, assetTokenIDs []uint64) error {
 	replyChannel := make(chan []byte)
+	errChan := make(chan error)
 
 	pp.send <- &Request{
 		ReplyChannel: replyChannel,
+		ErrChan:      errChan,
 		Message: &Message{
 			Key: "SUPREMACY:ASSET:LOCK",
 			Payload: struct {
@@ -62,18 +61,14 @@ func (pp *Passport) AssetLock(ctx context.Context, txID string, assetTokenIDs []
 		},
 	}
 
-	msg := <-replyChannel
-	resp := &SuccessResponse{}
-	err := json.Unmarshal(msg, resp)
-	if err != nil {
-		return terror.Error(err)
+	for {
+		select {
+		case <-replyChannel:
+			return nil
+		case err := <-errChan:
+			return terror.Error(err)
+		}
 	}
-
-	if !resp.IsSuccess {
-		return terror.Error(terror.ErrInvalidInput, "Unable to lock passport asset")
-	}
-
-	return nil
 }
 
 // AssetRelease tell passport to release user's asset
@@ -86,8 +81,7 @@ func (pp *Passport) AssetRelease(ctx context.Context, txID string, releasedAsset
 			}{
 				ReleasedAssets: releasedAssets,
 			},
-			TransactionID: txID,
-			context:       ctx,
+			context: ctx,
 		},
 	}
 }
@@ -103,8 +97,7 @@ type WarMachineQueuePosition struct {
 }
 
 // WarMachineQueue
-func (pp *Passport) WarMachineQueuePosition(ctx context.Context, txID string, uwm []*UserWarMachineQueuePosition) {
-
+func (pp *Passport) WarMachineQueuePositionBroadcast(ctx context.Context, uwm []*UserWarMachineQueuePosition) {
 	pp.send <- &Request{
 		Message: &Message{
 			Key: "SUPREMACY:WAR:MACHINE:QUEUE:POSITION",
@@ -113,8 +106,7 @@ func (pp *Passport) WarMachineQueuePosition(ctx context.Context, txID string, uw
 			}{
 				UserWarMachineQueuePosition: uwm,
 			},
-			TransactionID: txID,
-			context:       ctx,
+			context: ctx,
 		},
 	}
 }
@@ -129,8 +121,7 @@ func (pp *Passport) WarMachineQueuePositionClear(ctx context.Context, txID strin
 			}{
 				FactionID: factionID,
 			},
-			TransactionID: txID,
-			context:       ctx,
+			context: ctx,
 		},
 	}
 }

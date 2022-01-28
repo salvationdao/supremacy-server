@@ -160,10 +160,9 @@ func NewAPI(
 	// api.Passport.Events.AddEventHandler(passport.EventUserOnlineStatus, api.PassportUserOnlineStatusHandler)
 	api.Passport.Events.AddEventHandler(passport.EventUserUpdated, api.PassportUserUpdatedHandler)
 	api.Passport.Events.AddEventHandler(passport.EventUserEnlistFaction, api.PassportUserEnlistFactionHandler)
-	api.Passport.Events.AddEventHandler(passport.EventUserSupsUpdated, api.PassportUserSupsUpdatedHandler)
 	api.Passport.Events.AddEventHandler(passport.EventBattleQueueJoin, api.PassportBattleQueueJoinHandler)
 	api.Passport.Events.AddEventHandler(passport.EventBattleQueueLeave, api.PassportBattleQueueReleaseHandler)
-	api.Passport.Events.AddEventHandler(passport.EventWarMachineQueuePositionGet, api.PassportBattleQueueReleaseHandler)
+	api.Passport.Events.AddEventHandler(passport.EventWarMachineQueuePositionGet, api.PassportWarMachineQueuePositionHandler)
 	api.Passport.Events.AddEventHandler(passport.EventAuthRingCheck, api.AuthRingCheckHandler)
 
 	// listen to the client online and action channel
@@ -179,7 +178,7 @@ func (api *API) SetupAfterConnections() {
 	var err error
 
 	// get factions from passport, retrying every 10 seconds until we ge them.
-	for len(factions) <= 0 {
+	for {
 		// since the passport spins up concurrently the passport connection may not be setup right away, so we check every second for the connection
 		for api.Passport == nil || api.Passport.Conn == nil || !api.Passport.Conn.Connected {
 			time.Sleep(1 * time.Second)
@@ -189,16 +188,21 @@ func (api *API) SetupAfterConnections() {
 		if err != nil {
 			api.Log.Err(err).Msg("unable to get factions")
 		}
+
+		if len(factions) > 0 {
+			break
+		}
+
 		time.Sleep(5 * time.Second)
 	}
 
-	factionMap := make(map[server.FactionID]*server.Faction)
+	api.factionMap = make(map[server.FactionID]*server.Faction)
 	for _, faction := range factions {
-		factionMap[faction.ID] = faction
+		api.factionMap[faction.ID] = faction
 	}
 
 	// get all the faction list from passport server
-	for _, faction := range factionMap {
+	for _, faction := range api.factionMap {
 
 		// start voting cycle
 		api.factionVoteCycle[faction.ID] = make(chan func(*server.Faction, *VoteStage, FirstVoteState, *FirstVoteResult, *secondVoteResult, *FactionVotingTicker))

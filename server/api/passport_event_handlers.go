@@ -76,7 +76,6 @@ func (api *API) PassportUserUpdatedHandler(ctx context.Context, payload []byte) 
 					if !req.Payload.User.FactionID.IsNil() {
 						user.Faction = api.factionMap[req.Payload.User.FactionID]
 					}
-
 					// send
 					resp := struct {
 						Key           hub.HubCommandKey `json:"key"`
@@ -141,7 +140,6 @@ func (api *API) PassportUserEnlistFactionHandler(ctx context.Context, payload []
 					FactionID: req.Payload.FactionID,
 					Faction:   faction,
 				}
-
 				// send
 				resp := struct {
 					Key           hub.HubCommandKey `json:"key"`
@@ -167,24 +165,6 @@ func (api *API) PassportUserEnlistFactionHandler(ctx context.Context, payload []
 			}(client)
 		}
 	})
-}
-
-type PassportUserSupsUpdatedRequest struct {
-	Key     passport.Event `json:"key"`
-	Payload struct {
-		UserID server.UserID `json:"userID"`
-		Sups   server.BigInt `json:"sups"`
-	} `json:"payload"`
-}
-
-func (api *API) PassportUserSupsUpdatedHandler(ctx context.Context, payload []byte) {
-	req := &PassportUserSupsUpdatedRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		api.Log.Err(err).Msg("error unmarshalling passport user sups updated request")
-	}
-
-	api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsUpdated, req.Payload.UserID)), req.Payload.Sups.String())
 }
 
 type BattleQueueJoinRequest struct {
@@ -236,7 +216,7 @@ func (api *API) PassportBattleQueueJoinHandler(ctx context.Context, payload []by
 			}
 
 			// fire a war machine queue passport request
-			api.Passport.WarMachineQueuePosition(ctx, fmt.Sprintf("war_machine_queue_position_%s", req.Payload.WarMachineNFT.OwnedByID), []*passport.UserWarMachineQueuePosition{
+			api.Passport.WarMachineQueuePositionBroadcast(ctx, []*passport.UserWarMachineQueuePosition{
 				{
 					UserID:                   req.Payload.WarMachineNFT.OwnedByID,
 					WarMachineQueuePositions: warMachineQueuePosition,
@@ -286,7 +266,7 @@ func (api *API) PassportBattleQueueReleaseHandler(ctx context.Context, payload [
 				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchFactionWarMachineQueueUpdated, req.Payload.WarMachineNFT.FactionID)), wmq.WarMachines[:maxLength])
 			}
 
-			api.Passport.WarMachineQueuePosition(context.Background(), fmt.Sprintf("war_machine_queue_position_%s", req.Payload.WarMachineNFT.OwnedByID), BuildUserWarMachineQueuePosition(wmq.WarMachines))
+			api.Passport.WarMachineQueuePositionBroadcast(context.Background(), BuildUserWarMachineQueuePosition(wmq.WarMachines))
 		}
 	}
 }
@@ -338,7 +318,7 @@ func (api *API) PassportWarMachineQueuePositionHandler(ctx context.Context, payl
 
 	// fire a war machine queue passport request
 	if len(warMachineQueuePosition) > 0 {
-		api.Passport.WarMachineQueuePosition(ctx, fmt.Sprintf("war_machine_queue_position_%s", req.Payload.UserID), []*passport.UserWarMachineQueuePosition{
+		api.Passport.WarMachineQueuePositionBroadcast(ctx, []*passport.UserWarMachineQueuePosition{
 			{
 				UserID:                   req.Payload.UserID,
 				WarMachineQueuePositions: warMachineQueuePosition,
@@ -420,7 +400,11 @@ func (api *API) AuthRingCheckHandler(ctx context.Context, payload []byte) {
 		}
 
 		// send request to passport server to upgrade the gamebar user
-		api.Passport.UpgradeUserConnection(ctx, req.Payload.SessionID, string(req.Payload.SessionID))
+		err = api.Passport.UpgradeUserConnection(ctx, req.Payload.SessionID, string(req.Payload.SessionID))
+		if err != nil {
+			api.Log.Err(err).Msg("Failed to upgrade passport hub client level")
+			return
+		}
 
 		// delete jwt from map
 		delete(tjm, req.Payload.TwitchExtensionJWT)

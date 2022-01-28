@@ -25,7 +25,6 @@ type EventHandler func(ctx context.Context, ed *EventData)
 const (
 	EventGameStart                 Event = "GAME_START"
 	EventGameEnd                   Event = "GAME_END"
-	EventAnamationEnd              Event = "ANIMATION_END"
 	EventWarMachinePositionChanged Event = "WAR_MACHINE_POSITION_CHANGED"
 	EventWarMachineDestroyed       Event = "WAR_MACHINE_DESTROYED"
 )

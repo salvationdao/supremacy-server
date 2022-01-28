@@ -14,8 +14,8 @@ type FactionAllResponse struct {
 
 // FactionAll get all the factions from passport server
 func (pp *Passport) FactionAll(ctx context.Context, txID string) ([]*server.Faction, error) {
-	replyChannel := make(chan []byte)
-	errChan := make(chan error)
+	replyChannel := make(chan []byte, 1)
+	errChan := make(chan error, 1)
 
 	pp.send <- &Request{
 		ErrChan:      errChan,

@@ -3,11 +3,11 @@ package api
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"server"
 	"time"
 
 	"github.com/ninja-software/log_helpers"
-	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-software/tickle"
 
 	"github.com/ninja-syndicate/hub"
@@ -68,12 +68,9 @@ func (api *API) ClientListener() {
 			userMap[userMultiplier] = append(userMap[userMultiplier], uid)
 		}
 
-		_, err := api.Passport.SendTickerMessage(ctx, userMap)
-		if err != nil {
-			return 0, terror.Error(err)
-		}
+		api.Passport.SendTickerMessage(ctx, userMap)
 
-		return 0, nil
+		return http.StatusOK, nil
 	})
 	taskTickle.Log = log_helpers.NamedLogger(api.Log, "FactionID Channel Point Ticker")
 	taskTickle.DisableLogging = true

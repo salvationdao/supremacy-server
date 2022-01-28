@@ -2,7 +2,6 @@ package battle_arena
 
 import (
 	"context"
-	"fmt"
 	"server"
 	"server/db"
 	"time"
@@ -25,24 +24,24 @@ func (ba *BattleArena) FactionAbilitiesQuery(factionID server.FactionID) ([]*ser
 }
 
 type AbilityTriggerRequest struct {
-	FactionID        server.FactionID
-	FactionAbilityID server.FactionAbilityID
-	IsSuccess        bool
-	TriggeredByUser  *string
-	TriggeredOnCellX *int
-	TriggeredOnCellY *int
+	FactionID         server.FactionID
+	FactionAbilityID  server.FactionAbilityID
+	IsSuccess         bool
+	TriggeredByUserID *string
+	TriggeredOnCellX  *int
+	TriggeredOnCellY  *int
 }
 
 func (ba *BattleArena) FactionAbilityTrigger(atr *AbilityTriggerRequest) error {
-	go ba.fakeAnimation(atr.FactionID)
+	// go ba.fakeAnimation(atr.FactionID)
 
 	ctx := context.Background()
 	factionAbilityEvent := &server.FactionAbilityEvent{
-		FactionAbilityID: atr.FactionAbilityID,
-		IsTriggered:      atr.IsSuccess,
-		TriggeredByUser:  atr.TriggeredByUser,
-		TriggeredOnCellX: atr.TriggeredOnCellX,
-		TriggeredOnCellY: atr.TriggeredOnCellY,
+		FactionAbilityID:  atr.FactionAbilityID,
+		IsTriggered:       atr.IsSuccess,
+		TriggeredByUserID: atr.TriggeredByUserID,
+		TriggeredOnCellX:  atr.TriggeredOnCellX,
+		TriggeredOnCellY:  atr.TriggeredOnCellY,
 	}
 
 	err := db.FactionAbilityEventCreate(ctx, ba.Conn, ba.battle.ID, factionAbilityEvent)
@@ -53,20 +52,20 @@ func (ba *BattleArena) FactionAbilityTrigger(atr *AbilityTriggerRequest) error {
 	return nil
 }
 
-func (ba *BattleArena) fakeAnimation(factionID server.FactionID) {
-	// want second
-	i := 5
-	for i > 0 {
-		fmt.Println("wait", i, "seconds for animation to end")
-		time.Sleep(1 * time.Second)
-		i--
-	}
-	fmt.Println("wait", i, "seconds for animation to end")
-	fmt.Println("----------------------------------")
-	fmt.Println("Restart the voting cycle")
+// func (ba *BattleArena) fakeAnimation(factionID server.FactionID) {
+// 	// want second
+// 	i := 5
+// 	for i > 0 {
+// 		fmt.Println("wait", i, "seconds for animation to end")
+// 		time.Sleep(1 * time.Second)
+// 		i--
+// 	}
+// 	fmt.Println("wait", i, "seconds for animation to end")
+// 	fmt.Println("----------------------------------")
+// 	fmt.Println("Restart the voting cycle")
 
-	ba.Events.Trigger(context.Background(), Event(fmt.Sprintf("%s:%s", factionID, EventAnamationEnd)), nil)
-}
+// 	ba.Events.Trigger(context.Background(), Event(fmt.Sprintf("%s:%s", factionID, EventAnamationEnd)), nil)
+// }
 
 func (ba *BattleArena) FakeWarMachinePositionUpdate() {
 	i := 1

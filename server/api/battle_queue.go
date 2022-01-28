@@ -70,7 +70,7 @@ func (api *API) GetBattleWarMachineFromQueue(factionID server.FactionID) []*serv
 		api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchFactionWarMachineQueueUpdated, factionID)), wmq.WarMachines[:maxLength])
 
 		// broadcast war machine queue position update
-		api.Passport.WarMachineQueuePosition(context.Background(), "war_machine_queue_position", BuildUserWarMachineQueuePosition(wmq.WarMachines))
+		api.Passport.WarMachineQueuePositionBroadcast(context.Background(), BuildUserWarMachineQueuePosition(wmq.WarMachines))
 
 		// return the war machines
 		inGameWarMachinesChan <- tempList

@@ -78,17 +78,17 @@ func FactionAbilityEventCreate(ctx context.Context, conn Conn, battleID server.B
 				id
 		)
 		INSERT INTO 
-			faction_ability_events (event_id, faction_ability_id, is_triggered, triggered_by_user, triggered_on_cell_x, triggered_on_cell_y)
+			faction_ability_events (event_id, faction_ability_id, is_triggered, triggered_by_user_id, triggered_on_cell_x, triggered_on_cell_y)
 		VALUES 
 			((SELECT id FROM rows), $2, $3, $4, $5, $6)
 		RETURNING 
-			id, event_id, faction_ability_id, is_triggered, triggered_by_user, triggered_on_cell_x, triggered_on_cell_y;
+			id, event_id, faction_ability_id, is_triggered, triggered_by_user_id, triggered_on_cell_x, triggered_on_cell_y;
 	`
 	err := pgxscan.Get(ctx, conn, factionAbilityEvent, q,
 		battleID,
 		factionAbilityEvent.FactionAbilityID,
 		factionAbilityEvent.IsTriggered,
-		factionAbilityEvent.TriggeredByUser,
+		factionAbilityEvent.TriggeredByUserID,
 		factionAbilityEvent.TriggeredOnCellX,
 		factionAbilityEvent.TriggeredOnCellY,
 	)
