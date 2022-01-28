@@ -15,7 +15,7 @@ import (
 	"github.com/gofrs/uuid"
 )
 
-const TickTime = 2
+const TickTime = 3
 
 type ClientAction string
 
