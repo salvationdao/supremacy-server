@@ -16,9 +16,19 @@ LOCAL_DEV_DB_DATABASE=$(PACKAGE)
 DB_CONNECTION_STRING="postgres://$(LOCAL_DEV_DB_USER):$(LOCAL_DEV_DB_PASS)@$(LOCAL_DEV_DB_HOST):$(LOCAL_DEV_DB_PORT)/$(LOCAL_DEV_DB_DATABASE)?sslmode=disable"
 
 # Make Commands
+.PHONY: clean
+clean:
+	rm -rf deploy
+
+.PHONY: deploy-package
+deploy-package: clean tools build
+	mkdir -p deploy/migrations/
+	cp $(BIN)/migrate deploy/.
+	cp -r $(SERVER)/db/migrations deploy/migrations/.
+
 .PHONY: build
 build:
-	cd $(SERVER) && go build -o platform cmd/gameserver/main.go
+	cd $(SERVER) && go build -o ../deploy/gameserver cmd/gameserver/main.go
 
 .PHONY: tools
 tools: go-mod-tidy
@@ -118,4 +128,3 @@ wt:
 .PHONY: serve-test
 serve-test:
 	cd server && go test ./...
-
