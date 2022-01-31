@@ -140,6 +140,11 @@ func (th *TwitchControllerWS) FactionAbilityFirstVote(ctx context.Context, wsc *
 			return
 		}
 
+		// store vote amount to live voting data
+		th.API.liveVotingData[f.ID] <- func(lvd *LiveVotingData) {
+			lvd.TotalVote.Add(&lvd.TotalVote.Int, &req.Payload.PointSpend.Int)
+		}
+
 		// update vote result if it is in first vote phase
 		if vs.Phase == VotePhaseFirstVote {
 			_, ok = fvs[req.Payload.FactionAbilityID].UserVoteMap[userID]
@@ -275,22 +280,24 @@ func (th *TwitchControllerWS) FactionAbilitySecondVote(ctx context.Context, wsc 
 			return
 		}
 
+		amount := server.BigInt{Int: *big.NewInt(1000000000000000000)}
 		reason := fmt.Sprintf("battle:%s|voteaction:%s", th.API.BattleArena.CurrentBattleID(), req.Payload.FactionAbilityID)
-		supTransactionReference, err := th.API.Passport.SendHoldSupsMessage(context.Background(), userID, server.BigInt{Int: *big.NewInt(1000000000000000000)}, req.TransactionID, reason)
+		supTransactionReference, err := th.API.Passport.SendHoldSupsMessage(context.Background(), userID, amount, req.TransactionID, reason)
 		if err != nil {
 			th.API.Log.Err(err).Msg("failed to spend sups")
 			return
 		}
 
+		// store vote amount to live voting data
+		th.API.liveVotingData[f.ID] <- func(lvd *LiveVotingData) {
+			lvd.TotalVote.Add(&lvd.TotalVote.Int, &amount.Int)
+		}
+
 		// add vote to result
 		if req.Payload.IsAgreed {
-			svs.AgreeCountLock.Lock()
 			svs.AgreedCount = append(svs.AgreedCount, supTransactionReference)
-			svs.AgreeCountLock.Unlock()
 		} else {
-			svs.DisagreedCountLock.Lock()
 			svs.DisagreedCount = append(svs.DisagreedCount, supTransactionReference)
-			svs.DisagreedCountLock.Unlock()
 		}
 
 		errChan <- nil
@@ -511,6 +518,8 @@ func (th *TwitchControllerWS) FactionWarMachineQueueUpdateSubscribeHandler(ctx c
 
 	return req.TransactionID, busKey, nil
 }
+
+const HubKeyTwitchLiveVotingDataUpdated hub.HubCommandKey = "TWITCH:LIVE:VOTING:DATA:UPDATED"
 
 const HubKeyTwitchFactionAbilityUpdated = hub.HubCommandKey("TWITCH:FACTION:ABILITY:UPDATED")
 

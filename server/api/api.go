@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"net/http"
 	"server"
 	"server/battle_arena"
 	"server/passport"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/ninja-syndicate/hub/ext/messagebus"
@@ -21,6 +23,8 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-software/log_helpers"
+	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-software/tickle"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/auth"
 	zerologger "github.com/ninja-syndicate/hub/ext/zerolog"
@@ -56,6 +60,7 @@ type API struct {
 
 	// map channels
 	factionVoteCycle map[server.FactionID]chan func(*server.Faction, *VoteStage, FirstVoteState, *FirstVoteResult, *secondVoteResult, *FactionVotingTicker)
+	liveVotingData   map[server.FactionID]chan func(*LiveVotingData)
 
 	// client channels
 	hubClientDetail map[*hub.Client]chan func(*HubClientDetail)
@@ -105,6 +110,8 @@ func NewAPI(
 		}),
 		// channel for faction voting system
 		factionVoteCycle: make(map[server.FactionID]chan func(*server.Faction, *VoteStage, FirstVoteState, *FirstVoteResult, *secondVoteResult, *FactionVotingTicker)),
+		liveVotingData:   make(map[server.FactionID]chan func(*LiveVotingData)),
+
 		// channel for handling hub client
 		hubClientDetail: make(map[*hub.Client]chan func(*HubClientDetail)),
 		onlineClientMap: make(chan *ClientUpdate),
@@ -203,6 +210,9 @@ func (api *API) SetupAfterConnections() {
 
 	// get all the faction list from passport server
 	for _, faction := range api.factionMap {
+		// start live voting ticker
+		api.liveVotingData[faction.ID] = make(chan func(*LiveVotingData))
+		go api.startLiveVotingDataTicker(faction.ID)
 
 		// start voting cycle
 		api.factionVoteCycle[faction.ID] = make(chan func(*server.Faction, *VoteStage, FirstVoteState, *FirstVoteResult, *secondVoteResult, *FactionVotingTicker))
@@ -211,8 +221,61 @@ func (api *API) SetupAfterConnections() {
 		// start battle queue
 		api.battleQueueMap[faction.ID] = make(chan func(*warMachineQueuingList))
 		go api.startBattleQueue(faction.ID)
-
 	}
+
+	// start live voting broadcaster
+	tickle.MinDurationOverride = true
+	liveVotingBroadcasterLogger := log_helpers.NamedLogger(api.Log, "Live Voting Broadcaster").Level(zerolog.TraceLevel)
+	liveVotingBroadcaster := tickle.New("Live Voting Broadcaster", 0.2, func() (int, error) {
+		totalVote := server.BigInt{Int: *big.NewInt(0)}
+		totalVoteMutex := sync.Mutex{}
+		for _, faction := range factions {
+			voteCountChan := make(chan server.BigInt)
+			api.liveVotingData[faction.ID] <- func(lvd *LiveVotingData) {
+				// pass value back
+				voteCountChan <- lvd.TotalVote
+
+				// clear current value
+				lvd.TotalVote = server.BigInt{Int: *big.NewInt(0)}
+			}
+
+			voteCount := <-voteCountChan
+
+			// protect total vote
+			totalVoteMutex.Lock()
+			totalVote.Add(&totalVote.Int, &voteCount.Int)
+			totalVoteMutex.Unlock()
+		}
+
+		// broadcast notification to all the connected clients
+		broadcastData, err := json.Marshal(&BroadcastPayload{
+			Key:     HubKeyTwitchLiveVotingDataUpdated,
+			Payload: totalVote,
+		})
+		if err != nil {
+			return http.StatusInternalServerError, terror.Error(err)
+		}
+
+		api.Hub.Clients(func(clients hub.ClientsList) {
+
+			for client, ok := range clients {
+				if !ok {
+					continue
+				}
+				go func(c *hub.Client) {
+					err := c.Send(broadcastData)
+					if err != nil {
+						api.Log.Err(err).Msg("failed to send broadcast")
+					}
+				}(client)
+			}
+		})
+
+		return http.StatusOK, nil
+	})
+	liveVotingBroadcaster.Log = &liveVotingBroadcasterLogger
+
+	liveVotingBroadcaster.Start()
 }
 
 // Event handlers

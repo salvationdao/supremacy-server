@@ -277,7 +277,7 @@ func (pp *Passport) sendPump(callbackChannels map[string]*callbackChannel) {
 			}
 
 			if msg.ErrChan == nil {
-				msg.ErrChan <- terror.Error(fmt.Errorf("missing err chan"))
+				msg.ErrChan <- terror.Error(fmt.Errorf("missing err channel"))
 				continue
 			}
 
