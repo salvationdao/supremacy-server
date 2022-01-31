@@ -25,9 +25,10 @@ clean:
 
 .PHONY: deploy-package
 deploy-prep: clean tools build
-	mkdir -p deploy/migrations/
+	mkdir -p deploy
 	cp $(BIN)/migrate deploy/.
-	cp -r $(SERVER)/db/migrations deploy/migrations/.
+	cp -r ./configs deploy/.
+	cp -r $(SERVER)/db/migrations deploy/.
 
 .PHONY: build
 build:
