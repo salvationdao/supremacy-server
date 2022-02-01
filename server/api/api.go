@@ -69,7 +69,7 @@ type API struct {
 	// battle queue channels
 	battleQueueMap map[server.FactionID]chan func(*warMachineQueuingList)
 
-	twitchJWTAuthChan chan func(TwitchJWTAuthMap)
+	ringCheckAuthChan chan func(RingCheckAuthMap)
 }
 
 // NewAPI registers routes
@@ -118,7 +118,7 @@ func NewAPI(
 		// channel for battle queue
 		battleQueueMap: make(map[server.FactionID]chan func(*warMachineQueuingList)),
 
-		twitchJWTAuthChan: make(chan func(TwitchJWTAuthMap)),
+		ringCheckAuthChan: make(chan func(RingCheckAuthMap)),
 	}
 
 	// start twitch jwt auth listener
@@ -147,6 +147,7 @@ func NewAPI(
 	_ = NewCheckController(log, conn, api)
 	_ = NewTwitchController(log, conn, api)
 	_ = NewUserController(log, conn, api)
+	_ = NewAuthController(log, conn, api)
 
 	///////////////////////////
 	//		 Hub Events		 //

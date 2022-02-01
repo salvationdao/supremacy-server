@@ -8,6 +8,7 @@ import (
 	"server/passport"
 	"strconv"
 
+	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
@@ -330,9 +331,10 @@ func (api *API) PassportWarMachineQueuePositionHandler(ctx context.Context, payl
 type AuthedTwitchExtensionRequest struct {
 	Key     passport.Event `json:"key"`
 	Payload struct {
-		User               server.User   `json:"user"`
-		SessionID          hub.SessionID `json:"sessionID"`
-		TwitchExtensionJWT string        `json:"twitchExtensionJWT"`
+		User                server.User   `json:"user"`
+		SessionID           hub.SessionID `json:"sessionID"`
+		TwitchExtensionJWT  string        `json:"twitchExtensionJWT"`
+		GameserverSessionID string        `json:"gameserverSessionID"`
 	} `json:"payload"`
 }
 
@@ -341,12 +343,31 @@ func (api *API) AuthRingCheckHandler(ctx context.Context, payload []byte) {
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		api.Log.Err(err).Msg("error unmarshalling passport auth ring check")
+		return
 	}
-	api.twitchJWTAuthChan <- func(tjm TwitchJWTAuthMap) {
-		hubClient, ok := tjm[req.Payload.TwitchExtensionJWT]
+
+	if req.Payload.TwitchExtensionJWT == "" && req.Payload.GameserverSessionID == "" {
+		api.Log.Err(fmt.Errorf("Not auth key provided"))
+		return
+	}
+
+	ringCheckKey := req.Payload.TwitchExtensionJWT
+	if ringCheckKey == "" {
+		ringCheckKey = req.Payload.GameserverSessionID
+	}
+
+	api.ringCheckAuthChan <- func(rca RingCheckAuthMap) {
+		hubClient, ok := rca[ringCheckKey]
 		if !ok {
 			return
 		}
+
+		if req.Payload.GameserverSessionID != "" && req.Payload.GameserverSessionID != string(hubClient.SessionID) {
+			api.Log.Err(fmt.Errorf("Session id does not match"))
+			return
+		}
+		// reset session id for security
+		hubClient.SessionID = hub.SessionID(uuid.Must(uuid.NewV4()).String())
 
 		hubClientDetail, ok := api.hubClientDetail[hubClient]
 		if !ok {
@@ -407,6 +428,6 @@ func (api *API) AuthRingCheckHandler(ctx context.Context, payload []byte) {
 		}
 
 		// delete jwt from map
-		delete(tjm, req.Payload.TwitchExtensionJWT)
+		delete(rca, req.Payload.TwitchExtensionJWT)
 	}
 }

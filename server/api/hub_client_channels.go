@@ -12,15 +12,15 @@ import (
 * Twitch JWT Auth Map *
 **********************/
 
-type TwitchJWTAuthMap map[string]*hub.Client
+type RingCheckAuthMap map[string]*hub.Client
 
 func (api *API) startTwitchJWTAuthListener() {
 
-	twitchJWTAuthMap := make(TwitchJWTAuthMap)
+	ringCheckAuthMap := make(RingCheckAuthMap)
 
 	go func() {
-		for fn := range api.twitchJWTAuthChan {
-			fn(twitchJWTAuthMap)
+		for fn := range api.ringCheckAuthChan {
+			fn(ringCheckAuthMap)
 		}
 	}()
 

@@ -33,7 +33,6 @@ func NewTwitchController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Twi
 		API:  api,
 	}
 
-	// api.Command(HubKeyTwitchAuth, twitchHub.Authentication)
 	api.Command(HubKeyTwitchJWTAuth, twitchHub.JWTAuth)
 	api.SecureUserFactionCommand(HubKeyTwitchFactionAbilityFirstVote, twitchHub.FactionAbilityFirstVote)
 	api.SecureUserCommand(HubKeyTwitchFactionAbilitySecondVote, twitchHub.FactionAbilitySecondVote)
@@ -65,18 +64,18 @@ func (th *TwitchControllerWS) JWTAuth(ctx context.Context, wsc *hub.Client, payl
 		return terror.Error(err)
 	}
 
-	th.API.twitchJWTAuthChan <- func(tjm TwitchJWTAuthMap) {
-		tjm[req.Payload.TwitchToken] = wsc
+	th.API.ringCheckAuthChan <- func(rca RingCheckAuthMap) {
+		rca[req.Payload.TwitchToken] = wsc
 	}
 
 	// distroy the token in 30 second
 	go func() {
 		time.Sleep(600 * time.Second)
 
-		th.API.twitchJWTAuthChan <- func(tjm TwitchJWTAuthMap) {
-			_, ok := tjm[req.Payload.TwitchToken]
+		th.API.ringCheckAuthChan <- func(rca RingCheckAuthMap) {
+			_, ok := rca[req.Payload.TwitchToken]
 			if ok {
-				delete(tjm, req.Payload.TwitchToken)
+				delete(rca, req.Payload.TwitchToken)
 			}
 		}
 	}()
