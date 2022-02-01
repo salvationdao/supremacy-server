@@ -44,6 +44,7 @@ CREATE TABLE battles_war_machines (
 -- faction_abilities
 CREATE TABLE faction_abilities (
     id uuid PRIMARY KEY NOT NULL DEFAULT gen_random_uuid (),
+    game_client_ability_id int NOT NULL, -- gameclient uses byte/enum instead of uuid
     faction_id uuid NOT NULL,
     label text NOT NULL,
     type text NOT NULL,
@@ -59,7 +60,7 @@ CREATE TABLE war_machine_destroyed_events (
     event_id uuid NOT NULL REFERENCES battle_events (id),
     destroyed_war_machine_id numeric(78, 0) NOT NULL,
     kill_by_war_machine_id numeric(78, 0),
-    kill_by_faction_ability_id uuid REFERENCES faction_abilities (id)
+    related_event_id uuid REFERENCES battle_events (id)
 );
 
 CREATE TABLE war_machine_destroyed_events_assisted_war_machines (

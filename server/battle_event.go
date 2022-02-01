@@ -23,23 +23,30 @@ type BattleEvent struct {
 }
 
 type WarMachineDestroyedEvent struct {
-	ID                     WarMachineDestroyedEventID `json:"id" db:"id"`
-	EventID                EventID                    `json:"eventID" db:"event_id"`
-	DestroyedWarMachineID  uint64                     `json:"destroyedWarMachineID" db:"destroyed_war_machine_id"`
-	KillByWarMachineID     *uint64                    `json:"killByWarMachineID,omitempty" db:"kill_by_war_machine_id,omitempty"`
-	KillByFactionAbilityID *uint64                    `json:"killByFactionAbilityID,omitempty" db:"kill_by_faction_ability_id,omitempty"`
-	AssistedWarMachineIDs  []uint64                   `json:"assistedWarMachineIDs"`
-	KilledBy               string                     `json:"killedBy"` // this will hold weapon name or event name?
+	ID                    WarMachineDestroyedEventID `json:"id" db:"id"`
+	EventID               EventID                    `json:"eventID" db:"event_id"`
+	DestroyedWarMachineID uint64                     `json:"destroyedWarMachineID" db:"destroyed_war_machine_id"`
+	KillByWarMachineID    *uint64                    `json:"killByWarMachineID,omitempty" db:"kill_by_war_machine_id,omitempty"`
+	RelatedEventID        *EventID                   `json:"relatedEventID,omitempty" db:"related_event_id,omitempty"`
+	RelatedEventIDString  string                     `json:"relatedEventIDString,omitempty" `
+	//AssistedWarMachineIDs  []uint64                   `json:"assistedWarMachineIDs"`
+	//KilledBy               string                     `json:"killedBy"` // this will hold weapon name or event name?
 }
 
 type FactionAbilityEvent struct {
-	ID                FactionAbilityEventID `json:"id" db:"id"`
-	EventID           EventID               `json:"eventID" db:"event_id"`
-	FactionAbilityID  FactionAbilityID      `json:"factionAbilityID" db:"faction_ability_id"`
-	IsTriggered       bool                  `json:"isTriggered" db:"is_triggered"`
-	TriggeredByUserID *string               `json:"triggeredByUserID,omitempty" db:"triggered_by_user_id,omitempty"`
-	TriggeredOnCellX  *int                  `json:"triggeredOnCellX,omitempty" db:"triggered_on_cell_x,omitempty"`
-	TriggeredOnCellY  *int                  `json:"triggeredOnCellY,omitempty" db:"triggered_on_cell_y,omitempty"`
+	ID                  FactionAbilityEventID `json:"id" db:"id"`
+	EventID             EventID               `json:"eventID" db:"event_id"`
+	FactionAbilityID    FactionAbilityID      `json:"factionAbilityID" db:"faction_ability_id"`
+	GameClientAbilityID byte                  `json:"gameClientAbilityID" db:"game_client_ability_id"`
+	IsTriggered         bool                  `json:"isTriggered" db:"is_triggered"`
+	TriggeredByUserID   *string               `json:"TriggeredByUserID,omitempty" db:"triggered_by_user_id,omitempty"`
+	TriggeredByUsername *string               `json:"triggeredByUsername"`
+	TriggeredOnCellX    *int                  `json:"triggeredOnCellX,omitempty" db:"triggered_on_cell_x,omitempty"`
+	TriggeredOnCellY    *int                  `json:"triggeredOnCellY,omitempty" db:"triggered_on_cell_y,omitempty"`
+	GameLocation        struct {
+		X int `json:"X"`
+		Y int `json:"Y"`
+	} `json:"gameLocation"`
 }
 
 type EventID uuid.UUID

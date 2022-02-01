@@ -4,7 +4,6 @@ import (
 	"context"
 	"server"
 	"server/db"
-	"time"
 
 	"github.com/ninja-software/terror/v2"
 )
@@ -23,23 +22,29 @@ func (ba *BattleArena) FactionAbilitiesQuery(factionID server.FactionID) ([]*ser
 	return factionAbilities, nil
 }
 
+const BattleAbilityCommand = BattleCommand("BATTLE:ABILITY")
+
 type AbilityTriggerRequest struct {
-	FactionID         server.FactionID
-	FactionAbilityID  server.FactionAbilityID
-	IsSuccess         bool
-	TriggeredByUserID *string
-	TriggeredOnCellX  *int
-	TriggeredOnCellY  *int
+	FactionID           server.FactionID
+	FactionAbilityID    server.FactionAbilityID
+	IsSuccess           bool
+	TriggeredByUserID   *string
+	TriggeredByUsername *string
+	TriggeredOnCellX    *int
+	TriggeredOnCellY    *int
+	GameClientAbilityID byte
 }
 
 func (ba *BattleArena) FactionAbilityTrigger(atr *AbilityTriggerRequest) error {
+
 	ctx := context.Background()
 	factionAbilityEvent := &server.FactionAbilityEvent{
-		FactionAbilityID:  atr.FactionAbilityID,
-		IsTriggered:       atr.IsSuccess,
-		TriggeredByUserID: atr.TriggeredByUserID,
-		TriggeredOnCellX:  atr.TriggeredOnCellX,
-		TriggeredOnCellY:  atr.TriggeredOnCellY,
+		FactionAbilityID:    atr.FactionAbilityID,
+		IsTriggered:         atr.IsSuccess,
+		TriggeredByUserID:   atr.TriggeredByUserID,
+		TriggeredOnCellX:    atr.TriggeredOnCellX,
+		TriggeredOnCellY:    atr.TriggeredOnCellY,
+		GameClientAbilityID: atr.GameClientAbilityID,
 	}
 
 	err := db.FactionAbilityEventCreate(ctx, ba.Conn, ba.battle.ID, factionAbilityEvent)
@@ -47,45 +52,59 @@ func (ba *BattleArena) FactionAbilityTrigger(atr *AbilityTriggerRequest) error {
 		return terror.Error(err)
 	}
 
+	// TODO: add possible counter animations in unreal
+	if !factionAbilityEvent.IsTriggered {
+		return nil
+	}
+
+	// Get the ability enum
+	//fa, err := db.FactionAbilityGetRandom()
+
+	// To get the location in game its
+	//  ((cellX * GameClientTileSize) + GameClientTileSize / 2) + LeftPixels
+	//  ((cellY * GameClientTileSize) + GameClientTileSize / 2) + TopPixels
+	if factionAbilityEvent.TriggeredOnCellX != nil && factionAbilityEvent.TriggeredOnCellY != nil {
+		factionAbilityEvent.GameLocation.X = ((*factionAbilityEvent.TriggeredOnCellX * server.GameClientTileSize) + (server.GameClientTileSize / 2)) + ba.battle.GameMap.LeftPixels
+		factionAbilityEvent.GameLocation.Y = ((*factionAbilityEvent.TriggeredOnCellY * server.GameClientTileSize) + (server.GameClientTileSize / 2)) + ba.battle.GameMap.TopPixels
+	}
+
+	// send new battle details to game client
+	ctx, cancel := context.WithCancel(ba.ctx)
+
+	gameMessage := &GameMessage{
+		BattleCommand: BattleAbilityCommand,
+		Payload:       factionAbilityEvent,
+		context:       ctx,
+		cancel:        cancel,
+	}
+
+	ba.send <- gameMessage
 	return nil
 }
 
-func (ba *BattleArena) FakeWarMachinePositionUpdate() {
-	i := 1
-	for {
-		for _, warMachine := range ba.battle.WarMachines {
-			// remain health
-			if warMachine.RemainHitPoint == 0 {
-				warMachine.RemainHitPoint = 500
-			} else {
-				warMachine.RemainHitPoint -= 2
-			}
-
-			if warMachine.RemainShield == 0 {
-				warMachine.RemainShield = 100
-			} else {
-				warMachine.RemainShield -= 1
-			}
-
-			// do update
-			scale := 1
-			if i%2 == 0 {
-				scale = -1
-			}
-
-			warMachine.Rotation = i % 360
-			warMachine.Position.X += 10 * scale
-			warMachine.Position.Y -= 10 * scale
-
-		}
-
-		// broadcast
-		ba.Events.Trigger(context.Background(), EventWarMachineStateUpdated, &EventData{
-			BattleArena: ba.battle,
-		})
-
-		time.Sleep(250 * time.Millisecond)
-		i++
-	}
-
-}
+//
+//func (ba *BattleArena) FakeWarMachinePositionUpdate() {
+//	i := 1
+//	for {
+//		for _, warMachine := range ba.battle.WarMachines {
+//			// do update
+//			scale := 1
+//			if i%2 == 0 {
+//				scale = -1
+//			}
+//
+//			warMachine.Rotation = i % 360
+//			warMachine.Position.X += 10 * scale
+//			warMachine.Position.Y -= 10 * scale
+//		}
+//
+//		// broadcast
+//		ba.Events.Trigger(context.Background(), EventWarMachinePositionChanged, &EventData{
+//			BattleArena: ba.battle,
+//		})
+//
+//		time.Sleep(250 * time.Millisecond)
+//		i++
+//	}
+//
+//}

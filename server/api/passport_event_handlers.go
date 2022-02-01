@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"server"
+	"server/battle_arena"
 	"server/passport"
 	"strconv"
 
@@ -77,6 +78,7 @@ func (api *API) PassportUserUpdatedHandler(ctx context.Context, payload []byte) 
 					if !req.Payload.User.FactionID.IsNil() {
 						user.Faction = api.factionMap[req.Payload.User.FactionID]
 					}
+
 					// send
 					resp := struct {
 						Key           hub.HubCommandKey `json:"key"`
@@ -141,6 +143,7 @@ func (api *API) PassportUserEnlistFactionHandler(ctx context.Context, payload []
 					FactionID: req.Payload.FactionID,
 					Faction:   faction,
 				}
+
 				// send
 				resp := struct {
 					Key           hub.HubCommandKey `json:"key"`
@@ -183,7 +186,7 @@ func (api *API) PassportBattleQueueJoinHandler(ctx context.Context, payload []by
 	}
 
 	if !req.Payload.WarMachineNFT.FactionID.IsNil() {
-		api.battleQueueMap[req.Payload.WarMachineNFT.FactionID] <- func(wmq *warMachineQueuingList) {
+		api.BattleArena.BattleQueueMap[req.Payload.WarMachineNFT.FactionID] <- func(wmq *battle_arena.WarMachineQueuingList) {
 			// skip if the war machine already join the queue
 			if checkWarMachineExist(wmq.WarMachines, req.Payload.WarMachineNFT.TokenID) != -1 {
 				api.Log.Err(terror.ErrInvalidInput).Msgf("Asset %d is already in the queue", req.Payload.WarMachineNFT.TokenID)
@@ -242,7 +245,7 @@ func (api *API) PassportBattleQueueReleaseHandler(ctx context.Context, payload [
 	}
 
 	if !req.Payload.WarMachineNFT.FactionID.IsNil() {
-		api.battleQueueMap[req.Payload.WarMachineNFT.FactionID] <- func(wmq *warMachineQueuingList) {
+		api.BattleArena.BattleQueueMap[req.Payload.WarMachineNFT.FactionID] <- func(wmq *battle_arena.WarMachineQueuingList) {
 			// check war machine is in the queue
 			index := checkWarMachineExist(wmq.WarMachines, req.Payload.WarMachineNFT.TokenID)
 			if index < 0 {
@@ -267,7 +270,7 @@ func (api *API) PassportBattleQueueReleaseHandler(ctx context.Context, payload [
 				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchFactionWarMachineQueueUpdated, req.Payload.WarMachineNFT.FactionID)), wmq.WarMachines[:maxLength])
 			}
 
-			api.Passport.WarMachineQueuePositionBroadcast(context.Background(), BuildUserWarMachineQueuePosition(wmq.WarMachines))
+			api.Passport.WarMachineQueuePositionBroadcast(context.Background(), battle_arena.BuildUserWarMachineQueuePosition(wmq.WarMachines))
 		}
 	}
 }
@@ -300,7 +303,7 @@ func (api *API) PassportWarMachineQueuePositionHandler(ctx context.Context, payl
 
 	warMachineQueuePositionChan := make(chan []*passport.WarMachineQueuePosition)
 
-	api.battleQueueMap[req.Payload.FactionID] <- func(wmq *warMachineQueuingList) {
+	api.BattleArena.BattleQueueMap[req.Payload.FactionID] <- func(wmq *battle_arena.WarMachineQueuingList) {
 		warMachineQueuePosition := []*passport.WarMachineQueuePosition{}
 		for i, wm := range wmq.WarMachines {
 			if wm.OwnedByID != req.Payload.UserID {

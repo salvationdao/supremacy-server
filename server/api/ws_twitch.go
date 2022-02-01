@@ -386,18 +386,26 @@ func (th *TwitchControllerWS) ActionLocationSelect(ctx context.Context, wsc *hub
 		// broadcast current stage to current faction users
 		th.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchFactionVoteStageUpdated, f.ID)), vs)
 
+		userDetails, err := th.API.getClientDetailFromChannel(wsc)
+		if err != nil {
+			errChan <- terror.Error(err)
+			return
+		}
+
 		userIDString := userID.String()
 		selectedX := req.Payload.XIndex
 		selectedY := req.Payload.YIndex
 
 		// signal ability animation
 		err = th.API.BattleArena.FactionAbilityTrigger(&battle_arena.AbilityTriggerRequest{
-			FactionID:         f.ID,
-			FactionAbilityID:  fvr.factionAbilityID,
-			IsSuccess:         true,
-			TriggeredByUserID: &userIDString,
-			TriggeredOnCellX:  &selectedX,
-			TriggeredOnCellY:  &selectedY,
+			FactionID:           f.ID,
+			FactionAbilityID:    fvr.factionAbilityID,
+			IsSuccess:           true,
+			GameClientAbilityID: fvs[fvr.factionAbilityID].FactionAbility.GameClientAbilityID,
+			TriggeredByUserID:   &userIDString,
+			TriggeredByUsername: &userDetails.Username,
+			TriggeredOnCellX:    &selectedX,
+			TriggeredOnCellY:    &selectedY,
 		})
 		if err != nil {
 			errChan <- terror.Error(err)
@@ -502,8 +510,8 @@ func (th *TwitchControllerWS) FactionWarMachineQueueUpdateSubscribeHandler(ctx c
 		return "", "", terror.Error(err)
 	}
 
-	if battleQueue, ok := th.API.battleQueueMap[hubClientDetail.FactionID]; ok {
-		battleQueue <- func(wmql *warMachineQueuingList) {
+	if battleQueue, ok := th.API.BattleArena.BattleQueueMap[hubClientDetail.FactionID]; ok {
+		battleQueue <- func(wmql *battle_arena.WarMachineQueuingList) {
 			maxLength := 5
 			if len(wmql.WarMachines) < maxLength {
 				maxLength = len(wmql.WarMachines)

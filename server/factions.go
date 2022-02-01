@@ -24,6 +24,7 @@ const (
 
 type FactionAbility struct {
 	ID                     FactionAbilityID   `json:"id" db:"id"`
+	GameClientAbilityID    byte               `json:"gameClientAbilityID" db:"game_client_ability_id"`
 	FactionID              FactionID          `json:"factionID" db:"faction_id"`
 	Label                  string             `json:"label" db:"label"`
 	Type                   FactionAbilityType `json:"type" db:"type"`

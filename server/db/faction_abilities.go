@@ -12,14 +12,15 @@ import (
 func FactionAbilityCreate(ctx context.Context, conn Conn, factionAbility *server.FactionAbility) error {
 	q := `
 		INSERT INTO
-			faction_abilities (faction_id, label, type, colour, sups_cost, image_url, cooldown_duration_second)
+			faction_abilities (game_client_ability_id, faction_id, label, type, colour, sups_cost, image_url, cooldown_duration_second)
 		VALUES
-			($1, $2, $3, $4, $5, $6, $7)
+			($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING
-			id, faction_id, label, type, colour, sups_cost, image_url, cooldown_duration_second
+			game_client_ability_id, id, faction_id, label, type, colour, sups_cost, image_url, cooldown_duration_second
 	`
 
 	err := pgxscan.Get(ctx, conn, factionAbility, q,
+		factionAbility.GameClientAbilityID,
 		factionAbility.FactionID,
 		factionAbility.Label,
 		factionAbility.Type,

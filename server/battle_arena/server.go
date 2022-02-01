@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/antonholmquist/jason"
-
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/log_helpers"
 	"github.com/ninja-software/terror/v2"
@@ -53,6 +52,9 @@ type BattleArena struct {
 	ctx      context.Context
 	close    context.CancelFunc
 	battle   *server.Battle
+
+	// battle queue channels
+	BattleQueueMap map[server.FactionID]chan func(*WarMachineQueuingList)
 }
 
 // NewBattleArenaClient creates a new battle arena client
@@ -70,17 +72,22 @@ func NewBattleArenaClient(ctx context.Context, logger *zerolog.Logger, conn *pgx
 		ctx:      ctx,
 		close:    cancel,
 		battle:   &server.Battle{},
+
+		// channel for battle queue
+		BattleQueueMap: make(map[server.FactionID]chan func(*WarMachineQueuingList)),
 	}
 
 	// add the commands here
 
 	// battle state
+	ba.Command(BattleReadyCommand, ba.BattleReadyHandler)
 	ba.Command(BattleStartCommand, ba.BattleStartHandler)
 	ba.Command(BattleEndCommand, ba.BattleEndHandler)
 
 	// war machines
 	ba.Command(WarMachineDestroyedCommand, ba.WarMachineDestroyedHandler)
 
+	go ba.SetupAfterConnections()
 	return ba
 }
 
@@ -117,86 +124,112 @@ func (ba *BattleArena) Close() {
 	}
 }
 
+type NetMessageType byte
+
+// NetMessageTypes
+const (
+	NetMessageTypeJSON NetMessageType = iota
+	NetMessageTypePositionTick
+)
+
 func (ba *BattleArena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithCancel(r.Context())
 	c, err := websocket.Accept(w, r, &websocket.AcceptOptions{
-		Subprotocols: []string{"gameserver-v1"},
+		//Subprotocols: []string{"gameserver-v1"},
 	})
 	if err != nil {
-		ba.Log.Printf("%v", err)
+		ba.Log.Err(err).Msg("")
+		cancel()
 		return
 	}
+
+	ba.Log.Info().Msg("game client conneted")
+
 	defer c.Close(websocket.StatusInternalError, "the sky is falling")
 
-	if c.Subprotocol() != "gameserver-v1" {
-		ba.Log.Printf("client must speak the gameserver-v1 subprotocol")
+	// if c.Subprotocol() != "gameserver-v1" {
+	// 	ba.Log.Printf("client must speak the gameserver-v1 subprotocol")
 
-		c.Close(websocket.StatusPolicyViolation, "client must speak the gameserver-v1 subprotocol")
-		return
-	}
+	// 	c.Close(websocket.StatusPolicyViolation, "client must speak the gameserver-v1 subprotocol")
+	// 	return
+	// }
 
 	// send message
-	go func() {
-		err := ba.sendPump(c)
-		if err != nil {
-			ba.Log.Err(err).Msgf("error sending message to server")
-			return
-		}
-	}()
+	go ba.sendPump(ctx, c)
 
+	// Init first battle
+	//ba.Events.Trigger(r.Context(), EventGameInit, &EventData{BattleArena: ba.battle})
+
+	go func() {
+		time.Sleep(2 * time.Second)
+		_ = ba.InitNextBattle()
+	}()
 	// listening for message
 	for {
-		ctx := context.Background()
-		_, r, err := c.Reader(ctx)
-		if err != nil {
-			ba.Log.Err(err).Msgf(err.Error())
-		}
-
-		payload, err := ioutil.ReadAll(r)
-		if err != nil {
-			ba.Log.Err(err).Msgf(`error reading out buffer`)
-			continue
-		}
-
-		v, err := jason.NewObjectFromBytes(payload)
-		if err != nil {
-			ba.Log.Err(err).Msgf(`error making object from bytes`)
-			continue
-		}
-
-		cmdKey, err := v.GetString("battleCommand")
-		if err != nil {
-			ba.Log.Err(err).Msgf(`missing json key "key"`)
-			continue
-		}
-
-		if cmdKey == "" {
-			ba.Log.Err(fmt.Errorf("missing key value")).Msgf("missing key/command value")
-			continue
-		}
-
-		ba.runGameCommand(ctx, c, BattleCommand(cmdKey), payload)
-
-		if websocket.CloseStatus(err) == websocket.StatusNormalClosure {
+		select {
+		case <-ctx.Done():
+			err := c.Close(websocket.StatusGoingAway, "context done")
+			if err != nil {
+				ba.Log.Err(err).Msg("")
+			}
+			cancel()
 			return
-		}
-		if err != nil {
-			ba.Log.Err(err).Msg(err.Error())
-			return
+		default:
+			_, r, err := c.Reader(ctx)
+			if err != nil {
+				if websocket.CloseStatus(err) == websocket.StatusNormalClosure {
+					ba.Log.Warn().Msg("game client connection lost")
+					cancel()
+					return
+				}
+				ba.Log.Err(err).Msgf(err.Error())
+			}
+
+			payload, err := ioutil.ReadAll(r)
+			if err != nil {
+				ba.Log.Err(err).Msgf(`error reading out buffer`)
+				continue
+			}
+
+			msgType := NetMessageType(payload[0])
+
+			switch msgType {
+			case NetMessageTypeJSON:
+				v, err := jason.NewObjectFromBytes(payload[1:])
+				if err != nil {
+					ba.Log.Err(err).Msgf(`error making object from bytes`)
+					continue
+				}
+				cmdKey, err := v.GetString("battleCommand")
+				if err != nil {
+					ba.Log.Err(err).Msgf(`missing json key "key"`)
+					continue
+				}
+				if cmdKey == "" {
+					ba.Log.Err(fmt.Errorf("missing key value")).Msgf("missing key/command value")
+					continue
+				}
+				ba.runGameCommand(ctx, c, BattleCommand(cmdKey), payload[1:])
+			case NetMessageTypePositionTick:
+				ba.WarMachinePositionUpdate(payload)
+			default:
+				ba.Log.Err(fmt.Errorf("unknown message type")).Msg("")
+			}
 		}
 	}
+
 }
 
-func (ba *BattleArena) sendPump(c *websocket.Conn) error {
+func (ba *BattleArena) sendPump(ctx context.Context, c *websocket.Conn) {
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case msg := <-ba.send:
 			err := writeTimeout(msg, time.Second*5, c)
 			if err != nil {
-				ba.close()
-				return terror.Error(err)
+				ba.Log.Err(err).Msg("error sending message to game client")
 			}
-		case <-ba.ctx.Done():
-			return terror.Error(ba.ctx.Err())
 		}
 	}
 }
@@ -206,7 +239,6 @@ func writeTimeout(msg *GameMessage, timeout time.Duration, c *websocket.Conn) er
 	ctx, cancel := context.WithTimeout(msg.context, timeout)
 	defer func() {
 		cancel()
-		msg.cancel()
 	}()
 
 	jsn, err := json.Marshal(msg)
@@ -282,4 +314,37 @@ func (ba *BattleArena) Command(command BattleCommand, fn BattleCommandFunc) {
 	}
 	ba.commands[command] = fn
 	ba.Log.Trace().Msg(string(command))
+}
+
+func (ba *BattleArena) SetupAfterConnections() {
+	var factions []*server.Faction
+	var err error
+
+	// TODO: FIX THIS, it seems to be super delayed in getting the factions
+
+	// get factions from passport, retrying every 10 seconds until we ge them.
+	for len(factions) <= 0 {
+		// since the passport spins up concurrently the passport connection may not be setup right away, so we check every second for the connection
+		for ba.passport == nil || ba.passport.Conn == nil || !ba.passport.Conn.Connected {
+			time.Sleep(2 * time.Second)
+		}
+
+		factions, err = ba.passport.FactionAll(ba.ctx, "faction all - gameserver")
+		if err != nil {
+			ba.Log.Err(err).Msg("unable to get factions")
+		}
+		time.Sleep(2 * time.Second)
+	}
+
+	factionMap := make(map[server.FactionID]*server.Faction)
+	for _, faction := range factions {
+		factionMap[faction.ID] = faction
+	}
+
+	// get all the faction list from passport server
+	for _, faction := range factionMap {
+		// start battle queue
+		ba.BattleQueueMap[faction.ID] = make(chan func(*WarMachineQueuingList))
+		go ba.startBattleQueue(faction.ID)
+	}
 }

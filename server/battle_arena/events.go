@@ -2,8 +2,13 @@ package battle_arena
 
 import (
 	"context"
+	"net/http"
 	"server"
+	"server/db"
+	"server/helpers"
 	"sync"
+
+	"github.com/ninja-software/terror/v2"
 )
 
 /**************
@@ -23,16 +28,17 @@ type Event string
 type EventHandler func(ctx context.Context, ed *EventData)
 
 const (
-	EventGameStart              Event = "GAME_START"
-	EventGameEnd                Event = "GAME_END"
-	EventWarMachineStateUpdated Event = "WAR_MACHINE_POSITION_CHANGED"
-	EventWarMachineDestroyed    Event = "WAR_MACHINE_DESTROYED"
+	EventGameStart                 Event = "GAME_START"
+	EventGameEnd                   Event = "GAME_END"
+	EventWarMachinePositionChanged Event = "WAR_MACHINE_POSITION_CHANGED"
+	EventWarMachineDestroyed       Event = "WAR_MACHINE_DESTROYED"
 )
 
 type EventData struct {
 	BattleArena              *server.Battle
 	FactionAbilities         []*server.FactionAbility
 	WarMachineDestroyedEvent *server.WarMachineDestroyedEvent
+	WarMachineLocation       []byte `json:"warMachineLocation"`
 }
 
 type BattleArenaEvents struct {
@@ -64,4 +70,14 @@ func (ev *BattleArenaEvents) TriggerMany(ctx context.Context, event Event, ed *E
 		}
 		ev.RUnlock()
 	}()
+}
+
+func (ba *BattleArena) GetEvents(w http.ResponseWriter, r *http.Request) (int, error) {
+	ctx := context.Background()
+	events, err := db.GetEvents(ctx, ba.Conn, nil)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err)
+	}
+
+	return helpers.EncodeJSON(w, events)
 }

@@ -1,5 +1,11 @@
 package server
 
+const GameClientTileSize = 2000
+
+// To get the location in game its
+//  ((cellX * GameClientTileSize) + GameClientTileSize / 2) + LeftPixels
+//  ((cellY * GameClientTileSize) + GameClientTileSize / 2) + TopPixels
+
 type GameMap struct {
 	ID            GameMapID `json:"id" db:"id"`
 	Name          string    `json:"name" db:"name"`
@@ -15,27 +21,29 @@ type GameMap struct {
 }
 
 type WarMachineNFT struct {
-	TokenID         uint64    `json:"tokenID"`
-	OwnedByID       UserID    `json:"ownedByID"`
-	Name            string    `json:"name"`
-	Description     string    `json:"description"`
-	ExternalUrl     string    `json:"externalUrl"`
-	Image           string    `json:"image"`
-	MaxHitPoint     int       `json:"maxHitPoint"`
-	RemainHitPoint  int       `json:"remainHitPoint"`
-	MaxShield       int       `json:"maxShield"`
-	RemainShield    int       `json:"remainShield"`
-	Speed           int       `json:"speed"`
-	Durability      int       `json:"durability"`
-	PowerGrid       int       `json:"powerGrid"`
-	CPU             int       `json:"cpu"`
-	WeaponHardpoint int       `json:"weaponHardpoint"`
-	TurretHardpoint int       `json:"turretHardpoint"`
-	UtilitySlots    int       `json:"utilitySlots"`
-	FactionID       FactionID `json:"factionID"`
-	Faction         *Faction  `json:"faction"`
-	Position        *Vector3  `json:"position"`
-	Rotation        int       `json:"rotation"`
+	TokenID            uint64    `json:"tokenID"`
+	ParticipantID      byte      `json:"participantID"`
+	OwnedByID          UserID    `json:"ownedByID"`
+	Name               string    `json:"name"`
+	Description        string    `json:"description"`
+	ExternalUrl        string    `json:"externalUrl"`
+	Image              string    `json:"image"`
+	MaxHitPoints       int       `json:"maxHitPoints"`
+	RemainingHitPoints int       `json:"remainingHitPoints"`
+	MaxShield          int       `json:"maxShield"`
+	RemainShield       int       `json:"remainShield"`
+	Speed              int       `json:"speed"`
+	Durability         int       `json:"durability"`
+	PowerGrid          int       `json:"powerGrid"`
+	CPU                int       `json:"cpu"`
+	WeaponHardpoint    int       `json:"weaponHardpoint"`
+	TurretHardpoint    int       `json:"turretHardpoint"`
+	UtilitySlots       int       `json:"utilitySlots"`
+	FactionID          FactionID `json:"factionID"`
+	Faction            *Faction  `json:"faction"`
+	WeaponNames        []string  `json:"weaponNames"`
+	Position           *Vector3  `json:"position"`
+	Rotation           int       `json:"rotation"`
 }
 
 type Vector3 struct {

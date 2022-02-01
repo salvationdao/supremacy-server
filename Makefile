@@ -11,7 +11,7 @@ SERVER = $(CURDIR)/server
 LOCAL_DEV_DB_USER=$(PACKAGE)
 LOCAL_DEV_DB_PASS=dev
 LOCAL_DEV_DB_HOST=localhost
-LOCAL_DEV_DB_PORT=${GAMESERVER_DATABASE_PORT}
+LOCAL_DEV_DB_PORT=5437
 LOCAL_DEV_DB_DATABASE=$(PACKAGE)
 DB_CONNECTION_STRING="postgres://$(LOCAL_DEV_DB_USER):$(LOCAL_DEV_DB_PASS)@$(LOCAL_DEV_DB_HOST):$(LOCAL_DEV_DB_PORT)/$(LOCAL_DEV_DB_DATABASE)?sslmode=disable"
 
@@ -46,6 +46,7 @@ docker-remove:
 .PHONY: docker-setup
 docker-setup:
 	docker exec -it $(DOCKER_CONTAINER) psql -U $(PACKAGE) -c 'CREATE EXTENSION IF NOT EXISTS pg_trgm; CREATE EXTENSION IF NOT EXISTS pgcrypto; CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'
+
 
 .PHONY: db-setup
 db-setup:
@@ -112,7 +113,7 @@ lb:
 
 .PHONY: wt
 wt:
-	wt --window 0 --tabColor #4747E2 --title "Boilerplate - Server" -p "PowerShell" -d ./server powershell -NoExit "${BIN}/arelo -p '**/*.go' -i '**/.*' -i '**/*_test.go' -i 'tools/*' -- go run cmd/platform/main.go serve" ; split-pane --tabColor #4747E2 --title "Boilerplate - Load Balancer" -p "PowerShell" -d ./ powershell -NoExit make lb ; split-pane -H -s 0.8 --tabColor #4747E2 --title "Boilerplate - Admin Frontend" --suppressApplicationTitle -p "PowerShell" -d ./web powershell -NoExit "$$env:BROWSER='none' \; npm run admin-start" ; split-pane -H -s 0.5 --tabColor #4747E2 --title "Boilerplate - Public Frontend" --suppressApplicationTitle -p "PowerShell" -d ./web powershell -NoExit "$$env:BROWSER='none' \; npm run public-start"
+	wt --window 0 --tabColor #4747E2 --title "Supremacy - Game Server" -p "PowerShell" -d ./ powershell -NoExit make serve-arelo ; split-pane --tabColor #4747E2 --title "Supremacy - Load Balancer" -p "PowerShell" -d ./ powershell -NoExit make lb ; split-pane -H -s 0.8 --tabColor #4747E2 --title "Passport Server" --suppressApplicationTitle -p "PowerShell" -d ../passport-server powershell -NoExit make serve-arelo
 
 .PHONY: serve-test
 serve-test:

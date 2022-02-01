@@ -434,9 +434,10 @@ func (api *API) voteStageListenerFactory(factionID server.FactionID) func() (int
 
 				// signal ability countered animation
 				err = api.BattleArena.FactionAbilityTrigger(&battle_arena.AbilityTriggerRequest{
-					FactionID:        f.ID,
-					FactionAbilityID: fvr.factionAbilityID,
-					IsSuccess:        false,
+					FactionID:           f.ID,
+					FactionAbilityID:    fvr.factionAbilityID,
+					GameClientAbilityID: fvs[fvr.factionAbilityID].FactionAbility.GameClientAbilityID,
+					IsSuccess:           false,
 				})
 				if err != nil {
 					api.Log.Err(err).Msg("failed to call FactionAbilityTrigger")
@@ -468,7 +469,7 @@ func (api *API) voteStageListenerFactory(factionID server.FactionID) func() (int
 						Key: HubKeyTwitchNotification,
 						Payload: &TwitchNotification{
 							Type: TwitchNotificationTypeText,
-							Data: fmt.Sprintf("Action %s from Faction %s has been cancelled, due to no one select the location.", fvs[fvr.factionAbilityID].FactionAbility.Label, f.Label),
+							Data: fmt.Sprintf("Action %s from Faction %s has been cancelled, due to no one selecting the location.", fvs[fvr.factionAbilityID].FactionAbility.Label, f.Label),
 						},
 					})
 					if err != nil {
@@ -492,9 +493,10 @@ func (api *API) voteStageListenerFactory(factionID server.FactionID) func() (int
 
 					// signal ability countered animation
 					err = api.BattleArena.FactionAbilityTrigger(&battle_arena.AbilityTriggerRequest{
-						FactionID:        f.ID,
-						FactionAbilityID: fvr.factionAbilityID,
-						IsSuccess:        false,
+						FactionID:           f.ID,
+						FactionAbilityID:    fvr.factionAbilityID,
+						GameClientAbilityID: fvs[fvr.factionAbilityID].FactionAbility.GameClientAbilityID,
+						IsSuccess:           false,
 					})
 					if err != nil {
 						api.Log.Err(err).Msg("Failed to call FactionAbilityTrigger")
