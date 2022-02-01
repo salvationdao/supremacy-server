@@ -1,0 +1,14 @@
+[Unit]
+Description=game control server service
+After=network.target
+
+[Service]
+Type=simple
+Restart=always
+User=gameserver
+WorkingDirectory=/usr/share/ninja_syndicate/gameserver-online
+ExecStart=/usr/share/ninja_syndicate/gameserver-online serve
+EnvironmentFile=-/usr/share/ninja_syndicate/gameserver-online/gameserver-staging.env
+
+[Install]
+WantedBy=multi-user.target
