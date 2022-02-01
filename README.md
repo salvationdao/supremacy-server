@@ -12,6 +12,7 @@ export GOPRIVATE="github.com/ninja-software/*"
 ### Envars
 
 ```
+export GAMESERVER_DATABASE_PORT= - postgres database port
 export GAMESERVER_TWITCH_EXTENSION_SECRET="" - in your twitch dev console
 ```
 

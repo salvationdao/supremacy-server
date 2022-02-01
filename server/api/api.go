@@ -275,6 +275,7 @@ func (api *API) SetupAfterConnections() {
 		return http.StatusOK, nil
 	})
 	liveVotingBroadcaster.Log = &liveVotingBroadcasterLogger
+	// liveVotingBroadcaster.DisableLogging = true
 
 	liveVotingBroadcaster.Start()
 }
