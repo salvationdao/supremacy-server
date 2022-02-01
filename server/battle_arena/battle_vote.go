@@ -9,7 +9,7 @@ import (
 	"github.com/ninja-software/terror/v2"
 )
 
-func (ba *BattleArena) SetFactionMap(factionMap map[server.FactionID]server.Faction) {
+func (ba *BattleArena) SetFactionMap(factionMap map[server.FactionID]*server.Faction) {
 	ba.battle.FactionMap = factionMap
 }
 
@@ -54,6 +54,19 @@ func (ba *BattleArena) FakeWarMachinePositionUpdate() {
 	i := 1
 	for {
 		for _, warMachine := range ba.battle.WarMachines {
+			// remain health
+			if warMachine.RemainHitPoint == 0 {
+				warMachine.RemainHitPoint = 500
+			} else {
+				warMachine.RemainHitPoint -= 2
+			}
+
+			if warMachine.RemainShield == 0 {
+				warMachine.RemainShield = 100
+			} else {
+				warMachine.RemainShield -= 1
+			}
+
 			// do update
 			scale := 1
 			if i%2 == 0 {
@@ -63,10 +76,11 @@ func (ba *BattleArena) FakeWarMachinePositionUpdate() {
 			warMachine.Rotation = i % 360
 			warMachine.Position.X += 10 * scale
 			warMachine.Position.Y -= 10 * scale
+
 		}
 
 		// broadcast
-		ba.Events.Trigger(context.Background(), EventWarMachinePositionChanged, &EventData{
+		ba.Events.Trigger(context.Background(), EventWarMachineStateUpdated, &EventData{
 			BattleArena: ba.battle,
 		})
 

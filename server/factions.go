@@ -7,10 +7,11 @@ type FactionTheme struct {
 }
 
 type Faction struct {
-	ID       FactionID     `json:"id" db:"id"`
-	Label    string        `json:"label" db:"label"`
-	ImageUrl string        `json:"imageUrl"`
-	Theme    *FactionTheme `json:"theme" db:"theme"`
+	ID            FactionID     `json:"id" db:"id"`
+	Label         string        `json:"label" db:"label"`
+	Theme         *FactionTheme `json:"theme" db:"theme"`
+	LogoUrl       string        `json:"logoUrl,omitempty"`
+	BackgroundUrl string        `json:"backgroundUrl,omitempty"`
 }
 
 type FactionAbilityType string

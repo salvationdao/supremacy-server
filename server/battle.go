@@ -8,15 +8,15 @@ import (
 )
 
 type Battle struct {
-	ID                BattleID              `json:"battleID" db:"id"`
-	GameMapID         GameMapID             `json:"gameMapID" db:"game_map_id"`
-	StartedAt         time.Time             `json:"startedAt" db:"started_at"`
-	EndedAt           *time.Time            `json:"endedAt" db:"ended_at"`
-	WinningCondition  *string               `json:"winningCondition" db:"winning_condition"`
-	WarMachines       []*WarMachineNFT      `json:"warMachines"`
-	WinningWarMachine *uint64               `json:"winningWarMachine"`
-	GameMap           *GameMap              `json:"map"`
-	FactionMap        map[FactionID]Faction `json:"factionMap"`
+	ID                BattleID               `json:"battleID" db:"id"`
+	GameMapID         GameMapID              `json:"gameMapID" db:"game_map_id"`
+	StartedAt         time.Time              `json:"startedAt" db:"started_at"`
+	EndedAt           *time.Time             `json:"endedAt" db:"ended_at"`
+	WinningCondition  *string                `json:"winningCondition" db:"winning_condition"`
+	WarMachines       []*WarMachineNFT       `json:"warMachines"`
+	WinningWarMachine *uint64                `json:"winningWarMachine"`
+	GameMap           *GameMap               `json:"map"`
+	FactionMap        map[FactionID]*Faction `json:"factionMap"`
 }
 
 type BattleState string

@@ -160,7 +160,7 @@ func NewAPI(
 	///////////////////////////
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventGameStart, api.BattleStartSignal)
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventGameEnd, api.BattleEndSignal)
-	api.BattleArena.Events.AddEventHandler(battle_arena.EventWarMachinePositionChanged, api.UpdateWarMachinePosition)
+	api.BattleArena.Events.AddEventHandler(battle_arena.EventWarMachineStateUpdated, api.UpdateWarMachineState)
 
 	///////////////////////////
 	//	 Passport Events	 //
@@ -208,6 +208,7 @@ func (api *API) SetupAfterConnections() {
 	for _, faction := range factions {
 		api.factionMap[faction.ID] = faction
 	}
+	api.BattleArena.SetFactionMap(api.factionMap)
 
 	// get all the faction list from passport server
 	for _, faction := range api.factionMap {
@@ -226,7 +227,7 @@ func (api *API) SetupAfterConnections() {
 
 	// start live voting broadcaster
 	tickle.MinDurationOverride = true
-	liveVotingBroadcasterLogger := log_helpers.NamedLogger(api.Log, "Live Voting Broadcaster").Level(zerolog.TraceLevel)
+	liveVotingBroadcasterLogger := log_helpers.NamedLogger(api.Log, "Live Voting Broadcaster").Level(zerolog.Disabled)
 	liveVotingBroadcaster := tickle.New("Live Voting Broadcaster", 0.2, func() (int, error) {
 		totalVote := server.BigInt{Int: *big.NewInt(0)}
 		totalVoteMutex := sync.Mutex{}
