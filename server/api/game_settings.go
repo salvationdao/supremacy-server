@@ -28,26 +28,35 @@ func (api *API) GetGameSettings(w http.ResponseWriter, r *http.Request) (int, er
 
 const HubKeyWarMachinePositionUpdated hub.HubCommandKey = hub.HubCommandKey("WARMACHINE:UPDATED")
 
-func (api *API) UpdateWarMachinePosition(ctx context.Context, ed *battle_arena.EventData) {
+type WarMachineState struct {
+	TokenID        uint64          `json:"tokenID"`
+	Position       *server.Vector3 `json:"position"`
+	Rotation       int             `json:"rotation"`
+	RemainHitPoint int             `json:"remainHitPoint"`
+	RemainShield   int             `json:"remainShield"`
+}
 
+func (api *API) UpdateWarMachineState(ctx context.Context, ed *battle_arena.EventData) {
 	if len(ed.BattleArena.WarMachines) == 0 {
 		return
 	}
 
-	positions := []*server.WarMachineNFT{}
+	warMachineStates := []*WarMachineState{}
 
 	for _, warmachine := range ed.BattleArena.WarMachines {
-		positions = append(positions, &server.WarMachineNFT{
-			TokenID:  warmachine.TokenID,
-			Position: warmachine.Position,
-			Rotation: warmachine.Rotation,
+		warMachineStates = append(warMachineStates, &WarMachineState{
+			TokenID:        warmachine.TokenID,
+			Position:       warmachine.Position,
+			Rotation:       warmachine.Rotation,
+			RemainHitPoint: warmachine.RemainHitPoint,
+			RemainShield:   warmachine.MaxShield,
 		})
 	}
 
 	// parse broadcast data
 	data, err := json.Marshal(&BroadcastPayload{
 		Key:     HubKeyWarMachinePositionUpdated,
-		Payload: positions,
+		Payload: warMachineStates,
 	})
 	if err != nil {
 		return

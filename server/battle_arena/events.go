@@ -23,10 +23,10 @@ type Event string
 type EventHandler func(ctx context.Context, ed *EventData)
 
 const (
-	EventGameStart                 Event = "GAME_START"
-	EventGameEnd                   Event = "GAME_END"
-	EventWarMachinePositionChanged Event = "WAR_MACHINE_POSITION_CHANGED"
-	EventWarMachineDestroyed       Event = "WAR_MACHINE_DESTROYED"
+	EventGameStart              Event = "GAME_START"
+	EventGameEnd                Event = "GAME_END"
+	EventWarMachineStateUpdated Event = "WAR_MACHINE_POSITION_CHANGED"
+	EventWarMachineDestroyed    Event = "WAR_MACHINE_DESTROYED"
 )
 
 type EventData struct {

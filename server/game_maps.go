@@ -23,6 +23,8 @@ type WarMachineNFT struct {
 	Image           string    `json:"image"`
 	MaxHitPoint     int       `json:"maxHitPoint"`
 	RemainHitPoint  int       `json:"remainHitPoint"`
+	MaxShield       int       `json:"maxShield"`
+	RemainShield    int       `json:"remainShield"`
 	Speed           int       `json:"speed"`
 	Durability      int       `json:"durability"`
 	PowerGrid       int       `json:"powerGrid"`

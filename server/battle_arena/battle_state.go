@@ -89,6 +89,10 @@ func (ba *BattleArena) BattleStartHandler(ctx context.Context, payload []byte, r
 		return terror.Error(err)
 	}
 
+	for _, warMachine := range req.Payload.WarMachineNFTs {
+		warMachine.Faction = ba.battle.FactionMap[warMachine.FactionID]
+	}
+
 	// set the rest fo the fields of the battle
 	ba.battle.GameMap = gameMap
 	ba.battle.WarMachines = req.Payload.WarMachineNFTs
