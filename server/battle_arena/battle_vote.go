@@ -42,6 +42,7 @@ func (ba *BattleArena) FactionAbilityTrigger(atr *AbilityTriggerRequest) error {
 		FactionAbilityID:    atr.FactionAbilityID,
 		IsTriggered:         atr.IsSuccess,
 		TriggeredByUserID:   atr.TriggeredByUserID,
+		TriggeredByUsername: atr.TriggeredByUsername,
 		TriggeredOnCellX:    atr.TriggeredOnCellX,
 		TriggeredOnCellY:    atr.TriggeredOnCellY,
 		GameClientAbilityID: atr.GameClientAbilityID,
