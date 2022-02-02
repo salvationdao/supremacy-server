@@ -107,10 +107,6 @@ outerLoop:
 		return terror.Error(err)
 	}
 
-	for _, warMachine := range ba.battle.WarMachines {
-		warMachine.Faction = ba.battle.FactionMap[warMachine.FactionID]
-	}
-
 	ba.Events.Trigger(ctx, EventGameStart, &EventData{BattleArena: ba.battle})
 
 	// start dummy war machine moving
