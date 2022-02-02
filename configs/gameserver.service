@@ -7,8 +7,8 @@ Type=simple
 Restart=always
 User=gameserver
 WorkingDirectory=/usr/share/ninja_syndicate/gameserver-online
-ExecStart=/usr/share/ninja_syndicate/gameserver-online serve
-EnvironmentFile=-/usr/share/ninja_syndicate/gameserver-online/gameserver-staging.env
+ExecStart=/usr/share/ninja_syndicate/gameserver-online/gameserver serve
+EnvironmentFile=/usr/share/ninja_syndicate/gameserver-online/configs/gameserver-staging.env
 
 [Install]
 WantedBy=multi-user.target
