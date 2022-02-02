@@ -6,6 +6,9 @@ import (
 	"errors"
 	"server"
 	"server/db"
+	"time"
+
+	"github.com/gofrs/uuid"
 
 	"github.com/jackc/pgx/v4"
 
@@ -43,19 +46,34 @@ func (ba *BattleArena) WarMachineDestroyedHandler(ctx context.Context, payload [
 		}
 	}(tx, ctx)
 
-	assistedWarMachineIDs := req.Payload.DestroyedWarMachineEvent.AssistedWarMachineIDs
+	if req.Payload.DestroyedWarMachineEvent.RelatedEventIDString != "" {
+		relatedEventuuid, err := uuid.FromString(req.Payload.DestroyedWarMachineEvent.RelatedEventIDString)
+		if err != nil {
+			return terror.Error(err)
+		}
+		vid := server.EventID(relatedEventuuid)
+		req.Payload.DestroyedWarMachineEvent.RelatedEventID = &vid
+	}
 
 	err = db.WarMachineDestroyedEventCreate(ctx, tx, req.Payload.BattleID, req.Payload.DestroyedWarMachineEvent)
 	if err != nil {
 		return terror.Error(err)
 	}
 
-	if len(assistedWarMachineIDs) > 0 {
-		err = db.WarMachineDestroyedEventAssistedWarMachineSet(ctx, tx, req.Payload.DestroyedWarMachineEvent.ID, assistedWarMachineIDs)
-		if err != nil {
-			return terror.Error(err)
+	// TODO: MAKE TREAD SAFE
+	for _, wm := range ba.battle.WarMachines {
+		if wm.TokenID == req.Payload.DestroyedWarMachineEvent.DestroyedWarMachineID {
+			wm.RemainingHitPoints = 0
 		}
 	}
+
+	// TODO: Add kill assists
+	//if len(assistedWarMachineIDs) > 0 {
+	//	err = db.WarMachineDestroyedEventAssistedWarMachineSet(ctx, tx, req.Payload.DestroyedWarMachineEvent.ID, assistedWarMachineIDs)
+	//	if err != nil {
+	//		return terror.Error(err)
+	//	}
+	//}
 
 	err = tx.Commit(ctx)
 	if err != nil {
@@ -67,4 +85,63 @@ func (ba *BattleArena) WarMachineDestroyedHandler(ctx context.Context, payload [
 		WarMachineDestroyedEvent: req.Payload.DestroyedWarMachineEvent,
 	})
 	return nil
+}
+
+func (ba *BattleArena) FakeWarMachinePositionUpdate() {
+	i := 1
+	for {
+		for _, warMachine := range ba.battle.WarMachines {
+			// do update
+			scale := 1
+			if i%2 == 0 {
+				scale = -1
+			}
+
+			warMachine.Rotation = i % 360
+			warMachine.Position.X += 10 * scale
+			warMachine.Position.Y -= 10 * scale
+		}
+
+		// broadcast
+		ba.Events.Trigger(context.Background(), EventWarMachinePositionChanged, &EventData{
+			BattleArena: ba.battle,
+		})
+
+		time.Sleep(250 * time.Millisecond)
+		i++
+	}
+
+}
+
+func (ba *BattleArena) WarMachinePositionUpdate(payload []byte) {
+	ba.battle.BattleHistory = append(ba.battle.BattleHistory, payload)
+
+	// broadcast
+	ba.Events.Trigger(context.Background(), EventWarMachinePositionChanged, &EventData{
+		BattleArena:        ba.battle,
+		WarMachineLocation: payload,
+	})
+	//i := 1
+	//for {
+	//	for _, warMachine := range ba.battle.WarMachines {
+	//		// do update
+	//		scale := 1
+	//		if i%2 == 0 {
+	//			scale = -1
+	//		}
+	//
+	//		warMachine.Rotation = i % 360
+	//		warMachine.Position.X += 10 * scale
+	//		warMachine.Position.Y -= 10 * scale
+	//	}
+	//
+	//	// broadcast
+	//	ba.Events.Trigger(context.Background(), EventWarMachinePositionChanged, &EventData{
+	//		BattleArena: ba.battle,
+	//	})
+	//
+	//	time.Sleep(250 * time.Millisecond)
+	//	i++
+	//}
+
 }

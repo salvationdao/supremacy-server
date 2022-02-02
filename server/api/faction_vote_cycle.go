@@ -10,7 +10,6 @@ import (
 	"server/battle_arena"
 	"server/helpers"
 	"sort"
-	"sync"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -20,6 +19,28 @@ import (
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
 )
+
+/************************
+* Live Voting Broadcast *
+************************/
+
+type LiveVotingData struct {
+	TotalVote server.BigInt
+}
+
+func (api *API) startLiveVotingDataTicker(factionID server.FactionID) {
+	// live voting data broadcast
+	liveVotingData := &LiveVotingData{
+		TotalVote: server.BigInt{Int: *big.NewInt(0)},
+	}
+
+	// start channel
+	go func() {
+		for fn := range api.liveVotingData[factionID] {
+			fn(liveVotingData)
+		}
+	}()
+}
 
 /*************
 * Vote Stage *
@@ -83,10 +104,8 @@ type secondVoteCandidate struct {
 }
 
 type secondVoteResult struct {
-	AgreedCount        []server.TransactionReference `json:"AgreedCount"`
-	AgreeCountLock     sync.Mutex
-	DisagreedCount     []server.TransactionReference `json:"DisagreedCount"`
-	DisagreedCountLock sync.Mutex
+	AgreedCount    []server.TransactionReference `json:"AgreedCount"`
+	DisagreedCount []server.TransactionReference `json:"DisagreedCount"`
 }
 
 /***********
@@ -117,15 +136,13 @@ func (api *API) startFactionVoteCycle(faction *server.Faction) {
 
 	// start faction voting cycle tickle
 	tickle.MinDurationOverride = true
-	voteStageLogger := log_helpers.NamedLogger(api.Log, "FactionID Voting Cycle").Level(zerolog.Disabled)
-
-	voteStageListener := tickle.New("FactionID Voting Cycle", 1, api.voteStageListenerFactory(faction.ID))
+	voteStageLogger := log_helpers.NamedLogger(api.Log, fmt.Sprintf("Faction %s Voting Cycle", faction.Label)).Level(zerolog.Disabled)
+	voteStageListener := tickle.New(fmt.Sprintf("Faction %s Voting Cycle", faction.Label), 1, api.voteStageListenerFactory(faction.ID))
 	voteStageListener.Log = &voteStageLogger
 
 	// tickle for broadcasting second result
-	secondVoteResultLogger := log_helpers.NamedLogger(api.Log, "FactionID Second Vote Broadcast").Level(zerolog.Disabled)
-
-	secondVoteResultBroadcaster := tickle.New("FactionID Second Vote Broadcast", 0.5, api.secondVoteResultBroadcasterFactory(faction.ID))
+	secondVoteResultLogger := log_helpers.NamedLogger(api.Log, fmt.Sprintf("Faction %s Second Vote Broadcast", faction.Label)).Level(zerolog.Disabled)
+	secondVoteResultBroadcaster := tickle.New(fmt.Sprintf("Faction %s Second Vote Broadcast", faction.Label), 0.5, api.secondVoteResultBroadcasterFactory(faction.ID, voteStage, secondVoteResult))
 	secondVoteResultBroadcaster.Log = &secondVoteResultLogger
 
 	tickers := &FactionVotingTicker{
@@ -172,35 +189,35 @@ func (api *API) pauseVotingCycle(factionID server.FactionID) {
 }
 
 // secondVoteResultBroadcasterFactory generate the function for broadcasting the second vote result
-func (api *API) secondVoteResultBroadcasterFactory(factionID server.FactionID) func() (int, error) {
+func (api *API) secondVoteResultBroadcasterFactory(factionID server.FactionID, vs *VoteStage, svs *secondVoteResult) func() (int, error) {
 	fn := func() (int, error) {
-		api.factionVoteCycle[factionID] <- func(f *server.Faction, vs *VoteStage, fvs FirstVoteState, fvr *FirstVoteResult, svs *secondVoteResult, t *FactionVotingTicker) {
-			if vs.Phase != VotePhaseSecondVote {
-				return
-			}
+		if vs.Phase != VotePhaseSecondVote {
+			return http.StatusOK, nil
+		}
 
-			// broadcast notification to all the connected clients
-			broadcastData, err := json.Marshal(&BroadcastPayload{
-				Key:     HubKeyTwitchFactionSecondVoteUpdated,
-				Payload: calcSecondVoteResult(f.ID, svs),
-			})
+		secondVoteResult := *svs
 
-			if err == nil {
-				api.Hub.Clients(func(clients hub.ClientsList) {
+		// broadcast notification to all the connected clients
+		broadcastData, err := json.Marshal(&BroadcastPayload{
+			Key:     HubKeyTwitchFactionSecondVoteUpdated,
+			Payload: calcSecondVoteResult(factionID, secondVoteResult),
+		})
 
-					for client, ok := range clients {
-						if !ok {
-							continue
-						}
-						go func(c *hub.Client) {
-							err := c.Send(broadcastData)
-							if err != nil {
-								api.Log.Err(err).Msg("failed to send broadcast")
-							}
-						}(client)
+		if err == nil {
+			api.Hub.Clients(func(clients hub.ClientsList) {
+
+				for client, ok := range clients {
+					if !ok {
+						continue
 					}
-				})
-			}
+					go func(c *hub.Client) {
+						err := c.Send(broadcastData)
+						if err != nil {
+							api.Log.Err(err).Msg("failed to send broadcast")
+						}
+					}(client)
+				}
+			})
 		}
 
 		return http.StatusOK, nil
@@ -344,9 +361,10 @@ func (api *API) voteStageListenerFactory(factionID server.FactionID) func() (int
 				}
 
 				// broadcast the latest vote result to all the connected clients
+				secondVoteResult := *svs
 				broadcastData, err := json.Marshal(&BroadcastPayload{
 					Key:     HubKeyTwitchFactionSecondVoteUpdated,
-					Payload: calcSecondVoteResult(f.ID, svs),
+					Payload: calcSecondVoteResult(f.ID, secondVoteResult),
 				})
 				if err == nil {
 					api.Hub.Clients(func(clients hub.ClientsList) {
@@ -416,9 +434,10 @@ func (api *API) voteStageListenerFactory(factionID server.FactionID) func() (int
 
 				// signal ability countered animation
 				err = api.BattleArena.FactionAbilityTrigger(&battle_arena.AbilityTriggerRequest{
-					FactionID:        f.ID,
-					FactionAbilityID: fvr.factionAbilityID,
-					IsSuccess:        false,
+					FactionID:           f.ID,
+					FactionAbilityID:    fvr.factionAbilityID,
+					GameClientAbilityID: fvs[fvr.factionAbilityID].FactionAbility.GameClientAbilityID,
+					IsSuccess:           false,
 				})
 				if err != nil {
 					api.Log.Err(err).Msg("failed to call FactionAbilityTrigger")
@@ -445,15 +464,12 @@ func (api *API) voteStageListenerFactory(factionID server.FactionID) func() (int
 						t.SecondVoteResultBroadcaster.Stop()
 					}
 
-					// broadcast current stage to current faction users
-					api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchFactionVoteStageUpdated, f.ID)), vs)
-
 					// broadcast countered notification
 					broadcastData, err := json.Marshal(&BroadcastPayload{
 						Key: HubKeyTwitchNotification,
 						Payload: &TwitchNotification{
 							Type: TwitchNotificationTypeText,
-							Data: fmt.Sprintf("Action %s from Faction %s has been cancelled, due to no one select the location.", fvs[fvr.factionAbilityID].FactionAbility.Label, f.Label),
+							Data: fmt.Sprintf("Action %s from Faction %s has been cancelled, due to no one selecting the location.", fvs[fvr.factionAbilityID].FactionAbility.Label, f.Label),
 						},
 					})
 					if err != nil {
@@ -477,9 +493,10 @@ func (api *API) voteStageListenerFactory(factionID server.FactionID) func() (int
 
 					// signal ability countered animation
 					err = api.BattleArena.FactionAbilityTrigger(&battle_arena.AbilityTriggerRequest{
-						FactionID:        f.ID,
-						FactionAbilityID: fvr.factionAbilityID,
-						IsSuccess:        false,
+						FactionID:           f.ID,
+						FactionAbilityID:    fvr.factionAbilityID,
+						GameClientAbilityID: fvs[fvr.factionAbilityID].FactionAbility.GameClientAbilityID,
+						IsSuccess:           false,
 					})
 					if err != nil {
 						api.Log.Err(err).Msg("Failed to call FactionAbilityTrigger")
@@ -690,7 +707,7 @@ type secondVoteResultResponse struct {
 }
 
 // calc second vote result
-func calcSecondVoteResult(factionID server.FactionID, svs *secondVoteResult) *secondVoteResultResponse {
+func calcSecondVoteResult(factionID server.FactionID, svs secondVoteResult) *secondVoteResultResponse {
 	resp := &secondVoteResultResponse{
 		FactionID: factionID,
 		Result:    0.5,

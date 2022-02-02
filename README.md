@@ -6,12 +6,13 @@ Supremacy gameserver for communication between the game client and various front
 
 ```shell
 git config --global --add url."git@github.com:".insteadOf "https://github.com/"
-export GOPRIVATE="github.com/ninja-software/*"
+export GOPRIVATE="github.com/ninja-syndicate/*"
 ```
 
 ### Envars
 
 ```
+export GAMESERVER_DATABASE_PORT= - postgres database port
 export GAMESERVER_TWITCH_EXTENSION_SECRET="" - in your twitch dev console
 ```
 

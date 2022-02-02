@@ -122,7 +122,7 @@ serve:
 
 .PHONY: serve-arelo
 serve-arelo:
-	cd $(SERVER) && ${BIN}/arelo -p '**/*.go' -i '**/.*' -i '**/*_test.go' -i 'tools/*' -- go run cmd/platform/main.go serve
+	cd $(SERVER) && ${BIN}/arelo -p '**/*.go' -i '**/.*' -i '**/*_test.go' -i 'tools/*' -- go run cmd/gameserver/main.go serve
 
 .PHONY: lb
 lb:
@@ -130,7 +130,7 @@ lb:
 
 .PHONY: wt
 wt:
-	wt --window 0 --tabColor #4747E2 --title "Boilerplate - Server" -p "PowerShell" -d ./server powershell -NoExit "${BIN}/arelo -p '**/*.go' -i '**/.*' -i '**/*_test.go' -i 'tools/*' -- go run cmd/platform/main.go serve" ; split-pane --tabColor #4747E2 --title "Boilerplate - Load Balancer" -p "PowerShell" -d ./ powershell -NoExit make lb ; split-pane -H -s 0.8 --tabColor #4747E2 --title "Boilerplate - Admin Frontend" --suppressApplicationTitle -p "PowerShell" -d ./web powershell -NoExit "$$env:BROWSER='none' \; npm run admin-start" ; split-pane -H -s 0.5 --tabColor #4747E2 --title "Boilerplate - Public Frontend" --suppressApplicationTitle -p "PowerShell" -d ./web powershell -NoExit "$$env:BROWSER='none' \; npm run public-start"
+	wt --window 0 --tabColor #4747E2 --title "Supremacy - Game Server" -p "PowerShell" -d ./ powershell -NoExit make serve-arelo ; split-pane --tabColor #4747E2 --title "Supremacy - Load Balancer" -p "PowerShell" -d ../supremacy-stream-site powershell -NoExit make lb ; split-pane -H -s 0.8 --tabColor #4747E2 --title "Passport Server" --suppressApplicationTitle -p "PowerShell" -d ../passport-server powershell -NoExit make serve-arelo ; split-pane --tabColor #4747E2 --title "Passport Web" -p "PowerShell" -d ../passport-web powershell -NoExit make watch ; split-pane -H -s 0.5 --tabColor #4747E2 --title "Stream Web" --suppressApplicationTitle -p "PowerShell" -d ../supremacy-stream-site powershell -NoExit npm start
 
 .PHONY: serve-test
 serve-test:

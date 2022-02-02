@@ -2,11 +2,12 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"server"
 	"server/battle_arena"
 	"server/helpers"
+
+	"nhooyr.io/websocket"
 
 	"github.com/ninja-syndicate/hub"
 )
@@ -26,30 +27,8 @@ func (api *API) GetGameSettings(w http.ResponseWriter, r *http.Request) (int, er
 	return helpers.EncodeJSON(w, resp)
 }
 
-const HubKeyWarMachinePositionUpdated hub.HubCommandKey = hub.HubCommandKey("WARMACHINE:UPDATED")
-
 func (api *API) UpdateWarMachinePosition(ctx context.Context, ed *battle_arena.EventData) {
-
 	if len(ed.BattleArena.WarMachines) == 0 {
-		return
-	}
-
-	positions := []*server.WarMachineNFT{}
-
-	for _, warmachine := range ed.BattleArena.WarMachines {
-		positions = append(positions, &server.WarMachineNFT{
-			TokenID:  warmachine.TokenID,
-			Position: warmachine.Position,
-			Rotation: warmachine.Rotation,
-		})
-	}
-
-	// parse broadcast data
-	data, err := json.Marshal(&BroadcastPayload{
-		Key:     HubKeyWarMachinePositionUpdated,
-		Payload: positions,
-	})
-	if err != nil {
 		return
 	}
 
@@ -60,7 +39,7 @@ func (api *API) UpdateWarMachinePosition(ctx context.Context, ed *battle_arena.E
 				continue
 			}
 			go func(c *hub.Client) {
-				err := c.Send(data)
+				err := c.SendWithMessageType(ed.WarMachineLocation, websocket.MessageBinary)
 				if err != nil {
 					api.Log.Err(err).Msg("failed to send broadcast")
 				}

@@ -86,7 +86,7 @@ func BattleEnded(ctx context.Context, conn Conn, battleID server.BattleID, winni
 }
 
 // BattleWinnerWarMachinesSet set war machine as winner
-func BattleWinnerWarMachinesSet(ctx context.Context, conn Conn, battleID server.BattleID, warMachineIDs []uint64) error {
+func BattleWinnerWarMachinesSet(ctx context.Context, conn Conn, battleID server.BattleID, warMachines []*server.WarMachineNFT) error {
 	q := `
 		UPDATE
 			battles_war_machines
@@ -95,9 +95,9 @@ func BattleWinnerWarMachinesSet(ctx context.Context, conn Conn, battleID server.
 		WHERE 
 			battle_id = $1 AND war_machine_id IN (
 	`
-	for i, warMachineID := range warMachineIDs {
-		q += fmt.Sprintf("'%d'", warMachineID)
-		if i < len(warMachineIDs)-1 {
+	for i, warMachine := range warMachines {
+		q += fmt.Sprintf("'%d'", warMachine.TokenID)
+		if i < len(warMachines)-1 {
 			q += ","
 			continue
 		}

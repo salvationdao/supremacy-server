@@ -2,9 +2,13 @@ package seed
 
 import "server"
 
+// To get the location in game its
+//  ((cellX * GameClientTileSize) + GameClientTileSize / 2) + LeftPixels
+//  ((cellY * GameClientTileSize) + GameClientTileSize / 2) + TopPixels
+
 var GameMaps = []*server.GameMap{
 	{
-		Name:       "desert_city",
+		Name:       "DesertCity",
 		ImageUrl:   "https://ninjasoftware-static-media.s3.ap-southeast-2.amazonaws.com/supremacy/maps/desert_city.jpg",
 		Width:      1700,
 		Height:     1600,

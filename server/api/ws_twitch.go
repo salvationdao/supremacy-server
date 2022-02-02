@@ -33,7 +33,6 @@ func NewTwitchController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Twi
 		API:  api,
 	}
 
-	// api.Command(HubKeyTwitchAuth, twitchHub.Authentication)
 	api.Command(HubKeyTwitchJWTAuth, twitchHub.JWTAuth)
 	api.SecureUserFactionCommand(HubKeyTwitchFactionAbilityFirstVote, twitchHub.FactionAbilityFirstVote)
 	api.SecureUserCommand(HubKeyTwitchFactionAbilitySecondVote, twitchHub.FactionAbilitySecondVote)
@@ -65,18 +64,18 @@ func (th *TwitchControllerWS) JWTAuth(ctx context.Context, wsc *hub.Client, payl
 		return terror.Error(err)
 	}
 
-	th.API.twitchJWTAuthChan <- func(tjm TwitchJWTAuthMap) {
-		tjm[req.Payload.TwitchToken] = wsc
+	th.API.ringCheckAuthChan <- func(rca RingCheckAuthMap) {
+		rca[req.Payload.TwitchToken] = wsc
 	}
 
 	// distroy the token in 30 second
 	go func() {
 		time.Sleep(600 * time.Second)
 
-		th.API.twitchJWTAuthChan <- func(tjm TwitchJWTAuthMap) {
-			_, ok := tjm[req.Payload.TwitchToken]
+		th.API.ringCheckAuthChan <- func(rca RingCheckAuthMap) {
+			_, ok := rca[req.Payload.TwitchToken]
 			if ok {
-				delete(tjm, req.Payload.TwitchToken)
+				delete(rca, req.Payload.TwitchToken)
 			}
 		}
 	}()
@@ -138,6 +137,11 @@ func (th *TwitchControllerWS) FactionAbilityFirstVote(ctx context.Context, wsc *
 		if err != nil {
 			errChan <- terror.Error(err, "Error - Failed to spend sups")
 			return
+		}
+
+		// store vote amount to live voting data
+		th.API.liveVotingData[f.ID] <- func(lvd *LiveVotingData) {
+			lvd.TotalVote.Add(&lvd.TotalVote.Int, &req.Payload.PointSpend.Int)
 		}
 
 		// update vote result if it is in first vote phase
@@ -275,22 +279,24 @@ func (th *TwitchControllerWS) FactionAbilitySecondVote(ctx context.Context, wsc 
 			return
 		}
 
+		amount := server.BigInt{Int: *big.NewInt(1000000000000000000)}
 		reason := fmt.Sprintf("battle:%s|voteaction:%s", th.API.BattleArena.CurrentBattleID(), req.Payload.FactionAbilityID)
-		supTransactionReference, err := th.API.Passport.SendHoldSupsMessage(context.Background(), userID, server.BigInt{Int: *big.NewInt(1000000000000000000)}, req.TransactionID, reason)
+		supTransactionReference, err := th.API.Passport.SendHoldSupsMessage(context.Background(), userID, amount, req.TransactionID, reason)
 		if err != nil {
 			th.API.Log.Err(err).Msg("failed to spend sups")
 			return
 		}
 
+		// store vote amount to live voting data
+		th.API.liveVotingData[f.ID] <- func(lvd *LiveVotingData) {
+			lvd.TotalVote.Add(&lvd.TotalVote.Int, &amount.Int)
+		}
+
 		// add vote to result
 		if req.Payload.IsAgreed {
-			svs.AgreeCountLock.Lock()
 			svs.AgreedCount = append(svs.AgreedCount, supTransactionReference)
-			svs.AgreeCountLock.Unlock()
 		} else {
-			svs.DisagreedCountLock.Lock()
 			svs.DisagreedCount = append(svs.DisagreedCount, supTransactionReference)
-			svs.DisagreedCountLock.Unlock()
 		}
 
 		errChan <- nil
@@ -380,18 +386,26 @@ func (th *TwitchControllerWS) ActionLocationSelect(ctx context.Context, wsc *hub
 		// broadcast current stage to current faction users
 		th.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchFactionVoteStageUpdated, f.ID)), vs)
 
+		userDetails, err := th.API.getClientDetailFromChannel(wsc)
+		if err != nil {
+			errChan <- terror.Error(err)
+			return
+		}
+
 		userIDString := userID.String()
 		selectedX := req.Payload.XIndex
 		selectedY := req.Payload.YIndex
 
 		// signal ability animation
 		err = th.API.BattleArena.FactionAbilityTrigger(&battle_arena.AbilityTriggerRequest{
-			FactionID:         f.ID,
-			FactionAbilityID:  fvr.factionAbilityID,
-			IsSuccess:         true,
-			TriggeredByUserID: &userIDString,
-			TriggeredOnCellX:  &selectedX,
-			TriggeredOnCellY:  &selectedY,
+			FactionID:           f.ID,
+			FactionAbilityID:    fvr.factionAbilityID,
+			IsSuccess:           true,
+			GameClientAbilityID: fvs[fvr.factionAbilityID].FactionAbility.GameClientAbilityID,
+			TriggeredByUserID:   &userIDString,
+			TriggeredByUsername: &userDetails.Username,
+			TriggeredOnCellX:    &selectedX,
+			TriggeredOnCellY:    &selectedY,
 		})
 		if err != nil {
 			errChan <- terror.Error(err)
@@ -496,8 +510,8 @@ func (th *TwitchControllerWS) FactionWarMachineQueueUpdateSubscribeHandler(ctx c
 		return "", "", terror.Error(err)
 	}
 
-	if battleQueue, ok := th.API.battleQueueMap[hubClientDetail.FactionID]; ok {
-		battleQueue <- func(wmql *warMachineQueuingList) {
+	if battleQueue, ok := th.API.BattleArena.BattleQueueMap[hubClientDetail.FactionID]; ok {
+		battleQueue <- func(wmql *battle_arena.WarMachineQueuingList) {
 			maxLength := 5
 			if len(wmql.WarMachines) < maxLength {
 				maxLength = len(wmql.WarMachines)
@@ -511,6 +525,8 @@ func (th *TwitchControllerWS) FactionWarMachineQueueUpdateSubscribeHandler(ctx c
 
 	return req.TransactionID, busKey, nil
 }
+
+const HubKeyTwitchLiveVotingDataUpdated hub.HubCommandKey = "TWITCH:LIVE:VOTING:DATA:UPDATED"
 
 const HubKeyTwitchFactionAbilityUpdated = hub.HubCommandKey("TWITCH:FACTION:ABILITY:UPDATED")
 

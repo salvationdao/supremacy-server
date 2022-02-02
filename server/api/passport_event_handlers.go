@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"server"
+	"server/battle_arena"
 	"server/passport"
 	"strconv"
 
+	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
@@ -76,6 +78,7 @@ func (api *API) PassportUserUpdatedHandler(ctx context.Context, payload []byte) 
 					if !req.Payload.User.FactionID.IsNil() {
 						user.Faction = api.factionMap[req.Payload.User.FactionID]
 					}
+
 					// send
 					resp := struct {
 						Key           hub.HubCommandKey `json:"key"`
@@ -140,6 +143,7 @@ func (api *API) PassportUserEnlistFactionHandler(ctx context.Context, payload []
 					FactionID: req.Payload.FactionID,
 					Faction:   faction,
 				}
+
 				// send
 				resp := struct {
 					Key           hub.HubCommandKey `json:"key"`
@@ -182,7 +186,7 @@ func (api *API) PassportBattleQueueJoinHandler(ctx context.Context, payload []by
 	}
 
 	if !req.Payload.WarMachineNFT.FactionID.IsNil() {
-		api.battleQueueMap[req.Payload.WarMachineNFT.FactionID] <- func(wmq *warMachineQueuingList) {
+		api.BattleArena.BattleQueueMap[req.Payload.WarMachineNFT.FactionID] <- func(wmq *battle_arena.WarMachineQueuingList) {
 			// skip if the war machine already join the queue
 			if checkWarMachineExist(wmq.WarMachines, req.Payload.WarMachineNFT.TokenID) != -1 {
 				api.Log.Err(terror.ErrInvalidInput).Msgf("Asset %d is already in the queue", req.Payload.WarMachineNFT.TokenID)
@@ -241,7 +245,7 @@ func (api *API) PassportBattleQueueReleaseHandler(ctx context.Context, payload [
 	}
 
 	if !req.Payload.WarMachineNFT.FactionID.IsNil() {
-		api.battleQueueMap[req.Payload.WarMachineNFT.FactionID] <- func(wmq *warMachineQueuingList) {
+		api.BattleArena.BattleQueueMap[req.Payload.WarMachineNFT.FactionID] <- func(wmq *battle_arena.WarMachineQueuingList) {
 			// check war machine is in the queue
 			index := checkWarMachineExist(wmq.WarMachines, req.Payload.WarMachineNFT.TokenID)
 			if index < 0 {
@@ -266,7 +270,7 @@ func (api *API) PassportBattleQueueReleaseHandler(ctx context.Context, payload [
 				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchFactionWarMachineQueueUpdated, req.Payload.WarMachineNFT.FactionID)), wmq.WarMachines[:maxLength])
 			}
 
-			api.Passport.WarMachineQueuePositionBroadcast(context.Background(), BuildUserWarMachineQueuePosition(wmq.WarMachines))
+			api.Passport.WarMachineQueuePositionBroadcast(context.Background(), battle_arena.BuildUserWarMachineQueuePosition(wmq.WarMachines))
 		}
 	}
 }
@@ -299,7 +303,7 @@ func (api *API) PassportWarMachineQueuePositionHandler(ctx context.Context, payl
 
 	warMachineQueuePositionChan := make(chan []*passport.WarMachineQueuePosition)
 
-	api.battleQueueMap[req.Payload.FactionID] <- func(wmq *warMachineQueuingList) {
+	api.BattleArena.BattleQueueMap[req.Payload.FactionID] <- func(wmq *battle_arena.WarMachineQueuingList) {
 		warMachineQueuePosition := []*passport.WarMachineQueuePosition{}
 		for i, wm := range wmq.WarMachines {
 			if wm.OwnedByID != req.Payload.UserID {
@@ -330,9 +334,10 @@ func (api *API) PassportWarMachineQueuePositionHandler(ctx context.Context, payl
 type AuthedTwitchExtensionRequest struct {
 	Key     passport.Event `json:"key"`
 	Payload struct {
-		User               server.User   `json:"user"`
-		SessionID          hub.SessionID `json:"sessionID"`
-		TwitchExtensionJWT string        `json:"twitchExtensionJWT"`
+		User                server.User   `json:"user"`
+		SessionID           hub.SessionID `json:"sessionID"`
+		TwitchExtensionJWT  string        `json:"twitchExtensionJWT"`
+		GameserverSessionID string        `json:"gameserverSessionID"`
 	} `json:"payload"`
 }
 
@@ -341,12 +346,31 @@ func (api *API) AuthRingCheckHandler(ctx context.Context, payload []byte) {
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		api.Log.Err(err).Msg("error unmarshalling passport auth ring check")
+		return
 	}
-	api.twitchJWTAuthChan <- func(tjm TwitchJWTAuthMap) {
-		hubClient, ok := tjm[req.Payload.TwitchExtensionJWT]
+
+	if req.Payload.TwitchExtensionJWT == "" && req.Payload.GameserverSessionID == "" {
+		api.Log.Err(fmt.Errorf("Not auth key provided"))
+		return
+	}
+
+	ringCheckKey := req.Payload.TwitchExtensionJWT
+	if ringCheckKey == "" {
+		ringCheckKey = req.Payload.GameserverSessionID
+	}
+
+	api.ringCheckAuthChan <- func(rca RingCheckAuthMap) {
+		hubClient, ok := rca[ringCheckKey]
 		if !ok {
 			return
 		}
+
+		if req.Payload.GameserverSessionID != "" && req.Payload.GameserverSessionID != string(hubClient.SessionID) {
+			api.Log.Err(fmt.Errorf("Session id does not match"))
+			return
+		}
+		// reset session id for security
+		hubClient.SessionID = hub.SessionID(uuid.Must(uuid.NewV4()).String())
 
 		hubClientDetail, ok := api.hubClientDetail[hubClient]
 		if !ok {
@@ -407,6 +431,6 @@ func (api *API) AuthRingCheckHandler(ctx context.Context, payload []byte) {
 		}
 
 		// delete jwt from map
-		delete(tjm, req.Payload.TwitchExtensionJWT)
+		delete(rca, req.Payload.TwitchExtensionJWT)
 	}
 }
