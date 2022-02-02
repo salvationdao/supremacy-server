@@ -120,25 +120,37 @@ func (ba *BattleArena) WarMachinesTick(payload []byte) {
 
 		// Position + Yaw
 		if syncByte >= 100 {
-			if ba.battle.WarMachines[warMachineIndex].Position == nil {
-				ba.battle.WarMachines[warMachineIndex].Position = &server.Vector3{}
+			x := int(binary.BigEndian.Uint32(payload[offset : offset+4]))
+			offset += 4
+			y := int(binary.BigEndian.Uint32(payload[offset : offset+4]))
+			offset += 4
+			rotation := int(binary.BigEndian.Uint32(payload[offset : offset+4]))
+			offset += 4
+
+			if warMachineIndex != -1 {
+				if ba.battle.WarMachines[warMachineIndex].Position == nil {
+					ba.battle.WarMachines[warMachineIndex].Position = &server.Vector3{}
+				}
+				ba.battle.WarMachines[warMachineIndex].Position.X = x
+				ba.battle.WarMachines[warMachineIndex].Position.X = y
+				ba.battle.WarMachines[warMachineIndex].Rotation = rotation
 			}
-			ba.battle.WarMachines[warMachineIndex].Position.X = int(binary.BigEndian.Uint32(payload[offset : offset+4]))
-			offset += 4
-			ba.battle.WarMachines[warMachineIndex].Position.Y = int(binary.BigEndian.Uint32(payload[offset : offset+4]))
-			offset += 4
-			ba.battle.WarMachines[warMachineIndex].Rotation = int(binary.BigEndian.Uint32(payload[offset : offset+4]))
-			offset += 4
 		}
 		// Health
 		if syncByte == 1 || syncByte == 11 || syncByte == 101 || syncByte == 111 {
-			ba.battle.WarMachines[warMachineIndex].Health = int(binary.BigEndian.Uint32(payload[offset : offset+4]))
+			health := int(binary.BigEndian.Uint32(payload[offset : offset+4]))
 			offset += 4
+			if warMachineIndex != -1 {
+				ba.battle.WarMachines[warMachineIndex].Health = health
+			}
 		}
 		// Shield
 		if syncByte == 10 || syncByte == 11 || syncByte == 110 || syncByte == 111 {
-			ba.battle.WarMachines[warMachineIndex].Shield = int(binary.BigEndian.Uint32(payload[offset : offset+4]))
+			shield := int(binary.BigEndian.Uint32(payload[offset : offset+4]))
 			offset += 4
+			if warMachineIndex != -1 {
+				ba.battle.WarMachines[warMachineIndex].Shield = shield
+			}
 		}
 	}
 }
