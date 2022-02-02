@@ -30,8 +30,11 @@ type EventHandler func(ctx context.Context, ed *EventData)
 const (
 	EventGameStart                 Event = "GAME_START"
 	EventGameEnd                   Event = "GAME_END"
-	EventWarMachinePositionChanged Event = "WAR_MACHINE_POSITION_CHANGED"
+	EventWarMachineStateUpdated    Event = "WAR_MACHINE_POSITION_CHANGED"
 	EventWarMachineDestroyed       Event = "WAR_MACHINE_DESTROYED"
+	EventFactionViewersGet         Event = "FACTION_VIEWERS_GET"
+	EventWarMachinePositionChanged Event = "WAR_MACHINE_POSITION_CHANGED"
+	EventWarMachineHitPointChanged Event = "WAR_MACHINE_Hit_POINT_CHANGED"
 )
 
 type EventData struct {
@@ -39,6 +42,13 @@ type EventData struct {
 	FactionAbilities         []*server.FactionAbility
 	WarMachineDestroyedEvent *server.WarMachineDestroyedEvent
 	WarMachineLocation       []byte `json:"warMachineLocation"`
+	WarMachineHitPoint       []byte `json:"warMachineHitPoint"`
+	WinnerFactionViewers     *WinnerFactionViewer
+}
+
+type WinnerFactionViewer struct {
+	WinnerFactionID server.FactionID
+	CallbackChannel chan []server.UserID
 }
 
 type BattleArenaEvents struct {

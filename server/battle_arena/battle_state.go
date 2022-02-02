@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"server"
 	"server/db"
+	"server/passport"
 
 	"github.com/jackc/pgx/v4"
 	"github.com/ninja-software/terror/v2"
@@ -109,8 +110,6 @@ outerLoop:
 
 	ba.Events.Trigger(ctx, EventGameStart, &EventData{BattleArena: ba.battle})
 
-	// start dummy war machine moving
-	//go ba.FakeWarMachinePositionUpdate()
 	return nil
 }
 
@@ -118,9 +117,8 @@ const BattleEndCommand = BattleCommand("BATTLE:END")
 
 type BattleEndRequest struct {
 	Payload struct {
-		BattleID     server.BattleID           `json:"battleID"`
-		WinCondition server.BattleWinCondition `json:"winCondition"`
-		//WinningWarMachineNFTs []*server.WarMachineNFT   `json:"winningWarMachines"`
+		BattleID              server.BattleID           `json:"battleID"`
+		WinCondition          server.BattleWinCondition `json:"winCondition"`
 		WinningWarMachineNFTs []*struct {
 			TokenID            uint64 `json:"tokenID"`
 			RemainingHitPoints int    `json:"remainingHitPoints"`
@@ -141,6 +139,9 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 		ba.Log.Info().Msgf("%d", warMachine.TokenID)
 	}
 
+	// prepare battle reward request
+	battleRewardRequest := &passport.DistributeBattleRewardRequest{}
+
 	winningMachines := []*server.WarMachineNFT{}
 
 	for _, wm := range req.Payload.WinningWarMachineNFTs {
@@ -148,6 +149,8 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 			if wm.TokenID == bwm.TokenID {
 				bwm.RemainingHitPoints = wm.RemainingHitPoints
 				winningMachines = append(winningMachines, bwm)
+				battleRewardRequest.WinningWarMachineOwnerIDs = append(battleRewardRequest.WinningWarMachineOwnerIDs, bwm.OwnedByID)
+				battleRewardRequest.WinnerFactionID = bwm.FactionID
 			}
 		}
 	}
@@ -178,8 +181,6 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 		}
 	}
 
-	ba.battle.WinningWarMachines = winningMachines
-
 	err = tx.Commit(ctx)
 	if err != nil {
 		return terror.Error(err)
@@ -199,6 +200,42 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 		)
 	}
 
+	// execute kill war machine owner id
+	destoryedEvents, err := db.WarMachineDestroyedEventGetByBattleID(ctx, ba.Conn, req.Payload.BattleID)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	for _, event := range destoryedEvents {
+		if event.KillByWarMachineID == nil {
+			continue
+		}
+		for _, warMachine := range ba.battle.WarMachines {
+			if *event.KillByWarMachineID != warMachine.TokenID {
+				continue
+			}
+
+			battleRewardRequest.ExecuteKillWarMachineOwnerIDs = append(battleRewardRequest.ExecuteKillWarMachineOwnerIDs, warMachine.OwnedByID)
+		}
+	}
+
+	// winner faction viewers' id
+	factionViewerChan := make(chan []server.UserID)
+	ba.Events.Trigger(ctx, EventFactionViewersGet, &EventData{
+		WinnerFactionViewers: &WinnerFactionViewer{
+			WinnerFactionID: battleRewardRequest.WinnerFactionID,
+			CallbackChannel: factionViewerChan,
+		},
+	})
+
+	battleRewardRequest.WinningFactionViewerIDs = <-factionViewerChan
+
+	err = ba.passport.DistributeBattleReward(ctx, battleRewardRequest, fmt.Sprintf("battle_reward_distribution|%s", req.Payload.BattleID))
+	if err != nil {
+		return terror.Error(err, "Failed to distribute battle reward")
+	}
+
+	// trigger battle end
 	ba.Events.Trigger(ctx, EventGameEnd, &EventData{BattleArena: ba.battle})
 
 	return nil

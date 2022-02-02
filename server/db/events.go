@@ -100,6 +100,25 @@ func FactionAbilityEventCreate(ctx context.Context, conn Conn, battleID server.B
 	return nil
 }
 
+// WarMachineDestroyedEventGetByBattleID return a list of war machine destroyed events by given battle id
+func WarMachineDestroyedEventGetByBattleID(ctx context.Context, conn Conn, battleID server.BattleID) ([]*server.WarMachineDestroyedEvent, error) {
+	events := []*server.WarMachineDestroyedEvent{}
+
+	q := `
+		SELECT wmde.* 
+		FROM 
+			war_machine_destroyed_events wmde
+		INNER JOIN 
+			battle_events be ON be.id = wmde. event_id AND be.battle_id = $1
+	`
+
+	err := pgxscan.Select(ctx, conn, &events, q, battleID)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+	return events, nil
+}
+
 func GetEvents(ctx context.Context, conn Conn, since *time.Time) ([]*server.BattleEvent, error) {
 	events := []*server.BattleEvent{}
 

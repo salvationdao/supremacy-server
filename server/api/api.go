@@ -160,7 +160,9 @@ func NewAPI(
 	///////////////////////////
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventGameStart, api.BattleStartSignal)
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventGameEnd, api.BattleEndSignal)
+	api.BattleArena.Events.AddEventHandler(battle_arena.EventFactionViewersGet, api.WinningFactionViewerIDsGet)
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventWarMachinePositionChanged, api.UpdateWarMachinePosition)
+	api.BattleArena.Events.AddEventHandler(battle_arena.EventWarMachineHitPointChanged, api.UpdateWarMachineHitPoint)
 
 	///////////////////////////
 	//	 Passport Events	 //
@@ -334,6 +336,12 @@ const HubKeyGameSettingsUpdated = hub.HubCommandKey("GAME:SETTINGS:UPDATED")
 
 // BattleStartSignal start all the voting cycle
 func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventData) {
+	// build faction detail to battle start
+	warMachines := ed.BattleArena.WarMachines
+	for _, wm := range warMachines {
+		wm.Faction = ed.BattleArena.FactionMap[wm.FactionID]
+	}
+
 	// marshal payload
 	gameSettingsData, err := json.Marshal(&BroadcastPayload{
 		Key: HubKeyGameSettingsUpdated,

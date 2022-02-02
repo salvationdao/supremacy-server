@@ -6,7 +6,6 @@ import (
 	"errors"
 	"server"
 	"server/db"
-	"time"
 
 	"github.com/gofrs/uuid"
 
@@ -87,32 +86,6 @@ func (ba *BattleArena) WarMachineDestroyedHandler(ctx context.Context, payload [
 	return nil
 }
 
-func (ba *BattleArena) FakeWarMachinePositionUpdate() {
-	i := 1
-	for {
-		for _, warMachine := range ba.battle.WarMachines {
-			// do update
-			scale := 1
-			if i%2 == 0 {
-				scale = -1
-			}
-
-			warMachine.Rotation = i % 360
-			warMachine.Position.X += 10 * scale
-			warMachine.Position.Y -= 10 * scale
-		}
-
-		// broadcast
-		ba.Events.Trigger(context.Background(), EventWarMachinePositionChanged, &EventData{
-			BattleArena: ba.battle,
-		})
-
-		time.Sleep(250 * time.Millisecond)
-		i++
-	}
-
-}
-
 func (ba *BattleArena) WarMachinePositionUpdate(payload []byte) {
 	ba.battle.BattleHistory = append(ba.battle.BattleHistory, payload)
 
@@ -121,27 +94,14 @@ func (ba *BattleArena) WarMachinePositionUpdate(payload []byte) {
 		BattleArena:        ba.battle,
 		WarMachineLocation: payload,
 	})
-	//i := 1
-	//for {
-	//	for _, warMachine := range ba.battle.WarMachines {
-	//		// do update
-	//		scale := 1
-	//		if i%2 == 0 {
-	//			scale = -1
-	//		}
-	//
-	//		warMachine.Rotation = i % 360
-	//		warMachine.Position.X += 10 * scale
-	//		warMachine.Position.Y -= 10 * scale
-	//	}
-	//
-	//	// broadcast
-	//	ba.Events.Trigger(context.Background(), EventWarMachinePositionChanged, &EventData{
-	//		BattleArena: ba.battle,
-	//	})
-	//
-	//	time.Sleep(250 * time.Millisecond)
-	//	i++
-	//}
+}
 
+func (ba *BattleArena) WarMachineHitPointUpdate(payload []byte) {
+	ba.battle.BattleHistory = append(ba.battle.BattleHistory, payload)
+
+	// broadcast
+	ba.Events.Trigger(context.Background(), EventWarMachineHitPointChanged, &EventData{
+		BattleArena:        ba.battle,
+		WarMachineHitPoint: payload,
+	})
 }

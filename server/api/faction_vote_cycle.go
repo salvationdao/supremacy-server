@@ -328,15 +328,10 @@ func (api *API) voteStageListenerFactory(factionID server.FactionID) func() (int
 				}
 
 				// remove the unsuccessful agreed votes
-				for i, tx := range agreeTx {
-					if tx.Status != server.TransactionSuccess {
-						for i, v := range svs.AgreedCount {
-							if v == tx.TransactionReference {
-								svs.AgreedCount = append(svs.AgreedCount[:i], svs.AgreedCount[i+1:]...)
-								break
-							}
-						}
-						svs.AgreedCount = append(svs.AgreedCount[:i], svs.AgreedCount[i+1:]...)
+				svs.AgreedCount = []server.TransactionReference{}
+				for _, tx := range agreeTx {
+					if tx.Status == server.TransactionSuccess {
+						svs.AgreedCount = append(svs.AgreedCount, tx.TransactionReference)
 					}
 				}
 
@@ -348,15 +343,10 @@ func (api *API) voteStageListenerFactory(factionID server.FactionID) func() (int
 				}
 
 				// remove the unsuccessful disagree votes
-				for i, tx := range disagreeTx {
-					if tx.Status != server.TransactionSuccess {
-						for i, v := range svs.AgreedCount {
-							if v == tx.TransactionReference {
-								svs.AgreedCount = append(svs.AgreedCount[:i], svs.AgreedCount[i+1:]...)
-								break
-							}
-						}
-						svs.AgreedCount = append(svs.AgreedCount[:i], svs.AgreedCount[i+1:]...)
+				svs.DisagreedCount = []server.TransactionReference{}
+				for _, tx := range disagreeTx {
+					if tx.Status == server.TransactionSuccess {
+						svs.DisagreedCount = append(svs.DisagreedCount, tx.TransactionReference)
 					}
 				}
 

@@ -130,6 +130,7 @@ type NetMessageType byte
 const (
 	NetMessageTypeJSON NetMessageType = iota
 	NetMessageTypePositionTick
+	NetMessageTypeHitPointTick
 )
 
 func (ba *BattleArena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -212,6 +213,8 @@ func (ba *BattleArena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				ba.runGameCommand(ctx, c, BattleCommand(cmdKey), payload[1:])
 			case NetMessageTypePositionTick:
 				ba.WarMachinePositionUpdate(payload)
+			case NetMessageTypeHitPointTick:
+				ba.WarMachineHitPointUpdate(payload)
 			default:
 				ba.Log.Err(fmt.Errorf("unknown message type")).Msg("")
 			}
@@ -336,13 +339,13 @@ func (ba *BattleArena) SetupAfterConnections() {
 		time.Sleep(2 * time.Second)
 	}
 
-	factionMap := make(map[server.FactionID]*server.Faction)
+	ba.battle.FactionMap = make(map[server.FactionID]*server.Faction)
 	for _, faction := range factions {
-		factionMap[faction.ID] = faction
+		ba.battle.FactionMap[faction.ID] = faction
 	}
 
 	// get all the faction list from passport server
-	for _, faction := range factionMap {
+	for _, faction := range ba.battle.FactionMap {
 		// start battle queue
 		ba.BattleQueueMap[faction.ID] = make(chan func(*WarMachineQueuingList))
 		go ba.startBattleQueue(faction.ID)
