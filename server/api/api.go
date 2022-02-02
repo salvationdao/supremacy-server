@@ -290,6 +290,28 @@ func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client, clients
 		go api.startClientTracker(wsc)
 	}
 
+	ba := api.BattleArena.GetCurrentState()
+
+	// marshal payload
+	gameSettingsData, err := json.Marshal(&BroadcastPayload{
+		Key: HubKeyGameSettingsUpdated,
+		Payload: &GameSettingsResponse{
+			GameMap:            ba.GameMap,
+			WarMachines:        ba.WarMachines,
+			WarMachineLocation: ba.BattleHistory[0],
+		},
+	})
+	if err != nil {
+		return
+	}
+
+	go func() {
+		err := wsc.Send(gameSettingsData)
+		if err != nil {
+			api.Log.Err(err).Msg("failed to send broadcast")
+		}
+	}()
+
 }
 
 func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, clients hub.ClientsList, ch hub.TriggerChan) {
