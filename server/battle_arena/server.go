@@ -130,6 +130,7 @@ type NetMessageType byte
 const (
 	NetMessageTypeJSON NetMessageType = iota
 	NetMessageTypeTick
+	NetMessageTypeLiveVotingTick
 )
 
 func (ba *BattleArena) ServeHTTP(w http.ResponseWriter, r *http.Request) {

@@ -21,7 +21,6 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-software/log_helpers"
-	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-software/tickle"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/auth"
@@ -64,9 +63,7 @@ type API struct {
 	hubClientDetail map[*hub.Client]chan func(*HubClientDetail)
 	onlineClientMap chan *ClientUpdate
 
-	//// battle queue channels
-	//battleQueueMap map[server.FactionID]chan func(*battle_arena.warMachineQueuingList)
-
+	// ring check auth
 	ringCheckAuthChan chan func(RingCheckAuthMap)
 }
 
@@ -113,9 +110,8 @@ func NewAPI(
 		// channel for handling hub client
 		hubClientDetail: make(map[*hub.Client]chan func(*HubClientDetail)),
 		onlineClientMap: make(chan *ClientUpdate),
-		//// channel for battle queue
-		//battleQueueMap: make(map[server.FactionID]chan func(*battle_arena.warMachineQueuingList)),
 
+		// ring check auth
 		ringCheckAuthChan: make(chan func(RingCheckAuthMap)),
 	}
 
@@ -220,10 +216,6 @@ func (api *API) SetupAfterConnections() {
 		// start voting cycle
 		api.factionVoteCycle[faction.ID] = make(chan func(*server.Faction, *VoteStage, FirstVoteState, *FirstVoteResult, *secondVoteResult, *FactionVotingTicker))
 		go api.startFactionVoteCycle(faction)
-
-		// start battle queue
-		//api.battleQueueMap[faction.ID] = make(chan func(*warMachineQueuingList))
-		//go api.startBattleQueue(faction.ID)
 	}
 
 	// start live voting broadcaster
@@ -250,23 +242,18 @@ func (api *API) SetupAfterConnections() {
 			totalVoteMutex.Unlock()
 		}
 
-		// broadcast notification to all the connected clients
-		broadcastData, err := json.Marshal(&BroadcastPayload{
-			Key:     HubKeyTwitchLiveVotingDataUpdated,
-			Payload: totalVote,
-		})
-		if err != nil {
-			return http.StatusInternalServerError, terror.Error(err)
-		}
+		// prepare payload
+		payload := []byte{}
+		payload = append(payload, byte(battle_arena.NetMessageTypeLiveVotingTick))
+		payload = append(payload, []byte(totalVote.Int.String())...)
 
 		api.Hub.Clients(func(clients hub.ClientsList) {
-
 			for client, ok := range clients {
 				if !ok {
 					continue
 				}
 				go func(c *hub.Client) {
-					err := c.Send(broadcastData)
+					err := c.SendWithMessageType(payload, websocket.MessageBinary)
 					if err != nil {
 						api.Log.Err(err).Msg("failed to send broadcast")
 					}
