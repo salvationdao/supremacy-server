@@ -15,10 +15,27 @@ LOCAL_DEV_DB_PORT=5437
 LOCAL_DEV_DB_DATABASE=$(PACKAGE)
 DB_CONNECTION_STRING="postgres://$(LOCAL_DEV_DB_USER):$(LOCAL_DEV_DB_PASS)@$(LOCAL_DEV_DB_HOST):$(LOCAL_DEV_DB_PORT)/$(LOCAL_DEV_DB_DATABASE)?sslmode=disable"
 
+BUILDDATE=`date -u +%Y%m%d%H%M%S`
+GITSTATE=`git status --porcelain | wc -l`
+
 # Make Commands
+.PHONY: clean
+clean:
+	rm -rf deploy
+
+.PHONY: deploy-package
+deploy-prep: clean tools build
+	mkdir -p deploy
+	cp $(BIN)/migrate deploy/.
+	cp -r ./configs deploy/.
+	cp -r $(SERVER)/db/migrations deploy/.
+
 .PHONY: build
 build:
-	cd $(SERVER) && go build -o platform cmd/gameserver/main.go
+	cd $(SERVER) && go build \
+		-ldflags "-X main.BuildDate=${BUILDDATE} -X main.UnCommittedFiles=$(GITSTATE)" \
+		-o ../deploy/gameserver \
+		cmd/gameserver/main.go
 
 .PHONY: tools
 tools: go-mod-tidy
@@ -118,4 +135,3 @@ wt:
 .PHONY: serve-test
 serve-test:
 	cd server && go test ./...
-

@@ -30,13 +30,16 @@ import (
 )
 
 // Version build Version
-const Version = "v0.1.0"
+const Version = "v0.0.0-dev"
 
-// SentryVersion passed in using
-//   ```sh
-//   go build -ldflags "-X main.SentryVersion=" main.go
-//   ```
-var SentryVersion string
+// -ldflags "-X main.BuildDate=`date -u +.%Y%m%d%.H%M%S`"
+// -ldflags "-X main.UnCommittedFiles=`git status --porcelain`"
+//
+var (
+	BuildDate        string
+	UnCommittedFiles string
+	SentryVersion    string
+)
 
 const envPrefix = "GAMESERVER"
 
@@ -52,6 +55,18 @@ func main() {
 		},
 		Flags: []cli.Flag{},
 		Commands: []*cli.Command{
+			{
+				// This is not using the built in version so ansible can more easily read the version
+				Name: "version",
+				Action: func(c *cli.Context) error {
+					state := ""
+					if UnCommittedFiles != "0" {
+						state = "dirty"
+					}
+					fmt.Printf("%s-%s%s\n", Version, BuildDate, state)
+					return nil
+				},
+			},
 			{
 				Name:    "serve",
 				Aliases: []string{"s"},

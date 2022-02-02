@@ -4,10 +4,10 @@ cd server/ && env GOOS=linux GOARCH=amd64 go build -o ./cmd/gameserver/gameserve
 # upload binary
 scp ./server/cmd/gameserver/gameserver "root@sale.supremacy.fi:/root/gameserver"
 # upload envars if needed too
-#scp gameserver-staging-export.env "root@sale.supremacy.fi:/home/gameserver/gameserver-staging-export.env"
-#scp gameserver-staging.env "root@sale.supremacy.fi:/home/gameserver/gameserver-staging.env"
+#scp configs/gameserver-staging-export.env "root@sale.supremacy.fi:/home/gameserver/gameserver-staging-export.env"
+#scp configs/gameserver-staging.env "root@sale.supremacy.fi:/home/gameserver/gameserver-staging.env"
 # upload nginx config
-scp ./gameserver.conf "root@sale.supremacy.fi:/home/gameserver/gameserver.conf"
+scp ./config/gameserver.nginx.conf "root@sale.supremacy.fi:/home/gameserver/gameserver.conf"
 # upload migrations
 scp -r ./server/db/migrations "root@sale.supremacy.fi:/home/gameserver/migrations"
 # upload migrate binary
