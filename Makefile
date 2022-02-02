@@ -113,7 +113,7 @@ lb:
 
 .PHONY: wt
 wt:
-	wt --window 0 --tabColor #4747E2 --title "Supremacy - Game Server" -p "PowerShell" -d ./ powershell -NoExit make serve-arelo ; split-pane --tabColor #4747E2 --title "Supremacy - Load Balancer" -p "PowerShell" -d ./ powershell -NoExit make lb ; split-pane -H -s 0.8 --tabColor #4747E2 --title "Passport Server" --suppressApplicationTitle -p "PowerShell" -d ../passport-server powershell -NoExit make serve-arelo
+	wt --window 0 --tabColor #4747E2 --title "Supremacy - Game Server" -p "PowerShell" -d ./ powershell -NoExit make serve-arelo ; split-pane --tabColor #4747E2 --title "Supremacy - Load Balancer" -p "PowerShell" -d ../supremacy-stream-site powershell -NoExit make lb ; split-pane -H -s 0.8 --tabColor #4747E2 --title "Passport Server" --suppressApplicationTitle -p "PowerShell" -d ../passport-server powershell -NoExit make serve-arelo ; split-pane --tabColor #4747E2 --title "Passport Web" -p "PowerShell" -d ../passport-web powershell -NoExit make watch ; split-pane -H -s 0.5 --tabColor #4747E2 --title "Stream Web" --suppressApplicationTitle -p "PowerShell" -d ../supremacy-stream-site powershell -NoExit npm start
 
 .PHONY: serve-test
 serve-test:
