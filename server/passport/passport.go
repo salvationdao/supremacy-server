@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gofrs/uuid"
+
 	"github.com/antonholmquist/jason"
 	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog"
@@ -22,8 +24,9 @@ type CommandFunc func(ctx context.Context, payload []byte, reply ReplyFunc) erro
 
 type Request struct {
 	*Message
-	ReplyChannel chan []byte
-	ErrChan      chan error
+	ReplyChannel         chan []byte
+	ErrChan              chan error
+	OverrideNoConnection bool
 }
 
 type Message struct {
@@ -42,14 +45,13 @@ type Passport struct {
 	Events   Events
 	send     chan *Request
 
-	clientID     string
-	clientSecret string
+	clientToken string
 
 	ctx   context.Context
 	close context.CancelFunc
 }
 
-func NewPassport(ctx context.Context, logger *zerolog.Logger, addr, clientID, clientSecret string) *Passport {
+func NewPassport(ctx context.Context, logger *zerolog.Logger, addr, clientToken string) *Passport {
 	ctx, cancel := context.WithCancel(ctx)
 	newPP := &Passport{
 
@@ -59,8 +61,7 @@ func NewPassport(ctx context.Context, logger *zerolog.Logger, addr, clientID, cl
 		send:     make(chan *Request),
 		Events:   Events{map[Event][]EventHandler{}, sync.RWMutex{}},
 
-		clientID:     clientID,
-		clientSecret: clientSecret,
+		clientToken: clientToken,
 
 		ctx:   ctx,
 		close: cancel,
@@ -109,7 +110,9 @@ func (pp *Passport) Connect(ctx context.Context) error {
 	pp.Conn.cond = sync.NewCond(&pp.Conn.lock)
 
 	// set up the connection in a goroutine that loops checking for connection and if false attempts to reconnect
+
 	go func() {
+	reconnectLoop:
 		for {
 			pp.Conn.lock.Lock()
 			for pp.Conn.Connected { // while connected, wait
@@ -132,37 +135,92 @@ func (pp *Passport) Connect(ctx context.Context) error {
 				continue
 			}
 
-			// auth
-			authJson, err := json.Marshal(&Message{
-				Key: "AUTH:SERVERCLIENT",
+			txID := uuid.Must(uuid.NewV4())
+			ctx := context.Background()
+
+			err = writeTimeout(&Message{
+				Key:           "AUTH:SERVERCLIENT",
+				TransactionID: txID.String(),
 				Payload: struct {
-					ClientID     string `json:"client_id"`
-					ClientSecret string `json:"client_secret"`
+					ClientToken string `json:"clientToken"`
 				}{
-					ClientID:     pp.clientID,
-					ClientSecret: pp.clientSecret,
+					ClientToken: pp.clientToken,
 				},
-			})
+				context: ctx,
+			}, time.Second*5, pp.Conn.ws)
+
 			if err != nil {
-				pp.Log.Warn().Err(err).Msg("Failed to marshall auth request to passport server, retrying in 5 seconds...")
+				pp.Log.Warn().Err(err).Msg("Failed to connect to passport server, retrying in 5 seconds...")
 				time.Sleep(5 * time.Second)
 				pp.Conn.lock.Unlock()
 				continue
 			}
 
-			err = pp.Conn.ws.Write(ctx, websocket.MessageText, authJson)
-			if err != nil {
-				pp.Log.Warn().Err(err).Msg("Failed to auth with passport server, retrying in 5 seconds...")
-				time.Sleep(5 * time.Second)
-				pp.Conn.lock.Unlock()
-				continue
+			for {
+				_, r, err := pp.Conn.ws.Reader(ctx)
+				if err != nil {
+					time.Sleep(5 * time.Second)
+					pp.Conn.lock.Unlock()
+					continue reconnectLoop
+				}
+
+				payload, err := ioutil.ReadAll(r)
+				if err != nil {
+					pp.Log.Err(err).Msg("issue reading response")
+					time.Sleep(5 * time.Second)
+					pp.Conn.lock.Unlock()
+					continue reconnectLoop
+				}
+
+				v, err := jason.NewObjectFromBytes(payload)
+				if err != nil {
+					pp.Log.Err(err).Msgf(`error making object from bytes`)
+					time.Sleep(5 * time.Second)
+					pp.Conn.lock.Unlock()
+					continue reconnectLoop
+				}
+
+				returnedTxID, err := v.GetString("transactionID")
+				if err != nil {
+					continue
+				}
+
+				if returnedTxID == txID.String() {
+					result, err := v.GetString("key")
+					if err != nil {
+						pp.Log.Err(err).Msgf(`error getting auth payload`)
+						time.Sleep(5 * time.Second)
+						pp.Conn.lock.Unlock()
+						continue reconnectLoop
+					}
+
+					if result == "HUB:ERROR" {
+						// parse whether it is an error
+						errMsg := &responseError{}
+						err := json.Unmarshal(payload, errMsg)
+						if err != nil {
+							pp.Log.Err(err).Msgf(`error getting auth payload`)
+							time.Sleep(5 * time.Second)
+							pp.Conn.lock.Unlock()
+							pp.Conn.ws.Close(websocket.StatusNormalClosure, "error authing")
+							continue reconnectLoop
+						}
+
+						pp.Log.Err(fmt.Errorf(errMsg.Message)).Msg("error authing with passport")
+						time.Sleep(5 * time.Second)
+						pp.Conn.lock.Unlock()
+						pp.Conn.ws.Close(websocket.StatusNormalClosure, "error authing")
+						continue reconnectLoop
+					}
+
+					pp.Log.Info().Msg("Connection and auth to passport server successful")
+					pp.Conn.Connected = true
+					pp.Conn.cond.Broadcast()
+					pp.Conn.lock.Unlock()
+					continue reconnectLoop
+				}
 			}
-			pp.Log.Info().Msg("Connection and auth to passport server successful")
-			pp.Conn.Connected = true
-			pp.Conn.cond.Broadcast()
-			pp.Conn.lock.Unlock()
 		}
-
 	}()
 
 	//// TODO: setup ping pong
@@ -230,7 +288,7 @@ func (pp *Passport) Connect(ctx context.Context) error {
 				errMsg := &responseError{}
 				err := json.Unmarshal(payload, errMsg)
 				if err != nil {
-					cb.errChan <- terror.Error(err, "Invlid json response")
+					cb.errChan <- terror.Error(err, "Invalid json response")
 					continue
 				}
 
@@ -263,7 +321,7 @@ func (pp *Passport) Connect(ctx context.Context) error {
 func (pp *Passport) sendPump(callbackChannels map[string]*callbackChannel) {
 	for {
 		msg := <-pp.send
-		if !pp.Conn.Connected {
+		if !pp.Conn.Connected && !msg.OverrideNoConnection {
 			if msg.ErrChan != nil {
 				msg.ErrChan <- terror.Error(fmt.Errorf("no passport connection"))
 			}

@@ -74,8 +74,6 @@ func main() {
 					&cli.StringFlag{Name: "twitch_ui_web_host_url", Value: "http://localhost:8081", EnvVars: []string{"TWITCH_HOST_URL_FRONTEND"}, Usage: "Twitch url for CORS"},
 
 					&cli.StringFlag{Name: "passport_addr", Value: "ws://localhost:8086/api/ws", EnvVars: []string{envPrefix + "_PASSPORT_ADDR", "PASSPORT_ADDR"}, Usage: " address of the passport server, inc protocol"},
-					&cli.StringFlag{Name: "passport_client_id", Value: "gameserver", EnvVars: []string{envPrefix + "_PASSPORT_CLIENT_ID_ADDR", "PASSPORT_CLIENT_ID_ADDR"}, Usage: "game server client ID to auth with passport"},
-					&cli.StringFlag{Name: "passport_client_secret", Value: "noidea", EnvVars: []string{envPrefix + "_PASSPORT_CLIENT_SECRET_ADDR", "PASSPORT_CLIENT_SECRET_ADDR"}, Usage: "game server client secret to auth with passport"},
 
 					&cli.StringFlag{Name: "api_addr", Value: ":8084", EnvVars: []string{envPrefix + "_API_ADDR"}, Usage: ":port to run the API"},
 					&cli.StringFlag{Name: "rootpath", Value: "../web/build", EnvVars: []string{envPrefix + "_ROOTPATH"}, Usage: "folder path of index.html"},
@@ -87,6 +85,8 @@ func main() {
 					&cli.BoolFlag{Name: "jwt_encrypt", Value: true, EnvVars: []string{envPrefix + "_JWT_ENCRYPT", "JWT_ENCRYPT"}, Usage: "set if to encrypt jwt tokens or not"},
 					&cli.StringFlag{Name: "jwt_encrypt_key", Value: "ITF1vauAxvJlF0PLNY9btOO9ZzbUmc6X", EnvVars: []string{envPrefix + "_JWT_KEY", "JWT_KEY"}, Usage: "supports key sizes of 16, 24 or 32 bytes"},
 					&cli.IntFlag{Name: "jwt_expiry_days", Value: 1, EnvVars: []string{envPrefix + "_JWT_EXPIRY_DAYS", "JWT_EXPIRY_DAYS"}, Usage: "expiry days for auth tokens"},
+
+					&cli.StringFlag{Name: "passport_server_token", Value: "aG93cyBpdCBnb2luZyBtYWM=", EnvVars: []string{envPrefix + "_PASSPORT_TOKEN"}, Usage: "Token to auth to passport server"},
 				},
 				Usage: "run server",
 				Action: func(c *cli.Context) error {
@@ -98,8 +98,7 @@ func main() {
 					databaseAppName := c.String("database_application_name")
 
 					passportAddr := c.String("passport_addr")
-					passportClientID := c.String("passport_client_id")
-					passportClientSecret := c.String("passport_client_secret")
+					passportClientToken := c.String("passport_server_token")
 
 					ctx, cancel := context.WithCancel(c.Context)
 					environment := c.String("environment")
@@ -131,8 +130,7 @@ func main() {
 					ctxPP, cancelPP := context.WithCancel(ctx)
 					pp := passport.NewPassport(ctxPP, log_helpers.NamedLogger(logger, "passport"),
 						passportAddr,
-						passportClientID,
-						passportClientSecret,
+						passportClientToken,
 					)
 					g.Add(func() error {
 						return pp.Connect(ctxPP)
