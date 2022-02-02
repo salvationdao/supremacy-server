@@ -120,8 +120,8 @@ type BattleEndRequest struct {
 		BattleID              server.BattleID           `json:"battleID"`
 		WinCondition          server.BattleWinCondition `json:"winCondition"`
 		WinningWarMachineNFTs []*struct {
-			TokenID            uint64 `json:"tokenID"`
-			RemainingHitPoints int    `json:"remainingHitPoints"`
+			TokenID uint64 `json:"tokenID"`
+			Health  int    `json:"health"`
 		} `json:"winningWarMachines"`
 	} `json:"payload"`
 }
@@ -147,7 +147,7 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 	for _, wm := range req.Payload.WinningWarMachineNFTs {
 		for _, bwm := range ba.battle.WarMachines {
 			if wm.TokenID == bwm.TokenID {
-				bwm.RemainingHitPoints = wm.RemainingHitPoints
+				bwm.Health = wm.Health
 				winningMachines = append(winningMachines, bwm)
 				battleRewardRequest.WinningWarMachineOwnerIDs = append(battleRewardRequest.WinningWarMachineOwnerIDs, bwm.OwnedByID)
 				battleRewardRequest.WinnerFactionID = bwm.FactionID
@@ -188,7 +188,7 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 
 	// set war machine durability
 	for _, warMachine := range ba.battle.WarMachines {
-		warMachine.Durability = 100 * warMachine.RemainingHitPoints / warMachine.MaxHitPoints
+		warMachine.Durability = 100 * warMachine.Health / warMachine.MaxHealth
 	}
 
 	//release war machine

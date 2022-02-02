@@ -162,7 +162,6 @@ func NewAPI(
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventGameEnd, api.BattleEndSignal)
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventFactionViewersGet, api.WinningFactionViewerIDsGet)
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventWarMachinePositionChanged, api.UpdateWarMachinePosition)
-	api.BattleArena.Events.AddEventHandler(battle_arena.EventWarMachineHitPointChanged, api.UpdateWarMachineHitPoint)
 
 	///////////////////////////
 	//	 Passport Events	 //

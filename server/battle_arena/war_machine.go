@@ -2,6 +2,7 @@ package battle_arena
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"server"
@@ -62,7 +63,7 @@ func (ba *BattleArena) WarMachineDestroyedHandler(ctx context.Context, payload [
 	// TODO: MAKE TREAD SAFE
 	for _, wm := range ba.battle.WarMachines {
 		if wm.TokenID == req.Payload.DestroyedWarMachineEvent.DestroyedWarMachineID {
-			wm.RemainingHitPoints = 0
+			wm.Health = 0
 		}
 	}
 
@@ -86,7 +87,8 @@ func (ba *BattleArena) WarMachineDestroyedHandler(ctx context.Context, payload [
 	return nil
 }
 
-func (ba *BattleArena) WarMachinePositionUpdate(payload []byte) {
+func (ba *BattleArena) WarMachinesTick(payload []byte) {
+	// Save to history
 	ba.battle.BattleHistory = append(ba.battle.BattleHistory, payload)
 
 	// broadcast
@@ -94,14 +96,49 @@ func (ba *BattleArena) WarMachinePositionUpdate(payload []byte) {
 		BattleArena:        ba.battle,
 		WarMachineLocation: payload,
 	})
-}
 
-func (ba *BattleArena) WarMachineHitPointUpdate(payload []byte) {
-	ba.battle.BattleHistory = append(ba.battle.BattleHistory, payload)
+	// Update game settings (so new players get the latest position, health and shield of all warmachines)
+	count := payload[1]
+	var c byte
+	offset := 2
+	for c = 0; c < count; c++ {
+		participantID := payload[offset]
+		offset++
 
-	// broadcast
-	ba.Events.Trigger(context.Background(), EventWarMachineHitPointChanged, &EventData{
-		BattleArena:        ba.battle,
-		WarMachineHitPoint: payload,
-	})
+		// Get Warmachine Index
+		warMachineIndex := -1
+		for i, wmn := range ba.battle.WarMachines {
+			if wmn.ParticipantID == participantID {
+				warMachineIndex = i
+				break
+			}
+		}
+
+		// Get Sync byte (tells us which data was updated for this warmachine)
+		syncByte := payload[offset]
+		offset++
+
+		// Position + Yaw
+		if syncByte >= 100 {
+			if ba.battle.WarMachines[warMachineIndex].Position == nil {
+				ba.battle.WarMachines[warMachineIndex].Position = &server.Vector3{}
+			}
+			ba.battle.WarMachines[warMachineIndex].Position.X = int(binary.BigEndian.Uint32(payload[offset : offset+4]))
+			offset += 4
+			ba.battle.WarMachines[warMachineIndex].Position.Y = int(binary.BigEndian.Uint32(payload[offset : offset+4]))
+			offset += 4
+			ba.battle.WarMachines[warMachineIndex].Rotation = int(binary.BigEndian.Uint32(payload[offset : offset+4]))
+			offset += 4
+		}
+		// Health
+		if syncByte == 1 || syncByte == 11 || syncByte == 101 || syncByte == 111 {
+			ba.battle.WarMachines[warMachineIndex].Health = int(binary.BigEndian.Uint32(payload[offset : offset+4]))
+			offset += 4
+		}
+		// Shield
+		if syncByte == 10 || syncByte == 11 || syncByte == 110 || syncByte == 111 {
+			ba.battle.WarMachines[warMachineIndex].Shield = int(binary.BigEndian.Uint32(payload[offset : offset+4]))
+			offset += 4
+		}
+	}
 }

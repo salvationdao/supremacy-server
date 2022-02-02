@@ -129,8 +129,7 @@ type NetMessageType byte
 // NetMessageTypes
 const (
 	NetMessageTypeJSON NetMessageType = iota
-	NetMessageTypePositionTick
-	NetMessageTypeHitPointTick
+	NetMessageTypeTick
 )
 
 func (ba *BattleArena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -211,10 +210,8 @@ func (ba *BattleArena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					continue
 				}
 				ba.runGameCommand(ctx, c, BattleCommand(cmdKey), payload[1:])
-			case NetMessageTypePositionTick:
-				ba.WarMachinePositionUpdate(payload)
-			case NetMessageTypeHitPointTick:
-				ba.WarMachineHitPointUpdate(payload)
+			case NetMessageTypeTick:
+				ba.WarMachinesTick(payload)
 			default:
 				ba.Log.Err(fmt.Errorf("unknown message type")).Msg("")
 			}
