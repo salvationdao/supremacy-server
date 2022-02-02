@@ -2,10 +2,7 @@ package passport
 
 import (
 	"context"
-	"fmt"
 	"server"
-
-	"github.com/gofrs/uuid"
 
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
@@ -36,41 +33,6 @@ func (pp *Passport) UpgradeUserConnection(ctx context.Context, sessionID hub.Ses
 			return terror.Error(err)
 		}
 	}
-}
-
-// SendHoldSupsMessage tells the passport to hold sups
-func (pp *Passport) SendHoldSupsMessage(ctx context.Context, userID server.UserID, supsChange server.BigInt, txID string, reason string) (server.TransactionReference, error) {
-	supTransactionReference := uuid.Must(uuid.NewV4())
-	supTxRefString := server.TransactionReference(fmt.Sprintf("%s|%s", reason, supTransactionReference.String()))
-	replyChannel := make(chan []byte)
-	errChan := make(chan error)
-
-	pp.send <- &Request{
-		ReplyChannel: replyChannel,
-		ErrChan:      errChan,
-		Message: &Message{
-			Key: "SUPREMACY:HOLD_SUPS",
-			Payload: struct {
-				Amount               server.BigInt               `json:"amount"`
-				FromUserID           server.UserID               `json:"userID"`
-				TransactionReference server.TransactionReference `json:"transactionReference"`
-			}{
-				FromUserID:           userID,
-				Amount:               supsChange,
-				TransactionReference: supTxRefString,
-			},
-			TransactionID: txID,
-			context:       ctx,
-		}}
-	for {
-		select {
-		case <-replyChannel:
-			return supTxRefString, nil
-		case err := <-errChan:
-			return supTxRefString, terror.Error(err)
-		}
-	}
-
 }
 
 // SendTickerMessage sends the client map and multipliers to the passport to handle giving out sups

@@ -32,33 +32,27 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID) 
 		tempList := []*server.WarMachineNFT{}
 		// if queuing war machines is less than maximum in game war machine amount get all and fill rest with defaults
 		if len(wmq.WarMachines) <= MaxInGameWarmachinePerFaction {
-
-			fmt.Println(len(wmq.WarMachines))
 			// get all the war machines
 			tempList = append(tempList, wmq.WarMachines...)
 
 			// clear up the queuing list
 			wmq.WarMachines = []*server.WarMachineNFT{}
 
-			// TODO: add default war machine to meet the total amount
+			// add default war machine to meet the total amount
 			for len(tempList) < MaxInGameWarmachinePerFaction {
 				amountToGet := MaxInGameWarmachinePerFaction - len(tempList)
-				fmt.Println("here11111")
 				result, err := ba.passport.GetDefaultWarMachines(ctx, factionID, amountToGet)
 				if err != nil {
 					ba.Log.Err(err).Msg("issue getting default war machines")
 					// TODO: figure how what to do if this errors
 				}
-				fmt.Println("here222222")
 
 				tempList = append(tempList, result...)
 				time.Sleep(2 * time.Second)
 			}
 
-			fmt.Println("here33333")
-
 			// broadcast next 5 queuing war machines to twitch ui
-			//api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchFactionWarMachineQueueUpdated, factionID)), []*server.WarMachineNFT{})
+			// api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchFactionWarMachineQueueUpdated, factionID)), []*server.WarMachineNFT{})
 
 			// broadcast empty queue for all the passport client
 			ba.passport.WarMachineQueuePositionClear(context.Background(), fmt.Sprintf("war_machine_position_clear_%s", factionID), factionID)

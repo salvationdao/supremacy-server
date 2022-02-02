@@ -81,30 +81,3 @@ func (ba *BattleArena) FactionAbilityTrigger(atr *AbilityTriggerRequest) error {
 	ba.send <- gameMessage
 	return nil
 }
-
-//
-//func (ba *BattleArena) FakeWarMachinePositionUpdate() {
-//	i := 1
-//	for {
-//		for _, warMachine := range ba.battle.WarMachines {
-//			// do update
-//			scale := 1
-//			if i%2 == 0 {
-//				scale = -1
-//			}
-//
-//			warMachine.Rotation = i % 360
-//			warMachine.Position.X += 10 * scale
-//			warMachine.Position.Y -= 10 * scale
-//		}
-//
-//		// broadcast
-//		ba.Events.Trigger(context.Background(), EventWarMachinePositionChanged, &EventData{
-//			BattleArena: ba.battle,
-//		})
-//
-//		time.Sleep(250 * time.Millisecond)
-//		i++
-//	}
-//
-//}

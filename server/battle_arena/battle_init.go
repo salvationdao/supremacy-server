@@ -16,20 +16,19 @@ func (ba *BattleArena) InitNextBattle() error {
 
 	ctx := context.Background()
 	// generate a new battle event
-	newBattle := &server.Battle{
-		ID: server.BattleID(uuid.Must(uuid.NewV4())),
-	}
+	ba.battle.ID = server.BattleID(uuid.Must(uuid.NewV4()))
+
 	// assign a random map
 	gameMap, err := db.GameMapGetRandom(ba.ctx, ba.Conn)
 	if err != nil {
 		ba.Log.Err(err).Msg("")
 		return terror.Error(err)
 	}
-	newBattle.GameMap = gameMap
-	newBattle.GameMapID = gameMap.ID
-	// get nft from gameserver battle queue
-	// get NFT
-	WarMachineList := []*server.WarMachineNFT{}
+	ba.battle.GameMap = gameMap
+	ba.battle.GameMapID = gameMap.ID
+
+	// get NFT from battle queue
+	ba.battle.WarMachines = []*server.WarMachineNFT{}
 
 	for len(ba.BattleQueueMap) == 0 {
 		ba.Log.Info().Msg("No factions, trying again in 2 seconds")
@@ -37,12 +36,12 @@ func (ba *BattleArena) InitNextBattle() error {
 	}
 
 	for factionID := range ba.BattleQueueMap {
-		WarMachineList = append(WarMachineList, ba.GetBattleWarMachineFromQueue(factionID)...)
+		ba.battle.WarMachines = append(ba.battle.WarMachines, ba.GetBattleWarMachineFromQueue(factionID)...)
 	}
 
-	if len(WarMachineList) > 0 {
+	if len(ba.battle.WarMachines) > 0 {
 		tokenIDs := []uint64{}
-		for _, warMachine := range WarMachineList {
+		for _, warMachine := range ba.battle.WarMachines {
 			tokenIDs = append(tokenIDs, warMachine.TokenID)
 		}
 
@@ -50,16 +49,11 @@ func (ba *BattleArena) InitNextBattle() error {
 		err := ba.passport.AssetLock(ctx, "asset_lock", tokenIDs)
 		if err != nil {
 			ba.Log.Err(err).Msg("Failed to lock assets")
-			//return
 			// TODO: figure out how to handle this
 		}
 	}
 
-	newBattle.WarMachines = WarMachineList
-
-	ba.Log.Info().Msgf("Initializing new battle: %s", newBattle.ID)
-
-	ba.battle = newBattle
+	ba.Log.Info().Msgf("Initializing new battle: %s", ba.battle.ID)
 
 	// send new battle details to game client
 	ctx, cancel := context.WithCancel(ba.ctx)
@@ -70,9 +64,9 @@ func (ba *BattleArena) InitNextBattle() error {
 		MapName     string                  `json:"mapName"`
 		WarMachines []*server.WarMachineNFT `json:"warMachines"`
 	}{
-		BattleID:    newBattle.ID,
-		MapName:     newBattle.GameMap.Name,
-		WarMachines: newBattle.WarMachines,
+		BattleID:    ba.battle.ID,
+		MapName:     ba.battle.GameMap.Name,
+		WarMachines: ba.battle.WarMachines,
 	}
 
 	gameMessage := &GameMessage{
