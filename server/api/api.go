@@ -229,7 +229,7 @@ func (api *API) SetupAfterConnections() {
 
 	// start live voting broadcaster
 	tickle.MinDurationOverride = true
-	liveVotingBroadcasterLogger := log_helpers.NamedLogger(api.Log, "Live Voting Broadcaster").Level(zerolog.TraceLevel)
+	liveVotingBroadcasterLogger := log_helpers.NamedLogger(api.Log, "Live Voting Broadcaster").Level(zerolog.Disabled)
 	liveVotingBroadcaster := tickle.New("Live Voting Broadcaster", 0.2, func() (int, error) {
 		totalVote := server.BigInt{Int: *big.NewInt(0)}
 		totalVoteMutex := sync.Mutex{}
@@ -363,9 +363,9 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 	gameSettingsData, err := json.Marshal(&BroadcastPayload{
 		Key: HubKeyGameSettingsUpdated,
 		Payload: &GameSettingsResponse{
-			GameMap:     ed.BattleArena.GameMap,
-			WarMachines: ed.BattleArena.WarMachines,
-			// WarMachineLocation: ed.BattleArena.BattleHistory[0],
+			GameMap:            ed.BattleArena.GameMap,
+			WarMachines:        ed.BattleArena.WarMachines,
+			WarMachineLocation: ed.BattleArena.BattleHistory[0],
 		},
 	})
 	if err != nil {
