@@ -102,6 +102,10 @@ func (th *TwitchControllerWS) FactionAbilityFirstVote(ctx context.Context, wsc *
 		return terror.Error(err)
 	}
 
+	if req.Payload.PointSpend.Cmp(big.NewInt(0)) <= 0 {
+		return terror.Error(terror.ErrInvalidInput, "Error - Can not spend negative amount of sups")
+	}
+
 	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
 	if userID.IsNil() {
 		return terror.Error(terror.ErrInvalidInput)
@@ -113,8 +117,12 @@ func (th *TwitchControllerWS) FactionAbilityFirstVote(ctx context.Context, wsc *
 	}
 
 	if hubClientDetail.FactionID.IsNil() {
-		return terror.Error(terror.ErrForbidden, "Error - Con only vote after joining one of the three factions")
+		return terror.Error(terror.ErrForbidden, "Error - Can only vote after joining one of the three factions")
 	}
+
+	// declare amount
+	bigInt := big.NewInt(0)
+	amount := server.BigInt{Int: *bigInt.Add(bigInt, &req.Payload.PointSpend.Int)}
 
 	errChan := make(chan error)
 
@@ -126,14 +134,14 @@ func (th *TwitchControllerWS) FactionAbilityFirstVote(ctx context.Context, wsc *
 		}
 
 		// check action exists
-		_, ok := fvs[req.Payload.FactionAbilityID]
+		ability, ok := fvs[req.Payload.FactionAbilityID]
 		if !ok {
 			errChan <- terror.Error(terror.ErrForbidden, "Error - Action not exists")
 			return
 		}
 
 		reason := fmt.Sprintf("battle:%s|voteaction:%s", th.API.BattleArena.CurrentBattleID(), req.Payload.FactionAbilityID)
-		supTransactionReference, err := th.API.Passport.SendHoldSupsMessage(context.Background(), userID, req.Payload.PointSpend, req.TransactionID, reason)
+		supTransactionReference, err := th.API.Passport.SendHoldSupsMessage(context.Background(), userID, amount, req.TransactionID, reason)
 		if err != nil {
 			errChan <- terror.Error(err, "Error - Failed to spend sups")
 			return
@@ -141,8 +149,11 @@ func (th *TwitchControllerWS) FactionAbilityFirstVote(ctx context.Context, wsc *
 
 		// store vote amount to live voting data
 		th.API.liveVotingData[f.ID] <- func(lvd *LiveVotingData) {
-			lvd.TotalVote.Add(&lvd.TotalVote.Int, &req.Payload.PointSpend.Int)
+			lvd.TotalVote.Add(&lvd.TotalVote.Int, &amount.Int)
 		}
+
+		// calc total vote count of the current sups spent
+		voteCount := server.BigInt{Int: *req.Payload.PointSpend.Div(&req.Payload.PointSpend.Int, &ability.FactionAbility.SupsCost.Int)}
 
 		// update vote result if it is in first vote phase
 		if vs.Phase == VotePhaseFirstVote {
@@ -151,7 +162,7 @@ func (th *TwitchControllerWS) FactionAbilityFirstVote(ctx context.Context, wsc *
 				fvs[req.Payload.FactionAbilityID].UserVoteMap[userID] = make(map[server.TransactionReference]server.BigInt)
 			}
 
-			fvs[req.Payload.FactionAbilityID].UserVoteMap[userID][supTransactionReference] = req.Payload.PointSpend
+			fvs[req.Payload.FactionAbilityID].UserVoteMap[userID][supTransactionReference] = voteCount
 
 			errChan <- nil
 			return
@@ -260,6 +271,12 @@ func (th *TwitchControllerWS) FactionAbilitySecondVote(ctx context.Context, wsc 
 		return terror.Error(terror.ErrInvalidInput)
 	}
 
+	// get user detail
+	hubClientDetail, err := th.API.getClientDetailFromChannel(wsc)
+	if err != nil {
+		return terror.Error(err, "Failed to read user detail")
+	}
+
 	// check faction exists
 	factionVoteCycle, ok := th.API.factionVoteCycle[req.Payload.FactionID]
 	if !ok {
@@ -279,7 +296,8 @@ func (th *TwitchControllerWS) FactionAbilitySecondVote(ctx context.Context, wsc 
 			return
 		}
 
-		amount := server.BigInt{Int: *big.NewInt(1000000000000000000)}
+		// get ability basic sups cost as vote value
+		amount := fvs[fvr.factionAbilityID].FactionAbility.SupsCost
 		reason := fmt.Sprintf("battle:%s|voteaction:%s", th.API.BattleArena.CurrentBattleID(), req.Payload.FactionAbilityID)
 		supTransactionReference, err := th.API.Passport.SendHoldSupsMessage(context.Background(), userID, amount, req.TransactionID, reason)
 		if err != nil {
@@ -298,6 +316,25 @@ func (th *TwitchControllerWS) FactionAbilitySecondVote(ctx context.Context, wsc 
 		} else {
 			svs.DisagreedCount = append(svs.DisagreedCount, supTransactionReference)
 		}
+
+		// vote weight
+
+		// basic vote weight
+		voteWage := int64(5)
+
+		// get another 5 point if user join a faction
+		if !hubClientDetail.FactionID.IsNil() {
+			voteWage += 10
+		}
+
+		// get user active bonus
+		voteWage += int64(th.API.ClientMultiplierValueGet(wsc))
+
+		// get faction bonus
+		voteWage += th.API.GetFactionVoteWage(hubClientDetail.FactionID)
+
+		// add vote wage to the list
+		svs.VoteValueMap[supTransactionReference] = voteWage
 
 		errChan <- nil
 	}

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math"
 	"math/big"
 	"net/http"
 	"server"
@@ -20,6 +19,63 @@ import (
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
 )
+
+/***********************
+* Faction User Tracker *
+***********************/
+
+type FactionUserMap map[server.FactionID]map[server.UserID]bool
+type FactionVoteValueMap map[server.FactionID]*VoteValue
+type VoteValue struct {
+	Weight int64
+}
+
+const MinimumVoteWeight = 1
+
+func (api *API) startFactionUserTracker(factions []*server.Faction) {
+	factionUserMap := make(FactionUserMap)
+	factionVoteValueMap := make(FactionVoteValueMap)
+
+	for _, faction := range factions {
+		factionUserMap[faction.ID] = make(map[server.UserID]bool)
+		factionVoteValueMap[faction.ID] = &VoteValue{
+			Weight: MinimumVoteWeight,
+		}
+	}
+
+	// start channel
+	go func() {
+		for fn := range api.factionUserTracker {
+			fn(factionUserMap, factionVoteValueMap)
+		}
+	}()
+}
+
+// CalcVoteWeight recalculate the weight of each faction vote
+func CalcVoteWeight(fum FactionUserMap, fvv FactionVoteValueMap) {
+	for factionID, fv := range fvv {
+		for fid, fu := range fum {
+			if factionID != fid {
+				fv.Weight += int64(len(fu))
+			}
+		}
+
+		// minmum weight is 1
+		if fv.Weight < MinimumVoteWeight {
+			fv.Weight = MinimumVoteWeight
+		}
+	}
+}
+
+func (api *API) GetFactionVoteWage(factionID server.FactionID) int64 {
+	factionWageChan := make(chan int64, 5)
+
+	api.factionUserTracker <- func(fum FactionUserMap, fvvm FactionVoteValueMap) {
+		factionWageChan <- fvvm[factionID].Weight
+	}
+
+	return <-factionWageChan
+}
 
 /************************
 * Live Voting Broadcast *
@@ -107,6 +163,7 @@ type secondVoteCandidate struct {
 type secondVoteResult struct {
 	AgreedCount    []server.TransactionReference `json:"AgreedCount"`
 	DisagreedCount []server.TransactionReference `json:"DisagreedCount"`
+	VoteValueMap   map[server.TransactionReference]int64
 }
 
 /***********
@@ -127,6 +184,7 @@ func (api *API) startFactionVoteCycle(faction *server.Faction) {
 	secondVoteResult := &secondVoteResult{
 		AgreedCount:    []server.TransactionReference{},
 		DisagreedCount: []server.TransactionReference{},
+		VoteValueMap:   make(map[server.TransactionReference]int64),
 	}
 
 	// initialise current vote stage
@@ -196,12 +254,28 @@ func (api *API) secondVoteResultBroadcasterFactory(factionID server.FactionID, v
 			return http.StatusOK, nil
 		}
 
+		// get a copy of second vote
 		secondVoteResult := *svs
+
+		// remove the unsuccessful agreed votes
+		agreedVoteValue := int64(0)
+		for _, txRef := range secondVoteResult.AgreedCount {
+			if voteValue, ok := svs.VoteValueMap[txRef]; ok {
+				agreedVoteValue += voteValue
+			}
+		}
+		// remove the unsuccessful disagree votes
+		disagreedVoteValue := int64(0)
+		for _, txRef := range secondVoteResult.DisagreedCount {
+			if voteValue, ok := svs.VoteValueMap[txRef]; ok {
+				disagreedVoteValue += voteValue
+			}
+		}
 
 		// broadcast notification to all the connected clients
 		broadcastData, err := json.Marshal(&BroadcastPayload{
 			Key:     HubKeyTwitchFactionSecondVoteUpdated,
-			Payload: calcSecondVoteResult(factionID, secondVoteResult),
+			Payload: calcSecondVoteResult(factionID, agreedVoteValue, disagreedVoteValue),
 		})
 
 		if err == nil {
@@ -329,10 +403,12 @@ func (api *API) voteStageListenerFactory(factionID server.FactionID) func() (int
 				}
 
 				// remove the unsuccessful agreed votes
-				svs.AgreedCount = []server.TransactionReference{}
+				agreedVoteValue := int64(0)
 				for _, tx := range agreeTx {
 					if tx.Status == server.TransactionSuccess {
-						svs.AgreedCount = append(svs.AgreedCount, tx.TransactionReference)
+						if voteValue, ok := svs.VoteValueMap[tx.TransactionReference]; ok {
+							agreedVoteValue += voteValue
+						}
 					}
 				}
 
@@ -344,18 +420,19 @@ func (api *API) voteStageListenerFactory(factionID server.FactionID) func() (int
 				}
 
 				// remove the unsuccessful disagree votes
-				svs.DisagreedCount = []server.TransactionReference{}
+				disagreedVoteValue := int64(0)
 				for _, tx := range disagreeTx {
 					if tx.Status == server.TransactionSuccess {
-						svs.DisagreedCount = append(svs.DisagreedCount, tx.TransactionReference)
+						if voteValue, ok := svs.VoteValueMap[tx.TransactionReference]; ok {
+							disagreedVoteValue += voteValue
+						}
 					}
 				}
 
 				// broadcast the latest vote result to all the connected clients
-				secondVoteResult := *svs
 				broadcastData, err := json.Marshal(&BroadcastPayload{
 					Key:     HubKeyTwitchFactionSecondVoteUpdated,
-					Payload: calcSecondVoteResult(f.ID, secondVoteResult),
+					Payload: calcSecondVoteResult(f.ID, agreedVoteValue, disagreedVoteValue),
 				})
 				if err == nil {
 					api.Hub.Clients(func(clients hub.ClientsList) {
@@ -553,6 +630,9 @@ func (api *API) voteStageListenerFactory(factionID server.FactionID) func() (int
 				// initialise second vote state
 				svs.AgreedCount = []server.TransactionReference{}
 				svs.DisagreedCount = []server.TransactionReference{}
+				for key := range svs.VoteValueMap {
+					delete(svs.VoteValueMap, key)
+				}
 
 				// start a new vote
 
@@ -595,13 +675,12 @@ func parseFirstVoteResult(fvs FirstVoteState, fvr *FirstVoteResult, checkedTrans
 
 	// start parsing vote result
 	type voter struct {
-		id        server.UserID
-		totalSups server.BigInt
+		id         server.UserID
+		totalVotes server.BigInt
 	}
 	type ability struct {
 		id         server.FactionAbilityID
 		totalVotes server.BigInt
-		totalSups  server.BigInt
 		voters     []*voter
 	}
 
@@ -610,47 +689,34 @@ func parseFirstVoteResult(fvs FirstVoteState, fvr *FirstVoteResult, checkedTrans
 		ability := &ability{
 			id:         abilityID,
 			totalVotes: server.BigInt{Int: *big.NewInt(0)},
-			totalSups:  server.BigInt{Int: *big.NewInt(0)},
 			voters:     []*voter{},
 		}
 
 		// here we count the total amount of sups spent on that ability
 		for voterID, txMap := range fv.UserVoteMap {
 			voter := &voter{
-				id:        voterID,
-				totalSups: server.BigInt{Int: *big.NewInt(0)},
+				id:         voterID,
+				totalVotes: server.BigInt{Int: *big.NewInt(0)},
 			}
 			// tally their votes
 			for tx, voteCount := range txMap {
 				// validate transfer was successful here then add it
 				for _, chktx := range checkedTransactions {
 					if tx == chktx.TransactionReference && chktx.Status == server.TransactionSuccess {
-						voter.totalSups.Add(&voter.totalSups.Int, &voteCount.Int)
+						voter.totalVotes.Add(&voter.totalVotes.Int, &voteCount.Int)
 						continue
 					}
 				}
 			}
 			// append the voter and sups spent on that vote
-			ability.totalSups.Add(&ability.totalSups.Int, &voter.totalSups.Int)
+			ability.totalVotes.Add(&ability.totalVotes.Int, &voter.totalVotes.Int)
 			ability.voters = append(ability.voters, voter)
 		}
 
 		// skip if no vote
-		if ability.totalSups.BitLen() == 0 {
+		if ability.totalVotes.BitLen() == 0 {
 			continue
 		}
-
-		supUSDCentValue := 12
-		coefficient := float64(len(fmt.Sprint(supUSDCentValue))) - 1
-		howManySups := math.Floor(math.Pow(10, coefficient)*float64(fv.FactionAbility.USDCentCost)/float64(supUSDCentValue)) / math.Pow(10, coefficient)
-		oneSup := big.NewFloat(1000000000000000000)
-
-		bigInt, _ := oneSup.Mul(big.NewFloat(howManySups), oneSup).Int(nil)
-		abilityCost := server.BigInt{Int: *bigInt}
-		totalSpent := ability.totalSups
-
-		totalVotes := totalSpent.Div(&totalSpent.Int, &abilityCost.Int)
-		ability.totalVotes.Add(&ability.totalVotes.Int, totalVotes)
 
 		abilities = append(abilities, ability)
 	}
@@ -671,7 +737,7 @@ func parseFirstVoteResult(fvs FirstVoteState, fvr *FirstVoteResult, checkedTrans
 
 		// sort voters
 		sort.Slice(abilities[0].voters, func(i, j int) bool {
-			return abilities[0].voters[i].totalSups.Cmp(&abilities[0].voters[j].totalSups.Int) == 1
+			return abilities[0].voters[i].totalVotes.Cmp(&abilities[0].voters[j].totalVotes.Int) == 1
 		})
 
 		// set first vote result
@@ -696,7 +762,7 @@ func parseFirstVoteResult(fvs FirstVoteState, fvr *FirstVoteResult, checkedTrans
 
 	// sort voters
 	sort.Slice(abilities[0].voters, func(i, j int) bool {
-		return abilities[0].voters[i].totalSups.Cmp(&abilities[0].voters[j].totalSups.Int) == 1
+		return abilities[0].voters[i].totalVotes.Cmp(&abilities[0].voters[j].totalVotes.Int) == 1
 	})
 
 	// set first vote result
@@ -712,13 +778,13 @@ type secondVoteResultResponse struct {
 }
 
 // calc second vote result
-func calcSecondVoteResult(factionID server.FactionID, svs secondVoteResult) *secondVoteResultResponse {
+func calcSecondVoteResult(factionID server.FactionID, agreedVoteValue, disagreedVoteValue int64) *secondVoteResultResponse {
 	resp := &secondVoteResultResponse{
 		FactionID: factionID,
 		Result:    0.5,
 	}
-	if len(svs.AgreedCount) > 0 || len(svs.DisagreedCount) > 0 {
-		resp.Result = float64(len(svs.DisagreedCount)) / float64(len(svs.AgreedCount)+len(svs.DisagreedCount))
+	if agreedVoteValue > 0 || disagreedVoteValue > 0 {
+		resp.Result = float64(disagreedVoteValue) / float64(agreedVoteValue+disagreedVoteValue)
 	}
 
 	return resp

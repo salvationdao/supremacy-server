@@ -67,6 +67,16 @@ func (api *API) PassportUserUpdatedHandler(ctx context.Context, payload []byte) 
 						return
 					}
 
+					// update faction user map
+					api.factionUserTracker <- func(fum FactionUserMap, fvv FactionVoteValueMap) {
+						if !hcd.FactionID.IsNil() {
+							delete(fum[hcd.FactionID], req.Payload.User.ID)
+						}
+						fum[req.Payload.User.FactionID][req.Payload.User.ID] = true
+
+						CalcVoteWeight(fum, fvv)
+					}
+
 					// if faction id has changed, send the updated user to twitch ui
 					hcd.FactionID = req.Payload.User.FactionID
 
@@ -124,6 +134,29 @@ func (api *API) PassportUserEnlistFactionHandler(ctx context.Context, payload []
 
 	uid := req.Payload.UserID.String()
 
+	// prepare broadcast data
+	faction := api.factionMap[req.Payload.FactionID]
+	user := &server.User{
+		ID:        req.Payload.UserID,
+		FactionID: req.Payload.FactionID,
+		Faction:   faction,
+	}
+	// send
+	resp := struct {
+		Key           hub.HubCommandKey `json:"key"`
+		TransactionID string            `json:"transactionID"`
+		Payload       interface{}       `json:"payload"`
+	}{
+		Key:           HubKeyUserSubscribe,
+		TransactionID: "userUpdate",
+		Payload:       user,
+	}
+	broadcastData, err := json.Marshal(resp)
+	if err != nil {
+		api.Hub.Log.Err(err).Errorf("send: issue marshalling resp")
+		return
+	}
+
 	api.Hub.Clients(func(clients hub.ClientsList) {
 		for client, ok := range clients {
 			if !ok || client.Identifier() != uid {
@@ -131,39 +164,24 @@ func (api *API) PassportUserEnlistFactionHandler(ctx context.Context, payload []
 			}
 
 			go func(c *hub.Client) {
-				// update client facton id
 				api.hubClientDetail[c] <- func(hcd *HubClientDetail) {
+					// update faction user map
+					api.factionUserTracker <- func(fum FactionUserMap, fvv FactionVoteValueMap) {
+						if !hcd.FactionID.IsNil() {
+							delete(fum[hcd.FactionID], req.Payload.UserID)
+						}
+						fum[req.Payload.FactionID][req.Payload.UserID] = true
+
+						CalcVoteWeight(fum, fvv)
+					}
+
+					// update client facton id
 					hcd.FactionID = req.Payload.FactionID
 				}
 
-				faction := api.factionMap[req.Payload.FactionID]
-
-				user := &server.User{
-					ID:        req.Payload.UserID,
-					FactionID: req.Payload.FactionID,
-					Faction:   faction,
-				}
-
-				// send
-				resp := struct {
-					Key           hub.HubCommandKey `json:"key"`
-					TransactionID string            `json:"transactionID"`
-					Payload       interface{}       `json:"payload"`
-				}{
-					Key:           HubKeyUserSubscribe,
-					TransactionID: "userUpdate",
-					Payload:       user,
-				}
-
-				b, err := json.Marshal(resp)
+				err = c.Send(broadcastData)
 				if err != nil {
-					api.Hub.Log.Err(err).Errorf("send: issue marshalling resp")
-					return
-				}
-
-				err = c.Send(b)
-				if err != nil {
-					api.Log.Err(err).Msg("Failed to send auth response back to twitch client")
+					api.Log.Err(err).Msg("Failed to send auth response back to client")
 					return
 				}
 			}(client)

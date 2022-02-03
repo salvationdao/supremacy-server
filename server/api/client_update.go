@@ -20,15 +20,22 @@ const TickTime = 3
 type ClientAction string
 
 const (
-	ClientOnline         ClientAction = "Online"
-	ClientOffline        ClientAction = "Offline"
-	ClientVoted          ClientAction = "Voted"
-	ClientPickedLocation ClientAction = "PickedLocation"
+	ClientOnline          ClientAction = "Online"
+	ClientOffline         ClientAction = "Offline"
+	ClientVoted           ClientAction = "Voted"
+	ClientPickedLocation  ClientAction = "PickedLocation"
+	ClientMultiplierValue ClientAction = "MultiplierValue"
 )
 
 type ClientUpdate struct {
-	Client *hub.Client
-	Action ClientAction
+	Client            *hub.Client
+	Action            ClientAction
+	MultipleValueChan chan int
+}
+
+type ClientMultiplier struct {
+	clients           map[*hub.Client]bool
+	MultiplierActions []*MultiplierAction
 }
 
 type MultiplierAction struct {
@@ -45,7 +52,7 @@ func (api *API) ClientListener() {
 	// this map stores online clients and their multipliers
 	// [userID][action-name]
 	// to avoid floats we use % based multipliers with a base of 100
-	clientMultiplierMap := make(map[server.UserID][]*MultiplierAction)
+	clientMultiplierMap := make(map[server.UserID]*ClientMultiplier)
 	tickle.MinDurationOverride = true
 	// start ticker for watch to earn
 	taskTickle := tickle.New("FactionID Channel Point Ticker", TickTime, func() (int, error) {
@@ -54,7 +61,7 @@ func (api *API) ClientListener() {
 
 		for uid, actionSlice := range clientMultiplierMap {
 			userMultiplier := 0
-			for _, actn := range actionSlice {
+			for _, actn := range actionSlice.MultiplierActions {
 				if actn.Expiry.After(time.Now()) {
 					userMultiplier += actn.MultiplierValue
 				}
@@ -92,24 +99,38 @@ listenLoop:
 		switch msg.Action {
 		case ClientOnline:
 			if _, ok := clientMultiplierMap[userID]; !ok {
-				clientMultiplierMap[userID] = []*MultiplierAction{{
-					Name:            ClientOnline,
-					MultiplierValue: 100,
-					Expiry:          time.Now().AddDate(1, 0, 0),
-				}}
+				clientMultiplierMap[userID] = &ClientMultiplier{
+					clients: make(map[*hub.Client]bool),
+					MultiplierActions: []*MultiplierAction{{
+						Name:            ClientOnline,
+						MultiplierValue: 100,
+						Expiry:          time.Now().AddDate(1, 0, 0),
+					}},
+				}
+
+				// add user to faction user map
+				userDetail, err := api.getClientDetailFromChannel(msg.Client)
+				if err != nil {
+					api.Log.Err(err)
+					continue listenLoop
+				}
+
+				if !userDetail.FactionID.IsNil() {
+					// track faction user
+					api.factionUserTracker <- func(fum FactionUserMap, fvv FactionVoteValueMap) {
+						// register user to faction
+						fum[userDetail.FactionID][userID] = true
+
+						CalcVoteWeight(fum, fvv)
+					}
+				}
 			}
+
+			clientMultiplierMap[userID].clients[msg.Client] = true
 
 		case ClientVoted:
-			if _, ok := clientMultiplierMap[userID]; !ok { // if not okay add online one
-				clientMultiplierMap[userID] = []*MultiplierAction{{
-					Name:            ClientOnline,
-					MultiplierValue: 100,
-					Expiry:          time.Now().AddDate(1, 0, 0),
-				}}
-			}
-
 			// check for existing voting action, then bump the time if exists
-			for _, multipler := range clientMultiplierMap[userID] {
+			for _, multipler := range clientMultiplierMap[userID].MultiplierActions {
 				if multipler.Name == ClientVoted {
 					multipler.Expiry = time.Now().Add(time.Minute * 30)
 					continue listenLoop
@@ -117,22 +138,14 @@ listenLoop:
 			}
 
 			// if voting actions didn't exist, add it
-			clientMultiplierMap[userID] = append(clientMultiplierMap[userID], &MultiplierAction{
+			clientMultiplierMap[userID].MultiplierActions = append(clientMultiplierMap[userID].MultiplierActions, &MultiplierAction{
 				Name:            ClientVoted,
 				MultiplierValue: 50,
 				Expiry:          time.Now().Add(time.Minute * 30),
 			})
 		case ClientPickedLocation:
-			if _, ok := clientMultiplierMap[userID]; !ok { // if not okay add online one
-				clientMultiplierMap[userID] = []*MultiplierAction{{
-					Name:            ClientOnline,
-					MultiplierValue: 100,
-					Expiry:          time.Now().AddDate(1, 0, 0),
-				}}
-			}
-
 			// check for existing voting action, then bump the time if exists
-			for _, multiplier := range clientMultiplierMap[userID] {
+			for _, multiplier := range clientMultiplierMap[userID].MultiplierActions {
 				if multiplier.Name == ClientPickedLocation {
 					multiplier.Expiry = time.Now().Add(time.Minute * 30)
 					continue listenLoop
@@ -140,13 +153,51 @@ listenLoop:
 			}
 
 			// if voting actions didn't exist, add it
-			clientMultiplierMap[userID] = append(clientMultiplierMap[userID], &MultiplierAction{
+			clientMultiplierMap[userID].MultiplierActions = append(clientMultiplierMap[userID].MultiplierActions, &MultiplierAction{
 				Name:            ClientPickedLocation,
 				MultiplierValue: 50,
 				Expiry:          time.Now().Add(time.Minute * 30),
 			})
+
+		case ClientMultiplierValue:
+			userMultiplier := 0
+			for _, actn := range clientMultiplierMap[userID].MultiplierActions {
+				if actn.Expiry.After(time.Now()) {
+					userMultiplier += actn.MultiplierValue
+				}
+			}
+			msg.MultipleValueChan <- userMultiplier
+
 		case ClientOffline:
-			delete(clientMultiplierMap, userID)
+			clientMap, ok := clientMultiplierMap[userID]
+			if !ok {
+				api.Log.Err(err)
+				continue listenLoop
+			}
+
+			delete(clientMap.clients, msg.Client)
+
+			if len(clientMap.clients) == 0 {
+				delete(clientMultiplierMap, userID)
+
+				// remove user from faction user map
+				userDetail, err := api.getClientDetailFromChannel(msg.Client)
+				if err != nil {
+					api.Log.Err(err)
+					continue listenLoop
+				}
+
+				if !userDetail.FactionID.IsNil() {
+					// track faction user
+					api.factionUserTracker <- func(fum FactionUserMap, fvv FactionVoteValueMap) {
+						// delete user from faction user tracker
+						delete(fum[userDetail.FactionID], userID)
+
+						CalcVoteWeight(fum, fvv)
+					}
+				}
+			}
+
 		default:
 			api.Log.Err(fmt.Errorf("unknown client action")).Msgf("unknown client action: %s", msg.Action)
 		}
@@ -179,4 +230,14 @@ func (api *API) ClientPickedLocation(c *hub.Client) {
 		Client: c,
 		Action: ClientPickedLocation,
 	}
+}
+
+func (api *API) ClientMultiplierValueGet(c *hub.Client) int {
+	multiValueChan := make(chan int, 5)
+	api.onlineClientMap <- &ClientUpdate{
+		Client:            c,
+		Action:            ClientMultiplierValue,
+		MultipleValueChan: multiValueChan,
+	}
+	return <-multiValueChan
 }

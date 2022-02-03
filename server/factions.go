@@ -30,7 +30,7 @@ type FactionAbility struct {
 	Type                   FactionAbilityType `json:"type" db:"type"`
 	Colour                 string             `json:"colour" db:"colour"`
 	USDCentCost            int                `json:"usdCentCost" db:"usd_cent_cost"`
-	SupsCost               string             `json:"supsCost"`
+	SupsCost               BigInt             `json:"supsCost"`
 	ImageUrl               string             `json:"imageUrl" db:"image_url"`
 	CooldownDurationSecond int                `json:"cooldownDurationSecond" db:"cooldown_duration_second"`
 }

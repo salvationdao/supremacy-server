@@ -65,6 +65,9 @@ type API struct {
 
 	// ring check auth
 	ringCheckAuthChan chan func(RingCheckAuthMap)
+
+	// faction user tracker
+	factionUserTracker chan func(FactionUserMap, FactionVoteValueMap)
 }
 
 // NewAPI registers routes
@@ -113,6 +116,9 @@ func NewAPI(
 
 		// ring check auth
 		ringCheckAuthChan: make(chan func(RingCheckAuthMap)),
+
+		// faction user map
+		factionUserTracker: make(chan func(FactionUserMap, FactionVoteValueMap)),
 	}
 
 	// start twitch jwt auth listener
@@ -207,6 +213,9 @@ func (api *API) SetupAfterConnections() {
 	}
 	api.BattleArena.SetFactionMap(api.factionMap)
 
+	// start faction user tracker
+	go api.startFactionUserTracker(factions)
+
 	// get all the faction list from passport server
 	for _, faction := range api.factionMap {
 		// start live voting ticker
@@ -220,7 +229,7 @@ func (api *API) SetupAfterConnections() {
 
 	// start live voting broadcaster
 	tickle.MinDurationOverride = true
-	liveVotingBroadcasterLogger := log_helpers.NamedLogger(api.Log, "Live Voting Broadcaster").Level(zerolog.Disabled)
+	liveVotingBroadcasterLogger := log_helpers.NamedLogger(api.Log, "Live Voting Broadcaster").Level(zerolog.TraceLevel)
 	liveVotingBroadcaster := tickle.New("Live Voting Broadcaster", 0.2, func() (int, error) {
 		totalVote := server.BigInt{Int: *big.NewInt(0)}
 		totalVoteMutex := sync.Mutex{}
@@ -354,9 +363,9 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 	gameSettingsData, err := json.Marshal(&BroadcastPayload{
 		Key: HubKeyGameSettingsUpdated,
 		Payload: &GameSettingsResponse{
-			GameMap:            ed.BattleArena.GameMap,
-			WarMachines:        ed.BattleArena.WarMachines,
-			WarMachineLocation: ed.BattleArena.BattleHistory[0],
+			GameMap:     ed.BattleArena.GameMap,
+			WarMachines: ed.BattleArena.WarMachines,
+			// WarMachineLocation: ed.BattleArena.BattleHistory[0],
 		},
 	})
 	if err != nil {

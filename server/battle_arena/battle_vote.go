@@ -28,12 +28,13 @@ func (ba *BattleArena) FactionAbilitiesQuery(factionID server.FactionID) ([]*ser
 		coefficient := float64(len(fmt.Sprint(supUSDCentValue))) - 1
 
 		howManySups := math.Floor(math.Pow(10, coefficient)*float64(ability.USDCentCost)/float64(supUSDCentValue)) / math.Pow(10, coefficient)
-		oneSup := big.NewFloat(1000000000000000000)
+		oneSup := big.NewInt(1000000000000000000)
+		howManySupsBigIn := big.NewInt(int64(howManySups * 100))
 
-		bigInt, _ := oneSup.Mul(big.NewFloat(howManySups), oneSup).Int(nil)
-		totalCost := server.BigInt{Int: *bigInt}
+		bigInt := oneSup.Mul(howManySupsBigIn, oneSup)
+		totalCost := server.BigInt{Int: *bigInt.Div(bigInt, big.NewInt(100))}
 
-		ability.SupsCost = totalCost.String()
+		ability.SupsCost = totalCost
 	}
 
 	return factionAbilities, nil
