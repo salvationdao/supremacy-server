@@ -72,5 +72,4 @@ func ParseQueryText(queryText string, matchAll bool) string {
 func Exec(ctx context.Context, conn Conn, q string, args ...interface{}) error {
 	_, err := conn.Exec(ctx, q)
 	return err
-
 }

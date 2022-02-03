@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/big"
 	"net/http"
 	"server"
@@ -572,7 +573,7 @@ func (api *API) voteStageListenerFactory(factionID server.FactionID) func() (int
 	return fn
 }
 
-// parseFirstVoteResult return the most voted ability and the user who contribute the most vote on that ability
+// parseFirstVoteResult return the most voted ability and the user who contributed the most vote on that ability
 func parseFirstVoteResult(fvs FirstVoteState, fvr *FirstVoteResult, checkedTransactions []*server.Transaction) {
 	// initialise first vote result
 	fvr.factionAbilityID = server.FactionAbilityID(uuid.Nil)
@@ -595,47 +596,61 @@ func parseFirstVoteResult(fvs FirstVoteState, fvr *FirstVoteResult, checkedTrans
 	// start parsing vote result
 	type voter struct {
 		id        server.UserID
-		totalVote server.BigInt
+		totalSups server.BigInt
 	}
 	type ability struct {
-		id        server.FactionAbilityID
-		totalVote server.BigInt
-		voters    []*voter
+		id         server.FactionAbilityID
+		totalVotes server.BigInt
+		totalSups  server.BigInt
+		voters     []*voter
 	}
 
 	abilities := []*ability{}
 	for abilityID, fv := range fvs {
 		ability := &ability{
-			id:        abilityID,
-			totalVote: server.BigInt{Int: *big.NewInt(0)},
-			voters:    []*voter{},
+			id:         abilityID,
+			totalVotes: server.BigInt{Int: *big.NewInt(0)},
+			totalSups:  server.BigInt{Int: *big.NewInt(0)},
+			voters:     []*voter{},
 		}
 
-		// here we count the votes
+		// here we count the total amount of sups spent on that ability
 		for voterID, txMap := range fv.UserVoteMap {
 			voter := &voter{
 				id:        voterID,
-				totalVote: server.BigInt{Int: *big.NewInt(0)},
+				totalSups: server.BigInt{Int: *big.NewInt(0)},
 			}
 			// tally their votes
 			for tx, voteCount := range txMap {
 				// validate transfer was successful here then add it
 				for _, chktx := range checkedTransactions {
 					if tx == chktx.TransactionReference && chktx.Status == server.TransactionSuccess {
-						voter.totalVote.Add(&voter.totalVote.Int, &voteCount.Int)
+						voter.totalSups.Add(&voter.totalSups.Int, &voteCount.Int)
 						continue
 					}
 				}
 			}
-			// append the voter and votes total votes
-			ability.totalVote.Add(&ability.totalVote.Int, &voter.totalVote.Int)
+			// append the voter and sups spent on that vote
+			ability.totalSups.Add(&ability.totalSups.Int, &voter.totalSups.Int)
 			ability.voters = append(ability.voters, voter)
 		}
 
 		// skip if no vote
-		if ability.totalVote.BitLen() == 0 {
+		if ability.totalSups.BitLen() == 0 {
 			continue
 		}
+
+		supUSDCentValue := 12
+		coefficient := float64(len(fmt.Sprint(supUSDCentValue))) - 1
+		howManySups := math.Floor(math.Pow(10, coefficient)*float64(fv.FactionAbility.USDCentCost)/float64(supUSDCentValue)) / math.Pow(10, coefficient)
+		oneSup := big.NewFloat(1000000000000000000)
+
+		bigInt, _ := oneSup.Mul(big.NewFloat(howManySups), oneSup).Int(nil)
+		abilityCost := server.BigInt{Int: *bigInt}
+		totalSpent := ability.totalSups
+
+		totalVotes := totalSpent.Div(&totalSpent.Int, &abilityCost.Int)
+		ability.totalVotes.Add(&ability.totalVotes.Int, totalVotes)
 
 		abilities = append(abilities, ability)
 	}
@@ -656,7 +671,7 @@ func parseFirstVoteResult(fvs FirstVoteState, fvr *FirstVoteResult, checkedTrans
 
 		// sort voters
 		sort.Slice(abilities[0].voters, func(i, j int) bool {
-			return abilities[0].voters[i].totalVote.Cmp(&abilities[0].voters[j].totalVote.Int) == 1
+			return abilities[0].voters[i].totalSups.Cmp(&abilities[0].voters[j].totalSups.Int) == 1
 		})
 
 		// set first vote result
@@ -669,7 +684,7 @@ func parseFirstVoteResult(fvs FirstVoteState, fvr *FirstVoteResult, checkedTrans
 
 	// sort ability list
 	sort.Slice(abilities, func(i, j int) bool {
-		return abilities[i].totalVote.Cmp(&abilities[j].totalVote.Int) == 1
+		return abilities[i].totalVotes.Cmp(&abilities[j].totalVotes.Int) == 1
 	})
 
 	// if only one voter in current ability
@@ -681,7 +696,7 @@ func parseFirstVoteResult(fvs FirstVoteState, fvr *FirstVoteResult, checkedTrans
 
 	// sort voters
 	sort.Slice(abilities[0].voters, func(i, j int) bool {
-		return abilities[0].voters[i].totalVote.Cmp(&abilities[0].voters[j].totalVote.Int) == 1
+		return abilities[0].voters[i].totalSups.Cmp(&abilities[0].voters[j].totalSups.Int) == 1
 	})
 
 	// set first vote result

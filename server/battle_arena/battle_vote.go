@@ -2,6 +2,9 @@ package battle_arena
 
 import (
 	"context"
+	"fmt"
+	"math"
+	"math/big"
 	"server"
 	"server/db"
 
@@ -17,6 +20,20 @@ func (ba *BattleArena) FactionAbilitiesQuery(factionID server.FactionID) ([]*ser
 	factionAbilities, err := db.FactionAbilityGetRandom(ba.ctx, ba.Conn, factionID)
 	if err != nil {
 		return nil, terror.Error(err)
+	}
+
+	// 1 SUP = 12 cents
+	supUSDCentValue := 12
+	for _, ability := range factionAbilities {
+		coefficient := float64(len(fmt.Sprint(supUSDCentValue))) - 1
+
+		howManySups := math.Floor(math.Pow(10, coefficient)*float64(ability.USDCentCost)/float64(supUSDCentValue)) / math.Pow(10, coefficient)
+		oneSup := big.NewFloat(1000000000000000000)
+
+		bigInt, _ := oneSup.Mul(big.NewFloat(howManySups), oneSup).Int(nil)
+		totalCost := server.BigInt{Int: *bigInt}
+
+		ability.SupsCost = totalCost.String()
 	}
 
 	return factionAbilities, nil

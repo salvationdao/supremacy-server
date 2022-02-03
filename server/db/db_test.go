@@ -258,7 +258,7 @@ func TestDatabase(t *testing.T) {
 		Label:                  "test action",
 		Type:                   "test",
 		Colour:                 "test",
-		SupsCost:               100,
+		USDCentCost:            100,
 		CooldownDurationSecond: 100,
 	}
 
