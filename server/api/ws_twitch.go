@@ -327,9 +327,6 @@ func (th *TwitchControllerWS) FactionAbilitySecondVote(ctx context.Context, wsc 
 			voteWage += 10
 		}
 
-		// get user active bonus
-		voteWage += int64(th.API.ClientMultiplierValueGet(wsc))
-
 		// get faction bonus
 		voteWage += th.API.GetFactionVoteWage(hubClientDetail.FactionID)
 
