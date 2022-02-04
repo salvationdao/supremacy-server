@@ -27,6 +27,7 @@ clean:
 deploy-prep: clean tools build
 	mkdir -p deploy
 	cp $(BIN)/migrate deploy/.
+	cp -r ./init deploy/.
 	cp -r ./configs deploy/.
 	cp -r $(SERVER)/db/migrations deploy/.
 
