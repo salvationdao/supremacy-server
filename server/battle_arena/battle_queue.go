@@ -48,7 +48,7 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID) 
 				}
 
 				tempList = append(tempList, result...)
-				time.Sleep(2 * time.Second)
+				time.Sleep(200 * time.Microsecond)
 			}
 
 			// broadcast next 5 queuing war machines to twitch ui

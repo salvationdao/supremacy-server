@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"server"
 	"server/db"
 
@@ -29,6 +30,25 @@ func (ba *BattleArena) WarMachineDestroyedHandler(ctx context.Context, payload [
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err)
+	}
+
+	// check battle id
+	if req.Payload.BattleID != ba.battle.ID {
+		return terror.Error(fmt.Errorf("mismatch battleID, expected %s, got %s", ba.battle.ID.String(), req.Payload.BattleID.String()))
+	}
+
+	// check destroyed war machine exist
+	exists := false
+	for _, wm := range ba.battle.WarMachines {
+		if wm.TokenID == req.Payload.DestroyedWarMachineEvent.DestroyedWarMachineID {
+			// set health to 0
+			wm.Health = 0
+			exists = true
+			break
+		}
+	}
+	if !exists {
+		return terror.Error(fmt.Errorf("destroyed war machine %d does not exist", req.Payload.DestroyedWarMachineEvent.DestroyedWarMachineID))
 	}
 
 	ba.Log.Info().Msgf("Battle Update: %s - War Machine Destroyed: %d", req.Payload.BattleID, req.Payload.DestroyedWarMachineEvent.DestroyedWarMachineID)
@@ -58,13 +78,6 @@ func (ba *BattleArena) WarMachineDestroyedHandler(ctx context.Context, payload [
 	err = db.WarMachineDestroyedEventCreate(ctx, tx, req.Payload.BattleID, req.Payload.DestroyedWarMachineEvent)
 	if err != nil {
 		return terror.Error(err)
-	}
-
-	// TODO: MAKE TREAD SAFE
-	for _, wm := range ba.battle.WarMachines {
-		if wm.TokenID == req.Payload.DestroyedWarMachineEvent.DestroyedWarMachineID {
-			wm.Health = 0
-		}
 	}
 
 	// TODO: Add kill assists
