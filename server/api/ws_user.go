@@ -1,15 +1,9 @@
 package api
 
 import (
-	"context"
-	"encoding/json"
-	"fmt"
-
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/log_helpers"
-	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
-	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
 )
 
@@ -27,7 +21,7 @@ func NewUserController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *UserC
 	}
 
 	// uch.API.SecureUserSubscribeCommand(HubKeyUserOnlineStatus, uch.OnlineStatusSubscribeHandler)
-	uch.API.SecureUserSubscribeCommand(HubKeyUserSupsUpdated, uch.SupsUpdateSubscribeHandler)
+	// uch.API.SecureUserSubscribeCommand(HubKeyUserSupsUpdated, uch.SupsUpdateSubscribeHandler)
 
 	return uch
 }
@@ -86,15 +80,16 @@ func NewUserController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *UserC
 
 const HubKeyUserOnlineStatus hub.HubCommandKey = hub.HubCommandKey("USER:ONLINE_STATUS")
 const HubKeyUserSubscribe hub.HubCommandKey = hub.HubCommandKey("USER:SUBSCRIBE")
-const HubKeyUserSupsUpdated hub.HubCommandKey = hub.HubCommandKey("USER:SUPS:UPDATED")
 
-func (uc *UserControllerWS) SupsUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	req := &hub.HubCommandRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return "", "", terror.Error(err, "Invalid request received")
-	}
+// const HubKeyUserSupsUpdated hub.HubCommandKey = hub.HubCommandKey("USER:SUPS:UPDATED")
 
-	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsUpdated, wsc.Identifier()))
-	return req.TransactionID, busKey, nil
-}
+// func (uc *UserControllerWS) SupsUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+// 	req := &hub.HubCommandRequest{}
+// 	err := json.Unmarshal(payload, req)
+// 	if err != nil {
+// 		return "", "", terror.Error(err, "Invalid request received")
+// 	}
+
+// 	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSupsUpdated, wsc.Identifier()))
+// 	return req.TransactionID, busKey, nil
+// }

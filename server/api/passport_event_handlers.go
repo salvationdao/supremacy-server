@@ -67,16 +67,6 @@ func (api *API) PassportUserUpdatedHandler(ctx context.Context, payload []byte) 
 						return
 					}
 
-					// update faction user map
-					api.factionUserTracker <- func(fum FactionUserMap, fvv FactionVoteValueMap) {
-						if !hcd.FactionID.IsNil() {
-							delete(fum[hcd.FactionID], req.Payload.User.ID)
-						}
-						fum[req.Payload.User.FactionID][req.Payload.User.ID] = true
-
-						CalcVoteWeight(fum, fvv)
-					}
-
 					// if faction id has changed, send the updated user to twitch ui
 					hcd.FactionID = req.Payload.User.FactionID
 
@@ -165,16 +155,6 @@ func (api *API) PassportUserEnlistFactionHandler(ctx context.Context, payload []
 
 			go func(c *hub.Client) {
 				api.hubClientDetail[c] <- func(hcd *HubClientDetail) {
-					// update faction user map
-					api.factionUserTracker <- func(fum FactionUserMap, fvv FactionVoteValueMap) {
-						if !hcd.FactionID.IsNil() {
-							delete(fum[hcd.FactionID], req.Payload.UserID)
-						}
-						fum[req.Payload.FactionID][req.Payload.UserID] = true
-
-						CalcVoteWeight(fum, fvv)
-					}
-
 					// update client facton id
 					hcd.FactionID = req.Payload.FactionID
 				}
@@ -222,7 +202,7 @@ func (api *API) PassportBattleQueueJoinHandler(ctx context.Context, payload []by
 
 			// broadcast next 5 queuing war machines to twitch ui
 			if len(wmq.WarMachines) <= 5 {
-				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchFactionWarMachineQueueUpdated, req.Payload.WarMachineNFT.FactionID)), wmq.WarMachines)
+				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionWarMachineQueueUpdated, req.Payload.WarMachineNFT.FactionID)), wmq.WarMachines)
 			}
 
 			// broadcast war machine queue position update
@@ -285,7 +265,7 @@ func (api *API) PassportBattleQueueReleaseHandler(ctx context.Context, payload [
 					maxLength = len(wmq.WarMachines)
 				}
 
-				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchFactionWarMachineQueueUpdated, req.Payload.WarMachineNFT.FactionID)), wmq.WarMachines[:maxLength])
+				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionWarMachineQueueUpdated, req.Payload.WarMachineNFT.FactionID)), wmq.WarMachines[:maxLength])
 			}
 
 			api.Passport.WarMachineQueuePositionBroadcast(context.Background(), battle_arena.BuildUserWarMachineQueuePosition(wmq.WarMachines))

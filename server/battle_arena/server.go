@@ -131,6 +131,9 @@ const (
 	NetMessageTypeJSON NetMessageType = iota
 	NetMessageTypeTick
 	NetMessageTypeLiveVotingTick
+	NetMessageTypeAbilityRightRatioTick
+	NetMessageTypeVotePriceTick
+	NetMessageTypeVotePriceForecastTick
 )
 
 func (ba *BattleArena) ServeHTTP(w http.ResponseWriter, r *http.Request) {

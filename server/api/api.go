@@ -39,6 +39,28 @@ type BroadcastPayload struct {
 	Payload interface{}       `json:"payload"`
 }
 
+type VotePriceSystem struct {
+	VotePriceTicker     *tickle.Tickle
+	VotePriceForecaster *tickle.Tickle
+
+	GlobalVotePerTick []int64 // store last 100 tick total vote
+	GlobalTotalVote   int64
+	GlobalAverageVote int64
+
+	FactionVotePriceMap map[server.FactionID]*FactionVotePrice
+}
+
+type FactionVotePrice struct {
+	// priority lock
+	OuterLock      sync.Mutex
+	NextAccessLock sync.Mutex
+	DataLock       sync.Mutex
+
+	// price
+	CurrentVotePriceSups server.BigInt
+	CurrentVotePerTick   int64
+}
+
 // API server
 type API struct {
 	ctx    context.Context
@@ -55,9 +77,8 @@ type API struct {
 
 	factionMap map[server.FactionID]*server.Faction
 
-	// map channels
-	factionVoteCycle map[server.FactionID]chan func(*server.Faction, *VoteStage, FirstVoteState, *FirstVoteResult, *secondVoteResult, *FactionVotingTicker)
-	liveVotingData   map[server.FactionID]chan func(*LiveVotingData)
+	// voting channels
+	liveSupsSpend map[server.FactionID]chan func(*LiveVotingData)
 
 	// client channels
 	hubClientDetail map[*hub.Client]chan func(*HubClientDetail)
@@ -66,8 +87,10 @@ type API struct {
 	// ring check auth
 	ringCheckAuthChan chan func(RingCheckAuthMap)
 
-	// faction user tracker
-	factionUserTracker chan func(FactionUserMap, FactionVoteValueMap)
+	// voting channels
+	votingCycle chan func(*VoteStage, *VoteAbility, FactionUserVoteMap, *FactionTotalVote, *VoteWinner, *VotingCycleTicker)
+
+	votePriceSystem *VotePriceSystem
 }
 
 // NewAPI registers routes
@@ -107,8 +130,10 @@ func NewAPI(
 			ClientOfflineFn: offlineFunc,
 		}),
 		// channel for faction voting system
-		factionVoteCycle: make(map[server.FactionID]chan func(*server.Faction, *VoteStage, FirstVoteState, *FirstVoteResult, *secondVoteResult, *FactionVotingTicker)),
-		liveVotingData:   make(map[server.FactionID]chan func(*LiveVotingData)),
+		// factionVoteCycle: make(map[server.FactionID]chan func(*server.Faction, *VoteStage, FirstVoteState, *FirstVoteResult, *secondVoteResult, *FactionVotingTicker)),
+		liveSupsSpend: make(map[server.FactionID]chan func(*LiveVotingData)),
+
+		votingCycle: make(chan func(*VoteStage, *VoteAbility, FactionUserVoteMap, *FactionTotalVote, *VoteWinner, *VotingCycleTicker)),
 
 		// channel for handling hub client
 		hubClientDetail: make(map[*hub.Client]chan func(*HubClientDetail)),
@@ -116,13 +141,10 @@ func NewAPI(
 
 		// ring check auth
 		ringCheckAuthChan: make(chan func(RingCheckAuthMap)),
-
-		// faction user map
-		factionUserTracker: make(chan func(FactionUserMap, FactionVoteValueMap)),
 	}
 
 	// start twitch jwt auth listener
-	go api.startTwitchJWTAuthListener()
+	go api.startAuthRignCheckListener()
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
@@ -139,7 +161,6 @@ func NewAPI(
 		// See roothub.ServeHTTP for the setup of sentry on this route.
 		r.Handle("/ws", api.Hub)
 		r.Get("/game_settings", WithError(api.GetGameSettings))
-		r.Get("/second_votes", WithError(api.GetSecondVotes))
 		r.Get("/events", WithError(api.BattleArena.GetEvents))
 	})
 
@@ -147,9 +168,9 @@ func NewAPI(
 	//		 Controllers	 //
 	///////////////////////////
 	_ = NewCheckController(log, conn, api)
-	_ = NewTwitchController(log, conn, api)
 	_ = NewUserController(log, conn, api)
 	_ = NewAuthController(log, conn, api)
+	_ = NewVoteController(log, conn, api)
 
 	///////////////////////////
 	//		 Hub Events		 //
@@ -207,35 +228,34 @@ func (api *API) SetupAfterConnections() {
 		time.Sleep(5 * time.Second)
 	}
 
+	// initialise vote price system
+	go api.startVotePriceSystem(factions)
+
+	// initialise voting cycle
+	go api.StartVotingCycle(factions)
+
+	// build faction map for main server
 	api.factionMap = make(map[server.FactionID]*server.Faction)
 	for _, faction := range factions {
 		api.factionMap[faction.ID] = faction
+
+		// start live voting ticker
+		api.liveSupsSpend[faction.ID] = make(chan func(*LiveVotingData))
+		go api.startLiveVotingDataTicker(faction.ID)
 	}
+
+	// set faction map for battle arena server
 	api.BattleArena.SetFactionMap(api.factionMap)
 
-	// start faction user tracker
-	go api.startFactionUserTracker(factions)
-
-	// get all the faction list from passport server
-	for _, faction := range api.factionMap {
-		// start live voting ticker
-		api.liveVotingData[faction.ID] = make(chan func(*LiveVotingData))
-		go api.startLiveVotingDataTicker(faction.ID)
-
-		// start voting cycle
-		api.factionVoteCycle[faction.ID] = make(chan func(*server.Faction, *VoteStage, FirstVoteState, *FirstVoteResult, *secondVoteResult, *FactionVotingTicker))
-		go api.startFactionVoteCycle(faction)
-	}
-
-	// start live voting broadcaster
+	// declare live sups spend broadcaster
 	tickle.MinDurationOverride = true
-	liveVotingBroadcasterLogger := log_helpers.NamedLogger(api.Log, "Live Voting Broadcaster").Level(zerolog.Disabled)
-	liveVotingBroadcaster := tickle.New("Live Voting Broadcaster", 0.2, func() (int, error) {
+	liveVotingBroadcasterLogger := log_helpers.NamedLogger(api.Log, "Live Sups spend Broadcaster").Level(zerolog.Disabled)
+	liveVotingBroadcaster := tickle.New("Live Sups spend Broadcaster", 0.2, func() (int, error) {
 		totalVote := server.BigInt{Int: *big.NewInt(0)}
 		totalVoteMutex := sync.Mutex{}
 		for _, faction := range factions {
 			voteCountChan := make(chan server.BigInt)
-			api.liveVotingData[faction.ID] <- func(lvd *LiveVotingData) {
+			api.liveSupsSpend[faction.ID] <- func(lvd *LiveVotingData) {
 				// pass value back
 				voteCountChan <- lvd.TotalVote
 
@@ -272,9 +292,9 @@ func (api *API) SetupAfterConnections() {
 
 		return http.StatusOK, nil
 	})
-
 	liveVotingBroadcaster.Log = &liveVotingBroadcasterLogger
 
+	// start live voting broadcaster
 	liveVotingBroadcaster.Start()
 }
 
@@ -387,16 +407,12 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 		}
 	})
 
-	// start battle voting phase for all the factions
-	for factionID := range api.factionVoteCycle {
-		go api.startVotingCycle(factionID)
-	}
+	// start voting cycle
+	api.startVotingCycle()
 }
 
 // BattleEndSignal terminate all the voting cycle
 func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData) {
-	// start battle voting phase for all the factions
-	for factionID := range api.factionVoteCycle {
-		go api.pauseVotingCycle(factionID)
-	}
+	// stop all the tickles in voting cycle
+	go api.pauseVotingCycle()
 }

@@ -2,9 +2,6 @@ package battle_arena
 
 import (
 	"context"
-	"fmt"
-	"math"
-	"math/big"
 	"server"
 	"server/db"
 
@@ -15,29 +12,27 @@ func (ba *BattleArena) SetFactionMap(factionMap map[server.FactionID]*server.Fac
 	ba.battle.FactionMap = factionMap
 }
 
-// FactionAbilitiesQuery return 3 random abilities from faction
-func (ba *BattleArena) FactionAbilitiesQuery(factionID server.FactionID) ([]*server.FactionAbility, error) {
-	factionAbilities, err := db.FactionAbilityGetRandom(ba.ctx, ba.Conn, factionID)
+// RandomAbilityCollection return random ability collection and faction ability map
+func (ba *BattleArena) RandomAbilityCollection() (*server.AbilityCollection, map[server.FactionID]*server.FactionAbility, error) {
+	// get random collection
+	abilityCollection, err := db.AbilityCollectionGetRandom(ba.ctx, ba.Conn)
 	if err != nil {
-		return nil, terror.Error(err)
+		return nil, nil, terror.Error(err)
 	}
 
-	// 1 SUP = 12 cents
-	supUSDCentValue := 12
-	for _, ability := range factionAbilities {
-		coefficient := float64(len(fmt.Sprint(supUSDCentValue))) - 1
-
-		howManySups := math.Floor(math.Pow(10, coefficient)*float64(ability.USDCentCost)/float64(supUSDCentValue)) / math.Pow(10, coefficient)
-		oneSup := big.NewInt(1000000000000000000)
-		howManySupsBigIn := big.NewInt(int64(howManySups * 100))
-
-		bigInt := oneSup.Mul(howManySupsBigIn, oneSup)
-		totalCost := server.BigInt{Int: *bigInt.Div(bigInt, big.NewInt(100))}
-
-		ability.SupsCost = totalCost
+	// get abilities by collection id
+	abilities, err := db.FactionAbilityGetByCollectionID(ba.ctx, ba.Conn, abilityCollection.ID)
+	if err != nil {
+		return nil, nil, terror.Error(err)
 	}
 
-	return factionAbilities, nil
+	// build ability map
+	factionAbilityMap := make(map[server.FactionID]*server.FactionAbility)
+	for _, ability := range abilities {
+		factionAbilityMap[ability.FactionID] = ability
+	}
+
+	return abilityCollection, factionAbilityMap, nil
 }
 
 const BattleAbilityCommand = BattleCommand("BATTLE:ABILITY")

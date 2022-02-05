@@ -41,17 +41,23 @@ CREATE TABLE battles_war_machines (
     PRIMARY KEY (battle_id, war_machine_id)
 );
 
+-- ability_collection is for voting system
+CREATE TABLE ability_collections (
+    id uuid PRIMARY KEY NOT NULL DEFAULT gen_random_uuid (),
+    label text NOT NULL,
+    colour text NOT NULL,
+    image_url text NOT NULL,
+    cooldown_duration_second int NOT NULL
+);
+
 -- faction_abilities
 CREATE TABLE faction_abilities (
     id uuid PRIMARY KEY NOT NULL DEFAULT gen_random_uuid (),
     game_client_ability_id int NOT NULL, -- gameclient uses byte/enum instead of uuid
     faction_id uuid NOT NULL,
     label text NOT NULL,
-    type text NOT NULL,
-    colour text NOT NULL,
-    usd_cent_cost int NOT NULL,
-    image_url text NOT NULL,
-    cooldown_duration_second int NOT NULL
+    collection_id uuid NOT NULL REFERENCES ability_collections (id),
+    usd_cent_cost int NOT NULL
 );
 
 -- war_machine_destroyed_events log war machine is destroyed

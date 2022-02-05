@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"server"
 
 	"github.com/gofrs/uuid"
@@ -9,12 +10,12 @@ import (
 )
 
 /**********************
-* Twitch JWT Auth Map *
+* Auth Ring Check Map *
 **********************/
 
 type RingCheckAuthMap map[string]*hub.Client
 
-func (api *API) startTwitchJWTAuthListener() {
+func (api *API) startAuthRignCheckListener() {
 
 	ringCheckAuthMap := make(RingCheckAuthMap)
 
@@ -66,4 +67,22 @@ func (api *API) getClientDetailFromChannel(wsc *hub.Client) (*HubClientDetail, e
 	result := *<-detailChan
 
 	return &result, nil
+}
+
+// getClientDetailFromUserID return hub client detail by given user id
+func (api *API) getClientDetailFromUserID(userID server.UserID) (*HubClientDetail, error) {
+	// get winner username
+	for _, wsc := range api.Hub.FindClients(func(usersClients *hub.Client) bool {
+		return usersClients.Identifier() == userID.String()
+	}) {
+		// get all the hub client instance
+		clientDetail, err := api.getClientDetailFromChannel(wsc)
+		if err != nil {
+			continue
+		}
+
+		return clientDetail, nil
+	}
+
+	return nil, terror.Error(fmt.Errorf("No hub client found"))
 }

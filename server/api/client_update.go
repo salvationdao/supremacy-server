@@ -107,23 +107,6 @@ listenLoop:
 						Expiry:          time.Now().AddDate(1, 0, 0),
 					}},
 				}
-
-				// add user to faction user map
-				userDetail, err := api.getClientDetailFromChannel(msg.Client)
-				if err != nil {
-					api.Log.Err(err)
-					continue listenLoop
-				}
-
-				if !userDetail.FactionID.IsNil() {
-					// track faction user
-					api.factionUserTracker <- func(fum FactionUserMap, fvv FactionVoteValueMap) {
-						// register user to faction
-						fum[userDetail.FactionID][userID] = true
-
-						CalcVoteWeight(fum, fvv)
-					}
-				}
 			}
 
 			clientMultiplierMap[userID].clients[msg.Client] = true
@@ -179,23 +162,6 @@ listenLoop:
 
 			if len(clientMap.clients) == 0 {
 				delete(clientMultiplierMap, userID)
-
-				// remove user from faction user map
-				userDetail, err := api.getClientDetailFromChannel(msg.Client)
-				if err != nil {
-					api.Log.Err(err)
-					continue listenLoop
-				}
-
-				if !userDetail.FactionID.IsNil() {
-					// track faction user
-					api.factionUserTracker <- func(fum FactionUserMap, fvv FactionVoteValueMap) {
-						// delete user from faction user tracker
-						delete(fum[userDetail.FactionID], userID)
-
-						CalcVoteWeight(fum, fvv)
-					}
-				}
 			}
 
 		default:

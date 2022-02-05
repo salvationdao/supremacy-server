@@ -202,43 +202,6 @@ func TestDatabase(t *testing.T) {
 		}
 	})
 
-	// warMachine := &server.WarMachine{
-	// 	ID:              1,
-	// 	Name:            "test machine",
-	// 	BaseHealthPoint: 1,
-	// 	BaseShieldPoint: 1,
-	// }
-	// t.Run("Create war machine", func(t *testing.T) {
-	// 	err := db.WarMachineCreate(ctx, conn, warMachine)
-	// 	if err != nil {
-	// 		t.Errorf("fail to create war machine\n")
-	// 		t.Fatal()
-	// 		return
-	// 	}
-	// })
-
-	// faction := &server.Faction{
-	// 	Label:  "test faction",
-	// 	Colour: "test",
-	// }
-	// t.Run("Create new faction", func(t *testing.T) {
-	// 	err := db.FactionCreate(ctx, conn, faction)
-	// 	if err != nil {
-	// 		t.Errorf("fail to create new faction\n")
-	// 		t.Fatal()
-	// 		return
-	// 	}
-	// })
-
-	// t.Run("Get faction", func(t *testing.T) {
-	// 	_, err := db.FactionGet(ctx, conn, faction.ID)
-	// 	if err != nil {
-	// 		t.Errorf("fail to get faction\n")
-	// 		t.Fatal()
-	// 		return
-	// 	}
-	// })
-
 	warMachineNFT := &server.WarMachineNFT{
 		TokenID:   1,
 		FactionID: server.FactionID(uuid.Must(uuid.FromString("60be9c52-da87-4900-8705-cc1f00a4cf82"))),
@@ -254,12 +217,9 @@ func TestDatabase(t *testing.T) {
 	})
 
 	factionAbility := &server.FactionAbility{
-		FactionID:              server.FactionID(uuid.Must(uuid.NewV4())),
-		Label:                  "test action",
-		Type:                   "test",
-		Colour:                 "test",
-		USDCentCost:            100,
-		CooldownDurationSecond: 100,
+		FactionID:   server.FactionID(uuid.Must(uuid.NewV4())),
+		Label:       "test action",
+		USDCentCost: 100,
 	}
 
 	t.Run("Create new faction action", func(t *testing.T) {
