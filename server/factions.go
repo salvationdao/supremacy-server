@@ -1,6 +1,8 @@
 package server
 
-import "github.com/gofrs/uuid"
+import (
+	"github.com/gofrs/uuid"
+)
 
 type FactionTheme struct {
 	Primary    string `json:"primary"`
@@ -18,14 +20,15 @@ type Faction struct {
 	Theme         *FactionTheme `json:"theme" db:"theme"`
 	LogoUrl       string        `json:"logoUrl,omitempty"`
 	BackgroundUrl string        `json:"backgroundUrl,omitempty"`
+	VotePrice     string        `json:"votePrice" db:"vote_price"`
 }
 
 type BattleAbility struct {
 	ID                     BattleAbilityID `json:"id" db:"id"`
 	Label                  string          `json:"label" db:"label"`
-	Colour                 string          `json:"colour" db:"colour"`
-	ImageUrl               string          `json:"imageUrl" db:"image_url"`
 	CooldownDurationSecond int             `json:"cooldownDurationSecond" db:"cooldown_duration_second"`
+	Colour                 string          `json:"colour"`
+	ImageUrl               string          `json:"imageUrl"`
 }
 
 type FactionAbilityType string
@@ -39,9 +42,11 @@ const (
 type FactionAbility struct {
 	ID                  FactionAbilityID `json:"id" db:"id"`
 	GameClientAbilityID byte             `json:"gameClientAbilityID" db:"game_client_ability_id"`
-	BattleAbilityID     BattleAbilityID  `json:"collectionID" db:"battle_ability_id"`
+	BattleAbilityID     *BattleAbilityID `json:"battleAbilityID,omitempty" db:"battle_ability_id,omitempty"`
+	Colour              string           `json:"colour" db:"colour"`
+	ImageUrl            string           `json:"imageUrl" db:"image_url"`
 	FactionID           FactionID        `json:"factionID" db:"faction_id"`
 	Label               string           `json:"label" db:"label"`
-	USDCentCost         int              `json:"usdCentCost" db:"usd_cent_cost"`
-	SupsCost            BigInt           `json:"supsCost"`
+	SupsCost            string           `json:"supsCost" db:"sups_cost"`
+	CurrentSups         string           `json:"currentSups"`
 }

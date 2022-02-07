@@ -8,10 +8,12 @@ import (
 	"net/http"
 	"server"
 	"server/battle_arena"
+	"server/db"
 	"sort"
 	"sync"
 	"time"
 
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/log_helpers"
 	"github.com/ninja-software/tickle"
 	"github.com/ninja-syndicate/hub"
@@ -29,7 +31,7 @@ const VotePriceUpdaterTickSecond = 10
 
 const VotePriceAccuracy = 10000
 
-func (api *API) startVotePriceSystem(factions []*server.Faction) {
+func (api *API) startVotePriceSystem(factions []*server.Faction, conn *pgxpool.Pool) {
 	// initialise value
 	api.votePriceSystem = &VotePriceSystem{
 		GlobalVotePerTick:   []int64{},
@@ -44,19 +46,29 @@ func (api *API) startVotePriceSystem(factions []*server.Faction) {
 
 	// initialise faction vote price map
 	for _, faction := range factions {
-		api.votePriceSystem.FactionVotePriceMap[faction.ID] = &FactionVotePrice{
+		factionVotePrice := &FactionVotePrice{
 			OuterLock:            sync.Mutex{},
 			NextAccessLock:       sync.Mutex{},
 			DataLock:             sync.Mutex{},
-			CurrentVotePriceSups: server.BigInt{Int: *big.NewInt(1000000000000000000)},
+			CurrentVotePriceSups: server.BigInt{Int: *big.NewInt(0)},
 			CurrentVotePerTick:   0,
 		}
+
+		// parse previous price
+		prevPrice := server.BigInt{Int: *big.NewInt(0)}
+		prevPrice.SetString(faction.VotePrice, 10)
+
+		// set previous price to current price
+		factionVotePrice.CurrentVotePriceSups.Add(&factionVotePrice.CurrentVotePriceSups.Int, &prevPrice.Int)
+
+		// assign to map
+		api.votePriceSystem.FactionVotePriceMap[faction.ID] = factionVotePrice
 	}
 
 	// initialise vote price ticker
 	tickle.MinDurationOverride = true
 	votePriceTickerLogger := log_helpers.NamedLogger(api.Log, "Vote Price Ticker").Level(zerolog.TraceLevel)
-	votePriceUpdater := tickle.New("Vote Price Ticker", VotePriceUpdaterTickSecond, api.votePriceUpdater)
+	votePriceUpdater := tickle.New("Vote Price Ticker", VotePriceUpdaterTickSecond, api.votePriceUpdaterFactory(conn))
 	votePriceUpdater.Log = &votePriceTickerLogger
 
 	// initialise vote price forecaster
@@ -127,84 +139,96 @@ func (api *API) increaseFactionVoteTotal(factionID server.FactionID, voteCount i
 }
 
 // vote price ticker
-func (api *API) votePriceUpdater() (int, error) {
-	api.votePriceHighPriorityLock()
 
-	// sum current vote per tick from all the faction
-	totalCurrentVote := int64(0)
-	for _, fvp := range api.votePriceSystem.FactionVotePriceMap {
-		totalCurrentVote += fvp.CurrentVotePerTick
+func (api *API) votePriceUpdaterFactory(conn *pgxpool.Pool) func() (int, error) {
+	return func() (int, error) {
+		api.votePriceHighPriorityLock()
 
-	}
+		// sum current vote per tick from all the faction
+		totalCurrentVote := int64(0)
+		for _, fvp := range api.votePriceSystem.FactionVotePriceMap {
+			totalCurrentVote += fvp.CurrentVotePerTick
 
-	// calculate total vote per tick
-	api.votePriceSystem.GlobalTotalVote = api.votePriceSystem.GlobalTotalVote - api.votePriceSystem.GlobalVotePerTick[0] + totalCurrentVote
-
-	// shift one index
-	api.votePriceSystem.GlobalVotePerTick = append(api.votePriceSystem.GlobalVotePerTick[1:], totalCurrentVote)
-
-	// async calculate new faction vote price
-	var wg sync.WaitGroup
-	votePriceMutex := sync.Mutex{}
-	factionVotePriceMap := make(map[server.FactionID][]byte)
-
-	for factionID, fvp := range api.votePriceSystem.FactionVotePriceMap {
-		wg.Add(1)
-
-		go func(factionID server.FactionID, fvp *FactionVotePrice) {
-			newVotePrice := calVotePrice(
-				api.votePriceSystem.GlobalTotalVote,
-				fvp.CurrentVotePriceSups,
-				fvp.CurrentVotePerTick,
-				factionID,
-			)
-
-			// set current vote price
-			fvp.CurrentVotePriceSups = server.BigInt{Int: newVotePrice.Int}
-
-			// reset vote per tick for next round
-			fvp.CurrentVotePerTick = 0
-
-			// prepare broadcast payload
-			payload := []byte{}
-			payload = append(payload, byte(battle_arena.NetMessageTypeVotePriceTick))
-			payload = append(payload, []byte(fvp.CurrentVotePriceSups.Int.String())...)
-
-			votePriceMutex.Lock()
-			factionVotePriceMap[factionID] = payload
-			votePriceMutex.Unlock()
-
-			wg.Done()
-		}(factionID, fvp)
-	}
-	wg.Wait()
-	api.votePriceHighPriorityUnlock()
-
-	// start broadcast price
-	api.Hub.Clients(func(clients hub.ClientsList) {
-		for client, ok := range clients {
-			if !ok {
-				continue
-			}
-			go func(c *hub.Client) {
-				// get user faction id
-				hcd, err := api.getClientDetailFromChannel(c)
-
-				// skip, if error or no faction
-				if err != nil || hcd.FactionID.IsNil() {
-					return
-				}
-
-				// broadcast vote price forecast
-				err = c.SendWithMessageType(factionVotePriceMap[hcd.FactionID], websocket.MessageBinary)
-				if err != nil {
-					api.Log.Err(err).Msg("failed to send broadcast")
-				}
-			}(client)
 		}
-	})
 
-	return http.StatusOK, nil
+		// calculate total vote per tick
+		api.votePriceSystem.GlobalTotalVote = api.votePriceSystem.GlobalTotalVote - api.votePriceSystem.GlobalVotePerTick[0] + totalCurrentVote
+
+		// shift one index
+		api.votePriceSystem.GlobalVotePerTick = append(api.votePriceSystem.GlobalVotePerTick[1:], totalCurrentVote)
+
+		// async calculate new faction vote price
+		var wg sync.WaitGroup
+		votePriceMutex := sync.Mutex{}
+		factionVotePriceMap := make(map[server.FactionID][]byte)
+
+		for factionID, fvp := range api.votePriceSystem.FactionVotePriceMap {
+			wg.Add(1)
+
+			go func(factionID server.FactionID, fvp *FactionVotePrice) {
+				newVotePrice := calVotePrice(
+					api.votePriceSystem.GlobalTotalVote,
+					fvp.CurrentVotePriceSups,
+					fvp.CurrentVotePerTick,
+					factionID,
+				)
+
+				// store new vote price to db
+				err := db.FactionVotePriceUpdate(context.Background(), conn, &server.Faction{
+					ID:        factionID,
+					VotePrice: newVotePrice.String(),
+				})
+				if err != nil {
+					api.Log.Err(err).Msg("failed to store new faction vote price into db")
+				}
+
+				// set current vote price
+				fvp.CurrentVotePriceSups = server.BigInt{Int: newVotePrice.Int}
+
+				// reset vote per tick for next round
+				fvp.CurrentVotePerTick = 0
+
+				// prepare broadcast payload
+				payload := []byte{}
+				payload = append(payload, byte(battle_arena.NetMessageTypeVotePriceTick))
+				payload = append(payload, []byte(fvp.CurrentVotePriceSups.Int.String())...)
+
+				votePriceMutex.Lock()
+				factionVotePriceMap[factionID] = payload
+				votePriceMutex.Unlock()
+
+				wg.Done()
+			}(factionID, fvp)
+		}
+		wg.Wait()
+		api.votePriceHighPriorityUnlock()
+
+		// start broadcast price
+		api.Hub.Clients(func(clients hub.ClientsList) {
+			for client, ok := range clients {
+				if !ok {
+					continue
+				}
+				go func(c *hub.Client) {
+					// get user faction id
+					hcd, err := api.getClientDetailFromChannel(c)
+
+					// skip, if error or no faction
+					if err != nil || hcd.FactionID.IsNil() {
+						return
+					}
+
+					// broadcast vote price forecast
+					err = c.SendWithMessageType(factionVotePriceMap[hcd.FactionID], websocket.MessageBinary)
+					if err != nil {
+						api.Log.Err(err).Msg("failed to send broadcast")
+					}
+				}(client)
+			}
+		})
+
+		return http.StatusOK, nil
+	}
 }
 
 // votePriceForecaster
@@ -366,7 +390,7 @@ func (api *API) startLiveVotingDataTicker(factionID server.FactionID) {
 
 const (
 	// CooldownInitialDurationSecond the amount of second users have to wait for the next vote coming up
-	CooldownInitialDurationSecond = 5
+	CooldownInitialDurationSecond = 45
 
 	// VoteAbilityRightDurationSecond the amount of second users can vote the ability
 	VoteAbilityRightDurationSecond = 30
@@ -569,14 +593,14 @@ func (api *API) startVotingCycle() {
 		// broadcast current stage to faction users
 		api.MessageBus.Send(messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 
-		if vct.VotingStageListener.NextTick == nil {
+		if vct.VotingStageListener.NextTick == nil || vct.VotingStageListener.NextTick.Before(time.Now()) {
 			vct.VotingStageListener.Start()
 		}
 	}
 }
 
-// pauseVotingCycle pause voting cycle tickles
-func (api *API) pauseVotingCycle() {
+// stopVotingCycle pause voting cycle tickles
+func (api *API) stopVotingCycle() {
 	api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker) {
 		vs.Phase = VotePhaseHold
 
@@ -594,6 +618,25 @@ func (api *API) pauseVotingCycle() {
 
 		if api.votePriceSystem.VotePriceForecaster.NextTick != nil {
 			api.votePriceSystem.VotePriceForecaster.Stop()
+		}
+
+		// get all the left over transaction
+		var txRefs []server.TransactionReference
+		for _, factionVotes := range fuvm {
+			for _, userVotes := range factionVotes {
+				for txRef := range userVotes {
+					txRefs = append(txRefs, txRef)
+				}
+			}
+		}
+
+		// commit the transactions
+		if len(txRefs) > 0 {
+			_, err := api.Passport.CommitTransactions(context.Background(), txRefs)
+			if err != nil {
+				api.Log.Err(err).Msg("failed to check transactions")
+				return
+			}
 		}
 	}
 }
@@ -724,7 +767,7 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 					// voting phase change
 					api.votePhaseChecker.Phase = VotePhaseVoteCooldown
 					vs.Phase = VotePhaseVoteCooldown
-					vs.EndTime = time.Now().Add(CooldownInitialDurationSecond * time.Second)
+					vs.EndTime = time.Now().Add(time.Duration(va.BattleAbility.CooldownDurationSecond) * time.Second)
 
 					// broadcast current stage to faction users
 					api.MessageBus.Send(messagebus.BusKey(HubKeyVoteStageUpdated), vs)
@@ -787,7 +830,7 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 					// voting phase change
 					api.votePhaseChecker.Phase = VotePhaseVoteCooldown
 					vs.Phase = VotePhaseVoteCooldown
-					vs.EndTime = time.Now().Add(CooldownInitialDurationSecond * time.Second)
+					vs.EndTime = time.Now().Add(time.Duration(va.BattleAbility.CooldownDurationSecond) * time.Second)
 
 					// broadcast current stage to faction users
 					api.MessageBus.Send(messagebus.BusKey(HubKeyVoteStageUpdated), vs)
@@ -837,12 +880,18 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 				api.MessageBus.Send(messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 
 				// start tracking vote right result
-				if vct.AbilityRightResultBroadcaster.NextTick == nil {
+				if vct.AbilityRightResultBroadcaster.NextTick == nil || vct.AbilityRightResultBroadcaster.NextTick.Before(time.Now()) {
 					vct.AbilityRightResultBroadcaster.Start()
 				}
 
-				api.votePriceSystem.VotePriceUpdater.Start()
-				api.votePriceSystem.VotePriceForecaster.Start()
+				if api.votePriceSystem.VotePriceUpdater.NextTick == nil || api.votePriceSystem.VotePriceUpdater.NextTick.Before(time.Now()) {
+					api.votePriceSystem.VotePriceUpdater.Start()
+				}
+
+				if api.votePriceSystem.VotePriceForecaster.NextTick == nil || api.votePriceSystem.VotePriceForecaster.NextTick.Before(time.Now()) {
+					api.votePriceSystem.VotePriceForecaster.Start()
+				}
+
 			}
 		}
 

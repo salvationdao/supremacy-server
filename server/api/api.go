@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"server"
 	"server/battle_arena"
+	"server/db"
 	"server/passport"
 	"sync"
 	"time"
@@ -89,8 +90,10 @@ type API struct {
 	// voting channels
 	votePhaseChecker *VotePhaseChecker
 	votingCycle      chan func(*VoteStage, *VoteAbility, FactionUserVoteMap, *FactionTotalVote, *VoteWinner, *VotingCycleTicker)
+	votePriceSystem  *VotePriceSystem
 
-	votePriceSystem *VotePriceSystem
+	// faction abilities
+	factionAbilityPool map[server.FactionID]chan func(FactionAbilitiesPool, *FactionAbilityPoolTicker)
 }
 
 // NewAPI registers routes
@@ -141,6 +144,8 @@ func NewAPI(
 
 		// ring check auth
 		ringCheckAuthChan: make(chan func(RingCheckAuthMap)),
+
+		factionAbilityPool: make(map[server.FactionID]chan func(FactionAbilitiesPool, *FactionAbilityPoolTicker)),
 	}
 
 	// start twitch jwt auth listener
@@ -171,6 +176,7 @@ func NewAPI(
 	_ = NewUserController(log, conn, api)
 	_ = NewAuthController(log, conn, api)
 	_ = NewVoteController(log, conn, api)
+	_ = NewFactionController(log, conn, api)
 
 	///////////////////////////
 	//		 Hub Events		 //
@@ -200,12 +206,12 @@ func NewAPI(
 	// listen to the client online and action channel
 	go api.ClientListener()
 
-	go api.SetupAfterConnections()
+	go api.SetupAfterConnections(conn)
 
 	return api
 }
 
-func (api *API) SetupAfterConnections() {
+func (api *API) SetupAfterConnections(conn *pgxpool.Pool) {
 	var factions []*server.Faction
 	var err error
 
@@ -228,21 +234,30 @@ func (api *API) SetupAfterConnections() {
 		time.Sleep(5 * time.Second)
 	}
 
-	// initialise vote price system
-	go api.startVotePriceSystem(factions)
-
-	// initialise voting cycle
-	go api.StartVotingCycle(factions)
-
 	// build faction map for main server
 	api.factionMap = make(map[server.FactionID]*server.Faction)
 	for _, faction := range factions {
+		err := db.FactionVotePriceGet(context.Background(), conn, faction)
+		if err != nil {
+			api.Log.Err(err).Msg("unable to get faction vote price")
+		}
+
 		api.factionMap[faction.ID] = faction
 
 		// start live voting ticker
 		api.liveSupsSpend[faction.ID] = make(chan func(*LiveVotingData))
 		go api.startLiveVotingDataTicker(faction.ID)
+
+		// faction ability pool
+		api.factionAbilityPool[faction.ID] = make(chan func(FactionAbilitiesPool, *FactionAbilityPoolTicker))
+		go api.StartFactionAbilityPool(faction.ID, conn)
 	}
+
+	// initialise vote price system
+	go api.startVotePriceSystem(factions, conn)
+
+	// initialise voting cycle
+	go api.StartVotingCycle(factions)
 
 	// set faction map for battle arena server
 	api.BattleArena.SetFactionMap(api.factionMap)
@@ -412,11 +427,13 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 	})
 
 	// start voting cycle
-	api.startVotingCycle()
+	go api.startVotingCycle()
+	go api.startFactionAbilityPoolTicker()
 }
 
 // BattleEndSignal terminate all the voting cycle
 func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData) {
 	// stop all the tickles in voting cycle
-	go api.pauseVotingCycle()
+	go api.stopVotingCycle()
+	go api.stopFactionAbilityPoolTicker()
 }

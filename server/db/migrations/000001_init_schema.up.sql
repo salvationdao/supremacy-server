@@ -26,6 +26,13 @@ CREATE TABLE battles
     ended_at          timestamptz
 );
 
+-- factions
+CREATE TABLE factions
+(
+    id                 UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
+    vote_price         TEXT             NOT NULL DEFAULT '1000000000000000000'
+);
+
 
 -- battles_war_machines store the war machines attend in the battle
 CREATE TABLE battles_war_machines
@@ -38,25 +45,24 @@ CREATE TABLE battles_war_machines
     PRIMARY KEY (battle_id, war_machine_id)
 );
 
+
 -- battle_abilities is for voting system
-CREATE TABLE battle_abilities
-(
-    id                       uuid PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
-    label                    text             NOT NULL,
-    colour                   text             NOT NULL,
-    image_url                text             NOT NULL,
-    cooldown_duration_second int              NOT NULL
+CREATE TABLE battle_abilities(
+    id uuid PRIMARY KEY NOT NULL DEFAULT gen_random_uuid (),
+    label text NOT NULL,
+    cooldown_duration_second int NOT NULL
 );
 
 -- faction_abilities
-CREATE TABLE faction_abilities
-(
-    id                     uuid PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
-    game_client_ability_id int              NOT NULL, -- gameclient uses byte/enum instead of uuid
-    faction_id             uuid             NOT NULL,
-    label                  text             NOT NULL,
-    battle_ability_id      uuid             NOT NULL REFERENCES battle_abilities (id),
-    usd_cent_cost          int              NOT NULL
+CREATE TABLE faction_abilities (
+    id uuid PRIMARY KEY NOT NULL DEFAULT gen_random_uuid (),
+    game_client_ability_id int NOT NULL, -- gameclient uses byte/enum instead of uuid
+    faction_id uuid NOT NULL,
+    battle_ability_id uuid REFERENCES battle_abilities (id), -- not null if the ability is a battle ability
+    label text NOT NULL,
+    colour text NOT NULL,
+    image_url text NOT NULL,
+    sups_cost text NOT NULL DEFAULT '0'
 );
 
 -- battle_events log all the events that happen in the battle

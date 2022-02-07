@@ -43,7 +43,6 @@ func NewVoteController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *VoteC
 	api.SecureUserFactionSubscribeCommand(HubKeyVoteWinnerAnnouncement, voteHub.WinnerAnnouncementSubscribeHandler)
 	api.SecureUserFactionSubscribeCommand(HubKeyVoteBattleAbilityUpdated, voteHub.BattleAbilityUpdateSubscribeHandler)
 	api.SecureUserFactionSubscribeCommand(HubKeyVoteStageUpdated, voteHub.VoteStageUpdateSubscribeHandler)
-	api.SecureUserFactionSubscribeCommand(HubKeyFactionWarMachineQueueUpdated, voteHub.FactionWarMachineQueueUpdateSubscribeHandler)
 
 	return voteHub
 }
@@ -133,7 +132,7 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 		}
 
 		// pay sups
-		reason := fmt.Sprintf("battle:%s|vote_ability_collection:%s", vc.API.BattleArena.CurrentBattleID(), va.BattleAbility.ID)
+		reason := fmt.Sprintf("battle:%s|vote_ability_right:%s", vc.API.BattleArena.CurrentBattleID(), va.BattleAbility.ID)
 		supTransactionReference, err := vc.API.Passport.SendHoldSupsMessage(context.Background(), userID, totalSups, req.TransactionID, reason)
 		if err != nil {
 			errChan <- terror.Error(err, "Error - Failed to pay sups")
@@ -197,7 +196,7 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 		vc.API.MessageBus.Send(messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 
 		// start vote listener
-		if vct.VotingStageListener.NextTick == nil {
+		if vct.VotingStageListener.NextTick == nil || vct.VotingStageListener.NextTick.Before(time.Now()) {
 			vct.VotingStageListener.Start()
 		}
 
@@ -315,7 +314,7 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 		// broadcast next stage
 		vc.API.votePhaseChecker.Phase = VotePhaseVoteCooldown
 		vs.Phase = VotePhaseVoteCooldown
-		vs.EndTime = time.Now().Add(CooldownInitialDurationSecond * time.Second)
+		vs.EndTime = time.Now().Add(time.Duration(va.BattleAbility.CooldownDurationSecond) * time.Second)
 
 		// broadcast current stage to faction users
 		vc.API.MessageBus.Send(messagebus.BusKey(HubKeyVoteStageUpdated), vs)
@@ -407,36 +406,4 @@ func (vc *VoteControllerWS) VoteStageUpdateSubscribeHandler(ctx context.Context,
 	}
 
 	return req.TransactionID, messagebus.BusKey(HubKeyVoteStageUpdated), nil
-}
-
-const HubKeyFactionWarMachineQueueUpdated hub.HubCommandKey = "FACTION:WAR:MACHINE:QUEUE:UPDATED"
-
-// FactionWarMachineQueueUpdateSubscribeHandler
-func (vc *VoteControllerWS) FactionWarMachineQueueUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	req := &hub.HubCommandRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return "", "", terror.Error(err, "Invalid request received")
-	}
-
-	// get hub client
-	hubClientDetail, err := vc.API.getClientDetailFromChannel(wsc)
-	if err != nil {
-		return "", "", terror.Error(err)
-	}
-
-	if battleQueue, ok := vc.API.BattleArena.BattleQueueMap[hubClientDetail.FactionID]; ok {
-		battleQueue <- func(wmql *battle_arena.WarMachineQueuingList) {
-			maxLength := 5
-			if len(wmql.WarMachines) < maxLength {
-				maxLength = len(wmql.WarMachines)
-			}
-
-			reply(wmql.WarMachines[:maxLength])
-		}
-	}
-
-	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionWarMachineQueueUpdated, hubClientDetail.FactionID))
-
-	return req.TransactionID, busKey, nil
 }

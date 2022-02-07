@@ -134,6 +134,7 @@ const (
 	NetMessageTypeAbilityRightRatioTick
 	NetMessageTypeVotePriceTick
 	NetMessageTypeVotePriceForecastTick
+	NetMessageTypeAbilityTargetPriceTick
 )
 
 func (ba *BattleArena) ServeHTTP(w http.ResponseWriter, r *http.Request) {

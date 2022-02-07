@@ -217,9 +217,10 @@ func TestDatabase(t *testing.T) {
 	})
 
 	factionAbility := &server.FactionAbility{
-		FactionID:   server.FactionID(uuid.Must(uuid.NewV4())),
-		Label:       "test action",
-		USDCentCost: 100,
+		FactionID:           server.FactionID(uuid.Must(uuid.NewV4())),
+		GameClientAbilityID: 1,
+		Label:               "test action",
+		SupsCost:            "0",
 	}
 
 	t.Run("Create new faction action", func(t *testing.T) {

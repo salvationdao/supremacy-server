@@ -31,23 +31,17 @@ func (s *Seeder) Run() error {
 		return terror.Error(err)
 	}
 
-	// fmt.Println("Seed factions")
-	// err = factions(ctx, s.Conn)
-	// if err != nil {
-	// 	return terror.Error(err)
-	// }
+	fmt.Println("seed factions")
+	_, err = s.factions(ctx)
+	if err != nil {
+		return terror.Error(err)
+	}
 
 	fmt.Println("Seed faction abilities")
 	err = factionAbilities(ctx, s.Conn)
 	if err != nil {
 		return terror.Error(err)
 	}
-
-	// fmt.Println("Seed war machines")
-	// err = warMachines(ctx, s.Conn)
-	// if err != nil {
-	// 	return terror.Error(err)
-	// }
 
 	fmt.Println("Seed complete!")
 
@@ -72,21 +66,15 @@ var FactionIDZaibatsu = server.FactionID(uuid.Must(uuid.FromString("880db344-e40
 var SharedAbilityCollections = []*server.BattleAbility{
 	{
 		Label:                  "AIRSTRIKE",
-		Colour:                 "#428EC1",
-		ImageUrl:               "https://i.pinimg.com/originals/b1/92/4d/b1924dce177345b5485bb5490ab3441f.jpg",
-		CooldownDurationSecond: 15,
-	},
-	{
-		Label:                  "NUKE",
-		Colour:                 "#C24242",
-		ImageUrl:               "https://images2.minutemediacdn.com/image/upload/c_crop,h_1126,w_2000,x_0,y_83/f_auto,q_auto,w_1100/v1555949079/shape/mentalfloss/581049-mesut_zengin-istock-1138195821.jpg",
 		CooldownDurationSecond: 20,
 	},
 	{
+		Label:                  "NUKE",
+		CooldownDurationSecond: 30,
+	},
+	{
 		Label:                  "SYNDICATE CHOICE",
-		Colour:                 "#30B07D",
-		ImageUrl:               "https://i.pinimg.com/originals/ed/2f/9b/ed2f9b6e66b9efefa84d1ee423c718f0.png",
-		CooldownDurationSecond: 10,
+		CooldownDurationSecond: 15,
 	},
 }
 
@@ -96,79 +84,177 @@ var SharedFactionAbilities = []*server.FactionAbility{
 		Label:               "AIRSTRIKE",
 		FactionID:           FactionIDZaibatsu,
 		GameClientAbilityID: 0,
-		USDCentCost:         100,
+		Colour:              "#428EC1",
+		ImageUrl:            "https://i.pinimg.com/originals/b1/92/4d/b1924dce177345b5485bb5490ab3441f.jpg",
+		SupsCost:            "0",
 	},
 	{
 		Label:               "NUKE",
 		FactionID:           FactionIDZaibatsu,
 		GameClientAbilityID: 1,
-		USDCentCost:         100,
+		Colour:              "#C24242",
+		ImageUrl:            "https://images2.minutemediacdn.com/image/upload/c_crop,h_1126,w_2000,x_0,y_83/f_auto,q_auto,w_1100/v1555949079/shape/mentalfloss/581049-mesut_zengin-istock-1138195821.jpg",
+		SupsCost:            "0",
 	},
 	{
 		Label:               "SYNDICATE CHOICE",
 		FactionID:           FactionIDZaibatsu,
 		GameClientAbilityID: 2,
-
-		USDCentCost: 100,
+		Colour:              "#30B07D",
+		ImageUrl:            "https://i.pinimg.com/originals/ed/2f/9b/ed2f9b6e66b9efefa84d1ee423c718f0.png",
+		SupsCost:            "0",
 	},
 	// FactionIDBoston
 	{
 		Label:               "AIRSTRIKE",
 		GameClientAbilityID: 3,
 		FactionID:           FactionIDBoston,
-		USDCentCost:         100,
+		Colour:              "#428EC1",
+		ImageUrl:            "https://i.pinimg.com/originals/b1/92/4d/b1924dce177345b5485bb5490ab3441f.jpg",
+		SupsCost:            "0",
 	},
 	{
 		Label:               "NUKE",
 		FactionID:           FactionIDBoston,
 		GameClientAbilityID: 4,
-		USDCentCost:         100,
+		Colour:              "#C24242",
+		ImageUrl:            "https://images2.minutemediacdn.com/image/upload/c_crop,h_1126,w_2000,x_0,y_83/f_auto,q_auto,w_1100/v1555949079/shape/mentalfloss/581049-mesut_zengin-istock-1138195821.jpg",
+		SupsCost:            "0",
 	},
 	{
 		Label:               "SYNDICATE CHOICE",
 		FactionID:           FactionIDBoston,
 		GameClientAbilityID: 5,
-		USDCentCost:         100,
+		Colour:              "#30B07D",
+		ImageUrl:            "https://i.pinimg.com/originals/ed/2f/9b/ed2f9b6e66b9efefa84d1ee423c718f0.png",
+		SupsCost:            "0",
 	},
 	// FactionIDRedMountain
 	{
 		Label:               "AIRSTRIKE",
 		FactionID:           FactionIDRedMountain,
 		GameClientAbilityID: 6,
-		USDCentCost:         100,
+		Colour:              "#428EC1",
+		ImageUrl:            "https://i.pinimg.com/originals/b1/92/4d/b1924dce177345b5485bb5490ab3441f.jpg",
+		SupsCost:            "0",
 	},
 	{
 		Label:               "NUKE",
 		FactionID:           FactionIDRedMountain,
 		GameClientAbilityID: 7,
-		USDCentCost:         100,
+		Colour:              "#C24242",
+		ImageUrl:            "https://images2.minutemediacdn.com/image/upload/c_crop,h_1126,w_2000,x_0,y_83/f_auto,q_auto,w_1100/v1555949079/shape/mentalfloss/581049-mesut_zengin-istock-1138195821.jpg",
+		SupsCost:            "0",
 	},
 	{
 		Label:               "SYNDICATE CHOICE",
 		FactionID:           FactionIDRedMountain,
 		GameClientAbilityID: 8,
-		USDCentCost:         100,
+		Colour:              "#30B07D",
+		ImageUrl:            "https://i.pinimg.com/originals/ed/2f/9b/ed2f9b6e66b9efefa84d1ee423c718f0.png",
+		SupsCost:            "0",
+	},
+}
+
+var FactionSpecificAbilities = []*server.FactionAbility{
+	{
+		Label:               "AIRSTRIKE",
+		FactionID:           FactionIDRedMountain,
+		GameClientAbilityID: 6,
+		Colour:              "#428EC1",
+		ImageUrl:            "https://i.pinimg.com/originals/b1/92/4d/b1924dce177345b5485bb5490ab3441f.jpg",
+		SupsCost:            "100000000000000000000",
+	},
+	{
+		Label:               "NUKE",
+		FactionID:           FactionIDRedMountain,
+		GameClientAbilityID: 7,
+		Colour:              "#C24242",
+		ImageUrl:            "https://images2.minutemediacdn.com/image/upload/c_crop,h_1126,w_2000,x_0,y_83/f_auto,q_auto,w_1100/v1555949079/shape/mentalfloss/581049-mesut_zengin-istock-1138195821.jpg",
+		SupsCost:            "100000000000000000000",
+	},
+	{
+		Label:               "HEAL",
+		FactionID:           FactionIDRedMountain,
+		GameClientAbilityID: 8,
+		Colour:              "#30B07D",
+		ImageUrl:            "https://i.pinimg.com/originals/ed/2f/9b/ed2f9b6e66b9efefa84d1ee423c718f0.png",
+		SupsCost:            "100000000000000000000",
 	},
 }
 
 func factionAbilities(ctx context.Context, conn *pgxpool.Pool) error {
 	for _, battleAbility := range SharedAbilityCollections {
-		err := db.AbilityCollectionCreate(ctx, conn, battleAbility)
+		err := db.BattleAbilityCreate(ctx, conn, battleAbility)
 		if err != nil {
 			return terror.Error(err)
 		}
 	}
 
+	gameclientID := 0
 	for _, ability := range SharedFactionAbilities {
 		for _, battleAbility := range SharedAbilityCollections {
 			if battleAbility.Label == ability.Label {
-				ability.BattleAbilityID = battleAbility.ID
+				ability.BattleAbilityID = &battleAbility.ID
 			}
 		}
 		err := db.FactionAbilityCreate(ctx, conn, ability)
 		if err != nil {
 			return terror.Error(err)
 		}
+		gameclientID += 1
 	}
+
+	// insert red mountain faction abilities
+	for _, factionAbility := range FactionSpecificAbilities {
+		factionAbility.FactionID = server.RedMountainFactionID
+		factionAbility.GameClientAbilityID = byte(gameclientID)
+
+		err := db.FactionAbilityCreate(ctx, conn, factionAbility)
+		if err != nil {
+			return terror.Error(err)
+		}
+
+		gameclientID += 1
+	}
+
+	// insert boston faction abilities
+	for _, factionAbility := range FactionSpecificAbilities {
+		factionAbility.FactionID = server.BostonCyberneticsFactionID
+		factionAbility.GameClientAbilityID = byte(gameclientID)
+
+		err := db.FactionAbilityCreate(ctx, conn, factionAbility)
+		if err != nil {
+			return terror.Error(err)
+		}
+
+		gameclientID += 1
+	}
+
 	return nil
+}
+
+var factions = []*server.Faction{
+	{
+		ID:        server.RedMountainFactionID,
+		VotePrice: "1000000000000000000",
+	},
+	{
+		ID:        server.BostonCyberneticsFactionID,
+		VotePrice: "1000000000000000000",
+	},
+	{
+		ID:        server.ZaibatsuFactionID,
+		VotePrice: "1000000000000000000",
+	},
+}
+
+func (s *Seeder) factions(ctx context.Context) ([]*server.Faction, error) {
+	for _, faction := range factions {
+		err := db.FactionCreate(ctx, s.Conn, faction)
+		if err != nil {
+			return nil, terror.Error(err)
+		}
+	}
+	return factions, nil
 }

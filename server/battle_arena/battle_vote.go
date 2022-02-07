@@ -21,7 +21,7 @@ func (ba *BattleArena) RandomAbilityCollection() (*server.BattleAbility, map[ser
 	}
 
 	// get abilities by collection id
-	abilities, err := db.FactionAbilityGetByCollectionID(ba.ctx, ba.Conn, battleAbility.ID)
+	abilities, err := db.FactionAbilityGetByBattleAbilityID(ba.ctx, ba.Conn, battleAbility.ID)
 	if err != nil {
 		return nil, nil, terror.Error(err)
 	}
@@ -30,6 +30,10 @@ func (ba *BattleArena) RandomAbilityCollection() (*server.BattleAbility, map[ser
 	factionAbilityMap := make(map[server.FactionID]*server.FactionAbility)
 	for _, ability := range abilities {
 		factionAbilityMap[ability.FactionID] = ability
+
+		// set ability detail to battle ability
+		battleAbility.Colour = ability.Colour
+		battleAbility.ImageUrl = ability.ImageUrl
 	}
 
 	return battleAbility, factionAbilityMap, nil
