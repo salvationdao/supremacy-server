@@ -20,12 +20,12 @@ type Faction struct {
 	BackgroundUrl string        `json:"backgroundUrl,omitempty"`
 }
 
-type AbilityCollection struct {
-	ID                     AbilityCollectionID `json:"id" db:"id"`
-	Label                  string              `json:"label" db:"label"`
-	Colour                 string              `json:"colour" db:"colour"`
-	ImageUrl               string              `json:"imageUrl" db:"image_url"`
-	CooldownDurationSecond int                 `json:"cooldownDurationSecond" db:"cooldown_duration_second"`
+type BattleAbility struct {
+	ID                     BattleAbilityID `json:"id" db:"id"`
+	Label                  string          `json:"label" db:"label"`
+	Colour                 string          `json:"colour" db:"colour"`
+	ImageUrl               string          `json:"imageUrl" db:"image_url"`
+	CooldownDurationSecond int             `json:"cooldownDurationSecond" db:"cooldown_duration_second"`
 }
 
 type FactionAbilityType string
@@ -37,11 +37,11 @@ const (
 )
 
 type FactionAbility struct {
-	ID                  FactionAbilityID    `json:"id" db:"id"`
-	GameClientAbilityID byte                `json:"gameClientAbilityID" db:"game_client_ability_id"`
-	CollectionID        AbilityCollectionID `json:"collectionID" db:"collection_id"`
-	FactionID           FactionID           `json:"factionID" db:"faction_id"`
-	Label               string              `json:"label" db:"label"`
-	USDCentCost         int                 `json:"usdCentCost" db:"usd_cent_cost"`
-	SupsCost            BigInt              `json:"supsCost"`
+	ID                  FactionAbilityID `json:"id" db:"id"`
+	GameClientAbilityID byte             `json:"gameClientAbilityID" db:"game_client_ability_id"`
+	BattleAbilityID     BattleAbilityID  `json:"collectionID" db:"battle_ability_id"`
+	FactionID           FactionID        `json:"factionID" db:"faction_id"`
+	Label               string           `json:"label" db:"label"`
+	USDCentCost         int              `json:"usdCentCost" db:"usd_cent_cost"`
+	SupsCost            BigInt           `json:"supsCost"`
 }

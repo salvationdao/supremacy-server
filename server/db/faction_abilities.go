@@ -10,20 +10,20 @@ import (
 )
 
 // AbilityCollectionCreate create ability collection
-func AbilityCollectionCreate(ctx context.Context, conn Conn, abilityCollection *server.AbilityCollection) error {
+func AbilityCollectionCreate(ctx context.Context, conn Conn, battleAbility *server.BattleAbility) error {
 	q := `
 		INSERT INTO
-			ability_collections (label, colour, image_url, cooldown_duration_second)
+			battle_abilities (label, colour, image_url, cooldown_duration_second)
 		VALUES
 			($1, $2, $3, $4)
 		RETURNING
 			id, label, colour, image_url, cooldown_duration_second
 	`
-	err := pgxscan.Get(ctx, conn, abilityCollection, q,
-		abilityCollection.Label,
-		abilityCollection.Colour,
-		abilityCollection.ImageUrl,
-		abilityCollection.CooldownDurationSecond,
+	err := pgxscan.Get(ctx, conn, battleAbility, q,
+		battleAbility.Label,
+		battleAbility.Colour,
+		battleAbility.ImageUrl,
+		battleAbility.CooldownDurationSecond,
 	)
 	if err != nil {
 		fmt.Println(err)
@@ -36,11 +36,11 @@ func AbilityCollectionCreate(ctx context.Context, conn Conn, abilityCollection *
 func FactionAbilityCreate(ctx context.Context, conn Conn, factionAbility *server.FactionAbility) error {
 	q := `
 		INSERT INTO
-			faction_abilities (game_client_ability_id, faction_id, label, usd_cent_cost, collection_id)
+			faction_abilities (game_client_ability_id, faction_id, label, usd_cent_cost, battle_ability_id)
 		VALUES
 			($1, $2, $3, $4, $5)
 		RETURNING
-			id, game_client_ability_id, faction_id, label, usd_cent_cost, collection_id
+			id, game_client_ability_id, faction_id, label, usd_cent_cost, battle_ability_id
 	`
 
 	err := pgxscan.Get(ctx, conn, factionAbility, q,
@@ -48,7 +48,7 @@ func FactionAbilityCreate(ctx context.Context, conn Conn, factionAbility *server
 		factionAbility.FactionID,
 		factionAbility.Label,
 		factionAbility.USDCentCost,
-		factionAbility.CollectionID,
+		factionAbility.BattleAbilityID,
 	)
 	if err != nil {
 		return terror.Error(err)
@@ -58,10 +58,10 @@ func FactionAbilityCreate(ctx context.Context, conn Conn, factionAbility *server
 }
 
 // AbilityCollectionGetRandom return three random abilities
-func AbilityCollectionGetRandom(ctx context.Context, conn Conn) (*server.AbilityCollection, error) {
-	result := &server.AbilityCollection{}
+func AbilityCollectionGetRandom(ctx context.Context, conn Conn) (*server.BattleAbility, error) {
+	result := &server.BattleAbility{}
 	q := `
-		SELECT * FROM ability_collections
+		SELECT * FROM battle_abilities
 		ORDER BY RANDOM()
 		LIMIT 1;
 	`
@@ -74,11 +74,11 @@ func AbilityCollectionGetRandom(ctx context.Context, conn Conn) (*server.Ability
 }
 
 // FactionAbilityGetByCollectionID return faction ability by given collection id
-func FactionAbilityGetByCollectionID(ctx context.Context, conn Conn, collectionID server.AbilityCollectionID) ([]*server.FactionAbility, error) {
+func FactionAbilityGetByCollectionID(ctx context.Context, conn Conn, collectionID server.BattleAbilityID) ([]*server.FactionAbility, error) {
 	result := []*server.FactionAbility{}
 	q := `
 		SELECT * FROM faction_abilities
-		where collection_id = $1;
+		where battle_ability_id = $1;
 	`
 	err := pgxscan.Select(ctx, conn, &result, q, collectionID)
 	if err != nil {

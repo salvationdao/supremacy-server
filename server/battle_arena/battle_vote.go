@@ -13,15 +13,15 @@ func (ba *BattleArena) SetFactionMap(factionMap map[server.FactionID]*server.Fac
 }
 
 // RandomAbilityCollection return random ability collection and faction ability map
-func (ba *BattleArena) RandomAbilityCollection() (*server.AbilityCollection, map[server.FactionID]*server.FactionAbility, error) {
+func (ba *BattleArena) RandomAbilityCollection() (*server.BattleAbility, map[server.FactionID]*server.FactionAbility, error) {
 	// get random collection
-	abilityCollection, err := db.AbilityCollectionGetRandom(ba.ctx, ba.Conn)
+	battleAbility, err := db.AbilityCollectionGetRandom(ba.ctx, ba.Conn)
 	if err != nil {
 		return nil, nil, terror.Error(err)
 	}
 
 	// get abilities by collection id
-	abilities, err := db.FactionAbilityGetByCollectionID(ba.ctx, ba.Conn, abilityCollection.ID)
+	abilities, err := db.FactionAbilityGetByCollectionID(ba.ctx, ba.Conn, battleAbility.ID)
 	if err != nil {
 		return nil, nil, terror.Error(err)
 	}
@@ -32,7 +32,7 @@ func (ba *BattleArena) RandomAbilityCollection() (*server.AbilityCollection, map
 		factionAbilityMap[ability.FactionID] = ability
 	}
 
-	return abilityCollection, factionAbilityMap, nil
+	return battleAbility, factionAbilityMap, nil
 }
 
 const BattleAbilityCommand = BattleCommand("BATTLE:ABILITY")

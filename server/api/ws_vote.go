@@ -33,17 +33,41 @@ func NewVoteController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *VoteC
 		API:  api,
 	}
 
+	api.Command(HubKeyFactionColour, voteHub.FactionColour)
+
 	api.SecureUserFactionCommand(HubKeyFactionVotePrice, voteHub.FactionVotePrice)
 	api.SecureUserFactionCommand(HubKeyVoteAbilityRight, voteHub.AbilityRight)
 	api.SecureUserFactionCommand(HubKeyAbilityLocationSelect, voteHub.AbilityLocationSelect)
 
 	// subscription
 	api.SecureUserFactionSubscribeCommand(HubKeyVoteWinnerAnnouncement, voteHub.WinnerAnnouncementSubscribeHandler)
-	api.SecureUserFactionSubscribeCommand(HubKeyVoteAbilityCollectionUpdated, voteHub.AbilityCollectionUpdateSubscribeHandler)
+	api.SecureUserFactionSubscribeCommand(HubKeyVoteBattleAbilityUpdated, voteHub.BattleAbilityUpdateSubscribeHandler)
 	api.SecureUserFactionSubscribeCommand(HubKeyVoteStageUpdated, voteHub.VoteStageUpdateSubscribeHandler)
 	api.SecureUserFactionSubscribeCommand(HubKeyFactionWarMachineQueueUpdated, voteHub.FactionWarMachineQueueUpdateSubscribeHandler)
 
 	return voteHub
+}
+
+const HubKeyFactionColour hub.HubCommandKey = "FACTION:COLOUR"
+
+type FactionColourRespose struct {
+	RedMountain string `json:"redMountain"`
+	Boston      string `json:"boston"`
+	Zaibatsu    string `json:"zaibatsu"`
+}
+
+func (vc *VoteControllerWS) FactionColour(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	if vc.API.factionMap == nil {
+		return terror.Error(terror.ErrForbidden, "faction data not ready yet")
+	}
+
+	reply(&FactionColourRespose{
+		RedMountain: vc.API.factionMap[server.RedMountainFactionID].Theme.Primary,
+		Boston:      vc.API.factionMap[server.BostonCyberneticsFactionID].Theme.Primary,
+		Zaibatsu:    vc.API.factionMap[server.ZaibatsuFactionID].Theme.Primary,
+	})
+
+	return nil
 }
 
 const HubKeyFactionVotePrice hub.HubCommandKey = "FACTION:VOTE:PRICE"
@@ -86,10 +110,18 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 		return terror.Error(terror.ErrForbidden)
 	}
 
-	// get current faction vote price
-	pricePerVote := vc.API.votePriceSystem.FactionVotePriceMap[hcd.FactionID].CurrentVotePriceSups.Int
+	// check voting phase first
+	if vc.API.votePhaseChecker.Phase != VotePhaseVoteAbilityRight && vc.API.votePhaseChecker.Phase != VotePhaseNextVoteWin {
+		return terror.Error(terror.ErrForbidden, "Error - Invalid voting phase")
+	}
 
-	totalSups := server.BigInt{Int: *pricePerVote.Add(&pricePerVote, big.NewInt(req.Payload.VoteAmount))}
+	// get current faction vote price
+	pricePerVote := server.BigInt{Int: *big.NewInt(0)}
+	pricePerVote.Add(&pricePerVote.Int, &vc.API.votePriceSystem.FactionVotePriceMap[hcd.FactionID].CurrentVotePriceSups.Int)
+
+	totalSups := server.BigInt{Int: *big.NewInt(0)}
+	totalSups.Add(&totalSups.Int, &pricePerVote.Int)
+	totalSups.Mul(&totalSups.Int, big.NewInt(req.Payload.VoteAmount))
 
 	// deliver vote
 	errChan := make(chan error)
@@ -101,11 +133,20 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 		}
 
 		// pay sups
-		reason := fmt.Sprintf("battle:%s|vote_ability_collection:%s", vc.API.BattleArena.CurrentBattleID(), va.Collection.ID)
+		reason := fmt.Sprintf("battle:%s|vote_ability_collection:%s", vc.API.BattleArena.CurrentBattleID(), va.BattleAbility.ID)
 		supTransactionReference, err := vc.API.Passport.SendHoldSupsMessage(context.Background(), userID, totalSups, req.TransactionID, reason)
 		if err != nil {
 			errChan <- terror.Error(err, "Error - Failed to pay sups")
 			return
+		}
+
+		switch hcd.FactionID {
+		case server.RedMountainFactionID:
+			ftv.RedMountainTotalVote += req.Payload.VoteAmount
+		case server.BostonCyberneticsFactionID:
+			ftv.BostonTotalVote += req.Payload.VoteAmount
+		case server.ZaibatsuFactionID:
+			ftv.ZaibatsuTotalVote += req.Payload.VoteAmount
 		}
 
 		// update vote result, if it is vote ability right phase
@@ -140,6 +181,7 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 		vw.List = append(vw.List, userID)
 
 		// voting phase change
+		vc.API.votePhaseChecker.Phase = VotePhaseLocationSelect
 		vs.Phase = VotePhaseLocationSelect
 		vs.EndTime = time.Now().Add(LocationSelectDurationSecond * time.Second)
 
@@ -213,6 +255,10 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 		return terror.Error(err)
 	}
 
+	if vc.API.votePhaseChecker.Phase != VotePhaseLocationSelect {
+		return terror.Error(terror.ErrForbidden, "Error - Invalid voting phase")
+	}
+
 	errChan := make(chan error)
 	vc.API.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker) {
 		// check voting phase
@@ -249,7 +295,25 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 			return
 		}
 
+		// get random ability collection set
+		battleAbility, factionAbilityMap, err := vc.API.BattleArena.RandomAbilityCollection()
+		if err != nil {
+			errChan <- terror.Error(err)
+			return
+		}
+
+		vc.API.MessageBus.Send(messagebus.BusKey(HubKeyVoteBattleAbilityUpdated), battleAbility)
+
+		// initialise new ability collection
+		va.BattleAbility = battleAbility
+
+		// initialise new faction ability map
+		for fid, ability := range factionAbilityMap {
+			va.FactionAbilityMap[fid] = ability
+		}
+
 		// broadcast next stage
+		vc.API.votePhaseChecker.Phase = VotePhaseVoteCooldown
 		vs.Phase = VotePhaseVoteCooldown
 		vs.EndTime = time.Now().Add(CooldownInitialDurationSecond * time.Second)
 
@@ -308,10 +372,10 @@ func (vc *VoteControllerWS) WinnerAnnouncementSubscribeHandler(ctx context.Conte
 	return req.TransactionID, busKey, nil
 }
 
-const HubKeyVoteAbilityCollectionUpdated hub.HubCommandKey = "VOTE:ABILITY:COLLECTION:UPDATED"
+const HubKeyVoteBattleAbilityUpdated hub.HubCommandKey = "VOTE:BATTLE:ABILITY:UPDATED"
 
-// AbilityCollectionUpdateSubscribeHandler to subscribe to game event
-func (vc *VoteControllerWS) AbilityCollectionUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+// BattleAbilityUpdateSubscribeHandler to subscribe to game event
+func (vc *VoteControllerWS) BattleAbilityUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -322,10 +386,10 @@ func (vc *VoteControllerWS) AbilityCollectionUpdateSubscribeHandler(ctx context.
 		if vs.Phase == VotePhaseHold {
 			return
 		}
-		reply(va.Collection)
+		reply(va.BattleAbility)
 	}
 
-	return req.TransactionID, messagebus.BusKey(HubKeyVoteAbilityCollectionUpdated), nil
+	return req.TransactionID, messagebus.BusKey(HubKeyVoteBattleAbilityUpdated), nil
 }
 
 const HubKeyVoteStageUpdated hub.HubCommandKey = "VOTE:STAGE:UPDATED"

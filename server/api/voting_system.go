@@ -24,7 +24,9 @@ import (
 * Vote Price System *
 ********************/
 
-const VotePriceMultiplierPercentage = 5 // 10%
+const VotePriceMultiplierPercentage = 10 // 10%
+const VotePriceUpdaterTickSecond = 10
+
 const VotePriceAccuracy = 10000
 
 func (api *API) startVotePriceSystem(factions []*server.Faction) {
@@ -32,7 +34,6 @@ func (api *API) startVotePriceSystem(factions []*server.Faction) {
 	api.votePriceSystem = &VotePriceSystem{
 		GlobalVotePerTick:   []int64{},
 		GlobalTotalVote:     0,
-		GlobalAverageVote:   0,
 		FactionVotePriceMap: make(map[server.FactionID]*FactionVotePrice),
 	}
 
@@ -53,17 +54,17 @@ func (api *API) startVotePriceSystem(factions []*server.Faction) {
 	}
 
 	// initialise vote price ticker
-	votePriceTickerLogger := log_helpers.NamedLogger(api.Log, "Vote Price Ticker").Level(zerolog.Disabled)
-	votePriceTicker := tickle.New("Vote Price Ticker", 10, api.votePriceTicker)
-	votePriceTicker.Log = &votePriceTickerLogger
+	tickle.MinDurationOverride = true
+	votePriceTickerLogger := log_helpers.NamedLogger(api.Log, "Vote Price Ticker").Level(zerolog.TraceLevel)
+	votePriceUpdater := tickle.New("Vote Price Ticker", VotePriceUpdaterTickSecond, api.votePriceUpdater)
+	votePriceUpdater.Log = &votePriceTickerLogger
 
 	// initialise vote price forecaster
-	tickle.MinDurationOverride = true
 	votePriceForecasterLogger := log_helpers.NamedLogger(api.Log, "Vote Price Ticker").Level(zerolog.Disabled)
 	votePriceForecaster := tickle.New("Vote Price Ticker", 0.5, api.votePriceForecaster)
 	votePriceForecaster.Log = &votePriceForecasterLogger
 
-	api.votePriceSystem.VotePriceTicker = votePriceTicker
+	api.votePriceSystem.VotePriceUpdater = votePriceUpdater
 	api.votePriceSystem.VotePriceForecaster = votePriceForecaster
 }
 
@@ -126,7 +127,7 @@ func (api *API) increaseFactionVoteTotal(factionID server.FactionID, voteCount i
 }
 
 // vote price ticker
-func (api *API) votePriceTicker() (int, error) {
+func (api *API) votePriceUpdater() (int, error) {
 	api.votePriceHighPriorityLock()
 
 	// sum current vote per tick from all the faction
@@ -138,7 +139,6 @@ func (api *API) votePriceTicker() (int, error) {
 
 	// calculate total vote per tick
 	api.votePriceSystem.GlobalTotalVote = api.votePriceSystem.GlobalTotalVote - api.votePriceSystem.GlobalVotePerTick[0] + totalCurrentVote
-	api.votePriceSystem.GlobalAverageVote = api.votePriceSystem.GlobalTotalVote / 100
 
 	// shift one index
 	api.votePriceSystem.GlobalVotePerTick = append(api.votePriceSystem.GlobalVotePerTick[1:], totalCurrentVote)
@@ -152,43 +152,15 @@ func (api *API) votePriceTicker() (int, error) {
 		wg.Add(1)
 
 		go func(factionID server.FactionID, fvp *FactionVotePrice) {
-			// calculate max price change
-			maxPriceChange := server.BigInt{Int: fvp.CurrentVotePriceSups.Int}
-			maxPriceChange.Mul(&maxPriceChange.Int, big.NewInt(VotePriceMultiplierPercentage))
-			maxPriceChange.Div(&maxPriceChange.Int, big.NewInt(100))
+			newVotePrice := calVotePrice(
+				api.votePriceSystem.GlobalTotalVote,
+				fvp.CurrentVotePriceSups,
+				fvp.CurrentVotePerTick,
+				factionID,
+			)
 
-			if api.votePriceSystem.GlobalAverageVote == 0 { // vpt will also be 0
-				// reduce maximum price change
-				fvp.CurrentVotePriceSups.Sub(&fvp.CurrentVotePriceSups.Int, &maxPriceChange.Int)
-
-			} else {
-				// priceChange := currentFactionPrice * multiplier * (1 - abs(vpt-avpt)/avpt)
-				priceChange := server.BigInt{Int: *big.NewInt(0)}
-
-				// calc price change ratio "abs(vpt-avpt)/avpt"
-				ratio := VotePriceAccuracy * absoluteInt64(fvp.CurrentVotePerTick-api.votePriceSystem.GlobalAverageVote) / api.votePriceSystem.GlobalAverageVote
-
-				// if ratio greater than or equal to 1,  direct set price change to the max price change
-				if ratio >= VotePriceAccuracy {
-					priceChange.Add(&priceChange.Int, &maxPriceChange.Int)
-				} else {
-					// otherwise calc the current price change
-					priceChange.Add(&priceChange.Int, &fvp.CurrentVotePriceSups.Int)
-					priceChange.Mul(&priceChange.Int, big.NewInt(VotePriceMultiplierPercentage))
-
-					priceChange.Mul(&priceChange.Int, big.NewInt(VotePriceAccuracy-ratio))
-					priceChange.Div(&priceChange.Int, big.NewInt(VotePriceAccuracy))
-				}
-
-				// check current vote per tick is over average
-				if fvp.CurrentVotePerTick > api.votePriceSystem.GlobalAverageVote {
-					// price go up
-					fvp.CurrentVotePriceSups.Add(&fvp.CurrentVotePriceSups.Int, &priceChange.Int)
-				} else {
-					// price go down
-					fvp.CurrentVotePriceSups.Sub(&fvp.CurrentVotePriceSups.Int, &priceChange.Int)
-				}
-			}
+			// set current vote price
+			fvp.CurrentVotePriceSups = server.BigInt{Int: newVotePrice.Int}
 
 			// reset vote per tick for next round
 			fvp.CurrentVotePerTick = 0
@@ -251,7 +223,6 @@ func (api *API) votePriceForecaster() (int, error) {
 
 	// calculate total vote
 	globalTotalVote = globalTotalVote - globalFirstTick + currentTotalVote
-	globalAverageVote := globalTotalVote / 100
 
 	var wg sync.WaitGroup
 	votePriceMutex := sync.Mutex{}
@@ -261,52 +232,19 @@ func (api *API) votePriceForecaster() (int, error) {
 	for _, faction := range api.factionMap {
 		wg.Add(1)
 		go func(faction *server.Faction) {
+
 			// get a copy of current vote price
-			currentVotePrice := server.BigInt{Int: *big.NewInt(0)}
-			currentVotePrice.Add(&currentVotePrice.Int, &api.votePriceSystem.FactionVotePriceMap[faction.ID].CurrentVotePriceSups.Int)
-
-			// calculate max price change
-			maxPriceChange := server.BigInt{Int: *big.NewInt(0)}
-			maxPriceChange.Add(&maxPriceChange.Int, &currentVotePrice.Int)
-			maxPriceChange.Mul(&maxPriceChange.Int, big.NewInt(VotePriceMultiplierPercentage))
-			maxPriceChange.Div(&maxPriceChange.Int, big.NewInt(100))
-
-			if globalAverageVote == 0 { // vpt will also be 0
-				// reduce maximum price change
-				currentVotePrice.Sub(&currentVotePrice.Int, &maxPriceChange.Int)
-			} else {
-				// priceChange := currentFactionPrice * multiplier * (1 - abs(vpt-avpt)/avpt)
-				priceChange := server.BigInt{Int: *big.NewInt(0)}
-
-				// calc price change ratio "abs(vpt-avpt)/avpt"
-				ratio := VotePriceAccuracy * absoluteInt64(factionVoteMap[faction.ID]-globalAverageVote) / globalAverageVote
-
-				// if ratio greater than or equal to 1,  direct set price change to the max price change
-				if ratio >= VotePriceAccuracy {
-					priceChange.Add(&priceChange.Int, &maxPriceChange.Int)
-				} else {
-					// otherwise calc the current price change
-					priceChange.Add(&priceChange.Int, &currentVotePrice.Int)
-					priceChange.Mul(&priceChange.Int, big.NewInt(VotePriceMultiplierPercentage))
-
-					priceChange.Mul(&priceChange.Int, big.NewInt(VotePriceAccuracy-ratio))
-					priceChange.Div(&priceChange.Int, big.NewInt(VotePriceAccuracy))
-				}
-
-				// check current vote per tick is over average
-				if factionVoteMap[faction.ID] > globalAverageVote {
-					// price go up
-					currentVotePrice.Add(&currentVotePrice.Int, &priceChange.Int)
-				} else {
-					// price go down
-					currentVotePrice.Sub(&currentVotePrice.Int, &priceChange.Int)
-				}
-			}
+			newVotePrice := calVotePrice(
+				globalTotalVote,
+				api.votePriceSystem.FactionVotePriceMap[faction.ID].CurrentVotePriceSups,
+				factionVoteMap[faction.ID],
+				faction.ID,
+			)
 
 			// prepare broadcast payload
 			payload := []byte{}
 			payload = append(payload, byte(battle_arena.NetMessageTypeVotePriceForecastTick))
-			payload = append(payload, []byte(currentVotePrice.Int.String())...)
+			payload = append(payload, []byte(newVotePrice.Int.String())...)
 
 			votePriceMutex.Lock()
 			factionVotePriceMap[faction.ID] = payload
@@ -341,6 +279,63 @@ func (api *API) votePriceForecaster() (int, error) {
 	})
 
 	return http.StatusOK, nil
+}
+
+func calVotePrice(globalTotalVote int64, currentVotePrice server.BigInt, currentVotePerTick int64, factionID server.FactionID) server.BigInt {
+
+	// get a copy of current vote price
+	votePriceSups := server.BigInt{Int: *big.NewInt(0)}
+	votePriceSups.Add(&votePriceSups.Int, &currentVotePrice.Int)
+
+	// calculate max price change
+	maxPriceChange := server.BigInt{Int: *big.NewInt(0)}
+	maxPriceChange.Add(&maxPriceChange.Int, &votePriceSups.Int)
+	maxPriceChange.Mul(&maxPriceChange.Int, big.NewInt(VotePriceMultiplierPercentage))
+	maxPriceChange.Div(&maxPriceChange.Int, big.NewInt(100))
+
+	// if no vote
+	if currentVotePerTick == 0 {
+		// reduce maximum price change
+		votePriceSups.Sub(&votePriceSups.Int, &maxPriceChange.Int)
+
+		return votePriceSups
+
+	}
+	// priceChange := currentFactionPrice * multiplier * (1 - abs(vpt-avpt)/avpt)
+	priceChange := server.BigInt{Int: *big.NewInt(0)}
+
+	// calc price change ratio "abs(vpt-avpt)/avpt"
+	ratio := VotePriceAccuracy * absoluteInt64(currentVotePerTick*300-globalTotalVote) * 100 / (globalTotalVote * 3)
+
+	// if ratio is greater than or equal to 1 or ratio is equal to 0,
+	// direct set price change to the max price change
+	if ratio >= VotePriceAccuracy*100 || ratio == 0 {
+		priceChange.Add(&priceChange.Int, &maxPriceChange.Int)
+	} else {
+		// otherwise calc the current price change
+		priceChange.Add(&priceChange.Int, &maxPriceChange.Int)
+		priceChange.Mul(&priceChange.Int, big.NewInt(VotePriceAccuracy*100-ratio))
+		priceChange.Div(&priceChange.Int, big.NewInt(VotePriceAccuracy*100))
+	}
+
+	// check current vote per tick is over average
+	if currentVotePerTick*300 > globalTotalVote {
+		// price go up
+		if votePriceSups.Cmp(big.NewInt(1000000000000000000)) < 0 {
+			priceChange.Mul(&priceChange.Int, big.NewInt(2))
+		}
+
+		votePriceSups.Add(&votePriceSups.Int, &priceChange.Int)
+	} else {
+		// price go down
+		if votePriceSups.Cmp(big.NewInt(1000000000000000000)) < 0 {
+			priceChange.Div(&priceChange.Int, big.NewInt(2))
+		}
+
+		votePriceSups.Sub(&votePriceSups.Int, &priceChange.Int)
+	}
+
+	return votePriceSups
 }
 
 /************************
@@ -385,7 +380,7 @@ type VotePhase string
 const (
 	VotePhaseHold             VotePhase = "HOLD" // Waiting on signal
 	VotePhaseVoteCooldown     VotePhase = "VOTE_COOLDOWN"
-	VotePhaseVoteAbilityRight VotePhase = "VOTE_Ability_RIGHT"
+	VotePhaseVoteAbilityRight VotePhase = "VOTE_ABILITY_RIGHT"
 	VotePhaseNextVoteWin      VotePhase = "NEXT_VOTE_WIN"
 	VotePhaseLocationSelect   VotePhase = "LOCATION_SELECT"
 )
@@ -394,13 +389,17 @@ const (
 * Vote Struct *
 **************/
 
+type VotePhaseChecker struct {
+	Phase VotePhase
+}
+
 type VoteStage struct {
 	Phase   VotePhase `json:"phase"`
 	EndTime time.Time `json:"endTime"`
 }
 
 type VoteAbility struct {
-	Collection        *server.AbilityCollection
+	BattleAbility     *server.BattleAbility
 	FactionAbilityMap map[server.FactionID]*server.FactionAbility
 }
 
@@ -433,6 +432,9 @@ type WinnerSelectAbilityLocation struct {
 // StartVotingCycle start voting cycle ticker
 func (api *API) StartVotingCycle(factions []*server.Faction) {
 	// initialise current vote stage
+	api.votePhaseChecker = &VotePhaseChecker{
+		Phase: VotePhaseHold,
+	}
 	voteStage := &VoteStage{
 		Phase:   VotePhaseHold,
 		EndTime: time.Now(),
@@ -440,7 +442,7 @@ func (api *API) StartVotingCycle(factions []*server.Faction) {
 
 	// initialise vote ability
 	voteAbility := &VoteAbility{
-		Collection:        &server.AbilityCollection{},
+		BattleAbility:     &server.BattleAbility{},
 		FactionAbilityMap: make(map[server.FactionID]*server.FactionAbility),
 	}
 
@@ -498,7 +500,7 @@ func (api *API) abilityRightResultBroadcasterFactory(ftv *FactionTotalVote) func
 		factionTotalVote := *ftv
 
 		// initialise ratio data
-		ratioData := "33,33,33"
+		ratioData := "333333,333333,333333"
 
 		// if any faction have more than 1 vote, start calculate
 		if factionTotalVote.BostonTotalVote > 0 || factionTotalVote.RedMountainTotalVote > 0 || factionTotalVote.ZaibatsuTotalVote > 0 {
@@ -506,9 +508,9 @@ func (api *API) abilityRightResultBroadcasterFactory(ftv *FactionTotalVote) func
 			totalVote := factionTotalVote.BostonTotalVote + factionTotalVote.RedMountainTotalVote + factionTotalVote.ZaibatsuTotalVote
 
 			// calc ratio
-			redMountainRatio := factionTotalVote.RedMountainTotalVote / totalVote
-			bostonRatio := factionTotalVote.BostonTotalVote / totalVote
-			zaibatsuRatio := 100 - redMountainRatio - bostonRatio
+			redMountainRatio := factionTotalVote.RedMountainTotalVote * 10000 * 100 / totalVote
+			bostonRatio := factionTotalVote.BostonTotalVote * 10000 * 100 / totalVote
+			zaibatsuRatio := factionTotalVote.ZaibatsuTotalVote * 10000 * 100 / totalVote
 
 			ratioData = fmt.Sprintf("%d,%d,%d", redMountainRatio, bostonRatio, zaibatsuRatio)
 		}
@@ -544,6 +546,23 @@ func (api *API) abilityRightResultBroadcasterFactory(ftv *FactionTotalVote) func
 // startVotingCycle start voting cycle tickles
 func (api *API) startVotingCycle() {
 	api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker) {
+		// get random ability collection set
+		battleAbility, factionAbilityMap, err := api.BattleArena.RandomAbilityCollection()
+		if err != nil {
+			api.Log.Err(err)
+		}
+
+		api.MessageBus.Send(messagebus.BusKey(HubKeyVoteBattleAbilityUpdated), battleAbility)
+
+		// initialise new ability collection
+		va.BattleAbility = battleAbility
+
+		// initialise new faction ability map
+		for fid, ability := range factionAbilityMap {
+			va.FactionAbilityMap[fid] = ability
+		}
+
+		api.votePhaseChecker.Phase = VotePhaseVoteCooldown
 		vs.Phase = VotePhaseVoteCooldown
 		vs.EndTime = time.Now().Add(time.Duration(CooldownInitialDurationSecond) * time.Second)
 
@@ -552,14 +571,6 @@ func (api *API) startVotingCycle() {
 
 		if vct.VotingStageListener.NextTick == nil {
 			vct.VotingStageListener.Start()
-		}
-
-		// start vote price ticker on the very first battle
-		if api.votePriceSystem.VotePriceTicker.NextTick == nil {
-			api.votePriceSystem.VotePriceTicker.Start()
-		}
-		if api.votePriceSystem.VotePriceForecaster.NextTick == nil {
-			api.votePriceSystem.VotePriceForecaster.Start()
 		}
 	}
 }
@@ -575,6 +586,14 @@ func (api *API) pauseVotingCycle() {
 
 		if vct.AbilityRightResultBroadcaster.NextTick != nil {
 			vct.AbilityRightResultBroadcaster.Stop()
+		}
+
+		if api.votePriceSystem.VotePriceUpdater.NextTick != nil {
+			api.votePriceSystem.VotePriceUpdater.Stop()
+		}
+
+		if api.votePriceSystem.VotePriceForecaster.NextTick != nil {
+			api.votePriceSystem.VotePriceForecaster.Stop()
 		}
 	}
 }
@@ -592,6 +611,14 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 			switch vs.Phase {
 			// at the end of ability right voting
 			case VotePhaseVoteAbilityRight:
+				if api.votePriceSystem.VotePriceUpdater.NextTick != nil {
+					api.votePriceSystem.VotePriceUpdater.Stop()
+				}
+
+				if api.votePriceSystem.VotePriceForecaster.NextTick != nil {
+					api.votePriceSystem.VotePriceForecaster.Stop()
+				}
+
 				// get all the tx
 				var txRefs []server.TransactionReference
 				for _, factionVotes := range fuvm {
@@ -604,6 +631,7 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 
 				// if no vote, enter next vote win phase
 				if len(txRefs) == 0 {
+					api.votePhaseChecker.Phase = VotePhaseNextVoteWin
 					vs.Phase = VotePhaseNextVoteWin
 					// broadcast current stage to faction users
 					api.MessageBus.Send(messagebus.BusKey(HubKeyVoteStageUpdated), vs)
@@ -691,9 +719,10 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 				hcd, winnerClientID := api.getNextWinnerDetail(vw)
 				if hcd == nil {
 					// if no winner left, enter cooldown phase
-					go api.BroadcastGameNotification(GameNotificationTypeText, fmt.Sprintf("Ability %s has been cancelled, due to no one able to select the location.", va.Collection.Label))
+					go api.BroadcastGameNotification(GameNotificationTypeText, fmt.Sprintf("Ability %s has been cancelled, due to no one able to select the location.", va.BattleAbility.Label))
 
 					// voting phase change
+					api.votePhaseChecker.Phase = VotePhaseVoteCooldown
 					vs.Phase = VotePhaseVoteCooldown
 					vs.EndTime = time.Now().Add(CooldownInitialDurationSecond * time.Second)
 
@@ -704,6 +733,7 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 				}
 
 				// voting phase change
+				api.votePhaseChecker.Phase = VotePhaseLocationSelect
 				vs.Phase = VotePhaseLocationSelect
 				vs.EndTime = time.Now().Add(LocationSelectDurationSecond * time.Second)
 
@@ -736,9 +766,26 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 				hcd, winnerClientID := api.getNextWinnerDetail(vw)
 				if hcd == nil {
 					// if no winner left, enter cooldown phase
-					go api.BroadcastGameNotification(GameNotificationTypeText, fmt.Sprintf("Ability %s has been cancelled, due to no one selecting the location.", va.Collection.Label))
+					go api.BroadcastGameNotification(GameNotificationTypeText, fmt.Sprintf("Ability %s has been cancelled, due to no one selecting the location.", va.BattleAbility.Label))
+
+					// get random ability collection set
+					battleAbility, factionAbilityMap, err := api.BattleArena.RandomAbilityCollection()
+					if err != nil {
+						api.Log.Err(err)
+					}
+
+					api.MessageBus.Send(messagebus.BusKey(HubKeyVoteBattleAbilityUpdated), battleAbility)
+
+					// initialise new ability collection
+					va.BattleAbility = battleAbility
+
+					// initialise new faction ability map
+					for fid, ability := range factionAbilityMap {
+						va.FactionAbilityMap[fid] = ability
+					}
 
 					// voting phase change
+					api.votePhaseChecker.Phase = VotePhaseVoteCooldown
 					vs.Phase = VotePhaseVoteCooldown
 					vs.EndTime = time.Now().Add(CooldownInitialDurationSecond * time.Second)
 
@@ -749,6 +796,7 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 				}
 
 				// otherwise, choose next winner
+				api.votePhaseChecker.Phase = VotePhaseLocationSelect
 				vs.Phase = VotePhaseLocationSelect
 				vs.EndTime = time.Now().Add(LocationSelectDurationSecond * time.Second)
 
@@ -766,20 +814,6 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 
 			// at the end of cooldown
 			case VotePhaseVoteCooldown:
-				// get random ability collection set
-				abilityCollection, factionAbilityMap, err := api.BattleArena.RandomAbilityCollection()
-				if err != nil {
-					api.Log.Err(err)
-				}
-
-				// initialise new ability collection
-				va.Collection = abilityCollection
-
-				// initialise new faction ability map
-				for fid, ability := range factionAbilityMap {
-					va.FactionAbilityMap[fid] = ability
-				}
-
 				// initialise faction user vote map
 				for _, fuv := range fuvm {
 					for uid := range fuv {
@@ -795,20 +829,20 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 				// initialise vote winner
 				vw.List = []server.UserID{}
 
+				api.votePhaseChecker.Phase = VotePhaseVoteAbilityRight
 				vs.Phase = VotePhaseVoteAbilityRight
 				vs.EndTime = time.Now().Add(VoteAbilityRightDurationSecond * time.Second)
-
-				api.MessageBus.Send(messagebus.BusKey(HubKeyVoteAbilityCollectionUpdated), va.Collection)
 
 				// broadcast current stage to faction users
 				api.MessageBus.Send(messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 
 				// start tracking vote right result
 				if vct.AbilityRightResultBroadcaster.NextTick == nil {
-					fmt.Println("start ability right result broadcaster")
 					vct.AbilityRightResultBroadcaster.Start()
 				}
 
+				api.votePriceSystem.VotePriceUpdater.Start()
+				api.votePriceSystem.VotePriceForecaster.Start()
 			}
 		}
 

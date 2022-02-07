@@ -40,12 +40,11 @@ type BroadcastPayload struct {
 }
 
 type VotePriceSystem struct {
-	VotePriceTicker     *tickle.Tickle
+	VotePriceUpdater    *tickle.Tickle
 	VotePriceForecaster *tickle.Tickle
 
 	GlobalVotePerTick []int64 // store last 100 tick total vote
 	GlobalTotalVote   int64
-	GlobalAverageVote int64
 
 	FactionVotePriceMap map[server.FactionID]*FactionVotePrice
 }
@@ -88,7 +87,8 @@ type API struct {
 	ringCheckAuthChan chan func(RingCheckAuthMap)
 
 	// voting channels
-	votingCycle chan func(*VoteStage, *VoteAbility, FactionUserVoteMap, *FactionTotalVote, *VoteWinner, *VotingCycleTicker)
+	votePhaseChecker *VotePhaseChecker
+	votingCycle      chan func(*VoteStage, *VoteAbility, FactionUserVoteMap, *FactionTotalVote, *VoteWinner, *VotingCycleTicker)
 
 	votePriceSystem *VotePriceSystem
 }
@@ -309,21 +309,25 @@ func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client, clients
 
 	ba := api.BattleArena.GetCurrentState()
 
-	// marshal payload
-	gameSettingsData, err := json.Marshal(&BroadcastPayload{
-		Key: HubKeyGameSettingsUpdated,
-		Payload: &GameSettingsResponse{
-			GameMap:     ba.GameMap,
-			WarMachines: ba.WarMachines,
-			//WarMachineLocation: ba.BattleHistory[0],
-		},
-	})
-	if err != nil {
-		return
-	}
-
 	go func() {
-		err := wsc.Send(gameSettingsData)
+		// delay 2 second to wait frontend setup key map
+		time.Sleep(2 * time.Second)
+
+		// marshal payload
+		gameSettingsData, err := json.Marshal(&BroadcastPayload{
+			Key: HubKeyGameSettingsUpdated,
+			Payload: &GameSettingsResponse{
+				GameMap:     ba.GameMap,
+				WarMachines: ba.WarMachines,
+				//WarMachineLocation: ba.BattleHistory[0],
+			},
+		})
+		if err != nil {
+			api.Log.Err(err).Msg("failed to marshal data")
+			return
+		}
+
+		err = wsc.Send(gameSettingsData)
 		if err != nil {
 			api.Log.Err(err).Msg("failed to send broadcast")
 		}
@@ -364,9 +368,9 @@ func (api *API) Close() {
 }
 
 type GameSettingsResponse struct {
-	GameMap            *server.GameMap         `json:"gameMap"`
-	WarMachines        []*server.WarMachineNFT `json:"warMachines"`
-	WarMachineLocation []byte                  `json:"warMachineLocation"`
+	GameMap     *server.GameMap         `json:"gameMap"`
+	WarMachines []*server.WarMachineNFT `json:"warMachines"`
+	// WarMachineLocation []byte                  `json:"warMachineLocation"`
 }
 
 const HubKeyGameSettingsUpdated = hub.HubCommandKey("GAME:SETTINGS:UPDATED")
@@ -383,9 +387,9 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 	gameSettingsData, err := json.Marshal(&BroadcastPayload{
 		Key: HubKeyGameSettingsUpdated,
 		Payload: &GameSettingsResponse{
-			GameMap:            ed.BattleArena.GameMap,
-			WarMachines:        ed.BattleArena.WarMachines,
-			WarMachineLocation: ed.BattleArena.BattleHistory[0],
+			GameMap:     ed.BattleArena.GameMap,
+			WarMachines: ed.BattleArena.WarMachines,
+			// WarMachineLocation: ed.BattleArena.BattleHistory[0],
 		},
 	})
 	if err != nil {

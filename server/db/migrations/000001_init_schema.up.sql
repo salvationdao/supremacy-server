@@ -41,8 +41,8 @@ CREATE TABLE battles_war_machines (
     PRIMARY KEY (battle_id, war_machine_id)
 );
 
--- ability_collection is for voting system
-CREATE TABLE ability_collections (
+-- battle_abilities is for voting system
+CREATE TABLE battle_abilities(
     id uuid PRIMARY KEY NOT NULL DEFAULT gen_random_uuid (),
     label text NOT NULL,
     colour text NOT NULL,
@@ -56,7 +56,7 @@ CREATE TABLE faction_abilities (
     game_client_ability_id int NOT NULL, -- gameclient uses byte/enum instead of uuid
     faction_id uuid NOT NULL,
     label text NOT NULL,
-    collection_id uuid NOT NULL REFERENCES ability_collections (id),
+    battle_ability_id uuid NOT NULL REFERENCES battle_abilities (id),
     usd_cent_cost int NOT NULL
 );
 

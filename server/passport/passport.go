@@ -1,9 +1,11 @@
 package passport
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"sync"
 	"time"
@@ -260,10 +262,16 @@ func (pp *Passport) Connect(ctx context.Context) error {
 				continue
 			}
 
-			payload, err := ioutil.ReadAll(r)
+			var buf bytes.Buffer
+
+			_, err = io.Copy(&buf, r)
 			if err != nil {
 				return terror.Error(err)
 			}
+
+			payload := buf.Bytes()
+
+			// payload, err := ioutil.ReadAll(r)
 
 			v, err := jason.NewObjectFromBytes(payload)
 			if err != nil {

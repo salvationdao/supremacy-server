@@ -69,7 +69,7 @@ var FactionIDRedMountain = server.FactionID(uuid.Must(uuid.FromString("98bf7bb3-
 var FactionIDBoston = server.FactionID(uuid.Must(uuid.FromString("7c6dde21-b067-46cf-9e56-155c88a520e2")))
 var FactionIDZaibatsu = server.FactionID(uuid.Must(uuid.FromString("880db344-e405-428d-84e5-6ebebab1fe6d")))
 
-var SharedAbilityCollections = []*server.AbilityCollection{
+var SharedAbilityCollections = []*server.BattleAbility{
 	{
 		Label:                  "AIRSTRIKE",
 		Colour:                 "#428EC1",
@@ -152,17 +152,17 @@ var SharedFactionAbilities = []*server.FactionAbility{
 }
 
 func factionAbilities(ctx context.Context, conn *pgxpool.Pool) error {
-	for _, abilityCollection := range SharedAbilityCollections {
-		err := db.AbilityCollectionCreate(ctx, conn, abilityCollection)
+	for _, battleAbility := range SharedAbilityCollections {
+		err := db.AbilityCollectionCreate(ctx, conn, battleAbility)
 		if err != nil {
 			return terror.Error(err)
 		}
 	}
 
 	for _, ability := range SharedFactionAbilities {
-		for _, abilityCollection := range SharedAbilityCollections {
-			if abilityCollection.Label == ability.Label {
-				ability.CollectionID = abilityCollection.ID
+		for _, battleAbility := range SharedAbilityCollections {
+			if battleAbility.Label == ability.Label {
+				ability.BattleAbilityID = battleAbility.ID
 			}
 		}
 		err := db.FactionAbilityCreate(ctx, conn, ability)
