@@ -10,8 +10,9 @@ import (
 type BattleEventType string
 
 const (
-	BattleEventWarMachineDestroyed BattleEventType = "WAR_MACHINE_DESTROYED"
-	BattleEventFactionAbility      BattleEventType = "FACTION_ABILITY"
+	BattleEventTypeWarMachineDestroyed BattleEventType = "WAR_MACHINE_DESTROYED"
+	BattleEventTypeFactionAbility      BattleEventType = "FACTION_ABILITY"
+	BattleEventTypeStateChange         BattleEventType = "STATE"
 )
 
 type BattleEvent struct {
@@ -47,6 +48,19 @@ type FactionAbilityEvent struct {
 		X int `json:"X"`
 		Y int `json:"Y"`
 	} `json:"gameLocation"`
+}
+
+type BattleEventState string
+
+const (
+	BattleEventBattleStart = "START"
+	BattleEventBattleEnd   = "END"
+)
+
+type BattleEventStateChange struct {
+	ID      FactionAbilityEventID `json:"id" db:"id"`
+	EventID EventID               `json:"eventID" db:"event_id"`
+	State   BattleEventState      `json:"state" db:"state"`
 }
 
 type EventID uuid.UUID

@@ -124,3 +124,33 @@ func BattleGet(ctx context.Context, conn Conn, battleID server.BattleID) (*serve
 	}
 	return result, nil
 }
+
+// CreateBattleStateEvent adds a battle log of BattleEvent
+func CreateBattleStateEvent(ctx context.Context, conn Conn, battleID server.BattleID, state string) (*server.BattleEventStateChange, error) {
+	event := &server.BattleEventStateChange{}
+	q := `
+		WITH rows AS (
+			INSERT INTO 
+				battle_events (battle_id, event_type) 
+			VALUES
+				($1, $2)
+			RETURNING
+				id
+		)
+		INSERT INTO 
+			battle_events_state (event_id, state)
+		VALUES 
+			((SELECT id FROM rows), $3)
+		RETURNING 
+			id, event_id, state;
+	`
+	err := pgxscan.Get(ctx, conn, event, q,
+		battleID,
+		server.BattleEventTypeStateChange,
+		state,
+	)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+	return event, nil
+}

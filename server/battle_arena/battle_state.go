@@ -103,6 +103,11 @@ outerLoop:
 		return terror.Error(err)
 	}
 
+	_, err = db.CreateBattleStateEvent(ctx, tx, ba.battle.ID, server.BattleEventBattleStart)
+	if err != nil {
+		return terror.Error(err)
+	}
+
 	err = tx.Commit(ctx)
 	if err != nil {
 		return terror.Error(err)
@@ -179,6 +184,11 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 		if err != nil {
 			return terror.Error(err)
 		}
+	}
+
+	_, err = db.CreateBattleStateEvent(ctx, tx, ba.battle.ID, server.BattleEventBattleEnd)
+	if err != nil {
+		return terror.Error(err)
 	}
 
 	err = tx.Commit(ctx)
