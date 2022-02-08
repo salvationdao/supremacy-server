@@ -426,9 +426,11 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 		}
 	})
 
-	// start voting cycle
-	go api.startVotingCycle()
-	go api.startFactionAbilityPoolTicker()
+	// start voting cycle, initial intro time equal: (mech_count * 3 + 7) seconds
+	introSecond := len(warMachines)*3 + 7
+
+	go api.startVotingCycle(introSecond)
+	go api.startFactionAbilityPoolTicker(introSecond)
 }
 
 // BattleEndSignal terminate all the voting cycle

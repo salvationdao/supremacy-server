@@ -158,8 +158,12 @@ func (fc *FactionControllerWS) FactionAbilityContribute(ctx context.Context, wsc
 
 		// prepare broadcast data
 		targetPriceList := []string{}
-		for _, fa := range fap {
-			targetPriceList = append(targetPriceList, fmt.Sprintf("%s_%s_%s", fa.FactionAbility.ID, fa.TargetPrice.String(), fa.CurrentSups.String()))
+		for abilityID, fa := range fap {
+			hasTriggered := 0
+			if abilityID == req.Payload.FactionAbilityID {
+				hasTriggered = 1
+			}
+			targetPriceList = append(targetPriceList, fmt.Sprintf("%s_%s_%s_%d", fa.FactionAbility.ID, fa.TargetPrice.String(), fa.CurrentSups.String(), hasTriggered))
 		}
 
 		targetPriceChan <- strings.Join(targetPriceList, "|")

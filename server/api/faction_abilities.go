@@ -9,6 +9,7 @@ import (
 	"server/battle_arena"
 	"server/db"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/log_helpers"
@@ -101,6 +102,7 @@ func (api *API) abilityTargetPriceUpdaterFactory(factionID server.FactionID, con
 				fa.TargetPrice.Mul(&fa.TargetPrice.Int, big.NewInt(9772))
 				fa.TargetPrice.Div(&fa.TargetPrice.Int, big.NewInt(10000))
 
+				hasTriggered := 0
 				if fa.TargetPrice.Cmp(&fa.CurrentSups.Int) <= 0 {
 					//double the target price
 					fa.TargetPrice.Mul(&fa.TargetPrice.Int, big.NewInt(2))
@@ -133,10 +135,11 @@ func (api *API) abilityTargetPriceUpdaterFactory(factionID server.FactionID, con
 					// broadcast notification
 					go api.BroadcastGameNotification(GameNotificationTypeText, fmt.Sprintf(`Ability %s in %s had been triggered`, fa.FactionAbility.Label, api.factionMap[factionID].Label))
 
+					hasTriggered = 1
 				}
 
 				// record current price
-				targetPriceList = append(targetPriceList, fmt.Sprintf("%s_%s_%s", fa.FactionAbility.ID, fa.TargetPrice.String(), fa.CurrentSups.String()))
+				targetPriceList = append(targetPriceList, fmt.Sprintf("%s_%s_%s_%d", fa.FactionAbility.ID, fa.TargetPrice.String(), fa.CurrentSups.String(), hasTriggered))
 
 				// update sups cost of the ability in db
 				fa.FactionAbility.SupsCost = fa.TargetPrice.String()
@@ -148,6 +151,7 @@ func (api *API) abilityTargetPriceUpdaterFactory(factionID server.FactionID, con
 
 				}
 			}
+
 			targetPriceChan <- strings.Join(targetPriceList, "|")
 			errChan <- nil
 		}
@@ -201,7 +205,7 @@ func (api *API) abilityTargetPriceBroadcasterFactory(factionID server.FactionID)
 		api.factionAbilityPool[factionID] <- func(fap FactionAbilitiesPool, fapt *FactionAbilityPoolTicker) {
 			targetPriceList := []string{}
 			for _, fa := range fap {
-				targetPriceList = append(targetPriceList, fmt.Sprintf("%s_%s_%s", fa.FactionAbility.ID, fa.TargetPrice.String(), fa.CurrentSups.String()))
+				targetPriceList = append(targetPriceList, fmt.Sprintf("%s_%s_%s_%d", fa.FactionAbility.ID, fa.TargetPrice.String(), fa.CurrentSups.String(), 0))
 			}
 			targetPriceChan <- strings.Join(targetPriceList, "|")
 		}
@@ -240,7 +244,10 @@ func (api *API) abilityTargetPriceBroadcasterFactory(factionID server.FactionID)
 	}
 }
 
-func (api *API) startFactionAbilityPoolTicker() {
+func (api *API) startFactionAbilityPoolTicker(introSecond int) {
+	// start faction ability pool ticker after mech intro
+	time.Sleep(time.Duration(introSecond) * time.Second)
+
 	for factionID := range api.factionMap {
 		api.factionAbilityPool[factionID] <- func(fap FactionAbilitiesPool, fapt *FactionAbilityPoolTicker) {
 			// start all the tickles

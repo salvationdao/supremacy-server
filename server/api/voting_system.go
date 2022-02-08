@@ -390,7 +390,7 @@ func (api *API) startLiveVotingDataTicker(factionID server.FactionID) {
 
 const (
 	// CooldownInitialDurationSecond the amount of second users have to wait for the next vote coming up
-	CooldownInitialDurationSecond = 45
+	CooldownInitialDurationSecond = 15
 
 	// VoteAbilityRightDurationSecond the amount of second users can vote the ability
 	VoteAbilityRightDurationSecond = 30
@@ -403,6 +403,7 @@ type VotePhase string
 
 const (
 	VotePhaseHold             VotePhase = "HOLD" // Waiting on signal
+	VotePhaseWaitMechIntro    VotePhase = "WAIT_MECH_INTRO"
 	VotePhaseVoteCooldown     VotePhase = "VOTE_COOLDOWN"
 	VotePhaseVoteAbilityRight VotePhase = "VOTE_ABILITY_RIGHT"
 	VotePhaseNextVoteWin      VotePhase = "NEXT_VOTE_WIN"
@@ -568,27 +569,11 @@ func (api *API) abilityRightResultBroadcasterFactory(ftv *FactionTotalVote) func
 **********************/
 
 // startVotingCycle start voting cycle tickles
-func (api *API) startVotingCycle() {
+func (api *API) startVotingCycle(introSecond int) {
 	api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker) {
-		// get random ability collection set
-		battleAbility, factionAbilityMap, err := api.BattleArena.RandomAbilityCollection()
-		if err != nil {
-			api.Log.Err(err)
-		}
-
-		api.MessageBus.Send(messagebus.BusKey(HubKeyVoteBattleAbilityUpdated), battleAbility)
-
-		// initialise new ability collection
-		va.BattleAbility = battleAbility
-
-		// initialise new faction ability map
-		for fid, ability := range factionAbilityMap {
-			va.FactionAbilityMap[fid] = ability
-		}
-
-		api.votePhaseChecker.Phase = VotePhaseVoteCooldown
-		vs.Phase = VotePhaseVoteCooldown
-		vs.EndTime = time.Now().Add(time.Duration(CooldownInitialDurationSecond) * time.Second)
+		api.votePhaseChecker.Phase = VotePhaseWaitMechIntro
+		vs.Phase = VotePhaseWaitMechIntro
+		vs.EndTime = time.Now().Add(time.Duration(introSecond) * time.Second)
 
 		// broadcast current stage to faction users
 		api.MessageBus.Send(messagebus.BusKey(HubKeyVoteStageUpdated), vs)
@@ -652,6 +637,34 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 			}
 
 			switch vs.Phase {
+			// at the end of wait mech intro
+			case VotePhaseWaitMechIntro:
+
+				// get random ability collection set
+				battleAbility, factionAbilityMap, err := api.BattleArena.RandomAbilityCollection()
+				if err != nil {
+					api.Log.Err(err)
+				}
+
+				api.MessageBus.Send(messagebus.BusKey(HubKeyVoteBattleAbilityUpdated), battleAbility)
+
+				// initialise new ability collection
+				va.BattleAbility = battleAbility
+
+				// initialise new faction ability map
+				for fid, ability := range factionAbilityMap {
+					va.FactionAbilityMap[fid] = ability
+				}
+
+				// start vote ticker
+				api.votePhaseChecker.Phase = VotePhaseVoteCooldown
+
+				vs.Phase = VotePhaseVoteCooldown
+				vs.EndTime = time.Now().Add(CooldownInitialDurationSecond * time.Second)
+
+				// broadcast current stage to faction users
+				api.MessageBus.Send(messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+
 			// at the end of ability right voting
 			case VotePhaseVoteAbilityRight:
 				if api.votePriceSystem.VotePriceUpdater.NextTick != nil {
