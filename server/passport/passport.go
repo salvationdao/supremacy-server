@@ -130,6 +130,7 @@ func (pp *Passport) Connect(ctx context.Context) error {
 				//CompressionMode:0,
 				//CompressionThreshold:0,
 			})
+			pp.Conn.ws.SetReadLimit(104857600) // set to 100mbs
 			if err != nil {
 				pp.Log.Warn().Err(err).Msg("Failed to connect to passport server, retrying in 5 seconds...")
 				time.Sleep(5 * time.Second)
