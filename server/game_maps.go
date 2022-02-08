@@ -21,29 +21,43 @@ type GameMap struct {
 }
 
 type WarMachineNFT struct {
-	TokenID         uint64    `json:"tokenID"`
-	ParticipantID   byte      `json:"participantID"`
-	OwnedByID       UserID    `json:"ownedByID"`
-	Name            string    `json:"name"`
-	Description     string    `json:"description"`
-	ExternalUrl     string    `json:"externalUrl"`
-	Image           string    `json:"image"`
-	MaxHealth       int       `json:"maxHealth"`
-	Health          int       `json:"health"`
-	MaxShield       int       `json:"maxShield"`
-	Shield          int       `json:"shield"`
-	Speed           int       `json:"speed"`
-	Durability      int       `json:"durability"`
-	PowerGrid       int       `json:"powerGrid"`
-	CPU             int       `json:"cpu"`
-	WeaponHardpoint int       `json:"weaponHardpoint"`
-	TurretHardpoint int       `json:"turretHardpoint"`
-	UtilitySlots    int       `json:"utilitySlots"`
-	FactionID       FactionID `json:"factionID"`
-	Faction         *Faction  `json:"faction"`
-	WeaponNames     []string  `json:"weaponNames"`
-	Position        *Vector3  `json:"position"`
-	Rotation        int       `json:"rotation"`
+	TokenID         uint64        `json:"tokenID"`
+	ParticipantID   byte          `json:"participantID"`
+	OwnedByID       UserID        `json:"ownedByID"`
+	Name            string        `json:"name"`
+	Description     string        `json:"description"`
+	ExternalUrl     string        `json:"externalUrl"`
+	Image           string        `json:"image"`
+	MaxHealth       int           `json:"maxHealth"`
+	Health          int           `json:"health"`
+	MaxShield       int           `json:"maxShield"`
+	Shield          int           `json:"shield"`
+	Speed           int           `json:"speed"`
+	Durability      int           `json:"durability"`
+	PowerGrid       int           `json:"powerGrid"`
+	CPU             int           `json:"cpu"`
+	WeaponHardpoint int           `json:"weaponHardpoint"`
+	TurretHardpoint int           `json:"turretHardpoint"`
+	UtilitySlots    int           `json:"utilitySlots"`
+	FactionID       FactionID     `json:"factionID"`
+	Faction         *Faction      `json:"faction"`
+	WeaponNames     []string      `json:"weaponNames"`
+	Position        *Vector3      `json:"position"`
+	Rotation        int           `json:"rotation"`
+	Abilities       []*AbilityNFT `json:"abilities"`
+}
+
+type AbilityNFT struct {
+	TokenID           uint64 `json:"tokenID"`
+	Name              string `json:"name"`
+	Description       string `json:"description"`
+	ExternalUrl       string `json:"externalUrl"`
+	Image             string `json:"image"`
+	SupsCost          string `json:"supsCost"`
+	GameClientID      int    `json:"gameClientID"`
+	RequiredSlot      string `json:"requiredSlot"`
+	RequiredPowerGrid int    `json:"requiredPowerGrid"`
+	RequiredCPU       int    `json:"requiredCPU"`
 }
 
 type Vector3 struct {

@@ -237,15 +237,15 @@ func factionAbilities(ctx context.Context, conn *pgxpool.Pool) error {
 var factions = []*server.Faction{
 	{
 		ID:        server.RedMountainFactionID,
-		VotePrice: "1000000000000000000",
+		VotePrice: "100000000000000000000",
 	},
 	{
 		ID:        server.BostonCyberneticsFactionID,
-		VotePrice: "1000000000000000000",
+		VotePrice: "100000000000000000000",
 	},
 	{
 		ID:        server.ZaibatsuFactionID,
-		VotePrice: "1000000000000000000",
+		VotePrice: "100000000000000000000",
 	},
 }
 

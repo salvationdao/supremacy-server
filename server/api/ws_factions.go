@@ -80,6 +80,14 @@ func (fc *FactionControllerWS) FactionAbilityContribute(ctx context.Context, wsc
 		return terror.Error(terror.ErrInvalidInput, "The battle hasn't started yet")
 	}
 
+	// calculate how many sups worth
+	oneSups := big.NewInt(0)
+	oneSups, ok := oneSups.SetString("1000000000000000000", 10)
+	if !ok {
+		return terror.Error(fmt.Errorf("Unable to convert 1000000000000000000 to big int"))
+	}
+	req.Payload.Amount.Mul(&req.Payload.Amount.Int, oneSups)
+
 	targetPriceChan := make(chan string)
 	errChan := make(chan error)
 	fc.API.factionAbilityPool[factionID] <- func(fap FactionAbilitiesPool, fapt *FactionAbilityPoolTicker) {
