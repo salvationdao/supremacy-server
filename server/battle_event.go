@@ -23,15 +23,22 @@ type BattleEvent struct {
 	CreatedAt time.Time       `json:"created_at" db:"created_at"`
 }
 
+type DamageHistory struct {
+	Amount            int    `json:"amount"`            // The total amount of damage taken from this source
+	InstigatorTokenID uint64 `json:"instigatorTokenID"` // The TokenID of the WarMachine that caused the damage (0 if none, ie: an Airstrike)
+	SourceTokenID     uint64 `json:"sourceTokenID"`     // The TokenID of the weapon
+	SourceName        string `json:"sourceName"`        // The name of the weapon / damage causer (in-case of now TokenID)
+}
+
 type WarMachineDestroyedEvent struct {
 	ID                    WarMachineDestroyedEventID `json:"id" db:"id"`
 	EventID               EventID                    `json:"eventID" db:"event_id"`
 	DestroyedWarMachineID uint64                     `json:"destroyedWarMachineID" db:"destroyed_war_machine_id"`
 	KillByWarMachineID    *uint64                    `json:"killByWarMachineID,omitempty" db:"kill_by_war_machine_id,omitempty"`
 	RelatedEventID        *EventID                   `json:"relatedEventID,omitempty" db:"related_event_id,omitempty"`
-	RelatedEventIDString  string                     `json:"relatedEventIDString,omitempty" `
-	//AssistedWarMachineIDs  []uint64                   `json:"assistedWarMachineIDs"`
-	//KilledBy               string                     `json:"killedBy"` // this will hold weapon name or event name?
+	RelatedEventIDString  string                     `json:"relatedEventIDString,omitempty"` // The related EventID in string form (received from game client)
+	DamageHistory         []DamageHistory            `json:"damageHistory"`                  // Compiled History of all the damage this WarMachine took and from who/what
+	KilledBy              string                     `json:"killedBy"`                       // Name of who/what killed the WarMachine (in-case of no EventID or TokenID)
 }
 
 type FactionAbilityEvent struct {
