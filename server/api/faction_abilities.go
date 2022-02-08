@@ -16,6 +16,7 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-software/tickle"
 	"github.com/ninja-syndicate/hub"
+	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
 	"nhooyr.io/websocket"
 )
@@ -24,6 +25,7 @@ type FactionAbilitiesPool map[server.FactionAbilityID]*FactionAbilityPrice
 
 type FactionAbilityPrice struct {
 	FactionAbility *server.FactionAbility
+	MaxTargetPrice server.BigInt
 	TargetPrice    server.BigInt
 	CurrentSups    server.BigInt
 	TxRefs         []server.TransactionReference
@@ -37,33 +39,6 @@ type FactionAbilityPoolTicker struct {
 func (api *API) StartFactionAbilityPool(factionID server.FactionID, conn *pgxpool.Pool) {
 	// initial faction ability
 	factionAbilitiesPool := make(FactionAbilitiesPool)
-
-	// get initial abilities
-	initialAbilities, err := db.FactionExclusiveAbilitiesByFactionID(api.ctx, conn, factionID)
-	if err != nil {
-		api.Log.Err(err).Msg("Failed to query initial faction abilities")
-		return
-	}
-
-	// set initial ability
-	for _, ability := range initialAbilities {
-		factionAbilitiesPool[ability.ID] = &FactionAbilityPrice{
-			FactionAbility: ability,
-			TargetPrice:    server.BigInt{Int: *big.NewInt(0)},
-			CurrentSups:    server.BigInt{Int: *big.NewInt(0)},
-			TxRefs:         []server.TransactionReference{},
-		}
-
-		// calc target price
-		initialTarget := big.NewInt(0)
-		initialTarget, ok := initialTarget.SetString(ability.SupsCost, 10)
-		if !ok {
-			api.Log.Err(fmt.Errorf("Failed to set initial target price"))
-			return
-		}
-
-		factionAbilitiesPool[ability.ID].TargetPrice.Add(&factionAbilitiesPool[ability.ID].TargetPrice.Int, initialTarget)
-	}
 
 	// initialise target price ticker
 	tickle.MinDurationOverride = true
@@ -104,8 +79,27 @@ func (api *API) abilityTargetPriceUpdaterFactory(factionID server.FactionID, con
 
 				hasTriggered := 0
 				if fa.TargetPrice.Cmp(&fa.CurrentSups.Int) <= 0 {
-					//double the target price
-					fa.TargetPrice.Mul(&fa.TargetPrice.Int, big.NewInt(2))
+
+					// calc min target price (half of last max target price)
+					minTargetPrice := server.BigInt{Int: *big.NewInt(0)}
+					minTargetPrice.Add(&minTargetPrice.Int, &fa.MaxTargetPrice.Int)
+					minTargetPrice.Div(&minTargetPrice.Int, big.NewInt(2))
+
+					// calc current new target price (twice of current target price)
+					newTargetPrice := server.BigInt{Int: *big.NewInt(0)}
+					newTargetPrice.Add(&newTargetPrice.Int, &fa.TargetPrice.Int)
+					newTargetPrice.Mul(&newTargetPrice.Int, big.NewInt(2))
+
+					// reset target price and max target price
+					fa.TargetPrice = server.BigInt{Int: *big.NewInt(0)}
+					fa.MaxTargetPrice = server.BigInt{Int: *big.NewInt(0)}
+					if newTargetPrice.Cmp(&minTargetPrice.Int) >= 0 {
+						fa.TargetPrice.Add(&fa.TargetPrice.Int, &newTargetPrice.Int)
+						fa.MaxTargetPrice.Add(&fa.MaxTargetPrice.Int, &newTargetPrice.Int)
+					} else {
+						fa.TargetPrice.Add(&fa.TargetPrice.Int, &minTargetPrice.Int)
+						fa.MaxTargetPrice.Add(&fa.MaxTargetPrice.Int, &minTargetPrice.Int)
+					}
 
 					// reset current sups to zero
 					fa.CurrentSups = server.BigInt{Int: *big.NewInt(0)}
@@ -119,13 +113,19 @@ func (api *API) abilityTargetPriceUpdaterFactory(factionID server.FactionID, con
 					}
 					fa.TxRefs = []server.TransactionReference{}
 
-					// trigger battle arena function to handle faction ability
-					err = api.BattleArena.FactionAbilityTrigger(&battle_arena.AbilityTriggerRequest{
-						FactionID:           fa.FactionAbility.FactionID,
-						FactionAbilityID:    fa.FactionAbility.ID,
-						IsSuccess:           true,
+					abilityTriggerEvent := &server.FactionAbilityEvent{
+						IsTriggered:         true,
 						GameClientAbilityID: fa.FactionAbility.GameClientAbilityID,
-					})
+						ParticipantID:       fa.FactionAbility.ParticipantID,
+					}
+					if fa.FactionAbility.AbilityTokenID == 0 {
+						abilityTriggerEvent.FactionAbilityID = &fa.FactionAbility.ID
+					} else {
+						abilityTriggerEvent.AbilityTokenID = &fa.FactionAbility.AbilityTokenID
+					}
+
+					// trigger battle arena function to handle faction ability
+					err = api.BattleArena.FactionAbilityTrigger(abilityTriggerEvent)
 					if err != nil {
 						targetPriceChan <- ""
 						errChan <- terror.Error(err)
@@ -141,14 +141,19 @@ func (api *API) abilityTargetPriceUpdaterFactory(factionID server.FactionID, con
 				// record current price
 				targetPriceList = append(targetPriceList, fmt.Sprintf("%s_%s_%s_%d", fa.FactionAbility.ID, fa.TargetPrice.String(), fa.CurrentSups.String(), hasTriggered))
 
-				// update sups cost of the ability in db
-				fa.FactionAbility.SupsCost = fa.TargetPrice.String()
-				err := db.FactionExclusiveAbilitiesSupsCostUpdate(api.ctx, conn, fa.FactionAbility)
-				if err != nil {
-					targetPriceChan <- ""
-					errChan <- terror.Error(err)
-					return
+				// store new target price to passport server, if the ability is nft
+				if fa.FactionAbility.AbilityTokenID != 0 && fa.FactionAbility.WarMachineTokenID != 0 {
+					api.Passport.AbilityUpdateTargetPrice(api.ctx, fa.FactionAbility.AbilityTokenID, fa.FactionAbility.WarMachineTokenID, fa.TargetPrice.String())
+				} else {
+					// update sups cost of the ability in db
+					fa.FactionAbility.SupsCost = fa.TargetPrice.String()
+					err := db.FactionExclusiveAbilitiesSupsCostUpdate(api.ctx, conn, fa.FactionAbility)
+					if err != nil {
+						targetPriceChan <- ""
+						errChan <- terror.Error(err)
+						return
 
+					}
 				}
 			}
 
@@ -244,16 +249,39 @@ func (api *API) abilityTargetPriceBroadcasterFactory(factionID server.FactionID)
 	}
 }
 
-func (api *API) startFactionAbilityPoolTicker(introSecond int) {
+func (api *API) startFactionAbilityPoolTicker(factionID server.FactionID, initialAbilities []*server.FactionAbility, introSecond int) {
 	// start faction ability pool ticker after mech intro
 	time.Sleep(time.Duration(introSecond) * time.Second)
 
-	for factionID := range api.factionMap {
-		api.factionAbilityPool[factionID] <- func(fap FactionAbilitiesPool, fapt *FactionAbilityPoolTicker) {
-			// start all the tickles
-			fapt.TargetPriceUpdater.Start()
-			fapt.TargetPriceBroadcaster.Start()
+	api.factionAbilityPool[factionID] <- func(fap FactionAbilitiesPool, fapt *FactionAbilityPoolTicker) {
+		// set initial ability
+		for _, ability := range initialAbilities {
+			fap[ability.ID] = &FactionAbilityPrice{
+				FactionAbility: ability,
+				MaxTargetPrice: server.BigInt{Int: *big.NewInt(0)},
+				TargetPrice:    server.BigInt{Int: *big.NewInt(0)},
+				CurrentSups:    server.BigInt{Int: *big.NewInt(0)},
+				TxRefs:         []server.TransactionReference{},
+			}
+
+			// calc target price
+			initialTargetPrice := big.NewInt(0)
+			initialTargetPrice, ok := initialTargetPrice.SetString(ability.SupsCost, 10)
+			if !ok {
+				api.Log.Err(fmt.Errorf("Failed to set initial target price"))
+				return
+			}
+
+			fap[ability.ID].TargetPrice.Add(&fap[ability.ID].TargetPrice.Int, initialTargetPrice)
+			fap[ability.ID].MaxTargetPrice.Add(&fap[ability.ID].MaxTargetPrice.Int, initialTargetPrice)
 		}
+
+		// broadcast ability
+		api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionAbilitiesUpdated, factionID)), initialAbilities)
+
+		// start all the tickles
+		fapt.TargetPriceUpdater.Start()
+		fapt.TargetPriceBroadcaster.Start()
 	}
 }
 

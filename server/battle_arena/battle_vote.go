@@ -41,42 +41,13 @@ func (ba *BattleArena) RandomAbilityCollection() (*server.BattleAbility, map[ser
 
 const BattleAbilityCommand = BattleCommand("BATTLE:ABILITY")
 
-type AbilityTriggerRequest struct {
-	FactionID           server.FactionID
-	FactionAbilityID    server.FactionAbilityID
-	IsSuccess           bool
-	TriggeredByUserID   *string
-	TriggeredByUsername *string
-	TriggeredOnCellX    *int
-	TriggeredOnCellY    *int
-	GameClientAbilityID byte
-}
-
-func (ba *BattleArena) FactionAbilityTrigger(atr *AbilityTriggerRequest) error {
-
+func (ba *BattleArena) FactionAbilityTrigger(factionAbilityEvent *server.FactionAbilityEvent) error {
 	ctx := context.Background()
-	factionAbilityEvent := &server.FactionAbilityEvent{
-		FactionAbilityID:    atr.FactionAbilityID,
-		IsTriggered:         atr.IsSuccess,
-		TriggeredByUserID:   atr.TriggeredByUserID,
-		TriggeredByUsername: atr.TriggeredByUsername,
-		TriggeredOnCellX:    atr.TriggeredOnCellX,
-		TriggeredOnCellY:    atr.TriggeredOnCellY,
-		GameClientAbilityID: atr.GameClientAbilityID,
-	}
 
 	err := db.FactionAbilityEventCreate(ctx, ba.Conn, ba.battle.ID, factionAbilityEvent)
 	if err != nil {
 		return terror.Error(err)
 	}
-
-	// TODO: add possible counter animations in unreal
-	if !factionAbilityEvent.IsTriggered {
-		return nil
-	}
-
-	// Get the ability enum
-	//fa, err := db.FactionAbilityGetRandom()
 
 	// To get the location in game its
 	//  ((cellX * GameClientTileSize) + GameClientTileSize / 2) + LeftPixels

@@ -2,7 +2,6 @@ package battle_arena
 
 import (
 	"context"
-	"fmt"
 	"server"
 	"server/passport"
 	"time"
@@ -55,7 +54,7 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID) 
 			// api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchFactionWarMachineQueueUpdated, factionID)), []*server.WarMachineNFT{})
 
 			// broadcast empty queue for all the passport client
-			ba.passport.WarMachineQueuePositionClear(context.Background(), fmt.Sprintf("war_machine_position_clear_%s", factionID), factionID)
+			ba.passport.WarMachineQueuePositionClear(context.Background(), factionID)
 
 			inGameWarMachinesChan <- tempList
 			return

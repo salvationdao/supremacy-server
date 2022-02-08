@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math/big"
 	"server"
-	"server/battle_arena"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -279,10 +278,9 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 		userIDString := userID.String()
 		selectedX := req.Payload.XIndex
 		selectedY := req.Payload.YIndex
-		err = vc.API.BattleArena.FactionAbilityTrigger(&battle_arena.AbilityTriggerRequest{
-			FactionID:           hcd.FactionID,
-			FactionAbilityID:    va.FactionAbilityMap[hcd.FactionID].ID,
-			IsSuccess:           true,
+		err = vc.API.BattleArena.FactionAbilityTrigger(&server.FactionAbilityEvent{
+			FactionAbilityID:    &va.FactionAbilityMap[hcd.FactionID].ID,
+			IsTriggered:         true,
 			GameClientAbilityID: va.FactionAbilityMap[hcd.FactionID].GameClientAbilityID,
 			TriggeredByUserID:   &userIDString,
 			TriggeredByUsername: &hcd.Username,

@@ -112,7 +112,7 @@ func (pp *Passport) WarMachineQueuePositionBroadcast(ctx context.Context, uwm []
 }
 
 // WarMachineQueue
-func (pp *Passport) WarMachineQueuePositionClear(ctx context.Context, txID string, factionID server.FactionID) {
+func (pp *Passport) WarMachineQueuePositionClear(ctx context.Context, factionID server.FactionID) {
 	pp.send <- &Request{
 		Message: &Message{
 			Key: "SUPREMACY:WAR:MACHINE:QUEUE:POSITION:CLEAR",
@@ -120,6 +120,25 @@ func (pp *Passport) WarMachineQueuePositionClear(ctx context.Context, txID strin
 				FactionID server.FactionID `json:"factionID"`
 			}{
 				FactionID: factionID,
+			},
+			context: ctx,
+		},
+	}
+}
+
+// WarMachineQueue
+func (pp *Passport) AbilityUpdateTargetPrice(ctx context.Context, abilityTokenID, warMachineTokenID uint64, supsCost string) {
+	pp.send <- &Request{
+		Message: &Message{
+			Key: "SUPREMACY:ABILITY:TARGET:PRICE:UPDATE",
+			Payload: struct {
+				AbilityTokenID    uint64 `json:"abilityTokenID"`
+				WarMachineTokenID uint64 `json:"warMachineTokenID"`
+				SupsCost          string `json:"supsCost"`
+			}{
+				AbilityTokenID:    abilityTokenID,
+				WarMachineTokenID: warMachineTokenID,
+				SupsCost:          supsCost,
 			},
 			context: ctx,
 		},

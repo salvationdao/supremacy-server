@@ -44,8 +44,10 @@ type WarMachineDestroyedEvent struct {
 type FactionAbilityEvent struct {
 	ID                  FactionAbilityEventID `json:"id" db:"id"`
 	EventID             EventID               `json:"eventID" db:"event_id"`
-	FactionAbilityID    FactionAbilityID      `json:"factionAbilityID" db:"faction_ability_id"`
+	FactionAbilityID    *FactionAbilityID     `json:"factionAbilityID,omitempty" db:"faction_ability_id,omitempty"`
+	AbilityTokenID      *uint64               `json:"abilityTokenID,omitempty" db:"ability_token_id,omitempty"`
 	GameClientAbilityID byte                  `json:"gameClientAbilityID" db:"game_client_ability_id"`
+	ParticipantID       *byte                 `json:"participantID" db:"participant_id"`
 	IsTriggered         bool                  `json:"isTriggered" db:"is_triggered"`
 	TriggeredByUserID   *string               `json:"TriggeredByUserID,omitempty" db:"triggered_by_user_id,omitempty"`
 	TriggeredByUsername *string               `json:"triggeredByUsername"`

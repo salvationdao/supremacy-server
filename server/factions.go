@@ -31,14 +31,6 @@ type BattleAbility struct {
 	ImageUrl               string          `json:"imageUrl"`
 }
 
-type FactionAbilityType string
-
-const (
-	FactionAbilityTypeAirStrike FactionAbilityType = "AIRSTRIKE"
-	FactionAbilityTypeNuke      FactionAbilityType = "NUKE"
-	FactionAbilityTypeHealing   FactionAbilityType = "HEALING"
-)
-
 type FactionAbility struct {
 	ID                  FactionAbilityID `json:"id" db:"id"`
 	GameClientAbilityID byte             `json:"gameClientAbilityID" db:"game_client_ability_id"`
@@ -49,4 +41,12 @@ type FactionAbility struct {
 	Label               string           `json:"label" db:"label"`
 	SupsCost            string           `json:"supsCost" db:"sups_cost"`
 	CurrentSups         string           `json:"currentSups"`
+
+	// if token id is not 0, it is a nft ability, otherwise it is a faction wide ability
+	AbilityTokenID    uint64
+	WarMachineTokenID uint64
+	ParticipantID     *byte
+
+	// Category title for frontend to group the abilities together
+	Title string `json:"title"`
 }

@@ -260,7 +260,7 @@ func TestDatabase(t *testing.T) {
 	})
 
 	factionAbilityEvent := &server.FactionAbilityEvent{
-		FactionAbilityID: factionAbility.ID,
+		FactionAbilityID: &factionAbility.ID,
 		IsTriggered:      false,
 	}
 

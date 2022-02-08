@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gofrs/uuid"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"nhooyr.io/websocket"
 
@@ -430,7 +431,44 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 	introSecond := len(warMachines)*3 + 7
 
 	go api.startVotingCycle(introSecond)
-	go api.startFactionAbilityPoolTicker(introSecond)
+
+	for factionID := range api.factionMap {
+		// get initial abilities
+		initialAbilities, err := db.FactionExclusiveAbilitiesByFactionID(api.ctx, api.BattleArena.Conn, factionID)
+		if err != nil {
+			api.Log.Err(err).Msg("Failed to query initial faction abilities")
+			return
+		}
+		for _, ab := range initialAbilities {
+			ab.Title = "FACTION_WIDE"
+			ab.CurrentSups = "0"
+		}
+
+		for _, wm := range ed.BattleArena.WarMachines {
+			if wm.FactionID != factionID || len(wm.Abilities) == 0 {
+				continue
+			}
+
+			for _, ability := range wm.Abilities {
+				initialAbilities = append(initialAbilities, &server.FactionAbility{
+					ID:                  server.FactionAbilityID(uuid.Must(uuid.NewV4())), // generate a uuid for frontend to track sups contribution
+					GameClientAbilityID: byte(ability.GameClientID),
+					ImageUrl:            ability.Image,
+					FactionID:           factionID,
+					Label:               ability.Name,
+					SupsCost:            ability.SupsCost,
+					CurrentSups:         "0",
+					AbilityTokenID:      ability.TokenID,
+					WarMachineTokenID:   wm.TokenID,
+					ParticipantID:       &wm.ParticipantID,
+					Title:               wm.Name,
+				})
+			}
+		}
+
+		go api.startFactionAbilityPoolTicker(factionID, initialAbilities, introSecond)
+	}
+
 }
 
 // BattleEndSignal terminate all the voting cycle

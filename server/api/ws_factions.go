@@ -128,33 +128,64 @@ func (fc *FactionControllerWS) FactionAbilityContribute(ctx context.Context, wsc
 			errChan <- terror.Error(err)
 			return
 		}
+		// clear transaction reference
 		fa.TxRefs = []server.TransactionReference{}
 
-		// double the target price
-		fa.TargetPrice.Mul(&fa.TargetPrice.Int, big.NewInt(2))
+		// calc min target price (half of last max target price)
+		minTargetPrice := server.BigInt{Int: *big.NewInt(0)}
+		minTargetPrice.Add(&minTargetPrice.Int, &fa.MaxTargetPrice.Int)
+		minTargetPrice.Div(&minTargetPrice.Int, big.NewInt(2))
+
+		// calc current new target price (twice of current target price)
+		newTargetPrice := server.BigInt{Int: *big.NewInt(0)}
+		newTargetPrice.Add(&newTargetPrice.Int, &fa.TargetPrice.Int)
+		newTargetPrice.Mul(&newTargetPrice.Int, big.NewInt(2))
+
+		// reset target price and max target price
+		fa.TargetPrice = server.BigInt{Int: *big.NewInt(0)}
+		fa.MaxTargetPrice = server.BigInt{Int: *big.NewInt(0)}
+		if newTargetPrice.Cmp(&minTargetPrice.Int) >= 0 {
+			fa.TargetPrice.Add(&fa.TargetPrice.Int, &newTargetPrice.Int)
+			fa.MaxTargetPrice.Add(&fa.MaxTargetPrice.Int, &newTargetPrice.Int)
+		} else {
+			fa.TargetPrice.Add(&fa.TargetPrice.Int, &minTargetPrice.Int)
+			fa.MaxTargetPrice.Add(&fa.MaxTargetPrice.Int, &minTargetPrice.Int)
+		}
 
 		// reset current sups to zero
 		fa.CurrentSups = server.BigInt{Int: *big.NewInt(0)}
 
 		// update sups cost of the ability in db
 		fa.FactionAbility.SupsCost = fa.TargetPrice.String()
-		err = db.FactionExclusiveAbilitiesSupsCostUpdate(ctx, fc.Conn, fa.FactionAbility)
-		if err != nil {
-			targetPriceChan <- ""
-			errChan <- terror.Error(err)
-			return
+
+		// store new target price to passport server, if the ability is nft
+		if fa.FactionAbility.AbilityTokenID != 0 && fa.FactionAbility.WarMachineTokenID != 0 {
+			fc.API.Passport.AbilityUpdateTargetPrice(fc.API.ctx, fa.FactionAbility.AbilityTokenID, fa.FactionAbility.WarMachineTokenID, fa.TargetPrice.String())
+		} else {
+			err = db.FactionExclusiveAbilitiesSupsCostUpdate(ctx, fc.Conn, fa.FactionAbility)
+			if err != nil {
+				targetPriceChan <- ""
+				errChan <- terror.Error(err)
+				return
+			}
 		}
 
 		// trigger battle arena function to handle faction ability
 		userIDStr := userID.String()
-		err = fc.API.BattleArena.FactionAbilityTrigger(&battle_arena.AbilityTriggerRequest{
-			FactionID:           fa.FactionAbility.FactionID,
-			FactionAbilityID:    fa.FactionAbility.ID,
-			IsSuccess:           true,
+
+		abilityTriggerEvent := &server.FactionAbilityEvent{
+			IsTriggered:         true,
 			TriggeredByUserID:   &userIDStr,
 			TriggeredByUsername: &hcd.Username,
 			GameClientAbilityID: fa.FactionAbility.GameClientAbilityID,
-		})
+			ParticipantID:       fa.FactionAbility.ParticipantID,
+		}
+		if fa.FactionAbility.AbilityTokenID == 0 {
+			abilityTriggerEvent.FactionAbilityID = &fa.FactionAbility.ID
+		} else {
+			abilityTriggerEvent.AbilityTokenID = &fa.FactionAbility.AbilityTokenID
+		}
+		err = fc.API.BattleArena.FactionAbilityTrigger(abilityTriggerEvent)
 		if err != nil {
 			targetPriceChan <- ""
 			errChan <- terror.Error(err)
@@ -185,6 +216,11 @@ func (fc *FactionControllerWS) FactionAbilityContribute(ctx context.Context, wsc
 	err = <-errChan
 	if err != nil {
 		return terror.Error(err)
+	}
+
+	// store vote amount to live voting data after vote success
+	fc.API.liveSupsSpend[hcd.FactionID] <- func(lvd *LiveVotingData) {
+		lvd.TotalVote.Add(&lvd.TotalVote.Int, &req.Payload.Amount.Int)
 	}
 
 	// broadcast if target price is updated
