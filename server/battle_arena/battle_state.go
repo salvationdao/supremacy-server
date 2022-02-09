@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"server"
 	"server/db"
-	"server/passport"
 
 	"github.com/jackc/pgx/v4"
 	"github.com/ninja-software/terror/v2"
@@ -131,6 +130,13 @@ type BattleEndRequest struct {
 	} `json:"payload"`
 }
 
+type BattleRewardList struct {
+	BattleID                      server.BattleID
+	WinnerFactionID               server.FactionID
+	WinningWarMachineOwnerIDs     map[server.UserID]bool
+	ExecuteKillWarMachineOwnerIDs map[server.UserID]bool
+}
+
 func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, reply ReplyFunc) error {
 	req := &BattleEndRequest{}
 	err := json.Unmarshal(payload, req)
@@ -145,7 +151,11 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 	}
 
 	// prepare battle reward request
-	battleRewardRequest := &passport.DistributeBattleRewardRequest{}
+	battleRewardList := &BattleRewardList{
+		BattleID:                      req.Payload.BattleID,
+		WinningWarMachineOwnerIDs:     make(map[server.UserID]bool),
+		ExecuteKillWarMachineOwnerIDs: make(map[server.UserID]bool),
+	}
 
 	winningMachines := []*server.WarMachineNFT{}
 
@@ -154,8 +164,8 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 			if wm.TokenID == bwm.TokenID {
 				bwm.Health = wm.Health
 				winningMachines = append(winningMachines, bwm)
-				battleRewardRequest.WinningWarMachineOwnerIDs = append(battleRewardRequest.WinningWarMachineOwnerIDs, bwm.OwnedByID)
-				battleRewardRequest.WinnerFactionID = bwm.FactionID
+				battleRewardList.WinnerFactionID = bwm.FactionID
+				battleRewardList.WinningWarMachineOwnerIDs[bwm.OwnedByID] = true
 			}
 		}
 	}
@@ -225,28 +235,20 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 				continue
 			}
 
-			battleRewardRequest.ExecuteKillWarMachineOwnerIDs = append(battleRewardRequest.ExecuteKillWarMachineOwnerIDs, warMachine.OwnedByID)
+			battleRewardList.ExecuteKillWarMachineOwnerIDs[warMachine.OwnedByID] = true
 		}
 	}
 
-	// winner faction viewers' id
-	factionViewerChan := make(chan []server.UserID)
-	ba.Events.Trigger(ctx, EventFactionViewersGet, &EventData{
-		WinnerFactionViewers: &WinnerFactionViewer{
-			WinnerFactionID: battleRewardRequest.WinnerFactionID,
-			CallbackChannel: factionViewerChan,
-		},
-	})
-
-	battleRewardRequest.WinningFactionViewerIDs = <-factionViewerChan
-
-	err = ba.passport.DistributeBattleReward(ctx, battleRewardRequest, fmt.Sprintf("battle_reward_distribution|%s", req.Payload.BattleID))
+	err = ba.passport.TransferBattleFundToSupsPool(ctx, fmt.Sprintf("transfer_battle_fund_to_sup_pool|%s", req.Payload.BattleID))
 	if err != nil {
 		return terror.Error(err, "Failed to distribute battle reward")
 	}
 
 	// trigger battle end
-	ba.Events.Trigger(ctx, EventGameEnd, &EventData{BattleArena: ba.battle})
+	ba.Events.Trigger(ctx, EventGameEnd, &EventData{
+		BattleArena:      ba.battle,
+		BattleRewardList: battleRewardList,
+	})
 
 	return nil
 }

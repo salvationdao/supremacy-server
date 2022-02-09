@@ -42,6 +42,7 @@ type EventData struct {
 	WarMachineDestroyedEvent *server.WarMachineDestroyedEvent
 	WarMachineLocation       []byte `json:"warMachineLocation"`
 	WinnerFactionViewers     *WinnerFactionViewer
+	BattleRewardList         *BattleRewardList
 }
 
 type WinnerFactionViewer struct {

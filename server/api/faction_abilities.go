@@ -289,8 +289,12 @@ func (api *API) stopFactionAbilityPoolTicker() {
 	for factionID := range api.factionMap {
 		api.factionAbilityPool[factionID] <- func(fap FactionAbilitiesPool, fapt *FactionAbilityPoolTicker) {
 			// stop all the tickles
-			fapt.TargetPriceUpdater.Stop()
-			fapt.TargetPriceBroadcaster.Stop()
+			if fapt.TargetPriceUpdater.NextTick != nil {
+				fapt.TargetPriceUpdater.Stop()
+			}
+			if fapt.TargetPriceBroadcaster.NextTick != nil {
+				fapt.TargetPriceBroadcaster.Stop()
+			}
 
 			// commit all the left over transactions
 			txRefs := []server.TransactionReference{}

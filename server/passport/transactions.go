@@ -92,15 +92,8 @@ func (pp *Passport) SendHoldSupsMessage(ctx context.Context, userID server.UserI
 	}
 }
 
-type DistributeBattleRewardRequest struct {
-	WinnerFactionID               server.FactionID `json:"winnerFactionID"`
-	WinningFactionViewerIDs       []server.UserID  `json:"winningFactionViewerIDs"`
-	WinningWarMachineOwnerIDs     []server.UserID  `json:"winningWarMachineOwnerIDs"`
-	ExecuteKillWarMachineOwnerIDs []server.UserID  `json:"executeKillWarMachineOwnerIDs"`
-}
-
-// DistributeBattleReward tells the passport to distribute battle reward
-func (pp *Passport) DistributeBattleReward(ctx context.Context, battleReward *DistributeBattleRewardRequest, txID string) error {
+// TransferBattleFundToSupsPool tells the passport to transfer fund to sup pool
+func (pp *Passport) TransferBattleFundToSupsPool(ctx context.Context, txID string) error {
 	replyChannel := make(chan []byte)
 	errChan := make(chan error)
 
@@ -108,8 +101,7 @@ func (pp *Passport) DistributeBattleReward(ctx context.Context, battleReward *Di
 		ReplyChannel: replyChannel,
 		ErrChan:      errChan,
 		Message: &Message{
-			Key:           "SUPREMACY:DISTRIBUTE_BATTLE_REWARD",
-			Payload:       battleReward,
+			Key:           "SUPREMACY:TRANSFER_BATTLE_FUND_TO_SUP_POOL",
 			TransactionID: txID,
 			context:       ctx,
 		}}

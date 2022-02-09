@@ -15,31 +15,43 @@ import (
 	"github.com/gofrs/uuid"
 )
 
-const TickTime = 3
+const TickSecond = 3
 
 type ClientAction string
 
 const (
-	ClientOnline          ClientAction = "Online"
-	ClientOffline         ClientAction = "Offline"
-	ClientVoted           ClientAction = "Voted"
-	ClientPickedLocation  ClientAction = "PickedLocation"
-	ClientMultiplierValue ClientAction = "MultiplierValue"
+	ClientOnline             ClientAction = "Online"
+	ClientOffline            ClientAction = "Offline"
+	ClientVoted              ClientAction = "Voted"
+	ClientPickedLocation     ClientAction = "PickedLocation"
+	ClientBattleRewardUpdate ClientAction = "BattleRewardUpdate"
+)
+
+type BattleRewardType string
+
+const (
+	BattleRewardTypeFaction = "BattleFactionReward"
+	BattleRewardTypeWinner  = "BattleWinnerReward"
+	BattleRewardTypeKill    = "BattleKillReward"
 )
 
 type ClientUpdate struct {
-	Client            *hub.Client
-	Action            ClientAction
-	MultipleValueChan chan int
+	Client       *hub.Client
+	Action       ClientAction
+	BattleReward *ClientBattleReward
+}
+
+type ClientBattleReward struct {
+	BattleID server.BattleID
+	Rewards  []BattleRewardType
 }
 
 type ClientMultiplier struct {
 	clients           map[*hub.Client]bool
-	MultiplierActions []*MultiplierAction
+	MultiplierActions map[string]*MultiplierAction
 }
 
 type MultiplierAction struct {
-	Name            ClientAction
 	MultiplierValue int
 	Expiry          time.Time
 }
@@ -55,15 +67,17 @@ func (api *API) ClientListener() {
 	clientMultiplierMap := make(map[server.UserID]*ClientMultiplier)
 	tickle.MinDurationOverride = true
 	// start ticker for watch to earn
-	taskTickle := tickle.New("FactionID Channel Point Ticker", TickTime, func() (int, error) {
+	taskTickle := tickle.New("FactionID Channel Point Ticker", TickSecond, func() (int, error) {
 		ctx := context.Background()
 		userMap := make(map[int][]server.UserID)
 
 		for uid, actionSlice := range clientMultiplierMap {
 			userMultiplier := 0
-			for _, actn := range actionSlice.MultiplierActions {
+			for key, actn := range actionSlice.MultiplierActions {
 				if actn.Expiry.After(time.Now()) {
 					userMultiplier += actn.MultiplierValue
+				} else {
+					delete(actionSlice.MultiplierActions, key)
 				}
 			}
 
@@ -100,12 +114,13 @@ listenLoop:
 		case ClientOnline:
 			if _, ok := clientMultiplierMap[userID]; !ok {
 				clientMultiplierMap[userID] = &ClientMultiplier{
-					clients: make(map[*hub.Client]bool),
-					MultiplierActions: []*MultiplierAction{{
-						Name:            ClientOnline,
-						MultiplierValue: 100,
-						Expiry:          time.Now().AddDate(1, 0, 0),
-					}},
+					clients:           make(map[*hub.Client]bool),
+					MultiplierActions: make(map[string]*MultiplierAction),
+				}
+
+				clientMultiplierMap[userID].MultiplierActions[string(ClientOnline)] = &MultiplierAction{
+					MultiplierValue: 100,
+					Expiry:          time.Now().AddDate(1, 0, 0),
 				}
 			}
 
@@ -113,43 +128,54 @@ listenLoop:
 
 		case ClientVoted:
 			// check for existing voting action, then bump the time if exists
-			for _, multipler := range clientMultiplierMap[userID].MultiplierActions {
-				if multipler.Name == ClientVoted {
-					multipler.Expiry = time.Now().Add(time.Minute * 30)
-					continue listenLoop
-				}
+			multiplier, ok := clientMultiplierMap[userID].MultiplierActions[string(ClientVoted)]
+			if ok {
+				multiplier.Expiry = time.Now().Add(time.Minute * 30)
+				continue listenLoop
 			}
 
-			// if voting actions didn't exist, add it
-			clientMultiplierMap[userID].MultiplierActions = append(clientMultiplierMap[userID].MultiplierActions, &MultiplierAction{
-				Name:            ClientVoted,
+			multiplier = &MultiplierAction{
 				MultiplierValue: 50,
 				Expiry:          time.Now().Add(time.Minute * 30),
-			})
+			}
+
+			clientMultiplierMap[userID].MultiplierActions[string(ClientVoted)] = multiplier
+
 		case ClientPickedLocation:
 			// check for existing voting action, then bump the time if exists
-			for _, multiplier := range clientMultiplierMap[userID].MultiplierActions {
-				if multiplier.Name == ClientPickedLocation {
-					multiplier.Expiry = time.Now().Add(time.Minute * 30)
-					continue listenLoop
-				}
+			multiplier, ok := clientMultiplierMap[userID].MultiplierActions[string(ClientPickedLocation)]
+			if ok {
+				multiplier.Expiry = time.Now().Add(time.Minute * 30)
+				continue listenLoop
 			}
 
-			// if voting actions didn't exist, add it
-			clientMultiplierMap[userID].MultiplierActions = append(clientMultiplierMap[userID].MultiplierActions, &MultiplierAction{
-				Name:            ClientPickedLocation,
+			multiplier = &MultiplierAction{
 				MultiplierValue: 50,
 				Expiry:          time.Now().Add(time.Minute * 30),
-			})
+			}
 
-		case ClientMultiplierValue:
-			userMultiplier := 0
-			for _, actn := range clientMultiplierMap[userID].MultiplierActions {
-				if actn.Expiry.After(time.Now()) {
-					userMultiplier += actn.MultiplierValue
+			clientMultiplierMap[userID].MultiplierActions[string(ClientPickedLocation)] = multiplier
+
+		case ClientBattleRewardUpdate:
+			for _, reward := range msg.BattleReward.Rewards {
+				switch reward {
+				case BattleRewardTypeFaction:
+					clientMultiplierMap[userID].MultiplierActions[fmt.Sprintf("%s:%s", BattleRewardTypeFaction, msg.BattleReward.BattleID)] = &MultiplierAction{
+						MultiplierValue: 75,
+						Expiry:          time.Now().Add(time.Minute * 5),
+					}
+				case BattleRewardTypeWinner:
+					clientMultiplierMap[userID].MultiplierActions[fmt.Sprintf("%s:%s", BattleRewardTypeWinner, msg.BattleReward.BattleID)] = &MultiplierAction{
+						MultiplierValue: 225,
+						Expiry:          time.Now().Add(time.Minute * 5),
+					}
+				case BattleRewardTypeKill:
+					clientMultiplierMap[userID].MultiplierActions[fmt.Sprintf("%s:%s", BattleRewardTypeKill, msg.BattleReward.BattleID)] = &MultiplierAction{
+						MultiplierValue: 150,
+						Expiry:          time.Now().Add(time.Minute * 5),
+					}
 				}
 			}
-			msg.MultipleValueChan <- userMultiplier
 
 		case ClientOffline:
 			clientMap, ok := clientMultiplierMap[userID]
@@ -198,12 +224,10 @@ func (api *API) ClientPickedLocation(c *hub.Client) {
 	}
 }
 
-func (api *API) ClientMultiplierValueGet(c *hub.Client) int {
-	multiValueChan := make(chan int, 5)
+func (api *API) ClientBattleRewardUpdate(c *hub.Client, cbr *ClientBattleReward) {
 	api.onlineClientMap <- &ClientUpdate{
-		Client:            c,
-		Action:            ClientMultiplierValue,
-		MultipleValueChan: multiValueChan,
+		Client:       c,
+		Action:       ClientBattleRewardUpdate,
+		BattleReward: cbr,
 	}
-	return <-multiValueChan
 }

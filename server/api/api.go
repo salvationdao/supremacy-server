@@ -190,7 +190,6 @@ func NewAPI(
 	///////////////////////////
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventGameStart, api.BattleStartSignal)
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventGameEnd, api.BattleEndSignal)
-	api.BattleArena.Events.AddEventHandler(battle_arena.EventFactionViewersGet, api.WinningFactionViewerIDsGet)
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventWarMachinePositionChanged, api.UpdateWarMachinePosition)
 
 	///////////////////////////
@@ -476,4 +475,43 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 	// stop all the tickles in voting cycle
 	go api.stopVotingCycle()
 	go api.stopFactionAbilityPoolTicker()
+
+	// parse battle reward list
+	api.Hub.Clients(func(clients hub.ClientsList) {
+		for c := range clients {
+			go func(c *hub.Client) {
+				userID := server.UserID(uuid.FromStringOrNil(c.Identifier()))
+				if userID.IsNil() {
+					return
+				}
+				hcd, err := api.getClientDetailFromChannel(c)
+				if err != nil || hcd.FactionID.IsNil() {
+					return
+				}
+
+				brs := []BattleRewardType{}
+				// check reward
+				if hcd.FactionID == ed.BattleRewardList.WinnerFactionID {
+					brs = append(brs, BattleRewardTypeFaction)
+				}
+
+				if _, ok := ed.BattleRewardList.WinningWarMachineOwnerIDs[userID]; ok {
+					brs = append(brs, BattleRewardTypeWinner)
+				}
+
+				if _, ok := ed.BattleRewardList.ExecuteKillWarMachineOwnerIDs[userID]; ok {
+					brs = append(brs, BattleRewardTypeKill)
+				}
+
+				if len(brs) == 0 {
+					return
+				}
+
+				api.ClientBattleRewardUpdate(c, &ClientBattleReward{
+					BattleID: ed.BattleRewardList.BattleID,
+					Rewards:  brs,
+				})
+			}(c)
+		}
+	})
 }
