@@ -218,22 +218,7 @@ func (ba *BattleArena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			case NetMessageTypeTick:
 				ba.WarMachinesTick(payload)
 			default:
-				// ba.Log.Err(fmt.Errorf("unknown message type")).Msg("")
-				v, err := jason.NewObjectFromBytes(payload)
-				if err != nil {
-					ba.Log.Err(err).Msgf(`error making object from bytes`)
-					continue
-				}
-				cmdKey, err := v.GetString("battleCommand")
-				if err != nil {
-					ba.Log.Err(err).Msgf(`missing json key "key"`)
-					continue
-				}
-				if cmdKey == "" {
-					ba.Log.Err(fmt.Errorf("missing key value")).Msgf("missing key/command value")
-					continue
-				}
-				ba.runGameCommand(ctx, c, BattleCommand(cmdKey), payload)
+				ba.Log.Err(fmt.Errorf("unknown message type")).Msg("")
 			}
 		}
 	}

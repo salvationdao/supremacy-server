@@ -383,9 +383,9 @@ func (api *API) Close() {
 }
 
 type GameSettingsResponse struct {
-	GameMap     *server.GameMap         `json:"gameMap"`
-	WarMachines []*server.WarMachineNFT `json:"warMachines"`
-	// WarMachineLocation []byte                  `json:"warMachineLocation"`
+	GameMap            *server.GameMap         `json:"gameMap"`
+	WarMachines        []*server.WarMachineNFT `json:"warMachines"`
+	WarMachineLocation []byte                  `json:"warMachineLocation"`
 }
 
 const HubKeyGameSettingsUpdated = hub.HubCommandKey("GAME:SETTINGS:UPDATED")
@@ -402,9 +402,9 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 	gameSettingsData, err := json.Marshal(&BroadcastPayload{
 		Key: HubKeyGameSettingsUpdated,
 		Payload: &GameSettingsResponse{
-			GameMap:     ed.BattleArena.GameMap,
-			WarMachines: ed.BattleArena.WarMachines,
-			// WarMachineLocation: ed.BattleArena.BattleHistory[0],
+			GameMap:            ed.BattleArena.GameMap,
+			WarMachines:        ed.BattleArena.WarMachines,
+			WarMachineLocation: ed.BattleArena.BattleHistory[0],
 		},
 	})
 	if err != nil {
