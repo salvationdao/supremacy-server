@@ -92,6 +92,49 @@ func (pp *Passport) SendHoldSupsMessage(ctx context.Context, userID server.UserI
 	}
 }
 
+// ReleaseTransactions tells the passport to transfer fund to sup pool
+func (pp *Passport) ReleaseTransactions(ctx context.Context, transactions []server.TransactionReference) ([]*server.Transaction, error) {
+	if len(transactions) == 0 {
+		return nil, nil
+	}
+
+	txID, err := uuid.NewV4()
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	replyChannel := make(chan []byte)
+	errChan := make(chan error)
+	pp.send <- &Request{
+		ReplyChannel: replyChannel,
+		ErrChan:      errChan,
+		Message: &Message{
+			Key: "SUPREMACY:RELEASE_TRANSACTIONS",
+			Payload: struct {
+				TransactionReferences []server.TransactionReference `json:"transactionReferences"`
+			}{
+				TransactionReferences: transactions,
+			},
+			TransactionID: txID.String(),
+			context:       ctx,
+		},
+	}
+
+	for {
+		select {
+		case msg := <-replyChannel:
+			resp := &CommitTransactionsResponse{}
+			err = json.Unmarshal(msg, resp)
+			if err != nil {
+				return nil, terror.Error(err)
+			}
+			return resp.Transactions, nil
+		case err := <-errChan:
+			return nil, terror.Error(err)
+		}
+	}
+}
+
 // TransferBattleFundToSupsPool tells the passport to transfer fund to sup pool
 func (pp *Passport) TransferBattleFundToSupsPool(ctx context.Context, txID string) error {
 	replyChannel := make(chan []byte)

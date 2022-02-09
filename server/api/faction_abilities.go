@@ -303,7 +303,7 @@ func (api *API) stopFactionAbilityPoolTicker() {
 			}
 
 			if len(txRefs) > 0 {
-				_, err := api.Passport.CommitTransactions(context.Background(), txRefs)
+				_, err := api.Passport.ReleaseTransactions(context.Background(), txRefs)
 				if err != nil {
 					api.Log.Err(err)
 					return

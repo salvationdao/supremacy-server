@@ -621,9 +621,9 @@ func (api *API) stopVotingCycle() {
 
 		// commit the transactions
 		if len(txRefs) > 0 {
-			_, err := api.Passport.CommitTransactions(context.Background(), txRefs)
+			_, err := api.Passport.ReleaseTransactions(context.Background(), txRefs)
 			if err != nil {
-				api.Log.Err(err).Msg("failed to check transactions")
+				api.Log.Err(err).Msg("failed to Release transactions")
 				return
 			}
 		}
