@@ -64,6 +64,8 @@ func (api *API) StartFactionAbilityPool(factionID server.FactionID, conn *pgxpoo
 }
 
 func (api *API) abilityTargetPriceUpdaterFactory(factionID server.FactionID, conn *pgxpool.Pool) func() (int, error) {
+	minPrice := big.NewInt(1000000000000000000)
+
 	return func() (int, error) {
 		targetPriceChan := make(chan string)
 		errChan := make(chan error)
@@ -76,6 +78,10 @@ func (api *API) abilityTargetPriceUpdaterFactory(factionID server.FactionID, con
 				// reduce target price by 0.9772 on every tick
 				fa.TargetPrice.Mul(&fa.TargetPrice.Int, big.NewInt(9772))
 				fa.TargetPrice.Div(&fa.TargetPrice.Int, big.NewInt(10000))
+
+				if fa.TargetPrice.Cmp(minPrice) <= 0 {
+					fa.TargetPrice = server.BigInt{Int: *minPrice}
+				}
 
 				hasTriggered := 0
 				if fa.TargetPrice.Cmp(&fa.CurrentSups.Int) <= 0 {
