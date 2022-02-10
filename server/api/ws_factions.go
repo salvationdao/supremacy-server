@@ -207,6 +207,7 @@ func (fc *FactionControllerWS) FactionAbilityContribute(ctx context.Context, wsc
 				Ability: &AbilityBrief{
 					Label:    fa.FactionAbility.Label,
 					ImageUrl: fa.FactionAbility.ImageUrl,
+					Colour:   fa.FactionAbility.Colour,
 				},
 			})
 		} else {
@@ -224,6 +225,7 @@ func (fc *FactionControllerWS) FactionAbilityContribute(ctx context.Context, wsc
 				Ability: &AbilityBrief{
 					Label:    fa.FactionAbility.Label,
 					ImageUrl: fa.FactionAbility.ImageUrl,
+					Colour:   fa.FactionAbility.Colour,
 				},
 				WarMachine: &WarMachineBrief{
 					Name:     fa.FactionAbility.WarMachineName,

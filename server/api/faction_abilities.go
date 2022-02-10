@@ -143,6 +143,7 @@ func (api *API) abilityTargetPriceUpdaterFactory(factionID server.FactionID, con
 							Ability: &AbilityBrief{
 								Label:    fa.FactionAbility.Label,
 								ImageUrl: fa.FactionAbility.ImageUrl,
+								Colour:   fa.FactionAbility.Colour,
 							},
 						})
 					} else {
@@ -151,6 +152,7 @@ func (api *API) abilityTargetPriceUpdaterFactory(factionID server.FactionID, con
 							Ability: &AbilityBrief{
 								Label:    fa.FactionAbility.Label,
 								ImageUrl: fa.FactionAbility.ImageUrl,
+								Colour:   fa.FactionAbility.Colour,
 							},
 							WarMachine: &WarMachineBrief{
 								Name:     fa.FactionAbility.WarMachineName,

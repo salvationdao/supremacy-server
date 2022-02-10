@@ -431,9 +431,6 @@ func (api *API) startLiveVotingDataTicker(factionID server.FactionID) {
 ***************/
 
 const (
-	// CooldownInitialDurationSecond the amount of second users have to wait for the next vote coming up
-	CooldownInitialDurationSecond = 15
-
 	// VoteAbilityRightDurationSecond the amount of second users can vote the ability
 	VoteAbilityRightDurationSecond = 30
 
@@ -704,7 +701,7 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 				api.votePhaseChecker.Phase = VotePhaseVoteCooldown
 
 				vs.Phase = VotePhaseVoteCooldown
-				vs.EndTime = time.Now().Add(CooldownInitialDurationSecond * time.Second)
+				vs.EndTime = time.Now().Add(time.Duration(battleAbility.CooldownDurationSecond) * time.Second)
 
 				// broadcast current stage to faction users
 				api.MessageBus.Send(messagebus.BusKey(HubKeyVoteStageUpdated), vs)
@@ -824,6 +821,7 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 						Ability: &AbilityBrief{
 							Label:    va.BattleAbility.Label,
 							ImageUrl: va.BattleAbility.ImageUrl,
+							Colour:   va.BattleAbility.Colour,
 						},
 						Reason: "NO_PLAYER_SELECT_LOCATION",
 					})
@@ -892,6 +890,7 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 						Ability: &AbilityBrief{
 							Label:    va.BattleAbility.Label,
 							ImageUrl: va.BattleAbility.ImageUrl,
+							Colour:   va.BattleAbility.Colour,
 						},
 						Reason: "NO_PLAYER",
 					})
@@ -940,6 +939,7 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 					Ability: &AbilityBrief{
 						Label:    va.BattleAbility.Label,
 						ImageUrl: va.BattleAbility.ImageUrl,
+						Colour:   va.BattleAbility.Colour,
 					},
 					Reason: "TIMEOUT",
 					CurrentUser: &UserBrief{

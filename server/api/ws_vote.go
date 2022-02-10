@@ -172,6 +172,7 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 			Ability: &AbilityBrief{
 				Label:    va.FactionAbilityMap[hcd.FactionID].Label,
 				ImageUrl: va.FactionAbilityMap[hcd.FactionID].ImageUrl,
+				Colour:   va.FactionAbilityMap[hcd.FactionID].Colour,
 			},
 		})
 
@@ -278,6 +279,7 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 			Ability: &AbilityBrief{
 				Label:    va.BattleAbility.Label,
 				ImageUrl: va.BattleAbility.ImageUrl,
+				Colour:   va.BattleAbility.Colour,
 			},
 		})
 

@@ -395,6 +395,7 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 						Ability: &AbilityBrief{
 							Label:    va.BattleAbility.Label,
 							ImageUrl: va.BattleAbility.ImageUrl,
+							Colour:   va.BattleAbility.Colour,
 						},
 						Reason: "DISCONNECTED",
 					})
@@ -443,6 +444,7 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 					Ability: &AbilityBrief{
 						Label:    va.BattleAbility.Label,
 						ImageUrl: va.BattleAbility.ImageUrl,
+						Colour:   va.BattleAbility.Colour,
 					},
 					Reason: "DISCONNECTED",
 					CurrentUser: &UserBrief{
