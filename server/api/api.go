@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"math/big"
 	"net/http"
 	"server"
@@ -95,6 +96,9 @@ type API struct {
 
 	// faction abilities
 	factionAbilityPool map[server.FactionID]chan func(FactionAbilitiesPool, *FactionAbilityPoolTicker)
+
+	// viewer live count
+	viewerLiveCount chan func(ViewerLiveCount)
 }
 
 // NewAPI registers routes
@@ -134,10 +138,8 @@ func NewAPI(
 			ClientOfflineFn: offlineFunc,
 		}),
 		// channel for faction voting system
-		// factionVoteCycle: make(map[server.FactionID]chan func(*server.Faction, *VoteStage, FirstVoteState, *FirstVoteResult, *secondVoteResult, *FactionVotingTicker)),
+		votingCycle:   make(chan func(*VoteStage, *VoteAbility, FactionUserVoteMap, *FactionTotalVote, *VoteWinner, *VotingCycleTicker)),
 		liveSupsSpend: make(map[server.FactionID]chan func(*LiveVotingData)),
-
-		votingCycle: make(chan func(*VoteStage, *VoteAbility, FactionUserVoteMap, *FactionTotalVote, *VoteWinner, *VotingCycleTicker)),
 
 		// channel for handling hub client
 		hubClientDetail: make(map[*hub.Client]chan func(*HubClientDetail)),
@@ -146,7 +148,11 @@ func NewAPI(
 		// ring check auth
 		ringCheckAuthChan: make(chan func(RingCheckAuthMap)),
 
+		// faction ability pool
 		factionAbilityPool: make(map[server.FactionID]chan func(FactionAbilitiesPool, *FactionAbilityPoolTicker)),
+
+		// faction viewer count
+		viewerLiveCount: make(chan func(ViewerLiveCount)),
 	}
 
 	// start twitch jwt auth listener
@@ -166,7 +172,6 @@ func NewAPI(
 		// Web sockets are long-lived, so we don't want the sentry performance tracer running for the life-time of the connection.
 		// See roothub.ServeHTTP for the setup of sentry on this route.
 		r.Handle("/ws", api.Hub)
-		r.Get("/game_settings", WithError(api.GetGameSettings))
 		r.Get("/events", WithError(api.BattleArena.GetEvents))
 	})
 
@@ -178,6 +183,7 @@ func NewAPI(
 	_ = NewAuthController(log, conn, api)
 	_ = NewVoteController(log, conn, api)
 	_ = NewFactionController(log, conn, api)
+	_ = NewGameController(log, conn, api)
 
 	///////////////////////////
 	//		 Hub Events		 //
@@ -190,6 +196,7 @@ func NewAPI(
 	///////////////////////////
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventGameStart, api.BattleStartSignal)
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventGameEnd, api.BattleEndSignal)
+	api.BattleArena.Events.AddEventHandler(battle_arena.EventWarMachineDestroyed, api.WarMachineDestroyedBroadcast)
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventWarMachinePositionChanged, api.UpdateWarMachinePosition)
 
 	///////////////////////////
@@ -233,6 +240,9 @@ func (api *API) SetupAfterConnections(conn *pgxpool.Pool) {
 
 		time.Sleep(5 * time.Second)
 	}
+
+	go api.initialiseViewerLiveCount(factions)
+	go api.startSpoilOfWarBroadcaster()
 
 	// build faction map for main server
 	api.factionMap = make(map[server.FactionID]*server.Faction)
@@ -320,13 +330,14 @@ func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client, clients
 		// initialise a client detail channel if not on the list
 		api.hubClientDetail[wsc] = make(chan func(*HubClientDetail))
 		go api.startClientTracker(wsc)
+		go api.viewerLiveCountAdd(server.FactionID(uuid.Nil))
 	}
 
-	ba := api.BattleArena.GetCurrentState()
-
+	// broadcast current game state
 	go func() {
+		ba := api.BattleArena.GetCurrentState()
 		// delay 2 second to wait frontend setup key map
-		time.Sleep(2 * time.Second)
+		time.Sleep(3 * time.Second)
 
 		// marshal payload
 		gameSettingsData, err := json.Marshal(&BroadcastPayload{
@@ -334,7 +345,7 @@ func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client, clients
 			Payload: &GameSettingsResponse{
 				GameMap:     ba.GameMap,
 				WarMachines: ba.WarMachines,
-				//WarMachineLocation: ba.BattleHistory[0],
+				// WarMachineLocation: ba.BattleHistory[0],
 			},
 		})
 		if err != nil {
@@ -351,7 +362,115 @@ func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client, clients
 }
 
 func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, clients hub.ClientsList, ch hub.TriggerChan) {
-	api.ClientOffline(wsc)
+	currentUser, err := api.getClientDetailFromChannel(wsc)
+	if err != nil {
+		api.Log.Err(err).Msg("failed to get client detail")
+	}
+	go api.viewerLiveCountRemove(currentUser.FactionID)
+
+	// set client offline
+	noClientLeft := api.ClientOffline(wsc)
+
+	// check vote if there is not client instances of the offline user
+	if noClientLeft && api.votePhaseChecker.Phase == VotePhaseLocationSelect {
+		// check the user is selecting ability location
+		api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker) {
+			if len(vw.List) > 0 && vw.List[0].String() == wsc.Identifier() {
+				if err != nil {
+					api.Log.Err(err).Msg("failed to get user")
+				}
+				// pop out the first user of the list
+				if len(vw.List) > 1 {
+					vw.List = vw.List[1:]
+				} else {
+					vw.List = []server.UserID{}
+				}
+
+				// get next winner
+				nextUser, winnerClientID := api.getNextWinnerDetail(vw)
+				if nextUser == nil {
+					// if no winner left, enter cooldown phase
+					go api.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
+						Type: LocationSelectTypeCancelled,
+						Ability: &AbilityBrief{
+							Label:    va.BattleAbility.Label,
+							ImageUrl: va.BattleAbility.ImageUrl,
+						},
+						Reason: "DISCONNECTED",
+					})
+
+					// get random ability collection set
+					battleAbility, factionAbilityMap, err := api.BattleArena.RandomAbilityCollection()
+					if err != nil {
+						api.Log.Err(err)
+					}
+
+					api.MessageBus.Send(messagebus.BusKey(HubKeyVoteBattleAbilityUpdated), battleAbility)
+
+					// initialise new ability collection
+					va.BattleAbility = battleAbility
+
+					// initialise new faction ability map
+					for fid, ability := range factionAbilityMap {
+						va.FactionAbilityMap[fid] = ability
+					}
+
+					// voting phase change
+					api.votePhaseChecker.Phase = VotePhaseVoteCooldown
+					vs.Phase = VotePhaseVoteCooldown
+					vs.EndTime = time.Now().Add(time.Duration(va.BattleAbility.CooldownDurationSecond) * time.Second)
+
+					// broadcast current stage to faction users
+					api.MessageBus.Send(messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+
+					return
+				}
+
+				// otherwise, choose next winner
+				api.votePhaseChecker.Phase = VotePhaseLocationSelect
+				vs.Phase = VotePhaseLocationSelect
+				vs.EndTime = time.Now().Add(LocationSelectDurationSecond * time.Second)
+
+				// otherwise announce another winner
+				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, winnerClientID)), &WinnerSelectAbilityLocation{
+					FactionAbility: *va.FactionAbilityMap[nextUser.FactionID],
+					EndTime:        vs.EndTime,
+				})
+
+				// broadcast winner select location
+				go api.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
+					Type: LocationSelectTypeFailed,
+					Ability: &AbilityBrief{
+						Label:    va.BattleAbility.Label,
+						ImageUrl: va.BattleAbility.ImageUrl,
+					},
+					Reason: "DISCONNECTED",
+					CurrentUser: &UserBrief{
+						Username: currentUser.Username,
+						AvatarID: currentUser.avatarID,
+						Faction: &FactionBrief{
+							Label:      api.factionMap[currentUser.FactionID].Label,
+							Theme:      api.factionMap[currentUser.FactionID].Theme,
+							LogoBlobID: api.factionMap[currentUser.FactionID].LogoBlobID,
+						},
+					},
+					NextUser: &UserBrief{
+						Username: nextUser.Username,
+						AvatarID: nextUser.avatarID,
+						Faction: &FactionBrief{
+							Label:      api.factionMap[nextUser.FactionID].Label,
+							Theme:      api.factionMap[nextUser.FactionID].Theme,
+							LogoBlobID: api.factionMap[nextUser.FactionID].LogoBlobID,
+						},
+					},
+				})
+
+				// broadcast current stage to faction users
+				api.MessageBus.Send(messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+			}
+		}
+	}
+
 	// clean up the map
 	delete(api.hubClientDetail, wsc)
 }
@@ -380,138 +499,4 @@ func (api *API) Close() {
 	if err != nil {
 		api.Log.Warn().Err(err).Msg("")
 	}
-}
-
-type GameSettingsResponse struct {
-	GameMap            *server.GameMap         `json:"gameMap"`
-	WarMachines        []*server.WarMachineNFT `json:"warMachines"`
-	WarMachineLocation []byte                  `json:"warMachineLocation"`
-}
-
-const HubKeyGameSettingsUpdated = hub.HubCommandKey("GAME:SETTINGS:UPDATED")
-
-// BattleStartSignal start all the voting cycle
-func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventData) {
-	// build faction detail to battle start
-	warMachines := ed.BattleArena.WarMachines
-	for _, wm := range warMachines {
-		wm.Faction = ed.BattleArena.FactionMap[wm.FactionID]
-	}
-
-	// marshal payload
-	gameSettingsData, err := json.Marshal(&BroadcastPayload{
-		Key: HubKeyGameSettingsUpdated,
-		Payload: &GameSettingsResponse{
-			GameMap:            ed.BattleArena.GameMap,
-			WarMachines:        ed.BattleArena.WarMachines,
-			WarMachineLocation: ed.BattleArena.BattleHistory[0],
-		},
-	})
-	if err != nil {
-		return
-	}
-
-	// broadcast game settings to all the connected clients
-	api.Hub.Clients(func(clients hub.ClientsList) {
-		for client, ok := range clients {
-			if !ok {
-				continue
-			}
-			go func(c *hub.Client) {
-				err := c.Send(gameSettingsData)
-				if err != nil {
-					api.Log.Err(err).Msg("failed to send broadcast")
-				}
-			}(client)
-		}
-	})
-
-	// start voting cycle, initial intro time equal: (mech_count * 3 + 7) seconds
-	introSecond := len(warMachines)*3 + 7
-
-	go api.startVotingCycle(introSecond)
-
-	for factionID := range api.factionMap {
-		// get initial abilities
-		initialAbilities, err := db.FactionExclusiveAbilitiesByFactionID(api.ctx, api.BattleArena.Conn, factionID)
-		if err != nil {
-			api.Log.Err(err).Msg("Failed to query initial faction abilities")
-			return
-		}
-		for _, ab := range initialAbilities {
-			ab.Title = "FACTION_WIDE"
-			ab.CurrentSups = "0"
-		}
-
-		for _, wm := range ed.BattleArena.WarMachines {
-			if wm.FactionID != factionID || len(wm.Abilities) == 0 {
-				continue
-			}
-
-			for _, ability := range wm.Abilities {
-				initialAbilities = append(initialAbilities, &server.FactionAbility{
-					ID:                  server.FactionAbilityID(uuid.Must(uuid.NewV4())), // generate a uuid for frontend to track sups contribution
-					GameClientAbilityID: byte(ability.GameClientID),
-					ImageUrl:            ability.Image,
-					FactionID:           factionID,
-					Label:               ability.Name,
-					SupsCost:            ability.SupsCost,
-					CurrentSups:         "0",
-					AbilityTokenID:      ability.TokenID,
-					WarMachineTokenID:   wm.TokenID,
-					ParticipantID:       &wm.ParticipantID,
-					Title:               wm.Name,
-				})
-			}
-		}
-
-		go api.startFactionAbilityPoolTicker(factionID, initialAbilities, introSecond)
-	}
-
-}
-
-// BattleEndSignal terminate all the voting cycle
-func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData) {
-	// stop all the tickles in voting cycle
-	go api.stopVotingCycle()
-	go api.stopFactionAbilityPoolTicker()
-
-	// parse battle reward list
-	api.Hub.Clients(func(clients hub.ClientsList) {
-		for c := range clients {
-			go func(c *hub.Client) {
-				userID := server.UserID(uuid.FromStringOrNil(c.Identifier()))
-				if userID.IsNil() {
-					return
-				}
-				hcd, err := api.getClientDetailFromChannel(c)
-				if err != nil || hcd.FactionID.IsNil() {
-					return
-				}
-
-				brs := []BattleRewardType{}
-				// check reward
-				if hcd.FactionID == ed.BattleRewardList.WinnerFactionID {
-					brs = append(brs, BattleRewardTypeFaction)
-				}
-
-				if _, ok := ed.BattleRewardList.WinningWarMachineOwnerIDs[userID]; ok {
-					brs = append(brs, BattleRewardTypeWinner)
-				}
-
-				if _, ok := ed.BattleRewardList.ExecuteKillWarMachineOwnerIDs[userID]; ok {
-					brs = append(brs, BattleRewardTypeKill)
-				}
-
-				if len(brs) == 0 {
-					return
-				}
-
-				api.ClientBattleRewardUpdate(c, &ClientBattleReward{
-					BattleID: ed.BattleRewardList.BattleID,
-					Rewards:  brs,
-				})
-			}(c)
-		}
-	})
 }

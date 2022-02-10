@@ -18,6 +18,11 @@ func (ba *BattleArena) InitNextBattle() error {
 	// generate a new battle event
 	ba.battle.ID = server.BattleID(uuid.Must(uuid.NewV4()))
 
+	// clean up war machine destroyed record cache
+	for key := range ba.battle.WarMachineDestroyedRecordMap {
+		delete(ba.battle.WarMachineDestroyedRecordMap, key)
+	}
+
 	// assign a random map
 	gameMap, err := db.GameMapGetRandom(ba.ctx, ba.Conn)
 	if err != nil {

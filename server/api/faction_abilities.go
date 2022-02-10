@@ -138,8 +138,31 @@ func (api *API) abilityTargetPriceUpdaterFactory(factionID server.FactionID, con
 						return
 					}
 
-					// broadcast notification
-					go api.BroadcastGameNotification(GameNotificationTypeText, fmt.Sprintf(`Ability %s in %s had been triggered`, fa.FactionAbility.Label, api.factionMap[factionID].Label))
+					if fa.FactionAbility.AbilityTokenID == 0 {
+						go api.BroadcastGameNotificationAbility(GameNotificationTypeFactionAbility, &GameNotificationAbility{
+							Ability: &AbilityBrief{
+								Label:    fa.FactionAbility.Label,
+								ImageUrl: fa.FactionAbility.ImageUrl,
+							},
+						})
+					} else {
+						// broadcast notification
+						go api.BroadcastGameNotificationWarMachineAbility(&GameNotificationWarMachineAbility{
+							Ability: &AbilityBrief{
+								Label:    fa.FactionAbility.Label,
+								ImageUrl: fa.FactionAbility.ImageUrl,
+							},
+							WarMachine: &WarMachineBrief{
+								Name:     fa.FactionAbility.WarMachineName,
+								ImageUrl: fa.FactionAbility.WarMachineImage,
+								Faction: &FactionBrief{
+									Label:      api.factionMap[fa.FactionAbility.FactionID].Label,
+									Theme:      api.factionMap[fa.FactionAbility.FactionID].Theme,
+									LogoBlobID: api.factionMap[fa.FactionAbility.FactionID].LogoBlobID,
+								},
+							},
+						})
+					}
 
 					hasTriggered = 1
 				}

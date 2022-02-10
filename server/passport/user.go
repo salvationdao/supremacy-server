@@ -2,8 +2,10 @@ package passport
 
 import (
 	"context"
+	"encoding/json"
 	"server"
 
+	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 )
@@ -46,5 +48,43 @@ func (pp *Passport) SendTickerMessage(ctx context.Context, userMap map[int][]ser
 				UserMap: userMap,
 			},
 			context: ctx,
-		}}
+		},
+	}
+}
+
+type SpoilOfWarAmountRequest struct {
+	Amount string `json:"payload"`
+}
+
+// GetSpoilOfWarAmount get current sup pool amount
+func (pp *Passport) GetSpoilOfWarAmount(ctx context.Context) (string, error) {
+	txID, err := uuid.NewV4()
+	if err != nil {
+		return "", terror.Error(err)
+	}
+	replyChannel := make(chan []byte)
+	errChan := make(chan error)
+	pp.send <- &Request{
+		ReplyChannel: replyChannel,
+		ErrChan:      errChan,
+		Message: &Message{
+			Key:           "SUPREMACY:SUPS_POOL_AMOUNT",
+			context:       ctx,
+			TransactionID: txID.String(),
+		},
+	}
+
+	for {
+		select {
+		case msg := <-replyChannel:
+			resp := &SpoilOfWarAmountRequest{}
+			err = json.Unmarshal(msg, resp)
+			if err != nil {
+				return "", terror.Error(err)
+			}
+			return resp.Amount, nil
+		case err := <-errChan:
+			return "", terror.Error(err)
+		}
+	}
 }

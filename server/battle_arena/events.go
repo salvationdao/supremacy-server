@@ -37,12 +37,12 @@ const (
 )
 
 type EventData struct {
-	BattleArena              *server.Battle
-	FactionAbilities         []*server.FactionAbility
-	WarMachineDestroyedEvent *server.WarMachineDestroyedEvent
-	WarMachineLocation       []byte `json:"warMachineLocation"`
-	WinnerFactionViewers     *WinnerFactionViewer
-	BattleRewardList         *BattleRewardList
+	BattleArena               *server.Battle
+	FactionAbilities          []*server.FactionAbility
+	WarMachineLocation        []byte `json:"warMachineLocation"`
+	WinnerFactionViewers      *WinnerFactionViewer
+	BattleRewardList          *BattleRewardList
+	WarMachineDestroyedRecord *server.WarMachineDestroyedRecord
 }
 
 type WinnerFactionViewer struct {

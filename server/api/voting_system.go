@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -15,12 +14,51 @@ import (
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/log_helpers"
+	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-software/tickle"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
 	"nhooyr.io/websocket"
 )
+
+/***************
+* Spoil of War *
+***************/
+func (api *API) startSpoilOfWarBroadcaster() {
+	spoilOfWarBroadcasterLogger := log_helpers.NamedLogger(api.Log, "Spoil of War Broadcaster").Level(zerolog.Disabled)
+	spoilOfWarBroadcaster := tickle.New("Spoil of War Broadcaster", 5, func() (int, error) {
+
+		amount, err := api.Passport.GetSpoilOfWarAmount(context.Background())
+		if err != nil {
+			return http.StatusInternalServerError, terror.Error(err)
+		}
+
+		// prepare payload
+		payload := []byte{}
+		payload = append(payload, byte(battle_arena.NetMessageTypeSpoilOfWarTick))
+		payload = append(payload, []byte(amount)...)
+
+		api.Hub.Clients(func(clients hub.ClientsList) {
+			for client, ok := range clients {
+				if !ok {
+					continue
+				}
+				go func(c *hub.Client) {
+					err := c.SendWithMessageType(payload, websocket.MessageBinary)
+					if err != nil {
+						api.Log.Err(err).Msg("failed to send broadcast")
+					}
+				}(client)
+			}
+		})
+
+		return http.StatusOK, nil
+	})
+
+	spoilOfWarBroadcaster.Log = &spoilOfWarBroadcasterLogger
+	spoilOfWarBroadcaster.Start()
+}
 
 /********************
 * Vote Price System *
@@ -592,6 +630,8 @@ func (api *API) startVotingCycle(introSecond int) {
 func (api *API) stopVotingCycle() {
 	api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker) {
 		vs.Phase = VotePhaseHold
+		// broadcast current stage to faction users
+		api.MessageBus.Send(messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 
 		if vct.VotingStageListener.NextTick != nil {
 			vct.VotingStageListener.Stop()
@@ -779,7 +819,14 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 				hcd, winnerClientID := api.getNextWinnerDetail(vw)
 				if hcd == nil {
 					// if no winner left, enter cooldown phase
-					go api.BroadcastGameNotification(GameNotificationTypeText, fmt.Sprintf("Ability %s has been cancelled, due to no one able to select the location.", va.BattleAbility.Label))
+					go api.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
+						Type: LocationSelectTypeCancelled,
+						Ability: &AbilityBrief{
+							Label:    va.BattleAbility.Label,
+							ImageUrl: va.BattleAbility.ImageUrl,
+						},
+						Reason: "NO_PLAYER_SELECT_LOCATION",
+					})
 
 					// voting phase change
 					api.votePhaseChecker.Phase = VotePhaseVoteCooldown
@@ -797,7 +844,17 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 				vs.Phase = VotePhaseLocationSelect
 				vs.EndTime = time.Now().Add(LocationSelectDurationSecond * time.Second)
 
-				go api.BroadcastGameNotification(GameNotificationTypeText, fmt.Sprintf("User %s is selecting location for the ability %s", hcd.Username, va.FactionAbilityMap[hcd.FactionID].Label))
+				go api.BroadcastGameNotificationAbility(GameNotificationTypeBattleAbility, &GameNotificationAbility{
+					User: &UserBrief{
+						Username: hcd.Username,
+						AvatarID: hcd.avatarID,
+						Faction: &FactionBrief{
+							Label:      api.factionMap[hcd.FactionID].Label,
+							Theme:      api.factionMap[hcd.FactionID].Theme,
+							LogoBlobID: api.factionMap[hcd.FactionID].LogoBlobID,
+						},
+					},
+				})
 
 				// announce winner
 				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, winnerClientID)), &WinnerSelectAbilityLocation{
@@ -815,6 +872,10 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 
 			// at the end of location select
 			case VotePhaseLocationSelect:
+				currentUser, err := api.getClientDetailFromUserID(vw.List[0])
+				if err != nil {
+					api.Log.Err(err).Msg("failed to get user")
+				}
 				// pop out the first user of the list
 				if len(vw.List) > 1 {
 					vw.List = vw.List[1:]
@@ -823,10 +884,17 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 				}
 
 				// get next winner
-				hcd, winnerClientID := api.getNextWinnerDetail(vw)
-				if hcd == nil {
+				nextUser, winnerClientID := api.getNextWinnerDetail(vw)
+				if nextUser == nil {
 					// if no winner left, enter cooldown phase
-					go api.BroadcastGameNotification(GameNotificationTypeText, fmt.Sprintf("Ability %s has been cancelled, due to no one selecting the location.", va.BattleAbility.Label))
+					go api.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
+						Type: LocationSelectTypeCancelled,
+						Ability: &AbilityBrief{
+							Label:    va.BattleAbility.Label,
+							ImageUrl: va.BattleAbility.ImageUrl,
+						},
+						Reason: "NO_PLAYER",
+					})
 
 					// get random ability collection set
 					battleAbility, factionAbilityMap, err := api.BattleArena.RandomAbilityCollection()
@@ -862,12 +930,37 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 
 				// otherwise announce another winner
 				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, winnerClientID)), &WinnerSelectAbilityLocation{
-					FactionAbility: *va.FactionAbilityMap[hcd.FactionID],
+					FactionAbility: *va.FactionAbilityMap[nextUser.FactionID],
 					EndTime:        vs.EndTime,
 				})
 
 				// broadcast winner select location
-				go api.BroadcastGameNotification(GameNotificationTypeText, fmt.Sprintf("User %s is selecting location for the ability %s", hcd.Username, va.FactionAbilityMap[hcd.FactionID].Label))
+				go api.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
+					Type: LocationSelectTypeFailed,
+					Ability: &AbilityBrief{
+						Label:    va.BattleAbility.Label,
+						ImageUrl: va.BattleAbility.ImageUrl,
+					},
+					Reason: "TIMEOUT",
+					CurrentUser: &UserBrief{
+						Username: currentUser.Username,
+						AvatarID: currentUser.avatarID,
+						Faction: &FactionBrief{
+							Label:      api.factionMap[currentUser.FactionID].Label,
+							Theme:      api.factionMap[currentUser.FactionID].Theme,
+							LogoBlobID: api.factionMap[currentUser.FactionID].LogoBlobID,
+						},
+					},
+					NextUser: &UserBrief{
+						Username: nextUser.Username,
+						AvatarID: nextUser.avatarID,
+						Faction: &FactionBrief{
+							Label:      api.factionMap[nextUser.FactionID].Label,
+							Theme:      api.factionMap[nextUser.FactionID].Theme,
+							LogoBlobID: api.factionMap[nextUser.FactionID].LogoBlobID,
+						},
+					},
+				})
 
 				// broadcast current stage to faction users
 				api.MessageBus.Send(messagebus.BusKey(HubKeyVoteStageUpdated), vs)
@@ -936,34 +1029,4 @@ func (api *API) getNextWinnerDetail(vw *VoteWinner) (*HubClientDetail, server.Us
 	}
 
 	return nil, server.UserID{}
-}
-
-// BroadcastGameNotification broadcast game notification to client
-func (api *API) BroadcastGameNotification(notificationType GameNotificationType, data interface{}) {
-	// broadcast countered notification
-	broadcastData, err := json.Marshal(&BroadcastPayload{
-		Key: HubKeyGameNotification,
-		Payload: &GameNotification{
-			Type: notificationType,
-			Data: data,
-		},
-	})
-	if err != nil {
-		api.Log.Err(err).Msg("marshal broadcast payload")
-		return
-	}
-
-	api.Hub.Clients(func(clients hub.ClientsList) {
-		for client, ok := range clients {
-			if !ok {
-				continue
-			}
-			go func(c *hub.Client) {
-				err := c.Send(broadcastData)
-				if err != nil {
-					api.Log.Err(err).Msg("failed to send broadcast")
-				}
-			}(client)
-		}
-	})
 }

@@ -32,8 +32,6 @@ func NewVoteController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *VoteC
 		API:  api,
 	}
 
-	api.Command(HubKeyFactionColour, voteHub.FactionColour)
-
 	api.SecureUserFactionCommand(HubKeyFactionVotePrice, voteHub.FactionVotePrice)
 	api.SecureUserFactionCommand(HubKeyVoteAbilityRight, voteHub.AbilityRight)
 	api.SecureUserFactionCommand(HubKeyAbilityLocationSelect, voteHub.AbilityLocationSelect)
@@ -44,28 +42,6 @@ func NewVoteController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *VoteC
 	api.SecureUserFactionSubscribeCommand(HubKeyVoteStageUpdated, voteHub.VoteStageUpdateSubscribeHandler)
 
 	return voteHub
-}
-
-const HubKeyFactionColour hub.HubCommandKey = "FACTION:COLOUR"
-
-type FactionColourRespose struct {
-	RedMountain string `json:"redMountain"`
-	Boston      string `json:"boston"`
-	Zaibatsu    string `json:"zaibatsu"`
-}
-
-func (vc *VoteControllerWS) FactionColour(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	if vc.API.factionMap == nil {
-		return terror.Error(terror.ErrForbidden, "faction data not ready yet")
-	}
-
-	reply(&FactionColourRespose{
-		RedMountain: vc.API.factionMap[server.RedMountainFactionID].Theme.Primary,
-		Boston:      vc.API.factionMap[server.BostonCyberneticsFactionID].Theme.Primary,
-		Zaibatsu:    vc.API.factionMap[server.ZaibatsuFactionID].Theme.Primary,
-	})
-
-	return nil
 }
 
 const HubKeyFactionVotePrice hub.HubCommandKey = "FACTION:VOTE:PRICE"
@@ -183,7 +159,21 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 		vs.Phase = VotePhaseLocationSelect
 		vs.EndTime = time.Now().Add(LocationSelectDurationSecond * time.Second)
 
-		go vc.API.BroadcastGameNotification(GameNotificationTypeText, fmt.Sprintf("User %s is selecting location for the ability %s", hcd.Username, va.FactionAbilityMap[hcd.FactionID].Label))
+		go vc.API.BroadcastGameNotificationAbility(GameNotificationTypeBattleAbility, &GameNotificationAbility{
+			User: &UserBrief{
+				Username: hcd.Username,
+				AvatarID: hcd.avatarID,
+				Faction: &FactionBrief{
+					Label:      vc.API.factionMap[hcd.FactionID].Label,
+					Theme:      vc.API.factionMap[hcd.FactionID].Theme,
+					LogoBlobID: vc.API.factionMap[hcd.FactionID].LogoBlobID,
+				},
+			},
+			Ability: &AbilityBrief{
+				Label:    va.FactionAbilityMap[hcd.FactionID].Label,
+				ImageUrl: va.FactionAbilityMap[hcd.FactionID].ImageUrl,
+			},
+		})
 
 		// announce winner
 		vc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, userID)), &WinnerSelectAbilityLocation{
@@ -272,7 +262,24 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 		}
 
 		// broadcast notification
-		go vc.API.BroadcastGameNotification(GameNotificationTypeText, fmt.Sprintf("User %s placed %s at (x: %d, y: %d)", hcd.Username, va.FactionAbilityMap[hcd.FactionID].Label, req.Payload.XIndex, req.Payload.YIndex))
+		go vc.API.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
+			Type: LocationSelectTypeTrigger,
+			CurrentUser: &UserBrief{
+				Username: hcd.Username,
+				AvatarID: hcd.avatarID,
+				Faction: &FactionBrief{
+					Label:      vc.API.factionMap[hcd.FactionID].Label,
+					Theme:      vc.API.factionMap[hcd.FactionID].Theme,
+					LogoBlobID: vc.API.factionMap[hcd.FactionID].LogoBlobID,
+				},
+			},
+			X: &req.Payload.XIndex,
+			Y: &req.Payload.YIndex,
+			Ability: &AbilityBrief{
+				Label:    va.BattleAbility.Label,
+				ImageUrl: va.BattleAbility.ImageUrl,
+			},
+		})
 
 		// record ability animation
 		userIDString := userID.String()
@@ -334,20 +341,6 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 /***************
 * Subscription *
 ***************/
-
-type GameNotificationType string
-
-const (
-	GameNotificationTypeText       GameNotificationType = "TEXT"
-	GameNotificationTypeSecondVote GameNotificationType = "SECOND_VOTE"
-)
-
-type GameNotification struct {
-	Type GameNotificationType `json:"type"`
-	Data interface{}          `json:"data"`
-}
-
-const HubKeyGameNotification hub.HubCommandKey = "GAME:NOTIFICATION"
 
 const HubKeyVoteWinnerAnnouncement hub.HubCommandKey = "VOTE:WINNER:ANNOUNCEMENT"
 

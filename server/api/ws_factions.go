@@ -193,8 +193,49 @@ func (fc *FactionControllerWS) FactionAbilityContribute(ctx context.Context, wsc
 		}
 
 		// broadcast notification
-		go fc.API.BroadcastGameNotification(GameNotificationTypeText, fmt.Sprintf("User %s from %s has trigger %s", hcd.Username, fc.API.factionMap[hcd.FactionID].Label, fa.FactionAbility.Label))
-
+		if fa.FactionAbility.AbilityTokenID == 0 {
+			go fc.API.BroadcastGameNotificationAbility(GameNotificationTypeFactionAbility, &GameNotificationAbility{
+				User: &UserBrief{
+					Username: hcd.Username,
+					AvatarID: hcd.avatarID,
+					Faction: &FactionBrief{
+						Label:      fc.API.factionMap[hcd.FactionID].Label,
+						Theme:      fc.API.factionMap[hcd.FactionID].Theme,
+						LogoBlobID: fc.API.factionMap[hcd.FactionID].LogoBlobID,
+					},
+				},
+				Ability: &AbilityBrief{
+					Label:    fa.FactionAbility.Label,
+					ImageUrl: fa.FactionAbility.ImageUrl,
+				},
+			})
+		} else {
+			// broadcast notification
+			go fc.API.BroadcastGameNotificationWarMachineAbility(&GameNotificationWarMachineAbility{
+				User: &UserBrief{
+					Username: hcd.Username,
+					AvatarID: hcd.avatarID,
+					Faction: &FactionBrief{
+						Label:      fc.API.factionMap[hcd.FactionID].Label,
+						Theme:      fc.API.factionMap[hcd.FactionID].Theme,
+						LogoBlobID: fc.API.factionMap[hcd.FactionID].LogoBlobID,
+					},
+				},
+				Ability: &AbilityBrief{
+					Label:    fa.FactionAbility.Label,
+					ImageUrl: fa.FactionAbility.ImageUrl,
+				},
+				WarMachine: &WarMachineBrief{
+					Name:     fa.FactionAbility.WarMachineName,
+					ImageUrl: fa.FactionAbility.WarMachineImage,
+					Faction: &FactionBrief{
+						Label:      fc.API.factionMap[fa.FactionAbility.FactionID].Label,
+						Theme:      fc.API.factionMap[fa.FactionAbility.FactionID].Theme,
+						LogoBlobID: fc.API.factionMap[fa.FactionAbility.FactionID].LogoBlobID,
+					},
+				},
+			})
+		}
 		// prepare broadcast data
 		targetPriceList := []string{}
 		for abilityID, fa := range fap {

@@ -36,9 +36,10 @@ const (
 )
 
 type ClientUpdate struct {
-	Client       *hub.Client
-	Action       ClientAction
-	BattleReward *ClientBattleReward
+	Client           *hub.Client
+	Action           ClientAction
+	BattleReward     *ClientBattleReward
+	NoClientLeftChan chan bool
 }
 
 type ClientBattleReward struct {
@@ -181,6 +182,7 @@ listenLoop:
 			clientMap, ok := clientMultiplierMap[userID]
 			if !ok {
 				api.Log.Err(err)
+				msg.NoClientLeftChan <- true
 				continue listenLoop
 			}
 
@@ -188,7 +190,10 @@ listenLoop:
 
 			if len(clientMap.clients) == 0 {
 				delete(clientMultiplierMap, userID)
+				msg.NoClientLeftChan <- true
+				continue listenLoop
 			}
+			msg.NoClientLeftChan <- false
 
 		default:
 			api.Log.Err(fmt.Errorf("unknown client action")).Msgf("unknown client action: %s", msg.Action)
@@ -203,11 +208,15 @@ func (api *API) ClientOnline(c *hub.Client) {
 	}
 }
 
-func (api *API) ClientOffline(c *hub.Client) {
+func (api *API) ClientOffline(c *hub.Client) bool {
+	noClientLeftChan := make(chan bool)
 	api.onlineClientMap <- &ClientUpdate{
-		Client: c,
-		Action: ClientOffline,
+		Client:           c,
+		Action:           ClientOffline,
+		NoClientLeftChan: noClientLeftChan,
 	}
+	isNoClient := <-noClientLeftChan
+	return isNoClient
 }
 
 func (api *API) ClientVoted(c *hub.Client) {

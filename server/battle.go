@@ -18,6 +18,22 @@ type Battle struct {
 	GameMap            *GameMap               `json:"map"`
 	FactionMap         map[FactionID]*Faction `json:"factionMap"`
 	BattleHistory      [][]byte               `json:"battleHistory"`
+
+	// used for destroyed notification subscription
+	WarMachineDestroyedRecordMap map[byte]*WarMachineDestroyedRecord
+}
+
+type WarMachineDestroyedRecord struct {
+	DestroyedWarMachine *WarMachineNFT  `json:"destroyedWarMachine"`
+	KilledByWarMachine  *WarMachineNFT  `json:"killedByWarMachine,omitempty"`
+	KilledBy            string          `json:"killedBy"`
+	DamageRecords       []*DamageRecord `json:"damageRecords"`
+}
+
+type DamageRecord struct {
+	Amount             int            `json:"amount"` // The total amount of damage taken from this source
+	CausedByWarMachine *WarMachineNFT `json:"causedByWarMachine,omitempty"`
+	SourceName         string         `json:"sourceName,omitempty"` // The name of the weapon / damage causer (in-case of now TokenID)
 }
 
 type BattleState string

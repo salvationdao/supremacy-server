@@ -77,6 +77,8 @@ func NewBattleArenaClient(ctx context.Context, logger *zerolog.Logger, conn *pgx
 		BattleQueueMap: make(map[server.FactionID]chan func(*WarMachineQueuingList)),
 	}
 
+	ba.battle.WarMachineDestroyedRecordMap = make(map[byte]*server.WarMachineDestroyedRecord)
+
 	// add the commands here
 
 	// battle state
@@ -135,6 +137,8 @@ const (
 	NetMessageTypeVotePriceTick
 	NetMessageTypeVotePriceForecastTick
 	NetMessageTypeAbilityTargetPriceTick
+	NetMessageTypeViewerLiveCountTick
+	NetMessageTypeSpoilOfWarTick
 )
 
 func (ba *BattleArena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -161,9 +165,6 @@ func (ba *BattleArena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// send message
 	go ba.sendPump(ctx, c)
-
-	// Init first battle
-	//ba.Events.Trigger(r.Context(), EventGameInit, &EventData{BattleArena: ba.battle})
 
 	go func() {
 		time.Sleep(2 * time.Second)

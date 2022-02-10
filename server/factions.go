@@ -15,12 +15,12 @@ var BostonCyberneticsFactionID = FactionID(uuid.Must(uuid.FromString("7c6dde21-b
 var ZaibatsuFactionID = FactionID(uuid.Must(uuid.FromString("880db344-e405-428d-84e5-6ebebab1fe6d")))
 
 type Faction struct {
-	ID            FactionID     `json:"id" db:"id"`
-	Label         string        `json:"label" db:"label"`
-	Theme         *FactionTheme `json:"theme" db:"theme"`
-	LogoUrl       string        `json:"logoUrl,omitempty"`
-	BackgroundUrl string        `json:"backgroundUrl,omitempty"`
-	VotePrice     string        `json:"votePrice" db:"vote_price"`
+	ID               FactionID     `json:"id" db:"id"`
+	Label            string        `json:"label" db:"label"`
+	Theme            *FactionTheme `json:"theme" db:"theme"`
+	LogoBlobID       BlobID        `json:"logoBlobID,omitempty"`
+	BackgroundBlobID BlobID        `json:"backgroundBlobID,omitempty"`
+	VotePrice        string        `json:"votePrice" db:"vote_price"`
 }
 
 type BattleAbility struct {
@@ -46,6 +46,8 @@ type FactionAbility struct {
 	AbilityTokenID    uint64
 	WarMachineTokenID uint64
 	ParticipantID     *byte
+	WarMachineName    string
+	WarMachineImage   string
 
 	// Category title for frontend to group the abilities together
 	Title string `json:"title"`

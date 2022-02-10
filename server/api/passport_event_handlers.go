@@ -62,12 +62,14 @@ func (api *API) PassportUserUpdatedHandler(ctx context.Context, payload []byte) 
 					hcd.FirstName = req.Payload.User.FirstName
 					hcd.LastName = req.Payload.User.LastName
 					hcd.Username = req.Payload.User.Username
+					hcd.avatarID = req.Payload.User.AvatarID
 
 					if hcd.FactionID == req.Payload.User.FactionID {
 						return
 					}
 
-					// if faction id has changed, send the updated user to twitch ui
+					// if faction id has changed, send the updated user
+					go api.viewerLiveCountSwap(hcd.FactionID, req.Payload.User.FactionID)
 					hcd.FactionID = req.Payload.User.FactionID
 
 					user := &server.User{
@@ -155,6 +157,7 @@ func (api *API) PassportUserEnlistFactionHandler(ctx context.Context, payload []
 
 			go func(c *hub.Client) {
 				api.hubClientDetail[c] <- func(hcd *HubClientDetail) {
+					go api.viewerLiveCountSwap(hcd.FactionID, req.Payload.FactionID)
 					// update client facton id
 					hcd.FactionID = req.Payload.FactionID
 				}
@@ -377,10 +380,15 @@ func (api *API) AuthRingCheckHandler(ctx context.Context, payload []byte) {
 
 		// set hub client detail
 		hubClientDetail <- func(hcd *HubClientDetail) {
-			hcd.FactionID = req.Payload.User.FactionID
 			hcd.Username = req.Payload.User.Username
 			hcd.FirstName = req.Payload.User.FirstName
 			hcd.LastName = req.Payload.User.LastName
+			hcd.avatarID = req.Payload.User.AvatarID
+
+			if hcd.FactionID != req.Payload.User.FactionID {
+				go api.viewerLiveCountSwap(hcd.FactionID, req.Payload.User.FactionID)
+				hcd.FactionID = req.Payload.User.FactionID
+			}
 		}
 
 		// set user id

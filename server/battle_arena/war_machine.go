@@ -38,17 +38,29 @@ func (ba *BattleArena) WarMachineDestroyedHandler(ctx context.Context, payload [
 	}
 
 	// check destroyed war machine exist
-	exists := false
+	var destroyedWarMachine *server.WarMachineNFT
 	for _, wm := range ba.battle.WarMachines {
 		if wm.TokenID == req.Payload.DestroyedWarMachineEvent.DestroyedWarMachineID {
 			// set health to 0
 			wm.Health = 0
-			exists = true
+			destroyedWarMachine = wm
 			break
 		}
 	}
-	if !exists {
+	if destroyedWarMachine == nil {
 		return terror.Error(fmt.Errorf("destroyed war machine %d does not exist", req.Payload.DestroyedWarMachineEvent.DestroyedWarMachineID))
+	}
+
+	var killByWarMachine *server.WarMachineNFT
+	if req.Payload.DestroyedWarMachineEvent.KillByWarMachineID != nil {
+		for _, wm := range ba.battle.WarMachines {
+			if wm.TokenID == *req.Payload.DestroyedWarMachineEvent.KillByWarMachineID {
+				killByWarMachine = wm
+			}
+		}
+		if destroyedWarMachine == nil {
+			return terror.Error(fmt.Errorf("killer war machine %d does not exist", *req.Payload.DestroyedWarMachineEvent.KillByWarMachineID))
+		}
 	}
 
 	ba.Log.Info().Msgf("Battle Update: %s - War Machine Destroyed: %d", req.Payload.BattleID, req.Payload.DestroyedWarMachineEvent.DestroyedWarMachineID)
@@ -93,10 +105,37 @@ func (ba *BattleArena) WarMachineDestroyedHandler(ctx context.Context, payload [
 		return terror.Error(err)
 	}
 
+	// prepare destroyed record
+	destroyedRecord := &server.WarMachineDestroyedRecord{
+		DestroyedWarMachine: destroyedWarMachine,
+		KilledByWarMachine:  killByWarMachine,
+		KilledBy:            req.Payload.DestroyedWarMachineEvent.KilledBy,
+		DamageRecords:       []*server.DamageRecord{},
+	}
+
+	for _, damage := range req.Payload.DestroyedWarMachineEvent.DamageHistory {
+		damageRecord := &server.DamageRecord{
+			SourceName: damage.SourceName,
+			Amount:     damage.Amount,
+		}
+		if damage.InstigatorTokenID > 0 {
+			for _, wm := range ba.battle.WarMachines {
+				if wm.TokenID == damage.InstigatorTokenID {
+					damageRecord.CausedByWarMachine = wm
+				}
+			}
+		}
+		destroyedRecord.DamageRecords = append(destroyedRecord.DamageRecords, damageRecord)
+	}
+
+	// cache record in battle, for future subscription
+	ba.battle.WarMachineDestroyedRecordMap[destroyedWarMachine.ParticipantID] = destroyedRecord
+
 	// send event to hub clients
 	ba.Events.Trigger(ctx, EventWarMachineDestroyed, &EventData{
-		WarMachineDestroyedEvent: req.Payload.DestroyedWarMachineEvent,
+		WarMachineDestroyedRecord: destroyedRecord,
 	})
+
 	return nil
 }
 
