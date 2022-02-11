@@ -28,6 +28,8 @@ type WarMachineNFT struct {
 	Description     string        `json:"description"`
 	ExternalUrl     string        `json:"externalUrl"`
 	Image           string        `json:"image"`
+	Model           string        `json:"model"`
+	Skin            string        `json:"skin"`
 	MaxHealth       int           `json:"maxHealth"`
 	Health          int           `json:"health"`
 	MaxShield       int           `json:"maxShield"`
