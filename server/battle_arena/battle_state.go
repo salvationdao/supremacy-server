@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"server"
 	"server/db"
+	"time"
 
 	"github.com/jackc/pgx/v4"
 	"github.com/ninja-software/terror/v2"
@@ -25,7 +26,7 @@ type BattleStartRequest struct {
 			TokenID       uint64 `json:"tokenID"`
 			ParticipantID byte   `json:"participantID"`
 		} `json:"warMachines"`
-		WarMachineLocation []byte `json:"warMachineLocation"`
+		// WarMachineLocation []byte `json:"warMachineLocation"`
 	} `json:"payload"`
 }
 
@@ -76,7 +77,7 @@ outerLoop:
 		ba.Log.Info().Msgf("War Machine: %s - %d", wm.Name, wm.TokenID)
 	}
 
-	ba.battle.BattleHistory = append(ba.battle.BattleHistory, req.Payload.WarMachineLocation)
+	// ba.battle.BattleHistory = append(ba.battle.BattleHistory, req.Payload.WarMachineLocation)
 
 	// save to database
 	tx, err := ba.Conn.Begin(ctx)
@@ -166,6 +167,24 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 				winningMachines = append(winningMachines, bwm)
 				battleRewardList.WinnerFactionID = bwm.FactionID
 				battleRewardList.WinningWarMachineOwnerIDs[bwm.OwnedByID] = true
+
+				// pay queuing contract reward
+				err = ba.passport.AssetContractRewardRedeem(
+					ctx,
+					bwm.OwnedByID,
+					bwm.FactionID,
+					server.BigInt{Int: bwm.ContractReward},
+					server.TransactionReference(
+						fmt.Sprintf(
+							"redeem_faction_contract_reward|%s|%s",
+							bwm.Name,
+							time.Now(),
+						),
+					),
+				)
+				if err != nil {
+					ba.Log.Err(err).Msgf("User %s failed to redeem contract reward", bwm.OwnedByID)
+				}
 			}
 		}
 	}
@@ -211,15 +230,6 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 		warMachine.Durability = 100 * warMachine.Health / warMachine.MaxHealth
 	}
 
-	//release war machine
-	if len(ba.battle.WarMachines) > 0 {
-		ba.passport.AssetRelease(
-			ctx,
-			fmt.Sprintf("release_asset|battleID:%s", ba.battle.ID),
-			ba.battle.WarMachines,
-		)
-	}
-
 	// execute kill war machine owner id
 	destoryedEvents, err := db.WarMachineDestroyedEventGetByBattleID(ctx, ba.Conn, req.Payload.BattleID)
 	if err != nil {
@@ -242,6 +252,32 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 	err = ba.passport.TransferBattleFundToSupsPool(ctx, fmt.Sprintf("transfer_battle_fund_to_sup_pool|%s", req.Payload.BattleID))
 	if err != nil {
 		return terror.Error(err, "Failed to distribute battle reward")
+	}
+
+	// cache in game war machines
+	inGameWarMachines := ba.battle.WarMachines
+	ba.battle.WarMachines = []*server.WarMachineNFT{}
+
+	//release war machine
+	if len(inGameWarMachines) > 0 {
+		ba.passport.AssetRelease(
+			ctx,
+			fmt.Sprintf("release_asset|battleID:%s", ba.battle.ID),
+			inGameWarMachines,
+		)
+	}
+
+	for _, faction := range ba.battle.FactionMap {
+		includedUserID := []server.UserID{}
+		for _, ig := range inGameWarMachines {
+			if ig.FactionID == faction.ID {
+				includedUserID = append(includedUserID, ig.OwnedByID)
+			}
+		}
+		ba.BattleQueueMap[faction.ID] <- func(wmq *WarMachineQueuingList) {
+			// broadcast new war machine position for in game war machine owners
+			ba.passport.WarMachineQueuePositionBroadcast(context.Background(), ba.BuildUserWarMachineQueuePosition(wmq.WarMachines, []*server.WarMachineNFT{}, includedUserID...))
+		}
 	}
 
 	// trigger battle end

@@ -1,5 +1,7 @@
 package server
 
+import "math/big"
+
 const GameClientTileSize = 2000
 
 // To get the location in game its
@@ -47,6 +49,9 @@ type WarMachineNFT struct {
 	Position        *Vector3      `json:"position"`
 	Rotation        int           `json:"rotation"`
 	Abilities       []*AbilityNFT `json:"abilities"`
+
+	ContractReward big.Int `json:"contractReward"`
+	IsInsured      bool    `json:"isInsured"`
 }
 
 type AbilityNFT struct {

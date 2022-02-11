@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"server"
 	"server/battle_arena"
 	"server/passport"
 	"strconv"
+	"time"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
@@ -271,7 +273,7 @@ func (api *API) PassportBattleQueueReleaseHandler(ctx context.Context, payload [
 				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionWarMachineQueueUpdated, req.Payload.WarMachineNFT.FactionID)), wmq.WarMachines[:maxLength])
 			}
 
-			api.Passport.WarMachineQueuePositionBroadcast(context.Background(), battle_arena.BuildUserWarMachineQueuePosition(wmq.WarMachines))
+			api.Passport.WarMachineQueuePositionBroadcast(context.Background(), api.BattleArena.BuildUserWarMachineQueuePosition(wmq.WarMachines, []*server.WarMachineNFT{}, req.Payload.WarMachineNFT.OwnedByID))
 		}
 	}
 }
@@ -285,6 +287,80 @@ func checkWarMachineExist(list []*server.WarMachineNFT, tokenID uint64) int {
 	}
 
 	return -1
+}
+
+type AssetInsurancePayRequest struct {
+	Key     passport.Event `json:"key"`
+	Payload struct {
+		FactionID    server.FactionID `json:"factionID"`
+		AssetTokenID uint64           `json:"assetTokenID"`
+	} `json:"payload"`
+}
+
+func (api *API) PassportAssetInsurancePayHandler(ctx context.Context, payload []byte) {
+	req := &AssetInsurancePayRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		api.Log.Err(err).Msg("error unmarshalling passport battle queue release request")
+	}
+
+	if !req.Payload.FactionID.IsNil() {
+		api.BattleArena.BattleQueueMap[req.Payload.FactionID] <- func(wmq *battle_arena.WarMachineQueuingList) {
+			// check war machine is in the queue
+			index := checkWarMachineExist(wmq.WarMachines, req.Payload.AssetTokenID)
+			if index < 0 {
+				api.Log.Err(terror.ErrInvalidInput).Msgf("Asset %d is not in the queue", req.Payload.AssetTokenID)
+				return
+			}
+
+			targetWarMachine := wmq.WarMachines[index]
+
+			// calc insurance amount
+			insuranceCost := server.BigInt{Int: *big.NewInt(0)}
+			insuranceCost.Div(&targetWarMachine.ContractReward, big.NewInt(10))
+
+			err = api.Passport.AssetInsurancePay(
+				ctx,
+				targetWarMachine.OwnedByID,
+				targetWarMachine.FactionID,
+				insuranceCost,
+				server.TransactionReference(
+					fmt.Sprintf(
+						"pay_insurance_for_%s|%s",
+						targetWarMachine.Name,
+						time.Now(),
+					),
+				),
+			)
+			if err != nil {
+				api.Log.Err(err).Msg(err.Error())
+				return
+			}
+
+			// set isInsured flag to true
+			targetWarMachine.IsInsured = true
+
+			// broadcast war machine queue
+			warMachineQueuePosition := []*passport.WarMachineQueuePosition{}
+			for i, wm := range wmq.WarMachines {
+				if wm.OwnedByID != targetWarMachine.OwnedByID {
+					continue
+				}
+				warMachineQueuePosition = append(warMachineQueuePosition, &passport.WarMachineQueuePosition{
+					WarMachineNFT: wm,
+					Position:      i,
+				})
+			}
+
+			api.Passport.WarMachineQueuePositionBroadcast(ctx, []*passport.UserWarMachineQueuePosition{
+				{
+					UserID:                   targetWarMachine.OwnedByID,
+					WarMachineQueuePositions: warMachineQueuePosition,
+				},
+			})
+
+		}
+	}
 }
 
 type WarMachineQueuePositionRequest struct {
@@ -320,6 +396,17 @@ func (api *API) PassportWarMachineQueuePositionHandler(ctx context.Context, payl
 	}
 
 	warMachineQueuePosition := <-warMachineQueuePositionChan
+
+	// get in game war machine
+	for _, wm := range api.BattleArena.InGameWarMachines() {
+		if wm.OwnedByID != req.Payload.UserID {
+			continue
+		}
+		warMachineQueuePosition = append(warMachineQueuePosition, &passport.WarMachineQueuePosition{
+			WarMachineNFT: wm,
+			Position:      -1,
+		})
+	}
 
 	// fire a war machine queue passport request
 	if len(warMachineQueuePosition) > 0 {

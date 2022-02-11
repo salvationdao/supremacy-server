@@ -17,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/log_helpers"
 	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-software/tickle"
 	"github.com/rs/zerolog"
 	"nhooyr.io/websocket"
 	"nhooyr.io/websocket/wsjson"
@@ -76,9 +77,6 @@ func NewBattleArenaClient(ctx context.Context, logger *zerolog.Logger, conn *pgx
 		// channel for battle queue
 		BattleQueueMap: make(map[server.FactionID]chan func(*WarMachineQueuingList)),
 	}
-
-	ba.battle.WarMachineDestroyedRecordMap = make(map[byte]*server.WarMachineDestroyedRecord)
-
 	// add the commands here
 
 	// battle state
@@ -219,7 +217,22 @@ func (ba *BattleArena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			case NetMessageTypeTick:
 				ba.WarMachinesTick(payload)
 			default:
-				ba.Log.Err(fmt.Errorf("unknown message type")).Msg("")
+				// ba.Log.Err(fmt.Errorf("unknown message type")).Msg("")
+				v, err := jason.NewObjectFromBytes(payload)
+				if err != nil {
+					ba.Log.Err(err).Msgf(`error making object from bytes`)
+					continue
+				}
+				cmdKey, err := v.GetString("battleCommand")
+				if err != nil {
+					ba.Log.Err(err).Msgf(`missing json key "key"`)
+					continue
+				}
+				if cmdKey == "" {
+					ba.Log.Err(fmt.Errorf("missing key value")).Msgf("missing key/command value")
+					continue
+				}
+				ba.runGameCommand(ctx, c, BattleCommand(cmdKey), payload)
 			}
 		}
 	}
@@ -326,21 +339,21 @@ func (ba *BattleArena) SetupAfterConnections() {
 	var factions []*server.Faction
 	var err error
 
-	// TODO: FIX THIS, it seems to be super delayed in getting the factions
-
 	// get factions from passport, retrying every 10 seconds until we ge them.
 	for len(factions) <= 0 {
 		// since the passport spins up concurrently the passport connection may not be setup right away, so we check every second for the connection
 		for ba.passport == nil || ba.passport.Conn == nil || !ba.passport.Conn.Connected {
-			time.Sleep(2 * time.Second)
+			time.Sleep(1 * time.Second)
 		}
 
 		factions, err = ba.passport.FactionAll(ba.ctx, "faction all - gameserver")
 		if err != nil {
 			ba.Log.Err(err).Msg("unable to get factions")
 		}
-		time.Sleep(2 * time.Second)
+		time.Sleep(1 * time.Second)
 	}
+
+	ba.battle.WarMachineDestroyedRecordMap = make(map[byte]*server.WarMachineDestroyedRecord)
 
 	ba.battle.FactionMap = make(map[server.FactionID]*server.Faction)
 	for _, faction := range factions {
@@ -353,4 +366,42 @@ func (ba *BattleArena) SetupAfterConnections() {
 		ba.BattleQueueMap[faction.ID] = make(chan func(*WarMachineQueuingList))
 		go ba.startBattleQueue(faction.ID)
 	}
+
+	battleContractRewardUpdaterLogger := log_helpers.NamedLogger(ba.Log, "Contract Reward Updater").Level(zerolog.Disabled)
+	battleContractRewardUpdater := tickle.New("Contract Reward Updater", 10, func() (int, error) {
+		rQueueNumberChan := make(chan int)
+		ba.BattleQueueMap[server.RedMountainFactionID] <- func(wmql *WarMachineQueuingList) {
+			rQueueNumberChan <- len(wmql.WarMachines)
+		}
+		bQueueNumberChan := make(chan int)
+		ba.BattleQueueMap[server.BostonCyberneticsFactionID] <- func(wmql *WarMachineQueuingList) {
+			bQueueNumberChan <- len(wmql.WarMachines)
+		}
+		zQueueNumberChan := make(chan int)
+		ba.BattleQueueMap[server.ZaibatsuFactionID] <- func(wmql *WarMachineQueuingList) {
+			zQueueNumberChan <- len(wmql.WarMachines)
+		}
+
+		ba.passport.FactionWarMachineContractRewardUpdate(
+			ba.ctx,
+			[]*server.FactionWarMachineQueue{
+				{
+					FactionID:  server.RedMountainFactionID,
+					QueueTotal: <-rQueueNumberChan,
+				},
+				{
+					FactionID:  server.BostonCyberneticsFactionID,
+					QueueTotal: <-bQueueNumberChan,
+				},
+				{
+					FactionID:  server.ZaibatsuFactionID,
+					QueueTotal: <-zQueueNumberChan,
+				},
+			},
+		)
+
+		return http.StatusOK, nil
+	})
+	battleContractRewardUpdater.Log = &battleContractRewardUpdaterLogger
+	battleContractRewardUpdater.Start()
 }

@@ -43,8 +43,7 @@ type BroadcastPayload struct {
 }
 
 type VotePriceSystem struct {
-	VotePriceUpdater    *tickle.Tickle
-	VotePriceForecaster *tickle.Tickle
+	VotePriceUpdater *tickle.Tickle
 
 	GlobalVotePerTick []int64 // store last 100 tick total vote
 	GlobalTotalVote   int64
@@ -198,6 +197,7 @@ func NewAPI(
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventGameEnd, api.BattleEndSignal)
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventWarMachineDestroyed, api.WarMachineDestroyedBroadcast)
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventWarMachinePositionChanged, api.UpdateWarMachinePosition)
+	api.BattleArena.Events.AddEventHandler(battle_arena.EventWarMachineQueueUpdated, api.UpdateWarMachineQueue)
 
 	///////////////////////////
 	//	 Passport Events	 //
@@ -209,6 +209,7 @@ func NewAPI(
 	api.Passport.Events.AddEventHandler(passport.EventBattleQueueLeave, api.PassportBattleQueueReleaseHandler)
 	api.Passport.Events.AddEventHandler(passport.EventWarMachineQueuePositionGet, api.PassportWarMachineQueuePositionHandler)
 	api.Passport.Events.AddEventHandler(passport.EventAuthRingCheck, api.AuthRingCheckHandler)
+	api.Passport.Events.AddEventHandler(passport.EventAssetInsurancePay, api.PassportAssetInsurancePayHandler)
 
 	// listen to the client online and action channel
 	go api.ClientListener()
@@ -358,7 +359,6 @@ func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client, clients
 			api.Log.Err(err).Msg("failed to send broadcast")
 		}
 	}()
-
 }
 
 func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, clients hub.ClientsList, ch hub.TriggerChan) {

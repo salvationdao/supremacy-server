@@ -28,6 +28,7 @@ const (
 	EventBattleQueueJoin            Event = "PASSPORT:ASSET:QUEUE:JOIN"
 	EventBattleQueueLeave           Event = "PASSPORT:ASSET:QUEUE:LEAVE"
 	EventWarMachineQueuePositionGet Event = "PASSPORT:WAR:MACHINE:QUEUE:POSITION:GET"
+	EventAssetInsurancePay          Event = "PASSPORT:ASSET:INSURANCE:PAY"
 	EventAuthRingCheck              Event = "PASSPORT:AUTH:RING:CHECK"
 )
 

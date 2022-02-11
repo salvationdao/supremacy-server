@@ -17,9 +17,9 @@ import (
 const HubKeyGameSettingsUpdated = hub.HubCommandKey("GAME:SETTINGS:UPDATED")
 
 type GameSettingsResponse struct {
-	GameMap            *server.GameMap         `json:"gameMap"`
-	WarMachines        []*server.WarMachineNFT `json:"warMachines"`
-	WarMachineLocation []byte                  `json:"warMachineLocation"`
+	GameMap     *server.GameMap         `json:"gameMap"`
+	WarMachines []*server.WarMachineNFT `json:"warMachines"`
+	// WarMachineLocation []byte                  `json:"warMachineLocation"`
 }
 
 // BattleStartSignal start all the voting cycle
@@ -34,9 +34,9 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 	gameSettingsData, err := json.Marshal(&BroadcastPayload{
 		Key: HubKeyGameSettingsUpdated,
 		Payload: &GameSettingsResponse{
-			GameMap:            ed.BattleArena.GameMap,
-			WarMachines:        ed.BattleArena.WarMachines,
-			WarMachineLocation: ed.BattleArena.BattleHistory[0],
+			GameMap:     ed.BattleArena.GameMap,
+			WarMachines: ed.BattleArena.WarMachines,
+			// WarMachineLocation: ed.BattleArena.BattleHistory[0],
 		},
 	})
 	if err != nil {
@@ -183,4 +183,11 @@ func (api *API) UpdateWarMachinePosition(ctx context.Context, ed *battle_arena.E
 			}(client)
 		}
 	})
+}
+
+func (api *API) UpdateWarMachineQueue(ctx context.Context, ed *battle_arena.EventData) {
+	if ed.WarMachineQueue == nil {
+		return
+	}
+	api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionWarMachineQueueUpdated, ed.WarMachineQueue.FactionID)), ed.WarMachineQueue.WarMachines)
 }

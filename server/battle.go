@@ -36,6 +36,11 @@ type DamageRecord struct {
 	SourceName         string         `json:"sourceName,omitempty"` // The name of the weapon / damage causer (in-case of now TokenID)
 }
 
+type FactionWarMachineQueue struct {
+	FactionID  FactionID `json:"factionID"`
+	QueueTotal int       `json:"queueTotal"`
+}
+
 type BattleState string
 
 const (

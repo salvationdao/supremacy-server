@@ -34,11 +34,18 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID) 
 			// get all the war machines
 			tempList = append(tempList, wmq.WarMachines...)
 
+			// cache included user
+			includedUserID := []server.UserID{}
+			for _, tl := range tempList {
+				includedUserID = append(includedUserID, tl.OwnedByID)
+			}
+
 			// clear up the queuing list
 			wmq.WarMachines = []*server.WarMachineNFT{}
 
 			// add default war machine to meet the total amount
 			for len(tempList) < MaxInGameWarmachinePerFaction {
+
 				amountToGet := MaxInGameWarmachinePerFaction - len(tempList)
 				result, err := ba.passport.GetDefaultWarMachines(ctx, factionID, amountToGet)
 				if err != nil {
@@ -50,11 +57,16 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID) 
 				time.Sleep(200 * time.Microsecond)
 			}
 
-			// broadcast next 5 queuing war machines to twitch ui
-			// api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchFactionWarMachineQueueUpdated, factionID)), []*server.WarMachineNFT{})
+			// broadcast next 5 queuing war machines to game ui
+			ba.Events.Trigger(context.Background(), EventWarMachineQueueUpdated, &EventData{
+				WarMachineQueue: &WarMachineQueueUpdateEvent{
+					FactionID:   factionID,
+					WarMachines: []*server.WarMachineNFT{},
+				},
+			})
 
 			// broadcast empty queue for all the passport client
-			ba.passport.WarMachineQueuePositionClear(context.Background(), factionID)
+			ba.passport.WarMachineQueuePositionBroadcast(context.Background(), ba.BuildUserWarMachineQueuePosition(wmq.WarMachines, tempList, includedUserID...))
 
 			inGameWarMachinesChan <- tempList
 			return
@@ -65,19 +77,30 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID) 
 			tempList = append(tempList, wmq.WarMachines[i])
 		}
 
+		// cache included user
+		includedUserID := []server.UserID{}
+		for _, tl := range tempList {
+			includedUserID = append(includedUserID, tl.OwnedByID)
+		}
+
 		// delete it from the queue list
 		wmq.WarMachines = wmq.WarMachines[MaxInGameWarmachinePerFaction-1:]
 
-		//// broadcast next 5 queuing war machines to twitch ui
-		//maxLength := 5
-		//if len(wmq.WarMachines) < maxLength {
-		//	maxLength = len(wmq.WarMachines)
-		//}
+		// broadcast next 5 queuing war machines to twitch ui
+		maxLength := 5
+		if len(wmq.WarMachines) < maxLength {
+			maxLength = len(wmq.WarMachines)
+		}
 
-		//api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTwitchFactionWarMachineQueueUpdated, factionID)), wmq.WarMachines[:maxLength])
+		ba.Events.Trigger(context.Background(), EventWarMachineQueueUpdated, &EventData{
+			WarMachineQueue: &WarMachineQueueUpdateEvent{
+				FactionID:   factionID,
+				WarMachines: wmq.WarMachines[:maxLength],
+			},
+		})
 
 		// broadcast war machine queue position update
-		ba.passport.WarMachineQueuePositionBroadcast(context.Background(), BuildUserWarMachineQueuePosition(wmq.WarMachines))
+		ba.passport.WarMachineQueuePositionBroadcast(context.Background(), ba.BuildUserWarMachineQueuePosition(wmq.WarMachines, tempList, includedUserID...))
 
 		// return the war machines
 		inGameWarMachinesChan <- tempList
@@ -86,10 +109,12 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID) 
 	return <-inGameWarMachinesChan
 }
 
-func BuildUserWarMachineQueuePosition(wmn []*server.WarMachineNFT) []*passport.UserWarMachineQueuePosition {
-	var result []*passport.UserWarMachineQueuePosition
+func (ba *BattleArena) BuildUserWarMachineQueuePosition(queuingList []*server.WarMachineNFT, pendingList []*server.WarMachineNFT, mustIncludeUserIDs ...server.UserID) []*passport.UserWarMachineQueuePosition {
+	result := []*passport.UserWarMachineQueuePosition{}
 	queuePositionMap := make(map[server.UserID][]*passport.WarMachineQueuePosition)
-	for i, wm := range wmn {
+
+	// from queuing list
+	for i, wm := range queuingList {
 		qp, ok := queuePositionMap[wm.OwnedByID]
 		if !ok {
 			qp = []*passport.WarMachineQueuePosition{}
@@ -102,15 +127,59 @@ func BuildUserWarMachineQueuePosition(wmn []*server.WarMachineNFT) []*passport.U
 		queuePositionMap[wm.OwnedByID] = qp
 	}
 
-	if len(queuePositionMap) == 0 {
-		return []*passport.UserWarMachineQueuePosition{}
+	// from pending list
+	for _, wm := range pendingList {
+		qp, ok := queuePositionMap[wm.OwnedByID]
+		if !ok {
+			qp = []*passport.WarMachineQueuePosition{}
+		}
+
+		qp = append(qp, &passport.WarMachineQueuePosition{
+			WarMachineNFT: wm,
+			Position:      -1,
+		})
+		queuePositionMap[wm.OwnedByID] = qp
 	}
 
-	for userID, qp := range queuePositionMap {
-		result = append(result, &passport.UserWarMachineQueuePosition{
-			UserID:                   userID,
-			WarMachineQueuePositions: qp,
+	// from in game list
+	for _, wm := range ba.battle.WarMachines {
+		qp, ok := queuePositionMap[wm.OwnedByID]
+		if !ok {
+			qp = []*passport.WarMachineQueuePosition{}
+		}
+
+		qp = append(qp, &passport.WarMachineQueuePosition{
+			WarMachineNFT: wm,
+			Position:      -1,
 		})
+
+		queuePositionMap[wm.OwnedByID] = qp
+	}
+
+	if len(queuePositionMap) > 0 {
+		for userID, qp := range queuePositionMap {
+			result = append(result, &passport.UserWarMachineQueuePosition{
+				UserID:                   userID,
+				WarMachineQueuePositions: qp,
+			})
+		}
+	}
+
+	if len(mustIncludeUserIDs) > 0 {
+		for _, uid := range mustIncludeUserIDs {
+			exists := false
+			for _, r := range result {
+				if r.UserID == uid {
+					exists = true
+				}
+			}
+			if !exists {
+				result = append(result, &passport.UserWarMachineQueuePosition{
+					UserID:                   uid,
+					WarMachineQueuePositions: []*passport.WarMachineQueuePosition{},
+				})
+			}
+		}
 	}
 
 	return result
