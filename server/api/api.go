@@ -95,7 +95,7 @@ type API struct {
 	votePriceSystem  *VotePriceSystem
 
 	// faction abilities
-	factionAbilityPool map[server.FactionID]chan func(FactionAbilitiesPool, *FactionAbilityPoolTicker)
+	gameAbilityPool map[server.FactionID]chan func(GameAbilitiesPool, *GameAbilityPoolTicker)
 
 	// viewer live count
 	viewerLiveCount chan func(ViewerLiveCount)
@@ -148,8 +148,8 @@ func NewAPI(
 		// ring check auth
 		ringCheckAuthChan: make(chan func(RingCheckAuthMap)),
 
-		// faction ability pool
-		factionAbilityPool: make(map[server.FactionID]chan func(FactionAbilitiesPool, *FactionAbilityPoolTicker)),
+		// game ability pool
+		gameAbilityPool: make(map[server.FactionID]chan func(GameAbilitiesPool, *GameAbilityPoolTicker)),
 
 		// faction viewer count
 		viewerLiveCount: make(chan func(ViewerLiveCount)),
@@ -258,9 +258,9 @@ func (api *API) SetupAfterConnections(conn *pgxpool.Pool) {
 		api.liveSupsSpend[faction.ID] = make(chan func(*LiveVotingData))
 		go api.startLiveVotingDataTicker(faction.ID)
 
-		// faction ability pool
-		api.factionAbilityPool[faction.ID] = make(chan func(FactionAbilitiesPool, *FactionAbilityPoolTicker))
-		go api.StartFactionAbilityPool(faction.ID, conn)
+		// game ability pool
+		api.gameAbilityPool[faction.ID] = make(chan func(GameAbilitiesPool, *GameAbilityPoolTicker))
+		go api.StartGameAbilityPool(faction.ID, conn)
 	}
 
 	// initialise vote price system
@@ -391,17 +391,16 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 				if nextUser == nil {
 					// if no winner left, enter cooldown phase
 					go api.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
-						Type: LocationSelectTypeCancelled,
+						Type: LocationSelectTypeCancelledDisconnect,
 						Ability: &AbilityBrief{
 							Label:    va.BattleAbility.Label,
 							ImageUrl: va.BattleAbility.ImageUrl,
 							Colour:   va.BattleAbility.Colour,
 						},
-						Reason: "DISCONNECTED",
 					})
 
 					// get random ability collection set
-					battleAbility, factionAbilityMap, err := api.BattleArena.RandomAbilityCollection()
+					battleAbility, factionAbilityMap, err := api.BattleArena.RandomBattleAbility()
 					if err != nil {
 						api.Log.Err(err)
 					}
@@ -411,7 +410,7 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 					// initialise new ability collection
 					va.BattleAbility = battleAbility
 
-					// initialise new faction ability map
+					// initialise new game ability map
 					for fid, ability := range factionAbilityMap {
 						va.FactionAbilityMap[fid] = ability
 					}
@@ -434,19 +433,18 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 
 				// otherwise announce another winner
 				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, winnerClientID)), &WinnerSelectAbilityLocation{
-					FactionAbility: *va.FactionAbilityMap[nextUser.FactionID],
-					EndTime:        vs.EndTime,
+					GameAbility: *va.FactionAbilityMap[nextUser.FactionID],
+					EndTime:     vs.EndTime,
 				})
 
 				// broadcast winner select location
 				go api.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
-					Type: LocationSelectTypeFailed,
+					Type: LocationSelectTypeFailedDisconnect,
 					Ability: &AbilityBrief{
 						Label:    va.BattleAbility.Label,
 						ImageUrl: va.BattleAbility.ImageUrl,
 						Colour:   va.BattleAbility.Colour,
 					},
-					Reason: "DISCONNECTED",
 					CurrentUser: &UserBrief{
 						Username: currentUser.Username,
 						AvatarID: currentUser.avatarID,

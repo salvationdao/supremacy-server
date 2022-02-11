@@ -53,8 +53,8 @@ CREATE TABLE battle_abilities(
     cooldown_duration_second int NOT NULL
 );
 
--- faction_abilities
-CREATE TABLE faction_abilities (
+-- game_abilities
+CREATE TABLE game_abilities (
     id uuid PRIMARY KEY NOT NULL DEFAULT gen_random_uuid (),
     game_client_ability_id int NOT NULL, -- gameclient uses byte/enum instead of uuid
     faction_id uuid NOT NULL,
@@ -99,12 +99,12 @@ CREATE TABLE battle_events_war_machine_destroyed_assisted_war_machines
     PRIMARY KEY (war_machine_destroyed_event_id, war_machine_id)
 );
 
--- battle_events_faction_ability
-CREATE TABLE battle_events_faction_ability
+-- battle_events_game_ability
+CREATE TABLE battle_events_game_ability
 (
     id                   uuid PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
     event_id             uuid             NOT NULL REFERENCES battle_events (id),
-    faction_ability_id   uuid             REFERENCES faction_abilities (id), -- not null if it is a faction abitliy
+    game_ability_id   uuid             REFERENCES game_abilities (id), -- not null if it is a faction abitliy
     ability_token_id     numeric(78, 0),                                     -- non-zero if it is a nft ability
     is_triggered         bool             NOT NULL DEFAULT FALSE,
     triggered_by_user_id text,

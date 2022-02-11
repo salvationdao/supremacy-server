@@ -61,54 +61,55 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 	// start voting cycle, initial intro time equal: (mech_count * 3 + 7) seconds
 	introSecond := len(warMachines)*3 + 7
 
-	go api.startVotingCycle(introSecond)
-
 	for factionID := range api.factionMap {
-		// get initial abilities
-		initialAbilities, err := db.FactionExclusiveAbilitiesByFactionID(api.ctx, api.BattleArena.Conn, factionID)
-		if err != nil {
-			api.Log.Err(err).Msg("Failed to query initial faction abilities")
-			return
-		}
-		for _, ab := range initialAbilities {
-			ab.Title = "FACTION_WIDE"
-			ab.CurrentSups = "0"
-		}
-
-		for _, wm := range ed.BattleArena.WarMachines {
-			if wm.FactionID != factionID || len(wm.Abilities) == 0 {
-				continue
+		go func(factionID server.FactionID) {
+			// get initial abilities
+			initialAbilities, err := db.FactionExclusiveAbilitiesByFactionID(api.ctx, api.BattleArena.Conn, factionID)
+			if err != nil {
+				api.Log.Err(err).Msg("Failed to query initial faction abilities")
+				return
+			}
+			for _, ab := range initialAbilities {
+				ab.Title = "FACTION_WIDE"
+				ab.CurrentSups = "0"
 			}
 
-			for _, ability := range wm.Abilities {
-				initialAbilities = append(initialAbilities, &server.FactionAbility{
-					ID:                  server.FactionAbilityID(uuid.Must(uuid.NewV4())), // generate a uuid for frontend to track sups contribution
-					GameClientAbilityID: byte(ability.GameClientID),
-					ImageUrl:            ability.Image,
-					FactionID:           factionID,
-					Label:               ability.Name,
-					SupsCost:            ability.SupsCost,
-					CurrentSups:         "0",
-					AbilityTokenID:      ability.TokenID,
-					WarMachineTokenID:   wm.TokenID,
-					ParticipantID:       &wm.ParticipantID,
-					WarMachineName:      wm.Name,  // for game notification
-					WarMachineImage:     wm.Image, // for game notification
-					Title:               wm.Name,
-				})
-			}
-		}
+			for _, wm := range ed.BattleArena.WarMachines {
+				if wm.FactionID != factionID || len(wm.Abilities) == 0 {
+					continue
+				}
 
-		go api.startFactionAbilityPoolTicker(factionID, initialAbilities, introSecond)
+				for _, ability := range wm.Abilities {
+					initialAbilities = append(initialAbilities, &server.GameAbility{
+						ID:                  server.GameAbilityID(uuid.Must(uuid.NewV4())), // generate a uuid for frontend to track sups contribution
+						GameClientAbilityID: byte(ability.GameClientID),
+						ImageUrl:            ability.Image,
+						FactionID:           factionID,
+						Label:               ability.Name,
+						SupsCost:            ability.SupsCost,
+						CurrentSups:         "0",
+						AbilityTokenID:      ability.TokenID,
+						WarMachineTokenID:   wm.TokenID,
+						ParticipantID:       &wm.ParticipantID,
+						WarMachineName:      wm.Name,  // for game notification
+						WarMachineImage:     wm.Image, // for game notification
+						Title:               wm.Name,
+					})
+				}
+			}
+
+			api.startGameAbilityPoolTicker(factionID, initialAbilities, introSecond)
+		}(factionID)
 	}
 
+	go api.startVotingCycle(introSecond)
 }
 
 // BattleEndSignal terminate all the voting cycle
 func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData) {
 	// stop all the tickles in voting cycle
 	go api.stopVotingCycle()
-	go api.stopFactionAbilityPoolTicker()
+	go api.stopGameAbilityPoolTicker()
 
 	// parse battle reward list
 	api.Hub.Clients(func(clients hub.ClientsList) {

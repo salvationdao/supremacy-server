@@ -21,24 +21,24 @@ import (
 	"nhooyr.io/websocket"
 )
 
-type FactionAbilitiesPool map[server.FactionAbilityID]*FactionAbilityPrice
+type GameAbilitiesPool map[server.GameAbilityID]*GameAbilityPrice
 
-type FactionAbilityPrice struct {
-	FactionAbility *server.FactionAbility
+type GameAbilityPrice struct {
+	GameAbility    *server.GameAbility
 	MaxTargetPrice server.BigInt
 	TargetPrice    server.BigInt
 	CurrentSups    server.BigInt
 	TxRefs         []server.TransactionReference
 }
 
-type FactionAbilityPoolTicker struct {
+type GameAbilityPoolTicker struct {
 	TargetPriceUpdater     *tickle.Tickle
 	TargetPriceBroadcaster *tickle.Tickle
 }
 
-func (api *API) StartFactionAbilityPool(factionID server.FactionID, conn *pgxpool.Pool) {
-	// initial faction ability
-	factionAbilitiesPool := make(FactionAbilitiesPool)
+func (api *API) StartGameAbilityPool(factionID server.FactionID, conn *pgxpool.Pool) {
+	// initial game ability
+	factionAbilitiesPool := make(GameAbilitiesPool)
 
 	// initialise target price ticker
 	tickle.MinDurationOverride = true
@@ -51,13 +51,13 @@ func (api *API) StartFactionAbilityPool(factionID server.FactionID, conn *pgxpoo
 	AbilityTargetPriceBroadcaster := tickle.New("Ability target price Broadcaster", 0.5, api.abilityTargetPriceBroadcasterFactory(factionID))
 	AbilityTargetPriceBroadcaster.Log = &AbilityTargetPriceBroadcasterLogger
 
-	ts := &FactionAbilityPoolTicker{
+	ts := &GameAbilityPoolTicker{
 		TargetPriceUpdater:     AbilityTargetPriceUpdater,
 		TargetPriceBroadcaster: AbilityTargetPriceBroadcaster,
 	}
 
 	for {
-		for fn := range api.factionAbilityPool[factionID] {
+		for fn := range api.gameAbilityPool[factionID] {
 			fn(factionAbilitiesPool, ts)
 		}
 	}
@@ -71,7 +71,7 @@ func (api *API) abilityTargetPriceUpdaterFactory(factionID server.FactionID, con
 		errChan := make(chan error)
 
 		// update ability target price
-		api.factionAbilityPool[factionID] <- func(fap FactionAbilitiesPool, fapt *FactionAbilityPoolTicker) {
+		api.gameAbilityPool[factionID] <- func(fap GameAbilitiesPool, fapt *GameAbilityPoolTicker) {
 			targetPriceList := []string{}
 			for _, fa := range fap {
 				// in order to reduce price by half after 5 minutes
@@ -119,48 +119,48 @@ func (api *API) abilityTargetPriceUpdaterFactory(factionID server.FactionID, con
 					}
 					fa.TxRefs = []server.TransactionReference{}
 
-					abilityTriggerEvent := &server.FactionAbilityEvent{
+					abilityTriggerEvent := &server.GameAbilityEvent{
 						IsTriggered:         true,
-						GameClientAbilityID: fa.FactionAbility.GameClientAbilityID,
-						ParticipantID:       fa.FactionAbility.ParticipantID,
+						GameClientAbilityID: fa.GameAbility.GameClientAbilityID,
+						ParticipantID:       fa.GameAbility.ParticipantID,
 					}
-					if fa.FactionAbility.AbilityTokenID == 0 {
-						abilityTriggerEvent.FactionAbilityID = &fa.FactionAbility.ID
+					if fa.GameAbility.AbilityTokenID == 0 {
+						abilityTriggerEvent.GameAbilityID = &fa.GameAbility.ID
 					} else {
-						abilityTriggerEvent.AbilityTokenID = &fa.FactionAbility.AbilityTokenID
+						abilityTriggerEvent.AbilityTokenID = &fa.GameAbility.AbilityTokenID
 					}
 
-					// trigger battle arena function to handle faction ability
-					err = api.BattleArena.FactionAbilityTrigger(abilityTriggerEvent)
+					// trigger battle arena function to handle game ability
+					err = api.BattleArena.GameAbilityTrigger(abilityTriggerEvent)
 					if err != nil {
 						targetPriceChan <- ""
 						errChan <- terror.Error(err)
 						return
 					}
 
-					if fa.FactionAbility.AbilityTokenID == 0 {
+					if fa.GameAbility.AbilityTokenID == 0 {
 						go api.BroadcastGameNotificationAbility(GameNotificationTypeFactionAbility, &GameNotificationAbility{
 							Ability: &AbilityBrief{
-								Label:    fa.FactionAbility.Label,
-								ImageUrl: fa.FactionAbility.ImageUrl,
-								Colour:   fa.FactionAbility.Colour,
+								Label:    fa.GameAbility.Label,
+								ImageUrl: fa.GameAbility.ImageUrl,
+								Colour:   fa.GameAbility.Colour,
 							},
 						})
 					} else {
 						// broadcast notification
 						go api.BroadcastGameNotificationWarMachineAbility(&GameNotificationWarMachineAbility{
 							Ability: &AbilityBrief{
-								Label:    fa.FactionAbility.Label,
-								ImageUrl: fa.FactionAbility.ImageUrl,
-								Colour:   fa.FactionAbility.Colour,
+								Label:    fa.GameAbility.Label,
+								ImageUrl: fa.GameAbility.ImageUrl,
+								Colour:   fa.GameAbility.Colour,
 							},
 							WarMachine: &WarMachineBrief{
-								Name:     fa.FactionAbility.WarMachineName,
-								ImageUrl: fa.FactionAbility.WarMachineImage,
+								Name:     fa.GameAbility.WarMachineName,
+								ImageUrl: fa.GameAbility.WarMachineImage,
 								Faction: &FactionBrief{
-									Label:      api.factionMap[fa.FactionAbility.FactionID].Label,
-									Theme:      api.factionMap[fa.FactionAbility.FactionID].Theme,
-									LogoBlobID: api.factionMap[fa.FactionAbility.FactionID].LogoBlobID,
+									Label:      api.factionMap[fa.GameAbility.FactionID].Label,
+									Theme:      api.factionMap[fa.GameAbility.FactionID].Theme,
+									LogoBlobID: api.factionMap[fa.GameAbility.FactionID].LogoBlobID,
 								},
 							},
 						})
@@ -170,15 +170,15 @@ func (api *API) abilityTargetPriceUpdaterFactory(factionID server.FactionID, con
 				}
 
 				// record current price
-				targetPriceList = append(targetPriceList, fmt.Sprintf("%s_%s_%s_%d", fa.FactionAbility.ID, fa.TargetPrice.String(), fa.CurrentSups.String(), hasTriggered))
+				targetPriceList = append(targetPriceList, fmt.Sprintf("%s_%s_%s_%d", fa.GameAbility.ID, fa.TargetPrice.String(), fa.CurrentSups.String(), hasTriggered))
 
 				// store new target price to passport server, if the ability is nft
-				if fa.FactionAbility.AbilityTokenID != 0 && fa.FactionAbility.WarMachineTokenID != 0 {
-					api.Passport.AbilityUpdateTargetPrice(api.ctx, fa.FactionAbility.AbilityTokenID, fa.FactionAbility.WarMachineTokenID, fa.TargetPrice.String())
+				if fa.GameAbility.AbilityTokenID != 0 && fa.GameAbility.WarMachineTokenID != 0 {
+					api.Passport.AbilityUpdateTargetPrice(api.ctx, fa.GameAbility.AbilityTokenID, fa.GameAbility.WarMachineTokenID, fa.TargetPrice.String())
 				} else {
 					// update sups cost of the ability in db
-					fa.FactionAbility.SupsCost = fa.TargetPrice.String()
-					err := db.FactionExclusiveAbilitiesSupsCostUpdate(api.ctx, conn, fa.FactionAbility)
+					fa.GameAbility.SupsCost = fa.TargetPrice.String()
+					err := db.FactionExclusiveAbilitiesSupsCostUpdate(api.ctx, conn, fa.GameAbility)
 					if err != nil {
 						targetPriceChan <- ""
 						errChan <- terror.Error(err)
@@ -238,10 +238,10 @@ func (api *API) abilityTargetPriceBroadcasterFactory(factionID server.FactionID)
 	return func() (int, error) {
 		// get current target price data
 		targetPriceChan := make(chan string)
-		api.factionAbilityPool[factionID] <- func(fap FactionAbilitiesPool, fapt *FactionAbilityPoolTicker) {
+		api.gameAbilityPool[factionID] <- func(fap GameAbilitiesPool, fapt *GameAbilityPoolTicker) {
 			targetPriceList := []string{}
 			for _, fa := range fap {
-				targetPriceList = append(targetPriceList, fmt.Sprintf("%s_%s_%s_%d", fa.FactionAbility.ID, fa.TargetPrice.String(), fa.CurrentSups.String(), 0))
+				targetPriceList = append(targetPriceList, fmt.Sprintf("%s_%s_%s_%d", fa.GameAbility.ID, fa.TargetPrice.String(), fa.CurrentSups.String(), 0))
 			}
 			targetPriceChan <- strings.Join(targetPriceList, "|")
 		}
@@ -280,19 +280,30 @@ func (api *API) abilityTargetPriceBroadcasterFactory(factionID server.FactionID)
 	}
 }
 
-func (api *API) startFactionAbilityPoolTicker(factionID server.FactionID, initialAbilities []*server.FactionAbility, introSecond int) {
-	// start faction ability pool ticker after mech intro
+func (api *API) startGameAbilityPoolTicker(factionID server.FactionID, initialAbilities []*server.GameAbility, introSecond int) {
+	// start game ability pool ticker after mech intro
 	time.Sleep(time.Duration(introSecond) * time.Second)
 
-	api.factionAbilityPool[factionID] <- func(fap FactionAbilitiesPool, fapt *FactionAbilityPoolTicker) {
+	api.gameAbilityPool[factionID] <- func(fap GameAbilitiesPool, fapt *GameAbilityPoolTicker) {
 		// set initial ability
+		factionAbilities := []*server.GameAbility{}
+		warMachineAbilities := make(map[byte][]*server.GameAbility)
 		for _, ability := range initialAbilities {
-			fap[ability.ID] = &FactionAbilityPrice{
-				FactionAbility: ability,
+			fap[ability.ID] = &GameAbilityPrice{
+				GameAbility:    ability,
 				MaxTargetPrice: server.BigInt{Int: *big.NewInt(0)},
 				TargetPrice:    server.BigInt{Int: *big.NewInt(0)},
 				CurrentSups:    server.BigInt{Int: *big.NewInt(0)},
 				TxRefs:         []server.TransactionReference{},
+			}
+
+			if ability.AbilityTokenID == 0 {
+				factionAbilities = append(factionAbilities, ability)
+			} else {
+				if _, ok := warMachineAbilities[*ability.ParticipantID]; !ok {
+					warMachineAbilities[*ability.ParticipantID] = []*server.GameAbility{}
+				}
+				warMachineAbilities[*ability.ParticipantID] = append(warMachineAbilities[*ability.ParticipantID], ability)
 			}
 
 			// calc target price
@@ -307,8 +318,15 @@ func (api *API) startFactionAbilityPoolTicker(factionID server.FactionID, initia
 			fap[ability.ID].MaxTargetPrice.Add(&fap[ability.ID].MaxTargetPrice.Int, initialTargetPrice)
 		}
 
-		// broadcast ability
-		api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionAbilitiesUpdated, factionID)), initialAbilities)
+		// broadcast abilities
+		if len(factionAbilities) > 0 {
+			api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionAbilitiesUpdated, factionID)), factionAbilities)
+		}
+
+		// broadcast war machine ability
+		for participantID, abilities := range warMachineAbilities {
+			api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s:%x", HubKeyWarMachineAbilitiesUpdated, factionID, participantID)), abilities)
+		}
 
 		// start all the tickles
 		fapt.TargetPriceUpdater.Start()
@@ -316,9 +334,9 @@ func (api *API) startFactionAbilityPoolTicker(factionID server.FactionID, initia
 	}
 }
 
-func (api *API) stopFactionAbilityPoolTicker() {
+func (api *API) stopGameAbilityPoolTicker() {
 	for factionID := range api.factionMap {
-		api.factionAbilityPool[factionID] <- func(fap FactionAbilitiesPool, fapt *FactionAbilityPoolTicker) {
+		api.gameAbilityPool[factionID] <- func(fap GameAbilitiesPool, fapt *GameAbilityPoolTicker) {
 			// stop all the tickles
 			if fapt.TargetPriceUpdater.NextTick != nil {
 				fapt.TargetPriceUpdater.Stop()

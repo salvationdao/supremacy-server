@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"server"
+	"server/battle_arena"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/log_helpers"
@@ -31,6 +32,7 @@ func NewGameController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *GameC
 
 	api.Command(HubKeyFactionColour, gameHub.FactionColour)
 	api.SubscribeCommand(HubKeyWarMachineDestroyedUpdated, gameHub.WarMachineDestroyedUpdateSubscribeHandler)
+	api.SecureUserFactionSubscribeCommand(HubKeyFactionWarMachineQueueUpdated, gameHub.FactionWarMachineQueueUpdateSubscribeHandler)
 
 	return gameHub
 }
@@ -84,6 +86,41 @@ func (gc *GameControllerWS) WarMachineDestroyedUpdateSubscribeHandler(ctx contex
 	return req.TransactionID, busKey, nil
 }
 
+const HubKeyFactionWarMachineQueueUpdated hub.HubCommandKey = "FACTION:WAR:MACHINE:QUEUE:UPDATED"
+
+// FactionWarMachineQueueUpdateSubscribeHandler
+func (gc *GameControllerWS) FactionWarMachineQueueUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return "", "", terror.Error(err, "Invalid request received")
+	}
+
+	// get hub client
+	hcd, err := gc.API.getClientDetailFromChannel(wsc)
+	if err != nil {
+		return "", "", terror.Error(err)
+	}
+
+	if battleQueue, ok := gc.API.BattleArena.BattleQueueMap[hcd.FactionID]; ok {
+		battleQueue <- func(wmql *battle_arena.WarMachineQueuingList) {
+			maxLength := 5
+			if len(wmql.WarMachines) < maxLength {
+				maxLength = len(wmql.WarMachines)
+			}
+
+			reply(wmql.WarMachines[:maxLength])
+		}
+	}
+
+	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionWarMachineQueueUpdated, hcd.FactionID))
+
+	return req.TransactionID, busKey, nil
+}
+
+/**********************
+*  Game Notification  *
+**********************/
 type GameNotificationType string
 
 const (
@@ -127,19 +164,20 @@ type GameNotificationKill struct {
 type LocationSelectType string
 
 const (
-	LocationSelectTypeFailed    = "FAILED"
-	LocationSelectTypeCancelled = "CANCELLED"
-	LocationSelectTypeTrigger   = "TRIGGER"
+	LocationSelectTypeFailedDisconnect    = "FAILED_DISCONNECT"
+	LocationSelectTypeFailedTimeout       = "FAILED_TIMEOUT"
+	LocationSelectTypeCancelledNoPlayer   = "CANCELLED_NO_PLAYER"
+	LocationSelectTypeCancelledDisconnect = "CANCELLED_DISCONNECT"
+	LocationSelectTypeTrigger             = "TRIGGER"
 )
 
 type GameNotificationLocationSelect struct {
 	Type        LocationSelectType `json:"type"`
 	X           *int               `json:"x,omitempty"`
 	Y           *int               `json:"y,omitempty"`
-	CurrentUser *UserBrief         `json:"CurrentUser,omitempty"`
+	CurrentUser *UserBrief         `json:"currentUser,omitempty"`
 	NextUser    *UserBrief         `json:"nextUser,omitempty"`
 	Ability     *AbilityBrief      `json:"ability,omitempty"`
-	Reason      string             `json:"reason"` // announce failed to pick reason
 }
 
 type GameNotificationAbility struct {

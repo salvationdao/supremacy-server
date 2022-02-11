@@ -178,8 +178,8 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 
 		// announce winner
 		vc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, userID)), &WinnerSelectAbilityLocation{
-			FactionAbility: *va.FactionAbilityMap[hcd.FactionID],
-			EndTime:        vs.EndTime,
+			GameAbility: *va.FactionAbilityMap[hcd.FactionID],
+			EndTime:     vs.EndTime,
 		})
 
 		// broadcast current stage to faction users
@@ -287,8 +287,8 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 		userIDString := userID.String()
 		selectedX := req.Payload.XIndex
 		selectedY := req.Payload.YIndex
-		err = vc.API.BattleArena.FactionAbilityTrigger(&server.FactionAbilityEvent{
-			FactionAbilityID:    &va.FactionAbilityMap[hcd.FactionID].ID,
+		err = vc.API.BattleArena.GameAbilityTrigger(&server.GameAbilityEvent{
+			GameAbilityID:       &va.FactionAbilityMap[hcd.FactionID].ID,
 			IsTriggered:         true,
 			GameClientAbilityID: va.FactionAbilityMap[hcd.FactionID].GameClientAbilityID,
 			TriggeredByUserID:   &userIDString,
@@ -302,7 +302,7 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 		}
 
 		// get random ability collection set
-		battleAbility, factionAbilityMap, err := vc.API.BattleArena.RandomAbilityCollection()
+		battleAbility, factionAbilityMap, err := vc.API.BattleArena.RandomBattleAbility()
 		if err != nil {
 			errChan <- terror.Error(err)
 			return
@@ -313,7 +313,7 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 		// initialise new ability collection
 		va.BattleAbility = battleAbility
 
-		// initialise new faction ability map
+		// initialise new game ability map
 		for fid, ability := range factionAbilityMap {
 			va.FactionAbilityMap[fid] = ability
 		}

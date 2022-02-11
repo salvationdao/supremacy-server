@@ -78,7 +78,7 @@ var SharedAbilityCollections = []*server.BattleAbility{
 	},
 }
 
-var SharedFactionAbilities = []*server.FactionAbility{
+var SharedFactionAbilities = []*server.GameAbility{
 	// FactionIDZaibatsu
 	{
 		Label:               "AIRSTRIKE",
@@ -156,7 +156,7 @@ var SharedFactionAbilities = []*server.FactionAbility{
 	},
 }
 
-var FactionSpecificAbilities = []*server.FactionAbility{
+var FactionSpecificAbilities = []*server.GameAbility{
 	{
 		Label:               "AIRSTRIKE",
 		FactionID:           FactionIDRedMountain,
@@ -198,7 +198,7 @@ func factionAbilities(ctx context.Context, conn *pgxpool.Pool) error {
 				ability.BattleAbilityID = &battleAbility.ID
 			}
 		}
-		err := db.FactionAbilityCreate(ctx, conn, ability)
+		err := db.GameAbilityCreate(ctx, conn, ability)
 		if err != nil {
 			return terror.Error(err)
 		}
@@ -206,11 +206,11 @@ func factionAbilities(ctx context.Context, conn *pgxpool.Pool) error {
 	}
 
 	// insert red mountain faction abilities
-	for _, factionAbility := range FactionSpecificAbilities {
-		factionAbility.FactionID = server.RedMountainFactionID
-		factionAbility.GameClientAbilityID = byte(gameclientID)
+	for _, gameAbility := range FactionSpecificAbilities {
+		gameAbility.FactionID = server.RedMountainFactionID
+		gameAbility.GameClientAbilityID = byte(gameclientID)
 
-		err := db.FactionAbilityCreate(ctx, conn, factionAbility)
+		err := db.GameAbilityCreate(ctx, conn, gameAbility)
 		if err != nil {
 			return terror.Error(err)
 		}
@@ -219,11 +219,11 @@ func factionAbilities(ctx context.Context, conn *pgxpool.Pool) error {
 	}
 
 	// insert boston faction abilities
-	for _, factionAbility := range FactionSpecificAbilities {
-		factionAbility.FactionID = server.BostonCyberneticsFactionID
-		factionAbility.GameClientAbilityID = byte(gameclientID)
+	for _, gameAbility := range FactionSpecificAbilities {
+		gameAbility.FactionID = server.BostonCyberneticsFactionID
+		gameAbility.GameClientAbilityID = byte(gameclientID)
 
-		err := db.FactionAbilityCreate(ctx, conn, factionAbility)
+		err := db.GameAbilityCreate(ctx, conn, gameAbility)
 		if err != nil {
 			return terror.Error(err)
 		}

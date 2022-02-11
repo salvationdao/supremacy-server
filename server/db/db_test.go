@@ -216,7 +216,7 @@ func TestDatabase(t *testing.T) {
 		}
 	})
 
-	factionAbility := &server.FactionAbility{
+	gameAbility := &server.GameAbility{
 		FactionID:           server.FactionID(uuid.Must(uuid.NewV4())),
 		GameClientAbilityID: 1,
 		Label:               "test action",
@@ -224,7 +224,7 @@ func TestDatabase(t *testing.T) {
 	}
 
 	t.Run("Create new faction action", func(t *testing.T) {
-		err := db.FactionAbilityCreate(ctx, conn, factionAbility)
+		err := db.GameAbilityCreate(ctx, conn, gameAbility)
 		if err != nil {
 			t.Errorf("fail to create new faction action\n")
 			t.Fatal()
@@ -259,14 +259,14 @@ func TestDatabase(t *testing.T) {
 		}
 	})
 
-	factionAbilityEvent := &server.FactionAbilityEvent{
-		FactionAbilityID: &factionAbility.ID,
-		IsTriggered:      false,
+	gameAbilityEvent := &server.GameAbilityEvent{
+		GameAbilityID: &gameAbility.ID,
+		IsTriggered:   false,
 	}
 
 	// add battle event
 	t.Run("Log faction action event", func(t *testing.T) {
-		err := db.FactionAbilityEventCreate(ctx, conn, battle.ID, factionAbilityEvent)
+		err := db.GameAbilityEventCreate(ctx, conn, battle.ID, gameAbilityEvent)
 		if err != nil {
 			fmt.Println(err)
 			t.Errorf("fail to log faction action event\n")

@@ -12,8 +12,8 @@ func (ba *BattleArena) SetFactionMap(factionMap map[server.FactionID]*server.Fac
 	ba.battle.FactionMap = factionMap
 }
 
-// RandomAbilityCollection return random ability collection and faction ability map
-func (ba *BattleArena) RandomAbilityCollection() (*server.BattleAbility, map[server.FactionID]*server.FactionAbility, error) {
+// RandomBattleAbility return random ability collection and game ability map
+func (ba *BattleArena) RandomBattleAbility() (*server.BattleAbility, map[server.FactionID]*server.GameAbility, error) {
 	// get random collection
 	battleAbility, err := db.AbilityCollectionGetRandom(ba.ctx, ba.Conn)
 	if err != nil {
@@ -27,7 +27,7 @@ func (ba *BattleArena) RandomAbilityCollection() (*server.BattleAbility, map[ser
 	}
 
 	// build ability map
-	factionAbilityMap := make(map[server.FactionID]*server.FactionAbility)
+	factionAbilityMap := make(map[server.FactionID]*server.GameAbility)
 	for _, ability := range abilities {
 		factionAbilityMap[ability.FactionID] = ability
 
@@ -41,10 +41,10 @@ func (ba *BattleArena) RandomAbilityCollection() (*server.BattleAbility, map[ser
 
 const BattleAbilityCommand = BattleCommand("BATTLE:ABILITY")
 
-func (ba *BattleArena) FactionAbilityTrigger(factionAbilityEvent *server.FactionAbilityEvent) error {
+func (ba *BattleArena) GameAbilityTrigger(gameAbilityEvent *server.GameAbilityEvent) error {
 	ctx := context.Background()
 
-	err := db.FactionAbilityEventCreate(ctx, ba.Conn, ba.battle.ID, factionAbilityEvent)
+	err := db.GameAbilityEventCreate(ctx, ba.Conn, ba.battle.ID, gameAbilityEvent)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -52,9 +52,9 @@ func (ba *BattleArena) FactionAbilityTrigger(factionAbilityEvent *server.Faction
 	// To get the location in game its
 	//  ((cellX * GameClientTileSize) + GameClientTileSize / 2) + LeftPixels
 	//  ((cellY * GameClientTileSize) + GameClientTileSize / 2) + TopPixels
-	if factionAbilityEvent.TriggeredOnCellX != nil && factionAbilityEvent.TriggeredOnCellY != nil {
-		factionAbilityEvent.GameLocation.X = ((*factionAbilityEvent.TriggeredOnCellX * server.GameClientTileSize) + (server.GameClientTileSize / 2)) + ba.battle.GameMap.LeftPixels
-		factionAbilityEvent.GameLocation.Y = ((*factionAbilityEvent.TriggeredOnCellY * server.GameClientTileSize) + (server.GameClientTileSize / 2)) + ba.battle.GameMap.TopPixels
+	if gameAbilityEvent.TriggeredOnCellX != nil && gameAbilityEvent.TriggeredOnCellY != nil {
+		gameAbilityEvent.GameLocation.X = ((*gameAbilityEvent.TriggeredOnCellX * server.GameClientTileSize) + (server.GameClientTileSize / 2)) + ba.battle.GameMap.LeftPixels
+		gameAbilityEvent.GameLocation.Y = ((*gameAbilityEvent.TriggeredOnCellY * server.GameClientTileSize) + (server.GameClientTileSize / 2)) + ba.battle.GameMap.TopPixels
 	}
 
 	// send new battle details to game client
@@ -62,7 +62,7 @@ func (ba *BattleArena) FactionAbilityTrigger(factionAbilityEvent *server.Faction
 
 	gameMessage := &GameMessage{
 		BattleCommand: BattleAbilityCommand,
-		Payload:       factionAbilityEvent,
+		Payload:       gameAbilityEvent,
 		context:       ctx,
 		cancel:        cancel,
 	}

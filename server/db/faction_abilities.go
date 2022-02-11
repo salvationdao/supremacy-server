@@ -30,25 +30,25 @@ func BattleAbilityCreate(ctx context.Context, conn Conn, battleAbility *server.B
 	return nil
 }
 
-// FactionAbilityCreate create a new faction action
-func FactionAbilityCreate(ctx context.Context, conn Conn, factionAbility *server.FactionAbility) error {
+// GameAbilityCreate create a new faction action
+func GameAbilityCreate(ctx context.Context, conn Conn, gameAbility *server.GameAbility) error {
 	q := `
 		INSERT INTO
-			faction_abilities (game_client_ability_id, faction_id, label, sups_cost, battle_ability_id, colour, image_url)
+			game_abilities (game_client_ability_id, faction_id, label, sups_cost, battle_ability_id, colour, image_url)
 		VALUES
 			($1, $2, $3, $4, $5, $6, $7)
 		RETURNING
 			id, game_client_ability_id, faction_id, label, sups_cost, battle_ability_id, colour, image_url
 	`
 
-	err := pgxscan.Get(ctx, conn, factionAbility, q,
-		factionAbility.GameClientAbilityID,
-		factionAbility.FactionID,
-		factionAbility.Label,
-		factionAbility.SupsCost,
-		factionAbility.BattleAbilityID,
-		factionAbility.Colour,
-		factionAbility.ImageUrl,
+	err := pgxscan.Get(ctx, conn, gameAbility, q,
+		gameAbility.GameClientAbilityID,
+		gameAbility.FactionID,
+		gameAbility.Label,
+		gameAbility.SupsCost,
+		gameAbility.BattleAbilityID,
+		gameAbility.Colour,
+		gameAbility.ImageUrl,
 	)
 	if err != nil {
 		return terror.Error(err)
@@ -73,11 +73,11 @@ func AbilityCollectionGetRandom(ctx context.Context, conn Conn) (*server.BattleA
 	return result, nil
 }
 
-// FactionAbilityGetByBattleAbilityID return faction ability by given collection id
-func FactionAbilityGetByBattleAbilityID(ctx context.Context, conn Conn, battleAbilityID server.BattleAbilityID) ([]*server.FactionAbility, error) {
-	result := []*server.FactionAbility{}
+// FactionAbilityGetByBattleAbilityID return game ability by given collection id
+func FactionAbilityGetByBattleAbilityID(ctx context.Context, conn Conn, battleAbilityID server.BattleAbilityID) ([]*server.GameAbility, error) {
+	result := []*server.GameAbility{}
 	q := `
-		SELECT * FROM faction_abilities
+		SELECT * FROM game_abilities
 		where battle_ability_id = $1;
 	`
 	err := pgxscan.Select(ctx, conn, &result, q, battleAbilityID)
@@ -89,10 +89,10 @@ func FactionAbilityGetByBattleAbilityID(ctx context.Context, conn Conn, battleAb
 }
 
 // FactionExclusiveAbilitiesByFactionID return exclusive abilities of a faction which is not battle abilities
-func FactionExclusiveAbilitiesByFactionID(ctx context.Context, conn Conn, factionID server.FactionID) ([]*server.FactionAbility, error) {
-	result := []*server.FactionAbility{}
+func FactionExclusiveAbilitiesByFactionID(ctx context.Context, conn Conn, factionID server.FactionID) ([]*server.GameAbility, error) {
+	result := []*server.GameAbility{}
 	q := `
-		SELECT * FROM faction_abilities
+		SELECT * FROM game_abilities
 		where faction_id = $1 AND battle_ability_id ISNULL;
 	`
 	err := pgxscan.Select(ctx, conn, &result, q, factionID)
@@ -104,18 +104,18 @@ func FactionExclusiveAbilitiesByFactionID(ctx context.Context, conn Conn, factio
 }
 
 // FactionExclusiveAbilitiesSupsCostUpdate update faction exclusive ability
-func FactionExclusiveAbilitiesSupsCostUpdate(ctx context.Context, conn Conn, factionAbility *server.FactionAbility) error {
+func FactionExclusiveAbilitiesSupsCostUpdate(ctx context.Context, conn Conn, gameAbility *server.GameAbility) error {
 	q := `
 		UPDATE 
-			faction_abilities
+			game_abilities
 		SET
 			sups_cost = $2
 		where 
 			id = $1;
 	`
 	_, err := conn.Exec(ctx, q,
-		factionAbility.ID,
-		factionAbility.SupsCost,
+		gameAbility.ID,
+		gameAbility.SupsCost,
 	)
 	if err != nil {
 		return terror.Error(err)

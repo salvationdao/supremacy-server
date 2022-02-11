@@ -327,55 +327,55 @@ func (id *FactionID) Scan(src interface{}) error {
 	return err
 }
 
-// FactionAbilityID aliases uuid.UUID.
-// Doing this prevents situations where you use FactionAbilityID where it doesn't belong.
-type FactionAbilityID uuid.UUID
+// GameAbilityID aliases uuid.UUID.
+// Doing this prevents situations where you use GameAbilityID where it doesn't belong.
+type GameAbilityID uuid.UUID
 
 // IsNil returns true for a nil uuid.
-func (id FactionAbilityID) IsNil() bool {
-	return id == FactionAbilityID{}
+func (id GameAbilityID) IsNil() bool {
+	return id == GameAbilityID{}
 }
 
 // String aliases UUID.String which returns a canonical RFC-4122 string representation of the UUID.
 // For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.String.
-func (id FactionAbilityID) String() string {
+func (id GameAbilityID) String() string {
 	return uuid.UUID(id).String()
 }
 
 // MarshalText aliases UUID.MarshalText which implements the encoding.TextMarshaler interface.
 // For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.MarshalText.
-func (id FactionAbilityID) MarshalText() ([]byte, error) {
+func (id GameAbilityID) MarshalText() ([]byte, error) {
 	return uuid.UUID(id).MarshalText()
 }
 
 // UnmarshalText aliases UUID.UnmarshalText which implements the encoding.TextUnmarshaler interface.
 // For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.UnmarshalText.
-func (id *FactionAbilityID) UnmarshalText(text []byte) error {
+func (id *GameAbilityID) UnmarshalText(text []byte) error {
 	// Convert to uuid.UUID
 	uid := uuid.UUID(*id)
 	// Unmarshal as uuid.UUID
 	err := uid.UnmarshalText(text)
 	// Convert back to original type
-	*id = FactionAbilityID(uid)
+	*id = GameAbilityID(uid)
 	// Retrun error
 	return err
 }
 
 // Value aliases UUID.Value which implements the driver.Valuer interface.
 // For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.Value.
-func (id FactionAbilityID) Value() (driver.Value, error) {
+func (id GameAbilityID) Value() (driver.Value, error) {
 	return uuid.UUID(id).Value()
 }
 
 // Scan implements the sql.Scanner interface.
 // For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.Scan.
-func (id *FactionAbilityID) Scan(src interface{}) error {
+func (id *GameAbilityID) Scan(src interface{}) error {
 	// Convert to uuid.UUID
 	uid := uuid.UUID(*id)
 	// Unmarshal as uuid.UUID
 	err := uid.Scan(src)
 	// Convert back to original type
-	*id = FactionAbilityID(uid)
+	*id = GameAbilityID(uid)
 	// Retrun error
 	return err
 }
@@ -482,53 +482,53 @@ func (id *WarMachineDestroyedEventID) Scan(src interface{}) error {
 	return err
 }
 
-type FactionAbilityEventID uuid.UUID
+type GameAbilityEventID uuid.UUID
 
 // IsNil returns true for a nil uuid.
-func (id FactionAbilityEventID) IsNil() bool {
-	return id == FactionAbilityEventID{}
+func (id GameAbilityEventID) IsNil() bool {
+	return id == GameAbilityEventID{}
 }
 
 // String aliases UUID.String which returns a canonical RFC-4122 string representation of the UUID.
 // For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.String.
-func (id FactionAbilityEventID) String() string {
+func (id GameAbilityEventID) String() string {
 	return uuid.UUID(id).String()
 }
 
 // MarshalText aliases UUID.MarshalText which implements the encoding.TextMarshaler interface.
 // For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.MarshalText.
-func (id FactionAbilityEventID) MarshalText() ([]byte, error) {
+func (id GameAbilityEventID) MarshalText() ([]byte, error) {
 	return uuid.UUID(id).MarshalText()
 }
 
 // UnmarshalText aliases UUID.UnmarshalText which implements the encoding.TextUnmarshaler interface.
 // For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.UnmarshalText.
-func (id *FactionAbilityEventID) UnmarshalText(text []byte) error {
+func (id *GameAbilityEventID) UnmarshalText(text []byte) error {
 	// Convert to uuid.UUID
 	uid := uuid.UUID(*id)
 	// Unmarshal as uuid.UUID
 	err := uid.UnmarshalText(text)
 	// Convert back to original type
-	*id = FactionAbilityEventID(uid)
+	*id = GameAbilityEventID(uid)
 	// Retrun error
 	return err
 }
 
 // Value aliases UUID.Value which implements the driver.Valuer interface.
 // For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.Value.
-func (id FactionAbilityEventID) Value() (driver.Value, error) {
+func (id GameAbilityEventID) Value() (driver.Value, error) {
 	return uuid.UUID(id).Value()
 }
 
 // Scan implements the sql.Scanner interface.
 // For more details see https://pkg.go.dev/github.com/gofrs/uuid#UUID.Scan.
-func (id *FactionAbilityEventID) Scan(src interface{}) error {
+func (id *GameAbilityEventID) Scan(src interface{}) error {
 	// Convert to uuid.UUID
 	uid := uuid.UUID(*id)
 	// Unmarshal as uuid.UUID
 	err := uid.Scan(src)
 	// Convert back to original type
-	*id = FactionAbilityEventID(uid)
+	*id = GameAbilityEventID(uid)
 	// Retrun error
 	return err
 }

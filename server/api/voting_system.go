@@ -464,7 +464,7 @@ type VoteStage struct {
 
 type VoteAbility struct {
 	BattleAbility     *server.BattleAbility
-	FactionAbilityMap map[server.FactionID]*server.FactionAbility
+	FactionAbilityMap map[server.FactionID]*server.GameAbility
 }
 
 type FactionUserVoteMap map[server.FactionID]map[server.UserID]map[server.TransactionReference]int64
@@ -485,8 +485,8 @@ type VoteWinner struct {
 }
 
 type WinnerSelectAbilityLocation struct {
-	FactionAbility server.FactionAbility `json:"factionAbility"`
-	EndTime        time.Time             `json:"endTime"`
+	GameAbility server.GameAbility `json:"gameAbility"`
+	EndTime     time.Time          `json:"endTime"`
 }
 
 /***********************
@@ -507,14 +507,14 @@ func (api *API) StartVotingCycle(factions []*server.Faction) {
 	// initialise vote ability
 	voteAbility := &VoteAbility{
 		BattleAbility:     &server.BattleAbility{},
-		FactionAbilityMap: make(map[server.FactionID]*server.FactionAbility),
+		FactionAbilityMap: make(map[server.FactionID]*server.GameAbility),
 	}
 
 	// initial faction user voting map
 	factionUserVoteMap := make(FactionUserVoteMap)
 	for _, f := range factions {
 		factionUserVoteMap[f.ID] = make(map[server.UserID]map[server.TransactionReference]int64)
-		voteAbility.FactionAbilityMap[f.ID] = &server.FactionAbility{}
+		voteAbility.FactionAbilityMap[f.ID] = &server.GameAbility{}
 	}
 
 	// initialise faction total vote
@@ -682,7 +682,7 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 			case VotePhaseWaitMechIntro:
 
 				// get random ability collection set
-				battleAbility, factionAbilityMap, err := api.BattleArena.RandomAbilityCollection()
+				battleAbility, factionAbilityMap, err := api.BattleArena.RandomBattleAbility()
 				if err != nil {
 					api.Log.Err(err)
 				}
@@ -692,7 +692,7 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 				// initialise new ability collection
 				va.BattleAbility = battleAbility
 
-				// initialise new faction ability map
+				// initialise new game ability map
 				for fid, ability := range factionAbilityMap {
 					va.FactionAbilityMap[fid] = ability
 				}
@@ -817,13 +817,12 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 				if hcd == nil {
 					// if no winner left, enter cooldown phase
 					go api.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
-						Type: LocationSelectTypeCancelled,
+						Type: LocationSelectTypeCancelledNoPlayer,
 						Ability: &AbilityBrief{
 							Label:    va.BattleAbility.Label,
 							ImageUrl: va.BattleAbility.ImageUrl,
 							Colour:   va.BattleAbility.Colour,
 						},
-						Reason: "NO_PLAYER_SELECT_LOCATION",
 					})
 
 					// voting phase change
@@ -856,8 +855,8 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 
 				// announce winner
 				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, winnerClientID)), &WinnerSelectAbilityLocation{
-					FactionAbility: *va.FactionAbilityMap[hcd.FactionID],
-					EndTime:        vs.EndTime,
+					GameAbility: *va.FactionAbilityMap[hcd.FactionID],
+					EndTime:     vs.EndTime,
 				})
 
 				// broadcast current stage to faction users
@@ -886,17 +885,16 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 				if nextUser == nil {
 					// if no winner left, enter cooldown phase
 					go api.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
-						Type: LocationSelectTypeCancelled,
+						Type: LocationSelectTypeCancelledNoPlayer,
 						Ability: &AbilityBrief{
 							Label:    va.BattleAbility.Label,
 							ImageUrl: va.BattleAbility.ImageUrl,
 							Colour:   va.BattleAbility.Colour,
 						},
-						Reason: "NO_PLAYER",
 					})
 
 					// get random ability collection set
-					battleAbility, factionAbilityMap, err := api.BattleArena.RandomAbilityCollection()
+					battleAbility, factionAbilityMap, err := api.BattleArena.RandomBattleAbility()
 					if err != nil {
 						api.Log.Err(err)
 					}
@@ -906,7 +904,7 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 					// initialise new ability collection
 					va.BattleAbility = battleAbility
 
-					// initialise new faction ability map
+					// initialise new game ability map
 					for fid, ability := range factionAbilityMap {
 						va.FactionAbilityMap[fid] = ability
 					}
@@ -929,19 +927,18 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 
 				// otherwise announce another winner
 				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, winnerClientID)), &WinnerSelectAbilityLocation{
-					FactionAbility: *va.FactionAbilityMap[nextUser.FactionID],
-					EndTime:        vs.EndTime,
+					GameAbility: *va.FactionAbilityMap[nextUser.FactionID],
+					EndTime:     vs.EndTime,
 				})
 
 				// broadcast winner select location
 				go api.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
-					Type: LocationSelectTypeFailed,
+					Type: LocationSelectTypeFailedTimeout,
 					Ability: &AbilityBrief{
 						Label:    va.BattleAbility.Label,
 						ImageUrl: va.BattleAbility.ImageUrl,
 						Colour:   va.BattleAbility.Colour,
 					},
-					Reason: "TIMEOUT",
 					CurrentUser: &UserBrief{
 						Username: currentUser.Username,
 						AvatarID: currentUser.avatarID,

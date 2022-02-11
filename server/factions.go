@@ -31,8 +31,8 @@ type BattleAbility struct {
 	ImageUrl               string          `json:"imageUrl"`
 }
 
-type FactionAbility struct {
-	ID                  FactionAbilityID `json:"id" db:"id"`
+type GameAbility struct {
+	ID                  GameAbilityID    `json:"id" db:"id"`
 	GameClientAbilityID byte             `json:"gameClientAbilityID" db:"game_client_ability_id"`
 	BattleAbilityID     *BattleAbilityID `json:"battleAbilityID,omitempty" db:"battle_ability_id,omitempty"`
 	Colour              string           `json:"colour" db:"colour"`

@@ -35,27 +35,26 @@ func NewFactionController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Fa
 		API:  api,
 	}
 
-	api.SecureUserFactionCommand(HubKeyFactionAbilityContribute, factionHub.FactionAbilityContribute)
+	api.SecureUserFactionCommand(HubKeGameyAbilityContribute, factionHub.GameAbilityContribute)
 
 	// subscription
 	api.SecureUserFactionSubscribeCommand(HubKeyFactionAbilitiesUpdated, factionHub.FactionAbilitiesUpdateSubscribeHandler)
-	api.SecureUserFactionSubscribeCommand(HubKeyFactionWarMachineQueueUpdated, factionHub.FactionWarMachineQueueUpdateSubscribeHandler)
-
+	api.SecureUserFactionSubscribeCommand(HubKeyWarMachineAbilitiesUpdated, factionHub.WarMachineAbilitiesUpdateSubscribeHandler)
 	return factionHub
 }
 
-type FactionAbilityContributeRequest struct {
+type GameAbilityContributeRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		FactionAbilityID server.FactionAbilityID `json:"factionAbilityID"`
-		Amount           server.BigInt           `json:"amount"`
+		GameAbilityID server.GameAbilityID `json:"gameAbilityID"`
+		Amount        server.BigInt        `json:"amount"`
 	} `json:"payload"`
 }
 
-const HubKeyFactionAbilityContribute hub.HubCommandKey = "FACTION:ABILITY:CONTRIBUTE"
+const HubKeGameyAbilityContribute hub.HubCommandKey = "GAME:ABILITY:CONTRIBUTE"
 
-func (fc *FactionControllerWS) FactionAbilityContribute(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	req := &FactionAbilityContributeRequest{}
+func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &GameAbilityContributeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received")
@@ -90,9 +89,9 @@ func (fc *FactionControllerWS) FactionAbilityContribute(ctx context.Context, wsc
 
 	targetPriceChan := make(chan string)
 	errChan := make(chan error)
-	fc.API.factionAbilityPool[factionID] <- func(fap FactionAbilitiesPool, fapt *FactionAbilityPoolTicker) {
+	fc.API.gameAbilityPool[factionID] <- func(fap GameAbilitiesPool, fapt *GameAbilityPoolTicker) {
 		// find ability
-		fa, ok := fap[req.Payload.FactionAbilityID]
+		fa, ok := fap[req.Payload.GameAbilityID]
 		if !ok {
 			targetPriceChan <- ""
 			errChan <- terror.Error(terror.ErrInvalidInput, "Target ability does not exists")
@@ -100,7 +99,7 @@ func (fc *FactionControllerWS) FactionAbilityContribute(ctx context.Context, wsc
 		}
 
 		// check sups
-		reason := fmt.Sprintf("battle:%s|faction_ability_contribution:%s", fc.API.BattleArena.CurrentBattleID(), req.Payload.FactionAbilityID)
+		reason := fmt.Sprintf("battle:%s|game_ability_contribution:%s", fc.API.BattleArena.CurrentBattleID(), req.Payload.GameAbilityID)
 		supTransactionReference, err := fc.API.Passport.SendHoldSupsMessage(context.Background(), userID, req.Payload.Amount, req.TransactionID, reason)
 		if err != nil {
 			targetPriceChan <- ""
@@ -156,13 +155,13 @@ func (fc *FactionControllerWS) FactionAbilityContribute(ctx context.Context, wsc
 		fa.CurrentSups = server.BigInt{Int: *big.NewInt(0)}
 
 		// update sups cost of the ability in db
-		fa.FactionAbility.SupsCost = fa.TargetPrice.String()
+		fa.GameAbility.SupsCost = fa.TargetPrice.String()
 
 		// store new target price to passport server, if the ability is nft
-		if fa.FactionAbility.AbilityTokenID != 0 && fa.FactionAbility.WarMachineTokenID != 0 {
-			fc.API.Passport.AbilityUpdateTargetPrice(fc.API.ctx, fa.FactionAbility.AbilityTokenID, fa.FactionAbility.WarMachineTokenID, fa.TargetPrice.String())
+		if fa.GameAbility.AbilityTokenID != 0 && fa.GameAbility.WarMachineTokenID != 0 {
+			fc.API.Passport.AbilityUpdateTargetPrice(fc.API.ctx, fa.GameAbility.AbilityTokenID, fa.GameAbility.WarMachineTokenID, fa.TargetPrice.String())
 		} else {
-			err = db.FactionExclusiveAbilitiesSupsCostUpdate(ctx, fc.Conn, fa.FactionAbility)
+			err = db.FactionExclusiveAbilitiesSupsCostUpdate(ctx, fc.Conn, fa.GameAbility)
 			if err != nil {
 				targetPriceChan <- ""
 				errChan <- terror.Error(err)
@@ -170,22 +169,22 @@ func (fc *FactionControllerWS) FactionAbilityContribute(ctx context.Context, wsc
 			}
 		}
 
-		// trigger battle arena function to handle faction ability
+		// trigger battle arena function to handle game ability
 		userIDStr := userID.String()
 
-		abilityTriggerEvent := &server.FactionAbilityEvent{
+		abilityTriggerEvent := &server.GameAbilityEvent{
 			IsTriggered:         true,
 			TriggeredByUserID:   &userIDStr,
 			TriggeredByUsername: &hcd.Username,
-			GameClientAbilityID: fa.FactionAbility.GameClientAbilityID,
-			ParticipantID:       fa.FactionAbility.ParticipantID,
+			GameClientAbilityID: fa.GameAbility.GameClientAbilityID,
+			ParticipantID:       fa.GameAbility.ParticipantID,
 		}
-		if fa.FactionAbility.AbilityTokenID == 0 {
-			abilityTriggerEvent.FactionAbilityID = &fa.FactionAbility.ID
+		if fa.GameAbility.AbilityTokenID == 0 {
+			abilityTriggerEvent.GameAbilityID = &fa.GameAbility.ID
 		} else {
-			abilityTriggerEvent.AbilityTokenID = &fa.FactionAbility.AbilityTokenID
+			abilityTriggerEvent.AbilityTokenID = &fa.GameAbility.AbilityTokenID
 		}
-		err = fc.API.BattleArena.FactionAbilityTrigger(abilityTriggerEvent)
+		err = fc.API.BattleArena.GameAbilityTrigger(abilityTriggerEvent)
 		if err != nil {
 			targetPriceChan <- ""
 			errChan <- terror.Error(err)
@@ -193,7 +192,7 @@ func (fc *FactionControllerWS) FactionAbilityContribute(ctx context.Context, wsc
 		}
 
 		// broadcast notification
-		if fa.FactionAbility.AbilityTokenID == 0 {
+		if fa.GameAbility.AbilityTokenID == 0 {
 			go fc.API.BroadcastGameNotificationAbility(GameNotificationTypeFactionAbility, &GameNotificationAbility{
 				User: &UserBrief{
 					Username: hcd.Username,
@@ -205,9 +204,9 @@ func (fc *FactionControllerWS) FactionAbilityContribute(ctx context.Context, wsc
 					},
 				},
 				Ability: &AbilityBrief{
-					Label:    fa.FactionAbility.Label,
-					ImageUrl: fa.FactionAbility.ImageUrl,
-					Colour:   fa.FactionAbility.Colour,
+					Label:    fa.GameAbility.Label,
+					ImageUrl: fa.GameAbility.ImageUrl,
+					Colour:   fa.GameAbility.Colour,
 				},
 			})
 		} else {
@@ -223,17 +222,17 @@ func (fc *FactionControllerWS) FactionAbilityContribute(ctx context.Context, wsc
 					},
 				},
 				Ability: &AbilityBrief{
-					Label:    fa.FactionAbility.Label,
-					ImageUrl: fa.FactionAbility.ImageUrl,
-					Colour:   fa.FactionAbility.Colour,
+					Label:    fa.GameAbility.Label,
+					ImageUrl: fa.GameAbility.ImageUrl,
+					Colour:   fa.GameAbility.Colour,
 				},
 				WarMachine: &WarMachineBrief{
-					Name:     fa.FactionAbility.WarMachineName,
-					ImageUrl: fa.FactionAbility.WarMachineImage,
+					Name:     fa.GameAbility.WarMachineName,
+					ImageUrl: fa.GameAbility.WarMachineImage,
 					Faction: &FactionBrief{
-						Label:      fc.API.factionMap[fa.FactionAbility.FactionID].Label,
-						Theme:      fc.API.factionMap[fa.FactionAbility.FactionID].Theme,
-						LogoBlobID: fc.API.factionMap[fa.FactionAbility.FactionID].LogoBlobID,
+						Label:      fc.API.factionMap[fa.GameAbility.FactionID].Label,
+						Theme:      fc.API.factionMap[fa.GameAbility.FactionID].Theme,
+						LogoBlobID: fc.API.factionMap[fa.GameAbility.FactionID].LogoBlobID,
 					},
 				},
 			})
@@ -242,10 +241,10 @@ func (fc *FactionControllerWS) FactionAbilityContribute(ctx context.Context, wsc
 		targetPriceList := []string{}
 		for abilityID, fa := range fap {
 			hasTriggered := 0
-			if abilityID == req.Payload.FactionAbilityID {
+			if abilityID == req.Payload.GameAbilityID {
 				hasTriggered = 1
 			}
-			targetPriceList = append(targetPriceList, fmt.Sprintf("%s_%s_%s_%d", fa.FactionAbility.ID, fa.TargetPrice.String(), fa.CurrentSups.String(), hasTriggered))
+			targetPriceList = append(targetPriceList, fmt.Sprintf("%s_%s_%s_%d", fa.GameAbility.ID, fa.TargetPrice.String(), fa.CurrentSups.String(), hasTriggered))
 		}
 
 		targetPriceChan <- strings.Join(targetPriceList, "|")
@@ -313,11 +312,14 @@ func (fc *FactionControllerWS) FactionAbilitiesUpdateSubscribeHandler(ctx contex
 		return "", "", terror.Error(err)
 	}
 
-	fc.API.factionAbilityPool[hcd.FactionID] <- func(fap FactionAbilitiesPool, fapt *FactionAbilityPoolTicker) {
-		abilities := []*server.FactionAbility{}
+	fc.API.gameAbilityPool[hcd.FactionID] <- func(fap GameAbilitiesPool, fapt *GameAbilityPoolTicker) {
+		abilities := []*server.GameAbility{}
 		for _, fa := range fap {
-			fa.FactionAbility.CurrentSups = fa.CurrentSups.String()
-			abilities = append(abilities, fa.FactionAbility)
+			if fa.GameAbility.AbilityTokenID > 0 {
+				continue
+			}
+			fa.GameAbility.CurrentSups = fa.CurrentSups.String()
+			abilities = append(abilities, fa.GameAbility)
 		}
 		reply(abilities)
 	}
@@ -328,34 +330,43 @@ func (fc *FactionControllerWS) FactionAbilitiesUpdateSubscribeHandler(ctx contex
 
 }
 
-const HubKeyFactionWarMachineQueueUpdated hub.HubCommandKey = "FACTION:WAR:MACHINE:QUEUE:UPDATED"
+const HubKeyWarMachineAbilitiesUpdated hub.HubCommandKey = "WAR:MACHINE:ABILITIES:UPDATED"
 
-// FactionWarMachineQueueUpdateSubscribeHandler
-func (fc *FactionControllerWS) FactionWarMachineQueueUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	req := &hub.HubCommandRequest{}
+type WarMachineAbilitiesUpdatedRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		ParticipantID byte `json:"participantID"`
+	} `json:"payload"`
+}
+
+// WarMachineAbilitiesUpdateSubscribeHandler subscribe on war machine abilities
+func (fc *FactionControllerWS) WarMachineAbilitiesUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &WarMachineAbilitiesUpdatedRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
-	// get hub client
 	hcd, err := fc.API.getClientDetailFromChannel(wsc)
 	if err != nil {
 		return "", "", terror.Error(err)
 	}
 
-	if battleQueue, ok := fc.API.BattleArena.BattleQueueMap[hcd.FactionID]; ok {
-		battleQueue <- func(wmql *battle_arena.WarMachineQueuingList) {
-			maxLength := 5
-			if len(wmql.WarMachines) < maxLength {
-				maxLength = len(wmql.WarMachines)
+	fc.API.gameAbilityPool[hcd.FactionID] <- func(fap GameAbilitiesPool, fapt *GameAbilityPoolTicker) {
+		abilities := []*server.GameAbility{}
+		for _, fa := range fap {
+			if fa.GameAbility.AbilityTokenID == 0 ||
+				fa.GameAbility.ParticipantID == nil ||
+				*fa.GameAbility.ParticipantID != req.Payload.ParticipantID {
+				continue
 			}
-
-			reply(wmql.WarMachines[:maxLength])
+			fa.GameAbility.CurrentSups = fa.CurrentSups.String()
+			abilities = append(abilities, fa.GameAbility)
 		}
+		reply(abilities)
 	}
 
-	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionWarMachineQueueUpdated, hcd.FactionID))
+	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s:%x", HubKeyWarMachineAbilitiesUpdated, hcd.FactionID, req.Payload.ParticipantID))
 
 	return req.TransactionID, busKey, nil
 }

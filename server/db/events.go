@@ -69,8 +69,8 @@ func WarMachineDestroyedEventAssistedWarMachineSet(ctx context.Context, conn Con
 	return nil
 }
 
-// FactionAbilityEventCreate adds a battle log of BattleEvent
-func FactionAbilityEventCreate(ctx context.Context, conn Conn, battleID server.BattleID, factionAbilityEvent *server.FactionAbilityEvent) error {
+// GameAbilityEventCreate adds a battle log of BattleEvent
+func GameAbilityEventCreate(ctx context.Context, conn Conn, battleID server.BattleID, gameAbilityEvent *server.GameAbilityEvent) error {
 	q := `
 		WITH rows AS (
 			INSERT INTO 
@@ -81,21 +81,21 @@ func FactionAbilityEventCreate(ctx context.Context, conn Conn, battleID server.B
 				id
 		)
 		INSERT INTO 
-			battle_events_faction_ability (event_id, faction_ability_id, ability_token_id, is_triggered, triggered_by_user_id, triggered_on_cell_x, triggered_on_cell_y)
+			battle_events_game_ability (event_id, game_ability_id, ability_token_id, is_triggered, triggered_by_user_id, triggered_on_cell_x, triggered_on_cell_y)
 		VALUES 
 			((SELECT id FROM rows), $3, $4, $5, $6, $7, $8)
 		RETURNING 
-			id, event_id, faction_ability_id, ability_token_id, is_triggered, triggered_by_user_id, triggered_on_cell_x, triggered_on_cell_y;
+			id, event_id, game_ability_id, ability_token_id, is_triggered, triggered_by_user_id, triggered_on_cell_x, triggered_on_cell_y;
 	`
-	err := pgxscan.Get(ctx, conn, factionAbilityEvent, q,
+	err := pgxscan.Get(ctx, conn, gameAbilityEvent, q,
 		battleID,
-		server.BattleEventTypeFactionAbility,
-		factionAbilityEvent.FactionAbilityID,
-		factionAbilityEvent.AbilityTokenID,
-		factionAbilityEvent.IsTriggered,
-		factionAbilityEvent.TriggeredByUserID,
-		factionAbilityEvent.TriggeredOnCellX,
-		factionAbilityEvent.TriggeredOnCellY,
+		server.BattleEventTypeGameAbility,
+		gameAbilityEvent.GameAbilityID,
+		gameAbilityEvent.AbilityTokenID,
+		gameAbilityEvent.IsTriggered,
+		gameAbilityEvent.TriggeredByUserID,
+		gameAbilityEvent.TriggeredOnCellX,
+		gameAbilityEvent.TriggeredOnCellY,
 	)
 	if err != nil {
 		return terror.Error(err)
@@ -151,9 +151,9 @@ func GetEvents(ctx context.Context, conn Conn, since *time.Time) ([]*server.Batt
 				return nil, terror.Error(err)
 			}
 			evnt.Event = eventObj
-		case server.BattleEventTypeFactionAbility:
-			eventObj := &server.FactionAbilityEvent{}
-			q = `SELECT * FROM battle_events_faction_ability WHERE event_id = $1`
+		case server.BattleEventTypeGameAbility:
+			eventObj := &server.GameAbilityEvent{}
+			q = `SELECT * FROM battle_events_game_ability WHERE event_id = $1`
 			err := pgxscan.Get(ctx, conn, eventObj, q, evnt.ID)
 			if err != nil {
 				return nil, terror.Error(err)
