@@ -485,8 +485,8 @@ type VoteWinner struct {
 }
 
 type WinnerSelectAbilityLocation struct {
-	GameAbility server.GameAbility `json:"gameAbility"`
-	EndTime     time.Time          `json:"endTime"`
+	GameAbility *server.GameAbility `json:"gameAbility"`
+	EndTime     time.Time           `json:"endTime"`
 }
 
 /***********************
@@ -851,11 +851,16 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 							LogoBlobID: api.factionMap[hcd.FactionID].LogoBlobID,
 						},
 					},
+					Ability: &AbilityBrief{
+						Label:    va.FactionAbilityMap[hcd.FactionID].Label,
+						ImageUrl: va.FactionAbilityMap[hcd.FactionID].ImageUrl,
+						Colour:   va.FactionAbilityMap[hcd.FactionID].Colour,
+					},
 				})
 
 				// announce winner
 				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, winnerClientID)), &WinnerSelectAbilityLocation{
-					GameAbility: *va.FactionAbilityMap[hcd.FactionID],
+					GameAbility: va.FactionAbilityMap[hcd.FactionID],
 					EndTime:     vs.EndTime,
 				})
 
@@ -927,7 +932,7 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 
 				// otherwise announce another winner
 				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, winnerClientID)), &WinnerSelectAbilityLocation{
-					GameAbility: *va.FactionAbilityMap[nextUser.FactionID],
+					GameAbility: va.FactionAbilityMap[nextUser.FactionID],
 					EndTime:     vs.EndTime,
 				})
 

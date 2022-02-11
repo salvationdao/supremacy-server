@@ -178,7 +178,7 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 
 		// announce winner
 		vc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, userID)), &WinnerSelectAbilityLocation{
-			GameAbility: *va.FactionAbilityMap[hcd.FactionID],
+			GameAbility: va.FactionAbilityMap[hcd.FactionID],
 			EndTime:     vs.EndTime,
 		})
 

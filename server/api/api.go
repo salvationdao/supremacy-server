@@ -433,7 +433,7 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 
 				// otherwise announce another winner
 				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, winnerClientID)), &WinnerSelectAbilityLocation{
-					GameAbility: *va.FactionAbilityMap[nextUser.FactionID],
+					GameAbility: va.FactionAbilityMap[nextUser.FactionID],
 					EndTime:     vs.EndTime,
 				})
 
