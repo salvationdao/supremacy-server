@@ -1,12 +1,14 @@
 # supremacy-gameserver
 
+[![Staging Deployment](https://github.com/ninja-syndicate/supremacy-gameserver/actions/workflows/deploy-staging.yml/badge.svg)](https://github.com/ninja-syndicate/supremacy-gameserver/actions/workflows/deploy-staging.yml)
+
 Supremacy gameserver for communication between the game client and various frontends
 
 ### For go private modules
 
 ```shell
 git config --global --add url."git@github.com:".insteadOf "https://github.com/"
-export GOPRIVATE="github.com/ninja-syndicate/*"
+export GOPRIVATE="github.com/ninja-syndicate/*,github.com/ninja-software/*"
 ```
 
 ### Envars
