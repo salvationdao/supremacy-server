@@ -73,6 +73,7 @@ type API struct {
 	BattleArena  *battle_arena.BattleArena
 	HTMLSanitize *bluemonday.Policy
 	Hub          *hub.Hub
+	Conn         *pgxpool.Pool
 	MessageBus   *messagebus.MessageBus
 	Passport     *passport.Passport
 
@@ -124,6 +125,7 @@ func NewAPI(
 		MessageBus:   messageBus,
 		HTMLSanitize: HTMLSanitize,
 		BattleArena:  battleArenaClient,
+		Conn:         conn,
 		Hub: hub.New(&hub.Config{
 			Log: zerologger.New(*log_helpers.NamedLogger(log, "hub library")),
 			WelcomeMsg: &hub.WelcomeMsg{
@@ -210,6 +212,7 @@ func NewAPI(
 	api.Passport.Events.AddEventHandler(passport.EventWarMachineQueuePositionGet, api.PassportWarMachineQueuePositionHandler)
 	api.Passport.Events.AddEventHandler(passport.EventAuthRingCheck, api.AuthRingCheckHandler)
 	api.Passport.Events.AddEventHandler(passport.EventAssetInsurancePay, api.PassportAssetInsurancePayHandler)
+	api.Passport.Events.AddEventHandler(passport.EventFactionStatGet, api.PassportFactionStatGetHandler)
 
 	// listen to the client online and action channel
 	go api.ClientListener()

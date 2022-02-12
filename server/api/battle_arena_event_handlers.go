@@ -7,6 +7,7 @@ import (
 	"server"
 	"server/battle_arena"
 	"server/db"
+	"server/passport"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-syndicate/hub"
@@ -149,6 +150,39 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 			}(c)
 		}
 	})
+
+	// trigger faction stat refresh and send result to passport server
+	go func() {
+		ctx := context.Background()
+
+		// update factions' stat
+		err := db.FactionStatMaterialisedViewRefresh(ctx, api.Conn)
+		if err != nil {
+			api.Log.Err(err).Msg("Failed to refresh materialised view")
+			return
+		}
+
+		// get all the faction stat
+		factionStats, err := db.FactionStatAll(ctx, api.Conn)
+		if err != nil {
+			api.Log.Err(err).Msg("failed to query faction stats")
+			return
+		}
+
+		sendRequest := []*passport.FactionStatSend{}
+		for _, factionStat := range factionStats {
+			sendRequest = append(sendRequest, &passport.FactionStatSend{
+				FactionStat: factionStat,
+			})
+		}
+
+		// send faction stat to passport server
+		err = api.Passport.FactionStatsSend(ctx, sendRequest)
+		if err != nil {
+			api.Log.Err(err).Msg("failed to send faction stat")
+			return
+		}
+	}()
 }
 
 func (api *API) WarMachineDestroyedBroadcast(ctx context.Context, ed *battle_arena.EventData) {

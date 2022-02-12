@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"server"
 	"server/battle_arena"
+	"server/db"
 	"server/passport"
 	"strconv"
 	"time"
@@ -48,6 +49,7 @@ func (api *API) PassportUserUpdatedHandler(ctx context.Context, payload []byte) 
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		api.Log.Err(err).Msg("error unmarshalling passport user updated handler request")
+		return
 	}
 
 	uid := req.Payload.User.ID.String()
@@ -124,6 +126,7 @@ func (api *API) PassportUserEnlistFactionHandler(ctx context.Context, payload []
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		api.Log.Err(err).Msg("error unmarshalling passport user updated handler request")
+		return
 	}
 
 	uid := req.Payload.UserID.String()
@@ -186,6 +189,7 @@ func (api *API) PassportBattleQueueJoinHandler(ctx context.Context, payload []by
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		api.Log.Err(err).Msg("error unmarshalling passport battle queue join request")
+		return
 	}
 
 	if !req.Payload.WarMachineNFT.FactionID.IsNil() {
@@ -245,6 +249,7 @@ func (api *API) PassportBattleQueueReleaseHandler(ctx context.Context, payload [
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		api.Log.Err(err).Msg("error unmarshalling passport battle queue release request")
+		return
 	}
 
 	if !req.Payload.WarMachineNFT.FactionID.IsNil() {
@@ -302,6 +307,7 @@ func (api *API) PassportAssetInsurancePayHandler(ctx context.Context, payload []
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		api.Log.Err(err).Msg("error unmarshalling passport battle queue release request")
+		return
 	}
 
 	if !req.Payload.FactionID.IsNil() {
@@ -363,6 +369,47 @@ func (api *API) PassportAssetInsurancePayHandler(ctx context.Context, payload []
 	}
 }
 
+type FactionStatGetRequest struct {
+	Key     passport.Event `json:"key"`
+	Payload struct {
+		UserID    *server.UserID   `json:"userID,omitempty"`
+		SessionID *hub.SessionID   `json:"sessionID,omitempty"`
+		FactionID server.FactionID `json:"factionID"`
+	} `json:"payload"`
+}
+
+func (api *API) PassportFactionStatGetHandler(ctx context.Context, payload []byte) {
+	req := &FactionStatGetRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		api.Log.Err(err).Msg("error unmarshalling passport faction stat get request")
+		return
+	}
+
+	factionStat := &server.FactionStat{
+		ID: req.Payload.FactionID,
+	}
+
+	err = db.FactionStatGet(ctx, api.Conn, factionStat)
+	if err != nil {
+		api.Log.Err(err).Msgf("Failed to get faction %s stat", req.Payload.FactionID)
+		return
+	}
+
+	err = api.Passport.FactionStatsSend(ctx, []*passport.FactionStatSend{
+		{
+			FactionStat:     factionStat,
+			ToUserID:        req.Payload.UserID,
+			ToUserSessionID: req.Payload.SessionID,
+		},
+	})
+	if err != nil {
+		api.Log.Err(err).Msgf("Failed to send faction %s stat", req.Payload.FactionID)
+		return
+	}
+
+}
+
 type WarMachineQueuePositionRequest struct {
 	Key     passport.Event `json:"key"`
 	Payload struct {
@@ -376,6 +423,7 @@ func (api *API) PassportWarMachineQueuePositionHandler(ctx context.Context, payl
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		api.Log.Err(err).Msg("error unmarshalling passport battle queue release request")
+		return
 	}
 
 	warMachineQueuePositionChan := make(chan []*passport.WarMachineQueuePosition)

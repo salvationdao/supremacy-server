@@ -256,5 +256,10 @@ func (s *Seeder) factions(ctx context.Context) ([]*server.Faction, error) {
 			return nil, terror.Error(err)
 		}
 	}
+
+	err := db.FactionStatMaterialisedViewRefresh(ctx, s.Conn)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
 	return factions, nil
 }

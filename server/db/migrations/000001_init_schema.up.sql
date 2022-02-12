@@ -38,7 +38,7 @@ CREATE TABLE factions
 CREATE TABLE battles_war_machines
 (
     battle_id          uuid           NOT NULL REFERENCES battles (id),
-    war_machine_id     numeric(78, 0) NOT NULL,
+    war_machine_id     NUMERIC(78, 0) NOT NULL,
     war_machine_stat   jsonb          NOT NULL,
     join_as_faction_id uuid           NOT NULL,
     is_winner          bool           NOT NULL DEFAULT FALSE,
@@ -87,15 +87,15 @@ CREATE TABLE battle_events_war_machine_destroyed
 (
     id                       uuid PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
     event_id                 uuid             NOT NULL REFERENCES battle_events (id),
-    destroyed_war_machine_id numeric(78, 0)   NOT NULL,
-    kill_by_war_machine_id   numeric(78, 0),
+    destroyed_war_machine_id NUMERIC(78, 0)   NOT NULL,
+    kill_by_war_machine_id   NUMERIC(78, 0),
     related_event_id         uuid REFERENCES battle_events (id)
 );
 
 CREATE TABLE battle_events_war_machine_destroyed_assisted_war_machines
 (
     war_machine_destroyed_event_id uuid           NOT NULL REFERENCES battle_events_war_machine_destroyed (id),
-    war_machine_id                 numeric(78, 0) NOT NULL,
+    war_machine_id                 NUMERIC(78, 0) NOT NULL,
     PRIMARY KEY (war_machine_destroyed_event_id, war_machine_id)
 );
 
@@ -105,12 +105,76 @@ CREATE TABLE battle_events_game_ability
     id                   uuid PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
     event_id             uuid             NOT NULL REFERENCES battle_events (id),
     game_ability_id   uuid             REFERENCES game_abilities (id), -- not null if it is a faction abitliy
-    ability_token_id     numeric(78, 0),                                     -- non-zero if it is a nft ability
+    ability_token_id     NUMERIC(78, 0),                                     -- non-zero if it is a nft ability
     is_triggered         bool             NOT NULL DEFAULT FALSE,
     triggered_by_user_id text,
     triggered_on_cell_x  int,
     triggered_on_cell_y  int
 );
+
+/*****************************************************
+ *          faction stats materialize view           *
+ ****************************************************/
+
+-- create faction materialize view
+CREATE MATERIALIZED VIEW faction_stats AS 
+	SELECT f.id,
+	COALESCE(
+		(
+			SELECT COUNT(distinct bwm.battle_id) FROM battles_war_machines bwm
+			WHERE bwm.is_winner = true AND bwm.join_as_faction_id = f.id
+			GROUP BY bwm.join_as_faction_id 
+		),0) AS win_count,
+	COALESCE(
+		(
+	    	SELECT ((SELECT count(b.id) FROM battles b) - count(DISTINCT battle_id)) FROM battles_war_machines bwm
+	    	WHERE bwm.is_winner = true AND bwm.join_as_faction_id = f.id
+	    	GROUP BY bwm.join_as_faction_id 
+	    ),
+	    (SELECT count(b.id) FROM battles b)
+	    ,0) as loss_count,
+	COALESCE(
+		(
+			SELECT COUNT(bewmd.id) FROM battle_events_war_machine_destroyed bewmd
+			INNER JOIN battle_events be ON be.id = bewmd.event_id
+			INNER JOIN battles_war_machines bwm ON 	be.battle_id = bwm.battle_id AND 
+													bewmd.kill_by_war_machine_id = bwm.war_machine_id AND  
+													bwm.join_as_faction_id = f.id
+			GROUP BY bwm.join_as_faction_id
+		),0) AS kill_count,
+	COALESCE(
+		(
+			SELECT COUNT(bewmd.id) FROM battle_events_war_machine_destroyed bewmd
+			INNER JOIN battle_events be ON be.id = bewmd.event_id
+			INNER JOIN battles_war_machines bwm ON 	be.battle_id = bwm.battle_id AND 
+													bewmd.destroyed_war_machine_id = bwm.war_machine_id AND  
+													bwm.join_as_faction_id = f.id
+			GROUP BY bwm.join_as_faction_id
+		),0) AS death_count,
+    coalesce(
+	    (
+	    	SELECT bewmd.kill_by_war_machine_id FROM battle_events_war_machine_destroyed bewmd
+	    	INNER JOIN battle_events be ON be.id = bewmd.event_id
+	    	INNER JOIN battles_war_machines bwm ON  be.battle_id = bwm.battle_id AND 
+                                                    bewmd.kill_by_war_machine_id = bwm.war_machine_id AND 
+                                                    bwm.join_as_faction_id = f.id
+	    	GROUP BY bwm.join_as_faction_id, bewmd.kill_by_war_machine_id
+	    	having count(bewmd.event_id) = (
+	    		SELECT max(xx.kill_count) FROM ( 
+	    			SELECT count(bewmd.event_id) AS kill_count FROM battle_events_war_machine_destroyed bewmd
+	    			INNER JOIN battle_events be ON be.id = bewmd.event_id
+	    			INNER JOIN battles_war_machines bwm ON  be.battle_id = bwm.battle_id AND 
+                                                            bewmd.kill_by_war_machine_id = bwm.war_machine_id AND 
+                                                            bwm.join_as_faction_id = f.id
+	    			GROUP BY bwm.join_as_faction_id, bewmd.kill_by_war_machine_id
+	    		) xx
+	    	)
+	    	LIMIT 1
+	    ),0)::NUMERIC(78, 0) AS mvp_token_id
+	FROM factions f;
+
+-- create unique index
+CREATE UNIQUE INDEX faction_id ON faction_stats (id);
 
 COMMIT;
 
