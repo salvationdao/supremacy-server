@@ -26,7 +26,7 @@ type BattleStartRequest struct {
 			TokenID       uint64 `json:"tokenID"`
 			ParticipantID byte   `json:"participantID"`
 		} `json:"warMachines"`
-		// WarMachineLocation []byte `json:"warMachineLocation"`
+		WarMachineLocation []byte `json:"warMachineLocation"`
 	} `json:"payload"`
 }
 
@@ -77,7 +77,7 @@ outerLoop:
 		ba.Log.Info().Msgf("War Machine: %s - %d", wm.Name, wm.TokenID)
 	}
 
-	// ba.battle.BattleHistory = append(ba.battle.BattleHistory, req.Payload.WarMachineLocation)
+	ba.battle.BattleHistory = append(ba.battle.BattleHistory, req.Payload.WarMachineLocation)
 
 	// save to database
 	tx, err := ba.Conn.Begin(ctx)
