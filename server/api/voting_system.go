@@ -573,13 +573,7 @@ func (api *API) stopVotingCycle() {
 		}
 
 		// commit the transactions
-		if len(txRefs) > 0 {
-			_, err := api.Passport.ReleaseTransactions(context.Background(), txRefs)
-			if err != nil {
-				api.Log.Err(err).Msg("failed to Release transactions")
-				return
-			}
-		}
+		api.Passport.ReleaseTransactions(context.Background(), txRefs)
 	}
 }
 

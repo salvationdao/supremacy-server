@@ -345,19 +345,18 @@ func (api *API) stopGameAbilityPoolTicker() {
 				fapt.TargetPriceBroadcaster.Stop()
 			}
 
+			// clean up pool
+			for key := range fap {
+				delete(fap, key)
+			}
+
 			// commit all the left over transactions
 			txRefs := []server.TransactionReference{}
 			for _, fa := range fap {
 				txRefs = append(txRefs, fa.TxRefs...)
 			}
 
-			if len(txRefs) > 0 {
-				_, err := api.Passport.ReleaseTransactions(context.Background(), txRefs)
-				if err != nil {
-					api.Log.Err(err)
-					return
-				}
-			}
+			api.Passport.ReleaseTransactions(context.Background(), txRefs)
 		}
 	}
 }
