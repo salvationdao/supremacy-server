@@ -31,6 +31,7 @@ const (
 	EventAssetInsurancePay          Event = "PASSPORT:ASSET:INSURANCE:PAY"
 	EventFactionStatGet             Event = "PASSPORT:FACTION:STAT:GET"
 	EventAuthRingCheck              Event = "PASSPORT:AUTH:RING:CHECK"
+	EventUserSupsMultiplierGet      Event = "PASSPORT:USER:SUPS:MULTIPLIER:GET"
 )
 
 type EventHandler func(ctx context.Context, payload []byte)

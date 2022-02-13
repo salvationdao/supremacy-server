@@ -369,6 +369,25 @@ func (api *API) PassportAssetInsurancePayHandler(ctx context.Context, payload []
 	}
 }
 
+type UserSupsMultiplierGetRequest struct {
+	Key     passport.Event `json:"key"`
+	Payload struct {
+		UserID    server.UserID `json:"userID"`
+		SessionID hub.SessionID `json:"sessionID"`
+	} `json:"payload"`
+}
+
+func (api *API) PassportUserSupsMultiplierGetHandler(ctx context.Context, payload []byte) {
+	req := &UserSupsMultiplierGetRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		api.Log.Err(err).Msg("error unmarshalling passport faction stat get request")
+		return
+	}
+
+	api.ClientSupsMultipliersGet(req.Payload.UserID)
+}
+
 type FactionStatGetRequest struct {
 	Key     passport.Event `json:"key"`
 	Payload struct {
@@ -383,6 +402,11 @@ func (api *API) PassportFactionStatGetHandler(ctx context.Context, payload []byt
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		api.Log.Err(err).Msg("error unmarshalling passport faction stat get request")
+		return
+	}
+
+	if req.Payload.FactionID.IsNil() {
+		api.Log.Err(terror.ErrInvalidInput).Msg("Faction id is empty")
 		return
 	}
 

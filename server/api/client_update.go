@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"net/http"
 	"server"
+	"server/passport"
 	"time"
 
 	"github.com/ninja-software/log_helpers"
 	"github.com/ninja-software/tickle"
+	"github.com/rs/zerolog"
 
 	"github.com/ninja-syndicate/hub"
 
@@ -20,22 +22,25 @@ const TickSecond = 3
 type ClientAction string
 
 const (
-	ClientOnline             ClientAction = "Online"
-	ClientOffline            ClientAction = "Offline"
-	ClientVoted              ClientAction = "Voted"
-	ClientPickedLocation     ClientAction = "PickedLocation"
-	ClientBattleRewardUpdate ClientAction = "BattleRewardUpdate"
+	ClientOnline                ClientAction = "Online"
+	ClientOffline               ClientAction = "Offline"
+	ClientVoted                 ClientAction = "Applause"
+	ClientPickedLocation        ClientAction = "Picked Location"
+	ClientBattleRewardUpdate    ClientAction = "BattleRewardUpdate"
+	ClientSupsMultiplierGet     ClientAction = "SupsMultiplierGet"
+	ClientCheckMultiplierUpdate ClientAction = "CheckMultiplierUpdate"
 )
 
 type BattleRewardType string
 
 const (
-	BattleRewardTypeFaction = "BattleFactionReward"
-	BattleRewardTypeWinner  = "BattleWinnerReward"
-	BattleRewardTypeKill    = "BattleKillReward"
+	BattleRewardTypeFaction BattleRewardType = "Battle Faction Reward"
+	BattleRewardTypeWinner  BattleRewardType = "Battle Winner Reward"
+	BattleRewardTypeKill    BattleRewardType = "Battle Kill Reward"
 )
 
 type ClientUpdate struct {
+	UserID           server.UserID
 	Client           *hub.Client
 	Action           ClientAction
 	BattleReward     *ClientBattleReward
@@ -98,17 +103,41 @@ func (api *API) ClientListener() {
 	taskTickle.DisableLogging = true
 	taskTickle.Start()
 
+	// send multiplier changes every second to passport server
+	cachedUserMultiplierAction := make(map[server.UserID]map[string]*MultiplierAction)
+
+	supsMultiplierCheckerLogger := log_helpers.NamedLogger(api.Log, "Sups Multiplier Checker").Level(zerolog.Disabled)
+	supsMultiplierChecker := tickle.New("Sups Multiplier Checker", 1, func() (int, error) {
+		api.onlineClientMap <- &ClientUpdate{
+			UserID: server.UserID(uuid.Must(uuid.NewV4())), // HACK: to pass the user id check
+			Action: ClientCheckMultiplierUpdate,
+		}
+		return http.StatusOK, nil
+	})
+	supsMultiplierChecker.Log = &supsMultiplierCheckerLogger
+	supsMultiplierChecker.Start()
+
 listenLoop:
 	for {
 		msg := <-api.onlineClientMap
-		uid, err := uuid.FromString(msg.Client.Identifier())
-		if uid.IsNil() {
-			continue
-		}
 
-		userID := server.UserID(uid)
-		if err != nil {
-			api.Log.Err(err).Msg("unable to marshall client identifier as uuid")
+		userID := msg.UserID
+
+		// if user id is nil, check id from client
+		if userID.IsNil() {
+			if msg.Client == nil {
+				continue
+			}
+
+			uid, err := uuid.FromString(msg.Client.Identifier())
+			if uid.IsNil() {
+				continue
+			}
+
+			userID = server.UserID(uid)
+			if err != nil {
+				api.Log.Err(err).Msg("unable to marshall client identifier as uuid")
+			}
 		}
 
 		switch msg.Action {
@@ -147,6 +176,7 @@ listenLoop:
 			multiplier, ok := clientMultiplierMap[userID].MultiplierActions[string(ClientPickedLocation)]
 			if ok {
 				multiplier.Expiry = time.Now().Add(time.Minute * 30)
+
 				continue listenLoop
 			}
 
@@ -161,27 +191,40 @@ listenLoop:
 			for _, reward := range msg.BattleReward.Rewards {
 				switch reward {
 				case BattleRewardTypeFaction:
-					clientMultiplierMap[userID].MultiplierActions[fmt.Sprintf("%s:%s", BattleRewardTypeFaction, msg.BattleReward.BattleID)] = &MultiplierAction{
-						MultiplierValue: 75,
+					clientMultiplierMap[userID].MultiplierActions[fmt.Sprintf("%s_%s", BattleRewardTypeFaction, msg.BattleReward.BattleID)] = &MultiplierAction{
+						MultiplierValue: 1000,
 						Expiry:          time.Now().Add(time.Minute * 5),
 					}
 				case BattleRewardTypeWinner:
-					clientMultiplierMap[userID].MultiplierActions[fmt.Sprintf("%s:%s", BattleRewardTypeWinner, msg.BattleReward.BattleID)] = &MultiplierAction{
-						MultiplierValue: 225,
+					clientMultiplierMap[userID].MultiplierActions[fmt.Sprintf("%s_%s", BattleRewardTypeWinner, msg.BattleReward.BattleID)] = &MultiplierAction{
+						MultiplierValue: 500,
 						Expiry:          time.Now().Add(time.Minute * 5),
 					}
 				case BattleRewardTypeKill:
-					clientMultiplierMap[userID].MultiplierActions[fmt.Sprintf("%s:%s", BattleRewardTypeKill, msg.BattleReward.BattleID)] = &MultiplierAction{
-						MultiplierValue: 150,
+					clientMultiplierMap[userID].MultiplierActions[fmt.Sprintf("%s_%s", BattleRewardTypeKill, msg.BattleReward.BattleID)] = &MultiplierAction{
+						MultiplierValue: 500,
 						Expiry:          time.Now().Add(time.Minute * 5),
 					}
 				}
 			}
 
+		case ClientSupsMultiplierGet:
+			clientMap, ok := clientMultiplierMap[userID]
+			if !ok {
+				go api.UserSupsMultiplierToPassport(userID, nil)
+				continue listenLoop
+			}
+
+			// send user's sups multipliers to passport server
+			go api.UserSupsMultiplierToPassport(userID, clientMap.MultiplierActions)
+
+		case ClientCheckMultiplierUpdate:
+			api.clientMapUpdatedChecker(clientMultiplierMap, cachedUserMultiplierAction)
+
 		case ClientOffline:
 			clientMap, ok := clientMultiplierMap[userID]
 			if !ok {
-				api.Log.Err(err)
+				api.Log.Err(fmt.Errorf("client not exists"))
 				msg.NoClientLeftChan <- true
 				continue listenLoop
 			}
@@ -190,7 +233,12 @@ listenLoop:
 
 			if len(clientMap.clients) == 0 {
 				delete(clientMultiplierMap, userID)
+				delete(cachedUserMultiplierAction, userID)
 				msg.NoClientLeftChan <- true
+
+				// send user's sups multipliers to passport server
+				go api.UserSupsMultiplierToPassport(userID, nil)
+
 				continue listenLoop
 			}
 			msg.NoClientLeftChan <- false
@@ -238,5 +286,118 @@ func (api *API) ClientBattleRewardUpdate(c *hub.Client, cbr *ClientBattleReward)
 		Client:       c,
 		Action:       ClientBattleRewardUpdate,
 		BattleReward: cbr,
+	}
+}
+
+func (api *API) ClientSupsMultipliersGet(userID server.UserID) {
+	api.onlineClientMap <- &ClientUpdate{
+		UserID: userID,
+		Action: ClientSupsMultiplierGet,
+	}
+}
+
+func (api *API) UserSupsMultiplierToPassport(userID server.UserID, supsMultiplierMap map[string]*MultiplierAction) {
+	userSupsMultiplierSend := &passport.UserSupsMultiplierSend{
+		ToUserID:        userID,
+		SupsMultipliers: []*passport.SupsMultiplier{},
+	}
+
+	for key, sm := range supsMultiplierMap {
+		userSupsMultiplierSend.SupsMultipliers = append(userSupsMultiplierSend.SupsMultipliers, &passport.SupsMultiplier{
+			Key:       key,
+			Value:     sm.MultiplierValue,
+			ExpiredAt: sm.Expiry,
+		})
+	}
+
+	api.Passport.UserSupsMultiplierSend(context.Background(), []*passport.UserSupsMultiplierSend{userSupsMultiplierSend})
+}
+
+func (api *API) clientMapUpdatedChecker(newClientMap map[server.UserID]*ClientMultiplier, oldClientMap map[server.UserID]map[string]*MultiplierAction) {
+	// send different
+	sendDiff := []*passport.UserSupsMultiplierSend{}
+
+	// loop through new user multiplier
+	for userID, newMultiplier := range newClientMap {
+
+		// prepare broadcast data to send
+		userSupsMultiplierSend := &passport.UserSupsMultiplierSend{
+			ToUserID:        userID,
+			SupsMultipliers: []*passport.SupsMultiplier{},
+		}
+
+		// find old client map with user id
+		oldMultiplier, ok := oldClientMap[userID]
+		if !ok {
+			// create a new copy of the new multiplier map
+			oldClientMap[userID] = make(map[string]*MultiplierAction)
+
+			for key, nm := range newMultiplier.MultiplierActions {
+				// add a copy of multiplier action to old client map
+				oldClientMap[userID][key] = &MultiplierAction{
+					MultiplierValue: nm.MultiplierValue,
+					Expiry:          nm.Expiry,
+				}
+
+				// add a copy of multiplier action to user sups send
+				userSupsMultiplierSend.SupsMultipliers = append(userSupsMultiplierSend.SupsMultipliers, &passport.SupsMultiplier{
+					Key:       key,
+					Value:     nm.MultiplierValue,
+					ExpiredAt: nm.Expiry,
+				})
+			}
+
+			// append send data
+			sendDiff = append(sendDiff, userSupsMultiplierSend)
+
+			// skip
+			continue
+		}
+
+		// if exists, update the old multiplier map with the new one
+		for key, nm := range newMultiplier.MultiplierActions {
+
+			// find multiplier action with key
+			multiplier, ok := oldMultiplier[key]
+			if !ok {
+
+				// add a copy to old map if not exist
+				oldMultiplier[key] = &MultiplierAction{
+					MultiplierValue: nm.MultiplierValue,
+					Expiry:          nm.Expiry,
+				}
+
+				userSupsMultiplierSend.SupsMultipliers = append(userSupsMultiplierSend.SupsMultipliers, &passport.SupsMultiplier{
+					Key:       key,
+					Value:     nm.MultiplierValue,
+					ExpiredAt: nm.Expiry,
+				})
+
+				continue
+			}
+
+			// update copy if expiry is different
+			if multiplier.Expiry.String() != nm.Expiry.String() {
+				// add a copy to old map if not exist
+				oldMultiplier[key].Expiry = nm.Expiry
+
+				// record change
+				userSupsMultiplierSend.SupsMultipliers = append(userSupsMultiplierSend.SupsMultipliers, &passport.SupsMultiplier{
+					Key:       key,
+					Value:     nm.MultiplierValue,
+					ExpiredAt: nm.Expiry,
+				})
+			}
+		}
+
+		// append to send list if user sups multiplier is changed
+		if len(userSupsMultiplierSend.SupsMultipliers) > 0 {
+			sendDiff = append(sendDiff, userSupsMultiplierSend)
+		}
+	}
+
+	if len(sendDiff) > 0 {
+		// broadcast multiplier change
+		api.Passport.UserSupsMultiplierSend(context.Background(), sendDiff)
 	}
 }

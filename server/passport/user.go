@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"server"
+	"time"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
@@ -86,5 +87,32 @@ func (pp *Passport) GetSpoilOfWarAmount(ctx context.Context) (string, error) {
 		case err := <-errChan:
 			return "", terror.Error(err)
 		}
+	}
+}
+
+type UserSupsMultiplierSend struct {
+	ToUserID        server.UserID     `json:"toUserID"`
+	ToUserSessionID *hub.SessionID    `json:"toUserSessionID,omitempty"`
+	SupsMultipliers []*SupsMultiplier `json:"supsMultiplier"`
+}
+
+type SupsMultiplier struct {
+	Key       string    `json:"key"`
+	Value     int       `json:"value"`
+	ExpiredAt time.Time `json:"expiredAt"`
+}
+
+// UserSupsMultiplierSend send user sups multipliers
+func (pp *Passport) UserSupsMultiplierSend(ctx context.Context, userSupsMultiplierSends []*UserSupsMultiplierSend) {
+	pp.send <- &Request{
+		Message: &Message{
+			Key: "SUPREMACY:USER_SUPS_MULTIPLIER_SEND",
+			Payload: struct {
+				UserSupsMultiplierSends []*UserSupsMultiplierSend `json:"userSupsMultiplierSends"`
+			}{
+				UserSupsMultiplierSends: userSupsMultiplierSends,
+			},
+			context: ctx,
+		},
 	}
 }

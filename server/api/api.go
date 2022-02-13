@@ -213,6 +213,7 @@ func NewAPI(
 	api.Passport.Events.AddEventHandler(passport.EventAuthRingCheck, api.AuthRingCheckHandler)
 	api.Passport.Events.AddEventHandler(passport.EventAssetInsurancePay, api.PassportAssetInsurancePayHandler)
 	api.Passport.Events.AddEventHandler(passport.EventFactionStatGet, api.PassportFactionStatGetHandler)
+	api.Passport.Events.AddEventHandler(passport.EventUserSupsMultiplierGet, api.PassportUserSupsMultiplierGetHandler)
 
 	// listen to the client online and action channel
 	go api.ClientListener()
