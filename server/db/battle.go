@@ -34,7 +34,7 @@ func BattleStarted(ctx context.Context, conn Conn, battle *server.Battle) error 
 func BattleWarMachineAssign(ctx context.Context, conn Conn, battleID server.BattleID, warMachineNFTs []*server.WarMachineNFT) error {
 	q := `
 		INSERT INTO 
-			battles_war_machines (battle_id, war_machine_id, join_as_faction_id, war_machine_stat)
+			battles_war_machines (battle_id, war_machine_stat)
 		VALUES
 
 	`
@@ -49,7 +49,7 @@ func BattleWarMachineAssign(ctx context.Context, conn Conn, battleID server.Batt
 
 		args = append(args, b)
 
-		q += fmt.Sprintf("('%s', %d, '%s', $%d)", battleID, warMachineNFT.TokenID, warMachineNFT.FactionID, len(args))
+		q += fmt.Sprintf("('%s', $%d)", battleID, len(args))
 
 		if i < len(warMachineNFTs)-1 {
 			q += ","
@@ -93,7 +93,7 @@ func BattleWinnerWarMachinesSet(ctx context.Context, conn Conn, battleID server.
 		SET
 			is_winner = true
 		WHERE 
-			battle_id = $1 AND war_machine_id IN (
+			battle_id = $1 AND war_machine_stat->>'tokenID' IN (
 	`
 	for i, warMachine := range warMachines {
 		q += fmt.Sprintf("'%d'", warMachine.TokenID)

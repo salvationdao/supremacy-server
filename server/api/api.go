@@ -98,7 +98,7 @@ type API struct {
 	gameAbilityPool map[server.FactionID]chan func(GameAbilitiesPool, *GameAbilityPoolTicker)
 
 	// viewer live count
-	viewerLiveCount chan func(ViewerLiveCount)
+	viewerLiveCount chan func(ViewerLiveCount, ViewerIDMap)
 }
 
 // NewAPI registers routes
@@ -153,7 +153,7 @@ func NewAPI(
 		gameAbilityPool: make(map[server.FactionID]chan func(GameAbilitiesPool, *GameAbilityPoolTicker)),
 
 		// faction viewer count
-		viewerLiveCount: make(chan func(ViewerLiveCount)),
+		viewerLiveCount: make(chan func(ViewerLiveCount, ViewerIDMap)),
 	}
 
 	// start twitch jwt auth listener

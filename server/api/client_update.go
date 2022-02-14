@@ -29,6 +29,7 @@ const (
 	ClientBattleRewardUpdate    ClientAction = "BattleRewardUpdate"
 	ClientSupsMultiplierGet     ClientAction = "SupsMultiplierGet"
 	ClientCheckMultiplierUpdate ClientAction = "CheckMultiplierUpdate"
+	ClientSupsTick              ClientAction = "SupsTick"
 )
 
 type BattleRewardType string
@@ -73,35 +74,16 @@ func (api *API) ClientListener() {
 	clientMultiplierMap := make(map[server.UserID]*ClientMultiplier)
 	tickle.MinDurationOverride = true
 	// start ticker for watch to earn
-	taskTickle := tickle.New("FactionID Channel Point Ticker", TickSecond, func() (int, error) {
-		ctx := context.Background()
-		userMap := make(map[int][]server.UserID)
-
-		for uid, actionSlice := range clientMultiplierMap {
-			userMultiplier := 0
-			for key, actn := range actionSlice.MultiplierActions {
-				if actn.Expiry.After(time.Now()) {
-					userMultiplier += actn.MultiplierValue
-				} else {
-					delete(actionSlice.MultiplierActions, key)
-				}
-			}
-
-			_, ok := userMap[userMultiplier]
-			if !ok {
-				userMap[userMultiplier] = []server.UserID{}
-			}
-
-			userMap[userMultiplier] = append(userMap[userMultiplier], uid)
+	supsTickerLogger := log_helpers.NamedLogger(api.Log, "Sups Ticker").Level(zerolog.Disabled)
+	supsTicker := tickle.New("Sups Ticker", TickSecond, func() (int, error) {
+		api.onlineClientMap <- &ClientUpdate{
+			UserID: server.UserID(uuid.Must(uuid.NewV4())), // HACK: to pass the user id check
+			Action: ClientSupsTick,
 		}
-
-		api.Passport.SendTickerMessage(ctx, userMap)
-
 		return http.StatusOK, nil
 	})
-	taskTickle.Log = log_helpers.NamedLogger(api.Log, "FactionID Channel Point Ticker")
-	taskTickle.DisableLogging = true
-	taskTickle.Start()
+	supsTicker.Log = &supsTickerLogger
+	supsTicker.Start()
 
 	// send multiplier changes every second to passport server
 	cachedUserMultiplierAction := make(map[server.UserID]map[string]*MultiplierAction)
@@ -152,6 +134,9 @@ listenLoop:
 					MultiplierValue: 100,
 					Expiry:          time.Now().AddDate(1, 0, 0),
 				}
+
+				// record viewer id
+				api.viewerIDRecord(userID)
 			}
 
 			clientMultiplierMap[userID].clients[msg.Client] = true
@@ -207,6 +192,30 @@ listenLoop:
 					}
 				}
 			}
+
+		case ClientSupsTick:
+			userMap := make(map[int][]server.UserID)
+			now := time.Now()
+
+			for uid, actionSlice := range clientMultiplierMap {
+				userMultiplier := 0
+				for key, actn := range actionSlice.MultiplierActions {
+					if actn.Expiry.After(now) {
+						userMultiplier += actn.MultiplierValue
+					} else {
+						delete(actionSlice.MultiplierActions, key)
+					}
+				}
+
+				_, ok := userMap[userMultiplier]
+				if !ok {
+					userMap[userMultiplier] = []server.UserID{}
+				}
+
+				userMap[userMultiplier] = append(userMap[userMultiplier], uid)
+			}
+
+			api.Passport.SendTickerMessage(context.Background(), userMap)
 
 		case ClientSupsMultiplierGet:
 			clientMap, ok := clientMultiplierMap[userID]

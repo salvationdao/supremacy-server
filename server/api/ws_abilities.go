@@ -170,11 +170,9 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 		}
 
 		// trigger battle arena function to handle game ability
-		userIDStr := userID.String()
-
 		abilityTriggerEvent := &server.GameAbilityEvent{
 			IsTriggered:         true,
-			TriggeredByUserID:   &userIDStr,
+			TriggeredByUserID:   &userID,
 			TriggeredByUsername: &hcd.Username,
 			GameClientAbilityID: fa.GameAbility.GameClientAbilityID,
 			ParticipantID:       fa.GameAbility.ParticipantID,

@@ -18,13 +18,16 @@ import (
 const HubKeyGameSettingsUpdated = hub.HubCommandKey("GAME:SETTINGS:UPDATED")
 
 type GameSettingsResponse struct {
-	GameMap            *server.GameMap         `json:"gameMap"`
-	WarMachines        []*server.WarMachineNFT `json:"warMachines"`
-	WarMachineLocation []byte                  `json:"warMachineLocation"`
+	GameMap     *server.GameMap         `json:"gameMap"`
+	WarMachines []*server.WarMachineNFT `json:"warMachines"`
+	// WarMachineLocation []byte                  `json:"warMachineLocation"`
 }
 
 // BattleStartSignal start all the voting cycle
 func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventData) {
+	// clean up current viewer id map
+	api.viewerIDRead()
+
 	// build faction detail to battle start
 	warMachines := ed.BattleArena.WarMachines
 	for _, wm := range warMachines {
@@ -35,9 +38,9 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 	gameSettingsData, err := json.Marshal(&BroadcastPayload{
 		Key: HubKeyGameSettingsUpdated,
 		Payload: &GameSettingsResponse{
-			GameMap:            ed.BattleArena.GameMap,
-			WarMachines:        ed.BattleArena.WarMachines,
-			WarMachineLocation: ed.BattleArena.BattleHistory[0],
+			GameMap:     ed.BattleArena.GameMap,
+			WarMachines: ed.BattleArena.WarMachines,
+			// WarMachineLocation: ed.BattleArena.BattleHistory[0],
 		},
 	})
 	if err != nil {
@@ -150,6 +153,15 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 			}(c)
 		}
 	})
+
+	// increment users' view battle count
+	go func() {
+		err := db.UserBattleViewRecord(ctx, api.Conn, api.viewerIDRead())
+		if err != nil {
+			api.Log.Err(err).Msg("Failed to record users' battle count")
+			return
+		}
+	}()
 
 	// trigger faction stat refresh and send result to passport server
 	go func() {
