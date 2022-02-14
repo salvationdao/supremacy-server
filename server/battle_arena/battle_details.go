@@ -14,3 +14,7 @@ func (ba *BattleArena) WarMachineDestroyedRecord(participantID byte) *server.War
 
 	return record
 }
+
+func (ba *BattleArena) InGameWarMachines() []*server.WarMachineNFT {
+	return ba.battle.WarMachines
+}

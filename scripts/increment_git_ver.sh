@@ -14,12 +14,12 @@ CURRENT_VER=$(git describe --tags --abbrev=0)
 CURRENT_HASH=$(git rev-parse --short HEAD)
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
-# if [[ $CURRENT_BRANCH != "develop" && $CURRENT_BRANCH != "staging" ]]
-# then
-#     debugecho "failed branch check: " $CURRENT_BRANCH
-#     echo invalid branch, should be develop or staging: current is $CURRENT_BRANCH
-#     exit 1
-# fi
+if [[ $CURRENT_BRANCH != "develop" && $CURRENT_BRANCH != "staging" ]]
+then
+    debugecho "failed branch check: " $CURRENT_BRANCH
+    echo invalid branch, should be develop or staging: current is $CURRENT_BRANCH
+    exit 1
+fi
 
 case $CURRENT_VER in
   *rc.*)
@@ -46,8 +46,8 @@ case $CURRENT_VER in
     else
         debugecho "case \* else"
         NEXT_VER=$(printf "%s-rc.1" $CURRENT_VER)
-        # echo invalid branch, should be develop or staging
-        # exit 1
+        echo invalid branch, should be develop or staging
+        exit 1
     fi
     ;;
 

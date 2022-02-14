@@ -51,3 +51,18 @@ func (pp *Passport) GetDefaultWarMachines(ctx context.Context, factionID server.
 		}
 	}
 }
+
+// FactionWarMachineContractRewardUpdate gets the default war machines for a given faction
+func (pp *Passport) FactionWarMachineContractRewardUpdate(ctx context.Context, fwm []*server.FactionWarMachineQueue) {
+	pp.send <- &Request{
+		Message: &Message{
+			Key: "SUPREMACY:WAR_MACHINE_QUEUE_CONTRACT_UPDATE",
+			Payload: struct {
+				FactionWarMachineQueues []*server.FactionWarMachineQueue `json:"factionWarMachineQueues"`
+			}{
+				FactionWarMachineQueues: fwm,
+			},
+			context: ctx,
+		},
+	}
+}

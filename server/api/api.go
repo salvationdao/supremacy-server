@@ -43,8 +43,7 @@ type BroadcastPayload struct {
 }
 
 type VotePriceSystem struct {
-	VotePriceUpdater    *tickle.Tickle
-	VotePriceForecaster *tickle.Tickle
+	VotePriceUpdater *tickle.Tickle
 
 	GlobalVotePerTick []int64 // store last 100 tick total vote
 	GlobalTotalVote   int64
@@ -74,6 +73,7 @@ type API struct {
 	BattleArena  *battle_arena.BattleArena
 	HTMLSanitize *bluemonday.Policy
 	Hub          *hub.Hub
+	Conn         *pgxpool.Pool
 	MessageBus   *messagebus.MessageBus
 	Passport     *passport.Passport
 
@@ -125,6 +125,7 @@ func NewAPI(
 		MessageBus:   messageBus,
 		HTMLSanitize: HTMLSanitize,
 		BattleArena:  battleArenaClient,
+		Conn:         conn,
 		Hub: hub.New(&hub.Config{
 			Log: zerologger.New(*log_helpers.NamedLogger(log, "hub library")),
 			WelcomeMsg: &hub.WelcomeMsg{
@@ -198,6 +199,7 @@ func NewAPI(
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventGameEnd, api.BattleEndSignal)
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventWarMachineDestroyed, api.WarMachineDestroyedBroadcast)
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventWarMachinePositionChanged, api.UpdateWarMachinePosition)
+	api.BattleArena.Events.AddEventHandler(battle_arena.EventWarMachineQueueUpdated, api.UpdateWarMachineQueue)
 
 	///////////////////////////
 	//	 Passport Events	 //
@@ -209,6 +211,9 @@ func NewAPI(
 	api.Passport.Events.AddEventHandler(passport.EventBattleQueueLeave, api.PassportBattleQueueReleaseHandler)
 	api.Passport.Events.AddEventHandler(passport.EventWarMachineQueuePositionGet, api.PassportWarMachineQueuePositionHandler)
 	api.Passport.Events.AddEventHandler(passport.EventAuthRingCheck, api.AuthRingCheckHandler)
+	api.Passport.Events.AddEventHandler(passport.EventAssetInsurancePay, api.PassportAssetInsurancePayHandler)
+	api.Passport.Events.AddEventHandler(passport.EventFactionStatGet, api.PassportFactionStatGetHandler)
+	api.Passport.Events.AddEventHandler(passport.EventUserSupsMultiplierGet, api.PassportUserSupsMultiplierGetHandler)
 
 	// listen to the client online and action channel
 	go api.ClientListener()
@@ -358,7 +363,6 @@ func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client, clients
 			api.Log.Err(err).Msg("failed to send broadcast")
 		}
 	}()
-
 }
 
 func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, clients hub.ClientsList, ch hub.TriggerChan) {

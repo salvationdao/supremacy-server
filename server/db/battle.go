@@ -69,12 +69,12 @@ func BattleWarMachineAssign(ctx context.Context, conn Conn, battleID server.Batt
 // BattleEnded sets a battle as ended
 func BattleEnded(ctx context.Context, conn Conn, battleID server.BattleID, winningCondition server.BattleWinCondition) error {
 	q := `
-	UPDATE 
-		battles
-	SET 
-		winning_condition = $2, ended_at = NOW()
-	WHERE 
-		id = $1;
+		UPDATE 
+			battles
+		SET 
+			winning_condition = $2, ended_at = NOW()
+		WHERE 
+			id = $1;
 	`
 
 	_, err := conn.Exec(ctx, q, battleID, winningCondition)

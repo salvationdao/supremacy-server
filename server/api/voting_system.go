@@ -105,17 +105,11 @@ func (api *API) startVotePriceSystem(factions []*server.Faction, conn *pgxpool.P
 
 	// initialise vote price ticker
 	tickle.MinDurationOverride = true
-	votePriceTickerLogger := log_helpers.NamedLogger(api.Log, "Vote Price Ticker").Level(zerolog.TraceLevel)
+	votePriceTickerLogger := log_helpers.NamedLogger(api.Log, "Vote Price Ticker").Level(zerolog.Disabled)
 	votePriceUpdater := tickle.New("Vote Price Ticker", VotePriceUpdaterTickSecond, api.votePriceUpdaterFactory(conn))
 	votePriceUpdater.Log = &votePriceTickerLogger
 
-	// initialise vote price forecaster
-	votePriceForecasterLogger := log_helpers.NamedLogger(api.Log, "Vote Price Ticker").Level(zerolog.Disabled)
-	votePriceForecaster := tickle.New("Vote Price Ticker", 0.5, api.votePriceForecaster)
-	votePriceForecaster.Log = &votePriceForecasterLogger
-
 	api.votePriceSystem.VotePriceUpdater = votePriceUpdater
-	api.votePriceSystem.VotePriceForecaster = votePriceForecaster
 }
 
 func absoluteInt64(x int64) int64 {
@@ -267,80 +261,6 @@ func (api *API) votePriceUpdaterFactory(conn *pgxpool.Pool) func() (int, error) 
 
 		return http.StatusOK, nil
 	}
-}
-
-// votePriceForecaster
-func (api *API) votePriceForecaster() (int, error) {
-	// get snap shot of current value
-	globalFirstTick := api.votePriceSystem.GlobalVotePerTick[0]
-	globalTotalVote := api.votePriceSystem.GlobalTotalVote
-
-	currentTotalVote := int64(0)
-	factionVoteMap := make(map[server.FactionID]int64)
-	for _, faction := range api.factionMap {
-		cvpt := api.votePriceSystem.FactionVotePriceMap[faction.ID].CurrentVotePerTick
-		factionVoteMap[faction.ID] = cvpt
-		currentTotalVote += cvpt
-	}
-
-	// calculate total vote
-	globalTotalVote = globalTotalVote - globalFirstTick + currentTotalVote
-
-	var wg sync.WaitGroup
-	votePriceMutex := sync.Mutex{}
-	factionVotePriceMap := make(map[server.FactionID][]byte)
-
-	// start calc faction vote price
-	for _, faction := range api.factionMap {
-		wg.Add(1)
-		go func(faction *server.Faction) {
-
-			// get a copy of current vote price
-			newVotePrice := calVotePrice(
-				globalTotalVote,
-				api.votePriceSystem.FactionVotePriceMap[faction.ID].CurrentVotePriceSups,
-				factionVoteMap[faction.ID],
-				faction.ID,
-			)
-
-			// prepare broadcast payload
-			payload := []byte{}
-			payload = append(payload, byte(battle_arena.NetMessageTypeVotePriceForecastTick))
-			payload = append(payload, []byte(newVotePrice.Int.String())...)
-
-			votePriceMutex.Lock()
-			factionVotePriceMap[faction.ID] = payload
-			votePriceMutex.Unlock()
-			wg.Done()
-		}(faction)
-	}
-	wg.Wait()
-
-	// start broadcast
-	api.Hub.Clients(func(clients hub.ClientsList) {
-		for client, ok := range clients {
-			if !ok {
-				continue
-			}
-			go func(c *hub.Client) {
-				// get user faction id
-				hcd, err := api.getClientDetailFromChannel(c)
-
-				// skip, if error or no faction
-				if err != nil || hcd.FactionID.IsNil() {
-					return
-				}
-
-				// broadcast vote price forecast
-				err = c.SendWithMessageType(factionVotePriceMap[hcd.FactionID], websocket.MessageBinary)
-				if err != nil {
-					api.Log.Err(err).Msg("failed to send broadcast")
-				}
-			}(client)
-		}
-	})
-
-	return http.StatusOK, nil
 }
 
 func calVotePrice(globalTotalVote int64, currentVotePrice server.BigInt, currentVotePerTick int64, factionID server.FactionID) server.BigInt {
@@ -642,10 +562,6 @@ func (api *API) stopVotingCycle() {
 			api.votePriceSystem.VotePriceUpdater.Stop()
 		}
 
-		if api.votePriceSystem.VotePriceForecaster.NextTick != nil {
-			api.votePriceSystem.VotePriceForecaster.Stop()
-		}
-
 		// get all the left over transaction
 		var txRefs []server.TransactionReference
 		for _, factionVotes := range fuvm {
@@ -657,13 +573,7 @@ func (api *API) stopVotingCycle() {
 		}
 
 		// commit the transactions
-		if len(txRefs) > 0 {
-			_, err := api.Passport.ReleaseTransactions(context.Background(), txRefs)
-			if err != nil {
-				api.Log.Err(err).Msg("failed to Release transactions")
-				return
-			}
-		}
+		api.Passport.ReleaseTransactions(context.Background(), txRefs)
 	}
 }
 
@@ -710,10 +620,6 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 			case VotePhaseVoteAbilityRight:
 				if api.votePriceSystem.VotePriceUpdater.NextTick != nil {
 					api.votePriceSystem.VotePriceUpdater.Stop()
-				}
-
-				if api.votePriceSystem.VotePriceForecaster.NextTick != nil {
-					api.votePriceSystem.VotePriceForecaster.Stop()
 				}
 
 				// get all the tx
@@ -998,10 +904,6 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 
 				if api.votePriceSystem.VotePriceUpdater.NextTick == nil || api.votePriceSystem.VotePriceUpdater.NextTick.Before(time.Now()) {
 					api.votePriceSystem.VotePriceUpdater.Start()
-				}
-
-				if api.votePriceSystem.VotePriceForecaster.NextTick == nil || api.votePriceSystem.VotePriceForecaster.NextTick.Before(time.Now()) {
-					api.votePriceSystem.VotePriceForecaster.Start()
 				}
 
 			}

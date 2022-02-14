@@ -4,6 +4,7 @@ import (
 	"context"
 	"server"
 
+	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 )
 
@@ -92,7 +93,7 @@ type UserWarMachineQueuePosition struct {
 }
 
 type WarMachineQueuePosition struct {
-	WarMachineNFT *server.WarMachineNFT `json:"warMachineNFT"`
+	WarMachineNFT *server.WarMachineNFT `json:"warMachineMetadata"`
 	Position      int                   `json:"position"`
 }
 
@@ -105,21 +106,6 @@ func (pp *Passport) WarMachineQueuePositionBroadcast(ctx context.Context, uwm []
 				UserWarMachineQueuePosition []*UserWarMachineQueuePosition `json:"userWarMachineQueuePosition"`
 			}{
 				UserWarMachineQueuePosition: uwm,
-			},
-			context: ctx,
-		},
-	}
-}
-
-// WarMachineQueue
-func (pp *Passport) WarMachineQueuePositionClear(ctx context.Context, factionID server.FactionID) {
-	pp.send <- &Request{
-		Message: &Message{
-			Key: "SUPREMACY:WAR:MACHINE:QUEUE:POSITION:CLEAR",
-			Payload: struct {
-				FactionID server.FactionID `json:"factionID"`
-			}{
-				FactionID: factionID,
 			},
 			context: ctx,
 		},
@@ -142,5 +128,77 @@ func (pp *Passport) AbilityUpdateTargetPrice(ctx context.Context, abilityTokenID
 			},
 			context: ctx,
 		},
+	}
+}
+
+// AssetInsurancePay tell passport to pay insurance for battle asset
+func (pp *Passport) AssetInsurancePay(ctx context.Context, userID server.UserID, factionID server.FactionID, amount server.BigInt, txRef server.TransactionReference) error {
+	replyChannel := make(chan []byte)
+	errChan := make(chan error)
+
+	pp.send <- &Request{
+		ReplyChannel: replyChannel,
+		ErrChan:      errChan,
+		Message: &Message{
+			Key: "SUPREMACY:PAY_ASSET_INSURANCE",
+			Payload: struct {
+				UserID               server.UserID               `json:"userID"`
+				FactionID            server.FactionID            `json:"factionID"`
+				Amount               server.BigInt               `json:"amount"`
+				TransactionReference server.TransactionReference `json:"transactionReference"`
+			}{
+				UserID:               userID,
+				FactionID:            factionID,
+				Amount:               amount,
+				TransactionReference: txRef,
+			},
+			TransactionID: uuid.Must(uuid.NewV4()).String(),
+			context:       ctx,
+		},
+	}
+
+	for {
+		select {
+		case <-replyChannel:
+			return nil
+		case err := <-errChan:
+			return terror.Error(err)
+		}
+	}
+}
+
+// AssetContractRewardRedeem redeem faction contract reward
+func (pp *Passport) AssetContractRewardRedeem(ctx context.Context, userID server.UserID, factionID server.FactionID, amount server.BigInt, txRef server.TransactionReference) error {
+	replyChannel := make(chan []byte)
+	errChan := make(chan error)
+
+	pp.send <- &Request{
+		ReplyChannel: replyChannel,
+		ErrChan:      errChan,
+		Message: &Message{
+			Key: "SUPREMACY:REDEEM_FACTION_CONTRACT_REWARD",
+			Payload: struct {
+				UserID               server.UserID               `json:"userID"`
+				FactionID            server.FactionID            `json:"factionID"`
+				Amount               server.BigInt               `json:"amount"`
+				TransactionReference server.TransactionReference `json:"transactionReference"`
+			}{
+				UserID:               userID,
+				FactionID:            factionID,
+				Amount:               amount,
+				TransactionReference: txRef,
+			},
+			TransactionID: uuid.Must(uuid.NewV4()).String(),
+			context:       ctx,
+		},
+	}
+
+	for {
+		select {
+		case <-replyChannel:
+			return nil
+		case err := <-errChan:
+			return terror.Error(err)
+		}
 	}
 }

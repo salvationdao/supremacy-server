@@ -23,6 +23,15 @@ type Faction struct {
 	VotePrice        string        `json:"votePrice" db:"vote_price"`
 }
 
+type FactionStat struct {
+	ID         FactionID `json:"id" db:"id"`
+	WinCount   int64     `json:"winCount" db:"win_count"`
+	LossCount  int64     `json:"lossCount" db:"loss_count"`
+	KillCount  int64     `json:"killCount" db:"kill_count"`
+	DeathCount int64     `json:"deathCount" db:"death_count"`
+	MvpTokenID uint64    `json:"mvpTokenID" db:"mvp_token_id"`
+}
+
 type BattleAbility struct {
 	ID                     BattleAbilityID `json:"id" db:"id"`
 	Label                  string          `json:"label" db:"label"`
