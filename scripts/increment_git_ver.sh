@@ -7,6 +7,7 @@ debugecho () {
   [[ "$INSTRUMENTING" ]] && builtin echo $@
 }
 
+[[ "$INSTRUMENTING" ]] && git fetch --tags
 [[ "$INSTRUMENTING" ]] && git pull --tags
 [[ "$INSTRUMENTING" ]] || git pull --quiet --tags
 
