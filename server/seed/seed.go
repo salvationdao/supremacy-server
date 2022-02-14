@@ -73,7 +73,7 @@ var SharedAbilityCollections = []*server.BattleAbility{
 		CooldownDurationSecond: 30,
 	},
 	{
-		Label:                  "SYNDICATE CHOICE",
+		Label:                  "HEAL",
 		CooldownDurationSecond: 15,
 	},
 }
@@ -97,7 +97,7 @@ var SharedFactionAbilities = []*server.GameAbility{
 		SupsCost:            "0",
 	},
 	{
-		Label:               "SYNDICATE CHOICE",
+		Label:               "HEAL",
 		FactionID:           FactionIDZaibatsu,
 		GameClientAbilityID: 2,
 		Colour:              "#30B07D",
@@ -122,7 +122,7 @@ var SharedFactionAbilities = []*server.GameAbility{
 		SupsCost:            "0",
 	},
 	{
-		Label:               "SYNDICATE CHOICE",
+		Label:               "HEAL",
 		FactionID:           FactionIDBoston,
 		GameClientAbilityID: 5,
 		Colour:              "#30B07D",
@@ -147,7 +147,7 @@ var SharedFactionAbilities = []*server.GameAbility{
 		SupsCost:            "0",
 	},
 	{
-		Label:               "SYNDICATE CHOICE",
+		Label:               "HEAL",
 		FactionID:           FactionIDRedMountain,
 		GameClientAbilityID: 8,
 		Colour:              "#30B07D",
@@ -156,29 +156,25 @@ var SharedFactionAbilities = []*server.GameAbility{
 	},
 }
 
-var FactionSpecificAbilities = []*server.GameAbility{
+var BostonUniqueAbilities = []*server.GameAbility{
 	{
-		Label:               "AIRSTRIKE",
-		FactionID:           FactionIDRedMountain,
-		GameClientAbilityID: 6,
+
+		Label:               "ROBOT DOGS",
+		FactionID:           FactionIDBoston,
+		GameClientAbilityID: 9,
 		Colour:              "#428EC1",
 		ImageUrl:            "https://i.pinimg.com/originals/b1/92/4d/b1924dce177345b5485bb5490ab3441f.jpg",
 		SupsCost:            "100000000000000000000",
 	},
+}
+
+var RedMountainUniqueAbilities = []*server.GameAbility{
 	{
-		Label:               "NUKE",
+		Label:               "WAR MACHING REINFORCEMENT",
 		FactionID:           FactionIDRedMountain,
-		GameClientAbilityID: 7,
+		GameClientAbilityID: 10,
 		Colour:              "#C24242",
 		ImageUrl:            "https://images2.minutemediacdn.com/image/upload/c_crop,h_1126,w_2000,x_0,y_83/f_auto,q_auto,w_1100/v1555949079/shape/mentalfloss/581049-mesut_zengin-istock-1138195821.jpg",
-		SupsCost:            "100000000000000000000",
-	},
-	{
-		Label:               "HEAL",
-		FactionID:           FactionIDRedMountain,
-		GameClientAbilityID: 8,
-		Colour:              "#30B07D",
-		ImageUrl:            "https://i.pinimg.com/originals/ed/2f/9b/ed2f9b6e66b9efefa84d1ee423c718f0.png",
 		SupsCost:            "100000000000000000000",
 	},
 }
@@ -206,29 +202,19 @@ func factionAbilities(ctx context.Context, conn *pgxpool.Pool) error {
 	}
 
 	// insert red mountain faction abilities
-	for _, gameAbility := range FactionSpecificAbilities {
-		gameAbility.FactionID = server.RedMountainFactionID
-		gameAbility.GameClientAbilityID = byte(gameclientID)
-
+	for _, gameAbility := range RedMountainUniqueAbilities {
 		err := db.GameAbilityCreate(ctx, conn, gameAbility)
 		if err != nil {
 			return terror.Error(err)
 		}
-
-		gameclientID += 1
 	}
 
 	// insert boston faction abilities
-	for _, gameAbility := range FactionSpecificAbilities {
-		gameAbility.FactionID = server.BostonCyberneticsFactionID
-		gameAbility.GameClientAbilityID = byte(gameclientID)
-
+	for _, gameAbility := range BostonUniqueAbilities {
 		err := db.GameAbilityCreate(ctx, conn, gameAbility)
 		if err != nil {
 			return terror.Error(err)
 		}
-
-		gameclientID += 1
 	}
 
 	return nil

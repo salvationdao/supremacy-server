@@ -25,6 +25,9 @@ type GameSettingsResponse struct {
 
 // BattleStartSignal start all the voting cycle
 func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventData) {
+	// clean up current viewer id map
+	api.viewerIDRead()
+
 	// build faction detail to battle start
 	warMachines := ed.BattleArena.WarMachines
 	for _, wm := range warMachines {
@@ -150,6 +153,15 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 			}(c)
 		}
 	})
+
+	// increment users' view battle count
+	go func() {
+		err := db.UserBattleViewRecord(ctx, api.Conn, api.viewerIDRead())
+		if err != nil {
+			api.Log.Err(err).Msg("Failed to record users' battle count")
+			return
+		}
+	}()
 
 	// trigger faction stat refresh and send result to passport server
 	go func() {

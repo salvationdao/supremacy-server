@@ -25,8 +25,13 @@ type ViewerCount struct {
 	Count int64
 }
 
+// used for tracking user
+type ViewerIDMap map[server.UserID]bool
+
 func (api *API) initialiseViewerLiveCount(factions []*server.Faction) {
 	vlc := make(ViewerLiveCount)
+
+	vim := make(ViewerIDMap)
 
 	vlc[server.FactionID(uuid.Nil)] = &ViewerCount{
 		Count: 0,
@@ -74,28 +79,47 @@ func (api *API) initialiseViewerLiveCount(factions []*server.Faction) {
 
 	go func() {
 		for fn := range api.viewerLiveCount {
-			fn(vlc)
+			fn(vlc, vim)
 		}
 	}()
 }
 
 func (api *API) viewerLiveCountAdd(factionID server.FactionID) {
-	api.viewerLiveCount <- func(vlc ViewerLiveCount) {
+	api.viewerLiveCount <- func(vlc ViewerLiveCount, vim ViewerIDMap) {
 		vlc[factionID].Count += 1
 	}
 }
 
 func (api *API) viewerLiveCountRemove(factionID server.FactionID) {
-	api.viewerLiveCount <- func(vlc ViewerLiveCount) {
+	api.viewerLiveCount <- func(vlc ViewerLiveCount, vim ViewerIDMap) {
 		vlc[factionID].Count -= 1
 	}
 }
 
 func (api *API) viewerLiveCountSwap(oldFactionID, newFactionID server.FactionID) {
-	api.viewerLiveCount <- func(vlc ViewerLiveCount) {
+	api.viewerLiveCount <- func(vlc ViewerLiveCount, vim ViewerIDMap) {
 		vlc[oldFactionID].Count -= 1
 		vlc[newFactionID].Count += 1
 	}
+}
+
+func (api *API) viewerIDRecord(userID server.UserID) {
+	api.viewerLiveCount <- func(vlc ViewerLiveCount, vim ViewerIDMap) {
+		vim[userID] = true
+	}
+}
+
+func (api *API) viewerIDRead() []server.UserID {
+	userIDChan := make(chan []server.UserID)
+	api.viewerLiveCount <- func(vlc ViewerLiveCount, vim ViewerIDMap) {
+		userIDs := []server.UserID{}
+		for userID := range vim {
+			userIDs = append(userIDs, userID)
+			delete(vim, userID)
+		}
+		userIDChan <- userIDs
+	}
+	return <-userIDChan
 }
 
 /**********************

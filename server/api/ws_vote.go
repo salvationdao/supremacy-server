@@ -284,14 +284,13 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 		})
 
 		// record ability animation
-		userIDString := userID.String()
 		selectedX := req.Payload.XIndex
 		selectedY := req.Payload.YIndex
 		err = vc.API.BattleArena.GameAbilityTrigger(&server.GameAbilityEvent{
 			GameAbilityID:       &va.FactionAbilityMap[hcd.FactionID].ID,
 			IsTriggered:         true,
 			GameClientAbilityID: va.FactionAbilityMap[hcd.FactionID].GameClientAbilityID,
-			TriggeredByUserID:   &userIDString,
+			TriggeredByUserID:   &userID,
 			TriggeredByUsername: &hcd.Username,
 			TriggeredOnCellX:    &selectedX,
 			TriggeredOnCellY:    &selectedY,
