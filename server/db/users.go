@@ -35,6 +35,8 @@ func UserBattleViewUpsert(ctx context.Context, conn Conn, userIDs []server.UserI
 			view_battle_count = users.view_battle_count + 1;
 	`
 
+	fmt.Println(q)
+
 	_, err := conn.Exec(ctx, q)
 	if err != nil {
 		return terror.Error(err)
@@ -59,7 +61,9 @@ func UserBattleVoteCountInsert(ctx context.Context, conn Conn, battleID server.B
 		}
 	}
 
-	q += " ON CONFLICT (battle_id,user_id) DO NOTHING"
+	q += " ON CONFLICT (battle_id, user_id) DO NOTHING"
+
+	fmt.Println(q)
 	_, err := conn.Exec(ctx, q)
 	if err != nil {
 		return terror.Error(err)
