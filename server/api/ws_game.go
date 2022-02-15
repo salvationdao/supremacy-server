@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"server"
 	"server/battle_arena"
+	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/log_helpers"
@@ -118,6 +119,26 @@ func (gc *GameControllerWS) FactionWarMachineQueueUpdateSubscribeHandler(ctx con
 	return req.TransactionID, busKey, nil
 }
 
+type BattleEventRecord struct {
+	Type      server.BattleEventType `json:"type"`
+	CreatedAt time.Time              `json:"createdAt"`
+	Event     interface{}            `json:"event"`
+}
+
+type BattleAbilityEventRecord struct {
+	Ability               *server.AbilityBrief    `json:"ability"`
+	TriggeredByUser       *server.UserBrief       `json:"triggeredByUser,omitempty"`
+	TriggeredOnCellX      *int                    `json:"x,omitempty"`
+	TriggeredOnCellY      *int                    `json:"y,omitempty"`
+	TriggeredOnWarMachine *server.WarMachineBrief `json:"triggeredOnWarMachine,omitempty"`
+}
+
+type WarMachineDestroyedEventRecord struct {
+	DestroyedWarMachine *server.WarMachineBrief `json:"destroyedWarMachine"`
+	KilledByWarMachine  *server.WarMachineBrief `json:"killedByWarMachineID,omitempty"`
+	KilledBy            string                  `json:"killedBy"`
+}
+
 const HubKeyBattleEndDetailUpdated hub.HubCommandKey = "BATTLE:END:DETAIL:UPDATED"
 
 func (gc *GameControllerWS) BattleEndDetailUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
@@ -127,7 +148,7 @@ func (gc *GameControllerWS) BattleEndDetailUpdateSubscribeHandler(ctx context.Co
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
-	if !gc.API.battleEndInfo.BattleID.IsNil() {
+	if !gc.API.battleEndInfo.BattleID.IsNil() && gc.API.battleEndInfo.BattleID == gc.API.BattleArena.CurrentBattleID() {
 		reply(gc.API.battleEndInfo)
 	}
 
@@ -147,34 +168,10 @@ const (
 	GameNotificationTypeWarMachineAbility GameNotificationType = "WAR_MACHINE_ABILITY"
 )
 
-type WarMachineBrief struct {
-	ImageUrl string        `json:"image"`
-	Name     string        `json:"name"`
-	Faction  *FactionBrief `json:"faction"`
-}
-
-type AbilityBrief struct {
-	Label    string `json:"label"`
-	ImageUrl string `json:"imageUrl"`
-	Colour   string `json:"colour"`
-}
-
-type UserBrief struct {
-	Username string         `json:"username"`
-	AvatarID *server.BlobID `json:"avatarID,omitempty"`
-	Faction  *FactionBrief  `json:"faction"`
-}
-
-type FactionBrief struct {
-	Label      string               `json:"label"`
-	LogoBlobID server.BlobID        `json:"logoBlobID,omitempty"`
-	Theme      *server.FactionTheme `json:"theme"`
-}
-
 type GameNotificationKill struct {
-	DestroyedWarMachine *WarMachineBrief `json:"DestroyedWarMachine"`
-	KillerWarMachine    *WarMachineBrief `json:"killerWarMachine,omitempty"`
-	KilledByAbility     *AbilityBrief    `json:"killedByAbility,omitempty"`
+	DestroyedWarMachine *server.WarMachineBrief `json:"DestroyedWarMachine"`
+	KillerWarMachine    *server.WarMachineBrief `json:"killerWarMachine,omitempty"`
+	KilledByAbility     *server.AbilityBrief    `json:"killedByAbility,omitempty"`
 }
 
 type LocationSelectType string
@@ -188,23 +185,23 @@ const (
 )
 
 type GameNotificationLocationSelect struct {
-	Type        LocationSelectType `json:"type"`
-	X           *int               `json:"x,omitempty"`
-	Y           *int               `json:"y,omitempty"`
-	CurrentUser *UserBrief         `json:"currentUser,omitempty"`
-	NextUser    *UserBrief         `json:"nextUser,omitempty"`
-	Ability     *AbilityBrief      `json:"ability,omitempty"`
+	Type        LocationSelectType   `json:"type"`
+	X           *int                 `json:"x,omitempty"`
+	Y           *int                 `json:"y,omitempty"`
+	CurrentUser *server.UserBrief    `json:"currentUser,omitempty"`
+	NextUser    *server.UserBrief    `json:"nextUser,omitempty"`
+	Ability     *server.AbilityBrief `json:"ability,omitempty"`
 }
 
 type GameNotificationAbility struct {
-	User    *UserBrief    `json:"user,omitempty"`
-	Ability *AbilityBrief `json:"ability,omitempty"`
+	User    *server.UserBrief    `json:"user,omitempty"`
+	Ability *server.AbilityBrief `json:"ability,omitempty"`
 }
 
 type GameNotificationWarMachineAbility struct {
-	User       *UserBrief       `json:"user,omitempty"`
-	Ability    *AbilityBrief    `json:"ability,omitempty"`
-	WarMachine *WarMachineBrief `json:"warMachine,omitempty"`
+	User       *server.UserBrief       `json:"user,omitempty"`
+	Ability    *server.AbilityBrief    `json:"ability,omitempty"`
+	WarMachine *server.WarMachineBrief `json:"warMachine,omitempty"`
 }
 
 type GameNotification struct {

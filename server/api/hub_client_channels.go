@@ -145,37 +145,29 @@ func (api *API) startAuthRignCheckListener() {
 * Client Detail Map *
 ********************/
 
-type HubClientDetail struct {
-	FactionID server.FactionID
-	FirstName string
-	LastName  string
-	Username  string
-	avatarID  *server.BlobID
-}
-
 // startClientTracker track client state
 func (api *API) startClientTracker(wsc *hub.Client) {
 	// initialise online client
-	hubClientDetail := &HubClientDetail{
+	hcd := &server.User{
 		FactionID: server.FactionID(uuid.Nil),
 	}
 
 	go func() {
 		for fn := range api.hubClientDetail[wsc] {
-			fn(hubClientDetail)
+			fn(hcd)
 		}
 	}()
 }
 
 // getClientDetailFromChannel return a client detail from client detail channel
-func (api *API) getClientDetailFromChannel(wsc *hub.Client) (*HubClientDetail, error) {
+func (api *API) getClientDetailFromChannel(wsc *hub.Client) (*server.User, error) {
 	hubClientDetailChan, ok := api.hubClientDetail[wsc]
 	if !ok {
 		return nil, terror.Error(terror.ErrInvalidInput, "Error - Current hub client is not on the map")
 	}
 
-	detailChan := make(chan *HubClientDetail)
-	hubClientDetailChan <- func(hcd *HubClientDetail) {
+	detailChan := make(chan *server.User)
+	hubClientDetailChan <- func(hcd *server.User) {
 		detailChan <- hcd
 	}
 
@@ -185,7 +177,7 @@ func (api *API) getClientDetailFromChannel(wsc *hub.Client) (*HubClientDetail, e
 }
 
 // getClientDetailFromUserID return hub client detail by given user id
-func (api *API) getClientDetailFromUserID(userID server.UserID) (*HubClientDetail, error) {
+func (api *API) getClientDetailFromUserID(userID server.UserID) (*server.User, error) {
 	// get winner username
 	for _, wsc := range api.Hub.FindClients(func(usersClients *hub.Client) bool {
 		return usersClients.Identifier() == userID.String()

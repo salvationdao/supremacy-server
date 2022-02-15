@@ -166,20 +166,8 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 		vs.EndTime = time.Now().Add(LocationSelectDurationSecond * time.Second)
 
 		go vc.API.BroadcastGameNotificationAbility(ctx, GameNotificationTypeBattleAbility, &GameNotificationAbility{
-			User: &UserBrief{
-				Username: hcd.Username,
-				AvatarID: hcd.avatarID,
-				Faction: &FactionBrief{
-					Label:      vc.API.factionMap[hcd.FactionID].Label,
-					Theme:      vc.API.factionMap[hcd.FactionID].Theme,
-					LogoBlobID: vc.API.factionMap[hcd.FactionID].LogoBlobID,
-				},
-			},
-			Ability: &AbilityBrief{
-				Label:    va.FactionAbilityMap[hcd.FactionID].Label,
-				ImageUrl: va.FactionAbilityMap[hcd.FactionID].ImageUrl,
-				Colour:   va.FactionAbilityMap[hcd.FactionID].Colour,
-			},
+			User:    hcd.Brief(),
+			Ability: va.FactionAbilityMap[hcd.FactionID].Brief(),
 		})
 
 		// announce winner
@@ -268,27 +256,6 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 			return
 		}
 
-		// broadcast notification
-		go vc.API.BroadcastGameNotificationLocationSelect(ctx, &GameNotificationLocationSelect{
-			Type: LocationSelectTypeTrigger,
-			CurrentUser: &UserBrief{
-				Username: hcd.Username,
-				AvatarID: hcd.avatarID,
-				Faction: &FactionBrief{
-					Label:      vc.API.factionMap[hcd.FactionID].Label,
-					Theme:      vc.API.factionMap[hcd.FactionID].Theme,
-					LogoBlobID: vc.API.factionMap[hcd.FactionID].LogoBlobID,
-				},
-			},
-			X: &req.Payload.XIndex,
-			Y: &req.Payload.YIndex,
-			Ability: &AbilityBrief{
-				Label:    va.BattleAbility.Label,
-				ImageUrl: va.BattleAbility.ImageUrl,
-				Colour:   va.BattleAbility.Colour,
-			},
-		})
-
 		// record ability animation
 		selectedX := req.Payload.XIndex
 		selectedY := req.Payload.YIndex
@@ -305,6 +272,27 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 			errChan <- terror.Error(err)
 			return
 		}
+
+		// record ability triggered event for battle end content
+		vc.API.battleEndInfo.BattleEvents = append(vc.API.battleEndInfo.BattleEvents, &BattleEventRecord{
+			Type:      server.BattleEventTypeGameAbility,
+			CreatedAt: time.Now(),
+			Event: &BattleAbilityEventRecord{
+				TriggeredByUser:  hcd.Brief(),
+				Ability:          va.BattleAbility.Brief(),
+				TriggeredOnCellX: &selectedX,
+				TriggeredOnCellY: &selectedY,
+			},
+		})
+
+		// broadcast notification
+		go vc.API.BroadcastGameNotificationLocationSelect(ctx, &GameNotificationLocationSelect{
+			Type:        LocationSelectTypeTrigger,
+			CurrentUser: hcd.Brief(),
+			X:           &req.Payload.XIndex,
+			Y:           &req.Payload.YIndex,
+			Ability:     va.BattleAbility.Brief(),
+		})
 
 		// get random ability collection set
 		battleAbility, factionAbilityMap, err := vc.API.BattleArena.RandomBattleAbility()

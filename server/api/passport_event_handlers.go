@@ -64,11 +64,11 @@ func (api *API) PassportUserUpdatedHandler(ctx context.Context, payload []byte) 
 
 			go func(c *hub.Client) {
 				// update client detail
-				api.hubClientDetail[c] <- func(hcd *HubClientDetail) {
+				api.hubClientDetail[c] <- func(hcd *server.User) {
 					hcd.FirstName = req.Payload.User.FirstName
 					hcd.LastName = req.Payload.User.LastName
 					hcd.Username = req.Payload.User.Username
-					hcd.avatarID = req.Payload.User.AvatarID
+					hcd.AvatarID = req.Payload.User.AvatarID
 
 					if hcd.FactionID == req.Payload.User.FactionID {
 						return
@@ -78,13 +78,8 @@ func (api *API) PassportUserUpdatedHandler(ctx context.Context, payload []byte) 
 					go api.viewerLiveCountSwap(hcd.FactionID, req.Payload.User.FactionID)
 					hcd.FactionID = req.Payload.User.FactionID
 
-					user := &server.User{
-						ID:        req.Payload.User.ID,
-						FactionID: req.Payload.User.FactionID,
-					}
-
 					if !req.Payload.User.FactionID.IsNil() {
-						user.Faction = api.factionMap[req.Payload.User.FactionID]
+						hcd.Faction = api.factionMap[req.Payload.User.FactionID]
 					}
 
 					// send
@@ -95,7 +90,7 @@ func (api *API) PassportUserUpdatedHandler(ctx context.Context, payload []byte) 
 					}{
 						Key:           HubKeyUserSubscribe,
 						TransactionID: "userUpdate",
-						Payload:       user,
+						Payload:       hcd,
 					}
 
 					b, err := json.Marshal(resp)
@@ -163,10 +158,11 @@ func (api *API) PassportUserEnlistFactionHandler(ctx context.Context, payload []
 			}
 
 			go func(c *hub.Client) {
-				api.hubClientDetail[c] <- func(hcd *HubClientDetail) {
+				api.hubClientDetail[c] <- func(hcd *server.User) {
 					go api.viewerLiveCountSwap(hcd.FactionID, req.Payload.FactionID)
 					// update client facton id
 					hcd.FactionID = req.Payload.FactionID
+					hcd.Faction = api.factionMap[hcd.FactionID]
 				}
 
 				err = c.Send(ctx, broadcastData)
@@ -587,15 +583,19 @@ func (api *API) AuthRingCheckHandler(ctx context.Context, payload []byte) {
 		}
 
 		// set hub client detail
-		hubClientDetail <- func(hcd *HubClientDetail) {
+		hubClientDetail <- func(hcd *server.User) {
 			hcd.Username = req.Payload.User.Username
 			hcd.FirstName = req.Payload.User.FirstName
 			hcd.LastName = req.Payload.User.LastName
-			hcd.avatarID = req.Payload.User.AvatarID
+			hcd.AvatarID = req.Payload.User.AvatarID
 
 			if hcd.FactionID != req.Payload.User.FactionID {
 				go api.viewerLiveCountSwap(hcd.FactionID, req.Payload.User.FactionID)
 				hcd.FactionID = req.Payload.User.FactionID
+
+				if !hcd.FactionID.IsNil() {
+					hcd.Faction = api.factionMap[hcd.FactionID]
+				}
 			}
 		}
 

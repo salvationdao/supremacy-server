@@ -138,30 +138,33 @@ func (api *API) abilityTargetPriceUpdaterFactory(ctx context.Context, factionID 
 						return
 					}
 
+					ability := fa.GameAbility.Brief()
 					if fa.GameAbility.AbilityTokenID == 0 {
 						go api.BroadcastGameNotificationAbility(ctx, GameNotificationTypeFactionAbility, &GameNotificationAbility{
-							Ability: &AbilityBrief{
-								Label:    fa.GameAbility.Label,
-								ImageUrl: fa.GameAbility.ImageUrl,
-								Colour:   fa.GameAbility.Colour,
+							Ability: ability,
+						})
+						// record ability triggered event for battle end content
+						api.battleEndInfo.BattleEvents = append(api.battleEndInfo.BattleEvents, &BattleEventRecord{
+							Type:      server.BattleEventTypeGameAbility,
+							CreatedAt: time.Now(),
+							Event: &BattleAbilityEventRecord{
+								Ability: ability,
 							},
 						})
 					} else {
+						warMachine := api.BattleArena.GetWarMachine(fa.GameAbility.WarMachineTokenID).Brief()
 						// broadcast notification
 						go api.BroadcastGameNotificationWarMachineAbility(ctx, &GameNotificationWarMachineAbility{
-							Ability: &AbilityBrief{
-								Label:    fa.GameAbility.Label,
-								ImageUrl: fa.GameAbility.ImageUrl,
-								Colour:   fa.GameAbility.Colour,
-							},
-							WarMachine: &WarMachineBrief{
-								Name:     fa.GameAbility.WarMachineName,
-								ImageUrl: fa.GameAbility.WarMachineImage,
-								Faction: &FactionBrief{
-									Label:      api.factionMap[fa.GameAbility.FactionID].Label,
-									Theme:      api.factionMap[fa.GameAbility.FactionID].Theme,
-									LogoBlobID: api.factionMap[fa.GameAbility.FactionID].LogoBlobID,
-								},
+							Ability:    ability,
+							WarMachine: warMachine,
+						})
+						// record ability triggered event for battle end content
+						api.battleEndInfo.BattleEvents = append(api.battleEndInfo.BattleEvents, &BattleEventRecord{
+							Type:      server.BattleEventTypeGameAbility,
+							CreatedAt: time.Now(),
+							Event: &BattleAbilityEventRecord{
+								Ability:               ability,
+								TriggeredOnWarMachine: warMachine,
 							},
 						})
 					}

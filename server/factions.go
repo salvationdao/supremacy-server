@@ -23,6 +23,20 @@ type Faction struct {
 	VotePrice        string        `json:"votePrice" db:"vote_price"`
 }
 
+type FactionBrief struct {
+	Label      string        `json:"label"`
+	LogoBlobID BlobID        `json:"logoBlobID,omitempty"`
+	Theme      *FactionTheme `json:"theme"`
+}
+
+func (f *Faction) Brief() *FactionBrief {
+	return &FactionBrief{
+		Label:      f.Label,
+		LogoBlobID: f.LogoBlobID,
+		Theme:      f.Theme,
+	}
+}
+
 type FactionStat struct {
 	ID         FactionID `json:"id" db:"id"`
 	WinCount   *int64    `json:"winCount,omitempty" db:"win_count,omitempty"`
@@ -39,24 +53,10 @@ type BattleAbility struct {
 	ImageUrl               string          `json:"imageUrl"`
 }
 
-type GameAbility struct {
-	ID                  GameAbilityID    `json:"id" db:"id"`
-	GameClientAbilityID byte             `json:"gameClientAbilityID" db:"game_client_ability_id"`
-	BattleAbilityID     *BattleAbilityID `json:"battleAbilityID,omitempty" db:"battle_ability_id,omitempty"`
-	Colour              string           `json:"colour" db:"colour"`
-	ImageUrl            string           `json:"imageUrl" db:"image_url"`
-	FactionID           FactionID        `json:"factionID" db:"faction_id"`
-	Label               string           `json:"label" db:"label"`
-	SupsCost            string           `json:"supsCost" db:"sups_cost"`
-	CurrentSups         string           `json:"currentSups"`
-
-	// if token id is not 0, it is a nft ability, otherwise it is a faction wide ability
-	AbilityTokenID    uint64
-	WarMachineTokenID uint64
-	ParticipantID     *byte
-	WarMachineName    string
-	WarMachineImage   string
-
-	// Category title for frontend to group the abilities together
-	Title string `json:"title"`
+func (ga *BattleAbility) Brief() *AbilityBrief {
+	return &AbilityBrief{
+		Label:    ga.Label,
+		ImageUrl: ga.ImageUrl,
+		Colour:   ga.Colour,
+	}
 }

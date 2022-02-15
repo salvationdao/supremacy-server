@@ -9,6 +9,7 @@ import (
 	"server/battle_arena"
 	"server/db"
 	"strings"
+	"time"
 
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -189,49 +190,40 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 			return
 		}
 
+		triggeredBy := hcd.Brief()
+		ability := fa.GameAbility.Brief()
 		// broadcast notification
 		if fa.GameAbility.AbilityTokenID == 0 {
 			go fc.API.BroadcastGameNotificationAbility(ctx, GameNotificationTypeFactionAbility, &GameNotificationAbility{
-				User: &UserBrief{
-					Username: hcd.Username,
-					AvatarID: hcd.avatarID,
-					Faction: &FactionBrief{
-						Label:      fc.API.factionMap[hcd.FactionID].Label,
-						Theme:      fc.API.factionMap[hcd.FactionID].Theme,
-						LogoBlobID: fc.API.factionMap[hcd.FactionID].LogoBlobID,
-					},
-				},
-				Ability: &AbilityBrief{
-					Label:    fa.GameAbility.Label,
-					ImageUrl: fa.GameAbility.ImageUrl,
-					Colour:   fa.GameAbility.Colour,
+				User:    triggeredBy,
+				Ability: ability,
+			})
+			// record ability triggered event for battle end content
+			fc.API.battleEndInfo.BattleEvents = append(fc.API.battleEndInfo.BattleEvents, &BattleEventRecord{
+				Type:      server.BattleEventTypeGameAbility,
+				CreatedAt: time.Now(),
+				Event: &BattleAbilityEventRecord{
+					TriggeredByUser: triggeredBy,
+					Ability:         ability,
 				},
 			})
 		} else {
+			warMachine := fc.API.BattleArena.GetWarMachine(fa.GameAbility.WarMachineTokenID).Brief()
 			// broadcast notification
 			go fc.API.BroadcastGameNotificationWarMachineAbility(ctx, &GameNotificationWarMachineAbility{
-				User: &UserBrief{
-					Username: hcd.Username,
-					AvatarID: hcd.avatarID,
-					Faction: &FactionBrief{
-						Label:      fc.API.factionMap[hcd.FactionID].Label,
-						Theme:      fc.API.factionMap[hcd.FactionID].Theme,
-						LogoBlobID: fc.API.factionMap[hcd.FactionID].LogoBlobID,
-					},
-				},
-				Ability: &AbilityBrief{
-					Label:    fa.GameAbility.Label,
-					ImageUrl: fa.GameAbility.ImageUrl,
-					Colour:   fa.GameAbility.Colour,
-				},
-				WarMachine: &WarMachineBrief{
-					Name:     fa.GameAbility.WarMachineName,
-					ImageUrl: fa.GameAbility.WarMachineImage,
-					Faction: &FactionBrief{
-						Label:      fc.API.factionMap[fa.GameAbility.FactionID].Label,
-						Theme:      fc.API.factionMap[fa.GameAbility.FactionID].Theme,
-						LogoBlobID: fc.API.factionMap[fa.GameAbility.FactionID].LogoBlobID,
-					},
+				User:       hcd.Brief(),
+				Ability:    fa.GameAbility.Brief(),
+				WarMachine: fc.API.BattleArena.GetWarMachine(fa.GameAbility.WarMachineTokenID).Brief(),
+			})
+
+			// record ability triggered event for battle end content
+			fc.API.battleEndInfo.BattleEvents = append(fc.API.battleEndInfo.BattleEvents, &BattleEventRecord{
+				Type:      server.BattleEventTypeGameAbility,
+				CreatedAt: time.Now(),
+				Event: &BattleAbilityEventRecord{
+					TriggeredByUser:       triggeredBy,
+					Ability:               ability,
+					TriggeredOnWarMachine: warMachine,
 				},
 			})
 		}

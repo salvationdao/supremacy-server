@@ -54,6 +54,25 @@ type WarMachineMetadata struct {
 	IsInsured      bool    `json:"isInsured"`
 }
 
+type WarMachineBrief struct {
+	ImageUrl string        `json:"image"`
+	Name     string        `json:"name"`
+	Faction  *FactionBrief `json:"faction"`
+}
+
+func (wm *WarMachineMetadata) Brief() *WarMachineBrief {
+	wmb := &WarMachineBrief{
+		ImageUrl: wm.Image,
+		Name:     wm.Name,
+	}
+
+	if wm.Faction != nil {
+		wmb.Faction = wm.Faction.Brief()
+	}
+
+	return wmb
+}
+
 type AbilityMetadata struct {
 	TokenID           uint64 `json:"tokenID"`
 	Name              string `json:"name"`
@@ -71,4 +90,38 @@ type Vector3 struct {
 	X int `json:"x"`
 	Y int `json:"y"`
 	Z int `json:"z"`
+}
+
+type GameAbility struct {
+	ID                  GameAbilityID    `json:"id" db:"id"`
+	GameClientAbilityID byte             `json:"gameClientAbilityID" db:"game_client_ability_id"`
+	BattleAbilityID     *BattleAbilityID `json:"battleAbilityID,omitempty" db:"battle_ability_id,omitempty"`
+	Colour              string           `json:"colour" db:"colour"`
+	ImageUrl            string           `json:"imageUrl" db:"image_url"`
+	FactionID           FactionID        `json:"factionID" db:"faction_id"`
+	Label               string           `json:"label" db:"label"`
+	SupsCost            string           `json:"supsCost" db:"sups_cost"`
+	CurrentSups         string           `json:"currentSups"`
+
+	// if token id is not 0, it is a nft ability, otherwise it is a faction wide ability
+	AbilityTokenID    uint64
+	WarMachineTokenID uint64
+	ParticipantID     *byte
+
+	// Category title for frontend to group the abilities together
+	Title string `json:"title"`
+}
+
+type AbilityBrief struct {
+	Label    string `json:"label"`
+	ImageUrl string `json:"imageUrl"`
+	Colour   string `json:"colour"`
+}
+
+func (ga *GameAbility) Brief() *AbilityBrief {
+	return &AbilityBrief{
+		Label:    ga.Label,
+		ImageUrl: ga.ImageUrl,
+		Colour:   ga.Colour,
+	}
 }
