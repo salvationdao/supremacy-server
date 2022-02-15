@@ -13,8 +13,8 @@ type Battle struct {
 	StartedAt          time.Time              `json:"startedAt" db:"started_at"`
 	EndedAt            *time.Time             `json:"endedAt" db:"ended_at"`
 	WinningCondition   *string                `json:"winningCondition" db:"winning_condition"`
-	WarMachines        []*WarMachineNFT       `json:"warMachines"`
-	WinningWarMachines []*WarMachineNFT       `json:"winningWarMachines"`
+	WarMachines        []*WarMachineMetadata  `json:"warMachines"`
+	WinningWarMachines []*WarMachineMetadata  `json:"winningWarMachines"`
 	GameMap            *GameMap               `json:"map"`
 	FactionMap         map[FactionID]*Faction `json:"factionMap"`
 	BattleHistory      [][]byte               `json:"battleHistory"`
@@ -24,16 +24,16 @@ type Battle struct {
 }
 
 type WarMachineDestroyedRecord struct {
-	DestroyedWarMachine *WarMachineNFT  `json:"destroyedWarMachine"`
-	KilledByWarMachine  *WarMachineNFT  `json:"killedByWarMachine,omitempty"`
-	KilledBy            string          `json:"killedBy"`
-	DamageRecords       []*DamageRecord `json:"damageRecords"`
+	DestroyedWarMachine *WarMachineMetadata `json:"destroyedWarMachine"`
+	KilledByWarMachine  *WarMachineMetadata `json:"killedByWarMachine,omitempty"`
+	KilledBy            string              `json:"killedBy"`
+	DamageRecords       []*DamageRecord     `json:"damageRecords"`
 }
 
 type DamageRecord struct {
-	Amount             int            `json:"amount"` // The total amount of damage taken from this source
-	CausedByWarMachine *WarMachineNFT `json:"causedByWarMachine,omitempty"`
-	SourceName         string         `json:"sourceName,omitempty"` // The name of the weapon / damage causer (in-case of now TokenID)
+	Amount             int                 `json:"amount"` // The total amount of damage taken from this source
+	CausedByWarMachine *WarMachineMetadata `json:"causedByWarMachine,omitempty"`
+	SourceName         string              `json:"sourceName,omitempty"` // The name of the weapon / damage causer (in-case of now TokenID)
 }
 
 type FactionWarMachineQueue struct {

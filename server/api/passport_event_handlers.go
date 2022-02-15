@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"server"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gofrs/uuid"
+	"github.com/jackc/pgx/v4"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
@@ -180,7 +182,7 @@ func (api *API) PassportUserEnlistFactionHandler(ctx context.Context, payload []
 type BattleQueueJoinRequest struct {
 	Key     passport.Event `json:"key"`
 	Payload struct {
-		WarMachineNFT *server.WarMachineNFT `json:"warMachineNFT"`
+		WarMachineMetadata *server.WarMachineMetadata `json:"warMachineMetadata"`
 	} `json:"payload"`
 }
 
@@ -192,44 +194,44 @@ func (api *API) PassportBattleQueueJoinHandler(ctx context.Context, payload []by
 		return
 	}
 
-	if !req.Payload.WarMachineNFT.FactionID.IsNil() {
-		api.BattleArena.BattleQueueMap[req.Payload.WarMachineNFT.FactionID] <- func(wmq *battle_arena.WarMachineQueuingList) {
+	if !req.Payload.WarMachineMetadata.FactionID.IsNil() {
+		api.BattleArena.BattleQueueMap[req.Payload.WarMachineMetadata.FactionID] <- func(wmq *battle_arena.WarMachineQueuingList) {
 			// skip if the war machine already join the queue
-			if checkWarMachineExist(wmq.WarMachines, req.Payload.WarMachineNFT.TokenID) != -1 {
-				api.Log.Err(terror.ErrInvalidInput).Msgf("Asset %d is already in the queue", req.Payload.WarMachineNFT.TokenID)
+			if checkWarMachineExist(wmq.WarMachines, req.Payload.WarMachineMetadata.TokenID) != -1 {
+				api.Log.Err(terror.ErrInvalidInput).Msgf("Asset %d is already in the queue", req.Payload.WarMachineMetadata.TokenID)
 				return
 			}
 
 			// fire a freeze command to the passport server
-			err := api.Passport.AssetFreeze(ctx, "asset_freeze"+strconv.Itoa(int(req.Payload.WarMachineNFT.TokenID)), req.Payload.WarMachineNFT.TokenID)
+			err := api.Passport.AssetFreeze(ctx, "asset_freeze"+strconv.Itoa(int(req.Payload.WarMachineMetadata.TokenID)), req.Payload.WarMachineMetadata.TokenID)
 			if err != nil {
-				api.Log.Err(err).Msgf("Failed to freeze asset %d", req.Payload.WarMachineNFT.TokenID)
+				api.Log.Err(err).Msgf("Failed to freeze asset %d", req.Payload.WarMachineMetadata.TokenID)
 				return
 			}
 
-			wmq.WarMachines = append(wmq.WarMachines, req.Payload.WarMachineNFT)
+			wmq.WarMachines = append(wmq.WarMachines, req.Payload.WarMachineMetadata)
 
 			// broadcast next 5 queuing war machines to twitch ui
 			if len(wmq.WarMachines) <= 5 {
-				api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionWarMachineQueueUpdated, req.Payload.WarMachineNFT.FactionID)), wmq.WarMachines)
+				api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionWarMachineQueueUpdated, req.Payload.WarMachineMetadata.FactionID)), wmq.WarMachines)
 			}
 
 			// broadcast war machine queue position update
 			warMachineQueuePosition := []*passport.WarMachineQueuePosition{}
 			for i, wm := range wmq.WarMachines {
-				if wm.OwnedByID != req.Payload.WarMachineNFT.OwnedByID {
+				if wm.OwnedByID != req.Payload.WarMachineMetadata.OwnedByID {
 					continue
 				}
 				warMachineQueuePosition = append(warMachineQueuePosition, &passport.WarMachineQueuePosition{
-					WarMachineNFT: wm,
-					Position:      i,
+					WarMachineMetadata: wm,
+					Position:           i,
 				})
 			}
 
 			// fire a war machine queue passport request
 			api.Passport.WarMachineQueuePositionBroadcast(ctx, []*passport.UserWarMachineQueuePosition{
 				{
-					UserID:                   req.Payload.WarMachineNFT.OwnedByID,
+					UserID:                   req.Payload.WarMachineMetadata.OwnedByID,
 					WarMachineQueuePositions: warMachineQueuePosition,
 				},
 			})
@@ -240,7 +242,7 @@ func (api *API) PassportBattleQueueJoinHandler(ctx context.Context, payload []by
 type BattleQueueReleaseRequest struct {
 	Key     passport.Event `json:"key"`
 	Payload struct {
-		WarMachineNFT *server.WarMachineNFT `json:"warMachineNFT"`
+		WarMachineMetadata *server.WarMachineMetadata `json:"warMachineMetadata"`
 	} `json:"payload"`
 }
 
@@ -252,17 +254,17 @@ func (api *API) PassportBattleQueueReleaseHandler(ctx context.Context, payload [
 		return
 	}
 
-	if !req.Payload.WarMachineNFT.FactionID.IsNil() {
-		api.BattleArena.BattleQueueMap[req.Payload.WarMachineNFT.FactionID] <- func(wmq *battle_arena.WarMachineQueuingList) {
+	if !req.Payload.WarMachineMetadata.FactionID.IsNil() {
+		api.BattleArena.BattleQueueMap[req.Payload.WarMachineMetadata.FactionID] <- func(wmq *battle_arena.WarMachineQueuingList) {
 			// check war machine is in the queue
-			index := checkWarMachineExist(wmq.WarMachines, req.Payload.WarMachineNFT.TokenID)
+			index := checkWarMachineExist(wmq.WarMachines, req.Payload.WarMachineMetadata.TokenID)
 			if index < 0 {
-				api.Log.Err(terror.ErrInvalidInput).Msgf("Asset %d is not in the queue", req.Payload.WarMachineNFT.TokenID)
+				api.Log.Err(terror.ErrInvalidInput).Msgf("Asset %d is not in the queue", req.Payload.WarMachineMetadata.TokenID)
 				return
 			}
 
 			// fire a freeze command to the passport server
-			api.Passport.AssetRelease(ctx, "asset_release"+strconv.Itoa(int(req.Payload.WarMachineNFT.TokenID)), []*server.WarMachineNFT{wmq.WarMachines[index]})
+			api.Passport.AssetRelease(ctx, "asset_release"+strconv.Itoa(int(req.Payload.WarMachineMetadata.TokenID)), []*server.WarMachineMetadata{wmq.WarMachines[index]})
 
 			copy(wmq.WarMachines[index:], wmq.WarMachines[index+1:])   // Shift wmq.WarMachines[i+1:] left one index.
 			wmq.WarMachines[len(wmq.WarMachines)-1] = nil              // wmq.WarMachinesse wmq.WarMachinesst element (write zero vwmq.WarMachineslue).
@@ -275,16 +277,16 @@ func (api *API) PassportBattleQueueReleaseHandler(ctx context.Context, payload [
 					maxLength = len(wmq.WarMachines)
 				}
 
-				api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionWarMachineQueueUpdated, req.Payload.WarMachineNFT.FactionID)), wmq.WarMachines[:maxLength])
+				api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionWarMachineQueueUpdated, req.Payload.WarMachineMetadata.FactionID)), wmq.WarMachines[:maxLength])
 			}
 
-			api.Passport.WarMachineQueuePositionBroadcast(context.Background(), api.BattleArena.BuildUserWarMachineQueuePosition(wmq.WarMachines, []*server.WarMachineNFT{}, req.Payload.WarMachineNFT.OwnedByID))
+			api.Passport.WarMachineQueuePositionBroadcast(context.Background(), api.BattleArena.BuildUserWarMachineQueuePosition(wmq.WarMachines, []*server.WarMachineMetadata{}, req.Payload.WarMachineMetadata.OwnedByID))
 		}
 	}
 }
 
 // checkWarMachineExist return true if war machine already exist in the list
-func checkWarMachineExist(list []*server.WarMachineNFT, tokenID uint64) int {
+func checkWarMachineExist(list []*server.WarMachineMetadata, tokenID uint64) int {
 	for i, wm := range list {
 		if wm.TokenID == tokenID {
 			return i
@@ -353,8 +355,8 @@ func (api *API) PassportAssetInsurancePayHandler(ctx context.Context, payload []
 					continue
 				}
 				warMachineQueuePosition = append(warMachineQueuePosition, &passport.WarMachineQueuePosition{
-					WarMachineNFT: wm,
-					Position:      i,
+					WarMachineMetadata: wm,
+					Position:           i,
 				})
 			}
 
@@ -386,6 +388,53 @@ func (api *API) PassportUserSupsMultiplierGetHandler(ctx context.Context, payloa
 	}
 
 	api.ClientSupsMultipliersGet(req.Payload.UserID)
+}
+
+type UserStatGetRequest struct {
+	Key     passport.Event `json:"key"`
+	Payload struct {
+		UserID    server.UserID `json:"userID"`
+		SessionID hub.SessionID `json:"sessionID"`
+	} `json:"payload"`
+}
+
+func (api *API) PassportUserStatGetHandler(ctx context.Context, payload []byte) {
+	req := &UserStatGetRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		api.Log.Err(err).Msg("error unmarshalling user stat get request")
+		return
+	}
+
+	if req.Payload.UserID.IsNil() {
+		api.Log.Err(err).Msg("User id is required")
+		return
+	}
+
+	userStat, err := db.UserStatGet(ctx, api.Conn, req.Payload.UserID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		api.Log.Err(err).Msg("Failed to get user stat")
+		return
+	}
+
+	if userStat == nil {
+		// build a empty user stat if there is no user stat in db
+		userStat = &server.UserStat{
+			ID:                    req.Payload.UserID,
+			ViewBattleCount:       0,
+			TotalVoteCount:        0,
+			TotalAbilityTriggered: 0,
+			KillCount:             0,
+		}
+	}
+
+	api.Passport.UserStatSend(ctx, []*passport.UserStatSend{
+		{
+			ToUserSessionID: &req.Payload.SessionID,
+			Stat:            userStat,
+		},
+	})
+
 }
 
 type FactionStatGetRequest struct {
@@ -459,8 +508,8 @@ func (api *API) PassportWarMachineQueuePositionHandler(ctx context.Context, payl
 				continue
 			}
 			warMachineQueuePosition = append(warMachineQueuePosition, &passport.WarMachineQueuePosition{
-				WarMachineNFT: wm,
-				Position:      i,
+				WarMachineMetadata: wm,
+				Position:           i,
 			})
 		}
 
@@ -475,8 +524,8 @@ func (api *API) PassportWarMachineQueuePositionHandler(ctx context.Context, payl
 			continue
 		}
 		warMachineQueuePosition = append(warMachineQueuePosition, &passport.WarMachineQueuePosition{
-			WarMachineNFT: wm,
-			Position:      -1,
+			WarMachineMetadata: wm,
+			Position:           -1,
 		})
 	}
 

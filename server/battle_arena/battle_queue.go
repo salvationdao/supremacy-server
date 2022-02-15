@@ -10,25 +10,25 @@ import (
 const MaxInGameWarmachinePerFaction = 2
 
 type WarMachineQueuingList struct {
-	WarMachines []*server.WarMachineNFT
+	WarMachines []*server.WarMachineMetadata
 }
 
 func (ba *BattleArena) startBattleQueue(factionID server.FactionID) {
-	warMachineNFTs := &WarMachineQueuingList{
-		WarMachines: []*server.WarMachineNFT{},
+	warMachineMetadatas := &WarMachineQueuingList{
+		WarMachines: []*server.WarMachineMetadata{},
 	}
 
 	for {
 		fn := <-ba.BattleQueueMap[factionID]
-		fn(warMachineNFTs)
+		fn(warMachineMetadatas)
 	}
 }
 
-func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID) []*server.WarMachineNFT {
-	inGameWarMachinesChan := make(chan []*server.WarMachineNFT)
+func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID) []*server.WarMachineMetadata {
+	inGameWarMachinesChan := make(chan []*server.WarMachineMetadata)
 	ba.BattleQueueMap[factionID] <- func(wmq *WarMachineQueuingList) {
 		ctx := context.Background()
-		tempList := []*server.WarMachineNFT{}
+		tempList := []*server.WarMachineMetadata{}
 		// if queuing war machines is less than maximum in game war machine amount get all and fill rest with defaults
 		if len(wmq.WarMachines) <= MaxInGameWarmachinePerFaction {
 			// get all the war machines
@@ -41,7 +41,7 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID) 
 			}
 
 			// clear up the queuing list
-			wmq.WarMachines = []*server.WarMachineNFT{}
+			wmq.WarMachines = []*server.WarMachineMetadata{}
 
 			// add default war machine to meet the total amount
 			for len(tempList) < MaxInGameWarmachinePerFaction {
@@ -61,7 +61,7 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID) 
 			ba.Events.Trigger(context.Background(), EventWarMachineQueueUpdated, &EventData{
 				WarMachineQueue: &WarMachineQueueUpdateEvent{
 					FactionID:   factionID,
-					WarMachines: []*server.WarMachineNFT{},
+					WarMachines: []*server.WarMachineMetadata{},
 				},
 			})
 
@@ -109,7 +109,7 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID) 
 	return <-inGameWarMachinesChan
 }
 
-func (ba *BattleArena) BuildUserWarMachineQueuePosition(queuingList []*server.WarMachineNFT, pendingList []*server.WarMachineNFT, mustIncludeUserIDs ...server.UserID) []*passport.UserWarMachineQueuePosition {
+func (ba *BattleArena) BuildUserWarMachineQueuePosition(queuingList []*server.WarMachineMetadata, pendingList []*server.WarMachineMetadata, mustIncludeUserIDs ...server.UserID) []*passport.UserWarMachineQueuePosition {
 	result := []*passport.UserWarMachineQueuePosition{}
 	queuePositionMap := make(map[server.UserID][]*passport.WarMachineQueuePosition)
 
@@ -121,8 +121,8 @@ func (ba *BattleArena) BuildUserWarMachineQueuePosition(queuingList []*server.Wa
 		}
 
 		qp = append(qp, &passport.WarMachineQueuePosition{
-			WarMachineNFT: wm,
-			Position:      i,
+			WarMachineMetadata: wm,
+			Position:           i,
 		})
 		queuePositionMap[wm.OwnedByID] = qp
 	}
@@ -135,8 +135,8 @@ func (ba *BattleArena) BuildUserWarMachineQueuePosition(queuingList []*server.Wa
 		}
 
 		qp = append(qp, &passport.WarMachineQueuePosition{
-			WarMachineNFT: wm,
-			Position:      -1,
+			WarMachineMetadata: wm,
+			Position:           -1,
 		})
 		queuePositionMap[wm.OwnedByID] = qp
 	}
@@ -149,8 +149,8 @@ func (ba *BattleArena) BuildUserWarMachineQueuePosition(queuingList []*server.Wa
 		}
 
 		qp = append(qp, &passport.WarMachineQueuePosition{
-			WarMachineNFT: wm,
-			Position:      -1,
+			WarMachineMetadata: wm,
+			Position:           -1,
 		})
 
 		queuePositionMap[wm.OwnedByID] = qp

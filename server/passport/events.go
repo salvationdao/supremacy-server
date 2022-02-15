@@ -32,6 +32,7 @@ const (
 	EventFactionStatGet             Event = "PASSPORT:FACTION:STAT:GET"
 	EventAuthRingCheck              Event = "PASSPORT:AUTH:RING:CHECK"
 	EventUserSupsMultiplierGet      Event = "PASSPORT:USER:SUPS:MULTIPLIER:GET"
+	EventUserStatGet                Event = "PASSPORT:USER:STAT:GET"
 )
 
 type EventHandler func(ctx context.Context, payload []byte)

@@ -100,7 +100,7 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 	// deliver vote
 	errChan := make(chan error)
 
-	vc.API.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker) {
+	vc.API.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
 		if vs.Phase != VotePhaseVoteAbilityRight && vs.Phase != VotePhaseNextVoteWin {
 			errChan <- terror.Error(terror.ErrInvalidInput, "Error - Invalid voting phase")
 			return
@@ -150,6 +150,12 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 				return
 			}
 		}
+
+		// record user vote map
+		if _, ok := uvm[userID]; !ok {
+			uvm[userID] = 0
+		}
+		uvm[userID] += req.Payload.VoteAmount
 
 		// set current user as winner
 		vw.List = append(vw.List, userID)
@@ -249,7 +255,7 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 	}
 
 	errChan := make(chan error)
-	vc.API.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker) {
+	vc.API.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
 		// check voting phase
 		if vs.Phase != VotePhaseLocationSelect {
 			errChan <- terror.Error(terror.ErrForbidden, "Error - Invalid voting phase")
@@ -373,7 +379,7 @@ func (vc *VoteControllerWS) BattleAbilityUpdateSubscribeHandler(ctx context.Cont
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
-	vc.API.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker) {
+	vc.API.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
 		if vs.Phase == VotePhaseHold {
 			return
 		}
@@ -393,7 +399,7 @@ func (vc *VoteControllerWS) VoteStageUpdateSubscribeHandler(ctx context.Context,
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
-	vc.API.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker) {
+	vc.API.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
 		reply(vs)
 	}
 

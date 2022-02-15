@@ -31,7 +31,7 @@ func BattleStarted(ctx context.Context, conn Conn, battle *server.Battle) error 
 }
 
 // BattleWarMachineAssign assign war machines into a battle
-func BattleWarMachineAssign(ctx context.Context, conn Conn, battleID server.BattleID, warMachineNFTs []*server.WarMachineNFT) error {
+func BattleWarMachineAssign(ctx context.Context, conn Conn, battleID server.BattleID, warMachineMetadatas []*server.WarMachineMetadata) error {
 	q := `
 		INSERT INTO 
 			battles_war_machines (battle_id, war_machine_stat)
@@ -40,9 +40,9 @@ func BattleWarMachineAssign(ctx context.Context, conn Conn, battleID server.Batt
 	`
 
 	var args []interface{}
-	for i, warMachineNFT := range warMachineNFTs {
+	for i, warMachineMetadata := range warMachineMetadatas {
 
-		b, err := json.Marshal(warMachineNFT)
+		b, err := json.Marshal(warMachineMetadata)
 		if err != nil {
 			return terror.Error(err)
 		}
@@ -51,7 +51,7 @@ func BattleWarMachineAssign(ctx context.Context, conn Conn, battleID server.Batt
 
 		q += fmt.Sprintf("('%s', $%d)", battleID, len(args))
 
-		if i < len(warMachineNFTs)-1 {
+		if i < len(warMachineMetadatas)-1 {
 			q += ","
 			continue
 		}
@@ -86,7 +86,7 @@ func BattleEnded(ctx context.Context, conn Conn, battleID server.BattleID, winni
 }
 
 // BattleWinnerWarMachinesSet set war machine as winner
-func BattleWinnerWarMachinesSet(ctx context.Context, conn Conn, battleID server.BattleID, warMachines []*server.WarMachineNFT) error {
+func BattleWinnerWarMachinesSet(ctx context.Context, conn Conn, battleID server.BattleID, warMachines []*server.WarMachineMetadata) error {
 	q := `
 		UPDATE
 			battles_war_machines

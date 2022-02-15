@@ -35,9 +35,12 @@ const (
 type BattleRewardType string
 
 const (
-	BattleRewardTypeFaction BattleRewardType = "Battle Faction Reward"
-	BattleRewardTypeWinner  BattleRewardType = "Battle Winner Reward"
-	BattleRewardTypeKill    BattleRewardType = "Battle Kill Reward"
+	BattleRewardTypeFaction         BattleRewardType = "Battle Faction Reward"
+	BattleRewardTypeWinner          BattleRewardType = "Battle Winner Reward"
+	BattleRewardTypeKill            BattleRewardType = "Battle Kill Reward"
+	BattleRewardTypeAbilityExecutor BattleRewardType = "Ability Executor"
+	BattleRewardTypeInfluencer      BattleRewardType = "Battle Influencer"
+	BattleRewardTypeWarContributor  BattleRewardType = "War Contributor"
 )
 
 type ClientUpdate struct {
@@ -192,6 +195,7 @@ listenLoop:
 					}
 				}
 			}
+
 		case ClientSupsTick:
 			userMap := make(map[int][]server.UserID)
 			now := time.Now()
@@ -213,6 +217,7 @@ listenLoop:
 
 				userMap[userMultiplier] = append(userMap[userMultiplier], uid)
 			}
+
 			api.Passport.SendTickerMessage(context.Background(), userMap)
 
 		case ClientSupsMultiplierGet:

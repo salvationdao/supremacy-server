@@ -38,7 +38,7 @@ func (ba *BattleArena) WarMachineDestroyedHandler(ctx context.Context, payload [
 	}
 
 	// check destroyed war machine exist
-	var destroyedWarMachine *server.WarMachineNFT
+	var destroyedWarMachine *server.WarMachineMetadata
 	for _, wm := range ba.battle.WarMachines {
 		if wm.TokenID == req.Payload.DestroyedWarMachineEvent.DestroyedWarMachineID {
 			// set health to 0
@@ -50,7 +50,8 @@ func (ba *BattleArena) WarMachineDestroyedHandler(ctx context.Context, payload [
 	if destroyedWarMachine == nil {
 		return terror.Error(fmt.Errorf("destroyed war machine %d does not exist", req.Payload.DestroyedWarMachineEvent.DestroyedWarMachineID))
 	}
-	var killByWarMachine *server.WarMachineNFT
+
+	var killByWarMachine *server.WarMachineMetadata
 	if req.Payload.DestroyedWarMachineEvent.KillByWarMachineID != nil {
 		for _, wm := range ba.battle.WarMachines {
 			if wm.TokenID == *req.Payload.DestroyedWarMachineEvent.KillByWarMachineID {

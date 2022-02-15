@@ -48,7 +48,7 @@ type EventData struct {
 
 type WarMachineQueueUpdateEvent struct {
 	FactionID   server.FactionID
-	WarMachines []*server.WarMachineNFT
+	WarMachines []*server.WarMachineMetadata
 }
 
 type WinnerFactionViewer struct {

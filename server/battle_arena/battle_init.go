@@ -33,7 +33,7 @@ func (ba *BattleArena) InitNextBattle() error {
 	ba.battle.GameMapID = gameMap.ID
 
 	// get NFT from battle queue
-	ba.battle.WarMachines = []*server.WarMachineNFT{}
+	ba.battle.WarMachines = []*server.WarMachineMetadata{}
 
 	for len(ba.BattleQueueMap) == 0 {
 		ba.Log.Info().Msg("No factions, trying again in 2 seconds")
@@ -65,9 +65,9 @@ func (ba *BattleArena) InitNextBattle() error {
 
 	// Setup payload
 	payload := struct {
-		BattleID    server.BattleID         `json:"battleID"`
-		MapName     string                  `json:"mapName"`
-		WarMachines []*server.WarMachineNFT `json:"warMachines"`
+		BattleID    server.BattleID              `json:"battleID"`
+		MapName     string                       `json:"mapName"`
+		WarMachines []*server.WarMachineMetadata `json:"warMachines"`
 	}{
 		BattleID:    ba.battle.ID,
 		MapName:     ba.battle.GameMap.Name,

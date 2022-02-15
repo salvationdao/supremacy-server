@@ -131,63 +131,57 @@ CREATE TABLE battle_events_game_ability
 
 -- create faction materialize view
 CREATE MATERIALIZED VIEW faction_stats AS 
-	SELECT f.id,
-	COALESCE(
-		(
-			SELECT COUNT(distinct bwm.battle_id) FROM battles_war_machines bwm
-			WHERE bwm.is_winner = true AND bwm.war_machine_stat -> 'faction' ->> 'id' = f.id::TEXT
-			GROUP BY bwm.war_machine_stat -> 'faction' ->> 'id' 
-		),0) AS win_count,
-	COALESCE(
-		(
-	    	SELECT ((SELECT count(b.id) FROM battles b) - count(DISTINCT battle_id)) FROM battles_war_machines bwm
-	    	WHERE bwm.is_winner = true AND bwm.war_machine_stat -> 'faction' ->> 'id' = f.id::TEXT
-	    	GROUP BY bwm.war_machine_stat -> 'faction' ->> 'id' 
-	    ),
-	    (SELECT count(b.id) FROM battles b)
-	    ,0) as loss_count,
-	COALESCE(
-		(
-			SELECT COUNT(bewmd.id) FROM battle_events_war_machine_destroyed bewmd
-			INNER JOIN battle_events be ON be.id = bewmd.event_id
-			INNER JOIN battles_war_machines bwm ON 	be.battle_id = bwm.battle_id AND 
-													bewmd.kill_by_war_machine_id::TEXT = bwm.war_machine_stat->>'tokenID' AND  
-													bwm.war_machine_stat -> 'faction' ->> 'id' = f.id::TEXT
-			GROUP BY bwm.war_machine_stat -> 'faction' ->> 'id'
-		),0) AS kill_count,
-	COALESCE(
-		(
-			SELECT COUNT(bewmd.id) FROM battle_events_war_machine_destroyed bewmd
-			INNER JOIN battle_events be ON be.id = bewmd.event_id
-			INNER JOIN battles_war_machines bwm ON 	be.battle_id = bwm.battle_id AND 
-													bewmd.destroyed_war_machine_id::TEXT = bwm.war_machine_stat->>'tokenID' AND  
-													bwm.war_machine_stat -> 'faction' ->> 'id' = f.id::TEXT
-			GROUP BY bwm.war_machine_stat -> 'faction' ->> 'id'
-		),0) AS death_count,
-    coalesce(
-	    (
-	    	SELECT bewmd.kill_by_war_machine_id FROM battle_events_war_machine_destroyed bewmd
-	    	INNER JOIN battle_events be ON be.id = bewmd.event_id
-	    	INNER JOIN battles_war_machines bwm ON  be.battle_id = bwm.battle_id AND 
-                                                    bewmd.kill_by_war_machine_id::TEXT = bwm.war_machine_stat->>'tokenID' AND 
-                                                    bwm.war_machine_stat -> 'faction' ->> 'id' = f.id::TEXT
-	    	GROUP BY bwm.war_machine_stat -> 'faction' ->> 'id', bewmd.kill_by_war_machine_id
-	    	having count(bewmd.event_id) = (
-	    		SELECT max(xx.kill_count) FROM ( 
-	    			SELECT count(bewmd.event_id) AS kill_count FROM battle_events_war_machine_destroyed bewmd
-	    			INNER JOIN battle_events be ON be.id = bewmd.event_id
-	    			INNER JOIN battles_war_machines bwm ON  be.battle_id = bwm.battle_id AND 
-                                                            bewmd.kill_by_war_machine_id::TEXT = bwm.war_machine_stat->>'tokenID' AND 
-                                                            bwm.war_machine_stat -> 'faction' ->> 'id' = f.id::TEXT
-	    			GROUP BY bwm.war_machine_stat -> 'faction' ->> 'id', bewmd.kill_by_war_machine_id
-	    		) xx
-	    	)
-	    	LIMIT 1
-	    ),0)::NUMERIC(78, 0) AS mvp_token_id
-	FROM factions f;
+select * from (
+	select f.id from factions f 
+)f1 left join lateral(
+	select count(distinct bwm.battle_id) as win_count from battles_war_machines bwm
+	where bwm.is_winner = true and bwm.war_machine_stat -> 'faction' ->> 'id' = f1.id::text 
+	group by bwm.war_machine_stat -> 'faction' ->> 'id' 
+)f2 on true left join lateral (
+	select ((select count(b.id) from battles b) - count(distinct battle_id)) as loss_count from battles_war_machines bwm
+	where bwm.is_winner = true and bwm.war_machine_stat -> 'faction' ->> 'id' = f1.id::text
+	group by bwm.war_machine_stat -> 'faction' ->> 'id' 
+)f3 on true left join lateral (
+	select count(bewmd.id) as kill_count from battle_events_war_machine_destroyed bewmd
+	inner join battle_events be on be.id = bewmd.event_id
+	inner join battles_war_machines bwm on be.battle_id = bwm.battle_id and bewmd.kill_by_war_machine_id::text = bwm.war_machine_stat->>'tokenID' and  bwm.war_machine_stat -> 'faction' ->> 'id' = f1.id::text
+	group by bwm.war_machine_stat -> 'faction' ->> 'id'
+)f4 on true left join lateral (
+	select count(bewmd.id) as death_count from battle_events_war_machine_destroyed bewmd
+	inner join battle_events be on be.id = bewmd.event_id
+	inner join battles_war_machines bwm on be.battle_id = bwm.battle_id and bewmd.destroyed_war_machine_id::text = bwm.war_machine_stat->>'tokenID' and bwm.war_machine_stat -> 'faction' ->> 'id' = f1.id::text
+	group by bwm.war_machine_stat -> 'faction' ->> 'id'
+)f5 on true;
 
 -- create unique index
 CREATE UNIQUE INDEX faction_id ON faction_stats (id);
+
+/**************************************************
+ *          user stats materialize view           *
+ *************************************************/
+
+CREATE MATERIALIZED VIEW user_stats AS 
+select * from (
+	select u.id, u.view_battle_count  from users u 
+)u1 left join lateral(
+	select sum(buv.vote_count) as total_vote_count  from battles_user_votes buv
+	where buv.user_id = u1.id 
+	group by buv.user_id 
+)u2 on true left join lateral(
+	select count(bega.id) as total_ability_triggered from battle_events_game_ability bega 
+	where bega.triggered_by_user_id = u1.id
+)u3 on true left join lateral(
+	select count(bewmd.id) as kill_count from battle_events_war_machine_destroyed bewmd 
+	inner join battle_events be on be.id = bewmd.event_id 
+	where exists(
+                    select 1 from battles_war_machines bwm 
+                        where   bwm.battle_id = be.battle_id and 
+							    bwm.war_machine_stat ->>'tokenID' = bewmd.kill_by_war_machine_id::text and 
+							    bwm.war_machine_stat ->>'OwnedByID' = u1.id ::text
+                )
+)u4 on true;
+
+CREATE UNIQUE INDEX user_id ON user_stats (id);
 
 COMMIT;
 

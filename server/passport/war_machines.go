@@ -10,7 +10,7 @@ import (
 )
 
 // GetDefaultWarMachines gets the default war machines for a given faction
-func (pp *Passport) GetDefaultWarMachines(ctx context.Context, factionID server.FactionID, amount int) ([]*server.WarMachineNFT, error) {
+func (pp *Passport) GetDefaultWarMachines(ctx context.Context, factionID server.FactionID, amount int) ([]*server.WarMachineMetadata, error) {
 	replyChannel := make(chan []byte, 1)
 	errChan := make(chan error, 1)
 
@@ -39,7 +39,7 @@ func (pp *Passport) GetDefaultWarMachines(ctx context.Context, factionID server.
 		select {
 		case msg := <-replyChannel:
 			resp := struct {
-				WarMachines []*server.WarMachineNFT `json:"payload"`
+				WarMachines []*server.WarMachineMetadata `json:"payload"`
 			}{}
 			err := json.Unmarshal(msg, &resp)
 			if err != nil {

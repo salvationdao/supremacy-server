@@ -62,6 +62,14 @@ type FactionVotePrice struct {
 	CurrentVotePerTick   int64
 }
 
+type BattleEndInfo struct {
+	BattleID                    server.BattleID `json:"battleID"`
+	TopSupsContributor          *server.User    `json:"topSupsContributor"`
+	TopSupsContributeFaction    *server.Faction `json:"topSupsContributeFaction"`
+	TopApplauseContributor      *server.User    `json:"topApplauseContributor"`
+	MostFrequentAbilityExecutor *server.User    `json:"mostFrequentAbilityExecutor"`
+}
+
 // API server
 type API struct {
 	ctx    context.Context
@@ -91,7 +99,7 @@ type API struct {
 
 	// voting channels
 	votePhaseChecker *VotePhaseChecker
-	votingCycle      chan func(*VoteStage, *VoteAbility, FactionUserVoteMap, *FactionTotalVote, *VoteWinner, *VotingCycleTicker)
+	votingCycle      chan func(*VoteStage, *VoteAbility, FactionUserVoteMap, *FactionTotalVote, *VoteWinner, *VotingCycleTicker, UserVoteMap)
 	votePriceSystem  *VotePriceSystem
 
 	// faction abilities
@@ -99,6 +107,8 @@ type API struct {
 
 	// viewer live count
 	viewerLiveCount chan func(ViewerLiveCount, ViewerIDMap)
+
+	battleEndInfo *BattleEndInfo
 }
 
 // NewAPI registers routes
@@ -139,7 +149,7 @@ func NewAPI(
 			ClientOfflineFn: offlineFunc,
 		}),
 		// channel for faction voting system
-		votingCycle:   make(chan func(*VoteStage, *VoteAbility, FactionUserVoteMap, *FactionTotalVote, *VoteWinner, *VotingCycleTicker)),
+		votingCycle:   make(chan func(*VoteStage, *VoteAbility, FactionUserVoteMap, *FactionTotalVote, *VoteWinner, *VotingCycleTicker, UserVoteMap)),
 		liveSupsSpend: make(map[server.FactionID]chan func(*LiveVotingData)),
 
 		// channel for handling hub client
@@ -154,6 +164,8 @@ func NewAPI(
 
 		// faction viewer count
 		viewerLiveCount: make(chan func(ViewerLiveCount, ViewerIDMap)),
+
+		battleEndInfo: &BattleEndInfo{},
 	}
 
 	// start twitch jwt auth listener
@@ -214,6 +226,7 @@ func NewAPI(
 	api.Passport.Events.AddEventHandler(passport.EventAssetInsurancePay, api.PassportAssetInsurancePayHandler)
 	api.Passport.Events.AddEventHandler(passport.EventFactionStatGet, api.PassportFactionStatGetHandler)
 	api.Passport.Events.AddEventHandler(passport.EventUserSupsMultiplierGet, api.PassportUserSupsMultiplierGetHandler)
+	api.Passport.Events.AddEventHandler(passport.EventUserStatGet, api.PassportUserStatGetHandler)
 
 	// listen to the client online and action channel
 	go api.ClientListener()
@@ -378,7 +391,7 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 	// check vote if there is not client instances of the offline user
 	if noClientLeft && api.votePhaseChecker.Phase == VotePhaseLocationSelect {
 		// check the user is selecting ability location
-		api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker) {
+		api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
 			if len(vw.List) > 0 && vw.List[0].String() == wsc.Identifier() {
 				if err != nil {
 					api.Log.Err(err).Msg("failed to get user")
