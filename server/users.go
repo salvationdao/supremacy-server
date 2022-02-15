@@ -51,3 +51,17 @@ type UserOnlineStatusChange struct {
 	ID     UserID `json:"id" db:"id"`
 	Online bool   `json:"online"`
 }
+
+type BattleUserVote struct {
+	BattleID  BattleID `json:"battleID" db:"battle_id"`
+	UserID    UserID   `json:"userID" db:"user_id"`
+	VoteCount int64    `json:"voteCount" db:"vote_count"`
+}
+
+type UserStat struct {
+	ID                    UserID `json:"id" db:"id"`
+	ViewBattleCount       int64  `json:"viewBattleCount" db:"view_battle_count"`
+	TotalVoteCount        int64  `json:"totalVoteCount" db:"total_vote_count"`
+	TotalAbilityTriggered int64  `json:"totalAbilityTriggered" db:"total_ability_triggered"`
+	KillCount             int64  `json:"killCount" db:"kill_count"`
+}

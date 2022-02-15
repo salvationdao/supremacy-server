@@ -73,12 +73,12 @@ func (pp *Passport) AssetLock(ctx context.Context, txID string, assetTokenIDs []
 }
 
 // AssetRelease tell passport to release user's asset
-func (pp *Passport) AssetRelease(ctx context.Context, txID string, releasedAssets []*server.WarMachineNFT) {
+func (pp *Passport) AssetRelease(ctx context.Context, txID string, releasedAssets []*server.WarMachineMetadata) {
 	pp.send <- &Request{
 		Message: &Message{
 			Key: "SUPREMACY:ASSET:RELEASE",
 			Payload: struct {
-				ReleasedAssets []*server.WarMachineNFT `json:"releasedAssets"`
+				ReleasedAssets []*server.WarMachineMetadata `json:"releasedAssets"`
 			}{
 				ReleasedAssets: releasedAssets,
 			},
@@ -93,8 +93,8 @@ type UserWarMachineQueuePosition struct {
 }
 
 type WarMachineQueuePosition struct {
-	WarMachineNFT *server.WarMachineNFT `json:"warMachineMetadata"`
-	Position      int                   `json:"position"`
+	WarMachineMetadata *server.WarMachineMetadata `json:"warMachineMetadata"`
+	Position           int                        `json:"position"`
 }
 
 func (pp *Passport) WarMachineQueuePositionBroadcast(ctx context.Context, uwm []*UserWarMachineQueuePosition) {

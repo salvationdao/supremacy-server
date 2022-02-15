@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"server"
+	"time"
 
 	"github.com/gofrs/uuid"
 
@@ -131,6 +132,51 @@ func (pp *Passport) TransferBattleFundToSupsPool(ctx context.Context, txID strin
 			return nil
 		case err := <-errChan:
 			return terror.Error(err)
+		}
+	}
+}
+
+type SupremacyTopSupsContributorResponse struct {
+	Payload SupremacyTopSupsContributor `json:"payload"`
+}
+
+type SupremacyTopSupsContributor struct {
+	TopSupsContributor       *server.User    `json:"topSupsContributor"`
+	TopSupsContributeFaction *server.Faction `json:"topSupsContributeFaction"`
+}
+
+// TopSupsContributorsGet tells the passport to return the top three most sups contributors with in the time frame
+func (pp *Passport) TopSupsContributorsGet(ctx context.Context, startTime, endTime time.Time) (*server.User, *server.Faction, error) {
+	replyChannel := make(chan []byte)
+	errChan := make(chan error)
+
+	pp.send <- &Request{
+		ReplyChannel: replyChannel,
+		ErrChan:      errChan,
+		Message: &Message{
+			Key: "SUPREMACY:TOP_SUPS_CONTRIBUTORS",
+			Payload: struct {
+				StartTime time.Time `json:"startTime"`
+				EndTime   time.Time `json:"endTime"`
+			}{
+				StartTime: startTime,
+				EndTime:   endTime,
+			},
+			TransactionID: uuid.Must(uuid.NewV4()).String(),
+			context:       ctx,
+		}}
+
+	for {
+		select {
+		case msg := <-replyChannel:
+			resp := &SupremacyTopSupsContributorResponse{}
+			err := json.Unmarshal(msg, resp)
+			if err != nil {
+				return nil, nil, terror.Error(err)
+			}
+			return resp.Payload.TopSupsContributor, resp.Payload.TopSupsContributeFaction, nil
+		case err := <-errChan:
+			return nil, nil, terror.Error(err)
 		}
 	}
 }

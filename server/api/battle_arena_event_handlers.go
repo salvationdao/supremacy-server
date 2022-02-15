@@ -3,13 +3,17 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"server"
 	"server/battle_arena"
 	"server/db"
 	"server/passport"
+	"sort"
+	"time"
 
 	"github.com/gofrs/uuid"
+	"github.com/jackc/pgx/v4"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"nhooyr.io/websocket"
@@ -18,9 +22,9 @@ import (
 const HubKeyGameSettingsUpdated = hub.HubCommandKey("GAME:SETTINGS:UPDATED")
 
 type GameSettingsResponse struct {
-	GameMap            *server.GameMap         `json:"gameMap"`
-	WarMachines        []*server.WarMachineNFT `json:"warMachines"`
-	WarMachineLocation []byte                  `json:"warMachineLocation"`
+	GameMap     *server.GameMap              `json:"gameMap"`
+	WarMachines []*server.WarMachineMetadata `json:"warMachines"`
+	// WarMachineLocation []byte                  `json:"warMachineLocation"`
 }
 
 // BattleStartSignal start all the voting cycle
@@ -38,9 +42,9 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 	gameSettingsData, err := json.Marshal(&BroadcastPayload{
 		Key: HubKeyGameSettingsUpdated,
 		Payload: &GameSettingsResponse{
-			GameMap:            ed.BattleArena.GameMap,
-			WarMachines:        ed.BattleArena.WarMachines,
-			WarMachineLocation: ed.BattleArena.BattleHistory[0],
+			GameMap:     ed.BattleArena.GameMap,
+			WarMachines: ed.BattleArena.WarMachines,
+			// WarMachineLocation: ed.BattleArena.BattleHistory[0],
 		},
 	})
 	if err != nil {
@@ -112,8 +116,97 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 // BattleEndSignal terminate all the voting cycle
 func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData) {
 	// stop all the tickles in voting cycle
-	go api.stopVotingCycle(ctx)
 	go api.stopGameAbilityPoolTicker()
+	userVoteList := api.stopVotingCycle(ctx)
+
+	battleViewers := api.viewerIDRead()
+	// increment users' view battle count
+	err := db.UserBattleViewUpsert(ctx, api.Conn, battleViewers)
+	if err != nil {
+		api.Log.Err(err).Msg("Failed to record users' battle count")
+		return
+	}
+
+	// start preparing ending broadcast data
+	if len(userVoteList) > 0 {
+		// insert user vote list to db
+		err := db.UserBattleVoteCountInsert(context.Background(), api.Conn, ed.BattleRewardList.BattleID, userVoteList)
+		if err != nil {
+			api.Log.Err(err).Msg("Failed to record battle user vote")
+			return
+		}
+
+		// get the applause contributor
+		sort.Slice(userVoteList, func(i, j int) bool {
+			return userVoteList[i].VoteCount > userVoteList[j].VoteCount
+		})
+
+		u, err := api.Passport.UserGet(ctx, userVoteList[0].UserID)
+		if err != nil {
+			api.Log.Err(err).Msg("Failed to get user from passport server")
+			return
+		}
+
+		api.battleEndInfo.TopApplauseContributor = u
+	}
+
+	// get the user who spend most sups during the battle from passport
+	topUser, topFactions, err := api.Passport.TopSupsContributorsGet(ctx, ed.BattleArena.StartedAt, time.Now())
+	if err != nil {
+		api.Log.Err(err).Msg("Failed to get top sups contributors from passport")
+		return
+	}
+
+	for topUser != nil {
+		topUser.Faction = api.factionMap[topUser.FactionID]
+	}
+	api.battleEndInfo.TopSupsContributor = topUser
+	api.battleEndInfo.TopSupsContributeFaction = topFactions
+
+	// get most frequent trigger ability user
+	user, err := db.UserMostFrequentTriggerAbility(ctx, api.Conn, ed.BattleArena.ID)
+	if err != nil && errors.Is(err, pgx.ErrNoRows) {
+		api.Log.Err(err).Msg("Failed to get most frequent trigger ability user")
+		return
+	}
+	if user != nil {
+		user, err = api.Passport.UserGet(ctx, user.ID)
+		if err != nil {
+			api.Log.Err(err).Msg("Failed to get user from passport server")
+			return
+		}
+		api.battleEndInfo.MostFrequentAbilityExecutor = user
+	}
+
+	// broadcast battle end info back to game ui
+	api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyBattleEndDetailUpdated), api.battleEndInfo)
+
+	// refresh user stat
+	if len(battleViewers) > 0 {
+		go func() {
+			err := db.UserStatMaterialisedViewRefresh(ctx, api.Conn)
+			if err != nil {
+				api.Log.Err(err).Msg("Failed to refresh user stats")
+				return
+			}
+
+			// get user stat
+			userStats, err := db.UserStatMany(ctx, api.Conn, battleViewers)
+			if err != nil {
+				api.Log.Err(err).Msg("Failed to get users' stat")
+				return
+			}
+
+			userStatSends := []*passport.UserStatSend{}
+			for _, us := range userStats {
+				userStatSends = append(userStatSends, &passport.UserStatSend{
+					Stat: us,
+				})
+			}
+
+			api.Passport.UserStatSend(ctx, userStatSends)
+		}()
+	}
 
 	// parse battle reward list
 	api.Hub.Clients(func(clients hub.ClientsList) {
@@ -142,6 +235,19 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 					brs = append(brs, BattleRewardTypeKill)
 				}
 
+				// TODO: set sups multiplier for these three rewards
+				if api.battleEndInfo.MostFrequentAbilityExecutor != nil && api.battleEndInfo.MostFrequentAbilityExecutor.ID == userID {
+					brs = append(brs, BattleRewardTypeAbilityExecutor)
+				}
+
+				if api.battleEndInfo.TopApplauseContributor != nil && api.battleEndInfo.TopApplauseContributor.ID == userID {
+					brs = append(brs, BattleRewardTypeInfluencer)
+				}
+
+				if api.battleEndInfo.TopSupsContributor != nil && api.battleEndInfo.TopSupsContributor.ID == userID {
+					brs = append(brs, BattleRewardTypeWarContributor)
+				}
+
 				if len(brs) == 0 {
 					return
 				}
@@ -153,15 +259,6 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 			}(c)
 		}
 	})
-
-	// increment users' view battle count
-	go func() {
-		err := db.UserBattleViewRecord(ctx, api.Conn, api.viewerIDRead())
-		if err != nil {
-			api.Log.Err(err).Msg("Failed to record users' battle count")
-			return
-		}
-	}()
 
 	// trigger faction stat refresh and send result to passport server
 	go func() {
@@ -195,6 +292,7 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 			return
 		}
 	}()
+
 }
 
 func (api *API) WarMachineDestroyedBroadcast(ctx context.Context, ed *battle_arena.EventData) {

@@ -116,3 +116,61 @@ func (pp *Passport) UserSupsMultiplierSend(ctx context.Context, userSupsMultipli
 		},
 	}
 }
+
+type UserStatSend struct {
+	ToUserSessionID *hub.SessionID   `json:"toUserSessionID,omitempty"`
+	Stat            *server.UserStat `json:"stat"`
+}
+
+// UserStatSend send user sups multipliers
+func (pp *Passport) UserStatSend(ctx context.Context, userStatSends []*UserStatSend) {
+	pp.send <- &Request{
+		Message: &Message{
+			Key: "SUPREMACY:USER_STAT_SEND",
+			Payload: struct {
+				UserStatSends []*UserStatSend `json:"userStatSends"`
+			}{
+				UserStatSends: userStatSends,
+			},
+			context: ctx,
+		},
+	}
+}
+
+type GetUser struct {
+	User *server.User `json:"payload"`
+}
+
+// UserGet get user by id
+func (pp *Passport) UserGet(ctx context.Context, userID server.UserID) (*server.User, error) {
+	replyChannel := make(chan []byte)
+	errChan := make(chan error)
+	pp.send <- &Request{
+		ReplyChannel: replyChannel,
+		ErrChan:      errChan,
+		Message: &Message{
+			Key: "SUPREMACY:GET_USER",
+			Payload: struct {
+				UserID server.UserID `json:"userID"`
+			}{
+				UserID: userID,
+			},
+			context:       ctx,
+			TransactionID: uuid.Must(uuid.NewV4()).String(),
+		},
+	}
+
+	for {
+		select {
+		case msg := <-replyChannel:
+			resp := &GetUser{}
+			err := json.Unmarshal(msg, resp)
+			if err != nil {
+				return nil, terror.Error(err)
+			}
+			return resp.User, nil
+		case err := <-errChan:
+			return nil, terror.Error(err)
+		}
+	}
+}

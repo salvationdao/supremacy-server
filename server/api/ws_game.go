@@ -33,6 +33,7 @@ func NewGameController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *GameC
 	api.Command(HubKeyFactionColour, gameHub.FactionColour)
 	api.SubscribeCommand(HubKeyWarMachineDestroyedUpdated, gameHub.WarMachineDestroyedUpdateSubscribeHandler)
 	api.SecureUserFactionSubscribeCommand(HubKeyFactionWarMachineQueueUpdated, gameHub.FactionWarMachineQueueUpdateSubscribeHandler)
+	api.SubscribeCommand(HubKeyBattleEndDetailUpdated, gameHub.BattleEndDetailUpdateSubscribeHandler)
 
 	return gameHub
 }
@@ -115,6 +116,22 @@ func (gc *GameControllerWS) FactionWarMachineQueueUpdateSubscribeHandler(ctx con
 	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionWarMachineQueueUpdated, hcd.FactionID))
 
 	return req.TransactionID, busKey, nil
+}
+
+const HubKeyBattleEndDetailUpdated hub.HubCommandKey = "BATTLE:END:DETAIL:UPDATED"
+
+func (gc *GameControllerWS) BattleEndDetailUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return "", "", terror.Error(err, "Invalid request received")
+	}
+
+	if !gc.API.battleEndInfo.BattleID.IsNil() {
+		reply(gc.API.battleEndInfo)
+	}
+
+	return req.TransactionID, messagebus.BusKey(HubKeyBattleEndDetailUpdated), nil
 }
 
 /**********************

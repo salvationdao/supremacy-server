@@ -26,7 +26,7 @@ type BattleStartRequest struct {
 			TokenID       uint64 `json:"tokenID"`
 			ParticipantID byte   `json:"participantID"`
 		} `json:"warMachines"`
-		WarMachineLocation []byte `json:"warMachineLocation"`
+		// WarMachineLocation []byte `json:"warMachineLocation"`
 	} `json:"payload"`
 }
 
@@ -77,7 +77,7 @@ outerLoop:
 		ba.Log.Info().Msgf("War Machine: %s - %d", wm.Name, wm.TokenID)
 	}
 
-	ba.battle.BattleHistory = append(ba.battle.BattleHistory, req.Payload.WarMachineLocation)
+	// ba.battle.BattleHistory = append(ba.battle.BattleHistory, req.Payload.WarMachineLocation)
 
 	// save to database
 	tx, err := ba.Conn.Begin(ctx)
@@ -122,9 +122,9 @@ const BattleEndCommand = BattleCommand("BATTLE:END")
 
 type BattleEndRequest struct {
 	Payload struct {
-		BattleID              server.BattleID           `json:"battleID"`
-		WinCondition          server.BattleWinCondition `json:"winCondition"`
-		WinningWarMachineNFTs []*struct {
+		BattleID                   server.BattleID           `json:"battleID"`
+		WinCondition               server.BattleWinCondition `json:"winCondition"`
+		WinningWarMachineMetadatas []*struct {
 			TokenID uint64 `json:"tokenID"`
 			Health  int    `json:"health"`
 		} `json:"winningWarMachines"`
@@ -161,7 +161,7 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 
 	ba.Log.Info().Msgf("Battle ending: %s", req.Payload.BattleID)
 	ba.Log.Info().Msg("Winning War Machines")
-	for _, warMachine := range req.Payload.WinningWarMachineNFTs {
+	for _, warMachine := range req.Payload.WinningWarMachineMetadatas {
 		ba.Log.Info().Msgf("%d", warMachine.TokenID)
 	}
 
@@ -183,6 +183,8 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 	if err != nil {
 		return terror.Error(err)
 	}
+	now := time.Now()
+	ba.battle.EndedAt = &now
 
 	_, err = db.CreateBattleStateEvent(ctx, tx, ba.battle.ID, server.BattleEventBattleEnd)
 	if err != nil {
@@ -196,9 +198,9 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 		ExecuteKillWarMachineOwnerIDs: make(map[server.UserID]bool),
 	}
 
-	winningMachines := []*server.WarMachineNFT{}
+	winningMachines := []*server.WarMachineMetadata{}
 
-	for _, wm := range req.Payload.WinningWarMachineNFTs {
+	for _, wm := range req.Payload.WinningWarMachineMetadatas {
 		for _, bwm := range ba.battle.WarMachines {
 			if wm.TokenID == bwm.TokenID {
 				bwm.Health = wm.Health
@@ -228,7 +230,7 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 	}
 
 	// assign winner war machine
-	if len(req.Payload.WinningWarMachineNFTs) > 0 {
+	if len(req.Payload.WinningWarMachineMetadatas) > 0 {
 		err = db.BattleWinnerWarMachinesSet(ctx, tx, req.Payload.BattleID, winningMachines)
 		if err != nil {
 			return terror.Error(err)
@@ -271,7 +273,7 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 
 	// cache in game war machines
 	inGameWarMachines := ba.battle.WarMachines
-	ba.battle.WarMachines = []*server.WarMachineNFT{}
+	ba.battle.WarMachines = []*server.WarMachineMetadata{}
 
 	//release war machine
 	if len(inGameWarMachines) > 0 {
@@ -291,7 +293,7 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 		}
 		ba.BattleQueueMap[faction.ID] <- func(wmq *WarMachineQueuingList) {
 			// broadcast new war machine position for in game war machine owners
-			ba.passport.WarMachineQueuePositionBroadcast(context.Background(), ba.BuildUserWarMachineQueuePosition(wmq.WarMachines, []*server.WarMachineNFT{}, includedUserID...))
+			ba.passport.WarMachineQueuePositionBroadcast(context.Background(), ba.BuildUserWarMachineQueuePosition(wmq.WarMachines, []*server.WarMachineMetadata{}, includedUserID...))
 		}
 	}
 

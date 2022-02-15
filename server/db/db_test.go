@@ -202,13 +202,13 @@ func TestDatabase(t *testing.T) {
 		}
 	})
 
-	warMachineNFT := &server.WarMachineNFT{
+	warMachineMetadata := &server.WarMachineMetadata{
 		TokenID:   1,
 		FactionID: server.FactionID(uuid.Must(uuid.FromString("60be9c52-da87-4900-8705-cc1f00a4cf82"))),
 	}
 
 	t.Run("Assign war machines to the battle", func(t *testing.T) {
-		err := db.BattleWarMachineAssign(ctx, conn, battle.ID, []*server.WarMachineNFT{warMachineNFT})
+		err := db.BattleWarMachineAssign(ctx, conn, battle.ID, []*server.WarMachineMetadata{warMachineMetadata})
 		if err != nil {
 			t.Errorf("fail to assign war machines to the battle\n")
 			t.Fatal()
