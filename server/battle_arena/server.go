@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/jpillora/backoff"
+	"github.com/ninja-software/terror/v2"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -16,7 +18,6 @@ import (
 	"github.com/antonholmquist/jason"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/log_helpers"
-	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-software/tickle"
 	"github.com/rs/zerolog"
 	"nhooyr.io/websocket"
@@ -189,14 +190,14 @@ func (ba *BattleArena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				ba.Log.Err(err).Msgf("passport connection reader error")
 				cancel()
-				continue
+				return
 			}
 
 			payload, err := ioutil.ReadAll(r)
 			if err != nil {
 				ba.Log.Err(err).Msgf(`error reading out buffer`)
 				cancel()
-				continue
+				return
 			}
 
 			msgType := NetMessageType(payload[0])
@@ -207,7 +208,7 @@ func (ba *BattleArena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				if err != nil {
 					ba.Log.Err(err).Msgf(`error making object from bytes`)
 					cancel()
-					continue
+					return
 				}
 				cmdKey, err := v.GetString("battleCommand")
 				if err != nil {
@@ -220,13 +221,14 @@ func (ba *BattleArena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				}
 				ba.runGameCommand(ctx, c, BattleCommand(cmdKey), payload[1:])
 			case NetMessageTypeTick:
-				ba.WarMachinesTick(payload)
+				ba.WarMachinesTick(ctx, payload)
 			default:
 				// ba.Log.Err(fmt.Errorf("unknown message type")).Msg("")
 				v, err := jason.NewObjectFromBytes(payload)
 				if err != nil {
 					ba.Log.Err(err).Msgf(`error making object from bytes`)
-					continue
+					cancel()
+					return
 				}
 				cmdKey, err := v.GetString("battleCommand")
 				if err != nil {
@@ -359,19 +361,24 @@ func (ba *BattleArena) Command(command BattleCommand, fn BattleCommandFunc) {
 func (ba *BattleArena) SetupAfterConnections() {
 	var factions []*server.Faction
 	var err error
+	b := &backoff.Backoff{
+		Min:    1 * time.Second,
+		Max:    30 * time.Second,
+		Factor: 2,
+	}
 
 	// get factions from passport, retrying every 10 seconds until we ge them.
 	for len(factions) <= 0 {
-		// since the passport spins up concurrently the passport connection may not be setup right away, so we check every second for the connection
-		for ba.passport == nil || ba.passport.Conn == nil || !ba.passport.Conn.Connected {
-			time.Sleep(1 * time.Second)
+		if !ba.passport.Connected {
+			time.Sleep(b.Duration())
+			continue
 		}
 
 		factions, err = ba.passport.FactionAll(ba.ctx, "faction all - gameserver")
 		if err != nil {
 			ba.Log.Err(err).Msg("unable to get factions")
 		}
-		time.Sleep(1 * time.Second)
+		time.Sleep(b.Duration())
 	}
 
 	ba.battle.WarMachineDestroyedRecordMap = make(map[byte]*server.WarMachineDestroyedRecord)

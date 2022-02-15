@@ -6,14 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/jackc/pgx/v4"
+	"github.com/ninja-software/terror/v2"
 	"server"
 	"server/db"
 
 	"github.com/gofrs/uuid"
-
-	"github.com/jackc/pgx/v4"
-
-	"github.com/ninja-software/terror/v2"
 )
 
 const WarMachineDestroyedCommand = BattleCommand("BATTLE:WAR_MACHINE_DESTROYED")
@@ -138,12 +136,12 @@ func (ba *BattleArena) WarMachineDestroyedHandler(ctx context.Context, payload [
 	return nil
 }
 
-func (ba *BattleArena) WarMachinesTick(payload []byte) {
+func (ba *BattleArena) WarMachinesTick(ctx context.Context, payload []byte) {
 	// Save to history
 	ba.battle.BattleHistory = append(ba.battle.BattleHistory, payload)
 
 	// broadcast
-	ba.Events.Trigger(context.Background(), EventWarMachinePositionChanged, &EventData{
+	ba.Events.Trigger(ctx, EventWarMachinePositionChanged, &EventData{
 		BattleArena:        ba.battle,
 		WarMachineLocation: payload,
 	})

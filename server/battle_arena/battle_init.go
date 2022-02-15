@@ -2,19 +2,19 @@ package battle_arena
 
 import (
 	"context"
+	"github.com/ninja-software/terror/v2"
 	"server"
 	"server/db"
 	"time"
 
 	"github.com/gofrs/uuid"
-	"github.com/ninja-software/terror/v2"
 )
 
 const BattleCommandInitBattle BattleCommand = "BATTLE:INIT"
 
 func (ba *BattleArena) InitNextBattle() error {
+	// send new battle details to game client
 
-	ctx := context.Background()
 	// generate a new battle event
 	ba.battle.ID = server.BattleID(uuid.Must(uuid.NewV4()))
 
@@ -51,7 +51,7 @@ func (ba *BattleArena) InitNextBattle() error {
 		}
 
 		// set war machine lock request
-		err := ba.passport.AssetLock(ctx, "asset_lock", tokenIDs)
+		err := ba.passport.AssetLock(ba.ctx, "asset_lock", tokenIDs)
 		if err != nil {
 			ba.Log.Err(err).Msg("Failed to lock assets")
 			// TODO: figure out how to handle this
@@ -59,9 +59,6 @@ func (ba *BattleArena) InitNextBattle() error {
 	}
 
 	ba.Log.Info().Msgf("Initializing new battle: %s", ba.battle.ID)
-
-	// send new battle details to game client
-	ctx, cancel := context.WithCancel(ba.ctx)
 
 	// Setup payload
 	payload := struct {
@@ -73,7 +70,7 @@ func (ba *BattleArena) InitNextBattle() error {
 		MapName:     ba.battle.GameMap.Name,
 		WarMachines: ba.battle.WarMachines,
 	}
-
+	ctx, cancel := context.WithCancel(ba.ctx)
 	gameMessage := &GameMessage{
 		BattleCommand: BattleCommandInitBattle,
 		Payload:       payload,
