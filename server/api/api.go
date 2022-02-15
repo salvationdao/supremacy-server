@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/jpillora/backoff"
 	"math/big"
+	"net"
 	"net/http"
 	"server"
 	"server/battle_arena"
@@ -63,11 +65,12 @@ type FactionVotePrice struct {
 }
 
 type BattleEndInfo struct {
-	BattleID                    server.BattleID `json:"battleID"`
-	TopSupsContributor          *server.User    `json:"topSupsContributor"`
-	TopSupsContributeFaction    *server.Faction `json:"topSupsContributeFaction"`
-	TopApplauseContributor      *server.User    `json:"topApplauseContributor"`
-	MostFrequentAbilityExecutor *server.User    `json:"mostFrequentAbilityExecutor"`
+	BattleID                    server.BattleID      `json:"battleID"`
+	TopSupsContributor          *server.UserBrief    `json:"topSupsContributor"`
+	TopSupsContributeFaction    *server.FactionBrief `json:"topSupsContributeFaction"`
+	TopApplauseContributor      *server.UserBrief    `json:"topApplauseContributor"`
+	MostFrequentAbilityExecutor *server.UserBrief    `json:"mostFrequentAbilityExecutor"`
+	BattleEvents                []*BattleEventRecord `json:"battleEvents"`
 }
 
 // API server
@@ -91,7 +94,7 @@ type API struct {
 	liveSupsSpend map[server.FactionID]chan func(*LiveVotingData)
 
 	// client channels
-	hubClientDetail map[*hub.Client]chan func(*HubClientDetail)
+	hubClientDetail map[*hub.Client]chan func(*server.User)
 	onlineClientMap chan *ClientUpdate
 
 	// ring check auth
@@ -153,7 +156,7 @@ func NewAPI(
 		liveSupsSpend: make(map[server.FactionID]chan func(*LiveVotingData)),
 
 		// channel for handling hub client
-		hubClientDetail: make(map[*hub.Client]chan func(*HubClientDetail)),
+		hubClientDetail: make(map[*hub.Client]chan func(*server.User)),
 		onlineClientMap: make(chan *ClientUpdate),
 
 		// ring check auth
@@ -240,23 +243,24 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 	var factions []*server.Faction
 	var err error
 
+	b := &backoff.Backoff{
+		Min:    1 * time.Second,
+		Max:    30 * time.Second,
+		Factor: 2,
+	}
+
 	// get factions from passport, retrying every 10 seconds until we ge them.
-	for {
-		// since the passport spins up concurrently the passport connection may not be setup right away, so we check every second for the connection
-		for api.Passport == nil || api.Passport.Conn == nil || !api.Passport.Conn.Connected {
-			time.Sleep(1 * time.Second)
+	for len(factions) <= 0 {
+		if !api.Passport.Connected {
+			time.Sleep(b.Duration())
+			continue
 		}
 
-		factions, err = api.Passport.FactionAll(api.ctx, "faction all")
+		factions, err = api.Passport.FactionAll(ctx, "faction all - gameserver")
 		if err != nil {
-			api.Log.Err(err).Msg("unable to get factions")
+			api.Passport.Log.Err(err).Msg("unable to get factions")
 		}
-
-		if len(factions) > 0 {
-			break
-		}
-
-		time.Sleep(5 * time.Second)
+		time.Sleep(b.Duration())
 	}
 
 	go api.initialiseViewerLiveCount(ctx, factions)
@@ -346,7 +350,7 @@ func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client, clients
 	_, ok := api.hubClientDetail[wsc]
 	if !ok {
 		// initialise a client detail channel if not on the list
-		api.hubClientDetail[wsc] = make(chan func(*HubClientDetail))
+		api.hubClientDetail[wsc] = make(chan func(*server.User))
 		go api.startClientTracker(wsc)
 		go api.viewerLiveCountAdd(server.FactionID(uuid.Nil))
 	}
@@ -408,12 +412,8 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 				if nextUser == nil {
 					// if no winner left, enter cooldown phase
 					go api.BroadcastGameNotificationLocationSelect(ctx, &GameNotificationLocationSelect{
-						Type: LocationSelectTypeCancelledDisconnect,
-						Ability: &AbilityBrief{
-							Label:    va.BattleAbility.Label,
-							ImageUrl: va.BattleAbility.ImageUrl,
-							Colour:   va.BattleAbility.Colour,
-						},
+						Type:    LocationSelectTypeCancelledDisconnect,
+						Ability: va.BattleAbility.Brief(),
 					})
 
 					// get random ability collection set
@@ -456,30 +456,10 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 
 				// broadcast winner select location
 				go api.BroadcastGameNotificationLocationSelect(ctx, &GameNotificationLocationSelect{
-					Type: LocationSelectTypeFailedDisconnect,
-					Ability: &AbilityBrief{
-						Label:    va.BattleAbility.Label,
-						ImageUrl: va.BattleAbility.ImageUrl,
-						Colour:   va.BattleAbility.Colour,
-					},
-					CurrentUser: &UserBrief{
-						Username: currentUser.Username,
-						AvatarID: currentUser.avatarID,
-						Faction: &FactionBrief{
-							Label:      api.factionMap[currentUser.FactionID].Label,
-							Theme:      api.factionMap[currentUser.FactionID].Theme,
-							LogoBlobID: api.factionMap[currentUser.FactionID].LogoBlobID,
-						},
-					},
-					NextUser: &UserBrief{
-						Username: nextUser.Username,
-						AvatarID: nextUser.avatarID,
-						Faction: &FactionBrief{
-							Label:      api.factionMap[nextUser.FactionID].Label,
-							Theme:      api.factionMap[nextUser.FactionID].Theme,
-							LogoBlobID: api.factionMap[nextUser.FactionID].LogoBlobID,
-						},
-					},
+					Type:        LocationSelectTypeFailedDisconnect,
+					Ability:     va.BattleAbility.Brief(),
+					CurrentUser: currentUser.Brief(),
+					NextUser:    nextUser.Brief(),
 				})
 
 				// broadcast current stage to faction users
@@ -497,6 +477,9 @@ func (api *API) Run(ctx context.Context) error {
 	api.server = &http.Server{
 		Addr:    api.Addr,
 		Handler: api.Routes,
+		BaseContext: func(_ net.Listener) context.Context {
+			return ctx
+		},
 	}
 
 	api.Log.Info().Msgf("Starting API Server on %v", api.server.Addr)
@@ -510,7 +493,8 @@ func (api *API) Run(ctx context.Context) error {
 }
 
 func (api *API) Close() {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(api.ctx, 5*time.Second)
+	defer cancel()
 	api.Log.Info().Msg("Stopping API")
 	err := api.server.Shutdown(ctx)
 	if err != nil {

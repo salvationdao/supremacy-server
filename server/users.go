@@ -65,3 +65,24 @@ type UserStat struct {
 	TotalAbilityTriggered int64  `json:"totalAbilityTriggered" db:"total_ability_triggered"`
 	KillCount             int64  `json:"killCount" db:"kill_count"`
 }
+
+type UserBrief struct {
+	ID       UserID        `json:"id"`
+	Username string        `json:"username"`
+	AvatarID *BlobID       `json:"avatarID,omitempty"`
+	Faction  *FactionBrief `json:"faction"`
+}
+
+func (u *User) Brief() *UserBrief {
+	ub := &UserBrief{
+		ID:       u.ID,
+		Username: u.Username,
+		AvatarID: u.AvatarID,
+	}
+
+	if u.Faction != nil {
+		ub.Faction = u.Faction.Brief()
+	}
+
+	return ub
+}

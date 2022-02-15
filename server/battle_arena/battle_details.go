@@ -18,3 +18,13 @@ func (ba *BattleArena) WarMachineDestroyedRecord(participantID byte) *server.War
 func (ba *BattleArena) InGameWarMachines() []*server.WarMachineMetadata {
 	return ba.battle.WarMachines
 }
+
+func (ba *BattleArena) GetWarMachine(tokenID uint64) *server.WarMachineMetadata {
+	for _, wm := range ba.battle.WarMachines {
+		if wm.TokenID == tokenID {
+			return wm
+		}
+	}
+
+	return nil
+}

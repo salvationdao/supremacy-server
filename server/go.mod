@@ -27,6 +27,7 @@ require (
 
 require (
 	github.com/jackc/pgconn v1.10.1
+	github.com/jpillora/backoff v1.0.0
 	github.com/microcosm-cc/bluemonday v1.0.16
 	github.com/ninja-software/tickle v1.3.2
 )

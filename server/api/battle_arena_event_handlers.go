@@ -29,6 +29,9 @@ type GameSettingsResponse struct {
 
 // BattleStartSignal start all the voting cycle
 func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventData) {
+	// clean up battle end information
+	api.battleEndInfo = &BattleEndInfo{}
+
 	// build faction detail to battle start
 	warMachines := ed.BattleArena.WarMachines
 	for _, wm := range warMachines {
@@ -96,8 +99,6 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 						AbilityTokenID:      ability.TokenID,
 						WarMachineTokenID:   wm.TokenID,
 						ParticipantID:       &wm.ParticipantID,
-						WarMachineName:      wm.Name,  // for game notification
-						WarMachineImage:     wm.Image, // for game notification
 						Title:               wm.Name,
 					})
 				}
@@ -112,6 +113,8 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 
 // BattleEndSignal terminate all the voting cycle
 func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData) {
+
+	api.battleEndInfo.BattleID = api.BattleArena.CurrentBattleID()
 	// stop all the tickles in voting cycle
 	go api.stopGameAbilityPoolTicker()
 
@@ -127,7 +130,7 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 	// start preparing ending broadcast data
 	if len(userVoteList) > 0 {
 		// insert user vote list to db
-		err := db.UserBattleVoteCountInsert(context.Background(), api.Conn, ed.BattleRewardList.BattleID, userVoteList)
+		err := db.UserBattleVoteCountInsert(context.Background(), api.Conn, api.BattleArena.CurrentBattleID(), userVoteList)
 		if err != nil {
 			api.Log.Err(err).Msg("Failed to record battle user vote")
 			return
@@ -144,25 +147,29 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 			return
 		}
 
-		api.battleEndInfo.TopApplauseContributor = u
+		api.battleEndInfo.TopApplauseContributor = u.Brief()
 	}
 
 	// get the user who spend most sups during the battle from passport
-	topUser, topFactions, err := api.Passport.TopSupsContributorsGet(ctx, ed.BattleArena.StartedAt, time.Now())
+	topUser, topFaction, err := api.Passport.TopSupsContributorsGet(ctx, ed.BattleArena.StartedAt, time.Now())
 	if err != nil {
 		api.Log.Err(err).Msg("Failed to get top sups contributors from passport")
 		return
 	}
 
-	for topUser != nil {
-		topUser.Faction = api.factionMap[topUser.FactionID]
+	if topUser != nil {
+		if !topUser.FactionID.IsNil() {
+			topUser.Faction = api.factionMap[topFaction.ID]
+		}
+		api.battleEndInfo.TopSupsContributor = topUser.Brief()
 	}
-	api.battleEndInfo.TopSupsContributor = topUser
-	api.battleEndInfo.TopSupsContributeFaction = topFactions
+	if topFaction != nil {
+		api.battleEndInfo.TopSupsContributeFaction = topFaction.Brief()
+	}
 
 	// get most frequent trigger ability user
-	user, err := db.UserMostFrequentTriggerAbility(ctx, api.Conn, ed.BattleArena.ID)
-	if err != nil && errors.Is(err, pgx.ErrNoRows) {
+	user, err := db.UserMostFrequentTriggerAbility(ctx, api.Conn, api.BattleArena.CurrentBattleID())
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		api.Log.Err(err).Msg("Failed to get most frequent trigger ability user")
 		return
 	}
@@ -172,7 +179,7 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 			api.Log.Err(err).Msg("Failed to get user from passport server")
 			return
 		}
-		api.battleEndInfo.MostFrequentAbilityExecutor = user
+		api.battleEndInfo.MostFrequentAbilityExecutor = user.Brief()
 	}
 
 	// broadcast battle end info back to game ui
@@ -250,7 +257,7 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 				}
 
 				api.ClientBattleRewardUpdate(c, &ClientBattleReward{
-					BattleID: ed.BattleRewardList.BattleID,
+					BattleID: api.BattleArena.CurrentBattleID(),
 					Rewards:  brs,
 				})
 			}(c)
@@ -293,6 +300,21 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 }
 
 func (api *API) WarMachineDestroyedBroadcast(ctx context.Context, ed *battle_arena.EventData) {
+
+	// record destroyed event
+	wmd := &WarMachineDestroyedEventRecord{
+		KilledBy:            ed.WarMachineDestroyedRecord.KilledBy,
+		DestroyedWarMachine: ed.WarMachineDestroyedRecord.DestroyedWarMachine.Brief(),
+	}
+	if ed.WarMachineDestroyedRecord.KilledByWarMachine != nil {
+		wmd.KilledByWarMachine = ed.WarMachineDestroyedRecord.KilledByWarMachine.Brief()
+	}
+	api.battleEndInfo.BattleEvents = append(api.battleEndInfo.BattleEvents, &BattleEventRecord{
+		Type:      server.BattleEventTypeWarMachineDestroyed,
+		CreatedAt: time.Now(),
+		Event:     wmd,
+	})
+
 	api.MessageBus.Send(ctx,
 		messagebus.BusKey(
 			fmt.Sprintf(

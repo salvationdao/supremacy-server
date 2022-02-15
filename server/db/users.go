@@ -74,7 +74,7 @@ func UserMostFrequentTriggerAbility(ctx context.Context, conn Conn, battleID ser
 
 	q := `
 	SELECT 
-		bega.triggered_by_user_id  
+		bega.triggered_by_user_id as id
 	FROM 
 		battle_events_game_ability bega 
 	INNER JOIN 
