@@ -29,9 +29,6 @@ type GameSettingsResponse struct {
 
 // BattleStartSignal start all the voting cycle
 func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventData) {
-	// clean up current viewer id map
-	api.viewerIDRead()
-
 	// build faction detail to battle start
 	warMachines := ed.BattleArena.WarMachines
 	for _, wm := range warMachines {
@@ -117,7 +114,6 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData) {
 	// stop all the tickles in voting cycle
 	go api.stopGameAbilityPoolTicker()
-	userVoteList := api.stopVotingCycle(ctx)
 
 	battleViewers := api.viewerIDRead()
 	// increment users' view battle count
@@ -127,6 +123,7 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 		return
 	}
 
+	userVoteList := api.stopVotingCycle(ctx)
 	// start preparing ending broadcast data
 	if len(userVoteList) > 0 {
 		// insert user vote list to db
