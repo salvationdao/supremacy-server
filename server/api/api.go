@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/jpillora/backoff"
 	"math/big"
+	"net"
 	"net/http"
 	"server"
 	"server/battle_arena"
@@ -240,23 +242,24 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 	var factions []*server.Faction
 	var err error
 
+	b := &backoff.Backoff{
+		Min:    1 * time.Second,
+		Max:    30 * time.Second,
+		Factor: 2,
+	}
+
 	// get factions from passport, retrying every 10 seconds until we ge them.
-	for {
-		// since the passport spins up concurrently the passport connection may not be setup right away, so we check every second for the connection
-		for api.Passport == nil || api.Passport.Conn == nil || !api.Passport.Conn.Connected {
-			time.Sleep(1 * time.Second)
+	for len(factions) <= 0 {
+		if !api.Passport.Connected {
+			time.Sleep(b.Duration())
+			continue
 		}
 
-		factions, err = api.Passport.FactionAll(api.ctx, "faction all")
+		factions, err = api.Passport.FactionAll(ctx, "faction all - gameserver")
 		if err != nil {
-			api.Log.Err(err).Msg("unable to get factions")
+			api.Passport.Log.Err(err).Msg("unable to get factions")
 		}
-
-		if len(factions) > 0 {
-			break
-		}
-
-		time.Sleep(5 * time.Second)
+		time.Sleep(b.Duration())
 	}
 
 	go api.initialiseViewerLiveCount(ctx, factions)
@@ -497,6 +500,9 @@ func (api *API) Run(ctx context.Context) error {
 	api.server = &http.Server{
 		Addr:    api.Addr,
 		Handler: api.Routes,
+		BaseContext: func(_ net.Listener) context.Context {
+			return ctx
+		},
 	}
 
 	api.Log.Info().Msgf("Starting API Server on %v", api.server.Addr)
@@ -510,7 +516,8 @@ func (api *API) Run(ctx context.Context) error {
 }
 
 func (api *API) Close() {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(api.ctx, 5*time.Second)
+	defer cancel()
 	api.Log.Info().Msg("Stopping API")
 	err := api.server.Shutdown(ctx)
 	if err != nil {
