@@ -1,7 +1,6 @@
 package db
 
 import (
-	"fmt"
 	"server"
 
 	"github.com/georgysavva/scany/pgxscan"
@@ -24,7 +23,7 @@ func BattleAbilityCreate(ctx context.Context, conn Conn, battleAbility *server.B
 		battleAbility.CooldownDurationSecond,
 	)
 	if err != nil {
-		fmt.Println(err)
+		return terror.Error(err)
 	}
 
 	return nil

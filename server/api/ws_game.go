@@ -82,7 +82,6 @@ func (gc *GameControllerWS) WarMachineDestroyedUpdateSubscribeHandler(ctx contex
 	}
 
 	busKey := messagebus.BusKey(fmt.Sprintf("%s:%x", HubKeyWarMachineDestroyedUpdated, req.Payload.ParticipantID))
-
 	return req.TransactionID, busKey, nil
 }
 
@@ -199,7 +198,7 @@ type GameNotification struct {
 const HubKeyGameNotification hub.HubCommandKey = "GAME:NOTIFICATION"
 
 // BroadcastGameNotificationText broadcast game notification to client
-func (api *API) BroadcastGameNotificationText(data string) {
+func (api *API) BroadcastGameNotificationText(ctx context.Context, data string) {
 	// broadcast countered notification
 	broadcastData, err := json.Marshal(&BroadcastPayload{
 		Key: HubKeyGameNotification,
@@ -213,11 +212,11 @@ func (api *API) BroadcastGameNotificationText(data string) {
 		return
 	}
 
-	api.clientBroadcast(broadcastData)
+	api.clientBroadcast(ctx, broadcastData)
 }
 
 // BroadcastGameNotificationLocationSelect broadcast game notification to client
-func (api *API) BroadcastGameNotificationLocationSelect(data *GameNotificationLocationSelect) {
+func (api *API) BroadcastGameNotificationLocationSelect(ctx context.Context, data *GameNotificationLocationSelect) {
 	// broadcast countered notification
 	broadcastData, err := json.Marshal(&BroadcastPayload{
 		Key: HubKeyGameNotification,
@@ -230,11 +229,11 @@ func (api *API) BroadcastGameNotificationLocationSelect(data *GameNotificationLo
 		api.Log.Err(err).Msg("marshal broadcast payload")
 		return
 	}
-	api.clientBroadcast(broadcastData)
+	api.clientBroadcast(ctx, broadcastData)
 }
 
 // BroadcastGameNotificationAbility broadcast game notification to client
-func (api *API) BroadcastGameNotificationAbility(notificationType GameNotificationType, data *GameNotificationAbility) {
+func (api *API) BroadcastGameNotificationAbility(ctx context.Context, notificationType GameNotificationType, data *GameNotificationAbility) {
 	// broadcast countered notification
 	broadcastData, err := json.Marshal(&BroadcastPayload{
 		Key: HubKeyGameNotification,
@@ -247,11 +246,11 @@ func (api *API) BroadcastGameNotificationAbility(notificationType GameNotificati
 		api.Log.Err(err).Msg("marshal broadcast payload")
 		return
 	}
-	api.clientBroadcast(broadcastData)
+	api.clientBroadcast(ctx, broadcastData)
 }
 
 // BroadcastGameNotificationWarMachineAbility broadcast game notification to client
-func (api *API) BroadcastGameNotificationWarMachineAbility(data *GameNotificationWarMachineAbility) {
+func (api *API) BroadcastGameNotificationWarMachineAbility(ctx context.Context, data *GameNotificationWarMachineAbility) {
 	// broadcast countered notification
 	broadcastData, err := json.Marshal(&BroadcastPayload{
 		Key: HubKeyGameNotification,
@@ -264,17 +263,17 @@ func (api *API) BroadcastGameNotificationWarMachineAbility(data *GameNotificatio
 		api.Log.Err(err).Msg("marshal broadcast payload")
 		return
 	}
-	api.clientBroadcast(broadcastData)
+	api.clientBroadcast(ctx, broadcastData)
 }
 
-func (api *API) clientBroadcast(data []byte) {
+func (api *API) clientBroadcast(ctx context.Context, data []byte) {
 	api.Hub.Clients(func(clients hub.ClientsList) {
 		for client, ok := range clients {
 			if !ok {
 				continue
 			}
 			go func(c *hub.Client) {
-				err := c.Send(data)
+				err := c.Send(ctx, data)
 				if err != nil {
 					api.Log.Err(err).Msg("failed to send broadcast")
 				}

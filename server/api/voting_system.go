@@ -25,7 +25,7 @@ import (
 /***************
 * Spoil of War *
 ***************/
-func (api *API) startSpoilOfWarBroadcaster() {
+func (api *API) startSpoilOfWarBroadcaster(ctx context.Context) {
 	spoilOfWarBroadcasterLogger := log_helpers.NamedLogger(api.Log, "Spoil of War Broadcaster").Level(zerolog.Disabled)
 	spoilOfWarBroadcaster := tickle.New("Spoil of War Broadcaster", 5, func() (int, error) {
 
@@ -45,7 +45,7 @@ func (api *API) startSpoilOfWarBroadcaster() {
 					continue
 				}
 				go func(c *hub.Client) {
-					err := c.SendWithMessageType(payload, websocket.MessageBinary)
+					err := c.SendWithMessageType(ctx, payload, websocket.MessageBinary)
 					if err != nil {
 						api.Log.Err(err).Msg("failed to send broadcast")
 					}
@@ -69,7 +69,7 @@ const VotePriceUpdaterTickSecond = 10
 
 const VotePriceAccuracy = 10000
 
-func (api *API) startVotePriceSystem(factions []*server.Faction, conn *pgxpool.Pool) {
+func (api *API) startVotePriceSystem(ctx context.Context, factions []*server.Faction, conn *pgxpool.Pool) {
 	// initialise value
 	api.votePriceSystem = &VotePriceSystem{
 		GlobalVotePerTick:   []int64{},
@@ -106,7 +106,7 @@ func (api *API) startVotePriceSystem(factions []*server.Faction, conn *pgxpool.P
 	// initialise vote price ticker
 	tickle.MinDurationOverride = true
 	votePriceTickerLogger := log_helpers.NamedLogger(api.Log, "Vote Price Ticker").Level(zerolog.Disabled)
-	votePriceUpdater := tickle.New("Vote Price Ticker", VotePriceUpdaterTickSecond, api.votePriceUpdaterFactory(conn))
+	votePriceUpdater := tickle.New("Vote Price Ticker", VotePriceUpdaterTickSecond, api.votePriceUpdaterFactory(ctx, conn))
 	votePriceUpdater.Log = &votePriceTickerLogger
 
 	api.votePriceSystem.VotePriceUpdater = votePriceUpdater
@@ -172,7 +172,7 @@ func (api *API) increaseFactionVoteTotal(factionID server.FactionID, voteCount i
 
 // vote price ticker
 
-func (api *API) votePriceUpdaterFactory(conn *pgxpool.Pool) func() (int, error) {
+func (api *API) votePriceUpdaterFactory(ctx context.Context, conn *pgxpool.Pool) func() (int, error) {
 	return func() (int, error) {
 		api.votePriceHighPriorityLock()
 
@@ -251,7 +251,7 @@ func (api *API) votePriceUpdaterFactory(conn *pgxpool.Pool) func() (int, error) 
 					}
 
 					// broadcast vote price forecast
-					err = c.SendWithMessageType(factionVotePriceMap[hcd.FactionID], websocket.MessageBinary)
+					err = c.SendWithMessageType(ctx, factionVotePriceMap[hcd.FactionID], websocket.MessageBinary)
 					if err != nil {
 						api.Log.Err(err).Msg("failed to send broadcast")
 					}
@@ -414,7 +414,7 @@ type WinnerSelectAbilityLocation struct {
 ***********************/
 
 // StartVotingCycle start voting cycle ticker
-func (api *API) StartVotingCycle(factions []*server.Faction) {
+func (api *API) StartVotingCycle(ctx context.Context, factions []*server.Faction) {
 	// initialise current vote stage
 	api.votePhaseChecker = &VotePhaseChecker{
 		Phase: VotePhaseHold,
@@ -452,12 +452,12 @@ func (api *API) StartVotingCycle(factions []*server.Faction) {
 	// start faction voting cycle tickle
 	tickle.MinDurationOverride = true
 	voteStageLogger := log_helpers.NamedLogger(api.Log, "Voting Cycle Tracker").Level(zerolog.Disabled)
-	voteStageListener := tickle.New("Voting Cycle Tracker", 1, api.voteStageListenerFactory())
+	voteStageListener := tickle.New("Voting Cycle Tracker", 1, api.voteStageListenerFactory(ctx))
 	voteStageListener.Log = &voteStageLogger
 
 	// start faction voting cycle tickle
 	abilityRightResultLogger := log_helpers.NamedLogger(api.Log, "Ability Right Result Broadcaster").Level(zerolog.Disabled)
-	abilityRightResultBroadcaster := tickle.New("Ability Right Result Broadcaster", 0.5, api.abilityRightResultBroadcasterFactory(factionTotalVote))
+	abilityRightResultBroadcaster := tickle.New("Ability Right Result Broadcaster", 0.5, api.abilityRightResultBroadcasterFactory(ctx, factionTotalVote))
 	abilityRightResultBroadcaster.Log = &abilityRightResultLogger
 
 	tickers := &VotingCycleTicker{
@@ -478,7 +478,7 @@ func (api *API) StartVotingCycle(factions []*server.Faction) {
 ******************************/
 
 // abilityRightResultBroadcasterFactory generate the function for broadcasting the ability right result
-func (api *API) abilityRightResultBroadcasterFactory(ftv *FactionTotalVote) func() (int, error) {
+func (api *API) abilityRightResultBroadcasterFactory(ctx context.Context, ftv *FactionTotalVote) func() (int, error) {
 	return func() (int, error) {
 		// save a snapshot of current faction total vote
 		factionTotalVote := *ftv
@@ -511,7 +511,7 @@ func (api *API) abilityRightResultBroadcasterFactory(ftv *FactionTotalVote) func
 					continue
 				}
 				go func(c *hub.Client) {
-					err := c.SendWithMessageType(payload, websocket.MessageBinary)
+					err := c.SendWithMessageType(ctx, payload, websocket.MessageBinary)
 					if err != nil {
 						api.Log.Err(err).Msg("failed to send broadcast")
 					}
@@ -528,14 +528,14 @@ func (api *API) abilityRightResultBroadcasterFactory(ftv *FactionTotalVote) func
 **********************/
 
 // startVotingCycle start voting cycle tickles
-func (api *API) startVotingCycle(introSecond int) {
+func (api *API) startVotingCycle(ctx context.Context, introSecond int) {
 	api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker) {
 		api.votePhaseChecker.Phase = VotePhaseWaitMechIntro
 		vs.Phase = VotePhaseWaitMechIntro
 		vs.EndTime = time.Now().Add(time.Duration(introSecond) * time.Second)
 
 		// broadcast current stage to faction users
-		api.MessageBus.Send(messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+		api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 
 		if vct.VotingStageListener.NextTick == nil || vct.VotingStageListener.NextTick.Before(time.Now()) {
 			vct.VotingStageListener.Start()
@@ -544,11 +544,11 @@ func (api *API) startVotingCycle(introSecond int) {
 }
 
 // stopVotingCycle pause voting cycle tickles
-func (api *API) stopVotingCycle() {
+func (api *API) stopVotingCycle(ctx context.Context) {
 	api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker) {
 		vs.Phase = VotePhaseHold
 		// broadcast current stage to faction users
-		api.MessageBus.Send(messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+		api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 
 		if vct.VotingStageListener.NextTick != nil {
 			vct.VotingStageListener.Stop()
@@ -578,7 +578,7 @@ func (api *API) stopVotingCycle() {
 }
 
 // voteStageListenerFactory is the main vote stage handler
-func (api *API) voteStageListenerFactory() func() (int, error) {
+func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error) {
 	return func() (int, error) {
 		api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker) {
 			ctx := context.Background()
@@ -597,7 +597,7 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 					api.Log.Err(err)
 				}
 
-				api.MessageBus.Send(messagebus.BusKey(HubKeyVoteBattleAbilityUpdated), battleAbility)
+				api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteBattleAbilityUpdated), battleAbility)
 
 				// initialise new ability collection
 				va.BattleAbility = battleAbility
@@ -614,7 +614,7 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 				vs.EndTime = time.Now().Add(time.Duration(battleAbility.CooldownDurationSecond) * time.Second)
 
 				// broadcast current stage to faction users
-				api.MessageBus.Send(messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+				api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 
 			// at the end of ability right voting
 			case VotePhaseVoteAbilityRight:
@@ -637,7 +637,7 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 					api.votePhaseChecker.Phase = VotePhaseNextVoteWin
 					vs.Phase = VotePhaseNextVoteWin
 					// broadcast current stage to faction users
-					api.MessageBus.Send(messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+					api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 
 					// stop ticker
 					if vct.VotingStageListener.NextTick != nil {
@@ -722,7 +722,7 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 				hcd, winnerClientID := api.getNextWinnerDetail(vw)
 				if hcd == nil {
 					// if no winner left, enter cooldown phase
-					go api.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
+					go api.BroadcastGameNotificationLocationSelect(ctx, &GameNotificationLocationSelect{
 						Type: LocationSelectTypeCancelledNoPlayer,
 						Ability: &AbilityBrief{
 							Label:    va.BattleAbility.Label,
@@ -737,7 +737,7 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 					vs.EndTime = time.Now().Add(time.Duration(va.BattleAbility.CooldownDurationSecond) * time.Second)
 
 					// broadcast current stage to faction users
-					api.MessageBus.Send(messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+					api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 
 					return
 				}
@@ -747,7 +747,7 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 				vs.Phase = VotePhaseLocationSelect
 				vs.EndTime = time.Now().Add(LocationSelectDurationSecond * time.Second)
 
-				go api.BroadcastGameNotificationAbility(GameNotificationTypeBattleAbility, &GameNotificationAbility{
+				go api.BroadcastGameNotificationAbility(ctx, GameNotificationTypeBattleAbility, &GameNotificationAbility{
 					User: &UserBrief{
 						Username: hcd.Username,
 						AvatarID: hcd.avatarID,
@@ -765,13 +765,13 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 				})
 
 				// announce winner
-				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, winnerClientID)), &WinnerSelectAbilityLocation{
+				api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, winnerClientID)), &WinnerSelectAbilityLocation{
 					GameAbility: va.FactionAbilityMap[hcd.FactionID],
 					EndTime:     vs.EndTime,
 				})
 
 				// broadcast current stage to faction users
-				api.MessageBus.Send(messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+				api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 
 				// stop broadcaster when the vote right is done
 				if vct.AbilityRightResultBroadcaster.NextTick != nil {
@@ -795,7 +795,7 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 				nextUser, winnerClientID := api.getNextWinnerDetail(vw)
 				if nextUser == nil {
 					// if no winner left, enter cooldown phase
-					go api.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
+					go api.BroadcastGameNotificationLocationSelect(ctx, &GameNotificationLocationSelect{
 						Type: LocationSelectTypeCancelledNoPlayer,
 						Ability: &AbilityBrief{
 							Label:    va.BattleAbility.Label,
@@ -810,7 +810,7 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 						api.Log.Err(err)
 					}
 
-					api.MessageBus.Send(messagebus.BusKey(HubKeyVoteBattleAbilityUpdated), battleAbility)
+					api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteBattleAbilityUpdated), battleAbility)
 
 					// initialise new ability collection
 					va.BattleAbility = battleAbility
@@ -826,7 +826,7 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 					vs.EndTime = time.Now().Add(time.Duration(va.BattleAbility.CooldownDurationSecond) * time.Second)
 
 					// broadcast current stage to faction users
-					api.MessageBus.Send(messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+					api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 
 					return
 				}
@@ -837,13 +837,13 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 				vs.EndTime = time.Now().Add(LocationSelectDurationSecond * time.Second)
 
 				// otherwise announce another winner
-				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, winnerClientID)), &WinnerSelectAbilityLocation{
+				api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, winnerClientID)), &WinnerSelectAbilityLocation{
 					GameAbility: va.FactionAbilityMap[nextUser.FactionID],
 					EndTime:     vs.EndTime,
 				})
 
 				// broadcast winner select location
-				go api.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
+				go api.BroadcastGameNotificationLocationSelect(ctx, &GameNotificationLocationSelect{
 					Type: LocationSelectTypeFailedTimeout,
 					Ability: &AbilityBrief{
 						Label:    va.BattleAbility.Label,
@@ -871,7 +871,7 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 				})
 
 				// broadcast current stage to faction users
-				api.MessageBus.Send(messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+				api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 
 			// at the end of cooldown
 			case VotePhaseVoteCooldown:
@@ -895,7 +895,7 @@ func (api *API) voteStageListenerFactory() func() (int, error) {
 				vs.EndTime = time.Now().Add(VoteAbilityRightDurationSecond * time.Second)
 
 				// broadcast current stage to faction users
-				api.MessageBus.Send(messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+				api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 
 				// start tracking vote right result
 				if vct.AbilityRightResultBroadcaster.NextTick == nil || vct.AbilityRightResultBroadcaster.NextTick.Before(time.Now()) {

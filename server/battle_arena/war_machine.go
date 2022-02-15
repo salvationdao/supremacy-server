@@ -50,7 +50,6 @@ func (ba *BattleArena) WarMachineDestroyedHandler(ctx context.Context, payload [
 	if destroyedWarMachine == nil {
 		return terror.Error(fmt.Errorf("destroyed war machine %d does not exist", req.Payload.DestroyedWarMachineEvent.DestroyedWarMachineID))
 	}
-
 	var killByWarMachine *server.WarMachineNFT
 	if req.Payload.DestroyedWarMachineEvent.KillByWarMachineID != nil {
 		for _, wm := range ba.battle.WarMachines {
@@ -62,7 +61,6 @@ func (ba *BattleArena) WarMachineDestroyedHandler(ctx context.Context, payload [
 			return terror.Error(fmt.Errorf("killer war machine %d does not exist", *req.Payload.DestroyedWarMachineEvent.KillByWarMachineID))
 		}
 	}
-
 	ba.Log.Info().Msgf("Battle Update: %s - War Machine Destroyed: %d", req.Payload.BattleID, req.Payload.DestroyedWarMachineEvent.DestroyedWarMachineID)
 
 	// save to database

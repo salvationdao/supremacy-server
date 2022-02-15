@@ -97,7 +97,6 @@ type WarMachineQueuePosition struct {
 	Position      int                   `json:"position"`
 }
 
-// WarMachineQueue
 func (pp *Passport) WarMachineQueuePositionBroadcast(ctx context.Context, uwm []*UserWarMachineQueuePosition) {
 	pp.send <- &Request{
 		Message: &Message{
@@ -112,7 +111,6 @@ func (pp *Passport) WarMachineQueuePositionBroadcast(ctx context.Context, uwm []
 	}
 }
 
-// WarMachineQueue
 func (pp *Passport) AbilityUpdateTargetPrice(ctx context.Context, abilityTokenID, warMachineTokenID uint64, supsCost string) {
 	pp.send <- &Request{
 		Message: &Message{
@@ -169,8 +167,8 @@ func (pp *Passport) AssetInsurancePay(ctx context.Context, userID server.UserID,
 
 // AssetContractRewardRedeem redeem faction contract reward
 func (pp *Passport) AssetContractRewardRedeem(ctx context.Context, userID server.UserID, factionID server.FactionID, amount server.BigInt, txRef server.TransactionReference) error {
-	replyChannel := make(chan []byte)
-	errChan := make(chan error)
+	replyChannel := make(chan []byte, 1)
+	errChan := make(chan error, 1)
 
 	pp.send <- &Request{
 		ReplyChannel: replyChannel,

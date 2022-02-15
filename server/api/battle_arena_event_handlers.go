@@ -54,7 +54,7 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 				continue
 			}
 			go func(c *hub.Client) {
-				err := c.Send(gameSettingsData)
+				err := c.Send(ctx, gameSettingsData)
 				if err != nil {
 					api.Log.Err(err).Msg("failed to send broadcast")
 				}
@@ -102,17 +102,17 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 				}
 			}
 
-			api.startGameAbilityPoolTicker(factionID, initialAbilities, introSecond)
+			api.startGameAbilityPoolTicker(ctx, factionID, initialAbilities, introSecond)
 		}(factionID)
 	}
 
-	go api.startVotingCycle(introSecond)
+	go api.startVotingCycle(ctx, introSecond)
 }
 
 // BattleEndSignal terminate all the voting cycle
 func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData) {
 	// stop all the tickles in voting cycle
-	go api.stopVotingCycle()
+	go api.stopVotingCycle(ctx)
 	go api.stopGameAbilityPoolTicker()
 
 	// parse battle reward list
@@ -198,7 +198,7 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 }
 
 func (api *API) WarMachineDestroyedBroadcast(ctx context.Context, ed *battle_arena.EventData) {
-	api.MessageBus.Send(
+	api.MessageBus.Send(ctx,
 		messagebus.BusKey(
 			fmt.Sprintf(
 				"%s:%x",
@@ -222,7 +222,7 @@ func (api *API) UpdateWarMachinePosition(ctx context.Context, ed *battle_arena.E
 				continue
 			}
 			go func(c *hub.Client) {
-				err := c.SendWithMessageType(ed.WarMachineLocation, websocket.MessageBinary)
+				err := c.SendWithMessageType(ctx, ed.WarMachineLocation, websocket.MessageBinary)
 				if err != nil {
 					api.Log.Err(err).Msg("failed to send broadcast")
 				}
@@ -235,5 +235,5 @@ func (api *API) UpdateWarMachineQueue(ctx context.Context, ed *battle_arena.Even
 	if ed.WarMachineQueue == nil {
 		return
 	}
-	api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionWarMachineQueueUpdated, ed.WarMachineQueue.FactionID)), ed.WarMachineQueue.WarMachines)
+	api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionWarMachineQueueUpdated, ed.WarMachineQueue.FactionID)), ed.WarMachineQueue.WarMachines)
 }

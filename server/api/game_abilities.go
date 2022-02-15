@@ -36,19 +36,19 @@ type GameAbilityPoolTicker struct {
 	TargetPriceBroadcaster *tickle.Tickle
 }
 
-func (api *API) StartGameAbilityPool(factionID server.FactionID, conn *pgxpool.Pool) {
+func (api *API) StartGameAbilityPool(ctx context.Context, factionID server.FactionID, conn *pgxpool.Pool) {
 	// initial game ability
 	factionAbilitiesPool := make(GameAbilitiesPool)
 
 	// initialise target price ticker
 	tickle.MinDurationOverride = true
 	AbilityTargetPriceUpdaterLogger := log_helpers.NamedLogger(api.Log, "Ability target price Updater").Level(zerolog.Disabled)
-	AbilityTargetPriceUpdater := tickle.New("Ability target price Updater", 10, api.abilityTargetPriceUpdaterFactory(factionID, conn))
+	AbilityTargetPriceUpdater := tickle.New("Ability target price Updater", 10, api.abilityTargetPriceUpdaterFactory(ctx, factionID, conn))
 	AbilityTargetPriceUpdater.Log = &AbilityTargetPriceUpdaterLogger
 
 	// initialise target price broadcaster
 	AbilityTargetPriceBroadcasterLogger := log_helpers.NamedLogger(api.Log, "Ability target price Broadcaster").Level(zerolog.Disabled)
-	AbilityTargetPriceBroadcaster := tickle.New("Ability target price Broadcaster", 0.5, api.abilityTargetPriceBroadcasterFactory(factionID))
+	AbilityTargetPriceBroadcaster := tickle.New("Ability target price Broadcaster", 0.5, api.abilityTargetPriceBroadcasterFactory(ctx, factionID))
 	AbilityTargetPriceBroadcaster.Log = &AbilityTargetPriceBroadcasterLogger
 
 	ts := &GameAbilityPoolTicker{
@@ -63,7 +63,7 @@ func (api *API) StartGameAbilityPool(factionID server.FactionID, conn *pgxpool.P
 	}
 }
 
-func (api *API) abilityTargetPriceUpdaterFactory(factionID server.FactionID, conn *pgxpool.Pool) func() (int, error) {
+func (api *API) abilityTargetPriceUpdaterFactory(ctx context.Context, factionID server.FactionID, conn *pgxpool.Pool) func() (int, error) {
 	minPrice := big.NewInt(1000000000000000000)
 
 	return func() (int, error) {
@@ -139,7 +139,7 @@ func (api *API) abilityTargetPriceUpdaterFactory(factionID server.FactionID, con
 					}
 
 					if fa.GameAbility.AbilityTokenID == 0 {
-						go api.BroadcastGameNotificationAbility(GameNotificationTypeFactionAbility, &GameNotificationAbility{
+						go api.BroadcastGameNotificationAbility(ctx, GameNotificationTypeFactionAbility, &GameNotificationAbility{
 							Ability: &AbilityBrief{
 								Label:    fa.GameAbility.Label,
 								ImageUrl: fa.GameAbility.ImageUrl,
@@ -148,7 +148,7 @@ func (api *API) abilityTargetPriceUpdaterFactory(factionID server.FactionID, con
 						})
 					} else {
 						// broadcast notification
-						go api.BroadcastGameNotificationWarMachineAbility(&GameNotificationWarMachineAbility{
+						go api.BroadcastGameNotificationWarMachineAbility(ctx, &GameNotificationWarMachineAbility{
 							Ability: &AbilityBrief{
 								Label:    fa.GameAbility.Label,
 								ImageUrl: fa.GameAbility.ImageUrl,
@@ -221,7 +221,7 @@ func (api *API) abilityTargetPriceUpdaterFactory(factionID server.FactionID, con
 						}
 
 						// broadcast vote price forecast
-						err = c.SendWithMessageType(payload, websocket.MessageBinary)
+						err = c.SendWithMessageType(ctx, payload, websocket.MessageBinary)
 						if err != nil {
 							api.Log.Err(err).Msg("failed to send broadcast")
 						}
@@ -234,7 +234,7 @@ func (api *API) abilityTargetPriceUpdaterFactory(factionID server.FactionID, con
 	}
 }
 
-func (api *API) abilityTargetPriceBroadcasterFactory(factionID server.FactionID) func() (int, error) {
+func (api *API) abilityTargetPriceBroadcasterFactory(ctx context.Context, factionID server.FactionID) func() (int, error) {
 	return func() (int, error) {
 		// get current target price data
 		targetPriceChan := make(chan string)
@@ -267,7 +267,7 @@ func (api *API) abilityTargetPriceBroadcasterFactory(factionID server.FactionID)
 						}
 
 						// broadcast vote price forecast
-						err = c.SendWithMessageType(payload, websocket.MessageBinary)
+						err = c.SendWithMessageType(ctx, payload, websocket.MessageBinary)
 						if err != nil {
 							api.Log.Err(err).Msg("failed to send broadcast")
 						}
@@ -280,7 +280,7 @@ func (api *API) abilityTargetPriceBroadcasterFactory(factionID server.FactionID)
 	}
 }
 
-func (api *API) startGameAbilityPoolTicker(factionID server.FactionID, initialAbilities []*server.GameAbility, introSecond int) {
+func (api *API) startGameAbilityPoolTicker(ctx context.Context, factionID server.FactionID, initialAbilities []*server.GameAbility, introSecond int) {
 	// start game ability pool ticker after mech intro
 	time.Sleep(time.Duration(introSecond) * time.Second)
 
@@ -320,12 +320,12 @@ func (api *API) startGameAbilityPoolTicker(factionID server.FactionID, initialAb
 
 		// broadcast abilities
 		if len(factionAbilities) > 0 {
-			api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionAbilitiesUpdated, factionID)), factionAbilities)
+			api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionAbilitiesUpdated, factionID)), factionAbilities)
 		}
 
 		// broadcast war machine ability
 		for participantID, abilities := range warMachineAbilities {
-			api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s:%x", HubKeyWarMachineAbilitiesUpdated, factionID, participantID)), abilities)
+			api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s:%x", HubKeyWarMachineAbilitiesUpdated, factionID, participantID)), abilities)
 		}
 
 		// start all the tickles

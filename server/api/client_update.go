@@ -17,7 +17,7 @@ import (
 	"github.com/gofrs/uuid"
 )
 
-const TickSecond = 3
+const TickSecond = 5
 
 type ClientAction string
 
@@ -192,7 +192,6 @@ listenLoop:
 					}
 				}
 			}
-
 		case ClientSupsTick:
 			userMap := make(map[int][]server.UserID)
 			now := time.Now()
@@ -214,7 +213,6 @@ listenLoop:
 
 				userMap[userMultiplier] = append(userMap[userMultiplier], uid)
 			}
-
 			api.Passport.SendTickerMessage(context.Background(), userMap)
 
 		case ClientSupsMultiplierGet:

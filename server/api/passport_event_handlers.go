@@ -102,7 +102,7 @@ func (api *API) PassportUserUpdatedHandler(ctx context.Context, payload []byte) 
 						return
 					}
 
-					err = c.Send(b)
+					err = c.Send(ctx, b)
 					if err != nil {
 						api.Log.Err(err).Msg("Failed to send auth response back to twitch client")
 						return
@@ -167,7 +167,7 @@ func (api *API) PassportUserEnlistFactionHandler(ctx context.Context, payload []
 					hcd.FactionID = req.Payload.FactionID
 				}
 
-				err = c.Send(broadcastData)
+				err = c.Send(ctx, broadcastData)
 				if err != nil {
 					api.Log.Err(err).Msg("Failed to send auth response back to client")
 					return
@@ -211,7 +211,7 @@ func (api *API) PassportBattleQueueJoinHandler(ctx context.Context, payload []by
 
 			// broadcast next 5 queuing war machines to twitch ui
 			if len(wmq.WarMachines) <= 5 {
-				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionWarMachineQueueUpdated, req.Payload.WarMachineNFT.FactionID)), wmq.WarMachines)
+				api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionWarMachineQueueUpdated, req.Payload.WarMachineNFT.FactionID)), wmq.WarMachines)
 			}
 
 			// broadcast war machine queue position update
@@ -275,7 +275,7 @@ func (api *API) PassportBattleQueueReleaseHandler(ctx context.Context, payload [
 					maxLength = len(wmq.WarMachines)
 				}
 
-				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionWarMachineQueueUpdated, req.Payload.WarMachineNFT.FactionID)), wmq.WarMachines[:maxLength])
+				api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionWarMachineQueueUpdated, req.Payload.WarMachineNFT.FactionID)), wmq.WarMachines[:maxLength])
 			}
 
 			api.Passport.WarMachineQueuePositionBroadcast(context.Background(), api.BattleArena.BuildUserWarMachineQueuePosition(wmq.WarMachines, []*server.WarMachineNFT{}, req.Payload.WarMachineNFT.OwnedByID))
@@ -582,7 +582,7 @@ func (api *API) AuthRingCheckHandler(ctx context.Context, payload []byte) {
 			return
 		}
 
-		err = hubClient.Send(b)
+		err = hubClient.Send(ctx, b)
 		if err != nil {
 			api.Log.Err(err).Msg("Failed to send auth response back to twitch client")
 			return

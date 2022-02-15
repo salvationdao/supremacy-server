@@ -218,12 +218,12 @@ func NewAPI(
 	// listen to the client online and action channel
 	go api.ClientListener()
 
-	go api.SetupAfterConnections(conn)
+	go api.SetupAfterConnections(ctx, conn)
 
 	return api
 }
 
-func (api *API) SetupAfterConnections(conn *pgxpool.Pool) {
+func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 	var factions []*server.Faction
 	var err error
 
@@ -246,8 +246,8 @@ func (api *API) SetupAfterConnections(conn *pgxpool.Pool) {
 		time.Sleep(5 * time.Second)
 	}
 
-	go api.initialiseViewerLiveCount(factions)
-	go api.startSpoilOfWarBroadcaster()
+	go api.initialiseViewerLiveCount(ctx, factions)
+	go api.startSpoilOfWarBroadcaster(ctx)
 
 	// build faction map for main server
 	api.factionMap = make(map[server.FactionID]*server.Faction)
@@ -265,14 +265,14 @@ func (api *API) SetupAfterConnections(conn *pgxpool.Pool) {
 
 		// game ability pool
 		api.gameAbilityPool[faction.ID] = make(chan func(GameAbilitiesPool, *GameAbilityPoolTicker))
-		go api.StartGameAbilityPool(faction.ID, conn)
+		go api.StartGameAbilityPool(ctx, faction.ID, conn)
 	}
 
 	// initialise vote price system
-	go api.startVotePriceSystem(factions, conn)
+	go api.startVotePriceSystem(ctx, factions, conn)
 
 	// initialise voting cycle
-	go api.StartVotingCycle(factions)
+	go api.StartVotingCycle(ctx, factions)
 
 	// set faction map for battle arena server
 	api.BattleArena.SetFactionMap(api.factionMap)
@@ -312,7 +312,7 @@ func (api *API) SetupAfterConnections(conn *pgxpool.Pool) {
 					continue
 				}
 				go func(c *hub.Client) {
-					err := c.SendWithMessageType(payload, websocket.MessageBinary)
+					err := c.SendWithMessageType(ctx, payload, websocket.MessageBinary)
 					if err != nil {
 						api.Log.Err(err).Msg("failed to send broadcast")
 					}
@@ -358,7 +358,7 @@ func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client, clients
 			return
 		}
 
-		err = wsc.Send(gameSettingsData)
+		err = wsc.Send(ctx, gameSettingsData)
 		if err != nil {
 			api.Log.Err(err).Msg("failed to send broadcast")
 		}
@@ -394,7 +394,7 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 				nextUser, winnerClientID := api.getNextWinnerDetail(vw)
 				if nextUser == nil {
 					// if no winner left, enter cooldown phase
-					go api.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
+					go api.BroadcastGameNotificationLocationSelect(ctx, &GameNotificationLocationSelect{
 						Type: LocationSelectTypeCancelledDisconnect,
 						Ability: &AbilityBrief{
 							Label:    va.BattleAbility.Label,
@@ -409,7 +409,7 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 						api.Log.Err(err)
 					}
 
-					api.MessageBus.Send(messagebus.BusKey(HubKeyVoteBattleAbilityUpdated), battleAbility)
+					api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteBattleAbilityUpdated), battleAbility)
 
 					// initialise new ability collection
 					va.BattleAbility = battleAbility
@@ -425,7 +425,7 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 					vs.EndTime = time.Now().Add(time.Duration(va.BattleAbility.CooldownDurationSecond) * time.Second)
 
 					// broadcast current stage to faction users
-					api.MessageBus.Send(messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+					api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 
 					return
 				}
@@ -436,13 +436,13 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 				vs.EndTime = time.Now().Add(LocationSelectDurationSecond * time.Second)
 
 				// otherwise announce another winner
-				api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, winnerClientID)), &WinnerSelectAbilityLocation{
+				api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, winnerClientID)), &WinnerSelectAbilityLocation{
 					GameAbility: va.FactionAbilityMap[nextUser.FactionID],
 					EndTime:     vs.EndTime,
 				})
 
 				// broadcast winner select location
-				go api.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
+				go api.BroadcastGameNotificationLocationSelect(ctx, &GameNotificationLocationSelect{
 					Type: LocationSelectTypeFailedDisconnect,
 					Ability: &AbilityBrief{
 						Label:    va.BattleAbility.Label,
@@ -470,7 +470,7 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 				})
 
 				// broadcast current stage to faction users
-				api.MessageBus.Send(messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+				api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 			}
 		}
 	}
