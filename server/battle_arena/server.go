@@ -23,6 +23,17 @@ import (
 	"nhooyr.io/websocket/wsjson"
 )
 
+const (
+	// Time allowed to write a message to the peer.
+	writeWait = 10 * time.Second
+
+	// Time allowed to read the next pong message from the peer.
+	//pongWait = 60 * time.Second
+
+	// Send pings to peer with this period. Must be less than pongWait.
+	//pingPeriod = (pongWait * 9) / 10
+)
+
 type BattleCommand string
 
 type ReplyFunc func(interface{})
@@ -93,7 +104,6 @@ func NewBattleArenaClient(ctx context.Context, logger *zerolog.Logger, conn *pgx
 
 // Serve starts the battle arena server
 func (ba *BattleArena) Serve(ctx context.Context) error {
-	// TODO: handle ctx with listen? ListenConfig.Listen.(ctx, network, addr)
 	l, err := net.Listen("tcp", ba.addr)
 	if err != nil {
 		return terror.Error(err)
@@ -102,26 +112,26 @@ func (ba *BattleArena) Serve(ctx context.Context) error {
 	ba.Log.Info().Msgf("Starting BattleArena Server on %v", l.Addr())
 	ba.server = &http.Server{
 		Handler:      ba,
-		ReadTimeout:  time.Second * 10,
-		WriteTimeout: time.Second * 10,
+		ReadTimeout:  writeWait,
+		WriteTimeout: writeWait,
 	}
 
+	errChan := make(chan error, 1)
 	go func() {
-		<-ctx.Done()
-		ba.Close()
+		errChan <- ba.server.Serve(l)
 	}()
 
-	return ba.server.Serve(l)
-}
-
-func (ba *BattleArena) Close() {
-	if ba.server != nil {
-		ba.Log.Info().Msg("closing battle-arena server")
-		err := ba.server.Close()
-		if err != nil {
-			ba.Log.Warn().Err(err).Msgf("")
-		}
+	select {
+	case err := <-errChan:
+		ba.Log.Err(err).Msgf("Shutting down battle arena server.")
+	case <-ctx.Done():
+		ba.Log.Info().Msgf("Shutting down battle arena server.")
 	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	return ba.server.Shutdown(ctx)
 }
 
 type NetMessageType byte
@@ -150,9 +160,9 @@ func (ba *BattleArena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ba.Log.Info().Msg("game client conneted")
+	ba.Log.Info().Msg("game client connected")
 
-	defer c.Close(websocket.StatusInternalError, "the sky is falling")
+	defer c.Close(websocket.StatusInternalError, "game client disconnected")
 
 	// if c.Subprotocol() != "gameserver-v1" {
 	// 	ba.Log.Printf("client must speak the gameserver-v1 subprotocol")
@@ -162,36 +172,30 @@ func (ba *BattleArena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// }
 
 	// send message
-	go ba.sendPump(ctx, c)
+	go ba.sendPump(ctx, cancel, c)
 
 	go func() {
 		time.Sleep(2 * time.Second)
 		_ = ba.InitNextBattle()
 	}()
+
 	// listening for message
 	for {
 		select {
 		case <-ctx.Done():
-			err := c.Close(websocket.StatusGoingAway, "context done")
-			if err != nil {
-				ba.Log.Err(err).Msg("")
-			}
-			cancel()
 			return
 		default:
 			_, r, err := c.Reader(ctx)
 			if err != nil {
-				if websocket.CloseStatus(err) == websocket.StatusNormalClosure {
-					ba.Log.Warn().Msg("game client connection lost")
-					cancel()
-					return
-				}
-				ba.Log.Err(err).Msgf(err.Error())
+				ba.Log.Err(err).Msgf("passport connection reader error")
+				cancel()
+				continue
 			}
 
 			payload, err := ioutil.ReadAll(r)
 			if err != nil {
 				ba.Log.Err(err).Msgf(`error reading out buffer`)
+				cancel()
 				continue
 			}
 
@@ -202,6 +206,7 @@ func (ba *BattleArena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				v, err := jason.NewObjectFromBytes(payload[1:])
 				if err != nil {
 					ba.Log.Err(err).Msgf(`error making object from bytes`)
+					cancel()
 					continue
 				}
 				cmdKey, err := v.GetString("battleCommand")
@@ -224,26 +229,42 @@ func (ba *BattleArena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (ba *BattleArena) sendPump(ctx context.Context, c *websocket.Conn) {
+func (ba *BattleArena) sendPump(ctx context.Context, cancel context.CancelFunc, c *websocket.Conn) {
+	//ticker := time.NewTicker(pingPeriod)
+	//defer ticker.Stop()
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case msg := <-ba.send:
-			err := writeTimeout(msg, time.Second*5, c)
+			err := writeTimeout(msg, writeWait, c)
 			if err != nil {
 				ba.Log.Err(err).Msg("error sending message to game client")
 			}
+			//case <-ticker.C:
+			//	err := pingTimeout(ctx, writeWait, c)
+			//	if err != nil {
+			//		ba.Log.Err(err).Msgf("error with pinging passport ")
+			//		cancel()
+			//	}
 		}
 	}
 }
 
+// PING COMMENTED OUT BY VINNIE, not getting ping responses and breaks connection
+
+// pingTimeout enforces a timeout on websocket writes
+//func pingTimeout(ctx context.Context, timeout time.Duration, c *websocket.Conn) error {
+//	ctx, cancel := context.WithTimeout(ctx, timeout)
+//	defer cancel()
+//	return c.Ping(ctx)
+//}
+
 // writeTimeout enforces a timeout on websocket writes
 func writeTimeout(msg *GameMessage, timeout time.Duration, c *websocket.Conn) error {
 	ctx, cancel := context.WithTimeout(msg.context, timeout)
-	defer func() {
-		cancel()
-	}()
+	defer cancel()
 
 	jsn, err := json.Marshal(msg)
 	if err != nil {

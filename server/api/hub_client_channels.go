@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"server"
@@ -28,7 +29,7 @@ type ViewerCount struct {
 // used for tracking user
 type ViewerIDMap map[server.UserID]bool
 
-func (api *API) initialiseViewerLiveCount(factions []*server.Faction) {
+func (api *API) initialiseViewerLiveCount(ctx context.Context, factions []*server.Faction) {
 	vlc := make(ViewerLiveCount)
 
 	vim := make(ViewerIDMap)
@@ -64,7 +65,7 @@ func (api *API) initialiseViewerLiveCount(factions []*server.Faction) {
 					continue
 				}
 				go func(c *hub.Client) {
-					err := c.SendWithMessageType(payload, websocket.MessageBinary)
+					err := c.SendWithMessageType(ctx, payload, websocket.MessageBinary)
 					if err != nil {
 						api.Log.Err(err).Msg("failed to send broadcast")
 					}

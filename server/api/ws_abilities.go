@@ -191,7 +191,7 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 
 		// broadcast notification
 		if fa.GameAbility.AbilityTokenID == 0 {
-			go fc.API.BroadcastGameNotificationAbility(GameNotificationTypeFactionAbility, &GameNotificationAbility{
+			go fc.API.BroadcastGameNotificationAbility(ctx, GameNotificationTypeFactionAbility, &GameNotificationAbility{
 				User: &UserBrief{
 					Username: hcd.Username,
 					AvatarID: hcd.avatarID,
@@ -209,7 +209,7 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 			})
 		} else {
 			// broadcast notification
-			go fc.API.BroadcastGameNotificationWarMachineAbility(&GameNotificationWarMachineAbility{
+			go fc.API.BroadcastGameNotificationWarMachineAbility(ctx, &GameNotificationWarMachineAbility{
 				User: &UserBrief{
 					Username: hcd.Username,
 					AvatarID: hcd.avatarID,
@@ -284,7 +284,7 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 					}
 
 					// broadcast vote price forecast
-					err = c.SendWithMessageType(payload, websocket.MessageBinary)
+					err = c.SendWithMessageType(ctx, payload, websocket.MessageBinary)
 					if err != nil {
 						fc.API.Log.Err(err).Msg("failed to send broadcast")
 					}
