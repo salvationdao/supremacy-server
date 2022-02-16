@@ -292,25 +292,20 @@ listenLoop:
 }
 
 func (api *API) ClientOnline(c *hub.Client) {
-	fmt.Println("online start")
-
 	api.onlineClientMap <- &ClientUpdate{
 		Client: c,
 		Action: ClientOnline,
 	}
-	fmt.Println("online end")
 }
 
 func (api *API) ClientOffline(c *hub.Client) bool {
 	noClientLeftChan := make(chan bool)
-	fmt.Println("offline start")
 	api.onlineClientMap <- &ClientUpdate{
 		Client:           c,
 		Action:           ClientOffline,
 		NoClientLeftChan: noClientLeftChan,
 	}
 	isNoClient := <-noClientLeftChan
-	fmt.Println("offline end")
 	return isNoClient
 }
 
