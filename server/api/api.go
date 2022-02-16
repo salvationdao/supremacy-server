@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/jpillora/backoff"
 	"math/big"
 	"net"
 	"net/http"
@@ -14,6 +13,8 @@ import (
 	"server/passport"
 	"sync"
 	"time"
+
+	"github.com/jpillora/backoff"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
@@ -231,9 +232,6 @@ func NewAPI(
 	api.Passport.Events.AddEventHandler(passport.EventUserSupsMultiplierGet, api.PassportUserSupsMultiplierGetHandler)
 	api.Passport.Events.AddEventHandler(passport.EventUserStatGet, api.PassportUserStatGetHandler)
 
-	// listen to the client online and action channel
-	go api.ClientListener()
-
 	go api.SetupAfterConnections(ctx, conn)
 
 	return api
@@ -260,8 +258,16 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 		if err != nil {
 			api.Passport.Log.Err(err).Msg("unable to get factions")
 		}
+
+		if len(factions) > 0 {
+			break
+		}
+
 		time.Sleep(b.Duration())
 	}
+
+	// listen to the client online and action channel
+	go api.ClientListener()
 
 	go api.initialiseViewerLiveCount(ctx, factions)
 	go api.startSpoilOfWarBroadcaster(ctx)
