@@ -251,7 +251,7 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 			continue
 		}
 
-		factions, err = api.Passport.FactionAll(ctx, "faction all - gameserver")
+		factions, err = api.Passport.FactionAll(ctx)
 		if err != nil {
 			api.Passport.Log.Err(err).Msg("unable to get factions")
 		}
