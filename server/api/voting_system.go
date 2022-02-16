@@ -26,6 +26,7 @@ import (
 * Spoil of War *
 ***************/
 func (api *API) startSpoilOfWarBroadcaster(ctx context.Context) {
+	tickle.MinDurationOverride = true
 	spoilOfWarBroadcasterLogger := log_helpers.NamedLogger(api.Log, "Spoil of War Broadcaster").Level(zerolog.Disabled)
 	spoilOfWarBroadcaster := tickle.New("Spoil of War Broadcaster", 5, func() (int, error) {
 

@@ -107,20 +107,19 @@ listenLoop:
 		msg := <-api.onlineClientMap
 
 		userID := msg.UserID
-
 		// if user id is nil, check id from client
 		if userID.IsNil() {
-			if msg.Client == nil {
+			if msg.Client == nil && msg.NoClientLeftChan == nil {
 				continue
 			}
 
 			uid, err := uuid.FromString(msg.Client.Identifier())
-			if uid.IsNil() {
+			if uid.IsNil() && msg.NoClientLeftChan == nil {
 				continue
 			}
 
 			userID = server.UserID(uid)
-			if err != nil {
+			if err != nil && msg.NoClientLeftChan == nil {
 				api.Log.Err(err).Msg("unable to marshall client identifier as uuid")
 			}
 		}
