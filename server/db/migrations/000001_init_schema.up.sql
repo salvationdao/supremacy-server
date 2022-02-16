@@ -20,6 +20,7 @@ CREATE TABLE game_maps
 CREATE TABLE battles
 (
     id                uuid PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
+    identifier        SERIAL,
     game_map_id       uuid             NOT NULL REFERENCES game_maps (id),
     winning_condition text,
     started_at        timestamptz      NOT NULL DEFAULT NOW(),
@@ -117,12 +118,28 @@ CREATE TABLE battle_events_game_ability
 (
     id                   uuid PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
     event_id             uuid             NOT NULL REFERENCES battle_events (id),
-    game_ability_id   uuid             REFERENCES game_abilities (id), -- not null if it is a faction abitliy
+    game_ability_id      uuid             REFERENCES game_abilities (id), -- not null if it is a faction abitliy
     ability_token_id     NUMERIC(78, 0),                                     -- non-zero if it is a nft ability
     is_triggered         bool             NOT NULL DEFAULT FALSE,
     triggered_by_user_id UUID,
     triggered_on_cell_x  int,
     triggered_on_cell_y  int
+);
+
+CREATE TABLE stream_list
+(
+    id uuid PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
+    name text NOT NULL,
+    url text NOT NULL,
+    region text NOT NULL,
+    resolution text NOT NULL,
+    bit_rates_k_bits int NOT NULL,
+    user_max int NOT NULL,
+    users_now int NOT NULL,
+    active boolean NOT NULL,
+    status text NOT NULL,
+    latitude decimal NOT NULL,
+    longitude decimal NOT NULL
 );
 
 /*****************************************************

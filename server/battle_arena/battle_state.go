@@ -229,6 +229,9 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 		}
 	}
 
+	ba.battle.WinningWarMachines = winningMachines
+	ba.battle.WinningCondition = (*string)(&req.Payload.WinCondition)
+
 	// assign winner war machine
 	if len(req.Payload.WinningWarMachineMetadatas) > 0 {
 		err = db.BattleWinnerWarMachinesSet(ctx, tx, req.Payload.BattleID, winningMachines)

@@ -19,7 +19,7 @@ func BattleStarted(ctx context.Context, conn Conn, battle *server.Battle) error 
 			battles (id, game_map_id)
 		VALUES 
 			($1, $2)
-		RETURNING id, game_map_id, started_at;
+		RETURNING id, identifier, game_map_id, started_at;
 	`
 
 	err := pgxscan.Get(ctx, conn, battle, q, battle.ID, battle.GameMapID)
