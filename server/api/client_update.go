@@ -133,9 +133,29 @@ listenLoop:
 					MultiplierActions: make(map[string]*MultiplierAction),
 				}
 
+				now := time.Now()
+
+				// check client is in the old list
+				if mas, ok := cachedUserMultiplierAction[userID]; ok {
+					for key, ma := range mas {
+						// if multiplier in old map is expired, delete and skip it
+						if ma.Expiry.After(now) {
+							// add non-expired multipliers to client
+							clientMultiplierMap[userID].MultiplierActions[key] = &MultiplierAction{
+								MultiplierValue: ma.MultiplierValue,
+								Expiry:          ma.Expiry,
+							}
+						}
+
+						// delete cache to trigger multiplier update
+						delete(mas, key)
+					}
+				}
+
+				// update online client to correct time
 				clientMultiplierMap[userID].MultiplierActions[string(ClientOnline)] = &MultiplierAction{
 					MultiplierValue: 100,
-					Expiry:          time.Now().AddDate(1, 0, 0),
+					Expiry:          now.AddDate(1, 0, 0),
 				}
 
 				// record viewer id
@@ -143,7 +163,6 @@ listenLoop:
 			}
 
 			clientMultiplierMap[userID].clients[msg.Client] = true
-
 		case ClientVoted:
 			// check for existing voting action, then bump the time if exists
 			multiplier, ok := clientMultiplierMap[userID].MultiplierActions[string(ClientVoted)]
@@ -245,7 +264,6 @@ listenLoop:
 
 			if len(clientMap.clients) == 0 {
 				delete(clientMultiplierMap, userID)
-				delete(cachedUserMultiplierAction, userID)
 				msg.NoClientLeftChan <- true
 
 				// send user's sups multipliers to passport server

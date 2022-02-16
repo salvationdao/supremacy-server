@@ -14,11 +14,6 @@ func (pp *Passport) GetDefaultWarMachines(ctx context.Context, factionID server.
 	replyChannel := make(chan []byte, 1)
 	errChan := make(chan error, 1)
 
-	txID, err := uuid.NewV4()
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-
 	pp.send <- &Request{
 		ReplyChannel: replyChannel,
 		ErrChan:      errChan,
@@ -31,7 +26,7 @@ func (pp *Passport) GetDefaultWarMachines(ctx context.Context, factionID server.
 				FactionID: factionID,
 				Amount:    amount,
 			},
-			TransactionID: txID.String(),
+			TransactionID: uuid.Must(uuid.NewV4()).String(),
 			context:       ctx,
 		}}
 

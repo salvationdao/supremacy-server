@@ -2,10 +2,11 @@ package battle_arena
 
 import (
 	"context"
-	"github.com/ninja-software/terror/v2"
 	"server"
 	"server/db"
 	"time"
+
+	"github.com/ninja-software/terror/v2"
 
 	"github.com/gofrs/uuid"
 )
@@ -51,7 +52,7 @@ func (ba *BattleArena) InitNextBattle() error {
 		}
 
 		// set war machine lock request
-		err := ba.passport.AssetLock(ba.ctx, "asset_lock", tokenIDs)
+		err := ba.passport.AssetLock(ba.ctx, tokenIDs)
 		if err != nil {
 			ba.Log.Err(err).Msg("Failed to lock assets")
 			// TODO: figure out how to handle this

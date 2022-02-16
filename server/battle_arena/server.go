@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/jpillora/backoff"
-	"github.com/ninja-software/terror/v2"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -14,6 +12,9 @@ import (
 	"server/passport"
 	"sync"
 	"time"
+
+	"github.com/jpillora/backoff"
+	"github.com/ninja-software/terror/v2"
 
 	"github.com/antonholmquist/jason"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -374,9 +375,13 @@ func (ba *BattleArena) SetupAfterConnections() {
 			continue
 		}
 
-		factions, err = ba.passport.FactionAll(ba.ctx, "faction all - gameserver")
+		factions, err = ba.passport.FactionAll(ba.ctx)
 		if err != nil {
 			ba.Log.Err(err).Msg("unable to get factions")
+		}
+
+		if len(factions) > 0 {
+			break
 		}
 		time.Sleep(b.Duration())
 	}
@@ -389,7 +394,7 @@ func (ba *BattleArena) SetupAfterConnections() {
 	}
 
 	// get all the faction list from passport server
-	for _, faction := range ba.battle.FactionMap {
+	for _, faction := range factions {
 		// start battle queue
 		ba.BattleQueueMap[faction.ID] = make(chan func(*WarMachineQueuingList))
 		go ba.startBattleQueue(faction.ID)

@@ -24,10 +24,6 @@ func (pp *Passport) CommitTransactions(ctx context.Context, transactions []serve
 	replyChannel := make(chan []byte)
 	errChan := make(chan error)
 
-	txID, err := uuid.NewV4()
-	if err != nil {
-		return nil, terror.Error(err)
-	}
 	pp.send <- &Request{
 		ReplyChannel: replyChannel,
 		ErrChan:      errChan,
@@ -38,7 +34,7 @@ func (pp *Passport) CommitTransactions(ctx context.Context, transactions []serve
 			}{
 				TransactionReferences: transactions,
 			},
-			TransactionID: txID.String(),
+			TransactionID: uuid.Must(uuid.NewV4()).String(),
 			context:       ctx,
 		}}
 
@@ -46,7 +42,7 @@ func (pp *Passport) CommitTransactions(ctx context.Context, transactions []serve
 		select {
 		case msg := <-replyChannel:
 			resp := &CommitTransactionsResponse{}
-			err = json.Unmarshal(msg, resp)
+			err := json.Unmarshal(msg, resp)
 			if err != nil {
 				return nil, terror.Error(err)
 			}
@@ -58,7 +54,7 @@ func (pp *Passport) CommitTransactions(ctx context.Context, transactions []serve
 }
 
 // SendHoldSupsMessage tells the passport to hold sups
-func (pp *Passport) SendHoldSupsMessage(ctx context.Context, userID server.UserID, supsChange server.BigInt, txID string, reason string) (server.TransactionReference, error) {
+func (pp *Passport) SendHoldSupsMessage(ctx context.Context, userID server.UserID, supsChange server.BigInt, reason string) (server.TransactionReference, error) {
 	supTransactionReference := uuid.Must(uuid.NewV4())
 	supTxRefString := server.TransactionReference(fmt.Sprintf("%s|%s", reason, supTransactionReference.String()))
 	replyChannel := make(chan []byte)
@@ -80,7 +76,7 @@ func (pp *Passport) SendHoldSupsMessage(ctx context.Context, userID server.UserI
 				TransactionReference: supTxRefString,
 				IsBattleVote:         true,
 			},
-			TransactionID: txID,
+			TransactionID: uuid.Must(uuid.NewV4()).String(),
 			context:       ctx,
 		}}
 	for {
@@ -113,7 +109,7 @@ func (pp *Passport) ReleaseTransactions(ctx context.Context, transactions []serv
 }
 
 // TransferBattleFundToSupsPool tells the passport to transfer fund to sup pool
-func (pp *Passport) TransferBattleFundToSupsPool(ctx context.Context, txID string) error {
+func (pp *Passport) TransferBattleFundToSupsPool(ctx context.Context) error {
 	replyChannel := make(chan []byte)
 	errChan := make(chan error)
 
@@ -122,7 +118,7 @@ func (pp *Passport) TransferBattleFundToSupsPool(ctx context.Context, txID strin
 		ErrChan:      errChan,
 		Message: &Message{
 			Key:           "SUPREMACY:TRANSFER_BATTLE_FUND_TO_SUP_POOL",
-			TransactionID: txID,
+			TransactionID: uuid.Must(uuid.NewV4()).String(),
 			context:       ctx,
 		}}
 

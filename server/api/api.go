@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/jpillora/backoff"
 	"math/big"
 	"net"
 	"net/http"
@@ -14,6 +13,8 @@ import (
 	"server/passport"
 	"sync"
 	"time"
+
+	"github.com/jpillora/backoff"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
@@ -171,9 +172,6 @@ func NewAPI(
 		battleEndInfo: &BattleEndInfo{},
 	}
 
-	// start twitch jwt auth listener
-	go api.startAuthRignCheckListener()
-
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
 	api.Routes.Use(cors.New(cors.Options{AllowedOrigins: []string{config.TwitchUIHostURL}}).Handler)
@@ -231,9 +229,6 @@ func NewAPI(
 	api.Passport.Events.AddEventHandler(passport.EventUserSupsMultiplierGet, api.PassportUserSupsMultiplierGetHandler)
 	api.Passport.Events.AddEventHandler(passport.EventUserStatGet, api.PassportUserStatGetHandler)
 
-	// listen to the client online and action channel
-	go api.ClientListener()
-
 	go api.SetupAfterConnections(ctx, conn)
 
 	return api
@@ -256,12 +251,23 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 			continue
 		}
 
-		factions, err = api.Passport.FactionAll(ctx, "faction all - gameserver")
+		factions, err = api.Passport.FactionAll(ctx)
 		if err != nil {
 			api.Passport.Log.Err(err).Msg("unable to get factions")
 		}
+
+		if len(factions) > 0 {
+			break
+		}
+
 		time.Sleep(b.Duration())
 	}
+
+	// listen to the client online and action channel
+	go api.ClientListener()
+
+	// start twitch jwt auth listener
+	go api.startAuthRignCheckListener()
 
 	go api.initialiseViewerLiveCount(ctx, factions)
 	go api.startSpoilOfWarBroadcaster(ctx)

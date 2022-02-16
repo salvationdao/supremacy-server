@@ -266,7 +266,7 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 		}
 	}
 
-	err = ba.passport.TransferBattleFundToSupsPool(ctx, fmt.Sprintf("transfer_battle_fund_to_sup_pool|%s", req.Payload.BattleID))
+	err = ba.passport.TransferBattleFundToSupsPool(ctx)
 	if err != nil {
 		return terror.Error(err, "Failed to distribute battle reward")
 	}
@@ -277,11 +277,7 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 
 	//release war machine
 	if len(inGameWarMachines) > 0 {
-		ba.passport.AssetRelease(
-			ctx,
-			fmt.Sprintf("release_asset|battleID:%s", ba.battle.ID),
-			inGameWarMachines,
-		)
+		ba.passport.AssetRelease(ctx, inGameWarMachines)
 	}
 
 	for _, faction := range ba.battle.FactionMap {

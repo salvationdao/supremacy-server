@@ -15,7 +15,7 @@ type FactionAllResponse struct {
 }
 
 // FactionAll get all the factions from passport server
-func (pp *Passport) FactionAll(ctx context.Context, txID string) ([]*server.Faction, error) {
+func (pp *Passport) FactionAll(ctx context.Context) ([]*server.Faction, error) {
 	replyChannel := make(chan []byte, 1)
 	errChan := make(chan error, 1)
 
@@ -24,7 +24,7 @@ func (pp *Passport) FactionAll(ctx context.Context, txID string) ([]*server.Fact
 		ReplyChannel: replyChannel,
 		Message: &Message{
 			Key:           "FACTION:ALL",
-			TransactionID: txID,
+			TransactionID: uuid.Must(uuid.NewV4()).String(),
 			context:       ctx,
 		}}
 
