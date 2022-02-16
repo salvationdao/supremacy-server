@@ -252,37 +252,24 @@ listenLoop:
 			api.clientMapUpdatedChecker(clientMultiplierMap, cachedUserMultiplierAction)
 
 		case ClientOffline:
-			fmt.Println("get 1")
 			clientMap, ok := clientMultiplierMap[userID]
-			fmt.Println("get 2")
 			if !ok {
-				fmt.Println("get 3")
 				api.Log.Err(fmt.Errorf("client not exists"))
-				fmt.Println("get 4")
 				msg.NoClientLeftChan <- true
-				fmt.Println("get 5")
 				continue listenLoop
 			}
 
-			fmt.Println("get 6")
 			delete(clientMap.clients, msg.Client)
-			fmt.Println("get 7")
 
 			if len(clientMap.clients) == 0 {
-				fmt.Println("get 8")
 				delete(clientMultiplierMap, userID)
-				fmt.Println("get 9")
 				msg.NoClientLeftChan <- true
-				fmt.Println("get 10")
 
 				// send user's sups multipliers to passport server
-				fmt.Println("get 11")
 				go api.UserSupsMultiplierToPassport(userID, nil)
-				fmt.Println("get 12")
 
 				continue listenLoop
 			}
-			fmt.Println("get 13")
 			msg.NoClientLeftChan <- false
 
 		default:
