@@ -43,6 +43,12 @@ func (s *Seeder) Run() error {
 		return terror.Error(err)
 	}
 
+	fmt.Println("Seed streams")
+	_, err = s.streams(ctx)
+	if err != nil {
+		return terror.Error(err)
+	}
+
 	fmt.Println("Seed complete!")
 
 	return nil
@@ -248,4 +254,148 @@ func (s *Seeder) factions(ctx context.Context) ([]*server.Faction, error) {
 		return nil, terror.Error(err)
 	}
 	return factions, nil
+}
+
+var streams = []*server.Stream{
+	{ID: server.StreamID(uuid.Must(uuid.FromString("d66645eb-e72c-49fb-aca6-3091fe45936d"))),
+		Name:          "USA Los Angeles",
+		Url:           "https://136.175.8.137",
+		Region:        "us-west",
+		Resolution:    "1920x1080",
+		BitRatesKBits: 2000,
+		UserMax:       1000,
+		UsersNow:      370,
+		Active:        true,
+		Status:        "online",
+		Latitude:      34.0522,
+		Longitude:     -118.2437,
+	},
+	{ID: server.StreamID(uuid.Must(uuid.FromString("33bc7ae0-2b07-44f3-ad78-8ea7cdc53abe"))),
+		Name:          "USA Phoenix",
+		Url:           "https://136.175.11.73",
+		Region:        "us-mid-west",
+		Resolution:    "1920x1080",
+		BitRatesKBits: 1500,
+		UserMax:       800,
+		UsersNow:      170,
+		Active:        true,
+		Status:        "online",
+		Latitude:      33.6020,
+		Longitude:     -111.8879,
+	},
+	{ID: server.StreamID(uuid.Must(uuid.FromString("80fee7a6-90a0-4446-8b73-53fce331513d"))),
+		Name:          "UK London",
+		Url:           "https://staging-watch-syd02.supremacy.game/WebRTCAppEE/play.html?name=886200805704583109786601",
+		Region:        "uk",
+		Resolution:    "1920x1080",
+		BitRatesKBits: 2000,
+		UserMax:       1000,
+		UsersNow:      200,
+		Active:        true,
+		Status:        "online",
+		Latitude:      51.5085,
+		Longitude:     -0.1257,
+	},
+	{ID: server.StreamID(uuid.Must(uuid.FromString("2a2dc936-d0b4-40f8-a021-de0526500b74"))),
+		Name:          "AU Sydney",
+		Url:           "https://watch-au-east-1.supremacy.game/WebRTCAppEE/play.html?name=079583650308221367643",
+		Region:        "au-east",
+		Resolution:    "1920x1080",
+		BitRatesKBits: 5000,
+		UserMax:       1200,
+		UsersNow:      1200,
+		Active:        true,
+		Status:        "online",
+		Latitude:      -33.9032,
+		Longitude:     151.1518,
+	},
+	{ID: server.StreamID(uuid.Must(uuid.FromString("0ae1ae84-b647-42ef-ba71-99ae457df6ba"))),
+		Name:          "AU Melbourne",
+		Url:           "https://watch-au-south-1.supremacy.game/WebRTCAppEE/play.html?name=079583650308221367643",
+		Region:        "au-south",
+		Resolution:    "1920x1080",
+		BitRatesKBits: 5000,
+		UserMax:       200,
+		UsersNow:      100,
+		Active:        true,
+		Status:        "online",
+		Latitude:      -37.8159,
+		Longitude:     144.9669,
+	},
+	{ID: server.StreamID(uuid.Must(uuid.FromString("306a35c9-c90a-4df2-80a8-5e24fa1a609e"))),
+		Name:          "USA New York",
+		Url:           "https://watch-us-east-1.supremacy.game/WebRTCAppEE/play.html?name=079583650308221367643",
+		Region:        "us-east",
+		Resolution:    "1920x1080",
+		BitRatesKBits: 5000,
+		UserMax:       1200,
+		UsersNow:      1000,
+		Active:        true,
+		Status:        "online",
+		Latitude:      40.7143,
+		Longitude:     -74.0060,
+	},
+	{ID: server.StreamID(uuid.Must(uuid.FromString("930cb843-ab4f-4770-a980-41108e01b5ec"))),
+		Name:          "USA Washington",
+		Url:           "https://watch-us-nw-1.supremacy.game/WebRTCAppEE/play.html?name=079583650308221367643",
+		Region:        "us-northwest",
+		Resolution:    "1920x1080",
+		BitRatesKBits: 5000,
+		UserMax:       100,
+		UsersNow:      80,
+		Active:        true,
+		Status:        "online",
+		Latitude:      -33.9032,
+		Longitude:     151.1518,
+	},
+	{ID: server.StreamID(uuid.Must(uuid.FromString("288537e0-7cb3-41a9-832f-af7fa759c858"))),
+		Name:          "AU Perth",
+		Url:           "https://watch-au-west-1.supremacy.game/WebRTCAppEE/play.html?name=079583650308221367643",
+		Region:        "au-west",
+		Resolution:    "1920x1080",
+		BitRatesKBits: 5000,
+		UserMax:       100,
+		UsersNow:      80,
+		Active:        true,
+		Status:        "online",
+		Latitude:      -31.95000076,
+		Longitude:     115.86000061,
+	},
+	{ID: server.StreamID(uuid.Must(uuid.FromString("48b1bc8a-c936-4804-ab21-3d9ff2d3b7ec"))),
+		Name:          "AU Sydney",
+		Url:           "https://watch-au-east-2.supremacy.game/WebRTCAppEE/play.html?name=079583650308221367643",
+		Region:        "au-east",
+		Resolution:    "1920x1080",
+		BitRatesKBits: 5000,
+		UserMax:       500,
+		UsersNow:      400,
+		Active:        true,
+		Status:        "online",
+		Latitude:      -33.9032,
+		Longitude:     151.1518,
+	},
+	{ID: server.StreamID(uuid.Must(uuid.FromString("17d1a31d-0459-4c98-af80-5899ccad9b13"))),
+		Name:          "Spain Madrid",
+		Url:           "https://watch-eu-1.supremacy.game/WebRTCAppEE/play.html?name=079583650308221367643",
+		Region:        "eu-spain",
+		Resolution:    "1920x1080",
+		BitRatesKBits: 900,
+		UserMax:       5000,
+		UsersNow:      1200,
+		Active:        true,
+		Status:        "offline",
+		Latitude:      40.4165,
+		Longitude:     -3.7026,
+	},
+}
+
+func (s *Seeder) streams(ctx context.Context) ([]*server.Stream, error) {
+	for _, stream := range streams {
+		err := db.CreateStream(ctx, s.Conn, stream)
+		if err != nil {
+			return nil, terror.Error(err)
+		}
+	}
+
+	return streams, nil
 }

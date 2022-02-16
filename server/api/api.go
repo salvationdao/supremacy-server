@@ -202,6 +202,7 @@ func NewAPI(
 	_ = NewVoteController(log, conn, api)
 	_ = NewFactionController(log, conn, api)
 	_ = NewGameController(log, conn, api)
+	_ = NewStreamController(log, conn, api)
 
 	///////////////////////////
 	//		 Hub Events		 //
