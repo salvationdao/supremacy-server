@@ -4,6 +4,8 @@
 
 Supremacy gameserver for communication between the game client and various frontends
 
+[CD Docs](.github/workflows/README.md)
+
 ### For go private modules
 
 ```shell
