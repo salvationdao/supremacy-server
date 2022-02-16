@@ -107,20 +107,19 @@ listenLoop:
 		msg := <-api.onlineClientMap
 
 		userID := msg.UserID
-
 		// if user id is nil, check id from client
 		if userID.IsNil() {
-			if msg.Client == nil {
+			if msg.Client == nil && msg.NoClientLeftChan == nil {
 				continue
 			}
 
 			uid, err := uuid.FromString(msg.Client.Identifier())
-			if uid.IsNil() {
+			if uid.IsNil() && msg.NoClientLeftChan == nil {
 				continue
 			}
 
 			userID = server.UserID(uid)
-			if err != nil {
+			if err != nil && msg.NoClientLeftChan == nil {
 				api.Log.Err(err).Msg("unable to marshall client identifier as uuid")
 			}
 		}
@@ -253,24 +252,37 @@ listenLoop:
 			api.clientMapUpdatedChecker(clientMultiplierMap, cachedUserMultiplierAction)
 
 		case ClientOffline:
+			fmt.Println("get 1")
 			clientMap, ok := clientMultiplierMap[userID]
+			fmt.Println("get 2")
 			if !ok {
+				fmt.Println("get 3")
 				api.Log.Err(fmt.Errorf("client not exists"))
+				fmt.Println("get 4")
 				msg.NoClientLeftChan <- true
+				fmt.Println("get 5")
 				continue listenLoop
 			}
 
+			fmt.Println("get 6")
 			delete(clientMap.clients, msg.Client)
+			fmt.Println("get 7")
 
 			if len(clientMap.clients) == 0 {
+				fmt.Println("get 8")
 				delete(clientMultiplierMap, userID)
+				fmt.Println("get 9")
 				msg.NoClientLeftChan <- true
+				fmt.Println("get 10")
 
 				// send user's sups multipliers to passport server
+				fmt.Println("get 11")
 				go api.UserSupsMultiplierToPassport(userID, nil)
+				fmt.Println("get 12")
 
 				continue listenLoop
 			}
+			fmt.Println("get 13")
 			msg.NoClientLeftChan <- false
 
 		default:
@@ -280,28 +292,36 @@ listenLoop:
 }
 
 func (api *API) ClientOnline(c *hub.Client) {
+	fmt.Println("online start")
+
 	api.onlineClientMap <- &ClientUpdate{
 		Client: c,
 		Action: ClientOnline,
 	}
+	fmt.Println("online end")
 }
 
 func (api *API) ClientOffline(c *hub.Client) bool {
 	noClientLeftChan := make(chan bool)
+	fmt.Println("offline start")
 	api.onlineClientMap <- &ClientUpdate{
 		Client:           c,
 		Action:           ClientOffline,
 		NoClientLeftChan: noClientLeftChan,
 	}
 	isNoClient := <-noClientLeftChan
+	fmt.Println("offline end")
 	return isNoClient
 }
 
 func (api *API) ClientVoted(c *hub.Client) {
+	fmt.Println("vote start")
+
 	api.onlineClientMap <- &ClientUpdate{
 		Client: c,
 		Action: ClientVoted,
 	}
+	fmt.Println("vote end")
 }
 
 func (api *API) ClientPickedLocation(c *hub.Client) {
