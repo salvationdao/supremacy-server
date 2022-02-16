@@ -10,7 +10,6 @@ import (
 	"server/battle_arena"
 	"server/db"
 	"server/passport"
-	"strconv"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -199,7 +198,7 @@ func (api *API) PassportBattleQueueJoinHandler(ctx context.Context, payload []by
 			}
 
 			// fire a freeze command to the passport server
-			err := api.Passport.AssetFreeze(ctx, "asset_freeze"+strconv.Itoa(int(req.Payload.WarMachineMetadata.TokenID)), req.Payload.WarMachineMetadata.TokenID)
+			err := api.Passport.AssetFreeze(ctx, req.Payload.WarMachineMetadata.TokenID)
 			if err != nil {
 				api.Log.Err(err).Msgf("Failed to freeze asset %d", req.Payload.WarMachineMetadata.TokenID)
 				return
@@ -260,7 +259,7 @@ func (api *API) PassportBattleQueueReleaseHandler(ctx context.Context, payload [
 			}
 
 			// fire a freeze command to the passport server
-			api.Passport.AssetRelease(ctx, "asset_release"+strconv.Itoa(int(req.Payload.WarMachineMetadata.TokenID)), []*server.WarMachineMetadata{wmq.WarMachines[index]})
+			api.Passport.AssetRelease(ctx, []*server.WarMachineMetadata{wmq.WarMachines[index]})
 
 			copy(wmq.WarMachines[index:], wmq.WarMachines[index+1:])   // Shift wmq.WarMachines[i+1:] left one index.
 			wmq.WarMachines[len(wmq.WarMachines)-1] = nil              // wmq.WarMachinesse wmq.WarMachinesst element (write zero vwmq.WarMachineslue).
@@ -638,7 +637,7 @@ func (api *API) AuthRingCheckHandler(ctx context.Context, payload []byte) {
 		}
 
 		// send request to passport server to upgrade the gamebar user
-		err = api.Passport.UpgradeUserConnection(ctx, req.Payload.SessionID, string(req.Payload.SessionID))
+		err = api.Passport.UpgradeUserConnection(ctx, req.Payload.SessionID)
 		if err != nil {
 			api.Log.Err(err).Msg("Failed to upgrade passport hub client level")
 			return

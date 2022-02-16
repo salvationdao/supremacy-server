@@ -13,7 +13,7 @@ type SuccessResponse struct {
 }
 
 // AssetFreeze tell passport to freeze user's assets
-func (pp *Passport) AssetFreeze(ctx context.Context, txID string, assetTokenID uint64) error {
+func (pp *Passport) AssetFreeze(ctx context.Context, assetTokenID uint64) error {
 	replyChannel := make(chan []byte)
 	errChan := make(chan error)
 
@@ -27,7 +27,7 @@ func (pp *Passport) AssetFreeze(ctx context.Context, txID string, assetTokenID u
 			}{
 				AssetTokenID: assetTokenID,
 			},
-			TransactionID: txID,
+			TransactionID: uuid.Must(uuid.NewV4()).String(),
 			context:       ctx,
 		},
 	}
@@ -43,7 +43,7 @@ func (pp *Passport) AssetFreeze(ctx context.Context, txID string, assetTokenID u
 }
 
 // AssetLock tell passport to lock user's assets
-func (pp *Passport) AssetLock(ctx context.Context, txID string, assetTokenIDs []uint64) error {
+func (pp *Passport) AssetLock(ctx context.Context, assetTokenIDs []uint64) error {
 	replyChannel := make(chan []byte)
 	errChan := make(chan error)
 
@@ -57,7 +57,7 @@ func (pp *Passport) AssetLock(ctx context.Context, txID string, assetTokenIDs []
 			}{
 				AssetTokenIDs: assetTokenIDs,
 			},
-			TransactionID: txID,
+			TransactionID: uuid.Must(uuid.NewV4()).String(),
 			context:       ctx,
 		},
 	}
@@ -73,7 +73,7 @@ func (pp *Passport) AssetLock(ctx context.Context, txID string, assetTokenIDs []
 }
 
 // AssetRelease tell passport to release user's asset
-func (pp *Passport) AssetRelease(ctx context.Context, txID string, releasedAssets []*server.WarMachineMetadata) {
+func (pp *Passport) AssetRelease(ctx context.Context, releasedAssets []*server.WarMachineMetadata) {
 	pp.send <- &Request{
 		Message: &Message{
 			Key: "SUPREMACY:ASSET:RELEASE",

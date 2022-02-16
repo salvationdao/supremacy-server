@@ -11,7 +11,7 @@ import (
 	"github.com/ninja-syndicate/hub"
 )
 
-func (pp *Passport) UpgradeUserConnection(ctx context.Context, sessionID hub.SessionID, txID string) error {
+func (pp *Passport) UpgradeUserConnection(ctx context.Context, sessionID hub.SessionID) error {
 	replyChannel := make(chan []byte)
 	errChan := make(chan error)
 	pp.send <- &Request{
@@ -24,7 +24,7 @@ func (pp *Passport) UpgradeUserConnection(ctx context.Context, sessionID hub.Ses
 			}{
 				SessionID: sessionID,
 			},
-			TransactionID: txID,
+			TransactionID: uuid.Must(uuid.NewV4()).String(),
 			context:       ctx,
 		},
 	}
@@ -59,10 +59,6 @@ type SpoilOfWarAmountRequest struct {
 
 // GetSpoilOfWarAmount get current sup pool amount
 func (pp *Passport) GetSpoilOfWarAmount(ctx context.Context) (string, error) {
-	txID, err := uuid.NewV4()
-	if err != nil {
-		return "", terror.Error(err)
-	}
 	replyChannel := make(chan []byte)
 	errChan := make(chan error)
 	pp.send <- &Request{
@@ -71,7 +67,7 @@ func (pp *Passport) GetSpoilOfWarAmount(ctx context.Context) (string, error) {
 		Message: &Message{
 			Key:           "SUPREMACY:SUPS_POOL_AMOUNT",
 			context:       ctx,
-			TransactionID: txID.String(),
+			TransactionID: uuid.Must(uuid.NewV4()).String(),
 		},
 	}
 
@@ -79,7 +75,7 @@ func (pp *Passport) GetSpoilOfWarAmount(ctx context.Context) (string, error) {
 		select {
 		case msg := <-replyChannel:
 			resp := &SpoilOfWarAmountRequest{}
-			err = json.Unmarshal(msg, resp)
+			err := json.Unmarshal(msg, resp)
 			if err != nil {
 				return "", terror.Error(err)
 			}
