@@ -172,9 +172,6 @@ func NewAPI(
 		battleEndInfo: &BattleEndInfo{},
 	}
 
-	// start twitch jwt auth listener
-	go api.startAuthRignCheckListener()
-
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
 	api.Routes.Use(cors.New(cors.Options{AllowedOrigins: []string{config.TwitchUIHostURL}}).Handler)
@@ -268,6 +265,9 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 
 	// listen to the client online and action channel
 	go api.ClientListener()
+
+	// start twitch jwt auth listener
+	go api.startAuthRignCheckListener()
 
 	go api.initialiseViewerLiveCount(ctx, factions)
 	go api.startSpoilOfWarBroadcaster(ctx)
