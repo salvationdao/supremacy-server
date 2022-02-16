@@ -168,7 +168,7 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 	}
 
 	// get most frequent trigger ability user
-	user, err := db.UserMostFrequentTriggerAbility(ctx, api.Conn, api.BattleArena.CurrentBattleID())
+	user, err := db.UserMostFrequentTriggerAbility(ctx, api.Conn, ed.BattleArena.ID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		api.Log.Err(err).Msg("Failed to get most frequent trigger ability user")
 		return
@@ -180,6 +180,18 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 			return
 		}
 		api.battleEndInfo.MostFrequentAbilityExecutor = user.Brief()
+	}
+
+	// set up rest of battle end info
+	api.battleEndInfo.BattleIdentifier = ed.BattleArena.Identifier
+	api.battleEndInfo.WinningCondition = *ed.BattleArena.WinningCondition
+	api.battleEndInfo.WinningWarMachines = []*server.WarMachineBrief{}
+
+	if len(ed.BattleArena.WinningWarMachines) > 0 {
+		api.battleEndInfo.WinningFaction = ed.BattleArena.WinningWarMachines[0].Faction.Brief()
+		for _, wm := range ed.BattleArena.WinningWarMachines {
+			api.battleEndInfo.WinningWarMachines = append(api.battleEndInfo.WinningWarMachines, wm.Brief())
+		}
 	}
 
 	// broadcast battle end info back to game ui

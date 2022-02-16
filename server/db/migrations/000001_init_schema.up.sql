@@ -20,6 +20,7 @@ CREATE TABLE game_maps
 CREATE TABLE battles
 (
     id                uuid PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
+    identifier        SERIAL,
     game_map_id       uuid             NOT NULL REFERENCES game_maps (id),
     winning_condition text,
     started_at        timestamptz      NOT NULL DEFAULT NOW(),

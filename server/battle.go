@@ -9,6 +9,7 @@ import (
 
 type Battle struct {
 	ID                 BattleID               `json:"battleID" db:"id"`
+	Identifier         int64                  `json:"identifier"`
 	GameMapID          GameMapID              `json:"gameMapID" db:"game_map_id"`
 	StartedAt          time.Time              `json:"startedAt" db:"started_at"`
 	EndedAt            *time.Time             `json:"endedAt" db:"ended_at"`

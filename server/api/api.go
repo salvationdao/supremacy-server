@@ -66,12 +66,16 @@ type FactionVotePrice struct {
 }
 
 type BattleEndInfo struct {
-	BattleID                    server.BattleID      `json:"battleID"`
-	TopSupsContributor          *server.UserBrief    `json:"topSupsContributor"`
-	TopSupsContributeFaction    *server.FactionBrief `json:"topSupsContributeFaction"`
-	TopApplauseContributor      *server.UserBrief    `json:"topApplauseContributor"`
-	MostFrequentAbilityExecutor *server.UserBrief    `json:"mostFrequentAbilityExecutor"`
-	BattleEvents                []*BattleEventRecord `json:"battleEvents"`
+	BattleID                    server.BattleID           `json:"battleID"`
+	BattleIdentifier            int64                     `json:"battleIdentifier"`
+	WinningCondition            string                    `json:"winningCondition"`
+	WinningFaction              *server.FactionBrief      `json:"winningFaction"`
+	WinningWarMachines          []*server.WarMachineBrief `json:"winningWarMachines"`
+	TopSupsContributor          *server.UserBrief         `json:"topSupsContributor"`
+	TopSupsContributeFaction    *server.FactionBrief      `json:"topSupsContributeFaction"`
+	TopApplauseContributor      *server.UserBrief         `json:"topApplauseContributor"`
+	MostFrequentAbilityExecutor *server.UserBrief         `json:"mostFrequentAbilityExecutor"`
+	BattleEvents                []*BattleEventRecord      `json:"battleEvents"`
 }
 
 // API server
