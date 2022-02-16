@@ -297,13 +297,10 @@ func (api *API) ClientOffline(c *hub.Client) bool {
 }
 
 func (api *API) ClientVoted(c *hub.Client) {
-	fmt.Println("vote start")
-
 	api.onlineClientMap <- &ClientUpdate{
 		Client: c,
 		Action: ClientVoted,
 	}
-	fmt.Println("vote end")
 }
 
 func (api *API) ClientPickedLocation(c *hub.Client) {
