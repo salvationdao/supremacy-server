@@ -8,8 +8,12 @@ env:
   GO_VERSION: 1.17.7
 
 jobs:
-  cd:
+  build:
     runs-on: ubuntu-20.04
+    outputs:
+      artifact_filename: ${{ steps.artifact.outputs.filename }}
+      version: ${{ steps.version.outputs.v }}
+
     steps:
       - uses: actions/checkout@v2
         with:
@@ -71,8 +75,8 @@ jobs:
         run: |
           go build \
             -ldflags "-X main.Version=${{env.GITVERSION}} -X main.GitHash=${{env.GITHASH}} -X main.GitBranch=${{env.GITBRANCH}} -X main.BuildDate=${{env.BUILDDATE}} -X main.UnCommittedFiles=${{env.GITSTATE}}" \
-            -gcflags=-trimpath=$(pwd) \
-            -asmflags=-trimpath=$(pwd) \
+            -gcflags=-trimpath=${{ github.workspace }} \
+            -asmflags=-trimpath=${{ github.workspace }} \
             -o ../deploy/gameserver \
             cmd/gameserver/main.go
 
@@ -86,9 +90,36 @@ jobs:
           git push
           git push --tags
 
-      # Send to server
+      # Package artifact
       - name: List deploy dir
         run: find deploy
+
+      - id: artifact
+        run: echo "::set-output name=filename::gameserver_${{env.GITVERSION}}.tar"
+      - id: version
+        run: echo "::set-output name=v::${{env.GITVERSION}}"
+
+      - name: tar deploy directory
+        run: tar -cvf ${{ steps.artifact.outputs.filename }} ./deploy
+
+      - name: save artifact
+        uses: actions/upload-artifact@v2
+        if: ${{ !env.ACT }} # if running in local test environment
+        with:
+          name: ${{ steps.artifact.outputs.filename }}
+          path: ${{ steps.artifact.outputs.filename }}
+
+  deploy:
+    needs: [build]
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/download-artifact@v2
+        if: ${{ !env.ACT }} # if running in local test environment
+        with:
+          name: ${{ needs.build.outputs.artifact_filename }}
+
+      - name: untar deploy directory
+        run: tar -xvf ${{ needs.build.outputs.artifact_filename }}
 
       - name: Setup SSH
         run: |
@@ -100,11 +131,11 @@ jobs:
 
       - name: Rsync to server
         if: ${{ !env.ACT }} # if running in local test environment
-        run: rsync -av deploy/ ${{ secrets.STAGING_SSH_HOST }}:/usr/share/ninja_syndicate/gameserver_${{env.GITVERSION}}
+        run: rsync -av ./deploy/ ${{ secrets.STAGING_SSH_HOST }}:/usr/share/ninja_syndicate/gameserver_${{ needs.build.outputs.version }}
 
       - name: Copy previous config
         if: ${{ !env.ACT }} # if running in local test environment
-        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'cp /usr/share/ninja_syndicate/gameserver-online/init/gameserver.env /usr/share/ninja_syndicate/gameserver_${{env.GITVERSION}}/init/gameserver.env && cp /usr/share/ninja_syndicate/gameserver-online/init/gameserver.env ~/.ssh/environment'
+        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'cp /usr/share/ninja_syndicate/gameserver-online/init/gameserver.env /usr/share/ninja_syndicate/gameserver_${{ needs.build.outputs.version }}/init/gameserver.env && cp /usr/share/ninja_syndicate/gameserver-online/init/gameserver.env ~/.ssh/environment'
 
       # - name: "DB: Backup" # Run this before changing the link
       #   if: ${{ !env.ACT }} # if running in local test environment
@@ -113,7 +144,7 @@ jobs:
 
       - name: Bring new version online
         if: ${{ !env.ACT }} # if running in local test environment
-        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'ln -Tfsv /usr/share/ninja_syndicate/gameserver_${{env.GITVERSION}} /usr/share/ninja_syndicate/gameserver-online'
+        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'ln -Tfsv /usr/share/ninja_syndicate/gameserver_${{ needs.build.outputs.version }} /usr/share/ninja_syndicate/gameserver-online'
 
       - name: stop api-server
         if: ${{ !env.ACT }} # if running in local test environment

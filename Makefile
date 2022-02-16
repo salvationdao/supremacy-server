@@ -15,8 +15,12 @@ LOCAL_DEV_DB_PORT=5437
 LOCAL_DEV_DB_DATABASE=$(PACKAGE)
 DB_CONNECTION_STRING="postgres://$(LOCAL_DEV_DB_USER):$(LOCAL_DEV_DB_PASS)@$(LOCAL_DEV_DB_HOST):$(LOCAL_DEV_DB_PORT)/$(LOCAL_DEV_DB_DATABASE)?sslmode=disable"
 
+GITVERSION=`git describe --tags --abbrev=0`
+GITHASH=`git rev-parse HEAD`
+GITBRANCH=`git rev-parse --abbrev-ref HEAD`
 BUILDDATE=`date -u +%Y%m%d%H%M%S`
 GITSTATE=`git status --porcelain | wc -l`
+
 
 # Make Commands
 .PHONY: clean
@@ -32,9 +36,14 @@ deploy-prep: clean tools build
 	cp -r $(SERVER)/db/migrations deploy/.
 
 .PHONY: build
+.ONESHELL:
 build:
-	cd $(SERVER) && go build \
-		-ldflags "-X main.BuildDate=${BUILDDATE} -X main.UnCommittedFiles=$(GITSTATE)" \
+	cd $(SERVER)
+	pwd
+	go build \
+		-ldflags "-X main.Version=${GITVERSION} -X main.GitHash=${GITHASH} -X main.GitBranch=${GITBRANCH} -X main.BuildDate=${BUILDDATE} -X main.UnCommittedFiles=${GITSTATE}" \
+		-gcflags=-trimpath=$(shell pwd) \
+		-asmflags=-trimpath=$(shell pwd) \
 		-o ../deploy/gameserver \
 		cmd/gameserver/main.go
 
