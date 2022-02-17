@@ -63,7 +63,7 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 				continue
 			}
 			go func(c *hub.Client) {
-				err := c.Send(ctx, gameSettingsData)
+				err := c.Send(gameSettingsData)
 				if err != nil {
 					api.Log.Err(err).Msg("failed to send broadcast")
 				}
@@ -367,7 +367,7 @@ func (api *API) UpdateWarMachinePosition(ctx context.Context, ed *battle_arena.E
 				continue
 			}
 			go func(c *hub.Client) {
-				err := c.SendWithMessageType(ctx, ed.WarMachineLocation, websocket.MessageBinary)
+				err := c.SendWithMessageType(ed.WarMachineLocation, websocket.MessageBinary)
 				if err != nil {
 					api.Log.Err(err).Msg("failed to send broadcast")
 				}

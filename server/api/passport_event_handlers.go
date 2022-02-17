@@ -111,7 +111,7 @@ func (api *API) PassportUserUpdatedHandler(ctx context.Context, payload []byte) 
 
 			if hcd != nil {
 				go func() {
-					err = client.Send(ctx, broadcastData)
+					err = client.Send(broadcastData)
 					if err != nil {
 						api.Log.Err(err).Msg("Failed to send auth response back to twitch client")
 						return
@@ -182,7 +182,7 @@ func (api *API) PassportUserEnlistFactionHandler(ctx context.Context, payload []
 				hcd.Faction = api.factionMap[hcd.FactionID]
 			}
 
-			err = client.Send(ctx, broadcastData)
+			err = client.Send(broadcastData)
 			if err != nil {
 				api.Log.Err(err).Msg("Failed to send auth response back to client")
 				return
@@ -657,7 +657,7 @@ func (api *API) AuthRingCheckHandler(ctx context.Context, payload []byte) {
 		return
 	}
 
-	err = client.Send(ctx, b)
+	err = client.Send(b)
 	if err != nil {
 		api.Log.Err(err).Msg("Failed to send auth response back to twitch client")
 		return

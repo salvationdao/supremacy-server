@@ -224,7 +224,7 @@ func (api *API) abilityTargetPriceUpdaterFactory(ctx context.Context, factionID 
 						}
 
 						// broadcast vote price forecast
-						err = c.SendWithMessageType(ctx, payload, websocket.MessageBinary)
+						err = c.SendWithMessageType(payload, websocket.MessageBinary)
 						if err != nil {
 							api.Log.Err(err).Msg("failed to send broadcast")
 						}
@@ -270,7 +270,7 @@ func (api *API) abilityTargetPriceBroadcasterFactory(ctx context.Context, factio
 						}
 
 						// broadcast vote price forecast
-						err = c.SendWithMessageType(ctx, payload, websocket.MessageBinary)
+						err = c.SendWithMessageType(payload, websocket.MessageBinary)
 						if err != nil {
 							api.Log.Err(err).Msg("failed to send broadcast")
 						}
