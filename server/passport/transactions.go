@@ -137,12 +137,12 @@ type SupremacyTopSupsContributorResponse struct {
 }
 
 type SupremacyTopSupsContributor struct {
-	TopSupsContributor       *server.User    `json:"topSupsContributor"`
-	TopSupsContributeFaction *server.Faction `json:"topSupsContributeFaction"`
+	TopSupsContributors       []*server.User    `json:"topSupsContributors"`
+	TopSupsContributeFactions []*server.Faction `json:"topSupsContributeFactions"`
 }
 
 // TopSupsContributorsGet tells the passport to return the top three most sups contributors with in the time frame
-func (pp *Passport) TopSupsContributorsGet(ctx context.Context, startTime, endTime time.Time) (*server.User, *server.Faction, error) {
+func (pp *Passport) TopSupsContributorsGet(ctx context.Context, startTime, endTime time.Time) ([]*server.User, []*server.Faction, error) {
 	replyChannel := make(chan []byte)
 	errChan := make(chan error)
 
@@ -170,7 +170,7 @@ func (pp *Passport) TopSupsContributorsGet(ctx context.Context, startTime, endTi
 			if err != nil {
 				return nil, nil, terror.Error(err)
 			}
-			return resp.Payload.TopSupsContributor, resp.Payload.TopSupsContributeFaction, nil
+			return resp.Payload.TopSupsContributors, resp.Payload.TopSupsContributeFactions, nil
 		case err := <-errChan:
 			return nil, nil, terror.Error(err)
 		}

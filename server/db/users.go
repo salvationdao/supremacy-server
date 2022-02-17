@@ -69,8 +69,8 @@ func UserBattleVoteCountInsert(ctx context.Context, conn Conn, battleID server.B
 	return nil
 }
 
-func UserMostFrequentTriggerAbility(ctx context.Context, conn Conn, battleID server.BattleID) (*server.User, error) {
-	user := &server.User{}
+func UsersMostFrequentTriggerAbility(ctx context.Context, conn Conn, battleID server.BattleID) ([]*server.User, error) {
+	users := []*server.User{}
 
 	q := `
 	SELECT 
@@ -87,15 +87,15 @@ func UserMostFrequentTriggerAbility(ctx context.Context, conn Conn, battleID ser
 		bega.triggered_by_user_id
 	ORDER BY 
 		COUNT(bega.id) DESC 
-	LIMIT 1
+	LIMIT 5
 	`
 
-	err := pgxscan.Get(ctx, conn, user, q, battleID)
+	err := pgxscan.Select(ctx, conn, &users, q, battleID)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
 
-	return user, nil
+	return users, nil
 }
 
 func UserStatMaterialisedViewRefresh(ctx context.Context, conn Conn) error {

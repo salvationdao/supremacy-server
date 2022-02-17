@@ -9,7 +9,6 @@ import (
 	"server/battle_arena"
 	"server/db"
 	"server/passport"
-	"sort"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -141,51 +140,60 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 			api.Log.Err(err).Msg("Failed to record battle user vote")
 			return
 		}
-
-		// get the applause contributor
-		sort.Slice(userVoteList, func(i, j int) bool {
-			return userVoteList[i].VoteCount > userVoteList[j].VoteCount
-		})
-
-		u, err := api.Passport.UserGet(ctx, userVoteList[0].UserID)
-		if err != nil {
-			api.Log.Err(err).Msg("Failed to get user from passport server")
-			return
-		}
-
-		api.battleEndInfo.TopApplauseContributor = u.Brief()
 	}
 
 	// get the user who spend most sups during the battle from passport
-	topUser, topFaction, err := api.Passport.TopSupsContributorsGet(ctx, ed.BattleArena.StartedAt, time.Now())
+	topUsers, topFactions, err := api.Passport.TopSupsContributorsGet(ctx, ed.BattleArena.StartedAt, time.Now())
 	if err != nil {
 		api.Log.Err(err).Msg("Failed to get top sups contributors from passport")
 		return
 	}
 
-	if topUser != nil {
+	for _, topUser := range topUsers {
 		if !topUser.FactionID.IsNil() {
-			topUser.Faction = api.factionMap[topFaction.ID]
+			topUser.Faction = api.factionMap[topUser.FactionID]
 		}
-		api.battleEndInfo.TopSupsContributor = topUser.Brief()
+		api.battleEndInfo.TopSupsContributors = append(api.battleEndInfo.TopSupsContributors, topUser.Brief())
 	}
-	if topFaction != nil {
-		api.battleEndInfo.TopSupsContributeFaction = topFaction.Brief()
+
+	for _, topFaction := range topFactions {
+		api.battleEndInfo.TopSupsContributeFactions = append(api.battleEndInfo.TopSupsContributeFactions, topFaction.Brief())
 	}
 
 	// get most frequent trigger ability user
-	user, err := db.UserMostFrequentTriggerAbility(ctx, api.Conn, ed.BattleArena.ID)
+	us, err := db.UsersMostFrequentTriggerAbility(ctx, api.Conn, ed.BattleArena.ID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		api.Log.Err(err).Msg("Failed to get most frequent trigger ability user")
 		return
 	}
-	if user != nil {
-		user, err = api.Passport.UserGet(ctx, user.ID)
-		if err != nil {
-			api.Log.Err(err).Msg("Failed to get user from passport server")
-			return
+
+	userIDs := []server.UserID{}
+	if len(us) <= 5 {
+		for _, uv := range userVoteList {
+			userIDs = append(userIDs, uv.UserID)
 		}
-		api.battleEndInfo.MostFrequentAbilityExecutor = user.Brief()
+	} else {
+		for len(userIDs) < 5 {
+			userIDs = append(userIDs, us[len(userIDs)].ID)
+		}
+	}
+
+	users, err := api.Passport.UsersGet(ctx, userIDs)
+	if err != nil {
+		api.Log.Err(err).Msg("Failed to get user from passport server")
+		return
+	}
+
+	for _, userID := range userIDs {
+		for _, user := range users {
+			if user.ID == userID {
+				if !user.FactionID.IsNil() {
+					user.Faction = api.factionMap[user.FactionID]
+				}
+				api.battleEndInfo.MostFrequentAbilityExecutors = append(api.battleEndInfo.MostFrequentAbilityExecutors, user.Brief())
+				break
+			}
+		}
 	}
 
 	// set up rest of battle end info
@@ -258,16 +266,18 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 				}
 
 				// TODO: set sups multiplier for these three rewards
-				if api.battleEndInfo.MostFrequentAbilityExecutor != nil && api.battleEndInfo.MostFrequentAbilityExecutor.ID == userID {
-					brs = append(brs, BattleRewardTypeAbilityExecutor)
+				for _, executor := range api.battleEndInfo.MostFrequentAbilityExecutors {
+					if executor.ID == userID {
+						brs = append(brs, BattleRewardTypeAbilityExecutor)
+						break
+					}
 				}
 
-				if api.battleEndInfo.TopApplauseContributor != nil && api.battleEndInfo.TopApplauseContributor.ID == userID {
-					brs = append(brs, BattleRewardTypeInfluencer)
-				}
-
-				if api.battleEndInfo.TopSupsContributor != nil && api.battleEndInfo.TopSupsContributor.ID == userID {
-					brs = append(brs, BattleRewardTypeWarContributor)
+				for _, supsContributor := range api.battleEndInfo.TopSupsContributors {
+					if supsContributor.ID == userID {
+						brs = append(brs, BattleRewardTypeWarContributor)
+						break
+					}
 				}
 
 				if len(brs) == 0 {
