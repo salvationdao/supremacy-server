@@ -146,34 +146,54 @@ func (api *API) startAuthRignCheckListener() {
 ********************/
 
 // startClientTracker track client state
-func (api *API) startClientTracker(wsc *hub.Client) {
-	// initialise online client
-	hcd := &server.User{
-		FactionID: server.FactionID(uuid.Nil),
-	}
-
+func (api *API) startClientTracker() {
+	wscMap := make(map[*hub.Client]*server.User)
 	go func() {
-		for fn := range api.hubClientDetail[wsc] {
-			fn(hcd)
+		for fn := range api.hubClientDetail {
+			fn(wscMap)
 		}
 	}()
 }
 
+// register client detail channel
+func (api *API) hubClientDetailRegister(wsc *hub.Client) {
+	hcd := &server.User{
+		FactionID: server.FactionID(uuid.Nil),
+	}
+	api.hubClientDetail <- func(m map[*hub.Client]*server.User) {
+		if _, ok := m[wsc]; !ok {
+			m[wsc] = hcd
+		}
+	}
+}
+
+// remove hub client channel
+func (api *API) hubClientDetailRemove(wsc *hub.Client) {
+	api.hubClientDetail <- func(m map[*hub.Client]*server.User) {
+		delete(m, wsc)
+	}
+}
+
 // getClientDetailFromChannel return a client detail from client detail channel
 func (api *API) getClientDetailFromChannel(wsc *hub.Client) (*server.User, error) {
-	hubClientDetailChan, ok := api.hubClientDetail[wsc]
-	if !ok {
+	detailChan := make(chan *server.User)
+	api.hubClientDetail <- func(m map[*hub.Client]*server.User) {
+		hcd, ok := m[wsc]
+		if !ok {
+			detailChan <- nil
+			return
+		}
+
+		detailChan <- hcd
+
+	}
+	result := <-detailChan
+
+	if result == nil {
 		return nil, terror.Error(terror.ErrInvalidInput, "Error - Current hub client is not on the map")
 	}
 
-	detailChan := make(chan *server.User)
-	hubClientDetailChan <- func(hcd *server.User) {
-		detailChan <- hcd
-	}
-
-	result := *<-detailChan
-
-	return &result, nil
+	return result, nil
 }
 
 // getClientDetailFromUserID return hub client detail by given user id

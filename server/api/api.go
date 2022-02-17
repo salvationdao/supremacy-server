@@ -99,8 +99,9 @@ type API struct {
 	liveSupsSpend map[server.FactionID]chan func(*LiveVotingData)
 
 	// client channels
-	hubClientDetail map[*hub.Client]chan func(*server.User)
-	onlineClientMap chan *ClientUpdate
+	hubClientDetailLock sync.Mutex
+	hubClientDetail     chan func(map[*hub.Client]*server.User)
+	onlineClientMap     chan *ClientUpdate
 
 	// ring check auth
 	ringCheckAuthChan chan func(RingCheckAuthMap)
@@ -161,8 +162,9 @@ func NewAPI(
 		liveSupsSpend: make(map[server.FactionID]chan func(*LiveVotingData)),
 
 		// channel for handling hub client
-		hubClientDetail: make(map[*hub.Client]chan func(*server.User)),
-		onlineClientMap: make(chan *ClientUpdate),
+		hubClientDetailLock: sync.Mutex{},
+		hubClientDetail:     make(chan func(map[*hub.Client]*server.User)),
+		onlineClientMap:     make(chan *ClientUpdate),
 
 		// ring check auth
 		ringCheckAuthChan: make(chan func(RingCheckAuthMap)),
@@ -271,6 +273,8 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 	// listen to the client online and action channel
 	go api.ClientListener()
 
+	go api.startClientTracker()
+
 	// start twitch jwt auth listener
 	go api.startAuthRignCheckListener()
 
@@ -358,13 +362,9 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 
 // Event handlers
 func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client, clients hub.ClientsList, ch hub.TriggerChan) {
-	_, ok := api.hubClientDetail[wsc]
-	if !ok {
-		// initialise a client detail channel if not on the list
-		api.hubClientDetail[wsc] = make(chan func(*server.User))
-		go api.startClientTracker(wsc)
-		go api.viewerLiveCountAdd(server.FactionID(uuid.Nil))
-	}
+	// initialise a client detail channel if not on the list
+	go api.hubClientDetailRegister(wsc)
+	go api.viewerLiveCountAdd(server.FactionID(uuid.Nil))
 
 	// broadcast current game state
 	go func() {
@@ -480,7 +480,7 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 	}
 
 	// clean up the map
-	delete(api.hubClientDetail, wsc)
+	api.hubClientDetailRemove(wsc)
 }
 
 // Run the API service

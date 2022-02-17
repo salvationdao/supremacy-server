@@ -12,7 +12,6 @@ import (
 	"server/passport"
 	"time"
 
-	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
@@ -53,58 +52,72 @@ func (api *API) PassportUserUpdatedHandler(ctx context.Context, payload []byte) 
 		return
 	}
 
-	uid := req.Payload.User.ID.String()
+	// prepare broadcast data
+	req.Payload.User.Faction = api.factionMap[req.Payload.User.FactionID]
+	// send
+	resp := struct {
+		Key           hub.HubCommandKey `json:"key"`
+		TransactionID string            `json:"transactionID"`
+		Payload       interface{}       `json:"payload"`
+	}{
+		Key:           HubKeyUserSubscribe,
+		TransactionID: "userUpdate",
+		Payload:       req.Payload.User,
+	}
+	broadcastData, err := json.Marshal(resp)
+	if err != nil {
+		api.Hub.Log.Err(err).Errorf("send: issue marshalling resp")
+		return
+	}
 
 	api.Hub.Clients(func(clients hub.ClientsList) {
 		for client, ok := range clients {
-			if !ok || client.Identifier() != uid {
+			if !ok || client.Identifier() != req.Payload.User.ID.String() {
 				continue
 			}
 
-			go func(c *hub.Client) {
-				// update client detail
-				api.hubClientDetail[c] <- func(hcd *server.User) {
-					hcd.FirstName = req.Payload.User.FirstName
-					hcd.LastName = req.Payload.User.LastName
-					hcd.Username = req.Payload.User.Username
-					hcd.AvatarID = req.Payload.User.AvatarID
+			// update client detail
+			detailChan := make(chan *server.User)
+			api.hubClientDetail <- func(m map[*hub.Client]*server.User) {
+				hcd, ok := m[client]
+				if !ok {
+					detailChan <- nil
+					api.Log.Err(fmt.Errorf("client not found")).Msg("Failed to send auth response back to twitch client")
+					return
+				}
+				hcd.FirstName = req.Payload.User.FirstName
+				hcd.LastName = req.Payload.User.LastName
+				hcd.Username = req.Payload.User.Username
+				hcd.AvatarID = req.Payload.User.AvatarID
 
-					if hcd.FactionID == req.Payload.User.FactionID {
-						return
-					}
+				if hcd.FactionID == req.Payload.User.FactionID {
+					detailChan <- nil
+					return
+				}
 
-					// if faction id has changed, send the updated user
-					go api.viewerLiveCountSwap(hcd.FactionID, req.Payload.User.FactionID)
-					hcd.FactionID = req.Payload.User.FactionID
+				// if faction id has changed, send the updated user
+				go api.viewerLiveCountSwap(hcd.FactionID, req.Payload.User.FactionID)
+				hcd.FactionID = req.Payload.User.FactionID
 
-					if !req.Payload.User.FactionID.IsNil() {
-						hcd.Faction = api.factionMap[req.Payload.User.FactionID]
-					}
+				if !req.Payload.User.FactionID.IsNil() {
+					hcd.Faction = api.factionMap[req.Payload.User.FactionID]
+				}
 
-					// send
-					resp := struct {
-						Key           hub.HubCommandKey `json:"key"`
-						TransactionID string            `json:"transactionID"`
-						Payload       interface{}       `json:"payload"`
-					}{
-						Key:           HubKeyUserSubscribe,
-						TransactionID: "userUpdate",
-						Payload:       hcd,
-					}
+				detailChan <- hcd
 
-					b, err := json.Marshal(resp)
-					if err != nil {
-						api.Hub.Log.Err(err).Errorf("send: issue marshalling resp")
-						return
-					}
+			}
 
-					err = c.Send(ctx, b)
+			hcd := <-detailChan
+
+			if hcd != nil {
+				go func() {
+					err = client.Send(ctx, broadcastData)
 					if err != nil {
 						api.Log.Err(err).Msg("Failed to send auth response back to twitch client")
 						return
 					}
-				}
-			}(client)
+				}()
+			}
 		}
 	})
 }
@@ -156,20 +169,24 @@ func (api *API) PassportUserEnlistFactionHandler(ctx context.Context, payload []
 				continue
 			}
 
-			go func(c *hub.Client) {
-				api.hubClientDetail[c] <- func(hcd *server.User) {
-					go api.viewerLiveCountSwap(hcd.FactionID, req.Payload.FactionID)
-					// update client facton id
-					hcd.FactionID = req.Payload.FactionID
-					hcd.Faction = api.factionMap[hcd.FactionID]
-				}
-
-				err = c.Send(ctx, broadcastData)
-				if err != nil {
-					api.Log.Err(err).Msg("Failed to send auth response back to client")
+			api.hubClientDetail <- func(m map[*hub.Client]*server.User) {
+				hcd, ok := m[client]
+				if !ok {
+					api.Log.Err(fmt.Errorf("client not found"))
 					return
 				}
-			}(client)
+
+				go api.viewerLiveCountSwap(hcd.FactionID, req.Payload.FactionID)
+				// update client facton id
+				hcd.FactionID = req.Payload.FactionID
+				hcd.Faction = api.factionMap[hcd.FactionID]
+			}
+
+			err = client.Send(ctx, broadcastData)
+			if err != nil {
+				api.Log.Err(err).Msg("Failed to send auth response back to client")
+				return
+			}
 		}
 	})
 }
@@ -563,87 +580,93 @@ func (api *API) AuthRingCheckHandler(ctx context.Context, payload []byte) {
 		ringCheckKey = req.Payload.GameserverSessionID
 	}
 
-	api.ringCheckAuthChan <- func(rca RingCheckAuthMap) {
-		hubClient, ok := rca[ringCheckKey]
+	clientChan := make(chan *hub.Client)
+
+	// get client from ring check auth chan
+	api.ringCheckAuthChan <- func(rcam RingCheckAuthMap) {
+		client, ok := rcam[ringCheckKey]
 		if !ok {
+			clientChan <- nil
 			return
 		}
 
-		if req.Payload.GameserverSessionID != "" && req.Payload.GameserverSessionID != string(hubClient.SessionID) {
-			api.Log.Err(fmt.Errorf("Session id does not match"))
-			return
-		}
-		// reset session id for security
-		hubClient.SessionID = hub.SessionID(uuid.Must(uuid.NewV4()).String())
+		// clean up ring check key
+		delete(rcam, ringCheckKey)
 
-		hubClientDetail, ok := api.hubClientDetail[hubClient]
+		clientChan <- client
+	}
+
+	client := <-clientChan
+	if client == nil {
+		api.Log.Err(fmt.Errorf("client not found")).Msg("client does not exist in ring check map")
+		return
+	}
+
+	detailChan := make(chan *server.User)
+
+	// set up client detail
+	api.hubClientDetail <- func(m map[*hub.Client]*server.User) {
+		hcd, ok := m[client]
 		if !ok {
+			detailChan <- nil
 			return
 		}
 
-		// set hub client detail
-		hubClientDetail <- func(hcd *server.User) {
-			hcd.Username = req.Payload.User.Username
-			hcd.FirstName = req.Payload.User.FirstName
-			hcd.LastName = req.Payload.User.LastName
-			hcd.AvatarID = req.Payload.User.AvatarID
+		hcd.Username = req.Payload.User.Username
+		hcd.FirstName = req.Payload.User.FirstName
+		hcd.LastName = req.Payload.User.LastName
+		hcd.AvatarID = req.Payload.User.AvatarID
 
-			if hcd.FactionID != req.Payload.User.FactionID {
-				go api.viewerLiveCountSwap(hcd.FactionID, req.Payload.User.FactionID)
-				hcd.FactionID = req.Payload.User.FactionID
+		if hcd.FactionID != req.Payload.User.FactionID {
+			go api.viewerLiveCountSwap(hcd.FactionID, req.Payload.User.FactionID)
+			hcd.FactionID = req.Payload.User.FactionID
 
-				if !hcd.FactionID.IsNil() {
-					hcd.Faction = api.factionMap[hcd.FactionID]
-				}
+			if !hcd.FactionID.IsNil() {
+				hcd.Faction = api.factionMap[hcd.FactionID]
 			}
 		}
+		detailChan <- hcd
+	}
 
-		// set user id
-		hubClient.SetIdentifier(req.Payload.User.ID.String())
+	hcd := <-detailChan
+	if hcd == nil {
+		api.Log.Err(fmt.Errorf("client not found")).Msg("client not found in hub client detail map")
+		return
+	}
 
-		// set user online
-		api.ClientOnline(hubClient)
+	// set user id
+	client.SetIdentifier(req.Payload.User.ID.String())
 
-		// parse user response
-		user := &server.User{
-			ID: req.Payload.User.ID,
-		}
-		if !req.Payload.User.FactionID.IsNil() {
-			user.FactionID = req.Payload.User.FactionID
-			user.Faction = api.factionMap[req.Payload.User.FactionID]
-		}
+	// set user online
+	api.ClientOnline(client)
 
-		// send user id and faction id back to twitch ui client
-		resp := struct {
-			Key           hub.HubCommandKey `json:"key"`
-			TransactionID string            `json:"transactionID"`
-			Payload       interface{}       `json:"payload"`
-		}{
-			Key:           HubKeyUserSubscribe,
-			TransactionID: "authRingCheck",
-			Payload:       user,
-		}
+	// send user id and faction id back to twitch ui client
+	resp := struct {
+		Key           hub.HubCommandKey `json:"key"`
+		TransactionID string            `json:"transactionID"`
+		Payload       interface{}       `json:"payload"`
+	}{
+		Key:           HubKeyUserSubscribe,
+		TransactionID: "authRingCheck",
+		Payload:       hcd,
+	}
 
-		b, err := json.Marshal(resp)
-		if err != nil {
-			api.Hub.Log.Err(err).Errorf("send: issue marshalling resp")
-			return
-		}
+	b, err := json.Marshal(resp)
+	if err != nil {
+		api.Hub.Log.Err(err).Errorf("send: issue marshalling resp")
+		return
+	}
 
-		err = hubClient.Send(ctx, b)
-		if err != nil {
-			api.Log.Err(err).Msg("Failed to send auth response back to twitch client")
-			return
-		}
+	err = client.Send(ctx, b)
+	if err != nil {
+		api.Log.Err(err).Msg("Failed to send auth response back to twitch client")
+		return
+	}
 
-		// send request to passport server to upgrade the gamebar user
-		err = api.Passport.UpgradeUserConnection(ctx, req.Payload.SessionID)
-		if err != nil {
-			api.Log.Err(err).Msg("Failed to upgrade passport hub client level")
-			return
-		}
-
-		// delete jwt from map
-		delete(rca, req.Payload.TwitchExtensionJWT)
+	// send request to passport server to upgrade the gamebar user
+	err = api.Passport.UpgradeUserConnection(ctx, req.Payload.SessionID)
+	if err != nil {
+		api.Log.Err(err).Msg("Failed to upgrade passport hub client level")
+		return
 	}
 }
