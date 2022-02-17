@@ -148,7 +148,7 @@ func (gc *GameControllerWS) BattleEndDetailUpdateSubscribeHandler(ctx context.Co
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
-	if !gc.API.battleEndInfo.BattleID.IsNil() && gc.API.battleEndInfo.BattleID == gc.API.BattleArena.CurrentBattleID() {
+	if gc.API.BattleArena.GetCurrentState().EndedAt != nil {
 		reply(gc.API.battleEndInfo)
 	}
 

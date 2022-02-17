@@ -215,6 +215,7 @@ func NewAPI(
 	///////////////////////////
 	//	Battle Arena Events	 //
 	///////////////////////////
+	api.BattleArena.Events.AddEventHandler(battle_arena.EventGameInit, api.BattleInitSignal)
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventGameStart, api.BattleStartSignal)
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventGameEnd, api.BattleEndSignal)
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventWarMachineDestroyed, api.WarMachineDestroyedBroadcast)

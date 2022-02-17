@@ -19,6 +19,14 @@ import (
 	"nhooyr.io/websocket"
 )
 
+func (api *API) BattleInitSignal(ctx context.Context, ed *battle_arena.EventData) {
+	// clean up battle end information
+	api.battleEndInfo = &BattleEndInfo{}
+
+	// pass back nil to tell game ui to clean up current end battle message
+	api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyBattleEndDetailUpdated), nil)
+}
+
 const HubKeyGameSettingsUpdated = hub.HubCommandKey("GAME:SETTINGS:UPDATED")
 
 type GameSettingsResponse struct {
@@ -29,8 +37,6 @@ type GameSettingsResponse struct {
 
 // BattleStartSignal start all the voting cycle
 func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventData) {
-	// clean up battle end information
-	api.battleEndInfo = &BattleEndInfo{}
 
 	// build faction detail to battle start
 	warMachines := ed.BattleArena.WarMachines
