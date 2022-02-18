@@ -257,9 +257,10 @@ func (s *Seeder) factions(ctx context.Context) ([]*server.Faction, error) {
 }
 
 var streams = []*server.Stream{
-	{ID: server.StreamID(uuid.Must(uuid.FromString("d66645eb-e72c-49fb-aca6-3091fe45936d"))),
+	{
+		Host:          "watch-us-west-1.supremacy.game",
 		Name:          "USA Los Angeles",
-		Url:           "https://136.175.8.137",
+		Url:           "https://watch-us-west-1.supremacy.game/WebRTCAppEE/play.html?name=886200805704583109786601",
 		Region:        "us-west",
 		Resolution:    "1920x1080",
 		BitRatesKBits: 2000,
@@ -270,9 +271,10 @@ var streams = []*server.Stream{
 		Latitude:      34.0522,
 		Longitude:     -118.2437,
 	},
-	{ID: server.StreamID(uuid.Must(uuid.FromString("33bc7ae0-2b07-44f3-ad78-8ea7cdc53abe"))),
+	{
+		Host:          "watch-us-mid-west-1.supremacy.game",
 		Name:          "USA Phoenix",
-		Url:           "https://136.175.11.73",
+		Url:           "https://watch-us-mid-west-1.supremacy.game/WebRTCAppEE/play.html?name=886200805704583109786601",
 		Region:        "us-mid-west",
 		Resolution:    "1920x1080",
 		BitRatesKBits: 1500,
@@ -283,7 +285,8 @@ var streams = []*server.Stream{
 		Latitude:      33.6020,
 		Longitude:     -111.8879,
 	},
-	{ID: server.StreamID(uuid.Must(uuid.FromString("80fee7a6-90a0-4446-8b73-53fce331513d"))),
+	{
+		Host:          "staging-watch-syd02.supremacy.game",
 		Name:          "UK London",
 		Url:           "https://staging-watch-syd02.supremacy.game/WebRTCAppEE/play.html?name=886200805704583109786601",
 		Region:        "uk",
@@ -296,7 +299,8 @@ var streams = []*server.Stream{
 		Latitude:      51.5085,
 		Longitude:     -0.1257,
 	},
-	{ID: server.StreamID(uuid.Must(uuid.FromString("2a2dc936-d0b4-40f8-a021-de0526500b74"))),
+	{
+		Host:          "watch-au-east-1.supremacy.game",
 		Name:          "AU Sydney",
 		Url:           "https://watch-au-east-1.supremacy.game/WebRTCAppEE/play.html?name=079583650308221367643",
 		Region:        "au-east",
@@ -309,7 +313,8 @@ var streams = []*server.Stream{
 		Latitude:      -33.9032,
 		Longitude:     151.1518,
 	},
-	{ID: server.StreamID(uuid.Must(uuid.FromString("0ae1ae84-b647-42ef-ba71-99ae457df6ba"))),
+	{
+		Host:          "watch-au-south-1.supremacy.game",
 		Name:          "AU Melbourne",
 		Url:           "https://watch-au-south-1.supremacy.game/WebRTCAppEE/play.html?name=079583650308221367643",
 		Region:        "au-south",
@@ -322,7 +327,8 @@ var streams = []*server.Stream{
 		Latitude:      -37.8159,
 		Longitude:     144.9669,
 	},
-	{ID: server.StreamID(uuid.Must(uuid.FromString("306a35c9-c90a-4df2-80a8-5e24fa1a609e"))),
+	{
+		Host:          "watch-us-east-1.supremacy.game",
 		Name:          "USA New York",
 		Url:           "https://watch-us-east-1.supremacy.game/WebRTCAppEE/play.html?name=079583650308221367643",
 		Region:        "us-east",
@@ -335,7 +341,8 @@ var streams = []*server.Stream{
 		Latitude:      40.7143,
 		Longitude:     -74.0060,
 	},
-	{ID: server.StreamID(uuid.Must(uuid.FromString("930cb843-ab4f-4770-a980-41108e01b5ec"))),
+	{
+		Host:          "watch-us-nw-1.supremacy.game",
 		Name:          "USA Washington",
 		Url:           "https://watch-us-nw-1.supremacy.game/WebRTCAppEE/play.html?name=079583650308221367643",
 		Region:        "us-northwest",
@@ -348,7 +355,8 @@ var streams = []*server.Stream{
 		Latitude:      -33.9032,
 		Longitude:     151.1518,
 	},
-	{ID: server.StreamID(uuid.Must(uuid.FromString("288537e0-7cb3-41a9-832f-af7fa759c858"))),
+	{
+		Host:          "watch-au-west-1.supremacy.game",
 		Name:          "AU Perth",
 		Url:           "https://watch-au-west-1.supremacy.game/WebRTCAppEE/play.html?name=079583650308221367643",
 		Region:        "au-west",
@@ -361,7 +369,8 @@ var streams = []*server.Stream{
 		Latitude:      -31.95000076,
 		Longitude:     115.86000061,
 	},
-	{ID: server.StreamID(uuid.Must(uuid.FromString("48b1bc8a-c936-4804-ab21-3d9ff2d3b7ec"))),
+	{
+		Host:          "watch-au-east-2.supremacy.game",
 		Name:          "AU Sydney",
 		Url:           "https://watch-au-east-2.supremacy.game/WebRTCAppEE/play.html?name=079583650308221367643",
 		Region:        "au-east",
@@ -374,7 +383,8 @@ var streams = []*server.Stream{
 		Latitude:      -33.9032,
 		Longitude:     151.1518,
 	},
-	{ID: server.StreamID(uuid.Must(uuid.FromString("17d1a31d-0459-4c98-af80-5899ccad9b13"))),
+	{
+		Host:          "watch-eu-1.supremacy.game",
 		Name:          "Spain Madrid",
 		Url:           "https://watch-eu-1.supremacy.game/WebRTCAppEE/play.html?name=079583650308221367643",
 		Region:        "eu-spain",

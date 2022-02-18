@@ -108,3 +108,14 @@ func randInt(min int, max int) int {
 	rand.Seed(time.Now().UTC().UnixNano())
 	return min + rand.Intn(max-min)
 }
+
+func WithToken(apiToken string, next func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("X-Authorization") != apiToken {
+			http.Error(w, "unauthorized", http.StatusForbidden)
+			return
+		}
+		next(w, r)
+	}
+	return fn
+}
