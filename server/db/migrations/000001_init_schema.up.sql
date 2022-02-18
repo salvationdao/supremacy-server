@@ -128,7 +128,7 @@ CREATE TABLE battle_events_game_ability
 
 CREATE TABLE stream_list
 (
-    id uuid PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
+    host text PRIMARY KEY NOT NULL,
     name text NOT NULL,
     url text NOT NULL,
     region text NOT NULL,

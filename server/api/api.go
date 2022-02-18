@@ -66,16 +66,15 @@ type FactionVotePrice struct {
 }
 
 type BattleEndInfo struct {
-	BattleID                    server.BattleID           `json:"battleID"`
-	BattleIdentifier            int64                     `json:"battleIdentifier"`
-	WinningCondition            string                    `json:"winningCondition"`
-	WinningFaction              *server.FactionBrief      `json:"winningFaction"`
-	WinningWarMachines          []*server.WarMachineBrief `json:"winningWarMachines"`
-	TopSupsContributor          *server.UserBrief         `json:"topSupsContributor"`
-	TopSupsContributeFaction    *server.FactionBrief      `json:"topSupsContributeFaction"`
-	TopApplauseContributor      *server.UserBrief         `json:"topApplauseContributor"`
-	MostFrequentAbilityExecutor *server.UserBrief         `json:"mostFrequentAbilityExecutor"`
-	BattleEvents                []*BattleEventRecord      `json:"battleEvents"`
+	BattleID                     server.BattleID           `json:"battleID"`
+	BattleIdentifier             int64                     `json:"battleIdentifier"`
+	WinningCondition             string                    `json:"winningCondition"`
+	WinningFaction               *server.FactionBrief      `json:"winningFaction"`
+	WinningWarMachines           []*server.WarMachineBrief `json:"winningWarMachines"`
+	TopSupsContributeFactions    []*server.FactionBrief    `json:"topSupsContributeFactions"`
+	TopSupsContributors          []*server.UserBrief       `json:"topSupsContributors"`
+	MostFrequentAbilityExecutors []*server.UserBrief       `json:"mostFrequentAbilityExecutors"`
+	BattleEvents                 []*BattleEventRecord      `json:"battleEvents"`
 }
 
 // API server
@@ -99,8 +98,9 @@ type API struct {
 	liveSupsSpend map[server.FactionID]chan func(*LiveVotingData)
 
 	// client channels
-	hubClientDetail map[*hub.Client]chan func(*server.User)
-	onlineClientMap chan *ClientUpdate
+	hubClientDetailLock sync.Mutex
+	hubClientDetail     chan func(map[*hub.Client]*server.User)
+	onlineClientMap     chan *ClientUpdate
 
 	// ring check auth
 	ringCheckAuthChan chan func(RingCheckAuthMap)
@@ -161,8 +161,9 @@ func NewAPI(
 		liveSupsSpend: make(map[server.FactionID]chan func(*LiveVotingData)),
 
 		// channel for handling hub client
-		hubClientDetail: make(map[*hub.Client]chan func(*server.User)),
-		onlineClientMap: make(chan *ClientUpdate),
+		hubClientDetailLock: sync.Mutex{},
+		hubClientDetail:     make(chan func(map[*hub.Client]*server.User)),
+		onlineClientMap:     make(chan *ClientUpdate),
 
 		// ring check auth
 		ringCheckAuthChan: make(chan func(RingCheckAuthMap)),
@@ -191,6 +192,9 @@ func NewAPI(
 		// See roothub.ServeHTTP for the setup of sentry on this route.
 		r.Handle("/ws", api.Hub)
 		r.Get("/events", WithError(api.BattleArena.GetEvents))
+		r.Post("/video_server", WithToken(config.ServerStreamKey, WithError((api.CreateStreamHandler))))
+		r.Get("/video_server", WithToken(config.ServerStreamKey, WithError((api.GetStreamsHandler))))
+		r.Delete("/video_server", WithToken(config.ServerStreamKey, WithError((api.DeleteStreamHandler))))
 	})
 
 	///////////////////////////
@@ -213,6 +217,7 @@ func NewAPI(
 	///////////////////////////
 	//	Battle Arena Events	 //
 	///////////////////////////
+	api.BattleArena.Events.AddEventHandler(battle_arena.EventGameInit, api.BattleInitSignal)
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventGameStart, api.BattleStartSignal)
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventGameEnd, api.BattleEndSignal)
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventWarMachineDestroyed, api.WarMachineDestroyedBroadcast)
@@ -270,6 +275,8 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 
 	// listen to the client online and action channel
 	go api.ClientListener()
+
+	go api.startClientTracker()
 
 	// start twitch jwt auth listener
 	go api.startAuthRignCheckListener()
@@ -340,7 +347,7 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 					continue
 				}
 				go func(c *hub.Client) {
-					err := c.SendWithMessageType(ctx, payload, websocket.MessageBinary)
+					err := c.SendWithMessageType(payload, websocket.MessageBinary)
 					if err != nil {
 						api.Log.Err(err).Msg("failed to send broadcast")
 					}
@@ -358,13 +365,9 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 
 // Event handlers
 func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client, clients hub.ClientsList, ch hub.TriggerChan) {
-	_, ok := api.hubClientDetail[wsc]
-	if !ok {
-		// initialise a client detail channel if not on the list
-		api.hubClientDetail[wsc] = make(chan func(*server.User))
-		go api.startClientTracker(wsc)
-		go api.viewerLiveCountAdd(server.FactionID(uuid.Nil))
-	}
+	// initialise a client detail channel if not on the list
+	go api.hubClientDetailRegister(wsc)
+	go api.viewerLiveCountAdd(server.FactionID(uuid.Nil))
 
 	// broadcast current game state
 	go func() {
@@ -386,10 +389,12 @@ func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client, clients
 			return
 		}
 
-		err = wsc.Send(ctx, gameSettingsData)
-		if err != nil {
-			api.Log.Err(err).Msg("failed to send broadcast")
-		}
+		go func() {
+			err := wsc.Send(gameSettingsData)
+			if err != nil {
+				api.Log.Err(err).Msg("failed to send game settings data")
+			}
+		}()
 	}()
 }
 
@@ -433,7 +438,7 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 						api.Log.Err(err)
 					}
 
-					api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteBattleAbilityUpdated), battleAbility)
+					go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteBattleAbilityUpdated), battleAbility)
 
 					// initialise new ability collection
 					va.BattleAbility = battleAbility
@@ -449,7 +454,7 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 					vs.EndTime = time.Now().Add(time.Duration(va.BattleAbility.CooldownDurationSecond) * time.Second)
 
 					// broadcast current stage to faction users
-					api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+					go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 
 					return
 				}
@@ -460,7 +465,7 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 				vs.EndTime = time.Now().Add(LocationSelectDurationSecond * time.Second)
 
 				// otherwise announce another winner
-				api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, winnerClientID)), &WinnerSelectAbilityLocation{
+				go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, winnerClientID)), &WinnerSelectAbilityLocation{
 					GameAbility: va.FactionAbilityMap[nextUser.FactionID],
 					EndTime:     vs.EndTime,
 				})
@@ -474,13 +479,13 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 				})
 
 				// broadcast current stage to faction users
-				api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 			}
 		}
 	}
 
 	// clean up the map
-	delete(api.hubClientDetail, wsc)
+	api.hubClientDetailRemove(wsc)
 }
 
 // Run the API service

@@ -148,7 +148,7 @@ func (gc *GameControllerWS) BattleEndDetailUpdateSubscribeHandler(ctx context.Co
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
-	if !gc.API.battleEndInfo.BattleID.IsNil() && gc.API.battleEndInfo.BattleID == gc.API.BattleArena.CurrentBattleID() {
+	if gc.API.BattleArena.GetCurrentState().EndedAt != nil {
 		reply(gc.API.battleEndInfo)
 	}
 
@@ -287,7 +287,7 @@ func (api *API) clientBroadcast(ctx context.Context, data []byte) {
 				continue
 			}
 			go func(c *hub.Client) {
-				err := c.Send(ctx, data)
+				err := c.Send(data)
 				if err != nil {
 					api.Log.Err(err).Msg("failed to send broadcast")
 				}

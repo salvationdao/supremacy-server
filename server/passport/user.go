@@ -133,23 +133,23 @@ func (pp *Passport) UserStatSend(ctx context.Context, userStatSends []*UserStatS
 	}
 }
 
-type GetUser struct {
-	User *server.User `json:"payload"`
+type GetUsers struct {
+	Users []*server.User `json:"payload"`
 }
 
 // UserGet get user by id
-func (pp *Passport) UserGet(ctx context.Context, userID server.UserID) (*server.User, error) {
+func (pp *Passport) UsersGet(ctx context.Context, userIDs []server.UserID) ([]*server.User, error) {
 	replyChannel := make(chan []byte)
 	errChan := make(chan error)
 	pp.send <- &Request{
 		ReplyChannel: replyChannel,
 		ErrChan:      errChan,
 		Message: &Message{
-			Key: "SUPREMACY:GET_USER",
+			Key: "SUPREMACY:GET_USERS",
 			Payload: struct {
-				UserID server.UserID `json:"userID"`
+				UserIDs []server.UserID `json:"userIDs"`
 			}{
-				UserID: userID,
+				UserIDs: userIDs,
 			},
 			context:       ctx,
 			TransactionID: uuid.Must(uuid.NewV4()).String(),
@@ -159,12 +159,12 @@ func (pp *Passport) UserGet(ctx context.Context, userID server.UserID) (*server.
 	for {
 		select {
 		case msg := <-replyChannel:
-			resp := &GetUser{}
+			resp := &GetUsers{}
 			err := json.Unmarshal(msg, resp)
 			if err != nil {
 				return nil, terror.Error(err)
 			}
-			return resp.User, nil
+			return resp.Users, nil
 		case err := <-errChan:
 			return nil, terror.Error(err)
 		}

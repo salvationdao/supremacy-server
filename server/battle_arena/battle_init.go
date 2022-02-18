@@ -59,6 +59,10 @@ func (ba *BattleArena) InitNextBattle() error {
 		}
 	}
 
+	// clean up battle end message of the last battle
+	ba.battle.EndedAt = nil
+	ba.Events.Trigger(context.Background(), EventGameInit, nil)
+
 	ba.Log.Info().Msgf("Initializing new battle: %s", ba.battle.ID)
 
 	// Setup payload

@@ -339,7 +339,7 @@ func (api *API) UserSupsMultiplierToPassport(userID server.UserID, supsMultiplie
 		})
 	}
 
-	api.Passport.UserSupsMultiplierSend(context.Background(), []*passport.UserSupsMultiplierSend{userSupsMultiplierSend})
+	go api.Passport.UserSupsMultiplierSend(context.Background(), []*passport.UserSupsMultiplierSend{userSupsMultiplierSend})
 }
 
 func (api *API) clientMapUpdatedChecker(newClientMap map[server.UserID]*ClientMultiplier, oldClientMap map[server.UserID]map[string]*MultiplierAction) {
@@ -427,6 +427,6 @@ func (api *API) clientMapUpdatedChecker(newClientMap map[server.UserID]*ClientMu
 
 	if len(sendDiff) > 0 {
 		// broadcast multiplier change
-		api.Passport.UserSupsMultiplierSend(context.Background(), sendDiff)
+		go api.Passport.UserSupsMultiplierSend(context.Background(), sendDiff)
 	}
 }

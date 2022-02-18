@@ -28,6 +28,7 @@ type Event string
 type EventHandler func(ctx context.Context, ed *EventData)
 
 const (
+	EventGameInit                  Event = "GAME_INIT"
 	EventGameStart                 Event = "GAME_START"
 	EventGameEnd                   Event = "GAME_END"
 	EventWarMachineQueueUpdated    Event = "WAR_MACHINE_QUEUE_UPDATED"

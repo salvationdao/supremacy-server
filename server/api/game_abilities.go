@@ -224,7 +224,7 @@ func (api *API) abilityTargetPriceUpdaterFactory(ctx context.Context, factionID 
 						}
 
 						// broadcast vote price forecast
-						err = c.SendWithMessageType(ctx, payload, websocket.MessageBinary)
+						err = c.SendWithMessageType(payload, websocket.MessageBinary)
 						if err != nil {
 							api.Log.Err(err).Msg("failed to send broadcast")
 						}
@@ -270,7 +270,7 @@ func (api *API) abilityTargetPriceBroadcasterFactory(ctx context.Context, factio
 						}
 
 						// broadcast vote price forecast
-						err = c.SendWithMessageType(ctx, payload, websocket.MessageBinary)
+						err = c.SendWithMessageType(payload, websocket.MessageBinary)
 						if err != nil {
 							api.Log.Err(err).Msg("failed to send broadcast")
 						}
@@ -323,12 +323,12 @@ func (api *API) startGameAbilityPoolTicker(ctx context.Context, factionID server
 
 		// broadcast abilities
 		if len(factionAbilities) > 0 {
-			api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionAbilitiesUpdated, factionID)), factionAbilities)
+			go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionAbilitiesUpdated, factionID)), factionAbilities)
 		}
 
 		// broadcast war machine ability
 		for participantID, abilities := range warMachineAbilities {
-			api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s:%x", HubKeyWarMachineAbilitiesUpdated, factionID, participantID)), abilities)
+			go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s:%x", HubKeyWarMachineAbilitiesUpdated, factionID, participantID)), abilities)
 		}
 
 		// start all the tickles
