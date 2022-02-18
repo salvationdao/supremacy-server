@@ -60,7 +60,6 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 	if err != nil {
 		return terror.Error(err, "Invalid request received")
 	}
-
 	// get user detail
 	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
 	if userID.IsNil() {
@@ -240,6 +239,8 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 		targetPriceChan <- strings.Join(targetPriceList, "|")
 		errChan <- nil
 	}
+
+	reply(true)
 
 	// wait for target price change
 	targetPrice := <-targetPriceChan
