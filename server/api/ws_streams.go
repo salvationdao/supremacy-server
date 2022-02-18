@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"server"
 	"server/db"
@@ -42,6 +43,12 @@ func NewStreamController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Str
 const HubKeyStreamList hub.HubCommandKey = "STREAMLIST:SUBSCRIBE"
 
 func (s *StreamsWS) StreamListSubscribeSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	fmt.Println("kkkkkkkkkkkkk 4")
+	fmt.Println("kkkkkkkkkkkkk 4")
+	fmt.Println("kkkkkkkkkkkkk 4")
+	fmt.Println("kkkkkkkkkkkkk 4")
+	fmt.Println("kkkkkkkkkkkkk 4")
+
 	req := &StreamListRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -52,6 +59,16 @@ func (s *StreamsWS) StreamListSubscribeSubscribeHandler(ctx context.Context, wsc
 	if err != nil {
 		return req.TransactionID, "", terror.Error(err)
 	}
+
+	fmt.Println("ffffffffffff")
+	fmt.Println("ffffffffffff")
+	fmt.Println("ffffffffffff")
+	fmt.Println("ffffffffffff")
+	fmt.Println("ffffffffffff")
+	fmt.Println("ffffffffffff")
+	fmt.Println("ffffffffffff")
+	fmt.Println("ffffffffffff")
+	fmt.Println("ffffffffffff", streamList)
 
 	reply(streamList)
 
@@ -67,6 +84,11 @@ func (api *API) GetStreamsHandler(w http.ResponseWriter, r *http.Request) (int, 
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)
 	}
+	fmt.Println("kkkkkkkkkkkkk 3")
+	fmt.Println("kkkkkkkkkkkkk 3")
+	fmt.Println("kkkkkkkkkkkkk 3")
+	fmt.Println("kkkkkkkkkkkkk 3")
+	fmt.Println("kkkkkkkkkkkkk 3")
 
 	go api.MessageBus.Send(r.Context(), messagebus.BusKey(HubKeyStreamList), streams)
 

@@ -3,7 +3,8 @@ package server
 type Stream struct {
 	Host          string  `json:"host" db:"host"`
 	Name          string  `json:"name" db:"name"`
-	Url           string  `json:"url" db:"url"`
+	StreamID      string  `json:"streamID" db:"stream_id"`
+	WsURL         string  `json:"wsURL" db:"ws_url"`
 	Region        string  `json:"region" db:"region"`
 	Resolution    string  `json:"resolution" db:"resolution"`
 	BitRatesKBits int     `json:"bitRatesKBits" db:"bit_rates_k_bits"`
