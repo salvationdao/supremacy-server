@@ -171,13 +171,13 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 		})
 
 		// announce winner
-		vc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, userID)), &WinnerSelectAbilityLocation{
+		go vc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, userID)), &WinnerSelectAbilityLocation{
 			GameAbility: va.FactionAbilityMap[hcd.FactionID],
 			EndTime:     vs.EndTime,
 		})
 
 		// broadcast current stage to faction users
-		vc.API.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+		go vc.API.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 
 		// start vote listener
 		if vct.VotingStageListener.NextTick == nil || vct.VotingStageListener.NextTick.Before(time.Now()) {
@@ -301,7 +301,7 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 			return
 		}
 
-		vc.API.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteBattleAbilityUpdated), battleAbility)
+		go vc.API.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteBattleAbilityUpdated), battleAbility)
 
 		// initialise new ability collection
 		va.BattleAbility = battleAbility
@@ -317,7 +317,7 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 		vs.EndTime = time.Now().Add(time.Duration(va.BattleAbility.CooldownDurationSecond) * time.Second)
 
 		// broadcast current stage to faction users
-		vc.API.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+		go vc.API.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 
 		errChan <- nil
 	}

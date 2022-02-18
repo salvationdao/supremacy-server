@@ -389,10 +389,12 @@ func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client, clients
 			return
 		}
 
-		err = wsc.Send(gameSettingsData)
-		if err != nil {
-			api.Log.Err(err).Msg("failed to send broadcast")
-		}
+		go func() {
+			err := wsc.Send(gameSettingsData)
+			if err != nil {
+				api.Log.Err(err).Msg("failed to send game settings data")
+			}
+		}()
 	}()
 }
 
@@ -436,7 +438,7 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 						api.Log.Err(err)
 					}
 
-					api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteBattleAbilityUpdated), battleAbility)
+					go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteBattleAbilityUpdated), battleAbility)
 
 					// initialise new ability collection
 					va.BattleAbility = battleAbility
@@ -452,7 +454,7 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 					vs.EndTime = time.Now().Add(time.Duration(va.BattleAbility.CooldownDurationSecond) * time.Second)
 
 					// broadcast current stage to faction users
-					api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+					go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 
 					return
 				}
@@ -463,7 +465,7 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 				vs.EndTime = time.Now().Add(LocationSelectDurationSecond * time.Second)
 
 				// otherwise announce another winner
-				api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, winnerClientID)), &WinnerSelectAbilityLocation{
+				go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, winnerClientID)), &WinnerSelectAbilityLocation{
 					GameAbility: va.FactionAbilityMap[nextUser.FactionID],
 					EndTime:     vs.EndTime,
 				})
@@ -477,7 +479,7 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 				})
 
 				// broadcast current stage to faction users
-				api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 			}
 		}
 	}

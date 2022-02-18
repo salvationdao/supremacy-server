@@ -68,7 +68,7 @@ func (api *API) GetStreamsHandler(w http.ResponseWriter, r *http.Request) (int, 
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	api.MessageBus.Send(r.Context(), messagebus.BusKey(HubKeyStreamList), streams)
+	go api.MessageBus.Send(r.Context(), messagebus.BusKey(HubKeyStreamList), streams)
 
 	return helpers.EncodeJSON(w, streams)
 }
@@ -91,7 +91,7 @@ func (api *API) CreateStreamHandler(w http.ResponseWriter, r *http.Request) (int
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	api.MessageBus.Send(r.Context(), messagebus.BusKey(HubKeyVoteStageUpdated), streamList)
+	go api.MessageBus.Send(r.Context(), messagebus.BusKey(HubKeyVoteStageUpdated), streamList)
 
 	return http.StatusOK, nil
 }
@@ -113,7 +113,7 @@ func (api *API) DeleteStreamHandler(w http.ResponseWriter, r *http.Request) (int
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	api.MessageBus.Send(r.Context(), messagebus.BusKey(HubKeyVoteStageUpdated), streamList)
+	go api.MessageBus.Send(r.Context(), messagebus.BusKey(HubKeyVoteStageUpdated), streamList)
 
 	return http.StatusOK, nil
 }

@@ -542,7 +542,7 @@ func (api *API) startVotingCycle(ctx context.Context, introSecond int) {
 		vs.EndTime = time.Now().Add(time.Duration(introSecond) * time.Second)
 
 		// broadcast current stage to faction users
-		api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+		go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 
 		if vct.VotingStageListener.NextTick == nil || vct.VotingStageListener.NextTick.Before(time.Now()) {
 			vct.VotingStageListener.Start()
@@ -556,7 +556,7 @@ func (api *API) stopVotingCycle(ctx context.Context) []*server.BattleUserVote {
 	api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
 		vs.Phase = VotePhaseHold
 		// broadcast current stage to faction users
-		api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+		go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 
 		if vct.VotingStageListener.NextTick != nil {
 			vct.VotingStageListener.Stop()
@@ -621,7 +621,7 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 					api.Log.Err(err)
 				}
 
-				api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteBattleAbilityUpdated), battleAbility)
+				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteBattleAbilityUpdated), battleAbility)
 
 				// initialise new ability collection
 				va.BattleAbility = battleAbility
@@ -638,7 +638,7 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 				vs.EndTime = time.Now().Add(time.Duration(battleAbility.CooldownDurationSecond) * time.Second)
 
 				// broadcast current stage to faction users
-				api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 
 			// at the end of ability right voting
 			case VotePhaseVoteAbilityRight:
@@ -661,7 +661,7 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 					api.votePhaseChecker.Phase = VotePhaseNextVoteWin
 					vs.Phase = VotePhaseNextVoteWin
 					// broadcast current stage to faction users
-					api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+					go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 
 					// stop ticker
 					if vct.VotingStageListener.NextTick != nil {
@@ -766,7 +766,7 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 					vs.EndTime = time.Now().Add(time.Duration(va.BattleAbility.CooldownDurationSecond) * time.Second)
 
 					// broadcast current stage to faction users
-					api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+					go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 
 					return
 				}
@@ -782,13 +782,13 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 				})
 
 				// announce winner
-				api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, winnerClientID)), &WinnerSelectAbilityLocation{
+				go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, winnerClientID)), &WinnerSelectAbilityLocation{
 					GameAbility: va.FactionAbilityMap[hcd.FactionID],
 					EndTime:     vs.EndTime,
 				})
 
 				// broadcast current stage to faction users
-				api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 
 				// stop broadcaster when the vote right is done
 				if vct.AbilityRightResultBroadcaster.NextTick != nil {
@@ -823,7 +823,7 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 						api.Log.Err(err)
 					}
 
-					api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteBattleAbilityUpdated), battleAbility)
+					go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteBattleAbilityUpdated), battleAbility)
 
 					// initialise new ability collection
 					va.BattleAbility = battleAbility
@@ -839,7 +839,7 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 					vs.EndTime = time.Now().Add(time.Duration(va.BattleAbility.CooldownDurationSecond) * time.Second)
 
 					// broadcast current stage to faction users
-					api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+					go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 
 					return
 				}
@@ -850,7 +850,7 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 				vs.EndTime = time.Now().Add(LocationSelectDurationSecond * time.Second)
 
 				// otherwise announce another winner
-				api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, winnerClientID)), &WinnerSelectAbilityLocation{
+				go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, winnerClientID)), &WinnerSelectAbilityLocation{
 					GameAbility: va.FactionAbilityMap[nextUser.FactionID],
 					EndTime:     vs.EndTime,
 				})
@@ -864,7 +864,7 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 				})
 
 				// broadcast current stage to faction users
-				api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 
 			// at the end of cooldown
 			case VotePhaseVoteCooldown:
@@ -888,7 +888,7 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 				vs.EndTime = time.Now().Add(VoteAbilityRightDurationSecond * time.Second)
 
 				// broadcast current stage to faction users
-				api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 
 				// start tracking vote right result
 				if vct.AbilityRightResultBroadcaster.NextTick == nil || vct.AbilityRightResultBroadcaster.NextTick.Before(time.Now()) {

@@ -225,7 +225,7 @@ func (api *API) PassportBattleQueueJoinHandler(ctx context.Context, payload []by
 
 			// broadcast next 5 queuing war machines to twitch ui
 			if len(wmq.WarMachines) <= 5 {
-				api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionWarMachineQueueUpdated, req.Payload.WarMachineMetadata.FactionID)), wmq.WarMachines)
+				go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionWarMachineQueueUpdated, req.Payload.WarMachineMetadata.FactionID)), wmq.WarMachines)
 			}
 
 			// broadcast war machine queue position update
@@ -289,10 +289,10 @@ func (api *API) PassportBattleQueueReleaseHandler(ctx context.Context, payload [
 					maxLength = len(wmq.WarMachines)
 				}
 
-				api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionWarMachineQueueUpdated, req.Payload.WarMachineMetadata.FactionID)), wmq.WarMachines[:maxLength])
+				go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionWarMachineQueueUpdated, req.Payload.WarMachineMetadata.FactionID)), wmq.WarMachines[:maxLength])
 			}
 
-			api.Passport.WarMachineQueuePositionBroadcast(context.Background(), api.BattleArena.BuildUserWarMachineQueuePosition(wmq.WarMachines, []*server.WarMachineMetadata{}, req.Payload.WarMachineMetadata.OwnedByID))
+			go api.Passport.WarMachineQueuePositionBroadcast(context.Background(), api.BattleArena.BuildUserWarMachineQueuePosition(wmq.WarMachines, []*server.WarMachineMetadata{}, req.Payload.WarMachineMetadata.OwnedByID))
 		}
 	}
 }

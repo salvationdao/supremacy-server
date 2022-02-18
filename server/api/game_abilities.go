@@ -323,12 +323,12 @@ func (api *API) startGameAbilityPoolTicker(ctx context.Context, factionID server
 
 		// broadcast abilities
 		if len(factionAbilities) > 0 {
-			api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionAbilitiesUpdated, factionID)), factionAbilities)
+			go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionAbilitiesUpdated, factionID)), factionAbilities)
 		}
 
 		// broadcast war machine ability
 		for participantID, abilities := range warMachineAbilities {
-			api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s:%x", HubKeyWarMachineAbilitiesUpdated, factionID, participantID)), abilities)
+			go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s:%x", HubKeyWarMachineAbilitiesUpdated, factionID, participantID)), abilities)
 		}
 
 		// start all the tickles
