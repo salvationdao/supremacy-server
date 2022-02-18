@@ -192,6 +192,9 @@ func NewAPI(
 		// See roothub.ServeHTTP for the setup of sentry on this route.
 		r.Handle("/ws", api.Hub)
 		r.Get("/events", WithError(api.BattleArena.GetEvents))
+		r.Post("/video_server", WithToken(config.ServerStreamKey, WithError((api.CreateStreamHandler))))
+		r.Get("/video_server", WithToken(config.ServerStreamKey, WithError((api.GetStreamsHandler))))
+		r.Delete("/video_server", WithToken(config.ServerStreamKey, WithError((api.DeleteStreamHandler))))
 	})
 
 	///////////////////////////
@@ -344,7 +347,7 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 					continue
 				}
 				go func(c *hub.Client) {
-					err := c.SendWithMessageType(ctx, payload, websocket.MessageBinary)
+					err := c.SendWithMessageType(payload, websocket.MessageBinary)
 					if err != nil {
 						api.Log.Err(err).Msg("failed to send broadcast")
 					}
@@ -386,10 +389,12 @@ func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client, clients
 			return
 		}
 
-		err = wsc.Send(ctx, gameSettingsData)
-		if err != nil {
-			api.Log.Err(err).Msg("failed to send broadcast")
-		}
+		go func() {
+			err := wsc.Send(gameSettingsData)
+			if err != nil {
+				api.Log.Err(err).Msg("failed to send game settings data")
+			}
+		}()
 	}()
 }
 
@@ -433,7 +438,7 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 						api.Log.Err(err)
 					}
 
-					api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteBattleAbilityUpdated), battleAbility)
+					go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteBattleAbilityUpdated), battleAbility)
 
 					// initialise new ability collection
 					va.BattleAbility = battleAbility
@@ -449,7 +454,7 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 					vs.EndTime = time.Now().Add(time.Duration(va.BattleAbility.CooldownDurationSecond) * time.Second)
 
 					// broadcast current stage to faction users
-					api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+					go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 
 					return
 				}
@@ -460,7 +465,7 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 				vs.EndTime = time.Now().Add(LocationSelectDurationSecond * time.Second)
 
 				// otherwise announce another winner
-				api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, winnerClientID)), &WinnerSelectAbilityLocation{
+				go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, winnerClientID)), &WinnerSelectAbilityLocation{
 					GameAbility: va.FactionAbilityMap[nextUser.FactionID],
 					EndTime:     vs.EndTime,
 				})
@@ -474,7 +479,7 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 				})
 
 				// broadcast current stage to faction users
-				api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 			}
 		}
 	}

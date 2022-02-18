@@ -23,7 +23,7 @@ func (api *API) BattleInitSignal(ctx context.Context, ed *battle_arena.EventData
 	api.battleEndInfo = &BattleEndInfo{}
 
 	// pass back nil to tell game ui to clean up current end battle message
-	api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyBattleEndDetailUpdated), nil)
+	go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyBattleEndDetailUpdated), nil)
 }
 
 const HubKeyGameSettingsUpdated = hub.HubCommandKey("GAME:SETTINGS:UPDATED")
@@ -63,7 +63,7 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 				continue
 			}
 			go func(c *hub.Client) {
-				err := c.Send(ctx, gameSettingsData)
+				err := c.Send(gameSettingsData)
 				if err != nil {
 					api.Log.Err(err).Msg("failed to send broadcast")
 				}
@@ -209,7 +209,7 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 	}
 
 	// broadcast battle end info back to game ui
-	api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyBattleEndDetailUpdated), api.battleEndInfo)
+	go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyBattleEndDetailUpdated), api.battleEndInfo)
 
 	// refresh user stat
 	if len(battleViewers) > 0 {
@@ -234,7 +234,7 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 				})
 			}
 
-			api.Passport.UserStatSend(ctx, userStatSends)
+			go api.Passport.UserStatSend(ctx, userStatSends)
 		}()
 	}
 
@@ -343,7 +343,7 @@ func (api *API) WarMachineDestroyedBroadcast(ctx context.Context, ed *battle_are
 		Event:     wmd,
 	})
 
-	api.MessageBus.Send(ctx,
+	go api.MessageBus.Send(ctx,
 		messagebus.BusKey(
 			fmt.Sprintf(
 				"%s:%x",
@@ -367,7 +367,7 @@ func (api *API) UpdateWarMachinePosition(ctx context.Context, ed *battle_arena.E
 				continue
 			}
 			go func(c *hub.Client) {
-				err := c.SendWithMessageType(ctx, ed.WarMachineLocation, websocket.MessageBinary)
+				err := c.SendWithMessageType(ed.WarMachineLocation, websocket.MessageBinary)
 				if err != nil {
 					api.Log.Err(err).Msg("failed to send broadcast")
 				}
@@ -380,5 +380,5 @@ func (api *API) UpdateWarMachineQueue(ctx context.Context, ed *battle_arena.Even
 	if ed.WarMachineQueue == nil {
 		return
 	}
-	api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionWarMachineQueueUpdated, ed.WarMachineQueue.FactionID)), ed.WarMachineQueue.WarMachines)
+	go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionWarMachineQueueUpdated, ed.WarMachineQueue.FactionID)), ed.WarMachineQueue.WarMachines)
 }

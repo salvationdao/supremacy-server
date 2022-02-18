@@ -65,7 +65,7 @@ func (api *API) initialiseViewerLiveCount(ctx context.Context, factions []*serve
 					continue
 				}
 				go func(c *hub.Client) {
-					err := c.SendWithMessageType(ctx, payload, websocket.MessageBinary)
+					err := c.SendWithMessageType(payload, websocket.MessageBinary)
 					if err != nil {
 						api.Log.Err(err).Msg("failed to send broadcast")
 					}

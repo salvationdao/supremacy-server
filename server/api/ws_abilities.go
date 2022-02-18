@@ -277,7 +277,7 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 					}
 
 					// broadcast vote price forecast
-					err = c.SendWithMessageType(ctx, payload, websocket.MessageBinary)
+					err = c.SendWithMessageType(payload, websocket.MessageBinary)
 					if err != nil {
 						fc.API.Log.Err(err).Msg("failed to send broadcast")
 					}

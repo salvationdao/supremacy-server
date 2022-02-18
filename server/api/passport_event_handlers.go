@@ -111,7 +111,7 @@ func (api *API) PassportUserUpdatedHandler(ctx context.Context, payload []byte) 
 
 			if hcd != nil {
 				go func() {
-					err = client.Send(ctx, broadcastData)
+					err = client.Send(broadcastData)
 					if err != nil {
 						api.Log.Err(err).Msg("Failed to send auth response back to twitch client")
 						return
@@ -182,7 +182,7 @@ func (api *API) PassportUserEnlistFactionHandler(ctx context.Context, payload []
 				hcd.Faction = api.factionMap[hcd.FactionID]
 			}
 
-			err = client.Send(ctx, broadcastData)
+			err = client.Send(broadcastData)
 			if err != nil {
 				api.Log.Err(err).Msg("Failed to send auth response back to client")
 				return
@@ -225,7 +225,7 @@ func (api *API) PassportBattleQueueJoinHandler(ctx context.Context, payload []by
 
 			// broadcast next 5 queuing war machines to twitch ui
 			if len(wmq.WarMachines) <= 5 {
-				api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionWarMachineQueueUpdated, req.Payload.WarMachineMetadata.FactionID)), wmq.WarMachines)
+				go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionWarMachineQueueUpdated, req.Payload.WarMachineMetadata.FactionID)), wmq.WarMachines)
 			}
 
 			// broadcast war machine queue position update
@@ -289,10 +289,10 @@ func (api *API) PassportBattleQueueReleaseHandler(ctx context.Context, payload [
 					maxLength = len(wmq.WarMachines)
 				}
 
-				api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionWarMachineQueueUpdated, req.Payload.WarMachineMetadata.FactionID)), wmq.WarMachines[:maxLength])
+				go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionWarMachineQueueUpdated, req.Payload.WarMachineMetadata.FactionID)), wmq.WarMachines[:maxLength])
 			}
 
-			api.Passport.WarMachineQueuePositionBroadcast(context.Background(), api.BattleArena.BuildUserWarMachineQueuePosition(wmq.WarMachines, []*server.WarMachineMetadata{}, req.Payload.WarMachineMetadata.OwnedByID))
+			go api.Passport.WarMachineQueuePositionBroadcast(context.Background(), api.BattleArena.BuildUserWarMachineQueuePosition(wmq.WarMachines, []*server.WarMachineMetadata{}, req.Payload.WarMachineMetadata.OwnedByID))
 		}
 	}
 }
@@ -657,7 +657,7 @@ func (api *API) AuthRingCheckHandler(ctx context.Context, payload []byte) {
 		return
 	}
 
-	err = client.Send(ctx, b)
+	err = client.Send(b)
 	if err != nil {
 		api.Log.Err(err).Msg("Failed to send auth response back to twitch client")
 		return
