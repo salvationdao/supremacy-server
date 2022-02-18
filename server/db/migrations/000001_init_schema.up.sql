@@ -130,7 +130,7 @@ CREATE TABLE stream_list
 (
     host text PRIMARY KEY NOT NULL,
     name text NOT NULL,
-    ws_url text NOT NULL,
+    url text NOT NULL,
     stream_id text NOT NULL,
     region text NOT NULL,
     resolution text NOT NULL,

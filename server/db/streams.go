@@ -13,14 +13,14 @@ import (
 func CreateStream(ctx context.Context, conn Conn, stream *server.Stream) error {
 	q := `
 		INSERT INTO
-			stream_list (host, name, ws_url, stream_id, region, resolution, bit_rates_k_bits, user_max, users_now, active, status, latitude, longitude)
+			stream_list (host, name, url, stream_id, region, resolution, bit_rates_k_bits, user_max, users_now, active, status, latitude, longitude)
 		VALUES
 			($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 		RETURNING
-		host, name, ws_url, stream_id, region, resolution, bit_rates_k_bits, user_max, users_now, active, status
+		host, name, url, stream_id region, resolution, bit_rates_k_bits, user_max, users_now, active, status
 	`
 
-	err := pgxscan.Get(ctx, conn, stream, q, stream.Host, stream.Name, stream.WsURL, stream.StreamID, stream.Region, stream.Resolution, stream.BitRatesKBits, stream.UserMax, stream.UsersNow, stream.Active, stream.Status, stream.Latitude, stream.Longitude)
+	err := pgxscan.Get(ctx, conn, stream, q, stream.Host, stream.Name, stream.URL, stream.StreamID, stream.Region, stream.Resolution, stream.BitRatesKBits, stream.UserMax, stream.UsersNow, stream.Active, stream.Status, stream.Latitude, stream.Longitude)
 	if err != nil {
 		fmt.Println("errrrrrrrrrrr", err)
 		return terror.Error(err)
