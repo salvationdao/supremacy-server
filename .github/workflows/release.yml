@@ -1,0 +1,90 @@
+name: Publish Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+      - "!*-rc*"
+
+permissions:
+  contents: write
+
+jobs:
+  Release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - uses: actions/setup-go@v2 # install go
+        with:
+          go-version: 1.17
+      # Setup
+      # Multi key private go repos
+      # https://gist.github.com/jrapoport/d12f60029eef017354d0ec982b918258
+      - name: Setup go private repos access
+        run: |
+          mkdir -p ~/.ssh
+          echo -e "Host hub.github.com\n  HostName github.com\n  IdentityFile ~/.ssh/id_ed25519_hub\n  IdentitiesOnly yes" >> ~/.ssh/config
+          echo -e "Host bridge.github.com\n  HostName github.com\n  IdentityFile ~/.ssh/id_ed25519_bridge\n  IdentitiesOnly yes" >> ~/.ssh/config
+          echo -e "Host loghelpers.github.com\n  HostName github.com\n  IdentityFile ~/.ssh/id_ed25519_loghelpers\n  IdentitiesOnly yes" >> ~/.ssh/config
+          echo '${{ secrets.GH_DEPLOY_HUB_PK }}' > ~/.ssh/id_ed25519_hub
+          chmod 600 ~/.ssh/id_ed25519_hub
+          echo '${{ secrets.GH_DEPLOY_BRIDGE_PK }}' > ~/.ssh/id_ed25519_bridge
+          chmod 600 ~/.ssh/id_ed25519_bridge
+          echo '${{ secrets.GH_DEPLOY_LOGHELPERS_PK }}' > ~/.ssh/id_ed25519_loghelpers
+          chmod 600 ~/.ssh/id_ed25519_loghelpers
+          git config --global user.name "Github CI"
+          git config --global user.email "team@syndicate.ninja"
+          git config --global --add url."git@hub.github.com:ninja-syndicate/hub".insteadOf "https://github.com/ninja-syndicate/hub"
+          git config --global --add url."git@bridge.github.com:ninja-syndicate/supremacy-bridge".insteadOf "https://github.com/ninja-syndicate/supremacy-bridge"
+          git config --global --add url."git@loghelpers.github.com:ninja-software/log_helpers".insteadOf "https://github.com/ninja-software/log_helpers"
+
+      - name: Setup build env
+        run: |
+          export GOPRIVATE="github.com/ninja-syndicate/*,github.com/ninja-software/*"
+          mkdir -p bin
+          make tools
+
+      - name: Copy dependants
+        run: |
+          mkdir -p deploy
+          cp bin/migrate deploy/.
+          cp -r ./init deploy/.
+          cp -r ./scripts deploy/.
+          cp -r ./configs deploy/.
+          cp -r ./server/db/migrations deploy/.
+
+      - name: Get build metadata
+        run: |
+          echo "GITVERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
+          echo "GITHASH=$(git rev-parse HEAD)" >> $GITHUB_ENV
+          echo "GITBRANCH=${GITHUB_REF##*/}" >> $GITHUB_ENV
+          echo "BUILDDATE=$(date -u +%Y%m%d%H%M%S)" >> $GITHUB_ENV
+          echo "GITSTATE=$(git status --porcelain | wc -l)" >> $GITHUB_ENV
+
+      - name: Build API server
+        working-directory: ./server
+        run: |
+          go build \
+            -ldflags "-X main.Version=${{env.GITVERSION}} -X main.GitHash=${{env.GITHASH}} -X main.GitBranch=${{env.GITBRANCH}} -X main.BuildDate=${{env.BUILDDATE}} -X main.UnCommittedFiles=${{env.GITSTATE}}" \
+            -gcflags=-trimpath=${{ github.workspace }} \
+            -asmflags=-trimpath=${{ github.workspace }} \
+            -o ../deploy/gameserver \
+            cmd/gameserver/main.go
+
+      - name: Add info text
+        run: deploy/gameserver version --full > deploy/BuildInfo.txt
+
+      - name: Tar Gzip
+        run: |
+          mv deploy gameserver_${{env.GITVERSION}}
+          tar czf gameserver_${{env.GITVERSION}}.tar.gz gameserver_${{env.GITVERSION}}
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          prerelease: true
+          files: gameserver_${{env.GITVERSION}}.tar.gz
+          generate_release_notes: true
