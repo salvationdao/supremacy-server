@@ -5,11 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/jpillora/backoff"
-	"github.com/ninja-software/terror/v2"
 	"io"
 	"sync"
 	"time"
+
+	"github.com/jpillora/backoff"
+	"github.com/ninja-software/terror/v2"
 
 	"github.com/gofrs/uuid"
 
