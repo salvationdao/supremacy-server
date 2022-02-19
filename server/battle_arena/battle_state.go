@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"server"
 	"server/db"
 	"time"
@@ -208,6 +209,10 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 				battleRewardList.WinnerFactionID = bwm.FactionID
 				battleRewardList.WinningWarMachineOwnerIDs[bwm.OwnedByID] = true
 
+				if bwm.ContractReward.Cmp(big.NewInt(0)) <= 0 {
+					continue
+				}
+
 				// pay queuing contract reward
 				err = ba.passport.AssetContractRewardRedeem(
 					ctx,
@@ -309,7 +314,6 @@ const BattleReadyCommand = BattleCommand("BATTLE:READY")
 
 // BattleReadyHandler gets called when the game client is ready for a new battle
 func (ba *BattleArena) BattleReadyHandler(ctx context.Context, payload []byte, reply ReplyFunc) error {
-
 	err := ba.InitNextBattle()
 	if err != nil {
 		ba.Log.Err(err).Msg("Failed to initialise next battle")

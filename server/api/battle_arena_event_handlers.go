@@ -179,20 +179,22 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 		}
 	}
 
-	users, err := api.Passport.UsersGet(ctx, userIDs)
-	if err != nil {
-		api.Log.Err(err).Msg("Failed to get user from passport server")
-		return
-	}
+	if len(userIDs) > 0 {
+		users, err := api.Passport.UsersGet(ctx, userIDs)
+		if err != nil {
+			api.Log.Err(err).Msg("Failed to get user from passport server")
+			return
+		}
 
-	for _, userID := range userIDs {
-		for _, user := range users {
-			if user.ID == userID {
-				if !user.FactionID.IsNil() {
-					user.Faction = api.factionMap[user.FactionID]
+		for _, userID := range userIDs {
+			for _, user := range users {
+				if user.ID == userID {
+					if !user.FactionID.IsNil() {
+						user.Faction = api.factionMap[user.FactionID]
+					}
+					api.battleEndInfo.MostFrequentAbilityExecutors = append(api.battleEndInfo.MostFrequentAbilityExecutors, user.Brief())
+					break
 				}
-				api.battleEndInfo.MostFrequentAbilityExecutors = append(api.battleEndInfo.MostFrequentAbilityExecutors, user.Brief())
-				break
 			}
 		}
 	}

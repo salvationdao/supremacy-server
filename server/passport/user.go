@@ -25,7 +25,6 @@ func (pp *Passport) UpgradeUserConnection(ctx context.Context, sessionID hub.Ses
 				SessionID: sessionID,
 			},
 			TransactionID: uuid.Must(uuid.NewV4()).String(),
-			context:       ctx,
 		},
 	}
 	for {
@@ -48,7 +47,6 @@ func (pp *Passport) SendTickerMessage(ctx context.Context, userMap map[int][]ser
 			}{
 				UserMap: userMap,
 			},
-			context: ctx,
 		},
 	}
 }
@@ -66,7 +64,6 @@ func (pp *Passport) GetSpoilOfWarAmount(ctx context.Context) (string, error) {
 		ErrChan:      errChan,
 		Message: &Message{
 			Key:           "SUPREMACY:SUPS_POOL_AMOUNT",
-			context:       ctx,
 			TransactionID: uuid.Must(uuid.NewV4()).String(),
 		},
 	}
@@ -108,7 +105,6 @@ func (pp *Passport) UserSupsMultiplierSend(ctx context.Context, userSupsMultipli
 			}{
 				UserSupsMultiplierSends: userSupsMultiplierSends,
 			},
-			context: ctx,
 		},
 	}
 }
@@ -128,7 +124,6 @@ func (pp *Passport) UserStatSend(ctx context.Context, userStatSends []*UserStatS
 			}{
 				UserStatSends: userStatSends,
 			},
-			context: ctx,
 		},
 	}
 }
@@ -151,7 +146,6 @@ func (pp *Passport) UsersGet(ctx context.Context, userIDs []server.UserID) ([]*s
 			}{
 				UserIDs: userIDs,
 			},
-			context:       ctx,
 			TransactionID: uuid.Must(uuid.NewV4()).String(),
 		},
 	}

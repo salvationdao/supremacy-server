@@ -27,7 +27,6 @@ func (pp *Passport) GetDefaultWarMachines(ctx context.Context, factionID server.
 				Amount:    amount,
 			},
 			TransactionID: uuid.Must(uuid.NewV4()).String(),
-			context:       ctx,
 		}}
 
 	for {
@@ -57,7 +56,6 @@ func (pp *Passport) FactionWarMachineContractRewardUpdate(ctx context.Context, f
 			}{
 				FactionWarMachineQueues: fwm,
 			},
-			context: ctx,
 		},
 	}
 }
