@@ -92,7 +92,7 @@ func (ev *BattleArenaEvents) TriggerMany(ctx context.Context, event Event, ed *E
 
 func (ba *BattleArena) GetEvents(w http.ResponseWriter, r *http.Request) (int, error) {
 	ctx := context.Background()
-	sinceStr := r.Header.Get("since")
+	sinceStr := r.URL.Query().Get("since")
 	if sinceStr == "" {
 		events, err := db.GetEvents(ctx, ba.Conn, nil)
 		if err != nil {
