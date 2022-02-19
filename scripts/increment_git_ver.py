@@ -49,13 +49,13 @@ if current_branch == 'staging':
     fixedString = "{major}.{minor}.{micro}".format(
         major=current_version.major, minor=current_version.minor, micro=current_version.micro)
     if current_version.is_prerelease:
-        next_version = "{baseVer}-rc.{rc:02d}".format(
+        next_version = "v{baseVer}-rc.{rc:02d}".format(
             baseVer=fixedString, rc=current_version.pre[1]+1)
     else:
-        next_version = "{baseVer}-rc.01".format(baseVer=fixedString)
+        next_version = "v{baseVer}-rc.01".format(baseVer=fixedString)
 
 else:
-    logging.debug(
+    print(
         "invalid branch, should be staging: current is " + current_branch)
     exit(1)
 

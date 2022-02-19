@@ -2,7 +2,6 @@ package battle_arena
 
 import (
 	"context"
-	"fmt"
 	"server"
 	"server/db"
 	"time"
@@ -41,9 +40,7 @@ func (ba *BattleArena) InitNextBattle() error {
 		ba.Log.Info().Msg("No factions, trying again in 2 seconds")
 		time.Sleep(2 * time.Second)
 	}
-	fmt.Println(gameMap.MaxSpawns)
-	fmt.Println(gameMap.MaxSpawns)
-	fmt.Println(gameMap.MaxSpawns)
+
 	mechsPerFaction := gameMap.MaxSpawns / 3
 
 	for factionID := range ba.BattleQueueMap {

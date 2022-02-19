@@ -114,7 +114,12 @@ func UserStatMany(ctx context.Context, conn Conn, userIDs []server.UserID) ([]*s
 	users := []*server.UserStat{}
 
 	q := `
-		SELECT * FROM user_stats us
+		SELECT 	us.id,
+				COALESCE(us.view_battle_count,0),
+				COALESCE(us.total_vote_count,0),
+				COALESCE(us.total_ability_triggered,0),
+				COALESCE(us.kill_count,0)
+		FROM user_stats us
 		WHERE us.id IN (
 	`
 
