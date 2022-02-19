@@ -6,7 +6,9 @@ import (
 	"server"
 	"server/db"
 	"server/helpers"
+	"strconv"
 	"sync"
+	"time"
 
 	"github.com/ninja-software/terror/v2"
 )
@@ -90,7 +92,20 @@ func (ev *BattleArenaEvents) TriggerMany(ctx context.Context, event Event, ed *E
 
 func (ba *BattleArena) GetEvents(w http.ResponseWriter, r *http.Request) (int, error) {
 	ctx := context.Background()
-	events, err := db.GetEvents(ctx, ba.Conn, nil)
+	sinceStr := r.Header.Get("since")
+	if sinceStr == "" {
+		events, err := db.GetEvents(ctx, ba.Conn, nil)
+		if err != nil {
+			return http.StatusInternalServerError, terror.Error(err)
+		}
+		return helpers.EncodeJSON(w, events)
+	}
+	since, err := strconv.Atoi(sinceStr)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err)
+	}
+	t := time.Unix(int64(since), 0)
+	events, err := db.GetEvents(ctx, ba.Conn, &t)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)
 	}
