@@ -49,6 +49,7 @@ type Passport struct {
 	send      chan *Request
 
 	clientToken string
+	txRWMutex   sync.RWMutex
 
 	ctx   context.Context
 	close context.CancelFunc
@@ -65,6 +66,7 @@ func NewPassport(ctx context.Context, logger *zerolog.Logger, addr, clientToken 
 		Events:   Events{map[Event][]EventHandler{}, sync.RWMutex{}},
 
 		clientToken: clientToken,
+		txRWMutex:   sync.RWMutex{},
 
 		ctx:   ctx,
 		close: cancel,
@@ -248,11 +250,13 @@ reconnectLoop:
 						continue
 					}
 
+					pp.txRWMutex.Lock()
 					cb, ok := callbackChannels[transactionID]
 					if !ok {
 						pp.Log.Warn().Msgf("missing callback for transactionID %s", transactionID)
 						continue
 					}
+					pp.txRWMutex.Unlock()
 
 					// parse whether it is an error
 					errMsg := &responseError{}
@@ -308,10 +312,12 @@ func (pp *Passport) sendPump(ctx context.Context, cancelFunc context.CancelFunc,
 					continue
 				}
 
+				pp.txRWMutex.Lock()
 				callbackChannels[msg.TransactionID] = &callbackChannel{
 					ReplyChannel: msg.ReplyChannel,
 					errChan:      msg.ErrChan,
 				}
+				pp.txRWMutex.Unlock()
 			}
 
 			err := writeTimeout(ctx, &Message{
