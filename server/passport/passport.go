@@ -250,13 +250,13 @@ reconnectLoop:
 						continue
 					}
 
-					pp.txRWMutex.Lock()
+					pp.txRWMutex.RLock()
 					cb, ok := callbackChannels[transactionID]
 					if !ok {
 						pp.Log.Warn().Msgf("missing callback for transactionID %s", transactionID)
 						continue
 					}
-					pp.txRWMutex.Unlock()
+					pp.txRWMutex.RUnlock()
 
 					// parse whether it is an error
 					errMsg := &responseError{}

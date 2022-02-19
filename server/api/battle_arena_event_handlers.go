@@ -170,8 +170,8 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 
 	userIDs := []server.UserID{}
 	if len(us) <= 5 {
-		for _, uv := range userVoteList {
-			userIDs = append(userIDs, uv.UserID)
+		for _, u := range us {
+			userIDs = append(userIDs, u.ID)
 		}
 	} else {
 		for len(userIDs) < 5 {
