@@ -27,7 +27,7 @@ type BattleStartRequest struct {
 			TokenID       uint64 `json:"tokenID"`
 			ParticipantID byte   `json:"participantID"`
 		} `json:"warMachines"`
-		WarMachineLocation []byte `json:"warMachineLocation"`
+		// WarMachineLocation []byte `json:"warMachineLocation"`
 	} `json:"payload"`
 }
 
@@ -78,7 +78,7 @@ outerLoop:
 		ba.Log.Info().Msgf("War Machine: %s - %d", wm.Name, wm.TokenID)
 	}
 
-	ba.battle.BattleHistory = append(ba.battle.BattleHistory, req.Payload.WarMachineLocation)
+	// ba.battle.BattleHistory = append(ba.battle.BattleHistory, req.Payload.WarMachineLocation)
 
 	// save to database
 	tx, err := ba.Conn.Begin(ctx)
@@ -104,7 +104,13 @@ outerLoop:
 		return terror.Error(err)
 	}
 
-	_, err = db.CreateBattleStateEvent(ctx, tx, ba.battle.ID, server.BattleEventBattleStart)
+	// marshal warMachineData
+	b, err := json.Marshal(ba.battle.WarMachines)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	_, err = db.CreateBattleStateEvent(ctx, tx, ba.battle.ID, server.BattleEventBattleStart, b)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -115,6 +121,9 @@ outerLoop:
 	}
 
 	ba.Events.Trigger(ctx, EventGameStart, &EventData{BattleArena: ba.battle})
+
+	// switch battle state to START
+	ba.battle.State = server.StateMatchStart
 
 	return nil
 }
@@ -140,6 +149,9 @@ type BattleRewardList struct {
 }
 
 func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, reply ReplyFunc) error {
+	// switch battle state to END
+	ba.battle.State = server.StateMatchEnd
+
 	req := &BattleEndRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -184,13 +196,9 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 	if err != nil {
 		return terror.Error(err)
 	}
+
 	now := time.Now()
 	ba.battle.EndedAt = &now
-
-	_, err = db.CreateBattleStateEvent(ctx, tx, ba.battle.ID, server.BattleEventBattleEnd)
-	if err != nil {
-		return terror.Error(err)
-	}
 
 	// prepare battle reward request
 	battleRewardList := &BattleRewardList{

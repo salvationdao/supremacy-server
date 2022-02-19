@@ -143,14 +143,14 @@ func (api *API) abilityTargetPriceUpdaterFactory(ctx context.Context, factionID 
 						go api.BroadcastGameNotificationAbility(ctx, GameNotificationTypeFactionAbility, &GameNotificationAbility{
 							Ability: ability,
 						})
-						// record ability triggered event for battle end content
-						api.battleEndInfo.BattleEvents = append(api.battleEndInfo.BattleEvents, &BattleEventRecord{
-							Type:      server.BattleEventTypeGameAbility,
-							CreatedAt: time.Now(),
-							Event: &BattleAbilityEventRecord{
-								Ability: ability,
-							},
-						})
+						// // record ability triggered event for battle end content
+						// api.battleEndInfo.BattleEvents = append(api.battleEndInfo.BattleEvents, &BattleEventRecord{
+						// 	Type:      server.BattleEventTypeGameAbility,
+						// 	CreatedAt: time.Now(),
+						// 	Event: &BattleAbilityEventRecord{
+						// 		Ability: ability,
+						// 	},
+						// })
 					} else {
 						warMachine := api.BattleArena.GetWarMachine(fa.GameAbility.WarMachineTokenID).Brief()
 						// broadcast notification
@@ -158,15 +158,15 @@ func (api *API) abilityTargetPriceUpdaterFactory(ctx context.Context, factionID 
 							Ability:    ability,
 							WarMachine: warMachine,
 						})
-						// record ability triggered event for battle end content
-						api.battleEndInfo.BattleEvents = append(api.battleEndInfo.BattleEvents, &BattleEventRecord{
-							Type:      server.BattleEventTypeGameAbility,
-							CreatedAt: time.Now(),
-							Event: &BattleAbilityEventRecord{
-								Ability:               ability,
-								TriggeredOnWarMachine: warMachine,
-							},
-						})
+						// // record ability triggered event for battle end content
+						// api.battleEndInfo.BattleEvents = append(api.battleEndInfo.BattleEvents, &BattleEventRecord{
+						// 	Type:      server.BattleEventTypeGameAbility,
+						// 	CreatedAt: time.Now(),
+						// 	Event: &BattleAbilityEventRecord{
+						// 		Ability:               ability,
+						// 		TriggeredOnWarMachine: warMachine,
+						// 	},
+						// })
 					}
 
 					hasTriggered = 1

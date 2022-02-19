@@ -9,7 +9,6 @@ import (
 	"server/battle_arena"
 	"server/db"
 	"strings"
-	"time"
 
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -60,10 +59,20 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 	if err != nil {
 		return terror.Error(err, "Invalid request received")
 	}
+
 	// get user detail
 	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
 	if userID.IsNil() {
 		return terror.Error(terror.ErrForbidden)
+	}
+
+	// check whether the battle is started
+	if fc.API.BattleArena.GetCurrentState().State != server.StateMatchStart {
+		return terror.Error(terror.ErrInvalidInput, "The battle hasn't started yet")
+	}
+
+	if fc.API.votePhaseChecker.Phase == VotePhaseWaitMechIntro {
+		return terror.Error(terror.ErrInvalidInput, "Ability Contribute are available after intro")
 	}
 
 	// get client detail
@@ -73,11 +82,6 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 	}
 
 	factionID := hcd.FactionID
-
-	// check whether the battle is started
-	if fc.API.votePhaseChecker.Phase == VotePhaseHold {
-		return terror.Error(terror.ErrInvalidInput, "The battle hasn't started yet")
-	}
 
 	// calculate how many sups worth
 	oneSups := big.NewInt(0)
@@ -110,7 +114,7 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 		if err != nil {
 			targetPriceChan <- &targetPrice{
 				targetPrice: "",
-				err:         terror.Error(err),
+				err:         terror.Error(err, "Error - Failed to pay sups"),
 			}
 			return
 		}
@@ -213,34 +217,34 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 				User:    triggeredBy,
 				Ability: ability,
 			})
-			// record ability triggered event for battle end content
-			fc.API.battleEndInfo.BattleEvents = append(fc.API.battleEndInfo.BattleEvents, &BattleEventRecord{
-				Type:      server.BattleEventTypeGameAbility,
-				CreatedAt: time.Now(),
-				Event: &BattleAbilityEventRecord{
-					TriggeredByUser: triggeredBy,
-					Ability:         ability,
-				},
-			})
+			// // record ability triggered event for battle end content
+			// fc.API.battleEndInfo.BattleEvents = append(fc.API.battleEndInfo.BattleEvents, &BattleEventRecord{
+			// 	Type:      server.BattleEventTypeGameAbility,
+			// 	CreatedAt: time.Now(),
+			// 	Event: &BattleAbilityEventRecord{
+			// 		TriggeredByUser: triggeredBy,
+			// 		Ability:         ability,
+			// 	},
+			// })
 		} else {
 			warMachine := fc.API.BattleArena.GetWarMachine(fa.GameAbility.WarMachineTokenID).Brief()
 			// broadcast notification
 			go fc.API.BroadcastGameNotificationWarMachineAbility(ctx, &GameNotificationWarMachineAbility{
 				User:       hcd.Brief(),
 				Ability:    fa.GameAbility.Brief(),
-				WarMachine: fc.API.BattleArena.GetWarMachine(fa.GameAbility.WarMachineTokenID).Brief(),
+				WarMachine: warMachine,
 			})
 
-			// record ability triggered event for battle end content
-			fc.API.battleEndInfo.BattleEvents = append(fc.API.battleEndInfo.BattleEvents, &BattleEventRecord{
-				Type:      server.BattleEventTypeGameAbility,
-				CreatedAt: time.Now(),
-				Event: &BattleAbilityEventRecord{
-					TriggeredByUser:       triggeredBy,
-					Ability:               ability,
-					TriggeredOnWarMachine: warMachine,
-				},
-			})
+			// // record ability triggered event for battle end content
+			// fc.API.battleEndInfo.BattleEvents = append(fc.API.battleEndInfo.BattleEvents, &BattleEventRecord{
+			// 	Type:      server.BattleEventTypeGameAbility,
+			// 	CreatedAt: time.Now(),
+			// 	Event: &BattleAbilityEventRecord{
+			// 		TriggeredByUser:       triggeredBy,
+			// 		Ability:               ability,
+			// 		TriggeredOnWarMachine: warMachine,
+			// 	},
+			// })
 		}
 		// prepare broadcast data
 		targetPriceList := []string{}

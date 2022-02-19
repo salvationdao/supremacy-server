@@ -29,9 +29,9 @@ func (api *API) BattleInitSignal(ctx context.Context, ed *battle_arena.EventData
 const HubKeyGameSettingsUpdated = hub.HubCommandKey("GAME:SETTINGS:UPDATED")
 
 type GameSettingsResponse struct {
-	GameMap            *server.GameMap              `json:"gameMap"`
-	WarMachines        []*server.WarMachineMetadata `json:"warMachines"`
-	WarMachineLocation []byte                       `json:"warMachineLocation"`
+	GameMap     *server.GameMap              `json:"gameMap"`
+	WarMachines []*server.WarMachineMetadata `json:"warMachines"`
+	// WarMachineLocation []byte                       `json:"warMachineLocation"`
 }
 
 // BattleStartSignal start all the voting cycle
@@ -47,9 +47,9 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 	gameSettingsData, err := json.Marshal(&BroadcastPayload{
 		Key: HubKeyGameSettingsUpdated,
 		Payload: &GameSettingsResponse{
-			GameMap:            ed.BattleArena.GameMap,
-			WarMachines:        ed.BattleArena.WarMachines,
-			WarMachineLocation: ed.BattleArena.BattleHistory[0],
+			GameMap:     ed.BattleArena.GameMap,
+			WarMachines: ed.BattleArena.WarMachines,
+			// WarMachineLocation: ed.BattleArena.BattleHistory[0],
 		},
 	})
 	if err != nil {
@@ -72,8 +72,7 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 	})
 
 	// start voting cycle, initial intro time equal: (mech_count * 3 + 7) seconds
-	// introSecond := len(warMachines)*3 + 7
-	introSecond := 0
+	introSecond := len(warMachines)*3 + 7
 
 	for factionID := range api.factionMap {
 		go func(factionID server.FactionID) {
@@ -120,7 +119,10 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 // BattleEndSignal terminate all the voting cycle
 func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData) {
 
-	api.battleEndInfo.BattleID = api.BattleArena.CurrentBattleID()
+	battleStat := api.BattleArena.GetCurrentState()
+	api.battleEndInfo.BattleID = battleStat.ID
+	api.battleEndInfo.StartedAt = battleStat.StartedAt
+	api.battleEndInfo.EndedAt = *battleStat.EndedAt
 	// stop all the tickles in voting cycle
 	go api.stopGameAbilityPoolTicker()
 
@@ -158,6 +160,7 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 	}
 
 	for _, topFaction := range topFactions {
+		fmt.Println(topFaction.Label)
 		api.battleEndInfo.TopSupsContributeFactions = append(api.battleEndInfo.TopSupsContributeFactions, topFaction.Brief())
 	}
 
@@ -209,6 +212,18 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 		for _, wm := range ed.BattleArena.WinningWarMachines {
 			api.battleEndInfo.WinningWarMachines = append(api.battleEndInfo.WinningWarMachines, wm.Brief())
 		}
+	}
+
+	b, err := json.Marshal(api.battleEndInfo)
+	if err != nil {
+		api.Log.Err(err).Msg("Failed to marshal battle end information")
+		return
+	}
+
+	_, err = db.CreateBattleStateEvent(ctx, api.Conn, api.BattleArena.CurrentBattleID(), server.BattleEventBattleEnd, b)
+	if err != nil {
+		api.Log.Err(err).Msg("Failed to store battle end event")
+		return
 	}
 
 	// broadcast battle end info back to game ui
@@ -340,11 +355,11 @@ func (api *API) WarMachineDestroyedBroadcast(ctx context.Context, ed *battle_are
 	if ed.WarMachineDestroyedRecord.KilledByWarMachine != nil {
 		wmd.KilledByWarMachine = ed.WarMachineDestroyedRecord.KilledByWarMachine.Brief()
 	}
-	api.battleEndInfo.BattleEvents = append(api.battleEndInfo.BattleEvents, &BattleEventRecord{
-		Type:      server.BattleEventTypeWarMachineDestroyed,
-		CreatedAt: time.Now(),
-		Event:     wmd,
-	})
+	// api.battleEndInfo.BattleEvents = append(api.battleEndInfo.BattleEvents, &BattleEventRecord{
+	// 	Type:      server.BattleEventTypeWarMachineDestroyed,
+	// 	CreatedAt: time.Now(),
+	// 	Event:     wmd,
+	// })
 
 	go api.MessageBus.Send(ctx,
 		messagebus.BusKey(

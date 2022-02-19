@@ -79,14 +79,14 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 		return terror.Error(terror.ErrForbidden)
 	}
 
-	hcd, err := vc.API.getClientDetailFromChannel(wsc)
-	if err != nil {
-		return terror.Error(terror.ErrForbidden)
-	}
-
 	// check voting phase first
 	if vc.API.votePhaseChecker.Phase != VotePhaseVoteAbilityRight && vc.API.votePhaseChecker.Phase != VotePhaseNextVoteWin {
 		return terror.Error(terror.ErrForbidden, "Error - Invalid voting phase")
+	}
+
+	hcd, err := vc.API.getClientDetailFromChannel(wsc)
+	if err != nil {
+		return terror.Error(terror.ErrForbidden)
 	}
 
 	// get current faction vote price
@@ -273,17 +273,17 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 			return
 		}
 
-		// record ability triggered event for battle end content
-		vc.API.battleEndInfo.BattleEvents = append(vc.API.battleEndInfo.BattleEvents, &BattleEventRecord{
-			Type:      server.BattleEventTypeGameAbility,
-			CreatedAt: time.Now(),
-			Event: &BattleAbilityEventRecord{
-				TriggeredByUser:  hcd.Brief(),
-				Ability:          va.BattleAbility.Brief(),
-				TriggeredOnCellX: &selectedX,
-				TriggeredOnCellY: &selectedY,
-			},
-		})
+		// // record ability triggered event for battle end content
+		// vc.API.battleEndInfo.BattleEvents = append(vc.API.battleEndInfo.BattleEvents, &BattleEventRecord{
+		// 	Type:      server.BattleEventTypeGameAbility,
+		// 	CreatedAt: time.Now(),
+		// 	Event: &BattleAbilityEventRecord{
+		// 		TriggeredByUser:  hcd.Brief(),
+		// 		Ability:          va.BattleAbility.Brief(),
+		// 		TriggeredOnCellX: &selectedX,
+		// 		TriggeredOnCellY: &selectedY,
+		// 	},
+		// })
 
 		// broadcast notification
 		go vc.API.BroadcastGameNotificationLocationSelect(ctx, &GameNotificationLocationSelect{
@@ -367,11 +367,16 @@ func (vc *VoteControllerWS) BattleAbilityUpdateSubscribeHandler(ctx context.Cont
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
-	vc.API.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
-		if vs.Phase == VotePhaseHold {
-			return
+	// only pass ability when battle started and vote phase is not on hold
+	if vc.API.BattleArena.GetCurrentState().State == server.StateMatchStart &&
+		vc.API.votePhaseChecker.Phase != VotePhaseHold {
+
+		vc.API.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+			if vs.Phase == VotePhaseHold {
+				return
+			}
+			reply(va.BattleAbility)
 		}
-		reply(va.BattleAbility)
 	}
 
 	return req.TransactionID, messagebus.BusKey(HubKeyVoteBattleAbilityUpdated), nil
