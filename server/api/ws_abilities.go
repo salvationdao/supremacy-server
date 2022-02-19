@@ -87,14 +87,20 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 	}
 	req.Payload.Amount.Mul(&req.Payload.Amount.Int, oneSups)
 
-	targetPriceChan := make(chan string)
-	errChan := make(chan error)
+	type targetPrice struct {
+		targetPrice string
+		err         error
+	}
+
+	targetPriceChan := make(chan *targetPrice)
 	fc.API.gameAbilityPool[factionID] <- func(fap GameAbilitiesPool, fapt *GameAbilityPoolTicker) {
 		// find ability
 		fa, ok := fap[req.Payload.GameAbilityID]
 		if !ok {
-			targetPriceChan <- ""
-			errChan <- terror.Error(terror.ErrInvalidInput, "Target ability does not exists")
+			targetPriceChan <- &targetPrice{
+				targetPrice: "",
+				err:         terror.Error(terror.ErrInvalidInput, "Target ability does not exists"),
+			}
 			return
 		}
 
@@ -102,8 +108,10 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 		reason := fmt.Sprintf("battle:%s|game_ability_contribution:%s", fc.API.BattleArena.CurrentBattleID(), req.Payload.GameAbilityID)
 		supTransactionReference, err := fc.API.Passport.SendHoldSupsMessage(context.Background(), userID, req.Payload.Amount, reason)
 		if err != nil {
-			targetPriceChan <- ""
-			errChan <- terror.Error(err)
+			targetPriceChan <- &targetPrice{
+				targetPrice: "",
+				err:         terror.Error(err),
+			}
 			return
 		}
 
@@ -115,16 +123,20 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 
 		// skip, if current sups is less than target price
 		if fa.CurrentSups.Cmp(&fa.TargetPrice.Int) < 0 {
-			targetPriceChan <- ""
-			errChan <- nil
+			targetPriceChan <- &targetPrice{
+				targetPrice: "",
+				err:         nil,
+			}
 			return
 		}
 
 		// commit all the transactions
 		_, err = fc.API.Passport.CommitTransactions(ctx, fa.TxRefs)
 		if err != nil {
-			targetPriceChan <- ""
-			errChan <- terror.Error(err)
+			targetPriceChan <- &targetPrice{
+				targetPrice: "",
+				err:         terror.Error(err),
+			}
 			return
 		}
 		// clear transaction reference
@@ -163,8 +175,10 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 		} else {
 			err = db.FactionExclusiveAbilitiesSupsCostUpdate(ctx, fc.Conn, fa.GameAbility)
 			if err != nil {
-				targetPriceChan <- ""
-				errChan <- terror.Error(err)
+				targetPriceChan <- &targetPrice{
+					targetPrice: "",
+					err:         terror.Error(err),
+				}
 				return
 			}
 		}
@@ -184,8 +198,10 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 		}
 		err = fc.API.BattleArena.GameAbilityTrigger(abilityTriggerEvent)
 		if err != nil {
-			targetPriceChan <- ""
-			errChan <- terror.Error(err)
+			targetPriceChan <- &targetPrice{
+				targetPrice: "",
+				err:         terror.Error(err),
+			}
 			return
 		}
 
@@ -236,20 +252,18 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 			targetPriceList = append(targetPriceList, fmt.Sprintf("%s_%s_%s_%d", fa.GameAbility.ID, fa.TargetPrice.String(), fa.CurrentSups.String(), hasTriggered))
 		}
 
-		targetPriceChan <- strings.Join(targetPriceList, "|")
-		errChan <- nil
+		targetPriceChan <- &targetPrice{
+			targetPrice: strings.Join(targetPriceList, "|"),
+			err:         nil,
+		}
 	}
-
-	reply(true)
 
 	// wait for target price change
-	targetPrice := <-targetPriceChan
-
-	// wait for error check
-	err = <-errChan
-	if err != nil {
+	tp := <-targetPriceChan
+	if tp.err != nil {
 		return terror.Error(err)
 	}
+	reply(true)
 
 	// store vote amount to live voting data after vote success
 	fc.API.liveSupsSpend[hcd.FactionID] <- func(lvd *LiveVotingData) {
@@ -257,11 +271,11 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 	}
 
 	// broadcast if target price is updated
-	if targetPrice != "" {
+	if tp.targetPrice != "" {
 		// prepare broadcast payload
 		payload := []byte{}
 		payload = append(payload, byte(battle_arena.NetMessageTypeAbilityTargetPriceTick))
-		payload = append(payload, []byte(targetPrice)...)
+		payload = append(payload, []byte(tp.targetPrice)...)
 		// start broadcast
 		fc.API.Hub.Clients(func(clients hub.ClientsList) {
 			for client, ok := range clients {
