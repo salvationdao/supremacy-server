@@ -29,9 +29,9 @@ func (api *API) BattleInitSignal(ctx context.Context, ed *battle_arena.EventData
 const HubKeyGameSettingsUpdated = hub.HubCommandKey("GAME:SETTINGS:UPDATED")
 
 type GameSettingsResponse struct {
-	GameMap     *server.GameMap              `json:"gameMap"`
-	WarMachines []*server.WarMachineMetadata `json:"warMachines"`
-	// WarMachineLocation []byte                  `json:"warMachineLocation"`
+	GameMap            *server.GameMap              `json:"gameMap"`
+	WarMachines        []*server.WarMachineMetadata `json:"warMachines"`
+	WarMachineLocation []byte                       `json:"warMachineLocation"`
 }
 
 // BattleStartSignal start all the voting cycle
@@ -47,9 +47,9 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 	gameSettingsData, err := json.Marshal(&BroadcastPayload{
 		Key: HubKeyGameSettingsUpdated,
 		Payload: &GameSettingsResponse{
-			GameMap:     ed.BattleArena.GameMap,
-			WarMachines: ed.BattleArena.WarMachines,
-			// WarMachineLocation: ed.BattleArena.BattleHistory[0],
+			GameMap:            ed.BattleArena.GameMap,
+			WarMachines:        ed.BattleArena.WarMachines,
+			WarMachineLocation: ed.BattleArena.BattleHistory[0],
 		},
 	})
 	if err != nil {
