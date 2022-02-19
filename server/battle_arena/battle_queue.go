@@ -2,7 +2,6 @@ package battle_arena
 
 import (
 	"context"
-	"fmt"
 	"server"
 	"server/passport"
 	"time"
@@ -27,11 +26,7 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, 
 	inGameWarMachinesChan := make(chan []*server.WarMachineMetadata)
 	ba.BattleQueueMap[factionID] <- func(wmq *WarMachineQueuingList) {
 		ctx := context.Background()
-		fmt.Println(warMachinePerBattle)
-		fmt.Println(warMachinePerBattle)
-		fmt.Println(warMachinePerBattle)
-		fmt.Println(warMachinePerBattle)
-		fmt.Println(warMachinePerBattle)
+
 		tempList := []*server.WarMachineMetadata{}
 		// if queuing war machines is less than maximum in game war machine amount get all and fill rest with defaults
 		if len(wmq.WarMachines) <= warMachinePerBattle {
