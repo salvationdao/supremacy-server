@@ -82,7 +82,7 @@ jobs:
 
       - name: Add info text
         run: |
-          deploy/gameserver version full > deploy/BuildInfo.txt
+          deploy/gameserver version --full > deploy/BuildInfo.txt
 
       - name: Update tags
         if: ${{ !env.ACT }} # if running in local test environment
