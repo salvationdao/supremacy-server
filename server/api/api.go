@@ -381,9 +381,9 @@ func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client, clients
 		gameSettingsData, err := json.Marshal(&BroadcastPayload{
 			Key: HubKeyGameSettingsUpdated,
 			Payload: &GameSettingsResponse{
-				GameMap:     ba.GameMap,
-				WarMachines: ba.WarMachines,
-				// WarMachineLocation: ba.BattleHistory[0],
+				GameMap:            ba.GameMap,
+				WarMachines:        ba.WarMachines,
+				WarMachineLocation: ba.BattleHistory[0],
 			},
 		})
 		if err != nil {
