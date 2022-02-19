@@ -378,14 +378,18 @@ func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client, clients
 		time.Sleep(3 * time.Second)
 
 		// marshal payload
+		gsr := &GameSettingsResponse{
+			GameMap:     ba.GameMap,
+			WarMachines: ba.WarMachines,
+		}
+		if ba.BattleHistory != nil && len(ba.BattleHistory) > 0 {
+			gsr.WarMachineLocation = ba.BattleHistory[0]
+		}
 		gameSettingsData, err := json.Marshal(&BroadcastPayload{
-			Key: HubKeyGameSettingsUpdated,
-			Payload: &GameSettingsResponse{
-				GameMap:            ba.GameMap,
-				WarMachines:        ba.WarMachines,
-				WarMachineLocation: ba.BattleHistory[0],
-			},
+			Key:     HubKeyGameSettingsUpdated,
+			Payload: gsr,
 		})
+
 		if err != nil {
 			api.Log.Err(err).Msg("failed to marshal data")
 			return
