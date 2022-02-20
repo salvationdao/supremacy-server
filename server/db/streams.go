@@ -1,7 +1,6 @@
 package db
 
 import (
-	"fmt"
 	"server"
 
 	"github.com/georgysavva/scany/pgxscan"
@@ -22,7 +21,6 @@ func CreateStream(ctx context.Context, conn Conn, stream *server.Stream) error {
 
 	err := pgxscan.Get(ctx, conn, stream, q, stream.Host, stream.Name, stream.URL, stream.StreamID, stream.Region, stream.Resolution, stream.BitRatesKBits, stream.UserMax, stream.UsersNow, stream.Active, stream.Status, stream.Latitude, stream.Longitude)
 	if err != nil {
-		fmt.Println("errrrrrrrrrrr", err)
 		return terror.Error(err)
 	}
 

@@ -44,15 +44,6 @@ func (s *Seeder) Run() error {
 	}
 
 	fmt.Println("Seed streams")
-	fmt.Println("Seed streams")
-	fmt.Println("Seed streams")
-	fmt.Println("Seed streams")
-	fmt.Println("Seed streams")
-	fmt.Println("Seed streams")
-	fmt.Println("Seed streams")
-	fmt.Println("Seed streams")
-	fmt.Println("Seed streams")
-
 	_, err = s.streams(ctx)
 	if err != nil {
 		return terror.Error(err)
