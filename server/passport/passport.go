@@ -351,11 +351,28 @@ func writeTimeout(msg *Message, timeout time.Duration, c *websocket.Conn) error 
 	if err != nil {
 		return terror.Error(err)
 	}
+	errChan := make(chan error)
 
 	go func() {
-		c.Write(ctx, websocket.MessageText, jsn)
+		defer cancel()
+		err := c.Write(ctx, websocket.MessageText, jsn)
+		if err != nil {
+			errChan <- err
+			return
+		}
 	}()
 
-	<-ctx.Done()
-	return ctx.Err()
+	for {
+		select {
+		case err = <-errChan:
+			fmt.Println(err.Error())
+			return err
+		case <-ctx.Done():
+			if ctx.Err() == context.DeadlineExceeded {
+				fmt.Println(ctx.Err().Error())
+				return ctx.Err()
+			}
+			return nil
+		}
+	}
 }
