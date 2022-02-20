@@ -35,7 +35,7 @@ func NewFactionController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Fa
 		API:  api,
 	}
 
-	api.SecureUserFactionCommand(HubKeGameyAbilityContribute, factionHub.GameAbilityContribute)
+	api.SecureUserFactionCommand(HubKeGameAbilityContribute, factionHub.GameAbilityContribute)
 
 	// subscription
 	api.SecureUserFactionSubscribeCommand(HubKeyFactionAbilitiesUpdated, factionHub.FactionAbilitiesUpdateSubscribeHandler)
@@ -51,7 +51,7 @@ type GameAbilityContributeRequest struct {
 	} `json:"payload"`
 }
 
-const HubKeGameyAbilityContribute hub.HubCommandKey = "GAME:ABILITY:CONTRIBUTE"
+const HubKeGameAbilityContribute hub.HubCommandKey = "GAME:ABILITY:CONTRIBUTE"
 
 func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &GameAbilityContributeRequest{}
@@ -87,7 +87,7 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 	oneSups := big.NewInt(0)
 	oneSups, ok := oneSups.SetString("1000000000000000000", 10)
 	if !ok {
-		return terror.Error(fmt.Errorf("Unable to convert 1000000000000000000 to big int"))
+		return terror.Error(fmt.Errorf("unable to convert 1000000000000000000 to big int"))
 	}
 	req.Payload.Amount.Mul(&req.Payload.Amount.Int, oneSups)
 
@@ -103,7 +103,7 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 		if !ok {
 			targetPriceChan <- &targetPrice{
 				targetPrice: "",
-				err:         terror.Error(terror.ErrInvalidInput, "Target ability does not exists"),
+				err:         terror.Error(fmt.Errorf("target ability does not exist"), "Target ability does not exist."),
 			}
 			return
 		}
