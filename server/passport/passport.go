@@ -121,7 +121,7 @@ reconnectLoop:
 
 		authTxID := uuid.Must(uuid.NewV4())
 
-		err = writeTimeout(connectCtx, &Message{
+		err = writeTimeout(&Message{
 			Key:           "AUTH:SERVERCLIENT",
 			TransactionID: authTxID.String(),
 			Payload: struct {

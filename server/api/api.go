@@ -84,15 +84,16 @@ type API struct {
 	ctx    context.Context
 	server *http.Server
 	*auth.Auth
-	Log          *zerolog.Logger
-	Routes       chi.Router
-	Addr         string
-	BattleArena  *battle_arena.BattleArena
-	HTMLSanitize *bluemonday.Policy
-	Hub          *hub.Hub
-	Conn         *pgxpool.Pool
-	MessageBus   *messagebus.MessageBus
-	Passport     *passport.Passport
+	Log           *zerolog.Logger
+	Routes        chi.Router
+	Addr          string
+	BattleArena   *battle_arena.BattleArena
+	HTMLSanitize  *bluemonday.Policy
+	Hub           *hub.Hub
+	Conn          *pgxpool.Pool
+	MessageBus    *messagebus.MessageBus
+	NetMessageBus *messagebus.NetMessageBus
+	Passport      *passport.Passport
 
 	factionMap map[server.FactionID]*server.Faction
 
@@ -133,19 +134,22 @@ func NewAPI(
 	config *server.Config,
 ) *API {
 
+	netMessageBus, netMessageBusOfflineFunc := messagebus.NewNetMessageBus(log_helpers.NamedLogger(log, "net_message_bus"))
+
 	// initialise message bus
-	messageBus, offlineFunc := messagebus.NewMessageBus(log_helpers.NamedLogger(log, "message_bus"))
+	messageBus, messageBusOfflineFunc := messagebus.NewMessageBus(log_helpers.NamedLogger(log, "message_bus"))
 	// initialise api
 	api := &API{
-		ctx:          ctx,
-		Log:          log_helpers.NamedLogger(log, "api"),
-		Routes:       chi.NewRouter(),
-		Passport:     pp,
-		Addr:         addr,
-		MessageBus:   messageBus,
-		HTMLSanitize: HTMLSanitize,
-		BattleArena:  battleArenaClient,
-		Conn:         conn,
+		ctx:           ctx,
+		Log:           log_helpers.NamedLogger(log, "api"),
+		Routes:        chi.NewRouter(),
+		Passport:      pp,
+		Addr:          addr,
+		MessageBus:    messageBus,
+		NetMessageBus: netMessageBus,
+		HTMLSanitize:  HTMLSanitize,
+		BattleArena:   battleArenaClient,
+		Conn:          conn,
 		Hub: hub.New(&hub.Config{
 			Log: zerologger.New(*log_helpers.NamedLogger(log, "hub library")),
 			WelcomeMsg: &hub.WelcomeMsg{
@@ -156,7 +160,10 @@ func NewAPI(
 				InsecureSkipVerify: true, // TODO: set this depending on environment
 				OriginPatterns:     []string{config.TwitchUIHostURL},
 			},
-			ClientOfflineFn: offlineFunc,
+			ClientOfflineFn: func(cl *hub.Client) {
+				netMessageBusOfflineFunc(cl)
+				messageBusOfflineFunc(cl)
+			},
 		}),
 		// channel for faction voting system
 		votingCycle:   make(chan func(*VoteStage, *VoteAbility, FactionUserVoteMap, *FactionTotalVote, *VoteWinner, *VotingCycleTicker, UserVoteMap)),
@@ -344,19 +351,7 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 		payload = append(payload, byte(battle_arena.NetMessageTypeLiveVotingTick))
 		payload = append(payload, []byte(totalVote.Int.String())...)
 
-		api.Hub.Clients(func(clients hub.ClientsList) {
-			for client, ok := range clients {
-				if !ok {
-					continue
-				}
-				go func(c *hub.Client) {
-					err := c.SendWithMessageType(payload, websocket.MessageBinary)
-					if err != nil {
-						api.Log.Err(err).Msg("failed to send broadcast")
-					}
-				}(client)
-			}
-		})
+		api.NetMessageBus.Send(ctx, messagebus.NetBusKey(HubKeyLiveVoteUpdated), payload)
 
 		return http.StatusOK, nil
 	})

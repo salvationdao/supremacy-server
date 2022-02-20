@@ -12,8 +12,8 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-software/tickle"
 	"github.com/ninja-syndicate/hub"
+	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
-	"nhooyr.io/websocket"
 )
 
 /********************
@@ -59,19 +59,7 @@ func (api *API) initialiseViewerLiveCount(ctx context.Context, factions []*serve
 			vlc[server.FactionID(uuid.Nil)].Count,
 		))...)
 
-		api.Hub.Clients(func(clients hub.ClientsList) {
-			for client, ok := range clients {
-				if !ok {
-					continue
-				}
-				go func(c *hub.Client) {
-					err := c.SendWithMessageType(payload, websocket.MessageBinary)
-					if err != nil {
-						api.Log.Err(err).Msg("failed to send broadcast")
-					}
-				}(client)
-			}
-		})
+		api.NetMessageBus.Send(ctx, messagebus.NetBusKey(HubKeyViewerLiveCountUpdated), payload)
 
 		return http.StatusOK, nil
 	})

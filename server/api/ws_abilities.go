@@ -17,7 +17,6 @@ import (
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
-	"nhooyr.io/websocket"
 )
 
 // FactionControllerWS holds handlers for checking server status
@@ -97,6 +96,7 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 	}
 
 	targetPriceChan := make(chan *targetPrice)
+	fmt.Println("enter channel")
 	fc.API.gameAbilityPool[factionID] <- func(fap GameAbilitiesPool, fapt *GameAbilityPoolTicker) {
 		// find ability
 		fa, ok := fap[req.Payload.GameAbilityID]
@@ -108,9 +108,11 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 			return
 		}
 
+		fmt.Println("Hold sups transaction")
 		// check sups
 		reason := fmt.Sprintf("battle:%s|game_ability_contribution:%s", fc.API.BattleArena.CurrentBattleID(), req.Payload.GameAbilityID)
 		supTransactionReference, err := fc.API.Passport.SendHoldSupsMessage(context.Background(), userID, req.Payload.Amount, reason)
+		fmt.Println("End hold sup transaction")
 		if err != nil {
 			targetPriceChan <- &targetPrice{
 				targetPrice: "",
@@ -217,15 +219,6 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 				User:    triggeredBy,
 				Ability: ability,
 			})
-			// // record ability triggered event for battle end content
-			// fc.API.battleEndInfo.BattleEvents = append(fc.API.battleEndInfo.BattleEvents, &BattleEventRecord{
-			// 	Type:      server.BattleEventTypeGameAbility,
-			// 	CreatedAt: time.Now(),
-			// 	Event: &BattleAbilityEventRecord{
-			// 		TriggeredByUser: triggeredBy,
-			// 		Ability:         ability,
-			// 	},
-			// })
 		} else {
 			warMachine := fc.API.BattleArena.GetWarMachine(fa.GameAbility.WarMachineTokenID).Brief()
 			// broadcast notification
@@ -234,17 +227,6 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 				Ability:    fa.GameAbility.Brief(),
 				WarMachine: warMachine,
 			})
-
-			// // record ability triggered event for battle end content
-			// fc.API.battleEndInfo.BattleEvents = append(fc.API.battleEndInfo.BattleEvents, &BattleEventRecord{
-			// 	Type:      server.BattleEventTypeGameAbility,
-			// 	CreatedAt: time.Now(),
-			// 	Event: &BattleAbilityEventRecord{
-			// 		TriggeredByUser:       triggeredBy,
-			// 		Ability:               ability,
-			// 		TriggeredOnWarMachine: warMachine,
-			// 	},
-			// })
 		}
 		// prepare broadcast data
 		targetPriceList := []string{}
@@ -280,28 +262,7 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 		payload := []byte{}
 		payload = append(payload, byte(battle_arena.NetMessageTypeAbilityTargetPriceTick))
 		payload = append(payload, []byte(tp.targetPrice)...)
-		// start broadcast
-		fc.API.Hub.Clients(func(clients hub.ClientsList) {
-			for client, ok := range clients {
-				if !ok {
-					continue
-				}
-				go func(c *hub.Client) {
-					// get user faction id
-					hcd, err := fc.API.getClientDetailFromChannel(c)
-					// skip, if error or not current faction player
-					if err != nil || hcd.FactionID != factionID {
-						return
-					}
-
-					// broadcast vote price forecast
-					err = c.SendWithMessageType(payload, websocket.MessageBinary)
-					if err != nil {
-						fc.API.Log.Err(err).Msg("failed to send broadcast")
-					}
-				}(client)
-			}
-		})
+		fc.API.NetMessageBus.Send(ctx, messagebus.NetBusKey(fmt.Sprintf("%s:%s", HubKeyFactionAbilityPriceUpdated, factionID)), payload)
 	}
 
 	return nil

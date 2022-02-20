@@ -16,10 +16,8 @@ import (
 	"github.com/ninja-software/log_helpers"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-software/tickle"
-	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
-	"nhooyr.io/websocket"
 )
 
 /***************
@@ -40,19 +38,7 @@ func (api *API) startSpoilOfWarBroadcaster(ctx context.Context) {
 		payload = append(payload, byte(battle_arena.NetMessageTypeSpoilOfWarTick))
 		payload = append(payload, []byte(amount)...)
 
-		api.Hub.Clients(func(clients hub.ClientsList) {
-			for client, ok := range clients {
-				if !ok {
-					continue
-				}
-				go func(c *hub.Client) {
-					err := c.SendWithMessageType(payload, websocket.MessageBinary)
-					if err != nil {
-						api.Log.Err(err).Msg("failed to send broadcast")
-					}
-				}(client)
-			}
-		})
+		api.NetMessageBus.Send(ctx, messagebus.NetBusKey(HubKeySpoilOfWarUpdated), payload)
 
 		return http.StatusOK, nil
 	})
@@ -191,8 +177,6 @@ func (api *API) votePriceUpdaterFactory(ctx context.Context, conn *pgxpool.Pool)
 
 		// async calculate new faction vote price
 		var wg sync.WaitGroup
-		votePriceMutex := sync.Mutex{}
-		factionVotePriceMap := make(map[server.FactionID][]byte)
 
 		for factionID, fvp := range api.votePriceSystem.FactionVotePriceMap {
 			wg.Add(1)
@@ -225,39 +209,14 @@ func (api *API) votePriceUpdaterFactory(ctx context.Context, conn *pgxpool.Pool)
 				payload = append(payload, byte(battle_arena.NetMessageTypeVotePriceTick))
 				payload = append(payload, []byte(fvp.CurrentVotePriceSups.Int.String())...)
 
-				votePriceMutex.Lock()
-				factionVotePriceMap[factionID] = payload
-				votePriceMutex.Unlock()
+				// broadcase
+				api.NetMessageBus.Send(ctx, messagebus.NetBusKey(fmt.Sprintf("%s:%s", HubKeyFactionVotePriceUpdated, factionID)), payload)
 
 				wg.Done()
 			}(factionID, fvp)
 		}
 		wg.Wait()
 		api.votePriceHighPriorityUnlock()
-
-		// start broadcast price
-		api.Hub.Clients(func(clients hub.ClientsList) {
-			for client, ok := range clients {
-				if !ok {
-					continue
-				}
-				go func(c *hub.Client) {
-					// get user faction id
-					hcd, err := api.getClientDetailFromChannel(c)
-
-					// skip, if error or no faction
-					if err != nil || hcd.FactionID.IsNil() {
-						return
-					}
-
-					// broadcast vote price forecast
-					err = c.SendWithMessageType(factionVotePriceMap[hcd.FactionID], websocket.MessageBinary)
-					if err != nil {
-						api.Log.Err(err).Msg("failed to send broadcast")
-					}
-				}(client)
-			}
-		})
 
 		return http.StatusOK, nil
 	}
@@ -510,20 +469,7 @@ func (api *API) abilityRightResultBroadcasterFactory(ctx context.Context, ftv *F
 		payload = append(payload, byte(battle_arena.NetMessageTypeAbilityRightRatioTick))
 		payload = append(payload, []byte(ratioData)...)
 
-		// broadcast back to client
-		api.Hub.Clients(func(clients hub.ClientsList) {
-			for client, ok := range clients {
-				if !ok {
-					continue
-				}
-				go func(c *hub.Client) {
-					err := c.SendWithMessageType(payload, websocket.MessageBinary)
-					if err != nil {
-						api.Log.Err(err).Msg("failed to send broadcast")
-					}
-				}(client)
-			}
-		})
+		api.NetMessageBus.Send(ctx, messagebus.NetBusKey(HubKeyAbilityRightRatioUpdated), payload)
 
 		return http.StatusOK, nil
 	}
@@ -644,6 +590,11 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 					api.votePriceSystem.VotePriceUpdater.Stop()
 				}
 
+				// stop broadcaster when the vote right is done
+				if vct.AbilityRightResultBroadcaster.NextTick != nil {
+					vct.AbilityRightResultBroadcaster.Stop()
+				}
+
 				// get all the tx
 				var txRefs []server.TransactionReference
 				for _, factionVotes := range fuvm {
@@ -672,6 +623,19 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 				checkedTransactions, err := api.Passport.CommitTransactions(ctx, txRefs)
 				if err != nil {
 					api.Log.Err(err).Msg("failed to check transactions")
+					return
+				}
+
+				if len(checkedTransactions) == 0 {
+					api.votePhaseChecker.Phase = VotePhaseNextVoteWin
+					vs.Phase = VotePhaseNextVoteWin
+					// broadcast current stage to faction users
+					go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+
+					// stop ticker
+					if vct.VotingStageListener.NextTick != nil {
+						vct.VotingStageListener.Stop()
+					}
 					return
 				}
 
@@ -787,11 +751,6 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 
 				// broadcast current stage to faction users
 				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
-
-				// stop broadcaster when the vote right is done
-				if vct.AbilityRightResultBroadcaster.NextTick != nil {
-					vct.AbilityRightResultBroadcaster.Stop()
-				}
 
 			// at the end of location select
 			case VotePhaseLocationSelect:
