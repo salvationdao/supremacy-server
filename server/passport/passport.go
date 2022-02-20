@@ -249,14 +249,17 @@ reconnectLoop:
 						continue
 					}
 
+					pp.Log.Info().Msg("LISTEN LOCK")
 					pp.txRWMutex.RLock()
 					cb, ok := callbackChannels[transactionID]
 					if !ok {
 						pp.txRWMutex.RUnlock()
+						pp.Log.Info().Msg("LISTEN UNLOCK NOT OKAY")
 						pp.Log.Warn().Msgf("missing callback for transactionID %s", transactionID)
 						continue
 					}
 					pp.txRWMutex.RUnlock()
+					pp.Log.Info().Msg("LISTEN UNLOCK")
 
 					// parse whether it is an error
 					errMsg := &responseError{}
@@ -311,15 +314,17 @@ func (pp *Passport) sendPump(ctx context.Context, cancelFunc context.CancelFunc,
 					continue
 				}
 
+				pp.Log.Info().Msg("SEND PUMP LOCK")
 				pp.txRWMutex.Lock()
 				callbackChannels[msg.TransactionID] = &callbackChannel{
 					ReplyChannel: msg.ReplyChannel,
 					errChan:      msg.ErrChan,
 				}
 				pp.txRWMutex.Unlock()
+				pp.Log.Info().Msg("SEND PUMP UNLOCK")
 			}
 
-			err := writeTimeout(ctx, &Message{
+			err := writeTimeout(&Message{
 				Key:           msg.Key,
 				Payload:       msg.Payload,
 				TransactionID: msg.TransactionID,
@@ -335,19 +340,22 @@ func (pp *Passport) sendPump(ctx context.Context, cancelFunc context.CancelFunc,
 }
 
 // writeTimeout enforces a timeout on websocket writes
-func writeTimeout(serverCtx context.Context, msg *Message, timeout time.Duration, c *websocket.Conn) error {
+func writeTimeout(msg *Message, timeout time.Duration, c *websocket.Conn) error {
 	if c == nil {
 		return nil
 	}
-	ctx, cancel := context.WithTimeout(serverCtx, timeout)
-	defer func() {
-		cancel()
-	}()
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
+	defer cancel()
 	jsn, err := json.Marshal(msg)
 	if err != nil {
 		return terror.Error(err)
 	}
 
-	return c.Write(ctx, websocket.MessageText, jsn)
+	go func() {
+		c.Write(ctx, websocket.MessageText, jsn)
+	}()
+
+	<-ctx.Done()
+	return ctx.Err()
 }
