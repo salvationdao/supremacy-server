@@ -409,13 +409,16 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 	if err != nil {
 		api.Log.Err(err).Msg("failed to get client detail")
 	}
-	go api.viewerLiveCountRemove(currentUser.FactionID)
+
+	if currentUser != nil {
+		go api.viewerLiveCountRemove(currentUser.FactionID)
+	}
 
 	// set client offline
 	noClientLeft := api.ClientOffline(wsc)
 
 	// check vote if there is not client instances of the offline user
-	if noClientLeft && api.votePhaseChecker.Phase == VotePhaseLocationSelect {
+	if noClientLeft && currentUser != nil && api.votePhaseChecker.Phase == VotePhaseLocationSelect {
 		// check the user is selecting ability location
 		api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
 			if len(vw.List) > 0 && vw.List[0].String() == wsc.Identifier() {
