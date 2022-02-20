@@ -12,6 +12,7 @@ var GameMaps = []*server.GameMap{
 		ImageUrl:   "https://ninjasoftware-static-media.s3.ap-southeast-2.amazonaws.com/supremacy/maps/desert_city.jpg",
 		Width:      1700,
 		Height:     1600,
+		MaxSpawns:  9,
 		CellsX:     34,
 		CellsY:     32,
 		TopPixels:  -40000,

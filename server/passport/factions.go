@@ -25,7 +25,6 @@ func (pp *Passport) FactionAll(ctx context.Context) ([]*server.Faction, error) {
 		Message: &Message{
 			Key:           "FACTION:ALL",
 			TransactionID: uuid.Must(uuid.NewV4()).String(),
-			context:       ctx,
 		}}
 
 	for {
@@ -65,7 +64,6 @@ func (pp *Passport) FactionStatsSend(ctx context.Context, factionStatSends []*Fa
 				FactionStatSends: factionStatSends,
 			},
 			TransactionID: uuid.Must(uuid.NewV4()).String(),
-			context:       ctx,
 		}}
 
 	for {

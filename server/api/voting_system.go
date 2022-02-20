@@ -181,7 +181,6 @@ func (api *API) votePriceUpdaterFactory(ctx context.Context, conn *pgxpool.Pool)
 		totalCurrentVote := int64(0)
 		for _, fvp := range api.votePriceSystem.FactionVotePriceMap {
 			totalCurrentVote += fvp.CurrentVotePerTick
-
 		}
 
 		// calculate total vote per tick
@@ -544,9 +543,7 @@ func (api *API) startVotingCycle(ctx context.Context, introSecond int) {
 		// broadcast current stage to faction users
 		go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 
-		if vct.VotingStageListener.NextTick == nil || vct.VotingStageListener.NextTick.Before(time.Now()) {
-			vct.VotingStageListener.Start()
-		}
+		vct.VotingStageListener.Start()
 	}
 }
 
@@ -554,6 +551,7 @@ func (api *API) startVotingCycle(ctx context.Context, introSecond int) {
 func (api *API) stopVotingCycle(ctx context.Context) []*server.BattleUserVote {
 	userVoteCountsChan := make(chan []*server.BattleUserVote)
 	api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+		api.votePhaseChecker.Phase = VotePhaseHold
 		vs.Phase = VotePhaseHold
 		// broadcast current stage to faction users
 		go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)

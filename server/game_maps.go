@@ -12,6 +12,7 @@ type GameMap struct {
 	ID            GameMapID `json:"id" db:"id"`
 	Name          string    `json:"name" db:"name"`
 	ImageUrl      string    `json:"imageUrl" db:"image_url"`
+	MaxSpawns     int       `json:"maxSpawns" db:"max_spawns"`
 	Width         int       `json:"width" db:"width"`
 	Height        int       `json:"height" db:"height"`
 	CellsX        int       `json:"cellsX" db:"cells_x"`
@@ -55,7 +56,7 @@ type WarMachineMetadata struct {
 }
 
 type WarMachineBrief struct {
-	ImageUrl string        `json:"image"`
+	ImageUrl string        `json:"imageUrl"`
 	Name     string        `json:"name"`
 	Faction  *FactionBrief `json:"faction"`
 }

@@ -14,6 +14,9 @@ import (
 const BattleCommandInitBattle BattleCommand = "BATTLE:INIT"
 
 func (ba *BattleArena) InitNextBattle() error {
+	// switch battle state to LOBBY
+	ba.battle.State = server.StateLobby
+
 	// send new battle details to game client
 
 	// generate a new battle event
@@ -40,9 +43,10 @@ func (ba *BattleArena) InitNextBattle() error {
 		ba.Log.Info().Msg("No factions, trying again in 2 seconds")
 		time.Sleep(2 * time.Second)
 	}
+	mechsPerFaction := gameMap.MaxSpawns / 3
 
 	for factionID := range ba.BattleQueueMap {
-		ba.battle.WarMachines = append(ba.battle.WarMachines, ba.GetBattleWarMachineFromQueue(factionID)...)
+		ba.battle.WarMachines = append(ba.battle.WarMachines, ba.GetBattleWarMachineFromQueue(factionID, mechsPerFaction)...)
 	}
 
 	if len(ba.battle.WarMachines) > 0 {

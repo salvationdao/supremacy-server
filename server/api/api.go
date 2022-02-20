@@ -67,6 +67,8 @@ type FactionVotePrice struct {
 
 type BattleEndInfo struct {
 	BattleID                     server.BattleID           `json:"battleID"`
+	StartedAt                    time.Time                 `json:"startedAt"`
+	EndedAt                      time.Time                 `json:"endedAt"`
 	BattleIdentifier             int64                     `json:"battleIdentifier"`
 	WinningCondition             string                    `json:"winningCondition"`
 	WinningFaction               *server.FactionBrief      `json:"winningFaction"`
@@ -74,7 +76,7 @@ type BattleEndInfo struct {
 	TopSupsContributeFactions    []*server.FactionBrief    `json:"topSupsContributeFactions"`
 	TopSupsContributors          []*server.UserBrief       `json:"topSupsContributors"`
 	MostFrequentAbilityExecutors []*server.UserBrief       `json:"mostFrequentAbilityExecutors"`
-	BattleEvents                 []*BattleEventRecord      `json:"battleEvents"`
+	// BattleEvents                 []*BattleEventRecord      `json:"battleEvents"`
 }
 
 // API server
@@ -376,14 +378,18 @@ func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client, clients
 		time.Sleep(3 * time.Second)
 
 		// marshal payload
+		gsr := &GameSettingsResponse{
+			GameMap:     ba.GameMap,
+			WarMachines: ba.WarMachines,
+		}
+		if ba.BattleHistory != nil && len(ba.BattleHistory) > 0 {
+			gsr.WarMachineLocation = ba.BattleHistory[0]
+		}
 		gameSettingsData, err := json.Marshal(&BroadcastPayload{
-			Key: HubKeyGameSettingsUpdated,
-			Payload: &GameSettingsResponse{
-				GameMap:     ba.GameMap,
-				WarMachines: ba.WarMachines,
-				// WarMachineLocation: ba.BattleHistory[0],
-			},
+			Key:     HubKeyGameSettingsUpdated,
+			Payload: gsr,
 		})
+
 		if err != nil {
 			api.Log.Err(err).Msg("failed to marshal data")
 			return

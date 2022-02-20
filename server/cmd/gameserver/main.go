@@ -68,7 +68,7 @@ func main() {
 						fmt.Printf("WorkingCopyState=%s uncommitted\n", UnCommittedFiles)
 						return nil
 					}
-					fmt.Printf("%s-\n", Version)
+					fmt.Printf("%s\n", Version)
 					return nil
 				},
 			},

@@ -5,11 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/jpillora/backoff"
-	"github.com/ninja-software/terror/v2"
 	"io"
 	"sync"
 	"time"
+
+	"github.com/jpillora/backoff"
+	"github.com/ninja-software/terror/v2"
 
 	"github.com/gofrs/uuid"
 
@@ -34,7 +35,6 @@ type Message struct {
 	Key           Command     `json:"key"`
 	Payload       interface{} `json:"payload"`
 	TransactionID string      `json:"transactionID"`
-	context       context.Context
 }
 
 type Passport struct {
@@ -48,6 +48,7 @@ type Passport struct {
 	send      chan *Request
 
 	clientToken string
+	txRWMutex   sync.RWMutex
 
 	ctx   context.Context
 	close context.CancelFunc
@@ -64,6 +65,7 @@ func NewPassport(ctx context.Context, logger *zerolog.Logger, addr, clientToken 
 		Events:   Events{map[Event][]EventHandler{}, sync.RWMutex{}},
 
 		clientToken: clientToken,
+		txRWMutex:   sync.RWMutex{},
 
 		ctx:   ctx,
 		close: cancel,
@@ -101,7 +103,7 @@ reconnectLoop:
 
 		pp.Log.Info().Msgf("Attempting to connect to passport on %v", pp.addr)
 		var err error
-		pp.ws, _, err = websocket.Dial(ctx, pp.addr, &websocket.DialOptions{
+		pp.ws, _, err = websocket.Dial(connectCtx, pp.addr, &websocket.DialOptions{
 			//HTTPClient:nil,
 			//HTTPHeader:nil,
 			//Subprotocols:nil,
@@ -127,7 +129,6 @@ reconnectLoop:
 			}{
 				ClientToken: pp.clientToken,
 			},
-			context: ctx,
 		}, time.Second*5, pp.ws)
 
 		if err != nil {
@@ -167,10 +168,10 @@ reconnectLoop:
 		// listening for message
 		for {
 			select {
-			case <-ctx.Done():
+			case <-connectCtx.Done():
 				cancel()
 				pp.ws.Close(websocket.StatusNormalClosure, "close called")
-				return ctx.Err()
+				return connectCtx.Err()
 			case <-connectCtx.Done():
 				pp.ws.Close(websocket.StatusNormalClosure, "close called")
 				continue reconnectLoop
@@ -182,8 +183,9 @@ reconnectLoop:
 					continue reconnectLoop
 				}
 			default:
-				_, r, err := pp.ws.Reader(ctx)
+				_, r, err := pp.ws.Reader(connectCtx)
 				if err != nil {
+					fmt.Println("reader")
 					pp.Log.Warn().Err(err).Msg("issue reading from passport connection")
 					pp.ws.Close(websocket.StatusNormalClosure, "close called")
 					time.Sleep(b.Duration())
@@ -247,11 +249,14 @@ reconnectLoop:
 						continue
 					}
 
+					pp.txRWMutex.RLock()
 					cb, ok := callbackChannels[transactionID]
 					if !ok {
+						pp.txRWMutex.RUnlock()
 						pp.Log.Warn().Msgf("missing callback for transactionID %s", transactionID)
 						continue
 					}
+					pp.txRWMutex.RUnlock()
 
 					// parse whether it is an error
 					errMsg := &responseError{}
@@ -282,7 +287,7 @@ reconnectLoop:
 				}
 
 				// send received message to the hub to handle
-				pp.Events.Trigger(ctx, Event(fmt.Sprintf("PASSPORT:%s", cmdKey)), payload)
+				pp.Events.Trigger(connectCtx, Event(fmt.Sprintf("PASSPORT:%s", cmdKey)), payload)
 			}
 		}
 	}
@@ -295,7 +300,6 @@ func (pp *Passport) sendPump(ctx context.Context, cancelFunc context.CancelFunc,
 			return
 		default:
 			msg := <-pp.send
-
 			if msg.TransactionID != "" {
 				if msg.ReplyChannel == nil {
 					msg.ErrChan <- terror.Error(fmt.Errorf("missing reply channel"))
@@ -307,24 +311,24 @@ func (pp *Passport) sendPump(ctx context.Context, cancelFunc context.CancelFunc,
 					continue
 				}
 
+				pp.txRWMutex.Lock()
 				callbackChannels[msg.TransactionID] = &callbackChannel{
 					ReplyChannel: msg.ReplyChannel,
 					errChan:      msg.ErrChan,
 				}
+				pp.txRWMutex.Unlock()
 			}
 
 			err := writeTimeout(ctx, &Message{
 				Key:           msg.Key,
 				Payload:       msg.Payload,
 				TransactionID: msg.TransactionID,
-				context:       msg.context,
 			}, time.Second*5, pp.ws)
 			if err != nil {
 				if msg.ErrChan != nil {
 					msg.ErrChan <- terror.Error(err)
 				}
 				pp.Log.Warn().Err(err).Msg("failed to send message to passport")
-				cancelFunc()
 			}
 		}
 	}
@@ -335,20 +339,9 @@ func writeTimeout(serverCtx context.Context, msg *Message, timeout time.Duration
 	if c == nil {
 		return nil
 	}
-	ctx, cancel := context.WithTimeout(msg.context, timeout)
+	ctx, cancel := context.WithTimeout(serverCtx, timeout)
 	defer func() {
 		cancel()
-	}()
-
-	go func() {
-		select {
-		case <-serverCtx.Done():
-			cancel()
-			return
-		case <-ctx.Done():
-			return
-		}
-
 	}()
 
 	jsn, err := json.Marshal(msg)

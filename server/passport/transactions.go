@@ -35,7 +35,6 @@ func (pp *Passport) CommitTransactions(ctx context.Context, transactions []serve
 				TransactionReferences: transactions,
 			},
 			TransactionID: uuid.Must(uuid.NewV4()).String(),
-			context:       ctx,
 		}}
 
 	for {
@@ -77,7 +76,6 @@ func (pp *Passport) SendHoldSupsMessage(ctx context.Context, userID server.UserI
 				IsBattleVote:         true,
 			},
 			TransactionID: uuid.Must(uuid.NewV4()).String(),
-			context:       ctx,
 		}}
 	for {
 		select {
@@ -103,7 +101,6 @@ func (pp *Passport) ReleaseTransactions(ctx context.Context, transactions []serv
 			}{
 				TransactionReferences: transactions,
 			},
-			context: ctx,
 		},
 	}
 }
@@ -119,7 +116,6 @@ func (pp *Passport) TransferBattleFundToSupsPool(ctx context.Context) error {
 		Message: &Message{
 			Key:           "SUPREMACY:TRANSFER_BATTLE_FUND_TO_SUP_POOL",
 			TransactionID: uuid.Must(uuid.NewV4()).String(),
-			context:       ctx,
 		}}
 
 	for {
@@ -159,7 +155,6 @@ func (pp *Passport) TopSupsContributorsGet(ctx context.Context, startTime, endTi
 				EndTime:   endTime,
 			},
 			TransactionID: uuid.Must(uuid.NewV4()).String(),
-			context:       ctx,
 		}}
 
 	for {

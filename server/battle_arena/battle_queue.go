@@ -7,8 +7,6 @@ import (
 	"time"
 )
 
-const MaxInGameWarmachinePerFaction = 2
-
 type WarMachineQueuingList struct {
 	WarMachines []*server.WarMachineMetadata
 }
@@ -24,13 +22,13 @@ func (ba *BattleArena) startBattleQueue(factionID server.FactionID) {
 	}
 }
 
-func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID) []*server.WarMachineMetadata {
+func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, warMachinePerBattle int) []*server.WarMachineMetadata {
 	inGameWarMachinesChan := make(chan []*server.WarMachineMetadata)
 	ba.BattleQueueMap[factionID] <- func(wmq *WarMachineQueuingList) {
 		ctx := context.Background()
 		tempList := []*server.WarMachineMetadata{}
 		// if queuing war machines is less than maximum in game war machine amount get all and fill rest with defaults
-		if len(wmq.WarMachines) <= MaxInGameWarmachinePerFaction {
+		if len(wmq.WarMachines) <= warMachinePerBattle {
 			// get all the war machines
 			tempList = append(tempList, wmq.WarMachines...)
 
@@ -44,9 +42,8 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID) 
 			wmq.WarMachines = []*server.WarMachineMetadata{}
 
 			// add default war machine to meet the total amount
-			for len(tempList) < MaxInGameWarmachinePerFaction {
-
-				amountToGet := MaxInGameWarmachinePerFaction - len(tempList)
+			for len(tempList) < warMachinePerBattle {
+				amountToGet := warMachinePerBattle - len(tempList)
 				result, err := ba.passport.GetDefaultWarMachines(ctx, factionID, amountToGet)
 				if err != nil {
 					ba.Log.Err(err).Msg("issue getting default war machines")
@@ -73,7 +70,7 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID) 
 		}
 
 		// get first war machines up to the max
-		for i := 0; i < MaxInGameWarmachinePerFaction; i++ {
+		for i := 0; i < warMachinePerBattle; i++ {
 			tempList = append(tempList, wmq.WarMachines[i])
 		}
 
@@ -84,7 +81,7 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID) 
 		}
 
 		// delete it from the queue list
-		wmq.WarMachines = wmq.WarMachines[MaxInGameWarmachinePerFaction-1:]
+		wmq.WarMachines = wmq.WarMachines[warMachinePerBattle-1:]
 
 		// broadcast next 5 queuing war machines to twitch ui
 		maxLength := 5
