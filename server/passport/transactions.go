@@ -21,6 +21,12 @@ func (pp *Passport) CommitTransactions(ctx context.Context, transactions []serve
 		return nil, nil
 	}
 
+	fmt.Println("")
+	fmt.Println("")
+	fmt.Println("STARTING TX COMMIT")
+	fmt.Println("")
+	fmt.Println("")
+
 	replyChannel := make(chan []byte)
 	errChan := make(chan error)
 
@@ -40,6 +46,11 @@ func (pp *Passport) CommitTransactions(ctx context.Context, transactions []serve
 	for {
 		select {
 		case msg := <-replyChannel:
+			fmt.Println("")
+			fmt.Println("")
+			fmt.Println("ENDING TX COMMIT")
+			fmt.Println("")
+			fmt.Println("")
 			resp := &CommitTransactionsResponse{}
 			err := json.Unmarshal(msg, resp)
 			if err != nil {
@@ -47,6 +58,11 @@ func (pp *Passport) CommitTransactions(ctx context.Context, transactions []serve
 			}
 			return resp.Transactions, nil
 		case err := <-errChan:
+			fmt.Println("")
+			fmt.Println("")
+			fmt.Println("ENDING TX COMMIT ERR")
+			fmt.Println(err)
+			fmt.Println("")
 			return nil, terror.Error(err)
 		}
 	}
@@ -59,6 +75,11 @@ func (pp *Passport) SendHoldSupsMessage(ctx context.Context, userID server.UserI
 	replyChannel := make(chan []byte)
 	errChan := make(chan error)
 
+	fmt.Println("")
+	fmt.Println("")
+	fmt.Println("STARTING SUP HOLD")
+	fmt.Println("")
+	fmt.Println("")
 	pp.send <- &Request{
 		ReplyChannel: replyChannel,
 		ErrChan:      errChan,
@@ -80,8 +101,18 @@ func (pp *Passport) SendHoldSupsMessage(ctx context.Context, userID server.UserI
 	for {
 		select {
 		case <-replyChannel:
+			fmt.Println("")
+			fmt.Println("")
+			fmt.Println("ENDING SUP HOLD")
+			fmt.Println("")
+			fmt.Println("")
 			return supTxRefString, nil
 		case err := <-errChan:
+			fmt.Println("")
+			fmt.Println("")
+			fmt.Println("ENDING SUP HOLD ERR")
+			fmt.Println("")
+			fmt.Println("")
 			return supTxRefString, terror.Error(err)
 		}
 	}
