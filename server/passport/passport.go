@@ -210,10 +210,12 @@ reconnectLoop:
 					continue
 				}
 
-				transactionID, err := v.GetString("transactionID")
-				if err != nil {
-					continue
-				}
+				transactionID, _ := v.GetString("transactionID")
+				//if err != nil {
+				//	pp.Log.Err(err).Msgf(`transaction id error`)
+				//
+				//	continue
+				//}
 
 				// if we have a transactionID call the channel in the callback map
 				fmt.Println(transactionID)
