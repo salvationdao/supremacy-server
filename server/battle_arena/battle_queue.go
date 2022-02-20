@@ -26,7 +26,6 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, 
 	inGameWarMachinesChan := make(chan []*server.WarMachineMetadata)
 	ba.BattleQueueMap[factionID] <- func(wmq *WarMachineQueuingList) {
 		ctx := context.Background()
-
 		tempList := []*server.WarMachineMetadata{}
 		// if queuing war machines is less than maximum in game war machine amount get all and fill rest with defaults
 		if len(wmq.WarMachines) <= warMachinePerBattle {

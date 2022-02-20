@@ -28,7 +28,6 @@ func (pp *Passport) AssetFreeze(ctx context.Context, assetTokenID uint64) error 
 				AssetTokenID: assetTokenID,
 			},
 			TransactionID: uuid.Must(uuid.NewV4()).String(),
-			context:       ctx,
 		},
 	}
 
@@ -58,7 +57,6 @@ func (pp *Passport) AssetLock(ctx context.Context, assetTokenIDs []uint64) error
 				AssetTokenIDs: assetTokenIDs,
 			},
 			TransactionID: uuid.Must(uuid.NewV4()).String(),
-			context:       ctx,
 		},
 	}
 
@@ -82,7 +80,6 @@ func (pp *Passport) AssetRelease(ctx context.Context, releasedAssets []*server.W
 			}{
 				ReleasedAssets: releasedAssets,
 			},
-			context: ctx,
 		},
 	}
 }
@@ -106,7 +103,6 @@ func (pp *Passport) WarMachineQueuePositionBroadcast(ctx context.Context, uwm []
 			}{
 				UserWarMachineQueuePosition: uwm,
 			},
-			context: ctx,
 		},
 	}
 }
@@ -124,7 +120,6 @@ func (pp *Passport) AbilityUpdateTargetPrice(ctx context.Context, abilityTokenID
 				WarMachineTokenID: warMachineTokenID,
 				SupsCost:          supsCost,
 			},
-			context: ctx,
 		},
 	}
 }
@@ -151,7 +146,6 @@ func (pp *Passport) AssetInsurancePay(ctx context.Context, userID server.UserID,
 				TransactionReference: txRef,
 			},
 			TransactionID: uuid.Must(uuid.NewV4()).String(),
-			context:       ctx,
 		},
 	}
 
@@ -187,7 +181,6 @@ func (pp *Passport) AssetContractRewardRedeem(ctx context.Context, userID server
 				TransactionReference: txRef,
 			},
 			TransactionID: uuid.Must(uuid.NewV4()).String(),
-			context:       ctx,
 		},
 	}
 

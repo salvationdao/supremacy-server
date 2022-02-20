@@ -98,7 +98,8 @@ CREATE TABLE battle_events_state
 (
     id       UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
     event_id UUID             NOT NULL REFERENCES battle_events (id),
-    state    TEXT CHECK (state IN ('START', 'END'))
+    state    TEXT CHECK (state IN ('START', 'END')),
+    detail   JSONB NOT NULL
 );
 
 -- battle_events_war_machine_destroyed log war machine is destroyed
@@ -133,18 +134,19 @@ CREATE TABLE battle_events_game_ability
 
 CREATE TABLE stream_list
 (
-    host             TEXT PRIMARY KEY NOT NULL,
-    name             TEXT             NOT NULL,
-    url              TEXT             NOT NULL,
-    region           TEXT             NOT NULL,
-    resolution       TEXT             NOT NULL,
-    bit_rates_k_bits INT              NOT NULL,
-    user_max         INT              NOT NULL,
-    users_now        INT              NOT NULL,
-    active           BOOLEAN          NOT NULL,
-    status           TEXT             NOT NULL,
-    latitude         DECIMAL          NOT NULL,
-    longitude        DECIMAL          NOT NULL
+    host text PRIMARY KEY NOT NULL,
+    name text NOT NULL,
+    url text NOT NULL,
+    stream_id text NOT NULL,
+    region text NOT NULL,
+    resolution text NOT NULL,
+    bit_rates_k_bits int NOT NULL,
+    user_max int NOT NULL,
+    users_now int NOT NULL,
+    active boolean NOT NULL,
+    status text NOT NULL,
+    latitude decimal NOT NULL,
+    longitude decimal NOT NULL
 );
 
 /*****************************************************

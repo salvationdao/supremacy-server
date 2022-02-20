@@ -6,10 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/jackc/pgx/v4"
-	"github.com/ninja-software/terror/v2"
 	"server"
 	"server/db"
+
+	"github.com/jackc/pgx/v4"
+	"github.com/ninja-software/terror/v2"
 
 	"github.com/gofrs/uuid"
 )
@@ -60,6 +61,7 @@ func (ba *BattleArena) WarMachineDestroyedHandler(ctx context.Context, payload [
 			return terror.Error(fmt.Errorf("killer war machine %d does not exist", *req.Payload.DestroyedWarMachineEvent.KillByWarMachineID))
 		}
 	}
+
 	ba.Log.Info().Msgf("Battle Update: %s - War Machine Destroyed: %d", req.Payload.BattleID, req.Payload.DestroyedWarMachineEvent.DestroyedWarMachineID)
 
 	// save to database
@@ -110,10 +112,55 @@ func (ba *BattleArena) WarMachineDestroyedHandler(ctx context.Context, payload [
 		DamageRecords:       []*server.DamageRecord{},
 	}
 
+	// calc total damage and merge the duplicated damage source
+	totalDamage := 0
+	newDamageHistory := []*server.DamageHistory{}
 	for _, damage := range req.Payload.DestroyedWarMachineEvent.DamageHistory {
+		totalDamage += damage.Amount
+		// check instigator token id exist in the list
+		if damage.InstigatorTokenID > 0 {
+			exists := false
+			for _, hist := range newDamageHistory {
+				if hist.InstigatorTokenID == damage.InstigatorTokenID {
+					hist.Amount += damage.Amount
+					exists = true
+					break
+				}
+			}
+			if !exists {
+				newDamageHistory = append(newDamageHistory, &server.DamageHistory{
+					Amount:            damage.Amount,
+					InstigatorTokenID: damage.InstigatorTokenID,
+					SourceName:        damage.SourceName,
+					SourceTokenID:     damage.SourceTokenID,
+				})
+			}
+			continue
+		}
+		// check source name
+		exists := false
+		for _, hist := range newDamageHistory {
+			if hist.SourceName == damage.SourceName {
+				hist.Amount += damage.Amount
+				exists = true
+				break
+			}
+		}
+		if !exists {
+			newDamageHistory = append(newDamageHistory, &server.DamageHistory{
+				Amount:            damage.Amount,
+				InstigatorTokenID: damage.InstigatorTokenID,
+				SourceName:        damage.SourceName,
+				SourceTokenID:     damage.SourceTokenID,
+			})
+		}
+	}
+
+	// get total damage amount for calculating percentage
+	for _, damage := range newDamageHistory {
 		damageRecord := &server.DamageRecord{
 			SourceName: damage.SourceName,
-			Amount:     damage.Amount,
+			Amount:     (damage.Amount * 1000000 / totalDamage) / 100,
 		}
 		if damage.InstigatorTokenID > 0 {
 			for _, wm := range ba.battle.WarMachines {

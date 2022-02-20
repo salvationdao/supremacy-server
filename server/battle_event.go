@@ -2,6 +2,7 @@ package server
 
 import (
 	"database/sql/driver"
+	"encoding/json"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -70,6 +71,7 @@ type BattleEventStateChange struct {
 	ID      GameAbilityEventID `json:"id" db:"id"`
 	EventID EventID            `json:"eventID" db:"event_id"`
 	State   BattleEventState   `json:"state" db:"state"`
+	Detail  json.RawMessage    `json:"detail" db:"detail"`
 }
 
 type EventID uuid.UUID

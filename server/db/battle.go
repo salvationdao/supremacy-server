@@ -126,7 +126,7 @@ func BattleGet(ctx context.Context, conn Conn, battleID server.BattleID) (*serve
 }
 
 // CreateBattleStateEvent adds a battle log of BattleEvent
-func CreateBattleStateEvent(ctx context.Context, conn Conn, battleID server.BattleID, state string) (*server.BattleEventStateChange, error) {
+func CreateBattleStateEvent(ctx context.Context, conn Conn, battleID server.BattleID, state string, detail []byte) (*server.BattleEventStateChange, error) {
 	event := &server.BattleEventStateChange{}
 	q := `
 		WITH rows AS (
@@ -138,9 +138,9 @@ func CreateBattleStateEvent(ctx context.Context, conn Conn, battleID server.Batt
 				id
 		)
 		INSERT INTO 
-			battle_events_state (event_id, state)
+			battle_events_state (event_id, state, detail)
 		VALUES 
-			((SELECT id FROM rows), $3)
+			((SELECT id FROM rows), $3, $4)
 		RETURNING 
 			id, event_id, state;
 	`
@@ -148,6 +148,7 @@ func CreateBattleStateEvent(ctx context.Context, conn Conn, battleID server.Batt
 		battleID,
 		server.BattleEventTypeStateChange,
 		state,
+		detail,
 	)
 	if err != nil {
 		return nil, terror.Error(err)

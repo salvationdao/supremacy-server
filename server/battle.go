@@ -22,6 +22,9 @@ type Battle struct {
 
 	// used for destroyed notification subscription
 	WarMachineDestroyedRecordMap map[byte]*WarMachineDestroyedRecord
+
+	// State
+	State BattleState
 }
 
 type WarMachineDestroyedRecord struct {

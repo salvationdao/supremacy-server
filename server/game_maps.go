@@ -56,7 +56,7 @@ type WarMachineMetadata struct {
 }
 
 type WarMachineBrief struct {
-	ImageUrl string        `json:"image"`
+	ImageUrl string        `json:"imageUrl"`
 	Name     string        `json:"name"`
 	Faction  *FactionBrief `json:"faction"`
 }
