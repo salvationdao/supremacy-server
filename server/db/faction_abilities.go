@@ -72,6 +72,21 @@ func AbilityCollectionGetRandom(ctx context.Context, conn Conn) (*server.BattleA
 	return result, nil
 }
 
+// GameAbility return faction ability by given id
+func GameAbility(ctx context.Context, conn Conn, id server.GameAbilityID) (*server.GameAbility, error) {
+	result := &server.GameAbility{}
+	q := `
+		SELECT * FROM game_abilities
+		where id = $1;
+	`
+	err := pgxscan.Get(ctx, conn, result, q, id)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return result, nil
+}
+
 // FactionAbilityGetByBattleAbilityID return game ability by given collection id
 func FactionAbilityGetByBattleAbilityID(ctx context.Context, conn Conn, battleAbilityID server.BattleAbilityID) ([]*server.GameAbility, error) {
 	result := []*server.GameAbility{}
