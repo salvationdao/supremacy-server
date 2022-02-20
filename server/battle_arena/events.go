@@ -2,6 +2,7 @@ package battle_arena
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"server"
 	"server/db"
@@ -10,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 )
 
@@ -111,4 +113,21 @@ func (ba *BattleArena) GetEvents(w http.ResponseWriter, r *http.Request) (int, e
 	}
 
 	return helpers.EncodeJSON(w, events)
+}
+
+func (ba *BattleArena) GetAbility(w http.ResponseWriter, r *http.Request) (int, error) {
+	ctx := context.Background()
+	abilityIDStr := r.URL.Query().Get("id")
+	if abilityIDStr == "" {
+		return http.StatusBadRequest, errors.New("id not provided")
+	}
+	abilityID, err := uuid.FromString(abilityIDStr)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err)
+	}
+	result, err := db.GameAbility(ctx, ba.Conn, server.GameAbilityID(abilityID))
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err)
+	}
+	return helpers.EncodeJSON(w, result)
 }
