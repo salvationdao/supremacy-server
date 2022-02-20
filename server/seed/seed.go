@@ -44,6 +44,15 @@ func (s *Seeder) Run() error {
 	}
 
 	fmt.Println("Seed streams")
+	fmt.Println("Seed streams")
+	fmt.Println("Seed streams")
+	fmt.Println("Seed streams")
+	fmt.Println("Seed streams")
+	fmt.Println("Seed streams")
+	fmt.Println("Seed streams")
+	fmt.Println("Seed streams")
+	fmt.Println("Seed streams")
+
 	_, err = s.streams(ctx)
 	if err != nil {
 		return terror.Error(err)
@@ -258,6 +267,21 @@ func (s *Seeder) factions(ctx context.Context) ([]*server.Faction, error) {
 
 var streams = []*server.Stream{
 	{
+		Host:          "staging-watch-syd02.supremacy.game",
+		Name:          "AU Sydney",
+		URL:           "wss://staging-watch-syd02.supremacy.game/WebRTCAppEE/websocket",
+		StreamID:      "886200805704583109786601",
+		Region:        "au-east",
+		Resolution:    "1920x1080",
+		BitRatesKBits: 5000,
+		UserMax:       1000,
+		UsersNow:      100,
+		Active:        true,
+		Status:        "online",
+		Latitude:      -33.9032,
+		Longitude:     151.1518,
+	},
+	{
 		Host:          "watch-us-west-1.supremacy.game",
 		Name:          "USA Los Angeles",
 		URL:           "wss://watch-us-west-1.supremacy.game/WebRTCAppEE/websocket",
@@ -288,10 +312,10 @@ var streams = []*server.Stream{
 		Longitude:     -111.8879,
 	},
 	{
-		Host:          "staging-watch-syd02.supremacy.game",
+		Host:          "watch-au-east-1.supremacy.game",
 		Name:          "UK London",
-		URL:           "wss://staging-watch-syd02.supremacy.game/WebRTCAppEE/websocket",
-		StreamID:      "886200805704583109786601",
+		URL:           "wss://watch-au-east-1.supremacy.game/WebRTCAppEE/websocket",
+		StreamID:      "079583650308221367643",
 		Region:        "uk",
 		Resolution:    "1920x1080",
 		BitRatesKBits: 2000,
@@ -301,21 +325,6 @@ var streams = []*server.Stream{
 		Status:        "online",
 		Latitude:      51.5085,
 		Longitude:     -0.1257,
-	},
-	{
-		Host:          "watch-au-east-1.supremacy.game",
-		Name:          "AU Sydney",
-		URL:           "wss://watch-au-east-1.supremacy.game/WebRTCAppEE/websocket",
-		StreamID:      "079583650308221367643",
-		Region:        "au-east",
-		Resolution:    "1920x1080",
-		BitRatesKBits: 5000,
-		UserMax:       1200,
-		UsersNow:      1200,
-		Active:        true,
-		Status:        "online",
-		Latitude:      -33.9032,
-		Longitude:     151.1518,
 	},
 	{
 		Host:          "watch-au-south-1.supremacy.game",
@@ -376,21 +385,6 @@ var streams = []*server.Stream{
 		Status:        "online",
 		Latitude:      -31.95000076,
 		Longitude:     115.86000061,
-	},
-	{
-		Host:          "watch-au-east-2.supremacy.game",
-		Name:          "AU Sydney",
-		URL:           "wss://watch-au-east-2.supremacy.game/WebRTCAppEE/websocket",
-		StreamID:      "079583650308221367643",
-		Region:        "au-east",
-		Resolution:    "1920x1080",
-		BitRatesKBits: 5000,
-		UserMax:       500,
-		UsersNow:      400,
-		Active:        true,
-		Status:        "online",
-		Latitude:      -33.9032,
-		Longitude:     151.1518,
 	},
 	{
 		Host:          "watch-eu-1.supremacy.game",
