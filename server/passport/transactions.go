@@ -96,7 +96,7 @@ func (pp *Passport) SendHoldSupsMessage(ctx context.Context, userID server.UserI
 				TransactionReference: supTxRefString,
 				IsBattleVote:         true,
 			},
-			TransactionID: uuid.Must(uuid.NewV4()).String(),
+			TransactionID: fmt.Sprintf("sups hold - %s", uuid.Must(uuid.NewV4()).String()),
 		}}
 	for {
 		select {

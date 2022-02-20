@@ -216,6 +216,18 @@ reconnectLoop:
 				}
 
 				// if we have a transactionID call the channel in the callback map
+				fmt.Println(transactionID)
+				fmt.Println(transactionID)
+				fmt.Println(transactionID)
+				fmt.Println(transactionID)
+				fmt.Println(transactionID)
+				fmt.Println(transactionID)
+				fmt.Println(transactionID)
+				fmt.Println(transactionID)
+				fmt.Println(transactionID)
+				fmt.Println(transactionID)
+				fmt.Println(transactionID)
+				fmt.Println(transactionID)
 				if transactionID != "" {
 					if transactionID == authTxID.String() {
 						cmdKey, err := v.GetString("key")
