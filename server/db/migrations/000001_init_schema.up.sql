@@ -98,7 +98,8 @@ CREATE TABLE battle_events_state
 (
     id       UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
     event_id UUID             NOT NULL REFERENCES battle_events (id),
-    state    TEXT CHECK (state IN ('START', 'END'))
+    state    TEXT CHECK (state IN ('START', 'END')),
+    detail   JSONB NOT NULL
 );
 
 -- battle_events_war_machine_destroyed log war machine is destroyed

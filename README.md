@@ -10,7 +10,7 @@ Supremacy gameserver for communication between the game client and various front
 
 ```shell
 git config --global --add url."git@github.com:".insteadOf "https://github.com/"
-export GOPRIVATE="github.com/ninja-syndicate/*,github.com/ninja-syndicate/*"
+export GOPRIVATE="github.com/ninja-software/*,github.com/ninja-syndicate/*"
 ```
 
 ### Envars

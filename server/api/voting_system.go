@@ -551,6 +551,7 @@ func (api *API) startVotingCycle(ctx context.Context, introSecond int) {
 func (api *API) stopVotingCycle(ctx context.Context) []*server.BattleUserVote {
 	userVoteCountsChan := make(chan []*server.BattleUserVote)
 	api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+		api.votePhaseChecker.Phase = VotePhaseHold
 		vs.Phase = VotePhaseHold
 		// broadcast current stage to faction users
 		go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
