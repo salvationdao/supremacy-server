@@ -67,7 +67,6 @@ func (api *API) GetStreamsHandler(w http.ResponseWriter, r *http.Request) (int, 
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)
 	}
-
 	go api.MessageBus.Send(r.Context(), messagebus.BusKey(HubKeyStreamList), streams)
 
 	return helpers.EncodeJSON(w, streams)

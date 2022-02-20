@@ -265,6 +265,7 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 	// wait for target price change
 	tp := <-targetPriceChan
 	if tp.err != nil {
+		fmt.Println(err)
 		return terror.Error(err)
 	}
 	reply(true)
