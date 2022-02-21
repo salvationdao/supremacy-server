@@ -116,6 +116,8 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 		}
 
 		// pay sups
+
+
 		reason := fmt.Sprintf("battle:%s|vote_ability_right:%s", vc.API.BattleArena.CurrentBattleID(), va.BattleAbility.ID)
 		supTransactionReference, err := vc.API.Passport.SendHoldSupsMessage(context.Background(), userID, totalSups, reason)
 		if err != nil {
