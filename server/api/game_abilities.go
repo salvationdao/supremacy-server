@@ -15,10 +15,8 @@ import (
 	"github.com/ninja-software/log_helpers"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-software/tickle"
-	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
-	"nhooyr.io/websocket"
 )
 
 type GameAbilitiesPool map[server.GameAbilityID]*GameAbilityPrice
@@ -143,14 +141,6 @@ func (api *API) abilityTargetPriceUpdaterFactory(ctx context.Context, factionID 
 						go api.BroadcastGameNotificationAbility(ctx, GameNotificationTypeFactionAbility, &GameNotificationAbility{
 							Ability: ability,
 						})
-						// // record ability triggered event for battle end content
-						// api.battleEndInfo.BattleEvents = append(api.battleEndInfo.BattleEvents, &BattleEventRecord{
-						// 	Type:      server.BattleEventTypeGameAbility,
-						// 	CreatedAt: time.Now(),
-						// 	Event: &BattleAbilityEventRecord{
-						// 		Ability: ability,
-						// 	},
-						// })
 					} else {
 						warMachine := api.BattleArena.GetWarMachine(fa.GameAbility.WarMachineTokenID).Brief()
 						// broadcast notification
@@ -158,15 +148,6 @@ func (api *API) abilityTargetPriceUpdaterFactory(ctx context.Context, factionID 
 							Ability:    ability,
 							WarMachine: warMachine,
 						})
-						// // record ability triggered event for battle end content
-						// api.battleEndInfo.BattleEvents = append(api.battleEndInfo.BattleEvents, &BattleEventRecord{
-						// 	Type:      server.BattleEventTypeGameAbility,
-						// 	CreatedAt: time.Now(),
-						// 	Event: &BattleAbilityEventRecord{
-						// 		Ability:               ability,
-						// 		TriggeredOnWarMachine: warMachine,
-						// 	},
-						// })
 					}
 
 					hasTriggered = 1
@@ -209,28 +190,9 @@ func (api *API) abilityTargetPriceUpdaterFactory(ctx context.Context, factionID 
 			payload := []byte{}
 			payload = append(payload, byte(battle_arena.NetMessageTypeAbilityTargetPriceTick))
 			payload = append(payload, []byte(targetPrice)...)
-			// start broadcast
-			api.Hub.Clients(func(clients hub.ClientsList) {
-				for client, ok := range clients {
-					if !ok {
-						continue
-					}
-					go func(c *hub.Client) {
-						// get user faction id
-						hcd, err := api.getClientDetailFromChannel(c)
-						// skip, if error or not current faction player
-						if err != nil || hcd.FactionID != factionID {
-							return
-						}
 
-						// broadcast vote price forecast
-						err = c.SendWithMessageType(payload, websocket.MessageBinary)
-						if err != nil {
-							api.Log.Err(err).Msg("failed to send broadcast")
-						}
-					}(client)
-				}
-			})
+			// start broadcast
+			api.NetMessageBus.Send(ctx, messagebus.NetBusKey(fmt.Sprintf("%s:%s", HubKeyFactionAbilityPriceUpdated, factionID)), payload)
 		}
 
 		return http.StatusOK, nil
@@ -255,28 +217,9 @@ func (api *API) abilityTargetPriceBroadcasterFactory(ctx context.Context, factio
 			payload := []byte{}
 			payload = append(payload, byte(battle_arena.NetMessageTypeAbilityTargetPriceTick))
 			payload = append(payload, []byte(targetPrice)...)
-			// start broadcast
-			api.Hub.Clients(func(clients hub.ClientsList) {
-				for client, ok := range clients {
-					if !ok {
-						continue
-					}
-					go func(c *hub.Client) {
-						// get user faction id
-						hcd, err := api.getClientDetailFromChannel(c)
-						// skip, if error or not current faction player
-						if err != nil || hcd.FactionID != factionID {
-							return
-						}
 
-						// broadcast vote price forecast
-						err = c.SendWithMessageType(payload, websocket.MessageBinary)
-						if err != nil {
-							api.Log.Err(err).Msg("failed to send broadcast")
-						}
-					}(client)
-				}
-			})
+			// start broadcast
+			api.NetMessageBus.Send(ctx, messagebus.NetBusKey(fmt.Sprintf("%s:%s", HubKeyFactionAbilityPriceUpdated, factionID)), payload)
 		}
 
 		return http.StatusOK, nil
