@@ -26,7 +26,6 @@ type GameAbilityPrice struct {
 	MaxTargetPrice server.BigInt
 	TargetPrice    server.BigInt
 	CurrentSups    server.BigInt
-	Locked *server.TAtomBool
 	TxRefs         []server.TransactionReference
 }
 
@@ -242,7 +241,6 @@ func (api *API) startGameAbilityPoolTicker(ctx context.Context, factionID server
 				TargetPrice:    server.BigInt{Int: *big.NewInt(0)},
 				CurrentSups:    server.BigInt{Int: *big.NewInt(0)},
 				TxRefs:         []server.TransactionReference{},
-				Locked: new(server.TAtomBool),
 			}
 
 			if ability.AbilityTokenID == 0 {

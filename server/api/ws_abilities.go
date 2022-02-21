@@ -90,11 +90,6 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 	}
 	req.Payload.Amount.Mul(&req.Payload.Amount.Int, oneSups)
 
-	type targetPrice struct {
-		targetPrice string
-		err         error
-	}
-
 	fc.Log.Info().Msg("STARTING fc.API.gameAbilityPool[factionID]")
 	go func() {
 		fc.API.gameAbilityPool[factionID] <- func(fap GameAbilitiesPool, fapt *GameAbilityPoolTicker) {
