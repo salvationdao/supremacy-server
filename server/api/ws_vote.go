@@ -41,6 +41,15 @@ func NewVoteController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *VoteC
 	api.SecureUserFactionSubscribeCommand(HubKeyVoteBattleAbilityUpdated, voteHub.BattleAbilityUpdateSubscribeHandler)
 	api.SecureUserFactionSubscribeCommand(HubKeyVoteStageUpdated, voteHub.VoteStageUpdateSubscribeHandler)
 
+	// net message subscription
+	api.NetSubscribeCommand(HubKeyLiveVoteUpdated, voteHub.LiveVoteUpdateSubscribeHandler)
+	api.NetSubscribeCommand(HubKeyWarMachineLocationUpdated, voteHub.WarMachineLocationUpdateSubscribeHandler)
+	api.NetSubscribeCommand(HubKeyViewerLiveCountUpdated, voteHub.ViewerLiveCountUpdateSubscribeHandler)
+	api.NetSubscribeCommand(HubKeySpoilOfWarUpdated, voteHub.SpoilOfWarUpdateSubscribeHandler)
+	api.NetSecureUserFactionSubscribeCommand(HubKeyAbilityRightRatioUpdated, voteHub.AbilityRightRatioUpdateSubscribeHandler)
+	api.NetSecureUserFactionSubscribeCommand(HubKeyFactionAbilityPriceUpdated, voteHub.FactionAbilityPriceUpdateSubscribeHandler)
+	api.NetSecureUserFactionSubscribeCommand(HubKeyFactionVotePriceUpdated, voteHub.FactionVotePriceUpdateSubscribeHandler)
+
 	return voteHub
 }
 
@@ -397,4 +406,70 @@ func (vc *VoteControllerWS) VoteStageUpdateSubscribeHandler(ctx context.Context,
 	}
 
 	return req.TransactionID, messagebus.BusKey(HubKeyVoteStageUpdated), nil
+}
+
+/***************************
+* Net Message Subscription *
+***************************/
+
+const HubKeyLiveVoteUpdated hub.HubCommandKey = "LIVE:VOTE:UPDATED"
+
+// AbilityRightRatioUpdateSubscribeHandler to subscribe on ability right ratio update
+func (vc *VoteControllerWS) LiveVoteUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.NetBusKey, error) {
+	return messagebus.NetBusKey(HubKeyLiveVoteUpdated), nil
+}
+
+const HubKeyWarMachineLocationUpdated hub.HubCommandKey = "WAR:MACHINE:LOCATION:UPDATED"
+
+// AbilityRightRatioUpdateSubscribeHandler to subscribe on ability right ratio update
+func (vc *VoteControllerWS) WarMachineLocationUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.NetBusKey, error) {
+	return messagebus.NetBusKey(HubKeyWarMachineLocationUpdated), nil
+}
+
+const HubKeyViewerLiveCountUpdated hub.HubCommandKey = "VIEWER:LIVE:COUNT:UPDATED"
+
+func (vc *VoteControllerWS) ViewerLiveCountUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.NetBusKey, error) {
+	return messagebus.NetBusKey(HubKeyViewerLiveCountUpdated), nil
+}
+
+const HubKeySpoilOfWarUpdated hub.HubCommandKey = "SPOIL:OF:WAR:UPDATED"
+
+func (vc *VoteControllerWS) SpoilOfWarUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.NetBusKey, error) {
+	return messagebus.NetBusKey(HubKeySpoilOfWarUpdated), nil
+}
+
+const HubKeyAbilityRightRatioUpdated hub.HubCommandKey = "ABILITY:RIGHT:RATIO:UPDATED"
+
+// AbilityRightRatioUpdateSubscribeHandler to subscribe on ability right ratio update
+func (vc *VoteControllerWS) AbilityRightRatioUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.NetBusKey, error) {
+	busKey := messagebus.NetBusKey(HubKeyAbilityRightRatioUpdated)
+	return busKey, nil
+}
+
+const HubKeyFactionAbilityPriceUpdated hub.HubCommandKey = "FACTION:ABILITY:PRICE:UPDATED"
+
+func (vc *VoteControllerWS) FactionAbilityPriceUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.NetBusKey, error) {
+	// get user faction
+	hcd, err := vc.API.getClientDetailFromChannel(wsc)
+	if err != nil {
+		return "", terror.Error(err)
+	}
+
+	busKey := messagebus.NetBusKey(fmt.Sprintf("%s:%s", HubKeyFactionAbilityPriceUpdated, hcd.FactionID))
+
+	return busKey, nil
+}
+
+const HubKeyFactionVotePriceUpdated hub.HubCommandKey = "FACTION:VOTE:PRICE:UPDATED"
+
+func (vc *VoteControllerWS) FactionVotePriceUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.NetBusKey, error) {
+	// get user faction
+	hcd, err := vc.API.getClientDetailFromChannel(wsc)
+	if err != nil {
+		return "", terror.Error(err)
+	}
+
+	busKey := messagebus.NetBusKey(fmt.Sprintf("%s:%s", HubKeyFactionVotePriceUpdated, hcd.FactionID))
+
+	return busKey, nil
 }

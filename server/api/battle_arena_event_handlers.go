@@ -15,7 +15,6 @@ import (
 	"github.com/jackc/pgx/v4"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
-	"nhooyr.io/websocket"
 )
 
 func (api *API) BattleInitSignal(ctx context.Context, ed *battle_arena.EventData) {
@@ -378,20 +377,7 @@ func (api *API) UpdateWarMachinePosition(ctx context.Context, ed *battle_arena.E
 		return
 	}
 
-	// broadcast game settings to all the connected clients
-	api.Hub.Clients(func(clients hub.ClientsList) {
-		for client, ok := range clients {
-			if !ok {
-				continue
-			}
-			go func(c *hub.Client) {
-				err := c.SendWithMessageType(ed.WarMachineLocation, websocket.MessageBinary)
-				if err != nil {
-					api.Log.Err(err).Msg("failed to send broadcast")
-				}
-			}(client)
-		}
-	})
+	api.NetMessageBus.Send(ctx, messagebus.NetBusKey(HubKeyWarMachineLocationUpdated), ed.WarMachineLocation)
 }
 
 func (api *API) UpdateWarMachineQueue(ctx context.Context, ed *battle_arena.EventData) {

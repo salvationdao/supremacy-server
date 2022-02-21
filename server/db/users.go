@@ -144,7 +144,13 @@ func UserStatGet(ctx context.Context, conn Conn, userID server.UserID) (*server.
 	user := &server.UserStat{}
 
 	q := `
-		SELECT * FROM user_stats us
+		SELECT 
+			us.id,
+			COALESCE(us.view_battle_count,0),
+			COALESCE(us.total_vote_count,0),
+			COALESCE(us.total_ability_triggered,0),
+			COALESCE(us.kill_count,0)
+		FROM user_stats us
 		WHERE us.id = $1
 	`
 
