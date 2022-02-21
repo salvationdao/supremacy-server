@@ -206,8 +206,9 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 				TriggeredByUserID:   &userID,
 				TriggeredByUsername: &hcd.Username,
 				GameClientAbilityID: fa.GameAbility.GameClientAbilityID,
-				ParticipantID:       fa.GameAbility.ParticipantID,
+				WarMachineTokenID:   &fa.GameAbility.WarMachineTokenID,
 			}
+
 			if fa.GameAbility.AbilityTokenID == 0 {
 				abilityTriggerEvent.GameAbilityID = &fa.GameAbility.ID
 			} else {
