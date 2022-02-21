@@ -93,6 +93,10 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 		return terror.Error(terror.ErrForbidden, "Error - Invalid voting phase")
 	}
 
+	if req.Payload.VoteAmount <= 0 {
+		return terror.Error(terror.ErrInvalidInput, "Invalid vote amount")
+	}
+
 	hcd, err := vc.API.getClientDetailFromChannel(wsc)
 	if err != nil {
 		return terror.Error(terror.ErrForbidden)
@@ -116,7 +120,6 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 		}
 
 		// pay sups
-
 
 		reason := fmt.Sprintf("battle:%s|vote_ability_right:%s", vc.API.BattleArena.CurrentBattleID(), va.BattleAbility.ID)
 		supTransactionReference, err := vc.API.Passport.SendHoldSupsMessage(context.Background(), userID, totalSups, reason)
@@ -283,18 +286,6 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 			errChan <- terror.Error(err)
 			return
 		}
-
-		// // record ability triggered event for battle end content
-		// vc.API.battleEndInfo.BattleEvents = append(vc.API.battleEndInfo.BattleEvents, &BattleEventRecord{
-		// 	Type:      server.BattleEventTypeGameAbility,
-		// 	CreatedAt: time.Now(),
-		// 	Event: &BattleAbilityEventRecord{
-		// 		TriggeredByUser:  hcd.Brief(),
-		// 		Ability:          va.BattleAbility.Brief(),
-		// 		TriggeredOnCellX: &selectedX,
-		// 		TriggeredOnCellY: &selectedY,
-		// 	},
-		// })
 
 		// broadcast notification
 		go vc.API.BroadcastGameNotificationLocationSelect(ctx, &GameNotificationLocationSelect{
