@@ -74,6 +74,10 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 		return terror.Error(terror.ErrInvalidInput, "Ability Contribute are available after intro")
 	}
 
+	if req.Payload.Amount.Cmp(big.NewInt(0)) <= 0 {
+		return terror.Error(terror.ErrInvalidInput, "Invalid contribute amount")
+	}
+
 	// get client detail
 	hcd, err := fc.API.getClientDetailFromChannel(wsc)
 	if err != nil {
