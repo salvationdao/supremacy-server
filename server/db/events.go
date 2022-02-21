@@ -158,6 +158,11 @@ func GetEvents(ctx context.Context, conn Conn, since *time.Time) ([]*server.Batt
 			if err != nil {
 				return nil, terror.Error(err)
 			}
+			result, err := GameAbility(ctx, conn, *eventObj.GameAbilityID)
+			if err != nil {
+				return nil, terror.Error(err)
+			}
+			eventObj.GameAbility = result
 			evnt.Event = eventObj
 		case server.BattleEventTypeStateChange:
 			eventObj := &server.BattleEventStateChange{}
