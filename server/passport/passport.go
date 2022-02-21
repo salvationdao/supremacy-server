@@ -353,7 +353,10 @@ func writeTimeout(msg *Message, timeout time.Duration, c *websocket.Conn) error 
 	}
 
 	go func() {
-		c.Write(ctx, websocket.MessageText, jsn)
+		err = c.Write(ctx, websocket.MessageText, jsn)
+		if err != nil {
+			fmt.Println(err)
+		}
 	}()
 
 	<-ctx.Done()

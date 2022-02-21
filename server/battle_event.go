@@ -54,6 +54,7 @@ type GameAbilityEvent struct {
 	TriggeredByUsername *string            `json:"triggeredByUsername"`
 	TriggeredOnCellX    *int               `json:"triggeredOnCellX,omitempty" db:"triggered_on_cell_x,omitempty"`
 	TriggeredOnCellY    *int               `json:"triggeredOnCellY,omitempty" db:"triggered_on_cell_y,omitempty"`
+	GameAbility         *GameAbility       `json:"gameAbility,omitempty"`
 	GameLocation        struct {
 		X int `json:"X"`
 		Y int `json:"Y"`
