@@ -77,8 +77,9 @@ func (pp *Passport) SendHoldSupsMessage(ctx context.Context, userID server.UserI
 
 	pp.Log.Info().Msg("")
 	pp.Log.Info().Msg("")
+	id := fmt.Sprintf("sups hold - %s", uuid.Must(uuid.NewV4()).String())
 	pp.Log.Info().Msg("STARTING SUP HOLD")
-	pp.Log.Info().Msg("")
+	pp.Log.Info().Msg(id)
 	pp.Log.Info().Msg("")
 	pp.send <- &Request{
 		ReplyChannel: replyChannel,
@@ -96,7 +97,7 @@ func (pp *Passport) SendHoldSupsMessage(ctx context.Context, userID server.UserI
 				TransactionReference: supTxRefString,
 				IsBattleVote:         true,
 			},
-			TransactionID: fmt.Sprintf("sups hold - %s", uuid.Must(uuid.NewV4()).String()),
+			TransactionID: id,
 		}}
 	for {
 		select {
