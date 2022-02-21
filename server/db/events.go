@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"fmt"
+	"log"
 	"server"
 	"time"
 
@@ -158,7 +159,11 @@ func GetEvents(ctx context.Context, conn Conn, since *time.Time) ([]*server.Batt
 			if err != nil {
 				return nil, terror.Error(err)
 			}
-			result, err := GameAbility(ctx, conn, *eventObj.GameAbilityID)
+			if eventObj == nil || eventObj.GameAbilityID == nil || eventObj.GameAbilityID.IsNil() {
+				log.Println("missing game ability ID")
+				continue
+			}
+				result, err := GameAbility(ctx, conn, *eventObj.GameAbilityID)
 			if err != nil {
 				return nil, terror.Error(err)
 			}
