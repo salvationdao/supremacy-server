@@ -75,12 +75,9 @@ func (pp *Passport) SendHoldSupsMessage(ctx context.Context, userID server.UserI
 	replyChannel := make(chan []byte)
 	errChan := make(chan error)
 
-	pp.Log.Info().Msg("")
-	pp.Log.Info().Msg("")
 	id := fmt.Sprintf("sups hold - %s", uuid.Must(uuid.NewV4()).String())
-	pp.Log.Info().Msg("STARTING SUP HOLD")
-	pp.Log.Info().Msg(id)
-	pp.Log.Info().Msg("")
+	pp.Log.Info().Str("TransactionID", id).Msg("STARTING SUP HOLD")
+
 	pp.send <- &Request{
 		ReplyChannel: replyChannel,
 		ErrChan:      errChan,
@@ -102,18 +99,10 @@ func (pp *Passport) SendHoldSupsMessage(ctx context.Context, userID server.UserI
 	for {
 		select {
 		case <-replyChannel:
-			pp.Log.Info().Msg("")
-			pp.Log.Info().Msg("")
 			pp.Log.Info().Msg("ENDING SUP HOLD")
-			pp.Log.Info().Msg("")
-			pp.Log.Info().Msg("")
 			return supTxRefString, nil
 		case err := <-errChan:
-			pp.Log.Info().Msg("")
-			pp.Log.Info().Msg("")
 			pp.Log.Info().Msg("ENDING SUP HOLD ERR")
-			pp.Log.Info().Msg("")
-			pp.Log.Info().Msg("")
 			return supTxRefString, terror.Error(err)
 		}
 	}
