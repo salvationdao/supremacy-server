@@ -619,23 +619,16 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 					return
 				}
 
+				// HACK: tell user enter location select stage, while committing transactions
+				// commit process may take a noticeale time, so user won't fell the vote system freeze
+				api.votePhaseChecker.Phase = VotePhaseLocationSelect
+				vs.Phase = VotePhaseLocationSelect
+				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+
 				// otherwise, commit the transactions and check the status
 				checkedTransactions, err := api.Passport.CommitTransactions(ctx, txRefs)
 				if err != nil {
 					api.Log.Err(err).Msg("failed to check transactions")
-					return
-				}
-
-				if len(checkedTransactions) == 0 {
-					api.votePhaseChecker.Phase = VotePhaseNextVoteWin
-					vs.Phase = VotePhaseNextVoteWin
-					// broadcast current stage to faction users
-					go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
-
-					// stop ticker
-					if vct.VotingStageListener.NextTick != nil {
-						vct.VotingStageListener.Stop()
-					}
 					return
 				}
 
@@ -696,6 +689,20 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 
 					// append current result to faction vote list
 					factionVotes = append(factionVotes, factionVote)
+				}
+
+				// enter next vote win phase, there is no valid transaction
+				if len(factionVotes) == 0 {
+					api.votePhaseChecker.Phase = VotePhaseNextVoteWin
+					vs.Phase = VotePhaseNextVoteWin
+					// broadcast current stage to faction users
+					go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+
+					// stop ticker
+					if vct.VotingStageListener.NextTick != nil {
+						vct.VotingStageListener.Stop()
+					}
+					return
 				}
 
 				// sort faction votes

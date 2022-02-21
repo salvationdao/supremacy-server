@@ -354,11 +354,6 @@ func (api *API) WarMachineDestroyedBroadcast(ctx context.Context, ed *battle_are
 	if ed.WarMachineDestroyedRecord.KilledByWarMachine != nil {
 		wmd.KilledByWarMachine = ed.WarMachineDestroyedRecord.KilledByWarMachine.Brief()
 	}
-	// api.battleEndInfo.BattleEvents = append(api.battleEndInfo.BattleEvents, &BattleEventRecord{
-	// 	Type:      server.BattleEventTypeWarMachineDestroyed,
-	// 	CreatedAt: time.Now(),
-	// 	Event:     wmd,
-	// })
 
 	go api.MessageBus.Send(ctx,
 		messagebus.BusKey(
