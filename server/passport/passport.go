@@ -347,42 +347,32 @@ func (pp *Passport) sendPump(ctx context.Context, cancelFunc context.CancelFunc,
 
 // writeTimeout enforces a timeout on websocket writes
 func writeTimeout(msg *Message, timeout time.Duration, c *websocket.Conn) error {
-	fmt.Printf("write timeout 1")
 	if c == nil {
 		return nil
 	}
-	fmt.Printf("write timeout 2")
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	fmt.Printf("write timeout 3")
 	defer cancel()
 	jsn, err := json.Marshal(msg)
 	if err != nil {
-		fmt.Printf("write timeout 4")
 		return terror.Error(err)
 	}
 	errChan := make(chan error)
-	fmt.Printf("write timeout 5")
 	go func() {
 		defer cancel()
 		err := c.Write(ctx, websocket.MessageText, jsn)
 		if err != nil {
-			fmt.Printf("write timeout 6")
 			errChan <- err
 			return
 		}
-		fmt.Printf("write timeout 7")
 	}()
 
 	for {
 		select {
 		case err = <-errChan:
-			fmt.Printf("write timeout 8")
 			fmt.Println(err.Error())
 			return err
 		case <-ctx.Done():
-			fmt.Printf("write timeout 9")
 			if ctx.Err() == context.DeadlineExceeded {
-				fmt.Printf("write timeout 10")
 				fmt.Println(ctx.Err().Error())
 				return ctx.Err()
 			}
