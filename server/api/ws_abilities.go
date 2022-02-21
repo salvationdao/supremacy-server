@@ -96,24 +96,27 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 	}
 
 	targetPriceChan := make(chan *targetPrice)
-	fmt.Println("enter channel")
+	fc.Log.Info().Msg("STARTING fc.API.gameAbilityPool[factionID]")
 	fc.API.gameAbilityPool[factionID] <- func(fap GameAbilitiesPool, fapt *GameAbilityPoolTicker) {
 		// find ability
+		fc.Log.Info().Msg("fc.API.gameAbilityPool[factionID] 1")
 		fa, ok := fap[req.Payload.GameAbilityID]
 		if !ok {
+			fc.Log.Info().Msg("fc.API.gameAbilityPool[factionID] 2")
 			targetPriceChan <- &targetPrice{
 				targetPrice: "",
 				err:         terror.Error(fmt.Errorf("target ability does not exist"), "Target ability does not exist."),
 			}
+			fc.Log.Info().Msg("fc.API.gameAbilityPool[factionID] 3")
 			return
 		}
-
-		fmt.Println("Hold sups transaction")
+		fc.Log.Info().Msg("fc.API.gameAbilityPool[factionID] 4")
 		// check sups
 		reason := fmt.Sprintf("battle:%s|game_ability_contribution:%s", fc.API.BattleArena.CurrentBattleID(), req.Payload.GameAbilityID)
 		supTransactionReference, err := fc.API.Passport.SendHoldSupsMessage(context.Background(), userID, req.Payload.Amount, reason)
 		fmt.Println("End hold sup transaction")
 		if err != nil {
+			fc.Log.Info().Msg("fc.API.gameAbilityPool[factionID] 5")
 			targetPriceChan <- &targetPrice{
 				targetPrice: "",
 				err:         terror.Error(err, "Error - Failed to pay sups"),
@@ -243,7 +246,7 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 			err:         nil,
 		}
 	}
-
+	fc.Log.Info().Msg("ENDING fc.API.gameAbilityPool[factionID]")
 	// wait for target price change
 	tp := <-targetPriceChan
 	if tp.err != nil {
