@@ -114,7 +114,6 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 		// check sups
 		reason := fmt.Sprintf("battle:%s|game_ability_contribution:%s", fc.API.BattleArena.CurrentBattleID(), req.Payload.GameAbilityID)
 		supTransactionReference, err := fc.API.Passport.SendHoldSupsMessage(context.Background(), userID, req.Payload.Amount, reason)
-		fmt.Println("End hold sup transaction")
 		if err != nil {
 			fc.Log.Info().Msg("fc.API.gameAbilityPool[factionID] 5")
 			targetPriceChan <- &targetPrice{
