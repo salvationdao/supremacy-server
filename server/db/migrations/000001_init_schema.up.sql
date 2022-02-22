@@ -234,5 +234,11 @@ FROM (
 
 CREATE UNIQUE INDEX user_id ON user_stats (id);
 
+CREATE TABLE battle_war_machine_queues(
+    war_machine_metadata JSONB            NOT NULL,
+    queued_at            TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
+    released_at           TIMESTAMPTZ
+);
+
 COMMIT;
 

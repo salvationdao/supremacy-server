@@ -2,7 +2,9 @@ package battle_arena
 
 import (
 	"context"
+	"errors"
 	"server"
+	"server/db"
 	"server/passport"
 	"time"
 )
@@ -16,17 +18,30 @@ func (ba *BattleArena) startBattleQueue(factionID server.FactionID) {
 		WarMachines: []*server.WarMachineMetadata{},
 	}
 
-	for {
-		fn := <-ba.BattleQueueMap[factionID]
-		fn(warMachineMetadatas)
+	// read war machine queue from db
+	wms, err := db.BattleQueueRead(ba.ctx, ba.Conn, factionID)
+	if err != nil {
+		ba.Log.Err(err).Msg("failed to read battle queue list from db")
 	}
+
+	// assign war machine list
+	warMachineMetadatas.WarMachines = wms
+
+	go func() {
+		for {
+			fn := <-ba.BattleQueueMap[factionID]
+			fn(warMachineMetadatas)
+		}
+	}()
 }
 
 func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, warMachinePerBattle int) []*server.WarMachineMetadata {
 	inGameWarMachinesChan := make(chan []*server.WarMachineMetadata)
-	ba.BattleQueueMap[factionID] <- func(wmq *WarMachineQueuingList) {
+	select {
+	case ba.BattleQueueMap[factionID] <- func(wmq *WarMachineQueuingList) {
 		ctx := context.Background()
 		tempList := []*server.WarMachineMetadata{}
+
 		// if queuing war machines is less than maximum in game war machine amount get all and fill rest with defaults
 		if len(wmq.WarMachines) <= warMachinePerBattle {
 			// get all the war machines
@@ -63,7 +78,7 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, 
 			})
 
 			// broadcast empty queue for all the passport client
-			ba.passport.WarMachineQueuePositionBroadcast(context.Background(), ba.BuildUserWarMachineQueuePosition(wmq.WarMachines, tempList, includedUserID...))
+			go ba.passport.WarMachineQueuePositionBroadcast(context.Background(), ba.BuildUserWarMachineQueuePosition(wmq.WarMachines, tempList, includedUserID...))
 
 			inGameWarMachinesChan <- tempList
 			return
@@ -97,10 +112,15 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, 
 		})
 
 		// broadcast war machine queue position update
-		ba.passport.WarMachineQueuePositionBroadcast(context.Background(), ba.BuildUserWarMachineQueuePosition(wmq.WarMachines, tempList, includedUserID...))
+		go ba.passport.WarMachineQueuePositionBroadcast(context.Background(), ba.BuildUserWarMachineQueuePosition(wmq.WarMachines, tempList, includedUserID...))
 
 		// return the war machines
 		inGameWarMachinesChan <- tempList
+	}:
+
+	case <-time.After(10 * time.Second):
+		ba.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("Client Battle Reward Update")
 	}
 
 	return <-inGameWarMachinesChan

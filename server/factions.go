@@ -39,10 +39,10 @@ func (f *Faction) Brief() *FactionBrief {
 
 type FactionStat struct {
 	ID         FactionID `json:"id" db:"id"`
-	WinCount   *int64    `json:"winCount,omitempty" db:"win_count,omitempty"`
-	LossCount  *int64    `json:"lossCount,omitempty" db:"loss_count,omitempty"`
-	KillCount  *int64    `json:"killCount,omitempty" db:"kill_count,omitempty"`
-	DeathCount *int64    `json:"deathCount,omitempty" db:"death_count,omitempty"`
+	WinCount   *int64    `json:"winCount" db:"win_count,omitempty"`
+	LossCount  *int64    `json:"lossCount" db:"loss_count,omitempty"`
+	KillCount  *int64    `json:"killCount" db:"kill_count,omitempty"`
+	DeathCount *int64    `json:"deathCount" db:"death_count,omitempty"`
 }
 
 type BattleAbility struct {

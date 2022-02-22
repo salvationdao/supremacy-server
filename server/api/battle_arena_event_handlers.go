@@ -23,6 +23,30 @@ func (api *API) BattleInitSignal(ctx context.Context, ed *battle_arena.EventData
 
 	// pass back nil to tell game ui to clean up current end battle message
 	go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyBattleEndDetailUpdated), nil)
+	// send new queue details
+
+	go func() {
+		for i := range api.BattleArena.BattleQueueMap {
+			api.BattleArena.BattleQueueMap[i] <- func(wmq *battle_arena.WarMachineQueuingList) {
+				// for each queue map
+				userMap := make(map[server.UserID][]*passport.WarMachineQueuePosition)
+
+				for i, wm := range wmq.WarMachines {
+					if _, ok := userMap[wm.OwnedByID]; !ok {
+						userMap[wm.OwnedByID] = []*passport.WarMachineQueuePosition{}
+					}
+					userMap[wm.OwnedByID] = append(userMap[wm.OwnedByID], &passport.WarMachineQueuePosition{
+						WarMachineMetadata: wm,
+						Position:           i + 1,
+					})
+				}
+
+				for u, uwm := range userMap {
+					go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserWarMachineQueueUpdated, u)), uwm)
+				}
+			}
+		}
+	}()
 }
 
 const HubKeyGameSettingsUpdated = hub.HubCommandKey("GAME:SETTINGS:UPDATED")

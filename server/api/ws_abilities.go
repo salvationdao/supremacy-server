@@ -3,12 +3,15 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"server"
 	"server/battle_arena"
 	"server/db"
+	"server/passport"
 	"strings"
+	"time"
 
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -39,7 +42,65 @@ func NewFactionController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Fa
 	// subscription
 	api.SecureUserFactionSubscribeCommand(HubKeyFactionAbilitiesUpdated, factionHub.FactionAbilitiesUpdateSubscribeHandler)
 	api.SecureUserFactionSubscribeCommand(HubKeyWarMachineAbilitiesUpdated, factionHub.WarMachineAbilitiesUpdateSubscribeHandler)
+	api.SecureUserFactionSubscribeCommand(HubKeyUserWarMachineQueueUpdated, factionHub.UserWarMachineQueueUpdatedSubscribeHandler)
 	return factionHub
+}
+
+type UserWarMachineQueueUpdatedSubscribeRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		FactionID server.FactionID `json:"factionID"`
+		UserID    server.UserID    `json:"userID"`
+	} `json:"payload"`
+}
+
+const HubKeyUserWarMachineQueueUpdated hub.HubCommandKey = "USER:WAR:MACHINE:QUEUE:UPDATED"
+
+// UserWarMachineQueueUpdatedSubscribeHandler subscribes a user to a list of their queued mechs
+func (fc *FactionControllerWS) UserWarMachineQueueUpdatedSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return "", "", terror.Error(err, "Invalid request received")
+	}
+
+	hcd, err := fc.API.getClientDetailFromChannel(wsc)
+	if err != nil {
+		return "", "", terror.Error(err)
+	}
+
+	if hcd.FactionID.IsNil() || hcd.FactionID.String() == "" {
+		return "", "", terror.Error(fmt.Errorf("no faction ID provided"))
+	}
+
+	inBattleWarMachines := fc.API.BattleArena.InGameWarMachines()
+
+	fc.API.BattleArena.BattleQueueMap[hcd.FactionID] <- func(wmq *battle_arena.WarMachineQueuingList) {
+		warMachineQueuePosition := []*passport.WarMachineQueuePosition{}
+		for i, wm := range wmq.WarMachines {
+			if wm.OwnedByID != hcd.ID {
+				continue
+			}
+			warMachineQueuePosition = append(warMachineQueuePosition, &passport.WarMachineQueuePosition{
+				WarMachineMetadata: wm,
+				Position:           i,
+			})
+		}
+		// get in game war machine
+		for _, wm := range inBattleWarMachines {
+			if wm.OwnedByID != hcd.ID {
+				continue
+			}
+			warMachineQueuePosition = append(warMachineQueuePosition, &passport.WarMachineQueuePosition{
+				WarMachineMetadata: wm,
+				Position:           -1,
+			})
+		}
+		reply(warMachineQueuePosition)
+	}
+
+	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserWarMachineQueueUpdated, hcd.ID))
+	return req.TransactionID, busKey, nil
 }
 
 type GameAbilityContributeRequest struct {
@@ -96,7 +157,8 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 
 	fc.Log.Info().Msg("STARTING fc.API.gameAbilityPool[factionID]")
 	go func() {
-		fc.API.gameAbilityPool[factionID] <- func(fap GameAbilitiesPool, fapt *GameAbilityPoolTicker) {
+		select {
+		case fc.API.gameAbilityPool[factionID] <- func(fap GameAbilitiesPool, fapt *GameAbilityPoolTicker) {
 			// find ability
 			fa, ok := fap[req.Payload.GameAbilityID]
 			if !ok {
@@ -254,15 +316,27 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 				payload = append(payload, []byte(strings.Join(targetPriceList, "|"))...)
 				fc.API.NetMessageBus.Send(ctx, messagebus.NetBusKey(fmt.Sprintf("%s:%s", HubKeyFactionAbilityPriceUpdated, factionID)), payload)
 			}
+		}:
+
+		case <-time.After(30 * time.Second):
+			fc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+			panic("Game Ability Contribute")
 		}
+
 	}()
 
 	reply(true)
 
-	// store vote amount to live voting data after vote success
-	fc.API.liveSupsSpend[hcd.FactionID] <- func(lvd *LiveVotingData) {
+	select {
+	case fc.API.liveSupsSpend[hcd.FactionID] <- func(lvd *LiveVotingData) {
 		lvd.TotalVote.Add(&lvd.TotalVote.Int, &req.Payload.Amount.Int)
+	}:
+
+	case <-time.After(10 * time.Second):
+		fc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("store vote amount to live voting data after vote success")
 	}
+
 	return nil
 }
 
@@ -280,7 +354,8 @@ func (fc *FactionControllerWS) FactionAbilitiesUpdateSubscribeHandler(ctx contex
 		return "", "", terror.Error(err)
 	}
 
-	fc.API.gameAbilityPool[hcd.FactionID] <- func(fap GameAbilitiesPool, fapt *GameAbilityPoolTicker) {
+	select {
+	case fc.API.gameAbilityPool[hcd.FactionID] <- func(fap GameAbilitiesPool, fapt *GameAbilityPoolTicker) {
 		abilities := []*server.GameAbility{}
 		for _, fa := range fap {
 			if fa.GameAbility.AbilityTokenID > 0 {
@@ -290,12 +365,14 @@ func (fc *FactionControllerWS) FactionAbilitiesUpdateSubscribeHandler(ctx contex
 			abilities = append(abilities, fa.GameAbility)
 		}
 		reply(abilities)
+	}:
+		busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionAbilitiesUpdated, hcd.FactionID))
+		return req.TransactionID, busKey, nil
+
+	case <-time.After(10 * time.Second):
+		fc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("Client Battle Reward Update")
 	}
-
-	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionAbilitiesUpdated, hcd.FactionID))
-
-	return req.TransactionID, busKey, nil
-
 }
 
 const HubKeyWarMachineAbilitiesUpdated hub.HubCommandKey = "WAR:MACHINE:ABILITIES:UPDATED"
@@ -320,7 +397,8 @@ func (fc *FactionControllerWS) WarMachineAbilitiesUpdateSubscribeHandler(ctx con
 		return "", "", terror.Error(err)
 	}
 
-	fc.API.gameAbilityPool[hcd.FactionID] <- func(fap GameAbilitiesPool, fapt *GameAbilityPoolTicker) {
+	select {
+	case fc.API.gameAbilityPool[hcd.FactionID] <- func(fap GameAbilitiesPool, fapt *GameAbilityPoolTicker) {
 		abilities := []*server.GameAbility{}
 		for _, fa := range fap {
 			if fa.GameAbility.AbilityTokenID == 0 ||
@@ -332,9 +410,13 @@ func (fc *FactionControllerWS) WarMachineAbilitiesUpdateSubscribeHandler(ctx con
 			abilities = append(abilities, fa.GameAbility)
 		}
 		reply(abilities)
+	}:
+
+		busKey := messagebus.BusKey(fmt.Sprintf("%s:%s:%x", HubKeyWarMachineAbilitiesUpdated, hcd.FactionID, req.Payload.ParticipantID))
+		return req.TransactionID, busKey, nil
+
+	case <-time.After(10 * time.Second):
+		fc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("War Machine Abilities Update Subscribe Handler")
 	}
-
-	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s:%x", HubKeyWarMachineAbilitiesUpdated, hcd.FactionID, req.Payload.ParticipantID))
-
-	return req.TransactionID, busKey, nil
 }

@@ -2,10 +2,12 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"server"
 	"server/battle_arena"
+	"time"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/log_helpers"
@@ -74,41 +76,73 @@ func (api *API) initialiseViewerLiveCount(ctx context.Context, factions []*serve
 }
 
 func (api *API) viewerLiveCountAdd(factionID server.FactionID) {
-	api.viewerLiveCount <- func(vlc ViewerLiveCount, vim ViewerIDMap) {
+	select {
+	case api.viewerLiveCount <- func(vlc ViewerLiveCount, vim ViewerIDMap) {
 		vlc[factionID].Count += 1
+	}:
+
+	case <-time.After(10 * time.Second):
+		api.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("viewer Live Count Add")
 	}
 }
 
 func (api *API) viewerLiveCountRemove(factionID server.FactionID) {
-	api.viewerLiveCount <- func(vlc ViewerLiveCount, vim ViewerIDMap) {
+	select {
+	case api.viewerLiveCount <- func(vlc ViewerLiveCount, vim ViewerIDMap) {
 		vlc[factionID].Count -= 1
+	}:
+
+	case <-time.After(10 * time.Second):
+		api.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("viewer Live Count Remove")
 	}
+
 }
 
 func (api *API) viewerLiveCountSwap(oldFactionID, newFactionID server.FactionID) {
-	api.viewerLiveCount <- func(vlc ViewerLiveCount, vim ViewerIDMap) {
+	select {
+	case api.viewerLiveCount <- func(vlc ViewerLiveCount, vim ViewerIDMap) {
 		vlc[oldFactionID].Count -= 1
 		vlc[newFactionID].Count += 1
+	}:
+
+	case <-time.After(10 * time.Second):
+		api.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("viewer Live Count Swap")
 	}
 }
 
 func (api *API) viewerIDRecord(userID server.UserID) {
-	api.viewerLiveCount <- func(vlc ViewerLiveCount, vim ViewerIDMap) {
+	select {
+	case api.viewerLiveCount <- func(vlc ViewerLiveCount, vim ViewerIDMap) {
 		vim[userID] = true
+	}:
+
+	case <-time.After(10 * time.Second):
+		api.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("viewer ID Record")
 	}
 }
 
 func (api *API) viewerIDRead() []server.UserID {
 	userIDChan := make(chan []server.UserID)
-	api.viewerLiveCount <- func(vlc ViewerLiveCount, vim ViewerIDMap) {
+	select {
+	case api.viewerLiveCount <- func(vlc ViewerLiveCount, vim ViewerIDMap) {
 		userIDs := []server.UserID{}
 		for userID := range vim {
 			userIDs = append(userIDs, userID)
 			delete(vim, userID)
 		}
 		userIDChan <- userIDs
+	}:
+		return <-userIDChan
+
+	case <-time.After(10 * time.Second):
+		api.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("viewer ID Read")
+
 	}
-	return <-userIDChan
 }
 
 /**********************
@@ -148,24 +182,40 @@ func (api *API) hubClientDetailRegister(wsc *hub.Client) {
 	hcd := &server.User{
 		FactionID: server.FactionID(uuid.Nil),
 	}
-	api.hubClientDetail <- func(m map[*hub.Client]*server.User) {
+
+	select {
+	case api.hubClientDetail <- func(m map[*hub.Client]*server.User) {
 		if _, ok := m[wsc]; !ok {
 			m[wsc] = hcd
 		}
+	}:
+
+	case <-time.After(10 * time.Second):
+		api.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("hub Client Detail Register")
+
 	}
 }
 
 // remove hub client channel
 func (api *API) hubClientDetailRemove(wsc *hub.Client) {
-	api.hubClientDetail <- func(m map[*hub.Client]*server.User) {
+	select {
+	case api.hubClientDetail <- func(m map[*hub.Client]*server.User) {
 		delete(m, wsc)
+	}:
+
+	case <-time.After(10 * time.Second):
+		api.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("hub Client Detail Remove")
+
 	}
 }
 
 // getClientDetailFromChannel return a client detail from client detail channel
 func (api *API) getClientDetailFromChannel(wsc *hub.Client) (*server.User, error) {
 	detailChan := make(chan *server.User)
-	api.hubClientDetail <- func(m map[*hub.Client]*server.User) {
+	select {
+	case api.hubClientDetail <- func(m map[*hub.Client]*server.User) {
 		hcd, ok := m[wsc]
 		if !ok {
 			detailChan <- nil
@@ -174,14 +224,19 @@ func (api *API) getClientDetailFromChannel(wsc *hub.Client) (*server.User, error
 
 		detailChan <- hcd
 
-	}
-	result := <-detailChan
+	}:
+		result := <-detailChan
 
-	if result == nil {
-		return nil, terror.Error(terror.ErrInvalidInput, "Error - Current hub client is not on the map")
-	}
+		if result == nil {
+			return nil, terror.Error(terror.ErrInvalidInput, "Error - Current hub client is not on the map")
+		}
+		return result, nil
 
-	return result, nil
+	case <-time.After(10 * time.Second):
+		api.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("get Client Detail From Channel")
+
+	}
 }
 
 // getClientDetailFromUserID return hub client detail by given user id

@@ -92,6 +92,66 @@ func (ev *BattleArenaEvents) TriggerMany(ctx context.Context, event Event, ed *E
 	}()
 }
 
+func (ba *BattleArena) FactionStats(w http.ResponseWriter, r *http.Request) (int, error) {
+	ctx := context.Background()
+	result, err := db.FactionStatAll(ctx, ba.Conn)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err)
+	}
+	return helpers.EncodeJSON(w, result)
+}
+func (ba *BattleArena) UserStats(w http.ResponseWriter, r *http.Request) (int, error) {
+	userIDStr := r.URL.Query().Get("user_id")
+	if userIDStr == "" {
+		return http.StatusBadRequest, errors.New("user_id not provided")
+	}
+	userID, err := uuid.FromString(userIDStr)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err)
+	}
+
+	ctx := context.Background()
+	result, err := db.UserStatGet(ctx, ba.Conn, server.UserID(userID))
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err)
+	}
+	return helpers.EncodeJSON(w, result)
+}
+
+func (ba *BattleArena) GetBattleQueue(w http.ResponseWriter, r *http.Request) (int, error) {
+	if r.Header.Get("X-Authorization") != "9b3c60af-035c-4f64-9450-a7dd7cbe2297" {
+		return http.StatusForbidden, errors.New("unauthorised")
+	}
+
+	// X-Authorization:
+	result := &struct {
+		Zaibatsu    []*server.WarMachineMetadata `json:"zaibatsu"`
+		RedMountain []*server.WarMachineMetadata `json:"red_mountain"`
+		Boston      []*server.WarMachineMetadata `json:"boston"`
+	}{}
+
+	wg := sync.WaitGroup{}
+	for i := range ba.BattleQueueMap {
+		wg.Add(1)
+		ba.BattleQueueMap[i] <- func(wmq *WarMachineQueuingList) {
+			// for each queue map
+			switch ba.battle.FactionMap[i].Label {
+			case "Zaibatsu Heavy Industries":
+				result.Zaibatsu = wmq.WarMachines
+			case "Boston Cybernetics":
+				result.Boston = wmq.WarMachines
+			case "Red Mountain Offworld Mining Corporation":
+				result.RedMountain = wmq.WarMachines
+			}
+			wg.Done()
+		}
+	}
+
+	wg.Wait()
+
+	return helpers.EncodeJSON(w, result)
+}
+
 func (ba *BattleArena) GetEvents(w http.ResponseWriter, r *http.Request) (int, error) {
 	ctx := context.Background()
 	sinceStr := r.URL.Query().Get("since")

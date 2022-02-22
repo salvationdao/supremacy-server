@@ -294,6 +294,14 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 	//release war machine
 	if len(inGameWarMachines) > 0 {
 		ba.passport.AssetRelease(ctx, inGameWarMachines)
+
+		// remove the war machine in db
+		for _, wm := range inGameWarMachines {
+			err = db.BattleQueueRemove(ctx, ba.Conn, wm)
+			if err != nil {
+				ba.Log.Err(err).Msgf("Failed to remove battle queue cache in db, token id: %d ", wm.TokenID)
+			}
+		}
 	}
 
 	for _, faction := range ba.battle.FactionMap {
@@ -303,10 +311,18 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 				includedUserID = append(includedUserID, ig.OwnedByID)
 			}
 		}
-		ba.BattleQueueMap[faction.ID] <- func(wmq *WarMachineQueuingList) {
+
+		select {
+		case ba.BattleQueueMap[faction.ID] <- func(wmq *WarMachineQueuingList) {
 			// broadcast new war machine position for in game war machine owners
-			ba.passport.WarMachineQueuePositionBroadcast(context.Background(), ba.BuildUserWarMachineQueuePosition(wmq.WarMachines, []*server.WarMachineMetadata{}, includedUserID...))
+			go ba.passport.WarMachineQueuePositionBroadcast(context.Background(), ba.BuildUserWarMachineQueuePosition(wmq.WarMachines, []*server.WarMachineMetadata{}, includedUserID...))
+		}:
+
+		case <-time.After(10 * time.Second):
+			ba.Log.Err(errors.New("timeout on channel send exceeded"))
+			panic("Client Battle Reward Update")
 		}
+
 	}
 
 	// trigger battle end
@@ -315,6 +331,14 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 		BattleRewardList: battleRewardList,
 	})
 
+	go func() {
+		time.Sleep(22 * time.Second)
+		err := ba.InitNextBattle()
+		if err != nil {
+			ba.Log.Err(err).Msg("Failed to initialise next battle")
+		}
+	}()
+
 	return nil
 }
 
@@ -322,10 +346,6 @@ const BattleReadyCommand = BattleCommand("BATTLE:READY")
 
 // BattleReadyHandler gets called when the game client is ready for a new battle
 func (ba *BattleArena) BattleReadyHandler(ctx context.Context, payload []byte, reply ReplyFunc) error {
-	err := ba.InitNextBattle()
-	if err != nil {
-		ba.Log.Err(err).Msg("Failed to initialise next battle")
-		return terror.Error(err)
-	}
+
 	return nil
 }

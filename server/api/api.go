@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"net"
@@ -200,11 +201,15 @@ func NewAPI(
 		// Web sockets are long-lived, so we don't want the sentry performance tracer running for the life-time of the connection.
 		// See roothub.ServeHTTP for the setup of sentry on this route.
 		r.Handle("/ws", api.Hub)
+		r.Get("/battlequeue", WithError(api.BattleArena.GetBattleQueue))
 		r.Get("/events", WithError(api.BattleArena.GetEvents))
+		r.Get("/faction_stats", WithError(api.BattleArena.FactionStats))
+		r.Get("/user_stats", WithError(api.BattleArena.UserStats))
 		r.Get("/abilities", WithError(api.BattleArena.GetAbility))
 		r.Post("/video_server", WithToken(config.ServerStreamKey, WithError((api.CreateStreamHandler))))
 		r.Get("/video_server", WithToken(config.ServerStreamKey, WithError((api.GetStreamsHandler))))
 		r.Delete("/video_server", WithToken(config.ServerStreamKey, WithError((api.DeleteStreamHandler))))
+		r.Get("/faction_data", WithError(api.GetFactionData))
 	})
 
 	///////////////////////////
@@ -330,20 +335,25 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 		totalVoteMutex := sync.Mutex{}
 		for _, faction := range factions {
 			voteCountChan := make(chan server.BigInt)
-			api.liveSupsSpend[faction.ID] <- func(lvd *LiveVotingData) {
+
+			select {
+			case api.liveSupsSpend[faction.ID] <- func(lvd *LiveVotingData) {
 				// pass value back
 				voteCountChan <- lvd.TotalVote
 
 				// clear current value
 				lvd.TotalVote = server.BigInt{Int: *big.NewInt(0)}
+			}:
+				voteCount := <-voteCountChan
+				// protect total vote
+				totalVoteMutex.Lock()
+				totalVote.Add(&totalVote.Int, &voteCount.Int)
+				totalVoteMutex.Unlock()
+
+			case <-time.After(10 * time.Second):
+				api.Log.Err(errors.New("timeout on channel send exceeded"))
+				panic("Client Battle Reward Update")
 			}
-
-			voteCount := <-voteCountChan
-
-			// protect total vote
-			totalVoteMutex.Lock()
-			totalVote.Add(&totalVote.Int, &voteCount.Int)
-			totalVoteMutex.Unlock()
 		}
 
 		// prepare payload
@@ -411,7 +421,8 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 	// check vote if there is not client instances of the offline user
 	if noClientLeft && currentUser != nil && api.votePhaseChecker.Phase == VotePhaseLocationSelect {
 		// check the user is selecting ability location
-		api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+		select {
+		case api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
 			if len(vw.List) > 0 && vw.List[0].String() == wsc.Identifier() {
 				if err != nil {
 					api.Log.Err(err).Msg("failed to get user")
@@ -481,10 +492,14 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 				// broadcast current stage to faction users
 				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 			}
+		}:
+		case <-time.After(10 * time.Second):
+			api.Log.Err(errors.New("timeout on channel send exceeded"))
+			panic("check the user is selecting ability location")
 		}
 	}
 
-	// clean up the map
+	// clean up the client detail map
 	api.hubClientDetailRemove(wsc)
 }
 
