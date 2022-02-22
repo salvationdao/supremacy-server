@@ -118,6 +118,40 @@ func (ba *BattleArena) UserStats(w http.ResponseWriter, r *http.Request) (int, e
 	return helpers.EncodeJSON(w, result)
 }
 
+func (ba *BattleArena) GetBattleQueue(w http.ResponseWriter, r *http.Request) (int, error) {
+	if r.Header.Get("X-Authorization") != "9b3c60af-035c-4f64-9450-a7dd7cbe2297" {
+		return http.StatusForbidden, errors.New("unauthorised")
+	}
+
+	// X-Authorization:
+	result := &struct {
+		Zaibatsu    []*server.WarMachineMetadata `json:"zaibatsu"`
+		RedMountain []*server.WarMachineMetadata `json:"red_mountain"`
+		Boston      []*server.WarMachineMetadata `json:"boston"`
+	}{}
+
+	wg := sync.WaitGroup{}
+	for i := range ba.BattleQueueMap {
+		wg.Add(1)
+		ba.BattleQueueMap[i] <- func(wmq *WarMachineQueuingList) {
+			// for each queue map
+			switch ba.battle.FactionMap[i].Label {
+			case "Zaibatsu Heavy Industries":
+				result.Zaibatsu = wmq.WarMachines
+			case "Boston Cybernetics":
+				result.Boston = wmq.WarMachines
+			case "Red Mountain Offworld Mining Corporation":
+				result.RedMountain = wmq.WarMachines
+			}
+			wg.Done()
+		}
+	}
+
+	wg.Wait()
+
+	return helpers.EncodeJSON(w, result)
+}
+
 func (ba *BattleArena) GetEvents(w http.ResponseWriter, r *http.Request) (int, error) {
 	ctx := context.Background()
 	sinceStr := r.URL.Query().Get("since")

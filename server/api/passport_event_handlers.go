@@ -252,14 +252,15 @@ func (api *API) PassportBattleQueueJoinHandler(ctx context.Context, payload []by
 			}
 
 			// fire a war machine queue passport request
-			api.Passport.WarMachineQueuePositionBroadcast(ctx, []*passport.UserWarMachineQueuePosition{
+			go api.Passport.WarMachineQueuePositionBroadcast(ctx, []*passport.UserWarMachineQueuePosition{
 				{
 					UserID:                   req.Payload.WarMachineMetadata.OwnedByID,
 					WarMachineQueuePositions: warMachineQueuePosition,
 				},
 			})
-		}:
+			go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserWarMachineQueueUpdated, req.Payload.WarMachineMetadata.OwnedByID)), warMachineQueuePosition)
 
+		}:
 		case <-time.After(10 * time.Second):
 			api.Log.Err(errors.New("timeout on channel send exceeded"))
 			panic("Passport Battle Queue Join Handler")
@@ -316,8 +317,18 @@ func (api *API) PassportBattleQueueReleaseHandler(ctx context.Context, payload [
 
 				go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionWarMachineQueueUpdated, req.Payload.WarMachineMetadata.FactionID)), wmq.WarMachines[:maxLength])
 			}
+			result := api.BattleArena.BuildUserWarMachineQueuePosition(wmq.WarMachines, []*server.WarMachineMetadata{}, req.Payload.WarMachineMetadata.OwnedByID)
+			go api.Passport.WarMachineQueuePositionBroadcast(context.Background(), result)
 
-			go api.Passport.WarMachineQueuePositionBroadcast(context.Background(), api.BattleArena.BuildUserWarMachineQueuePosition(wmq.WarMachines, []*server.WarMachineMetadata{}, req.Payload.WarMachineMetadata.OwnedByID))
+			warMachineQueuePosition := make([]*passport.WarMachineQueuePosition, 0)
+			for _, qp := range result {
+				if qp.UserID != req.Payload.WarMachineMetadata.OwnedByID {
+					continue
+				}
+				warMachineQueuePosition = qp.WarMachineQueuePositions
+			}
+			go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserWarMachineQueueUpdated, req.Payload.WarMachineMetadata.OwnedByID)), warMachineQueuePosition)
+
 		}:
 
 		case <-time.After(10 * time.Second):
@@ -411,7 +422,7 @@ func (api *API) PassportAssetInsurancePayHandler(ctx context.Context, payload []
 				})
 			}
 
-			api.Passport.WarMachineQueuePositionBroadcast(ctx, []*passport.UserWarMachineQueuePosition{
+			go api.Passport.WarMachineQueuePositionBroadcast(ctx, []*passport.UserWarMachineQueuePosition{
 				{
 					UserID:                   targetWarMachine.OwnedByID,
 					WarMachineQueuePositions: warMachineQueuePosition,
@@ -557,11 +568,10 @@ func (api *API) PassportWarMachineQueuePositionHandler(ctx context.Context, payl
 		return
 	}
 
-	warMachineQueuePositionChan := make(chan []*passport.WarMachineQueuePosition)
+	warMachineQueuePosition := []*passport.WarMachineQueuePosition{}
 
 	select {
 	case api.BattleArena.BattleQueueMap[req.Payload.FactionID] <- func(wmq *battle_arena.WarMachineQueuingList) {
-		warMachineQueuePosition := []*passport.WarMachineQueuePosition{}
 		for i, wm := range wmq.WarMachines {
 			if wm.OwnedByID != req.Payload.UserID {
 				continue
@@ -571,11 +581,7 @@ func (api *API) PassportWarMachineQueuePositionHandler(ctx context.Context, payl
 				Position:           i,
 			})
 		}
-
-		warMachineQueuePositionChan <- warMachineQueuePosition
 	}:
-
-		warMachineQueuePosition := <-warMachineQueuePositionChan
 
 		// get in game war machine
 		for _, wm := range api.BattleArena.InGameWarMachines() {
@@ -590,7 +596,7 @@ func (api *API) PassportWarMachineQueuePositionHandler(ctx context.Context, payl
 
 		// fire a war machine queue passport request
 		if len(warMachineQueuePosition) > 0 {
-			api.Passport.WarMachineQueuePositionBroadcast(ctx, []*passport.UserWarMachineQueuePosition{
+			go api.Passport.WarMachineQueuePositionBroadcast(ctx, []*passport.UserWarMachineQueuePosition{
 				{
 					UserID:                   req.Payload.UserID,
 					WarMachineQueuePositions: warMachineQueuePosition,

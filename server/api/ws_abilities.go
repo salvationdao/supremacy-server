@@ -9,6 +9,7 @@ import (
 	"server"
 	"server/battle_arena"
 	"server/db"
+	"server/passport"
 	"strings"
 	"time"
 
@@ -41,7 +42,65 @@ func NewFactionController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Fa
 	// subscription
 	api.SecureUserFactionSubscribeCommand(HubKeyFactionAbilitiesUpdated, factionHub.FactionAbilitiesUpdateSubscribeHandler)
 	api.SecureUserFactionSubscribeCommand(HubKeyWarMachineAbilitiesUpdated, factionHub.WarMachineAbilitiesUpdateSubscribeHandler)
+	api.SecureUserFactionSubscribeCommand(HubKeyUserWarMachineQueueUpdated, factionHub.UserWarMachineQueueUpdatedSubscribeHandler)
 	return factionHub
+}
+
+type UserWarMachineQueueUpdatedSubscribeRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		FactionID server.FactionID `json:"factionID"`
+		UserID    server.UserID    `json:"userID"`
+	} `json:"payload"`
+}
+
+const HubKeyUserWarMachineQueueUpdated hub.HubCommandKey = "USER:WAR:MACHINE:QUEUE:UPDATED"
+
+// UserWarMachineQueueUpdatedSubscribeHandler subscribes a user to a list of their queued mechs
+func (fc *FactionControllerWS) UserWarMachineQueueUpdatedSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return "", "", terror.Error(err, "Invalid request received")
+	}
+
+	hcd, err := fc.API.getClientDetailFromChannel(wsc)
+	if err != nil {
+		return "", "", terror.Error(err)
+	}
+
+	if hcd.FactionID.IsNil() || hcd.FactionID.String() == "" {
+		return "", "", terror.Error(fmt.Errorf("no faction ID provided"))
+	}
+
+	inBattleWarMachines := fc.API.BattleArena.InGameWarMachines()
+
+	fc.API.BattleArena.BattleQueueMap[hcd.FactionID] <- func(wmq *battle_arena.WarMachineQueuingList) {
+		warMachineQueuePosition := []*passport.WarMachineQueuePosition{}
+		for i, wm := range wmq.WarMachines {
+			if wm.OwnedByID != hcd.ID {
+				continue
+			}
+			warMachineQueuePosition = append(warMachineQueuePosition, &passport.WarMachineQueuePosition{
+				WarMachineMetadata: wm,
+				Position:           i,
+			})
+		}
+		// get in game war machine
+		for _, wm := range inBattleWarMachines {
+			if wm.OwnedByID != hcd.ID {
+				continue
+			}
+			warMachineQueuePosition = append(warMachineQueuePosition, &passport.WarMachineQueuePosition{
+				WarMachineMetadata: wm,
+				Position:           -1,
+			})
+		}
+		reply(warMachineQueuePosition)
+	}
+
+	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserWarMachineQueueUpdated, hcd.ID))
+	return req.TransactionID, busKey, nil
 }
 
 type GameAbilityContributeRequest struct {

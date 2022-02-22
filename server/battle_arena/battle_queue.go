@@ -78,7 +78,7 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, 
 			})
 
 			// broadcast empty queue for all the passport client
-			ba.passport.WarMachineQueuePositionBroadcast(context.Background(), ba.BuildUserWarMachineQueuePosition(wmq.WarMachines, tempList, includedUserID...))
+			go ba.passport.WarMachineQueuePositionBroadcast(context.Background(), ba.BuildUserWarMachineQueuePosition(wmq.WarMachines, tempList, includedUserID...))
 
 			inGameWarMachinesChan <- tempList
 			return
@@ -112,7 +112,7 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, 
 		})
 
 		// broadcast war machine queue position update
-		ba.passport.WarMachineQueuePositionBroadcast(context.Background(), ba.BuildUserWarMachineQueuePosition(wmq.WarMachines, tempList, includedUserID...))
+		go ba.passport.WarMachineQueuePositionBroadcast(context.Background(), ba.BuildUserWarMachineQueuePosition(wmq.WarMachines, tempList, includedUserID...))
 
 		// return the war machines
 		inGameWarMachinesChan <- tempList
