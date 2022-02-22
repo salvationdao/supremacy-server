@@ -62,7 +62,7 @@ read PROCEED
 if [[ $var != "y" ]]; then exit 1; fi
 
 systemctl stop ${PACKAGE}
-$TARGET/migrate -database "postgres://postgres:${PGPASSWORD}@${GAMESERVER_DATABASE_HOST}:${GAMESERVER_DATABASE_PORT}/${GAMESERVER_DATABASE_NAME}" -path $TARGET/migrations up
+$TARGET/migrate -database "postgres://${GAMESERVER_DATABASE_USER}:${PGPASSWORD}@${GAMESERVER_DATABASE_HOST}:${GAMESERVER_DATABASE_PORT}/${GAMESERVER_DATABASE_NAME}" -path $TARGET/migrations up
 
 ln -Tfsv $TARGET $(pwd)/${PACKAGE}_online
 
