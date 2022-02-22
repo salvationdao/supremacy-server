@@ -2,12 +2,11 @@ package api
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/log_helpers"
-	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/rs/zerolog"
 )
@@ -28,7 +27,6 @@ func NewAuthController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *AuthC
 	}
 
 	api.Command(HubKeyAuthSessionIDGet, authHub.GetHubSessionID)
-	api.Command(HubKeyTwitchJWTAuth, authHub.JWTAuth)
 
 	return authHub
 }
@@ -37,48 +35,54 @@ const HubKeyAuthSessionIDGet = hub.HubCommandKey("AUTH:SESSION:ID:GET")
 
 // GetHubSessionID return hub client's session id for ring check authentication
 func (ac *AuthControllerWS) GetHubSessionID(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	ac.API.ringCheckAuthChan <- func(rcam RingCheckAuthMap) {
+	select {
+	case ac.API.ringCheckAuthChan <- func(rcam RingCheckAuthMap) {
 		rcam[string(wsc.SessionID)] = wsc
+		reply(wsc.SessionID)
+	}:
+		return nil
+
+	case <-time.After(10 * time.Second):
+		ac.API.Log.Err(errors.New("timeout on channel send exceeded!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"))
+		panic("Get Hub Session ID")
 	}
 
-	reply(wsc.SessionID)
-	return nil
 }
 
-// TwitchAuthRequest authenticate a twitch user
-type TwitchAuthRequest struct {
-	*hub.HubCommandRequest
-	Payload struct {
-		TwitchToken string `json:"twitchToken"`
-	} `json:"payload"`
-}
+// // TwitchAuthRequest authenticate a twitch user
+// type TwitchAuthRequest struct {
+// 	*hub.HubCommandRequest
+// 	Payload struct {
+// 		TwitchToken string `json:"twitchToken"`
+// 	} `json:"payload"`
+// }
 
-const HubKeyTwitchJWTAuth = hub.HubCommandKey("TWITCH:JWT:AUTH")
+// const HubKeyTwitchJWTAuth = hub.HubCommandKey("TWITCH:JWT:AUTH")
 
-func (ac *AuthControllerWS) JWTAuth(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	req := &TwitchAuthRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err)
-	}
+// func (ac *AuthControllerWS) JWTAuth(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+// 	req := &TwitchAuthRequest{}
+// 	err := json.Unmarshal(payload, req)
+// 	if err != nil {
+// 		return terror.Error(err)
+// 	}
 
-	ac.API.ringCheckAuthChan <- func(rca RingCheckAuthMap) {
-		rca[req.Payload.TwitchToken] = wsc
-	}
+// 	ac.API.ringCheckAuthChan <- func(rca RingCheckAuthMap) {
+// 		rca[req.Payload.TwitchToken] = wsc
+// 	}
 
-	// distroy the token in 30 second
-	go func() {
-		time.Sleep(600 * time.Second)
+// 	// distroy the token in 30 second
+// 	go func() {
+// 		time.Sleep(600 * time.Second)
 
-		ac.API.ringCheckAuthChan <- func(rca RingCheckAuthMap) {
-			_, ok := rca[req.Payload.TwitchToken]
-			if ok {
-				delete(rca, req.Payload.TwitchToken)
-			}
-		}
-	}()
+// 		ac.API.ringCheckAuthChan <- func(rca RingCheckAuthMap) {
+// 			_, ok := rca[req.Payload.TwitchToken]
+// 			if ok {
+// 				delete(rca, req.Payload.TwitchToken)
+// 			}
+// 		}
+// 	}()
 
-	reply(true)
+// 	reply(true)
 
-	return nil
-}
+// 	return nil
+// }

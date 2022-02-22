@@ -2,6 +2,7 @@ package battle_arena
 
 import (
 	"context"
+	"errors"
 	"server"
 	"server/db"
 	"server/passport"
@@ -36,9 +37,11 @@ func (ba *BattleArena) startBattleQueue(factionID server.FactionID) {
 
 func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, warMachinePerBattle int) []*server.WarMachineMetadata {
 	inGameWarMachinesChan := make(chan []*server.WarMachineMetadata)
-	ba.BattleQueueMap[factionID] <- func(wmq *WarMachineQueuingList) {
+	select {
+	case ba.BattleQueueMap[factionID] <- func(wmq *WarMachineQueuingList) {
 		ctx := context.Background()
 		tempList := []*server.WarMachineMetadata{}
+
 		// if queuing war machines is less than maximum in game war machine amount get all and fill rest with defaults
 		if len(wmq.WarMachines) <= warMachinePerBattle {
 			// get all the war machines
@@ -113,6 +116,11 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, 
 
 		// return the war machines
 		inGameWarMachinesChan <- tempList
+	}:
+
+	case <-time.After(10 * time.Second):
+		ba.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("Client Battle Reward Update")
 	}
 
 	return <-inGameWarMachinesChan
