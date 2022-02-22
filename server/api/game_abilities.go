@@ -292,9 +292,9 @@ func (api *API) startGameAbilityPoolTicker(ctx context.Context, factionID server
 		fapt.TargetPriceBroadcaster.Start()
 	}:
 
-	case <-time.After(10 * time.Second):
+	case <-time.After(5 * time.Second):
 		api.Log.Err(errors.New("timeout on channel send exceeded"))
-		panic("Client Battle Reward Update")
+		return
 	}
 
 }

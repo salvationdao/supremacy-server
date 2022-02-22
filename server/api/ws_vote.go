@@ -229,9 +229,9 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 
 		return nil
 
-	case <-time.After(10 * time.Second):
+	case <-time.After(5 * time.Second):
 		vc.API.Log.Err(errors.New("timeout on channel send exceeded"))
-		panic("Ability Right")
+		return nil
 	}
 }
 
