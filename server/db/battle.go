@@ -168,12 +168,12 @@ func BattleQueueInsert(ctx context.Context, conn Conn, warMachineMetadata *serve
 
 	q := `
 		INSERT INTO 
-			battle_war_machine_queues (faction_id, war_machine_metadata)
+			battle_war_machine_queues (war_machine_metadata)
 		VALUES
-			($1, $2)
+			($1)
 	`
 
-	_, err = conn.Exec(ctx, q, warMachineMetadata.FactionID, jb)
+	_, err = conn.Exec(ctx, q, jb)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -194,7 +194,7 @@ func BattleQueueWarMachineUpdate(ctx context.Context, conn Conn, warMachineMetad
 	SET
 		war_machine_metadata = $1
 	WHERE
-		war_machine_metadata ->> 'tokenID' = '%d' AND deleted_at ISNULL
+		war_machine_metadata ->> 'tokenID' = '%d' AND released_at ISNULL
 	`, warMachineMetadata.TokenID)
 
 	_, err = conn.Exec(ctx, q, jb)
@@ -206,16 +206,22 @@ func BattleQueueWarMachineUpdate(ctx context.Context, conn Conn, warMachineMetad
 }
 
 func BattleQueueRemove(ctx context.Context, conn Conn, warMachineMetadata *server.WarMachineMetadata) error {
-	q := fmt.Sprintf(`
-		UPDATE
-			battle_war_machine_queues
-		SET
-			deleted_at = NOW()
-		WHERE
-			war_machine_metadata ->> 'tokenID' = '%d' AND faction_id = $1 AND deleted_at ISNULL
-	`, warMachineMetadata.TokenID)
+	q := fmt.Sprintf(
+		`
+			UPDATE
+				battle_war_machine_queues
+			SET
+				released_at = NOW()
+			WHERE
+				war_machine_metadata ->> 'tokenID' = '%d' AND 
+				war_machine_metadata ->> 'factionID' = '%s' AND 
+				released_at ISNULL
+		`,
+		warMachineMetadata.TokenID,
+		warMachineMetadata.FactionID,
+	)
 
-	_, err := conn.Exec(ctx, q, warMachineMetadata.FactionID)
+	_, err := conn.Exec(ctx, q)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -225,18 +231,21 @@ func BattleQueueRemove(ctx context.Context, conn Conn, warMachineMetadata *serve
 
 func BattleQueueRead(ctx context.Context, conn Conn, factionID server.FactionID) ([]*server.WarMachineMetadata, error) {
 	bqs := []*server.BattleQueueMetadata{}
-	q := `
-		SELECT
-			war_machine_metadata
-		FROM
-			battle_war_machine_queues
-		WHERE
-			faction_id = $1 AND deleted_at ISNULL
-		ORDER BY
-			queued_at asc
-	`
+	q := fmt.Sprintf(
+		`
+			SELECT
+				war_machine_metadata
+			FROM
+				battle_war_machine_queues
+			WHERE
+				war_machine_metadata ->> 'factionID' = '%s' AND released_at ISNULL
+			ORDER BY
+				queued_at asc
+		`,
+		factionID,
+	)
 
-	err := pgxscan.Select(ctx, conn, &bqs, q, factionID)
+	err := pgxscan.Select(ctx, conn, &bqs, q)
 	if err != nil {
 		return []*server.WarMachineMetadata{}, terror.Error(err)
 	}
