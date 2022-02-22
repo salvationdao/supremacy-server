@@ -1,0 +1,15 @@
+[Unit]
+Description=game control server service
+After=network.target
+
+[Service]
+Type=simple
+Restart=always
+User=gameserver
+LimitNOFILE=65536
+WorkingDirectory=/usr/share/ninja_syndicate/gameserver-online
+ExecStart=/usr/share/ninja_syndicate/gameserver-online/gameserver serve
+EnvironmentFile=/usr/share/ninja_syndicate/gameserver-online/init/gameserver.env
+
+[Install]
+WantedBy=multi-user.target

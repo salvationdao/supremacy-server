@@ -1,0 +1,171 @@
+name: Staging Deployment
+
+on:
+  push:
+    branches: [staging]
+
+env:
+  GO_VERSION: 1.17.7
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    outputs:
+      artifact_filename: ${{ steps.artifact.outputs.filename }}
+      version: ${{ steps.version.outputs.v }}
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: "0"
+
+      - uses: actions/setup-go@v2 # install go
+        with:
+          go-version: ${{env.GO_VERSION}}
+      # Setup
+      # Multi key private go repos
+      # https://gist.github.com/jrapoport/d12f60029eef017354d0ec982b918258
+      - name: Setup go private repos access
+        run: |
+          mkdir -p ~/.ssh
+          echo -e "Host hub.github.com\n  HostName github.com\n  IdentityFile ~/.ssh/id_ed25519_hub\n  IdentitiesOnly yes" >> ~/.ssh/config
+          echo -e "Host bridge.github.com\n  HostName github.com\n  IdentityFile ~/.ssh/id_ed25519_bridge\n  IdentitiesOnly yes" >> ~/.ssh/config
+          echo -e "Host loghelpers.github.com\n  HostName github.com\n  IdentityFile ~/.ssh/id_ed25519_loghelpers\n  IdentitiesOnly yes" >> ~/.ssh/config
+          echo '${{ secrets.GH_DEPLOY_HUB_PK }}' > ~/.ssh/id_ed25519_hub
+          chmod 600 ~/.ssh/id_ed25519_hub
+          echo '${{ secrets.GH_DEPLOY_BRIDGE_PK }}' > ~/.ssh/id_ed25519_bridge
+          chmod 600 ~/.ssh/id_ed25519_bridge
+          echo '${{ secrets.GH_DEPLOY_LOGHELPERS_PK }}' > ~/.ssh/id_ed25519_loghelpers
+          chmod 600 ~/.ssh/id_ed25519_loghelpers
+          git config --global user.name "Github CI"
+          git config --global user.email "team@syndicate.ninja"
+          git config --global --add url."git@hub.github.com:ninja-syndicate/hub".insteadOf "https://github.com/ninja-syndicate/hub"
+          git config --global --add url."git@bridge.github.com:ninja-syndicate/supremacy-bridge".insteadOf "https://github.com/ninja-syndicate/supremacy-bridge"
+          git config --global --add url."git@loghelpers.github.com:ninja-software/log_helpers".insteadOf "https://github.com/ninja-software/log_helpers"
+
+      - name: calculate version increment
+        if: ${{ !env.ACT }} # if running in local test environment
+        run: |
+          NEWVER=$(scripts/increment_git_ver.py)
+          git tag "$NEWVER"
+          echo "GITVERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
+          echo "GITHASH=$(git rev-parse HEAD)" >> $GITHUB_ENV
+          echo "GITBRANCH=$(git rev-parse --abbrev-ref HEAD)" >> $GITHUB_ENV
+          echo "BUILDDATE=$(date -u +%Y%m%d%H%M%S)" >> $GITHUB_ENV
+          echo "GITSTATE=$(git status --porcelain | wc -l)" >> $GITHUB_ENV
+
+      - name: Setup build env
+        run: |
+          export GOPRIVATE="github.com/ninja-syndicate/*,github.com/ninja-software/*"
+          mkdir -p bin
+          make tools
+
+      # Server
+      - name: Copy dependants
+        run: |
+          mkdir -p deploy
+          cp bin/migrate deploy/.
+          cp -r ./init deploy/.
+          cp -r ./scripts deploy/.
+          cp -r ./configs deploy/.
+          cp -r ./server/db/migrations deploy/.
+
+      - name: Build API server
+        working-directory: ./server
+        run: |
+          go build \
+            -ldflags "-X main.Version=${{env.GITVERSION}} -X main.GitHash=${{env.GITHASH}} -X main.GitBranch=${{env.GITBRANCH}} -X main.BuildDate=${{env.BUILDDATE}} -X main.UnCommittedFiles=${{env.GITSTATE}}" \
+            -gcflags=-trimpath=${{ github.workspace }} \
+            -asmflags=-trimpath=${{ github.workspace }} \
+            -o ../deploy/gameserver \
+            cmd/gameserver/main.go
+
+      - name: Add info text
+        run: |
+          deploy/gameserver version --full > deploy/BuildInfo.txt
+
+      - name: Update tags
+        if: ${{ !env.ACT }} # if running in local test environment
+        run: |
+          git push
+          git push --tags
+
+      # Package artifact
+      - name: List deploy dir
+        run: find deploy
+
+      - id: artifact
+        run: echo "::set-output name=filename::gameserver_${{env.GITVERSION}}.tar"
+      - id: version
+        run: echo "::set-output name=v::${{env.GITVERSION}}"
+
+      - name: tar deploy directory
+        run: tar -cvf ${{ steps.artifact.outputs.filename }} ./deploy
+
+      - name: save artifact
+        uses: actions/upload-artifact@v2
+        if: ${{ !env.ACT }} # if running in local test environment
+        with:
+          name: ${{ steps.artifact.outputs.filename }}
+          path: ${{ steps.artifact.outputs.filename }}
+
+  deploy:
+    needs: [build]
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/download-artifact@v2
+        if: ${{ !env.ACT }} # if running in local test environment
+        with:
+          name: ${{ needs.build.outputs.artifact_filename }}
+
+      - name: untar deploy directory
+        run: tar -xvf ${{ needs.build.outputs.artifact_filename }}
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo -e "Host ${{ secrets.STAGING_SSH_HOST }}\n  User ${{ secrets.STAGING_SSH_USER }}\n  Port ${{ secrets.STAGING_SSH_PORT }}" >> ~/.ssh/config
+          echo '${{ secrets.STAGING_SSH_KNOWN_HOSTS }}' > ~/.ssh/known_hosts
+          echo '${{ secrets.STAGING_SSH_PKEY }}' > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+      - name: Rsync to server
+        if: ${{ !env.ACT }} # if running in local test environment
+        run: rsync -av ./deploy/ ${{ secrets.STAGING_SSH_HOST }}:/usr/share/ninja_syndicate/gameserver_${{ needs.build.outputs.version }}
+
+      - name: Copy previous config
+        if: ${{ !env.ACT }} # if running in local test environment
+        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'cp /usr/share/ninja_syndicate/gameserver-online/init/gameserver.env /usr/share/ninja_syndicate/gameserver_${{ needs.build.outputs.version }}/init/gameserver.env && cp /usr/share/ninja_syndicate/gameserver-online/init/gameserver.env ~/.ssh/environment'
+
+      # - name: "DB: Backup" # Run this before changing the link
+      #   if: ${{ !env.ACT }} # if running in local test environment
+      #   run: ssh ${{ secrets.STAGING_SSH_HOST }} 'mkdir -p /usr/share/ninja_syndicate/gameserver-online/db_backup && \
+      #     /usr/bin/pg_dump postgres://$GAMESERVER_DATABASE_USER:$GAMESERVER_DATABASE_PASS@$GAMESERVER_DATABASE_HOST:$GAMESERVER_DATABASE_PORT/$GAMESERVER_DATABASE_NAME?sslmode=disable > "/usr/share/ninja_syndicate/GAMESERVER-online/db_backup/gameserver_$(date -Is).sql"'
+
+      - name: Bring new version online
+        if: ${{ !env.ACT }} # if running in local test environment
+        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'ln -Tfsv /usr/share/ninja_syndicate/gameserver_${{ needs.build.outputs.version }} /usr/share/ninja_syndicate/gameserver-online'
+
+      - name: stop api-server
+        if: ${{ !env.ACT }} # if running in local test environment
+        run: ssh ${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }} 'sudo systemctl stop gameserver'
+
+      - name: "DB: drop"
+        if: ${{ !env.ACT }} # if running in local test environment
+        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'cd /usr/share/ninja_syndicate/gameserver-online && source ./init/gameserver.env && ./migrate -database "postgres://$GAMESERVER_DATABASE_USER:$GAMESERVER_DATABASE_PASS@$GAMESERVER_DATABASE_HOST:$GAMESERVER_DATABASE_PORT/$GAMESERVER_DATABASE_NAME?sslmode=disable" -path ./migrations drop -f'
+
+      - name: "DB: up"
+        if: ${{ !env.ACT }} # if running in local test environment
+        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'cd /usr/share/ninja_syndicate/gameserver-online && source ./init/gameserver.env && ./migrate -database "postgres://$GAMESERVER_DATABASE_USER:$GAMESERVER_DATABASE_PASS@$GAMESERVER_DATABASE_HOST:$GAMESERVER_DATABASE_PORT/$GAMESERVER_DATABASE_NAME?sslmode=disable" -path ./migrations up'
+
+      - name: "DB: seed"
+        if: ${{ !env.ACT }} # if running in local test environment
+        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'cd /usr/share/ninja_syndicate/gameserver-online && source ./init/gameserver.env && ./gameserver db --database_user=$GAMESERVER_DATABASE_USER --database_pass=$GAMESERVER_DATABASE_PASS --database_host=$GAMESERVER_DATABASE_HOST --database_port=$GAMESERVER_DATABASE_PORT --database_name=$GAMESERVER_DATABASE_NAME'
+
+      - name: restart api-server
+        if: ${{ !env.ACT }} # if running in local test environment
+        run: ssh ${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }} 'sudo systemctl daemon-reload && sudo systemctl start gameserver'
+
+      - name: restart web-server
+        if: ${{ !env.ACT }} # if running in local test environment
+        run: ssh ${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }} 'sudo nginx -t && sudo nginx -s reload'
