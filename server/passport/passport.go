@@ -86,8 +86,6 @@ type responseError struct {
 }
 
 func (pp *Passport) Connect(ctx context.Context) error {
-	// this holds the callbacks for some requests
-	callbackChannels := make(map[string]*callbackChannel)
 
 	b := &backoff.Backoff{
 		Min:    1 * time.Second,
@@ -97,6 +95,9 @@ func (pp *Passport) Connect(ctx context.Context) error {
 
 reconnectLoop:
 	for {
+		// this holds the callbacks for some requests
+		callbackChannels := make(map[string]*callbackChannel)
+
 		connectCtx, cancel := context.WithCancel(ctx)
 		authed := false
 		pp.Connected = false
