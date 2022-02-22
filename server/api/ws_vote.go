@@ -152,6 +152,12 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 
 			fuvm[hcd.FactionID][userID][supTransactionReference] = req.Payload.VoteAmount
 
+			// check phase end time
+			if vs.EndTime.Before(time.Now()) {
+				// trigger vote right end function
+				vc.API.VoteRightPhase(ctx, vs, va, fuvm, ftv, vw, vct, uvm)
+			}
+
 			errChan <- nil
 			return
 		}
