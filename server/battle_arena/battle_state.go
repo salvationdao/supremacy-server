@@ -315,6 +315,14 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 		BattleRewardList: battleRewardList,
 	})
 
+	go func() {
+		time.Sleep(22 * time.Second)
+		err := ba.InitNextBattle()
+		if err != nil {
+			ba.Log.Err(err).Msg("Failed to initialise next battle")
+		}
+	}()
+
 	return nil
 }
 
@@ -322,10 +330,6 @@ const BattleReadyCommand = BattleCommand("BATTLE:READY")
 
 // BattleReadyHandler gets called when the game client is ready for a new battle
 func (ba *BattleArena) BattleReadyHandler(ctx context.Context, payload []byte, reply ReplyFunc) error {
-	err := ba.InitNextBattle()
-	if err != nil {
-		ba.Log.Err(err).Msg("Failed to initialise next battle")
-		return terror.Error(err)
-	}
+
 	return nil
 }
