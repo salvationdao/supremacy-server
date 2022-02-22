@@ -3,6 +3,7 @@ package battle_arena
 import (
 	"context"
 	"server"
+	"server/db"
 	"server/passport"
 	"time"
 )
@@ -16,10 +17,21 @@ func (ba *BattleArena) startBattleQueue(factionID server.FactionID) {
 		WarMachines: []*server.WarMachineMetadata{},
 	}
 
-	for {
-		fn := <-ba.BattleQueueMap[factionID]
-		fn(warMachineMetadatas)
+	// read war machine queue from db
+	wms, err := db.BattleQueueRead(ba.ctx, ba.Conn, factionID)
+	if err != nil {
+		ba.Log.Err(err).Msg("failed to read battle queue list from db")
 	}
+
+	// assign war machine list
+	warMachineMetadatas.WarMachines = wms
+
+	go func() {
+		for {
+			fn := <-ba.BattleQueueMap[factionID]
+			fn(warMachineMetadatas)
+		}
+	}()
 }
 
 func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, warMachinePerBattle int) []*server.WarMachineMetadata {

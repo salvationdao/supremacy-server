@@ -92,6 +92,32 @@ func (ev *BattleArenaEvents) TriggerMany(ctx context.Context, event Event, ed *E
 	}()
 }
 
+func (ba *BattleArena) FactionStats(w http.ResponseWriter, r *http.Request) (int, error) {
+	ctx := context.Background()
+	result, err := db.FactionStatAll(ctx, ba.Conn)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err)
+	}
+	return helpers.EncodeJSON(w, result)
+}
+func (ba *BattleArena) UserStats(w http.ResponseWriter, r *http.Request) (int, error) {
+	userIDStr := r.URL.Query().Get("user_id")
+	if userIDStr == "" {
+		return http.StatusBadRequest, errors.New("user_id not provided")
+	}
+	userID, err := uuid.FromString(userIDStr)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err)
+	}
+
+	ctx := context.Background()
+	result, err := db.UserStatGet(ctx, ba.Conn, server.UserID(userID))
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(err)
+	}
+	return helpers.EncodeJSON(w, result)
+}
+
 func (ba *BattleArena) GetEvents(w http.ResponseWriter, r *http.Request) (int, error) {
 	ctx := context.Background()
 	sinceStr := r.URL.Query().Get("since")

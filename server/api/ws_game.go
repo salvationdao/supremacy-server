@@ -89,7 +89,7 @@ func (gc *GameControllerWS) WarMachineDestroyedUpdateSubscribeHandler(ctx contex
 
 const HubKeyFactionWarMachineQueueUpdated hub.HubCommandKey = "FACTION:WAR:MACHINE:QUEUE:UPDATED"
 
-// FactionWarMachineQueueUpdateSubscribeHandler
+// FactionWarMachineQueueUpdateSubscribeHandler subscribe on war machine queue position change
 func (gc *GameControllerWS) FactionWarMachineQueueUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
