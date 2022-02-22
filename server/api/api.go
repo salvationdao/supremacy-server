@@ -201,6 +201,8 @@ func NewAPI(
 		// See roothub.ServeHTTP for the setup of sentry on this route.
 		r.Handle("/ws", api.Hub)
 		r.Get("/events", WithError(api.BattleArena.GetEvents))
+		r.Get("/faction_stats", WithError(api.BattleArena.FactionStats))
+		r.Get("/user_stats", WithError(api.BattleArena.UserStats))
 		r.Get("/abilities", WithError(api.BattleArena.GetAbility))
 		r.Post("/video_server", WithToken(config.ServerStreamKey, WithError((api.CreateStreamHandler))))
 		r.Get("/video_server", WithToken(config.ServerStreamKey, WithError((api.GetStreamsHandler))))
