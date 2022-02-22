@@ -155,3 +155,94 @@ func CreateBattleStateEvent(ctx context.Context, conn Conn, battleID server.Batt
 	}
 	return event, nil
 }
+
+/*********************
+* Battle Queue stuff *
+*********************/
+func BattleQueueInsert(ctx context.Context, conn Conn, warMachineMetadata *server.WarMachineMetadata) error {
+	// marshal metadata
+	jb, err := json.Marshal(warMachineMetadata)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	q := `
+		INSERT INTO 
+			battle_war_machine_queues (war_machine_token_id,faction_id, war_machine_metadata)
+		VALUES
+			($1, $2, $3)
+	`
+
+	_, err = conn.Exec(ctx, q, warMachineMetadata.TokenID, warMachineMetadata.FactionID, jb)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	return nil
+}
+
+func BattleQueueWarMachineUpdate(ctx context.Context, conn Conn, warMachineMetadata *server.WarMachineMetadata) error {
+	// marshal metadata
+	jb, err := json.Marshal(warMachineMetadata)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	q := `
+	UPDATE
+		battle_war_machine_queues
+	SET
+		war_machine_metadata = $2
+	WHERE
+		war_machine_token_id = $1
+	`
+
+	_, err = conn.Exec(ctx, q, warMachineMetadata.TokenID, jb)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	return nil
+}
+
+func BattleQueueRemove(ctx context.Context, conn Conn, warMachineMetadata *server.WarMachineMetadata) error {
+	q := `
+		DELETE FROM 
+			battle_war_machine_queues
+		WHERE
+			war_machine_token_id = $1 AND faction_id = $2
+	`
+
+	_, err := conn.Exec(ctx, q, warMachineMetadata.TokenID, warMachineMetadata.FactionID)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	return nil
+}
+
+func BattleQueueRead(ctx context.Context, conn Conn, factionID server.FactionID) ([]*server.WarMachineMetadata, error) {
+	bqs := []*server.BattleQueueMetadata{}
+	q := `
+		SELECT
+			war_machine_metadata
+		FROM
+			battle_war_machine_queues
+		WHERE
+			faction_id = $1
+		ORDER BY
+			queued_at asc
+	`
+
+	err := pgxscan.Select(ctx, conn, &bqs, q, factionID)
+	if err != nil {
+		return []*server.WarMachineMetadata{}, terror.Error(err)
+	}
+
+	wms := []*server.WarMachineMetadata{}
+	for _, bq := range bqs {
+		wms = append(wms, bq.WarMachineMetadata)
+	}
+
+	return wms, nil
+}

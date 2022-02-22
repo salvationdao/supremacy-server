@@ -211,6 +211,13 @@ func (api *API) PassportBattleQueueJoinHandler(ctx context.Context, payload []by
 				return
 			}
 
+			// insert war machine into db
+			err = db.BattleQueueInsert(ctx, api.Conn, req.Payload.WarMachineMetadata)
+			if err != nil {
+				api.Log.Err(err).Msgf("Failed to insert a copy of queue in db, token id: %d", req.Payload.WarMachineMetadata.TokenID)
+				return
+			}
+
 			wmq.WarMachines = append(wmq.WarMachines, req.Payload.WarMachineMetadata)
 
 			// broadcast next 5 queuing war machines to twitch ui
@@ -271,6 +278,13 @@ func (api *API) PassportBattleQueueReleaseHandler(ctx context.Context, payload [
 			copy(wmq.WarMachines[index:], wmq.WarMachines[index+1:])   // Shift wmq.WarMachines[i+1:] left one index.
 			wmq.WarMachines[len(wmq.WarMachines)-1] = nil              // wmq.WarMachinesse wmq.WarMachinesst element (write zero vwmq.WarMachineslue).
 			wmq.WarMachines = wmq.WarMachines[:len(wmq.WarMachines)-1] // Truncate slice.
+
+			// remove the war machine queue copy in db
+			err = db.BattleQueueRemove(ctx, api.Conn, req.Payload.WarMachineMetadata)
+			if err != nil {
+				api.Log.Err(err).Msgf("failed to remove war machine queue in db, token id: %d", req.Payload.WarMachineMetadata.TokenID)
+				return
+			}
 
 			// broadcast next 5 queuing war machines to twitch ui
 			if index <= 5 {
@@ -349,6 +363,13 @@ func (api *API) PassportAssetInsurancePayHandler(ctx context.Context, payload []
 
 			// set isInsured flag to true
 			targetWarMachine.IsInsured = true
+
+			// update war machine copy in battle queue
+			err = db.BattleQueueWarMachineUpdate(ctx, api.Conn, targetWarMachine)
+			if err != nil {
+				api.Log.Err(err).Msgf("failed to update war machine in db, token id: %d", req.Payload.AssetTokenID)
+				return
+			}
 
 			// broadcast war machine queue
 			warMachineQueuePosition := []*passport.WarMachineQueuePosition{}
@@ -493,11 +514,12 @@ type WarMachineQueuePositionRequest struct {
 	} `json:"payload"`
 }
 
+// PassportWarMachineQueuePositionHandler return the list of user's war machines in the queue
 func (api *API) PassportWarMachineQueuePositionHandler(ctx context.Context, payload []byte) {
 	req := &WarMachineQueuePositionRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		api.Log.Err(err).Msg("error unmarshalling passport battle queue release request")
+		api.Log.Err(err).Msg("error unmarshalling passport battle queue position")
 		return
 	}
 

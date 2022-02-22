@@ -294,6 +294,14 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 	//release war machine
 	if len(inGameWarMachines) > 0 {
 		ba.passport.AssetRelease(ctx, inGameWarMachines)
+
+		// remove the war machine in db
+		for _, wm := range inGameWarMachines {
+			err = db.BattleQueueRemove(ctx, ba.Conn, wm)
+			if err != nil {
+				ba.Log.Err(err).Msgf("Failed to remove battle queue cache in db, token id: %d ", wm.TokenID)
+			}
+		}
 	}
 
 	for _, faction := range ba.battle.FactionMap {
