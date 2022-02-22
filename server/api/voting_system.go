@@ -347,7 +347,11 @@ type VoteAbility struct {
 	FactionAbilityMap map[server.FactionID]*server.GameAbility
 }
 
-type FactionUserVoteMap map[server.FactionID]map[server.UserID]map[server.TransactionReference]int64
+type FactionUserVoteMap map[server.FactionID]map[server.UserID]int64
+
+type FactionTransactions struct {
+	Transactions []server.Transaction
+}
 
 type FactionTotalVote struct {
 	RedMountainTotalVote int64
@@ -396,8 +400,13 @@ func (api *API) StartVotingCycle(ctx context.Context, factions []*server.Faction
 	// initial faction user voting map
 	factionUserVoteMap := make(FactionUserVoteMap)
 	for _, f := range factions {
-		factionUserVoteMap[f.ID] = make(map[server.UserID]map[server.TransactionReference]int64)
+		factionUserVoteMap[f.ID] = make(map[server.UserID]int64)
 		voteAbility.FactionAbilityMap[f.ID] = &server.GameAbility{}
+	}
+
+	// initial faction transactions
+	factionTransactions := &FactionTransactions{
+		Transactions: []server.Transaction{},
 	}
 
 	// initialise faction total vote
@@ -434,7 +443,7 @@ func (api *API) StartVotingCycle(ctx context.Context, factions []*server.Faction
 	// start channel
 	go func() {
 		for fn := range api.votingCycle {
-			fn(voteStage, voteAbility, factionUserVoteMap, factionTotalVote, voteWinner, tickers, UserVoteMap)
+			fn(voteStage, voteAbility, factionUserVoteMap, factionTransactions, factionTotalVote, voteWinner, tickers, UserVoteMap)
 		}
 	}()
 }
@@ -483,7 +492,7 @@ func (api *API) abilityRightResultBroadcasterFactory(ctx context.Context, ftv *F
 // startVotingCycle start voting cycle tickles
 func (api *API) startVotingCycle(ctx context.Context, introSecond int) {
 	select {
-	case api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+	case api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
 		api.votePhaseChecker.Phase = VotePhaseWaitMechIntro
 		vs.Phase = VotePhaseWaitMechIntro
 		vs.EndTime = time.Now().Add(time.Duration(introSecond) * time.Second)
@@ -504,7 +513,7 @@ func (api *API) startVotingCycle(ctx context.Context, introSecond int) {
 func (api *API) stopVotingCycle(ctx context.Context) []*server.BattleUserVote {
 	userVoteCountsChan := make(chan []*server.BattleUserVote)
 	select {
-	case api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+	case api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
 		api.votePhaseChecker.Phase = VotePhaseHold
 		vs.Phase = VotePhaseHold
 		// broadcast current stage to faction users
@@ -522,18 +531,10 @@ func (api *API) stopVotingCycle(ctx context.Context) []*server.BattleUserVote {
 			api.votePriceSystem.VotePriceUpdater.Stop()
 		}
 
-		// get all the left over transaction
-		var txRefs []server.TransactionReference
-		for _, factionVotes := range fuvm {
-			for _, userVotes := range factionVotes {
-				for txRef := range userVotes {
-					txRefs = append(txRefs, txRef)
-				}
-			}
+		if len(fts.Transactions) > 0 {
+			// commit the transactions
+			api.Passport.ReleaseTransactions(context.Background(), fts.Transactions)
 		}
-
-		// commit the transactions
-		api.Passport.ReleaseTransactions(context.Background(), txRefs)
 
 		uvcs := []*server.BattleUserVote{}
 		for userID, voteCount := range uvm {
@@ -563,7 +564,7 @@ func (api *API) stopVotingCycle(ctx context.Context) []*server.BattleUserVote {
 func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error) {
 	return func() (int, error) {
 		select {
-		case api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+		case api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
 			// skip if it does not reach the end time or current phase is TIE
 			if vs.EndTime.After(time.Now()) || vs.Phase == VotePhaseHold || vs.Phase == VotePhaseNextVoteWin {
 				return
@@ -600,7 +601,7 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 
 			// at the end of ability right voting
 			case VotePhaseVoteAbilityRight:
-				api.VoteRightPhase(ctx, vs, va, fuvm, ftv, vw, vct, uvm)
+				api.VoteRightPhase(ctx, vs, va, fuvm, fts, ftv, vw, vct, uvm)
 				// if api.votePriceSystem.VotePriceUpdater.NextTick != nil {
 				// 	api.votePriceSystem.VotePriceUpdater.Stop()
 				// }
@@ -912,7 +913,7 @@ func (api *API) getNextWinnerDetail(vw *VoteWinner) (*server.User, server.UserID
 	return nil, server.UserID{}
 }
 
-func (api *API) VoteRightPhase(ctx context.Context, vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+func (api *API) VoteRightPhase(ctx context.Context, vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
 	if api.votePriceSystem.VotePriceUpdater.NextTick != nil {
 		api.votePriceSystem.VotePriceUpdater.Stop()
 	}
@@ -922,18 +923,18 @@ func (api *API) VoteRightPhase(ctx context.Context, vs *VoteStage, va *VoteAbili
 		vct.AbilityRightResultBroadcaster.Stop()
 	}
 
-	// get all the tx
-	var txRefs []server.TransactionReference
-	for _, factionVotes := range fuvm {
-		for _, userVotes := range factionVotes {
-			for txRef := range userVotes {
-				txRefs = append(txRefs, txRef)
-			}
-		}
-	}
+	// // get all the tx
+	// var txRefs []server.TransactionReference
+	// for _, factionVotes := range fuvm {
+	// 	for _, userVotes := range factionVotes {
+	// 		for txRef := range userVotes {
+	// 			txRefs = append(txRefs, txRef)
+	// 		}
+	// 	}
+	// }
 
 	// if no vote, enter next vote win phase
-	if len(txRefs) == 0 {
+	if len(fts.Transactions) == 0 {
 		api.votePhaseChecker.Phase = VotePhaseNextVoteWin
 		vs.Phase = VotePhaseNextVoteWin
 		// broadcast current stage to faction users
@@ -952,12 +953,14 @@ func (api *API) VoteRightPhase(ctx context.Context, vs *VoteStage, va *VoteAbili
 	vs.Phase = VotePhaseLocationSelect
 	go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 
-	// otherwise, commit the transactions and check the status
-	checkedTransactions, err := api.Passport.CommitTransactions(ctx, txRefs)
-	if err != nil {
-		api.Log.Err(err).Msg("failed to check transactions")
-		return
-	}
+	// // otherwise, commit the transactions and check the status
+	// checkedTransactions, err := api.Passport.CommitTransactions(ctx, txRefs)
+	// if err != nil {
+	// 	api.Log.Err(err).Msg("failed to check transactions")
+	// 	return
+	// }
+
+	fts.Transactions = []server.Transaction{}
 
 	// parse ability vote result
 	type voter struct {
@@ -978,35 +981,17 @@ func (api *API) VoteRightPhase(ctx context.Context, vs *VoteStage, va *VoteAbili
 			voters:     []*voter{},
 		}
 
-		for userID, userVotes := range factionUserVote {
+		for userID, totalVotes := range factionUserVote {
 			// add user to user vote map
 			if _, ok := uvm[userID]; !ok {
-				uvm[userID] = 0
-			}
-
-			// record voter
-			voter := &voter{
-				id:         userID,
-				totalVotes: 0,
-			}
-
-			// sum total successful vote
-			for txRef, voteCount := range userVotes {
-				for _, chktx := range checkedTransactions {
-					if txRef == chktx.TransactionReference && chktx.Status == server.TransactionSuccess {
-						factionVote.totalVotes += voteCount
-						voter.totalVotes += voteCount
-
-						// record user votes in user vote map
-						uvm[userID] += voteCount
-
-						continue
-					}
-				}
+				uvm[userID] = totalVotes
 			}
 
 			// append voter to faction vote
-			factionVote.voters = append(factionVote.voters, voter)
+			factionVote.voters = append(factionVote.voters, &voter{
+				id:         userID,
+				totalVotes: totalVotes,
+			})
 		}
 
 		// if no vote skip current faction
