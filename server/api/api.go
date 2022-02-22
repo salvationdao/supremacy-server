@@ -391,12 +391,7 @@ func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client, clients
 			return
 		}
 
-		go func() {
-			err := wsc.Send(gameSettingsData)
-			if err != nil {
-				api.Log.Err(err).Msg("failed to send game settings data")
-			}
-		}()
+		go wsc.Send(gameSettingsData)
 	}()
 }
 

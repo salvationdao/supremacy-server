@@ -110,13 +110,7 @@ func (api *API) PassportUserUpdatedHandler(ctx context.Context, payload []byte) 
 			hcd := <-detailChan
 
 			if hcd != nil {
-				go func() {
-					err = client.Send(broadcastData)
-					if err != nil {
-						api.Log.Err(err).Msg("Failed to send auth response back to twitch client")
-						return
-					}
-				}()
+				go client.Send(broadcastData)
 			}
 		}
 	})
@@ -182,11 +176,7 @@ func (api *API) PassportUserEnlistFactionHandler(ctx context.Context, payload []
 				hcd.Faction = api.factionMap[hcd.FactionID]
 			}
 
-			err = client.Send(broadcastData)
-			if err != nil {
-				api.Log.Err(err).Msg("Failed to send auth response back to client")
-				return
-			}
+			go client.Send(broadcastData)
 		}
 	})
 }
@@ -657,11 +647,7 @@ func (api *API) AuthRingCheckHandler(ctx context.Context, payload []byte) {
 		return
 	}
 
-	err = client.Send(b)
-	if err != nil {
-		api.Log.Err(err).Msg("Failed to send auth response back to twitch client")
-		return
-	}
+	go client.Send(b)
 
 	// send request to passport server to upgrade the gamebar user
 	err = api.Passport.UpgradeUserConnection(ctx, req.Payload.SessionID)

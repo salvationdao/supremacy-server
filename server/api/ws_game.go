@@ -286,12 +286,7 @@ func (api *API) clientBroadcast(ctx context.Context, data []byte) {
 			if !ok {
 				continue
 			}
-			go func(c *hub.Client) {
-				err := c.Send(data)
-				if err != nil {
-					api.Log.Err(err).Msg("failed to send broadcast")
-				}
-			}(client)
+			go client.Send(data)
 		}
 	})
 }
