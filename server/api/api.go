@@ -200,6 +200,7 @@ func NewAPI(
 		// Web sockets are long-lived, so we don't want the sentry performance tracer running for the life-time of the connection.
 		// See roothub.ServeHTTP for the setup of sentry on this route.
 		r.Handle("/ws", api.Hub)
+		r.Get("/battlequeue", WithError(api.BattleArena.GetBattleQueue))
 		r.Get("/events", WithError(api.BattleArena.GetEvents))
 		r.Get("/faction_stats", WithError(api.BattleArena.FactionStats))
 		r.Get("/user_stats", WithError(api.BattleArena.UserStats))
