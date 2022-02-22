@@ -244,6 +244,7 @@ func (api *API) PassportBattleQueueJoinHandler(ctx context.Context, payload []by
 					WarMachineQueuePositions: warMachineQueuePosition,
 				},
 			})
+			go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserWarMachineQueueUpdated, req.Payload.WarMachineMetadata.OwnedByID)), warMachineQueuePosition)
 		}
 	}
 }
@@ -296,7 +297,17 @@ func (api *API) PassportBattleQueueReleaseHandler(ctx context.Context, payload [
 				go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionWarMachineQueueUpdated, req.Payload.WarMachineMetadata.FactionID)), wmq.WarMachines[:maxLength])
 			}
 
-			go api.Passport.WarMachineQueuePositionBroadcast(context.Background(), api.BattleArena.BuildUserWarMachineQueuePosition(wmq.WarMachines, []*server.WarMachineMetadata{}, req.Payload.WarMachineMetadata.OwnedByID))
+			result := api.BattleArena.BuildUserWarMachineQueuePosition(wmq.WarMachines, []*server.WarMachineMetadata{}, req.Payload.WarMachineMetadata.OwnedByID)
+			go api.Passport.WarMachineQueuePositionBroadcast(context.Background(), result)
+
+			warMachineQueuePosition := make([]*passport.WarMachineQueuePosition, 0)
+			for _, qp := range result {
+				if qp.UserID != req.Payload.WarMachineMetadata.OwnedByID {
+					continue
+				}
+				warMachineQueuePosition = qp.WarMachineQueuePositions
+			}
+			go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserWarMachineQueueUpdated, req.Payload.WarMachineMetadata.OwnedByID)), warMachineQueuePosition)
 		}
 	}
 }
@@ -523,10 +534,9 @@ func (api *API) PassportWarMachineQueuePositionHandler(ctx context.Context, payl
 		return
 	}
 
-	warMachineQueuePositionChan := make(chan []*passport.WarMachineQueuePosition)
+	warMachineQueuePosition := []*passport.WarMachineQueuePosition{}
 
 	api.BattleArena.BattleQueueMap[req.Payload.FactionID] <- func(wmq *battle_arena.WarMachineQueuingList) {
-		warMachineQueuePosition := []*passport.WarMachineQueuePosition{}
 		for i, wm := range wmq.WarMachines {
 			if wm.OwnedByID != req.Payload.UserID {
 				continue
@@ -536,11 +546,7 @@ func (api *API) PassportWarMachineQueuePositionHandler(ctx context.Context, payl
 				Position:           i,
 			})
 		}
-
-		warMachineQueuePositionChan <- warMachineQueuePosition
 	}
-
-	warMachineQueuePosition := <-warMachineQueuePositionChan
 
 	// get in game war machine
 	for _, wm := range api.BattleArena.InGameWarMachines() {
@@ -628,6 +634,7 @@ func (api *API) AuthRingCheckHandler(ctx context.Context, payload []byte) {
 		hcd.FirstName = req.Payload.User.FirstName
 		hcd.LastName = req.Payload.User.LastName
 		hcd.AvatarID = req.Payload.User.AvatarID
+		hcd.ID = req.Payload.User.ID
 
 		if hcd.FactionID != req.Payload.User.FactionID {
 			go api.viewerLiveCountSwap(hcd.FactionID, req.Payload.User.FactionID)
