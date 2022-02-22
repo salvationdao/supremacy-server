@@ -311,10 +311,18 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 				includedUserID = append(includedUserID, ig.OwnedByID)
 			}
 		}
-		ba.BattleQueueMap[faction.ID] <- func(wmq *WarMachineQueuingList) {
+
+		select {
+		case ba.BattleQueueMap[faction.ID] <- func(wmq *WarMachineQueuingList) {
 			// broadcast new war machine position for in game war machine owners
 			ba.passport.WarMachineQueuePositionBroadcast(context.Background(), ba.BuildUserWarMachineQueuePosition(wmq.WarMachines, []*server.WarMachineMetadata{}, includedUserID...))
+		}:
+
+		case <-time.After(10 * time.Second):
+			ba.Log.Err(errors.New("timeout on channel send exceeded"))
+			panic("Client Battle Reward Update")
 		}
+
 	}
 
 	// trigger battle end

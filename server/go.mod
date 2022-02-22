@@ -2,6 +2,8 @@ module server
 
 go 1.17
 
+replace github.com/ninja-syndicate/hub => /home/darren/go/src/github.com/ninja-syndicate/hub
+
 require (
 	github.com/antonholmquist/jason v1.0.0
 	github.com/cosmtrek/air v1.27.8

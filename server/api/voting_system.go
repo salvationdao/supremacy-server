@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -481,7 +482,8 @@ func (api *API) abilityRightResultBroadcasterFactory(ctx context.Context, ftv *F
 
 // startVotingCycle start voting cycle tickles
 func (api *API) startVotingCycle(ctx context.Context, introSecond int) {
-	api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+	select {
+	case api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
 		api.votePhaseChecker.Phase = VotePhaseWaitMechIntro
 		vs.Phase = VotePhaseWaitMechIntro
 		vs.EndTime = time.Now().Add(time.Duration(introSecond) * time.Second)
@@ -490,13 +492,19 @@ func (api *API) startVotingCycle(ctx context.Context, introSecond int) {
 		go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 
 		vct.VotingStageListener.Start()
+	}:
+
+	case <-time.After(10 * time.Second):
+		api.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("Client Battle Reward Update")
 	}
 }
 
 // stopVotingCycle pause voting cycle tickles
 func (api *API) stopVotingCycle(ctx context.Context) []*server.BattleUserVote {
 	userVoteCountsChan := make(chan []*server.BattleUserVote)
-	api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+	select {
+	case api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
 		api.votePhaseChecker.Phase = VotePhaseHold
 		vs.Phase = VotePhaseHold
 		// broadcast current stage to faction users
@@ -540,15 +548,22 @@ func (api *API) stopVotingCycle(ctx context.Context) []*server.BattleUserVote {
 		}
 
 		userVoteCountsChan <- uvcs
+	}:
+
+		return <-userVoteCountsChan
+
+	case <-time.After(10 * time.Second):
+		api.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("Client Battle Reward Update")
 	}
 
-	return <-userVoteCountsChan
 }
 
 // voteStageListenerFactory is the main vote stage handler
 func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error) {
 	return func() (int, error) {
-		api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+		select {
+		case api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
 			ctx := context.Background()
 			// skip if it does not reach the end time or current phase is TIE
 			if vs.EndTime.After(time.Now()) || vs.Phase == VotePhaseHold || vs.Phase == VotePhaseNextVoteWin {
@@ -864,6 +879,11 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 				}
 
 			}
+		}:
+
+		case <-time.After(10 * time.Second):
+			api.Log.Err(errors.New("timeout on channel send exceeded"))
+			panic("vote Stage Listener Factory")
 		}
 
 		return http.StatusOK, nil

@@ -21,12 +21,6 @@ func (pp *Passport) CommitTransactions(ctx context.Context, transactions []serve
 		return nil, nil
 	}
 
-	fmt.Println("")
-	fmt.Println("")
-	fmt.Println("STARTING TX COMMIT")
-	fmt.Println("")
-	fmt.Println("")
-
 	replyChannel := make(chan []byte)
 	errChan := make(chan error)
 
@@ -46,11 +40,6 @@ func (pp *Passport) CommitTransactions(ctx context.Context, transactions []serve
 	for {
 		select {
 		case msg := <-replyChannel:
-			pp.Log.Info().Msg("")
-			pp.Log.Info().Msg("")
-			pp.Log.Info().Msg("ENDING TX COMMIT")
-			pp.Log.Info().Msg("")
-			pp.Log.Info().Msg("")
 			resp := &CommitTransactionsResponse{}
 			err := json.Unmarshal(msg, resp)
 			if err != nil {
@@ -58,11 +47,6 @@ func (pp *Passport) CommitTransactions(ctx context.Context, transactions []serve
 			}
 			return resp.Transactions, nil
 		case err := <-errChan:
-			pp.Log.Info().Msg("")
-			pp.Log.Info().Msg("")
-			pp.Log.Info().Msg("ENDING TX COMMIT ERR")
-			pp.Log.Err(err).Msg("")
-			pp.Log.Info().Msg("")
 			return nil, terror.Error(err)
 		}
 	}

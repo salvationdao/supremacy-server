@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"server"
@@ -117,7 +118,8 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 	// deliver vote
 	errChan := make(chan error)
 
-	vc.API.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+	select {
+	case vc.API.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
 		if vs.Phase != VotePhaseVoteAbilityRight && vs.Phase != VotePhaseNextVoteWin {
 			errChan <- terror.Error(terror.ErrInvalidInput, "Error - Invalid voting phase")
 			return
@@ -208,25 +210,29 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 		}
 
 		errChan <- nil
+	}:
+		err = <-errChan
+		if err != nil {
+			return terror.Error(err, "Failed to vote")
+		}
+
+		// store vote amount to live voting data after vote success
+		vc.API.liveSupsSpend[hcd.FactionID] <- func(lvd *LiveVotingData) {
+			lvd.TotalVote.Add(&lvd.TotalVote.Int, &totalSups.Int)
+		}
+
+		// add vote count to faction price channels
+		vc.API.increaseFactionVoteTotal(hcd.FactionID, req.Payload.VoteAmount)
+
+		vc.API.ClientVoted(wsc)
+		reply(true)
+
+		return nil
+
+	case <-time.After(10 * time.Second):
+		vc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("Ability Right")
 	}
-
-	err = <-errChan
-	if err != nil {
-		return terror.Error(err, "Failed to vote")
-	}
-
-	// store vote amount to live voting data after vote success
-	vc.API.liveSupsSpend[hcd.FactionID] <- func(lvd *LiveVotingData) {
-		lvd.TotalVote.Add(&lvd.TotalVote.Int, &totalSups.Int)
-	}
-
-	// add vote count to faction price channels
-	vc.API.increaseFactionVoteTotal(hcd.FactionID, req.Payload.VoteAmount)
-
-	vc.API.ClientVoted(wsc)
-	reply(true)
-
-	return nil
 }
 
 type AbilityLocationSelectRequest struct {
@@ -261,7 +267,8 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 	}
 
 	errChan := make(chan error)
-	vc.API.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+	select {
+	case vc.API.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
 		// check voting phase
 		if vs.Phase != VotePhaseLocationSelect {
 			errChan <- terror.Error(terror.ErrForbidden, "Error - Invalid voting phase")
@@ -326,17 +333,22 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 		go vc.API.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 
 		errChan <- nil
+	}:
+		err = <-errChan
+		if err != nil {
+			return terror.Error(err)
+		}
+
+		vc.API.ClientPickedLocation(wsc)
+		reply(true)
+
+		return nil
+
+	case <-time.After(10 * time.Second):
+		vc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("Client Battle Reward Update")
 	}
 
-	err = <-errChan
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	vc.API.ClientPickedLocation(wsc)
-	reply(true)
-
-	return nil
 }
 
 /***************
@@ -377,11 +389,17 @@ func (vc *VoteControllerWS) BattleAbilityUpdateSubscribeHandler(ctx context.Cont
 	if vc.API.BattleArena.GetCurrentState().State == server.StateMatchStart &&
 		vc.API.votePhaseChecker.Phase != VotePhaseHold {
 
-		vc.API.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+		select {
+		case vc.API.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
 			if vs.Phase == VotePhaseHold {
 				return
 			}
 			reply(va.BattleAbility)
+		}:
+
+		case <-time.After(10 * time.Second):
+			vc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+			panic("Battle Ability Update Subscribe Handler")
 		}
 	}
 
@@ -398,8 +416,14 @@ func (vc *VoteControllerWS) VoteStageUpdateSubscribeHandler(ctx context.Context,
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
-	vc.API.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+	select {
+	case vc.API.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
 		reply(vs)
+	}:
+
+	case <-time.After(10 * time.Second):
+		vc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("Client Battle Reward Update")
 	}
 
 	return req.TransactionID, messagebus.BusKey(HubKeyVoteStageUpdated), nil
