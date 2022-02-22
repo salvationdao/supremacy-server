@@ -168,12 +168,12 @@ func BattleQueueInsert(ctx context.Context, conn Conn, warMachineMetadata *serve
 
 	q := `
 		INSERT INTO 
-			battle_war_machine_queues (war_machine_token_id,faction_id, war_machine_metadata)
+			battle_war_machine_queues (faction_id, war_machine_metadata)
 		VALUES
-			($1, $2, $3)
+			($1, $2)
 	`
 
-	_, err = conn.Exec(ctx, q, warMachineMetadata.TokenID, warMachineMetadata.FactionID, jb)
+	_, err = conn.Exec(ctx, q, warMachineMetadata.FactionID, jb)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -188,16 +188,16 @@ func BattleQueueWarMachineUpdate(ctx context.Context, conn Conn, warMachineMetad
 		return terror.Error(err)
 	}
 
-	q := `
+	q := fmt.Sprintf(`
 	UPDATE
 		battle_war_machine_queues
 	SET
-		war_machine_metadata = $2
+		war_machine_metadata = $1
 	WHERE
-		war_machine_token_id = $1
-	`
+		war_machine_metadata ->> 'tokenID' = '%d' AND deleted_at ISNULL
+	`, warMachineMetadata.TokenID)
 
-	_, err = conn.Exec(ctx, q, warMachineMetadata.TokenID, jb)
+	_, err = conn.Exec(ctx, q, jb)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -206,14 +206,16 @@ func BattleQueueWarMachineUpdate(ctx context.Context, conn Conn, warMachineMetad
 }
 
 func BattleQueueRemove(ctx context.Context, conn Conn, warMachineMetadata *server.WarMachineMetadata) error {
-	q := `
-		DELETE FROM 
+	q := fmt.Sprintf(`
+		UPDATE
 			battle_war_machine_queues
+		SET
+			deleted_at = NOW()
 		WHERE
-			war_machine_token_id = $1 AND faction_id = $2
-	`
+			war_machine_metadata ->> 'tokenID' = '%d' AND faction_id = $1 AND deleted_at ISNULL
+	`, warMachineMetadata.TokenID)
 
-	_, err := conn.Exec(ctx, q, warMachineMetadata.TokenID, warMachineMetadata.FactionID)
+	_, err := conn.Exec(ctx, q, warMachineMetadata.FactionID)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -229,7 +231,7 @@ func BattleQueueRead(ctx context.Context, conn Conn, factionID server.FactionID)
 		FROM
 			battle_war_machine_queues
 		WHERE
-			faction_id = $1
+			faction_id = $1 AND deleted_at ISNULL
 		ORDER BY
 			queued_at asc
 	`
