@@ -61,12 +61,7 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 			if !ok {
 				continue
 			}
-			go func(c *hub.Client) {
-				err := c.Send(gameSettingsData)
-				if err != nil {
-					api.Log.Err(err).Msg("failed to send broadcast")
-				}
-			}(client)
+			go client.Send(gameSettingsData)
 		}
 	})
 

@@ -88,6 +88,10 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 		return terror.Error(terror.ErrForbidden)
 	}
 
+	if vc.API.BattleArena.GetCurrentState().State != server.StateMatchStart {
+		return terror.Error(terror.ErrForbidden, "Error - battle has not started yet")
+	}
+
 	// check voting phase first
 	if vc.API.votePhaseChecker.Phase != VotePhaseVoteAbilityRight && vc.API.votePhaseChecker.Phase != VotePhaseNextVoteWin {
 		return terror.Error(terror.ErrForbidden, "Error - Invalid voting phase")
