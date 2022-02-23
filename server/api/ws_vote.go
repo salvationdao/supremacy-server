@@ -120,7 +120,7 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 
 	select {
 	case vc.API.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
-		if vs.Phase != VotePhaseVoteAbilityRight && vs.Phase != VotePhaseNextVoteWin {
+		if (vs.Phase != VotePhaseVoteAbilityRight && vs.Phase != VotePhaseNextVoteWin) || vs.EndTime.After(time.Now()) {
 			errChan <- terror.Error(terror.ErrInvalidInput, "Error - Invalid voting phase")
 			return
 		}
@@ -154,32 +154,11 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 
 			fuvm[hcd.FactionID][userID] += req.Payload.VoteAmount
 
-			// check phase end time
-			if vs.EndTime.Before(time.Now()) {
-				// trigger vote right end function
-				vc.API.VoteRightPhase(ctx, vs, va, fuvm, fts, ftv, vw, vct, uvm)
-			}
-
 			errChan <- nil
 			return
 		}
 
-		// // if next vote win, set user as winner once the transaction is successful
-		// transactions, err := vc.API.Passport.CommitTransactions(ctx, []server.TransactionReference{supTransactionReference})
-		// if err != nil {
-		// 	errChan <- terror.Error(err, "Error - Failed to check transactions")
-		// 	return
-		// }
-
-		// for _, chktx := range transactions {
-		// 	// return if transaction failed
-		// 	if chktx.Status == server.TransactionFailed {
-		// 		errChan <- terror.Error(terror.ErrInvalidInput, "Error - Transaction failed")
-		// 		return
-		// 	}
-		// }
-
-		// clean up the transaction
+		// if transaction committed, clean up the transactions
 		fts.Transactions = []server.Transaction{}
 
 		// record user vote map
