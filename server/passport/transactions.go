@@ -12,71 +12,58 @@ import (
 	"github.com/ninja-software/terror/v2"
 )
 
-type CommitTransactionsResponse struct {
-	Transactions []*server.Transaction `json:"payload"`
-}
+// type CommitTransactionsResponse struct {
+// 	Transactions []*server.Transaction `json:"payload"`
+// }
 
-func (pp *Passport) CommitTransactions(ctx context.Context, transactions []server.TransactionReference) ([]*server.Transaction, error) {
-	if len(transactions) == 0 {
-		return nil, nil
-	}
+// func (pp *Passport) CommitTransactions(ctx context.Context, transactions []server.TransactionReference) ([]*server.Transaction, error) {
+// 	if len(transactions) == 0 {
+// 		return nil, nil
+// 	}
 
-	fmt.Println("")
-	fmt.Println("")
-	fmt.Println("STARTING TX COMMIT")
-	fmt.Println("")
-	fmt.Println("")
+// 	replyChannel := make(chan []byte)
+// 	errChan := make(chan error)
 
-	replyChannel := make(chan []byte)
-	errChan := make(chan error)
+// 	pp.send <- &Request{
+// 		ReplyChannel: replyChannel,
+// 		ErrChan:      errChan,
+// 		Message: &Message{
+// 			Key: "SUPREMACY:COMMIT_TRANSACTIONS",
+// 			Payload: struct {
+// 				TransactionReferences []server.TransactionReference `json:"transactionReferences"`
+// 			}{
+// 				TransactionReferences: transactions,
+// 			},
+// 			TransactionID: uuid.Must(uuid.NewV4()).String(),
+// 		}}
 
-	pp.send <- &Request{
-		ReplyChannel: replyChannel,
-		ErrChan:      errChan,
-		Message: &Message{
-			Key: "SUPREMACY:COMMIT_TRANSACTIONS",
-			Payload: struct {
-				TransactionReferences []server.TransactionReference `json:"transactionReferences"`
-			}{
-				TransactionReferences: transactions,
-			},
-			TransactionID: uuid.Must(uuid.NewV4()).String(),
-		}}
+// 	for {
+// 		select {
+// 		case msg := <-replyChannel:
+// 			resp := &CommitTransactionsResponse{}
+// 			err := json.Unmarshal(msg, resp)
+// 			if err != nil {
+// 				return nil, terror.Error(err)
+// 			}
+// 			return resp.Transactions, nil
+// 		case err := <-errChan:
+// 			return nil, terror.Error(err)
+// 		}
+// 	}
+// }
 
-	for {
-		select {
-		case msg := <-replyChannel:
-			pp.Log.Info().Msg("")
-			pp.Log.Info().Msg("")
-			pp.Log.Info().Msg("ENDING TX COMMIT")
-			pp.Log.Info().Msg("")
-			pp.Log.Info().Msg("")
-			resp := &CommitTransactionsResponse{}
-			err := json.Unmarshal(msg, resp)
-			if err != nil {
-				return nil, terror.Error(err)
-			}
-			return resp.Transactions, nil
-		case err := <-errChan:
-			pp.Log.Info().Msg("")
-			pp.Log.Info().Msg("")
-			pp.Log.Info().Msg("ENDING TX COMMIT ERR")
-			pp.Log.Err(err).Msg("")
-			pp.Log.Info().Msg("")
-			return nil, terror.Error(err)
-		}
-	}
+type HoldSupsMessageResponse struct {
+	Transaction server.Transaction `json:"payload"`
 }
 
 // SendHoldSupsMessage tells the passport to hold sups
-func (pp *Passport) SendHoldSupsMessage(ctx context.Context, userID server.UserID, supsChange server.BigInt, reason string) (server.TransactionReference, error) {
+func (pp *Passport) SendHoldSupsMessage(ctx context.Context, userID server.UserID, supsChange server.BigInt, reason string) (*server.Transaction, error) {
 	supTransactionReference := uuid.Must(uuid.NewV4())
 	supTxRefString := server.TransactionReference(fmt.Sprintf("%s|%s", reason, supTransactionReference.String()))
 	replyChannel := make(chan []byte)
 	errChan := make(chan error)
 
 	id := fmt.Sprintf("sups hold - %s", uuid.Must(uuid.NewV4()).String())
-	pp.Log.Info().Str("TransactionID", id).Msg("STARTING SUP HOLD")
 
 	pp.send <- &Request{
 		ReplyChannel: replyChannel,
@@ -98,18 +85,22 @@ func (pp *Passport) SendHoldSupsMessage(ctx context.Context, userID server.UserI
 		}}
 	for {
 		select {
-		case <-replyChannel:
-			pp.Log.Info().Msg("ENDING SUP HOLD")
-			return supTxRefString, nil
+		case msg := <-replyChannel:
+			resp := &HoldSupsMessageResponse{}
+			err := json.Unmarshal(msg, resp)
+			if err != nil {
+				return nil, terror.Error(err)
+			}
+
+			return &resp.Transaction, nil
 		case err := <-errChan:
-			pp.Log.Info().Msg("ENDING SUP HOLD ERR")
-			return supTxRefString, terror.Error(err)
+			return nil, terror.Error(err)
 		}
 	}
 }
 
 // ReleaseTransactions tells the passport to transfer fund to sup pool
-func (pp *Passport) ReleaseTransactions(ctx context.Context, transactions []server.TransactionReference) {
+func (pp *Passport) ReleaseTransactions(ctx context.Context, transactions []server.Transaction) {
 	if len(transactions) == 0 {
 		return
 	}
@@ -118,9 +109,9 @@ func (pp *Passport) ReleaseTransactions(ctx context.Context, transactions []serv
 		Message: &Message{
 			Key: "SUPREMACY:RELEASE_TRANSACTIONS",
 			Payload: struct {
-				TransactionReferences []server.TransactionReference `json:"transactionReferences"`
+				Transactions []server.Transaction `json:"transactions"`
 			}{
-				TransactionReferences: transactions,
+				Transactions: transactions,
 			},
 		},
 	}

@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"server"
@@ -117,7 +118,8 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 	// deliver vote
 	errChan := make(chan error)
 
-	vc.API.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+	select {
+	case vc.API.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
 		if vs.Phase != VotePhaseVoteAbilityRight && vs.Phase != VotePhaseNextVoteWin {
 			errChan <- terror.Error(terror.ErrInvalidInput, "Error - Invalid voting phase")
 			return
@@ -126,11 +128,13 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 		// pay sups
 
 		reason := fmt.Sprintf("battle:%s|vote_ability_right:%s", vc.API.BattleArena.CurrentBattleID(), va.BattleAbility.ID)
-		supTransactionReference, err := vc.API.Passport.SendHoldSupsMessage(context.Background(), userID, totalSups, reason)
+		supTransaction, err := vc.API.Passport.SendHoldSupsMessage(context.Background(), userID, totalSups, reason)
 		if err != nil {
 			errChan <- terror.Error(err, "Error - Failed to pay sups")
 			return
 		}
+
+		fts.Transactions = append(fts.Transactions, *supTransaction)
 
 		switch hcd.FactionID {
 		case server.RedMountainFactionID:
@@ -145,29 +149,38 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 		if vs.Phase == VotePhaseVoteAbilityRight {
 			_, ok := fuvm[hcd.FactionID][userID]
 			if !ok {
-				fuvm[hcd.FactionID][userID] = make(map[server.TransactionReference]int64)
+				fuvm[hcd.FactionID][userID] = 0
 			}
 
-			fuvm[hcd.FactionID][userID][supTransactionReference] = req.Payload.VoteAmount
+			fuvm[hcd.FactionID][userID] += req.Payload.VoteAmount
+
+			// check phase end time
+			if vs.EndTime.Before(time.Now()) {
+				// trigger vote right end function
+				vc.API.VoteRightPhase(ctx, vs, va, fuvm, fts, ftv, vw, vct, uvm)
+			}
 
 			errChan <- nil
 			return
 		}
 
-		// if next vote win, set user as winner once the transaction is successful
-		transactions, err := vc.API.Passport.CommitTransactions(ctx, []server.TransactionReference{supTransactionReference})
-		if err != nil {
-			errChan <- terror.Error(err, "Error - Failed to check transactions")
-			return
-		}
+		// // if next vote win, set user as winner once the transaction is successful
+		// transactions, err := vc.API.Passport.CommitTransactions(ctx, []server.TransactionReference{supTransactionReference})
+		// if err != nil {
+		// 	errChan <- terror.Error(err, "Error - Failed to check transactions")
+		// 	return
+		// }
 
-		for _, chktx := range transactions {
-			// return if transaction failed
-			if chktx.Status == server.TransactionFailed {
-				errChan <- terror.Error(terror.ErrInvalidInput, "Error - Transaction failed")
-				return
-			}
-		}
+		// for _, chktx := range transactions {
+		// 	// return if transaction failed
+		// 	if chktx.Status == server.TransactionFailed {
+		// 		errChan <- terror.Error(terror.ErrInvalidInput, "Error - Transaction failed")
+		// 		return
+		// 	}
+		// }
+
+		// clean up the transaction
+		fts.Transactions = []server.Transaction{}
 
 		// record user vote map
 		if _, ok := uvm[userID]; !ok {
@@ -208,25 +221,29 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 		}
 
 		errChan <- nil
+	}:
+		err = <-errChan
+		if err != nil {
+			return terror.Error(err, "Failed to vote")
+		}
+
+		// store vote amount to live voting data after vote success
+		vc.API.liveSupsSpend[hcd.FactionID] <- func(lvd *LiveVotingData) {
+			lvd.TotalVote.Add(&lvd.TotalVote.Int, &totalSups.Int)
+		}
+
+		// add vote count to faction price channels
+		vc.API.increaseFactionVoteTotal(hcd.FactionID, req.Payload.VoteAmount)
+
+		vc.API.ClientVoted(wsc)
+		reply(true)
+
+		return nil
+
+	case <-time.After(5 * time.Second):
+		vc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+		return nil
 	}
-
-	err = <-errChan
-	if err != nil {
-		return terror.Error(err, "Failed to vote")
-	}
-
-	// store vote amount to live voting data after vote success
-	vc.API.liveSupsSpend[hcd.FactionID] <- func(lvd *LiveVotingData) {
-		lvd.TotalVote.Add(&lvd.TotalVote.Int, &totalSups.Int)
-	}
-
-	// add vote count to faction price channels
-	vc.API.increaseFactionVoteTotal(hcd.FactionID, req.Payload.VoteAmount)
-
-	vc.API.ClientVoted(wsc)
-	reply(true)
-
-	return nil
 }
 
 type AbilityLocationSelectRequest struct {
@@ -261,7 +278,8 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 	}
 
 	errChan := make(chan error)
-	vc.API.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+	select {
+	case vc.API.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
 		// check voting phase
 		if vs.Phase != VotePhaseLocationSelect {
 			errChan <- terror.Error(terror.ErrForbidden, "Error - Invalid voting phase")
@@ -326,17 +344,22 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 		go vc.API.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 
 		errChan <- nil
+	}:
+		err = <-errChan
+		if err != nil {
+			return terror.Error(err)
+		}
+
+		vc.API.ClientPickedLocation(wsc)
+		reply(true)
+
+		return nil
+
+	case <-time.After(10 * time.Second):
+		vc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("Client Battle Reward Update")
 	}
 
-	err = <-errChan
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	vc.API.ClientPickedLocation(wsc)
-	reply(true)
-
-	return nil
 }
 
 /***************
@@ -377,11 +400,17 @@ func (vc *VoteControllerWS) BattleAbilityUpdateSubscribeHandler(ctx context.Cont
 	if vc.API.BattleArena.GetCurrentState().State == server.StateMatchStart &&
 		vc.API.votePhaseChecker.Phase != VotePhaseHold {
 
-		vc.API.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+		select {
+		case vc.API.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
 			if vs.Phase == VotePhaseHold {
 				return
 			}
 			reply(va.BattleAbility)
+		}:
+
+		case <-time.After(10 * time.Second):
+			vc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+			panic("Battle Ability Update Subscribe Handler")
 		}
 	}
 
@@ -398,8 +427,14 @@ func (vc *VoteControllerWS) VoteStageUpdateSubscribeHandler(ctx context.Context,
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
-	vc.API.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+	select {
+	case vc.API.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
 		reply(vs)
+	}:
+
+	case <-time.After(10 * time.Second):
+		vc.API.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("Vote Stage Update Subscribe Handler")
 	}
 
 	return req.TransactionID, messagebus.BusKey(HubKeyVoteStageUpdated), nil

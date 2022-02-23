@@ -235,10 +235,9 @@ FROM (
 CREATE UNIQUE INDEX user_id ON user_stats (id);
 
 CREATE TABLE battle_war_machine_queues(
-    war_machine_token_id NUMERIC(78, 0)   NOT NULL,                      -- non-zero if it is a nft ability
-    faction_id           UUID             NOT NULL,
     war_machine_metadata JSONB            NOT NULL,
-    queued_at           TIMESTAMPTZ      NOT NULL DEFAULT NOW()
+    queued_at            TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
+    released_at           TIMESTAMPTZ
 );
 
 COMMIT;

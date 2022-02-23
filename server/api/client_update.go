@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"server"
@@ -79,10 +80,16 @@ func (api *API) ClientListener() {
 	// start ticker for watch to earn
 	supsTickerLogger := log_helpers.NamedLogger(api.Log, "Sups Ticker").Level(zerolog.Disabled)
 	supsTicker := tickle.New("Sups Ticker", TickSecond, func() (int, error) {
-		api.onlineClientMap <- &ClientUpdate{
+		select {
+		case api.onlineClientMap <- &ClientUpdate{
 			UserID: server.UserID(uuid.Must(uuid.NewV4())), // HACK: to pass the user id check
 			Action: ClientSupsTick,
+		}:
+		case <-time.After(10 * time.Second):
+			api.Log.Err(errors.New("timeout on channel send exceeded"))
+			panic("Client Sups Tick")
 		}
+
 		return http.StatusOK, nil
 	})
 	supsTicker.Log = &supsTickerLogger
@@ -93,9 +100,14 @@ func (api *API) ClientListener() {
 
 	supsMultiplierCheckerLogger := log_helpers.NamedLogger(api.Log, "Sups Multiplier Checker").Level(zerolog.Disabled)
 	supsMultiplierChecker := tickle.New("Sups Multiplier Checker", 1, func() (int, error) {
-		api.onlineClientMap <- &ClientUpdate{
+		select {
+		case api.onlineClientMap <- &ClientUpdate{
 			UserID: server.UserID(uuid.Must(uuid.NewV4())), // HACK: to pass the user id check
 			Action: ClientCheckMultiplierUpdate,
+		}:
+		case <-time.After(10 * time.Second):
+			api.Log.Err(errors.New("timeout on channel send exceeded"))
+			panic("sups Multiplier Checker")
 		}
 		return http.StatusOK, nil
 	})
@@ -105,23 +117,18 @@ func (api *API) ClientListener() {
 listenLoop:
 	for {
 		msg := <-api.onlineClientMap
-
 		userID := msg.UserID
 		// if user id is nil, check id from client
 		if userID.IsNil() {
-			if msg.Client == nil && msg.NoClientLeftChan == nil {
+			if msg.Client == nil {
 				continue
 			}
 
-			uid, err := uuid.FromString(msg.Client.Identifier())
-			if uid.IsNil() && msg.NoClientLeftChan == nil {
+			uid := uuid.FromStringOrNil(msg.Client.Identifier())
+			if uid.IsNil() {
 				continue
 			}
-
 			userID = server.UserID(uid)
-			if err != nil && msg.NoClientLeftChan == nil {
-				api.Log.Err(err).Msg("unable to marshall client identifier as uuid")
-			}
 		}
 
 		switch msg.Action {
@@ -162,6 +169,7 @@ listenLoop:
 			}
 
 			clientMultiplierMap[userID].clients[msg.Client] = true
+
 		case ClientVoted:
 			// check for existing voting action, then bump the time if exists
 			multiplier, ok := clientMultiplierMap[userID].MultiplierActions[string(ClientVoted)]
@@ -267,61 +275,124 @@ listenLoop:
 
 				// send user's sups multipliers to passport server
 				go api.UserSupsMultiplierToPassport(userID, nil)
-
 				continue listenLoop
 			}
 			msg.NoClientLeftChan <- false
-
 		default:
 			api.Log.Err(fmt.Errorf("unknown client action")).Msgf("unknown client action: %s", msg.Action)
 		}
 	}
 }
 
+// wait
+const WaitTime = 10 * time.Second
+
 func (api *API) ClientOnline(c *hub.Client) {
-	api.onlineClientMap <- &ClientUpdate{
+	// skip, if user not login
+	if c.Identifier() == "" {
+		return
+	}
+
+	fmt.Println("get here")
+
+	select {
+	case api.onlineClientMap <- &ClientUpdate{
 		Client: c,
 		Action: ClientOnline,
+	}:
+	case <-time.After(10 * time.Second):
+		api.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("Client Online")
 	}
 }
 
 func (api *API) ClientOffline(c *hub.Client) bool {
-	noClientLeftChan := make(chan bool)
-	api.onlineClientMap <- &ClientUpdate{
-		Client:           c,
-		Action:           ClientOffline,
-		NoClientLeftChan: noClientLeftChan,
+	// skip, if user not login
+	if c.Identifier() == "" {
+		return false
 	}
-	isNoClient := <-noClientLeftChan
-	return isNoClient
+
+	// otherwise erase the client from
+	noClientLeftChan := make(chan bool)
+
+	for {
+		select {
+		case api.onlineClientMap <- &ClientUpdate{
+			Client:           c,
+			Action:           ClientOffline,
+			NoClientLeftChan: noClientLeftChan,
+		}:
+			isNoClient := <-noClientLeftChan
+			return isNoClient
+		case <-time.After(10 * time.Second):
+			api.Log.Err(errors.New("timeout on channel send exceeded"))
+			panic("Client Offline")
+
+		}
+	}
 }
 
 func (api *API) ClientVoted(c *hub.Client) {
-	api.onlineClientMap <- &ClientUpdate{
+	// skip, if user not login
+	if c.Identifier() == "" {
+		return
+	}
+
+	select {
+	case api.onlineClientMap <- &ClientUpdate{
 		Client: c,
 		Action: ClientVoted,
+	}:
+	case <-time.After(10 * time.Second):
+		api.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("Client voted panic")
 	}
 }
 
 func (api *API) ClientPickedLocation(c *hub.Client) {
-	api.onlineClientMap <- &ClientUpdate{
+	// skip, if user not login
+	if c.Identifier() == "" {
+		return
+	}
+
+	select {
+	case api.onlineClientMap <- &ClientUpdate{
 		Client: c,
 		Action: ClientPickedLocation,
+	}:
+	case <-time.After(10 * time.Second):
+		api.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("Client Pick location")
 	}
 }
 
 func (api *API) ClientBattleRewardUpdate(c *hub.Client, cbr *ClientBattleReward) {
-	api.onlineClientMap <- &ClientUpdate{
+	// skip, if user not login
+	if c.Identifier() == "" {
+		return
+	}
+
+	select {
+	case api.onlineClientMap <- &ClientUpdate{
 		Client:       c,
 		Action:       ClientBattleRewardUpdate,
 		BattleReward: cbr,
+	}:
+	case <-time.After(10 * time.Second):
+		api.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("Client Battle Reward Update")
 	}
 }
 
 func (api *API) ClientSupsMultipliersGet(userID server.UserID) {
-	api.onlineClientMap <- &ClientUpdate{
+	select {
+	case api.onlineClientMap <- &ClientUpdate{
 		UserID: userID,
 		Action: ClientSupsMultiplierGet,
+	}:
+	case <-time.After(10 * time.Second):
+		api.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("Client Sups Multipliers Get")
 	}
 }
 

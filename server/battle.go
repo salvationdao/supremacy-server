@@ -63,9 +63,9 @@ const (
 type BattleID uuid.UUID
 
 type BattleQueueMetadata struct {
-	FactionID          FactionID           `json:"factionID"`
 	WarMachineMetadata *WarMachineMetadata `json:"warMachineMetadata" db:"war_machine_metadata"`
 	QueuedAt           time.Time           `json:"queuedAt" db:"queued_at"`
+	ReleasedAt         *time.Time          `json:"releasedAt" db:"released_at"`
 }
 
 // IsNil returns true for a nil uuid.

@@ -78,7 +78,9 @@ func (api *API) PassportUserUpdatedHandler(ctx context.Context, payload []byte) 
 
 			// update client detail
 			detailChan := make(chan *server.User)
-			api.hubClientDetail <- func(m map[*hub.Client]*server.User) {
+
+			select {
+			case api.hubClientDetail <- func(m map[*hub.Client]*server.User) {
 				hcd, ok := m[client]
 				if !ok {
 					detailChan <- nil
@@ -105,12 +107,17 @@ func (api *API) PassportUserUpdatedHandler(ctx context.Context, payload []byte) 
 
 				detailChan <- hcd
 
-			}
+			}:
+				hcd := <-detailChan
 
-			hcd := <-detailChan
+				if hcd != nil {
+					go client.Send(broadcastData)
+				}
 
-			if hcd != nil {
-				go client.Send(broadcastData)
+			case <-time.After(10 * time.Second):
+				api.Log.Err(errors.New("timeout on channel send exceeded"))
+				panic("get Client Detail From Channel")
+
 			}
 		}
 	})
@@ -163,7 +170,8 @@ func (api *API) PassportUserEnlistFactionHandler(ctx context.Context, payload []
 				continue
 			}
 
-			api.hubClientDetail <- func(m map[*hub.Client]*server.User) {
+			select {
+			case api.hubClientDetail <- func(m map[*hub.Client]*server.User) {
 				hcd, ok := m[client]
 				if !ok {
 					api.Log.Err(fmt.Errorf("client not found"))
@@ -174,9 +182,14 @@ func (api *API) PassportUserEnlistFactionHandler(ctx context.Context, payload []
 				// update client facton id
 				hcd.FactionID = req.Payload.FactionID
 				hcd.Faction = api.factionMap[hcd.FactionID]
-			}
+			}:
+				go client.Send(broadcastData)
 
-			go client.Send(broadcastData)
+			case <-time.After(10 * time.Second):
+				api.Log.Err(errors.New("timeout on channel send exceeded"))
+				panic("Passport User Enlist Faction Handler")
+
+			}
 		}
 	})
 }
@@ -197,7 +210,8 @@ func (api *API) PassportBattleQueueJoinHandler(ctx context.Context, payload []by
 	}
 
 	if !req.Payload.WarMachineMetadata.FactionID.IsNil() {
-		api.BattleArena.BattleQueueMap[req.Payload.WarMachineMetadata.FactionID] <- func(wmq *battle_arena.WarMachineQueuingList) {
+		select {
+		case api.BattleArena.BattleQueueMap[req.Payload.WarMachineMetadata.FactionID] <- func(wmq *battle_arena.WarMachineQueuingList) {
 			// skip if the war machine already join the queue
 			if checkWarMachineExist(wmq.WarMachines, req.Payload.WarMachineMetadata.TokenID) != -1 {
 				api.Log.Err(terror.ErrInvalidInput).Msgf("Asset %d is already in the queue", req.Payload.WarMachineMetadata.TokenID)
@@ -238,13 +252,19 @@ func (api *API) PassportBattleQueueJoinHandler(ctx context.Context, payload []by
 			}
 
 			// fire a war machine queue passport request
-			api.Passport.WarMachineQueuePositionBroadcast(ctx, []*passport.UserWarMachineQueuePosition{
+			go api.Passport.WarMachineQueuePositionBroadcast(ctx, []*passport.UserWarMachineQueuePosition{
 				{
 					UserID:                   req.Payload.WarMachineMetadata.OwnedByID,
 					WarMachineQueuePositions: warMachineQueuePosition,
 				},
 			})
 			go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserWarMachineQueueUpdated, req.Payload.WarMachineMetadata.OwnedByID)), warMachineQueuePosition)
+
+		}:
+		case <-time.After(10 * time.Second):
+			api.Log.Err(errors.New("timeout on channel send exceeded"))
+			panic("Passport Battle Queue Join Handler")
+
 		}
 	}
 }
@@ -265,7 +285,8 @@ func (api *API) PassportBattleQueueReleaseHandler(ctx context.Context, payload [
 	}
 
 	if !req.Payload.WarMachineMetadata.FactionID.IsNil() {
-		api.BattleArena.BattleQueueMap[req.Payload.WarMachineMetadata.FactionID] <- func(wmq *battle_arena.WarMachineQueuingList) {
+		select {
+		case api.BattleArena.BattleQueueMap[req.Payload.WarMachineMetadata.FactionID] <- func(wmq *battle_arena.WarMachineQueuingList) {
 			// check war machine is in the queue
 			index := checkWarMachineExist(wmq.WarMachines, req.Payload.WarMachineMetadata.TokenID)
 			if index < 0 {
@@ -296,7 +317,6 @@ func (api *API) PassportBattleQueueReleaseHandler(ctx context.Context, payload [
 
 				go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionWarMachineQueueUpdated, req.Payload.WarMachineMetadata.FactionID)), wmq.WarMachines[:maxLength])
 			}
-
 			result := api.BattleArena.BuildUserWarMachineQueuePosition(wmq.WarMachines, []*server.WarMachineMetadata{}, req.Payload.WarMachineMetadata.OwnedByID)
 			go api.Passport.WarMachineQueuePositionBroadcast(context.Background(), result)
 
@@ -308,6 +328,13 @@ func (api *API) PassportBattleQueueReleaseHandler(ctx context.Context, payload [
 				warMachineQueuePosition = qp.WarMachineQueuePositions
 			}
 			go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserWarMachineQueueUpdated, req.Payload.WarMachineMetadata.OwnedByID)), warMachineQueuePosition)
+
+		}:
+
+		case <-time.After(10 * time.Second):
+			api.Log.Err(errors.New("timeout on channel send exceeded"))
+			panic("Passport Battle Queue Release Handler")
+
 		}
 	}
 }
@@ -340,7 +367,8 @@ func (api *API) PassportAssetInsurancePayHandler(ctx context.Context, payload []
 	}
 
 	if !req.Payload.FactionID.IsNil() {
-		api.BattleArena.BattleQueueMap[req.Payload.FactionID] <- func(wmq *battle_arena.WarMachineQueuingList) {
+		select {
+		case api.BattleArena.BattleQueueMap[req.Payload.FactionID] <- func(wmq *battle_arena.WarMachineQueuingList) {
 			// check war machine is in the queue
 			index := checkWarMachineExist(wmq.WarMachines, req.Payload.AssetTokenID)
 			if index < 0 {
@@ -394,12 +422,18 @@ func (api *API) PassportAssetInsurancePayHandler(ctx context.Context, payload []
 				})
 			}
 
-			api.Passport.WarMachineQueuePositionBroadcast(ctx, []*passport.UserWarMachineQueuePosition{
+			go api.Passport.WarMachineQueuePositionBroadcast(ctx, []*passport.UserWarMachineQueuePosition{
 				{
 					UserID:                   targetWarMachine.OwnedByID,
 					WarMachineQueuePositions: warMachineQueuePosition,
 				},
 			})
+
+		}:
+
+		case <-time.After(10 * time.Second):
+			api.Log.Err(errors.New("timeout on channel send exceeded"))
+			panic("Passport Asset Insurance Pay Handler")
 
 		}
 	}
@@ -536,7 +570,8 @@ func (api *API) PassportWarMachineQueuePositionHandler(ctx context.Context, payl
 
 	warMachineQueuePosition := []*passport.WarMachineQueuePosition{}
 
-	api.BattleArena.BattleQueueMap[req.Payload.FactionID] <- func(wmq *battle_arena.WarMachineQueuingList) {
+	select {
+	case api.BattleArena.BattleQueueMap[req.Payload.FactionID] <- func(wmq *battle_arena.WarMachineQueuingList) {
 		for i, wm := range wmq.WarMachines {
 			if wm.OwnedByID != req.Payload.UserID {
 				continue
@@ -546,142 +581,140 @@ func (api *API) PassportWarMachineQueuePositionHandler(ctx context.Context, payl
 				Position:           i,
 			})
 		}
-	}
+	}:
 
-	// get in game war machine
-	for _, wm := range api.BattleArena.InGameWarMachines() {
-		if wm.OwnedByID != req.Payload.UserID {
-			continue
+		// get in game war machine
+		for _, wm := range api.BattleArena.InGameWarMachines() {
+			if wm.OwnedByID != req.Payload.UserID {
+				continue
+			}
+			warMachineQueuePosition = append(warMachineQueuePosition, &passport.WarMachineQueuePosition{
+				WarMachineMetadata: wm,
+				Position:           -1,
+			})
 		}
-		warMachineQueuePosition = append(warMachineQueuePosition, &passport.WarMachineQueuePosition{
-			WarMachineMetadata: wm,
-			Position:           -1,
-		})
-	}
 
-	// fire a war machine queue passport request
-	if len(warMachineQueuePosition) > 0 {
-		api.Passport.WarMachineQueuePositionBroadcast(ctx, []*passport.UserWarMachineQueuePosition{
-			{
-				UserID:                   req.Payload.UserID,
-				WarMachineQueuePositions: warMachineQueuePosition,
-			},
-		})
+		// fire a war machine queue passport request
+		if len(warMachineQueuePosition) > 0 {
+			go api.Passport.WarMachineQueuePositionBroadcast(ctx, []*passport.UserWarMachineQueuePosition{
+				{
+					UserID:                   req.Payload.UserID,
+					WarMachineQueuePositions: warMachineQueuePosition,
+				},
+			})
+		}
+
+	case <-time.After(10 * time.Second):
+		api.Log.Err(errors.New("timeout on channel send exceeded"))
+		panic("Passport War Machine Queue Position Handler")
+
 	}
 }
 
-type AuthedTwitchExtensionRequest struct {
+type AuthRingCheckRequest struct {
 	Key     passport.Event `json:"key"`
 	Payload struct {
 		User                server.User   `json:"user"`
 		SessionID           hub.SessionID `json:"sessionID"`
-		TwitchExtensionJWT  string        `json:"twitchExtensionJWT"`
 		GameserverSessionID string        `json:"gameserverSessionID"`
 	} `json:"payload"`
 }
 
 func (api *API) AuthRingCheckHandler(ctx context.Context, payload []byte) {
-	req := &AuthedTwitchExtensionRequest{}
+	req := &AuthRingCheckRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		api.Log.Err(err).Msg("error unmarshalling passport auth ring check")
 		return
 	}
 
-	if req.Payload.TwitchExtensionJWT == "" && req.Payload.GameserverSessionID == "" {
-		api.Log.Err(fmt.Errorf("Not auth key provided"))
+	if req.Payload.GameserverSessionID == "" {
+		api.Log.Err(fmt.Errorf("No auth ring check key is provided"))
 		return
 	}
 
-	ringCheckKey := req.Payload.TwitchExtensionJWT
-	if ringCheckKey == "" {
-		ringCheckKey = req.Payload.GameserverSessionID
-	}
-
-	clientChan := make(chan *hub.Client)
-
-	// get client from ring check auth chan
-	api.ringCheckAuthChan <- func(rcam RingCheckAuthMap) {
-		client, ok := rcam[ringCheckKey]
+	select {
+	case api.ringCheckAuthChan <- func(rcam RingCheckAuthMap) {
+		client, ok := rcam[req.Payload.GameserverSessionID]
 		if !ok {
-			clientChan <- nil
+			api.Log.Err(fmt.Errorf("client not found")).Msg("client does not exist in ring check map")
 			return
 		}
+
+		// set user id
+		client.SetIdentifier(req.Payload.User.ID.String())
+
+		// set user online
+		api.ClientOnline(client)
 
 		// clean up ring check key
-		delete(rcam, ringCheckKey)
+		delete(rcam, req.Payload.GameserverSessionID)
 
-		clientChan <- client
-	}
-
-	client := <-clientChan
-	if client == nil {
-		api.Log.Err(fmt.Errorf("client not found")).Msg("client does not exist in ring check map")
-		return
-	}
-
-	detailChan := make(chan *server.User)
-
-	// set up client detail
-	api.hubClientDetail <- func(m map[*hub.Client]*server.User) {
-		hcd, ok := m[client]
-		if !ok {
-			detailChan <- nil
-			return
-		}
-
-		hcd.Username = req.Payload.User.Username
-		hcd.FirstName = req.Payload.User.FirstName
-		hcd.LastName = req.Payload.User.LastName
-		hcd.AvatarID = req.Payload.User.AvatarID
-		hcd.ID = req.Payload.User.ID
-
-		if hcd.FactionID != req.Payload.User.FactionID {
-			go api.viewerLiveCountSwap(hcd.FactionID, req.Payload.User.FactionID)
-			hcd.FactionID = req.Payload.User.FactionID
-
-			if !hcd.FactionID.IsNil() {
-				hcd.Faction = api.factionMap[hcd.FactionID]
+		select {
+		case api.hubClientDetail <- func(m map[*hub.Client]*server.User) {
+			if client == nil {
+				api.Log.Err(fmt.Errorf("client not found")).Msg("client is nil somehow")
+				return
 			}
+
+			hcd, ok := m[client]
+			if !ok {
+				api.Log.Err(fmt.Errorf("client not found")).Msg("client not found in hub client detail map")
+				return
+			}
+
+			hcd.Username = req.Payload.User.Username
+			hcd.FirstName = req.Payload.User.FirstName
+			hcd.LastName = req.Payload.User.LastName
+			hcd.AvatarID = req.Payload.User.AvatarID
+			hcd.ID = req.Payload.User.ID
+
+			if hcd.FactionID != req.Payload.User.FactionID {
+				go api.viewerLiveCountSwap(hcd.FactionID, req.Payload.User.FactionID)
+				hcd.FactionID = req.Payload.User.FactionID
+
+				if !hcd.FactionID.IsNil() {
+					hcd.Faction = api.factionMap[hcd.FactionID]
+				}
+			}
+
+			// send user id and faction id back to twitch ui client
+			resp := struct {
+				Key           hub.HubCommandKey `json:"key"`
+				TransactionID string            `json:"transactionID"`
+				Payload       interface{}       `json:"payload"`
+			}{
+				Key:           HubKeyUserSubscribe,
+				TransactionID: "authRingCheck",
+				Payload:       hcd,
+			}
+
+			b, err := json.Marshal(resp)
+			if err != nil {
+				api.Hub.Log.Err(err).Errorf("send: issue marshalling resp")
+				return
+			}
+
+			go client.Send(b)
+
+			// send request to passport server to upgrade the gamebar user
+			err = api.Passport.UpgradeUserConnection(ctx, req.Payload.SessionID)
+			if err != nil {
+				api.Log.Err(err).Msg("Failed to upgrade passport hub client level")
+				return
+			}
+		}:
+
+		case <-time.After(10 * time.Second):
+			api.Log.Err(errors.New("timeout on channel send exceeded"))
+			panic("set up client detail")
 		}
-		detailChan <- hcd
-	}
 
-	hcd := <-detailChan
-	if hcd == nil {
-		api.Log.Err(fmt.Errorf("client not found")).Msg("client not found in hub client detail map")
-		return
-	}
+	}:
 
-	// set user id
-	client.SetIdentifier(req.Payload.User.ID.String())
+	case <-time.After(10 * time.Second):
+		api.Log.Err(errors.New("timeout on channel send exceeded!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"))
+		panic("get client from ring check auth chan")
 
-	// set user online
-	api.ClientOnline(client)
-
-	// send user id and faction id back to twitch ui client
-	resp := struct {
-		Key           hub.HubCommandKey `json:"key"`
-		TransactionID string            `json:"transactionID"`
-		Payload       interface{}       `json:"payload"`
-	}{
-		Key:           HubKeyUserSubscribe,
-		TransactionID: "authRingCheck",
-		Payload:       hcd,
-	}
-
-	b, err := json.Marshal(resp)
-	if err != nil {
-		api.Hub.Log.Err(err).Errorf("send: issue marshalling resp")
-		return
-	}
-
-	go client.Send(b)
-
-	// send request to passport server to upgrade the gamebar user
-	err = api.Passport.UpgradeUserConnection(ctx, req.Payload.SessionID)
-	if err != nil {
-		api.Log.Err(err).Msg("Failed to upgrade passport hub client level")
-		return
 	}
 }
