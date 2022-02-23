@@ -91,20 +91,25 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 	})
 
 	// start voting cycle, initial intro time equal: (mech_count * 3 + 7) seconds
-	// introSecond := len(warMachines)*3 + 7
-	introSecond := 0
+	introSecond := len(warMachines)*3 + 7
 
 	for factionID := range api.factionMap {
 		go func(factionID server.FactionID) {
-			// get initial abilities
-			initialAbilities, err := db.FactionExclusiveAbilitiesByFactionID(api.ctx, api.BattleArena.Conn, factionID)
-			if err != nil {
-				api.Log.Err(err).Msg("Failed to query initial faction abilities")
-				return
-			}
-			for _, ab := range initialAbilities {
-				ab.Title = "FACTION_WIDE"
-				ab.CurrentSups = "0"
+
+			initialAbilities := []*server.GameAbility{}
+
+			if factionID != server.ZaibatsuFactionID {
+				// get initial abilities
+				initialAbilities, err = db.FactionExclusiveAbilitiesByFactionID(api.ctx, api.BattleArena.Conn, factionID)
+				if err != nil {
+					api.Log.Err(err).Msg("Failed to query initial faction abilities")
+					return
+				}
+
+				for _, ab := range initialAbilities {
+					ab.Title = "FACTION_WIDE"
+					ab.CurrentSups = "0"
+				}
 			}
 
 			for _, wm := range ed.BattleArena.WarMachines {
@@ -113,7 +118,7 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 				}
 
 				for _, ability := range wm.Abilities {
-					initialAbilities = append(initialAbilities, &server.GameAbility{
+					wmAbility := &server.GameAbility{
 						ID:                  server.GameAbilityID(uuid.Must(uuid.NewV4())), // generate a uuid for frontend to track sups contribution
 						GameClientAbilityID: byte(ability.GameClientID),
 						ImageUrl:            ability.Image,
@@ -126,7 +131,13 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 						WarMachineTokenID:   wm.TokenID,
 						ParticipantID:       &wm.ParticipantID,
 						Title:               wm.Name,
-					})
+					}
+					// if it is zaibatsu faction ability set id back
+					if ability.GameClientID == 11 {
+						wmAbility.ID = ability.ID
+					}
+					initialAbilities = append(initialAbilities, wmAbility)
+
 				}
 			}
 

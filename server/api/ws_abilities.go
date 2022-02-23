@@ -347,6 +347,11 @@ func (fc *FactionControllerWS) FactionAbilitiesUpdateSubscribeHandler(ctx contex
 		return "", "", terror.Error(err)
 	}
 
+	// skip, if faction is zaibatsu
+	if hcd.FactionID == server.ZaibatsuFactionID {
+		return "", "", nil
+	}
+
 	fc.API.gameAbilityPool[hcd.FactionID](func(fap *sync.Map) {
 		abilities := []*server.GameAbility{}
 
@@ -393,14 +398,21 @@ func (fc *FactionControllerWS) WarMachineAbilitiesUpdateSubscribeHandler(ctx con
 		abilities := []*server.GameAbility{}
 		fap.Range(func(key interface{}, gameAbilityPrice interface{}) bool {
 			fa := gameAbilityPrice.(*GameAbilityPrice)
-			if fa.GameAbility.AbilityTokenID == 0 ||
-				fa.GameAbility.ParticipantID == nil ||
-				*fa.GameAbility.ParticipantID != req.Payload.ParticipantID {
-				return true
+			if hcd.FactionID == server.ZaibatsuFactionID {
+				if fa.GameAbility.ParticipantID == nil ||
+					*fa.GameAbility.ParticipantID != req.Payload.ParticipantID {
+					return true
+				}
+			} else {
+				if fa.GameAbility.AbilityTokenID == 0 ||
+					fa.GameAbility.ParticipantID == nil ||
+					*fa.GameAbility.ParticipantID != req.Payload.ParticipantID {
+					return true
+				}
 			}
+
 			fa.GameAbility.CurrentSups = fa.CurrentSups.String()
 			abilities = append(abilities, fa.GameAbility)
-
 			fap.Store(fa.GameAbility.ID, fa)
 
 			return true

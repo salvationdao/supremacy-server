@@ -75,16 +75,17 @@ func (wm *WarMachineMetadata) Brief() *WarMachineBrief {
 }
 
 type AbilityMetadata struct {
-	TokenID           uint64 `json:"tokenID"`
-	Name              string `json:"name"`
-	Description       string `json:"description"`
-	ExternalUrl       string `json:"externalUrl"`
-	Image             string `json:"image"`
-	SupsCost          string `json:"supsCost"`
-	GameClientID      int    `json:"gameClientID"`
-	RequiredSlot      string `json:"requiredSlot"`
-	RequiredPowerGrid int    `json:"requiredPowerGrid"`
-	RequiredCPU       int    `json:"requiredCPU"`
+	ID                GameAbilityID `json:"id" db:"id"` // used for zaibatsu faction ability
+	TokenID           uint64        `json:"tokenID"`
+	Name              string        `json:"name"`
+	Description       string        `json:"description"`
+	ExternalUrl       string        `json:"externalUrl"`
+	Image             string        `json:"image"`
+	SupsCost          string        `json:"supsCost"`
+	GameClientID      int           `json:"gameClientID"`
+	RequiredSlot      string        `json:"requiredSlot"`
+	RequiredPowerGrid int           `json:"requiredPowerGrid"`
+	RequiredCPU       int           `json:"requiredCPU"`
 }
 
 type Vector3 struct {

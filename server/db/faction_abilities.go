@@ -89,6 +89,38 @@ func GameAbility(ctx context.Context, conn Conn, id server.GameAbilityID) (*serv
 	return result, nil
 }
 
+func GetZaibatsuFactionAbility(ctx context.Context, conn Conn) (*server.GameAbility, error) {
+	result := &server.GameAbility{}
+	q := `
+		SELECT * FROM game_abilities
+		WHERE game_client_ability_id = 11
+	`
+
+	err := pgxscan.Get(ctx, conn, result, q)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return result, nil
+}
+
+func ZaibatsuFactionAbilityUpdate(ctx context.Context, conn Conn, supsCost string) error {
+	q := `
+	UPDATE 
+		game_abilities
+	SET
+		sups_cost = $1
+	WHERE game_client_ability_id = 11
+	`
+
+	_, err := conn.Exec(ctx, q, supsCost)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	return nil
+}
+
 // FactionAbilityGetByBattleAbilityID return game ability by given collection id
 func FactionAbilityGetByBattleAbilityID(ctx context.Context, conn Conn, battleAbilityID server.BattleAbilityID) ([]*server.GameAbility, error) {
 	result := []*server.GameAbility{}
