@@ -190,7 +190,6 @@ reconnectLoop:
 			default:
 				_, r, err := pp.ws.Reader(context.Background())
 				if err != nil {
-					fmt.Println("reader")
 					pp.Log.Warn().Err(err).Msg("issue reading from passport connection")
 					pp.ws.Close(websocket.StatusNormalClosure, "close called")
 					time.Sleep(b.Duration())

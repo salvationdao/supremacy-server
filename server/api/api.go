@@ -93,7 +93,7 @@ type API struct {
 	Hub           *hub.Hub
 	Conn          *pgxpool.Pool
 	MessageBus    *messagebus.MessageBus
-	NetMessageBus *messagebus.NetMessageBus
+	NetMessageBus *messagebus.NetBus
 	Passport      *passport.Passport
 
 	factionMap map[server.FactionID]*server.Faction
@@ -135,7 +135,7 @@ func NewAPI(
 	config *server.Config,
 ) *API {
 
-	netMessageBus, netMessageBusOfflineFunc := messagebus.NewNetMessageBus(log_helpers.NamedLogger(log, "net_message_bus"))
+	netMessageBus := messagebus.NewNetBus(log_helpers.NamedLogger(log, "net_message_bus"))
 
 	// initialise message bus
 	messageBus, messageBusOfflineFunc := messagebus.NewMessageBus(log_helpers.NamedLogger(log, "message_bus"))
@@ -162,7 +162,7 @@ func NewAPI(
 				OriginPatterns:     []string{config.TwitchUIHostURL},
 			},
 			ClientOfflineFn: func(cl *hub.Client) {
-				netMessageBusOfflineFunc(cl)
+				netMessageBus.UnsubAll(cl)
 				messageBusOfflineFunc(cl)
 			},
 		}),
