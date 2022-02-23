@@ -111,7 +111,7 @@ type API struct {
 
 	// voting channels
 	votePhaseChecker *VotePhaseChecker
-	votingCycle      chan func(*VoteStage, *VoteAbility, FactionUserVoteMap, *FactionTotalVote, *VoteWinner, *VotingCycleTicker, UserVoteMap)
+	votingCycle      chan func(*VoteStage, *VoteAbility, FactionUserVoteMap, *FactionTransactions, *FactionTotalVote, *VoteWinner, *VotingCycleTicker, UserVoteMap)
 	votePriceSystem  *VotePriceSystem
 
 	// faction abilities
@@ -167,7 +167,7 @@ func NewAPI(
 			},
 		}),
 		// channel for faction voting system
-		votingCycle:   make(chan func(*VoteStage, *VoteAbility, FactionUserVoteMap, *FactionTotalVote, *VoteWinner, *VotingCycleTicker, UserVoteMap)),
+		votingCycle:   make(chan func(*VoteStage, *VoteAbility, FactionUserVoteMap, *FactionTransactions, *FactionTotalVote, *VoteWinner, *VotingCycleTicker, UserVoteMap)),
 		liveSupsSpend: make(map[server.FactionID]chan func(*LiveVotingData)),
 
 		// channel for handling hub client
@@ -422,7 +422,7 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 	if noClientLeft && currentUser != nil && api.votePhaseChecker.Phase == VotePhaseLocationSelect {
 		// check the user is selecting ability location
 		select {
-		case api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+		case api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
 			if len(vw.List) > 0 && vw.List[0].String() == wsc.Identifier() {
 				if err != nil {
 					api.Log.Err(err).Msg("failed to get user")
