@@ -65,6 +65,17 @@ func (s *Seeder) Run() error {
 	return nil
 }
 
+// Run for database spin up (post prod)
+func (s *Seeder) RunAssets() error {
+	ctx := context.Background()
+	fmt.Println("Seed assets")
+	_, err := s.assets(ctx)
+	if err != nil {
+		return terror.Error(err)
+	}
+	return nil
+}
+
 func gameMaps(ctx context.Context, conn *pgxpool.Pool) error {
 	for _, gameMap := range GameMaps {
 		err := db.GameMapCreate(ctx, conn, gameMap)

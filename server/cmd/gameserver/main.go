@@ -204,6 +204,7 @@ func main() {
 					&cli.StringFlag{Name: "database_port", Value: "5437", EnvVars: []string{envPrefix + "_DATABASE_PORT"}, Usage: "The database port"},
 					&cli.StringFlag{Name: "database_name", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_NAME"}, Usage: "The database name"},
 					&cli.StringFlag{Name: "database_application_name", Value: "API Server", EnvVars: []string{envPrefix + "_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
+					&cli.BoolFlag{Name: "assets", Value: false, Usage: "Whether to seed assets only"},
 
 					//&cli.BoolFlag{Name: "seed", EnvVars: []string{"DB_SEED"}, Usage: "seed the database"},
 				},
@@ -230,6 +231,9 @@ func main() {
 					}
 
 					seeder := seed.NewSeeder(pgxconn)
+					if c.Bool("assets") {
+						return seeder.RunAssets()
+					}
 					return seeder.Run()
 				},
 			},
