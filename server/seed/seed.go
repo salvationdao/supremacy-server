@@ -139,7 +139,7 @@ var AbilityBlobs = []*server.Blob{
 	// BlobIDAbilityNuke
 	{
 		ID:       BlobIDAbilityNuke,
-		FileName: "Overcharge.png",
+		FileName: "Nuke.png",
 	},
 }
 
