@@ -7,7 +7,6 @@ import (
 	"server"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/gofrs/uuid"
 
 	"github.com/ninja-software/terror/v2"
@@ -93,7 +92,6 @@ func (pp *Passport) SendHoldSupsMessage(ctx context.Context, userID server.UserI
 				return nil, terror.Error(err)
 			}
 
-			spew.Dump(resp.Transaction)
 			return &resp.Transaction, nil
 		case err := <-errChan:
 			return nil, terror.Error(err)
