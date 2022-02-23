@@ -33,7 +33,7 @@ WHERE label = 'REINFORCEMENTS';
 
 UPDATE game_abilities
 SET image_url = '/api/blobs/f40e90b7-1ea2-4a91-bf0f-feb052a019be',
-	description = 'Support your Syndcate with a well-timed repair.'
+	description = 'Support your Syndicate with a well-timed repair.'
 WHERE label = 'REPAIR';
 
 UPDATE game_abilities

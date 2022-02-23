@@ -73,6 +73,16 @@ func (s *Seeder) RunAssets() error {
 	if err != nil {
 		return terror.Error(err)
 	}
+
+	// insert zaibatsu faction abilities
+	fmt.Println("Seed new ability")
+	for _, gameAbility := range ZaibatsuUniqueAbilities {
+		err := db.GameAbilityCreate(ctx, s.Conn, gameAbility)
+		if err != nil {
+			return terror.Error(err)
+		}
+	}
+
 	return nil
 }
 
@@ -92,6 +102,7 @@ var BlobIDAbilityRobotDogs = server.BlobID(uuid.Must(uuid.FromString("3b4ae24a-7
 var BlobIDAbilityReinforcements = server.BlobID(uuid.Must(uuid.FromString("5d0a0028-c074-4ab5-b46e-14d0ff07795d")))
 var BlobIDAbilityRepair = server.BlobID(uuid.Must(uuid.FromString("f40e90b7-1ea2-4a91-bf0f-feb052a019be")))
 var BlobIDAbilityNuke = server.BlobID(uuid.Must(uuid.FromString("8e0e1918-556c-4370-85f9-b8960fd19554")))
+var BlobIDAbilityOverload = server.BlobID(uuid.Must(uuid.FromString("04acaffd-7bd1-4b01-b264-feb4f8ab4563")))
 
 var FactionIDRedMountain = server.FactionID(uuid.Must(uuid.FromString("98bf7bb3-1a7c-4f21-8843-458d62884060")))
 var FactionIDBoston = server.FactionID(uuid.Must(uuid.FromString("7c6dde21-b067-46cf-9e56-155c88a520e2")))
@@ -110,7 +121,7 @@ var SharedAbilityCollections = []*server.BattleAbility{
 	},
 	{
 		Label:                  "REPAIR",
-		Description:            "Support your Syndcate with a well-timed repair.",
+		Description:            "Support your Syndicate with a well-timed repair.",
 		CooldownDurationSecond: 15,
 	},
 }
@@ -255,6 +266,18 @@ var RedMountainUniqueAbilities = []*server.GameAbility{
 	},
 }
 
+var ZaibatsuUniqueAbilities = []*server.GameAbility{
+	{
+		Label:               "OVERLOAD",
+		FactionID:           FactionIDZaibatsu,
+		GameClientAbilityID: 11,
+		Colour:              "#D18E11",
+		Description:         "Zaibatsu unique ability. Consume your remaining shield for an explosive defence mechanism.",
+		ImageUrl:            "/api/blobs/04acaffd-7bd1-4b01-b264-feb4f8ab4563",
+		SupsCost:            "100000000000000000000",
+	},
+}
+
 func factionAbilities(ctx context.Context, conn *pgxpool.Pool) error {
 	for _, battleAbility := range SharedAbilityCollections {
 		err := db.BattleAbilityCreate(ctx, conn, battleAbility)
@@ -287,6 +310,14 @@ func factionAbilities(ctx context.Context, conn *pgxpool.Pool) error {
 
 	// insert boston faction abilities
 	for _, gameAbility := range BostonUniqueAbilities {
+		err := db.GameAbilityCreate(ctx, conn, gameAbility)
+		if err != nil {
+			return terror.Error(err)
+		}
+	}
+
+	// insert zaibatsu faction abilities
+	for _, gameAbility := range ZaibatsuUniqueAbilities {
 		err := db.GameAbilityCreate(ctx, conn, gameAbility)
 		if err != nil {
 			return terror.Error(err)
