@@ -2,11 +2,16 @@ package seed
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"server"
 	"server/db"
 
 	"github.com/gofrs/uuid"
+	"github.com/h2non/filetype"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/terror/v2"
 )
@@ -33,6 +38,12 @@ func (s *Seeder) Run() error {
 
 	fmt.Println("seed factions")
 	_, err = s.factions(ctx)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	fmt.Println("Seed assets")
+	_, err = s.assets(ctx)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -65,6 +76,12 @@ func gameMaps(ctx context.Context, conn *pgxpool.Pool) error {
 	return nil
 }
 
+var BlobIDAbilityAirstrike = server.BlobID(uuid.Must(uuid.FromString("dc713e47-4119-494a-a81b-8ac92cf3222b")))
+var BlobIDAbilityRobotDogs = server.BlobID(uuid.Must(uuid.FromString("3b4ae24a-7ccb-4d3b-8d88-905b406da0e1")))
+var BlobIDAbilityReinforcements = server.BlobID(uuid.Must(uuid.FromString("5d0a0028-c074-4ab5-b46e-14d0ff07795d")))
+var BlobIDAbilityRepair = server.BlobID(uuid.Must(uuid.FromString("f40e90b7-1ea2-4a91-bf0f-feb052a019be")))
+var BlobIDAbilityNuke = server.BlobID(uuid.Must(uuid.FromString("8e0e1918-556c-4370-85f9-b8960fd19554")))
+
 var FactionIDRedMountain = server.FactionID(uuid.Must(uuid.FromString("98bf7bb3-1a7c-4f21-8843-458d62884060")))
 var FactionIDBoston = server.FactionID(uuid.Must(uuid.FromString("7c6dde21-b067-46cf-9e56-155c88a520e2")))
 var FactionIDZaibatsu = server.FactionID(uuid.Must(uuid.FromString("880db344-e405-428d-84e5-6ebebab1fe6d")))
@@ -81,6 +98,34 @@ var SharedAbilityCollections = []*server.BattleAbility{
 	{
 		Label:                  "REPAIR",
 		CooldownDurationSecond: 15,
+	},
+}
+
+var AbilityBlobs = []*server.Blob{
+	// BlobIDAbilityAirstrike
+	{
+		ID:       BlobIDAbilityAirstrike,
+		FileName: "Airstrike.png",
+	},
+	// BlobIDAbilityRobotDogs
+	{
+		ID:       BlobIDAbilityRobotDogs,
+		FileName: "Dogs.png",
+	},
+	// BlobIDAbilityReinforacements
+	{
+		ID:       BlobIDAbilityReinforcements,
+		FileName: "Reinforcements.png",
+	},
+	// BlobIDAbilityRepair
+	{
+		ID:       BlobIDAbilityRepair,
+		FileName: "Repair.png",
+	},
+	// BlobIDAbilityNuke
+	{
+		ID:       BlobIDAbilityNuke,
+		FileName: "Overcharge.png",
 	},
 }
 
@@ -403,4 +448,54 @@ func (s *Seeder) streams(ctx context.Context) ([]*server.Stream, error) {
 	}
 
 	return streams, nil
+}
+
+func (s *Seeder) assets(ctx context.Context) ([]*server.Blob, error) {
+	output := []*server.Blob{}
+	for _, blob := range AbilityBlobs {
+		f, err := os.Open("./asset/" + blob.FileName)
+		if err != nil {
+			return nil, terror.Error(err)
+		}
+		fileData, err := ioutil.ReadAll(f)
+		if err != nil {
+			return nil, terror.Error(err)
+		}
+
+		// Get image mime type
+		kind, err := filetype.Match(fileData)
+		if err != nil {
+			return nil, terror.Error(terror.ErrParse, "parse error")
+		}
+
+		if kind == filetype.Unknown {
+			return nil, terror.Error(fmt.Errorf("Image type is unknown"), "Image type is unknown")
+		}
+
+		mimeType := kind.MIME.Value
+		extension := kind.Extension
+
+		// Get hash
+		hasher := md5.New()
+		_, err = hasher.Write(fileData)
+		if err != nil {
+			return nil, terror.Error(err, "hash error")
+		}
+		hashResult := hasher.Sum(nil)
+		hash := hex.EncodeToString(hashResult)
+
+		blob.MimeType = mimeType
+		blob.Extension = extension
+		blob.FileSizeBytes = int64(len(fileData))
+		blob.File = fileData
+		blob.Hash = &hash
+
+		err = db.BlobInsert(ctx, s.Conn, blob, blob.ID, blob.FileName, blob.MimeType, blob.FileSizeBytes, blob.Extension, blob.File, blob.Hash)
+		if err != nil {
+			return nil, terror.Error(err, "blob insert error")
+		}
+
+		output = append(output, blob)
+	}
+	return output, nil
 }
