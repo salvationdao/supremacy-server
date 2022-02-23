@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -26,7 +27,7 @@ type GameAbilityPrice struct {
 	MaxTargetPrice server.BigInt
 	TargetPrice    server.BigInt
 	CurrentSups    server.BigInt
-	TxRefs         []server.TransactionReference
+	TxRefs         []server.Transaction
 }
 
 type GameAbilityPoolTicker struct {
@@ -69,7 +70,8 @@ func (api *API) abilityTargetPriceUpdaterFactory(ctx context.Context, factionID 
 		errChan := make(chan error)
 
 		// update ability target price
-		api.gameAbilityPool[factionID] <- func(fap GameAbilitiesPool, fapt *GameAbilityPoolTicker) {
+		select {
+		case api.gameAbilityPool[factionID] <- func(fap GameAbilitiesPool, fapt *GameAbilityPoolTicker) {
 			targetPriceList := []string{}
 			for _, fa := range fap {
 				// in order to reduce price by half after 5 minutes
@@ -109,13 +111,13 @@ func (api *API) abilityTargetPriceUpdaterFactory(ctx context.Context, factionID 
 					fa.CurrentSups = server.BigInt{Int: *big.NewInt(0)}
 
 					// commit all the transactions
-					_, err := api.Passport.CommitTransactions(context.Background(), fa.TxRefs)
-					if err != nil {
-						targetPriceChan <- ""
-						errChan <- terror.Error(err)
-						return
-					}
-					fa.TxRefs = []server.TransactionReference{}
+					// _, err := api.Passport.CommitTransactions(context.Background(), fa.TxRefs)
+					// if err != nil {
+					// 	targetPriceChan <- ""
+					// 	errChan <- terror.Error(err)
+					// 	return
+					// }
+					fa.TxRefs = []server.Transaction{}
 
 					abilityTriggerEvent := &server.GameAbilityEvent{
 						IsTriggered:         true,
@@ -129,7 +131,7 @@ func (api *API) abilityTargetPriceUpdaterFactory(ctx context.Context, factionID 
 					}
 
 					// trigger battle arena function to handle game ability
-					err = api.BattleArena.GameAbilityTrigger(abilityTriggerEvent)
+					err := api.BattleArena.GameAbilityTrigger(abilityTriggerEvent)
 					if err != nil {
 						targetPriceChan <- ""
 						errChan <- terror.Error(err)
@@ -174,25 +176,29 @@ func (api *API) abilityTargetPriceUpdaterFactory(ctx context.Context, factionID 
 
 			targetPriceChan <- strings.Join(targetPriceList, "|")
 			errChan <- nil
-		}
+		}:
+			// wait for target price change
+			targetPrice := <-targetPriceChan
 
-		// wait for target price change
-		targetPrice := <-targetPriceChan
+			// wait for error check
+			err := <-errChan
+			if err != nil {
+				return http.StatusInternalServerError, terror.Error(err)
+			}
 
-		// wait for error check
-		err := <-errChan
-		if err != nil {
-			return http.StatusInternalServerError, terror.Error(err)
-		}
+			if targetPrice != "" {
+				// prepare broadcast payload
+				payload := []byte{}
+				payload = append(payload, byte(battle_arena.NetMessageTypeAbilityTargetPriceTick))
+				payload = append(payload, []byte(targetPrice)...)
 
-		if targetPrice != "" {
-			// prepare broadcast payload
-			payload := []byte{}
-			payload = append(payload, byte(battle_arena.NetMessageTypeAbilityTargetPriceTick))
-			payload = append(payload, []byte(targetPrice)...)
+				// start broadcast
+				api.NetMessageBus.Send(ctx, messagebus.NetBusKey(fmt.Sprintf("%s:%s", HubKeyFactionAbilityPriceUpdated, factionID)), payload)
+			}
 
-			// start broadcast
-			api.NetMessageBus.Send(ctx, messagebus.NetBusKey(fmt.Sprintf("%s:%s", HubKeyFactionAbilityPriceUpdated, factionID)), payload)
+		case <-time.After(10 * time.Second):
+			api.Log.Err(errors.New("timeout on channel send exceeded"))
+			panic("update ability target price")
 		}
 
 		return http.StatusOK, nil
@@ -203,23 +209,29 @@ func (api *API) abilityTargetPriceBroadcasterFactory(ctx context.Context, factio
 	return func() (int, error) {
 		// get current target price data
 		targetPriceChan := make(chan string)
-		api.gameAbilityPool[factionID] <- func(fap GameAbilitiesPool, fapt *GameAbilityPoolTicker) {
+		select {
+		case api.gameAbilityPool[factionID] <- func(fap GameAbilitiesPool, fapt *GameAbilityPoolTicker) {
 			targetPriceList := []string{}
 			for _, fa := range fap {
 				targetPriceList = append(targetPriceList, fmt.Sprintf("%s_%s_%s_%d", fa.GameAbility.ID, fa.TargetPrice.String(), fa.CurrentSups.String(), 0))
 			}
 			targetPriceChan <- strings.Join(targetPriceList, "|")
-		}
-		targetPrice := <-targetPriceChan
+		}:
+			targetPrice := <-targetPriceChan
 
-		if targetPrice != "" {
-			// prepare broadcast payload
-			payload := []byte{}
-			payload = append(payload, byte(battle_arena.NetMessageTypeAbilityTargetPriceTick))
-			payload = append(payload, []byte(targetPrice)...)
+			if targetPrice != "" {
+				// prepare broadcast payload
+				payload := []byte{}
+				payload = append(payload, byte(battle_arena.NetMessageTypeAbilityTargetPriceTick))
+				payload = append(payload, []byte(targetPrice)...)
 
-			// start broadcast
-			api.NetMessageBus.Send(ctx, messagebus.NetBusKey(fmt.Sprintf("%s:%s", HubKeyFactionAbilityPriceUpdated, factionID)), payload)
+				// start broadcast
+				api.NetMessageBus.Send(ctx, messagebus.NetBusKey(fmt.Sprintf("%s:%s", HubKeyFactionAbilityPriceUpdated, factionID)), payload)
+			}
+
+		case <-time.After(10 * time.Second):
+			api.Log.Err(errors.New("timeout on channel send exceeded"))
+			panic("Client Battle Reward Update")
 		}
 
 		return http.StatusOK, nil
@@ -230,7 +242,8 @@ func (api *API) startGameAbilityPoolTicker(ctx context.Context, factionID server
 	// start game ability pool ticker after mech intro
 	time.Sleep(time.Duration(introSecond) * time.Second)
 
-	api.gameAbilityPool[factionID] <- func(fap GameAbilitiesPool, fapt *GameAbilityPoolTicker) {
+	select {
+	case api.gameAbilityPool[factionID] <- func(fap GameAbilitiesPool, fapt *GameAbilityPoolTicker) {
 		// set initial ability
 		factionAbilities := []*server.GameAbility{}
 		warMachineAbilities := make(map[byte][]*server.GameAbility)
@@ -240,7 +253,7 @@ func (api *API) startGameAbilityPoolTicker(ctx context.Context, factionID server
 				MaxTargetPrice: server.BigInt{Int: *big.NewInt(0)},
 				TargetPrice:    server.BigInt{Int: *big.NewInt(0)},
 				CurrentSups:    server.BigInt{Int: *big.NewInt(0)},
-				TxRefs:         []server.TransactionReference{},
+				TxRefs:         []server.Transaction{},
 			}
 
 			if ability.AbilityTokenID == 0 {
@@ -277,12 +290,20 @@ func (api *API) startGameAbilityPoolTicker(ctx context.Context, factionID server
 		// start all the tickles
 		fapt.TargetPriceUpdater.Start()
 		fapt.TargetPriceBroadcaster.Start()
+	}:
+
+	case <-time.After(5 * time.Second):
+		api.Log.Err(errors.New("timeout on channel send exceeded"))
+		return
 	}
+
 }
 
 func (api *API) stopGameAbilityPoolTicker() {
 	for factionID := range api.factionMap {
-		api.gameAbilityPool[factionID] <- func(fap GameAbilitiesPool, fapt *GameAbilityPoolTicker) {
+
+		select {
+		case api.gameAbilityPool[factionID] <- func(fap GameAbilitiesPool, fapt *GameAbilityPoolTicker) {
 			// stop all the tickles
 			if fapt.TargetPriceUpdater.NextTick != nil {
 				fapt.TargetPriceUpdater.Stop()
@@ -297,12 +318,18 @@ func (api *API) stopGameAbilityPoolTicker() {
 			}
 
 			// commit all the left over transactions
-			txRefs := []server.TransactionReference{}
+			txRefs := []server.Transaction{}
 			for _, fa := range fap {
 				txRefs = append(txRefs, fa.TxRefs...)
 			}
 
 			api.Passport.ReleaseTransactions(context.Background(), txRefs)
+		}:
+
+		case <-time.After(10 * time.Second):
+			api.Log.Err(errors.New("timeout on channel send exceeded"))
+			panic("Client Battle Reward Update")
 		}
+
 	}
 }

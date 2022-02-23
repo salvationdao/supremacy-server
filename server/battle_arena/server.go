@@ -436,16 +436,33 @@ func (ba *BattleArena) SetupAfterConnections() {
 	battleContractRewardUpdaterLogger := log_helpers.NamedLogger(ba.Log, "Contract Reward Updater").Level(zerolog.Disabled)
 	battleContractRewardUpdater := tickle.New("Contract Reward Updater", 10, func() (int, error) {
 		rQueueNumberChan := make(chan int)
-		ba.BattleQueueMap[server.RedMountainFactionID] <- func(wmql *WarMachineQueuingList) {
+		select {
+		case ba.BattleQueueMap[server.RedMountainFactionID] <- func(wmql *WarMachineQueuingList) {
 			rQueueNumberChan <- len(wmql.WarMachines)
+		}:
+		case <-time.After(10 * time.Second):
+			ba.Log.Err(errors.New("timeout on channel send exceeded"))
+			panic("Client Battle Reward Update")
 		}
+
 		bQueueNumberChan := make(chan int)
-		ba.BattleQueueMap[server.BostonCyberneticsFactionID] <- func(wmql *WarMachineQueuingList) {
+		select {
+		case ba.BattleQueueMap[server.BostonCyberneticsFactionID] <- func(wmql *WarMachineQueuingList) {
 			bQueueNumberChan <- len(wmql.WarMachines)
+		}:
+		case <-time.After(10 * time.Second):
+			ba.Log.Err(errors.New("timeout on channel send exceeded"))
+			panic("Client Battle Reward Update")
 		}
+
 		zQueueNumberChan := make(chan int)
-		ba.BattleQueueMap[server.ZaibatsuFactionID] <- func(wmql *WarMachineQueuingList) {
+		select {
+		case ba.BattleQueueMap[server.ZaibatsuFactionID] <- func(wmql *WarMachineQueuingList) {
 			zQueueNumberChan <- len(wmql.WarMachines)
+		}:
+		case <-time.After(10 * time.Second):
+			ba.Log.Err(errors.New("timeout on channel send exceeded"))
+			panic("Client Battle Reward Update")
 		}
 
 		ba.passport.FactionWarMachineContractRewardUpdate(
