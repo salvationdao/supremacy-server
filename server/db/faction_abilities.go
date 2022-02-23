@@ -12,14 +12,15 @@ import (
 func BattleAbilityCreate(ctx context.Context, conn Conn, battleAbility *server.BattleAbility) error {
 	q := `
 		INSERT INTO
-			battle_abilities (label, cooldown_duration_second)
+			battle_abilities (label, description, cooldown_duration_second)
 		VALUES
-			($1, $2)
+			($1, $2, $3)
 		RETURNING
-			id, label, cooldown_duration_second
+			id, label, description, cooldown_duration_second
 	`
 	err := pgxscan.Get(ctx, conn, battleAbility, q,
 		battleAbility.Label,
+		battleAbility.Description,
 		battleAbility.CooldownDurationSecond,
 	)
 	if err != nil {

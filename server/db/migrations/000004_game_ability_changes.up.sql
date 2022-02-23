@@ -12,6 +12,7 @@ CREATE TABLE blobs (
     created_at      TIMESTAMPTZ      NOT NULL DEFAULT NOW()
 );
 
+-- Game Abilities
 ALTER TABLE game_abilities
 	ADD COLUMN description TEXT;
 
@@ -41,4 +42,15 @@ SET image_url = '/api/blobs/3b4ae24a-7ccb-4d3b-8d88-905b406da0e1',
 WHERE label = 'ROBOT DOGS';
 
 ALTER TABLE game_abilities
+	ALTER COLUMN description SET NOT NULL;
+
+-- Battle Abilities
+ALTER TABLE battle_abilities
+	ADD COLUMN description TEXT;
+
+UPDATE battle_abilities SET description = 'Rain fury on the arena with a targeted airstrike.' WHERE label = 'AIRSTRIKE';
+UPDATE battle_abilities SET description = 'The show-stopper. A tactical nuke at your fingertips.' WHERE label = 'NUKE';
+UPDATE battle_abilities SET description = 'Support your Syndcate with a well-timed repair.' WHERE label = 'REPAIR';
+
+ALTER TABLE battle_abilities
 	ALTER COLUMN description SET NOT NULL;

@@ -22,3 +22,6 @@ WHERE label = 'ROBOT DOGS';
 
 ALTER TABLE game_abilities
 	DROP COLUMN description;
+
+ALTER TABLE battle_abilities
+	DROP COLUMN description;

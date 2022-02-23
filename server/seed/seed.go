@@ -100,14 +100,17 @@ var FactionIDZaibatsu = server.FactionID(uuid.Must(uuid.FromString("880db344-e40
 var SharedAbilityCollections = []*server.BattleAbility{
 	{
 		Label:                  "AIRSTRIKE",
+		Description:            "Rain fury on the arena with a targeted airstrike.",
 		CooldownDurationSecond: 20,
 	},
 	{
 		Label:                  "NUKE",
+		Description:            "The show-stopper. A tactical nuke at your fingertips.",
 		CooldownDurationSecond: 30,
 	},
 	{
 		Label:                  "REPAIR",
+		Description:            "Support your Syndcate with a well-timed repair.",
 		CooldownDurationSecond: 15,
 	},
 }
