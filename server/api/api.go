@@ -209,6 +209,7 @@ func NewAPI(
 		r.Get("/video_server", WithToken(config.ServerStreamKey, WithError((api.GetStreamsHandler))))
 		r.Delete("/video_server", WithToken(config.ServerStreamKey, WithError((api.DeleteStreamHandler))))
 		r.Get("/faction_data", WithError(api.GetFactionData))
+		r.Get("/trigger/ability_file_upload", WithError(api.GetFactionData))
 	})
 
 	///////////////////////////
