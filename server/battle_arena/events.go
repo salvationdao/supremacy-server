@@ -3,6 +3,7 @@ package battle_arena
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"server"
 	"server/db"
@@ -11,7 +12,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-chi/chi"
 	"github.com/gofrs/uuid"
+	"github.com/jackc/pgx"
 	"github.com/ninja-software/terror/v2"
 )
 
@@ -190,4 +193,39 @@ func (ba *BattleArena) GetAbility(w http.ResponseWriter, r *http.Request) (int, 
 		return http.StatusBadRequest, terror.Error(err)
 	}
 	return helpers.EncodeJSON(w, result)
+}
+
+func (ba *BattleArena) GetBlob(w http.ResponseWriter, r *http.Request) (int, error) {
+	ctx := context.Background()
+	idStr := chi.URLParam(r, "id")
+	if idStr == "" {
+		return http.StatusBadRequest, terror.Error(terror.ErrInvalidInput, "no id provided")
+	}
+	id, err := uuid.FromString(idStr)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(terror.ErrInvalidInput, "invalid id provided")
+	}
+	blobID := server.BlobID(id)
+
+	att := &server.Blob{}
+	err = db.FindBlob(ctx, ba.Conn, att, blobID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return http.StatusNotFound, terror.Error(err, "attachment not found")
+	}
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "could not get attachment")
+	}
+
+	disposition := "attachment"
+	isViewDisposition := r.URL.Query().Get("view")
+	if isViewDisposition == "true" {
+		disposition = "inline"
+	}
+
+	// tell the browser the returned content should be downloaded/inline
+	if att.MimeType != "" && att.MimeType != "unknown" {
+		w.Header().Add("Content-Type", att.MimeType)
+	}
+	w.Header().Add("Content-Disposition", fmt.Sprintf("%s;filename=%s", disposition, att.FileName))
+	return w.Write(att.File)
 }

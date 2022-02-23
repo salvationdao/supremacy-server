@@ -206,6 +206,7 @@ func NewAPI(
 		r.Get("/faction_stats", WithError(api.BattleArena.FactionStats))
 		r.Get("/user_stats", WithError(api.BattleArena.UserStats))
 		r.Get("/abilities", WithError(api.BattleArena.GetAbility))
+		r.Get("/blob/{id}", WithError(api.BattleArena.GetBlob))
 		r.Post("/video_server", WithToken(config.ServerStreamKey, WithError((api.CreateStreamHandler))))
 		r.Get("/video_server", WithToken(config.ServerStreamKey, WithError((api.GetStreamsHandler))))
 		r.Delete("/video_server", WithToken(config.ServerStreamKey, WithError((api.DeleteStreamHandler))))
