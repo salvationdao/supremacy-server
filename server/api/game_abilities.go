@@ -27,7 +27,7 @@ type GameAbilityPrice struct {
 	MaxTargetPrice server.BigInt
 	TargetPrice    server.BigInt
 	CurrentSups    server.BigInt
-	TxRefs         []server.TransactionReference
+	TxRefs         []server.Transaction
 }
 
 type GameAbilityPoolTicker struct {
@@ -111,13 +111,13 @@ func (api *API) abilityTargetPriceUpdaterFactory(ctx context.Context, factionID 
 					fa.CurrentSups = server.BigInt{Int: *big.NewInt(0)}
 
 					// commit all the transactions
-					_, err := api.Passport.CommitTransactions(context.Background(), fa.TxRefs)
-					if err != nil {
-						targetPriceChan <- ""
-						errChan <- terror.Error(err)
-						return
-					}
-					fa.TxRefs = []server.TransactionReference{}
+					// _, err := api.Passport.CommitTransactions(context.Background(), fa.TxRefs)
+					// if err != nil {
+					// 	targetPriceChan <- ""
+					// 	errChan <- terror.Error(err)
+					// 	return
+					// }
+					fa.TxRefs = []server.Transaction{}
 
 					abilityTriggerEvent := &server.GameAbilityEvent{
 						IsTriggered:         true,
@@ -131,7 +131,7 @@ func (api *API) abilityTargetPriceUpdaterFactory(ctx context.Context, factionID 
 					}
 
 					// trigger battle arena function to handle game ability
-					err = api.BattleArena.GameAbilityTrigger(abilityTriggerEvent)
+					err := api.BattleArena.GameAbilityTrigger(abilityTriggerEvent)
 					if err != nil {
 						targetPriceChan <- ""
 						errChan <- terror.Error(err)
@@ -253,7 +253,7 @@ func (api *API) startGameAbilityPoolTicker(ctx context.Context, factionID server
 				MaxTargetPrice: server.BigInt{Int: *big.NewInt(0)},
 				TargetPrice:    server.BigInt{Int: *big.NewInt(0)},
 				CurrentSups:    server.BigInt{Int: *big.NewInt(0)},
-				TxRefs:         []server.TransactionReference{},
+				TxRefs:         []server.Transaction{},
 			}
 
 			if ability.AbilityTokenID == 0 {
@@ -318,7 +318,7 @@ func (api *API) stopGameAbilityPoolTicker() {
 			}
 
 			// commit all the left over transactions
-			txRefs := []server.TransactionReference{}
+			txRefs := []server.Transaction{}
 			for _, fa := range fap {
 				txRefs = append(txRefs, fa.TxRefs...)
 			}

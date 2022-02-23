@@ -166,62 +166,42 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 				return
 			}
 
+			exceedFund := big.NewInt(0)
+			exceedFund.Add(exceedFund, &fa.CurrentSups.Int)
+			exceedFund.Add(exceedFund, &req.Payload.Amount.Int)
+			isReached := false
+			if exceedFund.Cmp(&fa.MaxTargetPrice.Int) >= 0 {
+				isReached = true
+			}
+
+			reduceAmount := server.BigInt{Int: *big.NewInt(0)}
+			if !isReached {
+				reduceAmount.Add(&reduceAmount.Int, &req.Payload.Amount.Int)
+			} else {
+				reduceAmount.Add(&reduceAmount.Int, exceedFund)
+				reduceAmount.Sub(&reduceAmount.Int, &fa.MaxTargetPrice.Int)
+			}
+
 			// check sups
 			reason := fmt.Sprintf("battle:%s|game_ability_contribution:%s", fc.API.BattleArena.CurrentBattleID(), req.Payload.GameAbilityID)
 
-			supTransactionReference, err := fc.API.Passport.SendHoldSupsMessage(ctx, userID, req.Payload.Amount, reason)
+			supsTransaction, err := fc.API.Passport.SendHoldSupsMessage(ctx, userID, reduceAmount, reason)
 			if err != nil {
 				fc.Log.Err(err).Msg("")
 				return
 			}
 
 			// append transaction ref
-			fa.TxRefs = append(fa.TxRefs, supTransactionReference)
+			fa.TxRefs = append(fa.TxRefs, *supsTransaction)
 
-			// increase current sups
-			fa.CurrentSups.Add(&fa.CurrentSups.Int, &req.Payload.Amount.Int)
-
-			// skip, if current sups is less than target price
-			if fa.CurrentSups.Cmp(&fa.TargetPrice.Int) < 0 {
-				return
-			} else if fa.CurrentSups.Cmp(&fa.TargetPrice.Int) > 0 {
-				// get dif
-				reason := fmt.Sprintf("battle:%s|game_ability_contribution:%s:overpay_refund", fc.API.BattleArena.CurrentBattleID(), req.Payload.GameAbilityID)
-
-				supReverseTransactionReference, err := fc.API.Passport.SendHoldSupsMessage(ctx, userID, req.Payload.Amount, reason)
-				if err != nil {
-					fc.Log.Err(err).Msg("")
-				}
-				if err == nil {
-					// append transaction ref
-					fa.TxRefs = append(fa.TxRefs, supReverseTransactionReference)
-				}
-			}
-
-			// commit all the transactions
-			results, err := fc.API.Passport.CommitTransactions(ctx, fa.TxRefs)
-			if err != nil {
-				fc.Log.Err(err).Msg("")
+			if !isReached {
+				// increase current sups and return
+				fa.CurrentSups.Add(&fa.CurrentSups.Int, &req.Payload.Amount.Int)
 				return
 			}
 
-			// clear transaction reference
-			fa.TxRefs = []server.TransactionReference{}
-
-			for _, result := range results {
-				if result.Status == server.TransactionFailed {
-					// decrease amount
-					fa.CurrentSups.Sub(&fa.CurrentSups.Int, &result.Amount.Int)
-				}
-			}
-
-			// skip, if current sups is less than target price
-			if fa.CurrentSups.Cmp(&fa.TargetPrice.Int) < 0 {
-				return
-			}
-
-			// clear transaction reference
-			fa.TxRefs = []server.TransactionReference{}
+			// otherwise, clear transaction and bump the price
+			fa.TxRefs = []server.Transaction{}
 
 			// calc min target price (half of last max target price)
 			minTargetPrice := server.BigInt{Int: *big.NewInt(0)}

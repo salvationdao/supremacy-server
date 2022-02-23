@@ -14,9 +14,9 @@ const (
 )
 
 type Transaction struct {
-	ID                   int64                `json:"id"`
-	Credit               UserID               `json:"credit"`
-	Debit                UserID               `json:"debit"`
+	ID                   string               `json:"id"`
+	ToID                 UserID               `json:"credit"`
+	FromID               UserID               `json:"debit"`
 	Amount               BigInt               `json:"amount"`
 	Status               TransactionStatus    `json:"status"`
 	TransactionReference TransactionReference `json:"transactionReference"`
