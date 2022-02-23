@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
 	"server"
@@ -11,7 +10,7 @@ import (
 	"server/db"
 	"server/passport"
 	"strings"
-	"time"
+	"sync"
 
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -155,13 +154,16 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 	}
 	req.Payload.Amount.Mul(&req.Payload.Amount.Int, oneSups)
 
-	fc.API.gameAbilityPool[factionID] <- func(fap GameAbilitiesPool, fapt *GameAbilityPoolTicker) {
+	fc.API.gameAbilityPool[factionID](func(fap *sync.Map) {
 		// find ability
-		fa, ok := fap[req.Payload.GameAbilityID]
+
+		faIface, ok := fap.Load(req.Payload.GameAbilityID)
 		if !ok {
 			fc.Log.Err(fmt.Errorf("error doesn't exist"))
 			return
 		}
+
+		fa := faIface.(*GameAbilityPrice)
 
 		exceedFund := big.NewInt(0)
 		exceedFund.Add(exceedFund, &fa.CurrentSups.Int)
@@ -181,42 +183,33 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 
 		// check sups
 		reason := fmt.Sprintf("battle:%s|game_ability_contribution:%s", fc.API.BattleArena.CurrentBattleID(), req.Payload.GameAbilityID)
-		// wg := sync.WaitGroup{}
-		// wg.Add(1)
-		// fc.API.Passport.SendHoldSupsMessage(userID, reduceAmount, reason, func(msg []byte) {
-		// 	defer wg.Done()
-		// 	resp := &passport.HoldSupsMessageResponse{}
-		// 	err := json.Unmarshal(msg, resp)
-		// 	if err != nil {
-		// 		fc.Log.Err(err).Msg("unable to send hold sups message")
-		// 		return
-		// 	}
 
-		// 	fa.TxRefs = append(fa.TxRefs, resp.Transaction)
-		// })
-		// wg.Done()
+		go func() {
+			fc.API.Passport.SendHoldSupsMessage(userID, reduceAmount, reason, func(msg []byte) {
+				faIface, ok := fap.Load(req.Payload.GameAbilityID)
+				if !ok {
+					fc.Log.Err(fmt.Errorf("error doesn't exist"))
+					return
+				}
 
-		fc.API.Passport.SendHoldSupsMessage(userID, reduceAmount, reason, func(msg []byte) {
-			resp := &passport.HoldSupsMessageResponse{}
-			fmt.Println(string(msg))
-			err := json.Unmarshal(msg, resp)
-			if err != nil {
-				fc.Log.Err(err).Msg("unable to send hold sups message")
-				return
-			}
+				fa := faIface.(*GameAbilityPrice)
 
-			fa.txMx.Lock()
-			fa.TxRefs = append(fa.TxRefs, resp.Transaction)
-			fa.txMx.Unlock()
+				resp := &passport.HoldSupsMessageResponse{}
+				fmt.Println(string(msg))
+				err := json.Unmarshal(msg, resp)
+				if err != nil {
+					fc.Log.Err(err).Msg("unable to send hold sups message")
+					return
+				}
 
-			fc.API.liveSupsSpend[hcd.FactionID] <- func(lvd *LiveVotingData) {
-				lvd.TotalVote.Add(&lvd.TotalVote.Int, &req.Payload.Amount.Int)
-			}
+				fa.TxRefs = append(fa.TxRefs, resp.Transaction)
 
-			fc.API.ClientVoted(wsc)
-
-			reply(true)
-		})
+				fc.API.liveSupsSpend[hcd.FactionID] <- func(lvd *LiveVotingData) {
+					lvd.TotalVote.Add(&lvd.TotalVote.Int, &req.Payload.Amount.Int)
+				}
+				fc.API.ClientVoted(wsc)
+			})
+		}()
 
 		if err != nil {
 			fc.Log.Err(err).Msg("")
@@ -261,13 +254,12 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 		// update sups cost of the ability in db
 		fa.GameAbility.SupsCost = fa.TargetPrice.String()
 
+		fap.Store(fa.GameAbility.ID, fa)
+
 		// store new target price to passport server, if the ability is nft
 		if fa.GameAbility.AbilityTokenID != 0 && fa.GameAbility.WarMachineTokenID != 0 {
-			fmt.Println("33333333333333333333333333333333333333333333check ")
-
 			fc.API.Passport.AbilityUpdateTargetPrice(fa.GameAbility.AbilityTokenID, fa.GameAbility.WarMachineTokenID, fa.TargetPrice.String())
 		} else {
-			fmt.Println("4444444444444444444444444444444444444444444444444check ")
 			err = db.FactionExclusiveAbilitiesSupsCostUpdate(ctx, fc.Conn, fa.GameAbility)
 			if err != nil {
 				fc.Log.Err(err).Msg("")
@@ -289,10 +281,8 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 		} else {
 			abilityTriggerEvent.AbilityTokenID = &fa.GameAbility.AbilityTokenID
 		}
-		fmt.Println("55555555555555555555555555555555555555555555555555555check ")
 
 		err = fc.API.BattleArena.GameAbilityTrigger(abilityTriggerEvent)
-		fmt.Println("After trigger!!!!!!!!!!!!!!!!!!!!!!!!!!!! ")
 		if err != nil {
 			fc.Log.Err(err).Msg("")
 			return
@@ -317,13 +307,16 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 		}
 		// prepare broadcast data
 		targetPriceList := []string{}
-		for abilityID, fa := range fap {
+
+		fap.Range(func(key interface{}, gameAbilityPrice interface{}) bool {
+			fa := gameAbilityPrice.(*GameAbilityPrice)
 			hasTriggered := 0
-			if abilityID == req.Payload.GameAbilityID {
+			if fa.GameAbility.ID == req.Payload.GameAbilityID {
 				hasTriggered = 1
 			}
 			targetPriceList = append(targetPriceList, fmt.Sprintf("%s_%s_%s_%d", fa.GameAbility.ID, fa.TargetPrice.String(), fa.CurrentSups.String(), hasTriggered))
-		}
+			return true
+		})
 
 		// broadcast if target price is updated
 		if strings.Join(targetPriceList, "|") != "" {
@@ -333,7 +326,7 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 			payload = append(payload, []byte(strings.Join(targetPriceList, "|"))...)
 			go fc.API.NetMessageBus.Send(ctx, messagebus.NetBusKey(fmt.Sprintf("%s:%s", HubKeyFactionAbilityPriceUpdated, factionID)), payload)
 		}
-	}
+	})
 
 	reply(true)
 
@@ -354,25 +347,24 @@ func (fc *FactionControllerWS) FactionAbilitiesUpdateSubscribeHandler(ctx contex
 		return "", "", terror.Error(err)
 	}
 
-	select {
-	case fc.API.gameAbilityPool[hcd.FactionID] <- func(fap GameAbilitiesPool, fapt *GameAbilityPoolTicker) {
+	fc.API.gameAbilityPool[hcd.FactionID](func(fap *sync.Map) {
 		abilities := []*server.GameAbility{}
-		for _, fa := range fap {
+
+		fap.Range(func(key interface{}, gameAbilityPrice interface{}) bool {
+			fa := gameAbilityPrice.(*GameAbilityPrice)
 			if fa.GameAbility.AbilityTokenID > 0 {
-				continue
+				return true
 			}
 			fa.GameAbility.CurrentSups = fa.CurrentSups.String()
 			abilities = append(abilities, fa.GameAbility)
-		}
-		reply(abilities)
-	}:
-		busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionAbilitiesUpdated, hcd.FactionID))
-		return req.TransactionID, busKey, nil
 
-	case <-time.After(10 * time.Second):
-		fc.API.Log.Err(errors.New("timeout on channel send exceeded"))
-		panic("Client Battle Reward Update")
-	}
+			return true
+		})
+
+		reply(abilities)
+	})
+	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionAbilitiesUpdated, hcd.FactionID))
+	return req.TransactionID, busKey, nil
 }
 
 const HubKeyWarMachineAbilitiesUpdated hub.HubCommandKey = "WAR:MACHINE:ABILITIES:UPDATED"
@@ -397,26 +389,25 @@ func (fc *FactionControllerWS) WarMachineAbilitiesUpdateSubscribeHandler(ctx con
 		return "", "", terror.Error(err)
 	}
 
-	select {
-	case fc.API.gameAbilityPool[hcd.FactionID] <- func(fap GameAbilitiesPool, fapt *GameAbilityPoolTicker) {
+	fc.API.gameAbilityPool[hcd.FactionID](func(fap *sync.Map) {
 		abilities := []*server.GameAbility{}
-		for _, fa := range fap {
+		fap.Range(func(key interface{}, gameAbilityPrice interface{}) bool {
+			fa := gameAbilityPrice.(*GameAbilityPrice)
 			if fa.GameAbility.AbilityTokenID == 0 ||
 				fa.GameAbility.ParticipantID == nil ||
 				*fa.GameAbility.ParticipantID != req.Payload.ParticipantID {
-				continue
+				return true
 			}
 			fa.GameAbility.CurrentSups = fa.CurrentSups.String()
 			abilities = append(abilities, fa.GameAbility)
-		}
+
+			fap.Store(fa.GameAbility.ID, fa)
+
+			return true
+		})
+
 		reply(abilities)
-	}:
-
-		busKey := messagebus.BusKey(fmt.Sprintf("%s:%s:%x", HubKeyWarMachineAbilitiesUpdated, hcd.FactionID, req.Payload.ParticipantID))
-		return req.TransactionID, busKey, nil
-
-	case <-time.After(10 * time.Second):
-		fc.API.Log.Err(errors.New("timeout on channel send exceeded"))
-		panic("War Machine Abilities Update Subscribe Handler")
-	}
+	})
+	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s:%x", HubKeyWarMachineAbilitiesUpdated, hcd.FactionID, req.Payload.ParticipantID))
+	return req.TransactionID, busKey, nil
 }

@@ -118,37 +118,35 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 
 	// deliver vote
 	vc.API.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
-		if vs.Phase != VotePhaseVoteAbilityRight && vs.Phase != VotePhaseNextVoteWin {
-			vc.Log.Err(err).Msg("Error - Invalid voting phase")
-			fmt.Println("1111fsdfdsfasfadsfadsffdsf1", vs.Phase)
-			return
-		}
+		// if vs.Phase != VotePhaseVoteAbilityRight && vs.Phase != VotePhaseNextVoteWin {
+		// 	vc.Log.Err(err).Msg("Error - Invalid voting phase")
+		// 	fmt.Println("1111fsdfdsfasfadsfadsffdsf1", vs.Phase)
+		// 	return
+		// }
 
 		// pay sups
+		go func() {
+			reason := fmt.Sprintf("battle:%s|vote_ability_right:%s", vc.API.BattleArena.CurrentBattleID(), va.BattleAbility.ID)
+			vc.API.Passport.SendHoldSupsMessage(userID, totalSups, reason, func(msg []byte) {
+				resp := &passport.HoldSupsMessageResponse{}
+				fmt.Println(string(msg))
+				err := json.Unmarshal(msg, resp)
+				if err != nil {
+					vc.Log.Err(err).Msg("unable to send hold sups message")
+					return
+				}
 
-		reason := fmt.Sprintf("battle:%s|vote_ability_right:%s", vc.API.BattleArena.CurrentBattleID(), va.BattleAbility.ID)
-		vc.API.Passport.SendHoldSupsMessage(userID, totalSups, reason, func(msg []byte) {
-			resp := &passport.HoldSupsMessageResponse{}
-			fmt.Println(string(msg))
-			err := json.Unmarshal(msg, resp)
-			if err != nil {
-				vc.Log.Err(err).Msg("unable to send hold sups message")
-				return
-			}
+				fts.Lock()
+				defer fts.Unlock()
+				fts.Transactions = append(fts.Transactions, resp.Transaction)
 
-			fts.Lock()
-			fts.Transactions = append(fts.Transactions, resp.Transaction)
-			fts.Unlock()
-
-			vc.API.liveSupsSpend[hcd.FactionID] <- func(lvd *LiveVotingData) {
-				lvd.TotalVote.Add(&lvd.TotalVote.Int, &totalSups.Int)
-			}
-			vc.API.increaseFactionVoteTotal(hcd.FactionID, req.Payload.VoteAmount)
-
-			vc.API.ClientVoted(wsc)
-
-			reply(true)
-		})
+				vc.API.liveSupsSpend[hcd.FactionID] <- func(lvd *LiveVotingData) {
+					lvd.TotalVote.Add(&lvd.TotalVote.Int, &totalSups.Int)
+				}
+				vc.API.increaseFactionVoteTotal(hcd.FactionID, req.Payload.VoteAmount)
+				vc.API.ClientVoted(wsc)
+			})
+		}()
 
 		switch hcd.FactionID {
 		case server.RedMountainFactionID:
@@ -175,8 +173,8 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 
 		// if transaction committed, clean up the transactions
 		fts.Lock()
+		defer fts.Unlock()
 		fts.Transactions = []string{}
-		fts.Unlock()
 
 		// record user vote map
 		if _, ok := uvm[userID]; !ok {

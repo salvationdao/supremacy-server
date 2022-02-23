@@ -115,7 +115,7 @@ type API struct {
 	votePriceSystem  *VotePriceSystem
 
 	// faction abilities
-	gameAbilityPool map[server.FactionID]chan func(GameAbilitiesPool, *GameAbilityPoolTicker)
+	gameAbilityPool map[server.FactionID]func(func(*sync.Map))
 
 	// viewer live count
 	viewerLiveCount chan func(ViewerLiveCount, ViewerIDMap)
@@ -179,7 +179,7 @@ func NewAPI(
 		ringCheckAuthChan: make(chan func(RingCheckAuthMap)),
 
 		// game ability pool
-		gameAbilityPool: make(map[server.FactionID]chan func(GameAbilitiesPool, *GameAbilityPoolTicker)),
+		gameAbilityPool: make(map[server.FactionID]func(func(*sync.Map))),
 
 		// faction viewer count
 		viewerLiveCount: make(chan func(ViewerLiveCount, ViewerIDMap)),
@@ -324,7 +324,7 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 		go api.startLiveVotingDataTicker(faction.ID)
 
 		// game ability pool
-		api.gameAbilityPool[faction.ID] = make(chan func(GameAbilitiesPool, *GameAbilityPoolTicker))
+
 		go api.StartGameAbilityPool(ctx, faction.ID, conn)
 	}
 

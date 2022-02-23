@@ -31,6 +31,13 @@ type BattleStartRequest struct {
 	} `json:"payload"`
 }
 
+func (ba *BattleArena) BattleActive() bool {
+	if ba.battle == nil {
+		return false
+	}
+	return ba.battle.State == server.StateMatchStart
+}
+
 // BattleStartHandler start a new battle
 func (ba *BattleArena) BattleStartHandler(ctx context.Context, payload []byte, reply ReplyFunc) error {
 	req := &BattleStartRequest{}
