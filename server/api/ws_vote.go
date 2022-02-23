@@ -434,7 +434,7 @@ func (vc *VoteControllerWS) VoteStageUpdateSubscribeHandler(ctx context.Context,
 
 	case <-time.After(10 * time.Second):
 		vc.API.Log.Err(errors.New("timeout on channel send exceeded"))
-		panic("Client Battle Reward Update")
+		panic("Vote Stage Update Subscribe Handler")
 	}
 
 	return req.TransactionID, messagebus.BusKey(HubKeyVoteStageUpdated), nil
