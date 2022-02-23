@@ -52,6 +52,17 @@ make serve
 make lb
 ```
 
+### Game Image Assets (Post Production)
+
+In case you have not migrated to `000004_game_ability_changes.up.sql`, you will need to run the following command:
+
+```
+cd server
+go run cmd/gameserver/main.go db --assets
+```
+
+This will seed in all the known game ability images.
+
 ### Gameserver connection details
 
 The game client will require these headers to connect.
