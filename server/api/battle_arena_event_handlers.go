@@ -117,6 +117,7 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 						ID:                  server.GameAbilityID(uuid.Must(uuid.NewV4())), // generate a uuid for frontend to track sups contribution
 						GameClientAbilityID: byte(ability.GameClientID),
 						ImageUrl:            ability.Image,
+						Description:         ability.Description,
 						FactionID:           factionID,
 						Label:               ability.Name,
 						SupsCost:            ability.SupsCost,

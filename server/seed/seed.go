@@ -2,11 +2,16 @@ package seed
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"server"
 	"server/db"
 
 	"github.com/gofrs/uuid"
+	"github.com/h2non/filetype"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/terror/v2"
 )
@@ -37,6 +42,12 @@ func (s *Seeder) Run() error {
 		return terror.Error(err)
 	}
 
+	fmt.Println("Seed assets")
+	_, err = s.assets(ctx)
+	if err != nil {
+		return terror.Error(err)
+	}
+
 	fmt.Println("Seed faction abilities")
 	err = factionAbilities(ctx, s.Conn)
 	if err != nil {
@@ -54,6 +65,27 @@ func (s *Seeder) Run() error {
 	return nil
 }
 
+// Run for database spin up (post prod)
+func (s *Seeder) RunAssets() error {
+	ctx := context.Background()
+	fmt.Println("Seed assets")
+	_, err := s.assets(ctx)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	// insert zaibatsu faction abilities
+	fmt.Println("Seed new ability")
+	for _, gameAbility := range ZaibatsuUniqueAbilities {
+		err := db.GameAbilityCreate(ctx, s.Conn, gameAbility)
+		if err != nil {
+			return terror.Error(err)
+		}
+	}
+
+	return nil
+}
+
 func gameMaps(ctx context.Context, conn *pgxpool.Pool) error {
 	for _, gameMap := range GameMaps {
 		err := db.GameMapCreate(ctx, conn, gameMap)
@@ -65,6 +97,13 @@ func gameMaps(ctx context.Context, conn *pgxpool.Pool) error {
 	return nil
 }
 
+var BlobIDAbilityAirstrike = server.BlobID(uuid.Must(uuid.FromString("dc713e47-4119-494a-a81b-8ac92cf3222b")))
+var BlobIDAbilityRobotDogs = server.BlobID(uuid.Must(uuid.FromString("3b4ae24a-7ccb-4d3b-8d88-905b406da0e1")))
+var BlobIDAbilityReinforcements = server.BlobID(uuid.Must(uuid.FromString("5d0a0028-c074-4ab5-b46e-14d0ff07795d")))
+var BlobIDAbilityRepair = server.BlobID(uuid.Must(uuid.FromString("f40e90b7-1ea2-4a91-bf0f-feb052a019be")))
+var BlobIDAbilityNuke = server.BlobID(uuid.Must(uuid.FromString("8e0e1918-556c-4370-85f9-b8960fd19554")))
+var BlobIDAbilityOvercharge = server.BlobID(uuid.Must(uuid.FromString("04acaffd-7bd1-4b01-b264-feb4f8ab4563")))
+
 var FactionIDRedMountain = server.FactionID(uuid.Must(uuid.FromString("98bf7bb3-1a7c-4f21-8843-458d62884060")))
 var FactionIDBoston = server.FactionID(uuid.Must(uuid.FromString("7c6dde21-b067-46cf-9e56-155c88a520e2")))
 var FactionIDZaibatsu = server.FactionID(uuid.Must(uuid.FromString("880db344-e405-428d-84e5-6ebebab1fe6d")))
@@ -72,15 +111,51 @@ var FactionIDZaibatsu = server.FactionID(uuid.Must(uuid.FromString("880db344-e40
 var SharedAbilityCollections = []*server.BattleAbility{
 	{
 		Label:                  "AIRSTRIKE",
+		Description:            "Rain fury on the arena with a targeted airstrike.",
 		CooldownDurationSecond: 20,
 	},
 	{
 		Label:                  "NUKE",
+		Description:            "The show-stopper. A tactical nuke at your fingertips.",
 		CooldownDurationSecond: 30,
 	},
 	{
 		Label:                  "REPAIR",
+		Description:            "Support your Syndicate with a well-timed repair.",
 		CooldownDurationSecond: 15,
+	},
+}
+
+var AbilityBlobs = []*server.Blob{
+	// BlobIDAbilityAirstrike
+	{
+		ID:       BlobIDAbilityAirstrike,
+		FileName: "Airstrike.png",
+	},
+	// BlobIDAbilityRobotDogs
+	{
+		ID:       BlobIDAbilityRobotDogs,
+		FileName: "Dogs.png",
+	},
+	// BlobIDAbilityReinforacements
+	{
+		ID:       BlobIDAbilityReinforcements,
+		FileName: "Reinforcements.png",
+	},
+	// BlobIDAbilityRepair
+	{
+		ID:       BlobIDAbilityRepair,
+		FileName: "Repair.png",
+	},
+	// BlobIDAbilityNuke
+	{
+		ID:       BlobIDAbilityNuke,
+		FileName: "Nuke.png",
+	},
+	// BlobIDAbilityOvercharge
+	{
+		ID:       BlobIDAbilityOvercharge,
+		FileName: "Overcharge.png",
 	},
 }
 
@@ -91,7 +166,8 @@ var SharedFactionAbilities = []*server.GameAbility{
 		FactionID:           FactionIDZaibatsu,
 		GameClientAbilityID: 0,
 		Colour:              "#3B5DAD",
-		ImageUrl:            "https://i.pinimg.com/originals/b1/92/4d/b1924dce177345b5485bb5490ab3441f.jpg",
+		Description:         "'Rain fury on the arena with a targeted airstrike.",
+		ImageUrl:            "/api/blobs/dc713e47-4119-494a-a81b-8ac92cf3222b",
 		SupsCost:            "0",
 	},
 	{
@@ -99,7 +175,8 @@ var SharedFactionAbilities = []*server.GameAbility{
 		FactionID:           FactionIDZaibatsu,
 		GameClientAbilityID: 1,
 		Colour:              "#B8422A",
-		ImageUrl:            "https://images2.minutemediacdn.com/image/upload/c_crop,h_1126,w_2000,x_0,y_83/f_auto,q_auto,w_1100/v1555949079/shape/mentalfloss/581049-mesut_zengin-istock-1138195821.jpg",
+		Description:         "The show-stopper. A tactical nuke at your fingertips.",
+		ImageUrl:            "/api/blobs/8e0e1918-556c-4370-85f9-b8960fd19554",
 		SupsCost:            "0",
 	},
 	{
@@ -107,7 +184,8 @@ var SharedFactionAbilities = []*server.GameAbility{
 		FactionID:           FactionIDZaibatsu,
 		GameClientAbilityID: 2,
 		Colour:              "#25A16F",
-		ImageUrl:            "https://i.pinimg.com/originals/ed/2f/9b/ed2f9b6e66b9efefa84d1ee423c718f0.png",
+		Description:         "Support your Syndcate with a well-timed repair.",
+		ImageUrl:            "/api/blobs/f40e90b7-1ea2-4a91-bf0f-feb052a019be",
 		SupsCost:            "0",
 	},
 	// FactionIDBoston
@@ -116,7 +194,8 @@ var SharedFactionAbilities = []*server.GameAbility{
 		GameClientAbilityID: 3,
 		FactionID:           FactionIDBoston,
 		Colour:              "#3B5DAD",
-		ImageUrl:            "https://i.pinimg.com/originals/b1/92/4d/b1924dce177345b5485bb5490ab3441f.jpg",
+		Description:         "'Rain fury on the arena with a targeted airstrike.",
+		ImageUrl:            "/api/blobs/dc713e47-4119-494a-a81b-8ac92cf3222b",
 		SupsCost:            "0",
 	},
 	{
@@ -124,7 +203,8 @@ var SharedFactionAbilities = []*server.GameAbility{
 		FactionID:           FactionIDBoston,
 		GameClientAbilityID: 4,
 		Colour:              "#B8422A",
-		ImageUrl:            "https://images2.minutemediacdn.com/image/upload/c_crop,h_1126,w_2000,x_0,y_83/f_auto,q_auto,w_1100/v1555949079/shape/mentalfloss/581049-mesut_zengin-istock-1138195821.jpg",
+		Description:         "The show-stopper. A tactical nuke at your fingertips.",
+		ImageUrl:            "/api/blobs/8e0e1918-556c-4370-85f9-b8960fd19554",
 		SupsCost:            "0",
 	},
 	{
@@ -132,7 +212,8 @@ var SharedFactionAbilities = []*server.GameAbility{
 		FactionID:           FactionIDBoston,
 		GameClientAbilityID: 5,
 		Colour:              "#25A16F",
-		ImageUrl:            "https://i.pinimg.com/originals/ed/2f/9b/ed2f9b6e66b9efefa84d1ee423c718f0.png",
+		Description:         "Support your Syndcate with a well-timed repair.",
+		ImageUrl:            "/api/blobs/f40e90b7-1ea2-4a91-bf0f-feb052a019be",
 		SupsCost:            "0",
 	},
 	// FactionIDRedMountain
@@ -141,7 +222,8 @@ var SharedFactionAbilities = []*server.GameAbility{
 		FactionID:           FactionIDRedMountain,
 		GameClientAbilityID: 6,
 		Colour:              "#3B5DAD",
-		ImageUrl:            "https://i.pinimg.com/originals/b1/92/4d/b1924dce177345b5485bb5490ab3441f.jpg",
+		Description:         "'Rain fury on the arena with a targeted airstrike.",
+		ImageUrl:            "/api/blobs/dc713e47-4119-494a-a81b-8ac92cf3222b",
 		SupsCost:            "0",
 	},
 	{
@@ -149,7 +231,8 @@ var SharedFactionAbilities = []*server.GameAbility{
 		FactionID:           FactionIDRedMountain,
 		GameClientAbilityID: 7,
 		Colour:              "#B8422A",
-		ImageUrl:            "https://images2.minutemediacdn.com/image/upload/c_crop,h_1126,w_2000,x_0,y_83/f_auto,q_auto,w_1100/v1555949079/shape/mentalfloss/581049-mesut_zengin-istock-1138195821.jpg",
+		Description:         "The show-stopper. A tactical nuke at your fingertips.",
+		ImageUrl:            "/api/blobs/8e0e1918-556c-4370-85f9-b8960fd19554",
 		SupsCost:            "0",
 	},
 	{
@@ -157,7 +240,8 @@ var SharedFactionAbilities = []*server.GameAbility{
 		FactionID:           FactionIDRedMountain,
 		GameClientAbilityID: 8,
 		Colour:              "#25A16F",
-		ImageUrl:            "https://i.pinimg.com/originals/ed/2f/9b/ed2f9b6e66b9efefa84d1ee423c718f0.png",
+		Description:         "Support your Syndcate with a well-timed repair.",
+		ImageUrl:            "/api/blobs/f40e90b7-1ea2-4a91-bf0f-feb052a019be",
 		SupsCost:            "0",
 	},
 }
@@ -169,7 +253,8 @@ var BostonUniqueAbilities = []*server.GameAbility{
 		FactionID:           FactionIDBoston,
 		GameClientAbilityID: 9,
 		Colour:              "#6F40AD",
-		ImageUrl:            "https://i.pinimg.com/originals/b1/92/4d/b1924dce177345b5485bb5490ab3441f.jpg",
+		Description:         "Boston Cybernetic unique ability. Release the hounds!",
+		ImageUrl:            "/api/blobs/3b4ae24a-7ccb-4d3b-8d88-905b406da0e1",
 		SupsCost:            "100000000000000000000",
 	},
 }
@@ -180,7 +265,20 @@ var RedMountainUniqueAbilities = []*server.GameAbility{
 		FactionID:           FactionIDRedMountain,
 		GameClientAbilityID: 10,
 		Colour:              "#C42B40",
-		ImageUrl:            "https://images2.minutemediacdn.com/image/upload/c_crop,h_1126,w_2000,x_0,y_83/f_auto,q_auto,w_1100/v1555949079/shape/mentalfloss/581049-mesut_zengin-istock-1138195821.jpg",
+		Description:         "Red Mountain unique ability. Call an additional Mech to the arena.",
+		ImageUrl:            "/api/blobs/5d0a0028-c074-4ab5-b46e-14d0ff07795d",
+		SupsCost:            "100000000000000000000",
+	},
+}
+
+var ZaibatsuUniqueAbilities = []*server.GameAbility{
+	{
+		Label:               "OVERCHARGE",
+		FactionID:           FactionIDZaibatsu,
+		GameClientAbilityID: 11,
+		Colour:              "#D18E11",
+		Description:         "Zaibatsu unique ability. Consume your remaining shield for an explosive defence mechanism.",
+		ImageUrl:            "/api/blobs/04acaffd-7bd1-4b01-b264-feb4f8ab4563",
 		SupsCost:            "100000000000000000000",
 	},
 }
@@ -217,6 +315,14 @@ func factionAbilities(ctx context.Context, conn *pgxpool.Pool) error {
 
 	// insert boston faction abilities
 	for _, gameAbility := range BostonUniqueAbilities {
+		err := db.GameAbilityCreate(ctx, conn, gameAbility)
+		if err != nil {
+			return terror.Error(err)
+		}
+	}
+
+	// insert zaibatsu faction abilities
+	for _, gameAbility := range ZaibatsuUniqueAbilities {
 		err := db.GameAbilityCreate(ctx, conn, gameAbility)
 		if err != nil {
 			return terror.Error(err)
@@ -403,4 +509,54 @@ func (s *Seeder) streams(ctx context.Context) ([]*server.Stream, error) {
 	}
 
 	return streams, nil
+}
+
+func (s *Seeder) assets(ctx context.Context) ([]*server.Blob, error) {
+	output := []*server.Blob{}
+	for _, blob := range AbilityBlobs {
+		f, err := os.Open("./asset/" + blob.FileName)
+		if err != nil {
+			return nil, terror.Error(err)
+		}
+		fileData, err := ioutil.ReadAll(f)
+		if err != nil {
+			return nil, terror.Error(err)
+		}
+
+		// Get image mime type
+		kind, err := filetype.Match(fileData)
+		if err != nil {
+			return nil, terror.Error(terror.ErrParse, "parse error")
+		}
+
+		if kind == filetype.Unknown {
+			return nil, terror.Error(fmt.Errorf("Image type is unknown"), "Image type is unknown")
+		}
+
+		mimeType := kind.MIME.Value
+		extension := kind.Extension
+
+		// Get hash
+		hasher := md5.New()
+		_, err = hasher.Write(fileData)
+		if err != nil {
+			return nil, terror.Error(err, "hash error")
+		}
+		hashResult := hasher.Sum(nil)
+		hash := hex.EncodeToString(hashResult)
+
+		blob.MimeType = mimeType
+		blob.Extension = extension
+		blob.FileSizeBytes = int64(len(fileData))
+		blob.File = fileData
+		blob.Hash = &hash
+
+		err = db.BlobInsert(ctx, s.Conn, blob, blob.ID, blob.FileName, blob.MimeType, blob.FileSizeBytes, blob.Extension, blob.File, blob.Hash)
+		if err != nil {
+			return nil, terror.Error(err, "blob insert error")
+		}
+
+		output = append(output, blob)
+	}
+	return output, nil
 }
