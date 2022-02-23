@@ -93,7 +93,7 @@ type API struct {
 	Hub           *hub.Hub
 	Conn          *pgxpool.Pool
 	MessageBus    *messagebus.MessageBus
-	NetMessageBus *messagebus.NetMessageBus
+	NetMessageBus *messagebus.NetBus
 	Passport      *passport.Passport
 
 	factionMap map[server.FactionID]*server.Faction
@@ -115,7 +115,7 @@ type API struct {
 	votePriceSystem  *VotePriceSystem
 
 	// faction abilities
-	gameAbilityPool map[server.FactionID]chan func(GameAbilitiesPool, *GameAbilityPoolTicker)
+	gameAbilityPool map[server.FactionID]func(func(*sync.Map))
 
 	// viewer live count
 	viewerLiveCount chan func(ViewerLiveCount, ViewerIDMap)
@@ -135,7 +135,7 @@ func NewAPI(
 	config *server.Config,
 ) *API {
 
-	netMessageBus, netMessageBusOfflineFunc := messagebus.NewNetMessageBus(log_helpers.NamedLogger(log, "net_message_bus"))
+	netMessageBus := messagebus.NewNetBus(log_helpers.NamedLogger(log, "net_message_bus"))
 
 	// initialise message bus
 	messageBus, messageBusOfflineFunc := messagebus.NewMessageBus(log_helpers.NamedLogger(log, "message_bus"))
@@ -162,7 +162,7 @@ func NewAPI(
 				OriginPatterns:     []string{config.TwitchUIHostURL},
 			},
 			ClientOfflineFn: func(cl *hub.Client) {
-				netMessageBusOfflineFunc(cl)
+				netMessageBus.UnsubAll(cl)
 				messageBusOfflineFunc(cl)
 			},
 		}),
@@ -179,7 +179,7 @@ func NewAPI(
 		ringCheckAuthChan: make(chan func(RingCheckAuthMap)),
 
 		// game ability pool
-		gameAbilityPool: make(map[server.FactionID]chan func(GameAbilitiesPool, *GameAbilityPoolTicker)),
+		gameAbilityPool: make(map[server.FactionID]func(func(*sync.Map))),
 
 		// faction viewer count
 		viewerLiveCount: make(chan func(ViewerLiveCount, ViewerIDMap)),
@@ -206,10 +206,12 @@ func NewAPI(
 		r.Get("/faction_stats", WithError(api.BattleArena.FactionStats))
 		r.Get("/user_stats", WithError(api.BattleArena.UserStats))
 		r.Get("/abilities", WithError(api.BattleArena.GetAbility))
+		r.Get("/blobs/{id}", WithError(api.BattleArena.GetBlob))
 		r.Post("/video_server", WithToken(config.ServerStreamKey, WithError((api.CreateStreamHandler))))
 		r.Get("/video_server", WithToken(config.ServerStreamKey, WithError((api.GetStreamsHandler))))
 		r.Delete("/video_server", WithToken(config.ServerStreamKey, WithError((api.DeleteStreamHandler))))
 		r.Get("/faction_data", WithError(api.GetFactionData))
+		r.Get("/trigger/ability_file_upload", WithError(api.GetFactionData))
 	})
 
 	///////////////////////////
@@ -261,7 +263,6 @@ func NewAPI(
 
 func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 	var factions []*server.Faction
-	var err error
 
 	b := &backoff.Backoff{
 		Min:    1 * time.Second,
@@ -276,15 +277,26 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 			continue
 		}
 
-		factions, err = api.Passport.FactionAll(ctx)
-		if err != nil {
-			api.Passport.Log.Err(err).Msg("unable to get factions")
-		}
+		wg := sync.WaitGroup{}
+		wg.Add(1)
+		api.Passport.FactionAll(func(msg []byte) {
+			defer wg.Done()
+			resp := &passport.FactionAllResponse{}
+			err := json.Unmarshal(msg, resp)
+			if err != nil {
+				return
+			}
+			if err != nil {
+				api.Passport.Log.Err(err).Msg("unable to get factions")
+			}
+
+			factions = resp.Factions
+		})
+		wg.Wait()
 
 		if len(factions) > 0 {
 			break
 		}
-
 		time.Sleep(b.Duration())
 	}
 
@@ -314,7 +326,7 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 		go api.startLiveVotingDataTicker(faction.ID)
 
 		// game ability pool
-		api.gameAbilityPool[faction.ID] = make(chan func(GameAbilitiesPool, *GameAbilityPoolTicker))
+
 		go api.StartGameAbilityPool(ctx, faction.ID, conn)
 	}
 
