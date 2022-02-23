@@ -315,7 +315,7 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 		select {
 		case ba.BattleQueueMap[faction.ID] <- func(wmq *WarMachineQueuingList) {
 			// broadcast new war machine position for in game war machine owners
-			go ba.passport.WarMachineQueuePositionBroadcast(context.Background(), ba.BuildUserWarMachineQueuePosition(wmq.WarMachines, []*server.WarMachineMetadata{}, includedUserID...))
+			go ba.passport.WarMachineQueuePositionBroadcast(ba.BuildUserWarMachineQueuePosition(wmq.WarMachines, []*server.WarMachineMetadata{}, includedUserID...))
 		}:
 
 		case <-time.After(10 * time.Second):

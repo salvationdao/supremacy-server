@@ -10,6 +10,7 @@ import (
 	"server/battle_arena"
 	"server/db"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -27,7 +28,8 @@ type GameAbilityPrice struct {
 	MaxTargetPrice server.BigInt
 	TargetPrice    server.BigInt
 	CurrentSups    server.BigInt
-	TxRefs         []server.Transaction
+	TxRefs         []string
+	txMx           sync.Mutex
 }
 
 type GameAbilityPoolTicker struct {
@@ -117,7 +119,7 @@ func (api *API) abilityTargetPriceUpdaterFactory(ctx context.Context, factionID 
 					// 	errChan <- terror.Error(err)
 					// 	return
 					// }
-					fa.TxRefs = []server.Transaction{}
+					fa.TxRefs = []string{}
 
 					abilityTriggerEvent := &server.GameAbilityEvent{
 						IsTriggered:         true,
@@ -160,7 +162,7 @@ func (api *API) abilityTargetPriceUpdaterFactory(ctx context.Context, factionID 
 
 				// store new target price to passport server, if the ability is nft
 				if fa.GameAbility.AbilityTokenID != 0 && fa.GameAbility.WarMachineTokenID != 0 {
-					api.Passport.AbilityUpdateTargetPrice(api.ctx, fa.GameAbility.AbilityTokenID, fa.GameAbility.WarMachineTokenID, fa.TargetPrice.String())
+					api.Passport.AbilityUpdateTargetPrice(fa.GameAbility.AbilityTokenID, fa.GameAbility.WarMachineTokenID, fa.TargetPrice.String())
 				} else {
 					// update sups cost of the ability in db
 					fa.GameAbility.SupsCost = fa.TargetPrice.String()
@@ -253,7 +255,8 @@ func (api *API) startGameAbilityPoolTicker(ctx context.Context, factionID server
 				MaxTargetPrice: server.BigInt{Int: *big.NewInt(0)},
 				TargetPrice:    server.BigInt{Int: *big.NewInt(0)},
 				CurrentSups:    server.BigInt{Int: *big.NewInt(0)},
-				TxRefs:         []server.Transaction{},
+				TxRefs:         []string{},
+				txMx:           sync.Mutex{},
 			}
 
 			if ability.AbilityTokenID == 0 {
@@ -318,7 +321,7 @@ func (api *API) stopGameAbilityPoolTicker() {
 			}
 
 			// commit all the left over transactions
-			txRefs := []server.Transaction{}
+			txRefs := []string{}
 			for _, fa := range fap {
 				txRefs = append(txRefs, fa.TxRefs...)
 			}

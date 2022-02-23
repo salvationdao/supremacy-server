@@ -244,7 +244,7 @@ listenLoop:
 				userMap[userMultiplier] = append(userMap[userMultiplier], uid)
 			}
 
-			api.Passport.SendTickerMessage(context.Background(), userMap)
+			api.Passport.SendTickerMessage(userMap)
 
 		case ClientSupsMultiplierGet:
 			clientMap, ok := clientMultiplierMap[userID]

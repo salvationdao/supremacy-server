@@ -2,10 +2,12 @@ package battle_arena
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"server"
 	"server/db"
 	"server/passport"
+	"sync"
 	"time"
 )
 
@@ -59,13 +61,22 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, 
 			// add default war machine to meet the total amount
 			for len(tempList) < warMachinePerBattle {
 				amountToGet := warMachinePerBattle - len(tempList)
-				result, err := ba.passport.GetDefaultWarMachines(ctx, factionID, amountToGet)
-				if err != nil {
-					ba.Log.Err(err).Msg("issue getting default war machines")
-					// TODO: figure how what to do if this errors
-				}
 
-				tempList = append(tempList, result...)
+				wg := sync.WaitGroup{}
+				wg.Add(1)
+				ba.passport.GetDefaultWarMachines(ctx, factionID, amountToGet, func(msg []byte) {
+					defer wg.Done()
+					resp := struct {
+						WarMachines []*server.WarMachineMetadata `json:"payload"`
+					}{}
+					err := json.Unmarshal(msg, &resp)
+					if err != nil {
+						return
+					}
+
+					tempList = append(tempList, resp.WarMachines...)
+				})
+				wg.Wait()
 				time.Sleep(200 * time.Microsecond)
 			}
 
@@ -78,7 +89,7 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, 
 			})
 
 			// broadcast empty queue for all the passport client
-			go ba.passport.WarMachineQueuePositionBroadcast(context.Background(), ba.BuildUserWarMachineQueuePosition(wmq.WarMachines, tempList, includedUserID...))
+			go ba.passport.WarMachineQueuePositionBroadcast(ba.BuildUserWarMachineQueuePosition(wmq.WarMachines, tempList, includedUserID...))
 
 			inGameWarMachinesChan <- tempList
 			return
@@ -112,7 +123,7 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, 
 		})
 
 		// broadcast war machine queue position update
-		go ba.passport.WarMachineQueuePositionBroadcast(context.Background(), ba.BuildUserWarMachineQueuePosition(wmq.WarMachines, tempList, includedUserID...))
+		go ba.passport.WarMachineQueuePositionBroadcast(ba.BuildUserWarMachineQueuePosition(wmq.WarMachines, tempList, includedUserID...))
 
 		// return the war machines
 		inGameWarMachinesChan <- tempList

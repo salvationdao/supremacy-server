@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/jpillora/backoff"
-	"github.com/ninja-software/terror/v2"
 
 	"github.com/gofrs/uuid"
 
@@ -32,9 +31,10 @@ type Request struct {
 }
 
 type Message struct {
-	Key           Command     `json:"key"`
-	Payload       interface{} `json:"payload"`
-	TransactionID string      `json:"transactionID"`
+	Key           Command          `json:"key"`
+	Payload       interface{}      `json:"payload"`
+	TransactionID string           `json:"transactionID"`
+	Callback      func(msg []byte) `json:"-"`
 }
 
 type Passport struct {
@@ -45,8 +45,9 @@ type Passport struct {
 	addr      string
 	commands  map[Command]CommandFunc
 	Events    Events
-	send      chan *Request
+	send      chan *Message
 
+	callbacks   sync.Map
 	clientToken string
 	txRWMutex   sync.RWMutex
 
@@ -61,9 +62,10 @@ func NewPassport(ctx context.Context, logger *zerolog.Logger, addr, clientToken 
 		Log:      logger,
 		addr:     addr,
 		commands: make(map[Command]CommandFunc),
-		send:     make(chan *Request),
+		send:     make(chan *Message),
 		Events:   Events{map[Event][]EventHandler{}, sync.RWMutex{}},
 
+		callbacks:   sync.Map{},
 		clientToken: clientToken,
 		txRWMutex:   sync.RWMutex{},
 
@@ -74,10 +76,10 @@ func NewPassport(ctx context.Context, logger *zerolog.Logger, addr, clientToken 
 	return newPP
 }
 
-type callbackChannel struct {
-	ReplyChannel chan []byte
-	errChan      chan error
-}
+// type callbackChannel struct {
+// 	ReplyChannel chan []byte
+// 	errChan      chan error
+// }
 
 type responseError struct {
 	Key           string `json:"key"`
@@ -86,6 +88,7 @@ type responseError struct {
 }
 
 func (pp *Passport) Connect(ctx context.Context) error {
+	// this holds the callbacks for some requests
 
 	b := &backoff.Backoff{
 		Min:    1 * time.Second,
@@ -95,16 +98,12 @@ func (pp *Passport) Connect(ctx context.Context) error {
 
 reconnectLoop:
 	for {
-		// this holds the callbacks for some requests
-		callbackChannels := make(map[string]*callbackChannel)
-
-		connectCtx, cancel := context.WithCancel(ctx)
 		authed := false
 		pp.Connected = false
 
 		pp.Log.Info().Msgf("Attempting to connect to passport on %v", pp.addr)
 		var err error
-		pp.ws, _, err = websocket.Dial(connectCtx, pp.addr, &websocket.DialOptions{
+		pp.ws, _, err = websocket.Dial(context.Background(), pp.addr, &websocket.DialOptions{
 			//HTTPClient:nil,
 			//HTTPHeader:nil,
 			//Subprotocols:nil,
@@ -122,7 +121,7 @@ reconnectLoop:
 
 		authTxID := uuid.Must(uuid.NewV4())
 
-		err = writeTimeout(&Message{
+		msg := &Message{
 			Key:           "AUTH:SERVERCLIENT",
 			TransactionID: authTxID.String(),
 			Payload: struct {
@@ -130,8 +129,20 @@ reconnectLoop:
 			}{
 				ClientToken: pp.clientToken,
 			},
-		}, time.Second*5, pp.ws)
+		}
 
+		jsn, err := json.Marshal(msg)
+		if err != nil {
+			pp.Log.Warn().Err(err).Msg("failed to write json to send to passport")
+			continue
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+
+		func() {
+			defer cancel()
+			err = pp.ws.Write(ctx, websocket.MessageText, jsn)
+		}()
 		if err != nil {
 			pp.Log.Warn().Err(err).Msgf("Failed to connect to passport server, retrying in %v seconds...", b.Duration().Seconds())
 			time.Sleep(b.Duration())
@@ -164,18 +175,11 @@ reconnectLoop:
 		//}()
 
 		// send messages
-		go pp.sendPump(connectCtx, cancel, callbackChannels)
+		go pp.sendPump()
 
 		// listening for message
 		for {
 			select {
-			case <-connectCtx.Done():
-				cancel()
-				pp.ws.Close(websocket.StatusNormalClosure, "close called")
-				return connectCtx.Err()
-			case <-connectCtx.Done():
-				pp.ws.Close(websocket.StatusNormalClosure, "close called")
-				continue reconnectLoop
 			case err := <-authTimeout:
 				if err != nil {
 					pp.Log.Warn().Err(err).Msg("issue reading from passport connection")
@@ -184,7 +188,7 @@ reconnectLoop:
 					continue reconnectLoop
 				}
 			default:
-				_, r, err := pp.ws.Reader(connectCtx)
+				_, r, err := pp.ws.Reader(context.Background())
 				if err != nil {
 					fmt.Println("reader")
 					pp.Log.Warn().Err(err).Msg("issue reading from passport connection")
@@ -212,75 +216,43 @@ reconnectLoop:
 				}
 
 				transactionID, _ := v.GetString("transactionID")
-				//if err != nil {
-				//	pp.Log.Err(err).Msgf(`transaction id error`)
-				//
-				//	continue
-				//}
 
-				// if we have a transactionID call the channel in the callback map
-				fmt.Println(transactionID)
-				fmt.Println(transactionID)
-				if transactionID != "" {
-					if transactionID == authTxID.String() {
-						cmdKey, err := v.GetString("key")
+				if transactionID == authTxID.String() {
+					cmdKey, err := v.GetString("key")
+					if err != nil {
+						pp.Log.Warn().Err(err).Msgf("Failed to auth to passport server, retrying in %v seconds...", b.Duration().Seconds())
+						pp.ws.Close(websocket.StatusNormalClosure, "close called")
+						time.Sleep(b.Duration())
+						continue reconnectLoop
+					}
+					if cmdKey == "HUB:ERROR" {
+						// parse whether it is an error
+						errMsg := &responseError{}
+						err := json.Unmarshal(payload, errMsg)
 						if err != nil {
 							pp.Log.Warn().Err(err).Msgf("Failed to auth to passport server, retrying in %v seconds...", b.Duration().Seconds())
 							pp.ws.Close(websocket.StatusNormalClosure, "close called")
 							time.Sleep(b.Duration())
 							continue reconnectLoop
 						}
-						if cmdKey == "HUB:ERROR" {
-							// parse whether it is an error
-							errMsg := &responseError{}
-							err := json.Unmarshal(payload, errMsg)
-							if err != nil {
-								pp.Log.Warn().Err(err).Msgf("Failed to auth to passport server, retrying in %v seconds...", b.Duration().Seconds())
-								pp.ws.Close(websocket.StatusNormalClosure, "close called")
-								time.Sleep(b.Duration())
-								continue reconnectLoop
-							}
 
-							pp.Log.Warn().Err(fmt.Errorf(errMsg.Message)).Msgf("Failed to auth to passport server, retrying in %v seconds...", b.Duration().Seconds())
-							pp.ws.Close(websocket.StatusNormalClosure, "close called")
-							time.Sleep(b.Duration())
-							continue reconnectLoop
-						}
-
-						b.Reset()
-						authed = true
-						pp.Connected = true
-						pp.Log.Info().Msgf("Successfully to connect and authed to passport on %v", pp.addr)
-						continue
+						pp.Log.Warn().Err(fmt.Errorf(errMsg.Message)).Msgf("Failed to auth to passport server, retrying in %v seconds...", b.Duration().Seconds())
+						pp.ws.Close(websocket.StatusNormalClosure, "close called")
+						time.Sleep(b.Duration())
+						continue reconnectLoop
 					}
 
-					pp.Log.Info().Msg("LISTEN LOCK")
-					pp.txRWMutex.RLock()
-					cb, ok := callbackChannels[transactionID]
-					if !ok {
-						pp.txRWMutex.RUnlock()
-						pp.Log.Info().Msg("LISTEN UNLOCK NOT OKAY")
-						pp.Log.Warn().Msgf("missing callback for transactionID %s", transactionID)
-						continue
-					}
-					pp.txRWMutex.RUnlock()
-					pp.Log.Info().Msg("LISTEN UNLOCK")
-
-					// parse whether it is an error
-					errMsg := &responseError{}
-					err := json.Unmarshal(payload, errMsg)
-					if err != nil {
-						cb.errChan <- terror.Error(err, "Invalid json response")
-						continue
-					}
-
-					if errMsg.Key == "HUB:ERROR" {
-						cb.errChan <- terror.Error(fmt.Errorf(errMsg.Message), errMsg.Message)
-						continue
-					}
-
-					cb.ReplyChannel <- payload
+					b.Reset()
+					authed = true
+					pp.Connected = true
+					pp.Log.Info().Msgf("Successfully to connect and authed to passport on %v", pp.addr)
 					continue
+				} else if transactionID != "" {
+					cb, ok := pp.callbacks.LoadAndDelete(transactionID)
+					if ok {
+						callback := cb.(func(msg []byte))
+						go callback(payload)
+					}
 				}
 
 				cmdKey, err := v.GetString("key")
@@ -295,89 +267,39 @@ reconnectLoop:
 				}
 
 				// send received message to the hub to handle
-				pp.Events.Trigger(connectCtx, Event(fmt.Sprintf("PASSPORT:%s", cmdKey)), payload)
+				pp.Events.Trigger(Event(fmt.Sprintf("PASSPORT:%s", cmdKey)), payload)
 			}
 		}
 	}
 }
 
-func (pp *Passport) sendPump(ctx context.Context, cancelFunc context.CancelFunc, callbackChannels map[string]*callbackChannel) {
+func (pp *Passport) sendPump() {
 	for {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			msg := <-pp.send
-			if msg.TransactionID != "" {
-				if msg.ReplyChannel == nil {
-					msg.ErrChan <- terror.Error(fmt.Errorf("missing reply channel"))
-					continue
-				}
-
-				if msg.ErrChan == nil {
-					msg.ErrChan <- terror.Error(fmt.Errorf("missing err channel"))
-					continue
-				}
-
-				pp.Log.Info().Msg("SEND PUMP LOCK")
-				pp.txRWMutex.Lock()
-				callbackChannels[msg.TransactionID] = &callbackChannel{
-					ReplyChannel: msg.ReplyChannel,
-					errChan:      msg.ErrChan,
-				}
-				pp.txRWMutex.Unlock()
-				pp.Log.Info().Msg("SEND PUMP UNLOCK")
-			}
-
-			err := writeTimeout(&Message{
-				Key:           msg.Key,
-				Payload:       msg.Payload,
-				TransactionID: msg.TransactionID,
-			}, time.Second*5, pp.ws)
-			if err != nil {
-				fmt.Printf("sdsdsd")
-				if msg.ErrChan != nil {
-					fmt.Printf("fqasq")
-					msg.ErrChan <- terror.Error(err)
-				}
-				pp.Log.Warn().Err(err).Msg("failed to send message to passport")
+		msg := <-pp.send
+		if msg.TransactionID != "" {
+			if msg.Callback != nil {
+				pp.callbacks.Store(msg.TransactionID, msg.Callback)
 			}
 		}
-	}
-}
 
-// writeTimeout enforces a timeout on websocket writes
-func writeTimeout(msg *Message, timeout time.Duration, c *websocket.Conn) error {
-	if c == nil {
-		return nil
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	jsn, err := json.Marshal(msg)
-	if err != nil {
-		return terror.Error(err)
-	}
-	errChan := make(chan error)
-	go func() {
-		defer cancel()
-		err := c.Write(ctx, websocket.MessageText, jsn)
+		jsn, err := json.Marshal(&Message{
+			Key:           msg.Key,
+			Payload:       msg.Payload,
+			TransactionID: msg.TransactionID,
+		})
 		if err != nil {
-			errChan <- err
-			return
+			pp.Log.Warn().Err(err).Msg("failed to write json to send to passport")
+			continue
 		}
-	}()
 
-	for {
-		select {
-		case err = <-errChan:
-			fmt.Println(err.Error())
-			return err
-		case <-ctx.Done():
-			if ctx.Err() == context.DeadlineExceeded {
-				fmt.Println(ctx.Err().Error())
-				return ctx.Err()
-			}
-			return nil
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*40)
+		func() {
+			defer cancel()
+			err = pp.ws.Write(ctx, websocket.MessageText, jsn)
+		}()
+		if err != nil {
+			pp.Log.Warn().Err(err).Msg("failed to send to passport")
+			continue
 		}
 	}
 }

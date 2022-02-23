@@ -155,9 +155,7 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 	}
 	req.Payload.Amount.Mul(&req.Payload.Amount.Int, oneSups)
 
-	fc.Log.Info().Msg("STARTING fc.API.gameAbilityPool[factionID]")
-	select {
-	case fc.API.gameAbilityPool[factionID] <- func(fap GameAbilitiesPool, fapt *GameAbilityPoolTicker) {
+	fc.API.gameAbilityPool[factionID] <- func(fap GameAbilitiesPool, fapt *GameAbilityPoolTicker) {
 		// find ability
 		fa, ok := fap[req.Payload.GameAbilityID]
 		if !ok {
@@ -183,16 +181,49 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 
 		// check sups
 		reason := fmt.Sprintf("battle:%s|game_ability_contribution:%s", fc.API.BattleArena.CurrentBattleID(), req.Payload.GameAbilityID)
-		fmt.Println("11111111111111111111111111111111111111111111check ")
-		supsTransaction, err := fc.API.Passport.SendHoldSupsMessage(ctx, userID, reduceAmount, reason)
-		fmt.Println("2222222222222222222222222222222222222222222222check ")
+		// wg := sync.WaitGroup{}
+		// wg.Add(1)
+		// fc.API.Passport.SendHoldSupsMessage(userID, reduceAmount, reason, func(msg []byte) {
+		// 	defer wg.Done()
+		// 	resp := &passport.HoldSupsMessageResponse{}
+		// 	err := json.Unmarshal(msg, resp)
+		// 	if err != nil {
+		// 		fc.Log.Err(err).Msg("unable to send hold sups message")
+		// 		return
+		// 	}
+
+		// 	fa.TxRefs = append(fa.TxRefs, resp.Transaction)
+		// })
+		// wg.Done()
+
+		fc.API.Passport.SendHoldSupsMessage(userID, reduceAmount, reason, func(msg []byte) {
+			resp := &passport.HoldSupsMessageResponse{}
+			fmt.Println(string(msg))
+			err := json.Unmarshal(msg, resp)
+			if err != nil {
+				fc.Log.Err(err).Msg("unable to send hold sups message")
+				return
+			}
+
+			fa.txMx.Lock()
+			fa.TxRefs = append(fa.TxRefs, resp.Transaction)
+			fa.txMx.Unlock()
+
+			fc.API.liveSupsSpend[hcd.FactionID] <- func(lvd *LiveVotingData) {
+				lvd.TotalVote.Add(&lvd.TotalVote.Int, &req.Payload.Amount.Int)
+			}
+
+			fc.API.ClientVoted(wsc)
+
+			reply(true)
+		})
+
 		if err != nil {
 			fc.Log.Err(err).Msg("")
 			return
 		}
 
 		// append transaction ref
-		fa.TxRefs = append(fa.TxRefs, *supsTransaction)
 
 		if !isReached {
 			// increase current sups and return
@@ -201,7 +232,7 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 		}
 
 		// otherwise, clear transaction and bump the price
-		fa.TxRefs = []server.Transaction{}
+		fa.TxRefs = []string{}
 
 		// calc min target price (half of last max target price)
 		minTargetPrice := server.BigInt{Int: *big.NewInt(0)}
@@ -234,7 +265,7 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 		if fa.GameAbility.AbilityTokenID != 0 && fa.GameAbility.WarMachineTokenID != 0 {
 			fmt.Println("33333333333333333333333333333333333333333333check ")
 
-			fc.API.Passport.AbilityUpdateTargetPrice(fc.API.ctx, fa.GameAbility.AbilityTokenID, fa.GameAbility.WarMachineTokenID, fa.TargetPrice.String())
+			fc.API.Passport.AbilityUpdateTargetPrice(fa.GameAbility.AbilityTokenID, fa.GameAbility.WarMachineTokenID, fa.TargetPrice.String())
 		} else {
 			fmt.Println("4444444444444444444444444444444444444444444444444check ")
 			err = db.FactionExclusiveAbilitiesSupsCostUpdate(ctx, fc.Conn, fa.GameAbility)
@@ -261,6 +292,7 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 		fmt.Println("55555555555555555555555555555555555555555555555555555check ")
 
 		err = fc.API.BattleArena.GameAbilityTrigger(abilityTriggerEvent)
+		fmt.Println("After trigger!!!!!!!!!!!!!!!!!!!!!!!!!!!! ")
 		if err != nil {
 			fc.Log.Err(err).Msg("")
 			return
@@ -301,25 +333,9 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 			payload = append(payload, []byte(strings.Join(targetPriceList, "|"))...)
 			go fc.API.NetMessageBus.Send(ctx, messagebus.NetBusKey(fmt.Sprintf("%s:%s", HubKeyFactionAbilityPriceUpdated, factionID)), payload)
 		}
-	}:
-
-	case <-time.After(30 * time.Second):
-		fc.API.Log.Err(errors.New("timeout on channel send exceeded"))
-		panic("Game Ability Contribute")
-
 	}
 
 	reply(true)
-
-	select {
-	case fc.API.liveSupsSpend[hcd.FactionID] <- func(lvd *LiveVotingData) {
-		lvd.TotalVote.Add(&lvd.TotalVote.Int, &req.Payload.Amount.Int)
-	}:
-
-	case <-time.After(10 * time.Second):
-		fc.API.Log.Err(errors.New("timeout on channel send exceeded"))
-		panic("store vote amount to live voting data after vote success")
-	}
 
 	return nil
 }

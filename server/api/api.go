@@ -261,7 +261,6 @@ func NewAPI(
 
 func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 	var factions []*server.Faction
-	var err error
 
 	b := &backoff.Backoff{
 		Min:    1 * time.Second,
@@ -276,15 +275,26 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 			continue
 		}
 
-		factions, err = api.Passport.FactionAll(ctx)
-		if err != nil {
-			api.Passport.Log.Err(err).Msg("unable to get factions")
-		}
+		wg := sync.WaitGroup{}
+		wg.Add(1)
+		api.Passport.FactionAll(func(msg []byte) {
+			defer wg.Done()
+			resp := &passport.FactionAllResponse{}
+			err := json.Unmarshal(msg, resp)
+			if err != nil {
+				return
+			}
+			if err != nil {
+				api.Passport.Log.Err(err).Msg("unable to get factions")
+			}
+
+			factions = resp.Factions
+		})
+		wg.Wait()
 
 		if len(factions) > 0 {
 			break
 		}
-
 		time.Sleep(b.Duration())
 	}
 
