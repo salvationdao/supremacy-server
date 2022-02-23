@@ -102,7 +102,7 @@ var BlobIDAbilityRobotDogs = server.BlobID(uuid.Must(uuid.FromString("3b4ae24a-7
 var BlobIDAbilityReinforcements = server.BlobID(uuid.Must(uuid.FromString("5d0a0028-c074-4ab5-b46e-14d0ff07795d")))
 var BlobIDAbilityRepair = server.BlobID(uuid.Must(uuid.FromString("f40e90b7-1ea2-4a91-bf0f-feb052a019be")))
 var BlobIDAbilityNuke = server.BlobID(uuid.Must(uuid.FromString("8e0e1918-556c-4370-85f9-b8960fd19554")))
-var BlobIDAbilityOverload = server.BlobID(uuid.Must(uuid.FromString("04acaffd-7bd1-4b01-b264-feb4f8ab4563")))
+var BlobIDAbilityOvercharge = server.BlobID(uuid.Must(uuid.FromString("04acaffd-7bd1-4b01-b264-feb4f8ab4563")))
 
 var FactionIDRedMountain = server.FactionID(uuid.Must(uuid.FromString("98bf7bb3-1a7c-4f21-8843-458d62884060")))
 var FactionIDBoston = server.FactionID(uuid.Must(uuid.FromString("7c6dde21-b067-46cf-9e56-155c88a520e2")))
@@ -151,6 +151,11 @@ var AbilityBlobs = []*server.Blob{
 	{
 		ID:       BlobIDAbilityNuke,
 		FileName: "Nuke.png",
+	},
+	// BlobIDAbilityOvercharge
+	{
+		ID:       BlobIDAbilityOvercharge,
+		FileName: "Overcharge.png",
 	},
 }
 
@@ -268,7 +273,7 @@ var RedMountainUniqueAbilities = []*server.GameAbility{
 
 var ZaibatsuUniqueAbilities = []*server.GameAbility{
 	{
-		Label:               "OVERLOAD",
+		Label:               "OVERCHARGE",
 		FactionID:           FactionIDZaibatsu,
 		GameClientAbilityID: 11,
 		Colour:              "#D18E11",
