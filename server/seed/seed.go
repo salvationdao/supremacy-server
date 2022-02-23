@@ -151,7 +151,7 @@ var SharedFactionAbilities = []*server.GameAbility{
 		GameClientAbilityID: 0,
 		Colour:              "#3B5DAD",
 		Description:         "'Rain fury on the arena with a targeted airstrike.",
-		ImageUrl:            "https://i.pinimg.com/originals/b1/92/4d/b1924dce177345b5485bb5490ab3441f.jpg",
+		ImageUrl:            "/api/blobs/dc713e47-4119-494a-a81b-8ac92cf3222b",
 		SupsCost:            "0",
 	},
 	{
@@ -160,7 +160,7 @@ var SharedFactionAbilities = []*server.GameAbility{
 		GameClientAbilityID: 1,
 		Colour:              "#B8422A",
 		Description:         "The show-stopper. A tactical nuke at your fingertips.",
-		ImageUrl:            "https://images2.minutemediacdn.com/image/upload/c_crop,h_1126,w_2000,x_0,y_83/f_auto,q_auto,w_1100/v1555949079/shape/mentalfloss/581049-mesut_zengin-istock-1138195821.jpg",
+		ImageUrl:            "/api/blobs/8e0e1918-556c-4370-85f9-b8960fd19554",
 		SupsCost:            "0",
 	},
 	{
@@ -169,7 +169,7 @@ var SharedFactionAbilities = []*server.GameAbility{
 		GameClientAbilityID: 2,
 		Colour:              "#25A16F",
 		Description:         "Support your Syndcate with a well-timed repair.",
-		ImageUrl:            "https://i.pinimg.com/originals/ed/2f/9b/ed2f9b6e66b9efefa84d1ee423c718f0.png",
+		ImageUrl:            "/api/blobs/f40e90b7-1ea2-4a91-bf0f-feb052a019be",
 		SupsCost:            "0",
 	},
 	// FactionIDBoston
@@ -179,7 +179,7 @@ var SharedFactionAbilities = []*server.GameAbility{
 		FactionID:           FactionIDBoston,
 		Colour:              "#3B5DAD",
 		Description:         "'Rain fury on the arena with a targeted airstrike.",
-		ImageUrl:            "https://i.pinimg.com/originals/b1/92/4d/b1924dce177345b5485bb5490ab3441f.jpg",
+		ImageUrl:            "/api/blobs/dc713e47-4119-494a-a81b-8ac92cf3222b",
 		SupsCost:            "0",
 	},
 	{
@@ -188,7 +188,7 @@ var SharedFactionAbilities = []*server.GameAbility{
 		GameClientAbilityID: 4,
 		Colour:              "#B8422A",
 		Description:         "The show-stopper. A tactical nuke at your fingertips.",
-		ImageUrl:            "https://images2.minutemediacdn.com/image/upload/c_crop,h_1126,w_2000,x_0,y_83/f_auto,q_auto,w_1100/v1555949079/shape/mentalfloss/581049-mesut_zengin-istock-1138195821.jpg",
+		ImageUrl:            "/api/blobs/8e0e1918-556c-4370-85f9-b8960fd19554",
 		SupsCost:            "0",
 	},
 	{
@@ -197,7 +197,7 @@ var SharedFactionAbilities = []*server.GameAbility{
 		GameClientAbilityID: 5,
 		Colour:              "#25A16F",
 		Description:         "Support your Syndcate with a well-timed repair.",
-		ImageUrl:            "https://i.pinimg.com/originals/ed/2f/9b/ed2f9b6e66b9efefa84d1ee423c718f0.png",
+		ImageUrl:            "/api/blobs/f40e90b7-1ea2-4a91-bf0f-feb052a019be",
 		SupsCost:            "0",
 	},
 	// FactionIDRedMountain
@@ -207,7 +207,7 @@ var SharedFactionAbilities = []*server.GameAbility{
 		GameClientAbilityID: 6,
 		Colour:              "#3B5DAD",
 		Description:         "'Rain fury on the arena with a targeted airstrike.",
-		ImageUrl:            "https://i.pinimg.com/originals/b1/92/4d/b1924dce177345b5485bb5490ab3441f.jpg",
+		ImageUrl:            "/api/blobs/dc713e47-4119-494a-a81b-8ac92cf3222b",
 		SupsCost:            "0",
 	},
 	{
@@ -216,7 +216,7 @@ var SharedFactionAbilities = []*server.GameAbility{
 		GameClientAbilityID: 7,
 		Colour:              "#B8422A",
 		Description:         "The show-stopper. A tactical nuke at your fingertips.",
-		ImageUrl:            "https://images2.minutemediacdn.com/image/upload/c_crop,h_1126,w_2000,x_0,y_83/f_auto,q_auto,w_1100/v1555949079/shape/mentalfloss/581049-mesut_zengin-istock-1138195821.jpg",
+		ImageUrl:            "/api/blobs/8e0e1918-556c-4370-85f9-b8960fd19554",
 		SupsCost:            "0",
 	},
 	{
@@ -225,7 +225,7 @@ var SharedFactionAbilities = []*server.GameAbility{
 		GameClientAbilityID: 8,
 		Colour:              "#25A16F",
 		Description:         "Support your Syndcate with a well-timed repair.",
-		ImageUrl:            "https://i.pinimg.com/originals/ed/2f/9b/ed2f9b6e66b9efefa84d1ee423c718f0.png",
+		ImageUrl:            "/api/blobs/f40e90b7-1ea2-4a91-bf0f-feb052a019be",
 		SupsCost:            "0",
 	},
 }
@@ -238,7 +238,7 @@ var BostonUniqueAbilities = []*server.GameAbility{
 		GameClientAbilityID: 9,
 		Colour:              "#6F40AD",
 		Description:         "Boston Cybernetic unique ability. Release the hounds!",
-		ImageUrl:            "https://i.pinimg.com/originals/b1/92/4d/b1924dce177345b5485bb5490ab3441f.jpg",
+		ImageUrl:            "/api/blobs/3b4ae24a-7ccb-4d3b-8d88-905b406da0e1",
 		SupsCost:            "100000000000000000000",
 	},
 }
@@ -250,7 +250,7 @@ var RedMountainUniqueAbilities = []*server.GameAbility{
 		GameClientAbilityID: 10,
 		Colour:              "#C42B40",
 		Description:         "Red Mountain unique ability. Call an additional Mech to the arena.",
-		ImageUrl:            "https://images2.minutemediacdn.com/image/upload/c_crop,h_1126,w_2000,x_0,y_83/f_auto,q_auto,w_1100/v1555949079/shape/mentalfloss/581049-mesut_zengin-istock-1138195821.jpg",
+		ImageUrl:            "/api/blobs/5d0a0028-c074-4ab5-b46e-14d0ff07795d",
 		SupsCost:            "100000000000000000000",
 	},
 }
