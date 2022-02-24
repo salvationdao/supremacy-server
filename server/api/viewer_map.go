@@ -133,6 +133,7 @@ func (rcm *RingCheckAuthMap) Check(key string) (*hub.Client, error) {
 * Client Detail Map *
 ********************/
 type UserMap struct {
+	*ViewerLiveCount
 	ClientMap map[string]*UserClientMap
 	sync.RWMutex
 }
@@ -143,8 +144,9 @@ type UserClientMap struct {
 	sync.RWMutex
 }
 
-func NewUserMap() *UserMap {
+func NewUserMap(vlc *ViewerLiveCount) *UserMap {
 	return &UserMap{
+		vlc,
 		make(map[string]*UserClientMap),
 		sync.RWMutex{},
 	}
@@ -153,6 +155,7 @@ func NewUserMap() *UserMap {
 func (um *UserMap) UserRegister(wsc *hub.Client, user *server.User) {
 	um.RWMutex.Lock()
 	defer um.RWMutex.Unlock()
+	um.ViewerLiveCount.IDRecord(user.ID)
 	hcm, ok := um.ClientMap[wsc.Identifier()]
 	if !ok {
 		hcm = &UserClientMap{

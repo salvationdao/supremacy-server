@@ -61,11 +61,6 @@ type ClientMultiplier struct {
 	MultiplierActions map[string]*MultiplierAction
 }
 
-type MultiplierAction struct {
-	MultiplierValue int
-	Expiry          time.Time
-}
-
 func (api *API) ValidateAndSendActiveClients(clientMap map[server.UserID][]*MultiplierAction) (int, error) {
 	return 0, nil
 }
@@ -155,8 +150,6 @@ listenLoop:
 					Expiry:          now.AddDate(1, 0, 0),
 				}
 
-				// record viewer id
-				api.viewerLiveCount.IDRecord(userID)
 			}
 
 			clientMultiplierMap[userID].clients[msg.Client] = true

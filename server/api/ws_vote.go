@@ -117,11 +117,9 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 
 	// deliver vote
 	vc.API.votingCycle <- func(va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
-		fmt.Println(len(fts.Transactions))
 		// pay sups
 		go func() {
 			reason := fmt.Sprintf("battle:%s|vote_ability_right:%s", vc.API.BattleArena.CurrentBattleID(), va.BattleAbility.ID)
-
 			vc.API.Passport.SendHoldSupsMessage(userID, totalSups, reason, func(msg []byte) {
 				resp := &passport.HoldSupsMessageResponse{}
 				err := json.Unmarshal(msg, resp)

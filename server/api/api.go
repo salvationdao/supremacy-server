@@ -176,8 +176,6 @@ func NewAPI(
 		// channel for handling hub client
 		onlineClientMap: make(chan *ClientUpdate),
 
-		// client detail
-		UserMap: NewUserMap(),
 		// ring check auth
 		RingCheckAuthMap: NewRingCheckMap(),
 
@@ -307,6 +305,7 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 
 	// set viewer live count
 	api.viewerLiveCount = NewViewerLiveCount(api.NetMessageBus, factions)
+	api.UserMap = NewUserMap(api.viewerLiveCount)
 
 	go api.startSpoilOfWarBroadcaster(ctx)
 
