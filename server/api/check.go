@@ -15,6 +15,8 @@ var (
 
 // check checks server is working correctly
 func check(ctx context.Context, conn db.Conn) error {
+
+	// check db dirty
 	count := 0
 	err := db.IsSchemaDirty(ctx, conn, &count)
 	if err != nil {
@@ -23,5 +25,6 @@ func check(ctx context.Context, conn db.Conn) error {
 	if count > 0 {
 		return terror.Error(ErrCheckDBDirty)
 	}
+
 	return nil
 }
