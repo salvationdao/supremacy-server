@@ -383,7 +383,7 @@ var streams = []*server.Stream{
 
 	// Germany
 	{
-		Host:          "https://video.ninja-cdn.com/WebRTCAppEE/player.html?name=R3dvaIhZOxRr1645381571194",
+		Host:          "https://video-de.ninja-cdn.com/WebRTCAppEE/player.html?name=R3dvaIhZOxRr1645381571194",
 		Name:          "Germany",
 		URL:           "wss://video-de.ninja-cdn.com/WebRTCAppEE/websocket",
 		StreamID:      "R3dvaIhZOxRr1645381571194",
