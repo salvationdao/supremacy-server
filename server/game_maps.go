@@ -1,6 +1,10 @@
 package server
 
-import "math/big"
+import (
+	"math/big"
+
+	"github.com/gofrs/uuid"
+)
 
 const GameClientTileSize = 2000
 
@@ -76,6 +80,7 @@ func (wm *WarMachineMetadata) Brief() *WarMachineBrief {
 
 type AbilityMetadata struct {
 	ID                GameAbilityID `json:"id" db:"id"` // used for zaibatsu faction ability
+	Identity          uuid.UUID     `json:"identity"`   // used to track ability price update
 	TokenID           uint64        `json:"tokenID"`
 	Name              string        `json:"name"`
 	Description       string        `json:"description"`
@@ -96,6 +101,7 @@ type Vector3 struct {
 
 type GameAbility struct {
 	ID                  GameAbilityID    `json:"id" db:"id"`
+	Identity            uuid.UUID        `json:"identity"` // used for tracking ability price
 	GameClientAbilityID byte             `json:"gameClientAbilityID" db:"game_client_ability_id"`
 	BattleAbilityID     *BattleAbilityID `json:"battleAbilityID,omitempty" db:"battle_ability_id,omitempty"`
 	Colour              string           `json:"colour" db:"colour"`

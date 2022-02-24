@@ -107,6 +107,7 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 				}
 
 				for _, ab := range initialAbilities {
+					ab.Identity = uuid.Must(uuid.NewV4())
 					ab.Title = "FACTION_WIDE"
 					ab.CurrentSups = "0"
 				}
@@ -120,6 +121,7 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 				for _, ability := range wm.Abilities {
 					wmAbility := &server.GameAbility{
 						ID:                  server.GameAbilityID(uuid.Must(uuid.NewV4())), // generate a uuid for frontend to track sups contribution
+						Identity:            ability.Identity,
 						GameClientAbilityID: byte(ability.GameClientID),
 						ImageUrl:            ability.Image,
 						Description:         ability.Description,

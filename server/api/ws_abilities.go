@@ -254,7 +254,7 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 		// update sups cost of the ability in db
 		fa.GameAbility.SupsCost = fa.TargetPrice.String()
 
-		fap.Store(fa.GameAbility.ID, fa)
+		fap.Store(fa.GameAbility.Identity, fa)
 
 		// store new target price to passport server, if the ability is nft
 		if fa.GameAbility.AbilityTokenID != 0 && fa.GameAbility.WarMachineTokenID != 0 {
@@ -413,7 +413,7 @@ func (fc *FactionControllerWS) WarMachineAbilitiesUpdateSubscribeHandler(ctx con
 
 			fa.GameAbility.CurrentSups = fa.CurrentSups.String()
 			abilities = append(abilities, fa.GameAbility)
-			fap.Store(fa.GameAbility.ID, fa)
+			fap.Store(fa.GameAbility.Identity, fa)
 
 			return true
 		})

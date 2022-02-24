@@ -65,6 +65,7 @@ func (ba *BattleArena) InitNextBattle() error {
 				// if war machine is from Zaibatsu, insert the ability as faction ability
 				warMachine.Abilities = append(warMachine.Abilities, &server.AbilityMetadata{
 					ID:           zaibatsuAbility.ID,
+					Identity:     uuid.Must(uuid.NewV4()), // track ability's price
 					GameClientID: int(zaibatsuAbility.GameClientAbilityID),
 					Image:        zaibatsuAbility.ImageUrl,
 					Description:  zaibatsuAbility.Description,
