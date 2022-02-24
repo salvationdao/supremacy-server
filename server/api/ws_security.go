@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"server"
 
 	"github.com/ninja-software/terror/v2"
@@ -32,9 +33,9 @@ func (api *API) SecureUserFactionCommand(key hub.HubCommandKey, fn hub.HubComman
 			return terror.Error(terror.ErrForbidden)
 		}
 
-		hcd, err := api.ClientDetailMap.GetDetail(wsc)
-		if err != nil {
-			return terror.Error(err)
+		hcd := api.UserMap.GetUserDetail(wsc)
+		if hcd != nil {
+			return terror.Error(fmt.Errorf("User not found"))
 		}
 
 		if hcd.FactionID.IsNil() {
@@ -91,8 +92,8 @@ func (api *API) SecureUserFactionSubscribeCommand(key hub.HubCommandKey, fn ...H
 			return true
 		}
 
-		hcd, err := api.ClientDetailMap.GetDetail(wsc)
-		if err != nil {
+		hcd := api.UserMap.GetUserDetail(wsc)
+		if hcd != nil {
 			return true
 		}
 		return hcd.FactionID.IsNil()
@@ -179,8 +180,8 @@ func (api *API) NetSecureUserFactionSubscribeCommand(key hub.HubCommandKey, fn .
 			return true
 		}
 
-		hcd, err := api.ClientDetailMap.GetDetail(wsc)
-		if err != nil {
+		hcd := api.UserMap.GetUserDetail(wsc)
+		if hcd != nil {
 			return true
 		}
 		return hcd.FactionID.IsNil()

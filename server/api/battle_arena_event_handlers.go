@@ -318,8 +318,8 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 				if userID.IsNil() {
 					return
 				}
-				hcd, err := api.ClientDetailMap.GetDetail(c)
-				if err != nil || hcd.FactionID.IsNil() {
+				hcd := api.UserMap.GetUserDetail(c)
+				if hcd == nil || hcd.FactionID.IsNil() {
 					return
 				}
 

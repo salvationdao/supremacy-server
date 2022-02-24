@@ -113,7 +113,7 @@ func (api *API) abilityTargetPriceUpdater(factionID server.FactionID, conn *pgxp
 
 				fa.TxRefs = []string{}
 
-				fap.Store(fa.GameAbility.Identity, fa)
+				fap.Store(fa.GameAbility.Identity.String(), fa)
 
 				abilityTriggerEvent := &server.GameAbilityEvent{
 					IsTriggered:         true,
@@ -256,7 +256,7 @@ func (api *API) startGameAbilityPoolTicker(ctx context.Context, factionID server
 			fa.MaxTargetPrice.Add(&fa.MaxTargetPrice.Int, initialTargetPrice)
 			fmt.Println(ability.Title)
 			fmt.Println(ability.Identity)
-			fap.Store(ability.Identity, fa)
+			fap.Store(ability.Identity.String(), fa)
 		}
 		// broadcast abilities
 		if len(factionAbilities) > 0 {

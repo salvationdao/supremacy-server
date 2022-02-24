@@ -71,7 +71,7 @@ func (vcm *ViewerLiveCount) Add(factionID server.FactionID) {
 	}
 }
 
-func (vcm *ViewerLiveCount) Remove(factionID server.FactionID) {
+func (vcm *ViewerLiveCount) Sub(factionID server.FactionID) {
 	if fvm, ok := vcm.FactionViewerMap[factionID]; ok {
 		atomic.AddInt64(&fvm.Count, -1)
 	}
@@ -132,72 +132,145 @@ func (rcm *RingCheckAuthMap) Check(key string) (*hub.Client, error) {
 /********************
 * Client Detail Map *
 ********************/
-
-type ClientDetailMap struct {
-	sync.Map
+type UserMap struct {
+	ClientMap map[string]*UserClientMap
+	sync.RWMutex
 }
 
-func NewClientDetailMap() *ClientDetailMap {
-	return &ClientDetailMap{
-		sync.Map{},
+type UserClientMap struct {
+	User      *server.User
+	ClientMap map[*hub.Client]bool
+	sync.RWMutex
+}
+
+func NewUserMap() *UserMap {
+	return &UserMap{
+		make(map[string]*UserClientMap),
+		sync.RWMutex{},
 	}
 }
 
-func (cdm *ClientDetailMap) Register(wsc *hub.Client) {
-	user := &server.User{}
-	cdm.Store(wsc, user)
-}
-
-func (cdm *ClientDetailMap) GetDetail(wsc *hub.Client) (*server.User, error) {
-	user, ok := cdm.Load(wsc)
+func (um *UserMap) UserRegister(wsc *hub.Client, user *server.User) {
+	um.RWMutex.Lock()
+	defer um.RWMutex.Unlock()
+	hcm, ok := um.ClientMap[wsc.Identifier()]
 	if !ok {
-		return nil, terror.Error(fmt.Errorf("client not found"))
+		hcm = &UserClientMap{
+			&server.User{},
+			make(map[*hub.Client]bool),
+			sync.RWMutex{},
+		}
+
+		// set up user
+		hcm.RWMutex.Lock()
+		defer hcm.RWMutex.Unlock()
+		hcm.User.Username = user.Username
+		hcm.User.FirstName = user.FirstName
+		hcm.User.LastName = user.LastName
+		hcm.User.AvatarID = user.AvatarID
+		hcm.User.FactionID = user.FactionID
+		hcm.User.Faction = user.Faction
+		hcm.ClientMap[wsc] = true
+
+		um.ClientMap[wsc.Identifier()] = hcm
+		return
 	}
 
-	return user.(*server.User), nil
+	hcm.RWMutex.Lock()
+	defer hcm.RWMutex.Unlock()
+	if _, ok := hcm.ClientMap[wsc]; !ok {
+		hcm.ClientMap[wsc] = true
+	}
 }
 
-func (cdm *ClientDetailMap) Update(wsc *hub.Client, us *server.User) {
-	cdm.Store(wsc, us)
+func (um *UserMap) GetUserDetail(wsc *hub.Client) *server.User {
+	if wsc.Identifier() == "" {
+		return nil
+	}
+	um.RWMutex.RLock()
+	defer um.RWMutex.RUnlock()
+	cm, ok := um.ClientMap[wsc.Identifier()]
+	if !ok {
+		return nil
+	}
+	return cm.User
 }
 
-func (cdm *ClientDetailMap) Remove(wsc *hub.Client) {
-	cdm.Delete(wsc)
+func (um *UserMap) Update(user *server.User) []*hub.Client {
+	hcs := []*hub.Client{}
+	um.RWMutex.Lock()
+	defer um.RWMutex.Unlock()
+	hcm, ok := um.ClientMap[user.ID.String()]
+	if !ok {
+		return nil
+	}
+
+	hcm.RWMutex.Lock()
+	hcm.User.Username = user.Username
+	hcm.User.FirstName = user.FirstName
+	hcm.User.LastName = user.LastName
+	hcm.User.AvatarID = user.AvatarID
+	hcm.User.FactionID = user.FactionID
+	hcm.User.Faction = user.Faction
+	hcm.RWMutex.Unlock()
+
+	hcm.RWMutex.RLock()
+	for cl := range hcm.ClientMap {
+		hcs = append(hcs, cl)
+	}
+	hcm.RWMutex.RUnlock()
+
+	// return broadcast list
+	return hcs
 }
 
-func (cdm *ClientDetailMap) GetDetailByUserID(userID server.UserID) (*server.User, error) {
-	var user *server.User
-	cdm.Range(func(key, value interface{}) bool {
-		u := value.(*server.User)
-		if u.ID == userID {
-			user = u
-			return false
-		}
-		return true
-	})
+func (um *UserMap) Remove(wsc *hub.Client) {
+	if wsc.Identifier() == "" {
+		return
+	}
 
-	if user == nil {
+	um.RWMutex.Lock()
+	defer um.RWMutex.Unlock()
+	hcm, ok := um.ClientMap[wsc.Identifier()]
+	if !ok {
+		return
+	}
+
+	hcm.RWMutex.Lock()
+	defer hcm.RWMutex.Unlock()
+	delete(hcm.ClientMap, wsc)
+
+	if len(hcm.ClientMap) == 0 {
+		delete(um.ClientMap, wsc.Identifier())
+	}
+
+	return
+}
+
+func (um *UserMap) GetUserDetailByID(userID server.UserID) (*server.User, error) {
+	um.RWMutex.RLock()
+	defer um.RWMutex.RUnlock()
+	hcm, ok := um.ClientMap[userID.String()]
+	if !ok {
 		return nil, terror.Error(fmt.Errorf("user not found"))
 	}
-	return user, nil
+	return hcm.User, nil
 }
 
-type ClientDetail struct {
-	hubClient *hub.Client
-	detail    *server.User
-}
+func (um *UserMap) GetClientsByUserID(userID server.UserID) []*hub.Client {
+	hcs := []*hub.Client{}
+	um.RWMutex.RLock()
+	defer um.RWMutex.RUnlock()
+	hcm, ok := um.ClientMap[userID.String()]
+	if !ok {
+		return hcs
+	}
 
-func (cdm *ClientDetailMap) GetDetailsByUserID(userID server.UserID) []*ClientDetail {
-	clients := []*ClientDetail{}
-	cdm.Range(func(key, value interface{}) bool {
-		u := value.(*server.User)
-		if u.ID == userID {
-			clients = append(clients, &ClientDetail{
-				hubClient: key.(*hub.Client),
-				detail:    u,
-			})
-		}
-		return true
-	})
-	return clients
+	hcm.RWMutex.RLock()
+	defer hcm.RWMutex.RUnlock()
+	for cl := range hcm.ClientMap {
+		hcs = append(hcs, cl)
+	}
+
+	return hcs
 }

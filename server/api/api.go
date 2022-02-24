@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
 	"net"
@@ -44,6 +43,11 @@ type WelcomePayload struct {
 type BroadcastPayload struct {
 	Key     hub.HubCommandKey `json:"key"`
 	Payload interface{}       `json:"payload"`
+}
+
+type LiveVotingData struct {
+	sync.Mutex
+	TotalVote server.BigInt
 }
 
 type VotePriceSystem struct {
@@ -98,13 +102,13 @@ type API struct {
 	factionMap map[server.FactionID]*server.Faction
 
 	// voting channels
-	liveSupsSpend map[server.FactionID]chan func(*LiveVotingData)
+	liveSupsSpend map[server.FactionID]*LiveVotingData
 
 	// client channels
 	onlineClientMap chan *ClientUpdate
 
 	// client detail
-	ClientDetailMap *ClientDetailMap
+	UserMap *UserMap
 	// ring check auth
 	RingCheckAuthMap *RingCheckAuthMap
 
@@ -167,13 +171,13 @@ func NewAPI(
 		}),
 		// channel for faction voting system
 		votingCycle:   make(chan func(*VoteStage, *VoteAbility, FactionUserVoteMap, *FactionTransactions, *FactionTotalVote, *VoteWinner, *VotingCycleTicker, UserVoteMap)),
-		liveSupsSpend: make(map[server.FactionID]chan func(*LiveVotingData)),
+		liveSupsSpend: make(map[server.FactionID]*LiveVotingData),
 
 		// channel for handling hub client
 		onlineClientMap: make(chan *ClientUpdate),
 
 		// client detail
-		ClientDetailMap: NewClientDetailMap(),
+		UserMap: NewUserMap(),
 		// ring check auth
 		RingCheckAuthMap: NewRingCheckMap(),
 
@@ -317,8 +321,7 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 		api.factionMap[faction.ID] = faction
 
 		// start live voting ticker
-		api.liveSupsSpend[faction.ID] = make(chan func(*LiveVotingData))
-		go api.startLiveVotingDataTicker(faction.ID)
+		api.liveSupsSpend[faction.ID] = &LiveVotingData{sync.Mutex{}, server.BigInt{Int: *big.NewInt(0)}}
 
 		// game ability pool
 
@@ -341,26 +344,17 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 		totalVote := server.BigInt{Int: *big.NewInt(0)}
 		totalVoteMutex := sync.Mutex{}
 		for _, faction := range factions {
-			voteCountChan := make(chan server.BigInt)
+			voteCount := big.NewInt(0)
+			api.liveSupsSpend[faction.ID].Lock()
+			voteCount.Add(voteCount, &api.liveSupsSpend[faction.ID].TotalVote.Int)
+			api.liveSupsSpend[faction.ID].TotalVote = server.BigInt{Int: *big.NewInt(0)}
+			api.liveSupsSpend[faction.ID].Unlock()
 
-			select {
-			case api.liveSupsSpend[faction.ID] <- func(lvd *LiveVotingData) {
-				// pass value back
-				voteCountChan <- lvd.TotalVote
+			// protect total vote
+			totalVoteMutex.Lock()
+			totalVote.Add(&totalVote.Int, voteCount)
+			totalVoteMutex.Unlock()
 
-				// clear current value
-				lvd.TotalVote = server.BigInt{Int: *big.NewInt(0)}
-			}:
-				voteCount := <-voteCountChan
-				// protect total vote
-				totalVoteMutex.Lock()
-				totalVote.Add(&totalVote.Int, &voteCount.Int)
-				totalVoteMutex.Unlock()
-
-			case <-time.After(10 * time.Second):
-				api.Log.Err(errors.New("timeout on channel send exceeded"))
-				panic("Client Battle Reward Update")
-			}
 		}
 
 		// prepare payload
@@ -381,7 +375,6 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 // Event handlers
 func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client, clients hub.ClientsList, ch hub.TriggerChan) {
 	// initialise a client detail channel if not on the list
-	api.ClientDetailMap.Register(wsc)
 	api.viewerLiveCount.Add(server.FactionID(uuid.Nil))
 
 	// broadcast current game state
@@ -413,13 +406,10 @@ func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client, clients
 }
 
 func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, clients hub.ClientsList, ch hub.TriggerChan) {
-	currentUser, err := api.ClientDetailMap.GetDetail(wsc)
-	if err != nil {
-		api.Log.Err(err).Msg("failed to get client detail")
-	}
+	currentUser := api.UserMap.GetUserDetail(wsc)
 
 	if currentUser != nil {
-		api.viewerLiveCount.Remove(currentUser.FactionID)
+		api.viewerLiveCount.Sub(currentUser.FactionID)
 	}
 
 	// set client offline
@@ -428,12 +418,8 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 	// check vote if there is not client instances of the offline user
 	if noClientLeft && currentUser != nil && api.votePhaseChecker.Phase == VotePhaseLocationSelect {
 		// check the user is selecting ability location
-		select {
-		case api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+		api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
 			if len(vw.List) > 0 && vw.List[0].String() == wsc.Identifier() {
-				if err != nil {
-					api.Log.Err(err).Msg("failed to get user")
-				}
 				// pop out the first user of the list
 				if len(vw.List) > 1 {
 					vw.List = vw.List[1:]
@@ -499,15 +485,11 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 				// broadcast current stage to faction users
 				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 			}
-		}:
-		case <-time.After(10 * time.Second):
-			api.Log.Err(errors.New("timeout on channel send exceeded"))
-			panic("check the user is selecting ability location")
 		}
 	}
 
 	// clean up the client detail map
-	api.ClientDetailMap.Remove(wsc)
+	api.UserMap.Remove(wsc)
 }
 
 // Run the API service

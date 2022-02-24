@@ -63,9 +63,9 @@ func (fc *FactionControllerWS) UserWarMachineQueueUpdatedSubscribeHandler(ctx co
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
-	hcd, err := fc.API.ClientDetailMap.GetDetail(wsc)
-	if err != nil {
-		return "", "", terror.Error(err)
+	hcd := fc.API.UserMap.GetUserDetail(wsc)
+	if hcd != nil {
+		return "", "", terror.Error(fmt.Errorf("User not found"))
 	}
 
 	if hcd.FactionID.IsNil() || hcd.FactionID.String() == "" {
@@ -139,9 +139,9 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 	}
 
 	// get client detail
-	hcd, err := fc.API.ClientDetailMap.GetDetail(wsc)
-	if err != nil {
-		return terror.Error(err)
+	hcd := fc.API.UserMap.GetUserDetail(wsc)
+	if hcd != nil {
+		return terror.Error(fmt.Errorf("User not found"))
 	}
 
 	factionID := hcd.FactionID
@@ -157,9 +157,8 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 	fc.API.gameAbilityPool[factionID](func(fap *sync.Map) {
 		// find ability
 
-		faIface, ok := fap.Load(req.Payload.GameAbilityID)
+		faIface, ok := fap.Load(req.Payload.GameAbilityID.String())
 		if !ok {
-			fmt.Println("11111111111111111111111111111111111111111111111111111111111111")
 			fc.Log.Err(fmt.Errorf("error doesn't exist"))
 			return
 		}
@@ -187,7 +186,7 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 
 		go func() {
 			fc.API.Passport.SendHoldSupsMessage(userID, reduceAmount, reason, func(msg []byte) {
-				faIface, ok := fap.Load(req.Payload.GameAbilityID)
+				faIface, ok := fap.Load(req.Payload.GameAbilityID.String())
 				if !ok {
 					fc.Log.Err(fmt.Errorf("error doesn't exist"))
 					return
@@ -205,9 +204,10 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 
 				fa.TxRefs = append(fa.TxRefs, resp.Transaction)
 
-				fc.API.liveSupsSpend[hcd.FactionID] <- func(lvd *LiveVotingData) {
-					lvd.TotalVote.Add(&lvd.TotalVote.Int, &req.Payload.Amount.Int)
-				}
+				fc.API.liveSupsSpend[hcd.FactionID].Lock()
+				fc.API.liveSupsSpend[hcd.FactionID].TotalVote.Add(&fc.API.liveSupsSpend[hcd.FactionID].TotalVote.Int, &req.Payload.Amount.Int)
+				fc.API.liveSupsSpend[hcd.FactionID].Unlock()
+
 				fc.API.ClientVoted(wsc)
 			})
 		}()
@@ -255,7 +255,7 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 		// update sups cost of the ability in db
 		fa.GameAbility.SupsCost = fa.TargetPrice.String()
 
-		fap.Store(fa.GameAbility.Identity, fa)
+		fap.Store(fa.GameAbility.Identity.String(), fa)
 
 		// store new target price to passport server, if the ability is nft
 		if fa.GameAbility.AbilityTokenID != 0 && fa.GameAbility.WarMachineTokenID != 0 {
@@ -343,9 +343,9 @@ func (fc *FactionControllerWS) FactionAbilitiesUpdateSubscribeHandler(ctx contex
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
-	hcd, err := fc.API.ClientDetailMap.GetDetail(wsc)
-	if err != nil {
-		return "", "", terror.Error(err)
+	hcd := fc.API.UserMap.GetUserDetail(wsc)
+	if hcd != nil {
+		return "", "", terror.Error(fmt.Errorf("User not found"))
 	}
 
 	// skip, if faction is zaibatsu
@@ -390,9 +390,9 @@ func (fc *FactionControllerWS) WarMachineAbilitiesUpdateSubscribeHandler(ctx con
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
-	hcd, err := fc.API.ClientDetailMap.GetDetail(wsc)
-	if err != nil {
-		return "", "", terror.Error(err)
+	hcd := fc.API.UserMap.GetUserDetail(wsc)
+	if hcd != nil {
+		return "", "", terror.Error(fmt.Errorf("User not found"))
 	}
 
 	fc.API.gameAbilityPool[hcd.FactionID](func(fap *sync.Map) {
@@ -414,7 +414,7 @@ func (fc *FactionControllerWS) WarMachineAbilitiesUpdateSubscribeHandler(ctx con
 
 			fa.GameAbility.CurrentSups = fa.CurrentSups.String()
 			abilities = append(abilities, fa.GameAbility)
-			fap.Store(fa.GameAbility.Identity, fa)
+			fap.Store(fa.GameAbility.Identity.String(), fa)
 
 			return true
 		})

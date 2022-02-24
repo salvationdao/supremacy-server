@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -290,24 +289,6 @@ func calVotePrice(globalTotalVote int64, currentVotePrice server.BigInt, current
 * Live Voting Broadcast *
 ************************/
 
-type LiveVotingData struct {
-	TotalVote server.BigInt
-}
-
-func (api *API) startLiveVotingDataTicker(factionID server.FactionID) {
-	// live voting data broadcast
-	liveSupsSpend := &LiveVotingData{
-		TotalVote: server.BigInt{Int: *big.NewInt(0)},
-	}
-
-	// start channel
-	go func() {
-		for fn := range api.liveSupsSpend[factionID] {
-			fn(liveSupsSpend)
-		}
-	}()
-}
-
 /***************
 * Voting Cycle *
 ***************/
@@ -494,8 +475,8 @@ func (api *API) abilityRightResultBroadcasterFactory(ctx context.Context, ftv *F
 
 // startVotingCycle start voting cycle tickles
 func (api *API) startVotingCycle(ctx context.Context, introSecond int) {
-	select {
-	case api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+
+	api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
 		api.votePhaseChecker.Phase = VotePhaseWaitMechIntro
 		vs.Phase = VotePhaseWaitMechIntro
 		vs.EndTime = time.Now().Add(time.Duration(introSecond) * time.Second)
@@ -504,19 +485,13 @@ func (api *API) startVotingCycle(ctx context.Context, introSecond int) {
 		go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
 
 		vct.VotingStageListener.Start()
-	}:
-
-	case <-time.After(10 * time.Second):
-		api.Log.Err(errors.New("timeout on channel send exceeded"))
-		panic("Client Battle Reward Update")
 	}
 }
 
 // stopVotingCycle pause voting cycle tickles
 func (api *API) stopVotingCycle(ctx context.Context) []*server.BattleUserVote {
 	userVoteCountsChan := make(chan []*server.BattleUserVote)
-	select {
-	case api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+	api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
 		api.votePhaseChecker.Phase = VotePhaseHold
 		vs.Phase = VotePhaseHold
 		// broadcast current stage to faction users
@@ -554,22 +529,16 @@ func (api *API) stopVotingCycle(ctx context.Context) []*server.BattleUserVote {
 		}
 
 		userVoteCountsChan <- uvcs
-	}:
-
-		return <-userVoteCountsChan
-
-	case <-time.After(10 * time.Second):
-		api.Log.Err(errors.New("timeout on channel send exceeded"))
-		panic("Client Battle Reward Update")
 	}
+
+	return <-userVoteCountsChan
 
 }
 
 // voteStageListenerFactory is the main vote stage handler
 func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error) {
 	return func() (int, error) {
-		select {
-		case api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+		api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
 			// skip if it does not reach the end time or current phase is TIE
 			if vs.EndTime.After(time.Now()) || vs.Phase == VotePhaseHold || vs.Phase == VotePhaseNextVoteWin {
 				return
@@ -756,7 +725,7 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 
 			// at the end of location select
 			case VotePhaseLocationSelect:
-				currentUser, err := api.ClientDetailMap.GetDetailByUserID(vw.List[0])
+				currentUser, err := api.UserMap.GetUserDetailByID(vw.List[0])
 				if err != nil {
 					api.Log.Err(err).Msg("failed to get user")
 				}
@@ -859,11 +828,6 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 				}
 
 			}
-		}:
-
-		case <-time.After(10 * time.Second):
-			api.Log.Err(errors.New("timeout on channel send exceeded"))
-			panic("vote Stage Listener Factory")
 		}
 
 		return http.StatusOK, nil
@@ -875,7 +839,7 @@ func (api *API) getNextWinnerDetail(vw *VoteWinner) (*server.User, server.UserID
 	for len(vw.List) > 0 {
 		winnerClientID := vw.List[0]
 		// broadcast winner notification
-		hubClientDetail, err := api.ClientDetailMap.GetDetailByUserID(winnerClientID)
+		hubClientDetail, err := api.UserMap.GetUserDetailByID(winnerClientID)
 		if err != nil {
 			// pop out current user, if the user is not online
 			if len(vw.List) > 1 {
