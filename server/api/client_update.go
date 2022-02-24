@@ -281,8 +281,6 @@ func (api *API) ClientOnline(c *hub.Client) {
 		return
 	}
 
-	fmt.Println("get here")
-
 	api.onlineClientMap <- &ClientUpdate{
 		Client: c,
 		Action: ClientOnline,

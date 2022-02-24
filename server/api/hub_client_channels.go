@@ -243,8 +243,6 @@ func (um *UserMap) Remove(wsc *hub.Client) {
 	if len(hcm.ClientMap) == 0 {
 		delete(um.ClientMap, wsc.Identifier())
 	}
-
-	return
 }
 
 func (um *UserMap) GetUserDetailByID(userID server.UserID) (*server.User, error) {

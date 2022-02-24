@@ -64,7 +64,7 @@ func (fc *FactionControllerWS) UserWarMachineQueueUpdatedSubscribeHandler(ctx co
 	}
 
 	hcd := fc.API.UserMap.GetUserDetail(wsc)
-	if hcd != nil {
+	if hcd == nil {
 		return "", "", terror.Error(fmt.Errorf("User not found"))
 	}
 
@@ -127,12 +127,14 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 
 	// check whether the battle is started
 	if fc.API.BattleArena.GetCurrentState().State != server.StateMatchStart {
-		return terror.Error(terror.ErrInvalidInput, "The battle hasn't started yet")
+		return terror.Error(terror.ErrForbidden, "The battle hasn't started yet")
 	}
 
+	fc.API.votePhaseChecker.RLock()
 	if fc.API.votePhaseChecker.Phase == VotePhaseWaitMechIntro {
-		return terror.Error(terror.ErrInvalidInput, "Ability Contribute are available after intro")
+		return terror.Error(terror.ErrForbidden, "Ability Contribute are available after intro")
 	}
+	fc.API.votePhaseChecker.RUnlock()
 
 	if req.Payload.Amount.Cmp(big.NewInt(0)) <= 0 {
 		return terror.Error(terror.ErrInvalidInput, "Invalid contribute amount")
@@ -140,7 +142,7 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 
 	// get client detail
 	hcd := fc.API.UserMap.GetUserDetail(wsc)
-	if hcd != nil {
+	if hcd == nil {
 		return terror.Error(fmt.Errorf("User not found"))
 	}
 
@@ -195,13 +197,13 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 				fa := faIface.(*GameAbilityPrice)
 
 				resp := &passport.HoldSupsMessageResponse{}
-				fmt.Println(string(msg))
 				err := json.Unmarshal(msg, resp)
 				if err != nil {
 					fc.Log.Err(err).Msg("unable to send hold sups message")
 					return
 				}
 
+				fa.TxMX.Lock()
 				fa.TxRefs = append(fa.TxRefs, resp.Transaction)
 
 				fc.API.liveSupsSpend[hcd.FactionID].Lock()
@@ -209,124 +211,129 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 				fc.API.liveSupsSpend[hcd.FactionID].Unlock()
 
 				fc.API.ClientVoted(wsc)
+
+				// append transaction ref
+
+				if !isReached {
+					// increase current sups and return
+					fa.PriceRW.Lock()
+					fa.CurrentSups.Add(&fa.CurrentSups.Int, &req.Payload.Amount.Int)
+					fap.Store(fa.GameAbility.Identity.String(), fa)
+					fa.PriceRW.Unlock()
+					fa.TxMX.Unlock()
+					return
+				}
+
+				// otherwise, clear transaction and bump the price
+				fa.TxRefs = []string{}
+				fa.TxMX.Unlock()
+
+				fa.PriceRW.Lock()
+				// calc min target price (half of last max target price)
+				minTargetPrice := server.BigInt{Int: *big.NewInt(0)}
+				minTargetPrice.Add(&minTargetPrice.Int, &fa.MaxTargetPrice.Int)
+				minTargetPrice.Div(&minTargetPrice.Int, big.NewInt(2))
+
+				// calc current new target price (twice of current target price)
+				newTargetPrice := server.BigInt{Int: *big.NewInt(0)}
+				newTargetPrice.Add(&newTargetPrice.Int, &fa.TargetPrice.Int)
+				newTargetPrice.Mul(&newTargetPrice.Int, big.NewInt(2))
+
+				// reset target price and max target price
+				fa.TargetPrice = server.BigInt{Int: *big.NewInt(0)}
+				fa.MaxTargetPrice = server.BigInt{Int: *big.NewInt(0)}
+				if newTargetPrice.Cmp(&minTargetPrice.Int) >= 0 {
+					fa.TargetPrice.Add(&fa.TargetPrice.Int, &newTargetPrice.Int)
+					fa.MaxTargetPrice.Add(&fa.MaxTargetPrice.Int, &newTargetPrice.Int)
+				} else {
+					fa.TargetPrice.Add(&fa.TargetPrice.Int, &minTargetPrice.Int)
+					fa.MaxTargetPrice.Add(&fa.MaxTargetPrice.Int, &minTargetPrice.Int)
+				}
+
+				// reset current sups to zero
+				fa.CurrentSups = server.BigInt{Int: *big.NewInt(0)}
+
+				// update sups cost of the ability in db
+				fa.GameAbility.SupsCost = fa.TargetPrice.String()
+
+				fap.Store(fa.GameAbility.Identity.String(), fa)
+				fa.PriceRW.Unlock()
+
+				// store new target price to passport server, if the ability is nft
+				if fa.GameAbility.AbilityTokenID != 0 && fa.GameAbility.WarMachineTokenID != 0 {
+					fc.API.Passport.AbilityUpdateTargetPrice(fa.GameAbility.AbilityTokenID, fa.GameAbility.WarMachineTokenID, fa.TargetPrice.String())
+				} else {
+					err = db.FactionExclusiveAbilitiesSupsCostUpdate(ctx, fc.Conn, fa.GameAbility)
+					if err != nil {
+						fc.Log.Err(err).Msg("")
+						return
+					}
+				}
+
+				// trigger battle arena function to handle game ability
+				abilityTriggerEvent := &server.GameAbilityEvent{
+					IsTriggered:         true,
+					TriggeredByUserID:   &userID,
+					TriggeredByUsername: &hcd.Username,
+					GameClientAbilityID: fa.GameAbility.GameClientAbilityID,
+					WarMachineTokenID:   &fa.GameAbility.WarMachineTokenID,
+				}
+
+				if fa.GameAbility.AbilityTokenID == 0 {
+					abilityTriggerEvent.GameAbilityID = &fa.GameAbility.ID
+				} else {
+					abilityTriggerEvent.AbilityTokenID = &fa.GameAbility.AbilityTokenID
+				}
+
+				err = fc.API.BattleArena.GameAbilityTrigger(abilityTriggerEvent)
+				if err != nil {
+					fc.Log.Err(err).Msg("")
+					return
+				}
+
+				triggeredBy := hcd.Brief()
+				ability := fa.GameAbility.Brief()
+				// broadcast notification
+				if fa.GameAbility.AbilityTokenID == 0 {
+					go fc.API.BroadcastGameNotificationAbility(ctx, GameNotificationTypeFactionAbility, &GameNotificationAbility{
+						User:    triggeredBy,
+						Ability: ability,
+					})
+				} else {
+					warMachine := fc.API.BattleArena.GetWarMachine(fa.GameAbility.WarMachineTokenID).Brief()
+					// broadcast notification
+					go fc.API.BroadcastGameNotificationWarMachineAbility(ctx, &GameNotificationWarMachineAbility{
+						User:       hcd.Brief(),
+						Ability:    fa.GameAbility.Brief(),
+						WarMachine: warMachine,
+					})
+				}
+				// prepare broadcast data
+				targetPriceList := []string{}
+
+				fap.Range(func(key interface{}, gameAbilityPrice interface{}) bool {
+					fa := gameAbilityPrice.(*GameAbilityPrice)
+					hasTriggered := 0
+					if fa.GameAbility.ID == req.Payload.GameAbilityID {
+						hasTriggered = 1
+					}
+					fa.PriceRW.RLock()
+					targetPriceList = append(targetPriceList, fmt.Sprintf("%s_%s_%s_%d", fa.GameAbility.Identity, fa.TargetPrice.String(), fa.CurrentSups.String(), hasTriggered))
+					fa.PriceRW.RUnlock()
+					return true
+				})
+
+				// broadcast if target price is updated
+				if strings.Join(targetPriceList, "|") != "" {
+					// prepare broadcast payload
+					payload := []byte{}
+					payload = append(payload, byte(battle_arena.NetMessageTypeAbilityTargetPriceTick))
+					payload = append(payload, []byte(strings.Join(targetPriceList, "|"))...)
+					go fc.API.NetMessageBus.Send(ctx, messagebus.NetBusKey(fmt.Sprintf("%s:%s", HubKeyFactionAbilityPriceUpdated, factionID)), payload)
+				}
+
 			})
 		}()
-
-		if err != nil {
-			fc.Log.Err(err).Msg("")
-			return
-		}
-
-		// append transaction ref
-
-		if !isReached {
-			// increase current sups and return
-			fa.CurrentSups.Add(&fa.CurrentSups.Int, &req.Payload.Amount.Int)
-			return
-		}
-
-		// otherwise, clear transaction and bump the price
-		fa.TxRefs = []string{}
-
-		// calc min target price (half of last max target price)
-		minTargetPrice := server.BigInt{Int: *big.NewInt(0)}
-		minTargetPrice.Add(&minTargetPrice.Int, &fa.MaxTargetPrice.Int)
-		minTargetPrice.Div(&minTargetPrice.Int, big.NewInt(2))
-
-		// calc current new target price (twice of current target price)
-		newTargetPrice := server.BigInt{Int: *big.NewInt(0)}
-		newTargetPrice.Add(&newTargetPrice.Int, &fa.TargetPrice.Int)
-		newTargetPrice.Mul(&newTargetPrice.Int, big.NewInt(2))
-
-		// reset target price and max target price
-		fa.TargetPrice = server.BigInt{Int: *big.NewInt(0)}
-		fa.MaxTargetPrice = server.BigInt{Int: *big.NewInt(0)}
-		if newTargetPrice.Cmp(&minTargetPrice.Int) >= 0 {
-			fa.TargetPrice.Add(&fa.TargetPrice.Int, &newTargetPrice.Int)
-			fa.MaxTargetPrice.Add(&fa.MaxTargetPrice.Int, &newTargetPrice.Int)
-		} else {
-			fa.TargetPrice.Add(&fa.TargetPrice.Int, &minTargetPrice.Int)
-			fa.MaxTargetPrice.Add(&fa.MaxTargetPrice.Int, &minTargetPrice.Int)
-		}
-
-		// reset current sups to zero
-		fa.CurrentSups = server.BigInt{Int: *big.NewInt(0)}
-
-		// update sups cost of the ability in db
-		fa.GameAbility.SupsCost = fa.TargetPrice.String()
-
-		fap.Store(fa.GameAbility.Identity.String(), fa)
-
-		// store new target price to passport server, if the ability is nft
-		if fa.GameAbility.AbilityTokenID != 0 && fa.GameAbility.WarMachineTokenID != 0 {
-			fc.API.Passport.AbilityUpdateTargetPrice(fa.GameAbility.AbilityTokenID, fa.GameAbility.WarMachineTokenID, fa.TargetPrice.String())
-		} else {
-			err = db.FactionExclusiveAbilitiesSupsCostUpdate(ctx, fc.Conn, fa.GameAbility)
-			if err != nil {
-				fc.Log.Err(err).Msg("")
-				return
-			}
-		}
-
-		// trigger battle arena function to handle game ability
-		abilityTriggerEvent := &server.GameAbilityEvent{
-			IsTriggered:         true,
-			TriggeredByUserID:   &userID,
-			TriggeredByUsername: &hcd.Username,
-			GameClientAbilityID: fa.GameAbility.GameClientAbilityID,
-			WarMachineTokenID:   &fa.GameAbility.WarMachineTokenID,
-		}
-
-		if fa.GameAbility.AbilityTokenID == 0 {
-			abilityTriggerEvent.GameAbilityID = &fa.GameAbility.ID
-		} else {
-			abilityTriggerEvent.AbilityTokenID = &fa.GameAbility.AbilityTokenID
-		}
-
-		err = fc.API.BattleArena.GameAbilityTrigger(abilityTriggerEvent)
-		if err != nil {
-			fc.Log.Err(err).Msg("")
-			return
-		}
-
-		triggeredBy := hcd.Brief()
-		ability := fa.GameAbility.Brief()
-		// broadcast notification
-		if fa.GameAbility.AbilityTokenID == 0 {
-			go fc.API.BroadcastGameNotificationAbility(ctx, GameNotificationTypeFactionAbility, &GameNotificationAbility{
-				User:    triggeredBy,
-				Ability: ability,
-			})
-		} else {
-			warMachine := fc.API.BattleArena.GetWarMachine(fa.GameAbility.WarMachineTokenID).Brief()
-			// broadcast notification
-			go fc.API.BroadcastGameNotificationWarMachineAbility(ctx, &GameNotificationWarMachineAbility{
-				User:       hcd.Brief(),
-				Ability:    fa.GameAbility.Brief(),
-				WarMachine: warMachine,
-			})
-		}
-		// prepare broadcast data
-		targetPriceList := []string{}
-
-		fap.Range(func(key interface{}, gameAbilityPrice interface{}) bool {
-			fa := gameAbilityPrice.(*GameAbilityPrice)
-			hasTriggered := 0
-			if fa.GameAbility.ID == req.Payload.GameAbilityID {
-				hasTriggered = 1
-			}
-			targetPriceList = append(targetPriceList, fmt.Sprintf("%s_%s_%s_%d", fa.GameAbility.Identity, fa.TargetPrice.String(), fa.CurrentSups.String(), hasTriggered))
-			return true
-		})
-
-		// broadcast if target price is updated
-		if strings.Join(targetPriceList, "|") != "" {
-			// prepare broadcast payload
-			payload := []byte{}
-			payload = append(payload, byte(battle_arena.NetMessageTypeAbilityTargetPriceTick))
-			payload = append(payload, []byte(strings.Join(targetPriceList, "|"))...)
-			go fc.API.NetMessageBus.Send(ctx, messagebus.NetBusKey(fmt.Sprintf("%s:%s", HubKeyFactionAbilityPriceUpdated, factionID)), payload)
-		}
 	})
 
 	reply(true)
@@ -344,7 +351,7 @@ func (fc *FactionControllerWS) FactionAbilitiesUpdateSubscribeHandler(ctx contex
 	}
 
 	hcd := fc.API.UserMap.GetUserDetail(wsc)
-	if hcd != nil {
+	if hcd == nil {
 		return "", "", terror.Error(fmt.Errorf("User not found"))
 	}
 
@@ -391,7 +398,7 @@ func (fc *FactionControllerWS) WarMachineAbilitiesUpdateSubscribeHandler(ctx con
 	}
 
 	hcd := fc.API.UserMap.GetUserDetail(wsc)
-	if hcd != nil {
+	if hcd == nil {
 		return "", "", terror.Error(fmt.Errorf("User not found"))
 	}
 

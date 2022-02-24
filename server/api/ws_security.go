@@ -34,7 +34,7 @@ func (api *API) SecureUserFactionCommand(key hub.HubCommandKey, fn hub.HubComman
 		}
 
 		hcd := api.UserMap.GetUserDetail(wsc)
-		if hcd != nil {
+		if hcd == nil {
 			return terror.Error(fmt.Errorf("User not found"))
 		}
 
@@ -93,7 +93,7 @@ func (api *API) SecureUserFactionSubscribeCommand(key hub.HubCommandKey, fn ...H
 		}
 
 		hcd := api.UserMap.GetUserDetail(wsc)
-		if hcd != nil {
+		if hcd == nil {
 			return true
 		}
 		return hcd.FactionID.IsNil()
@@ -181,7 +181,7 @@ func (api *API) NetSecureUserFactionSubscribeCommand(key hub.HubCommandKey, fn .
 		}
 
 		hcd := api.UserMap.GetUserDetail(wsc)
-		if hcd != nil {
+		if hcd == nil {
 			return true
 		}
 		return hcd.FactionID.IsNil()

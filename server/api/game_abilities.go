@@ -19,11 +19,15 @@ import (
 //type PricePool map[server.GameAbilityID]*GameAbilityPrice
 
 type GameAbilityPrice struct {
-	GameAbility    *server.GameAbility
+	GameAbility *server.GameAbility
+
+	PriceRW        sync.RWMutex
 	MaxTargetPrice server.BigInt
 	TargetPrice    server.BigInt
 	CurrentSups    server.BigInt
-	TxRefs         []string
+
+	TxMX   sync.Mutex
+	TxRefs []string
 }
 
 type GameAbilityPoolTicker struct {
@@ -77,11 +81,14 @@ func (api *API) abilityTargetPriceUpdater(factionID server.FactionID, conn *pgxp
 
 			// in order to reduce price by half after 5 minutes
 			// reduce target price by 0.9772 on every tick
+			fa.PriceRW.Lock()
+			defer fa.PriceRW.Unlock()
 			fa.TargetPrice.Mul(&fa.TargetPrice.Int, big.NewInt(9772))
 			fa.TargetPrice.Div(&fa.TargetPrice.Int, big.NewInt(10000))
 
 			if fa.TargetPrice.Cmp(minPrice) <= 0 {
 				fa.TargetPrice = server.BigInt{Int: *minPrice}
+				fap.Store(fa.GameAbility.Identity.String(), fa)
 			}
 
 			hasTriggered := 0
@@ -110,10 +117,11 @@ func (api *API) abilityTargetPriceUpdater(factionID server.FactionID, conn *pgxp
 
 				// reset current sups to zero
 				fa.CurrentSups = server.BigInt{Int: *big.NewInt(0)}
-
-				fa.TxRefs = []string{}
-
 				fap.Store(fa.GameAbility.Identity.String(), fa)
+
+				fa.TxMX.Lock()
+				fa.TxRefs = []string{}
+				fa.TxMX.Unlock()
 
 				abilityTriggerEvent := &server.GameAbilityEvent{
 					IsTriggered:         true,
@@ -187,7 +195,9 @@ func (api *API) abilityTargetPriceBroadcast(factionID server.FactionID) {
 		targetPriceList := []string{}
 		fap.Range(func(key interface{}, gameAbilityPrice interface{}) bool {
 			fa := gameAbilityPrice.(*GameAbilityPrice)
+			fa.PriceRW.RLock()
 			targetPriceList = append(targetPriceList, fmt.Sprintf("%s_%s_%s_%d", fa.GameAbility.Identity, fa.TargetPrice.String(), fa.CurrentSups.String(), 0))
+			fa.PriceRW.RUnlock()
 			return true
 		})
 		targetPrice := strings.Join(targetPriceList, "|")
@@ -254,8 +264,6 @@ func (api *API) startGameAbilityPoolTicker(ctx context.Context, factionID server
 
 			fa.TargetPrice.Add(&fa.TargetPrice.Int, initialTargetPrice)
 			fa.MaxTargetPrice.Add(&fa.MaxTargetPrice.Int, initialTargetPrice)
-			fmt.Println(ability.Title)
-			fmt.Println(ability.Identity)
 			fap.Store(ability.Identity.String(), fa)
 		}
 		// broadcast abilities

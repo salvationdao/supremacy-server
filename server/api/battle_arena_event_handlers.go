@@ -199,7 +199,6 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 		}
 
 		for _, topFaction := range resp.Payload.TopSupsContributeFactions {
-			fmt.Println(topFaction.Label)
 			api.battleEndInfo.TopSupsContributeFactions = append(api.battleEndInfo.TopSupsContributeFactions, topFaction.Brief())
 		}
 
