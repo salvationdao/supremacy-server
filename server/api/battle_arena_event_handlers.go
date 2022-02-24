@@ -9,6 +9,7 @@ import (
 	"server/battle_arena"
 	"server/db"
 	"server/passport"
+	"sync"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -94,15 +95,22 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 
 	for factionID := range api.factionMap {
 		go func(factionID server.FactionID) {
-			// get initial abilities
-			initialAbilities, err := db.FactionExclusiveAbilitiesByFactionID(api.ctx, api.BattleArena.Conn, factionID)
-			if err != nil {
-				api.Log.Err(err).Msg("Failed to query initial faction abilities")
-				return
-			}
-			for _, ab := range initialAbilities {
-				ab.Title = "FACTION_WIDE"
-				ab.CurrentSups = "0"
+
+			initialAbilities := []*server.GameAbility{}
+
+			if factionID != server.ZaibatsuFactionID {
+				// get initial abilities
+				initialAbilities, err = db.FactionExclusiveAbilitiesByFactionID(api.ctx, api.BattleArena.Conn, factionID)
+				if err != nil {
+					api.Log.Err(err).Msg("Failed to query initial faction abilities")
+					return
+				}
+
+				for _, ab := range initialAbilities {
+					ab.Identity = uuid.Must(uuid.NewV4())
+					ab.Title = "FACTION_WIDE"
+					ab.CurrentSups = "0"
+				}
 			}
 
 			for _, wm := range ed.BattleArena.WarMachines {
@@ -111,8 +119,9 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 				}
 
 				for _, ability := range wm.Abilities {
-					initialAbilities = append(initialAbilities, &server.GameAbility{
+					wmAbility := &server.GameAbility{
 						ID:                  server.GameAbilityID(uuid.Must(uuid.NewV4())), // generate a uuid for frontend to track sups contribution
+						Identity:            ability.Identity,
 						GameClientAbilityID: byte(ability.GameClientID),
 						ImageUrl:            ability.Image,
 						Description:         ability.Description,
@@ -124,7 +133,13 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 						WarMachineTokenID:   wm.TokenID,
 						ParticipantID:       &wm.ParticipantID,
 						Title:               wm.Name,
-					})
+					}
+					// if it is zaibatsu faction ability set id back
+					if ability.GameClientID == 11 {
+						wmAbility.ID = ability.ID
+					}
+					initialAbilities = append(initialAbilities, wmAbility)
+
 				}
 			}
 
@@ -165,22 +180,35 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 	}
 
 	// get the user who spend most sups during the battle from passport
-	topUsers, topFactions, err := api.Passport.TopSupsContributorsGet(ctx, ed.BattleArena.StartedAt, time.Now())
+	wg := sync.WaitGroup{}
+
+	wg.Add(1)
+	err = api.Passport.TopSupsContributorsGet(ctx, ed.BattleArena.StartedAt, time.Now(), func(msg []byte) {
+		resp := &passport.SupremacyTopSupsContributorResponse{}
+		err := json.Unmarshal(msg, resp)
+		if err != nil {
+			return
+		}
+
+		for _, topUser := range resp.Payload.TopSupsContributors {
+			if !topUser.FactionID.IsNil() {
+				topUser.Faction = api.factionMap[topUser.FactionID]
+			}
+			api.battleEndInfo.TopSupsContributors = append(api.battleEndInfo.TopSupsContributors, topUser.Brief())
+		}
+
+		for _, topFaction := range resp.Payload.TopSupsContributeFactions {
+			fmt.Println(topFaction.Label)
+			api.battleEndInfo.TopSupsContributeFactions = append(api.battleEndInfo.TopSupsContributeFactions, topFaction.Brief())
+		}
+
+		wg.Done()
+	})
+	wg.Wait()
+
 	if err != nil {
 		api.Log.Err(err).Msg("Failed to get top sups contributors from passport")
 		return
-	}
-
-	for _, topUser := range topUsers {
-		if !topUser.FactionID.IsNil() {
-			topUser.Faction = api.factionMap[topUser.FactionID]
-		}
-		api.battleEndInfo.TopSupsContributors = append(api.battleEndInfo.TopSupsContributors, topUser.Brief())
-	}
-
-	for _, topFaction := range topFactions {
-		fmt.Println(topFaction.Label)
-		api.battleEndInfo.TopSupsContributeFactions = append(api.battleEndInfo.TopSupsContributeFactions, topFaction.Brief())
 	}
 
 	// get most frequent trigger ability user
@@ -202,23 +230,29 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 	}
 
 	if len(userIDs) > 0 {
-		users, err := api.Passport.UsersGet(ctx, userIDs)
-		if err != nil {
-			api.Log.Err(err).Msg("Failed to get user from passport server")
-			return
-		}
+		wg := sync.WaitGroup{}
+		wg.Add(1)
+		api.Passport.UsersGet(userIDs, func(msg []byte) {
+			defer wg.Done()
+			resp := &passport.GetUsers{}
+			err := json.Unmarshal(msg, resp)
+			if err != nil {
+				return
+			}
 
-		for _, userID := range userIDs {
-			for _, user := range users {
-				if user.ID == userID {
-					if !user.FactionID.IsNil() {
-						user.Faction = api.factionMap[user.FactionID]
+			for _, userID := range userIDs {
+				for _, user := range resp.Users {
+					if user.ID == userID {
+						if !user.FactionID.IsNil() {
+							user.Faction = api.factionMap[user.FactionID]
+						}
+						api.battleEndInfo.MostFrequentAbilityExecutors = append(api.battleEndInfo.MostFrequentAbilityExecutors, user.Brief())
+						break
 					}
-					api.battleEndInfo.MostFrequentAbilityExecutors = append(api.battleEndInfo.MostFrequentAbilityExecutors, user.Brief())
-					break
 				}
 			}
-		}
+		})
+		wg.Wait()
 	}
 
 	// set up rest of battle end info

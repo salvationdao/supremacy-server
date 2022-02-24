@@ -48,11 +48,11 @@ func (ev *Events) AddEventHandler(event Event, handler EventHandler) {
 	ev.Unlock()
 }
 
-func (ev *Events) Trigger(ctx context.Context, event Event, payload []byte) {
+func (ev *Events) Trigger(event Event, payload []byte) {
 	go func() {
 		ev.RLock()
 		for _, fn := range ev.events[event] {
-			fn(ctx, payload)
+			fn(context.Background(), payload)
 		}
 		ev.RUnlock()
 	}()

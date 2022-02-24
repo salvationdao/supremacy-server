@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -9,13 +10,13 @@ import (
 	"server"
 	"server/battle_arena"
 	"server/db"
+	"server/passport"
 	"sort"
 	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/log_helpers"
-	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-software/tickle"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
@@ -29,17 +30,18 @@ func (api *API) startSpoilOfWarBroadcaster(ctx context.Context) {
 	spoilOfWarBroadcasterLogger := log_helpers.NamedLogger(api.Log, "Spoil of War Broadcaster").Level(zerolog.Disabled)
 	spoilOfWarBroadcaster := tickle.New("Spoil of War Broadcaster", 5, func() (int, error) {
 
-		amount, err := api.Passport.GetSpoilOfWarAmount(context.Background())
-		if err != nil {
-			return http.StatusInternalServerError, terror.Error(err)
-		}
+		api.Passport.GetSpoilOfWarAmount(func(msg []byte) {
+			resp := &passport.SpoilOfWarAmountRequest{}
+			err := json.Unmarshal(msg, resp)
+			if err != nil {
+				return
+			}
+			payload := []byte{}
+			payload = append(payload, byte(battle_arena.NetMessageTypeSpoilOfWarTick))
+			payload = append(payload, []byte(resp.Amount)...)
 
-		// prepare payload
-		payload := []byte{}
-		payload = append(payload, byte(battle_arena.NetMessageTypeSpoilOfWarTick))
-		payload = append(payload, []byte(amount)...)
-
-		api.NetMessageBus.Send(ctx, messagebus.NetBusKey(HubKeySpoilOfWarUpdated), payload)
+			api.NetMessageBus.Send(ctx, messagebus.NetBusKey(HubKeySpoilOfWarUpdated), payload)
+		})
 
 		return http.StatusOK, nil
 	})
@@ -350,7 +352,8 @@ type VoteAbility struct {
 type FactionUserVoteMap map[server.FactionID]map[server.UserID]int64
 
 type FactionTransactions struct {
-	Transactions []server.Transaction
+	Transactions []string
+	sync.Mutex
 }
 
 type FactionTotalVote struct {
@@ -406,7 +409,7 @@ func (api *API) StartVotingCycle(ctx context.Context, factions []*server.Faction
 
 	// initial faction transactions
 	factionTransactions := &FactionTransactions{
-		Transactions: []server.Transaction{},
+		Transactions: []string{},
 	}
 
 	// initialise faction total vote
@@ -531,6 +534,8 @@ func (api *API) stopVotingCycle(ctx context.Context) []*server.BattleUserVote {
 			api.votePriceSystem.VotePriceUpdater.Stop()
 		}
 
+		fts.Lock()
+		defer fts.Unlock()
 		if len(fts.Transactions) > 0 {
 			// commit the transactions
 			api.Passport.ReleaseTransactions(context.Background(), fts.Transactions)
@@ -610,6 +615,8 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 					vct.AbilityRightResultBroadcaster.Stop()
 				}
 
+				fts.Lock()
+				defer fts.Unlock()
 				// if no vote, enter next vote win phase
 				if len(fts.Transactions) == 0 {
 					api.votePhaseChecker.Phase = VotePhaseNextVoteWin
@@ -636,8 +643,7 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 				// 	api.Log.Err(err).Msg("failed to check transactions")
 				// 	return
 				// }
-
-				fts.Transactions = []server.Transaction{}
+				fts.Transactions = []string{}
 
 				// parse ability vote result
 				type voter struct {
