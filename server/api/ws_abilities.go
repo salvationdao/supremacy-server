@@ -63,7 +63,7 @@ func (fc *FactionControllerWS) UserWarMachineQueueUpdatedSubscribeHandler(ctx co
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
-	hcd, err := fc.API.getClientDetailFromChannel(wsc)
+	hcd, err := fc.API.ClientDetailMap.GetDetail(wsc)
 	if err != nil {
 		return "", "", terror.Error(err)
 	}
@@ -139,7 +139,7 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 	}
 
 	// get client detail
-	hcd, err := fc.API.getClientDetailFromChannel(wsc)
+	hcd, err := fc.API.ClientDetailMap.GetDetail(wsc)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -342,7 +342,7 @@ func (fc *FactionControllerWS) FactionAbilitiesUpdateSubscribeHandler(ctx contex
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
-	hcd, err := fc.API.getClientDetailFromChannel(wsc)
+	hcd, err := fc.API.ClientDetailMap.GetDetail(wsc)
 	if err != nil {
 		return "", "", terror.Error(err)
 	}
@@ -389,7 +389,7 @@ func (fc *FactionControllerWS) WarMachineAbilitiesUpdateSubscribeHandler(ctx con
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
-	hcd, err := fc.API.getClientDetailFromChannel(wsc)
+	hcd, err := fc.API.ClientDetailMap.GetDetail(wsc)
 	if err != nil {
 		return "", "", terror.Error(err)
 	}

@@ -77,7 +77,6 @@ type BattleEndInfo struct {
 	TopSupsContributeFactions    []*server.FactionBrief    `json:"topSupsContributeFactions"`
 	TopSupsContributors          []*server.UserBrief       `json:"topSupsContributors"`
 	MostFrequentAbilityExecutors []*server.UserBrief       `json:"mostFrequentAbilityExecutors"`
-	// BattleEvents                 []*BattleEventRecord      `json:"battleEvents"`
 }
 
 // API server
@@ -102,12 +101,12 @@ type API struct {
 	liveSupsSpend map[server.FactionID]chan func(*LiveVotingData)
 
 	// client channels
-	hubClientDetailLock sync.Mutex
-	hubClientDetail     chan func(map[*hub.Client]*server.User)
-	onlineClientMap     chan *ClientUpdate
+	onlineClientMap chan *ClientUpdate
 
+	// client detail
+	ClientDetailMap *ClientDetailMap
 	// ring check auth
-	ringCheckAuthChan chan func(RingCheckAuthMap)
+	RingCheckAuthMap *RingCheckAuthMap
 
 	// voting channels
 	votePhaseChecker *VotePhaseChecker
@@ -118,7 +117,7 @@ type API struct {
 	gameAbilityPool map[server.FactionID]func(func(*sync.Map))
 
 	// viewer live count
-	viewerLiveCount chan func(ViewerLiveCount, ViewerIDMap)
+	viewerLiveCount *ViewerLiveCount
 
 	battleEndInfo *BattleEndInfo
 }
@@ -171,19 +170,17 @@ func NewAPI(
 		liveSupsSpend: make(map[server.FactionID]chan func(*LiveVotingData)),
 
 		// channel for handling hub client
-		hubClientDetailLock: sync.Mutex{},
-		hubClientDetail:     make(chan func(map[*hub.Client]*server.User)),
-		onlineClientMap:     make(chan *ClientUpdate),
+		onlineClientMap: make(chan *ClientUpdate),
 
+		// client detail
+		ClientDetailMap: NewClientDetailMap(),
 		// ring check auth
-		ringCheckAuthChan: make(chan func(RingCheckAuthMap)),
+		RingCheckAuthMap: NewRingCheckMap(),
 
 		// game ability pool
 		gameAbilityPool: make(map[server.FactionID]func(func(*sync.Map))),
 
 		// faction viewer count
-		viewerLiveCount: make(chan func(ViewerLiveCount, ViewerIDMap)),
-
 		battleEndInfo: &BattleEndInfo{},
 	}
 
@@ -304,12 +301,9 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 	// listen to the client online and action channel
 	go api.ClientListener()
 
-	go api.startClientTracker()
+	// set viewer live count
+	api.viewerLiveCount = NewViewerLiveCount(api.NetMessageBus, factions)
 
-	// start twitch jwt auth listener
-	go api.startAuthRignCheckListener()
-
-	go api.initialiseViewerLiveCount(ctx, factions)
 	go api.startSpoilOfWarBroadcaster(ctx)
 
 	// build faction map for main server
@@ -387,8 +381,8 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 // Event handlers
 func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client, clients hub.ClientsList, ch hub.TriggerChan) {
 	// initialise a client detail channel if not on the list
-	go api.hubClientDetailRegister(wsc)
-	go api.viewerLiveCountAdd(server.FactionID(uuid.Nil))
+	go api.ClientDetailMap.Register(wsc)
+	go api.viewerLiveCount.Add(server.FactionID(uuid.Nil))
 
 	// broadcast current game state
 	go func() {
@@ -419,13 +413,13 @@ func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client, clients
 }
 
 func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, clients hub.ClientsList, ch hub.TriggerChan) {
-	currentUser, err := api.getClientDetailFromChannel(wsc)
+	currentUser, err := api.ClientDetailMap.GetDetail(wsc)
 	if err != nil {
 		api.Log.Err(err).Msg("failed to get client detail")
 	}
 
 	if currentUser != nil {
-		go api.viewerLiveCountRemove(currentUser.FactionID)
+		go api.viewerLiveCount.Remove(currentUser.FactionID)
 	}
 
 	// set client offline
@@ -513,7 +507,7 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 	}
 
 	// clean up the client detail map
-	api.hubClientDetailRemove(wsc)
+	api.ClientDetailMap.Remove(wsc)
 }
 
 // Run the API service

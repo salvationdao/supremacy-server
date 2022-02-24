@@ -165,7 +165,7 @@ listenLoop:
 				}
 
 				// record viewer id
-				api.viewerIDRecord(userID)
+				api.viewerLiveCount.IDRecord(userID)
 			}
 
 			clientMultiplierMap[userID].clients[msg.Client] = true

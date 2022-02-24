@@ -58,7 +58,7 @@ func NewVoteController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *VoteC
 const HubKeyFactionVotePrice hub.HubCommandKey = "FACTION:VOTE:PRICE"
 
 func (vc *VoteControllerWS) FactionVotePrice(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	hcd, err := vc.API.getClientDetailFromChannel(wsc)
+	hcd, err := vc.API.ClientDetailMap.GetDetail(wsc)
 	if err != nil {
 		return terror.Error(terror.ErrForbidden)
 	}
@@ -103,7 +103,7 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 		return terror.Error(terror.ErrInvalidInput, "Invalid vote amount")
 	}
 
-	hcd, err := vc.API.getClientDetailFromChannel(wsc)
+	hcd, err := vc.API.ClientDetailMap.GetDetail(wsc)
 	if err != nil {
 		return terror.Error(terror.ErrForbidden)
 	}
@@ -241,7 +241,7 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 		return terror.Error(terror.ErrInvalidInput)
 	}
 
-	hcd, err := vc.API.getClientDetailFromChannel(wsc)
+	hcd, err := vc.API.ClientDetailMap.GetDetail(wsc)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -455,7 +455,7 @@ const HubKeyFactionAbilityPriceUpdated hub.HubCommandKey = "FACTION:ABILITY:PRIC
 
 func (vc *VoteControllerWS) FactionAbilityPriceUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.NetBusKey, error) {
 	// get user faction
-	hcd, err := vc.API.getClientDetailFromChannel(wsc)
+	hcd, err := vc.API.ClientDetailMap.GetDetail(wsc)
 	if err != nil {
 		return "", terror.Error(err)
 	}
@@ -469,7 +469,7 @@ const HubKeyFactionVotePriceUpdated hub.HubCommandKey = "FACTION:VOTE:PRICE:UPDA
 
 func (vc *VoteControllerWS) FactionVotePriceUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.NetBusKey, error) {
 	// get user faction
-	hcd, err := vc.API.getClientDetailFromChannel(wsc)
+	hcd, err := vc.API.ClientDetailMap.GetDetail(wsc)
 	if err != nil {
 		return "", terror.Error(err)
 	}

@@ -70,57 +70,29 @@ func (api *API) PassportUserUpdatedHandler(ctx context.Context, payload []byte) 
 		return
 	}
 
-	api.Hub.Clients(func(clients hub.ClientsList) {
-		for client, ok := range clients {
-			if !ok || client.Identifier() != req.Payload.User.ID.String() {
-				continue
-			}
+	hcds := api.ClientDetailMap.GetDetailsByUserID(req.Payload.User.ID)
+	for _, hcd := range hcds {
+		hcd.detail.FirstName = req.Payload.User.FirstName
+		hcd.detail.LastName = req.Payload.User.LastName
+		hcd.detail.Username = req.Payload.User.Username
+		hcd.detail.AvatarID = req.Payload.User.AvatarID
 
-			// update client detail
-			detailChan := make(chan *server.User)
-
-			select {
-			case api.hubClientDetail <- func(m map[*hub.Client]*server.User) {
-				hcd, ok := m[client]
-				if !ok {
-					detailChan <- nil
-					api.Log.Err(fmt.Errorf("client not found")).Msg("Failed to send auth response back to twitch client")
-					return
-				}
-				hcd.FirstName = req.Payload.User.FirstName
-				hcd.LastName = req.Payload.User.LastName
-				hcd.Username = req.Payload.User.Username
-				hcd.AvatarID = req.Payload.User.AvatarID
-
-				if hcd.FactionID == req.Payload.User.FactionID {
-					detailChan <- nil
-					return
-				}
-
-				// if faction id has changed, send the updated user
-				go api.viewerLiveCountSwap(hcd.FactionID, req.Payload.User.FactionID)
-				hcd.FactionID = req.Payload.User.FactionID
-
-				if !req.Payload.User.FactionID.IsNil() {
-					hcd.Faction = api.factionMap[req.Payload.User.FactionID]
-				}
-
-				detailChan <- hcd
-
-			}:
-				hcd := <-detailChan
-
-				if hcd != nil {
-					go client.Send(broadcastData)
-				}
-
-			case <-time.After(10 * time.Second):
-				api.Log.Err(errors.New("timeout on channel send exceeded"))
-				panic("get Client Detail From Channel")
-
-			}
+		if hcd.detail.FactionID == req.Payload.User.FactionID {
+			api.ClientDetailMap.Update(hcd.hubClient, hcd.detail)
+			go hcd.hubClient.Send(broadcastData)
+			return
 		}
-	})
+
+		go api.viewerLiveCount.Swap(hcd.detail.FactionID, req.Payload.User.FactionID)
+		hcd.detail.FactionID = req.Payload.User.FactionID
+
+		if !req.Payload.User.FactionID.IsNil() {
+			hcd.detail.Faction = api.factionMap[hcd.detail.FactionID]
+		}
+
+		api.ClientDetailMap.Update(hcd.hubClient, hcd.detail)
+		go hcd.hubClient.Send(broadcastData)
+	}
 }
 
 type PassportUserEnlistFactionRequest struct {
@@ -138,8 +110,6 @@ func (api *API) PassportUserEnlistFactionHandler(ctx context.Context, payload []
 		api.Log.Err(err).Msg("error unmarshalling passport user updated handler request")
 		return
 	}
-
-	uid := req.Payload.UserID.String()
 
 	// prepare broadcast data
 	faction := api.factionMap[req.Payload.FactionID]
@@ -164,34 +134,14 @@ func (api *API) PassportUserEnlistFactionHandler(ctx context.Context, payload []
 		return
 	}
 
-	api.Hub.Clients(func(clients hub.ClientsList) {
-		for client, ok := range clients {
-			if !ok || client.Identifier() != uid {
-				continue
-			}
-
-			select {
-			case api.hubClientDetail <- func(m map[*hub.Client]*server.User) {
-				hcd, ok := m[client]
-				if !ok {
-					api.Log.Err(fmt.Errorf("client not found"))
-					return
-				}
-
-				go api.viewerLiveCountSwap(hcd.FactionID, req.Payload.FactionID)
-				// update client facton id
-				hcd.FactionID = req.Payload.FactionID
-				hcd.Faction = api.factionMap[hcd.FactionID]
-			}:
-				go client.Send(broadcastData)
-
-			case <-time.After(10 * time.Second):
-				api.Log.Err(errors.New("timeout on channel send exceeded"))
-				panic("Passport User Enlist Faction Handler")
-
-			}
-		}
-	})
+	hcds := api.ClientDetailMap.GetDetailsByUserID(user.ID)
+	for _, hcd := range hcds {
+		go api.viewerLiveCount.Swap(hcd.detail.FactionID, req.Payload.FactionID)
+		hcd.detail.FactionID = req.Payload.FactionID
+		hcd.detail.Faction = api.factionMap[hcd.detail.FactionID]
+		api.ClientDetailMap.Update(hcd.hubClient, hcd.detail)
+		go hcd.hubClient.Send(broadcastData)
+	}
 }
 
 type BattleQueueJoinRequest struct {
@@ -631,84 +581,60 @@ func (api *API) AuthRingCheckHandler(ctx context.Context, payload []byte) {
 		return
 	}
 
-	select {
-	case api.ringCheckAuthChan <- func(rcam RingCheckAuthMap) {
-		client, ok := rcam[req.Payload.GameserverSessionID]
-		if !ok {
-			api.Log.Err(fmt.Errorf("client not found")).Msg("client does not exist in ring check map")
-			return
-		}
-
-		// set user id
-		client.SetIdentifier(req.Payload.User.ID.String())
-
-		// set user online
-		api.ClientOnline(client)
-
-		// clean up ring check key
-		delete(rcam, req.Payload.GameserverSessionID)
-
-		select {
-		case api.hubClientDetail <- func(m map[*hub.Client]*server.User) {
-			if client == nil {
-				api.Log.Err(fmt.Errorf("client not found")).Msg("client is nil somehow")
-				return
-			}
-
-			hcd, ok := m[client]
-			if !ok {
-				api.Log.Err(fmt.Errorf("client not found")).Msg("client not found in hub client detail map")
-				return
-			}
-
-			hcd.Username = req.Payload.User.Username
-			hcd.FirstName = req.Payload.User.FirstName
-			hcd.LastName = req.Payload.User.LastName
-			hcd.AvatarID = req.Payload.User.AvatarID
-			hcd.ID = req.Payload.User.ID
-
-			if hcd.FactionID != req.Payload.User.FactionID {
-				go api.viewerLiveCountSwap(hcd.FactionID, req.Payload.User.FactionID)
-				hcd.FactionID = req.Payload.User.FactionID
-
-				if !hcd.FactionID.IsNil() {
-					hcd.Faction = api.factionMap[hcd.FactionID]
-				}
-			}
-
-			// send user id and faction id back to twitch ui client
-			resp := struct {
-				Key           hub.HubCommandKey `json:"key"`
-				TransactionID string            `json:"transactionID"`
-				Payload       interface{}       `json:"payload"`
-			}{
-				Key:           HubKeyUserSubscribe,
-				TransactionID: "authRingCheck",
-				Payload:       hcd,
-			}
-
-			b, err := json.Marshal(resp)
-			if err != nil {
-				api.Hub.Log.Err(err).Errorf("send: issue marshalling resp")
-				return
-			}
-
-			go client.Send(b)
-
-			// send request to passport server to upgrade the gamebar user
-			api.Passport.UpgradeUserConnection(req.Payload.SessionID)
-		}:
-
-		case <-time.After(10 * time.Second):
-			api.Log.Err(errors.New("timeout on channel send exceeded"))
-			panic("set up client detail")
-		}
-
-	}:
-
-	case <-time.After(10 * time.Second):
-		api.Log.Err(errors.New("timeout on channel send exceeded!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"))
-		panic("get client from ring check auth chan")
-
+	client, err := api.RingCheckAuthMap.Check(req.Payload.GameserverSessionID)
+	if err != nil {
+		api.Log.Err(err)
+		return
 	}
+
+	client.SetIdentifier(req.Payload.User.ID.String())
+
+	go api.ClientOnline(client)
+
+	// get client detail
+	user, err := api.ClientDetailMap.GetDetail(client)
+	if err != nil {
+		api.Log.Err(err)
+		return
+	}
+
+	user.Username = req.Payload.User.Username
+	user.FirstName = req.Payload.User.FirstName
+	user.LastName = req.Payload.User.LastName
+	user.AvatarID = req.Payload.User.AvatarID
+	user.ID = req.Payload.User.ID
+
+	if user.FactionID != req.Payload.User.FactionID {
+		go api.viewerLiveCount.Swap(user.FactionID, req.Payload.User.FactionID)
+		user.FactionID = req.Payload.User.FactionID
+
+		if !user.FactionID.IsNil() {
+			user.Faction = api.factionMap[user.FactionID]
+		}
+	}
+
+	// update client detail
+	go api.ClientDetailMap.Update(client, user)
+
+	// send user id and faction id back to twitch ui client
+	resp := struct {
+		Key           hub.HubCommandKey `json:"key"`
+		TransactionID string            `json:"transactionID"`
+		Payload       interface{}       `json:"payload"`
+	}{
+		Key:           HubKeyUserSubscribe,
+		TransactionID: "authRingCheck",
+		Payload:       user,
+	}
+
+	b, err := json.Marshal(resp)
+	if err != nil {
+		api.Hub.Log.Err(err).Errorf("send: issue marshalling resp")
+		return
+	}
+
+	go client.Send(b)
+
+	// send request to passport server to upgrade the gamebar user
+	api.Passport.UpgradeUserConnection(req.Payload.SessionID)
 }

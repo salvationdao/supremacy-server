@@ -160,7 +160,7 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 	// stop all the tickles in voting cycle
 	go api.stopGameAbilityPoolTicker()
 
-	battleViewers := api.viewerIDRead()
+	battleViewers := api.viewerLiveCount.IDRead()
 	// increment users' view battle count
 	err := db.UserBattleViewUpsert(ctx, api.Conn, battleViewers)
 	if err != nil {
@@ -317,7 +317,7 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 				if userID.IsNil() {
 					return
 				}
-				hcd, err := api.getClientDetailFromChannel(c)
+				hcd, err := api.ClientDetailMap.GetDetail(c)
 				if err != nil || hcd.FactionID.IsNil() {
 					return
 				}

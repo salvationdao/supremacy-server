@@ -32,7 +32,7 @@ func (api *API) SecureUserFactionCommand(key hub.HubCommandKey, fn hub.HubComman
 			return terror.Error(terror.ErrForbidden)
 		}
 
-		hcd, err := api.getClientDetailFromChannel(wsc)
+		hcd, err := api.ClientDetailMap.GetDetail(wsc)
 		if err != nil {
 			return terror.Error(err)
 		}
@@ -91,7 +91,7 @@ func (api *API) SecureUserFactionSubscribeCommand(key hub.HubCommandKey, fn ...H
 			return true
 		}
 
-		hcd, err := api.getClientDetailFromChannel(wsc)
+		hcd, err := api.ClientDetailMap.GetDetail(wsc)
 		if err != nil {
 			return true
 		}
@@ -179,7 +179,7 @@ func (api *API) NetSecureUserFactionSubscribeCommand(key hub.HubCommandKey, fn .
 			return true
 		}
 
-		hcd, err := api.getClientDetailFromChannel(wsc)
+		hcd, err := api.ClientDetailMap.GetDetail(wsc)
 		if err != nil {
 			return true
 		}

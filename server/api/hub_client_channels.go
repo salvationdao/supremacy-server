@@ -2,257 +2,202 @@ package api
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"net/http"
 	"server"
 	"server/battle_arena"
+	"sync"
 	"time"
 
 	"github.com/gofrs/uuid"
-	"github.com/ninja-software/log_helpers"
 	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-software/tickle"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
-	"github.com/rs/zerolog"
 )
 
 /********************
 * Viewer Live Count *
 ********************/
 
-type ViewerLiveCount map[server.FactionID]*ViewerCount
-
-type ViewerCount struct {
-	Count int64
+type ViewerLiveCount struct {
+	FactionViewerMap sync.Map
+	ViewerIDMap      sync.Map
+	NetMessageBus    *messagebus.NetBus
 }
 
-// used for tracking user
-type ViewerIDMap map[server.UserID]bool
-
-func (api *API) initialiseViewerLiveCount(ctx context.Context, factions []*server.Faction) {
-	vlc := make(ViewerLiveCount)
-
-	vim := make(ViewerIDMap)
-
-	vlc[server.FactionID(uuid.Nil)] = &ViewerCount{
-		Count: 0,
+func NewViewerLiveCount(nmb *messagebus.NetBus, factions []*server.Faction) *ViewerLiveCount {
+	vlc := &ViewerLiveCount{
+		FactionViewerMap: sync.Map{},
+		ViewerIDMap:      sync.Map{},
 	}
+
+	vlc.FactionViewerMap.Store(server.FactionID(uuid.Nil), 0)
 
 	for _, f := range factions {
-		vlc[f.ID] = &ViewerCount{
-			Count: 0,
-		}
+		vlc.FactionViewerMap.Store(f.ID, 0)
 	}
-
-	// declare live sups spend broadcaster
-	tickle.MinDurationOverride = true
-	viewLiveCountBroadcasterLogger := log_helpers.NamedLogger(api.Log, "View Live Count Broadcaster").Level(zerolog.Disabled)
-	viewLiveCountBroadcaster := tickle.New("Live Sups spend Broadcaster", 1, func() (int, error) {
-		// prepare payload
-		payload := []byte{}
-		payload = append(payload, byte(battle_arena.NetMessageTypeViewerLiveCountTick))
-		payload = append(payload, []byte(fmt.Sprintf(
-			"B_%d|R_%d|Z_%d|O_%d",
-			vlc[server.BostonCyberneticsFactionID].Count,
-			vlc[server.RedMountainFactionID].Count,
-			vlc[server.ZaibatsuFactionID].Count,
-			vlc[server.FactionID(uuid.Nil)].Count,
-		))...)
-
-		api.NetMessageBus.Send(ctx, messagebus.NetBusKey(HubKeyViewerLiveCountUpdated), payload)
-
-		return http.StatusOK, nil
-	})
-	viewLiveCountBroadcaster.Log = &viewLiveCountBroadcasterLogger
-	viewLiveCountBroadcaster.Start()
 
 	go func() {
-		for fn := range api.viewerLiveCount {
-			fn(vlc, vim)
+		for {
+			// broadcast to users
+			payload := []byte{}
+			payload = append(payload, byte(battle_arena.NetMessageTypeViewerLiveCountTick))
+
+			bc, _ := vlc.FactionViewerMap.Load(server.BostonCyberneticsFactionID)
+			rc, _ := vlc.FactionViewerMap.Load(server.RedMountainFactionID)
+			zc, _ := vlc.FactionViewerMap.Load(server.ZaibatsuFactionID)
+			oc, _ := vlc.FactionViewerMap.Load(server.FactionID(uuid.Nil))
+			payload = append(payload, []byte(fmt.Sprintf(
+				"B_%d|R_%d|Z_%d|O_%d",
+				bc.(int),
+				rc.(int),
+				zc.(int),
+				oc.(int),
+			))...)
+
+			nmb.Send(context.Background(), messagebus.NetBusKey(HubKeyViewerLiveCountUpdated), payload)
+
+			// sleep one second
+			time.Sleep(1 * time.Second)
 		}
 	}()
+
+	return vlc
 }
 
-func (api *API) viewerLiveCountAdd(factionID server.FactionID) {
-	select {
-	case api.viewerLiveCount <- func(vlc ViewerLiveCount, vim ViewerIDMap) {
-		vlc[factionID].Count += 1
-	}:
-
-	case <-time.After(10 * time.Second):
-		api.Log.Err(errors.New("timeout on channel send exceeded"))
-		panic("viewer Live Count Add")
-	}
+func (vcm *ViewerLiveCount) Add(factionID server.FactionID) {
+	c, _ := vcm.FactionViewerMap.Load(factionID)
+	c = c.(int) + 1
+	vcm.FactionViewerMap.Store(factionID, c)
 }
 
-func (api *API) viewerLiveCountRemove(factionID server.FactionID) {
-	select {
-	case api.viewerLiveCount <- func(vlc ViewerLiveCount, vim ViewerIDMap) {
-		vlc[factionID].Count -= 1
-	}:
-
-	case <-time.After(10 * time.Second):
-		api.Log.Err(errors.New("timeout on channel send exceeded"))
-		panic("viewer Live Count Remove")
-	}
-
+func (vcm *ViewerLiveCount) Remove(factionID server.FactionID) {
+	c, _ := vcm.FactionViewerMap.Load(factionID)
+	c = c.(int) - 1
+	vcm.FactionViewerMap.Store(factionID, c)
 }
 
-func (api *API) viewerLiveCountSwap(oldFactionID, newFactionID server.FactionID) {
-	select {
-	case api.viewerLiveCount <- func(vlc ViewerLiveCount, vim ViewerIDMap) {
-		vlc[oldFactionID].Count -= 1
-		vlc[newFactionID].Count += 1
-	}:
+func (vcm *ViewerLiveCount) Swap(oldFactionID, newFactionID server.FactionID) {
+	c, _ := vcm.FactionViewerMap.Load(oldFactionID)
+	c = c.(int) - 1
+	vcm.FactionViewerMap.Store(oldFactionID, c)
 
-	case <-time.After(10 * time.Second):
-		api.Log.Err(errors.New("timeout on channel send exceeded"))
-		panic("viewer Live Count Swap")
-	}
+	c, _ = vcm.FactionViewerMap.Load(newFactionID)
+	c = c.(int) + 1
+	vcm.FactionViewerMap.Store(newFactionID, c)
 }
 
-func (api *API) viewerIDRecord(userID server.UserID) {
-	select {
-	case api.viewerLiveCount <- func(vlc ViewerLiveCount, vim ViewerIDMap) {
-		vim[userID] = true
-	}:
-
-	case <-time.After(10 * time.Second):
-		api.Log.Err(errors.New("timeout on channel send exceeded"))
-		panic("viewer ID Record")
-	}
+func (vcm *ViewerLiveCount) IDRecord(userID server.UserID) {
+	vcm.ViewerIDMap.Store(userID, true)
 }
 
-func (api *API) viewerIDRead() []server.UserID {
-	userIDChan := make(chan []server.UserID)
-	select {
-	case api.viewerLiveCount <- func(vlc ViewerLiveCount, vim ViewerIDMap) {
-		userIDs := []server.UserID{}
-		for userID := range vim {
-			userIDs = append(userIDs, userID)
-			delete(vim, userID)
-		}
-		userIDChan <- userIDs
-	}:
-		return <-userIDChan
+func (vcm *ViewerLiveCount) IDRead() []server.UserID {
+	userIDs := []server.UserID{}
+	vcm.ViewerIDMap.Range(func(key interface{}, value interface{}) bool {
+		userIDs = append(userIDs, key.(server.UserID))
 
-	case <-time.After(10 * time.Second):
-		api.Log.Err(errors.New("timeout on channel send exceeded"))
-		panic("viewer ID Read")
+		vcm.ViewerIDMap.Delete(key)
+		return true
+	})
 
-	}
+	return userIDs
 }
 
 /**********************
 * Auth Ring Check Map *
 **********************/
 
-type RingCheckAuthMap map[string]*hub.Client
+type RingCheckAuthMap struct {
+	sync.Map
+}
 
-func (api *API) startAuthRignCheckListener() {
+func NewRingCheckMap() *RingCheckAuthMap {
+	return &RingCheckAuthMap{
+		sync.Map{},
+	}
+}
 
-	ringCheckAuthMap := make(RingCheckAuthMap)
+func (rcm *RingCheckAuthMap) Record(key string, cl *hub.Client) {
+	rcm.Store(key, cl)
+}
 
-	go func() {
-		for fn := range api.ringCheckAuthChan {
-			fn(ringCheckAuthMap)
-		}
-	}()
+func (rcm *RingCheckAuthMap) Check(key string) (*hub.Client, error) {
+	value, ok := rcm.LoadAndDelete(key)
+	if !ok {
+		return nil, terror.Error(fmt.Errorf("hub client not found"))
+	}
 
+	return value.(*hub.Client), nil
 }
 
 /********************
 * Client Detail Map *
 ********************/
 
-// startClientTracker track client state
-func (api *API) startClientTracker() {
-	wscMap := make(map[*hub.Client]*server.User)
-	go func() {
-		for fn := range api.hubClientDetail {
-			fn(wscMap)
-		}
-	}()
+type ClientDetailMap struct {
+	sync.Map
 }
 
-// register client detail channel
-func (api *API) hubClientDetailRegister(wsc *hub.Client) {
-	hcd := &server.User{
-		FactionID: server.FactionID(uuid.Nil),
-	}
-
-	select {
-	case api.hubClientDetail <- func(m map[*hub.Client]*server.User) {
-		if _, ok := m[wsc]; !ok {
-			m[wsc] = hcd
-		}
-	}:
-
-	case <-time.After(10 * time.Second):
-		api.Log.Err(errors.New("timeout on channel send exceeded"))
-		panic("hub Client Detail Register")
-
+func NewClientDetailMap() *ClientDetailMap {
+	return &ClientDetailMap{
+		sync.Map{},
 	}
 }
 
-// remove hub client channel
-func (api *API) hubClientDetailRemove(wsc *hub.Client) {
-	select {
-	case api.hubClientDetail <- func(m map[*hub.Client]*server.User) {
-		delete(m, wsc)
-	}:
-
-	case <-time.After(10 * time.Second):
-		api.Log.Err(errors.New("timeout on channel send exceeded"))
-		panic("hub Client Detail Remove")
-
-	}
+func (cdm *ClientDetailMap) Register(wsc *hub.Client) {
+	user := &server.User{}
+	cdm.Store(wsc, user)
 }
 
-// getClientDetailFromChannel return a client detail from client detail channel
-func (api *API) getClientDetailFromChannel(wsc *hub.Client) (*server.User, error) {
-	detailChan := make(chan *server.User)
-	select {
-	case api.hubClientDetail <- func(m map[*hub.Client]*server.User) {
-		hcd, ok := m[wsc]
-		if !ok {
-			detailChan <- nil
-			return
-		}
-
-		detailChan <- hcd
-
-	}:
-		result := <-detailChan
-
-		if result == nil {
-			return nil, terror.Error(terror.ErrInvalidInput, "Error - Current hub client is not on the map")
-		}
-		return result, nil
-
-	case <-time.After(10 * time.Second):
-		api.Log.Err(errors.New("timeout on channel send exceeded"))
-		panic("get Client Detail From Channel")
-
+func (cdm *ClientDetailMap) GetDetail(wsc *hub.Client) (*server.User, error) {
+	user, ok := cdm.Load(wsc)
+	if !ok {
+		return nil, terror.Error(fmt.Errorf("client not found"))
 	}
+
+	return user.(*server.User), nil
 }
 
-// getClientDetailFromUserID return hub client detail by given user id
-func (api *API) getClientDetailFromUserID(userID server.UserID) (*server.User, error) {
-	// get winner username
-	for _, wsc := range api.Hub.FindClients(func(usersClients *hub.Client) bool {
-		return usersClients.Identifier() == userID.String()
-	}) {
-		// get all the hub client instance
-		clientDetail, err := api.getClientDetailFromChannel(wsc)
-		if err != nil {
-			continue
+func (cdm *ClientDetailMap) Update(wsc *hub.Client, us *server.User) {
+	cdm.Store(wsc, us)
+}
+
+func (cdm *ClientDetailMap) Remove(wsc *hub.Client) {
+	cdm.Delete(wsc)
+}
+
+func (cdm *ClientDetailMap) GetDetailByUserID(userID server.UserID) (*server.User, error) {
+	var user *server.User
+	cdm.Range(func(key, value interface{}) bool {
+		u := value.(*server.User)
+		if u.ID == userID {
+			user = u
+			return false
 		}
+		return true
+	})
 
-		return clientDetail, nil
+	if user == nil {
+		return nil, terror.Error(fmt.Errorf("user not found"))
 	}
+	return user, nil
+}
 
-	return nil, terror.Error(fmt.Errorf("No hub client found"))
+type ClientDetail struct {
+	hubClient *hub.Client
+	detail    *server.User
+}
+
+func (cdm *ClientDetailMap) GetDetailsByUserID(userID server.UserID) []*ClientDetail {
+	clients := []*ClientDetail{}
+	cdm.Range(func(key, value interface{}) bool {
+		u := value.(*server.User)
+		if u.ID == userID {
+			clients = append(clients, &ClientDetail{
+				hubClient: key.(*hub.Client),
+				detail:    u,
+			})
+		}
+		return true
+	})
+	return clients
 }

@@ -756,7 +756,7 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 
 			// at the end of location select
 			case VotePhaseLocationSelect:
-				currentUser, err := api.getClientDetailFromUserID(vw.List[0])
+				currentUser, err := api.ClientDetailMap.GetDetailByUserID(vw.List[0])
 				if err != nil {
 					api.Log.Err(err).Msg("failed to get user")
 				}
@@ -875,7 +875,7 @@ func (api *API) getNextWinnerDetail(vw *VoteWinner) (*server.User, server.UserID
 	for len(vw.List) > 0 {
 		winnerClientID := vw.List[0]
 		// broadcast winner notification
-		hubClientDetail, err := api.getClientDetailFromUserID(winnerClientID)
+		hubClientDetail, err := api.ClientDetailMap.GetDetailByUserID(winnerClientID)
 		if err != nil {
 			// pop out current user, if the user is not online
 			if len(vw.List) > 1 {

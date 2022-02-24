@@ -99,7 +99,7 @@ func (gc *GameControllerWS) FactionWarMachineQueueUpdateSubscribeHandler(ctx con
 	}
 
 	// get hub client
-	hcd, err := gc.API.getClientDetailFromChannel(wsc)
+	hcd, err := gc.API.ClientDetailMap.GetDetail(wsc)
 	if err != nil {
 		return "", "", terror.Error(err)
 	}
