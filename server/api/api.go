@@ -381,8 +381,8 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 // Event handlers
 func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client, clients hub.ClientsList, ch hub.TriggerChan) {
 	// initialise a client detail channel if not on the list
-	go api.ClientDetailMap.Register(wsc)
-	go api.viewerLiveCount.Add(server.FactionID(uuid.Nil))
+	api.ClientDetailMap.Register(wsc)
+	api.viewerLiveCount.Add(server.FactionID(uuid.Nil))
 
 	// broadcast current game state
 	go func() {
@@ -419,7 +419,7 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 	}
 
 	if currentUser != nil {
-		go api.viewerLiveCount.Remove(currentUser.FactionID)
+		api.viewerLiveCount.Remove(currentUser.FactionID)
 	}
 
 	// set client offline

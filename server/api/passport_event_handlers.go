@@ -18,25 +18,6 @@ import (
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 )
 
-// type PassportUserOnlineStatusRequest struct {
-// 	Key     passport.Event `json:"key"`
-// 	Payload struct {
-// 		UserID server.UserID `json:"userID"`
-// 		Status bool          `json:"status"`
-// 	} `json:"payload"`
-// }
-
-// func (api *API) PassportUserOnlineStatusHandler(ctx context.Context, payload []byte) {
-// 	req := &PassportUserOnlineStatusRequest{}
-// 	err := json.Unmarshal(payload, req)
-// 	if err != nil {
-// 		api.Log.Err(err).Msg("error unmarshalling passport user online handler request")
-// 	}
-
-// 	// TODO: maybe add a difference between passport online and gameserver online
-// 	api.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserOnlineStatus, req.Payload.UserID)), req.Payload.Status)
-// }
-
 type PassportUserUpdatedRequest struct {
 	Key     passport.Event `json:"key"`
 	Payload struct {
@@ -83,7 +64,7 @@ func (api *API) PassportUserUpdatedHandler(ctx context.Context, payload []byte) 
 			return
 		}
 
-		go api.viewerLiveCount.Swap(hcd.detail.FactionID, req.Payload.User.FactionID)
+		api.viewerLiveCount.Swap(hcd.detail.FactionID, req.Payload.User.FactionID)
 		hcd.detail.FactionID = req.Payload.User.FactionID
 
 		if !req.Payload.User.FactionID.IsNil() {
@@ -136,7 +117,7 @@ func (api *API) PassportUserEnlistFactionHandler(ctx context.Context, payload []
 
 	hcds := api.ClientDetailMap.GetDetailsByUserID(user.ID)
 	for _, hcd := range hcds {
-		go api.viewerLiveCount.Swap(hcd.detail.FactionID, req.Payload.FactionID)
+		api.viewerLiveCount.Swap(hcd.detail.FactionID, req.Payload.FactionID)
 		hcd.detail.FactionID = req.Payload.FactionID
 		hcd.detail.Faction = api.factionMap[hcd.detail.FactionID]
 		api.ClientDetailMap.Update(hcd.hubClient, hcd.detail)
@@ -605,7 +586,7 @@ func (api *API) AuthRingCheckHandler(ctx context.Context, payload []byte) {
 	user.ID = req.Payload.User.ID
 
 	if user.FactionID != req.Payload.User.FactionID {
-		go api.viewerLiveCount.Swap(user.FactionID, req.Payload.User.FactionID)
+		api.viewerLiveCount.Swap(user.FactionID, req.Payload.User.FactionID)
 		user.FactionID = req.Payload.User.FactionID
 
 		if !user.FactionID.IsNil() {
