@@ -159,6 +159,7 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 
 		faIface, ok := fap.Load(req.Payload.GameAbilityID)
 		if !ok {
+			fmt.Println("11111111111111111111111111111111111111111111111111111111111111")
 			fc.Log.Err(fmt.Errorf("error doesn't exist"))
 			return
 		}
@@ -314,7 +315,7 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 			if fa.GameAbility.ID == req.Payload.GameAbilityID {
 				hasTriggered = 1
 			}
-			targetPriceList = append(targetPriceList, fmt.Sprintf("%s_%s_%s_%d", fa.GameAbility.ID, fa.TargetPrice.String(), fa.CurrentSups.String(), hasTriggered))
+			targetPriceList = append(targetPriceList, fmt.Sprintf("%s_%s_%s_%d", fa.GameAbility.Identity, fa.TargetPrice.String(), fa.CurrentSups.String(), hasTriggered))
 			return true
 		})
 

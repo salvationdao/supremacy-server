@@ -6,6 +6,7 @@ import (
 	"server"
 	"server/battle_arena"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -18,22 +19,26 @@ import (
 * Viewer Live Count *
 ********************/
 
+type ViewerCount struct {
+	Count int64
+}
+
 type ViewerLiveCount struct {
-	FactionViewerMap sync.Map
+	FactionViewerMap map[server.FactionID]*ViewerCount
 	ViewerIDMap      sync.Map
 	NetMessageBus    *messagebus.NetBus
 }
 
 func NewViewerLiveCount(nmb *messagebus.NetBus, factions []*server.Faction) *ViewerLiveCount {
 	vlc := &ViewerLiveCount{
-		FactionViewerMap: sync.Map{},
+		FactionViewerMap: make(map[server.FactionID]*ViewerCount),
 		ViewerIDMap:      sync.Map{},
 	}
 
-	vlc.FactionViewerMap.Store(server.FactionID(uuid.Nil), 0)
+	vlc.FactionViewerMap[server.FactionID(uuid.Nil)] = &ViewerCount{0}
 
 	for _, f := range factions {
-		vlc.FactionViewerMap.Store(f.ID, 0)
+		vlc.FactionViewerMap[f.ID] = &ViewerCount{0}
 	}
 
 	go func() {
@@ -42,16 +47,12 @@ func NewViewerLiveCount(nmb *messagebus.NetBus, factions []*server.Faction) *Vie
 			payload := []byte{}
 			payload = append(payload, byte(battle_arena.NetMessageTypeViewerLiveCountTick))
 
-			bc, _ := vlc.FactionViewerMap.Load(server.BostonCyberneticsFactionID)
-			rc, _ := vlc.FactionViewerMap.Load(server.RedMountainFactionID)
-			zc, _ := vlc.FactionViewerMap.Load(server.ZaibatsuFactionID)
-			oc, _ := vlc.FactionViewerMap.Load(server.FactionID(uuid.Nil))
 			payload = append(payload, []byte(fmt.Sprintf(
 				"B_%d|R_%d|Z_%d|O_%d",
-				bc.(int),
-				rc.(int),
-				zc.(int),
-				oc.(int),
+				vlc.FactionViewerMap[server.BostonCyberneticsFactionID].Count,
+				vlc.FactionViewerMap[server.RedMountainFactionID].Count,
+				vlc.FactionViewerMap[server.ZaibatsuFactionID].Count,
+				vlc.FactionViewerMap[server.FactionID(uuid.Nil)].Count,
 			))...)
 
 			nmb.Send(context.Background(), messagebus.NetBusKey(HubKeyViewerLiveCountUpdated), payload)
@@ -65,25 +66,24 @@ func NewViewerLiveCount(nmb *messagebus.NetBus, factions []*server.Faction) *Vie
 }
 
 func (vcm *ViewerLiveCount) Add(factionID server.FactionID) {
-	c, _ := vcm.FactionViewerMap.Load(factionID)
-	c = c.(int) + 1
-	vcm.FactionViewerMap.Store(factionID, c)
+	if fvm, ok := vcm.FactionViewerMap[factionID]; ok {
+		atomic.AddInt64(&fvm.Count, 1)
+	}
 }
 
 func (vcm *ViewerLiveCount) Remove(factionID server.FactionID) {
-	c, _ := vcm.FactionViewerMap.Load(factionID)
-	c = c.(int) - 1
-	vcm.FactionViewerMap.Store(factionID, c)
+	if fvm, ok := vcm.FactionViewerMap[factionID]; ok {
+		atomic.AddInt64(&fvm.Count, -1)
+	}
 }
 
 func (vcm *ViewerLiveCount) Swap(oldFactionID, newFactionID server.FactionID) {
-	c, _ := vcm.FactionViewerMap.Load(oldFactionID)
-	c = c.(int) - 1
-	vcm.FactionViewerMap.Store(oldFactionID, c)
-
-	c, _ = vcm.FactionViewerMap.Load(newFactionID)
-	c = c.(int) + 1
-	vcm.FactionViewerMap.Store(newFactionID, c)
+	if fvm, ok := vcm.FactionViewerMap[oldFactionID]; ok {
+		atomic.AddInt64(&fvm.Count, -1)
+	}
+	if fvm, ok := vcm.FactionViewerMap[newFactionID]; ok {
+		atomic.AddInt64(&fvm.Count, 1)
+	}
 }
 
 func (vcm *ViewerLiveCount) IDRecord(userID server.UserID) {

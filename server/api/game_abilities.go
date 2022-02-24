@@ -150,7 +150,7 @@ func (api *API) abilityTargetPriceUpdater(factionID server.FactionID, conn *pgxp
 			}
 
 			// record current price
-			targetPriceList = append(targetPriceList, fmt.Sprintf("%s_%s_%s_%d", fa.GameAbility.ID, fa.TargetPrice.String(), fa.CurrentSups.String(), hasTriggered))
+			targetPriceList = append(targetPriceList, fmt.Sprintf("%s_%s_%s_%d", fa.GameAbility.Identity, fa.TargetPrice.String(), fa.CurrentSups.String(), hasTriggered))
 
 			// store new target price to passport server, if the ability is nft
 			if fa.GameAbility.AbilityTokenID != 0 && fa.GameAbility.WarMachineTokenID != 0 {
@@ -187,7 +187,7 @@ func (api *API) abilityTargetPriceBroadcast(factionID server.FactionID) {
 		targetPriceList := []string{}
 		fap.Range(func(key interface{}, gameAbilityPrice interface{}) bool {
 			fa := gameAbilityPrice.(*GameAbilityPrice)
-			targetPriceList = append(targetPriceList, fmt.Sprintf("%s_%s_%s_%d", fa.GameAbility.ID, fa.TargetPrice.String(), fa.CurrentSups.String(), 0))
+			targetPriceList = append(targetPriceList, fmt.Sprintf("%s_%s_%s_%d", fa.GameAbility.Identity, fa.TargetPrice.String(), fa.CurrentSups.String(), 0))
 			return true
 		})
 		targetPrice := strings.Join(targetPriceList, "|")
@@ -254,7 +254,8 @@ func (api *API) startGameAbilityPoolTicker(ctx context.Context, factionID server
 
 			fa.TargetPrice.Add(&fa.TargetPrice.Int, initialTargetPrice)
 			fa.MaxTargetPrice.Add(&fa.MaxTargetPrice.Int, initialTargetPrice)
-
+			fmt.Println(ability.Title)
+			fmt.Println(ability.Identity)
 			fap.Store(ability.Identity, fa)
 		}
 		// broadcast abilities
