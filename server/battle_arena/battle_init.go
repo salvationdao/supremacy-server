@@ -2,12 +2,10 @@ package battle_arena
 
 import (
 	"context"
-	"fmt"
 	"server"
 	"server/db"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/ninja-software/terror/v2"
 
 	"github.com/gofrs/uuid"
@@ -19,33 +17,15 @@ func (ba *BattleArena) InitNextBattle() error {
 	// switch battle state to LOBBY
 	ba.battle.State = server.StateLobby
 
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	spew.Dump(ba.battle.State)
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-
 	// send new battle details to game client
 
 	// generate a new battle event
 	ba.battle.ID = server.BattleID(uuid.Must(uuid.NewV4()))
 
-	spew.Dump(ba.battle.WarMachineDestroyedRecordMap)
-
 	// clean up war machine destroyed record cache
 	for key := range ba.battle.WarMachineDestroyedRecordMap {
 		delete(ba.battle.WarMachineDestroyedRecordMap, key)
 	}
-
-	fmt.Println("23454395834905784095743875243895723047324857309")
 
 	// assign a random map
 	gameMap, err := db.GameMapGetRandom(ba.ctx, ba.Conn)
@@ -60,30 +40,13 @@ func (ba *BattleArena) InitNextBattle() error {
 	ba.battle.WarMachines = []*server.WarMachineMetadata{}
 
 	for len(ba.BattleQueueMap) == 0 {
-		fmt.Println("NO FACTION STUFF111111111111111111111111111111111111111111111111111111111111")
 		ba.Log.Info().Msg("No factions, trying again in 2 seconds")
 		time.Sleep(2 * time.Second)
 	}
 	mechsPerFaction := gameMap.MaxSpawns / 3
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println("fjdsijfksdjfkadsjflkasdjf;lidsajf;klasdjfoiadsjfoiajdsfijads;flijdsa;oifjsad;of")
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
 	for factionID := range ba.BattleQueueMap {
 		ba.battle.WarMachines = append(ba.battle.WarMachines, ba.GetBattleWarMachineFromQueue(factionID, mechsPerFaction)...)
 	}
-
-	fmt.Println("EXit dfasdlkfjlkdsjfkldsajglkadsjg;lkdsajgk;lasdjglk;adsjkg;as")
 
 	// get Zaibatsu faction abilities to insert
 	zaibatsuAbility, err := db.GetZaibatsuFactionAbility(context.Background(), ba.Conn)
@@ -112,10 +75,8 @@ func (ba *BattleArena) InitNextBattle() error {
 			}
 		}
 
-		fmt.Println("Enter Asset!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 		// set war machine lock request
 		err := ba.passport.AssetLock(ba.ctx, hashes)
-		fmt.Println("Enter Assetdfslkjsdlkfjdslkjfkdslfj;lksdafjk;ldsajgfk;lsadjf;lksdjf;lkasjf;")
 		if err != nil {
 			ba.Log.Err(err).Msg("Failed to lock assets")
 			// TODO: figure out how to handle this
@@ -146,29 +107,10 @@ func (ba *BattleArena) InitNextBattle() error {
 		cancel:        cancel,
 	}
 
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	spew.Dump(gameMessage)
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-
 	// NOTE: this will potentially lock game server if game client is disconnected
 	// 		 so wrap it in a go routine
 	go func() {
-
-		fmt.Println("fired to game client 4395345983475987349857438957230572348572439857984035789432750")
 		ba.send <- gameMessage
-		fmt.Println("fired 44444444444444444444444444444444444")
 	}()
 	return nil
 }
