@@ -246,6 +246,7 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 
 	errChan := make(chan error)
 	vc.API.votingCycle <- func(va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+		fmt.Println("get 1")
 		// check voting phase
 		vc.API.votePhaseChecker.RLock()
 		if vc.API.votePhaseChecker.Phase != VotePhaseLocationSelect {
@@ -257,15 +258,16 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 
 		// check winner user id
 		if vw.List[0] != userID {
+
 			errChan <- terror.Error(terror.ErrForbidden)
+
 			return
 		}
 
 		// record ability animation
-		// NOTE: potentially lock game server if game client disconnected
-
 		selectedX := req.Payload.XIndex
 		selectedY := req.Payload.YIndex
+
 		err = vc.API.BattleArena.GameAbilityTrigger(&server.GameAbilityEvent{
 			GameAbilityID:       &va.FactionAbilityMap[hcd.FactionID].ID,
 			IsTriggered:         true,
@@ -275,6 +277,7 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 			TriggeredOnCellX:    &selectedX,
 			TriggeredOnCellY:    &selectedY,
 		})
+
 		if err != nil {
 			errChan <- terror.Error(err)
 			return

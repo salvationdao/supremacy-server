@@ -197,7 +197,7 @@ func (um *UserMultiplier) Voted(userID server.UserID) {
 
 func (um *UserMultiplier) PickedLocation(userID server.UserID) {
 	userIDStr := userID.String()
-	um.CurrentMaps.ApplauseMap.Store(userIDStr, &MultiplierAction{
+	um.CurrentMaps.PickedLocationMap.Store(userIDStr, &MultiplierAction{
 		MultiplierValue: 50,
 		Expiry:          time.Now().Add(time.Minute * 30),
 	})
