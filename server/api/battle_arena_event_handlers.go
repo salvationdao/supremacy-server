@@ -91,7 +91,8 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 	})
 
 	// start voting cycle, initial intro time equal: (mech_count * 3 + 7) seconds
-	introSecond := len(warMachines)*3 + 7
+	// introSecond := len(warMachines)*3 + 7
+	introSecond := 0
 
 	for factionID := range api.factionMap {
 		go func(factionID server.FactionID) {
@@ -160,7 +161,7 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 	// stop all the tickles in voting cycle
 	go api.stopGameAbilityPoolTicker()
 
-	battleViewers := api.viewerIDRead()
+	battleViewers := api.viewerLiveCount.IDRead()
 	// increment users' view battle count
 	err := db.UserBattleViewUpsert(ctx, api.Conn, battleViewers)
 	if err != nil {
@@ -198,7 +199,6 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 		}
 
 		for _, topFaction := range resp.Payload.TopSupsContributeFactions {
-			fmt.Println(topFaction.Label)
 			api.battleEndInfo.TopSupsContributeFactions = append(api.battleEndInfo.TopSupsContributeFactions, topFaction.Brief())
 		}
 
@@ -317,8 +317,8 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 				if userID.IsNil() {
 					return
 				}
-				hcd, err := api.getClientDetailFromChannel(c)
-				if err != nil || hcd.FactionID.IsNil() {
+				hcd := api.UserMap.GetUserDetail(c)
+				if hcd == nil || hcd.FactionID.IsNil() {
 					return
 				}
 

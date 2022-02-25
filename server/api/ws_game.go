@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"server"
 	"server/battle_arena"
@@ -99,26 +98,20 @@ func (gc *GameControllerWS) FactionWarMachineQueueUpdateSubscribeHandler(ctx con
 	}
 
 	// get hub client
-	hcd, err := gc.API.getClientDetailFromChannel(wsc)
-	if err != nil {
+	hcd := gc.API.UserMap.GetUserDetail(wsc)
+	if hcd == nil {
 		return "", "", terror.Error(err)
 	}
 
 	if battleQueue, ok := gc.API.BattleArena.BattleQueueMap[hcd.FactionID]; ok {
-		select {
-		case battleQueue <- func(wmql *battle_arena.WarMachineQueuingList) {
+		battleQueue <- func(wmql *battle_arena.WarMachineQueuingList) {
 			maxLength := 5
 			if len(wmql.WarMachines) < maxLength {
 				maxLength = len(wmql.WarMachines)
 			}
 
 			reply(wmql.WarMachines[:maxLength])
-		}:
-		case <-time.After(10 * time.Second):
-			gc.API.Log.Err(errors.New("timeout on channel send exceeded"))
-			panic("Client Battle Reward Update")
 		}
-
 	}
 
 	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionWarMachineQueueUpdated, hcd.FactionID))

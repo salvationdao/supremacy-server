@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -290,24 +289,6 @@ func calVotePrice(globalTotalVote int64, currentVotePrice server.BigInt, current
 * Live Voting Broadcast *
 ************************/
 
-type LiveVotingData struct {
-	TotalVote server.BigInt
-}
-
-func (api *API) startLiveVotingDataTicker(factionID server.FactionID) {
-	// live voting data broadcast
-	liveSupsSpend := &LiveVotingData{
-		TotalVote: server.BigInt{Int: *big.NewInt(0)},
-	}
-
-	// start channel
-	go func() {
-		for fn := range api.liveSupsSpend[factionID] {
-			fn(liveSupsSpend)
-		}
-	}()
-}
-
 /***************
 * Voting Cycle *
 ***************/
@@ -336,10 +317,7 @@ const (
 **************/
 
 type VotePhaseChecker struct {
-	Phase VotePhase
-}
-
-type VoteStage struct {
+	sync.RWMutex
 	Phase   VotePhase `json:"phase"`
 	EndTime time.Time `json:"endTime"`
 }
@@ -387,11 +365,9 @@ type UserVoteMap map[server.UserID]int64
 func (api *API) StartVotingCycle(ctx context.Context, factions []*server.Faction) {
 	// initialise current vote stage
 	api.votePhaseChecker = &VotePhaseChecker{
-		Phase: VotePhaseHold,
-	}
-	voteStage := &VoteStage{
-		Phase:   VotePhaseHold,
-		EndTime: time.Now(),
+		sync.RWMutex{},
+		VotePhaseHold,
+		time.Now(),
 	}
 
 	// initialise vote ability
@@ -446,7 +422,7 @@ func (api *API) StartVotingCycle(ctx context.Context, factions []*server.Faction
 	// start channel
 	go func() {
 		for fn := range api.votingCycle {
-			fn(voteStage, voteAbility, factionUserVoteMap, factionTransactions, factionTotalVote, voteWinner, tickers, UserVoteMap)
+			fn(voteAbility, factionUserVoteMap, factionTransactions, factionTotalVote, voteWinner, tickers, UserVoteMap)
 		}
 	}()
 }
@@ -494,33 +470,30 @@ func (api *API) abilityRightResultBroadcasterFactory(ctx context.Context, ftv *F
 
 // startVotingCycle start voting cycle tickles
 func (api *API) startVotingCycle(ctx context.Context, introSecond int) {
-	select {
-	case api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+
+	api.votingCycle <- func(va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+		api.votePhaseChecker.Lock()
 		api.votePhaseChecker.Phase = VotePhaseWaitMechIntro
-		vs.Phase = VotePhaseWaitMechIntro
-		vs.EndTime = time.Now().Add(time.Duration(introSecond) * time.Second)
+		api.votePhaseChecker.EndTime = time.Now().Add(time.Duration(introSecond) * time.Second)
+		api.votePhaseChecker.Unlock()
 
 		// broadcast current stage to faction users
-		go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+		go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
 
 		vct.VotingStageListener.Start()
-	}:
-
-	case <-time.After(10 * time.Second):
-		api.Log.Err(errors.New("timeout on channel send exceeded"))
-		panic("Client Battle Reward Update")
 	}
 }
 
 // stopVotingCycle pause voting cycle tickles
 func (api *API) stopVotingCycle(ctx context.Context) []*server.BattleUserVote {
 	userVoteCountsChan := make(chan []*server.BattleUserVote)
-	select {
-	case api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+	api.votingCycle <- func(va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+		api.votePhaseChecker.Lock()
 		api.votePhaseChecker.Phase = VotePhaseHold
-		vs.Phase = VotePhaseHold
+		api.votePhaseChecker.Unlock()
+
 		// broadcast current stage to faction users
-		go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+		go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
 
 		if vct.VotingStageListener.NextTick != nil {
 			vct.VotingStageListener.Stop()
@@ -554,28 +527,27 @@ func (api *API) stopVotingCycle(ctx context.Context) []*server.BattleUserVote {
 		}
 
 		userVoteCountsChan <- uvcs
-	}:
-
-		return <-userVoteCountsChan
-
-	case <-time.After(10 * time.Second):
-		api.Log.Err(errors.New("timeout on channel send exceeded"))
-		panic("Client Battle Reward Update")
 	}
+
+	return <-userVoteCountsChan
 
 }
 
 // voteStageListenerFactory is the main vote stage handler
 func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error) {
 	return func() (int, error) {
-		select {
-		case api.votingCycle <- func(vs *VoteStage, va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+		api.votingCycle <- func(va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
 			// skip if it does not reach the end time or current phase is TIE
-			if vs.EndTime.After(time.Now()) || vs.Phase == VotePhaseHold || vs.Phase == VotePhaseNextVoteWin {
+			api.votePhaseChecker.RLock()
+			if api.votePhaseChecker.EndTime.After(time.Now()) ||
+				api.votePhaseChecker.Phase == VotePhaseHold ||
+				api.votePhaseChecker.Phase == VotePhaseNextVoteWin {
+				api.votePhaseChecker.RUnlock()
 				return
 			}
+			api.votePhaseChecker.RUnlock()
 
-			switch vs.Phase {
+			switch api.votePhaseChecker.Phase {
 			// at the end of wait mech intro
 			case VotePhaseWaitMechIntro:
 
@@ -596,13 +568,13 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 				}
 
 				// start vote ticker
+				api.votePhaseChecker.Lock()
 				api.votePhaseChecker.Phase = VotePhaseVoteCooldown
-
-				vs.Phase = VotePhaseVoteCooldown
-				vs.EndTime = time.Now().Add(time.Duration(battleAbility.CooldownDurationSecond) * time.Second)
+				api.votePhaseChecker.EndTime = time.Now().Add(time.Duration(battleAbility.CooldownDurationSecond) * time.Second)
+				api.votePhaseChecker.Unlock()
 
 				// broadcast current stage to faction users
-				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
 
 			// at the end of ability right voting
 			case VotePhaseVoteAbilityRight:
@@ -619,10 +591,11 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 				defer fts.Unlock()
 				// if no vote, enter next vote win phase
 				if len(fts.Transactions) == 0 {
+					api.votePhaseChecker.Lock()
 					api.votePhaseChecker.Phase = VotePhaseNextVoteWin
-					vs.Phase = VotePhaseNextVoteWin
+					api.votePhaseChecker.Unlock()
 					// broadcast current stage to faction users
-					go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+					go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
 
 					// stop ticker
 					if vct.VotingStageListener.NextTick != nil {
@@ -633,16 +606,12 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 
 				// HACK: tell user enter location select stage, while committing transactions
 				// commit process may take a noticeale time, so user won't fell the vote system freeze
+				api.votePhaseChecker.Lock()
 				api.votePhaseChecker.Phase = VotePhaseLocationSelect
-				vs.Phase = VotePhaseLocationSelect
-				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+				api.votePhaseChecker.Unlock()
+				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
 
-				// // otherwise, commit the transactions and check the status
-				// checkedTransactions, err := api.Passport.CommitTransactions(ctx, txRefs)
-				// if err != nil {
-				// 	api.Log.Err(err).Msg("failed to check transactions")
-				// 	return
-				// }
+				// otherwise, commit the transactions and check the status
 				fts.Transactions = []string{}
 
 				// parse ability vote result
@@ -655,6 +624,7 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 					totalVotes int64
 					voters     []*voter
 				}
+
 				factionVotes := []*factionVote{}
 				for factionID, factionUserVote := range fuvm {
 					// record faction vote
@@ -669,6 +639,9 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 						if _, ok := uvm[userID]; !ok {
 							uvm[userID] = totalVotes
 						}
+
+						// add total vote to faction vote
+						factionVote.totalVotes += totalVotes
 
 						// append voter to faction vote
 						factionVote.voters = append(factionVote.voters, &voter{
@@ -688,10 +661,11 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 
 				// enter next vote win phase, there is no valid transaction
 				if len(factionVotes) == 0 {
+					api.votePhaseChecker.Lock()
 					api.votePhaseChecker.Phase = VotePhaseNextVoteWin
-					vs.Phase = VotePhaseNextVoteWin
+					api.votePhaseChecker.Unlock()
 					// broadcast current stage to faction users
-					go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+					go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
 
 					// stop ticker
 					if vct.VotingStageListener.NextTick != nil {
@@ -725,20 +699,23 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 					})
 
 					// voting phase change
+					api.votePhaseChecker.Lock()
 					api.votePhaseChecker.Phase = VotePhaseVoteCooldown
-					vs.Phase = VotePhaseVoteCooldown
-					vs.EndTime = time.Now().Add(time.Duration(va.BattleAbility.CooldownDurationSecond) * time.Second)
+					api.votePhaseChecker.EndTime = time.Now().Add(time.Duration(va.BattleAbility.CooldownDurationSecond) * time.Second)
+					api.votePhaseChecker.Unlock()
 
 					// broadcast current stage to faction users
-					go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+					go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
 
 					return
 				}
 
 				// voting phase change
+				api.votePhaseChecker.Lock()
+				endTime := time.Now().Add(LocationSelectDurationSecond * time.Second)
 				api.votePhaseChecker.Phase = VotePhaseLocationSelect
-				vs.Phase = VotePhaseLocationSelect
-				vs.EndTime = time.Now().Add(LocationSelectDurationSecond * time.Second)
+				api.votePhaseChecker.EndTime = endTime
+				api.votePhaseChecker.Unlock()
 
 				go api.BroadcastGameNotificationAbility(ctx, GameNotificationTypeBattleAbility, &GameNotificationAbility{
 					User:    hcd.Brief(),
@@ -748,15 +725,15 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 				// announce winner
 				go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, winnerClientID)), &WinnerSelectAbilityLocation{
 					GameAbility: va.FactionAbilityMap[hcd.FactionID],
-					EndTime:     vs.EndTime,
+					EndTime:     endTime,
 				})
 
 				// broadcast current stage to faction users
-				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
 
 			// at the end of location select
 			case VotePhaseLocationSelect:
-				currentUser, err := api.getClientDetailFromUserID(vw.List[0])
+				currentUser, err := api.UserMap.GetUserDetailByID(vw.List[0])
 				if err != nil {
 					api.Log.Err(err).Msg("failed to get user")
 				}
@@ -793,25 +770,28 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 					}
 
 					// voting phase change
+					api.votePhaseChecker.Lock()
 					api.votePhaseChecker.Phase = VotePhaseVoteCooldown
-					vs.Phase = VotePhaseVoteCooldown
-					vs.EndTime = time.Now().Add(time.Duration(va.BattleAbility.CooldownDurationSecond) * time.Second)
+					api.votePhaseChecker.EndTime = time.Now().Add(time.Duration(va.BattleAbility.CooldownDurationSecond) * time.Second)
+					api.votePhaseChecker.Unlock()
 
 					// broadcast current stage to faction users
-					go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+					go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
 
 					return
 				}
 
 				// otherwise, choose next winner
+				api.votePhaseChecker.Lock()
+				endTime := time.Now().Add(LocationSelectDurationSecond * time.Second)
 				api.votePhaseChecker.Phase = VotePhaseLocationSelect
-				vs.Phase = VotePhaseLocationSelect
-				vs.EndTime = time.Now().Add(LocationSelectDurationSecond * time.Second)
+				api.votePhaseChecker.EndTime = endTime
+				api.votePhaseChecker.Unlock()
 
 				// otherwise announce another winner
 				go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, winnerClientID)), &WinnerSelectAbilityLocation{
 					GameAbility: va.FactionAbilityMap[nextUser.FactionID],
-					EndTime:     vs.EndTime,
+					EndTime:     endTime,
 				})
 
 				// broadcast winner select location
@@ -823,7 +803,7 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 				})
 
 				// broadcast current stage to faction users
-				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
 
 			// at the end of cooldown
 			case VotePhaseVoteCooldown:
@@ -842,12 +822,13 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 				// initialise vote winner
 				vw.List = []server.UserID{}
 
+				api.votePhaseChecker.Lock()
 				api.votePhaseChecker.Phase = VotePhaseVoteAbilityRight
-				vs.Phase = VotePhaseVoteAbilityRight
-				vs.EndTime = time.Now().Add(VoteAbilityRightDurationSecond * time.Second)
+				api.votePhaseChecker.EndTime = time.Now().Add(VoteAbilityRightDurationSecond * time.Second)
+				api.votePhaseChecker.Unlock()
 
 				// broadcast current stage to faction users
-				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vs)
+				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
 
 				// start tracking vote right result
 				if vct.AbilityRightResultBroadcaster.NextTick == nil || vct.AbilityRightResultBroadcaster.NextTick.Before(time.Now()) {
@@ -859,11 +840,6 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 				}
 
 			}
-		}:
-
-		case <-time.After(10 * time.Second):
-			api.Log.Err(errors.New("timeout on channel send exceeded"))
-			panic("vote Stage Listener Factory")
 		}
 
 		return http.StatusOK, nil
@@ -875,7 +851,7 @@ func (api *API) getNextWinnerDetail(vw *VoteWinner) (*server.User, server.UserID
 	for len(vw.List) > 0 {
 		winnerClientID := vw.List[0]
 		// broadcast winner notification
-		hubClientDetail, err := api.getClientDetailFromUserID(winnerClientID)
+		hubClientDetail, err := api.UserMap.GetUserDetailByID(winnerClientID)
 		if err != nil {
 			// pop out current user, if the user is not online
 			if len(vw.List) > 1 {
