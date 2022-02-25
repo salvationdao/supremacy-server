@@ -29,17 +29,16 @@ type ViewerLiveCount struct {
 	NetMessageBus    *messagebus.NetBus
 }
 
-func NewViewerLiveCount(nmb *messagebus.NetBus, factions []*server.Faction) *ViewerLiveCount {
+func NewViewerLiveCount(nmb *messagebus.NetBus) *ViewerLiveCount {
 	vlc := &ViewerLiveCount{
 		FactionViewerMap: make(map[server.FactionID]*ViewerCount),
 		ViewerIDMap:      sync.Map{},
 	}
 
 	vlc.FactionViewerMap[server.FactionID(uuid.Nil)] = &ViewerCount{0}
-
-	for _, f := range factions {
-		vlc.FactionViewerMap[f.ID] = &ViewerCount{0}
-	}
+	vlc.FactionViewerMap[server.RedMountainFactionID] = &ViewerCount{0}
+	vlc.FactionViewerMap[server.BostonCyberneticsFactionID] = &ViewerCount{0}
+	vlc.FactionViewerMap[server.ZaibatsuFactionID] = &ViewerCount{0}
 
 	go func() {
 		for {

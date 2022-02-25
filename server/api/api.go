@@ -215,6 +215,11 @@ func NewAPI(
 		r.Get("/trigger/ability_file_upload", WithError(api.GetFactionData))
 	})
 
+	// set viewer live count
+	api.viewerLiveCount = NewViewerLiveCount(api.NetMessageBus)
+	api.UserMap = NewUserMap(api.viewerLiveCount)
+	api.UserMultiplier = NewUserMultiplier(api.UserMap, api.Passport, api.BattleArena)
+
 	///////////////////////////
 	//		 Controllers	 //
 	///////////////////////////
@@ -303,11 +308,6 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 
 	// listen to the client online and action channel
 	// go api.ClientListener()
-
-	// set viewer live count
-	api.viewerLiveCount = NewViewerLiveCount(api.NetMessageBus, factions)
-	api.UserMap = NewUserMap(api.viewerLiveCount)
-	api.UserMultiplier = NewUserMultiplier(api.UserMap, api.Passport, api.BattleArena)
 
 	go api.startSpoilOfWarBroadcaster(ctx)
 
