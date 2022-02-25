@@ -19,15 +19,33 @@ func (ba *BattleArena) InitNextBattle() error {
 	// switch battle state to LOBBY
 	ba.battle.State = server.StateLobby
 
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	spew.Dump(ba.battle.State)
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+
 	// send new battle details to game client
 
 	// generate a new battle event
 	ba.battle.ID = server.BattleID(uuid.Must(uuid.NewV4()))
 
+	spew.Dump(ba.battle.WarMachineDestroyedRecordMap)
+
 	// clean up war machine destroyed record cache
 	for key := range ba.battle.WarMachineDestroyedRecordMap {
 		delete(ba.battle.WarMachineDestroyedRecordMap, key)
 	}
+
+	fmt.Println("23454395834905784095743875243895723047324857309")
 
 	// assign a random map
 	gameMap, err := db.GameMapGetRandom(ba.ctx, ba.Conn)
@@ -42,6 +60,7 @@ func (ba *BattleArena) InitNextBattle() error {
 	ba.battle.WarMachines = []*server.WarMachineMetadata{}
 
 	for len(ba.BattleQueueMap) == 0 {
+		fmt.Println("NO FACTION STUFF111111111111111111111111111111111111111111111111111111111111")
 		ba.Log.Info().Msg("No factions, trying again in 2 seconds")
 		time.Sleep(2 * time.Second)
 	}
