@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"server"
 	"server/battle_arena"
 	"server/passport"
@@ -11,6 +12,30 @@ import (
 	"github.com/gofrs/uuid"
 )
 
+type ClientAction string
+
+const (
+	ClientOnline                ClientAction = "Online"
+	ClientOffline               ClientAction = "Offline"
+	ClientVoted                 ClientAction = "Applause"
+	ClientPickedLocation        ClientAction = "Picked Location"
+	ClientBattleRewardUpdate    ClientAction = "BattleRewardUpdate"
+	ClientSupsMultiplierGet     ClientAction = "SupsMultiplierGet"
+	ClientCheckMultiplierUpdate ClientAction = "CheckMultiplierUpdate"
+	ClientSupsTick              ClientAction = "SupsTick"
+)
+
+type BattleRewardType string
+
+const (
+	BattleRewardTypeFaction         BattleRewardType = "Battle Faction Reward"
+	BattleRewardTypeWinner          BattleRewardType = "Battle Winner Reward"
+	BattleRewardTypeKill            BattleRewardType = "Battle Kill Reward"
+	BattleRewardTypeAbilityExecutor BattleRewardType = "Ability Executor"
+	BattleRewardTypeInfluencer      BattleRewardType = "Battle Influencer"
+	BattleRewardTypeWarContributor  BattleRewardType = "War Contributor"
+)
+
 type UserMultiplier struct {
 	CurrentMaps *Multiplier
 	CheckMaps   *Multiplier
@@ -18,8 +43,9 @@ type UserMultiplier struct {
 	BattleIDMap sync.Map
 
 	// other dependencies
-	UserMap  *UserMap
-	Passport *passport.Passport
+	UserMap     *UserMap
+	Passport    *passport.Passport
+	BattleArena *battle_arena.BattleArena
 }
 
 type Multiplier struct {
@@ -39,14 +65,31 @@ type MultiplierAction struct {
 }
 
 // TODO: set up sups ticker
-func NewUserMultiplier(userMap *UserMap, pp *passport.Passport) *UserMultiplier {
+func NewUserMultiplier(userMap *UserMap, pp *passport.Passport, ba *battle_arena.BattleArena) *UserMultiplier {
 	um := &UserMultiplier{
 		CurrentMaps: &Multiplier{sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}},
 		CheckMaps:   &Multiplier{sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}},
 		BattleIDMap: sync.Map{},
 		UserMap:     userMap,
 		Passport:    pp,
+		BattleArena: ba,
 	}
+
+	go func() {
+		for {
+			time.Sleep(5 * time.Second)
+			if ba.BattleActive() {
+				um.SupsTick()
+			}
+		}
+	}()
+
+	go func() {
+		for {
+			time.Sleep(1 * time.Second)
+			um.UserMultiplierUpdate()
+		}
+	}()
 
 	return um
 }
@@ -102,6 +145,7 @@ func (um *UserMultiplier) Online(userID server.UserID) {
 		}
 		return true
 	})
+
 }
 
 // Offline remove all the user related multiplier action in current map
@@ -139,6 +183,8 @@ func (um *UserMultiplier) Offline(userID server.UserID) {
 
 		return true
 	})
+
+	go um.UserSupsMultiplierToPassport(userID, nil)
 }
 
 func (um *UserMultiplier) Voted(userID server.UserID) {
@@ -374,9 +420,339 @@ func (um *UserMultiplier) SupsTick() {
 	um.Passport.SendTickerMessage(userMap)
 }
 
-// // PushUserMultiplierToPassport push the multiplier actions list of the user to passport user
-// func (um *UserMultiplier) PushUserMultiplierToPassport(userID server.UserID) {
-// 	uidStr := userID.String()
-// 	mas := make(map[string]*MultiplierAction)
+// PushUserMultiplierToPassport push the multiplier actions list of the user to passport user
+func (um *UserMultiplier) PushUserMultiplierToPassport(userID server.UserID) {
+	uidStr := userID.String()
+	mas := make(map[string]*MultiplierAction)
+	now := time.Now()
 
-// }
+	// online
+	if value, ok := um.CurrentMaps.OnlineMap.Load(uidStr); ok {
+		ma := value.(*MultiplierAction)
+		if ma.Expiry.After(now) {
+			mas[string(ClientOnline)] = ma
+		}
+	}
+	if value, ok := um.CurrentMaps.ApplauseMap.Load(uidStr); ok {
+		ma := value.(*MultiplierAction)
+		if ma.Expiry.After(now) {
+			mas[string(ClientVoted)] = ma
+		}
+	}
+	if value, ok := um.CurrentMaps.PickedLocationMap.Load(uidStr); ok {
+		ma := value.(*MultiplierAction)
+		if ma.Expiry.After(now) {
+			mas[string(ClientPickedLocation)] = ma
+		}
+	}
+
+	// battle rewards
+	um.BattleIDMap.Range(func(key, value interface{}) bool {
+		battleID := key.(string)
+
+		if value, ok := um.CurrentMaps.WinningFactionMap.Load(battleID + "_" + uidStr); ok {
+			ma := value.(*MultiplierAction)
+			if ma.Expiry.After(now) {
+				mas[string(BattleRewardTypeFaction)+"_"+battleID] = ma
+			}
+		}
+
+		if value, ok := um.CurrentMaps.WinningUserMap.Load(battleID + "_" + uidStr); ok {
+			ma := value.(*MultiplierAction)
+			if ma.Expiry.After(now) {
+				mas[string(BattleRewardTypeWinner)+"_"+battleID] = ma
+			}
+		}
+
+		if value, ok := um.CurrentMaps.KillMap.Load(battleID + "_" + uidStr); ok {
+			ma := value.(*MultiplierAction)
+			if ma.Expiry.After(now) {
+				mas[string(BattleRewardTypeKill)+"_"+battleID] = ma
+			}
+		}
+
+		return true
+	})
+
+	if len(mas) == 0 {
+		go um.UserSupsMultiplierToPassport(userID, nil)
+		return
+	}
+
+	go um.UserSupsMultiplierToPassport(userID, mas)
+}
+
+func (um *UserMultiplier) UserSupsMultiplierToPassport(userID server.UserID, supsMultiplierMap map[string]*MultiplierAction) {
+	userSupsMultiplierSend := &passport.UserSupsMultiplierSend{
+		ToUserID:        userID,
+		SupsMultipliers: []*passport.SupsMultiplier{},
+	}
+
+	for key, sm := range supsMultiplierMap {
+		userSupsMultiplierSend.SupsMultipliers = append(userSupsMultiplierSend.SupsMultipliers, &passport.SupsMultiplier{
+			Key:       key,
+			Value:     sm.MultiplierValue,
+			ExpiredAt: sm.Expiry,
+		})
+	}
+
+	go um.Passport.UserSupsMultiplierSend(context.Background(), []*passport.UserSupsMultiplierSend{userSupsMultiplierSend})
+}
+
+func (um *UserMultiplier) UserMultiplierUpdate() {
+	// map[userID]map[reward text] &MultiplierAction
+	diff := make(map[string]map[string]*MultiplierAction)
+
+	// check current map with check map, add any different from the cache
+	um.CurrentMaps.OnlineMap.Range(func(key, value interface{}) bool {
+
+		uidStr := key.(string)
+		currentValue := value.(*MultiplierAction)
+		// get data from check map
+		v, ok := um.CheckMaps.OnlineMap.Load(uidStr)
+		// record, if not exists
+		if !ok {
+			// store different
+			d, ok := diff[uidStr]
+			if !ok {
+				d = make(map[string]*MultiplierAction)
+			}
+			d[string(ClientOnline)] = currentValue
+			diff[uidStr] = d
+
+			// update check map
+			um.CheckMaps.OnlineMap.Store(uidStr, currentValue)
+			return true
+		}
+		oldValue := v.(*MultiplierAction)
+
+		// check whether it is the same
+		if currentValue.Expiry == oldValue.Expiry {
+			return true
+		}
+
+		// store different
+		d, ok := diff[uidStr]
+		if !ok {
+			d = make(map[string]*MultiplierAction)
+		}
+		d[string(ClientOnline)] = currentValue
+		diff[uidStr] = d
+		// update check map
+		um.CheckMaps.OnlineMap.Store(uidStr, currentValue)
+
+		return true
+	})
+
+	// check current map with check map, add any different from the cache
+	um.CurrentMaps.ApplauseMap.Range(func(key, value interface{}) bool {
+		uidStr := key.(string)
+		currentValue := value.(*MultiplierAction)
+		// get data from check map
+		v, ok := um.CheckMaps.ApplauseMap.Load(uidStr)
+		// record, if not exists
+		if !ok {
+			// store different
+			d, ok := diff[uidStr]
+			if !ok {
+				d = make(map[string]*MultiplierAction)
+			}
+			d[string(ClientVoted)] = currentValue
+			diff[uidStr] = d
+			// update check map
+			um.CheckMaps.ApplauseMap.Store(uidStr, currentValue)
+
+			return true
+		}
+		oldValue := v.(*MultiplierAction)
+
+		// check whether it is the same
+		if currentValue.Expiry == oldValue.Expiry {
+			return true
+		}
+
+		// store different
+		d, ok := diff[uidStr]
+		if !ok {
+			d = make(map[string]*MultiplierAction)
+		}
+		d[string(ClientVoted)] = currentValue
+		diff[uidStr] = d
+		// update check map
+		um.CheckMaps.ApplauseMap.Store(uidStr, currentValue)
+
+		return true
+	})
+
+	// check current map with check map, add any different from the cache
+	um.CurrentMaps.PickedLocationMap.Range(func(key, value interface{}) bool {
+		uidStr := key.(string)
+		currentValue := value.(*MultiplierAction)
+		// get data from check map
+		v, ok := um.CheckMaps.PickedLocationMap.Load(uidStr)
+		// record, if not exists
+		if !ok {
+			// store different
+			d, ok := diff[uidStr]
+			if !ok {
+				d = make(map[string]*MultiplierAction)
+			}
+			d[string(ClientPickedLocation)] = currentValue
+			diff[uidStr] = d
+			// update check map
+			um.CheckMaps.PickedLocationMap.Store(uidStr, currentValue)
+
+			return true
+		}
+		oldValue := v.(*MultiplierAction)
+
+		// check whether it is the same
+		if currentValue.Expiry == oldValue.Expiry {
+			return true
+		}
+
+		// store different
+		d, ok := diff[uidStr]
+		if !ok {
+			d = make(map[string]*MultiplierAction)
+		}
+		d[string(ClientPickedLocation)] = currentValue
+		diff[uidStr] = d
+		// update check map
+		um.CheckMaps.PickedLocationMap.Store(uidStr, currentValue)
+
+		return true
+	})
+
+	// battle rewards
+	um.BattleIDMap.Range(func(key, value interface{}) bool {
+		battleID := key.(string)
+		// check current map with check map, add any different from the cache
+		um.CurrentMaps.WinningFactionMap.Range(func(key, value interface{}) bool {
+			uidStr := strings.Split(key.(string), "_")[1]
+			currentValue := value.(*MultiplierAction)
+			// get data from check map
+			v, ok := um.CheckMaps.WinningFactionMap.Load(battleID + "_" + uidStr)
+			// record, if not exists
+			if !ok {
+				// store different
+				d, ok := diff[uidStr]
+				if !ok {
+					d = make(map[string]*MultiplierAction)
+				}
+				d[string(BattleRewardTypeFaction)+"_"+battleID] = currentValue
+				diff[uidStr] = d
+				// update check map
+				um.CheckMaps.WinningFactionMap.Store(battleID+"_"+uidStr, currentValue)
+
+				return true
+			}
+			oldValue := v.(*MultiplierAction)
+
+			// check whether it is the same
+			if currentValue.Expiry == oldValue.Expiry {
+				return true
+			}
+
+			// store different
+			d, ok := diff[uidStr]
+			if !ok {
+				d = make(map[string]*MultiplierAction)
+			}
+			d[string(BattleRewardTypeFaction)+"_"+battleID] = currentValue
+			diff[uidStr] = d
+			// update check map
+			um.CheckMaps.WinningFactionMap.Store(battleID+"_"+uidStr, currentValue)
+
+			return true
+		})
+
+		// check current map with check map, add any different from the cache
+		um.CurrentMaps.WinningUserMap.Range(func(key, value interface{}) bool {
+			uidStr := strings.Split(key.(string), "_")[1]
+			currentValue := value.(*MultiplierAction)
+			// get data from check map
+			v, ok := um.CheckMaps.WinningUserMap.Load(battleID + "_" + uidStr)
+			// record, if not exists
+			if !ok {
+				// store different
+				d, ok := diff[uidStr]
+				if !ok {
+					d = make(map[string]*MultiplierAction)
+				}
+				d[string(BattleRewardTypeWinner)+"_"+battleID] = currentValue
+				diff[uidStr] = d
+				// update check map
+				um.CheckMaps.WinningUserMap.Store(battleID+"_"+uidStr, currentValue)
+
+				return true
+			}
+			oldValue := v.(*MultiplierAction)
+
+			// check whether it is the same
+			if currentValue.Expiry == oldValue.Expiry {
+				return true
+			}
+
+			// store different
+			d, ok := diff[uidStr]
+			if !ok {
+				d = make(map[string]*MultiplierAction)
+			}
+			d[string(BattleRewardTypeWinner)+"_"+battleID] = currentValue
+			diff[uidStr] = d
+			// update check map
+			um.CheckMaps.WinningUserMap.Store(battleID+"_"+uidStr, currentValue)
+
+			return true
+		})
+
+		// check current map with check map, add any different from the cache
+		um.CurrentMaps.KillMap.Range(func(key, value interface{}) bool {
+			uidStr := strings.Split(key.(string), "_")[1]
+			currentValue := value.(*MultiplierAction)
+			// get data from check map
+			v, ok := um.CheckMaps.KillMap.Load(battleID + "_" + uidStr)
+			// record, if not exists
+			if !ok {
+				// store different
+				d, ok := diff[uidStr]
+				if !ok {
+					d = make(map[string]*MultiplierAction)
+				}
+				d[string(BattleRewardTypeKill)+"_"+battleID] = currentValue
+				diff[uidStr] = d
+				// update check map
+				um.CheckMaps.KillMap.Store(battleID+"_"+uidStr, currentValue)
+
+				return true
+			}
+			oldValue := v.(*MultiplierAction)
+
+			// check whether it is the same
+			if currentValue.Expiry == oldValue.Expiry {
+				return true
+			}
+
+			// store different
+			d, ok := diff[uidStr]
+			if !ok {
+				d = make(map[string]*MultiplierAction)
+			}
+			d[string(BattleRewardTypeKill)+"_"+battleID] = currentValue
+			diff[uidStr] = d
+			// update check map
+			um.CheckMaps.KillMap.Store(battleID+"_"+uidStr, currentValue)
+
+			return true
+		})
+
+		return true
+	})
+
+	for userID, ma := range diff {
+		uid := server.UserID(uuid.FromStringOrNil(userID))
+		go um.UserSupsMultiplierToPassport(uid, ma)
+	}
+
+}

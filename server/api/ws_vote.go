@@ -136,7 +136,8 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 				vc.API.liveSupsSpend[hcd.FactionID].Unlock()
 
 				vc.API.increaseFactionVoteTotal(hcd.FactionID, req.Payload.VoteAmount)
-				go vc.API.ClientVoted(wsc)
+				// go vc.API.ClientVoted(wsc)
+				vc.API.UserMultiplier.Voted(userID)
 
 				switch hcd.FactionID {
 				case server.RedMountainFactionID:
@@ -317,7 +318,9 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 		return terror.Error(err)
 	}
 
-	vc.API.ClientPickedLocation(wsc)
+	// vc.API.ClientPickedLocation(wsc)
+	vc.API.UserMultiplier.ClientPickedLocation(userID)
+
 	reply(true)
 
 	return nil

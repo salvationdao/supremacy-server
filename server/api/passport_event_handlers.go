@@ -379,7 +379,9 @@ func (api *API) PassportUserSupsMultiplierGetHandler(ctx context.Context, payloa
 		return
 	}
 
-	api.ClientSupsMultipliersGet(req.Payload.UserID)
+	// api.ClientSupsMultipliersGet(req.Payload.UserID)
+
+	api.UserMultiplier.PushUserMultiplierToPassport(req.Payload.UserID)
 }
 
 type UserStatGetRequest struct {
@@ -559,7 +561,8 @@ func (api *API) AuthRingCheckHandler(ctx context.Context, payload []byte) {
 
 	client.SetIdentifier(req.Payload.User.ID.String())
 
-	go api.ClientOnline(client)
+	// go api.ClientOnline(client)
+	api.UserMultiplier.Online(req.Payload.User.ID)
 
 	if !req.Payload.User.FactionID.IsNil() {
 		api.viewerLiveCount.Swap(server.FactionID(uuid.Nil), req.Payload.User.FactionID)

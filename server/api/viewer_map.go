@@ -229,16 +229,16 @@ func (um *UserMap) Update(user *server.User) []*hub.Client {
 	return hcs
 }
 
-func (um *UserMap) Remove(wsc *hub.Client) {
+func (um *UserMap) Remove(wsc *hub.Client) bool {
 	if wsc.Identifier() == "" {
-		return
+		return false
 	}
 
 	um.RWMutex.Lock()
 	defer um.RWMutex.Unlock()
 	hcm, ok := um.ClientMap[wsc.Identifier()]
 	if !ok {
-		return
+		return false
 	}
 
 	hcm.RWMutex.Lock()
@@ -247,7 +247,10 @@ func (um *UserMap) Remove(wsc *hub.Client) {
 
 	if len(hcm.ClientMap) == 0 {
 		delete(um.ClientMap, wsc.Identifier())
+		return true
 	}
+
+	return false
 }
 
 func (um *UserMap) GetUserDetailByID(userID server.UserID) (*server.User, error) {

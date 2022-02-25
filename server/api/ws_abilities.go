@@ -210,7 +210,9 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 				fc.API.liveSupsSpend[hcd.FactionID].TotalVote.Add(&fc.API.liveSupsSpend[hcd.FactionID].TotalVote.Int, &req.Payload.Amount.Int)
 				fc.API.liveSupsSpend[hcd.FactionID].Unlock()
 
-				fc.API.ClientVoted(wsc)
+				// fc.API.ClientVoted(wsc)
+
+				fc.API.UserMultiplier.Voted(userID)
 
 				// append transaction ref
 

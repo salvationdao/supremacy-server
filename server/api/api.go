@@ -105,8 +105,9 @@ type API struct {
 	liveSupsSpend map[server.FactionID]*LiveVotingData
 
 	// client channels
-	onlineClientMap chan *ClientUpdate
+	// onlineClientMap chan *ClientUpdate
 
+	UserMultiplier *UserMultiplier
 	// client detail
 	UserMap *UserMap
 	// ring check auth
@@ -174,7 +175,7 @@ func NewAPI(
 		liveSupsSpend: make(map[server.FactionID]*LiveVotingData),
 
 		// channel for handling hub client
-		onlineClientMap: make(chan *ClientUpdate),
+		// onlineClientMap: make(chan *ClientUpdate),
 
 		// ring check auth
 		RingCheckAuthMap: NewRingCheckMap(),
@@ -301,11 +302,12 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 	}
 
 	// listen to the client online and action channel
-	go api.ClientListener()
+	// go api.ClientListener()
 
 	// set viewer live count
 	api.viewerLiveCount = NewViewerLiveCount(api.NetMessageBus, factions)
 	api.UserMap = NewUserMap(api.viewerLiveCount)
+	api.UserMultiplier = NewUserMultiplier(api.UserMap, api.Passport, api.BattleArena)
 
 	go api.startSpoilOfWarBroadcaster(ctx)
 
@@ -407,21 +409,25 @@ func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client, clients
 func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, clients hub.ClientsList, ch hub.TriggerChan) {
 	currentUser := api.UserMap.GetUserDetail(wsc)
 
+	noClientLeft := false
 	if currentUser != nil {
 		// remove client multipliers
 		api.viewerLiveCount.Sub(currentUser.FactionID)
+		api.UserMultiplier.Offline(currentUser.ID)
+		// clean up the client detail map
+		noClientLeft = api.UserMap.Remove(wsc)
 	} else {
 		api.viewerLiveCount.Sub(server.FactionID(uuid.Nil))
 	}
 
 	// set client offline
-	noClientLeft := api.ClientOffline(wsc)
+	// noClientLeft := api.ClientOffline(wsc)
 
 	// check vote if there is not client instances of the offline user
 	if noClientLeft && currentUser != nil && api.votePhaseChecker.Phase == VotePhaseLocationSelect {
 		// check the user is selecting ability location
 		api.votingCycle <- func(va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
-			if len(vw.List) > 0 && vw.List[0].String() == wsc.Identifier() {
+			if len(vw.List) > 0 && vw.List[0].String() == currentUser.ID.String() {
 				// pop out the first user of the list
 				if len(vw.List) > 1 {
 					vw.List = vw.List[1:]
@@ -492,9 +498,6 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 			}
 		}
 	}
-
-	// clean up the client detail map
-	api.UserMap.Remove(wsc)
 }
 
 // Run the API service
