@@ -2,6 +2,7 @@ package passport
 
 import (
 	"context"
+	"fmt"
 	"server"
 
 	"github.com/gofrs/uuid"
@@ -27,6 +28,8 @@ func (pp *Passport) AssetFreeze(ctx context.Context, assetHash string) error {
 
 // AssetLock tell passport to lock user's assets
 func (pp *Passport) AssetLock(ctx context.Context, assetHashes []string) error {
+	fmt.Println("888888888888888888888888888888888888888888888888888888888888888888")
+
 	pp.send <- &Message{
 		Key: "SUPREMACY:ASSET:LOCK",
 		Payload: struct {
@@ -36,6 +39,9 @@ func (pp *Passport) AssetLock(ctx context.Context, assetHashes []string) error {
 		},
 		TransactionID: uuid.Must(uuid.NewV4()).String(),
 	}
+
+	fmt.Println("Enter 12333333333333333333333333333333333333333333333333333333")
+
 	return nil
 }
 

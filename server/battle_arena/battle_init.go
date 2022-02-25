@@ -2,12 +2,10 @@ package battle_arena
 
 import (
 	"context"
-	"fmt"
 	"server"
 	"server/db"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/ninja-software/terror/v2"
 
 	"github.com/gofrs/uuid"
@@ -46,7 +44,6 @@ func (ba *BattleArena) InitNextBattle() error {
 		time.Sleep(2 * time.Second)
 	}
 	mechsPerFaction := gameMap.MaxSpawns / 3
-
 	for factionID := range ba.BattleQueueMap {
 		ba.battle.WarMachines = append(ba.battle.WarMachines, ba.GetBattleWarMachineFromQueue(factionID, mechsPerFaction)...)
 	}
@@ -110,29 +107,10 @@ func (ba *BattleArena) InitNextBattle() error {
 		cancel:        cancel,
 	}
 
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	spew.Dump(gameMessage)
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-
 	// NOTE: this will potentially lock game server if game client is disconnected
 	// 		 so wrap it in a go routine
 	go func() {
-
-		fmt.Println("fired111111111111111111111111111111111111111111")
 		ba.send <- gameMessage
-		fmt.Println("fired 44444444444444444444444444444444444")
 	}()
 	return nil
 }

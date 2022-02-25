@@ -215,6 +215,11 @@ func NewAPI(
 		r.Get("/trigger/ability_file_upload", WithError(api.GetFactionData))
 	})
 
+	// set viewer live count
+	api.viewerLiveCount = NewViewerLiveCount(api.NetMessageBus)
+	api.UserMap = NewUserMap(api.viewerLiveCount)
+	api.UserMultiplier = NewUserMultiplier(api.UserMap, api.Passport, api.BattleArena)
+
 	///////////////////////////
 	//		 Controllers	 //
 	///////////////////////////
@@ -229,8 +234,8 @@ func NewAPI(
 	///////////////////////////
 	//		 Hub Events		 //
 	///////////////////////////
-	api.Hub.Events.AddEventHandler(hub.EventOnline, api.onlineEventHandler)
-	api.Hub.Events.AddEventHandler(hub.EventOffline, api.offlineEventHandler)
+	api.Hub.Events.AddEventHandler(hub.EventOnline, api.onlineEventHandler, func(e error) {})
+	api.Hub.Events.AddEventHandler(hub.EventOffline, api.offlineEventHandler, func(e error) {})
 
 	///////////////////////////
 	//	Battle Arena Events	 //
@@ -310,11 +315,6 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 	// listen to the client online and action channel
 	// go api.ClientListener()
 
-	// set viewer live count
-	api.viewerLiveCount = NewViewerLiveCount(api.NetMessageBus, factions)
-	api.UserMap = NewUserMap(api.viewerLiveCount)
-	api.UserMultiplier = NewUserMultiplier(api.UserMap, api.Passport, api.BattleArena)
-
 	go api.startSpoilOfWarBroadcaster(ctx)
 
 	// build faction map for main server
@@ -380,7 +380,7 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 }
 
 // Event handlers
-func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client, clients hub.ClientsList, ch hub.TriggerChan) {
+func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client) error {
 	// initialise a client detail channel if not on the list
 	api.viewerLiveCount.Add(server.FactionID(uuid.Nil))
 
@@ -410,9 +410,10 @@ func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client, clients
 
 		go wsc.Send(gameSettingsData)
 	}()
+	return nil
 }
 
-func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, clients hub.ClientsList, ch hub.TriggerChan) {
+func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client) error {
 	currentUser := api.UserMap.GetUserDetail(wsc)
 
 	noClientLeft := false
@@ -504,6 +505,7 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 			}
 		}
 	}
+	return nil
 }
 
 // Run the API service

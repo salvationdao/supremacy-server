@@ -8,6 +8,8 @@ import (
 	"server/passport"
 	"sync"
 	"time"
+
+	"github.com/davecgh/go-spew/spew"
 )
 
 type WarMachineQueuingList struct {
@@ -62,6 +64,7 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, 
 
 				wg := sync.WaitGroup{}
 				wg.Add(1)
+
 				ba.passport.GetDefaultWarMachines(ctx, factionID, amountToGet, func(msg []byte) {
 					defer wg.Done()
 					resp := struct {
@@ -69,9 +72,10 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, 
 					}{}
 					err := json.Unmarshal(msg, &resp)
 					if err != nil {
+						ba.Log.Err(err)
 						return
 					}
-
+					spew.Dump(resp.WarMachines)
 					tempList = append(tempList, resp.WarMachines...)
 				})
 				wg.Wait()

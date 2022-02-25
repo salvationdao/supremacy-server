@@ -281,12 +281,8 @@ func (api *API) BroadcastGameNotificationWarMachineAbility(ctx context.Context, 
 }
 
 func (api *API) clientBroadcast(ctx context.Context, data []byte) {
-	api.Hub.Clients(func(clients hub.ClientsList) {
-		for client, ok := range clients {
-			if !ok {
-				continue
-			}
-			go client.Send(data)
-		}
+	api.Hub.Clients(func(sessionID hub.SessionID, client *hub.Client) bool {
+		go client.Send(data)
+		return true
 	})
 }
