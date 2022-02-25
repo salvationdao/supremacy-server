@@ -7,6 +7,7 @@ import (
 	"server/db"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/ninja-software/terror/v2"
 
 	"github.com/gofrs/uuid"
@@ -108,6 +109,22 @@ func (ba *BattleArena) InitNextBattle() error {
 		context:       ctx,
 		cancel:        cancel,
 	}
+
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	spew.Dump(gameMessage)
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
 
 	// NOTE: this will potentially lock game server if game client is disconnected
 	// 		 so wrap it in a go routine
