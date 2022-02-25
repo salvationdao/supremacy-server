@@ -53,8 +53,8 @@ type HoldSupsMessageResponse struct {
 	Transaction string `json:"payload"`
 }
 
-// SendHoldSupsMessage tells the passport to hold sups
-func (pp *Passport) SendHoldSupsMessage(userID server.UserID, supsChange server.BigInt, reason string, callback func(msg []byte)) {
+// SpendSupMessage tells the passport to hold sups
+func (pp *Passport) SpendSupMessage(userID server.UserID, supsChange server.BigInt, battleID server.BattleID, reason string, callback func(msg []byte)) {
 	supTransactionReference := uuid.Must(uuid.NewV4())
 	supTxRefString := server.TransactionReference(fmt.Sprintf("%s|%s", reason, supTransactionReference.String()))
 	id := fmt.Sprintf("sups hold - %s", uuid.Must(uuid.NewV4()).String())
@@ -66,12 +66,12 @@ func (pp *Passport) SendHoldSupsMessage(userID server.UserID, supsChange server.
 			FromUserID           server.UserID               `json:"userID"`
 			Amount               server.BigInt               `json:"amount"`
 			TransactionReference server.TransactionReference `json:"transactionReference"`
-			IsBattleVote         bool                        `json:"isBattleVote"`
+			GroupID              string                      `json:"groupID"`
 		}{
 			FromUserID:           userID,
 			Amount:               supsChange,
 			TransactionReference: supTxRefString,
-			IsBattleVote:         true,
+			GroupID:              battleID.String(),
 		},
 		TransactionID: id,
 	}

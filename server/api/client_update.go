@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"server"
@@ -62,11 +61,6 @@ type ClientMultiplier struct {
 	MultiplierActions map[string]*MultiplierAction
 }
 
-type MultiplierAction struct {
-	MultiplierValue int
-	Expiry          time.Time
-}
-
 func (api *API) ValidateAndSendActiveClients(clientMap map[server.UserID][]*MultiplierAction) (int, error) {
 	return 0, nil
 }
@@ -80,14 +74,9 @@ func (api *API) ClientListener() {
 	// start ticker for watch to earn
 	supsTickerLogger := log_helpers.NamedLogger(api.Log, "Sups Ticker").Level(zerolog.Disabled)
 	supsTicker := tickle.New("Sups Ticker", TickSecond, func() (int, error) {
-		select {
-		case api.onlineClientMap <- &ClientUpdate{
+		api.onlineClientMap <- &ClientUpdate{
 			UserID: server.UserID(uuid.Must(uuid.NewV4())), // HACK: to pass the user id check
 			Action: ClientSupsTick,
-		}:
-		case <-time.After(10 * time.Second):
-			api.Log.Err(errors.New("timeout on channel send exceeded"))
-			panic("Client Sups Tick")
 		}
 
 		return http.StatusOK, nil
@@ -100,15 +89,12 @@ func (api *API) ClientListener() {
 
 	supsMultiplierCheckerLogger := log_helpers.NamedLogger(api.Log, "Sups Multiplier Checker").Level(zerolog.Disabled)
 	supsMultiplierChecker := tickle.New("Sups Multiplier Checker", 1, func() (int, error) {
-		select {
-		case api.onlineClientMap <- &ClientUpdate{
+
+		api.onlineClientMap <- &ClientUpdate{
 			UserID: server.UserID(uuid.Must(uuid.NewV4())), // HACK: to pass the user id check
 			Action: ClientCheckMultiplierUpdate,
-		}:
-		case <-time.After(10 * time.Second):
-			api.Log.Err(errors.New("timeout on channel send exceeded"))
-			panic("sups Multiplier Checker")
 		}
+
 		return http.StatusOK, nil
 	})
 	supsMultiplierChecker.Log = &supsMultiplierCheckerLogger
@@ -164,8 +150,6 @@ listenLoop:
 					Expiry:          now.AddDate(1, 0, 0),
 				}
 
-				// record viewer id
-				api.viewerIDRecord(userID)
 			}
 
 			clientMultiplierMap[userID].clients[msg.Client] = true
@@ -284,25 +268,15 @@ listenLoop:
 	}
 }
 
-// wait
-const WaitTime = 10 * time.Second
-
 func (api *API) ClientOnline(c *hub.Client) {
 	// skip, if user not login
 	if c.Identifier() == "" {
 		return
 	}
 
-	fmt.Println("get here")
-
-	select {
-	case api.onlineClientMap <- &ClientUpdate{
+	api.onlineClientMap <- &ClientUpdate{
 		Client: c,
 		Action: ClientOnline,
-	}:
-	case <-time.After(10 * time.Second):
-		api.Log.Err(errors.New("timeout on channel send exceeded"))
-		panic("Client Online")
 	}
 }
 
@@ -315,21 +289,13 @@ func (api *API) ClientOffline(c *hub.Client) bool {
 	// otherwise erase the client from
 	noClientLeftChan := make(chan bool)
 
-	for {
-		select {
-		case api.onlineClientMap <- &ClientUpdate{
-			Client:           c,
-			Action:           ClientOffline,
-			NoClientLeftChan: noClientLeftChan,
-		}:
-			isNoClient := <-noClientLeftChan
-			return isNoClient
-		case <-time.After(10 * time.Second):
-			api.Log.Err(errors.New("timeout on channel send exceeded"))
-			panic("Client Offline")
-
-		}
+	api.onlineClientMap <- &ClientUpdate{
+		Client:           c,
+		Action:           ClientOffline,
+		NoClientLeftChan: noClientLeftChan,
 	}
+	isNoClient := <-noClientLeftChan
+	return isNoClient
 }
 
 func (api *API) ClientVoted(c *hub.Client) {
@@ -338,14 +304,9 @@ func (api *API) ClientVoted(c *hub.Client) {
 		return
 	}
 
-	select {
-	case api.onlineClientMap <- &ClientUpdate{
+	api.onlineClientMap <- &ClientUpdate{
 		Client: c,
 		Action: ClientVoted,
-	}:
-	case <-time.After(10 * time.Second):
-		api.Log.Err(errors.New("timeout on channel send exceeded"))
-		panic("Client voted panic")
 	}
 }
 
@@ -355,14 +316,9 @@ func (api *API) ClientPickedLocation(c *hub.Client) {
 		return
 	}
 
-	select {
-	case api.onlineClientMap <- &ClientUpdate{
+	api.onlineClientMap <- &ClientUpdate{
 		Client: c,
 		Action: ClientPickedLocation,
-	}:
-	case <-time.After(10 * time.Second):
-		api.Log.Err(errors.New("timeout on channel send exceeded"))
-		panic("Client Pick location")
 	}
 }
 
@@ -372,27 +328,17 @@ func (api *API) ClientBattleRewardUpdate(c *hub.Client, cbr *ClientBattleReward)
 		return
 	}
 
-	select {
-	case api.onlineClientMap <- &ClientUpdate{
+	api.onlineClientMap <- &ClientUpdate{
 		Client:       c,
 		Action:       ClientBattleRewardUpdate,
 		BattleReward: cbr,
-	}:
-	case <-time.After(10 * time.Second):
-		api.Log.Err(errors.New("timeout on channel send exceeded"))
-		panic("Client Battle Reward Update")
 	}
 }
 
 func (api *API) ClientSupsMultipliersGet(userID server.UserID) {
-	select {
-	case api.onlineClientMap <- &ClientUpdate{
+	api.onlineClientMap <- &ClientUpdate{
 		UserID: userID,
 		Action: ClientSupsMultiplierGet,
-	}:
-	case <-time.After(10 * time.Second):
-		api.Log.Err(errors.New("timeout on channel send exceeded"))
-		panic("Client Sups Multipliers Get")
 	}
 }
 
