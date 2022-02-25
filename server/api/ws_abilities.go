@@ -187,7 +187,7 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 		reason := fmt.Sprintf("battle:%s|game_ability_contribution:%s", fc.API.BattleArena.CurrentBattleID(), req.Payload.GameAbilityID)
 
 		go func() {
-			fc.API.Passport.SendHoldSupsMessage(userID, reduceAmount, reason, func(msg []byte) {
+			fc.API.Passport.SpendSupMessage(userID, reduceAmount, fc.API.BattleArena.CurrentBattleID(), reason, func(msg []byte) {
 				faIface, ok := fap.Load(req.Payload.GameAbilityID.String())
 				if !ok {
 					fc.Log.Err(fmt.Errorf("error doesn't exist"))
