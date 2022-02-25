@@ -165,7 +165,6 @@ func (um *UserMap) UserRegister(wsc *hub.Client, user *server.User) {
 
 		// set up user
 		hcm.RWMutex.Lock()
-		defer hcm.RWMutex.Unlock()
 		hcm.User.ID = user.ID
 		hcm.User.Username = user.Username
 		hcm.User.FirstName = user.FirstName
@@ -174,16 +173,17 @@ func (um *UserMap) UserRegister(wsc *hub.Client, user *server.User) {
 		hcm.User.FactionID = user.FactionID
 		hcm.User.Faction = user.Faction
 		hcm.ClientMap[wsc] = true
+		hcm.RWMutex.Unlock()
 
 		um.ClientMap[wsc.Identifier()] = hcm
 		return
 	}
 
 	hcm.RWMutex.Lock()
-	defer hcm.RWMutex.Unlock()
 	if _, ok := hcm.ClientMap[wsc]; !ok {
 		hcm.ClientMap[wsc] = true
 	}
+	hcm.RWMutex.Unlock()
 }
 
 func (um *UserMap) GetUserDetail(wsc *hub.Client) *server.User {
@@ -241,8 +241,8 @@ func (um *UserMap) Remove(wsc *hub.Client) bool {
 	}
 
 	hcm.RWMutex.Lock()
-	defer hcm.RWMutex.Unlock()
 	delete(hcm.ClientMap, wsc)
+	hcm.RWMutex.Unlock()
 
 	if len(hcm.ClientMap) == 0 {
 		delete(um.ClientMap, wsc.Identifier())
@@ -272,10 +272,10 @@ func (um *UserMap) GetClientsByUserID(userID server.UserID) []*hub.Client {
 	}
 
 	hcm.RWMutex.RLock()
-	defer hcm.RWMutex.RUnlock()
 	for cl := range hcm.ClientMap {
 		hcs = append(hcs, cl)
 	}
+	hcm.RWMutex.RUnlock()
 
 	return hcs
 }

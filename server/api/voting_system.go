@@ -588,7 +588,6 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 				}
 
 				fts.Lock()
-				defer fts.Unlock()
 				// if no vote, enter next vote win phase
 				if len(fts.Transactions) == 0 {
 					api.votePhaseChecker.Lock()
@@ -601,8 +600,10 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 					if vct.VotingStageListener.NextTick != nil {
 						vct.VotingStageListener.Stop()
 					}
+					fts.Unlock()
 					return
 				}
+				fts.Unlock()
 
 				// HACK: tell user enter location select stage, while committing transactions
 				// commit process may take a noticeale time, so user won't fell the vote system freeze
