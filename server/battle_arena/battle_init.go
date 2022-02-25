@@ -2,6 +2,7 @@ package battle_arena
 
 import (
 	"context"
+	"fmt"
 	"server"
 	"server/db"
 	"time"
@@ -111,7 +112,10 @@ func (ba *BattleArena) InitNextBattle() error {
 	// NOTE: this will potentially lock game server if game client is disconnected
 	// 		 so wrap it in a go routine
 	go func() {
+
+		fmt.Println("fired111111111111111111111111111111111111111111")
 		ba.send <- gameMessage
+		fmt.Println("fired 44444444444444444444444444444444444")
 	}()
 	return nil
 }

@@ -264,7 +264,7 @@ func (ba *BattleArena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			case NetMessageTypeTick:
 				ba.WarMachinesTick(ctx, payload)
 			default:
-				ba.Log.Err(fmt.Errorf("unknown message type")).Msg("")
+				// ba.Log.Err(fmt.Errorf("unknown message type")).Msg("")
 			}
 		}
 	}
