@@ -46,10 +46,25 @@ func (ba *BattleArena) InitNextBattle() error {
 		time.Sleep(2 * time.Second)
 	}
 	mechsPerFaction := gameMap.MaxSpawns / 3
-
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println("fjdsijfksdjfkadsjflkasdjf;lidsajf;klasdjfoiadsjfoiajdsfijads;flijdsa;oifjsad;of")
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
 	for factionID := range ba.BattleQueueMap {
 		ba.battle.WarMachines = append(ba.battle.WarMachines, ba.GetBattleWarMachineFromQueue(factionID, mechsPerFaction)...)
 	}
+
+	fmt.Println("EXit dfasdlkfjlkdsjfkldsajglkadsjg;lkdsajgk;lasdjglk;adsjkg;as")
 
 	// get Zaibatsu faction abilities to insert
 	zaibatsuAbility, err := db.GetZaibatsuFactionAbility(context.Background(), ba.Conn)
@@ -78,8 +93,10 @@ func (ba *BattleArena) InitNextBattle() error {
 			}
 		}
 
+		fmt.Println("Enter Asset!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 		// set war machine lock request
 		err := ba.passport.AssetLock(ba.ctx, hashes)
+		fmt.Println("Enter Assetdfslkjsdlkfjdslkjfkdslfj;lksdafjk;ldsajgfk;lsadjf;lksdjf;lkasjf;")
 		if err != nil {
 			ba.Log.Err(err).Msg("Failed to lock assets")
 			// TODO: figure out how to handle this
@@ -130,7 +147,7 @@ func (ba *BattleArena) InitNextBattle() error {
 	// 		 so wrap it in a go routine
 	go func() {
 
-		fmt.Println("fired111111111111111111111111111111111111111111")
+		fmt.Println("fired to game client 4395345983475987349857438957230572348572439857984035789432750")
 		ba.send <- gameMessage
 		fmt.Println("fired 44444444444444444444444444444444444")
 	}()
