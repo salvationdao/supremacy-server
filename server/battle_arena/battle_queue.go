@@ -3,6 +3,7 @@ package battle_arena
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"server"
 	"server/db"
 	"server/passport"
@@ -38,7 +39,9 @@ func (ba *BattleArena) startBattleQueue(factionID server.FactionID) {
 
 func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, warMachinePerBattle int) []*server.WarMachineMetadata {
 	inGameWarMachinesChan := make(chan []*server.WarMachineMetadata)
+	fmt.Println("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
 	ba.BattleQueueMap[factionID] <- func(wmq *WarMachineQueuingList) {
+		fmt.Println("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
 		ctx := context.Background()
 		tempList := []*server.WarMachineMetadata{}
 
@@ -62,7 +65,10 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, 
 
 				wg := sync.WaitGroup{}
 				wg.Add(1)
+				fmt.Println("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
+
 				ba.passport.GetDefaultWarMachines(ctx, factionID, amountToGet, func(msg []byte) {
+					fmt.Println("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
 					defer wg.Done()
 					resp := struct {
 						WarMachines []*server.WarMachineMetadata `json:"payload"`
@@ -71,12 +77,16 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, 
 					if err != nil {
 						return
 					}
+					fmt.Println("tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt")
 
 					tempList = append(tempList, resp.WarMachines...)
 				})
 				wg.Wait()
+				fmt.Println("ggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg")
 				time.Sleep(200 * time.Microsecond)
 			}
+
+			fmt.Println("hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh")
 
 			// broadcast next 5 queuing war machines to game ui
 			ba.Events.Trigger(context.Background(), EventWarMachineQueueUpdated, &EventData{
@@ -86,10 +96,14 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, 
 				},
 			})
 
+			fmt.Println("iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii")
+
 			// broadcast empty queue for all the passport client
 			go ba.passport.WarMachineQueuePositionBroadcast(ba.BuildUserWarMachineQueuePosition(wmq.WarMachines, tempList, includedUserID...))
 
+			fmt.Println("jjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj")
 			inGameWarMachinesChan <- tempList
+			fmt.Println("kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk")
 			return
 		}
 
@@ -119,13 +133,17 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, 
 				WarMachines: wmq.WarMachines[:maxLength],
 			},
 		})
+		fmt.Println("lllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll")
 
 		// broadcast war machine queue position update
 		go ba.passport.WarMachineQueuePositionBroadcast(ba.BuildUserWarMachineQueuePosition(wmq.WarMachines, tempList, includedUserID...))
 
 		// return the war machines
+		fmt.Println("mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm")
 		inGameWarMachinesChan <- tempList
+		fmt.Println("oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo")
 	}
+	fmt.Println("ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc")
 
 	return <-inGameWarMachinesChan
 }
