@@ -7,7 +7,6 @@ import (
 	"math/big"
 	"server"
 	"server/battle_arena"
-	"server/db"
 	"server/passport"
 	"strings"
 	"sync"
@@ -203,6 +202,7 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 					return
 				}
 
+				fa.PriceRW.Lock()
 				fa.TxMX.Lock()
 				fa.TxRefs = append(fa.TxRefs, resp.Transaction)
 
@@ -216,17 +216,17 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 
 				if !isReached {
 					// increase current sups and return
-					fa.PriceRW.Lock()
 					fa.CurrentSups.Add(&fa.CurrentSups.Int, &req.Payload.Amount.Int)
 					fap.Store(fa.GameAbility.Identity.String(), fa)
-					fa.PriceRW.Unlock()
 					fa.TxMX.Unlock()
+					fa.PriceRW.Unlock()
 					return
 				}
 
 				// otherwise, clear transaction and bump the price
 				fa.TxRefs = []string{}
 				fa.TxMX.Unlock()
+				fa.PriceRW.Unlock()
 
 				fa.PriceRW.Lock()
 				// calc min target price (half of last max target price)
@@ -262,12 +262,6 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 				// store new target price to passport server, if the ability is nft
 				if fa.GameAbility.AbilityTokenID != 0 && fa.GameAbility.WarMachineTokenID != 0 {
 					fc.API.Passport.AbilityUpdateTargetPrice(fa.GameAbility.AbilityTokenID, fa.GameAbility.WarMachineTokenID, fa.TargetPrice.String())
-				} else {
-					err = db.FactionExclusiveAbilitiesSupsCostUpdate(ctx, fc.Conn, fa.GameAbility)
-					if err != nil {
-						fc.Log.Err(err).Msg("")
-						return
-					}
 				}
 
 				// trigger battle arena function to handle game ability

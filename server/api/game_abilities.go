@@ -163,14 +163,6 @@ func (api *API) abilityTargetPriceUpdater(factionID server.FactionID, conn *pgxp
 			// store new target price to passport server, if the ability is nft
 			if fa.GameAbility.AbilityTokenID != 0 && fa.GameAbility.WarMachineTokenID != 0 {
 				api.Passport.AbilityUpdateTargetPrice(fa.GameAbility.AbilityTokenID, fa.GameAbility.WarMachineTokenID, fa.TargetPrice.String())
-			} else {
-				// update sups cost of the ability in db
-				fa.GameAbility.SupsCost = fa.TargetPrice.String()
-				err := db.FactionExclusiveAbilitiesSupsCostUpdate(context.Background(), conn, fa.GameAbility)
-				if err != nil {
-					return false
-
-				}
 			}
 
 			return true
@@ -280,44 +272,72 @@ func (api *API) startGameAbilityPoolTicker(ctx context.Context, factionID server
 }
 
 func (api *API) stopGameAbilityPoolTicker() {
+	txRefs := []string{}
 	for factionID := range api.factionMap {
 
-		api.gameAbilityPool[factionID](func(fap *sync.Map) {
-			// commit all the left over transactions
-			txRefs := []string{}
+		// treat
+		if factionID == server.ZaibatsuFactionID {
+			api.gameAbilityPool[factionID](func(fap *sync.Map) {
+				// commit all the left over transactions
 
-			// do calculate for zaibatsu faction ability
-			zaiTargetPrice := big.NewInt(0)
-			dividedBy := 0
+				// do calculate for zaibatsu faction ability
+				zaiTargetPrice := big.NewInt(0)
+				dividedBy := 0
 
-			fap.Range(func(key interface{}, value interface{}) bool {
-				fa := value.(*GameAbilityPrice)
+				fap.Range(func(key interface{}, value interface{}) bool {
+					// read data
+					fa := value.(*GameAbilityPrice)
 
-				// directly target  zaibatsu faction id
-				if fa.GameAbility.GameClientAbilityID == 11 {
-					zaiTargetPrice.Add(zaiTargetPrice, &fa.TargetPrice.Int)
-					dividedBy += 1
+					// directly target zaibatsu faction id
+					if fa.GameAbility.GameClientAbilityID == 11 {
+						zaiTargetPrice.Add(zaiTargetPrice, &fa.TargetPrice.Int)
+						dividedBy += 1
+					}
+
+					// store left over transaction
+					txRefs = append(txRefs, fa.TxRefs...)
+
+					fap.Delete(key)
+					return true
+				})
+
+				// calculate zaibatsu faction ability
+				if dividedBy > 0 {
+					actuallyPrice := big.NewInt(0)
+					actuallyPrice.Add(actuallyPrice, zaiTargetPrice) // total remain price divide by total war machine
+					actuallyPrice.Div(actuallyPrice, big.NewInt(int64(dividedBy)))
+
+					// store new price back to db
+					err := db.ZaibatsuFactionAbilityUpdate(context.Background(), api.Conn, actuallyPrice.String())
+					if err != nil {
+						api.Log.Err(err).Msg("failed to update zaibatsu faction ability")
+					}
+
 				}
-				txRefs = append(txRefs, fa.TxRefs...)
 
-				fap.Delete(key)
-				return true
 			})
+		} else {
+			api.gameAbilityPool[factionID](func(fap *sync.Map) {
+				fap.Range(func(key interface{}, value interface{}) bool {
+					// read data
+					fa := value.(*GameAbilityPrice)
+					fa.GameAbility.SupsCost = fa.TargetPrice.String()
 
-			if factionID == server.ZaibatsuFactionID && dividedBy > 0 {
-				actuallyPrice := big.NewInt(0)
-				actuallyPrice.Add(actuallyPrice, zaiTargetPrice) // total remain price divide by total war machine
-				actuallyPrice.Div(actuallyPrice, big.NewInt(int64(dividedBy)))
+					// store new price back to db
+					err := db.FactionExclusiveAbilitiesSupsCostUpdate(context.Background(), api.Conn, fa.GameAbility)
+					if err != nil {
+						api.Log.Err(err).Msg("failed to update zaibatsu faction ability")
+					}
 
-				// store new price back to db
-				err := db.ZaibatsuFactionAbilityUpdate(context.Background(), api.Conn, actuallyPrice.String())
-				if err != nil {
-					api.Log.Err(err).Msg("failed to update zaibatsu faction ability")
-				}
+					// get left over transaction
+					txRefs = append(txRefs, fa.TxRefs...)
+					fap.Delete(key)
+					return true
+				})
 
-			}
+			})
+		}
 
-			api.Passport.ReleaseTransactions(context.Background(), txRefs)
-		})
 	}
+	api.Passport.ReleaseTransactions(context.Background(), txRefs)
 }
