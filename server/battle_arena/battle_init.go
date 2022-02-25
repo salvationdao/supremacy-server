@@ -66,6 +66,7 @@ func (ba *BattleArena) InitNextBattle() error {
 				warMachine.Abilities = append(warMachine.Abilities, &server.AbilityMetadata{
 					ID:           zaibatsuAbility.ID,
 					Identity:     uuid.Must(uuid.NewV4()), // track ability's price
+					Colour:       zaibatsuAbility.Colour,
 					GameClientID: int(zaibatsuAbility.GameClientAbilityID),
 					Image:        zaibatsuAbility.ImageUrl,
 					Description:  zaibatsuAbility.Description,

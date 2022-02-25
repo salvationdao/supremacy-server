@@ -81,6 +81,7 @@ func (wm *WarMachineMetadata) Brief() *WarMachineBrief {
 type AbilityMetadata struct {
 	ID                GameAbilityID `json:"id" db:"id"` // used for zaibatsu faction ability
 	Identity          uuid.UUID     `json:"identity"`   // used to track ability price update
+	Colour            string        `json:"colour"`     // used for game ability colour
 	TokenID           uint64        `json:"tokenID"`
 	Name              string        `json:"name"`
 	Description       string        `json:"description"`

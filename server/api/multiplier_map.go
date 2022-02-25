@@ -3,6 +3,7 @@ package api
 import (
 	"server"
 	"server/battle_arena"
+	"server/passport"
 	"strings"
 	"sync"
 	"time"
@@ -15,7 +16,10 @@ type UserMultiplier struct {
 	CheckMaps   *Multiplier
 
 	BattleIDMap sync.Map
-	UserMap     *UserMap
+
+	// other dependencies
+	UserMap  *UserMap
+	Passport *passport.Passport
 }
 
 type Multiplier struct {
@@ -35,12 +39,13 @@ type MultiplierAction struct {
 }
 
 // TODO: set up sups ticker
-func NewUserMultiplier(userMap *UserMap) *UserMultiplier {
+func NewUserMultiplier(userMap *UserMap, pp *passport.Passport) *UserMultiplier {
 	um := &UserMultiplier{
 		CurrentMaps: &Multiplier{sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}},
 		CheckMaps:   &Multiplier{sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}},
 		BattleIDMap: sync.Map{},
 		UserMap:     userMap,
+		Passport:    pp,
 	}
 
 	return um
@@ -252,6 +257,7 @@ func (um *UserMultiplier) CleanUpBattleReward(battleIDStr string) {
 	}()
 }
 
+// sups tick
 func (um *UserMultiplier) SupsTick() {
 	userMap := make(map[int][]server.UserID)
 	now := time.Now()
@@ -309,18 +315,68 @@ func (um *UserMultiplier) SupsTick() {
 	})
 
 	um.CurrentMaps.WinningFactionMap.Range(func(key, value interface{}) bool {
+		m := value.(*MultiplierAction)
+		// clean up, if expired
+		if m.Expiry.Before(now) {
+			um.CurrentMaps.WinningFactionMap.Delete(key)
+			return true
+		}
 
+		// append user to the ticking list
+		k := key.(string)
+		uidStr := strings.Split(k, "_")[1]
+		userID := server.UserID(uuid.FromStringOrNil(uidStr))
+		if _, ok := userMap[m.MultiplierValue]; !ok {
+			userMap[m.MultiplierValue] = []server.UserID{}
+		}
+		userMap[m.MultiplierValue] = append(userMap[m.MultiplierValue], userID)
 		return true
 	})
 
 	um.CurrentMaps.WinningUserMap.Range(func(key, value interface{}) bool {
+		m := value.(*MultiplierAction)
+		// clean up, if expired
+		if m.Expiry.Before(now) {
+			um.CurrentMaps.WinningUserMap.Delete(key)
+			return true
+		}
 
+		// append user to the ticking list
+		k := key.(string)
+		uidStr := strings.Split(k, "_")[1]
+		userID := server.UserID(uuid.FromStringOrNil(uidStr))
+		if _, ok := userMap[m.MultiplierValue]; !ok {
+			userMap[m.MultiplierValue] = []server.UserID{}
+		}
+		userMap[m.MultiplierValue] = append(userMap[m.MultiplierValue], userID)
 		return true
 	})
 
 	um.CurrentMaps.KillMap.Range(func(key, value interface{}) bool {
+		m := value.(*MultiplierAction)
+		// clean up, if expired
+		if m.Expiry.Before(now) {
+			um.CurrentMaps.KillMap.Delete(key)
+			return true
+		}
 
+		// append user to the ticking list
+		k := key.(string)
+		uidStr := strings.Split(k, "_")[1]
+		userID := server.UserID(uuid.FromStringOrNil(uidStr))
+		if _, ok := userMap[m.MultiplierValue]; !ok {
+			userMap[m.MultiplierValue] = []server.UserID{}
+		}
+		userMap[m.MultiplierValue] = append(userMap[m.MultiplierValue], userID)
 		return true
 	})
 
+	um.Passport.SendTickerMessage(userMap)
 }
+
+// // PushUserMultiplierToPassport push the multiplier actions list of the user to passport user
+// func (um *UserMultiplier) PushUserMultiplierToPassport(userID server.UserID) {
+// 	uidStr := userID.String()
+// 	mas := make(map[string]*MultiplierAction)
+
+// }

@@ -118,6 +118,7 @@ listenLoop:
 		}
 
 		switch msg.Action {
+		//done
 		case ClientOnline:
 			if _, ok := clientMultiplierMap[userID]; !ok {
 				clientMultiplierMap[userID] = &ClientMultiplier{
@@ -154,6 +155,7 @@ listenLoop:
 
 			clientMultiplierMap[userID].clients[msg.Client] = true
 
+			// done
 		case ClientVoted:
 			// check for existing voting action, then bump the time if exists
 			multiplier, ok := clientMultiplierMap[userID].MultiplierActions[string(ClientVoted)]
@@ -169,6 +171,7 @@ listenLoop:
 
 			clientMultiplierMap[userID].MultiplierActions[string(ClientVoted)] = multiplier
 
+			// done
 		case ClientPickedLocation:
 			// check for existing voting action, then bump the time if exists
 			multiplier, ok := clientMultiplierMap[userID].MultiplierActions[string(ClientPickedLocation)]
@@ -185,6 +188,7 @@ listenLoop:
 
 			clientMultiplierMap[userID].MultiplierActions[string(ClientPickedLocation)] = multiplier
 
+			// done
 		case ClientBattleRewardUpdate:
 			for _, reward := range msg.BattleReward.Rewards {
 				switch reward {
@@ -206,6 +210,7 @@ listenLoop:
 				}
 			}
 
+			// done
 		case ClientSupsTick:
 			userMap := make(map[int][]server.UserID)
 			now := time.Now()

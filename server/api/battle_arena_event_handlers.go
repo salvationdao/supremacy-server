@@ -138,6 +138,7 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 					// if it is zaibatsu faction ability set id back
 					if ability.GameClientID == 11 {
 						wmAbility.ID = ability.ID
+						wmAbility.Colour = ability.Colour
 					}
 					initialAbilities = append(initialAbilities, wmAbility)
 
