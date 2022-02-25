@@ -81,13 +81,9 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 	}
 
 	// broadcast game settings to all the connected clients
-	api.Hub.Clients(func(clients hub.ClientsList) {
-		for client, ok := range clients {
-			if !ok {
-				continue
-			}
-			go client.Send(gameSettingsData)
-		}
+	api.Hub.Clients(func(sessionID hub.SessionID, client *hub.Client) bool {
+		go client.Send(gameSettingsData)
+		return true
 	})
 
 	// start voting cycle, initial intro time equal: (mech_count * 3 + 7) seconds
