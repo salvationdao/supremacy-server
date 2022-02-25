@@ -9,6 +9,8 @@ import (
 	"server/passport"
 	"sync"
 	"time"
+
+	"github.com/davecgh/go-spew/spew"
 )
 
 type WarMachineQueuingList struct {
@@ -79,7 +81,7 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, 
 						return
 					}
 					fmt.Println("tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt")
-
+					spew.Dump(resp.WarMachines)
 					tempList = append(tempList, resp.WarMachines...)
 				})
 				wg.Wait()
