@@ -130,8 +130,8 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 						Label:               ability.Name,
 						SupsCost:            ability.SupsCost,
 						CurrentSups:         "0",
-						AbilityTokenID:      ability.TokenID,
-						WarMachineTokenID:   wm.TokenID,
+						AbilityHash:         ability.Hash,
+						WarMachineHash:      wm.Hash,
 						ParticipantID:       &wm.ParticipantID,
 						Title:               wm.Name,
 					}
@@ -311,60 +311,6 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 	}
 
 	api.UserMultiplier.ClientBattleRewardUpdate(ed.BattleRewardList)
-
-	// // parse battle reward list
-	// api.Hub.Clients(func(clients hub.ClientsList) {
-	// 	for c := range clients {
-	// 		go func(c *hub.Client) {
-	// 			userID := server.UserID(uuid.FromStringOrNil(c.Identifier()))
-	// 			if userID.IsNil() {
-	// 				return
-	// 			}
-	// 			hcd := api.UserMap.GetUserDetail(c)
-	// 			if hcd == nil || hcd.FactionID.IsNil() {
-	// 				return
-	// 			}
-
-	// 			brs := []BattleRewardType{}
-	// 			// check reward
-	// 			if hcd.FactionID == ed.BattleRewardList.WinnerFactionID {
-	// 				brs = append(brs, BattleRewardTypeFaction)
-	// 			}
-
-	// 			if _, ok := ed.BattleRewardList.WinningWarMachineOwnerIDs[userID]; ok {
-	// 				brs = append(brs, BattleRewardTypeWinner)
-	// 			}
-
-	// 			if _, ok := ed.BattleRewardList.ExecuteKillWarMachineOwnerIDs[userID]; ok {
-	// 				brs = append(brs, BattleRewardTypeKill)
-	// 			}
-
-	// 			// TODO: set sups multiplier for these three rewards
-	// 			for _, executor := range api.battleEndInfo.MostFrequentAbilityExecutors {
-	// 				if executor.ID == userID {
-	// 					brs = append(brs, BattleRewardTypeAbilityExecutor)
-	// 					break
-	// 				}
-	// 			}
-
-	// 			for _, supsContributor := range api.battleEndInfo.TopSupsContributors {
-	// 				if supsContributor.ID == userID {
-	// 					brs = append(brs, BattleRewardTypeWarContributor)
-	// 					break
-	// 				}
-	// 			}
-
-	// 			if len(brs) == 0 {
-	// 				return
-	// 			}
-
-	// 			api.ClientBattleRewardUpdate(c, &ClientBattleReward{
-	// 				BattleID: api.BattleArena.CurrentBattleID(),
-	// 				Rewards:  brs,
-	// 			})
-	// 		}(c)
-	// 	}
-	// })
 
 	// trigger faction stat refresh and send result to passport server
 	go func() {

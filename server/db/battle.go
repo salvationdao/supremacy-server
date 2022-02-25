@@ -93,10 +93,10 @@ func BattleWinnerWarMachinesSet(ctx context.Context, conn Conn, battleID server.
 		SET
 			is_winner = true
 		WHERE 
-			battle_id = $1 AND war_machine_stat->>'tokenID' IN (
+			battle_id = $1 AND war_machine_stat->>'hash' IN (
 	`
 	for i, warMachine := range warMachines {
-		q += fmt.Sprintf("'%d'", warMachine.TokenID)
+		q += fmt.Sprintf("'%s'", warMachine.Hash)
 		if i < len(warMachines)-1 {
 			q += ","
 			continue
@@ -194,8 +194,8 @@ func BattleQueueWarMachineUpdate(ctx context.Context, conn Conn, warMachineMetad
 	SET
 		war_machine_metadata = $1
 	WHERE
-		war_machine_metadata ->> 'tokenID' = '%d' AND released_at ISNULL
-	`, warMachineMetadata.TokenID)
+		war_machine_metadata ->> 'hash' = '%s' AND released_at ISNULL
+	`, warMachineMetadata.Hash)
 
 	_, err = conn.Exec(ctx, q, jb)
 	if err != nil {
@@ -213,11 +213,11 @@ func BattleQueueRemove(ctx context.Context, conn Conn, warMachineMetadata *serve
 			SET
 				released_at = NOW()
 			WHERE
-				war_machine_metadata ->> 'tokenID' = '%d' AND 
+				war_machine_metadata ->> 'hash' = '%s' AND 
 				war_machine_metadata ->> 'factionID' = '%s' AND 
 				released_at ISNULL
 		`,
-		warMachineMetadata.TokenID,
+		warMachineMetadata.Hash,
 		warMachineMetadata.FactionID,
 	)
 

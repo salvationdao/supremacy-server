@@ -24,7 +24,7 @@ type BattleStartRequest struct {
 	Payload struct {
 		BattleID    server.BattleID `json:"battleID"`
 		WarMachines []*struct {
-			TokenID       uint64 `json:"tokenID"`
+			Hash          string `json:"hash"`
 			ParticipantID byte   `json:"participantID"`
 		} `json:"warMachines"`
 		WarMachineLocation []byte `json:"warMachineLocation"`
@@ -66,7 +66,7 @@ func (ba *BattleArena) BattleStartHandler(ctx context.Context, payload []byte, r
 outerLoop:
 	for _, wm := range ba.battle.WarMachines {
 		for _, wmbid := range req.Payload.WarMachines {
-			if wm.TokenID == wmbid.TokenID {
+			if wm.Hash == wmbid.Hash {
 				wm.ParticipantID = wmbid.ParticipantID
 				continue outerLoop
 			}
@@ -76,13 +76,13 @@ outerLoop:
 	// check they all have ids
 	for _, wm := range ba.battle.WarMachines {
 		if wm.ParticipantID == 0 {
-			return terror.Error(fmt.Errorf("missing participant ID for %s  %d", wm.Name, wm.TokenID))
+			return terror.Error(fmt.Errorf("missing participant ID for %s  %s", wm.Name, wm.Hash))
 		}
 	}
 
 	ba.Log.Info().Msgf("Battle starting: %s", req.Payload.BattleID)
 	for _, wm := range ba.battle.WarMachines {
-		ba.Log.Info().Msgf("War Machine: %s - %d", wm.Name, wm.TokenID)
+		ba.Log.Info().Msgf("War Machine: %s - %s", wm.Name, wm.Hash)
 	}
 
 	ba.battle.BattleHistory = append(ba.battle.BattleHistory, req.Payload.WarMachineLocation)
@@ -142,8 +142,8 @@ type BattleEndRequest struct {
 		BattleID                   server.BattleID           `json:"battleID"`
 		WinCondition               server.BattleWinCondition `json:"winCondition"`
 		WinningWarMachineMetadatas []*struct {
-			TokenID uint64 `json:"tokenID"`
-			Health  int    `json:"health"`
+			Hash   string `json:"hash"`
+			Health int    `json:"health"`
 		} `json:"winningWarMachines"`
 	} `json:"payload"`
 }
@@ -182,7 +182,7 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 	ba.Log.Info().Msgf("Battle ending: %s", req.Payload.BattleID)
 	ba.Log.Info().Msg("Winning War Machines")
 	for _, warMachine := range req.Payload.WinningWarMachineMetadatas {
-		ba.Log.Info().Msgf("%d", warMachine.TokenID)
+		ba.Log.Info().Msgf("%s", warMachine.Hash)
 	}
 
 	//save to database
@@ -218,7 +218,7 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 
 	for _, wm := range req.Payload.WinningWarMachineMetadatas {
 		for _, bwm := range ba.battle.WarMachines {
-			if wm.TokenID == bwm.TokenID {
+			if wm.Hash == bwm.Hash {
 				bwm.Health = wm.Health
 				winningMachines = append(winningMachines, bwm)
 				battleRewardList.WinnerFactionID = bwm.FactionID
@@ -277,11 +277,11 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 	}
 
 	for _, event := range destoryedEvents {
-		if event.KillByWarMachineID == nil {
+		if event.KillByWarMachineHash == nil {
 			continue
 		}
 		for _, warMachine := range ba.battle.WarMachines {
-			if *event.KillByWarMachineID != warMachine.TokenID {
+			if *event.KillByWarMachineHash != warMachine.Hash {
 				continue
 			}
 
@@ -306,7 +306,7 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 		for _, wm := range inGameWarMachines {
 			err = db.BattleQueueRemove(ctx, ba.Conn, wm)
 			if err != nil {
-				ba.Log.Err(err).Msgf("Failed to remove battle queue cache in db, token id: %d ", wm.TokenID)
+				ba.Log.Err(err).Msgf("Failed to remove battle queue cache in db, token id: %s ", wm.Hash)
 			}
 		}
 	}

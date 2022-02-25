@@ -12,13 +12,13 @@ type SuccessResponse struct {
 }
 
 // AssetFreeze tell passport to freeze user's assets
-func (pp *Passport) AssetFreeze(ctx context.Context, assetTokenID uint64) error {
+func (pp *Passport) AssetFreeze(ctx context.Context, assetHash string) error {
 	pp.send <- &Message{
 		Key: "SUPREMACY:ASSET:FREEZE",
 		Payload: struct {
-			AssetTokenID uint64 `json:"assetTokenID"`
+			AssetHash string `json:"assetHash"`
 		}{
-			AssetTokenID: assetTokenID,
+			AssetHash: assetHash,
 		},
 		TransactionID: uuid.Must(uuid.NewV4()).String(),
 	}
@@ -26,13 +26,13 @@ func (pp *Passport) AssetFreeze(ctx context.Context, assetTokenID uint64) error 
 }
 
 // AssetLock tell passport to lock user's assets
-func (pp *Passport) AssetLock(ctx context.Context, assetTokenIDs []uint64) error {
+func (pp *Passport) AssetLock(ctx context.Context, assetHashes []string) error {
 	pp.send <- &Message{
 		Key: "SUPREMACY:ASSET:LOCK",
 		Payload: struct {
-			AssetTokenIDs []uint64 `json:"assetTokenIDs"`
+			AssetHashes []string `json:"assetHashes"`
 		}{
-			AssetTokenIDs: assetTokenIDs,
+			AssetHashes: assetHashes,
 		},
 		TransactionID: uuid.Must(uuid.NewV4()).String(),
 	}
@@ -72,17 +72,17 @@ func (pp *Passport) WarMachineQueuePositionBroadcast(uwm []*UserWarMachineQueueP
 	}
 }
 
-func (pp *Passport) AbilityUpdateTargetPrice(abilityTokenID, warMachineTokenID uint64, supsCost string) {
+func (pp *Passport) AbilityUpdateTargetPrice(abilityHash, warMachineHash string, supsCost string) {
 	pp.send <- &Message{
 		Key: "SUPREMACY:ABILITY:TARGET:PRICE:UPDATE",
 		Payload: struct {
-			AbilityTokenID    uint64 `json:"abilityTokenID"`
-			WarMachineTokenID uint64 `json:"warMachineTokenID"`
-			SupsCost          string `json:"supsCost"`
+			AbilityHash    string `json:"abilityHash"`
+			WarMachineHash string `json:"warMachineHash"`
+			SupsCost       string `json:"supsCost"`
 		}{
-			AbilityTokenID:    abilityTokenID,
-			WarMachineTokenID: warMachineTokenID,
-			SupsCost:          supsCost,
+			AbilityHash:    abilityHash,
+			WarMachineHash: warMachineHash,
+			SupsCost:       supsCost,
 		},
 	}
 }

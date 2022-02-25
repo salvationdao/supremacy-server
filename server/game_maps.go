@@ -28,11 +28,11 @@ type GameMap struct {
 }
 
 type WarMachineMetadata struct {
-	TokenID         uint64             `json:"tokenID"`
+	Hash            string             `json:"hash"`
 	ParticipantID   byte               `json:"participantID"`
 	OwnedByID       UserID             `json:"ownedByID"`
 	Name            string             `json:"name"`
-	Description     string             `json:"description"`
+	Description     *string            `json:"description,omitempty"`
 	ExternalUrl     string             `json:"externalUrl"`
 	Image           string             `json:"image"`
 	Model           string             `json:"model"`
@@ -82,7 +82,7 @@ type AbilityMetadata struct {
 	ID                GameAbilityID `json:"id" db:"id"` // used for zaibatsu faction ability
 	Identity          uuid.UUID     `json:"identity"`   // used to track ability price update
 	Colour            string        `json:"colour"`     // used for game ability colour
-	TokenID           uint64        `json:"tokenID"`
+	Hash              string        `json:"hash"`
 	Name              string        `json:"name"`
 	Description       string        `json:"description"`
 	ExternalUrl       string        `json:"externalUrl"`
@@ -114,9 +114,9 @@ type GameAbility struct {
 	CurrentSups         string           `json:"currentSups"`
 
 	// if token id is not 0, it is a nft ability, otherwise it is a faction wide ability
-	AbilityTokenID    uint64
-	WarMachineTokenID uint64
-	ParticipantID     *byte
+	AbilityHash    string
+	WarMachineHash string
+	ParticipantID  *byte
 
 	// Category title for frontend to group the abilities together
 	Title string `json:"title"`

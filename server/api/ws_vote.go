@@ -311,15 +311,13 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 		// broadcast current stage to faction users
 		go vc.API.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vc.API.votePhaseChecker)
 
+		vc.API.UserMultiplier.PickedLocation(userID)
 		errChan <- nil
 	}
 	err = <-errChan
 	if err != nil {
 		return terror.Error(err)
 	}
-
-	// vc.API.ClientPickedLocation(wsc)
-	vc.API.UserMultiplier.ClientPickedLocation(userID)
 
 	reply(true)
 

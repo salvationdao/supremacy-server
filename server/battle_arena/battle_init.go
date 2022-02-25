@@ -57,9 +57,9 @@ func (ba *BattleArena) InitNextBattle() error {
 	}
 
 	if len(ba.battle.WarMachines) > 0 {
-		tokenIDs := []uint64{}
+		hashes := []string{}
 		for _, warMachine := range ba.battle.WarMachines {
-			tokenIDs = append(tokenIDs, warMachine.TokenID)
+			hashes = append(hashes, warMachine.Hash)
 
 			if warMachine.FactionID == server.ZaibatsuFactionID {
 				// if war machine is from Zaibatsu, insert the ability as faction ability
@@ -77,7 +77,7 @@ func (ba *BattleArena) InitNextBattle() error {
 		}
 
 		// set war machine lock request
-		err := ba.passport.AssetLock(ba.ctx, tokenIDs)
+		err := ba.passport.AssetLock(ba.ctx, hashes)
 		if err != nil {
 			ba.Log.Err(err).Msg("Failed to lock assets")
 			// TODO: figure out how to handle this

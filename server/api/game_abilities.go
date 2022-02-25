@@ -128,10 +128,10 @@ func (api *API) abilityTargetPriceUpdater(factionID server.FactionID, conn *pgxp
 					GameClientAbilityID: fa.GameAbility.GameClientAbilityID,
 					ParticipantID:       fa.GameAbility.ParticipantID,
 				}
-				if fa.GameAbility.AbilityTokenID == 0 {
+				if fa.GameAbility.AbilityHash == "" {
 					abilityTriggerEvent.GameAbilityID = &fa.GameAbility.ID
 				} else {
-					abilityTriggerEvent.AbilityTokenID = &fa.GameAbility.AbilityTokenID
+					abilityTriggerEvent.AbilityHash = &fa.GameAbility.AbilityHash
 				}
 
 				// trigger battle arena function to handle game ability
@@ -141,12 +141,12 @@ func (api *API) abilityTargetPriceUpdater(factionID server.FactionID, conn *pgxp
 				}
 
 				ability := fa.GameAbility.Brief()
-				if fa.GameAbility.AbilityTokenID == 0 {
+				if fa.GameAbility.AbilityHash == "" {
 					go api.BroadcastGameNotificationAbility(context.Background(), GameNotificationTypeFactionAbility, &GameNotificationAbility{
 						Ability: ability,
 					})
 				} else {
-					warMachine := api.BattleArena.GetWarMachine(fa.GameAbility.WarMachineTokenID).Brief()
+					warMachine := api.BattleArena.GetWarMachine(fa.GameAbility.WarMachineHash).Brief()
 					// broadcast notification
 					go api.BroadcastGameNotificationWarMachineAbility(context.Background(), &GameNotificationWarMachineAbility{
 						Ability:    ability,
@@ -161,8 +161,8 @@ func (api *API) abilityTargetPriceUpdater(factionID server.FactionID, conn *pgxp
 			targetPriceList = append(targetPriceList, fmt.Sprintf("%s_%s_%s_%d", fa.GameAbility.Identity, fa.TargetPrice.String(), fa.CurrentSups.String(), hasTriggered))
 
 			// store new target price to passport server, if the ability is nft
-			if fa.GameAbility.AbilityTokenID != 0 && fa.GameAbility.WarMachineTokenID != 0 {
-				api.Passport.AbilityUpdateTargetPrice(fa.GameAbility.AbilityTokenID, fa.GameAbility.WarMachineTokenID, fa.TargetPrice.String())
+			if fa.GameAbility.AbilityHash != "" && fa.GameAbility.WarMachineHash != "" {
+				api.Passport.AbilityUpdateTargetPrice(fa.GameAbility.AbilityHash, fa.GameAbility.WarMachineHash, fa.TargetPrice.String())
 			}
 
 			return true
@@ -227,7 +227,7 @@ func (api *API) startGameAbilityPoolTicker(ctx context.Context, factionID server
 			}
 
 			if factionID != server.ZaibatsuFactionID {
-				if ability.AbilityTokenID == 0 {
+				if ability.AbilityHash == "" {
 					factionAbilities = append(factionAbilities, ability)
 				} else {
 					if _, ok := warMachineAbilities[*ability.ParticipantID]; !ok {
@@ -236,7 +236,7 @@ func (api *API) startGameAbilityPoolTicker(ctx context.Context, factionID server
 					warMachineAbilities[*ability.ParticipantID] = append(warMachineAbilities[*ability.ParticipantID], ability)
 				}
 			} else {
-				if ability.AbilityTokenID == 0 && ability.GameClientAbilityID != 11 {
+				if ability.AbilityHash == "" && ability.GameClientAbilityID != 11 {
 					factionAbilities = append(factionAbilities, ability)
 				} else {
 					if _, ok := warMachineAbilities[*ability.ParticipantID]; !ok {

@@ -156,22 +156,22 @@ func (api *API) PassportBattleQueueJoinHandler(ctx context.Context, payload []by
 	if !req.Payload.WarMachineMetadata.FactionID.IsNil() {
 		api.BattleArena.BattleQueueMap[req.Payload.WarMachineMetadata.FactionID] <- func(wmq *battle_arena.WarMachineQueuingList) {
 			// skip if the war machine already join the queue
-			if checkWarMachineExist(wmq.WarMachines, req.Payload.WarMachineMetadata.TokenID) != -1 {
-				api.Log.Err(terror.ErrInvalidInput).Msgf("Asset %d is already in the queue", req.Payload.WarMachineMetadata.TokenID)
+			if checkWarMachineExist(wmq.WarMachines, req.Payload.WarMachineMetadata.Hash) != -1 {
+				api.Log.Err(terror.ErrInvalidInput).Msgf("Asset %s is already in the queue", req.Payload.WarMachineMetadata.Hash)
 				return
 			}
 
 			// fire a freeze command to the passport server
-			err := api.Passport.AssetFreeze(ctx, req.Payload.WarMachineMetadata.TokenID)
+			err := api.Passport.AssetFreeze(ctx, req.Payload.WarMachineMetadata.Hash)
 			if err != nil {
-				api.Log.Err(err).Msgf("Failed to freeze asset %d", req.Payload.WarMachineMetadata.TokenID)
+				api.Log.Err(err).Msgf("Failed to freeze asset %s", req.Payload.WarMachineMetadata.Hash)
 				return
 			}
 
 			// insert war machine into db
 			err = db.BattleQueueInsert(ctx, api.Conn, req.Payload.WarMachineMetadata)
 			if err != nil {
-				api.Log.Err(err).Msgf("Failed to insert a copy of queue in db, token id: %d", req.Payload.WarMachineMetadata.TokenID)
+				api.Log.Err(err).Msgf("Failed to insert a copy of queue in db, token id: %s", req.Payload.WarMachineMetadata.Hash)
 				return
 			}
 
@@ -225,9 +225,9 @@ func (api *API) PassportBattleQueueReleaseHandler(ctx context.Context, payload [
 	if !req.Payload.WarMachineMetadata.FactionID.IsNil() {
 		api.BattleArena.BattleQueueMap[req.Payload.WarMachineMetadata.FactionID] <- func(wmq *battle_arena.WarMachineQueuingList) {
 			// check war machine is in the queue
-			index := checkWarMachineExist(wmq.WarMachines, req.Payload.WarMachineMetadata.TokenID)
+			index := checkWarMachineExist(wmq.WarMachines, req.Payload.WarMachineMetadata.Hash)
 			if index < 0 {
-				api.Log.Err(terror.ErrInvalidInput).Msgf("Asset %d is not in the queue", req.Payload.WarMachineMetadata.TokenID)
+				api.Log.Err(terror.ErrInvalidInput).Msgf("Asset %s is not in the queue", req.Payload.WarMachineMetadata.Hash)
 				return
 			}
 
@@ -241,7 +241,7 @@ func (api *API) PassportBattleQueueReleaseHandler(ctx context.Context, payload [
 			// remove the war machine queue copy in db
 			err = db.BattleQueueRemove(ctx, api.Conn, req.Payload.WarMachineMetadata)
 			if err != nil {
-				api.Log.Err(err).Msgf("failed to remove war machine queue in db, token id: %d", req.Payload.WarMachineMetadata.TokenID)
+				api.Log.Err(err).Msgf("failed to remove war machine queue in db, token id: %s", req.Payload.WarMachineMetadata.Hash)
 				return
 			}
 
@@ -272,9 +272,9 @@ func (api *API) PassportBattleQueueReleaseHandler(ctx context.Context, payload [
 }
 
 // checkWarMachineExist return true if war machine already exist in the list
-func checkWarMachineExist(list []*server.WarMachineMetadata, tokenID uint64) int {
+func checkWarMachineExist(list []*server.WarMachineMetadata, hash string) int {
 	for i, wm := range list {
-		if wm.TokenID == tokenID {
+		if wm.Hash == hash {
 			return i
 		}
 	}
@@ -285,8 +285,8 @@ func checkWarMachineExist(list []*server.WarMachineMetadata, tokenID uint64) int
 type AssetInsurancePayRequest struct {
 	Key     passport.Event `json:"key"`
 	Payload struct {
-		FactionID    server.FactionID `json:"factionID"`
-		AssetTokenID uint64           `json:"assetTokenID"`
+		FactionID server.FactionID `json:"factionID"`
+		AssetHash string           `json:"assetHash"`
 	} `json:"payload"`
 }
 
@@ -301,9 +301,9 @@ func (api *API) PassportAssetInsurancePayHandler(ctx context.Context, payload []
 	if !req.Payload.FactionID.IsNil() {
 		api.BattleArena.BattleQueueMap[req.Payload.FactionID] <- func(wmq *battle_arena.WarMachineQueuingList) {
 			// check war machine is in the queue
-			index := checkWarMachineExist(wmq.WarMachines, req.Payload.AssetTokenID)
+			index := checkWarMachineExist(wmq.WarMachines, req.Payload.AssetHash)
 			if index < 0 {
-				api.Log.Err(terror.ErrInvalidInput).Msgf("Asset %d is not in the queue", req.Payload.AssetTokenID)
+				api.Log.Err(terror.ErrInvalidInput).Msgf("Asset %s is not in the queue", req.Payload.AssetHash)
 				return
 			}
 
@@ -336,7 +336,7 @@ func (api *API) PassportAssetInsurancePayHandler(ctx context.Context, payload []
 			// update war machine copy in battle queue
 			err = db.BattleQueueWarMachineUpdate(ctx, api.Conn, targetWarMachine)
 			if err != nil {
-				api.Log.Err(err).Msgf("failed to update war machine in db, token id: %d", req.Payload.AssetTokenID)
+				api.Log.Err(err).Msgf("failed to update war machine in db, token id: %s", req.Payload.AssetHash)
 				return
 			}
 

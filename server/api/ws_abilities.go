@@ -262,8 +262,8 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 				fa.PriceRW.Unlock()
 
 				// store new target price to passport server, if the ability is nft
-				if fa.GameAbility.AbilityTokenID != 0 && fa.GameAbility.WarMachineTokenID != 0 {
-					fc.API.Passport.AbilityUpdateTargetPrice(fa.GameAbility.AbilityTokenID, fa.GameAbility.WarMachineTokenID, fa.TargetPrice.String())
+				if fa.GameAbility.AbilityHash != "" && fa.GameAbility.WarMachineHash != "" {
+					fc.API.Passport.AbilityUpdateTargetPrice(fa.GameAbility.AbilityHash, fa.GameAbility.WarMachineHash, fa.TargetPrice.String())
 				}
 
 				// trigger battle arena function to handle game ability
@@ -272,13 +272,13 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 					TriggeredByUserID:   &userID,
 					TriggeredByUsername: &hcd.Username,
 					GameClientAbilityID: fa.GameAbility.GameClientAbilityID,
-					WarMachineTokenID:   &fa.GameAbility.WarMachineTokenID,
+					WarMachineHash:      &fa.GameAbility.WarMachineHash,
 				}
 
-				if fa.GameAbility.AbilityTokenID == 0 {
+				if fa.GameAbility.AbilityHash == "" {
 					abilityTriggerEvent.GameAbilityID = &fa.GameAbility.ID
 				} else {
-					abilityTriggerEvent.AbilityTokenID = &fa.GameAbility.AbilityTokenID
+					abilityTriggerEvent.AbilityHash = &fa.GameAbility.AbilityHash
 				}
 
 				err = fc.API.BattleArena.GameAbilityTrigger(abilityTriggerEvent)
@@ -290,13 +290,13 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 				triggeredBy := hcd.Brief()
 				ability := fa.GameAbility.Brief()
 				// broadcast notification
-				if fa.GameAbility.AbilityTokenID == 0 {
+				if fa.GameAbility.AbilityHash == "" {
 					go fc.API.BroadcastGameNotificationAbility(ctx, GameNotificationTypeFactionAbility, &GameNotificationAbility{
 						User:    triggeredBy,
 						Ability: ability,
 					})
 				} else {
-					warMachine := fc.API.BattleArena.GetWarMachine(fa.GameAbility.WarMachineTokenID).Brief()
+					warMachine := fc.API.BattleArena.GetWarMachine(fa.GameAbility.WarMachineHash).Brief()
 					// broadcast notification
 					go fc.API.BroadcastGameNotificationWarMachineAbility(ctx, &GameNotificationWarMachineAbility{
 						User:       hcd.Brief(),
@@ -361,7 +361,7 @@ func (fc *FactionControllerWS) FactionAbilitiesUpdateSubscribeHandler(ctx contex
 
 		fap.Range(func(key interface{}, gameAbilityPrice interface{}) bool {
 			fa := gameAbilityPrice.(*GameAbilityPrice)
-			if fa.GameAbility.AbilityTokenID > 0 {
+			if fa.GameAbility.AbilityHash > "" {
 				return true
 			}
 			fa.GameAbility.CurrentSups = fa.CurrentSups.String()
@@ -408,7 +408,7 @@ func (fc *FactionControllerWS) WarMachineAbilitiesUpdateSubscribeHandler(ctx con
 					return true
 				}
 			} else {
-				if fa.GameAbility.AbilityTokenID == 0 ||
+				if fa.GameAbility.AbilityHash == "" ||
 					fa.GameAbility.ParticipantID == nil ||
 					*fa.GameAbility.ParticipantID != req.Payload.ParticipantID {
 					return true

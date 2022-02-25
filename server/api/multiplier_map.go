@@ -195,7 +195,7 @@ func (um *UserMultiplier) Voted(userID server.UserID) {
 	})
 }
 
-func (um *UserMultiplier) ClientPickedLocation(userID server.UserID) {
+func (um *UserMultiplier) PickedLocation(userID server.UserID) {
 	userIDStr := userID.String()
 	um.CurrentMaps.ApplauseMap.Store(userIDStr, &MultiplierAction{
 		MultiplierValue: 50,
