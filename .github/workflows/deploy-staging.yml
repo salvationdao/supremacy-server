@@ -69,6 +69,7 @@ jobs:
           cp -r ./scripts deploy/.
           cp -r ./configs deploy/.
           cp -r ./server/db/migrations deploy/.
+          cp -r ./server/asset deploy/.
 
       - name: Build API server
         working-directory: ./server

@@ -12,14 +12,15 @@ import (
 func BattleAbilityCreate(ctx context.Context, conn Conn, battleAbility *server.BattleAbility) error {
 	q := `
 		INSERT INTO
-			battle_abilities (label, cooldown_duration_second)
+			battle_abilities (label, description, cooldown_duration_second)
 		VALUES
-			($1, $2)
+			($1, $2, $3)
 		RETURNING
-			id, label, cooldown_duration_second
+			id, label, description, cooldown_duration_second
 	`
 	err := pgxscan.Get(ctx, conn, battleAbility, q,
 		battleAbility.Label,
+		battleAbility.Description,
 		battleAbility.CooldownDurationSecond,
 	)
 	if err != nil {
@@ -33,11 +34,11 @@ func BattleAbilityCreate(ctx context.Context, conn Conn, battleAbility *server.B
 func GameAbilityCreate(ctx context.Context, conn Conn, gameAbility *server.GameAbility) error {
 	q := `
 		INSERT INTO
-			game_abilities (game_client_ability_id, faction_id, label, sups_cost, battle_ability_id, colour, image_url)
+			game_abilities (game_client_ability_id, faction_id, label, sups_cost, battle_ability_id, colour, description, image_url)
 		VALUES
-			($1, $2, $3, $4, $5, $6, $7)
+			($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING
-			id, game_client_ability_id, faction_id, label, sups_cost, battle_ability_id, colour, image_url
+			id, game_client_ability_id, faction_id, label, sups_cost, battle_ability_id, colour, description, image_url
 	`
 
 	err := pgxscan.Get(ctx, conn, gameAbility, q,
@@ -47,6 +48,7 @@ func GameAbilityCreate(ctx context.Context, conn Conn, gameAbility *server.GameA
 		gameAbility.SupsCost,
 		gameAbility.BattleAbilityID,
 		gameAbility.Colour,
+		gameAbility.Description,
 		gameAbility.ImageUrl,
 	)
 	if err != nil {
@@ -85,6 +87,38 @@ func GameAbility(ctx context.Context, conn Conn, id server.GameAbilityID) (*serv
 	}
 
 	return result, nil
+}
+
+func GetZaibatsuFactionAbility(ctx context.Context, conn Conn) (*server.GameAbility, error) {
+	result := &server.GameAbility{}
+	q := `
+		SELECT * FROM game_abilities
+		WHERE game_client_ability_id = 11
+	`
+
+	err := pgxscan.Get(ctx, conn, result, q)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return result, nil
+}
+
+func ZaibatsuFactionAbilityUpdate(ctx context.Context, conn Conn, supsCost string) error {
+	q := `
+	UPDATE 
+		game_abilities
+	SET
+		sups_cost = $1
+	WHERE game_client_ability_id = 11
+	`
+
+	_, err := conn.Exec(ctx, q, supsCost)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	return nil
 }
 
 // FactionAbilityGetByBattleAbilityID return game ability by given collection id

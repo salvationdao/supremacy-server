@@ -2,10 +2,11 @@ package battle_arena
 
 import (
 	"context"
-	"errors"
+	"encoding/json"
 	"server"
 	"server/db"
 	"server/passport"
+	"sync"
 	"time"
 )
 
@@ -37,8 +38,7 @@ func (ba *BattleArena) startBattleQueue(factionID server.FactionID) {
 
 func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, warMachinePerBattle int) []*server.WarMachineMetadata {
 	inGameWarMachinesChan := make(chan []*server.WarMachineMetadata)
-	select {
-	case ba.BattleQueueMap[factionID] <- func(wmq *WarMachineQueuingList) {
+	ba.BattleQueueMap[factionID] <- func(wmq *WarMachineQueuingList) {
 		ctx := context.Background()
 		tempList := []*server.WarMachineMetadata{}
 
@@ -59,13 +59,22 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, 
 			// add default war machine to meet the total amount
 			for len(tempList) < warMachinePerBattle {
 				amountToGet := warMachinePerBattle - len(tempList)
-				result, err := ba.passport.GetDefaultWarMachines(ctx, factionID, amountToGet)
-				if err != nil {
-					ba.Log.Err(err).Msg("issue getting default war machines")
-					// TODO: figure how what to do if this errors
-				}
 
-				tempList = append(tempList, result...)
+				wg := sync.WaitGroup{}
+				wg.Add(1)
+				ba.passport.GetDefaultWarMachines(ctx, factionID, amountToGet, func(msg []byte) {
+					defer wg.Done()
+					resp := struct {
+						WarMachines []*server.WarMachineMetadata `json:"payload"`
+					}{}
+					err := json.Unmarshal(msg, &resp)
+					if err != nil {
+						return
+					}
+
+					tempList = append(tempList, resp.WarMachines...)
+				})
+				wg.Wait()
 				time.Sleep(200 * time.Microsecond)
 			}
 
@@ -78,7 +87,7 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, 
 			})
 
 			// broadcast empty queue for all the passport client
-			go ba.passport.WarMachineQueuePositionBroadcast(context.Background(), ba.BuildUserWarMachineQueuePosition(wmq.WarMachines, tempList, includedUserID...))
+			go ba.passport.WarMachineQueuePositionBroadcast(ba.BuildUserWarMachineQueuePosition(wmq.WarMachines, tempList, includedUserID...))
 
 			inGameWarMachinesChan <- tempList
 			return
@@ -112,15 +121,10 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, 
 		})
 
 		// broadcast war machine queue position update
-		go ba.passport.WarMachineQueuePositionBroadcast(context.Background(), ba.BuildUserWarMachineQueuePosition(wmq.WarMachines, tempList, includedUserID...))
+		go ba.passport.WarMachineQueuePositionBroadcast(ba.BuildUserWarMachineQueuePosition(wmq.WarMachines, tempList, includedUserID...))
 
 		// return the war machines
 		inGameWarMachinesChan <- tempList
-	}:
-
-	case <-time.After(10 * time.Second):
-		ba.Log.Err(errors.New("timeout on channel send exceeded"))
-		panic("Client Battle Reward Update")
 	}
 
 	return <-inGameWarMachinesChan

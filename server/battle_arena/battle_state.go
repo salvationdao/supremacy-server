@@ -31,6 +31,13 @@ type BattleStartRequest struct {
 	} `json:"payload"`
 }
 
+func (ba *BattleArena) BattleActive() bool {
+	if ba.battle == nil {
+		return false
+	}
+	return ba.battle.State == server.StateMatchStart
+}
+
 // BattleStartHandler start a new battle
 func (ba *BattleArena) BattleStartHandler(ctx context.Context, payload []byte, reply ReplyFunc) error {
 	req := &BattleStartRequest{}
@@ -312,15 +319,9 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 			}
 		}
 
-		select {
-		case ba.BattleQueueMap[faction.ID] <- func(wmq *WarMachineQueuingList) {
+		ba.BattleQueueMap[faction.ID] <- func(wmq *WarMachineQueuingList) {
 			// broadcast new war machine position for in game war machine owners
-			go ba.passport.WarMachineQueuePositionBroadcast(context.Background(), ba.BuildUserWarMachineQueuePosition(wmq.WarMachines, []*server.WarMachineMetadata{}, includedUserID...))
-		}:
-
-		case <-time.After(10 * time.Second):
-			ba.Log.Err(errors.New("timeout on channel send exceeded"))
-			panic("Client Battle Reward Update")
+			go ba.passport.WarMachineQueuePositionBroadcast(ba.BuildUserWarMachineQueuePosition(wmq.WarMachines, []*server.WarMachineMetadata{}, includedUserID...))
 		}
 
 	}

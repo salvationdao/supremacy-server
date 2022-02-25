@@ -49,10 +49,31 @@ func (ba *BattleArena) InitNextBattle() error {
 		ba.battle.WarMachines = append(ba.battle.WarMachines, ba.GetBattleWarMachineFromQueue(factionID, mechsPerFaction)...)
 	}
 
+	// get Zaibatsu faction abilities to insert
+	zaibatsuAbility, err := db.GetZaibatsuFactionAbility(context.Background(), ba.Conn)
+	if err != nil {
+		ba.Log.Err(err).Msg("Unable to get zaibatsu faction ability")
+		return terror.Error(err)
+	}
+
 	if len(ba.battle.WarMachines) > 0 {
 		tokenIDs := []uint64{}
 		for _, warMachine := range ba.battle.WarMachines {
 			tokenIDs = append(tokenIDs, warMachine.TokenID)
+
+			if warMachine.FactionID == server.ZaibatsuFactionID {
+				// if war machine is from Zaibatsu, insert the ability as faction ability
+				warMachine.Abilities = append(warMachine.Abilities, &server.AbilityMetadata{
+					ID:           zaibatsuAbility.ID,
+					Identity:     uuid.Must(uuid.NewV4()), // track ability's price
+					Colour:       zaibatsuAbility.Colour,
+					GameClientID: int(zaibatsuAbility.GameClientAbilityID),
+					Image:        zaibatsuAbility.ImageUrl,
+					Description:  zaibatsuAbility.Description,
+					Name:         zaibatsuAbility.Label,
+					SupsCost:     zaibatsuAbility.SupsCost,
+				})
+			}
 		}
 
 		// set war machine lock request

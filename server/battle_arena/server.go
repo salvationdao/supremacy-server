@@ -393,8 +393,6 @@ func (ba *BattleArena) Command(command BattleCommand, fn BattleCommandFunc) {
 }
 
 func (ba *BattleArena) SetupAfterConnections() {
-	var factions []*server.Faction
-	var err error
 	b := &backoff.Backoff{
 		Min:    1 * time.Second,
 		Max:    30 * time.Second,
@@ -402,32 +400,42 @@ func (ba *BattleArena) SetupAfterConnections() {
 	}
 
 	// get factions from passport, retrying every 10 seconds until we ge them.
-	for len(factions) <= 0 {
+	for len(ba.battle.FactionMap) <= 0 {
 		if !ba.passport.Connected {
 			time.Sleep(b.Duration())
 			continue
 		}
 
-		factions, err = ba.passport.FactionAll(ba.ctx)
-		if err != nil {
-			ba.Log.Err(err).Msg("unable to get factions")
-		}
+		wg := sync.WaitGroup{}
+		wg.Add(1)
+		ba.passport.FactionAll(func(msg []byte) {
+			defer wg.Done()
+			resp := &passport.FactionAllResponse{}
+			err := json.Unmarshal(msg, resp)
+			if err != nil {
+				return
+			}
+			if err != nil {
+				ba.passport.Log.Err(err).Msg("unable to get factions")
+			}
 
-		if len(factions) > 0 {
+			ba.battle.WarMachineDestroyedRecordMap = make(map[byte]*server.WarMachineDestroyedRecord)
+
+			ba.battle.FactionMap = make(map[server.FactionID]*server.Faction)
+			for _, faction := range resp.Factions {
+				ba.battle.FactionMap[faction.ID] = faction
+			}
+
+		})
+		wg.Wait()
+		if len(ba.battle.FactionMap) > 0 {
 			break
 		}
 		time.Sleep(b.Duration())
 	}
 
-	ba.battle.WarMachineDestroyedRecordMap = make(map[byte]*server.WarMachineDestroyedRecord)
-
-	ba.battle.FactionMap = make(map[server.FactionID]*server.Faction)
-	for _, faction := range factions {
-		ba.battle.FactionMap[faction.ID] = faction
-	}
-
 	// get all the faction list from passport server
-	for _, faction := range factions {
+	for _, faction := range ba.battle.FactionMap {
 		// start battle queue
 		ba.BattleQueueMap[faction.ID] = make(chan func(*WarMachineQueuingList))
 		go ba.startBattleQueue(faction.ID)
@@ -436,37 +444,21 @@ func (ba *BattleArena) SetupAfterConnections() {
 	battleContractRewardUpdaterLogger := log_helpers.NamedLogger(ba.Log, "Contract Reward Updater").Level(zerolog.Disabled)
 	battleContractRewardUpdater := tickle.New("Contract Reward Updater", 10, func() (int, error) {
 		rQueueNumberChan := make(chan int)
-		select {
-		case ba.BattleQueueMap[server.RedMountainFactionID] <- func(wmql *WarMachineQueuingList) {
+		ba.BattleQueueMap[server.RedMountainFactionID] <- func(wmql *WarMachineQueuingList) {
 			rQueueNumberChan <- len(wmql.WarMachines)
-		}:
-		case <-time.After(10 * time.Second):
-			ba.Log.Err(errors.New("timeout on channel send exceeded"))
-			panic("Client Battle Reward Update")
 		}
 
 		bQueueNumberChan := make(chan int)
-		select {
-		case ba.BattleQueueMap[server.BostonCyberneticsFactionID] <- func(wmql *WarMachineQueuingList) {
+		ba.BattleQueueMap[server.BostonCyberneticsFactionID] <- func(wmql *WarMachineQueuingList) {
 			bQueueNumberChan <- len(wmql.WarMachines)
-		}:
-		case <-time.After(10 * time.Second):
-			ba.Log.Err(errors.New("timeout on channel send exceeded"))
-			panic("Client Battle Reward Update")
 		}
 
 		zQueueNumberChan := make(chan int)
-		select {
-		case ba.BattleQueueMap[server.ZaibatsuFactionID] <- func(wmql *WarMachineQueuingList) {
+		ba.BattleQueueMap[server.ZaibatsuFactionID] <- func(wmql *WarMachineQueuingList) {
 			zQueueNumberChan <- len(wmql.WarMachines)
-		}:
-		case <-time.After(10 * time.Second):
-			ba.Log.Err(errors.New("timeout on channel send exceeded"))
-			panic("Client Battle Reward Update")
 		}
 
 		ba.passport.FactionWarMachineContractRewardUpdate(
-			ba.ctx,
 			[]*server.FactionWarMachineQueue{
 				{
 					FactionID:  server.RedMountainFactionID,

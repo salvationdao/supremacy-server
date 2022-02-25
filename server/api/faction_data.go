@@ -39,3 +39,8 @@ func (api *API) GetFactionData(w http.ResponseWriter, r *http.Request) (int, err
 	}
 	return helpers.EncodeJSON(w, factionStat)
 }
+
+func (api *API) TriggerAbilityFileUpload(w http.ResponseWriter, r *http.Request) (int, error) {
+
+	return helpers.EncodeJSON(w, true)
+}

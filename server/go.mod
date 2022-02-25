@@ -15,7 +15,7 @@ require (
 	github.com/makiuchi-d/arelo v1.9.2
 	github.com/ninja-software/log_helpers v1.0.1-0.20211202070223-aff11d9a6ae6
 	github.com/ninja-software/terror/v2 v2.0.7
-	github.com/ninja-syndicate/hub v1.5.7
+	github.com/ninja-syndicate/hub v1.5.10
 	github.com/oklog/run v1.1.0
 	github.com/ory/dockertest/v3 v3.8.1
 	github.com/prometheus/client_golang v1.11.0
@@ -26,7 +26,9 @@ require (
 )
 
 require (
+	github.com/h2non/filetype v1.1.3
 	github.com/jackc/pgconn v1.10.1
+	github.com/jackc/pgx v3.6.2+incompatible
 	github.com/jpillora/backoff v1.0.0
 	github.com/microcosm-cc/bluemonday v1.0.16
 	github.com/ninja-software/tickle v1.3.2
@@ -68,6 +70,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.0 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
+	github.com/jackc/fake v0.0.0-20150926172116-812a484cc733 // indirect
 	github.com/jackc/pgio v1.0.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgproto3/v2 v2.2.0 // indirect
