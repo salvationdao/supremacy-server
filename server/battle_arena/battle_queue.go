@@ -75,6 +75,7 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, 
 					}{}
 					err := json.Unmarshal(msg, &resp)
 					if err != nil {
+						fmt.Println(err, "fdsoifudsaogudsiogjodisgjhaosdgfjo;idsgfjasodfjoiasdfj;oiafj;oasdf")
 						return
 					}
 					fmt.Println("tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt")
