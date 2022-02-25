@@ -67,7 +67,11 @@ func (ba *BattleArena) GameAbilityTrigger(gameAbilityEvent *server.GameAbilityEv
 		cancel:        cancel,
 	}
 
-	ba.send <- gameMessage
+	// NOTE: this will potentially lock game server if game client is disconnected
+	// 		 so wrap it in a go routine
+	func() {
+		ba.send <- gameMessage
+	}()
 
 	return nil
 }

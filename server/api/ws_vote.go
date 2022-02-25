@@ -262,6 +262,8 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 		}
 
 		// record ability animation
+		// NOTE: potentially lock game server if game client disconnected
+
 		selectedX := req.Payload.XIndex
 		selectedY := req.Payload.YIndex
 		err = vc.API.BattleArena.GameAbilityTrigger(&server.GameAbilityEvent{
