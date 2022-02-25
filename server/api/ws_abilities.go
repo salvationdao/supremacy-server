@@ -314,7 +314,7 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 				fap.Range(func(key interface{}, gameAbilityPrice interface{}) bool {
 					fa := gameAbilityPrice.(*GameAbilityPrice)
 					hasTriggered := 0
-					if fa.GameAbility.ID == req.Payload.GameAbilityID {
+					if server.GameAbilityID(fa.GameAbility.Identity) == req.Payload.GameAbilityID {
 						hasTriggered = 1
 					}
 					fa.PriceRW.RLock()

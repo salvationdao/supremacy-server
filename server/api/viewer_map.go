@@ -167,6 +167,7 @@ func (um *UserMap) UserRegister(wsc *hub.Client, user *server.User) {
 		// set up user
 		hcm.RWMutex.Lock()
 		defer hcm.RWMutex.Unlock()
+		hcm.User.ID = user.ID
 		hcm.User.Username = user.Username
 		hcm.User.FirstName = user.FirstName
 		hcm.User.LastName = user.LastName
@@ -209,6 +210,7 @@ func (um *UserMap) Update(user *server.User) []*hub.Client {
 	}
 
 	hcm.RWMutex.Lock()
+	hcm.User.ID = user.ID
 	hcm.User.Username = user.Username
 	hcm.User.FirstName = user.FirstName
 	hcm.User.LastName = user.LastName

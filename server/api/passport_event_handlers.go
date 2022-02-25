@@ -130,6 +130,8 @@ func (api *API) PassportUserEnlistFactionHandler(ctx context.Context, payload []
 		return
 	}
 
+	fmt.Println("old faction id", oldFactionID)
+	fmt.Println("new faction id", newFactionID)
 	for _, cl := range api.UserMap.Update(detail) {
 		api.viewerLiveCount.Swap(oldFactionID, newFactionID)
 		go cl.Send(broadcastData)

@@ -408,7 +408,10 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client, client
 	currentUser := api.UserMap.GetUserDetail(wsc)
 
 	if currentUser != nil {
+		// remove client multipliers
 		api.viewerLiveCount.Sub(currentUser.FactionID)
+	} else {
+		api.viewerLiveCount.Sub(server.FactionID(uuid.Nil))
 	}
 
 	// set client offline
