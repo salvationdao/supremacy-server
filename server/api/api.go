@@ -270,11 +270,17 @@ func NewAPI(
 func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 	var factions []*server.Faction
 
+	for !api.Passport.Lock.Get() {
+		time.Sleep(5 * time.Second)
+	}
+
 	b := &backoff.Backoff{
 		Min:    1 * time.Second,
 		Max:    30 * time.Second,
 		Factor: 2,
 	}
+	// S1008: should use 'return atomic.LoadInt32(&(b.flag)) != 0' instead of 'if atomic.LoadInt32(&(b.flag)) != 0 { return true }; return false' (gosimple)
+	//        if atomic.LoadInt32(&(b.flag)) != 0 {
 
 	// get factions from passport, retrying every 10 seconds until we ge them.
 	for len(factions) <= 0 {

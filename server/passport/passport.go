@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"server"
 	"sync"
 	"time"
 
@@ -53,6 +54,7 @@ type Passport struct {
 
 	ctx   context.Context
 	close context.CancelFunc
+	Lock  server.TAtomBool
 }
 
 func NewPassport(ctx context.Context, logger *zerolog.Logger, addr, clientToken string) *Passport {
@@ -99,8 +101,9 @@ func (pp *Passport) Connect(ctx context.Context) error {
 reconnectLoop:
 	for {
 		authed := false
+		pp.Lock.Set(true)
 		pp.Connected = false
-
+		pp.Lock.Set(false)
 		pp.Log.Info().Msgf("Attempting to connect to passport on %v", pp.addr)
 		var err error
 		pp.ws, _, err = websocket.Dial(context.Background(), pp.addr, &websocket.DialOptions{
@@ -243,7 +246,9 @@ reconnectLoop:
 
 					b.Reset()
 					authed = true
+					pp.Lock.Set(true)
 					pp.Connected = true
+					pp.Lock.Set(false)
 					pp.Log.Info().Msgf("Successfully to connect and authed to passport on %v", pp.addr)
 					continue
 				} else if transactionID != "" {
