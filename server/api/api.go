@@ -142,7 +142,7 @@ func NewAPI(
 	netMessageBus := messagebus.NewNetBus(log_helpers.NamedLogger(log, "net_message_bus"))
 
 	// initialise message bus
-	messageBus, messageBusOfflineFunc := messagebus.NewMessageBus(log_helpers.NamedLogger(log, "message_bus"))
+	messageBus := messagebus.NewMessageBus(log_helpers.NamedLogger(log, "message_bus"))
 	// initialise api
 	api := &API{
 		ctx:           ctx,
@@ -167,7 +167,7 @@ func NewAPI(
 			},
 			ClientOfflineFn: func(cl *hub.Client) {
 				netMessageBus.UnsubAll(cl)
-				messageBusOfflineFunc(cl)
+				messageBus.UnsubAll(cl)
 			},
 		}),
 		// channel for faction voting system
