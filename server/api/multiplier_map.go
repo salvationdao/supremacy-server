@@ -330,24 +330,16 @@ func (um *UserMultiplier) SupsTick() {
 			um.CurrentMaps.OnlineMap.Delete(key)
 			return true
 		}
-		multiplierValue := m.MultiplierValue
 
 		// skip, if user is not active
 		userIDstr := key.(string)
-		value, ok := um.ActiveMap.Load(userIDstr)
-		if !ok {
+		multiplierValue := m.MultiplierValue
+		remain := um.UserRemainRate(now, userIDstr)
+		// return if no remain
+		if remain == 0 {
 			return true
 		}
-		lastActive, ok := value.(time.Time)
-		if !ok {
-			return true
-		}
-		last := lastActive.Sub(now).Minutes()
-		if last >= 20 {
-			return true
-		} else if last >= 5 {
-			multiplierValue = multiplierValue * 10 / 2
-		}
+		multiplierValue = multiplierValue * remain
 
 		// append user to the ticking list
 		userID := server.UserID(uuid.FromStringOrNil(key.(string)))
@@ -367,24 +359,15 @@ func (um *UserMultiplier) SupsTick() {
 			return true
 		}
 
-		multiplierValue := m.MultiplierValue
-
 		// skip, if user is not active
 		userIDstr := key.(string)
-		value, ok := um.ActiveMap.Load(userIDstr)
-		if !ok {
+		multiplierValue := m.MultiplierValue
+		remain := um.UserRemainRate(now, userIDstr)
+		// return if no remain
+		if remain == 0 {
 			return true
 		}
-		lastActive, ok := value.(time.Time)
-		if !ok {
-			return true
-		}
-		last := lastActive.Sub(now).Minutes()
-		if last >= 20 {
-			return true
-		} else if last >= 5 {
-			multiplierValue = multiplierValue * 10 / 2
-		}
+		multiplierValue = multiplierValue * remain
 
 		// append user to the ticking list
 		userID := server.UserID(uuid.FromStringOrNil(key.(string)))
@@ -402,24 +385,15 @@ func (um *UserMultiplier) SupsTick() {
 			return true
 		}
 
-		multiplierValue := m.MultiplierValue
-
 		// skip, if user is not active
 		userIDstr := key.(string)
-		value, ok := um.ActiveMap.Load(userIDstr)
-		if !ok {
+		multiplierValue := m.MultiplierValue
+		remain := um.UserRemainRate(now, userIDstr)
+		// return if no remain
+		if remain == 0 {
 			return true
 		}
-		lastActive, ok := value.(time.Time)
-		if !ok {
-			return true
-		}
-		last := lastActive.Sub(now).Minutes()
-		if last >= 20 {
-			return true
-		} else if last >= 5 {
-			multiplierValue = multiplierValue * 10 / 2
-		}
+		multiplierValue = multiplierValue * remain
 
 		// append user to the ticking list
 		userID := server.UserID(uuid.FromStringOrNil(key.(string)))
@@ -443,23 +417,14 @@ func (um *UserMultiplier) SupsTick() {
 		uidStr := strings.Split(k, "_")[1]
 		userID := server.UserID(uuid.FromStringOrNil(uidStr))
 
-		multiplierValue := m.MultiplierValue
-
 		// skip, if user is not active
-		value, ok := um.ActiveMap.Load(uidStr)
-		if !ok {
+		multiplierValue := m.MultiplierValue
+		remain := um.UserRemainRate(now, uidStr)
+		// return if no remain
+		if remain == 0 {
 			return true
 		}
-		lastActive, ok := value.(time.Time)
-		if !ok {
-			return true
-		}
-		last := lastActive.Sub(now).Minutes()
-		if last >= 20 {
-			return true
-		} else if last >= 5 {
-			multiplierValue = multiplierValue * 10 / 2
-		}
+		multiplierValue = multiplierValue * remain
 
 		if _, ok := userMap[multiplierValue]; !ok {
 			userMap[multiplierValue] = []server.UserID{}
@@ -481,23 +446,14 @@ func (um *UserMultiplier) SupsTick() {
 		uidStr := strings.Split(k, "_")[1]
 		userID := server.UserID(uuid.FromStringOrNil(uidStr))
 
-		multiplierValue := m.MultiplierValue
-
 		// skip, if user is not active
-		value, ok := um.ActiveMap.Load(uidStr)
-		if !ok {
+		multiplierValue := m.MultiplierValue
+		remain := um.UserRemainRate(now, uidStr)
+		// return if no remain
+		if remain == 0 {
 			return true
 		}
-		lastActive, ok := value.(time.Time)
-		if !ok {
-			return true
-		}
-		last := lastActive.Sub(now).Minutes()
-		if last >= 20 {
-			return true
-		} else if last >= 5 {
-			multiplierValue = multiplierValue * 10 / 2
-		}
+		multiplierValue = multiplierValue * remain
 
 		if _, ok := userMap[multiplierValue]; !ok {
 			userMap[multiplierValue] = []server.UserID{}
@@ -519,23 +475,14 @@ func (um *UserMultiplier) SupsTick() {
 		uidStr := strings.Split(k, "_")[1]
 		userID := server.UserID(uuid.FromStringOrNil(uidStr))
 
-		multiplierValue := m.MultiplierValue
-
 		// skip, if user is not active
-		value, ok := um.ActiveMap.Load(uidStr)
-		if !ok {
+		multiplierValue := m.MultiplierValue
+		remain := um.UserRemainRate(now, uidStr)
+		// return if no remain
+		if remain == 0 {
 			return true
 		}
-		lastActive, ok := value.(time.Time)
-		if !ok {
-			return true
-		}
-		last := lastActive.Sub(now).Minutes()
-		if last >= 20 {
-			return true
-		} else if last >= 5 {
-			multiplierValue = multiplierValue * 10 / 2
-		}
+		multiplierValue = multiplierValue * remain
 
 		if _, ok := userMap[multiplierValue]; !ok {
 			userMap[multiplierValue] = []server.UserID{}
@@ -629,12 +576,16 @@ func (um *UserMultiplier) UserSupsMultiplierToPassport(userID server.UserID, sup
 func (um *UserMultiplier) UserMultiplierUpdate() {
 	// map[userID]map[reward text] &MultiplierAction
 	diff := make(map[string]map[string]*MultiplierAction)
+	now := time.Now()
 
 	// check current map with check map, add any different from the cache
 	um.CurrentMaps.OnlineMap.Range(func(key, value interface{}) bool {
-
 		uidStr := key.(string)
 		currentValue := value.(*MultiplierAction)
+		if currentValue.Expiry.Before(now) {
+			return true
+		}
+
 		// get data from check map
 		v, ok := um.CheckMaps.OnlineMap.Load(uidStr)
 		// record, if not exists
@@ -675,6 +626,9 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 	um.CurrentMaps.ApplauseMap.Range(func(key, value interface{}) bool {
 		uidStr := key.(string)
 		currentValue := value.(*MultiplierAction)
+		if currentValue.Expiry.Before(now) {
+			return true
+		}
 		// get data from check map
 		v, ok := um.CheckMaps.ApplauseMap.Load(uidStr)
 		// record, if not exists
@@ -715,6 +669,9 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 	um.CurrentMaps.PickedLocationMap.Range(func(key, value interface{}) bool {
 		uidStr := key.(string)
 		currentValue := value.(*MultiplierAction)
+		if currentValue.Expiry.Before(now) {
+			return true
+		}
 		// get data from check map
 		v, ok := um.CheckMaps.PickedLocationMap.Load(uidStr)
 		// record, if not exists
@@ -765,6 +722,9 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 			// check value
 			uidStr := strings.Split(key.(string), "_")[1]
 			currentValue := value.(*MultiplierAction)
+			if currentValue.Expiry.Before(now) {
+				return true
+			}
 			// get data from check map
 			v, ok := um.CheckMaps.WinningFactionMap.Load(battleID + "_" + uidStr)
 			// record, if not exists
@@ -811,6 +771,9 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 
 			uidStr := strings.Split(key.(string), "_")[1]
 			currentValue := value.(*MultiplierAction)
+			if currentValue.Expiry.Before(now) {
+				return true
+			}
 			// get data from check map
 			v, ok := um.CheckMaps.WinningUserMap.Load(battleID + "_" + uidStr)
 			// record, if not exists
@@ -857,6 +820,9 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 
 			uidStr := strings.Split(key.(string), "_")[1]
 			currentValue := value.(*MultiplierAction)
+			if currentValue.Expiry.Before(now) {
+				return true
+			}
 			// get data from check map
 			v, ok := um.CheckMaps.KillMap.Load(battleID + "_" + uidStr)
 			// record, if not exists
@@ -897,6 +863,14 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 	})
 
 	for userID, ma := range diff {
+		// update user remain rate
+		remainRate := um.UserRemainRate(now, userID)
+		if remainRate == 0 || remainRate == 100 {
+			continue
+		}
+		for _, m := range ma {
+			m.MultiplierValue = m.MultiplierValue * remainRate
+		}
 		uid := server.UserID(uuid.FromStringOrNil(userID))
 		go um.UserSupsMultiplierToPassport(uid, ma)
 	}
@@ -917,4 +891,30 @@ func (um *UserMultiplier) UserActiveChecker() {
 		}
 		return true
 	})
+}
+
+func (um *UserMultiplier) UserRemainRate(now time.Time, userID string) int {
+	value, ok := um.ActiveMap.Load(userID)
+	if !ok {
+		return 0
+	}
+
+	lastValue, ok := value.(time.Time)
+	if !ok {
+		return 0
+	}
+
+	lastMinute := int(now.Sub(lastValue).Minutes())
+
+	if lastMinute >= 30 {
+		return 0
+	}
+
+	if lastMinute <= 10 {
+		return 100
+	}
+
+	remainRate := lastMinute - 10
+
+	return 100 - (remainRate/2)*10
 }
