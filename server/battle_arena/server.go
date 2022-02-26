@@ -85,7 +85,10 @@ func NewBattleArenaClient(ctx context.Context, logger *zerolog.Logger, conn *pgx
 		Events:   BattleArenaEvents{map[Event][]EventHandler{}, sync.RWMutex{}},
 		ctx:      ctx,
 		close:    cancel,
-		battle:   &server.Battle{},
+		battle: &server.Battle{
+			WarMachineDestroyedRecordMap: make(map[byte]*server.WarMachineDestroyedRecord),
+			FactionMap:                   make(map[server.FactionID]*server.Faction),
+		},
 
 		// channel for battle queue
 		BattleQueueMap: make(map[server.FactionID]chan func(*WarMachineQueuingList)),
