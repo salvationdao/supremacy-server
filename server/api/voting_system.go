@@ -483,7 +483,7 @@ func (api *API) startVotingCycle(ctx context.Context, introSecond int) {
 
 // stopVotingCycle pause voting cycle tickles
 func (api *API) stopVotingCycle(ctx context.Context) []*server.BattleUserVote {
-	userVoteCountsChan := make(chan []*server.BattleUserVote)
+	userVoteCounts := []*server.BattleUserVote{}
 	api.VotingCycle(func(va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
 		api.votePhaseChecker.Lock()
 		api.votePhaseChecker.Phase = VotePhaseHold
@@ -511,10 +511,10 @@ func (api *API) stopVotingCycle(ctx context.Context) []*server.BattleUserVote {
 			api.Passport.ReleaseTransactions(context.Background(), fts.Transactions)
 		}
 
-		uvcs := []*server.BattleUserVote{}
+		userVoteCounts := []*server.BattleUserVote{}
 		for userID, voteCount := range uvm {
 			// get a copy of the user vote map
-			uvcs = append(uvcs, &server.BattleUserVote{
+			userVoteCounts = append(userVoteCounts, &server.BattleUserVote{
 				UserID:    userID,
 				VoteCount: voteCount,
 			})
@@ -522,12 +522,9 @@ func (api *API) stopVotingCycle(ctx context.Context) []*server.BattleUserVote {
 			// delete current user vote
 			delete(uvm, userID)
 		}
-
-		userVoteCountsChan <- uvcs
 	})
 
-	return <-userVoteCountsChan
-
+	return userVoteCounts
 }
 
 // voteStageListenerFactory is the main vote stage handler
