@@ -339,7 +339,7 @@ func (um *UserMultiplier) SupsTick() {
 		if remain == 0 {
 			return true
 		}
-		multiplierValue = multiplierValue * remain
+		multiplierValue = multiplierValue * remain / 100
 
 		// append user to the ticking list
 		userID := server.UserID(uuid.FromStringOrNil(key.(string)))
@@ -367,7 +367,7 @@ func (um *UserMultiplier) SupsTick() {
 		if remain == 0 {
 			return true
 		}
-		multiplierValue = multiplierValue * remain
+		multiplierValue = multiplierValue * remain / 100
 
 		// append user to the ticking list
 		userID := server.UserID(uuid.FromStringOrNil(key.(string)))
@@ -393,7 +393,7 @@ func (um *UserMultiplier) SupsTick() {
 		if remain == 0 {
 			return true
 		}
-		multiplierValue = multiplierValue * remain
+		multiplierValue = multiplierValue * remain / 100
 
 		// append user to the ticking list
 		userID := server.UserID(uuid.FromStringOrNil(key.(string)))
@@ -424,7 +424,7 @@ func (um *UserMultiplier) SupsTick() {
 		if remain == 0 {
 			return true
 		}
-		multiplierValue = multiplierValue * remain
+		multiplierValue = multiplierValue * remain / 100
 
 		if _, ok := userMap[multiplierValue]; !ok {
 			userMap[multiplierValue] = []server.UserID{}
@@ -453,7 +453,7 @@ func (um *UserMultiplier) SupsTick() {
 		if remain == 0 {
 			return true
 		}
-		multiplierValue = multiplierValue * remain
+		multiplierValue = multiplierValue * remain / 100
 
 		if _, ok := userMap[multiplierValue]; !ok {
 			userMap[multiplierValue] = []server.UserID{}
@@ -482,7 +482,7 @@ func (um *UserMultiplier) SupsTick() {
 		if remain == 0 {
 			return true
 		}
-		multiplierValue = multiplierValue * remain
+		multiplierValue = multiplierValue * remain / 100
 
 		if _, ok := userMap[multiplierValue]; !ok {
 			userMap[multiplierValue] = []server.UserID{}
@@ -587,7 +587,7 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 		}
 
 		// get data from check map
-		v, ok := um.CheckMaps.OnlineMap.Load(uidStr)
+		_, ok := um.CheckMaps.OnlineMap.Load(uidStr)
 		// record, if not exists
 		if !ok {
 			// store different
@@ -600,12 +600,6 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 
 			// update check map
 			um.CheckMaps.OnlineMap.Store(uidStr, currentValue)
-			return true
-		}
-		oldValue := v.(*MultiplierAction)
-
-		// check whether it is the same
-		if currentValue.Expiry == oldValue.Expiry {
 			return true
 		}
 
@@ -630,7 +624,7 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 			return true
 		}
 		// get data from check map
-		v, ok := um.CheckMaps.ApplauseMap.Load(uidStr)
+		_, ok := um.CheckMaps.ApplauseMap.Load(uidStr)
 		// record, if not exists
 		if !ok {
 			// store different
@@ -643,12 +637,6 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 			// update check map
 			um.CheckMaps.ApplauseMap.Store(uidStr, currentValue)
 
-			return true
-		}
-		oldValue := v.(*MultiplierAction)
-
-		// check whether it is the same
-		if currentValue.Expiry == oldValue.Expiry {
 			return true
 		}
 
@@ -673,7 +661,7 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 			return true
 		}
 		// get data from check map
-		v, ok := um.CheckMaps.PickedLocationMap.Load(uidStr)
+		_, ok := um.CheckMaps.PickedLocationMap.Load(uidStr)
 		// record, if not exists
 		if !ok {
 			// store different
@@ -686,12 +674,6 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 			// update check map
 			um.CheckMaps.PickedLocationMap.Store(uidStr, currentValue)
 
-			return true
-		}
-		oldValue := v.(*MultiplierAction)
-
-		// check whether it is the same
-		if currentValue.Expiry == oldValue.Expiry {
 			return true
 		}
 
@@ -726,7 +708,7 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 				return true
 			}
 			// get data from check map
-			v, ok := um.CheckMaps.WinningFactionMap.Load(battleID + "_" + uidStr)
+			_, ok := um.CheckMaps.WinningFactionMap.Load(battleID + "_" + uidStr)
 			// record, if not exists
 			if !ok {
 				// store different
@@ -739,12 +721,6 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 				// update check map
 				um.CheckMaps.WinningFactionMap.Store(battleID+"_"+uidStr, currentValue)
 
-				return true
-			}
-			oldValue := v.(*MultiplierAction)
-
-			// check whether it is the same
-			if currentValue.Expiry == oldValue.Expiry {
 				return true
 			}
 
@@ -775,7 +751,7 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 				return true
 			}
 			// get data from check map
-			v, ok := um.CheckMaps.WinningUserMap.Load(battleID + "_" + uidStr)
+			_, ok := um.CheckMaps.WinningUserMap.Load(battleID + "_" + uidStr)
 			// record, if not exists
 			if !ok {
 				// store different
@@ -788,12 +764,6 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 				// update check map
 				um.CheckMaps.WinningUserMap.Store(battleID+"_"+uidStr, currentValue)
 
-				return true
-			}
-			oldValue := v.(*MultiplierAction)
-
-			// check whether it is the same
-			if currentValue.Expiry == oldValue.Expiry {
 				return true
 			}
 
@@ -824,7 +794,7 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 				return true
 			}
 			// get data from check map
-			v, ok := um.CheckMaps.KillMap.Load(battleID + "_" + uidStr)
+			_, ok := um.CheckMaps.KillMap.Load(battleID + "_" + uidStr)
 			// record, if not exists
 			if !ok {
 				// store different
@@ -837,12 +807,6 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 				// update check map
 				um.CheckMaps.KillMap.Store(battleID+"_"+uidStr, currentValue)
 
-				return true
-			}
-			oldValue := v.(*MultiplierAction)
-
-			// check whether it is the same
-			if currentValue.Expiry == oldValue.Expiry {
 				return true
 			}
 
@@ -869,7 +833,7 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 			continue
 		}
 		for _, m := range ma {
-			m.MultiplierValue = m.MultiplierValue * remainRate
+			m.MultiplierValue = m.MultiplierValue * remainRate / 100
 		}
 		uid := server.UserID(uuid.FromStringOrNil(userID))
 		go um.UserSupsMultiplierToPassport(uid, ma)
