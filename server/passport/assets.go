@@ -130,9 +130,9 @@ func (pp *Passport) AssetContractRewardRedeem(userID server.UserID, factionID se
 }
 
 // AssetCheckList pass a hashes checklist to passport server for passport server to free up the non-queued asset
-func (pp *Passport) AssetCheckList(hashes []string) {
+func (pp *Passport) AssetQueuingCheckList(hashes []string) {
 	pp.send <- &Message{
-		Key: "SUPREMACY:",
+		Key: "SUPREMACY:QUEUING_ASSET_CHECKLIST",
 		Payload: struct {
 			QueuedHashes []string `json:"queuedHashes"`
 		}{

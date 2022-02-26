@@ -449,7 +449,7 @@ func (ba *BattleArena) SetupAfterConnections() {
 	}
 
 	// fire the hashes checklist to passport to free up the non-queued war machines
-	ba.passport.AssetCheckList(hashes)
+	ba.passport.AssetQueuingCheckList(hashes)
 
 	battleContractRewardUpdaterLogger := log_helpers.NamedLogger(ba.Log, "Contract Reward Updater").Level(zerolog.Disabled)
 	battleContractRewardUpdater := tickle.New("Contract Reward Updater", 10, func() (int, error) {
