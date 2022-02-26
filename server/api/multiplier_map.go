@@ -83,6 +83,10 @@ func NewUserMultiplier(userMap *UserMap, pp *passport.Passport, ba *battle_arena
 		for {
 			time.Sleep(5 * time.Second)
 			if ba.BattleActive() {
+				// check user active list
+				um.UserActiveChecker()
+
+				// distribute sups
 				um.SupsTick()
 			}
 		}
@@ -92,13 +96,6 @@ func NewUserMultiplier(userMap *UserMap, pp *passport.Passport, ba *battle_arena
 		for {
 			time.Sleep(1 * time.Second)
 			um.UserMultiplierUpdate()
-		}
-	}()
-
-	go func() {
-		for {
-			time.Sleep(1 * time.Second)
-			um.UserActiveChecker()
 		}
 	}()
 
@@ -201,6 +198,9 @@ func (um *UserMultiplier) Offline(userID server.UserID) {
 
 func (um *UserMultiplier) Voted(userID server.UserID) {
 	userIDStr := userID.String()
+
+	// update user active check
+	um.ActiveMap.Store(userIDStr, time.Now())
 
 	um.CurrentMaps.ApplauseMap.Store(userIDStr, &MultiplierAction{
 		MultiplierValue: 50,
