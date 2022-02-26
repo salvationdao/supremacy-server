@@ -89,6 +89,13 @@ func (ba *BattleArena) InitNextBattle() error {
 
 	ba.Log.Info().Msgf("Initializing new battle: %s", ba.battle.ID)
 
+	// trunc war machine name before it is send to battle
+	for _, wm := range ba.battle.WarMachines {
+		if len(wm.Name) > 20 {
+			wm.Name = wm.Name[:20]
+		}
+	}
+
 	// Setup payload
 	payload := struct {
 		BattleID    server.BattleID              `json:"battleID"`

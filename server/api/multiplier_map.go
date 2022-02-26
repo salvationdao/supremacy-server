@@ -47,9 +47,7 @@ type UserMultiplier struct {
 	Passport    *passport.Passport
 	BattleArena *battle_arena.BattleArena
 
-	ReducerMx    *sync.RWMutex
-	TerminateMap map[string]bool
-	ReduceMap    map[string]int
+	ActiveMap *sync.Map
 }
 
 type Multiplier struct {
@@ -78,9 +76,7 @@ func NewUserMultiplier(userMap *UserMap, pp *passport.Passport, ba *battle_arena
 		Passport:    pp,
 		BattleArena: ba,
 
-		ReducerMx:    &sync.RWMutex{},
-		TerminateMap: make(map[string]bool),
-		ReduceMap:    make(map[string]int),
+		ActiveMap: &sync.Map{},
 	}
 
 	go func() {
@@ -101,8 +97,8 @@ func NewUserMultiplier(userMap *UserMap, pp *passport.Passport, ba *battle_arena
 
 	go func() {
 		for {
-			time.Sleep(1 * time.Minute)
-			um.UserMultiplierReducer()
+			time.Sleep(1 * time.Second)
+			um.UserActiveChecker()
 		}
 	}()
 
@@ -113,10 +109,6 @@ func NewUserMultiplier(userMap *UserMap, pp *passport.Passport, ba *battle_arena
 func (um *UserMultiplier) Online(userID server.UserID) {
 	userIDStr := userID.String()
 	now := time.Now()
-
-	um.ReducerMx.Lock()
-	delete(um.TerminateMap, userIDStr)
-	um.ReducerMx.Unlock()
 
 	// go through check map and get non expired multiplier
 	um.CheckMaps.OnlineMap.Delete(userIDStr)
@@ -172,10 +164,6 @@ func (um *UserMultiplier) Online(userID server.UserID) {
 func (um *UserMultiplier) Offline(userID server.UserID) {
 	userIDStr := userID.String()
 
-	um.ReducerMx.Lock()
-	um.TerminateMap[userIDStr] = true
-	um.ReducerMx.Unlock()
-
 	um.CurrentMaps.OnlineMap.Delete(userIDStr)
 	um.CurrentMaps.ApplauseMap.Delete(userIDStr)
 	um.CurrentMaps.PickedLocationMap.Delete(userIDStr)
@@ -214,11 +202,6 @@ func (um *UserMultiplier) Offline(userID server.UserID) {
 func (um *UserMultiplier) Voted(userID server.UserID) {
 	userIDStr := userID.String()
 
-	um.ReducerMx.Lock()
-	delete(um.TerminateMap, userIDStr)
-	delete(um.ReduceMap, userIDStr)
-	um.ReducerMx.Unlock()
-
 	um.CurrentMaps.ApplauseMap.Store(userIDStr, &MultiplierAction{
 		MultiplierValue: 50,
 		Expiry:          time.Now().Add(time.Minute * 30),
@@ -227,11 +210,6 @@ func (um *UserMultiplier) Voted(userID server.UserID) {
 
 func (um *UserMultiplier) PickedLocation(userID server.UserID) {
 	userIDStr := userID.String()
-
-	um.ReducerMx.Lock()
-	delete(um.TerminateMap, userIDStr)
-	delete(um.ReduceMap, userIDStr)
-	um.ReducerMx.Unlock()
 
 	um.CurrentMaps.PickedLocationMap.Store(userIDStr, &MultiplierAction{
 		MultiplierValue: 50,
@@ -346,26 +324,29 @@ func (um *UserMultiplier) SupsTick() {
 
 	// check online reward
 	um.CurrentMaps.OnlineMap.Range(func(key, value interface{}) bool {
-		uidStr := key.(string)
-		um.ReducerMx.RLock()
-		defer um.ReducerMx.RUnlock()
-		// skip, if user is not active
-		if _, ok := um.TerminateMap[uidStr]; ok {
-			return true
-		}
-
 		m := value.(*MultiplierAction)
 		// clean up, if expired
 		if m.Expiry.Before(now) {
 			um.CurrentMaps.OnlineMap.Delete(key)
 			return true
 		}
-
 		multiplierValue := m.MultiplierValue
-		// if user is reduce list
-		if level, ok := um.ReduceMap[uidStr]; ok {
-			// reduce a percentage
-			multiplierValue = multiplierValue * (10 - level) / 100
+
+		// skip, if user is not active
+		userIDstr := key.(string)
+		value, ok := um.ActiveMap.Load(userIDstr)
+		if !ok {
+			return true
+		}
+		lastActive, ok := value.(time.Time)
+		if !ok {
+			return true
+		}
+		last := lastActive.Sub(now).Minutes()
+		if last >= 20 {
+			return true
+		} else if last >= 5 {
+			multiplierValue = multiplierValue * 10 / 2
 		}
 
 		// append user to the ticking list
@@ -379,14 +360,6 @@ func (um *UserMultiplier) SupsTick() {
 
 	// check applause reward
 	um.CurrentMaps.ApplauseMap.Range(func(key, value interface{}) bool {
-		uidStr := key.(string)
-		um.ReducerMx.RLock()
-		defer um.ReducerMx.RUnlock()
-		// skip, if user is not active
-		if _, ok := um.TerminateMap[uidStr]; ok {
-			return true
-		}
-
 		m := value.(*MultiplierAction)
 		// clean up, if expired
 		if m.Expiry.Before(now) {
@@ -395,10 +368,22 @@ func (um *UserMultiplier) SupsTick() {
 		}
 
 		multiplierValue := m.MultiplierValue
-		// if user is reduce list
-		if level, ok := um.ReduceMap[uidStr]; ok {
-			// reduce a percentage
-			multiplierValue = multiplierValue * (10 - level) / 100
+
+		// skip, if user is not active
+		userIDstr := key.(string)
+		value, ok := um.ActiveMap.Load(userIDstr)
+		if !ok {
+			return true
+		}
+		lastActive, ok := value.(time.Time)
+		if !ok {
+			return true
+		}
+		last := lastActive.Sub(now).Minutes()
+		if last >= 20 {
+			return true
+		} else if last >= 5 {
+			multiplierValue = multiplierValue * 10 / 2
 		}
 
 		// append user to the ticking list
@@ -410,14 +395,6 @@ func (um *UserMultiplier) SupsTick() {
 		return true
 	})
 	um.CurrentMaps.PickedLocationMap.Range(func(key, value interface{}) bool {
-		uidStr := key.(string)
-		um.ReducerMx.RLock()
-		defer um.ReducerMx.RUnlock()
-		// skip, if user is not active
-		if _, ok := um.TerminateMap[uidStr]; ok {
-			return true
-		}
-
 		m := value.(*MultiplierAction)
 		// clean up, if expired
 		if m.Expiry.Before(now) {
@@ -426,10 +403,22 @@ func (um *UserMultiplier) SupsTick() {
 		}
 
 		multiplierValue := m.MultiplierValue
-		// if user is reduce list
-		if level, ok := um.ReduceMap[uidStr]; ok {
-			// reduce a percentage
-			multiplierValue = multiplierValue * (10 - level) / 100
+
+		// skip, if user is not active
+		userIDstr := key.(string)
+		value, ok := um.ActiveMap.Load(userIDstr)
+		if !ok {
+			return true
+		}
+		lastActive, ok := value.(time.Time)
+		if !ok {
+			return true
+		}
+		last := lastActive.Sub(now).Minutes()
+		if last >= 20 {
+			return true
+		} else if last >= 5 {
+			multiplierValue = multiplierValue * 10 / 2
 		}
 
 		// append user to the ticking list
@@ -454,18 +443,22 @@ func (um *UserMultiplier) SupsTick() {
 		uidStr := strings.Split(k, "_")[1]
 		userID := server.UserID(uuid.FromStringOrNil(uidStr))
 
-		um.ReducerMx.RLock()
-		defer um.ReducerMx.RUnlock()
+		multiplierValue := m.MultiplierValue
+
 		// skip, if user is not active
-		if _, ok := um.TerminateMap[uidStr]; ok {
+		value, ok := um.ActiveMap.Load(uidStr)
+		if !ok {
 			return true
 		}
-
-		multiplierValue := m.MultiplierValue
-		// if user is reduce list
-		if level, ok := um.ReduceMap[uidStr]; ok {
-			// reduce a percentage
-			multiplierValue = multiplierValue * (10 - level) / 100
+		lastActive, ok := value.(time.Time)
+		if !ok {
+			return true
+		}
+		last := lastActive.Sub(now).Minutes()
+		if last >= 20 {
+			return true
+		} else if last >= 5 {
+			multiplierValue = multiplierValue * 10 / 2
 		}
 
 		if _, ok := userMap[multiplierValue]; !ok {
@@ -488,18 +481,22 @@ func (um *UserMultiplier) SupsTick() {
 		uidStr := strings.Split(k, "_")[1]
 		userID := server.UserID(uuid.FromStringOrNil(uidStr))
 
-		um.ReducerMx.RLock()
-		defer um.ReducerMx.RUnlock()
+		multiplierValue := m.MultiplierValue
+
 		// skip, if user is not active
-		if _, ok := um.TerminateMap[uidStr]; ok {
+		value, ok := um.ActiveMap.Load(uidStr)
+		if !ok {
 			return true
 		}
-
-		multiplierValue := m.MultiplierValue
-		// if user is reduce list
-		if level, ok := um.ReduceMap[uidStr]; ok {
-			// reduce a percentage
-			multiplierValue = multiplierValue * (10 - level) / 100
+		lastActive, ok := value.(time.Time)
+		if !ok {
+			return true
+		}
+		last := lastActive.Sub(now).Minutes()
+		if last >= 20 {
+			return true
+		} else if last >= 5 {
+			multiplierValue = multiplierValue * 10 / 2
 		}
 
 		if _, ok := userMap[multiplierValue]; !ok {
@@ -522,18 +519,22 @@ func (um *UserMultiplier) SupsTick() {
 		uidStr := strings.Split(k, "_")[1]
 		userID := server.UserID(uuid.FromStringOrNil(uidStr))
 
-		um.ReducerMx.RLock()
-		defer um.ReducerMx.RUnlock()
+		multiplierValue := m.MultiplierValue
+
 		// skip, if user is not active
-		if _, ok := um.TerminateMap[uidStr]; ok {
+		value, ok := um.ActiveMap.Load(uidStr)
+		if !ok {
 			return true
 		}
-
-		multiplierValue := m.MultiplierValue
-		// if user is reduce list
-		if level, ok := um.ReduceMap[uidStr]; ok {
-			// reduce a percentage
-			multiplierValue = multiplierValue * (10 - level) / 100
+		lastActive, ok := value.(time.Time)
+		if !ok {
+			return true
+		}
+		last := lastActive.Sub(now).Minutes()
+		if last >= 20 {
+			return true
+		} else if last >= 5 {
+			multiplierValue = multiplierValue * 10 / 2
 		}
 
 		if _, ok := userMap[multiplierValue]; !ok {
@@ -882,41 +883,19 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 	}
 }
 
-func (um *UserMultiplier) UserMultiplierReducer() {
+func (um *UserMultiplier) UserActiveChecker() {
 	now := time.Now()
-	um.CurrentMaps.OnlineMap.Range(func(key, value interface{}) bool {
-		um.ReducerMx.Lock()
-		defer um.ReducerMx.Unlock()
-		userIDStr := key.(string)
-		applause, ok := um.CurrentMaps.ApplauseMap.Load(userIDStr)
+	um.ActiveMap.Range(func(key, value interface{}) bool {
+		userIDstr := key.(string)
+		lastTime, ok := value.(time.Time)
 		if !ok {
-			um.TerminateMap[userIDStr] = true
-			return true
-		} else {
-			applauseMA := applause.(*MultiplierAction)
-			lastActive := int(applauseMA.Expiry.Sub(now).Minutes())
-			// if last active expired
-			if lastActive < 0 {
-				um.TerminateMap[userIDStr] = true
-				return true
-
-				// if last active 1
-			} else if lastActive >= 1 {
-				level, ok := um.ReduceMap[userIDStr]
-				if !ok {
-					level = 0
-				}
-
-				level += 1
-
-				um.ReduceMap[userIDStr] = level
-				return true
-			}
+			um.ActiveMap.Delete(userIDstr)
 		}
-
-		// remove user id from the list
-		delete(um.TerminateMap, userIDStr)
-		delete(um.ReduceMap, userIDStr)
+		if now.Sub(lastTime).Minutes() >= 20 {
+			// remove from active map
+			um.ActiveMap.Delete(userIDstr)
+			return true
+		}
 		return true
 	})
 }

@@ -32,6 +32,7 @@ func NewGameController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *GameC
 	}
 
 	api.Command(HubKeyFactionColour, gameHub.FactionColour)
+	api.SecureUserCommand(HubKeyActiveCheckUpdated, gameHub.ActiveChecker)
 	api.SubscribeCommand(HubKeyWarMachineDestroyedUpdated, gameHub.WarMachineDestroyedUpdateSubscribeHandler)
 	api.SecureUserFactionSubscribeCommand(HubKeyFactionWarMachineQueueUpdated, gameHub.FactionWarMachineQueueUpdateSubscribeHandler)
 	api.SubscribeCommand(HubKeyBattleEndDetailUpdated, gameHub.BattleEndDetailUpdateSubscribeHandler)
@@ -58,6 +59,13 @@ func (gc *GameControllerWS) FactionColour(ctx context.Context, wsc *hub.Client, 
 		Zaibatsu:    gc.API.factionMap[server.ZaibatsuFactionID].Theme.Primary,
 	})
 
+	return nil
+}
+
+const HubKeyActiveCheckUpdated hub.HubCommandKey = "ACTIVE:CHECK"
+
+func (gc *GameControllerWS) ActiveChecker(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	gc.API.UserMultiplier.ActiveMap.Store(wsc.Identifier(), time.Now())
 	return nil
 }
 
