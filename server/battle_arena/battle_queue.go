@@ -27,27 +27,32 @@ type FactionQueue struct {
 	*sync.Mutex
 	Conn        *pgxpool.Pool
 	WarMachines []*server.WarMachineMetadata
-	log         *zerolog.Logger
+
+	defaultWarMachines []*server.WarMachineMetadata
+	log                *zerolog.Logger
 }
 
 func NewWarMachineQueue(factions []*server.Faction, conn *pgxpool.Pool, log *zerolog.Logger) *WarMachineQueue {
 	wmq := &WarMachineQueue{
-		RedMountain: &FactionQueue{&sync.Mutex{}, conn, []*server.WarMachineMetadata{}, log_helpers.NamedLogger(log, "Red Mountain queue")},
-		Boston:      &FactionQueue{&sync.Mutex{}, conn, []*server.WarMachineMetadata{}, log_helpers.NamedLogger(log, "Boston queue")},
-		Zaibatsu:    &FactionQueue{&sync.Mutex{}, conn, []*server.WarMachineMetadata{}, log_helpers.NamedLogger(log, "Zaibatsu queue")},
+		RedMountain: &FactionQueue{&sync.Mutex{}, conn, []*server.WarMachineMetadata{}, []*server.WarMachineMetadata{}, log_helpers.NamedLogger(log, "Red Mountain queue")},
+		Boston:      &FactionQueue{&sync.Mutex{}, conn, []*server.WarMachineMetadata{}, []*server.WarMachineMetadata{}, log_helpers.NamedLogger(log, "Boston queue")},
+		Zaibatsu:    &FactionQueue{&sync.Mutex{}, conn, []*server.WarMachineMetadata{}, []*server.WarMachineMetadata{}, log_helpers.NamedLogger(log, "Zaibatsu queue")},
 		log:         log_helpers.NamedLogger(log, "war machine queue"),
 	}
 
 	for _, faction := range factions {
 		switch faction.ID {
+
+		// initialise Red Mountain war machine queue
 		case server.RedMountainFactionID:
-			// initial
 			wmq.RedMountain.Init(faction)
+
+		// initialise Boston war machine queue
 		case server.BostonCyberneticsFactionID:
-			// initial
 			wmq.Boston.Init(faction)
+
+		// initialise Zaibatsu war machine queue
 		case server.ZaibatsuFactionID:
-			// initial
 			wmq.Zaibatsu.Init(faction)
 		}
 	}
@@ -114,6 +119,26 @@ func checkWarMachineExist(list []*server.WarMachineMetadata, hash string) int {
 		}
 	}
 	return -1
+}
+
+func (ba *BattleArena) GetDefaultWarMachines(factionID server.FactionID) {
+	for {
+		wg := sync.WaitGroup{}
+		wg.Add(1)
+		ba.passport.GetDefaultWarMachines(context.Background(), factionID, 3, func(msg []byte) {
+			defer wg.Done()
+			resp := struct {
+				WarMachines []*server.WarMachineMetadata `json:"payload"`
+			}{}
+			err := json.Unmarshal(msg, &resp)
+			if err != nil {
+				return
+			}
+			spew.Dump(resp.WarMachines)
+		})
+		wg.Wait()
+		time.Sleep(200 * time.Microsecond)
+	}
 }
 
 type WarMachineQueuingList struct {
