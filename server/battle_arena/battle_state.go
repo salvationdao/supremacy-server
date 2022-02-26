@@ -337,7 +337,6 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 		if err != nil {
 			ba.Log.Err(err).Msg("Failed to initialise next battle")
 		}
-		time.Sleep(25 * time.Second)
 	}()
 
 	return nil
