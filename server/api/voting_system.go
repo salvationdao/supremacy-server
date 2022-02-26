@@ -325,6 +325,7 @@ type VotePhaseChecker struct {
 type VoteAbility struct {
 	BattleAbility     *server.BattleAbility
 	FactionAbilityMap map[server.FactionID]*server.GameAbility
+	sync.Mutex
 }
 
 type FactionUserVoteMap map[server.FactionID]map[server.UserID]int64
@@ -401,7 +402,7 @@ func (api *API) StartVotingCycle(ctx context.Context, factions []*server.Faction
 	}
 
 	// initialise user vote map
-	UserVoteMap := make(UserVoteMap)
+	userVoteMap := make(UserVoteMap)
 
 	// start faction voting cycle tickle
 	tickle.MinDurationOverride = true
@@ -419,12 +420,9 @@ func (api *API) StartVotingCycle(ctx context.Context, factions []*server.Faction
 		AbilityRightResultBroadcaster: abilityRightResultBroadcaster,
 	}
 
-	// start channel
-	go func() {
-		for fn := range api.votingCycle {
-			fn(voteAbility, factionUserVoteMap, factionTransactions, factionTotalVote, voteWinner, tickers, UserVoteMap)
-		}
-	}()
+	api.VotingCycle = func(fn func(*VoteAbility, FactionUserVoteMap, *FactionTransactions, *FactionTotalVote, *VoteWinner, *VotingCycleTicker, UserVoteMap)) {
+		fn(voteAbility, factionUserVoteMap, factionTransactions, factionTotalVote, voteWinner, tickers, userVoteMap)
+	}
 }
 
 /******************************
@@ -470,8 +468,7 @@ func (api *API) abilityRightResultBroadcasterFactory(ctx context.Context, ftv *F
 
 // startVotingCycle start voting cycle tickles
 func (api *API) startVotingCycle(ctx context.Context, introSecond int) {
-
-	api.votingCycle <- func(va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+	api.VotingCycle(func(va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
 		api.votePhaseChecker.Lock()
 		api.votePhaseChecker.Phase = VotePhaseWaitMechIntro
 		api.votePhaseChecker.EndTime = time.Now().Add(time.Duration(introSecond) * time.Second)
@@ -481,13 +478,13 @@ func (api *API) startVotingCycle(ctx context.Context, introSecond int) {
 		go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
 
 		vct.VotingStageListener.Start()
-	}
+	})
 }
 
 // stopVotingCycle pause voting cycle tickles
 func (api *API) stopVotingCycle(ctx context.Context) []*server.BattleUserVote {
-	userVoteCountsChan := make(chan []*server.BattleUserVote)
-	api.votingCycle <- func(va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+	userVoteCounts := []*server.BattleUserVote{}
+	api.VotingCycle(func(va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
 		api.votePhaseChecker.Lock()
 		api.votePhaseChecker.Phase = VotePhaseHold
 		api.votePhaseChecker.Unlock()
@@ -514,10 +511,10 @@ func (api *API) stopVotingCycle(ctx context.Context) []*server.BattleUserVote {
 			api.Passport.ReleaseTransactions(context.Background(), fts.Transactions)
 		}
 
-		uvcs := []*server.BattleUserVote{}
+		userVoteCounts := []*server.BattleUserVote{}
 		for userID, voteCount := range uvm {
 			// get a copy of the user vote map
-			uvcs = append(uvcs, &server.BattleUserVote{
+			userVoteCounts = append(userVoteCounts, &server.BattleUserVote{
 				UserID:    userID,
 				VoteCount: voteCount,
 			})
@@ -525,18 +522,15 @@ func (api *API) stopVotingCycle(ctx context.Context) []*server.BattleUserVote {
 			// delete current user vote
 			delete(uvm, userID)
 		}
+	})
 
-		userVoteCountsChan <- uvcs
-	}
-
-	return <-userVoteCountsChan
-
+	return userVoteCounts
 }
 
 // voteStageListenerFactory is the main vote stage handler
 func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error) {
 	return func() (int, error) {
-		api.votingCycle <- func(va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+		api.VotingCycle(func(va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
 			// skip if it does not reach the end time or current phase is TIE
 			api.votePhaseChecker.RLock()
 			if api.votePhaseChecker.EndTime.After(time.Now()) ||
@@ -841,7 +835,7 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 				}
 
 			}
-		}
+		})
 
 		return http.StatusOK, nil
 	}

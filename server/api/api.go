@@ -97,7 +97,7 @@ type API struct {
 	MessageBus    *messagebus.MessageBus
 	NetMessageBus *messagebus.NetBus
 	Passport      *passport.Passport
-
+	VotingCycle  func(func(*VoteAbility, FactionUserVoteMap, *FactionTransactions, *FactionTotalVote, *VoteWinner, *VotingCycleTicker, UserVoteMap))
 	factionMap map[server.FactionID]*server.Faction
 
 	// voting channels
@@ -114,7 +114,6 @@ type API struct {
 
 	// voting channels
 	votePhaseChecker *VotePhaseChecker
-	votingCycle      chan func(*VoteAbility, FactionUserVoteMap, *FactionTransactions, *FactionTotalVote, *VoteWinner, *VotingCycleTicker, UserVoteMap)
 	votePriceSystem  *VotePriceSystem
 
 	// faction abilities
@@ -125,6 +124,7 @@ type API struct {
 
 	battleEndInfo *BattleEndInfo
 }
+
 
 // NewAPI registers routes
 func NewAPI(
@@ -170,7 +170,6 @@ func NewAPI(
 			},
 		}),
 		// channel for faction voting system
-		votingCycle:   make(chan func(*VoteAbility, FactionUserVoteMap, *FactionTransactions, *FactionTotalVote, *VoteWinner, *VotingCycleTicker, UserVoteMap)),
 		liveSupsSpend: make(map[server.FactionID]*LiveVotingData),
 
 		// channel for handling hub client
@@ -409,7 +408,7 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client) error 
 	// check vote if there is not client instances of the offline user
 	if noClientLeft && currentUser != nil && api.votePhaseChecker.Phase == VotePhaseLocationSelect {
 		// check the user is selecting ability location
-		api.votingCycle <- func(va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+		api.VotingCycle(func(va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
 			if len(vw.List) > 0 && vw.List[0].String() == currentUser.ID.String() {
 				// pop out the first user of the list
 				if len(vw.List) > 1 {
@@ -479,7 +478,7 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client) error 
 				// broadcast current stage to faction users
 				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
 			}
-		}
+		})
 	}
 	return nil
 }
