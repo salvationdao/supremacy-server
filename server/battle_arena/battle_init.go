@@ -6,7 +6,6 @@ import (
 	"server/db"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/ninja-software/terror/v2"
 
 	"github.com/gofrs/uuid"
@@ -97,6 +96,10 @@ func (ba *BattleArena) InitNextBattle() error {
 		}
 	}
 
+	for _, wm := range ba.battle.WarMachines {
+		fillFaction(wm)
+	}
+
 	// Setup payload
 	payload := struct {
 		BattleID    server.BattleID              `json:"battleID"`
@@ -108,7 +111,6 @@ func (ba *BattleArena) InitNextBattle() error {
 		WarMachines: ba.battle.WarMachines,
 	}
 
-	spew.Dump(ba.battle.WarMachines)
 	ctx, cancel := context.WithCancel(ba.ctx)
 	gameMessage := &GameMessage{
 		BattleCommand: BattleCommandInitBattle,
@@ -123,4 +125,45 @@ func (ba *BattleArena) InitNextBattle() error {
 		ba.send <- gameMessage
 	}()
 	return nil
+}
+
+var RedMountainFaction = &server.Faction{
+	ID:    server.RedMountainFactionID,
+	Label: "Red Mountain Offworld Mining Corporation",
+	Theme: &server.FactionTheme{
+		Primary:    "#C24242",
+		Secondary:  "#FFFFFF",
+		Background: "#120E0E",
+	},
+}
+
+var BostonFaction = &server.Faction{
+	ID:    server.BostonCyberneticsFactionID,
+	Label: "Boston Cybernetics",
+	Theme: &server.FactionTheme{
+		Primary:    "#428EC1",
+		Secondary:  "#FFFFFF",
+		Background: "#080C12",
+	},
+}
+
+var ZaibatsuFaction = &server.Faction{
+	ID:    server.ZaibatsuFactionID,
+	Label: "Zaibatsu Heavy Industries",
+	Theme: &server.FactionTheme{
+		Primary:    "#FFFFFF",
+		Secondary:  "#000000",
+		Background: "#0D0D0D",
+	},
+}
+
+func fillFaction(wm *server.WarMachineMetadata) {
+	switch wm.FactionID {
+	case server.BostonCyberneticsFactionID:
+		wm.Faction = BostonFaction
+	case server.RedMountainFactionID:
+		wm.Faction = RedMountainFaction
+	case server.ZaibatsuFactionID:
+		wm.Faction = ZaibatsuFaction
+	}
 }
