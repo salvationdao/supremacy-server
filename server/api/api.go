@@ -270,7 +270,7 @@ func NewAPI(
 func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 	var factions []*server.Faction
 
-	for !api.Passport.Lock.Get() {
+	for !api.Passport.Connected {
 		time.Sleep(5 * time.Second)
 	}
 

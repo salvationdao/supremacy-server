@@ -111,6 +111,20 @@ func (fq *FactionQueue) Join(wmm *server.WarMachineMetadata) {
 	}
 }
 
+// func (fq *FactionQueue) EnterGame(amount int) []*server.WarMachineMetadata {
+// 	newList := []*server.WarMachineMetadata{}
+// 	fq.Lock()
+// 	defer fq.Unlock()
+
+// 	index := 0
+// 	for index < amount {
+// 		newList = append(newList)
+// 	}
+
+// 	return nil
+
+// }
+
 // checkWarMachineExist return true if war machine already exist in the list
 func checkWarMachineExist(list []*server.WarMachineMetadata, hash string) int {
 	for i, wm := range list {
