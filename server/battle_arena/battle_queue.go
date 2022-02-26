@@ -84,7 +84,6 @@ func (fq *FactionQueue) Init(faction *server.Faction) {
 	for _, wm := range fq.WarMachines {
 		wm.Faction = faction
 	}
-
 }
 
 func (fq *FactionQueue) Join(wmm *server.WarMachineMetadata) {
