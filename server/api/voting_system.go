@@ -282,6 +282,10 @@ func calVotePrice(globalTotalVote int64, currentVotePrice server.BigInt, current
 		votePriceSups.Sub(&votePriceSups.Int, &priceChange.Int)
 	}
 
+	if votePriceSups.Cmp(big.NewInt(1000000000)) <= 0 {
+		return server.BigInt{Int: *big.NewInt(1000000000)}
+	}
+
 	return votePriceSups
 }
 

@@ -124,6 +124,7 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 	totalSups.Mul(&totalSups.Int, big.NewInt(req.Payload.VoteAmount))
 
 	// deliver vote
+
 	vc.API.VotingCycle(func(va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
 		reason := fmt.Sprintf("battle:%s|vote_ability_right:%s", vc.API.BattleArena.CurrentBattleID(), va.BattleAbility.ID)
 		vc.API.Passport.SpendSupMessage(userID, totalSups, vc.API.BattleArena.CurrentBattleID(), reason, func(msg []byte) {
