@@ -12,6 +12,26 @@ import (
 	"github.com/davecgh/go-spew/spew"
 )
 
+type WarMachineQueue struct {
+	RedMountain *FactionQueue
+	Boston      *FactionQueue
+	Zaibatsu    *FactionQueue
+}
+
+type FactionQueue struct {
+	*sync.Mutex
+	WarMachines []*server.WarMachineMetadata
+}
+
+func NewWarMachineQueue() *WarMachineQueue {
+	wmq := &WarMachineQueue{
+		RedMountain: &FactionQueue{&sync.Mutex{}, []*server.WarMachineMetadata{}},
+		Boston:      &FactionQueue{&sync.Mutex{}, []*server.WarMachineMetadata{}},
+		Zaibatsu:    &FactionQueue{&sync.Mutex{}, []*server.WarMachineMetadata{}},
+	}
+	return wmq
+}
+
 type WarMachineQueuingList struct {
 	WarMachines []*server.WarMachineMetadata
 }
