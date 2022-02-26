@@ -261,7 +261,7 @@ func (um *UserMultiplier) CleanUpBattleReward(battleIDStr string) {
 	// remove all the battle related reward from check map and current map
 	// NOTE: check map should be cleaned up first,
 	//		 otherwise it will rewrite the value back to current map in the check function
-
+	um.BattleIDMap.Delete(battleIDStr)
 	go func() {
 		um.CheckMaps.WinningFactionMap.Range(func(key, value interface{}) bool {
 			if !strings.HasPrefix(key.(string), battleIDStr) {
@@ -756,6 +756,13 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 		battleID := key.(string)
 		// check current map with check map, add any different from the cache
 		um.CurrentMaps.WinningFactionMap.Range(func(key, value interface{}) bool {
+			innerBattleID := strings.Split(key.(string), "_")[0]
+			// check inner battle id is the same
+			if innerBattleID != battleID {
+				return true
+			}
+
+			// check value
 			uidStr := strings.Split(key.(string), "_")[1]
 			currentValue := value.(*MultiplierAction)
 			// get data from check map
@@ -796,6 +803,12 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 
 		// check current map with check map, add any different from the cache
 		um.CurrentMaps.WinningUserMap.Range(func(key, value interface{}) bool {
+			innerBattleID := strings.Split(key.(string), "_")[0]
+			// check inner battle id is the same
+			if innerBattleID != battleID {
+				return true
+			}
+
 			uidStr := strings.Split(key.(string), "_")[1]
 			currentValue := value.(*MultiplierAction)
 			// get data from check map
@@ -836,6 +849,12 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 
 		// check current map with check map, add any different from the cache
 		um.CurrentMaps.KillMap.Range(func(key, value interface{}) bool {
+			innerBattleID := strings.Split(key.(string), "_")[0]
+			// check inner battle id is the same
+			if innerBattleID != battleID {
+				return true
+			}
+
 			uidStr := strings.Split(key.(string), "_")[1]
 			currentValue := value.(*MultiplierAction)
 			// get data from check map
