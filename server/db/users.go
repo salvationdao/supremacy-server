@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"server"
 
@@ -39,6 +40,8 @@ func UserBattleViewUpsert(ctx context.Context, conn Conn, userIDs []server.UserI
 	if err != nil {
 		return terror.Error(err)
 	}
+
+	// insert into battle id
 
 	return nil
 }
@@ -160,4 +163,62 @@ func UserStatGet(ctx context.Context, conn Conn, userID server.UserID) (*server.
 	}
 
 	return user, nil
+}
+
+// UserMultiplierStore store users' sups multipliers
+func UserMultiplierStore(ctx context.Context, conn Conn, usm []*server.UserSupsMultiplierSend) error {
+	if len(usm) == 0 {
+		return nil
+	}
+
+	var args []interface{}
+
+	q := `
+		INSERT INTO 
+			users (id, sups_multipliers)
+		VALUES
+			
+	`
+	for i, us := range usm {
+		b, err := json.Marshal(us.SupsMultipliers)
+		if err != nil {
+			return terror.Error(err)
+		}
+
+		args = append(args, b)
+
+		q += fmt.Sprintf("('%s', $%d)", us.ToUserID, len(args))
+
+		if i < len(usm)-1 {
+			q += ","
+			continue
+		}
+	}
+
+	q += `
+		ON CONFLICT (id) DO UPDATE SET sups_multipliers = EXCLUDED.sups_multipliers;
+	`
+
+	_, err := conn.Exec(ctx, q, args...)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	return nil
+}
+
+// UserMultiplierGet read user
+func UserMultiplierGet(ctx context.Context, conn Conn, userID server.UserID) ([]*server.SupsMultiplier, error) {
+	supsMultipliers := []*server.SupsMultiplier{}
+
+	q := `
+		SELECT sups_multipliers FROM users WHERE id = $1
+	`
+
+	err := pgxscan.Get(ctx, conn, &supsMultipliers, q, userID)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return supsMultipliers, nil
 }

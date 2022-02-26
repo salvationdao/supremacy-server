@@ -166,6 +166,26 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 	}
 
 	userVoteList := api.stopVotingCycle(ctx)
+	// combine user vote list with user view list
+	addedList := []*server.BattleUserVote{}
+	for _, uid := range battleViewers {
+		exists := false
+		for _, uv := range userVoteList {
+			if uid == uv.UserID {
+				exists = true
+				break
+			}
+		}
+		if !exists {
+			addedList = append(addedList, &server.BattleUserVote{
+				BattleID:  api.BattleArena.CurrentBattleID(),
+				UserID:    uid,
+				VoteCount: 0,
+			})
+		}
+	}
+	userVoteList = append(userVoteList, addedList...)
+
 	// start preparing ending broadcast data
 	if len(userVoteList) > 0 {
 		// insert user vote list to db

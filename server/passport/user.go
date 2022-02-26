@@ -3,7 +3,6 @@ package passport
 import (
 	"context"
 	"server"
-	"time"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-syndicate/hub"
@@ -46,24 +45,12 @@ func (pp *Passport) GetSpoilOfWarAmount(callback func(msg []byte)) {
 	}
 }
 
-type UserSupsMultiplierSend struct {
-	ToUserID        server.UserID     `json:"toUserID"`
-	ToUserSessionID *hub.SessionID    `json:"toUserSessionID,omitempty"`
-	SupsMultipliers []*SupsMultiplier `json:"supsMultiplier"`
-}
-
-type SupsMultiplier struct {
-	Key       string    `json:"key"`
-	Value     int       `json:"value"`
-	ExpiredAt time.Time `json:"expiredAt"`
-}
-
 // UserSupsMultiplierSend send user sups multipliers
-func (pp *Passport) UserSupsMultiplierSend(ctx context.Context, userSupsMultiplierSends []*UserSupsMultiplierSend) {
+func (pp *Passport) UserSupsMultiplierSend(ctx context.Context, userSupsMultiplierSends []*server.UserSupsMultiplierSend) {
 	pp.send <- &Message{
 		Key: "SUPREMACY:USER_SUPS_MULTIPLIER_SEND",
 		Payload: struct {
-			UserSupsMultiplierSends []*UserSupsMultiplierSend `json:"userSupsMultiplierSends"`
+			UserSupsMultiplierSends []*server.UserSupsMultiplierSend `json:"userSupsMultiplierSends"`
 		}{
 			UserSupsMultiplierSends: userSupsMultiplierSends,
 		},
