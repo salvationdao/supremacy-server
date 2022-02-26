@@ -123,7 +123,7 @@ func (fq *FactionQueue) EnterGame(desireAmount int) []*server.WarMachineMetadata
 	if len(fq.WarMachines) < desireAmount {
 		newList = append(newList, fq.WarMachines...)
 
-		newList = append(newList)
+		// newList = append(newList)
 		return newList
 	}
 
