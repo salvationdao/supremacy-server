@@ -6,6 +6,7 @@ import (
 	"server/db"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/ninja-software/terror/v2"
 
 	"github.com/gofrs/uuid"
@@ -106,6 +107,8 @@ func (ba *BattleArena) InitNextBattle() error {
 		MapName:     ba.battle.GameMap.Name,
 		WarMachines: ba.battle.WarMachines,
 	}
+
+	spew.Dump(ba.battle.WarMachines)
 	ctx, cancel := context.WithCancel(ba.ctx)
 	gameMessage := &GameMessage{
 		BattleCommand: BattleCommandInitBattle,
