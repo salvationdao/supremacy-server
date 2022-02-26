@@ -61,7 +61,18 @@ func (vc *VoteControllerWS) FactionVotePrice(ctx context.Context, wsc *hub.Clien
 	if hcd == nil {
 		return terror.Error(terror.ErrForbidden)
 	}
-
+	if hcd == nil {
+		return terror.Error(fmt.Errorf("hub client details returned nil"))
+	}
+	if vc.API.votePriceSystem == nil {
+		return terror.Error(fmt.Errorf("nil vote price system"))
+	}
+	if vc.API.votePriceSystem == nil {
+		return terror.Error(fmt.Errorf("nil vote price system"))
+	}
+	if _, ok := vc.API.votePriceSystem.FactionVotePriceMap[hcd.FactionID]; !ok {
+		return terror.Error(fmt.Errorf("unable to find faction id %s in FactionVotePriceMap", hcd.FactionID))
+	}
 	reply(vc.API.votePriceSystem.FactionVotePriceMap[hcd.FactionID].CurrentVotePriceSups.Int.String())
 
 	return nil
