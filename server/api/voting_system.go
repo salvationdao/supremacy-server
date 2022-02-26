@@ -283,6 +283,7 @@ func calVotePrice(globalTotalVote int64, currentVotePrice server.BigInt, current
 	}
 
 	if votePriceSups.Cmp(big.NewInt(1000000000)) <= 0 {
+		// set minimum price of voting
 		return server.BigInt{Int: *big.NewInt(1000000000)}
 	}
 

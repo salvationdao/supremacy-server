@@ -83,7 +83,6 @@ func NewUserMultiplier(userMap *UserMap, pp *passport.Passport, ba *battle_arena
 		for {
 			time.Sleep(5 * time.Second)
 			if ba.BattleActive() {
-
 				// distribute sups
 				um.SupsTick()
 			}
@@ -94,8 +93,8 @@ func NewUserMultiplier(userMap *UserMap, pp *passport.Passport, ba *battle_arena
 		for {
 			// check user active list
 			um.UserActiveChecker()
-			time.Sleep(1 * time.Second)
 			um.UserMultiplierUpdate()
+			time.Sleep(10 * time.Second)
 		}
 	}()
 
