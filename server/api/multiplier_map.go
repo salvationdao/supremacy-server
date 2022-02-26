@@ -83,8 +83,6 @@ func NewUserMultiplier(userMap *UserMap, pp *passport.Passport, ba *battle_arena
 		for {
 			time.Sleep(5 * time.Second)
 			if ba.BattleActive() {
-				// check user active list
-				um.UserActiveChecker()
 
 				// distribute sups
 				um.SupsTick()
@@ -94,6 +92,8 @@ func NewUserMultiplier(userMap *UserMap, pp *passport.Passport, ba *battle_arena
 
 	go func() {
 		for {
+			// check user active list
+			um.UserActiveChecker()
 			time.Sleep(1 * time.Second)
 			um.UserMultiplierUpdate()
 		}
@@ -106,6 +106,7 @@ func NewUserMultiplier(userMap *UserMap, pp *passport.Passport, ba *battle_arena
 func (um *UserMultiplier) Online(userID server.UserID) {
 	userIDStr := userID.String()
 	now := time.Now()
+	um.ActiveMap.Store(userIDStr, now)
 
 	// go through check map and get non expired multiplier
 	um.CheckMaps.OnlineMap.Delete(userIDStr)
@@ -193,7 +194,7 @@ func (um *UserMultiplier) Offline(userID server.UserID) {
 		return true
 	})
 
-	go um.UserSupsMultiplierToPassport(userID, nil)
+	go um.UserSupsMultiplierToPassport(userID, nil, 0)
 }
 
 func (um *UserMultiplier) Voted(userID server.UserID) {
@@ -549,23 +550,25 @@ func (um *UserMultiplier) PushUserMultiplierToPassport(userID server.UserID) {
 	})
 
 	if len(mas) == 0 {
-		go um.UserSupsMultiplierToPassport(userID, nil)
+		go um.UserSupsMultiplierToPassport(userID, nil, 100)
 		return
 	}
-
-	go um.UserSupsMultiplierToPassport(userID, mas)
+	go um.UserSupsMultiplierToPassport(userID, mas, 100)
 }
 
-func (um *UserMultiplier) UserSupsMultiplierToPassport(userID server.UserID, supsMultiplierMap map[string]*MultiplierAction) {
+func (um *UserMultiplier) UserSupsMultiplierToPassport(userID server.UserID, supsMultiplierMap map[string]*MultiplierAction, multiplier int) {
 	userSupsMultiplierSend := &passport.UserSupsMultiplierSend{
 		ToUserID:        userID,
 		SupsMultipliers: []*passport.SupsMultiplier{},
 	}
 
 	for key, sm := range supsMultiplierMap {
+		m := sm.MultiplierValue
+		m = m * multiplier / 100
+
 		userSupsMultiplierSend.SupsMultipliers = append(userSupsMultiplierSend.SupsMultipliers, &passport.SupsMultiplier{
 			Key:       key,
-			Value:     sm.MultiplierValue,
+			Value:     m,
 			ExpiredAt: sm.Expiry,
 		})
 	}
@@ -829,14 +832,11 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 	for userID, ma := range diff {
 		// update user remain rate
 		remainRate := um.UserRemainRate(now, userID)
-		if remainRate == 0 || remainRate == 100 {
+		if remainRate == 0 {
 			continue
 		}
-		for _, m := range ma {
-			m.MultiplierValue = m.MultiplierValue * remainRate / 100
-		}
 		uid := server.UserID(uuid.FromStringOrNil(userID))
-		go um.UserSupsMultiplierToPassport(uid, ma)
+		go um.UserSupsMultiplierToPassport(uid, ma, remainRate)
 	}
 }
 
@@ -847,8 +847,9 @@ func (um *UserMultiplier) UserActiveChecker() {
 		lastTime, ok := value.(time.Time)
 		if !ok {
 			um.ActiveMap.Delete(userIDstr)
+			return true
 		}
-		if now.Sub(lastTime).Minutes() >= 20 {
+		if now.Sub(lastTime).Minutes() >= 30 {
 			// remove from active map
 			um.ActiveMap.Delete(userIDstr)
 			return true
@@ -869,7 +870,6 @@ func (um *UserMultiplier) UserRemainRate(now time.Time, userID string) int {
 	}
 
 	lastMinute := int(now.Sub(lastValue).Minutes())
-
 	if lastMinute >= 30 {
 		return 0
 	}

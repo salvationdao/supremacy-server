@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/log_helpers"
 	"github.com/rs/zerolog"
@@ -159,7 +158,6 @@ func (ba *BattleArena) FillDefaultWarMachines(factionID server.FactionID, amount
 				ba.Log.Err(err)
 				return
 			}
-			spew.Dump(resp.WarMachines)
 			warMachines = append(warMachines, resp.WarMachines...)
 		})
 		wg.Wait()
@@ -231,7 +229,6 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, 
 						ba.Log.Err(err)
 						return
 					}
-					spew.Dump(resp.WarMachines)
 					tempList = append(tempList, resp.WarMachines...)
 				})
 				wg.Wait()
