@@ -65,7 +65,7 @@ func (gc *GameControllerWS) FactionColour(ctx context.Context, wsc *hub.Client, 
 const HubKeyActiveCheckUpdated hub.HubCommandKey = "MECH:REPAIR:STEAM"
 
 func (gc *GameControllerWS) ActiveChecker(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	gc.API.UserMultiplier.ActiveMap.Store(wsc.Identifier(), time.Now())
+	// gc.API.UserMultiplier.ActiveMap.Store(wsc.Identifier(), time.Now())
 	return nil
 }
 

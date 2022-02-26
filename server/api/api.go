@@ -262,7 +262,7 @@ func NewAPI(
 	api.Passport.Events.AddEventHandler(passport.EventUserSupsMultiplierGet, api.PassportUserSupsMultiplierGetHandler)
 	api.Passport.Events.AddEventHandler(passport.EventUserStatGet, api.PassportUserStatGetHandler)
 
-	go api.SetupAfterConnections(ctx, conn)
+	api.SetupAfterConnections(ctx, conn)
 
 	return api
 }
