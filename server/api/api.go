@@ -7,14 +7,13 @@ import (
 	"math/big"
 	"net"
 	"net/http"
+	"os"
 	"server"
 	"server/battle_arena"
 	"server/db"
 	"server/passport"
 	"sync"
 	"time"
-
-	"github.com/jpillora/backoff"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
@@ -262,7 +261,7 @@ func NewAPI(
 	api.Passport.Events.AddEventHandler(passport.EventUserSupsMultiplierGet, api.PassportUserSupsMultiplierGetHandler)
 	api.Passport.Events.AddEventHandler(passport.EventUserStatGet, api.PassportUserStatGetHandler)
 
-	go api.SetupAfterConnections(ctx, conn)
+	api.SetupAfterConnections(ctx, conn)
 
 	return api
 }
@@ -270,48 +269,27 @@ func NewAPI(
 func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 	var factions []*server.Faction
 
-	for !api.Passport.Connected {
-		time.Sleep(5 * time.Second)
-	}
-
-	b := &backoff.Backoff{
-		Min:    1 * time.Second,
-		Max:    30 * time.Second,
-		Factor: 2,
-	}
-
-	// get factions from passport, retrying every 10 seconds until we ge them.
 	for len(factions) <= 0 {
-		if !api.Passport.Connected {
-			time.Sleep(b.Duration())
-			continue
-		}
-
 		wg := sync.WaitGroup{}
 		wg.Add(1)
+		var err error
 		api.Passport.FactionAll(func(msg []byte) {
 			defer wg.Done()
 			resp := &passport.FactionAllResponse{}
-			err := json.Unmarshal(msg, resp)
+			err = json.Unmarshal(msg, resp)
 			if err != nil {
 				return
-			}
-			if err != nil {
-				api.Passport.Log.Err(err).Msg("unable to get factions")
 			}
 
 			factions = resp.Factions
 		})
 		wg.Wait()
 
-		if len(factions) > 0 {
-			break
+		if len(factions) == 0 {
+			api.Log.Fatal().Err(err).Msg("issue reading from passport connection.")
+			os.Exit(-1)
 		}
-		time.Sleep(b.Duration())
 	}
-
-	// listen to the client online and action channel
-	// go api.ClientListener()
 
 	go api.startSpoilOfWarBroadcaster(ctx)
 

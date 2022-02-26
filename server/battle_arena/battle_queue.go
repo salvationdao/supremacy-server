@@ -3,6 +3,7 @@ package battle_arena
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"server"
 	"server/db"
 	"server/passport"
@@ -10,26 +11,148 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/ninja-software/log_helpers"
+	"github.com/rs/zerolog"
 )
 
 type WarMachineQueue struct {
 	RedMountain *FactionQueue
 	Boston      *FactionQueue
 	Zaibatsu    *FactionQueue
+	log         *zerolog.Logger
 }
 
 type FactionQueue struct {
 	*sync.Mutex
+	Conn        *pgxpool.Pool
 	WarMachines []*server.WarMachineMetadata
+
+	defaultWarMachines []*server.WarMachineMetadata
+	log                *zerolog.Logger
 }
 
-func NewWarMachineQueue() *WarMachineQueue {
+func NewWarMachineQueue(factions []*server.Faction, conn *pgxpool.Pool, log *zerolog.Logger) *WarMachineQueue {
 	wmq := &WarMachineQueue{
-		RedMountain: &FactionQueue{&sync.Mutex{}, []*server.WarMachineMetadata{}},
-		Boston:      &FactionQueue{&sync.Mutex{}, []*server.WarMachineMetadata{}},
-		Zaibatsu:    &FactionQueue{&sync.Mutex{}, []*server.WarMachineMetadata{}},
+		RedMountain: &FactionQueue{&sync.Mutex{}, conn, []*server.WarMachineMetadata{}, []*server.WarMachineMetadata{}, log_helpers.NamedLogger(log, "Red Mountain queue")},
+		Boston:      &FactionQueue{&sync.Mutex{}, conn, []*server.WarMachineMetadata{}, []*server.WarMachineMetadata{}, log_helpers.NamedLogger(log, "Boston queue")},
+		Zaibatsu:    &FactionQueue{&sync.Mutex{}, conn, []*server.WarMachineMetadata{}, []*server.WarMachineMetadata{}, log_helpers.NamedLogger(log, "Zaibatsu queue")},
+		log:         log_helpers.NamedLogger(log, "war machine queue"),
 	}
+
+	for _, faction := range factions {
+		switch faction.ID {
+
+		// initialise Red Mountain war machine queue
+		case server.RedMountainFactionID:
+			wmq.RedMountain.Init(faction)
+
+		// initialise Boston war machine queue
+		case server.BostonCyberneticsFactionID:
+			wmq.Boston.Init(faction)
+
+		// initialise Zaibatsu war machine queue
+		case server.ZaibatsuFactionID:
+			wmq.Zaibatsu.Init(faction)
+		}
+	}
+
 	return wmq
+}
+
+func (wmq *WarMachineQueue) WarMachineJoin(wmm *server.WarMachineMetadata) {
+	// check faction id
+	switch wmm.FactionID {
+	case server.RedMountainFactionID:
+		wmq.RedMountain.Join(wmm)
+	case server.BostonCyberneticsFactionID:
+		wmq.Boston.Join(wmm)
+	case server.ZaibatsuFactionID:
+		wmq.Zaibatsu.Join(wmm)
+	default:
+		wmq.log.Err(fmt.Errorf("No faction war machine")).Msg("NON-FACTION WAR MACHINE IS NOT ALLOWED!!!!!!!!!!!!!!!!!!!")
+	}
+}
+
+// Init read war machine list from db and set up the list
+func (fq *FactionQueue) Init(faction *server.Faction) {
+	// read war machine queue from db
+	wms, err := db.BattleQueueRead(context.Background(), fq.Conn, faction.ID)
+	if err != nil {
+		fq.log.Err(err).Msg("failed to read battle queue list from db")
+	}
+
+	// chuck war machines into list
+	fq.WarMachines = wms
+
+	// set up war machines' faction detail
+	for _, wm := range fq.WarMachines {
+		wm.Faction = faction
+	}
+}
+
+func (fq *FactionQueue) Join(wmm *server.WarMachineMetadata) {
+	// reject queue if already in the queue
+	if index := checkWarMachineExist(fq.WarMachines, wmm.Hash); index != -1 {
+		fq.log.Err(fmt.Errorf("war machine already in the queue")).Msgf("war machine %s is already in queue", wmm.Hash)
+		return
+	}
+
+	// join war machine to queue
+	fq.Lock()
+	fq.WarMachines = append(fq.WarMachines, wmm)
+	fq.Unlock()
+
+	// insert war machine into db
+	err := db.BattleQueueInsert(context.Background(), fq.Conn, wmm)
+	if err != nil {
+		fq.log.Err(err).Msgf("Failed to insert a copy of queue in db, token id: %s", wmm.Hash)
+		return
+	}
+}
+
+// func (fq *FactionQueue) EnterGame(amount int) []*server.WarMachineMetadata {
+// 	newList := []*server.WarMachineMetadata{}
+// 	fq.Lock()
+// 	defer fq.Unlock()
+
+// 	index := 0
+// 	for index < amount {
+// 		newList = append(newList)
+// 	}
+
+// 	return nil
+
+// }
+
+// checkWarMachineExist return true if war machine already exist in the list
+func checkWarMachineExist(list []*server.WarMachineMetadata, hash string) int {
+	for i, wm := range list {
+		if wm.Hash == hash {
+			return i
+		}
+	}
+	return -1
+}
+
+func (ba *BattleArena) GetDefaultWarMachines(factionID server.FactionID) {
+	for {
+		wg := sync.WaitGroup{}
+		wg.Add(1)
+		ba.passport.GetDefaultWarMachines(context.Background(), factionID, 3, func(msg []byte) {
+			defer wg.Done()
+			resp := struct {
+				WarMachines []*server.WarMachineMetadata `json:"payload"`
+			}{}
+			err := json.Unmarshal(msg, &resp)
+			if err != nil {
+				return
+			}
+			spew.Dump(resp.WarMachines)
+		})
+		wg.Wait()
+		time.Sleep(200 * time.Microsecond)
+	}
 }
 
 type WarMachineQueuingList struct {
