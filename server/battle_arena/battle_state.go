@@ -230,7 +230,6 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 
 				// pay queuing contract reward
 				err = ba.passport.AssetContractRewardRedeem(
-					ctx,
 					bwm.OwnedByID,
 					bwm.FactionID,
 					server.BigInt{Int: bwm.ContractReward},
@@ -300,7 +299,7 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 
 	//release war machine
 	if len(inGameWarMachines) > 0 {
-		ba.passport.AssetRelease(ctx, inGameWarMachines)
+		ba.passport.AssetRelease(inGameWarMachines)
 
 		// remove the war machine in db
 		for _, wm := range inGameWarMachines {

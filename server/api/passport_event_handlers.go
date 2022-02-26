@@ -162,7 +162,7 @@ func (api *API) PassportBattleQueueJoinHandler(ctx context.Context, payload []by
 			}
 
 			// fire a freeze command to the passport server
-			err := api.Passport.AssetFreeze(ctx, req.Payload.WarMachineMetadata.Hash)
+			err := api.Passport.AssetFreeze(req.Payload.WarMachineMetadata.Hash)
 			if err != nil {
 				api.Log.Err(err).Msgf("Failed to freeze asset %s", req.Payload.WarMachineMetadata.Hash)
 				return
@@ -232,7 +232,7 @@ func (api *API) PassportBattleQueueReleaseHandler(ctx context.Context, payload [
 			}
 
 			// fire a freeze command to the passport server
-			api.Passport.AssetRelease(ctx, []*server.WarMachineMetadata{wmq.WarMachines[index]})
+			api.Passport.AssetRelease([]*server.WarMachineMetadata{wmq.WarMachines[index]})
 
 			copy(wmq.WarMachines[index:], wmq.WarMachines[index+1:])   // Shift wmq.WarMachines[i+1:] left one index.
 			wmq.WarMachines[len(wmq.WarMachines)-1] = nil              // wmq.WarMachinesse wmq.WarMachinesst element (write zero vwmq.WarMachineslue).

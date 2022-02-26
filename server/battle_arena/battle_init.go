@@ -76,7 +76,7 @@ func (ba *BattleArena) InitNextBattle() error {
 		}
 
 		// set war machine lock request
-		err := ba.passport.AssetLock(ba.ctx, hashes)
+		err := ba.passport.AssetLock(hashes)
 		if err != nil {
 			ba.Log.Err(err).Msg("Failed to lock assets")
 			// TODO: figure out how to handle this
