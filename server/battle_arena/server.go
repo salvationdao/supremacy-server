@@ -178,10 +178,8 @@ func (ba *BattleArena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	go func() {
 		time.Sleep(2 * time.Second)
-		fmt.Println("fired111111111111111111111111111111111111111111")
 		err = ba.InitNextBattle()
 		if err != nil {
-			ba.Log.Err(err).Msg("NOT FIRING11111111111111111111111111111111111111111111111111111")
 			return
 		}
 	}()
