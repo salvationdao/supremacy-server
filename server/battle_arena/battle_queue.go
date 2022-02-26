@@ -170,7 +170,8 @@ type WarMachineQueuingList struct {
 	WarMachines []*server.WarMachineMetadata
 }
 
-func (ba *BattleArena) startBattleQueue(factionID server.FactionID) {
+func (ba *BattleArena) startBattleQueue(factionID server.FactionID) []string {
+	hashes := []string{}
 	warMachineMetadatas := &WarMachineQueuingList{
 		WarMachines: []*server.WarMachineMetadata{},
 	}
@@ -190,6 +191,12 @@ func (ba *BattleArena) startBattleQueue(factionID server.FactionID) {
 			fn(warMachineMetadatas)
 		}
 	}()
+
+	for _, wm := range wms {
+		hashes = append(hashes, wm.Hash)
+	}
+
+	return hashes
 }
 
 func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, warMachinePerBattle int) []*server.WarMachineMetadata {

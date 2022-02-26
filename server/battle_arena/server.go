@@ -440,12 +440,16 @@ func (ba *BattleArena) SetupAfterConnections() {
 		time.Sleep(b.Duration())
 	}
 
+	hashes := []string{}
 	// get all the faction list from passport server
 	for _, faction := range ba.battle.FactionMap {
 		// start battle queue
 		ba.BattleQueueMap[faction.ID] = make(chan func(*WarMachineQueuingList))
-		go ba.startBattleQueue(faction.ID)
+		hashes = append(hashes, ba.startBattleQueue(faction.ID)...)
 	}
+
+	// fire the hashes checklist to passport to free up the non-queued war machines
+	ba.passport.AssetCheckList(hashes)
 
 	battleContractRewardUpdaterLogger := log_helpers.NamedLogger(ba.Log, "Contract Reward Updater").Level(zerolog.Disabled)
 	battleContractRewardUpdater := tickle.New("Contract Reward Updater", 10, func() (int, error) {
