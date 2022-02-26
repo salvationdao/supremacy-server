@@ -32,7 +32,7 @@ type FactionQueue struct {
 	log                *zerolog.Logger
 }
 
-func NewWarMachineQueue(factions []*server.Faction, conn *pgxpool.Pool, log *zerolog.Logger) *WarMachineQueue {
+func NewWarMachineQueue(factions []*server.Faction, conn *pgxpool.Pool, log *zerolog.Logger, ba *BattleArena) *WarMachineQueue {
 	wmq := &WarMachineQueue{
 		RedMountain: &FactionQueue{&sync.Mutex{}, conn, []*server.WarMachineMetadata{}, []*server.WarMachineMetadata{}, log_helpers.NamedLogger(log, "Red Mountain queue")},
 		Boston:      &FactionQueue{&sync.Mutex{}, conn, []*server.WarMachineMetadata{}, []*server.WarMachineMetadata{}, log_helpers.NamedLogger(log, "Boston queue")},
@@ -45,14 +45,18 @@ func NewWarMachineQueue(factions []*server.Faction, conn *pgxpool.Pool, log *zer
 
 		// initialise Red Mountain war machine queue
 		case server.RedMountainFactionID:
+
+			wmq.RedMountain.defaultWarMachines = ba.FillDefaultWarMachines(faction.ID, 3)
 			wmq.RedMountain.Init(faction)
 
-		// initialise Boston war machine queue
+			// initialise Boston war machine queue
 		case server.BostonCyberneticsFactionID:
+			wmq.Boston.defaultWarMachines = ba.FillDefaultWarMachines(faction.ID, 3)
 			wmq.Boston.Init(faction)
 
-		// initialise Zaibatsu war machine queue
+			// initialise Zaibatsu war machine queue
 		case server.ZaibatsuFactionID:
+			wmq.Zaibatsu.defaultWarMachines = ba.FillDefaultWarMachines(faction.ID, 3)
 			wmq.Zaibatsu.Init(faction)
 		}
 	}
@@ -111,19 +115,22 @@ func (fq *FactionQueue) Join(wmm *server.WarMachineMetadata) {
 	}
 }
 
-// func (fq *FactionQueue) EnterGame(amount int) []*server.WarMachineMetadata {
-// 	newList := []*server.WarMachineMetadata{}
-// 	fq.Lock()
-// 	defer fq.Unlock()
+func (fq *FactionQueue) EnterGame(desireAmount int) []*server.WarMachineMetadata {
+	newList := []*server.WarMachineMetadata{}
+	fq.Lock()
+	defer fq.Unlock()
 
-// 	index := 0
-// 	for index < amount {
-// 		newList = append(newList)
-// 	}
+	if len(fq.WarMachines) < desireAmount {
+		newList = append(newList, fq.WarMachines...)
 
-// 	return nil
+		newList = append(newList)
+		return newList
+	}
 
-// }
+	fq.WarMachines = fq.WarMachines[desireAmount-1:]
+
+	return newList
+}
 
 // checkWarMachineExist return true if war machine already exist in the list
 func checkWarMachineExist(list []*server.WarMachineMetadata, hash string) int {
@@ -135,24 +142,30 @@ func checkWarMachineExist(list []*server.WarMachineMetadata, hash string) int {
 	return -1
 }
 
-func (ba *BattleArena) GetDefaultWarMachines(factionID server.FactionID) {
-	for {
+func (ba *BattleArena) FillDefaultWarMachines(factionID server.FactionID, amount int) []*server.WarMachineMetadata {
+	warMachines := []*server.WarMachineMetadata{}
+	// add default war machine to meet the total amount
+	for len(warMachines) < amount {
 		wg := sync.WaitGroup{}
 		wg.Add(1)
-		ba.passport.GetDefaultWarMachines(context.Background(), factionID, 3, func(msg []byte) {
+
+		ba.passport.GetDefaultWarMachines(context.Background(), factionID, amount, func(msg []byte) {
 			defer wg.Done()
 			resp := struct {
 				WarMachines []*server.WarMachineMetadata `json:"payload"`
 			}{}
 			err := json.Unmarshal(msg, &resp)
 			if err != nil {
+				ba.Log.Err(err)
 				return
 			}
 			spew.Dump(resp.WarMachines)
+			warMachines = append(warMachines, resp.WarMachines...)
 		})
 		wg.Wait()
 		time.Sleep(200 * time.Microsecond)
 	}
+	return warMachines
 }
 
 type WarMachineQueuingList struct {
