@@ -2,8 +2,11 @@ package helpers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"runtime"
+	"server/gamelog"
+	"time"
 
 	"github.com/ninja-software/terror/v2"
 )
@@ -33,4 +36,21 @@ func EncodeJSON(w http.ResponseWriter, result interface{}) (int, error) {
 		return http.StatusInternalServerError, terr
 	}
 	return http.StatusOK, nil
+}
+
+func Gotimeout(cb func(), timeout time.Duration, errorCallback func(error)) {
+	start := make(chan bool, 1)
+
+	go func() {
+		select {
+		case <-start:
+			cb()
+		case <-time.After(timeout):
+			err := errors.New("callback has timed out")
+			gamelog.GameLog.Warn().Err(err).Msgf("Failed to connect to passport server. Please make sure passport is running.") /*  */
+			errorCallback(err)
+		}
+	}()
+	start <- true
+	close(start)
 }

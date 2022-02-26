@@ -8,14 +8,14 @@ import (
 	"server"
 	"server/api"
 	"server/battle_arena"
+	"server/gamelog"
 	"server/passport"
 	"server/seed"
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/ninja-software/log_helpers"
-
 	"github.com/microcosm-cc/bluemonday"
+	"github.com/ninja-software/log_helpers"
 
 	"time"
 
@@ -125,8 +125,7 @@ func main() {
 					environment := c.String("environment")
 					battleArenaAddr := c.String("battle_arena_addr")
 					level := c.String("log_level")
-					logger := log_helpers.LoggerInitZero(environment, level)
-					logger.Info().Msg("zerolog initialised")
+					logger := gamelog.New(environment, level)
 
 					pgxconn, err := pgxconnect(
 						databaseUser,
@@ -144,22 +143,16 @@ func main() {
 
 					g := &run.Group{}
 
-					//Listen for os.interrupt
-					g.Add(run.SignalHandler(ctx, os.Interrupt))
-
 					//// Connect to passport
-					ctxPP, cancelPP := context.WithCancel(ctx)
-					pp := passport.NewPassport(ctxPP, log_helpers.NamedLogger(logger, "passport"),
+					pp := passport.NewPassport(log_helpers.NamedLogger(logger, "passport"),
 						passportAddr,
 						passportClientToken,
 					)
-					g.Add(func() error {
-						return pp.Connect(ctxPP)
-					}, func(err error) {
-						cancel()
-						cancelPP()
-					})
-
+					err = pp.Connect()
+					if err != nil {
+						pp.Log.Warn().Err(err).Msgf("Passport connection failed")
+						os.Exit(-1)
+					}
 					// Start Gameserver - Gameclient server
 					ctxBA, cancelBA := context.WithCancel(ctx)
 					battleArenaClient := battle_arena.NewBattleArenaClient(ctxBA, log_helpers.NamedLogger(logger, "battle-arena"), pgxconn, pp, battleArenaAddr)
