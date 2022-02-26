@@ -262,7 +262,7 @@ func NewAPI(
 	api.Passport.Events.AddEventHandler(passport.EventUserSupsMultiplierGet, api.PassportUserSupsMultiplierGetHandler)
 	api.Passport.Events.AddEventHandler(passport.EventUserStatGet, api.PassportUserStatGetHandler)
 
-	go api.SetupAfterConnections(ctx, conn)
+	api.SetupAfterConnections(ctx, conn)
 
 	return api
 }
@@ -270,7 +270,7 @@ func NewAPI(
 func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 	var factions []*server.Faction
 
-	for !api.Passport.Lock.Get() {
+	for !api.Passport.Connected {
 		time.Sleep(5 * time.Second)
 	}
 
