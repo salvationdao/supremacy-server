@@ -6,7 +6,6 @@ import (
 	"server/db"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/ninja-software/terror/v2"
 
 	"github.com/gofrs/uuid"
@@ -100,8 +99,6 @@ func (ba *BattleArena) InitNextBattle() error {
 	for _, wm := range ba.battle.WarMachines {
 		fillFaction(wm)
 	}
-
-	spew.Dump(ba.battle.WarMachines)
 
 	// Setup payload
 	payload := struct {
