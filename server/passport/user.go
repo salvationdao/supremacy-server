@@ -20,40 +20,45 @@ func (pp *Passport) UpgradeUserConnection(sessionID hub.SessionID) {
 	}
 }
 
+type TickerTickReq struct {
+	UserMap map[int][]server.UserID `json:"userMap"`
+}
+type TickerTickResp struct{}
+
 // SendTickerMessage sends the client map and multipliers to the passport to handle giving out sups
 func (pp *Passport) SendTickerMessage(userMap map[int][]server.UserID) {
-	pp.send <- &Message{
-		Key: "SUPREMACY:TICKER_TICK",
-		Payload: struct {
-			UserMap map[int][]server.UserID `json:"userMap"`
-		}{
-			UserMap: userMap,
-		},
+	err := pp.Comms.Call("C.TickerTickHandler", TickerTickReq{userMap}, &TickerTickResp{})
+	if err != nil {
+		pp.Log.Err(err).Str("method", "TickerTickHandler").Msg("rpc error")
 	}
 }
 
-type SpoilOfWarAmountRequest struct {
-	Amount string `json:"payload"`
+type GetSpoilOfWarReq struct{}
+type GetSpoilOfWarResp struct {
+	Amount string
 }
 
 // GetSpoilOfWarAmount get current sup pool amount
-func (pp *Passport) GetSpoilOfWarAmount(callback func(msg []byte)) {
-	pp.send <- &Message{
-		Key:           "SUPREMACY:SUPS_POOL_AMOUNT",
-		TransactionID: uuid.Must(uuid.NewV4()).String(),
-		Callback:      callback,
+func (pp *Passport) GetSpoilOfWarAmount() string {
+	result := &GetSpoilOfWarResp{}
+	err := pp.Comms.Call("C.SupremacyGetSpoilOfWarHandler", GetSpoilOfWarReq{}, result)
+	if err != nil {
+		pp.Log.Err(err).Str("method", "SupremacyGetSpoilOfWarHandler").Msg("rpc error")
 	}
+	return result.Amount
 }
+
+type UserSupsMultiplierSendReq struct {
+	UserSupsMultiplierSends []*server.UserSupsMultiplierSend `json:"userSupsMultiplierSends"`
+}
+
+type UserSupsMultiplierSendResp struct{}
 
 // UserSupsMultiplierSend send user sups multipliers
 func (pp *Passport) UserSupsMultiplierSend(ctx context.Context, userSupsMultiplierSends []*server.UserSupsMultiplierSend) {
-	pp.send <- &Message{
-		Key: "SUPREMACY:USER_SUPS_MULTIPLIER_SEND",
-		Payload: struct {
-			UserSupsMultiplierSends []*server.UserSupsMultiplierSend `json:"userSupsMultiplierSends"`
-		}{
-			UserSupsMultiplierSends: userSupsMultiplierSends,
-		},
+	err := pp.Comms.Call("C.UserSupsMultiplierSendHandler", UserSupsMultiplierSendReq{userSupsMultiplierSends}, &UserSupsMultiplierSendResp{})
+	if err != nil {
+		pp.Log.Err(err).Str("method", "UserSupsMultiplierSendHandler").Msg("rpc error")
 	}
 }
 

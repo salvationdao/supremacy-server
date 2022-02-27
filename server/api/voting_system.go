@@ -2,14 +2,12 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"math/big"
 	"net/http"
 	"server"
 	"server/battle_arena"
 	"server/db"
-	"server/passport"
 	"sort"
 	"sync"
 	"time"
@@ -29,18 +27,12 @@ func (api *API) startSpoilOfWarBroadcaster(ctx context.Context) {
 	spoilOfWarBroadcasterLogger := log_helpers.NamedLogger(api.Log, "Spoil of War Broadcaster").Level(zerolog.Disabled)
 	spoilOfWarBroadcaster := tickle.New("Spoil of War Broadcaster", 5, func() (int, error) {
 
-		api.Passport.GetSpoilOfWarAmount(func(msg []byte) {
-			resp := &passport.SpoilOfWarAmountRequest{}
-			err := json.Unmarshal(msg, resp)
-			if err != nil {
-				return
-			}
-			payload := []byte{}
-			payload = append(payload, byte(battle_arena.NetMessageTypeSpoilOfWarTick))
-			payload = append(payload, []byte(resp.Amount)...)
+		result := api.Passport.GetSpoilOfWarAmount()
+		payload := []byte{}
+		payload = append(payload, byte(battle_arena.NetMessageTypeSpoilOfWarTick))
+		payload = append(payload, []byte(result)...)
 
-			api.NetMessageBus.Send(ctx, messagebus.NetBusKey(HubKeySpoilOfWarUpdated), payload)
-		})
+		api.NetMessageBus.Send(ctx, messagebus.NetBusKey(HubKeySpoilOfWarUpdated), payload)
 
 		return http.StatusOK, nil
 	})

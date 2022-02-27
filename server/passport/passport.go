@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"server/comms"
 	"server/gamelog"
 	"server/helpers"
 	"sync"
@@ -40,19 +41,19 @@ type Message struct {
 
 type Passport struct {
 	//Conn *Connection
-	ws        *websocket.Conn
-	Connected bool
-	Log       *zerolog.Logger
-	addr      string
-	commands  map[Command]CommandFunc
-	Events    Events
-	send      chan *Message
-
+	ws          *websocket.Conn
+	Connected   bool
+	Log         *zerolog.Logger
+	addr        string
+	commands    map[Command]CommandFunc
+	Events      Events
+	send        chan *Message
+	Comms       *comms.C
 	callbacks   sync.Map
 	clientToken string
 }
 
-func NewPassport(logger *zerolog.Logger, addr, clientToken string) *Passport {
+func NewPassport(logger *zerolog.Logger, addr, clientToken string, comms *comms.C) *Passport {
 	newPP := &Passport{
 
 		Log:      logger,
@@ -63,6 +64,7 @@ func NewPassport(logger *zerolog.Logger, addr, clientToken string) *Passport {
 
 		callbacks:   sync.Map{},
 		clientToken: clientToken,
+		Comms:       comms,
 	}
 
 	return newPP

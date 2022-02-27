@@ -8,6 +8,7 @@ import (
 	"server"
 	"server/api"
 	"server/battle_arena"
+	"server/comms"
 	"server/gamelog"
 	"server/passport"
 	"server/seed"
@@ -143,10 +144,31 @@ func main() {
 
 					g := &run.Group{}
 
+					u, err := url.Parse(passportAddr)
+					if err != nil {
+						cancel()
+						return terror.Panic(err)
+					}
+					hostname := u.Hostname()
+					rpcAddrs := []string{
+						fmt.Sprintf("%s:10006", hostname),
+						fmt.Sprintf("%s:10005", hostname),
+						fmt.Sprintf("%s:10004", hostname),
+						fmt.Sprintf("%s:10003", hostname),
+						fmt.Sprintf("%s:10002", hostname),
+						fmt.Sprintf("%s:10001", hostname),
+					}
+					passportRPC, err := comms.New(rpcAddrs...)
+					if err != nil {
+						cancel()
+						return terror.Panic(err)
+					}
+
 					//// Connect to passport
 					pp := passport.NewPassport(log_helpers.NamedLogger(logger, "passport"),
 						passportAddr,
 						passportClientToken,
+						passportRPC,
 					)
 					err = pp.Connect()
 					if err != nil {

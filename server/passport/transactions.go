@@ -13,43 +13,39 @@ type HoldSupsMessageResponse struct {
 	Transaction string `json:"payload"`
 }
 
+type SpendSupsReq struct {
+	FromUserID           server.UserID               `json:"userID"`
+	Amount               server.BigInt               `json:"amount"`
+	TransactionReference server.TransactionReference `json:"transactionReference"`
+	GroupID              string
+}
+type SpendSupsResp struct {
+	TXID string `json:"txid"`
+}
+
 // SpendSupMessage tells the passport to hold sups
 func (pp *Passport) SpendSupMessage(userID server.UserID, supsChange server.BigInt, battleID server.BattleID, reason string, callback func(msg []byte)) {
 	supTransactionReference := uuid.Must(uuid.NewV4())
 	supTxRefString := server.TransactionReference(fmt.Sprintf("%s|%s", reason, supTransactionReference.String()))
-	id := fmt.Sprintf("sups hold - %s", uuid.Must(uuid.NewV4()).String())
-
-	pp.send <- &Message{
-		Key:      "SUPREMACY:HOLD_SUPS",
-		Callback: callback,
-		Payload: struct {
-			FromUserID           server.UserID               `json:"userID"`
-			Amount               server.BigInt               `json:"amount"`
-			TransactionReference server.TransactionReference `json:"transactionReference"`
-			GroupID              string                      `json:"groupID"`
-		}{
-			FromUserID:           userID,
-			Amount:               supsChange,
-			TransactionReference: supTxRefString,
-			GroupID:              battleID.String(),
-		},
-		TransactionID: id,
+	err := pp.Comms.Call("C.SupremacySpendSupsHandler", SpendSupsReq{FromUserID: userID, Amount: supsChange, TransactionReference: supTxRefString, GroupID: battleID.String()}, &SpendSupsResp{})
+	if err != nil {
+		pp.Log.Err(err).Str("method", "SupremacySpendSupsHandler").Msg("rpc error")
 	}
 }
+
+type ReleaseTransactionsReq struct {
+	TxIDs []string `json:"txIDs"`
+}
+type ReleaseTransactionsResp struct{}
 
 // ReleaseTransactions tells the passport to transfer fund to sup pool
 func (pp *Passport) ReleaseTransactions(ctx context.Context, transactions []string) {
 	if len(transactions) == 0 {
 		return
 	}
-
-	pp.send <- &Message{
-		Key: "SUPREMACY:RELEASE_TRANSACTIONS",
-		Payload: struct {
-			Transactions []string `json:"txIDs"`
-		}{
-			Transactions: transactions,
-		},
+	err := pp.Comms.Call("C.ReleaseTransactionsHandler", ReleaseTransactionsReq{transactions}, &ReleaseTransactionsResp{})
+	if err != nil {
+		pp.Log.Err(err).Str("method", "ReleaseTransactionsHandler").Msg("rpc error")
 	}
 }
 
