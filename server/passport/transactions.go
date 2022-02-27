@@ -15,7 +15,7 @@ type HoldSupsMessageResponse struct {
 
 type SpendSupsReq struct {
 	FromUserID           server.UserID               `json:"userID"`
-	Amount               server.BigInt               `json:"amount"`
+	Amount               string                      `json:"amount"`
 	TransactionReference server.TransactionReference `json:"transactionReference"`
 	GroupID              string
 }
@@ -27,7 +27,7 @@ type SpendSupsResp struct {
 func (pp *Passport) SpendSupMessage(userID server.UserID, supsChange server.BigInt, battleID server.BattleID, reason string, callback func(msg []byte)) {
 	supTransactionReference := uuid.Must(uuid.NewV4())
 	supTxRefString := server.TransactionReference(fmt.Sprintf("%s|%s", reason, supTransactionReference.String()))
-	err := pp.Comms.Call("C.SupremacySpendSupsHandler", SpendSupsReq{FromUserID: userID, Amount: supsChange, TransactionReference: supTxRefString, GroupID: battleID.String()}, &SpendSupsResp{})
+	err := pp.Comms.Call("C.SupremacySpendSupsHandler", SpendSupsReq{FromUserID: userID, Amount: supsChange.String(), TransactionReference: supTxRefString, GroupID: battleID.String()}, &SpendSupsResp{})
 	if err != nil {
 		pp.Log.Err(err).Str("method", "SupremacySpendSupsHandler").Msg("rpc error")
 	}
