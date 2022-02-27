@@ -272,7 +272,7 @@ func calVotePrice(globalTotalVote int64, currentVotePrice server.BigInt, current
 		}
 
 		// increase the price drop to 20%
-		priceChange.Mul(&priceChange.Int, big.NewInt(10))
+		priceChange.Mul(&priceChange.Int, big.NewInt(8))
 
 		votePriceSups.Sub(&votePriceSups.Int, &priceChange.Int)
 	}
