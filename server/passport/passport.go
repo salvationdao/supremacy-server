@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 	"server/comms"
 	"server/gamelog"
 	"server/helpers"
@@ -88,7 +87,7 @@ func (pp *Passport) Connect() error {
 		connectionAttempts++
 		if connectionAttempts > 5 {
 			pp.Log.Warn().Err(err).Msgf("Failed to connect to passport server. Attempted 5 times.")
-			os.Exit(-1)
+			time.Sleep(5 * time.Second)
 		}
 		return pp.Connect()
 	}
@@ -109,14 +108,14 @@ func (pp *Passport) Connect() error {
 	jsn, err := json.Marshal(msg)
 	if err != nil {
 		pp.Log.Warn().Err(err).Msg("failed to write json to send to passport")
-		os.Exit(-1)
+		time.Sleep(5 * time.Second)
 	}
 
 	err = pp.ws.Write(context.Background(), websocket.MessageText, jsn)
 	if err != nil {
 		pp.Log.Warn().Err(err).Msgf("Failed to connect to passport server")
 		pp.ws.Close(websocket.StatusNormalClosure, "close called")
-		os.Exit(-1)
+		time.Sleep(5 * time.Second)
 	}
 
 	// send messages
@@ -136,12 +135,15 @@ func (pp *Passport) Connect() error {
 				time.Sleep(10 * time.Second)
 				_ = pp.Connect()
 			}
-
-			var buf bytes.Buffer
-
-			_, err = io.Copy(&buf, r)
+			if r == nil {
+				pp.Log.Warn().Err(err).Msg("ws reader is nil, continue")
+				continue
+			}
+			buf := &bytes.Buffer{}
+			_, err = io.Copy(buf, r)
 			if err != nil {
-				panic(err) //server out of memory
+				pp.Log.Warn().Err(err).Msg("io copy failed, passport connect")
+				continue
 			}
 
 			payload := buf.Bytes()
@@ -222,7 +224,12 @@ func (pp *Passport) sendPump() {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*40)
 		func() {
 			defer cancel()
-			err = pp.ws.Write(ctx, websocket.MessageText, jsn)
+			if pp.ws != nil {
+				err = pp.ws.Write(ctx, websocket.MessageText, jsn)
+				if err != nil {
+					pp.Log.Warn().Err(err).Msg("ws write error")
+				}
+			}
 		}()
 		if err != nil {
 			pp.Log.Warn().Err(err).Msg("failed to send to passport")

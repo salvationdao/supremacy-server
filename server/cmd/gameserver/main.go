@@ -158,14 +158,15 @@ func main() {
 						fmt.Sprintf("%s:10002", hostname),
 						fmt.Sprintf("%s:10001", hostname),
 					}
-					passportRPC, err := comms.New(rpcAddrs...)
+					passportRPC, err := comms.New(logger, rpcAddrs...)
 					if err != nil {
 						cancel()
 						return terror.Panic(err)
 					}
 
 					//// Connect to passport
-					pp := passport.NewPassport(log_helpers.NamedLogger(logger, "passport"),
+					pp := passport.NewPassport(
+						log_helpers.NamedLogger(logger, "passport"),
 						passportAddr,
 						passportClientToken,
 						passportRPC,

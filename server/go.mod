@@ -32,6 +32,7 @@ require (
 	github.com/jpillora/backoff v1.0.0
 	github.com/microcosm-cc/bluemonday v1.0.16
 	github.com/ninja-software/tickle v1.3.2
+	go.uber.org/atomic v1.7.0
 )
 
 require (
@@ -110,7 +111,6 @@ require (
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	go.opencensus.io v0.23.0 // indirect
-	go.uber.org/atomic v1.7.0 // indirect
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8 // indirect
 	golang.org/x/sys v0.0.0-20211124211545-fe61309f8881 // indirect
