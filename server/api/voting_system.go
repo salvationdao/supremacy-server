@@ -257,7 +257,7 @@ func calVotePrice(globalTotalVote int64, currentVotePrice server.BigInt, current
 	if currentVotePerTick*300 > globalTotalVote {
 		// price go up
 		if votePriceSups.Cmp(big.NewInt(1000000000000000000)) < 0 {
-			priceChange.Mul(&priceChange.Int, big.NewInt(3))
+			priceChange.Mul(&priceChange.Int, big.NewInt(4))
 		}
 
 		votePriceSups.Add(&votePriceSups.Int, &priceChange.Int)
