@@ -55,6 +55,9 @@ type LiveVotingData struct {
 type VotePriceSystem struct {
 	VotePriceUpdater *tickle.Tickle
 
+
+
+
 	GlobalVotePerTick []int64 // store last 100 tick total vote
 	GlobalTotalVote   int64
 
@@ -326,7 +329,6 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 			totalVoteMutex.Lock()
 			totalVote.Add(&totalVote.Int, voteCount)
 			totalVoteMutex.Unlock()
-
 		}
 
 		// prepare payload
@@ -400,11 +402,11 @@ func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client) error {
 
 		if err != nil {
 			api.Log.Err(err).Msg("failed to marshal data")
-			return
+			return err
 		}
 
 		wsc.Send(context.Background(), 3 * time.Second,gameSettingsData)
-	return nil
+	return err
 }
 
 func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client) error {
