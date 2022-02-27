@@ -331,6 +331,15 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 		BattleRewardList: battleRewardList,
 	})
 
+	// get the current queuing list from db
+	hashes, err := db.BattlQueueingHashesGet(ctx, ba.Conn)
+	if err != nil {
+		ba.Log.Err(err).Msgf("Failed to get battle queuing hashes")
+	}
+	if len(hashes) > 0 {
+		ba.passport.AssetQueuingCheckList(hashes)
+	}
+
 	go func() {
 		time.Sleep(25 * time.Second)
 		err := ba.InitNextBattle()

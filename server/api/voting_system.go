@@ -516,7 +516,6 @@ func (api *API) stopVotingCycle(ctx context.Context) []*server.BattleUserVote {
 			api.Passport.ReleaseTransactions(context.Background(), fts.Transactions)
 		}
 
-		userVoteCounts := []*server.BattleUserVote{}
 		for userID, voteCount := range uvm {
 			// get a copy of the user vote map
 			userVoteCounts = append(userVoteCounts, &server.BattleUserVote{

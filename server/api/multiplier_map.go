@@ -901,7 +901,11 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 	go um.Passport.UserSupsMultiplierSend(context.Background(), userSupsMultiplierSends)
 
 	// store in db
-	db.UserMultiplierStore(context.Background(), um.BattleArena.Conn, userSupsMultiplierSends)
+	err := db.UserMultiplierStore(context.Background(), um.BattleArena.Conn, userSupsMultiplierSends)
+	if err != nil {
+		um.BattleArena.Log.Err(err)
+		return
+	}
 }
 
 func (um *UserMultiplier) UserActiveChecker() {
