@@ -223,8 +223,12 @@ func (um *UserMultiplier) Online(userID server.UserID) {
 				Expiry:          s.ExpiredAt,
 			})
 		default:
-			brk := strings.Split(s.Key, "_")[0]
-			battleID := strings.Split(s.Key, "_")[1]
+			strs := strings.Split(s.Key, "_")
+			if len(strs) < 2 {
+				continue
+			}
+			brk := strs[0]
+			battleID := strs[1]
 
 			switch brk {
 			case string(BattleRewardTypeFaction):
