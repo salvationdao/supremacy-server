@@ -171,11 +171,6 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 			vc.API.votePhaseChecker.RUnlock()
 			fts.Unlock()
 
-			// if transaction committed, clean up the transactions
-			fts.Lock()
-			defer fts.Unlock()
-			fts.Transactions = []string{}
-
 			// record user vote map
 			if _, ok := uvm[userID]; !ok {
 				uvm[userID] = 0
@@ -251,7 +246,7 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 	}
 
 	vc.API.VotingCycle(func(va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
-		fmt.Println("get 1")
+
 		// check voting phase
 		vc.API.votePhaseChecker.RLock()
 		if vc.API.votePhaseChecker.Phase != VotePhaseLocationSelect {
@@ -283,6 +278,11 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 			return
 		}
 
+		// clean up the transactions after ability is triggered
+		fts.Lock()
+		fts.Transactions = []string{}
+		defer fts.Unlock()
+
 		// broadcast notification
 		go vc.API.BroadcastGameNotificationLocationSelect(ctx, &GameNotificationLocationSelect{
 			Type:        LocationSelectTypeTrigger,
@@ -309,8 +309,10 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 		}
 
 		// broadcast next stage
+		vc.API.votePhaseChecker.Lock()
 		vc.API.votePhaseChecker.Phase = VotePhaseVoteCooldown
 		vc.API.votePhaseChecker.EndTime = time.Now().Add(time.Duration(va.BattleAbility.CooldownDurationSecond) * time.Second)
+		vc.API.votePhaseChecker.Unlock()
 
 		// broadcast current stage to faction users
 		go vc.API.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vc.API.votePhaseChecker)

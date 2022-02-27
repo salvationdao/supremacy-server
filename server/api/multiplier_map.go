@@ -2,14 +2,18 @@ package api
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"server"
 	"server/battle_arena"
+	"server/db"
 	"server/passport"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/gofrs/uuid"
+	"github.com/jackc/pgx/v4"
 )
 
 type ClientAction string
@@ -59,6 +63,88 @@ type Multiplier struct {
 	WinningFactionMap sync.Map
 	WinningUserMap    sync.Map
 	KillMap           sync.Map
+
+	// most sups spend
+	MostSupsPend *MostSupsPendMap // key: battleID_userID
+}
+
+type MostSupsPendMap struct {
+	sync.Map
+}
+
+func (msp *MostSupsPendMap) Get(battleID string, userID string) *MultiplierAction {
+	key := battleID + "_" + userID
+
+	value, ok := msp.Load(key)
+	if !ok {
+		return nil
+	}
+	ma, ok := value.(*MultiplierAction)
+	if !ok {
+		return nil
+	}
+
+	return ma
+}
+
+func (msp *MostSupsPendMap) GetByUserID(userID string) []*MultiplierAction {
+	result := []*MultiplierAction{}
+	msp.Range(func(key, value interface{}) bool {
+		if strings.Split(key.(string), "_")[1] != userID {
+			return true
+		}
+
+		ma, ok := value.(*MultiplierAction)
+		if !ok {
+			return true
+		}
+
+		result = append(result, ma)
+
+		return true
+	})
+	return result
+}
+
+func (msp *MostSupsPendMap) GetByBattleID(battleID string) []*MultiplierAction {
+	result := []*MultiplierAction{}
+	msp.Range(func(key, value interface{}) bool {
+		if strings.Split(key.(string), "_")[0] != battleID {
+			return true
+		}
+
+		ma, ok := value.(*MultiplierAction)
+		if !ok {
+			return true
+		}
+
+		result = append(result, ma)
+
+		return true
+	})
+	return result
+}
+
+func (msp *MostSupsPendMap) Save(battleID string, userID string, ma *MultiplierAction) {
+	msp.Store(battleID+"_"+userID, ma)
+}
+
+func (msp *MostSupsPendMap) Clear(userID string) {
+	msp.Range(func(key, value interface{}) bool {
+		if strings.HasSuffix(key.(string), userID) {
+			msp.Delete(userID)
+		}
+		return true
+	})
+}
+
+func (msp *MostSupsPendMap) ClearByBattleID(battleID string) {
+	msp.Range(func(key, value interface{}) bool {
+		if strings.HasPrefix(key.(string), battleID) {
+			msp.Delete(battleID)
+		}
+		return true
+	})
 }
 
 type MultiplierAction struct {
@@ -69,8 +155,8 @@ type MultiplierAction struct {
 // TODO: set up sups ticker
 func NewUserMultiplier(userMap *UserMap, pp *passport.Passport, ba *battle_arena.BattleArena) *UserMultiplier {
 	um := &UserMultiplier{
-		CurrentMaps: &Multiplier{sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}},
-		CheckMaps:   &Multiplier{sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}},
+		CurrentMaps: &Multiplier{sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}, &MostSupsPendMap{}},
+		CheckMaps:   &Multiplier{sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}, &MostSupsPendMap{}},
 		BattleIDMap: sync.Map{},
 		UserMap:     userMap,
 		Passport:    pp,
@@ -107,54 +193,81 @@ func (um *UserMultiplier) Online(userID server.UserID) {
 	now := time.Now()
 	um.ActiveMap.Store(userIDStr, now)
 
-	// go through check map and get non expired multiplier
-	um.CheckMaps.OnlineMap.Delete(userIDStr)
+	// load multipliers from db
+	sm, err := db.UserMultiplierGet(context.Background(), um.BattleArena.Conn, userID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		fmt.Println("Failed to read user multipliers from db", err.Error())
+		return
+	}
+
 	um.CurrentMaps.OnlineMap.Store(userIDStr, &MultiplierAction{
 		MultiplierValue: 100,
 		Expiry:          now.AddDate(1, 0, 0),
 	})
+	for _, s := range sm {
+		switch s.Key {
+		case string(ClientVoted):
+			if s.ExpiredAt.Before(now) {
+				continue
+			}
+			um.CurrentMaps.ApplauseMap.Store(userIDStr, &MultiplierAction{
+				MultiplierValue: s.Value,
+				Expiry:          s.ExpiredAt,
+			})
+		case string(ClientPickedLocation):
+			if s.ExpiredAt.Before(now) {
+				continue
+			}
+			um.CurrentMaps.PickedLocationMap.Store(userIDStr, &MultiplierAction{
+				MultiplierValue: s.Value,
+				Expiry:          s.ExpiredAt,
+			})
+		default:
+			brk := strings.Split(s.Key, "_")[0]
+			battleID := strings.Split(s.Key, "_")[1]
 
-	// applause map
-	if v, ok := um.CheckMaps.ApplauseMap.LoadAndDelete(userIDStr); ok {
-		if m := v.(*MultiplierAction); m.Expiry.After(now) {
-			um.CurrentMaps.ApplauseMap.Store(userIDStr, m)
+			switch brk {
+			case string(BattleRewardTypeFaction):
+				if s.ExpiredAt.Before(now) {
+					continue
+				}
+				um.CurrentMaps.WinningFactionMap.Store(
+					battleID+"_"+userIDStr,
+					&MultiplierAction{
+						MultiplierValue: s.Value,
+						Expiry:          s.ExpiredAt,
+					},
+				)
+			case string(BattleRewardTypeWinner):
+				if s.ExpiredAt.Before(now) {
+					continue
+				}
+				um.CurrentMaps.WinningUserMap.Store(
+					battleID+"_"+userIDStr,
+					&MultiplierAction{
+						MultiplierValue: s.Value,
+						Expiry:          s.ExpiredAt,
+					},
+				)
+			case string(BattleRewardTypeKill):
+				if s.ExpiredAt.Before(now) {
+					continue
+				}
+				um.CurrentMaps.KillMap.Store(
+					battleID+"_"+userIDStr,
+					&MultiplierAction{
+						MultiplierValue: s.Value,
+						Expiry:          s.ExpiredAt,
+					},
+				)
+				// case string(BattleRewardTypeWarContributor):
+				// 	if s.ExpiredAt.Before(now) {
+				// 		continue
+				// 	}
+				// 	um.CurrentMaps.MostSupsPend.Save(battleID, userIDStr, &MultiplierAction{s.Value, s.ExpiredAt})
+			}
 		}
 	}
-
-	// picked location map
-	if v, ok := um.CheckMaps.PickedLocationMap.LoadAndDelete(userIDStr); ok {
-		if m := v.(*MultiplierAction); m.Expiry.After(now) {
-			um.CurrentMaps.PickedLocationMap.Store(userIDStr, m)
-		}
-	}
-
-	// move battle map
-	um.BattleIDMap.Range(func(key, value interface{}) bool {
-		battleIDStr := key.(string)
-
-		// winning faction map
-		if v, ok := um.CheckMaps.WinningFactionMap.LoadAndDelete(battleIDStr + "_" + userIDStr); ok {
-			if m := v.(*MultiplierAction); m.Expiry.After(now) {
-				um.CurrentMaps.WinningFactionMap.Store(battleIDStr+"_"+userIDStr, m)
-			}
-		}
-
-		// winner map
-		if v, ok := um.CheckMaps.WinningUserMap.LoadAndDelete(battleIDStr + "_" + userIDStr); ok {
-			if m := v.(*MultiplierAction); m.Expiry.After(now) {
-				um.CurrentMaps.WinningUserMap.Store(battleIDStr+"_"+userIDStr, m)
-			}
-		}
-
-		// kill map
-		if v, ok := um.CheckMaps.KillMap.LoadAndDelete(battleIDStr + "_" + userIDStr); ok {
-			if m := v.(*MultiplierAction); m.Expiry.After(now) {
-				um.CurrentMaps.KillMap.Store(battleIDStr+"_"+userIDStr, m)
-			}
-		}
-		return true
-	})
-
 }
 
 // Offline remove all the user related multiplier action in current map
@@ -162,38 +275,56 @@ func (um *UserMultiplier) Offline(userID server.UserID) {
 	userIDStr := userID.String()
 
 	um.CurrentMaps.OnlineMap.Delete(userIDStr)
+	um.CheckMaps.OnlineMap.Delete(userIDStr)
 	um.CurrentMaps.ApplauseMap.Delete(userIDStr)
+	um.CheckMaps.ApplauseMap.Delete(userIDStr)
 	um.CurrentMaps.PickedLocationMap.Delete(userIDStr)
+	um.CheckMaps.PickedLocationMap.Delete(userIDStr)
 
-	um.BattleIDMap.Range(func(key, value interface{}) bool {
-		um.CurrentMaps.WinningFactionMap.Range(func(key, value interface{}) bool {
-			if strings.HasSuffix(key.(string), userIDStr) {
-				um.CurrentMaps.WinningFactionMap.Delete(userIDStr)
-			}
-
-			return true
-		})
-
-		um.CurrentMaps.WinningUserMap.Range(func(key, value interface{}) bool {
-			if strings.HasSuffix(key.(string), userIDStr) {
-				um.CurrentMaps.WinningUserMap.Delete(userIDStr)
-			}
-
-			return true
-		})
-
-		um.CurrentMaps.KillMap.Range(func(key, value interface{}) bool {
-			if strings.HasSuffix(key.(string), userIDStr) {
-				um.CurrentMaps.KillMap.Delete(userIDStr)
-			}
-
-			return true
-		})
-
+	um.CurrentMaps.WinningFactionMap.Range(func(key, value interface{}) bool {
+		if strings.HasSuffix(key.(string), userIDStr) {
+			um.CurrentMaps.WinningFactionMap.Delete(userIDStr)
+		}
 		return true
 	})
 
-	go um.UserSupsMultiplierToPassport(userID, nil, 0)
+	um.CheckMaps.WinningFactionMap.Range(func(key, value interface{}) bool {
+		if strings.HasSuffix(key.(string), userIDStr) {
+			um.CheckMaps.WinningFactionMap.Delete(userIDStr)
+		}
+		return true
+	})
+
+	um.CurrentMaps.WinningUserMap.Range(func(key, value interface{}) bool {
+		if strings.HasSuffix(key.(string), userIDStr) {
+			um.CurrentMaps.WinningUserMap.Delete(userIDStr)
+		}
+		return true
+	})
+
+	um.CheckMaps.WinningFactionMap.Range(func(key, value interface{}) bool {
+		if strings.HasSuffix(key.(string), userIDStr) {
+			um.CheckMaps.WinningFactionMap.Delete(userIDStr)
+		}
+		return true
+	})
+
+	um.CurrentMaps.KillMap.Range(func(key, value interface{}) bool {
+		if strings.HasSuffix(key.(string), userIDStr) {
+			um.CurrentMaps.KillMap.Delete(userIDStr)
+		}
+		return true
+	})
+
+	um.CheckMaps.WinningFactionMap.Range(func(key, value interface{}) bool {
+		if strings.HasSuffix(key.(string), userIDStr) {
+			um.CheckMaps.WinningFactionMap.Delete(userIDStr)
+		}
+		return true
+	})
+
+	// um.CurrentMaps.MostSupsPend.Clear(userIDStr)
+	// um.CheckMaps.MostSupsPend.Clear(userIDStr)
 }
 
 func (um *UserMultiplier) Voted(userID server.UserID) {
@@ -239,6 +370,10 @@ func (um *UserMultiplier) ClientBattleRewardUpdate(brl *battle_arena.BattleRewar
 			Expiry:          now.Add(time.Minute * 5),
 		})
 	}
+
+	// for i, mvpID := range brl.TopSupsSpendUsers {
+	// 	um.CurrentMaps.MostSupsPend.Save(battleIDStr, mvpID.String(), &MultiplierAction{(len(brl.TopSupsSpendUsers) - i) * 100, now.Add(time.Minute * 5)})
+	// }
 
 	// loop through current online user and provide them winning faction reward
 	um.UserMap.RLock()
@@ -315,6 +450,9 @@ func (um *UserMultiplier) CleanUpBattleReward(battleIDStr string) {
 			return true
 		})
 	}()
+
+	// um.CurrentMaps.MostSupsPend.ClearByBattleID(battleIDStr)
+	// um.CheckMaps.MostSupsPend.ClearByBattleID(battleIDStr)
 }
 
 // sups tick
@@ -556,23 +694,23 @@ func (um *UserMultiplier) PushUserMultiplierToPassport(userID server.UserID) {
 }
 
 func (um *UserMultiplier) UserSupsMultiplierToPassport(userID server.UserID, supsMultiplierMap map[string]*MultiplierAction, multiplier int) {
-	userSupsMultiplierSend := &passport.UserSupsMultiplierSend{
+	userSupsMultiplierSend := &server.UserSupsMultiplierSend{
 		ToUserID:        userID,
-		SupsMultipliers: []*passport.SupsMultiplier{},
+		SupsMultipliers: []*server.SupsMultiplier{},
 	}
 
 	for key, sm := range supsMultiplierMap {
 		m := sm.MultiplierValue
 		m = m * multiplier / 100
 
-		userSupsMultiplierSend.SupsMultipliers = append(userSupsMultiplierSend.SupsMultipliers, &passport.SupsMultiplier{
+		userSupsMultiplierSend.SupsMultipliers = append(userSupsMultiplierSend.SupsMultipliers, &server.SupsMultiplier{
 			Key:       key,
 			Value:     m,
 			ExpiredAt: sm.Expiry,
 		})
 	}
 
-	go um.Passport.UserSupsMultiplierSend(context.Background(), []*passport.UserSupsMultiplierSend{userSupsMultiplierSend})
+	go um.Passport.UserSupsMultiplierSend(context.Background(), []*server.UserSupsMultiplierSend{userSupsMultiplierSend})
 }
 
 func (um *UserMultiplier) UserMultiplierUpdate() {
@@ -828,14 +966,42 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 		return true
 	})
 
+	userSupsMultiplierSends := []*server.UserSupsMultiplierSend{}
 	for userID, ma := range diff {
 		// update user remain rate
 		remainRate := um.UserRemainRate(now, userID)
 		if remainRate == 0 {
 			continue
 		}
+
 		uid := server.UserID(uuid.FromStringOrNil(userID))
-		go um.UserSupsMultiplierToPassport(uid, ma, remainRate)
+		userSupsMultiplierSend := &server.UserSupsMultiplierSend{
+			ToUserID:        uid,
+			SupsMultipliers: []*server.SupsMultiplier{},
+		}
+
+		for key, sm := range ma {
+			m := sm.MultiplierValue
+			m = m * remainRate / 100
+
+			userSupsMultiplierSend.SupsMultipliers = append(userSupsMultiplierSend.SupsMultipliers, &server.SupsMultiplier{
+				Key:       key,
+				Value:     m,
+				ExpiredAt: sm.Expiry,
+			})
+		}
+
+		userSupsMultiplierSends = append(userSupsMultiplierSends, userSupsMultiplierSend)
+
+	}
+	// broadcast to user
+	go um.Passport.UserSupsMultiplierSend(context.Background(), userSupsMultiplierSends)
+
+	// store in db
+	err := db.UserMultiplierStore(context.Background(), um.BattleArena.Conn, userSupsMultiplierSends)
+	if err != nil {
+		um.BattleArena.Log.Err(err)
+		return
 	}
 }
 

@@ -257,3 +257,22 @@ func BattleQueueRead(ctx context.Context, conn Conn, factionID server.FactionID)
 
 	return wms, nil
 }
+
+func BattleQueueingHashesGet(ctx context.Context, conn Conn) ([]string, error) {
+	bqh := []string{}
+	q := `
+		SELECT
+			war_machine_metadata ->> 'hash' as hash
+		FROM
+			battle_war_machine_queues
+		where 
+			released_at ISNULL
+	`
+
+	err := pgxscan.Select(ctx, conn, &bqh, q)
+	if err != nil {
+		return []string{}, terror.Error(err)
+	}
+
+	return bqh, nil
+}
