@@ -132,6 +132,7 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 
 	fc.API.votePhaseChecker.RLock()
 	if fc.API.votePhaseChecker.Phase == VotePhaseWaitMechIntro {
+		fc.API.votePhaseChecker.RUnlock()
 		return terror.Error(terror.ErrForbidden, "Ability Contribute are available after intro")
 	}
 	fc.API.votePhaseChecker.RUnlock()
