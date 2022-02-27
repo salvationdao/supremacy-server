@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/gofrs/uuid"
+	"github.com/ninja-syndicate/hub"
 )
 
 // User is a single user on the platform
@@ -85,4 +86,16 @@ func (u *User) Brief() *UserBrief {
 	}
 
 	return ub
+}
+
+type UserSupsMultiplierSend struct {
+	ToUserID        UserID            `json:"toUserID"`
+	ToUserSessionID *hub.SessionID    `json:"toUserSessionID,omitempty"`
+	SupsMultipliers []*SupsMultiplier `json:"supsMultiplier"`
+}
+
+type SupsMultiplier struct {
+	Key       string    `json:"key"`
+	Value     int       `json:"value"`
+	ExpiredAt time.Time `json:"expiredAt"`
 }

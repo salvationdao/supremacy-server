@@ -32,6 +32,7 @@ func NewGameController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *GameC
 	}
 
 	api.Command(HubKeyFactionColour, gameHub.FactionColour)
+	api.SecureUserCommand(HubKeyActiveCheckUpdated, gameHub.ActiveChecker)
 	api.SubscribeCommand(HubKeyWarMachineDestroyedUpdated, gameHub.WarMachineDestroyedUpdateSubscribeHandler)
 	api.SecureUserFactionSubscribeCommand(HubKeyFactionWarMachineQueueUpdated, gameHub.FactionWarMachineQueueUpdateSubscribeHandler)
 	api.SubscribeCommand(HubKeyBattleEndDetailUpdated, gameHub.BattleEndDetailUpdateSubscribeHandler)
@@ -58,6 +59,13 @@ func (gc *GameControllerWS) FactionColour(ctx context.Context, wsc *hub.Client, 
 		Zaibatsu:    gc.API.factionMap[server.ZaibatsuFactionID].Theme.Primary,
 	})
 
+	return nil
+}
+
+const HubKeyActiveCheckUpdated hub.HubCommandKey = "MECH:REPAIR:STEAM"
+
+func (gc *GameControllerWS) ActiveChecker(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	// gc.API.UserMultiplier.ActiveMap.Store(wsc.Identifier(), time.Now())
 	return nil
 }
 
@@ -281,12 +289,8 @@ func (api *API) BroadcastGameNotificationWarMachineAbility(ctx context.Context, 
 }
 
 func (api *API) clientBroadcast(ctx context.Context, data []byte) {
-	api.Hub.Clients(func(clients hub.ClientsList) {
-		for client, ok := range clients {
-			if !ok {
-				continue
-			}
-			go client.Send(data)
-		}
+	api.Hub.Clients(func(sessionID hub.SessionID, client *hub.Client) bool {
+		go client.Send(data)
+		return true
 	})
 }

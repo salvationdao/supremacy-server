@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"sync/atomic"
 
 	"github.com/gofrs/uuid"
 )
@@ -611,4 +612,18 @@ func (b *BigInt) UnmarshalJSON(text []byte) error {
 		return fmt.Errorf("invalid number %s", string(text))
 	}
 	return nil
+}
+
+type TAtomBool struct{ flag int32 }
+
+func (b *TAtomBool) Set(value bool) {
+	var i int32 = 0
+	if value {
+		i = 1
+	}
+	atomic.StoreInt32(&(b.flag), int32(i))
+}
+
+func (b *TAtomBool) Get() bool {
+	return atomic.LoadInt32(&(b.flag)) != 0
 }

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math/big"
 	"server"
-	"server/passport"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -16,6 +15,7 @@ import (
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
+	"nhooyr.io/websocket"
 )
 
 // VoteControllerWS holds handlers for checking server status
@@ -61,7 +61,15 @@ func (vc *VoteControllerWS) FactionVotePrice(ctx context.Context, wsc *hub.Clien
 	if hcd == nil {
 		return terror.Error(terror.ErrForbidden)
 	}
-
+	if hcd == nil {
+		return terror.Error(fmt.Errorf("hub client details returned nil"), "Error while getting vote price, please contact support.")
+	}
+	if vc.API.votePriceSystem == nil {
+		return terror.Error(fmt.Errorf("nil vote price system"), "Error finding voting system, please contact support.")
+	}
+	if _, ok := vc.API.votePriceSystem.FactionVotePriceMap[hcd.FactionID]; !ok {
+		return terror.Error(fmt.Errorf("unable to find faction id %s in FactionVotePriceMap", hcd.FactionID), "Error finding faction vote details, please contact support.")
+	}
 	reply(vc.API.votePriceSystem.FactionVotePriceMap[hcd.FactionID].CurrentVotePriceSups.Int.String())
 
 	return nil
@@ -116,100 +124,90 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 	totalSups.Mul(&totalSups.Int, big.NewInt(req.Payload.VoteAmount))
 
 	// deliver vote
-	vc.API.votingCycle <- func(va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
-		// pay sups
-		go func() {
-			reason := fmt.Sprintf("battle:%s|vote_ability_right:%s", vc.API.BattleArena.CurrentBattleID(), va.BattleAbility.ID)
-			vc.API.Passport.SpendSupMessage(userID, totalSups, vc.API.BattleArena.CurrentBattleID(), reason, func(msg []byte) {
-				resp := &passport.HoldSupsMessageResponse{}
-				err := json.Unmarshal(msg, resp)
-				if err != nil {
-					vc.Log.Err(err).Msg("unable to send hold sups message")
-					return
+
+	vc.API.VotingCycle(func(va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+		reason := fmt.Sprintf("battle:%s|vote_ability_right:%s", vc.API.BattleArena.CurrentBattleID(), va.BattleAbility.ID)
+		go vc.API.Passport.SpendSupMessage(userID, totalSups, vc.API.BattleArena.CurrentBattleID(), reason, func(transaction string) {
+
+			fts.Lock()
+			fts.Transactions = append(fts.Transactions, transaction)
+
+			vc.API.liveSupsSpend[hcd.FactionID].Lock()
+			vc.API.liveSupsSpend[hcd.FactionID].TotalVote.Add(&vc.API.liveSupsSpend[hcd.FactionID].TotalVote.Int, &totalSups.Int)
+			vc.API.liveSupsSpend[hcd.FactionID].Unlock()
+
+			vc.API.increaseFactionVoteTotal(hcd.FactionID, req.Payload.VoteAmount)
+			// go vc.API.ClientVoted(wsc)
+			vc.API.UserMultiplier.Voted(userID)
+
+			switch hcd.FactionID {
+			case server.RedMountainFactionID:
+				ftv.RedMountainTotalVote += req.Payload.VoteAmount
+			case server.BostonCyberneticsFactionID:
+				ftv.BostonTotalVote += req.Payload.VoteAmount
+			case server.ZaibatsuFactionID:
+				ftv.ZaibatsuTotalVote += req.Payload.VoteAmount
+			}
+
+			// update vote result, if it is vote ability right phase
+			vc.API.votePhaseChecker.RLock()
+			if vc.API.votePhaseChecker.Phase == VotePhaseVoteAbilityRight {
+				_, ok := fuvm[hcd.FactionID][userID]
+				if !ok {
+					fuvm[hcd.FactionID][userID] = 0
 				}
 
-				fts.Lock()
-				fts.Transactions = append(fts.Transactions, resp.Transaction)
-
-				vc.API.liveSupsSpend[hcd.FactionID].Lock()
-				vc.API.liveSupsSpend[hcd.FactionID].TotalVote.Add(&vc.API.liveSupsSpend[hcd.FactionID].TotalVote.Int, &totalSups.Int)
-				vc.API.liveSupsSpend[hcd.FactionID].Unlock()
-
-				vc.API.increaseFactionVoteTotal(hcd.FactionID, req.Payload.VoteAmount)
-				// go vc.API.ClientVoted(wsc)
-				vc.API.UserMultiplier.Voted(userID)
-
-				switch hcd.FactionID {
-				case server.RedMountainFactionID:
-					ftv.RedMountainTotalVote += req.Payload.VoteAmount
-				case server.BostonCyberneticsFactionID:
-					ftv.BostonTotalVote += req.Payload.VoteAmount
-				case server.ZaibatsuFactionID:
-					ftv.ZaibatsuTotalVote += req.Payload.VoteAmount
-				}
-
-				// update vote result, if it is vote ability right phase
-				vc.API.votePhaseChecker.RLock()
-				if vc.API.votePhaseChecker.Phase == VotePhaseVoteAbilityRight {
-					_, ok := fuvm[hcd.FactionID][userID]
-					if !ok {
-						fuvm[hcd.FactionID][userID] = 0
-					}
-
-					fuvm[hcd.FactionID][userID] += req.Payload.VoteAmount
-					vc.API.votePhaseChecker.RUnlock()
-					fts.Unlock()
-					return
-				}
+				fuvm[hcd.FactionID][userID] += req.Payload.VoteAmount
 				vc.API.votePhaseChecker.RUnlock()
 				fts.Unlock()
 
-				// if transaction committed, clean up the transactions
-				fts.Lock()
-				defer fts.Unlock()
-				fts.Transactions = []string{}
+				go wsc.SendWithMessageType(getRatio(ftv.RedMountainTotalVote, ftv.BostonTotalVote, ftv.ZaibatsuTotalVote), websocket.MessageBinary)
 
-				// record user vote map
-				if _, ok := uvm[userID]; !ok {
-					uvm[userID] = 0
-				}
-				uvm[userID] += req.Payload.VoteAmount
+				return
+			}
+			vc.API.votePhaseChecker.RUnlock()
+			fts.Unlock()
 
-				// set current user as winner
-				vw.List = append(vw.List, userID)
+			// record user vote map
+			if _, ok := uvm[userID]; !ok {
+				uvm[userID] = 0
+			}
+			uvm[userID] += req.Payload.VoteAmount
 
-				// voting phase change
-				vc.API.votePhaseChecker.Lock()
-				vc.API.votePhaseChecker.Phase = VotePhaseLocationSelect
-				vc.API.votePhaseChecker.EndTime = time.Now().Add(LocationSelectDurationSecond * time.Second)
-				vc.API.votePhaseChecker.Unlock()
+			// set current user as winner
+			vw.List = append(vw.List, userID)
 
-				go vc.API.BroadcastGameNotificationAbility(ctx, GameNotificationTypeBattleAbility, &GameNotificationAbility{
-					User:    hcd.Brief(),
-					Ability: va.FactionAbilityMap[hcd.FactionID].Brief(),
-				})
+			// voting phase change
+			vc.API.votePhaseChecker.Lock()
+			vc.API.votePhaseChecker.Phase = VotePhaseLocationSelect
+			vc.API.votePhaseChecker.EndTime = time.Now().Add(LocationSelectDurationSecond * time.Second)
+			vc.API.votePhaseChecker.Unlock()
 
-				// announce winner
-				go vc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, userID)), &WinnerSelectAbilityLocation{
-					GameAbility: va.FactionAbilityMap[hcd.FactionID],
-					EndTime:     vc.API.votePhaseChecker.EndTime,
-				})
-
-				// broadcast current stage to faction users
-				go vc.API.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vc.API.votePhaseChecker)
-
-				// start vote listener
-				if vct.VotingStageListener.NextTick == nil || vct.VotingStageListener.NextTick.Before(time.Now()) {
-					vct.VotingStageListener.Start()
-				}
-
-				// stop vote right result broadcaster
-				if vct.AbilityRightResultBroadcaster.NextTick != nil {
-					vct.AbilityRightResultBroadcaster.Stop()
-				}
+			go vc.API.BroadcastGameNotificationAbility(ctx, GameNotificationTypeBattleAbility, &GameNotificationAbility{
+				User:    hcd.Brief(),
+				Ability: va.FactionAbilityMap[hcd.FactionID].Brief(),
 			})
-		}()
-	}
+
+			// announce winner
+			go vc.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, userID)), &WinnerSelectAbilityLocation{
+				GameAbility: va.FactionAbilityMap[hcd.FactionID],
+				EndTime:     vc.API.votePhaseChecker.EndTime,
+			})
+
+			// broadcast current stage to faction users
+			go vc.API.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vc.API.votePhaseChecker)
+
+			// start vote listener
+			if vct.VotingStageListener.NextTick == nil || vct.VotingStageListener.NextTick.Before(time.Now()) {
+				vct.VotingStageListener.Start()
+			}
+
+			// stop vote right result broadcaster
+			if vct.AbilityRightResultBroadcaster.NextTick != nil {
+				vct.AbilityRightResultBroadcaster.Stop()
+			}
+		})
+	})
 	return nil
 }
 
@@ -244,13 +242,11 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 		return terror.Error(terror.ErrForbidden, "Error - Invalid voting phase")
 	}
 
-	errChan := make(chan error)
-	vc.API.votingCycle <- func(va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
-		fmt.Println("get 1")
+	vc.API.VotingCycle(func(va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+
 		// check voting phase
 		vc.API.votePhaseChecker.RLock()
 		if vc.API.votePhaseChecker.Phase != VotePhaseLocationSelect {
-			errChan <- terror.Error(terror.ErrForbidden, "Error - Invalid voting phase")
 			vc.API.votePhaseChecker.RUnlock()
 			return
 		}
@@ -258,9 +254,6 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 
 		// check winner user id
 		if vw.List[0] != userID {
-
-			errChan <- terror.Error(terror.ErrForbidden)
-
 			return
 		}
 
@@ -279,9 +272,13 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 		})
 
 		if err != nil {
-			errChan <- terror.Error(err)
 			return
 		}
+
+		// clean up the transactions after ability is triggered
+		fts.Lock()
+		fts.Transactions = []string{}
+		defer fts.Unlock()
 
 		// broadcast notification
 		go vc.API.BroadcastGameNotificationLocationSelect(ctx, &GameNotificationLocationSelect{
@@ -295,7 +292,6 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 		// get random ability collection set
 		battleAbility, factionAbilityMap, err := vc.API.BattleArena.RandomBattleAbility()
 		if err != nil {
-			errChan <- terror.Error(err)
 			return
 		}
 
@@ -310,22 +306,16 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 		}
 
 		// broadcast next stage
+		vc.API.votePhaseChecker.Lock()
 		vc.API.votePhaseChecker.Phase = VotePhaseVoteCooldown
 		vc.API.votePhaseChecker.EndTime = time.Now().Add(time.Duration(va.BattleAbility.CooldownDurationSecond) * time.Second)
+		vc.API.votePhaseChecker.Unlock()
 
 		// broadcast current stage to faction users
 		go vc.API.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vc.API.votePhaseChecker)
 
 		vc.API.UserMultiplier.PickedLocation(userID)
-		errChan <- nil
-	}
-	err = <-errChan
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	reply(true)
-
+	})
 	return nil
 }
 
@@ -368,9 +358,9 @@ func (vc *VoteControllerWS) BattleAbilityUpdateSubscribeHandler(ctx context.Cont
 		vc.API.votePhaseChecker.RLock()
 		defer vc.API.votePhaseChecker.RUnlock()
 		if vc.API.votePhaseChecker.Phase != VotePhaseHold {
-			vc.API.votingCycle <- func(va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+			vc.API.VotingCycle(func(va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
 				reply(va.BattleAbility)
-			}
+			})
 		}
 	}
 

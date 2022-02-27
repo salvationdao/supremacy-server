@@ -188,16 +188,16 @@ func BattleQueueWarMachineUpdate(ctx context.Context, conn Conn, warMachineMetad
 		return terror.Error(err)
 	}
 
-	q := fmt.Sprintf(`
+	q := `
 	UPDATE
 		battle_war_machine_queues
 	SET
 		war_machine_metadata = $1
 	WHERE
-		war_machine_metadata ->> 'hash' = '%s' AND released_at ISNULL
-	`, warMachineMetadata.Hash)
+		war_machine_metadata ->> 'hash' = $2 AND released_at ISNULL
+	`
 
-	_, err = conn.Exec(ctx, q, jb)
+	_, err = conn.Exec(ctx, q, jb, warMachineMetadata.Hash)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -206,22 +206,18 @@ func BattleQueueWarMachineUpdate(ctx context.Context, conn Conn, warMachineMetad
 }
 
 func BattleQueueRemove(ctx context.Context, conn Conn, warMachineMetadata *server.WarMachineMetadata) error {
-	q := fmt.Sprintf(
-		`
+	q := `
 			UPDATE
 				battle_war_machine_queues
 			SET
 				released_at = NOW()
 			WHERE
-				war_machine_metadata ->> 'hash' = '%s' AND 
-				war_machine_metadata ->> 'factionID' = '%s' AND 
+				war_machine_metadata ->> 'hash' = $1 AND 
+				war_machine_metadata ->> 'factionID' = $2 AND 
 				released_at ISNULL
-		`,
-		warMachineMetadata.Hash,
-		warMachineMetadata.FactionID,
-	)
+		`
 
-	_, err := conn.Exec(ctx, q)
+	_, err := conn.Exec(ctx, q, warMachineMetadata.Hash, warMachineMetadata.FactionID)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -231,21 +227,18 @@ func BattleQueueRemove(ctx context.Context, conn Conn, warMachineMetadata *serve
 
 func BattleQueueRead(ctx context.Context, conn Conn, factionID server.FactionID) ([]*server.WarMachineMetadata, error) {
 	bqs := []*server.BattleQueueMetadata{}
-	q := fmt.Sprintf(
-		`
+	q := `
 			SELECT
 				war_machine_metadata
 			FROM
 				battle_war_machine_queues
 			WHERE
-				war_machine_metadata ->> 'factionID' = '%s' AND released_at ISNULL
+				war_machine_metadata ->> 'factionID' = $1 AND released_at ISNULL
 			ORDER BY
 				queued_at asc
-		`,
-		factionID,
-	)
+		`
 
-	err := pgxscan.Select(ctx, conn, &bqs, q)
+	err := pgxscan.Select(ctx, conn, &bqs, q, factionID)
 	if err != nil {
 		return []*server.WarMachineMetadata{}, terror.Error(err)
 	}
@@ -256,4 +249,23 @@ func BattleQueueRead(ctx context.Context, conn Conn, factionID server.FactionID)
 	}
 
 	return wms, nil
+}
+
+func BattleQueueingHashesGet(ctx context.Context, conn Conn) ([]string, error) {
+	bqh := []string{}
+	q := `
+		SELECT
+			war_machine_metadata ->> 'hash' as hash
+		FROM
+			battle_war_machine_queues
+		where 
+			released_at ISNULL
+	`
+
+	err := pgxscan.Select(ctx, conn, &bqh, q)
+	if err != nil {
+		return []string{}, terror.Error(err)
+	}
+
+	return bqh, nil
 }

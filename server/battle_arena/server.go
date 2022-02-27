@@ -85,7 +85,10 @@ func NewBattleArenaClient(ctx context.Context, logger *zerolog.Logger, conn *pgx
 		Events:   BattleArenaEvents{map[Event][]EventHandler{}, sync.RWMutex{}},
 		ctx:      ctx,
 		close:    cancel,
-		battle:   &server.Battle{},
+		battle: &server.Battle{
+			WarMachineDestroyedRecordMap: make(map[byte]*server.WarMachineDestroyedRecord),
+			FactionMap:                   make(map[server.FactionID]*server.Faction),
+		},
 
 		// channel for battle queue
 		BattleQueueMap: make(map[server.FactionID]chan func(*WarMachineQueuingList)),
@@ -178,7 +181,10 @@ func (ba *BattleArena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	go func() {
 		time.Sleep(2 * time.Second)
-		_ = ba.InitNextBattle()
+		err = ba.InitNextBattle()
+		if err != nil {
+			return
+		}
 	}()
 
 	// listening for message
@@ -434,12 +440,16 @@ func (ba *BattleArena) SetupAfterConnections() {
 		time.Sleep(b.Duration())
 	}
 
+	hashes := []string{}
 	// get all the faction list from passport server
 	for _, faction := range ba.battle.FactionMap {
 		// start battle queue
 		ba.BattleQueueMap[faction.ID] = make(chan func(*WarMachineQueuingList))
-		go ba.startBattleQueue(faction.ID)
+		hashes = append(hashes, ba.startBattleQueue(faction.ID)...)
 	}
+
+	// fire the hashes checklist to passport to free up the non-queued war machines
+	ba.passport.AssetQueuingCheckList(hashes)
 
 	battleContractRewardUpdaterLogger := log_helpers.NamedLogger(ba.Log, "Contract Reward Updater").Level(zerolog.Disabled)
 	battleContractRewardUpdater := tickle.New("Contract Reward Updater", 10, func() (int, error) {

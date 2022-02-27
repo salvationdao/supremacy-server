@@ -153,6 +153,7 @@ type BattleRewardList struct {
 	WinnerFactionID               server.FactionID
 	WinningWarMachineOwnerIDs     map[server.UserID]bool
 	ExecuteKillWarMachineOwnerIDs map[server.UserID]bool
+	TopSupsSpendUsers             []server.UserID
 }
 
 func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, reply ReplyFunc) error {
@@ -230,7 +231,6 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 
 				// pay queuing contract reward
 				err = ba.passport.AssetContractRewardRedeem(
-					ctx,
 					bwm.OwnedByID,
 					bwm.FactionID,
 					server.BigInt{Int: bwm.ContractReward},
@@ -300,7 +300,7 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 
 	//release war machine
 	if len(inGameWarMachines) > 0 {
-		ba.passport.AssetRelease(ctx, inGameWarMachines)
+		ba.passport.AssetRelease(inGameWarMachines)
 
 		// remove the war machine in db
 		for _, wm := range inGameWarMachines {
@@ -331,6 +331,15 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 		BattleArena:      ba.battle,
 		BattleRewardList: battleRewardList,
 	})
+
+	// get the current queuing list from db
+	hashes, err := db.BattleQueueingHashesGet(ctx, ba.Conn)
+	if err != nil {
+		ba.Log.Err(err).Msgf("Failed to get battle queuing hashes")
+	}
+	if len(hashes) > 0 {
+		ba.passport.AssetQueuingCheckList(hashes)
+	}
 
 	go func() {
 		time.Sleep(25 * time.Second)

@@ -14,7 +14,8 @@ type WarMachineQueuingList struct {
 	WarMachines []*server.WarMachineMetadata
 }
 
-func (ba *BattleArena) startBattleQueue(factionID server.FactionID) {
+func (ba *BattleArena) startBattleQueue(factionID server.FactionID) []string {
+	hashes := []string{}
 	warMachineMetadatas := &WarMachineQueuingList{
 		WarMachines: []*server.WarMachineMetadata{},
 	}
@@ -34,6 +35,12 @@ func (ba *BattleArena) startBattleQueue(factionID server.FactionID) {
 			fn(warMachineMetadatas)
 		}
 	}()
+
+	for _, wm := range wms {
+		hashes = append(hashes, wm.Hash)
+	}
+
+	return hashes
 }
 
 func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, warMachinePerBattle int) []*server.WarMachineMetadata {
@@ -62,6 +69,7 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, 
 
 				wg := sync.WaitGroup{}
 				wg.Add(1)
+
 				ba.passport.GetDefaultWarMachines(ctx, factionID, amountToGet, func(msg []byte) {
 					defer wg.Done()
 					resp := struct {
@@ -69,9 +77,9 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, 
 					}{}
 					err := json.Unmarshal(msg, &resp)
 					if err != nil {
+						ba.Log.Err(err)
 						return
 					}
-
 					tempList = append(tempList, resp.WarMachines...)
 				})
 				wg.Wait()
@@ -105,7 +113,7 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, 
 		}
 
 		// delete it from the queue list
-		wmq.WarMachines = wmq.WarMachines[warMachinePerBattle-1:]
+		wmq.WarMachines = wmq.WarMachines[warMachinePerBattle:]
 
 		// broadcast next 5 queuing war machines to twitch ui
 		maxLength := 5

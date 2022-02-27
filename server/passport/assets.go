@@ -1,7 +1,6 @@
 package passport
 
 import (
-	"context"
 	"server"
 
 	"github.com/gofrs/uuid"
@@ -12,7 +11,7 @@ type SuccessResponse struct {
 }
 
 // AssetFreeze tell passport to freeze user's assets
-func (pp *Passport) AssetFreeze(ctx context.Context, assetHash string) error {
+func (pp *Passport) AssetFreeze(assetHash string) error {
 	pp.send <- &Message{
 		Key: "SUPREMACY:ASSET:FREEZE",
 		Payload: struct {
@@ -26,7 +25,8 @@ func (pp *Passport) AssetFreeze(ctx context.Context, assetHash string) error {
 }
 
 // AssetLock tell passport to lock user's assets
-func (pp *Passport) AssetLock(ctx context.Context, assetHashes []string) error {
+func (pp *Passport) AssetLock(assetHashes []string) error {
+
 	pp.send <- &Message{
 		Key: "SUPREMACY:ASSET:LOCK",
 		Payload: struct {
@@ -36,11 +36,12 @@ func (pp *Passport) AssetLock(ctx context.Context, assetHashes []string) error {
 		},
 		TransactionID: uuid.Must(uuid.NewV4()).String(),
 	}
+
 	return nil
 }
 
 // AssetRelease tell passport to release user's asset
-func (pp *Passport) AssetRelease(ctx context.Context, releasedAssets []*server.WarMachineMetadata) {
+func (pp *Passport) AssetRelease(releasedAssets []*server.WarMachineMetadata) {
 	pp.send <- &Message{
 		Key: "SUPREMACY:ASSET:RELEASE",
 		Payload: struct {
@@ -109,7 +110,7 @@ func (pp *Passport) AssetInsurancePay(userID server.UserID, factionID server.Fac
 }
 
 // AssetContractRewardRedeem redeem faction contract reward
-func (pp *Passport) AssetContractRewardRedeem(ctx context.Context, userID server.UserID, factionID server.FactionID, amount server.BigInt, txRef server.TransactionReference) error {
+func (pp *Passport) AssetContractRewardRedeem(userID server.UserID, factionID server.FactionID, amount server.BigInt, txRef server.TransactionReference) error {
 	pp.send <- &Message{
 		Key: "SUPREMACY:REDEEM_FACTION_CONTRACT_REWARD",
 		Payload: struct {
@@ -126,4 +127,17 @@ func (pp *Passport) AssetContractRewardRedeem(ctx context.Context, userID server
 		TransactionID: uuid.Must(uuid.NewV4()).String(),
 	}
 	return nil
+}
+
+// AssetCheckList pass a hashes checklist to passport server for passport server to free up the non-queued asset
+func (pp *Passport) AssetQueuingCheckList(hashes []string) {
+	pp.send <- &Message{
+		Key: "SUPREMACY:QUEUING_ASSET_CHECKLIST",
+		Payload: struct {
+			QueuedHashes []string `json:"queuedHashes"`
+		}{
+			QueuedHashes: hashes,
+		},
+		TransactionID: uuid.Must(uuid.NewV4()).String(),
+	}
 }
