@@ -257,21 +257,19 @@ func calVotePrice(globalTotalVote int64, currentVotePrice server.BigInt, current
 	if currentVotePerTick*300 > globalTotalVote {
 		// price go up
 		if votePriceSups.Cmp(big.NewInt(1000000000000000000)) < 0 {
-			priceChange.Mul(&priceChange.Int, big.NewInt(2))
+			priceChange.Mul(&priceChange.Int, big.NewInt(3))
 		}
 
 		votePriceSups.Add(&votePriceSups.Int, &priceChange.Int)
 	} else {
-		// price go down (max 20%)
+		// price go down
 		if votePriceSups.Cmp(big.NewInt(1000000000)) < 0 { // price floor
 			priceChange = server.BigInt{Int: *big.NewInt(0)}
 		} else if votePriceSups.Cmp(big.NewInt(1000000000000)) < 0 {
-			priceChange.Div(&priceChange.Int, big.NewInt(4))
+			priceChange.Div(&priceChange.Int, big.NewInt(5))
 		} else if votePriceSups.Cmp(big.NewInt(1000000000000000000)) < 0 {
-			priceChange.Div(&priceChange.Int, big.NewInt(2))
+			priceChange.Div(&priceChange.Int, big.NewInt(3))
 		}
-
-		priceChange.Div(&priceChange.Int, big.NewInt(2))
 
 		votePriceSups.Sub(&votePriceSups.Int, &priceChange.Int)
 	}
