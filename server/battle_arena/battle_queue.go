@@ -113,7 +113,7 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, 
 		}
 
 		// delete it from the queue list
-		wmq.WarMachines = wmq.WarMachines[warMachinePerBattle-1:]
+		wmq.WarMachines = wmq.WarMachines[warMachinePerBattle:]
 
 		// broadcast next 5 queuing war machines to twitch ui
 		maxLength := 5
