@@ -258,7 +258,7 @@ func BattleQueueRead(ctx context.Context, conn Conn, factionID server.FactionID)
 	return wms, nil
 }
 
-func BattlQueueingHashesGet(ctx context.Context, conn Conn) ([]string, error) {
+func BattleQueueingHashesGet(ctx context.Context, conn Conn) ([]string, error) {
 	bqh := []string{}
 	q := `
 		SELECT

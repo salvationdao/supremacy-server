@@ -333,7 +333,7 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 	})
 
 	// get the current queuing list from db
-	hashes, err := db.BattlQueueingHashesGet(ctx, ba.Conn)
+	hashes, err := db.BattleQueueingHashesGet(ctx, ba.Conn)
 	if err != nil {
 		ba.Log.Err(err).Msgf("Failed to get battle queuing hashes")
 	}
