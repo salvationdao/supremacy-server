@@ -63,6 +63,88 @@ type Multiplier struct {
 	WinningFactionMap sync.Map
 	WinningUserMap    sync.Map
 	KillMap           sync.Map
+
+	// most sups spend
+	MostSupsPend *MostSupsPendMap // key: battleID_userID
+}
+
+type MostSupsPendMap struct {
+	sync.Map
+}
+
+func (msp *MostSupsPendMap) Get(battleID string, userID string) *MultiplierAction {
+	key := battleID + "_" + userID
+
+	value, ok := msp.Load(key)
+	if !ok {
+		return nil
+	}
+	ma, ok := value.(*MultiplierAction)
+	if !ok {
+		return nil
+	}
+
+	return ma
+}
+
+func (msp *MostSupsPendMap) GetByUserID(userID string) []*MultiplierAction {
+	result := []*MultiplierAction{}
+	msp.Range(func(key, value interface{}) bool {
+		if strings.Split(key.(string), "_")[1] != userID {
+			return true
+		}
+
+		ma, ok := value.(*MultiplierAction)
+		if !ok {
+			return true
+		}
+
+		result = append(result, ma)
+
+		return true
+	})
+	return result
+}
+
+func (msp *MostSupsPendMap) GetByBattleID(battleID string) []*MultiplierAction {
+	result := []*MultiplierAction{}
+	msp.Range(func(key, value interface{}) bool {
+		if strings.Split(key.(string), "_")[0] != battleID {
+			return true
+		}
+
+		ma, ok := value.(*MultiplierAction)
+		if !ok {
+			return true
+		}
+
+		result = append(result, ma)
+
+		return true
+	})
+	return result
+}
+
+func (msp *MostSupsPendMap) Save(battleID string, userID string, ma *MultiplierAction) {
+	msp.Store(battleID+"_"+userID, ma)
+}
+
+func (msp *MostSupsPendMap) Clear(userID string) {
+	msp.Range(func(key, value interface{}) bool {
+		if strings.HasSuffix(key.(string), userID) {
+			msp.Delete(userID)
+		}
+		return true
+	})
+}
+
+func (msp *MostSupsPendMap) ClearByBattleID(battleID string) {
+	msp.Range(func(key, value interface{}) bool {
+		if strings.HasPrefix(key.(string), battleID) {
+			msp.Delete(battleID)
+		}
+		return true
+	})
 }
 
 type MultiplierAction struct {
@@ -73,8 +155,8 @@ type MultiplierAction struct {
 // TODO: set up sups ticker
 func NewUserMultiplier(userMap *UserMap, pp *passport.Passport, ba *battle_arena.BattleArena) *UserMultiplier {
 	um := &UserMultiplier{
-		CurrentMaps: &Multiplier{sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}},
-		CheckMaps:   &Multiplier{sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}},
+		CurrentMaps: &Multiplier{sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}, &MostSupsPendMap{}},
+		CheckMaps:   &Multiplier{sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}, &MostSupsPendMap{}},
 		BattleIDMap: sync.Map{},
 		UserMap:     userMap,
 		Passport:    pp,
@@ -178,6 +260,11 @@ func (um *UserMultiplier) Online(userID server.UserID) {
 						Expiry:          s.ExpiredAt,
 					},
 				)
+				// case string(BattleRewardTypeWarContributor):
+				// 	if s.ExpiredAt.Before(now) {
+				// 		continue
+				// 	}
+				// 	um.CurrentMaps.MostSupsPend.Save(battleID, userIDStr, &MultiplierAction{s.Value, s.ExpiredAt})
 			}
 		}
 	}
@@ -235,6 +322,9 @@ func (um *UserMultiplier) Offline(userID server.UserID) {
 		}
 		return true
 	})
+
+	// um.CurrentMaps.MostSupsPend.Clear(userIDStr)
+	// um.CheckMaps.MostSupsPend.Clear(userIDStr)
 }
 
 func (um *UserMultiplier) Voted(userID server.UserID) {
@@ -280,6 +370,10 @@ func (um *UserMultiplier) ClientBattleRewardUpdate(brl *battle_arena.BattleRewar
 			Expiry:          now.Add(time.Minute * 5),
 		})
 	}
+
+	// for i, mvpID := range brl.TopSupsSpendUsers {
+	// 	um.CurrentMaps.MostSupsPend.Save(battleIDStr, mvpID.String(), &MultiplierAction{(len(brl.TopSupsSpendUsers) - i) * 100, now.Add(time.Minute * 5)})
+	// }
 
 	// loop through current online user and provide them winning faction reward
 	um.UserMap.RLock()
@@ -356,6 +450,9 @@ func (um *UserMultiplier) CleanUpBattleReward(battleIDStr string) {
 			return true
 		})
 	}()
+
+	// um.CurrentMaps.MostSupsPend.ClearByBattleID(battleIDStr)
+	// um.CheckMaps.MostSupsPend.ClearByBattleID(battleIDStr)
 }
 
 // sups tick

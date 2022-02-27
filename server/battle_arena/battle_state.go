@@ -153,6 +153,7 @@ type BattleRewardList struct {
 	WinnerFactionID               server.FactionID
 	WinningWarMachineOwnerIDs     map[server.UserID]bool
 	ExecuteKillWarMachineOwnerIDs map[server.UserID]bool
+	TopSupsSpendUsers             []server.UserID
 }
 
 func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, reply ReplyFunc) error {

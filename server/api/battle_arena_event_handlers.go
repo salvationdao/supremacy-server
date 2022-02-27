@@ -212,6 +212,9 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 				topUser.Faction = api.factionMap[topUser.FactionID]
 			}
 			api.battleEndInfo.TopSupsContributors = append(api.battleEndInfo.TopSupsContributors, topUser.Brief())
+
+			// recorded for sups most spend
+			ed.BattleRewardList.TopSupsSpendUsers = append(ed.BattleRewardList.TopSupsSpendUsers, topUser.ID)
 		}
 
 		for _, topFaction := range resp.Payload.TopSupsContributeFactions {
