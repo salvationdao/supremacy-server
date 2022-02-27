@@ -2,6 +2,8 @@ module server
 
 go 1.17
 
+replace github.com/ninja-syndicate/hub => /Users/alexdunmow/Projects/hub
+
 require (
 	github.com/antonholmquist/jason v1.0.0
 	github.com/cosmtrek/air v1.27.8

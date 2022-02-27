@@ -380,7 +380,6 @@ func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client) error {
 	api.ViewerLiveCount.Add(server.FactionID(uuid.Nil))
 
 	// broadcast current game state
-	go func() {
 		ba := api.BattleArena.GetCurrentState()
 		// delay 2 second to wait frontend setup key map
 		time.Sleep(3 * time.Second)
@@ -404,8 +403,7 @@ func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client) error {
 			return
 		}
 
-		go wsc.Send(gameSettingsData)
-	}()
+		wsc.Send(context.Background(), 3 * time.Second,gameSettingsData)
 	return nil
 }
 
