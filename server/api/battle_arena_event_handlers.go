@@ -88,7 +88,6 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 
 	// start voting cycle, initial intro time equal: (mech_count * 3 + 7) seconds
 	introSecond := len(warMachines)*3 + 7
-	// introSecond := 0 // this is just for testing!!!!!!!!!
 
 	for factionID := range api.factionMap {
 		go func(factionID server.FactionID) {

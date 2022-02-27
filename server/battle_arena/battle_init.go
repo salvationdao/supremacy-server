@@ -91,7 +91,9 @@ func (ba *BattleArena) InitNextBattle() error {
 
 	// trunc war machine name before it is send to battle
 	for _, wm := range ba.battle.WarMachines {
-		if len(wm.Name) > 20 {
+		if len(wm.Name) == 0 {
+			wm.Name = "Unnamed Mech"
+		} else if len(wm.Name) > 20 {
 			wm.Name = wm.Name[:20]
 		}
 	}

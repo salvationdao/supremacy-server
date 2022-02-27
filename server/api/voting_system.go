@@ -271,16 +271,15 @@ func calVotePrice(globalTotalVote int64, currentVotePrice server.BigInt, current
 			priceChange.Div(&priceChange.Int, big.NewInt(2))
 		}
 
-		// increase the price drop to 5%
-		priceChange.Mul(&priceChange.Int, big.NewInt(5))
-		priceChange.Div(&priceChange.Int, big.NewInt(2))
+		// increase the price drop to 20%
+		priceChange.Mul(&priceChange.Int, big.NewInt(10))
 
 		votePriceSups.Sub(&votePriceSups.Int, &priceChange.Int)
 	}
 
-	if votePriceSups.Cmp(big.NewInt(1000000000)) <= 0 {
+	if votePriceSups.Cmp(big.NewInt(1000000000000)) <= 0 {
 		// set minimum price of voting
-		return server.BigInt{Int: *big.NewInt(1000000000)}
+		return server.BigInt{Int: *big.NewInt(1000000000000)}
 	}
 
 	return votePriceSups
@@ -497,6 +496,10 @@ func (api *API) startVotingCycle(ctx context.Context, introSecond int) {
 		go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
 
 		vct.VotingStageListener.Start()
+
+		if api.votePriceSystem.VotePriceUpdater.NextTick == nil || api.votePriceSystem.VotePriceUpdater.NextTick.Before(time.Now()) {
+			api.votePriceSystem.VotePriceUpdater.Start()
+		}
 	})
 }
 
@@ -590,9 +593,9 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 
 			// at the end of ability right voting
 			case VotePhaseVoteAbilityRight:
-				if api.votePriceSystem.VotePriceUpdater.NextTick != nil {
-					api.votePriceSystem.VotePriceUpdater.Stop()
-				}
+				// if api.votePriceSystem.VotePriceUpdater.NextTick != nil {
+				// 	api.votePriceSystem.VotePriceUpdater.Stop()
+				// }
 
 				// stop broadcaster when the vote right is done
 				if vct.AbilityRightResultBroadcaster.NextTick != nil {
@@ -848,9 +851,9 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 					vct.AbilityRightResultBroadcaster.Start()
 				}
 
-				if api.votePriceSystem.VotePriceUpdater.NextTick == nil || api.votePriceSystem.VotePriceUpdater.NextTick.Before(time.Now()) {
-					api.votePriceSystem.VotePriceUpdater.Start()
-				}
+				// if api.votePriceSystem.VotePriceUpdater.NextTick == nil || api.votePriceSystem.VotePriceUpdater.NextTick.Before(time.Now()) {
+				// 	api.votePriceSystem.VotePriceUpdater.Start()
+				// }
 
 			}
 		})
