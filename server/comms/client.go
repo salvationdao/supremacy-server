@@ -38,6 +38,15 @@ func connect(log *zerolog.Logger, addrs ...string) ([]*rpc.Client, error) {
 	return clients, nil
 }
 
+func (c *C) GoCall(serviceMethod string, args interface{}, reply interface{}, callback func(error)) {
+	go func() {
+		err := c.Call(serviceMethod, args, reply)
+		if callback != nil {
+			callback(err)
+		}
+	}()
+}
+
 func (c *C) Call(serviceMethod string, args interface{}, reply interface{}) error {
 	c.inc.Add(1)
 	i := c.inc.Load()

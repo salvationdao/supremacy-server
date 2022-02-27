@@ -24,13 +24,16 @@ type SpendSupsResp struct {
 }
 
 // SpendSupMessage tells the passport to hold sups
-func (pp *Passport) SpendSupMessage(userID server.UserID, supsChange server.BigInt, battleID server.BattleID, reason string, callback func(msg []byte)) {
+func (pp *Passport) SpendSupMessage(userID server.UserID, supsChange server.BigInt, battleID server.BattleID, reason string, callback func(txID string)) {
 	supTransactionReference := uuid.Must(uuid.NewV4())
 	supTxRefString := server.TransactionReference(fmt.Sprintf("%s|%s", reason, supTransactionReference.String()))
-	err := pp.Comms.Call("C.SupremacySpendSupsHandler", SpendSupsReq{FromUserID: userID, Amount: supsChange.String(), TransactionReference: supTxRefString, GroupID: battleID.String()}, &SpendSupsResp{})
-	if err != nil {
-		pp.Log.Err(err).Str("method", "SupremacySpendSupsHandler").Msg("rpc error")
-	}
+	resp := &SpendSupsResp{}
+	pp.Comms.GoCall("C.SupremacySpendSupsHandler", SpendSupsReq{FromUserID: userID, Amount: supsChange.String(), TransactionReference: supTxRefString, GroupID: battleID.String()}, resp, func(err error) {
+		if err != nil {
+			pp.Log.Err(err).Str("method", "SupremacySpendSupsHandler").Msg("rpc error")
+		}
+		callback(resp.TXID)
+	})
 }
 
 type ReleaseTransactionsReq struct {

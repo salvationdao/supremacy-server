@@ -18,6 +18,7 @@ import (
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
+	"nhooyr.io/websocket"
 )
 
 // FactionControllerWS holds handlers for checking server status
@@ -186,7 +187,7 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 		reason := fmt.Sprintf("battle:%s|game_ability_contribution:%s", fc.API.BattleArena.CurrentBattleID(), req.Payload.GameAbilityID)
 
 		go func() {
-			fc.API.Passport.SpendSupMessage(userID, reduceAmount, fc.API.BattleArena.CurrentBattleID(), reason, func(msg []byte) {
+			fc.API.Passport.SpendSupMessage(userID, reduceAmount, fc.API.BattleArena.CurrentBattleID(), reason, func(transaction string) {
 				faIface, ok := fap.Load(req.Payload.GameAbilityID.String())
 				if !ok {
 					fc.Log.Err(fmt.Errorf("error doesn't exist"))
@@ -195,16 +196,9 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 
 				fa := faIface.(*GameAbilityPrice)
 
-				resp := &passport.HoldSupsMessageResponse{}
-				err := json.Unmarshal(msg, resp)
-				if err != nil {
-					fc.Log.Err(err).Msg("unable to send hold sups message")
-					return
-				}
-
 				fa.PriceRW.Lock()
 				fa.TxMX.Lock()
-				fa.TxRefs = append(fa.TxRefs, resp.Transaction)
+				fa.TxRefs = append(fa.TxRefs, transaction)
 
 				fc.API.liveSupsSpend[hcd.FactionID].Lock()
 				fc.API.liveSupsSpend[hcd.FactionID].TotalVote.Add(&fc.API.liveSupsSpend[hcd.FactionID].TotalVote.Int, &req.Payload.Amount.Int)
@@ -222,6 +216,12 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 					fap.Store(fa.GameAbility.Identity.String(), fa)
 					fa.TxMX.Unlock()
 					fa.PriceRW.Unlock()
+
+					data := fmt.Sprintf("%s_%s_%s_%d", fa.GameAbility.Identity, fa.TargetPrice.String(), fa.CurrentSups.String(), 0)
+					payload := []byte{}
+					payload = append(payload, byte(battle_arena.NetMessageTypeAbilityTargetPriceTick))
+					payload = append(payload, []byte(data)...)
+					go wsc.SendWithMessageType(payload, websocket.MessageBinary)
 					return
 				}
 

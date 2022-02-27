@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math/big"
 	"server"
-	"server/passport"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -16,6 +15,7 @@ import (
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
+	"nhooyr.io/websocket"
 )
 
 // VoteControllerWS holds handlers for checking server status
@@ -127,16 +127,10 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 
 	vc.API.VotingCycle(func(va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
 		reason := fmt.Sprintf("battle:%s|vote_ability_right:%s", vc.API.BattleArena.CurrentBattleID(), va.BattleAbility.ID)
-		vc.API.Passport.SpendSupMessage(userID, totalSups, vc.API.BattleArena.CurrentBattleID(), reason, func(msg []byte) {
-			resp := &passport.HoldSupsMessageResponse{}
-			err := json.Unmarshal(msg, resp)
-			if err != nil {
-				vc.Log.Err(err).Msg("unable to send hold sups message")
-				return
-			}
+		go vc.API.Passport.SpendSupMessage(userID, totalSups, vc.API.BattleArena.CurrentBattleID(), reason, func(transaction string) {
 
 			fts.Lock()
-			fts.Transactions = append(fts.Transactions, resp.Transaction)
+			fts.Transactions = append(fts.Transactions, transaction)
 
 			vc.API.liveSupsSpend[hcd.FactionID].Lock()
 			vc.API.liveSupsSpend[hcd.FactionID].TotalVote.Add(&vc.API.liveSupsSpend[hcd.FactionID].TotalVote.Int, &totalSups.Int)
@@ -166,6 +160,9 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 				fuvm[hcd.FactionID][userID] += req.Payload.VoteAmount
 				vc.API.votePhaseChecker.RUnlock()
 				fts.Unlock()
+
+				go wsc.SendWithMessageType(getRatio(ftv.RedMountainTotalVote, ftv.BostonTotalVote, ftv.ZaibatsuTotalVote), websocket.MessageBinary)
+
 				return
 			}
 			vc.API.votePhaseChecker.RUnlock()

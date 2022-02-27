@@ -463,6 +463,24 @@ func (api *API) abilityRightResultBroadcasterFactory(ctx context.Context, ftv *F
 	}
 }
 
+func getRatio(rmVote, bVote, zVote int64) []byte {
+	// calc ratio
+	totalVote := bVote + rmVote + zVote
+
+	// calc ratio
+	redMountainRatio := rmVote * 10000 * 100 / totalVote
+	bostonRatio := bVote * 10000 * 100 / totalVote
+	zaibatsuRatio := zVote * 10000 * 100 / totalVote
+
+	ratioData := fmt.Sprintf("%d,%d,%d", redMountainRatio, bostonRatio, zaibatsuRatio)
+
+	payload := []byte{}
+	payload = append(payload, byte(battle_arena.NetMessageTypeAbilityRightRatioTick))
+	payload = append(payload, []byte(ratioData)...)
+
+	return payload
+}
+
 /**********************
 * Voting Stage Ticker *
 **********************/
