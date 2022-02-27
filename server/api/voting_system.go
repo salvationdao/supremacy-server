@@ -45,7 +45,7 @@ func (api *API) startSpoilOfWarBroadcaster(ctx context.Context) {
 * Vote Price System *
 ********************/
 
-const VotePriceMultiplierPercentage = 1 // 1%
+const VotePriceMultiplierPercentage = 10 // 1%
 const VotePriceUpdaterTickSecond = 10
 
 const VotePriceAccuracy = 10000
@@ -262,7 +262,7 @@ func calVotePrice(globalTotalVote int64, currentVotePrice server.BigInt, current
 
 		votePriceSups.Add(&votePriceSups.Int, &priceChange.Int)
 	} else {
-		// price go down
+		// price go down (max 20%)
 		if votePriceSups.Cmp(big.NewInt(1000000000)) < 0 { // price floor
 			priceChange = server.BigInt{Int: *big.NewInt(0)}
 		} else if votePriceSups.Cmp(big.NewInt(1000000000000)) < 0 {
@@ -270,9 +270,6 @@ func calVotePrice(globalTotalVote int64, currentVotePrice server.BigInt, current
 		} else if votePriceSups.Cmp(big.NewInt(1000000000000000000)) < 0 {
 			priceChange.Div(&priceChange.Int, big.NewInt(2))
 		}
-
-		// increase the price drop to 20%
-		priceChange.Mul(&priceChange.Int, big.NewInt(5))
 
 		votePriceSups.Sub(&votePriceSups.Int, &priceChange.Int)
 	}
