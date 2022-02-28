@@ -9,13 +9,13 @@ import (
 	"server/battle_arena"
 	"server/db"
 	"server/passport"
-	"sync"
 	"time"
 
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
+	"github.com/sasha-s/go-deadlock"
 )
 
 func (api *API) BattleInitSignal(ctx context.Context, ed *battle_arena.EventData) {
@@ -197,7 +197,7 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 	}
 
 	// get the user who spend most sups during the battle from passport
-	wg := sync.WaitGroup{}
+	wg := deadlock.WaitGroup{}
 
 	wg.Add(1)
 	err = api.Passport.TopSupsContributorsGet(ctx, ed.BattleArena.StartedAt, time.Now(), func(msg []byte) {
@@ -249,7 +249,7 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 	}
 
 	if len(userIDs) > 0 {
-		wg := sync.WaitGroup{}
+		wg := deadlock.WaitGroup{}
 		wg.Add(1)
 		api.Passport.UsersGet(userIDs, func(msg []byte) {
 			defer wg.Done()

@@ -9,7 +9,6 @@ import (
 	"server/battle_arena"
 	"server/db"
 	"sort"
-	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -17,6 +16,7 @@ import (
 	"github.com/ninja-software/tickle"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
+	"github.com/sasha-s/go-deadlock"
 )
 
 /***************
@@ -66,9 +66,9 @@ func (api *API) startVotePriceSystem(ctx context.Context, factions []*server.Fac
 	// initialise faction vote price map
 	for _, faction := range factions {
 		factionVotePrice := &FactionVotePrice{
-			OuterLock:            sync.Mutex{},
-			NextAccessLock:       sync.Mutex{},
-			DataLock:             sync.Mutex{},
+			OuterLock:            deadlock.Mutex{},
+			NextAccessLock:       deadlock.Mutex{},
+			DataLock:             deadlock.Mutex{},
 			CurrentVotePriceSups: server.BigInt{Int: *big.NewInt(0)},
 			CurrentVotePerTick:   0,
 		}
@@ -103,7 +103,7 @@ func absoluteInt64(x int64) int64 {
 
 // votePriceHighPriorityLock for vote price system to lock all the faction vote price lock
 func (api *API) votePriceHighPriorityLock() {
-	var wg sync.WaitGroup
+	var wg deadlock.WaitGroup
 
 	for _, fvp := range api.votePriceSystem.FactionVotePriceMap {
 		wg.Add(1)
@@ -170,7 +170,7 @@ func (api *API) votePriceUpdaterFactory(ctx context.Context, conn *pgxpool.Pool)
 		api.votePriceSystem.GlobalVotePerTick = append(api.votePriceSystem.GlobalVotePerTick[1:], totalCurrentVote)
 
 		// async calculate new faction vote price
-		var wg sync.WaitGroup
+		var wg deadlock.WaitGroup
 
 		for factionID, fvp := range api.votePriceSystem.FactionVotePriceMap {
 			wg.Add(1)
@@ -314,7 +314,7 @@ const (
 **************/
 
 type VotePhaseChecker struct {
-	sync.RWMutex
+	deadlock.RWMutex
 	Phase   VotePhase `json:"phase"`
 	EndTime time.Time `json:"endTime"`
 }
@@ -322,14 +322,14 @@ type VotePhaseChecker struct {
 type VoteAbility struct {
 	BattleAbility     *server.BattleAbility
 	FactionAbilityMap map[server.FactionID]*server.GameAbility
-	sync.Mutex
+	deadlock.Mutex
 }
 
 type FactionUserVoteMap map[server.FactionID]map[server.UserID]int64
 
 type FactionTransactions struct {
 	Transactions []string
-	sync.Mutex
+	deadlock.Mutex
 }
 
 type FactionTotalVote struct {
@@ -363,7 +363,7 @@ type UserVoteMap map[server.UserID]int64
 func (api *API) StartVotingCycle(ctx context.Context, factions []*server.Faction) {
 	// initialise current vote stage
 	api.votePhaseChecker = &VotePhaseChecker{
-		sync.RWMutex{},
+		deadlock.RWMutex{},
 		VotePhaseHold,
 		time.Now(),
 	}

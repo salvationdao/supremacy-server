@@ -12,11 +12,11 @@ import (
 	"server/battle_arena"
 	"server/db"
 	"server/passport"
-	"sync"
 	"time"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
+	"github.com/sasha-s/go-deadlock"
 	"nhooyr.io/websocket"
 
 	sentryhttp "github.com/getsentry/sentry-go/http"
@@ -45,7 +45,7 @@ type BroadcastPayload struct {
 }
 
 type LiveVotingData struct {
-	sync.Mutex
+	deadlock.Mutex
 	TotalVote server.BigInt
 }
 
@@ -60,9 +60,9 @@ type VotePriceSystem struct {
 
 type FactionVotePrice struct {
 	// priority lock
-	OuterLock      sync.Mutex
-	NextAccessLock sync.Mutex
-	DataLock       sync.Mutex
+	OuterLock      deadlock.Mutex
+	NextAccessLock deadlock.Mutex
+	DataLock       deadlock.Mutex
 
 	// price
 	CurrentVotePriceSups server.BigInt
@@ -97,8 +97,8 @@ type API struct {
 	MessageBus    *messagebus.MessageBus
 	NetMessageBus *messagebus.NetBus
 	Passport      *passport.Passport
-	VotingCycle  func(func(*VoteAbility, FactionUserVoteMap, *FactionTransactions, *FactionTotalVote, *VoteWinner, *VotingCycleTicker, UserVoteMap))
-	factionMap map[server.FactionID]*server.Faction
+	VotingCycle   func(func(*VoteAbility, FactionUserVoteMap, *FactionTransactions, *FactionTotalVote, *VoteWinner, *VotingCycleTicker, UserVoteMap))
+	factionMap    map[server.FactionID]*server.Faction
 
 	// voting channels
 	liveSupsSpend map[server.FactionID]*LiveVotingData
@@ -117,14 +117,13 @@ type API struct {
 	votePriceSystem  *VotePriceSystem
 
 	// faction abilities
-	gameAbilityPool map[server.FactionID]func(func(*sync.Map))
+	gameAbilityPool map[server.FactionID]func(func(*deadlock.Map))
 
 	// viewer live count
 	viewerLiveCount *ViewerLiveCount
 
 	battleEndInfo *BattleEndInfo
 }
-
 
 // NewAPI registers routes
 func NewAPI(
@@ -179,7 +178,7 @@ func NewAPI(
 		RingCheckAuthMap: NewRingCheckMap(),
 
 		// game ability pool
-		gameAbilityPool: make(map[server.FactionID]func(func(*sync.Map))),
+		gameAbilityPool: make(map[server.FactionID]func(func(*deadlock.Map))),
 
 		// faction viewer count
 		battleEndInfo: &BattleEndInfo{},
@@ -269,7 +268,7 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 	var factions []*server.Faction
 
 	for len(factions) <= 0 {
-		wg := sync.WaitGroup{}
+		wg := deadlock.WaitGroup{}
 		wg.Add(1)
 		var err error
 		api.Passport.FactionAll(func(msg []byte) {
@@ -303,7 +302,7 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 		api.factionMap[faction.ID] = faction
 
 		// start live voting ticker
-		api.liveSupsSpend[faction.ID] = &LiveVotingData{sync.Mutex{}, server.BigInt{Int: *big.NewInt(0)}}
+		api.liveSupsSpend[faction.ID] = &LiveVotingData{deadlock.Mutex{}, server.BigInt{Int: *big.NewInt(0)}}
 
 		// game ability pool
 
@@ -324,7 +323,7 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 	liveVotingBroadcasterLogger := log_helpers.NamedLogger(api.Log, "Live Sups spend Broadcaster").Level(zerolog.Disabled)
 	liveVotingBroadcaster := tickle.New("Live Sups spend Broadcaster", 0.2, func() (int, error) {
 		totalVote := server.BigInt{Int: *big.NewInt(0)}
-		totalVoteMutex := sync.Mutex{}
+		totalVoteMutex := deadlock.Mutex{}
 		for _, faction := range factions {
 			voteCount := big.NewInt(0)
 			api.liveSupsSpend[faction.ID].Lock()

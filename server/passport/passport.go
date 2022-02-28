@@ -9,10 +9,10 @@ import (
 	"server/comms"
 	"server/gamelog"
 	"server/helpers"
-	"sync"
 	"time"
 
 	"github.com/gofrs/uuid"
+	"github.com/sasha-s/go-deadlock"
 
 	"github.com/antonholmquist/jason"
 	"github.com/rs/zerolog"
@@ -48,7 +48,7 @@ type Passport struct {
 	Events      Events
 	send        chan *Message
 	Comms       *comms.C
-	callbacks   sync.Map
+	callbacks   deadlock.Map
 	clientToken string
 }
 
@@ -59,9 +59,9 @@ func NewPassport(logger *zerolog.Logger, addr, clientToken string, comms *comms.
 		addr:     addr,
 		commands: make(map[Command]CommandFunc),
 		send:     make(chan *Message, 5),
-		Events:   Events{map[Event][]EventHandler{}, sync.RWMutex{}},
+		Events:   Events{map[Event][]EventHandler{}, deadlock.RWMutex{}},
 
-		callbacks:   sync.Map{},
+		callbacks:   deadlock.Map{},
 		clientToken: clientToken,
 		Comms:       comms,
 	}
@@ -121,7 +121,7 @@ func (pp *Passport) Connect() error {
 	// send messages
 	go pp.sendPump()
 
-	wg := sync.WaitGroup{}
+	wg := deadlock.WaitGroup{}
 	wg.Add(1)
 	go func() {
 		defer wg.Done()

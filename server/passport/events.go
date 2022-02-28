@@ -2,7 +2,8 @@ package passport
 
 import (
 	"context"
-	"sync"
+
+	"github.com/sasha-s/go-deadlock"
 )
 
 /**************
@@ -39,7 +40,7 @@ type EventHandler func(ctx context.Context, payload []byte)
 
 type Events struct {
 	events map[Event][]EventHandler
-	sync.RWMutex
+	deadlock.RWMutex
 }
 
 func (ev *Events) AddEventHandler(event Event, handler EventHandler) {

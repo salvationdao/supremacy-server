@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"server"
 	"server/battle_arena"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
+	"github.com/sasha-s/go-deadlock"
 )
 
 /********************
@@ -25,14 +25,14 @@ type ViewerCount struct {
 
 type ViewerLiveCount struct {
 	FactionViewerMap map[server.FactionID]*ViewerCount
-	ViewerIDMap      sync.Map
+	ViewerIDMap      deadlock.Map
 	NetMessageBus    *messagebus.NetBus
 }
 
 func NewViewerLiveCount(nmb *messagebus.NetBus) *ViewerLiveCount {
 	vlc := &ViewerLiveCount{
 		FactionViewerMap: make(map[server.FactionID]*ViewerCount),
-		ViewerIDMap:      sync.Map{},
+		ViewerIDMap:      deadlock.Map{},
 	}
 
 	vlc.FactionViewerMap[server.FactionID(uuid.Nil)] = &ViewerCount{0}
@@ -106,12 +106,12 @@ func (vcm *ViewerLiveCount) IDRead() []server.UserID {
 **********************/
 
 type RingCheckAuthMap struct {
-	sync.Map
+	deadlock.Map
 }
 
 func NewRingCheckMap() *RingCheckAuthMap {
 	return &RingCheckAuthMap{
-		sync.Map{},
+		deadlock.Map{},
 	}
 }
 
@@ -134,20 +134,20 @@ func (rcm *RingCheckAuthMap) Check(key string) (*hub.Client, error) {
 type UserMap struct {
 	*ViewerLiveCount
 	ClientMap map[string]*UserClientMap
-	sync.RWMutex
+	deadlock.RWMutex
 }
 
 type UserClientMap struct {
 	User      *server.User
 	ClientMap map[*hub.Client]bool
-	sync.RWMutex
+	deadlock.RWMutex
 }
 
 func NewUserMap(vlc *ViewerLiveCount) *UserMap {
 	return &UserMap{
 		vlc,
 		make(map[string]*UserClientMap),
-		sync.RWMutex{},
+		deadlock.RWMutex{},
 	}
 }
 
@@ -160,7 +160,7 @@ func (um *UserMap) UserRegister(wsc *hub.Client, user *server.User) {
 		hcm = &UserClientMap{
 			&server.User{},
 			make(map[*hub.Client]bool),
-			sync.RWMutex{},
+			deadlock.RWMutex{},
 		}
 
 		// set up user

@@ -6,8 +6,9 @@ import (
 	"server"
 	"server/db"
 	"server/passport"
-	"sync"
 	"time"
+
+	"github.com/sasha-s/go-deadlock"
 )
 
 type WarMachineQueuingList struct {
@@ -67,7 +68,7 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, 
 			for len(tempList) < warMachinePerBattle {
 				amountToGet := warMachinePerBattle - len(tempList)
 
-				wg := sync.WaitGroup{}
+				wg := deadlock.WaitGroup{}
 				wg.Add(1)
 
 				ba.passport.GetDefaultWarMachines(ctx, factionID, amountToGet, func(msg []byte) {

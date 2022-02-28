@@ -9,13 +9,13 @@ import (
 	"server/db"
 	"server/helpers"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx"
 	"github.com/ninja-software/terror/v2"
+	"github.com/sasha-s/go-deadlock"
 )
 
 /**************
@@ -66,7 +66,7 @@ type WinnerFactionViewer struct {
 
 type BattleArenaEvents struct {
 	events map[Event][]EventHandler
-	sync.RWMutex
+	deadlock.RWMutex
 }
 
 func (ev *BattleArenaEvents) AddEventHandler(event Event, handler EventHandler) {
@@ -133,7 +133,7 @@ func (ba *BattleArena) GetBattleQueue(w http.ResponseWriter, r *http.Request) (i
 		Boston      []*server.WarMachineMetadata `json:"boston"`
 	}{}
 
-	wg := sync.WaitGroup{}
+	wg := deadlock.WaitGroup{}
 	for i := range ba.BattleQueueMap {
 		wg.Add(1)
 		ba.BattleQueueMap[i] <- func(wmq *WarMachineQueuingList) {

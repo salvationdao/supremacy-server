@@ -9,7 +9,6 @@ import (
 	"server/battle_arena"
 	"server/passport"
 	"strings"
-	"sync"
 
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -18,6 +17,7 @@ import (
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
+	"github.com/sasha-s/go-deadlock"
 	"nhooyr.io/websocket"
 )
 
@@ -157,7 +157,7 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 	}
 	req.Payload.Amount.Mul(&req.Payload.Amount.Int, oneSups)
 
-	fc.API.gameAbilityPool[factionID](func(fap *sync.Map) {
+	fc.API.gameAbilityPool[factionID](func(fap *deadlock.Map) {
 		// find ability
 
 		faIface, ok := fap.Load(req.Payload.GameAbilityID.String())
@@ -357,7 +357,7 @@ func (fc *FactionControllerWS) FactionAbilitiesUpdateSubscribeHandler(ctx contex
 		return "", "", nil
 	}
 
-	fc.API.gameAbilityPool[hcd.FactionID](func(fap *sync.Map) {
+	fc.API.gameAbilityPool[hcd.FactionID](func(fap *deadlock.Map) {
 		abilities := []*server.GameAbility{}
 
 		fap.Range(func(key interface{}, gameAbilityPrice interface{}) bool {
@@ -399,7 +399,7 @@ func (fc *FactionControllerWS) WarMachineAbilitiesUpdateSubscribeHandler(ctx con
 		return "", "", terror.Error(fmt.Errorf("User not found"))
 	}
 
-	fc.API.gameAbilityPool[hcd.FactionID](func(fap *sync.Map) {
+	fc.API.gameAbilityPool[hcd.FactionID](func(fap *deadlock.Map) {
 		abilities := []*server.GameAbility{}
 		fap.Range(func(key interface{}, gameAbilityPrice interface{}) bool {
 			fa := gameAbilityPrice.(*GameAbilityPrice)

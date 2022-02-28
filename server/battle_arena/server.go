@@ -10,11 +10,11 @@ import (
 	"net/http"
 	"server"
 	"server/passport"
-	"sync"
 	"time"
 
 	"github.com/jpillora/backoff"
 	"github.com/ninja-software/terror/v2"
+	"github.com/sasha-s/go-deadlock"
 
 	"github.com/antonholmquist/jason"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -82,7 +82,7 @@ func NewBattleArenaClient(ctx context.Context, logger *zerolog.Logger, conn *pgx
 		commands: make(map[BattleCommand]BattleCommandFunc),
 		send:     make(chan *GameMessage),
 		passport: passport,
-		Events:   BattleArenaEvents{map[Event][]EventHandler{}, sync.RWMutex{}},
+		Events:   BattleArenaEvents{map[Event][]EventHandler{}, deadlock.RWMutex{}},
 		ctx:      ctx,
 		close:    cancel,
 		battle: &server.Battle{
@@ -449,7 +449,7 @@ func (ba *BattleArena) SetupAfterConnections() {
 			continue
 		}
 
-		wg := sync.WaitGroup{}
+		wg := deadlock.WaitGroup{}
 		wg.Add(1)
 		ba.passport.FactionAll(func(msg []byte) {
 			defer wg.Done()
