@@ -447,6 +447,11 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client) error 
 					api.votePhaseChecker.EndTime = time.Now().Add(time.Duration(va.BattleAbility.CooldownDurationSecond) * time.Second)
 					api.votePhaseChecker.Unlock()
 
+					// stop vote price update when cooldown
+					if api.votePriceSystem.VotePriceUpdater.NextTick != nil {
+						api.votePriceSystem.VotePriceUpdater.Stop()
+					}
+
 					// broadcast current stage to faction users
 					go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
 

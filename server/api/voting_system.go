@@ -493,10 +493,6 @@ func (api *API) startVotingCycle(ctx context.Context, introSecond int) {
 		go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
 
 		vct.VotingStageListener.Start()
-
-		if api.votePriceSystem.VotePriceUpdater.NextTick == nil || api.votePriceSystem.VotePriceUpdater.NextTick.Before(time.Now()) {
-			api.votePriceSystem.VotePriceUpdater.Start()
-		}
 	})
 }
 
@@ -519,6 +515,7 @@ func (api *API) stopVotingCycle(ctx context.Context) []*server.BattleUserVote {
 			vct.AbilityRightResultBroadcaster.Stop()
 		}
 
+		// stop vote price update when game end
 		if api.votePriceSystem.VotePriceUpdater.NextTick != nil {
 			api.votePriceSystem.VotePriceUpdater.Stop()
 		}
@@ -590,10 +587,6 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 
 			// at the end of ability right voting
 			case VotePhaseVoteAbilityRight:
-				// if api.votePriceSystem.VotePriceUpdater.NextTick != nil {
-				// 	api.votePriceSystem.VotePriceUpdater.Stop()
-				// }
-
 				// stop broadcaster when the vote right is done
 				if vct.AbilityRightResultBroadcaster.NextTick != nil {
 					vct.AbilityRightResultBroadcaster.Stop()
@@ -717,6 +710,11 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 					api.votePhaseChecker.EndTime = time.Now().Add(time.Duration(va.BattleAbility.CooldownDurationSecond) * time.Second)
 					api.votePhaseChecker.Unlock()
 
+					// stop vote price update when cooldown
+					if api.votePriceSystem.VotePriceUpdater.NextTick != nil {
+						api.votePriceSystem.VotePriceUpdater.Stop()
+					}
+
 					// broadcast current stage to faction users
 					go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
 
@@ -788,6 +786,11 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 					api.votePhaseChecker.EndTime = time.Now().Add(time.Duration(va.BattleAbility.CooldownDurationSecond) * time.Second)
 					api.votePhaseChecker.Unlock()
 
+					// stop vote price update in when cooldown
+					if api.votePriceSystem.VotePriceUpdater.NextTick != nil {
+						api.votePriceSystem.VotePriceUpdater.Stop()
+					}
+
 					// broadcast current stage to faction users
 					go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
 
@@ -848,9 +851,9 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 					vct.AbilityRightResultBroadcaster.Start()
 				}
 
-				// if api.votePriceSystem.VotePriceUpdater.NextTick == nil || api.votePriceSystem.VotePriceUpdater.NextTick.Before(time.Now()) {
-				// 	api.votePriceSystem.VotePriceUpdater.Start()
-				// }
+				if api.votePriceSystem.VotePriceUpdater.NextTick == nil || api.votePriceSystem.VotePriceUpdater.NextTick.Before(time.Now()) {
+					api.votePriceSystem.VotePriceUpdater.Start()
+				}
 
 			}
 		})
