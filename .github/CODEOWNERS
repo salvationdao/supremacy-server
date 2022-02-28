@@ -1,0 +1,5 @@
+server/seed @devops
+server/db/migrations/000001_init_schema.down.sql @devops
+server/db/migrations/000001_init_schema.up.sql @devops
+server/db/migrations/000004_game_ability_changes.down.sql @devops
+server/db/migrations/000004_game_ability_changes.up.sql @devops

@@ -203,7 +203,7 @@ func TestDatabase(t *testing.T) {
 	})
 
 	warMachineMetadata := &server.WarMachineMetadata{
-		TokenID:   1,
+		Hash:      "fsdfsd",
 		FactionID: server.FactionID(uuid.Must(uuid.FromString("60be9c52-da87-4900-8705-cc1f00a4cf82"))),
 	}
 
@@ -232,10 +232,10 @@ func TestDatabase(t *testing.T) {
 		}
 	})
 
-	warMachineID := uint64(2)
+	warMachineID := "jdsfsdjhf"
 	warMachineDestroyedEvent := &server.WarMachineDestroyedEvent{
-		DestroyedWarMachineID: warMachineID,
-		KillByWarMachineID:    &warMachineID,
+		DestroyedWarMachineHash: warMachineID,
+		KillByWarMachineHash:    &warMachineID,
 	}
 
 	// add battle event
@@ -250,7 +250,7 @@ func TestDatabase(t *testing.T) {
 	})
 
 	t.Run("Assign assisted war machines to a destroyed event", func(t *testing.T) {
-		err := db.WarMachineDestroyedEventAssistedWarMachineSet(ctx, conn, warMachineDestroyedEvent.ID, []uint64{warMachineID})
+		err := db.WarMachineDestroyedEventAssistedWarMachineSet(ctx, conn, warMachineDestroyedEvent.ID, []string{warMachineID})
 		if err != nil {
 			fmt.Println(err)
 			t.Errorf("fail to assign assisted war machines to war machine destroyed event\n")

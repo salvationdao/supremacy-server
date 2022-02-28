@@ -2,8 +2,10 @@ package db
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"server"
+	"time"
 
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/ninja-software/terror/v2"
@@ -39,6 +41,8 @@ func UserBattleViewUpsert(ctx context.Context, conn Conn, userIDs []server.UserI
 	if err != nil {
 		return terror.Error(err)
 	}
+
+	// insert into battle id
 
 	return nil
 }
@@ -160,4 +164,94 @@ func UserStatGet(ctx context.Context, conn Conn, userID server.UserID) (*server.
 	}
 
 	return user, nil
+}
+
+type dbMultiplier struct {
+	Key           string `json:"key"`
+	Value         int    `json:"value"`
+	RemainSeconds int    `json:"remainSeconds"`
+}
+
+// UserMultiplierStore store users' sups multipliers
+func UserMultiplierStore(ctx context.Context, conn Conn, usm []*server.UserSupsMultiplierSend) error {
+	if len(usm) == 0 {
+		return nil
+	}
+
+	now := time.Now()
+	var args []interface{}
+
+	q := `
+		INSERT INTO 
+			users (id, sups_multipliers)
+		VALUES
+			
+	`
+	for i, us := range usm {
+		// reformat the sups multipliers before store
+		dbMultipliers := []*dbMultiplier{}
+		for _, sm := range us.SupsMultipliers {
+			remainSecond := sm.ExpiredAt.Sub(now).Seconds()
+			if remainSecond <= 0 {
+				continue
+			}
+			dbMultipliers = append(dbMultipliers, &dbMultiplier{
+				Key:           sm.Key,
+				Value:         sm.Value,
+				RemainSeconds: int(remainSecond),
+			})
+		}
+
+		b, err := json.Marshal(dbMultipliers)
+		if err != nil {
+			return terror.Error(err)
+		}
+
+		args = append(args, b)
+
+		q += fmt.Sprintf("('%s', $%d)", us.ToUserID, len(args))
+
+		if i < len(usm)-1 {
+			q += ","
+			continue
+		}
+	}
+
+	q += `
+		ON CONFLICT (id) DO UPDATE SET sups_multipliers = EXCLUDED.sups_multipliers;
+	`
+
+	_, err := conn.Exec(ctx, q, args...)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	return nil
+}
+
+// UserMultiplierGet read user
+func UserMultiplierGet(ctx context.Context, conn Conn, userID server.UserID) ([]*server.SupsMultiplier, error) {
+	dms := []*dbMultiplier{}
+
+	q := `
+		SELECT sups_multipliers FROM users WHERE id = $1
+	`
+
+	err := pgxscan.Get(ctx, conn, &dms, q, userID)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	// reformat the sups multipliers
+	result := []*server.SupsMultiplier{}
+	now := time.Now()
+	for _, dm := range dms {
+		result = append(result, &server.SupsMultiplier{
+			Key:       dm.Key,
+			Value:     dm.Value,
+			ExpiredAt: now.Add(time.Duration(dm.RemainSeconds) * time.Second),
+		})
+	}
+
+	return result, nil
 }

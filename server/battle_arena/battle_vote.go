@@ -2,10 +2,8 @@ package battle_arena
 
 import (
 	"context"
-	"errors"
 	"server"
 	"server/db"
-	"time"
 
 	"github.com/ninja-software/terror/v2"
 )
@@ -69,13 +67,11 @@ func (ba *BattleArena) GameAbilityTrigger(gameAbilityEvent *server.GameAbilityEv
 		cancel:        cancel,
 	}
 
-	select {
-	case ba.send <- gameMessage:
-
-	case <-time.After(10 * time.Second):
-		ba.Log.Err(errors.New("timeout on channel send exceeded"))
-		panic("Client Battle Reward Update")
-	}
+	// NOTE: this will potentially lock game server if game client is disconnected
+	// 		 so wrap it in a go routine
+	go func() {
+		ba.send <- gameMessage
+	}()
 
 	return nil
 }

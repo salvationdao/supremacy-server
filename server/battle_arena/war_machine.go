@@ -39,7 +39,7 @@ func (ba *BattleArena) WarMachineDestroyedHandler(ctx context.Context, payload [
 	// check destroyed war machine exist
 	var destroyedWarMachine *server.WarMachineMetadata
 	for _, wm := range ba.battle.WarMachines {
-		if wm.TokenID == req.Payload.DestroyedWarMachineEvent.DestroyedWarMachineID {
+		if wm.Hash == req.Payload.DestroyedWarMachineEvent.DestroyedWarMachineHash {
 			// set health to 0
 			wm.Health = 0
 			destroyedWarMachine = wm
@@ -47,22 +47,22 @@ func (ba *BattleArena) WarMachineDestroyedHandler(ctx context.Context, payload [
 		}
 	}
 	if destroyedWarMachine == nil {
-		return terror.Error(fmt.Errorf("destroyed war machine %d does not exist", req.Payload.DestroyedWarMachineEvent.DestroyedWarMachineID))
+		return terror.Error(fmt.Errorf("destroyed war machine %s does not exist", req.Payload.DestroyedWarMachineEvent.DestroyedWarMachineHash))
 	}
 
 	var killByWarMachine *server.WarMachineMetadata
-	if req.Payload.DestroyedWarMachineEvent.KillByWarMachineID != nil {
+	if req.Payload.DestroyedWarMachineEvent.KillByWarMachineHash != nil {
 		for _, wm := range ba.battle.WarMachines {
-			if wm.TokenID == *req.Payload.DestroyedWarMachineEvent.KillByWarMachineID {
+			if wm.Hash == *req.Payload.DestroyedWarMachineEvent.KillByWarMachineHash {
 				killByWarMachine = wm
 			}
 		}
 		if destroyedWarMachine == nil {
-			return terror.Error(fmt.Errorf("killer war machine %d does not exist", *req.Payload.DestroyedWarMachineEvent.KillByWarMachineID))
+			return terror.Error(fmt.Errorf("killer war machine %s does not exist", *req.Payload.DestroyedWarMachineEvent.KillByWarMachineHash))
 		}
 	}
 
-	ba.Log.Info().Msgf("Battle Update: %s - War Machine Destroyed: %d", req.Payload.BattleID, req.Payload.DestroyedWarMachineEvent.DestroyedWarMachineID)
+	ba.Log.Info().Msgf("Battle Update: %s - War Machine Destroyed: %s", req.Payload.BattleID, req.Payload.DestroyedWarMachineEvent.DestroyedWarMachineHash)
 
 	// save to database
 	tx, err := ba.Conn.Begin(ctx)
@@ -118,10 +118,10 @@ func (ba *BattleArena) WarMachineDestroyedHandler(ctx context.Context, payload [
 	for _, damage := range req.Payload.DestroyedWarMachineEvent.DamageHistory {
 		totalDamage += damage.Amount
 		// check instigator token id exist in the list
-		if damage.InstigatorTokenID > 0 {
+		if damage.InstigatorHash != "" {
 			exists := false
 			for _, hist := range newDamageHistory {
-				if hist.InstigatorTokenID == damage.InstigatorTokenID {
+				if hist.InstigatorHash == damage.InstigatorHash {
 					hist.Amount += damage.Amount
 					exists = true
 					break
@@ -129,10 +129,10 @@ func (ba *BattleArena) WarMachineDestroyedHandler(ctx context.Context, payload [
 			}
 			if !exists {
 				newDamageHistory = append(newDamageHistory, &server.DamageHistory{
-					Amount:            damage.Amount,
-					InstigatorTokenID: damage.InstigatorTokenID,
-					SourceName:        damage.SourceName,
-					SourceTokenID:     damage.SourceTokenID,
+					Amount:         damage.Amount,
+					InstigatorHash: damage.InstigatorHash,
+					SourceName:     damage.SourceName,
+					SourceHash:     damage.SourceHash,
 				})
 			}
 			continue
@@ -148,10 +148,10 @@ func (ba *BattleArena) WarMachineDestroyedHandler(ctx context.Context, payload [
 		}
 		if !exists {
 			newDamageHistory = append(newDamageHistory, &server.DamageHistory{
-				Amount:            damage.Amount,
-				InstigatorTokenID: damage.InstigatorTokenID,
-				SourceName:        damage.SourceName,
-				SourceTokenID:     damage.SourceTokenID,
+				Amount:         damage.Amount,
+				InstigatorHash: damage.InstigatorHash,
+				SourceName:     damage.SourceName,
+				SourceHash:     damage.SourceHash,
 			})
 		}
 	}
@@ -162,9 +162,9 @@ func (ba *BattleArena) WarMachineDestroyedHandler(ctx context.Context, payload [
 			SourceName: damage.SourceName,
 			Amount:     (damage.Amount * 1000000 / totalDamage) / 100,
 		}
-		if damage.InstigatorTokenID > 0 {
+		if damage.InstigatorHash != "" {
 			for _, wm := range ba.battle.WarMachines {
-				if wm.TokenID == damage.InstigatorTokenID {
+				if wm.Hash == damage.InstigatorHash {
 					damageRecord.CausedByWarMachine = wm
 				}
 			}

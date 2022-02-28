@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"server"
 	"server/battle_arena"
@@ -33,6 +32,7 @@ func NewGameController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *GameC
 	}
 
 	api.Command(HubKeyFactionColour, gameHub.FactionColour)
+	api.SecureUserCommand(HubKeyActiveCheckUpdated, gameHub.ActiveChecker)
 	api.SubscribeCommand(HubKeyWarMachineDestroyedUpdated, gameHub.WarMachineDestroyedUpdateSubscribeHandler)
 	api.SecureUserFactionSubscribeCommand(HubKeyFactionWarMachineQueueUpdated, gameHub.FactionWarMachineQueueUpdateSubscribeHandler)
 	api.SubscribeCommand(HubKeyBattleEndDetailUpdated, gameHub.BattleEndDetailUpdateSubscribeHandler)
@@ -59,6 +59,13 @@ func (gc *GameControllerWS) FactionColour(ctx context.Context, wsc *hub.Client, 
 		Zaibatsu:    gc.API.factionMap[server.ZaibatsuFactionID].Theme.Primary,
 	})
 
+	return nil
+}
+
+const HubKeyActiveCheckUpdated hub.HubCommandKey = "MECH:REPAIR:STEAM"
+
+func (gc *GameControllerWS) ActiveChecker(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	// gc.API.UserMultiplier.ActiveMap.Store(wsc.Identifier(), time.Now())
 	return nil
 }
 
@@ -99,26 +106,20 @@ func (gc *GameControllerWS) FactionWarMachineQueueUpdateSubscribeHandler(ctx con
 	}
 
 	// get hub client
-	hcd, err := gc.API.getClientDetailFromChannel(wsc)
-	if err != nil {
+	hcd := gc.API.UserMap.GetUserDetail(wsc)
+	if hcd == nil {
 		return "", "", terror.Error(err)
 	}
 
 	if battleQueue, ok := gc.API.BattleArena.BattleQueueMap[hcd.FactionID]; ok {
-		select {
-		case battleQueue <- func(wmql *battle_arena.WarMachineQueuingList) {
+		battleQueue <- func(wmql *battle_arena.WarMachineQueuingList) {
 			maxLength := 5
 			if len(wmql.WarMachines) < maxLength {
 				maxLength = len(wmql.WarMachines)
 			}
 
 			reply(wmql.WarMachines[:maxLength])
-		}:
-		case <-time.After(10 * time.Second):
-			gc.API.Log.Err(errors.New("timeout on channel send exceeded"))
-			panic("Client Battle Reward Update")
 		}
-
 	}
 
 	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionWarMachineQueueUpdated, hcd.FactionID))
@@ -288,12 +289,8 @@ func (api *API) BroadcastGameNotificationWarMachineAbility(ctx context.Context, 
 }
 
 func (api *API) clientBroadcast(ctx context.Context, data []byte) {
-	api.Hub.Clients(func(clients hub.ClientsList) {
-		for client, ok := range clients {
-			if !ok {
-				continue
-			}
-			go client.Send(data)
-		}
+	api.Hub.Clients(func(sessionID hub.SessionID, client *hub.Client) bool {
+		go client.Send(data)
+		return true
 	})
 }

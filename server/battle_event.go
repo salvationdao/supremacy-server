@@ -25,31 +25,31 @@ type BattleEvent struct {
 }
 
 type DamageHistory struct {
-	Amount            int    `json:"amount"`            // The total amount of damage taken from this source
-	InstigatorTokenID uint64 `json:"instigatorTokenID"` // The TokenID of the WarMachine that caused the damage (0 if none, ie: an Airstrike)
-	SourceTokenID     uint64 `json:"sourceTokenID"`     // The TokenID of the weapon
-	SourceName        string `json:"sourceName"`        // The name of the weapon / damage causer (in-case of now TokenID)
+	Amount         int    `json:"amount"`         // The total amount of damage taken from this source
+	InstigatorHash string `json:"instigatorHash"` // The Hash of the WarMachine that caused the damage (0 if none, ie: an Airstrike)
+	SourceHash     string `json:"sourceHash"`     // The Hash of the weapon
+	SourceName     string `json:"sourceName"`     // The name of the weapon / damage causer (in-case of now Hash)
 }
 
 type WarMachineDestroyedEvent struct {
-	ID                    WarMachineDestroyedEventID `json:"id" db:"id"`
-	EventID               EventID                    `json:"eventID" db:"event_id"`
-	DestroyedWarMachineID uint64                     `json:"destroyedWarMachineID" db:"destroyed_war_machine_id"`
-	KillByWarMachineID    *uint64                    `json:"killByWarMachineID,omitempty" db:"kill_by_war_machine_id,omitempty"`
-	RelatedEventID        *EventID                   `json:"relatedEventID,omitempty" db:"related_event_id,omitempty"`
-	RelatedEventIDString  string                     `json:"relatedEventIDString,omitempty"` // The related EventID in string form (received from game client)
-	DamageHistory         []DamageHistory            `json:"damageHistory"`                  // Compiled History of all the damage this WarMachine took and from who/what
-	KilledBy              string                     `json:"killedBy"`                       // Name of who/what killed the WarMachine (in-case of no EventID or TokenID)
+	ID                      WarMachineDestroyedEventID `json:"id" db:"id"`
+	EventID                 EventID                    `json:"eventID" db:"event_id"`
+	DestroyedWarMachineHash string                     `json:"destroyedWarMachineHash" db:"destroyed_war_machine_hash"`
+	KillByWarMachineHash    *string                    `json:"killByWarMachineHash,omitempty" db:"kill_by_war_machine_hash,omitempty"`
+	RelatedEventID          *EventID                   `json:"relatedEventID,omitempty" db:"related_event_id,omitempty"`
+	RelatedEventIDString    string                     `json:"relatedEventIDString,omitempty"` // The related EventID in string form (received from game client)
+	DamageHistory           []DamageHistory            `json:"damageHistory"`                  // Compiled History of all the damage this WarMachine took and from who/what
+	KilledBy                string                     `json:"killedBy"`                       // Name of who/what killed the WarMachine (in-case of no EventID or Hash)
 }
 
 type GameAbilityEvent struct {
 	ID                  GameAbilityEventID `json:"id" db:"id"`
 	EventID             EventID            `json:"eventID" db:"event_id"`
 	GameAbilityID       *GameAbilityID     `json:"gameAbilityID,omitempty" db:"game_ability_id,omitempty"`
-	AbilityTokenID      *uint64            `json:"abilityTokenID,omitempty" db:"ability_token_id,omitempty"`
+	AbilityHash         *string            `json:"abilityHash,omitempty" db:"ability_hash,omitempty"`
 	GameClientAbilityID byte               `json:"gameClientAbilityID" db:"game_client_ability_id"`
 	ParticipantID       *byte              `json:"participantID,omitempty" db:"participant_id"`
-	WarMachineTokenID   *uint64            `json:"warMachineTokenID,omitempty"`
+	WarMachineHash      *string            `json:"warMachineHash,omitempty"`
 	IsTriggered         bool               `json:"isTriggered" db:"is_triggered"`
 	TriggeredByUserID   *UserID            `json:"TriggeredByUserID,omitempty" db:"triggered_by_user_id,omitempty"`
 	TriggeredByUsername *string            `json:"triggeredByUsername"`

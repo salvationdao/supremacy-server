@@ -44,7 +44,6 @@ func (ba *BattleArena) InitNextBattle() error {
 		time.Sleep(2 * time.Second)
 	}
 	mechsPerFaction := gameMap.MaxSpawns / 3
-
 	for factionID := range ba.BattleQueueMap {
 		ba.battle.WarMachines = append(ba.battle.WarMachines, ba.GetBattleWarMachineFromQueue(factionID, mechsPerFaction)...)
 	}
@@ -57,15 +56,16 @@ func (ba *BattleArena) InitNextBattle() error {
 	}
 
 	if len(ba.battle.WarMachines) > 0 {
-		tokenIDs := []uint64{}
+		hashes := []string{}
 		for _, warMachine := range ba.battle.WarMachines {
-			tokenIDs = append(tokenIDs, warMachine.TokenID)
+			hashes = append(hashes, warMachine.Hash)
 
 			if warMachine.FactionID == server.ZaibatsuFactionID {
 				// if war machine is from Zaibatsu, insert the ability as faction ability
 				warMachine.Abilities = append(warMachine.Abilities, &server.AbilityMetadata{
 					ID:           zaibatsuAbility.ID,
 					Identity:     uuid.Must(uuid.NewV4()), // track ability's price
+					Colour:       zaibatsuAbility.Colour,
 					GameClientID: int(zaibatsuAbility.GameClientAbilityID),
 					Image:        zaibatsuAbility.ImageUrl,
 					Description:  zaibatsuAbility.Description,
@@ -76,7 +76,7 @@ func (ba *BattleArena) InitNextBattle() error {
 		}
 
 		// set war machine lock request
-		err := ba.passport.AssetLock(ba.ctx, tokenIDs)
+		err := ba.passport.AssetLock(hashes)
 		if err != nil {
 			ba.Log.Err(err).Msg("Failed to lock assets")
 			// TODO: figure out how to handle this
@@ -89,6 +89,19 @@ func (ba *BattleArena) InitNextBattle() error {
 
 	ba.Log.Info().Msgf("Initializing new battle: %s", ba.battle.ID)
 
+	// trunc war machine name before it is send to battle
+	for _, wm := range ba.battle.WarMachines {
+		if len(wm.Name) == 0 {
+			wm.Name = wm.Hash
+		} else if len(wm.Name) > 20 {
+			wm.Name = wm.Name[:20]
+		}
+	}
+
+	for _, wm := range ba.battle.WarMachines {
+		fillFaction(wm)
+	}
+
 	// Setup payload
 	payload := struct {
 		BattleID    server.BattleID              `json:"battleID"`
@@ -99,6 +112,7 @@ func (ba *BattleArena) InitNextBattle() error {
 		MapName:     ba.battle.GameMap.Name,
 		WarMachines: ba.battle.WarMachines,
 	}
+
 	ctx, cancel := context.WithCancel(ba.ctx)
 	gameMessage := &GameMessage{
 		BattleCommand: BattleCommandInitBattle,
@@ -107,6 +121,51 @@ func (ba *BattleArena) InitNextBattle() error {
 		cancel:        cancel,
 	}
 
-	ba.send <- gameMessage
+	// NOTE: this will potentially lock game server if game client is disconnected
+	// 		 so wrap it in a go routine
+	go func() {
+		ba.send <- gameMessage
+	}()
 	return nil
+}
+
+var RedMountainFaction = &server.Faction{
+	ID:    server.RedMountainFactionID,
+	Label: "Red Mountain Offworld Mining Corporation",
+	Theme: &server.FactionTheme{
+		Primary:    "#C24242",
+		Secondary:  "#FFFFFF",
+		Background: "#120E0E",
+	},
+}
+
+var BostonFaction = &server.Faction{
+	ID:    server.BostonCyberneticsFactionID,
+	Label: "Boston Cybernetics",
+	Theme: &server.FactionTheme{
+		Primary:    "#428EC1",
+		Secondary:  "#FFFFFF",
+		Background: "#080C12",
+	},
+}
+
+var ZaibatsuFaction = &server.Faction{
+	ID:    server.ZaibatsuFactionID,
+	Label: "Zaibatsu Heavy Industries",
+	Theme: &server.FactionTheme{
+		Primary:    "#FFFFFF",
+		Secondary:  "#000000",
+		Background: "#0D0D0D",
+	},
+}
+
+func fillFaction(wm *server.WarMachineMetadata) {
+	switch wm.FactionID {
+	case server.BostonCyberneticsFactionID:
+		wm.Faction = BostonFaction
+	case server.RedMountainFactionID:
+		wm.Faction = RedMountainFaction
+	case server.ZaibatsuFactionID:
+		wm.Faction = ZaibatsuFaction
+	}
 }

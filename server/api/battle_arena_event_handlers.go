@@ -81,13 +81,9 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 	}
 
 	// broadcast game settings to all the connected clients
-	api.Hub.Clients(func(clients hub.ClientsList) {
-		for client, ok := range clients {
-			if !ok {
-				continue
-			}
-			go client.Send(gameSettingsData)
-		}
+	api.Hub.Clients(func(sessionID hub.SessionID, client *hub.Client) bool {
+		go client.Send(gameSettingsData)
+		return true
 	})
 
 	// start voting cycle, initial intro time equal: (mech_count * 3 + 7) seconds
@@ -129,14 +125,15 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 						Label:               ability.Name,
 						SupsCost:            ability.SupsCost,
 						CurrentSups:         "0",
-						AbilityTokenID:      ability.TokenID,
-						WarMachineTokenID:   wm.TokenID,
+						AbilityHash:         ability.Hash,
+						WarMachineHash:      wm.Hash,
 						ParticipantID:       &wm.ParticipantID,
 						Title:               wm.Name,
 					}
 					// if it is zaibatsu faction ability set id back
 					if ability.GameClientID == 11 {
 						wmAbility.ID = ability.ID
+						wmAbility.Colour = ability.Colour
 					}
 					initialAbilities = append(initialAbilities, wmAbility)
 
@@ -160,7 +157,7 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 	// stop all the tickles in voting cycle
 	go api.stopGameAbilityPoolTicker()
 
-	battleViewers := api.viewerIDRead()
+	battleViewers := api.viewerLiveCount.IDRead()
 	// increment users' view battle count
 	err := db.UserBattleViewUpsert(ctx, api.Conn, battleViewers)
 	if err != nil {
@@ -169,6 +166,26 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 	}
 
 	userVoteList := api.stopVotingCycle(ctx)
+	// combine user vote list with user view list
+	addedList := []*server.BattleUserVote{}
+	for _, uid := range battleViewers {
+		exists := false
+		for _, uv := range userVoteList {
+			if uid == uv.UserID {
+				exists = true
+				break
+			}
+		}
+		if !exists {
+			addedList = append(addedList, &server.BattleUserVote{
+				BattleID:  api.BattleArena.CurrentBattleID(),
+				UserID:    uid,
+				VoteCount: 0,
+			})
+		}
+	}
+	userVoteList = append(userVoteList, addedList...)
+
 	// start preparing ending broadcast data
 	if len(userVoteList) > 0 {
 		// insert user vote list to db
@@ -195,10 +212,12 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 				topUser.Faction = api.factionMap[topUser.FactionID]
 			}
 			api.battleEndInfo.TopSupsContributors = append(api.battleEndInfo.TopSupsContributors, topUser.Brief())
+
+			// recorded for sups most spend
+			ed.BattleRewardList.TopSupsSpendUsers = append(ed.BattleRewardList.TopSupsSpendUsers, topUser.ID)
 		}
 
 		for _, topFaction := range resp.Payload.TopSupsContributeFactions {
-			fmt.Println(topFaction.Label)
 			api.battleEndInfo.TopSupsContributeFactions = append(api.battleEndInfo.TopSupsContributeFactions, topFaction.Brief())
 		}
 
@@ -309,59 +328,7 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 		}()
 	}
 
-	// parse battle reward list
-	api.Hub.Clients(func(clients hub.ClientsList) {
-		for c := range clients {
-			go func(c *hub.Client) {
-				userID := server.UserID(uuid.FromStringOrNil(c.Identifier()))
-				if userID.IsNil() {
-					return
-				}
-				hcd, err := api.getClientDetailFromChannel(c)
-				if err != nil || hcd.FactionID.IsNil() {
-					return
-				}
-
-				brs := []BattleRewardType{}
-				// check reward
-				if hcd.FactionID == ed.BattleRewardList.WinnerFactionID {
-					brs = append(brs, BattleRewardTypeFaction)
-				}
-
-				if _, ok := ed.BattleRewardList.WinningWarMachineOwnerIDs[userID]; ok {
-					brs = append(brs, BattleRewardTypeWinner)
-				}
-
-				if _, ok := ed.BattleRewardList.ExecuteKillWarMachineOwnerIDs[userID]; ok {
-					brs = append(brs, BattleRewardTypeKill)
-				}
-
-				// TODO: set sups multiplier for these three rewards
-				for _, executor := range api.battleEndInfo.MostFrequentAbilityExecutors {
-					if executor.ID == userID {
-						brs = append(brs, BattleRewardTypeAbilityExecutor)
-						break
-					}
-				}
-
-				for _, supsContributor := range api.battleEndInfo.TopSupsContributors {
-					if supsContributor.ID == userID {
-						brs = append(brs, BattleRewardTypeWarContributor)
-						break
-					}
-				}
-
-				if len(brs) == 0 {
-					return
-				}
-
-				api.ClientBattleRewardUpdate(c, &ClientBattleReward{
-					BattleID: api.BattleArena.CurrentBattleID(),
-					Rewards:  brs,
-				})
-			}(c)
-		}
-	})
+	api.UserMultiplier.ClientBattleRewardUpdate(ed.BattleRewardList)
 
 	// trigger faction stat refresh and send result to passport server
 	go func() {

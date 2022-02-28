@@ -22,9 +22,9 @@ func (ba *BattleArena) InGameWarMachines() []*server.WarMachineMetadata {
 	return ba.battle.WarMachines
 }
 
-func (ba *BattleArena) GetWarMachine(tokenID uint64) *server.WarMachineMetadata {
+func (ba *BattleArena) GetWarMachine(hash string) *server.WarMachineMetadata {
 	for _, wm := range ba.battle.WarMachines {
-		if wm.TokenID == tokenID {
+		if wm.Hash == hash {
 			return wm
 		}
 	}

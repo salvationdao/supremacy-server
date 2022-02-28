@@ -33,9 +33,7 @@ const HubKeyAuthSessionIDGet = hub.HubCommandKey("AUTH:SESSION:ID:GET")
 
 // GetHubSessionID return hub client's session id for ring check authentication
 func (ac *AuthControllerWS) GetHubSessionID(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	ac.API.ringCheckAuthChan <- func(rcam RingCheckAuthMap) {
-		rcam[string(wsc.SessionID)] = wsc
-		reply(wsc.SessionID)
-	}
+	ac.API.RingCheckAuthMap.Record(string(wsc.SessionID), wsc)
+	reply(wsc.SessionID)
 	return nil
 }

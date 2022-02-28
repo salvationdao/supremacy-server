@@ -85,7 +85,10 @@ func NewBattleArenaClient(ctx context.Context, logger *zerolog.Logger, conn *pgx
 		Events:   BattleArenaEvents{map[Event][]EventHandler{}, sync.RWMutex{}},
 		ctx:      ctx,
 		close:    cancel,
-		battle:   &server.Battle{},
+		battle: &server.Battle{
+			WarMachineDestroyedRecordMap: make(map[byte]*server.WarMachineDestroyedRecord),
+			FactionMap:                   make(map[server.FactionID]*server.Faction),
+		},
 
 		// channel for battle queue
 		BattleQueueMap: make(map[server.FactionID]chan func(*WarMachineQueuingList)),
@@ -178,7 +181,10 @@ func (ba *BattleArena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	go func() {
 		time.Sleep(2 * time.Second)
-		_ = ba.InitNextBattle()
+		err = ba.InitNextBattle()
+		if err != nil {
+			return
+		}
 	}()
 
 	// listening for message
@@ -259,7 +265,44 @@ func (ba *BattleArena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			case NetMessageTypeTick:
 				ba.WarMachinesTick(ctx, payload)
 			default:
-				ba.Log.Err(fmt.Errorf("unknown message type")).Msg("")
+				// ba.Log.Err(fmt.Errorf("unknown message type")).Msg("")
+				v, err := jason.NewObjectFromBytes(payload)
+				if err != nil {
+					if errors.Is(err, context.Canceled) {
+						return
+					}
+					if websocket.CloseStatus(err) == websocket.StatusNormalClosure ||
+						websocket.CloseStatus(err) == websocket.StatusGoingAway {
+						return
+					}
+					ba.Log.Err(err).Msgf(`error making object from bytes`)
+					cancel()
+					return
+				}
+				cmdKey, err := v.GetString("battleCommand")
+				if err != nil {
+					if errors.Is(err, context.Canceled) {
+						return
+					}
+					if websocket.CloseStatus(err) == websocket.StatusNormalClosure ||
+						websocket.CloseStatus(err) == websocket.StatusGoingAway {
+						return
+					}
+					ba.Log.Err(err).Msgf(`missing json key "key"`)
+					continue
+				}
+				if cmdKey == "" {
+					if errors.Is(err, context.Canceled) {
+						return
+					}
+					if websocket.CloseStatus(err) == websocket.StatusNormalClosure ||
+						websocket.CloseStatus(err) == websocket.StatusGoingAway {
+						return
+					}
+					ba.Log.Err(fmt.Errorf("missing key value")).Msgf("missing key/command value")
+					continue
+				}
+				ba.runGameCommand(ctx, c, BattleCommand(cmdKey), payload)
 			}
 		}
 	}
@@ -434,43 +477,32 @@ func (ba *BattleArena) SetupAfterConnections() {
 		time.Sleep(b.Duration())
 	}
 
+	hashes := []string{}
 	// get all the faction list from passport server
 	for _, faction := range ba.battle.FactionMap {
 		// start battle queue
 		ba.BattleQueueMap[faction.ID] = make(chan func(*WarMachineQueuingList))
-		go ba.startBattleQueue(faction.ID)
+		hashes = append(hashes, ba.startBattleQueue(faction.ID)...)
 	}
+
+	// fire the hashes checklist to passport to free up the non-queued war machines
+	ba.passport.AssetQueuingCheckList(hashes)
 
 	battleContractRewardUpdaterLogger := log_helpers.NamedLogger(ba.Log, "Contract Reward Updater").Level(zerolog.Disabled)
 	battleContractRewardUpdater := tickle.New("Contract Reward Updater", 10, func() (int, error) {
 		rQueueNumberChan := make(chan int)
-		select {
-		case ba.BattleQueueMap[server.RedMountainFactionID] <- func(wmql *WarMachineQueuingList) {
+		ba.BattleQueueMap[server.RedMountainFactionID] <- func(wmql *WarMachineQueuingList) {
 			rQueueNumberChan <- len(wmql.WarMachines)
-		}:
-		case <-time.After(10 * time.Second):
-			ba.Log.Err(errors.New("timeout on channel send exceeded"))
-			panic("Client Battle Reward Update")
 		}
 
 		bQueueNumberChan := make(chan int)
-		select {
-		case ba.BattleQueueMap[server.BostonCyberneticsFactionID] <- func(wmql *WarMachineQueuingList) {
+		ba.BattleQueueMap[server.BostonCyberneticsFactionID] <- func(wmql *WarMachineQueuingList) {
 			bQueueNumberChan <- len(wmql.WarMachines)
-		}:
-		case <-time.After(10 * time.Second):
-			ba.Log.Err(errors.New("timeout on channel send exceeded"))
-			panic("Client Battle Reward Update")
 		}
 
 		zQueueNumberChan := make(chan int)
-		select {
-		case ba.BattleQueueMap[server.ZaibatsuFactionID] <- func(wmql *WarMachineQueuingList) {
+		ba.BattleQueueMap[server.ZaibatsuFactionID] <- func(wmql *WarMachineQueuingList) {
 			zQueueNumberChan <- len(wmql.WarMachines)
-		}:
-		case <-time.After(10 * time.Second):
-			ba.Log.Err(errors.New("timeout on channel send exceeded"))
-			panic("Client Battle Reward Update")
 		}
 
 		ba.passport.FactionWarMachineContractRewardUpdate(

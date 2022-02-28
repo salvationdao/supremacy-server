@@ -3,7 +3,6 @@ package battle_arena
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"server"
 	"server/db"
 	"server/passport"
@@ -15,7 +14,8 @@ type WarMachineQueuingList struct {
 	WarMachines []*server.WarMachineMetadata
 }
 
-func (ba *BattleArena) startBattleQueue(factionID server.FactionID) {
+func (ba *BattleArena) startBattleQueue(factionID server.FactionID) []string {
+	hashes := []string{}
 	warMachineMetadatas := &WarMachineQueuingList{
 		WarMachines: []*server.WarMachineMetadata{},
 	}
@@ -35,12 +35,17 @@ func (ba *BattleArena) startBattleQueue(factionID server.FactionID) {
 			fn(warMachineMetadatas)
 		}
 	}()
+
+	for _, wm := range wms {
+		hashes = append(hashes, wm.Hash)
+	}
+
+	return hashes
 }
 
 func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, warMachinePerBattle int) []*server.WarMachineMetadata {
 	inGameWarMachinesChan := make(chan []*server.WarMachineMetadata)
-	select {
-	case ba.BattleQueueMap[factionID] <- func(wmq *WarMachineQueuingList) {
+	ba.BattleQueueMap[factionID] <- func(wmq *WarMachineQueuingList) {
 		ctx := context.Background()
 		tempList := []*server.WarMachineMetadata{}
 
@@ -64,6 +69,7 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, 
 
 				wg := sync.WaitGroup{}
 				wg.Add(1)
+
 				ba.passport.GetDefaultWarMachines(ctx, factionID, amountToGet, func(msg []byte) {
 					defer wg.Done()
 					resp := struct {
@@ -71,9 +77,9 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, 
 					}{}
 					err := json.Unmarshal(msg, &resp)
 					if err != nil {
+						ba.Log.Err(err)
 						return
 					}
-
 					tempList = append(tempList, resp.WarMachines...)
 				})
 				wg.Wait()
@@ -107,7 +113,7 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, 
 		}
 
 		// delete it from the queue list
-		wmq.WarMachines = wmq.WarMachines[warMachinePerBattle-1:]
+		wmq.WarMachines = wmq.WarMachines[warMachinePerBattle:]
 
 		// broadcast next 5 queuing war machines to twitch ui
 		maxLength := 5
@@ -127,11 +133,6 @@ func (ba *BattleArena) GetBattleWarMachineFromQueue(factionID server.FactionID, 
 
 		// return the war machines
 		inGameWarMachinesChan <- tempList
-	}:
-
-	case <-time.After(10 * time.Second):
-		ba.Log.Err(errors.New("timeout on channel send exceeded"))
-		panic("Client Battle Reward Update")
 	}
 
 	return <-inGameWarMachinesChan

@@ -23,18 +23,18 @@ func WarMachineDestroyedEventCreate(ctx context.Context, conn Conn, battleID ser
 				id
 		)
 		INSERT INTO 
-			battle_events_war_machine_destroyed (event_id, destroyed_war_machine_id, kill_by_war_machine_id, related_event_id)
+			battle_events_war_machine_destroyed (event_id, destroyed_war_machine_hash, kill_by_war_machine_hash, related_event_id)
 		VALUES 
 			((SELECT id FROM rows) ,$3, $4, $5)
 		RETURNING 
-			id, event_id, destroyed_war_machine_id, kill_by_war_machine_id, related_event_id;
+			id, event_id, destroyed_war_machine_hash, kill_by_war_machine_hash, related_event_id;
 	`
 
 	err := pgxscan.Get(ctx, conn, warMachineDestroyedEvent, q,
 		battleID,
 		server.BattleEventTypeWarMachineDestroyed,
-		warMachineDestroyedEvent.DestroyedWarMachineID,
-		warMachineDestroyedEvent.KillByWarMachineID,
+		warMachineDestroyedEvent.DestroyedWarMachineHash,
+		warMachineDestroyedEvent.KillByWarMachineHash,
 		warMachineDestroyedEvent.RelatedEventID,
 	)
 	if err != nil {
@@ -44,17 +44,17 @@ func WarMachineDestroyedEventCreate(ctx context.Context, conn Conn, battleID ser
 }
 
 // WarMachineDestroyedEventAssistedWarMachineSet assign assisted war machine to a war machine destroyed event
-func WarMachineDestroyedEventAssistedWarMachineSet(ctx context.Context, conn Conn, eventID server.WarMachineDestroyedEventID, warMachineIDs []uint64) error {
+func WarMachineDestroyedEventAssistedWarMachineSet(ctx context.Context, conn Conn, eventID server.WarMachineDestroyedEventID, warMachineHashs []string) error {
 	q := `
 		INSERT INTO
 			battle_events_war_machine_destroyed_assisted_war_machines (war_machine_destroyed_event_id, war_machine_id)
 		VALUES 
 	`
 
-	for i, warMachineID := range warMachineIDs {
-		q += fmt.Sprintf("('%s','%d')", eventID, warMachineID)
+	for i, warMachineID := range warMachineHashs {
+		q += fmt.Sprintf("('%s','%s')", eventID, warMachineID)
 
-		if i < len(warMachineIDs)-1 {
+		if i < len(warMachineHashs)-1 {
 			q += ","
 			continue
 		}
@@ -82,17 +82,17 @@ func GameAbilityEventCreate(ctx context.Context, conn Conn, battleID server.Batt
 				id
 		)
 		INSERT INTO 
-			battle_events_game_ability (event_id, game_ability_id, ability_token_id, is_triggered, triggered_by_user_id, triggered_on_cell_x, triggered_on_cell_y)
+			battle_events_game_ability (event_id, game_ability_id, ability_hash, is_triggered, triggered_by_user_id, triggered_on_cell_x, triggered_on_cell_y)
 		VALUES 
 			((SELECT id FROM rows), $3, $4, $5, $6, $7, $8)
 		RETURNING 
-			id, event_id, game_ability_id, ability_token_id, is_triggered, triggered_by_user_id, triggered_on_cell_x, triggered_on_cell_y;
+			id, event_id, game_ability_id, ability_hash, is_triggered, triggered_by_user_id, triggered_on_cell_x, triggered_on_cell_y;
 	`
 	err := pgxscan.Get(ctx, conn, gameAbilityEvent, q,
 		battleID,
 		server.BattleEventTypeGameAbility,
 		gameAbilityEvent.GameAbilityID,
-		gameAbilityEvent.AbilityTokenID,
+		gameAbilityEvent.AbilityHash,
 		gameAbilityEvent.IsTriggered,
 		gameAbilityEvent.TriggeredByUserID,
 		gameAbilityEvent.TriggeredOnCellX,
@@ -163,7 +163,7 @@ func GetEvents(ctx context.Context, conn Conn, since *time.Time) ([]*server.Batt
 				log.Println("missing game ability ID")
 				continue
 			}
-				result, err := GameAbility(ctx, conn, *eventObj.GameAbilityID)
+			result, err := GameAbility(ctx, conn, *eventObj.GameAbilityID)
 			if err != nil {
 				return nil, terror.Error(err)
 			}
