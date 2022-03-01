@@ -2,10 +2,12 @@ package db
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"server"
 
 	"github.com/georgysavva/scany/pgxscan"
+	"github.com/jackc/pgx/v4"
 
 	"github.com/ninja-software/terror/v2"
 
@@ -262,7 +264,7 @@ func AssetQueuingStat(ctx context.Context, conn Conn, hash string) (*server.Batt
 			war_machine_metadata ->> 'hash' = $1 AND deleted_at ISNULL
 	`
 	err := pgxscan.Get(ctx, conn, result, q, hash)
-	if err != nil {
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, terror.Error(err)
 	}
 
@@ -275,11 +277,11 @@ func AssetQueuingStat(ctx context.Context, conn Conn, hash string) (*server.Batt
 func AssetRepairInsert(ctx context.Context, conn Conn, assetRepairRecord *server.AssetRepairRecord) error {
 	q := `
 		INSERT INTO
-			asset_repair (hash, expect_complete_at, repair_mode)
+			asset_repair (hash, expect_completed_at, repair_mode)
 		VALUES
 			($1, $2, $3)
 		RETURNING
-			hash, expect_complete_at, repair_mode
+			hash, expect_completed_at, repair_mode
 	`
 
 	err := pgxscan.Get(ctx, conn, assetRepairRecord, q,
@@ -317,7 +319,7 @@ func AssetRepairPaidToComplete(ctx context.Context, conn Conn, assetRepairRecord
 		WHERE
 			hash = $1 AND completed_at ISNULL
 		RETURNING
-			hash, expect_complete_at, repair_mode, is_paid_to_complete, completed_at, created_at
+			hash, expect_completed_at, repair_mode, is_paid_to_complete, completed_at, created_at
 	`
 	err := pgxscan.Get(ctx, conn, assetRepairRecord, q, assetRepairRecord.Hash)
 	if err != nil {

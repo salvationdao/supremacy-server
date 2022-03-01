@@ -106,6 +106,7 @@ func NewBattleArenaClient(ctx context.Context, logger *zerolog.Logger, conn *pgx
 
 	// war machines
 	ba.Command(WarMachineDestroyedCommand, ba.WarMachineDestroyedHandler)
+	ba.Command(AISpawnedCommand, ba.AISpawnedHandler)
 
 	go ba.SetupAfterConnections()
 	return ba

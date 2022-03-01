@@ -167,7 +167,7 @@ func (fq *FactionQueue) Init(faction *server.Faction) error {
 // UpdateContractReward update contract reward when battle end
 func (fq *FactionQueue) UpdateContractReward(winningFactionID server.FactionID) error {
 	fq.ContractReward.Lock()
-	defer fq.ContractReward.RLock()
+	defer fq.ContractReward.Unlock()
 	if winningFactionID == fq.ID {
 		// decrease 2.5% if win a battle
 		fq.ContractReward.Amount.Mul(fq.ContractReward.Amount, big.NewInt(975))
