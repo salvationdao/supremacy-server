@@ -278,9 +278,18 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 	}
 
 	// recalculate contract reward
-	ba.WarMachineQueue.RedMountain.UpdateContractReward(battleRewardList.WinnerFactionID)
-	ba.WarMachineQueue.Boston.UpdateContractReward(battleRewardList.WinnerFactionID)
-	ba.WarMachineQueue.Zaibatsu.UpdateContractReward(battleRewardList.WinnerFactionID)
+	err = ba.WarMachineQueue.RedMountain.UpdateContractReward(battleRewardList.WinnerFactionID)
+	if err != nil {
+		return terror.Error(err)
+	}
+	err = ba.WarMachineQueue.Boston.UpdateContractReward(battleRewardList.WinnerFactionID)
+	if err != nil {
+		return terror.Error(err)
+	}
+	err = ba.WarMachineQueue.Zaibatsu.UpdateContractReward(battleRewardList.WinnerFactionID)
+	if err != nil {
+		return terror.Error(err)
+	}
 
 	// remove war machine from queue in db
 	if len(inGameWarMachines) > 0 {
