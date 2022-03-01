@@ -5,7 +5,7 @@ import (
 )
 
 type WarMachineQueuePositionReq struct {
-	WarMachineQueuePosition *WarMachineQueuePosition `json:"warMachineQueuePosition"`
+	UserWarMachineQueuePosition []*WarMachineQueuePosition `json:"userWarMachineQueuePosition"`
 }
 
 type WarMachineQueuePosition struct {
@@ -15,27 +15,13 @@ type WarMachineQueuePosition struct {
 
 type WarMachineQueuePositionResp struct{}
 
-func (pp *Passport) WarMachineQueuePositionBroadcast(wmq *WarMachineQueuePosition) {
-	err := pp.Comms.Call("C.SupremacyWarMachineQueuePositionHandler", WarMachineQueuePositionReq{wmq}, &WarMachineQueuePositionResp{})
+func (pp *Passport) WarMachineQueuePositionBroadcast(wmp []*WarMachineQueuePosition) {
+	if len(wmp) == 0 {
+		return
+	}
+	err := pp.Comms.Call("C.SupremacyWarMachineQueuePositionHandler", WarMachineQueuePositionReq{wmp}, &WarMachineQueuePositionResp{})
 	if err != nil {
 		pp.Log.Err(err).Str("method", "SupremacyWarMachineQueuePositionHandler").Msg("rpc error")
-	}
-}
-
-type RedeemFactionContractRewardReq struct {
-	UserID               server.UserID               `json:"userID"`
-	FactionID            server.FactionID            `json:"factionID"`
-	Amount               string                      `json:"amount"`
-	TransactionReference server.TransactionReference `json:"transactionReference"`
-}
-
-type RedeemFactionContractRewardResp struct{}
-
-// AssetContractRewardRedeem redeem faction contract reward
-func (pp *Passport) AssetContractRewardRedeem(userID server.UserID, factionID server.FactionID, amount string, txRef server.TransactionReference) {
-	err := pp.Comms.Call("C.SupremacyRedeemFactionContractRewardHandler", RedeemFactionContractRewardReq{userID, factionID, amount, txRef}, &RedeemFactionContractRewardResp{})
-	if err != nil {
-		pp.Log.Err(err).Str("method", "SupremacyRedeemFactionContractRewardHandler").Msg("rpc error")
 	}
 }
 
@@ -45,7 +31,7 @@ type AssetRepairStatReq struct {
 
 type AssetRepairStatResp struct{}
 
-// AssetContractRewardRedeem redeem faction contract reward
+// AssetRepairStat redeem faction contract reward
 func (pp *Passport) AssetRepairStat(arr *server.AssetRepairRecord) {
 	err := pp.Comms.Call("C.SupremacyAssetRepairStatUpdateHandler", AssetRepairStatReq{arr}, &AssetRepairStatResp{})
 	if err != nil {

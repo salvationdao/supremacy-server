@@ -43,6 +43,8 @@ func PassportWebhookRouter(log *zerolog.Logger, conn db.Conn, webhookSecret stri
 	r.Post("/faction_stat", WithPassportSecret(webhookSecret, WithError(c.FactionStatGet)))
 	r.Post("/faction_contract_reward", WithPassportSecret(webhookSecret, WithError(c.FactionContractRewardGet)))
 
+	r.Post("/faction_queue_cost", WithPassportSecret(webhookSecret, WithError(c.FactionQueueCostGet)))
+
 	return r
 }
 
@@ -393,4 +395,31 @@ func (pc *PassportWebhookController) AuthRingCheck(w http.ResponseWriter, r *htt
 	}{
 		IsSuccess: true,
 	})
+}
+
+type FactionQueueCostGetRequest struct {
+	FactionID server.FactionID `json:"factionID"`
+}
+
+func (pc *PassportWebhookController) FactionQueueCostGet(w http.ResponseWriter, r *http.Request) (int, error) {
+	req := &FactionQueueCostGetRequest{}
+	err := json.NewDecoder(r.Body).Decode(req)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err)
+	}
+
+	if req.FactionID.IsNil() || !req.FactionID.IsValid() {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("faction id is empty"), "Faction id is required")
+	}
+
+	cost := 0
+	switch req.FactionID {
+	case server.RedMountainFactionID:
+		cost = pc.API.BattleArena.WarMachineQueue.RedMountain.QueuingLength()
+	case server.BostonCyberneticsFactionID:
+		cost = pc.API.BattleArena.WarMachineQueue.Boston.QueuingLength()
+	case server.ZaibatsuFactionID:
+		cost = pc.API.BattleArena.WarMachineQueue.Zaibatsu.QueuingLength()
+	}
+	return helpers.EncodeJSON(w, cost)
 }

@@ -294,22 +294,20 @@ func checkWarMachineExist(list []*server.WarMachineMetadata, hash string) int {
 }
 
 func (wmq *WarMachineQueue) GetWarMachineQueue(factionID server.FactionID, hash string) (*int, error) {
-	fmt.Println(factionID)
 	// check faction id
 	switch factionID {
 	case server.RedMountainFactionID:
-		return wmq.RedMountain.WarMachineQueue(hash), nil
+		return wmq.RedMountain.WarMachineQueuePosition(hash), nil
 	case server.BostonCyberneticsFactionID:
-		return wmq.Boston.WarMachineQueue(hash), nil
+		return wmq.Boston.WarMachineQueuePosition(hash), nil
 	case server.ZaibatsuFactionID:
-		return wmq.Zaibatsu.WarMachineQueue(hash), nil
+		return wmq.Zaibatsu.WarMachineQueuePosition(hash), nil
 	default:
 		return nil, terror.Error(fmt.Errorf("No faction war machine"), "NON-FACTION WAR MACHINE IS NOT ALLOWED!!!!!!!!!!!!!!!!!!!")
 	}
 }
 
-func (fq *FactionQueue) WarMachineQueue(hash string) *int {
-	// for each queue map
+func (fq *FactionQueue) WarMachineQueuePosition(hash string) *int {
 	fq.RLock()
 	defer fq.RUnlock()
 	for i, wm := range fq.QueuingWarMachines {
@@ -318,6 +316,7 @@ func (fq *FactionQueue) WarMachineQueue(hash string) *int {
 		}
 
 		position := i + 1
+
 		return &position
 	}
 
@@ -325,7 +324,9 @@ func (fq *FactionQueue) WarMachineQueue(hash string) *int {
 		if wm.Hash != hash {
 			continue
 		}
+
 		position := -1
+
 		return &position
 	}
 
