@@ -220,21 +220,6 @@ func NewAPI(
 		r.Post("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.SendGlobalAnnouncement)))
 	})
 
-	// global announcement ticker
-	globalAnnouncementTicker := tickle.New("global announcement ticker", 10, func() (int, error) {
-
-		// check if
-		fmt.Println("-")
-
-		fmt.Println("-")
-		fmt.Println(api.GlobalAnnouncement)
-		fmt.Println("-")
-		fmt.Println("-")
-
-		return http.StatusOK, nil
-	})
-	globalAnnouncementTicker.Start()
-
 	// set viewer live count
 	api.ViewerLiveCount = NewViewerLiveCount(api.NetMessageBus)
 	api.UserMap = NewUserMap(api.ViewerLiveCount)
@@ -351,6 +336,26 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 
 	// start live voting broadcaster
 	liveVotingBroadcaster.Start()
+
+	// global announcement ticker
+	globalAnnouncementTicker := tickle.New("global announcement ticker", 10, func() (int, error) {
+		// check if a global announcement exist
+		if api.GlobalAnnouncement != nil {
+			now := time.Now()
+			// check if a announcement "show_until" has passed
+			if api.GlobalAnnouncement.ShowUntil != nil && api.GlobalAnnouncement.ShowUntil.After(now) {
+				api.GlobalAnnouncement = nil
+				err := db.AnnouncementDelete(ctx, api.Conn)
+				if err != nil {
+					return http.StatusInternalServerError, err
+				}
+			}
+		}
+
+		return http.StatusOK, nil
+	})
+
+	go globalAnnouncementTicker.Start()
 }
 
 // Event handlers
@@ -521,7 +526,7 @@ func (api *API) SendGlobalAnnouncement(w http.ResponseWriter, r *http.Request) (
 	req := &server.GlobalAnnouncement{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err)
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("invaid request %w", err))
 	}
 	defer r.Body.Close()
 
@@ -534,7 +539,7 @@ func (api *API) SendGlobalAnnouncement(w http.ResponseWriter, r *http.Request) (
 
 	// insert to db
 	if req.GamesUntil != nil || req.ShowUntil != nil {
-		err = db.CreateAnnouncement(api.ctx, api.Conn, req)
+		err = db.AnnouncementCreate(api.ctx, api.Conn, req)
 		if err != nil {
 			return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to create announcement %w", err))
 		}
@@ -547,6 +552,3 @@ func (api *API) SendGlobalAnnouncement(w http.ResponseWriter, r *http.Request) (
 
 	return http.StatusOK, nil
 }
-
-// ticker 10secs
-// delete GlobalAnnouncement

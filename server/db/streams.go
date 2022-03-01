@@ -52,7 +52,7 @@ func DeleteStream(ctx context.Context, conn Conn, host string) error {
 }
 
 // TODO : move to announcements file
-func CreateAnnouncement(ctx context.Context, conn Conn, stream *server.GlobalAnnouncement) error {
+func AnnouncementCreate(ctx context.Context, conn Conn, stream *server.GlobalAnnouncement) error {
 	q := `
 		INSERT INTO
 			global_announcements (title, message, games_until, show_until)
@@ -67,5 +67,28 @@ func CreateAnnouncement(ctx context.Context, conn Conn, stream *server.GlobalAnn
 		return terror.Error(err)
 	}
 
+	return nil
+}
+
+func AnnouncementDelete(ctx context.Context, conn Conn) error {
+	q := `DELETE FROM global_announcement`
+	_, err := conn.Exec(ctx, q)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	return nil
+}
+
+// FactionStatGet return the stat by the given faction id
+func AnnouncementGet(ctx context.Context, conn Conn, factionStat *server.FactionStat) error {
+	q := `
+		SELECT * FROM faction_stats
+		WHERE id = $1;
+	`
+	err := pgxscan.Get(ctx, conn, factionStat, q, factionStat.ID)
+	if err != nil {
+		return terror.Error(err)
+	}
 	return nil
 }
