@@ -26,6 +26,7 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-software/log_helpers"
+	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-software/tickle"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/auth"
@@ -97,8 +98,8 @@ type API struct {
 	MessageBus    *messagebus.MessageBus
 	NetMessageBus *messagebus.NetBus
 	Passport      *passport.Passport
-	VotingCycle  func(func(*VoteAbility, FactionUserVoteMap, *FactionTransactions, *FactionTotalVote, *VoteWinner, *VotingCycleTicker, UserVoteMap))
-	factionMap map[server.FactionID]*server.Faction
+	VotingCycle   func(func(*VoteAbility, FactionUserVoteMap, *FactionTransactions, *FactionTotalVote, *VoteWinner, *VotingCycleTicker, UserVoteMap))
+	factionMap    map[server.FactionID]*server.Faction
 
 	// voting channels
 	liveSupsSpend map[server.FactionID]*LiveVotingData
@@ -124,7 +125,6 @@ type API struct {
 
 	battleEndInfo *BattleEndInfo
 }
-
 
 // NewAPI registers routes
 func NewAPI(
@@ -211,6 +211,8 @@ func NewAPI(
 		r.Delete("/video_server", WithToken(config.ServerStreamKey, WithError((api.DeleteStreamHandler))))
 		r.Get("/faction_data", WithError(api.GetFactionData))
 		r.Get("/trigger/ability_file_upload", WithError(api.GetFactionData))
+		r.Post("/global_announcement", WithError(api.SendGlobalAnnouncement))
+
 	})
 
 	// set viewer live count
@@ -511,4 +513,39 @@ func (api *API) Close() {
 	if err != nil {
 		api.Log.Warn().Err(err).Msg("")
 	}
+}
+
+type GlobalAnnouncement struct {
+	Message     string    `json:"message"`
+	DeleteAfter time.Time `json:"deleteAfter"`
+}
+
+type GlobalAnnouncementRequest struct {
+	Message     string    `json:"message"`
+	DeleteAfter time.Time `json:"deleteAfter"`
+}
+
+const HubKeyGlobalAnnouncementSubscribe hub.HubCommandKey = "GLOBAL_ANNOUNCEMENT:SUBSCRIBE"
+
+func (api *API) SendGlobalAnnouncement(w http.ResponseWriter, r *http.Request) (int, error) {
+	req := &GlobalAnnouncementRequest{}
+	err := json.NewDecoder(r.Body).Decode(req)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err)
+	}
+
+	fmt.Println("!!!!!!!!!!!!!!")
+	fmt.Println("!!!!!!!!!!!!!!")
+	fmt.Println("!!!!!!!!!!!!!!")
+	fmt.Println("!!!!!!!!!!!!!!", req)
+
+	// ga := &GlobalAnnouncement{
+	// 	Message:     "test",
+	// 	DeleteAfter: time.Now().Add(-3),
+	// }
+
+	// go api.MessageBus.Send(r.Context(), messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), ga)
+
+	return http.StatusOK, nil
+
 }
