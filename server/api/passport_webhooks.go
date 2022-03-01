@@ -8,7 +8,6 @@ import (
 	"server"
 	"server/db"
 	"server/helpers"
-	"server/passport"
 
 	"github.com/go-chi/chi"
 	"github.com/gofrs/uuid"
@@ -277,23 +276,23 @@ func (pc *PassportWebhookController) WarMachineQueuePositionGet(w http.ResponseW
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	userWarMachinePosition, err := pc.API.BattleArena.WarMachineQueue.GetUserWarMachineQueue(req.FactionID, req.UserID)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err)
-	}
+	// userWarMachinePosition, err := pc.API.BattleArena.WarMachineQueue.GetUserWarMachineQueue(req.FactionID, req.UserID)
+	// if err != nil {
+	// 	return http.StatusInternalServerError, terror.Error(err)
+	// }
 
-	// get in game war machine
-	for _, wm := range pc.API.BattleArena.InGameWarMachines() {
-		if wm.OwnedByID != req.UserID {
-			continue
-		}
-		userWarMachinePosition = append(userWarMachinePosition, &passport.WarMachineQueuePosition{
-			WarMachineMetadata: wm,
-			Position:           -1,
-		})
-	}
+	// // get in game war machine
+	// for _, wm := range pc.API.BattleArena.InGameWarMachines() {
+	// 	if wm.OwnedByID != req.UserID {
+	// 		continue
+	// 	}
+	// 	userWarMachinePosition = append(userWarMachinePosition, &passport.WarMachineQueuePosition{
+	// 		WarMachineMetadata: wm,
+	// 		Position:           -1,
+	// 	})
+	// }
 
-	return helpers.EncodeJSON(w, userWarMachinePosition)
+	return helpers.EncodeJSON(w, 0)
 }
 
 type AssetRepairStatRequest struct {
