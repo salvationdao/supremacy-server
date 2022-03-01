@@ -1,5 +1,7 @@
 package server
 
+import "time"
+
 type Stream struct {
 	Host          string  `json:"host" db:"host"`
 	Name          string  `json:"name" db:"name"`
@@ -14,4 +16,11 @@ type Stream struct {
 	Status        string  `json:"status" db:"status"`
 	Latitude      float32 `json:"latitude" db:"latitude"`
 	Longitude     float32 `json:"longitude" db:"longitude"`
+}
+
+type GlobalAnnouncement struct {
+	Title      string     `json:"title"`
+	Message    string     `json:"message"`
+	GamesUntil *int       `json:"gamesUntil"`
+	ShowUntil  *time.Time `json:"showUntil"`
 }

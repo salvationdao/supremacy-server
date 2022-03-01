@@ -50,3 +50,23 @@ func DeleteStream(ctx context.Context, conn Conn, host string) error {
 
 	return nil
 }
+
+// TODO : move to announcements file
+// CreateStream created a new stream
+func CreateAnnouncement(ctx context.Context, conn Conn, stream *server.GlobalAnnouncement) error {
+	q := `
+		INSERT INTO
+			global_announcements (title, message, games_until, show_until)
+		VALUES
+			($1, $2, $3, $4)
+		RETURNING
+		title, message, games_until, show_until
+	`
+
+	err := pgxscan.Get(ctx, conn, stream, q, stream.Title, stream.Message, stream.GamesUntil, stream.ShowUntil)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	return nil
+}

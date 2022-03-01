@@ -123,7 +123,7 @@ type API struct {
 	// viewer live count
 	viewerLiveCount *ViewerLiveCount
 
-	GlobalAnnouncement *GlobalAnnouncement
+	GlobalAnnouncement *server.GlobalAnnouncement
 
 	battleEndInfo *BattleEndInfo
 }
@@ -517,21 +517,34 @@ func (api *API) Close() {
 	}
 }
 
-type GlobalAnnouncement struct {
-	Message  string `json:"message"`
-	Duration int    `json:"duration"`
-}
-
 func (api *API) SendGlobalAnnouncement(w http.ResponseWriter, r *http.Request) (int, error) {
-	req := &GlobalAnnouncement{}
+	req := &server.GlobalAnnouncement{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
-
 		return http.StatusInternalServerError, terror.Error(err)
 	}
+
+	// checks
+	if req.Message == "" {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("message cannot be empty %w", err))
+	}
+	if req.Title == "" {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("title cannot be empty %w", err))
+	}
+
+	// insert to db
+	if req.GamesUntil != nil || req.ShowUntil != nil {
+		err = db.CreateAnnouncement(api.ctx, api.Conn, req)
+		if err != nil {
+			return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to create announcement %w", err))
+		}
+	}
+
+	// store in memory
+	api.GlobalAnnouncement = req
+
 	defer r.Body.Close()
 	go api.MessageBus.Send(r.Context(), messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), req)
 
-	api.GlobalAnnouncement = req
 	return http.StatusOK, nil
 }
