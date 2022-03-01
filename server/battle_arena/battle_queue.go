@@ -7,7 +7,6 @@ import (
 	"math/big"
 	"server"
 	"server/db"
-	"server/passport"
 	"sync"
 
 	"github.com/jackc/pgx/v4"
@@ -331,35 +330,6 @@ func (fq *FactionQueue) WarMachineQueue(hash string) *int {
 	}
 
 	return nil
-}
-
-func (fq *FactionQueue) CurrentBattleQueuePerUser() map[server.UserID][]*passport.WarMachineQueuePosition {
-	// for each queue map
-	userWarMachineMap := make(map[server.UserID][]*passport.WarMachineQueuePosition)
-
-	fq.RLock()
-	defer fq.RUnlock()
-	for i, wm := range fq.QueuingWarMachines {
-		if _, ok := userWarMachineMap[wm.OwnedByID]; !ok {
-			userWarMachineMap[wm.OwnedByID] = []*passport.WarMachineQueuePosition{}
-		}
-		userWarMachineMap[wm.OwnedByID] = append(userWarMachineMap[wm.OwnedByID], &passport.WarMachineQueuePosition{
-			WarMachineMetadata: wm,
-			Position:           i + 1,
-		})
-	}
-
-	for _, wm := range fq.InGameWarMachines {
-		if _, ok := userWarMachineMap[wm.OwnedByID]; !ok {
-			userWarMachineMap[wm.OwnedByID] = []*passport.WarMachineQueuePosition{}
-		}
-		userWarMachineMap[wm.OwnedByID] = append(userWarMachineMap[wm.OwnedByID], &passport.WarMachineQueuePosition{
-			WarMachineMetadata: wm,
-			Position:           -1,
-		})
-	}
-
-	return userWarMachineMap
 }
 
 func (fq *FactionQueue) GetFirstFiveQueuingWarMachines() []*server.WarMachineBrief {

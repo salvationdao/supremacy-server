@@ -5,26 +5,18 @@ import (
 )
 
 type WarMachineQueuePositionReq struct {
-	UserWarMachineQueuePosition []*UserWarMachineQueuePosition `json:"userWarMachineQueuePosition"`
-}
-
-type UserWarMachineQueuePosition struct {
-	UserID                   server.UserID              `json:"userID"`
-	WarMachineQueuePositions []*WarMachineQueuePosition `json:"warMachineQueuePositions"`
+	WarMachineQueuePosition *WarMachineQueuePosition `json:"warMachineQueuePosition"`
 }
 
 type WarMachineQueuePosition struct {
-	WarMachineMetadata *server.WarMachineMetadata `json:"warMachineMetadata"`
-	Position           int                        `json:"position"`
+	Hash     string `json:"hash"`
+	Position *int   `json:"position,omitempty"`
 }
 
 type WarMachineQueuePositionResp struct{}
 
-func (pp *Passport) WarMachineQueuePositionBroadcast(uwm []*UserWarMachineQueuePosition) {
-	if len(uwm) == 0 {
-		return
-	}
-	err := pp.Comms.Call("C.SupremacyWarMachineQueuePositionHandler", WarMachineQueuePositionReq{uwm}, &WarMachineQueuePositionResp{})
+func (pp *Passport) WarMachineQueuePositionBroadcast(wmq *WarMachineQueuePosition) {
+	err := pp.Comms.Call("C.SupremacyWarMachineQueuePositionHandler", WarMachineQueuePositionReq{wmq}, &WarMachineQueuePositionResp{})
 	if err != nil {
 		pp.Log.Err(err).Str("method", "SupremacyWarMachineQueuePositionHandler").Msg("rpc error")
 	}

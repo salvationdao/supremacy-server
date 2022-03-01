@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"net/http"
 	"server/db"
 
@@ -26,7 +27,7 @@ func CheckRouter(log *zerolog.Logger, conn db.Conn) chi.Router {
 }
 
 func (c *CheckController) Check(w http.ResponseWriter, r *http.Request) {
-	err := check(r.Context(), c.Conn)
+	err := check(context.Background(), c.Conn)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, err = w.Write([]byte(err.Error()))

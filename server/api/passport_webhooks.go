@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -209,7 +210,7 @@ func (pc *PassportWebhookController) UserStatGet(w http.ResponseWriter, r *http.
 		return http.StatusBadRequest, terror.Error(terror.ErrInvalidInput, "User id is required")
 	}
 
-	userStat, err := db.UserStatGet(r.Context(), pc.Conn, req.UserID)
+	userStat, err := db.UserStatGet(context.Background(), pc.Conn, req.UserID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get user stat")
 	}
@@ -243,7 +244,7 @@ func (pc *PassportWebhookController) FactionStatGet(w http.ResponseWriter, r *ht
 		ID: req.FactionID,
 	}
 
-	err = db.FactionStatGet(r.Context(), pc.Conn, factionStat)
+	err = db.FactionStatGet(context.Background(), pc.Conn, factionStat)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, fmt.Sprintf("Failed to get faction %s stat", req.FactionID))
 	}
@@ -323,7 +324,7 @@ func (pc *PassportWebhookController) AssetRepairStatGet(w http.ResponseWriter, r
 	record := &server.AssetRepairRecord{
 		Hash: req.Hash,
 	}
-	err = db.AssetRepairIncompleteGet(r.Context(), pc.Conn, record)
+	err = db.AssetRepairIncompleteGet(context.Background(), pc.Conn, record)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return helpers.EncodeJSON(w, struct {

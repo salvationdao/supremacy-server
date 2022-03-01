@@ -87,17 +87,17 @@ func (api *API) CreateStreamCloseHandler(w http.ResponseWriter, r *http.Request)
 
 	api.BattleArena.PutGamesToClose(gamesToClose)
 
-	go api.MessageBus.Send(r.Context(), messagebus.BusKey(HubKeyStreamCloseSubscribe), gamesToClose)
+	go api.MessageBus.Send(context.Background(), messagebus.BusKey(HubKeyStreamCloseSubscribe), gamesToClose)
 
 	return http.StatusOK, nil
 }
 
 func (api *API) GetStreamsHandler(w http.ResponseWriter, r *http.Request) (int, error) {
-	streams, err := db.GetStreamList(r.Context(), api.Conn)
+	streams, err := db.GetStreamList(context.Background(), api.Conn)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)
 	}
-	go api.MessageBus.Send(r.Context(), messagebus.BusKey(HubKeyStreamList), streams)
+	go api.MessageBus.Send(context.Background(), messagebus.BusKey(HubKeyStreamList), streams)
 
 	return helpers.EncodeJSON(w, streams)
 }
@@ -110,17 +110,17 @@ func (api *API) CreateStreamHandler(w http.ResponseWriter, r *http.Request) (int
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	err = db.CreateStream(r.Context(), api.Conn, stream)
+	err = db.CreateStream(context.Background(), api.Conn, stream)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	streamList, err := db.GetStreamList(r.Context(), api.Conn)
+	streamList, err := db.GetStreamList(context.Background(), api.Conn)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	go api.MessageBus.Send(r.Context(), messagebus.BusKey(HubKeyVoteStageUpdated), streamList)
+	go api.MessageBus.Send(context.Background(), messagebus.BusKey(HubKeyVoteStageUpdated), streamList)
 
 	return http.StatusOK, nil
 }
@@ -136,17 +136,17 @@ func (api *API) DeleteStreamHandler(w http.ResponseWriter, r *http.Request) (int
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	err = db.DeleteStream(r.Context(), api.Conn, stream.Host)
+	err = db.DeleteStream(context.Background(), api.Conn, stream.Host)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	streamList, err := db.GetStreamList(r.Context(), api.Conn)
+	streamList, err := db.GetStreamList(context.Background(), api.Conn)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	go api.MessageBus.Send(r.Context(), messagebus.BusKey(HubKeyVoteStageUpdated), streamList)
+	go api.MessageBus.Send(context.Background(), messagebus.BusKey(HubKeyVoteStageUpdated), streamList)
 
 	return http.StatusOK, nil
 }
