@@ -312,7 +312,7 @@ func (pc *PassportWebhookController) AssetRepairStatGet(w http.ResponseWriter, r
 
 	err = db.AssetRepairIncompleteGet(r.Context(), pc.Conn, record)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return helpers.EncodeJSON(w, &server.AssetRepairRecord{})
 		}
 

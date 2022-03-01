@@ -2,6 +2,7 @@ package battle_arena
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"server"
@@ -131,7 +132,7 @@ var ZaibatsuFaction = &server.Faction{
 func (fq *FactionQueue) Init(faction *server.Faction) error {
 	// read war machine queue from db
 	wms, err := db.BattleQueueGetByFactionID(context.Background(), fq.Conn, faction.ID)
-	if err != nil && err != pgx.ErrNoRows {
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return terror.Error(err, "failed to read battle queue list from db")
 	}
 
