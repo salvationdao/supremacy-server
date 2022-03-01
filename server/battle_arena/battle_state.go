@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/big"
 	"server"
 	"server/db"
 	"time"
@@ -215,38 +214,94 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 		ExecuteKillWarMachineOwnerIDs: make(map[server.UserID]bool),
 	}
 
+	// cache in game war machines
+	inGameWarMachines := ba.battle.WarMachines
+	ba.battle.WarMachines = []*server.WarMachineMetadata{}
 	winningMachines := []*server.WarMachineMetadata{}
 
-	for _, wm := range req.Payload.WinningWarMachineMetadatas {
-		for _, bwm := range ba.battle.WarMachines {
-			if wm.Hash == bwm.Hash {
-				bwm.Health = wm.Health
-				winningMachines = append(winningMachines, bwm)
-				battleRewardList.WinnerFactionID = bwm.FactionID
-				battleRewardList.WinningWarMachineOwnerIDs[bwm.OwnedByID] = true
+	for _, bwm := range ba.battle.WarMachines {
+		// get contract reward from queuing
+		assetQueueStat, err := db.AssetQueuingStat(ctx, tx, bwm.Hash)
+		if err != nil {
+			return terror.Error(err, "failed to get contract reward from db")
+		}
 
-				if bwm.ContractReward.Cmp(big.NewInt(0)) <= 0 {
-					continue
-				}
+		assetRepairRecord := &server.AssetRepairRecord{
+			Hash:       bwm.Hash,
+			RepairMode: server.RepairModeFast,
+		}
 
-				// pay queuing contract reward
-				err = ba.passport.AssetContractRewardRedeem(
-					bwm.OwnedByID,
-					bwm.FactionID,
-					server.BigInt{Int: bwm.ContractReward},
-					server.TransactionReference(
-						fmt.Sprintf(
-							"redeem_faction_contract_reward|%s|%s",
-							bwm.Name,
-							time.Now(),
-						),
+		if !assetQueueStat.IsInsured {
+			assetRepairRecord.RepairMode = server.RepairModeStandard
+		}
+
+		// if war machines win
+		health, exists := WarMachineExistInList(req.Payload.WinningWarMachineMetadatas, bwm.Hash)
+		if exists {
+			bwm.Health = health
+			winningMachines = append(winningMachines, bwm)
+			battleRewardList.WinnerFactionID = bwm.FactionID
+			battleRewardList.WinningWarMachineOwnerIDs[bwm.OwnedByID] = true
+
+			// pay queuing contract reward
+			ba.passport.AssetContractRewardRedeem(
+				bwm.OwnedByID,
+				bwm.FactionID,
+				assetQueueStat.ContractReward,
+				server.TransactionReference(
+					fmt.Sprintf(
+						"redeem_faction_contract_reward|%s|%s",
+						bwm.Name,
+						time.Now(),
 					),
-				)
-				if err != nil {
-					ba.Log.Err(err).Msgf("User %s failed to redeem contract reward", bwm.OwnedByID)
-				}
+				),
+			)
+
+			// calc asset repair complete time
+			assetRepairRecord.ExpectCompletedAt = calcRepairCompleteTime(bwm.MaxHealth, bwm.Health, assetQueueStat.IsInsured, now)
+			err := db.AssetRepairInsert(ctx, tx, assetRepairRecord)
+			if err != nil {
+				return terror.Error(err)
+			}
+			// broadcast repair stat
+
+			continue
+		}
+
+		// if loss, store mech in asset repair db
+		assetRepairRecord.ExpectCompletedAt = calcRepairCompleteTime(bwm.MaxHealth, 0, assetQueueStat.IsInsured, now)
+		err = db.AssetRepairInsert(ctx, tx, assetRepairRecord)
+		if err != nil {
+			return terror.Error(err)
+		}
+		// broadcast repair stat
+	}
+
+	// recalculate contract reward
+	err = ba.WarMachineQueue.RedMountain.UpdateContractReward(battleRewardList.WinnerFactionID)
+	if err != nil {
+		return terror.Error(err)
+	}
+	err = ba.WarMachineQueue.Boston.UpdateContractReward(battleRewardList.WinnerFactionID)
+	if err != nil {
+		return terror.Error(err)
+	}
+	err = ba.WarMachineQueue.Zaibatsu.UpdateContractReward(battleRewardList.WinnerFactionID)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	// remove war machine from queue in db
+	if len(inGameWarMachines) > 0 {
+		// remove the war machine in db
+		for _, wm := range inGameWarMachines {
+			err = db.BattleQueueRemove(ctx, tx, wm)
+			if err != nil {
+				ba.Log.Err(err).Msgf("Failed to remove battle queue cache in db, token id: %s ", wm.Hash)
 			}
 		}
+
+		// broadcast war machine release to passport server
 	}
 
 	ba.battle.WinningWarMachines = winningMachines
@@ -289,57 +344,13 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 		}
 	}
 
-	err = ba.passport.TransferBattleFundToSupsPool(ctx)
-	if err != nil {
-		return terror.Error(err, "Failed to distribute battle reward")
-	}
-
-	// cache in game war machines
-	inGameWarMachines := ba.battle.WarMachines
-	ba.battle.WarMachines = []*server.WarMachineMetadata{}
-
-	//release war machine
-	if len(inGameWarMachines) > 0 {
-		ba.passport.AssetRelease(inGameWarMachines)
-
-		// remove the war machine in db
-		for _, wm := range inGameWarMachines {
-			err = db.BattleQueueRemove(ctx, ba.Conn, wm)
-			if err != nil {
-				ba.Log.Err(err).Msgf("Failed to remove battle queue cache in db, token id: %s ", wm.Hash)
-			}
-		}
-	}
-
-	for _, faction := range ba.battle.FactionMap {
-		includedUserID := []server.UserID{}
-		for _, ig := range inGameWarMachines {
-			if ig.FactionID == faction.ID {
-				includedUserID = append(includedUserID, ig.OwnedByID)
-			}
-		}
-
-		ba.BattleQueueMap[faction.ID] <- func(wmq *WarMachineQueuingList) {
-			// broadcast new war machine position for in game war machine owners
-			go ba.passport.WarMachineQueuePositionBroadcast(ba.BuildUserWarMachineQueuePosition(wmq.WarMachines, []*server.WarMachineMetadata{}, includedUserID...))
-		}
-
-	}
+	ba.passport.TransferBattleFundToSupsPool()
 
 	// trigger battle end
 	ba.Events.Trigger(ctx, EventGameEnd, &EventData{
 		BattleArena:      ba.battle,
 		BattleRewardList: battleRewardList,
 	})
-
-	// get the current queuing list from db
-	hashes, err := db.BattleQueueingHashesGet(ctx, ba.Conn)
-	if err != nil {
-		ba.Log.Err(err).Msgf("Failed to get battle queuing hashes")
-	}
-	if len(hashes) > 0 {
-		ba.passport.AssetQueuingCheckList(hashes)
-	}
 
 	go func() {
 		time.Sleep(25 * time.Second)
@@ -358,4 +369,30 @@ const BattleReadyCommand = BattleCommand("BATTLE:READY")
 func (ba *BattleArena) BattleReadyHandler(ctx context.Context, payload []byte, reply ReplyFunc) error {
 
 	return nil
+}
+
+func WarMachineExistInList(wms []*struct {
+	Hash   string `json:"hash"`
+	Health int    `json:"health"`
+}, hash string) (int, bool) {
+	for _, wm := range wms {
+		if wm.Hash == hash {
+			return wm.Health, true
+		}
+	}
+
+	return 0, false
+}
+
+// calcRepairCompleteTime
+func calcRepairCompleteTime(maxHealth, health int, isInsured bool, now time.Time) time.Time {
+	secondForEachPoint := 18
+	if !isInsured {
+		secondForEachPoint = 864
+	}
+
+	recoverPoint := (100 - health*100/maxHealth)
+
+	return now.Add(time.Duration(recoverPoint) * time.Duration(secondForEachPoint) * time.Second)
+
 }

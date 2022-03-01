@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"server"
 	"server/battle_arena"
-	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
+	"github.com/sasha-s/go-deadlock"
 )
 
 /********************
@@ -24,15 +23,18 @@ type ViewerCount struct {
 }
 
 type ViewerLiveCount struct {
+	FactionViewerRW  deadlock.RWMutex
 	FactionViewerMap map[server.FactionID]*ViewerCount
-	ViewerIDMap      sync.Map
+	ViewerIDMap      deadlock.Map
 	NetMessageBus    *messagebus.NetBus
 }
 
 func NewViewerLiveCount(nmb *messagebus.NetBus) *ViewerLiveCount {
 	vlc := &ViewerLiveCount{
 		FactionViewerMap: make(map[server.FactionID]*ViewerCount),
-		ViewerIDMap:      sync.Map{},
+		FactionViewerRW:  deadlock.RWMutex{},
+		ViewerIDMap:      deadlock.Map{},
+		NetMessageBus:    nmb,
 	}
 
 	vlc.FactionViewerMap[server.FactionID(uuid.Nil)] = &ViewerCount{0}
@@ -46,6 +48,7 @@ func NewViewerLiveCount(nmb *messagebus.NetBus) *ViewerLiveCount {
 			payload := []byte{}
 			payload = append(payload, byte(battle_arena.NetMessageTypeViewerLiveCountTick))
 
+			vlc.FactionViewerRW.RLock()
 			payload = append(payload, []byte(fmt.Sprintf(
 				"B_%d|R_%d|Z_%d|O_%d",
 				vlc.FactionViewerMap[server.BostonCyberneticsFactionID].Count,
@@ -53,6 +56,7 @@ func NewViewerLiveCount(nmb *messagebus.NetBus) *ViewerLiveCount {
 				vlc.FactionViewerMap[server.ZaibatsuFactionID].Count,
 				vlc.FactionViewerMap[server.FactionID(uuid.Nil)].Count,
 			))...)
+			vlc.FactionViewerRW.RUnlock()
 
 			nmb.Send(context.Background(), messagebus.NetBusKey(HubKeyViewerLiveCountUpdated), payload)
 
@@ -65,24 +69,39 @@ func NewViewerLiveCount(nmb *messagebus.NetBus) *ViewerLiveCount {
 }
 
 func (vcm *ViewerLiveCount) Add(factionID server.FactionID) {
-	if fvm, ok := vcm.FactionViewerMap[factionID]; ok {
-		atomic.AddInt64(&fvm.Count, 1)
+	if !factionID.IsValid() {
+		return
 	}
+	vcm.FactionViewerRW.Lock()
+	if fvm, ok := vcm.FactionViewerMap[factionID]; ok {
+		fvm.Count += 1
+	}
+	vcm.FactionViewerRW.Unlock()
 }
 
 func (vcm *ViewerLiveCount) Sub(factionID server.FactionID) {
-	if fvm, ok := vcm.FactionViewerMap[factionID]; ok {
-		atomic.AddInt64(&fvm.Count, -1)
+	if !factionID.IsValid() {
+		return
 	}
+	vcm.FactionViewerRW.Lock()
+	if fvm, ok := vcm.FactionViewerMap[factionID]; ok {
+		fvm.Count -= 1
+	}
+	vcm.FactionViewerRW.Unlock()
 }
 
 func (vcm *ViewerLiveCount) Swap(oldFactionID, newFactionID server.FactionID) {
+	if !oldFactionID.IsValid() || !newFactionID.IsValid() {
+		return
+	}
+	vcm.FactionViewerRW.Lock()
 	if fvm, ok := vcm.FactionViewerMap[oldFactionID]; ok {
-		atomic.AddInt64(&fvm.Count, -1)
+		fvm.Count -= 1
 	}
 	if fvm, ok := vcm.FactionViewerMap[newFactionID]; ok {
-		atomic.AddInt64(&fvm.Count, 1)
+		fvm.Count += 1
 	}
+	vcm.FactionViewerRW.Unlock()
 }
 
 func (vcm *ViewerLiveCount) IDRecord(userID server.UserID) {
@@ -106,12 +125,12 @@ func (vcm *ViewerLiveCount) IDRead() []server.UserID {
 **********************/
 
 type RingCheckAuthMap struct {
-	sync.Map
+	deadlock.Map
 }
 
 func NewRingCheckMap() *RingCheckAuthMap {
 	return &RingCheckAuthMap{
-		sync.Map{},
+		deadlock.Map{},
 	}
 }
 
@@ -125,7 +144,12 @@ func (rcm *RingCheckAuthMap) Check(key string) (*hub.Client, error) {
 		return nil, terror.Error(fmt.Errorf("hub client not found"))
 	}
 
-	return value.(*hub.Client), nil
+	hubc, ok := value.(*hub.Client)
+	if !ok {
+		return nil, terror.Error(fmt.Errorf("hub client not found"))
+	}
+
+	return hubc, nil
 }
 
 /********************
@@ -134,20 +158,20 @@ func (rcm *RingCheckAuthMap) Check(key string) (*hub.Client, error) {
 type UserMap struct {
 	*ViewerLiveCount
 	ClientMap map[string]*UserClientMap
-	sync.RWMutex
+	deadlock.RWMutex
 }
 
 type UserClientMap struct {
 	User      *server.User
 	ClientMap map[*hub.Client]bool
-	sync.RWMutex
+	deadlock.RWMutex
 }
 
 func NewUserMap(vlc *ViewerLiveCount) *UserMap {
 	return &UserMap{
 		vlc,
 		make(map[string]*UserClientMap),
-		sync.RWMutex{},
+		deadlock.RWMutex{},
 	}
 }
 
@@ -160,7 +184,7 @@ func (um *UserMap) UserRegister(wsc *hub.Client, user *server.User) {
 		hcm = &UserClientMap{
 			&server.User{},
 			make(map[*hub.Client]bool),
-			sync.RWMutex{},
+			deadlock.RWMutex{},
 		}
 
 		// set up user

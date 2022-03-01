@@ -59,15 +59,15 @@ fi
 
 echo "Proceed with migrations? (y/N)"
 read PROCEED
-if [[ $var != "y" ]]; then exit 1; fi
+if [[ $PROCEED != "y" ]]; then exit 1; fi
 
 systemctl stop ${PACKAGE}
-$TARGET/migrate -database "postgres://${GAMESERVER_DATABASE_USER}:${PGPASSWORD}@${GAMESERVER_DATABASE_HOST}:${GAMESERVER_DATABASE_PORT}/${GAMESERVER_DATABASE_NAME}" -path $TARGET/migrations up
+$TARGET/migrate -database "postgres://${GAMESERVER_DATABASE_USER}:${GAMESERVER_DATABASE_PASS}@${GAMESERVER_DATABASE_HOST}:${GAMESERVER_DATABASE_PORT}/${GAMESERVER_DATABASE_NAME}" -path $TARGET/migrations up
 
 ln -Tfsv $TARGET $(pwd)/${PACKAGE}_online
 
 # Ensure ownership
 chown -R ${PACKAGE}:${PACKAGE} .
 
-systemctl daemon-reload && systemctl start ${PACKAGE}
+systemctl daemon-reload && systemctl restart ${PACKAGE}
 nginx -t && nginx -s reload

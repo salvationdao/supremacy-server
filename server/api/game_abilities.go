@@ -8,12 +8,12 @@ import (
 	"server/battle_arena"
 	"server/db"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/tickle"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
+	"github.com/sasha-s/go-deadlock"
 )
 
 //type PricePool map[server.GameAbilityID]*GameAbilityPrice
@@ -21,25 +21,25 @@ import (
 type GameAbilityPrice struct {
 	GameAbility *server.GameAbility
 
-	PriceRW        sync.RWMutex
+	PriceRW        deadlock.RWMutex
 	MaxTargetPrice server.BigInt
 	TargetPrice    server.BigInt
 	CurrentSups    server.BigInt
 
-	TxMX   sync.Mutex
+	TxMX   deadlock.Mutex
 	TxRefs []string
 }
 
 type GameAbilityPoolTicker struct {
 	TargetPriceUpdater     *tickle.Tickle
 	TargetPriceBroadcaster *tickle.Tickle
-	sync.RWMutex
+	deadlock.RWMutex
 }
 
 func (api *API) StartGameAbilityPool(ctx context.Context, factionID server.FactionID, conn *pgxpool.Pool) {
 	// initial game ability
 
-	factionAbilitiesPool := &sync.Map{}
+	factionAbilitiesPool := &deadlock.Map{}
 
 	go func() {
 		for {
@@ -63,7 +63,7 @@ func (api *API) StartGameAbilityPool(ctx context.Context, factionID server.Facti
 		}
 	}()
 
-	api.gameAbilityPool[factionID] = func(fn func(factionAbilitiesPool *sync.Map)) {
+	api.gameAbilityPool[factionID] = func(fn func(factionAbilitiesPool *deadlock.Map)) {
 		fn(factionAbilitiesPool)
 	}
 }
@@ -74,7 +74,7 @@ func (api *API) abilityTargetPriceUpdater(factionID server.FactionID, conn *pgxp
 	// errChan := make(chan error)
 
 	// update ability target price
-	api.gameAbilityPool[factionID](func(fap *sync.Map) {
+	api.gameAbilityPool[factionID](func(fap *deadlock.Map) {
 		targetPriceList := []string{}
 		fap.Range(func(key interface{}, gameAbilityPrice interface{}) bool {
 			fa := gameAbilityPrice.(*GameAbilityPrice)
@@ -160,11 +160,6 @@ func (api *API) abilityTargetPriceUpdater(factionID server.FactionID, conn *pgxp
 			// record current price
 			targetPriceList = append(targetPriceList, fmt.Sprintf("%s_%s_%s_%d", fa.GameAbility.Identity, fa.TargetPrice.String(), fa.CurrentSups.String(), hasTriggered))
 
-			// store new target price to passport server, if the ability is nft
-			if fa.GameAbility.AbilityHash != "" && fa.GameAbility.WarMachineHash != "" {
-				api.Passport.AbilityUpdateTargetPrice(fa.GameAbility.AbilityHash, fa.GameAbility.WarMachineHash, fa.TargetPrice.String())
-			}
-
 			return true
 		})
 
@@ -183,7 +178,7 @@ func (api *API) abilityTargetPriceUpdater(factionID server.FactionID, conn *pgxp
 
 func (api *API) abilityTargetPriceBroadcast(factionID server.FactionID) {
 	// get current target price data
-	api.gameAbilityPool[factionID](func(fap *sync.Map) {
+	api.gameAbilityPool[factionID](func(fap *deadlock.Map) {
 		targetPriceList := []string{}
 		fap.Range(func(key interface{}, gameAbilityPrice interface{}) bool {
 			fa := gameAbilityPrice.(*GameAbilityPrice)
@@ -210,7 +205,7 @@ func (api *API) startGameAbilityPoolTicker(ctx context.Context, factionID server
 	// start game ability pool ticker after mech intro
 	time.Sleep(time.Duration(introSecond) * time.Second)
 
-	api.gameAbilityPool[factionID](func(fap *sync.Map) {
+	api.gameAbilityPool[factionID](func(fap *deadlock.Map) {
 
 		// set initial ability
 		factionAbilities := []*server.GameAbility{}
@@ -277,7 +272,7 @@ func (api *API) stopGameAbilityPoolTicker() {
 
 		// treat
 		if factionID == server.ZaibatsuFactionID {
-			api.gameAbilityPool[factionID](func(fap *sync.Map) {
+			api.gameAbilityPool[factionID](func(fap *deadlock.Map) {
 				// commit all the left over transactions
 
 				// do calculate for zaibatsu faction ability
@@ -317,7 +312,7 @@ func (api *API) stopGameAbilityPoolTicker() {
 
 			})
 		} else {
-			api.gameAbilityPool[factionID](func(fap *sync.Map) {
+			api.gameAbilityPool[factionID](func(fap *deadlock.Map) {
 				fap.Range(func(key interface{}, value interface{}) bool {
 					// read data
 					fa := value.(*GameAbilityPrice)
@@ -339,5 +334,5 @@ func (api *API) stopGameAbilityPoolTicker() {
 		}
 
 	}
-	api.Passport.ReleaseTransactions(context.Background(), txRefs)
+	api.Passport.ReleaseTransactions(txRefs)
 }

@@ -2,54 +2,10 @@ package passport
 
 import (
 	"server"
-
-	"github.com/gofrs/uuid"
 )
 
-type SuccessResponse struct {
-	IsSuccess bool `json:"payload"`
-}
-
-// AssetFreeze tell passport to freeze user's assets
-func (pp *Passport) AssetFreeze(assetHash string) error {
-	pp.send <- &Message{
-		Key: "SUPREMACY:ASSET:FREEZE",
-		Payload: struct {
-			AssetHash string `json:"assetHash"`
-		}{
-			AssetHash: assetHash,
-		},
-		TransactionID: uuid.Must(uuid.NewV4()).String(),
-	}
-	return nil
-}
-
-// AssetLock tell passport to lock user's assets
-func (pp *Passport) AssetLock(assetHashes []string) error {
-
-	pp.send <- &Message{
-		Key: "SUPREMACY:ASSET:LOCK",
-		Payload: struct {
-			AssetHashes []string `json:"assetHashes"`
-		}{
-			AssetHashes: assetHashes,
-		},
-		TransactionID: uuid.Must(uuid.NewV4()).String(),
-	}
-
-	return nil
-}
-
-// AssetRelease tell passport to release user's asset
-func (pp *Passport) AssetRelease(releasedAssets []*server.WarMachineMetadata) {
-	pp.send <- &Message{
-		Key: "SUPREMACY:ASSET:RELEASE",
-		Payload: struct {
-			ReleasedAssets []*server.WarMachineMetadata `json:"releasedAssets"`
-		}{
-			ReleasedAssets: releasedAssets,
-		},
-	}
+type WarMachineQueuePositionReq struct {
+	UserWarMachineQueuePosition []*UserWarMachineQueuePosition `json:"userWarMachineQueuePosition"`
 }
 
 type UserWarMachineQueuePosition struct {
@@ -62,82 +18,45 @@ type WarMachineQueuePosition struct {
 	Position           int                        `json:"position"`
 }
 
+type WarMachineQueuePositionResp struct{}
+
 func (pp *Passport) WarMachineQueuePositionBroadcast(uwm []*UserWarMachineQueuePosition) {
-	pp.send <- &Message{
-		Key: "SUPREMACY:WAR:MACHINE:QUEUE:POSITION",
-		Payload: struct {
-			UserWarMachineQueuePosition []*UserWarMachineQueuePosition `json:"userWarMachineQueuePosition"`
-		}{
-			UserWarMachineQueuePosition: uwm,
-		},
+	if len(uwm) == 0 {
+		return
+	}
+	err := pp.Comms.Call("C.SupremacyWarMachineQueuePositionHandler", WarMachineQueuePositionReq{uwm}, &WarMachineQueuePositionResp{})
+	if err != nil {
+		pp.Log.Err(err).Str("method", "SupremacyWarMachineQueuePositionHandler").Msg("rpc error")
 	}
 }
 
-func (pp *Passport) AbilityUpdateTargetPrice(abilityHash, warMachineHash string, supsCost string) {
-	pp.send <- &Message{
-		Key: "SUPREMACY:ABILITY:TARGET:PRICE:UPDATE",
-		Payload: struct {
-			AbilityHash    string `json:"abilityHash"`
-			WarMachineHash string `json:"warMachineHash"`
-			SupsCost       string `json:"supsCost"`
-		}{
-			AbilityHash:    abilityHash,
-			WarMachineHash: warMachineHash,
-			SupsCost:       supsCost,
-		},
-	}
+type RedeemFactionContractRewardReq struct {
+	UserID               server.UserID               `json:"userID"`
+	FactionID            server.FactionID            `json:"factionID"`
+	Amount               string                      `json:"amount"`
+	TransactionReference server.TransactionReference `json:"transactionReference"`
 }
 
-// AssetInsurancePay tell passport to pay insurance for battle asset
-func (pp *Passport) AssetInsurancePay(userID server.UserID, factionID server.FactionID, amount server.BigInt, txRef server.TransactionReference) error {
-	pp.send <- &Message{
-		Key: "SUPREMACY:PAY_ASSET_INSURANCE",
-		Payload: struct {
-			UserID               server.UserID               `json:"userID"`
-			FactionID            server.FactionID            `json:"factionID"`
-			Amount               server.BigInt               `json:"amount"`
-			TransactionReference server.TransactionReference `json:"transactionReference"`
-		}{
-			UserID:               userID,
-			FactionID:            factionID,
-			Amount:               amount,
-			TransactionReference: txRef,
-		},
-		TransactionID: uuid.Must(uuid.NewV4()).String(),
-	}
-
-	return nil
-}
+type RedeemFactionContractRewardResp struct{}
 
 // AssetContractRewardRedeem redeem faction contract reward
-func (pp *Passport) AssetContractRewardRedeem(userID server.UserID, factionID server.FactionID, amount server.BigInt, txRef server.TransactionReference) error {
-	pp.send <- &Message{
-		Key: "SUPREMACY:REDEEM_FACTION_CONTRACT_REWARD",
-		Payload: struct {
-			UserID               server.UserID               `json:"userID"`
-			FactionID            server.FactionID            `json:"factionID"`
-			Amount               server.BigInt               `json:"amount"`
-			TransactionReference server.TransactionReference `json:"transactionReference"`
-		}{
-			UserID:               userID,
-			FactionID:            factionID,
-			Amount:               amount,
-			TransactionReference: txRef,
-		},
-		TransactionID: uuid.Must(uuid.NewV4()).String(),
+func (pp *Passport) AssetContractRewardRedeem(userID server.UserID, factionID server.FactionID, amount string, txRef server.TransactionReference) {
+	err := pp.Comms.Call("C.SupremacyRedeemFactionContractRewardHandler", RedeemFactionContractRewardReq{userID, factionID, amount, txRef}, &RedeemFactionContractRewardResp{})
+	if err != nil {
+		pp.Log.Err(err).Str("method", "SupremacyRedeemFactionContractRewardHandler").Msg("rpc error")
 	}
-	return nil
 }
 
-// AssetCheckList pass a hashes checklist to passport server for passport server to free up the non-queued asset
-func (pp *Passport) AssetQueuingCheckList(hashes []string) {
-	pp.send <- &Message{
-		Key: "SUPREMACY:QUEUING_ASSET_CHECKLIST",
-		Payload: struct {
-			QueuedHashes []string `json:"queuedHashes"`
-		}{
-			QueuedHashes: hashes,
-		},
-		TransactionID: uuid.Must(uuid.NewV4()).String(),
+type AssetRepairStatReq struct {
+	AssetRepairRecord *server.AssetRepairRecord `json:"assetRepairRecord"`
+}
+
+type AssetRepairStatResp struct{}
+
+// AssetContractRewardRedeem redeem faction contract reward
+func (pp *Passport) AssetRepairStat(arr *server.AssetRepairRecord) {
+	err := pp.Comms.Call("C.SupremacyAssetRepairStatUpdateHandler", AssetRepairStatReq{arr}, &AssetRepairStatResp{})
+	if err != nil {
+		pp.Log.Err(err).Str("method", "SupremacyAssetRepairStatUpdateHandler").Msg("rpc error")
 	}
 }

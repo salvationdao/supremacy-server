@@ -9,13 +9,13 @@ import (
 	"server/battle_arena"
 	"server/db"
 	"server/passport"
-	"sync"
 	"time"
 
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
+	"github.com/sasha-s/go-deadlock"
 )
 
 func (api *API) BattleInitSignal(ctx context.Context, ed *battle_arena.EventData) {
@@ -24,30 +24,6 @@ func (api *API) BattleInitSignal(ctx context.Context, ed *battle_arena.EventData
 
 	// pass back nil to tell game ui to clean up current end battle message
 	go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyBattleEndDetailUpdated), nil)
-	// send new queue details
-
-	go func() {
-		for i := range api.BattleArena.BattleQueueMap {
-			api.BattleArena.BattleQueueMap[i] <- func(wmq *battle_arena.WarMachineQueuingList) {
-				// for each queue map
-				userMap := make(map[server.UserID][]*passport.WarMachineQueuePosition)
-
-				for i, wm := range wmq.WarMachines {
-					if _, ok := userMap[wm.OwnedByID]; !ok {
-						userMap[wm.OwnedByID] = []*passport.WarMachineQueuePosition{}
-					}
-					userMap[wm.OwnedByID] = append(userMap[wm.OwnedByID], &passport.WarMachineQueuePosition{
-						WarMachineMetadata: wm,
-						Position:           i + 1,
-					})
-				}
-
-				for u, uwm := range userMap {
-					go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserWarMachineQueueUpdated, u)), uwm)
-				}
-			}
-		}
-	}()
 }
 
 const HubKeyGameSettingsUpdated = hub.HubCommandKey("GAME:SETTINGS:UPDATED")
@@ -88,7 +64,6 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 
 	// start voting cycle, initial intro time equal: (mech_count * 3 + 7) seconds
 	introSecond := len(warMachines)*3 + 7
-	// introSecond := 0 // this is just for testing!!!!!!!!!
 
 	for factionID := range api.factionMap {
 		go func(factionID server.FactionID) {
@@ -158,7 +133,7 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 	// stop all the tickles in voting cycle
 	go api.stopGameAbilityPoolTicker()
 
-	battleViewers := api.viewerLiveCount.IDRead()
+	battleViewers := api.ViewerLiveCount.IDRead()
 	// increment users' view battle count
 	err := db.UserBattleViewUpsert(ctx, api.Conn, battleViewers)
 	if err != nil {
@@ -198,17 +173,11 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 	}
 
 	// get the user who spend most sups during the battle from passport
-	wg := sync.WaitGroup{}
+	wg := deadlock.WaitGroup{}
 
 	wg.Add(1)
-	err = api.Passport.TopSupsContributorsGet(ctx, ed.BattleArena.StartedAt, time.Now(), func(msg []byte) {
-		resp := &passport.SupremacyTopSupsContributorResponse{}
-		err := json.Unmarshal(msg, resp)
-		if err != nil {
-			return
-		}
-
-		for _, topUser := range resp.Payload.TopSupsContributors {
+	api.Passport.TopSupsContributorsGet(ed.BattleArena.StartedAt, time.Now(), func(result *passport.TopSupsContributorResp) {
+		for _, topUser := range result.TopSupsContributors {
 			if !topUser.FactionID.IsNil() {
 				topUser.Faction = api.factionMap[topUser.FactionID]
 			}
@@ -218,7 +187,7 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 			ed.BattleRewardList.TopSupsSpendUsers = append(ed.BattleRewardList.TopSupsSpendUsers, topUser.ID)
 		}
 
-		for _, topFaction := range resp.Payload.TopSupsContributeFactions {
+		for _, topFaction := range result.TopSupsContributeFactions {
 			api.battleEndInfo.TopSupsContributeFactions = append(api.battleEndInfo.TopSupsContributeFactions, topFaction.Brief())
 		}
 
@@ -250,18 +219,14 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 	}
 
 	if len(userIDs) > 0 {
-		wg := sync.WaitGroup{}
+		wg := deadlock.WaitGroup{}
 		wg.Add(1)
-		api.Passport.UsersGet(userIDs, func(msg []byte) {
+		api.Passport.UsersGet(userIDs, func(users []*server.User) {
 			defer wg.Done()
-			resp := &passport.GetUsers{}
-			err := json.Unmarshal(msg, resp)
-			if err != nil {
-				return
-			}
 
+			// store users in correct order
 			for _, userID := range userIDs {
-				for _, user := range resp.Users {
+				for _, user := range users {
 					if user.ID == userID {
 						if !user.FactionID.IsNil() {
 							user.Faction = api.factionMap[user.FactionID]
@@ -271,6 +236,7 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 					}
 				}
 			}
+
 		})
 		wg.Wait()
 	}
@@ -300,7 +266,10 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 	}
 
 	// broadcast battle end info back to game ui
-	go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyBattleEndDetailUpdated), api.battleEndInfo)
+	go func() {
+		time.Sleep(15 * time.Second)
+		api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyBattleEndDetailUpdated), api.battleEndInfo)
+	}()
 
 	// refresh user stat
 	if len(battleViewers) > 0 {
@@ -357,11 +326,7 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 		}
 
 		// send faction stat to passport server
-		err = api.Passport.FactionStatsSend(ctx, sendRequest)
-		if err != nil {
-			api.Log.Err(err).Msg("failed to send faction stat")
-			return
-		}
+		api.Passport.FactionStatsSend(sendRequest)
 	}()
 
 }
@@ -395,11 +360,4 @@ func (api *API) UpdateWarMachinePosition(ctx context.Context, ed *battle_arena.E
 	}
 
 	api.NetMessageBus.Send(ctx, messagebus.NetBusKey(HubKeyWarMachineLocationUpdated), ed.WarMachineLocation)
-}
-
-func (api *API) UpdateWarMachineQueue(ctx context.Context, ed *battle_arena.EventData) {
-	if ed.WarMachineQueue == nil {
-		return
-	}
-	go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionWarMachineQueueUpdated, ed.WarMachineQueue.FactionID)), ed.WarMachineQueue.WarMachines)
 }

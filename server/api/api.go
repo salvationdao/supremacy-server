@@ -12,11 +12,11 @@ import (
 	"server/battle_arena"
 	"server/db"
 	"server/passport"
-	"sync"
 	"time"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
+	"github.com/sasha-s/go-deadlock"
 	"nhooyr.io/websocket"
 
 	sentryhttp "github.com/getsentry/sentry-go/http"
@@ -45,7 +45,7 @@ type BroadcastPayload struct {
 }
 
 type LiveVotingData struct {
-	sync.Mutex
+	deadlock.Mutex
 	TotalVote server.BigInt
 }
 
@@ -60,9 +60,9 @@ type VotePriceSystem struct {
 
 type FactionVotePrice struct {
 	// priority lock
-	OuterLock      sync.Mutex
-	NextAccessLock sync.Mutex
-	DataLock       sync.Mutex
+	OuterLock      deadlock.Mutex
+	NextAccessLock deadlock.Mutex
+	DataLock       deadlock.Mutex
 
 	// price
 	CurrentVotePriceSups server.BigInt
@@ -97,8 +97,8 @@ type API struct {
 	MessageBus    *messagebus.MessageBus
 	NetMessageBus *messagebus.NetBus
 	Passport      *passport.Passport
-	VotingCycle  func(func(*VoteAbility, FactionUserVoteMap, *FactionTransactions, *FactionTotalVote, *VoteWinner, *VotingCycleTicker, UserVoteMap))
-	factionMap map[server.FactionID]*server.Faction
+	VotingCycle   func(func(*VoteAbility, FactionUserVoteMap, *FactionTransactions, *FactionTotalVote, *VoteWinner, *VotingCycleTicker, UserVoteMap))
+	factionMap    map[server.FactionID]*server.Faction
 
 	// voting channels
 	liveSupsSpend map[server.FactionID]*LiveVotingData
@@ -117,14 +117,15 @@ type API struct {
 	votePriceSystem  *VotePriceSystem
 
 	// faction abilities
-	gameAbilityPool map[server.FactionID]func(func(*sync.Map))
+	gameAbilityPool map[server.FactionID]func(func(*deadlock.Map))
 
 	// viewer live count
-	viewerLiveCount *ViewerLiveCount
+	ViewerLiveCount *ViewerLiveCount
 
 	battleEndInfo *BattleEndInfo
 }
 
+const SupremacyGameUserID = "4fae8fdf-584f-46bb-9cb9-bb32ae20177e"
 
 // NewAPI registers routes
 func NewAPI(
@@ -179,7 +180,7 @@ func NewAPI(
 		RingCheckAuthMap: NewRingCheckMap(),
 
 		// game ability pool
-		gameAbilityPool: make(map[server.FactionID]func(func(*sync.Map))),
+		gameAbilityPool: make(map[server.FactionID]func(func(*deadlock.Map))),
 
 		// faction viewer count
 		battleEndInfo: &BattleEndInfo{},
@@ -196,6 +197,7 @@ func NewAPI(
 			r.Use(sentryHandler.Handle)
 		})
 		r.Mount("/check", CheckRouter(log_helpers.NamedLogger(log, "check router"), conn))
+		r.Mount(fmt.Sprintf("/%s/Supremacy_game", SupremacyGameUserID), PassportWebhookRouter(log, conn, config.PassportWebhookSecret, api))
 
 		// Web sockets are long-lived, so we don't want the sentry performance tracer running for the life-time of the connection.
 		// See roothub.ServeHTTP for the setup of sentry on this route.
@@ -214,8 +216,8 @@ func NewAPI(
 	})
 
 	// set viewer live count
-	api.viewerLiveCount = NewViewerLiveCount(api.NetMessageBus)
-	api.UserMap = NewUserMap(api.viewerLiveCount)
+	api.ViewerLiveCount = NewViewerLiveCount(api.NetMessageBus)
+	api.UserMap = NewUserMap(api.ViewerLiveCount)
 	api.UserMultiplier = NewUserMultiplier(api.UserMap, api.Passport, api.BattleArena)
 
 	///////////////////////////
@@ -243,22 +245,6 @@ func NewAPI(
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventGameEnd, api.BattleEndSignal)
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventWarMachineDestroyed, api.WarMachineDestroyedBroadcast)
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventWarMachinePositionChanged, api.UpdateWarMachinePosition)
-	api.BattleArena.Events.AddEventHandler(battle_arena.EventWarMachineQueueUpdated, api.UpdateWarMachineQueue)
-
-	///////////////////////////
-	//	 Passport Events	 //
-	///////////////////////////
-	// api.Passport.Events.AddEventHandler(passport.EventUserOnlineStatus, api.PassportUserOnlineStatusHandler)
-	api.Passport.Events.AddEventHandler(passport.EventUserUpdated, api.PassportUserUpdatedHandler)
-	api.Passport.Events.AddEventHandler(passport.EventUserEnlistFaction, api.PassportUserEnlistFactionHandler)
-	api.Passport.Events.AddEventHandler(passport.EventBattleQueueJoin, api.PassportBattleQueueJoinHandler)
-	api.Passport.Events.AddEventHandler(passport.EventBattleQueueLeave, api.PassportBattleQueueReleaseHandler)
-	api.Passport.Events.AddEventHandler(passport.EventWarMachineQueuePositionGet, api.PassportWarMachineQueuePositionHandler)
-	api.Passport.Events.AddEventHandler(passport.EventAuthRingCheck, api.AuthRingCheckHandler)
-	api.Passport.Events.AddEventHandler(passport.EventAssetInsurancePay, api.PassportAssetInsurancePayHandler)
-	api.Passport.Events.AddEventHandler(passport.EventFactionStatGet, api.PassportFactionStatGetHandler)
-	api.Passport.Events.AddEventHandler(passport.EventUserSupsMultiplierGet, api.PassportUserSupsMultiplierGetHandler)
-	api.Passport.Events.AddEventHandler(passport.EventUserStatGet, api.PassportUserStatGetHandler)
 
 	api.SetupAfterConnections(ctx, conn)
 
@@ -266,35 +252,28 @@ func NewAPI(
 }
 
 func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
-	var factions []*server.Faction
+	api.factionMap = make(map[server.FactionID]*server.Faction)
 
-	for len(factions) <= 0 {
-		wg := sync.WaitGroup{}
-		wg.Add(1)
-		var err error
-		api.Passport.FactionAll(func(msg []byte) {
-			defer wg.Done()
-			resp := &passport.FactionAllResponse{}
-			err = json.Unmarshal(msg, resp)
-			if err != nil {
-				return
-			}
-
-			factions = resp.Factions
-		})
-		wg.Wait()
-
-		if len(factions) == 0 {
-			api.Log.Fatal().Err(err).Msg("issue reading from passport connection.")
-			os.Exit(-1)
+	wg := deadlock.WaitGroup{}
+	wg.Add(1)
+	var err error
+	api.Passport.FactionAll(func(factions []*server.Faction) {
+		defer wg.Done()
+		for _, f := range factions {
+			api.factionMap[f.ID] = f
 		}
+	})
+	wg.Wait()
+
+	if len(api.factionMap) == 0 {
+		api.Log.Fatal().Err(err).Msg("issue reading from passport connection.")
+		os.Exit(-1)
 	}
 
 	go api.startSpoilOfWarBroadcaster(ctx)
 
 	// build faction map for main server
-	api.factionMap = make(map[server.FactionID]*server.Faction)
-	for _, faction := range factions {
+	for _, faction := range api.factionMap {
 		err := db.FactionVotePriceGet(context.Background(), conn, faction)
 		if err != nil {
 			api.Log.Err(err).Msg("unable to get faction vote price")
@@ -303,7 +282,7 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 		api.factionMap[faction.ID] = faction
 
 		// start live voting ticker
-		api.liveSupsSpend[faction.ID] = &LiveVotingData{sync.Mutex{}, server.BigInt{Int: *big.NewInt(0)}}
+		api.liveSupsSpend[faction.ID] = &LiveVotingData{deadlock.Mutex{}, server.BigInt{Int: *big.NewInt(0)}}
 
 		// game ability pool
 
@@ -311,10 +290,10 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 	}
 
 	// initialise vote price system
-	go api.startVotePriceSystem(ctx, factions, conn)
+	go api.startVotePriceSystem(ctx, conn)
 
 	// initialise voting cycle
-	go api.StartVotingCycle(ctx, factions)
+	go api.StartVotingCycle(ctx)
 
 	// set faction map for battle arena server
 	api.BattleArena.SetFactionMap(api.factionMap)
@@ -324,8 +303,8 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 	liveVotingBroadcasterLogger := log_helpers.NamedLogger(api.Log, "Live Sups spend Broadcaster").Level(zerolog.Disabled)
 	liveVotingBroadcaster := tickle.New("Live Sups spend Broadcaster", 0.2, func() (int, error) {
 		totalVote := server.BigInt{Int: *big.NewInt(0)}
-		totalVoteMutex := sync.Mutex{}
-		for _, faction := range factions {
+		totalVoteMutex := deadlock.Mutex{}
+		for _, faction := range api.factionMap {
 			voteCount := big.NewInt(0)
 			api.liveSupsSpend[faction.ID].Lock()
 			voteCount.Add(voteCount, &api.liveSupsSpend[faction.ID].TotalVote.Int)
@@ -357,7 +336,7 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 // Event handlers
 func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client) error {
 	// initialise a client detail channel if not on the list
-	api.viewerLiveCount.Add(server.FactionID(uuid.Nil))
+	api.ViewerLiveCount.Add(server.FactionID(uuid.Nil))
 
 	// broadcast current game state
 	go func() {
@@ -394,12 +373,12 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client) error 
 	noClientLeft := false
 	if currentUser != nil {
 		// remove client multipliers
-		api.viewerLiveCount.Sub(currentUser.FactionID)
+		api.ViewerLiveCount.Sub(currentUser.FactionID)
 		api.UserMultiplier.Offline(currentUser.ID)
 		// clean up the client detail map
 		noClientLeft = api.UserMap.Remove(wsc)
 	} else {
-		api.viewerLiveCount.Sub(server.FactionID(uuid.Nil))
+		api.ViewerLiveCount.Sub(server.FactionID(uuid.Nil))
 	}
 
 	// set client offline
@@ -447,6 +426,11 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client) error 
 					api.votePhaseChecker.Phase = VotePhaseVoteCooldown
 					api.votePhaseChecker.EndTime = time.Now().Add(time.Duration(va.BattleAbility.CooldownDurationSecond) * time.Second)
 					api.votePhaseChecker.Unlock()
+
+					// stop vote price update when cooldown
+					if api.votePriceSystem.VotePriceUpdater.NextTick != nil {
+						api.votePriceSystem.VotePriceUpdater.Stop()
+					}
 
 					// broadcast current stage to faction users
 					go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)

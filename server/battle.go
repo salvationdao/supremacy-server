@@ -65,7 +65,9 @@ type BattleID uuid.UUID
 type BattleQueueMetadata struct {
 	WarMachineMetadata *WarMachineMetadata `json:"warMachineMetadata" db:"war_machine_metadata"`
 	QueuedAt           time.Time           `json:"queuedAt" db:"queued_at"`
-	ReleasedAt         *time.Time          `json:"releasedAt" db:"released_at"`
+	DeletedAt          *time.Time          `json:"deletedAt,omitempty" db:"deleted_at,omitempty"`
+	ContractReward     string              `json:"contractReward" db:"contract_reward"`
+	IsInsured          bool                `json:"isInsured" db:"is_insured"`
 }
 
 // IsNil returns true for a nil uuid.
@@ -115,4 +117,20 @@ func (id *BattleID) Scan(src interface{}) error {
 	*id = BattleID(uid)
 	// Retrun error
 	return err
+}
+
+type RepairMode string
+
+const (
+	RepairModeFast     = "FAST"
+	RepairModeStandard = "STANDARD"
+)
+
+type AssetRepairRecord struct {
+	Hash              string     `json:"hash" db:"hash"`
+	ExpectCompletedAt time.Time  `json:"expectCompleteAt" db:"expect_complete_at"`
+	RepairMode        RepairMode `json:"repairMode" db:"repair_mode"`
+	IsPaidToComplete  bool       `json:"isPaidToComplete" db:"is_paid_to_complete"`
+	CompletedAt       *time.Time `json:"completedAt,omitempty" db:"completed_at,omitempty"`
+	CreatedAt         time.Time  `json:"createdAt" db:"created_at"`
 }

@@ -9,7 +9,6 @@ import (
 	"server/battle_arena"
 	"server/db"
 	"sort"
-	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -17,6 +16,7 @@ import (
 	"github.com/ninja-software/tickle"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
+	"github.com/sasha-s/go-deadlock"
 )
 
 /***************
@@ -45,12 +45,12 @@ func (api *API) startSpoilOfWarBroadcaster(ctx context.Context) {
 * Vote Price System *
 ********************/
 
-const VotePriceMultiplierPercentage = 1 // 1%
+const VotePriceMultiplierPercentage = 10 // 1%
 const VotePriceUpdaterTickSecond = 10
 
 const VotePriceAccuracy = 10000
 
-func (api *API) startVotePriceSystem(ctx context.Context, factions []*server.Faction, conn *pgxpool.Pool) {
+func (api *API) startVotePriceSystem(ctx context.Context, conn *pgxpool.Pool) {
 	// initialise value
 	api.votePriceSystem = &VotePriceSystem{
 		GlobalVotePerTick:   []int64{},
@@ -64,11 +64,11 @@ func (api *API) startVotePriceSystem(ctx context.Context, factions []*server.Fac
 	}
 
 	// initialise faction vote price map
-	for _, faction := range factions {
+	for _, faction := range api.factionMap {
 		factionVotePrice := &FactionVotePrice{
-			OuterLock:            sync.Mutex{},
-			NextAccessLock:       sync.Mutex{},
-			DataLock:             sync.Mutex{},
+			OuterLock:            deadlock.Mutex{},
+			NextAccessLock:       deadlock.Mutex{},
+			DataLock:             deadlock.Mutex{},
 			CurrentVotePriceSups: server.BigInt{Int: *big.NewInt(0)},
 			CurrentVotePerTick:   0,
 		}
@@ -103,7 +103,7 @@ func absoluteInt64(x int64) int64 {
 
 // votePriceHighPriorityLock for vote price system to lock all the faction vote price lock
 func (api *API) votePriceHighPriorityLock() {
-	var wg sync.WaitGroup
+	var wg deadlock.WaitGroup
 
 	for _, fvp := range api.votePriceSystem.FactionVotePriceMap {
 		wg.Add(1)
@@ -170,7 +170,7 @@ func (api *API) votePriceUpdaterFactory(ctx context.Context, conn *pgxpool.Pool)
 		api.votePriceSystem.GlobalVotePerTick = append(api.votePriceSystem.GlobalVotePerTick[1:], totalCurrentVote)
 
 		// async calculate new faction vote price
-		var wg sync.WaitGroup
+		var wg deadlock.WaitGroup
 
 		for factionID, fvp := range api.votePriceSystem.FactionVotePriceMap {
 			wg.Add(1)
@@ -257,7 +257,7 @@ func calVotePrice(globalTotalVote int64, currentVotePrice server.BigInt, current
 	if currentVotePerTick*300 > globalTotalVote {
 		// price go up
 		if votePriceSups.Cmp(big.NewInt(1000000000000000000)) < 0 {
-			priceChange.Mul(&priceChange.Int, big.NewInt(2))
+			priceChange.Mul(&priceChange.Int, big.NewInt(4))
 		}
 
 		votePriceSups.Add(&votePriceSups.Int, &priceChange.Int)
@@ -266,21 +266,17 @@ func calVotePrice(globalTotalVote int64, currentVotePrice server.BigInt, current
 		if votePriceSups.Cmp(big.NewInt(1000000000)) < 0 { // price floor
 			priceChange = server.BigInt{Int: *big.NewInt(0)}
 		} else if votePriceSups.Cmp(big.NewInt(1000000000000)) < 0 {
-			priceChange.Div(&priceChange.Int, big.NewInt(4))
+			priceChange.Div(&priceChange.Int, big.NewInt(5))
 		} else if votePriceSups.Cmp(big.NewInt(1000000000000000000)) < 0 {
-			priceChange.Div(&priceChange.Int, big.NewInt(2))
+			priceChange.Div(&priceChange.Int, big.NewInt(3))
 		}
-
-		// increase the price drop to 5%
-		priceChange.Mul(&priceChange.Int, big.NewInt(5))
-		priceChange.Div(&priceChange.Int, big.NewInt(2))
 
 		votePriceSups.Sub(&votePriceSups.Int, &priceChange.Int)
 	}
 
-	if votePriceSups.Cmp(big.NewInt(1000000000)) <= 0 {
+	if votePriceSups.Cmp(big.NewInt(1000000000000)) <= 0 {
 		// set minimum price of voting
-		return server.BigInt{Int: *big.NewInt(1000000000)}
+		return server.BigInt{Int: *big.NewInt(1000000000000)}
 	}
 
 	return votePriceSups
@@ -318,7 +314,7 @@ const (
 **************/
 
 type VotePhaseChecker struct {
-	sync.RWMutex
+	deadlock.RWMutex
 	Phase   VotePhase `json:"phase"`
 	EndTime time.Time `json:"endTime"`
 }
@@ -326,14 +322,14 @@ type VotePhaseChecker struct {
 type VoteAbility struct {
 	BattleAbility     *server.BattleAbility
 	FactionAbilityMap map[server.FactionID]*server.GameAbility
-	sync.Mutex
+	deadlock.Mutex
 }
 
 type FactionUserVoteMap map[server.FactionID]map[server.UserID]int64
 
 type FactionTransactions struct {
 	Transactions []string
-	sync.Mutex
+	deadlock.Mutex
 }
 
 type FactionTotalVote struct {
@@ -364,10 +360,10 @@ type UserVoteMap map[server.UserID]int64
 ***********************/
 
 // StartVotingCycle start voting cycle ticker
-func (api *API) StartVotingCycle(ctx context.Context, factions []*server.Faction) {
+func (api *API) StartVotingCycle(ctx context.Context) {
 	// initialise current vote stage
 	api.votePhaseChecker = &VotePhaseChecker{
-		sync.RWMutex{},
+		deadlock.RWMutex{},
 		VotePhaseHold,
 		time.Now(),
 	}
@@ -380,7 +376,7 @@ func (api *API) StartVotingCycle(ctx context.Context, factions []*server.Faction
 
 	// initial faction user voting map
 	factionUserVoteMap := make(FactionUserVoteMap)
-	for _, f := range factions {
+	for _, f := range api.factionMap {
 		factionUserVoteMap[f.ID] = make(map[server.UserID]int64)
 		voteAbility.FactionAbilityMap[f.ID] = &server.GameAbility{}
 	}
@@ -519,6 +515,7 @@ func (api *API) stopVotingCycle(ctx context.Context) []*server.BattleUserVote {
 			vct.AbilityRightResultBroadcaster.Stop()
 		}
 
+		// stop vote price update when game end
 		if api.votePriceSystem.VotePriceUpdater.NextTick != nil {
 			api.votePriceSystem.VotePriceUpdater.Stop()
 		}
@@ -527,7 +524,7 @@ func (api *API) stopVotingCycle(ctx context.Context) []*server.BattleUserVote {
 		defer fts.Unlock()
 		if len(fts.Transactions) > 0 {
 			// commit the transactions
-			api.Passport.ReleaseTransactions(context.Background(), fts.Transactions)
+			api.Passport.ReleaseTransactions(fts.Transactions)
 		}
 
 		for userID, voteCount := range uvm {
@@ -590,10 +587,6 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 
 			// at the end of ability right voting
 			case VotePhaseVoteAbilityRight:
-				if api.votePriceSystem.VotePriceUpdater.NextTick != nil {
-					api.votePriceSystem.VotePriceUpdater.Stop()
-				}
-
 				// stop broadcaster when the vote right is done
 				if vct.AbilityRightResultBroadcaster.NextTick != nil {
 					vct.AbilityRightResultBroadcaster.Stop()
@@ -717,6 +710,11 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 					api.votePhaseChecker.EndTime = time.Now().Add(time.Duration(va.BattleAbility.CooldownDurationSecond) * time.Second)
 					api.votePhaseChecker.Unlock()
 
+					// stop vote price update when cooldown
+					if api.votePriceSystem.VotePriceUpdater.NextTick != nil {
+						api.votePriceSystem.VotePriceUpdater.Stop()
+					}
+
 					// broadcast current stage to faction users
 					go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
 
@@ -787,6 +785,11 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 					api.votePhaseChecker.Phase = VotePhaseVoteCooldown
 					api.votePhaseChecker.EndTime = time.Now().Add(time.Duration(va.BattleAbility.CooldownDurationSecond) * time.Second)
 					api.votePhaseChecker.Unlock()
+
+					// stop vote price update in when cooldown
+					if api.votePriceSystem.VotePriceUpdater.NextTick != nil {
+						api.votePriceSystem.VotePriceUpdater.Stop()
+					}
 
 					// broadcast current stage to faction users
 					go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)

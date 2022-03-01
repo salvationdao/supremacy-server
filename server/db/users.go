@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"server"
+	"time"
 
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/ninja-software/terror/v2"
@@ -165,12 +166,19 @@ func UserStatGet(ctx context.Context, conn Conn, userID server.UserID) (*server.
 	return user, nil
 }
 
+type dbMultiplier struct {
+	Key           string `json:"key"`
+	Value         int    `json:"value"`
+	RemainSeconds int    `json:"remainSeconds"`
+}
+
 // UserMultiplierStore store users' sups multipliers
 func UserMultiplierStore(ctx context.Context, conn Conn, usm []*server.UserSupsMultiplierSend) error {
 	if len(usm) == 0 {
 		return nil
 	}
 
+	now := time.Now()
 	var args []interface{}
 
 	q := `
@@ -180,7 +188,21 @@ func UserMultiplierStore(ctx context.Context, conn Conn, usm []*server.UserSupsM
 			
 	`
 	for i, us := range usm {
-		b, err := json.Marshal(us.SupsMultipliers)
+		// reformat the sups multipliers before store
+		dbMultipliers := []*dbMultiplier{}
+		for _, sm := range us.SupsMultipliers {
+			remainSecond := sm.ExpiredAt.Sub(now).Seconds()
+			if remainSecond <= 0 {
+				continue
+			}
+			dbMultipliers = append(dbMultipliers, &dbMultiplier{
+				Key:           sm.Key,
+				Value:         sm.Value,
+				RemainSeconds: int(remainSecond),
+			})
+		}
+
+		b, err := json.Marshal(dbMultipliers)
 		if err != nil {
 			return terror.Error(err)
 		}
@@ -209,16 +231,27 @@ func UserMultiplierStore(ctx context.Context, conn Conn, usm []*server.UserSupsM
 
 // UserMultiplierGet read user
 func UserMultiplierGet(ctx context.Context, conn Conn, userID server.UserID) ([]*server.SupsMultiplier, error) {
-	supsMultipliers := []*server.SupsMultiplier{}
+	dms := []*dbMultiplier{}
 
 	q := `
 		SELECT sups_multipliers FROM users WHERE id = $1
 	`
 
-	err := pgxscan.Get(ctx, conn, &supsMultipliers, q, userID)
+	err := pgxscan.Get(ctx, conn, &dms, q, userID)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
 
-	return supsMultipliers, nil
+	// reformat the sups multipliers
+	result := []*server.SupsMultiplier{}
+	now := time.Now()
+	for _, dm := range dms {
+		result = append(result, &server.SupsMultiplier{
+			Key:       dm.Key,
+			Value:     dm.Value,
+			ExpiredAt: now.Add(time.Duration(dm.RemainSeconds) * time.Second),
+		})
+	}
+
+	return result, nil
 }

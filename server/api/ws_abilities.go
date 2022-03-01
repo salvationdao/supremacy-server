@@ -7,9 +7,7 @@ import (
 	"math/big"
 	"server"
 	"server/battle_arena"
-	"server/passport"
 	"strings"
-	"sync"
 
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -18,6 +16,7 @@ import (
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
+	"github.com/sasha-s/go-deadlock"
 	"nhooyr.io/websocket"
 )
 
@@ -41,65 +40,7 @@ func NewFactionController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Fa
 	// subscription
 	api.SecureUserFactionSubscribeCommand(HubKeyFactionAbilitiesUpdated, factionHub.FactionAbilitiesUpdateSubscribeHandler)
 	api.SecureUserFactionSubscribeCommand(HubKeyWarMachineAbilitiesUpdated, factionHub.WarMachineAbilitiesUpdateSubscribeHandler)
-	api.SecureUserFactionSubscribeCommand(HubKeyUserWarMachineQueueUpdated, factionHub.UserWarMachineQueueUpdatedSubscribeHandler)
 	return factionHub
-}
-
-type UserWarMachineQueueUpdatedSubscribeRequest struct {
-	*hub.HubCommandRequest
-	Payload struct {
-		FactionID server.FactionID `json:"factionID"`
-		UserID    server.UserID    `json:"userID"`
-	} `json:"payload"`
-}
-
-const HubKeyUserWarMachineQueueUpdated hub.HubCommandKey = "USER:WAR:MACHINE:QUEUE:UPDATED"
-
-// UserWarMachineQueueUpdatedSubscribeHandler subscribes a user to a list of their queued mechs
-func (fc *FactionControllerWS) UserWarMachineQueueUpdatedSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	req := &hub.HubCommandRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return "", "", terror.Error(err, "Invalid request received")
-	}
-
-	hcd := fc.API.UserMap.GetUserDetail(wsc)
-	if hcd == nil {
-		return "", "", terror.Error(fmt.Errorf("User not found"))
-	}
-
-	if hcd.FactionID.IsNil() || hcd.FactionID.String() == "" {
-		return "", "", terror.Error(fmt.Errorf("no faction ID provided"))
-	}
-
-	inBattleWarMachines := fc.API.BattleArena.InGameWarMachines()
-
-	fc.API.BattleArena.BattleQueueMap[hcd.FactionID] <- func(wmq *battle_arena.WarMachineQueuingList) {
-		warMachineQueuePosition := []*passport.WarMachineQueuePosition{}
-		for i, wm := range wmq.WarMachines {
-			if wm.OwnedByID != hcd.ID {
-				continue
-			}
-			warMachineQueuePosition = append(warMachineQueuePosition, &passport.WarMachineQueuePosition{
-				WarMachineMetadata: wm,
-				Position:           i,
-			})
-		}
-		// get in game war machine
-		for _, wm := range inBattleWarMachines {
-			if wm.OwnedByID != hcd.ID {
-				continue
-			}
-			warMachineQueuePosition = append(warMachineQueuePosition, &passport.WarMachineQueuePosition{
-				WarMachineMetadata: wm,
-				Position:           -1,
-			})
-		}
-		reply(warMachineQueuePosition)
-	}
-
-	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserWarMachineQueueUpdated, hcd.ID))
-	return req.TransactionID, busKey, nil
 }
 
 type GameAbilityContributeRequest struct {
@@ -132,6 +73,7 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 
 	fc.API.votePhaseChecker.RLock()
 	if fc.API.votePhaseChecker.Phase == VotePhaseWaitMechIntro {
+		fc.API.votePhaseChecker.RUnlock()
 		return terror.Error(terror.ErrForbidden, "Ability Contribute are available after intro")
 	}
 	fc.API.votePhaseChecker.RUnlock()
@@ -156,7 +98,7 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 	}
 	req.Payload.Amount.Mul(&req.Payload.Amount.Int, oneSups)
 
-	fc.API.gameAbilityPool[factionID](func(fap *sync.Map) {
+	fc.API.gameAbilityPool[factionID](func(fap *deadlock.Map) {
 		// find ability
 
 		faIface, ok := fap.Load(req.Payload.GameAbilityID.String())
@@ -261,11 +203,6 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 				fap.Store(fa.GameAbility.Identity.String(), fa)
 				fa.PriceRW.Unlock()
 
-				// store new target price to passport server, if the ability is nft
-				if fa.GameAbility.AbilityHash != "" && fa.GameAbility.WarMachineHash != "" {
-					fc.API.Passport.AbilityUpdateTargetPrice(fa.GameAbility.AbilityHash, fa.GameAbility.WarMachineHash, fa.TargetPrice.String())
-				}
-
 				// trigger battle arena function to handle game ability
 				abilityTriggerEvent := &server.GameAbilityEvent{
 					IsTriggered:         true,
@@ -356,7 +293,7 @@ func (fc *FactionControllerWS) FactionAbilitiesUpdateSubscribeHandler(ctx contex
 		return "", "", nil
 	}
 
-	fc.API.gameAbilityPool[hcd.FactionID](func(fap *sync.Map) {
+	fc.API.gameAbilityPool[hcd.FactionID](func(fap *deadlock.Map) {
 		abilities := []*server.GameAbility{}
 
 		fap.Range(func(key interface{}, gameAbilityPrice interface{}) bool {
@@ -398,7 +335,7 @@ func (fc *FactionControllerWS) WarMachineAbilitiesUpdateSubscribeHandler(ctx con
 		return "", "", terror.Error(fmt.Errorf("User not found"))
 	}
 
-	fc.API.gameAbilityPool[hcd.FactionID](func(fap *sync.Map) {
+	fc.API.gameAbilityPool[hcd.FactionID](func(fap *deadlock.Map) {
 		abilities := []*server.GameAbility{}
 		fap.Range(func(key interface{}, gameAbilityPrice interface{}) bool {
 			fa := gameAbilityPrice.(*GameAbilityPrice)
