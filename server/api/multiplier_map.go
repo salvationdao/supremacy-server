@@ -9,11 +9,11 @@ import (
 	"server/db"
 	"server/passport"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4"
+	"github.com/sasha-s/go-deadlock"
 )
 
 type ClientAction string
@@ -44,32 +44,32 @@ type UserMultiplier struct {
 	CurrentMaps *Multiplier
 	CheckMaps   *Multiplier
 
-	BattleIDMap sync.Map
+	BattleIDMap deadlock.Map
 
 	// other dependencies
 	UserMap     *UserMap
 	Passport    *passport.Passport
 	BattleArena *battle_arena.BattleArena
 
-	ActiveMap *sync.Map
+	ActiveMap *deadlock.Map
 }
 
 type Multiplier struct {
-	OnlineMap         sync.Map
-	ApplauseMap       sync.Map
-	PickedLocationMap sync.Map
+	OnlineMap         deadlock.Map
+	ApplauseMap       deadlock.Map
+	PickedLocationMap deadlock.Map
 
 	// battle multiplier
-	WinningFactionMap sync.Map
-	WinningUserMap    sync.Map
-	KillMap           sync.Map
+	WinningFactionMap deadlock.Map
+	WinningUserMap    deadlock.Map
+	KillMap           deadlock.Map
 
 	// most sups spend
 	MostSupsPend *MostSupsPendMap // key: battleID_userID
 }
 
 type MostSupsPendMap struct {
-	sync.Map
+	deadlock.Map
 }
 
 func (msp *MostSupsPendMap) Get(battleID string, userID string) *MultiplierAction {
@@ -155,14 +155,14 @@ type MultiplierAction struct {
 // TODO: set up sups ticker
 func NewUserMultiplier(userMap *UserMap, pp *passport.Passport, ba *battle_arena.BattleArena) *UserMultiplier {
 	um := &UserMultiplier{
-		CurrentMaps: &Multiplier{sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}, &MostSupsPendMap{}},
-		CheckMaps:   &Multiplier{sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}, sync.Map{}, &MostSupsPendMap{}},
-		BattleIDMap: sync.Map{},
+		CurrentMaps: &Multiplier{deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, &MostSupsPendMap{}},
+		CheckMaps:   &Multiplier{deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, &MostSupsPendMap{}},
+		BattleIDMap: deadlock.Map{},
 		UserMap:     userMap,
 		Passport:    pp,
 		BattleArena: ba,
 
-		ActiveMap: &sync.Map{},
+		ActiveMap: &deadlock.Map{},
 	}
 
 	go func() {
@@ -636,8 +636,8 @@ func (um *UserMultiplier) SupsTick() {
 	um.Passport.SendTickerMessage(userMap)
 }
 
-// PushUserMultiplierToPassport push the multiplier actions list of the user to passport user
-func (um *UserMultiplier) PushUserMultiplierToPassport(userID server.UserID) {
+// UserMultiplierGet push the multiplier actions list of the user to passport user
+func (um *UserMultiplier) UserMultiplierGet(userID server.UserID) []*server.SupsMultiplier {
 	uidStr := userID.String()
 	mas := make(map[string]*MultiplierAction)
 	now := time.Now()
@@ -690,11 +690,20 @@ func (um *UserMultiplier) PushUserMultiplierToPassport(userID server.UserID) {
 		return true
 	})
 
-	if len(mas) == 0 {
-		go um.UserSupsMultiplierToPassport(userID, nil, 100)
-		return
+	result := []*server.SupsMultiplier{}
+	remain := um.UserRemainRate(now, uidStr)
+	for key, sm := range mas {
+		m := sm.MultiplierValue
+		m = m * remain / 100
+
+		result = append(result, &server.SupsMultiplier{
+			Key:       key,
+			Value:     m,
+			ExpiredAt: sm.Expiry,
+		})
 	}
-	go um.UserSupsMultiplierToPassport(userID, mas, 100)
+
+	return result
 }
 
 func (um *UserMultiplier) UserSupsMultiplierToPassport(userID server.UserID, supsMultiplierMap map[string]*MultiplierAction, multiplier int) {

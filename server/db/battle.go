@@ -159,7 +159,7 @@ func CreateBattleStateEvent(ctx context.Context, conn Conn, battleID server.Batt
 /*********************
 * Battle Queue stuff *
 *********************/
-func BattleQueueInsert(ctx context.Context, conn Conn, warMachineMetadata *server.WarMachineMetadata) error {
+func BattleQueueInsert(ctx context.Context, conn Conn, warMachineMetadata *server.WarMachineMetadata, contractReward string, isInsured bool) error {
 	// marshal metadata
 	jb, err := json.Marshal(warMachineMetadata)
 	if err != nil {
@@ -168,12 +168,12 @@ func BattleQueueInsert(ctx context.Context, conn Conn, warMachineMetadata *serve
 
 	q := `
 		INSERT INTO 
-			battle_war_machine_queues (war_machine_metadata)
+			battle_war_machine_queues (war_machine_metadata, contract_reward, is_insured)
 		VALUES
-			($1)
+			($1, $2, $3)
 	`
 
-	_, err = conn.Exec(ctx, q, jb)
+	_, err = conn.Exec(ctx, q, jb, contractReward, isInsured)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -194,7 +194,7 @@ func BattleQueueWarMachineUpdate(ctx context.Context, conn Conn, warMachineMetad
 	SET
 		war_machine_metadata = $1
 	WHERE
-		war_machine_metadata ->> 'hash' = $2 AND released_at ISNULL
+		war_machine_metadata ->> 'hash' = $2 AND deleted_at ISNULL
 	`
 
 	_, err = conn.Exec(ctx, q, jb, warMachineMetadata.Hash)
@@ -210,11 +210,11 @@ func BattleQueueRemove(ctx context.Context, conn Conn, warMachineMetadata *serve
 			UPDATE
 				battle_war_machine_queues
 			SET
-				released_at = NOW()
+				deleted_at = NOW()
 			WHERE
 				war_machine_metadata ->> 'hash' = $1 AND 
 				war_machine_metadata ->> 'factionID' = $2 AND 
-				released_at ISNULL
+				deleted_at ISNULL
 		`
 
 	_, err := conn.Exec(ctx, q, warMachineMetadata.Hash, warMachineMetadata.FactionID)
@@ -225,7 +225,7 @@ func BattleQueueRemove(ctx context.Context, conn Conn, warMachineMetadata *serve
 	return nil
 }
 
-func BattleQueueRead(ctx context.Context, conn Conn, factionID server.FactionID) ([]*server.WarMachineMetadata, error) {
+func BattleQueueGetByFactionID(ctx context.Context, conn Conn, factionID server.FactionID) ([]*server.WarMachineMetadata, error) {
 	bqs := []*server.BattleQueueMetadata{}
 	q := `
 			SELECT
@@ -233,7 +233,7 @@ func BattleQueueRead(ctx context.Context, conn Conn, factionID server.FactionID)
 			FROM
 				battle_war_machine_queues
 			WHERE
-				war_machine_metadata ->> 'factionID' = $1 AND released_at ISNULL
+				war_machine_metadata ->> 'factionID' = $1 AND deleted_at ISNULL
 			ORDER BY
 				queued_at asc
 		`
@@ -251,21 +251,78 @@ func BattleQueueRead(ctx context.Context, conn Conn, factionID server.FactionID)
 	return wms, nil
 }
 
-func BattleQueueingHashesGet(ctx context.Context, conn Conn) ([]string, error) {
-	bqh := []string{}
+func AssetQueuingStat(ctx context.Context, conn Conn, hash string) (*server.BattleQueueMetadata, error) {
+	result := &server.BattleQueueMetadata{}
 	q := `
-		SELECT
-			war_machine_metadata ->> 'hash' as hash
+		SELECT 
+			*
 		FROM
 			battle_war_machine_queues
-		where 
-			released_at ISNULL
+		WHERE
+			war_machine_metadata ->> 'hash' = $1 AND deleted_at ISNULL
 	`
-
-	err := pgxscan.Select(ctx, conn, &bqh, q)
+	err := pgxscan.Get(ctx, conn, result, q, hash)
 	if err != nil {
-		return []string{}, terror.Error(err)
+		return nil, terror.Error(err)
 	}
 
-	return bqh, nil
+	return result, nil
+}
+
+/*********************
+* Asset Repair stuff *
+*********************/
+func AssetRepairInsert(ctx context.Context, conn Conn, assetRepairRecord *server.AssetRepairRecord) error {
+	q := `
+		INSERT INTO
+			asset_repair (hash, expect_complete_at, repair_mode)
+		VALUES
+			($1, $2, $3)
+		RETURNING
+			hash, expect_complete_at, repair_mode
+	`
+
+	err := pgxscan.Get(ctx, conn, assetRepairRecord, q,
+		assetRepairRecord.Hash,
+		assetRepairRecord.ExpectCompletedAt,
+		assetRepairRecord.RepairMode,
+	)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	return nil
+}
+
+func AssetRepairIncompleteGet(ctx context.Context, conn Conn, assetRepairRecord *server.AssetRepairRecord) error {
+	q := `
+		SELECT * FROM asset_repair WHERE hash = $1 AND completed_at ISNULL;
+	`
+
+	err := pgxscan.Get(ctx, conn, assetRepairRecord, q, assetRepairRecord.Hash)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	return nil
+}
+
+func AssetRepairPaidToComplete(ctx context.Context, conn Conn, assetRepairRecord *server.AssetRepairRecord) error {
+	q := `
+		UPDATE
+			asset_repair
+		SET
+			is_paidToComplete = TRUE,
+			completedAt = NOW()
+		WHERE
+			hash = $1 AND completed_at ISNULL
+		RETURNING
+			hash, expect_complete_at, repair_mode, is_paid_to_complete, completed_at, created_at
+	`
+	err := pgxscan.Get(ctx, conn, assetRepairRecord, q, assetRepairRecord.Hash)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	return nil
 }

@@ -119,3 +119,15 @@ func WithToken(apiToken string, next func(w http.ResponseWriter, r *http.Request
 	}
 	return fn
 }
+
+// check passport http request secret
+func WithPassportSecret(secret string, next func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Passport-Authorization") != secret {
+			http.Error(w, "unauthorized", http.StatusForbidden)
+			return
+		}
+		next(w, r)
+	}
+	return fn
+}

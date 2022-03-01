@@ -1,7 +1,6 @@
 package passport
 
 import (
-	"context"
 	"fmt"
 	"server"
 	"time"
@@ -42,7 +41,7 @@ type ReleaseTransactionsReq struct {
 type ReleaseTransactionsResp struct{}
 
 // ReleaseTransactions tells the passport to transfer fund to sup pool
-func (pp *Passport) ReleaseTransactions(ctx context.Context, transactions []string) {
+func (pp *Passport) ReleaseTransactions(transactions []string) {
 	if len(transactions) == 0 {
 		return
 	}
@@ -52,37 +51,33 @@ func (pp *Passport) ReleaseTransactions(ctx context.Context, transactions []stri
 	}
 }
 
-// TransferBattleFundToSupsPool tells the passport to transfer fund to sup pool
-func (pp *Passport) TransferBattleFundToSupsPool(ctx context.Context) error {
-	pp.send <- &Message{
-		Key:           "SUPREMACY:TRANSFER_BATTLE_FUND_TO_SUP_POOL",
-		TransactionID: uuid.Must(uuid.NewV4()).String(),
+type TransferBattleFundToSupPoolReq struct{}
+type TransferBattleFundToSupPoolResp struct{}
+
+// ReleaseTransactions tells the passport to transfer fund to sup pool
+func (pp *Passport) TransferBattleFundToSupsPool() {
+	err := pp.Comms.Call("C.TransferBattleFundToSupPoolHandler", TransferBattleFundToSupPoolReq{}, &TransferBattleFundToSupPoolResp{})
+	if err != nil {
+		pp.Log.Err(err).Str("method", "TransferBattleFundToSupPoolHandler").Msg("rpc error")
 	}
-	return nil
 }
 
-type SupremacyTopSupsContributorResponse struct {
-	Payload SupremacyTopSupsContributor `json:"payload"`
+type TopSupsContributorReq struct {
+	StartTime time.Time `json:"startTime"`
+	EndTime   time.Time `json:"endTime"`
 }
 
-type SupremacyTopSupsContributor struct {
+type TopSupsContributorResp struct {
 	TopSupsContributors       []*server.User    `json:"topSupsContributors"`
 	TopSupsContributeFactions []*server.Faction `json:"topSupsContributeFactions"`
 }
 
-// TopSupsContributorsGet tells the passport to return the top three most sups contributors with in the time frame
-func (pp *Passport) TopSupsContributorsGet(ctx context.Context, startTime, endTime time.Time, callback func(msg []byte)) error {
-	pp.send <- &Message{
-		Key: "SUPREMACY:TOP_SUPS_CONTRIBUTORS",
-		Payload: struct {
-			StartTime time.Time `json:"startTime"`
-			EndTime   time.Time `json:"endTime"`
-		}{
-			StartTime: startTime,
-			EndTime:   endTime,
-		},
-		Callback:      callback,
-		TransactionID: uuid.Must(uuid.NewV4()).String(),
+// ReleaseTransactions tells the passport to transfer fund to sup pool
+func (pp *Passport) TopSupsContributorsGet(startTime, endTime time.Time, callback func(result *TopSupsContributorResp)) {
+	resp := &TopSupsContributorResp{}
+	err := pp.Comms.Call("C.TopSupsContributorHandler", TopSupsContributorReq{}, resp)
+	if err != nil {
+		pp.Log.Err(err).Str("method", "TopSupsContributorHandler").Msg("rpc error")
 	}
-	return nil
+	callback(resp)
 }

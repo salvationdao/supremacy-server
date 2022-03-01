@@ -1,24 +1,29 @@
 package passport
 
 import (
-	"context"
 	"server"
 
-	"github.com/gofrs/uuid"
 	"github.com/ninja-syndicate/hub"
 )
 
-type FactionAllResponse struct {
-	Factions []*server.Faction `json:"payload"`
+type FactionAllReq struct{}
+
+type FactionAllResp struct {
+	Factions []*server.Faction `json:"factions"`
 }
 
 // FactionAll get all the factions from passport server
-func (pp *Passport) FactionAll(callback func(msg []byte)) {
-	pp.send <- &Message{
-		Key:           "FACTION:ALL",
-		TransactionID: uuid.Must(uuid.NewV4()).String(),
-		Callback:      callback,
+func (pp *Passport) FactionAll(callback func(factions []*server.Faction)) {
+	resp := &FactionAllResp{}
+	err := pp.Comms.Call("C.SupremacyFactionAllHandler", FactionAllReq{}, resp)
+	if err != nil {
+		pp.Log.Err(err).Str("method", "SupremacyFactionAllHandler").Msg("rpc error")
 	}
+	callback(resp.Factions)
+}
+
+type FactionStatSendReq struct {
+	FactionStatSends []*FactionStatSend `json:"factionStatSends"`
 }
 
 type FactionStatSend struct {
@@ -27,17 +32,12 @@ type FactionStatSend struct {
 	ToUserSessionID *hub.SessionID      `json:"toUserSessionID,omitempty"`
 }
 
-// FactionStatsSend send faction stat to passport serer
-func (pp *Passport) FactionStatsSend(ctx context.Context, factionStatSends []*FactionStatSend) error {
+type FactionStatSendResp struct{}
 
-	pp.send <- &Message{
-		Key: "SUPREMACY:FACTION_STAT_SEND",
-		Payload: struct {
-			FactionStatSends []*FactionStatSend `json:"factionStatSends"`
-		}{
-			FactionStatSends: factionStatSends,
-		},
-		TransactionID: uuid.Must(uuid.NewV4()).String(),
+// FactionStatsSend send faction stat to passport serer
+func (pp *Passport) FactionStatsSend(factionStatSends []*FactionStatSend) {
+	err := pp.Comms.Call("C.SupremacyFactionStatSendHandler", FactionStatSendReq{factionStatSends}, &FactionStatSendResp{})
+	if err != nil {
+		pp.Log.Err(err).Str("method", "SupremacyFactionStatSendHandler").Msg("rpc error")
 	}
-	return nil
 }
