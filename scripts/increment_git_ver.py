@@ -22,8 +22,6 @@ def current_ver() -> str():
     out = subprocess.check_output(
         ["git", "tag", "--sort=-version:refname"]).decode('ascii').strip()
     out_arr = out.split('\n')
-    out_arr.sort()
-    out_arr.reverse()
 
     logging.debug(out_arr[0])
     logging.debug(out_arr[1])
@@ -43,14 +41,28 @@ logging.debug("selected version: %s", current_version)
 current_branch = current_branch()
 next_version = ""
 
+# fixedString is needed for some repos with borked tags, i.e. 0.0.1.2.3
+fixedString = "{major}.{minor}.{micro}".format(
+    major=current_version.major,
+    minor=current_version.minor,
+    micro=current_version.micro
+)
+
+# If this is not a pre release then increment the microversion
+if not current_version.is_prerelease:
+    fixedString = "{major}.{minor}.{micro}".format(
+        major=current_version.major,
+        minor=current_version.minor,
+        micro=current_version.micro + 1
+    )
+
 
 if current_branch == 'staging':
-    # fixedString is needed for some repos with borked tags, i.e. 0.0.1.2.3
-    fixedString = "{major}.{minor}.{micro}".format(
-        major=current_version.major, minor=current_version.minor, micro=current_version.micro)
     if current_version.is_prerelease:
         next_version = "v{baseVer}-rc.{rc:02d}".format(
-            baseVer=fixedString, rc=current_version.pre[1]+1)
+            baseVer=fixedString,
+            rc=current_version.pre[1] + 1
+        )
     else:
         next_version = "v{baseVer}-rc.01".format(baseVer=fixedString)
 
