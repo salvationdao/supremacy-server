@@ -516,35 +516,20 @@ func (api *API) Close() {
 }
 
 type GlobalAnnouncement struct {
-	Message     string    `json:"message"`
-	DeleteAfter time.Time `json:"deleteAfter"`
+	Message  string `json:"message"`
+	Duration int    `json:"duration"`
 }
-
-type GlobalAnnouncementRequest struct {
-	Message     string    `json:"message"`
-	DeleteAfter time.Time `json:"deleteAfter"`
-}
-
-const HubKeyGlobalAnnouncementSubscribe hub.HubCommandKey = "GLOBAL_ANNOUNCEMENT:SUBSCRIBE"
 
 func (api *API) SendGlobalAnnouncement(w http.ResponseWriter, r *http.Request) (int, error) {
-	req := &GlobalAnnouncementRequest{}
+	req := &GlobalAnnouncement{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
+
 		return http.StatusInternalServerError, terror.Error(err)
 	}
+	defer r.Body.Close()
 
-	fmt.Println("!!!!!!!!!!!!!!")
-	fmt.Println("!!!!!!!!!!!!!!")
-	fmt.Println("!!!!!!!!!!!!!!")
-	fmt.Println("!!!!!!!!!!!!!!", req)
-
-	// ga := &GlobalAnnouncement{
-	// 	Message:     "test",
-	// 	DeleteAfter: time.Now().Add(-3),
-	// }
-
-	// go api.MessageBus.Send(r.Context(), messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), ga)
+	go api.MessageBus.Send(r.Context(), messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), req)
 
 	return http.StatusOK, nil
 
