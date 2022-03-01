@@ -43,6 +43,8 @@ func PassportWebhookRouter(log *zerolog.Logger, conn db.Conn, webhookSecret stri
 	r.Post("/faction_stat", WithPassportSecret(webhookSecret, WithError(c.FactionStatGet)))
 	r.Post("/faction_contract_reward", WithPassportSecret(webhookSecret, WithError(c.FactionContractRewardGet)))
 
+	r.Post("/faction_queue_cost", WithPassportSecret(webhookSecret, WithError(c.FactionQueueCostGet)))
+
 	return r
 }
 
@@ -145,6 +147,7 @@ func (pc *PassportWebhookController) WarMachineJoin(w http.ResponseWriter, r *ht
 	}
 
 	if req.WarMachineMetadata.FactionID.IsNil() {
+		fmt.Println(err, "111111111111111111111111111111")
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("Non-faction war machine is not able to join"))
 	}
 
@@ -154,13 +157,14 @@ func (pc *PassportWebhookController) WarMachineJoin(w http.ResponseWriter, r *ht
 	}
 
 	// set insurance flag
-	userWarMachinePostion, err := pc.API.BattleArena.WarMachineQueue.GetUserWarMachineQueue(req.WarMachineMetadata.FactionID, req.WarMachineMetadata.OwnedByID)
+	warMachinePostion, err := pc.API.BattleArena.WarMachineQueue.GetWarMachineQueuePosition(req.WarMachineMetadata.FactionID, req.WarMachineMetadata.Hash)
 	if err != nil {
+		fmt.Println(err, "2222222222222222222222222222222")
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
 	// return current queuing position
-	return helpers.EncodeJSON(w, userWarMachinePostion)
+	return helpers.EncodeJSON(w, warMachinePostion)
 }
 
 type UserSupsMultiplierGetRequest struct {
@@ -261,11 +265,41 @@ func (pc *PassportWebhookController) FactionContractRewardGet(w http.ResponseWri
 		contractReward = pc.API.BattleArena.WarMachineQueue.Zaibatsu.GetContractReward()
 
 	}
+
+	fmt.Println(contractReward)
 	return helpers.EncodeJSON(w, contractReward)
 }
 
+type FactionQueueCostGetRequest struct {
+	FactionID server.FactionID `json:"factionID"`
+}
+
+func (pc *PassportWebhookController) FactionQueueCostGet(w http.ResponseWriter, r *http.Request) (int, error) {
+	req := &FactionQueueCostGetRequest{}
+	err := json.NewDecoder(r.Body).Decode(req)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err)
+	}
+
+	if req.FactionID.IsNil() || !req.FactionID.IsValid() {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("faction id is empty"), "Faction id is required")
+	}
+
+	cost := 0
+	switch req.FactionID {
+	case server.RedMountainFactionID:
+		cost = pc.API.BattleArena.WarMachineQueue.RedMountain.QueuingLength()
+	case server.BostonCyberneticsFactionID:
+		cost = pc.API.BattleArena.WarMachineQueue.Boston.QueuingLength()
+	case server.ZaibatsuFactionID:
+		cost = pc.API.BattleArena.WarMachineQueue.Zaibatsu.QueuingLength()
+	}
+	return helpers.EncodeJSON(w, cost)
+}
+
 type WarMachineQueuePositionRequest struct {
-	AssetHash string `json:"assethash"`
+	FactionID server.FactionID `json:"factionID"`
+	AssetHash string           `json:"assethash"`
 }
 
 // PassportWarMachineQueuePositionHandler return the list of user's war machines in the queue
@@ -276,23 +310,12 @@ func (pc *PassportWebhookController) WarMachineQueuePositionGet(w http.ResponseW
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	// userWarMachinePosition, err := pc.API.BattleArena.WarMachineQueue.GetUserWarMachineQueue(req.FactionID, req.UserID)
-	// if err != nil {
-	// 	return http.StatusInternalServerError, terror.Error(err)
-	// }
+	warMachinePosition, err := pc.API.BattleArena.WarMachineQueue.GetWarMachineQueuePosition(req.FactionID, req.AssetHash)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err)
+	}
 
-	// // get in game war machine
-	// for _, wm := range pc.API.BattleArena.InGameWarMachines() {
-	// 	if wm.OwnedByID != req.UserID {
-	// 		continue
-	// 	}
-	// 	userWarMachinePosition = append(userWarMachinePosition, &passport.WarMachineQueuePosition{
-	// 		WarMachineMetadata: wm,
-	// 		Position:           -1,
-	// 	})
-	// }
-
-	return helpers.EncodeJSON(w, 0)
+	return helpers.EncodeJSON(w, warMachinePosition)
 }
 
 type AssetRepairStatRequest struct {
@@ -312,7 +335,7 @@ func (pc *PassportWebhookController) AssetRepairStatGet(w http.ResponseWriter, r
 
 	err = db.AssetRepairIncompleteGet(r.Context(), pc.Conn, record)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return helpers.EncodeJSON(w, &server.AssetRepairRecord{})
 		}
 

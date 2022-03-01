@@ -263,8 +263,9 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 			if err != nil {
 				return terror.Error(err)
 			}
-			// broadcast repair stat
 
+			// broadcast repair stat
+			ba.passport.AssetRepairStat(assetRepairRecord)
 			continue
 		}
 
@@ -274,7 +275,9 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 		if err != nil {
 			return terror.Error(err)
 		}
+
 		// broadcast repair stat
+		ba.passport.AssetRepairStat(assetRepairRecord)
 	}
 
 	// recalculate contract reward
@@ -293,6 +296,7 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 		}
 
 		// broadcast war machine release to passport server
+
 	}
 
 	ba.battle.WinningWarMachines = winningMachines
