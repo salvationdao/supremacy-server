@@ -55,17 +55,18 @@ type GameMessage struct {
 }
 
 type BattleArena struct {
-	server   *http.Server
-	Log      *zerolog.Logger
-	Conn     *pgxpool.Pool
-	passport *passport.Passport
-	addr     string
-	commands map[BattleCommand]BattleCommandFunc
-	Events   BattleArenaEvents
-	send     chan *GameMessage
-	ctx      context.Context
-	close    context.CancelFunc
-	battle   *server.Battle
+	server       *http.Server
+	Log          *zerolog.Logger
+	Conn         *pgxpool.Pool
+	passport     *passport.Passport
+	addr         string
+	commands     map[BattleCommand]BattleCommandFunc
+	Events       BattleArenaEvents
+	send         chan *GameMessage
+	ctx          context.Context
+	close        context.CancelFunc
+	battle       *server.Battle
+	gamesToClose int
 
 	// battle queue channels
 	// BattleQueueMap map[server.FactionID]chan func(*WarMachineQueuingList)
@@ -92,7 +93,7 @@ func NewBattleArenaClient(ctx context.Context, logger *zerolog.Logger, conn *pgx
 			WarMachineDestroyedRecordMap: make(map[byte]*server.WarMachineDestroyedRecord),
 			FactionMap:                   make(map[server.FactionID]*server.Faction),
 		},
-
+		gamesToClose: -1,
 		// channel for battle queue
 		// BattleQueueMap: make(map[server.FactionID]chan func(*WarMachineQueuingList)),
 	}

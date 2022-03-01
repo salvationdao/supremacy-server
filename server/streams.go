@@ -15,3 +15,7 @@ type Stream struct {
 	Latitude      float32 `json:"latitude" db:"latitude"`
 	Longitude     float32 `json:"longitude" db:"longitude"`
 }
+
+type GamesToCloseStream struct {
+	GamesToClose int `json:"gamesToClose"`
+}
