@@ -262,10 +262,10 @@ func AssetQueuingStat(ctx context.Context, conn Conn, hash string) (*server.Batt
 			battle_war_machine_queues
 		WHERE
 			war_machine_metadata ->> 'hash' = $1 AND deleted_at ISNULL
+		limit 1
 	`
 	err := pgxscan.Get(ctx, conn, result, q, hash)
 	if err != nil {
-		fmt.Println(hash + "11111111111111111111111111111111111111111111111111111111111111111")
 		return nil, terror.Error(err)
 	}
 
@@ -299,7 +299,8 @@ func AssetRepairInsert(ctx context.Context, conn Conn, assetRepairRecord *server
 
 func AssetRepairIncompleteGet(ctx context.Context, conn Conn, assetRepairRecord *server.AssetRepairRecord) error {
 	q := `
-		SELECT * FROM asset_repair WHERE hash = $1 AND completed_at ISNULL;
+		SELECT * FROM asset_repair WHERE hash = $1 AND completed_at ISNULL
+		limit 1;
 	`
 
 	err := pgxscan.Get(ctx, conn, assetRepairRecord, q, assetRepairRecord.Hash)
