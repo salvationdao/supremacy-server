@@ -220,6 +220,21 @@ func NewAPI(
 		r.Post("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.SendGlobalAnnouncement)))
 	})
 
+	// global announcement ticker
+	globalAnnouncementTicker := tickle.New("global announcement ticker", 10, func() (int, error) {
+
+		// check if
+		fmt.Println("-")
+
+		fmt.Println("-")
+		fmt.Println(api.GlobalAnnouncement)
+		fmt.Println("-")
+		fmt.Println("-")
+
+		return http.StatusOK, nil
+	})
+	globalAnnouncementTicker.Start()
+
 	// set viewer live count
 	api.ViewerLiveCount = NewViewerLiveCount(api.NetMessageBus)
 	api.UserMap = NewUserMap(api.ViewerLiveCount)
