@@ -52,7 +52,6 @@ func DeleteStream(ctx context.Context, conn Conn, host string) error {
 }
 
 // TODO : move to announcements file
-// CreateStream created a new stream
 func CreateAnnouncement(ctx context.Context, conn Conn, stream *server.GlobalAnnouncement) error {
 	q := `
 		INSERT INTO

@@ -218,7 +218,6 @@ func NewAPI(
 		r.Get("/faction_data", WithError(api.GetFactionData))
 		r.Get("/trigger/ability_file_upload", WithError(api.GetFactionData))
 		r.Post("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.SendGlobalAnnouncement)))
-
 	})
 
 	// set viewer live count
@@ -507,26 +506,10 @@ func (api *API) SendGlobalAnnouncement(w http.ResponseWriter, r *http.Request) (
 	req := &server.GlobalAnnouncement{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
-
-		fmt.Println()
-		fmt.Println()
-		fmt.Println()
-		fmt.Println(err)
-
 		return http.StatusInternalServerError, terror.Error(err)
 	}
+	defer r.Body.Close()
 
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-
-	t := time.Now()
-	req.ShowUntil = &t
-	fmt.Println(req.ShowUntil)
-	fmt.Println()
-	fmt.Println()
-	// checks
 	if req.Message == "" {
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("message cannot be empty %w", err))
 	}
@@ -545,8 +528,10 @@ func (api *API) SendGlobalAnnouncement(w http.ResponseWriter, r *http.Request) (
 	// store in memory
 	api.GlobalAnnouncement = req
 
-	defer r.Body.Close()
 	go api.MessageBus.Send(r.Context(), messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), req)
 
 	return http.StatusOK, nil
 }
+
+// ticker 10secs
+// delete GlobalAnnouncement
