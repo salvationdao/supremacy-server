@@ -17,6 +17,15 @@ func (ba *BattleArena) GetCurrentState() *server.Battle {
 	return ba.battle
 }
 
+//sets up functions to get and set this property not available elsewhere
+func (ba *BattleArena) GetGamesToClose() int {
+	return ba.gamesToClose
+}
+
+func (ba *BattleArena) PutGamesToClose(games int) {
+	ba.gamesToClose = games
+}
+
 const BattleStartCommand = BattleCommand("BATTLE:START")
 
 type BattleStartRequest struct {
@@ -43,6 +52,10 @@ func (ba *BattleArena) BattleStartHandler(ctx context.Context, payload []byte, r
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err)
+	}
+
+	if ba.gamesToClose == 0 {
+		return terror.Error(fmt.Errorf("stream has closed"))
 	}
 
 	if req.Payload.BattleID.IsNil() {
@@ -130,6 +143,11 @@ outerLoop:
 
 	// switch battle state to START
 	ba.battle.State = server.StateMatchStart
+
+	//games to close gets init to -1, and means it is unset, if it is set, tick down games to close
+	if ba.gamesToClose > 0 {
+		ba.gamesToClose -= 1
+	}
 
 	return nil
 }
@@ -342,6 +360,11 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 		BattleArena:      ba.battle,
 		BattleRewardList: battleRewardList,
 	})
+
+	//checks if games left until close equals 0, if so, return early and do not init next battle
+	if ba.gamesToClose == 0 {
+		return nil
+	}
 
 	go func() {
 		time.Sleep(25 * time.Second)

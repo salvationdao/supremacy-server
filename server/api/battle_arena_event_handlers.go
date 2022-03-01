@@ -36,6 +36,10 @@ type GameSettingsResponse struct {
 
 // BattleStartSignal start all the voting cycle
 func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventData) {
+	// getting games left until close and sending to subscribers
+	gamesToClose := api.BattleArena.GetGamesToClose()
+
+	go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyStreamCloseSubscribe), gamesToClose)
 
 	// build faction detail to battle start
 	warMachines := ed.BattleArena.WarMachines
