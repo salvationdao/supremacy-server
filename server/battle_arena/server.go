@@ -8,18 +8,18 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"os"
 	"server"
 	"server/passport"
-	"sync"
 	"time"
 
 	"github.com/jpillora/backoff"
 	"github.com/ninja-software/terror/v2"
+	"github.com/sasha-s/go-deadlock"
 
 	"github.com/antonholmquist/jason"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/log_helpers"
-	"github.com/ninja-software/tickle"
 	"github.com/rs/zerolog"
 	"nhooyr.io/websocket"
 	"nhooyr.io/websocket/wsjson"
@@ -55,20 +55,24 @@ type GameMessage struct {
 }
 
 type BattleArena struct {
-	server   *http.Server
-	Log      *zerolog.Logger
-	Conn     *pgxpool.Pool
-	passport *passport.Passport
-	addr     string
-	commands map[BattleCommand]BattleCommandFunc
-	Events   BattleArenaEvents
-	send     chan *GameMessage
-	ctx      context.Context
-	close    context.CancelFunc
-	battle   *server.Battle
+	server       *http.Server
+	Log          *zerolog.Logger
+	Conn         *pgxpool.Pool
+	passport     *passport.Passport
+	addr         string
+	commands     map[BattleCommand]BattleCommandFunc
+	Events       BattleArenaEvents
+	send         chan *GameMessage
+	ctx          context.Context
+	close        context.CancelFunc
+	battle       *server.Battle
+	gamesToClose int
 
 	// battle queue channels
-	BattleQueueMap map[server.FactionID]chan func(*WarMachineQueuingList)
+	// BattleQueueMap map[server.FactionID]chan func(*WarMachineQueuingList)
+
+	// better battle queue
+	WarMachineQueue *WarMachineQueue
 }
 
 // NewBattleArenaClient creates a new battle arena client
@@ -82,16 +86,16 @@ func NewBattleArenaClient(ctx context.Context, logger *zerolog.Logger, conn *pgx
 		commands: make(map[BattleCommand]BattleCommandFunc),
 		send:     make(chan *GameMessage),
 		passport: passport,
-		Events:   BattleArenaEvents{map[Event][]EventHandler{}, sync.RWMutex{}},
+		Events:   BattleArenaEvents{map[Event][]EventHandler{}, deadlock.RWMutex{}},
 		ctx:      ctx,
 		close:    cancel,
 		battle: &server.Battle{
 			WarMachineDestroyedRecordMap: make(map[byte]*server.WarMachineDestroyedRecord),
 			FactionMap:                   make(map[server.FactionID]*server.Faction),
 		},
-
+		gamesToClose: -1,
 		// channel for battle queue
-		BattleQueueMap: make(map[server.FactionID]chan func(*WarMachineQueuingList)),
+		// BattleQueueMap: make(map[server.FactionID]chan func(*WarMachineQueuingList)),
 	}
 	// add the commands here
 
@@ -441,89 +445,60 @@ func (ba *BattleArena) SetupAfterConnections() {
 		Max:    30 * time.Second,
 		Factor: 2,
 	}
-
+	var err error
 	// get factions from passport, retrying every 10 seconds until we ge them.
 	for len(ba.battle.FactionMap) <= 0 {
-		if !ba.passport.Connected {
-			time.Sleep(b.Duration())
-			continue
-		}
-
-		wg := sync.WaitGroup{}
+		wg := deadlock.WaitGroup{}
 		wg.Add(1)
-		ba.passport.FactionAll(func(msg []byte) {
-			defer wg.Done()
-			resp := &passport.FactionAllResponse{}
-			err := json.Unmarshal(msg, resp)
-			if err != nil {
-				return
-			}
-			if err != nil {
-				ba.passport.Log.Err(err).Msg("unable to get factions")
-			}
 
+		ba.passport.FactionAll(func(factions []*server.Faction) {
+			defer wg.Done()
 			ba.battle.WarMachineDestroyedRecordMap = make(map[byte]*server.WarMachineDestroyedRecord)
 
 			ba.battle.FactionMap = make(map[server.FactionID]*server.Faction)
-			for _, faction := range resp.Factions {
+			for _, faction := range factions {
 				ba.battle.FactionMap[faction.ID] = faction
+			}
+			if len(factions) > 0 {
+				ba.WarMachineQueue, err = NewWarMachineQueue(factions, ba.Conn, ba.Log, ba)
+				if err != nil {
+					ba.Log.Err(err).Msg("failed to set ups war machine queue")
+					os.Exit(-1)
+				}
+
+				// TODO: Build new faction reward system
+				// battleContractRewardUpdaterLogger := log_helpers.NamedLogger(ba.Log, "Contract Reward Updater").Level(zerolog.Disabled)
+				// battleContractRewardUpdater := tickle.New("Contract Reward Updater", 10, func() (int, error) {
+				// 	ba.passport.FactionWarMachineContractRewardUpdate(
+				// 		[]*server.FactionWarMachineQueue{
+				// 			{
+				// 				FactionID:  server.RedMountainFactionID,
+				// 				QueueTotal: ba.WarMachineQueue.RedMountain.QueuingLength(),
+				// 			},
+				// 			{
+				// 				FactionID:  server.BostonCyberneticsFactionID,
+				// 				QueueTotal: ba.WarMachineQueue.Boston.QueuingLength(),
+				// 			},
+				// 			{
+				// 				FactionID:  server.ZaibatsuFactionID,
+				// 				QueueTotal: ba.WarMachineQueue.Zaibatsu.QueuingLength(),
+				// 			},
+				// 		},
+				// 	)
+
+				// 	return http.StatusOK, nil
+				// })
+				// battleContractRewardUpdater.Log = &battleContractRewardUpdaterLogger
+				// battleContractRewardUpdater.Start()
+
 			}
 
 		})
 		wg.Wait()
 		if len(ba.battle.FactionMap) > 0 {
+
 			break
 		}
 		time.Sleep(b.Duration())
 	}
-
-	hashes := []string{}
-	// get all the faction list from passport server
-	for _, faction := range ba.battle.FactionMap {
-		// start battle queue
-		ba.BattleQueueMap[faction.ID] = make(chan func(*WarMachineQueuingList))
-		hashes = append(hashes, ba.startBattleQueue(faction.ID)...)
-	}
-
-	// fire the hashes checklist to passport to free up the non-queued war machines
-	ba.passport.AssetQueuingCheckList(hashes)
-
-	battleContractRewardUpdaterLogger := log_helpers.NamedLogger(ba.Log, "Contract Reward Updater").Level(zerolog.Disabled)
-	battleContractRewardUpdater := tickle.New("Contract Reward Updater", 10, func() (int, error) {
-		rQueueNumberChan := make(chan int)
-		ba.BattleQueueMap[server.RedMountainFactionID] <- func(wmql *WarMachineQueuingList) {
-			rQueueNumberChan <- len(wmql.WarMachines)
-		}
-
-		bQueueNumberChan := make(chan int)
-		ba.BattleQueueMap[server.BostonCyberneticsFactionID] <- func(wmql *WarMachineQueuingList) {
-			bQueueNumberChan <- len(wmql.WarMachines)
-		}
-
-		zQueueNumberChan := make(chan int)
-		ba.BattleQueueMap[server.ZaibatsuFactionID] <- func(wmql *WarMachineQueuingList) {
-			zQueueNumberChan <- len(wmql.WarMachines)
-		}
-
-		ba.passport.FactionWarMachineContractRewardUpdate(
-			[]*server.FactionWarMachineQueue{
-				{
-					FactionID:  server.RedMountainFactionID,
-					QueueTotal: <-rQueueNumberChan,
-				},
-				{
-					FactionID:  server.BostonCyberneticsFactionID,
-					QueueTotal: <-bQueueNumberChan,
-				},
-				{
-					FactionID:  server.ZaibatsuFactionID,
-					QueueTotal: <-zQueueNumberChan,
-				},
-			},
-		)
-
-		return http.StatusOK, nil
-	})
-	battleContractRewardUpdater.Log = &battleContractRewardUpdaterLogger
-	battleContractRewardUpdater.Start()
 }

@@ -21,6 +21,7 @@ type Faction struct {
 	LogoBlobID       BlobID        `json:"logoBlobID,omitempty"`
 	BackgroundBlobID BlobID        `json:"backgroundBlobID,omitempty"`
 	VotePrice        string        `json:"votePrice" db:"vote_price"`
+	ContractReward   string        `json:"contractReward" db:"contract_reward"`
 }
 
 type FactionBrief struct {

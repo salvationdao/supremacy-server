@@ -1,8 +1,6 @@
 package server
 
 import (
-	"math/big"
-
 	"github.com/gofrs/uuid"
 )
 
@@ -54,9 +52,6 @@ type WarMachineMetadata struct {
 	Position        *Vector3           `json:"position"`
 	Rotation        int                `json:"rotation"`
 	Abilities       []*AbilityMetadata `json:"abilities"`
-
-	ContractReward big.Int `json:"contractReward"`
-	IsInsured      bool    `json:"isInsured"`
 }
 
 type WarMachineBrief struct {

@@ -36,6 +36,7 @@ func NewStreamController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Str
 
 	api.SubscribeCommand(HubKeyStreamList, streamHub.StreamListSubscribeSubscribeHandler)
 	api.SubscribeCommand(HubKeyGlobalAnnouncementSubscribe, streamHub.GlobalMessageSubscribe)
+	api.SubscribeCommand(HubKeyStreamCloseSubscribe, streamHub.StreamCloseSubscribeHandler)
 
 	return streamHub
 }
@@ -59,8 +60,37 @@ func (s *StreamsWS) StreamListSubscribeSubscribeHandler(ctx context.Context, wsc
 	return req.TransactionID, messagebus.BusKey(HubKeyStreamList), nil
 }
 
-type StreamRequest struct {
-	Host string `json:"host"`
+const HubKeyStreamCloseSubscribe hub.HubCommandKey = "STREAM:CLOSE:SUBSCRIBE"
+
+//sets up subscription socket to push games left until stream closes
+func (s *StreamsWS) StreamCloseSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &StreamListRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return "", "", terror.Error(err, "Invalid request received")
+	}
+
+	gamesToClose := s.API.BattleArena.GetGamesToClose()
+
+	reply(gamesToClose)
+	return req.TransactionID, messagebus.BusKey(HubKeyStreamCloseSubscribe), nil
+}
+
+//creates api endpoint for manual override of games left until close and sends it via the subscription
+func (api *API) CreateStreamCloseHandler(w http.ResponseWriter, r *http.Request) (int, error) {
+	gamesToCloseStruct := &server.GamesToCloseStream{}
+	err := json.NewDecoder(r.Body).Decode(&gamesToCloseStruct)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err)
+	}
+
+	gamesToClose := gamesToCloseStruct.GamesToClose
+
+	api.BattleArena.PutGamesToClose(gamesToClose)
+
+	go api.MessageBus.Send(r.Context(), messagebus.BusKey(HubKeyStreamCloseSubscribe), gamesToClose)
+
+	return http.StatusOK, nil
 }
 
 func (api *API) GetStreamsHandler(w http.ResponseWriter, r *http.Request) (int, error) {
@@ -94,6 +124,10 @@ func (api *API) CreateStreamHandler(w http.ResponseWriter, r *http.Request) (int
 	go api.MessageBus.Send(r.Context(), messagebus.BusKey(HubKeyVoteStageUpdated), streamList)
 
 	return http.StatusOK, nil
+}
+
+type StreamRequest struct {
+	Host string `json:"host"`
 }
 
 func (api *API) DeleteStreamHandler(w http.ResponseWriter, r *http.Request) (int, error) {

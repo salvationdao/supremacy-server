@@ -311,6 +311,11 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 		vc.API.votePhaseChecker.EndTime = time.Now().Add(time.Duration(va.BattleAbility.CooldownDurationSecond) * time.Second)
 		vc.API.votePhaseChecker.Unlock()
 
+		// stop vote price update when cooldown
+		if vc.API.votePriceSystem.VotePriceUpdater.NextTick != nil {
+			vc.API.votePriceSystem.VotePriceUpdater.Stop()
+		}
+
 		// broadcast current stage to faction users
 		go vc.API.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), vc.API.votePhaseChecker)
 

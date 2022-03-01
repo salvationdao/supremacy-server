@@ -103,12 +103,14 @@ func main() {
 					&cli.BoolFlag{Name: "cookie_secure", Value: true, EnvVars: []string{envPrefix + "_COOKIE_SECURE", "COOKIE_SECURE"}, Usage: "set cookie secure"},
 					&cli.StringFlag{Name: "google_client_id", Value: "", EnvVars: []string{envPrefix + "_GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_ID"}, Usage: "Google Client ID for OAuth functionaility."},
 
+					// TODO: clear up token
 					&cli.BoolFlag{Name: "jwt_encrypt", Value: true, EnvVars: []string{envPrefix + "_JWT_ENCRYPT", "JWT_ENCRYPT"}, Usage: "set if to encrypt jwt tokens or not"},
 					&cli.StringFlag{Name: "jwt_encrypt_key", Value: "ITF1vauAxvJlF0PLNY9btOO9ZzbUmc6X", EnvVars: []string{envPrefix + "_JWT_KEY", "JWT_KEY"}, Usage: "supports key sizes of 16, 24 or 32 bytes"},
 					&cli.IntFlag{Name: "jwt_expiry_days", Value: 1, EnvVars: []string{envPrefix + "_JWT_EXPIRY_DAYS", "JWT_EXPIRY_DAYS"}, Usage: "expiry days for auth tokens"},
 
 					&cli.StringFlag{Name: "passport_server_token", Value: "aG93cyBpdCBnb2luZyBtYWM=", EnvVars: []string{envPrefix + "_PASSPORT_TOKEN"}, Usage: "Token to auth to passport server"},
 					&cli.StringFlag{Name: "server_stream_key", Value: "6c7b4a82-7797-4847-836e-978399830878", EnvVars: []string{envPrefix + "_SERVER_STREAM_KEY"}, Usage: "Authorization key to crud servers"},
+					&cli.StringFlag{Name: "passport_webhook_secret", Value: "e1BD3FF270804c6a9edJDzzDks87a8a4fde15c7=", EnvVars: []string{"PASSPORT_WEBHOOK_SECRET"}, Usage: "Authorization key to passport webhook"},
 				},
 				Usage: "run server",
 				Action: func(c *cli.Context) error {
@@ -171,11 +173,11 @@ func main() {
 						passportClientToken,
 						passportRPC,
 					)
-					err = pp.Connect()
-					if err != nil {
-						pp.Log.Warn().Err(err).Msgf("Passport connection failed")
-						os.Exit(-1)
-					}
+					// err = pp.Connect()
+					// if err != nil {
+					// 	pp.Log.Warn().Err(err).Msgf("Passport connection failed")
+					// 	os.Exit(-1)
+					// }
 					// Start Gameserver - Gameclient server
 					ctxBA, cancelBA := context.WithCancel(ctx)
 					battleArenaClient := battle_arena.NewBattleArenaClient(ctxBA, log_helpers.NamedLogger(logger, "battle-arena"), pgxconn, pp, battleArenaAddr)
@@ -288,12 +290,13 @@ func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, bat
 	apiAddr := ctxCLI.String("api_addr")
 
 	config := &server.Config{
-		CookieSecure:        ctxCLI.Bool("cookie_secure"),
-		EncryptTokens:       ctxCLI.Bool("jwt_encrypt"),
-		EncryptTokensKey:    ctxCLI.String("jwt_encrypt_key"),
-		TokenExpirationDays: ctxCLI.Int("jwt_expiry_days"),
-		TwitchUIHostURL:     ctxCLI.String("twitch_ui_web_host_url"),
-		ServerStreamKey:     ctxCLI.String("server_stream_key"),
+		CookieSecure:          ctxCLI.Bool("cookie_secure"),
+		EncryptTokens:         ctxCLI.Bool("jwt_encrypt"),
+		EncryptTokensKey:      ctxCLI.String("jwt_encrypt_key"),
+		TokenExpirationDays:   ctxCLI.Int("jwt_expiry_days"),
+		TwitchUIHostURL:       ctxCLI.String("twitch_ui_web_host_url"),
+		ServerStreamKey:       ctxCLI.String("server_stream_key"),
+		PassportWebhookSecret: ctxCLI.String("passport_webhook_secret"),
 	}
 
 	// HTML Sanitizer

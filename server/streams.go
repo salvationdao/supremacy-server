@@ -18,9 +18,13 @@ type Stream struct {
 	Longitude     float32 `json:"longitude" db:"longitude"`
 }
 
+type GamesToCloseStream struct {
+	GamesToClose int `json:"gamesToClose"`
+}
+
 type GlobalAnnouncement struct {
 	Title      string     `json:"title"`
 	Message    string     `json:"message"`
-	GamesUntil *int       `json:"gamesUntil"`
-	ShowUntil  *time.Time `json:"showUntil"`
+	GamesUntil *int       `json:"gamesUntil,omitempty"`
+	ShowUntil  *time.Time `json:"showUntil,omitempty"`
 }

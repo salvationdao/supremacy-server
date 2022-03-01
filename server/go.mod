@@ -35,6 +35,8 @@ require (
 	go.uber.org/atomic v1.7.0
 )
 
+require github.com/petermattis/goid v0.0.0-20180202154549-b0b1615b78e5 // indirect
+
 require (
 	cloud.google.com/go v0.97.0 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
@@ -102,6 +104,7 @@ require (
 	github.com/prometheus/common v0.26.0 // indirect
 	github.com/prometheus/procfs v0.6.0 // indirect
 	github.com/russross/blackfriday/v2 v2.0.1 // indirect
+	github.com/sasha-s/go-deadlock v0.3.1
 	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
