@@ -7,7 +7,6 @@ import (
 	"math/big"
 	"server"
 	"server/db"
-	"server/passport"
 	"sync"
 
 	"github.com/jackc/pgx/v4"
@@ -295,22 +294,20 @@ func checkWarMachineExist(list []*server.WarMachineMetadata, hash string) int {
 }
 
 func (wmq *WarMachineQueue) GetWarMachineQueue(factionID server.FactionID, hash string) (*int, error) {
-	fmt.Println(factionID)
 	// check faction id
 	switch factionID {
 	case server.RedMountainFactionID:
-		return wmq.RedMountain.WarMachineQueue(hash), nil
+		return wmq.RedMountain.WarMachineQueuePosition(hash), nil
 	case server.BostonCyberneticsFactionID:
-		return wmq.Boston.WarMachineQueue(hash), nil
+		return wmq.Boston.WarMachineQueuePosition(hash), nil
 	case server.ZaibatsuFactionID:
-		return wmq.Zaibatsu.WarMachineQueue(hash), nil
+		return wmq.Zaibatsu.WarMachineQueuePosition(hash), nil
 	default:
 		return nil, terror.Error(fmt.Errorf("No faction war machine"), "NON-FACTION WAR MACHINE IS NOT ALLOWED!!!!!!!!!!!!!!!!!!!")
 	}
 }
 
-func (fq *FactionQueue) WarMachineQueue(hash string) *int {
-	// for each queue map
+func (fq *FactionQueue) WarMachineQueuePosition(hash string) *int {
 	fq.RLock()
 	defer fq.RUnlock()
 	for i, wm := range fq.QueuingWarMachines {
@@ -319,6 +316,7 @@ func (fq *FactionQueue) WarMachineQueue(hash string) *int {
 		}
 
 		position := i + 1
+
 		return &position
 	}
 
@@ -326,40 +324,13 @@ func (fq *FactionQueue) WarMachineQueue(hash string) *int {
 		if wm.Hash != hash {
 			continue
 		}
+
 		position := -1
+
 		return &position
 	}
 
 	return nil
-}
-
-func (fq *FactionQueue) CurrentBattleQueuePerUser() map[server.UserID][]*passport.WarMachineQueuePosition {
-	// for each queue map
-	userWarMachineMap := make(map[server.UserID][]*passport.WarMachineQueuePosition)
-
-	fq.RLock()
-	defer fq.RUnlock()
-	for i, wm := range fq.QueuingWarMachines {
-		if _, ok := userWarMachineMap[wm.OwnedByID]; !ok {
-			userWarMachineMap[wm.OwnedByID] = []*passport.WarMachineQueuePosition{}
-		}
-		userWarMachineMap[wm.OwnedByID] = append(userWarMachineMap[wm.OwnedByID], &passport.WarMachineQueuePosition{
-			WarMachineMetadata: wm,
-			Position:           i + 1,
-		})
-	}
-
-	for _, wm := range fq.InGameWarMachines {
-		if _, ok := userWarMachineMap[wm.OwnedByID]; !ok {
-			userWarMachineMap[wm.OwnedByID] = []*passport.WarMachineQueuePosition{}
-		}
-		userWarMachineMap[wm.OwnedByID] = append(userWarMachineMap[wm.OwnedByID], &passport.WarMachineQueuePosition{
-			WarMachineMetadata: wm,
-			Position:           -1,
-		})
-	}
-
-	return userWarMachineMap
 }
 
 func (fq *FactionQueue) GetFirstFiveQueuingWarMachines() []*server.WarMachineBrief {

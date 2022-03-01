@@ -159,7 +159,7 @@ const (
 )
 
 func (ba *BattleArena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithCancel(r.Context())
+	ctx, cancel := context.WithCancel(context.Background())
 	c, err := websocket.Accept(w, r, &websocket.AcceptOptions{
 		//Subprotocols: []string{"gameserver-v1"},
 	})
