@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"server"
 	"server/battle_arena"
+	"server/passport"
 	"strings"
 
 	"github.com/gofrs/uuid"
@@ -129,7 +130,12 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 		reason := fmt.Sprintf("battle:%s|game_ability_contribution:%s", fc.API.BattleArena.CurrentBattleID(), req.Payload.GameAbilityID)
 
 		go func() {
-			fc.API.Passport.SpendSupMessage(userID, reduceAmount, fc.API.BattleArena.CurrentBattleID(), reason, func(transaction string) {
+			fc.API.Passport.SpendSupMessage(passport.SpendSupsReq{
+				FromUserID:           userID,
+				Amount:               reduceAmount.String(),
+				TransactionReference: server.TransactionReference(fmt.Sprintf("%s|%s", reason, uuid.Must(uuid.NewV4()))),
+				GroupID:              fc.API.BattleArena.CurrentBattleID().String(),
+			}, func(transaction string) {
 				faIface, ok := fap.Load(req.Payload.GameAbilityID.String())
 				if !ok {
 					fc.Log.Err(fmt.Errorf("error doesn't exist"))

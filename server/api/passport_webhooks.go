@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"net/http"
 	"server"
 	"server/db"
 	"server/helpers"
+	"server/passport"
 
 	"github.com/go-chi/chi"
 	"github.com/gofrs/uuid"
@@ -168,14 +170,41 @@ func (pc *PassportWebhookController) WarMachineJoin(w http.ResponseWriter, r *ht
 		return http.StatusBadRequest, terror.Error(err, err.Error())
 	}
 
+	// broadcast price change
+	factionQueuePrice := &passport.FactionQueuePriceUpdateReq{
+		FactionID: req.WarMachineMetadata.FactionID,
+	}
+	switch req.WarMachineMetadata.FactionID {
+	case server.RedMountainFactionID:
+		factionQueuePrice.QueuingLength = pc.API.BattleArena.WarMachineQueue.RedMountain.QueuingLength()
+	case server.BostonCyberneticsFactionID:
+		factionQueuePrice.QueuingLength = pc.API.BattleArena.WarMachineQueue.Boston.QueuingLength()
+	case server.ZaibatsuFactionID:
+		factionQueuePrice.QueuingLength = pc.API.BattleArena.WarMachineQueue.Zaibatsu.QueuingLength()
+	}
+	pc.API.Passport.FactionQueueCostUpdate(factionQueuePrice)
+
+	queuingFee := big.NewInt(1000000000000000000)
+	queuingFee.Mul(queuingFee, big.NewInt(int64(factionQueuePrice.QueuingLength)))
+
+	// fire a payment to passport
+	pc.API.Passport.SpendSupMessage(passport.SpendSupsReq{
+		FromUserID:           req.WarMachineMetadata.OwnedByID,
+		ToUserID:             &server.XsynTreasuryUserID,
+		Amount:               queuingFee.String(),
+		TransactionReference: server.TransactionReference(fmt.Sprintf("war_machine_queuing_fee|%s", uuid.Must(uuid.NewV4()))),
+	}, func(transaction string) {})
+
+	// prepare response
 	resp := &WarMachineJoinResp{}
 	// set insurance flag
-	warMachinePostion, err := pc.API.BattleArena.WarMachineQueue.GetWarMachineQueue(req.WarMachineMetadata.FactionID, req.WarMachineMetadata.Hash)
+	warMachinePostion, contractReward := pc.API.BattleArena.WarMachineQueue.GetWarMachineQueue(req.WarMachineMetadata.FactionID, req.WarMachineMetadata.Hash)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
 	resp.Position = warMachinePostion
+	resp.ContractReward = contractReward
 
 	// get contract reward
 	queuingStat, err := db.AssetQueuingStat(context.Background(), pc.Conn, req.WarMachineMetadata.Hash)
@@ -315,15 +344,17 @@ func (pc *PassportWebhookController) WarMachineQueuePositionGet(w http.ResponseW
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	warMachinePosition, err := pc.API.BattleArena.WarMachineQueue.GetWarMachineQueue(req.FactionID, req.AssetHash)
+	position, contractReward := pc.API.BattleArena.WarMachineQueue.GetWarMachineQueue(req.FactionID, req.AssetHash)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
 	return helpers.EncodeJSON(w, struct {
-		Position *int `json:"position"`
+		Position       *int    `json:"position"`
+		ContractReward *string `json:"contractReward"`
 	}{
-		Position: warMachinePosition,
+		Position:       position,
+		ContractReward: contractReward,
 	})
 }
 

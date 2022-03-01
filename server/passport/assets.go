@@ -5,17 +5,17 @@ import (
 )
 
 type WarMachineQueuePositionReq struct {
-	UserWarMachineQueuePosition []*WarMachineQueuePosition `json:"userWarMachineQueuePosition"`
+	WarMachineQueuePosition []*WarMachineQueueStat `json:"warMachineQueuePosition"`
 }
 
-type WarMachineQueuePosition struct {
-	Hash     string `json:"hash"`
-	Position *int   `json:"position,omitempty"`
+type WarMachineQueueStat struct {
+	Hash           string  `json:"hash"`
+	Position       *int    `json:"position,omitempty"`
+	ContractReward *string `json:"contractReward,omitempty"`
 }
-
 type WarMachineQueuePositionResp struct{}
 
-func (pp *Passport) WarMachineQueuePositionBroadcast(wmp []*WarMachineQueuePosition) {
+func (pp *Passport) WarMachineQueuePositionBroadcast(wmp []*WarMachineQueueStat) {
 	if len(wmp) == 0 {
 		return
 	}

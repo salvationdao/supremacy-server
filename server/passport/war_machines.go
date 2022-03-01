@@ -19,6 +19,7 @@ func (pp *Passport) GetDefaultWarMachines(ctx context.Context, factionID server.
 	err := pp.Comms.Call("C.SupremacyDefaultWarMachinesHandler", DefaultWarMachinesReq{factionID}, resp)
 	if err != nil {
 		pp.Log.Err(err).Str("method", "SupremacyDefaultWarMachinesHandler").Msg("rpc error")
+		return
 	}
 	callback(resp.WarMachines)
 }

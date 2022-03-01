@@ -63,6 +63,7 @@ func (pp *Passport) UsersGet(userIDs []server.UserID, callback func(users []*ser
 	err := pp.Comms.Call("C.SupremacyUsersGetHandler", UsersGetReq{userIDs}, resp)
 	if err != nil {
 		pp.Log.Err(err).Str("method", "SupremacyUsersGetHandler").Msg("rpc error")
+		return
 	}
 	callback(resp.Users)
 }

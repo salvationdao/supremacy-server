@@ -18,6 +18,7 @@ func (pp *Passport) FactionAll(callback func(factions []*server.Faction)) {
 	err := pp.Comms.Call("C.SupremacyFactionAllHandler", FactionAllReq{}, resp)
 	if err != nil {
 		pp.Log.Err(err).Str("method", "SupremacyFactionAllHandler").Msg("rpc error")
+		return
 	}
 	callback(resp.Factions)
 }
@@ -91,9 +92,17 @@ func (pp *Passport) FactionContractRewardUpdate(fcr []*FactionContractReward) {
 //  QUEUE COST
 //****************************************
 
-func (pp *Passport) FactionQueueCostUpdate(fcr []*FactionContractReward) {
-	err := pp.Comms.Call("C.SupremacyFactionContractRewardUpdateHandler", FactionContractRewardUpdateReq{fcr}, &FactionContractRewardUpdateResp{})
+type FactionQueuePriceUpdateReq struct {
+	FactionID     server.FactionID `json:"factionID"`
+	QueuingLength int              `json:"queuingLength"`
+}
+
+type FactionQueuePriceUpdateResp struct {
+}
+
+func (pp *Passport) FactionQueueCostUpdate(fcr *FactionQueuePriceUpdateReq) {
+	err := pp.Comms.Call("C.SupremacyFactionQueuingCostHandler", fcr, &FactionQueuePriceUpdateResp{})
 	if err != nil {
-		pp.Log.Err(err).Str("method", "SupremacyFactionContractRewardUpdateHandler").Msg("rpc error")
+		pp.Log.Err(err).Str("method", "SupremacyFactionQueuingCostHandler").Msg("rpc error")
 	}
 }

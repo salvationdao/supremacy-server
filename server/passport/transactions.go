@@ -1,11 +1,8 @@
 package passport
 
 import (
-	"fmt"
 	"server"
 	"time"
-
-	"github.com/gofrs/uuid"
 )
 
 type HoldSupsMessageResponse struct {
@@ -13,7 +10,8 @@ type HoldSupsMessageResponse struct {
 }
 
 type SpendSupsReq struct {
-	FromUserID           server.UserID               `json:"userID"`
+	FromUserID           server.UserID               `json:"fromUserID"`
+	ToUserID             *server.UserID              `json:"ToUserID,omitempty"`
 	Amount               string                      `json:"amount"`
 	TransactionReference server.TransactionReference `json:"transactionReference"`
 	GroupID              string
@@ -23,13 +21,12 @@ type SpendSupsResp struct {
 }
 
 // SpendSupMessage tells the passport to hold sups
-func (pp *Passport) SpendSupMessage(userID server.UserID, supsChange server.BigInt, battleID server.BattleID, reason string, callback func(txID string)) {
-	supTransactionReference := uuid.Must(uuid.NewV4())
-	supTxRefString := server.TransactionReference(fmt.Sprintf("%s|%s", reason, supTransactionReference.String()))
+func (pp *Passport) SpendSupMessage(req SpendSupsReq, callback func(txID string)) {
 	resp := &SpendSupsResp{}
-	pp.Comms.GoCall("C.SupremacySpendSupsHandler", SpendSupsReq{FromUserID: userID, Amount: supsChange.String(), TransactionReference: supTxRefString, GroupID: battleID.String()}, resp, func(err error) {
+	pp.Comms.GoCall("C.SupremacySpendSupsHandler", req, resp, func(err error) {
 		if err != nil {
 			pp.Log.Err(err).Str("method", "SupremacySpendSupsHandler").Msg("rpc error")
+			return
 		}
 		callback(resp.TXID)
 	})
@@ -78,6 +75,7 @@ func (pp *Passport) TopSupsContributorsGet(startTime, endTime time.Time, callbac
 	err := pp.Comms.Call("C.TopSupsContributorHandler", TopSupsContributorReq{}, resp)
 	if err != nil {
 		pp.Log.Err(err).Str("method", "TopSupsContributorHandler").Msg("rpc error")
+		return
 	}
 	callback(resp)
 }

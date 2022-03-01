@@ -53,6 +53,8 @@ type WarMachineMetadata struct {
 	Position           *Vector3           `json:"position"`
 	Rotation           int                `json:"rotation"`
 	Abilities          []*AbilityMetadata `json:"abilities"`
+
+	ContractReward *string `json:"contractReward"`
 }
 
 type WarMachineBrief struct {

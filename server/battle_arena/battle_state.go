@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"server"
 	"server/db"
+	"server/passport"
 	"time"
 
 	"github.com/jackc/pgx/v4"
@@ -233,15 +234,20 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 	}
 
 	// cache in game war machines
-	inGameWarMachines := ba.battle.WarMachines
-	ba.battle.WarMachines = []*server.WarMachineMetadata{}
 	winningMachines := []*server.WarMachineMetadata{}
+	wmq := []*passport.WarMachineQueueStat{}
 
 	for _, bwm := range ba.battle.WarMachines {
 		// get contract reward from queuing
 		assetQueueStat, err := db.AssetQueuingStat(ctx, tx, bwm.Hash)
-		if err != nil {
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			return terror.Error(err, "failed to get contract reward from db")
+		}
+
+		// default war machines
+		isDefaultWarMachine := false
+		if assetQueueStat == nil {
+			isDefaultWarMachine = true
 		}
 
 		assetRepairRecord := &server.AssetRepairRecord{
@@ -249,7 +255,7 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 			RepairMode: server.RepairModeFast,
 		}
 
-		if !assetQueueStat.IsInsured {
+		if !isDefaultWarMachine && !assetQueueStat.IsInsured {
 			assetRepairRecord.RepairMode = server.RepairModeStandard
 		}
 
@@ -260,6 +266,11 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 			winningMachines = append(winningMachines, bwm)
 			battleRewardList.WinnerFactionID = bwm.FactionID
 			battleRewardList.WinningWarMachineOwnerIDs[bwm.OwnedByID] = true
+
+			// skip if it is default war machine
+			if isDefaultWarMachine {
+				continue
+			}
 
 			// pay queuing contract reward
 			ba.passport.AssetContractRewardRedeem(
@@ -281,8 +292,21 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 			if err != nil {
 				return terror.Error(err)
 			}
-			// broadcast repair stat
 
+			err = db.BattleQueueRemove(ctx, tx, bwm)
+			if err != nil {
+				ba.Log.Err(err).Msgf("Failed to remove battle queue cache in db, token id: %s ", bwm.Hash)
+			}
+			wmq = append(wmq, &passport.WarMachineQueueStat{Hash: bwm.Hash})
+
+			// broadcast repair stat
+			ba.passport.AssetRepairStat(assetRepairRecord)
+
+			continue
+		}
+
+		// skip if it is default war machine
+		if isDefaultWarMachine {
 			continue
 		}
 
@@ -292,8 +316,19 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 		if err != nil {
 			return terror.Error(err)
 		}
+
+		err = db.BattleQueueRemove(ctx, tx, bwm)
+		if err != nil {
+			ba.Log.Err(err).Msgf("Failed to remove battle queue cache in db, token id: %s ", bwm.Hash)
+		}
+		wmq = append(wmq, &passport.WarMachineQueueStat{Hash: bwm.Hash})
+
 		// broadcast repair stat
+		ba.passport.AssetRepairStat(assetRepairRecord)
+
 	}
+	// broadcast queuing stat to passport server
+	ba.passport.WarMachineQueuePositionBroadcast(wmq)
 
 	// recalculate contract reward
 	err = ba.WarMachineQueue.RedMountain.UpdateContractReward(battleRewardList.WinnerFactionID)
@@ -309,19 +344,7 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 		return terror.Error(err)
 	}
 
-	// remove war machine from queue in db
-	if len(inGameWarMachines) > 0 {
-		// remove the war machine in db
-		for _, wm := range inGameWarMachines {
-			err = db.BattleQueueRemove(ctx, tx, wm)
-			if err != nil {
-				ba.Log.Err(err).Msgf("Failed to remove battle queue cache in db, token id: %s ", wm.Hash)
-			}
-		}
-
-		// broadcast war machine release to passport server
-	}
-
+	ba.battle.WarMachines = []*server.WarMachineMetadata{}
 	ba.battle.WinningWarMachines = winningMachines
 	ba.battle.WinningCondition = (*string)(&req.Payload.WinCondition)
 
