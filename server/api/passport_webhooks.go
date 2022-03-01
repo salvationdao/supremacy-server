@@ -13,7 +13,6 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4"
 	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-syndicate/hub"
 	"github.com/rs/zerolog"
 )
 
@@ -85,7 +84,11 @@ func (pc *PassportWebhookController) UserUpdated(w http.ResponseWriter, r *http.
 		go cl.Send(broadcastData)
 	}
 
-	return helpers.EncodeJSON(w, true)
+	return helpers.EncodeJSON(w, struct {
+		IsSuccess bool `json:"isSuccess"`
+	}{
+		IsSuccess: true,
+	})
 }
 
 type UserEnlistFactionRequest struct {
@@ -129,12 +132,20 @@ func (pc *PassportWebhookController) UserEnlistFaction(w http.ResponseWriter, r 
 		go cl.Send(broadcastData)
 	}
 
-	return helpers.EncodeJSON(w, true)
+	return helpers.EncodeJSON(w, struct {
+		IsSuccess bool `json:"isSuccess"`
+	}{
+		IsSuccess: true,
+	})
 }
 
 type WarMachineJoinRequest struct {
 	WarMachineMetadata *server.WarMachineMetadata `json:"warMachineMetadata"`
 	NeedInsured        bool                       `json:"needInsured"`
+}
+
+type WarMachineJoinResp struct {
+	Position *int `json:"position"`
 }
 
 func (pc *PassportWebhookController) WarMachineJoin(w http.ResponseWriter, r *http.Request) (int, error) {
@@ -154,13 +165,13 @@ func (pc *PassportWebhookController) WarMachineJoin(w http.ResponseWriter, r *ht
 	}
 
 	// set insurance flag
-	userWarMachinePostion, err := pc.API.BattleArena.WarMachineQueue.GetWarMachineQueue(req.WarMachineMetadata.FactionID, req.WarMachineMetadata.Hash)
+	warMachinePostion, err := pc.API.BattleArena.WarMachineQueue.GetWarMachineQueue(req.WarMachineMetadata.FactionID, req.WarMachineMetadata.Hash)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
 	// return current queuing position
-	return helpers.EncodeJSON(w, userWarMachinePostion)
+	return helpers.EncodeJSON(w, &WarMachineJoinResp{warMachinePostion})
 }
 
 type UserSupsMultiplierGetRequest struct {
@@ -176,7 +187,11 @@ func (pc *PassportWebhookController) UserSupsMultiplierGet(w http.ResponseWriter
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	return helpers.EncodeJSON(w, pc.API.UserMultiplier.UserMultiplierGet(req.UserID))
+	return helpers.EncodeJSON(w, struct {
+		UserMultipliers []*server.SupsMultiplier `json:"userMultipliers"`
+	}{
+		UserMultipliers: pc.API.UserMultiplier.UserMultiplierGet(req.UserID),
+	})
 }
 
 type UserStatGetRequest struct {
@@ -261,11 +276,17 @@ func (pc *PassportWebhookController) FactionContractRewardGet(w http.ResponseWri
 		contractReward = pc.API.BattleArena.WarMachineQueue.Zaibatsu.GetContractReward()
 
 	}
-	return helpers.EncodeJSON(w, contractReward)
+
+	return helpers.EncodeJSON(w, struct {
+		ContractReward string `json:"contractReward"`
+	}{
+		ContractReward: contractReward,
+	})
 }
 
 type WarMachineQueuePositionRequest struct {
-	AssetHash string `json:"assethash"`
+	FactionID server.FactionID `json:"factionID"`
+	AssetHash string           `json:"assethash"`
 }
 
 // PassportWarMachineQueuePositionHandler return the list of user's war machines in the queue
@@ -276,23 +297,16 @@ func (pc *PassportWebhookController) WarMachineQueuePositionGet(w http.ResponseW
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	// userWarMachinePosition, err := pc.API.BattleArena.WarMachineQueue.GetUserWarMachineQueue(req.FactionID, req.UserID)
-	// if err != nil {
-	// 	return http.StatusInternalServerError, terror.Error(err)
-	// }
+	warMachinePosition, err := pc.API.BattleArena.WarMachineQueue.GetWarMachineQueue(req.FactionID, req.AssetHash)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err)
+	}
 
-	// // get in game war machine
-	// for _, wm := range pc.API.BattleArena.InGameWarMachines() {
-	// 	if wm.OwnedByID != req.UserID {
-	// 		continue
-	// 	}
-	// 	userWarMachinePosition = append(userWarMachinePosition, &passport.WarMachineQueuePosition{
-	// 		WarMachineMetadata: wm,
-	// 		Position:           -1,
-	// 	})
-	// }
-
-	return helpers.EncodeJSON(w, 0)
+	return helpers.EncodeJSON(w, struct {
+		Position *int `json:"position"`
+	}{
+		Position: warMachinePosition,
+	})
 }
 
 type AssetRepairStatRequest struct {
@@ -309,23 +323,28 @@ func (pc *PassportWebhookController) AssetRepairStatGet(w http.ResponseWriter, r
 	record := &server.AssetRepairRecord{
 		Hash: req.Hash,
 	}
-
 	err = db.AssetRepairIncompleteGet(r.Context(), pc.Conn, record)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return helpers.EncodeJSON(w, &server.AssetRepairRecord{})
+			return helpers.EncodeJSON(w, struct {
+				AssetRepairRecord *server.AssetRepairRecord `json:"assetRepairRecord"`
+			}{
+				AssetRepairRecord: &server.AssetRepairRecord{},
+			})
 		}
 
 		return http.StatusInternalServerError, terror.Error(err)
 	}
-
-	return helpers.EncodeJSON(w, record)
+	return helpers.EncodeJSON(w, struct {
+		AssetRepairRecord *server.AssetRepairRecord `json:"assetRepairRecord"`
+	}{
+		AssetRepairRecord: record,
+	})
 }
 
 type AuthRingCheckRequest struct {
-	User                *server.User  `json:"user"`
-	SessionID           hub.SessionID `json:"sessionID"`
-	GameserverSessionID string        `json:"gameserverSessionID"`
+	User                *server.User `json:"user"`
+	GameserverSessionID string       `json:"gameserverSessionID"`
 }
 
 func (pc *PassportWebhookController) AuthRingCheck(w http.ResponseWriter, r *http.Request) (int, error) {
@@ -368,5 +387,9 @@ func (pc *PassportWebhookController) AuthRingCheck(w http.ResponseWriter, r *htt
 
 	go client.Send(b)
 
-	return helpers.EncodeJSON(w, true)
+	return helpers.EncodeJSON(w, struct {
+		IsSuccess bool `json:"isSuccess"`
+	}{
+		IsSuccess: true,
+	})
 }

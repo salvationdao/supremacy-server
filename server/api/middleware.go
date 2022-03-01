@@ -3,7 +3,6 @@ package api
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
@@ -41,37 +40,6 @@ func WithError(next func(w http.ResponseWriter, r *http.Request) (int, error)) f
 				Message:   err.Error(),
 				ErrorCode: generateErrorCode(5),
 			}
-
-			var bErr *terror.TError
-			if errors.As(err, &bErr) {
-				errObj.Message = bErr.Message
-
-				// set generic messages if friendly message not set making genric messages overrideable
-				if bErr.Error() == bErr.Message {
-
-					// if internal server error set as genric internal error message
-					if code == 500 {
-						errObj.Message = string(InternalErrorTryAgain)
-					}
-
-					// if forbidden error set genric forbidden error
-					if code == 403 {
-						errObj.Message = string(Forbidden)
-					}
-
-					// if unauthed error set genric unauthed error
-					if code == 401 {
-						errObj.Message = string(Unauthorised)
-					}
-
-					// if badstatus request
-					if code == 400 {
-						errObj.Message = string(InputError)
-					}
-				}
-			}
-
-			// gameserver.SentrySend(encryptionKey, err, errObj.ErrorCode, r, contents)
 
 			jsonErr, err := json.Marshal(errObj)
 			if err != nil {

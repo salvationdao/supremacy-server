@@ -305,7 +305,6 @@ func (wmq *WarMachineQueue) GetWarMachineQueue(factionID server.FactionID, hash 
 	case server.ZaibatsuFactionID:
 		return wmq.Zaibatsu.WarMachineQueue(hash), nil
 	default:
-		fmt.Println("fjdsaoigjsdlkgjfdlkgj;dlkfgj;dfgjklkfd;gj;slkdfgjskdfgjsdfkjg;sdlkfgj")
 		return nil, terror.Error(fmt.Errorf("No faction war machine"), "NON-FACTION WAR MACHINE IS NOT ALLOWED!!!!!!!!!!!!!!!!!!!")
 	}
 }
