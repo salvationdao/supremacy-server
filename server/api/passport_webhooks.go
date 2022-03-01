@@ -154,7 +154,7 @@ func (pc *PassportWebhookController) WarMachineJoin(w http.ResponseWriter, r *ht
 	}
 
 	// set insurance flag
-	userWarMachinePostion, err := pc.API.BattleArena.WarMachineQueue.GetUserWarMachineQueue(req.WarMachineMetadata.FactionID, req.WarMachineMetadata.OwnedByID)
+	userWarMachinePostion, err := pc.API.BattleArena.WarMachineQueue.GetWarMachineQueue(req.WarMachineMetadata.FactionID, req.WarMachineMetadata.Hash)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)
 	}

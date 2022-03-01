@@ -205,13 +205,22 @@ func (wmq *WarMachineQueue) Join(wmm *server.WarMachineMetadata, isInsured bool)
 	switch wmm.FactionID {
 	case server.RedMountainFactionID:
 		err := wmq.RedMountain.Join(wmm, isInsured, RedMountainFaction)
-		return terror.Error(err)
+		if err != nil {
+			return terror.Error(err)
+		}
+		return nil
 	case server.BostonCyberneticsFactionID:
 		err := wmq.Boston.Join(wmm, isInsured, BostonFaction)
-		return terror.Error(err)
+		if err != nil {
+			return terror.Error(err)
+		}
+		return nil
 	case server.ZaibatsuFactionID:
 		err := wmq.Zaibatsu.Join(wmm, isInsured, ZaibatsuFaction)
-		return terror.Error(err)
+		if err != nil {
+			return terror.Error(err)
+		}
+		return nil
 	default:
 		return terror.Error(fmt.Errorf("No faction war machine"), "NON-FACTION WAR MACHINE IS NOT ALLOWED!!!!!!!!!!!!!!!!!!!")
 	}
@@ -285,47 +294,44 @@ func checkWarMachineExist(list []*server.WarMachineMetadata, hash string) int {
 	return -1
 }
 
-func (wmq *WarMachineQueue) GetUserWarMachineQueue(factionID server.FactionID, userID server.UserID) ([]*passport.WarMachineQueuePosition, error) {
+func (wmq *WarMachineQueue) GetWarMachineQueue(factionID server.FactionID, hash string) (*int, error) {
+	fmt.Println(factionID)
 	// check faction id
 	switch factionID {
 	case server.RedMountainFactionID:
-		return wmq.RedMountain.UserWarMachineQueue(userID), nil
+		return wmq.RedMountain.WarMachineQueue(hash), nil
 	case server.BostonCyberneticsFactionID:
-		return wmq.Boston.UserWarMachineQueue(userID), nil
+		return wmq.Boston.WarMachineQueue(hash), nil
 	case server.ZaibatsuFactionID:
-		return wmq.Zaibatsu.UserWarMachineQueue(userID), nil
+		return wmq.Zaibatsu.WarMachineQueue(hash), nil
 	default:
+		fmt.Println("fjdsaoigjsdlkgjfdlkgj;dlkfgj;dfgjklkfd;gj;slkdfgjskdfgjsdfkjg;sdlkfgj")
 		return nil, terror.Error(fmt.Errorf("No faction war machine"), "NON-FACTION WAR MACHINE IS NOT ALLOWED!!!!!!!!!!!!!!!!!!!")
 	}
 }
 
-func (fq *FactionQueue) UserWarMachineQueue(userID server.UserID) []*passport.WarMachineQueuePosition {
+func (fq *FactionQueue) WarMachineQueue(hash string) *int {
 	// for each queue map
-	warMachineQueuePositions := []*passport.WarMachineQueuePosition{}
-
 	fq.RLock()
 	defer fq.RUnlock()
 	for i, wm := range fq.QueuingWarMachines {
-		if wm.OwnedByID != userID {
+		if wm.Hash != hash {
 			continue
 		}
-		warMachineQueuePositions = append(warMachineQueuePositions, &passport.WarMachineQueuePosition{
-			WarMachineMetadata: wm,
-			Position:           i + 1,
-		})
+
+		position := i + 1
+		return &position
 	}
 
 	for _, wm := range fq.InGameWarMachines {
-		if wm.OwnedByID != userID {
+		if wm.Hash != hash {
 			continue
 		}
-		warMachineQueuePositions = append(warMachineQueuePositions, &passport.WarMachineQueuePosition{
-			WarMachineMetadata: wm,
-			Position:           -1,
-		})
+		position := -1
+		return &position
 	}
 
-	return warMachineQueuePositions
+	return nil
 }
 
 func (fq *FactionQueue) CurrentBattleQueuePerUser() map[server.UserID][]*passport.WarMachineQueuePosition {
