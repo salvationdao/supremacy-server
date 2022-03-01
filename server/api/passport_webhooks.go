@@ -148,7 +148,8 @@ type WarMachineJoinRequest struct {
 }
 
 type WarMachineJoinResp struct {
-	Position *int `json:"position"`
+	Position       *int    `json:"position"`
+	ContractReward *string `json:"contractReward"`
 }
 
 func (pc *PassportWebhookController) WarMachineJoin(w http.ResponseWriter, r *http.Request) (int, error) {
@@ -167,14 +168,28 @@ func (pc *PassportWebhookController) WarMachineJoin(w http.ResponseWriter, r *ht
 		return http.StatusBadRequest, terror.Error(err, err.Error())
 	}
 
+	resp := &WarMachineJoinResp{}
 	// set insurance flag
 	warMachinePostion, err := pc.API.BattleArena.WarMachineQueue.GetWarMachineQueue(req.WarMachineMetadata.FactionID, req.WarMachineMetadata.Hash)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
+	resp.Position = warMachinePostion
+
+	// get contract reward
+	queuingStat, err := db.AssetQueuingStat(context.Background(), pc.Conn, req.WarMachineMetadata.Hash)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return http.StatusInternalServerError, terror.Error(err)
+	}
+
+	resp.ContractReward = nil
+	if queuingStat != nil {
+		resp.ContractReward = &queuingStat.ContractReward
+	}
+
 	// return current queuing position
-	return helpers.EncodeJSON(w, &WarMachineJoinResp{warMachinePostion})
+	return helpers.EncodeJSON(w, resp)
 }
 
 type UserSupsMultiplierGetRequest struct {
@@ -412,14 +427,19 @@ func (pc *PassportWebhookController) FactionQueueCostGet(w http.ResponseWriter, 
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("faction id is empty"), "Faction id is required")
 	}
 
-	cost := 0
+	length := 0
 	switch req.FactionID {
 	case server.RedMountainFactionID:
-		cost = pc.API.BattleArena.WarMachineQueue.RedMountain.QueuingLength()
+		length = pc.API.BattleArena.WarMachineQueue.RedMountain.QueuingLength()
 	case server.BostonCyberneticsFactionID:
-		cost = pc.API.BattleArena.WarMachineQueue.Boston.QueuingLength()
+		length = pc.API.BattleArena.WarMachineQueue.Boston.QueuingLength()
 	case server.ZaibatsuFactionID:
-		cost = pc.API.BattleArena.WarMachineQueue.Zaibatsu.QueuingLength()
+		length = pc.API.BattleArena.WarMachineQueue.Zaibatsu.QueuingLength()
 	}
-	return helpers.EncodeJSON(w, cost)
+
+	return helpers.EncodeJSON(w, struct {
+		Length int `json:"length"`
+	}{
+		Length: length,
+	})
 }
