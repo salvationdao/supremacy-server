@@ -126,8 +126,6 @@ func (s *StreamsWS) GlobalMessageSubscribe(ctx context.Context, wsc *hub.Client,
 	if err != nil {
 		return "", "", terror.Error(err, "Invalid request received")
 	}
-
-	reply(GlobalAnnouncement{})
-
+	reply(s.API.GlobalAnnouncement)
 	return req.TransactionID, messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), nil
 }

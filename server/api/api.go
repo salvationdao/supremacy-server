@@ -123,6 +123,8 @@ type API struct {
 	// viewer live count
 	viewerLiveCount *ViewerLiveCount
 
+	GlobalAnnouncement *GlobalAnnouncement
+
 	battleEndInfo *BattleEndInfo
 }
 
@@ -211,7 +213,7 @@ func NewAPI(
 		r.Delete("/video_server", WithToken(config.ServerStreamKey, WithError((api.DeleteStreamHandler))))
 		r.Get("/faction_data", WithError(api.GetFactionData))
 		r.Get("/trigger/ability_file_upload", WithError(api.GetFactionData))
-		r.Post("/global_announcement", WithError(api.SendGlobalAnnouncement))
+		r.Post("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.SendGlobalAnnouncement)))
 
 	})
 
@@ -528,9 +530,8 @@ func (api *API) SendGlobalAnnouncement(w http.ResponseWriter, r *http.Request) (
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 	defer r.Body.Close()
-
 	go api.MessageBus.Send(r.Context(), messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), req)
 
+	api.GlobalAnnouncement = req
 	return http.StatusOK, nil
-
 }
