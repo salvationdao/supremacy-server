@@ -39,7 +39,7 @@ type WarMachineMetadata struct {
 	Health             int                `json:"health"`
 	MaxShield          int                `json:"maxShield"`
 	Shield             int                `json:"shield"`
-	ShieldRechargeRate float32            `json:"shieldRechargeRate"`
+	ShieldRechargeRate float64            `json:"shieldRechargeRate"`
 	Speed              int                `json:"speed"`
 	Durability         int                `json:"durability"`
 	PowerGrid          int                `json:"powerGrid"`
