@@ -3,7 +3,9 @@ package battle_arena
 import (
 	"context"
 	"server"
+	"server/comms"
 	"server/db"
+	"server/passport"
 	"time"
 
 	"github.com/ninja-software/terror/v2"
@@ -48,6 +50,53 @@ func (ba *BattleArena) InitNextBattle() error {
 	ba.battle.WarMachines = append(ba.battle.WarMachines, ba.WarMachineQueue.RedMountain.GetWarMachineForEnterGame(mechsPerFaction)...)
 	ba.battle.WarMachines = append(ba.battle.WarMachines, ba.WarMachineQueue.Boston.GetWarMachineForEnterGame(mechsPerFaction)...)
 	ba.battle.WarMachines = append(ba.battle.WarMachines, ba.WarMachineQueue.Zaibatsu.GetWarMachineForEnterGame(mechsPerFaction)...)
+
+	// broadcast warmachine stat to passport
+	broadcastList := []*comms.WarMachineQueueStat{}
+	// Red mountain
+	for i, wm := range ba.WarMachineQueue.RedMountain.QueuingWarMachines {
+		position := i + 1
+		broadcastList = append(broadcastList, &comms.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
+	}
+	for _, wm := range ba.WarMachineQueue.RedMountain.InGameWarMachines {
+		position := -1
+		broadcastList = append(broadcastList, &comms.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
+	}
+	ba.passport.FactionQueueCostUpdate(&passport.FactionQueuePriceUpdateReq{
+		FactionID:     server.RedMountainFactionID,
+		QueuingLength: ba.WarMachineQueue.RedMountain.QueuingLength(),
+	})
+
+	// Boston
+	for i, wm := range ba.WarMachineQueue.Boston.QueuingWarMachines {
+		position := i + 1
+		broadcastList = append(broadcastList, &comms.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
+	}
+	for _, wm := range ba.WarMachineQueue.Boston.InGameWarMachines {
+		position := -1
+		broadcastList = append(broadcastList, &comms.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
+	}
+	ba.passport.FactionQueueCostUpdate(&passport.FactionQueuePriceUpdateReq{
+		FactionID:     server.BostonCyberneticsFactionID,
+		QueuingLength: ba.WarMachineQueue.Boston.QueuingLength(),
+	})
+
+	// Zaibatsu
+	for i, wm := range ba.WarMachineQueue.Zaibatsu.QueuingWarMachines {
+		position := i + 1
+		broadcastList = append(broadcastList, &comms.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
+	}
+	for _, wm := range ba.WarMachineQueue.Zaibatsu.InGameWarMachines {
+		position := -1
+		broadcastList = append(broadcastList, &comms.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
+	}
+	ba.passport.FactionQueueCostUpdate(&passport.FactionQueuePriceUpdateReq{
+		FactionID:     server.ZaibatsuFactionID,
+		QueuingLength: ba.WarMachineQueue.Zaibatsu.QueuingLength(),
+	})
+
+	// broadcast position change
+	ba.passport.WarMachineQueuePositionBroadcast(broadcastList)
 
 	// get Zaibatsu faction abilities to insert
 	zaibatsuAbility, err := db.GetZaibatsuFactionAbility(context.Background(), ba.Conn)

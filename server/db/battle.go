@@ -2,10 +2,14 @@ package db
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"server"
+	"server/gamelog"
 
 	"github.com/georgysavva/scany/pgxscan"
+	"github.com/jackc/pgx/v4"
+	"github.com/shopspring/decimal"
 
 	"github.com/ninja-software/terror/v2"
 
@@ -14,6 +18,7 @@ import (
 
 // BattleStarted inserts a new battle into the DB
 func BattleStarted(ctx context.Context, conn Conn, battle *server.Battle) error {
+	gamelog.GameLog.Info().Str("fn", "BattleStarted").Msg("db func")
 	q := `
 		INSERT INTO 
 			battles (id, game_map_id)
@@ -32,6 +37,7 @@ func BattleStarted(ctx context.Context, conn Conn, battle *server.Battle) error 
 
 // BattleWarMachineAssign assign war machines into a battle
 func BattleWarMachineAssign(ctx context.Context, conn Conn, battleID server.BattleID, warMachineMetadatas []*server.WarMachineMetadata) error {
+	gamelog.GameLog.Info().Str("fn", "BattleWarMachineAssign").Msg("db func")
 	q := `
 		INSERT INTO 
 			battles_war_machines (battle_id, war_machine_stat)
@@ -68,6 +74,7 @@ func BattleWarMachineAssign(ctx context.Context, conn Conn, battleID server.Batt
 
 // BattleEnded sets a battle as ended
 func BattleEnded(ctx context.Context, conn Conn, battleID server.BattleID, winningCondition server.BattleWinCondition) error {
+	gamelog.GameLog.Info().Str("fn", "BattleEnded").Msg("db func")
 	q := `
 		UPDATE 
 			battles
@@ -87,6 +94,7 @@ func BattleEnded(ctx context.Context, conn Conn, battleID server.BattleID, winni
 
 // BattleWinnerWarMachinesSet set war machine as winner
 func BattleWinnerWarMachinesSet(ctx context.Context, conn Conn, battleID server.BattleID, warMachines []*server.WarMachineMetadata) error {
+	gamelog.GameLog.Info().Str("fn", "BattleWinnerWarMachinesSet").Msg("db func")
 	q := `
 		UPDATE
 			battles_war_machines
@@ -114,6 +122,7 @@ func BattleWinnerWarMachinesSet(ctx context.Context, conn Conn, battleID server.
 
 // BattleGet gets a battle via battle uuid
 func BattleGet(ctx context.Context, conn Conn, battleID server.BattleID) (*server.Battle, error) {
+	gamelog.GameLog.Info().Str("fn", "BattleGet").Msg("db func")
 	result := &server.Battle{}
 
 	q := `SELECT * FROM battles WHERE id = $1;`
@@ -127,6 +136,7 @@ func BattleGet(ctx context.Context, conn Conn, battleID server.BattleID) (*serve
 
 // CreateBattleStateEvent adds a battle log of BattleEvent
 func CreateBattleStateEvent(ctx context.Context, conn Conn, battleID server.BattleID, state string, detail []byte) (*server.BattleEventStateChange, error) {
+	gamelog.GameLog.Info().Str("fn", "CreateBattleStateEvent").Msg("db func")
 	event := &server.BattleEventStateChange{}
 	q := `
 		WITH rows AS (
@@ -160,6 +170,7 @@ func CreateBattleStateEvent(ctx context.Context, conn Conn, battleID server.Batt
 * Battle Queue stuff *
 *********************/
 func BattleQueueInsert(ctx context.Context, conn Conn, warMachineMetadata *server.WarMachineMetadata, contractReward string, isInsured bool) error {
+	gamelog.GameLog.Info().Str("fn", "BattleQueueInsert").Msg("db func")
 	// marshal metadata
 	jb, err := json.Marshal(warMachineMetadata)
 	if err != nil {
@@ -182,6 +193,7 @@ func BattleQueueInsert(ctx context.Context, conn Conn, warMachineMetadata *serve
 }
 
 func BattleQueueWarMachineUpdate(ctx context.Context, conn Conn, warMachineMetadata *server.WarMachineMetadata) error {
+	gamelog.GameLog.Info().Str("fn", "BattleQueueWarMachineUpdate").Msg("db func")
 	// marshal metadata
 	jb, err := json.Marshal(warMachineMetadata)
 	if err != nil {
@@ -206,6 +218,7 @@ func BattleQueueWarMachineUpdate(ctx context.Context, conn Conn, warMachineMetad
 }
 
 func BattleQueueRemove(ctx context.Context, conn Conn, warMachineMetadata *server.WarMachineMetadata) error {
+	gamelog.GameLog.Info().Str("fn", "BattleQueueRemove").Msg("db func")
 	q := `
 			UPDATE
 				battle_war_machine_queues
@@ -213,11 +226,10 @@ func BattleQueueRemove(ctx context.Context, conn Conn, warMachineMetadata *serve
 				deleted_at = NOW()
 			WHERE
 				war_machine_metadata ->> 'hash' = $1 AND 
-				war_machine_metadata ->> 'factionID' = $2 AND 
 				deleted_at ISNULL
 		`
 
-	_, err := conn.Exec(ctx, q, warMachineMetadata.Hash, warMachineMetadata.FactionID)
+	_, err := conn.Exec(ctx, q, warMachineMetadata.Hash)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -226,10 +238,11 @@ func BattleQueueRemove(ctx context.Context, conn Conn, warMachineMetadata *serve
 }
 
 func BattleQueueGetByFactionID(ctx context.Context, conn Conn, factionID server.FactionID) ([]*server.WarMachineMetadata, error) {
+	gamelog.GameLog.Info().Str("fn", "BattleQueueGetByFactionID").Msg("db func")
 	bqs := []*server.BattleQueueMetadata{}
 	q := `
 			SELECT
-				war_machine_metadata
+				war_machine_metadata, contract_reward
 			FROM
 				battle_war_machine_queues
 			WHERE
@@ -245,6 +258,13 @@ func BattleQueueGetByFactionID(ctx context.Context, conn Conn, factionID server.
 
 	wms := []*server.WarMachineMetadata{}
 	for _, bq := range bqs {
+		// insert contract reward in the mech
+		contractReward, err := decimal.NewFromString(bq.ContractReward)
+		if err != nil {
+			return []*server.WarMachineMetadata{}, terror.Error(err)
+		}
+		bq.WarMachineMetadata.ContractReward = contractReward
+
 		wms = append(wms, bq.WarMachineMetadata)
 	}
 
@@ -252,6 +272,7 @@ func BattleQueueGetByFactionID(ctx context.Context, conn Conn, factionID server.
 }
 
 func AssetQueuingStat(ctx context.Context, conn Conn, hash string) (*server.BattleQueueMetadata, error) {
+	gamelog.GameLog.Info().Str("fn", "AssetQueuingStat").Msg("db func")
 	result := &server.BattleQueueMetadata{}
 	q := `
 		SELECT 
@@ -260,9 +281,10 @@ func AssetQueuingStat(ctx context.Context, conn Conn, hash string) (*server.Batt
 			battle_war_machine_queues
 		WHERE
 			war_machine_metadata ->> 'hash' = $1 AND deleted_at ISNULL
+		limit 1
 	`
 	err := pgxscan.Get(ctx, conn, result, q, hash)
-	if err != nil {
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, terror.Error(err)
 	}
 
@@ -273,13 +295,14 @@ func AssetQueuingStat(ctx context.Context, conn Conn, hash string) (*server.Batt
 * Asset Repair stuff *
 *********************/
 func AssetRepairInsert(ctx context.Context, conn Conn, assetRepairRecord *server.AssetRepairRecord) error {
+	gamelog.GameLog.Info().Str("fn", "AssetRepairInsert").Msg("db func")
 	q := `
 		INSERT INTO
-			asset_repair (hash, expect_complete_at, repair_mode)
+			asset_repair (hash, expect_completed_at, repair_mode)
 		VALUES
 			($1, $2, $3)
 		RETURNING
-			hash, expect_complete_at, repair_mode
+			hash, expect_completed_at, repair_mode
 	`
 
 	err := pgxscan.Get(ctx, conn, assetRepairRecord, q,
@@ -295,8 +318,10 @@ func AssetRepairInsert(ctx context.Context, conn Conn, assetRepairRecord *server
 }
 
 func AssetRepairIncompleteGet(ctx context.Context, conn Conn, assetRepairRecord *server.AssetRepairRecord) error {
+	gamelog.GameLog.Info().Str("fn", "AssetRepairIncompleteGet").Msg("db func")
 	q := `
-		SELECT * FROM asset_repair WHERE hash = $1 AND completed_at ISNULL;
+		SELECT * FROM asset_repair WHERE hash = $1 AND completed_at ISNULL
+		limit 1;
 	`
 
 	err := pgxscan.Get(ctx, conn, assetRepairRecord, q, assetRepairRecord.Hash)
@@ -308,6 +333,7 @@ func AssetRepairIncompleteGet(ctx context.Context, conn Conn, assetRepairRecord 
 }
 
 func AssetRepairPaidToComplete(ctx context.Context, conn Conn, assetRepairRecord *server.AssetRepairRecord) error {
+	gamelog.GameLog.Info().Str("fn", "AssetRepairPaidToComplete").Msg("db func")
 	q := `
 		UPDATE
 			asset_repair
@@ -317,7 +343,7 @@ func AssetRepairPaidToComplete(ctx context.Context, conn Conn, assetRepairRecord
 		WHERE
 			hash = $1 AND completed_at ISNULL
 		RETURNING
-			hash, expect_complete_at, repair_mode, is_paid_to_complete, completed_at, created_at
+			hash, expect_completed_at, repair_mode, is_paid_to_complete, completed_at, created_at
 	`
 	err := pgxscan.Get(ctx, conn, assetRepairRecord, q, assetRepairRecord.Hash)
 	if err != nil {

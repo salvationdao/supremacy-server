@@ -193,6 +193,7 @@ func NewAPI(
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
+	api.Routes.Use(middleware.Logger)
 	api.Routes.Use(cors.New(cors.Options{AllowedOrigins: []string{config.TwitchUIHostURL}}).Handler)
 
 	api.Routes.Handle("/metrics", promhttp.Handler())
@@ -254,6 +255,7 @@ func NewAPI(
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventGameEnd, api.BattleEndSignal)
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventWarMachineDestroyed, api.WarMachineDestroyedBroadcast)
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventWarMachinePositionChanged, api.UpdateWarMachinePosition)
+	api.BattleArena.Events.AddEventHandler(battle_arena.EventAISpawned, api.AISpawnedBroadcast)
 
 	api.SetupAfterConnections(ctx, conn)
 
@@ -263,16 +265,14 @@ func NewAPI(
 func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 	api.factionMap = make(map[server.FactionID]*server.Faction)
 
-	wg := deadlock.WaitGroup{}
-	wg.Add(1)
-	var err error
-	api.Passport.FactionAll(func(factions []*server.Faction) {
-		defer wg.Done()
-		for _, f := range factions {
-			api.factionMap[f.ID] = f
-		}
-	})
-	wg.Wait()
+	factions, err := api.Passport.FactionAll()
+	if err != nil {
+		api.Log.Fatal().Err(err).Msg("issue reading from passport connection.")
+		os.Exit(-1)
+	}
+	for _, f := range factions {
+		api.factionMap[f.ID] = f
+	}
 
 	if len(api.factionMap) == 0 {
 		api.Log.Fatal().Err(err).Msg("issue reading from passport connection.")
@@ -386,6 +386,7 @@ func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client) error {
 		gsr := &GameSettingsResponse{
 			GameMap:     ba.GameMap,
 			WarMachines: ba.WarMachines,
+			SpawnedAI:   ba.SpawnedAI,
 		}
 		if ba.BattleHistory != nil && len(ba.BattleHistory) > 0 {
 			gsr.WarMachineLocation = ba.BattleHistory[0]

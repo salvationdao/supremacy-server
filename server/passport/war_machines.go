@@ -2,6 +2,7 @@ package passport
 
 import (
 	"context"
+	"fmt"
 	"server"
 )
 
@@ -14,31 +15,11 @@ type DefaultWarMachinesResp struct {
 }
 
 // GetDefaultWarMachines gets the default war machines for a given faction
-func (pp *Passport) GetDefaultWarMachines(ctx context.Context, factionID server.FactionID, callback func(warMachines []*server.WarMachineMetadata)) {
+func (pp *Passport) GetDefaultWarMachines(ctx context.Context, factionID server.FactionID) ([]*server.WarMachineMetadata, error) {
 	resp := &DefaultWarMachinesResp{}
 	err := pp.Comms.Call("C.SupremacyDefaultWarMachinesHandler", DefaultWarMachinesReq{factionID}, resp)
 	if err != nil {
-		pp.Log.Err(err).Str("method", "SupremacyDefaultWarMachinesHandler").Msg("rpc error")
+		return nil, fmt.Errorf("GetDefaultWarMachines: %w", err)
 	}
-	callback(resp.WarMachines)
-}
-
-type FactionContractRewardUpdateReq struct {
-	FactionContractRewards []*FactionContractReward `json:"factionContractRewards"`
-}
-
-type FactionContractReward struct {
-	FactionID      server.FactionID `json:"factionID"`
-	ContractReward string           `json:"contractReward"`
-}
-
-type FactionContractRewardUpdateResp struct {
-}
-
-// FactionContractRewardUpdate gets the default war machines for a given faction
-func (pp *Passport) FactionContractRewardUpdate(fcr []*FactionContractReward) {
-	err := pp.Comms.Call("C.SupremacyFactionContractRewardUpdateHandler", FactionContractRewardUpdateReq{fcr}, &FactionContractRewardUpdateResp{})
-	if err != nil {
-		pp.Log.Err(err).Str("method", "SupremacyFactionContractRewardUpdateHandler").Msg("rpc error")
-	}
+	return resp.WarMachines, nil
 }

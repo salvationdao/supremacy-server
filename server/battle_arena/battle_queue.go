@@ -2,18 +2,19 @@ package battle_arena
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"server"
 	"server/db"
-	"server/passport"
-	"sync"
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/log_helpers"
 	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog"
+	"github.com/sasha-s/go-deadlock"
+	"github.com/shopspring/decimal"
 )
 
 type WarMachineQueue struct {
@@ -24,14 +25,14 @@ type WarMachineQueue struct {
 }
 
 type ContractReward struct {
-	*sync.RWMutex // lock for query
-	Amount        *big.Int
+	deadlock.RWMutex // lock for query
+	Amount           *big.Int
 }
 
 type FactionQueue struct {
-	ID            server.FactionID
-	*sync.RWMutex // lock for query
-	Conn          *pgxpool.Pool
+	ID               server.FactionID
+	deadlock.RWMutex // lock for query
+	Conn             *pgxpool.Pool
 
 	ContractReward     *ContractReward
 	QueuingWarMachines []*server.WarMachineMetadata
@@ -44,18 +45,28 @@ type FactionQueue struct {
 func NewWarMachineQueue(factions []*server.Faction, conn *pgxpool.Pool, log *zerolog.Logger, ba *BattleArena) (*WarMachineQueue, error) {
 	var err error
 	wmq := &WarMachineQueue{
-		RedMountain: &FactionQueue{server.RedMountainFactionID, &sync.RWMutex{}, conn, &ContractReward{&sync.RWMutex{}, big.NewInt(0)}, []*server.WarMachineMetadata{}, []*server.WarMachineMetadata{}, []*server.WarMachineMetadata{}, log_helpers.NamedLogger(log, "Red Mountain queue")},
-		Boston:      &FactionQueue{server.BostonCyberneticsFactionID, &sync.RWMutex{}, conn, &ContractReward{&sync.RWMutex{}, big.NewInt(0)}, []*server.WarMachineMetadata{}, []*server.WarMachineMetadata{}, []*server.WarMachineMetadata{}, log_helpers.NamedLogger(log, "Boston queue")},
-		Zaibatsu:    &FactionQueue{server.ZaibatsuFactionID, &sync.RWMutex{}, conn, &ContractReward{&sync.RWMutex{}, big.NewInt(0)}, []*server.WarMachineMetadata{}, []*server.WarMachineMetadata{}, []*server.WarMachineMetadata{}, log_helpers.NamedLogger(log, "Zaibatsu queue")},
+		RedMountain: &FactionQueue{server.RedMountainFactionID, deadlock.RWMutex{}, conn, &ContractReward{deadlock.RWMutex{}, big.NewInt(0)}, []*server.WarMachineMetadata{}, []*server.WarMachineMetadata{}, []*server.WarMachineMetadata{}, log_helpers.NamedLogger(log, "Red Mountain queue")},
+		Boston:      &FactionQueue{server.BostonCyberneticsFactionID, deadlock.RWMutex{}, conn, &ContractReward{deadlock.RWMutex{}, big.NewInt(0)}, []*server.WarMachineMetadata{}, []*server.WarMachineMetadata{}, []*server.WarMachineMetadata{}, log_helpers.NamedLogger(log, "Boston queue")},
+		Zaibatsu:    &FactionQueue{server.ZaibatsuFactionID, deadlock.RWMutex{}, conn, &ContractReward{deadlock.RWMutex{}, big.NewInt(0)}, []*server.WarMachineMetadata{}, []*server.WarMachineMetadata{}, []*server.WarMachineMetadata{}, log_helpers.NamedLogger(log, "Zaibatsu queue")},
 		log:         log_helpers.NamedLogger(log, "war machine queue"),
 	}
+
+	log.Info().
+		Str("red_mountain_faction_id", server.RedMountainFactionID.String()).
+		Str("boston_cybernetics_faction_id", server.BostonCyberneticsFactionID.String()).
+		Str("zaibatsu_faction_id", server.ZaibatsuFactionID.String()).
+		Str("fn", "NewWarMachineQueue").
+		Msg("created new war machine queue")
 
 	for _, faction := range factions {
 		switch faction.ID {
 
 		// initialise Red Mountain war machine queue
 		case server.RedMountainFactionID:
-			wmq.RedMountain.defaultWarMachines = ba.DefaultWarMachinesGet(faction.ID)
+			wmq.RedMountain.defaultWarMachines, err = ba.DefaultWarMachinesGet(faction.ID)
+			if err != nil {
+				return nil, fmt.Errorf("get default war machines: %w", err)
+			}
 			err = wmq.RedMountain.Init(faction)
 			if err != nil {
 				return nil, terror.Error(err)
@@ -63,7 +74,10 @@ func NewWarMachineQueue(factions []*server.Faction, conn *pgxpool.Pool, log *zer
 
 			// initialise Boston war machine queue
 		case server.BostonCyberneticsFactionID:
-			wmq.Boston.defaultWarMachines = ba.DefaultWarMachinesGet(faction.ID)
+			wmq.Boston.defaultWarMachines, err = ba.DefaultWarMachinesGet(faction.ID)
+			if err != nil {
+				return nil, fmt.Errorf("get default war machines: %w", err)
+			}
 			err = wmq.Boston.Init(faction)
 			if err != nil {
 				return nil, terror.Error(err)
@@ -71,12 +85,16 @@ func NewWarMachineQueue(factions []*server.Faction, conn *pgxpool.Pool, log *zer
 
 			// initialise Zaibatsu war machine queue
 		case server.ZaibatsuFactionID:
-			wmq.Zaibatsu.defaultWarMachines = ba.DefaultWarMachinesGet(faction.ID)
+			wmq.Zaibatsu.defaultWarMachines, err = ba.DefaultWarMachinesGet(faction.ID)
+			if err != nil {
+				return nil, fmt.Errorf("get default war machines: %w", err)
+			}
 			err = wmq.Zaibatsu.Init(faction)
 			if err != nil {
 				return nil, terror.Error(err)
 			}
-
+		default:
+			return nil, terror.Error(fmt.Errorf("faction switch fallthrough: %s", faction.ID))
 		}
 	}
 
@@ -84,17 +102,15 @@ func NewWarMachineQueue(factions []*server.Faction, conn *pgxpool.Pool, log *zer
 }
 
 //
-func (ba *BattleArena) DefaultWarMachinesGet(factionID server.FactionID) []*server.WarMachineMetadata {
+func (ba *BattleArena) DefaultWarMachinesGet(factionID server.FactionID) ([]*server.WarMachineMetadata, error) {
 	warMachines := []*server.WarMachineMetadata{}
 	// add default war machine to meet the total amount
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	ba.passport.GetDefaultWarMachines(context.Background(), factionID, func(wms []*server.WarMachineMetadata) {
-		defer wg.Done()
-		warMachines = append(warMachines, wms...)
-	})
-	wg.Wait()
-	return warMachines
+	result, err := ba.passport.GetDefaultWarMachines(context.Background(), factionID)
+	if err != nil {
+		return nil, err
+	}
+	warMachines = append(warMachines, result...)
+	return warMachines, nil
 }
 
 var RedMountainFaction = &server.Faction{
@@ -131,7 +147,7 @@ var ZaibatsuFaction = &server.Faction{
 func (fq *FactionQueue) Init(faction *server.Faction) error {
 	// read war machine queue from db
 	wms, err := db.BattleQueueGetByFactionID(context.Background(), fq.Conn, faction.ID)
-	if err != nil && err != pgx.ErrNoRows {
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return terror.Error(err, "failed to read battle queue list from db")
 	}
 
@@ -139,15 +155,9 @@ func (fq *FactionQueue) Init(faction *server.Faction) error {
 		wms = []*server.WarMachineMetadata{}
 	}
 	// set up contract reward
-	crStr, err := db.FactionContractRewardGet(context.Background(), fq.Conn, faction.ID)
+	contractReward, err := db.FactionContractRewardGet(context.Background(), fq.Conn, faction.ID)
 	if err != nil {
 		return terror.Error(err, "failed to get contract reward")
-	}
-
-	contractReward := big.NewInt(0)
-	cr, ok := contractReward.SetString(crStr, 10)
-	if !ok {
-		return terror.Error(fmt.Errorf("Failed to convert contract reward to big int"))
 	}
 
 	// chuck war machines into list
@@ -159,7 +169,7 @@ func (fq *FactionQueue) Init(faction *server.Faction) error {
 	}
 
 	// set up faction contract reward
-	fq.ContractReward.Amount.Add(fq.ContractReward.Amount, cr)
+	fq.ContractReward.Amount.Add(fq.ContractReward.Amount, contractReward.BigInt())
 
 	return nil
 }
@@ -167,7 +177,7 @@ func (fq *FactionQueue) Init(faction *server.Faction) error {
 // UpdateContractReward update contract reward when battle end
 func (fq *FactionQueue) UpdateContractReward(winningFactionID server.FactionID) error {
 	fq.ContractReward.Lock()
-	defer fq.ContractReward.RLock()
+	defer fq.ContractReward.Unlock()
 	if winningFactionID == fq.ID {
 		// decrease 2.5% if win a battle
 		fq.ContractReward.Amount.Mul(fq.ContractReward.Amount, big.NewInt(975))
@@ -204,13 +214,22 @@ func (wmq *WarMachineQueue) Join(wmm *server.WarMachineMetadata, isInsured bool)
 	switch wmm.FactionID {
 	case server.RedMountainFactionID:
 		err := wmq.RedMountain.Join(wmm, isInsured, RedMountainFaction)
-		return terror.Error(err)
+		if err != nil {
+			return terror.Error(err)
+		}
+		return nil
 	case server.BostonCyberneticsFactionID:
 		err := wmq.Boston.Join(wmm, isInsured, BostonFaction)
-		return terror.Error(err)
+		if err != nil {
+			return terror.Error(err)
+		}
+		return nil
 	case server.ZaibatsuFactionID:
 		err := wmq.Zaibatsu.Join(wmm, isInsured, ZaibatsuFaction)
-		return terror.Error(err)
+		if err != nil {
+			return terror.Error(err)
+		}
+		return nil
 	default:
 		return terror.Error(fmt.Errorf("No faction war machine"), "NON-FACTION WAR MACHINE IS NOT ALLOWED!!!!!!!!!!!!!!!!!!!")
 	}
@@ -227,8 +246,10 @@ func (fq *FactionQueue) Join(wmm *server.WarMachineMetadata, isInsured bool, fac
 		return terror.Error(fmt.Errorf("war machine is currently in game"), "war machine "+wmm.Hash+" is currently in game")
 	}
 
+	contractReward := decimal.NewFromBigInt(fq.ContractReward.Amount, 0)
+
 	// insert war machine into db
-	err := db.BattleQueueInsert(context.Background(), fq.Conn, wmm, fq.ContractReward.Amount.String(), isInsured)
+	err := db.BattleQueueInsert(context.Background(), fq.Conn, wmm, contractReward.String(), isInsured)
 	if err != nil {
 		return terror.Error(err, "Failed to insert a copy of queue in db, token id:"+wmm.Hash)
 	}
@@ -236,6 +257,7 @@ func (fq *FactionQueue) Join(wmm *server.WarMachineMetadata, isInsured bool, fac
 	// join war machine to queue
 	fq.Lock()
 	wmm.Faction = faction
+	wmm.ContractReward = contractReward
 	fq.QueuingWarMachines = append(fq.QueuingWarMachines, wmm)
 	fq.Unlock()
 
@@ -269,8 +291,6 @@ func (fq *FactionQueue) GetWarMachineForEnterGame(desireAmount int) []*server.Wa
 	// clear up the war machine list
 	fq.QueuingWarMachines = fq.QueuingWarMachines[desireAmount:]
 
-	// TODO: broadcast warmachine stat to passport
-
 	return newList
 }
 
@@ -284,76 +304,46 @@ func checkWarMachineExist(list []*server.WarMachineMetadata, hash string) int {
 	return -1
 }
 
-func (wmq *WarMachineQueue) GetUserWarMachineQueue(factionID server.FactionID, userID server.UserID) ([]*passport.WarMachineQueuePosition, error) {
+func (wmq *WarMachineQueue) GetWarMachineQueue(factionID server.FactionID, hash string) (*int, decimal.Decimal) {
 	// check faction id
+	wmq.log.Info().Str("faction_id", factionID.String()).Str("fn", "GetWarMachineQueue").Msg("battle_queue.go")
 	switch factionID {
 	case server.RedMountainFactionID:
-		return wmq.RedMountain.UserWarMachineQueue(userID), nil
+		return wmq.RedMountain.WarMachineQueuePosition(hash)
 	case server.BostonCyberneticsFactionID:
-		return wmq.Boston.UserWarMachineQueue(userID), nil
+		return wmq.Boston.WarMachineQueuePosition(hash)
 	case server.ZaibatsuFactionID:
-		return wmq.Zaibatsu.UserWarMachineQueue(userID), nil
-	default:
-		return nil, terror.Error(fmt.Errorf("No faction war machine"), "NON-FACTION WAR MACHINE IS NOT ALLOWED!!!!!!!!!!!!!!!!!!!")
+		return wmq.Zaibatsu.WarMachineQueuePosition(hash)
 	}
+
+	return nil, decimal.Zero
 }
 
-func (fq *FactionQueue) UserWarMachineQueue(userID server.UserID) []*passport.WarMachineQueuePosition {
-	// for each queue map
-	warMachineQueuePositions := []*passport.WarMachineQueuePosition{}
-
+func (fq *FactionQueue) WarMachineQueuePosition(hash string) (*int, decimal.Decimal) {
+	fq.log.Info().Str("hash", hash).Str("fn", "WarMachineQueuePosition").Msg("battle_queue.go")
 	fq.RLock()
 	defer fq.RUnlock()
 	for i, wm := range fq.QueuingWarMachines {
-		if wm.OwnedByID != userID {
+		if wm.Hash != hash {
 			continue
 		}
-		warMachineQueuePositions = append(warMachineQueuePositions, &passport.WarMachineQueuePosition{
-			WarMachineMetadata: wm,
-			Position:           i + 1,
-		})
+
+		position := i + 1
+
+		return &position, wm.ContractReward
 	}
 
 	for _, wm := range fq.InGameWarMachines {
-		if wm.OwnedByID != userID {
+		if wm.Hash != hash {
 			continue
 		}
-		warMachineQueuePositions = append(warMachineQueuePositions, &passport.WarMachineQueuePosition{
-			WarMachineMetadata: wm,
-			Position:           -1,
-		})
+
+		position := -1
+
+		return &position, wm.ContractReward
 	}
 
-	return warMachineQueuePositions
-}
-
-func (fq *FactionQueue) CurrentBattleQueuePerUser() map[server.UserID][]*passport.WarMachineQueuePosition {
-	// for each queue map
-	userWarMachineMap := make(map[server.UserID][]*passport.WarMachineQueuePosition)
-
-	fq.RLock()
-	defer fq.RUnlock()
-	for i, wm := range fq.QueuingWarMachines {
-		if _, ok := userWarMachineMap[wm.OwnedByID]; !ok {
-			userWarMachineMap[wm.OwnedByID] = []*passport.WarMachineQueuePosition{}
-		}
-		userWarMachineMap[wm.OwnedByID] = append(userWarMachineMap[wm.OwnedByID], &passport.WarMachineQueuePosition{
-			WarMachineMetadata: wm,
-			Position:           i + 1,
-		})
-	}
-
-	for _, wm := range fq.InGameWarMachines {
-		if _, ok := userWarMachineMap[wm.OwnedByID]; !ok {
-			userWarMachineMap[wm.OwnedByID] = []*passport.WarMachineQueuePosition{}
-		}
-		userWarMachineMap[wm.OwnedByID] = append(userWarMachineMap[wm.OwnedByID], &passport.WarMachineQueuePosition{
-			WarMachineMetadata: wm,
-			Position:           -1,
-		})
-	}
-
-	return userWarMachineMap
+	return nil, decimal.Zero
 }
 
 func (fq *FactionQueue) GetFirstFiveQueuingWarMachines() []*server.WarMachineBrief {

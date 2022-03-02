@@ -106,8 +106,8 @@ func NewBattleArenaClient(ctx context.Context, logger *zerolog.Logger, conn *pgx
 
 	// war machines
 	ba.Command(WarMachineDestroyedCommand, ba.WarMachineDestroyedHandler)
+	ba.Command(AISpawnedCommand, ba.AISpawnedHandler)
 
-	go ba.SetupAfterConnections()
 	return ba
 }
 
@@ -159,7 +159,7 @@ const (
 )
 
 func (ba *BattleArena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithCancel(r.Context())
+	ctx, cancel := context.WithCancel(context.Background())
 	c, err := websocket.Accept(w, r, &websocket.AcceptOptions{
 		//Subprotocols: []string{"gameserver-v1"},
 	})
@@ -439,66 +439,45 @@ func (ba *BattleArena) Command(command BattleCommand, fn BattleCommandFunc) {
 	ba.Log.Trace().Msg(string(command))
 }
 
-func (ba *BattleArena) SetupAfterConnections() {
+func (ba *BattleArena) SetupAfterConnections(logger *zerolog.Logger) {
 	b := &backoff.Backoff{
 		Min:    1 * time.Second,
 		Max:    30 * time.Second,
 		Factor: 2,
 	}
-	var err error
-	// get factions from passport, retrying every 10 seconds until we ge them.
-	for len(ba.battle.FactionMap) <= 0 {
-		wg := deadlock.WaitGroup{}
-		wg.Add(1)
+	attempts := 0
 
-		ba.passport.FactionAll(func(factions []*server.Faction) {
-			defer wg.Done()
-			ba.battle.WarMachineDestroyedRecordMap = make(map[byte]*server.WarMachineDestroyedRecord)
-
-			ba.battle.FactionMap = make(map[server.FactionID]*server.Faction)
-			for _, faction := range factions {
-				ba.battle.FactionMap[faction.ID] = faction
-			}
-			if len(factions) > 0 {
-				ba.WarMachineQueue, err = NewWarMachineQueue(factions, ba.Conn, ba.Log, ba)
-				if err != nil {
-					ba.Log.Err(err).Msg("failed to set ups war machine queue")
-					os.Exit(-1)
-				}
-
-				// TODO: Build new faction reward system
-				// battleContractRewardUpdaterLogger := log_helpers.NamedLogger(ba.Log, "Contract Reward Updater").Level(zerolog.Disabled)
-				// battleContractRewardUpdater := tickle.New("Contract Reward Updater", 10, func() (int, error) {
-				// 	ba.passport.FactionWarMachineContractRewardUpdate(
-				// 		[]*server.FactionWarMachineQueue{
-				// 			{
-				// 				FactionID:  server.RedMountainFactionID,
-				// 				QueueTotal: ba.WarMachineQueue.RedMountain.QueuingLength(),
-				// 			},
-				// 			{
-				// 				FactionID:  server.BostonCyberneticsFactionID,
-				// 				QueueTotal: ba.WarMachineQueue.Boston.QueuingLength(),
-				// 			},
-				// 			{
-				// 				FactionID:  server.ZaibatsuFactionID,
-				// 				QueueTotal: ba.WarMachineQueue.Zaibatsu.QueuingLength(),
-				// 			},
-				// 		},
-				// 	)
-
-				// 	return http.StatusOK, nil
-				// })
-				// battleContractRewardUpdater.Log = &battleContractRewardUpdaterLogger
-				// battleContractRewardUpdater.Start()
-
-			}
-
-		})
-		wg.Wait()
-		if len(ba.battle.FactionMap) > 0 {
-
-			break
+	for {
+		attempts++
+		logger.Info().Int("attempt", attempts).Msg("fetching battle queue from passport")
+		factions, err := ba.passport.FactionAll()
+		if err != nil {
+			ba.Log.Err(err).Msg("could not fetch war machine queue from passport")
+			continue
 		}
-		time.Sleep(b.Duration())
+
+		if len(factions) == 0 {
+			ba.Log.Err(err).Msg("no factions returned from API")
+			time.Sleep(b.Duration())
+			continue
+		}
+
+		ba.battle.WarMachineDestroyedRecordMap = make(map[byte]*server.WarMachineDestroyedRecord)
+		ba.battle.FactionMap = make(map[server.FactionID]*server.Faction)
+
+		for _, faction := range factions {
+			ba.battle.FactionMap[faction.ID] = faction
+		}
+
+		ba.WarMachineQueue, err = NewWarMachineQueue(factions, ba.Conn, logger, ba)
+		if err != nil {
+			ba.Log.Err(err).Msg("failed to set ups war machine queue")
+			os.Exit(-1)
+		}
+
+		ba.Log.Info().Msg("successfully setup war machine queue")
+		break
 	}
+
+	ba.Log.Info().Int("factions", len(ba.battle.FactionMap)).Msg("successfully fetched battle queue from passport")
 }

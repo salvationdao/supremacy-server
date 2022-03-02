@@ -31,6 +31,7 @@ const HubKeyGameSettingsUpdated = hub.HubCommandKey("GAME:SETTINGS:UPDATED")
 type GameSettingsResponse struct {
 	GameMap            *server.GameMap              `json:"gameMap"`
 	WarMachines        []*server.WarMachineMetadata `json:"warMachines"`
+	SpawnedAI          []*server.WarMachineMetadata `json:"spawnedAI"`
 	WarMachineLocation []byte                       `json:"warMachineLocation"`
 }
 
@@ -53,6 +54,7 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 		Payload: &GameSettingsResponse{
 			GameMap:            ed.BattleArena.GameMap,
 			WarMachines:        ed.BattleArena.WarMachines,
+			SpawnedAI:          ed.BattleArena.SpawnedAI,
 			WarMachineLocation: ed.BattleArena.BattleHistory[0],
 		},
 	})
@@ -144,8 +146,8 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 		api.Log.Err(err).Msg("Failed to record users' battle count")
 		return
 	}
-
 	userVoteList := api.stopVotingCycle(ctx)
+	hasVote := len(userVoteList) > 0
 	// combine user vote list with user view list
 	addedList := []*server.BattleUserVote{}
 	for _, uid := range battleViewers {
@@ -176,32 +178,29 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 		}
 	}
 
-	// get the user who spend most sups during the battle from passport
-	wg := deadlock.WaitGroup{}
+	if hasVote {
+		// get the user who spend most sups during the battle from passport
+		wg := deadlock.WaitGroup{}
 
-	wg.Add(1)
-	api.Passport.TopSupsContributorsGet(ed.BattleArena.StartedAt, time.Now(), func(result *passport.TopSupsContributorResp) {
-		for _, topUser := range result.TopSupsContributors {
-			if !topUser.FactionID.IsNil() {
-				topUser.Faction = api.factionMap[topUser.FactionID]
+		wg.Add(1)
+		api.Passport.TopSupsContributorsGet(ed.BattleArena.StartedAt, time.Now(), func(result *passport.TopSupsContributorResp) {
+			for _, topUser := range result.TopSupsContributors {
+				if !topUser.FactionID.IsNil() {
+					topUser.Faction = api.factionMap[topUser.FactionID]
+				}
+				api.battleEndInfo.TopSupsContributors = append(api.battleEndInfo.TopSupsContributors, topUser.Brief())
+
+				// recorded for sups most spend
+				ed.BattleRewardList.TopSupsSpendUsers = append(ed.BattleRewardList.TopSupsSpendUsers, topUser.ID)
 			}
-			api.battleEndInfo.TopSupsContributors = append(api.battleEndInfo.TopSupsContributors, topUser.Brief())
 
-			// recorded for sups most spend
-			ed.BattleRewardList.TopSupsSpendUsers = append(ed.BattleRewardList.TopSupsSpendUsers, topUser.ID)
-		}
+			for _, topFaction := range result.TopSupsContributeFactions {
+				api.battleEndInfo.TopSupsContributeFactions = append(api.battleEndInfo.TopSupsContributeFactions, topFaction.Brief())
+			}
 
-		for _, topFaction := range result.TopSupsContributeFactions {
-			api.battleEndInfo.TopSupsContributeFactions = append(api.battleEndInfo.TopSupsContributeFactions, topFaction.Brief())
-		}
-
-		wg.Done()
-	})
-	wg.Wait()
-
-	if err != nil {
-		api.Log.Err(err).Msg("Failed to get top sups contributors from passport")
-		return
+			wg.Done()
+		})
+		wg.Wait()
 	}
 
 	// get most frequent trigger ability user
@@ -355,6 +354,18 @@ func (api *API) WarMachineDestroyedBroadcast(ctx context.Context, ed *battle_are
 			),
 		),
 		ed.WarMachineDestroyedRecord,
+	)
+}
+
+func (api *API) AISpawnedBroadcast(ctx context.Context, ed *battle_arena.EventData) {
+	if ed.SpawnedAI == nil {
+		return
+	}
+
+	go api.MessageBus.Send(
+		ctx,
+		messagebus.BusKey(HubKeyAISpawned),
+		ed.SpawnedAI,
 	)
 }
 
