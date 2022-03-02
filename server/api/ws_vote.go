@@ -105,17 +105,19 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 	if vc.API.BattleArena.GetCurrentState().State != server.StateMatchStart {
 		gamelog.GameLog.Warn().Str("battle_arena_state", string(vc.API.BattleArena.GetCurrentState().State)).Str("want", string(server.StateMatchStart)).Msg("wrong game state")
 		return nil
-
 	}
 
 	// check voting phase first
+	vc.API.votePhaseChecker.RLock()
 	if vc.API.votePhaseChecker.Phase != VotePhaseVoteAbilityRight && vc.API.votePhaseChecker.Phase != VotePhaseNextVoteWin {
 		gamelog.GameLog.
 			Warn().
 			Str("server_phase", string(vc.API.votePhaseChecker.Phase)).
 			Msg("wrong vote phase (can only vote in next vote win or ability vote right phase)")
+		vc.API.votePhaseChecker.RUnlock()
 		return nil
 	}
+	vc.API.votePhaseChecker.RUnlock()
 
 	if req.Payload.VoteAmount <= 0 {
 		gamelog.GameLog.Warn().Int64("amt", req.Payload.VoteAmount).Msg("negative or zero vote amount")
@@ -145,6 +147,17 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 			TransactionReference: server.TransactionReference(fmt.Sprintf("%s|%s", reason, uuid.Must(uuid.NewV4()))),
 			GroupID:              vc.API.BattleArena.CurrentBattleID().String(),
 		}, func(transaction string) {
+			// check voting phase first
+			vc.API.votePhaseChecker.RLock()
+			if vc.API.votePhaseChecker.Phase != VotePhaseVoteAbilityRight && vc.API.votePhaseChecker.Phase != VotePhaseNextVoteWin {
+				gamelog.GameLog.
+					Warn().
+					Str("server_phase", string(vc.API.votePhaseChecker.Phase)).
+					Msg("wrong vote phase (can only vote in next vote win or ability vote right phase)")
+				vc.API.votePhaseChecker.RUnlock()
+				return
+			}
+			vc.API.votePhaseChecker.RUnlock()
 
 			fts.Lock()
 			fts.Transactions = append(fts.Transactions, transaction)
