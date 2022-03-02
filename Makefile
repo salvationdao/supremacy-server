@@ -110,6 +110,10 @@ db-prepare: db-drop db-migrate
 db-seed:
 	cd $(SERVER) && go run cmd/gameserver/main.go db
 
+.PHONY: db-update-assets
+db-update-assets:
+	cd $(SERVER) && go run cmd/gameserver/main.go db --assets
+
 .PHONY: db-reset
 db-reset: db-drop db-migrate db-seed
 
