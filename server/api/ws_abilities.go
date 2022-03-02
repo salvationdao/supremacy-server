@@ -188,14 +188,15 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 					go wsc.SendWithMessageType(payload, websocket.MessageBinary)
 					return
 				}
-				fa.Lock()
-				defer fa.Unlock()
-				fa.isReached = false
 
 				// otherwise, clear transaction and bump the price
 				fa.TxRefs = []string{}
 				fa.TxMX.Unlock()
 				fa.PriceRW.Unlock()
+
+				fa.Lock()
+				defer fa.Unlock()
+				fa.isReached = false
 
 				fa.PriceRW.Lock()
 				// calc min target price (half of last max target price)
