@@ -148,7 +148,6 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 		return
 	}
 	userVoteList := api.stopVotingCycle(ctx)
-	hasVote := len(userVoteList) > 0
 	// combine user vote list with user view list
 	addedList := []*server.BattleUserVote{}
 	for _, uid := range battleViewers {
@@ -177,15 +176,24 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 			api.Log.Err(err).Msg("Failed to record battle user vote")
 			return
 		}
-	}
 
-	if hasVote {
 		// get the user who spend most sups during the battle from passport
 		wg := deadlock.WaitGroup{}
 
 		wg.Add(1)
 		api.Passport.TopSupsContributorsGet(ed.BattleArena.StartedAt, time.Now(), func(result *passport.TopSupsContributorResp) {
-			for _, topUser := range result.TopSupsContributors {
+			// get the top five user
+			topFive := []*server.User{}
+			if len(result.TopSupsContributors) < 5 {
+				topFive = append(topFive, result.TopSupsContributors...)
+			} else {
+				topFive = append(topFive, result.TopSupsContributors[:5]...)
+			}
+
+			// calc citizen multipliers
+			api.UserMultiplier.NewCitizenOrder(result.TopSupsContributors)
+
+			for _, topUser := range topFive {
 				if !topUser.FactionID.IsNil() {
 					topUser.Faction = api.factionMap[topUser.FactionID]
 				}

@@ -312,7 +312,6 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 
 		// clean up the transactions after ability is triggered
 		fts.Lock()
-		fts.Transactions = []string{}
 		defer fts.Unlock()
 
 		// broadcast notification

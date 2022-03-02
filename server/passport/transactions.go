@@ -3,6 +3,8 @@ package passport
 import (
 	"server"
 	"time"
+
+	"github.com/davecgh/go-spew/spew"
 )
 
 type HoldSupsMessageResponse struct {
@@ -71,10 +73,15 @@ type TopSupsContributorResp struct {
 // ReleaseTransactions tells the passport to transfer fund to sup pool
 func (pp *Passport) TopSupsContributorsGet(startTime, endTime time.Time, callback func(result *TopSupsContributorResp)) {
 	resp := &TopSupsContributorResp{}
-	err := pp.Comms.Call("C.TopSupsContributorHandler", TopSupsContributorReq{}, resp)
+	err := pp.Comms.Call("C.TopSupsContributorHandler", TopSupsContributorReq{
+		StartTime: startTime,
+		EndTime:   endTime,
+	}, resp)
 	if err != nil {
 		pp.Log.Err(err).Str("method", "TopSupsContributorHandler").Msg("rpc error")
 		return
 	}
+
+	spew.Dump(resp)
 	callback(resp)
 }

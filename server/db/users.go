@@ -191,6 +191,7 @@ func UserMultiplierStore(ctx context.Context, conn Conn, usm []*server.UserSupsM
 		// reformat the sups multipliers before store
 		dbMultipliers := []*dbMultiplier{}
 		for _, sm := range us.SupsMultipliers {
+
 			remainSecond := sm.ExpiredAt.Sub(now).Seconds()
 			if remainSecond <= 0 {
 				continue

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4"
 	"github.com/sasha-s/go-deadlock"
@@ -57,10 +58,11 @@ type UserMultiplier struct {
 	AirstrikeAbility       *AbilityTrigger
 	RepairAbility          *AbilityTrigger
 	AbilityFactionRecorder []server.FactionID
+
+	// Citizen
 }
 
 type Multiplier struct {
-	OnlineMap         deadlock.Map
 	ApplauseMap       deadlock.Map
 	PickedLocationMap deadlock.Map
 
@@ -74,87 +76,12 @@ type Multiplier struct {
 	AirstrikeRewardMap *AbilityTriggerMap
 	RepairRewardMap    *AbilityTriggerMap
 
-	// most sups spend
-	MostSupsPend *MostSupsPendMap // key: battleID_userID
-}
+	// Combo Breaker
+	ComboBreakerMap *ComboBreakerMap
 
-type MostSupsPendMap struct {
-	deadlock.Map
-}
-
-func (msp *MostSupsPendMap) Get(battleID string, userID string) *MultiplierAction {
-	key := battleID + "_" + userID
-
-	value, ok := msp.Load(key)
-	if !ok {
-		return nil
-	}
-	ma, ok := value.(*MultiplierAction)
-	if !ok {
-		return nil
-	}
-
-	return ma
-}
-
-func (msp *MostSupsPendMap) GetByUserID(userID string) []*MultiplierAction {
-	result := []*MultiplierAction{}
-	msp.Range(func(key, value interface{}) bool {
-		if strings.Split(key.(string), "_")[1] != userID {
-			return true
-		}
-
-		ma, ok := value.(*MultiplierAction)
-		if !ok {
-			return true
-		}
-
-		result = append(result, ma)
-
-		return true
-	})
-	return result
-}
-
-func (msp *MostSupsPendMap) GetByBattleID(battleID string) []*MultiplierAction {
-	result := []*MultiplierAction{}
-	msp.Range(func(key, value interface{}) bool {
-		if strings.Split(key.(string), "_")[0] != battleID {
-			return true
-		}
-
-		ma, ok := value.(*MultiplierAction)
-		if !ok {
-			return true
-		}
-
-		result = append(result, ma)
-
-		return true
-	})
-	return result
-}
-
-func (msp *MostSupsPendMap) Save(battleID string, userID string, ma *MultiplierAction) {
-	msp.Store(battleID+"_"+userID, ma)
-}
-
-func (msp *MostSupsPendMap) Clear(userID string) {
-	msp.Range(func(key, value interface{}) bool {
-		if strings.HasSuffix(key.(string), userID) {
-			msp.Delete(userID)
-		}
-		return true
-	})
-}
-
-func (msp *MostSupsPendMap) ClearByBattleID(battleID string) {
-	msp.Range(func(key, value interface{}) bool {
-		if strings.HasPrefix(key.(string), battleID) {
-			msp.Delete(battleID)
-		}
-		return true
-	})
+	// citizen
+	ActiveCitizenMap   *CitizenMap
+	InactiveCitizenMap *CitizenMap
 }
 
 type MultiplierAction struct {
@@ -165,7 +92,7 @@ type MultiplierAction struct {
 // TODO: set up sups ticker
 func NewUserMultiplier(userMap *UserMap, pp *passport.Passport, ba *battle_arena.BattleArena) *UserMultiplier {
 	um := &UserMultiplier{
-		CurrentMaps: &Multiplier{deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, &AbilityTriggerMap{}, &AbilityTriggerMap{}, &AbilityTriggerMap{}, &MostSupsPendMap{}},
+		CurrentMaps: &Multiplier{deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, &AbilityTriggerMap{}, &AbilityTriggerMap{}, &AbilityTriggerMap{}, &ComboBreakerMap{}, &CitizenMap{}, &CitizenMap{}},
 		BattleIDMap: deadlock.Map{},
 		UserMap:     userMap,
 		Passport:    pp,
@@ -223,12 +150,15 @@ func (um *UserMultiplier) Online(userID server.UserID) {
 		return
 	}
 
-	um.CurrentMaps.OnlineMap.Store(userIDStr, &MultiplierAction{
+	um.CurrentMaps.ActiveCitizenMap.Store(userIDStr+"_"+string(CitizenTagCitizen), &MultiplierAction{
 		MultiplierValue: 100,
-		Expiry:          now.AddDate(1, 0, 0),
+		Expiry:          time.Now().AddDate(1, 0, 0),
 	})
+
 	for _, s := range sm {
 		switch s.Key {
+		case string(CitizenTagCitizen):
+
 		case string(ClientVoted):
 			if s.ExpiredAt.Before(now) {
 				continue
@@ -268,6 +198,11 @@ func (um *UserMultiplier) Online(userID server.UserID) {
 					})
 				case "Grease Monkey", "Field Mechanic":
 					um.CurrentMaps.RepairRewardMap.Store(fmt.Sprintf("%s_%s_%s", title, userID, timestp), &MultiplierAction{
+						MultiplierValue: s.Value,
+						Expiry:          s.ExpiredAt,
+					})
+				case "Combo breaker":
+					um.CurrentMaps.ComboBreakerMap.Store(fmt.Sprintf("%s_%s_%s", title, userID, timestp), &MultiplierAction{
 						MultiplierValue: s.Value,
 						Expiry:          s.ExpiredAt,
 					})
@@ -311,11 +246,6 @@ func (um *UserMultiplier) Online(userID server.UserID) {
 						Expiry:          s.ExpiredAt,
 					},
 				)
-				// case string(BattleRewardTypeWarContributor):
-				// 	if s.ExpiredAt.Before(now) {
-				// 		continue
-				// 	}
-				// 	um.CurrentMaps.MostSupsPend.Save(battleID, userIDStr, &MultiplierAction{s.Value, s.ExpiredAt})
 			}
 		}
 	}
@@ -325,7 +255,6 @@ func (um *UserMultiplier) Online(userID server.UserID) {
 func (um *UserMultiplier) Offline(userID server.UserID) {
 	userIDStr := userID.String()
 
-	um.CurrentMaps.OnlineMap.Delete(userIDStr)
 	um.CurrentMaps.ApplauseMap.Delete(userIDStr)
 	um.CurrentMaps.PickedLocationMap.Delete(userIDStr)
 
@@ -350,8 +279,6 @@ func (um *UserMultiplier) Offline(userID server.UserID) {
 		return true
 	})
 
-	// um.CurrentMaps.MostSupsPend.Clear(userIDStr)
-	// um.CheckMaps.MostSupsPend.Clear(userIDStr)
 }
 
 func (um *UserMultiplier) Voted(userID server.UserID) {
@@ -397,10 +324,6 @@ func (um *UserMultiplier) ClientBattleRewardUpdate(brl *battle_arena.BattleRewar
 			Expiry:          now.Add(time.Minute * 5),
 		})
 	}
-
-	// for i, mvpID := range brl.TopSupsSpendUsers {
-	// 	um.CurrentMaps.MostSupsPend.Save(battleIDStr, mvpID.String(), &MultiplierAction{(len(brl.TopSupsSpendUsers) - i) * 100, now.Add(time.Minute * 5)})
-	// }
 
 	// loop through current online user and provide them winning faction reward
 	um.UserMap.RLock()
@@ -453,43 +376,12 @@ func (um *UserMultiplier) CleanUpBattleReward(battleIDStr string) {
 			return true
 		})
 	}()
-
-	// um.CurrentMaps.MostSupsPend.ClearByBattleID(battleIDStr)
-	// um.CheckMaps.MostSupsPend.ClearByBattleID(battleIDStr)
 }
 
 // sups tick
 func (um *UserMultiplier) SupsTick() {
 	userMap := make(map[int][]server.UserID)
 	now := time.Now()
-
-	// check online reward
-	um.CurrentMaps.OnlineMap.Range(func(key, value interface{}) bool {
-		m := value.(*MultiplierAction)
-		// clean up, if expired
-		if m.Expiry.Before(now) {
-			um.CurrentMaps.OnlineMap.Delete(key)
-			return true
-		}
-
-		// skip, if user is not active
-		userIDstr := key.(string)
-		multiplierValue := m.MultiplierValue
-		remain := um.UserRemainRate(now, userIDstr)
-		// return if no remain
-		if remain == 0 {
-			return true
-		}
-		multiplierValue = multiplierValue * remain / 100
-
-		// append user to the ticking list
-		userID := server.UserID(uuid.FromStringOrNil(key.(string)))
-		if _, ok := userMap[multiplierValue]; !ok {
-			userMap[multiplierValue] = []server.UserID{}
-		}
-		userMap[multiplierValue] = append(userMap[multiplierValue], userID)
-		return true
-	})
 
 	// check applause reward
 	um.CurrentMaps.ApplauseMap.Range(func(key, value interface{}) bool {
@@ -632,6 +524,183 @@ func (um *UserMultiplier) SupsTick() {
 		return true
 	})
 
+	// ability
+	um.CurrentMaps.NukeRewardMap.Range(func(key, value interface{}) bool {
+		m := value.(*MultiplierAction)
+		// clean up, if expired
+		if m.Expiry.Before(now) {
+			um.CurrentMaps.NukeRewardMap.Delete(key)
+			return true
+		}
+
+		// append user to the ticking list
+		keys := strings.Split(key.(string), "_") // user id, title, timestamp
+		userStr := keys[0]
+		userID := server.UserID(uuid.FromStringOrNil(userStr))
+
+		// skip, if user is not active
+		multiplierValue := m.MultiplierValue
+		remain := um.UserRemainRate(now, userStr)
+		// return if no remain
+		if remain == 0 {
+			return true
+		}
+		multiplierValue = multiplierValue * remain / 100
+
+		if _, ok := userMap[multiplierValue]; !ok {
+			userMap[multiplierValue] = []server.UserID{}
+		}
+		userMap[multiplierValue] = append(userMap[multiplierValue], userID)
+		return true
+	})
+
+	// ability
+	um.CurrentMaps.AirstrikeRewardMap.Range(func(key, value interface{}) bool {
+		m := value.(*MultiplierAction)
+		// clean up, if expired
+		if m.Expiry.Before(now) {
+			um.CurrentMaps.AirstrikeRewardMap.Delete(key)
+			return true
+		}
+
+		// append user to the ticking list
+		keys := strings.Split(key.(string), "_") // user id, title, timestamp
+		userStr := keys[0]
+		userID := server.UserID(uuid.FromStringOrNil(userStr))
+
+		// skip, if user is not active
+		multiplierValue := m.MultiplierValue
+		remain := um.UserRemainRate(now, userStr)
+		// return if no remain
+		if remain == 0 {
+			return true
+		}
+		multiplierValue = multiplierValue * remain / 100
+
+		if _, ok := userMap[multiplierValue]; !ok {
+			userMap[multiplierValue] = []server.UserID{}
+		}
+		userMap[multiplierValue] = append(userMap[multiplierValue], userID)
+		return true
+	})
+
+	um.CurrentMaps.RepairRewardMap.Range(func(key, value interface{}) bool {
+		m := value.(*MultiplierAction)
+		// clean up, if expired
+		if m.Expiry.Before(now) {
+			um.CurrentMaps.RepairRewardMap.Delete(key)
+			return true
+		}
+
+		// append user to the ticking list
+		keys := strings.Split(key.(string), "_") // user id, title, timestamp
+		userStr := keys[0]
+		userID := server.UserID(uuid.FromStringOrNil(userStr))
+
+		// skip, if user is not active
+		multiplierValue := m.MultiplierValue
+		remain := um.UserRemainRate(now, userStr)
+		// return if no remain
+		if remain == 0 {
+			return true
+		}
+		multiplierValue = multiplierValue * remain / 100
+
+		if _, ok := userMap[multiplierValue]; !ok {
+			userMap[multiplierValue] = []server.UserID{}
+		}
+		userMap[multiplierValue] = append(userMap[multiplierValue], userID)
+		return true
+	})
+
+	um.CurrentMaps.ComboBreakerMap.Range(func(key, value interface{}) bool {
+		m := value.(*MultiplierAction)
+		// clean up, if expired
+		if m.Expiry.Before(now) {
+			um.CurrentMaps.ComboBreakerMap.Delete(key)
+			return true
+		}
+
+		// append user to the ticking list
+		keys := strings.Split(key.(string), "_") // user id, title, timestamp
+		userStr := keys[0]
+		userID := server.UserID(uuid.FromStringOrNil(userStr))
+
+		// skip, if user is not active
+		multiplierValue := m.MultiplierValue
+		remain := um.UserRemainRate(now, userStr)
+		// return if no remain
+		if remain == 0 {
+			return true
+		}
+		multiplierValue = multiplierValue * remain / 100
+
+		if _, ok := userMap[multiplierValue]; !ok {
+			userMap[multiplierValue] = []server.UserID{}
+		}
+		userMap[multiplierValue] = append(userMap[multiplierValue], userID)
+		return true
+	})
+
+	// citizen
+	um.CurrentMaps.ActiveCitizenMap.Range(func(key, value interface{}) bool {
+		m := value.(*MultiplierAction)
+		// clean up, if expired
+		if m.Expiry.Before(now) {
+			um.CurrentMaps.ActiveCitizenMap.Delete(key)
+			return true
+		}
+
+		// append user to the ticking list
+		keys := strings.Split(key.(string), "_") // user id, title, timestamp
+		userStr := keys[0]
+		userID := server.UserID(uuid.FromStringOrNil(userStr))
+
+		// skip, if user is not active
+		multiplierValue := m.MultiplierValue
+		remain := um.UserRemainRate(now, userStr)
+		// return if no remain
+		if remain == 0 {
+			return true
+		}
+		multiplierValue = multiplierValue * remain / 100
+
+		if _, ok := userMap[multiplierValue]; !ok {
+			userMap[multiplierValue] = []server.UserID{}
+		}
+		userMap[multiplierValue] = append(userMap[multiplierValue], userID)
+		return true
+	})
+
+	// inactive citizen
+	um.CurrentMaps.ActiveCitizenMap.Range(func(key, value interface{}) bool {
+		m := value.(*MultiplierAction)
+		// clean up, if expired
+		if m.Expiry.Before(now) {
+			um.CurrentMaps.ActiveCitizenMap.Delete(key)
+			return true
+		}
+
+		// append user to the ticking list
+		userStr := key.(string)
+		userID := server.UserID(uuid.FromStringOrNil(userStr))
+
+		// skip, if user is not active
+		multiplierValue := m.MultiplierValue
+		remain := um.UserRemainRate(now, userStr)
+		// return if no remain
+		if remain == 0 {
+			return true
+		}
+		multiplierValue = multiplierValue * remain / 100
+
+		if _, ok := userMap[multiplierValue]; !ok {
+			userMap[multiplierValue] = []server.UserID{}
+		}
+		userMap[multiplierValue] = append(userMap[multiplierValue], userID)
+		return true
+	})
+
 	um.Passport.SendTickerMessage(userMap)
 }
 
@@ -641,13 +710,6 @@ func (um *UserMultiplier) UserMultiplierGet(userID server.UserID) []*server.Sups
 	mas := make(map[string]*MultiplierAction)
 	now := time.Now()
 
-	// online
-	if value, ok := um.CurrentMaps.OnlineMap.Load(uidStr); ok {
-		ma := value.(*MultiplierAction)
-		if ma.Expiry.After(now) {
-			mas[string(ClientOnline)] = ma
-		}
-	}
 	if value, ok := um.CurrentMaps.ApplauseMap.Load(uidStr); ok {
 		ma := value.(*MultiplierAction)
 		if ma.Expiry.After(now) {
@@ -730,23 +792,37 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 	diff := make(map[string]map[string]*MultiplierAction)
 	now := time.Now()
 
-	// check current map with check map, add any different from the cache
-	um.CurrentMaps.OnlineMap.Range(func(key, value interface{}) bool {
-		uidStr := key.(string)
+	um.CurrentMaps.ActiveCitizenMap.Range(func(key, value interface{}) bool {
+		keys := strings.Split(key.(string), "_")
+		userIDstr := keys[0]
+		title := keys[1]
 		currentValue := value.(*MultiplierAction)
-		if currentValue.Expiry.Before(now) {
-			return true
-		}
-
 		// store different
-		d, ok := diff[uidStr]
+		d, ok := diff[userIDstr]
 		if !ok {
 			d = make(map[string]*MultiplierAction)
 		}
-		d[string(ClientOnline)] = currentValue
-		diff[uidStr] = d
-		// update check map
 
+		d[title] = currentValue
+		diff[userIDstr] = d
+
+		// update check map
+		return true
+	})
+
+	um.CurrentMaps.InactiveCitizenMap.Range(func(key, value interface{}) bool {
+		userIDstr := key.(string)
+		currentValue := value.(*MultiplierAction)
+		// store different
+		d, ok := diff[userIDstr]
+		if !ok {
+			d = make(map[string]*MultiplierAction)
+		}
+
+		d[string(CitizenTagUnproductiveCitizen)] = currentValue
+		diff[userIDstr] = d
+
+		// update check map
 		return true
 	})
 
@@ -755,6 +831,7 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 		uidStr := key.(string)
 		currentValue := value.(*MultiplierAction)
 		if currentValue.Expiry.Before(now) {
+			um.CurrentMaps.ApplauseMap.Delete(key)
 			return true
 		}
 
@@ -774,6 +851,7 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 		uidStr := key.(string)
 		currentValue := value.(*MultiplierAction)
 		if currentValue.Expiry.Before(now) {
+			um.CurrentMaps.PickedLocationMap.Delete(key)
 			return true
 		}
 		// store different
@@ -801,6 +879,7 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 			uidStr := strings.Split(key.(string), "_")[1]
 			currentValue := value.(*MultiplierAction)
 			if currentValue.Expiry.Before(now) {
+				um.CurrentMaps.WinningFactionMap.Delete(key)
 				return true
 			}
 			// store different
@@ -825,6 +904,7 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 			uidStr := strings.Split(key.(string), "_")[1]
 			currentValue := value.(*MultiplierAction)
 			if currentValue.Expiry.Before(now) {
+				um.CurrentMaps.WinningUserMap.Delete(key)
 				return true
 			}
 			// store different
@@ -849,6 +929,7 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 			uidStr := strings.Split(key.(string), "_")[1]
 			currentValue := value.(*MultiplierAction)
 			if currentValue.Expiry.Before(now) {
+				um.CurrentMaps.KillMap.Delete(key)
 				return true
 			}
 			// store different
@@ -874,6 +955,7 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 
 		currentValue := value.(*MultiplierAction)
 		if currentValue.Expiry.Before(now) {
+			um.CurrentMaps.AirstrikeRewardMap.Delete(key)
 			return true
 		}
 		// store different
@@ -894,6 +976,7 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 
 		currentValue := value.(*MultiplierAction)
 		if currentValue.Expiry.Before(now) {
+			um.CurrentMaps.NukeRewardMap.Delete(key)
 			return true
 		}
 		// store different
@@ -914,8 +997,32 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 
 		currentValue := value.(*MultiplierAction)
 		if currentValue.Expiry.Before(now) {
+			um.CurrentMaps.RepairRewardMap.Delete(key)
 			return true
 		}
+		// store different
+		d, ok := diff[userStr]
+		if !ok {
+			d = make(map[string]*MultiplierAction)
+		}
+		d[string(title)+"_"+userStr+"_"+timeStp] = currentValue
+
+		return true
+	})
+
+	// Combo breaker
+	um.CurrentMaps.ComboBreakerMap.Range(func(key, value interface{}) bool {
+		keys := strings.Split(key.(string), "_") // user id, title, timestamp
+		userStr := keys[0]
+		title := keys[1]
+		timeStp := keys[2]
+
+		currentValue := value.(*MultiplierAction)
+		if currentValue.Expiry.Before(now) {
+			um.CurrentMaps.ComboBreakerMap.Delete(key)
+			return true
+		}
+
 		// store different
 		d, ok := diff[userStr]
 		if !ok {
@@ -954,6 +1061,7 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 		userSupsMultiplierSends = append(userSupsMultiplierSends, userSupsMultiplierSend)
 
 	}
+
 	// broadcast to user
 	go um.Passport.UserSupsMultiplierSend(context.Background(), userSupsMultiplierSends)
 
@@ -1019,12 +1127,25 @@ type AbilityTriggerMap struct {
 
 func (atm *AbilityTriggerMap) Set(userID string, title string, isCombo bool) {
 	value := 500
+	expiredAt := time.Now().Add(1 * time.Minute)
 	if isCombo {
 		value = 1000
+		expiredAt = time.Now().Add(30 * time.Minute)
 	}
 	atm.Store(fmt.Sprintf("%s_%s_%s", userID, title, time.Now().String()), &MultiplierAction{
 		MultiplierValue: value,
-		Expiry:          time.Now().Add(5 * time.Minute),
+		Expiry:          expiredAt,
+	})
+}
+
+type ComboBreakerMap struct {
+	deadlock.Map
+}
+
+func (cbm *ComboBreakerMap) Set(userID string) {
+	cbm.Store(fmt.Sprintf("%s_Combo breaker_%s", userID, time.Now().String()), &MultiplierAction{
+		MultiplierValue: 500,
+		Expiry:          time.Now().Add(3 * time.Minute),
 	})
 }
 
@@ -1056,7 +1177,10 @@ func (um *UserMultiplier) AbilityTriggered(factionID server.FactionID, triggerUs
 			um.CurrentMaps.AirstrikeRewardMap.Set(triggerUserID.String(), "Air Support", false)
 		}
 
-		um.AbilityFactionRecorder = append(um.AbilityFactionRecorder, factionID)
+		// combo breaker
+		if um.IsComboBreaker(factionID) {
+			um.CurrentMaps.ComboBreakerMap.Set(triggerUserID.String())
+		}
 
 		um.AirstrikeAbility.Unlock()
 	case "NUKE":
@@ -1079,8 +1203,13 @@ func (um *UserMultiplier) AbilityTriggered(factionID server.FactionID, triggerUs
 			// set user as the winner of last three airstrike
 			um.CurrentMaps.NukeRewardMap.Set(triggerUserID.String(), "Destroyer of worlds", true)
 		} else {
-			um.CurrentMaps.NukeRewardMap.Set(triggerUserID.String(), "Now I am become Death", false)
 			// set user as
+			um.CurrentMaps.NukeRewardMap.Set(triggerUserID.String(), "Now I am become Death", false)
+		}
+
+		// combo breaker
+		if um.IsComboBreaker(factionID) {
+			um.CurrentMaps.ComboBreakerMap.Set(triggerUserID.String())
 		}
 
 		um.NukeAbility.Unlock()
@@ -1108,9 +1237,10 @@ func (um *UserMultiplier) AbilityTriggered(factionID server.FactionID, triggerUs
 			um.CurrentMaps.RepairRewardMap.Set(triggerUserID.String(), "Grease Monkey", false)
 		}
 
-		// if um.IsComboBreaker(factionID) {
-
-		// }
+		// combo breaker
+		if um.IsComboBreaker(factionID) {
+			um.CurrentMaps.ComboBreakerMap.Set(triggerUserID.String())
+		}
 
 		um.RepairAbility.Unlock()
 	}
@@ -1140,4 +1270,157 @@ func (um *UserMultiplier) IsComboBreaker(triggerFactionID server.FactionID) bool
 	}
 
 	return isComboBreaker
+}
+
+type CitizenTag string
+
+const (
+	CitizenTagSuperContributor    CitizenTag = "Super Contributor"    // top 10%
+	CitizenTagContributor         CitizenTag = "Contributor"          // top 25%
+	CitizenTagSupporter           CitizenTag = "Supporter"            // top 50%
+	CitizenTagCitizen             CitizenTag = "Citizen"              // top 80%
+	CitizenTagUnproductiveCitizen CitizenTag = "Unproductive Citizen" // other 20%
+)
+
+func (e CitizenTag) IsCitizen() bool {
+	switch e {
+	case CitizenTagSuperContributor,
+		CitizenTagContributor,
+		CitizenTagSupporter,
+		CitizenTagCitizen,
+		CitizenTagUnproductiveCitizen:
+		return true
+	}
+
+	return false
+}
+
+type CitizenMap struct {
+	deadlock.Map
+}
+
+func (cm *CitizenMap) Clear() {
+	cm.Range(func(key, value interface{}) bool {
+		cm.Delete(key)
+		return true
+	})
+}
+
+// this map will not be stored in db
+func (cm *CitizenMap) BulkSet(userIDs []*server.User, title string, ma *MultiplierAction) {
+	spew.Dump(ma)
+	for _, userID := range userIDs {
+		key := userID.ID.String() + "_" + title
+		cm.Store(key, ma)
+	}
+}
+
+func (um *UserMultiplier) NewCitizenOrder(users []*server.User) {
+	if len(users) == 0 {
+		return
+	}
+
+	// clear the map
+	um.CurrentMaps.ActiveCitizenMap.Clear()
+
+	expiredAt := time.Now().AddDate(1, 0, 0)
+
+	// calculate
+	superContributors := []*server.User{}
+	contributors := []*server.User{}
+	supporters := []*server.User{}
+	citizens := []*server.User{}
+	unproductiveCitizens := []*server.User{}
+
+	// calc the top 10% amount
+	superContributorAmount := len(users) / 10
+	if superContributorAmount > 0 {
+		superContributors = append(superContributors, users[:superContributorAmount]...)
+		users = users[superContributorAmount:] // clear queue
+	} else {
+		superContributors = append(superContributors, users...)
+		users = []*server.User{} // clear queue
+	}
+	um.CurrentMaps.ActiveCitizenMap.BulkSet(superContributors, "Super Contributor", &MultiplierAction{
+		MultiplierValue: 1000,
+		Expiry:          expiredAt,
+	})
+
+	// calc the top 25% amount
+	contributorAmount := len(users)/4 - superContributorAmount
+	if contributorAmount > 0 {
+		contributors = append(contributors, users[:contributorAmount]...)
+		users = users[contributorAmount:]
+	} else {
+		contributors = append(contributors, users...)
+		users = []*server.User{} // clear queue
+	}
+	um.CurrentMaps.ActiveCitizenMap.BulkSet(contributors, "Contributor", &MultiplierAction{
+		MultiplierValue: 500,
+		Expiry:          expiredAt,
+	})
+
+	// calc the top 50% amount
+	supporterAmount := len(users)/2 - superContributorAmount - contributorAmount
+	if supporterAmount > 0 {
+		supporters = append(supporters, users[:supporterAmount]...)
+		users = users[supporterAmount:]
+	} else {
+		supporters = append(supporters, users...)
+		users = []*server.User{} // clear queue
+	}
+	um.CurrentMaps.ActiveCitizenMap.BulkSet(supporters, "Supporter", &MultiplierAction{
+		MultiplierValue: 250,
+		Expiry:          expiredAt,
+	})
+
+	// calc the top 80% amount
+	citizenAmount := len(users)*4/5 - superContributorAmount - contributorAmount - supporterAmount
+	if citizenAmount > 0 {
+		citizens = append(citizens, users[:citizenAmount]...)
+		users = users[citizenAmount:]
+	} else {
+		citizens = append(citizens, users...)
+		users = []*server.User{} // clear queue
+	}
+	um.CurrentMaps.ActiveCitizenMap.BulkSet(citizens, "Citizen", &MultiplierAction{
+		MultiplierValue: 100,
+		Expiry:          expiredAt,
+	})
+
+	// start to store in active citizen map
+
+	// store in inactive citizen
+	// calc the rest of 20% amount
+	unproductiveCitizens = users
+
+	// clean up the map
+	um.CurrentMaps.InactiveCitizenMap.Range(func(key, value interface{}) bool {
+		userIDstr := key.(string)
+		index := -1
+		for i, user := range unproductiveCitizens {
+			if user.ID.String() == userIDstr {
+				index = i
+				break
+			}
+		}
+		// remove if not existsu
+		if index < 0 {
+			um.CurrentMaps.InactiveCitizenMap.Delete(key)
+		} else {
+			unproductiveCitizens[index] = unproductiveCitizens[len(unproductiveCitizens)-1]
+			unproductiveCitizens[len(unproductiveCitizens)-1] = nil
+			unproductiveCitizens = unproductiveCitizens[:len(unproductiveCitizens)-1]
+		}
+		return true
+	})
+
+	// add new commer
+
+	for _, uc := range unproductiveCitizens {
+		um.CurrentMaps.InactiveCitizenMap.Store(uc.ID.String(), &MultiplierAction{
+			MultiplierValue: 50,
+			Expiry:          expiredAt,
+		})
+	}
 }
