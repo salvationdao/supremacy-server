@@ -361,6 +361,7 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 				if err != nil {
 					return http.StatusInternalServerError, err
 				}
+				go api.MessageBus.Send(context.Background(), messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), nil)
 			}
 		}
 
@@ -549,6 +550,12 @@ func (api *API) GlobalAnnouncementSend(w http.ResponseWriter, r *http.Request) (
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("title cannot be empty %w", err))
 	}
 
+	// delete old announcements
+	err = db.AnnouncementDelete(api.ctx, api.Conn)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to delete announcement %w", err))
+	}
+
 	// insert to db
 	if req.GamesUntil != nil || req.ShowUntil != nil {
 		err = db.AnnouncementCreate(api.ctx, api.Conn, req)
@@ -568,13 +575,13 @@ func (api *API) GlobalAnnouncementSend(w http.ResponseWriter, r *http.Request) (
 func (api *API) GlobalAnnouncementDelete(w http.ResponseWriter, r *http.Request) (int, error) {
 	defer r.Body.Close()
 
-	// insert to db
+	// delete from db
 	err := db.AnnouncementDelete(api.ctx, api.Conn)
 	if err != nil {
-		return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to create announcement %w", err))
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to delete announcement %w", err))
 	}
 
-	// store in memory
+	// remove from memory
 	api.GlobalAnnouncement = nil
 
 	go api.MessageBus.Send(r.Context(), messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), nil)
