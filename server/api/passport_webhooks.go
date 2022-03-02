@@ -312,6 +312,21 @@ func (pc *PassportWebhookController) FactionContractRewardGet(w http.ResponseWri
 	if req.FactionID.IsNil() || !req.FactionID.IsValid() {
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("faction id is empty"), "Faction id is required")
 	}
+	if pc.API.BattleArena == nil {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("battle arena is nil"), "Battle arena is nil")
+	}
+	if pc.API.BattleArena.WarMachineQueue == nil {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("WarMachineQueue is nil"), "WarMachineQueue is nil")
+	}
+	if pc.API.BattleArena.WarMachineQueue.RedMountain == nil {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("RedMountain is nil"), "RedMountain is nil")
+	}
+	if pc.API.BattleArena.WarMachineQueue.Boston == nil {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("Boston is nil"), "Boston is nil")
+	}
+	if pc.API.BattleArena.WarMachineQueue.Zaibatsu == nil {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("Zaibatsu is nil"), "Zaibatsu is nil")
+	}
 
 	contractReward := "0"
 	switch req.FactionID {
@@ -321,7 +336,6 @@ func (pc *PassportWebhookController) FactionContractRewardGet(w http.ResponseWri
 		contractReward = pc.API.BattleArena.WarMachineQueue.Boston.GetContractReward()
 	case server.ZaibatsuFactionID:
 		contractReward = pc.API.BattleArena.WarMachineQueue.Zaibatsu.GetContractReward()
-
 	}
 
 	return helpers.EncodeJSON(w, struct {
@@ -463,6 +477,15 @@ func (pc *PassportWebhookController) FactionQueueCostGet(w http.ResponseWriter, 
 	}
 	if pc.API.BattleArena.WarMachineQueue == nil {
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("WarMachineQueue is nil"), "WarMachineQueue is nil")
+	}
+	if pc.API.BattleArena.WarMachineQueue.RedMountain == nil {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("RedMountain is nil"), "RedMountain is nil")
+	}
+	if pc.API.BattleArena.WarMachineQueue.Boston == nil {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("Boston is nil"), "Boston is nil")
+	}
+	if pc.API.BattleArena.WarMachineQueue.Zaibatsu == nil {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("Zaibatsu is nil"), "Zaibatsu is nil")
 	}
 	length := 0
 	switch req.FactionID {
