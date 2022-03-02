@@ -8,6 +8,7 @@ import (
 	"server"
 	"server/db"
 
+	"github.com/gofrs/uuid"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 
 	"github.com/jackc/pgx/v4"
@@ -112,6 +113,9 @@ func (ba *BattleArena) DefaultWarMachinesGet(factionID server.FactionID) ([]*ser
 		return nil, err
 	}
 	warMachines = append(warMachines, result...)
+	for _, wm := range warMachines {
+		wm.Hash = uuid.Must(uuid.NewV4()).String()
+	}
 	return warMachines, nil
 }
 
