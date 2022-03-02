@@ -165,17 +165,6 @@ func (pc *PassportWebhookController) WarMachineJoin(w http.ResponseWriter, r *ht
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("Non-faction war machine is not able to join"))
 	}
 
-	// check mech is in queue
-	_, err = db.AssetQueuingStat(context.Background(), pc.Conn, req.WarMachineMetadata.Hash)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return http.StatusInternalServerError, terror.Error(err)
-	}
-
-	// war machine is in queue
-	if err == nil {
-		return http.StatusInternalServerError, terror.Error(fmt.Errorf("war machine is in queue"))
-	}
-
 	err = pc.API.BattleArena.WarMachineQueue.Join(req.WarMachineMetadata, req.NeedInsured)
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err, err.Error())

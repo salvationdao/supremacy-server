@@ -338,6 +338,14 @@ func (fq *FactionQueue) GetWarMachineForEnterGame(desireAmount int) []*server.Wa
 	if len(fq.QueuingWarMachines) < desireAmount {
 		newList = append(newList, fq.QueuingWarMachines...)
 
+		// clear the queue
+		for _, wm := range newList {
+			err := db.BattleQueueRemove(context.Background(), fq.Conn, wm)
+			if err != nil {
+				fq.log.Err(err)
+			}
+		}
+
 		// fill mech with
 		newList = append(newList, fq.defaultWarMachines[:desireAmount-len(newList)]...)
 
@@ -350,6 +358,13 @@ func (fq *FactionQueue) GetWarMachineForEnterGame(desireAmount int) []*server.Wa
 	}
 
 	newList = append(newList, fq.QueuingWarMachines[:desireAmount]...)
+
+	for _, wm := range newList {
+		err := db.BattleQueueRemove(context.Background(), fq.Conn, wm)
+		if err != nil {
+			fq.log.Err(err)
+		}
+	}
 
 	// set the in game war machine list
 	fq.InGameWarMachines = newList
