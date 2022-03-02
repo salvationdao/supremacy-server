@@ -3,8 +3,6 @@ package passport
 import (
 	"server"
 	"time"
-
-	"github.com/davecgh/go-spew/spew"
 )
 
 type HoldSupsMessageResponse struct {
@@ -82,6 +80,5 @@ func (pp *Passport) TopSupsContributorsGet(startTime, endTime time.Time, callbac
 		return
 	}
 
-	spew.Dump(resp)
 	callback(resp)
 }

@@ -176,40 +176,41 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 			return
 		}
 
-		// get the user who spend most sups during the battle from passport
-		wg := deadlock.WaitGroup{}
-
-		wg.Add(1)
-		api.Passport.TopSupsContributorsGet(ed.BattleArena.StartedAt, time.Now(), func(result *passport.TopSupsContributorResp) {
-			// get the top five user
-			topFive := []*server.User{}
-			if len(result.TopSupsContributors) < 5 {
-				topFive = append(topFive, result.TopSupsContributors...)
-			} else {
-				topFive = append(topFive, result.TopSupsContributors[:5]...)
-			}
-
-			// calc citizen multipliers
-			api.UserMultiplier.NewCitizenOrder(result.TopSupsContributors)
-
-			for _, topUser := range topFive {
-				if !topUser.FactionID.IsNil() {
-					topUser.Faction = api.factionMap[topUser.FactionID]
-				}
-				api.battleEndInfo.TopSupsContributors = append(api.battleEndInfo.TopSupsContributors, topUser.Brief())
-
-				// recorded for sups most spend
-				ed.BattleRewardList.TopSupsSpendUsers = append(ed.BattleRewardList.TopSupsSpendUsers, topUser.ID)
-			}
-
-			for _, topFaction := range result.TopSupsContributeFactions {
-				api.battleEndInfo.TopSupsContributeFactions = append(api.battleEndInfo.TopSupsContributeFactions, topFaction.Brief())
-			}
-
-			wg.Done()
-		})
-		wg.Wait()
 	}
+
+	// get the user who spend most sups during the battle from passport
+	wg := deadlock.WaitGroup{}
+
+	wg.Add(1)
+	api.Passport.TopSupsContributorsGet(ed.BattleArena.StartedAt, time.Now(), func(result *passport.TopSupsContributorResp) {
+		// get the top five user
+		topFive := []*server.User{}
+		if len(result.TopSupsContributors) < 5 {
+			topFive = append(topFive, result.TopSupsContributors...)
+		} else {
+			topFive = append(topFive, result.TopSupsContributors[:5]...)
+		}
+
+		// calc citizen multipliers
+		api.UserMultiplier.NewCitizenOrder(result.TopSupsContributors)
+
+		for _, topUser := range topFive {
+			if !topUser.FactionID.IsNil() {
+				topUser.Faction = api.factionMap[topUser.FactionID]
+			}
+			api.battleEndInfo.TopSupsContributors = append(api.battleEndInfo.TopSupsContributors, topUser.Brief())
+
+			// recorded for sups most spend
+			ed.BattleRewardList.TopSupsSpendUsers = append(ed.BattleRewardList.TopSupsSpendUsers, topUser.ID)
+		}
+
+		for _, topFaction := range result.TopSupsContributeFactions {
+			api.battleEndInfo.TopSupsContributeFactions = append(api.battleEndInfo.TopSupsContributeFactions, topFaction.Brief())
+		}
+
+		wg.Done()
+	})
+	wg.Wait()
 
 	// get most frequent trigger ability user
 	us, err := db.UsersMostFrequentTriggerAbility(ctx, api.Conn, ed.BattleArena.ID)
