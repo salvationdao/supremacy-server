@@ -352,7 +352,7 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 	api.GlobalAnnouncement = globalAnnouncement
 
 	// global announcement ticker
-	globalAnnouncementTicker := tickle.New("global announcement ticker", 60*5, func() (int, error) {
+	globalAnnouncementTicker := tickle.New("global announcement ticker", 60, func() (int, error) {
 		// check if a global announcement exist
 		if api.GlobalAnnouncement != nil {
 			now := time.Now()
@@ -540,11 +540,15 @@ func (api *API) Close() {
 }
 
 func (api *API) GlobalAnnouncementSend(w http.ResponseWriter, r *http.Request) (int, error) {
+	fmt.Println("1111111111111111111111111")
 	req := &server.GlobalAnnouncement{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("invaid request %w", err))
 	}
+
+	fmt.Println("222222222222222222222")
+
 	defer r.Body.Close()
 
 	if req.Message == "" {
@@ -554,11 +558,15 @@ func (api *API) GlobalAnnouncementSend(w http.ResponseWriter, r *http.Request) (
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("title cannot be empty %w", err))
 	}
 
+	fmt.Println("33333333333333333333333")
+
 	// delete old announcements
 	err = db.AnnouncementDelete(api.ctx, api.Conn)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to delete announcement %w", err))
 	}
+
+	fmt.Println("44444444444444444444444444")
 
 	// insert to db
 	if req.GamesUntil != nil || req.ShowUntil != nil {
@@ -567,6 +575,8 @@ func (api *API) GlobalAnnouncementSend(w http.ResponseWriter, r *http.Request) (
 			return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to create announcement %w", err))
 		}
 	}
+
+	fmt.Println("55555555555555555555555555555")
 
 	// store in memory
 	api.GlobalAnnouncement = req
