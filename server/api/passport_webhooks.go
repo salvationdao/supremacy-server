@@ -455,9 +455,15 @@ func (pc *PassportWebhookController) FactionQueueCostGet(w http.ResponseWriter, 
 	}
 
 	if req.FactionID.IsNil() || !req.FactionID.IsValid() {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("faction id is empty"), "Faction id is required")
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("faction id is nil"), "Faction id is required")
 	}
 
+	if pc.API.BattleArena == nil {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("battle arena is nil"), "Battle arena is nil")
+	}
+	if pc.API.BattleArena.WarMachineQueue == nil {
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("WarMachineQueue is nil"), "WarMachineQueue is nil")
+	}
 	length := 0
 	switch req.FactionID {
 	case server.RedMountainFactionID:
@@ -466,6 +472,8 @@ func (pc *PassportWebhookController) FactionQueueCostGet(w http.ResponseWriter, 
 		length = pc.API.BattleArena.WarMachineQueue.Boston.QueuingLength()
 	case server.ZaibatsuFactionID:
 		length = pc.API.BattleArena.WarMachineQueue.Zaibatsu.QueuingLength()
+	default:
+		return http.StatusInternalServerError, errors.New("switch fallthrough")
 	}
 
 	return helpers.EncodeJSON(w, struct {
