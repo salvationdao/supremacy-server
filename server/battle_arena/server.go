@@ -1,5 +1,6 @@
 package battle_arena
 
+import "C"
 import (
 	"context"
 	"encoding/json"
@@ -319,38 +320,18 @@ func (ba *BattleArena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ba *BattleArena) sendPump(ctx context.Context, cancel context.CancelFunc, c *websocket.Conn) {
-	ticker := time.NewTicker(pingPeriod)
-	defer ticker.Stop()
-
 	for {
-		select {
-		case <-ctx.Done():
-			return
-		case msg := <-ba.send:
-			err := writeTimeout(msg, writeWait, c)
-			if err != nil {
-				if errors.Is(err, context.Canceled) {
-					return
-				}
-				if websocket.CloseStatus(err) == websocket.StatusNormalClosure ||
-					websocket.CloseStatus(err) == websocket.StatusGoingAway {
-					return
-				}
-				ba.Log.Err(err).Msg("error sending message to game client")
+		msg := <-ba.send
+		err := writeTimeout(msg, writeWait, c)
+		if err != nil {
+			if errors.Is(err, context.Canceled) {
+				return
 			}
-		case <-ticker.C:
-			err := pingTimeout(ctx, writeWait, c)
-			if err != nil {
-				if errors.Is(err, context.Canceled) {
-					return
-				}
-				if websocket.CloseStatus(err) == websocket.StatusNormalClosure ||
-					websocket.CloseStatus(err) == websocket.StatusGoingAway {
-					return
-				}
-				ba.Log.Err(err).Msgf("error with pinging gameclient")
-				cancel()
+			if websocket.CloseStatus(err) == websocket.StatusNormalClosure ||
+				websocket.CloseStatus(err) == websocket.StatusGoingAway {
+				return
 			}
+			ba.Log.Err(err).Msg("error sending message to game client")
 		}
 	}
 }
