@@ -100,6 +100,8 @@ outerLoop:
 
 	ba.battle.BattleHistory = append(ba.battle.BattleHistory, req.Payload.WarMachineLocation)
 
+	ba.battle.SpawnedAI = []*server.WarMachineMetadata{}
+
 	// save to database
 	tx, err := ba.Conn.Begin(ctx)
 	if err != nil {
@@ -237,7 +239,7 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 	winningMachines := []*server.WarMachineMetadata{}
 	wmq := []*passport.WarMachineQueueStat{}
 
-	for _, bwm := range ba.battle.WarMachines {
+	for _, bwm := range inGameWarMachines {
 		// get contract reward from queuing
 		assetQueueStat, err := db.AssetQueuingStat(ctx, tx, bwm.Hash)
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
@@ -273,18 +275,20 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 			}
 
 			// pay queuing contract reward
-			ba.passport.AssetContractRewardRedeem(
-				bwm.OwnedByID,
-				bwm.FactionID,
-				assetQueueStat.ContractReward,
-				server.TransactionReference(
-					fmt.Sprintf(
-						"redeem_faction_contract_reward|%s|%s",
-						bwm.Name,
-						time.Now(),
+			if assetQueueStat != nil {
+				ba.passport.AssetContractRewardRedeem(
+					bwm.OwnedByID,
+					bwm.FactionID,
+					assetQueueStat.ContractReward,
+					server.TransactionReference(
+						fmt.Sprintf(
+							"redeem_faction_contract_reward|%s|%s",
+							bwm.Name,
+							time.Now(),
+						),
 					),
-				),
-			)
+				)
+			}
 
 			// calc asset repair complete time
 			assetRepairRecord.ExpectCompletedAt = calcRepairCompleteTime(bwm.MaxHealth, bwm.Health, assetQueueStat.IsInsured, now)
@@ -349,7 +353,7 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 	ba.battle.WinningCondition = (*string)(&req.Payload.WinCondition)
 
 	// assign winner war machine
-	if len(req.Payload.WinningWarMachineMetadatas) > 0 {
+	if len(winningMachines) > 0 {
 		err = db.BattleWinnerWarMachinesSet(ctx, tx, req.Payload.BattleID, winningMachines)
 		if err != nil {
 			return terror.Error(err)
