@@ -281,6 +281,9 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 			return
 		}
 
+		// record triggered abilities
+		vc.API.UserMultiplier.AbilityTriggered(hcd.FactionID, userID, va.FactionAbilityMap[hcd.FactionID])
+
 		// clean up the transactions after ability is triggered
 		fts.Lock()
 		fts.Transactions = []string{}
