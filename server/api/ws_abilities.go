@@ -454,6 +454,7 @@ func (fc *FactionControllerWS) QueueSubscription(ctx context.Context, wsc *hub.C
 	feed.Length = feed.Length + 1
 
 	feed.Cost = feed.Cost.Mul(feed.Cost, big.NewInt(int64(feed.Length)))
+
 	reply(feed)
 
 	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeyFactionQueueJoin, hcd.FactionID.String()))

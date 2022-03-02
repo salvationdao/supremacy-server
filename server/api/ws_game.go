@@ -147,6 +147,13 @@ func (gc *GameControllerWS) WarMachineQueueLeaveHandler(ctx context.Context, wsc
 
 	gc.API.Passport.WarMachineQueuePositionBroadcast(broadcastData)
 
+	// broadcast war machine
+	gc.API.Passport.WarMachineQueuePositionBroadcast([]*comms.WarMachineQueueStat{
+		{
+			Hash: req.Payload.Hash,
+		},
+	})
+
 	reply(true)
 
 	return nil
