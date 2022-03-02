@@ -26,7 +26,6 @@ import (
 	"context"
 	"os"
 
-	"github.com/oklog/run"
 	"github.com/urfave/cli/v2"
 )
 
@@ -125,6 +124,7 @@ func main() {
 					passportClientToken := c.String("passport_server_token")
 
 					ctx, cancel := context.WithCancel(c.Context)
+					defer cancel()
 					environment := c.String("environment")
 					battleArenaAddr := c.String("battle_arena_addr")
 					level := c.String("log_level")
@@ -140,15 +140,11 @@ func main() {
 						Version,
 					)
 					if err != nil {
-						cancel()
 						return terror.Panic(err)
 					}
 
-					g := &run.Group{}
-
 					u, err := url.Parse(passportAddr)
 					if err != nil {
-						cancel()
 						return terror.Panic(err)
 					}
 					hostname := u.Hostname()
@@ -173,42 +169,35 @@ func main() {
 						passportClientToken,
 						passportRPC,
 					)
-					// err = pp.Connect()
-					// if err != nil {
-					// 	pp.Log.Warn().Err(err).Msgf("Passport connection failed")
-					// 	os.Exit(-1)
-					// }
+
 					// Start Gameserver - Gameclient server
-					ctxBA, cancelBA := context.WithCancel(ctx)
-					battleArenaClient := battle_arena.NewBattleArenaClient(ctxBA, log_helpers.NamedLogger(logger, "battle-arena"), pgxconn, pp, battleArenaAddr)
-					g.Add(func() error {
-						return battleArenaClient.Serve(ctxBA)
-					}, func(err error) {
-						cancel()
-						cancelBA()
-					})
 
-					// Start API/Client server
-					ctxAPI, cancelAPI := context.WithCancel(ctx)
-					api, err := SetupAPI(c, ctxAPI, log_helpers.NamedLogger(logger, "API"), battleArenaClient, pgxconn, pp)
+					// Passport
+					logger.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Setting up battle arena client")
+					battleArenaClient := battle_arena.NewBattleArenaClient(ctx, log_helpers.NamedLogger(logger, "battle-arena"), pgxconn, pp, battleArenaAddr)
+					battleArenaClient.SetupAfterConnections(logger) // Blocks until setup properly
+					logger.Info().Int("factions", len(battleArenaClient.GetCurrentState().FactionMap)).Msg("Successfully setup battle queue")
+
+					go func() {
+						err := battleArenaClient.Serve(ctx)
+						if err != nil {
+							fmt.Println(err)
+							os.Exit(1)
+						}
+					}()
+
+					logger.Info().Msg("Setting up webhook rest API")
+					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(logger, "API"), battleArenaClient, pgxconn, pp)
 					if err != nil {
-						cancel()
-						cancelAPI()
-						return terror.Panic(err)
+						fmt.Println(err)
+						os.Exit(1)
 					}
-					g.Add(func() error {
-						return api.Run(ctxAPI)
-					}, func(err error) {
-						cancel()
-						cancelAPI()
-					})
-
-					err = g.Run()
-					if errors.Is(err, run.SignalError{Signal: os.Interrupt}) {
-						cancel()
-						err = terror.Warn(err)
+					logger.Info().Msg("Running webhook rest API")
+					err = api.Run(ctx)
+					if err != nil {
+						fmt.Println(err)
+						os.Exit(1)
 					}
-
 					log_helpers.TerrorEcho(ctx, err, logger)
 					return nil
 				},

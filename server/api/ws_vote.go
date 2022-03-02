@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"server"
+	"server/passport"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -126,8 +127,13 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 	// deliver vote
 
 	vc.API.VotingCycle(func(va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
-		reason := fmt.Sprintf("battle:%s|vote_ability_right:%s", vc.API.BattleArena.CurrentBattleID(), va.BattleAbility.ID)
-		go vc.API.Passport.SpendSupMessage(userID, totalSups, vc.API.BattleArena.CurrentBattleID(), reason, func(transaction string) {
+		reason := fmt.Sprintf("battle:%vote_ability_right:%s", vc.API.BattleArena.CurrentBattleID(), va.BattleAbility.ID)
+		go vc.API.Passport.SpendSupMessage(passport.SpendSupsReq{
+			FromUserID:           userID,
+			Amount:               totalSups.String(),
+			TransactionReference: server.TransactionReference(fmt.Sprintf("%s|%s", reason, uuid.Must(uuid.NewV4()))),
+			GroupID:              vc.API.BattleArena.CurrentBattleID().String(),
+		}, func(transaction string) {
 
 			fts.Lock()
 			fts.Transactions = append(fts.Transactions, transaction)

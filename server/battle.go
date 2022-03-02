@@ -129,7 +129,7 @@ const (
 
 type AssetRepairRecord struct {
 	Hash              string     `json:"hash" db:"hash"`
-	ExpectCompletedAt time.Time  `json:"expectCompleteAt" db:"expect_completed_at"`
+	ExpectCompletedAt time.Time  `json:"expectCompletedAt" db:"expect_completed_at"`
 	RepairMode        RepairMode `json:"repairMode" db:"repair_mode"`
 	IsPaidToComplete  bool       `json:"isPaidToComplete" db:"is_paid_to_complete"`
 	CompletedAt       *time.Time `json:"completedAt,omitempty" db:"completed_at,omitempty"`

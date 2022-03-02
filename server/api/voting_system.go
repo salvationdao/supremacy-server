@@ -271,6 +271,8 @@ func calVotePrice(globalTotalVote int64, currentVotePrice server.BigInt, current
 			priceChange.Div(&priceChange.Int, big.NewInt(3))
 		}
 
+		priceChange.Div(&priceChange.Int, big.NewInt(2))
+
 		votePriceSups.Sub(&votePriceSups.Int, &priceChange.Int)
 	}
 

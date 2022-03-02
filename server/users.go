@@ -7,6 +7,8 @@ import (
 	"github.com/ninja-syndicate/hub"
 )
 
+var XsynTreasuryUserID = UserID(uuid.Must(uuid.FromString("ebf30ca0-875b-4e84-9a78-0b3fa36a1f87")))
+
 // User is a single user on the platform
 type User struct {
 	ID                  UserID     `json:"id" db:"id"`

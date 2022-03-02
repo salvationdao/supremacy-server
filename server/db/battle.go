@@ -215,11 +215,10 @@ func BattleQueueRemove(ctx context.Context, conn Conn, warMachineMetadata *serve
 				deleted_at = NOW()
 			WHERE
 				war_machine_metadata ->> 'hash' = $1 AND 
-				war_machine_metadata ->> 'factionID' = $2 AND 
 				deleted_at ISNULL
 		`
 
-	_, err := conn.Exec(ctx, q, warMachineMetadata.Hash, warMachineMetadata.FactionID)
+	_, err := conn.Exec(ctx, q, warMachineMetadata.Hash)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -231,7 +230,7 @@ func BattleQueueGetByFactionID(ctx context.Context, conn Conn, factionID server.
 	bqs := []*server.BattleQueueMetadata{}
 	q := `
 			SELECT
-				war_machine_metadata
+				war_machine_metadata, contract_reward
 			FROM
 				battle_war_machine_queues
 			WHERE
@@ -247,6 +246,9 @@ func BattleQueueGetByFactionID(ctx context.Context, conn Conn, factionID server.
 
 	wms := []*server.WarMachineMetadata{}
 	for _, bq := range bqs {
+		// insert contract reward in the mech
+		bq.WarMachineMetadata.ContractReward = &bq.ContractReward
+
 		wms = append(wms, bq.WarMachineMetadata)
 	}
 
@@ -262,6 +264,7 @@ func AssetQueuingStat(ctx context.Context, conn Conn, hash string) (*server.Batt
 			battle_war_machine_queues
 		WHERE
 			war_machine_metadata ->> 'hash' = $1 AND deleted_at ISNULL
+		limit 1
 	`
 	err := pgxscan.Get(ctx, conn, result, q, hash)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
@@ -298,7 +301,8 @@ func AssetRepairInsert(ctx context.Context, conn Conn, assetRepairRecord *server
 
 func AssetRepairIncompleteGet(ctx context.Context, conn Conn, assetRepairRecord *server.AssetRepairRecord) error {
 	q := `
-		SELECT * FROM asset_repair WHERE hash = $1 AND completed_at ISNULL;
+		SELECT * FROM asset_repair WHERE hash = $1 AND completed_at ISNULL
+		limit 1;
 	`
 
 	err := pgxscan.Get(ctx, conn, assetRepairRecord, q, assetRepairRecord.Hash)

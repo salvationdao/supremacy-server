@@ -4,9 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
-	"time"
 
 	"github.com/ninja-software/terror/v2"
 )
@@ -44,28 +42,6 @@ func WithError(next func(w http.ResponseWriter, r *http.Request) (int, error)) f
 		}
 	}
 	return fn
-}
-
-// generateErrorCode generates codes for error messages
-func generateErrorCode(codeLen int) string {
-	shortCodeArrayChars := []string{"a", "b", "c", "d", "e", "f", "g", "h", "j", "k", "m", "n", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"}
-	shortCodeArrayNumbers := []string{"2", "3", "4", "5", "6", "7", "8", "9"}
-	shortCode := ""
-
-	for i := 0; i < codeLen; i++ {
-		if i%2 == 0 {
-			shortCode += shortCodeArrayChars[randInt(0, len(shortCodeArrayChars))]
-			continue
-		}
-		shortCode += shortCodeArrayNumbers[randInt(0, len(shortCodeArrayNumbers))]
-	}
-	return shortCode
-}
-
-// randInt gives rand int between given ints
-func randInt(min int, max int) int {
-	rand.Seed(time.Now().UTC().UnixNano())
-	return min + rand.Intn(max-min)
 }
 
 func WithToken(apiToken string, next func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
