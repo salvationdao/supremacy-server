@@ -89,37 +89,36 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 					ab.Title = "FACTION_WIDE"
 					ab.CurrentSups = "0"
 				}
-			}
-
-			for _, wm := range ed.BattleArena.WarMachines {
-				if wm.FactionID != factionID || len(wm.Abilities) == 0 {
-					continue
-				}
-
-				for _, ability := range wm.Abilities {
-					wmAbility := &server.GameAbility{
-						ID:                  server.GameAbilityID(uuid.Must(uuid.NewV4())), // generate a uuid for frontend to track sups contribution
-						Identity:            ability.Identity,
-						GameClientAbilityID: byte(ability.GameClientID),
-						ImageUrl:            ability.Image,
-						Description:         ability.Description,
-						FactionID:           factionID,
-						Label:               ability.Name,
-						SupsCost:            ability.SupsCost,
-						CurrentSups:         "0",
-						AbilityHash:         ability.Hash,
-						WarMachineHash:      wm.Hash,
-						ParticipantID:       &wm.ParticipantID,
-						Title:               wm.Name,
+			} else {
+				for _, wm := range ed.BattleArena.WarMachines {
+					if wm.FactionID != factionID || len(wm.Abilities) == 0 {
+						continue
 					}
-					// if it is zaibatsu faction ability set id back
-					if ability.GameClientID == 11 {
-						wmAbility.ID = ability.ID
-						wmAbility.Colour = ability.Colour
-						wmAbility.TextColour = ability.TextColour
-					}
-					initialAbilities = append(initialAbilities, wmAbility)
 
+					for _, ability := range wm.Abilities {
+						wmAbility := &server.GameAbility{
+							ID:                  server.GameAbilityID(uuid.Must(uuid.NewV4())), // generate a uuid for frontend to track sups contribution
+							Identity:            ability.Identity,
+							GameClientAbilityID: byte(ability.GameClientID),
+							ImageUrl:            ability.Image,
+							Description:         ability.Description,
+							FactionID:           factionID,
+							Label:               ability.Name,
+							SupsCost:            ability.SupsCost,
+							CurrentSups:         "0",
+							AbilityHash:         ability.Hash,
+							WarMachineHash:      wm.Hash,
+							ParticipantID:       &wm.ParticipantID,
+							Title:               wm.Name,
+						}
+						// if it is zaibatsu faction ability set id back
+						if ability.GameClientID == 11 {
+							wmAbility.ID = ability.ID
+							wmAbility.Colour = ability.Colour
+							wmAbility.TextColour = ability.TextColour
+						}
+						initialAbilities = append(initialAbilities, wmAbility)
+					}
 				}
 			}
 

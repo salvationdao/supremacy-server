@@ -107,6 +107,8 @@ func (ba *BattleArena) InitNextBattle() error {
 
 	if len(ba.battle.WarMachines) > 0 {
 		for _, warMachine := range ba.battle.WarMachines {
+			// HACK: clean up war machine ability before stacking it
+			warMachine.Abilities = []*server.AbilityMetadata{}
 			if warMachine.FactionID == server.ZaibatsuFactionID {
 				// if war machine is from Zaibatsu, insert the ability as faction ability
 				warMachine.Abilities = append(warMachine.Abilities, &server.AbilityMetadata{
