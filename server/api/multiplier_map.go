@@ -257,6 +257,70 @@ func (um *UserMultiplier) Offline(userID server.UserID) {
 	um.CurrentMaps.ApplauseMap.Delete(userIDStr)
 	um.CurrentMaps.PickedLocationMap.Delete(userIDStr)
 
+	um.CurrentMaps.ActiveCitizenMap.Range(func(key, value interface{}) bool {
+		keys := strings.Split(key.(string), "_")
+		userIDstr := keys[0]
+
+		if userIDstr == userID.String() {
+			um.CurrentMaps.ActiveCitizenMap.Delete(key)
+			return false
+		}
+		// update check map
+		return true
+	})
+
+	// delete airstrike
+	um.CurrentMaps.AirstrikeRewardMap.Range(func(key, value interface{}) bool {
+		keys := strings.Split(key.(string), "_") // user id, title, timestamp
+		userStr := keys[0]
+
+		if userStr == userID.String() {
+			um.CurrentMaps.AirstrikeRewardMap.Delete(key)
+			return false
+		}
+		return true
+	})
+
+	// delete
+	um.CurrentMaps.NukeRewardMap.Range(func(key, value interface{}) bool {
+		keys := strings.Split(key.(string), "_") // user id, title, timestamp
+		userStr := keys[0]
+
+		if userStr == userID.String() {
+			um.CurrentMaps.NukeRewardMap.Delete(key)
+			return false
+		}
+		return true
+	})
+
+	// delete
+	um.CurrentMaps.RepairRewardMap.Range(func(key, value interface{}) bool {
+		keys := strings.Split(key.(string), "_") // user id, title, timestamp
+		userStr := keys[0]
+
+		if userStr == userID.String() {
+			um.CurrentMaps.RepairRewardMap.Delete(key)
+			return false
+		}
+		return true
+	})
+
+	// Combo breaker
+	um.CurrentMaps.ComboBreakerMap.Range(func(key, value interface{}) bool {
+		keys := strings.Split(key.(string), "_") // user id, title, timestamp
+		userStr := keys[0]
+
+		if userStr == userID.String() {
+			um.CurrentMaps.ComboBreakerMap.Delete(key)
+			return false
+		}
+		return true
+	})
+
+	um.CurrentMaps.NukeRewardMap.Range(func(key, value interface{}) bool {
+		return true
+	})
+
 	um.CurrentMaps.WinningFactionMap.Range(func(key, value interface{}) bool {
 		if strings.HasSuffix(key.(string), userIDStr) {
 			um.CurrentMaps.WinningFactionMap.Delete(userIDStr)
@@ -1253,13 +1317,6 @@ type CitizenMap struct {
 	deadlock.Map
 }
 
-func (cm *CitizenMap) Clear() {
-	cm.Range(func(key, value interface{}) bool {
-		cm.Delete(key)
-		return true
-	})
-}
-
 // this map will not be stored in db
 func (cm *CitizenMap) BulkSet(userIDs []*server.User, title string, ma *MultiplierAction) {
 	for _, userID := range userIDs {
@@ -1274,7 +1331,10 @@ func (um *UserMultiplier) NewCitizenOrder(users []*server.User) {
 	}
 
 	// clear the map
-	um.CurrentMaps.ActiveCitizenMap.Clear()
+	um.CurrentMaps.ActiveCitizenMap.Range(func(key, value interface{}) bool {
+		um.CurrentMaps.ActiveCitizenMap.Delete(key)
+		return true
+	})
 
 	expiredAt := time.Now().AddDate(1, 0, 0)
 

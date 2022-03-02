@@ -172,6 +172,29 @@ type dbMultiplier struct {
 	RemainSeconds int    `json:"remainSeconds"`
 }
 
+type CitizenTag string
+
+const (
+	CitizenTagSuperContributor    CitizenTag = "Super Contributor"    // top 10%
+	CitizenTagContributor         CitizenTag = "Contributor"          // top 25%
+	CitizenTagSupporter           CitizenTag = "Supporter"            // top 50%
+	CitizenTagCitizen             CitizenTag = "Citizen"              // top 80%
+	CitizenTagUnproductiveCitizen CitizenTag = "Unproductive Citizen" // other 20%
+)
+
+func (e CitizenTag) IsCitizen() bool {
+	switch e {
+	case CitizenTagSuperContributor,
+		CitizenTagContributor,
+		CitizenTagSupporter,
+		CitizenTagCitizen,
+		CitizenTagUnproductiveCitizen:
+		return true
+	}
+
+	return false
+}
+
 // UserMultiplierStore store users' sups multipliers
 func UserMultiplierStore(ctx context.Context, conn Conn, usm []*server.UserSupsMultiplierSend) error {
 	if len(usm) == 0 {
@@ -191,6 +214,9 @@ func UserMultiplierStore(ctx context.Context, conn Conn, usm []*server.UserSupsM
 		// reformat the sups multipliers before store
 		dbMultipliers := []*dbMultiplier{}
 		for _, sm := range us.SupsMultipliers {
+			if CitizenTag(sm.Key).IsCitizen() {
+				continue
+			}
 
 			remainSecond := sm.ExpiredAt.Sub(now).Seconds()
 			if remainSecond <= 0 {
