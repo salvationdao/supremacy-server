@@ -191,9 +191,29 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 			topFive = append(topFive, result.TopSupsContributors[:5]...)
 		}
 
-		// calc citizen multipliers
-		api.UserMultiplier.NewCitizenOrder(result.TopSupsContributors)
+		// fill user
+		list := []*server.User{}
+		list = append(list, result.TopSupsContributors...)
+		for _, userID := range battleViewers {
+			exist := false
+			for _, user := range result.TopSupsContributors {
+				if user.ID == userID {
+					exist = true
+					break
+				}
+			}
+			if !exist {
+				list = append(list, &server.User{ID: userID})
+			}
+		}
 
+		// calc citizen multipliers
+		api.UserMultiplier.NewCitizenOrder(list)
+
+		// record battle end info
+		api.battleEndInfo.TopSupsContributors = []*server.UserBrief{}
+		api.battleEndInfo.TopSupsContributeFactions = []*server.FactionBrief{}
+		ed.BattleRewardList.TopSupsSpendUsers = []server.UserID{}
 		for _, topUser := range topFive {
 			if !topUser.FactionID.IsNil() {
 				topUser.Faction = api.factionMap[topUser.FactionID]
@@ -201,6 +221,7 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 			api.battleEndInfo.TopSupsContributors = append(api.battleEndInfo.TopSupsContributors, topUser.Brief())
 
 			// recorded for sups most spend
+
 			ed.BattleRewardList.TopSupsSpendUsers = append(ed.BattleRewardList.TopSupsSpendUsers, topUser.ID)
 		}
 

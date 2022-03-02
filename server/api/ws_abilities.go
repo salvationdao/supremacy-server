@@ -380,6 +380,14 @@ func (fc *FactionControllerWS) WarMachineAbilitiesUpdateSubscribeHandler(ctx con
 				}
 			}
 
+			// filter dup
+			for _, ability := range abilities {
+				if ability.ID == fa.GameAbility.ID {
+					fap.Store(fa.GameAbility.Identity.String(), fa)
+					return true
+				}
+			}
+
 			fa.GameAbility.CurrentSups = fa.CurrentSups.String()
 			abilities = append(abilities, fa.GameAbility)
 			fap.Store(fa.GameAbility.Identity.String(), fa)
