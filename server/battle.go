@@ -16,6 +16,7 @@ type Battle struct {
 	WinningCondition   *string                `json:"winningCondition" db:"winning_condition"`
 	WarMachines        []*WarMachineMetadata  `json:"warMachines"`
 	WinningWarMachines []*WarMachineMetadata  `json:"winningWarMachines"`
+	SpawnedAI          []*WarMachineMetadata  `json:"spawnedAI"`
 	GameMap            *GameMap               `json:"map"`
 	FactionMap         map[FactionID]*Faction `json:"factionMap"`
 	BattleHistory      [][]byte               `json:"battleHistory"`
