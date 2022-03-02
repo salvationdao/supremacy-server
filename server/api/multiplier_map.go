@@ -42,7 +42,6 @@ const (
 
 type UserMultiplier struct {
 	CurrentMaps *Multiplier
-	CheckMaps   *Multiplier
 
 	BattleIDMap deadlock.Map
 
@@ -156,7 +155,6 @@ type MultiplierAction struct {
 func NewUserMultiplier(userMap *UserMap, pp *passport.Passport, ba *battle_arena.BattleArena) *UserMultiplier {
 	um := &UserMultiplier{
 		CurrentMaps: &Multiplier{deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, &MostSupsPendMap{}},
-		CheckMaps:   &Multiplier{deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, &MostSupsPendMap{}},
 		BattleIDMap: deadlock.Map{},
 		UserMap:     userMap,
 		Passport:    pp,
@@ -279,22 +277,12 @@ func (um *UserMultiplier) Offline(userID server.UserID) {
 	userIDStr := userID.String()
 
 	um.CurrentMaps.OnlineMap.Delete(userIDStr)
-	um.CheckMaps.OnlineMap.Delete(userIDStr)
 	um.CurrentMaps.ApplauseMap.Delete(userIDStr)
-	um.CheckMaps.ApplauseMap.Delete(userIDStr)
 	um.CurrentMaps.PickedLocationMap.Delete(userIDStr)
-	um.CheckMaps.PickedLocationMap.Delete(userIDStr)
 
 	um.CurrentMaps.WinningFactionMap.Range(func(key, value interface{}) bool {
 		if strings.HasSuffix(key.(string), userIDStr) {
 			um.CurrentMaps.WinningFactionMap.Delete(userIDStr)
-		}
-		return true
-	})
-
-	um.CheckMaps.WinningFactionMap.Range(func(key, value interface{}) bool {
-		if strings.HasSuffix(key.(string), userIDStr) {
-			um.CheckMaps.WinningFactionMap.Delete(userIDStr)
 		}
 		return true
 	})
@@ -306,23 +294,9 @@ func (um *UserMultiplier) Offline(userID server.UserID) {
 		return true
 	})
 
-	um.CheckMaps.WinningFactionMap.Range(func(key, value interface{}) bool {
-		if strings.HasSuffix(key.(string), userIDStr) {
-			um.CheckMaps.WinningFactionMap.Delete(userIDStr)
-		}
-		return true
-	})
-
 	um.CurrentMaps.KillMap.Range(func(key, value interface{}) bool {
 		if strings.HasSuffix(key.(string), userIDStr) {
 			um.CurrentMaps.KillMap.Delete(userIDStr)
-		}
-		return true
-	})
-
-	um.CheckMaps.WinningFactionMap.Range(func(key, value interface{}) bool {
-		if strings.HasSuffix(key.(string), userIDStr) {
-			um.CheckMaps.WinningFactionMap.Delete(userIDStr)
 		}
 		return true
 	})
@@ -402,14 +376,6 @@ func (um *UserMultiplier) CleanUpBattleReward(battleIDStr string) {
 	//		 otherwise it will rewrite the value back to current map in the check function
 	um.BattleIDMap.Delete(battleIDStr)
 	go func() {
-		um.CheckMaps.WinningFactionMap.Range(func(key, value interface{}) bool {
-			if !strings.HasPrefix(key.(string), battleIDStr) {
-				return true
-			}
-			um.CheckMaps.WinningFactionMap.Delete(key)
-			return true
-		})
-
 		um.CurrentMaps.WinningFactionMap.Range(func(key, value interface{}) bool {
 			if !strings.HasPrefix(key.(string), battleIDStr) {
 				return true
@@ -420,14 +386,6 @@ func (um *UserMultiplier) CleanUpBattleReward(battleIDStr string) {
 	}()
 
 	go func() {
-		um.CheckMaps.WinningUserMap.Range(func(key, value interface{}) bool {
-			if !strings.HasPrefix(key.(string), battleIDStr) {
-				return true
-			}
-			um.CheckMaps.WinningUserMap.Delete(key)
-			return true
-		})
-
 		um.CurrentMaps.WinningUserMap.Range(func(key, value interface{}) bool {
 			if !strings.HasPrefix(key.(string), battleIDStr) {
 				return true
@@ -438,14 +396,6 @@ func (um *UserMultiplier) CleanUpBattleReward(battleIDStr string) {
 	}()
 
 	go func() {
-		um.CheckMaps.KillMap.Range(func(key, value interface{}) bool {
-			if !strings.HasPrefix(key.(string), battleIDStr) {
-				return true
-			}
-			um.CheckMaps.KillMap.Delete(key)
-			return true
-		})
-
 		um.CurrentMaps.KillMap.Range(func(key, value interface{}) bool {
 			if !strings.HasPrefix(key.(string), battleIDStr) {
 				return true
@@ -739,23 +689,6 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 			return true
 		}
 
-		// get data from check map
-		_, ok := um.CheckMaps.OnlineMap.Load(uidStr)
-		// record, if not exists
-		if !ok {
-			// store different
-			d, ok := diff[uidStr]
-			if !ok {
-				d = make(map[string]*MultiplierAction)
-			}
-			d[string(ClientOnline)] = currentValue
-			diff[uidStr] = d
-
-			// update check map
-			um.CheckMaps.OnlineMap.Store(uidStr, currentValue)
-			return true
-		}
-
 		// store different
 		d, ok := diff[uidStr]
 		if !ok {
@@ -764,7 +697,6 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 		d[string(ClientOnline)] = currentValue
 		diff[uidStr] = d
 		// update check map
-		um.CheckMaps.OnlineMap.Store(uidStr, currentValue)
 
 		return true
 	})
@@ -776,22 +708,6 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 		if currentValue.Expiry.Before(now) {
 			return true
 		}
-		// get data from check map
-		_, ok := um.CheckMaps.ApplauseMap.Load(uidStr)
-		// record, if not exists
-		if !ok {
-			// store different
-			d, ok := diff[uidStr]
-			if !ok {
-				d = make(map[string]*MultiplierAction)
-			}
-			d[string(ClientVoted)] = currentValue
-			diff[uidStr] = d
-			// update check map
-			um.CheckMaps.ApplauseMap.Store(uidStr, currentValue)
-
-			return true
-		}
 
 		// store different
 		d, ok := diff[uidStr]
@@ -800,8 +716,6 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 		}
 		d[string(ClientVoted)] = currentValue
 		diff[uidStr] = d
-		// update check map
-		um.CheckMaps.ApplauseMap.Store(uidStr, currentValue)
 
 		return true
 	})
@@ -813,23 +727,6 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 		if currentValue.Expiry.Before(now) {
 			return true
 		}
-		// get data from check map
-		_, ok := um.CheckMaps.PickedLocationMap.Load(uidStr)
-		// record, if not exists
-		if !ok {
-			// store different
-			d, ok := diff[uidStr]
-			if !ok {
-				d = make(map[string]*MultiplierAction)
-			}
-			d[string(ClientPickedLocation)] = currentValue
-			diff[uidStr] = d
-			// update check map
-			um.CheckMaps.PickedLocationMap.Store(uidStr, currentValue)
-
-			return true
-		}
-
 		// store different
 		d, ok := diff[uidStr]
 		if !ok {
@@ -837,9 +734,6 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 		}
 		d[string(ClientPickedLocation)] = currentValue
 		diff[uidStr] = d
-		// update check map
-		um.CheckMaps.PickedLocationMap.Store(uidStr, currentValue)
-
 		return true
 	})
 
@@ -860,23 +754,6 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 			if currentValue.Expiry.Before(now) {
 				return true
 			}
-			// get data from check map
-			_, ok := um.CheckMaps.WinningFactionMap.Load(battleID + "_" + uidStr)
-			// record, if not exists
-			if !ok {
-				// store different
-				d, ok := diff[uidStr]
-				if !ok {
-					d = make(map[string]*MultiplierAction)
-				}
-				d[string(BattleRewardTypeFaction)+"_"+battleID] = currentValue
-				diff[uidStr] = d
-				// update check map
-				um.CheckMaps.WinningFactionMap.Store(battleID+"_"+uidStr, currentValue)
-
-				return true
-			}
-
 			// store different
 			d, ok := diff[uidStr]
 			if !ok {
@@ -884,8 +761,6 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 			}
 			d[string(BattleRewardTypeFaction)+"_"+battleID] = currentValue
 			diff[uidStr] = d
-			// update check map
-			um.CheckMaps.WinningFactionMap.Store(battleID+"_"+uidStr, currentValue)
 
 			return true
 		})
@@ -903,23 +778,6 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 			if currentValue.Expiry.Before(now) {
 				return true
 			}
-			// get data from check map
-			_, ok := um.CheckMaps.WinningUserMap.Load(battleID + "_" + uidStr)
-			// record, if not exists
-			if !ok {
-				// store different
-				d, ok := diff[uidStr]
-				if !ok {
-					d = make(map[string]*MultiplierAction)
-				}
-				d[string(BattleRewardTypeWinner)+"_"+battleID] = currentValue
-				diff[uidStr] = d
-				// update check map
-				um.CheckMaps.WinningUserMap.Store(battleID+"_"+uidStr, currentValue)
-
-				return true
-			}
-
 			// store different
 			d, ok := diff[uidStr]
 			if !ok {
@@ -927,8 +785,6 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 			}
 			d[string(BattleRewardTypeWinner)+"_"+battleID] = currentValue
 			diff[uidStr] = d
-			// update check map
-			um.CheckMaps.WinningUserMap.Store(battleID+"_"+uidStr, currentValue)
 
 			return true
 		})
@@ -946,23 +802,6 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 			if currentValue.Expiry.Before(now) {
 				return true
 			}
-			// get data from check map
-			_, ok := um.CheckMaps.KillMap.Load(battleID + "_" + uidStr)
-			// record, if not exists
-			if !ok {
-				// store different
-				d, ok := diff[uidStr]
-				if !ok {
-					d = make(map[string]*MultiplierAction)
-				}
-				d[string(BattleRewardTypeKill)+"_"+battleID] = currentValue
-				diff[uidStr] = d
-				// update check map
-				um.CheckMaps.KillMap.Store(battleID+"_"+uidStr, currentValue)
-
-				return true
-			}
-
 			// store different
 			d, ok := diff[uidStr]
 			if !ok {
@@ -970,8 +809,6 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 			}
 			d[string(BattleRewardTypeKill)+"_"+battleID] = currentValue
 			diff[uidStr] = d
-			// update check map
-			um.CheckMaps.KillMap.Store(battleID+"_"+uidStr, currentValue)
 
 			return true
 		})

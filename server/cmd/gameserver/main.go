@@ -160,7 +160,7 @@ func main() {
 						fmt.Sprintf("%s:10002", hostname),
 						fmt.Sprintf("%s:10001", hostname),
 					}
-					passportRPC, err := comms.New(gamelog.GameLog, rpcAddrs...)
+					passportRPC, err := comms.New(rpcAddrs...)
 					if err != nil {
 						cancel()
 						return terror.Panic(err)
