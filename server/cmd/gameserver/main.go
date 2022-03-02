@@ -179,7 +179,7 @@ func main() {
 					// Passport
 					logger.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Setting up battle arena client")
 					battleArenaClient := battle_arena.NewBattleArenaClient(ctx, log_helpers.NamedLogger(logger, "battle-arena"), pgxconn, pp, battleArenaAddr)
-					battleArenaClient.SetupAfterConnections(logger) // Blocks until setup properly
+					battleArenaClient.SetupAfterConnections(logger) // Blocks until setup properly, fetched and hydrated
 					logger.Info().Int("factions", len(battleArenaClient.GetCurrentState().FactionMap)).Msg("Successfully setup battle queue")
 
 					go func() {

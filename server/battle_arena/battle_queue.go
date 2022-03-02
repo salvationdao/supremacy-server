@@ -62,7 +62,10 @@ func NewWarMachineQueue(factions []*server.Faction, conn *pgxpool.Pool, log *zer
 
 		// initialise Red Mountain war machine queue
 		case server.RedMountainFactionID:
-			wmq.RedMountain.defaultWarMachines = ba.DefaultWarMachinesGet(faction.ID)
+			wmq.RedMountain.defaultWarMachines, err = ba.DefaultWarMachinesGet(faction.ID)
+			if err != nil {
+				return nil, fmt.Errorf("get default war machines: %w", err)
+			}
 			err = wmq.RedMountain.Init(faction)
 			if err != nil {
 				return nil, terror.Error(err)
@@ -70,7 +73,10 @@ func NewWarMachineQueue(factions []*server.Faction, conn *pgxpool.Pool, log *zer
 
 			// initialise Boston war machine queue
 		case server.BostonCyberneticsFactionID:
-			wmq.Boston.defaultWarMachines = ba.DefaultWarMachinesGet(faction.ID)
+			wmq.Boston.defaultWarMachines, err = ba.DefaultWarMachinesGet(faction.ID)
+			if err != nil {
+				return nil, fmt.Errorf("get default war machines: %w", err)
+			}
 			err = wmq.Boston.Init(faction)
 			if err != nil {
 				return nil, terror.Error(err)
@@ -78,7 +84,10 @@ func NewWarMachineQueue(factions []*server.Faction, conn *pgxpool.Pool, log *zer
 
 			// initialise Zaibatsu war machine queue
 		case server.ZaibatsuFactionID:
-			wmq.Zaibatsu.defaultWarMachines = ba.DefaultWarMachinesGet(faction.ID)
+			wmq.Zaibatsu.defaultWarMachines, err = ba.DefaultWarMachinesGet(faction.ID)
+			if err != nil {
+				return nil, fmt.Errorf("get default war machines: %w", err)
+			}
 			err = wmq.Zaibatsu.Init(faction)
 			if err != nil {
 				return nil, terror.Error(err)
@@ -92,17 +101,15 @@ func NewWarMachineQueue(factions []*server.Faction, conn *pgxpool.Pool, log *zer
 }
 
 //
-func (ba *BattleArena) DefaultWarMachinesGet(factionID server.FactionID) []*server.WarMachineMetadata {
+func (ba *BattleArena) DefaultWarMachinesGet(factionID server.FactionID) ([]*server.WarMachineMetadata, error) {
 	warMachines := []*server.WarMachineMetadata{}
 	// add default war machine to meet the total amount
-	wg := deadlock.WaitGroup{}
-	wg.Add(1)
-	ba.passport.GetDefaultWarMachines(context.Background(), factionID, func(wms []*server.WarMachineMetadata) {
-		defer wg.Done()
-		warMachines = append(warMachines, wms...)
-	})
-	wg.Wait()
-	return warMachines
+	result, err := ba.passport.GetDefaultWarMachines(context.Background(), factionID)
+	if err != nil {
+		return nil, err
+	}
+	warMachines = append(warMachines, result...)
+	return warMachines, nil
 }
 
 var RedMountainFaction = &server.Faction{
