@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/jpillora/backoff"
-	"github.com/rs/zerolog/log"
 	"go.uber.org/atomic"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 )
 
 type C struct {
@@ -38,7 +38,7 @@ func connect(addrs ...string) ([]*rpc.Client, error) {
 		gamelog.GameLog.Info().Int("attempt", attempts).Msg("fetching battle queue from passport")
 		clients = []*rpc.Client{}
 		for _, addr := range addrs {
-			log.Info().Str("addr", addr).Msg("registering RPC client")
+			gamelog.GameLog.Info().Str("addr", addr).Msg("registering RPC client")
 			client, err := rpc.Dial("tcp", addr)
 			if err != nil {
 				gamelog.GameLog.Err(err).Str("addr", addr).Msg("registering RPC client")
@@ -63,6 +63,8 @@ func (c *C) GoCall(serviceMethod string, args interface{}, reply interface{}, ca
 }
 
 func (c *C) Call(serviceMethod string, args interface{}, reply interface{}) error {
+	span := tracer.StartSpan("rpc.call", tracer.ResourceName(serviceMethod))
+	defer span.Finish()
 	c.inc.Add(1)
 	i := c.inc.Load()
 	if i >= int32(len(c.clients)-1) {
