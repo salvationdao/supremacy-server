@@ -401,6 +401,11 @@ func (fc *FactionControllerWS) WarMachineAbilitiesUpdateSubscribeHandler(ctx con
 	return req.TransactionID, busKey, nil
 }
 
+type QueueFeed struct {
+	Length int      `json:"queue_length"`
+	Cost   *big.Int `json:"queue_cost"`
+}
+
 func (fc *FactionControllerWS) QueueSubscription(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
 	gamelog.GameLog.Info().Str("fn", "QueueSubscription").RawJSON("req", payload).Msg("ws handler")
 	req := &WarMachineAbilitiesUpdatedRequest{}
@@ -420,24 +425,6 @@ func (fc *FactionControllerWS) QueueSubscription(ctx context.Context, wsc *hub.C
 
 	if fc.API.BattleArena.WarMachineQueue == nil {
 		return "", "", nil
-	}
-
-	switch hcd.Faction.Label {
-	case "Red Mountain Offworld Mining Corporation":
-		if fc.API.BattleArena.WarMachineQueue.RedMountain == nil {
-			reply(0)
-		}
-		reply(fc.API.BattleArena.WarMachineQueue.RedMountain.QueuingLength())
-	case "Boston Cybernetics":
-		if fc.API.BattleArena.WarMachineQueue.RedMountain == nil {
-			reply(0)
-		}
-		reply(fc.API.BattleArena.WarMachineQueue.Boston.QueuingLength())
-	case "Zaibatsu Heavy Industries":
-		if fc.API.BattleArena.WarMachineQueue.RedMountain == nil {
-			reply(0)
-		}
-		reply(fc.API.BattleArena.WarMachineQueue.Zaibatsu.QueuingLength())
 	}
 
 	var bi int64 = 250000000000000000
@@ -463,6 +450,8 @@ func (fc *FactionControllerWS) QueueSubscription(ctx context.Context, wsc *hub.C
 		}
 		feed.Length = fc.API.BattleArena.WarMachineQueue.RedMountain.QueuingLength()
 	}
+
+	feed.Length = feed.Length + 1
 
 	feed.Cost = feed.Cost.Mul(feed.Cost, big.NewInt(int64(feed.Length)))
 	reply(feed)

@@ -55,9 +55,6 @@ type LiveVotingData struct {
 type VotePriceSystem struct {
 	VotePriceUpdater *tickle.Tickle
 
-
-
-
 	GlobalVotePerTick []int64 // store last 100 tick total vote
 	GlobalTotalVote   int64
 
@@ -382,30 +379,30 @@ func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client) error {
 	api.ViewerLiveCount.Add(server.FactionID(uuid.Nil))
 
 	// broadcast current game state
-		ba := api.BattleArena.GetCurrentState()
-		// delay 2 second to wait frontend setup key map
-		time.Sleep(3 * time.Second)
+	ba := api.BattleArena.GetCurrentState()
+	// delay 2 second to wait frontend setup key map
+	time.Sleep(3 * time.Second)
 
-		// marshal payload
-		gsr := &GameSettingsResponse{
-			GameMap:     ba.GameMap,
-			WarMachines: ba.WarMachines,
-			SpawnedAI:   ba.SpawnedAI,
-		}
-		if ba.BattleHistory != nil && len(ba.BattleHistory) > 0 {
-			gsr.WarMachineLocation = ba.BattleHistory[0]
-		}
-		gameSettingsData, err := json.Marshal(&BroadcastPayload{
-			Key:     HubKeyGameSettingsUpdated,
-			Payload: gsr,
-		})
+	// marshal payload
+	gsr := &GameSettingsResponse{
+		GameMap:     ba.GameMap,
+		WarMachines: ba.WarMachines,
+		SpawnedAI:   ba.SpawnedAI,
+	}
+	if ba.BattleHistory != nil && len(ba.BattleHistory) > 0 {
+		gsr.WarMachineLocation = ba.BattleHistory[0]
+	}
+	gameSettingsData, err := json.Marshal(&BroadcastPayload{
+		Key:     HubKeyGameSettingsUpdated,
+		Payload: gsr,
+	})
 
-		if err != nil {
-			api.Log.Err(err).Msg("failed to marshal data")
-			return err
-		}
+	if err != nil {
+		api.Log.Err(err).Msg("failed to marshal data")
+		return err
+	}
 
-		wsc.Send(context.Background(), 3 * time.Second,gameSettingsData)
+	wsc.Send(gameSettingsData)
 	return err
 }
 

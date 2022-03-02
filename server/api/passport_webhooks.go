@@ -185,7 +185,7 @@ func (pc *PassportWebhookController) WarMachineJoin(w http.ResponseWriter, r *ht
 	}
 	pc.API.Passport.FactionQueueCostUpdate(factionQueuePrice)
 
-	queuingFee := big.NewInt(1000000000000000000)
+	queuingFee := big.NewInt(2500000000000000000)
 	queuingFee.Mul(queuingFee, big.NewInt(int64(factionQueuePrice.QueuingLength)))
 
 	// fire a payment to passport

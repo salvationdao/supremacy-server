@@ -145,6 +145,11 @@ var ZaibatsuFaction = &server.Faction{
 	},
 }
 
+type QueueFeed struct {
+	Length int      `json:"queue_length"`
+	Cost   *big.Int `json:"queue_cost"`
+}
+
 // Init read war machine list from db and set up the list
 func (fq *FactionQueue) Init(faction *server.Faction) error {
 	// read war machine queue from db
@@ -173,8 +178,16 @@ func (fq *FactionQueue) Init(faction *server.Faction) error {
 	// set up faction contract reward
 	fq.ContractReward.Amount.Add(fq.ContractReward.Amount, contractReward.BigInt())
 
+	var bi int64 = 250000000000000000
+	feed := QueueFeed{
+		Length: len(fq.QueuingWarMachines),
+		Cost:   big.NewInt(bi),
+	}
+
+	feed.Cost = feed.Cost.Mul(feed.Cost, big.NewInt(int64(feed.Length)))
+
 	if fq.ba.messageBus != nil {
-		go fq.ba.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeyFactionQueueJoin, faction.ID.String())), len(fq.QueuingWarMachines))
+		go fq.ba.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeyFactionQueueJoin, faction.ID.String())), feed)
 	}
 
 	return nil
@@ -269,7 +282,16 @@ func (fq *FactionQueue) Join(wmm *server.WarMachineMetadata, isInsured bool, fac
 	wmm.Faction = faction
 	wmm.ContractReward = contractReward
 	fq.QueuingWarMachines = append(fq.QueuingWarMachines, wmm)
-	go fq.ba.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeyFactionQueueJoin, faction.ID.String())), len(fq.QueuingWarMachines))
+
+	var bi int64 = 250000000000000000
+	feed := QueueFeed{
+		Length: len(fq.QueuingWarMachines),
+		Cost:   big.NewInt(bi),
+	}
+
+	feed.Cost = feed.Cost.Mul(feed.Cost, big.NewInt(int64(feed.Length)))
+
+	go fq.ba.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeyFactionQueueJoin, faction.ID.String())), feed)
 	fq.Unlock()
 
 	return nil
