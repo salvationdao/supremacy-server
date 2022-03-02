@@ -33,6 +33,7 @@ func (ba *BattleArena) RandomBattleAbility() (*server.BattleAbility, map[server.
 
 		// set ability detail to battle ability
 		battleAbility.Colour = ability.Colour
+		battleAbility.TextColour = ability.TextColour
 		battleAbility.ImageUrl = ability.ImageUrl
 	}
 
