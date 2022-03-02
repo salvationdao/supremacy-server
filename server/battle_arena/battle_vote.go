@@ -71,7 +71,6 @@ func (ba *BattleArena) GameAbilityTrigger(gameAbilityEvent *server.GameAbilityEv
 	log.Info().
 		Str("triggered_by_username", *gameAbilityEvent.TriggeredByUsername).
 		Str("war_machine_hash", *gameAbilityEvent.WarMachineHash).
-		Str("game_ability", gameAbilityEvent.GameAbility.Label).
 		Msg("request game ability")
 	// NOTE: this will potentially lock game server if game client is disconnected
 	// 		 so wrap it in a go routine
