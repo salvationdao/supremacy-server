@@ -36,6 +36,8 @@ func NewGameController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *GameC
 	api.SubscribeCommand(HubKeyBattleEndDetailUpdated, gameHub.BattleEndDetailUpdateSubscribeHandler)
 	api.SubscribeCommand(HubKeyAISpawned, gameHub.AISpawnedSubscribeHandler)
 
+	api.SecureUserCommand(HubKeyWarMachineQueueLeave, gameHub.WarMachineQueueLeaveHandler)
+
 	return gameHub
 }
 
@@ -57,6 +59,27 @@ func (gc *GameControllerWS) FactionColour(ctx context.Context, wsc *hub.Client, 
 		Boston:      gc.API.factionMap[server.BostonCyberneticsFactionID].Theme.Primary,
 		Zaibatsu:    gc.API.factionMap[server.ZaibatsuFactionID].Theme.Primary,
 	})
+
+	return nil
+}
+
+const HubKeyWarMachineQueueLeave hub.HubCommandKey = "WAR:WARMACHINE:QUEUE:LEAVE"
+
+type WarMachineQueueLeaveReqest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		Hash string `json:"hash"`
+	} `json:"payload"`
+}
+
+func (gc *GameControllerWS) WarMachineQueueLeaveHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &WarMachineQueueLeaveReqest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	// check user verified
 
 	return nil
 }
