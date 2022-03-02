@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"server"
 	"server/gamelog"
+	"strconv"
 
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/jackc/pgx/v4"
@@ -39,23 +40,25 @@ func BattleStarted(ctx context.Context, conn Conn, battle *server.Battle) error 
 func BattleWarMachineAssign(ctx context.Context, conn Conn, battleID server.BattleID, warMachineMetadatas []*server.WarMachineMetadata) error {
 	gamelog.GameLog.Info().Str("fn", "BattleWarMachineAssign").Msg("db func")
 	q := `
-		INSERT INTO 
-			battles_war_machines (battle_id, war_machine_stat)
+		INSERT INTO
+			battles_winner_records (battle_id, war_machine_hash, faction_id, owner_id)
 		VALUES
 
 	`
 
 	var args []interface{}
-	for i, warMachineMetadata := range warMachineMetadatas {
+	for i, wmm := range warMachineMetadatas {
+		args = append(args, battleID)
+		q += "($" + strconv.Itoa(len(args)) + ","
 
-		b, err := json.Marshal(warMachineMetadata)
-		if err != nil {
-			return terror.Error(err)
-		}
+		args = append(args, wmm.Hash)
+		q += "$" + strconv.Itoa(len(args)) + ","
 
-		args = append(args, b)
+		args = append(args, wmm.FactionID)
+		q += "$" + strconv.Itoa(len(args)) + ","
 
-		q += fmt.Sprintf("('%s', $%d)", battleID, len(args))
+		args = append(args, wmm.OwnedByID)
+		q += "$" + strconv.Itoa(len(args)) + ")"
 
 		if i < len(warMachineMetadatas)-1 {
 			q += ","
@@ -97,11 +100,11 @@ func BattleWinnerWarMachinesSet(ctx context.Context, conn Conn, battleID server.
 	gamelog.GameLog.Info().Str("fn", "BattleWinnerWarMachinesSet").Msg("db func")
 	q := `
 		UPDATE
-			battles_war_machines
+			battles_winner_records bwr
 		SET
 			is_winner = true
 		WHERE 
-			battle_id = $1 AND war_machine_stat->>'hash' IN (
+			battle_id = $1 AND war_machine_hash IN (
 	`
 	for i, warMachine := range warMachines {
 		q += fmt.Sprintf("'%s'", warMachine.Hash)
