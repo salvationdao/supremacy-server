@@ -43,6 +43,8 @@ func NewFactionController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Fa
 	// subscription
 	api.SecureUserFactionSubscribeCommand(HubKeyFactionAbilitiesUpdated, factionHub.FactionAbilitiesUpdateSubscribeHandler)
 	api.SecureUserFactionSubscribeCommand(HubKeyWarMachineAbilitiesUpdated, factionHub.WarMachineAbilitiesUpdateSubscribeHandler)
+	api.SecureUserSubscribeCommand(server.HubKeyFactionQueueJoin, factionHub.QueueSubscription)
+
 	return factionHub
 }
 
@@ -373,5 +375,31 @@ func (fc *FactionControllerWS) WarMachineAbilitiesUpdateSubscribeHandler(ctx con
 		reply(abilities)
 	})
 	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s:%x", HubKeyWarMachineAbilitiesUpdated, hcd.FactionID, req.Payload.ParticipantID))
+	return req.TransactionID, busKey, nil
+}
+
+func (fc *FactionControllerWS) QueueSubscription(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	gamelog.GameLog.Info().Str("fn", "QueueSubscription").RawJSON("req", payload).Msg("ws handler")
+	req := &WarMachineAbilitiesUpdatedRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return "", "", terror.Error(err, "Invalid request received")
+	}
+
+	hcd := fc.API.UserMap.GetUserDetail(wsc)
+	if hcd == nil {
+		return "", "", terror.Error(fmt.Errorf("hcd is nil"), "User not found")
+	}
+
+	switch hcd.Faction.Label {
+	case "Red Mountain Offworld Mining Corporation":
+		reply(fc.API.BattleArena.WarMachineQueue.RedMountain.QueuingLength())
+	case "Boston Cybernetics":
+		reply(fc.API.BattleArena.WarMachineQueue.Boston.QueuingLength())
+	case "Zaibatsu Heavy Industries":
+		reply(fc.API.BattleArena.WarMachineQueue.Zaibatsu.QueuingLength())
+	}
+
+	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeyFactionQueueJoin, hcd.FactionID.String()))
 	return req.TransactionID, busKey, nil
 }

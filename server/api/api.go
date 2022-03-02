@@ -186,6 +186,8 @@ func NewAPI(
 		battleEndInfo: &BattleEndInfo{},
 	}
 
+	battleArenaClient.SetMessageBus(messageBus)
+
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
 	api.Routes.Use(middleware.Logger)
