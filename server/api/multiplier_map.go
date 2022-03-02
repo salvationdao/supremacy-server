@@ -51,6 +51,12 @@ type UserMultiplier struct {
 	BattleArena *battle_arena.BattleArena
 
 	ActiveMap *deadlock.Map
+
+	// ability triggered map
+	NukeAbility            *AbilityTrigger
+	AirstrikeAbility       *AbilityTrigger
+	RepairAbility          *AbilityTrigger
+	AbilityFactionRecorder []server.FactionID
 }
 
 type Multiplier struct {
@@ -62,6 +68,11 @@ type Multiplier struct {
 	WinningFactionMap deadlock.Map
 	WinningUserMap    deadlock.Map
 	KillMap           deadlock.Map
+
+	// Ability Reward
+	NukeRewardMap      *AbilityTriggerMap
+	AirstrikeRewardMap *AbilityTriggerMap
+	RepairRewardMap    *AbilityTriggerMap
 
 	// most sups spend
 	MostSupsPend *MostSupsPendMap // key: battleID_userID
@@ -154,13 +165,27 @@ type MultiplierAction struct {
 // TODO: set up sups ticker
 func NewUserMultiplier(userMap *UserMap, pp *passport.Passport, ba *battle_arena.BattleArena) *UserMultiplier {
 	um := &UserMultiplier{
-		CurrentMaps: &Multiplier{deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, &MostSupsPendMap{}},
+		CurrentMaps: &Multiplier{deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, &AbilityTriggerMap{}, &AbilityTriggerMap{}, &AbilityTriggerMap{}, &MostSupsPendMap{}},
 		BattleIDMap: deadlock.Map{},
 		UserMap:     userMap,
 		Passport:    pp,
 		BattleArena: ba,
 
 		ActiveMap: &deadlock.Map{},
+
+		NukeAbility: &AbilityTrigger{
+			[]server.UserID{},
+			deadlock.RWMutex{},
+		},
+		AirstrikeAbility: &AbilityTrigger{
+			[]server.UserID{},
+			deadlock.RWMutex{},
+		},
+		RepairAbility: &AbilityTrigger{
+			[]server.UserID{},
+			deadlock.RWMutex{},
+		},
+		AbilityFactionRecorder: []server.FactionID{},
 	}
 
 	go func() {
@@ -225,6 +250,30 @@ func (um *UserMultiplier) Online(userID server.UserID) {
 			if len(strs) < 2 {
 				continue
 			}
+
+			if len(strs) == 3 { // user id, title, time
+				userID := strs[0]
+				title := strs[1]
+				timestp := strs[2]
+				switch strs[1] {
+				case "Air Marshal", "Air Support":
+					um.CurrentMaps.AirstrikeRewardMap.Store(fmt.Sprintf("%s_%s_%s", title, userID, timestp), &MultiplierAction{
+						MultiplierValue: s.Value,
+						Expiry:          s.ExpiredAt,
+					})
+				case "Now I am become Death", "Destroyer of worlds":
+					um.CurrentMaps.NukeRewardMap.Store(fmt.Sprintf("%s_%s_%s", title, userID, timestp), &MultiplierAction{
+						MultiplierValue: s.Value,
+						Expiry:          s.ExpiredAt,
+					})
+				case "Grease Monkey", "Field Mechanic":
+					um.CurrentMaps.RepairRewardMap.Store(fmt.Sprintf("%s_%s_%s", title, userID, timestp), &MultiplierAction{
+						MultiplierValue: s.Value,
+						Expiry:          s.ExpiredAt,
+					})
+				}
+			}
+
 			brk := strs[0]
 			battleID := strs[1]
 
@@ -816,6 +865,67 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 		return true
 	})
 
+	// claim abilities
+	um.CurrentMaps.AirstrikeRewardMap.Range(func(key, value interface{}) bool {
+		keys := strings.Split(key.(string), "_") // user id, title, timestamp
+		userStr := keys[0]
+		title := keys[1]
+		timeStp := keys[2]
+
+		currentValue := value.(*MultiplierAction)
+		if currentValue.Expiry.Before(now) {
+			return true
+		}
+		// store different
+		d, ok := diff[userStr]
+		if !ok {
+			d = make(map[string]*MultiplierAction)
+		}
+		d[string(title)+"_"+userStr+"_"+timeStp] = currentValue
+
+		return true
+	})
+
+	um.CurrentMaps.NukeRewardMap.Range(func(key, value interface{}) bool {
+		keys := strings.Split(key.(string), "_") // user id, title, timestamp
+		userStr := keys[0]
+		title := keys[1]
+		timeStp := keys[2]
+
+		currentValue := value.(*MultiplierAction)
+		if currentValue.Expiry.Before(now) {
+			return true
+		}
+		// store different
+		d, ok := diff[userStr]
+		if !ok {
+			d = make(map[string]*MultiplierAction)
+		}
+		d[string(title)+"_"+userStr+"_"+timeStp] = currentValue
+
+		return true
+	})
+
+	um.CurrentMaps.RepairRewardMap.Range(func(key, value interface{}) bool {
+		keys := strings.Split(key.(string), "_") // user id, title, timestamp
+		userStr := keys[0]
+		title := keys[1]
+		timeStp := keys[2]
+
+		currentValue := value.(*MultiplierAction)
+		if currentValue.Expiry.Before(now) {
+			return true
+		}
+		// store different
+		d, ok := diff[userStr]
+		if !ok {
+			d = make(map[string]*MultiplierAction)
+		}
+		d[string(title)+"_"+userStr+"_"+timeStp] = currentValue
+
+		return true
+	})
+
 	userSupsMultiplierSends := []*server.UserSupsMultiplierSend{}
 	for userID, ma := range diff {
 		// update user remain rate
@@ -896,4 +1006,138 @@ func (um *UserMultiplier) UserRemainRate(now time.Time, userID string) int {
 	remainRate := lastMinute - 10
 
 	return 100 - (remainRate/2)*10
+}
+
+type AbilityTrigger struct {
+	UserIDArray []server.UserID
+	deadlock.RWMutex
+}
+
+type AbilityTriggerMap struct {
+	deadlock.Map
+}
+
+func (atm *AbilityTriggerMap) Set(userID string, title string, isCombo bool) {
+	value := 500
+	if isCombo {
+		value = 1000
+	}
+	atm.Store(fmt.Sprintf("%s_%s_%s", userID, title, time.Now().String()), &MultiplierAction{
+		MultiplierValue: value,
+		Expiry:          time.Now().Add(5 * time.Minute),
+	})
+}
+
+func (um *UserMultiplier) AbilityTriggered(factionID server.FactionID, triggerUserID server.UserID, ability *server.GameAbility) {
+	switch ability.Label {
+	case "AIRSTRIKE":
+		um.AirstrikeAbility.Lock()
+		um.AirstrikeAbility.UserIDArray = append(um.AirstrikeAbility.UserIDArray, triggerUserID)
+
+		// if the array is longer than three
+		if len(um.AirstrikeAbility.UserIDArray) == 4 {
+			um.AirstrikeAbility.UserIDArray = um.AirstrikeAbility.UserIDArray[1:]
+		}
+
+		isCombo := len(um.AirstrikeAbility.UserIDArray) == 3
+		for _, userID := range um.AirstrikeAbility.UserIDArray {
+			if userID != triggerUserID {
+				isCombo = false
+				break
+			}
+		}
+
+		if isCombo {
+			// set user as the winner of last three airstrike
+			// tripple kill
+			um.CurrentMaps.AirstrikeRewardMap.Set(triggerUserID.String(), "Air Marshal", true)
+		} else {
+			// set user as air support
+			um.CurrentMaps.AirstrikeRewardMap.Set(triggerUserID.String(), "Air Support", false)
+		}
+
+		um.AbilityFactionRecorder = append(um.AbilityFactionRecorder, factionID)
+
+		um.AirstrikeAbility.Unlock()
+	case "NUKE":
+		um.NukeAbility.Lock()
+		um.NukeAbility.UserIDArray = append(um.NukeAbility.UserIDArray, triggerUserID)
+		// if the array is longer than three
+		if len(um.NukeAbility.UserIDArray) == 4 {
+			um.NukeAbility.UserIDArray = um.NukeAbility.UserIDArray[1:]
+		}
+
+		isCombo := len(um.NukeAbility.UserIDArray) == 3
+		for _, userID := range um.NukeAbility.UserIDArray {
+			if userID != triggerUserID {
+				isCombo = false
+				break
+			}
+		}
+
+		if isCombo {
+			// set user as the winner of last three airstrike
+			um.CurrentMaps.NukeRewardMap.Set(triggerUserID.String(), "Destroyer of worlds", true)
+		} else {
+			um.CurrentMaps.NukeRewardMap.Set(triggerUserID.String(), "Now I am become Death", false)
+			// set user as
+		}
+
+		um.NukeAbility.Unlock()
+	case "REPAIR":
+		um.RepairAbility.Lock()
+		um.RepairAbility.UserIDArray = append(um.RepairAbility.UserIDArray, triggerUserID)
+		// if the array is longer than three
+		if len(um.RepairAbility.UserIDArray) == 4 {
+			um.RepairAbility.UserIDArray = um.RepairAbility.UserIDArray[1:]
+		}
+
+		isCombo := len(um.RepairAbility.UserIDArray) == 3
+		for _, userID := range um.RepairAbility.UserIDArray {
+			if userID != triggerUserID {
+				isCombo = false
+				break
+			}
+		}
+
+		if isCombo {
+			// set user as the winner of last three airstrike
+			um.CurrentMaps.RepairRewardMap.Set(triggerUserID.String(), "Field Mechanic", true)
+		} else {
+			// set user as
+			um.CurrentMaps.RepairRewardMap.Set(triggerUserID.String(), "Grease Monkey", false)
+		}
+
+		// if um.IsComboBreaker(factionID) {
+
+		// }
+
+		um.RepairAbility.Unlock()
+	}
+}
+
+func (um *UserMultiplier) IsComboBreaker(triggerFactionID server.FactionID) bool {
+	um.AbilityFactionRecorder = append(um.AbilityFactionRecorder, triggerFactionID)
+
+	// check faction
+	if len(um.AbilityFactionRecorder) == 5 {
+		um.AbilityFactionRecorder = um.AbilityFactionRecorder[1:]
+	}
+
+	isComboBreaker := len(um.AbilityFactionRecorder) == 4
+
+	for i, factionID := range um.AbilityFactionRecorder {
+		// don't count the last one
+		if i == 4 {
+			break
+		}
+
+		// if faction triggere last three round
+		if triggerFactionID == factionID {
+			isComboBreaker = false
+			break
+		}
+	}
+
+	return isComboBreaker
 }

@@ -15,6 +15,7 @@ import (
 
 	"github.com/jpillora/backoff"
 	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/sasha-s/go-deadlock"
 
 	"github.com/antonholmquist/jason"
@@ -67,12 +68,16 @@ type BattleArena struct {
 	close        context.CancelFunc
 	battle       *server.Battle
 	gamesToClose int
-
+	messageBus   *messagebus.MessageBus
 	// battle queue channels
 	// BattleQueueMap map[server.FactionID]chan func(*WarMachineQueuingList)
 
 	// better battle queue
 	WarMachineQueue *WarMachineQueue
+}
+
+func (ba *BattleArena) SetMessageBus(mb *messagebus.MessageBus) {
+	ba.messageBus = mb
 }
 
 // NewBattleArenaClient creates a new battle arena client

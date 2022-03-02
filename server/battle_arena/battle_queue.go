@@ -8,6 +8,8 @@ import (
 	"server"
 	"server/db"
 
+	"github.com/ninja-syndicate/hub/ext/messagebus"
+
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/log_helpers"
@@ -36,18 +38,18 @@ type FactionQueue struct {
 
 	ContractReward     *ContractReward
 	QueuingWarMachines []*server.WarMachineMetadata
-
 	InGameWarMachines  []*server.WarMachineMetadata
 	defaultWarMachines []*server.WarMachineMetadata
 	log                *zerolog.Logger
+	ba                 *BattleArena
 }
 
 func NewWarMachineQueue(factions []*server.Faction, conn *pgxpool.Pool, log *zerolog.Logger, ba *BattleArena) (*WarMachineQueue, error) {
 	var err error
 	wmq := &WarMachineQueue{
-		RedMountain: &FactionQueue{server.RedMountainFactionID, deadlock.RWMutex{}, conn, &ContractReward{deadlock.RWMutex{}, big.NewInt(0)}, []*server.WarMachineMetadata{}, []*server.WarMachineMetadata{}, []*server.WarMachineMetadata{}, log_helpers.NamedLogger(log, "Red Mountain queue")},
-		Boston:      &FactionQueue{server.BostonCyberneticsFactionID, deadlock.RWMutex{}, conn, &ContractReward{deadlock.RWMutex{}, big.NewInt(0)}, []*server.WarMachineMetadata{}, []*server.WarMachineMetadata{}, []*server.WarMachineMetadata{}, log_helpers.NamedLogger(log, "Boston queue")},
-		Zaibatsu:    &FactionQueue{server.ZaibatsuFactionID, deadlock.RWMutex{}, conn, &ContractReward{deadlock.RWMutex{}, big.NewInt(0)}, []*server.WarMachineMetadata{}, []*server.WarMachineMetadata{}, []*server.WarMachineMetadata{}, log_helpers.NamedLogger(log, "Zaibatsu queue")},
+		RedMountain: &FactionQueue{server.RedMountainFactionID, deadlock.RWMutex{}, conn, &ContractReward{deadlock.RWMutex{}, big.NewInt(0)}, []*server.WarMachineMetadata{}, []*server.WarMachineMetadata{}, []*server.WarMachineMetadata{}, log_helpers.NamedLogger(log, "Red Mountain queue"), ba},
+		Boston:      &FactionQueue{server.BostonCyberneticsFactionID, deadlock.RWMutex{}, conn, &ContractReward{deadlock.RWMutex{}, big.NewInt(0)}, []*server.WarMachineMetadata{}, []*server.WarMachineMetadata{}, []*server.WarMachineMetadata{}, log_helpers.NamedLogger(log, "Boston queue"), ba},
+		Zaibatsu:    &FactionQueue{server.ZaibatsuFactionID, deadlock.RWMutex{}, conn, &ContractReward{deadlock.RWMutex{}, big.NewInt(0)}, []*server.WarMachineMetadata{}, []*server.WarMachineMetadata{}, []*server.WarMachineMetadata{}, log_helpers.NamedLogger(log, "Zaibatsu queue"), ba},
 		log:         log_helpers.NamedLogger(log, "war machine queue"),
 	}
 
@@ -171,6 +173,10 @@ func (fq *FactionQueue) Init(faction *server.Faction) error {
 	// set up faction contract reward
 	fq.ContractReward.Amount.Add(fq.ContractReward.Amount, contractReward.BigInt())
 
+	if fq.ba.messageBus != nil {
+		go fq.ba.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeyFactionQueueJoin, faction.ID.String())), len(fq.QueuingWarMachines))
+	}
+
 	return nil
 }
 
@@ -250,7 +256,7 @@ func (fq *FactionQueue) Join(wmm *server.WarMachineMetadata, isInsured bool, fac
 		return terror.Error(fmt.Errorf("war machine is currently in game"), "war machine "+wmm.Hash+" is currently in game")
 	}
 
-	contractReward := decimal.NewFromBigInt(fq.ContractReward.Amount, 0)
+	contractReward := decimal.New(int64(len(fq.QueuingWarMachines)+1)*2, 18)
 
 	// insert war machine into db
 	err := db.BattleQueueInsert(context.Background(), fq.Conn, wmm, contractReward.String(), isInsured)
@@ -263,6 +269,7 @@ func (fq *FactionQueue) Join(wmm *server.WarMachineMetadata, isInsured bool, fac
 	wmm.Faction = faction
 	wmm.ContractReward = contractReward
 	fq.QueuingWarMachines = append(fq.QueuingWarMachines, wmm)
+	go fq.ba.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeyFactionQueueJoin, faction.ID.String())), len(fq.QueuingWarMachines))
 	fq.Unlock()
 
 	return nil
