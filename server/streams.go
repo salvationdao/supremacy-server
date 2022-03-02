@@ -23,6 +23,7 @@ type GamesToCloseStream struct {
 }
 
 type GlobalAnnouncement struct {
+	ID         string     `json:"id"`
 	Title      string     `json:"title"`
 	Message    string     `json:"message"`
 	GamesUntil *int       `json:"gamesUntil,omitempty"`
