@@ -105,7 +105,7 @@ type GameAbility struct {
 	GameClientAbilityID byte             `json:"gameClientAbilityID" db:"game_client_ability_id"`
 	BattleAbilityID     *BattleAbilityID `json:"battleAbilityID,omitempty" db:"battle_ability_id,omitempty"`
 	Colour              string           `json:"colour" db:"colour"`
-	TextColour          string           `json:"text_colour" db:"text_colour"`
+	TextColour          string           `json:"textColour" db:"text_colour"`
 	Description         string           `json:"description" db:"description"`
 	ImageUrl            string           `json:"imageUrl" db:"image_url"`
 	FactionID           FactionID        `json:"factionID" db:"faction_id"`
