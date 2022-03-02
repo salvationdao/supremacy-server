@@ -3,9 +3,11 @@ package comms
 import (
 	"errors"
 	"net/rpc"
+	"server/gamelog"
 	"time"
 
-	"github.com/rs/zerolog"
+	"github.com/jpillora/backoff"
+	"github.com/rs/zerolog/log"
 	"go.uber.org/atomic"
 )
 
@@ -13,27 +15,40 @@ type C struct {
 	addrs   []string
 	clients []*rpc.Client
 	inc     *atomic.Int32
-	log     *zerolog.Logger
 }
 
-func New(log *zerolog.Logger, addrs ...string) (*C, error) {
-	clients, err := connect(log, addrs...)
+func New(addrs ...string) (*C, error) {
+	clients, err := connect(addrs...)
 	if err != nil {
 		return nil, err
 	}
-	c := &C{addrs, clients, atomic.NewInt32(0), log}
+	c := &C{addrs, clients, atomic.NewInt32(0)}
 	return c, nil
 }
-func connect(log *zerolog.Logger, addrs ...string) ([]*rpc.Client, error) {
-	clients := []*rpc.Client{}
-	for _, addr := range addrs {
-		log.Info().Str("addr", addr).Msg("registering RPC client")
-		client, err := rpc.Dial("tcp", addr)
-		if err != nil {
-			return nil, err
+func connect(addrs ...string) ([]*rpc.Client, error) {
+	b := &backoff.Backoff{
+		Min:    1 * time.Second,
+		Max:    10 * time.Second,
+		Factor: 2,
+	}
+	attempts := 0
+	var clients []*rpc.Client
+	for {
+		attempts++
+		gamelog.GameLog.Info().Int("attempt", attempts).Msg("fetching battle queue from passport")
+		clients = []*rpc.Client{}
+		for _, addr := range addrs {
+			log.Info().Str("addr", addr).Msg("registering RPC client")
+			client, err := rpc.Dial("tcp", addr)
+			if err != nil {
+				gamelog.GameLog.Err(err).Str("addr", addr).Msg("registering RPC client")
+				time.Sleep(b.Duration())
+				continue
+			}
+			clients = append(clients, client)
 		}
-		clients = append(clients, client)
 
+		break
 	}
 	return clients, nil
 }
@@ -57,7 +72,7 @@ func (c *C) Call(serviceMethod string, args interface{}, reply interface{}) erro
 	client := c.clients[i]
 	err := client.Call(serviceMethod, args, reply)
 	if err != nil && errors.Is(err, rpc.ErrShutdown) {
-		newClients, err := connect(c.log, c.addrs...)
+		newClients, err := connect(c.addrs...)
 		if err != nil {
 			time.Sleep(5 * time.Second)
 			return c.Call(serviceMethod, args, reply)
