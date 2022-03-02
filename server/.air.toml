@@ -2,7 +2,7 @@ root = "."
 tmp_dir = "tmp"
 
 [build]
-cmd = "../bin/golangci-lint run && go build -o ./tmp/main ./cmd/gameserver"
+cmd = "go build -o ./tmp/main ./cmd/gameserver"
 bin = "tmp/main"
 full_bin = "APP_ENV=dev APP_USER=air ./tmp/main serve"
 include_ext = ["go", "tpl", "tmpl", "html"]
