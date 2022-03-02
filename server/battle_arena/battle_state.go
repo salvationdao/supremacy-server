@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"server"
+	"server/comms"
 	"server/db"
-	"server/passport"
 	"time"
 
 	"github.com/jackc/pgx/v4"
@@ -237,7 +237,7 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 
 	// cache in game war machines
 	winningMachines := []*server.WarMachineMetadata{}
-	wmq := []*passport.WarMachineQueueStat{}
+	wmq := []*comms.WarMachineQueueStat{}
 
 	for _, bwm := range ba.battle.WarMachines {
 		// get contract reward from queuing
@@ -301,7 +301,7 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 			if err != nil {
 				ba.Log.Err(err).Msgf("Failed to remove battle queue cache in db, token id: %s ", bwm.Hash)
 			}
-			wmq = append(wmq, &passport.WarMachineQueueStat{Hash: bwm.Hash})
+			wmq = append(wmq, &comms.WarMachineQueueStat{Hash: bwm.Hash})
 
 			// broadcast repair stat
 			ba.passport.AssetRepairStat(assetRepairRecord)
@@ -325,7 +325,7 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 		if err != nil {
 			ba.Log.Err(err).Msgf("Failed to remove battle queue cache in db, token id: %s ", bwm.Hash)
 		}
-		wmq = append(wmq, &passport.WarMachineQueueStat{Hash: bwm.Hash})
+		wmq = append(wmq, &comms.WarMachineQueueStat{Hash: bwm.Hash})
 
 		// broadcast repair stat
 		ba.passport.AssetRepairStat(assetRepairRecord)
