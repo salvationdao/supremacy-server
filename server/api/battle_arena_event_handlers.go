@@ -31,6 +31,7 @@ const HubKeyGameSettingsUpdated = hub.HubCommandKey("GAME:SETTINGS:UPDATED")
 type GameSettingsResponse struct {
 	GameMap            *server.GameMap              `json:"gameMap"`
 	WarMachines        []*server.WarMachineMetadata `json:"warMachines"`
+	SpawnedAI          []*server.WarMachineMetadata `json:"spawnedAI"`
 	WarMachineLocation []byte                       `json:"warMachineLocation"`
 }
 
@@ -53,6 +54,7 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 		Payload: &GameSettingsResponse{
 			GameMap:            ed.BattleArena.GameMap,
 			WarMachines:        ed.BattleArena.WarMachines,
+			SpawnedAI:          ed.BattleArena.SpawnedAI,
 			WarMachineLocation: ed.BattleArena.BattleHistory[0],
 		},
 	})
@@ -352,6 +354,18 @@ func (api *API) WarMachineDestroyedBroadcast(ctx context.Context, ed *battle_are
 			),
 		),
 		ed.WarMachineDestroyedRecord,
+	)
+}
+
+func (api *API) AISpawnedBroadcast(ctx context.Context, ed *battle_arena.EventData) {
+	if ed.SpawnedAI == nil {
+		return
+	}
+
+	go api.MessageBus.Send(
+		ctx,
+		messagebus.BusKey(HubKeyAISpawned),
+		ed.SpawnedAI,
 	)
 }
 

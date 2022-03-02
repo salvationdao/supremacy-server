@@ -2,10 +2,12 @@ package db
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"server"
 
 	"github.com/georgysavva/scany/pgxscan"
+	"github.com/jackc/pgx/v4"
 
 	"github.com/ninja-software/terror/v2"
 
@@ -265,7 +267,7 @@ func AssetQueuingStat(ctx context.Context, conn Conn, hash string) (*server.Batt
 		limit 1
 	`
 	err := pgxscan.Get(ctx, conn, result, q, hash)
-	if err != nil {
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, terror.Error(err)
 	}
 
@@ -321,7 +323,7 @@ func AssetRepairPaidToComplete(ctx context.Context, conn Conn, assetRepairRecord
 		WHERE
 			hash = $1 AND completed_at ISNULL
 		RETURNING
-			hash, expect_complete_at, repair_mode, is_paid_to_complete, completed_at, created_at
+			hash, expect_completed_at, repair_mode, is_paid_to_complete, completed_at, created_at
 	`
 	err := pgxscan.Get(ctx, conn, assetRepairRecord, q, assetRepairRecord.Hash)
 	if err != nil {

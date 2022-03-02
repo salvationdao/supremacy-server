@@ -41,6 +41,7 @@ const (
 	EventWarMachineDestroyed       Event = "WAR_MACHINE_DESTROYED"
 	EventFactionViewersGet         Event = "FACTION_VIEWERS_GET"
 	EventWarMachinePositionChanged Event = "WAR_MACHINE_POSITION_CHANGED"
+	EventAISpawned                 Event = "AI_SPAWNED"
 )
 
 type EventData struct {
@@ -51,6 +52,7 @@ type EventData struct {
 	BattleRewardList          *BattleRewardList
 	WarMachineDestroyedRecord *server.WarMachineDestroyedRecord
 	WarMachineQueue           *WarMachineQueueUpdateEvent
+	SpawnedAI                 *server.WarMachineMetadata
 }
 
 type WarMachineQueueUpdateEvent struct {

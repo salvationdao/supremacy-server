@@ -42,6 +42,20 @@ type WarMachineDestroyedEvent struct {
 	KilledBy                string                     `json:"killedBy"`                       // Name of who/what killed the WarMachine (in-case of no EventID or Hash)
 }
 
+type SpawnedAIEvent struct {
+	ParticipantID byte      `json:"participantID"`
+	Name          string    `json:"name"`
+	Model         string    `json:"model"`
+	Skin          string    `json:"skin"`
+	MaxHealth     int       `json:"maxHealth"`
+	Health        int       `json:"health"`
+	MaxShield     int       `json:"maxShield"`
+	Shield        int       `json:"shield"`
+	FactionID     FactionID `json:"factionID"`
+	Position      *Vector3  `json:"position"`
+	Rotation      int       `json:"rotation"`
+}
+
 type GameAbilityEvent struct {
 	ID                  GameAbilityEventID `json:"id" db:"id"`
 	EventID             EventID            `json:"eventID" db:"event_id"`

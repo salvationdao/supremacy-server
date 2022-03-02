@@ -247,6 +247,7 @@ func NewAPI(
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventGameEnd, api.BattleEndSignal)
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventWarMachineDestroyed, api.WarMachineDestroyedBroadcast)
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventWarMachinePositionChanged, api.UpdateWarMachinePosition)
+	api.BattleArena.Events.AddEventHandler(battle_arena.EventAISpawned, api.AISpawnedBroadcast)
 
 	api.SetupAfterConnections(ctx, conn)
 
@@ -350,6 +351,7 @@ func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client) error {
 		gsr := &GameSettingsResponse{
 			GameMap:     ba.GameMap,
 			WarMachines: ba.WarMachines,
+			SpawnedAI:   ba.SpawnedAI,
 		}
 		if ba.BattleHistory != nil && len(ba.BattleHistory) > 0 {
 			gsr.WarMachineLocation = ba.BattleHistory[0]

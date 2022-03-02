@@ -34,6 +34,7 @@ func NewGameController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *GameC
 	api.SecureUserCommand(HubKeyActiveCheckUpdated, gameHub.ActiveChecker)
 	api.SubscribeCommand(HubKeyWarMachineDestroyedUpdated, gameHub.WarMachineDestroyedUpdateSubscribeHandler)
 	api.SubscribeCommand(HubKeyBattleEndDetailUpdated, gameHub.BattleEndDetailUpdateSubscribeHandler)
+	api.SubscribeCommand(HubKeyAISpawned, gameHub.AISpawnedSubscribeHandler)
 
 	return gameHub
 }
@@ -90,6 +91,22 @@ func (gc *GameControllerWS) WarMachineDestroyedUpdateSubscribeHandler(ctx contex
 	}
 
 	busKey := messagebus.BusKey(fmt.Sprintf("%s:%x", HubKeyWarMachineDestroyedUpdated, req.Payload.ParticipantID))
+	return req.TransactionID, busKey, nil
+}
+
+const HubKeyAISpawned hub.HubCommandKey = "AI:SPAWNED"
+
+// AISpawnedSubscribeHandler to subscribe on war machine destroyed
+func (gc *GameControllerWS) AISpawnedSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &struct {
+		*hub.HubCommandRequest
+	}{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return "", "", terror.Error(err, "Invalid request received")
+	}
+
+	busKey := messagebus.BusKey(HubKeyAISpawned)
 	return req.TransactionID, busKey, nil
 }
 
