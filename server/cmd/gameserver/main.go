@@ -171,8 +171,12 @@ func main() {
 					)
 
 					// Start Gameserver - Gameclient server
+
+					// Passport
+					logger.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Setting up battle arena client")
 					battleArenaClient := battle_arena.NewBattleArenaClient(ctx, log_helpers.NamedLogger(logger, "battle-arena"), pgxconn, pp, battleArenaAddr)
 					battleArenaClient.SetupAfterConnections(logger) // Blocks until setup properly
+					logger.Info().Int("factions", len(battleArenaClient.GetCurrentState().FactionMap)).Msg("Successfully setup battle queue")
 
 					go func() {
 						err := battleArenaClient.Serve(ctx)
@@ -182,11 +186,13 @@ func main() {
 						}
 					}()
 
+					logger.Info().Msg("Setting up webhook rest API")
 					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(logger, "API"), battleArenaClient, pgxconn, pp)
 					if err != nil {
 						fmt.Println(err)
 						os.Exit(1)
 					}
+					logger.Info().Msg("Running webhook rest API")
 					err = api.Run(ctx)
 					if err != nil {
 						fmt.Println(err)

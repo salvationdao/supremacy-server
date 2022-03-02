@@ -446,8 +446,10 @@ func (ba *BattleArena) SetupAfterConnections(logger *zerolog.Logger) {
 	}
 	var err error
 	// get factions from passport, retrying every 10 seconds until we ge them.
+	attempts := 0
 	for len(ba.battle.FactionMap) <= 0 {
-		logger.Info().Msg("fetching battle queue from passport")
+		attempts++
+		logger.Info().Int("attempt", attempts).Msg("fetching battle queue from passport")
 		wg := deadlock.WaitGroup{}
 		wg.Add(1)
 
@@ -500,5 +502,5 @@ func (ba *BattleArena) SetupAfterConnections(logger *zerolog.Logger) {
 		}
 		time.Sleep(b.Duration())
 	}
-	logger.Info().Int("factions", len(ba.battle.FactionMap)).Msg("succesfully fetched battle queue from passport")
+	logger.Info().Int("factions", len(ba.battle.FactionMap)).Msg("successfully fetched battle queue from passport")
 }
