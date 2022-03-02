@@ -8,8 +8,6 @@ create table battles_winner_records(
     PRIMARY KEY (battle_id, war_machine_hash)
 );
 
-
-
 -- drop faction stats
 DROP MATERIALIZED VIEW faction_stats;
 
