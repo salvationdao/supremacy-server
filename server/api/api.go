@@ -219,7 +219,9 @@ func NewAPI(
 		r.Post("/close_stream", WithToken(config.ServerStreamKey, WithError(api.CreateStreamCloseHandler)))
 		r.Get("/faction_data", WithError(api.GetFactionData))
 		r.Get("/trigger/ability_file_upload", WithError(api.GetFactionData))
-		r.Post("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.SendGlobalAnnouncement)))
+		r.Post("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.GlobalAnnouncementSend)))
+		r.Delete("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.GlobalAnnouncementDelete)))
+
 	})
 
 	// set viewer live count
@@ -532,7 +534,7 @@ func (api *API) Close() {
 	}
 }
 
-func (api *API) SendGlobalAnnouncement(w http.ResponseWriter, r *http.Request) (int, error) {
+func (api *API) GlobalAnnouncementSend(w http.ResponseWriter, r *http.Request) (int, error) {
 	req := &server.GlobalAnnouncement{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
@@ -559,6 +561,23 @@ func (api *API) SendGlobalAnnouncement(w http.ResponseWriter, r *http.Request) (
 	api.GlobalAnnouncement = req
 
 	go api.MessageBus.Send(r.Context(), messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), req)
+
+	return http.StatusOK, nil
+}
+
+func (api *API) GlobalAnnouncementDelete(w http.ResponseWriter, r *http.Request) (int, error) {
+	defer r.Body.Close()
+
+	// insert to db
+	err := db.AnnouncementDelete(api.ctx, api.Conn)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to create announcement %w", err))
+	}
+
+	// store in memory
+	api.GlobalAnnouncement = nil
+
+	go api.MessageBus.Send(r.Context(), messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), nil)
 
 	return http.StatusOK, nil
 }
