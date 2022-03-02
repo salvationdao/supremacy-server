@@ -19,7 +19,7 @@ import (
 type ClientAction string
 
 const (
-	ClientOnline                ClientAction = "Online"
+	// ClientOnline                ClientAction = "Online"
 	ClientOffline               ClientAction = "Offline"
 	ClientVoted                 ClientAction = "Applause"
 	ClientPickedLocation        ClientAction = "Picked Location"

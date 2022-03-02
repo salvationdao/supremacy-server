@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"server"
 	"server/gamelog"
+	"strconv"
 
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/jackc/pgx/v4"
@@ -39,23 +40,25 @@ func BattleStarted(ctx context.Context, conn Conn, battle *server.Battle) error 
 func BattleWarMachineAssign(ctx context.Context, conn Conn, battleID server.BattleID, warMachineMetadatas []*server.WarMachineMetadata) error {
 	gamelog.GameLog.Info().Str("fn", "BattleWarMachineAssign").Msg("db func")
 	q := `
-		INSERT INTO 
-			battles_war_machines (battle_id, war_machine_stat)
+		INSERT INTO
+			battles_winner_records (battle_id, war_machine_hash, faction_id, owner_id)
 		VALUES
 
 	`
 
 	var args []interface{}
-	for i, warMachineMetadata := range warMachineMetadatas {
+	for i, wmm := range warMachineMetadatas {
+		args = append(args, battleID)
+		q += "($" + strconv.Itoa(len(args)) + ","
 
-		b, err := json.Marshal(warMachineMetadata)
-		if err != nil {
-			return terror.Error(err)
-		}
+		args = append(args, wmm.Hash)
+		q += "$" + strconv.Itoa(len(args)) + ","
 
-		args = append(args, b)
+		args = append(args, wmm.FactionID)
+		q += "$" + strconv.Itoa(len(args)) + ","
 
-		q += fmt.Sprintf("('%s', $%d)", battleID, len(args))
+		args = append(args, wmm.OwnedByID)
+		q += "$" + strconv.Itoa(len(args)) + ")"
 
 		if i < len(warMachineMetadatas)-1 {
 			q += ","
@@ -97,11 +100,11 @@ func BattleWinnerWarMachinesSet(ctx context.Context, conn Conn, battleID server.
 	gamelog.GameLog.Info().Str("fn", "BattleWinnerWarMachinesSet").Msg("db func")
 	q := `
 		UPDATE
-			battles_war_machines
+			battles_winner_records bwr
 		SET
 			is_winner = true
 		WHERE 
-			battle_id = $1 AND war_machine_stat->>'hash' IN (
+			battle_id = $1 AND war_machine_hash IN (
 	`
 	for i, warMachine := range warMachines {
 		q += fmt.Sprintf("'%s'", warMachine.Hash)
@@ -169,7 +172,7 @@ func CreateBattleStateEvent(ctx context.Context, conn Conn, battleID server.Batt
 /*********************
 * Battle Queue stuff *
 *********************/
-func BattleQueueInsert(ctx context.Context, conn Conn, warMachineMetadata *server.WarMachineMetadata, contractReward string, isInsured bool) error {
+func BattleQueueInsert(ctx context.Context, conn Conn, warMachineMetadata *server.WarMachineMetadata, contractReward string, isInsured bool, fee string) error {
 	gamelog.GameLog.Info().Str("fn", "BattleQueueInsert").Msg("db func")
 	// marshal metadata
 	jb, err := json.Marshal(warMachineMetadata)
@@ -179,12 +182,12 @@ func BattleQueueInsert(ctx context.Context, conn Conn, warMachineMetadata *serve
 
 	q := `
 		INSERT INTO 
-			battle_war_machine_queues (war_machine_metadata, contract_reward, is_insured)
+			battle_war_machine_queues (war_machine_metadata, contract_reward, is_insured, fee)
 		VALUES
-			($1, $2, $3)
+			($1, $2, $3, $4)
 	`
 
-	_, err = conn.Exec(ctx, q, jb, contractReward, isInsured)
+	_, err = conn.Exec(ctx, q, jb, contractReward, isInsured, fee)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -242,7 +245,7 @@ func BattleQueueGetByFactionID(ctx context.Context, conn Conn, factionID server.
 	bqs := []*server.BattleQueueMetadata{}
 	q := `
 			SELECT
-				war_machine_metadata, contract_reward
+				war_machine_metadata, contract_reward, fee
 			FROM
 				battle_war_machine_queues
 			WHERE
@@ -264,6 +267,11 @@ func BattleQueueGetByFactionID(ctx context.Context, conn Conn, factionID server.
 			return []*server.WarMachineMetadata{}, terror.Error(err)
 		}
 		bq.WarMachineMetadata.ContractReward = contractReward
+		fee, err := decimal.NewFromString(bq.Fee)
+		if err != nil {
+			return []*server.WarMachineMetadata{}, terror.Error(err)
+		}
+		bq.WarMachineMetadata.Fee = fee
 
 		wms = append(wms, bq.WarMachineMetadata)
 	}

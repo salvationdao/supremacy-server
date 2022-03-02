@@ -193,6 +193,32 @@ func (fq *FactionQueue) Init(faction *server.Faction) error {
 	return nil
 }
 
+func (fq *FactionQueue) Leave(userID server.UserID, hash string) (decimal.Decimal, error) {
+	index := -1
+	fee := decimal.Zero
+	for i, wm := range fq.QueuingWarMachines {
+		if wm.Hash == hash {
+			if wm.OwnedByID != userID {
+				return decimal.Zero, terror.Error(fmt.Errorf("The mech does not own by the user"))
+			}
+			index = i
+			fee = wm.Fee
+			break
+		}
+	}
+
+	if index == -1 {
+		return decimal.Zero, terror.Error(fmt.Errorf("Mech not found"))
+	}
+
+	// remove mech from queue
+	fq.QueuingWarMachines[index] = fq.QueuingWarMachines[len(fq.QueuingWarMachines)-1]
+	fq.QueuingWarMachines[len(fq.QueuingWarMachines)-1] = nil
+	fq.QueuingWarMachines = fq.QueuingWarMachines[:len(fq.QueuingWarMachines)-1]
+
+	return fee, nil
+}
+
 // UpdateContractReward update contract reward when battle end
 func (fq *FactionQueue) UpdateContractReward(winningFactionID server.FactionID) error {
 	fq.ContractReward.Lock()
@@ -271,8 +297,10 @@ func (fq *FactionQueue) Join(wmm *server.WarMachineMetadata, isInsured bool, fac
 
 	contractReward := decimal.New(int64(len(fq.QueuingWarMachines)+1)*2, 18)
 
+	fee := decimal.New(int64(len(fq.QueuingWarMachines)+1), 18).Div(decimal.NewFromFloat(0.25))
+
 	// insert war machine into db
-	err := db.BattleQueueInsert(context.Background(), fq.Conn, wmm, contractReward.String(), isInsured)
+	err := db.BattleQueueInsert(context.Background(), fq.Conn, wmm, contractReward.String(), isInsured, fee.String())
 	if err != nil {
 		return terror.Error(err, "Failed to insert a copy of queue in db, token id:"+wmm.Hash)
 	}
@@ -281,6 +309,7 @@ func (fq *FactionQueue) Join(wmm *server.WarMachineMetadata, isInsured bool, fac
 	fq.Lock()
 	wmm.Faction = faction
 	wmm.ContractReward = contractReward
+	wmm.Fee = fee
 	fq.QueuingWarMachines = append(fq.QueuingWarMachines, wmm)
 
 	var bi int64 = 250000000000000000

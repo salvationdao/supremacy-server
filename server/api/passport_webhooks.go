@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/big"
 	"net/http"
 	"server"
 	"server/db"
@@ -185,14 +184,11 @@ func (pc *PassportWebhookController) WarMachineJoin(w http.ResponseWriter, r *ht
 	}
 	pc.API.Passport.FactionQueueCostUpdate(factionQueuePrice)
 
-	queuingFee := big.NewInt(2500000000000000000)
-	queuingFee.Mul(queuingFee, big.NewInt(int64(factionQueuePrice.QueuingLength)))
-
 	// fire a payment to passport
 	pc.API.Passport.SpendSupMessage(passport.SpendSupsReq{
 		FromUserID:           req.WarMachineMetadata.OwnedByID,
 		ToUserID:             &server.XsynTreasuryUserID,
-		Amount:               queuingFee.String(),
+		Amount:               req.WarMachineMetadata.Fee.String(),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("war_machine_queuing_fee|%s", uuid.Must(uuid.NewV4()))),
 	}, func(transaction string) {})
 
