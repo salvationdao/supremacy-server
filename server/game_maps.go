@@ -56,6 +56,7 @@ type WarMachineMetadata struct {
 	Abilities          []*AbilityMetadata `json:"abilities"`
 
 	ContractReward decimal.Decimal `json:"contractReward"`
+	Fee            decimal.Decimal `json:"fee"`
 }
 
 type WarMachineBrief struct {

@@ -172,7 +172,7 @@ func CreateBattleStateEvent(ctx context.Context, conn Conn, battleID server.Batt
 /*********************
 * Battle Queue stuff *
 *********************/
-func BattleQueueInsert(ctx context.Context, conn Conn, warMachineMetadata *server.WarMachineMetadata, contractReward string, isInsured bool) error {
+func BattleQueueInsert(ctx context.Context, conn Conn, warMachineMetadata *server.WarMachineMetadata, contractReward string, isInsured bool, fee string) error {
 	gamelog.GameLog.Info().Str("fn", "BattleQueueInsert").Msg("db func")
 	// marshal metadata
 	jb, err := json.Marshal(warMachineMetadata)
@@ -182,12 +182,12 @@ func BattleQueueInsert(ctx context.Context, conn Conn, warMachineMetadata *serve
 
 	q := `
 		INSERT INTO 
-			battle_war_machine_queues (war_machine_metadata, contract_reward, is_insured)
+			battle_war_machine_queues (war_machine_metadata, contract_reward, is_insured, fee)
 		VALUES
-			($1, $2, $3)
+			($1, $2, $3, $4)
 	`
 
-	_, err = conn.Exec(ctx, q, jb, contractReward, isInsured)
+	_, err = conn.Exec(ctx, q, jb, contractReward, isInsured, fee)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -245,7 +245,7 @@ func BattleQueueGetByFactionID(ctx context.Context, conn Conn, factionID server.
 	bqs := []*server.BattleQueueMetadata{}
 	q := `
 			SELECT
-				war_machine_metadata, contract_reward
+				war_machine_metadata, contract_reward, fee
 			FROM
 				battle_war_machine_queues
 			WHERE
@@ -267,6 +267,11 @@ func BattleQueueGetByFactionID(ctx context.Context, conn Conn, factionID server.
 			return []*server.WarMachineMetadata{}, terror.Error(err)
 		}
 		bq.WarMachineMetadata.ContractReward = contractReward
+		fee, err := decimal.NewFromString(bq.Fee)
+		if err != nil {
+			return []*server.WarMachineMetadata{}, terror.Error(err)
+		}
+		bq.WarMachineMetadata.Fee = fee
 
 		wms = append(wms, bq.WarMachineMetadata)
 	}

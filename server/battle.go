@@ -69,6 +69,7 @@ type BattleQueueMetadata struct {
 	DeletedAt          *time.Time          `json:"deletedAt,omitempty" db:"deleted_at,omitempty"`
 	ContractReward     string              `json:"contractReward" db:"contract_reward"`
 	IsInsured          bool                `json:"isInsured" db:"is_insured"`
+	Fee                string              `json:"fee" db:"fee"`
 }
 
 // IsNil returns true for a nil uuid.

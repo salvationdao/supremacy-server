@@ -5,14 +5,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"server"
+	"server/comms"
+	"server/passport"
 	"time"
 
+	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/log_helpers"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
+	"github.com/shopspring/decimal"
 )
 
 // GameControllerWS holds handlers for checking server status
@@ -79,7 +83,71 @@ func (gc *GameControllerWS) WarMachineQueueLeaveHandler(ctx context.Context, wsc
 		return terror.Error(err, "Invalid request received")
 	}
 
-	// check user verified
+	// get user
+	user := gc.API.UserMap.GetUserDetail(wsc)
+	if user == nil {
+		return terror.Error(fmt.Errorf("user not found"))
+	}
+
+	if user.FactionID.IsNil() {
+		return terror.Error(fmt.Errorf("user not in faction"))
+	}
+
+	broadcastData := []*comms.WarMachineQueueStat{}
+	fee := decimal.Zero
+	switch user.FactionID {
+	case server.RedMountainFactionID:
+		fee, err = gc.API.BattleArena.WarMachineQueue.RedMountain.Leave(user.ID, req.Payload.Hash)
+		if err != nil {
+			return terror.Error(err)
+		}
+		for i, wm := range gc.API.BattleArena.WarMachineQueue.RedMountain.QueuingWarMachines {
+			position := i + 1
+			broadcastData = append(broadcastData, &comms.WarMachineQueueStat{
+				Hash:           wm.Hash,
+				Position:       &position,
+				ContractReward: wm.ContractReward,
+			})
+		}
+	case server.BostonCyberneticsFactionID:
+		fee, err = gc.API.BattleArena.WarMachineQueue.Boston.Leave(user.ID, req.Payload.Hash)
+		if err != nil {
+			return terror.Error(err)
+		}
+		for i, wm := range gc.API.BattleArena.WarMachineQueue.RedMountain.QueuingWarMachines {
+			position := i + 1
+			broadcastData = append(broadcastData, &comms.WarMachineQueueStat{
+				Hash:           wm.Hash,
+				Position:       &position,
+				ContractReward: wm.ContractReward,
+			})
+		}
+	case server.ZaibatsuFactionID:
+		fee, err = gc.API.BattleArena.WarMachineQueue.Zaibatsu.Leave(user.ID, req.Payload.Hash)
+		if err != nil {
+			return terror.Error(err)
+		}
+		for i, wm := range gc.API.BattleArena.WarMachineQueue.RedMountain.QueuingWarMachines {
+			position := i + 1
+			broadcastData = append(broadcastData, &comms.WarMachineQueueStat{
+				Hash:           wm.Hash,
+				Position:       &position,
+				ContractReward: wm.ContractReward,
+			})
+		}
+	}
+
+	// fire a refund to passport
+	gc.API.Passport.SpendSupMessage(passport.SpendSupsReq{
+		FromUserID:           server.XsynTreasuryUserID,
+		ToUserID:             &user.ID,
+		Amount:               fee.String(),
+		TransactionReference: server.TransactionReference(fmt.Sprintf("refund|war_machine_queuing_fee|%s", uuid.Must(uuid.NewV4()))),
+	}, func(transaction string) {})
+
+	gc.API.Passport.WarMachineQueuePositionBroadcast(broadcastData)
+
+	reply(true)
 
 	return nil
 }
