@@ -454,7 +454,6 @@ func (ba *BattleArena) SetupAfterConnections() {
 		ba.passport.FactionAll(func(factions []*server.Faction) {
 			defer wg.Done()
 			ba.battle.WarMachineDestroyedRecordMap = make(map[byte]*server.WarMachineDestroyedRecord)
-
 			ba.battle.FactionMap = make(map[server.FactionID]*server.Faction)
 			for _, faction := range factions {
 				ba.battle.FactionMap[faction.ID] = faction
@@ -465,6 +464,7 @@ func (ba *BattleArena) SetupAfterConnections() {
 					ba.Log.Err(err).Msg("failed to set ups war machine queue")
 					os.Exit(-1)
 				}
+				ba.Log.Info().Msg("successfully setup war machine queue")
 
 				// TODO: Build new faction reward system
 				// battleContractRewardUpdaterLogger := log_helpers.NamedLogger(ba.Log, "Contract Reward Updater").Level(zerolog.Disabled)

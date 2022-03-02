@@ -76,7 +76,8 @@ func NewWarMachineQueue(factions []*server.Faction, conn *pgxpool.Pool, log *zer
 			if err != nil {
 				return nil, terror.Error(err)
 			}
-
+		default:
+			return nil, terror.Error(fmt.Errorf("faction switch fallthrough: %s", faction.ID))
 		}
 	}
 
