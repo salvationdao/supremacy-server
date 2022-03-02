@@ -50,3 +50,60 @@ func DeleteStream(ctx context.Context, conn Conn, host string) error {
 
 	return nil
 }
+
+func AnnouncementCreate(ctx context.Context, conn Conn, stream *server.GlobalAnnouncement) error {
+	q := `
+		INSERT INTO
+			global_announcements (title, message, games_until, show_until)
+		VALUES
+			($1, $2, $3, $4)
+		RETURNING
+		title, message, games_until, show_until
+	`
+
+	err := pgxscan.Get(ctx, conn, stream, q, stream.Title, stream.Message, stream.GamesUntil, stream.ShowUntil)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	return nil
+}
+
+func AnnouncementDelete(ctx context.Context, conn Conn) error {
+	q := `DELETE FROM global_announcements`
+	_, err := conn.Exec(ctx, q)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	return nil
+}
+
+func AnnouncementGet(ctx context.Context, conn Conn) (*server.GlobalAnnouncement, error) {
+	announcement := &server.GlobalAnnouncement{}
+	q := `
+		SELECT * FROM global_announcements
+		LIMIT 1;
+	`
+	err := pgxscan.Get(ctx, conn, announcement, q)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+	return announcement, nil
+}
+
+func AnnouncementUpdateGamesUntil(ctx context.Context, conn Conn, newGamesUntil int) error {
+	q := `
+	UPDATE 
+		global_announcements
+	SET 
+		games_until = $1
+	`
+
+	_, err := conn.Exec(ctx, q, newGamesUntil)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	return nil
+}
