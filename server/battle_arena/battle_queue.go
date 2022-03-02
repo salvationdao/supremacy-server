@@ -154,15 +154,9 @@ func (fq *FactionQueue) Init(faction *server.Faction) error {
 		wms = []*server.WarMachineMetadata{}
 	}
 	// set up contract reward
-	crStr, err := db.FactionContractRewardGet(context.Background(), fq.Conn, faction.ID)
+	contractReward, err := db.FactionContractRewardGet(context.Background(), fq.Conn, faction.ID)
 	if err != nil {
 		return terror.Error(err, "failed to get contract reward")
-	}
-
-	contractReward := big.NewInt(0)
-	cr, ok := contractReward.SetString(crStr, 10)
-	if !ok {
-		return terror.Error(fmt.Errorf("failed to convert contract reward to big int"), "Failed to convert contract reward to big int")
 	}
 
 	// chuck war machines into list
@@ -174,7 +168,7 @@ func (fq *FactionQueue) Init(faction *server.Faction) error {
 	}
 
 	// set up faction contract reward
-	fq.ContractReward.Amount.Add(fq.ContractReward.Amount, cr)
+	fq.ContractReward.Amount.Add(fq.ContractReward.Amount, contractReward.BigInt())
 
 	return nil
 }
