@@ -113,6 +113,7 @@ func (ba *BattleArena) InitNextBattle() error {
 					ID:           zaibatsuAbility.ID,
 					Identity:     uuid.Must(uuid.NewV4()), // track ability's price
 					Colour:       zaibatsuAbility.Colour,
+					TextColour:   zaibatsuAbility.TextColour,
 					GameClientID: int(zaibatsuAbility.GameClientAbilityID),
 					Image:        zaibatsuAbility.ImageUrl,
 					Description:  zaibatsuAbility.Description,

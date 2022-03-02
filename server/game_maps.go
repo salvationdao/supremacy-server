@@ -81,6 +81,7 @@ type AbilityMetadata struct {
 	ID                GameAbilityID `json:"id" db:"id"` // used for zaibatsu faction ability
 	Identity          uuid.UUID     `json:"identity"`   // used to track ability price update
 	Colour            string        `json:"colour"`     // used for game ability colour
+	TextColour        string        `json:"textColour"` // used for game ability text colour
 	Hash              string        `json:"hash"`
 	Name              string        `json:"name"`
 	Description       string        `json:"description"`
