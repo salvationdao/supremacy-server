@@ -257,16 +257,14 @@ func NewAPI(
 func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 	api.factionMap = make(map[server.FactionID]*server.Faction)
 
-	wg := deadlock.WaitGroup{}
-	wg.Add(1)
-	var err error
-	api.Passport.FactionAll(func(factions []*server.Faction) {
-		defer wg.Done()
-		for _, f := range factions {
-			api.factionMap[f.ID] = f
-		}
-	})
-	wg.Wait()
+	factions, err := api.Passport.FactionAll()
+	if err != nil {
+		api.Log.Fatal().Err(err).Msg("issue reading from passport connection.")
+		os.Exit(-1)
+	}
+	for _, f := range factions {
+		api.factionMap[f.ID] = f
+	}
 
 	if len(api.factionMap) == 0 {
 		api.Log.Fatal().Err(err).Msg("issue reading from passport connection.")
