@@ -405,12 +405,29 @@ func (fc *FactionControllerWS) QueueSubscription(ctx context.Context, wsc *hub.C
 		return "", "", terror.Error(fmt.Errorf("hcd is nil"), "User not found")
 	}
 
+	if hcd.Faction == nil {
+		return "", "", nil
+	}
+
+	if fc.API.BattleArena.WarMachineQueue == nil {
+		return "", "", nil
+	}
+
 	switch hcd.Faction.Label {
 	case "Red Mountain Offworld Mining Corporation":
+		if fc.API.BattleArena.WarMachineQueue.RedMountain == nil {
+			reply(0)
+		}
 		reply(fc.API.BattleArena.WarMachineQueue.RedMountain.QueuingLength())
 	case "Boston Cybernetics":
+		if fc.API.BattleArena.WarMachineQueue.RedMountain == nil {
+			reply(0)
+		}
 		reply(fc.API.BattleArena.WarMachineQueue.Boston.QueuingLength())
 	case "Zaibatsu Heavy Industries":
+		if fc.API.BattleArena.WarMachineQueue.RedMountain == nil {
+			reply(0)
+		}
 		reply(fc.API.BattleArena.WarMachineQueue.Zaibatsu.QueuingLength())
 	}
 
