@@ -199,13 +199,13 @@ func (pc *PassportWebhookController) WarMachineJoin(w http.ResponseWriter, r *ht
 	// prepare response
 	resp := &WarMachineJoinResp{}
 	// set insurance flag
-	warMachinePostion, contractReward := pc.API.BattleArena.WarMachineQueue.GetWarMachineQueue(req.WarMachineMetadata.FactionID, req.WarMachineMetadata.Hash)
+	warMachinePostion, _ := pc.API.BattleArena.WarMachineQueue.GetWarMachineQueue(req.WarMachineMetadata.FactionID, req.WarMachineMetadata.Hash)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
 	resp.Position = warMachinePostion
-	resp.ContractReward = contractReward
+	resp.ContractReward = decimal.New(int64((*warMachinePostion+1)*2), 0)
 
 	// get contract reward
 	queuingStat, err := db.AssetQueuingStat(context.Background(), pc.Conn, req.WarMachineMetadata.Hash)
@@ -235,7 +235,6 @@ func (pc *PassportWebhookController) UserSupsMultiplierGet(w http.ResponseWriter
 	req := &UserSupsMultiplierGetRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
-		fmt.Println(err)
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
