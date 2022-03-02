@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4"
 	"github.com/sasha-s/go-deadlock"
@@ -80,8 +79,7 @@ type Multiplier struct {
 	ComboBreakerMap *ComboBreakerMap
 
 	// citizen
-	ActiveCitizenMap   *CitizenMap
-	InactiveCitizenMap *CitizenMap
+	ActiveCitizenMap *CitizenMap
 }
 
 type MultiplierAction struct {
@@ -92,7 +90,7 @@ type MultiplierAction struct {
 // TODO: set up sups ticker
 func NewUserMultiplier(userMap *UserMap, pp *passport.Passport, ba *battle_arena.BattleArena) *UserMultiplier {
 	um := &UserMultiplier{
-		CurrentMaps: &Multiplier{deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, &AbilityTriggerMap{}, &AbilityTriggerMap{}, &AbilityTriggerMap{}, &ComboBreakerMap{}, &CitizenMap{}, &CitizenMap{}},
+		CurrentMaps: &Multiplier{deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, &AbilityTriggerMap{}, &AbilityTriggerMap{}, &AbilityTriggerMap{}, &ComboBreakerMap{}, &CitizenMap{}},
 		BattleIDMap: deadlock.Map{},
 		UserMap:     userMap,
 		Passport:    pp,
@@ -149,11 +147,6 @@ func (um *UserMultiplier) Online(userID server.UserID) {
 		fmt.Println("Failed to read user multipliers from db", err.Error())
 		return
 	}
-
-	um.CurrentMaps.ActiveCitizenMap.Store(userIDStr+"_"+string(CitizenTagCitizen), &MultiplierAction{
-		MultiplierValue: 100,
-		Expiry:          time.Now().AddDate(1, 0, 0),
-	})
 
 	for _, s := range sm {
 		switch s.Key {
@@ -249,6 +242,11 @@ func (um *UserMultiplier) Online(userID server.UserID) {
 			}
 		}
 	}
+
+	um.CurrentMaps.ActiveCitizenMap.Store(userIDStr+"_"+string(CitizenTagCitizen), &MultiplierAction{
+		MultiplierValue: 100,
+		Expiry:          time.Now().AddDate(1, 0, 0),
+	})
 }
 
 // Offline remove all the user related multiplier action in current map
@@ -810,22 +808,6 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 		return true
 	})
 
-	um.CurrentMaps.InactiveCitizenMap.Range(func(key, value interface{}) bool {
-		userIDstr := key.(string)
-		currentValue := value.(*MultiplierAction)
-		// store different
-		d, ok := diff[userIDstr]
-		if !ok {
-			d = make(map[string]*MultiplierAction)
-		}
-
-		d[string(CitizenTagUnproductiveCitizen)] = currentValue
-		diff[userIDstr] = d
-
-		// update check map
-		return true
-	})
-
 	// check current map with check map, add any different from the cache
 	um.CurrentMaps.ApplauseMap.Range(func(key, value interface{}) bool {
 		uidStr := key.(string)
@@ -1308,7 +1290,6 @@ func (cm *CitizenMap) Clear() {
 
 // this map will not be stored in db
 func (cm *CitizenMap) BulkSet(userIDs []*server.User, title string, ma *MultiplierAction) {
-	spew.Dump(ma)
 	for _, userID := range userIDs {
 		key := userID.ID.String() + "_" + title
 		cm.Store(key, ma)
@@ -1330,7 +1311,6 @@ func (um *UserMultiplier) NewCitizenOrder(users []*server.User) {
 	contributors := []*server.User{}
 	supporters := []*server.User{}
 	citizens := []*server.User{}
-	unproductiveCitizens := []*server.User{}
 
 	// calc the top 10% amount
 	superContributorAmount := len(users) / 10
@@ -1388,39 +1368,10 @@ func (um *UserMultiplier) NewCitizenOrder(users []*server.User) {
 		Expiry:          expiredAt,
 	})
 
-	// start to store in active citizen map
-
 	// store in inactive citizen
 	// calc the rest of 20% amount
-	unproductiveCitizens = users
-
-	// clean up the map
-	um.CurrentMaps.InactiveCitizenMap.Range(func(key, value interface{}) bool {
-		userIDstr := key.(string)
-		index := -1
-		for i, user := range unproductiveCitizens {
-			if user.ID.String() == userIDstr {
-				index = i
-				break
-			}
-		}
-		// remove if not existsu
-		if index < 0 {
-			um.CurrentMaps.InactiveCitizenMap.Delete(key)
-		} else {
-			unproductiveCitizens[index] = unproductiveCitizens[len(unproductiveCitizens)-1]
-			unproductiveCitizens[len(unproductiveCitizens)-1] = nil
-			unproductiveCitizens = unproductiveCitizens[:len(unproductiveCitizens)-1]
-		}
-		return true
+	um.CurrentMaps.ActiveCitizenMap.BulkSet(users, "Unproductive Citizen", &MultiplierAction{
+		MultiplierValue: 50,
+		Expiry:          expiredAt,
 	})
-
-	// add new commer
-
-	for _, uc := range unproductiveCitizens {
-		um.CurrentMaps.InactiveCitizenMap.Store(uc.ID.String(), &MultiplierAction{
-			MultiplierValue: 50,
-			Expiry:          expiredAt,
-		})
-	}
 }

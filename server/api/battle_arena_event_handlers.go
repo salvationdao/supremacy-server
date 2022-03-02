@@ -21,9 +21,6 @@ import (
 func (api *API) BattleInitSignal(ctx context.Context, ed *battle_arena.EventData) {
 	// clean up battle end information
 	api.battleEndInfo = &BattleEndInfo{}
-
-	// pass back nil to tell game ui to clean up current end battle message
-	go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyBattleEndDetailUpdated), nil)
 }
 
 const HubKeyGameSettingsUpdated = hub.HubCommandKey("GAME:SETTINGS:UPDATED")
@@ -210,7 +207,7 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 		// calc citizen multipliers
 		api.UserMultiplier.NewCitizenOrder(list)
 
-		// record battle end info
+		// record battle end if
 		api.battleEndInfo.TopSupsContributors = []*server.UserBrief{}
 		api.battleEndInfo.TopSupsContributeFactions = []*server.FactionBrief{}
 		ed.BattleRewardList.TopSupsSpendUsers = []server.UserID{}

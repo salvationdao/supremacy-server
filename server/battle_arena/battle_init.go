@@ -16,6 +16,8 @@ import (
 const BattleCommandInitBattle BattleCommand = "BATTLE:INIT"
 
 func (ba *BattleArena) InitNextBattle() error {
+	ba.Events.Trigger(context.Background(), EventGameInit, nil)
+
 	// switch battle state to LOBBY
 	ba.battle.State = server.StateLobby
 
