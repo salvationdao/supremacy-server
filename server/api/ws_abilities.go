@@ -115,12 +115,23 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 
 		fa := faIface.(*GameAbilityPrice)
 
+		fa.RLock()
+		if fa.isReached {
+			fa.RUnlock()
+			return
+		}
+		fa.RUnlock()
+
 		exceedFund := big.NewInt(0)
 		exceedFund.Add(exceedFund, &fa.CurrentSups.Int)
 		exceedFund.Add(exceedFund, &req.Payload.Amount.Int)
+
 		isReached := false
 		if exceedFund.Cmp(&fa.MaxTargetPrice.Int) >= 0 {
+			fa.Lock()
+			fa.isReached = true
 			isReached = true
+			fa.Unlock()
 		}
 
 		reduceAmount := server.BigInt{Int: *big.NewInt(0)}
@@ -177,6 +188,9 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 					go wsc.SendWithMessageType(payload, websocket.MessageBinary)
 					return
 				}
+				fa.Lock()
+				defer fa.Unlock()
+				fa.isReached = false
 
 				// otherwise, clear transaction and bump the price
 				fa.TxRefs = []string{}

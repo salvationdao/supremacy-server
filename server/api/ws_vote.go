@@ -150,6 +150,7 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 			// check voting phase first
 			vc.API.votePhaseChecker.RLock()
 			if vc.API.votePhaseChecker.Phase != VotePhaseVoteAbilityRight && vc.API.votePhaseChecker.Phase != VotePhaseNextVoteWin {
+				go vc.API.Passport.ReleaseTransactions([]string{transaction})
 				gamelog.GameLog.
 					Warn().
 					Str("server_phase", string(vc.API.votePhaseChecker.Phase)).
