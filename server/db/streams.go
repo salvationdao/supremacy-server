@@ -51,7 +51,6 @@ func DeleteStream(ctx context.Context, conn Conn, host string) error {
 	return nil
 }
 
-// TODO : move to announcements file
 func AnnouncementCreate(ctx context.Context, conn Conn, stream *server.GlobalAnnouncement) error {
 	q := `
 		INSERT INTO
@@ -80,7 +79,6 @@ func AnnouncementDelete(ctx context.Context, conn Conn) error {
 	return nil
 }
 
-// FactionStatGet return the stat by the given faction id
 func AnnouncementGet(ctx context.Context, conn Conn) (*server.GlobalAnnouncement, error) {
 	announcement := &server.GlobalAnnouncement{}
 	q := `

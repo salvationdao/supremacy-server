@@ -350,7 +350,7 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 	api.GlobalAnnouncement = globalAnnouncement
 
 	// global announcement ticker
-	globalAnnouncementTicker := tickle.New("global announcement ticker", 10, func() (int, error) {
+	globalAnnouncementTicker := tickle.New("global announcement ticker", 60*5, func() (int, error) {
 		// check if a global announcement exist
 		if api.GlobalAnnouncement != nil {
 			now := time.Now()
