@@ -1,6 +1,7 @@
 package passport
 
 import (
+	"math/big"
 	"server"
 
 	"github.com/ninja-syndicate/hub"
@@ -62,6 +63,11 @@ type RedeemFactionContractRewardResp struct{}
 
 // AssetContractRewardRedeem redeem faction contract reward
 func (pp *Passport) AssetContractRewardRedeem(userID server.UserID, factionID server.FactionID, amount string, txRef server.TransactionReference) {
+	_, ok := big.NewInt(0).SetString(amount, 10)
+	if !ok {
+		pp.Log.Trace().Msgf("invalid contract reward amount %s", amount)
+		return
+	}
 	err := pp.Comms.Call("C.SupremacyRedeemFactionContractRewardHandler", RedeemFactionContractRewardReq{userID, factionID, amount, txRef}, &RedeemFactionContractRewardResp{})
 	if err != nil {
 		pp.Log.Err(err).Str("method", "SupremacyRedeemFactionContractRewardHandler").Msg("rpc error")
