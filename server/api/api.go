@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"net"
@@ -23,6 +24,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-software/log_helpers"
@@ -336,6 +338,14 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 
 	// start live voting broadcaster
 	liveVotingBroadcaster.Start()
+
+	// get global announcement from db
+	globalAnnouncement, err := db.AnnouncementGet(ctx, api.Conn)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		api.Log.Err(err).Msg("unable to get global announcement")
+	}
+
+	api.GlobalAnnouncement = globalAnnouncement
 
 	// global announcement ticker
 	globalAnnouncementTicker := tickle.New("global announcement ticker", 10, func() (int, error) {

@@ -81,14 +81,15 @@ func AnnouncementDelete(ctx context.Context, conn Conn) error {
 }
 
 // FactionStatGet return the stat by the given faction id
-func AnnouncementGet(ctx context.Context, conn Conn, factionStat *server.FactionStat) error {
+func AnnouncementGet(ctx context.Context, conn Conn) (*server.GlobalAnnouncement, error) {
+	announcement := &server.GlobalAnnouncement{}
 	q := `
-		SELECT * FROM faction_stats
-		WHERE id = $1;
+		SELECT * FROM global_announcements
+		LIMIT 1;
 	`
-	err := pgxscan.Get(ctx, conn, factionStat, q, factionStat.ID)
+	err := pgxscan.Get(ctx, conn, announcement, q)
 	if err != nil {
-		return terror.Error(err)
+		return nil, terror.Error(err)
 	}
-	return nil
+	return announcement, nil
 }
