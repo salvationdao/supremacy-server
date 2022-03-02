@@ -2,7 +2,6 @@ module server
 
 go 1.17
 
-replace github.com/ninja-syndicate/hub => /Users/alexdunmow/Projects/hub
 
 require (
 	github.com/antonholmquist/jason v1.0.0

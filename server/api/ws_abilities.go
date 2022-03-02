@@ -440,6 +440,33 @@ func (fc *FactionControllerWS) QueueSubscription(ctx context.Context, wsc *hub.C
 		reply(fc.API.BattleArena.WarMachineQueue.Zaibatsu.QueuingLength())
 	}
 
+	var bi int64 = 250000000000000000
+	feed := QueueFeed{
+		Length: 0,
+		Cost:   big.NewInt(bi),
+	}
+
+	switch hcd.Faction.Label {
+	case "Red Mountain Offworld Mining Corporation":
+		if fc.API.BattleArena.WarMachineQueue.RedMountain == nil {
+			reply(feed)
+		}
+		feed.Length = fc.API.BattleArena.WarMachineQueue.RedMountain.QueuingLength()
+	case "Boston Cybernetics":
+		if fc.API.BattleArena.WarMachineQueue.RedMountain == nil {
+			reply(feed)
+		}
+		feed.Length = fc.API.BattleArena.WarMachineQueue.RedMountain.QueuingLength()
+	case "Zaibatsu Heavy Industries":
+		if fc.API.BattleArena.WarMachineQueue.RedMountain == nil {
+			reply(feed)
+		}
+		feed.Length = fc.API.BattleArena.WarMachineQueue.RedMountain.QueuingLength()
+	}
+
+	feed.Cost = feed.Cost.Mul(feed.Cost, big.NewInt(int64(feed.Length)))
+	reply(feed)
+
 	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeyFactionQueueJoin, hcd.FactionID.String()))
 	return req.TransactionID, busKey, nil
 }
