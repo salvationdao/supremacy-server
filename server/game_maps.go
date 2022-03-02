@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/gofrs/uuid"
+	"github.com/shopspring/decimal"
 )
 
 const GameClientTileSize = 2000
@@ -54,7 +55,7 @@ type WarMachineMetadata struct {
 	Rotation           int                `json:"rotation"`
 	Abilities          []*AbilityMetadata `json:"abilities"`
 
-	ContractReward *string `json:"contractReward"`
+	ContractReward decimal.Decimal `json:"contractReward"`
 }
 
 type WarMachineBrief struct {

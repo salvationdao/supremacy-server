@@ -14,6 +14,7 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog"
 	"github.com/sasha-s/go-deadlock"
+	"github.com/shopspring/decimal"
 )
 
 type WarMachineQueue struct {
@@ -245,10 +246,10 @@ func (fq *FactionQueue) Join(wmm *server.WarMachineMetadata, isInsured bool, fac
 		return terror.Error(fmt.Errorf("war machine is currently in game"), "war machine "+wmm.Hash+" is currently in game")
 	}
 
-	contractReward := fq.ContractReward.Amount.String()
+	contractReward := decimal.NewFromBigInt(fq.ContractReward.Amount, 0)
 
 	// insert war machine into db
-	err := db.BattleQueueInsert(context.Background(), fq.Conn, wmm, contractReward, isInsured)
+	err := db.BattleQueueInsert(context.Background(), fq.Conn, wmm, contractReward.String(), isInsured)
 	if err != nil {
 		return terror.Error(err, "Failed to insert a copy of queue in db, token id:"+wmm.Hash)
 	}
@@ -256,7 +257,7 @@ func (fq *FactionQueue) Join(wmm *server.WarMachineMetadata, isInsured bool, fac
 	// join war machine to queue
 	fq.Lock()
 	wmm.Faction = faction
-	wmm.ContractReward = &contractReward
+	wmm.ContractReward = contractReward
 	fq.QueuingWarMachines = append(fq.QueuingWarMachines, wmm)
 	fq.Unlock()
 
@@ -303,7 +304,7 @@ func checkWarMachineExist(list []*server.WarMachineMetadata, hash string) int {
 	return -1
 }
 
-func (wmq *WarMachineQueue) GetWarMachineQueue(factionID server.FactionID, hash string) (*int, *string) {
+func (wmq *WarMachineQueue) GetWarMachineQueue(factionID server.FactionID, hash string) (*int, decimal.Decimal) {
 	// check faction id
 	wmq.log.Info().Str("faction_id", factionID.String()).Str("fn", "GetWarMachineQueue").Msg("battle_queue.go")
 	switch factionID {
@@ -315,10 +316,10 @@ func (wmq *WarMachineQueue) GetWarMachineQueue(factionID server.FactionID, hash 
 		return wmq.Zaibatsu.WarMachineQueuePosition(hash)
 	}
 
-	return nil, nil
+	return nil, decimal.Zero
 }
 
-func (fq *FactionQueue) WarMachineQueuePosition(hash string) (*int, *string) {
+func (fq *FactionQueue) WarMachineQueuePosition(hash string) (*int, decimal.Decimal) {
 	fq.log.Info().Str("hash", hash).Str("fn", "WarMachineQueuePosition").Msg("battle_queue.go")
 	fq.RLock()
 	defer fq.RUnlock()
@@ -342,7 +343,7 @@ func (fq *FactionQueue) WarMachineQueuePosition(hash string) (*int, *string) {
 		return &position, wm.ContractReward
 	}
 
-	return nil, nil
+	return nil, decimal.Zero
 }
 
 func (fq *FactionQueue) GetFirstFiveQueuingWarMachines() []*server.WarMachineBrief {

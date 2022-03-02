@@ -2,6 +2,8 @@ package passport
 
 import (
 	"server"
+
+	"github.com/shopspring/decimal"
 )
 
 type WarMachineQueuePositionReq struct {
@@ -9,9 +11,9 @@ type WarMachineQueuePositionReq struct {
 }
 
 type WarMachineQueueStat struct {
-	Hash           string  `json:"hash"`
-	Position       *int    `json:"position,omitempty"`
-	ContractReward *string `json:"contractReward,omitempty"`
+	Hash           string          `json:"hash"`
+	Position       *int            `json:"position,omitempty"`
+	ContractReward decimal.Decimal `json:"contractReward,omitempty"`
 }
 type WarMachineQueuePositionResp struct{}
 

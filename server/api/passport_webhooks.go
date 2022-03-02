@@ -17,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v4"
 	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog"
+	"github.com/shopspring/decimal"
 )
 
 type PassportWebhookController struct {
@@ -150,8 +151,8 @@ type WarMachineJoinRequest struct {
 }
 
 type WarMachineJoinResp struct {
-	Position       *int    `json:"position"`
-	ContractReward *string `json:"contractReward"`
+	Position       *int            `json:"position"`
+	ContractReward decimal.Decimal `json:"contractReward"`
 }
 
 func (pc *PassportWebhookController) WarMachineJoin(w http.ResponseWriter, r *http.Request) (int, error) {
@@ -212,9 +213,13 @@ func (pc *PassportWebhookController) WarMachineJoin(w http.ResponseWriter, r *ht
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	resp.ContractReward = nil
+	queueingContractReward, err := decimal.NewFromString(queuingStat.ContractReward)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err)
+	}
+	resp.ContractReward = decimal.Zero
 	if queuingStat != nil {
-		resp.ContractReward = &queuingStat.ContractReward
+		resp.ContractReward = queueingContractReward
 	}
 
 	// return current queuing position
@@ -364,8 +369,8 @@ func (pc *PassportWebhookController) WarMachineQueuePositionGet(w http.ResponseW
 	}
 
 	return helpers.EncodeJSON(w, struct {
-		Position       *int    `json:"position"`
-		ContractReward *string `json:"contractReward"`
+		Position       *int            `json:"position"`
+		ContractReward decimal.Decimal `json:"contractReward"`
 	}{
 		Position:       position,
 		ContractReward: contractReward,

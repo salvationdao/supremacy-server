@@ -9,6 +9,7 @@ import (
 
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/jackc/pgx/v4"
+	"github.com/shopspring/decimal"
 
 	"github.com/ninja-software/terror/v2"
 
@@ -258,7 +259,11 @@ func BattleQueueGetByFactionID(ctx context.Context, conn Conn, factionID server.
 	wms := []*server.WarMachineMetadata{}
 	for _, bq := range bqs {
 		// insert contract reward in the mech
-		bq.WarMachineMetadata.ContractReward = &bq.ContractReward
+		contractReward, err := decimal.NewFromString(bq.ContractReward)
+		if err != nil {
+			return []*server.WarMachineMetadata{}, terror.Error(err)
+		}
+		bq.WarMachineMetadata.ContractReward = contractReward
 
 		wms = append(wms, bq.WarMachineMetadata)
 	}
