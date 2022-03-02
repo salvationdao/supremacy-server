@@ -332,26 +332,6 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 		api.Passport.FactionStatsSend(sendRequest)
 	}()
 
-	// check if an global announcement exist
-	if api.GlobalAnnouncement != nil && api.GlobalAnnouncement.GamesUntil != nil {
-
-		if *api.GlobalAnnouncement.GamesUntil == 1 {
-			api.GlobalAnnouncement = nil
-			err = db.AnnouncementDelete(ctx, api.Conn)
-			if err != nil {
-				api.Log.Err(err).Msg("failed to delete announcement")
-				return
-			}
-			if *api.GlobalAnnouncement.GamesUntil > 1 {
-				newGamesUntil := *api.GlobalAnnouncement.GamesUntil - 1
-				err = db.AnnouncementUpdateGamesUntil(ctx, api.Conn, newGamesUntil)
-				if err != nil {
-					api.Log.Err(err).Msg("failed to update announcement")
-					return
-				}
-			}
-		}
-	}
 }
 
 func (api *API) WarMachineDestroyedBroadcast(ctx context.Context, ed *battle_arena.EventData) {
