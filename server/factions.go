@@ -52,6 +52,7 @@ type BattleAbility struct {
 	Description            string          `json:"description" db:"description"`
 	CooldownDurationSecond int             `json:"cooldownDurationSecond" db:"cooldown_duration_second"`
 	Colour                 string          `json:"colour"`
+	TextColour             string          `json:"textColour"`
 	ImageUrl               string          `json:"imageUrl"`
 }
 
