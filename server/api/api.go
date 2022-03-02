@@ -467,6 +467,9 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client) error 
 					api.votePhaseChecker.Lock()
 					api.votePhaseChecker.Phase = VotePhaseVoteCooldown
 					api.votePhaseChecker.EndTime = time.Now().Add(time.Duration(va.BattleAbility.CooldownDurationSecond) * time.Second)
+					if os.Getenv("GAMESERVER_ENVIRONMENT") == "development" || os.Getenv("GAMESERVER_ENVIRONMENT") == "staging" {
+						api.votePhaseChecker.EndTime = time.Now().Add(5 * time.Second)
+					}
 					api.votePhaseChecker.Unlock()
 
 					// stop vote price update when cooldown
