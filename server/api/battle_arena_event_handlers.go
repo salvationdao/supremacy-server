@@ -147,7 +147,6 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 		return
 	}
 	userVoteList := api.stopVotingCycle(ctx)
-	hasVote := len(userVoteList) > 0
 	// combine user vote list with user view list
 	addedList := []*server.BattleUserVote{}
 	for _, uid := range battleViewers {
@@ -176,9 +175,7 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 			api.Log.Err(err).Msg("Failed to record battle user vote")
 			return
 		}
-	}
 
-	if hasVote {
 		// get the user who spend most sups during the battle from passport
 		wg := deadlock.WaitGroup{}
 

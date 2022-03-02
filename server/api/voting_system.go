@@ -610,6 +610,8 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 					fts.Unlock()
 					return
 				}
+
+				fts.Transactions = []string{}
 				fts.Unlock()
 
 				// HACK: tell user enter location select stage, while committing transactions
@@ -618,9 +620,6 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 				api.votePhaseChecker.Phase = VotePhaseLocationSelect
 				api.votePhaseChecker.Unlock()
 				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
-
-				// otherwise, commit the transactions and check the status
-				fts.Transactions = []string{}
 
 				// parse ability vote result
 				type voter struct {

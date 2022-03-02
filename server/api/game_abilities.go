@@ -266,10 +266,10 @@ func (api *API) startGameAbilityPoolTicker(ctx context.Context, factionID server
 			go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionAbilitiesUpdated, factionID)), factionAbilities)
 		}
 
-		// broadcast war machine ability
-		for participantID, abilities := range warMachineAbilities {
-			go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s:%x", HubKeyWarMachineAbilitiesUpdated, factionID, participantID)), abilities)
-		}
+		// // broadcast war machine ability
+		// for participantID, abilities := range warMachineAbilities {
+		// 	go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s:%x", HubKeyWarMachineAbilitiesUpdated, factionID, participantID)), abilities)
+		// }
 	})
 
 }
