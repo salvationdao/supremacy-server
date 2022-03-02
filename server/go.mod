@@ -2,6 +2,7 @@ module server
 
 go 1.17
 
+
 require (
 	github.com/antonholmquist/jason v1.0.0
 	github.com/cosmtrek/air v1.27.8
