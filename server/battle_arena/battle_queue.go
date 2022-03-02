@@ -178,15 +178,16 @@ func (fq *FactionQueue) Init(faction *server.Faction) error {
 func (fq *FactionQueue) UpdateContractReward(winningFactionID server.FactionID) error {
 	fq.ContractReward.Lock()
 	defer fq.ContractReward.Unlock()
-	if winningFactionID == fq.ID {
-		// decrease 2.5% if win a battle
-		fq.ContractReward.Amount.Mul(fq.ContractReward.Amount, big.NewInt(975))
-		fq.ContractReward.Amount.Div(fq.ContractReward.Amount, big.NewInt(1000))
-	} else {
-		// increase 2.5% if loss a battle
-		fq.ContractReward.Amount.Mul(fq.ContractReward.Amount, big.NewInt(1025))
-		fq.ContractReward.Amount.Div(fq.ContractReward.Amount, big.NewInt(1000))
-	}
+	//if winningFactionID == fq.ID {
+	//	// decrease 2.5% if win a battle
+	//	fq.ContractReward.Amount.Mul(fq.ContractReward.Amount, big.NewInt(975))
+	//	fq.ContractReward.Amount.Div(fq.ContractReward.Amount, big.NewInt(1000))
+	//} else {
+	//	// increase 2.5% if loss a battle
+	//	fq.ContractReward.Amount.Mul(fq.ContractReward.Amount, big.NewInt(1025))
+	//	fq.ContractReward.Amount.Div(fq.ContractReward.Amount, big.NewInt(1000))
+	//}
+	fq.ContractReward.Amount.SetInt64(int64(fq.QueuingLength()))
 
 	// store contract reward into
 	err := db.FactionContractRewardUpdate(context.Background(), fq.Conn, fq.ID, fq.ContractReward.Amount.String())
