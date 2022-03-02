@@ -149,9 +149,10 @@ func (um *UserMultiplier) Online(userID server.UserID) {
 	}
 
 	for _, s := range sm {
+		if CitizenTag(s.Key).IsCitizen() {
+			continue
+		}
 		switch s.Key {
-		case string(CitizenTagCitizen):
-
 		case string(ClientVoted):
 			if s.ExpiredAt.Before(now) {
 				continue
@@ -652,35 +653,6 @@ func (um *UserMultiplier) SupsTick() {
 		// append user to the ticking list
 		keys := strings.Split(key.(string), "_") // user id, title, timestamp
 		userStr := keys[0]
-		userID := server.UserID(uuid.FromStringOrNil(userStr))
-
-		// skip, if user is not active
-		multiplierValue := m.MultiplierValue
-		remain := um.UserRemainRate(now, userStr)
-		// return if no remain
-		if remain == 0 {
-			return true
-		}
-		multiplierValue = multiplierValue * remain / 100
-
-		if _, ok := userMap[multiplierValue]; !ok {
-			userMap[multiplierValue] = []server.UserID{}
-		}
-		userMap[multiplierValue] = append(userMap[multiplierValue], userID)
-		return true
-	})
-
-	// inactive citizen
-	um.CurrentMaps.ActiveCitizenMap.Range(func(key, value interface{}) bool {
-		m := value.(*MultiplierAction)
-		// clean up, if expired
-		if m.Expiry.Before(now) {
-			um.CurrentMaps.ActiveCitizenMap.Delete(key)
-			return true
-		}
-
-		// append user to the ticking list
-		userStr := key.(string)
 		userID := server.UserID(uuid.FromStringOrNil(userStr))
 
 		// skip, if user is not active
