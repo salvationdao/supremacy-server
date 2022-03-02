@@ -14,14 +14,13 @@ type FactionAllResp struct {
 }
 
 // FactionAll get all the factions from passport server
-func (pp *Passport) FactionAll(callback func(factions []*server.Faction)) {
+func (pp *Passport) FactionAll() ([]*server.Faction, error) {
 	resp := &FactionAllResp{}
 	err := pp.Comms.Call("C.SupremacyFactionAllHandler", FactionAllReq{}, resp)
 	if err != nil {
-		pp.Log.Err(err).Str("method", "SupremacyFactionAllHandler").Msg("rpc error")
-		return
+		return nil, err
 	}
-	callback(resp.Factions)
+	return resp.Factions, nil
 }
 
 //****************************************
