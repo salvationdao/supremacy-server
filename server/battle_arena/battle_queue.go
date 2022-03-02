@@ -50,6 +50,13 @@ func NewWarMachineQueue(factions []*server.Faction, conn *pgxpool.Pool, log *zer
 		log:         log_helpers.NamedLogger(log, "war machine queue"),
 	}
 
+	log.Info().
+		Str("red_mountain_faction_id", server.RedMountainFactionID.String()).
+		Str("boston_cybernetics_faction_id", server.BostonCyberneticsFactionID.String()).
+		Str("zaibatsu_faction_id", server.ZaibatsuFactionID.String()).
+		Str("fn", "NewWarMachineQueue").
+		Msg("created new war machine queue")
+
 	for _, faction := range factions {
 		switch faction.ID {
 
@@ -148,7 +155,7 @@ func (fq *FactionQueue) Init(faction *server.Faction) error {
 	contractReward := big.NewInt(0)
 	cr, ok := contractReward.SetString(crStr, 10)
 	if !ok {
-		return terror.Error(fmt.Errorf("Failed to convert contract reward to big int"))
+		return terror.Error(fmt.Errorf("failed to convert contract reward to big int"), "Failed to convert contract reward to big int")
 	}
 
 	// chuck war machines into list
@@ -297,6 +304,7 @@ func checkWarMachineExist(list []*server.WarMachineMetadata, hash string) int {
 
 func (wmq *WarMachineQueue) GetWarMachineQueue(factionID server.FactionID, hash string) (*int, *string) {
 	// check faction id
+	wmq.log.Info().Str("faction_id", factionID.String()).Str("fn", "GetWarMachineQueue").Msg("battle_queue.go")
 	switch factionID {
 	case server.RedMountainFactionID:
 		return wmq.RedMountain.WarMachineQueuePosition(hash)
@@ -310,6 +318,7 @@ func (wmq *WarMachineQueue) GetWarMachineQueue(factionID server.FactionID, hash 
 }
 
 func (fq *FactionQueue) WarMachineQueuePosition(hash string) (*int, *string) {
+	fq.log.Info().Str("hash", hash).Str("fn", "WarMachineQueuePosition").Msg("battle_queue.go")
 	fq.RLock()
 	defer fq.RUnlock()
 	for i, wm := range fq.QueuingWarMachines {
