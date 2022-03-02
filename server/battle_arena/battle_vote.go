@@ -6,6 +6,7 @@ import (
 	"server/db"
 
 	"github.com/ninja-software/terror/v2"
+	"github.com/rs/zerolog/log"
 )
 
 func (ba *BattleArena) SetFactionMap(factionMap map[server.FactionID]*server.Faction) {
@@ -67,7 +68,11 @@ func (ba *BattleArena) GameAbilityTrigger(gameAbilityEvent *server.GameAbilityEv
 		context:       ctx,
 		cancel:        cancel,
 	}
-
+	log.Info().
+		Str("triggered_by_username", *gameAbilityEvent.TriggeredByUsername).
+		Str("war_machine_hash", *gameAbilityEvent.WarMachineHash).
+		Str("game_ability", gameAbilityEvent.GameAbility.Label).
+		Msg("request game ability")
 	// NOTE: this will potentially lock game server if game client is disconnected
 	// 		 so wrap it in a go routine
 	go func() {
