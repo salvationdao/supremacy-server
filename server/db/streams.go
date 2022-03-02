@@ -71,7 +71,7 @@ func AnnouncementCreate(ctx context.Context, conn Conn, stream *server.GlobalAnn
 }
 
 func AnnouncementDelete(ctx context.Context, conn Conn) error {
-	q := `DELETE FROM global_announcement`
+	q := `DELETE FROM global_announcements`
 	_, err := conn.Exec(ctx, q)
 	if err != nil {
 		return terror.Error(err)
@@ -92,4 +92,20 @@ func AnnouncementGet(ctx context.Context, conn Conn) (*server.GlobalAnnouncement
 		return nil, terror.Error(err)
 	}
 	return announcement, nil
+}
+
+func AnnouncementUpdateGamesUntil(ctx context.Context, conn Conn, newGamesUntil int) error {
+	q := `
+	UPDATE 
+		global_announcements
+	SET 
+		games_until = $1
+	`
+
+	_, err := conn.Exec(ctx, q, newGamesUntil)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	return nil
 }

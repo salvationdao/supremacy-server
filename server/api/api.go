@@ -354,8 +354,9 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 		// check if a global announcement exist
 		if api.GlobalAnnouncement != nil {
 			now := time.Now()
+
 			// check if a announcement "show_until" has passed
-			if api.GlobalAnnouncement.ShowUntil != nil && api.GlobalAnnouncement.ShowUntil.After(now) {
+			if api.GlobalAnnouncement.ShowUntil != nil && api.GlobalAnnouncement.ShowUntil.Before(now) {
 				api.GlobalAnnouncement = nil
 				err := db.AnnouncementDelete(ctx, api.Conn)
 				if err != nil {
