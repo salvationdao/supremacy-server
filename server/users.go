@@ -33,7 +33,7 @@ type User struct {
 	PassportURL string `json:"passportURL"`
 	Sups        BigInt `json:"sups"`
 	// for dev env only
-	TwitchID string `json:"twitchID" db:"twitch_id"`
+	TwitchID null.String `json:"twitchID" db:"twitch_id"`
 }
 
 // IssueToken contains token information used for login and verifying accounts
