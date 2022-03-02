@@ -107,7 +107,7 @@ func NewBattleArenaClient(ctx context.Context, logger *zerolog.Logger, conn *pgx
 	// war machines
 	ba.Command(WarMachineDestroyedCommand, ba.WarMachineDestroyedHandler)
 
-	go ba.SetupAfterConnections()
+	go ba.SetupAfterConnections(logger)
 	return ba
 }
 
@@ -439,7 +439,7 @@ func (ba *BattleArena) Command(command BattleCommand, fn BattleCommandFunc) {
 	ba.Log.Trace().Msg(string(command))
 }
 
-func (ba *BattleArena) SetupAfterConnections() {
+func (ba *BattleArena) SetupAfterConnections(logger *zerolog.Logger) {
 	b := &backoff.Backoff{
 		Min:    1 * time.Second,
 		Max:    30 * time.Second,
@@ -459,7 +459,7 @@ func (ba *BattleArena) SetupAfterConnections() {
 				ba.battle.FactionMap[faction.ID] = faction
 			}
 			if len(factions) > 0 {
-				ba.WarMachineQueue, err = NewWarMachineQueue(factions, ba.Conn, ba.Log, ba)
+				ba.WarMachineQueue, err = NewWarMachineQueue(factions, ba.Conn, logger, ba)
 				if err != nil {
 					ba.Log.Err(err).Msg("failed to set ups war machine queue")
 					os.Exit(-1)
