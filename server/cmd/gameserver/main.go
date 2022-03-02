@@ -22,6 +22,7 @@ import (
 
 	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 
 	"context"
 	"os"
@@ -127,7 +128,12 @@ func main() {
 					battleArenaAddr := c.String("battle_arena_addr")
 					level := c.String("log_level")
 					logger := gamelog.New(environment, level)
-
+					tracer.Start(
+						tracer.WithEnv(environment),
+						tracer.WithService(envPrefix),
+						tracer.WithServiceVersion(Version),
+					)
+					defer tracer.Stop()
 					pgxconn, err := pgxconnect(
 						databaseUser,
 						databasePass,
