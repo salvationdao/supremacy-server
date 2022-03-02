@@ -69,6 +69,8 @@ func (ba *BattleArena) InitNextBattle() error {
 		QueuingLength: ba.WarMachineQueue.RedMountain.QueuingLength(),
 	})
 
+	// release in game the mechs
+
 	// Boston
 	for i, wm := range ba.WarMachineQueue.Boston.QueuingWarMachines {
 		position := i + 1

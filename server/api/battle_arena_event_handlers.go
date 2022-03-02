@@ -132,7 +132,7 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 	battleStat := api.BattleArena.GetCurrentState()
 	api.battleEndInfo.BattleID = battleStat.ID
 	api.battleEndInfo.StartedAt = battleStat.StartedAt
-	api.battleEndInfo.EndedAt = *battleStat.EndedAt
+	api.battleEndInfo.EndedAt = time.Now()
 	// stop all the tickles in voting cycle
 	go api.stopGameAbilityPoolTicker()
 
