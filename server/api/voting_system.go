@@ -50,7 +50,7 @@ const VotePriceUpdaterTickSecond = 10
 
 const VotePriceAccuracy = 10000
 
-func (api *API) startVotePriceSystem(ctx context.Context, factions []*server.Faction, conn *pgxpool.Pool) {
+func (api *API) startVotePriceSystem(ctx context.Context, conn *pgxpool.Pool) {
 	// initialise value
 	api.votePriceSystem = &VotePriceSystem{
 		GlobalVotePerTick:   []int64{},
@@ -64,7 +64,7 @@ func (api *API) startVotePriceSystem(ctx context.Context, factions []*server.Fac
 	}
 
 	// initialise faction vote price map
-	for _, faction := range factions {
+	for _, faction := range api.factionMap {
 		factionVotePrice := &FactionVotePrice{
 			OuterLock:            deadlock.Mutex{},
 			NextAccessLock:       deadlock.Mutex{},
@@ -271,6 +271,8 @@ func calVotePrice(globalTotalVote int64, currentVotePrice server.BigInt, current
 			priceChange.Div(&priceChange.Int, big.NewInt(3))
 		}
 
+		priceChange.Div(&priceChange.Int, big.NewInt(2))
+
 		votePriceSups.Sub(&votePriceSups.Int, &priceChange.Int)
 	}
 
@@ -360,7 +362,7 @@ type UserVoteMap map[server.UserID]int64
 ***********************/
 
 // StartVotingCycle start voting cycle ticker
-func (api *API) StartVotingCycle(ctx context.Context, factions []*server.Faction) {
+func (api *API) StartVotingCycle(ctx context.Context) {
 	// initialise current vote stage
 	api.votePhaseChecker = &VotePhaseChecker{
 		deadlock.RWMutex{},
@@ -376,7 +378,7 @@ func (api *API) StartVotingCycle(ctx context.Context, factions []*server.Faction
 
 	// initial faction user voting map
 	factionUserVoteMap := make(FactionUserVoteMap)
-	for _, f := range factions {
+	for _, f := range api.factionMap {
 		factionUserVoteMap[f.ID] = make(map[server.UserID]int64)
 		voteAbility.FactionAbilityMap[f.ID] = &server.GameAbility{}
 	}
@@ -524,7 +526,7 @@ func (api *API) stopVotingCycle(ctx context.Context) []*server.BattleUserVote {
 		defer fts.Unlock()
 		if len(fts.Transactions) > 0 {
 			// commit the transactions
-			api.Passport.ReleaseTransactions(context.Background(), fts.Transactions)
+			api.Passport.ReleaseTransactions(fts.Transactions)
 		}
 
 		for userID, voteCount := range uvm {
@@ -608,6 +610,8 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 					fts.Unlock()
 					return
 				}
+
+				fts.Transactions = []string{}
 				fts.Unlock()
 
 				// HACK: tell user enter location select stage, while committing transactions
@@ -616,9 +620,6 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 				api.votePhaseChecker.Phase = VotePhaseLocationSelect
 				api.votePhaseChecker.Unlock()
 				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
-
-				// otherwise, commit the transactions and check the status
-				fts.Transactions = []string{}
 
 				// parse ability vote result
 				type voter struct {

@@ -2,35 +2,24 @@ package passport
 
 import (
 	"context"
+	"fmt"
 	"server"
-
-	"github.com/gofrs/uuid"
 )
 
-// GetDefaultWarMachines gets the default war machines for a given faction
-func (pp *Passport) GetDefaultWarMachines(ctx context.Context, factionID server.FactionID, amount int, callback func(msg []byte)) {
-	pp.send <- &Message{
-		Key: "SUPREMACY:GET_DEFAULT_WAR_MACHINES",
-		Payload: struct {
-			FactionID server.FactionID `json:"factionID"`
-			Amount    int              `json:"amount"`
-		}{
-			FactionID: factionID,
-			Amount:    amount,
-		},
-		Callback:      callback,
-		TransactionID: uuid.Must(uuid.NewV4()).String(),
-	}
+type DefaultWarMachinesReq struct {
+	FactionID server.FactionID `json:"factionID"`
 }
 
-// FactionWarMachineContractRewardUpdate gets the default war machines for a given faction
-func (pp *Passport) FactionWarMachineContractRewardUpdate(fwm []*server.FactionWarMachineQueue) {
-	pp.send <- &Message{
-		Key: "SUPREMACY:WAR_MACHINE_QUEUE_CONTRACT_UPDATE",
-		Payload: struct {
-			FactionWarMachineQueues []*server.FactionWarMachineQueue `json:"factionWarMachineQueues"`
-		}{
-			FactionWarMachineQueues: fwm,
-		},
+type DefaultWarMachinesResp struct {
+	WarMachines []*server.WarMachineMetadata `json:"warMachines"`
+}
+
+// GetDefaultWarMachines gets the default war machines for a given faction
+func (pp *Passport) GetDefaultWarMachines(ctx context.Context, factionID server.FactionID) ([]*server.WarMachineMetadata, error) {
+	resp := &DefaultWarMachinesResp{}
+	err := pp.Comms.Call("C.SupremacyDefaultWarMachinesHandler", DefaultWarMachinesReq{factionID}, resp)
+	if err != nil {
+		return nil, fmt.Errorf("GetDefaultWarMachines: %w", err)
 	}
+	return resp.WarMachines, nil
 }

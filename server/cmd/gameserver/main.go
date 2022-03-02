@@ -22,11 +22,11 @@ import (
 
 	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 
 	"context"
 	"os"
 
-	"github.com/oklog/run"
 	"github.com/urfave/cli/v2"
 )
 
@@ -91,24 +91,24 @@ func main() {
 					&cli.Float64Flag{Name: "sentry_sample_rate", Value: 1, EnvVars: []string{envPrefix + "_SENTRY_SAMPLE_RATE", "SENTRY_SAMPLE_RATE"}, Usage: "The percentage of trace sample to collect (0.0-1)"},
 
 					&cli.StringFlag{Name: "battle_arena_addr", Value: ":8083", EnvVars: []string{envPrefix + "_BA_ADDR", "API_ADDR"}, Usage: ":port to run the battle arena server"},
-
+					&cli.StringFlag{Name: "passport_addr", Value: "ws://localhost:8086/api/ws", EnvVars: []string{envPrefix + "_PASSPORT_ADDR", "PASSPORT_ADDR"}, Usage: " address of the passport server, inc protocol"},
+					&cli.StringFlag{Name: "api_addr", Value: ":8084", EnvVars: []string{envPrefix + "_API_ADDR"}, Usage: ":port to run the API"},
 					&cli.StringFlag{Name: "twitch_ui_web_host_url", Value: "http://localhost:8081", EnvVars: []string{"TWITCH_HOST_URL_FRONTEND"}, Usage: "Twitch url for CORS"},
 
-					&cli.StringFlag{Name: "passport_addr", Value: "ws://localhost:8086/api/ws", EnvVars: []string{envPrefix + "_PASSPORT_ADDR", "PASSPORT_ADDR"}, Usage: " address of the passport server, inc protocol"},
-
-					&cli.StringFlag{Name: "api_addr", Value: ":8084", EnvVars: []string{envPrefix + "_API_ADDR"}, Usage: ":port to run the API"},
 					&cli.StringFlag{Name: "rootpath", Value: "../web/build", EnvVars: []string{envPrefix + "_ROOTPATH"}, Usage: "folder path of index.html"},
 					&cli.StringFlag{Name: "userauth_jwtsecret", Value: "872ab3df-d7c7-4eb6-a052-4146d0f4dd15", EnvVars: []string{envPrefix + "_USERAUTH_JWTSECRET"}, Usage: "JWT secret"},
 
 					&cli.BoolFlag{Name: "cookie_secure", Value: true, EnvVars: []string{envPrefix + "_COOKIE_SECURE", "COOKIE_SECURE"}, Usage: "set cookie secure"},
 					&cli.StringFlag{Name: "google_client_id", Value: "", EnvVars: []string{envPrefix + "_GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_ID"}, Usage: "Google Client ID for OAuth functionaility."},
 
+					// TODO: clear up token
 					&cli.BoolFlag{Name: "jwt_encrypt", Value: true, EnvVars: []string{envPrefix + "_JWT_ENCRYPT", "JWT_ENCRYPT"}, Usage: "set if to encrypt jwt tokens or not"},
 					&cli.StringFlag{Name: "jwt_encrypt_key", Value: "ITF1vauAxvJlF0PLNY9btOO9ZzbUmc6X", EnvVars: []string{envPrefix + "_JWT_KEY", "JWT_KEY"}, Usage: "supports key sizes of 16, 24 or 32 bytes"},
 					&cli.IntFlag{Name: "jwt_expiry_days", Value: 1, EnvVars: []string{envPrefix + "_JWT_EXPIRY_DAYS", "JWT_EXPIRY_DAYS"}, Usage: "expiry days for auth tokens"},
 
 					&cli.StringFlag{Name: "passport_server_token", Value: "aG93cyBpdCBnb2luZyBtYWM=", EnvVars: []string{envPrefix + "_PASSPORT_TOKEN"}, Usage: "Token to auth to passport server"},
 					&cli.StringFlag{Name: "server_stream_key", Value: "6c7b4a82-7797-4847-836e-978399830878", EnvVars: []string{envPrefix + "_SERVER_STREAM_KEY"}, Usage: "Authorization key to crud servers"},
+					&cli.StringFlag{Name: "passport_webhook_secret", Value: "e1BD3FF270804c6a9edJDzzDks87a8a4fde15c7=", EnvVars: []string{"PASSPORT_WEBHOOK_SECRET"}, Usage: "Authorization key to passport webhook"},
 				},
 				Usage: "run server",
 				Action: func(c *cli.Context) error {
@@ -123,11 +123,17 @@ func main() {
 					passportClientToken := c.String("passport_server_token")
 
 					ctx, cancel := context.WithCancel(c.Context)
+					defer cancel()
 					environment := c.String("environment")
 					battleArenaAddr := c.String("battle_arena_addr")
 					level := c.String("log_level")
-					logger := gamelog.New(environment, level)
-
+					gamelog.New(environment, level)
+					tracer.Start(
+						tracer.WithEnv(environment),
+						tracer.WithService(envPrefix),
+						tracer.WithServiceVersion(Version),
+					)
+					defer tracer.Stop()
 					pgxconn, err := pgxconnect(
 						databaseUser,
 						databasePass,
@@ -138,15 +144,11 @@ func main() {
 						Version,
 					)
 					if err != nil {
-						cancel()
 						return terror.Panic(err)
 					}
 
-					g := &run.Group{}
-
 					u, err := url.Parse(passportAddr)
 					if err != nil {
-						cancel()
 						return terror.Panic(err)
 					}
 					hostname := u.Hostname()
@@ -158,7 +160,7 @@ func main() {
 						fmt.Sprintf("%s:10002", hostname),
 						fmt.Sprintf("%s:10001", hostname),
 					}
-					passportRPC, err := comms.New(logger, rpcAddrs...)
+					passportRPC, err := comms.New(rpcAddrs...)
 					if err != nil {
 						cancel()
 						return terror.Panic(err)
@@ -166,48 +168,41 @@ func main() {
 
 					//// Connect to passport
 					pp := passport.NewPassport(
-						log_helpers.NamedLogger(logger, "passport"),
+						log_helpers.NamedLogger(gamelog.GameLog, "passport"),
 						passportAddr,
 						passportClientToken,
 						passportRPC,
 					)
-					err = pp.Connect()
-					if err != nil {
-						pp.Log.Warn().Err(err).Msgf("Passport connection failed")
-						os.Exit(-1)
-					}
+
 					// Start Gameserver - Gameclient server
-					ctxBA, cancelBA := context.WithCancel(ctx)
-					battleArenaClient := battle_arena.NewBattleArenaClient(ctxBA, log_helpers.NamedLogger(logger, "battle-arena"), pgxconn, pp, battleArenaAddr)
-					g.Add(func() error {
-						return battleArenaClient.Serve(ctxBA)
-					}, func(err error) {
-						cancel()
-						cancelBA()
-					})
 
-					// Start API/Client server
-					ctxAPI, cancelAPI := context.WithCancel(ctx)
-					api, err := SetupAPI(c, ctxAPI, log_helpers.NamedLogger(logger, "API"), battleArenaClient, pgxconn, pp)
+					// Passport
+					gamelog.GameLog.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Setting up battle arena client")
+					battleArenaClient := battle_arena.NewBattleArenaClient(ctx, log_helpers.NamedLogger(gamelog.GameLog, "battle-arena"), pgxconn, pp, battleArenaAddr)
+					battleArenaClient.SetupAfterConnections(gamelog.GameLog) // Blocks until setup properly, fetched and hydrated
+					gamelog.GameLog.Info().Int("factions", len(battleArenaClient.GetCurrentState().FactionMap)).Msg("Successfully setup battle queue")
+
+					go func() {
+						err := battleArenaClient.Serve(ctx)
+						if err != nil {
+							fmt.Println(err)
+							os.Exit(1)
+						}
+					}()
+
+					gamelog.GameLog.Info().Msg("Setting up webhook rest API")
+					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.GameLog, "API"), battleArenaClient, pgxconn, pp)
 					if err != nil {
-						cancel()
-						cancelAPI()
-						return terror.Panic(err)
+						fmt.Println(err)
+						os.Exit(1)
 					}
-					g.Add(func() error {
-						return api.Run(ctxAPI)
-					}, func(err error) {
-						cancel()
-						cancelAPI()
-					})
-
-					err = g.Run()
-					if errors.Is(err, run.SignalError{Signal: os.Interrupt}) {
-						cancel()
-						err = terror.Warn(err)
+					gamelog.GameLog.Info().Msg("Running webhook rest API")
+					err = api.Run(ctx)
+					if err != nil {
+						fmt.Println(err)
+						os.Exit(1)
 					}
-
-					log_helpers.TerrorEcho(ctx, err, logger)
+					log_helpers.TerrorEcho(ctx, err, gamelog.GameLog)
 					return nil
 				},
 			},
@@ -288,12 +283,13 @@ func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, bat
 	apiAddr := ctxCLI.String("api_addr")
 
 	config := &server.Config{
-		CookieSecure:        ctxCLI.Bool("cookie_secure"),
-		EncryptTokens:       ctxCLI.Bool("jwt_encrypt"),
-		EncryptTokensKey:    ctxCLI.String("jwt_encrypt_key"),
-		TokenExpirationDays: ctxCLI.Int("jwt_expiry_days"),
-		TwitchUIHostURL:     ctxCLI.String("twitch_ui_web_host_url"),
-		ServerStreamKey:     ctxCLI.String("server_stream_key"),
+		CookieSecure:          ctxCLI.Bool("cookie_secure"),
+		EncryptTokens:         ctxCLI.Bool("jwt_encrypt"),
+		EncryptTokensKey:      ctxCLI.String("jwt_encrypt_key"),
+		TokenExpirationDays:   ctxCLI.Int("jwt_expiry_days"),
+		TwitchUIHostURL:       ctxCLI.String("twitch_ui_web_host_url"),
+		ServerStreamKey:       ctxCLI.String("server_stream_key"),
+		PassportWebhookSecret: ctxCLI.String("passport_webhook_secret"),
 	}
 
 	// HTML Sanitizer

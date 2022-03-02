@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"server"
-	"server/battle_arena"
 	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -34,8 +33,8 @@ func NewGameController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *GameC
 	api.Command(HubKeyFactionColour, gameHub.FactionColour)
 	api.SecureUserCommand(HubKeyActiveCheckUpdated, gameHub.ActiveChecker)
 	api.SubscribeCommand(HubKeyWarMachineDestroyedUpdated, gameHub.WarMachineDestroyedUpdateSubscribeHandler)
-	api.SecureUserFactionSubscribeCommand(HubKeyFactionWarMachineQueueUpdated, gameHub.FactionWarMachineQueueUpdateSubscribeHandler)
 	api.SubscribeCommand(HubKeyBattleEndDetailUpdated, gameHub.BattleEndDetailUpdateSubscribeHandler)
+	api.SubscribeCommand(HubKeyAISpawned, gameHub.AISpawnedSubscribeHandler)
 
 	return gameHub
 }
@@ -95,35 +94,19 @@ func (gc *GameControllerWS) WarMachineDestroyedUpdateSubscribeHandler(ctx contex
 	return req.TransactionID, busKey, nil
 }
 
-const HubKeyFactionWarMachineQueueUpdated hub.HubCommandKey = "FACTION:WAR:MACHINE:QUEUE:UPDATED"
+const HubKeyAISpawned hub.HubCommandKey = "AI:SPAWNED"
 
-// FactionWarMachineQueueUpdateSubscribeHandler subscribe on war machine queue position change
-func (gc *GameControllerWS) FactionWarMachineQueueUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	req := &hub.HubCommandRequest{}
+// AISpawnedSubscribeHandler to subscribe on war machine destroyed
+func (gc *GameControllerWS) AISpawnedSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &struct {
+		*hub.HubCommandRequest
+	}{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
-	// get hub client
-	hcd := gc.API.UserMap.GetUserDetail(wsc)
-	if hcd == nil {
-		return "", "", terror.Error(err)
-	}
-
-	if battleQueue, ok := gc.API.BattleArena.BattleQueueMap[hcd.FactionID]; ok {
-		battleQueue <- func(wmql *battle_arena.WarMachineQueuingList) {
-			maxLength := 5
-			if len(wmql.WarMachines) < maxLength {
-				maxLength = len(wmql.WarMachines)
-			}
-
-			reply(wmql.WarMachines[:maxLength])
-		}
-	}
-
-	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionWarMachineQueueUpdated, hcd.FactionID))
-
+	busKey := messagebus.BusKey(HubKeyAISpawned)
 	return req.TransactionID, busKey, nil
 }
 

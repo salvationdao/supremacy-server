@@ -3,7 +3,9 @@ package battle_arena
 import (
 	"context"
 	"server"
+	"server/comms"
 	"server/db"
+	"server/passport"
 	"time"
 
 	"github.com/ninja-software/terror/v2"
@@ -14,6 +16,8 @@ import (
 const BattleCommandInitBattle BattleCommand = "BATTLE:INIT"
 
 func (ba *BattleArena) InitNextBattle() error {
+	ba.Events.Trigger(context.Background(), EventGameInit, nil)
+
 	// switch battle state to LOBBY
 	ba.battle.State = server.StateLobby
 
@@ -39,14 +43,62 @@ func (ba *BattleArena) InitNextBattle() error {
 	// get NFT from battle queue
 	ba.battle.WarMachines = []*server.WarMachineMetadata{}
 
-	for len(ba.BattleQueueMap) == 0 {
+	for ba.battle == nil || len(ba.battle.FactionMap) == 0 {
 		ba.Log.Info().Msg("No factions, trying again in 2 seconds")
 		time.Sleep(2 * time.Second)
 	}
+
 	mechsPerFaction := gameMap.MaxSpawns / 3
-	for factionID := range ba.BattleQueueMap {
-		ba.battle.WarMachines = append(ba.battle.WarMachines, ba.GetBattleWarMachineFromQueue(factionID, mechsPerFaction)...)
+	ba.battle.WarMachines = append(ba.battle.WarMachines, ba.WarMachineQueue.RedMountain.GetWarMachineForEnterGame(mechsPerFaction)...)
+	ba.battle.WarMachines = append(ba.battle.WarMachines, ba.WarMachineQueue.Boston.GetWarMachineForEnterGame(mechsPerFaction)...)
+	ba.battle.WarMachines = append(ba.battle.WarMachines, ba.WarMachineQueue.Zaibatsu.GetWarMachineForEnterGame(mechsPerFaction)...)
+
+	// broadcast warmachine stat to passport
+	broadcastList := []*comms.WarMachineQueueStat{}
+	// Red mountain
+	for i, wm := range ba.WarMachineQueue.RedMountain.QueuingWarMachines {
+		position := i + 1
+		broadcastList = append(broadcastList, &comms.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
 	}
+	for _, wm := range ba.WarMachineQueue.RedMountain.InGameWarMachines {
+		position := -1
+		broadcastList = append(broadcastList, &comms.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
+	}
+	ba.passport.FactionQueueCostUpdate(&passport.FactionQueuePriceUpdateReq{
+		FactionID:     server.RedMountainFactionID,
+		QueuingLength: ba.WarMachineQueue.RedMountain.QueuingLength(),
+	})
+
+	// Boston
+	for i, wm := range ba.WarMachineQueue.Boston.QueuingWarMachines {
+		position := i + 1
+		broadcastList = append(broadcastList, &comms.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
+	}
+	for _, wm := range ba.WarMachineQueue.Boston.InGameWarMachines {
+		position := -1
+		broadcastList = append(broadcastList, &comms.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
+	}
+	ba.passport.FactionQueueCostUpdate(&passport.FactionQueuePriceUpdateReq{
+		FactionID:     server.BostonCyberneticsFactionID,
+		QueuingLength: ba.WarMachineQueue.Boston.QueuingLength(),
+	})
+
+	// Zaibatsu
+	for i, wm := range ba.WarMachineQueue.Zaibatsu.QueuingWarMachines {
+		position := i + 1
+		broadcastList = append(broadcastList, &comms.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
+	}
+	for _, wm := range ba.WarMachineQueue.Zaibatsu.InGameWarMachines {
+		position := -1
+		broadcastList = append(broadcastList, &comms.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
+	}
+	ba.passport.FactionQueueCostUpdate(&passport.FactionQueuePriceUpdateReq{
+		FactionID:     server.ZaibatsuFactionID,
+		QueuingLength: ba.WarMachineQueue.Zaibatsu.QueuingLength(),
+	})
+
+	// broadcast position change
+	ba.passport.WarMachineQueuePositionBroadcast(broadcastList)
 
 	// get Zaibatsu faction abilities to insert
 	zaibatsuAbility, err := db.GetZaibatsuFactionAbility(context.Background(), ba.Conn)
@@ -56,16 +108,16 @@ func (ba *BattleArena) InitNextBattle() error {
 	}
 
 	if len(ba.battle.WarMachines) > 0 {
-		hashes := []string{}
 		for _, warMachine := range ba.battle.WarMachines {
-			hashes = append(hashes, warMachine.Hash)
-
+			// HACK: clean up war machine ability before stacking it
+			warMachine.Abilities = []*server.AbilityMetadata{}
 			if warMachine.FactionID == server.ZaibatsuFactionID {
 				// if war machine is from Zaibatsu, insert the ability as faction ability
 				warMachine.Abilities = append(warMachine.Abilities, &server.AbilityMetadata{
 					ID:           zaibatsuAbility.ID,
 					Identity:     uuid.Must(uuid.NewV4()), // track ability's price
 					Colour:       zaibatsuAbility.Colour,
+					TextColour:   zaibatsuAbility.TextColour,
 					GameClientID: int(zaibatsuAbility.GameClientAbilityID),
 					Image:        zaibatsuAbility.ImageUrl,
 					Description:  zaibatsuAbility.Description,
@@ -74,18 +126,10 @@ func (ba *BattleArena) InitNextBattle() error {
 				})
 			}
 		}
-
-		// set war machine lock request
-		err := ba.passport.AssetLock(hashes)
-		if err != nil {
-			ba.Log.Err(err).Msg("Failed to lock assets")
-			// TODO: figure out how to handle this
-		}
 	}
 
 	// clean up battle end message of the last battle
 	ba.battle.EndedAt = nil
-	ba.Events.Trigger(context.Background(), EventGameInit, nil)
 
 	ba.Log.Info().Msgf("Initializing new battle: %s", ba.battle.ID)
 
@@ -127,36 +171,6 @@ func (ba *BattleArena) InitNextBattle() error {
 		ba.send <- gameMessage
 	}()
 	return nil
-}
-
-var RedMountainFaction = &server.Faction{
-	ID:    server.RedMountainFactionID,
-	Label: "Red Mountain Offworld Mining Corporation",
-	Theme: &server.FactionTheme{
-		Primary:    "#C24242",
-		Secondary:  "#FFFFFF",
-		Background: "#120E0E",
-	},
-}
-
-var BostonFaction = &server.Faction{
-	ID:    server.BostonCyberneticsFactionID,
-	Label: "Boston Cybernetics",
-	Theme: &server.FactionTheme{
-		Primary:    "#428EC1",
-		Secondary:  "#FFFFFF",
-		Background: "#080C12",
-	},
-}
-
-var ZaibatsuFaction = &server.Faction{
-	ID:    server.ZaibatsuFactionID,
-	Label: "Zaibatsu Heavy Industries",
-	Theme: &server.FactionTheme{
-		Primary:    "#FFFFFF",
-		Secondary:  "#000000",
-		Background: "#0D0D0D",
-	},
 }
 
 func fillFaction(wm *server.WarMachineMetadata) {

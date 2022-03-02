@@ -21,6 +21,9 @@ import (
 type GameAbilityPrice struct {
 	GameAbility *server.GameAbility
 
+	deadlock.RWMutex
+	isReached bool
+
 	PriceRW        deadlock.RWMutex
 	MaxTargetPrice server.BigInt
 	TargetPrice    server.BigInt
@@ -160,11 +163,6 @@ func (api *API) abilityTargetPriceUpdater(factionID server.FactionID, conn *pgxp
 			// record current price
 			targetPriceList = append(targetPriceList, fmt.Sprintf("%s_%s_%s_%d", fa.GameAbility.Identity, fa.TargetPrice.String(), fa.CurrentSups.String(), hasTriggered))
 
-			// store new target price to passport server, if the ability is nft
-			if fa.GameAbility.AbilityHash != "" && fa.GameAbility.WarMachineHash != "" {
-				api.Passport.AbilityUpdateTargetPrice(fa.GameAbility.AbilityHash, fa.GameAbility.WarMachineHash, fa.TargetPrice.String())
-			}
-
 			return true
 		})
 
@@ -211,8 +209,13 @@ func (api *API) startGameAbilityPoolTicker(ctx context.Context, factionID server
 	time.Sleep(time.Duration(introSecond) * time.Second)
 
 	api.gameAbilityPool[factionID](func(fap *deadlock.Map) {
+		// clean up ability incase battle didn't end properly
+		fap.Range(func(key, value interface{}) bool {
+			fap.Delete(key)
+			return true
+		})
 
-		// set initial ability
+		// start filling initial abilities
 		factionAbilities := []*server.GameAbility{}
 		warMachineAbilities := make(map[byte][]*server.GameAbility)
 
@@ -339,5 +342,5 @@ func (api *API) stopGameAbilityPoolTicker() {
 		}
 
 	}
-	api.Passport.ReleaseTransactions(context.Background(), txRefs)
+	api.Passport.ReleaseTransactions(txRefs)
 }

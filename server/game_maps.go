@@ -1,9 +1,8 @@
 package server
 
 import (
-	"math/big"
-
 	"github.com/gofrs/uuid"
+	"github.com/shopspring/decimal"
 )
 
 const GameClientTileSize = 2000
@@ -28,35 +27,35 @@ type GameMap struct {
 }
 
 type WarMachineMetadata struct {
-	Hash            string             `json:"hash"`
-	ParticipantID   byte               `json:"participantID"`
-	OwnedByID       UserID             `json:"ownedByID"`
-	Name            string             `json:"name"`
-	Description     *string            `json:"description,omitempty"`
-	ExternalUrl     string             `json:"externalUrl"`
-	Image           string             `json:"image"`
-	Model           string             `json:"model"`
-	Skin            string             `json:"skin"`
-	MaxHealth       int                `json:"maxHealth"`
-	Health          int                `json:"health"`
-	MaxShield       int                `json:"maxShield"`
-	Shield          int                `json:"shield"`
-	Speed           int                `json:"speed"`
-	Durability      int                `json:"durability"`
-	PowerGrid       int                `json:"powerGrid"`
-	CPU             int                `json:"cpu"`
-	WeaponHardpoint int                `json:"weaponHardpoint"`
-	TurretHardpoint int                `json:"turretHardpoint"`
-	UtilitySlots    int                `json:"utilitySlots"`
-	FactionID       FactionID          `json:"factionID"`
-	Faction         *Faction           `json:"faction"`
-	WeaponNames     []string           `json:"weaponNames"`
-	Position        *Vector3           `json:"position"`
-	Rotation        int                `json:"rotation"`
-	Abilities       []*AbilityMetadata `json:"abilities"`
+	Hash               string             `json:"hash"`
+	ParticipantID      byte               `json:"participantID"`
+	OwnedByID          UserID             `json:"ownedByID"`
+	Name               string             `json:"name"`
+	Description        *string            `json:"description,omitempty"`
+	ExternalUrl        string             `json:"externalUrl"`
+	Image              string             `json:"image"`
+	Model              string             `json:"model"`
+	Skin               string             `json:"skin"`
+	MaxHealth          int                `json:"maxHealth"`
+	Health             int                `json:"health"`
+	MaxShield          int                `json:"maxShield"`
+	Shield             int                `json:"shield"`
+	ShieldRechargeRate float64            `json:"shieldRechargeRate"`
+	Speed              int                `json:"speed"`
+	Durability         int                `json:"durability"`
+	PowerGrid          int                `json:"powerGrid"`
+	CPU                int                `json:"cpu"`
+	WeaponHardpoint    int                `json:"weaponHardpoint"`
+	TurretHardpoint    int                `json:"turretHardpoint"`
+	UtilitySlots       int                `json:"utilitySlots"`
+	FactionID          FactionID          `json:"factionID"`
+	Faction            *Faction           `json:"faction"`
+	WeaponNames        []string           `json:"weaponNames"`
+	Position           *Vector3           `json:"position"`
+	Rotation           int                `json:"rotation"`
+	Abilities          []*AbilityMetadata `json:"abilities"`
 
-	ContractReward big.Int `json:"contractReward"`
-	IsInsured      bool    `json:"isInsured"`
+	ContractReward decimal.Decimal `json:"contractReward"`
 }
 
 type WarMachineBrief struct {
@@ -82,6 +81,7 @@ type AbilityMetadata struct {
 	ID                GameAbilityID `json:"id" db:"id"` // used for zaibatsu faction ability
 	Identity          uuid.UUID     `json:"identity"`   // used to track ability price update
 	Colour            string        `json:"colour"`     // used for game ability colour
+	TextColour        string        `json:"textColour"` // used for game ability text colour
 	Hash              string        `json:"hash"`
 	Name              string        `json:"name"`
 	Description       string        `json:"description"`
@@ -106,6 +106,7 @@ type GameAbility struct {
 	GameClientAbilityID byte             `json:"gameClientAbilityID" db:"game_client_ability_id"`
 	BattleAbilityID     *BattleAbilityID `json:"battleAbilityID,omitempty" db:"battle_ability_id,omitempty"`
 	Colour              string           `json:"colour" db:"colour"`
+	TextColour          string           `json:"textColour" db:"text_colour"`
 	Description         string           `json:"description" db:"description"`
 	ImageUrl            string           `json:"imageUrl" db:"image_url"`
 	FactionID           FactionID        `json:"factionID" db:"faction_id"`

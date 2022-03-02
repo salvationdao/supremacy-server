@@ -8,18 +8,19 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"os"
 	"server"
 	"server/passport"
 	"time"
 
 	"github.com/jpillora/backoff"
 	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/sasha-s/go-deadlock"
 
 	"github.com/antonholmquist/jason"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/log_helpers"
-	"github.com/ninja-software/tickle"
 	"github.com/rs/zerolog"
 	"nhooyr.io/websocket"
 	"nhooyr.io/websocket/wsjson"
@@ -55,20 +56,28 @@ type GameMessage struct {
 }
 
 type BattleArena struct {
-	server   *http.Server
-	Log      *zerolog.Logger
-	Conn     *pgxpool.Pool
-	passport *passport.Passport
-	addr     string
-	commands map[BattleCommand]BattleCommandFunc
-	Events   BattleArenaEvents
-	send     chan *GameMessage
-	ctx      context.Context
-	close    context.CancelFunc
-	battle   *server.Battle
-
+	server       *http.Server
+	Log          *zerolog.Logger
+	Conn         *pgxpool.Pool
+	passport     *passport.Passport
+	addr         string
+	commands     map[BattleCommand]BattleCommandFunc
+	Events       BattleArenaEvents
+	send         chan *GameMessage
+	ctx          context.Context
+	close        context.CancelFunc
+	battle       *server.Battle
+	gamesToClose int
+	messageBus   *messagebus.MessageBus
 	// battle queue channels
-	BattleQueueMap map[server.FactionID]chan func(*WarMachineQueuingList)
+	// BattleQueueMap map[server.FactionID]chan func(*WarMachineQueuingList)
+
+	// better battle queue
+	WarMachineQueue *WarMachineQueue
+}
+
+func (ba *BattleArena) SetMessageBus(mb *messagebus.MessageBus) {
+	ba.messageBus = mb
 }
 
 // NewBattleArenaClient creates a new battle arena client
@@ -89,9 +98,9 @@ func NewBattleArenaClient(ctx context.Context, logger *zerolog.Logger, conn *pgx
 			WarMachineDestroyedRecordMap: make(map[byte]*server.WarMachineDestroyedRecord),
 			FactionMap:                   make(map[server.FactionID]*server.Faction),
 		},
-
+		gamesToClose: -1,
 		// channel for battle queue
-		BattleQueueMap: make(map[server.FactionID]chan func(*WarMachineQueuingList)),
+		// BattleQueueMap: make(map[server.FactionID]chan func(*WarMachineQueuingList)),
 	}
 	// add the commands here
 
@@ -102,8 +111,8 @@ func NewBattleArenaClient(ctx context.Context, logger *zerolog.Logger, conn *pgx
 
 	// war machines
 	ba.Command(WarMachineDestroyedCommand, ba.WarMachineDestroyedHandler)
+	ba.Command(AISpawnedCommand, ba.AISpawnedHandler)
 
-	go ba.SetupAfterConnections()
 	return ba
 }
 
@@ -155,7 +164,7 @@ const (
 )
 
 func (ba *BattleArena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithCancel(r.Context())
+	ctx, cancel := context.WithCancel(context.Background())
 	c, err := websocket.Accept(w, r, &websocket.AcceptOptions{
 		//Subprotocols: []string{"gameserver-v1"},
 	})
@@ -435,95 +444,45 @@ func (ba *BattleArena) Command(command BattleCommand, fn BattleCommandFunc) {
 	ba.Log.Trace().Msg(string(command))
 }
 
-func (ba *BattleArena) SetupAfterConnections() {
+func (ba *BattleArena) SetupAfterConnections(logger *zerolog.Logger) {
 	b := &backoff.Backoff{
 		Min:    1 * time.Second,
 		Max:    30 * time.Second,
 		Factor: 2,
 	}
+	attempts := 0
 
-	// get factions from passport, retrying every 10 seconds until we ge them.
-	for len(ba.battle.FactionMap) <= 0 {
-		if !ba.passport.Connected {
+	for {
+		attempts++
+		logger.Info().Int("attempt", attempts).Msg("fetching battle queue from passport")
+		factions, err := ba.passport.FactionAll()
+		if err != nil {
+			ba.Log.Err(err).Msg("could not fetch war machine queue from passport")
+			continue
+		}
+
+		if len(factions) == 0 {
+			ba.Log.Err(err).Msg("no factions returned from API")
 			time.Sleep(b.Duration())
 			continue
 		}
 
-		wg := deadlock.WaitGroup{}
-		wg.Add(1)
-		ba.passport.FactionAll(func(msg []byte) {
-			defer wg.Done()
-			resp := &passport.FactionAllResponse{}
-			err := json.Unmarshal(msg, resp)
-			if err != nil {
-				return
-			}
-			if err != nil {
-				ba.passport.Log.Err(err).Msg("unable to get factions")
-			}
+		ba.battle.WarMachineDestroyedRecordMap = make(map[byte]*server.WarMachineDestroyedRecord)
+		ba.battle.FactionMap = make(map[server.FactionID]*server.Faction)
 
-			ba.battle.WarMachineDestroyedRecordMap = make(map[byte]*server.WarMachineDestroyedRecord)
-
-			ba.battle.FactionMap = make(map[server.FactionID]*server.Faction)
-			for _, faction := range resp.Factions {
-				ba.battle.FactionMap[faction.ID] = faction
-			}
-
-		})
-		wg.Wait()
-		if len(ba.battle.FactionMap) > 0 {
-			break
+		for _, faction := range factions {
+			ba.battle.FactionMap[faction.ID] = faction
 		}
-		time.Sleep(b.Duration())
+
+		ba.WarMachineQueue, err = NewWarMachineQueue(factions, ba.Conn, logger, ba)
+		if err != nil {
+			ba.Log.Err(err).Msg("failed to set ups war machine queue")
+			os.Exit(-1)
+		}
+
+		ba.Log.Info().Msg("successfully setup war machine queue")
+		break
 	}
 
-	hashes := []string{}
-	// get all the faction list from passport server
-	for _, faction := range ba.battle.FactionMap {
-		// start battle queue
-		ba.BattleQueueMap[faction.ID] = make(chan func(*WarMachineQueuingList))
-		hashes = append(hashes, ba.startBattleQueue(faction.ID)...)
-	}
-
-	// fire the hashes checklist to passport to free up the non-queued war machines
-	ba.passport.AssetQueuingCheckList(hashes)
-
-	battleContractRewardUpdaterLogger := log_helpers.NamedLogger(ba.Log, "Contract Reward Updater").Level(zerolog.Disabled)
-	battleContractRewardUpdater := tickle.New("Contract Reward Updater", 10, func() (int, error) {
-		rQueueNumberChan := make(chan int)
-		ba.BattleQueueMap[server.RedMountainFactionID] <- func(wmql *WarMachineQueuingList) {
-			rQueueNumberChan <- len(wmql.WarMachines)
-		}
-
-		bQueueNumberChan := make(chan int)
-		ba.BattleQueueMap[server.BostonCyberneticsFactionID] <- func(wmql *WarMachineQueuingList) {
-			bQueueNumberChan <- len(wmql.WarMachines)
-		}
-
-		zQueueNumberChan := make(chan int)
-		ba.BattleQueueMap[server.ZaibatsuFactionID] <- func(wmql *WarMachineQueuingList) {
-			zQueueNumberChan <- len(wmql.WarMachines)
-		}
-
-		ba.passport.FactionWarMachineContractRewardUpdate(
-			[]*server.FactionWarMachineQueue{
-				{
-					FactionID:  server.RedMountainFactionID,
-					QueueTotal: <-rQueueNumberChan,
-				},
-				{
-					FactionID:  server.BostonCyberneticsFactionID,
-					QueueTotal: <-bQueueNumberChan,
-				},
-				{
-					FactionID:  server.ZaibatsuFactionID,
-					QueueTotal: <-zQueueNumberChan,
-				},
-			},
-		)
-
-		return http.StatusOK, nil
-	})
-	battleContractRewardUpdater.Log = &battleContractRewardUpdaterLogger
-	battleContractRewardUpdater.Start()
+	ba.Log.Info().Int("factions", len(ba.battle.FactionMap)).Msg("successfully fetched battle queue from passport")
 }

@@ -1,12 +1,8 @@
 package passport
 
 import (
-	"context"
-	"fmt"
 	"server"
 	"time"
-
-	"github.com/gofrs/uuid"
 )
 
 type HoldSupsMessageResponse struct {
@@ -14,7 +10,8 @@ type HoldSupsMessageResponse struct {
 }
 
 type SpendSupsReq struct {
-	FromUserID           server.UserID               `json:"userID"`
+	FromUserID           server.UserID               `json:"fromUserID"`
+	ToUserID             *server.UserID              `json:"ToUserID,omitempty"`
 	Amount               string                      `json:"amount"`
 	TransactionReference server.TransactionReference `json:"transactionReference"`
 	GroupID              string
@@ -24,13 +21,12 @@ type SpendSupsResp struct {
 }
 
 // SpendSupMessage tells the passport to hold sups
-func (pp *Passport) SpendSupMessage(userID server.UserID, supsChange server.BigInt, battleID server.BattleID, reason string, callback func(txID string)) {
-	supTransactionReference := uuid.Must(uuid.NewV4())
-	supTxRefString := server.TransactionReference(fmt.Sprintf("%s|%s", reason, supTransactionReference.String()))
+func (pp *Passport) SpendSupMessage(req SpendSupsReq, callback func(txID string)) {
 	resp := &SpendSupsResp{}
-	pp.Comms.GoCall("C.SupremacySpendSupsHandler", SpendSupsReq{FromUserID: userID, Amount: supsChange.String(), TransactionReference: supTxRefString, GroupID: battleID.String()}, resp, func(err error) {
+	pp.Comms.GoCall("C.SupremacySpendSupsHandler", req, resp, func(err error) {
 		if err != nil {
 			pp.Log.Err(err).Str("method", "SupremacySpendSupsHandler").Msg("rpc error")
+			return
 		}
 		callback(resp.TXID)
 	})
@@ -42,7 +38,7 @@ type ReleaseTransactionsReq struct {
 type ReleaseTransactionsResp struct{}
 
 // ReleaseTransactions tells the passport to transfer fund to sup pool
-func (pp *Passport) ReleaseTransactions(ctx context.Context, transactions []string) {
+func (pp *Passport) ReleaseTransactions(transactions []string) {
 	if len(transactions) == 0 {
 		return
 	}
@@ -52,37 +48,37 @@ func (pp *Passport) ReleaseTransactions(ctx context.Context, transactions []stri
 	}
 }
 
-// TransferBattleFundToSupsPool tells the passport to transfer fund to sup pool
-func (pp *Passport) TransferBattleFundToSupsPool(ctx context.Context) error {
-	pp.send <- &Message{
-		Key:           "SUPREMACY:TRANSFER_BATTLE_FUND_TO_SUP_POOL",
-		TransactionID: uuid.Must(uuid.NewV4()).String(),
+type TransferBattleFundToSupPoolReq struct{}
+type TransferBattleFundToSupPoolResp struct{}
+
+func (pp *Passport) TransferBattleFundToSupsPool() {
+	err := pp.Comms.Call("C.TransferBattleFundToSupPoolHandler", TransferBattleFundToSupPoolReq{}, &TransferBattleFundToSupPoolResp{})
+	if err != nil {
+		pp.Log.Err(err).Str("method", "TransferBattleFundToSupPoolHandler").Msg("rpc error")
 	}
-	return nil
 }
 
-type SupremacyTopSupsContributorResponse struct {
-	Payload SupremacyTopSupsContributor `json:"payload"`
+type TopSupsContributorReq struct {
+	StartTime time.Time `json:"startTime"`
+	EndTime   time.Time `json:"endTime"`
 }
 
-type SupremacyTopSupsContributor struct {
+type TopSupsContributorResp struct {
 	TopSupsContributors       []*server.User    `json:"topSupsContributors"`
 	TopSupsContributeFactions []*server.Faction `json:"topSupsContributeFactions"`
 }
 
-// TopSupsContributorsGet tells the passport to return the top three most sups contributors with in the time frame
-func (pp *Passport) TopSupsContributorsGet(ctx context.Context, startTime, endTime time.Time, callback func(msg []byte)) error {
-	pp.send <- &Message{
-		Key: "SUPREMACY:TOP_SUPS_CONTRIBUTORS",
-		Payload: struct {
-			StartTime time.Time `json:"startTime"`
-			EndTime   time.Time `json:"endTime"`
-		}{
-			StartTime: startTime,
-			EndTime:   endTime,
-		},
-		Callback:      callback,
-		TransactionID: uuid.Must(uuid.NewV4()).String(),
+// ReleaseTransactions tells the passport to transfer fund to sup pool
+func (pp *Passport) TopSupsContributorsGet(startTime, endTime time.Time, callback func(result *TopSupsContributorResp)) {
+	resp := &TopSupsContributorResp{}
+	err := pp.Comms.Call("C.TopSupsContributorHandler", TopSupsContributorReq{
+		StartTime: startTime,
+		EndTime:   endTime,
+	}, resp)
+	if err != nil {
+		pp.Log.Err(err).Str("method", "TopSupsContributorHandler").Msg("rpc error")
+		return
 	}
-	return nil
+
+	callback(resp)
 }

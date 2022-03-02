@@ -4,21 +4,8 @@ import (
 	"context"
 	"server"
 
-	"github.com/gofrs/uuid"
 	"github.com/ninja-syndicate/hub"
 )
-
-func (pp *Passport) UpgradeUserConnection(sessionID hub.SessionID) {
-	pp.send <- &Message{
-		Key: "SUPREMACY:USER_CONNECTION_UPGRADE",
-		Payload: struct {
-			SessionID hub.SessionID `json:"sessionID"`
-		}{
-			SessionID: sessionID,
-		},
-		TransactionID: uuid.Must(uuid.NewV4()).String(),
-	}
-}
 
 type TickerTickReq struct {
 	UserMap map[int][]server.UserID `json:"userMap"`
@@ -62,37 +49,43 @@ func (pp *Passport) UserSupsMultiplierSend(ctx context.Context, userSupsMultipli
 	}
 }
 
+type UsersGetReq struct {
+	UserIDs []server.UserID `json:"userIDs"`
+}
+
+type UsersGetResp struct {
+	Users []*server.User `json:"users"`
+}
+
+// UserGet get user by id
+func (pp *Passport) UsersGet(userIDs []server.UserID, callback func(users []*server.User)) {
+	resp := &UsersGetResp{}
+	err := pp.Comms.Call("C.SupremacyUsersGetHandler", UsersGetReq{userIDs}, resp)
+	if err != nil {
+		pp.Log.Err(err).Str("method", "SupremacyUsersGetHandler").Msg("rpc error")
+		return
+	}
+	callback(resp.Users)
+}
+
+type UserStatSendReq struct {
+	UserStatSends []*UserStatSend `json:"userStatSends"`
+}
+
 type UserStatSend struct {
 	ToUserSessionID *hub.SessionID   `json:"toUserSessionID,omitempty"`
 	Stat            *server.UserStat `json:"stat"`
 }
 
+type UserStatSendResp struct{}
+
 // UserStatSend send user sups multipliers
 func (pp *Passport) UserStatSend(ctx context.Context, userStatSends []*UserStatSend) {
-	pp.send <- &Message{
-		Key: "SUPREMACY:USER_STAT_SEND",
-		Payload: struct {
-			UserStatSends []*UserStatSend `json:"userStatSends"`
-		}{
-			UserStatSends: userStatSends,
-		},
+	if len(userStatSends) == 0 {
+		return
 	}
-}
-
-type GetUsers struct {
-	Users []*server.User `json:"payload"`
-}
-
-// UserGet get user by id
-func (pp *Passport) UsersGet(userIDs []server.UserID, callback func(msg []byte)) {
-	pp.send <- &Message{
-		Key:      "SUPREMACY:GET_USERS",
-		Callback: callback,
-		Payload: struct {
-			UserIDs []server.UserID `json:"userIDs"`
-		}{
-			UserIDs: userIDs,
-		},
-		TransactionID: uuid.Must(uuid.NewV4()).String(),
+	err := pp.Comms.Call("C.SupremacyUserStatSendHandler", UserStatSendReq{userStatSends}, &UserStatSend{})
+	if err != nil {
+		pp.Log.Err(err).Str("method", "SupremacyUserStatSendHandler").Msg("rpc error")
 	}
 }

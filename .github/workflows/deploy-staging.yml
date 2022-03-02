@@ -138,11 +138,6 @@ jobs:
         if: ${{ !env.ACT }} # if running in local test environment
         run: ssh ${{ secrets.STAGING_SSH_HOST }} 'cp /usr/share/ninja_syndicate/gameserver-online/init/gameserver.env /usr/share/ninja_syndicate/gameserver_${{ needs.build.outputs.version }}/init/gameserver.env && cp /usr/share/ninja_syndicate/gameserver-online/init/gameserver.env ~/.ssh/environment'
 
-      # - name: "DB: Backup" # Run this before changing the link
-      #   if: ${{ !env.ACT }} # if running in local test environment
-      #   run: ssh ${{ secrets.STAGING_SSH_HOST }} 'mkdir -p /usr/share/ninja_syndicate/gameserver-online/db_backup && \
-      #     /usr/bin/pg_dump postgres://$GAMESERVER_DATABASE_USER:$GAMESERVER_DATABASE_PASS@$GAMESERVER_DATABASE_HOST:$GAMESERVER_DATABASE_PORT/$GAMESERVER_DATABASE_NAME?sslmode=disable > "/usr/share/ninja_syndicate/GAMESERVER-online/db_backup/gameserver_$(date -Is).sql"'
-
       - name: Bring new version online
         if: ${{ !env.ACT }} # if running in local test environment
         run: ssh ${{ secrets.STAGING_SSH_HOST }} 'ln -Tfsv /usr/share/ninja_syndicate/gameserver_${{ needs.build.outputs.version }} /usr/share/ninja_syndicate/gameserver-online'
@@ -151,17 +146,9 @@ jobs:
         if: ${{ !env.ACT }} # if running in local test environment
         run: ssh ${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }} 'sudo systemctl stop gameserver'
 
-      - name: "DB: drop"
-        if: ${{ !env.ACT }} # if running in local test environment
-        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'cd /usr/share/ninja_syndicate/gameserver-online && source ./init/gameserver.env && ./migrate -database "postgres://$GAMESERVER_DATABASE_USER:$GAMESERVER_DATABASE_PASS@$GAMESERVER_DATABASE_HOST:$GAMESERVER_DATABASE_PORT/$GAMESERVER_DATABASE_NAME?sslmode=disable" -path ./migrations drop -f'
-
       - name: "DB: up"
         if: ${{ !env.ACT }} # if running in local test environment
         run: ssh ${{ secrets.STAGING_SSH_HOST }} 'cd /usr/share/ninja_syndicate/gameserver-online && source ./init/gameserver.env && ./migrate -database "postgres://$GAMESERVER_DATABASE_USER:$GAMESERVER_DATABASE_PASS@$GAMESERVER_DATABASE_HOST:$GAMESERVER_DATABASE_PORT/$GAMESERVER_DATABASE_NAME?sslmode=disable" -path ./migrations up'
-
-      - name: "DB: seed"
-        if: ${{ !env.ACT }} # if running in local test environment
-        run: ssh ${{ secrets.STAGING_SSH_HOST }} 'cd /usr/share/ninja_syndicate/gameserver-online && source ./init/gameserver.env && ./gameserver db --database_user=$GAMESERVER_DATABASE_USER --database_pass=$GAMESERVER_DATABASE_PASS --database_host=$GAMESERVER_DATABASE_HOST --database_port=$GAMESERVER_DATABASE_PORT --database_name=$GAMESERVER_DATABASE_NAME'
 
       - name: restart api-server
         if: ${{ !env.ACT }} # if running in local test environment

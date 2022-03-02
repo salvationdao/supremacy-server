@@ -26,6 +26,13 @@ func BlobInsert(ctx context.Context, conn Conn, result *server.Blob, id server.B
 	q := `
 		INSERT INTO blobs (id, file_name, mime_type, file_size_bytes, extension, file, hash) 
 			VALUES ($1, $2, $3, $4, $5, $6, $7)
+		ON CONFLICT (id) DO UPDATE
+		SET file_name = EXCLUDED.file_name,
+			mime_type = EXCLUDED.mime_type,
+			file_size_bytes = EXCLUDED.file_size_bytes,
+			extension = EXCLUDED.extension,
+			file = EXCLUDED.file,
+			hash = EXCLUDED.hash
 		RETURNING id, file_name, mime_type, file_size_bytes, extension, file, hash`
 	err := pgxscan.Get(ctx, conn, result, q, id, fileName, mimeType, fileSizeBytes, extension, file, hash)
 	if err != nil {

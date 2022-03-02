@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"net"
@@ -23,9 +24,11 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-software/log_helpers"
+	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-software/tickle"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/auth"
@@ -120,10 +123,14 @@ type API struct {
 	gameAbilityPool map[server.FactionID]func(func(*deadlock.Map))
 
 	// viewer live count
-	viewerLiveCount *ViewerLiveCount
+	ViewerLiveCount *ViewerLiveCount
+
+	GlobalAnnouncement *server.GlobalAnnouncement
 
 	battleEndInfo *BattleEndInfo
 }
+
+const SupremacyGameUserID = "4fae8fdf-584f-46bb-9cb9-bb32ae20177e"
 
 // NewAPI registers routes
 func NewAPI(
@@ -184,8 +191,11 @@ func NewAPI(
 		battleEndInfo: &BattleEndInfo{},
 	}
 
+	battleArenaClient.SetMessageBus(messageBus)
+
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
+	api.Routes.Use(middleware.Logger)
 	api.Routes.Use(cors.New(cors.Options{AllowedOrigins: []string{config.TwitchUIHostURL}}).Handler)
 
 	api.Routes.Handle("/metrics", promhttp.Handler())
@@ -195,6 +205,7 @@ func NewAPI(
 			r.Use(sentryHandler.Handle)
 		})
 		r.Mount("/check", CheckRouter(log_helpers.NamedLogger(log, "check router"), conn))
+		r.Mount(fmt.Sprintf("/%s/Supremacy_game", SupremacyGameUserID), PassportWebhookRouter(log, conn, config.PassportWebhookSecret, api))
 
 		// Web sockets are long-lived, so we don't want the sentry performance tracer running for the life-time of the connection.
 		// See roothub.ServeHTTP for the setup of sentry on this route.
@@ -208,13 +219,17 @@ func NewAPI(
 		r.Post("/video_server", WithToken(config.ServerStreamKey, WithError((api.CreateStreamHandler))))
 		r.Get("/video_server", WithToken(config.ServerStreamKey, WithError((api.GetStreamsHandler))))
 		r.Delete("/video_server", WithToken(config.ServerStreamKey, WithError((api.DeleteStreamHandler))))
+		r.Post("/close_stream", WithToken(config.ServerStreamKey, WithError(api.CreateStreamCloseHandler)))
 		r.Get("/faction_data", WithError(api.GetFactionData))
 		r.Get("/trigger/ability_file_upload", WithError(api.GetFactionData))
+		r.Post("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.GlobalAnnouncementSend)))
+		r.Delete("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.GlobalAnnouncementDelete)))
+
 	})
 
 	// set viewer live count
-	api.viewerLiveCount = NewViewerLiveCount(api.NetMessageBus)
-	api.UserMap = NewUserMap(api.viewerLiveCount)
+	api.ViewerLiveCount = NewViewerLiveCount(api.NetMessageBus)
+	api.UserMap = NewUserMap(api.ViewerLiveCount)
 	api.UserMultiplier = NewUserMultiplier(api.UserMap, api.Passport, api.BattleArena)
 
 	///////////////////////////
@@ -242,22 +257,7 @@ func NewAPI(
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventGameEnd, api.BattleEndSignal)
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventWarMachineDestroyed, api.WarMachineDestroyedBroadcast)
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventWarMachinePositionChanged, api.UpdateWarMachinePosition)
-	api.BattleArena.Events.AddEventHandler(battle_arena.EventWarMachineQueueUpdated, api.UpdateWarMachineQueue)
-
-	///////////////////////////
-	//	 Passport Events	 //
-	///////////////////////////
-	// api.Passport.Events.AddEventHandler(passport.EventUserOnlineStatus, api.PassportUserOnlineStatusHandler)
-	api.Passport.Events.AddEventHandler(passport.EventUserUpdated, api.PassportUserUpdatedHandler)
-	api.Passport.Events.AddEventHandler(passport.EventUserEnlistFaction, api.PassportUserEnlistFactionHandler)
-	api.Passport.Events.AddEventHandler(passport.EventBattleQueueJoin, api.PassportBattleQueueJoinHandler)
-	api.Passport.Events.AddEventHandler(passport.EventBattleQueueLeave, api.PassportBattleQueueReleaseHandler)
-	api.Passport.Events.AddEventHandler(passport.EventWarMachineQueuePositionGet, api.PassportWarMachineQueuePositionHandler)
-	api.Passport.Events.AddEventHandler(passport.EventAuthRingCheck, api.AuthRingCheckHandler)
-	api.Passport.Events.AddEventHandler(passport.EventAssetInsurancePay, api.PassportAssetInsurancePayHandler)
-	api.Passport.Events.AddEventHandler(passport.EventFactionStatGet, api.PassportFactionStatGetHandler)
-	api.Passport.Events.AddEventHandler(passport.EventUserSupsMultiplierGet, api.PassportUserSupsMultiplierGetHandler)
-	api.Passport.Events.AddEventHandler(passport.EventUserStatGet, api.PassportUserStatGetHandler)
+	api.BattleArena.Events.AddEventHandler(battle_arena.EventAISpawned, api.AISpawnedBroadcast)
 
 	api.SetupAfterConnections(ctx, conn)
 
@@ -265,35 +265,26 @@ func NewAPI(
 }
 
 func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
-	var factions []*server.Faction
+	api.factionMap = make(map[server.FactionID]*server.Faction)
 
-	for len(factions) <= 0 {
-		wg := deadlock.WaitGroup{}
-		wg.Add(1)
-		var err error
-		api.Passport.FactionAll(func(msg []byte) {
-			defer wg.Done()
-			resp := &passport.FactionAllResponse{}
-			err = json.Unmarshal(msg, resp)
-			if err != nil {
-				return
-			}
+	factions, err := api.Passport.FactionAll()
+	if err != nil {
+		api.Log.Fatal().Err(err).Msg("issue reading from passport connection.")
+		os.Exit(-1)
+	}
+	for _, f := range factions {
+		api.factionMap[f.ID] = f
+	}
 
-			factions = resp.Factions
-		})
-		wg.Wait()
-
-		if len(factions) == 0 {
-			api.Log.Fatal().Err(err).Msg("issue reading from passport connection.")
-			os.Exit(-1)
-		}
+	if len(api.factionMap) == 0 {
+		api.Log.Fatal().Err(err).Msg("issue reading from passport connection.")
+		os.Exit(-1)
 	}
 
 	go api.startSpoilOfWarBroadcaster(ctx)
 
 	// build faction map for main server
-	api.factionMap = make(map[server.FactionID]*server.Faction)
-	for _, faction := range factions {
+	for _, faction := range api.factionMap {
 		err := db.FactionVotePriceGet(context.Background(), conn, faction)
 		if err != nil {
 			api.Log.Err(err).Msg("unable to get faction vote price")
@@ -310,10 +301,10 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 	}
 
 	// initialise vote price system
-	go api.startVotePriceSystem(ctx, factions, conn)
+	go api.startVotePriceSystem(ctx, conn)
 
 	// initialise voting cycle
-	go api.StartVotingCycle(ctx, factions)
+	go api.StartVotingCycle(ctx)
 
 	// set faction map for battle arena server
 	api.BattleArena.SetFactionMap(api.factionMap)
@@ -324,7 +315,7 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 	liveVotingBroadcaster := tickle.New("Live Sups spend Broadcaster", 0.2, func() (int, error) {
 		totalVote := server.BigInt{Int: *big.NewInt(0)}
 		totalVoteMutex := deadlock.Mutex{}
-		for _, faction := range factions {
+		for _, faction := range api.factionMap {
 			voteCount := big.NewInt(0)
 			api.liveSupsSpend[faction.ID].Lock()
 			voteCount.Add(voteCount, &api.liveSupsSpend[faction.ID].TotalVote.Int)
@@ -351,12 +342,42 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 
 	// start live voting broadcaster
 	liveVotingBroadcaster.Start()
+
+	// get global announcement from db
+	globalAnnouncement, err := db.AnnouncementGet(ctx, api.Conn)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		api.Log.Err(err).Msg("unable to get global announcement")
+	}
+
+	api.GlobalAnnouncement = globalAnnouncement
+
+	// global announcement ticker
+	globalAnnouncementTicker := tickle.New("global announcement ticker", 60, func() (int, error) {
+		// check if a global announcement exist
+		if api.GlobalAnnouncement != nil {
+			now := time.Now()
+
+			// check if a announcement "show_until" has passed
+			if api.GlobalAnnouncement.ShowUntil != nil && api.GlobalAnnouncement.ShowUntil.Before(now) {
+				api.GlobalAnnouncement = nil
+				err := db.AnnouncementDelete(ctx, api.Conn)
+				if err != nil {
+					return http.StatusInternalServerError, err
+				}
+				go api.MessageBus.Send(context.Background(), messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), nil)
+			}
+		}
+
+		return http.StatusOK, nil
+	})
+
+	go globalAnnouncementTicker.Start()
 }
 
 // Event handlers
 func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client) error {
 	// initialise a client detail channel if not on the list
-	api.viewerLiveCount.Add(server.FactionID(uuid.Nil))
+	api.ViewerLiveCount.Add(server.FactionID(uuid.Nil))
 
 	// broadcast current game state
 	go func() {
@@ -368,6 +389,7 @@ func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client) error {
 		gsr := &GameSettingsResponse{
 			GameMap:     ba.GameMap,
 			WarMachines: ba.WarMachines,
+			SpawnedAI:   ba.SpawnedAI,
 		}
 		if ba.BattleHistory != nil && len(ba.BattleHistory) > 0 {
 			gsr.WarMachineLocation = ba.BattleHistory[0]
@@ -393,12 +415,12 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client) error 
 	noClientLeft := false
 	if currentUser != nil {
 		// remove client multipliers
-		api.viewerLiveCount.Sub(currentUser.FactionID)
+		api.ViewerLiveCount.Sub(currentUser.FactionID)
 		api.UserMultiplier.Offline(currentUser.ID)
 		// clean up the client detail map
 		noClientLeft = api.UserMap.Remove(wsc)
 	} else {
-		api.viewerLiveCount.Sub(server.FactionID(uuid.Nil))
+		api.ViewerLiveCount.Sub(server.FactionID(uuid.Nil))
 	}
 
 	// set client offline
@@ -445,6 +467,9 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client) error 
 					api.votePhaseChecker.Lock()
 					api.votePhaseChecker.Phase = VotePhaseVoteCooldown
 					api.votePhaseChecker.EndTime = time.Now().Add(time.Duration(va.BattleAbility.CooldownDurationSecond) * time.Second)
+					if os.Getenv("GAMESERVER_ENVIRONMENT") == "development" || os.Getenv("GAMESERVER_ENVIRONMENT") == "staging" {
+						api.votePhaseChecker.EndTime = time.Now().Add(5 * time.Second)
+					}
 					api.votePhaseChecker.Unlock()
 
 					// stop vote price update when cooldown
@@ -515,4 +540,59 @@ func (api *API) Close() {
 	if err != nil {
 		api.Log.Warn().Err(err).Msg("")
 	}
+}
+
+func (api *API) GlobalAnnouncementSend(w http.ResponseWriter, r *http.Request) (int, error) {
+	req := &server.GlobalAnnouncement{}
+	err := json.NewDecoder(r.Body).Decode(req)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("invaid request %w", err))
+	}
+
+	defer r.Body.Close()
+
+	if req.Message == "" {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("message cannot be empty %w", err))
+	}
+	if req.Title == "" {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("title cannot be empty %w", err))
+	}
+
+	// delete old announcements
+	err = db.AnnouncementDelete(api.ctx, api.Conn)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to delete announcement %w", err))
+	}
+
+	// insert to db
+	if req.GamesUntil != nil || req.ShowUntil != nil {
+		err = db.AnnouncementCreate(api.ctx, api.Conn, req)
+		if err != nil {
+			return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to create announcement %w", err))
+		}
+	}
+
+	// store in memory
+	api.GlobalAnnouncement = req
+
+	go api.MessageBus.Send(r.Context(), messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), req)
+
+	return http.StatusOK, nil
+}
+
+func (api *API) GlobalAnnouncementDelete(w http.ResponseWriter, r *http.Request) (int, error) {
+	defer r.Body.Close()
+
+	// delete from db
+	err := db.AnnouncementDelete(api.ctx, api.Conn)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to delete announcement %w", err))
+	}
+
+	// remove from memory
+	api.GlobalAnnouncement = nil
+
+	go api.MessageBus.Send(r.Context(), messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), nil)
+
+	return http.StatusOK, nil
 }

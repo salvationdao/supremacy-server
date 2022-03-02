@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"server"
 	"server/battle_arena"
-	"sync/atomic"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -24,6 +23,7 @@ type ViewerCount struct {
 }
 
 type ViewerLiveCount struct {
+	FactionViewerRW  deadlock.RWMutex
 	FactionViewerMap map[server.FactionID]*ViewerCount
 	ViewerIDMap      deadlock.Map
 	NetMessageBus    *messagebus.NetBus
@@ -32,7 +32,9 @@ type ViewerLiveCount struct {
 func NewViewerLiveCount(nmb *messagebus.NetBus) *ViewerLiveCount {
 	vlc := &ViewerLiveCount{
 		FactionViewerMap: make(map[server.FactionID]*ViewerCount),
+		FactionViewerRW:  deadlock.RWMutex{},
 		ViewerIDMap:      deadlock.Map{},
+		NetMessageBus:    nmb,
 	}
 
 	vlc.FactionViewerMap[server.FactionID(uuid.Nil)] = &ViewerCount{0}
@@ -46,6 +48,7 @@ func NewViewerLiveCount(nmb *messagebus.NetBus) *ViewerLiveCount {
 			payload := []byte{}
 			payload = append(payload, byte(battle_arena.NetMessageTypeViewerLiveCountTick))
 
+			vlc.FactionViewerRW.RLock()
 			payload = append(payload, []byte(fmt.Sprintf(
 				"B_%d|R_%d|Z_%d|O_%d",
 				vlc.FactionViewerMap[server.BostonCyberneticsFactionID].Count,
@@ -53,6 +56,7 @@ func NewViewerLiveCount(nmb *messagebus.NetBus) *ViewerLiveCount {
 				vlc.FactionViewerMap[server.ZaibatsuFactionID].Count,
 				vlc.FactionViewerMap[server.FactionID(uuid.Nil)].Count,
 			))...)
+			vlc.FactionViewerRW.RUnlock()
 
 			nmb.Send(context.Background(), messagebus.NetBusKey(HubKeyViewerLiveCountUpdated), payload)
 
@@ -65,24 +69,39 @@ func NewViewerLiveCount(nmb *messagebus.NetBus) *ViewerLiveCount {
 }
 
 func (vcm *ViewerLiveCount) Add(factionID server.FactionID) {
-	if fvm, ok := vcm.FactionViewerMap[factionID]; ok {
-		atomic.AddInt64(&fvm.Count, 1)
+	if !factionID.IsValid() {
+		return
 	}
+	vcm.FactionViewerRW.Lock()
+	if fvm, ok := vcm.FactionViewerMap[factionID]; ok {
+		fvm.Count += 1
+	}
+	vcm.FactionViewerRW.Unlock()
 }
 
 func (vcm *ViewerLiveCount) Sub(factionID server.FactionID) {
-	if fvm, ok := vcm.FactionViewerMap[factionID]; ok {
-		atomic.AddInt64(&fvm.Count, -1)
+	if !factionID.IsValid() {
+		return
 	}
+	vcm.FactionViewerRW.Lock()
+	if fvm, ok := vcm.FactionViewerMap[factionID]; ok {
+		fvm.Count -= 1
+	}
+	vcm.FactionViewerRW.Unlock()
 }
 
 func (vcm *ViewerLiveCount) Swap(oldFactionID, newFactionID server.FactionID) {
+	if !oldFactionID.IsValid() || !newFactionID.IsValid() {
+		return
+	}
+	vcm.FactionViewerRW.Lock()
 	if fvm, ok := vcm.FactionViewerMap[oldFactionID]; ok {
-		atomic.AddInt64(&fvm.Count, -1)
+		fvm.Count -= 1
 	}
 	if fvm, ok := vcm.FactionViewerMap[newFactionID]; ok {
-		atomic.AddInt64(&fvm.Count, 1)
+		fvm.Count += 1
 	}
+	vcm.FactionViewerRW.Unlock()
 }
 
 func (vcm *ViewerLiveCount) IDRecord(userID server.UserID) {
@@ -120,12 +139,17 @@ func (rcm *RingCheckAuthMap) Record(key string, cl *hub.Client) {
 }
 
 func (rcm *RingCheckAuthMap) Check(key string) (*hub.Client, error) {
-	value, ok := rcm.LoadAndDelete(key)
+	value, ok := rcm.Load(key)
 	if !ok {
 		return nil, terror.Error(fmt.Errorf("hub client not found"))
 	}
 
-	return value.(*hub.Client), nil
+	hubc, ok := value.(*hub.Client)
+	if !ok {
+		return nil, terror.Error(fmt.Errorf("hub client not found"))
+	}
+
+	return hubc, nil
 }
 
 /********************

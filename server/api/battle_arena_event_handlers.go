@@ -21,33 +21,6 @@ import (
 func (api *API) BattleInitSignal(ctx context.Context, ed *battle_arena.EventData) {
 	// clean up battle end information
 	api.battleEndInfo = &BattleEndInfo{}
-
-	// pass back nil to tell game ui to clean up current end battle message
-	go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyBattleEndDetailUpdated), nil)
-	// send new queue details
-
-	go func() {
-		for i := range api.BattleArena.BattleQueueMap {
-			api.BattleArena.BattleQueueMap[i] <- func(wmq *battle_arena.WarMachineQueuingList) {
-				// for each queue map
-				userMap := make(map[server.UserID][]*passport.WarMachineQueuePosition)
-
-				for i, wm := range wmq.WarMachines {
-					if _, ok := userMap[wm.OwnedByID]; !ok {
-						userMap[wm.OwnedByID] = []*passport.WarMachineQueuePosition{}
-					}
-					userMap[wm.OwnedByID] = append(userMap[wm.OwnedByID], &passport.WarMachineQueuePosition{
-						WarMachineMetadata: wm,
-						Position:           i + 1,
-					})
-				}
-
-				for u, uwm := range userMap {
-					go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserWarMachineQueueUpdated, u)), uwm)
-				}
-			}
-		}
-	}()
 }
 
 const HubKeyGameSettingsUpdated = hub.HubCommandKey("GAME:SETTINGS:UPDATED")
@@ -55,11 +28,16 @@ const HubKeyGameSettingsUpdated = hub.HubCommandKey("GAME:SETTINGS:UPDATED")
 type GameSettingsResponse struct {
 	GameMap            *server.GameMap              `json:"gameMap"`
 	WarMachines        []*server.WarMachineMetadata `json:"warMachines"`
+	SpawnedAI          []*server.WarMachineMetadata `json:"spawnedAI"`
 	WarMachineLocation []byte                       `json:"warMachineLocation"`
 }
 
 // BattleStartSignal start all the voting cycle
 func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventData) {
+	// getting games left until close and sending to subscribers
+	gamesToClose := api.BattleArena.GetGamesToClose()
+
+	go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyStreamCloseSubscribe), gamesToClose)
 
 	// build faction detail to battle start
 	warMachines := ed.BattleArena.WarMachines
@@ -73,6 +51,7 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 		Payload: &GameSettingsResponse{
 			GameMap:            ed.BattleArena.GameMap,
 			WarMachines:        ed.BattleArena.WarMachines,
+			SpawnedAI:          ed.BattleArena.SpawnedAI,
 			WarMachineLocation: ed.BattleArena.BattleHistory[0],
 		},
 	})
@@ -107,36 +86,36 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 					ab.Title = "FACTION_WIDE"
 					ab.CurrentSups = "0"
 				}
-			}
-
-			for _, wm := range ed.BattleArena.WarMachines {
-				if wm.FactionID != factionID || len(wm.Abilities) == 0 {
-					continue
-				}
-
-				for _, ability := range wm.Abilities {
-					wmAbility := &server.GameAbility{
-						ID:                  server.GameAbilityID(uuid.Must(uuid.NewV4())), // generate a uuid for frontend to track sups contribution
-						Identity:            ability.Identity,
-						GameClientAbilityID: byte(ability.GameClientID),
-						ImageUrl:            ability.Image,
-						Description:         ability.Description,
-						FactionID:           factionID,
-						Label:               ability.Name,
-						SupsCost:            ability.SupsCost,
-						CurrentSups:         "0",
-						AbilityHash:         ability.Hash,
-						WarMachineHash:      wm.Hash,
-						ParticipantID:       &wm.ParticipantID,
-						Title:               wm.Name,
+			} else {
+				for _, wm := range ed.BattleArena.WarMachines {
+					if wm.FactionID != factionID || len(wm.Abilities) == 0 {
+						continue
 					}
-					// if it is zaibatsu faction ability set id back
-					if ability.GameClientID == 11 {
-						wmAbility.ID = ability.ID
-						wmAbility.Colour = ability.Colour
-					}
-					initialAbilities = append(initialAbilities, wmAbility)
 
+					for _, ability := range wm.Abilities {
+						wmAbility := &server.GameAbility{
+							ID:                  server.GameAbilityID(uuid.Must(uuid.NewV4())), // generate a uuid for frontend to track sups contribution
+							Identity:            ability.Identity,
+							GameClientAbilityID: byte(ability.GameClientID),
+							ImageUrl:            ability.Image,
+							Description:         ability.Description,
+							FactionID:           factionID,
+							Label:               ability.Name,
+							SupsCost:            ability.SupsCost,
+							CurrentSups:         "0",
+							AbilityHash:         ability.Hash,
+							WarMachineHash:      wm.Hash,
+							ParticipantID:       &wm.ParticipantID,
+							Title:               wm.Name,
+						}
+						// if it is zaibatsu faction ability set id back
+						if ability.GameClientID == 11 {
+							wmAbility.ID = ability.ID
+							wmAbility.Colour = ability.Colour
+							wmAbility.TextColour = ability.TextColour
+						}
+						initialAbilities = append(initialAbilities, wmAbility)
+					}
 				}
 			}
 
@@ -157,14 +136,13 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 	// stop all the tickles in voting cycle
 	go api.stopGameAbilityPoolTicker()
 
-	battleViewers := api.viewerLiveCount.IDRead()
+	battleViewers := api.ViewerLiveCount.IDRead()
 	// increment users' view battle count
 	err := db.UserBattleViewUpsert(ctx, api.Conn, battleViewers)
 	if err != nil {
 		api.Log.Err(err).Msg("Failed to record users' battle count")
 		return
 	}
-
 	userVoteList := api.stopVotingCycle(ctx)
 	// combine user vote list with user view list
 	addedList := []*server.BattleUserVote{}
@@ -194,41 +172,63 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 			api.Log.Err(err).Msg("Failed to record battle user vote")
 			return
 		}
+
 	}
 
 	// get the user who spend most sups during the battle from passport
 	wg := deadlock.WaitGroup{}
 
 	wg.Add(1)
-	err = api.Passport.TopSupsContributorsGet(ctx, ed.BattleArena.StartedAt, time.Now(), func(msg []byte) {
-		resp := &passport.SupremacyTopSupsContributorResponse{}
-		err := json.Unmarshal(msg, resp)
-		if err != nil {
-			return
+	api.Passport.TopSupsContributorsGet(ed.BattleArena.StartedAt, time.Now(), func(result *passport.TopSupsContributorResp) {
+		// get the top five user
+		topFive := []*server.User{}
+		if len(result.TopSupsContributors) < 5 {
+			topFive = append(topFive, result.TopSupsContributors...)
+		} else {
+			topFive = append(topFive, result.TopSupsContributors[:5]...)
 		}
 
-		for _, topUser := range resp.Payload.TopSupsContributors {
+		// fill user
+		list := []*server.User{}
+		list = append(list, result.TopSupsContributors...)
+		for _, userID := range battleViewers {
+			exist := false
+			for _, user := range result.TopSupsContributors {
+				if user.ID == userID {
+					exist = true
+					break
+				}
+			}
+			if !exist {
+				list = append(list, &server.User{ID: userID})
+			}
+		}
+
+		// calc citizen multipliers
+		api.UserMultiplier.NewCitizenOrder(list)
+
+		// record battle end if
+		api.battleEndInfo.TopSupsContributors = []*server.UserBrief{}
+		api.battleEndInfo.TopSupsContributeFactions = []*server.FactionBrief{}
+		ed.BattleRewardList.TopSupsSpendUsers = []server.UserID{}
+		for _, topUser := range topFive {
 			if !topUser.FactionID.IsNil() {
 				topUser.Faction = api.factionMap[topUser.FactionID]
 			}
 			api.battleEndInfo.TopSupsContributors = append(api.battleEndInfo.TopSupsContributors, topUser.Brief())
 
 			// recorded for sups most spend
+
 			ed.BattleRewardList.TopSupsSpendUsers = append(ed.BattleRewardList.TopSupsSpendUsers, topUser.ID)
 		}
 
-		for _, topFaction := range resp.Payload.TopSupsContributeFactions {
+		for _, topFaction := range result.TopSupsContributeFactions {
 			api.battleEndInfo.TopSupsContributeFactions = append(api.battleEndInfo.TopSupsContributeFactions, topFaction.Brief())
 		}
 
 		wg.Done()
 	})
 	wg.Wait()
-
-	if err != nil {
-		api.Log.Err(err).Msg("Failed to get top sups contributors from passport")
-		return
-	}
 
 	// get most frequent trigger ability user
 	us, err := db.UsersMostFrequentTriggerAbility(ctx, api.Conn, ed.BattleArena.ID)
@@ -251,16 +251,12 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 	if len(userIDs) > 0 {
 		wg := deadlock.WaitGroup{}
 		wg.Add(1)
-		api.Passport.UsersGet(userIDs, func(msg []byte) {
+		api.Passport.UsersGet(userIDs, func(users []*server.User) {
 			defer wg.Done()
-			resp := &passport.GetUsers{}
-			err := json.Unmarshal(msg, resp)
-			if err != nil {
-				return
-			}
 
+			// store users in correct order
 			for _, userID := range userIDs {
-				for _, user := range resp.Users {
+				for _, user := range users {
 					if user.ID == userID {
 						if !user.FactionID.IsNil() {
 							user.Faction = api.factionMap[user.FactionID]
@@ -270,6 +266,7 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 					}
 				}
 			}
+
 		})
 		wg.Wait()
 	}
@@ -299,7 +296,10 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 	}
 
 	// broadcast battle end info back to game ui
-	go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyBattleEndDetailUpdated), api.battleEndInfo)
+	go func() {
+		time.Sleep(15 * time.Second)
+		api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyBattleEndDetailUpdated), api.battleEndInfo)
+	}()
 
 	// refresh user stat
 	if len(battleViewers) > 0 {
@@ -356,11 +356,7 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 		}
 
 		// send faction stat to passport server
-		err = api.Passport.FactionStatsSend(ctx, sendRequest)
-		if err != nil {
-			api.Log.Err(err).Msg("failed to send faction stat")
-			return
-		}
+		api.Passport.FactionStatsSend(sendRequest)
 	}()
 
 }
@@ -388,17 +384,22 @@ func (api *API) WarMachineDestroyedBroadcast(ctx context.Context, ed *battle_are
 	)
 }
 
+func (api *API) AISpawnedBroadcast(ctx context.Context, ed *battle_arena.EventData) {
+	if ed.SpawnedAI == nil {
+		return
+	}
+
+	go api.MessageBus.Send(
+		ctx,
+		messagebus.BusKey(HubKeyAISpawned),
+		ed.SpawnedAI,
+	)
+}
+
 func (api *API) UpdateWarMachinePosition(ctx context.Context, ed *battle_arena.EventData) {
 	if len(ed.BattleArena.WarMachines) == 0 {
 		return
 	}
 
 	api.NetMessageBus.Send(ctx, messagebus.NetBusKey(HubKeyWarMachineLocationUpdated), ed.WarMachineLocation)
-}
-
-func (api *API) UpdateWarMachineQueue(ctx context.Context, ed *battle_arena.EventData) {
-	if ed.WarMachineQueue == nil {
-		return
-	}
-	go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionWarMachineQueueUpdated, ed.WarMachineQueue.FactionID)), ed.WarMachineQueue.WarMachines)
 }

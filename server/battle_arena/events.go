@@ -38,10 +38,10 @@ const (
 	EventGameInit                  Event = "GAME_INIT"
 	EventGameStart                 Event = "GAME_START"
 	EventGameEnd                   Event = "GAME_END"
-	EventWarMachineQueueUpdated    Event = "WAR_MACHINE_QUEUE_UPDATED"
 	EventWarMachineDestroyed       Event = "WAR_MACHINE_DESTROYED"
 	EventFactionViewersGet         Event = "FACTION_VIEWERS_GET"
 	EventWarMachinePositionChanged Event = "WAR_MACHINE_POSITION_CHANGED"
+	EventAISpawned                 Event = "AI_SPAWNED"
 )
 
 type EventData struct {
@@ -52,6 +52,7 @@ type EventData struct {
 	BattleRewardList          *BattleRewardList
 	WarMachineDestroyedRecord *server.WarMachineDestroyedRecord
 	WarMachineQueue           *WarMachineQueueUpdateEvent
+	SpawnedAI                 *server.WarMachineMetadata
 }
 
 type WarMachineQueueUpdateEvent struct {
@@ -131,26 +132,11 @@ func (ba *BattleArena) GetBattleQueue(w http.ResponseWriter, r *http.Request) (i
 		Zaibatsu    []*server.WarMachineMetadata `json:"zaibatsu"`
 		RedMountain []*server.WarMachineMetadata `json:"red_mountain"`
 		Boston      []*server.WarMachineMetadata `json:"boston"`
-	}{}
-
-	wg := deadlock.WaitGroup{}
-	for i := range ba.BattleQueueMap {
-		wg.Add(1)
-		ba.BattleQueueMap[i] <- func(wmq *WarMachineQueuingList) {
-			// for each queue map
-			switch ba.battle.FactionMap[i].Label {
-			case "Zaibatsu Heavy Industries":
-				result.Zaibatsu = wmq.WarMachines
-			case "Boston Cybernetics":
-				result.Boston = wmq.WarMachines
-			case "Red Mountain Offworld Mining Corporation":
-				result.RedMountain = wmq.WarMachines
-			}
-			wg.Done()
-		}
+	}{
+		Zaibatsu:    ba.WarMachineQueue.Zaibatsu.QueuingWarMachines,
+		RedMountain: ba.WarMachineQueue.RedMountain.QueuingWarMachines,
+		Boston:      ba.WarMachineQueue.Boston.QueuingWarMachines,
 	}
-
-	wg.Wait()
 
 	return helpers.EncodeJSON(w, result)
 }
