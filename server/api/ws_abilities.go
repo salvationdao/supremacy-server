@@ -3,10 +3,12 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"server"
 	"server/battle_arena"
+	"server/gamelog"
 	"server/passport"
 	"strings"
 
@@ -55,6 +57,7 @@ type GameAbilityContributeRequest struct {
 const HubKeGameAbilityContribute hub.HubCommandKey = "GAME:ABILITY:CONTRIBUTE"
 
 func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	gamelog.GameLog.Info().Str("fn", "GameAbilityContribute").RawJSON("req", payload).Msg("ws handler")
 	req := &GameAbilityContributeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -64,12 +67,12 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 	// get user detail
 	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
 	if userID.IsNil() {
-		return terror.Error(terror.ErrForbidden)
+		return terror.Error(errors.New("user ID is nil"), "There was a problem getting your user")
 	}
 
 	// check whether the battle is started
 	if fc.API.BattleArena.GetCurrentState().State != server.StateMatchStart {
-		return terror.Error(terror.ErrForbidden, "The battle hasn't started yet")
+		return terror.Error(fmt.Errorf("wrong game state: current state %s, match state %s", fc.API.BattleArena.GetCurrentState().State, server.StateMatchStart), "The battle hasn't started yet")
 	}
 
 	fc.API.votePhaseChecker.RLock()
@@ -80,13 +83,13 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 	fc.API.votePhaseChecker.RUnlock()
 
 	if req.Payload.Amount.Cmp(big.NewInt(0)) <= 0 {
-		return terror.Error(terror.ErrInvalidInput, "Invalid contribute amount")
+		return terror.Error(fmt.Errorf("bad amount: %s", req.Payload.Amount.String()), "Invalid contribute amount")
 	}
 
 	// get client detail
 	hcd := fc.API.UserMap.GetUserDetail(wsc)
 	if hcd == nil {
-		return terror.Error(fmt.Errorf("User not found"))
+		return terror.Error(errors.New("nil hcd"), "User not found")
 	}
 
 	factionID := hcd.FactionID
@@ -95,7 +98,7 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 	oneSups := big.NewInt(0)
 	oneSups, ok := oneSups.SetString("1000000000000000000", 10)
 	if !ok {
-		return terror.Error(fmt.Errorf("unable to convert 1000000000000000000 to big int"))
+		return terror.Error(fmt.Errorf("unable to convert 1000000000000000000 to big int"), "There was an issue calculating the SUPS")
 	}
 	req.Payload.Amount.Mul(&req.Payload.Amount.Int, oneSups)
 
@@ -104,7 +107,7 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 
 		faIface, ok := fap.Load(req.Payload.GameAbilityID.String())
 		if !ok {
-			fc.Log.Err(fmt.Errorf("error doesn't exist"))
+			fc.Log.Err(errors.New("could not load")).Msg("fap load")
 			return
 		}
 
@@ -134,11 +137,11 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 				FromUserID:           userID,
 				Amount:               reduceAmount.String(),
 				TransactionReference: server.TransactionReference(fmt.Sprintf("%s|%s", reason, uuid.Must(uuid.NewV4()))),
-				GroupID:              fc.API.BattleArena.CurrentBattleID().String(),
+				GroupID:              "Battle",
 			}, func(transaction string) {
 				faIface, ok := fap.Load(req.Payload.GameAbilityID.String())
 				if !ok {
-					fc.Log.Err(fmt.Errorf("error doesn't exist"))
+					fc.Log.Err(errors.New("could not load")).Msg("fap load")
 					return
 				}
 
@@ -283,6 +286,7 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 const HubKeyFactionAbilitiesUpdated hub.HubCommandKey = "FACTION:ABILITIES:UPDATED"
 
 func (fc *FactionControllerWS) FactionAbilitiesUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	gamelog.GameLog.Info().Str("fn", "FactionAbilitiesUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -291,7 +295,7 @@ func (fc *FactionControllerWS) FactionAbilitiesUpdateSubscribeHandler(ctx contex
 
 	hcd := fc.API.UserMap.GetUserDetail(wsc)
 	if hcd == nil {
-		return "", "", terror.Error(fmt.Errorf("User not found"))
+		return "", "", terror.Error(fmt.Errorf("hcd is nil"), "User not found")
 	}
 
 	// skip, if faction is zaibatsu
@@ -330,6 +334,7 @@ type WarMachineAbilitiesUpdatedRequest struct {
 
 // WarMachineAbilitiesUpdateSubscribeHandler subscribe on war machine abilities
 func (fc *FactionControllerWS) WarMachineAbilitiesUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	gamelog.GameLog.Info().Str("fn", "WarMachineAbilitiesUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &WarMachineAbilitiesUpdatedRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -338,7 +343,7 @@ func (fc *FactionControllerWS) WarMachineAbilitiesUpdateSubscribeHandler(ctx con
 
 	hcd := fc.API.UserMap.GetUserDetail(wsc)
 	if hcd == nil {
-		return "", "", terror.Error(fmt.Errorf("User not found"))
+		return "", "", terror.Error(fmt.Errorf("hcd is nil"), "User not found")
 	}
 
 	fc.API.gameAbilityPool[hcd.FactionID](func(fap *deadlock.Map) {
