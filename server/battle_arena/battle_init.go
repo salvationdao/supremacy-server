@@ -3,6 +3,7 @@ package battle_arena
 import (
 	"context"
 	"server"
+	"server/comms"
 	"server/db"
 	"server/passport"
 	"time"
@@ -51,15 +52,15 @@ func (ba *BattleArena) InitNextBattle() error {
 	ba.battle.WarMachines = append(ba.battle.WarMachines, ba.WarMachineQueue.Zaibatsu.GetWarMachineForEnterGame(mechsPerFaction)...)
 
 	// broadcast warmachine stat to passport
-	broadcastList := []*passport.WarMachineQueueStat{}
+	broadcastList := []*comms.WarMachineQueueStat{}
 	// Red mountain
 	for i, wm := range ba.WarMachineQueue.RedMountain.QueuingWarMachines {
 		position := i + 1
-		broadcastList = append(broadcastList, &passport.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
+		broadcastList = append(broadcastList, &comms.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
 	}
 	for _, wm := range ba.WarMachineQueue.RedMountain.InGameWarMachines {
 		position := -1
-		broadcastList = append(broadcastList, &passport.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
+		broadcastList = append(broadcastList, &comms.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
 	}
 	ba.passport.FactionQueueCostUpdate(&passport.FactionQueuePriceUpdateReq{
 		FactionID:     server.RedMountainFactionID,
@@ -69,11 +70,11 @@ func (ba *BattleArena) InitNextBattle() error {
 	// Boston
 	for i, wm := range ba.WarMachineQueue.Boston.QueuingWarMachines {
 		position := i + 1
-		broadcastList = append(broadcastList, &passport.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
+		broadcastList = append(broadcastList, &comms.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
 	}
 	for _, wm := range ba.WarMachineQueue.Boston.InGameWarMachines {
 		position := -1
-		broadcastList = append(broadcastList, &passport.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
+		broadcastList = append(broadcastList, &comms.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
 	}
 	ba.passport.FactionQueueCostUpdate(&passport.FactionQueuePriceUpdateReq{
 		FactionID:     server.BostonCyberneticsFactionID,
@@ -83,11 +84,11 @@ func (ba *BattleArena) InitNextBattle() error {
 	// Zaibatsu
 	for i, wm := range ba.WarMachineQueue.Zaibatsu.QueuingWarMachines {
 		position := i + 1
-		broadcastList = append(broadcastList, &passport.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
+		broadcastList = append(broadcastList, &comms.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
 	}
 	for _, wm := range ba.WarMachineQueue.Zaibatsu.InGameWarMachines {
 		position := -1
-		broadcastList = append(broadcastList, &passport.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
+		broadcastList = append(broadcastList, &comms.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
 	}
 	ba.passport.FactionQueueCostUpdate(&passport.FactionQueuePriceUpdateReq{
 		FactionID:     server.ZaibatsuFactionID,

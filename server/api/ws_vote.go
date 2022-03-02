@@ -3,9 +3,11 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"server"
+	"server/gamelog"
 	"server/passport"
 	"time"
 
@@ -58,6 +60,7 @@ func NewVoteController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *VoteC
 const HubKeyFactionVotePrice hub.HubCommandKey = "FACTION:VOTE:PRICE"
 
 func (vc *VoteControllerWS) FactionVotePrice(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	gamelog.GameLog.Info().Str("fn", "FactionVotePrice").RawJSON("req", payload).Msg("ws handler")
 	hcd := vc.API.UserMap.GetUserDetail(wsc)
 	if hcd == nil {
 		return terror.Error(terror.ErrForbidden)
@@ -86,34 +89,35 @@ type AbilityRightVoteRequest struct {
 const HubKeyVoteAbilityRight hub.HubCommandKey = "VOTE:ABILITY:RIGHT"
 
 func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	gamelog.GameLog.Info().Str("fn", "AbilityRight").RawJSON("req", payload).Msg("ws handler")
 	req := &AbilityRightVoteRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err)
+		return terror.Error(err, "There was a problem parsing the data")
 	}
 
 	// get user detail
 	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
 	if userID.IsNil() {
-		return terror.Error(terror.ErrForbidden)
+		return terror.Error(errors.New("user ID is nil"), "There was a problem getting your user")
 	}
 
 	if vc.API.BattleArena.GetCurrentState().State != server.StateMatchStart {
-		return terror.Error(terror.ErrForbidden, "Error - battle has not started yet")
+		return terror.Error(fmt.Errorf("wrong game state: current state %s, match state %s", vc.API.BattleArena.GetCurrentState().State, server.StateMatchStart), "Error - battle has not started yet")
 	}
 
 	// check voting phase first
 	if vc.API.votePhaseChecker.Phase != VotePhaseVoteAbilityRight && vc.API.votePhaseChecker.Phase != VotePhaseNextVoteWin {
-		return terror.Error(terror.ErrForbidden, "Error - Invalid voting phase")
+		return terror.Error(fmt.Errorf("bad vote phase: phase %s, right %s, nextWin %s", vc.API.votePhaseChecker.Phase, VotePhaseVoteAbilityRight, VotePhaseNextVoteWin), "Error - Invalid voting phase")
 	}
 
 	if req.Payload.VoteAmount <= 0 {
-		return terror.Error(terror.ErrInvalidInput, "Invalid vote amount")
+		return terror.Error(fmt.Errorf("bad vote amount: %v", req.Payload.VoteAmount), "Invalid vote amount")
 	}
 
 	hcd := vc.API.UserMap.GetUserDetail(wsc)
 	if hcd == nil {
-		return terror.Error(terror.ErrForbidden)
+		return terror.Error(err, "Could not get user details")
 	}
 
 	// get current faction vote price
@@ -228,6 +232,7 @@ type AbilityLocationSelectRequest struct {
 const HubKeyAbilityLocationSelect hub.HubCommandKey = "ABILITY:LOCATION:SELECT"
 
 func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	gamelog.GameLog.Info().Str("fn", "AbilityLocationSelect").RawJSON("req", payload).Msg("ws handler")
 	req := &AbilityLocationSelectRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -338,6 +343,7 @@ const HubKeyVoteWinnerAnnouncement hub.HubCommandKey = "VOTE:WINNER:ANNOUNCEMENT
 
 // WinnerAnnouncementSubscribeHandler subscribe on vote winner to pick location
 func (vc *VoteControllerWS) WinnerAnnouncementSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	gamelog.GameLog.Info().Str("fn", "WinnerAnnouncementSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -358,6 +364,7 @@ const HubKeyVoteBattleAbilityUpdated hub.HubCommandKey = "VOTE:BATTLE:ABILITY:UP
 
 // BattleAbilityUpdateSubscribeHandler to subscribe to game event
 func (vc *VoteControllerWS) BattleAbilityUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	gamelog.GameLog.Info().Str("fn", "BattleAbilityUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -382,6 +389,7 @@ const HubKeyVoteStageUpdated hub.HubCommandKey = "VOTE:STAGE:UPDATED"
 
 // VoteStageUpdateSubscribeHandler to subscribe on vote stage
 func (vc *VoteControllerWS) VoteStageUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	gamelog.GameLog.Info().Str("fn", "VoteStageUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -401,6 +409,7 @@ const HubKeyLiveVoteUpdated hub.HubCommandKey = "LIVE:VOTE:UPDATED"
 
 // AbilityRightRatioUpdateSubscribeHandler to subscribe on ability right ratio update
 func (vc *VoteControllerWS) LiveVoteUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.NetBusKey, error) {
+	gamelog.GameLog.Info().Str("fn", "LiveVoteUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
 	return messagebus.NetBusKey(HubKeyLiveVoteUpdated), nil
 }
 
@@ -408,18 +417,21 @@ const HubKeyWarMachineLocationUpdated hub.HubCommandKey = "WAR:MACHINE:LOCATION:
 
 // AbilityRightRatioUpdateSubscribeHandler to subscribe on ability right ratio update
 func (vc *VoteControllerWS) WarMachineLocationUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.NetBusKey, error) {
+	gamelog.GameLog.Info().Str("fn", "WarMachineLocationUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
 	return messagebus.NetBusKey(HubKeyWarMachineLocationUpdated), nil
 }
 
 const HubKeyViewerLiveCountUpdated hub.HubCommandKey = "VIEWER:LIVE:COUNT:UPDATED"
 
 func (vc *VoteControllerWS) ViewerLiveCountUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.NetBusKey, error) {
+	gamelog.GameLog.Info().Str("fn", "ViewerLiveCountUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
 	return messagebus.NetBusKey(HubKeyViewerLiveCountUpdated), nil
 }
 
 const HubKeySpoilOfWarUpdated hub.HubCommandKey = "SPOIL:OF:WAR:UPDATED"
 
 func (vc *VoteControllerWS) SpoilOfWarUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.NetBusKey, error) {
+	gamelog.GameLog.Info().Str("fn", "SpoilOfWarUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
 	return messagebus.NetBusKey(HubKeySpoilOfWarUpdated), nil
 }
 
@@ -427,6 +439,7 @@ const HubKeyAbilityRightRatioUpdated hub.HubCommandKey = "ABILITY:RIGHT:RATIO:UP
 
 // AbilityRightRatioUpdateSubscribeHandler to subscribe on ability right ratio update
 func (vc *VoteControllerWS) AbilityRightRatioUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.NetBusKey, error) {
+	gamelog.GameLog.Info().Str("fn", "AbilityRightRatioUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
 	busKey := messagebus.NetBusKey(HubKeyAbilityRightRatioUpdated)
 	return busKey, nil
 }
@@ -434,6 +447,7 @@ func (vc *VoteControllerWS) AbilityRightRatioUpdateSubscribeHandler(ctx context.
 const HubKeyFactionAbilityPriceUpdated hub.HubCommandKey = "FACTION:ABILITY:PRICE:UPDATED"
 
 func (vc *VoteControllerWS) FactionAbilityPriceUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.NetBusKey, error) {
+	gamelog.GameLog.Info().Str("fn", "FactionAbilityPriceUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
 	// get user faction
 	hcd := vc.API.UserMap.GetUserDetail(wsc)
 	if hcd == nil {
@@ -448,6 +462,7 @@ func (vc *VoteControllerWS) FactionAbilityPriceUpdateSubscribeHandler(ctx contex
 const HubKeyFactionVotePriceUpdated hub.HubCommandKey = "FACTION:VOTE:PRICE:UPDATED"
 
 func (vc *VoteControllerWS) FactionVotePriceUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.NetBusKey, error) {
+	gamelog.GameLog.Info().Str("fn", "FactionVotePriceUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
 	// get user faction
 	hcd := vc.API.UserMap.GetUserDetail(wsc)
 	if hcd == nil {
