@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"server"
 	"server/comms"
+	"server/db"
 	"server/passport"
 	"time"
 
@@ -16,7 +17,6 @@ import (
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
-	"github.com/shopspring/decimal"
 )
 
 // GameControllerWS holds handlers for checking server status
@@ -94,46 +94,26 @@ func (gc *GameControllerWS) WarMachineQueueLeaveHandler(ctx context.Context, wsc
 	}
 
 	broadcastData := []*comms.WarMachineQueueStat{}
-	fee := decimal.Zero
+	fee, err := db.BattleQueueGetFee(context.Background(), gc.Conn, req.Payload.Hash)
+	if err != nil {
+		return err
+	}
+
 	switch user.FactionID {
 	case server.RedMountainFactionID:
-		fee, err = gc.API.BattleArena.WarMachineQueue.RedMountain.Leave(user.ID, req.Payload.Hash)
+		err = gc.API.BattleArena.WarMachineQueue.RedMountain.Leave(req.Payload.Hash)
 		if err != nil {
 			return terror.Error(err)
-		}
-		for i, wm := range gc.API.BattleArena.WarMachineQueue.RedMountain.QueuingWarMachines {
-			position := i + 1
-			broadcastData = append(broadcastData, &comms.WarMachineQueueStat{
-				Hash:           wm.Hash,
-				Position:       &position,
-				ContractReward: wm.ContractReward,
-			})
 		}
 	case server.BostonCyberneticsFactionID:
-		fee, err = gc.API.BattleArena.WarMachineQueue.Boston.Leave(user.ID, req.Payload.Hash)
+		err = gc.API.BattleArena.WarMachineQueue.Boston.Leave(req.Payload.Hash)
 		if err != nil {
 			return terror.Error(err)
-		}
-		for i, wm := range gc.API.BattleArena.WarMachineQueue.RedMountain.QueuingWarMachines {
-			position := i + 1
-			broadcastData = append(broadcastData, &comms.WarMachineQueueStat{
-				Hash:           wm.Hash,
-				Position:       &position,
-				ContractReward: wm.ContractReward,
-			})
 		}
 	case server.ZaibatsuFactionID:
-		fee, err = gc.API.BattleArena.WarMachineQueue.Zaibatsu.Leave(user.ID, req.Payload.Hash)
+		err = gc.API.BattleArena.WarMachineQueue.Zaibatsu.Leave(req.Payload.Hash)
 		if err != nil {
 			return terror.Error(err)
-		}
-		for i, wm := range gc.API.BattleArena.WarMachineQueue.RedMountain.QueuingWarMachines {
-			position := i + 1
-			broadcastData = append(broadcastData, &comms.WarMachineQueueStat{
-				Hash:           wm.Hash,
-				Position:       &position,
-				ContractReward: wm.ContractReward,
-			})
 		}
 	}
 
@@ -141,7 +121,7 @@ func (gc *GameControllerWS) WarMachineQueueLeaveHandler(ctx context.Context, wsc
 	gc.API.Passport.SpendSupMessage(passport.SpendSupsReq{
 		FromUserID:           server.XsynTreasuryUserID,
 		ToUserID:             &user.ID,
-		Amount:               fee.String(),
+		Amount:               fee,
 		TransactionReference: server.TransactionReference(fmt.Sprintf("refund|war_machine_queuing_fee|%s", uuid.Must(uuid.NewV4()))),
 	}, func(transaction string) {})
 

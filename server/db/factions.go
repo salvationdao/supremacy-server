@@ -1,12 +1,10 @@
 package db
 
 import (
-	"fmt"
 	"server"
 
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/ninja-software/terror/v2"
-	"github.com/shopspring/decimal"
 	"golang.org/x/net/context"
 )
 
@@ -61,28 +59,6 @@ func FactionVotePriceUpdate(ctx context.Context, conn Conn, faction *server.Fact
 	}
 
 	return nil
-}
-
-// FactionContractRewardGet create a new faction
-func FactionContractRewardGet(ctx context.Context, conn Conn, factionID server.FactionID) (decimal.Decimal, error) {
-	var contractReward string
-
-	q := `
-		SELECT contract_reward FROM factions
-		WHERE id = $1
-	`
-
-	err := pgxscan.Get(ctx, conn, &contractReward, q, factionID)
-	if err != nil {
-		return decimal.Zero, terror.Error(err)
-	}
-
-	result, err := decimal.NewFromString(contractReward)
-	if err != nil {
-		return decimal.Zero, fmt.Errorf("invalid decimal: %w", err)
-	}
-
-	return result, nil
 }
 
 // FactionContractRewardUpdate create a new faction

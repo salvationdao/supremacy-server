@@ -165,11 +165,6 @@ func (fq *FactionQueue) Init(faction *server.Faction) error {
 	if wms == nil {
 		wms = []*server.WarMachineMetadata{}
 	}
-	// set up contract reward
-	contractReward, err := db.FactionContractRewardGet(context.Background(), fq.Conn, faction.ID)
-	if err != nil {
-		return terror.Error(err, "failed to get contract reward")
-	}
 
 	// chuck war machines into list
 	fq.QueuingWarMachines = wms
@@ -178,9 +173,6 @@ func (fq *FactionQueue) Init(faction *server.Faction) error {
 	for _, wm := range fq.QueuingWarMachines {
 		wm.Faction = faction
 	}
-
-	// set up faction contract reward
-	fq.ContractReward.Amount.Add(fq.ContractReward.Amount, contractReward.BigInt())
 
 	var bi int64 = 250000000000000000
 	feed := QueueFeed{
@@ -197,63 +189,28 @@ func (fq *FactionQueue) Init(faction *server.Faction) error {
 	return nil
 }
 
-func (fq *FactionQueue) Leave(userID server.UserID, hash string) (decimal.Decimal, error) {
-	index := -1
-	fee := decimal.Zero
-	for i, wm := range fq.QueuingWarMachines {
-		if wm.Hash == hash {
-			if wm.OwnedByID != userID {
-				return decimal.Zero, terror.Error(fmt.Errorf("The mech does not own by the user"))
-			}
-			index = i
-			fee = wm.Fee
-			break
-		}
-	}
-
-	if index == -1 {
-		return decimal.Zero, terror.Error(fmt.Errorf("Mech not found"))
-	}
-
-	// remove mech from queue
-	fq.QueuingWarMachines[index] = fq.QueuingWarMachines[len(fq.QueuingWarMachines)-1]
-	fq.QueuingWarMachines[len(fq.QueuingWarMachines)-1] = nil
-	fq.QueuingWarMachines = fq.QueuingWarMachines[:len(fq.QueuingWarMachines)-1]
-
-	return fee, nil
+func remove(slice []int, s int) []int {
+	return append(slice[:s], slice[s+1:]...)
 }
 
-// UpdateContractReward update contract reward when battle end
-func (fq *FactionQueue) UpdateContractReward(winningFactionID server.FactionID) error {
-	fq.ContractReward.Lock()
-	defer fq.ContractReward.Unlock()
-	//if winningFactionID == fq.ID {
-	//	// decrease 2.5% if win a battle
-	//	fq.ContractReward.Amount.Mul(fq.ContractReward.Amount, big.NewInt(975))
-	//	fq.ContractReward.Amount.Div(fq.ContractReward.Amount, big.NewInt(1000))
-	//} else {
-	//	// increase 2.5% if loss a battle
-	//	fq.ContractReward.Amount.Mul(fq.ContractReward.Amount, big.NewInt(1025))
-	//	fq.ContractReward.Amount.Div(fq.ContractReward.Amount, big.NewInt(1000))
-	//}
-
-	newReward := big.NewInt(int64(fq.QueuingLength()))
-	newReward = newReward.Mul(newReward, big.NewInt(2))
-	fq.ContractReward.Amount = newReward
-
-	// store contract reward into
-	err := db.FactionContractRewardUpdate(context.Background(), fq.Conn, fq.ID, fq.ContractReward.Amount.String())
+func (fq *FactionQueue) Leave(hash string) error {
+	err := db.BattleQueueRemove(context.Background(), fq.Conn, hash)
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
-	return nil
-}
+	wms, err := db.BattleQueueGetByFactionID(context.Background(), fq.Conn, fq.ID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return terror.Error(err, "failed to read battle queue list from db")
+	}
 
-// GetContractReward return contract reward for current faction queue
-func (fq *FactionQueue) GetContractReward() string {
-	fq.ContractReward.RLock()
-	defer fq.ContractReward.RUnlock()
-	return fq.ContractReward.Amount.String()
+	if wms == nil {
+		wms = []*server.WarMachineMetadata{}
+	}
+
+	// chuck war machines into list
+	fq.QueuingWarMachines = wms
+
+	return err
 }
 
 // return the length of current queuing list
@@ -289,16 +246,6 @@ func (wmq *WarMachineQueue) Join(wmm *server.WarMachineMetadata, isInsured bool)
 }
 
 func (fq *FactionQueue) Join(wmm *server.WarMachineMetadata, isInsured bool, faction *server.Faction) error {
-	// reject queue if already in the queue
-	if index := checkWarMachineExist(fq.QueuingWarMachines, wmm.Hash); index != -1 {
-		return terror.Error(fmt.Errorf("war machine is already in the queue"), "war machine "+wmm.Hash+" is already in queue")
-	}
-
-	// reject if already in the game
-	if index := checkWarMachineExist(fq.InGameWarMachines, wmm.Hash); index != -1 {
-		return terror.Error(fmt.Errorf("war machine is currently in game"), "war machine "+wmm.Hash+" is currently in game")
-	}
-
 	contractReward := decimal.New(int64(len(fq.QueuingWarMachines)+1)*2, 18)
 
 	fee := decimal.New(int64(len(fq.QueuingWarMachines)+1), 18).Mul(decimal.NewFromFloat(0.25))
@@ -340,7 +287,7 @@ func (fq *FactionQueue) GetWarMachineForEnterGame(desireAmount int) []*server.Wa
 
 		// clear the queue
 		for _, wm := range newList {
-			err := db.BattleQueueRemove(context.Background(), fq.Conn, wm)
+			err := db.BattleQueueRemove(context.Background(), fq.Conn, wm.Hash)
 			if err != nil {
 				fq.log.Err(err)
 			}
@@ -360,7 +307,7 @@ func (fq *FactionQueue) GetWarMachineForEnterGame(desireAmount int) []*server.Wa
 	newList = append(newList, fq.QueuingWarMachines[:desireAmount]...)
 
 	for _, wm := range newList {
-		err := db.BattleQueueRemove(context.Background(), fq.Conn, wm)
+		err := db.BattleQueueRemove(context.Background(), fq.Conn, wm.Hash)
 		if err != nil {
 			fq.log.Err(err)
 		}
@@ -373,16 +320,6 @@ func (fq *FactionQueue) GetWarMachineForEnterGame(desireAmount int) []*server.Wa
 	fq.QueuingWarMachines = fq.QueuingWarMachines[desireAmount:]
 
 	return newList
-}
-
-// checkWarMachineExist return true if war machine already exist in the list
-func checkWarMachineExist(list []*server.WarMachineMetadata, hash string) int {
-	for i, wm := range list {
-		if wm.Hash == hash {
-			return i
-		}
-	}
-	return -1
 }
 
 func (wmq *WarMachineQueue) GetWarMachineQueue(factionID server.FactionID, hash string) (*int, decimal.Decimal) {

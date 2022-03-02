@@ -182,12 +182,12 @@ func BattleQueueInsert(ctx context.Context, conn Conn, warMachineMetadata *serve
 
 	q := `
 		INSERT INTO 
-			battle_war_machine_queues (war_machine_metadata, contract_reward, is_insured, fee)
+			battle_war_machine_queues (war_machine_hash, faction_id, war_machine_metadata, contract_reward, is_insured, fee)
 		VALUES
-			($1, $2, $3, $4)
+			($1, $2, $3, $4, $5, $6)
 	`
 
-	_, err = conn.Exec(ctx, q, jb, contractReward, isInsured, fee)
+	_, err = conn.Exec(ctx, q, warMachineMetadata.Hash, warMachineMetadata.FactionID, jb, contractReward, isInsured, fee)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -195,49 +195,42 @@ func BattleQueueInsert(ctx context.Context, conn Conn, warMachineMetadata *serve
 	return nil
 }
 
-func BattleQueueWarMachineUpdate(ctx context.Context, conn Conn, warMachineMetadata *server.WarMachineMetadata) error {
-	gamelog.GameLog.Info().Str("fn", "BattleQueueWarMachineUpdate").Msg("db func")
-	// marshal metadata
-	jb, err := json.Marshal(warMachineMetadata)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	q := `
-	UPDATE
-		battle_war_machine_queues
-	SET
-		war_machine_metadata = $1
-	WHERE
-		war_machine_metadata ->> 'hash' = $2 AND deleted_at ISNULL
-	`
-
-	_, err = conn.Exec(ctx, q, jb, warMachineMetadata.Hash)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	return nil
-}
-
-func BattleQueueRemove(ctx context.Context, conn Conn, warMachineMetadata *server.WarMachineMetadata) error {
+func BattleQueueRemove(ctx context.Context, conn Conn, hash string) error {
 	gamelog.GameLog.Info().Str("fn", "BattleQueueRemove").Msg("db func")
 	q := `
-			UPDATE
+			DELETE FROM
 				battle_war_machine_queues
-			SET
-				deleted_at = NOW()
 			WHERE
-				war_machine_metadata ->> 'hash' = $1 AND 
-				deleted_at ISNULL
+				war_machine_hash = $1
 		`
 
-	_, err := conn.Exec(ctx, q, warMachineMetadata.Hash)
+	_, err := conn.Exec(ctx, q, hash)
 	if err != nil {
 		return terror.Error(err)
 	}
 
 	return nil
+}
+
+func BattleQueueGetFee(ctx context.Context, conn Conn, hash string) (string, error) {
+	gamelog.GameLog.Info().Str("fn", "BattleQueueGetFee").Msg("db func")
+	q := `
+			SELECT
+				fee
+			FROM
+				battle_war_machine_queues
+			WHERE
+				war_machine_hash = $1
+		`
+
+	result := ""
+
+	err := pgxscan.Get(ctx, conn, &result, q, hash)
+	if err != nil {
+		return "", terror.Error(err)
+	}
+
+	return result, nil
 }
 
 func BattleQueueGetByFactionID(ctx context.Context, conn Conn, factionID server.FactionID) ([]*server.WarMachineMetadata, error) {
@@ -245,11 +238,11 @@ func BattleQueueGetByFactionID(ctx context.Context, conn Conn, factionID server.
 	bqs := []*server.BattleQueueMetadata{}
 	q := `
 			SELECT
-				war_machine_metadata, contract_reward, fee
+				war_machine_hash, faction_id, war_machine_metadata, contract_reward, fee
 			FROM
 				battle_war_machine_queues
 			WHERE
-				war_machine_metadata ->> 'factionID' = $1 AND deleted_at ISNULL
+				faction_id = $1
 			ORDER BY
 				queued_at asc
 		`
@@ -288,7 +281,7 @@ func AssetQueuingStat(ctx context.Context, conn Conn, hash string) (*server.Batt
 		FROM
 			battle_war_machine_queues
 		WHERE
-			war_machine_metadata ->> 'hash' = $1 AND deleted_at ISNULL
+			war_machine_hash = $1
 		limit 1
 	`
 	err := pgxscan.Get(ctx, conn, result, q, hash)

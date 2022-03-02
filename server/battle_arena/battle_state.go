@@ -298,7 +298,7 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 				return terror.Error(err)
 			}
 
-			err = db.BattleQueueRemove(ctx, tx, bwm)
+			err = db.BattleQueueRemove(ctx, tx, bwm.Hash)
 			if err != nil {
 				ba.Log.Err(err).Msgf("Failed to remove battle queue cache in db, token id: %s ", bwm.Hash)
 			}
@@ -322,7 +322,7 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 			return terror.Error(err)
 		}
 
-		err = db.BattleQueueRemove(ctx, tx, bwm)
+		err = db.BattleQueueRemove(ctx, tx, bwm.Hash)
 		if err != nil {
 			ba.Log.Err(err).Msgf("Failed to remove battle queue cache in db, token id: %s ", bwm.Hash)
 		}
@@ -333,21 +333,8 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 
 	}
 	// broadcast queuing stat to passport server
-	ba.passport.WarMachineQueuePositionBroadcast(wmq)
 
-	// recalculate contract reward
-	err = ba.WarMachineQueue.RedMountain.UpdateContractReward(battleRewardList.WinnerFactionID)
-	if err != nil {
-		return terror.Error(err)
-	}
-	err = ba.WarMachineQueue.Boston.UpdateContractReward(battleRewardList.WinnerFactionID)
-	if err != nil {
-		return terror.Error(err)
-	}
-	err = ba.WarMachineQueue.Zaibatsu.UpdateContractReward(battleRewardList.WinnerFactionID)
-	if err != nil {
-		return terror.Error(err)
-	}
+	ba.passport.WarMachineQueuePositionBroadcast(wmq)
 
 	ba.battle.WarMachines = []*server.WarMachineMetadata{}
 	ba.battle.WinningWarMachines = winningMachines

@@ -43,7 +43,6 @@ func PassportWebhookRouter(log *zerolog.Logger, conn db.Conn, webhookSecret stri
 
 	r.Post("/user_stat", WithPassportSecret(webhookSecret, WithError(c.UserStatGet)))
 	r.Post("/faction_stat", WithPassportSecret(webhookSecret, WithError(c.FactionStatGet)))
-	r.Post("/faction_contract_reward", WithPassportSecret(webhookSecret, WithError(c.FactionContractRewardGet)))
 
 	r.Post("/faction_queue_cost", WithPassportSecret(webhookSecret, WithError(c.FactionQueueCostGet)))
 
@@ -296,53 +295,6 @@ func (pc *PassportWebhookController) FactionStatGet(w http.ResponseWriter, r *ht
 	}
 
 	return helpers.EncodeJSON(w, factionStat)
-}
-
-type FactionContractRewardGetRequest struct {
-	FactionID server.FactionID `json:"factionID"`
-}
-
-func (pc *PassportWebhookController) FactionContractRewardGet(w http.ResponseWriter, r *http.Request) (int, error) {
-	req := &FactionContractRewardGetRequest{}
-	err := json.NewDecoder(r.Body).Decode(req)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err)
-	}
-
-	if req.FactionID.IsNil() || !req.FactionID.IsValid() {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("faction id is empty"), "Faction id is required")
-	}
-	if pc.API.BattleArena == nil {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("battle arena is nil"), "Battle arena is nil")
-	}
-	if pc.API.BattleArena.WarMachineQueue == nil {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("WarMachineQueue is nil"), "WarMachineQueue is nil")
-	}
-	if pc.API.BattleArena.WarMachineQueue.RedMountain == nil {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("RedMountain is nil"), "RedMountain is nil")
-	}
-	if pc.API.BattleArena.WarMachineQueue.Boston == nil {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("Boston is nil"), "Boston is nil")
-	}
-	if pc.API.BattleArena.WarMachineQueue.Zaibatsu == nil {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("Zaibatsu is nil"), "Zaibatsu is nil")
-	}
-
-	contractReward := "0"
-	switch req.FactionID {
-	case server.RedMountainFactionID:
-		contractReward = pc.API.BattleArena.WarMachineQueue.RedMountain.GetContractReward()
-	case server.BostonCyberneticsFactionID:
-		contractReward = pc.API.BattleArena.WarMachineQueue.Boston.GetContractReward()
-	case server.ZaibatsuFactionID:
-		contractReward = pc.API.BattleArena.WarMachineQueue.Zaibatsu.GetContractReward()
-	}
-
-	return helpers.EncodeJSON(w, struct {
-		ContractReward string `json:"contractReward"`
-	}{
-		ContractReward: contractReward,
-	})
 }
 
 type WarMachineQueuePositionRequest struct {
