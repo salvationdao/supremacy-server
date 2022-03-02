@@ -21,6 +21,9 @@ import (
 type GameAbilityPrice struct {
 	GameAbility *server.GameAbility
 
+	deadlock.RWMutex
+	isReached bool
+
 	PriceRW        deadlock.RWMutex
 	MaxTargetPrice server.BigInt
 	TargetPrice    server.BigInt

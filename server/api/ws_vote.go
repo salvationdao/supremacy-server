@@ -103,16 +103,25 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 	}
 
 	if vc.API.BattleArena.GetCurrentState().State != server.StateMatchStart {
-		return terror.Error(fmt.Errorf("wrong game state: current state %s, match state %s", vc.API.BattleArena.GetCurrentState().State, server.StateMatchStart), "Error - battle has not started yet")
+		gamelog.GameLog.Warn().Str("battle_arena_state", string(vc.API.BattleArena.GetCurrentState().State)).Str("want", string(server.StateMatchStart)).Msg("wrong game state")
+		return nil
 	}
 
 	// check voting phase first
+	vc.API.votePhaseChecker.RLock()
 	if vc.API.votePhaseChecker.Phase != VotePhaseVoteAbilityRight && vc.API.votePhaseChecker.Phase != VotePhaseNextVoteWin {
-		return terror.Error(fmt.Errorf("bad vote phase: phase %s, right %s, nextWin %s", vc.API.votePhaseChecker.Phase, VotePhaseVoteAbilityRight, VotePhaseNextVoteWin), "Error - Invalid voting phase")
+		gamelog.GameLog.
+			Warn().
+			Str("server_phase", string(vc.API.votePhaseChecker.Phase)).
+			Msg("wrong vote phase (can only vote in next vote win or ability vote right phase)")
+		vc.API.votePhaseChecker.RUnlock()
+		return nil
 	}
+	vc.API.votePhaseChecker.RUnlock()
 
 	if req.Payload.VoteAmount <= 0 {
-		return terror.Error(fmt.Errorf("bad vote amount: %v", req.Payload.VoteAmount), "Invalid vote amount")
+		gamelog.GameLog.Warn().Int64("amt", req.Payload.VoteAmount).Msg("negative or zero vote amount")
+		return nil
 	}
 
 	hcd := vc.API.UserMap.GetUserDetail(wsc)
@@ -138,6 +147,18 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 			TransactionReference: server.TransactionReference(fmt.Sprintf("%s|%s", reason, uuid.Must(uuid.NewV4()))),
 			GroupID:              vc.API.BattleArena.CurrentBattleID().String(),
 		}, func(transaction string) {
+			// check voting phase first
+			vc.API.votePhaseChecker.RLock()
+			if vc.API.votePhaseChecker.Phase != VotePhaseVoteAbilityRight && vc.API.votePhaseChecker.Phase != VotePhaseNextVoteWin {
+				go vc.API.Passport.ReleaseTransactions([]string{transaction})
+				gamelog.GameLog.
+					Warn().
+					Str("server_phase", string(vc.API.votePhaseChecker.Phase)).
+					Msg("wrong vote phase (can only vote in next vote win or ability vote right phase)")
+				vc.API.votePhaseChecker.RUnlock()
+				return
+			}
+			vc.API.votePhaseChecker.RUnlock()
 
 			fts.Lock()
 			fts.Transactions = append(fts.Transactions, transaction)

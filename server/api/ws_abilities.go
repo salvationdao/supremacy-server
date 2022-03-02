@@ -43,6 +43,8 @@ func NewFactionController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Fa
 	// subscription
 	api.SecureUserFactionSubscribeCommand(HubKeyFactionAbilitiesUpdated, factionHub.FactionAbilitiesUpdateSubscribeHandler)
 	api.SecureUserFactionSubscribeCommand(HubKeyWarMachineAbilitiesUpdated, factionHub.WarMachineAbilitiesUpdateSubscribeHandler)
+	api.SecureUserSubscribeCommand(server.HubKeyFactionQueueJoin, factionHub.QueueSubscription)
+
 	return factionHub
 }
 
@@ -113,12 +115,23 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 
 		fa := faIface.(*GameAbilityPrice)
 
+		fa.RLock()
+		if fa.isReached {
+			fa.RUnlock()
+			return
+		}
+		fa.RUnlock()
+
 		exceedFund := big.NewInt(0)
 		exceedFund.Add(exceedFund, &fa.CurrentSups.Int)
 		exceedFund.Add(exceedFund, &req.Payload.Amount.Int)
+
 		isReached := false
 		if exceedFund.Cmp(&fa.MaxTargetPrice.Int) >= 0 {
+			fa.Lock()
+			fa.isReached = true
 			isReached = true
+			fa.Unlock()
 		}
 
 		reduceAmount := server.BigInt{Int: *big.NewInt(0)}
@@ -180,6 +193,10 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 				fa.TxRefs = []string{}
 				fa.TxMX.Unlock()
 				fa.PriceRW.Unlock()
+
+				fa.Lock()
+				defer fa.Unlock()
+				fa.isReached = false
 
 				fa.PriceRW.Lock()
 				// calc min target price (half of last max target price)
@@ -373,5 +390,48 @@ func (fc *FactionControllerWS) WarMachineAbilitiesUpdateSubscribeHandler(ctx con
 		reply(abilities)
 	})
 	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s:%x", HubKeyWarMachineAbilitiesUpdated, hcd.FactionID, req.Payload.ParticipantID))
+	return req.TransactionID, busKey, nil
+}
+
+func (fc *FactionControllerWS) QueueSubscription(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	gamelog.GameLog.Info().Str("fn", "QueueSubscription").RawJSON("req", payload).Msg("ws handler")
+	req := &WarMachineAbilitiesUpdatedRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return "", "", terror.Error(err, "Invalid request received")
+	}
+
+	hcd := fc.API.UserMap.GetUserDetail(wsc)
+	if hcd == nil {
+		return "", "", terror.Error(fmt.Errorf("hcd is nil"), "User not found")
+	}
+
+	if hcd.Faction == nil {
+		return "", "", nil
+	}
+
+	if fc.API.BattleArena.WarMachineQueue == nil {
+		return "", "", nil
+	}
+
+	switch hcd.Faction.Label {
+	case "Red Mountain Offworld Mining Corporation":
+		if fc.API.BattleArena.WarMachineQueue.RedMountain == nil {
+			reply(0)
+		}
+		reply(fc.API.BattleArena.WarMachineQueue.RedMountain.QueuingLength())
+	case "Boston Cybernetics":
+		if fc.API.BattleArena.WarMachineQueue.RedMountain == nil {
+			reply(0)
+		}
+		reply(fc.API.BattleArena.WarMachineQueue.Boston.QueuingLength())
+	case "Zaibatsu Heavy Industries":
+		if fc.API.BattleArena.WarMachineQueue.RedMountain == nil {
+			reply(0)
+		}
+		reply(fc.API.BattleArena.WarMachineQueue.Zaibatsu.QueuingLength())
+	}
+
+	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeyFactionQueueJoin, hcd.FactionID.String()))
 	return req.TransactionID, busKey, nil
 }
