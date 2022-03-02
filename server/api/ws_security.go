@@ -23,6 +23,7 @@ func (api *API) Command(key hub.HubCommandKey, fn hub.HubCommandFunc) {
 func (api *API) SecureUserCommand(key hub.HubCommandKey, fn hub.HubCommandFunc) {
 	api.Hub.Handle(key, func(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 		span := tracer.StartSpan("ws.SecureUserCommand", tracer.ResourceName(string(key)))
+		span.SetTag("user", wsc.Identifier())
 		defer span.Finish()
 		if wsc.Identifier() == "" {
 			return terror.Error(terror.ErrForbidden)
@@ -35,6 +36,7 @@ func (api *API) SecureUserCommand(key hub.HubCommandKey, fn hub.HubCommandFunc) 
 func (api *API) SecureUserFactionCommand(key hub.HubCommandKey, fn hub.HubCommandFunc) {
 	api.Hub.Handle(key, func(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 		span := tracer.StartSpan("ws.SecureUserFactionCommand", tracer.ResourceName(string(key)))
+		span.SetTag("user", wsc.Identifier())
 		defer span.Finish()
 		if wsc.Identifier() == "" {
 			return terror.Error(terror.ErrForbidden)
