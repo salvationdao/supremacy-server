@@ -206,6 +206,11 @@ func (api *API) startGameAbilityPoolTicker(ctx context.Context, factionID server
 	time.Sleep(time.Duration(introSecond) * time.Second)
 
 	api.gameAbilityPool[factionID](func(fap *deadlock.Map) {
+		// clean up ability incase battle didn't end properly
+		fap.Range(func(key, value interface{}) bool {
+			fap.Delete(key)
+			return true
+		})
 
 		// set initial ability
 		factionAbilities := []*server.GameAbility{}
