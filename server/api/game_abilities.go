@@ -212,7 +212,7 @@ func (api *API) startGameAbilityPoolTicker(ctx context.Context, factionID server
 			return true
 		})
 
-		// set initial ability
+		// start filling initial abilities
 		factionAbilities := []*server.GameAbility{}
 		warMachineAbilities := make(map[byte][]*server.GameAbility)
 
