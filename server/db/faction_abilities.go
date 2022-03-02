@@ -34,11 +34,11 @@ func BattleAbilityCreate(ctx context.Context, conn Conn, battleAbility *server.B
 func GameAbilityCreate(ctx context.Context, conn Conn, gameAbility *server.GameAbility) error {
 	q := `
 		INSERT INTO
-			game_abilities (game_client_ability_id, faction_id, label, sups_cost, battle_ability_id, colour, description, image_url)
+			game_abilities (game_client_ability_id, faction_id, label, sups_cost, battle_ability_id, colour, text_colour, description, image_url)
 		VALUES
-			($1, $2, $3, $4, $5, $6, $7, $8)
+			($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		RETURNING
-			id, game_client_ability_id, faction_id, label, sups_cost, battle_ability_id, colour, description, image_url
+			id, game_client_ability_id, faction_id, label, sups_cost, battle_ability_id, colour, text_colour, description, image_url
 	`
 
 	err := pgxscan.Get(ctx, conn, gameAbility, q,
@@ -48,6 +48,7 @@ func GameAbilityCreate(ctx context.Context, conn Conn, gameAbility *server.GameA
 		gameAbility.SupsCost,
 		gameAbility.BattleAbilityID,
 		gameAbility.Colour,
+		gameAbility.TextColour,
 		gameAbility.Description,
 		gameAbility.ImageUrl,
 	)

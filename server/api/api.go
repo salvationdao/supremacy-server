@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"net"
@@ -23,9 +24,11 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-software/log_helpers"
+	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-software/tickle"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/auth"
@@ -122,6 +125,8 @@ type API struct {
 	// viewer live count
 	ViewerLiveCount *ViewerLiveCount
 
+	GlobalAnnouncement *server.GlobalAnnouncement
+
 	battleEndInfo *BattleEndInfo
 }
 
@@ -217,6 +222,9 @@ func NewAPI(
 		r.Post("/close_stream", WithToken(config.ServerStreamKey, WithError(api.CreateStreamCloseHandler)))
 		r.Get("/faction_data", WithError(api.GetFactionData))
 		r.Get("/trigger/ability_file_upload", WithError(api.GetFactionData))
+		r.Post("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.GlobalAnnouncementSend)))
+		r.Delete("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.GlobalAnnouncementDelete)))
+
 	})
 
 	// set viewer live count
@@ -334,6 +342,36 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 
 	// start live voting broadcaster
 	liveVotingBroadcaster.Start()
+
+	// get global announcement from db
+	globalAnnouncement, err := db.AnnouncementGet(ctx, api.Conn)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		api.Log.Err(err).Msg("unable to get global announcement")
+	}
+
+	api.GlobalAnnouncement = globalAnnouncement
+
+	// global announcement ticker
+	globalAnnouncementTicker := tickle.New("global announcement ticker", 60, func() (int, error) {
+		// check if a global announcement exist
+		if api.GlobalAnnouncement != nil {
+			now := time.Now()
+
+			// check if a announcement "show_until" has passed
+			if api.GlobalAnnouncement.ShowUntil != nil && api.GlobalAnnouncement.ShowUntil.Before(now) {
+				api.GlobalAnnouncement = nil
+				err := db.AnnouncementDelete(ctx, api.Conn)
+				if err != nil {
+					return http.StatusInternalServerError, err
+				}
+				go api.MessageBus.Send(context.Background(), messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), nil)
+			}
+		}
+
+		return http.StatusOK, nil
+	})
+
+	go globalAnnouncementTicker.Start()
 }
 
 // Event handlers
@@ -502,4 +540,59 @@ func (api *API) Close() {
 	if err != nil {
 		api.Log.Warn().Err(err).Msg("")
 	}
+}
+
+func (api *API) GlobalAnnouncementSend(w http.ResponseWriter, r *http.Request) (int, error) {
+	req := &server.GlobalAnnouncement{}
+	err := json.NewDecoder(r.Body).Decode(req)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("invaid request %w", err))
+	}
+
+	defer r.Body.Close()
+
+	if req.Message == "" {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("message cannot be empty %w", err))
+	}
+	if req.Title == "" {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("title cannot be empty %w", err))
+	}
+
+	// delete old announcements
+	err = db.AnnouncementDelete(api.ctx, api.Conn)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to delete announcement %w", err))
+	}
+
+	// insert to db
+	if req.GamesUntil != nil || req.ShowUntil != nil {
+		err = db.AnnouncementCreate(api.ctx, api.Conn, req)
+		if err != nil {
+			return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to create announcement %w", err))
+		}
+	}
+
+	// store in memory
+	api.GlobalAnnouncement = req
+
+	go api.MessageBus.Send(r.Context(), messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), req)
+
+	return http.StatusOK, nil
+}
+
+func (api *API) GlobalAnnouncementDelete(w http.ResponseWriter, r *http.Request) (int, error) {
+	defer r.Body.Close()
+
+	// delete from db
+	err := db.AnnouncementDelete(api.ctx, api.Conn)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to delete announcement %w", err))
+	}
+
+	// remove from memory
+	api.GlobalAnnouncement = nil
+
+	go api.MessageBus.Send(r.Context(), messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), nil)
+
+	return http.StatusOK, nil
 }
