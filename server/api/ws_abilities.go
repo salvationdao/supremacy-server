@@ -443,12 +443,12 @@ func (fc *FactionControllerWS) QueueSubscription(ctx context.Context, wsc *hub.C
 		if fc.API.BattleArena.WarMachineQueue.RedMountain == nil {
 			reply(feed)
 		}
-		feed.Length = fc.API.BattleArena.WarMachineQueue.RedMountain.QueuingLength()
+		feed.Length = fc.API.BattleArena.WarMachineQueue.Boston.QueuingLength()
 	case "Zaibatsu Heavy Industries":
 		if fc.API.BattleArena.WarMachineQueue.RedMountain == nil {
 			reply(feed)
 		}
-		feed.Length = fc.API.BattleArena.WarMachineQueue.RedMountain.QueuingLength()
+		feed.Length = fc.API.BattleArena.WarMachineQueue.Zaibatsu.QueuingLength()
 	}
 
 	feed.Length = feed.Length + 1
