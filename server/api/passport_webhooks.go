@@ -424,7 +424,6 @@ func (pc *PassportWebhookController) AuthRingCheck(w http.ResponseWriter, r *htt
 	if req.GameserverSessionID == "" {
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("no auth ring check key provided"), "Ring check key is required")
 	}
-
 	client, err := pc.API.RingCheckAuthMap.Check(req.GameserverSessionID)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Hub client not found")
@@ -460,6 +459,7 @@ func (pc *PassportWebhookController) AuthRingCheck(w http.ResponseWriter, r *htt
 	}{
 		IsSuccess: true,
 	})
+
 }
 
 type FactionQueueCostGetRequest struct {

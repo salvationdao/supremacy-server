@@ -184,7 +184,18 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 
 		wg.Add(1)
 		api.Passport.TopSupsContributorsGet(ed.BattleArena.StartedAt, time.Now(), func(result *passport.TopSupsContributorResp) {
-			for _, topUser := range result.TopSupsContributors {
+			// get the top five user
+			topFive := []*server.User{}
+			if len(result.TopSupsContributors) < 5 {
+				topFive = append(topFive, result.TopSupsContributors...)
+			} else {
+				topFive = append(topFive, result.TopSupsContributors[:5]...)
+			}
+
+			// calc citizen multipliers
+			api.UserMultiplier.NewCitizenOrder(result.TopSupsContributors)
+
+			for _, topUser := range topFive {
 				if !topUser.FactionID.IsNil() {
 					topUser.Faction = api.factionMap[topUser.FactionID]
 				}
