@@ -121,6 +121,7 @@ outerLoop:
 		return terror.Error(err)
 	}
 
+	fmt.Println(ba.battle.ID)
 	err = db.BattleWarMachineAssign(ctx, tx, ba.battle.ID, ba.battle.WarMachines)
 	if err != nil {
 		return terror.Error(err)
