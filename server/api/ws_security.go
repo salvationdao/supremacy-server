@@ -9,16 +9,21 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 )
 
 func (api *API) Command(key hub.HubCommandKey, fn hub.HubCommandFunc) {
 	api.Hub.Handle(key, func(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+		span := tracer.StartSpan("ws.Command", tracer.ResourceName(string(key)))
+		defer span.Finish()
 		return fn(ctx, wsc, payload, reply)
 	})
 }
 
 func (api *API) SecureUserCommand(key hub.HubCommandKey, fn hub.HubCommandFunc) {
 	api.Hub.Handle(key, func(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+		span := tracer.StartSpan("ws.SecureUserCommand", tracer.ResourceName(string(key)))
+		defer span.Finish()
 		if wsc.Identifier() == "" {
 			return terror.Error(terror.ErrForbidden)
 		}
@@ -29,6 +34,8 @@ func (api *API) SecureUserCommand(key hub.HubCommandKey, fn hub.HubCommandFunc) 
 
 func (api *API) SecureUserFactionCommand(key hub.HubCommandKey, fn hub.HubCommandFunc) {
 	api.Hub.Handle(key, func(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+		span := tracer.StartSpan("ws.SecureUserFactionCommand", tracer.ResourceName(string(key)))
+		defer span.Finish()
 		if wsc.Identifier() == "" {
 			return terror.Error(terror.ErrForbidden)
 		}
