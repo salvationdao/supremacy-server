@@ -116,6 +116,7 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 					if ability.GameClientID == 11 {
 						wmAbility.ID = ability.ID
 						wmAbility.Colour = ability.Colour
+						wmAbility.TextColour = ability.TextColour
 					}
 					initialAbilities = append(initialAbilities, wmAbility)
 
