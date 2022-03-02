@@ -187,7 +187,10 @@ func (fq *FactionQueue) UpdateContractReward(winningFactionID server.FactionID) 
 	//	fq.ContractReward.Amount.Mul(fq.ContractReward.Amount, big.NewInt(1025))
 	//	fq.ContractReward.Amount.Div(fq.ContractReward.Amount, big.NewInt(1000))
 	//}
-	fq.ContractReward.Amount.SetInt64(int64(fq.QueuingLength()))
+
+	newReward := big.NewInt(int64(fq.QueuingLength()))
+	newReward = newReward.Mul(newReward, big.NewInt(2))
+	fq.ContractReward.Amount = newReward
 
 	// store contract reward into
 	err := db.FactionContractRewardUpdate(context.Background(), fq.Conn, fq.ID, fq.ContractReward.Amount.String())
