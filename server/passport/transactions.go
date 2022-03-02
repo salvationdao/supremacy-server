@@ -51,7 +51,6 @@ func (pp *Passport) ReleaseTransactions(transactions []string) {
 type TransferBattleFundToSupPoolReq struct{}
 type TransferBattleFundToSupPoolResp struct{}
 
-// ReleaseTransactions tells the passport to transfer fund to sup pool
 func (pp *Passport) TransferBattleFundToSupsPool() {
 	err := pp.Comms.Call("C.TransferBattleFundToSupPoolHandler", TransferBattleFundToSupPoolReq{}, &TransferBattleFundToSupPoolResp{})
 	if err != nil {
