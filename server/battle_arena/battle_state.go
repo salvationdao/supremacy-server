@@ -239,7 +239,7 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 	winningMachines := []*server.WarMachineMetadata{}
 	wmq := []*passport.WarMachineQueueStat{}
 
-	for _, bwm := range inGameWarMachines {
+	for _, bwm := range ba.battle.WarMachines {
 		// get contract reward from queuing
 		assetQueueStat, err := db.AssetQueuingStat(ctx, tx, bwm.Hash)
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
