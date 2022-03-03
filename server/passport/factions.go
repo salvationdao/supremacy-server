@@ -57,7 +57,6 @@ type RedeemFactionContractRewardReq struct {
 	Amount               string                      `json:"amount"`
 	TransactionReference server.TransactionReference `json:"transactionReference"`
 }
-
 type RedeemFactionContractRewardResp struct{}
 
 // AssetContractRewardRedeem redeem faction contract reward
@@ -73,6 +72,7 @@ func (pp *Passport) AssetContractRewardRedeem(userID server.UserID, factionID se
 	}
 }
 
+/*
 type FactionContractRewardUpdateReq struct {
 	FactionContractRewards []*FactionContractReward `json:"factionContractRewards"`
 }
@@ -84,14 +84,14 @@ type FactionContractReward struct {
 
 type FactionContractRewardUpdateResp struct {
 }
-
+*/
 // FactionContractRewardUpdate gets the default war machines for a given faction
-func (pp *Passport) FactionContractRewardUpdate(fcr []*FactionContractReward) {
-	err := pp.Comms.Call("C.SupremacyFactionContractRewardUpdateHandler", FactionContractRewardUpdateReq{fcr}, &FactionContractRewardUpdateResp{})
-	if err != nil {
-		pp.Log.Err(err).Str("method", "SupremacyFactionContractRewardUpdateHandler").Msg("rpc error")
-	}
-}
+//func (pp *Passport) FactionContractRewardUpdate(fcr []*FactionContractReward) {
+//	err := pp.Comms.Call("C.SupremacyFactionContractRewardUpdateHandler", FactionContractRewardUpdateReq{fcr}, &FactionContractRewardUpdateResp{})
+//	if err != nil {
+//		pp.Log.Err(err).Str("method", "SupremacyFactionContractRewardUpdateHandler").Msg("rpc error")
+//	}
+//}
 
 //****************************************
 //  QUEUE COST

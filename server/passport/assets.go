@@ -22,3 +22,10 @@ func (pp *Passport) AssetRepairStat(arr *server.AssetRepairRecord) {
 		pp.Log.Err(err).Str("method", "SupremacyAssetRepairStatUpdateHandler").Msg("rpc error")
 	}
 }
+
+func (pp *Passport) SupremacyQueueUpdate(arr *server.SupremacyQueueUpdateReq) {
+	err := pp.Comms.Call("C.SupremacyQueueUpdateHandler", arr, &comms.AssetRepairStatResp{})
+	if err != nil {
+		pp.Log.Err(err).Str("method", "SupremacyQueueUpdateHandler").Msg("rpc error")
+	}
+}

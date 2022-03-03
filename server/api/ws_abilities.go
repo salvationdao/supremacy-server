@@ -291,7 +291,7 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 					go fc.API.NetMessageBus.Send(ctx, messagebus.NetBusKey(fmt.Sprintf("%s:%s", HubKeyFactionAbilityPriceUpdated, factionID)), payload)
 				}
 
-			})
+			}, func(err error) {})
 		}()
 	})
 

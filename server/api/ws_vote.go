@@ -237,7 +237,7 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 			if vct.AbilityRightResultBroadcaster.NextTick != nil {
 				vct.AbilityRightResultBroadcaster.Stop()
 			}
-		})
+		}, func(err error) {})
 	})
 	return nil
 }

@@ -139,3 +139,9 @@ type AssetRepairRecord struct {
 	CompletedAt       *time.Time `json:"completedAt,omitempty" db:"completed_at,omitempty"`
 	CreatedAt         time.Time  `json:"createdAt" db:"created_at"`
 }
+
+type SupremacyQueueUpdateReq struct {
+	Hash           string  `json:"hash"`
+	Position       *int    `json:"position"`
+	ContractReward *string `json:"contractReward"`
+}
