@@ -42,11 +42,17 @@ func IsDefaultWarMachine(ctx context.Context, tx Conn, hash string) bool {
 }
 
 func ContractRewardGet(ctx context.Context, tx Conn, hash string) (decimal.Decimal, error) {
-	var result decimal.Decimal
+	resultStr := struct {
+		ContractReward string
+	}{}
 	q := `SELECT contract_reward FROM battle_war_machine_queues WHERE war_machine_hash = $1`
-	err := pgxscan.Get(ctx, tx, &result, q, hash)
+	err := pgxscan.Get(ctx, tx, &resultStr, q, hash)
 	if err != nil {
 		return decimal.Zero, fmt.Errorf("get contract reward: %w", err)
+	}
+	result, err := decimal.NewFromString(resultStr.ContractReward)
+	if err != nil {
+		return decimal.Zero, fmt.Errorf("process contract reward string to decimal: %w", err)
 	}
 	return result, nil
 }
