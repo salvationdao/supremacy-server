@@ -1,6 +1,7 @@
 package passport
 
 import (
+	"fmt"
 	"math/big"
 	"server"
 
@@ -64,7 +65,7 @@ type RedeemFactionContractRewardResp struct{}
 func (pp *Passport) AssetContractRewardRedeem(userID server.UserID, factionID server.FactionID, amount string, txRef server.TransactionReference) {
 	_, ok := big.NewInt(0).SetString(amount, 10)
 	if !ok {
-		pp.Log.Trace().Msgf("invalid contract reward amount %s", amount)
+		pp.Log.Err(fmt.Errorf("invalid contract amount: %s", amount)).Msgf("invalid contract reward amount %s", amount)
 		return
 	}
 	err := pp.Comms.Call("C.SupremacyRedeemFactionContractRewardHandler", RedeemFactionContractRewardReq{userID, factionID, amount, txRef}, &RedeemFactionContractRewardResp{})
