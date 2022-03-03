@@ -336,6 +336,7 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 	wmq := []*comms.WarMachineQueueStat{}
 
 	for _, meta := range req.Payload.WinningWarMachineMetadatas {
+		gamelog.GameLog.Debug().Str("hash", meta.Hash).Msg("process winning mech")
 		err = PayWinners(ctx, tx, ba.passport, req.Payload.BattleID, meta.Hash)
 		if err != nil {
 			return fmt.Errorf("PayWinners: %w", err)
@@ -343,6 +344,7 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 	}
 
 	for _, bwm := range ba.battle.WarMachines {
+		gamelog.GameLog.Debug().Str("hash", bwm.Hash).Msg("process participating mech")
 		err = SendForRepairs(ctx, tx, req.Payload.BattleID, ba.passport, bwm.MaxHealth, bwm.Health, bwm.Hash)
 		if err != nil {
 			return fmt.Errorf("SendForRepairs: %w", err)
