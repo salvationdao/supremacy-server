@@ -241,7 +241,7 @@ func RemoveParticipant(ctx context.Context, tx db.Conn, battleID server.BattleID
 }
 
 func PayWinners(ctx context.Context, tx db.Conn, ppclient *passport.Passport, battleID server.BattleID, winnerHash string) error {
-	gamelog.GameLog.Debug().Str("fn", "PayWinners").Str("battle_id", battleID.String()).Str("winning_hash", winnerHash).Msg("pay winner from queue")
+	gamelog.GameLog.Debug().Str("fn", "PayWinners").Str("battle_id", battleID.String()).Str("winning_hash", winnerHash).Msg("attempt to pay winner from queue")
 
 	// Payout
 
@@ -259,7 +259,7 @@ func PayWinners(ctx context.Context, tx db.Conn, ppclient *passport.Passport, ba
 	gamelog.GameLog.Debug().
 		Str("fn", "PayWinners").
 		Str("battle_id", battleID.String()).
-		Str("winning_hash", winnerHash).Msg("pay winner from queue")
+		Str("winning_hash", winnerHash).Msg("not default mech, prepare to pay winner from queue")
 
 	reward, err := db.ContractRewardGet(ctx, tx, winnerHash)
 	if err != nil {
