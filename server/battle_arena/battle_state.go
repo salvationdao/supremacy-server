@@ -8,6 +8,7 @@ import (
 	"server"
 	"server/comms"
 	"server/db"
+	"server/gamelog"
 	"time"
 
 	"github.com/jackc/pgx/v4"
@@ -264,6 +265,9 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 
 		// if war machines win
 		health, exists := WarMachineExistInList(req.Payload.WinningWarMachineMetadatas, bwm.Hash)
+		if !exists {
+			gamelog.GameLog.Debug().Str("hash", bwm.Hash).Str("battle_id", req.Payload.BattleID.String()).Msg("war machine not in list")
+		}
 		if exists {
 			bwm.Health = health
 			winningMachines = append(winningMachines, bwm)
@@ -277,6 +281,7 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 
 			// pay queuing contract reward
 			if assetQueueStat != nil {
+				gamelog.GameLog.Debug().Str("battle_id", req.Payload.BattleID.String()).Msg("asset is in queue, pay rewards")
 				ba.passport.AssetContractRewardRedeem(
 					bwm.OwnedByID,
 					bwm.FactionID,
@@ -289,6 +294,8 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 						),
 					),
 				)
+			} else {
+				gamelog.GameLog.Debug().Str("battle_id", req.Payload.BattleID.String()).Msg("asset is not in queue, skip reward")
 			}
 
 			// calc asset repair complete time

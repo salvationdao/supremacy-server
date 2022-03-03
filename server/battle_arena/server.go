@@ -422,7 +422,7 @@ func (ba *BattleArena) Command(command BattleCommand, fn BattleCommandFunc) {
 		ba.Log.Panic().Msgf("command has already been registered to hub: %s", command)
 	}
 	ba.commands[command] = fn
-	ba.Log.Trace().Msg(string(command))
+	ba.Log.Trace().Str("key", string(command)).Msg("battle arena command")
 }
 
 func (ba *BattleArena) SetupAfterConnections(logger *zerolog.Logger) {
