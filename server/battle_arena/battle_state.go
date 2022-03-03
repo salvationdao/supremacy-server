@@ -179,21 +179,29 @@ type BattleRewardList struct {
 }
 
 func SendForRepairs(ctx context.Context, tx db.Conn, battleID server.BattleID, ppclient *passport.Passport, maxHealth int, health int, hash string) error {
-	l := gamelog.GameLog.Debug().Str("fn", "SendForRepairs").Str("battle_id", battleID.String()).Str("hash", hash)
-
-	l.Msg("send participant to repairs")
 	isDefault := db.IsDefaultWarMachine(ctx, tx, hash)
 	if isDefault {
-		l.Msg("is default, skip")
+		gamelog.GameLog.Warn().
+			Str("fn", "SendForRepairs").
+			Str("battle_id", battleID.String()).
+			Str("hash", hash).
+			Msg("skip, is default war machine")
 		return nil
 	}
+
+	gamelog.GameLog.Debug().Str("fn", "SendForRepairs").Str("battle_id", battleID.String()).Str("hash", hash).Msg("send participant to repairs")
+
 	isInsured, err := db.IsInsured(ctx, tx, hash)
 	if err != nil {
 		return fmt.Errorf("get is insured: %w", err)
 	}
 	repairMode := server.RepairModeStandard
 	if isInsured {
-		l.Msg("is insured, fast repair")
+		gamelog.GameLog.Warn().
+			Str("fn", "SendForRepairs").
+			Str("battle_id", battleID.String()).
+			Str("hash", hash).
+			Msg("is insured, fast repair")
 		repairMode = server.RepairModeFast
 	}
 	record := &server.AssetRepairRecord{
@@ -206,20 +214,24 @@ func SendForRepairs(ctx context.Context, tx db.Conn, battleID server.BattleID, p
 		return fmt.Errorf("insert asset repair record: %w", err)
 	}
 
-	l.Msg("broadcast repair event")
+	gamelog.GameLog.Debug().
+		Str("fn", "SendForRepairs").
+		Str("battle_id", battleID.String()).
+		Str("hash", hash).
+		Msg("broadcast repair event")
 	ppclient.AssetRepairStat(record)
 	return nil
 }
 
 func RemoveParticipant(ctx context.Context, tx db.Conn, battleID server.BattleID, hash string) error {
-	gamelog.GameLog.Debug().Str("fn", "RemoveParticipant").Str("battle_id", battleID.String()).Str("hash", hash).Msg("remove participant from queue")
-
 	// Remove from queue
 	// Skip default mechs (won't be in queue)
 	isDefault := db.IsDefaultWarMachine(ctx, tx, hash)
 	if isDefault {
 		return nil
 	}
+
+	gamelog.GameLog.Debug().Str("fn", "RemoveParticipant").Str("battle_id", battleID.String()).Str("hash", hash).Msg("remove participant from queue")
 
 	err := db.BattleQueueRemove(ctx, tx, hash)
 	if err != nil {
@@ -229,16 +241,25 @@ func RemoveParticipant(ctx context.Context, tx db.Conn, battleID server.BattleID
 }
 
 func PayWinners(ctx context.Context, tx db.Conn, ppclient *passport.Passport, battleID server.BattleID, winnerHash string) error {
-	l := gamelog.GameLog.Debug().Str("fn", "PayWinners").Str("battle_id", battleID.String()).Str("winning_hash", winnerHash)
+	gamelog.GameLog.Debug().Str("fn", "PayWinners").Str("battle_id", battleID.String()).Str("winning_hash", winnerHash).Msg("pay winner from queue")
 
 	// Payout
-	l.Msg("pay winner from queue")
+
 	// Skip default mechs (won't be in queue)
 	isDefault := db.IsDefaultWarMachine(ctx, tx, winnerHash)
 	if isDefault {
-		l.Msg("skip, is default war machine")
+		gamelog.GameLog.Warn().
+			Str("fn", "PayWinners").
+			Str("battle_id", battleID.String()).
+			Str("winning_hash", winnerHash).
+			Msg("skip, is default war machine")
 		return nil
 	}
+
+	gamelog.GameLog.Debug().
+		Str("fn", "PayWinners").
+		Str("battle_id", battleID.String()).
+		Str("winning_hash", winnerHash).Msg("pay winner from queue")
 
 	reward, err := db.ContractRewardGet(ctx, tx, winnerHash)
 	if err != nil {
@@ -254,7 +275,11 @@ func PayWinners(ctx context.Context, tx db.Conn, ppclient *passport.Passport, ba
 		return fmt.Errorf("get metadata: %w", err)
 	}
 
-	l.Msg("send to rpc")
+	gamelog.GameLog.Debug().
+		Str("fn", "PayWinners").
+		Str("battle_id", battleID.String()).
+		Str("winning_hash", winnerHash).Msg("send to rpc")
+
 	ppclient.AssetContractRewardRedeem(
 		ownedByID,
 		factionID,
