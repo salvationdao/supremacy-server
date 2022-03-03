@@ -183,24 +183,56 @@ func (pc *PassportWebhookController) WarMachineJoin(w http.ResponseWriter, r *ht
 	}
 	pc.API.Passport.FactionQueueCostUpdate(factionQueuePrice)
 
+	errChan := make(chan error)
+
 	// fire a payment to passport
 	pc.API.Passport.SpendSupMessage(passport.SpendSupsReq{
 		FromUserID:           req.WarMachineMetadata.OwnedByID,
 		ToUserID:             &server.XsynTreasuryUserID,
 		Amount:               req.WarMachineMetadata.Fee.String(),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("war_machine_queuing_fee|%s", uuid.Must(uuid.NewV4()))),
-	}, func(transaction string) {})
+	}, func(transaction string) {
+		errChan <- nil
+	}, func(reqErr error) {
+		// check faction id
+		switch req.WarMachineMetadata.FactionID {
+		case server.RedMountainFactionID:
+			err = pc.API.BattleArena.WarMachineQueue.RedMountain.Leave(req.WarMachineMetadata.Hash)
+			if err != nil {
+				pc.Log.Err(err).Msg("")
+			}
+		case server.BostonCyberneticsFactionID:
+			err = pc.API.BattleArena.WarMachineQueue.Boston.Leave(req.WarMachineMetadata.Hash)
+			if err != nil {
+				pc.Log.Err(err).Msg("")
+			}
+		case server.ZaibatsuFactionID:
+			err = pc.API.BattleArena.WarMachineQueue.Zaibatsu.Leave(req.WarMachineMetadata.Hash)
+			if err != nil {
+				pc.Log.Err(err).Msg("")
+			}
+		}
+		pc.API.Passport.SupremacyQueueUpdate(&server.SupremacyQueueUpdateReq{
+			Hash: req.WarMachineMetadata.Hash,
+		})
+		errChan <- reqErr
+	})
+
+	err = <-errChan
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Issue joining queue")
+	}
 
 	// prepare response
 	resp := &WarMachineJoinResp{}
 	// set insurance flag
-	warMachinePostion, _ := pc.API.BattleArena.WarMachineQueue.GetWarMachineQueue(req.WarMachineMetadata.FactionID, req.WarMachineMetadata.Hash)
+	warMachinePosition, _ := pc.API.BattleArena.WarMachineQueue.GetWarMachineQueue(req.WarMachineMetadata.FactionID, req.WarMachineMetadata.Hash)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	resp.Position = warMachinePostion
-	resp.ContractReward = decimal.New(int64((*warMachinePostion+1)*2), 0)
+	resp.Position = warMachinePosition
+	resp.ContractReward = decimal.New(int64((*warMachinePosition+1)*2), 0)
 
 	// get contract reward
 	queuingStat, err := db.AssetQueuingStat(context.Background(), pc.Conn, req.WarMachineMetadata.Hash)

@@ -21,11 +21,12 @@ type SpendSupsResp struct {
 }
 
 // SpendSupMessage tells the passport to hold sups
-func (pp *Passport) SpendSupMessage(req SpendSupsReq, callback func(txID string)) {
+func (pp *Passport) SpendSupMessage(req SpendSupsReq, callback func(txID string), errorCallback func(err error)) {
 	resp := &SpendSupsResp{}
 	pp.Comms.GoCall("C.SupremacySpendSupsHandler", req, resp, func(err error) {
 		if err != nil {
 			pp.Log.Err(err).Str("method", "SupremacySpendSupsHandler").Msg("rpc error")
+			errorCallback(err)
 			return
 		}
 		callback(resp.TXID)
