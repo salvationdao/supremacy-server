@@ -9,7 +9,7 @@ import (
 	"server/comms"
 	"server/db"
 	"server/gamelog"
-	"strings"
+	"server/passport"
 	"time"
 
 	"github.com/jackc/pgx/v4"
@@ -179,6 +179,91 @@ type BattleRewardList struct {
 	TopSupsSpendUsers             []server.UserID
 }
 
+func SendForRepairs(ctx context.Context, tx db.Conn, battleID server.BattleID, ppclient *passport.Passport, maxHealth int, health int, hash string) error {
+	gamelog.GameLog.Debug().Str("battle_id", battleID.String()).Str("hash", hash).Msg("send participant to repairs")
+	isDefault := db.IsDefaultWarMachine(ctx, tx, hash)
+	if isDefault {
+		return nil
+	}
+	isInsured, err := db.IsInsured(ctx, tx, hash)
+	if err != nil {
+		return fmt.Errorf("get is insured: %w", err)
+	}
+	repairMode := server.RepairModeStandard
+	if isInsured {
+		repairMode = server.RepairModeFast
+	}
+	record := &server.AssetRepairRecord{
+		Hash:              hash,
+		RepairMode:        repairMode,
+		ExpectCompletedAt: calcRepairCompleteTime(maxHealth, health, isInsured, time.Now()),
+	}
+	err = db.AssetRepairInsert(ctx, tx, record)
+	if err != nil {
+		return fmt.Errorf("insert asset repair record: %w", err)
+	}
+
+	ppclient.AssetRepairStat(record)
+	return nil
+}
+
+func RemoveParticipant(ctx context.Context, tx db.Conn, battleID server.BattleID, hash string) error {
+	gamelog.GameLog.Debug().Str("battle_id", battleID.String()).Str("hash", hash).Msg("remove participant from queue")
+
+	// Remove from queue
+	// Skip default mechs (won't be in queue)
+	isDefault := db.IsDefaultWarMachine(ctx, tx, hash)
+	if isDefault {
+		return nil
+	}
+
+	err := db.BattleQueueRemove(ctx, tx, hash)
+	if err != nil {
+		return fmt.Errorf("remove from queue: %w", err)
+	}
+	return nil
+}
+
+func PayWinners(ctx context.Context, tx db.Conn, ppclient *passport.Passport, battleID server.BattleID, winnerHash string) error {
+	l := gamelog.GameLog.Debug().Str("battle_id", battleID.String()).Str("winning_hash", winnerHash)
+
+	// Payout
+	l.Msg("pay winner from queue")
+	// Skip default mechs (won't be in queue)
+	isDefault := db.IsDefaultWarMachine(ctx, tx, winnerHash)
+	if isDefault {
+		return nil
+	}
+
+	reward, err := db.ContractRewardGet(ctx, tx, winnerHash)
+	if err != nil {
+		return fmt.Errorf("get reward from db: %w", err)
+	}
+
+	err = db.ContractRewardInsert(ctx, tx, battleID, reward, winnerHash)
+	if err != nil {
+		return fmt.Errorf("insert reward: %w", err)
+	}
+	ownedByID, factionID, mechName, err := db.MechMetadata(ctx, tx, winnerHash)
+	if err != nil {
+		return fmt.Errorf("get metadata: %w", err)
+	}
+	ppclient.AssetContractRewardRedeem(
+		ownedByID,
+		factionID,
+		reward,
+		server.TransactionReference(
+			fmt.Sprintf(
+				"redeem_faction_contract_reward|%s|%s",
+				mechName,
+				time.Now(),
+			),
+		),
+	)
+	// Insert into battle ID
+	return nil
+}
+
 func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, reply ReplyFunc) error {
 	// switch battle state to END
 	ba.battle.State = server.StateMatchEnd
@@ -242,114 +327,24 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 	winningMachines := []*server.WarMachineMetadata{}
 	wmq := []*comms.WarMachineQueueStat{}
 
-	for _, bwm := range ba.battle.WarMachines {
-		l := gamelog.GameLog.Debug().Str("hash", bwm.Hash).Str("battle_id", req.Payload.BattleID.String())
-		// get contract reward from queuing
-		winningHashes := []string{}
-		for _, meta := range req.Payload.WinningWarMachineMetadatas {
-			winningHashes = append(winningHashes, meta.Hash)
-		}
-
-		l.Str("winning_hashes", strings.Join(winningHashes, ",")).Msg("process warmachine from battle result")
-
-		assetQueueStat, err := db.AssetQueuingStat(ctx, tx, bwm.Hash)
-		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			return terror.Error(err, "failed to get contract reward from db")
-		}
-		// default war machines
-		isDefaultWarMachine := false
-		if assetQueueStat == nil {
-			isDefaultWarMachine = true
-		}
-		if assetQueueStat != nil {
-			l.Str("amt", assetQueueStat.ContractReward).Msg("received assetQueueStat")
-		} else {
-			l.Msg("assetQueueStat is nil (probably default war machine)")
-		}
-
-		assetRepairRecord := &server.AssetRepairRecord{
-			Hash:       bwm.Hash,
-			RepairMode: server.RepairModeFast,
-		}
-
-		if !isDefaultWarMachine && !assetQueueStat.IsInsured {
-			assetRepairRecord.RepairMode = server.RepairModeStandard
-		}
-
-		// if war machines win
-		health, exists := WarMachineExistInList(req.Payload.WinningWarMachineMetadatas, bwm.Hash)
-		l.Bool("in_list", exists).Msg("war machine list status")
-		if exists {
-			bwm.Health = health
-			winningMachines = append(winningMachines, bwm)
-			battleRewardList.WinnerFactionID = bwm.FactionID
-			battleRewardList.WinningWarMachineOwnerIDs[bwm.OwnedByID] = true
-
-			// skip if it is default war machine
-			if isDefaultWarMachine {
-				continue
-			}
-
-			// pay queuing contract reward
-			if assetQueueStat != nil {
-				l.Msg("asset is in queue, pay rewards")
-				ba.passport.AssetContractRewardRedeem(
-					bwm.OwnedByID,
-					bwm.FactionID,
-					assetQueueStat.ContractReward,
-					server.TransactionReference(
-						fmt.Sprintf(
-							"redeem_faction_contract_reward|%s|%s",
-							bwm.Name,
-							time.Now(),
-						),
-					),
-				)
-			} else {
-				l.Str("battle_id", req.Payload.BattleID.String()).Msg("asset is not in queue, skip reward")
-			}
-
-			// calc asset repair complete time
-			assetRepairRecord.ExpectCompletedAt = calcRepairCompleteTime(bwm.MaxHealth, bwm.Health, assetQueueStat.IsInsured, now)
-			err := db.AssetRepairInsert(ctx, tx, assetRepairRecord)
-			if err != nil {
-				return terror.Error(err)
-			}
-
-			err = db.BattleQueueRemove(ctx, tx, bwm.Hash)
-			if err != nil {
-				ba.Log.Err(err).Msgf("Failed to remove battle queue cache in db, token id: %s ", bwm.Hash)
-			}
-			wmq = append(wmq, &comms.WarMachineQueueStat{Hash: bwm.Hash})
-
-			// broadcast repair stat
-			ba.passport.AssetRepairStat(assetRepairRecord)
-
-			continue
-		}
-
-		// skip if it is default war machine
-		if isDefaultWarMachine {
-			continue
-		}
-
-		// if loss, store mech in asset repair db
-		assetRepairRecord.ExpectCompletedAt = calcRepairCompleteTime(bwm.MaxHealth, 0, assetQueueStat.IsInsured, now)
-		err = db.AssetRepairInsert(ctx, tx, assetRepairRecord)
+	for _, meta := range req.Payload.WinningWarMachineMetadatas {
+		err = PayWinners(ctx, tx, ba.passport, req.Payload.BattleID, meta.Hash)
 		if err != nil {
-			return terror.Error(err)
+			return fmt.Errorf("PayWinners: %w", err)
 		}
-
-		err = db.BattleQueueRemove(ctx, tx, bwm.Hash)
-		if err != nil {
-			ba.Log.Err(err).Msgf("Failed to remove battle queue cache in db, token id: %s ", bwm.Hash)
-		}
-		wmq = append(wmq, &comms.WarMachineQueueStat{Hash: bwm.Hash})
-
-		// broadcast repair stat
-		ba.passport.AssetRepairStat(assetRepairRecord)
-
 	}
+
+	for _, bwm := range ba.battle.WarMachines {
+		err = SendForRepairs(ctx, tx, req.Payload.BattleID, ba.passport, bwm.MaxHealth, bwm.Health, bwm.Hash)
+		if err != nil {
+			return fmt.Errorf("SendForRepairs: %w", err)
+		}
+		err = RemoveParticipant(ctx, tx, req.Payload.BattleID, bwm.Hash)
+		if err != nil {
+			return fmt.Errorf("RemoveParticipant: %w", err)
+		}
+	}
+
 	// broadcast queuing stat to passport server
 
 	ba.passport.WarMachineQueuePositionBroadcast(wmq)

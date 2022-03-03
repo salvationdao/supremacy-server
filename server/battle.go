@@ -127,8 +127,8 @@ func (id *BattleID) Scan(src interface{}) error {
 type RepairMode string
 
 const (
-	RepairModeFast     = "FAST"
-	RepairModeStandard = "STANDARD"
+	RepairModeFast     RepairMode = "FAST"
+	RepairModeStandard RepairMode = "STANDARD"
 )
 
 type AssetRepairRecord struct {
