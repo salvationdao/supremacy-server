@@ -363,6 +363,7 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 		gamelog.GameLog.Debug().Str("battle_id", req.Payload.BattleID.String()).Str("hash", meta.Hash).Msg("process winning mech")
 		err = PayWinners(ctx, tx, ba.passport, req.Payload.BattleID, meta.Hash)
 		if err != nil {
+			gamelog.GameLog.Err(err).Str("battle_id", req.Payload.BattleID.String()).Str("hash", meta.Hash).Msg("failed to pay winners")
 			return fmt.Errorf("PayWinners: %w", err)
 		}
 	}
@@ -371,10 +372,12 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 		gamelog.GameLog.Debug().Str("battle_id", req.Payload.BattleID.String()).Str("hash", bwm.Hash).Msg("process participating mech")
 		err = SendForRepairs(ctx, tx, req.Payload.BattleID, ba.passport, bwm.MaxHealth, bwm.Health, bwm.Hash)
 		if err != nil {
+			gamelog.GameLog.Err(err).Str("battle_id", req.Payload.BattleID.String()).Str("hash", bwm.Hash).Msg("failed to send for repairs")
 			return fmt.Errorf("SendForRepairs: %w", err)
 		}
 		err = RemoveParticipant(ctx, tx, req.Payload.BattleID, bwm.Hash)
 		if err != nil {
+			gamelog.GameLog.Err(err).Str("battle_id", req.Payload.BattleID.String()).Str("hash", bwm.Hash).Msg("failed to remove participants")
 			return fmt.Errorf("RemoveParticipant: %w", err)
 		}
 	}
