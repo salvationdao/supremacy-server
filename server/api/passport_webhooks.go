@@ -183,6 +183,8 @@ func (pc *PassportWebhookController) WarMachineJoin(w http.ResponseWriter, r *ht
 	}
 	pc.API.Passport.FactionQueueCostUpdate(factionQueuePrice)
 
+	errChan := make(chan error)
+
 	// fire a payment to passport
 	pc.API.Passport.SpendSupMessage(passport.SpendSupsReq{
 		FromUserID:           req.WarMachineMetadata.OwnedByID,
@@ -190,8 +192,8 @@ func (pc *PassportWebhookController) WarMachineJoin(w http.ResponseWriter, r *ht
 		Amount:               req.WarMachineMetadata.Fee.String(),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("war_machine_queuing_fee|%s", uuid.Must(uuid.NewV4()))),
 	}, func(transaction string) {
-
-	}, func(err error) {
+		errChan <- nil
+	}, func(reqErr error) {
 		// check faction id
 		switch req.WarMachineMetadata.FactionID {
 		case server.RedMountainFactionID:
@@ -213,7 +215,13 @@ func (pc *PassportWebhookController) WarMachineJoin(w http.ResponseWriter, r *ht
 		pc.API.Passport.SupremacyQueueUpdate(&server.SupremacyQueueUpdateReq{
 			Hash: req.WarMachineMetadata.Hash,
 		})
+		errChan <- reqErr
 	})
+
+	err = <-errChan
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Issue joining queue")
+	}
 
 	// prepare response
 	resp := &WarMachineJoinResp{}
