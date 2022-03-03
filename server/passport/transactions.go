@@ -14,7 +14,8 @@ type SpendSupsReq struct {
 	ToUserID             *server.UserID              `json:"ToUserID,omitempty"`
 	Amount               string                      `json:"amount"`
 	TransactionReference server.TransactionReference `json:"transactionReference"`
-	GroupID              string
+	GroupID              string                      `json:"groupID"`
+	NotSafe              bool                        `json:"notSafe"`
 }
 type SpendSupsResp struct {
 	TXID string `json:"txid"`
