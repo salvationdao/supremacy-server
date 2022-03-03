@@ -2,10 +2,10 @@ package passport
 
 import (
 	"fmt"
-	"math/big"
 	"server"
 
 	"github.com/ninja-syndicate/hub"
+	"github.com/shopspring/decimal"
 )
 
 type FactionAllReq struct{}
@@ -61,13 +61,12 @@ type RedeemFactionContractRewardReq struct {
 type RedeemFactionContractRewardResp struct{}
 
 // AssetContractRewardRedeem redeem faction contract reward
-func (pp *Passport) AssetContractRewardRedeem(userID server.UserID, factionID server.FactionID, amount string, txRef server.TransactionReference) {
-	_, ok := big.NewInt(0).SetString(amount, 10)
-	if !ok {
-		pp.Log.Err(fmt.Errorf("invalid contract amount: %s", amount)).Msgf("invalid contract reward amount %s", amount)
+func (pp *Passport) AssetContractRewardRedeem(userID server.UserID, factionID server.FactionID, amount decimal.Decimal, txRef server.TransactionReference) {
+	if amount.LessThanOrEqual(decimal.Zero) {
+		pp.Log.Err(fmt.Errorf("invalid contract amount: %s", amount)).Msgf("zero or negative contract reward amount", amount)
 		return
 	}
-	err := pp.Comms.Call("C.SupremacyRedeemFactionContractRewardHandler", RedeemFactionContractRewardReq{userID, factionID, amount, txRef}, &RedeemFactionContractRewardResp{})
+	err := pp.Comms.Call("C.SupremacyRedeemFactionContractRewardHandler", RedeemFactionContractRewardReq{userID, factionID, amount.String(), txRef}, &RedeemFactionContractRewardResp{})
 	if err != nil {
 		pp.Log.Err(err).Str("method", "SupremacyRedeemFactionContractRewardHandler").Msg("rpc error")
 	}
