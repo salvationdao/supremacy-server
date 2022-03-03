@@ -249,6 +249,8 @@ func PayWinners(ctx context.Context, tx db.Conn, ppclient *passport.Passport, ba
 	if err != nil {
 		return fmt.Errorf("get metadata: %w", err)
 	}
+
+	l.Msg("send to rpc")
 	ppclient.AssetContractRewardRedeem(
 		ownedByID,
 		factionID,
