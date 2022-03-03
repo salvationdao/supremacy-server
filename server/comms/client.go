@@ -63,7 +63,7 @@ func (c *C) GoCall(serviceMethod string, args interface{}, reply interface{}, ca
 }
 
 func (c *C) Call(serviceMethod string, args interface{}, reply interface{}) error {
-	gamelog.GameLog.Trace().Interface("args", args).Msg("rpc call")
+	gamelog.GameLog.Debug().Interface("args", args).Msg("rpc call")
 	span := tracer.StartSpan("rpc.call", tracer.ResourceName(serviceMethod))
 	defer span.Finish()
 	c.inc.Add(1)
