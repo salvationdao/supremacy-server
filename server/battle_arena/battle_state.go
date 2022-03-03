@@ -180,9 +180,12 @@ type BattleRewardList struct {
 }
 
 func SendForRepairs(ctx context.Context, tx db.Conn, battleID server.BattleID, ppclient *passport.Passport, maxHealth int, health int, hash string) error {
-	gamelog.GameLog.Debug().Str("fn", "SendForRepairs").Str("battle_id", battleID.String()).Str("hash", hash).Msg("send participant to repairs")
+	l := gamelog.GameLog.Trace().Str("fn", "SendForRepairs").Str("battle_id", battleID.String()).Str("hash", hash)
+
+	l.Msg("send participant to repairs")
 	isDefault := db.IsDefaultWarMachine(ctx, tx, hash)
 	if isDefault {
+		l.Msg("is default, skip")
 		return nil
 	}
 	isInsured, err := db.IsInsured(ctx, tx, hash)
@@ -191,6 +194,7 @@ func SendForRepairs(ctx context.Context, tx db.Conn, battleID server.BattleID, p
 	}
 	repairMode := server.RepairModeStandard
 	if isInsured {
+		l.Msg("is insured, fast repair")
 		repairMode = server.RepairModeFast
 	}
 	record := &server.AssetRepairRecord{
@@ -203,12 +207,13 @@ func SendForRepairs(ctx context.Context, tx db.Conn, battleID server.BattleID, p
 		return fmt.Errorf("insert asset repair record: %w", err)
 	}
 
+	l.Msg("broadcast repair event")
 	ppclient.AssetRepairStat(record)
 	return nil
 }
 
 func RemoveParticipant(ctx context.Context, tx db.Conn, battleID server.BattleID, hash string) error {
-	gamelog.GameLog.Debug().Str("fn", "RemoveParticipant").Str("battle_id", battleID.String()).Str("hash", hash).Msg("remove participant from queue")
+	gamelog.GameLog.Trace().Str("fn", "RemoveParticipant").Str("battle_id", battleID.String()).Str("hash", hash).Msg("remove participant from queue")
 
 	// Remove from queue
 	// Skip default mechs (won't be in queue)
@@ -225,7 +230,7 @@ func RemoveParticipant(ctx context.Context, tx db.Conn, battleID server.BattleID
 }
 
 func PayWinners(ctx context.Context, tx db.Conn, ppclient *passport.Passport, battleID server.BattleID, winnerHash string) error {
-	l := gamelog.GameLog.Debug().Str("fn", "PayWinners").Str("battle_id", battleID.String()).Str("winning_hash", winnerHash)
+	l := gamelog.GameLog.Trace().Str("fn", "PayWinners").Str("battle_id", battleID.String()).Str("winning_hash", winnerHash)
 
 	// Payout
 	l.Msg("pay winner from queue")

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"server"
+	"server/gamelog"
 
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/jackc/pgx/v4"
@@ -12,6 +13,7 @@ import (
 )
 
 func MechMetadata(ctx context.Context, conn Conn, hash string) (server.UserID, server.FactionID, string, error) {
+	gamelog.GameLog.Trace().Str("fn", "MechMetadata").Msg("db func")
 	result := struct {
 		OwnedByID server.UserID
 		FactionID server.FactionID
@@ -28,6 +30,7 @@ func MechMetadata(ctx context.Context, conn Conn, hash string) (server.UserID, s
 	return result.OwnedByID, result.FactionID, result.Name, err
 }
 func IsInsured(ctx context.Context, tx Conn, hash string) (bool, error) {
+	gamelog.GameLog.Trace().Str("fn", "IsInsured").Msg("db func")
 	var result bool
 	q := `SELECT is_insured FROM battle_war_machine_queues WHERE war_machine_hash = $1`
 	err := pgxscan.Get(ctx, tx, &result, q, hash)
@@ -37,11 +40,13 @@ func IsInsured(ctx context.Context, tx Conn, hash string) (bool, error) {
 	return result, nil
 }
 func IsDefaultWarMachine(ctx context.Context, tx Conn, hash string) bool {
+	gamelog.GameLog.Trace().Str("fn", "IsDefaultWarMachine").Msg("db func")
 	_, err := ContractRewardGet(ctx, tx, hash)
 	return errors.Is(err, pgx.ErrNoRows)
 }
 
 func ContractRewardGet(ctx context.Context, tx Conn, hash string) (decimal.Decimal, error) {
+	gamelog.GameLog.Trace().Str("fn", "ContractRewardGet").Msg("db func")
 	resultStr := struct {
 		ContractReward string
 	}{}
@@ -57,10 +62,11 @@ func ContractRewardGet(ctx context.Context, tx Conn, hash string) (decimal.Decim
 	return result, nil
 }
 func ContractRewardInsert(ctx context.Context, tx Conn, battleID server.BattleID, reward decimal.Decimal, hash string) error {
+	gamelog.GameLog.Trace().Str("fn", "ContractRewardInsert").Msg("db func")
 	q := `INSERT INTO issued_contract_rewards (battle_id, reward, war_machine_hash) VALUES ($1, $2, $3);`
 	_, err := tx.Exec(ctx, q, battleID, reward, hash)
 	if err != nil {
-		return err
+		return fmt.Errorf("insert into issued_contract_rewards: %w", err)
 	}
 	return nil
 }
