@@ -251,7 +251,8 @@ func (fq *FactionQueue) Join(wmm *server.WarMachineMetadata, isInsured bool, fac
 	fee := decimal.New(int64(len(fq.QueuingWarMachines)+1), 18).Mul(decimal.NewFromFloat(0.25))
 
 	// insert war machine into db
-	err := db.BattleQueueInsert(context.Background(), fq.Conn, wmm, contractReward.String(), isInsured, fee.String())
+	ctx := context.Background()
+	err := db.BattleQueueInsert(ctx, fq.Conn, wmm, contractReward.String(), isInsured, fee.String())
 	if err != nil {
 		return terror.Error(err, "Failed to insert a copy of queue in db, token id:"+wmm.Hash)
 	}

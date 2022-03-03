@@ -54,7 +54,7 @@ func ContractRewardGet(ctx context.Context, tx Conn, hash string) (decimal.Decim
 	resultStr := struct {
 		ContractReward string
 	}{}
-	q := `SELECT contract_reward FROM battle_war_machine_queues WHERE war_machine_hash = $1`
+	q := `SELECT contract_reward FROM issued_contract_rewards WHERE war_machine_hash = $1`
 	err := pgxscan.Get(ctx, tx, &resultStr, q, hash)
 	if err != nil {
 		return decimal.Zero, fmt.Errorf("get contract reward: %w", err)
@@ -67,8 +67,21 @@ func ContractRewardGet(ctx context.Context, tx Conn, hash string) (decimal.Decim
 }
 func ContractRewardInsert(ctx context.Context, tx Conn, battleID server.BattleID, reward decimal.Decimal, hash string) error {
 	gamelog.GameLog.Debug().Str("fn", "ContractRewardInsert").Str("battle_id", battleID.String()).Msg("db func")
-	q := `INSERT INTO issued_contract_rewards (battle_id, reward, war_machine_hash) VALUES ($1, $2, $3);`
+	if reward.LessThanOrEqual(decimal.Zero) {
+		return fmt.Errorf("reward must be greater than 0")
+	}
+	q := `INSERT INTO issued_contract_rewards (battle_id, reward, war_machine_hash, is_paid) VALUES ($1, $2, $3, NULL);`
 	_, err := tx.Exec(ctx, q, battleID, reward, hash)
+	if err != nil {
+		return fmt.Errorf("insert into issued_contract_rewards: %w", err)
+	}
+	return nil
+}
+
+func ContractRewardMarkIsPaid(ctx context.Context, tx Conn, battleID server.BattleID, hash string) error {
+	gamelog.GameLog.Debug().Str("fn", "ContractRewardMarkIsPaid").Str("battle_id", battleID.String()).Msg("db func")
+	q := `UPDATE issued_contract_rewards SET is_paid = NOW();`
+	_, err := tx.Exec(ctx, q, battleID, hash)
 	if err != nil {
 		return fmt.Errorf("insert into issued_contract_rewards: %w", err)
 	}

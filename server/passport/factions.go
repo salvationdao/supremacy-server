@@ -61,15 +61,15 @@ type RedeemFactionContractRewardReq struct {
 type RedeemFactionContractRewardResp struct{}
 
 // AssetContractRewardRedeem redeem faction contract reward
-func (pp *Passport) AssetContractRewardRedeem(userID server.UserID, factionID server.FactionID, amount decimal.Decimal, txRef server.TransactionReference) {
+func (pp *Passport) AssetContractRewardRedeem(userID server.UserID, factionID server.FactionID, amount decimal.Decimal, txRef server.TransactionReference) error {
 	if amount.LessThanOrEqual(decimal.Zero) {
-		pp.Log.Err(fmt.Errorf("invalid contract amount: %s", amount)).Str("fn", "SupremacyRedeemFactionContractRewardHandler").Msgf("zero or negative contract reward amount", amount)
-		return
+		return fmt.Errorf("AssetContractRewardRedeem: amount must be greater than zero")
 	}
 	err := pp.Comms.Call("C.SupremacyRedeemFactionContractRewardHandler", RedeemFactionContractRewardReq{userID, factionID, amount.String(), txRef}, &RedeemFactionContractRewardResp{})
 	if err != nil {
-		pp.Log.Err(err).Str("fn", "SupremacyRedeemFactionContractRewardHandler").Msg("rpc error")
+		return fmt.Errorf("SupremacyRedeemFactionContractRewardHandler rpc call: %w", err)
 	}
+	return nil
 }
 
 /*

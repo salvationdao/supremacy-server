@@ -123,6 +123,13 @@ outerLoop:
 		return terror.Error(err)
 	}
 
+	for _, wm := range ba.battle.WarMachines {
+		err = db.ContractRewardInsert(ctx, tx, ba.battle.ID, wm.ContractReward, wm.Hash)
+		if err != nil {
+			return terror.Error(err)
+		}
+	}
+
 	err = db.BattleWarMachineAssign(ctx, tx, ba.battle.ID, ba.battle.WarMachines)
 	if err != nil {
 		return terror.Error(err)
@@ -266,10 +273,6 @@ func PayWinners(ctx context.Context, tx db.Conn, ppclient *passport.Passport, ba
 		return fmt.Errorf("get reward from db: %w", err)
 	}
 
-	err = db.ContractRewardInsert(ctx, tx, battleID, reward, winnerHash)
-	if err != nil {
-		return fmt.Errorf("insert reward: %w", err)
-	}
 	ownedByID, factionID, mechName, err := db.MechMetadata(ctx, tx, winnerHash)
 	if err != nil {
 		return fmt.Errorf("get metadata: %w", err)
@@ -280,7 +283,7 @@ func PayWinners(ctx context.Context, tx db.Conn, ppclient *passport.Passport, ba
 		Str("battle_id", battleID.String()).
 		Str("winning_hash", winnerHash).Msg("send to rpc")
 
-	ppclient.AssetContractRewardRedeem(
+	err = ppclient.AssetContractRewardRedeem(
 		ownedByID,
 		factionID,
 		reward,
@@ -292,6 +295,13 @@ func PayWinners(ctx context.Context, tx db.Conn, ppclient *passport.Passport, ba
 			),
 		),
 	)
+	if err != nil {
+		return fmt.Errorf("request redeem contract reward: %w", err)
+	}
+	err = db.ContractRewardMarkIsPaid(ctx, tx, battleID, winnerHash)
+	if err != nil {
+		return fmt.Errorf("insert reward: %w", err)
+	}
 	// Insert into battle ID
 	return nil
 }

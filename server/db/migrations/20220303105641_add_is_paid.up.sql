@@ -1,0 +1,1 @@
+ALTER TABLE issued_contract_rewards ADD COLUMN is_paid TIMESTAMPTZ;
