@@ -6,6 +6,7 @@ import (
 	"server/db"
 
 	"github.com/ninja-software/terror/v2"
+	"github.com/rs/zerolog/log"
 )
 
 func (ba *BattleArena) SetFactionMap(factionMap map[server.FactionID]*server.Faction) {
@@ -33,6 +34,7 @@ func (ba *BattleArena) RandomBattleAbility() (*server.BattleAbility, map[server.
 
 		// set ability detail to battle ability
 		battleAbility.Colour = ability.Colour
+		battleAbility.TextColour = ability.TextColour
 		battleAbility.ImageUrl = ability.ImageUrl
 	}
 
@@ -67,6 +69,7 @@ func (ba *BattleArena) GameAbilityTrigger(gameAbilityEvent *server.GameAbilityEv
 		cancel:        cancel,
 	}
 
+	log.Info().Msg("request game ability")
 	// NOTE: this will potentially lock game server if game client is disconnected
 	// 		 so wrap it in a go routine
 	go func() {

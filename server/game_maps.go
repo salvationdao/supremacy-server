@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/gofrs/uuid"
+	"github.com/shopspring/decimal"
 )
 
 const GameClientTileSize = 2000
@@ -54,7 +55,8 @@ type WarMachineMetadata struct {
 	Rotation           int                `json:"rotation"`
 	Abilities          []*AbilityMetadata `json:"abilities"`
 
-	ContractReward *string `json:"contractReward"`
+	ContractReward decimal.Decimal `json:"contractReward"`
+	Fee            decimal.Decimal `json:"fee"`
 }
 
 type WarMachineBrief struct {
@@ -80,6 +82,7 @@ type AbilityMetadata struct {
 	ID                GameAbilityID `json:"id" db:"id"` // used for zaibatsu faction ability
 	Identity          uuid.UUID     `json:"identity"`   // used to track ability price update
 	Colour            string        `json:"colour"`     // used for game ability colour
+	TextColour        string        `json:"textColour"` // used for game ability text colour
 	Hash              string        `json:"hash"`
 	Name              string        `json:"name"`
 	Description       string        `json:"description"`
@@ -104,6 +107,7 @@ type GameAbility struct {
 	GameClientAbilityID byte             `json:"gameClientAbilityID" db:"game_client_ability_id"`
 	BattleAbilityID     *BattleAbilityID `json:"battleAbilityID,omitempty" db:"battle_ability_id,omitempty"`
 	Colour              string           `json:"colour" db:"colour"`
+	TextColour          string           `json:"textColour" db:"text_colour"`
 	Description         string           `json:"description" db:"description"`
 	ImageUrl            string           `json:"imageUrl" db:"image_url"`
 	FactionID           FactionID        `json:"factionID" db:"faction_id"`

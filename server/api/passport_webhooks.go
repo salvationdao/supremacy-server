@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/big"
 	"net/http"
 	"server"
 	"server/db"
@@ -17,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v4"
 	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog"
+	"github.com/shopspring/decimal"
 )
 
 type PassportWebhookController struct {
@@ -43,7 +43,6 @@ func PassportWebhookRouter(log *zerolog.Logger, conn db.Conn, webhookSecret stri
 
 	r.Post("/user_stat", WithPassportSecret(webhookSecret, WithError(c.UserStatGet)))
 	r.Post("/faction_stat", WithPassportSecret(webhookSecret, WithError(c.FactionStatGet)))
-	r.Post("/faction_contract_reward", WithPassportSecret(webhookSecret, WithError(c.FactionContractRewardGet)))
 
 	r.Post("/faction_queue_cost", WithPassportSecret(webhookSecret, WithError(c.FactionQueueCostGet)))
 
@@ -150,8 +149,8 @@ type WarMachineJoinRequest struct {
 }
 
 type WarMachineJoinResp struct {
-	Position       *int    `json:"position"`
-	ContractReward *string `json:"contractReward"`
+	Position       *int            `json:"position"`
+	ContractReward decimal.Decimal `json:"contractReward"`
 }
 
 func (pc *PassportWebhookController) WarMachineJoin(w http.ResponseWriter, r *http.Request) (int, error) {
@@ -184,27 +183,56 @@ func (pc *PassportWebhookController) WarMachineJoin(w http.ResponseWriter, r *ht
 	}
 	pc.API.Passport.FactionQueueCostUpdate(factionQueuePrice)
 
-	queuingFee := big.NewInt(1000000000000000000)
-	queuingFee.Mul(queuingFee, big.NewInt(int64(factionQueuePrice.QueuingLength)))
+	errChan := make(chan error)
 
 	// fire a payment to passport
 	pc.API.Passport.SpendSupMessage(passport.SpendSupsReq{
 		FromUserID:           req.WarMachineMetadata.OwnedByID,
 		ToUserID:             &server.XsynTreasuryUserID,
-		Amount:               queuingFee.String(),
+		Amount:               req.WarMachineMetadata.Fee.String(),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("war_machine_queuing_fee|%s", uuid.Must(uuid.NewV4()))),
-	}, func(transaction string) {})
+	}, func(transaction string) {
+		errChan <- nil
+	}, func(reqErr error) {
+		// check faction id
+		switch req.WarMachineMetadata.FactionID {
+		case server.RedMountainFactionID:
+			err = pc.API.BattleArena.WarMachineQueue.RedMountain.Leave(req.WarMachineMetadata.Hash)
+			if err != nil {
+				pc.Log.Err(err).Msg("")
+			}
+		case server.BostonCyberneticsFactionID:
+			err = pc.API.BattleArena.WarMachineQueue.Boston.Leave(req.WarMachineMetadata.Hash)
+			if err != nil {
+				pc.Log.Err(err).Msg("")
+			}
+		case server.ZaibatsuFactionID:
+			err = pc.API.BattleArena.WarMachineQueue.Zaibatsu.Leave(req.WarMachineMetadata.Hash)
+			if err != nil {
+				pc.Log.Err(err).Msg("")
+			}
+		}
+		pc.API.Passport.SupremacyQueueUpdate(&server.SupremacyQueueUpdateReq{
+			Hash: req.WarMachineMetadata.Hash,
+		})
+		errChan <- reqErr
+	})
+
+	err = <-errChan
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Issue joining queue")
+	}
 
 	// prepare response
 	resp := &WarMachineJoinResp{}
 	// set insurance flag
-	warMachinePostion, contractReward := pc.API.BattleArena.WarMachineQueue.GetWarMachineQueue(req.WarMachineMetadata.FactionID, req.WarMachineMetadata.Hash)
+	warMachinePosition, _ := pc.API.BattleArena.WarMachineQueue.GetWarMachineQueue(req.WarMachineMetadata.FactionID, req.WarMachineMetadata.Hash)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	resp.Position = warMachinePostion
-	resp.ContractReward = contractReward
+	resp.Position = warMachinePosition
+	resp.ContractReward = decimal.New(int64((*warMachinePosition+1)*2), 0)
 
 	// get contract reward
 	queuingStat, err := db.AssetQueuingStat(context.Background(), pc.Conn, req.WarMachineMetadata.Hash)
@@ -212,9 +240,13 @@ func (pc *PassportWebhookController) WarMachineJoin(w http.ResponseWriter, r *ht
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	resp.ContractReward = nil
+	queueingContractReward, err := decimal.NewFromString(queuingStat.ContractReward)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err)
+	}
+	resp.ContractReward = decimal.Zero
 	if queuingStat != nil {
-		resp.ContractReward = &queuingStat.ContractReward
+		resp.ContractReward = queueingContractReward
 	}
 
 	// return current queuing position
@@ -230,7 +262,6 @@ func (pc *PassportWebhookController) UserSupsMultiplierGet(w http.ResponseWriter
 	req := &UserSupsMultiplierGetRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
-		fmt.Println(err)
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
@@ -298,53 +329,6 @@ func (pc *PassportWebhookController) FactionStatGet(w http.ResponseWriter, r *ht
 	return helpers.EncodeJSON(w, factionStat)
 }
 
-type FactionContractRewardGetRequest struct {
-	FactionID server.FactionID `json:"factionID"`
-}
-
-func (pc *PassportWebhookController) FactionContractRewardGet(w http.ResponseWriter, r *http.Request) (int, error) {
-	req := &FactionContractRewardGetRequest{}
-	err := json.NewDecoder(r.Body).Decode(req)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err)
-	}
-
-	if req.FactionID.IsNil() || !req.FactionID.IsValid() {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("faction id is empty"), "Faction id is required")
-	}
-	if pc.API.BattleArena == nil {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("battle arena is nil"), "Battle arena is nil")
-	}
-	if pc.API.BattleArena.WarMachineQueue == nil {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("WarMachineQueue is nil"), "WarMachineQueue is nil")
-	}
-	if pc.API.BattleArena.WarMachineQueue.RedMountain == nil {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("RedMountain is nil"), "RedMountain is nil")
-	}
-	if pc.API.BattleArena.WarMachineQueue.Boston == nil {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("Boston is nil"), "Boston is nil")
-	}
-	if pc.API.BattleArena.WarMachineQueue.Zaibatsu == nil {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("Zaibatsu is nil"), "Zaibatsu is nil")
-	}
-
-	contractReward := "0"
-	switch req.FactionID {
-	case server.RedMountainFactionID:
-		contractReward = pc.API.BattleArena.WarMachineQueue.RedMountain.GetContractReward()
-	case server.BostonCyberneticsFactionID:
-		contractReward = pc.API.BattleArena.WarMachineQueue.Boston.GetContractReward()
-	case server.ZaibatsuFactionID:
-		contractReward = pc.API.BattleArena.WarMachineQueue.Zaibatsu.GetContractReward()
-	}
-
-	return helpers.EncodeJSON(w, struct {
-		ContractReward string `json:"contractReward"`
-	}{
-		ContractReward: contractReward,
-	})
-}
-
 type WarMachineQueuePositionRequest struct {
 	FactionID server.FactionID `json:"factionID"`
 	AssetHash string           `json:"assethash"`
@@ -364,8 +348,8 @@ func (pc *PassportWebhookController) WarMachineQueuePositionGet(w http.ResponseW
 	}
 
 	return helpers.EncodeJSON(w, struct {
-		Position       *int    `json:"position"`
-		ContractReward *string `json:"contractReward"`
+		Position       *int            `json:"position"`
+		ContractReward decimal.Decimal `json:"contractReward"`
 	}{
 		Position:       position,
 		ContractReward: contractReward,
@@ -419,7 +403,6 @@ func (pc *PassportWebhookController) AuthRingCheck(w http.ResponseWriter, r *htt
 	if req.GameserverSessionID == "" {
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("no auth ring check key provided"), "Ring check key is required")
 	}
-
 	client, err := pc.API.RingCheckAuthMap.Check(req.GameserverSessionID)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Hub client not found")
@@ -455,6 +438,7 @@ func (pc *PassportWebhookController) AuthRingCheck(w http.ResponseWriter, r *htt
 	}{
 		IsSuccess: true,
 	})
+
 }
 
 type FactionQueueCostGetRequest struct {

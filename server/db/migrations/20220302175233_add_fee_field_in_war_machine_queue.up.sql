@@ -1,0 +1,2 @@
+ALTER TABLE battle_war_machine_queues
+    ADD COLUMN IF NOT EXISTS fee TEXT NOT NULL DEFAULT '0';

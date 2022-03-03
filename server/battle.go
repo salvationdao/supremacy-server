@@ -64,11 +64,15 @@ const (
 type BattleID uuid.UUID
 
 type BattleQueueMetadata struct {
+	WarNachuneHash     string              `json:"war_machine_hash" db:"war_machine_hash"`
+	FactionID          FactionID           `json:"faction_id" db:"faction_id"`
 	WarMachineMetadata *WarMachineMetadata `json:"warMachineMetadata" db:"war_machine_metadata"`
 	QueuedAt           time.Time           `json:"queuedAt" db:"queued_at"`
 	DeletedAt          *time.Time          `json:"deletedAt,omitempty" db:"deleted_at,omitempty"`
 	ContractReward     string              `json:"contractReward" db:"contract_reward"`
 	IsInsured          bool                `json:"isInsured" db:"is_insured"`
+	Fee                string              `json:"fee" db:"fee"`
+	CreatedAt          time.Time           `json:"created_at" db:"created_at"`
 }
 
 // IsNil returns true for a nil uuid.
@@ -134,4 +138,10 @@ type AssetRepairRecord struct {
 	IsPaidToComplete  bool       `json:"isPaidToComplete" db:"is_paid_to_complete"`
 	CompletedAt       *time.Time `json:"completedAt,omitempty" db:"completed_at,omitempty"`
 	CreatedAt         time.Time  `json:"createdAt" db:"created_at"`
+}
+
+type SupremacyQueueUpdateReq struct {
+	Hash           string  `json:"hash"`
+	Position       *int    `json:"position"`
+	ContractReward *string `json:"contractReward"`
 }

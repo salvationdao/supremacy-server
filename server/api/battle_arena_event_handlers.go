@@ -21,9 +21,6 @@ import (
 func (api *API) BattleInitSignal(ctx context.Context, ed *battle_arena.EventData) {
 	// clean up battle end information
 	api.battleEndInfo = &BattleEndInfo{}
-
-	// pass back nil to tell game ui to clean up current end battle message
-	go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyBattleEndDetailUpdated), nil)
 }
 
 const HubKeyGameSettingsUpdated = hub.HubCommandKey("GAME:SETTINGS:UPDATED")
@@ -89,36 +86,36 @@ func (api *API) BattleStartSignal(ctx context.Context, ed *battle_arena.EventDat
 					ab.Title = "FACTION_WIDE"
 					ab.CurrentSups = "0"
 				}
-			}
-
-			for _, wm := range ed.BattleArena.WarMachines {
-				if wm.FactionID != factionID || len(wm.Abilities) == 0 {
-					continue
-				}
-
-				for _, ability := range wm.Abilities {
-					wmAbility := &server.GameAbility{
-						ID:                  server.GameAbilityID(uuid.Must(uuid.NewV4())), // generate a uuid for frontend to track sups contribution
-						Identity:            ability.Identity,
-						GameClientAbilityID: byte(ability.GameClientID),
-						ImageUrl:            ability.Image,
-						Description:         ability.Description,
-						FactionID:           factionID,
-						Label:               ability.Name,
-						SupsCost:            ability.SupsCost,
-						CurrentSups:         "0",
-						AbilityHash:         ability.Hash,
-						WarMachineHash:      wm.Hash,
-						ParticipantID:       &wm.ParticipantID,
-						Title:               wm.Name,
+			} else {
+				for _, wm := range ed.BattleArena.WarMachines {
+					if wm.FactionID != factionID || len(wm.Abilities) == 0 {
+						continue
 					}
-					// if it is zaibatsu faction ability set id back
-					if ability.GameClientID == 11 {
-						wmAbility.ID = ability.ID
-						wmAbility.Colour = ability.Colour
-					}
-					initialAbilities = append(initialAbilities, wmAbility)
 
+					for _, ability := range wm.Abilities {
+						wmAbility := &server.GameAbility{
+							ID:                  server.GameAbilityID(uuid.Must(uuid.NewV4())), // generate a uuid for frontend to track sups contribution
+							Identity:            ability.Identity,
+							GameClientAbilityID: byte(ability.GameClientID),
+							ImageUrl:            ability.Image,
+							Description:         ability.Description,
+							FactionID:           factionID,
+							Label:               ability.Name,
+							SupsCost:            ability.SupsCost,
+							CurrentSups:         "0",
+							AbilityHash:         ability.Hash,
+							WarMachineHash:      wm.Hash,
+							ParticipantID:       &wm.ParticipantID,
+							Title:               wm.Name,
+						}
+						// if it is zaibatsu faction ability set id back
+						if ability.GameClientID == 11 {
+							wmAbility.ID = ability.ID
+							wmAbility.Colour = ability.Colour
+							wmAbility.TextColour = ability.TextColour
+						}
+						initialAbilities = append(initialAbilities, wmAbility)
+					}
 				}
 			}
 
@@ -135,7 +132,7 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 	battleStat := api.BattleArena.GetCurrentState()
 	api.battleEndInfo.BattleID = battleStat.ID
 	api.battleEndInfo.StartedAt = battleStat.StartedAt
-	api.battleEndInfo.EndedAt = *battleStat.EndedAt
+	api.battleEndInfo.EndedAt = time.Now()
 	// stop all the tickles in voting cycle
 	go api.stopGameAbilityPoolTicker()
 
@@ -147,7 +144,6 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 		return
 	}
 	userVoteList := api.stopVotingCycle(ctx)
-	hasVote := len(userVoteList) > 0
 	// combine user vote list with user view list
 	addedList := []*server.BattleUserVote{}
 	for _, uid := range battleViewers {
@@ -176,32 +172,63 @@ func (api *API) BattleEndSignal(ctx context.Context, ed *battle_arena.EventData)
 			api.Log.Err(err).Msg("Failed to record battle user vote")
 			return
 		}
+
 	}
 
-	if hasVote {
-		// get the user who spend most sups during the battle from passport
-		wg := deadlock.WaitGroup{}
+	// get the user who spend most sups during the battle from passport
+	wg := deadlock.WaitGroup{}
 
-		wg.Add(1)
-		api.Passport.TopSupsContributorsGet(ed.BattleArena.StartedAt, time.Now(), func(result *passport.TopSupsContributorResp) {
-			for _, topUser := range result.TopSupsContributors {
-				if !topUser.FactionID.IsNil() {
-					topUser.Faction = api.factionMap[topUser.FactionID]
+	wg.Add(1)
+	api.Passport.TopSupsContributorsGet(ed.BattleArena.StartedAt, time.Now(), func(result *passport.TopSupsContributorResp) {
+		// get the top five user
+		topFive := []*server.User{}
+		if len(result.TopSupsContributors) < 5 {
+			topFive = append(topFive, result.TopSupsContributors...)
+		} else {
+			topFive = append(topFive, result.TopSupsContributors[:5]...)
+		}
+
+		// fill user
+		list := []*server.User{}
+		list = append(list, result.TopSupsContributors...)
+		for _, userID := range battleViewers {
+			exist := false
+			for _, user := range result.TopSupsContributors {
+				if user.ID == userID {
+					exist = true
+					break
 				}
-				api.battleEndInfo.TopSupsContributors = append(api.battleEndInfo.TopSupsContributors, topUser.Brief())
-
-				// recorded for sups most spend
-				ed.BattleRewardList.TopSupsSpendUsers = append(ed.BattleRewardList.TopSupsSpendUsers, topUser.ID)
 			}
-
-			for _, topFaction := range result.TopSupsContributeFactions {
-				api.battleEndInfo.TopSupsContributeFactions = append(api.battleEndInfo.TopSupsContributeFactions, topFaction.Brief())
+			if !exist {
+				list = append(list, &server.User{ID: userID})
 			}
+		}
 
-			wg.Done()
-		})
-		wg.Wait()
-	}
+		// calc citizen multipliers
+		api.UserMultiplier.NewCitizenOrder(list)
+
+		// record battle end if
+		api.battleEndInfo.TopSupsContributors = []*server.UserBrief{}
+		api.battleEndInfo.TopSupsContributeFactions = []*server.FactionBrief{}
+		ed.BattleRewardList.TopSupsSpendUsers = []server.UserID{}
+		for _, topUser := range topFive {
+			if !topUser.FactionID.IsNil() {
+				topUser.Faction = api.factionMap[topUser.FactionID]
+			}
+			api.battleEndInfo.TopSupsContributors = append(api.battleEndInfo.TopSupsContributors, topUser.Brief())
+
+			// recorded for sups most spend
+
+			ed.BattleRewardList.TopSupsSpendUsers = append(ed.BattleRewardList.TopSupsSpendUsers, topUser.ID)
+		}
+
+		for _, topFaction := range result.TopSupsContributeFactions {
+			api.battleEndInfo.TopSupsContributeFactions = append(api.battleEndInfo.TopSupsContributeFactions, topFaction.Brief())
+		}
+
+		wg.Done()
+	})
+	wg.Wait()
 
 	// get most frequent trigger ability user
 	us, err := db.UsersMostFrequentTriggerAbility(ctx, api.Conn, ed.BattleArena.ID)

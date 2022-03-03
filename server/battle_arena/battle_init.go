@@ -3,6 +3,7 @@ package battle_arena
 import (
 	"context"
 	"server"
+	"server/comms"
 	"server/db"
 	"server/passport"
 	"time"
@@ -15,6 +16,8 @@ import (
 const BattleCommandInitBattle BattleCommand = "BATTLE:INIT"
 
 func (ba *BattleArena) InitNextBattle() error {
+	ba.Events.Trigger(context.Background(), EventGameInit, nil)
+
 	// switch battle state to LOBBY
 	ba.battle.State = server.StateLobby
 
@@ -51,29 +54,31 @@ func (ba *BattleArena) InitNextBattle() error {
 	ba.battle.WarMachines = append(ba.battle.WarMachines, ba.WarMachineQueue.Zaibatsu.GetWarMachineForEnterGame(mechsPerFaction)...)
 
 	// broadcast warmachine stat to passport
-	broadcastList := []*passport.WarMachineQueueStat{}
+	broadcastList := []*comms.WarMachineQueueStat{}
 	// Red mountain
 	for i, wm := range ba.WarMachineQueue.RedMountain.QueuingWarMachines {
 		position := i + 1
-		broadcastList = append(broadcastList, &passport.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
+		broadcastList = append(broadcastList, &comms.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
 	}
 	for _, wm := range ba.WarMachineQueue.RedMountain.InGameWarMachines {
 		position := -1
-		broadcastList = append(broadcastList, &passport.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
+		broadcastList = append(broadcastList, &comms.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
 	}
 	ba.passport.FactionQueueCostUpdate(&passport.FactionQueuePriceUpdateReq{
 		FactionID:     server.RedMountainFactionID,
 		QueuingLength: ba.WarMachineQueue.RedMountain.QueuingLength(),
 	})
 
+	// release in game the mechs
+
 	// Boston
 	for i, wm := range ba.WarMachineQueue.Boston.QueuingWarMachines {
 		position := i + 1
-		broadcastList = append(broadcastList, &passport.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
+		broadcastList = append(broadcastList, &comms.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
 	}
 	for _, wm := range ba.WarMachineQueue.Boston.InGameWarMachines {
 		position := -1
-		broadcastList = append(broadcastList, &passport.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
+		broadcastList = append(broadcastList, &comms.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
 	}
 	ba.passport.FactionQueueCostUpdate(&passport.FactionQueuePriceUpdateReq{
 		FactionID:     server.BostonCyberneticsFactionID,
@@ -83,11 +88,11 @@ func (ba *BattleArena) InitNextBattle() error {
 	// Zaibatsu
 	for i, wm := range ba.WarMachineQueue.Zaibatsu.QueuingWarMachines {
 		position := i + 1
-		broadcastList = append(broadcastList, &passport.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
+		broadcastList = append(broadcastList, &comms.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
 	}
 	for _, wm := range ba.WarMachineQueue.Zaibatsu.InGameWarMachines {
 		position := -1
-		broadcastList = append(broadcastList, &passport.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
+		broadcastList = append(broadcastList, &comms.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
 	}
 	ba.passport.FactionQueueCostUpdate(&passport.FactionQueuePriceUpdateReq{
 		FactionID:     server.ZaibatsuFactionID,
@@ -106,12 +111,15 @@ func (ba *BattleArena) InitNextBattle() error {
 
 	if len(ba.battle.WarMachines) > 0 {
 		for _, warMachine := range ba.battle.WarMachines {
+			// HACK: clean up war machine ability before stacking it
+			warMachine.Abilities = []*server.AbilityMetadata{}
 			if warMachine.FactionID == server.ZaibatsuFactionID {
 				// if war machine is from Zaibatsu, insert the ability as faction ability
 				warMachine.Abilities = append(warMachine.Abilities, &server.AbilityMetadata{
 					ID:           zaibatsuAbility.ID,
 					Identity:     uuid.Must(uuid.NewV4()), // track ability's price
 					Colour:       zaibatsuAbility.Colour,
+					TextColour:   zaibatsuAbility.TextColour,
 					GameClientID: int(zaibatsuAbility.GameClientAbilityID),
 					Image:        zaibatsuAbility.ImageUrl,
 					Description:  zaibatsuAbility.Description,

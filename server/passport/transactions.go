@@ -21,11 +21,12 @@ type SpendSupsResp struct {
 }
 
 // SpendSupMessage tells the passport to hold sups
-func (pp *Passport) SpendSupMessage(req SpendSupsReq, callback func(txID string)) {
+func (pp *Passport) SpendSupMessage(req SpendSupsReq, callback func(txID string), errorCallback func(err error)) {
 	resp := &SpendSupsResp{}
 	pp.Comms.GoCall("C.SupremacySpendSupsHandler", req, resp, func(err error) {
 		if err != nil {
 			pp.Log.Err(err).Str("method", "SupremacySpendSupsHandler").Msg("rpc error")
+			errorCallback(err)
 			return
 		}
 		callback(resp.TXID)
@@ -51,7 +52,6 @@ func (pp *Passport) ReleaseTransactions(transactions []string) {
 type TransferBattleFundToSupPoolReq struct{}
 type TransferBattleFundToSupPoolResp struct{}
 
-// ReleaseTransactions tells the passport to transfer fund to sup pool
 func (pp *Passport) TransferBattleFundToSupsPool() {
 	err := pp.Comms.Call("C.TransferBattleFundToSupPoolHandler", TransferBattleFundToSupPoolReq{}, &TransferBattleFundToSupPoolResp{})
 	if err != nil {
@@ -72,10 +72,14 @@ type TopSupsContributorResp struct {
 // ReleaseTransactions tells the passport to transfer fund to sup pool
 func (pp *Passport) TopSupsContributorsGet(startTime, endTime time.Time, callback func(result *TopSupsContributorResp)) {
 	resp := &TopSupsContributorResp{}
-	err := pp.Comms.Call("C.TopSupsContributorHandler", TopSupsContributorReq{}, resp)
+	err := pp.Comms.Call("C.TopSupsContributorHandler", TopSupsContributorReq{
+		StartTime: startTime,
+		EndTime:   endTime,
+	}, resp)
 	if err != nil {
 		pp.Log.Err(err).Str("method", "TopSupsContributorHandler").Msg("rpc error")
 		return
 	}
+
 	callback(resp)
 }
