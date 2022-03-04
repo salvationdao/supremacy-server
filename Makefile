@@ -120,7 +120,7 @@ db-reset: db-drop db-migrate db-seed
 # make sure `make tools` is done
 .PHONY: db-boiler
 db-boiler:
-	$(BIN)/sqlboiler $(BIN)/sqlboiler-psql --wipe --config $(SERVER)/sqlboiler.toml
+	$(BIN)/sqlboiler $(BIN)/sqlboiler-psql -config $(SERVER)/sqlboiler.toml
 
 .PHONY: go-mod-download
 go-mod-download:
