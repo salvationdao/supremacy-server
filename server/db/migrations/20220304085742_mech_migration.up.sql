@@ -37,7 +37,6 @@ CREATE TABLE blueprint_chassis (
     label TEXT NOT NULL,
     slug TEXT NOT NULL,
     shield_recharge_rate INTEGER NOT NULL,
-    hp INTEGER NOT NULL,
     weapon_hardpoints INTEGER NOT NULL,
     turret_hardpoints INTEGER NOT NULL,
     utility_slots INTEGER NOT NULL,

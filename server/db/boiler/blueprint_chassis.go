@@ -28,7 +28,6 @@ type BlueprintChassis struct {
 	Label              string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
 	Slug               string    `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
 	ShieldRechargeRate int       `boiler:"shield_recharge_rate" boil:"shield_recharge_rate" json:"shieldRechargeRate" toml:"shieldRechargeRate" yaml:"shieldRechargeRate"`
-	HP                 int       `boiler:"hp" boil:"hp" json:"hp" toml:"hp" yaml:"hp"`
 	WeaponHardpoints   int       `boiler:"weapon_hardpoints" boil:"weapon_hardpoints" json:"weaponHardpoints" toml:"weaponHardpoints" yaml:"weaponHardpoints"`
 	TurretHardpoints   int       `boiler:"turret_hardpoints" boil:"turret_hardpoints" json:"turretHardpoints" toml:"turretHardpoints" yaml:"turretHardpoints"`
 	UtilitySlots       int       `boiler:"utility_slots" boil:"utility_slots" json:"utilitySlots" toml:"utilitySlots" yaml:"utilitySlots"`
@@ -49,7 +48,6 @@ var BlueprintChassisColumns = struct {
 	Label              string
 	Slug               string
 	ShieldRechargeRate string
-	HP                 string
 	WeaponHardpoints   string
 	TurretHardpoints   string
 	UtilitySlots       string
@@ -65,7 +63,6 @@ var BlueprintChassisColumns = struct {
 	Label:              "label",
 	Slug:               "slug",
 	ShieldRechargeRate: "shield_recharge_rate",
-	HP:                 "hp",
 	WeaponHardpoints:   "weapon_hardpoints",
 	TurretHardpoints:   "turret_hardpoints",
 	UtilitySlots:       "utility_slots",
@@ -83,7 +80,6 @@ var BlueprintChassisTableColumns = struct {
 	Label              string
 	Slug               string
 	ShieldRechargeRate string
-	HP                 string
 	WeaponHardpoints   string
 	TurretHardpoints   string
 	UtilitySlots       string
@@ -99,7 +95,6 @@ var BlueprintChassisTableColumns = struct {
 	Label:              "blueprint_chassis.label",
 	Slug:               "blueprint_chassis.slug",
 	ShieldRechargeRate: "blueprint_chassis.shield_recharge_rate",
-	HP:                 "blueprint_chassis.hp",
 	WeaponHardpoints:   "blueprint_chassis.weapon_hardpoints",
 	TurretHardpoints:   "blueprint_chassis.turret_hardpoints",
 	UtilitySlots:       "blueprint_chassis.utility_slots",
@@ -119,7 +114,6 @@ var BlueprintChassisWhere = struct {
 	Label              whereHelperstring
 	Slug               whereHelperstring
 	ShieldRechargeRate whereHelperint
-	HP                 whereHelperint
 	WeaponHardpoints   whereHelperint
 	TurretHardpoints   whereHelperint
 	UtilitySlots       whereHelperint
@@ -135,7 +129,6 @@ var BlueprintChassisWhere = struct {
 	Label:              whereHelperstring{field: "\"blueprint_chassis\".\"label\""},
 	Slug:               whereHelperstring{field: "\"blueprint_chassis\".\"slug\""},
 	ShieldRechargeRate: whereHelperint{field: "\"blueprint_chassis\".\"shield_recharge_rate\""},
-	HP:                 whereHelperint{field: "\"blueprint_chassis\".\"hp\""},
 	WeaponHardpoints:   whereHelperint{field: "\"blueprint_chassis\".\"weapon_hardpoints\""},
 	TurretHardpoints:   whereHelperint{field: "\"blueprint_chassis\".\"turret_hardpoints\""},
 	UtilitySlots:       whereHelperint{field: "\"blueprint_chassis\".\"utility_slots\""},
@@ -177,8 +170,8 @@ func (*blueprintChassisR) NewStruct() *blueprintChassisR {
 type blueprintChassisL struct{}
 
 var (
-	blueprintChassisAllColumns            = []string{"id", "brand_id", "label", "slug", "shield_recharge_rate", "hp", "weapon_hardpoints", "turret_hardpoints", "utility_slots", "speed", "max_hitpoints", "max_shield", "deleted_at", "updated_at", "created_at"}
-	blueprintChassisColumnsWithoutDefault = []string{"brand_id", "label", "slug", "shield_recharge_rate", "hp", "weapon_hardpoints", "turret_hardpoints", "utility_slots", "speed", "max_hitpoints", "max_shield"}
+	blueprintChassisAllColumns            = []string{"id", "brand_id", "label", "slug", "shield_recharge_rate", "weapon_hardpoints", "turret_hardpoints", "utility_slots", "speed", "max_hitpoints", "max_shield", "deleted_at", "updated_at", "created_at"}
+	blueprintChassisColumnsWithoutDefault = []string{"brand_id", "label", "slug", "shield_recharge_rate", "weapon_hardpoints", "turret_hardpoints", "utility_slots", "speed", "max_hitpoints", "max_shield"}
 	blueprintChassisColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at"}
 	blueprintChassisPrimaryKeyColumns     = []string{"id"}
 	blueprintChassisGeneratedColumns      = []string{}
