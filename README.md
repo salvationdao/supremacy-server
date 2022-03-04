@@ -34,6 +34,16 @@ make tools
 make docker-start docker-setup db-reset
 ```
 
+#### db-boiler
+
+For existing db, migrate up is required, to allow sqlboiler to generate boilers codes
+
+```bash
+make tools
+make db-migrate
+make db-boiler
+```
+
 #### manually spinup server
 
 ```shell
