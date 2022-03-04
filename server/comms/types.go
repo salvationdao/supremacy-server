@@ -6,6 +6,7 @@ import (
 
 	"github.com/ninja-syndicate/hub"
 	"github.com/shopspring/decimal"
+	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
 type AssetRepairStatReq struct {
@@ -81,4 +82,12 @@ type TopSupsContributorReq struct {
 type TopSupsContributorResp struct {
 	TopSupsContributors       []*server.User    `json:"topSupsContributors"`
 	TopSupsContributeFactions []*server.Faction `json:"topSupsContributeFactions"`
+}
+type GetAllReq struct{}
+type GetAll struct {
+	AssetPayload    types.JSON
+	MetadataPayload types.JSON
+	StorePayload    types.JSON
+	UserPayload     types.JSON
+	FactionPayload  types.JSON
 }

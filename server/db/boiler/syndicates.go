@@ -23,65 +23,72 @@ import (
 
 // Syndicate is an object representing the database table.
 type Syndicate struct {
-	ID        string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Label     string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	GuildID   null.String `boiler:"guild_id" boil:"guild_id" json:"guildID,omitempty" toml:"guildID" yaml:"guildID,omitempty"`
-	DeletedAt null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
-	UpdatedAt time.Time   `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
-	CreatedAt time.Time   `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	ID          string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Label       string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	Description string      `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
+	GuildID     null.String `boiler:"guild_id" boil:"guild_id" json:"guildID,omitempty" toml:"guildID" yaml:"guildID,omitempty"`
+	DeletedAt   null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
+	UpdatedAt   time.Time   `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
+	CreatedAt   time.Time   `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
 
 	R *syndicateR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L syndicateL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var SyndicateColumns = struct {
-	ID        string
-	Label     string
-	GuildID   string
-	DeletedAt string
-	UpdatedAt string
-	CreatedAt string
+	ID          string
+	Label       string
+	Description string
+	GuildID     string
+	DeletedAt   string
+	UpdatedAt   string
+	CreatedAt   string
 }{
-	ID:        "id",
-	Label:     "label",
-	GuildID:   "guild_id",
-	DeletedAt: "deleted_at",
-	UpdatedAt: "updated_at",
-	CreatedAt: "created_at",
+	ID:          "id",
+	Label:       "label",
+	Description: "description",
+	GuildID:     "guild_id",
+	DeletedAt:   "deleted_at",
+	UpdatedAt:   "updated_at",
+	CreatedAt:   "created_at",
 }
 
 var SyndicateTableColumns = struct {
-	ID        string
-	Label     string
-	GuildID   string
-	DeletedAt string
-	UpdatedAt string
-	CreatedAt string
+	ID          string
+	Label       string
+	Description string
+	GuildID     string
+	DeletedAt   string
+	UpdatedAt   string
+	CreatedAt   string
 }{
-	ID:        "syndicates.id",
-	Label:     "syndicates.label",
-	GuildID:   "syndicates.guild_id",
-	DeletedAt: "syndicates.deleted_at",
-	UpdatedAt: "syndicates.updated_at",
-	CreatedAt: "syndicates.created_at",
+	ID:          "syndicates.id",
+	Label:       "syndicates.label",
+	Description: "syndicates.description",
+	GuildID:     "syndicates.guild_id",
+	DeletedAt:   "syndicates.deleted_at",
+	UpdatedAt:   "syndicates.updated_at",
+	CreatedAt:   "syndicates.created_at",
 }
 
 // Generated where
 
 var SyndicateWhere = struct {
-	ID        whereHelperstring
-	Label     whereHelperstring
-	GuildID   whereHelpernull_String
-	DeletedAt whereHelpernull_Time
-	UpdatedAt whereHelpertime_Time
-	CreatedAt whereHelpertime_Time
+	ID          whereHelperstring
+	Label       whereHelperstring
+	Description whereHelperstring
+	GuildID     whereHelpernull_String
+	DeletedAt   whereHelpernull_Time
+	UpdatedAt   whereHelpertime_Time
+	CreatedAt   whereHelpertime_Time
 }{
-	ID:        whereHelperstring{field: "\"syndicates\".\"id\""},
-	Label:     whereHelperstring{field: "\"syndicates\".\"label\""},
-	GuildID:   whereHelpernull_String{field: "\"syndicates\".\"guild_id\""},
-	DeletedAt: whereHelpernull_Time{field: "\"syndicates\".\"deleted_at\""},
-	UpdatedAt: whereHelpertime_Time{field: "\"syndicates\".\"updated_at\""},
-	CreatedAt: whereHelpertime_Time{field: "\"syndicates\".\"created_at\""},
+	ID:          whereHelperstring{field: "\"syndicates\".\"id\""},
+	Label:       whereHelperstring{field: "\"syndicates\".\"label\""},
+	Description: whereHelperstring{field: "\"syndicates\".\"description\""},
+	GuildID:     whereHelpernull_String{field: "\"syndicates\".\"guild_id\""},
+	DeletedAt:   whereHelpernull_Time{field: "\"syndicates\".\"deleted_at\""},
+	UpdatedAt:   whereHelpertime_Time{field: "\"syndicates\".\"updated_at\""},
+	CreatedAt:   whereHelpertime_Time{field: "\"syndicates\".\"created_at\""},
 }
 
 // SyndicateRels is where relationship names are stored.
@@ -108,8 +115,8 @@ func (*syndicateR) NewStruct() *syndicateR {
 type syndicateL struct{}
 
 var (
-	syndicateAllColumns            = []string{"id", "label", "guild_id", "deleted_at", "updated_at", "created_at"}
-	syndicateColumnsWithoutDefault = []string{"label"}
+	syndicateAllColumns            = []string{"id", "label", "description", "guild_id", "deleted_at", "updated_at", "created_at"}
+	syndicateColumnsWithoutDefault = []string{"label", "description"}
 	syndicateColumnsWithDefault    = []string{"id", "guild_id", "deleted_at", "updated_at", "created_at"}
 	syndicatePrimaryKeyColumns     = []string{"id"}
 	syndicateGeneratedColumns      = []string{}

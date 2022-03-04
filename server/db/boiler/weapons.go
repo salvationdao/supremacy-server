@@ -24,11 +24,11 @@ import (
 // Weapon is an object representing the database table.
 type Weapon struct {
 	ID         string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	BrandID    string    `boiler:"brand_id" boil:"brand_id" json:"brandID" toml:"brandID" yaml:"brandID"`
 	Label      string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
 	Slug       string    `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
 	Damage     int       `boiler:"damage" boil:"damage" json:"damage" toml:"damage" yaml:"damage"`
 	WeaponType string    `boiler:"weapon_type" boil:"weapon_type" json:"weaponType" toml:"weaponType" yaml:"weaponType"`
-	BrandID    string    `boiler:"brand_id" boil:"brand_id" json:"brandID" toml:"brandID" yaml:"brandID"`
 	DeletedAt  null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
 	UpdatedAt  time.Time `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
 	CreatedAt  time.Time `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
@@ -39,21 +39,21 @@ type Weapon struct {
 
 var WeaponColumns = struct {
 	ID         string
+	BrandID    string
 	Label      string
 	Slug       string
 	Damage     string
 	WeaponType string
-	BrandID    string
 	DeletedAt  string
 	UpdatedAt  string
 	CreatedAt  string
 }{
 	ID:         "id",
+	BrandID:    "brand_id",
 	Label:      "label",
 	Slug:       "slug",
 	Damage:     "damage",
 	WeaponType: "weapon_type",
-	BrandID:    "brand_id",
 	DeletedAt:  "deleted_at",
 	UpdatedAt:  "updated_at",
 	CreatedAt:  "created_at",
@@ -61,21 +61,21 @@ var WeaponColumns = struct {
 
 var WeaponTableColumns = struct {
 	ID         string
+	BrandID    string
 	Label      string
 	Slug       string
 	Damage     string
 	WeaponType string
-	BrandID    string
 	DeletedAt  string
 	UpdatedAt  string
 	CreatedAt  string
 }{
 	ID:         "weapons.id",
+	BrandID:    "weapons.brand_id",
 	Label:      "weapons.label",
 	Slug:       "weapons.slug",
 	Damage:     "weapons.damage",
 	WeaponType: "weapons.weapon_type",
-	BrandID:    "weapons.brand_id",
 	DeletedAt:  "weapons.deleted_at",
 	UpdatedAt:  "weapons.updated_at",
 	CreatedAt:  "weapons.created_at",
@@ -85,21 +85,21 @@ var WeaponTableColumns = struct {
 
 var WeaponWhere = struct {
 	ID         whereHelperstring
+	BrandID    whereHelperstring
 	Label      whereHelperstring
 	Slug       whereHelperstring
 	Damage     whereHelperint
 	WeaponType whereHelperstring
-	BrandID    whereHelperstring
 	DeletedAt  whereHelpernull_Time
 	UpdatedAt  whereHelpertime_Time
 	CreatedAt  whereHelpertime_Time
 }{
 	ID:         whereHelperstring{field: "\"weapons\".\"id\""},
+	BrandID:    whereHelperstring{field: "\"weapons\".\"brand_id\""},
 	Label:      whereHelperstring{field: "\"weapons\".\"label\""},
 	Slug:       whereHelperstring{field: "\"weapons\".\"slug\""},
 	Damage:     whereHelperint{field: "\"weapons\".\"damage\""},
 	WeaponType: whereHelperstring{field: "\"weapons\".\"weapon_type\""},
-	BrandID:    whereHelperstring{field: "\"weapons\".\"brand_id\""},
 	DeletedAt:  whereHelpernull_Time{field: "\"weapons\".\"deleted_at\""},
 	UpdatedAt:  whereHelpertime_Time{field: "\"weapons\".\"updated_at\""},
 	CreatedAt:  whereHelpertime_Time{field: "\"weapons\".\"created_at\""},
@@ -129,8 +129,8 @@ func (*weaponR) NewStruct() *weaponR {
 type weaponL struct{}
 
 var (
-	weaponAllColumns            = []string{"id", "label", "slug", "damage", "weapon_type", "brand_id", "deleted_at", "updated_at", "created_at"}
-	weaponColumnsWithoutDefault = []string{"label", "slug", "damage", "weapon_type", "brand_id"}
+	weaponAllColumns            = []string{"id", "brand_id", "label", "slug", "damage", "weapon_type", "deleted_at", "updated_at", "created_at"}
+	weaponColumnsWithoutDefault = []string{"brand_id", "label", "slug", "damage", "weapon_type"}
 	weaponColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at"}
 	weaponPrimaryKeyColumns     = []string{"id"}
 	weaponGeneratedColumns      = []string{}

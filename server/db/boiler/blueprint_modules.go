@@ -23,91 +23,101 @@ import (
 
 // BlueprintModule is an object representing the database table.
 type BlueprintModule struct {
-	ID             string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Slug           string    `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
-	Label          string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	HPModifier     int       `boiler:"hp_modifier" boil:"hp_modifier" json:"hpModifier" toml:"hpModifier" yaml:"hpModifier"`
-	ShieldModifier int       `boiler:"shield_modifier" boil:"shield_modifier" json:"shieldModifier" toml:"shieldModifier" yaml:"shieldModifier"`
-	DeletedAt      null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
-	UpdatedAt      time.Time `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
-	CreatedAt      time.Time `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	ID               string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	BrandID          string    `boiler:"brand_id" boil:"brand_id" json:"brandID" toml:"brandID" yaml:"brandID"`
+	Slug             string    `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
+	Label            string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	HitpointModifier int       `boiler:"hitpoint_modifier" boil:"hitpoint_modifier" json:"hitpointModifier" toml:"hitpointModifier" yaml:"hitpointModifier"`
+	ShieldModifier   int       `boiler:"shield_modifier" boil:"shield_modifier" json:"shieldModifier" toml:"shieldModifier" yaml:"shieldModifier"`
+	DeletedAt        null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
+	UpdatedAt        time.Time `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
+	CreatedAt        time.Time `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
 
 	R *blueprintModuleR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintModuleL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var BlueprintModuleColumns = struct {
-	ID             string
-	Slug           string
-	Label          string
-	HPModifier     string
-	ShieldModifier string
-	DeletedAt      string
-	UpdatedAt      string
-	CreatedAt      string
+	ID               string
+	BrandID          string
+	Slug             string
+	Label            string
+	HitpointModifier string
+	ShieldModifier   string
+	DeletedAt        string
+	UpdatedAt        string
+	CreatedAt        string
 }{
-	ID:             "id",
-	Slug:           "slug",
-	Label:          "label",
-	HPModifier:     "hp_modifier",
-	ShieldModifier: "shield_modifier",
-	DeletedAt:      "deleted_at",
-	UpdatedAt:      "updated_at",
-	CreatedAt:      "created_at",
+	ID:               "id",
+	BrandID:          "brand_id",
+	Slug:             "slug",
+	Label:            "label",
+	HitpointModifier: "hitpoint_modifier",
+	ShieldModifier:   "shield_modifier",
+	DeletedAt:        "deleted_at",
+	UpdatedAt:        "updated_at",
+	CreatedAt:        "created_at",
 }
 
 var BlueprintModuleTableColumns = struct {
-	ID             string
-	Slug           string
-	Label          string
-	HPModifier     string
-	ShieldModifier string
-	DeletedAt      string
-	UpdatedAt      string
-	CreatedAt      string
+	ID               string
+	BrandID          string
+	Slug             string
+	Label            string
+	HitpointModifier string
+	ShieldModifier   string
+	DeletedAt        string
+	UpdatedAt        string
+	CreatedAt        string
 }{
-	ID:             "blueprint_modules.id",
-	Slug:           "blueprint_modules.slug",
-	Label:          "blueprint_modules.label",
-	HPModifier:     "blueprint_modules.hp_modifier",
-	ShieldModifier: "blueprint_modules.shield_modifier",
-	DeletedAt:      "blueprint_modules.deleted_at",
-	UpdatedAt:      "blueprint_modules.updated_at",
-	CreatedAt:      "blueprint_modules.created_at",
+	ID:               "blueprint_modules.id",
+	BrandID:          "blueprint_modules.brand_id",
+	Slug:             "blueprint_modules.slug",
+	Label:            "blueprint_modules.label",
+	HitpointModifier: "blueprint_modules.hitpoint_modifier",
+	ShieldModifier:   "blueprint_modules.shield_modifier",
+	DeletedAt:        "blueprint_modules.deleted_at",
+	UpdatedAt:        "blueprint_modules.updated_at",
+	CreatedAt:        "blueprint_modules.created_at",
 }
 
 // Generated where
 
 var BlueprintModuleWhere = struct {
-	ID             whereHelperstring
-	Slug           whereHelperstring
-	Label          whereHelperstring
-	HPModifier     whereHelperint
-	ShieldModifier whereHelperint
-	DeletedAt      whereHelpernull_Time
-	UpdatedAt      whereHelpertime_Time
-	CreatedAt      whereHelpertime_Time
+	ID               whereHelperstring
+	BrandID          whereHelperstring
+	Slug             whereHelperstring
+	Label            whereHelperstring
+	HitpointModifier whereHelperint
+	ShieldModifier   whereHelperint
+	DeletedAt        whereHelpernull_Time
+	UpdatedAt        whereHelpertime_Time
+	CreatedAt        whereHelpertime_Time
 }{
-	ID:             whereHelperstring{field: "\"blueprint_modules\".\"id\""},
-	Slug:           whereHelperstring{field: "\"blueprint_modules\".\"slug\""},
-	Label:          whereHelperstring{field: "\"blueprint_modules\".\"label\""},
-	HPModifier:     whereHelperint{field: "\"blueprint_modules\".\"hp_modifier\""},
-	ShieldModifier: whereHelperint{field: "\"blueprint_modules\".\"shield_modifier\""},
-	DeletedAt:      whereHelpernull_Time{field: "\"blueprint_modules\".\"deleted_at\""},
-	UpdatedAt:      whereHelpertime_Time{field: "\"blueprint_modules\".\"updated_at\""},
-	CreatedAt:      whereHelpertime_Time{field: "\"blueprint_modules\".\"created_at\""},
+	ID:               whereHelperstring{field: "\"blueprint_modules\".\"id\""},
+	BrandID:          whereHelperstring{field: "\"blueprint_modules\".\"brand_id\""},
+	Slug:             whereHelperstring{field: "\"blueprint_modules\".\"slug\""},
+	Label:            whereHelperstring{field: "\"blueprint_modules\".\"label\""},
+	HitpointModifier: whereHelperint{field: "\"blueprint_modules\".\"hitpoint_modifier\""},
+	ShieldModifier:   whereHelperint{field: "\"blueprint_modules\".\"shield_modifier\""},
+	DeletedAt:        whereHelpernull_Time{field: "\"blueprint_modules\".\"deleted_at\""},
+	UpdatedAt:        whereHelpertime_Time{field: "\"blueprint_modules\".\"updated_at\""},
+	CreatedAt:        whereHelpertime_Time{field: "\"blueprint_modules\".\"created_at\""},
 }
 
 // BlueprintModuleRels is where relationship names are stored.
 var BlueprintModuleRels = struct {
-	TemplatesBlueprintModules string
+	Brand                            string
+	BlueprintChassisBlueprintModules string
 }{
-	TemplatesBlueprintModules: "TemplatesBlueprintModules",
+	Brand:                            "Brand",
+	BlueprintChassisBlueprintModules: "BlueprintChassisBlueprintModules",
 }
 
 // blueprintModuleR is where relationships are stored.
 type blueprintModuleR struct {
-	TemplatesBlueprintModules TemplatesBlueprintModuleSlice `boiler:"TemplatesBlueprintModules" boil:"TemplatesBlueprintModules" json:"TemplatesBlueprintModules" toml:"TemplatesBlueprintModules" yaml:"TemplatesBlueprintModules"`
+	Brand                            *Brand                               `boiler:"Brand" boil:"Brand" json:"Brand" toml:"Brand" yaml:"Brand"`
+	BlueprintChassisBlueprintModules BlueprintChassisBlueprintModuleSlice `boiler:"BlueprintChassisBlueprintModules" boil:"BlueprintChassisBlueprintModules" json:"BlueprintChassisBlueprintModules" toml:"BlueprintChassisBlueprintModules" yaml:"BlueprintChassisBlueprintModules"`
 }
 
 // NewStruct creates a new relationship struct
@@ -119,8 +129,8 @@ func (*blueprintModuleR) NewStruct() *blueprintModuleR {
 type blueprintModuleL struct{}
 
 var (
-	blueprintModuleAllColumns            = []string{"id", "slug", "label", "hp_modifier", "shield_modifier", "deleted_at", "updated_at", "created_at"}
-	blueprintModuleColumnsWithoutDefault = []string{"slug", "label", "hp_modifier", "shield_modifier"}
+	blueprintModuleAllColumns            = []string{"id", "brand_id", "slug", "label", "hitpoint_modifier", "shield_modifier", "deleted_at", "updated_at", "created_at"}
+	blueprintModuleColumnsWithoutDefault = []string{"brand_id", "slug", "label", "hitpoint_modifier", "shield_modifier"}
 	blueprintModuleColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at"}
 	blueprintModulePrimaryKeyColumns     = []string{"id"}
 	blueprintModuleGeneratedColumns      = []string{}
@@ -368,31 +378,151 @@ func (q blueprintModuleQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
-// TemplatesBlueprintModules retrieves all the templates_blueprint_module's TemplatesBlueprintModules with an executor.
-func (o *BlueprintModule) TemplatesBlueprintModules(mods ...qm.QueryMod) templatesBlueprintModuleQuery {
+// Brand pointed to by the foreign key.
+func (o *BlueprintModule) Brand(mods ...qm.QueryMod) brandQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.BrandID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Brands(queryMods...)
+	queries.SetFrom(query.Query, "\"brands\"")
+
+	return query
+}
+
+// BlueprintChassisBlueprintModules retrieves all the blueprint_chassis_blueprint_module's BlueprintChassisBlueprintModules with an executor.
+func (o *BlueprintModule) BlueprintChassisBlueprintModules(mods ...qm.QueryMod) blueprintChassisBlueprintModuleQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"templates_blueprint_modules\".\"blueprint_module_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"templates_blueprint_modules\".\"deleted_at\""),
+		qm.Where("\"blueprint_chassis_blueprint_modules\".\"blueprint_module_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"blueprint_chassis_blueprint_modules\".\"deleted_at\""),
 	)
 
-	query := TemplatesBlueprintModules(queryMods...)
-	queries.SetFrom(query.Query, "\"templates_blueprint_modules\"")
+	query := BlueprintChassisBlueprintModules(queryMods...)
+	queries.SetFrom(query.Query, "\"blueprint_chassis_blueprint_modules\"")
 
 	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"templates_blueprint_modules\".*"})
+		queries.SetSelect(query.Query, []string{"\"blueprint_chassis_blueprint_modules\".*"})
 	}
 
 	return query
 }
 
-// LoadTemplatesBlueprintModules allows an eager lookup of values, cached into the
+// LoadBrand allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (blueprintModuleL) LoadBrand(e boil.Executor, singular bool, maybeBlueprintModule interface{}, mods queries.Applicator) error {
+	var slice []*BlueprintModule
+	var object *BlueprintModule
+
+	if singular {
+		object = maybeBlueprintModule.(*BlueprintModule)
+	} else {
+		slice = *maybeBlueprintModule.(*[]*BlueprintModule)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &blueprintModuleR{}
+		}
+		args = append(args, object.BrandID)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &blueprintModuleR{}
+			}
+
+			for _, a := range args {
+				if a == obj.BrandID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.BrandID)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`brands`),
+		qm.WhereIn(`brands.id in ?`, args...),
+		qmhelper.WhereIsNull(`brands.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Brand")
+	}
+
+	var resultSlice []*Brand
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Brand")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for brands")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for brands")
+	}
+
+	if len(blueprintModuleAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Brand = foreign
+		if foreign.R == nil {
+			foreign.R = &brandR{}
+		}
+		foreign.R.BlueprintModules = append(foreign.R.BlueprintModules, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.BrandID == foreign.ID {
+				local.R.Brand = foreign
+				if foreign.R == nil {
+					foreign.R = &brandR{}
+				}
+				foreign.R.BlueprintModules = append(foreign.R.BlueprintModules, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadBlueprintChassisBlueprintModules allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (blueprintModuleL) LoadTemplatesBlueprintModules(e boil.Executor, singular bool, maybeBlueprintModule interface{}, mods queries.Applicator) error {
+func (blueprintModuleL) LoadBlueprintChassisBlueprintModules(e boil.Executor, singular bool, maybeBlueprintModule interface{}, mods queries.Applicator) error {
 	var slice []*BlueprintModule
 	var object *BlueprintModule
 
@@ -430,9 +560,9 @@ func (blueprintModuleL) LoadTemplatesBlueprintModules(e boil.Executor, singular 
 	}
 
 	query := NewQuery(
-		qm.From(`templates_blueprint_modules`),
-		qm.WhereIn(`templates_blueprint_modules.blueprint_module_id in ?`, args...),
-		qmhelper.WhereIsNull(`templates_blueprint_modules.deleted_at`),
+		qm.From(`blueprint_chassis_blueprint_modules`),
+		qm.WhereIn(`blueprint_chassis_blueprint_modules.blueprint_module_id in ?`, args...),
+		qmhelper.WhereIsNull(`blueprint_chassis_blueprint_modules.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -440,22 +570,22 @@ func (blueprintModuleL) LoadTemplatesBlueprintModules(e boil.Executor, singular 
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load templates_blueprint_modules")
+		return errors.Wrap(err, "failed to eager load blueprint_chassis_blueprint_modules")
 	}
 
-	var resultSlice []*TemplatesBlueprintModule
+	var resultSlice []*BlueprintChassisBlueprintModule
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice templates_blueprint_modules")
+		return errors.Wrap(err, "failed to bind eager loaded slice blueprint_chassis_blueprint_modules")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on templates_blueprint_modules")
+		return errors.Wrap(err, "failed to close results in eager load on blueprint_chassis_blueprint_modules")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for templates_blueprint_modules")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_chassis_blueprint_modules")
 	}
 
-	if len(templatesBlueprintModuleAfterSelectHooks) != 0 {
+	if len(blueprintChassisBlueprintModuleAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -463,10 +593,10 @@ func (blueprintModuleL) LoadTemplatesBlueprintModules(e boil.Executor, singular 
 		}
 	}
 	if singular {
-		object.R.TemplatesBlueprintModules = resultSlice
+		object.R.BlueprintChassisBlueprintModules = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
-				foreign.R = &templatesBlueprintModuleR{}
+				foreign.R = &blueprintChassisBlueprintModuleR{}
 			}
 			foreign.R.BlueprintModule = object
 		}
@@ -476,9 +606,9 @@ func (blueprintModuleL) LoadTemplatesBlueprintModules(e boil.Executor, singular 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
 			if local.ID == foreign.BlueprintModuleID {
-				local.R.TemplatesBlueprintModules = append(local.R.TemplatesBlueprintModules, foreign)
+				local.R.BlueprintChassisBlueprintModules = append(local.R.BlueprintChassisBlueprintModules, foreign)
 				if foreign.R == nil {
-					foreign.R = &templatesBlueprintModuleR{}
+					foreign.R = &blueprintChassisBlueprintModuleR{}
 				}
 				foreign.R.BlueprintModule = local
 				break
@@ -489,11 +619,57 @@ func (blueprintModuleL) LoadTemplatesBlueprintModules(e boil.Executor, singular 
 	return nil
 }
 
-// AddTemplatesBlueprintModules adds the given related objects to the existing relationships
+// SetBrand of the blueprintModule to the related item.
+// Sets o.R.Brand to related.
+// Adds o to related.R.BlueprintModules.
+func (o *BlueprintModule) SetBrand(exec boil.Executor, insert bool, related *Brand) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"blueprint_modules\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"brand_id"}),
+		strmangle.WhereClause("\"", "\"", 2, blueprintModulePrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.BrandID = related.ID
+	if o.R == nil {
+		o.R = &blueprintModuleR{
+			Brand: related,
+		}
+	} else {
+		o.R.Brand = related
+	}
+
+	if related.R == nil {
+		related.R = &brandR{
+			BlueprintModules: BlueprintModuleSlice{o},
+		}
+	} else {
+		related.R.BlueprintModules = append(related.R.BlueprintModules, o)
+	}
+
+	return nil
+}
+
+// AddBlueprintChassisBlueprintModules adds the given related objects to the existing relationships
 // of the blueprint_module, optionally inserting them as new records.
-// Appends related to o.R.TemplatesBlueprintModules.
+// Appends related to o.R.BlueprintChassisBlueprintModules.
 // Sets related.R.BlueprintModule appropriately.
-func (o *BlueprintModule) AddTemplatesBlueprintModules(exec boil.Executor, insert bool, related ...*TemplatesBlueprintModule) error {
+func (o *BlueprintModule) AddBlueprintChassisBlueprintModules(exec boil.Executor, insert bool, related ...*BlueprintChassisBlueprintModule) error {
 	var err error
 	for _, rel := range related {
 		if insert {
@@ -503,9 +679,9 @@ func (o *BlueprintModule) AddTemplatesBlueprintModules(exec boil.Executor, inser
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
-				"UPDATE \"templates_blueprint_modules\" SET %s WHERE %s",
+				"UPDATE \"blueprint_chassis_blueprint_modules\" SET %s WHERE %s",
 				strmangle.SetParamNames("\"", "\"", 1, []string{"blueprint_module_id"}),
-				strmangle.WhereClause("\"", "\"", 2, templatesBlueprintModulePrimaryKeyColumns),
+				strmangle.WhereClause("\"", "\"", 2, blueprintChassisBlueprintModulePrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
 
@@ -523,15 +699,15 @@ func (o *BlueprintModule) AddTemplatesBlueprintModules(exec boil.Executor, inser
 
 	if o.R == nil {
 		o.R = &blueprintModuleR{
-			TemplatesBlueprintModules: related,
+			BlueprintChassisBlueprintModules: related,
 		}
 	} else {
-		o.R.TemplatesBlueprintModules = append(o.R.TemplatesBlueprintModules, related...)
+		o.R.BlueprintChassisBlueprintModules = append(o.R.BlueprintChassisBlueprintModules, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
-			rel.R = &templatesBlueprintModuleR{
+			rel.R = &blueprintChassisBlueprintModuleR{
 				BlueprintModule: o,
 			}
 		} else {

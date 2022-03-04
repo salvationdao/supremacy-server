@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"log"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v4/stdlib"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-software/log_helpers"
 
@@ -147,8 +149,17 @@ func main() {
 					if err != nil {
 						return terror.Panic(err)
 					}
-
-					err = gamedb.New(pgxconn)
+					sqlconn, err := sqlConnect(
+						databaseUser,
+						databasePass,
+						databaseHost,
+						databasePort,
+						databaseName,
+					)
+					if err != nil {
+						return terror.Panic(err)
+					}
+					err = gamedb.New(pgxconn, sqlconn)
 					if err != nil {
 						return terror.Panic(err)
 					}
@@ -210,6 +221,78 @@ func main() {
 						os.Exit(1)
 					}
 					log_helpers.TerrorEcho(ctx, err, gamelog.GameLog)
+					return nil
+				},
+			},
+			{
+				Name:  "supermigrate",
+				Usage: "seed the database with passport data",
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "passport_addr", Value: "ws://localhost:8086/api/ws", EnvVars: []string{envPrefix + "_PASSPORT_ADDR", "PASSPORT_ADDR"}, Usage: " address of the passport server, inc protocol"},
+					&cli.StringFlag{Name: "database_user", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_USER", "DATABASE_USER"}, Usage: "The database user"},
+					&cli.StringFlag{Name: "database_pass", Value: "dev", EnvVars: []string{envPrefix + "_DATABASE_PASS", "DATABASE_PASS"}, Usage: "The database pass"},
+					&cli.StringFlag{Name: "database_host", Value: "localhost", EnvVars: []string{envPrefix + "_DATABASE_HOST", "DATABASE_HOST"}, Usage: "The database host"},
+					&cli.StringFlag{Name: "database_port", Value: "5437", EnvVars: []string{envPrefix + "_DATABASE_PORT", "DATABASE_PORT"}, Usage: "The database port"},
+					&cli.StringFlag{Name: "database_name", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_NAME", "DATABASE_NAME"}, Usage: "The database name"},
+					&cli.StringFlag{Name: "database_application_name", Value: "API Server", EnvVars: []string{envPrefix + "_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
+				},
+				Action: func(c *cli.Context) error {
+					databaseUser := c.String("database_user")
+					databasePass := c.String("database_pass")
+					databaseHost := c.String("database_host")
+					databasePort := c.String("database_port")
+					databaseName := c.String("database_name")
+					databaseAppName := c.String("database_application_name")
+					pgxconn, err := pgxconnect(
+						databaseUser,
+						databasePass,
+						databaseHost,
+						databasePort,
+						databaseName,
+						databaseAppName,
+						Version,
+					)
+					if err != nil {
+						return terror.Panic(err)
+					}
+					sqlconn, err := sqlConnect(
+						databaseUser,
+						databasePass,
+						databaseHost,
+						databasePort,
+						databaseName,
+					)
+					if err != nil {
+						return terror.Panic(err)
+					}
+					err = gamedb.New(pgxconn, sqlconn)
+					if err != nil {
+						return terror.Panic(err)
+					}
+
+					gamelog.New("development", "TraceLevel")
+					passportAddr := c.String("passport_addr")
+					u, err := url.Parse(passportAddr)
+					if err != nil {
+						return terror.Panic(err)
+					}
+					hostname := u.Hostname()
+					rpcAddrs := []string{
+						fmt.Sprintf("%s:10006", hostname),
+						fmt.Sprintf("%s:10005", hostname),
+						fmt.Sprintf("%s:10004", hostname),
+						fmt.Sprintf("%s:10003", hostname),
+						fmt.Sprintf("%s:10002", hostname),
+						fmt.Sprintf("%s:10001", hostname),
+					}
+					passportRPC, err := comms.New(rpcAddrs...)
+					if err != nil {
+						return terror.Panic(err)
+					}
+					err = SuperMigrate(passportRPC)
+					if err != nil {
+						return terror.Panic(err)
+					}
 					return nil
 				},
 			},
@@ -345,4 +428,33 @@ func pgxconnect(
 	}
 
 	return conn, nil
+}
+
+func sqlConnect(
+	databaseTxUser string,
+	databaseTxPass string,
+	databaseHost string,
+	databasePort string,
+	databaseName string,
+) (*sql.DB, error) {
+	params := url.Values{}
+	params.Add("sslmode", "disable")
+	connString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?%s",
+		databaseTxUser,
+		databaseTxPass,
+		databaseHost,
+		databasePort,
+		databaseName,
+		params.Encode(),
+	)
+	cfg, err := pgx.ParseConfig(connString)
+	if err != nil {
+		return nil, err
+	}
+	conn := stdlib.OpenDB(*cfg)
+	if err != nil {
+		return nil, err
+	}
+	return conn, nil
+
 }

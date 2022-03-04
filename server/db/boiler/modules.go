@@ -23,90 +23,100 @@ import (
 
 // Module is an object representing the database table.
 type Module struct {
-	ID             string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Slug           string    `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
-	Label          string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	HPModifier     int       `boiler:"hp_modifier" boil:"hp_modifier" json:"hpModifier" toml:"hpModifier" yaml:"hpModifier"`
-	ShieldModifier int       `boiler:"shield_modifier" boil:"shield_modifier" json:"shieldModifier" toml:"shieldModifier" yaml:"shieldModifier"`
-	DeletedAt      null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
-	UpdatedAt      time.Time `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
-	CreatedAt      time.Time `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	ID               string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	BrandID          string    `boiler:"brand_id" boil:"brand_id" json:"brandID" toml:"brandID" yaml:"brandID"`
+	Slug             string    `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
+	Label            string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	HitpointModifier int       `boiler:"hitpoint_modifier" boil:"hitpoint_modifier" json:"hitpointModifier" toml:"hitpointModifier" yaml:"hitpointModifier"`
+	ShieldModifier   int       `boiler:"shield_modifier" boil:"shield_modifier" json:"shieldModifier" toml:"shieldModifier" yaml:"shieldModifier"`
+	DeletedAt        null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
+	UpdatedAt        time.Time `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
+	CreatedAt        time.Time `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
 
 	R *moduleR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L moduleL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var ModuleColumns = struct {
-	ID             string
-	Slug           string
-	Label          string
-	HPModifier     string
-	ShieldModifier string
-	DeletedAt      string
-	UpdatedAt      string
-	CreatedAt      string
+	ID               string
+	BrandID          string
+	Slug             string
+	Label            string
+	HitpointModifier string
+	ShieldModifier   string
+	DeletedAt        string
+	UpdatedAt        string
+	CreatedAt        string
 }{
-	ID:             "id",
-	Slug:           "slug",
-	Label:          "label",
-	HPModifier:     "hp_modifier",
-	ShieldModifier: "shield_modifier",
-	DeletedAt:      "deleted_at",
-	UpdatedAt:      "updated_at",
-	CreatedAt:      "created_at",
+	ID:               "id",
+	BrandID:          "brand_id",
+	Slug:             "slug",
+	Label:            "label",
+	HitpointModifier: "hitpoint_modifier",
+	ShieldModifier:   "shield_modifier",
+	DeletedAt:        "deleted_at",
+	UpdatedAt:        "updated_at",
+	CreatedAt:        "created_at",
 }
 
 var ModuleTableColumns = struct {
-	ID             string
-	Slug           string
-	Label          string
-	HPModifier     string
-	ShieldModifier string
-	DeletedAt      string
-	UpdatedAt      string
-	CreatedAt      string
+	ID               string
+	BrandID          string
+	Slug             string
+	Label            string
+	HitpointModifier string
+	ShieldModifier   string
+	DeletedAt        string
+	UpdatedAt        string
+	CreatedAt        string
 }{
-	ID:             "modules.id",
-	Slug:           "modules.slug",
-	Label:          "modules.label",
-	HPModifier:     "modules.hp_modifier",
-	ShieldModifier: "modules.shield_modifier",
-	DeletedAt:      "modules.deleted_at",
-	UpdatedAt:      "modules.updated_at",
-	CreatedAt:      "modules.created_at",
+	ID:               "modules.id",
+	BrandID:          "modules.brand_id",
+	Slug:             "modules.slug",
+	Label:            "modules.label",
+	HitpointModifier: "modules.hitpoint_modifier",
+	ShieldModifier:   "modules.shield_modifier",
+	DeletedAt:        "modules.deleted_at",
+	UpdatedAt:        "modules.updated_at",
+	CreatedAt:        "modules.created_at",
 }
 
 // Generated where
 
 var ModuleWhere = struct {
-	ID             whereHelperstring
-	Slug           whereHelperstring
-	Label          whereHelperstring
-	HPModifier     whereHelperint
-	ShieldModifier whereHelperint
-	DeletedAt      whereHelpernull_Time
-	UpdatedAt      whereHelpertime_Time
-	CreatedAt      whereHelpertime_Time
+	ID               whereHelperstring
+	BrandID          whereHelperstring
+	Slug             whereHelperstring
+	Label            whereHelperstring
+	HitpointModifier whereHelperint
+	ShieldModifier   whereHelperint
+	DeletedAt        whereHelpernull_Time
+	UpdatedAt        whereHelpertime_Time
+	CreatedAt        whereHelpertime_Time
 }{
-	ID:             whereHelperstring{field: "\"modules\".\"id\""},
-	Slug:           whereHelperstring{field: "\"modules\".\"slug\""},
-	Label:          whereHelperstring{field: "\"modules\".\"label\""},
-	HPModifier:     whereHelperint{field: "\"modules\".\"hp_modifier\""},
-	ShieldModifier: whereHelperint{field: "\"modules\".\"shield_modifier\""},
-	DeletedAt:      whereHelpernull_Time{field: "\"modules\".\"deleted_at\""},
-	UpdatedAt:      whereHelpertime_Time{field: "\"modules\".\"updated_at\""},
-	CreatedAt:      whereHelpertime_Time{field: "\"modules\".\"created_at\""},
+	ID:               whereHelperstring{field: "\"modules\".\"id\""},
+	BrandID:          whereHelperstring{field: "\"modules\".\"brand_id\""},
+	Slug:             whereHelperstring{field: "\"modules\".\"slug\""},
+	Label:            whereHelperstring{field: "\"modules\".\"label\""},
+	HitpointModifier: whereHelperint{field: "\"modules\".\"hitpoint_modifier\""},
+	ShieldModifier:   whereHelperint{field: "\"modules\".\"shield_modifier\""},
+	DeletedAt:        whereHelpernull_Time{field: "\"modules\".\"deleted_at\""},
+	UpdatedAt:        whereHelpertime_Time{field: "\"modules\".\"updated_at\""},
+	CreatedAt:        whereHelpertime_Time{field: "\"modules\".\"created_at\""},
 }
 
 // ModuleRels is where relationship names are stored.
 var ModuleRels = struct {
+	Brand        string
 	MechsModules string
 }{
+	Brand:        "Brand",
 	MechsModules: "MechsModules",
 }
 
 // moduleR is where relationships are stored.
 type moduleR struct {
+	Brand        *Brand           `boiler:"Brand" boil:"Brand" json:"Brand" toml:"Brand" yaml:"Brand"`
 	MechsModules MechsModuleSlice `boiler:"MechsModules" boil:"MechsModules" json:"MechsModules" toml:"MechsModules" yaml:"MechsModules"`
 }
 
@@ -119,8 +129,8 @@ func (*moduleR) NewStruct() *moduleR {
 type moduleL struct{}
 
 var (
-	moduleAllColumns            = []string{"id", "slug", "label", "hp_modifier", "shield_modifier", "deleted_at", "updated_at", "created_at"}
-	moduleColumnsWithoutDefault = []string{"slug", "label", "hp_modifier", "shield_modifier"}
+	moduleAllColumns            = []string{"id", "brand_id", "slug", "label", "hitpoint_modifier", "shield_modifier", "deleted_at", "updated_at", "created_at"}
+	moduleColumnsWithoutDefault = []string{"brand_id", "slug", "label", "hitpoint_modifier", "shield_modifier"}
 	moduleColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at"}
 	modulePrimaryKeyColumns     = []string{"id"}
 	moduleGeneratedColumns      = []string{}
@@ -368,6 +378,21 @@ func (q moduleQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
+// Brand pointed to by the foreign key.
+func (o *Module) Brand(mods ...qm.QueryMod) brandQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.BrandID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Brands(queryMods...)
+	queries.SetFrom(query.Query, "\"brands\"")
+
+	return query
+}
+
 // MechsModules retrieves all the mechs_module's MechsModules with an executor.
 func (o *Module) MechsModules(mods ...qm.QueryMod) mechsModuleQuery {
 	var queryMods []qm.QueryMod
@@ -388,6 +413,111 @@ func (o *Module) MechsModules(mods ...qm.QueryMod) mechsModuleQuery {
 	}
 
 	return query
+}
+
+// LoadBrand allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (moduleL) LoadBrand(e boil.Executor, singular bool, maybeModule interface{}, mods queries.Applicator) error {
+	var slice []*Module
+	var object *Module
+
+	if singular {
+		object = maybeModule.(*Module)
+	} else {
+		slice = *maybeModule.(*[]*Module)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &moduleR{}
+		}
+		args = append(args, object.BrandID)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &moduleR{}
+			}
+
+			for _, a := range args {
+				if a == obj.BrandID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.BrandID)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`brands`),
+		qm.WhereIn(`brands.id in ?`, args...),
+		qmhelper.WhereIsNull(`brands.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Brand")
+	}
+
+	var resultSlice []*Brand
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Brand")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for brands")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for brands")
+	}
+
+	if len(moduleAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Brand = foreign
+		if foreign.R == nil {
+			foreign.R = &brandR{}
+		}
+		foreign.R.Modules = append(foreign.R.Modules, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.BrandID == foreign.ID {
+				local.R.Brand = foreign
+				if foreign.R == nil {
+					foreign.R = &brandR{}
+				}
+				foreign.R.Modules = append(foreign.R.Modules, local)
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadMechsModules allows an eager lookup of values, cached into the
@@ -484,6 +614,52 @@ func (moduleL) LoadMechsModules(e boil.Executor, singular bool, maybeModule inte
 				break
 			}
 		}
+	}
+
+	return nil
+}
+
+// SetBrand of the module to the related item.
+// Sets o.R.Brand to related.
+// Adds o to related.R.Modules.
+func (o *Module) SetBrand(exec boil.Executor, insert bool, related *Brand) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"modules\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"brand_id"}),
+		strmangle.WhereClause("\"", "\"", 2, modulePrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.BrandID = related.ID
+	if o.R == nil {
+		o.R = &moduleR{
+			Brand: related,
+		}
+	} else {
+		o.R.Brand = related
+	}
+
+	if related.R == nil {
+		related.R = &brandR{
+			Modules: ModuleSlice{o},
+		}
+	} else {
+		related.R.Modules = append(related.R.Modules, o)
 	}
 
 	return nil

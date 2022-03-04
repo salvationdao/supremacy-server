@@ -17,6 +17,8 @@ var TableNames = struct {
 	BattlesWinnerRecords                               string
 	Blobs                                              string
 	BlueprintChassis                                   string
+	BlueprintChassisBlueprintModules                   string
+	BlueprintChassisBlueprintWeapons                   string
 	BlueprintModules                                   string
 	BlueprintWeapons                                   string
 	Brands                                             string
@@ -35,8 +37,6 @@ var TableNames = struct {
 	StreamList                                         string
 	Syndicates                                         string
 	Templates                                          string
-	TemplatesBlueprintModules                          string
-	TemplatesBlueprintWeapons                          string
 	Users                                              string
 	Weapons                                            string
 }{
@@ -53,6 +53,8 @@ var TableNames = struct {
 	BattlesWinnerRecords:                               "battles_winner_records",
 	Blobs:                                              "blobs",
 	BlueprintChassis:                                   "blueprint_chassis",
+	BlueprintChassisBlueprintModules:                   "blueprint_chassis_blueprint_modules",
+	BlueprintChassisBlueprintWeapons:                   "blueprint_chassis_blueprint_weapons",
 	BlueprintModules:                                   "blueprint_modules",
 	BlueprintWeapons:                                   "blueprint_weapons",
 	Brands:                                             "brands",
@@ -71,8 +73,6 @@ var TableNames = struct {
 	StreamList:                                         "stream_list",
 	Syndicates:                                         "syndicates",
 	Templates:                                          "templates",
-	TemplatesBlueprintModules:                          "templates_blueprint_modules",
-	TemplatesBlueprintWeapons:                          "templates_blueprint_weapons",
 	Users:                                              "users",
 	Weapons:                                            "weapons",
 }

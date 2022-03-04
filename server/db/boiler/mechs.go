@@ -23,111 +23,129 @@ import (
 
 // Mech is an object representing the database table.
 type Mech struct {
-	ID              string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	OwnerID         string    `boiler:"owner_id" boil:"owner_id" json:"ownerID" toml:"ownerID" yaml:"ownerID"`
-	Label           string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	HealthRemaining int       `boiler:"health_remaining" boil:"health_remaining" json:"healthRemaining" toml:"healthRemaining" yaml:"healthRemaining"`
-	Skin            string    `boiler:"skin" boil:"skin" json:"skin" toml:"skin" yaml:"skin"`
-	Model           string    `boiler:"model" boil:"model" json:"model" toml:"model" yaml:"model"`
-	BrandID         string    `boiler:"brand_id" boil:"brand_id" json:"brandID" toml:"brandID" yaml:"brandID"`
-	Slug            string    `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
-	DeletedAt       null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
-	UpdatedAt       time.Time `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
-	CreatedAt       time.Time `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	ID         string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	OwnerID    string    `boiler:"owner_id" boil:"owner_id" json:"ownerID" toml:"ownerID" yaml:"ownerID"`
+	TemplateID string    `boiler:"template_id" boil:"template_id" json:"templateID" toml:"templateID" yaml:"templateID"`
+	BrandID    string    `boiler:"brand_id" boil:"brand_id" json:"brandID" toml:"brandID" yaml:"brandID"`
+	ChassisID  string    `boiler:"chassis_id" boil:"chassis_id" json:"chassisID" toml:"chassisID" yaml:"chassisID"`
+	Hash       string    `boiler:"hash" boil:"hash" json:"hash" toml:"hash" yaml:"hash"`
+	Label      string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	Skin       string    `boiler:"skin" boil:"skin" json:"skin" toml:"skin" yaml:"skin"`
+	Model      string    `boiler:"model" boil:"model" json:"model" toml:"model" yaml:"model"`
+	Slug       string    `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
+	DeletedAt  null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
+	UpdatedAt  time.Time `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
+	CreatedAt  time.Time `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
 
 	R *mechR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L mechL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var MechColumns = struct {
-	ID              string
-	OwnerID         string
-	Label           string
-	HealthRemaining string
-	Skin            string
-	Model           string
-	BrandID         string
-	Slug            string
-	DeletedAt       string
-	UpdatedAt       string
-	CreatedAt       string
+	ID         string
+	OwnerID    string
+	TemplateID string
+	BrandID    string
+	ChassisID  string
+	Hash       string
+	Label      string
+	Skin       string
+	Model      string
+	Slug       string
+	DeletedAt  string
+	UpdatedAt  string
+	CreatedAt  string
 }{
-	ID:              "id",
-	OwnerID:         "owner_id",
-	Label:           "label",
-	HealthRemaining: "health_remaining",
-	Skin:            "skin",
-	Model:           "model",
-	BrandID:         "brand_id",
-	Slug:            "slug",
-	DeletedAt:       "deleted_at",
-	UpdatedAt:       "updated_at",
-	CreatedAt:       "created_at",
+	ID:         "id",
+	OwnerID:    "owner_id",
+	TemplateID: "template_id",
+	BrandID:    "brand_id",
+	ChassisID:  "chassis_id",
+	Hash:       "hash",
+	Label:      "label",
+	Skin:       "skin",
+	Model:      "model",
+	Slug:       "slug",
+	DeletedAt:  "deleted_at",
+	UpdatedAt:  "updated_at",
+	CreatedAt:  "created_at",
 }
 
 var MechTableColumns = struct {
-	ID              string
-	OwnerID         string
-	Label           string
-	HealthRemaining string
-	Skin            string
-	Model           string
-	BrandID         string
-	Slug            string
-	DeletedAt       string
-	UpdatedAt       string
-	CreatedAt       string
+	ID         string
+	OwnerID    string
+	TemplateID string
+	BrandID    string
+	ChassisID  string
+	Hash       string
+	Label      string
+	Skin       string
+	Model      string
+	Slug       string
+	DeletedAt  string
+	UpdatedAt  string
+	CreatedAt  string
 }{
-	ID:              "mechs.id",
-	OwnerID:         "mechs.owner_id",
-	Label:           "mechs.label",
-	HealthRemaining: "mechs.health_remaining",
-	Skin:            "mechs.skin",
-	Model:           "mechs.model",
-	BrandID:         "mechs.brand_id",
-	Slug:            "mechs.slug",
-	DeletedAt:       "mechs.deleted_at",
-	UpdatedAt:       "mechs.updated_at",
-	CreatedAt:       "mechs.created_at",
+	ID:         "mechs.id",
+	OwnerID:    "mechs.owner_id",
+	TemplateID: "mechs.template_id",
+	BrandID:    "mechs.brand_id",
+	ChassisID:  "mechs.chassis_id",
+	Hash:       "mechs.hash",
+	Label:      "mechs.label",
+	Skin:       "mechs.skin",
+	Model:      "mechs.model",
+	Slug:       "mechs.slug",
+	DeletedAt:  "mechs.deleted_at",
+	UpdatedAt:  "mechs.updated_at",
+	CreatedAt:  "mechs.created_at",
 }
 
 // Generated where
 
 var MechWhere = struct {
-	ID              whereHelperstring
-	OwnerID         whereHelperstring
-	Label           whereHelperstring
-	HealthRemaining whereHelperint
-	Skin            whereHelperstring
-	Model           whereHelperstring
-	BrandID         whereHelperstring
-	Slug            whereHelperstring
-	DeletedAt       whereHelpernull_Time
-	UpdatedAt       whereHelpertime_Time
-	CreatedAt       whereHelpertime_Time
+	ID         whereHelperstring
+	OwnerID    whereHelperstring
+	TemplateID whereHelperstring
+	BrandID    whereHelperstring
+	ChassisID  whereHelperstring
+	Hash       whereHelperstring
+	Label      whereHelperstring
+	Skin       whereHelperstring
+	Model      whereHelperstring
+	Slug       whereHelperstring
+	DeletedAt  whereHelpernull_Time
+	UpdatedAt  whereHelpertime_Time
+	CreatedAt  whereHelpertime_Time
 }{
-	ID:              whereHelperstring{field: "\"mechs\".\"id\""},
-	OwnerID:         whereHelperstring{field: "\"mechs\".\"owner_id\""},
-	Label:           whereHelperstring{field: "\"mechs\".\"label\""},
-	HealthRemaining: whereHelperint{field: "\"mechs\".\"health_remaining\""},
-	Skin:            whereHelperstring{field: "\"mechs\".\"skin\""},
-	Model:           whereHelperstring{field: "\"mechs\".\"model\""},
-	BrandID:         whereHelperstring{field: "\"mechs\".\"brand_id\""},
-	Slug:            whereHelperstring{field: "\"mechs\".\"slug\""},
-	DeletedAt:       whereHelpernull_Time{field: "\"mechs\".\"deleted_at\""},
-	UpdatedAt:       whereHelpertime_Time{field: "\"mechs\".\"updated_at\""},
-	CreatedAt:       whereHelpertime_Time{field: "\"mechs\".\"created_at\""},
+	ID:         whereHelperstring{field: "\"mechs\".\"id\""},
+	OwnerID:    whereHelperstring{field: "\"mechs\".\"owner_id\""},
+	TemplateID: whereHelperstring{field: "\"mechs\".\"template_id\""},
+	BrandID:    whereHelperstring{field: "\"mechs\".\"brand_id\""},
+	ChassisID:  whereHelperstring{field: "\"mechs\".\"chassis_id\""},
+	Hash:       whereHelperstring{field: "\"mechs\".\"hash\""},
+	Label:      whereHelperstring{field: "\"mechs\".\"label\""},
+	Skin:       whereHelperstring{field: "\"mechs\".\"skin\""},
+	Model:      whereHelperstring{field: "\"mechs\".\"model\""},
+	Slug:       whereHelperstring{field: "\"mechs\".\"slug\""},
+	DeletedAt:  whereHelpernull_Time{field: "\"mechs\".\"deleted_at\""},
+	UpdatedAt:  whereHelpertime_Time{field: "\"mechs\".\"updated_at\""},
+	CreatedAt:  whereHelpertime_Time{field: "\"mechs\".\"created_at\""},
 }
 
 // MechRels is where relationship names are stored.
 var MechRels = struct {
 	Brand        string
+	Chassis      string
 	Owner        string
+	Template     string
 	MechsModules string
 	MechsWeapons string
 }{
 	Brand:        "Brand",
+	Chassis:      "Chassis",
 	Owner:        "Owner",
+	Template:     "Template",
 	MechsModules: "MechsModules",
 	MechsWeapons: "MechsWeapons",
 }
@@ -135,7 +153,9 @@ var MechRels = struct {
 // mechR is where relationships are stored.
 type mechR struct {
 	Brand        *Brand           `boiler:"Brand" boil:"Brand" json:"Brand" toml:"Brand" yaml:"Brand"`
+	Chassis      *Chassis         `boiler:"Chassis" boil:"Chassis" json:"Chassis" toml:"Chassis" yaml:"Chassis"`
 	Owner        *Player          `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
+	Template     *Template        `boiler:"Template" boil:"Template" json:"Template" toml:"Template" yaml:"Template"`
 	MechsModules MechsModuleSlice `boiler:"MechsModules" boil:"MechsModules" json:"MechsModules" toml:"MechsModules" yaml:"MechsModules"`
 	MechsWeapons MechsWeaponSlice `boiler:"MechsWeapons" boil:"MechsWeapons" json:"MechsWeapons" toml:"MechsWeapons" yaml:"MechsWeapons"`
 }
@@ -149,8 +169,8 @@ func (*mechR) NewStruct() *mechR {
 type mechL struct{}
 
 var (
-	mechAllColumns            = []string{"id", "owner_id", "label", "health_remaining", "skin", "model", "brand_id", "slug", "deleted_at", "updated_at", "created_at"}
-	mechColumnsWithoutDefault = []string{"owner_id", "label", "health_remaining", "skin", "model", "brand_id", "slug"}
+	mechAllColumns            = []string{"id", "owner_id", "template_id", "brand_id", "chassis_id", "hash", "label", "skin", "model", "slug", "deleted_at", "updated_at", "created_at"}
+	mechColumnsWithoutDefault = []string{"owner_id", "template_id", "brand_id", "chassis_id", "hash", "label", "skin", "model", "slug"}
 	mechColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at"}
 	mechPrimaryKeyColumns     = []string{"id"}
 	mechGeneratedColumns      = []string{}
@@ -413,6 +433,21 @@ func (o *Mech) Brand(mods ...qm.QueryMod) brandQuery {
 	return query
 }
 
+// Chassis pointed to by the foreign key.
+func (o *Mech) Chassis(mods ...qm.QueryMod) chassisQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.ChassisID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Chasses(queryMods...)
+	queries.SetFrom(query.Query, "\"chassis\"")
+
+	return query
+}
+
 // Owner pointed to by the foreign key.
 func (o *Mech) Owner(mods ...qm.QueryMod) playerQuery {
 	queryMods := []qm.QueryMod{
@@ -424,6 +459,21 @@ func (o *Mech) Owner(mods ...qm.QueryMod) playerQuery {
 
 	query := Players(queryMods...)
 	queries.SetFrom(query.Query, "\"players\"")
+
+	return query
+}
+
+// Template pointed to by the foreign key.
+func (o *Mech) Template(mods ...qm.QueryMod) templateQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.TemplateID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Templates(queryMods...)
+	queries.SetFrom(query.Query, "\"templates\"")
 
 	return query
 }
@@ -577,6 +627,111 @@ func (mechL) LoadBrand(e boil.Executor, singular bool, maybeMech interface{}, mo
 	return nil
 }
 
+// LoadChassis allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (mechL) LoadChassis(e boil.Executor, singular bool, maybeMech interface{}, mods queries.Applicator) error {
+	var slice []*Mech
+	var object *Mech
+
+	if singular {
+		object = maybeMech.(*Mech)
+	} else {
+		slice = *maybeMech.(*[]*Mech)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &mechR{}
+		}
+		args = append(args, object.ChassisID)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &mechR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ChassisID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ChassisID)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`chassis`),
+		qm.WhereIn(`chassis.id in ?`, args...),
+		qmhelper.WhereIsNull(`chassis.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Chassis")
+	}
+
+	var resultSlice []*Chassis
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Chassis")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for chassis")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for chassis")
+	}
+
+	if len(mechAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Chassis = foreign
+		if foreign.R == nil {
+			foreign.R = &chassisR{}
+		}
+		foreign.R.Mechs = append(foreign.R.Mechs, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.ChassisID == foreign.ID {
+				local.R.Chassis = foreign
+				if foreign.R == nil {
+					foreign.R = &chassisR{}
+				}
+				foreign.R.Mechs = append(foreign.R.Mechs, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // LoadOwner allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
 func (mechL) LoadOwner(e boil.Executor, singular bool, maybeMech interface{}, mods queries.Applicator) error {
@@ -674,6 +829,111 @@ func (mechL) LoadOwner(e boil.Executor, singular bool, maybeMech interface{}, mo
 					foreign.R = &playerR{}
 				}
 				foreign.R.OwnerMechs = append(foreign.R.OwnerMechs, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadTemplate allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (mechL) LoadTemplate(e boil.Executor, singular bool, maybeMech interface{}, mods queries.Applicator) error {
+	var slice []*Mech
+	var object *Mech
+
+	if singular {
+		object = maybeMech.(*Mech)
+	} else {
+		slice = *maybeMech.(*[]*Mech)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &mechR{}
+		}
+		args = append(args, object.TemplateID)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &mechR{}
+			}
+
+			for _, a := range args {
+				if a == obj.TemplateID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.TemplateID)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`templates`),
+		qm.WhereIn(`templates.id in ?`, args...),
+		qmhelper.WhereIsNull(`templates.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Template")
+	}
+
+	var resultSlice []*Template
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Template")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for templates")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for templates")
+	}
+
+	if len(mechAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Template = foreign
+		if foreign.R == nil {
+			foreign.R = &templateR{}
+		}
+		foreign.R.Mechs = append(foreign.R.Mechs, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.TemplateID == foreign.ID {
+				local.R.Template = foreign
+				if foreign.R == nil {
+					foreign.R = &templateR{}
+				}
+				foreign.R.Mechs = append(foreign.R.Mechs, local)
 				break
 			}
 		}
@@ -926,6 +1186,52 @@ func (o *Mech) SetBrand(exec boil.Executor, insert bool, related *Brand) error {
 	return nil
 }
 
+// SetChassis of the mech to the related item.
+// Sets o.R.Chassis to related.
+// Adds o to related.R.Mechs.
+func (o *Mech) SetChassis(exec boil.Executor, insert bool, related *Chassis) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"mechs\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"chassis_id"}),
+		strmangle.WhereClause("\"", "\"", 2, mechPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.ChassisID = related.ID
+	if o.R == nil {
+		o.R = &mechR{
+			Chassis: related,
+		}
+	} else {
+		o.R.Chassis = related
+	}
+
+	if related.R == nil {
+		related.R = &chassisR{
+			Mechs: MechSlice{o},
+		}
+	} else {
+		related.R.Mechs = append(related.R.Mechs, o)
+	}
+
+	return nil
+}
+
 // SetOwner of the mech to the related item.
 // Sets o.R.Owner to related.
 // Adds o to related.R.OwnerMechs.
@@ -967,6 +1273,52 @@ func (o *Mech) SetOwner(exec boil.Executor, insert bool, related *Player) error 
 		}
 	} else {
 		related.R.OwnerMechs = append(related.R.OwnerMechs, o)
+	}
+
+	return nil
+}
+
+// SetTemplate of the mech to the related item.
+// Sets o.R.Template to related.
+// Adds o to related.R.Mechs.
+func (o *Mech) SetTemplate(exec boil.Executor, insert bool, related *Template) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"mechs\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"template_id"}),
+		strmangle.WhereClause("\"", "\"", 2, mechPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.TemplateID = related.ID
+	if o.R == nil {
+		o.R = &mechR{
+			Template: related,
+		}
+	} else {
+		o.R.Template = related
+	}
+
+	if related.R == nil {
+		related.R = &templateR{
+			Mechs: MechSlice{o},
+		}
+	} else {
+		related.R.Mechs = append(related.R.Mechs, o)
 	}
 
 	return nil
