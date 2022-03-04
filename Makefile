@@ -77,7 +77,7 @@ docker-setup:
 
 .PHONY: db-setup
 db-setup:
-	psql -U postgres -f init.sql
+	psql -h $(LOCAL_DEV_DB_HOST) -p $(LOCAL_DEV_DB_PORT) -U postgres -f init.sql
 
 .PHONY: db-version
 db-version:
@@ -116,6 +116,11 @@ db-update-assets:
 
 .PHONY: db-reset
 db-reset: db-drop db-migrate db-seed
+
+# make sure `make tools` is done
+.PHONY: db-boiler
+db-boiler:
+	$(BIN)/sqlboiler $(BIN)/sqlboiler-psql --wipe --config $(SERVER)/sqlboiler.toml
 
 .PHONY: go-mod-download
 go-mod-download:
