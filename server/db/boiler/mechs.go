@@ -712,7 +712,7 @@ func (mechL) LoadChassis(e boil.Executor, singular bool, maybeMech interface{}, 
 		if foreign.R == nil {
 			foreign.R = &chassisR{}
 		}
-		foreign.R.Mechs = append(foreign.R.Mechs, object)
+		foreign.R.Mech = object
 		return nil
 	}
 
@@ -723,7 +723,7 @@ func (mechL) LoadChassis(e boil.Executor, singular bool, maybeMech interface{}, 
 				if foreign.R == nil {
 					foreign.R = &chassisR{}
 				}
-				foreign.R.Mechs = append(foreign.R.Mechs, local)
+				foreign.R.Mech = local
 				break
 			}
 		}
@@ -1188,7 +1188,7 @@ func (o *Mech) SetBrand(exec boil.Executor, insert bool, related *Brand) error {
 
 // SetChassis of the mech to the related item.
 // Sets o.R.Chassis to related.
-// Adds o to related.R.Mechs.
+// Adds o to related.R.Mech.
 func (o *Mech) SetChassis(exec boil.Executor, insert bool, related *Chassis) error {
 	var err error
 	if insert {
@@ -1223,10 +1223,10 @@ func (o *Mech) SetChassis(exec boil.Executor, insert bool, related *Chassis) err
 
 	if related.R == nil {
 		related.R = &chassisR{
-			Mechs: MechSlice{o},
+			Mech: o,
 		}
 	} else {
-		related.R.Mechs = append(related.R.Mechs, o)
+		related.R.Mech = o
 	}
 
 	return nil

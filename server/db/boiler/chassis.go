@@ -150,16 +150,16 @@ var ChassisWhere = struct {
 // ChassisRels is where relationship names are stored.
 var ChassisRels = struct {
 	Brand string
-	Mechs string
+	Mech  string
 }{
 	Brand: "Brand",
-	Mechs: "Mechs",
+	Mech:  "Mech",
 }
 
 // chassisR is where relationships are stored.
 type chassisR struct {
-	Brand *Brand    `boiler:"Brand" boil:"Brand" json:"Brand" toml:"Brand" yaml:"Brand"`
-	Mechs MechSlice `boiler:"Mechs" boil:"Mechs" json:"Mechs" toml:"Mechs" yaml:"Mechs"`
+	Brand *Brand `boiler:"Brand" boil:"Brand" json:"Brand" toml:"Brand" yaml:"Brand"`
+	Mech  *Mech  `boiler:"Mech" boil:"Mech" json:"Mech" toml:"Mech" yaml:"Mech"`
 }
 
 // NewStruct creates a new relationship struct
@@ -435,24 +435,17 @@ func (o *Chassis) Brand(mods ...qm.QueryMod) brandQuery {
 	return query
 }
 
-// Mechs retrieves all the mech's Mechs with an executor.
-func (o *Chassis) Mechs(mods ...qm.QueryMod) mechQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
+// Mech pointed to by the foreign key.
+func (o *Chassis) Mech(mods ...qm.QueryMod) mechQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"chassis_id\" = ?", o.ID),
+		qmhelper.WhereIsNull("deleted_at"),
 	}
 
-	queryMods = append(queryMods,
-		qm.Where("\"mechs\".\"chassis_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"mechs\".\"deleted_at\""),
-	)
+	queryMods = append(queryMods, mods...)
 
 	query := Mechs(queryMods...)
 	queries.SetFrom(query.Query, "\"mechs\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"mechs\".*"})
-	}
 
 	return query
 }
@@ -562,9 +555,9 @@ func (chassisL) LoadBrand(e boil.Executor, singular bool, maybeChassis interface
 	return nil
 }
 
-// LoadMechs allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (chassisL) LoadMechs(e boil.Executor, singular bool, maybeChassis interface{}, mods queries.Applicator) error {
+// LoadMech allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-1 relationship.
+func (chassisL) LoadMech(e boil.Executor, singular bool, maybeChassis interface{}, mods queries.Applicator) error {
 	var slice []*Chassis
 	var object *Chassis
 
@@ -612,43 +605,46 @@ func (chassisL) LoadMechs(e boil.Executor, singular bool, maybeChassis interface
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load mechs")
+		return errors.Wrap(err, "failed to eager load Mech")
 	}
 
 	var resultSlice []*Mech
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice mechs")
+		return errors.Wrap(err, "failed to bind eager loaded slice Mech")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on mechs")
+		return errors.Wrap(err, "failed to close results of eager load for mechs")
 	}
 	if err = results.Err(); err != nil {
 		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mechs")
 	}
 
-	if len(mechAfterSelectHooks) != 0 {
+	if len(chassisAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
 			}
 		}
 	}
-	if singular {
-		object.R.Mechs = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &mechR{}
-			}
-			foreign.R.Chassis = object
-		}
+
+	if len(resultSlice) == 0 {
 		return nil
 	}
 
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Mech = foreign
+		if foreign.R == nil {
+			foreign.R = &mechR{}
+		}
+		foreign.R.Chassis = object
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
 			if local.ID == foreign.ChassisID {
-				local.R.Mechs = append(local.R.Mechs, foreign)
+				local.R.Mech = foreign
 				if foreign.R == nil {
 					foreign.R = &mechR{}
 				}
@@ -707,54 +703,52 @@ func (o *Chassis) SetBrand(exec boil.Executor, insert bool, related *Brand) erro
 	return nil
 }
 
-// AddMechs adds the given related objects to the existing relationships
-// of the chassis, optionally inserting them as new records.
-// Appends related to o.R.Mechs.
-// Sets related.R.Chassis appropriately.
-func (o *Chassis) AddMechs(exec boil.Executor, insert bool, related ...*Mech) error {
+// SetMech of the chassis to the related item.
+// Sets o.R.Mech to related.
+// Adds o to related.R.Chassis.
+func (o *Chassis) SetMech(exec boil.Executor, insert bool, related *Mech) error {
 	var err error
-	for _, rel := range related {
-		if insert {
-			rel.ChassisID = o.ID
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"mechs\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"chassis_id"}),
-				strmangle.WhereClause("\"", "\"", 2, mechPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
 
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
+	if insert {
+		related.ChassisID = o.ID
 
-			rel.ChassisID = o.ID
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
 		}
+	} else {
+		updateQuery := fmt.Sprintf(
+			"UPDATE \"mechs\" SET %s WHERE %s",
+			strmangle.SetParamNames("\"", "\"", 1, []string{"chassis_id"}),
+			strmangle.WhereClause("\"", "\"", 2, mechPrimaryKeyColumns),
+		)
+		values := []interface{}{o.ID, related.ID}
+
+		if boil.DebugMode {
+			fmt.Fprintln(boil.DebugWriter, updateQuery)
+			fmt.Fprintln(boil.DebugWriter, values)
+		}
+		if _, err = exec.Exec(updateQuery, values...); err != nil {
+			return errors.Wrap(err, "failed to update foreign table")
+		}
+
+		related.ChassisID = o.ID
+
 	}
 
 	if o.R == nil {
 		o.R = &chassisR{
-			Mechs: related,
+			Mech: related,
 		}
 	} else {
-		o.R.Mechs = append(o.R.Mechs, related...)
+		o.R.Mech = related
 	}
 
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &mechR{
-				Chassis: o,
-			}
-		} else {
-			rel.R.Chassis = o
+	if related.R == nil {
+		related.R = &mechR{
+			Chassis: o,
 		}
+	} else {
+		related.R.Chassis = o
 	}
 	return nil
 }

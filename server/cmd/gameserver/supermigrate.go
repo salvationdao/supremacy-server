@@ -418,7 +418,7 @@ func ProcessTemplate(data *StorePayload) error {
 	defer tx.Rollback()
 
 	gamelog.GameLog.Debug().Msg("inserting chassis")
-	err = chassis.Insert(gamedb.StdConn, boil.Infer())
+	err = chassis.Insert(tx, boil.Infer())
 	if err != nil {
 		return err
 	}
@@ -436,7 +436,7 @@ func ProcessTemplate(data *StorePayload) error {
 
 	if weapon1 != nil {
 		gamelog.GameLog.Debug().Msg("inserting weapon 1")
-		err = weapon1.Insert(gamedb.StdConn, boil.Infer())
+		err = weapon1.Insert(tx, boil.Infer())
 		if err != nil {
 			return err
 		}
@@ -444,27 +444,27 @@ func ProcessTemplate(data *StorePayload) error {
 	}
 	if weapon2 != nil {
 		gamelog.GameLog.Debug().Msg("inserting weapon 2")
-		err = weapon2.Insert(gamedb.StdConn, boil.Infer())
+		err = weapon2.Insert(tx, boil.Infer())
 		if err != nil {
 			return err
 		}
 	}
 	if turret1 != nil {
 		gamelog.GameLog.Debug().Msg("inserting turret 1")
-		err = turret1.Insert(gamedb.StdConn, boil.Infer())
+		err = turret1.Insert(tx, boil.Infer())
 		if err != nil {
 			return err
 		}
 	}
 	if turret2 != nil {
 		gamelog.GameLog.Debug().Msg("inserting turret 2")
-		err = turret2.Insert(gamedb.StdConn, boil.Infer())
+		err = turret2.Insert(tx, boil.Infer())
 		if err != nil {
 			return err
 		}
 	}
 	gamelog.GameLog.Debug().Msg("inserting module")
-	err = module.Insert(gamedb.StdConn, boil.Infer())
+	err = module.Insert(tx, boil.Infer())
 	if err != nil {
 		return err
 	}

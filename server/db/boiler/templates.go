@@ -479,7 +479,7 @@ func (templateL) LoadBlueprintChassis(e boil.Executor, singular bool, maybeTempl
 		if foreign.R == nil {
 			foreign.R = &blueprintChassisR{}
 		}
-		foreign.R.Templates = append(foreign.R.Templates, object)
+		foreign.R.Template = object
 		return nil
 	}
 
@@ -490,7 +490,7 @@ func (templateL) LoadBlueprintChassis(e boil.Executor, singular bool, maybeTempl
 				if foreign.R == nil {
 					foreign.R = &blueprintChassisR{}
 				}
-				foreign.R.Templates = append(foreign.R.Templates, local)
+				foreign.R.Template = local
 				break
 			}
 		}
@@ -600,7 +600,7 @@ func (templateL) LoadMechs(e boil.Executor, singular bool, maybeTemplate interfa
 
 // SetBlueprintChassis of the template to the related item.
 // Sets o.R.BlueprintChassis to related.
-// Adds o to related.R.Templates.
+// Adds o to related.R.Template.
 func (o *Template) SetBlueprintChassis(exec boil.Executor, insert bool, related *BlueprintChassis) error {
 	var err error
 	if insert {
@@ -635,10 +635,10 @@ func (o *Template) SetBlueprintChassis(exec boil.Executor, insert bool, related 
 
 	if related.R == nil {
 		related.R = &blueprintChassisR{
-			Templates: TemplateSlice{o},
+			Template: o,
 		}
 	} else {
-		related.R.Templates = append(related.R.Templates, o)
+		related.R.Template = o
 	}
 
 	return nil

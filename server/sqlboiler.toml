@@ -10,8 +10,8 @@ tag = ["boiler"]
 [psql]
   dbname = "gameserver"
   host   = "localhost"
-  port   = 5432
-  user   = "postgres"
+  port   = 5437
+  user   = "gameserver"
   pass   = "dev"
   schema = "public"
   blacklist = ["migrations", "other"]
