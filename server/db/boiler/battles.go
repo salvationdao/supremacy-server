@@ -428,6 +428,7 @@ func (o *Battle) IssuedContractRewards(mods ...qm.QueryMod) issuedContractReward
 
 	queryMods = append(queryMods,
 		qm.Where("\"issued_contract_rewards\".\"battle_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"issued_contract_rewards\".\"deleted_at\""),
 	)
 
 	query := IssuedContractRewards(queryMods...)
@@ -782,6 +783,7 @@ func (battleL) LoadIssuedContractRewards(e boil.Executor, singular bool, maybeBa
 	query := NewQuery(
 		qm.From(`issued_contract_rewards`),
 		qm.WhereIn(`issued_contract_rewards.battle_id in ?`, args...),
+		qmhelper.WhereIsNull(`issued_contract_rewards.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)

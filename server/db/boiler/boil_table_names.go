@@ -16,14 +16,29 @@ var TableNames = struct {
 	BattlesUserVotes                                   string
 	BattlesWinnerRecords                               string
 	Blobs                                              string
+	Brands                                             string
+	Chassis                                            string
 	Factions                                           string
 	GameAbilities                                      string
 	GameMaps                                           string
 	GlobalAnnouncements                                string
 	IssuedContractRewards                              string
+	Mechs                                              string
+	MechsModules                                       string
+	MechsWeapons                                       string
+	Modules                                            string
+	Players                                            string
 	SchemaMigrations                                   string
 	StreamList                                         string
+	Syndicates                                         string
+	TemplateChassis                                    string
+	TemplateModules                                    string
+	TemplateWeapons                                    string
+	Templates                                          string
+	TemplatesTemplateModules                           string
+	TemplatesTemplateWeapons                           string
 	Users                                              string
+	Weapons                                            string
 }{
 	AssetRepair:                     "asset_repair",
 	BattleAbilities:                 "battle_abilities",
@@ -37,12 +52,27 @@ var TableNames = struct {
 	BattlesUserVotes:                                   "battles_user_votes",
 	BattlesWinnerRecords:                               "battles_winner_records",
 	Blobs:                                              "blobs",
+	Brands:                                             "brands",
+	Chassis:                                            "chassis",
 	Factions:                                           "factions",
 	GameAbilities:                                      "game_abilities",
 	GameMaps:                                           "game_maps",
 	GlobalAnnouncements:                                "global_announcements",
 	IssuedContractRewards:                              "issued_contract_rewards",
+	Mechs:                                              "mechs",
+	MechsModules:                                       "mechs_modules",
+	MechsWeapons:                                       "mechs_weapons",
+	Modules:                                            "modules",
+	Players:                                            "players",
 	SchemaMigrations:                                   "schema_migrations",
 	StreamList:                                         "stream_list",
+	Syndicates:                                         "syndicates",
+	TemplateChassis:                                    "template_chassis",
+	TemplateModules:                                    "template_modules",
+	TemplateWeapons:                                    "template_weapons",
+	Templates:                                          "templates",
+	TemplatesTemplateModules:                           "templates_template_modules",
+	TemplatesTemplateWeapons:                           "templates_template_weapons",
 	Users:                                              "users",
+	Weapons:                                            "weapons",
 }

@@ -381,7 +381,7 @@ func (q battleWarMachineQueueQuery) Exists(exec boil.Executor) (bool, error) {
 
 // BattleWarMachineQueues retrieves all the records using an executor.
 func BattleWarMachineQueues(mods ...qm.QueryMod) battleWarMachineQueueQuery {
-	mods = append(mods, qm.From("\"battle_war_machine_queues\""))
+	mods = append(mods, qm.From("\"battle_war_machine_queues\""), qmhelper.WhereIsNull("\"battle_war_machine_queues\".\"deleted_at\""))
 	return battleWarMachineQueueQuery{NewQuery(mods...)}
 }
 
@@ -395,7 +395,7 @@ func FindBattleWarMachineQueue(exec boil.Executor, iD string, selectCols ...stri
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"battle_war_machine_queues\" where \"id\"=$1", sel,
+		"select %s from \"battle_war_machine_queues\" where \"id\"=$1 and \"deleted_at\" is null", sel,
 	)
 
 	q := queries.Raw(query, iD)
@@ -746,7 +746,7 @@ func (o *BattleWarMachineQueue) Upsert(exec boil.Executor, updateOnConflict bool
 
 // Delete deletes a single BattleWarMachineQueue record with an executor.
 // Delete will match against the primary key column to find the record to delete.
-func (o *BattleWarMachineQueue) Delete(exec boil.Executor) (int64, error) {
+func (o *BattleWarMachineQueue) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
 	if o == nil {
 		return 0, errors.New("boiler: no BattleWarMachineQueue provided for delete")
 	}
@@ -755,8 +755,26 @@ func (o *BattleWarMachineQueue) Delete(exec boil.Executor) (int64, error) {
 		return 0, err
 	}
 
-	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), battleWarMachineQueuePrimaryKeyMapping)
-	sql := "DELETE FROM \"battle_war_machine_queues\" WHERE \"id\"=$1"
+	var (
+		sql  string
+		args []interface{}
+	)
+	if hardDelete {
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), battleWarMachineQueuePrimaryKeyMapping)
+		sql = "DELETE FROM \"battle_war_machine_queues\" WHERE \"id\"=$1"
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		o.DeletedAt = null.TimeFrom(currTime)
+		wl := []string{"deleted_at"}
+		sql = fmt.Sprintf("UPDATE \"battle_war_machine_queues\" SET %s WHERE \"id\"=$2",
+			strmangle.SetParamNames("\"", "\"", 1, wl),
+		)
+		valueMapping, err := queries.BindMapping(battleWarMachineQueueType, battleWarMachineQueueMapping, append(wl, battleWarMachineQueuePrimaryKeyColumns...))
+		if err != nil {
+			return 0, err
+		}
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), valueMapping)
+	}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -780,12 +798,17 @@ func (o *BattleWarMachineQueue) Delete(exec boil.Executor) (int64, error) {
 }
 
 // DeleteAll deletes all matching rows.
-func (q battleWarMachineQueueQuery) DeleteAll(exec boil.Executor) (int64, error) {
+func (q battleWarMachineQueueQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if q.Query == nil {
 		return 0, errors.New("boiler: no battleWarMachineQueueQuery provided for delete all")
 	}
 
-	queries.SetDelete(q.Query)
+	if hardDelete {
+		queries.SetDelete(q.Query)
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		queries.SetUpdate(q.Query, M{"deleted_at": currTime})
+	}
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
@@ -801,7 +824,7 @@ func (q battleWarMachineQueueQuery) DeleteAll(exec boil.Executor) (int64, error)
 }
 
 // DeleteAll deletes all rows in the slice, using an executor.
-func (o BattleWarMachineQueueSlice) DeleteAll(exec boil.Executor) (int64, error) {
+func (o BattleWarMachineQueueSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if len(o) == 0 {
 		return 0, nil
 	}
@@ -814,14 +837,31 @@ func (o BattleWarMachineQueueSlice) DeleteAll(exec boil.Executor) (int64, error)
 		}
 	}
 
-	var args []interface{}
-	for _, obj := range o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleWarMachineQueuePrimaryKeyMapping)
-		args = append(args, pkeyArgs...)
+	var (
+		sql  string
+		args []interface{}
+	)
+	if hardDelete {
+		for _, obj := range o {
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleWarMachineQueuePrimaryKeyMapping)
+			args = append(args, pkeyArgs...)
+		}
+		sql = "DELETE FROM \"battle_war_machine_queues\" WHERE " +
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, battleWarMachineQueuePrimaryKeyColumns, len(o))
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		for _, obj := range o {
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), battleWarMachineQueuePrimaryKeyMapping)
+			args = append(args, pkeyArgs...)
+			obj.DeletedAt = null.TimeFrom(currTime)
+		}
+		wl := []string{"deleted_at"}
+		sql = fmt.Sprintf("UPDATE \"battle_war_machine_queues\" SET %s WHERE "+
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, battleWarMachineQueuePrimaryKeyColumns, len(o)),
+			strmangle.SetParamNames("\"", "\"", 1, wl),
+		)
+		args = append([]interface{}{currTime}, args...)
 	}
-
-	sql := "DELETE FROM \"battle_war_machine_queues\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, battleWarMachineQueuePrimaryKeyColumns, len(o))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -875,7 +915,8 @@ func (o *BattleWarMachineQueueSlice) ReloadAll(exec boil.Executor) error {
 	}
 
 	sql := "SELECT \"battle_war_machine_queues\".* FROM \"battle_war_machine_queues\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, battleWarMachineQueuePrimaryKeyColumns, len(*o))
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, battleWarMachineQueuePrimaryKeyColumns, len(*o)) +
+		"and \"deleted_at\" is null"
 
 	q := queries.Raw(sql, args...)
 
@@ -892,7 +933,7 @@ func (o *BattleWarMachineQueueSlice) ReloadAll(exec boil.Executor) error {
 // BattleWarMachineQueueExists checks if the BattleWarMachineQueue row exists.
 func BattleWarMachineQueueExists(exec boil.Executor, iD string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"battle_war_machine_queues\" where \"id\"=$1 limit 1)"
+	sql := "select exists(select 1 from \"battle_war_machine_queues\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)

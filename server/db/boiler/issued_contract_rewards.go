@@ -556,7 +556,7 @@ func (o *IssuedContractReward) SetBattle(exec boil.Executor, insert bool, relate
 
 // IssuedContractRewards retrieves all the records using an executor.
 func IssuedContractRewards(mods ...qm.QueryMod) issuedContractRewardQuery {
-	mods = append(mods, qm.From("\"issued_contract_rewards\""))
+	mods = append(mods, qm.From("\"issued_contract_rewards\""), qmhelper.WhereIsNull("\"issued_contract_rewards\".\"deleted_at\""))
 	return issuedContractRewardQuery{NewQuery(mods...)}
 }
 
@@ -570,7 +570,7 @@ func FindIssuedContractReward(exec boil.Executor, iD string, selectCols ...strin
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"issued_contract_rewards\" where \"id\"=$1", sel,
+		"select %s from \"issued_contract_rewards\" where \"id\"=$1 and \"deleted_at\" is null", sel,
 	)
 
 	q := queries.Raw(query, iD)
@@ -929,7 +929,7 @@ func (o *IssuedContractReward) Upsert(exec boil.Executor, updateOnConflict bool,
 
 // Delete deletes a single IssuedContractReward record with an executor.
 // Delete will match against the primary key column to find the record to delete.
-func (o *IssuedContractReward) Delete(exec boil.Executor) (int64, error) {
+func (o *IssuedContractReward) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
 	if o == nil {
 		return 0, errors.New("boiler: no IssuedContractReward provided for delete")
 	}
@@ -938,8 +938,26 @@ func (o *IssuedContractReward) Delete(exec boil.Executor) (int64, error) {
 		return 0, err
 	}
 
-	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), issuedContractRewardPrimaryKeyMapping)
-	sql := "DELETE FROM \"issued_contract_rewards\" WHERE \"id\"=$1"
+	var (
+		sql  string
+		args []interface{}
+	)
+	if hardDelete {
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), issuedContractRewardPrimaryKeyMapping)
+		sql = "DELETE FROM \"issued_contract_rewards\" WHERE \"id\"=$1"
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		o.DeletedAt = null.TimeFrom(currTime)
+		wl := []string{"deleted_at"}
+		sql = fmt.Sprintf("UPDATE \"issued_contract_rewards\" SET %s WHERE \"id\"=$2",
+			strmangle.SetParamNames("\"", "\"", 1, wl),
+		)
+		valueMapping, err := queries.BindMapping(issuedContractRewardType, issuedContractRewardMapping, append(wl, issuedContractRewardPrimaryKeyColumns...))
+		if err != nil {
+			return 0, err
+		}
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), valueMapping)
+	}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -963,12 +981,17 @@ func (o *IssuedContractReward) Delete(exec boil.Executor) (int64, error) {
 }
 
 // DeleteAll deletes all matching rows.
-func (q issuedContractRewardQuery) DeleteAll(exec boil.Executor) (int64, error) {
+func (q issuedContractRewardQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if q.Query == nil {
 		return 0, errors.New("boiler: no issuedContractRewardQuery provided for delete all")
 	}
 
-	queries.SetDelete(q.Query)
+	if hardDelete {
+		queries.SetDelete(q.Query)
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		queries.SetUpdate(q.Query, M{"deleted_at": currTime})
+	}
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
@@ -984,7 +1007,7 @@ func (q issuedContractRewardQuery) DeleteAll(exec boil.Executor) (int64, error) 
 }
 
 // DeleteAll deletes all rows in the slice, using an executor.
-func (o IssuedContractRewardSlice) DeleteAll(exec boil.Executor) (int64, error) {
+func (o IssuedContractRewardSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if len(o) == 0 {
 		return 0, nil
 	}
@@ -997,14 +1020,31 @@ func (o IssuedContractRewardSlice) DeleteAll(exec boil.Executor) (int64, error) 
 		}
 	}
 
-	var args []interface{}
-	for _, obj := range o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), issuedContractRewardPrimaryKeyMapping)
-		args = append(args, pkeyArgs...)
+	var (
+		sql  string
+		args []interface{}
+	)
+	if hardDelete {
+		for _, obj := range o {
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), issuedContractRewardPrimaryKeyMapping)
+			args = append(args, pkeyArgs...)
+		}
+		sql = "DELETE FROM \"issued_contract_rewards\" WHERE " +
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, issuedContractRewardPrimaryKeyColumns, len(o))
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		for _, obj := range o {
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), issuedContractRewardPrimaryKeyMapping)
+			args = append(args, pkeyArgs...)
+			obj.DeletedAt = null.TimeFrom(currTime)
+		}
+		wl := []string{"deleted_at"}
+		sql = fmt.Sprintf("UPDATE \"issued_contract_rewards\" SET %s WHERE "+
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, issuedContractRewardPrimaryKeyColumns, len(o)),
+			strmangle.SetParamNames("\"", "\"", 1, wl),
+		)
+		args = append([]interface{}{currTime}, args...)
 	}
-
-	sql := "DELETE FROM \"issued_contract_rewards\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, issuedContractRewardPrimaryKeyColumns, len(o))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1058,7 +1098,8 @@ func (o *IssuedContractRewardSlice) ReloadAll(exec boil.Executor) error {
 	}
 
 	sql := "SELECT \"issued_contract_rewards\".* FROM \"issued_contract_rewards\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, issuedContractRewardPrimaryKeyColumns, len(*o))
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, issuedContractRewardPrimaryKeyColumns, len(*o)) +
+		"and \"deleted_at\" is null"
 
 	q := queries.Raw(sql, args...)
 
@@ -1075,7 +1116,7 @@ func (o *IssuedContractRewardSlice) ReloadAll(exec boil.Executor) error {
 // IssuedContractRewardExists checks if the IssuedContractReward row exists.
 func IssuedContractRewardExists(exec boil.Executor, iD string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"issued_contract_rewards\" where \"id\"=$1 limit 1)"
+	sql := "select exists(select 1 from \"issued_contract_rewards\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)

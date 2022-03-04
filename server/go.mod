@@ -25,6 +25,7 @@ require (
 )
 
 require (
+	github.com/friendsofgo/errors v0.9.2
 	github.com/h2non/filetype v1.1.3
 	github.com/jackc/pgconn v1.10.1
 	github.com/jackc/pgx v3.6.2+incompatible
@@ -34,6 +35,7 @@ require (
 	github.com/shopspring/decimal v1.2.0
 	github.com/volatiletech/null/v8 v8.1.2
 	github.com/volatiletech/sqlboiler/v4 v4.8.6
+	github.com/volatiletech/strmangle v0.0.2
 	go.uber.org/atomic v1.7.0
 )
 
@@ -46,7 +48,7 @@ require (
 	github.com/DataDog/sketches-go v1.0.0 // indirect
 	github.com/dgraph-io/ristretto v0.1.0 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
-	github.com/friendsofgo/errors v0.9.2 // indirect
+	github.com/ericlagergren/decimal v0.0.0-20181231230500-73749d4874d5 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
@@ -64,7 +66,6 @@ require (
 	github.com/tinylib/msgp v1.1.2 // indirect
 	github.com/volatiletech/inflect v0.0.1 // indirect
 	github.com/volatiletech/randomize v0.0.1 // indirect
-	github.com/volatiletech/strmangle v0.0.2 // indirect
 	golang.org/x/time v0.0.0-20211116232009-f0f3c7e86c11 // indirect
 	gopkg.in/ini.v1 v1.63.2 // indirect
 )
