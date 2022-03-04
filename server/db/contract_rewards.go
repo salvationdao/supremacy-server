@@ -68,7 +68,8 @@ func ContractRewardGet(ctx context.Context, tx Conn, hash string) (decimal.Decim
 func ContractRewardInsert(ctx context.Context, tx Conn, battleID server.BattleID, reward decimal.Decimal, hash string) error {
 	gamelog.GameLog.Debug().Str("fn", "ContractRewardInsert").Str("reward", reward.String()).Str("hash", hash).Str("battle_id", battleID.String()).Msg("db func")
 	if reward.LessThanOrEqual(decimal.Zero) {
-		return fmt.Errorf("reward must be greater than 0")
+		gamelog.GameLog.Warn().Msg("reward must be greater than 0")
+		return nil
 	}
 	q := `INSERT INTO issued_contract_rewards (battle_id, reward, war_machine_hash, is_paid) VALUES ($1, $2, $3, NULL);`
 	_, err := tx.Exec(ctx, q, battleID, reward, hash)
