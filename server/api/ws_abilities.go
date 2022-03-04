@@ -254,14 +254,14 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 				ability := fa.GameAbility.Brief()
 				// broadcast notification
 				if fa.GameAbility.AbilityHash == "" {
-					go fc.API.BroadcastGameNotificationAbility(ctx, GameNotificationTypeFactionAbility, &GameNotificationAbility{
+					go fc.API.BroadcastGameNotificationAbility(GameNotificationTypeFactionAbility, &GameNotificationAbility{
 						User:    triggeredBy,
 						Ability: ability,
 					})
 				} else {
 					warMachine := fc.API.BattleArena.GetWarMachine(fa.GameAbility.WarMachineHash).Brief()
 					// broadcast notification
-					go fc.API.BroadcastGameNotificationWarMachineAbility(ctx, &GameNotificationWarMachineAbility{
+					go fc.API.BroadcastGameNotificationWarMachineAbility(&GameNotificationWarMachineAbility{
 						User:       hcd.Brief(),
 						Ability:    fa.GameAbility.Brief(),
 						WarMachine: warMachine,

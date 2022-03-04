@@ -145,13 +145,13 @@ func (api *API) abilityTargetPriceUpdater(factionID server.FactionID, conn *pgxp
 
 				ability := fa.GameAbility.Brief()
 				if fa.GameAbility.AbilityHash == "" {
-					go api.BroadcastGameNotificationAbility(context.Background(), GameNotificationTypeFactionAbility, &GameNotificationAbility{
+					go api.BroadcastGameNotificationAbility(GameNotificationTypeFactionAbility, &GameNotificationAbility{
 						Ability: ability,
 					})
 				} else {
 					warMachine := api.BattleArena.GetWarMachine(fa.GameAbility.WarMachineHash).Brief()
 					// broadcast notification
-					go api.BroadcastGameNotificationWarMachineAbility(context.Background(), &GameNotificationWarMachineAbility{
+					go api.BroadcastGameNotificationWarMachineAbility(&GameNotificationWarMachineAbility{
 						Ability:    ability,
 						WarMachine: warMachine,
 					})

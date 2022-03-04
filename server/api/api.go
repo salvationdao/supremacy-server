@@ -439,7 +439,7 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client) error 
 				nextUser, winnerClientID := api.getNextWinnerDetail(vw)
 				if nextUser == nil {
 					// if no winner left, enter cooldown phase
-					go api.BroadcastGameNotificationLocationSelect(ctx, &GameNotificationLocationSelect{
+					go api.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
 						Type:    LocationSelectTypeCancelledDisconnect,
 						Ability: va.BattleAbility.Brief(),
 					})
@@ -494,7 +494,7 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client) error 
 				})
 
 				// broadcast winner select location
-				go api.BroadcastGameNotificationLocationSelect(ctx, &GameNotificationLocationSelect{
+				go api.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
 					Type:        LocationSelectTypeFailedDisconnect,
 					Ability:     va.BattleAbility.Brief(),
 					CurrentUser: currentUser.Brief(),

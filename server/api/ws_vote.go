@@ -215,7 +215,7 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 			vc.API.votePhaseChecker.EndTime = time.Now().Add(LocationSelectDurationSecond * time.Second)
 			vc.API.votePhaseChecker.Unlock()
 
-			go vc.API.BroadcastGameNotificationAbility(ctx, GameNotificationTypeBattleAbility, &GameNotificationAbility{
+			go vc.API.BroadcastGameNotificationAbility(GameNotificationTypeBattleAbility, &GameNotificationAbility{
 				User:    hcd.Brief(),
 				Ability: va.FactionAbilityMap[hcd.FactionID].Brief(),
 			})
@@ -316,7 +316,7 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 		defer fts.Unlock()
 
 		// broadcast notification
-		go vc.API.BroadcastGameNotificationLocationSelect(ctx, &GameNotificationLocationSelect{
+		go vc.API.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
 			Type:        LocationSelectTypeTrigger,
 			CurrentUser: hcd.Brief(),
 			X:           &req.Payload.XIndex,

@@ -41,6 +41,8 @@ func NewGameController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *GameC
 	api.SubscribeCommand(HubKeyAISpawned, gameHub.AISpawnedSubscribeHandler)
 
 	api.SecureUserCommand(HubKeyWarMachineQueueLeave, gameHub.WarMachineQueueLeaveHandler)
+
+	api.SubscribeCommand(HubKeyGameNotification, gameHub.GameNotificationSubscribeHandler)
 	return gameHub
 }
 
@@ -229,11 +231,12 @@ func (gc *GameControllerWS) BattleEndDetailUpdateSubscribeHandler(ctx context.Co
 type GameNotificationType string
 
 const (
-	GameNotificationTypeText              GameNotificationType = "TEXT"
-	GameNotificationTypeLocationSelect    GameNotificationType = "LOCATION_SELECT"
-	GameNotificationTypeBattleAbility     GameNotificationType = "BATTLE_ABILITY"
-	GameNotificationTypeFactionAbility    GameNotificationType = "FACTION_ABILITY"
-	GameNotificationTypeWarMachineAbility GameNotificationType = "WAR_MACHINE_ABILITY"
+	GameNotificationTypeText                GameNotificationType = "TEXT"
+	GameNotificationTypeLocationSelect      GameNotificationType = "LOCATION_SELECT"
+	GameNotificationTypeBattleAbility       GameNotificationType = "BATTLE_ABILITY"
+	GameNotificationTypeFactionAbility      GameNotificationType = "FACTION_ABILITY"
+	GameNotificationTypeWarMachineAbility   GameNotificationType = "WAR_MACHINE_ABILITY"
+	GameNotificationTypeWarMachineDestroyed GameNotificationType = "WAR_MACHINE_DESTROYED"
 )
 
 type GameNotificationKill struct {
@@ -279,78 +282,38 @@ type GameNotification struct {
 
 const HubKeyGameNotification hub.HubCommandKey = "GAME:NOTIFICATION"
 
-// BroadcastGameNotificationText broadcast game notification to client
-func (api *API) BroadcastGameNotificationText(ctx context.Context, data string) {
-	// broadcast countered notification
-	broadcastData, err := json.Marshal(&BroadcastPayload{
-		Key: HubKeyGameNotification,
-		Payload: &GameNotification{
-			Type: GameNotificationTypeText,
-			Data: data,
-		},
-	})
+// WinnerAnnouncementSubscribeHandler subscribe on vote winner to pick location
+func (gc *GameControllerWS) GameNotificationSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &AbilityLocationSelectRequest{}
+	err := json.Unmarshal(payload, req)
 	if err != nil {
-		api.Log.Err(err).Msg("marshal broadcast payload")
-		return
+		return "", "", terror.Error(err)
 	}
 
-	api.clientBroadcast(ctx, broadcastData)
+	return req.TransactionID, messagebus.BusKey(HubKeyGameNotification), nil
+}
+
+// BroadcastGameNotificationText broadcast game notification to client
+func (api *API) BroadcastGameNotificationText(data string) {
+	api.MessageBus.Send(context.Background(), messagebus.BusKey(HubKeyGameNotification), data)
 }
 
 // BroadcastGameNotificationLocationSelect broadcast game notification to client
-func (api *API) BroadcastGameNotificationLocationSelect(ctx context.Context, data *GameNotificationLocationSelect) {
-	// broadcast countered notification
-	broadcastData, err := json.Marshal(&BroadcastPayload{
-		Key: HubKeyGameNotification,
-		Payload: &GameNotification{
-			Type: GameNotificationTypeLocationSelect,
-			Data: data,
-		},
-	})
-	if err != nil {
-		api.Log.Err(err).Msg("marshal broadcast payload")
-		return
-	}
-	api.clientBroadcast(ctx, broadcastData)
+func (api *API) BroadcastGameNotificationLocationSelect(data *GameNotificationLocationSelect) {
+	api.MessageBus.Send(context.Background(), messagebus.BusKey(HubKeyGameNotification), data)
 }
 
 // BroadcastGameNotificationAbility broadcast game notification to client
-func (api *API) BroadcastGameNotificationAbility(ctx context.Context, notificationType GameNotificationType, data *GameNotificationAbility) {
-	// broadcast countered notification
-	broadcastData, err := json.Marshal(&BroadcastPayload{
-		Key: HubKeyGameNotification,
-		Payload: &GameNotification{
-			Type: notificationType,
-			Data: data,
-		},
-	})
-	if err != nil {
-		api.Log.Err(err).Msg("marshal broadcast payload")
-		return
-	}
-	api.clientBroadcast(ctx, broadcastData)
+func (api *API) BroadcastGameNotificationAbility(notificationType GameNotificationType, data *GameNotificationAbility) {
+	api.MessageBus.Send(context.Background(), messagebus.BusKey(HubKeyGameNotification), data)
 }
 
 // BroadcastGameNotificationWarMachineAbility broadcast game notification to client
-func (api *API) BroadcastGameNotificationWarMachineAbility(ctx context.Context, data *GameNotificationWarMachineAbility) {
-	// broadcast countered notification
-	broadcastData, err := json.Marshal(&BroadcastPayload{
-		Key: HubKeyGameNotification,
-		Payload: &GameNotification{
-			Type: GameNotificationTypeWarMachineAbility,
-			Data: data,
-		},
-	})
-	if err != nil {
-		api.Log.Err(err).Msg("marshal broadcast payload")
-		return
-	}
-	api.clientBroadcast(ctx, broadcastData)
+func (api *API) BroadcastGameNotificationWarMachineAbility(data *GameNotificationWarMachineAbility) {
+	api.MessageBus.Send(context.Background(), messagebus.BusKey(HubKeyGameNotification), data)
 }
 
-func (api *API) clientBroadcast(ctx context.Context, data []byte) {
-	api.Hub.Clients(func(sessionID hub.SessionID, client *hub.Client) bool {
-		go client.Send(data)
-		return true
-	})
+// BroadcastGameNotificationWarMachineDestroyed broadcast game notification to client
+func (api *API) BroadcastGameNotificationWarMachineDestroyed(data *WarMachineDestroyedEventRecord) {
+	api.MessageBus.Send(context.Background(), messagebus.BusKey(HubKeyGameNotification), data)
 }

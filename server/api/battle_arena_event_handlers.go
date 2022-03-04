@@ -372,7 +372,9 @@ func (api *API) WarMachineDestroyedBroadcast(ctx context.Context, ed *battle_are
 		wmd.KilledByWarMachine = ed.WarMachineDestroyedRecord.KilledByWarMachine.Brief()
 	}
 
-	go api.MessageBus.Send(ctx,
+	api.BroadcastGameNotificationWarMachineDestroyed(wmd)
+
+	api.MessageBus.Send(ctx,
 		messagebus.BusKey(
 			fmt.Sprintf(
 				"%s:%x",
