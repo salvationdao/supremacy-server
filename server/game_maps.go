@@ -54,21 +54,24 @@ type WarMachineMetadata struct {
 	Position           *Vector3           `json:"position"`
 	Rotation           int                `json:"rotation"`
 	Abilities          []*AbilityMetadata `json:"abilities"`
+	ImageAvatar        string             `json:"imageAvatar"`
 
 	ContractReward decimal.Decimal `json:"contractReward"`
 	Fee            decimal.Decimal `json:"fee"`
 }
 
 type WarMachineBrief struct {
-	ImageUrl string        `json:"imageUrl"`
-	Name     string        `json:"name"`
-	Faction  *FactionBrief `json:"faction"`
+	ImageUrl    string        `json:"imageUrl"`
+	ImageAvatar string        `json:"imageAvatar"`
+	Name        string        `json:"name"`
+	Faction     *FactionBrief `json:"faction"`
 }
 
 func (wm *WarMachineMetadata) Brief() *WarMachineBrief {
 	wmb := &WarMachineBrief{
-		ImageUrl: wm.Image,
-		Name:     wm.Name,
+		ImageUrl:    wm.Image,
+		ImageAvatar: wm.ImageAvatar,
+		Name:        wm.Name,
 	}
 
 	if wm.Faction != nil {
