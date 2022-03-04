@@ -191,6 +191,8 @@ func (pc *PassportWebhookController) WarMachineJoin(w http.ResponseWriter, r *ht
 		ToUserID:             &server.XsynTreasuryUserID,
 		Amount:               req.WarMachineMetadata.Fee.String(),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("war_machine_queuing_fee|%s", uuid.Must(uuid.NewV4()))),
+		Group:                "Supremacy",
+		Description:          "Adding war machine to queue.",
 	}, func(transaction string) {
 		errChan <- nil
 	}, func(reqErr error) {

@@ -145,7 +145,9 @@ func (vc *VoteControllerWS) AbilityRight(ctx context.Context, wsc *hub.Client, p
 			FromUserID:           userID,
 			Amount:               totalSups.String(),
 			TransactionReference: server.TransactionReference(fmt.Sprintf("%s|%s", reason, uuid.Must(uuid.NewV4()))),
-			GroupID:              vc.API.BattleArena.CurrentBattleID().String(),
+			Group:                "Battle",
+			SubGroup:             vc.API.BattleArena.CurrentBattleID().String(),
+			Description:          "Battle vote.",
 			NotSafe:              true,
 		}, func(transaction string) {
 			// check voting phase first

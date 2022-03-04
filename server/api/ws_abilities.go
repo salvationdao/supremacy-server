@@ -150,7 +150,9 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 				FromUserID:           userID,
 				Amount:               reduceAmount.String(),
 				TransactionReference: server.TransactionReference(fmt.Sprintf("%s|%s", reason, uuid.Must(uuid.NewV4()))),
-				GroupID:              "Battle",
+				Group:                "Battle",
+				SubGroup:             fc.API.BattleArena.CurrentBattleID().String(),
+				Description:          "Ability vote.",
 			}, func(transaction string) {
 				faIface, ok := fap.Load(req.Payload.GameAbilityID.String())
 				if !ok {

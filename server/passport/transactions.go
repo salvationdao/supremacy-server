@@ -10,12 +10,15 @@ type HoldSupsMessageResponse struct {
 }
 
 type SpendSupsReq struct {
-	FromUserID           server.UserID               `json:"fromUserID"`
-	ToUserID             *server.UserID              `json:"ToUserID,omitempty"`
 	Amount               string                      `json:"amount"`
+	FromUserID           server.UserID               `json:"fromUserID"`
+	ToUserID             *server.UserID              `json:"toUserID,omitempty"`
 	TransactionReference server.TransactionReference `json:"transactionReference"`
-	GroupID              string                      `json:"groupID"`
-	NotSafe              bool                        `json:"notSafe"`
+	Group                string                      `json:"group,omitempty"`
+	SubGroup             string                      `json:"subGroup"`    //TODO: send battle id
+	Description          string                      `json:"description"` //TODO: send descritpion
+
+	NotSafe bool `json:"notSafe"`
 }
 type SpendSupsResp struct {
 	TXID string `json:"txid"`

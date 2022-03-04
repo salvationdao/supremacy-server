@@ -124,6 +124,8 @@ func (gc *GameControllerWS) WarMachineQueueLeaveHandler(ctx context.Context, wsc
 		ToUserID:             &user.ID,
 		Amount:               fee,
 		TransactionReference: server.TransactionReference(fmt.Sprintf("refund|war_machine_queuing_fee|%s", uuid.Must(uuid.NewV4()))),
+		Group:                "Supremacy",
+		Description:          "Removing war machine from queue.",
 	}, func(transaction string) {}, func(err error) {})
 
 	gc.API.Passport.WarMachineQueuePositionBroadcast(broadcastData)

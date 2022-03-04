@@ -294,6 +294,7 @@ func PayWinners(ctx context.Context, tx db.Conn, ppclient *passport.Passport, ba
 				time.Now(),
 			),
 		),
+		battleID.String(),
 	)
 	if err != nil {
 		return fmt.Errorf("request redeem contract reward: %w", err)

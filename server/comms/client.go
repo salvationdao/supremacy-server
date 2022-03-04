@@ -2,6 +2,7 @@ package comms
 
 import (
 	"errors"
+	"fmt"
 	"net/rpc"
 	"server/gamelog"
 	"time"
@@ -71,6 +72,9 @@ func (c *C) Call(serviceMethod string, args interface{}, reply interface{}) erro
 	if i >= int32(len(c.clients)-1) {
 		c.inc.Store(0)
 		i = 0
+	}
+	if len(c.clients) < int(i) {
+		return fmt.Errorf("index out of range len = %d, index = %d", len(c.clients), int(i))
 	}
 	client := c.clients[i]
 	err := client.Call(serviceMethod, args, reply)

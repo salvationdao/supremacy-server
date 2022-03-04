@@ -55,17 +55,28 @@ func (pp *Passport) FactionStatsSend(factionStatSends []*FactionStatSend) {
 type RedeemFactionContractRewardReq struct {
 	UserID               server.UserID               `json:"userID"`
 	FactionID            server.FactionID            `json:"factionID"`
+	BattleID             string                      `json:"battleID"` //TODO: SEND BATTLE ID
 	Amount               string                      `json:"amount"`
 	TransactionReference server.TransactionReference `json:"transactionReference"`
 }
+
 type RedeemFactionContractRewardResp struct{}
 
 // AssetContractRewardRedeem redeem faction contract reward
-func (pp *Passport) AssetContractRewardRedeem(userID server.UserID, factionID server.FactionID, amount decimal.Decimal, txRef server.TransactionReference) error {
+func (pp *Passport) AssetContractRewardRedeem(userID server.UserID, factionID server.FactionID, amount decimal.Decimal, txRef server.TransactionReference, battleID string) error {
 	if amount.LessThanOrEqual(decimal.Zero) {
 		return fmt.Errorf("AssetContractRewardRedeem: amount must be greater than zero")
 	}
-	err := pp.Comms.Call("C.SupremacyRedeemFactionContractRewardHandler", RedeemFactionContractRewardReq{userID, factionID, amount.String(), txRef}, &RedeemFactionContractRewardResp{})
+	err := pp.Comms.Call(
+		"C.SupremacyRedeemFactionContractRewardHandler",
+		RedeemFactionContractRewardReq{
+			UserID:               userID,
+			FactionID:            factionID,
+			Amount:               amount.String(),
+			TransactionReference: txRef,
+			BattleID:             battleID,
+		},
+		&RedeemFactionContractRewardResp{})
 	if err != nil {
 		return fmt.Errorf("SupremacyRedeemFactionContractRewardHandler rpc call: %w", err)
 	}
