@@ -20,9 +20,13 @@ GITHASH=`git rev-parse HEAD`
 GITBRANCH=`git rev-parse --abbrev-ref HEAD`
 BUILDDATE=`date -u +%Y%m%d%H%M%S`
 GITSTATE=`git status --porcelain | wc -l`
-
+REPO_ROOT=`git rev-parse --show-toplevel`
 
 # Make Commands
+.PHONY: setup-git
+setup-git:
+	ln -s ${REPO_ROOT}/.pre-commit ${REPO_ROOT}/.git/hooks/pre-commit
+
 .PHONY: clean
 clean:
 	rm -rf deploy
@@ -37,7 +41,7 @@ deploy-prep: clean tools build
 
 .PHONY: build
 .ONESHELL:
-build:
+build: setup-git
 	cd $(SERVER)
 	pwd
 	go build \
@@ -120,7 +124,7 @@ db-reset: db-drop db-migrate db-seed
 # make sure `make tools` is done
 .PHONY: db-boiler
 db-boiler:
-	$(BIN)/sqlboiler $(BIN)/sqlboiler-psql --config $(SERVER)/sqlboiler.toml
+	$(BIN)/sqlboiler $(BIN)/sqlboiler-psql -config $(SERVER)/sqlboiler.toml
 
 .PHONY: go-mod-download
 go-mod-download:

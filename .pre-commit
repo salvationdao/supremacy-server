@@ -1,0 +1,24 @@
+#!/bin/sh
+
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
+
+RED="\e[31m"
+ENDCOLOR="\e[0m"
+
+# check and make sure the repo doesn't use the .All from the sqlboiler, cuz it is expensive query and lazy programming
+echo -n "" > ${REPO_ROOT}/.check-bad-files
+find "${REPO_ROOT}/server" -path "${REPO_ROOT}/server/db/boiler" -prune -o -type f -iname '*.go' -print0 | xargs -0 -n1 -I '{}' grep --color=always -Hn '\.All(' '{}' >> ${REPO_ROOT}/.check-bad-files
+
+LINES=$(cat ${REPO_ROOT}/.check-bad-files | wc -l)
+
+if [ "${LINES}" != "0" ]; then
+  cat ${REPO_ROOT}/.check-bad-files
+
+  MSG="${RED}ERROR: git commit failed${ENDCOLOR}
+DO NOT use  ${RED}.All()${ENDCOLOR}
+from db boiler, do proper pagination. Because it's expensive query and bad habit
+Ask senior devs if not sure what it meant"
+  echo "${MSG}"
+  exit 1
+fi

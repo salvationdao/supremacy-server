@@ -3,6 +3,8 @@ server/tmp
 *.tar.gz
 web/dist*
 web/stats.json
+.check-bad-files
+
 # ---> Go
 # Binaries for programs and plugins
 *.exe
