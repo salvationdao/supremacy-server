@@ -1,14 +1,17 @@
 package gamedb
 
 import (
+	"errors"
+
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 var Conn *pgxpool.Pool
 
-func New(conn *pgxpool.Pool) {
+func New(conn *pgxpool.Pool) error {
 	if Conn != nil {
-		panic("db already initialised")
+		return errors.New("db already initialised")
 	}
 	Conn = conn
+	return nil
 }

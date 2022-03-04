@@ -9,6 +9,7 @@ import (
 	"server/api"
 	"server/battle_arena"
 	"server/comms"
+	"server/gamedb"
 	"server/gamelog"
 	"server/passport"
 	"server/seed"
@@ -147,6 +148,11 @@ func main() {
 						return terror.Panic(err)
 					}
 
+					err = gamedb.New(pgxconn)
+					if err != nil {
+						return terror.Panic(err)
+					}
+
 					u, err := url.Parse(passportAddr)
 					if err != nil {
 						return terror.Panic(err)
@@ -196,6 +202,7 @@ func main() {
 						fmt.Println(err)
 						os.Exit(1)
 					}
+
 					gamelog.GameLog.Info().Msg("Running webhook rest API")
 					err = api.Run(ctx)
 					if err != nil {
