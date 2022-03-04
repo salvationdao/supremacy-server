@@ -16,6 +16,9 @@ var TableNames = struct {
 	BattlesUserVotes                                   string
 	BattlesWinnerRecords                               string
 	Blobs                                              string
+	BlueprintChassis                                   string
+	BlueprintModules                                   string
+	BlueprintWeapons                                   string
 	Brands                                             string
 	Chassis                                            string
 	Factions                                           string
@@ -31,12 +34,9 @@ var TableNames = struct {
 	SchemaMigrations                                   string
 	StreamList                                         string
 	Syndicates                                         string
-	TemplateChassis                                    string
-	TemplateModules                                    string
-	TemplateWeapons                                    string
 	Templates                                          string
-	TemplatesTemplateModules                           string
-	TemplatesTemplateWeapons                           string
+	TemplatesBlueprintModules                          string
+	TemplatesBlueprintWeapons                          string
 	Users                                              string
 	Weapons                                            string
 }{
@@ -52,6 +52,9 @@ var TableNames = struct {
 	BattlesUserVotes:                                   "battles_user_votes",
 	BattlesWinnerRecords:                               "battles_winner_records",
 	Blobs:                                              "blobs",
+	BlueprintChassis:                                   "blueprint_chassis",
+	BlueprintModules:                                   "blueprint_modules",
+	BlueprintWeapons:                                   "blueprint_weapons",
 	Brands:                                             "brands",
 	Chassis:                                            "chassis",
 	Factions:                                           "factions",
@@ -67,12 +70,9 @@ var TableNames = struct {
 	SchemaMigrations:                                   "schema_migrations",
 	StreamList:                                         "stream_list",
 	Syndicates:                                         "syndicates",
-	TemplateChassis:                                    "template_chassis",
-	TemplateModules:                                    "template_modules",
-	TemplateWeapons:                                    "template_weapons",
 	Templates:                                          "templates",
-	TemplatesTemplateModules:                           "templates_template_modules",
-	TemplatesTemplateWeapons:                           "templates_template_weapons",
+	TemplatesBlueprintModules:                          "templates_blueprint_modules",
+	TemplatesBlueprintWeapons:                          "templates_blueprint_weapons",
 	Users:                                              "users",
 	Weapons:                                            "weapons",
 }

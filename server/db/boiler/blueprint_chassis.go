@@ -21,8 +21,8 @@ import (
 	"github.com/volatiletech/strmangle"
 )
 
-// TemplateChassis is an object representing the database table.
-type TemplateChassis struct {
+// BlueprintChassis is an object representing the database table.
+type BlueprintChassis struct {
 	ID                 string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	Label              string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
 	Slug               string    `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
@@ -39,11 +39,11 @@ type TemplateChassis struct {
 	UpdatedAt          time.Time `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
 	CreatedAt          time.Time `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
 
-	R *templateChassisR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
-	L templateChassisL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
+	R *blueprintChassisR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
+	L blueprintChassisL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
-var TemplateChassisColumns = struct {
+var BlueprintChassisColumns = struct {
 	ID                 string
 	Label              string
 	Slug               string
@@ -77,7 +77,7 @@ var TemplateChassisColumns = struct {
 	CreatedAt:          "created_at",
 }
 
-var TemplateChassisTableColumns = struct {
+var BlueprintChassisTableColumns = struct {
 	ID                 string
 	Label              string
 	Slug               string
@@ -94,26 +94,26 @@ var TemplateChassisTableColumns = struct {
 	UpdatedAt          string
 	CreatedAt          string
 }{
-	ID:                 "template_chassis.id",
-	Label:              "template_chassis.label",
-	Slug:               "template_chassis.slug",
-	ShieldRechargeRate: "template_chassis.shield_recharge_rate",
-	HP:                 "template_chassis.hp",
-	BrandID:            "template_chassis.brand_id",
-	WeaponHardpoints:   "template_chassis.weapon_hardpoints",
-	TurretHardpoints:   "template_chassis.turret_hardpoints",
-	UtilitySlots:       "template_chassis.utility_slots",
-	Speed:              "template_chassis.speed",
-	MaxHitpoints:       "template_chassis.max_hitpoints",
-	MaxShield:          "template_chassis.max_shield",
-	DeletedAt:          "template_chassis.deleted_at",
-	UpdatedAt:          "template_chassis.updated_at",
-	CreatedAt:          "template_chassis.created_at",
+	ID:                 "blueprint_chassis.id",
+	Label:              "blueprint_chassis.label",
+	Slug:               "blueprint_chassis.slug",
+	ShieldRechargeRate: "blueprint_chassis.shield_recharge_rate",
+	HP:                 "blueprint_chassis.hp",
+	BrandID:            "blueprint_chassis.brand_id",
+	WeaponHardpoints:   "blueprint_chassis.weapon_hardpoints",
+	TurretHardpoints:   "blueprint_chassis.turret_hardpoints",
+	UtilitySlots:       "blueprint_chassis.utility_slots",
+	Speed:              "blueprint_chassis.speed",
+	MaxHitpoints:       "blueprint_chassis.max_hitpoints",
+	MaxShield:          "blueprint_chassis.max_shield",
+	DeletedAt:          "blueprint_chassis.deleted_at",
+	UpdatedAt:          "blueprint_chassis.updated_at",
+	CreatedAt:          "blueprint_chassis.created_at",
 }
 
 // Generated where
 
-var TemplateChassisWhere = struct {
+var BlueprintChassisWhere = struct {
 	ID                 whereHelperstring
 	Label              whereHelperstring
 	Slug               whereHelperstring
@@ -130,25 +130,25 @@ var TemplateChassisWhere = struct {
 	UpdatedAt          whereHelpertime_Time
 	CreatedAt          whereHelpertime_Time
 }{
-	ID:                 whereHelperstring{field: "\"template_chassis\".\"id\""},
-	Label:              whereHelperstring{field: "\"template_chassis\".\"label\""},
-	Slug:               whereHelperstring{field: "\"template_chassis\".\"slug\""},
-	ShieldRechargeRate: whereHelperint{field: "\"template_chassis\".\"shield_recharge_rate\""},
-	HP:                 whereHelperint{field: "\"template_chassis\".\"hp\""},
-	BrandID:            whereHelperstring{field: "\"template_chassis\".\"brand_id\""},
-	WeaponHardpoints:   whereHelperint{field: "\"template_chassis\".\"weapon_hardpoints\""},
-	TurretHardpoints:   whereHelperint{field: "\"template_chassis\".\"turret_hardpoints\""},
-	UtilitySlots:       whereHelperint{field: "\"template_chassis\".\"utility_slots\""},
-	Speed:              whereHelperint{field: "\"template_chassis\".\"speed\""},
-	MaxHitpoints:       whereHelperint{field: "\"template_chassis\".\"max_hitpoints\""},
-	MaxShield:          whereHelperint{field: "\"template_chassis\".\"max_shield\""},
-	DeletedAt:          whereHelpernull_Time{field: "\"template_chassis\".\"deleted_at\""},
-	UpdatedAt:          whereHelpertime_Time{field: "\"template_chassis\".\"updated_at\""},
-	CreatedAt:          whereHelpertime_Time{field: "\"template_chassis\".\"created_at\""},
+	ID:                 whereHelperstring{field: "\"blueprint_chassis\".\"id\""},
+	Label:              whereHelperstring{field: "\"blueprint_chassis\".\"label\""},
+	Slug:               whereHelperstring{field: "\"blueprint_chassis\".\"slug\""},
+	ShieldRechargeRate: whereHelperint{field: "\"blueprint_chassis\".\"shield_recharge_rate\""},
+	HP:                 whereHelperint{field: "\"blueprint_chassis\".\"hp\""},
+	BrandID:            whereHelperstring{field: "\"blueprint_chassis\".\"brand_id\""},
+	WeaponHardpoints:   whereHelperint{field: "\"blueprint_chassis\".\"weapon_hardpoints\""},
+	TurretHardpoints:   whereHelperint{field: "\"blueprint_chassis\".\"turret_hardpoints\""},
+	UtilitySlots:       whereHelperint{field: "\"blueprint_chassis\".\"utility_slots\""},
+	Speed:              whereHelperint{field: "\"blueprint_chassis\".\"speed\""},
+	MaxHitpoints:       whereHelperint{field: "\"blueprint_chassis\".\"max_hitpoints\""},
+	MaxShield:          whereHelperint{field: "\"blueprint_chassis\".\"max_shield\""},
+	DeletedAt:          whereHelpernull_Time{field: "\"blueprint_chassis\".\"deleted_at\""},
+	UpdatedAt:          whereHelpertime_Time{field: "\"blueprint_chassis\".\"updated_at\""},
+	CreatedAt:          whereHelpertime_Time{field: "\"blueprint_chassis\".\"created_at\""},
 }
 
-// TemplateChassisRels is where relationship names are stored.
-var TemplateChassisRels = struct {
+// BlueprintChassisRels is where relationship names are stored.
+var BlueprintChassisRels = struct {
 	Brand     string
 	Templates string
 }{
@@ -156,51 +156,51 @@ var TemplateChassisRels = struct {
 	Templates: "Templates",
 }
 
-// templateChassisR is where relationships are stored.
-type templateChassisR struct {
+// blueprintChassisR is where relationships are stored.
+type blueprintChassisR struct {
 	Brand     *Brand        `boiler:"Brand" boil:"Brand" json:"Brand" toml:"Brand" yaml:"Brand"`
 	Templates TemplateSlice `boiler:"Templates" boil:"Templates" json:"Templates" toml:"Templates" yaml:"Templates"`
 }
 
 // NewStruct creates a new relationship struct
-func (*templateChassisR) NewStruct() *templateChassisR {
-	return &templateChassisR{}
+func (*blueprintChassisR) NewStruct() *blueprintChassisR {
+	return &blueprintChassisR{}
 }
 
-// templateChassisL is where Load methods for each relationship are stored.
-type templateChassisL struct{}
+// blueprintChassisL is where Load methods for each relationship are stored.
+type blueprintChassisL struct{}
 
 var (
-	templateChassisAllColumns            = []string{"id", "label", "slug", "shield_recharge_rate", "hp", "brand_id", "weapon_hardpoints", "turret_hardpoints", "utility_slots", "speed", "max_hitpoints", "max_shield", "deleted_at", "updated_at", "created_at"}
-	templateChassisColumnsWithoutDefault = []string{"label", "slug", "shield_recharge_rate", "hp", "brand_id", "weapon_hardpoints", "turret_hardpoints", "utility_slots", "speed", "max_hitpoints", "max_shield"}
-	templateChassisColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at"}
-	templateChassisPrimaryKeyColumns     = []string{"id"}
-	templateChassisGeneratedColumns      = []string{}
+	blueprintChassisAllColumns            = []string{"id", "label", "slug", "shield_recharge_rate", "hp", "brand_id", "weapon_hardpoints", "turret_hardpoints", "utility_slots", "speed", "max_hitpoints", "max_shield", "deleted_at", "updated_at", "created_at"}
+	blueprintChassisColumnsWithoutDefault = []string{"label", "slug", "shield_recharge_rate", "hp", "brand_id", "weapon_hardpoints", "turret_hardpoints", "utility_slots", "speed", "max_hitpoints", "max_shield"}
+	blueprintChassisColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at"}
+	blueprintChassisPrimaryKeyColumns     = []string{"id"}
+	blueprintChassisGeneratedColumns      = []string{}
 )
 
 type (
-	// TemplateChassisSlice is an alias for a slice of pointers to TemplateChassis.
-	// This should almost always be used instead of []TemplateChassis.
-	TemplateChassisSlice []*TemplateChassis
-	// TemplateChassisHook is the signature for custom TemplateChassis hook methods
-	TemplateChassisHook func(boil.Executor, *TemplateChassis) error
+	// BlueprintChassisSlice is an alias for a slice of pointers to BlueprintChassis.
+	// This should almost always be used instead of []BlueprintChassis.
+	BlueprintChassisSlice []*BlueprintChassis
+	// BlueprintChassisHook is the signature for custom BlueprintChassis hook methods
+	BlueprintChassisHook func(boil.Executor, *BlueprintChassis) error
 
-	templateChassisQuery struct {
+	blueprintChassisQuery struct {
 		*queries.Query
 	}
 )
 
 // Cache for insert, update and upsert
 var (
-	templateChassisType                 = reflect.TypeOf(&TemplateChassis{})
-	templateChassisMapping              = queries.MakeStructMapping(templateChassisType)
-	templateChassisPrimaryKeyMapping, _ = queries.BindMapping(templateChassisType, templateChassisMapping, templateChassisPrimaryKeyColumns)
-	templateChassisInsertCacheMut       sync.RWMutex
-	templateChassisInsertCache          = make(map[string]insertCache)
-	templateChassisUpdateCacheMut       sync.RWMutex
-	templateChassisUpdateCache          = make(map[string]updateCache)
-	templateChassisUpsertCacheMut       sync.RWMutex
-	templateChassisUpsertCache          = make(map[string]insertCache)
+	blueprintChassisType                 = reflect.TypeOf(&BlueprintChassis{})
+	blueprintChassisMapping              = queries.MakeStructMapping(blueprintChassisType)
+	blueprintChassisPrimaryKeyMapping, _ = queries.BindMapping(blueprintChassisType, blueprintChassisMapping, blueprintChassisPrimaryKeyColumns)
+	blueprintChassisInsertCacheMut       sync.RWMutex
+	blueprintChassisInsertCache          = make(map[string]insertCache)
+	blueprintChassisUpdateCacheMut       sync.RWMutex
+	blueprintChassisUpdateCache          = make(map[string]updateCache)
+	blueprintChassisUpsertCacheMut       sync.RWMutex
+	blueprintChassisUpsertCache          = make(map[string]insertCache)
 )
 
 var (
@@ -211,23 +211,23 @@ var (
 	_ = qmhelper.Where
 )
 
-var templateChassisAfterSelectHooks []TemplateChassisHook
+var blueprintChassisAfterSelectHooks []BlueprintChassisHook
 
-var templateChassisBeforeInsertHooks []TemplateChassisHook
-var templateChassisAfterInsertHooks []TemplateChassisHook
+var blueprintChassisBeforeInsertHooks []BlueprintChassisHook
+var blueprintChassisAfterInsertHooks []BlueprintChassisHook
 
-var templateChassisBeforeUpdateHooks []TemplateChassisHook
-var templateChassisAfterUpdateHooks []TemplateChassisHook
+var blueprintChassisBeforeUpdateHooks []BlueprintChassisHook
+var blueprintChassisAfterUpdateHooks []BlueprintChassisHook
 
-var templateChassisBeforeDeleteHooks []TemplateChassisHook
-var templateChassisAfterDeleteHooks []TemplateChassisHook
+var blueprintChassisBeforeDeleteHooks []BlueprintChassisHook
+var blueprintChassisAfterDeleteHooks []BlueprintChassisHook
 
-var templateChassisBeforeUpsertHooks []TemplateChassisHook
-var templateChassisAfterUpsertHooks []TemplateChassisHook
+var blueprintChassisBeforeUpsertHooks []BlueprintChassisHook
+var blueprintChassisAfterUpsertHooks []BlueprintChassisHook
 
 // doAfterSelectHooks executes all "after Select" hooks.
-func (o *TemplateChassis) doAfterSelectHooks(exec boil.Executor) (err error) {
-	for _, hook := range templateChassisAfterSelectHooks {
+func (o *BlueprintChassis) doAfterSelectHooks(exec boil.Executor) (err error) {
+	for _, hook := range blueprintChassisAfterSelectHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -237,8 +237,8 @@ func (o *TemplateChassis) doAfterSelectHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeInsertHooks executes all "before insert" hooks.
-func (o *TemplateChassis) doBeforeInsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range templateChassisBeforeInsertHooks {
+func (o *BlueprintChassis) doBeforeInsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range blueprintChassisBeforeInsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -248,8 +248,8 @@ func (o *TemplateChassis) doBeforeInsertHooks(exec boil.Executor) (err error) {
 }
 
 // doAfterInsertHooks executes all "after Insert" hooks.
-func (o *TemplateChassis) doAfterInsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range templateChassisAfterInsertHooks {
+func (o *BlueprintChassis) doAfterInsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range blueprintChassisAfterInsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -259,8 +259,8 @@ func (o *TemplateChassis) doAfterInsertHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeUpdateHooks executes all "before Update" hooks.
-func (o *TemplateChassis) doBeforeUpdateHooks(exec boil.Executor) (err error) {
-	for _, hook := range templateChassisBeforeUpdateHooks {
+func (o *BlueprintChassis) doBeforeUpdateHooks(exec boil.Executor) (err error) {
+	for _, hook := range blueprintChassisBeforeUpdateHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -270,8 +270,8 @@ func (o *TemplateChassis) doBeforeUpdateHooks(exec boil.Executor) (err error) {
 }
 
 // doAfterUpdateHooks executes all "after Update" hooks.
-func (o *TemplateChassis) doAfterUpdateHooks(exec boil.Executor) (err error) {
-	for _, hook := range templateChassisAfterUpdateHooks {
+func (o *BlueprintChassis) doAfterUpdateHooks(exec boil.Executor) (err error) {
+	for _, hook := range blueprintChassisAfterUpdateHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -281,8 +281,8 @@ func (o *TemplateChassis) doAfterUpdateHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeDeleteHooks executes all "before Delete" hooks.
-func (o *TemplateChassis) doBeforeDeleteHooks(exec boil.Executor) (err error) {
-	for _, hook := range templateChassisBeforeDeleteHooks {
+func (o *BlueprintChassis) doBeforeDeleteHooks(exec boil.Executor) (err error) {
+	for _, hook := range blueprintChassisBeforeDeleteHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -292,8 +292,8 @@ func (o *TemplateChassis) doBeforeDeleteHooks(exec boil.Executor) (err error) {
 }
 
 // doAfterDeleteHooks executes all "after Delete" hooks.
-func (o *TemplateChassis) doAfterDeleteHooks(exec boil.Executor) (err error) {
-	for _, hook := range templateChassisAfterDeleteHooks {
+func (o *BlueprintChassis) doAfterDeleteHooks(exec boil.Executor) (err error) {
+	for _, hook := range blueprintChassisAfterDeleteHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -303,8 +303,8 @@ func (o *TemplateChassis) doAfterDeleteHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeUpsertHooks executes all "before Upsert" hooks.
-func (o *TemplateChassis) doBeforeUpsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range templateChassisBeforeUpsertHooks {
+func (o *BlueprintChassis) doBeforeUpsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range blueprintChassisBeforeUpsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -314,8 +314,8 @@ func (o *TemplateChassis) doBeforeUpsertHooks(exec boil.Executor) (err error) {
 }
 
 // doAfterUpsertHooks executes all "after Upsert" hooks.
-func (o *TemplateChassis) doAfterUpsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range templateChassisAfterUpsertHooks {
+func (o *BlueprintChassis) doAfterUpsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range blueprintChassisAfterUpsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -324,33 +324,33 @@ func (o *TemplateChassis) doAfterUpsertHooks(exec boil.Executor) (err error) {
 	return nil
 }
 
-// AddTemplateChassisHook registers your hook function for all future operations.
-func AddTemplateChassisHook(hookPoint boil.HookPoint, templateChassisHook TemplateChassisHook) {
+// AddBlueprintChassisHook registers your hook function for all future operations.
+func AddBlueprintChassisHook(hookPoint boil.HookPoint, blueprintChassisHook BlueprintChassisHook) {
 	switch hookPoint {
 	case boil.AfterSelectHook:
-		templateChassisAfterSelectHooks = append(templateChassisAfterSelectHooks, templateChassisHook)
+		blueprintChassisAfterSelectHooks = append(blueprintChassisAfterSelectHooks, blueprintChassisHook)
 	case boil.BeforeInsertHook:
-		templateChassisBeforeInsertHooks = append(templateChassisBeforeInsertHooks, templateChassisHook)
+		blueprintChassisBeforeInsertHooks = append(blueprintChassisBeforeInsertHooks, blueprintChassisHook)
 	case boil.AfterInsertHook:
-		templateChassisAfterInsertHooks = append(templateChassisAfterInsertHooks, templateChassisHook)
+		blueprintChassisAfterInsertHooks = append(blueprintChassisAfterInsertHooks, blueprintChassisHook)
 	case boil.BeforeUpdateHook:
-		templateChassisBeforeUpdateHooks = append(templateChassisBeforeUpdateHooks, templateChassisHook)
+		blueprintChassisBeforeUpdateHooks = append(blueprintChassisBeforeUpdateHooks, blueprintChassisHook)
 	case boil.AfterUpdateHook:
-		templateChassisAfterUpdateHooks = append(templateChassisAfterUpdateHooks, templateChassisHook)
+		blueprintChassisAfterUpdateHooks = append(blueprintChassisAfterUpdateHooks, blueprintChassisHook)
 	case boil.BeforeDeleteHook:
-		templateChassisBeforeDeleteHooks = append(templateChassisBeforeDeleteHooks, templateChassisHook)
+		blueprintChassisBeforeDeleteHooks = append(blueprintChassisBeforeDeleteHooks, blueprintChassisHook)
 	case boil.AfterDeleteHook:
-		templateChassisAfterDeleteHooks = append(templateChassisAfterDeleteHooks, templateChassisHook)
+		blueprintChassisAfterDeleteHooks = append(blueprintChassisAfterDeleteHooks, blueprintChassisHook)
 	case boil.BeforeUpsertHook:
-		templateChassisBeforeUpsertHooks = append(templateChassisBeforeUpsertHooks, templateChassisHook)
+		blueprintChassisBeforeUpsertHooks = append(blueprintChassisBeforeUpsertHooks, blueprintChassisHook)
 	case boil.AfterUpsertHook:
-		templateChassisAfterUpsertHooks = append(templateChassisAfterUpsertHooks, templateChassisHook)
+		blueprintChassisAfterUpsertHooks = append(blueprintChassisAfterUpsertHooks, blueprintChassisHook)
 	}
 }
 
-// One returns a single templateChassis record from the query.
-func (q templateChassisQuery) One(exec boil.Executor) (*TemplateChassis, error) {
-	o := &TemplateChassis{}
+// One returns a single blueprintChassis record from the query.
+func (q blueprintChassisQuery) One(exec boil.Executor) (*BlueprintChassis, error) {
+	o := &BlueprintChassis{}
 
 	queries.SetLimit(q.Query, 1)
 
@@ -359,7 +359,7 @@ func (q templateChassisQuery) One(exec boil.Executor) (*TemplateChassis, error) 
 		if errors.Cause(err) == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		return nil, errors.Wrap(err, "boiler: failed to execute a one query for template_chassis")
+		return nil, errors.Wrap(err, "boiler: failed to execute a one query for blueprint_chassis")
 	}
 
 	if err := o.doAfterSelectHooks(exec); err != nil {
@@ -369,16 +369,16 @@ func (q templateChassisQuery) One(exec boil.Executor) (*TemplateChassis, error) 
 	return o, nil
 }
 
-// All returns all TemplateChassis records from the query.
-func (q templateChassisQuery) All(exec boil.Executor) (TemplateChassisSlice, error) {
-	var o []*TemplateChassis
+// All returns all BlueprintChassis records from the query.
+func (q blueprintChassisQuery) All(exec boil.Executor) (BlueprintChassisSlice, error) {
+	var o []*BlueprintChassis
 
 	err := q.Bind(nil, exec, &o)
 	if err != nil {
-		return nil, errors.Wrap(err, "boiler: failed to assign all query results to TemplateChassis slice")
+		return nil, errors.Wrap(err, "boiler: failed to assign all query results to BlueprintChassis slice")
 	}
 
-	if len(templateChassisAfterSelectHooks) != 0 {
+	if len(blueprintChassisAfterSelectHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doAfterSelectHooks(exec); err != nil {
 				return o, err
@@ -389,8 +389,8 @@ func (q templateChassisQuery) All(exec boil.Executor) (TemplateChassisSlice, err
 	return o, nil
 }
 
-// Count returns the count of all TemplateChassis records in the query.
-func (q templateChassisQuery) Count(exec boil.Executor) (int64, error) {
+// Count returns the count of all BlueprintChassis records in the query.
+func (q blueprintChassisQuery) Count(exec boil.Executor) (int64, error) {
 	var count int64
 
 	queries.SetSelect(q.Query, nil)
@@ -398,14 +398,14 @@ func (q templateChassisQuery) Count(exec boil.Executor) (int64, error) {
 
 	err := q.Query.QueryRow(exec).Scan(&count)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to count template_chassis rows")
+		return 0, errors.Wrap(err, "boiler: failed to count blueprint_chassis rows")
 	}
 
 	return count, nil
 }
 
 // Exists checks if the row exists in the table.
-func (q templateChassisQuery) Exists(exec boil.Executor) (bool, error) {
+func (q blueprintChassisQuery) Exists(exec boil.Executor) (bool, error) {
 	var count int64
 
 	queries.SetSelect(q.Query, nil)
@@ -414,14 +414,14 @@ func (q templateChassisQuery) Exists(exec boil.Executor) (bool, error) {
 
 	err := q.Query.QueryRow(exec).Scan(&count)
 	if err != nil {
-		return false, errors.Wrap(err, "boiler: failed to check if template_chassis exists")
+		return false, errors.Wrap(err, "boiler: failed to check if blueprint_chassis exists")
 	}
 
 	return count > 0, nil
 }
 
 // Brand pointed to by the foreign key.
-func (o *TemplateChassis) Brand(mods ...qm.QueryMod) brandQuery {
+func (o *BlueprintChassis) Brand(mods ...qm.QueryMod) brandQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.BrandID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -436,14 +436,14 @@ func (o *TemplateChassis) Brand(mods ...qm.QueryMod) brandQuery {
 }
 
 // Templates retrieves all the template's Templates with an executor.
-func (o *TemplateChassis) Templates(mods ...qm.QueryMod) templateQuery {
+func (o *BlueprintChassis) Templates(mods ...qm.QueryMod) templateQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"templates\".\"template_chassis_id\"=?", o.ID),
+		qm.Where("\"templates\".\"blueprint_chassis_id\"=?", o.ID),
 		qmhelper.WhereIsNull("\"templates\".\"deleted_at\""),
 	)
 
@@ -459,20 +459,20 @@ func (o *TemplateChassis) Templates(mods ...qm.QueryMod) templateQuery {
 
 // LoadBrand allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (templateChassisL) LoadBrand(e boil.Executor, singular bool, maybeTemplateChassis interface{}, mods queries.Applicator) error {
-	var slice []*TemplateChassis
-	var object *TemplateChassis
+func (blueprintChassisL) LoadBrand(e boil.Executor, singular bool, maybeBlueprintChassis interface{}, mods queries.Applicator) error {
+	var slice []*BlueprintChassis
+	var object *BlueprintChassis
 
 	if singular {
-		object = maybeTemplateChassis.(*TemplateChassis)
+		object = maybeBlueprintChassis.(*BlueprintChassis)
 	} else {
-		slice = *maybeTemplateChassis.(*[]*TemplateChassis)
+		slice = *maybeBlueprintChassis.(*[]*BlueprintChassis)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &templateChassisR{}
+			object.R = &blueprintChassisR{}
 		}
 		args = append(args, object.BrandID)
 
@@ -480,7 +480,7 @@ func (templateChassisL) LoadBrand(e boil.Executor, singular bool, maybeTemplateC
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &templateChassisR{}
+				obj.R = &blueprintChassisR{}
 			}
 
 			for _, a := range args {
@@ -524,7 +524,7 @@ func (templateChassisL) LoadBrand(e boil.Executor, singular bool, maybeTemplateC
 		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for brands")
 	}
 
-	if len(templateChassisAfterSelectHooks) != 0 {
+	if len(blueprintChassisAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -542,7 +542,7 @@ func (templateChassisL) LoadBrand(e boil.Executor, singular bool, maybeTemplateC
 		if foreign.R == nil {
 			foreign.R = &brandR{}
 		}
-		foreign.R.TemplateChasses = append(foreign.R.TemplateChasses, object)
+		foreign.R.BlueprintChasses = append(foreign.R.BlueprintChasses, object)
 		return nil
 	}
 
@@ -553,7 +553,7 @@ func (templateChassisL) LoadBrand(e boil.Executor, singular bool, maybeTemplateC
 				if foreign.R == nil {
 					foreign.R = &brandR{}
 				}
-				foreign.R.TemplateChasses = append(foreign.R.TemplateChasses, local)
+				foreign.R.BlueprintChasses = append(foreign.R.BlueprintChasses, local)
 				break
 			}
 		}
@@ -564,27 +564,27 @@ func (templateChassisL) LoadBrand(e boil.Executor, singular bool, maybeTemplateC
 
 // LoadTemplates allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (templateChassisL) LoadTemplates(e boil.Executor, singular bool, maybeTemplateChassis interface{}, mods queries.Applicator) error {
-	var slice []*TemplateChassis
-	var object *TemplateChassis
+func (blueprintChassisL) LoadTemplates(e boil.Executor, singular bool, maybeBlueprintChassis interface{}, mods queries.Applicator) error {
+	var slice []*BlueprintChassis
+	var object *BlueprintChassis
 
 	if singular {
-		object = maybeTemplateChassis.(*TemplateChassis)
+		object = maybeBlueprintChassis.(*BlueprintChassis)
 	} else {
-		slice = *maybeTemplateChassis.(*[]*TemplateChassis)
+		slice = *maybeBlueprintChassis.(*[]*BlueprintChassis)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &templateChassisR{}
+			object.R = &blueprintChassisR{}
 		}
 		args = append(args, object.ID)
 	} else {
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &templateChassisR{}
+				obj.R = &blueprintChassisR{}
 			}
 
 			for _, a := range args {
@@ -603,7 +603,7 @@ func (templateChassisL) LoadTemplates(e boil.Executor, singular bool, maybeTempl
 
 	query := NewQuery(
 		qm.From(`templates`),
-		qm.WhereIn(`templates.template_chassis_id in ?`, args...),
+		qm.WhereIn(`templates.blueprint_chassis_id in ?`, args...),
 		qmhelper.WhereIsNull(`templates.deleted_at`),
 	)
 	if mods != nil {
@@ -640,19 +640,19 @@ func (templateChassisL) LoadTemplates(e boil.Executor, singular bool, maybeTempl
 			if foreign.R == nil {
 				foreign.R = &templateR{}
 			}
-			foreign.R.TemplateChassis = object
+			foreign.R.BlueprintChassis = object
 		}
 		return nil
 	}
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if local.ID == foreign.TemplateChassisID {
+			if local.ID == foreign.BlueprintChassisID {
 				local.R.Templates = append(local.R.Templates, foreign)
 				if foreign.R == nil {
 					foreign.R = &templateR{}
 				}
-				foreign.R.TemplateChassis = local
+				foreign.R.BlueprintChassis = local
 				break
 			}
 		}
@@ -661,10 +661,10 @@ func (templateChassisL) LoadTemplates(e boil.Executor, singular bool, maybeTempl
 	return nil
 }
 
-// SetBrand of the templateChassis to the related item.
+// SetBrand of the blueprintChassis to the related item.
 // Sets o.R.Brand to related.
-// Adds o to related.R.TemplateChasses.
-func (o *TemplateChassis) SetBrand(exec boil.Executor, insert bool, related *Brand) error {
+// Adds o to related.R.BlueprintChasses.
+func (o *BlueprintChassis) SetBrand(exec boil.Executor, insert bool, related *Brand) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -673,9 +673,9 @@ func (o *TemplateChassis) SetBrand(exec boil.Executor, insert bool, related *Bra
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"template_chassis\" SET %s WHERE %s",
+		"UPDATE \"blueprint_chassis\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"brand_id"}),
-		strmangle.WhereClause("\"", "\"", 2, templateChassisPrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, blueprintChassisPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
 
@@ -689,7 +689,7 @@ func (o *TemplateChassis) SetBrand(exec boil.Executor, insert bool, related *Bra
 
 	o.BrandID = related.ID
 	if o.R == nil {
-		o.R = &templateChassisR{
+		o.R = &blueprintChassisR{
 			Brand: related,
 		}
 	} else {
@@ -698,31 +698,31 @@ func (o *TemplateChassis) SetBrand(exec boil.Executor, insert bool, related *Bra
 
 	if related.R == nil {
 		related.R = &brandR{
-			TemplateChasses: TemplateChassisSlice{o},
+			BlueprintChasses: BlueprintChassisSlice{o},
 		}
 	} else {
-		related.R.TemplateChasses = append(related.R.TemplateChasses, o)
+		related.R.BlueprintChasses = append(related.R.BlueprintChasses, o)
 	}
 
 	return nil
 }
 
 // AddTemplates adds the given related objects to the existing relationships
-// of the template_chassis, optionally inserting them as new records.
+// of the blueprint_chassis, optionally inserting them as new records.
 // Appends related to o.R.Templates.
-// Sets related.R.TemplateChassis appropriately.
-func (o *TemplateChassis) AddTemplates(exec boil.Executor, insert bool, related ...*Template) error {
+// Sets related.R.BlueprintChassis appropriately.
+func (o *BlueprintChassis) AddTemplates(exec boil.Executor, insert bool, related ...*Template) error {
 	var err error
 	for _, rel := range related {
 		if insert {
-			rel.TemplateChassisID = o.ID
+			rel.BlueprintChassisID = o.ID
 			if err = rel.Insert(exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
 				"UPDATE \"templates\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"template_chassis_id"}),
+				strmangle.SetParamNames("\"", "\"", 1, []string{"blueprint_chassis_id"}),
 				strmangle.WhereClause("\"", "\"", 2, templatePrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
@@ -735,12 +735,12 @@ func (o *TemplateChassis) AddTemplates(exec boil.Executor, insert bool, related 
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			rel.TemplateChassisID = o.ID
+			rel.BlueprintChassisID = o.ID
 		}
 	}
 
 	if o.R == nil {
-		o.R = &templateChassisR{
+		o.R = &blueprintChassisR{
 			Templates: related,
 		}
 	} else {
@@ -750,56 +750,56 @@ func (o *TemplateChassis) AddTemplates(exec boil.Executor, insert bool, related 
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &templateR{
-				TemplateChassis: o,
+				BlueprintChassis: o,
 			}
 		} else {
-			rel.R.TemplateChassis = o
+			rel.R.BlueprintChassis = o
 		}
 	}
 	return nil
 }
 
-// TemplateChasses retrieves all the records using an executor.
-func TemplateChasses(mods ...qm.QueryMod) templateChassisQuery {
-	mods = append(mods, qm.From("\"template_chassis\""), qmhelper.WhereIsNull("\"template_chassis\".\"deleted_at\""))
-	return templateChassisQuery{NewQuery(mods...)}
+// BlueprintChasses retrieves all the records using an executor.
+func BlueprintChasses(mods ...qm.QueryMod) blueprintChassisQuery {
+	mods = append(mods, qm.From("\"blueprint_chassis\""), qmhelper.WhereIsNull("\"blueprint_chassis\".\"deleted_at\""))
+	return blueprintChassisQuery{NewQuery(mods...)}
 }
 
-// FindTemplateChassis retrieves a single record by ID with an executor.
+// FindBlueprintChassis retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindTemplateChassis(exec boil.Executor, iD string, selectCols ...string) (*TemplateChassis, error) {
-	templateChassisObj := &TemplateChassis{}
+func FindBlueprintChassis(exec boil.Executor, iD string, selectCols ...string) (*BlueprintChassis, error) {
+	blueprintChassisObj := &BlueprintChassis{}
 
 	sel := "*"
 	if len(selectCols) > 0 {
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"template_chassis\" where \"id\"=$1 and \"deleted_at\" is null", sel,
+		"select %s from \"blueprint_chassis\" where \"id\"=$1 and \"deleted_at\" is null", sel,
 	)
 
 	q := queries.Raw(query, iD)
 
-	err := q.Bind(nil, exec, templateChassisObj)
+	err := q.Bind(nil, exec, blueprintChassisObj)
 	if err != nil {
 		if errors.Cause(err) == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		return nil, errors.Wrap(err, "boiler: unable to select from template_chassis")
+		return nil, errors.Wrap(err, "boiler: unable to select from blueprint_chassis")
 	}
 
-	if err = templateChassisObj.doAfterSelectHooks(exec); err != nil {
-		return templateChassisObj, err
+	if err = blueprintChassisObj.doAfterSelectHooks(exec); err != nil {
+		return blueprintChassisObj, err
 	}
 
-	return templateChassisObj, nil
+	return blueprintChassisObj, nil
 }
 
 // Insert a single record using an executor.
 // See boil.Columns.InsertColumnSet documentation to understand column list inference for inserts.
-func (o *TemplateChassis) Insert(exec boil.Executor, columns boil.Columns) error {
+func (o *BlueprintChassis) Insert(exec boil.Executor, columns boil.Columns) error {
 	if o == nil {
-		return errors.New("boiler: no template_chassis provided for insertion")
+		return errors.New("boiler: no blueprint_chassis provided for insertion")
 	}
 
 	var err error
@@ -816,33 +816,33 @@ func (o *TemplateChassis) Insert(exec boil.Executor, columns boil.Columns) error
 		return err
 	}
 
-	nzDefaults := queries.NonZeroDefaultSet(templateChassisColumnsWithDefault, o)
+	nzDefaults := queries.NonZeroDefaultSet(blueprintChassisColumnsWithDefault, o)
 
 	key := makeCacheKey(columns, nzDefaults)
-	templateChassisInsertCacheMut.RLock()
-	cache, cached := templateChassisInsertCache[key]
-	templateChassisInsertCacheMut.RUnlock()
+	blueprintChassisInsertCacheMut.RLock()
+	cache, cached := blueprintChassisInsertCache[key]
+	blueprintChassisInsertCacheMut.RUnlock()
 
 	if !cached {
 		wl, returnColumns := columns.InsertColumnSet(
-			templateChassisAllColumns,
-			templateChassisColumnsWithDefault,
-			templateChassisColumnsWithoutDefault,
+			blueprintChassisAllColumns,
+			blueprintChassisColumnsWithDefault,
+			blueprintChassisColumnsWithoutDefault,
 			nzDefaults,
 		)
 
-		cache.valueMapping, err = queries.BindMapping(templateChassisType, templateChassisMapping, wl)
+		cache.valueMapping, err = queries.BindMapping(blueprintChassisType, blueprintChassisMapping, wl)
 		if err != nil {
 			return err
 		}
-		cache.retMapping, err = queries.BindMapping(templateChassisType, templateChassisMapping, returnColumns)
+		cache.retMapping, err = queries.BindMapping(blueprintChassisType, blueprintChassisMapping, returnColumns)
 		if err != nil {
 			return err
 		}
 		if len(wl) != 0 {
-			cache.query = fmt.Sprintf("INSERT INTO \"template_chassis\" (\"%s\") %%sVALUES (%s)%%s", strings.Join(wl, "\",\""), strmangle.Placeholders(dialect.UseIndexPlaceholders, len(wl), 1, 1))
+			cache.query = fmt.Sprintf("INSERT INTO \"blueprint_chassis\" (\"%s\") %%sVALUES (%s)%%s", strings.Join(wl, "\",\""), strmangle.Placeholders(dialect.UseIndexPlaceholders, len(wl), 1, 1))
 		} else {
-			cache.query = "INSERT INTO \"template_chassis\" %sDEFAULT VALUES%s"
+			cache.query = "INSERT INTO \"blueprint_chassis\" %sDEFAULT VALUES%s"
 		}
 
 		var queryOutput, queryReturning string
@@ -869,22 +869,22 @@ func (o *TemplateChassis) Insert(exec boil.Executor, columns boil.Columns) error
 	}
 
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to insert into template_chassis")
+		return errors.Wrap(err, "boiler: unable to insert into blueprint_chassis")
 	}
 
 	if !cached {
-		templateChassisInsertCacheMut.Lock()
-		templateChassisInsertCache[key] = cache
-		templateChassisInsertCacheMut.Unlock()
+		blueprintChassisInsertCacheMut.Lock()
+		blueprintChassisInsertCache[key] = cache
+		blueprintChassisInsertCacheMut.Unlock()
 	}
 
 	return o.doAfterInsertHooks(exec)
 }
 
-// Update uses an executor to update the TemplateChassis.
+// Update uses an executor to update the BlueprintChassis.
 // See boil.Columns.UpdateColumnSet documentation to understand column list inference for updates.
 // Update does not automatically update the record in case of default values. Use .Reload() to refresh the records.
-func (o *TemplateChassis) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
+func (o *BlueprintChassis) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
 	currTime := time.Now().In(boil.GetLocation())
 
 	o.UpdatedAt = currTime
@@ -894,28 +894,28 @@ func (o *TemplateChassis) Update(exec boil.Executor, columns boil.Columns) (int6
 		return 0, err
 	}
 	key := makeCacheKey(columns, nil)
-	templateChassisUpdateCacheMut.RLock()
-	cache, cached := templateChassisUpdateCache[key]
-	templateChassisUpdateCacheMut.RUnlock()
+	blueprintChassisUpdateCacheMut.RLock()
+	cache, cached := blueprintChassisUpdateCache[key]
+	blueprintChassisUpdateCacheMut.RUnlock()
 
 	if !cached {
 		wl := columns.UpdateColumnSet(
-			templateChassisAllColumns,
-			templateChassisPrimaryKeyColumns,
+			blueprintChassisAllColumns,
+			blueprintChassisPrimaryKeyColumns,
 		)
 
 		if !columns.IsWhitelist() {
 			wl = strmangle.SetComplement(wl, []string{"created_at"})
 		}
 		if len(wl) == 0 {
-			return 0, errors.New("boiler: unable to update template_chassis, could not build whitelist")
+			return 0, errors.New("boiler: unable to update blueprint_chassis, could not build whitelist")
 		}
 
-		cache.query = fmt.Sprintf("UPDATE \"template_chassis\" SET %s WHERE %s",
+		cache.query = fmt.Sprintf("UPDATE \"blueprint_chassis\" SET %s WHERE %s",
 			strmangle.SetParamNames("\"", "\"", 1, wl),
-			strmangle.WhereClause("\"", "\"", len(wl)+1, templateChassisPrimaryKeyColumns),
+			strmangle.WhereClause("\"", "\"", len(wl)+1, blueprintChassisPrimaryKeyColumns),
 		)
-		cache.valueMapping, err = queries.BindMapping(templateChassisType, templateChassisMapping, append(wl, templateChassisPrimaryKeyColumns...))
+		cache.valueMapping, err = queries.BindMapping(blueprintChassisType, blueprintChassisMapping, append(wl, blueprintChassisPrimaryKeyColumns...))
 		if err != nil {
 			return 0, err
 		}
@@ -930,42 +930,42 @@ func (o *TemplateChassis) Update(exec boil.Executor, columns boil.Columns) (int6
 	var result sql.Result
 	result, err = exec.Exec(cache.query, values...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update template_chassis row")
+		return 0, errors.Wrap(err, "boiler: unable to update blueprint_chassis row")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by update for template_chassis")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by update for blueprint_chassis")
 	}
 
 	if !cached {
-		templateChassisUpdateCacheMut.Lock()
-		templateChassisUpdateCache[key] = cache
-		templateChassisUpdateCacheMut.Unlock()
+		blueprintChassisUpdateCacheMut.Lock()
+		blueprintChassisUpdateCache[key] = cache
+		blueprintChassisUpdateCacheMut.Unlock()
 	}
 
 	return rowsAff, o.doAfterUpdateHooks(exec)
 }
 
 // UpdateAll updates all rows with the specified column values.
-func (q templateChassisQuery) UpdateAll(exec boil.Executor, cols M) (int64, error) {
+func (q blueprintChassisQuery) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 	queries.SetUpdate(q.Query, cols)
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update all for template_chassis")
+		return 0, errors.Wrap(err, "boiler: unable to update all for blueprint_chassis")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected for template_chassis")
+		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected for blueprint_chassis")
 	}
 
 	return rowsAff, nil
 }
 
 // UpdateAll updates all rows with the specified column values, using an executor.
-func (o TemplateChassisSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
+func (o BlueprintChassisSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 	ln := int64(len(o))
 	if ln == 0 {
 		return 0, nil
@@ -987,13 +987,13 @@ func (o TemplateChassisSlice) UpdateAll(exec boil.Executor, cols M) (int64, erro
 
 	// Append all of the primary key values for each column
 	for _, obj := range o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), templateChassisPrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), blueprintChassisPrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := fmt.Sprintf("UPDATE \"template_chassis\" SET %s WHERE %s",
+	sql := fmt.Sprintf("UPDATE \"blueprint_chassis\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, colNames),
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), len(colNames)+1, templateChassisPrimaryKeyColumns, len(o)))
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), len(colNames)+1, blueprintChassisPrimaryKeyColumns, len(o)))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1001,21 +1001,21 @@ func (o TemplateChassisSlice) UpdateAll(exec boil.Executor, cols M) (int64, erro
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update all in templateChassis slice")
+		return 0, errors.Wrap(err, "boiler: unable to update all in blueprintChassis slice")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected all in update all templateChassis")
+		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected all in update all blueprintChassis")
 	}
 	return rowsAff, nil
 }
 
 // Upsert attempts an insert using an executor, and does an update or ignore on conflict.
 // See boil.Columns documentation for how to properly use updateColumns and insertColumns.
-func (o *TemplateChassis) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
+func (o *BlueprintChassis) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
 	if o == nil {
-		return errors.New("boiler: no template_chassis provided for upsert")
+		return errors.New("boiler: no blueprint_chassis provided for upsert")
 	}
 	currTime := time.Now().In(boil.GetLocation())
 
@@ -1028,7 +1028,7 @@ func (o *TemplateChassis) Upsert(exec boil.Executor, updateOnConflict bool, conf
 		return err
 	}
 
-	nzDefaults := queries.NonZeroDefaultSet(templateChassisColumnsWithDefault, o)
+	nzDefaults := queries.NonZeroDefaultSet(blueprintChassisColumnsWithDefault, o)
 
 	// Build cache key in-line uglily - mysql vs psql problems
 	buf := strmangle.GetBuffer()
@@ -1058,42 +1058,42 @@ func (o *TemplateChassis) Upsert(exec boil.Executor, updateOnConflict bool, conf
 	key := buf.String()
 	strmangle.PutBuffer(buf)
 
-	templateChassisUpsertCacheMut.RLock()
-	cache, cached := templateChassisUpsertCache[key]
-	templateChassisUpsertCacheMut.RUnlock()
+	blueprintChassisUpsertCacheMut.RLock()
+	cache, cached := blueprintChassisUpsertCache[key]
+	blueprintChassisUpsertCacheMut.RUnlock()
 
 	var err error
 
 	if !cached {
 		insert, ret := insertColumns.InsertColumnSet(
-			templateChassisAllColumns,
-			templateChassisColumnsWithDefault,
-			templateChassisColumnsWithoutDefault,
+			blueprintChassisAllColumns,
+			blueprintChassisColumnsWithDefault,
+			blueprintChassisColumnsWithoutDefault,
 			nzDefaults,
 		)
 
 		update := updateColumns.UpdateColumnSet(
-			templateChassisAllColumns,
-			templateChassisPrimaryKeyColumns,
+			blueprintChassisAllColumns,
+			blueprintChassisPrimaryKeyColumns,
 		)
 
 		if updateOnConflict && len(update) == 0 {
-			return errors.New("boiler: unable to upsert template_chassis, could not build update column list")
+			return errors.New("boiler: unable to upsert blueprint_chassis, could not build update column list")
 		}
 
 		conflict := conflictColumns
 		if len(conflict) == 0 {
-			conflict = make([]string, len(templateChassisPrimaryKeyColumns))
-			copy(conflict, templateChassisPrimaryKeyColumns)
+			conflict = make([]string, len(blueprintChassisPrimaryKeyColumns))
+			copy(conflict, blueprintChassisPrimaryKeyColumns)
 		}
-		cache.query = buildUpsertQueryPostgres(dialect, "\"template_chassis\"", updateOnConflict, ret, update, conflict, insert)
+		cache.query = buildUpsertQueryPostgres(dialect, "\"blueprint_chassis\"", updateOnConflict, ret, update, conflict, insert)
 
-		cache.valueMapping, err = queries.BindMapping(templateChassisType, templateChassisMapping, insert)
+		cache.valueMapping, err = queries.BindMapping(blueprintChassisType, blueprintChassisMapping, insert)
 		if err != nil {
 			return err
 		}
 		if len(ret) != 0 {
-			cache.retMapping, err = queries.BindMapping(templateChassisType, templateChassisMapping, ret)
+			cache.retMapping, err = queries.BindMapping(blueprintChassisType, blueprintChassisMapping, ret)
 			if err != nil {
 				return err
 			}
@@ -1120,23 +1120,23 @@ func (o *TemplateChassis) Upsert(exec boil.Executor, updateOnConflict bool, conf
 		_, err = exec.Exec(cache.query, vals...)
 	}
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to upsert template_chassis")
+		return errors.Wrap(err, "boiler: unable to upsert blueprint_chassis")
 	}
 
 	if !cached {
-		templateChassisUpsertCacheMut.Lock()
-		templateChassisUpsertCache[key] = cache
-		templateChassisUpsertCacheMut.Unlock()
+		blueprintChassisUpsertCacheMut.Lock()
+		blueprintChassisUpsertCache[key] = cache
+		blueprintChassisUpsertCacheMut.Unlock()
 	}
 
 	return o.doAfterUpsertHooks(exec)
 }
 
-// Delete deletes a single TemplateChassis record with an executor.
+// Delete deletes a single BlueprintChassis record with an executor.
 // Delete will match against the primary key column to find the record to delete.
-func (o *TemplateChassis) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
+func (o *BlueprintChassis) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
 	if o == nil {
-		return 0, errors.New("boiler: no TemplateChassis provided for delete")
+		return 0, errors.New("boiler: no BlueprintChassis provided for delete")
 	}
 
 	if err := o.doBeforeDeleteHooks(exec); err != nil {
@@ -1148,16 +1148,16 @@ func (o *TemplateChassis) Delete(exec boil.Executor, hardDelete bool) (int64, er
 		args []interface{}
 	)
 	if hardDelete {
-		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), templateChassisPrimaryKeyMapping)
-		sql = "DELETE FROM \"template_chassis\" WHERE \"id\"=$1"
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), blueprintChassisPrimaryKeyMapping)
+		sql = "DELETE FROM \"blueprint_chassis\" WHERE \"id\"=$1"
 	} else {
 		currTime := time.Now().In(boil.GetLocation())
 		o.DeletedAt = null.TimeFrom(currTime)
 		wl := []string{"deleted_at"}
-		sql = fmt.Sprintf("UPDATE \"template_chassis\" SET %s WHERE \"id\"=$2",
+		sql = fmt.Sprintf("UPDATE \"blueprint_chassis\" SET %s WHERE \"id\"=$2",
 			strmangle.SetParamNames("\"", "\"", 1, wl),
 		)
-		valueMapping, err := queries.BindMapping(templateChassisType, templateChassisMapping, append(wl, templateChassisPrimaryKeyColumns...))
+		valueMapping, err := queries.BindMapping(blueprintChassisType, blueprintChassisMapping, append(wl, blueprintChassisPrimaryKeyColumns...))
 		if err != nil {
 			return 0, err
 		}
@@ -1170,12 +1170,12 @@ func (o *TemplateChassis) Delete(exec boil.Executor, hardDelete bool) (int64, er
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete from template_chassis")
+		return 0, errors.Wrap(err, "boiler: unable to delete from blueprint_chassis")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by delete for template_chassis")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by delete for blueprint_chassis")
 	}
 
 	if err := o.doAfterDeleteHooks(exec); err != nil {
@@ -1186,9 +1186,9 @@ func (o *TemplateChassis) Delete(exec boil.Executor, hardDelete bool) (int64, er
 }
 
 // DeleteAll deletes all matching rows.
-func (q templateChassisQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
+func (q blueprintChassisQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if q.Query == nil {
-		return 0, errors.New("boiler: no templateChassisQuery provided for delete all")
+		return 0, errors.New("boiler: no blueprintChassisQuery provided for delete all")
 	}
 
 	if hardDelete {
@@ -1200,24 +1200,24 @@ func (q templateChassisQuery) DeleteAll(exec boil.Executor, hardDelete bool) (in
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete all from template_chassis")
+		return 0, errors.Wrap(err, "boiler: unable to delete all from blueprint_chassis")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for template_chassis")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for blueprint_chassis")
 	}
 
 	return rowsAff, nil
 }
 
 // DeleteAll deletes all rows in the slice, using an executor.
-func (o TemplateChassisSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
+func (o BlueprintChassisSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if len(o) == 0 {
 		return 0, nil
 	}
 
-	if len(templateChassisBeforeDeleteHooks) != 0 {
+	if len(blueprintChassisBeforeDeleteHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doBeforeDeleteHooks(exec); err != nil {
 				return 0, err
@@ -1231,21 +1231,21 @@ func (o TemplateChassisSlice) DeleteAll(exec boil.Executor, hardDelete bool) (in
 	)
 	if hardDelete {
 		for _, obj := range o {
-			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), templateChassisPrimaryKeyMapping)
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), blueprintChassisPrimaryKeyMapping)
 			args = append(args, pkeyArgs...)
 		}
-		sql = "DELETE FROM \"template_chassis\" WHERE " +
-			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, templateChassisPrimaryKeyColumns, len(o))
+		sql = "DELETE FROM \"blueprint_chassis\" WHERE " +
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, blueprintChassisPrimaryKeyColumns, len(o))
 	} else {
 		currTime := time.Now().In(boil.GetLocation())
 		for _, obj := range o {
-			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), templateChassisPrimaryKeyMapping)
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), blueprintChassisPrimaryKeyMapping)
 			args = append(args, pkeyArgs...)
 			obj.DeletedAt = null.TimeFrom(currTime)
 		}
 		wl := []string{"deleted_at"}
-		sql = fmt.Sprintf("UPDATE \"template_chassis\" SET %s WHERE "+
-			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, templateChassisPrimaryKeyColumns, len(o)),
+		sql = fmt.Sprintf("UPDATE \"blueprint_chassis\" SET %s WHERE "+
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, blueprintChassisPrimaryKeyColumns, len(o)),
 			strmangle.SetParamNames("\"", "\"", 1, wl),
 		)
 		args = append([]interface{}{currTime}, args...)
@@ -1257,15 +1257,15 @@ func (o TemplateChassisSlice) DeleteAll(exec boil.Executor, hardDelete bool) (in
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete all from templateChassis slice")
+		return 0, errors.Wrap(err, "boiler: unable to delete all from blueprintChassis slice")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for template_chassis")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for blueprint_chassis")
 	}
 
-	if len(templateChassisAfterDeleteHooks) != 0 {
+	if len(blueprintChassisAfterDeleteHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doAfterDeleteHooks(exec); err != nil {
 				return 0, err
@@ -1278,8 +1278,8 @@ func (o TemplateChassisSlice) DeleteAll(exec boil.Executor, hardDelete bool) (in
 
 // Reload refetches the object from the database
 // using the primary keys with an executor.
-func (o *TemplateChassis) Reload(exec boil.Executor) error {
-	ret, err := FindTemplateChassis(exec, o.ID)
+func (o *BlueprintChassis) Reload(exec boil.Executor) error {
+	ret, err := FindBlueprintChassis(exec, o.ID)
 	if err != nil {
 		return err
 	}
@@ -1290,27 +1290,27 @@ func (o *TemplateChassis) Reload(exec boil.Executor) error {
 
 // ReloadAll refetches every row with matching primary key column values
 // and overwrites the original object slice with the newly updated slice.
-func (o *TemplateChassisSlice) ReloadAll(exec boil.Executor) error {
+func (o *BlueprintChassisSlice) ReloadAll(exec boil.Executor) error {
 	if o == nil || len(*o) == 0 {
 		return nil
 	}
 
-	slice := TemplateChassisSlice{}
+	slice := BlueprintChassisSlice{}
 	var args []interface{}
 	for _, obj := range *o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), templateChassisPrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), blueprintChassisPrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := "SELECT \"template_chassis\".* FROM \"template_chassis\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, templateChassisPrimaryKeyColumns, len(*o)) +
+	sql := "SELECT \"blueprint_chassis\".* FROM \"blueprint_chassis\" WHERE " +
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, blueprintChassisPrimaryKeyColumns, len(*o)) +
 		"and \"deleted_at\" is null"
 
 	q := queries.Raw(sql, args...)
 
 	err := q.Bind(nil, exec, &slice)
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to reload all in TemplateChassisSlice")
+		return errors.Wrap(err, "boiler: unable to reload all in BlueprintChassisSlice")
 	}
 
 	*o = slice
@@ -1318,10 +1318,10 @@ func (o *TemplateChassisSlice) ReloadAll(exec boil.Executor) error {
 	return nil
 }
 
-// TemplateChassisExists checks if the TemplateChassis row exists.
-func TemplateChassisExists(exec boil.Executor, iD string) (bool, error) {
+// BlueprintChassisExists checks if the BlueprintChassis row exists.
+func BlueprintChassisExists(exec boil.Executor, iD string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"template_chassis\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
+	sql := "select exists(select 1 from \"blueprint_chassis\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1331,7 +1331,7 @@ func TemplateChassisExists(exec boil.Executor, iD string) (bool, error) {
 
 	err := row.Scan(&exists)
 	if err != nil {
-		return false, errors.Wrap(err, "boiler: unable to check if template_chassis exists")
+		return false, errors.Wrap(err, "boiler: unable to check if blueprint_chassis exists")
 	}
 
 	return exists, nil

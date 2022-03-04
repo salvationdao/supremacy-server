@@ -23,73 +23,83 @@ import (
 
 // Template is an object representing the database table.
 type Template struct {
-	ID                string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	TemplateChassisID string    `boiler:"template_chassis_id" boil:"template_chassis_id" json:"templateChassisID" toml:"templateChassisID" yaml:"templateChassisID"`
-	DeletedAt         null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
-	UpdatedAt         time.Time `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
-	CreatedAt         time.Time `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	ID                 string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	BlueprintChassisID string    `boiler:"blueprint_chassis_id" boil:"blueprint_chassis_id" json:"blueprintChassisID" toml:"blueprintChassisID" yaml:"blueprintChassisID"`
+	Label              string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	DeletedAt          null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
+	UpdatedAt          time.Time `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
+	CreatedAt          time.Time `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
 
 	R *templateR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L templateL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var TemplateColumns = struct {
-	ID                string
-	TemplateChassisID string
-	DeletedAt         string
-	UpdatedAt         string
-	CreatedAt         string
+	ID                 string
+	BlueprintChassisID string
+	Label              string
+	DeletedAt          string
+	UpdatedAt          string
+	CreatedAt          string
 }{
-	ID:                "id",
-	TemplateChassisID: "template_chassis_id",
-	DeletedAt:         "deleted_at",
-	UpdatedAt:         "updated_at",
-	CreatedAt:         "created_at",
+	ID:                 "id",
+	BlueprintChassisID: "blueprint_chassis_id",
+	Label:              "label",
+	DeletedAt:          "deleted_at",
+	UpdatedAt:          "updated_at",
+	CreatedAt:          "created_at",
 }
 
 var TemplateTableColumns = struct {
-	ID                string
-	TemplateChassisID string
-	DeletedAt         string
-	UpdatedAt         string
-	CreatedAt         string
+	ID                 string
+	BlueprintChassisID string
+	Label              string
+	DeletedAt          string
+	UpdatedAt          string
+	CreatedAt          string
 }{
-	ID:                "templates.id",
-	TemplateChassisID: "templates.template_chassis_id",
-	DeletedAt:         "templates.deleted_at",
-	UpdatedAt:         "templates.updated_at",
-	CreatedAt:         "templates.created_at",
+	ID:                 "templates.id",
+	BlueprintChassisID: "templates.blueprint_chassis_id",
+	Label:              "templates.label",
+	DeletedAt:          "templates.deleted_at",
+	UpdatedAt:          "templates.updated_at",
+	CreatedAt:          "templates.created_at",
 }
 
 // Generated where
 
 var TemplateWhere = struct {
-	ID                whereHelperstring
-	TemplateChassisID whereHelperstring
-	DeletedAt         whereHelpernull_Time
-	UpdatedAt         whereHelpertime_Time
-	CreatedAt         whereHelpertime_Time
+	ID                 whereHelperstring
+	BlueprintChassisID whereHelperstring
+	Label              whereHelperstring
+	DeletedAt          whereHelpernull_Time
+	UpdatedAt          whereHelpertime_Time
+	CreatedAt          whereHelpertime_Time
 }{
-	ID:                whereHelperstring{field: "\"templates\".\"id\""},
-	TemplateChassisID: whereHelperstring{field: "\"templates\".\"template_chassis_id\""},
-	DeletedAt:         whereHelpernull_Time{field: "\"templates\".\"deleted_at\""},
-	UpdatedAt:         whereHelpertime_Time{field: "\"templates\".\"updated_at\""},
-	CreatedAt:         whereHelpertime_Time{field: "\"templates\".\"created_at\""},
+	ID:                 whereHelperstring{field: "\"templates\".\"id\""},
+	BlueprintChassisID: whereHelperstring{field: "\"templates\".\"blueprint_chassis_id\""},
+	Label:              whereHelperstring{field: "\"templates\".\"label\""},
+	DeletedAt:          whereHelpernull_Time{field: "\"templates\".\"deleted_at\""},
+	UpdatedAt:          whereHelpertime_Time{field: "\"templates\".\"updated_at\""},
+	CreatedAt:          whereHelpertime_Time{field: "\"templates\".\"created_at\""},
 }
 
 // TemplateRels is where relationship names are stored.
 var TemplateRels = struct {
-	TemplateChassis          string
-	TemplatesTemplateWeapons string
+	BlueprintChassis          string
+	TemplatesBlueprintModules string
+	TemplatesBlueprintWeapons string
 }{
-	TemplateChassis:          "TemplateChassis",
-	TemplatesTemplateWeapons: "TemplatesTemplateWeapons",
+	BlueprintChassis:          "BlueprintChassis",
+	TemplatesBlueprintModules: "TemplatesBlueprintModules",
+	TemplatesBlueprintWeapons: "TemplatesBlueprintWeapons",
 }
 
 // templateR is where relationships are stored.
 type templateR struct {
-	TemplateChassis          *TemplateChassis             `boiler:"TemplateChassis" boil:"TemplateChassis" json:"TemplateChassis" toml:"TemplateChassis" yaml:"TemplateChassis"`
-	TemplatesTemplateWeapons TemplatesTemplateWeaponSlice `boiler:"TemplatesTemplateWeapons" boil:"TemplatesTemplateWeapons" json:"TemplatesTemplateWeapons" toml:"TemplatesTemplateWeapons" yaml:"TemplatesTemplateWeapons"`
+	BlueprintChassis          *BlueprintChassis             `boiler:"BlueprintChassis" boil:"BlueprintChassis" json:"BlueprintChassis" toml:"BlueprintChassis" yaml:"BlueprintChassis"`
+	TemplatesBlueprintModules TemplatesBlueprintModuleSlice `boiler:"TemplatesBlueprintModules" boil:"TemplatesBlueprintModules" json:"TemplatesBlueprintModules" toml:"TemplatesBlueprintModules" yaml:"TemplatesBlueprintModules"`
+	TemplatesBlueprintWeapons TemplatesBlueprintWeaponSlice `boiler:"TemplatesBlueprintWeapons" boil:"TemplatesBlueprintWeapons" json:"TemplatesBlueprintWeapons" toml:"TemplatesBlueprintWeapons" yaml:"TemplatesBlueprintWeapons"`
 }
 
 // NewStruct creates a new relationship struct
@@ -101,8 +111,8 @@ func (*templateR) NewStruct() *templateR {
 type templateL struct{}
 
 var (
-	templateAllColumns            = []string{"id", "template_chassis_id", "deleted_at", "updated_at", "created_at"}
-	templateColumnsWithoutDefault = []string{"template_chassis_id"}
+	templateAllColumns            = []string{"id", "blueprint_chassis_id", "label", "deleted_at", "updated_at", "created_at"}
+	templateColumnsWithoutDefault = []string{"blueprint_chassis_id", "label"}
 	templateColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at"}
 	templatePrimaryKeyColumns     = []string{"id"}
 	templateGeneratedColumns      = []string{}
@@ -350,46 +360,68 @@ func (q templateQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
-// TemplateChassis pointed to by the foreign key.
-func (o *Template) TemplateChassis(mods ...qm.QueryMod) templateChassisQuery {
+// BlueprintChassis pointed to by the foreign key.
+func (o *Template) BlueprintChassis(mods ...qm.QueryMod) blueprintChassisQuery {
 	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.TemplateChassisID),
+		qm.Where("\"id\" = ?", o.BlueprintChassisID),
 		qmhelper.WhereIsNull("deleted_at"),
 	}
 
 	queryMods = append(queryMods, mods...)
 
-	query := TemplateChasses(queryMods...)
-	queries.SetFrom(query.Query, "\"template_chassis\"")
+	query := BlueprintChasses(queryMods...)
+	queries.SetFrom(query.Query, "\"blueprint_chassis\"")
 
 	return query
 }
 
-// TemplatesTemplateWeapons retrieves all the templates_template_weapon's TemplatesTemplateWeapons with an executor.
-func (o *Template) TemplatesTemplateWeapons(mods ...qm.QueryMod) templatesTemplateWeaponQuery {
+// TemplatesBlueprintModules retrieves all the templates_blueprint_module's TemplatesBlueprintModules with an executor.
+func (o *Template) TemplatesBlueprintModules(mods ...qm.QueryMod) templatesBlueprintModuleQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"templates_template_weapons\".\"template_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"templates_template_weapons\".\"deleted_at\""),
+		qm.Where("\"templates_blueprint_modules\".\"template_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"templates_blueprint_modules\".\"deleted_at\""),
 	)
 
-	query := TemplatesTemplateWeapons(queryMods...)
-	queries.SetFrom(query.Query, "\"templates_template_weapons\"")
+	query := TemplatesBlueprintModules(queryMods...)
+	queries.SetFrom(query.Query, "\"templates_blueprint_modules\"")
 
 	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"templates_template_weapons\".*"})
+		queries.SetSelect(query.Query, []string{"\"templates_blueprint_modules\".*"})
 	}
 
 	return query
 }
 
-// LoadTemplateChassis allows an eager lookup of values, cached into the
+// TemplatesBlueprintWeapons retrieves all the templates_blueprint_weapon's TemplatesBlueprintWeapons with an executor.
+func (o *Template) TemplatesBlueprintWeapons(mods ...qm.QueryMod) templatesBlueprintWeaponQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"templates_blueprint_weapons\".\"template_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"templates_blueprint_weapons\".\"deleted_at\""),
+	)
+
+	query := TemplatesBlueprintWeapons(queryMods...)
+	queries.SetFrom(query.Query, "\"templates_blueprint_weapons\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"templates_blueprint_weapons\".*"})
+	}
+
+	return query
+}
+
+// LoadBlueprintChassis allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (templateL) LoadTemplateChassis(e boil.Executor, singular bool, maybeTemplate interface{}, mods queries.Applicator) error {
+func (templateL) LoadBlueprintChassis(e boil.Executor, singular bool, maybeTemplate interface{}, mods queries.Applicator) error {
 	var slice []*Template
 	var object *Template
 
@@ -404,7 +436,7 @@ func (templateL) LoadTemplateChassis(e boil.Executor, singular bool, maybeTempla
 		if object.R == nil {
 			object.R = &templateR{}
 		}
-		args = append(args, object.TemplateChassisID)
+		args = append(args, object.BlueprintChassisID)
 
 	} else {
 	Outer:
@@ -414,12 +446,12 @@ func (templateL) LoadTemplateChassis(e boil.Executor, singular bool, maybeTempla
 			}
 
 			for _, a := range args {
-				if a == obj.TemplateChassisID {
+				if a == obj.BlueprintChassisID {
 					continue Outer
 				}
 			}
 
-			args = append(args, obj.TemplateChassisID)
+			args = append(args, obj.BlueprintChassisID)
 
 		}
 	}
@@ -429,9 +461,9 @@ func (templateL) LoadTemplateChassis(e boil.Executor, singular bool, maybeTempla
 	}
 
 	query := NewQuery(
-		qm.From(`template_chassis`),
-		qm.WhereIn(`template_chassis.id in ?`, args...),
-		qmhelper.WhereIsNull(`template_chassis.deleted_at`),
+		qm.From(`blueprint_chassis`),
+		qm.WhereIn(`blueprint_chassis.id in ?`, args...),
+		qmhelper.WhereIsNull(`blueprint_chassis.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -439,19 +471,19 @@ func (templateL) LoadTemplateChassis(e boil.Executor, singular bool, maybeTempla
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load TemplateChassis")
+		return errors.Wrap(err, "failed to eager load BlueprintChassis")
 	}
 
-	var resultSlice []*TemplateChassis
+	var resultSlice []*BlueprintChassis
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice TemplateChassis")
+		return errors.Wrap(err, "failed to bind eager loaded slice BlueprintChassis")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for template_chassis")
+		return errors.Wrap(err, "failed to close results of eager load for blueprint_chassis")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for template_chassis")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_chassis")
 	}
 
 	if len(templateAfterSelectHooks) != 0 {
@@ -468,9 +500,9 @@ func (templateL) LoadTemplateChassis(e boil.Executor, singular bool, maybeTempla
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.TemplateChassis = foreign
+		object.R.BlueprintChassis = foreign
 		if foreign.R == nil {
-			foreign.R = &templateChassisR{}
+			foreign.R = &blueprintChassisR{}
 		}
 		foreign.R.Templates = append(foreign.R.Templates, object)
 		return nil
@@ -478,10 +510,10 @@ func (templateL) LoadTemplateChassis(e boil.Executor, singular bool, maybeTempla
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if local.TemplateChassisID == foreign.ID {
-				local.R.TemplateChassis = foreign
+			if local.BlueprintChassisID == foreign.ID {
+				local.R.BlueprintChassis = foreign
 				if foreign.R == nil {
-					foreign.R = &templateChassisR{}
+					foreign.R = &blueprintChassisR{}
 				}
 				foreign.R.Templates = append(foreign.R.Templates, local)
 				break
@@ -492,9 +524,9 @@ func (templateL) LoadTemplateChassis(e boil.Executor, singular bool, maybeTempla
 	return nil
 }
 
-// LoadTemplatesTemplateWeapons allows an eager lookup of values, cached into the
+// LoadTemplatesBlueprintModules allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (templateL) LoadTemplatesTemplateWeapons(e boil.Executor, singular bool, maybeTemplate interface{}, mods queries.Applicator) error {
+func (templateL) LoadTemplatesBlueprintModules(e boil.Executor, singular bool, maybeTemplate interface{}, mods queries.Applicator) error {
 	var slice []*Template
 	var object *Template
 
@@ -532,9 +564,9 @@ func (templateL) LoadTemplatesTemplateWeapons(e boil.Executor, singular bool, ma
 	}
 
 	query := NewQuery(
-		qm.From(`templates_template_weapons`),
-		qm.WhereIn(`templates_template_weapons.template_id in ?`, args...),
-		qmhelper.WhereIsNull(`templates_template_weapons.deleted_at`),
+		qm.From(`templates_blueprint_modules`),
+		qm.WhereIn(`templates_blueprint_modules.template_id in ?`, args...),
+		qmhelper.WhereIsNull(`templates_blueprint_modules.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -542,22 +574,22 @@ func (templateL) LoadTemplatesTemplateWeapons(e boil.Executor, singular bool, ma
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load templates_template_weapons")
+		return errors.Wrap(err, "failed to eager load templates_blueprint_modules")
 	}
 
-	var resultSlice []*TemplatesTemplateWeapon
+	var resultSlice []*TemplatesBlueprintModule
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice templates_template_weapons")
+		return errors.Wrap(err, "failed to bind eager loaded slice templates_blueprint_modules")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on templates_template_weapons")
+		return errors.Wrap(err, "failed to close results in eager load on templates_blueprint_modules")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for templates_template_weapons")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for templates_blueprint_modules")
 	}
 
-	if len(templatesTemplateWeaponAfterSelectHooks) != 0 {
+	if len(templatesBlueprintModuleAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -565,10 +597,10 @@ func (templateL) LoadTemplatesTemplateWeapons(e boil.Executor, singular bool, ma
 		}
 	}
 	if singular {
-		object.R.TemplatesTemplateWeapons = resultSlice
+		object.R.TemplatesBlueprintModules = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
-				foreign.R = &templatesTemplateWeaponR{}
+				foreign.R = &templatesBlueprintModuleR{}
 			}
 			foreign.R.Template = object
 		}
@@ -578,9 +610,9 @@ func (templateL) LoadTemplatesTemplateWeapons(e boil.Executor, singular bool, ma
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
 			if local.ID == foreign.TemplateID {
-				local.R.TemplatesTemplateWeapons = append(local.R.TemplatesTemplateWeapons, foreign)
+				local.R.TemplatesBlueprintModules = append(local.R.TemplatesBlueprintModules, foreign)
 				if foreign.R == nil {
-					foreign.R = &templatesTemplateWeaponR{}
+					foreign.R = &templatesBlueprintModuleR{}
 				}
 				foreign.R.Template = local
 				break
@@ -591,10 +623,109 @@ func (templateL) LoadTemplatesTemplateWeapons(e boil.Executor, singular bool, ma
 	return nil
 }
 
-// SetTemplateChassis of the template to the related item.
-// Sets o.R.TemplateChassis to related.
+// LoadTemplatesBlueprintWeapons allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (templateL) LoadTemplatesBlueprintWeapons(e boil.Executor, singular bool, maybeTemplate interface{}, mods queries.Applicator) error {
+	var slice []*Template
+	var object *Template
+
+	if singular {
+		object = maybeTemplate.(*Template)
+	} else {
+		slice = *maybeTemplate.(*[]*Template)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &templateR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &templateR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`templates_blueprint_weapons`),
+		qm.WhereIn(`templates_blueprint_weapons.template_id in ?`, args...),
+		qmhelper.WhereIsNull(`templates_blueprint_weapons.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load templates_blueprint_weapons")
+	}
+
+	var resultSlice []*TemplatesBlueprintWeapon
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice templates_blueprint_weapons")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on templates_blueprint_weapons")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for templates_blueprint_weapons")
+	}
+
+	if len(templatesBlueprintWeaponAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.TemplatesBlueprintWeapons = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &templatesBlueprintWeaponR{}
+			}
+			foreign.R.Template = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.TemplateID {
+				local.R.TemplatesBlueprintWeapons = append(local.R.TemplatesBlueprintWeapons, foreign)
+				if foreign.R == nil {
+					foreign.R = &templatesBlueprintWeaponR{}
+				}
+				foreign.R.Template = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// SetBlueprintChassis of the template to the related item.
+// Sets o.R.BlueprintChassis to related.
 // Adds o to related.R.Templates.
-func (o *Template) SetTemplateChassis(exec boil.Executor, insert bool, related *TemplateChassis) error {
+func (o *Template) SetBlueprintChassis(exec boil.Executor, insert bool, related *BlueprintChassis) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -604,7 +735,7 @@ func (o *Template) SetTemplateChassis(exec boil.Executor, insert bool, related *
 
 	updateQuery := fmt.Sprintf(
 		"UPDATE \"templates\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"template_chassis_id"}),
+		strmangle.SetParamNames("\"", "\"", 1, []string{"blueprint_chassis_id"}),
 		strmangle.WhereClause("\"", "\"", 2, templatePrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
@@ -617,17 +748,17 @@ func (o *Template) SetTemplateChassis(exec boil.Executor, insert bool, related *
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	o.TemplateChassisID = related.ID
+	o.BlueprintChassisID = related.ID
 	if o.R == nil {
 		o.R = &templateR{
-			TemplateChassis: related,
+			BlueprintChassis: related,
 		}
 	} else {
-		o.R.TemplateChassis = related
+		o.R.BlueprintChassis = related
 	}
 
 	if related.R == nil {
-		related.R = &templateChassisR{
+		related.R = &blueprintChassisR{
 			Templates: TemplateSlice{o},
 		}
 	} else {
@@ -637,11 +768,11 @@ func (o *Template) SetTemplateChassis(exec boil.Executor, insert bool, related *
 	return nil
 }
 
-// AddTemplatesTemplateWeapons adds the given related objects to the existing relationships
+// AddTemplatesBlueprintModules adds the given related objects to the existing relationships
 // of the template, optionally inserting them as new records.
-// Appends related to o.R.TemplatesTemplateWeapons.
+// Appends related to o.R.TemplatesBlueprintModules.
 // Sets related.R.Template appropriately.
-func (o *Template) AddTemplatesTemplateWeapons(exec boil.Executor, insert bool, related ...*TemplatesTemplateWeapon) error {
+func (o *Template) AddTemplatesBlueprintModules(exec boil.Executor, insert bool, related ...*TemplatesBlueprintModule) error {
 	var err error
 	for _, rel := range related {
 		if insert {
@@ -651,9 +782,9 @@ func (o *Template) AddTemplatesTemplateWeapons(exec boil.Executor, insert bool, 
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
-				"UPDATE \"templates_template_weapons\" SET %s WHERE %s",
+				"UPDATE \"templates_blueprint_modules\" SET %s WHERE %s",
 				strmangle.SetParamNames("\"", "\"", 1, []string{"template_id"}),
-				strmangle.WhereClause("\"", "\"", 2, templatesTemplateWeaponPrimaryKeyColumns),
+				strmangle.WhereClause("\"", "\"", 2, templatesBlueprintModulePrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
 
@@ -671,15 +802,67 @@ func (o *Template) AddTemplatesTemplateWeapons(exec boil.Executor, insert bool, 
 
 	if o.R == nil {
 		o.R = &templateR{
-			TemplatesTemplateWeapons: related,
+			TemplatesBlueprintModules: related,
 		}
 	} else {
-		o.R.TemplatesTemplateWeapons = append(o.R.TemplatesTemplateWeapons, related...)
+		o.R.TemplatesBlueprintModules = append(o.R.TemplatesBlueprintModules, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
-			rel.R = &templatesTemplateWeaponR{
+			rel.R = &templatesBlueprintModuleR{
+				Template: o,
+			}
+		} else {
+			rel.R.Template = o
+		}
+	}
+	return nil
+}
+
+// AddTemplatesBlueprintWeapons adds the given related objects to the existing relationships
+// of the template, optionally inserting them as new records.
+// Appends related to o.R.TemplatesBlueprintWeapons.
+// Sets related.R.Template appropriately.
+func (o *Template) AddTemplatesBlueprintWeapons(exec boil.Executor, insert bool, related ...*TemplatesBlueprintWeapon) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.TemplateID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"templates_blueprint_weapons\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"template_id"}),
+				strmangle.WhereClause("\"", "\"", 2, templatesBlueprintWeaponPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.TemplateID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &templateR{
+			TemplatesBlueprintWeapons: related,
+		}
+	} else {
+		o.R.TemplatesBlueprintWeapons = append(o.R.TemplatesBlueprintWeapons, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &templatesBlueprintWeaponR{
 				Template: o,
 			}
 		} else {

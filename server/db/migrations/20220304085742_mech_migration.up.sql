@@ -29,7 +29,7 @@ CREATE TABLE brands (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE template_chassis (
+CREATE TABLE blueprint_chassis (
     id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
     label TEXT NOT NULL,
     slug TEXT NOT NULL,
@@ -50,7 +50,7 @@ CREATE TABLE template_chassis (
 
 CREATE TABLE templates (
     id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
-    template_chassis_id UUID NOT NULL REFERENCES template_chassis(id),
+    blueprint_chassis_id UUID NOT NULL REFERENCES blueprint_chassis(id),
     label TEXT NOT NULL,
 
     deleted_at TIMESTAMPTZ,
@@ -58,7 +58,7 @@ CREATE TABLE templates (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE template_weapons (
+CREATE TABLE blueprint_weapons (
     id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
     label TEXT NOT NULL,
     slug TEXT NOT NULL,
@@ -71,7 +71,7 @@ CREATE TABLE template_weapons (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE template_modules (
+CREATE TABLE blueprint_modules (
     id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
     slug TEXT NOT NULL,
     label TEXT NOT NULL,
@@ -83,9 +83,9 @@ CREATE TABLE template_modules (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE templates_template_weapons (
+CREATE TABLE templates_blueprint_weapons (
     id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
-    template_weapon_id UUID NOT NULL REFERENCES template_weapons(id),
+    blueprint_weapon_id UUID NOT NULL REFERENCES blueprint_weapons(id),
     template_id UUID NOT NULL REFERENCES templates(id),
 
     deleted_at TIMESTAMPTZ,
@@ -93,8 +93,10 @@ CREATE TABLE templates_template_weapons (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE templates_template_modules (
+CREATE TABLE templates_blueprint_modules (
     id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
+    blueprint_module_id UUID NOT NULL REFERENCES blueprint_modules(id),
+    template_id UUID NOT NULL REFERENCES templates(id),
 
     deleted_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
