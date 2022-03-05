@@ -23,114 +23,142 @@ import (
 
 // Mech is an object representing the database table.
 type Mech struct {
-	ID         string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	OwnerID    string      `boiler:"owner_id" boil:"owner_id" json:"ownerID" toml:"ownerID" yaml:"ownerID"`
-	TemplateID string      `boiler:"template_id" boil:"template_id" json:"templateID" toml:"templateID" yaml:"templateID"`
-	BrandID    null.String `boiler:"brand_id" boil:"brand_id" json:"brandID,omitempty" toml:"brandID" yaml:"brandID,omitempty"`
-	ChassisID  string      `boiler:"chassis_id" boil:"chassis_id" json:"chassisID" toml:"chassisID" yaml:"chassisID"`
-	IsDefault  bool        `boiler:"is_default" boil:"is_default" json:"isDefault" toml:"isDefault" yaml:"isDefault"`
-	Hash       string      `boiler:"hash" boil:"hash" json:"hash" toml:"hash" yaml:"hash"`
-	Name       string      `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
-	Label      string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	Slug       string      `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
-	DeletedAt  null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
-	UpdatedAt  time.Time   `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
-	CreatedAt  time.Time   `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	ID              string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	CollectionID    string      `boiler:"collection_id" boil:"collection_id" json:"collectionID" toml:"collectionID" yaml:"collectionID"`
+	ExternalTokenID int         `boiler:"external_token_id" boil:"external_token_id" json:"externalTokenID" toml:"externalTokenID" yaml:"externalTokenID"`
+	OwnerID         string      `boiler:"owner_id" boil:"owner_id" json:"ownerID" toml:"ownerID" yaml:"ownerID"`
+	TemplateID      string      `boiler:"template_id" boil:"template_id" json:"templateID" toml:"templateID" yaml:"templateID"`
+	BrandID         null.String `boiler:"brand_id" boil:"brand_id" json:"brandID,omitempty" toml:"brandID" yaml:"brandID,omitempty"`
+	ChassisID       string      `boiler:"chassis_id" boil:"chassis_id" json:"chassisID" toml:"chassisID" yaml:"chassisID"`
+	IsDefault       bool        `boiler:"is_default" boil:"is_default" json:"isDefault" toml:"isDefault" yaml:"isDefault"`
+	ImageURL        string      `boiler:"image_url" boil:"image_url" json:"imageURL" toml:"imageURL" yaml:"imageURL"`
+	AnimationURL    string      `boiler:"animation_url" boil:"animation_url" json:"animationURL" toml:"animationURL" yaml:"animationURL"`
+	Hash            string      `boiler:"hash" boil:"hash" json:"hash" toml:"hash" yaml:"hash"`
+	Name            string      `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
+	Label           string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	Slug            string      `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
+	DeletedAt       null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
+	UpdatedAt       time.Time   `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
+	CreatedAt       time.Time   `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
 
 	R *mechR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L mechL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var MechColumns = struct {
-	ID         string
-	OwnerID    string
-	TemplateID string
-	BrandID    string
-	ChassisID  string
-	IsDefault  string
-	Hash       string
-	Name       string
-	Label      string
-	Slug       string
-	DeletedAt  string
-	UpdatedAt  string
-	CreatedAt  string
+	ID              string
+	CollectionID    string
+	ExternalTokenID string
+	OwnerID         string
+	TemplateID      string
+	BrandID         string
+	ChassisID       string
+	IsDefault       string
+	ImageURL        string
+	AnimationURL    string
+	Hash            string
+	Name            string
+	Label           string
+	Slug            string
+	DeletedAt       string
+	UpdatedAt       string
+	CreatedAt       string
 }{
-	ID:         "id",
-	OwnerID:    "owner_id",
-	TemplateID: "template_id",
-	BrandID:    "brand_id",
-	ChassisID:  "chassis_id",
-	IsDefault:  "is_default",
-	Hash:       "hash",
-	Name:       "name",
-	Label:      "label",
-	Slug:       "slug",
-	DeletedAt:  "deleted_at",
-	UpdatedAt:  "updated_at",
-	CreatedAt:  "created_at",
+	ID:              "id",
+	CollectionID:    "collection_id",
+	ExternalTokenID: "external_token_id",
+	OwnerID:         "owner_id",
+	TemplateID:      "template_id",
+	BrandID:         "brand_id",
+	ChassisID:       "chassis_id",
+	IsDefault:       "is_default",
+	ImageURL:        "image_url",
+	AnimationURL:    "animation_url",
+	Hash:            "hash",
+	Name:            "name",
+	Label:           "label",
+	Slug:            "slug",
+	DeletedAt:       "deleted_at",
+	UpdatedAt:       "updated_at",
+	CreatedAt:       "created_at",
 }
 
 var MechTableColumns = struct {
-	ID         string
-	OwnerID    string
-	TemplateID string
-	BrandID    string
-	ChassisID  string
-	IsDefault  string
-	Hash       string
-	Name       string
-	Label      string
-	Slug       string
-	DeletedAt  string
-	UpdatedAt  string
-	CreatedAt  string
+	ID              string
+	CollectionID    string
+	ExternalTokenID string
+	OwnerID         string
+	TemplateID      string
+	BrandID         string
+	ChassisID       string
+	IsDefault       string
+	ImageURL        string
+	AnimationURL    string
+	Hash            string
+	Name            string
+	Label           string
+	Slug            string
+	DeletedAt       string
+	UpdatedAt       string
+	CreatedAt       string
 }{
-	ID:         "mechs.id",
-	OwnerID:    "mechs.owner_id",
-	TemplateID: "mechs.template_id",
-	BrandID:    "mechs.brand_id",
-	ChassisID:  "mechs.chassis_id",
-	IsDefault:  "mechs.is_default",
-	Hash:       "mechs.hash",
-	Name:       "mechs.name",
-	Label:      "mechs.label",
-	Slug:       "mechs.slug",
-	DeletedAt:  "mechs.deleted_at",
-	UpdatedAt:  "mechs.updated_at",
-	CreatedAt:  "mechs.created_at",
+	ID:              "mechs.id",
+	CollectionID:    "mechs.collection_id",
+	ExternalTokenID: "mechs.external_token_id",
+	OwnerID:         "mechs.owner_id",
+	TemplateID:      "mechs.template_id",
+	BrandID:         "mechs.brand_id",
+	ChassisID:       "mechs.chassis_id",
+	IsDefault:       "mechs.is_default",
+	ImageURL:        "mechs.image_url",
+	AnimationURL:    "mechs.animation_url",
+	Hash:            "mechs.hash",
+	Name:            "mechs.name",
+	Label:           "mechs.label",
+	Slug:            "mechs.slug",
+	DeletedAt:       "mechs.deleted_at",
+	UpdatedAt:       "mechs.updated_at",
+	CreatedAt:       "mechs.created_at",
 }
 
 // Generated where
 
 var MechWhere = struct {
-	ID         whereHelperstring
-	OwnerID    whereHelperstring
-	TemplateID whereHelperstring
-	BrandID    whereHelpernull_String
-	ChassisID  whereHelperstring
-	IsDefault  whereHelperbool
-	Hash       whereHelperstring
-	Name       whereHelperstring
-	Label      whereHelperstring
-	Slug       whereHelperstring
-	DeletedAt  whereHelpernull_Time
-	UpdatedAt  whereHelpertime_Time
-	CreatedAt  whereHelpertime_Time
+	ID              whereHelperstring
+	CollectionID    whereHelperstring
+	ExternalTokenID whereHelperint
+	OwnerID         whereHelperstring
+	TemplateID      whereHelperstring
+	BrandID         whereHelpernull_String
+	ChassisID       whereHelperstring
+	IsDefault       whereHelperbool
+	ImageURL        whereHelperstring
+	AnimationURL    whereHelperstring
+	Hash            whereHelperstring
+	Name            whereHelperstring
+	Label           whereHelperstring
+	Slug            whereHelperstring
+	DeletedAt       whereHelpernull_Time
+	UpdatedAt       whereHelpertime_Time
+	CreatedAt       whereHelpertime_Time
 }{
-	ID:         whereHelperstring{field: "\"mechs\".\"id\""},
-	OwnerID:    whereHelperstring{field: "\"mechs\".\"owner_id\""},
-	TemplateID: whereHelperstring{field: "\"mechs\".\"template_id\""},
-	BrandID:    whereHelpernull_String{field: "\"mechs\".\"brand_id\""},
-	ChassisID:  whereHelperstring{field: "\"mechs\".\"chassis_id\""},
-	IsDefault:  whereHelperbool{field: "\"mechs\".\"is_default\""},
-	Hash:       whereHelperstring{field: "\"mechs\".\"hash\""},
-	Name:       whereHelperstring{field: "\"mechs\".\"name\""},
-	Label:      whereHelperstring{field: "\"mechs\".\"label\""},
-	Slug:       whereHelperstring{field: "\"mechs\".\"slug\""},
-	DeletedAt:  whereHelpernull_Time{field: "\"mechs\".\"deleted_at\""},
-	UpdatedAt:  whereHelpertime_Time{field: "\"mechs\".\"updated_at\""},
-	CreatedAt:  whereHelpertime_Time{field: "\"mechs\".\"created_at\""},
+	ID:              whereHelperstring{field: "\"mechs\".\"id\""},
+	CollectionID:    whereHelperstring{field: "\"mechs\".\"collection_id\""},
+	ExternalTokenID: whereHelperint{field: "\"mechs\".\"external_token_id\""},
+	OwnerID:         whereHelperstring{field: "\"mechs\".\"owner_id\""},
+	TemplateID:      whereHelperstring{field: "\"mechs\".\"template_id\""},
+	BrandID:         whereHelpernull_String{field: "\"mechs\".\"brand_id\""},
+	ChassisID:       whereHelperstring{field: "\"mechs\".\"chassis_id\""},
+	IsDefault:       whereHelperbool{field: "\"mechs\".\"is_default\""},
+	ImageURL:        whereHelperstring{field: "\"mechs\".\"image_url\""},
+	AnimationURL:    whereHelperstring{field: "\"mechs\".\"animation_url\""},
+	Hash:            whereHelperstring{field: "\"mechs\".\"hash\""},
+	Name:            whereHelperstring{field: "\"mechs\".\"name\""},
+	Label:           whereHelperstring{field: "\"mechs\".\"label\""},
+	Slug:            whereHelperstring{field: "\"mechs\".\"slug\""},
+	DeletedAt:       whereHelpernull_Time{field: "\"mechs\".\"deleted_at\""},
+	UpdatedAt:       whereHelpertime_Time{field: "\"mechs\".\"updated_at\""},
+	CreatedAt:       whereHelpertime_Time{field: "\"mechs\".\"created_at\""},
 }
 
 // MechRels is where relationship names are stored.
@@ -163,8 +191,8 @@ func (*mechR) NewStruct() *mechR {
 type mechL struct{}
 
 var (
-	mechAllColumns            = []string{"id", "owner_id", "template_id", "brand_id", "chassis_id", "is_default", "hash", "name", "label", "slug", "deleted_at", "updated_at", "created_at"}
-	mechColumnsWithoutDefault = []string{"owner_id", "template_id", "chassis_id", "hash", "name", "label", "slug"}
+	mechAllColumns            = []string{"id", "collection_id", "external_token_id", "owner_id", "template_id", "brand_id", "chassis_id", "is_default", "image_url", "animation_url", "hash", "name", "label", "slug", "deleted_at", "updated_at", "created_at"}
+	mechColumnsWithoutDefault = []string{"collection_id", "external_token_id", "owner_id", "template_id", "chassis_id", "image_url", "animation_url", "hash", "name", "label", "slug"}
 	mechColumnsWithDefault    = []string{"id", "brand_id", "is_default", "deleted_at", "updated_at", "created_at"}
 	mechPrimaryKeyColumns     = []string{"id"}
 	mechGeneratedColumns      = []string{}

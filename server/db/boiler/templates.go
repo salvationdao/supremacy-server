@@ -29,6 +29,8 @@ type Template struct {
 	Label              string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
 	Slug               string    `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
 	IsDefault          bool      `boiler:"is_default" boil:"is_default" json:"isDefault" toml:"isDefault" yaml:"isDefault"`
+	ImageURL           string    `boiler:"image_url" boil:"image_url" json:"imageURL" toml:"imageURL" yaml:"imageURL"`
+	AnimationURL       string    `boiler:"animation_url" boil:"animation_url" json:"animationURL" toml:"animationURL" yaml:"animationURL"`
 	DeletedAt          null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
 	UpdatedAt          time.Time `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
 	CreatedAt          time.Time `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
@@ -44,6 +46,8 @@ var TemplateColumns = struct {
 	Label              string
 	Slug               string
 	IsDefault          string
+	ImageURL           string
+	AnimationURL       string
 	DeletedAt          string
 	UpdatedAt          string
 	CreatedAt          string
@@ -54,6 +58,8 @@ var TemplateColumns = struct {
 	Label:              "label",
 	Slug:               "slug",
 	IsDefault:          "is_default",
+	ImageURL:           "image_url",
+	AnimationURL:       "animation_url",
 	DeletedAt:          "deleted_at",
 	UpdatedAt:          "updated_at",
 	CreatedAt:          "created_at",
@@ -66,6 +72,8 @@ var TemplateTableColumns = struct {
 	Label              string
 	Slug               string
 	IsDefault          string
+	ImageURL           string
+	AnimationURL       string
 	DeletedAt          string
 	UpdatedAt          string
 	CreatedAt          string
@@ -76,6 +84,8 @@ var TemplateTableColumns = struct {
 	Label:              "templates.label",
 	Slug:               "templates.slug",
 	IsDefault:          "templates.is_default",
+	ImageURL:           "templates.image_url",
+	AnimationURL:       "templates.animation_url",
 	DeletedAt:          "templates.deleted_at",
 	UpdatedAt:          "templates.updated_at",
 	CreatedAt:          "templates.created_at",
@@ -90,6 +100,8 @@ var TemplateWhere = struct {
 	Label              whereHelperstring
 	Slug               whereHelperstring
 	IsDefault          whereHelperbool
+	ImageURL           whereHelperstring
+	AnimationURL       whereHelperstring
 	DeletedAt          whereHelpernull_Time
 	UpdatedAt          whereHelpertime_Time
 	CreatedAt          whereHelpertime_Time
@@ -100,6 +112,8 @@ var TemplateWhere = struct {
 	Label:              whereHelperstring{field: "\"templates\".\"label\""},
 	Slug:               whereHelperstring{field: "\"templates\".\"slug\""},
 	IsDefault:          whereHelperbool{field: "\"templates\".\"is_default\""},
+	ImageURL:           whereHelperstring{field: "\"templates\".\"image_url\""},
+	AnimationURL:       whereHelperstring{field: "\"templates\".\"animation_url\""},
 	DeletedAt:          whereHelpernull_Time{field: "\"templates\".\"deleted_at\""},
 	UpdatedAt:          whereHelpertime_Time{field: "\"templates\".\"updated_at\""},
 	CreatedAt:          whereHelpertime_Time{field: "\"templates\".\"created_at\""},
@@ -132,8 +146,8 @@ func (*templateR) NewStruct() *templateR {
 type templateL struct{}
 
 var (
-	templateAllColumns            = []string{"id", "blueprint_chassis_id", "syndicate_id", "label", "slug", "is_default", "deleted_at", "updated_at", "created_at"}
-	templateColumnsWithoutDefault = []string{"blueprint_chassis_id", "syndicate_id", "label", "slug"}
+	templateAllColumns            = []string{"id", "blueprint_chassis_id", "syndicate_id", "label", "slug", "is_default", "image_url", "animation_url", "deleted_at", "updated_at", "created_at"}
+	templateColumnsWithoutDefault = []string{"blueprint_chassis_id", "syndicate_id", "label", "slug", "image_url", "animation_url"}
 	templateColumnsWithDefault    = []string{"id", "is_default", "deleted_at", "updated_at", "created_at"}
 	templatePrimaryKeyColumns     = []string{"id"}
 	templateGeneratedColumns      = []string{}

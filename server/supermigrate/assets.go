@@ -30,9 +30,15 @@ func ProcessMech(tx *sql.Tx, data *AssetPayload, metadata *MetadataPayload) (boo
 		return true, nil
 	}
 
+	mechExists, err := boiler.Mechs(boiler.MechWhere.Hash.EQ(data.MetadataHash)).Exists(tx)
+	if err != nil {
+		return false, fmt.Errorf("check mech exist: %w", err)
+	}
+	if mechExists {
+		return true, nil
+	}
+
 	label, _ := TemplateLabelSlug(att.Brand, att.Model, att.SubModel)
-	fmt.Println(att.Brand, att.Model, att.SubModel)
-	fmt.Println(att)
 	templateExists, err := boiler.Templates(boiler.TemplateWhere.Label.EQ(label)).Exists(tx)
 	if err != nil {
 		return false, fmt.Errorf("check template exist: %w", err)
@@ -44,14 +50,6 @@ func ProcessMech(tx *sql.Tx, data *AssetPayload, metadata *MetadataPayload) (boo
 	template, err := boiler.Templates(boiler.TemplateWhere.Label.EQ(label)).One(tx)
 	if err != nil {
 		return false, fmt.Errorf("check mech exist: %w", err)
-	}
-
-	mechExists, err := boiler.Mechs(qm.Where("hash = ?", data.MetadataHash)).Exists(tx)
-	if err != nil {
-		return false, fmt.Errorf("check mech exist: %w", err)
-	}
-	if mechExists {
-		return false, errors.New("mech exists")
 	}
 
 	brandExists, err := boiler.Brands(qm.Where("label = ?", BrandMap[att.Brand])).Exists(tx)
@@ -101,14 +99,15 @@ func ProcessMech(tx *sql.Tx, data *AssetPayload, metadata *MetadataPayload) (boo
 	}
 	label, slug := MechLabelSlug(att.Brand, att.Model, att.SubModel, att.Name)
 	newMech := &boiler.Mech{
-		ID:         uuid.Must(uuid.NewV4()).String(),
-		OwnerID:    data.UserID,
-		TemplateID: template.ID,
-		ChassisID:  chassis.ID,
-		Hash:       data.MetadataHash,
-		Name:       att.Name,
-		Label:      label,
-		Slug:       slug,
+		ID:           uuid.Must(uuid.NewV4()).String(),
+		CollectionID: data.CollectionID,
+		OwnerID:      data.UserID,
+		TemplateID:   template.ID,
+		ChassisID:    chassis.ID,
+		Hash:         data.MetadataHash,
+		Name:         att.Name,
+		Label:        label,
+		Slug:         slug,
 	}
 
 	err = newMech.Insert(tx, boil.Infer())
@@ -122,9 +121,10 @@ func ProcessMech(tx *sql.Tx, data *AssetPayload, metadata *MetadataPayload) (boo
 			return false, fmt.Errorf("insert weapon 1: %w", err)
 		}
 		join := &boiler.ChassisWeapon{
-			WeaponID:   weapon1.ID,
-			ChassisID:  chassis.ID,
-			SlotNumber: 1,
+			WeaponID:      weapon1.ID,
+			ChassisID:     chassis.ID,
+			MountLocation: weapon1.WeaponType,
+			SlotNumber:    1,
 		}
 		err = join.Insert(tx, boil.Infer())
 		if err != nil {
@@ -137,9 +137,10 @@ func ProcessMech(tx *sql.Tx, data *AssetPayload, metadata *MetadataPayload) (boo
 			return false, fmt.Errorf("insert weapon 2: %w", err)
 		}
 		join := &boiler.ChassisWeapon{
-			WeaponID:   weapon2.ID,
-			ChassisID:  chassis.ID,
-			SlotNumber: 2,
+			WeaponID:      weapon2.ID,
+			ChassisID:     chassis.ID,
+			MountLocation: weapon2.WeaponType,
+			SlotNumber:    2,
 		}
 		err = join.Insert(tx, boil.Infer())
 		if err != nil {
@@ -152,9 +153,10 @@ func ProcessMech(tx *sql.Tx, data *AssetPayload, metadata *MetadataPayload) (boo
 			return false, fmt.Errorf("insert turret 1: %w", err)
 		}
 		join := &boiler.ChassisWeapon{
-			WeaponID:   turret1.ID,
-			ChassisID:  chassis.ID,
-			SlotNumber: 1,
+			WeaponID:      turret1.ID,
+			ChassisID:     chassis.ID,
+			MountLocation: turret1.WeaponType,
+			SlotNumber:    1,
 		}
 		err = join.Insert(tx, boil.Infer())
 		if err != nil {
@@ -167,9 +169,10 @@ func ProcessMech(tx *sql.Tx, data *AssetPayload, metadata *MetadataPayload) (boo
 			return false, fmt.Errorf("insert turret 2: %w", err)
 		}
 		join := &boiler.ChassisWeapon{
-			WeaponID:   turret2.ID,
-			ChassisID:  chassis.ID,
-			SlotNumber: 2,
+			WeaponID:      turret2.ID,
+			ChassisID:     chassis.ID,
+			MountLocation: turret2.WeaponType,
+			SlotNumber:    2,
 		}
 		err = join.Insert(tx, boil.Infer())
 		if err != nil {

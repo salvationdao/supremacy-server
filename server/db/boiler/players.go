@@ -25,6 +25,7 @@ import (
 type Player struct {
 	ID            string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	SyndicateID   null.String `boiler:"syndicate_id" boil:"syndicate_id" json:"syndicateID,omitempty" toml:"syndicateID" yaml:"syndicateID,omitempty"`
+	Username      string      `boiler:"username" boil:"username" json:"username" toml:"username" yaml:"username"`
 	PublicAddress null.String `boiler:"public_address" boil:"public_address" json:"publicAddress,omitempty" toml:"publicAddress" yaml:"publicAddress,omitempty"`
 	DeletedAt     null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
 	UpdatedAt     time.Time   `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
@@ -37,6 +38,7 @@ type Player struct {
 var PlayerColumns = struct {
 	ID            string
 	SyndicateID   string
+	Username      string
 	PublicAddress string
 	DeletedAt     string
 	UpdatedAt     string
@@ -44,6 +46,7 @@ var PlayerColumns = struct {
 }{
 	ID:            "id",
 	SyndicateID:   "syndicate_id",
+	Username:      "username",
 	PublicAddress: "public_address",
 	DeletedAt:     "deleted_at",
 	UpdatedAt:     "updated_at",
@@ -53,6 +56,7 @@ var PlayerColumns = struct {
 var PlayerTableColumns = struct {
 	ID            string
 	SyndicateID   string
+	Username      string
 	PublicAddress string
 	DeletedAt     string
 	UpdatedAt     string
@@ -60,6 +64,7 @@ var PlayerTableColumns = struct {
 }{
 	ID:            "players.id",
 	SyndicateID:   "players.syndicate_id",
+	Username:      "players.username",
 	PublicAddress: "players.public_address",
 	DeletedAt:     "players.deleted_at",
 	UpdatedAt:     "players.updated_at",
@@ -71,6 +76,7 @@ var PlayerTableColumns = struct {
 var PlayerWhere = struct {
 	ID            whereHelperstring
 	SyndicateID   whereHelpernull_String
+	Username      whereHelperstring
 	PublicAddress whereHelpernull_String
 	DeletedAt     whereHelpernull_Time
 	UpdatedAt     whereHelpertime_Time
@@ -78,6 +84,7 @@ var PlayerWhere = struct {
 }{
 	ID:            whereHelperstring{field: "\"players\".\"id\""},
 	SyndicateID:   whereHelpernull_String{field: "\"players\".\"syndicate_id\""},
+	Username:      whereHelperstring{field: "\"players\".\"username\""},
 	PublicAddress: whereHelpernull_String{field: "\"players\".\"public_address\""},
 	DeletedAt:     whereHelpernull_Time{field: "\"players\".\"deleted_at\""},
 	UpdatedAt:     whereHelpertime_Time{field: "\"players\".\"updated_at\""},
@@ -108,8 +115,8 @@ func (*playerR) NewStruct() *playerR {
 type playerL struct{}
 
 var (
-	playerAllColumns            = []string{"id", "syndicate_id", "public_address", "deleted_at", "updated_at", "created_at"}
-	playerColumnsWithoutDefault = []string{}
+	playerAllColumns            = []string{"id", "syndicate_id", "username", "public_address", "deleted_at", "updated_at", "created_at"}
+	playerColumnsWithoutDefault = []string{"username"}
 	playerColumnsWithDefault    = []string{"id", "syndicate_id", "public_address", "deleted_at", "updated_at", "created_at"}
 	playerPrimaryKeyColumns     = []string{"id"}
 	playerGeneratedColumns      = []string{}

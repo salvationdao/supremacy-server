@@ -36,6 +36,7 @@ func ProcessUser(tx *sql.Tx, data *UserPayload) (bool, bool, error) {
 	record := &boiler.Player{
 		ID:            data.ID,
 		SyndicateID:   data.FactionID,
+		Username:      data.Username,
 		PublicAddress: addr,
 	}
 	err = record.Insert(tx, boil.Infer())
