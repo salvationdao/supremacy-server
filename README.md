@@ -6,6 +6,16 @@ Supremacy gameserver for communication between the game client and various front
 
 [CD Docs](.github/workflows/README.md)
 
+## Supermigrate tool
+
+Used to suck mechs from passport-server over to gameserver.
+
+```
+cd server
+go run cmd/gameserver/main.go sm --migrate_users
+go run cmd/gameserver/main.go sm --migrate_assets
+```
+
 ### For go private modules
 
 ```shell
