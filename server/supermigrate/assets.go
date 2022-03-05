@@ -13,8 +13,22 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
+func isDefaultHash(in string) bool {
+	defaultHashes := []string{"ZXga92AmGD", "dbYaD4a0Zj", "l7epj2pPL4", "kN7aVgAenK", "wdBAN1aeo5", "018pkXaRWM", "B8x3qdAy6K", "D16aRep0Zo", "4Q1p8dpqwX"}
+	for _, defaultHash := range defaultHashes {
+		if in == defaultHash {
+			return true
+		}
+	}
+	return false
+}
+
 func ProcessMech(tx *sql.Tx, data *AssetPayload, metadata *MetadataPayload) (bool, error) {
 	att := GetAttributes(metadata.Attributes)
+
+	if isDefaultHash(data.MetadataHash) {
+		return true, nil
+	}
 
 	label, _ := TemplateLabelSlug(att.Brand, att.Model, att.SubModel)
 	fmt.Println(att.Brand, att.Model, att.SubModel)

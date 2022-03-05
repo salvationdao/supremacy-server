@@ -333,17 +333,18 @@ func main() {
 						return terror.Error(err)
 					}
 
-					if migrateAssets {
-						err = supermigrate.MigrateAssets(metadataPayload, assetPayload, storePayload, factionPayload, userPayload)
-						if err != nil {
-							return fmt.Errorf("failed to migrate assets: %w", err)
-						}
-
-					}
 					if migrateUsers {
 						err = supermigrate.MigrateUsers(metadataPayload, assetPayload, storePayload, factionPayload, userPayload)
 						if err != nil {
 							return fmt.Errorf("failed to migrate users: %w", err)
+						}
+
+					}
+
+					if migrateAssets {
+						err = supermigrate.MigrateAssets(metadataPayload, assetPayload, storePayload, factionPayload, userPayload)
+						if err != nil {
+							return fmt.Errorf("failed to migrate assets: %w", err)
 						}
 
 					}
