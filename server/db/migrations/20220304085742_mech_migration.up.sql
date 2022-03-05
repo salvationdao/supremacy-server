@@ -159,6 +159,8 @@ CREATE TABLE mechs (
     label TEXT NOT NULL,
     slug TEXT NOT NULL,
 
+    UNIQUE (collection_id, external_token_id),
+
     deleted_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
