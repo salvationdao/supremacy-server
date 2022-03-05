@@ -15,13 +15,13 @@ func ProcessUser(tx *sql.Tx, data *UserPayload) (bool, bool, error) {
 		return false, false, fmt.Errorf("check player exists: %w", err)
 	}
 	if exists {
-
 		player, err := boiler.FindPlayer(tx, data.ID)
 		if err != nil {
 			return false, false, err
 		}
 		player.SyndicateID = data.FactionID
-		_, err = player.Update(tx, boil.Infer())
+		player.Username = data.Username
+		_, err = player.Update(tx, boil.Whitelist(boiler.PlayerColumns.SyndicateID, boiler.PlayerColumns.Username))
 		if err != nil {
 			return false, false, err
 		}

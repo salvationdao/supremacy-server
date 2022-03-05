@@ -38,15 +38,19 @@ func MigrateAssets(
 
 	success := 0
 	skipped := 0
-
+	updated := 0
 	for _, asset := range assetPayload {
 		metadata, err := getMetadataFromHash(asset.MetadataHash, metadataPayload)
 		if err != nil {
 			return fmt.Errorf("get metadata: %w", err)
 		}
-		wasSkipped, err := ProcessMech(tx, asset, metadata)
+		wasSkipped, wasUpdated, err := ProcessMech(tx, asset, metadata)
 		if wasSkipped {
 			skipped++
+			continue
+		}
+		if wasUpdated {
+			updated++
 			continue
 		}
 		if err != nil {
@@ -55,7 +59,7 @@ func MigrateAssets(
 		success++
 
 	}
-	gamelog.GameLog.Info().Int("success", success).Int("skipped", skipped).Msg("finished asset migration")
+	gamelog.GameLog.Info().Int("success", success).Int("skipped", skipped).Int("updated", updated).Msg("finished asset migration")
 
 	tx.Commit()
 	return nil

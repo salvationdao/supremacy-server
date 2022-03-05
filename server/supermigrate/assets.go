@@ -24,88 +24,108 @@ func isDefaultHash(in string) bool {
 	return false
 }
 
-func ProcessMech(tx *sql.Tx, data *AssetPayload, metadata *MetadataPayload) (bool, error) {
+func ProcessMech(tx *sql.Tx, data *AssetPayload, metadata *MetadataPayload) (bool, bool, error) {
 	att := GetAttributes(metadata.Attributes)
 
 	if isDefaultHash(data.MetadataHash) {
-		return true, nil
+		return true, false, nil
 	}
 
 	mechExists, err := boiler.Mechs(boiler.MechWhere.Hash.EQ(data.MetadataHash)).Exists(tx)
 	if err != nil {
-		return false, fmt.Errorf("check mech exist: %w", err)
+		return false, false, fmt.Errorf("check mech exist: %w", err)
 	}
 	if mechExists {
-		return true, nil
+		// Update instead of processing all the damn pieces
+		existingMech, err := boiler.Mechs(boiler.MechWhere.Hash.EQ(data.MetadataHash)).One(tx)
+		if err != nil {
+			return false, false, fmt.Errorf("get existing mech: %w", err)
+		}
+
+		existingMech.OwnerID = data.UserID
+		existingMech.Name = att.Name
+
+		_, err = existingMech.Update(tx, boil.Whitelist(boiler.MechColumns.OwnerID, boiler.MechColumns.Name))
+		if err != nil {
+			return false, false, fmt.Errorf("update mech: %w", err)
+		}
+		return false, true, nil
 	}
 
 	label, _ := TemplateLabelSlug(att.Brand, att.Model, att.SubModel)
 	templateExists, err := boiler.Templates(boiler.TemplateWhere.Label.EQ(label)).Exists(tx)
 	if err != nil {
-		return false, fmt.Errorf("check template exist: %w", err)
+		return false, false, fmt.Errorf("check template exist: %w", err)
 	}
 	if !templateExists {
-		return false, fmt.Errorf("matching template does not exist: %s", label)
+		return false, false, fmt.Errorf("matching template does not exist: %s", label)
 	}
 	label, _ = TemplateLabelSlug(att.Brand, att.Model, att.SubModel)
 	template, err := boiler.Templates(boiler.TemplateWhere.Label.EQ(label)).One(tx)
 	if err != nil {
-		return false, fmt.Errorf("check mech exist: %w", err)
+		return false, false, fmt.Errorf("check mech exist: %w", err)
 	}
 
 	brandExists, err := boiler.Brands(qm.Where("label = ?", BrandMap[att.Brand])).Exists(tx)
 	if err != nil {
-		return false, fmt.Errorf("check brand exist: %w", err)
+		return false, false, fmt.Errorf("check brand exist: %w", err)
 	}
 	if !brandExists {
-		return false, fmt.Errorf("brand does not exist: %s", att.Brand)
+		return false, false, fmt.Errorf("brand does not exist: %s", att.Brand)
 	}
 	brand, err := boiler.Brands(qm.Where("label = ?", BrandMap[att.Brand])).One(tx)
 	if err != nil {
-		return false, fmt.Errorf("get brand: %w", err)
+		return false, false, fmt.Errorf("get brand: %w", err)
 	}
 	chassis, err := ProcessChassis(brand, metadata.Attributes)
 	if err != nil {
-		return false, fmt.Errorf("process chassis: %w", err)
+		return false, false, fmt.Errorf("process chassis: %w", err)
 	}
 
 	weapon1, err := ProcessWeapon("ARM", 1, brand, metadata.Attributes)
 	if err != nil {
-		return false, fmt.Errorf("process weapon: %w", err)
+		return false, false, fmt.Errorf("process weapon: %w", err)
 	}
 
 	weapon2, err := ProcessWeapon("ARM", 2, brand, metadata.Attributes)
 	if err != nil {
-		return false, fmt.Errorf("process weapon: %w", err)
+		return false, false, fmt.Errorf("process weapon: %w", err)
 	}
 
 	turret1, err := ProcessWeapon("TURRET", 1, brand, metadata.Attributes)
 	if err != nil {
-		return false, fmt.Errorf("process weapon: %w", err)
+		return false, false, fmt.Errorf("process weapon: %w", err)
 	}
 
 	turret2, err := ProcessWeapon("TURRET", 2, brand, metadata.Attributes)
 	if err != nil {
-		return false, fmt.Errorf("process weapon: %w", err)
+		return false, false, fmt.Errorf("process weapon: %w", err)
 	}
 
 	module, err := ProcessModule(brand, metadata.Attributes)
 	if err != nil {
-		return false, fmt.Errorf("process module: %w", err)
+		return false, false, fmt.Errorf("process module: %w", err)
 	}
 
 	err = chassis.Insert(tx, boil.Infer())
 	if err != nil {
-		return false, fmt.Errorf("insert chassis: %w", err)
+		return false, false, fmt.Errorf("insert chassis: %w", err)
 	}
 	label, slug := MechLabelSlug(att.Brand, att.Model, att.SubModel, att.Name)
 	externalTokenID, err := strconv.Atoi(data.ExternalTokenID)
 	if err != nil {
-		return false, fmt.Errorf("convert external token ID: %w", err)
+		return false, false, fmt.Errorf("convert external token ID: %w", err)
 	}
 
+	err = template.L.LoadBlueprintChassis(tx, true, template, nil)
+	if err != nil {
+		return false, false, fmt.Errorf("load blueprint chassis: %w", err)
+	}
 	newMech := &boiler.Mech{
 		ID:              uuid.Must(uuid.NewV4()).String(),
+		BrandID:         template.R.BlueprintChassis.BrandID,
+		ImageURL:        metadata.Image,
+		AnimationURL:    metadata.AnimationURL,
 		CollectionID:    data.CollectionID,
 		ExternalTokenID: externalTokenID,
 		OwnerID:         data.UserID,
@@ -119,13 +139,13 @@ func ProcessMech(tx *sql.Tx, data *AssetPayload, metadata *MetadataPayload) (boo
 
 	err = newMech.Insert(tx, boil.Infer())
 	if err != nil {
-		return false, fmt.Errorf("insert mech: %w", err)
+		return false, false, fmt.Errorf("insert mech: %w", err)
 	}
 
 	if weapon1 != nil {
 		err = weapon1.Insert(tx, boil.Infer())
 		if err != nil {
-			return false, fmt.Errorf("insert weapon 1: %w", err)
+			return false, false, fmt.Errorf("insert weapon 1: %w", err)
 		}
 		join := &boiler.ChassisWeapon{
 			WeaponID:      weapon1.ID,
@@ -135,13 +155,13 @@ func ProcessMech(tx *sql.Tx, data *AssetPayload, metadata *MetadataPayload) (boo
 		}
 		err = join.Insert(tx, boil.Infer())
 		if err != nil {
-			return false, fmt.Errorf("insert weapon 1 join : %w", err)
+			return false, false, fmt.Errorf("insert weapon 1 join : %w", err)
 		}
 	}
 	if weapon2 != nil {
 		err = weapon2.Insert(tx, boil.Infer())
 		if err != nil {
-			return false, fmt.Errorf("insert weapon 2: %w", err)
+			return false, false, fmt.Errorf("insert weapon 2: %w", err)
 		}
 		join := &boiler.ChassisWeapon{
 			WeaponID:      weapon2.ID,
@@ -151,13 +171,13 @@ func ProcessMech(tx *sql.Tx, data *AssetPayload, metadata *MetadataPayload) (boo
 		}
 		err = join.Insert(tx, boil.Infer())
 		if err != nil {
-			return false, fmt.Errorf("insert weapon 2 join : %w", err)
+			return false, false, fmt.Errorf("insert weapon 2 join : %w", err)
 		}
 	}
 	if turret1 != nil {
 		err = turret1.Insert(tx, boil.Infer())
 		if err != nil {
-			return false, fmt.Errorf("insert turret 1: %w", err)
+			return false, false, fmt.Errorf("insert turret 1: %w", err)
 		}
 		join := &boiler.ChassisWeapon{
 			WeaponID:      turret1.ID,
@@ -167,13 +187,13 @@ func ProcessMech(tx *sql.Tx, data *AssetPayload, metadata *MetadataPayload) (boo
 		}
 		err = join.Insert(tx, boil.Infer())
 		if err != nil {
-			return false, fmt.Errorf("insert turret 1 join: %w", err)
+			return false, false, fmt.Errorf("insert turret 1 join: %w", err)
 		}
 	}
 	if turret2 != nil {
 		err = turret2.Insert(tx, boil.Infer())
 		if err != nil {
-			return false, fmt.Errorf("insert turret 2: %w", err)
+			return false, false, fmt.Errorf("insert turret 2: %w", err)
 		}
 		join := &boiler.ChassisWeapon{
 			WeaponID:      turret2.ID,
@@ -183,15 +203,15 @@ func ProcessMech(tx *sql.Tx, data *AssetPayload, metadata *MetadataPayload) (boo
 		}
 		err = join.Insert(tx, boil.Infer())
 		if err != nil {
-			return false, fmt.Errorf("insert turret 2 join: %w", err)
+			return false, false, fmt.Errorf("insert turret 2 join: %w", err)
 		}
 	}
 	err = module.Insert(tx, boil.Infer())
 	if err != nil {
-		return false, fmt.Errorf("insert module: %w", err)
+		return false, false, fmt.Errorf("insert module: %w", err)
 	}
 
-	return false, nil
+	return false, false, nil
 }
 func ProcessChassis(brand *boiler.Brand, attributes []Attributes) (*boiler.Chassis, error) {
 	att := GetAttributes(attributes)
