@@ -25,7 +25,7 @@ import (
 type Template struct {
 	ID                 string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	BlueprintChassisID string    `boiler:"blueprint_chassis_id" boil:"blueprint_chassis_id" json:"blueprintChassisID" toml:"blueprintChassisID" yaml:"blueprintChassisID"`
-	SyndicateID        string    `boiler:"syndicate_id" boil:"syndicate_id" json:"syndicateID" toml:"syndicateID" yaml:"syndicateID"`
+	FactionID          string    `boiler:"faction_id" boil:"faction_id" json:"factionID" toml:"factionID" yaml:"factionID"`
 	Label              string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
 	Slug               string    `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
 	IsDefault          bool      `boiler:"is_default" boil:"is_default" json:"isDefault" toml:"isDefault" yaml:"isDefault"`
@@ -42,7 +42,7 @@ type Template struct {
 var TemplateColumns = struct {
 	ID                 string
 	BlueprintChassisID string
-	SyndicateID        string
+	FactionID          string
 	Label              string
 	Slug               string
 	IsDefault          string
@@ -54,7 +54,7 @@ var TemplateColumns = struct {
 }{
 	ID:                 "id",
 	BlueprintChassisID: "blueprint_chassis_id",
-	SyndicateID:        "syndicate_id",
+	FactionID:          "faction_id",
 	Label:              "label",
 	Slug:               "slug",
 	IsDefault:          "is_default",
@@ -68,7 +68,7 @@ var TemplateColumns = struct {
 var TemplateTableColumns = struct {
 	ID                 string
 	BlueprintChassisID string
-	SyndicateID        string
+	FactionID          string
 	Label              string
 	Slug               string
 	IsDefault          string
@@ -80,7 +80,7 @@ var TemplateTableColumns = struct {
 }{
 	ID:                 "templates.id",
 	BlueprintChassisID: "templates.blueprint_chassis_id",
-	SyndicateID:        "templates.syndicate_id",
+	FactionID:          "templates.faction_id",
 	Label:              "templates.label",
 	Slug:               "templates.slug",
 	IsDefault:          "templates.is_default",
@@ -96,7 +96,7 @@ var TemplateTableColumns = struct {
 var TemplateWhere = struct {
 	ID                 whereHelperstring
 	BlueprintChassisID whereHelperstring
-	SyndicateID        whereHelperstring
+	FactionID          whereHelperstring
 	Label              whereHelperstring
 	Slug               whereHelperstring
 	IsDefault          whereHelperbool
@@ -108,7 +108,7 @@ var TemplateWhere = struct {
 }{
 	ID:                 whereHelperstring{field: "\"templates\".\"id\""},
 	BlueprintChassisID: whereHelperstring{field: "\"templates\".\"blueprint_chassis_id\""},
-	SyndicateID:        whereHelperstring{field: "\"templates\".\"syndicate_id\""},
+	FactionID:          whereHelperstring{field: "\"templates\".\"faction_id\""},
 	Label:              whereHelperstring{field: "\"templates\".\"label\""},
 	Slug:               whereHelperstring{field: "\"templates\".\"slug\""},
 	IsDefault:          whereHelperbool{field: "\"templates\".\"is_default\""},
@@ -122,18 +122,18 @@ var TemplateWhere = struct {
 // TemplateRels is where relationship names are stored.
 var TemplateRels = struct {
 	BlueprintChassis string
-	Syndicate        string
+	Faction          string
 	Mechs            string
 }{
 	BlueprintChassis: "BlueprintChassis",
-	Syndicate:        "Syndicate",
+	Faction:          "Faction",
 	Mechs:            "Mechs",
 }
 
 // templateR is where relationships are stored.
 type templateR struct {
 	BlueprintChassis *BlueprintChassis `boiler:"BlueprintChassis" boil:"BlueprintChassis" json:"BlueprintChassis" toml:"BlueprintChassis" yaml:"BlueprintChassis"`
-	Syndicate        *Syndicate        `boiler:"Syndicate" boil:"Syndicate" json:"Syndicate" toml:"Syndicate" yaml:"Syndicate"`
+	Faction          *Faction          `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
 	Mechs            MechSlice         `boiler:"Mechs" boil:"Mechs" json:"Mechs" toml:"Mechs" yaml:"Mechs"`
 }
 
@@ -146,8 +146,8 @@ func (*templateR) NewStruct() *templateR {
 type templateL struct{}
 
 var (
-	templateAllColumns            = []string{"id", "blueprint_chassis_id", "syndicate_id", "label", "slug", "is_default", "image_url", "animation_url", "deleted_at", "updated_at", "created_at"}
-	templateColumnsWithoutDefault = []string{"blueprint_chassis_id", "syndicate_id", "label", "slug", "image_url", "animation_url"}
+	templateAllColumns            = []string{"id", "blueprint_chassis_id", "faction_id", "label", "slug", "is_default", "image_url", "animation_url", "deleted_at", "updated_at", "created_at"}
+	templateColumnsWithoutDefault = []string{"blueprint_chassis_id", "faction_id", "label", "slug", "image_url", "animation_url"}
 	templateColumnsWithDefault    = []string{"id", "is_default", "deleted_at", "updated_at", "created_at"}
 	templatePrimaryKeyColumns     = []string{"id"}
 	templateGeneratedColumns      = []string{}
@@ -410,17 +410,17 @@ func (o *Template) BlueprintChassis(mods ...qm.QueryMod) blueprintChassisQuery {
 	return query
 }
 
-// Syndicate pointed to by the foreign key.
-func (o *Template) Syndicate(mods ...qm.QueryMod) syndicateQuery {
+// Faction pointed to by the foreign key.
+func (o *Template) Faction(mods ...qm.QueryMod) factionQuery {
 	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.SyndicateID),
+		qm.Where("\"id\" = ?", o.FactionID),
 		qmhelper.WhereIsNull("deleted_at"),
 	}
 
 	queryMods = append(queryMods, mods...)
 
-	query := Syndicates(queryMods...)
-	queries.SetFrom(query.Query, "\"syndicates\"")
+	query := Factions(queryMods...)
+	queries.SetFrom(query.Query, "\"factions\"")
 
 	return query
 }
@@ -552,9 +552,9 @@ func (templateL) LoadBlueprintChassis(e boil.Executor, singular bool, maybeTempl
 	return nil
 }
 
-// LoadSyndicate allows an eager lookup of values, cached into the
+// LoadFaction allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (templateL) LoadSyndicate(e boil.Executor, singular bool, maybeTemplate interface{}, mods queries.Applicator) error {
+func (templateL) LoadFaction(e boil.Executor, singular bool, maybeTemplate interface{}, mods queries.Applicator) error {
 	var slice []*Template
 	var object *Template
 
@@ -569,7 +569,7 @@ func (templateL) LoadSyndicate(e boil.Executor, singular bool, maybeTemplate int
 		if object.R == nil {
 			object.R = &templateR{}
 		}
-		args = append(args, object.SyndicateID)
+		args = append(args, object.FactionID)
 
 	} else {
 	Outer:
@@ -579,12 +579,12 @@ func (templateL) LoadSyndicate(e boil.Executor, singular bool, maybeTemplate int
 			}
 
 			for _, a := range args {
-				if a == obj.SyndicateID {
+				if a == obj.FactionID {
 					continue Outer
 				}
 			}
 
-			args = append(args, obj.SyndicateID)
+			args = append(args, obj.FactionID)
 
 		}
 	}
@@ -594,9 +594,9 @@ func (templateL) LoadSyndicate(e boil.Executor, singular bool, maybeTemplate int
 	}
 
 	query := NewQuery(
-		qm.From(`syndicates`),
-		qm.WhereIn(`syndicates.id in ?`, args...),
-		qmhelper.WhereIsNull(`syndicates.deleted_at`),
+		qm.From(`factions`),
+		qm.WhereIn(`factions.id in ?`, args...),
+		qmhelper.WhereIsNull(`factions.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -604,19 +604,19 @@ func (templateL) LoadSyndicate(e boil.Executor, singular bool, maybeTemplate int
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load Syndicate")
+		return errors.Wrap(err, "failed to eager load Faction")
 	}
 
-	var resultSlice []*Syndicate
+	var resultSlice []*Faction
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice Syndicate")
+		return errors.Wrap(err, "failed to bind eager loaded slice Faction")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for syndicates")
+		return errors.Wrap(err, "failed to close results of eager load for factions")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for syndicates")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for factions")
 	}
 
 	if len(templateAfterSelectHooks) != 0 {
@@ -633,9 +633,9 @@ func (templateL) LoadSyndicate(e boil.Executor, singular bool, maybeTemplate int
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.Syndicate = foreign
+		object.R.Faction = foreign
 		if foreign.R == nil {
-			foreign.R = &syndicateR{}
+			foreign.R = &factionR{}
 		}
 		foreign.R.Templates = append(foreign.R.Templates, object)
 		return nil
@@ -643,10 +643,10 @@ func (templateL) LoadSyndicate(e boil.Executor, singular bool, maybeTemplate int
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if local.SyndicateID == foreign.ID {
-				local.R.Syndicate = foreign
+			if local.FactionID == foreign.ID {
+				local.R.Faction = foreign
 				if foreign.R == nil {
-					foreign.R = &syndicateR{}
+					foreign.R = &factionR{}
 				}
 				foreign.R.Templates = append(foreign.R.Templates, local)
 				break
@@ -802,10 +802,10 @@ func (o *Template) SetBlueprintChassis(exec boil.Executor, insert bool, related 
 	return nil
 }
 
-// SetSyndicate of the template to the related item.
-// Sets o.R.Syndicate to related.
+// SetFaction of the template to the related item.
+// Sets o.R.Faction to related.
 // Adds o to related.R.Templates.
-func (o *Template) SetSyndicate(exec boil.Executor, insert bool, related *Syndicate) error {
+func (o *Template) SetFaction(exec boil.Executor, insert bool, related *Faction) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -815,7 +815,7 @@ func (o *Template) SetSyndicate(exec boil.Executor, insert bool, related *Syndic
 
 	updateQuery := fmt.Sprintf(
 		"UPDATE \"templates\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"syndicate_id"}),
+		strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
 		strmangle.WhereClause("\"", "\"", 2, templatePrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
@@ -828,17 +828,17 @@ func (o *Template) SetSyndicate(exec boil.Executor, insert bool, related *Syndic
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	o.SyndicateID = related.ID
+	o.FactionID = related.ID
 	if o.R == nil {
 		o.R = &templateR{
-			Syndicate: related,
+			Faction: related,
 		}
 	} else {
-		o.R.Syndicate = related
+		o.R.Faction = related
 	}
 
 	if related.R == nil {
-		related.R = &syndicateR{
+		related.R = &factionR{
 			Templates: TemplateSlice{o},
 		}
 	} else {

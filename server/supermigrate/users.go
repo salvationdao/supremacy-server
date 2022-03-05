@@ -19,9 +19,9 @@ func ProcessUser(tx *sql.Tx, data *UserPayload) (bool, bool, error) {
 		if err != nil {
 			return false, false, err
 		}
-		player.SyndicateID = data.FactionID
+		player.FactionID = data.FactionID
 		player.Username = data.Username
-		_, err = player.Update(tx, boil.Whitelist(boiler.PlayerColumns.SyndicateID, boiler.PlayerColumns.Username))
+		_, err = player.Update(tx, boil.Whitelist(boiler.PlayerColumns.FactionID, boiler.PlayerColumns.Username))
 		if err != nil {
 			return false, false, err
 		}
@@ -35,7 +35,7 @@ func ProcessUser(tx *sql.Tx, data *UserPayload) (bool, bool, error) {
 	}
 	record := &boiler.Player{
 		ID:            data.ID,
-		SyndicateID:   data.FactionID,
+		FactionID:     data.FactionID,
 		Username:      data.Username,
 		PublicAddress: addr,
 	}

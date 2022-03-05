@@ -35,7 +35,6 @@ var TableNames = struct {
 	Players                                            string
 	SchemaMigrations                                   string
 	StreamList                                         string
-	Syndicates                                         string
 	Templates                                          string
 	Users                                              string
 	Weapons                                            string
@@ -71,7 +70,6 @@ var TableNames = struct {
 	Players:                                            "players",
 	SchemaMigrations:                                   "schema_migrations",
 	StreamList:                                         "stream_list",
-	Syndicates:                                         "syndicates",
 	Templates:                                          "templates",
 	Users:                                              "users",
 	Weapons:                                            "weapons",

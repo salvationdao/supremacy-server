@@ -65,6 +65,10 @@ func ProcessMech(tx *sql.Tx, data *AssetPayload, metadata *MetadataPayload) (boo
 	if err != nil {
 		return false, false, fmt.Errorf("check mech exist: %w", err)
 	}
+	err = template.L.LoadBlueprintChassis(tx, true, template, nil)
+	if err != nil {
+		return false, false, fmt.Errorf("load blueprint chassis: %w", err)
+	}
 
 	brandExists, err := boiler.Brands(qm.Where("label = ?", BrandMap[att.Brand])).Exists(tx)
 	if err != nil {
@@ -117,13 +121,8 @@ func ProcessMech(tx *sql.Tx, data *AssetPayload, metadata *MetadataPayload) (boo
 		return false, false, fmt.Errorf("convert external token ID: %w", err)
 	}
 
-	err = template.L.LoadBlueprintChassis(tx, true, template, nil)
-	if err != nil {
-		return false, false, fmt.Errorf("load blueprint chassis: %w", err)
-	}
 	newMech := &boiler.Mech{
 		ID:              uuid.Must(uuid.NewV4()).String(),
-		BrandID:         template.R.BlueprintChassis.BrandID,
 		ImageURL:        metadata.Image,
 		AnimationURL:    metadata.AnimationURL,
 		CollectionID:    data.CollectionID,
@@ -142,38 +141,35 @@ func ProcessMech(tx *sql.Tx, data *AssetPayload, metadata *MetadataPayload) (boo
 		return false, false, fmt.Errorf("insert mech: %w", err)
 	}
 
-	if weapon1 != nil {
-		err = weapon1.Insert(tx, boil.Infer())
-		if err != nil {
-			return false, false, fmt.Errorf("insert weapon 1: %w", err)
-		}
-		join := &boiler.ChassisWeapon{
-			WeaponID:      weapon1.ID,
-			ChassisID:     chassis.ID,
-			MountLocation: weapon1.WeaponType,
-			SlotNumber:    1,
-		}
-		err = join.Insert(tx, boil.Infer())
-		if err != nil {
-			return false, false, fmt.Errorf("insert weapon 1 join : %w", err)
-		}
+	err = weapon1.Insert(tx, boil.Infer())
+	if err != nil {
+		return false, false, fmt.Errorf("insert weapon 1: %w", err)
 	}
-	if weapon2 != nil {
-		err = weapon2.Insert(tx, boil.Infer())
-		if err != nil {
-			return false, false, fmt.Errorf("insert weapon 2: %w", err)
-		}
-		join := &boiler.ChassisWeapon{
-			WeaponID:      weapon2.ID,
-			ChassisID:     chassis.ID,
-			MountLocation: weapon2.WeaponType,
-			SlotNumber:    2,
-		}
-		err = join.Insert(tx, boil.Infer())
-		if err != nil {
-			return false, false, fmt.Errorf("insert weapon 2 join : %w", err)
-		}
+	join1 := &boiler.ChassisWeapon{
+		WeaponID:      weapon1.ID,
+		ChassisID:     chassis.ID,
+		MountLocation: weapon1.WeaponType,
+		SlotNumber:    1,
 	}
+	err = join1.Insert(tx, boil.Infer())
+	if err != nil {
+		return false, false, fmt.Errorf("insert weapon 1 join : %w", err)
+	}
+	err = weapon2.Insert(tx, boil.Infer())
+	if err != nil {
+		return false, false, fmt.Errorf("insert weapon 2: %w", err)
+	}
+	join2 := &boiler.ChassisWeapon{
+		WeaponID:      weapon2.ID,
+		ChassisID:     chassis.ID,
+		MountLocation: weapon2.WeaponType,
+		SlotNumber:    2,
+	}
+	err = join2.Insert(tx, boil.Infer())
+	if err != nil {
+		return false, false, fmt.Errorf("insert weapon 2 join : %w", err)
+	}
+
 	if turret1 != nil {
 		err = turret1.Insert(tx, boil.Infer())
 		if err != nil {
@@ -218,6 +214,7 @@ func ProcessChassis(brand *boiler.Brand, attributes []Attributes) (*boiler.Chass
 	label := fmt.Sprintf("%s %s %s %s Chassis", att.Brand, att.Model, att.SubModel, att.Name)
 	result := &boiler.Chassis{
 		ID:                 uuid.Must(uuid.NewV4()).String(),
+		BrandID:            brand.ID,
 		ShieldRechargeRate: att.ShieldRechargeRate,
 		MaxShield:          att.MaxShieldHitPoints,
 		Label:              label,

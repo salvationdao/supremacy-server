@@ -23,9 +23,10 @@ import (
 
 // User is an object representing the database table.
 type User struct {
-	ID              string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	ViewBattleCount int       `boiler:"view_battle_count" boil:"view_battle_count" json:"viewBattleCount" toml:"viewBattleCount" yaml:"viewBattleCount"`
-	SupsMultipliers null.JSON `boiler:"sups_multipliers" boil:"sups_multipliers" json:"supsMultipliers,omitempty" toml:"supsMultipliers" yaml:"supsMultipliers,omitempty"`
+	ID              string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	ViewBattleCount int         `boiler:"view_battle_count" boil:"view_battle_count" json:"viewBattleCount" toml:"viewBattleCount" yaml:"viewBattleCount"`
+	SupsMultipliers null.JSON   `boiler:"sups_multipliers" boil:"sups_multipliers" json:"supsMultipliers,omitempty" toml:"supsMultipliers" yaml:"supsMultipliers,omitempty"`
+	PlayerID        null.String `boiler:"player_id" boil:"player_id" json:"playerID,omitempty" toml:"playerID" yaml:"playerID,omitempty"`
 
 	R *userR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L userL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -35,20 +36,24 @@ var UserColumns = struct {
 	ID              string
 	ViewBattleCount string
 	SupsMultipliers string
+	PlayerID        string
 }{
 	ID:              "id",
 	ViewBattleCount: "view_battle_count",
 	SupsMultipliers: "sups_multipliers",
+	PlayerID:        "player_id",
 }
 
 var UserTableColumns = struct {
 	ID              string
 	ViewBattleCount string
 	SupsMultipliers string
+	PlayerID        string
 }{
 	ID:              "users.id",
 	ViewBattleCount: "users.view_battle_count",
 	SupsMultipliers: "users.sups_multipliers",
+	PlayerID:        "users.player_id",
 }
 
 // Generated where
@@ -81,21 +86,26 @@ var UserWhere = struct {
 	ID              whereHelperstring
 	ViewBattleCount whereHelperint
 	SupsMultipliers whereHelpernull_JSON
+	PlayerID        whereHelpernull_String
 }{
 	ID:              whereHelperstring{field: "\"users\".\"id\""},
 	ViewBattleCount: whereHelperint{field: "\"users\".\"view_battle_count\""},
 	SupsMultipliers: whereHelpernull_JSON{field: "\"users\".\"sups_multipliers\""},
+	PlayerID:        whereHelpernull_String{field: "\"users\".\"player_id\""},
 }
 
 // UserRels is where relationship names are stored.
 var UserRels = struct {
+	Player           string
 	BattlesUserVotes string
 }{
+	Player:           "Player",
 	BattlesUserVotes: "BattlesUserVotes",
 }
 
 // userR is where relationships are stored.
 type userR struct {
+	Player           *Player              `boiler:"Player" boil:"Player" json:"Player" toml:"Player" yaml:"Player"`
 	BattlesUserVotes BattlesUserVoteSlice `boiler:"BattlesUserVotes" boil:"BattlesUserVotes" json:"BattlesUserVotes" toml:"BattlesUserVotes" yaml:"BattlesUserVotes"`
 }
 
@@ -108,9 +118,9 @@ func (*userR) NewStruct() *userR {
 type userL struct{}
 
 var (
-	userAllColumns            = []string{"id", "view_battle_count", "sups_multipliers"}
+	userAllColumns            = []string{"id", "view_battle_count", "sups_multipliers", "player_id"}
 	userColumnsWithoutDefault = []string{}
-	userColumnsWithDefault    = []string{"id", "view_battle_count", "sups_multipliers"}
+	userColumnsWithDefault    = []string{"id", "view_battle_count", "sups_multipliers", "player_id"}
 	userPrimaryKeyColumns     = []string{"id"}
 	userGeneratedColumns      = []string{}
 )
@@ -357,6 +367,21 @@ func (q userQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
+// Player pointed to by the foreign key.
+func (o *User) Player(mods ...qm.QueryMod) playerQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.PlayerID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Players(queryMods...)
+	queries.SetFrom(query.Query, "\"players\"")
+
+	return query
+}
+
 // BattlesUserVotes retrieves all the battles_user_vote's BattlesUserVotes with an executor.
 func (o *User) BattlesUserVotes(mods ...qm.QueryMod) battlesUserVoteQuery {
 	var queryMods []qm.QueryMod
@@ -376,6 +401,115 @@ func (o *User) BattlesUserVotes(mods ...qm.QueryMod) battlesUserVoteQuery {
 	}
 
 	return query
+}
+
+// LoadPlayer allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (userL) LoadPlayer(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+	var slice []*User
+	var object *User
+
+	if singular {
+		object = maybeUser.(*User)
+	} else {
+		slice = *maybeUser.(*[]*User)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userR{}
+		}
+		if !queries.IsNil(object.PlayerID) {
+			args = append(args, object.PlayerID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.PlayerID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.PlayerID) {
+				args = append(args, obj.PlayerID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`players`),
+		qm.WhereIn(`players.id in ?`, args...),
+		qmhelper.WhereIsNull(`players.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Player")
+	}
+
+	var resultSlice []*Player
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Player")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for players")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players")
+	}
+
+	if len(userAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Player = foreign
+		if foreign.R == nil {
+			foreign.R = &playerR{}
+		}
+		foreign.R.Users = append(foreign.R.Users, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.PlayerID, foreign.ID) {
+				local.R.Player = foreign
+				if foreign.R == nil {
+					foreign.R = &playerR{}
+				}
+				foreign.R.Users = append(foreign.R.Users, local)
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadBattlesUserVotes allows an eager lookup of values, cached into the
@@ -473,6 +607,85 @@ func (userL) LoadBattlesUserVotes(e boil.Executor, singular bool, maybeUser inte
 		}
 	}
 
+	return nil
+}
+
+// SetPlayer of the user to the related item.
+// Sets o.R.Player to related.
+// Adds o to related.R.Users.
+func (o *User) SetPlayer(exec boil.Executor, insert bool, related *Player) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"users\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"player_id"}),
+		strmangle.WhereClause("\"", "\"", 2, userPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.PlayerID, related.ID)
+	if o.R == nil {
+		o.R = &userR{
+			Player: related,
+		}
+	} else {
+		o.R.Player = related
+	}
+
+	if related.R == nil {
+		related.R = &playerR{
+			Users: UserSlice{o},
+		}
+	} else {
+		related.R.Users = append(related.R.Users, o)
+	}
+
+	return nil
+}
+
+// RemovePlayer relationship.
+// Sets o.R.Player to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *User) RemovePlayer(exec boil.Executor, related *Player) error {
+	var err error
+
+	queries.SetScanner(&o.PlayerID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("player_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.Player = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.Users {
+		if queries.Equal(o.PlayerID, ri.PlayerID) {
+			continue
+		}
+
+		ln := len(related.R.Users)
+		if ln > 1 && i < ln-1 {
+			related.R.Users[i] = related.R.Users[ln-1]
+		}
+		related.R.Users = related.R.Users[:ln-1]
+		break
+	}
 	return nil
 }
 

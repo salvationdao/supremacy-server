@@ -107,6 +107,10 @@ db-migrate-down-one:
 db-migrate-up-one:
 	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(SERVER)/db/migrations up 1
 
+.PHONY: db-migrate-up-to-seed
+db-migrate-up-to-seed:
+	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(SERVER)/db/migrations up 14
+
 .PHONY: db-prepare
 db-prepare: db-drop db-migrate
 
@@ -119,7 +123,7 @@ db-update-assets:
 	cd $(SERVER) && go run cmd/gameserver/main.go db --assets
 
 .PHONY: db-reset
-db-reset: db-drop db-migrate db-seed
+db-reset: db-drop db-migrate-up-to-seed db-seed db-migrate
 
 # make sure `make tools` is done
 .PHONY: db-boiler
