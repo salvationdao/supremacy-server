@@ -23,15 +23,15 @@ import (
 
 // Module is an object representing the database table.
 type Module struct {
-	ID               string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	BrandID          string    `boiler:"brand_id" boil:"brand_id" json:"brandID" toml:"brandID" yaml:"brandID"`
-	Slug             string    `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
-	Label            string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	HitpointModifier int       `boiler:"hitpoint_modifier" boil:"hitpoint_modifier" json:"hitpointModifier" toml:"hitpointModifier" yaml:"hitpointModifier"`
-	ShieldModifier   int       `boiler:"shield_modifier" boil:"shield_modifier" json:"shieldModifier" toml:"shieldModifier" yaml:"shieldModifier"`
-	DeletedAt        null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
-	UpdatedAt        time.Time `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
-	CreatedAt        time.Time `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	ID               string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	BrandID          null.String `boiler:"brand_id" boil:"brand_id" json:"brandID,omitempty" toml:"brandID" yaml:"brandID,omitempty"`
+	Slug             string      `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
+	Label            string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	HitpointModifier int         `boiler:"hitpoint_modifier" boil:"hitpoint_modifier" json:"hitpointModifier" toml:"hitpointModifier" yaml:"hitpointModifier"`
+	ShieldModifier   int         `boiler:"shield_modifier" boil:"shield_modifier" json:"shieldModifier" toml:"shieldModifier" yaml:"shieldModifier"`
+	DeletedAt        null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
+	UpdatedAt        time.Time   `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
+	CreatedAt        time.Time   `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
 
 	R *moduleR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L moduleL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -85,7 +85,7 @@ var ModuleTableColumns = struct {
 
 var ModuleWhere = struct {
 	ID               whereHelperstring
-	BrandID          whereHelperstring
+	BrandID          whereHelpernull_String
 	Slug             whereHelperstring
 	Label            whereHelperstring
 	HitpointModifier whereHelperint
@@ -95,7 +95,7 @@ var ModuleWhere = struct {
 	CreatedAt        whereHelpertime_Time
 }{
 	ID:               whereHelperstring{field: "\"modules\".\"id\""},
-	BrandID:          whereHelperstring{field: "\"modules\".\"brand_id\""},
+	BrandID:          whereHelpernull_String{field: "\"modules\".\"brand_id\""},
 	Slug:             whereHelperstring{field: "\"modules\".\"slug\""},
 	Label:            whereHelperstring{field: "\"modules\".\"label\""},
 	HitpointModifier: whereHelperint{field: "\"modules\".\"hitpoint_modifier\""},
@@ -107,17 +107,17 @@ var ModuleWhere = struct {
 
 // ModuleRels is where relationship names are stored.
 var ModuleRels = struct {
-	Brand        string
-	MechsModules string
+	Brand         string
+	ChassisModule string
 }{
-	Brand:        "Brand",
-	MechsModules: "MechsModules",
+	Brand:         "Brand",
+	ChassisModule: "ChassisModule",
 }
 
 // moduleR is where relationships are stored.
 type moduleR struct {
-	Brand        *Brand           `boiler:"Brand" boil:"Brand" json:"Brand" toml:"Brand" yaml:"Brand"`
-	MechsModules MechsModuleSlice `boiler:"MechsModules" boil:"MechsModules" json:"MechsModules" toml:"MechsModules" yaml:"MechsModules"`
+	Brand         *Brand         `boiler:"Brand" boil:"Brand" json:"Brand" toml:"Brand" yaml:"Brand"`
+	ChassisModule *ChassisModule `boiler:"ChassisModule" boil:"ChassisModule" json:"ChassisModule" toml:"ChassisModule" yaml:"ChassisModule"`
 }
 
 // NewStruct creates a new relationship struct
@@ -130,8 +130,8 @@ type moduleL struct{}
 
 var (
 	moduleAllColumns            = []string{"id", "brand_id", "slug", "label", "hitpoint_modifier", "shield_modifier", "deleted_at", "updated_at", "created_at"}
-	moduleColumnsWithoutDefault = []string{"brand_id", "slug", "label", "hitpoint_modifier", "shield_modifier"}
-	moduleColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at"}
+	moduleColumnsWithoutDefault = []string{"slug", "label", "hitpoint_modifier", "shield_modifier"}
+	moduleColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at"}
 	modulePrimaryKeyColumns     = []string{"id"}
 	moduleGeneratedColumns      = []string{}
 )
@@ -393,24 +393,17 @@ func (o *Module) Brand(mods ...qm.QueryMod) brandQuery {
 	return query
 }
 
-// MechsModules retrieves all the mechs_module's MechsModules with an executor.
-func (o *Module) MechsModules(mods ...qm.QueryMod) mechsModuleQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
+// ChassisModule pointed to by the foreign key.
+func (o *Module) ChassisModule(mods ...qm.QueryMod) chassisModuleQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"module_id\" = ?", o.ID),
+		qmhelper.WhereIsNull("deleted_at"),
 	}
 
-	queryMods = append(queryMods,
-		qm.Where("\"mechs_modules\".\"module_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"mechs_modules\".\"deleted_at\""),
-	)
+	queryMods = append(queryMods, mods...)
 
-	query := MechsModules(queryMods...)
-	queries.SetFrom(query.Query, "\"mechs_modules\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"mechs_modules\".*"})
-	}
+	query := ChassisModules(queryMods...)
+	queries.SetFrom(query.Query, "\"chassis_modules\"")
 
 	return query
 }
@@ -432,7 +425,9 @@ func (moduleL) LoadBrand(e boil.Executor, singular bool, maybeModule interface{}
 		if object.R == nil {
 			object.R = &moduleR{}
 		}
-		args = append(args, object.BrandID)
+		if !queries.IsNil(object.BrandID) {
+			args = append(args, object.BrandID)
+		}
 
 	} else {
 	Outer:
@@ -442,12 +437,14 @@ func (moduleL) LoadBrand(e boil.Executor, singular bool, maybeModule interface{}
 			}
 
 			for _, a := range args {
-				if a == obj.BrandID {
+				if queries.Equal(a, obj.BrandID) {
 					continue Outer
 				}
 			}
 
-			args = append(args, obj.BrandID)
+			if !queries.IsNil(obj.BrandID) {
+				args = append(args, obj.BrandID)
+			}
 
 		}
 	}
@@ -506,7 +503,7 @@ func (moduleL) LoadBrand(e boil.Executor, singular bool, maybeModule interface{}
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if local.BrandID == foreign.ID {
+			if queries.Equal(local.BrandID, foreign.ID) {
 				local.R.Brand = foreign
 				if foreign.R == nil {
 					foreign.R = &brandR{}
@@ -520,9 +517,9 @@ func (moduleL) LoadBrand(e boil.Executor, singular bool, maybeModule interface{}
 	return nil
 }
 
-// LoadMechsModules allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (moduleL) LoadMechsModules(e boil.Executor, singular bool, maybeModule interface{}, mods queries.Applicator) error {
+// LoadChassisModule allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-1 relationship.
+func (moduleL) LoadChassisModule(e boil.Executor, singular bool, maybeModule interface{}, mods queries.Applicator) error {
 	var slice []*Module
 	var object *Module
 
@@ -560,9 +557,9 @@ func (moduleL) LoadMechsModules(e boil.Executor, singular bool, maybeModule inte
 	}
 
 	query := NewQuery(
-		qm.From(`mechs_modules`),
-		qm.WhereIn(`mechs_modules.module_id in ?`, args...),
-		qmhelper.WhereIsNull(`mechs_modules.deleted_at`),
+		qm.From(`chassis_modules`),
+		qm.WhereIn(`chassis_modules.module_id in ?`, args...),
+		qmhelper.WhereIsNull(`chassis_modules.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -570,45 +567,48 @@ func (moduleL) LoadMechsModules(e boil.Executor, singular bool, maybeModule inte
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load mechs_modules")
+		return errors.Wrap(err, "failed to eager load ChassisModule")
 	}
 
-	var resultSlice []*MechsModule
+	var resultSlice []*ChassisModule
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice mechs_modules")
+		return errors.Wrap(err, "failed to bind eager loaded slice ChassisModule")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on mechs_modules")
+		return errors.Wrap(err, "failed to close results of eager load for chassis_modules")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mechs_modules")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for chassis_modules")
 	}
 
-	if len(mechsModuleAfterSelectHooks) != 0 {
+	if len(moduleAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
 			}
 		}
 	}
-	if singular {
-		object.R.MechsModules = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &mechsModuleR{}
-			}
-			foreign.R.Module = object
-		}
+
+	if len(resultSlice) == 0 {
 		return nil
 	}
 
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
+	if singular {
+		foreign := resultSlice[0]
+		object.R.ChassisModule = foreign
+		if foreign.R == nil {
+			foreign.R = &chassisModuleR{}
+		}
+		foreign.R.Module = object
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
 			if local.ID == foreign.ModuleID {
-				local.R.MechsModules = append(local.R.MechsModules, foreign)
+				local.R.ChassisModule = foreign
 				if foreign.R == nil {
-					foreign.R = &mechsModuleR{}
+					foreign.R = &chassisModuleR{}
 				}
 				foreign.R.Module = local
 				break
@@ -645,7 +645,7 @@ func (o *Module) SetBrand(exec boil.Executor, insert bool, related *Brand) error
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	o.BrandID = related.ID
+	queries.Assign(&o.BrandID, related.ID)
 	if o.R == nil {
 		o.R = &moduleR{
 			Brand: related,
@@ -665,54 +665,85 @@ func (o *Module) SetBrand(exec boil.Executor, insert bool, related *Brand) error
 	return nil
 }
 
-// AddMechsModules adds the given related objects to the existing relationships
-// of the module, optionally inserting them as new records.
-// Appends related to o.R.MechsModules.
-// Sets related.R.Module appropriately.
-func (o *Module) AddMechsModules(exec boil.Executor, insert bool, related ...*MechsModule) error {
+// RemoveBrand relationship.
+// Sets o.R.Brand to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *Module) RemoveBrand(exec boil.Executor, related *Brand) error {
 	var err error
-	for _, rel := range related {
-		if insert {
-			rel.ModuleID = o.ID
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"mechs_modules\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"module_id"}),
-				strmangle.WhereClause("\"", "\"", 2, mechsModulePrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
 
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
+	queries.SetScanner(&o.BrandID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("brand_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
 
-			rel.ModuleID = o.ID
+	if o.R != nil {
+		o.R.Brand = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.Modules {
+		if queries.Equal(o.BrandID, ri.BrandID) {
+			continue
 		}
+
+		ln := len(related.R.Modules)
+		if ln > 1 && i < ln-1 {
+			related.R.Modules[i] = related.R.Modules[ln-1]
+		}
+		related.R.Modules = related.R.Modules[:ln-1]
+		break
+	}
+	return nil
+}
+
+// SetChassisModule of the module to the related item.
+// Sets o.R.ChassisModule to related.
+// Adds o to related.R.Module.
+func (o *Module) SetChassisModule(exec boil.Executor, insert bool, related *ChassisModule) error {
+	var err error
+
+	if insert {
+		related.ModuleID = o.ID
+
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	} else {
+		updateQuery := fmt.Sprintf(
+			"UPDATE \"chassis_modules\" SET %s WHERE %s",
+			strmangle.SetParamNames("\"", "\"", 1, []string{"module_id"}),
+			strmangle.WhereClause("\"", "\"", 2, chassisModulePrimaryKeyColumns),
+		)
+		values := []interface{}{o.ID, related.ID}
+
+		if boil.DebugMode {
+			fmt.Fprintln(boil.DebugWriter, updateQuery)
+			fmt.Fprintln(boil.DebugWriter, values)
+		}
+		if _, err = exec.Exec(updateQuery, values...); err != nil {
+			return errors.Wrap(err, "failed to update foreign table")
+		}
+
+		related.ModuleID = o.ID
+
 	}
 
 	if o.R == nil {
 		o.R = &moduleR{
-			MechsModules: related,
+			ChassisModule: related,
 		}
 	} else {
-		o.R.MechsModules = append(o.R.MechsModules, related...)
+		o.R.ChassisModule = related
 	}
 
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &mechsModuleR{
-				Module: o,
-			}
-		} else {
-			rel.R.Module = o
+	if related.R == nil {
+		related.R = &chassisModuleR{
+			Module: o,
 		}
+	} else {
+		related.R.Module = o
 	}
 	return nil
 }

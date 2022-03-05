@@ -11,6 +11,7 @@ var GameLog *zerolog.Logger
 
 func New(environment, level string) {
 	log := log_helpers.LoggerInitZero(environment, level)
+
 	if environment == "production" || environment == "staging" {
 		logPtr := zerolog.New(os.Stdout)
 		logPtr = logPtr.With().Caller().Logger()
@@ -21,4 +22,5 @@ func New(environment, level string) {
 		panic("GameLog already initialised")
 	}
 	GameLog = log
+	*GameLog = GameLog.With().Caller().Logger()
 }

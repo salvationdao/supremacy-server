@@ -23,14 +23,14 @@ var TableNames = struct {
 	BlueprintWeapons                                   string
 	Brands                                             string
 	Chassis                                            string
+	ChassisModules                                     string
+	ChassisWeapons                                     string
 	Factions                                           string
 	GameAbilities                                      string
 	GameMaps                                           string
 	GlobalAnnouncements                                string
 	IssuedContractRewards                              string
 	Mechs                                              string
-	MechsModules                                       string
-	MechsWeapons                                       string
 	Modules                                            string
 	Players                                            string
 	SchemaMigrations                                   string
@@ -59,14 +59,14 @@ var TableNames = struct {
 	BlueprintWeapons:                                   "blueprint_weapons",
 	Brands:                                             "brands",
 	Chassis:                                            "chassis",
+	ChassisModules:                                     "chassis_modules",
+	ChassisWeapons:                                     "chassis_weapons",
 	Factions:                                           "factions",
 	GameAbilities:                                      "game_abilities",
 	GameMaps:                                           "game_maps",
 	GlobalAnnouncements:                                "global_announcements",
 	IssuedContractRewards:                              "issued_contract_rewards",
 	Mechs:                                              "mechs",
-	MechsModules:                                       "mechs_modules",
-	MechsWeapons:                                       "mechs_weapons",
 	Modules:                                            "modules",
 	Players:                                            "players",
 	SchemaMigrations:                                   "schema_migrations",

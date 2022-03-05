@@ -26,6 +26,7 @@ type BlueprintChassisBlueprintModule struct {
 	ID                 string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	BlueprintModuleID  string    `boiler:"blueprint_module_id" boil:"blueprint_module_id" json:"blueprintModuleID" toml:"blueprintModuleID" yaml:"blueprintModuleID"`
 	BlueprintChassisID string    `boiler:"blueprint_chassis_id" boil:"blueprint_chassis_id" json:"blueprintChassisID" toml:"blueprintChassisID" yaml:"blueprintChassisID"`
+	SlotNumber         int       `boiler:"slot_number" boil:"slot_number" json:"slotNumber" toml:"slotNumber" yaml:"slotNumber"`
 	DeletedAt          null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
 	UpdatedAt          time.Time `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
 	CreatedAt          time.Time `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
@@ -38,6 +39,7 @@ var BlueprintChassisBlueprintModuleColumns = struct {
 	ID                 string
 	BlueprintModuleID  string
 	BlueprintChassisID string
+	SlotNumber         string
 	DeletedAt          string
 	UpdatedAt          string
 	CreatedAt          string
@@ -45,6 +47,7 @@ var BlueprintChassisBlueprintModuleColumns = struct {
 	ID:                 "id",
 	BlueprintModuleID:  "blueprint_module_id",
 	BlueprintChassisID: "blueprint_chassis_id",
+	SlotNumber:         "slot_number",
 	DeletedAt:          "deleted_at",
 	UpdatedAt:          "updated_at",
 	CreatedAt:          "created_at",
@@ -54,6 +57,7 @@ var BlueprintChassisBlueprintModuleTableColumns = struct {
 	ID                 string
 	BlueprintModuleID  string
 	BlueprintChassisID string
+	SlotNumber         string
 	DeletedAt          string
 	UpdatedAt          string
 	CreatedAt          string
@@ -61,6 +65,7 @@ var BlueprintChassisBlueprintModuleTableColumns = struct {
 	ID:                 "blueprint_chassis_blueprint_modules.id",
 	BlueprintModuleID:  "blueprint_chassis_blueprint_modules.blueprint_module_id",
 	BlueprintChassisID: "blueprint_chassis_blueprint_modules.blueprint_chassis_id",
+	SlotNumber:         "blueprint_chassis_blueprint_modules.slot_number",
 	DeletedAt:          "blueprint_chassis_blueprint_modules.deleted_at",
 	UpdatedAt:          "blueprint_chassis_blueprint_modules.updated_at",
 	CreatedAt:          "blueprint_chassis_blueprint_modules.created_at",
@@ -72,6 +77,7 @@ var BlueprintChassisBlueprintModuleWhere = struct {
 	ID                 whereHelperstring
 	BlueprintModuleID  whereHelperstring
 	BlueprintChassisID whereHelperstring
+	SlotNumber         whereHelperint
 	DeletedAt          whereHelpernull_Time
 	UpdatedAt          whereHelpertime_Time
 	CreatedAt          whereHelpertime_Time
@@ -79,6 +85,7 @@ var BlueprintChassisBlueprintModuleWhere = struct {
 	ID:                 whereHelperstring{field: "\"blueprint_chassis_blueprint_modules\".\"id\""},
 	BlueprintModuleID:  whereHelperstring{field: "\"blueprint_chassis_blueprint_modules\".\"blueprint_module_id\""},
 	BlueprintChassisID: whereHelperstring{field: "\"blueprint_chassis_blueprint_modules\".\"blueprint_chassis_id\""},
+	SlotNumber:         whereHelperint{field: "\"blueprint_chassis_blueprint_modules\".\"slot_number\""},
 	DeletedAt:          whereHelpernull_Time{field: "\"blueprint_chassis_blueprint_modules\".\"deleted_at\""},
 	UpdatedAt:          whereHelpertime_Time{field: "\"blueprint_chassis_blueprint_modules\".\"updated_at\""},
 	CreatedAt:          whereHelpertime_Time{field: "\"blueprint_chassis_blueprint_modules\".\"created_at\""},
@@ -108,8 +115,8 @@ func (*blueprintChassisBlueprintModuleR) NewStruct() *blueprintChassisBlueprintM
 type blueprintChassisBlueprintModuleL struct{}
 
 var (
-	blueprintChassisBlueprintModuleAllColumns            = []string{"id", "blueprint_module_id", "blueprint_chassis_id", "deleted_at", "updated_at", "created_at"}
-	blueprintChassisBlueprintModuleColumnsWithoutDefault = []string{"blueprint_module_id", "blueprint_chassis_id"}
+	blueprintChassisBlueprintModuleAllColumns            = []string{"id", "blueprint_module_id", "blueprint_chassis_id", "slot_number", "deleted_at", "updated_at", "created_at"}
+	blueprintChassisBlueprintModuleColumnsWithoutDefault = []string{"blueprint_module_id", "blueprint_chassis_id", "slot_number"}
 	blueprintChassisBlueprintModuleColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at"}
 	blueprintChassisBlueprintModulePrimaryKeyColumns     = []string{"id"}
 	blueprintChassisBlueprintModuleGeneratedColumns      = []string{}

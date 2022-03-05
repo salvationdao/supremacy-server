@@ -1,0 +1,248 @@
+package supermigrate
+
+import (
+	"database/sql"
+	"errors"
+	"fmt"
+	"math/rand"
+	"server/db/boiler"
+
+	"github.com/gofrs/uuid"
+	"github.com/gosimple/slug"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+)
+
+func ProcessMech(tx *sql.Tx, data *AssetPayload, metadata *MetadataPayload) (bool, error) {
+	att := GetAttributes(metadata.Attributes)
+
+	label, _ := TemplateLabelSlug(att.Brand, att.Model, att.SubModel)
+	fmt.Println(att.Brand, att.Model, att.SubModel)
+	fmt.Println(att)
+	templateExists, err := boiler.Templates(boiler.TemplateWhere.Label.EQ(label)).Exists(tx)
+	if err != nil {
+		return false, fmt.Errorf("check template exist: %w", err)
+	}
+	if !templateExists {
+		return false, fmt.Errorf("matching template does not exist: %s", label)
+	}
+	label, _ = TemplateLabelSlug(att.Brand, att.Model, att.SubModel)
+	template, err := boiler.Templates(boiler.TemplateWhere.Label.EQ(label)).One(tx)
+	if err != nil {
+		return false, fmt.Errorf("check mech exist: %w", err)
+	}
+
+	mechExists, err := boiler.Mechs(qm.Where("hash = ?", data.MetadataHash)).Exists(tx)
+	if err != nil {
+		return false, fmt.Errorf("check mech exist: %w", err)
+	}
+	if mechExists {
+		return false, errors.New("mech exists")
+	}
+
+	brandExists, err := boiler.Brands(qm.Where("label = ?", BrandMap[att.Brand])).Exists(tx)
+	if err != nil {
+		return false, fmt.Errorf("check brand exist: %w", err)
+	}
+	if !brandExists {
+		return false, fmt.Errorf("brand does not exist: %s", att.Brand)
+	}
+	brand, err := boiler.Brands(qm.Where("label = ?", BrandMap[att.Brand])).One(tx)
+	if err != nil {
+		return false, fmt.Errorf("get brand: %w", err)
+	}
+	chassis, err := ProcessChassis(brand, metadata.Attributes)
+	if err != nil {
+		return false, fmt.Errorf("process chassis: %w", err)
+	}
+
+	weapon1, err := ProcessWeapon("ARM", 1, brand, metadata.Attributes)
+	if err != nil {
+		return false, fmt.Errorf("process weapon: %w", err)
+	}
+
+	weapon2, err := ProcessWeapon("ARM", 2, brand, metadata.Attributes)
+	if err != nil {
+		return false, fmt.Errorf("process weapon: %w", err)
+	}
+
+	turret1, err := ProcessWeapon("TURRET", 1, brand, metadata.Attributes)
+	if err != nil {
+		return false, fmt.Errorf("process weapon: %w", err)
+	}
+
+	turret2, err := ProcessWeapon("TURRET", 2, brand, metadata.Attributes)
+	if err != nil {
+		return false, fmt.Errorf("process weapon: %w", err)
+	}
+
+	module, err := ProcessModule(brand, metadata.Attributes)
+	if err != nil {
+		return false, fmt.Errorf("process module: %w", err)
+	}
+
+	err = chassis.Insert(tx, boil.Infer())
+	if err != nil {
+		return false, fmt.Errorf("insert chassis: %w", err)
+	}
+	label, slug := MechLabelSlug(att.Brand, att.Model, att.SubModel, att.Name)
+	newMech := &boiler.Mech{
+		ID:         uuid.Must(uuid.NewV4()).String(),
+		OwnerID:    data.UserID,
+		TemplateID: template.ID,
+		ChassisID:  chassis.ID,
+		Hash:       data.MetadataHash,
+		Name:       att.Name,
+		Label:      label,
+		Slug:       slug,
+	}
+
+	err = newMech.Insert(tx, boil.Infer())
+	if err != nil {
+		return false, fmt.Errorf("insert mech: %w", err)
+	}
+
+	if weapon1 != nil {
+		err = weapon1.Insert(tx, boil.Infer())
+		if err != nil {
+			return false, fmt.Errorf("insert weapon 1: %w", err)
+		}
+		join := &boiler.ChassisWeapon{
+			WeaponID:   weapon1.ID,
+			ChassisID:  chassis.ID,
+			SlotNumber: 1,
+		}
+		err = join.Insert(tx, boil.Infer())
+		if err != nil {
+			return false, fmt.Errorf("insert weapon 1 join : %w", err)
+		}
+	}
+	if weapon2 != nil {
+		err = weapon2.Insert(tx, boil.Infer())
+		if err != nil {
+			return false, fmt.Errorf("insert weapon 2: %w", err)
+		}
+		join := &boiler.ChassisWeapon{
+			WeaponID:   weapon2.ID,
+			ChassisID:  chassis.ID,
+			SlotNumber: 2,
+		}
+		err = join.Insert(tx, boil.Infer())
+		if err != nil {
+			return false, fmt.Errorf("insert weapon 2 join : %w", err)
+		}
+	}
+	if turret1 != nil {
+		err = turret1.Insert(tx, boil.Infer())
+		if err != nil {
+			return false, fmt.Errorf("insert turret 1: %w", err)
+		}
+		join := &boiler.ChassisWeapon{
+			WeaponID:   turret1.ID,
+			ChassisID:  chassis.ID,
+			SlotNumber: 1,
+		}
+		err = join.Insert(tx, boil.Infer())
+		if err != nil {
+			return false, fmt.Errorf("insert turret 1 join: %w", err)
+		}
+	}
+	if turret2 != nil {
+		err = turret2.Insert(tx, boil.Infer())
+		if err != nil {
+			return false, fmt.Errorf("insert turret 2: %w", err)
+		}
+		join := &boiler.ChassisWeapon{
+			WeaponID:   turret2.ID,
+			ChassisID:  chassis.ID,
+			SlotNumber: 2,
+		}
+		err = join.Insert(tx, boil.Infer())
+		if err != nil {
+			return false, fmt.Errorf("insert turret 2 join: %w", err)
+		}
+	}
+	err = module.Insert(tx, boil.Infer())
+	if err != nil {
+		return false, fmt.Errorf("insert module: %w", err)
+	}
+
+	return false, nil
+}
+func ProcessChassis(brand *boiler.Brand, attributes []Attributes) (*boiler.Chassis, error) {
+	att := GetAttributes(attributes)
+	label := fmt.Sprintf("%s %s %s %s Chassis", att.Brand, att.Model, att.SubModel, att.Name)
+	result := &boiler.Chassis{
+		ID:                 uuid.Must(uuid.NewV4()).String(),
+		ShieldRechargeRate: att.ShieldRechargeRate,
+		MaxShield:          att.MaxShieldHitPoints,
+		Label:              label,
+		Slug:               slug.Make(fmt.Sprintf("%s#%d", label, 1000+rand.Intn(8999))),
+		HealthRemaining:    att.MaxStructureHitPoints,
+		WeaponHardpoints:   att.WeaponHardpoints,
+		TurretHardpoints:   att.TurretHardpoints,
+		UtilitySlots:       att.UtilitySlots,
+		Speed:              att.Speed,
+		Skin:               att.SubModel,
+		Model:              att.Model,
+		MaxHitpoints:       att.MaxStructureHitPoints,
+	}
+	return result, nil
+}
+func ProcessModule(brand *boiler.Brand, attributes []Attributes) (*boiler.Module, error) {
+	att := GetAttributes(attributes)
+	label := att.UtilityOne
+	result := &boiler.Module{
+		ID:               uuid.Must(uuid.NewV4()).String(),
+		Label:            att.UtilityOne,
+		Slug:             slug.Make(fmt.Sprintf("%s#%d", label, 1000+rand.Intn(8999))),
+		HitpointModifier: 100,
+		ShieldModifier:   100,
+	}
+	return result, nil
+}
+
+func ProcessWeapon(weaponType string, index int, brand *boiler.Brand, attributes []Attributes) (*boiler.Weapon, error) {
+	att := GetAttributes(attributes)
+	label := ""
+	weapslug := ""
+	if weaponType == "TURRET" {
+		if att.TurretHardpoints == 0 {
+			return nil, nil
+		}
+		if index == 1 {
+			label = att.TurretOne
+			weapslug = slug.Make(fmt.Sprintf("%s#%d", label, 1000+rand.Intn(8999)))
+		}
+		if index == 2 {
+			label = att.TurretTwo
+			weapslug = slug.Make(fmt.Sprintf("%s#%d", label, 1000+rand.Intn(8999)))
+		}
+	}
+
+	if weaponType == "ARM" {
+		if att.WeaponHardpoints == 0 {
+			return nil, nil
+		}
+		if index == 1 {
+			label = att.WeaponOne
+			weapslug = slug.Make(fmt.Sprintf("%s#%d", label, 1000+rand.Intn(8999)))
+		}
+		if index == 2 {
+			label = att.WeaponTwo
+			weapslug = slug.Make(fmt.Sprintf("%s#%d", label, 1000+rand.Intn(8999)))
+		}
+	}
+
+	if label == "" || weapslug == "" {
+		return nil, errors.New("could not find label, weapon or type")
+	}
+	result := &boiler.Weapon{
+		ID:         uuid.Must(uuid.NewV4()).String(),
+		Label:      label,
+		Slug:       weapslug,
+		Damage:     -1,
+		WeaponType: weaponType,
+	}
+	return result, nil
+}

@@ -23,15 +23,15 @@ import (
 
 // BlueprintModule is an object representing the database table.
 type BlueprintModule struct {
-	ID               string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	BrandID          string    `boiler:"brand_id" boil:"brand_id" json:"brandID" toml:"brandID" yaml:"brandID"`
-	Slug             string    `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
-	Label            string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	HitpointModifier int       `boiler:"hitpoint_modifier" boil:"hitpoint_modifier" json:"hitpointModifier" toml:"hitpointModifier" yaml:"hitpointModifier"`
-	ShieldModifier   int       `boiler:"shield_modifier" boil:"shield_modifier" json:"shieldModifier" toml:"shieldModifier" yaml:"shieldModifier"`
-	DeletedAt        null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
-	UpdatedAt        time.Time `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
-	CreatedAt        time.Time `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	ID               string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	BrandID          null.String `boiler:"brand_id" boil:"brand_id" json:"brandID,omitempty" toml:"brandID" yaml:"brandID,omitempty"`
+	Slug             string      `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
+	Label            string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	HitpointModifier int         `boiler:"hitpoint_modifier" boil:"hitpoint_modifier" json:"hitpointModifier" toml:"hitpointModifier" yaml:"hitpointModifier"`
+	ShieldModifier   int         `boiler:"shield_modifier" boil:"shield_modifier" json:"shieldModifier" toml:"shieldModifier" yaml:"shieldModifier"`
+	DeletedAt        null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
+	UpdatedAt        time.Time   `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
+	CreatedAt        time.Time   `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
 
 	R *blueprintModuleR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintModuleL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -85,7 +85,7 @@ var BlueprintModuleTableColumns = struct {
 
 var BlueprintModuleWhere = struct {
 	ID               whereHelperstring
-	BrandID          whereHelperstring
+	BrandID          whereHelpernull_String
 	Slug             whereHelperstring
 	Label            whereHelperstring
 	HitpointModifier whereHelperint
@@ -95,7 +95,7 @@ var BlueprintModuleWhere = struct {
 	CreatedAt        whereHelpertime_Time
 }{
 	ID:               whereHelperstring{field: "\"blueprint_modules\".\"id\""},
-	BrandID:          whereHelperstring{field: "\"blueprint_modules\".\"brand_id\""},
+	BrandID:          whereHelpernull_String{field: "\"blueprint_modules\".\"brand_id\""},
 	Slug:             whereHelperstring{field: "\"blueprint_modules\".\"slug\""},
 	Label:            whereHelperstring{field: "\"blueprint_modules\".\"label\""},
 	HitpointModifier: whereHelperint{field: "\"blueprint_modules\".\"hitpoint_modifier\""},
@@ -130,8 +130,8 @@ type blueprintModuleL struct{}
 
 var (
 	blueprintModuleAllColumns            = []string{"id", "brand_id", "slug", "label", "hitpoint_modifier", "shield_modifier", "deleted_at", "updated_at", "created_at"}
-	blueprintModuleColumnsWithoutDefault = []string{"brand_id", "slug", "label", "hitpoint_modifier", "shield_modifier"}
-	blueprintModuleColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at"}
+	blueprintModuleColumnsWithoutDefault = []string{"slug", "label", "hitpoint_modifier", "shield_modifier"}
+	blueprintModuleColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at"}
 	blueprintModulePrimaryKeyColumns     = []string{"id"}
 	blueprintModuleGeneratedColumns      = []string{}
 )
@@ -432,7 +432,9 @@ func (blueprintModuleL) LoadBrand(e boil.Executor, singular bool, maybeBlueprint
 		if object.R == nil {
 			object.R = &blueprintModuleR{}
 		}
-		args = append(args, object.BrandID)
+		if !queries.IsNil(object.BrandID) {
+			args = append(args, object.BrandID)
+		}
 
 	} else {
 	Outer:
@@ -442,12 +444,14 @@ func (blueprintModuleL) LoadBrand(e boil.Executor, singular bool, maybeBlueprint
 			}
 
 			for _, a := range args {
-				if a == obj.BrandID {
+				if queries.Equal(a, obj.BrandID) {
 					continue Outer
 				}
 			}
 
-			args = append(args, obj.BrandID)
+			if !queries.IsNil(obj.BrandID) {
+				args = append(args, obj.BrandID)
+			}
 
 		}
 	}
@@ -506,7 +510,7 @@ func (blueprintModuleL) LoadBrand(e boil.Executor, singular bool, maybeBlueprint
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if local.BrandID == foreign.ID {
+			if queries.Equal(local.BrandID, foreign.ID) {
 				local.R.Brand = foreign
 				if foreign.R == nil {
 					foreign.R = &brandR{}
@@ -645,7 +649,7 @@ func (o *BlueprintModule) SetBrand(exec boil.Executor, insert bool, related *Bra
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	o.BrandID = related.ID
+	queries.Assign(&o.BrandID, related.ID)
 	if o.R == nil {
 		o.R = &blueprintModuleR{
 			Brand: related,
@@ -662,6 +666,39 @@ func (o *BlueprintModule) SetBrand(exec boil.Executor, insert bool, related *Bra
 		related.R.BlueprintModules = append(related.R.BlueprintModules, o)
 	}
 
+	return nil
+}
+
+// RemoveBrand relationship.
+// Sets o.R.Brand to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *BlueprintModule) RemoveBrand(exec boil.Executor, related *Brand) error {
+	var err error
+
+	queries.SetScanner(&o.BrandID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("brand_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.Brand = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.BlueprintModules {
+		if queries.Equal(o.BrandID, ri.BrandID) {
+			continue
+		}
+
+		ln := len(related.R.BlueprintModules)
+		if ln > 1 && i < ln-1 {
+			related.R.BlueprintModules[i] = related.R.BlueprintModules[ln-1]
+		}
+		related.R.BlueprintModules = related.R.BlueprintModules[:ln-1]
+		break
+	}
 	return nil
 }
 

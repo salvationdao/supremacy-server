@@ -25,7 +25,10 @@ import (
 type Template struct {
 	ID                 string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	BlueprintChassisID string    `boiler:"blueprint_chassis_id" boil:"blueprint_chassis_id" json:"blueprintChassisID" toml:"blueprintChassisID" yaml:"blueprintChassisID"`
+	SyndicateID        string    `boiler:"syndicate_id" boil:"syndicate_id" json:"syndicateID" toml:"syndicateID" yaml:"syndicateID"`
 	Label              string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	Slug               string    `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
+	IsDefault          bool      `boiler:"is_default" boil:"is_default" json:"isDefault" toml:"isDefault" yaml:"isDefault"`
 	DeletedAt          null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
 	UpdatedAt          time.Time `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
 	CreatedAt          time.Time `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
@@ -37,14 +40,20 @@ type Template struct {
 var TemplateColumns = struct {
 	ID                 string
 	BlueprintChassisID string
+	SyndicateID        string
 	Label              string
+	Slug               string
+	IsDefault          string
 	DeletedAt          string
 	UpdatedAt          string
 	CreatedAt          string
 }{
 	ID:                 "id",
 	BlueprintChassisID: "blueprint_chassis_id",
+	SyndicateID:        "syndicate_id",
 	Label:              "label",
+	Slug:               "slug",
+	IsDefault:          "is_default",
 	DeletedAt:          "deleted_at",
 	UpdatedAt:          "updated_at",
 	CreatedAt:          "created_at",
@@ -53,14 +62,20 @@ var TemplateColumns = struct {
 var TemplateTableColumns = struct {
 	ID                 string
 	BlueprintChassisID string
+	SyndicateID        string
 	Label              string
+	Slug               string
+	IsDefault          string
 	DeletedAt          string
 	UpdatedAt          string
 	CreatedAt          string
 }{
 	ID:                 "templates.id",
 	BlueprintChassisID: "templates.blueprint_chassis_id",
+	SyndicateID:        "templates.syndicate_id",
 	Label:              "templates.label",
+	Slug:               "templates.slug",
+	IsDefault:          "templates.is_default",
 	DeletedAt:          "templates.deleted_at",
 	UpdatedAt:          "templates.updated_at",
 	CreatedAt:          "templates.created_at",
@@ -71,14 +86,20 @@ var TemplateTableColumns = struct {
 var TemplateWhere = struct {
 	ID                 whereHelperstring
 	BlueprintChassisID whereHelperstring
+	SyndicateID        whereHelperstring
 	Label              whereHelperstring
+	Slug               whereHelperstring
+	IsDefault          whereHelperbool
 	DeletedAt          whereHelpernull_Time
 	UpdatedAt          whereHelpertime_Time
 	CreatedAt          whereHelpertime_Time
 }{
 	ID:                 whereHelperstring{field: "\"templates\".\"id\""},
 	BlueprintChassisID: whereHelperstring{field: "\"templates\".\"blueprint_chassis_id\""},
+	SyndicateID:        whereHelperstring{field: "\"templates\".\"syndicate_id\""},
 	Label:              whereHelperstring{field: "\"templates\".\"label\""},
+	Slug:               whereHelperstring{field: "\"templates\".\"slug\""},
+	IsDefault:          whereHelperbool{field: "\"templates\".\"is_default\""},
 	DeletedAt:          whereHelpernull_Time{field: "\"templates\".\"deleted_at\""},
 	UpdatedAt:          whereHelpertime_Time{field: "\"templates\".\"updated_at\""},
 	CreatedAt:          whereHelpertime_Time{field: "\"templates\".\"created_at\""},
@@ -87,15 +108,18 @@ var TemplateWhere = struct {
 // TemplateRels is where relationship names are stored.
 var TemplateRels = struct {
 	BlueprintChassis string
+	Syndicate        string
 	Mechs            string
 }{
 	BlueprintChassis: "BlueprintChassis",
+	Syndicate:        "Syndicate",
 	Mechs:            "Mechs",
 }
 
 // templateR is where relationships are stored.
 type templateR struct {
 	BlueprintChassis *BlueprintChassis `boiler:"BlueprintChassis" boil:"BlueprintChassis" json:"BlueprintChassis" toml:"BlueprintChassis" yaml:"BlueprintChassis"`
+	Syndicate        *Syndicate        `boiler:"Syndicate" boil:"Syndicate" json:"Syndicate" toml:"Syndicate" yaml:"Syndicate"`
 	Mechs            MechSlice         `boiler:"Mechs" boil:"Mechs" json:"Mechs" toml:"Mechs" yaml:"Mechs"`
 }
 
@@ -108,9 +132,9 @@ func (*templateR) NewStruct() *templateR {
 type templateL struct{}
 
 var (
-	templateAllColumns            = []string{"id", "blueprint_chassis_id", "label", "deleted_at", "updated_at", "created_at"}
-	templateColumnsWithoutDefault = []string{"blueprint_chassis_id", "label"}
-	templateColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at"}
+	templateAllColumns            = []string{"id", "blueprint_chassis_id", "syndicate_id", "label", "slug", "is_default", "deleted_at", "updated_at", "created_at"}
+	templateColumnsWithoutDefault = []string{"blueprint_chassis_id", "syndicate_id", "label", "slug"}
+	templateColumnsWithDefault    = []string{"id", "is_default", "deleted_at", "updated_at", "created_at"}
 	templatePrimaryKeyColumns     = []string{"id"}
 	templateGeneratedColumns      = []string{}
 )
@@ -372,6 +396,21 @@ func (o *Template) BlueprintChassis(mods ...qm.QueryMod) blueprintChassisQuery {
 	return query
 }
 
+// Syndicate pointed to by the foreign key.
+func (o *Template) Syndicate(mods ...qm.QueryMod) syndicateQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.SyndicateID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Syndicates(queryMods...)
+	queries.SetFrom(query.Query, "\"syndicates\"")
+
+	return query
+}
+
 // Mechs retrieves all the mech's Mechs with an executor.
 func (o *Template) Mechs(mods ...qm.QueryMod) mechQuery {
 	var queryMods []qm.QueryMod
@@ -491,6 +530,111 @@ func (templateL) LoadBlueprintChassis(e boil.Executor, singular bool, maybeTempl
 					foreign.R = &blueprintChassisR{}
 				}
 				foreign.R.Template = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadSyndicate allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (templateL) LoadSyndicate(e boil.Executor, singular bool, maybeTemplate interface{}, mods queries.Applicator) error {
+	var slice []*Template
+	var object *Template
+
+	if singular {
+		object = maybeTemplate.(*Template)
+	} else {
+		slice = *maybeTemplate.(*[]*Template)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &templateR{}
+		}
+		args = append(args, object.SyndicateID)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &templateR{}
+			}
+
+			for _, a := range args {
+				if a == obj.SyndicateID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.SyndicateID)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`syndicates`),
+		qm.WhereIn(`syndicates.id in ?`, args...),
+		qmhelper.WhereIsNull(`syndicates.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Syndicate")
+	}
+
+	var resultSlice []*Syndicate
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Syndicate")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for syndicates")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for syndicates")
+	}
+
+	if len(templateAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Syndicate = foreign
+		if foreign.R == nil {
+			foreign.R = &syndicateR{}
+		}
+		foreign.R.Templates = append(foreign.R.Templates, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.SyndicateID == foreign.ID {
+				local.R.Syndicate = foreign
+				if foreign.R == nil {
+					foreign.R = &syndicateR{}
+				}
+				foreign.R.Templates = append(foreign.R.Templates, local)
 				break
 			}
 		}
@@ -639,6 +783,52 @@ func (o *Template) SetBlueprintChassis(exec boil.Executor, insert bool, related 
 		}
 	} else {
 		related.R.Template = o
+	}
+
+	return nil
+}
+
+// SetSyndicate of the template to the related item.
+// Sets o.R.Syndicate to related.
+// Adds o to related.R.Templates.
+func (o *Template) SetSyndicate(exec boil.Executor, insert bool, related *Syndicate) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"templates\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"syndicate_id"}),
+		strmangle.WhereClause("\"", "\"", 2, templatePrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.SyndicateID = related.ID
+	if o.R == nil {
+		o.R = &templateR{
+			Syndicate: related,
+		}
+	} else {
+		o.R.Syndicate = related
+	}
+
+	if related.R == nil {
+		related.R = &syndicateR{
+			Templates: TemplateSlice{o},
+		}
+	} else {
+		related.R.Templates = append(related.R.Templates, o)
 	}
 
 	return nil

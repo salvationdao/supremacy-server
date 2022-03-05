@@ -23,21 +23,23 @@ import (
 
 // Chassis is an object representing the database table.
 type Chassis struct {
-	ID                 string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	BrandID            string    `boiler:"brand_id" boil:"brand_id" json:"brandID" toml:"brandID" yaml:"brandID"`
-	Label              string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	Slug               string    `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
-	ShieldRechargeRate int       `boiler:"shield_recharge_rate" boil:"shield_recharge_rate" json:"shieldRechargeRate" toml:"shieldRechargeRate" yaml:"shieldRechargeRate"`
-	HealthRemaining    int       `boiler:"health_remaining" boil:"health_remaining" json:"healthRemaining" toml:"healthRemaining" yaml:"healthRemaining"`
-	WeaponHardpoints   int       `boiler:"weapon_hardpoints" boil:"weapon_hardpoints" json:"weaponHardpoints" toml:"weaponHardpoints" yaml:"weaponHardpoints"`
-	TurretHardpoints   int       `boiler:"turret_hardpoints" boil:"turret_hardpoints" json:"turretHardpoints" toml:"turretHardpoints" yaml:"turretHardpoints"`
-	UtilitySlots       int       `boiler:"utility_slots" boil:"utility_slots" json:"utilitySlots" toml:"utilitySlots" yaml:"utilitySlots"`
-	Speed              int       `boiler:"speed" boil:"speed" json:"speed" toml:"speed" yaml:"speed"`
-	MaxHitpoints       int       `boiler:"max_hitpoints" boil:"max_hitpoints" json:"maxHitpoints" toml:"maxHitpoints" yaml:"maxHitpoints"`
-	MaxShield          int       `boiler:"max_shield" boil:"max_shield" json:"maxShield" toml:"maxShield" yaml:"maxShield"`
-	DeletedAt          null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
-	UpdatedAt          time.Time `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
-	CreatedAt          time.Time `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	ID                 string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	BrandID            null.String `boiler:"brand_id" boil:"brand_id" json:"brandID,omitempty" toml:"brandID" yaml:"brandID,omitempty"`
+	Label              string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	Model              string      `boiler:"model" boil:"model" json:"model" toml:"model" yaml:"model"`
+	Skin               string      `boiler:"skin" boil:"skin" json:"skin" toml:"skin" yaml:"skin"`
+	Slug               string      `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
+	ShieldRechargeRate int         `boiler:"shield_recharge_rate" boil:"shield_recharge_rate" json:"shieldRechargeRate" toml:"shieldRechargeRate" yaml:"shieldRechargeRate"`
+	HealthRemaining    int         `boiler:"health_remaining" boil:"health_remaining" json:"healthRemaining" toml:"healthRemaining" yaml:"healthRemaining"`
+	WeaponHardpoints   int         `boiler:"weapon_hardpoints" boil:"weapon_hardpoints" json:"weaponHardpoints" toml:"weaponHardpoints" yaml:"weaponHardpoints"`
+	TurretHardpoints   int         `boiler:"turret_hardpoints" boil:"turret_hardpoints" json:"turretHardpoints" toml:"turretHardpoints" yaml:"turretHardpoints"`
+	UtilitySlots       int         `boiler:"utility_slots" boil:"utility_slots" json:"utilitySlots" toml:"utilitySlots" yaml:"utilitySlots"`
+	Speed              int         `boiler:"speed" boil:"speed" json:"speed" toml:"speed" yaml:"speed"`
+	MaxHitpoints       int         `boiler:"max_hitpoints" boil:"max_hitpoints" json:"maxHitpoints" toml:"maxHitpoints" yaml:"maxHitpoints"`
+	MaxShield          int         `boiler:"max_shield" boil:"max_shield" json:"maxShield" toml:"maxShield" yaml:"maxShield"`
+	DeletedAt          null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
+	UpdatedAt          time.Time   `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
+	CreatedAt          time.Time   `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
 
 	R *chassisR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L chassisL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -47,6 +49,8 @@ var ChassisColumns = struct {
 	ID                 string
 	BrandID            string
 	Label              string
+	Model              string
+	Skin               string
 	Slug               string
 	ShieldRechargeRate string
 	HealthRemaining    string
@@ -63,6 +67,8 @@ var ChassisColumns = struct {
 	ID:                 "id",
 	BrandID:            "brand_id",
 	Label:              "label",
+	Model:              "model",
+	Skin:               "skin",
 	Slug:               "slug",
 	ShieldRechargeRate: "shield_recharge_rate",
 	HealthRemaining:    "health_remaining",
@@ -81,6 +87,8 @@ var ChassisTableColumns = struct {
 	ID                 string
 	BrandID            string
 	Label              string
+	Model              string
+	Skin               string
 	Slug               string
 	ShieldRechargeRate string
 	HealthRemaining    string
@@ -97,6 +105,8 @@ var ChassisTableColumns = struct {
 	ID:                 "chassis.id",
 	BrandID:            "chassis.brand_id",
 	Label:              "chassis.label",
+	Model:              "chassis.model",
+	Skin:               "chassis.skin",
 	Slug:               "chassis.slug",
 	ShieldRechargeRate: "chassis.shield_recharge_rate",
 	HealthRemaining:    "chassis.health_remaining",
@@ -115,8 +125,10 @@ var ChassisTableColumns = struct {
 
 var ChassisWhere = struct {
 	ID                 whereHelperstring
-	BrandID            whereHelperstring
+	BrandID            whereHelpernull_String
 	Label              whereHelperstring
+	Model              whereHelperstring
+	Skin               whereHelperstring
 	Slug               whereHelperstring
 	ShieldRechargeRate whereHelperint
 	HealthRemaining    whereHelperint
@@ -131,8 +143,10 @@ var ChassisWhere = struct {
 	CreatedAt          whereHelpertime_Time
 }{
 	ID:                 whereHelperstring{field: "\"chassis\".\"id\""},
-	BrandID:            whereHelperstring{field: "\"chassis\".\"brand_id\""},
+	BrandID:            whereHelpernull_String{field: "\"chassis\".\"brand_id\""},
 	Label:              whereHelperstring{field: "\"chassis\".\"label\""},
+	Model:              whereHelperstring{field: "\"chassis\".\"model\""},
+	Skin:               whereHelperstring{field: "\"chassis\".\"skin\""},
 	Slug:               whereHelperstring{field: "\"chassis\".\"slug\""},
 	ShieldRechargeRate: whereHelperint{field: "\"chassis\".\"shield_recharge_rate\""},
 	HealthRemaining:    whereHelperint{field: "\"chassis\".\"health_remaining\""},
@@ -149,17 +163,23 @@ var ChassisWhere = struct {
 
 // ChassisRels is where relationship names are stored.
 var ChassisRels = struct {
-	Brand string
-	Mech  string
+	Brand          string
+	Mech           string
+	ChassisModules string
+	ChassisWeapons string
 }{
-	Brand: "Brand",
-	Mech:  "Mech",
+	Brand:          "Brand",
+	Mech:           "Mech",
+	ChassisModules: "ChassisModules",
+	ChassisWeapons: "ChassisWeapons",
 }
 
 // chassisR is where relationships are stored.
 type chassisR struct {
-	Brand *Brand `boiler:"Brand" boil:"Brand" json:"Brand" toml:"Brand" yaml:"Brand"`
-	Mech  *Mech  `boiler:"Mech" boil:"Mech" json:"Mech" toml:"Mech" yaml:"Mech"`
+	Brand          *Brand             `boiler:"Brand" boil:"Brand" json:"Brand" toml:"Brand" yaml:"Brand"`
+	Mech           *Mech              `boiler:"Mech" boil:"Mech" json:"Mech" toml:"Mech" yaml:"Mech"`
+	ChassisModules ChassisModuleSlice `boiler:"ChassisModules" boil:"ChassisModules" json:"ChassisModules" toml:"ChassisModules" yaml:"ChassisModules"`
+	ChassisWeapons ChassisWeaponSlice `boiler:"ChassisWeapons" boil:"ChassisWeapons" json:"ChassisWeapons" toml:"ChassisWeapons" yaml:"ChassisWeapons"`
 }
 
 // NewStruct creates a new relationship struct
@@ -171,9 +191,9 @@ func (*chassisR) NewStruct() *chassisR {
 type chassisL struct{}
 
 var (
-	chassisAllColumns            = []string{"id", "brand_id", "label", "slug", "shield_recharge_rate", "health_remaining", "weapon_hardpoints", "turret_hardpoints", "utility_slots", "speed", "max_hitpoints", "max_shield", "deleted_at", "updated_at", "created_at"}
-	chassisColumnsWithoutDefault = []string{"brand_id", "label", "slug", "shield_recharge_rate", "health_remaining", "weapon_hardpoints", "turret_hardpoints", "utility_slots", "speed", "max_hitpoints", "max_shield"}
-	chassisColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at"}
+	chassisAllColumns            = []string{"id", "brand_id", "label", "model", "skin", "slug", "shield_recharge_rate", "health_remaining", "weapon_hardpoints", "turret_hardpoints", "utility_slots", "speed", "max_hitpoints", "max_shield", "deleted_at", "updated_at", "created_at"}
+	chassisColumnsWithoutDefault = []string{"label", "model", "skin", "slug", "shield_recharge_rate", "health_remaining", "weapon_hardpoints", "turret_hardpoints", "utility_slots", "speed", "max_hitpoints", "max_shield"}
+	chassisColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at"}
 	chassisPrimaryKeyColumns     = []string{"id"}
 	chassisGeneratedColumns      = []string{}
 )
@@ -450,6 +470,50 @@ func (o *Chassis) Mech(mods ...qm.QueryMod) mechQuery {
 	return query
 }
 
+// ChassisModules retrieves all the chassis_module's ChassisModules with an executor.
+func (o *Chassis) ChassisModules(mods ...qm.QueryMod) chassisModuleQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"chassis_modules\".\"chassis_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"chassis_modules\".\"deleted_at\""),
+	)
+
+	query := ChassisModules(queryMods...)
+	queries.SetFrom(query.Query, "\"chassis_modules\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"chassis_modules\".*"})
+	}
+
+	return query
+}
+
+// ChassisWeapons retrieves all the chassis_weapon's ChassisWeapons with an executor.
+func (o *Chassis) ChassisWeapons(mods ...qm.QueryMod) chassisWeaponQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"chassis_weapons\".\"chassis_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"chassis_weapons\".\"deleted_at\""),
+	)
+
+	query := ChassisWeapons(queryMods...)
+	queries.SetFrom(query.Query, "\"chassis_weapons\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"chassis_weapons\".*"})
+	}
+
+	return query
+}
+
 // LoadBrand allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
 func (chassisL) LoadBrand(e boil.Executor, singular bool, maybeChassis interface{}, mods queries.Applicator) error {
@@ -467,7 +531,9 @@ func (chassisL) LoadBrand(e boil.Executor, singular bool, maybeChassis interface
 		if object.R == nil {
 			object.R = &chassisR{}
 		}
-		args = append(args, object.BrandID)
+		if !queries.IsNil(object.BrandID) {
+			args = append(args, object.BrandID)
+		}
 
 	} else {
 	Outer:
@@ -477,12 +543,14 @@ func (chassisL) LoadBrand(e boil.Executor, singular bool, maybeChassis interface
 			}
 
 			for _, a := range args {
-				if a == obj.BrandID {
+				if queries.Equal(a, obj.BrandID) {
 					continue Outer
 				}
 			}
 
-			args = append(args, obj.BrandID)
+			if !queries.IsNil(obj.BrandID) {
+				args = append(args, obj.BrandID)
+			}
 
 		}
 	}
@@ -541,7 +609,7 @@ func (chassisL) LoadBrand(e boil.Executor, singular bool, maybeChassis interface
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if local.BrandID == foreign.ID {
+			if queries.Equal(local.BrandID, foreign.ID) {
 				local.R.Brand = foreign
 				if foreign.R == nil {
 					foreign.R = &brandR{}
@@ -657,6 +725,204 @@ func (chassisL) LoadMech(e boil.Executor, singular bool, maybeChassis interface{
 	return nil
 }
 
+// LoadChassisModules allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (chassisL) LoadChassisModules(e boil.Executor, singular bool, maybeChassis interface{}, mods queries.Applicator) error {
+	var slice []*Chassis
+	var object *Chassis
+
+	if singular {
+		object = maybeChassis.(*Chassis)
+	} else {
+		slice = *maybeChassis.(*[]*Chassis)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &chassisR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &chassisR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`chassis_modules`),
+		qm.WhereIn(`chassis_modules.chassis_id in ?`, args...),
+		qmhelper.WhereIsNull(`chassis_modules.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load chassis_modules")
+	}
+
+	var resultSlice []*ChassisModule
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice chassis_modules")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on chassis_modules")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for chassis_modules")
+	}
+
+	if len(chassisModuleAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.ChassisModules = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &chassisModuleR{}
+			}
+			foreign.R.Chassis = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.ChassisID {
+				local.R.ChassisModules = append(local.R.ChassisModules, foreign)
+				if foreign.R == nil {
+					foreign.R = &chassisModuleR{}
+				}
+				foreign.R.Chassis = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadChassisWeapons allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (chassisL) LoadChassisWeapons(e boil.Executor, singular bool, maybeChassis interface{}, mods queries.Applicator) error {
+	var slice []*Chassis
+	var object *Chassis
+
+	if singular {
+		object = maybeChassis.(*Chassis)
+	} else {
+		slice = *maybeChassis.(*[]*Chassis)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &chassisR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &chassisR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`chassis_weapons`),
+		qm.WhereIn(`chassis_weapons.chassis_id in ?`, args...),
+		qmhelper.WhereIsNull(`chassis_weapons.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load chassis_weapons")
+	}
+
+	var resultSlice []*ChassisWeapon
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice chassis_weapons")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on chassis_weapons")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for chassis_weapons")
+	}
+
+	if len(chassisWeaponAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.ChassisWeapons = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &chassisWeaponR{}
+			}
+			foreign.R.Chassis = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.ChassisID {
+				local.R.ChassisWeapons = append(local.R.ChassisWeapons, foreign)
+				if foreign.R == nil {
+					foreign.R = &chassisWeaponR{}
+				}
+				foreign.R.Chassis = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetBrand of the chassis to the related item.
 // Sets o.R.Brand to related.
 // Adds o to related.R.Chasses.
@@ -683,7 +949,7 @@ func (o *Chassis) SetBrand(exec boil.Executor, insert bool, related *Brand) erro
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	o.BrandID = related.ID
+	queries.Assign(&o.BrandID, related.ID)
 	if o.R == nil {
 		o.R = &chassisR{
 			Brand: related,
@@ -700,6 +966,39 @@ func (o *Chassis) SetBrand(exec boil.Executor, insert bool, related *Brand) erro
 		related.R.Chasses = append(related.R.Chasses, o)
 	}
 
+	return nil
+}
+
+// RemoveBrand relationship.
+// Sets o.R.Brand to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *Chassis) RemoveBrand(exec boil.Executor, related *Brand) error {
+	var err error
+
+	queries.SetScanner(&o.BrandID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("brand_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.Brand = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.Chasses {
+		if queries.Equal(o.BrandID, ri.BrandID) {
+			continue
+		}
+
+		ln := len(related.R.Chasses)
+		if ln > 1 && i < ln-1 {
+			related.R.Chasses[i] = related.R.Chasses[ln-1]
+		}
+		related.R.Chasses = related.R.Chasses[:ln-1]
+		break
+	}
 	return nil
 }
 
@@ -749,6 +1048,110 @@ func (o *Chassis) SetMech(exec boil.Executor, insert bool, related *Mech) error 
 		}
 	} else {
 		related.R.Chassis = o
+	}
+	return nil
+}
+
+// AddChassisModules adds the given related objects to the existing relationships
+// of the chassis, optionally inserting them as new records.
+// Appends related to o.R.ChassisModules.
+// Sets related.R.Chassis appropriately.
+func (o *Chassis) AddChassisModules(exec boil.Executor, insert bool, related ...*ChassisModule) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.ChassisID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"chassis_modules\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"chassis_id"}),
+				strmangle.WhereClause("\"", "\"", 2, chassisModulePrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.ChassisID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &chassisR{
+			ChassisModules: related,
+		}
+	} else {
+		o.R.ChassisModules = append(o.R.ChassisModules, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &chassisModuleR{
+				Chassis: o,
+			}
+		} else {
+			rel.R.Chassis = o
+		}
+	}
+	return nil
+}
+
+// AddChassisWeapons adds the given related objects to the existing relationships
+// of the chassis, optionally inserting them as new records.
+// Appends related to o.R.ChassisWeapons.
+// Sets related.R.Chassis appropriately.
+func (o *Chassis) AddChassisWeapons(exec boil.Executor, insert bool, related ...*ChassisWeapon) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.ChassisID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"chassis_weapons\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"chassis_id"}),
+				strmangle.WhereClause("\"", "\"", 2, chassisWeaponPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.ChassisID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &chassisR{
+			ChassisWeapons: related,
+		}
+	} else {
+		o.R.ChassisWeapons = append(o.R.ChassisWeapons, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &chassisWeaponR{
+				Chassis: o,
+			}
+		} else {
+			rel.R.Chassis = o
+		}
 	}
 	return nil
 }

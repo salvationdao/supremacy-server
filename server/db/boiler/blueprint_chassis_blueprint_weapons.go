@@ -26,6 +26,8 @@ type BlueprintChassisBlueprintWeapon struct {
 	ID                 string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	BlueprintWeaponID  string    `boiler:"blueprint_weapon_id" boil:"blueprint_weapon_id" json:"blueprintWeaponID" toml:"blueprintWeaponID" yaml:"blueprintWeaponID"`
 	BlueprintChassisID string    `boiler:"blueprint_chassis_id" boil:"blueprint_chassis_id" json:"blueprintChassisID" toml:"blueprintChassisID" yaml:"blueprintChassisID"`
+	SlotNumber         int       `boiler:"slot_number" boil:"slot_number" json:"slotNumber" toml:"slotNumber" yaml:"slotNumber"`
+	MountLocation      string    `boiler:"mount_location" boil:"mount_location" json:"mountLocation" toml:"mountLocation" yaml:"mountLocation"`
 	DeletedAt          null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
 	UpdatedAt          time.Time `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
 	CreatedAt          time.Time `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
@@ -38,6 +40,8 @@ var BlueprintChassisBlueprintWeaponColumns = struct {
 	ID                 string
 	BlueprintWeaponID  string
 	BlueprintChassisID string
+	SlotNumber         string
+	MountLocation      string
 	DeletedAt          string
 	UpdatedAt          string
 	CreatedAt          string
@@ -45,6 +49,8 @@ var BlueprintChassisBlueprintWeaponColumns = struct {
 	ID:                 "id",
 	BlueprintWeaponID:  "blueprint_weapon_id",
 	BlueprintChassisID: "blueprint_chassis_id",
+	SlotNumber:         "slot_number",
+	MountLocation:      "mount_location",
 	DeletedAt:          "deleted_at",
 	UpdatedAt:          "updated_at",
 	CreatedAt:          "created_at",
@@ -54,6 +60,8 @@ var BlueprintChassisBlueprintWeaponTableColumns = struct {
 	ID                 string
 	BlueprintWeaponID  string
 	BlueprintChassisID string
+	SlotNumber         string
+	MountLocation      string
 	DeletedAt          string
 	UpdatedAt          string
 	CreatedAt          string
@@ -61,6 +69,8 @@ var BlueprintChassisBlueprintWeaponTableColumns = struct {
 	ID:                 "blueprint_chassis_blueprint_weapons.id",
 	BlueprintWeaponID:  "blueprint_chassis_blueprint_weapons.blueprint_weapon_id",
 	BlueprintChassisID: "blueprint_chassis_blueprint_weapons.blueprint_chassis_id",
+	SlotNumber:         "blueprint_chassis_blueprint_weapons.slot_number",
+	MountLocation:      "blueprint_chassis_blueprint_weapons.mount_location",
 	DeletedAt:          "blueprint_chassis_blueprint_weapons.deleted_at",
 	UpdatedAt:          "blueprint_chassis_blueprint_weapons.updated_at",
 	CreatedAt:          "blueprint_chassis_blueprint_weapons.created_at",
@@ -72,6 +82,8 @@ var BlueprintChassisBlueprintWeaponWhere = struct {
 	ID                 whereHelperstring
 	BlueprintWeaponID  whereHelperstring
 	BlueprintChassisID whereHelperstring
+	SlotNumber         whereHelperint
+	MountLocation      whereHelperstring
 	DeletedAt          whereHelpernull_Time
 	UpdatedAt          whereHelpertime_Time
 	CreatedAt          whereHelpertime_Time
@@ -79,6 +91,8 @@ var BlueprintChassisBlueprintWeaponWhere = struct {
 	ID:                 whereHelperstring{field: "\"blueprint_chassis_blueprint_weapons\".\"id\""},
 	BlueprintWeaponID:  whereHelperstring{field: "\"blueprint_chassis_blueprint_weapons\".\"blueprint_weapon_id\""},
 	BlueprintChassisID: whereHelperstring{field: "\"blueprint_chassis_blueprint_weapons\".\"blueprint_chassis_id\""},
+	SlotNumber:         whereHelperint{field: "\"blueprint_chassis_blueprint_weapons\".\"slot_number\""},
+	MountLocation:      whereHelperstring{field: "\"blueprint_chassis_blueprint_weapons\".\"mount_location\""},
 	DeletedAt:          whereHelpernull_Time{field: "\"blueprint_chassis_blueprint_weapons\".\"deleted_at\""},
 	UpdatedAt:          whereHelpertime_Time{field: "\"blueprint_chassis_blueprint_weapons\".\"updated_at\""},
 	CreatedAt:          whereHelpertime_Time{field: "\"blueprint_chassis_blueprint_weapons\".\"created_at\""},
@@ -108,8 +122,8 @@ func (*blueprintChassisBlueprintWeaponR) NewStruct() *blueprintChassisBlueprintW
 type blueprintChassisBlueprintWeaponL struct{}
 
 var (
-	blueprintChassisBlueprintWeaponAllColumns            = []string{"id", "blueprint_weapon_id", "blueprint_chassis_id", "deleted_at", "updated_at", "created_at"}
-	blueprintChassisBlueprintWeaponColumnsWithoutDefault = []string{"blueprint_weapon_id", "blueprint_chassis_id"}
+	blueprintChassisBlueprintWeaponAllColumns            = []string{"id", "blueprint_weapon_id", "blueprint_chassis_id", "slot_number", "mount_location", "deleted_at", "updated_at", "created_at"}
+	blueprintChassisBlueprintWeaponColumnsWithoutDefault = []string{"blueprint_weapon_id", "blueprint_chassis_id", "slot_number", "mount_location"}
 	blueprintChassisBlueprintWeaponColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at"}
 	blueprintChassisBlueprintWeaponPrimaryKeyColumns     = []string{"id"}
 	blueprintChassisBlueprintWeaponGeneratedColumns      = []string{}

@@ -14,6 +14,7 @@ import (
 	"server/gamelog"
 	"server/passport"
 	"server/seed"
+	"server/supermigrate"
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -225,8 +226,9 @@ func main() {
 				},
 			},
 			{
-				Name:  "supermigrate",
-				Usage: "seed the database with passport data",
+				Name:    "supermigrate",
+				Aliases: []string{"sm"},
+				Usage:   "seed the database with passport data",
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "passport_addr", Value: "ws://localhost:8086/api/ws", EnvVars: []string{envPrefix + "_PASSPORT_ADDR", "PASSPORT_ADDR"}, Usage: " address of the passport server, inc protocol"},
 					&cli.StringFlag{Name: "database_user", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_USER", "DATABASE_USER"}, Usage: "The database user"},
@@ -235,8 +237,18 @@ func main() {
 					&cli.StringFlag{Name: "database_port", Value: "5437", EnvVars: []string{envPrefix + "_DATABASE_PORT", "DATABASE_PORT"}, Usage: "The database port"},
 					&cli.StringFlag{Name: "database_name", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_NAME", "DATABASE_NAME"}, Usage: "The database name"},
 					&cli.StringFlag{Name: "database_application_name", Value: "API Server", EnvVars: []string{envPrefix + "_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
+					&cli.BoolFlag{Name: "migrate_assets", Value: false, EnvVars: []string{envPrefix + "_MIGRATE_ASSETS"}, Usage: "Migrate the assets and metadata over from passport-server"},
+					&cli.BoolFlag{Name: "migrate_users", Value: false, EnvVars: []string{envPrefix + "_MIGRATE_USERS"}, Usage: "Migrate the users over from passport-server as players"},
 				},
 				Action: func(c *cli.Context) error {
+
+					migrateAssets := c.Bool("migrate_assets")
+					migrateUsers := c.Bool("migrate_users")
+
+					if !migrateAssets && !migrateUsers {
+						return errors.New("one of the following is required --migrate_store_items --migrate_assets --migrate_syndicates --migrate_users")
+					}
+
 					databaseUser := c.String("database_user")
 					databasePass := c.String("database_pass")
 					databaseHost := c.String("database_host")
@@ -289,9 +301,51 @@ func main() {
 					if err != nil {
 						return terror.Panic(err)
 					}
-					err = SuperMigrate(passportRPC)
+
+					result := &comms.GetAll{}
+					err = passportRPC.Call("C.SuperMigrate", comms.GetAllReq{}, result)
 					if err != nil {
-						return terror.Panic(err)
+						return terror.Error(err)
+					}
+					metadataPayload := []*supermigrate.MetadataPayload{}
+					err = result.MetadataPayload.Unmarshal(&metadataPayload)
+					if err != nil {
+						return terror.Error(err)
+					}
+					assetPayload := []*supermigrate.AssetPayload{}
+					err = result.AssetPayload.Unmarshal(&assetPayload)
+					if err != nil {
+						return terror.Error(err)
+					}
+					storePayload := []*supermigrate.StorePayload{}
+					err = result.StorePayload.Unmarshal(&storePayload)
+					if err != nil {
+						return terror.Error(err)
+					}
+					factionPayload := []*supermigrate.FactionPayload{}
+					err = result.FactionPayload.Unmarshal(&factionPayload)
+					if err != nil {
+						return terror.Error(err)
+					}
+					userPayload := []*supermigrate.UserPayload{}
+					err = result.UserPayload.Unmarshal(&userPayload)
+					if err != nil {
+						return terror.Error(err)
+					}
+
+					if migrateAssets {
+						err = supermigrate.MigrateAssets(metadataPayload, assetPayload, storePayload, factionPayload, userPayload)
+						if err != nil {
+							return fmt.Errorf("failed to migrate assets: %w", err)
+						}
+
+					}
+					if migrateUsers {
+						err = supermigrate.MigrateUsers(metadataPayload, assetPayload, storePayload, factionPayload, userPayload)
+						if err != nil {
+							return fmt.Errorf("failed to migrate users: %w", err)
+						}
+
 					}
 					return nil
 				},

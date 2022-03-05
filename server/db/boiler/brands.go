@@ -675,7 +675,7 @@ func (brandL) LoadBlueprintChasses(e boil.Executor, singular bool, maybeBrand in
 			}
 
 			for _, a := range args {
-				if a == obj.ID {
+				if queries.Equal(a, obj.ID) {
 					continue Outer
 				}
 			}
@@ -734,7 +734,7 @@ func (brandL) LoadBlueprintChasses(e boil.Executor, singular bool, maybeBrand in
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if local.ID == foreign.BrandID {
+			if queries.Equal(local.ID, foreign.BrandID) {
 				local.R.BlueprintChasses = append(local.R.BlueprintChasses, foreign)
 				if foreign.R == nil {
 					foreign.R = &blueprintChassisR{}
@@ -774,7 +774,7 @@ func (brandL) LoadBlueprintModules(e boil.Executor, singular bool, maybeBrand in
 			}
 
 			for _, a := range args {
-				if a == obj.ID {
+				if queries.Equal(a, obj.ID) {
 					continue Outer
 				}
 			}
@@ -833,7 +833,7 @@ func (brandL) LoadBlueprintModules(e boil.Executor, singular bool, maybeBrand in
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if local.ID == foreign.BrandID {
+			if queries.Equal(local.ID, foreign.BrandID) {
 				local.R.BlueprintModules = append(local.R.BlueprintModules, foreign)
 				if foreign.R == nil {
 					foreign.R = &blueprintModuleR{}
@@ -873,7 +873,7 @@ func (brandL) LoadBlueprintWeapons(e boil.Executor, singular bool, maybeBrand in
 			}
 
 			for _, a := range args {
-				if a == obj.ID {
+				if queries.Equal(a, obj.ID) {
 					continue Outer
 				}
 			}
@@ -932,7 +932,7 @@ func (brandL) LoadBlueprintWeapons(e boil.Executor, singular bool, maybeBrand in
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if local.ID == foreign.BrandID {
+			if queries.Equal(local.ID, foreign.BrandID) {
 				local.R.BlueprintWeapons = append(local.R.BlueprintWeapons, foreign)
 				if foreign.R == nil {
 					foreign.R = &blueprintWeaponR{}
@@ -972,7 +972,7 @@ func (brandL) LoadChasses(e boil.Executor, singular bool, maybeBrand interface{}
 			}
 
 			for _, a := range args {
-				if a == obj.ID {
+				if queries.Equal(a, obj.ID) {
 					continue Outer
 				}
 			}
@@ -1031,7 +1031,7 @@ func (brandL) LoadChasses(e boil.Executor, singular bool, maybeBrand interface{}
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if local.ID == foreign.BrandID {
+			if queries.Equal(local.ID, foreign.BrandID) {
 				local.R.Chasses = append(local.R.Chasses, foreign)
 				if foreign.R == nil {
 					foreign.R = &chassisR{}
@@ -1071,7 +1071,7 @@ func (brandL) LoadMechs(e boil.Executor, singular bool, maybeBrand interface{}, 
 			}
 
 			for _, a := range args {
-				if a == obj.ID {
+				if queries.Equal(a, obj.ID) {
 					continue Outer
 				}
 			}
@@ -1130,7 +1130,7 @@ func (brandL) LoadMechs(e boil.Executor, singular bool, maybeBrand interface{}, 
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if local.ID == foreign.BrandID {
+			if queries.Equal(local.ID, foreign.BrandID) {
 				local.R.Mechs = append(local.R.Mechs, foreign)
 				if foreign.R == nil {
 					foreign.R = &mechR{}
@@ -1170,7 +1170,7 @@ func (brandL) LoadModules(e boil.Executor, singular bool, maybeBrand interface{}
 			}
 
 			for _, a := range args {
-				if a == obj.ID {
+				if queries.Equal(a, obj.ID) {
 					continue Outer
 				}
 			}
@@ -1229,7 +1229,7 @@ func (brandL) LoadModules(e boil.Executor, singular bool, maybeBrand interface{}
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if local.ID == foreign.BrandID {
+			if queries.Equal(local.ID, foreign.BrandID) {
 				local.R.Modules = append(local.R.Modules, foreign)
 				if foreign.R == nil {
 					foreign.R = &moduleR{}
@@ -1269,7 +1269,7 @@ func (brandL) LoadWeapons(e boil.Executor, singular bool, maybeBrand interface{}
 			}
 
 			for _, a := range args {
-				if a == obj.ID {
+				if queries.Equal(a, obj.ID) {
 					continue Outer
 				}
 			}
@@ -1328,7 +1328,7 @@ func (brandL) LoadWeapons(e boil.Executor, singular bool, maybeBrand interface{}
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if local.ID == foreign.BrandID {
+			if queries.Equal(local.ID, foreign.BrandID) {
 				local.R.Weapons = append(local.R.Weapons, foreign)
 				if foreign.R == nil {
 					foreign.R = &weaponR{}
@@ -1396,7 +1396,7 @@ func (o *Brand) AddBlueprintChasses(exec boil.Executor, insert bool, related ...
 	var err error
 	for _, rel := range related {
 		if insert {
-			rel.BrandID = o.ID
+			queries.Assign(&rel.BrandID, o.ID)
 			if err = rel.Insert(exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
@@ -1416,7 +1416,7 @@ func (o *Brand) AddBlueprintChasses(exec boil.Executor, insert bool, related ...
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			rel.BrandID = o.ID
+			queries.Assign(&rel.BrandID, o.ID)
 		}
 	}
 
@@ -1440,6 +1440,79 @@ func (o *Brand) AddBlueprintChasses(exec boil.Executor, insert bool, related ...
 	return nil
 }
 
+// SetBlueprintChasses removes all previously related items of the
+// brand replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.Brand's BlueprintChasses accordingly.
+// Replaces o.R.BlueprintChasses with related.
+// Sets related.R.Brand's BlueprintChasses accordingly.
+func (o *Brand) SetBlueprintChasses(exec boil.Executor, insert bool, related ...*BlueprintChassis) error {
+	query := "update \"blueprint_chassis\" set \"brand_id\" = null where \"brand_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.BlueprintChasses {
+			queries.SetScanner(&rel.BrandID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.Brand = nil
+		}
+
+		o.R.BlueprintChasses = nil
+	}
+	return o.AddBlueprintChasses(exec, insert, related...)
+}
+
+// RemoveBlueprintChasses relationships from objects passed in.
+// Removes related items from R.BlueprintChasses (uses pointer comparison, removal does not keep order)
+// Sets related.R.Brand.
+func (o *Brand) RemoveBlueprintChasses(exec boil.Executor, related ...*BlueprintChassis) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.BrandID, nil)
+		if rel.R != nil {
+			rel.R.Brand = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("brand_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.BlueprintChasses {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.BlueprintChasses)
+			if ln > 1 && i < ln-1 {
+				o.R.BlueprintChasses[i] = o.R.BlueprintChasses[ln-1]
+			}
+			o.R.BlueprintChasses = o.R.BlueprintChasses[:ln-1]
+			break
+		}
+	}
+
+	return nil
+}
+
 // AddBlueprintModules adds the given related objects to the existing relationships
 // of the brand, optionally inserting them as new records.
 // Appends related to o.R.BlueprintModules.
@@ -1448,7 +1521,7 @@ func (o *Brand) AddBlueprintModules(exec boil.Executor, insert bool, related ...
 	var err error
 	for _, rel := range related {
 		if insert {
-			rel.BrandID = o.ID
+			queries.Assign(&rel.BrandID, o.ID)
 			if err = rel.Insert(exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
@@ -1468,7 +1541,7 @@ func (o *Brand) AddBlueprintModules(exec boil.Executor, insert bool, related ...
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			rel.BrandID = o.ID
+			queries.Assign(&rel.BrandID, o.ID)
 		}
 	}
 
@@ -1492,6 +1565,79 @@ func (o *Brand) AddBlueprintModules(exec boil.Executor, insert bool, related ...
 	return nil
 }
 
+// SetBlueprintModules removes all previously related items of the
+// brand replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.Brand's BlueprintModules accordingly.
+// Replaces o.R.BlueprintModules with related.
+// Sets related.R.Brand's BlueprintModules accordingly.
+func (o *Brand) SetBlueprintModules(exec boil.Executor, insert bool, related ...*BlueprintModule) error {
+	query := "update \"blueprint_modules\" set \"brand_id\" = null where \"brand_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.BlueprintModules {
+			queries.SetScanner(&rel.BrandID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.Brand = nil
+		}
+
+		o.R.BlueprintModules = nil
+	}
+	return o.AddBlueprintModules(exec, insert, related...)
+}
+
+// RemoveBlueprintModules relationships from objects passed in.
+// Removes related items from R.BlueprintModules (uses pointer comparison, removal does not keep order)
+// Sets related.R.Brand.
+func (o *Brand) RemoveBlueprintModules(exec boil.Executor, related ...*BlueprintModule) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.BrandID, nil)
+		if rel.R != nil {
+			rel.R.Brand = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("brand_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.BlueprintModules {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.BlueprintModules)
+			if ln > 1 && i < ln-1 {
+				o.R.BlueprintModules[i] = o.R.BlueprintModules[ln-1]
+			}
+			o.R.BlueprintModules = o.R.BlueprintModules[:ln-1]
+			break
+		}
+	}
+
+	return nil
+}
+
 // AddBlueprintWeapons adds the given related objects to the existing relationships
 // of the brand, optionally inserting them as new records.
 // Appends related to o.R.BlueprintWeapons.
@@ -1500,7 +1646,7 @@ func (o *Brand) AddBlueprintWeapons(exec boil.Executor, insert bool, related ...
 	var err error
 	for _, rel := range related {
 		if insert {
-			rel.BrandID = o.ID
+			queries.Assign(&rel.BrandID, o.ID)
 			if err = rel.Insert(exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
@@ -1520,7 +1666,7 @@ func (o *Brand) AddBlueprintWeapons(exec boil.Executor, insert bool, related ...
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			rel.BrandID = o.ID
+			queries.Assign(&rel.BrandID, o.ID)
 		}
 	}
 
@@ -1544,6 +1690,79 @@ func (o *Brand) AddBlueprintWeapons(exec boil.Executor, insert bool, related ...
 	return nil
 }
 
+// SetBlueprintWeapons removes all previously related items of the
+// brand replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.Brand's BlueprintWeapons accordingly.
+// Replaces o.R.BlueprintWeapons with related.
+// Sets related.R.Brand's BlueprintWeapons accordingly.
+func (o *Brand) SetBlueprintWeapons(exec boil.Executor, insert bool, related ...*BlueprintWeapon) error {
+	query := "update \"blueprint_weapons\" set \"brand_id\" = null where \"brand_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.BlueprintWeapons {
+			queries.SetScanner(&rel.BrandID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.Brand = nil
+		}
+
+		o.R.BlueprintWeapons = nil
+	}
+	return o.AddBlueprintWeapons(exec, insert, related...)
+}
+
+// RemoveBlueprintWeapons relationships from objects passed in.
+// Removes related items from R.BlueprintWeapons (uses pointer comparison, removal does not keep order)
+// Sets related.R.Brand.
+func (o *Brand) RemoveBlueprintWeapons(exec boil.Executor, related ...*BlueprintWeapon) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.BrandID, nil)
+		if rel.R != nil {
+			rel.R.Brand = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("brand_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.BlueprintWeapons {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.BlueprintWeapons)
+			if ln > 1 && i < ln-1 {
+				o.R.BlueprintWeapons[i] = o.R.BlueprintWeapons[ln-1]
+			}
+			o.R.BlueprintWeapons = o.R.BlueprintWeapons[:ln-1]
+			break
+		}
+	}
+
+	return nil
+}
+
 // AddChasses adds the given related objects to the existing relationships
 // of the brand, optionally inserting them as new records.
 // Appends related to o.R.Chasses.
@@ -1552,7 +1771,7 @@ func (o *Brand) AddChasses(exec boil.Executor, insert bool, related ...*Chassis)
 	var err error
 	for _, rel := range related {
 		if insert {
-			rel.BrandID = o.ID
+			queries.Assign(&rel.BrandID, o.ID)
 			if err = rel.Insert(exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
@@ -1572,7 +1791,7 @@ func (o *Brand) AddChasses(exec boil.Executor, insert bool, related ...*Chassis)
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			rel.BrandID = o.ID
+			queries.Assign(&rel.BrandID, o.ID)
 		}
 	}
 
@@ -1596,6 +1815,79 @@ func (o *Brand) AddChasses(exec boil.Executor, insert bool, related ...*Chassis)
 	return nil
 }
 
+// SetChasses removes all previously related items of the
+// brand replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.Brand's Chasses accordingly.
+// Replaces o.R.Chasses with related.
+// Sets related.R.Brand's Chasses accordingly.
+func (o *Brand) SetChasses(exec boil.Executor, insert bool, related ...*Chassis) error {
+	query := "update \"chassis\" set \"brand_id\" = null where \"brand_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.Chasses {
+			queries.SetScanner(&rel.BrandID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.Brand = nil
+		}
+
+		o.R.Chasses = nil
+	}
+	return o.AddChasses(exec, insert, related...)
+}
+
+// RemoveChasses relationships from objects passed in.
+// Removes related items from R.Chasses (uses pointer comparison, removal does not keep order)
+// Sets related.R.Brand.
+func (o *Brand) RemoveChasses(exec boil.Executor, related ...*Chassis) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.BrandID, nil)
+		if rel.R != nil {
+			rel.R.Brand = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("brand_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.Chasses {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.Chasses)
+			if ln > 1 && i < ln-1 {
+				o.R.Chasses[i] = o.R.Chasses[ln-1]
+			}
+			o.R.Chasses = o.R.Chasses[:ln-1]
+			break
+		}
+	}
+
+	return nil
+}
+
 // AddMechs adds the given related objects to the existing relationships
 // of the brand, optionally inserting them as new records.
 // Appends related to o.R.Mechs.
@@ -1604,7 +1896,7 @@ func (o *Brand) AddMechs(exec boil.Executor, insert bool, related ...*Mech) erro
 	var err error
 	for _, rel := range related {
 		if insert {
-			rel.BrandID = o.ID
+			queries.Assign(&rel.BrandID, o.ID)
 			if err = rel.Insert(exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
@@ -1624,7 +1916,7 @@ func (o *Brand) AddMechs(exec boil.Executor, insert bool, related ...*Mech) erro
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			rel.BrandID = o.ID
+			queries.Assign(&rel.BrandID, o.ID)
 		}
 	}
 
@@ -1648,6 +1940,79 @@ func (o *Brand) AddMechs(exec boil.Executor, insert bool, related ...*Mech) erro
 	return nil
 }
 
+// SetMechs removes all previously related items of the
+// brand replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.Brand's Mechs accordingly.
+// Replaces o.R.Mechs with related.
+// Sets related.R.Brand's Mechs accordingly.
+func (o *Brand) SetMechs(exec boil.Executor, insert bool, related ...*Mech) error {
+	query := "update \"mechs\" set \"brand_id\" = null where \"brand_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.Mechs {
+			queries.SetScanner(&rel.BrandID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.Brand = nil
+		}
+
+		o.R.Mechs = nil
+	}
+	return o.AddMechs(exec, insert, related...)
+}
+
+// RemoveMechs relationships from objects passed in.
+// Removes related items from R.Mechs (uses pointer comparison, removal does not keep order)
+// Sets related.R.Brand.
+func (o *Brand) RemoveMechs(exec boil.Executor, related ...*Mech) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.BrandID, nil)
+		if rel.R != nil {
+			rel.R.Brand = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("brand_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.Mechs {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.Mechs)
+			if ln > 1 && i < ln-1 {
+				o.R.Mechs[i] = o.R.Mechs[ln-1]
+			}
+			o.R.Mechs = o.R.Mechs[:ln-1]
+			break
+		}
+	}
+
+	return nil
+}
+
 // AddModules adds the given related objects to the existing relationships
 // of the brand, optionally inserting them as new records.
 // Appends related to o.R.Modules.
@@ -1656,7 +2021,7 @@ func (o *Brand) AddModules(exec boil.Executor, insert bool, related ...*Module) 
 	var err error
 	for _, rel := range related {
 		if insert {
-			rel.BrandID = o.ID
+			queries.Assign(&rel.BrandID, o.ID)
 			if err = rel.Insert(exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
@@ -1676,7 +2041,7 @@ func (o *Brand) AddModules(exec boil.Executor, insert bool, related ...*Module) 
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			rel.BrandID = o.ID
+			queries.Assign(&rel.BrandID, o.ID)
 		}
 	}
 
@@ -1700,6 +2065,79 @@ func (o *Brand) AddModules(exec boil.Executor, insert bool, related ...*Module) 
 	return nil
 }
 
+// SetModules removes all previously related items of the
+// brand replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.Brand's Modules accordingly.
+// Replaces o.R.Modules with related.
+// Sets related.R.Brand's Modules accordingly.
+func (o *Brand) SetModules(exec boil.Executor, insert bool, related ...*Module) error {
+	query := "update \"modules\" set \"brand_id\" = null where \"brand_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.Modules {
+			queries.SetScanner(&rel.BrandID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.Brand = nil
+		}
+
+		o.R.Modules = nil
+	}
+	return o.AddModules(exec, insert, related...)
+}
+
+// RemoveModules relationships from objects passed in.
+// Removes related items from R.Modules (uses pointer comparison, removal does not keep order)
+// Sets related.R.Brand.
+func (o *Brand) RemoveModules(exec boil.Executor, related ...*Module) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.BrandID, nil)
+		if rel.R != nil {
+			rel.R.Brand = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("brand_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.Modules {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.Modules)
+			if ln > 1 && i < ln-1 {
+				o.R.Modules[i] = o.R.Modules[ln-1]
+			}
+			o.R.Modules = o.R.Modules[:ln-1]
+			break
+		}
+	}
+
+	return nil
+}
+
 // AddWeapons adds the given related objects to the existing relationships
 // of the brand, optionally inserting them as new records.
 // Appends related to o.R.Weapons.
@@ -1708,7 +2146,7 @@ func (o *Brand) AddWeapons(exec boil.Executor, insert bool, related ...*Weapon) 
 	var err error
 	for _, rel := range related {
 		if insert {
-			rel.BrandID = o.ID
+			queries.Assign(&rel.BrandID, o.ID)
 			if err = rel.Insert(exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
@@ -1728,7 +2166,7 @@ func (o *Brand) AddWeapons(exec boil.Executor, insert bool, related ...*Weapon) 
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			rel.BrandID = o.ID
+			queries.Assign(&rel.BrandID, o.ID)
 		}
 	}
 
@@ -1749,6 +2187,79 @@ func (o *Brand) AddWeapons(exec boil.Executor, insert bool, related ...*Weapon) 
 			rel.R.Brand = o
 		}
 	}
+	return nil
+}
+
+// SetWeapons removes all previously related items of the
+// brand replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.Brand's Weapons accordingly.
+// Replaces o.R.Weapons with related.
+// Sets related.R.Brand's Weapons accordingly.
+func (o *Brand) SetWeapons(exec boil.Executor, insert bool, related ...*Weapon) error {
+	query := "update \"weapons\" set \"brand_id\" = null where \"brand_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.Weapons {
+			queries.SetScanner(&rel.BrandID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.Brand = nil
+		}
+
+		o.R.Weapons = nil
+	}
+	return o.AddWeapons(exec, insert, related...)
+}
+
+// RemoveWeapons relationships from objects passed in.
+// Removes related items from R.Weapons (uses pointer comparison, removal does not keep order)
+// Sets related.R.Brand.
+func (o *Brand) RemoveWeapons(exec boil.Executor, related ...*Weapon) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.BrandID, nil)
+		if rel.R != nil {
+			rel.R.Brand = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("brand_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.Weapons {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.Weapons)
+			if ln > 1 && i < ln-1 {
+				o.R.Weapons[i] = o.R.Weapons[ln-1]
+			}
+			o.R.Weapons = o.R.Weapons[:ln-1]
+			break
+		}
+	}
+
 	return nil
 }
 

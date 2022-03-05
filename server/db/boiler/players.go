@@ -23,12 +23,12 @@ import (
 
 // Player is an object representing the database table.
 type Player struct {
-	ID            string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	SyndicateID   string    `boiler:"syndicate_id" boil:"syndicate_id" json:"syndicateID" toml:"syndicateID" yaml:"syndicateID"`
-	PublicAddress string    `boiler:"public_address" boil:"public_address" json:"publicAddress" toml:"publicAddress" yaml:"publicAddress"`
-	DeletedAt     null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
-	UpdatedAt     time.Time `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
-	CreatedAt     time.Time `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	ID            string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	SyndicateID   null.String `boiler:"syndicate_id" boil:"syndicate_id" json:"syndicateID,omitempty" toml:"syndicateID" yaml:"syndicateID,omitempty"`
+	PublicAddress null.String `boiler:"public_address" boil:"public_address" json:"publicAddress,omitempty" toml:"publicAddress" yaml:"publicAddress,omitempty"`
+	DeletedAt     null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
+	UpdatedAt     time.Time   `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
+	CreatedAt     time.Time   `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
 
 	R *playerR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L playerL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -70,15 +70,15 @@ var PlayerTableColumns = struct {
 
 var PlayerWhere = struct {
 	ID            whereHelperstring
-	SyndicateID   whereHelperstring
-	PublicAddress whereHelperstring
+	SyndicateID   whereHelpernull_String
+	PublicAddress whereHelpernull_String
 	DeletedAt     whereHelpernull_Time
 	UpdatedAt     whereHelpertime_Time
 	CreatedAt     whereHelpertime_Time
 }{
 	ID:            whereHelperstring{field: "\"players\".\"id\""},
-	SyndicateID:   whereHelperstring{field: "\"players\".\"syndicate_id\""},
-	PublicAddress: whereHelperstring{field: "\"players\".\"public_address\""},
+	SyndicateID:   whereHelpernull_String{field: "\"players\".\"syndicate_id\""},
+	PublicAddress: whereHelpernull_String{field: "\"players\".\"public_address\""},
 	DeletedAt:     whereHelpernull_Time{field: "\"players\".\"deleted_at\""},
 	UpdatedAt:     whereHelpertime_Time{field: "\"players\".\"updated_at\""},
 	CreatedAt:     whereHelpertime_Time{field: "\"players\".\"created_at\""},
@@ -109,8 +109,8 @@ type playerL struct{}
 
 var (
 	playerAllColumns            = []string{"id", "syndicate_id", "public_address", "deleted_at", "updated_at", "created_at"}
-	playerColumnsWithoutDefault = []string{"syndicate_id", "public_address"}
-	playerColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at"}
+	playerColumnsWithoutDefault = []string{}
+	playerColumnsWithDefault    = []string{"id", "syndicate_id", "public_address", "deleted_at", "updated_at", "created_at"}
 	playerPrimaryKeyColumns     = []string{"id"}
 	playerGeneratedColumns      = []string{}
 )
@@ -411,7 +411,9 @@ func (playerL) LoadSyndicate(e boil.Executor, singular bool, maybePlayer interfa
 		if object.R == nil {
 			object.R = &playerR{}
 		}
-		args = append(args, object.SyndicateID)
+		if !queries.IsNil(object.SyndicateID) {
+			args = append(args, object.SyndicateID)
+		}
 
 	} else {
 	Outer:
@@ -421,12 +423,14 @@ func (playerL) LoadSyndicate(e boil.Executor, singular bool, maybePlayer interfa
 			}
 
 			for _, a := range args {
-				if a == obj.SyndicateID {
+				if queries.Equal(a, obj.SyndicateID) {
 					continue Outer
 				}
 			}
 
-			args = append(args, obj.SyndicateID)
+			if !queries.IsNil(obj.SyndicateID) {
+				args = append(args, obj.SyndicateID)
+			}
 
 		}
 	}
@@ -485,7 +489,7 @@ func (playerL) LoadSyndicate(e boil.Executor, singular bool, maybePlayer interfa
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if local.SyndicateID == foreign.ID {
+			if queries.Equal(local.SyndicateID, foreign.ID) {
 				local.R.Syndicate = foreign
 				if foreign.R == nil {
 					foreign.R = &syndicateR{}
@@ -624,7 +628,7 @@ func (o *Player) SetSyndicate(exec boil.Executor, insert bool, related *Syndicat
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	o.SyndicateID = related.ID
+	queries.Assign(&o.SyndicateID, related.ID)
 	if o.R == nil {
 		o.R = &playerR{
 			Syndicate: related,
@@ -641,6 +645,39 @@ func (o *Player) SetSyndicate(exec boil.Executor, insert bool, related *Syndicat
 		related.R.Players = append(related.R.Players, o)
 	}
 
+	return nil
+}
+
+// RemoveSyndicate relationship.
+// Sets o.R.Syndicate to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *Player) RemoveSyndicate(exec boil.Executor, related *Syndicate) error {
+	var err error
+
+	queries.SetScanner(&o.SyndicateID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("syndicate_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.Syndicate = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.Players {
+		if queries.Equal(o.SyndicateID, ri.SyndicateID) {
+			continue
+		}
+
+		ln := len(related.R.Players)
+		if ln > 1 && i < ln-1 {
+			related.R.Players[i] = related.R.Players[ln-1]
+		}
+		related.R.Players = related.R.Players[:ln-1]
+		break
+	}
 	return nil
 }
 

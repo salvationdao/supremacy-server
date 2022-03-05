@@ -23,15 +23,15 @@ import (
 
 // BlueprintWeapon is an object representing the database table.
 type BlueprintWeapon struct {
-	ID         string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	BrandID    string    `boiler:"brand_id" boil:"brand_id" json:"brandID" toml:"brandID" yaml:"brandID"`
-	Label      string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	Slug       string    `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
-	Damage     int       `boiler:"damage" boil:"damage" json:"damage" toml:"damage" yaml:"damage"`
-	WeaponType string    `boiler:"weapon_type" boil:"weapon_type" json:"weaponType" toml:"weaponType" yaml:"weaponType"`
-	DeletedAt  null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
-	UpdatedAt  time.Time `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
-	CreatedAt  time.Time `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	ID         string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	BrandID    null.String `boiler:"brand_id" boil:"brand_id" json:"brandID,omitempty" toml:"brandID" yaml:"brandID,omitempty"`
+	Label      string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	Slug       string      `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
+	Damage     int         `boiler:"damage" boil:"damage" json:"damage" toml:"damage" yaml:"damage"`
+	WeaponType string      `boiler:"weapon_type" boil:"weapon_type" json:"weaponType" toml:"weaponType" yaml:"weaponType"`
+	DeletedAt  null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
+	UpdatedAt  time.Time   `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
+	CreatedAt  time.Time   `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
 
 	R *blueprintWeaponR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintWeaponL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -85,7 +85,7 @@ var BlueprintWeaponTableColumns = struct {
 
 var BlueprintWeaponWhere = struct {
 	ID         whereHelperstring
-	BrandID    whereHelperstring
+	BrandID    whereHelpernull_String
 	Label      whereHelperstring
 	Slug       whereHelperstring
 	Damage     whereHelperint
@@ -95,7 +95,7 @@ var BlueprintWeaponWhere = struct {
 	CreatedAt  whereHelpertime_Time
 }{
 	ID:         whereHelperstring{field: "\"blueprint_weapons\".\"id\""},
-	BrandID:    whereHelperstring{field: "\"blueprint_weapons\".\"brand_id\""},
+	BrandID:    whereHelpernull_String{field: "\"blueprint_weapons\".\"brand_id\""},
 	Label:      whereHelperstring{field: "\"blueprint_weapons\".\"label\""},
 	Slug:       whereHelperstring{field: "\"blueprint_weapons\".\"slug\""},
 	Damage:     whereHelperint{field: "\"blueprint_weapons\".\"damage\""},
@@ -130,8 +130,8 @@ type blueprintWeaponL struct{}
 
 var (
 	blueprintWeaponAllColumns            = []string{"id", "brand_id", "label", "slug", "damage", "weapon_type", "deleted_at", "updated_at", "created_at"}
-	blueprintWeaponColumnsWithoutDefault = []string{"brand_id", "label", "slug", "damage", "weapon_type"}
-	blueprintWeaponColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at"}
+	blueprintWeaponColumnsWithoutDefault = []string{"label", "slug", "damage", "weapon_type"}
+	blueprintWeaponColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at"}
 	blueprintWeaponPrimaryKeyColumns     = []string{"id"}
 	blueprintWeaponGeneratedColumns      = []string{}
 )
@@ -432,7 +432,9 @@ func (blueprintWeaponL) LoadBrand(e boil.Executor, singular bool, maybeBlueprint
 		if object.R == nil {
 			object.R = &blueprintWeaponR{}
 		}
-		args = append(args, object.BrandID)
+		if !queries.IsNil(object.BrandID) {
+			args = append(args, object.BrandID)
+		}
 
 	} else {
 	Outer:
@@ -442,12 +444,14 @@ func (blueprintWeaponL) LoadBrand(e boil.Executor, singular bool, maybeBlueprint
 			}
 
 			for _, a := range args {
-				if a == obj.BrandID {
+				if queries.Equal(a, obj.BrandID) {
 					continue Outer
 				}
 			}
 
-			args = append(args, obj.BrandID)
+			if !queries.IsNil(obj.BrandID) {
+				args = append(args, obj.BrandID)
+			}
 
 		}
 	}
@@ -506,7 +510,7 @@ func (blueprintWeaponL) LoadBrand(e boil.Executor, singular bool, maybeBlueprint
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if local.BrandID == foreign.ID {
+			if queries.Equal(local.BrandID, foreign.ID) {
 				local.R.Brand = foreign
 				if foreign.R == nil {
 					foreign.R = &brandR{}
@@ -645,7 +649,7 @@ func (o *BlueprintWeapon) SetBrand(exec boil.Executor, insert bool, related *Bra
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	o.BrandID = related.ID
+	queries.Assign(&o.BrandID, related.ID)
 	if o.R == nil {
 		o.R = &blueprintWeaponR{
 			Brand: related,
@@ -662,6 +666,39 @@ func (o *BlueprintWeapon) SetBrand(exec boil.Executor, insert bool, related *Bra
 		related.R.BlueprintWeapons = append(related.R.BlueprintWeapons, o)
 	}
 
+	return nil
+}
+
+// RemoveBrand relationship.
+// Sets o.R.Brand to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *BlueprintWeapon) RemoveBrand(exec boil.Executor, related *Brand) error {
+	var err error
+
+	queries.SetScanner(&o.BrandID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("brand_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.Brand = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.BlueprintWeapons {
+		if queries.Equal(o.BrandID, ri.BrandID) {
+			continue
+		}
+
+		ln := len(related.R.BlueprintWeapons)
+		if ln > 1 && i < ln-1 {
+			related.R.BlueprintWeapons[i] = related.R.BlueprintWeapons[ln-1]
+		}
+		related.R.BlueprintWeapons = related.R.BlueprintWeapons[:ln-1]
+		break
+	}
 	return nil
 }
 
