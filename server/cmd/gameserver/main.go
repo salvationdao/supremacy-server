@@ -186,7 +186,7 @@ func main() {
 
 					//// Connect to passport
 					pp := passport.NewPassport(
-						log_helpers.NamedLogger(gamelog.GameLog, "passport"),
+						log_helpers.NamedLogger(gamelog.L, "passport"),
 						passportAddr,
 						passportClientToken,
 						passportRPC,
@@ -195,10 +195,10 @@ func main() {
 					// Start Gameserver - Gameclient server
 
 					// Passport
-					gamelog.GameLog.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Setting up battle arena client")
-					battleArenaClient := battle_arena.NewBattleArenaClient(ctx, log_helpers.NamedLogger(gamelog.GameLog, "battle-arena"), pgxconn, pp, battleArenaAddr)
-					battleArenaClient.SetupAfterConnections(gamelog.GameLog) // Blocks until setup properly, fetched and hydrated
-					gamelog.GameLog.Info().Int("factions", len(battleArenaClient.GetCurrentState().FactionMap)).Msg("Successfully setup battle queue")
+					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Setting up battle arena client")
+					battleArenaClient := battle_arena.NewBattleArenaClient(ctx, log_helpers.NamedLogger(gamelog.L, "battle-arena"), pgxconn, pp, battleArenaAddr)
+					battleArenaClient.SetupAfterConnections(gamelog.L) // Blocks until setup properly, fetched and hydrated
+					gamelog.L.Info().Int("factions", len(battleArenaClient.GetCurrentState().FactionMap)).Msg("Successfully setup battle queue")
 
 					go func() {
 						err := battleArenaClient.Serve(ctx)
@@ -208,20 +208,20 @@ func main() {
 						}
 					}()
 
-					gamelog.GameLog.Info().Msg("Setting up webhook rest API")
-					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.GameLog, "API"), battleArenaClient, pgxconn, pp)
+					gamelog.L.Info().Msg("Setting up webhook rest API")
+					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), battleArenaClient, pgxconn, pp)
 					if err != nil {
 						fmt.Println(err)
 						os.Exit(1)
 					}
 
-					gamelog.GameLog.Info().Msg("Running webhook rest API")
+					gamelog.L.Info().Msg("Running webhook rest API")
 					err = api.Run(ctx)
 					if err != nil {
 						fmt.Println(err)
 						os.Exit(1)
 					}
-					log_helpers.TerrorEcho(ctx, err, gamelog.GameLog)
+					log_helpers.TerrorEcho(ctx, err, gamelog.L)
 					return nil
 				},
 			},

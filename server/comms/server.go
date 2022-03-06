@@ -1,155 +1,64 @@
 package comms
 
 import (
-	"server"
-	"server/db"
+	"fmt"
+	"math/big"
+	"net"
+	"net/rpc"
+	"server/gamelog"
 
-	"github.com/gofrs/uuid"
+	"github.com/sasha-s/go-deadlock"
 )
 
+// for sups trickle handler
+type TickerPoolCache struct {
+	deadlock.Mutex
+	TricklingAmountMap map[string]*big.Int
+}
 type S struct {
 }
 
-type MechReq struct {
-	MechID uuid.UUID
+func NewServer() *S {
+	result := &S{}
+	return result
 }
 
-type MechResp struct {
-	Mech *server.Mech
+func (c *C) listen(addrStr ...string) ([]net.Listener, error) {
+	listeners := make([]net.Listener, len(addrStr))
+	for i, a := range addrStr {
+		gamelog.L.Info().Str("addr", a).Msg("registering RPC server")
+		addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("0.0.0.0:%s", a))
+		if err != nil {
+			gamelog.L.Err(err).Str("addr", a).Msg("registering RPC server")
+			return listeners, nil
+		}
+
+		l, err := net.ListenTCP("tcp", addr)
+		if err != nil {
+			return listeners, err
+		}
+
+		listeners[i] = l
+	}
+
+	return listeners, nil
 }
 
-func (s *S) Mech(req MechReq, resp *MechResp) error {
-	result, err := db.Mech(req.MechID)
+func Start(c *C) error {
+	listeners, err := c.listen("10011", "10012", "10013", "10014", "10015", "10016")
 	if err != nil {
 		return err
 	}
-	resp.Mech = result
-	return nil
-}
+	for _, l := range listeners {
+		s := rpc.NewServer()
+		err = s.Register(c)
+		if err != nil {
+			return err
+		}
 
-type MechsByOwnerIDReq struct {
-	OwnerID uuid.UUID
-}
-type MechsByOwnerIDResp struct {
-	Mechs []*server.Mech
-}
-
-func (s *S) MechsByOwnerID(req MechsByOwnerIDReq, resp *MechsByOwnerIDResp) error {
-	result, err := db.MechsByOwnerID(req.OwnerID)
-	if err != nil {
-		return err
+		gamelog.L.Info().Str("addr", l.Addr().String()).Msg("starting up RPC server")
+		go s.Accept(l)
 	}
-	resp.Mechs = result
-	return nil
-}
 
-type MechRegisterReq struct {
-	TemplateID uuid.UUID
-	OwnerID    uuid.UUID
-}
-type MechRegisterResp struct {
-	Mech *server.Mech
-}
-
-func (s *S) MechRegister(req MechRegisterReq, resp *MechRegisterResp) error {
-	mechID, err := db.MechRegister(req.TemplateID, req.OwnerID)
-	if err != nil {
-		return err
-	}
-	mech, err := db.Mech(mechID)
-	if err != nil {
-		return err
-	}
-	resp.Mech = mech
-	return nil
-}
-
-type MechSetNameReq struct {
-	MechID uuid.UUID
-	Name   string
-}
-type MechSetNameResp struct {
-	Mech *server.Mech
-}
-
-func (s *S) MechSetName(req MechSetNameReq, resp *MechSetNameResp) error {
-	err := db.MechSetName(req.MechID, req.Name)
-	if err != nil {
-		return err
-	}
-	mech, err := db.Mech(req.MechID)
-	if err != nil {
-		return err
-	}
-	resp.Mech = mech
-	return nil
-}
-
-type MechSetOwnerReq struct {
-	MechID  uuid.UUID
-	OwnerID uuid.UUID
-}
-type MechSetOwnerResp struct {
-	Mech *server.Mech
-}
-
-func (s *S) MechSetOwner(req MechSetOwnerReq, resp *MechSetOwnerResp) error {
-	err := db.MechSetOwner(req.MechID, req.OwnerID)
-	if err != nil {
-		return err
-	}
-	mech, err := db.Mech(req.MechID)
-	if err != nil {
-		return err
-	}
-	resp.Mech = mech
-	return nil
-}
-
-type TemplateReq struct {
-	TemplateID uuid.UUID
-}
-type TemplateResp struct {
-	Template *server.Template
-}
-
-func (s *S) Template(req TemplateReq, resp *TemplateResp) error {
-	template, err := db.Template(req.TemplateID)
-	if err != nil {
-		return err
-	}
-	resp.Template = template
-	return nil
-}
-
-type TemplatePurchasedCountReq struct {
-	TemplateID uuid.UUID
-}
-type TemplatePurchasedCountResp struct {
-	Count int
-}
-
-func (s *S) TemplatePurchasedCount(req TemplatePurchasedCountReq, resp *TemplatePurchasedCountResp) error {
-	count, err := db.TemplatePurchasedCount(req.TemplateID)
-	if err != nil {
-		return err
-	}
-	resp.Count = count
-	return nil
-}
-
-type TemplatesByFactionIDReq struct {
-	FactionID uuid.UUID
-}
-type TemplatesByFactionIDResp struct {
-	Templates []*server.Template
-}
-
-func (s *S) TemplatesByFactionID(req TemplatesByFactionIDReq, resp *TemplatesByFactionIDResp) error {
-	templates, err := db.TemplatesByFactionID(req.FactionID)
-	if err != nil {
-		return err
-	}
-	resp.Templates = templates
 	return nil
 }

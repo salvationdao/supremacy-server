@@ -59,7 +59,7 @@ func MigrateAssets(
 		success++
 
 	}
-	gamelog.GameLog.Info().Int("success", success).Int("skipped", skipped).Int("updated", updated).Msg("finished asset migration")
+	gamelog.L.Info().Int("success", success).Int("skipped", skipped).Int("updated", updated).Msg("finished asset migration")
 
 	tx.Commit()
 	return nil
@@ -96,7 +96,7 @@ func MigrateUsers(
 		success++
 	}
 	tx.Commit()
-	gamelog.GameLog.Info().
+	gamelog.L.Info().
 		Int("success", success).
 		Int("updated", updated).
 		Int("skipped", skipped).

@@ -47,7 +47,7 @@ func Gotimeout(cb func(), timeout time.Duration, errorCallback func(error)) {
 			cb()
 		case <-time.After(timeout):
 			err := errors.New("callback has timed out")
-			gamelog.GameLog.Warn().Err(err).Msgf("Failed to connect to passport server. Please make sure passport is running.") /*  */
+			gamelog.L.Warn().Err(err).Msgf("Failed to connect to passport server. Please make sure passport is running.") /*  */
 			errorCallback(err)
 		}
 	}()

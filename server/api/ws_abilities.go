@@ -59,7 +59,7 @@ type GameAbilityContributeRequest struct {
 const HubKeGameAbilityContribute hub.HubCommandKey = "GAME:ABILITY:CONTRIBUTE"
 
 func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	gamelog.GameLog.Info().Str("fn", "GameAbilityContribute").RawJSON("req", payload).Msg("ws handler")
+	gamelog.L.Info().Str("fn", "GameAbilityContribute").RawJSON("req", payload).Msg("ws handler")
 	req := &GameAbilityContributeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -305,7 +305,7 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 const HubKeyFactionAbilitiesUpdated hub.HubCommandKey = "FACTION:ABILITIES:UPDATED"
 
 func (fc *FactionControllerWS) FactionAbilitiesUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	gamelog.GameLog.Info().Str("fn", "FactionAbilitiesUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
+	gamelog.L.Info().Str("fn", "FactionAbilitiesUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -353,7 +353,7 @@ type WarMachineAbilitiesUpdatedRequest struct {
 
 // WarMachineAbilitiesUpdateSubscribeHandler subscribe on war machine abilities
 func (fc *FactionControllerWS) WarMachineAbilitiesUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	gamelog.GameLog.Info().Str("fn", "WarMachineAbilitiesUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
+	gamelog.L.Info().Str("fn", "WarMachineAbilitiesUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &WarMachineAbilitiesUpdatedRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -409,7 +409,7 @@ type QueueFeed struct {
 }
 
 func (fc *FactionControllerWS) QueueSubscription(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	gamelog.GameLog.Info().Str("fn", "QueueSubscription").RawJSON("req", payload).Msg("ws handler")
+	gamelog.L.Info().Str("fn", "QueueSubscription").RawJSON("req", payload).Msg("ws handler")
 	req := &WarMachineAbilitiesUpdatedRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
