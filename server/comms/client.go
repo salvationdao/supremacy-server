@@ -18,7 +18,7 @@ type C struct {
 	inc     *atomic.Int32
 }
 
-func New(addrs ...string) (*C, error) {
+func NewClient(addrs ...string) (*C, error) {
 	clients, err := connect(addrs...)
 	if err != nil {
 		return nil, err
@@ -64,6 +64,9 @@ func (c *C) GoCall(serviceMethod string, args interface{}, reply interface{}, ca
 }
 
 func (c *C) Call(serviceMethod string, args interface{}, reply interface{}) error {
+	if len(c.clients) == 0 {
+		return errors.New("rpc client not ready")
+	}
 	gamelog.L.Debug().Str("fn", serviceMethod).Interface("args", args).Msg("rpc call")
 	span := tracer.StartSpan("rpc.call", tracer.ResourceName(serviceMethod))
 	defer span.Finish()

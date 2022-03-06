@@ -17,7 +17,7 @@ type FactionAllResp struct {
 // FactionAll get all the factions from passport server
 func (pp *Passport) FactionAll() ([]*server.Faction, error) {
 	resp := &FactionAllResp{}
-	err := pp.Comms.Call("C.SupremacyFactionAllHandler", FactionAllReq{}, resp)
+	err := pp.Comms.Call("S.SupremacyFactionAllHandler", FactionAllReq{}, resp)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +42,7 @@ type FactionStatSendResp struct{}
 
 // FactionStatsSend send faction stat to passport serer
 func (pp *Passport) FactionStatsSend(factionStatSends []*FactionStatSend) {
-	err := pp.Comms.Call("C.SupremacyFactionStatSendHandler", FactionStatSendReq{factionStatSends}, &FactionStatSendResp{})
+	err := pp.Comms.Call("S.SupremacyFactionStatSendHandler", FactionStatSendReq{factionStatSends}, &FactionStatSendResp{})
 	if err != nil {
 		pp.Log.Err(err).Str("method", "SupremacyFactionStatSendHandler").Msg("rpc error")
 	}
@@ -68,7 +68,7 @@ func (pp *Passport) AssetContractRewardRedeem(userID server.UserID, factionID se
 		return fmt.Errorf("AssetContractRewardRedeem: amount must be greater than zero")
 	}
 	err := pp.Comms.Call(
-		"C.SupremacyRedeemFactionContractRewardHandler",
+		"S.SupremacyRedeemFactionContractRewardHandler",
 		RedeemFactionContractRewardReq{
 			UserID:               userID,
 			FactionID:            factionID,
@@ -98,7 +98,7 @@ type FactionContractRewardUpdateResp struct {
 */
 // FactionContractRewardUpdate gets the default war machines for a given faction
 //func (pp *Passport) FactionContractRewardUpdate(fcr []*FactionContractReward) {
-//	err := pp.Comms.Call("C.SupremacyFactionContractRewardUpdateHandler", FactionContractRewardUpdateReq{fcr}, &FactionContractRewardUpdateResp{})
+//	err := pp.Comms.Call("S.SupremacyFactionContractRewardUpdateHandler", FactionContractRewardUpdateReq{fcr}, &FactionContractRewardUpdateResp{})
 //	if err != nil {
 //		pp.Log.Err(err).Str("method", "SupremacyFactionContractRewardUpdateHandler").Msg("rpc error")
 //	}
@@ -117,7 +117,7 @@ type FactionQueuePriceUpdateResp struct {
 }
 
 func (pp *Passport) FactionQueueCostUpdate(fcr *FactionQueuePriceUpdateReq) {
-	err := pp.Comms.Call("C.SupremacyFactionQueuingCostHandler", fcr, &FactionQueuePriceUpdateResp{})
+	err := pp.Comms.Call("S.SupremacyFactionQueuingCostHandler", fcr, &FactionQueuePriceUpdateResp{})
 	if err != nil {
 		pp.Log.Err(err).Str("method", "SupremacyFactionQueuingCostHandler").Msg("rpc error")
 	}

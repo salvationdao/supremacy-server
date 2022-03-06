@@ -2,19 +2,11 @@ package comms
 
 import (
 	"fmt"
-	"math/big"
 	"net"
 	"net/rpc"
 	"server/gamelog"
-
-	"github.com/sasha-s/go-deadlock"
 )
 
-// for sups trickle handler
-type TickerPoolCache struct {
-	deadlock.Mutex
-	TricklingAmountMap map[string]*big.Int
-}
 type S struct {
 }
 
@@ -23,7 +15,7 @@ func NewServer() *S {
 	return result
 }
 
-func (c *C) listen(addrStr ...string) ([]net.Listener, error) {
+func (s *S) listen(addrStr ...string) ([]net.Listener, error) {
 	listeners := make([]net.Listener, len(addrStr))
 	for i, a := range addrStr {
 		gamelog.L.Info().Str("addr", a).Msg("registering RPC server")
@@ -44,20 +36,20 @@ func (c *C) listen(addrStr ...string) ([]net.Listener, error) {
 	return listeners, nil
 }
 
-func Start(c *C) error {
-	listeners, err := c.listen("10011", "10012", "10013", "10014", "10015", "10016")
+func Start(s *S) error {
+	listeners, err := s.listen("10011", "10012", "10013", "10014", "10015", "10016")
 	if err != nil {
 		return err
 	}
 	for _, l := range listeners {
-		s := rpc.NewServer()
-		err = s.Register(c)
+		srv := rpc.NewServer()
+		err = srv.Register(s)
 		if err != nil {
 			return err
 		}
 
 		gamelog.L.Info().Str("addr", l.Addr().String()).Msg("starting up RPC server")
-		go s.Accept(l)
+		go srv.Accept(l)
 	}
 
 	return nil

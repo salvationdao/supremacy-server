@@ -14,7 +14,7 @@ type TickerTickResp struct{}
 
 // SendTickerMessage sends the client map and multipliers to the passport to handle giving out sups
 func (pp *Passport) SendTickerMessage(userMap map[int][]server.UserID) {
-	err := pp.Comms.Call("C.TickerTickHandler", TickerTickReq{userMap}, &TickerTickResp{})
+	err := pp.Comms.Call("S.TickerTickHandler", TickerTickReq{userMap}, &TickerTickResp{})
 	if err != nil {
 		pp.Log.Err(err).Str("method", "TickerTickHandler").Msg("rpc error")
 	}
@@ -28,7 +28,7 @@ type GetSpoilOfWarResp struct {
 // GetSpoilOfWarAmount get current sup pool amount
 func (pp *Passport) GetSpoilOfWarAmount() string {
 	result := &GetSpoilOfWarResp{}
-	err := pp.Comms.Call("C.SupremacyGetSpoilOfWarHandler", GetSpoilOfWarReq{}, result)
+	err := pp.Comms.Call("S.SupremacyGetSpoilOfWarHandler", GetSpoilOfWarReq{}, result)
 	if err != nil {
 		pp.Log.Err(err).Str("method", "SupremacyGetSpoilOfWarHandler").Msg("rpc error")
 	}
@@ -43,7 +43,7 @@ type UserSupsMultiplierSendResp struct{}
 
 // UserSupsMultiplierSend send user sups multipliers
 func (pp *Passport) UserSupsMultiplierSend(ctx context.Context, userSupsMultiplierSends []*server.UserSupsMultiplierSend) {
-	err := pp.Comms.Call("C.UserSupsMultiplierSendHandler", UserSupsMultiplierSendReq{userSupsMultiplierSends}, &UserSupsMultiplierSendResp{})
+	err := pp.Comms.Call("S.UserSupsMultiplierSendHandler", UserSupsMultiplierSendReq{userSupsMultiplierSends}, &UserSupsMultiplierSendResp{})
 	if err != nil {
 		pp.Log.Err(err).Str("method", "UserSupsMultiplierSendHandler").Msg("rpc error")
 	}
@@ -60,7 +60,7 @@ type UsersGetResp struct {
 // UserGet get user by id
 func (pp *Passport) UsersGet(userIDs []server.UserID, callback func(users []*server.User)) {
 	resp := &UsersGetResp{}
-	err := pp.Comms.Call("C.SupremacyUsersGetHandler", UsersGetReq{userIDs}, resp)
+	err := pp.Comms.Call("S.SupremacyUsersGetHandler", UsersGetReq{userIDs}, resp)
 	if err != nil {
 		pp.Log.Err(err).Str("method", "SupremacyUsersGetHandler").Msg("rpc error")
 		return
@@ -84,7 +84,7 @@ func (pp *Passport) UserStatSend(ctx context.Context, userStatSends []*UserStatS
 	if len(userStatSends) == 0 {
 		return
 	}
-	err := pp.Comms.Call("C.SupremacyUserStatSendHandler", UserStatSendReq{userStatSends}, &UserStatSend{})
+	err := pp.Comms.Call("S.SupremacyUserStatSendHandler", UserStatSendReq{userStatSends}, &UserStatSend{})
 	if err != nil {
 		pp.Log.Err(err).Str("method", "SupremacyUserStatSendHandler").Msg("rpc error")
 	}

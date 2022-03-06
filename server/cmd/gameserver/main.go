@@ -165,6 +165,12 @@ func main() {
 						return terror.Panic(err)
 					}
 
+					rpcServer := comms.NewServer()
+					err = comms.Start(rpcServer)
+					if err != nil {
+						return terror.Error(err)
+					}
+
 					u, err := url.Parse(passportAddr)
 					if err != nil {
 						return terror.Panic(err)
@@ -178,7 +184,7 @@ func main() {
 						fmt.Sprintf("%s:10002", hostname),
 						fmt.Sprintf("%s:10001", hostname),
 					}
-					passportRPC, err := comms.New(rpcAddrs...)
+					rpcClient, err := comms.NewClient(rpcAddrs...)
 					if err != nil {
 						cancel()
 						return terror.Panic(err)
@@ -189,11 +195,10 @@ func main() {
 						log_helpers.NamedLogger(gamelog.L, "passport"),
 						passportAddr,
 						passportClientToken,
-						passportRPC,
+						rpcClient,
 					)
 
 					// Start Gameserver - Gameclient server
-
 					// Passport
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Setting up battle arena client")
 					battleArenaClient := battle_arena.NewBattleArenaClient(ctx, log_helpers.NamedLogger(gamelog.L, "battle-arena"), pgxconn, pp, battleArenaAddr)
@@ -297,13 +302,13 @@ func main() {
 						fmt.Sprintf("%s:10002", hostname),
 						fmt.Sprintf("%s:10001", hostname),
 					}
-					passportRPC, err := comms.New(rpcAddrs...)
+					passportRPC, err := comms.NewClient(rpcAddrs...)
 					if err != nil {
 						return terror.Panic(err)
 					}
 
 					result := &comms.GetAll{}
-					err = passportRPC.Call("C.SuperMigrate", comms.GetAllReq{}, result)
+					err = passportRPC.Call("S.SuperMigrate", comms.GetAllReq{}, result)
 					if err != nil {
 						return terror.Error(err)
 					}

@@ -1,15 +1,17 @@
 package server
 
-import "server/db/boiler"
+import (
+	"server/db/boiler"
+)
 
-type Mech struct {
+type MechContainer struct {
 	Mech    *boiler.Mech
 	Chassis *boiler.Chassis
 	Weapons map[int]*boiler.Weapon
 	Turrets map[int]*boiler.Weapon
 	Modules map[int]*boiler.Module
 }
-type Template struct {
+type TemplateContainer struct {
 	Template         *boiler.Template
 	BlueprintChassis *boiler.BlueprintChassis
 	BlueprintWeapons map[int]*boiler.BlueprintWeapon

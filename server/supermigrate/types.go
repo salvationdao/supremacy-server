@@ -1,6 +1,7 @@
 package supermigrate
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -151,25 +152,103 @@ func GetAttributes(attributes []Attributes) *ParsedAttributes {
 			result.AssetType = att.Value.(string)
 		}
 		if att.TraitType == "Max Structure Hit Points" {
-			result.MaxStructureHitPoints = int(att.Value.(float64))
+			switch att.Value.(type) {
+			case float64:
+				result.MaxStructureHitPoints = int(att.Value.(float64))
+			case int:
+				result.MaxStructureHitPoints = att.Value.(int)
+			case string:
+				s, err := strconv.Atoi(att.Value.(string))
+				if err != nil {
+					result.MaxStructureHitPoints = 1000
+				}
+				result.MaxStructureHitPoints = s
+			default:
+				result.MaxStructureHitPoints = 1000
+			}
 		}
 		if att.TraitType == "Max Shield Hit Points" {
-			result.MaxShieldHitPoints = int(att.Value.(float64))
+			switch att.Value.(type) {
+			case float64:
+				result.MaxShieldHitPoints = int(att.Value.(float64))
+			case int:
+				result.MaxShieldHitPoints = att.Value.(int)
+			case string:
+				s, err := strconv.Atoi(att.Value.(string))
+				if err != nil {
+					result.MaxShieldHitPoints = 1000
+				}
+				result.MaxShieldHitPoints = s
+			default:
+				result.MaxShieldHitPoints = 1000
+			}
 		}
 		if att.TraitType == "Name" {
 			result.Name = att.Value.(string)
 		}
 		if att.TraitType == "Speed" {
-			result.Speed = int(att.Value.(float64))
+			switch att.Value.(type) {
+			case float64:
+				result.Speed = int(att.Value.(float64))
+			case int:
+				result.Speed = att.Value.(int)
+			case string:
+				s, err := strconv.Atoi(att.Value.(string))
+				if err != nil {
+					result.Speed = 1750
+				}
+				result.Speed = s
+			default:
+				result.Speed = 1750
+			}
 		}
 		if att.TraitType == "Weapon Hardpoints" {
-			result.WeaponHardpoints = int(att.Value.(float64))
+			switch att.Value.(type) {
+			case float64:
+				result.WeaponHardpoints = int(att.Value.(float64))
+			case int:
+				result.WeaponHardpoints = att.Value.(int)
+			case string:
+				s, err := strconv.Atoi(att.Value.(string))
+				if err != nil {
+					result.WeaponHardpoints = 2
+				}
+				result.WeaponHardpoints = s
+			default:
+				result.WeaponHardpoints = 2
+			}
 		}
 		if att.TraitType == "Turret Hardpoints" {
-			result.TurretHardpoints = int(att.Value.(float64))
+			switch att.Value.(type) {
+			case float64:
+				result.TurretHardpoints = int(att.Value.(float64))
+			case int:
+				result.TurretHardpoints = att.Value.(int)
+			case string:
+				s, err := strconv.Atoi(att.Value.(string))
+				if err != nil {
+					result.TurretHardpoints = 2
+				}
+				result.TurretHardpoints = s
+			default:
+				result.TurretHardpoints = 2
+			}
 		}
 		if att.TraitType == "Utility Slots" {
-			result.UtilitySlots = int(att.Value.(float64))
+			switch att.Value.(type) {
+			case float64:
+				result.UtilitySlots = int(att.Value.(float64))
+			case int:
+				result.UtilitySlots = att.Value.(int)
+			case string:
+				s, err := strconv.Atoi(att.Value.(string))
+				if err != nil {
+					result.UtilitySlots = 2
+				}
+				result.UtilitySlots = s
+			default:
+				result.UtilitySlots = 2
+			}
 		}
 		if att.TraitType == "Weapon One" {
 			result.WeaponOne = att.Value.(string)
@@ -187,8 +266,63 @@ func GetAttributes(attributes []Attributes) *ParsedAttributes {
 			result.UtilityOne = att.Value.(string)
 		}
 		if att.TraitType == "Shield Recharge Rate" {
-			result.ShieldRechargeRate = int(att.Value.(float64))
+			switch att.Value.(type) {
+			case float64:
+				result.ShieldRechargeRate = int(att.Value.(float64))
+			case int:
+				result.ShieldRechargeRate = att.Value.(int)
+			case string:
+				s, err := strconv.Atoi(att.Value.(string))
+				if err != nil {
+					result.ShieldRechargeRate = 80
+				}
+				result.ShieldRechargeRate = s
+			default:
+				result.ShieldRechargeRate = 80
+			}
 		}
 	}
 	return result
+}
+
+var SubmodelSkinMap = map[string]string{
+	"Crystal Blue":       "CrystalBlue",
+	"Rust Bucket":        "RustBucket",
+	"Dune":               "Dune",
+	"Dynamic Yellow":     "DynamicYellow",
+	"Molten":             "Molten",
+	"Mystermech":         "MysterMech",
+	"Nebula":             "Nebula",
+	"Sleek":              "Sleek",
+	"Blue White":         "BlueWhite",
+	"BioHazard":          "BioHazard",
+	"Cyber":              "Cyber",
+	"Light Blue Police":  "LightBluePolice",
+	"Vintage":            "Vintage",
+	"Red White":          "RedWhite",
+	"Red Hex":            "RedHex",
+	"Desert":             "Desert",
+	"Navy":               "Navy",
+	"Nautical":           "Nautical",
+	"Military":           "Military",
+	"Irradiated":         "Irradiated",
+	"Evo":                "EVA-02",
+	"Beetle":             "Beetle",
+	"Villain":            "Villain",
+	"Green Yellow":       "GreenYellow",
+	"Red Blue":           "RedBlue",
+	"White Gold":         "WhiteGold",
+	"Vector":             "Vector",
+	"Cherry Blossom":     "CherryBlossom",
+	"Warden":             "Warden",
+	"Gumdan":             "Gundam",
+	"White Gold Pattern": "WhiteGoldPattern",
+	"Evangelic":          "Evangelion",
+	"Chalky Neon":        "ChalkyNeon",
+	"Black Digi":         "BlackDigi",
+	"Purple Haze":        "PurpleHaze",
+	"Destroyer":          "Destroyer",
+	"Static":             "Static",
+	"Neon":               "Neon",
+	"Gold":               "Gold",
 }

@@ -3,16 +3,43 @@ package comms
 import (
 	"server"
 	"server/db"
+	"server/db/boiler"
+	"server/gamedb"
 
 	"github.com/gofrs/uuid"
 )
+
+type MechsReq struct {
+}
+type MechsResp struct {
+	MechContainers []*server.MechContainer
+}
+
+// Mechs is a heavy func, do not use on a running server
+func (s *S) Mechs(req MechsReq, resp *MechsResp) error {
+	templates, err := boiler.Mechs().All(gamedb.StdConn)
+	if err != nil {
+		return err
+	}
+	result := []*server.MechContainer{}
+	for _, tpl := range templates {
+		template, err := db.Mech(uuid.Must(uuid.FromString(tpl.ID)))
+		if err != nil {
+			return err
+		}
+		result = append(result, template)
+
+	}
+	resp.MechContainers = result
+	return nil
+}
 
 type MechReq struct {
 	MechID uuid.UUID
 }
 
 type MechResp struct {
-	Mech *server.Mech
+	MechContainer *server.MechContainer
 }
 
 func (s *S) Mech(req MechReq, resp *MechResp) error {
@@ -20,7 +47,7 @@ func (s *S) Mech(req MechReq, resp *MechResp) error {
 	if err != nil {
 		return err
 	}
-	resp.Mech = result
+	resp.MechContainer = result
 	return nil
 }
 
@@ -28,7 +55,7 @@ type MechsByOwnerIDReq struct {
 	OwnerID uuid.UUID
 }
 type MechsByOwnerIDResp struct {
-	Mechs []*server.Mech
+	MechContainers []*server.MechContainer
 }
 
 func (s *S) MechsByOwnerID(req MechsByOwnerIDReq, resp *MechsByOwnerIDResp) error {
@@ -36,7 +63,7 @@ func (s *S) MechsByOwnerID(req MechsByOwnerIDReq, resp *MechsByOwnerIDResp) erro
 	if err != nil {
 		return err
 	}
-	resp.Mechs = result
+	resp.MechContainers = result
 	return nil
 }
 
@@ -45,7 +72,7 @@ type MechRegisterReq struct {
 	OwnerID    uuid.UUID
 }
 type MechRegisterResp struct {
-	Mech *server.Mech
+	MechContainer *server.MechContainer
 }
 
 func (s *S) MechRegister(req MechRegisterReq, resp *MechRegisterResp) error {
@@ -57,7 +84,7 @@ func (s *S) MechRegister(req MechRegisterReq, resp *MechRegisterResp) error {
 	if err != nil {
 		return err
 	}
-	resp.Mech = mech
+	resp.MechContainer = mech
 	return nil
 }
 
@@ -66,7 +93,7 @@ type MechSetNameReq struct {
 	Name   string
 }
 type MechSetNameResp struct {
-	Mech *server.Mech
+	MechContainer *server.MechContainer
 }
 
 func (s *S) MechSetName(req MechSetNameReq, resp *MechSetNameResp) error {
@@ -78,7 +105,7 @@ func (s *S) MechSetName(req MechSetNameReq, resp *MechSetNameResp) error {
 	if err != nil {
 		return err
 	}
-	resp.Mech = mech
+	resp.MechContainer = mech
 	return nil
 }
 
@@ -87,7 +114,7 @@ type MechSetOwnerReq struct {
 	OwnerID uuid.UUID
 }
 type MechSetOwnerResp struct {
-	Mech *server.Mech
+	MechContainer *server.MechContainer
 }
 
 func (s *S) MechSetOwner(req MechSetOwnerReq, resp *MechSetOwnerResp) error {
@@ -99,6 +126,6 @@ func (s *S) MechSetOwner(req MechSetOwnerReq, resp *MechSetOwnerResp) error {
 	if err != nil {
 		return err
 	}
-	resp.Mech = mech
+	resp.MechContainer = mech
 	return nil
 }
