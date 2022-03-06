@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"math/rand"
 	"server/db/boiler"
-	"strconv"
+	"strings"
 
 	"github.com/gofrs/uuid"
 	"github.com/gosimple/slug"
@@ -30,7 +30,17 @@ func ProcessMech(tx *sql.Tx, data *AssetPayload, metadata *MetadataPayload) (boo
 	if isDefaultHash(data.MetadataHash) {
 		return true, false, nil
 	}
-
+	exists, err := boiler.PlayerExists(tx, data.UserID)
+	if err != nil {
+		return false, false, nil
+	}
+	if !exists {
+		newPlayer := &boiler.Player{ID: data.UserID}
+		err = newPlayer.Insert(tx, boil.Infer())
+		if err != nil {
+			return false, false, nil
+		}
+	}
 	mechExists, err := boiler.Mechs(boiler.MechWhere.Hash.EQ(data.MetadataHash)).Exists(tx)
 	if err != nil {
 		return false, false, fmt.Errorf("check mech exist: %w", err)
@@ -116,24 +126,18 @@ func ProcessMech(tx *sql.Tx, data *AssetPayload, metadata *MetadataPayload) (boo
 		return false, false, fmt.Errorf("insert chassis: %w", err)
 	}
 	label, slug := MechLabelSlug(att.Brand, att.Model, att.SubModel, att.Name)
-	externalTokenID, err := strconv.Atoi(data.ExternalTokenID)
-	if err != nil {
-		return false, false, fmt.Errorf("convert external token ID: %w", err)
-	}
-
 	newMech := &boiler.Mech{
-		ID:              uuid.Must(uuid.NewV4()).String(),
-		ImageURL:        metadata.Image,
-		AnimationURL:    metadata.AnimationURL,
-		CollectionID:    data.CollectionID,
-		ExternalTokenID: externalTokenID,
-		OwnerID:         data.UserID,
-		TemplateID:      template.ID,
-		ChassisID:       chassis.ID,
-		Hash:            data.MetadataHash,
-		Name:            att.Name,
-		Label:           label,
-		Slug:            slug,
+		ID:           uuid.Must(uuid.NewV4()).String(),
+		ImageURL:     metadata.Image,
+		AnimationURL: metadata.AnimationURL,
+		Tier:         strings.ToUpper(strings.ReplaceAll(att.Rarity, " ", "_")),
+		OwnerID:      data.UserID,
+		TemplateID:   template.ID,
+		ChassisID:    chassis.ID,
+		Hash:         data.MetadataHash,
+		Name:         att.Name,
+		Label:        label,
+		Slug:         slug,
 	}
 
 	err = newMech.Insert(tx, boil.Infer())
@@ -149,7 +153,7 @@ func ProcessMech(tx *sql.Tx, data *AssetPayload, metadata *MetadataPayload) (boo
 		WeaponID:      weapon1.ID,
 		ChassisID:     chassis.ID,
 		MountLocation: weapon1.WeaponType,
-		SlotNumber:    1,
+		SlotNumber:    0,
 	}
 	err = join1.Insert(tx, boil.Infer())
 	if err != nil {
@@ -163,7 +167,7 @@ func ProcessMech(tx *sql.Tx, data *AssetPayload, metadata *MetadataPayload) (boo
 		WeaponID:      weapon2.ID,
 		ChassisID:     chassis.ID,
 		MountLocation: weapon2.WeaponType,
-		SlotNumber:    2,
+		SlotNumber:    1,
 	}
 	err = join2.Insert(tx, boil.Infer())
 	if err != nil {
@@ -179,7 +183,7 @@ func ProcessMech(tx *sql.Tx, data *AssetPayload, metadata *MetadataPayload) (boo
 			WeaponID:      turret1.ID,
 			ChassisID:     chassis.ID,
 			MountLocation: turret1.WeaponType,
-			SlotNumber:    1,
+			SlotNumber:    0,
 		}
 		err = join.Insert(tx, boil.Infer())
 		if err != nil {
@@ -195,7 +199,7 @@ func ProcessMech(tx *sql.Tx, data *AssetPayload, metadata *MetadataPayload) (boo
 			WeaponID:      turret2.ID,
 			ChassisID:     chassis.ID,
 			MountLocation: turret2.WeaponType,
-			SlotNumber:    2,
+			SlotNumber:    1,
 		}
 		err = join.Insert(tx, boil.Infer())
 		if err != nil {
@@ -205,6 +209,15 @@ func ProcessMech(tx *sql.Tx, data *AssetPayload, metadata *MetadataPayload) (boo
 	err = module.Insert(tx, boil.Infer())
 	if err != nil {
 		return false, false, fmt.Errorf("insert module: %w", err)
+	}
+	moduleJoin := &boiler.ChassisModule{
+		ChassisID:  chassis.ID,
+		ModuleID:   module.ID,
+		SlotNumber: 0,
+	}
+	err = moduleJoin.Insert(tx, boil.Infer())
+	if err != nil {
+		return false, false, fmt.Errorf("insert module join: %w", err)
 	}
 
 	return false, false, nil

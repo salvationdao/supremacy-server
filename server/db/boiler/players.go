@@ -25,7 +25,7 @@ import (
 type Player struct {
 	ID            string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	FactionID     null.String `boiler:"faction_id" boil:"faction_id" json:"factionID,omitempty" toml:"factionID" yaml:"factionID,omitempty"`
-	Username      string      `boiler:"username" boil:"username" json:"username" toml:"username" yaml:"username"`
+	Username      null.String `boiler:"username" boil:"username" json:"username,omitempty" toml:"username" yaml:"username,omitempty"`
 	PublicAddress null.String `boiler:"public_address" boil:"public_address" json:"publicAddress,omitempty" toml:"publicAddress" yaml:"publicAddress,omitempty"`
 	DeletedAt     null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
 	UpdatedAt     time.Time   `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
@@ -76,7 +76,7 @@ var PlayerTableColumns = struct {
 var PlayerWhere = struct {
 	ID            whereHelperstring
 	FactionID     whereHelpernull_String
-	Username      whereHelperstring
+	Username      whereHelpernull_String
 	PublicAddress whereHelpernull_String
 	DeletedAt     whereHelpernull_Time
 	UpdatedAt     whereHelpertime_Time
@@ -84,7 +84,7 @@ var PlayerWhere = struct {
 }{
 	ID:            whereHelperstring{field: "\"players\".\"id\""},
 	FactionID:     whereHelpernull_String{field: "\"players\".\"faction_id\""},
-	Username:      whereHelperstring{field: "\"players\".\"username\""},
+	Username:      whereHelpernull_String{field: "\"players\".\"username\""},
 	PublicAddress: whereHelpernull_String{field: "\"players\".\"public_address\""},
 	DeletedAt:     whereHelpernull_Time{field: "\"players\".\"deleted_at\""},
 	UpdatedAt:     whereHelpertime_Time{field: "\"players\".\"updated_at\""},
@@ -119,8 +119,8 @@ type playerL struct{}
 
 var (
 	playerAllColumns            = []string{"id", "faction_id", "username", "public_address", "deleted_at", "updated_at", "created_at"}
-	playerColumnsWithoutDefault = []string{"username"}
-	playerColumnsWithDefault    = []string{"id", "faction_id", "public_address", "deleted_at", "updated_at", "created_at"}
+	playerColumnsWithoutDefault = []string{}
+	playerColumnsWithDefault    = []string{"id", "faction_id", "username", "public_address", "deleted_at", "updated_at", "created_at"}
 	playerPrimaryKeyColumns     = []string{"id"}
 	playerGeneratedColumns      = []string{}
 )

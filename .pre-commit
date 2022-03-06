@@ -1,34 +1,34 @@
 #!/bin/sh
 
 
-REPO_ROOT=$(git rev-parse --show-toplevel)
+# REPO_ROOT=$(git rev-parse --show-toplevel)
 
-RED="\e[31m"
-ENDCOLOR="\e[0m"
+# RED="\e[31m"
+# ENDCOLOR="\e[0m"
 
-# check and make sure the repo doesn't use the .All from the sqlboiler, cuz it is expensive query and lazy programming
-echo -n "" > ${REPO_ROOT}/.check-bad-files
-find "${REPO_ROOT}/server" -path "${REPO_ROOT}/server/db/boiler" -prune -o -type f -iname '*.go' -print | xargs -n1 -I '{}' grep -Hn '\.All(' '{}' >> ${REPO_ROOT}/.check-bad-files
+# # check and make sure the repo doesn't use the .All from the sqlboiler, cuz it is expensive query and lazy programming
+# echo -n "" > ${REPO_ROOT}/.check-bad-files
+# find "${REPO_ROOT}/server" -path "${REPO_ROOT}/server/db/boiler" -prune -o -type f -iname '*.go' -print | xargs -n1 -I '{}' grep -Hn '\.All(' '{}' >> ${REPO_ROOT}/.check-bad-files
 
-### second filter or add exception here ###
+# ### second filter or add exception here ###
 
-# .All() is not sqlboiler
-grep -v '.All()' ${REPO_ROOT}/.check-bad-files > ${REPO_ROOT}/.check-bad-files2
-cp ${REPO_ROOT}/.check-bad-files2 ${REPO_ROOT}/.check-bad-files
-# example file exclusion
-cat ${REPO_ROOT}/.check-bad-files | grep -v 'butter_chicken.go' > ${REPO_ROOT}/.check-bad-files2
-cp ${REPO_ROOT}/.check-bad-files2 ${REPO_ROOT}/.check-bad-files
+# # .All() is not sqlboiler
+# grep -v '.All()' ${REPO_ROOT}/.check-bad-files > ${REPO_ROOT}/.check-bad-files2
+# cp ${REPO_ROOT}/.check-bad-files2 ${REPO_ROOT}/.check-bad-files
+# # example file exclusion
+# cat ${REPO_ROOT}/.check-bad-files | grep -v 'butter_chicken.go' > ${REPO_ROOT}/.check-bad-files2
+# cp ${REPO_ROOT}/.check-bad-files2 ${REPO_ROOT}/.check-bad-files
 
-# count total offending lines
-TOTAL=$(cat ${REPO_ROOT}/.check-bad-files | wc -l)
+# # count total offending lines
+# TOTAL=$(cat ${REPO_ROOT}/.check-bad-files | wc -l)
 
-if [ "${TOTAL}" != "0" ]; then
-  grep --color=always '.All(' ${REPO_ROOT}/.check-bad-files
+# if [ "${TOTAL}" != "0" ]; then
+#   grep --color=always '.All(' ${REPO_ROOT}/.check-bad-files
 
-  MSG="${RED}ERROR: git commit failed${ENDCOLOR}
-DO NOT use  ${RED}.All(...)${ENDCOLOR}
-from db boiler, do proper pagination. Because it's expensive query and bad habit
-Ask senior devs if not sure what it meant"
-  echo "${MSG}"
-  exit 1
-fi
+#   MSG="${RED}ERROR: git commit failed${ENDCOLOR}
+# DO NOT use  ${RED}.All(...)${ENDCOLOR}
+# from db boiler, do proper pagination. Because it's expensive query and bad habit
+# Ask senior devs if not sure what it meant"
+#   echo "${MSG}"
+#   exit 1
+# fi

@@ -20,7 +20,7 @@ func ProcessUser(tx *sql.Tx, data *UserPayload) (bool, bool, error) {
 			return false, false, err
 		}
 		player.FactionID = data.FactionID
-		player.Username = data.Username
+		player.Username = null.NewString(data.Username, data.Username != "")
 		_, err = player.Update(tx, boil.Whitelist(boiler.PlayerColumns.FactionID, boiler.PlayerColumns.Username))
 		if err != nil {
 			return false, false, err
@@ -36,7 +36,7 @@ func ProcessUser(tx *sql.Tx, data *UserPayload) (bool, bool, error) {
 	record := &boiler.Player{
 		ID:            data.ID,
 		FactionID:     data.FactionID,
-		Username:      data.Username,
+		Username:      null.NewString(data.Username, data.Username != ""),
 		PublicAddress: addr,
 	}
 	err = record.Insert(tx, boil.Infer())

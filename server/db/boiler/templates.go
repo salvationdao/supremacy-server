@@ -26,6 +26,7 @@ type Template struct {
 	ID                 string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	BlueprintChassisID string    `boiler:"blueprint_chassis_id" boil:"blueprint_chassis_id" json:"blueprintChassisID" toml:"blueprintChassisID" yaml:"blueprintChassisID"`
 	FactionID          string    `boiler:"faction_id" boil:"faction_id" json:"factionID" toml:"factionID" yaml:"factionID"`
+	Tier               string    `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
 	Label              string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
 	Slug               string    `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
 	IsDefault          bool      `boiler:"is_default" boil:"is_default" json:"isDefault" toml:"isDefault" yaml:"isDefault"`
@@ -43,6 +44,7 @@ var TemplateColumns = struct {
 	ID                 string
 	BlueprintChassisID string
 	FactionID          string
+	Tier               string
 	Label              string
 	Slug               string
 	IsDefault          string
@@ -55,6 +57,7 @@ var TemplateColumns = struct {
 	ID:                 "id",
 	BlueprintChassisID: "blueprint_chassis_id",
 	FactionID:          "faction_id",
+	Tier:               "tier",
 	Label:              "label",
 	Slug:               "slug",
 	IsDefault:          "is_default",
@@ -69,6 +72,7 @@ var TemplateTableColumns = struct {
 	ID                 string
 	BlueprintChassisID string
 	FactionID          string
+	Tier               string
 	Label              string
 	Slug               string
 	IsDefault          string
@@ -81,6 +85,7 @@ var TemplateTableColumns = struct {
 	ID:                 "templates.id",
 	BlueprintChassisID: "templates.blueprint_chassis_id",
 	FactionID:          "templates.faction_id",
+	Tier:               "templates.tier",
 	Label:              "templates.label",
 	Slug:               "templates.slug",
 	IsDefault:          "templates.is_default",
@@ -97,6 +102,7 @@ var TemplateWhere = struct {
 	ID                 whereHelperstring
 	BlueprintChassisID whereHelperstring
 	FactionID          whereHelperstring
+	Tier               whereHelperstring
 	Label              whereHelperstring
 	Slug               whereHelperstring
 	IsDefault          whereHelperbool
@@ -109,6 +115,7 @@ var TemplateWhere = struct {
 	ID:                 whereHelperstring{field: "\"templates\".\"id\""},
 	BlueprintChassisID: whereHelperstring{field: "\"templates\".\"blueprint_chassis_id\""},
 	FactionID:          whereHelperstring{field: "\"templates\".\"faction_id\""},
+	Tier:               whereHelperstring{field: "\"templates\".\"tier\""},
 	Label:              whereHelperstring{field: "\"templates\".\"label\""},
 	Slug:               whereHelperstring{field: "\"templates\".\"slug\""},
 	IsDefault:          whereHelperbool{field: "\"templates\".\"is_default\""},
@@ -146,8 +153,8 @@ func (*templateR) NewStruct() *templateR {
 type templateL struct{}
 
 var (
-	templateAllColumns            = []string{"id", "blueprint_chassis_id", "faction_id", "label", "slug", "is_default", "image_url", "animation_url", "deleted_at", "updated_at", "created_at"}
-	templateColumnsWithoutDefault = []string{"blueprint_chassis_id", "faction_id", "label", "slug", "image_url", "animation_url"}
+	templateAllColumns            = []string{"id", "blueprint_chassis_id", "faction_id", "tier", "label", "slug", "is_default", "image_url", "animation_url", "deleted_at", "updated_at", "created_at"}
+	templateColumnsWithoutDefault = []string{"blueprint_chassis_id", "faction_id", "tier", "label", "slug", "image_url", "animation_url"}
 	templateColumnsWithDefault    = []string{"id", "is_default", "deleted_at", "updated_at", "created_at"}
 	templatePrimaryKeyColumns     = []string{"id"}
 	templateGeneratedColumns      = []string{}
