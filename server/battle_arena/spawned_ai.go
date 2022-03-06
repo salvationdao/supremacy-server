@@ -54,7 +54,7 @@ func (ba *BattleArena) AISpawnedHandler(ctx context.Context, payload []byte, rep
 		spawnedAI.Faction = aiFaction
 	}
 
-	ba.Log.Info().Msgf("Battle Update: %s - AI Spawned: %d", req.Payload.BattleID, spawnedAI.ParticipantID)
+	ba.Log.Info().Msgf("battle Update: %s - AI Spawned: %d", req.Payload.BattleID, spawnedAI.ParticipantID)
 
 	// cache record in battle, for future subscription
 	ba.battle.SpawnedAI = append(ba.battle.SpawnedAI, &spawnedAI)

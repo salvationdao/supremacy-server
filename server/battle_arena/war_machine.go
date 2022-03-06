@@ -62,7 +62,7 @@ func (ba *BattleArena) WarMachineDestroyedHandler(ctx context.Context, payload [
 		}
 	}
 
-	ba.Log.Info().Msgf("Battle Update: %s - War Machine Destroyed: %s", req.Payload.BattleID, req.Payload.DestroyedWarMachineEvent.DestroyedWarMachineHash)
+	ba.Log.Info().Msgf("battle Update: %s - War Machine Destroyed: %s", req.Payload.BattleID, req.Payload.DestroyedWarMachineEvent.DestroyedWarMachineHash)
 
 	// save to database
 	tx, err := ba.Conn.Begin(ctx)

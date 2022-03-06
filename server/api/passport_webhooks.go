@@ -459,7 +459,7 @@ func (pc *PassportWebhookController) FactionQueueCostGet(w http.ResponseWriter, 
 	}
 
 	if pc.API.BattleArena == nil {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("battle arena is nil"), "Battle arena is nil")
+		return http.StatusBadRequest, terror.Error(fmt.Errorf("battle arena is nil"), "battle arena is nil")
 	}
 	if pc.API.BattleArena.WarMachineQueue == nil {
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("WarMachineQueue is nil"), "WarMachineQueue is nil")

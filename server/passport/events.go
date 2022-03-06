@@ -8,7 +8,7 @@ import (
 
 /**************
 
-Battle arena Events are events that the hub client needs to know about.
+battle arena Events are events that the hub client needs to know about.
 
 As an example...
 	pp.Events.Trigger(ctx, EventGameStart, &EventData{EventType: EventGameStart, Passport: ba.battle})

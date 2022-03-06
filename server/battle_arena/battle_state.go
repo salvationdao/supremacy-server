@@ -95,7 +95,7 @@ outerLoop:
 		}
 	}
 
-	ba.Log.Info().Msgf("Battle starting: %s", req.Payload.BattleID)
+	ba.Log.Info().Msgf("battle starting: %s", req.Payload.BattleID)
 	for _, wm := range ba.battle.WarMachines {
 		ba.Log.Info().Msgf("War Machine: %s - %s", wm.Name, wm.Hash)
 	}
@@ -331,7 +331,7 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 		return terror.Error(err, "current battle has not started yet.")
 	}
 
-	ba.Log.Info().Msgf("Battle ending: %s", req.Payload.BattleID)
+	ba.Log.Info().Msgf("battle ending: %s", req.Payload.BattleID)
 	ba.Log.Info().Msg("Winning War Machines")
 	for _, warMachine := range req.Payload.WinningWarMachineMetadatas {
 		ba.Log.Info().Msgf("%s", warMachine.Hash)

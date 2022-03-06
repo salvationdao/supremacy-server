@@ -250,7 +250,7 @@ func NewAPI(
 	api.Hub.Events.AddEventHandler(hub.EventOffline, api.offlineEventHandler, func(e error) {})
 
 	///////////////////////////
-	//	Battle Arena Events	 //
+	//	battle Arena Events	 //
 	///////////////////////////
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventGameInit, api.BattleInitSignal)
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventGameStart, api.BattleStartSignal)

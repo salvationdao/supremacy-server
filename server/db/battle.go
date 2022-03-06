@@ -170,7 +170,7 @@ func CreateBattleStateEvent(ctx context.Context, conn Conn, battleID server.Batt
 }
 
 /*********************
-* Battle Queue stuff *
+* battle Queue stuff *
 *********************/
 func BattleQueueInsert(ctx context.Context, conn Conn, warMachineMetadata *server.WarMachineMetadata, contractReward string, isInsured bool, fee string) error {
 	gamelog.GameLog.Debug().Str("fn", "BattleQueueInsert").Str("contract_reward", contractReward).Str("warmachine_hash", warMachineMetadata.Hash).Msg("db func")

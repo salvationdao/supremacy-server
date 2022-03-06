@@ -123,7 +123,7 @@ var (
 
 type (
 	// BattleSlice is an alias for a slice of pointers to Battle.
-	// This should almost always be used instead of []Battle.
+	// This should almost always be used instead of []battle.
 	BattleSlice []*Battle
 	// BattleHook is the signature for custom Battle hook methods
 	BattleHook func(boil.Executor, *Battle) error
@@ -318,7 +318,7 @@ func (q battleQuery) All(exec boil.Executor) (BattleSlice, error) {
 
 	err := q.Bind(nil, exec, &o)
 	if err != nil {
-		return nil, errors.Wrap(err, "boiler: failed to assign all query results to Battle slice")
+		return nil, errors.Wrap(err, "boiler: failed to assign all query results to battle slice")
 	}
 
 	if len(battleAfterSelectHooks) != 0 {
@@ -889,7 +889,7 @@ func (o *Battle) SetGameMap(exec boil.Executor, insert bool, related *GameMap) e
 // AddBattleEvents adds the given related objects to the existing relationships
 // of the battle, optionally inserting them as new records.
 // Appends related to o.R.BattleEvents.
-// Sets related.R.Battle appropriately.
+// Sets related.R.battle appropriately.
 func (o *Battle) AddBattleEvents(exec boil.Executor, insert bool, related ...*BattleEvent) error {
 	var err error
 	for _, rel := range related {
@@ -941,9 +941,9 @@ func (o *Battle) AddBattleEvents(exec boil.Executor, insert bool, related ...*Ba
 // SetBattleEvents removes all previously related items of the
 // battle replacing them completely with the passed
 // in related items, optionally inserting them as new records.
-// Sets o.R.Battle's BattleEvents accordingly.
+// Sets o.R.battle's BattleEvents accordingly.
 // Replaces o.R.BattleEvents with related.
-// Sets related.R.Battle's BattleEvents accordingly.
+// Sets related.R.battle's BattleEvents accordingly.
 func (o *Battle) SetBattleEvents(exec boil.Executor, insert bool, related ...*BattleEvent) error {
 	query := "update \"battle_events\" set \"battle_id\" = null where \"battle_id\" = $1"
 	values := []interface{}{o.ID}
@@ -973,7 +973,7 @@ func (o *Battle) SetBattleEvents(exec boil.Executor, insert bool, related ...*Ba
 
 // RemoveBattleEvents relationships from objects passed in.
 // Removes related items from R.BattleEvents (uses pointer comparison, removal does not keep order)
-// Sets related.R.Battle.
+// Sets related.R.battle.
 func (o *Battle) RemoveBattleEvents(exec boil.Executor, related ...*BattleEvent) error {
 	if len(related) == 0 {
 		return nil
@@ -1014,7 +1014,7 @@ func (o *Battle) RemoveBattleEvents(exec boil.Executor, related ...*BattleEvent)
 // AddBattlesUserVotes adds the given related objects to the existing relationships
 // of the battle, optionally inserting them as new records.
 // Appends related to o.R.BattlesUserVotes.
-// Sets related.R.Battle appropriately.
+// Sets related.R.battle appropriately.
 func (o *Battle) AddBattlesUserVotes(exec boil.Executor, insert bool, related ...*BattlesUserVote) error {
 	var err error
 	for _, rel := range related {
@@ -1066,7 +1066,7 @@ func (o *Battle) AddBattlesUserVotes(exec boil.Executor, insert bool, related ..
 // AddIssuedContractRewards adds the given related objects to the existing relationships
 // of the battle, optionally inserting them as new records.
 // Appends related to o.R.IssuedContractRewards.
-// Sets related.R.Battle appropriately.
+// Sets related.R.battle appropriately.
 func (o *Battle) AddIssuedContractRewards(exec boil.Executor, insert bool, related ...*IssuedContractReward) error {
 	var err error
 	for _, rel := range related {
@@ -1474,7 +1474,7 @@ func (o *Battle) Upsert(exec boil.Executor, updateOnConflict bool, conflictColum
 // Delete will match against the primary key column to find the record to delete.
 func (o *Battle) Delete(exec boil.Executor) (int64, error) {
 	if o == nil {
-		return 0, errors.New("boiler: no Battle provided for delete")
+		return 0, errors.New("boiler: no battle provided for delete")
 	}
 
 	if err := o.doBeforeDeleteHooks(exec); err != nil {
