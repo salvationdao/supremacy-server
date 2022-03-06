@@ -13,12 +13,12 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
-func MechsByOwnerID(ownerID uuid.UUID) ([]*server.Mech, error) {
+func MechsByOwnerID(ownerID uuid.UUID) ([]*server.MechContainer, error) {
 	mechs, err := boiler.Mechs(boiler.MechWhere.OwnerID.EQ(ownerID.String())).All(gamedb.StdConn)
 	if err != nil {
 		return nil, err
 	}
-	result := []*server.Mech{}
+	result := []*server.MechContainer{}
 	for _, mech := range mechs {
 		record, err := Mech(uuid.Must(uuid.FromString(mech.ID)))
 		if err != nil {
@@ -65,7 +65,7 @@ func MechSetOwner(mechID uuid.UUID, ownerID uuid.UUID) error {
 	return nil
 
 }
-func Template(templateID uuid.UUID) (*server.Template, error) {
+func Template(templateID uuid.UUID) (*server.TemplateContainer, error) {
 	template, err := boiler.FindTemplate(gamedb.StdConn, templateID.String())
 	if err != nil {
 		return nil, err
@@ -76,7 +76,7 @@ func Template(templateID uuid.UUID) (*server.Template, error) {
 	}
 
 	blueprintWeaponJoins, err := boiler.BlueprintChassisBlueprintWeapons(
-		qm.Where("chassis_id = ? AND mount_location = 'ARM'", chassis.ID),
+		qm.Where("blueprint_chassis_id = ? AND mount_location = 'ARM'", chassis.ID),
 	).All(gamedb.StdConn)
 	if err != nil {
 		return nil, err
@@ -92,7 +92,7 @@ func Template(templateID uuid.UUID) (*server.Template, error) {
 	}
 
 	blueprintTurretJoins, err := boiler.BlueprintChassisBlueprintWeapons(
-		qm.Where("chassis_id = ? AND mount_location = 'TURRET'", chassis.ID),
+		qm.Where("blueprint_chassis_id = ? AND mount_location = 'TURRET'", chassis.ID),
 	).All(gamedb.StdConn)
 	if err != nil {
 		return nil, err
@@ -108,7 +108,7 @@ func Template(templateID uuid.UUID) (*server.Template, error) {
 	}
 
 	blueprintModuleJoins, err := boiler.BlueprintChassisBlueprintModules(
-		boiler.ChassisModuleWhere.ChassisID.EQ(chassis.ID),
+		boiler.BlueprintChassisBlueprintModuleWhere.BlueprintChassisID.EQ(chassis.ID),
 	).All(gamedb.StdConn)
 	if err != nil {
 		return nil, err
@@ -123,7 +123,7 @@ func Template(templateID uuid.UUID) (*server.Template, error) {
 		blueprintModules[join.SlotNumber] = blueprintModule
 	}
 
-	result := &server.Template{
+	result := &server.TemplateContainer{
 		Template:         template,
 		BlueprintChassis: chassis,
 		BlueprintWeapons: blueprintWeapons,
@@ -140,12 +140,12 @@ func TemplatePurchasedCount(templateID uuid.UUID) (int, error) {
 	}
 	return int(count), nil
 }
-func TemplatesByFactionID(factionID uuid.UUID) ([]*server.Template, error) {
+func TemplatesByFactionID(factionID uuid.UUID) ([]*server.TemplateContainer, error) {
 	templates, err := boiler.Templates().All(gamedb.StdConn)
 	if err != nil {
 		return nil, err
 	}
-	result := []*server.Template{}
+	result := []*server.TemplateContainer{}
 	for _, tpl := range templates {
 		template, err := Template(uuid.Must(uuid.FromString(tpl.ID)))
 		if err != nil {
@@ -157,7 +157,7 @@ func TemplatesByFactionID(factionID uuid.UUID) ([]*server.Template, error) {
 	return result, nil
 }
 
-func Mech(mechID uuid.UUID) (*server.Mech, error) {
+func Mech(mechID uuid.UUID) (*server.MechContainer, error) {
 	mech, err := boiler.FindMech(gamedb.StdConn, mechID.String())
 	if err != nil {
 		return nil, err
@@ -215,7 +215,7 @@ func Mech(mechID uuid.UUID) (*server.Mech, error) {
 		modules[join.SlotNumber] = module
 	}
 
-	result := &server.Mech{
+	result := &server.MechContainer{
 		Mech:    mech,
 		Chassis: chassis,
 		Weapons: weapons,

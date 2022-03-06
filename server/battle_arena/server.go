@@ -439,6 +439,7 @@ func (ba *BattleArena) SetupAfterConnections(logger *zerolog.Logger) {
 		factions, err := ba.passport.FactionAll()
 		if err != nil {
 			ba.Log.Err(err).Msg("could not fetch war machine queue from passport")
+			time.Sleep(b.Duration())
 			continue
 		}
 
