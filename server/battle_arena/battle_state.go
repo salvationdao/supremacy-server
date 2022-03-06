@@ -188,7 +188,7 @@ type BattleRewardList struct {
 func SendForRepairs(ctx context.Context, tx db.Conn, battleID server.BattleID, ppclient *passport.Passport, maxHealth int, health int, hash string) error {
 	isDefault := db.IsDefaultWarMachine(ctx, tx, hash)
 	if isDefault {
-		gamelog.GameLog.Warn().
+		gamelog.L.Warn().
 			Str("fn", "SendForRepairs").
 			Str("battle_id", battleID.String()).
 			Str("hash", hash).
@@ -196,7 +196,7 @@ func SendForRepairs(ctx context.Context, tx db.Conn, battleID server.BattleID, p
 		return nil
 	}
 
-	gamelog.GameLog.Debug().Str("fn", "SendForRepairs").Str("battle_id", battleID.String()).Str("hash", hash).Msg("send participant to repairs")
+	gamelog.L.Debug().Str("fn", "SendForRepairs").Str("battle_id", battleID.String()).Str("hash", hash).Msg("send participant to repairs")
 
 	isInsured, err := db.IsInsured(ctx, tx, hash)
 	if err != nil {
@@ -204,7 +204,7 @@ func SendForRepairs(ctx context.Context, tx db.Conn, battleID server.BattleID, p
 	}
 	repairMode := server.RepairModeStandard
 	if isInsured {
-		gamelog.GameLog.Warn().
+		gamelog.L.Warn().
 			Str("fn", "SendForRepairs").
 			Str("battle_id", battleID.String()).
 			Str("hash", hash).
@@ -221,7 +221,7 @@ func SendForRepairs(ctx context.Context, tx db.Conn, battleID server.BattleID, p
 		return fmt.Errorf("insert asset repair record: %w", err)
 	}
 
-	gamelog.GameLog.Debug().
+	gamelog.L.Debug().
 		Str("fn", "SendForRepairs").
 		Str("battle_id", battleID.String()).
 		Str("hash", hash).
@@ -238,7 +238,7 @@ func RemoveParticipant(ctx context.Context, tx db.Conn, battleID server.BattleID
 		return nil
 	}
 
-	gamelog.GameLog.Debug().Str("fn", "RemoveParticipant").Str("battle_id", battleID.String()).Str("hash", hash).Msg("remove participant from queue")
+	gamelog.L.Debug().Str("fn", "RemoveParticipant").Str("battle_id", battleID.String()).Str("hash", hash).Msg("remove participant from queue")
 
 	err := db.BattleQueueRemove(ctx, tx, hash)
 	if err != nil {
@@ -248,14 +248,14 @@ func RemoveParticipant(ctx context.Context, tx db.Conn, battleID server.BattleID
 }
 
 func PayWinners(ctx context.Context, tx db.Conn, ppclient *passport.Passport, battleID server.BattleID, winnerHash string) error {
-	gamelog.GameLog.Debug().Str("fn", "PayWinners").Str("battle_id", battleID.String()).Str("winning_hash", winnerHash).Msg("attempt to pay winner from queue")
+	gamelog.L.Debug().Str("fn", "PayWinners").Str("battle_id", battleID.String()).Str("winning_hash", winnerHash).Msg("attempt to pay winner from queue")
 
 	// Payout
 
 	// Skip default mechs (won't be in queue)
 	isDefault := db.IsDefaultWarMachine(ctx, tx, winnerHash)
 	if isDefault {
-		gamelog.GameLog.Warn().
+		gamelog.L.Warn().
 			Str("fn", "PayWinners").
 			Str("battle_id", battleID.String()).
 			Str("winning_hash", winnerHash).
@@ -263,7 +263,7 @@ func PayWinners(ctx context.Context, tx db.Conn, ppclient *passport.Passport, ba
 		return nil
 	}
 
-	gamelog.GameLog.Debug().
+	gamelog.L.Debug().
 		Str("fn", "PayWinners").
 		Str("battle_id", battleID.String()).
 		Str("winning_hash", winnerHash).Msg("not default mech, prepare to pay winner from queue")
@@ -278,7 +278,7 @@ func PayWinners(ctx context.Context, tx db.Conn, ppclient *passport.Passport, ba
 		return fmt.Errorf("get metadata: %w", err)
 	}
 
-	gamelog.GameLog.Debug().
+	gamelog.L.Debug().
 		Str("fn", "PayWinners").
 		Str("battle_id", battleID.String()).
 		Str("winning_hash", winnerHash).Msg("send to rpc")
@@ -371,24 +371,24 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 	wmq := []*comms.WarMachineQueueStat{}
 
 	for _, meta := range req.Payload.WinningWarMachineMetadatas {
-		gamelog.GameLog.Debug().Str("battle_id", req.Payload.BattleID.String()).Str("hash", meta.Hash).Msg("process winning mech")
+		gamelog.L.Debug().Str("battle_id", req.Payload.BattleID.String()).Str("hash", meta.Hash).Msg("process winning mech")
 		err = PayWinners(ctx, tx, ba.passport, req.Payload.BattleID, meta.Hash)
 		if err != nil {
-			gamelog.GameLog.Err(err).Str("battle_id", req.Payload.BattleID.String()).Str("hash", meta.Hash).Msg("failed to pay winners")
+			gamelog.L.Err(err).Str("battle_id", req.Payload.BattleID.String()).Str("hash", meta.Hash).Msg("failed to pay winners")
 			return fmt.Errorf("PayWinners: %w", err)
 		}
 	}
 
 	for _, bwm := range ba.battle.WarMachines {
-		gamelog.GameLog.Debug().Str("battle_id", req.Payload.BattleID.String()).Str("hash", bwm.Hash).Msg("process participating mech")
+		gamelog.L.Debug().Str("battle_id", req.Payload.BattleID.String()).Str("hash", bwm.Hash).Msg("process participating mech")
 		err = SendForRepairs(ctx, tx, req.Payload.BattleID, ba.passport, bwm.MaxHealth, bwm.Health, bwm.Hash)
 		if err != nil {
-			gamelog.GameLog.Err(err).Str("battle_id", req.Payload.BattleID.String()).Str("hash", bwm.Hash).Msg("failed to send for repairs")
+			gamelog.L.Err(err).Str("battle_id", req.Payload.BattleID.String()).Str("hash", bwm.Hash).Msg("failed to send for repairs")
 			return fmt.Errorf("SendForRepairs: %w", err)
 		}
 		err = RemoveParticipant(ctx, tx, req.Payload.BattleID, bwm.Hash)
 		if err != nil {
-			gamelog.GameLog.Err(err).Str("battle_id", req.Payload.BattleID.String()).Str("hash", bwm.Hash).Msg("failed to remove participants")
+			gamelog.L.Err(err).Str("battle_id", req.Payload.BattleID.String()).Str("hash", bwm.Hash).Msg("failed to remove participants")
 			return fmt.Errorf("RemoveParticipant: %w", err)
 		}
 	}

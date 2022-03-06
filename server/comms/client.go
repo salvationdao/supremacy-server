@@ -36,13 +36,13 @@ func connect(addrs ...string) ([]*rpc.Client, error) {
 	var clients []*rpc.Client
 	for {
 		attempts++
-		gamelog.GameLog.Info().Int("attempt", attempts).Msg("fetching battle queue from passport")
+		gamelog.L.Info().Int("attempt", attempts).Msg("fetching battle queue from passport")
 		clients = []*rpc.Client{}
 		for _, addr := range addrs {
-			gamelog.GameLog.Info().Str("addr", addr).Msg("registering RPC client")
+			gamelog.L.Info().Str("addr", addr).Msg("registering RPC client")
 			client, err := rpc.Dial("tcp", addr)
 			if err != nil {
-				gamelog.GameLog.Err(err).Str("addr", addr).Msg("registering RPC client")
+				gamelog.L.Err(err).Str("addr", addr).Msg("registering RPC client")
 				time.Sleep(b.Duration())
 				continue
 			}
@@ -64,7 +64,7 @@ func (c *C) GoCall(serviceMethod string, args interface{}, reply interface{}, ca
 }
 
 func (c *C) Call(serviceMethod string, args interface{}, reply interface{}) error {
-	gamelog.GameLog.Debug().Str("fn", serviceMethod).Interface("args", args).Msg("rpc call")
+	gamelog.L.Debug().Str("fn", serviceMethod).Interface("args", args).Msg("rpc call")
 	span := tracer.StartSpan("rpc.call", tracer.ResourceName(serviceMethod))
 	defer span.Finish()
 	c.inc.Add(1)

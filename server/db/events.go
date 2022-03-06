@@ -14,7 +14,7 @@ import (
 
 // WarMachineDestroyedEventCreate adds a battle log of BattleEventTypeWarMachineDestroyed
 func WarMachineDestroyedEventCreate(ctx context.Context, conn Conn, battleID server.BattleID, warMachineDestroyedEvent *server.WarMachineDestroyedEvent) error {
-	gamelog.GameLog.Debug().Str("fn", "WarMachineDestroyedEventCreate").Str("battle_id", battleID.String()).Msg("db func")
+	gamelog.L.Debug().Str("fn", "WarMachineDestroyedEventCreate").Str("battle_id", battleID.String()).Msg("db func")
 	q := `
 		WITH rows AS (
 			INSERT INTO 
@@ -47,7 +47,7 @@ func WarMachineDestroyedEventCreate(ctx context.Context, conn Conn, battleID ser
 
 // WarMachineDestroyedEventAssistedWarMachineSet assign assisted war machine to a war machine destroyed event
 func WarMachineDestroyedEventAssistedWarMachineSet(ctx context.Context, conn Conn, eventID server.WarMachineDestroyedEventID, warMachineHashs []string) error {
-	gamelog.GameLog.Debug().Str("fn", "WarMachineDestroyedEventAssistedWarMachineSet").Str("event_id", eventID.String()).Msg("db func")
+	gamelog.L.Debug().Str("fn", "WarMachineDestroyedEventAssistedWarMachineSet").Str("event_id", eventID.String()).Msg("db func")
 	q := `
 		INSERT INTO
 			battle_events_war_machine_destroyed_assisted_war_machines (war_machine_destroyed_event_id, war_machine_id)
@@ -75,7 +75,7 @@ func WarMachineDestroyedEventAssistedWarMachineSet(ctx context.Context, conn Con
 
 // GameAbilityEventCreate adds a battle log of BattleEvent
 func GameAbilityEventCreate(ctx context.Context, conn Conn, battleID server.BattleID, gameAbilityEvent *server.GameAbilityEvent) error {
-	gamelog.GameLog.Debug().Str("fn", "GameAbilityEventCreate").Str("battle_id", battleID.String()).Msg("db func")
+	gamelog.L.Debug().Str("fn", "GameAbilityEventCreate").Str("battle_id", battleID.String()).Msg("db func")
 	q := `
 		WITH rows AS (
 			INSERT INTO 
@@ -110,7 +110,7 @@ func GameAbilityEventCreate(ctx context.Context, conn Conn, battleID server.Batt
 
 // WarMachineDestroyedEventGetByBattleID return a list of war machine destroyed events by given battle id
 func WarMachineDestroyedEventGetByBattleID(ctx context.Context, conn Conn, battleID server.BattleID) ([]*server.WarMachineDestroyedEvent, error) {
-	gamelog.GameLog.Debug().Str("fn", "WarMachineDestroyedEventGetByBattleID").Str("battle_id", battleID.String()).Msg("db func")
+	gamelog.L.Debug().Str("fn", "WarMachineDestroyedEventGetByBattleID").Str("battle_id", battleID.String()).Msg("db func")
 	events := []*server.WarMachineDestroyedEvent{}
 
 	q := `
@@ -129,7 +129,7 @@ func WarMachineDestroyedEventGetByBattleID(ctx context.Context, conn Conn, battl
 }
 
 func GetEvents(ctx context.Context, conn Conn, since *time.Time) ([]*server.BattleEvent, error) {
-	gamelog.GameLog.Debug().Str("fn", "GetEvents").Msg("db func")
+	gamelog.L.Debug().Str("fn", "GetEvents").Msg("db func")
 	events := []*server.BattleEvent{}
 
 	var args []interface{}

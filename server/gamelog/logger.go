@@ -7,7 +7,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
-var GameLog *zerolog.Logger
+var L *zerolog.Logger
 
 func New(environment, level string) {
 	log := log_helpers.LoggerInitZero(environment, level)
@@ -18,9 +18,9 @@ func New(environment, level string) {
 		log = &logPtr
 	}
 	log.Info().Msg("zerolog initialised")
-	if GameLog != nil {
+	if L != nil {
 		panic("GameLog already initialised")
 	}
-	GameLog = log
-	*GameLog = GameLog.With().Caller().Logger()
+	L = log
+	*L = L.With().Caller().Logger()
 }
