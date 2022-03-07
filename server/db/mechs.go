@@ -36,7 +36,7 @@ func MechSetName(mechID uuid.UUID, name string) error {
 	if err != nil {
 		return err
 	}
-	tx.Rollback()
+	defer tx.Rollback()
 
 	mech, err := boiler.FindMech(gamedb.StdConn, mechID.String())
 	if err != nil {
@@ -56,7 +56,7 @@ func MechSetOwner(mechID uuid.UUID, ownerID uuid.UUID) error {
 	if err != nil {
 		return err
 	}
-	tx.Rollback()
+	defer tx.Rollback()
 	mech, err := boiler.FindMech(tx, mechID.String())
 	if err != nil {
 		return err
@@ -258,7 +258,7 @@ func MechRegister(templateID uuid.UUID, ownerID uuid.UUID) (uuid.UUID, error) {
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("start tx: %w", err)
 	}
-	tx.Rollback()
+	defer tx.Rollback()
 	exists, err := boiler.PlayerExists(tx, ownerID.String())
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("check player exists: %w", err)
