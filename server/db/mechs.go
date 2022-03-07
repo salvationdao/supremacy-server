@@ -1,12 +1,15 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
+	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/gofrs/uuid"
 	"github.com/teris-io/shortid"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -14,6 +17,7 @@ import (
 )
 
 func MechsByOwnerID(ownerID uuid.UUID) ([]*server.MechContainer, error) {
+	fmt.Println("func MechsByOwnerID")
 	mechs, err := boiler.Mechs(boiler.MechWhere.OwnerID.EQ(ownerID.String())).All(gamedb.StdConn)
 	if err != nil {
 		return nil, err
@@ -28,12 +32,20 @@ func MechsByOwnerID(ownerID uuid.UUID) ([]*server.MechContainer, error) {
 	}
 	return result, nil
 }
+
 func MechSetName(mechID uuid.UUID, name string) error {
+	fmt.Println("func MechSetName")
+	fmt.Println("gamedb.StdConn.Begin()")
 	tx, err := gamedb.StdConn.Begin()
+	fmt.Println("gamedb.StdConn.Begined()")
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() {
+		tx.Rollback()
+		fmt.Println("rollbacked")
+	}()
+
 	mech, err := boiler.FindMech(gamedb.StdConn, mechID.String())
 	if err != nil {
 		return err
@@ -46,12 +58,19 @@ func MechSetName(mechID uuid.UUID, name string) error {
 	tx.Commit()
 	return nil
 }
+
 func MechSetOwner(mechID uuid.UUID, ownerID uuid.UUID) error {
+	fmt.Println("func MechSetOwner")
+	fmt.Println("gamedb.StdConn.Begin()")
 	tx, err := gamedb.StdConn.Begin()
+	fmt.Println("gamedb.StdConn.Begined()")
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() {
+		tx.Rollback()
+		fmt.Println("rollbacked")
+	}()
 	mech, err := boiler.FindMech(tx, mechID.String())
 	if err != nil {
 		return err
@@ -63,9 +82,10 @@ func MechSetOwner(mechID uuid.UUID, ownerID uuid.UUID) error {
 	}
 	tx.Commit()
 	return nil
-
 }
+
 func Template(templateID uuid.UUID) (*server.TemplateContainer, error) {
+	fmt.Println("func Template")
 	template, err := boiler.FindTemplate(gamedb.StdConn, templateID.String())
 	if err != nil {
 		return nil, err
@@ -133,14 +153,18 @@ func Template(templateID uuid.UUID) (*server.TemplateContainer, error) {
 
 	return result, nil
 }
+
 func TemplatePurchasedCount(templateID uuid.UUID) (int, error) {
+	fmt.Println("func TemplatePurchasedCount")
 	count, err := boiler.Mechs(boiler.MechWhere.TemplateID.EQ(templateID.String())).Count(gamedb.StdConn)
 	if err != nil {
 		return 0, err
 	}
 	return int(count), nil
 }
+
 func TemplatesByFactionID(factionID uuid.UUID) ([]*server.TemplateContainer, error) {
+	fmt.Println("func TemplatesByFactionID")
 	templates, err := boiler.Templates().All(gamedb.StdConn)
 	if err != nil {
 		return nil, err
@@ -158,76 +182,77 @@ func TemplatesByFactionID(factionID uuid.UUID) ([]*server.TemplateContainer, err
 }
 
 func Mech(mechID uuid.UUID) (*server.MechContainer, error) {
-	mech, err := boiler.FindMech(gamedb.StdConn, mechID.String())
-	if err != nil {
-		return nil, err
-	}
-	chassis, err := mech.Chassis().One(gamedb.StdConn)
-	if err != nil {
-		return nil, err
-	}
+	mc := &server.MechContainer{}
+	query := `SELECT
+       mechs.*,
+       (SELECT to_json(chassis.*) FROM chassis WHERE id=mechs.chassis_id) as chassis,
+       to_json(
+           (SELECT jsonb_object_agg(cw.slot_number, wpn.* ORDER BY cw.slot_number ASC)
+            FROM chassis_weapons cw
+            INNER JOIN weapons wpn ON wpn.id = cw.weapon_id
+            WHERE cw.chassis_id=mechs.chassis_id AND cw.mount_location = 'ARM')
+        ) as weapons,
+       to_json(
+           (SELECT jsonb_object_agg(cwt.slot_number, wpn.* ORDER BY cwt.slot_number ASC)
+            FROM chassis_weapons cwt
+            INNER JOIN weapons wpn ON wpn.id = cwt.weapon_id
+            WHERE cwt.chassis_id=mechs.chassis_id AND cwt.mount_location = 'TURRET'
+            )
+        ) as turrets,
+        to_json(
+            (SELECT jsonb_object_agg(mods.slot_number, mds.* ORDER BY mods.slot_number ASC)
+                FROM chassis_modules mods
+                INNER JOIN modules mds ON mds.id = mods.module_id
+             WHERE mods.chassis_id=mechs.chassis_id)
+        ) as modules
+		from mechs WHERE id = $1 GROUP BY mechs.id`
 
-	weaponJoins, err := boiler.ChassisWeapons(
-		qm.Where("chassis_id = ? AND mount_location = 'ARM'", chassis.ID),
-	).All(gamedb.StdConn)
-	if err != nil {
-		return nil, err
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
+	defer cancel()
 
-	weapons := map[int]*boiler.Weapon{}
-	for _, join := range weaponJoins {
-		weapon, err := boiler.FindWeapon(gamedb.StdConn, join.WeaponID)
+	result, err := gamedb.Conn.Query(ctx, query, mechID.String())
+	if err != nil {
+		panic(err)
+	}
+	for result.Next() {
+		err = result.Scan(&mc.ID,
+			&mc.OwnerID,
+			&mc.TemplateID,
+			&mc.ChassisID,
+			&mc.ExternalTokenID,
+			&mc.Tier,
+			&mc.IsDefault,
+			&mc.ImageURL,
+			&mc.AnimationURL,
+			&mc.Hash,
+			&mc.Name,
+			&mc.Label,
+			&mc.Slug,
+			&mc.DeletedAt,
+			&mc.UpdatedAt,
+			&mc.CreatedAt,
+			&mc.Chassis,
+			&mc.Weapons,
+			&mc.Turrets,
+			&mc.Modules)
 		if err != nil {
-			return nil, err
+			panic(err)
 		}
-		weapons[join.SlotNumber] = weapon
 	}
-
-	turretJoins, err := boiler.ChassisWeapons(
-		qm.Where("chassis_id = ? AND mount_location = 'TURRET'", chassis.ID),
-	).All(gamedb.StdConn)
+	result.Close()
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
-	turrets := map[int]*boiler.Weapon{}
-	for _, join := range turretJoins {
-		turret, err := boiler.FindWeapon(gamedb.StdConn, join.WeaponID)
-		if err != nil {
-			return nil, err
-		}
-		turrets[join.SlotNumber] = turret
-	}
+	// pgxscan deadlocks for unknown reason.
+	// err = pgxscan.Get(ctx, px, mc, query, mechID.String())
+	spew.Dump(mc.Weapons)
 
-	moduleJoins, err := boiler.ChassisModules(
-		boiler.ChassisModuleWhere.ChassisID.EQ(chassis.ID),
-	).All(gamedb.StdConn)
-	if err != nil {
-		return nil, err
-	}
-
-	modules := map[int]*boiler.Module{}
-	for _, join := range moduleJoins {
-		module, err := boiler.FindModule(gamedb.StdConn, join.ModuleID)
-		if err != nil {
-			return nil, err
-		}
-		modules[join.SlotNumber] = module
-	}
-
-	result := &server.MechContainer{
-		Mech:    mech,
-		Chassis: chassis,
-		Weapons: weapons,
-		Turrets: turrets,
-		Modules: modules,
-	}
-
-	return result, nil
+	return mc, err
 }
 
 func NextExternalTokenID(tx *sql.Tx, isDefault bool) (int, error) {
-
+	fmt.Println("func NextExternalTokenID")
 	count, err := boiler.Mechs(
 		boiler.MechWhere.IsDefault.EQ(isDefault),
 	).Count(tx)
@@ -251,11 +276,17 @@ func NextExternalTokenID(tx *sql.Tx, isDefault bool) (int, error) {
 
 // MechRegister copies everything out of a template into a new mech
 func MechRegister(templateID uuid.UUID, ownerID uuid.UUID) (uuid.UUID, error) {
+	fmt.Println("func MechRegister")
+	fmt.Println("gamedb.StdConn.Begin()")
 	tx, err := gamedb.StdConn.Begin()
+	fmt.Println("gamedb.StdConn.Begined()")
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("start tx: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() {
+		tx.Rollback()
+		fmt.Println("rollbacked")
+	}()
 	exists, err := boiler.PlayerExists(tx, ownerID.String())
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("check player exists: %w", err)

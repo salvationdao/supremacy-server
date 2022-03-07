@@ -5,11 +5,11 @@ import (
 )
 
 type MechContainer struct {
-	Mech    *boiler.Mech
-	Chassis *boiler.Chassis
-	Weapons map[int]*boiler.Weapon
-	Turrets map[int]*boiler.Weapon
-	Modules map[int]*boiler.Module
+	boiler.Mech
+	Chassis boiler.Chassis            `db:"chassis" json:"chassis"`
+	Weapons map[string]*boiler.Weapon `db:"weapons" json:"weapons"`
+	Turrets map[string]*boiler.Weapon `db:"turrets" json:"turrets"`
+	Modules map[string]*boiler.Module `db:"modules" json:"modules"`
 }
 type TemplateContainer struct {
 	Template         *boiler.Template

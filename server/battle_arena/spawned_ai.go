@@ -13,8 +13,8 @@ const AISpawnedCommand = BattleCommand("BATTLE:AI_SPAWNED")
 
 type AISpawnedRequest struct {
 	Payload struct {
-		BattleID       server.BattleID        `json:"battleID"`
-		SpawnedAIEvent *server.SpawnedAIEvent `json:"spawnedAIEvent"`
+		BattleID       server.BattleID        `json:"battle_id"`
+		SpawnedAIEvent *server.SpawnedAIEvent `json:"spawned_aievent"`
 	} `json:"payload"`
 }
 
@@ -54,7 +54,7 @@ func (ba *BattleArena) AISpawnedHandler(ctx context.Context, payload []byte, rep
 		spawnedAI.Faction = aiFaction
 	}
 
-	ba.Log.Info().Msgf("Battle Update: %s - AI Spawned: %d", req.Payload.BattleID, spawnedAI.ParticipantID)
+	ba.Log.Info().Msgf("battle Update: %s - AI Spawned: %d", req.Payload.BattleID, spawnedAI.ParticipantID)
 
 	// cache record in battle, for future subscription
 	ba.battle.SpawnedAI = append(ba.battle.SpawnedAI, &spawnedAI)

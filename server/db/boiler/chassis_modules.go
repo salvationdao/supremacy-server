@@ -24,12 +24,12 @@ import (
 // ChassisModule is an object representing the database table.
 type ChassisModule struct {
 	ID         string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	ChassisID  string    `boiler:"chassis_id" boil:"chassis_id" json:"chassisID" toml:"chassisID" yaml:"chassisID"`
-	ModuleID   string    `boiler:"module_id" boil:"module_id" json:"moduleID" toml:"moduleID" yaml:"moduleID"`
-	SlotNumber int       `boiler:"slot_number" boil:"slot_number" json:"slotNumber" toml:"slotNumber" yaml:"slotNumber"`
-	DeletedAt  null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
-	UpdatedAt  time.Time `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
-	CreatedAt  time.Time `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	ChassisID  string    `boiler:"chassis_id" boil:"chassis_id" json:"chassis_id" toml:"chassis_id" yaml:"chassis_id"`
+	ModuleID   string    `boiler:"module_id" boil:"module_id" json:"module_id" toml:"module_id" yaml:"module_id"`
+	SlotNumber int       `boiler:"slot_number" boil:"slot_number" json:"slot_number" toml:"slot_number" yaml:"slot_number"`
+	DeletedAt  null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt  time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt  time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *chassisModuleR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L chassisModuleL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

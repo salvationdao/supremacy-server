@@ -19,8 +19,8 @@ const WarMachineDestroyedCommand = BattleCommand("BATTLE:WAR_MACHINE_DESTROYED")
 
 type WarMachineDestroyedRequest struct {
 	Payload struct {
-		BattleID                 server.BattleID                  `json:"battleID"`
-		DestroyedWarMachineEvent *server.WarMachineDestroyedEvent `json:"destroyedWarMachineEvent"`
+		BattleID                 server.BattleID                  `json:"battle_id"`
+		DestroyedWarMachineEvent *server.WarMachineDestroyedEvent `json:"destroyed_war_machine_event"`
 	} `json:"payload"`
 }
 
@@ -62,7 +62,7 @@ func (ba *BattleArena) WarMachineDestroyedHandler(ctx context.Context, payload [
 		}
 	}
 
-	ba.Log.Info().Msgf("Battle Update: %s - War Machine Destroyed: %s", req.Payload.BattleID, req.Payload.DestroyedWarMachineEvent.DestroyedWarMachineHash)
+	ba.Log.Info().Msgf("battle Update: %s - War Machine Destroyed: %s", req.Payload.BattleID, req.Payload.DestroyedWarMachineEvent.DestroyedWarMachineHash)
 
 	// save to database
 	tx, err := ba.Conn.Begin(ctx)

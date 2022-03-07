@@ -22,8 +22,8 @@ import (
 
 // BattleEventsWarMachineDestroyedAssistedWarMachine is an object representing the database table.
 type BattleEventsWarMachineDestroyedAssistedWarMachine struct {
-	WarMachineDestroyedEventID string `boiler:"war_machine_destroyed_event_id" boil:"war_machine_destroyed_event_id" json:"warMachineDestroyedEventID" toml:"warMachineDestroyedEventID" yaml:"warMachineDestroyedEventID"`
-	WarMachineHash             string `boiler:"war_machine_hash" boil:"war_machine_hash" json:"warMachineHash" toml:"warMachineHash" yaml:"warMachineHash"`
+	WarMachineDestroyedEventID string `boiler:"war_machine_destroyed_event_id" boil:"war_machine_destroyed_event_id" json:"war_machine_destroyed_event_id" toml:"war_machine_destroyed_event_id" yaml:"war_machine_destroyed_event_id"`
+	WarMachineHash             string `boiler:"war_machine_hash" boil:"war_machine_hash" json:"war_machine_hash" toml:"war_machine_hash" yaml:"war_machine_hash"`
 	ID                         string `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 
 	R *battleEventsWarMachineDestroyedAssistedWarMachineR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

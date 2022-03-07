@@ -24,21 +24,21 @@ import (
 // Mech is an object representing the database table.
 type Mech struct {
 	ID              string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	OwnerID         string    `boiler:"owner_id" boil:"owner_id" json:"ownerID" toml:"ownerID" yaml:"ownerID"`
-	TemplateID      string    `boiler:"template_id" boil:"template_id" json:"templateID" toml:"templateID" yaml:"templateID"`
-	ChassisID       string    `boiler:"chassis_id" boil:"chassis_id" json:"chassisID" toml:"chassisID" yaml:"chassisID"`
-	ExternalTokenID int       `boiler:"external_token_id" boil:"external_token_id" json:"externalTokenID" toml:"externalTokenID" yaml:"externalTokenID"`
+	OwnerID         string    `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
+	TemplateID      string    `boiler:"template_id" boil:"template_id" json:"template_id" toml:"template_id" yaml:"template_id"`
+	ChassisID       string    `boiler:"chassis_id" boil:"chassis_id" json:"chassis_id" toml:"chassis_id" yaml:"chassis_id"`
+	ExternalTokenID int       `boiler:"external_token_id" boil:"external_token_id" json:"external_token_id" toml:"external_token_id" yaml:"external_token_id"`
 	Tier            string    `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
-	IsDefault       bool      `boiler:"is_default" boil:"is_default" json:"isDefault" toml:"isDefault" yaml:"isDefault"`
-	ImageURL        string    `boiler:"image_url" boil:"image_url" json:"imageURL" toml:"imageURL" yaml:"imageURL"`
-	AnimationURL    string    `boiler:"animation_url" boil:"animation_url" json:"animationURL" toml:"animationURL" yaml:"animationURL"`
+	IsDefault       bool      `boiler:"is_default" boil:"is_default" json:"is_default" toml:"is_default" yaml:"is_default"`
+	ImageURL        string    `boiler:"image_url" boil:"image_url" json:"image_url" toml:"image_url" yaml:"image_url"`
+	AnimationURL    string    `boiler:"animation_url" boil:"animation_url" json:"animation_url" toml:"animation_url" yaml:"animation_url"`
 	Hash            string    `boiler:"hash" boil:"hash" json:"hash" toml:"hash" yaml:"hash"`
 	Name            string    `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
 	Label           string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
 	Slug            string    `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
-	DeletedAt       null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
-	UpdatedAt       time.Time `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
-	CreatedAt       time.Time `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	DeletedAt       null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt       time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt       time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *mechR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L mechL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

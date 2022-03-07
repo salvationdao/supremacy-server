@@ -18,15 +18,15 @@ type Faction struct {
 	ID               FactionID     `json:"id" db:"id"`
 	Label            string        `json:"label" db:"label"`
 	Theme            *FactionTheme `json:"theme" db:"theme"`
-	LogoBlobID       BlobID        `json:"logoBlobID,omitempty"`
-	BackgroundBlobID BlobID        `json:"backgroundBlobID,omitempty"`
-	VotePrice        string        `json:"votePrice" db:"vote_price"`
-	ContractReward   string        `json:"contractReward" db:"contract_reward"`
+	LogoBlobID       BlobID        `json:"logo_blob_id,omitempty"`
+	BackgroundBlobID BlobID        `json:"background_blob_id,omitempty"`
+	VotePrice        string        `json:"vote_price" db:"vote_price"`
+	ContractReward   string        `json:"contract_reward" db:"contract_reward"`
 }
 
 type FactionBrief struct {
 	Label      string        `json:"label"`
-	LogoBlobID BlobID        `json:"logoBlobID,omitempty"`
+	LogoBlobID BlobID        `json:"logo_blob_id,omitempty"`
 	Theme      *FactionTheme `json:"theme"`
 }
 
@@ -40,20 +40,20 @@ func (f *Faction) Brief() *FactionBrief {
 
 type FactionStat struct {
 	ID         FactionID `json:"id" db:"id"`
-	WinCount   *int64    `json:"winCount" db:"win_count,omitempty"`
-	LossCount  *int64    `json:"lossCount" db:"loss_count,omitempty"`
-	KillCount  *int64    `json:"killCount" db:"kill_count,omitempty"`
-	DeathCount *int64    `json:"deathCount" db:"death_count,omitempty"`
+	WinCount   *int64    `json:"win_count" db:"win_count,omitempty"`
+	LossCount  *int64    `json:"loss_count" db:"loss_count,omitempty"`
+	KillCount  *int64    `json:"kill_count" db:"kill_count,omitempty"`
+	DeathCount *int64    `json:"death_count" db:"death_count,omitempty"`
 }
 
 type BattleAbility struct {
 	ID                     BattleAbilityID `json:"id" db:"id"`
 	Label                  string          `json:"label" db:"label"`
 	Description            string          `json:"description" db:"description"`
-	CooldownDurationSecond int             `json:"cooldownDurationSecond" db:"cooldown_duration_second"`
+	CooldownDurationSecond int             `json:"cooldown_duration_second" db:"cooldown_duration_second"`
 	Colour                 string          `json:"colour"`
-	TextColour             string          `json:"textColour"`
-	ImageUrl               string          `json:"imageUrl"`
+	TextColour             string          `json:"text_colour"`
+	ImageUrl               string          `json:"image_url"`
 }
 
 func (ga *BattleAbility) Brief() *AbilityBrief {

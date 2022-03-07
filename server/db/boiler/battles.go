@@ -25,10 +25,10 @@ import (
 type Battle struct {
 	ID               string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	Identifier       int         `boiler:"identifier" boil:"identifier" json:"identifier" toml:"identifier" yaml:"identifier"`
-	GameMapID        string      `boiler:"game_map_id" boil:"game_map_id" json:"gameMapID" toml:"gameMapID" yaml:"gameMapID"`
-	WinningCondition null.String `boiler:"winning_condition" boil:"winning_condition" json:"winningCondition,omitempty" toml:"winningCondition" yaml:"winningCondition,omitempty"`
-	StartedAt        time.Time   `boiler:"started_at" boil:"started_at" json:"startedAt" toml:"startedAt" yaml:"startedAt"`
-	EndedAt          null.Time   `boiler:"ended_at" boil:"ended_at" json:"endedAt,omitempty" toml:"endedAt" yaml:"endedAt,omitempty"`
+	GameMapID        string      `boiler:"game_map_id" boil:"game_map_id" json:"game_map_id" toml:"game_map_id" yaml:"game_map_id"`
+	WinningCondition null.String `boiler:"winning_condition" boil:"winning_condition" json:"winning_condition,omitempty" toml:"winning_condition" yaml:"winning_condition,omitempty"`
+	StartedAt        time.Time   `boiler:"started_at" boil:"started_at" json:"started_at" toml:"started_at" yaml:"started_at"`
+	EndedAt          null.Time   `boiler:"ended_at" boil:"ended_at" json:"ended_at,omitempty" toml:"ended_at" yaml:"ended_at,omitempty"`
 
 	R *battleR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

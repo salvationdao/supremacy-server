@@ -26,8 +26,8 @@ type GlobalAnnouncement struct {
 	ID         string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	Title      string    `boiler:"title" boil:"title" json:"title" toml:"title" yaml:"title"`
 	Message    string    `boiler:"message" boil:"message" json:"message" toml:"message" yaml:"message"`
-	GamesUntil null.Int  `boiler:"games_until" boil:"games_until" json:"gamesUntil,omitempty" toml:"gamesUntil" yaml:"gamesUntil,omitempty"`
-	ShowUntil  null.Time `boiler:"show_until" boil:"show_until" json:"showUntil,omitempty" toml:"showUntil" yaml:"showUntil,omitempty"`
+	GamesUntil null.Int  `boiler:"games_until" boil:"games_until" json:"games_until,omitempty" toml:"games_until" yaml:"games_until,omitempty"`
+	ShowUntil  null.Time `boiler:"show_until" boil:"show_until" json:"show_until,omitempty" toml:"show_until" yaml:"show_until,omitempty"`
 
 	R *globalAnnouncementR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L globalAnnouncementL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

@@ -24,21 +24,21 @@ import (
 // BlueprintChassis is an object representing the database table.
 type BlueprintChassis struct {
 	ID                 string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	BrandID            string    `boiler:"brand_id" boil:"brand_id" json:"brandID" toml:"brandID" yaml:"brandID"`
+	BrandID            string    `boiler:"brand_id" boil:"brand_id" json:"brand_id" toml:"brand_id" yaml:"brand_id"`
 	Label              string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
 	Slug               string    `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
 	Model              string    `boiler:"model" boil:"model" json:"model" toml:"model" yaml:"model"`
 	Skin               string    `boiler:"skin" boil:"skin" json:"skin" toml:"skin" yaml:"skin"`
-	ShieldRechargeRate int       `boiler:"shield_recharge_rate" boil:"shield_recharge_rate" json:"shieldRechargeRate" toml:"shieldRechargeRate" yaml:"shieldRechargeRate"`
-	WeaponHardpoints   int       `boiler:"weapon_hardpoints" boil:"weapon_hardpoints" json:"weaponHardpoints" toml:"weaponHardpoints" yaml:"weaponHardpoints"`
-	TurretHardpoints   int       `boiler:"turret_hardpoints" boil:"turret_hardpoints" json:"turretHardpoints" toml:"turretHardpoints" yaml:"turretHardpoints"`
-	UtilitySlots       int       `boiler:"utility_slots" boil:"utility_slots" json:"utilitySlots" toml:"utilitySlots" yaml:"utilitySlots"`
+	ShieldRechargeRate int       `boiler:"shield_recharge_rate" boil:"shield_recharge_rate" json:"shield_recharge_rate" toml:"shield_recharge_rate" yaml:"shield_recharge_rate"`
+	WeaponHardpoints   int       `boiler:"weapon_hardpoints" boil:"weapon_hardpoints" json:"weapon_hardpoints" toml:"weapon_hardpoints" yaml:"weapon_hardpoints"`
+	TurretHardpoints   int       `boiler:"turret_hardpoints" boil:"turret_hardpoints" json:"turret_hardpoints" toml:"turret_hardpoints" yaml:"turret_hardpoints"`
+	UtilitySlots       int       `boiler:"utility_slots" boil:"utility_slots" json:"utility_slots" toml:"utility_slots" yaml:"utility_slots"`
 	Speed              int       `boiler:"speed" boil:"speed" json:"speed" toml:"speed" yaml:"speed"`
-	MaxHitpoints       int       `boiler:"max_hitpoints" boil:"max_hitpoints" json:"maxHitpoints" toml:"maxHitpoints" yaml:"maxHitpoints"`
-	MaxShield          int       `boiler:"max_shield" boil:"max_shield" json:"maxShield" toml:"maxShield" yaml:"maxShield"`
-	DeletedAt          null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
-	UpdatedAt          time.Time `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
-	CreatedAt          time.Time `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	MaxHitpoints       int       `boiler:"max_hitpoints" boil:"max_hitpoints" json:"max_hitpoints" toml:"max_hitpoints" yaml:"max_hitpoints"`
+	MaxShield          int       `boiler:"max_shield" boil:"max_shield" json:"max_shield" toml:"max_shield" yaml:"max_shield"`
+	DeletedAt          null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt          time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt          time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *blueprintChassisR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintChassisL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

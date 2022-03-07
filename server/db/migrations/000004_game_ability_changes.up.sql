@@ -44,7 +44,7 @@ WHERE label = 'ROBOT DOGS';
 ALTER TABLE game_abilities
 	ALTER COLUMN description SET NOT NULL;
 
--- Battle Abilities
+-- battle Abilities
 ALTER TABLE battle_abilities
 	ADD COLUMN description TEXT;
 

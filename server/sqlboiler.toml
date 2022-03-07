@@ -3,7 +3,7 @@ pkgname = "boiler"
 no-context = true
 no-tests = true
 add-soft-deletes = true
-struct-tag-casing = "camel"
+struct-tag-casing = "snake"
 wipe = true
 tag = ["boiler"]
 

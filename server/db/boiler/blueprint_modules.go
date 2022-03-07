@@ -24,14 +24,14 @@ import (
 // BlueprintModule is an object representing the database table.
 type BlueprintModule struct {
 	ID               string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	BrandID          null.String `boiler:"brand_id" boil:"brand_id" json:"brandID,omitempty" toml:"brandID" yaml:"brandID,omitempty"`
+	BrandID          null.String `boiler:"brand_id" boil:"brand_id" json:"brand_id,omitempty" toml:"brand_id" yaml:"brand_id,omitempty"`
 	Slug             string      `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
 	Label            string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	HitpointModifier int         `boiler:"hitpoint_modifier" boil:"hitpoint_modifier" json:"hitpointModifier" toml:"hitpointModifier" yaml:"hitpointModifier"`
-	ShieldModifier   int         `boiler:"shield_modifier" boil:"shield_modifier" json:"shieldModifier" toml:"shieldModifier" yaml:"shieldModifier"`
-	DeletedAt        null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
-	UpdatedAt        time.Time   `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
-	CreatedAt        time.Time   `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	HitpointModifier int         `boiler:"hitpoint_modifier" boil:"hitpoint_modifier" json:"hitpoint_modifier" toml:"hitpoint_modifier" yaml:"hitpoint_modifier"`
+	ShieldModifier   int         `boiler:"shield_modifier" boil:"shield_modifier" json:"shield_modifier" toml:"shield_modifier" yaml:"shield_modifier"`
+	DeletedAt        null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt        time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt        time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *blueprintModuleR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintModuleL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

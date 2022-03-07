@@ -24,11 +24,11 @@ import (
 // AssetRepair is an object representing the database table.
 type AssetRepair struct {
 	Hash              string    `boiler:"hash" boil:"hash" json:"hash" toml:"hash" yaml:"hash"`
-	ExpectCompletedAt time.Time `boiler:"expect_completed_at" boil:"expect_completed_at" json:"expectCompletedAt" toml:"expectCompletedAt" yaml:"expectCompletedAt"`
-	RepairMode        string    `boiler:"repair_mode" boil:"repair_mode" json:"repairMode" toml:"repairMode" yaml:"repairMode"`
-	IsPaidToComplete  bool      `boiler:"is_paid_to_complete" boil:"is_paid_to_complete" json:"isPaidToComplete" toml:"isPaidToComplete" yaml:"isPaidToComplete"`
-	CompletedAt       null.Time `boiler:"completed_at" boil:"completed_at" json:"completedAt,omitempty" toml:"completedAt" yaml:"completedAt,omitempty"`
-	CreatedAt         time.Time `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	ExpectCompletedAt time.Time `boiler:"expect_completed_at" boil:"expect_completed_at" json:"expect_completed_at" toml:"expect_completed_at" yaml:"expect_completed_at"`
+	RepairMode        string    `boiler:"repair_mode" boil:"repair_mode" json:"repair_mode" toml:"repair_mode" yaml:"repair_mode"`
+	IsPaidToComplete  bool      `boiler:"is_paid_to_complete" boil:"is_paid_to_complete" json:"is_paid_to_complete" toml:"is_paid_to_complete" yaml:"is_paid_to_complete"`
+	CompletedAt       null.Time `boiler:"completed_at" boil:"completed_at" json:"completed_at,omitempty" toml:"completed_at" yaml:"completed_at,omitempty"`
+	CreatedAt         time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	ID                string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 
 	R *assetRepairR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

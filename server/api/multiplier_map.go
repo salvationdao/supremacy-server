@@ -32,11 +32,11 @@ const (
 type BattleRewardType string
 
 const (
-	BattleRewardTypeFaction         BattleRewardType = "Battle Faction Reward"
-	BattleRewardTypeWinner          BattleRewardType = "Battle Winner Reward"
-	BattleRewardTypeKill            BattleRewardType = "Battle Kill Reward"
+	BattleRewardTypeFaction         BattleRewardType = "battle Faction Reward"
+	BattleRewardTypeWinner          BattleRewardType = "battle Winner Reward"
+	BattleRewardTypeKill            BattleRewardType = "battle Kill Reward"
 	BattleRewardTypeAbilityExecutor BattleRewardType = "Ability Executor"
-	BattleRewardTypeInfluencer      BattleRewardType = "Battle Influencer"
+	BattleRewardTypeInfluencer      BattleRewardType = "battle Influencer"
 	BattleRewardTypeWarContributor  BattleRewardType = "War Contributor"
 )
 

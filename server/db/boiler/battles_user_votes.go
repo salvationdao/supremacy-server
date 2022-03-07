@@ -22,9 +22,9 @@ import (
 
 // BattlesUserVote is an object representing the database table.
 type BattlesUserVote struct {
-	BattleID  string `boiler:"battle_id" boil:"battle_id" json:"battleID" toml:"battleID" yaml:"battleID"`
-	UserID    string `boiler:"user_id" boil:"user_id" json:"userID" toml:"userID" yaml:"userID"`
-	VoteCount int    `boiler:"vote_count" boil:"vote_count" json:"voteCount" toml:"voteCount" yaml:"voteCount"`
+	BattleID  string `boiler:"battle_id" boil:"battle_id" json:"battle_id" toml:"battle_id" yaml:"battle_id"`
+	UserID    string `boiler:"user_id" boil:"user_id" json:"user_id" toml:"user_id" yaml:"user_id"`
+	VoteCount int    `boiler:"vote_count" boil:"vote_count" json:"vote_count" toml:"vote_count" yaml:"vote_count"`
 
 	R *battlesUserVoteR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battlesUserVoteL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

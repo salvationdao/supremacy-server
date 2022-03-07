@@ -24,9 +24,9 @@ import (
 // BattleEvent is an object representing the database table.
 type BattleEvent struct {
 	ID        string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	BattleID  null.String `boiler:"battle_id" boil:"battle_id" json:"battleID,omitempty" toml:"battleID" yaml:"battleID,omitempty"`
-	EventType null.String `boiler:"event_type" boil:"event_type" json:"eventType,omitempty" toml:"eventType" yaml:"eventType,omitempty"`
-	CreatedAt time.Time   `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	BattleID  null.String `boiler:"battle_id" boil:"battle_id" json:"battle_id,omitempty" toml:"battle_id" yaml:"battle_id,omitempty"`
+	EventType null.String `boiler:"event_type" boil:"event_type" json:"event_type,omitempty" toml:"event_type" yaml:"event_type,omitempty"`
+	CreatedAt time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *battleEventR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleEventL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

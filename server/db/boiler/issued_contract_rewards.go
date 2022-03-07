@@ -25,13 +25,13 @@ import (
 // IssuedContractReward is an object representing the database table.
 type IssuedContractReward struct {
 	ID             string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	BattleID       string          `boiler:"battle_id" boil:"battle_id" json:"battleID" toml:"battleID" yaml:"battleID"`
+	BattleID       string          `boiler:"battle_id" boil:"battle_id" json:"battle_id" toml:"battle_id" yaml:"battle_id"`
 	Reward         decimal.Decimal `boiler:"reward" boil:"reward" json:"reward" toml:"reward" yaml:"reward"`
-	WarMachineHash string          `boiler:"war_machine_hash" boil:"war_machine_hash" json:"warMachineHash" toml:"warMachineHash" yaml:"warMachineHash"`
-	DeletedAt      null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
-	UpdatedAt      time.Time       `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
-	CreatedAt      time.Time       `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
-	IsPaid         null.Time       `boiler:"is_paid" boil:"is_paid" json:"isPaid,omitempty" toml:"isPaid" yaml:"isPaid,omitempty"`
+	WarMachineHash string          `boiler:"war_machine_hash" boil:"war_machine_hash" json:"war_machine_hash" toml:"war_machine_hash" yaml:"war_machine_hash"`
+	DeletedAt      null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt      time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt      time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	IsPaid         null.Time       `boiler:"is_paid" boil:"is_paid" json:"is_paid,omitempty" toml:"is_paid" yaml:"is_paid,omitempty"`
 
 	R *issuedContractRewardR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L issuedContractRewardL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

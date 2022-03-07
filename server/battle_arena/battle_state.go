@@ -33,12 +33,12 @@ const BattleStartCommand = BattleCommand("BATTLE:START")
 
 type BattleStartRequest struct {
 	Payload struct {
-		BattleID    server.BattleID `json:"battleID"`
+		BattleID    server.BattleID `json:"battle_id"`
 		WarMachines []*struct {
 			Hash          string `json:"hash"`
-			ParticipantID byte   `json:"participantID"`
-		} `json:"warMachines"`
-		WarMachineLocation []byte `json:"warMachineLocation"`
+			ParticipantID byte   `json:"participant_id"`
+		} `json:"war_machines"`
+		WarMachineLocation []byte `json:"war_machine_location"`
 	} `json:"payload"`
 }
 
@@ -95,7 +95,7 @@ outerLoop:
 		}
 	}
 
-	ba.Log.Info().Msgf("Battle starting: %s", req.Payload.BattleID)
+	ba.Log.Info().Msgf("battle starting: %s", req.Payload.BattleID)
 	for _, wm := range ba.battle.WarMachines {
 		ba.Log.Info().Msgf("War Machine: %s - %s", wm.Name, wm.Hash)
 	}
@@ -168,12 +168,12 @@ const BattleEndCommand = BattleCommand("BATTLE:END")
 
 type BattleEndRequest struct {
 	Payload struct {
-		BattleID                   server.BattleID           `json:"battleID"`
-		WinCondition               server.BattleWinCondition `json:"winCondition"`
+		BattleID                   server.BattleID           `json:"battle_id"`
+		WinCondition               server.BattleWinCondition `json:"win_condition"`
 		WinningWarMachineMetadatas []*struct {
 			Hash   string `json:"hash"`
 			Health int    `json:"health"`
-		} `json:"winningWarMachines"`
+		} `json:"winning_war_machines"`
 	} `json:"payload"`
 }
 
@@ -331,7 +331,7 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 		return terror.Error(err, "current battle has not started yet.")
 	}
 
-	ba.Log.Info().Msgf("Battle ending: %s", req.Payload.BattleID)
+	ba.Log.Info().Msgf("battle ending: %s", req.Payload.BattleID)
 	ba.Log.Info().Msg("Winning War Machines")
 	for _, warMachine := range req.Payload.WinningWarMachineMetadatas {
 		ba.Log.Info().Msgf("%s", warMachine.Hash)
