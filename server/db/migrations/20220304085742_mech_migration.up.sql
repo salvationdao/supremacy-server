@@ -10,7 +10,7 @@ ALTER TABLE factions ADD COLUMN updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 ALTER TABLE factions ADD COLUMN created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 
 CREATE TABLE players (
-    id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY NOT NULL,
     faction_id UUID REFERENCES factions(id),
     username TEXT UNIQUE,
     public_address TEXT UNIQUE,
@@ -53,7 +53,7 @@ CREATE TABLE blueprint_chassis (
 );
 
 CREATE TABLE templates (
-    id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY NOT NULL,
     blueprint_chassis_id UUID UNIQUE NOT NULL REFERENCES blueprint_chassis(id),
     faction_id UUID NOT NULL REFERENCES factions(id),
     tier TEXT NOT NULL CHECK (tier IN ('MEGA', 'COLOSSAL', 'RARE', 'LEGENDARY', 'ELITE_LEGENDARY', 'ULTRA_RARE', 'EXOTIC', 'GUARDIAN', 'MYTHIC', 'DEUS_EX')),

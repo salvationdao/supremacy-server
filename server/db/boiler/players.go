@@ -119,8 +119,8 @@ type playerL struct{}
 
 var (
 	playerAllColumns            = []string{"id", "faction_id", "username", "public_address", "deleted_at", "updated_at", "created_at"}
-	playerColumnsWithoutDefault = []string{}
-	playerColumnsWithDefault    = []string{"id", "faction_id", "username", "public_address", "deleted_at", "updated_at", "created_at"}
+	playerColumnsWithoutDefault = []string{"id"}
+	playerColumnsWithDefault    = []string{"faction_id", "username", "public_address", "deleted_at", "updated_at", "created_at"}
 	playerPrimaryKeyColumns     = []string{"id"}
 	playerGeneratedColumns      = []string{}
 )

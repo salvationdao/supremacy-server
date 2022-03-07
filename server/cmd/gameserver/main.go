@@ -231,9 +231,8 @@ func main() {
 				},
 			},
 			{
-				Name:    "supermigrate",
-				Aliases: []string{"sm"},
-				Usage:   "seed the database with passport data",
+				Name:  "sync",
+				Usage: "sync users and assets from passport-server",
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "passport_addr", Value: "ws://localhost:8086/api/ws", EnvVars: []string{envPrefix + "_PASSPORT_ADDR", "PASSPORT_ADDR"}, Usage: " address of the passport server, inc protocol"},
 					&cli.StringFlag{Name: "database_user", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_USER", "DATABASE_USER"}, Usage: "The database user"},
