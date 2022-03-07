@@ -154,8 +154,8 @@ type templateL struct{}
 
 var (
 	templateAllColumns            = []string{"id", "blueprint_chassis_id", "faction_id", "tier", "label", "slug", "is_default", "image_url", "animation_url", "deleted_at", "updated_at", "created_at"}
-	templateColumnsWithoutDefault = []string{"blueprint_chassis_id", "faction_id", "tier", "label", "slug", "image_url", "animation_url"}
-	templateColumnsWithDefault    = []string{"id", "is_default", "deleted_at", "updated_at", "created_at"}
+	templateColumnsWithoutDefault = []string{"id", "blueprint_chassis_id", "faction_id", "tier", "label", "slug", "image_url", "animation_url"}
+	templateColumnsWithDefault    = []string{"is_default", "deleted_at", "updated_at", "created_at"}
 	templatePrimaryKeyColumns     = []string{"id"}
 	templateGeneratedColumns      = []string{}
 )
