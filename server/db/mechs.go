@@ -9,7 +9,6 @@ import (
 	"server/gamedb"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/gofrs/uuid"
 	"github.com/teris-io/shortid"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -17,7 +16,6 @@ import (
 )
 
 func MechsByOwnerID(ownerID uuid.UUID) ([]*server.MechContainer, error) {
-	fmt.Println("func MechsByOwnerID")
 	mechs, err := boiler.Mechs(boiler.MechWhere.OwnerID.EQ(ownerID.String())).All(gamedb.StdConn)
 	if err != nil {
 		return nil, err
@@ -34,17 +32,11 @@ func MechsByOwnerID(ownerID uuid.UUID) ([]*server.MechContainer, error) {
 }
 
 func MechSetName(mechID uuid.UUID, name string) error {
-	fmt.Println("func MechSetName")
-	fmt.Println("gamedb.StdConn.Begin()")
 	tx, err := gamedb.StdConn.Begin()
-	fmt.Println("gamedb.StdConn.Begined()")
 	if err != nil {
 		return err
 	}
-	defer func() {
-		tx.Rollback()
-		fmt.Println("rollbacked")
-	}()
+	tx.Rollback()
 
 	mech, err := boiler.FindMech(gamedb.StdConn, mechID.String())
 	if err != nil {
@@ -60,17 +52,11 @@ func MechSetName(mechID uuid.UUID, name string) error {
 }
 
 func MechSetOwner(mechID uuid.UUID, ownerID uuid.UUID) error {
-	fmt.Println("func MechSetOwner")
-	fmt.Println("gamedb.StdConn.Begin()")
 	tx, err := gamedb.StdConn.Begin()
-	fmt.Println("gamedb.StdConn.Begined()")
 	if err != nil {
 		return err
 	}
-	defer func() {
-		tx.Rollback()
-		fmt.Println("rollbacked")
-	}()
+	tx.Rollback()
 	mech, err := boiler.FindMech(tx, mechID.String())
 	if err != nil {
 		return err
@@ -85,7 +71,6 @@ func MechSetOwner(mechID uuid.UUID, ownerID uuid.UUID) error {
 }
 
 func Template(templateID uuid.UUID) (*server.TemplateContainer, error) {
-	fmt.Println("func Template")
 	template, err := boiler.FindTemplate(gamedb.StdConn, templateID.String())
 	if err != nil {
 		return nil, err
@@ -155,7 +140,6 @@ func Template(templateID uuid.UUID) (*server.TemplateContainer, error) {
 }
 
 func TemplatePurchasedCount(templateID uuid.UUID) (int, error) {
-	fmt.Println("func TemplatePurchasedCount")
 	count, err := boiler.Mechs(boiler.MechWhere.TemplateID.EQ(templateID.String())).Count(gamedb.StdConn)
 	if err != nil {
 		return 0, err
@@ -164,7 +148,6 @@ func TemplatePurchasedCount(templateID uuid.UUID) (int, error) {
 }
 
 func TemplatesByFactionID(factionID uuid.UUID) ([]*server.TemplateContainer, error) {
-	fmt.Println("func TemplatesByFactionID")
 	templates, err := boiler.Templates().All(gamedb.StdConn)
 	if err != nil {
 		return nil, err
@@ -212,7 +195,7 @@ func Mech(mechID uuid.UUID) (*server.MechContainer, error) {
 
 	result, err := gamedb.Conn.Query(ctx, query, mechID.String())
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	for result.Next() {
 		err = result.Scan(&mc.ID,
@@ -236,23 +219,18 @@ func Mech(mechID uuid.UUID) (*server.MechContainer, error) {
 			&mc.Turrets,
 			&mc.Modules)
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 	}
 	result.Close()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-
-	// pgxscan deadlocks for unknown reason.4b4b
-	// err = pgxscan.Get(ctx, px, mc, query, mechID.String())
-	spew.Dump(mc.Weapons)
 
 	return mc, err
 }
 
 func NextExternalTokenID(tx *sql.Tx, isDefault bool) (int, error) {
-	fmt.Println("func NextExternalTokenID")
 	count, err := boiler.Mechs(
 		boiler.MechWhere.IsDefault.EQ(isDefault),
 	).Count(tx)
@@ -276,17 +254,11 @@ func NextExternalTokenID(tx *sql.Tx, isDefault bool) (int, error) {
 
 // MechRegister copies everything out of a template into a new mech
 func MechRegister(templateID uuid.UUID, ownerID uuid.UUID) (uuid.UUID, error) {
-	fmt.Println("func MechRegister")
-	fmt.Println("gamedb.StdConn.Begin()")
 	tx, err := gamedb.StdConn.Begin()
-	fmt.Println("gamedb.StdConn.Begined()")
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("start tx: %w", err)
 	}
-	defer func() {
-		tx.Rollback()
-		fmt.Println("rollbacked")
-	}()
+	tx.Rollback()
 	exists, err := boiler.PlayerExists(tx, ownerID.String())
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("check player exists: %w", err)
