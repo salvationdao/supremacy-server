@@ -242,17 +242,8 @@ func main() {
 					&cli.StringFlag{Name: "database_port", Value: "5437", EnvVars: []string{envPrefix + "_DATABASE_PORT", "DATABASE_PORT"}, Usage: "The database port"},
 					&cli.StringFlag{Name: "database_name", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_NAME", "DATABASE_NAME"}, Usage: "The database name"},
 					&cli.StringFlag{Name: "database_application_name", Value: "API Server", EnvVars: []string{envPrefix + "_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
-					&cli.BoolFlag{Name: "migrate_assets", Value: false, EnvVars: []string{envPrefix + "_MIGRATE_ASSETS"}, Usage: "Migrate the assets and metadata over from passport-server"},
-					&cli.BoolFlag{Name: "migrate_users", Value: false, EnvVars: []string{envPrefix + "_MIGRATE_USERS"}, Usage: "Migrate the users over from passport-server as players"},
 				},
 				Action: func(c *cli.Context) error {
-
-					migrateAssets := c.Bool("migrate_assets")
-					migrateUsers := c.Bool("migrate_users")
-
-					if !migrateAssets && !migrateUsers {
-						return errors.New("one of the following is required --migrate_store_items --migrate_assets --migrate_syndicates --migrate_users")
-					}
 
 					databaseUser := c.String("database_user")
 					databasePass := c.String("database_pass")
@@ -338,20 +329,13 @@ func main() {
 						return terror.Error(err)
 					}
 
-					if migrateUsers {
-						err = supermigrate.MigrateUsers(metadataPayload, assetPayload, storePayload, factionPayload, userPayload)
-						if err != nil {
-							return fmt.Errorf("failed to migrate users: %w", err)
-						}
-
+					err = supermigrate.MigrateUsers(metadataPayload, assetPayload, storePayload, factionPayload, userPayload)
+					if err != nil {
+						return fmt.Errorf("failed to migrate users: %w", err)
 					}
-
-					if migrateAssets {
-						err = supermigrate.MigrateAssets(metadataPayload, assetPayload, storePayload, factionPayload, userPayload)
-						if err != nil {
-							return fmt.Errorf("failed to migrate assets: %w", err)
-						}
-
+					err = supermigrate.MigrateAssets(metadataPayload, assetPayload, storePayload, factionPayload, userPayload)
+					if err != nil {
+						return fmt.Errorf("failed to migrate assets: %w", err)
 					}
 					return nil
 				},

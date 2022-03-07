@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand"
 	"server/db/boiler"
+	"strconv"
 	"strings"
 
 	"github.com/gofrs/uuid"
@@ -125,19 +126,24 @@ func ProcessMech(tx *sql.Tx, data *AssetPayload, metadata *MetadataPayload) (boo
 	if err != nil {
 		return false, false, fmt.Errorf("insert chassis: %w", err)
 	}
+	externalTokenID, err := strconv.Atoi(data.ExternalTokenID)
+	if err != nil {
+		return false, false, fmt.Errorf("parse external token ID: %w", err)
+	}
 	label, slug := MechLabelSlug(att.Brand, att.Model, att.SubModel, att.Name)
 	newMech := &boiler.Mech{
-		ID:           uuid.Must(uuid.NewV4()).String(),
-		ImageURL:     metadata.Image,
-		AnimationURL: metadata.AnimationURL,
-		Tier:         strings.ToUpper(strings.ReplaceAll(att.Rarity, " ", "_")),
-		OwnerID:      data.UserID,
-		TemplateID:   template.ID,
-		ChassisID:    chassis.ID,
-		Hash:         data.MetadataHash,
-		Name:         att.Name,
-		Label:        label,
-		Slug:         slug,
+		ID:              uuid.Must(uuid.NewV4()).String(),
+		ImageURL:        metadata.Image,
+		AnimationURL:    metadata.AnimationURL,
+		ExternalTokenID: externalTokenID,
+		Tier:            strings.ToUpper(strings.ReplaceAll(att.Rarity, " ", "_")),
+		OwnerID:         data.UserID,
+		TemplateID:      template.ID,
+		ChassisID:       chassis.ID,
+		Hash:            data.MetadataHash,
+		Name:            att.Name,
+		Label:           label,
+		Slug:            slug,
 	}
 
 	err = newMech.Insert(tx, boil.Infer())

@@ -1,14 +1,14 @@
 package db
 
 import (
-	"encoding/hex"
+	"database/sql"
+	"fmt"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
 
 	"github.com/gofrs/uuid"
-	"github.com/ninja-software/terror/v2"
-	"github.com/speps/go-hashids/v2"
+	"github.com/teris-io/shortid"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
@@ -52,7 +52,7 @@ func MechSetOwner(mechID uuid.UUID, ownerID uuid.UUID) error {
 		return err
 	}
 	defer tx.Rollback()
-	mech, err := boiler.FindMech(gamedb.StdConn, mechID.String())
+	mech, err := boiler.FindMech(tx, mechID.String())
 	if err != nil {
 		return err
 	}
@@ -226,32 +226,55 @@ func Mech(mechID uuid.UUID) (*server.MechContainer, error) {
 	return result, nil
 }
 
+func NextExternalTokenID(tx *sql.Tx, isDefault bool) (int, error) {
+
+	count, err := boiler.Mechs(
+		boiler.MechWhere.IsDefault.EQ(isDefault),
+	).Count(tx)
+	if err != nil {
+		return 0, err
+	}
+	if count == 0 {
+		return 0, nil
+	}
+
+	highestMechID, err := boiler.Mechs(
+		boiler.MechWhere.IsDefault.EQ(isDefault),
+		qm.OrderBy("external_token_id DESC"),
+	).One(tx)
+	if err != nil {
+		return 0, err
+	}
+
+	return highestMechID.ExternalTokenID + 1, nil
+}
+
 // MechRegister copies everything out of a template into a new mech
 func MechRegister(templateID uuid.UUID, ownerID uuid.UUID) (uuid.UUID, error) {
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("start tx: %w", err)
 	}
 	defer tx.Rollback()
 	exists, err := boiler.PlayerExists(tx, ownerID.String())
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("check player exists: %w", err)
 	}
 	if !exists {
 		newPlayer := &boiler.Player{ID: ownerID.String()}
 		err = newPlayer.Insert(tx, boil.Infer())
 		if err != nil {
-			return uuid.Nil, err
+			return uuid.Nil, fmt.Errorf("insert new player: %w", err)
 		}
 	}
 	template, err := boiler.FindTemplate(tx, templateID.String())
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("find template: %w", err)
 	}
 
 	blueprintChassis, err := template.BlueprintChassis().One(tx)
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("get blueprint chassis: %w", err)
 	}
 	chassis := &boiler.Chassis{
 		BrandID:            blueprintChassis.BrandID,
@@ -270,17 +293,17 @@ func MechRegister(templateID uuid.UUID, ownerID uuid.UUID) (uuid.UUID, error) {
 	}
 	err = chassis.Insert(tx, boil.Infer())
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf(": %w", err)
 	}
 
 	weaponJoins, err := boiler.BlueprintChassisBlueprintWeapons(boiler.BlueprintChassisBlueprintWeaponWhere.BlueprintChassisID.EQ(template.BlueprintChassisID)).All(tx)
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("get blueprint weapon joins: %w", err)
 	}
 	for _, join := range weaponJoins {
 		blueprintWeapon, err := boiler.FindBlueprintWeapon(tx, join.BlueprintWeaponID)
 		if err != nil {
-			return uuid.Nil, err
+			return uuid.Nil, fmt.Errorf("get blueprint weapon: %w", err)
 		}
 		newWeapon := &boiler.Weapon{
 			BrandID:    blueprintWeapon.BrandID,
@@ -291,7 +314,7 @@ func MechRegister(templateID uuid.UUID, ownerID uuid.UUID) (uuid.UUID, error) {
 		}
 		err = newWeapon.Insert(tx, boil.Infer())
 		if err != nil {
-			return uuid.Nil, err
+			return uuid.Nil, fmt.Errorf(": %w", err)
 		}
 		newJoin := &boiler.ChassisWeapon{
 			ChassisID:     chassis.ID,
@@ -301,17 +324,17 @@ func MechRegister(templateID uuid.UUID, ownerID uuid.UUID) (uuid.UUID, error) {
 		}
 		err = newJoin.Insert(tx, boil.Infer())
 		if err != nil {
-			return uuid.Nil, err
+			return uuid.Nil, fmt.Errorf("insert blueprint weapon join: %w", err)
 		}
 	}
 	moduleJoins, err := boiler.BlueprintChassisBlueprintModules(boiler.BlueprintChassisBlueprintModuleWhere.BlueprintChassisID.EQ(template.BlueprintChassisID)).All(tx)
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("get blueprint module joins: %w", err)
 	}
 	for _, join := range moduleJoins {
 		blueprintModule, err := boiler.FindBlueprintModule(tx, join.BlueprintModuleID)
 		if err != nil {
-			return uuid.Nil, err
+			return uuid.Nil, fmt.Errorf("get blueprint module: %w", err)
 		}
 		newModule := &boiler.Module{
 			BrandID:          blueprintModule.BrandID,
@@ -322,7 +345,7 @@ func MechRegister(templateID uuid.UUID, ownerID uuid.UUID) (uuid.UUID, error) {
 		}
 		err = newModule.Insert(tx, boil.Infer())
 		if err != nil {
-			return uuid.Nil, err
+			return uuid.Nil, fmt.Errorf("insert blueprint module: %w", err)
 		}
 		newJoin := &boiler.ChassisModule{
 			ChassisID:  chassis.ID,
@@ -331,63 +354,41 @@ func MechRegister(templateID uuid.UUID, ownerID uuid.UUID) (uuid.UUID, error) {
 		}
 		err = newJoin.Insert(tx, boil.Infer())
 		if err != nil {
-			return uuid.Nil, err
+			return uuid.Nil, fmt.Errorf("insert blueprint module join: %w", err)
 		}
 	}
 
 	newMechID, err := uuid.NewV4()
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("create mech id: %w", err)
 	}
-	newChassisID, err := uuid.FromString(chassis.ID)
+	shortID, err := shortid.Generate()
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("create short id: %w", err)
 	}
-	mechHash, err := GenerateHashID(newMechID, newChassisID)
+	nextID, err := NextExternalTokenID(tx, template.IsDefault)
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("get next external token id: %w", err)
 	}
 	newMech := &boiler.Mech{
-		ID:           newMechID.String(),
-		OwnerID:      ownerID.String(),
-		TemplateID:   templateID.String(),
-		ChassisID:    chassis.ID,
-		Tier:         template.Tier,
-		IsDefault:    template.IsDefault,
-		ImageURL:     template.ImageURL,
-		AnimationURL: template.AnimationURL,
-		Hash:         mechHash,
-		Name:         "",
-		Label:        template.Label,
-		Slug:         template.Slug,
+		ID:              newMechID.String(),
+		OwnerID:         ownerID.String(),
+		TemplateID:      templateID.String(),
+		ChassisID:       chassis.ID,
+		Tier:            template.Tier,
+		IsDefault:       template.IsDefault,
+		ImageURL:        template.ImageURL,
+		AnimationURL:    template.AnimationURL,
+		Hash:            shortID,
+		Name:            "",
+		ExternalTokenID: nextID,
+		Label:           template.Label,
+		Slug:            template.Slug,
 	}
 	err = newMech.Insert(tx, boil.Infer())
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("insert mech: %w", err)
 	}
-	id, err := uuid.FromString(newMech.ID)
-	if err != nil {
-		return uuid.Nil, err
-	}
-	return id, nil
-}
-func GenerateHashID(mechID uuid.UUID, chassisID uuid.UUID) (string, error) {
-	hd := hashids.NewData()
-	hd.Salt = mechID.String()
-	hd.MinLength = 10
-	h, err := hashids.NewWithData(hd)
-	if err != nil {
-		return "", terror.Error(err)
-	}
-
-	e, err := h.EncodeHex(hex.EncodeToString(chassisID.Bytes()))
-	if err != nil {
-		return "", terror.Error(err)
-	}
-	_, err = h.DecodeWithError(e)
-	if err != nil {
-		return "", terror.Error(err)
-	}
-
-	return e, nil
+	tx.Commit()
+	return newMechID, nil
 }
