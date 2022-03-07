@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"server/db/boiler"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
@@ -30,7 +31,7 @@ func ProcessUser(tx *sql.Tx, data *UserPayload) (bool, bool, error) {
 
 	addr := null.NewString("", false)
 	if data.PublicAddress != "" {
-		addr.String = data.PublicAddress
+		addr.String = common.HexToAddress(data.PublicAddress).Hex()
 		addr.Valid = true
 	}
 	record := &boiler.Player{

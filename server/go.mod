@@ -34,7 +34,6 @@ require (
 	github.com/microcosm-cc/bluemonday v1.0.16
 	github.com/ninja-software/tickle v1.3.2
 	github.com/shopspring/decimal v1.2.0
-	github.com/speps/go-hashids/v2 v2.0.1
 	github.com/volatiletech/null/v8 v8.1.2
 	github.com/volatiletech/sqlboiler/v4 v4.8.6
 	github.com/volatiletech/strmangle v0.0.2
@@ -66,6 +65,7 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/viper v1.9.0 // indirect
 	github.com/subosito/gotenv v1.2.0 // indirect
+	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125 // indirect
 	github.com/tinylib/msgp v1.1.2 // indirect
 	github.com/volatiletech/inflect v0.0.1 // indirect
 	github.com/volatiletech/randomize v0.0.1 // indirect

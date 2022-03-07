@@ -1,6 +1,7 @@
 package comms
 
 import (
+	"fmt"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -78,11 +79,11 @@ type MechRegisterResp struct {
 func (s *S) MechRegister(req MechRegisterReq, resp *MechRegisterResp) error {
 	mechID, err := db.MechRegister(req.TemplateID, req.OwnerID)
 	if err != nil {
-		return err
+		return fmt.Errorf("mech register: %w", err)
 	}
 	mech, err := db.Mech(mechID)
 	if err != nil {
-		return err
+		return fmt.Errorf("get created mech: %w", err)
 	}
 	resp.MechContainer = mech
 	return nil
