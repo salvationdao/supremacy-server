@@ -25,7 +25,7 @@ import (
 // BattleEventsState is an object representing the database table.
 type BattleEventsState struct {
 	ID      string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	EventID string      `boiler:"event_id" boil:"event_id" json:"eventID" toml:"eventID" yaml:"eventID"`
+	EventID string      `boiler:"event_id" boil:"event_id" json:"event_id" toml:"event_id" yaml:"event_id"`
 	State   null.String `boiler:"state" boil:"state" json:"state,omitempty" toml:"state" yaml:"state,omitempty"`
 	Detail  types.JSON  `boiler:"detail" boil:"detail" json:"detail" toml:"detail" yaml:"detail"`
 

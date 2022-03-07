@@ -24,15 +24,15 @@ import (
 
 // BattleWarMachineQueue is an object representing the database table.
 type BattleWarMachineQueue struct {
-	WarMachineMetadata types.JSON  `boiler:"war_machine_metadata" boil:"war_machine_metadata" json:"warMachineMetadata" toml:"warMachineMetadata" yaml:"warMachineMetadata"`
-	QueuedAt           time.Time   `boiler:"queued_at" boil:"queued_at" json:"queuedAt" toml:"queuedAt" yaml:"queuedAt"`
-	DeletedAt          null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
-	IsInsured          bool        `boiler:"is_insured" boil:"is_insured" json:"isInsured" toml:"isInsured" yaml:"isInsured"`
-	ContractReward     string      `boiler:"contract_reward" boil:"contract_reward" json:"contractReward" toml:"contractReward" yaml:"contractReward"`
+	WarMachineMetadata types.JSON  `boiler:"war_machine_metadata" boil:"war_machine_metadata" json:"war_machine_metadata" toml:"war_machine_metadata" yaml:"war_machine_metadata"`
+	QueuedAt           time.Time   `boiler:"queued_at" boil:"queued_at" json:"queued_at" toml:"queued_at" yaml:"queued_at"`
+	DeletedAt          null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	IsInsured          bool        `boiler:"is_insured" boil:"is_insured" json:"is_insured" toml:"is_insured" yaml:"is_insured"`
+	ContractReward     string      `boiler:"contract_reward" boil:"contract_reward" json:"contract_reward" toml:"contract_reward" yaml:"contract_reward"`
 	Fee                string      `boiler:"fee" boil:"fee" json:"fee" toml:"fee" yaml:"fee"`
-	WarMachineHash     null.String `boiler:"war_machine_hash" boil:"war_machine_hash" json:"warMachineHash,omitempty" toml:"warMachineHash" yaml:"warMachineHash,omitempty"`
-	FactionID          null.String `boiler:"faction_id" boil:"faction_id" json:"factionID,omitempty" toml:"factionID" yaml:"factionID,omitempty"`
-	CreatedAt          null.Time   `boiler:"created_at" boil:"created_at" json:"createdAt,omitempty" toml:"createdAt" yaml:"createdAt,omitempty"`
+	WarMachineHash     null.String `boiler:"war_machine_hash" boil:"war_machine_hash" json:"war_machine_hash,omitempty" toml:"war_machine_hash" yaml:"war_machine_hash,omitempty"`
+	FactionID          null.String `boiler:"faction_id" boil:"faction_id" json:"faction_id,omitempty" toml:"faction_id" yaml:"faction_id,omitempty"`
+	CreatedAt          null.Time   `boiler:"created_at" boil:"created_at" json:"created_at,omitempty" toml:"created_at" yaml:"created_at,omitempty"`
 	ID                 string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 
 	R *battleWarMachineQueueR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

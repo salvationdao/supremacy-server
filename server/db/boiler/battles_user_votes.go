@@ -22,9 +22,9 @@ import (
 
 // BattlesUserVote is an object representing the database table.
 type BattlesUserVote struct {
-	BattleID  string `boiler:"battle_id" boil:"battle_id" json:"battleID" toml:"battleID" yaml:"battleID"`
-	UserID    string `boiler:"user_id" boil:"user_id" json:"userID" toml:"userID" yaml:"userID"`
-	VoteCount int    `boiler:"vote_count" boil:"vote_count" json:"voteCount" toml:"voteCount" yaml:"voteCount"`
+	BattleID  string `boiler:"battle_id" boil:"battle_id" json:"battle_id" toml:"battle_id" yaml:"battle_id"`
+	UserID    string `boiler:"user_id" boil:"user_id" json:"user_id" toml:"user_id" yaml:"user_id"`
+	VoteCount int    `boiler:"vote_count" boil:"vote_count" json:"vote_count" toml:"vote_count" yaml:"vote_count"`
 
 	R *battlesUserVoteR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battlesUserVoteL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -67,13 +67,13 @@ var BattlesUserVoteRels = struct {
 	Battle string
 	User   string
 }{
-	Battle: "battle",
+	Battle: "Battle",
 	User:   "User",
 }
 
 // battlesUserVoteR is where relationships are stored.
 type battlesUserVoteR struct {
-	Battle *Battle `boiler:"battle" boil:"battle" json:"battle" toml:"battle" yaml:"battle"`
+	Battle *Battle `boiler:"Battle" boil:"Battle" json:"Battle" toml:"Battle" yaml:"Battle"`
 	User   *User   `boiler:"User" boil:"User" json:"User" toml:"User" yaml:"User"`
 }
 
@@ -414,12 +414,12 @@ func (battlesUserVoteL) LoadBattle(e boil.Executor, singular bool, maybeBattlesU
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load battle")
+		return errors.Wrap(err, "failed to eager load Battle")
 	}
 
 	var resultSlice []*Battle
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice battle")
+		return errors.Wrap(err, "failed to bind eager loaded slice Battle")
 	}
 
 	if err = results.Close(); err != nil {
@@ -572,7 +572,7 @@ func (battlesUserVoteL) LoadUser(e boil.Executor, singular bool, maybeBattlesUse
 }
 
 // SetBattle of the battlesUserVote to the related item.
-// Sets o.R.battle to related.
+// Sets o.R.Battle to related.
 // Adds o to related.R.BattlesUserVotes.
 func (o *BattlesUserVote) SetBattle(exec boil.Executor, insert bool, related *Battle) error {
 	var err error

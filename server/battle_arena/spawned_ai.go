@@ -13,8 +13,8 @@ const AISpawnedCommand = BattleCommand("BATTLE:AI_SPAWNED")
 
 type AISpawnedRequest struct {
 	Payload struct {
-		BattleID       server.BattleID        `json:"battleID"`
-		SpawnedAIEvent *server.SpawnedAIEvent `json:"spawnedAIEvent"`
+		BattleID       server.BattleID        `json:"battle_id"`
+		SpawnedAIEvent *server.SpawnedAIEvent `json:"spawned_aievent"`
 	} `json:"payload"`
 }
 

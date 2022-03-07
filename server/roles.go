@@ -19,9 +19,9 @@ type Role struct {
 	Permissions []string   `json:"permissions" db:"permissions"`
 	Tier        int        `json:"tier" db:"tier"`
 	Reserved    bool       `json:"reserved" db:"reserved"`
-	CreatedAt   time.Time  `json:"createdAt" db:"created_at"`
-	UpdatedAt   time.Time  `json:"updatedAt" db:"updated_at"`
-	DeletedAt   *time.Time `json:"deletedAt" db:"deleted_at"`
+	CreatedAt   time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at" db:"updated_at"`
+	DeletedAt   *time.Time `json:"deleted_at" db:"deleted_at"`
 }
 
 // Perm permission enum

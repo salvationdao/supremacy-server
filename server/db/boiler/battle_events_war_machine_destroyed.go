@@ -24,10 +24,10 @@ import (
 // BattleEventsWarMachineDestroyed is an object representing the database table.
 type BattleEventsWarMachineDestroyed struct {
 	ID                      string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	EventID                 string      `boiler:"event_id" boil:"event_id" json:"eventID" toml:"eventID" yaml:"eventID"`
-	RelatedEventID          null.String `boiler:"related_event_id" boil:"related_event_id" json:"relatedEventID,omitempty" toml:"relatedEventID" yaml:"relatedEventID,omitempty"`
-	DestroyedWarMachineHash string      `boiler:"destroyed_war_machine_hash" boil:"destroyed_war_machine_hash" json:"destroyedWarMachineHash" toml:"destroyedWarMachineHash" yaml:"destroyedWarMachineHash"`
-	KillByWarMachineHash    null.String `boiler:"kill_by_war_machine_hash" boil:"kill_by_war_machine_hash" json:"killByWarMachineHash,omitempty" toml:"killByWarMachineHash" yaml:"killByWarMachineHash,omitempty"`
+	EventID                 string      `boiler:"event_id" boil:"event_id" json:"event_id" toml:"event_id" yaml:"event_id"`
+	RelatedEventID          null.String `boiler:"related_event_id" boil:"related_event_id" json:"related_event_id,omitempty" toml:"related_event_id" yaml:"related_event_id,omitempty"`
+	DestroyedWarMachineHash string      `boiler:"destroyed_war_machine_hash" boil:"destroyed_war_machine_hash" json:"destroyed_war_machine_hash" toml:"destroyed_war_machine_hash" yaml:"destroyed_war_machine_hash"`
+	KillByWarMachineHash    null.String `boiler:"kill_by_war_machine_hash" boil:"kill_by_war_machine_hash" json:"kill_by_war_machine_hash,omitempty" toml:"kill_by_war_machine_hash" yaml:"kill_by_war_machine_hash,omitempty"`
 
 	R *battleEventsWarMachineDestroyedR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleEventsWarMachineDestroyedL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

@@ -22,12 +22,12 @@ import (
 
 // BattlesWinnerRecord is an object representing the database table.
 type BattlesWinnerRecord struct {
-	BattleID       string    `boiler:"battle_id" boil:"battle_id" json:"battleID" toml:"battleID" yaml:"battleID"`
-	WarMachineHash string    `boiler:"war_machine_hash" boil:"war_machine_hash" json:"warMachineHash" toml:"warMachineHash" yaml:"warMachineHash"`
-	IsWinner       bool      `boiler:"is_winner" boil:"is_winner" json:"isWinner" toml:"isWinner" yaml:"isWinner"`
-	FactionID      string    `boiler:"faction_id" boil:"faction_id" json:"factionID" toml:"factionID" yaml:"factionID"`
-	OwnerID        string    `boiler:"owner_id" boil:"owner_id" json:"ownerID" toml:"ownerID" yaml:"ownerID"`
-	CreatedAt      time.Time `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	BattleID       string    `boiler:"battle_id" boil:"battle_id" json:"battle_id" toml:"battle_id" yaml:"battle_id"`
+	WarMachineHash string    `boiler:"war_machine_hash" boil:"war_machine_hash" json:"war_machine_hash" toml:"war_machine_hash" yaml:"war_machine_hash"`
+	IsWinner       bool      `boiler:"is_winner" boil:"is_winner" json:"is_winner" toml:"is_winner" yaml:"is_winner"`
+	FactionID      string    `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
+	OwnerID        string    `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
+	CreatedAt      time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *battlesWinnerRecordR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battlesWinnerRecordL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

@@ -33,12 +33,12 @@ const BattleStartCommand = BattleCommand("BATTLE:START")
 
 type BattleStartRequest struct {
 	Payload struct {
-		BattleID    server.BattleID `json:"battleID"`
+		BattleID    server.BattleID `json:"battle_id"`
 		WarMachines []*struct {
 			Hash          string `json:"hash"`
-			ParticipantID byte   `json:"participantID"`
-		} `json:"warMachines"`
-		WarMachineLocation []byte `json:"warMachineLocation"`
+			ParticipantID byte   `json:"participant_id"`
+		} `json:"war_machines"`
+		WarMachineLocation []byte `json:"war_machine_location"`
 	} `json:"payload"`
 }
 
@@ -168,12 +168,12 @@ const BattleEndCommand = BattleCommand("BATTLE:END")
 
 type BattleEndRequest struct {
 	Payload struct {
-		BattleID                   server.BattleID           `json:"battleID"`
-		WinCondition               server.BattleWinCondition `json:"winCondition"`
+		BattleID                   server.BattleID           `json:"battle_id"`
+		WinCondition               server.BattleWinCondition `json:"win_condition"`
 		WinningWarMachineMetadatas []*struct {
 			Hash   string `json:"hash"`
 			Health int    `json:"health"`
-		} `json:"winningWarMachines"`
+		} `json:"winning_war_machines"`
 	} `json:"payload"`
 }
 

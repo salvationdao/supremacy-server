@@ -26,12 +26,12 @@ type StreamList struct {
 	Host          string          `boiler:"host" boil:"host" json:"host" toml:"host" yaml:"host"`
 	Name          string          `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
 	URL           string          `boiler:"url" boil:"url" json:"url" toml:"url" yaml:"url"`
-	StreamID      string          `boiler:"stream_id" boil:"stream_id" json:"streamID" toml:"streamID" yaml:"streamID"`
+	StreamID      string          `boiler:"stream_id" boil:"stream_id" json:"stream_id" toml:"stream_id" yaml:"stream_id"`
 	Region        string          `boiler:"region" boil:"region" json:"region" toml:"region" yaml:"region"`
 	Resolution    string          `boiler:"resolution" boil:"resolution" json:"resolution" toml:"resolution" yaml:"resolution"`
-	BitRatesKBits int             `boiler:"bit_rates_k_bits" boil:"bit_rates_k_bits" json:"bitRatesKBits" toml:"bitRatesKBits" yaml:"bitRatesKBits"`
-	UserMax       int             `boiler:"user_max" boil:"user_max" json:"userMax" toml:"userMax" yaml:"userMax"`
-	UsersNow      int             `boiler:"users_now" boil:"users_now" json:"usersNow" toml:"usersNow" yaml:"usersNow"`
+	BitRatesKBits int             `boiler:"bit_rates_k_bits" boil:"bit_rates_k_bits" json:"bit_rates_k_bits" toml:"bit_rates_k_bits" yaml:"bit_rates_k_bits"`
+	UserMax       int             `boiler:"user_max" boil:"user_max" json:"user_max" toml:"user_max" yaml:"user_max"`
+	UsersNow      int             `boiler:"users_now" boil:"users_now" json:"users_now" toml:"users_now" yaml:"users_now"`
 	Active        bool            `boiler:"active" boil:"active" json:"active" toml:"active" yaml:"active"`
 	Status        string          `boiler:"status" boil:"status" json:"status" toml:"status" yaml:"status"`
 	Latitude      decimal.Decimal `boiler:"latitude" boil:"latitude" json:"latitude" toml:"latitude" yaml:"latitude"`

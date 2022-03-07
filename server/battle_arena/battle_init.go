@@ -150,9 +150,9 @@ func (ba *BattleArena) InitNextBattle() error {
 
 	// Setup payload
 	payload := struct {
-		BattleID    server.BattleID              `json:"battleID"`
-		MapName     string                       `json:"mapName"`
-		WarMachines []*server.WarMachineMetadata `json:"warMachines"`
+		BattleID    server.BattleID              `json:"battle_id"`
+		MapName     string                       `json:"map_name"`
+		WarMachines []*server.WarMachineMetadata `json:"war_machines"`
 	}{
 		BattleID:    ba.battle.ID,
 		MapName:     ba.battle.GameMap.Name,

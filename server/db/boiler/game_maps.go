@@ -25,16 +25,16 @@ import (
 type GameMap struct {
 	ID            string           `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	Name          string           `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
-	MaxSpawns     int              `boiler:"max_spawns" boil:"max_spawns" json:"maxSpawns" toml:"maxSpawns" yaml:"maxSpawns"`
-	ImageURL      string           `boiler:"image_url" boil:"image_url" json:"imageURL" toml:"imageURL" yaml:"imageURL"`
+	MaxSpawns     int              `boiler:"max_spawns" boil:"max_spawns" json:"max_spawns" toml:"max_spawns" yaml:"max_spawns"`
+	ImageURL      string           `boiler:"image_url" boil:"image_url" json:"image_url" toml:"image_url" yaml:"image_url"`
 	Width         int              `boiler:"width" boil:"width" json:"width" toml:"width" yaml:"width"`
 	Height        int              `boiler:"height" boil:"height" json:"height" toml:"height" yaml:"height"`
-	CellsX        int              `boiler:"cells_x" boil:"cells_x" json:"cellsX" toml:"cellsX" yaml:"cellsX"`
-	CellsY        int              `boiler:"cells_y" boil:"cells_y" json:"cellsY" toml:"cellsY" yaml:"cellsY"`
-	TopPixels     int              `boiler:"top_pixels" boil:"top_pixels" json:"topPixels" toml:"topPixels" yaml:"topPixels"`
-	LeftPixels    int              `boiler:"left_pixels" boil:"left_pixels" json:"leftPixels" toml:"leftPixels" yaml:"leftPixels"`
+	CellsX        int              `boiler:"cells_x" boil:"cells_x" json:"cells_x" toml:"cells_x" yaml:"cells_x"`
+	CellsY        int              `boiler:"cells_y" boil:"cells_y" json:"cells_y" toml:"cells_y" yaml:"cells_y"`
+	TopPixels     int              `boiler:"top_pixels" boil:"top_pixels" json:"top_pixels" toml:"top_pixels" yaml:"top_pixels"`
+	LeftPixels    int              `boiler:"left_pixels" boil:"left_pixels" json:"left_pixels" toml:"left_pixels" yaml:"left_pixels"`
 	Scale         float64          `boiler:"scale" boil:"scale" json:"scale" toml:"scale" yaml:"scale"`
-	DisabledCells types.Int64Array `boiler:"disabled_cells" boil:"disabled_cells" json:"disabledCells" toml:"disabledCells" yaml:"disabledCells"`
+	DisabledCells types.Int64Array `boiler:"disabled_cells" boil:"disabled_cells" json:"disabled_cells" toml:"disabled_cells" yaml:"disabled_cells"`
 
 	R *gameMapR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L gameMapL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

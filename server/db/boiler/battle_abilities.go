@@ -24,7 +24,7 @@ import (
 type BattleAbility struct {
 	ID                     string `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	Label                  string `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	CooldownDurationSecond int    `boiler:"cooldown_duration_second" boil:"cooldown_duration_second" json:"cooldownDurationSecond" toml:"cooldownDurationSecond" yaml:"cooldownDurationSecond"`
+	CooldownDurationSecond int    `boiler:"cooldown_duration_second" boil:"cooldown_duration_second" json:"cooldown_duration_second" toml:"cooldown_duration_second" yaml:"cooldown_duration_second"`
 	Description            string `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
 
 	R *battleAbilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

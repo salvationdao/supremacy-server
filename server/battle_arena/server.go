@@ -45,12 +45,12 @@ type ReplyFunc func(interface{})
 type BattleCommandFunc func(ctx context.Context, payload []byte, reply ReplyFunc) error
 
 type Request struct {
-	BattleCommand BattleCommand `json:"battleCommand"`
+	BattleCommand BattleCommand `json:"battle_command"`
 	Payload       []byte        `json:"payload"`
 }
 
 type GameMessage struct {
-	BattleCommand BattleCommand `json:"battleCommand"`
+	BattleCommand BattleCommand `json:"battle_command"`
 	Payload       interface{}   `json:"payload"`
 	context       context.Context
 	cancel        context.CancelFunc
@@ -393,8 +393,8 @@ func (ba *BattleArena) runGameCommand(ctx context.Context, c *websocket.Conn, cm
 		log_helpers.TerrorEcho(ctx, err, ba.Log)
 
 		resp := struct {
-			Command BattleCommand `json:"battleCommand"`
-			//TransactionID string        `json:"transactionID"`
+			Command BattleCommand `json:"battle_command"`
+			//TransactionID string        `json:"transaction_id"`
 			Success bool        `json:"success"`
 			Payload interface{} `json:"payload"`
 		}{

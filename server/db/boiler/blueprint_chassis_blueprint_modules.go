@@ -24,12 +24,12 @@ import (
 // BlueprintChassisBlueprintModule is an object representing the database table.
 type BlueprintChassisBlueprintModule struct {
 	ID                 string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	BlueprintModuleID  string    `boiler:"blueprint_module_id" boil:"blueprint_module_id" json:"blueprintModuleID" toml:"blueprintModuleID" yaml:"blueprintModuleID"`
-	BlueprintChassisID string    `boiler:"blueprint_chassis_id" boil:"blueprint_chassis_id" json:"blueprintChassisID" toml:"blueprintChassisID" yaml:"blueprintChassisID"`
-	SlotNumber         int       `boiler:"slot_number" boil:"slot_number" json:"slotNumber" toml:"slotNumber" yaml:"slotNumber"`
-	DeletedAt          null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
-	UpdatedAt          time.Time `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
-	CreatedAt          time.Time `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	BlueprintModuleID  string    `boiler:"blueprint_module_id" boil:"blueprint_module_id" json:"blueprint_module_id" toml:"blueprint_module_id" yaml:"blueprint_module_id"`
+	BlueprintChassisID string    `boiler:"blueprint_chassis_id" boil:"blueprint_chassis_id" json:"blueprint_chassis_id" toml:"blueprint_chassis_id" yaml:"blueprint_chassis_id"`
+	SlotNumber         int       `boiler:"slot_number" boil:"slot_number" json:"slot_number" toml:"slot_number" yaml:"slot_number"`
+	DeletedAt          null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt          time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt          time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *blueprintChassisBlueprintModuleR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintChassisBlueprintModuleL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

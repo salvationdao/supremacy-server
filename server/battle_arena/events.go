@@ -47,7 +47,7 @@ const (
 type EventData struct {
 	BattleArena               *server.Battle
 	FactionAbilities          []*server.GameAbility
-	WarMachineLocation        []byte `json:"warMachineLocation"`
+	WarMachineLocation        []byte `json:"war_machine_location"`
 	WinnerFactionViewers      *WinnerFactionViewer
 	BattleRewardList          *BattleRewardList
 	WarMachineDestroyedRecord *server.WarMachineDestroyedRecord

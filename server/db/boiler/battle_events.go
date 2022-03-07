@@ -24,9 +24,9 @@ import (
 // BattleEvent is an object representing the database table.
 type BattleEvent struct {
 	ID        string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	BattleID  null.String `boiler:"battle_id" boil:"battle_id" json:"battleID,omitempty" toml:"battleID" yaml:"battleID,omitempty"`
-	EventType null.String `boiler:"event_type" boil:"event_type" json:"eventType,omitempty" toml:"eventType" yaml:"eventType,omitempty"`
-	CreatedAt time.Time   `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	BattleID  null.String `boiler:"battle_id" boil:"battle_id" json:"battle_id,omitempty" toml:"battle_id" yaml:"battle_id,omitempty"`
+	EventType null.String `boiler:"event_type" boil:"event_type" json:"event_type,omitempty" toml:"event_type" yaml:"event_type,omitempty"`
+	CreatedAt time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *battleEventR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleEventL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -102,7 +102,7 @@ var BattleEventRels = struct {
 	EventBattleEventsWarMachineDestroyeds        string
 	RelatedEventBattleEventsWarMachineDestroyeds string
 }{
-	Battle:                                       "battle",
+	Battle:                                       "Battle",
 	EventBattleEventsGameAbilities:               "EventBattleEventsGameAbilities",
 	EventBattleEventsStates:                      "EventBattleEventsStates",
 	EventBattleEventsWarMachineDestroyeds:        "EventBattleEventsWarMachineDestroyeds",
@@ -111,7 +111,7 @@ var BattleEventRels = struct {
 
 // battleEventR is where relationships are stored.
 type battleEventR struct {
-	Battle                                       *Battle                              `boiler:"battle" boil:"battle" json:"battle" toml:"battle" yaml:"battle"`
+	Battle                                       *Battle                              `boiler:"Battle" boil:"Battle" json:"Battle" toml:"Battle" yaml:"Battle"`
 	EventBattleEventsGameAbilities               BattleEventsGameAbilitySlice         `boiler:"EventBattleEventsGameAbilities" boil:"EventBattleEventsGameAbilities" json:"EventBattleEventsGameAbilities" toml:"EventBattleEventsGameAbilities" yaml:"EventBattleEventsGameAbilities"`
 	EventBattleEventsStates                      BattleEventsStateSlice               `boiler:"EventBattleEventsStates" boil:"EventBattleEventsStates" json:"EventBattleEventsStates" toml:"EventBattleEventsStates" yaml:"EventBattleEventsStates"`
 	EventBattleEventsWarMachineDestroyeds        BattleEventsWarMachineDestroyedSlice `boiler:"EventBattleEventsWarMachineDestroyeds" boil:"EventBattleEventsWarMachineDestroyeds" json:"EventBattleEventsWarMachineDestroyeds" toml:"EventBattleEventsWarMachineDestroyeds" yaml:"EventBattleEventsWarMachineDestroyeds"`
@@ -529,12 +529,12 @@ func (battleEventL) LoadBattle(e boil.Executor, singular bool, maybeBattleEvent 
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load battle")
+		return errors.Wrap(err, "failed to eager load Battle")
 	}
 
 	var resultSlice []*Battle
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice battle")
+		return errors.Wrap(err, "failed to bind eager loaded slice Battle")
 	}
 
 	if err = results.Close(); err != nil {
@@ -975,7 +975,7 @@ func (battleEventL) LoadRelatedEventBattleEventsWarMachineDestroyeds(e boil.Exec
 }
 
 // SetBattle of the battleEvent to the related item.
-// Sets o.R.battle to related.
+// Sets o.R.Battle to related.
 // Adds o to related.R.BattleEvents.
 func (o *BattleEvent) SetBattle(exec boil.Executor, insert bool, related *Battle) error {
 	var err error
@@ -1021,7 +1021,7 @@ func (o *BattleEvent) SetBattle(exec boil.Executor, insert bool, related *Battle
 }
 
 // RemoveBattle relationship.
-// Sets o.R.battle to nil.
+// Sets o.R.Battle to nil.
 // Removes o from all passed in related items' relationships struct (Optional).
 func (o *BattleEvent) RemoveBattle(exec boil.Executor, related *Battle) error {
 	var err error

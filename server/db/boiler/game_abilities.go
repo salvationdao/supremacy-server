@@ -24,15 +24,15 @@ import (
 // GameAbility is an object representing the database table.
 type GameAbility struct {
 	ID                  string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	GameClientAbilityID int         `boiler:"game_client_ability_id" boil:"game_client_ability_id" json:"gameClientAbilityID" toml:"gameClientAbilityID" yaml:"gameClientAbilityID"`
-	FactionID           string      `boiler:"faction_id" boil:"faction_id" json:"factionID" toml:"factionID" yaml:"factionID"`
-	BattleAbilityID     null.String `boiler:"battle_ability_id" boil:"battle_ability_id" json:"battleAbilityID,omitempty" toml:"battleAbilityID" yaml:"battleAbilityID,omitempty"`
+	GameClientAbilityID int         `boiler:"game_client_ability_id" boil:"game_client_ability_id" json:"game_client_ability_id" toml:"game_client_ability_id" yaml:"game_client_ability_id"`
+	FactionID           string      `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
+	BattleAbilityID     null.String `boiler:"battle_ability_id" boil:"battle_ability_id" json:"battle_ability_id,omitempty" toml:"battle_ability_id" yaml:"battle_ability_id,omitempty"`
 	Label               string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
 	Colour              string      `boiler:"colour" boil:"colour" json:"colour" toml:"colour" yaml:"colour"`
-	ImageURL            string      `boiler:"image_url" boil:"image_url" json:"imageURL" toml:"imageURL" yaml:"imageURL"`
-	SupsCost            string      `boiler:"sups_cost" boil:"sups_cost" json:"supsCost" toml:"supsCost" yaml:"supsCost"`
+	ImageURL            string      `boiler:"image_url" boil:"image_url" json:"image_url" toml:"image_url" yaml:"image_url"`
+	SupsCost            string      `boiler:"sups_cost" boil:"sups_cost" json:"sups_cost" toml:"sups_cost" yaml:"sups_cost"`
 	Description         string      `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
-	TextColour          string      `boiler:"text_colour" boil:"text_colour" json:"textColour" toml:"textColour" yaml:"textColour"`
+	TextColour          string      `boiler:"text_colour" boil:"text_colour" json:"text_colour" toml:"text_colour" yaml:"text_colour"`
 
 	R *gameAbilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L gameAbilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

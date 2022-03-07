@@ -12,11 +12,16 @@ import (
 )
 
 func PlayerRegister(ID uuid.UUID, Username string, FactionID uuid.UUID, PublicAddress common.Address) (*boiler.Player, error) {
+	fmt.Println("Player Register")
+	fmt.Println("tx, err := gamedb.StdConn.Begin()")
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
 		return nil, fmt.Errorf("start tx: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() {
+		tx.Rollback()
+		fmt.Println("Player Register rollback")
+	}()
 	exists, err := boiler.PlayerExists(tx, ID.String())
 	if err != nil {
 		return nil, err

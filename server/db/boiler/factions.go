@@ -24,13 +24,13 @@ import (
 // Faction is an object representing the database table.
 type Faction struct {
 	ID             string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	VotePrice      string      `boiler:"vote_price" boil:"vote_price" json:"votePrice" toml:"votePrice" yaml:"votePrice"`
-	ContractReward string      `boiler:"contract_reward" boil:"contract_reward" json:"contractReward" toml:"contractReward" yaml:"contractReward"`
+	VotePrice      string      `boiler:"vote_price" boil:"vote_price" json:"vote_price" toml:"vote_price" yaml:"vote_price"`
+	ContractReward string      `boiler:"contract_reward" boil:"contract_reward" json:"contract_reward" toml:"contract_reward" yaml:"contract_reward"`
 	Label          string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	GuildID        null.String `boiler:"guild_id" boil:"guild_id" json:"guildID,omitempty" toml:"guildID" yaml:"guildID,omitempty"`
-	DeletedAt      null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
-	UpdatedAt      time.Time   `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
-	CreatedAt      time.Time   `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	GuildID        null.String `boiler:"guild_id" boil:"guild_id" json:"guild_id,omitempty" toml:"guild_id" yaml:"guild_id,omitempty"`
+	DeletedAt      null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt      time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt      time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *factionR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L factionL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

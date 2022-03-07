@@ -24,9 +24,9 @@ import (
 // User is an object representing the database table.
 type User struct {
 	ID              string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	ViewBattleCount int         `boiler:"view_battle_count" boil:"view_battle_count" json:"viewBattleCount" toml:"viewBattleCount" yaml:"viewBattleCount"`
-	SupsMultipliers null.JSON   `boiler:"sups_multipliers" boil:"sups_multipliers" json:"supsMultipliers,omitempty" toml:"supsMultipliers" yaml:"supsMultipliers,omitempty"`
-	PlayerID        null.String `boiler:"player_id" boil:"player_id" json:"playerID,omitempty" toml:"playerID" yaml:"playerID,omitempty"`
+	ViewBattleCount int         `boiler:"view_battle_count" boil:"view_battle_count" json:"view_battle_count" toml:"view_battle_count" yaml:"view_battle_count"`
+	SupsMultipliers null.JSON   `boiler:"sups_multipliers" boil:"sups_multipliers" json:"sups_multipliers,omitempty" toml:"sups_multipliers" yaml:"sups_multipliers,omitempty"`
+	PlayerID        null.String `boiler:"player_id" boil:"player_id" json:"player_id,omitempty" toml:"player_id" yaml:"player_id,omitempty"`
 
 	R *userR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L userL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

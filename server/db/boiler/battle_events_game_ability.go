@@ -24,13 +24,13 @@ import (
 // BattleEventsGameAbility is an object representing the database table.
 type BattleEventsGameAbility struct {
 	ID                string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	EventID           string      `boiler:"event_id" boil:"event_id" json:"eventID" toml:"eventID" yaml:"eventID"`
-	GameAbilityID     null.String `boiler:"game_ability_id" boil:"game_ability_id" json:"gameAbilityID,omitempty" toml:"gameAbilityID" yaml:"gameAbilityID,omitempty"`
-	IsTriggered       bool        `boiler:"is_triggered" boil:"is_triggered" json:"isTriggered" toml:"isTriggered" yaml:"isTriggered"`
-	TriggeredByUserID null.String `boiler:"triggered_by_user_id" boil:"triggered_by_user_id" json:"triggeredByUserID,omitempty" toml:"triggeredByUserID" yaml:"triggeredByUserID,omitempty"`
-	TriggeredOnCellX  null.Int    `boiler:"triggered_on_cell_x" boil:"triggered_on_cell_x" json:"triggeredOnCellX,omitempty" toml:"triggeredOnCellX" yaml:"triggeredOnCellX,omitempty"`
-	TriggeredOnCellY  null.Int    `boiler:"triggered_on_cell_y" boil:"triggered_on_cell_y" json:"triggeredOnCellY,omitempty" toml:"triggeredOnCellY" yaml:"triggeredOnCellY,omitempty"`
-	AbilityHash       null.String `boiler:"ability_hash" boil:"ability_hash" json:"abilityHash,omitempty" toml:"abilityHash" yaml:"abilityHash,omitempty"`
+	EventID           string      `boiler:"event_id" boil:"event_id" json:"event_id" toml:"event_id" yaml:"event_id"`
+	GameAbilityID     null.String `boiler:"game_ability_id" boil:"game_ability_id" json:"game_ability_id,omitempty" toml:"game_ability_id" yaml:"game_ability_id,omitempty"`
+	IsTriggered       bool        `boiler:"is_triggered" boil:"is_triggered" json:"is_triggered" toml:"is_triggered" yaml:"is_triggered"`
+	TriggeredByUserID null.String `boiler:"triggered_by_user_id" boil:"triggered_by_user_id" json:"triggered_by_user_id,omitempty" toml:"triggered_by_user_id" yaml:"triggered_by_user_id,omitempty"`
+	TriggeredOnCellX  null.Int    `boiler:"triggered_on_cell_x" boil:"triggered_on_cell_x" json:"triggered_on_cell_x,omitempty" toml:"triggered_on_cell_x" yaml:"triggered_on_cell_x,omitempty"`
+	TriggeredOnCellY  null.Int    `boiler:"triggered_on_cell_y" boil:"triggered_on_cell_y" json:"triggered_on_cell_y,omitempty" toml:"triggered_on_cell_y" yaml:"triggered_on_cell_y,omitempty"`
+	AbilityHash       null.String `boiler:"ability_hash" boil:"ability_hash" json:"ability_hash,omitempty" toml:"ability_hash" yaml:"ability_hash,omitempty"`
 
 	R *battleEventsGameAbilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleEventsGameAbilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

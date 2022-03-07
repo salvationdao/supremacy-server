@@ -24,16 +24,16 @@ import (
 // Blob is an object representing the database table.
 type Blob struct {
 	ID            string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	FileName      string      `boiler:"file_name" boil:"file_name" json:"fileName" toml:"fileName" yaml:"fileName"`
-	MimeType      string      `boiler:"mime_type" boil:"mime_type" json:"mimeType" toml:"mimeType" yaml:"mimeType"`
-	FileSizeBytes int64       `boiler:"file_size_bytes" boil:"file_size_bytes" json:"fileSizeBytes" toml:"fileSizeBytes" yaml:"fileSizeBytes"`
+	FileName      string      `boiler:"file_name" boil:"file_name" json:"file_name" toml:"file_name" yaml:"file_name"`
+	MimeType      string      `boiler:"mime_type" boil:"mime_type" json:"mime_type" toml:"mime_type" yaml:"mime_type"`
+	FileSizeBytes int64       `boiler:"file_size_bytes" boil:"file_size_bytes" json:"file_size_bytes" toml:"file_size_bytes" yaml:"file_size_bytes"`
 	Extension     string      `boiler:"extension" boil:"extension" json:"extension" toml:"extension" yaml:"extension"`
 	File          []byte      `boiler:"file" boil:"file" json:"file" toml:"file" yaml:"file"`
 	Views         int         `boiler:"views" boil:"views" json:"views" toml:"views" yaml:"views"`
 	Hash          null.String `boiler:"hash" boil:"hash" json:"hash,omitempty" toml:"hash" yaml:"hash,omitempty"`
-	DeletedAt     null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
-	UpdatedAt     time.Time   `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
-	CreatedAt     time.Time   `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
+	DeletedAt     null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt     time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt     time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *blobR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blobL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`

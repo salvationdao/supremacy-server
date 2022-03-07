@@ -25,13 +25,13 @@ import (
 // IssuedContractReward is an object representing the database table.
 type IssuedContractReward struct {
 	ID             string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	BattleID       string          `boiler:"battle_id" boil:"battle_id" json:"battleID" toml:"battleID" yaml:"battleID"`
+	BattleID       string          `boiler:"battle_id" boil:"battle_id" json:"battle_id" toml:"battle_id" yaml:"battle_id"`
 	Reward         decimal.Decimal `boiler:"reward" boil:"reward" json:"reward" toml:"reward" yaml:"reward"`
-	WarMachineHash string          `boiler:"war_machine_hash" boil:"war_machine_hash" json:"warMachineHash" toml:"warMachineHash" yaml:"warMachineHash"`
-	DeletedAt      null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deletedAt,omitempty" toml:"deletedAt" yaml:"deletedAt,omitempty"`
-	UpdatedAt      time.Time       `boiler:"updated_at" boil:"updated_at" json:"updatedAt" toml:"updatedAt" yaml:"updatedAt"`
-	CreatedAt      time.Time       `boiler:"created_at" boil:"created_at" json:"createdAt" toml:"createdAt" yaml:"createdAt"`
-	IsPaid         null.Time       `boiler:"is_paid" boil:"is_paid" json:"isPaid,omitempty" toml:"isPaid" yaml:"isPaid,omitempty"`
+	WarMachineHash string          `boiler:"war_machine_hash" boil:"war_machine_hash" json:"war_machine_hash" toml:"war_machine_hash" yaml:"war_machine_hash"`
+	DeletedAt      null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt      time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt      time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	IsPaid         null.Time       `boiler:"is_paid" boil:"is_paid" json:"is_paid,omitempty" toml:"is_paid" yaml:"is_paid,omitempty"`
 
 	R *issuedContractRewardR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L issuedContractRewardL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -124,12 +124,12 @@ var IssuedContractRewardWhere = struct {
 var IssuedContractRewardRels = struct {
 	Battle string
 }{
-	Battle: "battle",
+	Battle: "Battle",
 }
 
 // issuedContractRewardR is where relationships are stored.
 type issuedContractRewardR struct {
-	Battle *Battle `boiler:"battle" boil:"battle" json:"battle" toml:"battle" yaml:"battle"`
+	Battle *Battle `boiler:"Battle" boil:"Battle" json:"Battle" toml:"Battle" yaml:"Battle"`
 }
 
 // NewStruct creates a new relationship struct
@@ -455,12 +455,12 @@ func (issuedContractRewardL) LoadBattle(e boil.Executor, singular bool, maybeIss
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load battle")
+		return errors.Wrap(err, "failed to eager load Battle")
 	}
 
 	var resultSlice []*Battle
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice battle")
+		return errors.Wrap(err, "failed to bind eager loaded slice Battle")
 	}
 
 	if err = results.Close(); err != nil {
@@ -509,7 +509,7 @@ func (issuedContractRewardL) LoadBattle(e boil.Executor, singular bool, maybeIss
 }
 
 // SetBattle of the issuedContractReward to the related item.
-// Sets o.R.battle to related.
+// Sets o.R.Battle to related.
 // Adds o to related.R.IssuedContractRewards.
 func (o *IssuedContractReward) SetBattle(exec boil.Executor, insert bool, related *Battle) error {
 	var err error
