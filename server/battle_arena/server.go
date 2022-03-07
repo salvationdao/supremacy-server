@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
-	"os"
 	"server"
 	"server/passport"
 	"time"
@@ -454,12 +453,6 @@ func (ba *BattleArena) SetupAfterConnections(logger *zerolog.Logger) {
 
 		for _, faction := range factions {
 			ba.battle.FactionMap[faction.ID] = faction
-		}
-
-		ba.WarMachineQueue, err = NewWarMachineQueue(factions, ba.Conn, logger, ba)
-		if err != nil {
-			ba.Log.Err(err).Msg("failed to set ups war machine queue")
-			os.Exit(-1)
 		}
 
 		ba.Log.Info().Msg("successfully setup war machine queue")

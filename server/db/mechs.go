@@ -244,7 +244,7 @@ func Mech(mechID uuid.UUID) (*server.MechContainer, error) {
 		panic(err)
 	}
 
-	// pgxscan deadlocks for unknown reason.
+	// pgxscan deadlocks for unknown reason.4b4b
 	// err = pgxscan.Get(ctx, px, mc, query, mechID.String())
 	spew.Dump(mc.Weapons)
 
