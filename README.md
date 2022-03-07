@@ -6,16 +6,6 @@ Supremacy gameserver for communication between the game client and various front
 
 [CD Docs](.github/workflows/README.md)
 
-## Supermigrate tool
-
-Used to suck mechs from passport-server over to gameserver.
-
-```
-cd server
-go run cmd/gameserver/main.go sm --migrate_users
-go run cmd/gameserver/main.go sm --migrate_assets
-```
-
 ### For go private modules
 
 ```shell
@@ -36,6 +26,40 @@ export GAMESERVER_TWITCH_EXTENSION_SECRET="" - in your twitch dev console
 
 ```shell
 make tools
+```
+
+Due to data migration, both servers must be on for a spinup process which migrates data back and forth between the two servers
+
+```
+cd $GAMESERVER
+make db-reset
+make db-boiler
+cd server
+go run cmd/gameserver/main.go serve
+```
+
+```
+cd $PASSPORTSERVER
+make db-reset
+make db-boiler
+cd server
+go run cmd/gameserver/main.go serve
+```
+
+After both servers are running (and database setup), suck data in this order:
+
+- passport-server -> gameserver
+- gameserver -> passport-server
+
+```
+cd $GAMESERVER
+cd server
+go run cmd/gameserver/main.go sync
+```
+
+```
+cd $PASSPORTSERVER
+go run cmd/platform/main.go sync
 ```
 
 #### db
