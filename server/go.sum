@@ -1136,6 +1136,8 @@ github.com/ninja-software/tickle v1.3.2 h1:x4w9dWg1U4VQ0QMrfrH5sevBnJVX7HiqZNx3Q
 github.com/ninja-software/tickle v1.3.2/go.mod h1:kQimeRvKZb825ULSdc1XWos1ssxN7fx6q8htjkGvthE=
 github.com/ninja-syndicate/hub v1.6.3 h1:Z0Ev/LpxN0i4SKbp2hydp0ZzoP6fCx0sPD4qAXzPPX0=
 github.com/ninja-syndicate/hub v1.6.3/go.mod h1:1pWd5gwHR2INbJgS43baNUWKEf4cPPUxZ6lN1RdKp1c=
+github.com/ninja-syndicate/hub v1.6.5 h1:MSnUDD20R5fo5RNRYRp4y9ZmtQoUsDUyynuUiid5cmc=
+github.com/ninja-syndicate/hub v1.6.5/go.mod h1:1pWd5gwHR2INbJgS43baNUWKEf4cPPUxZ6lN1RdKp1c=
 github.com/nxadm/tail v1.4.4/go.mod h1:kenIhsEOeOJmVchQTgglprH7qJGnHDVpk1VPCcaMI8A=
 github.com/oklog/ulid v1.3.1/go.mod h1:CirwcVhetQ6Lv90oh/F+FBtV6XMibvdAFo93nm5qn4U=
 github.com/olekukonko/tablewriter v0.0.0-20170122224234-a0225b3f23b5/go.mod h1:vsDQFd/mU46D+Z4whnwzcISnGGzXWMclvtLoiIKAKIo=

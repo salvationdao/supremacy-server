@@ -15,7 +15,7 @@ require (
 	github.com/makiuchi-d/arelo v1.9.2
 	github.com/ninja-software/log_helpers v1.0.1-0.20211202070223-aff11d9a6ae6
 	github.com/ninja-software/terror/v2 v2.0.7
-	github.com/ninja-syndicate/hub v1.6.3
+	github.com/ninja-syndicate/hub v1.6.5
 	github.com/ory/dockertest/v3 v3.8.1
 	github.com/prometheus/client_golang v1.11.0
 	github.com/rs/zerolog v1.26.0
