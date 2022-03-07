@@ -32,10 +32,12 @@ type Mech struct {
 	IsDefault       bool      `boiler:"is_default" boil:"is_default" json:"is_default" toml:"is_default" yaml:"is_default"`
 	ImageURL        string    `boiler:"image_url" boil:"image_url" json:"image_url" toml:"image_url" yaml:"image_url"`
 	AnimationURL    string    `boiler:"animation_url" boil:"animation_url" json:"animation_url" toml:"animation_url" yaml:"animation_url"`
+	AvatarURL       string    `boiler:"avatar_url" boil:"avatar_url" json:"avatar_url" toml:"avatar_url" yaml:"avatar_url"`
 	Hash            string    `boiler:"hash" boil:"hash" json:"hash" toml:"hash" yaml:"hash"`
 	Name            string    `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
 	Label           string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
 	Slug            string    `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
+	AssetType       string    `boiler:"asset_type" boil:"asset_type" json:"asset_type" toml:"asset_type" yaml:"asset_type"`
 	DeletedAt       null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 	UpdatedAt       time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	CreatedAt       time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
@@ -54,10 +56,12 @@ var MechColumns = struct {
 	IsDefault       string
 	ImageURL        string
 	AnimationURL    string
+	AvatarURL       string
 	Hash            string
 	Name            string
 	Label           string
 	Slug            string
+	AssetType       string
 	DeletedAt       string
 	UpdatedAt       string
 	CreatedAt       string
@@ -71,10 +75,12 @@ var MechColumns = struct {
 	IsDefault:       "is_default",
 	ImageURL:        "image_url",
 	AnimationURL:    "animation_url",
+	AvatarURL:       "avatar_url",
 	Hash:            "hash",
 	Name:            "name",
 	Label:           "label",
 	Slug:            "slug",
+	AssetType:       "asset_type",
 	DeletedAt:       "deleted_at",
 	UpdatedAt:       "updated_at",
 	CreatedAt:       "created_at",
@@ -90,10 +96,12 @@ var MechTableColumns = struct {
 	IsDefault       string
 	ImageURL        string
 	AnimationURL    string
+	AvatarURL       string
 	Hash            string
 	Name            string
 	Label           string
 	Slug            string
+	AssetType       string
 	DeletedAt       string
 	UpdatedAt       string
 	CreatedAt       string
@@ -107,10 +115,12 @@ var MechTableColumns = struct {
 	IsDefault:       "mechs.is_default",
 	ImageURL:        "mechs.image_url",
 	AnimationURL:    "mechs.animation_url",
+	AvatarURL:       "mechs.avatar_url",
 	Hash:            "mechs.hash",
 	Name:            "mechs.name",
 	Label:           "mechs.label",
 	Slug:            "mechs.slug",
+	AssetType:       "mechs.asset_type",
 	DeletedAt:       "mechs.deleted_at",
 	UpdatedAt:       "mechs.updated_at",
 	CreatedAt:       "mechs.created_at",
@@ -128,10 +138,12 @@ var MechWhere = struct {
 	IsDefault       whereHelperbool
 	ImageURL        whereHelperstring
 	AnimationURL    whereHelperstring
+	AvatarURL       whereHelperstring
 	Hash            whereHelperstring
 	Name            whereHelperstring
 	Label           whereHelperstring
 	Slug            whereHelperstring
+	AssetType       whereHelperstring
 	DeletedAt       whereHelpernull_Time
 	UpdatedAt       whereHelpertime_Time
 	CreatedAt       whereHelpertime_Time
@@ -145,10 +157,12 @@ var MechWhere = struct {
 	IsDefault:       whereHelperbool{field: "\"mechs\".\"is_default\""},
 	ImageURL:        whereHelperstring{field: "\"mechs\".\"image_url\""},
 	AnimationURL:    whereHelperstring{field: "\"mechs\".\"animation_url\""},
+	AvatarURL:       whereHelperstring{field: "\"mechs\".\"avatar_url\""},
 	Hash:            whereHelperstring{field: "\"mechs\".\"hash\""},
 	Name:            whereHelperstring{field: "\"mechs\".\"name\""},
 	Label:           whereHelperstring{field: "\"mechs\".\"label\""},
 	Slug:            whereHelperstring{field: "\"mechs\".\"slug\""},
+	AssetType:       whereHelperstring{field: "\"mechs\".\"asset_type\""},
 	DeletedAt:       whereHelpernull_Time{field: "\"mechs\".\"deleted_at\""},
 	UpdatedAt:       whereHelpertime_Time{field: "\"mechs\".\"updated_at\""},
 	CreatedAt:       whereHelpertime_Time{field: "\"mechs\".\"created_at\""},
@@ -181,8 +195,8 @@ func (*mechR) NewStruct() *mechR {
 type mechL struct{}
 
 var (
-	mechAllColumns            = []string{"id", "owner_id", "template_id", "chassis_id", "external_token_id", "tier", "is_default", "image_url", "animation_url", "hash", "name", "label", "slug", "deleted_at", "updated_at", "created_at"}
-	mechColumnsWithoutDefault = []string{"owner_id", "template_id", "chassis_id", "external_token_id", "tier", "image_url", "animation_url", "hash", "name", "label", "slug"}
+	mechAllColumns            = []string{"id", "owner_id", "template_id", "chassis_id", "external_token_id", "tier", "is_default", "image_url", "animation_url", "avatar_url", "hash", "name", "label", "slug", "asset_type", "deleted_at", "updated_at", "created_at"}
+	mechColumnsWithoutDefault = []string{"owner_id", "template_id", "chassis_id", "external_token_id", "tier", "image_url", "animation_url", "avatar_url", "hash", "name", "label", "slug", "asset_type"}
 	mechColumnsWithDefault    = []string{"id", "is_default", "deleted_at", "updated_at", "created_at"}
 	mechPrimaryKeyColumns     = []string{"id"}
 	mechGeneratedColumns      = []string{}

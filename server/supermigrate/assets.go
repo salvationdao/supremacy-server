@@ -135,6 +135,7 @@ func ProcessMech(tx *sql.Tx, data *AssetPayload, metadata *MetadataPayload) (boo
 		ID:              uuid.Must(uuid.NewV4()).String(),
 		ImageURL:        metadata.Image,
 		AnimationURL:    metadata.AnimationURL,
+		AvatarURL:       template.AvatarURL,
 		ExternalTokenID: externalTokenID,
 		Tier:            strings.ToUpper(strings.ReplaceAll(att.Rarity, " ", "_")),
 		OwnerID:         data.UserID,
@@ -144,6 +145,7 @@ func ProcessMech(tx *sql.Tx, data *AssetPayload, metadata *MetadataPayload) (boo
 		Name:            att.Name,
 		Label:           label,
 		Slug:            slug,
+		AssetType:       att.AssetType,
 	}
 
 	err = newMech.Insert(tx, boil.Infer())

@@ -198,7 +198,8 @@ func Mech(mechID uuid.UUID) (*server.MechContainer, error) {
 		return nil, err
 	}
 	for result.Next() {
-		err = result.Scan(&mc.ID,
+		err = result.Scan(
+			&mc.ID,
 			&mc.OwnerID,
 			&mc.TemplateID,
 			&mc.ChassisID,
@@ -207,10 +208,12 @@ func Mech(mechID uuid.UUID) (*server.MechContainer, error) {
 			&mc.IsDefault,
 			&mc.ImageURL,
 			&mc.AnimationURL,
+			&mc.AvatarURL,
 			&mc.Hash,
 			&mc.Name,
 			&mc.Label,
 			&mc.Slug,
+			&mc.AssetType,
 			&mc.DeletedAt,
 			&mc.UpdatedAt,
 			&mc.CreatedAt,
@@ -382,11 +385,13 @@ func MechRegister(templateID uuid.UUID, ownerID uuid.UUID) (uuid.UUID, error) {
 		IsDefault:       template.IsDefault,
 		ImageURL:        template.ImageURL,
 		AnimationURL:    template.AnimationURL,
+		AvatarURL:       template.AvatarURL,
 		Hash:            shortID,
 		Name:            "",
 		ExternalTokenID: nextID,
 		Label:           template.Label,
 		Slug:            template.Slug,
+		AssetType:       template.AssetType,
 	}
 	err = newMech.Insert(tx, boil.Infer())
 	if err != nil {

@@ -32,6 +32,8 @@ type Template struct {
 	IsDefault          bool      `boiler:"is_default" boil:"is_default" json:"is_default" toml:"is_default" yaml:"is_default"`
 	ImageURL           string    `boiler:"image_url" boil:"image_url" json:"image_url" toml:"image_url" yaml:"image_url"`
 	AnimationURL       string    `boiler:"animation_url" boil:"animation_url" json:"animation_url" toml:"animation_url" yaml:"animation_url"`
+	AvatarURL          string    `boiler:"avatar_url" boil:"avatar_url" json:"avatar_url" toml:"avatar_url" yaml:"avatar_url"`
+	AssetType          string    `boiler:"asset_type" boil:"asset_type" json:"asset_type" toml:"asset_type" yaml:"asset_type"`
 	DeletedAt          null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 	UpdatedAt          time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	CreatedAt          time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
@@ -50,6 +52,8 @@ var TemplateColumns = struct {
 	IsDefault          string
 	ImageURL           string
 	AnimationURL       string
+	AvatarURL          string
+	AssetType          string
 	DeletedAt          string
 	UpdatedAt          string
 	CreatedAt          string
@@ -63,6 +67,8 @@ var TemplateColumns = struct {
 	IsDefault:          "is_default",
 	ImageURL:           "image_url",
 	AnimationURL:       "animation_url",
+	AvatarURL:          "avatar_url",
+	AssetType:          "asset_type",
 	DeletedAt:          "deleted_at",
 	UpdatedAt:          "updated_at",
 	CreatedAt:          "created_at",
@@ -78,6 +84,8 @@ var TemplateTableColumns = struct {
 	IsDefault          string
 	ImageURL           string
 	AnimationURL       string
+	AvatarURL          string
+	AssetType          string
 	DeletedAt          string
 	UpdatedAt          string
 	CreatedAt          string
@@ -91,6 +99,8 @@ var TemplateTableColumns = struct {
 	IsDefault:          "templates.is_default",
 	ImageURL:           "templates.image_url",
 	AnimationURL:       "templates.animation_url",
+	AvatarURL:          "templates.avatar_url",
+	AssetType:          "templates.asset_type",
 	DeletedAt:          "templates.deleted_at",
 	UpdatedAt:          "templates.updated_at",
 	CreatedAt:          "templates.created_at",
@@ -108,6 +118,8 @@ var TemplateWhere = struct {
 	IsDefault          whereHelperbool
 	ImageURL           whereHelperstring
 	AnimationURL       whereHelperstring
+	AvatarURL          whereHelperstring
+	AssetType          whereHelperstring
 	DeletedAt          whereHelpernull_Time
 	UpdatedAt          whereHelpertime_Time
 	CreatedAt          whereHelpertime_Time
@@ -121,6 +133,8 @@ var TemplateWhere = struct {
 	IsDefault:          whereHelperbool{field: "\"templates\".\"is_default\""},
 	ImageURL:           whereHelperstring{field: "\"templates\".\"image_url\""},
 	AnimationURL:       whereHelperstring{field: "\"templates\".\"animation_url\""},
+	AvatarURL:          whereHelperstring{field: "\"templates\".\"avatar_url\""},
+	AssetType:          whereHelperstring{field: "\"templates\".\"asset_type\""},
 	DeletedAt:          whereHelpernull_Time{field: "\"templates\".\"deleted_at\""},
 	UpdatedAt:          whereHelpertime_Time{field: "\"templates\".\"updated_at\""},
 	CreatedAt:          whereHelpertime_Time{field: "\"templates\".\"created_at\""},
@@ -153,8 +167,8 @@ func (*templateR) NewStruct() *templateR {
 type templateL struct{}
 
 var (
-	templateAllColumns            = []string{"id", "blueprint_chassis_id", "faction_id", "tier", "label", "slug", "is_default", "image_url", "animation_url", "deleted_at", "updated_at", "created_at"}
-	templateColumnsWithoutDefault = []string{"id", "blueprint_chassis_id", "faction_id", "tier", "label", "slug", "image_url", "animation_url"}
+	templateAllColumns            = []string{"id", "blueprint_chassis_id", "faction_id", "tier", "label", "slug", "is_default", "image_url", "animation_url", "avatar_url", "asset_type", "deleted_at", "updated_at", "created_at"}
+	templateColumnsWithoutDefault = []string{"id", "blueprint_chassis_id", "faction_id", "tier", "label", "slug", "image_url", "animation_url", "avatar_url", "asset_type"}
 	templateColumnsWithDefault    = []string{"is_default", "deleted_at", "updated_at", "created_at"}
 	templatePrimaryKeyColumns     = []string{"id"}
 	templateGeneratedColumns      = []string{}
