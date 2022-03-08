@@ -418,13 +418,13 @@ func (pc *PassportWebhookController) AuthRingCheck(w http.ResponseWriter, r *htt
 
 	// check wallet address is whitelisted
 	// if not, skip set up auth in game server and return early
-	if !IsWhitelistedWalletAddress(req.User.PublicAddress.String) {
-		return helpers.EncodeJSON(w, struct {
-			IsSuccess bool `json:"is_success"`
-		}{
-			IsSuccess: true,
-		})
-	}
+	// if !IsWhitelistedWalletAddress(req.User.PublicAddress.String) {
+	// 	return helpers.EncodeJSON(w, struct {
+	// 		IsSuccess bool `json:"is_success"`
+	// 	}{
+	// 		IsSuccess: true,
+	// 	})
+	// }
 
 	client, err := pc.API.RingCheckAuthMap.Check(req.GameserverSessionID)
 	if err != nil {
