@@ -160,9 +160,6 @@ func NewAPI(
 		// channel for faction voting system
 		liveSupsSpend: make(map[server.FactionID]*LiveVotingData),
 
-		// channel for handling hub client
-		// onlineClientMap: make(chan *ClientUpdate),
-
 		// ring check auth
 		RingCheckAuthMap: NewRingCheckMap(),
 
@@ -216,7 +213,7 @@ func NewAPI(
 	// set viewer live count
 	api.ViewerLiveCount = NewViewerLiveCount(api.NetMessageBus)
 	api.UserMap = NewUserMap(api.ViewerLiveCount)
-	//api.UserMultiplier = NewUserMultiplier(api.UserMap, api.Passport, api.BattleArena)
+	api.UserMultiplier = NewUserMultiplier(api.UserMap, api.Passport, api.Conn)
 
 	///////////////////////////
 	//		 Controllers	 //
