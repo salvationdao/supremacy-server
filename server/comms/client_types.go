@@ -4,7 +4,6 @@ import (
 	"server"
 	"time"
 
-	"github.com/ninja-syndicate/hub"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/types"
 )
@@ -32,11 +31,6 @@ type WarMachineQueueStat struct {
 
 type WarMachineQueuePositionResp struct{}
 
-type UserConnectionUpgradeReq struct {
-	SessionID hub.SessionID `json:"sessionID"`
-}
-
-type UserConnectionUpgradeResp struct{}
 type FactionAllReq struct{}
 
 type FactionAllResp struct {

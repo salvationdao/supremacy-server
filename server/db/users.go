@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"server"
+	"server/db/boiler"
+	"server/gamedb"
 	"time"
 
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
 func UserBattleViewUpsert(ctx context.Context, conn Conn, userIDs []server.UserID) error {
@@ -281,4 +284,26 @@ func UserMultiplierGet(ctx context.Context, conn Conn, userID server.UserID) ([]
 	}
 
 	return result, nil
+}
+
+// ************************************
+// Player
+// ************************************
+
+func UpsertPlayer(p *boiler.Player) error {
+	err := p.Upsert(
+		gamedb.StdConn,
+		false,
+		[]string{
+			boiler.PlayerColumns.ID,
+			boiler.PlayerColumns.Username,
+			boiler.PlayerColumns.PublicAddress,
+		},
+		boil.None(),
+		boil.Infer(),
+	)
+	if err != nil {
+		return terror.Error(err)
+	}
+	return nil
 }

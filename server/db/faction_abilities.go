@@ -4,6 +4,7 @@ import (
 	"server"
 
 	"github.com/georgysavva/scany/pgxscan"
+	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"golang.org/x/net/context"
 )
@@ -138,13 +139,13 @@ func FactionAbilityGetByBattleAbilityID(ctx context.Context, conn Conn, battleAb
 }
 
 // FactionExclusiveAbilitiesByFactionID return exclusive abilities of a faction which is not battle abilities
-func FactionExclusiveAbilitiesByFactionID(ctx context.Context, conn Conn, factionID server.FactionID) ([]*server.GameAbility, error) {
+func FactionExclusiveAbilitiesByFactionID(ctx context.Context, conn Conn, factionID uuid.UUID) ([]*server.GameAbility, error) {
 	result := []*server.GameAbility{}
 	q := `
 		SELECT * FROM game_abilities
 		where faction_id = $1 AND battle_ability_id ISNULL;
 	`
-	err := pgxscan.Select(ctx, conn, &result, q, factionID)
+	err := pgxscan.Select(ctx, conn, &result, q, factionID.String())
 	if err != nil {
 		return nil, terror.Error(err)
 	}

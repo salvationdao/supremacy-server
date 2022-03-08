@@ -317,22 +317,22 @@ func (fc *FactionControllerWS) FactionAbilitiesUpdateSubscribeHandler(ctx contex
 		return "", "", nil
 	}
 
-	fc.API.gameAbilityPool[hcd.FactionID](func(fap *deadlock.Map) {
-		abilities := []*server.GameAbility{}
+	// fc.API.gameAbilityPool[hcd.FactionID](func(fap *deadlock.Map) {
+	// 	abilities := []*server.GameAbility{}
 
-		fap.Range(func(key interface{}, gameAbilityPrice interface{}) bool {
-			fa := gameAbilityPrice.(*GameAbilityPrice)
-			if fa.GameAbility.AbilityHash > "" {
-				return true
-			}
-			fa.GameAbility.CurrentSups = fa.CurrentSups.String()
-			abilities = append(abilities, fa.GameAbility)
+	// 	fap.Range(func(key interface{}, gameAbilityPrice interface{}) bool {
+	// 		fa := gameAbilityPrice.(*GameAbilityPrice)
+	// 		if fa.GameAbility.AbilityHash > "" {
+	// 			return true
+	// 		}
+	// 		fa.GameAbility.CurrentSups = fa.CurrentSups.String()
+	// 		abilities = append(abilities, fa.GameAbility)
 
-			return true
-		})
+	// 		return true
+	// 	})
 
-		reply(abilities)
-	})
+	// 	reply(abilities)
+	// })
 	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionAbilitiesUpdated, hcd.FactionID))
 	return req.TransactionID, busKey, nil
 }

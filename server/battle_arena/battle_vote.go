@@ -14,32 +14,32 @@ func (ba *BattleArena) SetFactionMap(factionMap map[server.FactionID]*server.Fac
 }
 
 // RandomBattleAbility return random ability collection and game ability map
-func (ba *BattleArena) RandomBattleAbility() (*server.BattleAbility, map[server.FactionID]*server.GameAbility, error) {
-	// get random collection
-	battleAbility, err := db.AbilityCollectionGetRandom(ba.ctx, ba.Conn)
-	if err != nil {
-		return nil, nil, terror.Error(err)
-	}
-
-	// get abilities by collection id
-	abilities, err := db.FactionAbilityGetByBattleAbilityID(ba.ctx, ba.Conn, battleAbility.ID)
-	if err != nil {
-		return nil, nil, terror.Error(err)
-	}
-
-	// build ability map
-	factionAbilityMap := make(map[server.FactionID]*server.GameAbility)
-	for _, ability := range abilities {
-		factionAbilityMap[ability.FactionID] = ability
-
-		// set ability detail to battle ability
-		battleAbility.Colour = ability.Colour
-		battleAbility.TextColour = ability.TextColour
-		battleAbility.ImageUrl = ability.ImageUrl
-	}
-
-	return battleAbility, factionAbilityMap, nil
-}
+//func (ba *BattleArena) RandomBattleAbility() (*server.BattleAbility, map[server.FactionID]*server.GameAbility, error) {
+//	// get random collection
+//	battleAbility, err := db.AbilityCollectionGetRandom(ba.ctx, ba.Conn)
+//	if err != nil {
+//		return nil, nil, terror.Error(err)
+//	}
+//
+//	// get abilities by collection id
+//	abilities, err := db.FactionAbilityGetByBattleAbilityID(ba.ctx, ba.Conn, battleAbility.ID)
+//	if err != nil {
+//		return nil, nil, terror.Error(err)
+//	}
+//
+//	// build ability map
+//	factionAbilityMap := make(map[server.FactionID]*server.GameAbility)
+//	for _, ability := range abilities {
+//		factionAbilityMap[ability.FactionID] = ability
+//
+//		// set ability detail to battle ability
+//		battleAbility.Colour = ability.Colour
+//		battleAbility.TextColour = ability.TextColour
+//		battleAbility.ImageUrl = ability.ImageUrl
+//	}
+//
+//	return battleAbility, factionAbilityMap, nil
+//}
 
 const BattleAbilityCommand = BattleCommand("BATTLE:ABILITY")
 
