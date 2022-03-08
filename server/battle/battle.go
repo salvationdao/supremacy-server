@@ -105,6 +105,7 @@ func NewArena(opts *Opts) *Arena {
 	}
 
 	opts.Hub.Handle(WSJoinQueue, arena.Join)
+	opts.Hub.Handle(HubKeyGameSettingsUpdated, arena.SendSettings)
 
 	go func() {
 		err = server.Serve(l)
@@ -175,6 +176,18 @@ func (arena *Arena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (arena *Arena) SetMessageBus(mb *messagebus.MessageBus, nb *messagebus.NetBus) {
 	arena.messageBus = mb
+}
+
+func (arena *Arena) SendSettings(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	if arena.currentBattle == nil {
+		return nil
+	}
+	btl := arena.currentBattle
+	reply(&BroadcastPayload{
+		Key:     HubKeyGameSettingsUpdated,
+		Payload: btl.updatePayload(),
+	})
+	return nil
 }
 
 type BattleMsg struct {
@@ -450,10 +463,10 @@ type BroadcastPayload struct {
 }
 
 type GameSettingsResponse struct {
-	GameMap            *server.GameMap `json:"gameMap"`
-	WarMachines        []*WarMachine   `json:"warMachines"`
-	SpawnedAI          []*WarMachine   `json:"spawnedAI"`
-	WarMachineLocation []byte          `json:"warMachineLocation"`
+	GameMap            *server.GameMap `json:"game_map"`
+	WarMachines        []*WarMachine   `json:"war_machines"`
+	SpawnedAI          []*WarMachine   `json:"spawned_ai"`
+	WarMachineLocation []byte          `json:"war_machine_location"`
 }
 
 func (btl *Battle) updatePayload() *GameSettingsResponse {
@@ -578,6 +591,11 @@ func (arena *Arena) Join(ctx context.Context, wsc *hub.Client, payload []byte, r
 	mech, err := db.Mech(mechId)
 	if err != nil {
 		gamelog.L.Error().Str("mech_id", mechId.String()).Err(err).Msg("unable to retrieve mech id from hash")
+		return err
+	}
+
+	if mech.Faction == nil {
+		gamelog.L.Error().Str("mech_id", mechId.String()).Err(err).Msg("mech's owner player has no faction")
 		return err
 	}
 
