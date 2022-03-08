@@ -376,7 +376,7 @@ func (btl *Battle) start(payload *BattleStartPayload) {
 		}
 	}
 
-	btl.votes = NewVotingSystem(btl)
+	btl.abilities = NewAbilitiesSystem(btl)
 }
 
 func (btl *Battle) end(payload *BattleEndPayload) {
