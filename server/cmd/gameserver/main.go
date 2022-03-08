@@ -212,7 +212,6 @@ func main() {
 					netMessageBus := messagebus.NewNetBus(log_helpers.NamedLogger(gamelog.L, "net_message_bus"))
 					// initialise message bus
 					messageBus := messagebus.NewMessageBus(log_helpers.NamedLogger(gamelog.L, "message_bus"))
-
 					gsHub := hub.New(&hub.Config{
 						Log: zerologger.New(*log_helpers.NamedLogger(gamelog.L, "hub library")),
 						WelcomeMsg: &hub.WelcomeMsg{
@@ -221,12 +220,15 @@ func main() {
 						},
 						AcceptOptions: &websocket.AcceptOptions{
 							InsecureSkipVerify: true, // TODO: set this depending on environment
+							OriginPatterns:     []string{"*"},
 						},
 						ClientOfflineFn: func(cl *hub.Client) {
 							netMessageBus.UnsubAll(cl)
 							messageBus.UnsubAll(cl)
 						},
 					})
+
+					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Set up hub")
 
 					ba := battle.NewArena(&battle.Opts{
 						Addr:          battleArenaAddr,
@@ -235,6 +237,7 @@ func main() {
 						MessageBus:    messageBus,
 						Hub:           gsHub,
 					})
+					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("set up arena")
 
 					//battleArenaClient := battle_arena.NewBattleArenaClient(ctx, log_helpers.NamedLogger(gamelog.L, "battle-arena"), pgxconn, pp, battleArenaAddr)
 					//battleArenaClient.SetupAfterConnections(gamelog.L) // Blocks until setup properly, fetched and hydrated
