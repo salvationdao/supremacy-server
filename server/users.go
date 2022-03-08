@@ -30,6 +30,8 @@ type User struct {
 	UpdatedAt           time.Time   `json:"updated_at" db:"updated_at"`
 	DeletedAt           *time.Time  `json:"deleted_at" db:"deleted_at"`
 
+	PublicAddress null.String `json:"public_address,omitempty" db:"public_address"`
+
 	PassportURL string `json:"passport_url"`
 	Sups        BigInt `json:"sups"`
 	// for dev env only

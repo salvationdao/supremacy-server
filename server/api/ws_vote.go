@@ -357,7 +357,6 @@ func (vc *VoteControllerWS) AbilityLocationSelect(ctx context.Context, wsc *hub.
 	//
 	//	vc.API.UserMultiplier.PickedLocation(userID)
 	//})
-	return nil
 }
 
 /***************

@@ -10,6 +10,7 @@ import (
 	"server/db"
 	"server/helpers"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/go-chi/chi"
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4"
@@ -407,9 +408,18 @@ func (pc *PassportWebhookController) AuthRingCheck(w http.ResponseWriter, r *htt
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)
 	}
+
 	if req.GameserverSessionID == "" {
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("no auth ring check key provided"), "Ring check key is required")
 	}
+
+	spew.Dump(req.User)
+
+	// // check wallet address is whitelisted
+	// if !IsWhitelistedWalletAddress(req.PublicAddress) {
+	// 	return http.StatusForbidden, terror.Error(fmt.Errorf("user is not on the whitelist"), "User is not on the whitelist")
+	// }
+
 	client, err := pc.API.RingCheckAuthMap.Check(req.GameserverSessionID)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Hub client not found")
@@ -497,4 +507,18 @@ func (pc *PassportWebhookController) FactionQueueCostGet(w http.ResponseWriter, 
 	//}{
 	//	Length: length,
 	//})
+}
+
+// whitelisted wallet addresses
+var WhitelistedWalletAddresses = []string{
+	"TEST",
+}
+
+func IsWhitelistedWalletAddress(pa string) bool {
+	for _, wwa := range WhitelistedWalletAddresses {
+		if wwa == pa {
+			return true
+		}
+	}
+	return false
 }
