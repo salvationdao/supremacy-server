@@ -183,10 +183,7 @@ func (arena *Arena) SendSettings(ctx context.Context, wsc *hub.Client, payload [
 		return nil
 	}
 	btl := arena.currentBattle
-	reply(&BroadcastPayload{
-		Key:     HubKeyGameSettingsUpdated,
-		Payload: btl.updatePayload(),
-	})
+	reply(btl.updatePayload())
 	return nil
 }
 
