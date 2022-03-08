@@ -3,6 +3,8 @@ package passport
 import (
 	"server"
 	"time"
+
+	"github.com/ninja-software/terror/v2"
 )
 
 type HoldSupsMessageResponse struct {
@@ -24,17 +26,28 @@ type SpendSupsResp struct {
 	TXID string `json:"txid"`
 }
 
+// // SpendSupMessage tells the passport to hold sups
+// func (pp *Passport) SpendSupMessage(req SpendSupsReq, callback func(txID string), errorCallback func(err error)) {
+// 	resp := &SpendSupsResp{}
+// 	pp.Comms.GoCall("S.SupremacySpendSupsHandler", req, resp, func(err error) {
+// 		if err != nil {
+// 			pp.Log.Err(err).Str("method", "SupremacySpendSupsHandler").Msg("rpc error")
+// 			errorCallback(err)
+// 			return
+// 		}
+// 		callback(resp.TXID)
+// 	})
+// }
+
 // SpendSupMessage tells the passport to hold sups
-func (pp *Passport) SpendSupMessage(req SpendSupsReq, callback func(txID string), errorCallback func(err error)) {
+func (pp *Passport) SpendSupMessage(req SpendSupsReq) error {
 	resp := &SpendSupsResp{}
-	pp.Comms.GoCall("S.SupremacySpendSupsHandler", req, resp, func(err error) {
-		if err != nil {
-			pp.Log.Err(err).Str("method", "SupremacySpendSupsHandler").Msg("rpc error")
-			errorCallback(err)
-			return
-		}
-		callback(resp.TXID)
-	})
+	err := pp.Comms.Call("S.SupremacySpendSupsHandler", req, resp)
+	if err != nil {
+		pp.Log.Err(err).Str("method", "SupremacySpendSupsHandler").Msg("rpc error")
+		return terror.Error(err)
+	}
+	return nil
 }
 
 type ReleaseTransactionsReq struct {

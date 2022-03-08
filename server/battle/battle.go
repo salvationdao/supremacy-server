@@ -12,6 +12,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/passport"
 	"strconv"
 	"strings"
 	"time"
@@ -36,6 +37,8 @@ type Arena struct {
 	currentBattle *Battle
 	syndicates    map[string]boiler.Faction
 	AIPlayers     map[string]db.PlayerWithFaction
+
+	ppClient *passport.Passport
 }
 
 type Opts struct {
@@ -45,6 +48,7 @@ type Opts struct {
 	Hub           *hub.Hub
 	MessageBus    *messagebus.MessageBus
 	NetMessageBus *messagebus.NetBus
+	PPClient      *passport.Passport
 }
 
 type MessageType byte
@@ -88,6 +92,7 @@ func NewArena(opts *Opts) *Arena {
 	arena.timeout = opts.Timeout
 	arena.netMessageBus = opts.NetMessageBus
 	arena.messageBus = opts.MessageBus
+	arena.ppClient = opts.PPClient
 
 	arena.AIPlayers, err = db.DefaultFactionPlayers()
 	if err != nil {
@@ -376,6 +381,7 @@ func (btl *Battle) start(payload *BattleStartPayload) {
 		}
 	}
 
+	// set up the abilities for current battle
 	btl.abilities = NewAbilitiesSystem(btl)
 }
 

@@ -209,7 +209,7 @@ var SharedFactionAbilities = []*GameAbility{
 		TextColour:          "#FFFFFF",
 		Description:         "'Rain fury on the arena with a targeted airstrike.",
 		ImageUrl:            "/api/blobs/dc713e47-4119-494a-a81b-8ac92cf3222b",
-		SupsCost:            "0",
+		SupsCost:            "1000000000000000000",
 	},
 	{
 		Label:               "NUKE",
@@ -219,7 +219,7 @@ var SharedFactionAbilities = []*GameAbility{
 		TextColour:          "#FFFFFF",
 		Description:         "The show-stopper. A tactical nuke at your fingertips.",
 		ImageUrl:            "/api/blobs/8e0e1918-556c-4370-85f9-b8960fd19554",
-		SupsCost:            "0",
+		SupsCost:            "1000000000000000000",
 	},
 	{
 		Label:               "REPAIR",
@@ -229,7 +229,7 @@ var SharedFactionAbilities = []*GameAbility{
 		TextColour:          "#000000",
 		Description:         "Support your Syndcate with a well-timed repair.",
 		ImageUrl:            "/api/blobs/f40e90b7-1ea2-4a91-bf0f-feb052a019be",
-		SupsCost:            "0",
+		SupsCost:            "1000000000000000000",
 	},
 	// FactionIDBoston
 	{
@@ -240,7 +240,7 @@ var SharedFactionAbilities = []*GameAbility{
 		TextColour:          "#FFFFFF",
 		Description:         "'Rain fury on the arena with a targeted airstrike.",
 		ImageUrl:            "/api/blobs/dc713e47-4119-494a-a81b-8ac92cf3222b",
-		SupsCost:            "0",
+		SupsCost:            "1000000000000000000",
 	},
 	{
 		Label:               "NUKE",
@@ -250,7 +250,7 @@ var SharedFactionAbilities = []*GameAbility{
 		TextColour:          "#FFFFFF",
 		Description:         "The show-stopper. A tactical nuke at your fingertips.",
 		ImageUrl:            "/api/blobs/8e0e1918-556c-4370-85f9-b8960fd19554",
-		SupsCost:            "0",
+		SupsCost:            "1000000000000000000",
 	},
 	{
 		Label:               "REPAIR",
@@ -260,7 +260,7 @@ var SharedFactionAbilities = []*GameAbility{
 		TextColour:          "#000000",
 		Description:         "Support your Syndcate with a well-timed repair.",
 		ImageUrl:            "/api/blobs/f40e90b7-1ea2-4a91-bf0f-feb052a019be",
-		SupsCost:            "0",
+		SupsCost:            "1000000000000000000",
 	},
 	// FactionIDRedMountain
 	{
@@ -271,7 +271,7 @@ var SharedFactionAbilities = []*GameAbility{
 		TextColour:          "#FFFFFF",
 		Description:         "'Rain fury on the arena with a targeted airstrike.",
 		ImageUrl:            "/api/blobs/dc713e47-4119-494a-a81b-8ac92cf3222b",
-		SupsCost:            "0",
+		SupsCost:            "1000000000000000000",
 	},
 	{
 		Label:               "NUKE",
@@ -281,7 +281,7 @@ var SharedFactionAbilities = []*GameAbility{
 		TextColour:          "#FFFFFF",
 		Description:         "The show-stopper. A tactical nuke at your fingertips.",
 		ImageUrl:            "/api/blobs/8e0e1918-556c-4370-85f9-b8960fd19554",
-		SupsCost:            "0",
+		SupsCost:            "1000000000000000000",
 	},
 	{
 		Label:               "REPAIR",
@@ -291,7 +291,7 @@ var SharedFactionAbilities = []*GameAbility{
 		TextColour:          "#000000",
 		Description:         "Support your Syndcate with a well-timed repair.",
 		ImageUrl:            "/api/blobs/f40e90b7-1ea2-4a91-bf0f-feb052a019be",
-		SupsCost:            "0",
+		SupsCost:            "1000000000000000000",
 	},
 }
 

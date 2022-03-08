@@ -236,6 +236,7 @@ func main() {
 						NetMessageBus: netMessageBus,
 						MessageBus:    messageBus,
 						Hub:           gsHub,
+						PPClient:      pp,
 					})
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("set up arena")
 

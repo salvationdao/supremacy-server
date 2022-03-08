@@ -33,6 +33,7 @@ type GameAbility struct {
 	SupsCost            string      `boiler:"sups_cost" boil:"sups_cost" json:"sups_cost" toml:"sups_cost" yaml:"sups_cost"`
 	Description         string      `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
 	TextColour          string      `boiler:"text_colour" boil:"text_colour" json:"text_colour" toml:"text_colour" yaml:"text_colour"`
+	CurrentSups         string      `boiler:"current_sups" boil:"current_sups" json:"current_sups" toml:"current_sups" yaml:"current_sups"`
 
 	R *gameAbilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L gameAbilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -49,6 +50,7 @@ var GameAbilityColumns = struct {
 	SupsCost            string
 	Description         string
 	TextColour          string
+	CurrentSups         string
 }{
 	ID:                  "id",
 	GameClientAbilityID: "game_client_ability_id",
@@ -60,6 +62,7 @@ var GameAbilityColumns = struct {
 	SupsCost:            "sups_cost",
 	Description:         "description",
 	TextColour:          "text_colour",
+	CurrentSups:         "current_sups",
 }
 
 var GameAbilityTableColumns = struct {
@@ -73,6 +76,7 @@ var GameAbilityTableColumns = struct {
 	SupsCost            string
 	Description         string
 	TextColour          string
+	CurrentSups         string
 }{
 	ID:                  "game_abilities.id",
 	GameClientAbilityID: "game_abilities.game_client_ability_id",
@@ -84,6 +88,7 @@ var GameAbilityTableColumns = struct {
 	SupsCost:            "game_abilities.sups_cost",
 	Description:         "game_abilities.description",
 	TextColour:          "game_abilities.text_colour",
+	CurrentSups:         "game_abilities.current_sups",
 }
 
 // Generated where
@@ -99,6 +104,7 @@ var GameAbilityWhere = struct {
 	SupsCost            whereHelperstring
 	Description         whereHelperstring
 	TextColour          whereHelperstring
+	CurrentSups         whereHelperstring
 }{
 	ID:                  whereHelperstring{field: "\"game_abilities\".\"id\""},
 	GameClientAbilityID: whereHelperint{field: "\"game_abilities\".\"game_client_ability_id\""},
@@ -110,6 +116,7 @@ var GameAbilityWhere = struct {
 	SupsCost:            whereHelperstring{field: "\"game_abilities\".\"sups_cost\""},
 	Description:         whereHelperstring{field: "\"game_abilities\".\"description\""},
 	TextColour:          whereHelperstring{field: "\"game_abilities\".\"text_colour\""},
+	CurrentSups:         whereHelperstring{field: "\"game_abilities\".\"current_sups\""},
 }
 
 // GameAbilityRels is where relationship names are stored.
@@ -136,9 +143,9 @@ func (*gameAbilityR) NewStruct() *gameAbilityR {
 type gameAbilityL struct{}
 
 var (
-	gameAbilityAllColumns            = []string{"id", "game_client_ability_id", "faction_id", "battle_ability_id", "label", "colour", "image_url", "sups_cost", "description", "text_colour"}
+	gameAbilityAllColumns            = []string{"id", "game_client_ability_id", "faction_id", "battle_ability_id", "label", "colour", "image_url", "sups_cost", "description", "text_colour", "current_sups"}
 	gameAbilityColumnsWithoutDefault = []string{"game_client_ability_id", "faction_id", "label", "colour", "image_url", "description", "text_colour"}
-	gameAbilityColumnsWithDefault    = []string{"id", "battle_ability_id", "sups_cost"}
+	gameAbilityColumnsWithDefault    = []string{"id", "battle_ability_id", "sups_cost", "current_sups"}
 	gameAbilityPrimaryKeyColumns     = []string{"id"}
 	gameAbilityGeneratedColumns      = []string{}
 )
