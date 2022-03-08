@@ -184,11 +184,13 @@ func main() {
 						fmt.Sprintf("%s:10002", hostname),
 						fmt.Sprintf("%s:10001", hostname),
 					}
+					gamelog.L.Info().Msg("start rpc client")
 					rpcClient, err := comms.NewClient(rpcAddrs...)
 					if err != nil {
 						cancel()
 						return terror.Panic(err)
 					}
+					gamelog.L.Info().Msg("start rpc server")
 					rpcServer := comms.NewServer(rpcClient)
 					err = comms.Start(rpcServer)
 					if err != nil {

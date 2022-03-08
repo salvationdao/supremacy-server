@@ -314,7 +314,7 @@ func Mech(mechID uuid.UUID) (*server.MechContainer, error) {
        to_json(fct.*) as faction
 		from mechs
 		INNER JOIN players ply ON ply.id = mechs.owner_id
-		INNER JOIN factions fct ON fct.id = ply.faction_id
+		LEFT JOIN factions fct ON fct.id = ply.faction_id
 		WHERE mechs.id = $1
 		GROUP BY mechs.id, ply.id, fct.id`
 
