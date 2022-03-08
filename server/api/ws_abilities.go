@@ -14,7 +14,6 @@ import (
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
-	"github.com/sasha-s/go-deadlock"
 )
 
 // FactionControllerWS holds handlers for checking server status
@@ -359,41 +358,41 @@ func (fc *FactionControllerWS) WarMachineAbilitiesUpdateSubscribeHandler(ctx con
 	if hcd == nil {
 		return "", "", terror.Error(fmt.Errorf("hcd is nil"), "User not found")
 	}
-
-	fc.API.gameAbilityPool[hcd.FactionID](func(fap *deadlock.Map) {
-		abilities := []*server.GameAbility{}
-		fap.Range(func(key interface{}, gameAbilityPrice interface{}) bool {
-			fa := gameAbilityPrice.(*GameAbilityPrice)
-			if hcd.FactionID == server.ZaibatsuFactionID {
-				if fa.GameAbility.ParticipantID == nil ||
-					*fa.GameAbility.ParticipantID != req.Payload.ParticipantID {
-					return true
-				}
-			} else {
-				if fa.GameAbility.AbilityHash == "" ||
-					fa.GameAbility.ParticipantID == nil ||
-					*fa.GameAbility.ParticipantID != req.Payload.ParticipantID {
-					return true
-				}
-			}
-
-			// filter dup
-			for _, ability := range abilities {
-				if ability.ID == fa.GameAbility.ID {
-					fap.Store(fa.GameAbility.Identity.String(), fa)
-					return true
-				}
-			}
-
-			fa.GameAbility.CurrentSups = fa.CurrentSups.String()
-			abilities = append(abilities, fa.GameAbility)
-			fap.Store(fa.GameAbility.Identity.String(), fa)
-
-			return true
-		})
-
-		reply(abilities)
-	})
+	//
+	//fc.API.gameAbilityPool[hcd.FactionID](func(fap *deadlock.Map) {
+	//	abilities := []*server.GameAbility{}
+	//	fap.Range(func(key interface{}, gameAbilityPrice interface{}) bool {
+	//		fa := gameAbilityPrice.(*GameAbilityPrice)
+	//		if hcd.FactionID == server.ZaibatsuFactionID {
+	//			if fa.GameAbility.ParticipantID == nil ||
+	//				*fa.GameAbility.ParticipantID != req.Payload.ParticipantID {
+	//				return true
+	//			}
+	//		} else {
+	//			if fa.GameAbility.AbilityHash == "" ||
+	//				fa.GameAbility.ParticipantID == nil ||
+	//				*fa.GameAbility.ParticipantID != req.Payload.ParticipantID {
+	//				return true
+	//			}
+	//		}
+	//
+	//		// filter dup
+	//		for _, ability := range abilities {
+	//			if ability.ID == fa.GameAbility.ID {
+	//				fap.Store(fa.GameAbility.Identity.String(), fa)
+	//				return true
+	//			}
+	//		}
+	//
+	//		fa.GameAbility.CurrentSups = fa.CurrentSups.String()
+	//		abilities = append(abilities, fa.GameAbility)
+	//		fap.Store(fa.GameAbility.Identity.String(), fa)
+	//
+	//		return true
+	//	})
+	//
+	//	reply(abilities)
+	//})
 	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s:%x", HubKeyWarMachineAbilitiesUpdated, hcd.FactionID, req.Payload.ParticipantID))
 	return req.TransactionID, busKey, nil
 }
