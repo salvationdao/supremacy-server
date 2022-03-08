@@ -1,19 +1,28 @@
 package battle
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"server"
+	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 	"server/passport"
 	"time"
 
+	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/hub"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/gofrs/uuid"
 )
+
+//******************************
+// Game Ability setup
+//******************************
 
 const EachMechIntroSecond = 3
 const InitIntroSecond = 7
@@ -21,19 +30,19 @@ const InitIntroSecond = 7
 type AbilitiesSystem struct {
 	battle *Battle
 	// faction unique abilities
-	factionUniqueAbilities map[uuid.UUID]map[string]*GameAbility // map[faction_id]map[identity]*Ability
+	factionUniqueAbilities map[uuid.UUID]map[server.GameAbilityID]*GameAbility // map[faction_id]map[identity]*Ability
 
 	// gabs abilities (air craft, nuke, repair)
-	factionGabsAbilities map[uuid.UUID]map[string]*GameAbility
+	factionGabsAbilities map[uuid.UUID]map[server.GameAbilityID]*GameAbility
 }
 
 func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
-	factionAbilities := map[uuid.UUID]map[string]*GameAbility{}
-	gabAbilities := map[uuid.UUID]map[string]*GameAbility{}
+	factionAbilities := map[uuid.UUID]map[server.GameAbilityID]*GameAbility{}
+	gabAbilities := map[uuid.UUID]map[server.GameAbilityID]*GameAbility{}
 
 	for factionID := range battle.factions {
 		// initialise faction unique abilities
-		factionAbilities[factionID] = map[string]*GameAbility{}
+		factionAbilities[factionID] = map[server.GameAbilityID]*GameAbility{}
 
 		// faction unique abilities
 		factionUniqueAbilities, err := boiler.GameAbilities(qm.Where("faction_id = ?", factionID.String()), qm.And("battle_ability_id ISNULL")).All(gamedb.StdConn)
@@ -70,7 +79,6 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 					// build the ability
 					wmAbility := &GameAbility{
 						ID:                  server.GameAbilityID(uuid.Must(uuid.FromString(ability.ID))), // generate a uuid for frontend to track sups contribution
-						Identity:            wm.ID,
 						GameClientAbilityID: byte(ability.GameClientAbilityID),
 						ImageUrl:            ability.ImageURL,
 						Description:         ability.Description,
@@ -85,19 +93,18 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 						TextColour:          ability.TextColour,
 					}
 
-					//TODO: if more mech abilities shit will fail
 					// inject ability to war machines
 					battle.WarMachines[i].Abilities = []*GameAbility{wmAbility}
 
 					// store faction ability for price tracking
-					factionAbilities[factionID][wmAbility.Identity] = wmAbility
+					factionAbilities[factionID][wmAbility.ID] = wmAbility
 				}
 			}
 
 		} else {
 
 			// for other faction unique abilities
-			abilities := map[string]*GameAbility{}
+			abilities := map[server.GameAbilityID]*GameAbility{}
 			for _, ability := range factionUniqueAbilities {
 
 				supsCost, err := decimal.NewFromString(ability.SupsCost)
@@ -118,7 +125,6 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 
 				wmAbility := &GameAbility{
 					ID:                  server.GameAbilityID(uuid.Must(uuid.FromString(ability.ID))), // generate a uuid for frontend to track sups contribution
-					Identity:            ability.ID,
 					GameClientAbilityID: byte(ability.GameClientAbilityID),
 					ImageUrl:            ability.ImageURL,
 					Description:         ability.Description,
@@ -130,13 +136,13 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 					TextColour:          ability.TextColour,
 					Title:               "FACTION_WIDE",
 				}
-				abilities[wmAbility.Identity] = wmAbility
+				abilities[wmAbility.ID] = wmAbility
 			}
 			factionAbilities[factionID] = abilities
 		}
 
 		// GABS abilities
-		gabAbilities[factionID] = map[string]*GameAbility{}
+		gabAbilities[factionID] = map[server.GameAbilityID]*GameAbility{}
 		factionGabsAbilities, err := boiler.GameAbilities(qm.Where("faction_id = ?", factionID.String()), qm.And("battle_ability_id NOTNULL")).All(gamedb.StdConn)
 		for _, ability := range factionGabsAbilities {
 			supsCost, err := decimal.NewFromString(ability.SupsCost)
@@ -155,9 +161,8 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 				currentSups = decimal.Zero
 			}
 
-			gabAbilities[factionID][ability.ID] = &GameAbility{
+			ga := &GameAbility{
 				ID:                  server.GameAbilityID(uuid.Must(uuid.FromString(ability.ID))),
-				Identity:            ability.ID,
 				GameClientAbilityID: byte(ability.GameClientAbilityID),
 				ImageUrl:            ability.ImageURL,
 				Description:         ability.Description,
@@ -166,6 +171,8 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 				SupsCost:            supsCost,
 				CurrentSups:         currentSups,
 			}
+
+			gabAbilities[factionID][ga.ID] = ga
 		}
 	}
 
@@ -195,7 +202,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 	for _, abilities := range as.factionUniqueAbilities {
 
 		// start ability price updater for each faction
-		go func(abilities map[string]*GameAbility) {
+		go func(abilities map[server.GameAbilityID]*GameAbility) {
 			for {
 				// read the stage first
 				as.battle.Stage.RLock()
@@ -247,6 +254,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 	}
 }
 
+// TargetPriceUpdate update target price on every tick
 func (ga *GameAbility) TargetPriceUpdate(minPrice decimal.Decimal) bool {
 	ga.SupsCost = ga.SupsCost.Mul(decimal.NewFromFloat(0.9772))
 
@@ -269,13 +277,25 @@ func (ga *GameAbility) TargetPriceUpdate(minPrice decimal.Decimal) bool {
 		ga.CurrentSups = decimal.Zero
 
 	}
+
+	// store updated price to db
+	err := db.FactionExclusiveAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ga.ID, ga.SupsCost.String(), ga.CurrentSups.String())
+	if err != nil {
+		gamelog.L.Err(err)
+		return isTriggered
+	}
+
 	return isTriggered
 }
 
 // FactionUniqueAbilityContribute contribute sups to specific faction unique ability
-func (as *AbilitiesSystem) FactionUniqueAbilityContribute(factionID uuid.UUID, abilityIdentity string, userID server.UserID, amount decimal.Decimal) {
+func (as *AbilitiesSystem) FactionUniqueAbilityContribute(factionID uuid.UUID, abilityID server.GameAbilityID, userID server.UserID, amount decimal.Decimal) {
+	// check faction unique ability exist
 	if abilities, ok := as.factionUniqueAbilities[factionID]; ok {
-		if ability, ok := abilities[abilityIdentity]; ok {
+
+		// check ability exists
+		if ability, ok := abilities[abilityID]; ok {
+
 			// lock price update
 			ability.Lock()
 			// check battle stage
@@ -337,6 +357,13 @@ func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID str
 	// update the current sups if not triggered
 	if !isTriggered {
 		ga.CurrentSups = ga.CurrentSups.Add(amount)
+
+		// store updated price to db
+		err := db.FactionExclusiveAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ga.ID, ga.SupsCost.String(), ga.CurrentSups.String())
+		if err != nil {
+			gamelog.L.Err(err)
+			return false
+		}
 		return false
 	}
 
@@ -344,5 +371,45 @@ func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID str
 	ga.SupsCost = ga.SupsCost.Mul(decimal.NewFromInt(2))
 	ga.CurrentSups = decimal.Zero
 
-	return isTriggered
+	// store updated price to db
+	err = db.FactionExclusiveAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ga.ID, ga.SupsCost.String(), ga.CurrentSups.String())
+	if err != nil {
+		gamelog.L.Err(err)
+		return true
+	}
+
+	return true
+}
+
+// *********************
+// Handlers
+// *********************
+
+type GameAbilityContributeRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		GameAbilityID server.GameAbilityID `json:"gameAbilityID"`
+		Amount        int64                `json:"amount"` // 1, 25, 100
+	} `json:"payload"`
+}
+
+const HubKeFactionUniqueAbilityContribute hub.HubCommandKey = "FACTION:UNIQUE:ABILITY:CONTRIBUTE"
+
+func (btl *Battle) FactionUniqueAbilityContribute(ctx context.Context, wsc *hub.Client, payload []byte, factionID server.FactionID, reply hub.ReplyFunc) error {
+	req := &GameAbilityContributeRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
+	if userID.IsNil() {
+		return terror.Error(terror.ErrForbidden)
+	}
+
+	supsAmount := decimal.New(req.Payload.Amount, 18)
+
+	btl.abilities.FactionUniqueAbilityContribute(uuid.UUID(factionID), req.Payload.GameAbilityID, userID, supsAmount)
+
+	return nil
 }

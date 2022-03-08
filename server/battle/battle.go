@@ -109,7 +109,10 @@ func NewArena(opts *Opts) *Arena {
 		WriteTimeout: arena.timeout,
 	}
 
-	opts.Hub.Handle(WSJoinQueue, arena.Join)
+	opts.SecureUserFactionCommand(WSJoinQueue, arena.Join)
+	// todo: access ability from here
+	// opts.SecureUserFactionCommand(HubKeFactionUniqueAbilityContribute, arena.FactionUniqueAbilityContribute)
+	opts.Command(HubKeyGameSettingsUpdated, arena.SendSettings)
 
 	go func() {
 		err = server.Serve(l)
@@ -180,6 +183,15 @@ func (arena *Arena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (arena *Arena) SetMessageBus(mb *messagebus.MessageBus, nb *messagebus.NetBus) {
 	arena.messageBus = mb
+}
+
+func (arena *Arena) SendSettings(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	if arena.currentBattle == nil {
+		return nil
+	}
+	btl := arena.currentBattle
+	reply(btl.updatePayload())
+	return nil
 }
 
 type BattleMsg struct {
@@ -456,10 +468,10 @@ type BroadcastPayload struct {
 }
 
 type GameSettingsResponse struct {
-	GameMap            *server.GameMap `json:"gameMap"`
-	WarMachines        []*WarMachine   `json:"warMachines"`
-	SpawnedAI          []*WarMachine   `json:"spawnedAI"`
-	WarMachineLocation []byte          `json:"warMachineLocation"`
+	GameMap            *server.GameMap `json:"game_map"`
+	WarMachines        []*WarMachine   `json:"war_machines"`
+	SpawnedAI          []*WarMachine   `json:"spawned_ai"`
+	WarMachineLocation []byte          `json:"war_machine_location"`
 }
 
 func (btl *Battle) updatePayload() *GameSettingsResponse {
@@ -564,7 +576,7 @@ type JoinPaylod struct {
 	NeedInsured bool   `json:"need_insured"`
 }
 
-func (arena *Arena) Join(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (arena *Arena) Join(ctx context.Context, wsc *hub.Client, payload []byte, factionID server.FactionID, reply hub.ReplyFunc) error {
 	span := tracer.StartSpan("ws.Command", tracer.ResourceName(string(WSJoinQueue)))
 	defer span.Finish()
 
@@ -587,22 +599,21 @@ func (arena *Arena) Join(ctx context.Context, wsc *hub.Client, payload []byte, r
 		return err
 	}
 
+	if mech.Faction == nil {
+		gamelog.L.Error().Str("mech_id", mechId.String()).Err(err).Msg("mech's owner player has no faction")
+		return err
+	}
+
 	ownerID, err := uuid.FromString(mech.OwnerID)
 	if err != nil {
 		gamelog.L.Error().Str("ownerID", mech.OwnerID).Err(err).Msg("unable to convert owner id from string")
 		return err
 	}
 
-	factionID, err := uuid.FromString(mech.FactionID)
-	if err != nil {
-		gamelog.L.Error().Str("factionID", mech.FactionID).Err(err).Msg("unable to convert faction id from string")
-		return err
-	}
-
 	pos, err := db.JoinQueue(&db.BattleMechData{
 		MechID:    mechId,
 		OwnerID:   ownerID,
-		FactionID: factionID,
+		FactionID: uuid.UUID(factionID),
 	})
 
 	if err != nil {
@@ -936,6 +947,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.MechContainer) []*WarMachi
 			Shield:        uint32(mech.Chassis.MaxShield),
 			Stat:          nil,
 			OwnedByID:     mech.OwnerID,
+			ImageAvatar:   mech.AvatarURL,
 			Faction: &Faction{
 				ID:    mech.Faction.ID,
 				Label: label,

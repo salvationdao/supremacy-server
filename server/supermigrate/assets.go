@@ -44,7 +44,7 @@ func ProcessMech(tx *sql.Tx, data *AssetPayload, metadata *MetadataPayload) (boo
 	}
 	mechExists, err := boiler.Mechs(boiler.MechWhere.Hash.EQ(data.MetadataHash)).Exists(tx)
 	if err != nil {
-		return false, false, fmt.Errorf("check mech exist: %w", err)
+		return false, false, fmt.Errorf("check mech exist %s: %w", data.MetadataHash, err)
 	}
 	if mechExists {
 		// Update instead of processing all the damn pieces
@@ -64,6 +64,9 @@ func ProcessMech(tx *sql.Tx, data *AssetPayload, metadata *MetadataPayload) (boo
 	}
 
 	label, _ := TemplateLabelSlug(att.Brand, att.Model, att.SubModel)
+	if label == "Zaibatsu Tenshi Mk1 Gundam" {
+		label = "Zaibatsu Tenshi Mk1 Gumdan"
+	}
 	templateExists, err := boiler.Templates(boiler.TemplateWhere.Label.EQ(label)).Exists(tx)
 	if err != nil {
 		return false, false, fmt.Errorf("check template exist: %w", err)
@@ -72,9 +75,12 @@ func ProcessMech(tx *sql.Tx, data *AssetPayload, metadata *MetadataPayload) (boo
 		return false, false, fmt.Errorf("matching template does not exist: %s", label)
 	}
 	label, _ = TemplateLabelSlug(att.Brand, att.Model, att.SubModel)
+	if label == "Zaibatsu Tenshi Mk1 Gundam" {
+		label = "Zaibatsu Tenshi Mk1 Gumdan"
+	}
 	template, err := boiler.Templates(boiler.TemplateWhere.Label.EQ(label)).One(tx)
 	if err != nil {
-		return false, false, fmt.Errorf("check mech exist: %w", err)
+		return false, false, fmt.Errorf("check mech exist %s: %w", label, err)
 	}
 	err = template.L.LoadBlueprintChassis(tx, true, template, nil)
 	if err != nil {

@@ -27,7 +27,7 @@ type Battle struct {
 	ID          uuid.UUID     `json:"battleID" db:"id"`
 	MapName     string        `json:"mapName"`
 	WarMachines []*WarMachine `json:"warMachines"`
-	SpawnedAI   []*WarMachine `json:"SpanwedAI"`
+	SpawnedAI   []*WarMachine `json:"SpawnedAI"`
 	lastTick    *[]byte
 	gameMap     *server.GameMap
 	abilities   *AbilitiesSystem
@@ -42,7 +42,7 @@ type Started struct {
 
 type WarMachine struct {
 	ID                 string          `json:"id"`
-	Hash               string          `json:"Hash"`
+	Hash               string          `json:"hash"`
 	ParticipantID      byte            `json:"participantID"`
 	FactionID          string          `json:"factionID"`
 	MaxHealth          uint32          `json:"maxHealth"`
@@ -50,6 +50,7 @@ type WarMachine struct {
 	MaxShield          uint32          `json:"maxShield"`
 	Shield             uint32          `json:"shield"`
 	Stat               *Stat           `json:"stat"`
+	ImageAvatar        string          `json:"imageAvatar"`
 	Position           *server.Vector3 `json:"position"`
 	Rotation           int             `json:"rotation"`
 	OwnedByID          string          `json:"ownedByID"`
@@ -73,7 +74,6 @@ type WarMachine struct {
 
 type GameAbility struct {
 	ID                  server.GameAbilityID `json:"id" db:"id"`
-	Identity            string               `json:"identity"` // used for tracking ability price
 	GameClientAbilityID byte                 `json:"game_client_ability_id" db:"game_client_ability_id"`
 	BattleAbilityID     *uuid.UUID           `json:"battle_ability_id,omitempty" db:"battle_ability_id,omitempty"`
 	Colour              string               `json:"colour" db:"colour"`
