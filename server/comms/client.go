@@ -64,7 +64,12 @@ func (c *C) GoCall(serviceMethod string, args interface{}, reply interface{}, ca
 }
 
 func (c *C) Call(serviceMethod string, args interface{}, reply interface{}) error {
-	if len(c.clients) == 0 {
+	if c == nil || c.clients == nil || len(c.clients) == 0 {
+		clients, err := connect(c.addrs...)
+		if err != nil {
+			return fmt.Errorf("connect to rpc: %w", err)
+		}
+		c.clients = clients
 		return errors.New("rpc client not ready")
 	}
 	gamelog.L.Debug().Str("fn", serviceMethod).Interface("args", args).Msg("rpc call")
