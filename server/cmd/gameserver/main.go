@@ -171,12 +171,6 @@ func main() {
 						return terror.Panic(err)
 					}
 
-					rpcServer := comms.NewServer()
-					err = comms.Start(rpcServer)
-					if err != nil {
-						return terror.Error(err)
-					}
-
 					u, err := url.Parse(passportAddr)
 					if err != nil {
 						return terror.Panic(err)
@@ -195,7 +189,11 @@ func main() {
 						cancel()
 						return terror.Panic(err)
 					}
-
+					rpcServer := comms.NewServer(rpcClient)
+					err = comms.Start(rpcServer)
+					if err != nil {
+						return terror.Error(err)
+					}
 					//// Connect to passport
 					pp := passport.NewPassport(
 						log_helpers.NamedLogger(gamelog.L, "passport"),

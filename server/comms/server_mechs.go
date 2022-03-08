@@ -7,7 +7,11 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 
+	"github.com/davecgh/go-spew/spew"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofrs/uuid"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
 type MechsReq struct {
@@ -16,9 +20,20 @@ type MechsResp struct {
 	MechContainers []*server.MechContainer
 }
 
+type UserReq struct {
+	ID uuid.UUID
+}
+type UserResp struct {
+	ID            uuid.UUID
+	Username      string
+	FactionID     null.String
+	PublicAddress common.Address
+}
+
 // Mechs is a heavy func, do not use on a running server
 func (s *S) Mechs(req MechsReq, resp *MechsResp) error {
 	fmt.Println("s.Mechs")
+
 	templates, err := boiler.Mechs().All(gamedb.StdConn)
 	if err != nil {
 		return err
@@ -81,15 +96,31 @@ type MechRegisterResp struct {
 
 func (s *S) MechRegister(req MechRegisterReq, resp *MechRegisterResp) error {
 	fmt.Println("s.MechRegister")
+	userResp := &UserResp{}
+	err := s.C.Call("S.User", &UserReq{ID: req.OwnerID}, userResp)
+	if err != nil {
+		return fmt.Errorf("refresh player: %w", err)
+	}
+
+	player, err := boiler.FindPlayer(gamedb.StdConn, req.OwnerID.String())
+	if err != nil {
+		return fmt.Errorf("get player: %w", err)
+	}
+	player.FactionID = null.StringFrom(userResp.FactionID.String)
+	_, err = player.Update(gamedb.StdConn, boil.Whitelist(boiler.PlayerColumns.FactionID))
+	if err != nil {
+		return fmt.Errorf("update player: %w", err)
+	}
+	spew.Dump(player)
 	mechID, err := db.MechRegister(req.TemplateID, req.OwnerID)
 	if err != nil {
 		return fmt.Errorf("mech register: %w", err)
 	}
-	fmt.Println("s.MechRegister")
 	mech, err := db.Mech(mechID)
 	if err != nil {
 		return fmt.Errorf("get created mech: %w", err)
 	}
+
 	resp.MechContainer = mech
 	return nil
 }
