@@ -46,6 +46,8 @@ func PassportWebhookRouter(log *zerolog.Logger, conn db.Conn, webhookSecret stri
 
 	r.Post("/faction_queue_cost", WithPassportSecret(webhookSecret, WithError(c.FactionQueueCostGet)))
 
+	r.Post("/faction_queue_cost", WithPassportSecret(webhookSecret, WithError(c.FactionQueueCostGet)))
+
 	return r
 }
 
@@ -161,6 +163,7 @@ func (pc *PassportWebhookController) WarMachineJoin(w http.ResponseWriter, r *ht
 	}
 
 	if req.WarMachineMetadata.FactionID.IsNil() {
+		fmt.Println(err, "111111111111111111111111111111")
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("Non-faction war machine is not able to join"))
 	}
 
@@ -244,6 +247,7 @@ func (pc *PassportWebhookController) WarMachineJoin(w http.ResponseWriter, r *ht
 
 	queueingContractReward, err := decimal.NewFromString(queuingStat.ContractReward)
 	if err != nil {
+		fmt.Println(err, "2222222222222222222222222222222")
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 	resp.ContractReward = decimal.Zero
