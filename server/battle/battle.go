@@ -105,11 +105,13 @@ func NewArena(opts *Opts) *Arena {
 
 	opts.Hub.Handle(WSJoinQueue, arena.Join)
 
-	err = server.Serve(l)
+	go func() {
+		err = server.Serve(l)
 
-	if err != nil {
-		gamelog.L.Fatal().Str("Addr", opts.Addr).Err(err).Msg("unable to start Battle Arena server")
-	}
+		if err != nil {
+			gamelog.L.Fatal().Str("Addr", opts.Addr).Err(err).Msg("unable to start Battle Arena server")
+		}
+	}()
 
 	return arena
 }
