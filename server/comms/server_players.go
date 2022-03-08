@@ -8,17 +8,17 @@ import (
 	"github.com/gofrs/uuid"
 )
 
-type PlayerReq struct {
+type PlayerRegisterReq struct {
 	ID            uuid.UUID
 	Username      string
 	FactionID     uuid.UUID
 	PublicAddress common.Address
 }
-type PlayerResp struct {
+type PlayerRegisterResp struct {
 	Player *boiler.Player
 }
 
-func (s *S) PlayerRegister(req PlayerReq, resp *PlayerResp) error {
+func (s *S) PlayerRegister(req PlayerRegisterReq, resp *PlayerRegisterResp) error {
 	result, err := db.PlayerRegister(req.ID, req.Username, req.FactionID, req.PublicAddress)
 	if err != nil {
 		return err

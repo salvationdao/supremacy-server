@@ -44,6 +44,7 @@ func MigrateAssets(
 		if err != nil {
 			return fmt.Errorf("get metadata: %w", err)
 		}
+		gamelog.L.Debug().Str("hash", asset.MetadataHash).Msg("processing mech")
 		wasSkipped, wasUpdated, err := ProcessMech(tx, asset, metadata)
 		if wasSkipped {
 			skipped++
@@ -81,6 +82,7 @@ func MigrateUsers(
 	updated := 0
 	defer tx.Rollback()
 	for _, user := range userPayload {
+		gamelog.L.Debug().Str("addr", user.PublicAddress).Msg("processing user")
 		wasSkipped, wasUpdated, err := ProcessUser(tx, user)
 		if wasUpdated {
 			updated++

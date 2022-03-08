@@ -358,6 +358,7 @@ func Mech(mechID uuid.UUID) (*server.MechContainer, error) {
 		}
 	}
 	result.Close()
+
 	if err != nil {
 		return nil, err
 	}
