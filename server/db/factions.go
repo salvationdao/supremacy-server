@@ -61,23 +61,6 @@ func FactionVotePriceUpdate(ctx context.Context, conn Conn, faction *server.Fact
 	return nil
 }
 
-// FactionContractRewardGet create a new faction
-func FactionContractRewardGet(ctx context.Context, conn Conn, factionID server.FactionID) (string, error) {
-	contractReward := "0"
-
-	q := `
-		SELECT contract_reward FROM factions
-		WHERE id = $1
-	`
-
-	err := pgxscan.Get(ctx, conn, &contractReward, q, factionID)
-	if err != nil {
-		return contractReward, terror.Error(err)
-	}
-
-	return contractReward, nil
-}
-
 // FactionContractRewardUpdate create a new faction
 func FactionContractRewardUpdate(ctx context.Context, conn Conn, factionID server.FactionID, contractReward string) error {
 	q := `

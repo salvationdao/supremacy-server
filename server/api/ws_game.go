@@ -5,8 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"server"
+	"server/comms"
+	"server/db"
+	"server/passport"
 	"time"
 
+	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/log_helpers"
 	"github.com/ninja-software/terror/v2"
@@ -34,7 +38,11 @@ func NewGameController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *GameC
 	api.SecureUserCommand(HubKeyActiveCheckUpdated, gameHub.ActiveChecker)
 	api.SubscribeCommand(HubKeyWarMachineDestroyedUpdated, gameHub.WarMachineDestroyedUpdateSubscribeHandler)
 	api.SubscribeCommand(HubKeyBattleEndDetailUpdated, gameHub.BattleEndDetailUpdateSubscribeHandler)
+	api.SubscribeCommand(HubKeyAISpawned, gameHub.AISpawnedSubscribeHandler)
 
+	api.SecureUserCommand(HubKeyWarMachineQueueLeave, gameHub.WarMachineQueueLeaveHandler)
+
+	api.SubscribeCommand(HubKeyGameNotification, gameHub.GameNotificationSubscribeHandler)
 	return gameHub
 }
 
@@ -56,6 +64,80 @@ func (gc *GameControllerWS) FactionColour(ctx context.Context, wsc *hub.Client, 
 		Boston:      gc.API.factionMap[server.BostonCyberneticsFactionID].Theme.Primary,
 		Zaibatsu:    gc.API.factionMap[server.ZaibatsuFactionID].Theme.Primary,
 	})
+
+	return nil
+}
+
+const HubKeyWarMachineQueueLeave hub.HubCommandKey = "WAR:WARMACHINE:QUEUE:LEAVE"
+
+type WarMachineQueueLeaveReqest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		Hash string `json:"hash"`
+	} `json:"payload"`
+}
+
+func (gc *GameControllerWS) WarMachineQueueLeaveHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &WarMachineQueueLeaveReqest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	// get user
+	user := gc.API.UserMap.GetUserDetail(wsc)
+	if user == nil {
+		return terror.Error(fmt.Errorf("user not found"))
+	}
+
+	if user.FactionID.IsNil() {
+		return terror.Error(fmt.Errorf("user not in faction"))
+	}
+
+	broadcastData := []*comms.WarMachineQueueStat{}
+	fee, err := db.BattleQueueGetFee(context.Background(), gc.Conn, req.Payload.Hash)
+	if err != nil {
+		return err
+	}
+
+	switch user.FactionID {
+	case server.RedMountainFactionID:
+		err = gc.API.BattleArena.WarMachineQueue.RedMountain.Leave(req.Payload.Hash)
+		if err != nil {
+			return terror.Error(err)
+		}
+	case server.BostonCyberneticsFactionID:
+		err = gc.API.BattleArena.WarMachineQueue.Boston.Leave(req.Payload.Hash)
+		if err != nil {
+			return terror.Error(err)
+		}
+	case server.ZaibatsuFactionID:
+		err = gc.API.BattleArena.WarMachineQueue.Zaibatsu.Leave(req.Payload.Hash)
+		if err != nil {
+			return terror.Error(err)
+		}
+	}
+
+	// fire a refund to passport
+	gc.API.Passport.SpendSupMessage(passport.SpendSupsReq{
+		FromUserID:           server.XsynTreasuryUserID,
+		ToUserID:             &user.ID,
+		Amount:               fee,
+		TransactionReference: server.TransactionReference(fmt.Sprintf("refund|war_machine_queuing_fee|%s", uuid.Must(uuid.NewV4()))),
+		Group:                "Supremacy",
+		Description:          "Removing war machine from queue.",
+	}, func(transaction string) {}, func(err error) {})
+
+	gc.API.Passport.WarMachineQueuePositionBroadcast(broadcastData)
+
+	// broadcast war machine
+	gc.API.Passport.WarMachineQueuePositionBroadcast([]*comms.WarMachineQueueStat{
+		{
+			Hash: req.Payload.Hash,
+		},
+	})
+
+	reply(true)
 
 	return nil
 }
@@ -90,6 +172,22 @@ func (gc *GameControllerWS) WarMachineDestroyedUpdateSubscribeHandler(ctx contex
 	}
 
 	busKey := messagebus.BusKey(fmt.Sprintf("%s:%x", HubKeyWarMachineDestroyedUpdated, req.Payload.ParticipantID))
+	return req.TransactionID, busKey, nil
+}
+
+const HubKeyAISpawned hub.HubCommandKey = "AI:SPAWNED"
+
+// AISpawnedSubscribeHandler to subscribe on war machine destroyed
+func (gc *GameControllerWS) AISpawnedSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &struct {
+		*hub.HubCommandRequest
+	}{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return "", "", terror.Error(err, "Invalid request received")
+	}
+
+	busKey := messagebus.BusKey(HubKeyAISpawned)
 	return req.TransactionID, busKey, nil
 }
 
@@ -135,11 +233,12 @@ func (gc *GameControllerWS) BattleEndDetailUpdateSubscribeHandler(ctx context.Co
 type GameNotificationType string
 
 const (
-	GameNotificationTypeText              GameNotificationType = "TEXT"
-	GameNotificationTypeLocationSelect    GameNotificationType = "LOCATION_SELECT"
-	GameNotificationTypeBattleAbility     GameNotificationType = "BATTLE_ABILITY"
-	GameNotificationTypeFactionAbility    GameNotificationType = "FACTION_ABILITY"
-	GameNotificationTypeWarMachineAbility GameNotificationType = "WAR_MACHINE_ABILITY"
+	GameNotificationTypeText                GameNotificationType = "TEXT"
+	GameNotificationTypeLocationSelect      GameNotificationType = "LOCATION_SELECT"
+	GameNotificationTypeBattleAbility       GameNotificationType = "BATTLE_ABILITY"
+	GameNotificationTypeFactionAbility      GameNotificationType = "FACTION_ABILITY"
+	GameNotificationTypeWarMachineAbility   GameNotificationType = "WAR_MACHINE_ABILITY"
+	GameNotificationTypeWarMachineDestroyed GameNotificationType = "WAR_MACHINE_DESTROYED"
 )
 
 type GameNotificationKill struct {
@@ -185,78 +284,38 @@ type GameNotification struct {
 
 const HubKeyGameNotification hub.HubCommandKey = "GAME:NOTIFICATION"
 
-// BroadcastGameNotificationText broadcast game notification to client
-func (api *API) BroadcastGameNotificationText(ctx context.Context, data string) {
-	// broadcast countered notification
-	broadcastData, err := json.Marshal(&BroadcastPayload{
-		Key: HubKeyGameNotification,
-		Payload: &GameNotification{
-			Type: GameNotificationTypeText,
-			Data: data,
-		},
-	})
+// WinnerAnnouncementSubscribeHandler subscribe on vote winner to pick location
+func (gc *GameControllerWS) GameNotificationSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &AbilityLocationSelectRequest{}
+	err := json.Unmarshal(payload, req)
 	if err != nil {
-		api.Log.Err(err).Msg("marshal broadcast payload")
-		return
+		return "", "", terror.Error(err)
 	}
 
-	api.clientBroadcast(ctx, broadcastData)
+	return req.TransactionID, messagebus.BusKey(HubKeyGameNotification), nil
+}
+
+// BroadcastGameNotificationText broadcast game notification to client
+func (api *API) BroadcastGameNotificationText(data string) {
+	api.MessageBus.Send(context.Background(), messagebus.BusKey(HubKeyGameNotification), data)
 }
 
 // BroadcastGameNotificationLocationSelect broadcast game notification to client
-func (api *API) BroadcastGameNotificationLocationSelect(ctx context.Context, data *GameNotificationLocationSelect) {
-	// broadcast countered notification
-	broadcastData, err := json.Marshal(&BroadcastPayload{
-		Key: HubKeyGameNotification,
-		Payload: &GameNotification{
-			Type: GameNotificationTypeLocationSelect,
-			Data: data,
-		},
-	})
-	if err != nil {
-		api.Log.Err(err).Msg("marshal broadcast payload")
-		return
-	}
-	api.clientBroadcast(ctx, broadcastData)
+func (api *API) BroadcastGameNotificationLocationSelect(data *GameNotificationLocationSelect) {
+	api.MessageBus.Send(context.Background(), messagebus.BusKey(HubKeyGameNotification), data)
 }
 
 // BroadcastGameNotificationAbility broadcast game notification to client
-func (api *API) BroadcastGameNotificationAbility(ctx context.Context, notificationType GameNotificationType, data *GameNotificationAbility) {
-	// broadcast countered notification
-	broadcastData, err := json.Marshal(&BroadcastPayload{
-		Key: HubKeyGameNotification,
-		Payload: &GameNotification{
-			Type: notificationType,
-			Data: data,
-		},
-	})
-	if err != nil {
-		api.Log.Err(err).Msg("marshal broadcast payload")
-		return
-	}
-	api.clientBroadcast(ctx, broadcastData)
+func (api *API) BroadcastGameNotificationAbility(notificationType GameNotificationType, data *GameNotificationAbility) {
+	api.MessageBus.Send(context.Background(), messagebus.BusKey(HubKeyGameNotification), data)
 }
 
 // BroadcastGameNotificationWarMachineAbility broadcast game notification to client
-func (api *API) BroadcastGameNotificationWarMachineAbility(ctx context.Context, data *GameNotificationWarMachineAbility) {
-	// broadcast countered notification
-	broadcastData, err := json.Marshal(&BroadcastPayload{
-		Key: HubKeyGameNotification,
-		Payload: &GameNotification{
-			Type: GameNotificationTypeWarMachineAbility,
-			Data: data,
-		},
-	})
-	if err != nil {
-		api.Log.Err(err).Msg("marshal broadcast payload")
-		return
-	}
-	api.clientBroadcast(ctx, broadcastData)
+func (api *API) BroadcastGameNotificationWarMachineAbility(data *GameNotificationWarMachineAbility) {
+	api.MessageBus.Send(context.Background(), messagebus.BusKey(HubKeyGameNotification), data)
 }
 
-func (api *API) clientBroadcast(ctx context.Context, data []byte) {
-	api.Hub.Clients(func(sessionID hub.SessionID, client *hub.Client) bool {
-		go client.Send(data)
-		return true
-	})
+// BroadcastGameNotificationWarMachineDestroyed broadcast game notification to client
+func (api *API) BroadcastGameNotificationWarMachineDestroyed(data *WarMachineDestroyedEventRecord) {
+	api.MessageBus.Send(context.Background(), messagebus.BusKey(HubKeyGameNotification), data)
 }

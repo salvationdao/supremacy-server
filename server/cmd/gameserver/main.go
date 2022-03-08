@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"log"
@@ -9,12 +10,15 @@ import (
 	"server/api"
 	"server/battle_arena"
 	"server/comms"
+	"server/gamedb"
 	"server/gamelog"
 	"server/passport"
 	"server/seed"
+	"server/supermigrate"
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v4/stdlib"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-software/log_helpers"
 
@@ -22,11 +26,11 @@ import (
 
 	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 
 	"context"
 	"os"
 
-	"github.com/oklog/run"
 	"github.com/urfave/cli/v2"
 )
 
@@ -91,12 +95,10 @@ func main() {
 					&cli.Float64Flag{Name: "sentry_sample_rate", Value: 1, EnvVars: []string{envPrefix + "_SENTRY_SAMPLE_RATE", "SENTRY_SAMPLE_RATE"}, Usage: "The percentage of trace sample to collect (0.0-1)"},
 
 					&cli.StringFlag{Name: "battle_arena_addr", Value: ":8083", EnvVars: []string{envPrefix + "_BA_ADDR", "API_ADDR"}, Usage: ":port to run the battle arena server"},
-
+					&cli.StringFlag{Name: "passport_addr", Value: "ws://localhost:8086/api/ws", EnvVars: []string{envPrefix + "_PASSPORT_ADDR", "PASSPORT_ADDR"}, Usage: " address of the passport server, inc protocol"},
+					&cli.StringFlag{Name: "api_addr", Value: ":8084", EnvVars: []string{envPrefix + "_API_ADDR"}, Usage: ":port to run the API"},
 					&cli.StringFlag{Name: "twitch_ui_web_host_url", Value: "http://localhost:8081", EnvVars: []string{"TWITCH_HOST_URL_FRONTEND"}, Usage: "Twitch url for CORS"},
 
-					&cli.StringFlag{Name: "passport_addr", Value: "ws://localhost:8086/api/ws", EnvVars: []string{envPrefix + "_PASSPORT_ADDR", "PASSPORT_ADDR"}, Usage: " address of the passport server, inc protocol"},
-
-					&cli.StringFlag{Name: "api_addr", Value: ":8084", EnvVars: []string{envPrefix + "_API_ADDR"}, Usage: ":port to run the API"},
 					&cli.StringFlag{Name: "rootpath", Value: "../web/build", EnvVars: []string{envPrefix + "_ROOTPATH"}, Usage: "folder path of index.html"},
 					&cli.StringFlag{Name: "userauth_jwtsecret", Value: "872ab3df-d7c7-4eb6-a052-4146d0f4dd15", EnvVars: []string{envPrefix + "_USERAUTH_JWTSECRET"}, Usage: "JWT secret"},
 
@@ -125,11 +127,17 @@ func main() {
 					passportClientToken := c.String("passport_server_token")
 
 					ctx, cancel := context.WithCancel(c.Context)
+					defer cancel()
 					environment := c.String("environment")
 					battleArenaAddr := c.String("battle_arena_addr")
 					level := c.String("log_level")
-					logger := gamelog.New(environment, level)
-
+					gamelog.New(environment, level)
+					tracer.Start(
+						tracer.WithEnv(environment),
+						tracer.WithService(envPrefix),
+						tracer.WithServiceVersion(Version),
+					)
+					defer tracer.Stop()
 					pgxconn, err := pgxconnect(
 						databaseUser,
 						databasePass,
@@ -140,15 +148,31 @@ func main() {
 						Version,
 					)
 					if err != nil {
-						cancel()
+						return terror.Panic(err)
+					}
+					sqlconn, err := sqlConnect(
+						databaseUser,
+						databasePass,
+						databaseHost,
+						databasePort,
+						databaseName,
+					)
+					if err != nil {
+						return terror.Panic(err)
+					}
+					err = gamedb.New(pgxconn, sqlconn)
+					if err != nil {
 						return terror.Panic(err)
 					}
 
-					g := &run.Group{}
+					rpcServer := comms.NewServer()
+					err = comms.Start(rpcServer)
+					if err != nil {
+						return terror.Error(err)
+					}
 
 					u, err := url.Parse(passportAddr)
 					if err != nil {
-						cancel()
 						return terror.Panic(err)
 					}
 					hostname := u.Hostname()
@@ -160,7 +184,7 @@ func main() {
 						fmt.Sprintf("%s:10002", hostname),
 						fmt.Sprintf("%s:10001", hostname),
 					}
-					passportRPC, err := comms.New(logger, rpcAddrs...)
+					rpcClient, err := comms.NewClient(rpcAddrs...)
 					if err != nil {
 						cancel()
 						return terror.Panic(err)
@@ -168,48 +192,150 @@ func main() {
 
 					//// Connect to passport
 					pp := passport.NewPassport(
-						log_helpers.NamedLogger(logger, "passport"),
+						log_helpers.NamedLogger(gamelog.L, "passport"),
 						passportAddr,
 						passportClientToken,
-						passportRPC,
+						rpcClient,
 					)
-					// err = pp.Connect()
-					// if err != nil {
-					// 	pp.Log.Warn().Err(err).Msgf("Passport connection failed")
-					// 	os.Exit(-1)
-					// }
-					// Start Gameserver - Gameclient server
-					ctxBA, cancelBA := context.WithCancel(ctx)
-					battleArenaClient := battle_arena.NewBattleArenaClient(ctxBA, log_helpers.NamedLogger(logger, "battle-arena"), pgxconn, pp, battleArenaAddr)
-					g.Add(func() error {
-						return battleArenaClient.Serve(ctxBA)
-					}, func(err error) {
-						cancel()
-						cancelBA()
-					})
 
-					// Start API/Client server
-					ctxAPI, cancelAPI := context.WithCancel(ctx)
-					api, err := SetupAPI(c, ctxAPI, log_helpers.NamedLogger(logger, "API"), battleArenaClient, pgxconn, pp)
+					// Start Gameserver - Gameclient server
+					// Passport
+					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Setting up battle arena client")
+					battleArenaClient := battle_arena.NewBattleArenaClient(ctx, log_helpers.NamedLogger(gamelog.L, "battle-arena"), pgxconn, pp, battleArenaAddr)
+					battleArenaClient.SetupAfterConnections(gamelog.L) // Blocks until setup properly, fetched and hydrated
+					gamelog.L.Info().Int("factions", len(battleArenaClient.GetCurrentState().FactionMap)).Msg("Successfully setup battle queue")
+
+					go func() {
+						err := battleArenaClient.Serve(ctx)
+						if err != nil {
+							fmt.Println(err)
+							os.Exit(1)
+						}
+					}()
+
+					gamelog.L.Info().Msg("Setting up webhook rest API")
+					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), battleArenaClient, pgxconn, pp)
 					if err != nil {
-						cancel()
-						cancelAPI()
+						fmt.Println(err)
+						os.Exit(1)
+					}
+
+					gamelog.L.Info().Msg("Running webhook rest API")
+					err = api.Run(ctx)
+					if err != nil {
+						fmt.Println(err)
+						os.Exit(1)
+					}
+					log_helpers.TerrorEcho(ctx, err, gamelog.L)
+					return nil
+				},
+			},
+			{
+				Name:  "sync",
+				Usage: "sync users and assets from passport-server",
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "passport_addr", Value: "ws://localhost:8086/api/ws", EnvVars: []string{envPrefix + "_PASSPORT_ADDR", "PASSPORT_ADDR"}, Usage: " address of the passport server, inc protocol"},
+					&cli.StringFlag{Name: "database_user", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_USER", "DATABASE_USER"}, Usage: "The database user"},
+					&cli.StringFlag{Name: "database_pass", Value: "dev", EnvVars: []string{envPrefix + "_DATABASE_PASS", "DATABASE_PASS"}, Usage: "The database pass"},
+					&cli.StringFlag{Name: "database_host", Value: "localhost", EnvVars: []string{envPrefix + "_DATABASE_HOST", "DATABASE_HOST"}, Usage: "The database host"},
+					&cli.StringFlag{Name: "database_port", Value: "5437", EnvVars: []string{envPrefix + "_DATABASE_PORT", "DATABASE_PORT"}, Usage: "The database port"},
+					&cli.StringFlag{Name: "database_name", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_NAME", "DATABASE_NAME"}, Usage: "The database name"},
+					&cli.StringFlag{Name: "database_application_name", Value: "API Server", EnvVars: []string{envPrefix + "_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
+				},
+				Action: func(c *cli.Context) error {
+
+					databaseUser := c.String("database_user")
+					databasePass := c.String("database_pass")
+					databaseHost := c.String("database_host")
+					databasePort := c.String("database_port")
+					databaseName := c.String("database_name")
+					databaseAppName := c.String("database_application_name")
+					pgxconn, err := pgxconnect(
+						databaseUser,
+						databasePass,
+						databaseHost,
+						databasePort,
+						databaseName,
+						databaseAppName,
+						Version,
+					)
+					if err != nil {
 						return terror.Panic(err)
 					}
-					g.Add(func() error {
-						return api.Run(ctxAPI)
-					}, func(err error) {
-						cancel()
-						cancelAPI()
-					})
-
-					err = g.Run()
-					if errors.Is(err, run.SignalError{Signal: os.Interrupt}) {
-						cancel()
-						err = terror.Warn(err)
+					sqlconn, err := sqlConnect(
+						databaseUser,
+						databasePass,
+						databaseHost,
+						databasePort,
+						databaseName,
+					)
+					if err != nil {
+						return terror.Panic(err)
+					}
+					err = gamedb.New(pgxconn, sqlconn)
+					if err != nil {
+						return terror.Panic(err)
 					}
 
-					log_helpers.TerrorEcho(ctx, err, logger)
+					gamelog.New("development", "TraceLevel")
+					passportAddr := c.String("passport_addr")
+					u, err := url.Parse(passportAddr)
+					if err != nil {
+						return terror.Panic(err)
+					}
+					hostname := u.Hostname()
+					rpcAddrs := []string{
+						fmt.Sprintf("%s:10006", hostname),
+						fmt.Sprintf("%s:10005", hostname),
+						fmt.Sprintf("%s:10004", hostname),
+						fmt.Sprintf("%s:10003", hostname),
+						fmt.Sprintf("%s:10002", hostname),
+						fmt.Sprintf("%s:10001", hostname),
+					}
+					passportRPC, err := comms.NewClient(rpcAddrs...)
+					if err != nil {
+						return terror.Panic(err)
+					}
+
+					result := &comms.GetAll{}
+					err = passportRPC.Call("S.SuperMigrate", comms.GetAllReq{}, result)
+					if err != nil {
+						return terror.Error(err)
+					}
+					metadataPayload := []*supermigrate.MetadataPayload{}
+					err = result.MetadataPayload.Unmarshal(&metadataPayload)
+					if err != nil {
+						return terror.Error(err)
+					}
+					assetPayload := []*supermigrate.AssetPayload{}
+					err = result.AssetPayload.Unmarshal(&assetPayload)
+					if err != nil {
+						return terror.Error(err)
+					}
+					storePayload := []*supermigrate.StorePayload{}
+					err = result.StorePayload.Unmarshal(&storePayload)
+					if err != nil {
+						return terror.Error(err)
+					}
+					factionPayload := []*supermigrate.FactionPayload{}
+					err = result.FactionPayload.Unmarshal(&factionPayload)
+					if err != nil {
+						return terror.Error(err)
+					}
+					userPayload := []*supermigrate.UserPayload{}
+					err = result.UserPayload.Unmarshal(&userPayload)
+					if err != nil {
+						return terror.Error(err)
+					}
+
+					err = supermigrate.MigrateUsers(metadataPayload, assetPayload, storePayload, factionPayload, userPayload)
+					if err != nil {
+						return fmt.Errorf("failed to migrate users: %w", err)
+					}
+					err = supermigrate.MigrateAssets(metadataPayload, assetPayload, storePayload, factionPayload, userPayload)
+					if err != nil {
+						return fmt.Errorf("failed to migrate assets: %w", err)
+					}
 					return nil
 				},
 			},
@@ -345,4 +471,33 @@ func pgxconnect(
 	}
 
 	return conn, nil
+}
+
+func sqlConnect(
+	databaseTxUser string,
+	databaseTxPass string,
+	databaseHost string,
+	databasePort string,
+	databaseName string,
+) (*sql.DB, error) {
+	params := url.Values{}
+	params.Add("sslmode", "disable")
+	connString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?%s",
+		databaseTxUser,
+		databaseTxPass,
+		databaseHost,
+		databasePort,
+		databaseName,
+		params.Encode(),
+	)
+	cfg, err := pgx.ParseConfig(connString)
+	if err != nil {
+		return nil, err
+	}
+	conn := stdlib.OpenDB(*cfg)
+	if err != nil {
+		return nil, err
+	}
+	return conn, nil
+
 }

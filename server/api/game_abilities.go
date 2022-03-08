@@ -21,6 +21,9 @@ import (
 type GameAbilityPrice struct {
 	GameAbility *server.GameAbility
 
+	deadlock.RWMutex
+	isReached bool
+
 	PriceRW        deadlock.RWMutex
 	MaxTargetPrice server.BigInt
 	TargetPrice    server.BigInt
@@ -142,13 +145,13 @@ func (api *API) abilityTargetPriceUpdater(factionID server.FactionID, conn *pgxp
 
 				ability := fa.GameAbility.Brief()
 				if fa.GameAbility.AbilityHash == "" {
-					go api.BroadcastGameNotificationAbility(context.Background(), GameNotificationTypeFactionAbility, &GameNotificationAbility{
+					go api.BroadcastGameNotificationAbility(GameNotificationTypeFactionAbility, &GameNotificationAbility{
 						Ability: ability,
 					})
 				} else {
 					warMachine := api.BattleArena.GetWarMachine(fa.GameAbility.WarMachineHash).Brief()
 					// broadcast notification
-					go api.BroadcastGameNotificationWarMachineAbility(context.Background(), &GameNotificationWarMachineAbility{
+					go api.BroadcastGameNotificationWarMachineAbility(&GameNotificationWarMachineAbility{
 						Ability:    ability,
 						WarMachine: warMachine,
 					})
@@ -206,8 +209,13 @@ func (api *API) startGameAbilityPoolTicker(ctx context.Context, factionID server
 	time.Sleep(time.Duration(introSecond) * time.Second)
 
 	api.gameAbilityPool[factionID](func(fap *deadlock.Map) {
+		// clean up ability incase battle didn't end properly
+		fap.Range(func(key, value interface{}) bool {
+			fap.Delete(key)
+			return true
+		})
 
-		// set initial ability
+		// start filling initial abilities
 		factionAbilities := []*server.GameAbility{}
 		warMachineAbilities := make(map[byte][]*server.GameAbility)
 

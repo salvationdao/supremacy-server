@@ -139,7 +139,7 @@ func (rcm *RingCheckAuthMap) Record(key string, cl *hub.Client) {
 }
 
 func (rcm *RingCheckAuthMap) Check(key string) (*hub.Client, error) {
-	value, ok := rcm.LoadAndDelete(key)
+	value, ok := rcm.Load(key)
 	if !ok {
 		return nil, terror.Error(fmt.Errorf("hub client not found"))
 	}

@@ -271,6 +271,8 @@ func calVotePrice(globalTotalVote int64, currentVotePrice server.BigInt, current
 			priceChange.Div(&priceChange.Int, big.NewInt(3))
 		}
 
+		priceChange.Div(&priceChange.Int, big.NewInt(2))
+
 		votePriceSups.Sub(&votePriceSups.Int, &priceChange.Int)
 	}
 
@@ -608,6 +610,8 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 					fts.Unlock()
 					return
 				}
+
+				fts.Transactions = []string{}
 				fts.Unlock()
 
 				// HACK: tell user enter location select stage, while committing transactions
@@ -616,9 +620,6 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 				api.votePhaseChecker.Phase = VotePhaseLocationSelect
 				api.votePhaseChecker.Unlock()
 				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
-
-				// otherwise, commit the transactions and check the status
-				fts.Transactions = []string{}
 
 				// parse ability vote result
 				type voter struct {
@@ -699,7 +700,7 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 				hcd, winnerClientID := api.getNextWinnerDetail(vw)
 				if hcd == nil {
 					// if no winner left, enter cooldown phase
-					go api.BroadcastGameNotificationLocationSelect(ctx, &GameNotificationLocationSelect{
+					go api.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
 						Type:    LocationSelectTypeCancelledNoPlayer,
 						Ability: va.BattleAbility.Brief(),
 					})
@@ -728,7 +729,7 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 				api.votePhaseChecker.EndTime = endTime
 				api.votePhaseChecker.Unlock()
 
-				go api.BroadcastGameNotificationAbility(ctx, GameNotificationTypeBattleAbility, &GameNotificationAbility{
+				go api.BroadcastGameNotificationAbility(GameNotificationTypeBattleAbility, &GameNotificationAbility{
 					User:    hcd.Brief(),
 					Ability: va.FactionAbilityMap[hcd.FactionID].Brief(),
 				})
@@ -759,7 +760,7 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 				nextUser, winnerClientID := api.getNextWinnerDetail(vw)
 				if nextUser == nil {
 					// if no winner left, enter cooldown phase
-					go api.BroadcastGameNotificationLocationSelect(ctx, &GameNotificationLocationSelect{
+					go api.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
 						Type:    LocationSelectTypeCancelledNoPlayer,
 						Ability: va.BattleAbility.Brief(),
 					})
@@ -811,7 +812,7 @@ func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error
 				})
 
 				// broadcast winner select location
-				go api.BroadcastGameNotificationLocationSelect(ctx, &GameNotificationLocationSelect{
+				go api.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
 					Type:        LocationSelectTypeFailedTimeout,
 					Ability:     va.BattleAbility.Brief(),
 					CurrentUser: currentUser.Brief(),

@@ -1,5 +1,6 @@
 package battle_arena
 
+import "C"
 import (
 	"context"
 	"encoding/json"
@@ -8,13 +9,13 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
-	"os"
 	"server"
 	"server/passport"
 	"time"
 
 	"github.com/jpillora/backoff"
 	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/sasha-s/go-deadlock"
 
 	"github.com/antonholmquist/jason"
@@ -43,35 +44,40 @@ type ReplyFunc func(interface{})
 type BattleCommandFunc func(ctx context.Context, payload []byte, reply ReplyFunc) error
 
 type Request struct {
-	BattleCommand BattleCommand `json:"battleCommand"`
+	BattleCommand BattleCommand `json:"battle_command"`
 	Payload       []byte        `json:"payload"`
 }
 
 type GameMessage struct {
-	BattleCommand BattleCommand `json:"battleCommand"`
+	BattleCommand BattleCommand `json:"battle_command"`
 	Payload       interface{}   `json:"payload"`
 	context       context.Context
 	cancel        context.CancelFunc
 }
 
 type BattleArena struct {
-	server   *http.Server
-	Log      *zerolog.Logger
-	Conn     *pgxpool.Pool
-	passport *passport.Passport
-	addr     string
-	commands map[BattleCommand]BattleCommandFunc
-	Events   BattleArenaEvents
-	send     chan *GameMessage
-	ctx      context.Context
-	close    context.CancelFunc
-	battle   *server.Battle
-
+	server       *http.Server
+	Log          *zerolog.Logger
+	Conn         *pgxpool.Pool
+	passport     *passport.Passport
+	addr         string
+	commands     map[BattleCommand]BattleCommandFunc
+	Events       BattleArenaEvents
+	send         chan *GameMessage
+	ctx          context.Context
+	close        context.CancelFunc
+	battle       *server.Battle
+	gamesToClose int
+	messageBus   *messagebus.MessageBus
 	// battle queue channels
 	// BattleQueueMap map[server.FactionID]chan func(*WarMachineQueuingList)
 
 	// better battle queue
 	WarMachineQueue *WarMachineQueue
+}
+
+func (ba *BattleArena) SetMessageBus(mb *messagebus.MessageBus) {
+	ba.messageBus = mb
 }
 
 // NewBattleArenaClient creates a new battle arena client
@@ -92,7 +98,7 @@ func NewBattleArenaClient(ctx context.Context, logger *zerolog.Logger, conn *pgx
 			WarMachineDestroyedRecordMap: make(map[byte]*server.WarMachineDestroyedRecord),
 			FactionMap:                   make(map[server.FactionID]*server.Faction),
 		},
-
+		gamesToClose: -1,
 		// channel for battle queue
 		// BattleQueueMap: make(map[server.FactionID]chan func(*WarMachineQueuingList)),
 	}
@@ -105,8 +111,8 @@ func NewBattleArenaClient(ctx context.Context, logger *zerolog.Logger, conn *pgx
 
 	// war machines
 	ba.Command(WarMachineDestroyedCommand, ba.WarMachineDestroyedHandler)
+	ba.Command(AISpawnedCommand, ba.AISpawnedHandler)
 
-	go ba.SetupAfterConnections()
 	return ba
 }
 
@@ -158,7 +164,7 @@ const (
 )
 
 func (ba *BattleArena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithCancel(r.Context())
+	ctx, cancel := context.WithCancel(context.Background())
 	c, err := websocket.Accept(w, r, &websocket.AcceptOptions{
 		//Subprotocols: []string{"gameserver-v1"},
 	})
@@ -313,38 +319,18 @@ func (ba *BattleArena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ba *BattleArena) sendPump(ctx context.Context, cancel context.CancelFunc, c *websocket.Conn) {
-	ticker := time.NewTicker(pingPeriod)
-	defer ticker.Stop()
-
 	for {
-		select {
-		case <-ctx.Done():
-			return
-		case msg := <-ba.send:
-			err := writeTimeout(msg, writeWait, c)
-			if err != nil {
-				if errors.Is(err, context.Canceled) {
-					return
-				}
-				if websocket.CloseStatus(err) == websocket.StatusNormalClosure ||
-					websocket.CloseStatus(err) == websocket.StatusGoingAway {
-					return
-				}
-				ba.Log.Err(err).Msg("error sending message to game client")
+		msg := <-ba.send
+		err := writeTimeout(msg, writeWait, c)
+		if err != nil {
+			if errors.Is(err, context.Canceled) {
+				return
 			}
-		case <-ticker.C:
-			err := pingTimeout(ctx, writeWait, c)
-			if err != nil {
-				if errors.Is(err, context.Canceled) {
-					return
-				}
-				if websocket.CloseStatus(err) == websocket.StatusNormalClosure ||
-					websocket.CloseStatus(err) == websocket.StatusGoingAway {
-					return
-				}
-				ba.Log.Err(err).Msgf("error with pinging gameclient")
-				cancel()
+			if websocket.CloseStatus(err) == websocket.StatusNormalClosure ||
+				websocket.CloseStatus(err) == websocket.StatusGoingAway {
+				return
 			}
+			ba.Log.Err(err).Msg("error sending message to game client")
 		}
 	}
 }
@@ -396,7 +382,7 @@ func (ba *BattleArena) runGameCommand(ctx context.Context, c *websocket.Conn, cm
 		// //fnSpan := span.StartChild("cmd")
 		// defer func() {
 		// 	//fnSpan.Finish()
-		// 	//ba.Log.Trace().Msgf("%s:%s all took %s", request.BattleCommand, "cmd", time.Since(fnSpan.StartTime))
+		// 	//ba.Log.Debug().Msgf("%s:%s all took %s", request.BattleCommand, "cmd", time.Since(fnSpan.StartTime))
 		// }()
 		return fn(ctx, payload, reply)
 	}()
@@ -406,8 +392,8 @@ func (ba *BattleArena) runGameCommand(ctx context.Context, c *websocket.Conn, cm
 		log_helpers.TerrorEcho(ctx, err, ba.Log)
 
 		resp := struct {
-			Command BattleCommand `json:"battleCommand"`
-			//TransactionID string        `json:"transactionID"`
+			Command BattleCommand `json:"battle_command"`
+			//TransactionID string        `json:"transaction_id"`
 			Success bool        `json:"success"`
 			Payload interface{} `json:"payload"`
 		}{
@@ -435,69 +421,43 @@ func (ba *BattleArena) Command(command BattleCommand, fn BattleCommandFunc) {
 		ba.Log.Panic().Msgf("command has already been registered to hub: %s", command)
 	}
 	ba.commands[command] = fn
-	ba.Log.Trace().Msg(string(command))
+	ba.Log.Debug().Str("key", string(command)).Msg("battle arena command")
 }
 
-func (ba *BattleArena) SetupAfterConnections() {
+func (ba *BattleArena) SetupAfterConnections(logger *zerolog.Logger) {
 	b := &backoff.Backoff{
 		Min:    1 * time.Second,
 		Max:    30 * time.Second,
 		Factor: 2,
 	}
-	var err error
-	// get factions from passport, retrying every 10 seconds until we ge them.
-	for len(ba.battle.FactionMap) <= 0 {
-		wg := deadlock.WaitGroup{}
-		wg.Add(1)
+	attempts := 0
 
-		ba.passport.FactionAll(func(factions []*server.Faction) {
-			defer wg.Done()
-			ba.battle.WarMachineDestroyedRecordMap = make(map[byte]*server.WarMachineDestroyedRecord)
-
-			ba.battle.FactionMap = make(map[server.FactionID]*server.Faction)
-			for _, faction := range factions {
-				ba.battle.FactionMap[faction.ID] = faction
-			}
-			if len(factions) > 0 {
-				ba.WarMachineQueue, err = NewWarMachineQueue(factions, ba.Conn, ba.Log, ba)
-				if err != nil {
-					ba.Log.Err(err).Msg("failed to set ups war machine queue")
-					os.Exit(-1)
-				}
-
-				// TODO: Build new faction reward system
-				// battleContractRewardUpdaterLogger := log_helpers.NamedLogger(ba.Log, "Contract Reward Updater").Level(zerolog.Disabled)
-				// battleContractRewardUpdater := tickle.New("Contract Reward Updater", 10, func() (int, error) {
-				// 	ba.passport.FactionWarMachineContractRewardUpdate(
-				// 		[]*server.FactionWarMachineQueue{
-				// 			{
-				// 				FactionID:  server.RedMountainFactionID,
-				// 				QueueTotal: ba.WarMachineQueue.RedMountain.QueuingLength(),
-				// 			},
-				// 			{
-				// 				FactionID:  server.BostonCyberneticsFactionID,
-				// 				QueueTotal: ba.WarMachineQueue.Boston.QueuingLength(),
-				// 			},
-				// 			{
-				// 				FactionID:  server.ZaibatsuFactionID,
-				// 				QueueTotal: ba.WarMachineQueue.Zaibatsu.QueuingLength(),
-				// 			},
-				// 		},
-				// 	)
-
-				// 	return http.StatusOK, nil
-				// })
-				// battleContractRewardUpdater.Log = &battleContractRewardUpdaterLogger
-				// battleContractRewardUpdater.Start()
-
-			}
-
-		})
-		wg.Wait()
-		if len(ba.battle.FactionMap) > 0 {
-
-			break
+	for {
+		attempts++
+		logger.Info().Int("attempt", attempts).Msg("fetching battle queue from passport")
+		factions, err := ba.passport.FactionAll()
+		if err != nil {
+			ba.Log.Err(err).Msg("could not fetch war machine queue from passport")
+			time.Sleep(b.Duration())
+			continue
 		}
-		time.Sleep(b.Duration())
+
+		if len(factions) == 0 {
+			ba.Log.Err(err).Msg("no factions returned from API")
+			time.Sleep(b.Duration())
+			continue
+		}
+
+		ba.battle.WarMachineDestroyedRecordMap = make(map[byte]*server.WarMachineDestroyedRecord)
+		ba.battle.FactionMap = make(map[server.FactionID]*server.Faction)
+
+		for _, faction := range factions {
+			ba.battle.FactionMap[faction.ID] = faction
+		}
+
+		ba.Log.Info().Msg("successfully setup war machine queue")
+		break
 	}
+
+	ba.Log.Info().Int("factions", len(ba.battle.FactionMap)).Msg("successfully fetched battle queue from passport")
 }

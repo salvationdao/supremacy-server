@@ -20,9 +20,13 @@ GITHASH=`git rev-parse HEAD`
 GITBRANCH=`git rev-parse --abbrev-ref HEAD`
 BUILDDATE=`date -u +%Y%m%d%H%M%S`
 GITSTATE=`git status --porcelain | wc -l`
-
+REPO_ROOT=`git rev-parse --show-toplevel`
 
 # Make Commands
+.PHONY: setup-git
+setup-git:
+	ln -s ${REPO_ROOT}/.pre-commit ${REPO_ROOT}/.git/hooks/pre-commit
+
 .PHONY: clean
 clean:
 	rm -rf deploy
@@ -37,7 +41,7 @@ deploy-prep: clean tools build
 
 .PHONY: build
 .ONESHELL:
-build:
+build: setup-git
 	cd $(SERVER)
 	pwd
 	go build \
@@ -77,7 +81,7 @@ docker-setup:
 
 .PHONY: db-setup
 db-setup:
-	psql -U postgres -f init.sql
+	psql -h $(LOCAL_DEV_DB_HOST) -p $(LOCAL_DEV_DB_PORT) -U postgres -f init.sql
 
 .PHONY: db-version
 db-version:
@@ -103,15 +107,28 @@ db-migrate-down-one:
 db-migrate-up-one:
 	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(SERVER)/db/migrations up 1
 
+.PHONY: db-migrate-up-to-seed
+db-migrate-up-to-seed:
+	$(BIN)/migrate -database $(DB_CONNECTION_STRING) -path $(SERVER)/db/migrations up 14
+
 .PHONY: db-prepare
 db-prepare: db-drop db-migrate
 
 .PHONY: db-seed
 db-seed:
-	cd $(SERVER) && go run cmd/gameserver/main.go db
+	cd $(SERVER) && go run cmd/gameserver/*.go db
+
+.PHONY: db-update-assets
+db-update-assets:
+	cd $(SERVER) && go run cmd/gameserver/main.go db --assets
 
 .PHONY: db-reset
-db-reset: db-drop db-migrate db-seed
+db-reset: db-drop db-migrate-up-to-seed db-seed db-migrate
+
+# make sure `make tools` is done
+.PHONY: db-boiler
+db-boiler:
+	$(BIN)/sqlboiler $(BIN)/sqlboiler-psql --config $(SERVER)/sqlboiler.toml
 
 .PHONY: go-mod-download
 go-mod-download:

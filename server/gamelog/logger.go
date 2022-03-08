@@ -1,14 +1,26 @@
 package gamelog
 
 import (
+	"os"
+
 	"github.com/ninja-software/log_helpers"
 	"github.com/rs/zerolog"
 )
 
-var GameLog *zerolog.Logger
+var L *zerolog.Logger
 
-func New(environment, level string) *zerolog.Logger {
-	GameLog := log_helpers.LoggerInitZero(environment, level)
-	GameLog.Info().Msg("zerolog initialised")
-	return GameLog
+func New(environment, level string) {
+	log := log_helpers.LoggerInitZero(environment, level)
+
+	if environment == "production" || environment == "staging" {
+		logPtr := zerolog.New(os.Stdout)
+		logPtr = logPtr.With().Caller().Logger()
+		log = &logPtr
+	}
+	log.Info().Msg("zerolog initialised")
+	if L != nil {
+		panic("GameLog already initialised")
+	}
+	L = log
+	*L = L.With().Caller().Logger()
 }

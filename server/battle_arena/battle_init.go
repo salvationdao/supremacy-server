@@ -3,7 +3,9 @@ package battle_arena
 import (
 	"context"
 	"server"
+	"server/comms"
 	"server/db"
+	"server/passport"
 	"time"
 
 	"github.com/ninja-software/terror/v2"
@@ -14,6 +16,8 @@ import (
 const BattleCommandInitBattle BattleCommand = "BATTLE:INIT"
 
 func (ba *BattleArena) InitNextBattle() error {
+	ba.Events.Trigger(context.Background(), EventGameInit, nil)
+
 	// switch battle state to LOBBY
 	ba.battle.State = server.StateLobby
 
@@ -49,6 +53,55 @@ func (ba *BattleArena) InitNextBattle() error {
 	ba.battle.WarMachines = append(ba.battle.WarMachines, ba.WarMachineQueue.Boston.GetWarMachineForEnterGame(mechsPerFaction)...)
 	ba.battle.WarMachines = append(ba.battle.WarMachines, ba.WarMachineQueue.Zaibatsu.GetWarMachineForEnterGame(mechsPerFaction)...)
 
+	// broadcast warmachine stat to passport
+	broadcastList := []*comms.WarMachineQueueStat{}
+	// Red mountain
+	for i, wm := range ba.WarMachineQueue.RedMountain.QueuingWarMachines {
+		position := i + 1
+		broadcastList = append(broadcastList, &comms.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
+	}
+	for _, wm := range ba.WarMachineQueue.RedMountain.InGameWarMachines {
+		position := -1
+		broadcastList = append(broadcastList, &comms.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
+	}
+	ba.passport.FactionQueueCostUpdate(&passport.FactionQueuePriceUpdateReq{
+		FactionID:     server.RedMountainFactionID,
+		QueuingLength: ba.WarMachineQueue.RedMountain.QueuingLength(),
+	})
+
+	// release in game the mechs
+
+	// Boston
+	for i, wm := range ba.WarMachineQueue.Boston.QueuingWarMachines {
+		position := i + 1
+		broadcastList = append(broadcastList, &comms.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
+	}
+	for _, wm := range ba.WarMachineQueue.Boston.InGameWarMachines {
+		position := -1
+		broadcastList = append(broadcastList, &comms.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
+	}
+	ba.passport.FactionQueueCostUpdate(&passport.FactionQueuePriceUpdateReq{
+		FactionID:     server.BostonCyberneticsFactionID,
+		QueuingLength: ba.WarMachineQueue.Boston.QueuingLength(),
+	})
+
+	// Zaibatsu
+	for i, wm := range ba.WarMachineQueue.Zaibatsu.QueuingWarMachines {
+		position := i + 1
+		broadcastList = append(broadcastList, &comms.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
+	}
+	for _, wm := range ba.WarMachineQueue.Zaibatsu.InGameWarMachines {
+		position := -1
+		broadcastList = append(broadcastList, &comms.WarMachineQueueStat{Hash: wm.Hash, Position: &position, ContractReward: wm.ContractReward})
+	}
+	ba.passport.FactionQueueCostUpdate(&passport.FactionQueuePriceUpdateReq{
+		FactionID:     server.ZaibatsuFactionID,
+		QueuingLength: ba.WarMachineQueue.Zaibatsu.QueuingLength(),
+	})
+
+	// broadcast position change
+	ba.passport.WarMachineQueuePositionBroadcast(broadcastList)
+
 	// get Zaibatsu faction abilities to insert
 	zaibatsuAbility, err := db.GetZaibatsuFactionAbility(context.Background(), ba.Conn)
 	if err != nil {
@@ -58,12 +111,15 @@ func (ba *BattleArena) InitNextBattle() error {
 
 	if len(ba.battle.WarMachines) > 0 {
 		for _, warMachine := range ba.battle.WarMachines {
+			// HACK: clean up war machine ability before stacking it
+			warMachine.Abilities = []*server.AbilityMetadata{}
 			if warMachine.FactionID == server.ZaibatsuFactionID {
 				// if war machine is from Zaibatsu, insert the ability as faction ability
 				warMachine.Abilities = append(warMachine.Abilities, &server.AbilityMetadata{
 					ID:           zaibatsuAbility.ID,
 					Identity:     uuid.Must(uuid.NewV4()), // track ability's price
 					Colour:       zaibatsuAbility.Colour,
+					TextColour:   zaibatsuAbility.TextColour,
 					GameClientID: int(zaibatsuAbility.GameClientAbilityID),
 					Image:        zaibatsuAbility.ImageUrl,
 					Description:  zaibatsuAbility.Description,
@@ -94,9 +150,9 @@ func (ba *BattleArena) InitNextBattle() error {
 
 	// Setup payload
 	payload := struct {
-		BattleID    server.BattleID              `json:"battleID"`
-		MapName     string                       `json:"mapName"`
-		WarMachines []*server.WarMachineMetadata `json:"warMachines"`
+		BattleID    server.BattleID              `json:"battle_id"`
+		MapName     string                       `json:"map_name"`
+		WarMachines []*server.WarMachineMetadata `json:"war_machines"`
 	}{
 		BattleID:    ba.battle.ID,
 		MapName:     ba.battle.GameMap.Name,

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"net/http"
 	"server/db"
 
@@ -27,7 +28,24 @@ func CheckRouter(log *zerolog.Logger, conn db.Conn) chi.Router {
 }
 
 func (c *CheckController) Check(w http.ResponseWriter, r *http.Request) {
-	err := check(r.Context(), c.Conn)
+	err := check(context.Background(), c.Conn)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, err = w.Write([]byte(err.Error()))
+		if err != nil {
+			c.Log.Err(err).Msg("failed to send")
+			return
+		}
+	}
+	_, err = w.Write([]byte("ok"))
+	if err != nil {
+		c.Log.Err(err).Msg("failed to send")
+	}
+}
+
+// CheckGame return a game stat check
+func (c *CheckController) CheckGame(w http.ResponseWriter, r *http.Request) {
+	err := check(context.Background(), c.Conn)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, err = w.Write([]byte(err.Error()))

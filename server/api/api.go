@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"net"
@@ -23,9 +24,11 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-software/log_helpers"
+	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-software/tickle"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/auth"
@@ -70,16 +73,16 @@ type FactionVotePrice struct {
 }
 
 type BattleEndInfo struct {
-	BattleID                     server.BattleID           `json:"battleID"`
-	StartedAt                    time.Time                 `json:"startedAt"`
-	EndedAt                      time.Time                 `json:"endedAt"`
-	BattleIdentifier             int64                     `json:"battleIdentifier"`
-	WinningCondition             string                    `json:"winningCondition"`
-	WinningFaction               *server.FactionBrief      `json:"winningFaction"`
-	WinningWarMachines           []*server.WarMachineBrief `json:"winningWarMachines"`
-	TopSupsContributeFactions    []*server.FactionBrief    `json:"topSupsContributeFactions"`
-	TopSupsContributors          []*server.UserBrief       `json:"topSupsContributors"`
-	MostFrequentAbilityExecutors []*server.UserBrief       `json:"mostFrequentAbilityExecutors"`
+	BattleID                     server.BattleID           `json:"battle_id"`
+	StartedAt                    time.Time                 `json:"started_at"`
+	EndedAt                      time.Time                 `json:"ended_at"`
+	BattleIdentifier             int64                     `json:"battle_identifier"`
+	WinningCondition             string                    `json:"winning_condition"`
+	WinningFaction               *server.FactionBrief      `json:"winning_faction"`
+	WinningWarMachines           []*server.WarMachineBrief `json:"winning_war_machines"`
+	TopSupsContributeFactions    []*server.FactionBrief    `json:"top_sups_contribute_factions"`
+	TopSupsContributors          []*server.UserBrief       `json:"top_sups_contributors"`
+	MostFrequentAbilityExecutors []*server.UserBrief       `json:"most_frequent_ability_executors"`
 }
 
 // API server
@@ -121,6 +124,8 @@ type API struct {
 
 	// viewer live count
 	ViewerLiveCount *ViewerLiveCount
+
+	GlobalAnnouncement *server.GlobalAnnouncement
 
 	battleEndInfo *BattleEndInfo
 }
@@ -186,8 +191,11 @@ func NewAPI(
 		battleEndInfo: &BattleEndInfo{},
 	}
 
+	battleArenaClient.SetMessageBus(messageBus)
+
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
+	api.Routes.Use(middleware.Logger)
 	api.Routes.Use(cors.New(cors.Options{AllowedOrigins: []string{config.TwitchUIHostURL}}).Handler)
 
 	api.Routes.Handle("/metrics", promhttp.Handler())
@@ -211,8 +219,12 @@ func NewAPI(
 		r.Post("/video_server", WithToken(config.ServerStreamKey, WithError((api.CreateStreamHandler))))
 		r.Get("/video_server", WithToken(config.ServerStreamKey, WithError((api.GetStreamsHandler))))
 		r.Delete("/video_server", WithToken(config.ServerStreamKey, WithError((api.DeleteStreamHandler))))
+		r.Post("/close_stream", WithToken(config.ServerStreamKey, WithError(api.CreateStreamCloseHandler)))
 		r.Get("/faction_data", WithError(api.GetFactionData))
 		r.Get("/trigger/ability_file_upload", WithError(api.GetFactionData))
+		r.Post("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.GlobalAnnouncementSend)))
+		r.Delete("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.GlobalAnnouncementDelete)))
+
 	})
 
 	// set viewer live count
@@ -238,13 +250,14 @@ func NewAPI(
 	api.Hub.Events.AddEventHandler(hub.EventOffline, api.offlineEventHandler, func(e error) {})
 
 	///////////////////////////
-	//	Battle Arena Events	 //
+	//	battle Arena Events	 //
 	///////////////////////////
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventGameInit, api.BattleInitSignal)
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventGameStart, api.BattleStartSignal)
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventGameEnd, api.BattleEndSignal)
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventWarMachineDestroyed, api.WarMachineDestroyedBroadcast)
 	api.BattleArena.Events.AddEventHandler(battle_arena.EventWarMachinePositionChanged, api.UpdateWarMachinePosition)
+	api.BattleArena.Events.AddEventHandler(battle_arena.EventAISpawned, api.AISpawnedBroadcast)
 
 	api.SetupAfterConnections(ctx, conn)
 
@@ -254,16 +267,14 @@ func NewAPI(
 func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 	api.factionMap = make(map[server.FactionID]*server.Faction)
 
-	wg := deadlock.WaitGroup{}
-	wg.Add(1)
-	var err error
-	api.Passport.FactionAll(func(factions []*server.Faction) {
-		defer wg.Done()
-		for _, f := range factions {
-			api.factionMap[f.ID] = f
-		}
-	})
-	wg.Wait()
+	factions, err := api.Passport.FactionAll()
+	if err != nil {
+		api.Log.Fatal().Err(err).Msg("issue reading from passport connection.")
+		os.Exit(-1)
+	}
+	for _, f := range factions {
+		api.factionMap[f.ID] = f
+	}
 
 	if len(api.factionMap) == 0 {
 		api.Log.Fatal().Err(err).Msg("issue reading from passport connection.")
@@ -315,7 +326,6 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 			totalVoteMutex.Lock()
 			totalVote.Add(&totalVote.Int, voteCount)
 			totalVoteMutex.Unlock()
-
 		}
 
 		// prepare payload
@@ -331,6 +341,36 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 
 	// start live voting broadcaster
 	liveVotingBroadcaster.Start()
+
+	// get global announcement from db
+	globalAnnouncement, err := db.AnnouncementGet(ctx, api.Conn)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		api.Log.Err(err).Msg("unable to get global announcement")
+	}
+
+	api.GlobalAnnouncement = globalAnnouncement
+
+	// global announcement ticker
+	globalAnnouncementTicker := tickle.New("global announcement ticker", 60, func() (int, error) {
+		// check if a global announcement exist
+		if api.GlobalAnnouncement != nil {
+			now := time.Now()
+
+			// check if a announcement "show_until" has passed
+			if api.GlobalAnnouncement.ShowUntil != nil && api.GlobalAnnouncement.ShowUntil.Before(now) {
+				api.GlobalAnnouncement = nil
+				err := db.AnnouncementDelete(ctx, api.Conn)
+				if err != nil {
+					return http.StatusInternalServerError, err
+				}
+				go api.MessageBus.Send(context.Background(), messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), nil)
+			}
+		}
+
+		return http.StatusOK, nil
+	})
+
+	go globalAnnouncementTicker.Start()
 }
 
 // Event handlers
@@ -339,32 +379,31 @@ func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client) error {
 	api.ViewerLiveCount.Add(server.FactionID(uuid.Nil))
 
 	// broadcast current game state
-	go func() {
-		ba := api.BattleArena.GetCurrentState()
-		// delay 2 second to wait frontend setup key map
-		time.Sleep(3 * time.Second)
+	ba := api.BattleArena.GetCurrentState()
+	// delay 2 second to wait frontend setup key map
+	time.Sleep(3 * time.Second)
 
-		// marshal payload
-		gsr := &GameSettingsResponse{
-			GameMap:     ba.GameMap,
-			WarMachines: ba.WarMachines,
-		}
-		if ba.BattleHistory != nil && len(ba.BattleHistory) > 0 {
-			gsr.WarMachineLocation = ba.BattleHistory[0]
-		}
-		gameSettingsData, err := json.Marshal(&BroadcastPayload{
-			Key:     HubKeyGameSettingsUpdated,
-			Payload: gsr,
-		})
+	// marshal payload
+	gsr := &GameSettingsResponse{
+		GameMap:     ba.GameMap,
+		WarMachines: ba.WarMachines,
+		SpawnedAI:   ba.SpawnedAI,
+	}
+	if ba.BattleHistory != nil && len(ba.BattleHistory) > 0 {
+		gsr.WarMachineLocation = ba.BattleHistory[0]
+	}
+	gameSettingsData, err := json.Marshal(&BroadcastPayload{
+		Key:     HubKeyGameSettingsUpdated,
+		Payload: gsr,
+	})
 
-		if err != nil {
-			api.Log.Err(err).Msg("failed to marshal data")
-			return
-		}
+	if err != nil {
+		api.Log.Err(err).Msg("failed to marshal data")
+		return err
+	}
 
-		go wsc.Send(gameSettingsData)
-	}()
-	return nil
+	wsc.Send(gameSettingsData)
+	return err
 }
 
 func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client) error {
@@ -400,7 +439,7 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client) error 
 				nextUser, winnerClientID := api.getNextWinnerDetail(vw)
 				if nextUser == nil {
 					// if no winner left, enter cooldown phase
-					go api.BroadcastGameNotificationLocationSelect(ctx, &GameNotificationLocationSelect{
+					go api.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
 						Type:    LocationSelectTypeCancelledDisconnect,
 						Ability: va.BattleAbility.Brief(),
 					})
@@ -425,6 +464,9 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client) error 
 					api.votePhaseChecker.Lock()
 					api.votePhaseChecker.Phase = VotePhaseVoteCooldown
 					api.votePhaseChecker.EndTime = time.Now().Add(time.Duration(va.BattleAbility.CooldownDurationSecond) * time.Second)
+					if os.Getenv("GAMESERVER_ENVIRONMENT") == "development" || os.Getenv("GAMESERVER_ENVIRONMENT") == "staging" {
+						api.votePhaseChecker.EndTime = time.Now().Add(5 * time.Second)
+					}
 					api.votePhaseChecker.Unlock()
 
 					// stop vote price update when cooldown
@@ -452,7 +494,7 @@ func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client) error 
 				})
 
 				// broadcast winner select location
-				go api.BroadcastGameNotificationLocationSelect(ctx, &GameNotificationLocationSelect{
+				go api.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
 					Type:        LocationSelectTypeFailedDisconnect,
 					Ability:     va.BattleAbility.Brief(),
 					CurrentUser: currentUser.Brief(),
@@ -495,4 +537,59 @@ func (api *API) Close() {
 	if err != nil {
 		api.Log.Warn().Err(err).Msg("")
 	}
+}
+
+func (api *API) GlobalAnnouncementSend(w http.ResponseWriter, r *http.Request) (int, error) {
+	req := &server.GlobalAnnouncement{}
+	err := json.NewDecoder(r.Body).Decode(req)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("invaid request %w", err))
+	}
+
+	defer r.Body.Close()
+
+	if req.Message == "" {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("message cannot be empty %w", err))
+	}
+	if req.Title == "" {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("title cannot be empty %w", err))
+	}
+
+	// delete old announcements
+	err = db.AnnouncementDelete(api.ctx, api.Conn)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to delete announcement %w", err))
+	}
+
+	// insert to db
+	if req.GamesUntil != nil || req.ShowUntil != nil {
+		err = db.AnnouncementCreate(api.ctx, api.Conn, req)
+		if err != nil {
+			return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to create announcement %w", err))
+		}
+	}
+
+	// store in memory
+	api.GlobalAnnouncement = req
+
+	go api.MessageBus.Send(r.Context(), messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), req)
+
+	return http.StatusOK, nil
+}
+
+func (api *API) GlobalAnnouncementDelete(w http.ResponseWriter, r *http.Request) (int, error) {
+	defer r.Body.Close()
+
+	// delete from db
+	err := db.AnnouncementDelete(api.ctx, api.Conn)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to delete announcement %w", err))
+	}
+
+	// remove from memory
+	api.GlobalAnnouncement = nil
+
+	go api.MessageBus.Send(r.Context(), messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), nil)
+
+	return http.StatusOK, nil
 }

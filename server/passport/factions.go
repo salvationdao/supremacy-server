@@ -1,9 +1,11 @@
 package passport
 
 import (
+	"fmt"
 	"server"
 
 	"github.com/ninja-syndicate/hub"
+	"github.com/shopspring/decimal"
 )
 
 type FactionAllReq struct{}
@@ -13,13 +15,13 @@ type FactionAllResp struct {
 }
 
 // FactionAll get all the factions from passport server
-func (pp *Passport) FactionAll(callback func(factions []*server.Faction)) {
+func (pp *Passport) FactionAll() ([]*server.Faction, error) {
 	resp := &FactionAllResp{}
-	err := pp.Comms.Call("C.SupremacyFactionAllHandler", FactionAllReq{}, resp)
+	err := pp.Comms.Call("S.SupremacyFactionAllHandler", FactionAllReq{}, resp)
 	if err != nil {
-		pp.Log.Err(err).Str("method", "SupremacyFactionAllHandler").Msg("rpc error")
+		return nil, err
 	}
-	callback(resp.Factions)
+	return resp.Factions, nil
 }
 
 //****************************************
@@ -40,7 +42,7 @@ type FactionStatSendResp struct{}
 
 // FactionStatsSend send faction stat to passport serer
 func (pp *Passport) FactionStatsSend(factionStatSends []*FactionStatSend) {
-	err := pp.Comms.Call("C.SupremacyFactionStatSendHandler", FactionStatSendReq{factionStatSends}, &FactionStatSendResp{})
+	err := pp.Comms.Call("S.SupremacyFactionStatSendHandler", FactionStatSendReq{factionStatSends}, &FactionStatSendResp{})
 	if err != nil {
 		pp.Log.Err(err).Str("method", "SupremacyFactionStatSendHandler").Msg("rpc error")
 	}
@@ -53,6 +55,7 @@ func (pp *Passport) FactionStatsSend(factionStatSends []*FactionStatSend) {
 type RedeemFactionContractRewardReq struct {
 	UserID               server.UserID               `json:"userID"`
 	FactionID            server.FactionID            `json:"factionID"`
+	BattleID             string                      `json:"battleID"` //TODO: SEND BATTLE ID
 	Amount               string                      `json:"amount"`
 	TransactionReference server.TransactionReference `json:"transactionReference"`
 }
@@ -60,13 +63,27 @@ type RedeemFactionContractRewardReq struct {
 type RedeemFactionContractRewardResp struct{}
 
 // AssetContractRewardRedeem redeem faction contract reward
-func (pp *Passport) AssetContractRewardRedeem(userID server.UserID, factionID server.FactionID, amount string, txRef server.TransactionReference) {
-	err := pp.Comms.Call("C.SupremacyRedeemFactionContractRewardHandler", RedeemFactionContractRewardReq{userID, factionID, amount, txRef}, &RedeemFactionContractRewardResp{})
-	if err != nil {
-		pp.Log.Err(err).Str("method", "SupremacyRedeemFactionContractRewardHandler").Msg("rpc error")
+func (pp *Passport) AssetContractRewardRedeem(userID server.UserID, factionID server.FactionID, amount decimal.Decimal, txRef server.TransactionReference, battleID string) error {
+	if amount.LessThanOrEqual(decimal.Zero) {
+		return fmt.Errorf("AssetContractRewardRedeem: amount must be greater than zero")
 	}
+	err := pp.Comms.Call(
+		"S.SupremacyRedeemFactionContractRewardHandler",
+		RedeemFactionContractRewardReq{
+			UserID:               userID,
+			FactionID:            factionID,
+			Amount:               amount.String(),
+			TransactionReference: txRef,
+			BattleID:             battleID,
+		},
+		&RedeemFactionContractRewardResp{})
+	if err != nil {
+		return fmt.Errorf("SupremacyRedeemFactionContractRewardHandler rpc call: %w", err)
+	}
+	return nil
 }
 
+/*
 type FactionContractRewardUpdateReq struct {
 	FactionContractRewards []*FactionContractReward `json:"factionContractRewards"`
 }
@@ -78,22 +95,30 @@ type FactionContractReward struct {
 
 type FactionContractRewardUpdateResp struct {
 }
-
+*/
 // FactionContractRewardUpdate gets the default war machines for a given faction
-func (pp *Passport) FactionContractRewardUpdate(fcr []*FactionContractReward) {
-	err := pp.Comms.Call("C.SupremacyFactionContractRewardUpdateHandler", FactionContractRewardUpdateReq{fcr}, &FactionContractRewardUpdateResp{})
-	if err != nil {
-		pp.Log.Err(err).Str("method", "SupremacyFactionContractRewardUpdateHandler").Msg("rpc error")
-	}
-}
+//func (pp *Passport) FactionContractRewardUpdate(fcr []*FactionContractReward) {
+//	err := pp.Comms.Call("S.SupremacyFactionContractRewardUpdateHandler", FactionContractRewardUpdateReq{fcr}, &FactionContractRewardUpdateResp{})
+//	if err != nil {
+//		pp.Log.Err(err).Str("method", "SupremacyFactionContractRewardUpdateHandler").Msg("rpc error")
+//	}
+//}
 
 //****************************************
 //  QUEUE COST
 //****************************************
 
-func (pp *Passport) FactionQueueCostUpdate(fcr []*FactionContractReward) {
-	err := pp.Comms.Call("C.SupremacyFactionContractRewardUpdateHandler", FactionContractRewardUpdateReq{fcr}, &FactionContractRewardUpdateResp{})
+type FactionQueuePriceUpdateReq struct {
+	FactionID     server.FactionID `json:"factionID"`
+	QueuingLength int              `json:"queuingLength"`
+}
+
+type FactionQueuePriceUpdateResp struct {
+}
+
+func (pp *Passport) FactionQueueCostUpdate(fcr *FactionQueuePriceUpdateReq) {
+	err := pp.Comms.Call("S.SupremacyFactionQueuingCostHandler", fcr, &FactionQueuePriceUpdateResp{})
 	if err != nil {
-		pp.Log.Err(err).Str("method", "SupremacyFactionContractRewardUpdateHandler").Msg("rpc error")
+		pp.Log.Err(err).Str("method", "SupremacyFactionQueuingCostHandler").Msg("rpc error")
 	}
 }

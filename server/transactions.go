@@ -19,7 +19,7 @@ type Transaction struct {
 	FromID               UserID               `json:"debit"`
 	Amount               BigInt               `json:"amount"`
 	Status               TransactionStatus    `json:"status"`
-	TransactionReference TransactionReference `json:"transactionReference"`
+	TransactionReference TransactionReference `json:"transaction_reference"`
 	Reason               string               `json:"reason"`
 	Description          string               `json:"description"`
 	CreatedAt            time.Time            `json:"created_at"`

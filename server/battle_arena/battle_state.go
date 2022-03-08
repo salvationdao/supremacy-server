@@ -6,7 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"server"
+	"server/comms"
 	"server/db"
+	"server/gamelog"
+	"server/passport"
 	"time"
 
 	"github.com/jackc/pgx/v4"
@@ -17,16 +20,25 @@ func (ba *BattleArena) GetCurrentState() *server.Battle {
 	return ba.battle
 }
 
+//sets up functions to get and set this property not available elsewhere
+func (ba *BattleArena) GetGamesToClose() int {
+	return ba.gamesToClose
+}
+
+func (ba *BattleArena) PutGamesToClose(games int) {
+	ba.gamesToClose = games
+}
+
 const BattleStartCommand = BattleCommand("BATTLE:START")
 
 type BattleStartRequest struct {
 	Payload struct {
-		BattleID    server.BattleID `json:"battleID"`
+		BattleID    server.BattleID `json:"battle_id"`
 		WarMachines []*struct {
 			Hash          string `json:"hash"`
-			ParticipantID byte   `json:"participantID"`
-		} `json:"warMachines"`
-		WarMachineLocation []byte `json:"warMachineLocation"`
+			ParticipantID byte   `json:"participant_id"`
+		} `json:"war_machines"`
+		WarMachineLocation []byte `json:"war_machine_location"`
 	} `json:"payload"`
 }
 
@@ -43,6 +55,10 @@ func (ba *BattleArena) BattleStartHandler(ctx context.Context, payload []byte, r
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err)
+	}
+
+	if ba.gamesToClose == 0 {
+		return terror.Error(fmt.Errorf("stream has closed"))
 	}
 
 	if req.Payload.BattleID.IsNil() {
@@ -79,12 +95,14 @@ outerLoop:
 		}
 	}
 
-	ba.Log.Info().Msgf("Battle starting: %s", req.Payload.BattleID)
+	ba.Log.Info().Msgf("battle starting: %s", req.Payload.BattleID)
 	for _, wm := range ba.battle.WarMachines {
 		ba.Log.Info().Msgf("War Machine: %s - %s", wm.Name, wm.Hash)
 	}
 
 	ba.battle.BattleHistory = append(ba.battle.BattleHistory, req.Payload.WarMachineLocation)
+
+	ba.battle.SpawnedAI = []*server.WarMachineMetadata{}
 
 	// save to database
 	tx, err := ba.Conn.Begin(ctx)
@@ -103,6 +121,13 @@ outerLoop:
 	err = db.BattleStarted(ctx, tx, ba.battle)
 	if err != nil {
 		return terror.Error(err)
+	}
+
+	for _, wm := range ba.battle.WarMachines {
+		err = db.ContractRewardInsert(ctx, tx, ba.battle.ID, wm.ContractReward, wm.Hash)
+		if err != nil {
+			return terror.Error(err)
+		}
 	}
 
 	err = db.BattleWarMachineAssign(ctx, tx, ba.battle.ID, ba.battle.WarMachines)
@@ -131,6 +156,11 @@ outerLoop:
 	// switch battle state to START
 	ba.battle.State = server.StateMatchStart
 
+	//games to close gets init to -1, and means it is unset, if it is set, tick down games to close
+	if ba.gamesToClose > 0 {
+		ba.gamesToClose -= 1
+	}
+
 	return nil
 }
 
@@ -138,12 +168,12 @@ const BattleEndCommand = BattleCommand("BATTLE:END")
 
 type BattleEndRequest struct {
 	Payload struct {
-		BattleID                   server.BattleID           `json:"battleID"`
-		WinCondition               server.BattleWinCondition `json:"winCondition"`
+		BattleID                   server.BattleID           `json:"battle_id"`
+		WinCondition               server.BattleWinCondition `json:"win_condition"`
 		WinningWarMachineMetadatas []*struct {
 			Hash   string `json:"hash"`
 			Health int    `json:"health"`
-		} `json:"winningWarMachines"`
+		} `json:"winning_war_machines"`
 	} `json:"payload"`
 }
 
@@ -153,6 +183,128 @@ type BattleRewardList struct {
 	WinningWarMachineOwnerIDs     map[server.UserID]bool
 	ExecuteKillWarMachineOwnerIDs map[server.UserID]bool
 	TopSupsSpendUsers             []server.UserID
+}
+
+func SendForRepairs(ctx context.Context, tx db.Conn, battleID server.BattleID, ppclient *passport.Passport, maxHealth int, health int, hash string) error {
+	isDefault := db.IsDefaultWarMachine(ctx, tx, hash)
+	if isDefault {
+		gamelog.L.Warn().
+			Str("fn", "SendForRepairs").
+			Str("battle_id", battleID.String()).
+			Str("hash", hash).
+			Msg("skip, is default war machine")
+		return nil
+	}
+
+	gamelog.L.Debug().Str("fn", "SendForRepairs").Str("battle_id", battleID.String()).Str("hash", hash).Msg("send participant to repairs")
+
+	isInsured, err := db.IsInsured(ctx, tx, hash)
+	if err != nil {
+		return fmt.Errorf("get is insured: %w", err)
+	}
+	repairMode := server.RepairModeStandard
+	if isInsured {
+		gamelog.L.Warn().
+			Str("fn", "SendForRepairs").
+			Str("battle_id", battleID.String()).
+			Str("hash", hash).
+			Msg("is insured, fast repair")
+		repairMode = server.RepairModeFast
+	}
+	record := &server.AssetRepairRecord{
+		Hash:              hash,
+		RepairMode:        repairMode,
+		ExpectCompletedAt: calcRepairCompleteTime(maxHealth, health, isInsured, time.Now()),
+	}
+	err = db.AssetRepairInsert(ctx, tx, record)
+	if err != nil {
+		return fmt.Errorf("insert asset repair record: %w", err)
+	}
+
+	gamelog.L.Debug().
+		Str("fn", "SendForRepairs").
+		Str("battle_id", battleID.String()).
+		Str("hash", hash).
+		Msg("broadcast repair event")
+	ppclient.AssetRepairStat(record)
+	return nil
+}
+
+func RemoveParticipant(ctx context.Context, tx db.Conn, battleID server.BattleID, hash string) error {
+	// Remove from queue
+	// Skip default mechs (won't be in queue)
+	isDefault := db.IsDefaultWarMachine(ctx, tx, hash)
+	if isDefault {
+		return nil
+	}
+
+	gamelog.L.Debug().Str("fn", "RemoveParticipant").Str("battle_id", battleID.String()).Str("hash", hash).Msg("remove participant from queue")
+
+	err := db.BattleQueueRemove(ctx, tx, hash)
+	if err != nil {
+		return fmt.Errorf("remove from queue: %w", err)
+	}
+	return nil
+}
+
+func PayWinners(ctx context.Context, tx db.Conn, ppclient *passport.Passport, battleID server.BattleID, winnerHash string) error {
+	gamelog.L.Debug().Str("fn", "PayWinners").Str("battle_id", battleID.String()).Str("winning_hash", winnerHash).Msg("attempt to pay winner from queue")
+
+	// Payout
+
+	// Skip default mechs (won't be in queue)
+	isDefault := db.IsDefaultWarMachine(ctx, tx, winnerHash)
+	if isDefault {
+		gamelog.L.Warn().
+			Str("fn", "PayWinners").
+			Str("battle_id", battleID.String()).
+			Str("winning_hash", winnerHash).
+			Msg("skip, is default war machine")
+		return nil
+	}
+
+	gamelog.L.Debug().
+		Str("fn", "PayWinners").
+		Str("battle_id", battleID.String()).
+		Str("winning_hash", winnerHash).Msg("not default mech, prepare to pay winner from queue")
+
+	reward, err := db.ContractRewardGet(ctx, tx, winnerHash)
+	if err != nil {
+		return fmt.Errorf("get reward from db: %w", err)
+	}
+
+	ownedByID, factionID, mechName, err := db.MechMetadata(ctx, tx, winnerHash)
+	if err != nil {
+		return fmt.Errorf("get metadata: %w", err)
+	}
+
+	gamelog.L.Debug().
+		Str("fn", "PayWinners").
+		Str("battle_id", battleID.String()).
+		Str("winning_hash", winnerHash).Msg("send to rpc")
+
+	err = ppclient.AssetContractRewardRedeem(
+		ownedByID,
+		factionID,
+		reward,
+		server.TransactionReference(
+			fmt.Sprintf(
+				"redeem_faction_contract_reward|%s|%s",
+				mechName,
+				time.Now(),
+			),
+		),
+		battleID.String(),
+	)
+	if err != nil {
+		return fmt.Errorf("request redeem contract reward: %w", err)
+	}
+	err = db.ContractRewardMarkIsPaid(ctx, tx, battleID, winnerHash)
+	if err != nil {
+		return fmt.Errorf("insert reward: %w", err)
+	}
+	// Insert into battle ID
+	return nil
 }
 
 func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, reply ReplyFunc) error {
@@ -179,7 +331,7 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 		return terror.Error(err, "current battle has not started yet.")
 	}
 
-	ba.Log.Info().Msgf("Battle ending: %s", req.Payload.BattleID)
+	ba.Log.Info().Msgf("battle ending: %s", req.Payload.BattleID)
 	ba.Log.Info().Msg("Winning War Machines")
 	for _, warMachine := range req.Payload.WinningWarMachineMetadatas {
 		ba.Log.Info().Msgf("%s", warMachine.Hash)
@@ -215,95 +367,42 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 	}
 
 	// cache in game war machines
-	inGameWarMachines := ba.battle.WarMachines
-	ba.battle.WarMachines = []*server.WarMachineMetadata{}
 	winningMachines := []*server.WarMachineMetadata{}
+	wmq := []*comms.WarMachineQueueStat{}
+
+	for _, meta := range req.Payload.WinningWarMachineMetadatas {
+		gamelog.L.Debug().Str("battle_id", req.Payload.BattleID.String()).Str("hash", meta.Hash).Msg("process winning mech")
+		err = PayWinners(ctx, tx, ba.passport, req.Payload.BattleID, meta.Hash)
+		if err != nil {
+			gamelog.L.Err(err).Str("battle_id", req.Payload.BattleID.String()).Str("hash", meta.Hash).Msg("failed to pay winners")
+			return fmt.Errorf("PayWinners: %w", err)
+		}
+	}
 
 	for _, bwm := range ba.battle.WarMachines {
-		// get contract reward from queuing
-		assetQueueStat, err := db.AssetQueuingStat(ctx, tx, bwm.Hash)
+		gamelog.L.Debug().Str("battle_id", req.Payload.BattleID.String()).Str("hash", bwm.Hash).Msg("process participating mech")
+		err = SendForRepairs(ctx, tx, req.Payload.BattleID, ba.passport, bwm.MaxHealth, bwm.Health, bwm.Hash)
 		if err != nil {
-			return terror.Error(err, "failed to get contract reward from db")
+			gamelog.L.Err(err).Str("battle_id", req.Payload.BattleID.String()).Str("hash", bwm.Hash).Msg("failed to send for repairs")
+			return fmt.Errorf("SendForRepairs: %w", err)
 		}
-
-		assetRepairRecord := &server.AssetRepairRecord{
-			Hash:       bwm.Hash,
-			RepairMode: server.RepairModeFast,
-		}
-
-		if !assetQueueStat.IsInsured {
-			assetRepairRecord.RepairMode = server.RepairModeStandard
-		}
-
-		// if war machines win
-		health, exists := WarMachineExistInList(req.Payload.WinningWarMachineMetadatas, bwm.Hash)
-		if exists {
-			bwm.Health = health
-			winningMachines = append(winningMachines, bwm)
-			battleRewardList.WinnerFactionID = bwm.FactionID
-			battleRewardList.WinningWarMachineOwnerIDs[bwm.OwnedByID] = true
-
-			// pay queuing contract reward
-			ba.passport.AssetContractRewardRedeem(
-				bwm.OwnedByID,
-				bwm.FactionID,
-				assetQueueStat.ContractReward,
-				server.TransactionReference(
-					fmt.Sprintf(
-						"redeem_faction_contract_reward|%s|%s",
-						bwm.Name,
-						time.Now(),
-					),
-				),
-			)
-
-			// calc asset repair complete time
-			assetRepairRecord.ExpectCompletedAt = calcRepairCompleteTime(bwm.MaxHealth, bwm.Health, assetQueueStat.IsInsured, now)
-			err := db.AssetRepairInsert(ctx, tx, assetRepairRecord)
-			if err != nil {
-				return terror.Error(err)
-			}
-
-			// broadcast repair stat
-			ba.passport.AssetRepairStat(assetRepairRecord)
-			continue
-		}
-
-		// if loss, store mech in asset repair db
-		assetRepairRecord.ExpectCompletedAt = calcRepairCompleteTime(bwm.MaxHealth, 0, assetQueueStat.IsInsured, now)
-		err = db.AssetRepairInsert(ctx, tx, assetRepairRecord)
+		err = RemoveParticipant(ctx, tx, req.Payload.BattleID, bwm.Hash)
 		if err != nil {
-			return terror.Error(err)
+			gamelog.L.Err(err).Str("battle_id", req.Payload.BattleID.String()).Str("hash", bwm.Hash).Msg("failed to remove participants")
+			return fmt.Errorf("RemoveParticipant: %w", err)
 		}
-
-		// broadcast repair stat
-		ba.passport.AssetRepairStat(assetRepairRecord)
 	}
 
-	// recalculate contract reward
-	ba.WarMachineQueue.RedMountain.UpdateContractReward(battleRewardList.WinnerFactionID)
-	ba.WarMachineQueue.Boston.UpdateContractReward(battleRewardList.WinnerFactionID)
-	ba.WarMachineQueue.Zaibatsu.UpdateContractReward(battleRewardList.WinnerFactionID)
+	// broadcast queuing stat to passport server
 
-	// remove war machine from queue in db
-	if len(inGameWarMachines) > 0 {
-		// remove the war machine in db
-		for _, wm := range inGameWarMachines {
-			err = db.BattleQueueRemove(ctx, tx, wm)
-			if err != nil {
-				ba.Log.Err(err).Msgf("Failed to remove battle queue cache in db, token id: %s ", wm.Hash)
-			}
-		}
+	ba.passport.WarMachineQueuePositionBroadcast(wmq)
 
-		// broadcast war machine release to passport server
-
-	}
-
+	ba.battle.WarMachines = []*server.WarMachineMetadata{}
 	ba.battle.WinningWarMachines = winningMachines
 	ba.battle.WinningCondition = (*string)(&req.Payload.WinCondition)
 
 	// assign winner war machine
-	if len(req.Payload.WinningWarMachineMetadatas) > 0 {
+	if len(winningMachines) > 0 {
 		err = db.BattleWinnerWarMachinesSet(ctx, tx, req.Payload.BattleID, winningMachines)
 		if err != nil {
 			return terror.Error(err)
@@ -346,6 +445,11 @@ func (ba *BattleArena) BattleEndHandler(ctx context.Context, payload []byte, rep
 		BattleArena:      ba.battle,
 		BattleRewardList: battleRewardList,
 	})
+
+	//checks if games left until close equals 0, if so, return early and do not init next battle
+	if ba.gamesToClose == 0 {
+		return nil
+	}
 
 	go func() {
 		time.Sleep(25 * time.Second)

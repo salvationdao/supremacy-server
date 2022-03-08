@@ -7,6 +7,7 @@
 #     version_change target_dir
 #
 # If your version/tag doesn't match, the script will exit with error.
+set -e
 
 TARGET=$(pwd)/$1
 CLIENT="ninja_syndicate"
@@ -51,7 +52,8 @@ source /home/ubuntu/.profile # load PGPASSWORD
 
 # Cant use the project default user due to adjusted permisions on some tables
 pg_dump --dbname="$GAMESERVER_DATABASE_NAME" --host="$GAMESERVER_DATABASE_HOST" --port="$GAMESERVER_DATABASE_PORT" --username="postgres" > ${DBFILE}
-
+echo "Saved ${DBFILE}"
+ls -lh ${DBFILE}
 if [ ! -s "${DBFILE}" ]; then
     echo "db copy is zero size" >&2
     exit 2
@@ -61,7 +63,13 @@ echo "Proceed with migrations? (y/N)"
 read PROCEED
 if [[ $PROCEED != "y" ]]; then exit 1; fi
 
+nginx -s stop
+echo "Stopped nginx sleeping for 10 seconds"
+sleep 10
+
 systemctl stop ${PACKAGE}
+echo "Stopped ${PACKAGE} sleeping for 5 seconds"
+sleep 5
 $TARGET/migrate -database "postgres://${GAMESERVER_DATABASE_USER}:${GAMESERVER_DATABASE_PASS}@${GAMESERVER_DATABASE_HOST}:${GAMESERVER_DATABASE_PORT}/${GAMESERVER_DATABASE_NAME}" -path $TARGET/migrations up
 
 ln -Tfsv $TARGET $(pwd)/${PACKAGE}_online
@@ -69,5 +77,9 @@ ln -Tfsv $TARGET $(pwd)/${PACKAGE}_online
 # Ensure ownership
 chown -R ${PACKAGE}:${PACKAGE} .
 
-systemctl daemon-reload && systemctl restart ${PACKAGE}
 nginx -t && nginx -s reload
+
+systemctl daemon-reload
+systemctl restart ${PACKAGE}
+
+systemctl status ${PACKAGE}

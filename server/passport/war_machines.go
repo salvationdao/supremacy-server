@@ -2,6 +2,7 @@ package passport
 
 import (
 	"context"
+	"fmt"
 	"server"
 )
 
@@ -14,11 +15,11 @@ type DefaultWarMachinesResp struct {
 }
 
 // GetDefaultWarMachines gets the default war machines for a given faction
-func (pp *Passport) GetDefaultWarMachines(ctx context.Context, factionID server.FactionID, callback func(warMachines []*server.WarMachineMetadata)) {
+func (pp *Passport) GetDefaultWarMachines(ctx context.Context, factionID server.FactionID) ([]*server.WarMachineMetadata, error) {
 	resp := &DefaultWarMachinesResp{}
-	err := pp.Comms.Call("C.SupremacyDefaultWarMachinesHandler", DefaultWarMachinesReq{factionID}, resp)
+	err := pp.Comms.Call("S.SupremacyDefaultWarMachinesHandler", DefaultWarMachinesReq{factionID}, resp)
 	if err != nil {
-		pp.Log.Err(err).Str("method", "SupremacyDefaultWarMachinesHandler").Msg("rpc error")
+		return nil, fmt.Errorf("GetDefaultWarMachines: %w", err)
 	}
-	callback(resp.WarMachines)
+	return resp.WarMachines, nil
 }
