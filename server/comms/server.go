@@ -8,10 +8,11 @@ import (
 )
 
 type S struct {
+	*C
 }
 
-func NewServer() *S {
-	result := &S{}
+func NewServer(c *C) *S {
+	result := &S{c}
 	return result
 }
 

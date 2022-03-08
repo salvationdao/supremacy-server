@@ -171,12 +171,6 @@ func main() {
 						return terror.Panic(err)
 					}
 
-					rpcServer := comms.NewServer()
-					err = comms.Start(rpcServer)
-					if err != nil {
-						return terror.Error(err)
-					}
-
 					u, err := url.Parse(passportAddr)
 					if err != nil {
 						return terror.Panic(err)
@@ -195,7 +189,11 @@ func main() {
 						cancel()
 						return terror.Panic(err)
 					}
-
+					rpcServer := comms.NewServer(rpcClient)
+					err = comms.Start(rpcServer)
+					if err != nil {
+						return terror.Error(err)
+					}
 					//// Connect to passport
 					pp := passport.NewPassport(
 						log_helpers.NamedLogger(gamelog.L, "passport"),
@@ -212,7 +210,6 @@ func main() {
 					netMessageBus := messagebus.NewNetBus(log_helpers.NamedLogger(gamelog.L, "net_message_bus"))
 					// initialise message bus
 					messageBus := messagebus.NewMessageBus(log_helpers.NamedLogger(gamelog.L, "message_bus"))
-
 					gsHub := hub.New(&hub.Config{
 						Log: zerologger.New(*log_helpers.NamedLogger(gamelog.L, "hub library")),
 						WelcomeMsg: &hub.WelcomeMsg{
@@ -221,12 +218,15 @@ func main() {
 						},
 						AcceptOptions: &websocket.AcceptOptions{
 							InsecureSkipVerify: true, // TODO: set this depending on environment
+							OriginPatterns:     []string{"*"},
 						},
 						ClientOfflineFn: func(cl *hub.Client) {
 							netMessageBus.UnsubAll(cl)
 							messageBus.UnsubAll(cl)
 						},
 					})
+
+					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Set up hub")
 
 					ba := battle.NewArena(&battle.Opts{
 						Addr:          battleArenaAddr,
@@ -235,6 +235,7 @@ func main() {
 						MessageBus:    messageBus,
 						Hub:           gsHub,
 					})
+					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("set up arena")
 
 					fmt.Println("nbotblocking")
 

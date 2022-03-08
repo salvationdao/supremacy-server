@@ -46,11 +46,12 @@ type UserMultiplier struct {
 	BattleIDMap deadlock.Map
 
 	// other dependencies
-	UserMap     *UserMap
-	Passport    *passport.Passport
-	BattleArena *battle_arena.BattleArena
+	UserMap  *UserMap
+	Passport *passport.Passport
 
 	ActiveMap *deadlock.Map
+
+	Conn db.Conn
 
 	// ability triggered map
 	NukeAbility            *AbilityTrigger
@@ -88,15 +89,15 @@ type MultiplierAction struct {
 }
 
 // TODO: set up sups ticker
-func NewUserMultiplier(userMap *UserMap, pp *passport.Passport, ba *battle_arena.BattleArena) *UserMultiplier {
+func NewUserMultiplier(userMap *UserMap, pp *passport.Passport, conn db.Conn) *UserMultiplier {
 	um := &UserMultiplier{
 		CurrentMaps: &Multiplier{deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, deadlock.Map{}, &AbilityTriggerMap{}, &AbilityTriggerMap{}, &AbilityTriggerMap{}, &ComboBreakerMap{}, &CitizenMap{}},
 		BattleIDMap: deadlock.Map{},
 		UserMap:     userMap,
 		Passport:    pp,
-		BattleArena: ba,
 
 		ActiveMap: &deadlock.Map{},
+		Conn:      conn,
 
 		NukeAbility: &AbilityTrigger{
 			[]server.UserID{},
@@ -116,10 +117,8 @@ func NewUserMultiplier(userMap *UserMap, pp *passport.Passport, ba *battle_arena
 	go func() {
 		for {
 			time.Sleep(5 * time.Second)
-			if ba.BattleActive() {
-				// distribute sups
-				um.SupsTick()
-			}
+			// distribute sups
+			um.SupsTick()
 		}
 	}()
 
@@ -142,7 +141,7 @@ func (um *UserMultiplier) Online(userID server.UserID) {
 	um.ActiveMap.Store(userIDStr, now)
 
 	// load multipliers from db
-	sm, err := db.UserMultiplierGet(context.Background(), um.BattleArena.Conn, userID)
+	sm, err := db.UserMultiplierGet(context.Background(), um.Conn, userID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		fmt.Println("Failed to read user multipliers from db", err.Error())
 		return
@@ -1084,9 +1083,9 @@ func (um *UserMultiplier) UserMultiplierUpdate() {
 	go um.Passport.UserSupsMultiplierSend(context.Background(), userSupsMultiplierSends)
 
 	// store in db
-	err := db.UserMultiplierStore(context.Background(), um.BattleArena.Conn, userSupsMultiplierSends)
+	err := db.UserMultiplierStore(context.Background(), um.Conn, userSupsMultiplierSends)
 	if err != nil {
-		um.BattleArena.Log.Err(err)
+		fmt.Println(err)
 		return
 	}
 }

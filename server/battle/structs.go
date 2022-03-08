@@ -16,7 +16,7 @@ type Battle struct {
 	SpawnedAI   []*WarMachine `json:"SpanwedAI"`
 	lastTick    *[]byte
 	gameMap     *server.GameMap
-	votes       *VotingSystem
+	abilities   *AbilitiesSystem
 	factions    map[uuid.UUID]*boiler.Faction
 }
 
