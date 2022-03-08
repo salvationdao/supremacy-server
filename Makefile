@@ -118,12 +118,19 @@ db-prepare: db-drop db-migrate
 db-seed:
 	cd $(SERVER) && go run seed/*.go db
 
+.PHONY: db-seed-windows
+db-seed-windows:
+	cd $(SERVER) && go run seed/main.go seed/gameMaps.go seed/seed.go db  
+
 .PHONY: db-update-assets
 db-update-assets:
 	cd $(SERVER) && go run cmd/gameserver/main.go db --assets
 
 .PHONY: db-reset
 db-reset: db-drop db-migrate-up-to-seed db-seed db-migrate
+
+.PHONY: db-reset-windows
+db-reset-windows: db-drop db-migrate-up-to-seed db-seed-windows db-migrate
 
 # make sure `make tools` is done
 .PHONY: db-boiler
