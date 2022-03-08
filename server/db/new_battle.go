@@ -368,6 +368,10 @@ func ClearQueue(mechIDs ...uuid.UUID) error {
 		paramrefs += `$` + strconv.Itoa(i+1) + `,`
 		mechids[i] = id.String()
 	}
+	if len(mechids) == 0 {
+		fmt.Println("no mechs", len(mechIDs))
+	}
+
 	paramrefs = paramrefs[:len(paramrefs)-1]
 
 	query := `DELETE FROM battle_queue WHERE id IN (` + paramrefs + `)`

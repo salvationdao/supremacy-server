@@ -251,7 +251,8 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.MechContainer, error) {
 	i := 0
 	for result.Next() {
 		mc := &server.MechContainer{}
-		err = result.Scan(&mc.ID,
+		err = result.Scan(
+			&mc.ID,
 			&mc.OwnerID,
 			&mc.TemplateID,
 			&mc.ChassisID,
@@ -260,10 +261,12 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.MechContainer, error) {
 			&mc.IsDefault,
 			&mc.ImageURL,
 			&mc.AnimationURL,
+			&mc.AvatarURL,
 			&mc.Hash,
 			&mc.Name,
 			&mc.Label,
 			&mc.Slug,
+			&mc.AssetType,
 			&mc.DeletedAt,
 			&mc.UpdatedAt,
 			&mc.CreatedAt,
@@ -306,8 +309,14 @@ func Mech(mechID uuid.UUID) (*server.MechContainer, error) {
                 FROM chassis_modules mods
                 INNER JOIN modules mds ON mds.id = mods.module_id
              WHERE mods.chassis_id=mechs.chassis_id)
-        ) as modules
-		from mechs WHERE id = $1 GROUP BY mechs.id`
+        ) as modules,
+       to_json(ply.*) as player,
+       to_json(fct.*) as faction
+		from mechs
+		INNER JOIN players ply ON ply.id = mechs.owner_id
+		INNER JOIN factions fct ON fct.id = ply.faction_id
+		WHERE mechs.id = $1
+		GROUP BY mechs.id, ply.id, fct.id`
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
 	defer cancel()
@@ -319,7 +328,8 @@ func Mech(mechID uuid.UUID) (*server.MechContainer, error) {
 	defer result.Close()
 
 	for result.Next() {
-		err = result.Scan(&mc.ID,
+		err = result.Scan(
+			&mc.ID,
 			&mc.OwnerID,
 			&mc.TemplateID,
 			&mc.ChassisID,
