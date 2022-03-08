@@ -165,7 +165,7 @@ func (arena *Arena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	arena.socket = c
 
-	defer c.Close(websocket.StatusInternalError, "the sky is falling")
+	defer c.Close(websocket.StatusInternalError, "game client has disconnected")
 
 	arena.Start()
 }
