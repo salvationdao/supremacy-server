@@ -28,32 +28,32 @@ type Started struct {
 
 type WarMachine struct {
 	ID                 string          `json:"id"`
-	Hash               string          `json:"Hash"`
-	ParticipantID      byte            `json:"participantID"`
-	FactionID          string          `json:"factionID"`
-	MaxHealth          uint32          `json:"maxHealth"`
+	Hash               string          `json:"hash"`
+	ParticipantID      byte            `json:"participant_id"`
+	FactionID          string          `json:"faction_id"`
+	MaxHealth          uint32          `json:"max_health"`
 	Health             uint32          `json:"health"`
-	MaxShield          uint32          `json:"maxShield"`
+	MaxShield          uint32          `json:"max_shield"`
 	Shield             uint32          `json:"shield"`
 	Stat               *Stat           `json:"stat"`
 	Position           *server.Vector3 `json:"position"`
 	Rotation           int             `json:"rotation"`
-	OwnedByID          string          `json:"ownedByID"`
+	OwnedByID          string          `json:"owned_by_id"`
 	Name               string          `json:"name"`
 	Description        *string         `json:"description"`
-	ExternalUrl        string          `json:"externalUrl"`
+	ExternalUrl        string          `json:"external_url"`
 	Image              string          `json:"image"`
 	Skin               string          `json:"skin"`
-	ShieldRechargeRate float64         `json:"shieldRechargeRate"`
+	ShieldRechargeRate float64         `json:"shield_recharge_rate"`
 	Speed              int             `json:"speed"`
 	Durability         int             `json:"durability"`
-	PowerGrid          int             `json:"powerGrid"`
+	PowerGrid          int             `json:"power_grid"`
 	CPU                int             `json:"cpu"`
-	WeaponHardpoint    int             `json:"weaponHardpoint"`
-	TurretHardpoint    int             `json:"turretHardpoint"`
-	UtilitySlots       int             `json:"utilitySlots"`
+	WeaponHardpoint    int             `json:"weapon_hardpoint"`
+	TurretHardpoint    int             `json:"turret_hardpoint"`
+	UtilitySlots       int             `json:"utility_slots"`
 	Faction            *Faction        `json:"faction"`
-	WeaponNames        []string        `json:"weaponNames"`
+	WeaponNames        []string        `json:"weapon_names"`
 	Abilities          []*GameAbility  `json:"abilities"`
 }
 
