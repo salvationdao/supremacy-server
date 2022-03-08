@@ -23,97 +23,127 @@ import (
 
 // Faction is an object representing the database table.
 type Faction struct {
-	ID             string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	VotePrice      string      `boiler:"vote_price" boil:"vote_price" json:"vote_price" toml:"vote_price" yaml:"vote_price"`
-	ContractReward string      `boiler:"contract_reward" boil:"contract_reward" json:"contract_reward" toml:"contract_reward" yaml:"contract_reward"`
-	Label          string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	GuildID        null.String `boiler:"guild_id" boil:"guild_id" json:"guild_id,omitempty" toml:"guild_id" yaml:"guild_id,omitempty"`
-	DeletedAt      null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	UpdatedAt      time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt      time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ID              string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	VotePrice       string      `boiler:"vote_price" boil:"vote_price" json:"vote_price" toml:"vote_price" yaml:"vote_price"`
+	ContractReward  string      `boiler:"contract_reward" boil:"contract_reward" json:"contract_reward" toml:"contract_reward" yaml:"contract_reward"`
+	Label           string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	GuildID         null.String `boiler:"guild_id" boil:"guild_id" json:"guild_id,omitempty" toml:"guild_id" yaml:"guild_id,omitempty"`
+	DeletedAt       null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt       time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt       time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	PrimaryColor    string      `boiler:"primary_color" boil:"primary_color" json:"primary_color" toml:"primary_color" yaml:"primary_color"`
+	SecondaryColor  string      `boiler:"secondary_color" boil:"secondary_color" json:"secondary_color" toml:"secondary_color" yaml:"secondary_color"`
+	BackgroundColor string      `boiler:"background_color" boil:"background_color" json:"background_color" toml:"background_color" yaml:"background_color"`
 
 	R *factionR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L factionL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var FactionColumns = struct {
-	ID             string
-	VotePrice      string
-	ContractReward string
-	Label          string
-	GuildID        string
-	DeletedAt      string
-	UpdatedAt      string
-	CreatedAt      string
+	ID              string
+	VotePrice       string
+	ContractReward  string
+	Label           string
+	GuildID         string
+	DeletedAt       string
+	UpdatedAt       string
+	CreatedAt       string
+	PrimaryColor    string
+	SecondaryColor  string
+	BackgroundColor string
 }{
-	ID:             "id",
-	VotePrice:      "vote_price",
-	ContractReward: "contract_reward",
-	Label:          "label",
-	GuildID:        "guild_id",
-	DeletedAt:      "deleted_at",
-	UpdatedAt:      "updated_at",
-	CreatedAt:      "created_at",
+	ID:              "id",
+	VotePrice:       "vote_price",
+	ContractReward:  "contract_reward",
+	Label:           "label",
+	GuildID:         "guild_id",
+	DeletedAt:       "deleted_at",
+	UpdatedAt:       "updated_at",
+	CreatedAt:       "created_at",
+	PrimaryColor:    "primary_color",
+	SecondaryColor:  "secondary_color",
+	BackgroundColor: "background_color",
 }
 
 var FactionTableColumns = struct {
-	ID             string
-	VotePrice      string
-	ContractReward string
-	Label          string
-	GuildID        string
-	DeletedAt      string
-	UpdatedAt      string
-	CreatedAt      string
+	ID              string
+	VotePrice       string
+	ContractReward  string
+	Label           string
+	GuildID         string
+	DeletedAt       string
+	UpdatedAt       string
+	CreatedAt       string
+	PrimaryColor    string
+	SecondaryColor  string
+	BackgroundColor string
 }{
-	ID:             "factions.id",
-	VotePrice:      "factions.vote_price",
-	ContractReward: "factions.contract_reward",
-	Label:          "factions.label",
-	GuildID:        "factions.guild_id",
-	DeletedAt:      "factions.deleted_at",
-	UpdatedAt:      "factions.updated_at",
-	CreatedAt:      "factions.created_at",
+	ID:              "factions.id",
+	VotePrice:       "factions.vote_price",
+	ContractReward:  "factions.contract_reward",
+	Label:           "factions.label",
+	GuildID:         "factions.guild_id",
+	DeletedAt:       "factions.deleted_at",
+	UpdatedAt:       "factions.updated_at",
+	CreatedAt:       "factions.created_at",
+	PrimaryColor:    "factions.primary_color",
+	SecondaryColor:  "factions.secondary_color",
+	BackgroundColor: "factions.background_color",
 }
 
 // Generated where
 
 var FactionWhere = struct {
-	ID             whereHelperstring
-	VotePrice      whereHelperstring
-	ContractReward whereHelperstring
-	Label          whereHelperstring
-	GuildID        whereHelpernull_String
-	DeletedAt      whereHelpernull_Time
-	UpdatedAt      whereHelpertime_Time
-	CreatedAt      whereHelpertime_Time
+	ID              whereHelperstring
+	VotePrice       whereHelperstring
+	ContractReward  whereHelperstring
+	Label           whereHelperstring
+	GuildID         whereHelpernull_String
+	DeletedAt       whereHelpernull_Time
+	UpdatedAt       whereHelpertime_Time
+	CreatedAt       whereHelpertime_Time
+	PrimaryColor    whereHelperstring
+	SecondaryColor  whereHelperstring
+	BackgroundColor whereHelperstring
 }{
-	ID:             whereHelperstring{field: "\"factions\".\"id\""},
-	VotePrice:      whereHelperstring{field: "\"factions\".\"vote_price\""},
-	ContractReward: whereHelperstring{field: "\"factions\".\"contract_reward\""},
-	Label:          whereHelperstring{field: "\"factions\".\"label\""},
-	GuildID:        whereHelpernull_String{field: "\"factions\".\"guild_id\""},
-	DeletedAt:      whereHelpernull_Time{field: "\"factions\".\"deleted_at\""},
-	UpdatedAt:      whereHelpertime_Time{field: "\"factions\".\"updated_at\""},
-	CreatedAt:      whereHelpertime_Time{field: "\"factions\".\"created_at\""},
+	ID:              whereHelperstring{field: "\"factions\".\"id\""},
+	VotePrice:       whereHelperstring{field: "\"factions\".\"vote_price\""},
+	ContractReward:  whereHelperstring{field: "\"factions\".\"contract_reward\""},
+	Label:           whereHelperstring{field: "\"factions\".\"label\""},
+	GuildID:         whereHelpernull_String{field: "\"factions\".\"guild_id\""},
+	DeletedAt:       whereHelpernull_Time{field: "\"factions\".\"deleted_at\""},
+	UpdatedAt:       whereHelpertime_Time{field: "\"factions\".\"updated_at\""},
+	CreatedAt:       whereHelpertime_Time{field: "\"factions\".\"created_at\""},
+	PrimaryColor:    whereHelperstring{field: "\"factions\".\"primary_color\""},
+	SecondaryColor:  whereHelperstring{field: "\"factions\".\"secondary_color\""},
+	BackgroundColor: whereHelperstring{field: "\"factions\".\"background_color\""},
 }
 
 // FactionRels is where relationship names are stored.
 var FactionRels = struct {
-	Brands    string
-	Players   string
-	Templates string
+	BattleMechs  string
+	BattleQueues string
+	BattleWins   string
+	Brands       string
+	Players      string
+	Templates    string
 }{
-	Brands:    "Brands",
-	Players:   "Players",
-	Templates: "Templates",
+	BattleMechs:  "BattleMechs",
+	BattleQueues: "BattleQueues",
+	BattleWins:   "BattleWins",
+	Brands:       "Brands",
+	Players:      "Players",
+	Templates:    "Templates",
 }
 
 // factionR is where relationships are stored.
 type factionR struct {
-	Brands    BrandSlice    `boiler:"Brands" boil:"Brands" json:"Brands" toml:"Brands" yaml:"Brands"`
-	Players   PlayerSlice   `boiler:"Players" boil:"Players" json:"Players" toml:"Players" yaml:"Players"`
-	Templates TemplateSlice `boiler:"Templates" boil:"Templates" json:"Templates" toml:"Templates" yaml:"Templates"`
+	BattleMechs  BattleMechSlice  `boiler:"BattleMechs" boil:"BattleMechs" json:"BattleMechs" toml:"BattleMechs" yaml:"BattleMechs"`
+	BattleQueues BattleQueueSlice `boiler:"BattleQueues" boil:"BattleQueues" json:"BattleQueues" toml:"BattleQueues" yaml:"BattleQueues"`
+	BattleWins   BattleWinSlice   `boiler:"BattleWins" boil:"BattleWins" json:"BattleWins" toml:"BattleWins" yaml:"BattleWins"`
+	Brands       BrandSlice       `boiler:"Brands" boil:"Brands" json:"Brands" toml:"Brands" yaml:"Brands"`
+	Players      PlayerSlice      `boiler:"Players" boil:"Players" json:"Players" toml:"Players" yaml:"Players"`
+	Templates    TemplateSlice    `boiler:"Templates" boil:"Templates" json:"Templates" toml:"Templates" yaml:"Templates"`
 }
 
 // NewStruct creates a new relationship struct
@@ -125,9 +155,9 @@ func (*factionR) NewStruct() *factionR {
 type factionL struct{}
 
 var (
-	factionAllColumns            = []string{"id", "vote_price", "contract_reward", "label", "guild_id", "deleted_at", "updated_at", "created_at"}
+	factionAllColumns            = []string{"id", "vote_price", "contract_reward", "label", "guild_id", "deleted_at", "updated_at", "created_at", "primary_color", "secondary_color", "background_color"}
 	factionColumnsWithoutDefault = []string{"label"}
-	factionColumnsWithDefault    = []string{"id", "vote_price", "contract_reward", "guild_id", "deleted_at", "updated_at", "created_at"}
+	factionColumnsWithDefault    = []string{"id", "vote_price", "contract_reward", "guild_id", "deleted_at", "updated_at", "created_at", "primary_color", "secondary_color", "background_color"}
 	factionPrimaryKeyColumns     = []string{"id"}
 	factionGeneratedColumns      = []string{}
 )
@@ -374,6 +404,69 @@ func (q factionQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
+// BattleMechs retrieves all the battle_mech's BattleMechs with an executor.
+func (o *Faction) BattleMechs(mods ...qm.QueryMod) battleMechQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"battle_mechs\".\"faction_id\"=?", o.ID),
+	)
+
+	query := BattleMechs(queryMods...)
+	queries.SetFrom(query.Query, "\"battle_mechs\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"battle_mechs\".*"})
+	}
+
+	return query
+}
+
+// BattleQueues retrieves all the battle_queue's BattleQueues with an executor.
+func (o *Faction) BattleQueues(mods ...qm.QueryMod) battleQueueQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"battle_queue\".\"faction_id\"=?", o.ID),
+	)
+
+	query := BattleQueues(queryMods...)
+	queries.SetFrom(query.Query, "\"battle_queue\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"battle_queue\".*"})
+	}
+
+	return query
+}
+
+// BattleWins retrieves all the battle_win's BattleWins with an executor.
+func (o *Faction) BattleWins(mods ...qm.QueryMod) battleWinQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"battle_wins\".\"faction_id\"=?", o.ID),
+	)
+
+	query := BattleWins(queryMods...)
+	queries.SetFrom(query.Query, "\"battle_wins\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"battle_wins\".*"})
+	}
+
+	return query
+}
+
 // Brands retrieves all the brand's Brands with an executor.
 func (o *Faction) Brands(mods ...qm.QueryMod) brandQuery {
 	var queryMods []qm.QueryMod
@@ -438,6 +531,300 @@ func (o *Faction) Templates(mods ...qm.QueryMod) templateQuery {
 	}
 
 	return query
+}
+
+// LoadBattleMechs allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (factionL) LoadBattleMechs(e boil.Executor, singular bool, maybeFaction interface{}, mods queries.Applicator) error {
+	var slice []*Faction
+	var object *Faction
+
+	if singular {
+		object = maybeFaction.(*Faction)
+	} else {
+		slice = *maybeFaction.(*[]*Faction)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &factionR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &factionR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`battle_mechs`),
+		qm.WhereIn(`battle_mechs.faction_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load battle_mechs")
+	}
+
+	var resultSlice []*BattleMech
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice battle_mechs")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on battle_mechs")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_mechs")
+	}
+
+	if len(battleMechAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.BattleMechs = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &battleMechR{}
+			}
+			foreign.R.Faction = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.FactionID {
+				local.R.BattleMechs = append(local.R.BattleMechs, foreign)
+				if foreign.R == nil {
+					foreign.R = &battleMechR{}
+				}
+				foreign.R.Faction = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadBattleQueues allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (factionL) LoadBattleQueues(e boil.Executor, singular bool, maybeFaction interface{}, mods queries.Applicator) error {
+	var slice []*Faction
+	var object *Faction
+
+	if singular {
+		object = maybeFaction.(*Faction)
+	} else {
+		slice = *maybeFaction.(*[]*Faction)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &factionR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &factionR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`battle_queue`),
+		qm.WhereIn(`battle_queue.faction_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load battle_queue")
+	}
+
+	var resultSlice []*BattleQueue
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice battle_queue")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on battle_queue")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_queue")
+	}
+
+	if len(battleQueueAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.BattleQueues = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &battleQueueR{}
+			}
+			foreign.R.Faction = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.FactionID {
+				local.R.BattleQueues = append(local.R.BattleQueues, foreign)
+				if foreign.R == nil {
+					foreign.R = &battleQueueR{}
+				}
+				foreign.R.Faction = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadBattleWins allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (factionL) LoadBattleWins(e boil.Executor, singular bool, maybeFaction interface{}, mods queries.Applicator) error {
+	var slice []*Faction
+	var object *Faction
+
+	if singular {
+		object = maybeFaction.(*Faction)
+	} else {
+		slice = *maybeFaction.(*[]*Faction)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &factionR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &factionR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`battle_wins`),
+		qm.WhereIn(`battle_wins.faction_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load battle_wins")
+	}
+
+	var resultSlice []*BattleWin
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice battle_wins")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on battle_wins")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_wins")
+	}
+
+	if len(battleWinAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.BattleWins = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &battleWinR{}
+			}
+			foreign.R.Faction = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.FactionID {
+				local.R.BattleWins = append(local.R.BattleWins, foreign)
+				if foreign.R == nil {
+					foreign.R = &battleWinR{}
+				}
+				foreign.R.Faction = local
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadBrands allows an eager lookup of values, cached into the
@@ -734,6 +1121,162 @@ func (factionL) LoadTemplates(e boil.Executor, singular bool, maybeFaction inter
 		}
 	}
 
+	return nil
+}
+
+// AddBattleMechs adds the given related objects to the existing relationships
+// of the faction, optionally inserting them as new records.
+// Appends related to o.R.BattleMechs.
+// Sets related.R.Faction appropriately.
+func (o *Faction) AddBattleMechs(exec boil.Executor, insert bool, related ...*BattleMech) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.FactionID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"battle_mechs\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
+				strmangle.WhereClause("\"", "\"", 2, battleMechPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.BattleID, rel.MechID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.FactionID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &factionR{
+			BattleMechs: related,
+		}
+	} else {
+		o.R.BattleMechs = append(o.R.BattleMechs, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &battleMechR{
+				Faction: o,
+			}
+		} else {
+			rel.R.Faction = o
+		}
+	}
+	return nil
+}
+
+// AddBattleQueues adds the given related objects to the existing relationships
+// of the faction, optionally inserting them as new records.
+// Appends related to o.R.BattleQueues.
+// Sets related.R.Faction appropriately.
+func (o *Faction) AddBattleQueues(exec boil.Executor, insert bool, related ...*BattleQueue) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.FactionID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"battle_queue\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
+				strmangle.WhereClause("\"", "\"", 2, battleQueuePrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.MechID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.FactionID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &factionR{
+			BattleQueues: related,
+		}
+	} else {
+		o.R.BattleQueues = append(o.R.BattleQueues, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &battleQueueR{
+				Faction: o,
+			}
+		} else {
+			rel.R.Faction = o
+		}
+	}
+	return nil
+}
+
+// AddBattleWins adds the given related objects to the existing relationships
+// of the faction, optionally inserting them as new records.
+// Appends related to o.R.BattleWins.
+// Sets related.R.Faction appropriately.
+func (o *Faction) AddBattleWins(exec boil.Executor, insert bool, related ...*BattleWin) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.FactionID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"battle_wins\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
+				strmangle.WhereClause("\"", "\"", 2, battleWinPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.BattleID, rel.MechID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.FactionID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &factionR{
+			BattleWins: related,
+		}
+	} else {
+		o.R.BattleWins = append(o.R.BattleWins, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &battleWinR{
+				Faction: o,
+			}
+		} else {
+			rel.R.Faction = o
+		}
+	}
 	return nil
 }
 

@@ -8,9 +8,8 @@ import (
 	"server/passport"
 	"time"
 
-	"github.com/ninja-software/terror/v2"
-
 	"github.com/gofrs/uuid"
+	"github.com/ninja-software/terror/v2"
 )
 
 const BattleCommandInitBattle BattleCommand = "BATTLE:INIT"

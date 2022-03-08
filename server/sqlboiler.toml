@@ -36,6 +36,14 @@ tag = ["boiler"]
    [types.imports]
      third_party = ['"github.com/shopspring/decimal"']
 
+[[types]]
+  [types.match]
+    type = "uuid"
+    nullable = false
+
+  [types.replace]
+    type = "string"
+
 # work with nullable decimal in code and db
 [[types]]
   [types.match]

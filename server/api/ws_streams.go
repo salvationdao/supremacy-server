@@ -70,9 +70,10 @@ func (s *StreamsWS) StreamCloseSubscribeHandler(ctx context.Context, wsc *hub.Cl
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
-	gamesToClose := s.API.BattleArena.GetGamesToClose()
-
-	reply(gamesToClose)
+	//TODO ALEX: fix
+	//gamesToClose := s.API.BattleArena.GetGamesToClose()
+	//
+	//reply(gamesToClose)
 	return req.TransactionID, messagebus.BusKey(HubKeyStreamCloseSubscribe), nil
 }
 
@@ -84,11 +85,12 @@ func (api *API) CreateStreamCloseHandler(w http.ResponseWriter, r *http.Request)
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	gamesToClose := gamesToCloseStruct.GamesToClose
+	//TODO ALEX: fix
+	//gamesToClose := gamesToCloseStruct.GamesToClose
 
-	api.BattleArena.PutGamesToClose(gamesToClose)
+	//api.BattleArena.PutGamesToClose(gamesToClose)
 
-	go api.MessageBus.Send(context.Background(), messagebus.BusKey(HubKeyStreamCloseSubscribe), gamesToClose)
+	//go api.MessageBus.Send(context.Background(), messagebus.BusKey(HubKeyStreamCloseSubscribe), gamesToClose)
 
 	return http.StatusOK, nil
 }

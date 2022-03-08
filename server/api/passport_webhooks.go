@@ -9,7 +9,6 @@ import (
 	"server"
 	"server/db"
 	"server/helpers"
-	"server/passport"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/go-chi/chi"
@@ -157,105 +156,107 @@ type WarMachineJoinResp struct {
 }
 
 func (pc *PassportWebhookController) WarMachineJoin(w http.ResponseWriter, r *http.Request) (int, error) {
-	req := &WarMachineJoinRequest{}
-	err := json.NewDecoder(r.Body).Decode(req)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err)
-	}
-
-	if req.WarMachineMetadata.FactionID.IsNil() {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("Non-faction war machine is not able to join"))
-	}
-
-	err = pc.API.BattleArena.WarMachineQueue.Join(req.WarMachineMetadata, req.NeedInsured)
-	if err != nil {
-		return http.StatusBadRequest, terror.Error(err, err.Error())
-	}
-
-	// broadcast price change
-	factionQueuePrice := &passport.FactionQueuePriceUpdateReq{
-		FactionID: req.WarMachineMetadata.FactionID,
-	}
-	switch req.WarMachineMetadata.FactionID {
-	case server.RedMountainFactionID:
-		factionQueuePrice.QueuingLength = pc.API.BattleArena.WarMachineQueue.RedMountain.QueuingLength()
-	case server.BostonCyberneticsFactionID:
-		factionQueuePrice.QueuingLength = pc.API.BattleArena.WarMachineQueue.Boston.QueuingLength()
-	case server.ZaibatsuFactionID:
-		factionQueuePrice.QueuingLength = pc.API.BattleArena.WarMachineQueue.Zaibatsu.QueuingLength()
-	}
-	pc.API.Passport.FactionQueueCostUpdate(factionQueuePrice)
-
-	errChan := make(chan error)
-
-	// fire a payment to passport
-	pc.API.Passport.SpendSupMessage(passport.SpendSupsReq{
-		FromUserID:           req.WarMachineMetadata.OwnedByID,
-		ToUserID:             &server.XsynTreasuryUserID,
-		Amount:               req.WarMachineMetadata.Fee.String(),
-		TransactionReference: server.TransactionReference(fmt.Sprintf("war_machine_queuing_fee|%s", uuid.Must(uuid.NewV4()))),
-		Group:                "Supremacy",
-		Description:          "Adding war machine to queue.",
-	}, func(transaction string) {
-		errChan <- nil
-	}, func(reqErr error) {
-		// check faction id
-		switch req.WarMachineMetadata.FactionID {
-		case server.RedMountainFactionID:
-			err = pc.API.BattleArena.WarMachineQueue.RedMountain.Leave(req.WarMachineMetadata.Hash)
-			if err != nil {
-				pc.Log.Err(err).Msg("")
-			}
-		case server.BostonCyberneticsFactionID:
-			err = pc.API.BattleArena.WarMachineQueue.Boston.Leave(req.WarMachineMetadata.Hash)
-			if err != nil {
-				pc.Log.Err(err).Msg("")
-			}
-		case server.ZaibatsuFactionID:
-			err = pc.API.BattleArena.WarMachineQueue.Zaibatsu.Leave(req.WarMachineMetadata.Hash)
-			if err != nil {
-				pc.Log.Err(err).Msg("")
-			}
-		}
-		pc.API.Passport.SupremacyQueueUpdate(&server.SupremacyQueueUpdateReq{
-			Hash: req.WarMachineMetadata.Hash,
-		})
-		errChan <- reqErr
-	})
-
-	err = <-errChan
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Issue joining queue")
-	}
-
-	// prepare response
-	resp := &WarMachineJoinResp{}
-	// set insurance flag
-	warMachinePosition, _ := pc.API.BattleArena.WarMachineQueue.GetWarMachineQueue(req.WarMachineMetadata.FactionID, req.WarMachineMetadata.Hash)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err)
-	}
-
-	resp.Position = warMachinePosition
-	resp.ContractReward = decimal.New(int64((*warMachinePosition+1)*2), 0)
-
-	// get contract reward
-	queuingStat, err := db.AssetQueuingStat(context.Background(), pc.Conn, req.WarMachineMetadata.Hash)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return http.StatusInternalServerError, terror.Error(err)
-	}
-
-	queueingContractReward, err := decimal.NewFromString(queuingStat.ContractReward)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err)
-	}
-	resp.ContractReward = decimal.Zero
-	if queuingStat != nil {
-		resp.ContractReward = queueingContractReward
-	}
-
-	// return current queuing position
-	return helpers.EncodeJSON(w, resp)
+	//TODO ALEX fix
+	return 0, nil
+	//req := &WarMachineJoinRequest{}
+	//err := json.NewDecoder(r.Body).Decode(req)
+	//if err != nil {
+	//	return http.StatusInternalServerError, terror.Error(err)
+	//}
+	//
+	//if req.WarMachineMetadata.FactionID.IsNil() {
+	//	return http.StatusBadRequest, terror.Error(fmt.Errorf("Non-faction war machine is not able to join"))
+	//}
+	//
+	//err = pc.API.BattleArena.WarMachineQueue.Join(req.WarMachineMetadata, req.NeedInsured)
+	//if err != nil {
+	//	return http.StatusBadRequest, terror.Error(err, err.Error())
+	//}
+	//
+	//// broadcast price change
+	//factionQueuePrice := &passport.FactionQueuePriceUpdateReq{
+	//	FactionID: req.WarMachineMetadata.FactionID,
+	//}
+	//switch req.WarMachineMetadata.FactionID {
+	//case server.RedMountainFactionID:
+	//	factionQueuePrice.QueuingLength = pc.API.BattleArena.WarMachineQueue.RedMountain.QueuingLength()
+	//case server.BostonCyberneticsFactionID:
+	//	factionQueuePrice.QueuingLength = pc.API.BattleArena.WarMachineQueue.Boston.QueuingLength()
+	//case server.ZaibatsuFactionID:
+	//	factionQueuePrice.QueuingLength = pc.API.BattleArena.WarMachineQueue.Zaibatsu.QueuingLength()
+	//}
+	//pc.API.Passport.FactionQueueCostUpdate(factionQueuePrice)
+	//
+	//errChan := make(chan error)
+	//
+	//// fire a payment to passport
+	//pc.API.Passport.SpendSupMessage(passport.SpendSupsReq{
+	//	FromUserID:           req.WarMachineMetadata.OwnedByID,
+	//	ToUserID:             &server.XsynTreasuryUserID,
+	//	Amount:               req.WarMachineMetadata.Fee.String(),
+	//	TransactionReference: server.TransactionReference(fmt.Sprintf("war_machine_queuing_fee|%s", uuid.Must(uuid.NewV4()))),
+	//	Group:                "Supremacy",
+	//	Description:          "Adding war machine to queue.",
+	//}, func(transaction string) {
+	//	errChan <- nil
+	//}, func(reqErr error) {
+	//	// check faction id
+	//	switch req.WarMachineMetadata.FactionID {
+	//	case server.RedMountainFactionID:
+	//		err = pc.API.BattleArena.WarMachineQueue.RedMountain.Leave(req.WarMachineMetadata.Hash)
+	//		if err != nil {
+	//			pc.Log.Err(err).Msg("")
+	//		}
+	//	case server.BostonCyberneticsFactionID:
+	//		err = pc.API.BattleArena.WarMachineQueue.Boston.Leave(req.WarMachineMetadata.Hash)
+	//		if err != nil {
+	//			pc.Log.Err(err).Msg("")
+	//		}
+	//	case server.ZaibatsuFactionID:
+	//		err = pc.API.BattleArena.WarMachineQueue.Zaibatsu.Leave(req.WarMachineMetadata.Hash)
+	//		if err != nil {
+	//			pc.Log.Err(err).Msg("")
+	//		}
+	//	}
+	//	pc.API.Passport.SupremacyQueueUpdate(&server.SupremacyQueueUpdateReq{
+	//		Hash: req.WarMachineMetadata.Hash,
+	//	})
+	//	errChan <- reqErr
+	//})
+	//
+	//err = <-errChan
+	//if err != nil {
+	//	return http.StatusInternalServerError, terror.Error(err, "Issue joining queue")
+	//}
+	//
+	//// prepare response
+	//resp := &WarMachineJoinResp{}
+	//// set insurance flag
+	//warMachinePosition, _ := pc.API.BattleArena.WarMachineQueue.GetWarMachineQueue(req.WarMachineMetadata.FactionID, req.WarMachineMetadata.Hash)
+	//if err != nil {
+	//	return http.StatusInternalServerError, terror.Error(err)
+	//}
+	//
+	//resp.Position = warMachinePosition
+	//resp.ContractReward = decimal.New(int64((*warMachinePosition+1)*2), 0)
+	//
+	//// get contract reward
+	//queuingStat, err := db.AssetQueuingStat(context.Background(), pc.Conn, req.WarMachineMetadata.Hash)
+	//if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+	//	return http.StatusInternalServerError, terror.Error(err)
+	//}
+	//
+	//queueingContractReward, err := decimal.NewFromString(queuingStat.ContractReward)
+	//if err != nil {
+	//	return http.StatusInternalServerError, terror.Error(err)
+	//}
+	//resp.ContractReward = decimal.Zero
+	//if queuingStat != nil {
+	//	resp.ContractReward = queueingContractReward
+	//}
+	//
+	//// return current queuing position
+	//return helpers.EncodeJSON(w, resp)
 }
 
 type UserSupsMultiplierGetRequest struct {
@@ -341,24 +342,26 @@ type WarMachineQueuePositionRequest struct {
 
 // PassportWarMachineQueuePositionHandler return the list of user's war machines in the queue
 func (pc *PassportWebhookController) WarMachineQueuePositionGet(w http.ResponseWriter, r *http.Request) (int, error) {
-	req := &WarMachineQueuePositionRequest{}
-	err := json.NewDecoder(r.Body).Decode(req)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err)
-	}
-
-	position, contractReward := pc.API.BattleArena.WarMachineQueue.GetWarMachineQueue(req.FactionID, req.AssetHash)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err)
-	}
-
-	return helpers.EncodeJSON(w, struct {
-		Position       *int            `json:"position"`
-		ContractReward decimal.Decimal `json:"contractReward"`
-	}{
-		Position:       position,
-		ContractReward: contractReward,
-	})
+	return 0, nil
+	//TODO ALEX: fix
+	//req := &WarMachineQueuePositionRequest{}
+	//err := json.NewDecoder(r.Body).Decode(req)
+	//if err != nil {
+	//	return http.StatusInternalServerError, terror.Error(err)
+	//}
+	//
+	//position, contractReward := pc.API.BattleArena.WarMachineQueue.GetWarMachineQueue(req.FactionID, req.AssetHash)
+	//if err != nil {
+	//	return http.StatusInternalServerError, terror.Error(err)
+	//}
+	//
+	//return helpers.EncodeJSON(w, struct {
+	//	Position       *int            `json:"position"`
+	//	ContractReward decimal.Decimal `json:"contractReward"`
+	//}{
+	//	Position:       position,
+	//	ContractReward: contractReward,
+	//})
 }
 
 type AssetRepairStatRequest struct {
@@ -460,48 +463,50 @@ type FactionQueueCostGetRequest struct {
 }
 
 func (pc *PassportWebhookController) FactionQueueCostGet(w http.ResponseWriter, r *http.Request) (int, error) {
-	req := &FactionQueueCostGetRequest{}
-	err := json.NewDecoder(r.Body).Decode(req)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err)
-	}
-
-	if req.FactionID.IsNil() || !req.FactionID.IsValid() {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("faction id is nil"), "Faction id is required")
-	}
-
-	if pc.API.BattleArena == nil {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("battle arena is nil"), "battle arena is nil")
-	}
-	if pc.API.BattleArena.WarMachineQueue == nil {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("WarMachineQueue is nil"), "WarMachineQueue is nil")
-	}
-	if pc.API.BattleArena.WarMachineQueue.RedMountain == nil {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("RedMountain is nil"), "RedMountain is nil")
-	}
-	if pc.API.BattleArena.WarMachineQueue.Boston == nil {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("Boston is nil"), "Boston is nil")
-	}
-	if pc.API.BattleArena.WarMachineQueue.Zaibatsu == nil {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("Zaibatsu is nil"), "Zaibatsu is nil")
-	}
-	length := 0
-	switch req.FactionID {
-	case server.RedMountainFactionID:
-		length = pc.API.BattleArena.WarMachineQueue.RedMountain.QueuingLength()
-	case server.BostonCyberneticsFactionID:
-		length = pc.API.BattleArena.WarMachineQueue.Boston.QueuingLength()
-	case server.ZaibatsuFactionID:
-		length = pc.API.BattleArena.WarMachineQueue.Zaibatsu.QueuingLength()
-	default:
-		return http.StatusInternalServerError, errors.New("switch fallthrough")
-	}
-
-	return helpers.EncodeJSON(w, struct {
-		Length int `json:"length"`
-	}{
-		Length: length,
-	})
+	return 0, nil
+	//TODO ALEX: fix
+	//req := &FactionQueueCostGetRequest{}
+	//err := json.NewDecoder(r.Body).Decode(req)
+	//if err != nil {
+	//	return http.StatusInternalServerError, terror.Error(err)
+	//}
+	//
+	//if req.FactionID.IsNil() || !req.FactionID.IsValid() {
+	//	return http.StatusBadRequest, terror.Error(fmt.Errorf("faction id is nil"), "Faction id is required")
+	//}
+	//
+	//if pc.API.BattleArena == nil {
+	//	return http.StatusBadRequest, terror.Error(fmt.Errorf("battle arena is nil"), "battle arena is nil")
+	//}
+	//if pc.API.BattleArena.WarMachineQueue == nil {
+	//	return http.StatusBadRequest, terror.Error(fmt.Errorf("WarMachineQueue is nil"), "WarMachineQueue is nil")
+	//}
+	//if pc.API.BattleArena.WarMachineQueue.RedMountain == nil {
+	//	return http.StatusBadRequest, terror.Error(fmt.Errorf("RedMountain is nil"), "RedMountain is nil")
+	//}
+	//if pc.API.BattleArena.WarMachineQueue.Boston == nil {
+	//	return http.StatusBadRequest, terror.Error(fmt.Errorf("Boston is nil"), "Boston is nil")
+	//}
+	//if pc.API.BattleArena.WarMachineQueue.Zaibatsu == nil {
+	//	return http.StatusBadRequest, terror.Error(fmt.Errorf("Zaibatsu is nil"), "Zaibatsu is nil")
+	//}
+	//length := 0
+	//switch req.FactionID {
+	//case server.RedMountainFactionID:
+	//	length = pc.API.BattleArena.WarMachineQueue.RedMountain.QueuingLength()
+	//case server.BostonCyberneticsFactionID:
+	//	length = pc.API.BattleArena.WarMachineQueue.Boston.QueuingLength()
+	//case server.ZaibatsuFactionID:
+	//	length = pc.API.BattleArena.WarMachineQueue.Zaibatsu.QueuingLength()
+	//default:
+	//	return http.StatusInternalServerError, errors.New("switch fallthrough")
+	//}
+	//
+	//return helpers.EncodeJSON(w, struct {
+	//	Length int `json:"length"`
+	//}{
+	//	Length: length,
+	//})
 }
 
 // whitelisted wallet addresses

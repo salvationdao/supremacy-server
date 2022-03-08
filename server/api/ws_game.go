@@ -3,14 +3,9 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"server"
-	"server/comms"
-	"server/db"
-	"server/passport"
 	"time"
 
-	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/log_helpers"
 	"github.com/ninja-software/terror/v2"
@@ -78,66 +73,67 @@ type WarMachineQueueLeaveReqest struct {
 }
 
 func (gc *GameControllerWS) WarMachineQueueLeaveHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	req := &WarMachineQueueLeaveReqest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received")
-	}
-
-	// get user
-	user := gc.API.UserMap.GetUserDetail(wsc)
-	if user == nil {
-		return terror.Error(fmt.Errorf("user not found"))
-	}
-
-	if user.FactionID.IsNil() {
-		return terror.Error(fmt.Errorf("user not in faction"))
-	}
-
-	broadcastData := []*comms.WarMachineQueueStat{}
-	fee, err := db.BattleQueueGetFee(context.Background(), gc.Conn, req.Payload.Hash)
-	if err != nil {
-		return err
-	}
-
-	switch user.FactionID {
-	case server.RedMountainFactionID:
-		err = gc.API.BattleArena.WarMachineQueue.RedMountain.Leave(req.Payload.Hash)
-		if err != nil {
-			return terror.Error(err)
-		}
-	case server.BostonCyberneticsFactionID:
-		err = gc.API.BattleArena.WarMachineQueue.Boston.Leave(req.Payload.Hash)
-		if err != nil {
-			return terror.Error(err)
-		}
-	case server.ZaibatsuFactionID:
-		err = gc.API.BattleArena.WarMachineQueue.Zaibatsu.Leave(req.Payload.Hash)
-		if err != nil {
-			return terror.Error(err)
-		}
-	}
-
-	// fire a refund to passport
-	gc.API.Passport.SpendSupMessage(passport.SpendSupsReq{
-		FromUserID:           server.XsynTreasuryUserID,
-		ToUserID:             &user.ID,
-		Amount:               fee,
-		TransactionReference: server.TransactionReference(fmt.Sprintf("refund|war_machine_queuing_fee|%s", uuid.Must(uuid.NewV4()))),
-		Group:                "Supremacy",
-		Description:          "Removing war machine from queue.",
-	}, func(transaction string) {}, func(err error) {})
-
-	gc.API.Passport.WarMachineQueuePositionBroadcast(broadcastData)
-
-	// broadcast war machine
-	gc.API.Passport.WarMachineQueuePositionBroadcast([]*comms.WarMachineQueueStat{
-		{
-			Hash: req.Payload.Hash,
-		},
-	})
-
-	reply(true)
+	//TODO ALEX: fix
+	//req := &WarMachineQueueLeaveReqest{}
+	//err := json.Unmarshal(payload, req)
+	//if err != nil {
+	//	return terror.Error(err, "Invalid request received")
+	//}
+	//
+	//// get user
+	//user := gc.API.UserMap.GetUserDetail(wsc)
+	//if user == nil {
+	//	return terror.Error(fmt.Errorf("user not found"))
+	//}
+	//
+	//if user.FactionID.IsNil() {
+	//	return terror.Error(fmt.Errorf("user not in faction"))
+	//}
+	//
+	//broadcastData := []*comms.WarMachineQueueStat{}
+	//fee, err := db.BattleQueueGetFee(context.Background(), gc.Conn, req.Payload.Hash)
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//switch user.FactionID {
+	//case server.RedMountainFactionID:
+	//	err = gc.API.BattleArena.WarMachineQueue.RedMountain.Leave(req.Payload.Hash)
+	//	if err != nil {
+	//		return terror.Error(err)
+	//	}
+	//case server.BostonCyberneticsFactionID:
+	//	err = gc.API.BattleArena.WarMachineQueue.Boston.Leave(req.Payload.Hash)
+	//	if err != nil {
+	//		return terror.Error(err)
+	//	}
+	//case server.ZaibatsuFactionID:
+	//	err = gc.API.BattleArena.WarMachineQueue.Zaibatsu.Leave(req.Payload.Hash)
+	//	if err != nil {
+	//		return terror.Error(err)
+	//	}
+	//}
+	//
+	//// fire a refund to passport
+	//gc.API.Passport.SpendSupMessage(passport.SpendSupsReq{
+	//	FromUserID:           server.XsynTreasuryUserID,
+	//	ToUserID:             &user.ID,
+	//	Amount:               fee,
+	//	TransactionReference: server.TransactionReference(fmt.Sprintf("refund|war_machine_queuing_fee|%s", uuid.Must(uuid.NewV4()))),
+	//	Group:                "Supremacy",
+	//	Description:          "Removing war machine from queue.",
+	//}, func(transaction string) {}, func(err error) {})
+	//
+	//gc.API.Passport.WarMachineQueuePositionBroadcast(broadcastData)
+	//
+	//// broadcast war machine
+	//gc.API.Passport.WarMachineQueuePositionBroadcast([]*comms.WarMachineQueueStat{
+	//	{
+	//		Hash: req.Payload.Hash,
+	//	},
+	//})
+	//
+	//reply(true)
 
 	return nil
 }
@@ -160,19 +156,21 @@ const HubKeyWarMachineDestroyedUpdated hub.HubCommandKey = "WAR:MACHINE:DESTROYE
 
 // WarMachineDestroyedUpdateSubscribeHandler to subscribe on war machine destroyed
 func (gc *GameControllerWS) WarMachineDestroyedUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	req := &WarMachineDestroyedRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return "", "", terror.Error(err, "Invalid request received")
-	}
-
-	record := gc.API.BattleArena.WarMachineDestroyedRecord(req.Payload.ParticipantID)
-	if record != nil {
-		reply(record)
-	}
-
-	busKey := messagebus.BusKey(fmt.Sprintf("%s:%x", HubKeyWarMachineDestroyedUpdated, req.Payload.ParticipantID))
-	return req.TransactionID, busKey, nil
+	//TODO ALEX: fix
+	return "", "", nil
+	//req := &WarMachineDestroyedRequest{}
+	//err := json.Unmarshal(payload, req)
+	//if err != nil {
+	//	return "", "", terror.Error(err, "Invalid request received")
+	//}
+	//
+	//record := gc.API.BattleArena.WarMachineDestroyedRecord(req.Payload.ParticipantID)
+	//if record != nil {
+	//	reply(record)
+	//}
+	//
+	//busKey := messagebus.BusKey(fmt.Sprintf("%s:%x", HubKeyWarMachineDestroyedUpdated, req.Payload.ParticipantID))
+	//return req.TransactionID, busKey, nil
 }
 
 const HubKeyAISpawned hub.HubCommandKey = "AI:SPAWNED"
@@ -220,9 +218,10 @@ func (gc *GameControllerWS) BattleEndDetailUpdateSubscribeHandler(ctx context.Co
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
-	if gc.API.BattleArena.GetCurrentState().EndedAt != nil {
-		reply(gc.API.battleEndInfo)
-	}
+	//TODO ALEX: fix
+	//if gc.API.BattleArena.GetCurrentState().EndedAt != nil {
+	//	reply(gc.API.battleEndInfo)
+	//}
 
 	return req.TransactionID, messagebus.BusKey(HubKeyBattleEndDetailUpdated), nil
 }

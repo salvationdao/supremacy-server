@@ -3,10 +3,13 @@ package db
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
+	"server/gamelog"
+	"strconv"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -164,6 +167,122 @@ func TemplatesByFactionID(factionID uuid.UUID) ([]*server.TemplateContainer, err
 	return result, nil
 }
 
+func DefaultMechs() ([]*server.MechContainer, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
+	defer cancel()
+	idq := `SELECT id FROM mechs WHERE is_default=true`
+
+	result, err := gamedb.Conn.Query(ctx, idq)
+	if err != nil {
+		return nil, err
+	}
+	defer result.Close()
+
+	ids := []uuid.UUID{}
+	for result.Next() {
+		id := ""
+		err = result.Scan(&id)
+		if err != nil {
+			return nil, err
+		}
+		uid, err := uuid.FromString(id)
+		if err != nil {
+			return nil, err
+		}
+		ids = append(ids, uid)
+	}
+
+	return Mechs(ids...)
+}
+
+func Mechs(mechIDs ...uuid.UUID) ([]*server.MechContainer, error) {
+	if len(mechIDs) == 0 {
+		return nil, errors.New("no mech ids provided")
+	}
+	mcs := make([]*server.MechContainer, len(mechIDs))
+
+	mechids := make([]interface{}, len(mechIDs))
+	var paramrefs string
+	for i, id := range mechIDs {
+		paramrefs += `$` + strconv.Itoa(i+1) + `,`
+		mechids[i] = id.String()
+	}
+	paramrefs = paramrefs[:len(paramrefs)-1]
+
+	query := `SELECT
+       mechs.*,
+       (SELECT to_json(chassis.*) FROM chassis WHERE id=mechs.chassis_id) as chassis,
+       to_json(
+           (SELECT jsonb_object_agg(cw.slot_number, wpn.* ORDER BY cw.slot_number ASC)
+            FROM chassis_weapons cw
+            INNER JOIN weapons wpn ON wpn.id = cw.weapon_id
+            WHERE cw.chassis_id=mechs.chassis_id AND cw.mount_location = 'ARM')
+        ) as weapons,
+       to_json(
+           (SELECT jsonb_object_agg(cwt.slot_number, wpn.* ORDER BY cwt.slot_number ASC)
+            FROM chassis_weapons cwt
+            INNER JOIN weapons wpn ON wpn.id = cwt.weapon_id
+            WHERE cwt.chassis_id=mechs.chassis_id AND cwt.mount_location = 'TURRET'
+            )
+        ) as turrets,
+        to_json(
+            (SELECT jsonb_object_agg(mods.slot_number, mds.* ORDER BY mods.slot_number ASC)
+                FROM chassis_modules mods
+                INNER JOIN modules mds ON mds.id = mods.module_id
+             WHERE mods.chassis_id=mechs.chassis_id)
+        ) as modules,
+       to_json(ply.*) as player,
+       to_json(fct.*) as faction
+		from mechs
+		INNER JOIN players ply ON ply.id = mechs.owner_id
+		INNER JOIN factions fct ON fct.id = ply.faction_id
+		WHERE mechs.id IN (` + paramrefs + `)
+		GROUP BY mechs.id, ply.id, fct.id`
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
+	defer cancel()
+
+	result, err := gamedb.Conn.Query(ctx, query, mechids...)
+	if err != nil {
+		return nil, err
+	}
+	defer result.Close()
+
+	i := 0
+	for result.Next() {
+		mc := &server.MechContainer{}
+		err = result.Scan(&mc.ID,
+			&mc.OwnerID,
+			&mc.TemplateID,
+			&mc.ChassisID,
+			&mc.ExternalTokenID,
+			&mc.Tier,
+			&mc.IsDefault,
+			&mc.ImageURL,
+			&mc.AnimationURL,
+			&mc.Hash,
+			&mc.Name,
+			&mc.Label,
+			&mc.Slug,
+			&mc.DeletedAt,
+			&mc.UpdatedAt,
+			&mc.CreatedAt,
+			&mc.Chassis,
+			&mc.Weapons,
+			&mc.Turrets,
+			&mc.Modules,
+			&mc.Player,
+			&mc.Faction)
+		if err != nil {
+			return nil, err
+		}
+		mcs[i] = mc
+		i++
+	}
+
+	return mcs, err
+}
+
 func Mech(mechID uuid.UUID) (*server.MechContainer, error) {
 	mc := &server.MechContainer{}
 	query := `SELECT
@@ -197,9 +316,10 @@ func Mech(mechID uuid.UUID) (*server.MechContainer, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer result.Close()
+
 	for result.Next() {
-		err = result.Scan(
-			&mc.ID,
+		err = result.Scan(&mc.ID,
 			&mc.OwnerID,
 			&mc.TemplateID,
 			&mc.ChassisID,
@@ -220,7 +340,9 @@ func Mech(mechID uuid.UUID) (*server.MechContainer, error) {
 			&mc.Chassis,
 			&mc.Weapons,
 			&mc.Turrets,
-			&mc.Modules)
+			&mc.Modules,
+			&mc.Player,
+			&mc.Faction)
 		if err != nil {
 			return nil, err
 		}
@@ -399,4 +521,63 @@ func MechRegister(templateID uuid.UUID, ownerID uuid.UUID) (uuid.UUID, error) {
 	}
 	tx.Commit()
 	return newMechID, nil
+}
+
+//MechIDFromHash retrieve a mech ID from a hash
+func MechIDFromHash(hash string) (uuid.UUID, error) {
+	q := `SELECT id FROM mechs WHERE hash = $1`
+	var id string
+	err := gamedb.Conn.QueryRow(context.Background(), q, hash).
+		Scan(&id)
+
+	uid, err := uuid.FromString(id)
+
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	return uid, err
+}
+
+//MechIDFromHash retrieve a slice mech IDs from hash variatic
+func MechIDsFromHash(hashes ...string) ([]uuid.UUID, error) {
+	var paramrefs string
+	idintf := []interface{}{}
+	for i, hash := range hashes {
+		if hash != "" {
+			paramrefs += `$` + strconv.Itoa(i+1) + `,`
+			idintf = append(idintf, hash)
+		}
+	}
+	paramrefs = paramrefs[:len(paramrefs)-1]
+	q := `SELECT id FROM mechs WHERE mechs.hash IN (` + paramrefs + `)`
+
+	result, err := gamedb.Conn.Query(context.Background(), q, idintf...)
+	if err != nil {
+		return nil, err
+	}
+	defer result.Close()
+
+	ids := make([]uuid.UUID, len(hashes))
+	i := 0
+	for result.Next() {
+		var idStr string
+		err = result.Scan(&idStr)
+		if err != nil {
+			return nil, err
+		}
+
+		uid, err := uuid.FromString(idStr)
+		if err != nil {
+			gamelog.L.Error().Str("mechID", idStr).Str("db func", "MechIDsFromHash").Err(err).Msg("unable to convert id to uuid")
+		}
+		ids[i] = uid
+		i++
+	}
+
+	if i == 0 {
+		return nil, errors.New("no ids were scanned from result")
+	}
+
+	return ids, err
 }
