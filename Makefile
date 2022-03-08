@@ -130,6 +130,11 @@ db-reset: db-drop db-migrate-up-to-seed db-seed db-migrate
 db-boiler:
 	$(BIN)/sqlboiler $(BIN)/sqlboiler-psql --config $(SERVER)/sqlboiler.toml
 
+# make sure `make tools` is done
+.PHONY: db-boiler-windows
+db-boiler-windows:
+	cd $(BIN) && sqlboiler psql --config $(SERVER)/sqlboiler.toml
+
 .PHONY: go-mod-download
 go-mod-download:
 	cd $(SERVER) && go mod download
