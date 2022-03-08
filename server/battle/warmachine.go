@@ -1,37 +1,5 @@
 package battle
 
-import "server"
-
-type WarMachine struct {
-	ID                 string          `json:"id"`
-	Hash               string          `json:"Hash"`
-	ParticipantID      byte            `json:"participantID"`
-	FactionID          string          `json:"factionID"`
-	MaxHealth          uint32          `json:"maxHealth"`
-	Health             uint32          `json:"health"`
-	MaxShield          uint32          `json:"maxShield"`
-	Shield             uint32          `json:"shield"`
-	Stat               *Stat           `json:"stat"`
-	Position           *server.Vector3 `json:"position"`
-	Rotation           int             `json:"rotation"`
-	OwnedByID          string          `json:"ownedByID"`
-	Name               string          `json:"name"`
-	Description        *string         `json:"description"`
-	ExternalUrl        string          `json:"externalUrl"`
-	Image              string          `json:"image"`
-	Skin               string          `json:"skin"`
-	ShieldRechargeRate float64         `json:"shieldRechargeRate"`
-	Speed              int             `json:"speed"`
-	Durability         int             `json:"durability"`
-	PowerGrid          int             `json:"powerGrid"`
-	CPU                int             `json:"cpu"`
-	WeaponHardpoint    int             `json:"weaponHardpoint"`
-	TurretHardpoint    int             `json:"turretHardpoint"`
-	UtilitySlots       int             `json:"utilitySlots"`
-	Faction            *Faction        `json:"faction"`
-	WeaponNames        []string        `json:"weaponNames"`
-}
-
 type Faction struct {
 	ID    string        `json:"id"`
 	Label string        `json:"label"`

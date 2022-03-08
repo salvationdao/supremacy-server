@@ -374,7 +374,7 @@ func ClearQueue(mechIDs ...uuid.UUID) error {
 
 	paramrefs = paramrefs[:len(paramrefs)-1]
 
-	query := `DELETE FROM battle_queue WHERE id IN (` + paramrefs + `)`
+	query := `DELETE FROM battle_queue WHERE mech_id IN (` + paramrefs + `)`
 
 	_, err = gamedb.Conn.Exec(context.Background(), query, mechids...)
 	if err != nil {

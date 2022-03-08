@@ -10,6 +10,7 @@ import (
 	"server"
 	"server/db"
 	"server/db/boiler"
+	"server/gamedb"
 	"server/gamelog"
 	"strconv"
 	"strings"
@@ -257,19 +258,12 @@ func (arena *Arena) start() {
 
 			switch msg.BattleCommand {
 			case "BATTLE:START":
-				var dataPayload BattleStartPayload
+				var dataPayload *BattleStartPayload
 				if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
 					gamelog.L.Warn().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal battle message payload")
 					continue
 				}
-				for _, wm := range dataPayload.WarMachines {
-					for i, wm2 := range btl.WarMachines {
-						if wm.Hash == wm2.Hash {
-							btl.WarMachines[i].ParticipantID = wm.ParticipantID
-							continue
-						}
-					}
-				}
+				btl.start(dataPayload)
 			case "BATTLE:WAR_MACHINE_DESTROYED":
 				var dataPayload BattleWMDestroyedPayload
 				if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
@@ -308,6 +302,7 @@ func (arena *Arena) Battle() *Battle {
 		arena:   arena,
 		ID:      uuid.Must(uuid.NewV4()),
 		MapName: gameMap.Name,
+		gameMap: gameMap,
 	}
 
 	err = btl.Load()
@@ -316,6 +311,8 @@ func (arena *Arena) Battle() *Battle {
 	}
 
 	bmd := make([]*db.BattleMechData, len(btl.WarMachines))
+
+	factions := map[uuid.UUID]*boiler.Faction{}
 
 	for i, wm := range btl.WarMachines {
 		mechID, err := uuid.FromString(wm.ID)
@@ -341,7 +338,22 @@ func (arena *Arena) Battle() *Battle {
 			OwnerID:   ownerID,
 			FactionID: factionID,
 		}
+
+		_, ok := factions[factionID]
+		if !ok {
+			faction, err := boiler.FindFaction(gamedb.StdConn, factionID.String())
+			if err != nil {
+				gamelog.L.Error().
+					Str("Battle ID", btl.ID.String()).
+					Str("Faction ID", factionID.String()).
+					Err(err).Msg("unable to retrieve faction from database")
+
+			}
+			factions[factionID] = faction
+		}
 	}
+
+	btl.factions = factions
 
 	_, err = db.Battle(btl.ID, uuid.UUID(gameMap.ID), bmd)
 	if err != nil {
@@ -353,6 +365,19 @@ func (arena *Arena) Battle() *Battle {
 }
 
 const HubKeyWarMachineLocationUpdated hub.HubCommandKey = "WAR:MACHINE:LOCATION:UPDATED"
+
+func (btl *Battle) start(payload *BattleStartPayload) {
+	for _, wm := range payload.WarMachines {
+		for i, wm2 := range btl.WarMachines {
+			if wm.Hash == wm2.Hash {
+				btl.WarMachines[i].ParticipantID = wm.ParticipantID
+				continue
+			}
+		}
+	}
+
+	btl.votes = NewVotingSystem(btl)
+}
 
 func (btl *Battle) end(payload *BattleEndPayload) {
 	ids := make([]uuid.UUID, len(btl.WarMachines))
@@ -419,11 +444,48 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	}
 }
 
+type BroadcastPayload struct {
+	Key     hub.HubCommandKey `json:"key"`
+	Payload interface{}       `json:"payload"`
+}
+
+type GameSettingsResponse struct {
+	GameMap            *server.GameMap `json:"gameMap"`
+	WarMachines        []*WarMachine   `json:"warMachines"`
+	SpawnedAI          []*WarMachine   `json:"spawnedAI"`
+	WarMachineLocation []byte          `json:"warMachineLocation"`
+}
+
+func (btl *Battle) updatePayload() *GameSettingsResponse {
+	var lt []byte
+	if btl.lastTick != nil {
+		lt = *btl.lastTick
+	}
+	return &GameSettingsResponse{
+		GameMap:            btl.gameMap,
+		WarMachines:        btl.WarMachines,
+		SpawnedAI:          btl.SpawnedAI,
+		WarMachineLocation: lt,
+	}
+}
+
+const HubKeyGameSettingsUpdated = hub.HubCommandKey("GAME:SETTINGS:UPDATED")
+
+func (btl *Battle) BroadcastUpdate() {
+	btl.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyGameSettingsUpdated), btl.updatePayload())
+}
+
 func (btl *Battle) Tick(payload []byte) {
 	// Save to history
 	// btl.BattleHistory = append(btl.BattleHistory, payload)
 
+	broadcast := false
 	// broadcast
+	if btl.lastTick == nil {
+		broadcast = true
+	}
+	btl.lastTick = &payload
+
 	btl.arena.netMessageBus.Send(context.Background(), messagebus.NetBusKey(HubKeyWarMachineLocationUpdated), payload)
 
 	// Update game settings (so new players get the latest position, health and shield of all warmachines)
@@ -481,6 +543,9 @@ func (btl *Battle) Tick(payload []byte) {
 				btl.WarMachines[warMachineIndex].Shield = shield
 			}
 		}
+	}
+	if broadcast {
+		btl.BroadcastUpdate()
 	}
 }
 

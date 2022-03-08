@@ -239,6 +239,8 @@ func main() {
 					})
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("set up arena")
 
+					fmt.Println("nbotblocking")
+
 					//battleArenaClient := battle_arena.NewBattleArenaClient(ctx, log_helpers.NamedLogger(gamelog.L, "battle-arena"), pgxconn, pp, battleArenaAddr)
 					//battleArenaClient.SetupAfterConnections(gamelog.L) // Blocks until setup properly, fetched and hydrated
 					//gamelog.L.Info().Int("factions", len(battleArenaClient.GetCurrentState().FactionMap)).Msg("Successfully setup battle queue")
