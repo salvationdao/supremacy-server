@@ -945,6 +945,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.MechContainer) []*WarMachi
 			Shield:        uint32(mech.Chassis.MaxShield),
 			Stat:          nil,
 			OwnedByID:     mech.OwnerID,
+			ImageAvatar:   mech.AvatarURL,
 			Faction: &Faction{
 				ID:    mech.Faction.ID,
 				Label: label,

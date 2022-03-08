@@ -36,6 +36,7 @@ type WarMachine struct {
 	MaxShield          uint32          `json:"maxShield"`
 	Shield             uint32          `json:"shield"`
 	Stat               *Stat           `json:"stat"`
+	ImageAvatar        string          `json:"imageAvatar"`
 	Position           *server.Vector3 `json:"position"`
 	Rotation           int             `json:"rotation"`
 	OwnedByID          string          `json:"ownedByID"`
