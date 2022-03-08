@@ -8,7 +8,6 @@ import (
 	"server"
 	"server/battle_arena"
 	"server/db"
-	"sort"
 	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -547,320 +546,324 @@ func (api *API) stopVotingCycle(ctx context.Context) []*server.BattleUserVote {
 // voteStageListenerFactory is the main vote stage handler
 func (api *API) voteStageListenerFactory(ctx context.Context) func() (int, error) {
 	return func() (int, error) {
-		api.VotingCycle(func(va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
-			// skip if it does not reach the end time or current phase is TIE
-			api.votePhaseChecker.RLock()
-			if api.votePhaseChecker.EndTime.After(time.Now()) ||
-				api.votePhaseChecker.Phase == VotePhaseHold ||
-				api.votePhaseChecker.Phase == VotePhaseNextVoteWin {
-				api.votePhaseChecker.RUnlock()
-				return
-			}
-			api.votePhaseChecker.RUnlock()
-
-			switch api.votePhaseChecker.Phase {
-			// at the end of wait mech intro
-			case VotePhaseWaitMechIntro:
-
-				// get random ability collection set
-				battleAbility, factionAbilityMap, err := api.BattleArena.RandomBattleAbility()
-				if err != nil {
-					api.Log.Err(err)
-				}
-
-				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteBattleAbilityUpdated), battleAbility)
-
-				// initialise new ability collection
-				va.BattleAbility = battleAbility
-
-				// initialise new game ability map
-				for fid, ability := range factionAbilityMap {
-					va.FactionAbilityMap[fid] = ability
-				}
-
-				// start vote ticker
-				api.votePhaseChecker.Lock()
-				api.votePhaseChecker.Phase = VotePhaseVoteCooldown
-				api.votePhaseChecker.EndTime = time.Now().Add(time.Duration(battleAbility.CooldownDurationSecond) * time.Second)
-				api.votePhaseChecker.Unlock()
-
-				// broadcast current stage to faction users
-				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
-
-			// at the end of ability right voting
-			case VotePhaseVoteAbilityRight:
-				// stop broadcaster when the vote right is done
-				if vct.AbilityRightResultBroadcaster.NextTick != nil {
-					vct.AbilityRightResultBroadcaster.Stop()
-				}
-
-				fts.Lock()
-				// if no vote, enter next vote win phase
-				if len(fts.Transactions) == 0 {
-					api.votePhaseChecker.Lock()
-					api.votePhaseChecker.Phase = VotePhaseNextVoteWin
-					api.votePhaseChecker.Unlock()
-					// broadcast current stage to faction users
-					go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
-
-					// stop ticker
-					if vct.VotingStageListener.NextTick != nil {
-						vct.VotingStageListener.Stop()
-					}
-					fts.Unlock()
-					return
-				}
-
-				fts.Transactions = []string{}
-				fts.Unlock()
-
-				// HACK: tell user enter location select stage, while committing transactions
-				// commit process may take a noticeale time, so user won't fell the vote system freeze
-				api.votePhaseChecker.Lock()
-				api.votePhaseChecker.Phase = VotePhaseLocationSelect
-				api.votePhaseChecker.Unlock()
-				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
-
-				// parse ability vote result
-				type voter struct {
-					id         server.UserID
-					totalVotes int64
-				}
-				type factionVote struct {
-					factionID  server.FactionID
-					totalVotes int64
-					voters     []*voter
-				}
-
-				factionVotes := []*factionVote{}
-				for factionID, factionUserVote := range fuvm {
-					// record faction vote
-					factionVote := &factionVote{
-						factionID:  factionID,
-						totalVotes: 0,
-						voters:     []*voter{},
-					}
-
-					for userID, totalVotes := range factionUserVote {
-						// add user to user vote map
-						if _, ok := uvm[userID]; !ok {
-							uvm[userID] = totalVotes
-						}
-
-						// add total vote to faction vote
-						factionVote.totalVotes += totalVotes
-
-						// append voter to faction vote
-						factionVote.voters = append(factionVote.voters, &voter{
-							id:         userID,
-							totalVotes: totalVotes,
-						})
-					}
-
-					// if no vote skip current faction
-					if factionVote.totalVotes == 0 {
-						continue
-					}
-
-					// append current result to faction vote list
-					factionVotes = append(factionVotes, factionVote)
-				}
-
-				// enter next vote win phase, there is no valid transaction
-				if len(factionVotes) == 0 {
-					api.votePhaseChecker.Lock()
-					api.votePhaseChecker.Phase = VotePhaseNextVoteWin
-					api.votePhaseChecker.Unlock()
-					// broadcast current stage to faction users
-					go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
-
-					// stop ticker
-					if vct.VotingStageListener.NextTick != nil {
-						vct.VotingStageListener.Stop()
-					}
-					return
-				}
-
-				// sort faction votes
-				sort.Slice(factionVotes, func(i, j int) bool {
-					return factionVotes[i].totalVotes > factionVotes[j].totalVotes
-				})
-
-				// sort voters
-				sort.Slice(factionVotes[0].voters, func(i, j int) bool {
-					return factionVotes[0].voters[i].totalVotes > factionVotes[0].voters[j].totalVotes
-				})
-
-				// append voter to list
-				for _, v := range factionVotes[0].voters {
-					vw.List = append(vw.List, v.id)
-				}
-
-				// unicast to the winner
-				hcd, winnerClientID := api.getNextWinnerDetail(vw)
-				if hcd == nil {
-					// if no winner left, enter cooldown phase
-					go api.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
-						Type:    LocationSelectTypeCancelledNoPlayer,
-						Ability: va.BattleAbility.Brief(),
-					})
-
-					// voting phase change
-					api.votePhaseChecker.Lock()
-					api.votePhaseChecker.Phase = VotePhaseVoteCooldown
-					api.votePhaseChecker.EndTime = time.Now().Add(time.Duration(va.BattleAbility.CooldownDurationSecond) * time.Second)
-					api.votePhaseChecker.Unlock()
-
-					// stop vote price update when cooldown
-					if api.votePriceSystem.VotePriceUpdater.NextTick != nil {
-						api.votePriceSystem.VotePriceUpdater.Stop()
-					}
-
-					// broadcast current stage to faction users
-					go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
-
-					return
-				}
-
-				// voting phase change
-				api.votePhaseChecker.Lock()
-				endTime := time.Now().Add(LocationSelectDurationSecond * time.Second)
-				api.votePhaseChecker.Phase = VotePhaseLocationSelect
-				api.votePhaseChecker.EndTime = endTime
-				api.votePhaseChecker.Unlock()
-
-				go api.BroadcastGameNotificationAbility(GameNotificationTypeBattleAbility, &GameNotificationAbility{
-					User:    hcd.Brief(),
-					Ability: va.FactionAbilityMap[hcd.FactionID].Brief(),
-				})
-
-				// announce winner
-				go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, winnerClientID)), &WinnerSelectAbilityLocation{
-					GameAbility: va.FactionAbilityMap[hcd.FactionID],
-					EndTime:     endTime,
-				})
-
-				// broadcast current stage to faction users
-				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
-
-			// at the end of location select
-			case VotePhaseLocationSelect:
-				currentUser, err := api.UserMap.GetUserDetailByID(vw.List[0])
-				if err != nil {
-					api.Log.Err(err).Msg("failed to get user")
-				}
-				// pop out the first user of the list
-				if len(vw.List) > 1 {
-					vw.List = vw.List[1:]
-				} else {
-					vw.List = []server.UserID{}
-				}
-
-				// get next winner
-				nextUser, winnerClientID := api.getNextWinnerDetail(vw)
-				if nextUser == nil {
-					// if no winner left, enter cooldown phase
-					go api.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
-						Type:    LocationSelectTypeCancelledNoPlayer,
-						Ability: va.BattleAbility.Brief(),
-					})
-
-					// get random ability collection set
-					battleAbility, factionAbilityMap, err := api.BattleArena.RandomBattleAbility()
-					if err != nil {
-						api.Log.Err(err)
-					}
-
-					go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteBattleAbilityUpdated), battleAbility)
-
-					// initialise new ability collection
-					va.BattleAbility = battleAbility
-
-					// initialise new game ability map
-					for fid, ability := range factionAbilityMap {
-						va.FactionAbilityMap[fid] = ability
-					}
-
-					// voting phase change
-					api.votePhaseChecker.Lock()
-					api.votePhaseChecker.Phase = VotePhaseVoteCooldown
-					api.votePhaseChecker.EndTime = time.Now().Add(time.Duration(va.BattleAbility.CooldownDurationSecond) * time.Second)
-					api.votePhaseChecker.Unlock()
-
-					// stop vote price update in when cooldown
-					if api.votePriceSystem.VotePriceUpdater.NextTick != nil {
-						api.votePriceSystem.VotePriceUpdater.Stop()
-					}
-
-					// broadcast current stage to faction users
-					go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
-
-					return
-				}
-
-				// otherwise, choose next winner
-				api.votePhaseChecker.Lock()
-				endTime := time.Now().Add(LocationSelectDurationSecond * time.Second)
-				api.votePhaseChecker.Phase = VotePhaseLocationSelect
-				api.votePhaseChecker.EndTime = endTime
-				api.votePhaseChecker.Unlock()
-
-				// otherwise announce another winner
-				go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, winnerClientID)), &WinnerSelectAbilityLocation{
-					GameAbility: va.FactionAbilityMap[nextUser.FactionID],
-					EndTime:     endTime,
-				})
-
-				// broadcast winner select location
-				go api.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
-					Type:        LocationSelectTypeFailedTimeout,
-					Ability:     va.BattleAbility.Brief(),
-					CurrentUser: currentUser.Brief(),
-					NextUser:    nextUser.Brief(),
-				})
-
-				// broadcast current stage to faction users
-				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
-
-			// at the end of cooldown
-			case VotePhaseVoteCooldown:
-				// initialise faction user vote map
-				for _, fuv := range fuvm {
-					for uid := range fuv {
-						delete(fuv, uid)
-					}
-				}
-
-				// initialise faction total vote
-				ftv.RedMountainTotalVote = 0
-				ftv.BostonTotalVote = 0
-				ftv.ZaibatsuTotalVote = 0
-
-				// initialise vote winner
-				vw.List = []server.UserID{}
-
-				api.votePhaseChecker.Lock()
-				api.votePhaseChecker.Phase = VotePhaseVoteAbilityRight
-				api.votePhaseChecker.EndTime = time.Now().Add(VoteAbilityRightDurationSecond * time.Second)
-				api.votePhaseChecker.Unlock()
-
-				// broadcast current stage to faction users
-				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
-
-				// start tracking vote right result
-				if vct.AbilityRightResultBroadcaster.NextTick == nil || vct.AbilityRightResultBroadcaster.NextTick.Before(time.Now()) {
-					vct.AbilityRightResultBroadcaster.Start()
-				}
-
-				if api.votePriceSystem.VotePriceUpdater.NextTick == nil || api.votePriceSystem.VotePriceUpdater.NextTick.Before(time.Now()) {
-					api.votePriceSystem.VotePriceUpdater.Start()
-				}
-
-			}
-		})
-
-		return http.StatusOK, nil
+		return 0, nil
 	}
+	//TODO ALEX: reimplment
+	//return func() (int, error) {
+	//	api.VotingCycle(func(va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+	//		// skip if it does not reach the end time or current phase is TIE
+	//		api.votePhaseChecker.RLock()
+	//		if api.votePhaseChecker.EndTime.After(time.Now()) ||
+	//			api.votePhaseChecker.Phase == VotePhaseHold ||
+	//			api.votePhaseChecker.Phase == VotePhaseNextVoteWin {
+	//			api.votePhaseChecker.RUnlock()
+	//			return
+	//		}
+	//		api.votePhaseChecker.RUnlock()
+	//
+	//		switch api.votePhaseChecker.Phase {
+	//		// at the end of wait mech intro
+	//		case VotePhaseWaitMechIntro:
+	//
+	//			// get random ability collection set
+	//			battleAbility, factionAbilityMap, err := api.BattleArena.RandomBattleAbility()
+	//			if err != nil {
+	//				api.Log.Err(err)
+	//			}
+	//
+	//			go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteBattleAbilityUpdated), battleAbility)
+	//
+	//			// initialise new ability collection
+	//			va.BattleAbility = battleAbility
+	//
+	//			// initialise new game ability map
+	//			for fid, ability := range factionAbilityMap {
+	//				va.FactionAbilityMap[fid] = ability
+	//			}
+	//
+	//			// start vote ticker
+	//			api.votePhaseChecker.Lock()
+	//			api.votePhaseChecker.Phase = VotePhaseVoteCooldown
+	//			api.votePhaseChecker.EndTime = time.Now().Add(time.Duration(battleAbility.CooldownDurationSecond) * time.Second)
+	//			api.votePhaseChecker.Unlock()
+	//
+	//			// broadcast current stage to faction users
+	//			go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
+	//
+	//		// at the end of ability right voting
+	//		case VotePhaseVoteAbilityRight:
+	//			// stop broadcaster when the vote right is done
+	//			if vct.AbilityRightResultBroadcaster.NextTick != nil {
+	//				vct.AbilityRightResultBroadcaster.Stop()
+	//			}
+	//
+	//			fts.Lock()
+	//			// if no vote, enter next vote win phase
+	//			if len(fts.Transactions) == 0 {
+	//				api.votePhaseChecker.Lock()
+	//				api.votePhaseChecker.Phase = VotePhaseNextVoteWin
+	//				api.votePhaseChecker.Unlock()
+	//				// broadcast current stage to faction users
+	//				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
+	//
+	//				// stop ticker
+	//				if vct.VotingStageListener.NextTick != nil {
+	//					vct.VotingStageListener.Stop()
+	//				}
+	//				fts.Unlock()
+	//				return
+	//			}
+	//
+	//			fts.Transactions = []string{}
+	//			fts.Unlock()
+	//
+	//			// HACK: tell user enter location select stage, while committing transactions
+	//			// commit process may take a noticeale time, so user won't fell the vote system freeze
+	//			api.votePhaseChecker.Lock()
+	//			api.votePhaseChecker.Phase = VotePhaseLocationSelect
+	//			api.votePhaseChecker.Unlock()
+	//			go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
+	//
+	//			// parse ability vote result
+	//			type voter struct {
+	//				id         server.UserID
+	//				totalVotes int64
+	//			}
+	//			type factionVote struct {
+	//				factionID  server.FactionID
+	//				totalVotes int64
+	//				voters     []*voter
+	//			}
+	//
+	//			factionVotes := []*factionVote{}
+	//			for factionID, factionUserVote := range fuvm {
+	//				// record faction vote
+	//				factionVote := &factionVote{
+	//					factionID:  factionID,
+	//					totalVotes: 0,
+	//					voters:     []*voter{},
+	//				}
+	//
+	//				for userID, totalVotes := range factionUserVote {
+	//					// add user to user vote map
+	//					if _, ok := uvm[userID]; !ok {
+	//						uvm[userID] = totalVotes
+	//					}
+	//
+	//					// add total vote to faction vote
+	//					factionVote.totalVotes += totalVotes
+	//
+	//					// append voter to faction vote
+	//					factionVote.voters = append(factionVote.voters, &voter{
+	//						id:         userID,
+	//						totalVotes: totalVotes,
+	//					})
+	//				}
+	//
+	//				// if no vote skip current faction
+	//				if factionVote.totalVotes == 0 {
+	//					continue
+	//				}
+	//
+	//				// append current result to faction vote list
+	//				factionVotes = append(factionVotes, factionVote)
+	//			}
+	//
+	//			// enter next vote win phase, there is no valid transaction
+	//			if len(factionVotes) == 0 {
+	//				api.votePhaseChecker.Lock()
+	//				api.votePhaseChecker.Phase = VotePhaseNextVoteWin
+	//				api.votePhaseChecker.Unlock()
+	//				// broadcast current stage to faction users
+	//				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
+	//
+	//				// stop ticker
+	//				if vct.VotingStageListener.NextTick != nil {
+	//					vct.VotingStageListener.Stop()
+	//				}
+	//				return
+	//			}
+	//
+	//			// sort faction votes
+	//			sort.Slice(factionVotes, func(i, j int) bool {
+	//				return factionVotes[i].totalVotes > factionVotes[j].totalVotes
+	//			})
+	//
+	//			// sort voters
+	//			sort.Slice(factionVotes[0].voters, func(i, j int) bool {
+	//				return factionVotes[0].voters[i].totalVotes > factionVotes[0].voters[j].totalVotes
+	//			})
+	//
+	//			// append voter to list
+	//			for _, v := range factionVotes[0].voters {
+	//				vw.List = append(vw.List, v.id)
+	//			}
+	//
+	//			// unicast to the winner
+	//			hcd, winnerClientID := api.getNextWinnerDetail(vw)
+	//			if hcd == nil {
+	//				// if no winner left, enter cooldown phase
+	//				go api.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
+	//					Type:    LocationSelectTypeCancelledNoPlayer,
+	//					Ability: va.BattleAbility.Brief(),
+	//				})
+	//
+	//				// voting phase change
+	//				api.votePhaseChecker.Lock()
+	//				api.votePhaseChecker.Phase = VotePhaseVoteCooldown
+	//				api.votePhaseChecker.EndTime = time.Now().Add(time.Duration(va.BattleAbility.CooldownDurationSecond) * time.Second)
+	//				api.votePhaseChecker.Unlock()
+	//
+	//				// stop vote price update when cooldown
+	//				if api.votePriceSystem.VotePriceUpdater.NextTick != nil {
+	//					api.votePriceSystem.VotePriceUpdater.Stop()
+	//				}
+	//
+	//				// broadcast current stage to faction users
+	//				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
+	//
+	//				return
+	//			}
+	//
+	//			// voting phase change
+	//			api.votePhaseChecker.Lock()
+	//			endTime := time.Now().Add(LocationSelectDurationSecond * time.Second)
+	//			api.votePhaseChecker.Phase = VotePhaseLocationSelect
+	//			api.votePhaseChecker.EndTime = endTime
+	//			api.votePhaseChecker.Unlock()
+	//
+	//			go api.BroadcastGameNotificationAbility(GameNotificationTypeBattleAbility, &GameNotificationAbility{
+	//				User:    hcd.Brief(),
+	//				Ability: va.FactionAbilityMap[hcd.FactionID].Brief(),
+	//			})
+	//
+	//			// announce winner
+	//			go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, winnerClientID)), &WinnerSelectAbilityLocation{
+	//				GameAbility: va.FactionAbilityMap[hcd.FactionID],
+	//				EndTime:     endTime,
+	//			})
+	//
+	//			// broadcast current stage to faction users
+	//			go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
+	//
+	//		// at the end of location select
+	//		case VotePhaseLocationSelect:
+	//			currentUser, err := api.UserMap.GetUserDetailByID(vw.List[0])
+	//			if err != nil {
+	//				api.Log.Err(err).Msg("failed to get user")
+	//			}
+	//			// pop out the first user of the list
+	//			if len(vw.List) > 1 {
+	//				vw.List = vw.List[1:]
+	//			} else {
+	//				vw.List = []server.UserID{}
+	//			}
+	//
+	//			// get next winner
+	//			nextUser, winnerClientID := api.getNextWinnerDetail(vw)
+	//			if nextUser == nil {
+	//				// if no winner left, enter cooldown phase
+	//				go api.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
+	//					Type:    LocationSelectTypeCancelledNoPlayer,
+	//					Ability: va.BattleAbility.Brief(),
+	//				})
+	//
+	//				// get random ability collection set
+	//				battleAbility, factionAbilityMap, err := api.BattleArena.RandomBattleAbility()
+	//				if err != nil {
+	//					api.Log.Err(err)
+	//				}
+	//
+	//				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteBattleAbilityUpdated), battleAbility)
+	//
+	//				// initialise new ability collection
+	//				va.BattleAbility = battleAbility
+	//
+	//				// initialise new game ability map
+	//				for fid, ability := range factionAbilityMap {
+	//					va.FactionAbilityMap[fid] = ability
+	//				}
+	//
+	//				// voting phase change
+	//				api.votePhaseChecker.Lock()
+	//				api.votePhaseChecker.Phase = VotePhaseVoteCooldown
+	//				api.votePhaseChecker.EndTime = time.Now().Add(time.Duration(va.BattleAbility.CooldownDurationSecond) * time.Second)
+	//				api.votePhaseChecker.Unlock()
+	//
+	//				// stop vote price update in when cooldown
+	//				if api.votePriceSystem.VotePriceUpdater.NextTick != nil {
+	//					api.votePriceSystem.VotePriceUpdater.Stop()
+	//				}
+	//
+	//				// broadcast current stage to faction users
+	//				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
+	//
+	//				return
+	//			}
+	//
+	//			// otherwise, choose next winner
+	//			api.votePhaseChecker.Lock()
+	//			endTime := time.Now().Add(LocationSelectDurationSecond * time.Second)
+	//			api.votePhaseChecker.Phase = VotePhaseLocationSelect
+	//			api.votePhaseChecker.EndTime = endTime
+	//			api.votePhaseChecker.Unlock()
+	//
+	//			// otherwise announce another winner
+	//			go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, winnerClientID)), &WinnerSelectAbilityLocation{
+	//				GameAbility: va.FactionAbilityMap[nextUser.FactionID],
+	//				EndTime:     endTime,
+	//			})
+	//
+	//			// broadcast winner select location
+	//			go api.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
+	//				Type:        LocationSelectTypeFailedTimeout,
+	//				Ability:     va.BattleAbility.Brief(),
+	//				CurrentUser: currentUser.Brief(),
+	//				NextUser:    nextUser.Brief(),
+	//			})
+	//
+	//			// broadcast current stage to faction users
+	//			go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
+	//
+	//		// at the end of cooldown
+	//		case VotePhaseVoteCooldown:
+	//			// initialise faction user vote map
+	//			for _, fuv := range fuvm {
+	//				for uid := range fuv {
+	//					delete(fuv, uid)
+	//				}
+	//			}
+	//
+	//			// initialise faction total vote
+	//			ftv.RedMountainTotalVote = 0
+	//			ftv.BostonTotalVote = 0
+	//			ftv.ZaibatsuTotalVote = 0
+	//
+	//			// initialise vote winner
+	//			vw.List = []server.UserID{}
+	//
+	//			api.votePhaseChecker.Lock()
+	//			api.votePhaseChecker.Phase = VotePhaseVoteAbilityRight
+	//			api.votePhaseChecker.EndTime = time.Now().Add(VoteAbilityRightDurationSecond * time.Second)
+	//			api.votePhaseChecker.Unlock()
+	//
+	//			// broadcast current stage to faction users
+	//			go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
+	//
+	//			// start tracking vote right result
+	//			if vct.AbilityRightResultBroadcaster.NextTick == nil || vct.AbilityRightResultBroadcaster.NextTick.Before(time.Now()) {
+	//				vct.AbilityRightResultBroadcaster.Start()
+	//			}
+	//
+	//			if api.votePriceSystem.VotePriceUpdater.NextTick == nil || api.votePriceSystem.VotePriceUpdater.NextTick.Before(time.Now()) {
+	//				api.votePriceSystem.VotePriceUpdater.Start()
+	//			}
+	//
+	//		}
+	//	})
+	//
+	//	return http.StatusOK, nil
+	//}
 }
 
 // getNextWinnerDetail get next winner detail from vote winner list

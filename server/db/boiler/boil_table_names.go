@@ -11,7 +11,12 @@ var TableNames = struct {
 	BattleEventsState                                  string
 	BattleEventsWarMachineDestroyed                    string
 	BattleEventsWarMachineDestroyedAssistedWarMachines string
+	BattleHistory                                      string
+	BattleKills                                        string
+	BattleMechs                                        string
+	BattleQueue                                        string
 	BattleWarMachineQueues                             string
+	BattleWins                                         string
 	Battles                                            string
 	BattlesUserVotes                                   string
 	BattlesWinnerRecords                               string
@@ -46,31 +51,36 @@ var TableNames = struct {
 	BattleEventsState:               "battle_events_state",
 	BattleEventsWarMachineDestroyed: "battle_events_war_machine_destroyed",
 	BattleEventsWarMachineDestroyedAssistedWarMachines: "battle_events_war_machine_destroyed_assisted_war_machines",
-	BattleWarMachineQueues:                             "battle_war_machine_queues",
-	Battles:                                            "battles",
-	BattlesUserVotes:                                   "battles_user_votes",
-	BattlesWinnerRecords:                               "battles_winner_records",
-	Blobs:                                              "blobs",
-	BlueprintChassis:                                   "blueprint_chassis",
-	BlueprintChassisBlueprintModules:                   "blueprint_chassis_blueprint_modules",
-	BlueprintChassisBlueprintWeapons:                   "blueprint_chassis_blueprint_weapons",
-	BlueprintModules:                                   "blueprint_modules",
-	BlueprintWeapons:                                   "blueprint_weapons",
-	Brands:                                             "brands",
-	Chassis:                                            "chassis",
-	ChassisModules:                                     "chassis_modules",
-	ChassisWeapons:                                     "chassis_weapons",
-	Factions:                                           "factions",
-	GameAbilities:                                      "game_abilities",
-	GameMaps:                                           "game_maps",
-	GlobalAnnouncements:                                "global_announcements",
-	IssuedContractRewards:                              "issued_contract_rewards",
-	Mechs:                                              "mechs",
-	Modules:                                            "modules",
-	Players:                                            "players",
-	SchemaMigrations:                                   "schema_migrations",
-	StreamList:                                         "stream_list",
-	Templates:                                          "templates",
-	Users:                                              "users",
-	Weapons:                                            "weapons",
+	BattleHistory:                    "battle_history",
+	BattleKills:                      "battle_kills",
+	BattleMechs:                      "battle_mechs",
+	BattleQueue:                      "battle_queue",
+	BattleWarMachineQueues:           "battle_war_machine_queues",
+	BattleWins:                       "battle_wins",
+	Battles:                          "battles",
+	BattlesUserVotes:                 "battles_user_votes",
+	BattlesWinnerRecords:             "battles_winner_records",
+	Blobs:                            "blobs",
+	BlueprintChassis:                 "blueprint_chassis",
+	BlueprintChassisBlueprintModules: "blueprint_chassis_blueprint_modules",
+	BlueprintChassisBlueprintWeapons: "blueprint_chassis_blueprint_weapons",
+	BlueprintModules:                 "blueprint_modules",
+	BlueprintWeapons:                 "blueprint_weapons",
+	Brands:                           "brands",
+	Chassis:                          "chassis",
+	ChassisModules:                   "chassis_modules",
+	ChassisWeapons:                   "chassis_weapons",
+	Factions:                         "factions",
+	GameAbilities:                    "game_abilities",
+	GameMaps:                         "game_maps",
+	GlobalAnnouncements:              "global_announcements",
+	IssuedContractRewards:            "issued_contract_rewards",
+	Mechs:                            "mechs",
+	Modules:                          "modules",
+	Players:                          "players",
+	SchemaMigrations:                 "schema_migrations",
+	StreamList:                       "stream_list",
+	Templates:                        "templates",
+	Users:                            "users",
+	Weapons:                          "weapons",
 }

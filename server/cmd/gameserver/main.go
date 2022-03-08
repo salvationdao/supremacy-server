@@ -8,13 +8,18 @@ import (
 	"net/url"
 	"server"
 	"server/api"
-	"server/battle_arena"
+	"server/battle"
 	"server/comms"
 	"server/gamedb"
 	"server/gamelog"
 	"server/passport"
-	"server/seed"
 	"server/supermigrate"
+
+	zerologger "github.com/ninja-syndicate/hub/ext/zerolog"
+	"nhooyr.io/websocket"
+
+	"github.com/ninja-syndicate/hub"
+	"github.com/ninja-syndicate/hub/ext/messagebus"
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -116,6 +121,7 @@ func main() {
 				},
 				Usage: "run server",
 				Action: func(c *cli.Context) error {
+
 					databaseUser := c.String("database_user")
 					databasePass := c.String("database_pass")
 					databaseHost := c.String("database_host")
@@ -201,20 +207,49 @@ func main() {
 					// Start Gameserver - Gameclient server
 					// Passport
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Setting up battle arena client")
-					battleArenaClient := battle_arena.NewBattleArenaClient(ctx, log_helpers.NamedLogger(gamelog.L, "battle-arena"), pgxconn, pp, battleArenaAddr)
-					battleArenaClient.SetupAfterConnections(gamelog.L) // Blocks until setup properly, fetched and hydrated
-					gamelog.L.Info().Int("factions", len(battleArenaClient.GetCurrentState().FactionMap)).Msg("Successfully setup battle queue")
 
-					go func() {
-						err := battleArenaClient.Serve(ctx)
-						if err != nil {
-							fmt.Println(err)
-							os.Exit(1)
-						}
-					}()
+					// initialise net message bus
+					netMessageBus := messagebus.NewNetBus(log_helpers.NamedLogger(gamelog.L, "net_message_bus"))
+					// initialise message bus
+					messageBus := messagebus.NewMessageBus(log_helpers.NamedLogger(gamelog.L, "message_bus"))
+
+					gsHub := hub.New(&hub.Config{
+						Log: zerologger.New(*log_helpers.NamedLogger(gamelog.L, "hub library")),
+						WelcomeMsg: &hub.WelcomeMsg{
+							Key:     "WELCOME",
+							Payload: nil,
+						},
+						AcceptOptions: &websocket.AcceptOptions{
+							InsecureSkipVerify: true, // TODO: set this depending on environment
+						},
+						ClientOfflineFn: func(cl *hub.Client) {
+							netMessageBus.UnsubAll(cl)
+							messageBus.UnsubAll(cl)
+						},
+					})
+
+					ba := battle.NewArena(&battle.Opts{
+						Addr:          battleArenaAddr,
+						Conn:          pgxconn,
+						NetMessageBus: netMessageBus,
+						MessageBus:    messageBus,
+						Hub:           gsHub,
+					})
+
+					//battleArenaClient := battle_arena.NewBattleArenaClient(ctx, log_helpers.NamedLogger(gamelog.L, "battle-arena"), pgxconn, pp, battleArenaAddr)
+					//battleArenaClient.SetupAfterConnections(gamelog.L) // Blocks until setup properly, fetched and hydrated
+					//gamelog.L.Info().Int("factions", len(battleArenaClient.GetCurrentState().FactionMap)).Msg("Successfully setup battle queue")
+
+					//go func() {
+					//	err := battleArenaClient.Serve(ctx)
+					//	if err != nil {
+					//		fmt.Println(err)
+					//		os.Exit(1)
+					//	}
+					//}()
 
 					gamelog.L.Info().Msg("Setting up webhook rest API")
-					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), battleArenaClient, pgxconn, pp)
+					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, pgxconn, pp, messageBus, netMessageBus, gsHub)
 					if err != nil {
 						fmt.Println(err)
 						os.Exit(1)
@@ -339,48 +374,6 @@ func main() {
 					return nil
 				},
 			},
-			{
-				Name: "db",
-				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "database_user", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_USER"}, Usage: "The database user"},
-					&cli.StringFlag{Name: "database_pass", Value: "dev", EnvVars: []string{envPrefix + "_DATABASE_PASS"}, Usage: "The database pass"},
-					&cli.StringFlag{Name: "database_host", Value: "localhost", EnvVars: []string{envPrefix + "_DATABASE_HOST"}, Usage: "The database host"},
-					&cli.StringFlag{Name: "database_port", Value: "5437", EnvVars: []string{envPrefix + "_DATABASE_PORT"}, Usage: "The database port"},
-					&cli.StringFlag{Name: "database_name", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_NAME"}, Usage: "The database name"},
-					&cli.StringFlag{Name: "database_application_name", Value: "API Server", EnvVars: []string{envPrefix + "_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
-					&cli.BoolFlag{Name: "assets", Value: false, Usage: "Whether to seed assets only"},
-
-					//&cli.BoolFlag{Name: "seed", EnvVars: []string{"DB_SEED"}, Usage: "seed the database"},
-				},
-				Usage: "seed the database",
-				Action: func(c *cli.Context) error {
-					databaseUser := c.String("database_user")
-					databasePass := c.String("database_pass")
-					databaseHost := c.String("database_host")
-					databasePort := c.String("database_port")
-					databaseName := c.String("database_name")
-					databaseAppName := c.String("database_application_name")
-
-					pgxconn, err := pgxconnect(
-						databaseUser,
-						databasePass,
-						databaseHost,
-						databasePort,
-						databaseName,
-						databaseAppName,
-						Version,
-					)
-					if err != nil {
-						return terror.Error(err)
-					}
-
-					seeder := seed.NewSeeder(pgxconn)
-					if c.Bool("assets") {
-						return seeder.RunAssets()
-					}
-					return seeder.Run()
-				},
-			},
 		},
 	}
 
@@ -391,7 +384,7 @@ func main() {
 	}
 }
 
-func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, battleArenaClient *battle_arena.BattleArena, conn *pgxpool.Pool, passport *passport.Passport) (*api.API, error) {
+func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, battleArenaClient *battle.Arena, conn *pgxpool.Pool, passport *passport.Passport, messageBus *messagebus.MessageBus, netMessageBus *messagebus.NetBus, gsHub *hub.Hub) (*api.API, error) {
 	environment := ctxCLI.String("environment")
 	sentryDSNBackend := ctxCLI.String("sentry_dsn_backend")
 	sentryServerName := ctxCLI.String("sentry_server_name")
@@ -430,7 +423,7 @@ func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, bat
 	HTMLSanitizePolicy.AllowAttrs("class").OnElements("img", "table", "tr", "td", "p")
 
 	// API Server
-	serverAPI := api.NewAPI(ctx, log, battleArenaClient, passport, apiAddr, HTMLSanitizePolicy, conn, config)
+	serverAPI := api.NewAPI(ctx, log, battleArenaClient, passport, apiAddr, HTMLSanitizePolicy, conn, config, messageBus, netMessageBus, gsHub)
 	return serverAPI, nil
 }
 

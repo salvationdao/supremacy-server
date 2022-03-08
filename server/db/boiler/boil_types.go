@@ -50,3 +50,11 @@ func makeCacheKey(cols boil.Columns, nzDefaults []string) string {
 	strmangle.PutBuffer(buf)
 	return str
 }
+
+// Enum values for BattleEvent
+const (
+	BattleEventKilled           = "killed"
+	BattleEventSpawnedAi        = "spawned_ai"
+	BattleEventKill             = "kill"
+	BattleEventAbilityTriggered = "ability_triggered"
+)

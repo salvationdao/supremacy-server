@@ -14,7 +14,7 @@ CREATE TABLE players (
     faction_id UUID REFERENCES factions(id),
     username TEXT UNIQUE,
     public_address TEXT UNIQUE,
-
+    is_ai BOOL NOT NULL DEFAULT false,
     deleted_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -238,9 +238,9 @@ INSERT INTO brands (id, faction_id, label) VALUES ('009f71fc-3594-4d24-a6e2-f050
 
 -- Players
 -- 1 for each faction
-INSERT INTO players (id, faction_id, username, public_address) VALUES ('1a657a32-778e-4612-8cc1-14e360665f2b', '880db344-e405-428d-84e5-6ebebab1fe6d', 'Zaibatsu', NULL);
-INSERT INTO players (id, faction_id, username, public_address) VALUES ('305da475-53dc-4973-8d78-a30d390d3de5', '98bf7bb3-1a7c-4f21-8843-458d62884060', 'RedMountain', NULL);
-INSERT INTO players (id, faction_id, username, public_address) VALUES ('15f29ee9-e834-4f76-aff8-31e39faabe2d', '7c6dde21-b067-46cf-9e56-155c88a520e2', 'BostonCybernetics', NULL);
+INSERT INTO players (id, faction_id, username, public_address, is_ai) VALUES ('1a657a32-778e-4612-8cc1-14e360665f2b', '880db344-e405-428d-84e5-6ebebab1fe6d', 'Zaibatsu', NULL, true);
+INSERT INTO players (id, faction_id, username, public_address, is_ai) VALUES ('305da475-53dc-4973-8d78-a30d390d3de5', '98bf7bb3-1a7c-4f21-8843-458d62884060', 'RedMountain', NULL, true);
+INSERT INTO players (id, faction_id, username, public_address, is_ai) VALUES ('15f29ee9-e834-4f76-aff8-31e39faabe2d', '7c6dde21-b067-46cf-9e56-155c88a520e2', 'BostonCybernetics', NULL, true);
 
 -- Default Chassis
 -- 1 for ZHI

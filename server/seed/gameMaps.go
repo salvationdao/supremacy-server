@@ -1,12 +1,34 @@
-package seed
+package main
 
-import "server"
+import (
+	"context"
+
+	"github.com/georgysavva/scany/pgxscan"
+	"github.com/gofrs/uuid"
+	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/ninja-software/terror/v2"
+)
 
 // To get the location in game its
 //  ((cellX * GameClientTileSize) + GameClientTileSize / 2) + LeftPixels
 //  ((cellY * GameClientTileSize) + GameClientTileSize / 2) + TopPixels
 
-var GameMaps = []*server.GameMap{
+type GameMap struct {
+	ID            uuid.UUID `json:"id" db:"id"`
+	Name          string    `json:"name" db:"name"`
+	ImageUrl      string    `json:"image_url" db:"image_url"`
+	MaxSpawns     int       `json:"max_spawns" db:"max_spawns"`
+	Width         int       `json:"width" db:"width"`
+	Height        int       `json:"height" db:"height"`
+	CellsX        int       `json:"cells_x" db:"cells_x"`
+	CellsY        int       `json:"cells_y" db:"cells_y"`
+	TopPixels     int       `json:"top" db:"top_pixels"`
+	LeftPixels    int       `json:"left" db:"left_pixels"`
+	Scale         float64   `json:"scale" db:"scale"`
+	DisabledCells []int     `json:"disabled_cells" db:"disabled_cells"`
+}
+
+var GameMaps = []*GameMap{
 	{
 		Name:       "DesertCity",
 		ImageUrl:   "https://ninjasoftware-static-media.s3.ap-southeast-2.amazonaws.com/supremacy/maps/desert_city.jpg",
@@ -53,4 +75,57 @@ var GameMaps = []*server.GameMap{
 			1054, 1055, 1056, 1057, 1058, 1059, 1060, 1061, 1062, 1063, 1064, 1065, 1066, 1067, 1068, 1069, 1070, 1071, 1072, 1073, 1074, 1075, 1076, 1077, 1078, 1079, 1080, 1081, 1082, 1083, 1084, 1085, 1086, 1087,
 		},
 	},
+}
+
+// GameMapCreate create a new game map
+func GameMapCreate(ctx context.Context, conn *pgxpool.Pool, gameMap *GameMap) error {
+	q := `
+		INSERT INTO 
+			game_maps (
+				name, 
+				image_url, 
+				width, 
+				height, 
+				cells_x, 
+				cells_y, 
+				top_pixels, 
+				left_pixels, 
+				scale, 
+				disabled_cells,
+				max_spawns
+			)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		RETURNING 
+			id,
+			name, 
+			image_url, 
+			width, 
+			height, 
+			cells_x, 
+			cells_y, 
+			top_pixels, 
+			left_pixels, 
+			scale,
+			disabled_cells,
+			max_spawns
+		
+	`
+	err := pgxscan.Get(ctx, conn, gameMap, q,
+		gameMap.Name,
+		gameMap.ImageUrl,
+		gameMap.Width,
+		gameMap.Height,
+		gameMap.CellsX,
+		gameMap.CellsY,
+		gameMap.TopPixels,
+		gameMap.LeftPixels,
+		gameMap.Scale,
+		gameMap.DisabledCells,
+		gameMap.MaxSpawns,
+	)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	return nil
 }

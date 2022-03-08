@@ -41,142 +41,143 @@ type GameAbilityPoolTicker struct {
 
 func (api *API) StartGameAbilityPool(ctx context.Context, factionID server.FactionID, conn *pgxpool.Pool) {
 	// initial game ability
-
-	factionAbilitiesPool := &deadlock.Map{}
-
-	go func() {
-		for {
-			if api.BattleArena.BattleActive() {
-				api.abilityTargetPriceUpdater(factionID, conn)
-				time.Sleep(10 * time.Second)
-			} else {
-				time.Sleep(1 * time.Second)
-			}
-		}
-	}()
-
-	go func() {
-		for {
-			if api.BattleArena.BattleActive() {
-				api.abilityTargetPriceBroadcast(factionID)
-				time.Sleep(500 * time.Millisecond)
-			} else {
-				time.Sleep(1 * time.Second)
-			}
-		}
-	}()
-
-	api.gameAbilityPool[factionID] = func(fn func(factionAbilitiesPool *deadlock.Map)) {
-		fn(factionAbilitiesPool)
-	}
+	//TODO ALEX reimmplement
+	//factionAbilitiesPool := &deadlock.Map{}
+	//
+	//go func() {
+	//	for {
+	//		if api.BattleArena.BattleActive() {
+	//			api.abilityTargetPriceUpdater(factionID, conn)
+	//			time.Sleep(10 * time.Second)
+	//		} else {
+	//			time.Sleep(1 * time.Second)
+	//		}
+	//	}
+	//}()
+	//
+	//go func() {
+	//	for {
+	//		if api.BattleArena.BattleActive() {
+	//			api.abilityTargetPriceBroadcast(factionID)
+	//			time.Sleep(500 * time.Millisecond)
+	//		} else {
+	//			time.Sleep(1 * time.Second)
+	//		}
+	//	}
+	//}()
+	//
+	//api.gameAbilityPool[factionID] = func(fn func(factionAbilitiesPool *deadlock.Map)) {
+	//	fn(factionAbilitiesPool)
+	//}
 }
 
 func (api *API) abilityTargetPriceUpdater(factionID server.FactionID, conn *pgxpool.Pool) {
-	minPrice := big.NewInt(1000000000000000000)
 	// targetPriceChan := make(chan string)
 	// errChan := make(chan error)
 
 	// update ability target price
-	api.gameAbilityPool[factionID](func(fap *deadlock.Map) {
-		targetPriceList := []string{}
-		fap.Range(func(key interface{}, gameAbilityPrice interface{}) bool {
-			fa := gameAbilityPrice.(*GameAbilityPrice)
-
-			// in order to reduce price by half after 5 minutes
-			// reduce target price by 0.9772 on every tick
-			fa.PriceRW.Lock()
-			defer fa.PriceRW.Unlock()
-			fa.TargetPrice.Mul(&fa.TargetPrice.Int, big.NewInt(9772))
-			fa.TargetPrice.Div(&fa.TargetPrice.Int, big.NewInt(10000))
-
-			if fa.TargetPrice.Cmp(minPrice) <= 0 {
-				fa.TargetPrice = server.BigInt{Int: *minPrice}
-				fap.Store(fa.GameAbility.Identity.String(), fa)
-			}
-
-			hasTriggered := 0
-			if fa.TargetPrice.Cmp(&fa.CurrentSups.Int) <= 0 {
-
-				// calc min target price (half of last max target price)
-				minTargetPrice := server.BigInt{Int: *big.NewInt(0)}
-				minTargetPrice.Add(&minTargetPrice.Int, &fa.MaxTargetPrice.Int)
-				minTargetPrice.Div(&minTargetPrice.Int, big.NewInt(2))
-
-				// calc current new target price (twice of current target price)
-				newTargetPrice := server.BigInt{Int: *big.NewInt(0)}
-				newTargetPrice.Add(&newTargetPrice.Int, &fa.TargetPrice.Int)
-				newTargetPrice.Mul(&newTargetPrice.Int, big.NewInt(2))
-
-				// reset target price and max target price
-				fa.TargetPrice = server.BigInt{Int: *big.NewInt(0)}
-				fa.MaxTargetPrice = server.BigInt{Int: *big.NewInt(0)}
-				if newTargetPrice.Cmp(&minTargetPrice.Int) >= 0 {
-					fa.TargetPrice.Add(&fa.TargetPrice.Int, &newTargetPrice.Int)
-					fa.MaxTargetPrice.Add(&fa.MaxTargetPrice.Int, &newTargetPrice.Int)
-				} else {
-					fa.TargetPrice.Add(&fa.TargetPrice.Int, &minTargetPrice.Int)
-					fa.MaxTargetPrice.Add(&fa.MaxTargetPrice.Int, &minTargetPrice.Int)
-				}
-
-				// reset current sups to zero
-				fa.CurrentSups = server.BigInt{Int: *big.NewInt(0)}
-				fap.Store(fa.GameAbility.Identity.String(), fa)
-
-				fa.TxMX.Lock()
-				fa.TxRefs = []string{}
-				fa.TxMX.Unlock()
-
-				abilityTriggerEvent := &server.GameAbilityEvent{
-					IsTriggered:         true,
-					GameClientAbilityID: fa.GameAbility.GameClientAbilityID,
-					ParticipantID:       fa.GameAbility.ParticipantID,
-				}
-				if fa.GameAbility.AbilityHash == "" {
-					abilityTriggerEvent.GameAbilityID = &fa.GameAbility.ID
-				} else {
-					abilityTriggerEvent.AbilityHash = &fa.GameAbility.AbilityHash
-				}
-
-				// trigger battle arena function to handle game ability
-				err := api.BattleArena.GameAbilityTrigger(abilityTriggerEvent)
-				if err != nil {
-					return false
-				}
-
-				ability := fa.GameAbility.Brief()
-				if fa.GameAbility.AbilityHash == "" {
-					go api.BroadcastGameNotificationAbility(GameNotificationTypeFactionAbility, &GameNotificationAbility{
-						Ability: ability,
-					})
-				} else {
-					warMachine := api.BattleArena.GetWarMachine(fa.GameAbility.WarMachineHash).Brief()
-					// broadcast notification
-					go api.BroadcastGameNotificationWarMachineAbility(&GameNotificationWarMachineAbility{
-						Ability:    ability,
-						WarMachine: warMachine,
-					})
-				}
-
-				hasTriggered = 1
-			}
-
-			// record current price
-			targetPriceList = append(targetPriceList, fmt.Sprintf("%s_%s_%s_%d", fa.GameAbility.Identity, fa.TargetPrice.String(), fa.CurrentSups.String(), hasTriggered))
-
-			return true
-		})
-
-		targetPrice := strings.Join(targetPriceList, "|")
-		if targetPrice != "" {
-			// prepare broadcast payload
-			payload := []byte{}
-			payload = append(payload, byte(battle_arena.NetMessageTypeAbilityTargetPriceTick))
-			payload = append(payload, []byte(strings.Join(targetPriceList, "|"))...)
-
-			// start broadcast
-			api.NetMessageBus.Send(context.Background(), messagebus.NetBusKey(fmt.Sprintf("%s:%s", HubKeyFactionAbilityPriceUpdated, factionID)), payload)
-		}
-	})
+	//TODO ALEX: fix
+	//minPrice := big.NewInt(1000000000000000000)
+	//api.gameAbilityPool[factionID](func(fap *deadlock.Map) {
+	//	targetPriceList := []string{}
+	//	fap.Range(func(key interface{}, gameAbilityPrice interface{}) bool {
+	//		fa := gameAbilityPrice.(*GameAbilityPrice)
+	//
+	//		// in order to reduce price by half after 5 minutes
+	//		// reduce target price by 0.9772 on every tick
+	//		fa.PriceRW.Lock()
+	//		defer fa.PriceRW.Unlock()
+	//		fa.TargetPrice.Mul(&fa.TargetPrice.Int, big.NewInt(9772))
+	//		fa.TargetPrice.Div(&fa.TargetPrice.Int, big.NewInt(10000))
+	//
+	//		if fa.TargetPrice.Cmp(minPrice) <= 0 {
+	//			fa.TargetPrice = server.BigInt{Int: *minPrice}
+	//			fap.Store(fa.GameAbility.Identity.String(), fa)
+	//		}
+	//
+	//		hasTriggered := 0
+	//		if fa.TargetPrice.Cmp(&fa.CurrentSups.Int) <= 0 {
+	//
+	//			// calc min target price (half of last max target price)
+	//			minTargetPrice := server.BigInt{Int: *big.NewInt(0)}
+	//			minTargetPrice.Add(&minTargetPrice.Int, &fa.MaxTargetPrice.Int)
+	//			minTargetPrice.Div(&minTargetPrice.Int, big.NewInt(2))
+	//
+	//			// calc current new target price (twice of current target price)
+	//			newTargetPrice := server.BigInt{Int: *big.NewInt(0)}
+	//			newTargetPrice.Add(&newTargetPrice.Int, &fa.TargetPrice.Int)
+	//			newTargetPrice.Mul(&newTargetPrice.Int, big.NewInt(2))
+	//
+	//			// reset target price and max target price
+	//			fa.TargetPrice = server.BigInt{Int: *big.NewInt(0)}
+	//			fa.MaxTargetPrice = server.BigInt{Int: *big.NewInt(0)}
+	//			if newTargetPrice.Cmp(&minTargetPrice.Int) >= 0 {
+	//				fa.TargetPrice.Add(&fa.TargetPrice.Int, &newTargetPrice.Int)
+	//				fa.MaxTargetPrice.Add(&fa.MaxTargetPrice.Int, &newTargetPrice.Int)
+	//			} else {
+	//				fa.TargetPrice.Add(&fa.TargetPrice.Int, &minTargetPrice.Int)
+	//				fa.MaxTargetPrice.Add(&fa.MaxTargetPrice.Int, &minTargetPrice.Int)
+	//			}
+	//
+	//			// reset current sups to zero
+	//			fa.CurrentSups = server.BigInt{Int: *big.NewInt(0)}
+	//			fap.Store(fa.GameAbility.Identity.String(), fa)
+	//
+	//			fa.TxMX.Lock()
+	//			fa.TxRefs = []string{}
+	//			fa.TxMX.Unlock()
+	//
+	//			abilityTriggerEvent := &server.GameAbilityEvent{
+	//				IsTriggered:         true,
+	//				GameClientAbilityID: fa.GameAbility.GameClientAbilityID,
+	//				ParticipantID:       fa.GameAbility.ParticipantID,
+	//			}
+	//			if fa.GameAbility.AbilityHash == "" {
+	//				abilityTriggerEvent.GameAbilityID = &fa.GameAbility.ID
+	//			} else {
+	//				abilityTriggerEvent.AbilityHash = &fa.GameAbility.AbilityHash
+	//			}
+	//
+	//			// trigger battle arena function to handle game ability
+	//			err := api.BattleArena.GameAbilityTrigger(abilityTriggerEvent)
+	//			if err != nil {
+	//				return false
+	//			}
+	//
+	//			ability := fa.GameAbility.Brief()
+	//			if fa.GameAbility.AbilityHash == "" {
+	//				go api.BroadcastGameNotificationAbility(GameNotificationTypeFactionAbility, &GameNotificationAbility{
+	//					Ability: ability,
+	//				})
+	//			} else {
+	//				warMachine := api.BattleArena.GetWarMachine(fa.GameAbility.WarMachineHash).Brief()
+	//				// broadcast notification
+	//				go api.BroadcastGameNotificationWarMachineAbility(&GameNotificationWarMachineAbility{
+	//					Ability:    ability,
+	//					WarMachine: warMachine,
+	//				})
+	//			}
+	//
+	//			hasTriggered = 1
+	//		}
+	//
+	//		// record current price
+	//		targetPriceList = append(targetPriceList, fmt.Sprintf("%s_%s_%s_%d", fa.GameAbility.Identity, fa.TargetPrice.String(), fa.CurrentSups.String(), hasTriggered))
+	//
+	//		return true
+	//	})
+	//
+	//	targetPrice := strings.Join(targetPriceList, "|")
+	//	if targetPrice != "" {
+	//		// prepare broadcast payload
+	//		payload := []byte{}
+	//		payload = append(payload, byte(battle_arena.NetMessageTypeAbilityTargetPriceTick))
+	//		payload = append(payload, []byte(strings.Join(targetPriceList, "|"))...)
+	//
+	//		// start broadcast
+	//		api.NetMessageBus.Send(context.Background(), messagebus.NetBusKey(fmt.Sprintf("%s:%s", HubKeyFactionAbilityPriceUpdated, factionID)), payload)
+	//	}
+	//})
 }
 
 func (api *API) abilityTargetPriceBroadcast(factionID server.FactionID) {

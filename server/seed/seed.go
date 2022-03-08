@@ -1,4 +1,4 @@
-package seed
+package main
 
 import (
 	"context"
@@ -7,8 +7,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"server"
-	"server/db"
+	"time"
+
+	"github.com/georgysavva/scany/pgxscan"
 
 	"github.com/gofrs/uuid"
 	"github.com/h2non/filetype"
@@ -79,7 +80,7 @@ func (s *Seeder) RunAssets() error {
 
 func gameMaps(ctx context.Context, conn *pgxpool.Pool) error {
 	for _, gameMap := range GameMaps {
-		err := db.GameMapCreate(ctx, conn, gameMap)
+		err := GameMapCreate(ctx, conn, gameMap)
 		if err != nil {
 			fmt.Println(err)
 			return terror.Error(err)
@@ -88,18 +89,28 @@ func gameMaps(ctx context.Context, conn *pgxpool.Pool) error {
 	return nil
 }
 
-var BlobIDAbilityAirstrike = server.BlobID(uuid.Must(uuid.FromString("dc713e47-4119-494a-a81b-8ac92cf3222b")))
-var BlobIDAbilityRobotDogs = server.BlobID(uuid.Must(uuid.FromString("3b4ae24a-7ccb-4d3b-8d88-905b406da0e1")))
-var BlobIDAbilityReinforcements = server.BlobID(uuid.Must(uuid.FromString("5d0a0028-c074-4ab5-b46e-14d0ff07795d")))
-var BlobIDAbilityRepair = server.BlobID(uuid.Must(uuid.FromString("f40e90b7-1ea2-4a91-bf0f-feb052a019be")))
-var BlobIDAbilityNuke = server.BlobID(uuid.Must(uuid.FromString("8e0e1918-556c-4370-85f9-b8960fd19554")))
-var BlobIDAbilityOvercharge = server.BlobID(uuid.Must(uuid.FromString("04acaffd-7bd1-4b01-b264-feb4f8ab4563")))
+type BattleAbility struct {
+	ID                     uuid.UUID `json:"id" db:"id"`
+	Label                  string    `json:"label" db:"label"`
+	Description            string    `json:"description" db:"description"`
+	CooldownDurationSecond int       `json:"cooldown_duration_second" db:"cooldown_duration_second"`
+	Colour                 string    `json:"colour"`
+	TextColour             string    `json:"text_colour"`
+	ImageUrl               string    `json:"image_url"`
+}
 
-var FactionIDRedMountain = server.FactionID(uuid.Must(uuid.FromString("98bf7bb3-1a7c-4f21-8843-458d62884060")))
-var FactionIDBoston = server.FactionID(uuid.Must(uuid.FromString("7c6dde21-b067-46cf-9e56-155c88a520e2")))
-var FactionIDZaibatsu = server.FactionID(uuid.Must(uuid.FromString("880db344-e405-428d-84e5-6ebebab1fe6d")))
+var BlobIDAbilityAirstrike = uuid.Must(uuid.FromString("dc713e47-4119-494a-a81b-8ac92cf3222b"))
+var BlobIDAbilityRobotDogs = uuid.Must(uuid.FromString("3b4ae24a-7ccb-4d3b-8d88-905b406da0e1"))
+var BlobIDAbilityReinforcements = uuid.Must(uuid.FromString("5d0a0028-c074-4ab5-b46e-14d0ff07795d"))
+var BlobIDAbilityRepair = uuid.Must(uuid.FromString("f40e90b7-1ea2-4a91-bf0f-feb052a019be"))
+var BlobIDAbilityNuke = uuid.Must(uuid.FromString("8e0e1918-556c-4370-85f9-b8960fd19554"))
+var BlobIDAbilityOvercharge = uuid.Must(uuid.FromString("04acaffd-7bd1-4b01-b264-feb4f8ab4563"))
 
-var SharedAbilityCollections = []*server.BattleAbility{
+var FactionIDRedMountain = uuid.Must(uuid.FromString("98bf7bb3-1a7c-4f21-8843-458d62884060"))
+var FactionIDBoston = uuid.Must(uuid.FromString("7c6dde21-b067-46cf-9e56-155c88a520e2"))
+var FactionIDZaibatsu = uuid.Must(uuid.FromString("880db344-e405-428d-84e5-6ebebab1fe6d"))
+
+var SharedAbilityCollections = []*BattleAbility{
 	{
 		Label:                  "AIRSTRIKE",
 		Description:            "Rain fury on the arena with a targeted airstrike.",
@@ -117,7 +128,22 @@ var SharedAbilityCollections = []*server.BattleAbility{
 	},
 }
 
-var AbilityBlobs = []*server.Blob{
+// Blob is a single attachment item on the platform
+type Blob struct {
+	ID            uuid.UUID  `json:"id" db:"id"`
+	FileName      string     `json:"file_name" db:"file_name"`
+	MimeType      string     `json:"mime_type" db:"mime_type"`
+	FileSizeBytes int64      `json:"file_size_bytes" db:"file_size_bytes"`
+	Extension     string     `json:"extension" db:"extension"`
+	File          []byte     `json:"file" db:"file"`
+	Views         int        `json:"views" db:"views"`
+	Hash          *string    `json:"hash" db:"hash"`
+	DeletedAt     *time.Time `json:"deleted_at" db:"deleted_at"`
+	UpdateAt      *time.Time `json:"updated_at" db:"updated_at"`
+	CreatedAt     *time.Time `json:"created_at" db:"created_at"`
+}
+
+var AbilityBlobs = []*Blob{
 	// BlobIDAbilityAirstrike
 	{
 		ID:       BlobIDAbilityAirstrike,
@@ -150,7 +176,30 @@ var AbilityBlobs = []*server.Blob{
 	},
 }
 
-var SharedFactionAbilities = []*server.GameAbility{
+type GameAbility struct {
+	ID                  uuid.UUID  `json:"id" db:"id"`
+	Identity            uuid.UUID  `json:"identity"` // used for tracking ability price
+	GameClientAbilityID byte       `json:"game_client_ability_id" db:"game_client_ability_id"`
+	BattleAbilityID     *uuid.UUID `json:"battle_ability_id,omitempty" db:"battle_ability_id,omitempty"`
+	Colour              string     `json:"colour" db:"colour"`
+	TextColour          string     `json:"text_colour" db:"text_colour"`
+	Description         string     `json:"description" db:"description"`
+	ImageUrl            string     `json:"image_url" db:"image_url"`
+	FactionID           uuid.UUID  `json:"faction_id" db:"faction_id"`
+	Label               string     `json:"label" db:"label"`
+	SupsCost            string     `json:"sups_cost" db:"sups_cost"`
+	CurrentSups         string     `json:"current_sups"`
+
+	// if token id is not 0, it is a nft ability, otherwise it is a faction wide ability
+	AbilityHash    string
+	WarMachineHash string
+	ParticipantID  *byte
+
+	// Category title for frontend to group the abilities together
+	Title string `json:"title"`
+}
+
+var SharedFactionAbilities = []*GameAbility{
 	// FactionIDZaibatsu
 	{
 		Label:               "AIRSTRIKE",
@@ -246,7 +295,7 @@ var SharedFactionAbilities = []*server.GameAbility{
 	},
 }
 
-var BostonUniqueAbilities = []*server.GameAbility{
+var BostonUniqueAbilities = []*GameAbility{
 	{
 
 		Label:               "ROBOT DOGS",
@@ -260,7 +309,7 @@ var BostonUniqueAbilities = []*server.GameAbility{
 	},
 }
 
-var RedMountainUniqueAbilities = []*server.GameAbility{
+var RedMountainUniqueAbilities = []*GameAbility{
 	{
 		Label:               "REINFORCEMENTS",
 		FactionID:           FactionIDRedMountain,
@@ -273,7 +322,7 @@ var RedMountainUniqueAbilities = []*server.GameAbility{
 	},
 }
 
-var ZaibatsuUniqueAbilities = []*server.GameAbility{
+var ZaibatsuUniqueAbilities = []*GameAbility{
 	{
 		Label:               "OVERCHARGE",
 		FactionID:           FactionIDZaibatsu,
@@ -286,9 +335,60 @@ var ZaibatsuUniqueAbilities = []*server.GameAbility{
 	},
 }
 
+// GameAbilityCreate create a new faction action
+func GameAbilityCreate(ctx context.Context, conn *pgxpool.Pool, gameAbility *GameAbility) error {
+	q := `
+		INSERT INTO
+			game_abilities (game_client_ability_id, faction_id, label, sups_cost, battle_ability_id, colour, text_colour, description, image_url)
+		VALUES
+			($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		RETURNING
+			id, game_client_ability_id, faction_id, label, sups_cost, battle_ability_id, colour, text_colour, description, image_url
+	`
+
+	err := pgxscan.Get(ctx, conn, gameAbility, q,
+		gameAbility.GameClientAbilityID,
+		gameAbility.FactionID,
+		gameAbility.Label,
+		gameAbility.SupsCost,
+		gameAbility.BattleAbilityID,
+		gameAbility.Colour,
+		gameAbility.TextColour,
+		gameAbility.Description,
+		gameAbility.ImageUrl,
+	)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	return nil
+}
+
+// BattleAbilityCreate create ability collection
+func BattleAbilityCreate(ctx context.Context, conn *pgxpool.Pool, battleAbility *BattleAbility) error {
+	q := `
+		INSERT INTO
+			battle_abilities (label, description, cooldown_duration_second)
+		VALUES
+			($1, $2, $3)
+		RETURNING
+			id, label, description, cooldown_duration_second
+	`
+	err := pgxscan.Get(ctx, conn, battleAbility, q,
+		battleAbility.Label,
+		battleAbility.Description,
+		battleAbility.CooldownDurationSecond,
+	)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	return nil
+}
+
 func factionAbilities(ctx context.Context, conn *pgxpool.Pool) error {
 	for _, battleAbility := range SharedAbilityCollections {
-		err := db.BattleAbilityCreate(ctx, conn, battleAbility)
+		err := BattleAbilityCreate(ctx, conn, battleAbility)
 		if err != nil {
 			return terror.Error(err)
 		}
@@ -301,7 +401,7 @@ func factionAbilities(ctx context.Context, conn *pgxpool.Pool) error {
 				ability.BattleAbilityID = &battleAbility.ID
 			}
 		}
-		err := db.GameAbilityCreate(ctx, conn, ability)
+		err := GameAbilityCreate(ctx, conn, ability)
 		if err != nil {
 			return terror.Error(err)
 		}
@@ -310,7 +410,7 @@ func factionAbilities(ctx context.Context, conn *pgxpool.Pool) error {
 
 	// insert red mountain faction abilities
 	for _, gameAbility := range RedMountainUniqueAbilities {
-		err := db.GameAbilityCreate(ctx, conn, gameAbility)
+		err := GameAbilityCreate(ctx, conn, gameAbility)
 		if err != nil {
 			return terror.Error(err)
 		}
@@ -318,7 +418,7 @@ func factionAbilities(ctx context.Context, conn *pgxpool.Pool) error {
 
 	// insert boston faction abilities
 	for _, gameAbility := range BostonUniqueAbilities {
-		err := db.GameAbilityCreate(ctx, conn, gameAbility)
+		err := GameAbilityCreate(ctx, conn, gameAbility)
 		if err != nil {
 			return terror.Error(err)
 		}
@@ -326,7 +426,7 @@ func factionAbilities(ctx context.Context, conn *pgxpool.Pool) error {
 
 	// insert zaibatsu faction abilities
 	for _, gameAbility := range ZaibatsuUniqueAbilities {
-		err := db.GameAbilityCreate(ctx, conn, gameAbility)
+		err := GameAbilityCreate(ctx, conn, gameAbility)
 		if err != nil {
 			return terror.Error(err)
 		}
@@ -335,37 +435,105 @@ func factionAbilities(ctx context.Context, conn *pgxpool.Pool) error {
 	return nil
 }
 
-var factions = []*server.Faction{
+type Faction struct {
+	ID               uuid.UUID     `json:"id" db:"id"`
+	Label            string        `json:"label" db:"label"`
+	Theme            *FactionTheme `json:"theme" db:"theme"`
+	LogoBlobID       uuid.UUID     `json:"logo_blob_id,omitempty"`
+	BackgroundBlobID uuid.UUID     `json:"background_blob_id,omitempty"`
+	VotePrice        string        `json:"vote_price" db:"vote_price"`
+	ContractReward   string        `json:"contract_reward" db:"contract_reward"`
+}
+
+type FactionTheme struct {
+	Primary    string `json:"primary"`
+	Secondary  string `json:"secondary"`
+	Background string `json:"background"`
+}
+
+var RedMountainFactionID = uuid.Must(uuid.FromString("98bf7bb3-1a7c-4f21-8843-458d62884060"))
+var BostonCyberneticsFactionID = uuid.Must(uuid.FromString("7c6dde21-b067-46cf-9e56-155c88a520e2"))
+var ZaibatsuFactionID = uuid.Must(uuid.FromString("880db344-e405-428d-84e5-6ebebab1fe6d"))
+
+var factions = []*Faction{
 	{
-		ID:        server.RedMountainFactionID,
+		ID:        RedMountainFactionID,
 		VotePrice: "1000000000000000000",
 	},
 	{
-		ID:        server.BostonCyberneticsFactionID,
+		ID:        BostonCyberneticsFactionID,
 		VotePrice: "1000000000000000000",
 	},
 	{
-		ID:        server.ZaibatsuFactionID,
+		ID:        ZaibatsuFactionID,
 		VotePrice: "1000000000000000000",
 	},
 }
 
-func (s *Seeder) factions(ctx context.Context) ([]*server.Faction, error) {
+// FactionCreate create a new faction
+func FactionCreate(ctx context.Context, conn *pgxpool.Pool, faction *Faction) error {
+	q := `
+		INSERT INTO
+			factions (id, vote_price)
+		VALUES
+			($1, $2)
+		RETURNING
+			id, vote_price
+	`
+
+	err := pgxscan.Get(ctx, conn, faction, q, faction.ID, faction.VotePrice)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	return nil
+}
+
+// FactionStatMaterialisedViewRefresh
+func FactionStatMaterialisedViewRefresh(ctx context.Context, conn *pgxpool.Pool) error {
+	q := `
+		REFRESH MATERIALIZED VIEW faction_stats;
+	`
+	_, err := conn.Exec(ctx, q)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	return nil
+}
+
+func (s *Seeder) factions(ctx context.Context) ([]*Faction, error) {
 	for _, faction := range factions {
-		err := db.FactionCreate(ctx, s.Conn, faction)
+		err := FactionCreate(ctx, s.Conn, faction)
 		if err != nil {
 			return nil, terror.Error(err)
 		}
 	}
 
-	err := db.FactionStatMaterialisedViewRefresh(ctx, s.Conn)
+	err := FactionStatMaterialisedViewRefresh(ctx, s.Conn)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
 	return factions, nil
 }
 
-var streams = []*server.Stream{
+type Stream struct {
+	Host          string  `json:"host" db:"host"`
+	Name          string  `json:"name" db:"name"`
+	StreamID      string  `json:"streamID" db:"stream_id"`
+	URL           string  `json:"url" db:"url"`
+	Region        string  `json:"region" db:"region"`
+	Resolution    string  `json:"resolution" db:"resolution"`
+	BitRatesKBits int     `json:"bitRatesKBits" db:"bit_rates_k_bits"`
+	UserMax       int     `json:"userMax" db:"user_max"`
+	UsersNow      int     `json:"usersNow" db:"users_now"`
+	Active        bool    `json:"active" db:"active"`
+	Status        string  `json:"status" db:"status"`
+	Latitude      float32 `json:"latitude" db:"latitude"`
+	Longitude     float32 `json:"longitude" db:"longitude"`
+}
+
+var streams = []*Stream{
 
 	// singapore
 	{
@@ -419,9 +587,28 @@ var streams = []*server.Stream{
 	},
 }
 
-func (s *Seeder) streams(ctx context.Context) ([]*server.Stream, error) {
+// CreateStream created a new stream
+func CreateStream(ctx context.Context, conn *pgxpool.Pool, stream *Stream) error {
+	q := `
+		INSERT INTO
+			stream_list (host, name, url, stream_id, region, resolution, bit_rates_k_bits, user_max, users_now, active, status, latitude, longitude)
+		VALUES
+			($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		RETURNING
+		host, name, url, stream_id region, resolution, bit_rates_k_bits, user_max, users_now, active, status
+	`
+
+	err := pgxscan.Get(ctx, conn, stream, q, stream.Host, stream.Name, stream.URL, stream.StreamID, stream.Region, stream.Resolution, stream.BitRatesKBits, stream.UserMax, stream.UsersNow, stream.Active, stream.Status, stream.Latitude, stream.Longitude)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	return nil
+}
+
+func (s *Seeder) streams(ctx context.Context) ([]*Stream, error) {
 	for _, stream := range streams {
-		err := db.CreateStream(ctx, s.Conn, stream)
+		err := CreateStream(ctx, s.Conn, stream)
 		if err != nil {
 			return nil, terror.Error(err)
 		}
@@ -430,8 +617,8 @@ func (s *Seeder) streams(ctx context.Context) ([]*server.Stream, error) {
 	return streams, nil
 }
 
-func (s *Seeder) assets(ctx context.Context) ([]*server.Blob, error) {
-	output := []*server.Blob{}
+func (s *Seeder) assets(ctx context.Context) ([]*Blob, error) {
+	output := []*Blob{}
 	for _, blob := range AbilityBlobs {
 		f, err := os.Open("./asset/" + blob.FileName)
 		if err != nil {
@@ -470,7 +657,7 @@ func (s *Seeder) assets(ctx context.Context) ([]*server.Blob, error) {
 		blob.File = fileData
 		blob.Hash = &hash
 
-		err = db.BlobInsert(ctx, s.Conn, blob, blob.ID, blob.FileName, blob.MimeType, blob.FileSizeBytes, blob.Extension, blob.File, blob.Hash)
+		err = BlobInsert(ctx, s.Conn, blob, blob.ID, blob.FileName, blob.MimeType, blob.FileSizeBytes, blob.Extension, blob.File, blob.Hash)
 		if err != nil {
 			return nil, terror.Error(err, "blob upsert error")
 		}
@@ -478,4 +665,24 @@ func (s *Seeder) assets(ctx context.Context) ([]*server.Blob, error) {
 		output = append(output, blob)
 	}
 	return output, nil
+}
+
+// BlobInsert inserts a new blob
+func BlobInsert(ctx context.Context, conn *pgxpool.Pool, result *Blob, id uuid.UUID, fileName string, mimeType string, fileSizeBytes int64, extension string, file []byte, hash *string) error {
+	q := `
+		INSERT INTO blobs (id, file_name, mime_type, file_size_bytes, extension, file, hash) 
+			VALUES ($1, $2, $3, $4, $5, $6, $7)
+		ON CONFLICT (id) DO UPDATE
+		SET file_name = EXCLUDED.file_name,
+			mime_type = EXCLUDED.mime_type,
+			file_size_bytes = EXCLUDED.file_size_bytes,
+			extension = EXCLUDED.extension,
+			file = EXCLUDED.file,
+			hash = EXCLUDED.hash
+		RETURNING id, file_name, mime_type, file_size_bytes, extension, file, hash`
+	err := pgxscan.Get(ctx, conn, result, q, id, fileName, mimeType, fileSizeBytes, extension, file, hash)
+	if err != nil {
+		return terror.Error(err)
+	}
+	return nil
 }

@@ -10,15 +10,11 @@ import (
 	"net/http"
 	"os"
 	"server"
+	"server/battle"
 	"server/battle_arena"
 	"server/db"
 	"server/passport"
 	"time"
-
-	"github.com/gofrs/uuid"
-	"github.com/ninja-syndicate/hub/ext/messagebus"
-	"github.com/sasha-s/go-deadlock"
-	"nhooyr.io/websocket"
 
 	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/go-chi/chi"
@@ -32,9 +28,10 @@ import (
 	"github.com/ninja-software/tickle"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/auth"
-	zerologger "github.com/ninja-syndicate/hub/ext/zerolog"
+	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
+	"github.com/sasha-s/go-deadlock"
 )
 
 // WelcomePayload is the response sent when a client connects to the server
@@ -93,7 +90,7 @@ type API struct {
 	Log           *zerolog.Logger
 	Routes        chi.Router
 	Addr          string
-	BattleArena   *battle_arena.BattleArena
+	BattleArena   *battle.Arena
 	HTMLSanitize  *bluemonday.Policy
 	Hub           *hub.Hub
 	Conn          *pgxpool.Pool
@@ -136,18 +133,17 @@ const SupremacyGameUserID = "4fae8fdf-584f-46bb-9cb9-bb32ae20177e"
 func NewAPI(
 	ctx context.Context,
 	log *zerolog.Logger,
-	battleArenaClient *battle_arena.BattleArena,
+	battleArenaClient *battle.Arena,
 	pp *passport.Passport,
 	addr string,
 	HTMLSanitize *bluemonday.Policy,
 	conn *pgxpool.Pool,
 	config *server.Config,
+	messageBus *messagebus.MessageBus,
+	netMessageBus *messagebus.NetBus,
+	gsHub *hub.Hub,
 ) *API {
 
-	netMessageBus := messagebus.NewNetBus(log_helpers.NamedLogger(log, "net_message_bus"))
-
-	// initialise message bus
-	messageBus := messagebus.NewMessageBus(log_helpers.NamedLogger(log, "message_bus"))
 	// initialise api
 	api := &API{
 		ctx:           ctx,
@@ -160,21 +156,7 @@ func NewAPI(
 		HTMLSanitize:  HTMLSanitize,
 		BattleArena:   battleArenaClient,
 		Conn:          conn,
-		Hub: hub.New(&hub.Config{
-			Log: zerologger.New(*log_helpers.NamedLogger(log, "hub library")),
-			WelcomeMsg: &hub.WelcomeMsg{
-				Key:     "WELCOME",
-				Payload: nil,
-			},
-			AcceptOptions: &websocket.AcceptOptions{
-				InsecureSkipVerify: true, // TODO: set this depending on environment
-				OriginPatterns:     []string{config.TwitchUIHostURL},
-			},
-			ClientOfflineFn: func(cl *hub.Client) {
-				netMessageBus.UnsubAll(cl)
-				messageBus.UnsubAll(cl)
-			},
-		}),
+		Hub:           gsHub,
 		// channel for faction voting system
 		liveSupsSpend: make(map[server.FactionID]*LiveVotingData),
 
@@ -191,7 +173,7 @@ func NewAPI(
 		battleEndInfo: &BattleEndInfo{},
 	}
 
-	battleArenaClient.SetMessageBus(messageBus)
+	battleArenaClient.SetMessageBus(messageBus, netMessageBus)
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
@@ -210,12 +192,16 @@ func NewAPI(
 		// Web sockets are long-lived, so we don't want the sentry performance tracer running for the life-time of the connection.
 		// See roothub.ServeHTTP for the setup of sentry on this route.
 		r.Handle("/ws", api.Hub)
-		r.Get("/battlequeue", WithError(api.BattleArena.GetBattleQueue))
-		r.Get("/events", WithError(api.BattleArena.GetEvents))
-		r.Get("/faction_stats", WithError(api.BattleArena.FactionStats))
-		r.Get("/user_stats", WithError(api.BattleArena.UserStats))
-		r.Get("/abilities", WithError(api.BattleArena.GetAbility))
-		r.Get("/blobs/{id}", WithError(api.BattleArena.GetBlob))
+
+		//TODO ALEX reimplement handlers
+
+		//r.Get("/battlequeue", WithError(api.BattleArena.GetBattleQueue))
+		//r.Get("/events", WithError(api.BattleArena.GetEvents))
+		//r.Get("/faction_stats", WithError(api.BattleArena.FactionStats))
+		//r.Get("/user_stats", WithError(api.BattleArena.UserStats))
+		//r.Get("/abilities", WithError(api.BattleArena.GetAbility))
+		//r.Get("/blobs/{id}", WithError(api.BattleArena.GetBlob))
+
 		r.Post("/video_server", WithToken(config.ServerStreamKey, WithError((api.CreateStreamHandler))))
 		r.Get("/video_server", WithToken(config.ServerStreamKey, WithError((api.GetStreamsHandler))))
 		r.Delete("/video_server", WithToken(config.ServerStreamKey, WithError((api.DeleteStreamHandler))))
@@ -230,7 +216,7 @@ func NewAPI(
 	// set viewer live count
 	api.ViewerLiveCount = NewViewerLiveCount(api.NetMessageBus)
 	api.UserMap = NewUserMap(api.ViewerLiveCount)
-	api.UserMultiplier = NewUserMultiplier(api.UserMap, api.Passport, api.BattleArena)
+	//api.UserMultiplier = NewUserMultiplier(api.UserMap, api.Passport, api.BattleArena)
 
 	///////////////////////////
 	//		 Controllers	 //
@@ -252,12 +238,15 @@ func NewAPI(
 	///////////////////////////
 	//	battle Arena Events	 //
 	///////////////////////////
-	api.BattleArena.Events.AddEventHandler(battle_arena.EventGameInit, api.BattleInitSignal)
-	api.BattleArena.Events.AddEventHandler(battle_arena.EventGameStart, api.BattleStartSignal)
-	api.BattleArena.Events.AddEventHandler(battle_arena.EventGameEnd, api.BattleEndSignal)
-	api.BattleArena.Events.AddEventHandler(battle_arena.EventWarMachineDestroyed, api.WarMachineDestroyedBroadcast)
-	api.BattleArena.Events.AddEventHandler(battle_arena.EventWarMachinePositionChanged, api.UpdateWarMachinePosition)
-	api.BattleArena.Events.AddEventHandler(battle_arena.EventAISpawned, api.AISpawnedBroadcast)
+
+	//TODO ALEX reimplement
+
+	//api.BattleArena.Events.AddEventHandler(battle_arena.EventGameInit, api.BattleInitSignal)
+	//api.BattleArena.Events.AddEventHandler(battle_arena.EventGameStart, api.BattleStartSignal)
+	//api.BattleArena.Events.AddEventHandler(battle_arena.EventGameEnd, api.BattleEndSignal)
+	//api.BattleArena.Events.AddEventHandler(battle_arena.EventWarMachineDestroyed, api.WarMachineDestroyedBroadcast)
+	//api.BattleArena.Events.AddEventHandler(battle_arena.EventWarMachinePositionChanged, api.UpdateWarMachinePosition)
+	//api.BattleArena.Events.AddEventHandler(battle_arena.EventAISpawned, api.AISpawnedBroadcast)
 
 	api.SetupAfterConnections(ctx, conn)
 
@@ -307,7 +296,8 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 	go api.StartVotingCycle(ctx)
 
 	// set faction map for battle arena server
-	api.BattleArena.SetFactionMap(api.factionMap)
+	//TODO ALEX investigate
+	//api.BattleArena.SetFactionMap(api.factionMap)
 
 	// declare live sups spend broadcaster
 	tickle.MinDurationOverride = true
@@ -376,136 +366,141 @@ func (api *API) SetupAfterConnections(ctx context.Context, conn *pgxpool.Pool) {
 // Event handlers
 func (api *API) onlineEventHandler(ctx context.Context, wsc *hub.Client) error {
 	// initialise a client detail channel if not on the list
-	api.ViewerLiveCount.Add(server.FactionID(uuid.Nil))
 
-	// broadcast current game state
-	ba := api.BattleArena.GetCurrentState()
-	// delay 2 second to wait frontend setup key map
-	time.Sleep(3 * time.Second)
+	//TODO ALEX investigate
 
-	// marshal payload
-	gsr := &GameSettingsResponse{
-		GameMap:     ba.GameMap,
-		WarMachines: ba.WarMachines,
-		SpawnedAI:   ba.SpawnedAI,
-	}
-	if ba.BattleHistory != nil && len(ba.BattleHistory) > 0 {
-		gsr.WarMachineLocation = ba.BattleHistory[0]
-	}
-	gameSettingsData, err := json.Marshal(&BroadcastPayload{
-		Key:     HubKeyGameSettingsUpdated,
-		Payload: gsr,
-	})
-
-	if err != nil {
-		api.Log.Err(err).Msg("failed to marshal data")
-		return err
-	}
-
-	wsc.Send(gameSettingsData)
-	return err
+	//api.ViewerLiveCount.Add(server.FactionID(uuid.Nil))
+	//
+	//// broadcast current game state
+	//ba := api.BattleArena.GetCurrentState()
+	//// delay 2 second to wait frontend setup key map
+	//time.Sleep(3 * time.Second)
+	//
+	//// marshal payload
+	//gsr := &GameSettingsResponse{
+	//	GameMap:     ba.GameMap,
+	//	WarMachines: ba.WarMachines,
+	//	SpawnedAI:   ba.SpawnedAI,
+	//}
+	//if ba.BattleHistory != nil && len(ba.BattleHistory) > 0 {
+	//	gsr.WarMachineLocation = ba.BattleHistory[0]
+	//}
+	//gameSettingsData, err := json.Marshal(&BroadcastPayload{
+	//	Key:     HubKeyGameSettingsUpdated,
+	//	Payload: gsr,
+	//})
+	//
+	//if err != nil {
+	//	api.Log.Err(err).Msg("failed to marshal data")
+	//	return err
+	//}
+	//
+	//wsc.Send(gameSettingsData)
+	//return err
+	return nil
 }
 
 func (api *API) offlineEventHandler(ctx context.Context, wsc *hub.Client) error {
-	currentUser := api.UserMap.GetUserDetail(wsc)
-
-	noClientLeft := false
-	if currentUser != nil {
-		// remove client multipliers
-		api.ViewerLiveCount.Sub(currentUser.FactionID)
-		api.UserMultiplier.Offline(currentUser.ID)
-		// clean up the client detail map
-		noClientLeft = api.UserMap.Remove(wsc)
-	} else {
-		api.ViewerLiveCount.Sub(server.FactionID(uuid.Nil))
-	}
-
-	// set client offline
-	// noClientLeft := api.ClientOffline(wsc)
-
-	// check vote if there is not client instances of the offline user
-	if noClientLeft && currentUser != nil && api.votePhaseChecker.Phase == VotePhaseLocationSelect {
-		// check the user is selecting ability location
-		api.VotingCycle(func(va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
-			if len(vw.List) > 0 && vw.List[0].String() == currentUser.ID.String() {
-				// pop out the first user of the list
-				if len(vw.List) > 1 {
-					vw.List = vw.List[1:]
-				} else {
-					vw.List = []server.UserID{}
-				}
-
-				// get next winner
-				nextUser, winnerClientID := api.getNextWinnerDetail(vw)
-				if nextUser == nil {
-					// if no winner left, enter cooldown phase
-					go api.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
-						Type:    LocationSelectTypeCancelledDisconnect,
-						Ability: va.BattleAbility.Brief(),
-					})
-
-					// get random ability collection set
-					battleAbility, factionAbilityMap, err := api.BattleArena.RandomBattleAbility()
-					if err != nil {
-						api.Log.Err(err)
-					}
-
-					go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteBattleAbilityUpdated), battleAbility)
-
-					// initialise new ability collection
-					va.BattleAbility = battleAbility
-
-					// initialise new game ability map
-					for fid, ability := range factionAbilityMap {
-						va.FactionAbilityMap[fid] = ability
-					}
-
-					// voting phase change
-					api.votePhaseChecker.Lock()
-					api.votePhaseChecker.Phase = VotePhaseVoteCooldown
-					api.votePhaseChecker.EndTime = time.Now().Add(time.Duration(va.BattleAbility.CooldownDurationSecond) * time.Second)
-					if os.Getenv("GAMESERVER_ENVIRONMENT") == "development" || os.Getenv("GAMESERVER_ENVIRONMENT") == "staging" {
-						api.votePhaseChecker.EndTime = time.Now().Add(5 * time.Second)
-					}
-					api.votePhaseChecker.Unlock()
-
-					// stop vote price update when cooldown
-					if api.votePriceSystem.VotePriceUpdater.NextTick != nil {
-						api.votePriceSystem.VotePriceUpdater.Stop()
-					}
-
-					// broadcast current stage to faction users
-					go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
-
-					return
-				}
-
-				// otherwise, choose next winner
-				api.votePhaseChecker.Lock()
-				endTime := time.Now().Add(LocationSelectDurationSecond * time.Second)
-				api.votePhaseChecker.Phase = VotePhaseLocationSelect
-				api.votePhaseChecker.EndTime = endTime
-				api.votePhaseChecker.Unlock()
-
-				// otherwise announce another winner
-				go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, winnerClientID)), &WinnerSelectAbilityLocation{
-					GameAbility: va.FactionAbilityMap[nextUser.FactionID],
-					EndTime:     endTime,
-				})
-
-				// broadcast winner select location
-				go api.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
-					Type:        LocationSelectTypeFailedDisconnect,
-					Ability:     va.BattleAbility.Brief(),
-					CurrentUser: currentUser.Brief(),
-					NextUser:    nextUser.Brief(),
-				})
-
-				// broadcast current stage to faction users
-				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
-			}
-		})
-	}
+	//TODO ALEX reimplement
+	//currentUser := api.UserMap.GetUserDetail(wsc)
+	//
+	//noClientLeft := false
+	//if currentUser != nil {
+	//	// remove client multipliers
+	//	api.ViewerLiveCount.Sub(currentUser.FactionID)
+	//	api.UserMultiplier.Offline(currentUser.ID)
+	//	// clean up the client detail map
+	//	noClientLeft = api.UserMap.Remove(wsc)
+	//} else {
+	//	api.ViewerLiveCount.Sub(server.FactionID(uuid.Nil))
+	//}
+	//
+	//// set client offline
+	//// noClientLeft := api.ClientOffline(wsc)
+	//
+	//// check vote if there is not client instances of the offline user
+	//if noClientLeft && currentUser != nil && api.votePhaseChecker.Phase == VotePhaseLocationSelect {
+	//	// check the user is selecting ability location
+	//	api.VotingCycle(func(va *VoteAbility, fuvm FactionUserVoteMap, fts *FactionTransactions, ftv *FactionTotalVote, vw *VoteWinner, vct *VotingCycleTicker, uvm UserVoteMap) {
+	//		if len(vw.List) > 0 && vw.List[0].String() == currentUser.ID.String() {
+	//			// pop out the first user of the list
+	//			if len(vw.List) > 1 {
+	//				vw.List = vw.List[1:]
+	//			} else {
+	//				vw.List = []server.UserID{}
+	//			}
+	//
+	//			// get next winner
+	//			nextUser, winnerClientID := api.getNextWinnerDetail(vw)
+	//			if nextUser == nil {
+	//				// if no winner left, enter cooldown phase
+	//				go api.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
+	//					Type:    LocationSelectTypeCancelledDisconnect,
+	//					Ability: va.BattleAbility.Brief(),
+	//				})
+	//
+	//				// get random ability collection set
+	//				battleAbility, factionAbilityMap, err := api.BattleArena.RandomBattleAbility()
+	//				if err != nil {
+	//					api.Log.Err(err)
+	//				}
+	//
+	//				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteBattleAbilityUpdated), battleAbility)
+	//
+	//				// initialise new ability collection
+	//				va.BattleAbility = battleAbility
+	//
+	//				// initialise new game ability map
+	//				for fid, ability := range factionAbilityMap {
+	//					va.FactionAbilityMap[fid] = ability
+	//				}
+	//
+	//				// voting phase change
+	//				api.votePhaseChecker.Lock()
+	//				api.votePhaseChecker.Phase = VotePhaseVoteCooldown
+	//				api.votePhaseChecker.EndTime = time.Now().Add(time.Duration(va.BattleAbility.CooldownDurationSecond) * time.Second)
+	//				if os.Getenv("GAMESERVER_ENVIRONMENT") == "development" || os.Getenv("GAMESERVER_ENVIRONMENT") == "staging" {
+	//					api.votePhaseChecker.EndTime = time.Now().Add(5 * time.Second)
+	//				}
+	//				api.votePhaseChecker.Unlock()
+	//
+	//				// stop vote price update when cooldown
+	//				if api.votePriceSystem.VotePriceUpdater.NextTick != nil {
+	//					api.votePriceSystem.VotePriceUpdater.Stop()
+	//				}
+	//
+	//				// broadcast current stage to faction users
+	//				go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
+	//
+	//				return
+	//			}
+	//
+	//			// otherwise, choose next winner
+	//			api.votePhaseChecker.Lock()
+	//			endTime := time.Now().Add(LocationSelectDurationSecond * time.Second)
+	//			api.votePhaseChecker.Phase = VotePhaseLocationSelect
+	//			api.votePhaseChecker.EndTime = endTime
+	//			api.votePhaseChecker.Unlock()
+	//
+	//			// otherwise announce another winner
+	//			go api.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyVoteWinnerAnnouncement, winnerClientID)), &WinnerSelectAbilityLocation{
+	//				GameAbility: va.FactionAbilityMap[nextUser.FactionID],
+	//				EndTime:     endTime,
+	//			})
+	//
+	//			// broadcast winner select location
+	//			go api.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
+	//				Type:        LocationSelectTypeFailedDisconnect,
+	//				Ability:     va.BattleAbility.Brief(),
+	//				CurrentUser: currentUser.Brief(),
+	//				NextUser:    nextUser.Brief(),
+	//			})
+	//
+	//			// broadcast current stage to faction users
+	//			go api.MessageBus.Send(ctx, messagebus.BusKey(HubKeyVoteStageUpdated), api.votePhaseChecker)
+	//		}
+	//	})
+	//}
 	return nil
 }
 
