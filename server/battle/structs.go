@@ -13,7 +13,7 @@ type Battle struct {
 	ID          uuid.UUID     `json:"battleID" db:"id"`
 	MapName     string        `json:"mapName"`
 	WarMachines []*WarMachine `json:"warMachines"`
-	SpawnedAI   []*WarMachine `json:"SpanwedAI"`
+	SpawnedAI   []*WarMachine `json:"SpawnedAI"`
 	lastTick    *[]byte
 	gameMap     *server.GameMap
 	abilities   *AbilitiesSystem
@@ -28,7 +28,7 @@ type Started struct {
 
 type WarMachine struct {
 	ID                 string          `json:"id"`
-	Hash               string          `json:"Hash"`
+	Hash               string          `json:"hash"`
 	ParticipantID      byte            `json:"participantID"`
 	FactionID          string          `json:"factionID"`
 	MaxHealth          uint32          `json:"maxHealth"`
@@ -36,6 +36,7 @@ type WarMachine struct {
 	MaxShield          uint32          `json:"maxShield"`
 	Shield             uint32          `json:"shield"`
 	Stat               *Stat           `json:"stat"`
+	ImageAvatar        string          `json:"imageAvatar"`
 	Position           *server.Vector3 `json:"position"`
 	Rotation           int             `json:"rotation"`
 	OwnedByID          string          `json:"ownedByID"`
