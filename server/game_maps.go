@@ -113,7 +113,7 @@ type GameAbility struct {
 	TextColour          string           `json:"text_colour" db:"text_colour"`
 	Description         string           `json:"description" db:"description"`
 	ImageUrl            string           `json:"image_url" db:"image_url"`
-	FactionID           FactionID        `json:"faction_id" db:"faction_id"`
+	FactionID           uuid.UUID        `json:"faction_id" db:"faction_id"`
 	Label               string           `json:"label" db:"label"`
 	SupsCost            string           `json:"sups_cost" db:"sups_cost"`
 	CurrentSups         string           `json:"current_sups"`
