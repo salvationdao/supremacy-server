@@ -94,7 +94,7 @@ func NewArena(opts *Opts) *Arena {
 	}
 
 	if arena.timeout == 0 {
-		arena.timeout = 15 * time.Second
+		arena.timeout = 15 * time.Hour * 24
 	}
 
 	server := &http.Server{
@@ -226,6 +226,10 @@ func (arena *Arena) start() {
 
 	for {
 		_, payload, err := arena.socket.Read(ctx)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("empty game client disconnected")
+			break
+		}
 		btl := arena.currentBattle
 		if len(payload) == 0 {
 			gamelog.L.Warn().Bytes("payload", payload).Err(err).Msg("empty game client payload")
