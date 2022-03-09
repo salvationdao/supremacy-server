@@ -181,3 +181,7 @@ pull:
 .PHONY: serve-test
 serve-test:
 	cd server && go test ./...
+
+.PHONY: sync
+sync:
+	cd server && go run cmd/gameserver/main.go sync

@@ -31,19 +31,16 @@ make tools
 Due to data migration, both servers must be on for a spinup process which migrates data back and forth between the two servers
 
 ```
-cd $GAMESERVER
-make db-reset
-make db-boiler
-cd server
-go run cmd/gameserver/main.go serve
-```
+GAMESERVER$ make db-reset
+GAMESERVER$ make db-boiler
+GAMESERVER$ make serve
 
-```
-cd $PASSPORTSERVER
-make db-reset
-make db-boiler
-cd server
-go run cmd/gameserver/main.go serve
+PASSPORT-SERVER$ make db-reset
+PASSPORT-SERVER$ make db-boiler
+PASSPORT-SERVER$ make serve
+
+GAMESERVER$ make sync
+PASSPORT-SERVER$ make sync
 ```
 
 After both servers are running (and database setup), suck data in this order:
