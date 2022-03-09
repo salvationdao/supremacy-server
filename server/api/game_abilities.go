@@ -328,7 +328,7 @@ func (api *API) stopGameAbilityPoolTicker() {
 					fa.GameAbility.SupsCost = fa.TargetPrice.String()
 
 					// store new price back to db
-					err := db.FactionExclusiveAbilitiesSupsCostUpdate(context.Background(), api.Conn, fa.GameAbility.ID, fa.GameAbility.SupsCost, fa.GameAbility.CurrentSups)
+					err := db.FactionAbilitiesSupsCostUpdate(context.Background(), api.Conn, fa.GameAbility.ID, fa.GameAbility.SupsCost, fa.GameAbility.CurrentSups)
 					if err != nil {
 						api.Log.Err(err).Msg("failed to update zaibatsu faction ability")
 					}

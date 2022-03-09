@@ -168,8 +168,8 @@ func FactionExclusiveAbilitiesByFactionID(ctx context.Context, conn Conn, factio
 	return result, nil
 }
 
-// FactionExclusiveAbilitiesSupsCostUpdate update faction exclusive ability
-func FactionExclusiveAbilitiesSupsCostUpdate(ctx context.Context, conn Conn, gameAbilityID server.GameAbilityID, supsCost string, currentSups string) error {
+// FactionAbilitiesSupsCostUpdate update faction exclusive ability
+func FactionAbilitiesSupsCostUpdate(ctx context.Context, conn Conn, gameAbilityID server.GameAbilityID, supsCost string, currentSups string) error {
 	q := `
 		UPDATE 
 			game_abilities

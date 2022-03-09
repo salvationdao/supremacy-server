@@ -33,7 +33,7 @@ func NewVoteController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *VoteC
 
 	api.SecureUserFactionCommand(HubKeyFactionVotePrice, voteHub.FactionVotePrice)
 	api.SecureUserFactionCommand(HubKeyVoteAbilityRight, voteHub.AbilityRight)
-	api.SecureUserFactionCommand(HubKeyAbilityLocationSelect, voteHub.AbilityLocationSelect)
+	// api.SecureUserFactionCommand(HubKeyAbilityLocationSelect, voteHub.AbilityLocationSelect)
 
 	// subscription
 	api.SecureUserFactionSubscribeCommand(HubKeyVoteWinnerAnnouncement, voteHub.WinnerAnnouncementSubscribeHandler)
