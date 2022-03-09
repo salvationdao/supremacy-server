@@ -185,10 +185,8 @@ func main() {
 						fmt.Sprintf("%s:10001", hostname),
 					}
 					gamelog.L.Info().Msg("start rpc client")
-					rpcClient, err := comms.NewClient(rpcAddrs...)
-					if err != nil {
-						cancel()
-						return terror.Panic(err)
+					rpcClient := &comms.XrpcClient{
+						Addrs: rpcAddrs,
 					}
 					gamelog.L.Info().Msg("start rpc server")
 					rpcServer := comms.NewServer(rpcClient)
@@ -333,13 +331,12 @@ func main() {
 						fmt.Sprintf("%s:10002", hostname),
 						fmt.Sprintf("%s:10001", hostname),
 					}
-					passportRPC, err := comms.NewClient(rpcAddrs...)
-					if err != nil {
-						return terror.Panic(err)
+					passportRPCclient := &comms.XrpcClient{
+						Addrs: rpcAddrs,
 					}
 
 					result := &comms.GetAll{}
-					err = passportRPC.Call("S.SuperMigrate", comms.GetAllReq{}, result)
+					err = passportRPCclient.Call("S.SuperMigrate", comms.GetAllReq{}, result)
 					if err != nil {
 						return terror.Error(err)
 					}

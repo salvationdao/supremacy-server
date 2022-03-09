@@ -2,61 +2,26 @@ package comms
 
 import (
 	"fmt"
-	"math/rand"
+	"log"
 	"net/rpc"
 	"server/gamelog"
-	"time"
+	"sync"
 
-	"github.com/jpillora/backoff"
 	"github.com/ninja-software/terror/v2"
 	"go.uber.org/atomic"
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 )
 
-type C struct {
-	addrs   []string
-	clients []*rpc.Client
-	inc     *atomic.Int32
+// XrpcClient is a basic RPC client with retry function and also support multiple addresses for increase through-put
+type XrpcClient struct {
+	Addrs   []string       // list of rpc addresses available to use
+	clients []*rpc.Client  // holds rpc clients, same len/pos as the Addrs
+	counter *atomic.Uint64 // counter for cycling address/clients
+	mutex   *sync.Mutex    // lock and unlocks clients slice editing
 }
 
-func NewClient(addrs ...string) (*C, error) {
-	clients, err := connect(addrs...)
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-	c := &C{addrs, clients, atomic.NewInt32(0)}
-	return c, nil
-}
-
-func connect(addrs ...string) ([]*rpc.Client, error) {
-	b := &backoff.Backoff{
-		Min:    1 * time.Second,
-		Max:    10 * time.Second,
-		Factor: 2,
-	}
-	attempts := 0
-	var clients []*rpc.Client
-	for {
-		attempts++
-		gamelog.L.Info().Int("attempt", attempts).Msg("fetching battle queue from passport")
-		clients = []*rpc.Client{}
-		for _, addr := range addrs {
-			gamelog.L.Info().Str("addr", addr).Msg("registering RPC client")
-			client, err := rpc.Dial("tcp", addr)
-			if err != nil {
-				gamelog.L.Err(err).Str("addr", addr).Msg("registering RPC client")
-				time.Sleep(b.Duration())
-				continue
-			}
-			clients = append(clients, client)
-		}
-
-		break
-	}
-	return clients, nil
-}
-
-func (c *C) GoCall(serviceMethod string, args interface{}, reply interface{}, callback func(error)) {
+// Gocall plan to deprecate if possible
+func (c *XrpcClient) GoCall(serviceMethod string, args interface{}, reply interface{}, callback func(error)) {
 	go func() {
 		err := c.Call(serviceMethod, args, reply)
 		if callback != nil {
@@ -65,27 +30,30 @@ func (c *C) GoCall(serviceMethod string, args interface{}, reply interface{}, ca
 	}()
 }
 
-func (c *C) Call(serviceMethod string, args interface{}, reply interface{}) error {
-	if c == nil || c.clients == nil || len(c.clients) == 0 {
-		clients, err := connect(c.addrs...)
-		if err != nil {
-			return terror.Error(err)
-		}
-		c.clients = clients
-		return terror.Error(fmt.Errorf("rpc client not ready"))
-	}
-	gamelog.L.Debug().Str("fn", serviceMethod).Interface("args", args).Msg("rpc call")
-	span := tracer.StartSpan("rpc.call", tracer.ResourceName(serviceMethod))
+// Call calls RPC server and retry, also initialise if it is the first time
+func (c *XrpcClient) Call(serviceMethod string, args interface{}, reply interface{}) error {
+	span := tracer.StartSpan("rpc.Call", tracer.ResourceName(serviceMethod))
 	defer span.Finish()
-	c.inc.Add(1)
-	i := c.inc.Load()
-	if i >= int32(len(c.clients)-1) {
-		c.inc.Store(0)
-		i = 0
+
+	// used for the first time, initialise
+	if c == nil {
+		gamelog.L.Debug().Msg("comms.Call init first time")
+		if len(c.Addrs) <= 0 {
+			log.Fatal("no rpc address set")
+		}
+		c.mutex.Lock()
+		for i := 0; i < len(c.Addrs); i++ {
+			c.clients = append(c.clients, &rpc.Client{})
+		}
+		c.mutex.Unlock()
 	}
-	if len(c.clients) < int(i) {
-		return terror.Error(fmt.Errorf("index out of range len = %d, index = %d", len(c.clients), int(i)))
-	}
+
+	gamelog.L.Debug().Str("fn", serviceMethod).Interface("args", args).Msg("rpc call")
+
+	// count up, and use the next client/address
+	c.counter.Add(1)
+	counter := c.counter.Load()
+	i := int(counter) % len(c.Addrs)
 	client := c.clients[i]
 
 	var err error
@@ -93,19 +61,19 @@ func (c *C) Call(serviceMethod string, args interface{}, reply interface{}) erro
 	for {
 		if client == nil {
 			// keep redialing until 30 times
-			client, err = dial(30, randAddr(c.addrs...))
+			client, err = dial(30, c.Addrs[i])
 			if err != nil {
 				return terror.Error(err)
 			}
+			c.mutex.Lock()
+			c.clients[i] = client
+			c.mutex.Unlock()
 		}
-
-		// TODO not thread safe
-		c.clients[i] = client
 
 		err = client.Call(serviceMethod, args, reply)
 		if err == nil {
 			// done
-			return nil
+			break
 		}
 
 		// clean up before retry
@@ -121,25 +89,12 @@ func (c *C) Call(serviceMethod string, args interface{}, reply interface{}) erro
 		}
 	}
 
-	gamelog.L.Warn().Str("fn", "comms.Call").Msg("shouldnt reach here")
 	return nil
-}
-
-// randAddr picks an address randomly
-func randAddr(addrs ...string) string {
-	rand.Seed(time.Now().UnixNano())
-	c := rand.Intn(len(addrs))
-	return addrs[c]
 }
 
 // dial is primitive rpc dialer, short and simple
 // maxRetry -1 == unlimited
-func dial(maxRetry int, addrAndPorts ...string) (client *rpc.Client, err error) {
-	if len(addrAndPorts) <= 0 {
-		return nil, terror.Error(fmt.Errorf("addr/port is zero length"))
-	}
-	addrAndPort := randAddr(addrAndPorts...)
-
+func dial(maxRetry int, addrAndPort string) (client *rpc.Client, err error) {
 	retry := 0
 	err = fmt.Errorf("x")
 

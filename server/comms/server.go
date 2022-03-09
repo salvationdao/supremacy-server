@@ -10,10 +10,10 @@ import (
 )
 
 type S struct {
-	*C
+	*XrpcClient
 }
 
-func NewServer(c *C) *S {
+func NewServer(c *XrpcClient) *S {
 	result := &S{c}
 	return result
 }

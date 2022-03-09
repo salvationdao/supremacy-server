@@ -131,7 +131,7 @@ type MechRegisterResp struct {
 func (s *S) MechRegister(req MechRegisterReq, resp *MechRegisterResp) error {
 	gamelog.L.Debug().Msg("comms.MechRegister")
 	userResp := &UserResp{}
-	err := s.C.Call("S.User", &UserReq{ID: req.OwnerID}, userResp)
+	err := s.XrpcClient.Call("S.User", &UserReq{ID: req.OwnerID}, userResp)
 	if err != nil {
 		return terror.Error(err)
 	}
