@@ -6,6 +6,7 @@ CREATE TABLE battle_ability_triggers (
     player_id UUID NULL references players(id),
     battle_id UUID NOT NULL references battles(id),
     faction_id UUID NOT NULL references factions(id),
+    is_all_syndicates BOOL NOT NULL default false,
     triggered_at TIMESTAMPTZ NOT NULL default NOW(),
     trigger_label TEXT NOT NULL,
     game_ability_id UUID NOT NULL references game_abilities(id)
