@@ -1,17 +1,47 @@
 package battle
 
+import (
+	"server/db/boiler"
+	"server/gamedb"
+	"server/gamelog"
+
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+)
+
 type MultiplierSystem struct {
-	battle *Battle
+	multipliers map[string]*boiler.Multiplier
+	players     map[string]map[string]*boiler.Multiplier
+	battle      *Battle
 }
 
 func NewMultiplierSystem(btl *Battle) *MultiplierSystem {
 	ms := &MultiplierSystem{
-		btl,
+		battle:      btl,
+		multipliers: make(map[string]*boiler.Multiplier),
+		players:     make(map[string]map[string]*boiler.Multiplier),
 	}
 	ms.init()
 	return ms
 }
 
 func (ms *MultiplierSystem) init() {
-
+	multipliers, err := boiler.Multipliers().All(gamedb.StdConn)
+	for _, m := range multipliers {
+		ms.multipliers[m.Key] = m
+	}
+	if err != nil {
+		gamelog.L.Panic().Err(err).Msgf("unable to retrieve multipliers from database")
+	}
+	usermultipliers, err := boiler.UserMultipliers(qm.Where(`until_game_number > ?`, ms.battle.battle.BattleNumber)).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Panic().Err(err).Msgf("unable to retrieve user's multipliers from database")
+	}
+	for _, m := range usermultipliers {
+		pm, ok := ms.players[m.PlayerID]
+		if !ok {
+			pm = make(map[string]*boiler.Multiplier)
+			ms.players[m.PlayerID] = pm
+		}
+		pm[m.Multiplier] = ms.multipliers[m.Multiplier]
+	}
 }
