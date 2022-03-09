@@ -143,7 +143,7 @@ func (bu *BattleUser) Send(key hub.HubCommandKey, payload interface{}) error {
 
 type Multiplier struct {
 	Key   string `json:"key"`
-	Value int    `json:"value"`
+	Value string `json:"value"`
 }
 
 type BattleEndDetail struct {
@@ -157,6 +157,7 @@ type BattleEndDetail struct {
 	TopSupsContributors          []*BattleUser `json:"top_sups_contributors"`
 	TopSupsContributeFactions    []*Faction    `json:"top_sups_contribute_factions"`
 	MostFrequentAbilityExecutors []*BattleUser `json:"most_frequent_ability_executors"`
+	TotalMultipliers             string        `json:"total_multipliers"`
 	UserMultipliers              []*Multiplier `json:"multipliers"`
 }
 

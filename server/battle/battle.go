@@ -645,6 +645,30 @@ func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 			Key:   "citizen",
 			Value: 1,
 		},
+		&Multiplier{
+			Key:   "contributor",
+			Value: "5x",
+		},
+		&Multiplier{
+			Key:   "super contributor",
+			Value: "10x",
+		},
+		&Multiplier{
+			Key:   "a fool and his money",
+			Value: "5x",
+		},
+		&Multiplier{
+			Key:   "air support",
+			Value: "5x",
+		},
+		&Multiplier{
+			Key:   "now i am become death",
+			Value: "5x",
+		},
+		&Multiplier{
+			Key:   "destroyer of worlds",
+			Value: "10x",
+		},
 	}
 	btl.users.ForEach(func(user *BattleUser) bool {
 		info.UserMultipliers = fakeMultipliers
