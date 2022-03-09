@@ -1,10 +1,15 @@
 package battle
 
 import (
+	"encoding/json"
+	"fmt"
 	"server"
 	"server/db/boiler"
+	"server/gamelog"
+	"time"
 
 	"github.com/gofrs/uuid"
+	"github.com/ninja-syndicate/hub"
 	"github.com/sasha-s/go-deadlock"
 	"github.com/shopspring/decimal"
 )
@@ -21,9 +26,64 @@ type BattleState struct {
 	Stage BattleStage
 }
 
+type usersMap struct {
+	deadlock.RWMutex
+	m map[uuid.UUID]*BattleUser
+}
+
+func (u *usersMap) Add(bu *BattleUser) {
+	u.Lock()
+	u.m[bu.ID] = bu
+	u.Unlock()
+}
+
+func (u *usersMap) ForEach(fn func(user *BattleUser) bool) {
+	u.RLock()
+	for _, user := range u.m {
+		if !fn(user) {
+			break
+		}
+	}
+	u.RUnlock()
+	return
+}
+
+func (u *usersMap) Send(payload interface{}, ids ...uuid.UUID) error {
+	u.RLock()
+	if len(ids) == 0 {
+		for _, user := range u.m {
+			user.Send(payload)
+		}
+	} else {
+		for _, id := range ids {
+			if user, ok := u.m[id]; ok {
+				user.Send(payload)
+			} else {
+				gamelog.L.Warn().Str("user_id", id.String()).Msg("tried to send user a msg but not in online map")
+			}
+		}
+	}
+	u.RUnlock()
+	return nil
+}
+
+func (u *usersMap) User(id uuid.UUID) BattleUser {
+	u.RLock()
+	b := u.m[id]
+	u.RUnlock()
+	return *b
+}
+
+func (u *usersMap) Delete(id uuid.UUID) {
+	u.Lock()
+	delete(u.m, id)
+	u.Unlock()
+}
+
 type Battle struct {
 	arena       *Arena
 	Stage       *BattleState
+	battle      *boiler.Battle
 	ID          uuid.UUID     `json:"battleID" db:"id"`
 	MapName     string        `json:"mapName"`
 	WarMachines []*WarMachine `json:"warMachines"`
@@ -31,6 +91,7 @@ type Battle struct {
 	lastTick    *[]byte
 	gameMap     *server.GameMap
 	abilities   *AbilitiesSystem
+	users       usersMap
 	factions    map[uuid.UUID]*boiler.Faction
 }
 
@@ -38,6 +99,50 @@ type Started struct {
 	BattleID           string        `json:"battleID"`
 	WarMachines        []*WarMachine `json:"warMachines"`
 	WarMachineLocation []byte        `json:"warMachineLocation"`
+}
+
+type BattleUser struct {
+	ID            uuid.UUID `json:"id"`
+	Username      string    `json:"username"`
+	FactionColour string    `json:"faction_colour"`
+	FactionID     uuid.UUID `json:"faction_id"`
+	FactionLogoID uuid.UUID `json:"faction_logo_id"`
+	wsClient      []*hub.Client
+}
+
+func (bu *BattleUser) Send(payload interface{}) error {
+	if bu.wsClient == nil || len(bu.wsClient) == 0 {
+		return fmt.Errorf("user does not have a websocket client")
+	}
+
+	b, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	for _, wsc := range bu.wsClient {
+		go wsc.Send(b)
+	}
+	return nil
+}
+
+type Multiplier struct {
+	Key   string `json:"key"`
+	Value int    `json:"value"`
+}
+
+type BattleEndDetail struct {
+	BattleID                     string        `json:"battle_id"`
+	BattleIdentifier             int           `json:"battle_identifier"`
+	StartedAt                    time.Time     `json:"started_at"`
+	EndedAt                      time.Time     `json:"ended_at"`
+	WinningCondition             string        `json:"winning_condition"`
+	WinningFaction               *Faction      `json:"winning_faction"`
+	WinningWarMachines           []*WarMachine `json:"winning_war_machines"`
+	TopSupsContributors          []*BattleUser `json:"top_sups_contributors"`
+	TopSupsContributeFactions    []*Faction    `json:"top_sups_contribute_factions"`
+	MostFrequentAbilityExecutors []*BattleUser `json:"most_frequent_ability_executors"`
+	UserMultipliers              []*Multiplier `json:"multipliers"`
 }
 
 type WarMachine struct {

@@ -17,10 +17,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/volatiletech/null/v8"
+
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	"github.com/gofrs/uuid"
 
@@ -114,6 +117,7 @@ func NewArena(opts *Opts) *Arena {
 	// todo: access ability from here
 	opts.SecureUserFactionCommand(HubKeFactionUniqueAbilityContribute, arena.FactionUniqueAbilityContribute)
 	opts.Command(HubKeyGameSettingsUpdated, arena.SendSettings)
+	opts.Command(HubKeyGameUserOnline, arena.UserOnline)
 
 	go func() {
 		err = server.Serve(l)
@@ -195,6 +199,24 @@ func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, wsc *hub
 	if err != nil {
 		return terror.Error(err)
 	}
+	return nil
+}
+
+func (arena *Arena) UserOnline(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	if arena.currentBattle == nil {
+		return nil
+	}
+
+	var user *BattleUser
+	err := json.Unmarshal(payload, user)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("unable to unmarshal online user")
+		return err
+	}
+
+	user.wsClient = wsc
+
+	arena.currentBattle.userOnline(user)
 	return nil
 }
 
@@ -385,7 +407,7 @@ func (arena *Arena) Battle() *Battle {
 
 	btl.factions = factions
 
-	_, err = db.Battle(btl.ID, uuid.UUID(gameMap.ID), bmd)
+	btl.battle, err = db.Battle(btl.ID, uuid.UUID(gameMap.ID), bmd)
 	if err != nil {
 		gamelog.L.Error().Str("Battle ID", btl.ID.String()).Err(err).Msg("unable to insert battle into database")
 		//TODO: something more dramatic
@@ -408,13 +430,78 @@ func (btl *Battle) start(payload *BattleStartPayload) {
 
 	// set up the abilities for current battle
 	btl.abilities = NewAbilitiesSystem(btl)
+	btl.users = []*BattleUser{}
 
 	btl.BroadcastUpdate()
 }
 
 func (btl *Battle) end(payload *BattleEndPayload) {
+	btl.battle.EndedAt = null.TimeFrom(time.Now())
+	_, err := btl.battle.Update(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().Str("Battle ID", btl.ID.String()).Time("EndedAt", btl.battle.EndedAt.Time).Msg("unable to update database for endat battle")
+	}
+
+	winningWarMachines := make([]*WarMachine, len(payload.WinningWarMachines))
+
+	for i, _ := range payload.WinningWarMachines {
+		for _, w := range btl.WarMachines {
+			if w.Hash == payload.WinningWarMachines[i].Hash {
+				winningWarMachines[i] = w
+				break
+			}
+		}
+		if winningWarMachines[i] == nil {
+			gamelog.L.Error().Str("Battle ID", btl.ID.String()).Msg("unable to match war machine to battle with hash")
+		}
+	}
+
+	faked := false
+	if winningWarMachines[0] == nil {
+		faked = true
+		gamelog.L.Error().Str("Battle ID", btl.ID.String()).Msg("selected \"winning warmachine\" at random so routine can end")
+	}
+
+	fakedUsers := []*BattleUser{
+		&BattleUser{ID: uuid.Must(uuid.NewV4()), Username: "FakeUser1"},
+		&BattleUser{ID: uuid.Must(uuid.NewV4()), Username: "FakeUser2"},
+	}
+
+	fakedFactions := make([]*Faction, 2)
+	i := 0
+	for _, faction := range btl.factions {
+		fakedFactions[i] = &Faction{
+			ID:    faction.ID,
+			Label: faction.Label,
+			Theme: &FactionTheme{
+				Primary:    faction.PrimaryColor,
+				Secondary:  faction.SecondaryColor,
+				Background: faction.BackgroundColor,
+			},
+		}
+		if i == 1 {
+			break
+		}
+		i++
+	}
+
+	endInfo := BattleEndDetail{
+		BattleID:                     btl.ID.String(),
+		BattleIdentifier:             btl.battle.BattleNumber,
+		StartedAt:                    btl.battle.StartedAt,
+		EndedAt:                      btl.battle.EndedAt.Time,
+		WinningCondition:             payload.WinCondition,
+		WinningFaction:               winningWarMachines[0].Faction,
+		WinningWarMachines:           winningWarMachines,
+		TopSupsContributors:          fakedUsers,
+		TopSupsContributeFactions:    fakedFactions,
+		MostFrequentAbilityExecutors: fakedUsers,
+	}
+
+	btl.endInfoBroadcast(endInfo)
+
 	ids := make([]uuid.UUID, len(btl.WarMachines))
-	err := db.ClearQueue(ids...)
+	err = db.ClearQueue(ids...)
 	if err != nil {
 		gamelog.L.Error().Interface("ids", ids).Err(err).Msg("db.ClearQueue() returned error")
 		return
@@ -477,6 +564,20 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	}
 }
 
+func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
+	fakeMultipliers := []*Multiplier{
+		&Multiplier{
+			Key:   "citizen",
+			Value: 1,
+		},
+	}
+	btl.users.ForEach(func(user *BattleUser) bool {
+		info.UserMultipliers = fakeMultipliers
+		user.Send(info)
+		return true
+	})
+}
+
 type BroadcastPayload struct {
 	Key     hub.HubCommandKey `json:"key"`
 	Payload interface{}       `json:"payload"`
@@ -487,6 +588,10 @@ type GameSettingsResponse struct {
 	WarMachines        []*WarMachine   `json:"war_machines"`
 	SpawnedAI          []*WarMachine   `json:"spawned_ai"`
 	WarMachineLocation []byte          `json:"war_machine_location"`
+}
+
+func (btl *Battle) userOnline(user *BattleUser) {
+	btl.users.Add(user)
 }
 
 func (btl *Battle) updatePayload() *GameSettingsResponse {
@@ -503,6 +608,7 @@ func (btl *Battle) updatePayload() *GameSettingsResponse {
 }
 
 const HubKeyGameSettingsUpdated = hub.HubCommandKey("GAME:SETTINGS:UPDATED")
+const HubKeyGameUserOnline = hub.HubCommandKey("GAME:ONLINE")
 
 func (btl *Battle) BroadcastUpdate() {
 	btl.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyGameSettingsUpdated), btl.updatePayload())
