@@ -111,9 +111,12 @@ func NewArena(opts *Opts) *Arena {
 	}
 
 	opts.SecureUserFactionCommand(WSJoinQueue, arena.Join)
-	// todo: access ability from here
 	opts.SecureUserFactionCommand(HubKeFactionUniqueAbilityContribute, arena.FactionUniqueAbilityContribute)
 	opts.Command(HubKeyGameSettingsUpdated, arena.SendSettings)
+
+	// subscribe functions
+	opts.SecureUserFactionSubscribeCommand(HubKeGabsBribeStageUpdateSubscribe, arena.GabsBribeStageSubscribe)
+	opts.SecureUserFactionSubscribeCommand(HubKeGabsBribingWinnerSubscribe, arena.GabsBribingWinnerSubscribe)
 
 	go func() {
 		err = server.Serve(l)
@@ -196,6 +199,50 @@ func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, wsc *hub
 		return terror.Error(err)
 	}
 	return nil
+}
+
+const HubKeGabsBribeStageUpdateSubscribe hub.HubCommandKey = "BRIBE:STAGE:UPDATED:SUBSCRIBE"
+
+// GabsBribeStageSubscribe subscribe on bribing stage change
+func (arena *Arena) GabsBribeStageSubscribe(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return "", "", terror.Error(err, "Invalid request received")
+	}
+
+	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
+	if userID.IsNil() {
+		return "", "", terror.Error(terror.ErrInvalidInput)
+	}
+
+	// return data if, current battle is not null
+	if arena.currentBattle != nil {
+		btl := arena.currentBattle
+		reply(btl.abilities.BribeStageGet())
+	}
+
+	return req.TransactionID, messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), nil
+}
+
+const HubKeGabsBribingWinnerSubscribe hub.HubCommandKey = "BRIBE:WINNER:SUBSCRIBE"
+
+// GabsBribingWinnerSubscribe subscribe on winner notification
+func (arena *Arena) GabsBribingWinnerSubscribe(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return "", "", terror.Error(err, "Invalid request received")
+	}
+
+	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
+	if userID.IsNil() {
+		return "", "", terror.Error(terror.ErrInvalidInput)
+	}
+
+	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeGabsBribingWinnerSubscribe, userID))
+
+	return req.TransactionID, busKey, nil
 }
 
 func (arena *Arena) SendSettings(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
