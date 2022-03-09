@@ -282,7 +282,7 @@ func (arena *Arena) SendSettings(ctx context.Context, wsc *hub.Client, payload [
 	btl := arena.currentBattle
 	reply(btl.updatePayload())
 
-	return req.TransactionID, messagebus.BusKey(HubKeyGameNotification), nil
+	return req.TransactionID, messagebus.BusKey(HubKeyGameSettingsUpdated), nil
 }
 
 type BattleMsg struct {

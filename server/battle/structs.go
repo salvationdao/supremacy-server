@@ -122,7 +122,6 @@ func (bu *BattleUser) AvatarID() string {
 }
 
 func (bu *BattleUser) Send(key hub.HubCommandKey, payload interface{}) error {
-
 	if bu.wsClient == nil || len(bu.wsClient) == 0 {
 		return fmt.Errorf("user does not have a websocket client")
 	}
