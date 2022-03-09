@@ -118,7 +118,7 @@ var FactionLogos = map[string]string{
 }
 
 func (bu *BattleUser) AvatarID() string {
-	return FactionLogos[bu.FactionID.String()]
+	return FactionLogos[bu.FactionID]
 }
 
 func (bu *BattleUser) Send(key hub.HubCommandKey, payload interface{}) error {
