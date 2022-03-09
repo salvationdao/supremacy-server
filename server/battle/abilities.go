@@ -10,10 +10,12 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/passport"
+	"sort"
 	"time"
 
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
+	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/sasha-s/go-deadlock"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -28,14 +30,24 @@ import (
 const EachMechIntroSecond = 3
 const InitIntroSecond = 7
 
+type LocationDeciders struct {
+	deadlock.RWMutex
+	list []server.UserID
+}
+
 type AbilitiesSystem struct {
 	battle *Battle
 	// faction unique abilities
 	factionUniqueAbilities map[uuid.UUID]map[server.GameAbilityID]*GameAbility // map[faction_id]map[identity]*Ability
 
 	// gabs abilities (air craft, nuke, repair)
-	factionGabsAbilities map[uuid.UUID]map[server.GameAbilityID]*GameAbility
-	gabsAbilityPool      *GabsAbilityPool
+	gabsAbilityPool *GabsAbilityPool
+
+	// track the sups contribution of each user, use for location select
+	userContributeMap map[uuid.UUID]*UserContribution
+
+	// location select winner list
+	locationDeciders *LocationDeciders
 }
 
 func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
@@ -47,9 +59,10 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 			Phase:   BribeStageHold,
 			EndTime: time.Now().AddDate(1, 0, 0), // HACK: set end time to far future to implement infinite time
 		},
-		Abilities:   map[uuid.UUID]*GameAbility{},
-		UserVoteMap: map[uuid.UUID]*UserVote{}, // track voting activity for current battle round
+		Abilities: map[uuid.UUID]*GameAbility{},
 	}
+
+	userContributeMap := map[uuid.UUID]*UserContribution{}
 
 	// init battle ability
 	err := gabsAbilityPool.SetNewBattleAbility()
@@ -160,8 +173,8 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 		}
 
 		// initialise user vote map in gab ability pool
-		gabsAbilityPool.UserVoteMap[factionID] = &UserVote{
-			VoteMap: map[server.UserID]decimal.Decimal{},
+		userContributeMap[factionID] = &UserContribution{
+			contributionMap: map[server.UserID]decimal.Decimal{},
 		}
 	}
 
@@ -169,15 +182,20 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 		battle:                 battle,
 		factionUniqueAbilities: factionAbilities,
 		gabsAbilityPool:        gabsAbilityPool,
+		userContributeMap:      userContributeMap,
+		locationDeciders: &LocationDeciders{
+			list: []server.UserID{},
+		},
 	}
 
-	// calc the intro time, mech_amount *3 + 7 second
+	// calc the intro time, mech_amount * 3 + 7 second
 	waitDurationSecond := len(battle.WarMachines)*EachMechIntroSecond + InitIntroSecond
 
-	as.FactionUniqueAbilityUpdater(waitDurationSecond)
+	// start ability cycle
+	go as.FactionUniqueAbilityUpdater(waitDurationSecond)
 
-	// vote cycle
-	// as.VoteCycle = as.VotingCycleTicker(waitDurationSecond)
+	// bribe cycle
+	go as.StartGabsAbilityPoolCycle(waitDurationSecond)
 
 	return as
 }
@@ -307,8 +325,18 @@ func (as *AbilitiesSystem) FactionUniqueAbilityContribute(factionID uuid.UUID, a
 			}
 			as.battle.Stage.RUnlock()
 
+			actualSupSpent, isTriggered := ability.SupContribution(as.battle.arena.ppClient, as.battle.ID.String(), userID, amount)
+
+			// cache user's sup contribution for generating location select order
+			as.userContributeMap[factionID].Lock()
+			if _, ok := as.userContributeMap[factionID].contributionMap[userID]; !ok {
+				as.userContributeMap[factionID].contributionMap[userID] = decimal.Zero
+			}
+			as.userContributeMap[factionID].contributionMap[userID] = as.userContributeMap[factionID].contributionMap[userID].Add(actualSupSpent)
+			as.userContributeMap[factionID].Unlock()
+
 			// sups contribution
-			if ability.SupContribution(as.battle.arena.ppClient, as.battle.ID.String(), userID, amount) {
+			if isTriggered {
 				// send message to game client, if ability trigger
 				as.battle.arena.Message(
 					"BATTLE:ABILITY",
@@ -325,8 +353,8 @@ func (as *AbilitiesSystem) FactionUniqueAbilityContribute(factionID uuid.UUID, a
 	}
 }
 
-// SupContribution contribute sups to specific game ability
-func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID string, userID server.UserID, amount decimal.Decimal) bool {
+// SupContribution contribute sups to specific game ability, return the actual sups spent and whether the ability is triggered
+func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID string, userID server.UserID, amount decimal.Decimal) (decimal.Decimal, bool) {
 	isTriggered := false
 
 	// calc the different
@@ -349,7 +377,7 @@ func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID str
 		NotSafe:              true,
 	})
 	if err != nil {
-		return false
+		return decimal.Zero, false
 	}
 
 	// update the current sups if not triggered
@@ -360,9 +388,9 @@ func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID str
 		err := db.FactionExclusiveAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ga.ID, ga.SupsCost.String(), ga.CurrentSups.String())
 		if err != nil {
 			gamelog.L.Err(err)
-			return false
+			return amount, false
 		}
-		return false
+		return amount, false
 	}
 
 	// otherwise update target price and reset the current price
@@ -373,10 +401,10 @@ func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID str
 	err = db.FactionExclusiveAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ga.ID, ga.SupsCost.String(), ga.CurrentSups.String())
 	if err != nil {
 		gamelog.L.Err(err)
-		return true
+		return amount, true
 	}
 
-	return true
+	return amount, true
 }
 
 // ***************************
@@ -403,14 +431,14 @@ const (
 
 type GabsBribeStage struct {
 	deadlock.RWMutex
-	Phase   BribePhase
-	EndTime time.Time
+	Phase   BribePhase `json:"phase"`
+	EndTime time.Time  `json:"endTime"`
 }
 
 // track user contribution of current battle
-type UserVote struct {
+type UserContribution struct {
 	deadlock.Mutex
-	VoteMap map[server.UserID]decimal.Decimal
+	contributionMap map[server.UserID]decimal.Decimal
 }
 
 type GabsAbilityPool struct {
@@ -420,10 +448,14 @@ type GabsAbilityPool struct {
 	// pick random battle ability
 	BattleAbility *server.BattleAbility
 
-	// map[factionID] map[battleAbilityID] map[userID]
-	UserVoteMap map[uuid.UUID]*UserVote
-
 	Abilities map[uuid.UUID]*GameAbility // faction ability current, change on every bribing cycle
+
+	TriggeredFactionID uuid.UUID
+}
+
+type LocationSelectAnnouncement struct {
+	GameAbility *GameAbility `json:"gameAbility"`
+	EndTime     time.Time    `json:"endTime"`
 }
 
 // StartGabsAbilityPoolCycle
@@ -472,23 +504,56 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 		// at the end of bribing phase
 		// no ability is triggered, switch to cooldown phase
 		case BribeStageBribe:
+			// change bribing phase
+			as.gabsAbilityPool.Stage.Lock()
+
 			// set new battle ability
 			err := as.gabsAbilityPool.SetNewBattleAbility()
 			if err != nil {
 				gamelog.L.Err(err).Msg("Failed to set new battle ability")
 			}
 
-			// change bribing phase
-			as.gabsAbilityPool.Stage.Lock()
 			as.gabsAbilityPool.Stage.Phase = BribeStageCooldown
 			as.gabsAbilityPool.Stage.EndTime = time.Now().Add(time.Duration(as.gabsAbilityPool.BattleAbility.CooldownDurationSecond) * time.Second)
+			// broadcast stage to frontend
+			as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.gabsAbilityPool.Stage)
 			as.gabsAbilityPool.Stage.Unlock()
-
-			// TODO: broadcast stage to frontend
 
 		// at the end of location select phase
 		// pass the location select to next player
 		case BribeStageLocationSelect:
+			// get the next location decider
+			userID, ok := as.nextLocationDeciderGet()
+			if !ok {
+				// enter cooldown phase, if there is no user left for location select
+
+				// change bribing phase
+				as.gabsAbilityPool.Stage.Lock()
+
+				// set new battle ability
+				err := as.gabsAbilityPool.SetNewBattleAbility()
+				if err != nil {
+					gamelog.L.Err(err).Msg("Failed to set new battle ability")
+				}
+
+				as.gabsAbilityPool.Stage.Phase = BribeStageCooldown
+				as.gabsAbilityPool.Stage.EndTime = time.Now().Add(time.Duration(as.gabsAbilityPool.BattleAbility.CooldownDurationSecond) * time.Second)
+				as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.gabsAbilityPool.Stage)
+				as.gabsAbilityPool.Stage.Unlock()
+			}
+
+			// extend location select phase duration
+			as.gabsAbilityPool.Stage.Lock()
+			as.gabsAbilityPool.Stage.Phase = BribeStageLocationSelect
+			as.gabsAbilityPool.Stage.EndTime = time.Now().Add(time.Duration(LocationSelectDurationSecond) * time.Second)
+			as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.gabsAbilityPool.Stage)
+			as.gabsAbilityPool.Stage.Unlock()
+
+			// broadcast the next location decider
+			as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeGabsBribingWinnerSubscribe, userID)), &LocationSelectAnnouncement{
+				GameAbility: as.gabsAbilityPool.Abilities[as.gabsAbilityPool.TriggeredFactionID],
+				EndTime:     as.gabsAbilityPool.Stage.EndTime,
+			})
 
 		// at the end of cooldown phase
 		// random choose a battle ability for next bribing session
@@ -498,9 +563,9 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 			as.gabsAbilityPool.Stage.Lock()
 			as.gabsAbilityPool.Stage.Phase = BribeStageBribe
 			as.gabsAbilityPool.Stage.EndTime = time.Now().Add(time.Duration(BribeDurationSecond) * time.Second)
+			// broadcast stage to frontend
+			as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.gabsAbilityPool.Stage)
 			as.gabsAbilityPool.Stage.Unlock()
-
-			// TODO: broadcast stage to frontend
 
 			continue
 		}
@@ -511,6 +576,9 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 
 // SetNewBattleAbility query
 func (bap *GabsAbilityPool) SetNewBattleAbility() error {
+	// clean up triggered faction
+	bap.TriggeredFactionID = uuid.Nil
+
 	// initialise new gabs ability pool
 	ba, err := db.BattleAbilityGetRandom(context.Background(), gamedb.Conn)
 	if err != nil {
@@ -557,6 +625,113 @@ func (bap *GabsAbilityPool) SetNewBattleAbility() error {
 	return nil
 }
 
+func (as *AbilitiesSystem) BattleAbilityContribution(factionID uuid.UUID, userID server.UserID, amount decimal.Decimal) error {
+	as.gabsAbilityPool.Lock()
+	defer as.gabsAbilityPool.Unlock()
+
+	// check current battle stage
+	as.battle.Stage.RLock()
+	as.gabsAbilityPool.Stage.RLock()
+	// return early if battle stage or bribing stage are invalid
+	if as.battle.Stage.Stage != BattleStagStart || as.gabsAbilityPool.Stage.Phase != BribeStageBribe {
+		as.gabsAbilityPool.Stage.RUnlock()
+		as.battle.Stage.RUnlock()
+		return nil
+	}
+	as.gabsAbilityPool.Stage.RUnlock()
+	as.battle.Stage.RUnlock()
+
+	// check faction ability exists
+	if factionAbility, ok := as.gabsAbilityPool.Abilities[uuid.UUID(factionID)]; ok {
+		// contribute sups
+		actualSupSpent, abilityTriggered := factionAbility.SupContribution(as.battle.arena.ppClient, as.battle.ID.String(), userID, amount)
+
+		// cache user contribution for location select order
+		as.userContributeMap[factionID].Lock()
+		if _, ok := as.userContributeMap[factionID].contributionMap[userID]; !ok {
+			as.userContributeMap[factionID].contributionMap[userID] = decimal.Zero
+		}
+		as.userContributeMap[factionID].contributionMap[userID] = as.userContributeMap[factionID].contributionMap[userID].Add(actualSupSpent)
+		as.userContributeMap[factionID].Unlock()
+
+		if abilityTriggered {
+			// generate location select order list
+			as.locationSelectListSet(factionID, userID)
+
+			// change bribing phase to location select
+			as.gabsAbilityPool.Stage.Lock()
+			as.gabsAbilityPool.Stage.Phase = BribeStageLocationSelect
+			as.gabsAbilityPool.Stage.EndTime = time.Now().Add(time.Duration(LocationSelectDurationSecond) * time.Second)
+			// broadcast stage change
+			as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.gabsAbilityPool.Stage)
+			as.gabsAbilityPool.Stage.Unlock()
+
+			// send message to the user who trigger the ability
+			as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeGabsBribingWinnerSubscribe, userID)), &LocationSelectAnnouncement{
+				GameAbility: as.gabsAbilityPool.Abilities[as.gabsAbilityPool.TriggeredFactionID],
+				EndTime:     as.gabsAbilityPool.Stage.EndTime,
+			})
+		}
+	}
+
+	return nil
+}
+
+// locationSelectListSet set a user list for location select for current ability triggered
+func (as *AbilitiesSystem) locationSelectListSet(factionID uuid.UUID, triggerByUserID server.UserID) {
+	// lock the user id list while setting
+	as.locationDeciders.Lock()
+	defer as.locationDeciders.Unlock()
+
+	// set triggered faction id
+	as.gabsAbilityPool.TriggeredFactionID = factionID
+
+	type userSupSpent struct {
+		userID   server.UserID
+		supSpent decimal.Decimal
+	}
+
+	list := []*userSupSpent{}
+	for userID, contribution := range as.userContributeMap[factionID].contributionMap {
+		list = append(list, &userSupSpent{userID, contribution})
+	}
+
+	// sort order
+	sort.Slice(list, func(i, j int) bool {
+		return list[i].supSpent.GreaterThan(list[j].supSpent)
+	})
+
+	// initialise location select list
+	as.locationDeciders.list = []server.UserID{triggerByUserID}
+
+	// set location select order
+	for _, uss := range list {
+		// skip the user who trigger the location
+		if uss.userID == triggerByUserID {
+			continue
+		}
+		as.locationDeciders.list = append(as.locationDeciders.list, uss.userID)
+	}
+}
+
+// nextLocationDeciderGet return the uuid of the next player to select the location for ability
+func (as *AbilitiesSystem) nextLocationDeciderGet() (server.UserID, bool) {
+	// lock the user id list while setting
+	as.locationDeciders.Lock()
+	defer as.locationDeciders.Unlock()
+
+	// clean up the location select list if there is not user left to select location
+	if len(as.locationDeciders.list) <= 1 {
+		as.locationDeciders.list = []server.UserID{}
+		return server.UserID(uuid.Nil), false
+	}
+
+	// remove the first user from the list
+	as.locationDeciders.list = as.locationDeciders.list[1:]
+
+	return as.locationDeciders.list[0], true
+}
+
 // *********************
 // Handlers
 // *********************
@@ -586,6 +761,67 @@ func (as *AbilitiesSystem) AbilityContribute(wsc *hub.Client, payload []byte, fa
 	supsAmount := decimal.New(req.Payload.Amount, 18)
 
 	as.FactionUniqueAbilityContribute(uuid.UUID(factionID), req.Payload.GameAbilityID, userID, supsAmount)
+
+	return nil
+}
+
+type BribeGabRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		Amount int64 `json:"amount"` // 1, 25, 100
+	} `json:"payload"`
+}
+
+func (as *AbilitiesSystem) BribeGabs(wsc *hub.Client, payload []byte, factionID server.FactionID) error {
+	req := &BribeGabRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
+	if userID.IsNil() {
+		return terror.Error(terror.ErrForbidden)
+	}
+
+	amount := decimal.New(req.Payload.Amount, 18)
+
+	err = as.BattleAbilityContribution(uuid.UUID(factionID), userID, amount)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	return nil
+}
+
+func (as *AbilitiesSystem) BribeStageGet() *GabsBribeStage {
+	return as.gabsAbilityPool.Stage
+}
+
+func (as *AbilitiesSystem) LocationSelect(userID server.UserID, x int, y int) error {
+	// check current user is the winner
+	as.locationDeciders.RLock()
+	defer as.locationDeciders.RUnlock()
+
+	// check eligibility
+	if len(as.locationDeciders.list) <= 0 || as.locationDeciders.list[0] != userID {
+		return terror.Error(terror.ErrForbidden)
+	}
+
+	// trigger location select
+	as.battle.arena.Message(
+		"BATTLE:ABILITY",
+		&server.GameAbilityEvent{
+			IsTriggered:         true,
+			GameClientAbilityID: as.gabsAbilityPool.Abilities[as.gabsAbilityPool.TriggeredFactionID].GameClientAbilityID,
+			TriggeredOnCellX:    &x,
+			TriggeredOnCellY:    &y,
+			TriggeredByUserID:   &userID,
+			// TODO: Get user name
+		},
+	)
+
+	// TODO: store ability event data
 
 	return nil
 }

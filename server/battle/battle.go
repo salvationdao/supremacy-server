@@ -119,6 +119,10 @@ func NewArena(opts *Opts) *Arena {
 	opts.Command(HubKeyGameSettingsUpdated, arena.SendSettings)
 	opts.Command(HubKeyGameUserOnline, arena.UserOnline)
 
+	// subscribe functions
+	opts.SecureUserFactionSubscribeCommand(HubKeGabsBribeStageUpdateSubscribe, arena.GabsBribeStageSubscribe)
+	opts.SecureUserFactionSubscribeCommand(HubKeGabsBribingWinnerSubscribe, arena.GabsBribingWinnerSubscribe)
+
 	go func() {
 		err = server.Serve(l)
 
@@ -214,10 +218,52 @@ func (arena *Arena) UserOnline(ctx context.Context, wsc *hub.Client, payload []b
 		return err
 	}
 
-	user.wsClient = wsc
-
-	arena.currentBattle.userOnline(user)
+	arena.currentBattle.userOnline(user, wsc)
 	return nil
+}
+
+const HubKeGabsBribeStageUpdateSubscribe hub.HubCommandKey = "BRIBE:STAGE:UPDATED:SUBSCRIBE"
+
+// GabsBribeStageSubscribe subscribe on bribing stage change
+func (arena *Arena) GabsBribeStageSubscribe(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return "", "", terror.Error(err, "Invalid request received")
+	}
+
+	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
+	if userID.IsNil() {
+		return "", "", terror.Error(terror.ErrInvalidInput)
+	}
+
+	// return data if, current battle is not null
+	if arena.currentBattle != nil {
+		btl := arena.currentBattle
+		reply(btl.abilities.BribeStageGet())
+	}
+
+	return req.TransactionID, messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), nil
+}
+
+const HubKeGabsBribingWinnerSubscribe hub.HubCommandKey = "BRIBE:WINNER:SUBSCRIBE"
+
+// GabsBribingWinnerSubscribe subscribe on winner notification
+func (arena *Arena) GabsBribingWinnerSubscribe(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return "", "", terror.Error(err, "Invalid request received")
+	}
+
+	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
+	if userID.IsNil() {
+		return "", "", terror.Error(terror.ErrInvalidInput)
+	}
+
+	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeGabsBribingWinnerSubscribe, userID))
+
+	return req.TransactionID, busKey, nil
 }
 
 func (arena *Arena) SendSettings(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
@@ -355,6 +401,9 @@ func (arena *Arena) Battle() *Battle {
 		ID:      uuid.Must(uuid.NewV4()),
 		MapName: gameMap.Name,
 		gameMap: gameMap,
+		Stage: &BattleState{
+			Stage: BattleStagStart,
+		},
 	}
 
 	err = btl.Load()
@@ -430,7 +479,9 @@ func (btl *Battle) start(payload *BattleStartPayload) {
 
 	// set up the abilities for current battle
 	btl.abilities = NewAbilitiesSystem(btl)
-	btl.users = []*BattleUser{}
+	btl.users = usersMap{
+		m: make(map[uuid.UUID]*BattleUser),
+	}
 
 	btl.BroadcastUpdate()
 }
@@ -456,10 +507,8 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		}
 	}
 
-	faked := false
 	if winningWarMachines[0] == nil {
-		faked = true
-		gamelog.L.Error().Str("Battle ID", btl.ID.String()).Msg("selected \"winning warmachine\" at random so routine can end")
+		gamelog.L.Panic().Str("Battle ID", btl.ID.String()).Msg("no winning war machines")
 	}
 
 	fakedUsers := []*BattleUser{
@@ -506,6 +555,10 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		gamelog.L.Error().Interface("ids", ids).Err(err).Msg("db.ClearQueue() returned error")
 		return
 	}
+
+	btl.Stage.Lock()
+	btl.Stage.Stage = BattleStageEnd
+	btl.Stage.Unlock()
 
 	mws := make([]*db.MechWithOwner, len(payload.WinningWarMachines))
 
@@ -564,6 +617,8 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	}
 }
 
+const HubKeyBattleEndDetailUpdated hub.HubCommandKey = "BATTLE:END:DETAIL:UPDATED"
+
 func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 	fakeMultipliers := []*Multiplier{
 		&Multiplier{
@@ -573,7 +628,7 @@ func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 	}
 	btl.users.ForEach(func(user *BattleUser) bool {
 		info.UserMultipliers = fakeMultipliers
-		user.Send(info)
+		user.Send(HubKeyBattleEndDetailUpdated, info)
 		return true
 	})
 }
@@ -590,8 +645,16 @@ type GameSettingsResponse struct {
 	WarMachineLocation []byte          `json:"war_machine_location"`
 }
 
-func (btl *Battle) userOnline(user *BattleUser) {
-	btl.users.Add(user)
+func (btl *Battle) userOnline(user *BattleUser, wsc *hub.Client) {
+	u, ok := btl.users.User(user.ID)
+	if !ok {
+		user.wsClient[wsc] = true
+		btl.users.Add(user)
+	} else {
+		u.Lock()
+		u.wsClient[wsc] = true
+		u.Unlock()
+	}
 }
 
 func (btl *Battle) updatePayload() *GameSettingsResponse {

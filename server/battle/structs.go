@@ -48,16 +48,16 @@ func (u *usersMap) ForEach(fn func(user *BattleUser) bool) {
 	return
 }
 
-func (u *usersMap) Send(payload interface{}, ids ...uuid.UUID) error {
+func (u *usersMap) Send(key hub.HubCommandKey, payload interface{}, ids ...uuid.UUID) error {
 	u.RLock()
 	if len(ids) == 0 {
 		for _, user := range u.m {
-			user.Send(payload)
+			user.Send(key, payload)
 		}
 	} else {
 		for _, id := range ids {
 			if user, ok := u.m[id]; ok {
-				user.Send(payload)
+				user.Send(key, payload)
 			} else {
 				gamelog.L.Warn().Str("user_id", id.String()).Msg("tried to send user a msg but not in online map")
 			}
@@ -67,11 +67,11 @@ func (u *usersMap) Send(payload interface{}, ids ...uuid.UUID) error {
 	return nil
 }
 
-func (u *usersMap) User(id uuid.UUID) BattleUser {
+func (u *usersMap) User(id uuid.UUID) (*BattleUser, bool) {
 	u.RLock()
-	b := u.m[id]
+	b, ok := u.m[id]
 	u.RUnlock()
-	return *b
+	return b, ok
 }
 
 func (u *usersMap) Delete(id uuid.UUID) {
@@ -107,20 +107,26 @@ type BattleUser struct {
 	FactionColour string    `json:"faction_colour"`
 	FactionID     uuid.UUID `json:"faction_id"`
 	FactionLogoID uuid.UUID `json:"faction_logo_id"`
-	wsClient      []*hub.Client
+	wsClient      map[*hub.Client]bool
+	deadlock.RWMutex
 }
 
-func (bu *BattleUser) Send(payload interface{}) error {
+func (bu *BattleUser) Send(key hub.HubCommandKey, payload interface{}) error {
+
 	if bu.wsClient == nil || len(bu.wsClient) == 0 {
 		return fmt.Errorf("user does not have a websocket client")
 	}
 
-	b, err := json.Marshal(payload)
+	b, err := json.Marshal(&BroadcastPayload{
+		Key:     key,
+		Payload: payload,
+	})
+
 	if err != nil {
 		return err
 	}
 
-	for _, wsc := range bu.wsClient {
+	for wsc, _ := range bu.wsClient {
 		go wsc.Send(b)
 	}
 	return nil

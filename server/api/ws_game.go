@@ -32,7 +32,7 @@ func NewGameController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *GameC
 	api.Command(HubKeyFactionColour, gameHub.FactionColour)
 	api.SecureUserCommand(HubKeyActiveCheckUpdated, gameHub.ActiveChecker)
 	api.SubscribeCommand(HubKeyWarMachineDestroyedUpdated, gameHub.WarMachineDestroyedUpdateSubscribeHandler)
-	api.SubscribeCommand(HubKeyBattleEndDetailUpdated, gameHub.BattleEndDetailUpdateSubscribeHandler)
+	//api.SubscribeCommand(HubKeyBattleEndDetailUpdated, gameHub.BattleEndDetailUpdateSubscribeHandler)
 	api.SubscribeCommand(HubKeyAISpawned, gameHub.AISpawnedSubscribeHandler)
 
 	api.SecureUserCommand(HubKeyWarMachineQueueLeave, gameHub.WarMachineQueueLeaveHandler)
