@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/volatiletech/null/v8"
 
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
@@ -116,10 +117,11 @@ func NewArena(opts *Opts) *Arena {
 	opts.SecureUserFactionCommand(WSJoinQueue, arena.Join)
 	// todo: access ability from here
 	opts.SecureUserFactionCommand(HubKeFactionUniqueAbilityContribute, arena.FactionUniqueAbilityContribute)
-	opts.Command(HubKeyGameSettingsUpdated, arena.SendSettings)
 	opts.Command(HubKeyGameUserOnline, arena.UserOnline)
 
 	// subscribe functions
+	opts.SubscribeCommand(HubKeyGameSettingsUpdated, arena.SendSettings)
+
 	opts.SubscribeCommand(HubKeyGameNotification, arena.GameNotificationSubscribeHandler)
 	opts.SecureUserFactionSubscribeCommand(HubKeGabsBribeStageUpdateSubscribe, arena.GabsBribeStageSubscribe)
 	opts.SecureUserFactionSubscribeCommand(HubKeGabsBribingWinnerSubscribe, arena.GabsBribingWinnerSubscribe)
@@ -267,13 +269,20 @@ func (arena *Arena) GabsBribingWinnerSubscribe(ctx context.Context, wsc *hub.Cli
 	return req.TransactionID, busKey, nil
 }
 
-func (arena *Arena) SendSettings(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	if arena.currentBattle == nil {
-		return nil
+func (arena *Arena) SendSettings(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return "", "", errors.Wrap(err, "unable to unmarshal json payload for send settings subscribe")
 	}
+	if arena.currentBattle == nil {
+		return "", "", fmt.Errorf("battle is not currently running")
+	}
+
 	btl := arena.currentBattle
 	reply(btl.updatePayload())
-	return nil
+
+	return req.TransactionID, messagebus.BusKey(HubKeyGameNotification), nil
 }
 
 type BattleMsg struct {
@@ -513,8 +522,18 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	}
 
 	fakedUsers := []*BattleUser{
-		&BattleUser{ID: uuid.Must(uuid.NewV4()), Username: "FakeUser1"},
-		&BattleUser{ID: uuid.Must(uuid.NewV4()), Username: "FakeUser2"},
+		&BattleUser{ID: uuid.Must(uuid.NewV4()),
+			Username:      "FakeUser1",
+			FactionID:     winningWarMachines[0].FactionID,
+			FactionColour: btl.factions[uuid.Must(uuid.FromString(winningWarMachines[0].FactionID))].PrimaryColor,
+			FactionLogoID: FactionLogos[winningWarMachines[0].FactionID],
+		},
+		&BattleUser{ID: uuid.Must(uuid.NewV4()),
+			Username:      "FakeUser2",
+			FactionID:     winningWarMachines[0].FactionID,
+			FactionColour: btl.factions[uuid.Must(uuid.FromString(winningWarMachines[0].FactionID))].PrimaryColor,
+			FactionLogoID: FactionLogos[winningWarMachines[0].FactionID],
+		},
 	}
 
 	fakedFactions := make([]*Faction, 2)

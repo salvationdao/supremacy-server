@@ -105,10 +105,20 @@ type BattleUser struct {
 	ID            uuid.UUID `json:"id"`
 	Username      string    `json:"username"`
 	FactionColour string    `json:"faction_colour"`
-	FactionID     uuid.UUID `json:"faction_id"`
-	FactionLogoID uuid.UUID `json:"faction_logo_id"`
+	FactionID     string    `json:"faction_id"`
+	FactionLogoID string    `json:"faction_logo_id"`
 	wsClient      map[*hub.Client]bool
 	deadlock.RWMutex
+}
+
+var FactionLogos = map[string]string{
+	"98bf7bb3-1a7c-4f21-8843-458d62884060": "471354c5-d910-4408-852a-6b44b497680f",
+	"7c6dde21-b067-46cf-9e56-155c88a520e2": "e1973047-f120-4c36-ba5d-2d1c5100a22f",
+	"880db344-e405-428d-84e5-6ebebab1fe6d": "fd3b1345-48e3-43ba-96bb-f0848dc70012",
+}
+
+func (bu *BattleUser) AvatarID() string {
+	return FactionLogos[bu.FactionID]
 }
 
 func (bu *BattleUser) Send(key hub.HubCommandKey, payload interface{}) error {
