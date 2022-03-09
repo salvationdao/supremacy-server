@@ -440,66 +440,42 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 	as.battleAbilityPool.Stage.Phase = BribeStageBribe
 	as.battleAbilityPool.Stage.EndTime = time.Now().Add(BribeDurationSecond * time.Second)
 
-	// progress bar broadcaster
-	go as.BattleAbilityProgressBar()
 	// ability price updater
-	go as.BAttleAbilityPriceUpdater()
 
 	// initial a ticker for current battle
-	ticker := time.NewTicker(1 * time.Second)
-
+	main_ticker := time.NewTicker(1 * time.Second)
+	price_ticker := time.NewTicker(1 * time.Second)
+	progress_ticker := time.NewTicker(1 * time.Millisecond)
 	// start ability pool cycle
 	for {
+		select {
 		// wait for next tick
-		<-ticker.C
+		case <-main_ticker.C:
 
-		// check phase
-		stage := as.battle.stage
-		// exit the loop, when battle is ended
-		if stage == BattleStageEnd {
-			ticker.Stop()
-			break
-		}
-
-		// otherwise check bribing phase
-
-		// skip, if the end time of current phase haven't been reached
-		if as.battleAbilityPool.Stage.EndTime.After(time.Now()) {
-			continue
-		}
-
-		// otherwise, read current bribe phase
-		bribePhase := as.battleAbilityPool.Stage.Phase
-
-		/////////////////
-		// Bribe Phase //
-		/////////////////
-		switch bribePhase {
-
-		// at the end of bribing phase
-		// no ability is triggered, switch to cooldown phase
-		case BribeStageBribe:
-			// change bribing phase
-
-			// set new battle ability
-			cooldownSecond, err := as.SetNewBattleAbility()
-			if err != nil {
-				gamelog.L.Err(err).Msg("Failed to set new battle ability")
+			// check phase
+			stage := as.battle.stage
+			// exit the loop, when battle is ended
+			if stage == BattleStageEnd {
+				main_ticker.Stop()
+				break
 			}
 
-			as.battleAbilityPool.Stage.Phase = BribeStageCooldown
-			as.battleAbilityPool.Stage.EndTime = time.Now().Add(time.Duration(cooldownSecond) * time.Second)
-			// broadcast stage to frontend
-			as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
+			// skip, if the end time of current phase haven't been reached
+			if as.battleAbilityPool.Stage.EndTime.After(time.Now()) {
+				continue
+			}
 
-		// at the end of location select phase
-		// pass the location select to next player
-		case BribeStageLocationSelect:
-			// get the next location decider
-			userID, ok := as.nextLocationDeciderGet()
-			if !ok {
-				// enter cooldown phase, if there is no user left for location select
+			// otherwise, read current bribe phase
+			bribePhase := as.battleAbilityPool.Stage.Phase
 
+			/////////////////
+			// Bribe Phase //
+			/////////////////
+			switch bribePhase {
+
+			// at the end of bribing phase
+			// no ability is triggered, switch to cooldown phase
+			case BribeStageBribe:
 				// change bribing phase
 
 				// set new battle ability
@@ -510,36 +486,63 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 
 				as.battleAbilityPool.Stage.Phase = BribeStageCooldown
 				as.battleAbilityPool.Stage.EndTime = time.Now().Add(time.Duration(cooldownSecond) * time.Second)
+				// broadcast stage to frontend
 				as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
+
+			// at the end of location select phase
+			// pass the location select to next player
+			case BribeStageLocationSelect:
+				// get the next location decider
+				userID, ok := as.nextLocationDeciderGet()
+				if !ok {
+					// enter cooldown phase, if there is no user left for location select
+
+					// change bribing phase
+
+					// set new battle ability
+					cooldownSecond, err := as.SetNewBattleAbility()
+					if err != nil {
+						gamelog.L.Err(err).Msg("Failed to set new battle ability")
+					}
+
+					as.battleAbilityPool.Stage.Phase = BribeStageCooldown
+					as.battleAbilityPool.Stage.EndTime = time.Now().Add(time.Duration(cooldownSecond) * time.Second)
+					as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
+					continue
+				}
+
+				// extend location select phase duration
+				as.battleAbilityPool.Stage.Phase = BribeStageLocationSelect
+				as.battleAbilityPool.Stage.EndTime = time.Now().Add(time.Duration(LocationSelectDurationSecond) * time.Second)
+				// broadcast stage to frontend
+				as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
+
+				// broadcast the announcement to the next location decider
+				as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeGabsBribingWinnerSubscribe, userID)), &LocationSelectAnnouncement{
+					GameAbility: as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID],
+					EndTime:     as.battleAbilityPool.Stage.EndTime,
+				})
+
+			// at the end of cooldown phase
+			// random choose a battle ability for next bribing session
+			case BribeStageCooldown:
+
+				// change bribing phase
+				as.battleAbilityPool.Stage.Phase = BribeStageBribe
+				as.battleAbilityPool.Stage.EndTime = time.Now().Add(time.Duration(BribeDurationSecond) * time.Second)
+				// broadcast stage to frontend
+				as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
+
 				continue
+			default:
+				gamelog.L.Error().Msg("hit default case switch on abilities loop")
 			}
-
-			// extend location select phase duration
-			as.battleAbilityPool.Stage.Phase = BribeStageLocationSelect
-			as.battleAbilityPool.Stage.EndTime = time.Now().Add(time.Duration(LocationSelectDurationSecond) * time.Second)
-			// broadcast stage to frontend
-			as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
-
-			// broadcast the announcement to the next location decider
-			as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeGabsBribingWinnerSubscribe, userID)), &LocationSelectAnnouncement{
-				GameAbility: as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID],
-				EndTime:     as.battleAbilityPool.Stage.EndTime,
-			})
-
-		// at the end of cooldown phase
-		// random choose a battle ability for next bribing session
-		case BribeStageCooldown:
-
-			// change bribing phase
-			as.battleAbilityPool.Stage.Phase = BribeStageBribe
-			as.battleAbilityPool.Stage.EndTime = time.Now().Add(time.Duration(BribeDurationSecond) * time.Second)
-			// broadcast stage to frontend
-			as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
-
-			continue
+		case <-price_ticker.C:
+			as.BattleAbilityPriceUpdater()
+		case <-progress_ticker.C:
+			as.BattleAbilityProgressBar()
 		}
 	}
-
 	// do some thing after battle end...
 	fmt.Println("Exit bribing ticker")
 }
@@ -609,7 +612,7 @@ func (as *AbilitiesSystem) BattleAbilityBribing(factionID uuid.UUID, userID serv
 	}
 
 	// check faction ability exists
-	if factionAbility, ok := as.battleAbilityPool.Abilities[uuid.UUID(factionID)]; ok {
+	if factionAbility, ok := as.battleAbilityPool.Abilities[factionID]; ok {
 
 		// contribute sups
 		actualSupSpent, abilityTriggered := factionAbility.SupContribution(as.battle.arena.ppClient, as.battle.ID.String(), userID, amount)
@@ -687,7 +690,7 @@ func (as *AbilitiesSystem) locationSelectListSet(factionID uuid.UUID, triggerByU
 
 // nextLocationDeciderGet return the uuid of the next player to select the location for ability
 func (as *AbilitiesSystem) nextLocationDeciderGet() (server.UserID, bool) {
-	// clean up the location select list if there is not user left to select location
+	// clean up the location select list if there is no user left to select location
 	if len(as.locationDeciders.list) <= 1 {
 		as.locationDeciders.list = []server.UserID{}
 		return server.UserID(uuid.Nil), false
@@ -705,128 +708,117 @@ func (as *AbilitiesSystem) nextLocationDeciderGet() (server.UserID, bool) {
 
 // 1 tick per second, each tick reduce 0,978 of current price
 
-func (as *AbilitiesSystem) BAttleAbilityPriceUpdater() {
-	ticker := time.NewTicker(1 * time.Second)
+func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 
-	for {
-		<-ticker.C
-		// check battle stage
-		stage := as.battle.stage
-		// exit the loop, when battle is ended
-		if stage == BattleStageEnd {
-			ticker.Stop()
-			break
+	// check battle stage
+	stage := as.battle.stage
+	// exit the loop, when battle is ended
+	if stage == BattleStageEnd {
+		return
+	}
+
+	// check bribing stage
+	if as.battleAbilityPool.Stage.Phase != BribeStageBribe {
+		// skip if the stage is invalid
+		return
+	}
+
+	// update price
+	for factionID, ability := range as.battleAbilityPool.Abilities {
+		// reduce price
+		ability.SupsCost = ability.SupsCost.Mul(decimal.NewFromFloat(0.978))
+
+		// cap minmum price at 1 sup
+		if ability.SupsCost.Cmp(decimal.New(1, 18)) <= 0 {
+			ability.SupsCost = decimal.New(1, 18)
 		}
 
-		// check bribing stage
-		if as.battleAbilityPool.Stage.Phase != BribeStageBribe {
-			// skip if the stage is invalid
-			continue
-		}
-
-		// update price
-		for factionID, ability := range as.battleAbilityPool.Abilities {
-			// reduce price
-			ability.SupsCost = ability.SupsCost.Mul(decimal.NewFromFloat(0.978))
-
-			// cap minmum price at 1 sup
-			if ability.SupsCost.Cmp(decimal.New(1, 18)) <= 0 {
-				ability.SupsCost = decimal.New(1, 18)
-			}
-
-			// if ability not triggered, store ability to database
-			if ability.SupsCost.Cmp(ability.CurrentSups) > 0 {
-				// store updated price to db
-				err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ability.ID, ability.SupsCost.String(), ability.CurrentSups.String())
-				if err != nil {
-					gamelog.L.Err(err)
-				}
-				continue
-			}
-
-			// if ability triggered
-			ability.SupsCost = ability.SupsCost.Mul(decimal.NewFromInt(2))
-			ability.CurrentSups = decimal.Zero
+		// if ability not triggered, store ability to database
+		if ability.SupsCost.Cmp(ability.CurrentSups) > 0 {
+			// store updated price to db
 			err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ability.ID, ability.SupsCost.String(), ability.CurrentSups.String())
 			if err != nil {
 				gamelog.L.Err(err)
 			}
+			continue
+		}
 
-			// change st
-			// generate location select order list
-			as.locationSelectListSet(factionID)
+		// if ability triggered
+		ability.SupsCost = ability.SupsCost.Mul(decimal.NewFromInt(2))
+		ability.CurrentSups = decimal.Zero
+		err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ability.ID, ability.SupsCost.String(), ability.CurrentSups.String())
+		if err != nil {
+			gamelog.L.Err(err)
+		}
 
-			// if no user online, enter cooldown and exit the loop
-			if len(as.locationDeciders.list) == 0 {
-				// change bribing phase
+		// change st
+		// generate location select order list
+		as.locationSelectListSet(factionID)
 
-				// set new battle ability
-				cooldownSecond, err := as.SetNewBattleAbility()
-				if err != nil {
-					gamelog.L.Err(err).Msg("Failed to set new battle ability")
-				}
+		// if no user online, enter cooldown and exit the loop
+		if len(as.locationDeciders.list) == 0 {
+			// change bribing phase
 
-				as.battleAbilityPool.Stage.Phase = BribeStageCooldown
-				as.battleAbilityPool.Stage.EndTime = time.Now().Add(time.Duration(cooldownSecond) * time.Second)
-				as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
-
-				break
+			// set new battle ability
+			cooldownSecond, err := as.SetNewBattleAbility()
+			if err != nil {
+				gamelog.L.Err(err).Msg("Failed to set new battle ability")
 			}
-			// if there is user, assign location decider and exit the loop
 
-			// change bribing phase to location select
-			as.battleAbilityPool.Stage.Phase = BribeStageLocationSelect
-			as.battleAbilityPool.Stage.EndTime = time.Now().Add(time.Duration(LocationSelectDurationSecond) * time.Second)
-			// broadcast stage change
+			as.battleAbilityPool.Stage.Phase = BribeStageCooldown
+			as.battleAbilityPool.Stage.EndTime = time.Now().Add(time.Duration(cooldownSecond) * time.Second)
 			as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
 
-			// broadcast the announcement to the next location decider
-			as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeGabsBribingWinnerSubscribe, as.locationDeciders.list[0])), &LocationSelectAnnouncement{
-				GameAbility: as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID],
-				EndTime:     as.battleAbilityPool.Stage.EndTime,
-			})
-
-			break
+			return
 		}
+		// if there is user, assign location decider and exit the loop
+
+		// change bribing phase to location select
+		as.battleAbilityPool.Stage.Phase = BribeStageLocationSelect
+		as.battleAbilityPool.Stage.EndTime = time.Now().Add(time.Duration(LocationSelectDurationSecond) * time.Second)
+		// broadcast stage change
+		as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
+
+		// broadcast the announcement to the next location decider
+		as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeGabsBribingWinnerSubscribe, as.locationDeciders.list[0])), &LocationSelectAnnouncement{
+			GameAbility: as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID],
+			EndTime:     as.battleAbilityPool.Stage.EndTime,
+		})
+
+		break
 	}
 }
 
 func (as *AbilitiesSystem) BattleAbilityProgressBar() {
-	ticker := time.NewTicker(200 * time.Microsecond)
 
-	for {
-		<-ticker.C
-		// check battle stage
-		stage := as.battle.stage
-		// exit the loop, when battle is ended
-		if stage == BattleStageEnd {
-			ticker.Stop()
-			break
-		}
-
-		// check bribing stage
-		if as.battleAbilityPool.Stage.Phase != BribeStageBribe {
-			// skip if the stage is invalid
-			continue
-		}
-
-		factionAbilityPrices := []string{}
-		for factionID, ability := range as.battleAbilityPool.Abilities {
-			factionAbilityPrice := fmt.Sprintf("%s_%s_%s", factionID.String(), ability.SupsCost.String(), ability.CurrentSups.String())
-			factionAbilityPrices = append(factionAbilityPrices, factionAbilityPrice)
-		}
-
-		// broadcast to frontend
-		data, err := json.Marshal(strings.Join(factionAbilityPrices, "|"))
-		if err != nil {
-			gamelog.L.Err(err).Msg("Failed to parse ability progress bar")
-			continue
-		}
-
-		as.battle.arena.netMessageBus.Send(context.Background(), messagebus.NetBusKey(HubKeyFactionProgressBarUpdated), data)
+	// check battle stage
+	stage := as.battle.stage
+	// exit the loop, when battle is ended
+	if stage == BattleStageEnd {
+		return
 	}
 
-	fmt.Println("Stop ability progress bar broadcast")
+	// check bribing stage
+	if as.battleAbilityPool.Stage.Phase != BribeStageBribe {
+		// skip if the stage is invalid
+		return
+	}
+
+	factionAbilityPrices := []string{}
+	for factionID, ability := range as.battleAbilityPool.Abilities {
+		factionAbilityPrice := fmt.Sprintf("%s_%s_%s", factionID.String(), ability.SupsCost.String(), ability.CurrentSups.String())
+		factionAbilityPrices = append(factionAbilityPrices, factionAbilityPrice)
+	}
+
+	// broadcast to frontend
+	data, err := json.Marshal(strings.Join(factionAbilityPrices, "|"))
+	if err != nil {
+		gamelog.L.Err(err).Msg("Failed to parse ability progress bar")
+		return
+	}
+
+	as.battle.arena.netMessageBus.Send(context.Background(), messagebus.NetBusKey(HubKeyFactionProgressBarUpdated), data)
+
 }
 
 // *********************
