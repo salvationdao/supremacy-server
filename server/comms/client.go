@@ -102,7 +102,7 @@ func dial(maxRetry int, addrAndPort string) (client *rpc.Client, err error) {
 		// rpc have own timeout probably 1~1.4 sec?
 		client, err = rpc.Dial("tcp", addrAndPort)
 		if err == nil {
-			return
+			break
 		}
 		gamelog.L.Debug().Err(err).Str("fn", "comms.dial").Msgf("err: dial fail, retrying... %d", retry)
 
@@ -114,9 +114,9 @@ func dial(maxRetry int, addrAndPort string) (client *rpc.Client, err error) {
 		retry++
 		// limited retry
 		if retry > maxRetry {
-			break
+			return nil, terror.Error(fmt.Errorf("rpc dial failed after %d retries", maxRetry))
 		}
 	}
 
-	return nil, terror.Error(fmt.Errorf("rpc dial failed after %d retries", maxRetry))
+	return client, nil
 }
