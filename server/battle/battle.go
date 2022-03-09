@@ -126,6 +126,9 @@ func NewArena(opts *Opts) *Arena {
 	opts.SecureUserFactionSubscribeCommand(HubKeGabsBribeStageUpdateSubscribe, arena.GabsBribeStageSubscribe)
 	opts.SecureUserFactionSubscribeCommand(HubKeGabsBribingWinnerSubscribe, arena.GabsBribingWinnerSubscribe)
 
+	// net message subscribe
+	opts.NetSecureUserFactionSubscribeCommand(HubKeyFactionProgressBarUpdated, arena.FactionProgressBarUpdateSubscribeHandler)
+
 	go func() {
 		err = server.Serve(l)
 
@@ -197,6 +200,39 @@ func (arena *Arena) SetMessageBus(mb *messagebus.MessageBus, nb *messagebus.NetB
 	arena.messageBus = mb
 }
 
+const HubKeyBattleAbilityUpdated hub.HubCommandKey = "BATTLE:ABILITY:UPDATED"
+
+func (arena *Arena) BattleAbilityUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return "", "", terror.Error(err, "Invalid request received")
+	}
+
+	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
+	if userID.IsNil() {
+		return "", "", terror.Error(terror.ErrInvalidInput)
+	}
+
+	// get faction id
+	factionID, err := db.PlayerFactionIDGet(context.Background(), gamedb.Conn, userID)
+	if err != nil {
+		return "", "", terror.Error(err)
+	}
+
+	if factionID == nil || factionID.IsNil() {
+		return "", "", terror.Error(terror.ErrForbidden)
+	}
+
+	// return data if, current battle is not null
+	if arena.currentBattle != nil {
+		btl := arena.currentBattle
+		reply(btl.abilities.FactionBattleAbilityGet(uuid.UUID(*factionID)))
+	}
+
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBattleAbilityUpdated, factionID.String())), nil
+}
+
 func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, wsc *hub.Client, payload []byte, factionID server.FactionID, reply hub.ReplyFunc) error {
 	if arena.currentBattle == nil {
 		return nil
@@ -249,6 +285,14 @@ func (arena *Arena) GabsBribeStageSubscribe(ctx context.Context, wsc *hub.Client
 	return req.TransactionID, messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), nil
 }
 
+const HubKeyFactionProgressBarUpdated hub.HubCommandKey = "FACTION:ABILITY:PROGRESS:BAR:UPDATED"
+
+func (arena *Arena) FactionProgressBarUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.NetBusKey, error) {
+	gamelog.L.Info().Str("fn", "FactionProgressBarUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
+
+	return messagebus.NetBusKey(HubKeyFactionProgressBarUpdated), nil
+}
+
 const HubKeGabsBribingWinnerSubscribe hub.HubCommandKey = "BRIBE:WINNER:SUBSCRIBE"
 
 // GabsBribingWinnerSubscribe subscribe on winner notification
@@ -282,7 +326,7 @@ func (arena *Arena) SendSettings(ctx context.Context, wsc *hub.Client, payload [
 	btl := arena.currentBattle
 	reply(btl.updatePayload())
 
-	return req.TransactionID, messagebus.BusKey(HubKeyGameNotification), nil
+	return req.TransactionID, messagebus.BusKey(HubKeyGameSettingsUpdated), nil
 }
 
 type BattleMsg struct {
