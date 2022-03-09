@@ -39,8 +39,8 @@ PASSPORT-SERVER$ make db-reset
 PASSPORT-SERVER$ make db-boiler
 PASSPORT-SERVER$ make serve
 
-GAMESERVER$ make serve
-PASSPORT-SERVER$ make serve
+GAMESERVER$ make sync
+PASSPORT-SERVER$ make sync
 ```
 
 After both servers are running (and database setup), suck data in this order:
