@@ -80,15 +80,10 @@ func (arena *Arena) HubKeyMultiplierUpdate(ctx context.Context, wsc *hub.Client,
 		return "", "", terror.Error(err)
 	}
 
-	b, err := json.Marshal(&BroadcastPayload{
-		Key: HubKeyMultiplierUpdate,
-		Payload: &MultiplierUpdate{
-			UserMultipliers:  fakeMultipliers,
-			TotalMultipliers: "36x",
-		},
+	reply(&MultiplierUpdate{
+		UserMultipliers:  fakeMultipliers,
+		TotalMultipliers: "36x",
 	})
-
-	reply(b)
 
 	return req.TransactionID, messagebus.BusKey(HubKeyMultiplierUpdate), nil
 }
