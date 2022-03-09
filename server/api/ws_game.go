@@ -37,7 +37,7 @@ func NewGameController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *GameC
 
 	api.SecureUserCommand(HubKeyWarMachineQueueLeave, gameHub.WarMachineQueueLeaveHandler)
 
-	api.SubscribeCommand(HubKeyGameNotification, gameHub.GameNotificationSubscribeHandler)
+	// api.SubscribeCommand(HubKeyGameNotification, gameHub.GameNotificationSubscribeHandler)
 	return gameHub
 }
 

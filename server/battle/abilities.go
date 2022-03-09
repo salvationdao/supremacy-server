@@ -258,11 +258,11 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 					continue
 				}
 
-				// terminate the function when battle is end
-				fmt.Println("Battle Ended")
 				break
 			}
 
+			// terminate the function when battle is end
+			fmt.Println("Exit battle price updater")
 			// do something after battle end...
 
 		}(abilities)
@@ -549,7 +549,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 			as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.gabsAbilityPool.Stage)
 			as.gabsAbilityPool.Stage.Unlock()
 
-			// broadcast the next location decider
+			// broadcast the announcement to the next location decider
 			as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeGabsBribingWinnerSubscribe, userID)), &LocationSelectAnnouncement{
 				GameAbility: as.gabsAbilityPool.Abilities[as.gabsAbilityPool.TriggeredFactionID],
 				EndTime:     as.gabsAbilityPool.Stage.EndTime,
@@ -572,6 +572,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 	}
 
 	// do some thing after battle end...
+	fmt.Println("Exit bribing ticker")
 }
 
 // SetNewBattleAbility query
@@ -732,6 +733,10 @@ func (as *AbilitiesSystem) nextLocationDeciderGet() (server.UserID, bool) {
 	return as.locationDeciders.list[0], true
 }
 
+// ***********************************
+// Ability Progression bar Broadcaster
+// ***********************************
+
 // *********************
 // Handlers
 // *********************
@@ -803,17 +808,27 @@ func (as *AbilitiesSystem) LocationSelect(userID server.UserID, x int, y int) er
 	as.locationDeciders.RLock()
 	defer as.locationDeciders.RUnlock()
 
+	// check battle end
+	as.battle.Stage.RLock()
+	if as.battle.Stage.Stage == BattleStageEnd {
+		as.battle.Stage.RUnlock()
+		return nil
+	}
+	as.battle.Stage.RUnlock()
+
 	// check eligibility
 	if len(as.locationDeciders.list) <= 0 || as.locationDeciders.list[0] != userID {
 		return terror.Error(terror.ErrForbidden)
 	}
+
+	ability := as.gabsAbilityPool.Abilities[as.gabsAbilityPool.TriggeredFactionID]
 
 	// trigger location select
 	as.battle.arena.Message(
 		"BATTLE:ABILITY",
 		&server.GameAbilityEvent{
 			IsTriggered:         true,
-			GameClientAbilityID: as.gabsAbilityPool.Abilities[as.gabsAbilityPool.TriggeredFactionID].GameClientAbilityID,
+			GameClientAbilityID: ability.GameClientAbilityID,
 			TriggeredOnCellX:    &x,
 			TriggeredOnCellY:    &y,
 			TriggeredByUserID:   &userID,
@@ -822,6 +837,17 @@ func (as *AbilitiesSystem) LocationSelect(userID server.UserID, x int, y int) er
 	)
 
 	// TODO: store ability event data
+	as.battle.arena.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
+		Type: LocationSelectTypeTrigger,
+		X:    &x,
+		Y:    &y,
+		Ability: &server.AbilityBrief{
+			Label:    ability.Label,
+			ImageUrl: ability.ImageUrl,
+			Colour:   ability.Colour,
+		},
+		// TODO: Get current user
+	})
 
 	return nil
 }

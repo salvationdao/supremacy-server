@@ -115,6 +115,7 @@ func NewArena(opts *Opts) *Arena {
 	opts.Command(HubKeyGameSettingsUpdated, arena.SendSettings)
 
 	// subscribe functions
+	opts.SubscribeCommand(HubKeyGameNotification, arena.GameNotificationSubscribeHandler)
 	opts.SecureUserFactionSubscribeCommand(HubKeGabsBribeStageUpdateSubscribe, arena.GabsBribeStageSubscribe)
 	opts.SecureUserFactionSubscribeCommand(HubKeGabsBribingWinnerSubscribe, arena.GabsBribingWinnerSubscribe)
 
