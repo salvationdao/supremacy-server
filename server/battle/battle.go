@@ -380,6 +380,9 @@ func (arena *Arena) Battle() *Battle {
 		ID:      uuid.Must(uuid.NewV4()),
 		MapName: gameMap.Name,
 		gameMap: gameMap,
+		Stage: &BattleState{
+			Stage: BattleStagStart,
+		},
 	}
 
 	err = btl.Load()
@@ -466,6 +469,10 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		gamelog.L.Error().Interface("ids", ids).Err(err).Msg("db.ClearQueue() returned error")
 		return
 	}
+
+	btl.Stage.Lock()
+	btl.Stage.Stage = BattleStageEnd
+	btl.Stage.Unlock()
 
 	mws := make([]*db.MechWithOwner, len(payload.WinningWarMachines))
 
