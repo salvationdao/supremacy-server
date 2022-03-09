@@ -4,13 +4,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"math/rand"
 	"server/db/boiler"
 	"strconv"
 	"strings"
 
 	"github.com/gofrs/uuid"
-	"github.com/gosimple/slug"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
@@ -136,7 +134,7 @@ func ProcessMech(tx *sql.Tx, data *AssetPayload, metadata *MetadataPayload) (boo
 	if err != nil {
 		return false, false, fmt.Errorf("parse external token ID: %w", err)
 	}
-	label, slug := MechLabelSlug(att.Brand, att.Model, att.SubModel, att.Name)
+	label, slug := MechLabelSlug(att.Brand, att.Model, att.SubModel)
 	newMech := &boiler.Mech{
 		ID:              uuid.Must(uuid.NewV4()).String(),
 		ImageURL:        metadata.Image,
@@ -238,14 +236,14 @@ func ProcessMech(tx *sql.Tx, data *AssetPayload, metadata *MetadataPayload) (boo
 }
 func ProcessChassis(brand *boiler.Brand, attributes []Attributes) (*boiler.Chassis, error) {
 	att := GetAttributes(attributes)
-	label := fmt.Sprintf("%s %s %s %s Chassis", att.Brand, att.Model, att.SubModel, att.Name)
+	label, slug := ChassisLabelSlug(att.Brand, att.Model, att.SubModel)
 	result := &boiler.Chassis{
 		ID:                 uuid.Must(uuid.NewV4()).String(),
 		BrandID:            brand.ID,
 		ShieldRechargeRate: att.ShieldRechargeRate,
 		MaxShield:          att.MaxShieldHitPoints,
 		Label:              label,
-		Slug:               slug.Make(fmt.Sprintf("%s#%d", label, 1000+rand.Intn(8999))),
+		Slug:               slug,
 		HealthRemaining:    att.MaxStructureHitPoints,
 		WeaponHardpoints:   att.WeaponHardpoints,
 		TurretHardpoints:   att.TurretHardpoints,
@@ -259,11 +257,11 @@ func ProcessChassis(brand *boiler.Brand, attributes []Attributes) (*boiler.Chass
 }
 func ProcessModule(brand *boiler.Brand, attributes []Attributes) (*boiler.Module, error) {
 	att := GetAttributes(attributes)
-	label := att.UtilityOne
+	label, slug := ModuleLabelSlug(att.Brand, att.UtilityOne)
 	result := &boiler.Module{
 		ID:               uuid.Must(uuid.NewV4()).String(),
-		Label:            att.UtilityOne,
-		Slug:             slug.Make(fmt.Sprintf("%s#%d", label, 1000+rand.Intn(8999))),
+		Label:            label,
+		Slug:             slug,
 		HitpointModifier: 100,
 		ShieldModifier:   100,
 	}
@@ -279,12 +277,10 @@ func ProcessWeapon(weaponType string, index int, brand *boiler.Brand, attributes
 			return nil, nil
 		}
 		if index == 1 {
-			label = att.TurretOne
-			weapslug = slug.Make(fmt.Sprintf("%s#%d", label, 1000+rand.Intn(8999)))
+			label, weapslug = WeaponLabelSlug(brand.Label, att.TurretOne)
 		}
 		if index == 2 {
-			label = att.TurretTwo
-			weapslug = slug.Make(fmt.Sprintf("%s#%d", label, 1000+rand.Intn(8999)))
+			label, weapslug = WeaponLabelSlug(brand.Label, att.TurretTwo)
 		}
 	}
 
@@ -293,12 +289,10 @@ func ProcessWeapon(weaponType string, index int, brand *boiler.Brand, attributes
 			return nil, nil
 		}
 		if index == 1 {
-			label = att.WeaponOne
-			weapslug = slug.Make(fmt.Sprintf("%s#%d", label, 1000+rand.Intn(8999)))
+			label, weapslug = WeaponLabelSlug(brand.Label, att.WeaponOne)
 		}
 		if index == 2 {
-			label = att.WeaponTwo
-			weapslug = slug.Make(fmt.Sprintf("%s#%d", label, 1000+rand.Intn(8999)))
+			label, weapslug = WeaponLabelSlug(brand.Label, att.WeaponTwo)
 		}
 	}
 

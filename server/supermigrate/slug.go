@@ -7,14 +7,6 @@ import (
 	"github.com/gosimple/slug"
 )
 
-func DefaultTemplateLabelSlug(name string) (string, string) {
-	switch name {
-	case "Alex":
-
-	}
-	return "", ""
-}
-
 func TemplateLabelSlug(brand, model, submodel string) (string, string) {
 	label := fmt.Sprintf("%s %s %s", brand, model, submodel)
 	return label, label
@@ -40,8 +32,8 @@ func BlueprintChassisLabelSlug(brand, model, submodel string) (string, string) {
 	return label, slug.Make(label)
 }
 
-func MechLabelSlug(brand, model, submodel, name string) (string, string) {
-	label := fmt.Sprintf("%s %s %s %s", brand, model, submodel, name)
+func MechLabelSlug(brand, model, submodel string) (string, string) {
+	label := fmt.Sprintf("%s %s %s", brand, model, submodel)
 	return label, slug.Make(fmt.Sprintf("%s#%d", label, 1000+rand.Intn(8999)))
 }
 
