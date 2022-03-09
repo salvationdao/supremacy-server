@@ -122,7 +122,6 @@ func (bu *BattleUser) AvatarID() string {
 }
 
 func (bu *BattleUser) Send(key hub.HubCommandKey, payload interface{}) error {
-
 	if bu.wsClient == nil || len(bu.wsClient) == 0 {
 		return fmt.Errorf("user does not have a websocket client")
 	}
@@ -143,8 +142,9 @@ func (bu *BattleUser) Send(key hub.HubCommandKey, payload interface{}) error {
 }
 
 type Multiplier struct {
-	Key   string `json:"key"`
-	Value int    `json:"value"`
+	Key         string `json:"key"`
+	Value       string `json:"value"`
+	Description string `json:"description"`
 }
 
 type BattleEndDetail struct {
@@ -158,7 +158,7 @@ type BattleEndDetail struct {
 	TopSupsContributors          []*BattleUser `json:"top_sups_contributors"`
 	TopSupsContributeFactions    []*Faction    `json:"top_sups_contribute_factions"`
 	MostFrequentAbilityExecutors []*BattleUser `json:"most_frequent_ability_executors"`
-	UserMultipliers              []*Multiplier `json:"multipliers"`
+	*MultiplierUpdate
 }
 
 type WarMachine struct {
@@ -243,4 +243,47 @@ type GameAbilityPrice struct {
 	CurrentSups    decimal.Decimal
 
 	TxRefs []string
+}
+
+type MultiplierUpdate struct {
+	TotalMultipliers string        `json:"total_multipliers"`
+	UserMultipliers  []*Multiplier `json:"multipliers"`
+}
+
+var fakeMultipliers = []*Multiplier{
+	&Multiplier{
+		Key:         "citizen",
+		Value:       "1x",
+		Description: "When a player is within the top 80% of voting average.",
+	},
+	&Multiplier{
+		Key:         "contributor",
+		Value:       "5x",
+		Description: "When a player is within the top 50% of voting average.",
+	},
+	&Multiplier{
+		Key:         "super contributor",
+		Value:       "10x",
+		Description: "When a player is within the top 75% of voting average.",
+	},
+	&Multiplier{
+		Key:         "a fool and his money",
+		Description: "For a player who has put the most individual SUPS in to vote but still lost.",
+		Value:       "5x",
+	},
+	&Multiplier{
+		Key:         "air support",
+		Description: "For a player who triggered an airstrike.",
+		Value:       "5x",
+	},
+	&Multiplier{
+		Key:         "now i am become death",
+		Description: "For a player who triggered a nuke.",
+		Value:       "5x",
+	},
+	&Multiplier{
+		Key:         "destroyer of worlds",
+		Description: "For a player who has triggered the previous three nukes.",
+		Value:       "10x",
+	},
 }

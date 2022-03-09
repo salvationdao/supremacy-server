@@ -123,6 +123,7 @@ func NewArena(opts *Opts) *Arena {
 	opts.SubscribeCommand(HubKeyGameSettingsUpdated, arena.SendSettings)
 
 	opts.SubscribeCommand(HubKeyGameNotification, arena.GameNotificationSubscribeHandler)
+	opts.SubscribeCommand(HubKeyMultiplierUpdate, arena.HubKeyMultiplierUpdate)
 	opts.SecureUserFactionSubscribeCommand(HubKeGabsBribeStageUpdateSubscribe, arena.GabsBribeStageSubscribe)
 	opts.SecureUserFactionSubscribeCommand(HubKeGabsBribingWinnerSubscribe, arena.GabsBribingWinnerSubscribe)
 
@@ -684,14 +685,11 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 const HubKeyBattleEndDetailUpdated hub.HubCommandKey = "BATTLE:END:DETAIL:UPDATED"
 
 func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
-	fakeMultipliers := []*Multiplier{
-		&Multiplier{
-			Key:   "citizen",
-			Value: 1,
-		},
-	}
 	btl.users.ForEach(func(user *BattleUser) bool {
-		info.UserMultipliers = fakeMultipliers
+		info.MultiplierUpdate = &MultiplierUpdate{
+			UserMultipliers:  fakeMultipliers,
+			TotalMultipliers: "36x",
+		}
 		user.Send(HubKeyBattleEndDetailUpdated, info)
 		return true
 	})
