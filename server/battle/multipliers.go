@@ -1,6 +1,8 @@
 package battle
 
 import (
+	"database/sql"
+	"errors"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -56,6 +58,29 @@ func (ms *MultiplierSystem) init() {
 	}
 }
 
+type TriggerDetails struct {
+	FireCount  int
+	PlayerIDs  []string
+	FactionIDs []string
+}
+
 func (ms *MultiplierSystem) calculate() {
+	triggers, err := boiler.BattleAbilityTriggers(qm.Where(`battle_id = ?`, ms.battle.battle.ID), qm.And(`is_all_syndicates = ?`), qm.OrderBy(`triggered_at DESC`)).All(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Panic().Err(err).Msgf("unable to retrieve trigger information from database")
+	}
+
+	// how many times fired
+	fired := make(map[string]*TriggerDetails)
+	for _, trigger := range triggers {
+		td, ok := fired[trigger.TriggerLabel]
+		if !ok {
+			td = &TriggerDetails{FireCount: 0, PlayerIDs: []string{}, FactionIDs: []string{}}
+		}
+		td.FireCount++
+		if trigger.PlayerID.Valid {
+			td.PlayerIDs = append(td.PlayerIDs, trigger.PlayerID.String)
+		}
+	}
 
 }
