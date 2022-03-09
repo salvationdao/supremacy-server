@@ -122,6 +122,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 					// inject ability to war machines
 					battle.WarMachines[i].Abilities = []*GameAbility{wmAbility}
 
+					// TODO: fix zaibatsu abilities mechanism
 					// store faction ability for price tracking
 					factionAbilities[factionID][wmAbility.ID] = wmAbility
 				}

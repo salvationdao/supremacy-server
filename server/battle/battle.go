@@ -116,7 +116,6 @@ func NewArena(opts *Opts) *Arena {
 	}
 
 	opts.SecureUserFactionCommand(WSJoinQueue, arena.Join)
-	// todo: access ability from here
 	opts.Command(HubKeyGameUserOnline, arena.UserOnline)
 
 	// subscribe functions
