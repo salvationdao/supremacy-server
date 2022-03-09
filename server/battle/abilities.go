@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/sasha-s/go-deadlock"
 	"github.com/shopspring/decimal"
@@ -241,7 +240,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 						as.battle.Stage.RUnlock()
 
 						// update ability price
-						if ability.TargetPriceUpdate(minPrice) {
+						if ability.FactionUniqueAbilityPriceUpdate(minPrice) {
 							// send message to game client, if ability trigger
 							as.battle.arena.Message(
 								"BATTLE:ABILITY",
@@ -273,8 +272,11 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 	}
 }
 
-// TargetPriceUpdate update target price on every tick
-func (ga *GameAbility) TargetPriceUpdate(minPrice decimal.Decimal) bool {
+// FactionUniqueAbilityPriceUpdate update target price on every tick
+func (ga *GameAbility) FactionUniqueAbilityPriceUpdate(minPrice decimal.Decimal) bool {
+	ga.Lock()
+	defer ga.Unlock()
+
 	ga.SupsCost = ga.SupsCost.Mul(decimal.NewFromFloat(0.9772))
 
 	// if target price hit 1 sup, set it to 1 sup
@@ -653,7 +655,7 @@ func (as *AbilitiesSystem) SetNewBattleAbility() (int, error) {
 	return ba.CooldownDurationSecond, nil
 }
 
-func (as *AbilitiesSystem) BattleAbilityBribing(factionID uuid.UUID, userID server.UserID, amount decimal.Decimal) error {
+func (as *AbilitiesSystem) BattleAbilityBribing(factionID uuid.UUID, userID server.UserID, amount decimal.Decimal) {
 	// lock bribe to force the bribe synchronize
 	as.battleAbilityPool.Lock()
 	defer as.battleAbilityPool.Unlock()
@@ -665,7 +667,7 @@ func (as *AbilitiesSystem) BattleAbilityBribing(factionID uuid.UUID, userID serv
 	if as.battle.Stage.Stage != BattleStagStart || as.battleAbilityPool.Stage.Phase != BribeStageBribe {
 		as.battleAbilityPool.Stage.RUnlock()
 		as.battle.Stage.RUnlock()
-		return nil
+		return
 	}
 	as.battleAbilityPool.Stage.RUnlock()
 	as.battle.Stage.RUnlock()
@@ -707,8 +709,6 @@ func (as *AbilitiesSystem) BattleAbilityBribing(factionID uuid.UUID, userID serv
 			})
 		}
 	}
-
-	return nil
 }
 
 // locationSelectListSet set a user list for location select for current ability triggered
@@ -868,7 +868,6 @@ func (as *AbilitiesSystem) BAttleAbilityPriceUpdater() {
 				ability.Unlock()
 				break
 			}
-
 			// if there is user, assign location decider and exit the loop
 
 			// change bribing phase to location select
@@ -916,12 +915,14 @@ func (as *AbilitiesSystem) BattleAbilityProgressBar() {
 		}
 		as.battleAbilityPool.Stage.RUnlock()
 
-		// gether faction ability price
+		// gether battle ability price
 		as.battleAbilityPool.BattleAbilityMx.RLock()
 		factionAbilityPrices := []string{}
 		for factionID, ability := range as.battleAbilityPool.Abilities {
+			ability.RLock()
 			factionAbilityPrice := fmt.Sprintf("%s_%s_%s", factionID.String(), ability.SupsCost.String(), ability.CurrentSups.String())
 			factionAbilityPrices = append(factionAbilityPrices, factionAbilityPrice)
+			ability.RUnlock()
 		}
 		as.battleAbilityPool.BattleAbilityMx.RUnlock()
 
@@ -941,63 +942,12 @@ func (as *AbilitiesSystem) BattleAbilityProgressBar() {
 // *********************
 // Handlers
 // *********************
-
-type GameAbilityContributeRequest struct {
-	*hub.HubCommandRequest
-	Payload struct {
-		GameAbilityID server.GameAbilityID `json:"gameAbilityID"`
-		Amount        int64                `json:"amount"` // 1, 25, 100
-	} `json:"payload"`
+func (as *AbilitiesSystem) AbilityContribute(factionID server.FactionID, userID server.UserID, gameAbilityID server.GameAbilityID, amount decimal.Decimal) {
+	as.FactionUniqueAbilityContribute(uuid.UUID(factionID), gameAbilityID, userID, amount)
 }
 
-const HubKeFactionUniqueAbilityContribute hub.HubCommandKey = "FACTION:UNIQUE:ABILITY:CONTRIBUTE"
-
-func (as *AbilitiesSystem) AbilityContribute(wsc *hub.Client, payload []byte, factionID server.FactionID) error {
-	req := &GameAbilityContributeRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received")
-	}
-
-	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
-	if userID.IsNil() {
-		return terror.Error(terror.ErrForbidden)
-	}
-
-	supsAmount := decimal.New(req.Payload.Amount, 18)
-
-	as.FactionUniqueAbilityContribute(uuid.UUID(factionID), req.Payload.GameAbilityID, userID, supsAmount)
-
-	return nil
-}
-
-type BribeGabRequest struct {
-	*hub.HubCommandRequest
-	Payload struct {
-		Amount int64 `json:"amount"` // 1, 25, 100
-	} `json:"payload"`
-}
-
-func (as *AbilitiesSystem) BribeGabs(wsc *hub.Client, payload []byte, factionID server.FactionID) error {
-	req := &BribeGabRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received")
-	}
-
-	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
-	if userID.IsNil() {
-		return terror.Error(terror.ErrForbidden)
-	}
-
-	amount := decimal.New(req.Payload.Amount, 18)
-
-	err = as.BattleAbilityBribing(uuid.UUID(factionID), userID, amount)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	return nil
+func (as *AbilitiesSystem) BribeGabs(factionID server.FactionID, userID server.UserID, amount decimal.Decimal) {
+	as.BattleAbilityBribing(uuid.UUID(factionID), userID, amount)
 }
 
 func (as *AbilitiesSystem) BribeStageGet() *GabsBribeStage {
