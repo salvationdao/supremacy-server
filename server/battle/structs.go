@@ -157,8 +157,7 @@ type BattleEndDetail struct {
 	TopSupsContributors          []*BattleUser `json:"top_sups_contributors"`
 	TopSupsContributeFactions    []*Faction    `json:"top_sups_contribute_factions"`
 	MostFrequentAbilityExecutors []*BattleUser `json:"most_frequent_ability_executors"`
-	TotalMultipliers             string        `json:"total_multipliers"`
-	UserMultipliers              []*Multiplier `json:"multipliers"`
+	*MultiplierUpdate
 }
 
 type WarMachine struct {
@@ -243,4 +242,40 @@ type GameAbilityPrice struct {
 	CurrentSups    decimal.Decimal
 
 	TxRefs []string
+}
+
+type MultiplierUpdate struct {
+	TotalMultipliers string        `json:"total_multipliers"`
+	UserMultipliers  []*Multiplier `json:"multipliers"`
+}
+
+var fakeMultipliers = []*Multiplier{
+	&Multiplier{
+		Key:   "citizen",
+		Value: "1x",
+	},
+	&Multiplier{
+		Key:   "contributor",
+		Value: "5x",
+	},
+	&Multiplier{
+		Key:   "super contributor",
+		Value: "10x",
+	},
+	&Multiplier{
+		Key:   "a fool and his money",
+		Value: "5x",
+	},
+	&Multiplier{
+		Key:   "air support",
+		Value: "5x",
+	},
+	&Multiplier{
+		Key:   "now i am become death",
+		Value: "5x",
+	},
+	&Multiplier{
+		Key:   "destroyer of worlds",
+		Value: "10x",
+	},
 }
