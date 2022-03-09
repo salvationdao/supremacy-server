@@ -125,7 +125,6 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 			}
 
 		} else {
-
 			// for other faction unique abilities
 			abilities := map[server.GameAbilityID]*GameAbility{}
 			for _, ability := range factionUniqueAbilities {
@@ -217,24 +216,15 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 		go func(abilities map[server.GameAbilityID]*GameAbility) {
 			for {
 				// read the stage first
-				as.battle.Stage.RLock()
-				stage := as.battle.Stage.Stage
-				as.battle.Stage.RUnlock()
+				stage := as.battle.stage
 
 				// start ticker while still in battle
 				if stage == BattleStagStart {
 					for _, ability := range abilities {
-						// lock current ability price update
-						ability.Lock()
-
 						// check battle stage before reduce update ability price
-						as.battle.Stage.RLock()
-						if as.battle.Stage.Stage == BattleStageEnd {
-							as.battle.Stage.RUnlock()
-							ability.Unlock()
+						if as.battle.stage == BattleStageEnd {
 							return
 						}
-						as.battle.Stage.RUnlock()
 
 						// update ability price
 						if ability.FactionUniqueAbilityPriceUpdate(minPrice) {
@@ -249,7 +239,6 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 							)
 
 						}
-						ability.Unlock()
 
 					}
 
@@ -271,9 +260,6 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 
 // FactionUniqueAbilityPriceUpdate update target price on every tick
 func (ga *GameAbility) FactionUniqueAbilityPriceUpdate(minPrice decimal.Decimal) bool {
-	ga.Lock()
-	defer ga.Unlock()
-
 	ga.SupsCost = ga.SupsCost.Mul(decimal.NewFromFloat(0.9772))
 
 	// if target price hit 1 sup, set it to 1 sup
@@ -314,18 +300,10 @@ func (as *AbilitiesSystem) FactionUniqueAbilityContribute(factionID uuid.UUID, a
 		// check ability exists
 		if ability, ok := abilities[abilityID]; ok {
 
-			// lock price update
-			ability.Lock()
-			// check battle stage
-			as.battle.Stage.RLock()
-
 			// return early if battle stage is invalid
-			if as.battle.Stage.Stage != BattleStagStart {
-				as.battle.Stage.RUnlock()
-				ability.Unlock()
+			if as.battle.stage != BattleStagStart {
 				return
 			}
-			as.battle.Stage.RUnlock()
 
 			actualSupSpent, isTriggered := ability.SupContribution(as.battle.arena.ppClient, as.battle.ID.String(), userID, amount)
 
@@ -348,7 +326,6 @@ func (as *AbilitiesSystem) FactionUniqueAbilityContribute(factionID uuid.UUID, a
 				)
 			}
 
-			ability.Unlock()
 		}
 	}
 }
@@ -477,15 +454,12 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 		<-ticker.C
 
 		// check phase
-		as.battle.Stage.RLock()
-		stage := as.battle.Stage.Stage
+		stage := as.battle.stage
 		// exit the loop, when battle is ended
 		if stage == BattleStageEnd {
 			ticker.Stop()
-			as.battle.Stage.RUnlock()
 			break
 		}
-		as.battle.Stage.RUnlock()
 
 		// otherwise check bribing phase
 
@@ -572,9 +546,6 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 
 // SetNewBattleAbility set new battle ability and return the cooldown time
 func (as *AbilitiesSystem) SetNewBattleAbility() (int, error) {
-
-	// lock the ability while changing
-
 	// clean up triggered faction
 	as.battleAbilityPool.TriggeredFactionID = uuid.Nil
 
@@ -631,23 +602,14 @@ func (as *AbilitiesSystem) SetNewBattleAbility() (int, error) {
 }
 
 func (as *AbilitiesSystem) BattleAbilityBribing(factionID uuid.UUID, userID server.UserID, amount decimal.Decimal) {
-	// lock bribe to force the bribe synchronize
-
 	// check current battle stage
-	as.battle.Stage.RLock()
 	// return early if battle stage or bribing stage are invalid
-	if as.battle.Stage.Stage != BattleStagStart || as.battleAbilityPool.Stage.Phase != BribeStageBribe {
-		as.battle.Stage.RUnlock()
+	if as.battle.stage != BattleStagStart || as.battleAbilityPool.Stage.Phase != BribeStageBribe {
 		return
 	}
-	as.battle.Stage.RUnlock()
 
 	// check faction ability exists
 	if factionAbility, ok := as.battleAbilityPool.Abilities[uuid.UUID(factionID)]; ok {
-
-		// lock ability
-		factionAbility.Lock()
-		defer factionAbility.Unlock()
 
 		// contribute sups
 		actualSupSpent, abilityTriggered := factionAbility.SupContribution(as.battle.arena.ppClient, as.battle.ID.String(), userID, amount)
@@ -749,15 +711,12 @@ func (as *AbilitiesSystem) BAttleAbilityPriceUpdater() {
 	for {
 		<-ticker.C
 		// check battle stage
-		as.battle.Stage.RLock()
-		stage := as.battle.Stage.Stage
+		stage := as.battle.stage
 		// exit the loop, when battle is ended
 		if stage == BattleStageEnd {
 			ticker.Stop()
-			as.battle.Stage.RUnlock()
 			break
 		}
-		as.battle.Stage.RUnlock()
 
 		// check bribing stage
 		if as.battleAbilityPool.Stage.Phase != BribeStageBribe {
@@ -766,11 +725,7 @@ func (as *AbilitiesSystem) BAttleAbilityPriceUpdater() {
 		}
 
 		// update price
-
 		for factionID, ability := range as.battleAbilityPool.Abilities {
-			// lock ability while updating
-			ability.Lock()
-
 			// reduce price
 			ability.SupsCost = ability.SupsCost.Mul(decimal.NewFromFloat(0.978))
 
@@ -786,7 +741,6 @@ func (as *AbilitiesSystem) BAttleAbilityPriceUpdater() {
 				if err != nil {
 					gamelog.L.Err(err)
 				}
-				ability.Unlock()
 				continue
 			}
 
@@ -816,7 +770,6 @@ func (as *AbilitiesSystem) BAttleAbilityPriceUpdater() {
 				as.battleAbilityPool.Stage.EndTime = time.Now().Add(time.Duration(cooldownSecond) * time.Second)
 				as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
 
-				ability.Unlock()
 				break
 			}
 			// if there is user, assign location decider and exit the loop
@@ -833,7 +786,6 @@ func (as *AbilitiesSystem) BAttleAbilityPriceUpdater() {
 				EndTime:     as.battleAbilityPool.Stage.EndTime,
 			})
 
-			ability.Unlock()
 			break
 		}
 	}
@@ -845,15 +797,12 @@ func (as *AbilitiesSystem) BattleAbilityProgressBar() {
 	for {
 		<-ticker.C
 		// check battle stage
-		as.battle.Stage.RLock()
-		stage := as.battle.Stage.Stage
+		stage := as.battle.stage
 		// exit the loop, when battle is ended
 		if stage == BattleStageEnd {
 			ticker.Stop()
-			as.battle.Stage.RUnlock()
 			break
 		}
-		as.battle.Stage.RUnlock()
 
 		// check bribing stage
 		if as.battleAbilityPool.Stage.Phase != BribeStageBribe {
@@ -863,10 +812,8 @@ func (as *AbilitiesSystem) BattleAbilityProgressBar() {
 
 		factionAbilityPrices := []string{}
 		for factionID, ability := range as.battleAbilityPool.Abilities {
-			ability.RLock()
 			factionAbilityPrice := fmt.Sprintf("%s_%s_%s", factionID.String(), ability.SupsCost.String(), ability.CurrentSups.String())
 			factionAbilityPrices = append(factionAbilityPrices, factionAbilityPrice)
-			ability.RUnlock()
 		}
 
 		// broadcast to frontend
@@ -900,6 +847,7 @@ func (as *AbilitiesSystem) BribeStageGet() *GabsBribeStage {
 func (as *AbilitiesSystem) FactionBattleAbilityGet(factionID uuid.UUID) *GameAbility {
 	ability, ok := as.battleAbilityPool.Abilities[factionID]
 	if !ok {
+		gamelog.L.Warn().Str("func", "FactionBattleAbilityGet").Msg("unable to retrieve abilities for faction")
 		return nil
 	}
 
@@ -908,12 +856,10 @@ func (as *AbilitiesSystem) FactionBattleAbilityGet(factionID uuid.UUID) *GameAbi
 
 func (as *AbilitiesSystem) LocationSelect(userID server.UserID, x int, y int) error {
 	// check battle end
-	as.battle.Stage.RLock()
-	if as.battle.Stage.Stage == BattleStageEnd {
-		as.battle.Stage.RUnlock()
+	if as.battle.stage == BattleStageEnd {
+		gamelog.L.Warn().Str("func", "LocationSelect").Msg("battle stage has en ended")
 		return nil
 	}
-	as.battle.Stage.RUnlock()
 
 	// check eligibility
 	if len(as.locationDeciders.list) <= 0 || as.locationDeciders.list[0] != userID {

@@ -35,7 +35,6 @@ func NewStreamController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Str
 	}
 
 	api.SubscribeCommand(HubKeyStreamList, streamHub.StreamListSubscribeSubscribeHandler)
-	api.SubscribeCommand(HubKeyGlobalAnnouncementSubscribe, streamHub.GlobalMessageSubscribe)
 	api.SubscribeCommand(HubKeyStreamCloseSubscribe, streamHub.StreamCloseSubscribeHandler)
 
 	return streamHub
@@ -118,12 +117,12 @@ func (api *API) CreateStreamHandler(w http.ResponseWriter, r *http.Request) (int
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	streamList, err := db.GetStreamList(context.Background(), api.Conn)
+	_, err = db.GetStreamList(context.Background(), api.Conn)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)
 	}
-
-	go api.MessageBus.Send(context.Background(), messagebus.BusKey(HubKeyVoteStageUpdated), streamList)
+	// Alex: wtf??
+	//go api.MessageBus.Send(context.Background(), messagebus.BusKey(HubKeyVoteStageUpdated), streamList)
 
 	return http.StatusOK, nil
 }
@@ -144,24 +143,13 @@ func (api *API) DeleteStreamHandler(w http.ResponseWriter, r *http.Request) (int
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	streamList, err := db.GetStreamList(context.Background(), api.Conn)
+	_, err = db.GetStreamList(context.Background(), api.Conn)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	go api.MessageBus.Send(context.Background(), messagebus.BusKey(HubKeyVoteStageUpdated), streamList)
+	// wtf??
+	//go api.MessageBus.Send(context.Background(), messagebus.BusKey(HubKeyVoteStageUpdated), streamList)
 
 	return http.StatusOK, nil
-}
-
-const HubKeyGlobalAnnouncementSubscribe hub.HubCommandKey = "GLOBAL_ANNOUNCEMENT:SUBSCRIBE"
-
-func (s *StreamsWS) GlobalMessageSubscribe(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	req := &hub.HubCommandRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return "", "", terror.Error(err, "Invalid request received")
-	}
-	reply(s.API.GlobalAnnouncement)
-	return req.TransactionID, messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), nil
 }

@@ -9,11 +9,11 @@ import (
 	"server"
 	"server/db"
 	"server/db/boiler"
+	"server/gamedb"
 	"server/helpers"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-chi/chi"
-	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4"
 	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog"
@@ -37,16 +37,8 @@ func PassportWebhookRouter(log *zerolog.Logger, conn db.Conn, webhookSecret stri
 	r.Post("/auth_ring_check", WithPassportSecret(webhookSecret, WithError(c.AuthRingCheck)))
 	r.Post("/user_update", WithPassportSecret(webhookSecret, WithError(c.UserUpdated)))
 	r.Post("/user_enlist_faction", WithPassportSecret(webhookSecret, WithError(c.UserEnlistFaction)))
-	r.Post("/user_multiplier", WithPassportSecret(webhookSecret, WithError(c.UserSupsMultiplierGet)))
-
-	r.Post("/war_machine_join", WithPassportSecret(webhookSecret, WithError(c.WarMachineJoin)))
-	r.Post("/war_machine_queue_position", WithPassportSecret(webhookSecret, WithError(c.WarMachineQueuePositionGet)))
-	r.Post("/asset_repair_stat", WithPassportSecret(webhookSecret, WithError(c.AssetRepairStatGet)))
-
 	r.Post("/user_stat", WithPassportSecret(webhookSecret, WithError(c.UserStatGet)))
 	r.Post("/faction_stat", WithPassportSecret(webhookSecret, WithError(c.FactionStatGet)))
-
-	r.Post("/faction_queue_cost", WithPassportSecret(webhookSecret, WithError(c.FactionQueueCostGet)))
 
 	return r
 }
@@ -76,7 +68,11 @@ func (pc *PassportWebhookController) UserUpdated(w http.ResponseWriter, r *http.
 	user.AvatarID = req.User.AvatarID
 	user.FactionID = req.User.FactionID
 	if !user.FactionID.IsNil() {
-		user.Faction = pc.API.factionMap[user.FactionID]
+		faction, err := boiler.FindFaction(gamedb.StdConn, user.FactionID.String())
+		if err != nil {
+			return http.StatusInternalServerError, terror.Error(err, "faction not found")
+		}
+		user.Faction = faction
 	}
 
 	broadcastData, err := json.Marshal(&BroadcastPayload{
@@ -118,12 +114,12 @@ func (pc *PassportWebhookController) UserEnlistFaction(w http.ResponseWriter, r 
 		return http.StatusInternalServerError, terror.Error(err, "User not found")
 	}
 
-	// swap from non faction to faction
-	pc.API.ViewerLiveCount.Swap(user.FactionID, req.FactionID)
-
 	// update user faction
 	user.FactionID = req.FactionID
-	user.Faction = pc.API.factionMap[user.FactionID]
+
+	faction, err := boiler.FindFaction(gamedb.StdConn, user.FactionID.String())
+
+	user.Faction = faction
 
 	broadcastData, err := json.Marshal(&BroadcastPayload{
 		Key:     HubKeyUserSubscribe,
@@ -261,21 +257,6 @@ func (pc *PassportWebhookController) WarMachineJoin(w http.ResponseWriter, r *ht
 
 type UserSupsMultiplierGetRequest struct {
 	UserID server.UserID `json:"user_id"`
-}
-
-// UserSupsMultiplierGet return the sups multiplier of the given user
-func (pc *PassportWebhookController) UserSupsMultiplierGet(w http.ResponseWriter, r *http.Request) (int, error) {
-	req := &UserSupsMultiplierGetRequest{}
-	err := json.NewDecoder(r.Body).Decode(req)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err)
-	}
-
-	return helpers.EncodeJSON(w, struct {
-		UserMultipliers []*server.SupsMultiplier `json:"user_multipliers"`
-	}{
-		UserMultipliers: pc.API.UserMultiplier.UserMultiplierGet(req.UserID),
-	})
 }
 
 type UserStatGetRequest struct {
@@ -437,10 +418,9 @@ func (pc *PassportWebhookController) AuthRingCheck(w http.ResponseWriter, r *htt
 	// set client identifier
 	client.SetIdentifier(req.User.ID.String())
 
-	// update user faction if user has a faction
-	if !req.User.FactionID.IsNil() {
-		pc.API.ViewerLiveCount.Swap(server.FactionID(uuid.Nil), req.User.FactionID)
-		req.User.Faction = pc.API.factionMap[req.User.FactionID]
+	user, err := boiler.FindPlayer(gamedb.StdConn, req.User.ID.String())
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Hub client not found")
 	}
 
 	// register user detail to user map
@@ -448,7 +428,7 @@ func (pc *PassportWebhookController) AuthRingCheck(w http.ResponseWriter, r *htt
 
 	// store user into player table
 	err = db.UpsertPlayer(&boiler.Player{
-		ID:            req.User.ID.String(),
+		ID:            user.ID,
 		Username:      null.StringFrom(req.User.Username),
 		PublicAddress: req.User.PublicAddress,
 	})
@@ -456,12 +436,9 @@ func (pc *PassportWebhookController) AuthRingCheck(w http.ResponseWriter, r *htt
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	// set client multipliers
-	pc.API.UserMultiplier.Online(req.User.ID)
-
 	b, err := json.Marshal(&BroadcastPayload{
 		Key:     HubKeyUserSubscribe,
-		Payload: req.User,
+		Payload: user,
 	})
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)
@@ -479,53 +456,6 @@ func (pc *PassportWebhookController) AuthRingCheck(w http.ResponseWriter, r *htt
 
 type FactionQueueCostGetRequest struct {
 	FactionID server.FactionID `json:"factionID"`
-}
-
-func (pc *PassportWebhookController) FactionQueueCostGet(w http.ResponseWriter, r *http.Request) (int, error) {
-	return 0, nil
-	//TODO ALEX: fix
-	//req := &FactionQueueCostGetRequest{}
-	//err := json.NewDecoder(r.Body).Decode(req)
-	//if err != nil {
-	//	return http.StatusInternalServerError, terror.Error(err)
-	//}
-	//
-	//if req.FactionID.IsNil() || !req.FactionID.IsValid() {
-	//	return http.StatusBadRequest, terror.Error(fmt.Errorf("faction id is nil"), "Faction id is required")
-	//}
-	//
-	//if pc.API.BattleArena == nil {
-	//	return http.StatusBadRequest, terror.Error(fmt.Errorf("battle arena is nil"), "battle arena is nil")
-	//}
-	//if pc.API.BattleArena.WarMachineQueue == nil {
-	//	return http.StatusBadRequest, terror.Error(fmt.Errorf("WarMachineQueue is nil"), "WarMachineQueue is nil")
-	//}
-	//if pc.API.BattleArena.WarMachineQueue.RedMountain == nil {
-	//	return http.StatusBadRequest, terror.Error(fmt.Errorf("RedMountain is nil"), "RedMountain is nil")
-	//}
-	//if pc.API.BattleArena.WarMachineQueue.Boston == nil {
-	//	return http.StatusBadRequest, terror.Error(fmt.Errorf("Boston is nil"), "Boston is nil")
-	//}
-	//if pc.API.BattleArena.WarMachineQueue.Zaibatsu == nil {
-	//	return http.StatusBadRequest, terror.Error(fmt.Errorf("Zaibatsu is nil"), "Zaibatsu is nil")
-	//}
-	//length := 0
-	//switch req.FactionID {
-	//case server.RedMountainFactionID:
-	//	length = pc.API.BattleArena.WarMachineQueue.RedMountain.QueuingLength()
-	//case server.BostonCyberneticsFactionID:
-	//	length = pc.API.BattleArena.WarMachineQueue.Boston.QueuingLength()
-	//case server.ZaibatsuFactionID:
-	//	length = pc.API.BattleArena.WarMachineQueue.Zaibatsu.QueuingLength()
-	//default:
-	//	return http.StatusInternalServerError, errors.New("switch fallthrough")
-	//}
-	//
-	//return helpers.EncodeJSON(w, struct {
-	//	Length int `json:"length"`
-	//}{
-	//	Length: length,
-	//})
 }
 
 // whitelisted wallet addresses
