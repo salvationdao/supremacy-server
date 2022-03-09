@@ -416,6 +416,7 @@ func (pc *PassportWebhookController) AuthRingCheck(w http.ResponseWriter, r *htt
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing user public address"), "User public address is required")
 	}
 
+	// TODO: turn the whitelist check on for delta force
 	// check wallet address is whitelisted
 	// if not, skip set up auth in game server and return early
 	// if !IsWhitelistedWalletAddress(req.User.PublicAddress.String) {
@@ -601,7 +602,7 @@ var WhitelistedWalletAddresses = []string{
 	"0x1E29077a5B9F29F80088179E462dEd5C49F301bC",
 	"0xf64ba532851619cD28924D933446022D349d01E5",
 	"0x0e6BE047eee4677869A138D6B5a1E87bf33e3C29",
-	"0x616978005a7940d03d7e3C472810f32ef0Eb7a24 ",
+	"0x616978005a7940d03d7e3C472810f32ef0Eb7a24",
 	"0xDFA1e36e88F7Ac449425BA8B1095f033E606E9C2",
 	"0xdf427B2aa315E5E9991F249d1664675Ea7EBb9Ac",
 	"0x43cb4bc9551966D553436900BA4d835F2a7163A7",

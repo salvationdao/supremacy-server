@@ -5,11 +5,25 @@ import (
 	"server/db/boiler"
 
 	"github.com/gofrs/uuid"
+	"github.com/sasha-s/go-deadlock"
 	"github.com/shopspring/decimal"
 )
 
+type BattleStage string
+
+const (
+	BattleStagStart BattleStage = "START"
+	BattleStageEnd  BattleStage = "END"
+)
+
+type BattleState struct {
+	deadlock.RWMutex
+	Stage BattleStage
+}
+
 type Battle struct {
 	arena       *Arena
+	Stage       *BattleState
 	ID          uuid.UUID     `json:"battleID" db:"id"`
 	MapName     string        `json:"mapName"`
 	WarMachines []*WarMachine `json:"warMachines"`
@@ -59,18 +73,17 @@ type WarMachine struct {
 }
 
 type GameAbility struct {
-	ID                  uuid.UUID  `json:"id" db:"id"`
-	Identity            string     `json:"identity"` // used for tracking ability price
-	GameClientAbilityID byte       `json:"game_client_ability_id" db:"game_client_ability_id"`
-	BattleAbilityID     *uuid.UUID `json:"battle_ability_id,omitempty" db:"battle_ability_id,omitempty"`
-	Colour              string     `json:"colour" db:"colour"`
-	TextColour          string     `json:"text_colour" db:"text_colour"`
-	Description         string     `json:"description" db:"description"`
-	ImageUrl            string     `json:"image_url" db:"image_url"`
-	FactionID           uuid.UUID  `json:"faction_id" db:"faction_id"`
-	Label               string     `json:"label" db:"label"`
-	SupsCost            string     `json:"sups_cost" db:"sups_cost"`
-	CurrentSups         string     `json:"current_sups"`
+	ID                  server.GameAbilityID `json:"id" db:"id"`
+	GameClientAbilityID byte                 `json:"game_client_ability_id" db:"game_client_ability_id"`
+	BattleAbilityID     *uuid.UUID           `json:"battle_ability_id,omitempty" db:"battle_ability_id,omitempty"`
+	Colour              string               `json:"colour" db:"colour"`
+	TextColour          string               `json:"text_colour" db:"text_colour"`
+	Description         string               `json:"description" db:"description"`
+	ImageUrl            string               `json:"image_url" db:"image_url"`
+	FactionID           uuid.UUID            `json:"faction_id" db:"faction_id"`
+	Label               string               `json:"label" db:"label"`
+	SupsCost            decimal.Decimal      `json:"sups_cost"`
+	CurrentSups         decimal.Decimal      `json:"current_sups`
 
 	// if token id is not 0, it is a nft ability, otherwise it is a faction wide ability
 	WarMachineHash string
@@ -78,6 +91,9 @@ type GameAbility struct {
 
 	// Category title for frontend to group the abilities together
 	Title string `json:"title"`
+
+	// price locker
+	deadlock.RWMutex
 }
 
 type Ability struct {

@@ -12,6 +12,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/passport"
 	"strconv"
 	"strings"
 	"time"
@@ -36,6 +37,8 @@ type Arena struct {
 	currentBattle *Battle
 	syndicates    map[string]boiler.Faction
 	AIPlayers     map[string]db.PlayerWithFaction
+
+	ppClient *passport.Passport
 }
 
 type Opts struct {
@@ -45,6 +48,7 @@ type Opts struct {
 	Hub           *hub.Hub
 	MessageBus    *messagebus.MessageBus
 	NetMessageBus *messagebus.NetBus
+	PPClient      *passport.Passport
 }
 
 type MessageType byte
@@ -88,6 +92,7 @@ func NewArena(opts *Opts) *Arena {
 	arena.timeout = opts.Timeout
 	arena.netMessageBus = opts.NetMessageBus
 	arena.messageBus = opts.MessageBus
+	arena.ppClient = opts.PPClient
 
 	arena.AIPlayers, err = db.DefaultFactionPlayers()
 	if err != nil {
@@ -104,8 +109,10 @@ func NewArena(opts *Opts) *Arena {
 		WriteTimeout: arena.timeout,
 	}
 
-	opts.Hub.Handle(WSJoinQueue, arena.Join)
-	opts.Hub.Handle(HubKeyGameSettingsUpdated, arena.SendSettings)
+	opts.SecureUserFactionCommand(WSJoinQueue, arena.Join)
+	// todo: access ability from here
+	// opts.SecureUserFactionCommand(HubKeFactionUniqueAbilityContribute, arena.FactionUniqueAbilityContribute)
+	opts.Command(HubKeyGameSettingsUpdated, arena.SendSettings)
 
 	go func() {
 		err = server.Serve(l)
@@ -386,6 +393,7 @@ func (btl *Battle) start(payload *BattleStartPayload) {
 		}
 	}
 
+	// set up the abilities for current battle
 	btl.abilities = NewAbilitiesSystem(btl)
 }
 
@@ -568,7 +576,7 @@ type JoinPaylod struct {
 	NeedInsured bool   `json:"need_insured"`
 }
 
-func (arena *Arena) Join(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (arena *Arena) Join(ctx context.Context, wsc *hub.Client, payload []byte, factionID server.FactionID, reply hub.ReplyFunc) error {
 	span := tracer.StartSpan("ws.Command", tracer.ResourceName(string(WSJoinQueue)))
 	defer span.Finish()
 
@@ -602,16 +610,10 @@ func (arena *Arena) Join(ctx context.Context, wsc *hub.Client, payload []byte, r
 		return err
 	}
 
-	factionID, err := uuid.FromString(mech.FactionID)
-	if err != nil {
-		gamelog.L.Error().Str("factionID", mech.FactionID).Err(err).Msg("unable to convert faction id from string")
-		return err
-	}
-
 	pos, err := db.JoinQueue(&db.BattleMechData{
 		MechID:    mechId,
 		OwnerID:   ownerID,
-		FactionID: factionID,
+		FactionID: uuid.UUID(factionID),
 	})
 
 	if err != nil {

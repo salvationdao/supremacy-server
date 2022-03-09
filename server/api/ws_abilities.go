@@ -14,6 +14,7 @@ import (
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
+	"github.com/shopspring/decimal"
 )
 
 // FactionControllerWS holds handlers for checking server status
@@ -44,14 +45,15 @@ func NewFactionController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Fa
 type GameAbilityContributeRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		GameAbilityID server.GameAbilityID `json:"gameAbilityID"`
-		Amount        server.BigInt        `json:"amount"`
+		GameAbilityIdentity string          `json:"gameAbilityIdentity"`
+		Amount              decimal.Decimal `json:"amount"`
 	} `json:"payload"`
 }
 
 const HubKeGameAbilityContribute hub.HubCommandKey = "GAME:ABILITY:CONTRIBUTE"
 
 func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+
 	//TODO ALEX: fix
 	//gamelog.L.Info().Str("fn", "GameAbilityContribute").RawJSON("req", payload).Msg("ws handler")
 	//req := &GameAbilityContributeRequest{}

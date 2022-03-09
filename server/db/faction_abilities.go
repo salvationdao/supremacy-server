@@ -154,18 +154,20 @@ func FactionExclusiveAbilitiesByFactionID(ctx context.Context, conn Conn, factio
 }
 
 // FactionExclusiveAbilitiesSupsCostUpdate update faction exclusive ability
-func FactionExclusiveAbilitiesSupsCostUpdate(ctx context.Context, conn Conn, gameAbility *server.GameAbility) error {
+func FactionExclusiveAbilitiesSupsCostUpdate(ctx context.Context, conn Conn, gameAbilityID server.GameAbilityID, supsCost string, currentSups string) error {
 	q := `
 		UPDATE 
 			game_abilities
 		SET
-			sups_cost = $2
+			sups_cost = $2,
+			current_sups = $3
 		where 
 			id = $1;
 	`
 	_, err := conn.Exec(ctx, q,
-		gameAbility.ID,
-		gameAbility.SupsCost,
+		gameAbilityID,
+		supsCost,
+		currentSups,
 	)
 	if err != nil {
 		return terror.Error(err)

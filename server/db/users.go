@@ -307,3 +307,19 @@ func UpsertPlayer(p *boiler.Player) error {
 	}
 	return nil
 }
+
+// PlayerFactionIDGet read user
+func PlayerFactionIDGet(ctx context.Context, conn Conn, userID server.UserID) (*server.FactionID, error) {
+	var factionID *server.FactionID
+
+	q := `
+		SELECT faction_id FROM players WHERE id = $1
+	`
+
+	err := pgxscan.Get(ctx, conn, factionID, q, userID)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return factionID, nil
+}
