@@ -5,6 +5,8 @@ import (
 	"net"
 	"net/rpc"
 	"server/gamelog"
+
+	"github.com/ninja-software/terror/v2"
 )
 
 type S struct {
@@ -28,7 +30,7 @@ func (s *S) listen(addrStr ...string) ([]net.Listener, error) {
 
 		l, err := net.ListenTCP("tcp", addr)
 		if err != nil {
-			return listeners, err
+			return listeners, terror.Error(err)
 		}
 
 		listeners[i] = l
@@ -46,7 +48,7 @@ func Start(s *S) error {
 		srv := rpc.NewServer()
 		err = srv.Register(s)
 		if err != nil {
-			return err
+			return terror.Error(err)
 		}
 
 		gamelog.L.Info().Str("addr", l.Addr().String()).Msg("starting up RPC server")
