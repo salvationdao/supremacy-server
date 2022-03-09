@@ -8,6 +8,16 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
+type MultiplierTypeEnum string
+
+const SPEND_AVERAGE MultiplierTypeEnum = "spend_average"
+const MOST_SUPS_LOST MultiplierTypeEnum = "most_sups_lost"
+const GAB_ABILITY MultiplierTypeEnum = "gab_ability"
+const COMBO_BREAKER MultiplierTypeEnum = "combo_breaker"
+const PLAYER_MECH MultiplierTypeEnum = "player_mech"
+const HOURS_ONLINE MultiplierTypeEnum = "hours_online"
+const SYNDICATE_WIN MultiplierTypeEnum = "syndicate_win"
+
 type MultiplierSystem struct {
 	multipliers map[string]*boiler.Multiplier
 	players     map[string]map[string]*boiler.Multiplier
@@ -32,7 +42,7 @@ func (ms *MultiplierSystem) init() {
 	if err != nil {
 		gamelog.L.Panic().Err(err).Msgf("unable to retrieve multipliers from database")
 	}
-	usermultipliers, err := boiler.UserMultipliers(qm.Where(`until_game_number > ?`, ms.battle.battle.BattleNumber)).All(gamedb.StdConn)
+	usermultipliers, err := boiler.UserMultipliers(qm.Where(`until_battle_number > ?`, ms.battle.battle.BattleNumber)).All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Panic().Err(err).Msgf("unable to retrieve user's multipliers from database")
 	}
@@ -44,4 +54,8 @@ func (ms *MultiplierSystem) init() {
 		}
 		pm[m.Multiplier] = ms.multipliers[m.Multiplier]
 	}
+}
+
+func (ms *MultiplierSystem) calculate() {
+
 }

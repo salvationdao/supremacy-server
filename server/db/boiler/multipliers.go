@@ -22,58 +22,79 @@ import (
 
 // Multiplier is an object representing the database table.
 type Multiplier struct {
-	ID          string `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Description string `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
-	Key         string `boiler:"key" boil:"key" json:"key" toml:"key" yaml:"key"`
-	ForGames    int    `boiler:"for_games" boil:"for_games" json:"for_games" toml:"for_games" yaml:"for_games"`
-	Value       int    `boiler:"value" boil:"value" json:"value" toml:"value" yaml:"value"`
+	ID             string `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Description    string `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
+	Key            string `boiler:"key" boil:"key" json:"key" toml:"key" yaml:"key"`
+	ForGames       int    `boiler:"for_games" boil:"for_games" json:"for_games" toml:"for_games" yaml:"for_games"`
+	MultiplierType string `boiler:"multiplier_type" boil:"multiplier_type" json:"multiplier_type" toml:"multiplier_type" yaml:"multiplier_type"`
+	TestNumber     int    `boiler:"test_number" boil:"test_number" json:"test_number" toml:"test_number" yaml:"test_number"`
+	TestString     string `boiler:"test_string" boil:"test_string" json:"test_string" toml:"test_string" yaml:"test_string"`
+	Value          int    `boiler:"value" boil:"value" json:"value" toml:"value" yaml:"value"`
 
 	R *multiplierR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L multiplierL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var MultiplierColumns = struct {
-	ID          string
-	Description string
-	Key         string
-	ForGames    string
-	Value       string
+	ID             string
+	Description    string
+	Key            string
+	ForGames       string
+	MultiplierType string
+	TestNumber     string
+	TestString     string
+	Value          string
 }{
-	ID:          "id",
-	Description: "description",
-	Key:         "key",
-	ForGames:    "for_games",
-	Value:       "value",
+	ID:             "id",
+	Description:    "description",
+	Key:            "key",
+	ForGames:       "for_games",
+	MultiplierType: "multiplier_type",
+	TestNumber:     "test_number",
+	TestString:     "test_string",
+	Value:          "value",
 }
 
 var MultiplierTableColumns = struct {
-	ID          string
-	Description string
-	Key         string
-	ForGames    string
-	Value       string
+	ID             string
+	Description    string
+	Key            string
+	ForGames       string
+	MultiplierType string
+	TestNumber     string
+	TestString     string
+	Value          string
 }{
-	ID:          "multipliers.id",
-	Description: "multipliers.description",
-	Key:         "multipliers.key",
-	ForGames:    "multipliers.for_games",
-	Value:       "multipliers.value",
+	ID:             "multipliers.id",
+	Description:    "multipliers.description",
+	Key:            "multipliers.key",
+	ForGames:       "multipliers.for_games",
+	MultiplierType: "multipliers.multiplier_type",
+	TestNumber:     "multipliers.test_number",
+	TestString:     "multipliers.test_string",
+	Value:          "multipliers.value",
 }
 
 // Generated where
 
 var MultiplierWhere = struct {
-	ID          whereHelperstring
-	Description whereHelperstring
-	Key         whereHelperstring
-	ForGames    whereHelperint
-	Value       whereHelperint
+	ID             whereHelperstring
+	Description    whereHelperstring
+	Key            whereHelperstring
+	ForGames       whereHelperint
+	MultiplierType whereHelperstring
+	TestNumber     whereHelperint
+	TestString     whereHelperstring
+	Value          whereHelperint
 }{
-	ID:          whereHelperstring{field: "\"multipliers\".\"id\""},
-	Description: whereHelperstring{field: "\"multipliers\".\"description\""},
-	Key:         whereHelperstring{field: "\"multipliers\".\"key\""},
-	ForGames:    whereHelperint{field: "\"multipliers\".\"for_games\""},
-	Value:       whereHelperint{field: "\"multipliers\".\"value\""},
+	ID:             whereHelperstring{field: "\"multipliers\".\"id\""},
+	Description:    whereHelperstring{field: "\"multipliers\".\"description\""},
+	Key:            whereHelperstring{field: "\"multipliers\".\"key\""},
+	ForGames:       whereHelperint{field: "\"multipliers\".\"for_games\""},
+	MultiplierType: whereHelperstring{field: "\"multipliers\".\"multiplier_type\""},
+	TestNumber:     whereHelperint{field: "\"multipliers\".\"test_number\""},
+	TestString:     whereHelperstring{field: "\"multipliers\".\"test_string\""},
+	Value:          whereHelperint{field: "\"multipliers\".\"value\""},
 }
 
 // MultiplierRels is where relationship names are stored.
@@ -97,8 +118,8 @@ func (*multiplierR) NewStruct() *multiplierR {
 type multiplierL struct{}
 
 var (
-	multiplierAllColumns            = []string{"id", "description", "key", "for_games", "value"}
-	multiplierColumnsWithoutDefault = []string{"description", "key"}
+	multiplierAllColumns            = []string{"id", "description", "key", "for_games", "multiplier_type", "test_number", "test_string", "value"}
+	multiplierColumnsWithoutDefault = []string{"description", "key", "multiplier_type", "test_number", "test_string"}
 	multiplierColumnsWithDefault    = []string{"id", "for_games", "value"}
 	multiplierPrimaryKeyColumns     = []string{"id"}
 	multiplierGeneratedColumns      = []string{}
