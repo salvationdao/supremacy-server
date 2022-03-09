@@ -19,6 +19,7 @@ import (
 
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 
+	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 
 	"github.com/gofrs/uuid"
@@ -111,7 +112,7 @@ func NewArena(opts *Opts) *Arena {
 
 	opts.SecureUserFactionCommand(WSJoinQueue, arena.Join)
 	// todo: access ability from here
-	// opts.SecureUserFactionCommand(HubKeFactionUniqueAbilityContribute, .FactionUniqueAbilityContribute)
+	opts.SecureUserFactionCommand(HubKeFactionUniqueAbilityContribute, arena.FactionUniqueAbilityContribute)
 	opts.Command(HubKeyGameSettingsUpdated, arena.SendSettings)
 
 	go func() {
@@ -190,7 +191,10 @@ func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, wsc *hub
 		return nil
 	}
 	btl := arena.currentBattle
-	reply(btl.updatePayload())
+	err := btl.abilities.AbilityContribute(wsc, payload, factionID)
+	if err != nil {
+		return terror.Error(err)
+	}
 	return nil
 }
 
@@ -404,6 +408,8 @@ func (btl *Battle) start(payload *BattleStartPayload) {
 
 	// set up the abilities for current battle
 	btl.abilities = NewAbilitiesSystem(btl)
+
+	btl.BroadcastUpdate()
 }
 
 func (btl *Battle) end(payload *BattleEndPayload) {
@@ -979,6 +985,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.MechContainer) []*WarMachi
 			PowerGrid:          1,
 			CPU:                1,
 			WeaponNames:        weaponNames,
+			Tier:               mech.Tier,
 		}
 	}
 	return warmachines

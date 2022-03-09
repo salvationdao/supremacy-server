@@ -44,10 +44,11 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 	// initialise new gabs ability pool
 	gabsAbilityPool := &GabsAbilityPool{
 		Stage: &GabsBribeStage{
-			Phase:   BribeStageBribe,
-			EndTime: time.Now(),
+			Phase:   BribeStageHold,
+			EndTime: time.Now().AddDate(1, 0, 0), // HACK: set end time to far future to implement infinite time
 		},
-		Abilities: map[uuid.UUID]map[server.GameAbilityID]*GameAbility{},
+		Abilities:   map[uuid.UUID]*GameAbility{},
+		UserVoteMap: map[uuid.UUID]*UserVote{}, // track voting activity for current battle round
 	}
 
 	// init battle ability
@@ -158,37 +159,9 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 			factionAbilities[factionID] = abilities
 		}
 
-		// GABS abilities
-		factionGabsAbilities, err := boiler.GameAbilities(qm.Where("faction_id = ?", factionID.String()), qm.And("battle_ability_id NOTNULL")).All(gamedb.StdConn)
-		for _, ability := range factionGabsAbilities {
-			supsCost, err := decimal.NewFromString(ability.SupsCost)
-			if err != nil {
-				gamelog.L.Err(err).Msg("Failed to ability sups cost to decimal")
-
-				// set sups cost to initial price
-				supsCost = decimal.New(1, 18)
-			}
-
-			currentSups, err := decimal.NewFromString(ability.CurrentSups)
-			if err != nil {
-				gamelog.L.Err(err).Msg("Failed to ability current sups to decimal")
-
-				// set current sups to initial price
-				currentSups = decimal.Zero
-			}
-
-			ga := &GameAbility{
-				ID:                  server.GameAbilityID(uuid.Must(uuid.FromString(ability.ID))),
-				GameClientAbilityID: byte(ability.GameClientAbilityID),
-				ImageUrl:            ability.ImageURL,
-				Description:         ability.Description,
-				FactionID:           factionID,
-				Label:               ability.Label,
-				SupsCost:            supsCost,
-				CurrentSups:         currentSups,
-			}
-
-			gabsAbilityPool.Abilities[factionID][ga.ID] = ga
+		// initialise user vote map in gab ability pool
+		gabsAbilityPool.UserVoteMap[factionID] = &UserVote{
+			VoteMap: map[server.UserID]decimal.Decimal{},
 		}
 	}
 
@@ -269,8 +242,11 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 
 				// terminate the function when battle is end
 				fmt.Println("Battle Ended")
-				return
+				break
 			}
+
+			// do something after battle end...
+
 		}(abilities)
 
 	}
@@ -408,6 +384,8 @@ func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID str
 // ***************************
 
 const (
+	// BribeDurationSecond the amount of second players can bribe GABS
+	BribeDurationSecond = 30
 	// LocationSelectDurationSecond the amount of second the winner user can select the location
 	LocationSelectDurationSecond = 15
 	// CooldownDurationSecond the amount of second players have to wait for next bribe phase
@@ -420,12 +398,19 @@ const (
 	BribeStageBribe          BribePhase = "BRIBE"
 	BribeStageLocationSelect BribePhase = "LOCATION_SELECT"
 	BribeStageCooldown       BribePhase = "COOLDOWN"
+	BribeStageHold           BribePhase = "HOLD"
 )
 
 type GabsBribeStage struct {
 	deadlock.RWMutex
 	Phase   BribePhase
 	EndTime time.Time
+}
+
+// track user contribution of current battle
+type UserVote struct {
+	deadlock.Mutex
+	VoteMap map[server.UserID]decimal.Decimal
 }
 
 type GabsAbilityPool struct {
@@ -435,7 +420,10 @@ type GabsAbilityPool struct {
 	// pick random battle ability
 	BattleAbility *server.BattleAbility
 
-	Abilities map[uuid.UUID]map[server.GameAbilityID]*GameAbility
+	// map[factionID] map[battleAbilityID] map[userID]
+	UserVoteMap map[uuid.UUID]*UserVote
+
+	Abilities map[uuid.UUID]*GameAbility // faction ability current, change on every bribing cycle
 }
 
 // StartGabsAbilityPoolCycle
@@ -443,14 +431,82 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 	// wait for mech intro
 	time.Sleep(time.Duration(waitDurationSecond) * time.Second)
 
+	// initial a ticker for current battle
+	ticker := time.NewTicker(1 * time.Second)
+
 	// start ability pool cycle
-	go func() {
-		for {
-			// check phase
+	for {
+		// wait for next tick
+		<-ticker.C
 
+		// check phase
+		as.battle.Stage.RLock()
+		stage := as.battle.Stage.Stage
+		// exit the loop, when battle is ended
+		if stage == BattleStageEnd {
+			ticker.Stop()
+			as.battle.Stage.RUnlock()
+			break
 		}
-	}()
+		as.battle.Stage.RUnlock()
 
+		// otherwise check bribing phase
+		as.gabsAbilityPool.Stage.RLock()
+
+		// skip, if the end time of current phase haven't been reached
+		if as.gabsAbilityPool.Stage.EndTime.After(time.Now()) {
+			as.gabsAbilityPool.Stage.RUnlock()
+			continue
+		}
+
+		// otherwise, read current bribe phase
+		bribePhase := as.gabsAbilityPool.Stage.Phase
+
+		as.gabsAbilityPool.Stage.RUnlock()
+
+		/////////////////
+		// Bribe Phase //
+		/////////////////
+		switch bribePhase {
+
+		// at the end of bribing phase
+		// no ability is triggered, switch to cooldown phase
+		case BribeStageBribe:
+			// set new battle ability
+			err := as.gabsAbilityPool.SetNewBattleAbility()
+			if err != nil {
+				gamelog.L.Err(err).Msg("Failed to set new battle ability")
+			}
+
+			// change bribing phase
+			as.gabsAbilityPool.Stage.Lock()
+			as.gabsAbilityPool.Stage.Phase = BribeStageCooldown
+			as.gabsAbilityPool.Stage.EndTime = time.Now().Add(time.Duration(as.gabsAbilityPool.BattleAbility.CooldownDurationSecond) * time.Second)
+			as.gabsAbilityPool.Stage.Unlock()
+
+			// TODO: broadcast stage to frontend
+
+		// at the end of location select phase
+		// pass the location select to next player
+		case BribeStageLocationSelect:
+
+		// at the end of cooldown phase
+		// random choose a battle ability for next bribing session
+		case BribeStageCooldown:
+
+			// change bribing phase
+			as.gabsAbilityPool.Stage.Lock()
+			as.gabsAbilityPool.Stage.Phase = BribeStageBribe
+			as.gabsAbilityPool.Stage.EndTime = time.Now().Add(time.Duration(BribeDurationSecond) * time.Second)
+			as.gabsAbilityPool.Stage.Unlock()
+
+			// TODO: broadcast stage to frontend
+
+			continue
+		}
+	}
+
+	// do some thing after battle end...
 }
 
 // SetNewBattleAbility query
@@ -461,8 +517,42 @@ func (bap *GabsAbilityPool) SetNewBattleAbility() error {
 		gamelog.L.Err(err).Msg("Failed to get battle ability from db")
 		return terror.Error(err)
 	}
-
 	bap.BattleAbility = ba
+
+	// get faction battle abilities
+	gabsAbilities, err := db.FactionBattleAbilityGet(context.Background(), gamedb.Conn, ba.ID)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	// set battle abilities of each faction
+	for _, ga := range gabsAbilities {
+		supsCost, err := decimal.NewFromString(ga.SupsCost)
+		if err != nil {
+			gamelog.L.Err(err).Msg("Failed to ability sups cost to decimal")
+
+			// set sups cost to initial price
+			supsCost = decimal.New(100, 18)
+		}
+
+		currentSups, err := decimal.NewFromString(ga.CurrentSups)
+		if err != nil {
+			gamelog.L.Err(err).Msg("Failed to ability current sups to decimal")
+
+			// set current sups to initial price
+			currentSups = decimal.Zero
+		}
+		bap.Abilities[ga.FactionID] = &GameAbility{
+			ID:                  ga.ID,
+			GameClientAbilityID: byte(ga.GameClientAbilityID),
+			ImageUrl:            ga.ImageUrl,
+			Description:         ga.Description,
+			FactionID:           ga.FactionID,
+			Label:               ga.Label,
+			SupsCost:            supsCost,
+			CurrentSups:         currentSups,
+		}
+	}
 
 	return nil
 }
@@ -481,7 +571,7 @@ type GameAbilityContributeRequest struct {
 
 const HubKeFactionUniqueAbilityContribute hub.HubCommandKey = "FACTION:UNIQUE:ABILITY:CONTRIBUTE"
 
-func (btl *Battle) FactionUniqueAbilityContribute(ctx context.Context, wsc *hub.Client, payload []byte, factionID server.FactionID, reply hub.ReplyFunc) error {
+func (as *AbilitiesSystem) AbilityContribute(wsc *hub.Client, payload []byte, factionID server.FactionID) error {
 	req := &GameAbilityContributeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -495,7 +585,7 @@ func (btl *Battle) FactionUniqueAbilityContribute(ctx context.Context, wsc *hub.
 
 	supsAmount := decimal.New(req.Payload.Amount, 18)
 
-	btl.abilities.FactionUniqueAbilityContribute(uuid.UUID(factionID), req.Payload.GameAbilityID, userID, supsAmount)
+	as.FactionUniqueAbilityContribute(uuid.UUID(factionID), req.Payload.GameAbilityID, userID, supsAmount)
 
 	return nil
 }

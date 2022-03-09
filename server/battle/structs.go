@@ -70,6 +70,7 @@ type WarMachine struct {
 	Faction            *Faction        `json:"faction"`
 	WeaponNames        []string        `json:"weaponNames"`
 	Abilities          []*GameAbility  `json:"abilities"`
+	Tier               string          `json:"tier"`
 }
 
 type GameAbility struct {
@@ -83,7 +84,7 @@ type GameAbility struct {
 	FactionID           uuid.UUID            `json:"faction_id" db:"faction_id"`
 	Label               string               `json:"label" db:"label"`
 	SupsCost            decimal.Decimal      `json:"sups_cost"`
-	CurrentSups         decimal.Decimal      `json:"current_sups`
+	CurrentSups         decimal.Decimal      `json:"current_sups"`
 
 	// if token id is not 0, it is a nft ability, otherwise it is a faction wide ability
 	WarMachineHash string
