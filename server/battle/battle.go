@@ -120,6 +120,7 @@ func NewArena(opts *Opts) *Arena {
 	opts.Command(HubKeyGameUserOnline, arena.UserOnline)
 
 	// subscribe functions
+	opts.SubscribeCommand(HubKeyGameNotification, arena.GameNotificationSubscribeHandler)
 	opts.SecureUserFactionSubscribeCommand(HubKeGabsBribeStageUpdateSubscribe, arena.GabsBribeStageSubscribe)
 	opts.SecureUserFactionSubscribeCommand(HubKeGabsBribingWinnerSubscribe, arena.GabsBribingWinnerSubscribe)
 
