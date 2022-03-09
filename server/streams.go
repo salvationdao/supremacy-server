@@ -26,6 +26,6 @@ type GlobalAnnouncement struct {
 	ID         string     `json:"id"`
 	Title      string     `json:"title"`
 	Message    string     `json:"message"`
-	GamesUntil *int       `json:"gamesUntil,omitempty"`
-	ShowUntil  *time.Time `json:"showUntil,omitempty"`
+	GamesUntil *int       `json:"games_until,omitempty"`
+	ShowUntil  *time.Time `json:"show_until,omitempty"`
 }
