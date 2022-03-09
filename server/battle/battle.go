@@ -111,7 +111,7 @@ func NewArena(opts *Opts) *Arena {
 
 	opts.SecureUserFactionCommand(WSJoinQueue, arena.Join)
 	// todo: access ability from here
-	// opts.SecureUserFactionCommand(HubKeFactionUniqueAbilityContribute, arena.FactionUniqueAbilityContribute)
+	// opts.SecureUserFactionCommand(HubKeFactionUniqueAbilityContribute, .FactionUniqueAbilityContribute)
 	opts.Command(HubKeyGameSettingsUpdated, arena.SendSettings)
 
 	go func() {
@@ -183,6 +183,15 @@ func (arena *Arena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (arena *Arena) SetMessageBus(mb *messagebus.MessageBus, nb *messagebus.NetBus) {
 	arena.messageBus = mb
+}
+
+func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, wsc *hub.Client, payload []byte, factionID server.FactionID, reply hub.ReplyFunc) error {
+	if arena.currentBattle == nil {
+		return nil
+	}
+	btl := arena.currentBattle
+	reply(btl.updatePayload())
+	return nil
 }
 
 func (arena *Arena) SendSettings(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {

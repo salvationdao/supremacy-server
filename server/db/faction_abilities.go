@@ -60,8 +60,8 @@ func GameAbilityCreate(ctx context.Context, conn Conn, gameAbility *server.GameA
 	return nil
 }
 
-// AbilityCollectionGetRandom return three random abilities
-func AbilityCollectionGetRandom(ctx context.Context, conn Conn) (*server.BattleAbility, error) {
+// BattleAbilityGetRandom return three random abilities
+func BattleAbilityGetRandom(ctx context.Context, conn Conn) (*server.BattleAbility, error) {
 	result := &server.BattleAbility{}
 	q := `
 		SELECT * FROM battle_abilities

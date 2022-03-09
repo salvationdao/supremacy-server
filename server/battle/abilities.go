@@ -14,6 +14,7 @@ import (
 
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
+	"github.com/sasha-s/go-deadlock"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
@@ -34,11 +35,27 @@ type AbilitiesSystem struct {
 
 	// gabs abilities (air craft, nuke, repair)
 	factionGabsAbilities map[uuid.UUID]map[server.GameAbilityID]*GameAbility
+	gabsAbilityPool      *GabsAbilityPool
 }
 
 func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 	factionAbilities := map[uuid.UUID]map[server.GameAbilityID]*GameAbility{}
-	gabAbilities := map[uuid.UUID]map[server.GameAbilityID]*GameAbility{}
+
+	// initialise new gabs ability pool
+	gabsAbilityPool := &GabsAbilityPool{
+		Stage: &GabsBribeStage{
+			Phase:   BribeStageBribe,
+			EndTime: time.Now(),
+		},
+		Abilities: map[uuid.UUID]map[server.GameAbilityID]*GameAbility{},
+	}
+
+	// init battle ability
+	err := gabsAbilityPool.SetNewBattleAbility()
+	if err != nil {
+		gamelog.L.Err(err).Msg("Failed to set up battle ability")
+		return nil
+	}
 
 	for factionID := range battle.factions {
 		// initialise faction unique abilities
@@ -142,7 +159,6 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 		}
 
 		// GABS abilities
-		gabAbilities[factionID] = map[server.GameAbilityID]*GameAbility{}
 		factionGabsAbilities, err := boiler.GameAbilities(qm.Where("faction_id = ?", factionID.String()), qm.And("battle_ability_id NOTNULL")).All(gamedb.StdConn)
 		for _, ability := range factionGabsAbilities {
 			supsCost, err := decimal.NewFromString(ability.SupsCost)
@@ -172,24 +188,30 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 				CurrentSups:         currentSups,
 			}
 
-			gabAbilities[factionID][ga.ID] = ga
+			gabsAbilityPool.Abilities[factionID][ga.ID] = ga
 		}
 	}
 
 	as := &AbilitiesSystem{
 		battle:                 battle,
 		factionUniqueAbilities: factionAbilities,
-		factionGabsAbilities:   gabAbilities,
+		gabsAbilityPool:        gabsAbilityPool,
 	}
 
 	// calc the intro time, mech_amount *3 + 7 second
 	waitDurationSecond := len(battle.WarMachines)*EachMechIntroSecond + InitIntroSecond
 
-	// as.VoteCycle = as.VotingCycleTicker(waitDurationSecond)
 	as.FactionUniqueAbilityUpdater(waitDurationSecond)
+
+	// vote cycle
+	// as.VoteCycle = as.VotingCycleTicker(waitDurationSecond)
 
 	return as
 }
+
+// ***********************************
+// Faction Unique Ability Contribution
+// ***********************************
 
 // FactionUniqueAbilityUpdater update ability price every 10 seconds
 func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
@@ -379,6 +401,70 @@ func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID str
 	}
 
 	return true
+}
+
+// ***************************
+// Gabs Abilities Voting Cycle
+// ***************************
+
+const (
+	// LocationSelectDurationSecond the amount of second the winner user can select the location
+	LocationSelectDurationSecond = 15
+	// CooldownDurationSecond the amount of second players have to wait for next bribe phase
+	CooldownDurationSecond = 20
+)
+
+type BribePhase string
+
+const (
+	BribeStageBribe          BribePhase = "BRIBE"
+	BribeStageLocationSelect BribePhase = "LOCATION_SELECT"
+	BribeStageCooldown       BribePhase = "COOLDOWN"
+)
+
+type GabsBribeStage struct {
+	deadlock.RWMutex
+	Phase   BribePhase
+	EndTime time.Time
+}
+
+type GabsAbilityPool struct {
+	deadlock.Mutex // force bribe process synchronize
+	Stage          *GabsBribeStage
+
+	// pick random battle ability
+	BattleAbility *server.BattleAbility
+
+	Abilities map[uuid.UUID]map[server.GameAbilityID]*GameAbility
+}
+
+// StartGabsAbilityPoolCycle
+func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
+	// wait for mech intro
+	time.Sleep(time.Duration(waitDurationSecond) * time.Second)
+
+	// start ability pool cycle
+	go func() {
+		for {
+			// check phase
+
+		}
+	}()
+
+}
+
+// SetNewBattleAbility query
+func (bap *GabsAbilityPool) SetNewBattleAbility() error {
+	// initialise new gabs ability pool
+	ba, err := db.BattleAbilityGetRandom(context.Background(), gamedb.Conn)
+	if err != nil {
+		gamelog.L.Err(err).Msg("Failed to get battle ability from db")
+		return terror.Error(err)
+	}
+
+	bap.BattleAbility = ba
+
+	return nil
 }
 
 // *********************
