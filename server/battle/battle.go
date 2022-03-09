@@ -513,8 +513,18 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	}
 
 	fakedUsers := []*BattleUser{
-		&BattleUser{ID: uuid.Must(uuid.NewV4()), Username: "FakeUser1"},
-		&BattleUser{ID: uuid.Must(uuid.NewV4()), Username: "FakeUser2"},
+		&BattleUser{ID: uuid.Must(uuid.NewV4()),
+			Username:      "FakeUser1",
+			FactionID:     winningWarMachines[0].FactionID,
+			FactionColour: btl.factions[uuid.Must(uuid.FromString(winningWarMachines[0].FactionID))].PrimaryColor,
+			FactionLogoID: FactionLogos[winningWarMachines[0].FactionID],
+		},
+		&BattleUser{ID: uuid.Must(uuid.NewV4()),
+			Username:      "FakeUser2",
+			FactionID:     winningWarMachines[0].FactionID,
+			FactionColour: btl.factions[uuid.Must(uuid.FromString(winningWarMachines[0].FactionID))].PrimaryColor,
+			FactionLogoID: FactionLogos[winningWarMachines[0].FactionID],
+		},
 	}
 
 	fakedFactions := make([]*Faction, 2)
