@@ -185,3 +185,29 @@ serve-test:
 .PHONY: sync
 sync:
 	cd server && go run cmd/gameserver/main.go sync
+
+docker-db-dump:
+	mkdir -p ./tmp
+	docker exec -it ${DOCKER_CONTAINER} /usr/local/bin/pg_dump -U ${LOCAL_DEV_DB_USER} > tmp/${LOCAL_DEV_DB_DATABASE}_dump.sql
+
+docker-db-restore:
+ifeq ("$(wildcard tmp/$(LOCAL_DEV_DB_DATABASE)_dump.sql)","")
+    $(error tmp/$(LOCAL_DEV_DB_DATABASE)_dump.sql is missing restore will fail)
+endif
+	docker exec -it ${DOCKER_CONTAINER} /usr/local/bin/psql -U ${LOCAL_DEV_DB_USER} -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE pid <> pg_backend_pid() AND datname = '${LOCAL_DEV_DB_DATABASE}'"
+	docker exec -it ${DOCKER_CONTAINER} /usr/local/bin/psql -U ${LOCAL_DEV_DB_USER} -d postgres -c "DROP DATABASE $(LOCAL_DEV_DB_DATABASE)"
+	docker exec -i  ${DOCKER_CONTAINER} /usr/local/bin/psql -U ${LOCAL_DEV_DB_USER} -d postgres < init.sql
+	docker exec -i  ${DOCKER_CONTAINER} /usr/local/bin/psql -U ${LOCAL_DEV_DB_USER} -d $(LOCAL_DEV_DB_DATABASE) < tmp/${LOCAL_DEV_DB_DATABASE}_dump.sql
+
+db-dump:
+	mkdir -p ./tmp
+	pg_dump -U ${LOCAL_DEV_DB_USER} > tmp/${LOCAL_DEV_DB_DATABASE}_dump.sql
+
+db-restore:
+ifeq ("$(wildcard tmp/$(LOCAL_DEV_DB_DATABASE)_dump.sql)","")
+    $(error tmp/$(LOCAL_DEV_DB_DATABASE)_dump.sql is missing restore will fail)
+endif
+	psql -U ${LOCAL_DEV_DB_USER} -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE pid <> pg_backend_pid() AND datname = '${LOCAL_DEV_DB_DATABASE}'"
+	psql -U ${LOCAL_DEV_DB_USER} -d postgres -c "DROP DATABASE $(LOCAL_DEV_DB_DATABASE)"
+	psql -U ${LOCAL_DEV_DB_USER} -d postgres < init.sql
+	psql -U ${LOCAL_DEV_DB_USER} -d $(LOCAL_DEV_DB_DATABASE) < tmp/${LOCAL_DEV_DB_DATABASE}_dump.sql

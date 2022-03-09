@@ -44,7 +44,7 @@ func NewGameController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *GameC
 const HubKeyFactionColour hub.HubCommandKey = "FACTION:COLOUR"
 
 type FactionColourRespose struct {
-	RedMountain string `json:"redMountain"`
+	RedMountain string `json:"red_mountain"`
 	Boston      string `json:"boston"`
 	Zaibatsu    string `json:"zaibatsu"`
 }
