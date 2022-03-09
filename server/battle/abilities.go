@@ -441,14 +441,18 @@ type UserContribution struct {
 	contributionMap map[server.UserID]decimal.Decimal
 }
 
+// pick random battle ability
+type GabAbility struct {
+	deadlock.RWMutex // lock for ability changes
+	BattleAbility    *server.BattleAbility
+	Abilities        map[uuid.UUID]*GameAbility // faction ability current, change on every bribing cycle
+}
+
 type GabsAbilityPool struct {
 	deadlock.Mutex // force bribe process synchronize
 	Stage          *GabsBribeStage
 
-	// pick random battle ability
-	BattleAbility *server.BattleAbility
-
-	Abilities map[uuid.UUID]*GameAbility // faction ability current, change on every bribing cycle
+	gabAbility *GabAbility
 
 	TriggeredFactionID uuid.UUID
 }
@@ -736,6 +740,10 @@ func (as *AbilitiesSystem) nextLocationDeciderGet() (server.UserID, bool) {
 // ***********************************
 // Ability Progression bar Broadcaster
 // ***********************************
+
+func (as *AbilitiesSystem) GabsAbilityProgressBar() {
+
+}
 
 // *********************
 // Handlers
