@@ -142,8 +142,8 @@ func (bu *BattleUser) Send(key hub.HubCommandKey, payload interface{}) error {
 }
 
 type Multiplier struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
+	Key         string `json:"key"`
+	Value       string `json:"value"`
 	Description string `json:"description"`
 }
 
@@ -252,39 +252,38 @@ type MultiplierUpdate struct {
 
 var fakeMultipliers = []*Multiplier{
 	&Multiplier{
-		Key:   "citizen",
-		Value: "1x",
-		Description: "When a player is within the top 80% of voting average."
+		Key:         "citizen",
+		Value:       "1x",
+		Description: "When a player is within the top 80% of voting average.",
 	},
 	&Multiplier{
-		Key:   "contributor",
-		Value: "5x",
-		Description: "When a player is within the top 50% of voting average."
-
+		Key:         "contributor",
+		Value:       "5x",
+		Description: "When a player is within the top 50% of voting average.",
 	},
 	&Multiplier{
-		Key:   "super contributor",
-		Value: "10x",
-		Description: "When a player is within the top 75% of voting average."
+		Key:         "super contributor",
+		Value:       "10x",
+		Description: "When a player is within the top 75% of voting average.",
 	},
 	&Multiplier{
-		Key:   "a fool and his money",
-		Description: "For a player who has put the most individual SUPS in to vote but still lost."
-		Value: "5x",
+		Key:         "a fool and his money",
+		Description: "For a player who has put the most individual SUPS in to vote but still lost.",
+		Value:       "5x",
 	},
 	&Multiplier{
-		Key:   "air support",
+		Key:         "air support",
 		Description: "For a player who triggered an airstrike.",
-		Value: "5x",
+		Value:       "5x",
 	},
 	&Multiplier{
-		Key:   "now i am become death",
+		Key:         "now i am become death",
 		Description: "For a player who triggered a nuke.",
-		Value: "5x",
+		Value:       "5x",
 	},
 	&Multiplier{
-		Key:   "destroyer of worlds",
+		Key:         "destroyer of worlds",
 		Description: "For a player who has triggered the previous three nukes.",
-		Value: "10x",
+		Value:       "10x",
 	},
 }
