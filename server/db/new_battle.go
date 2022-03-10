@@ -300,7 +300,7 @@ func QueueLength(factionID uuid.UUID) (int64, error) {
 func QueuePosition(mechID uuid.UUID, factionID uuid.UUID) (int64, error) {
 	var pos int64
 
-	query := `select *
+	query := `select t.rn
 		from (
 		   select 
 				  mech_id,  			      

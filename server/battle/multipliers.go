@@ -41,32 +41,7 @@ func NewMultiplierSystem(btl *Battle) *MultiplierSystem {
 }
 
 func (ms *MultiplierSystem) init() {
-	multipliers, err := boiler.Multipliers().All(gamedb.StdConn)
-	for _, m := range multipliers {
-		ms.multipliers[m.Key] = m
-	}
-	if err != nil {
-		gamelog.L.Panic().Err(err).Msgf("unable to retrieve multipliers from database")
-	}
 
-	// fetch all active user multipliers
-
-	usermultipliers, err := boiler.UserMultipliers(qm.Where(`until_battle_number >= ?`, ms.battle.BattleNumber)).All(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Panic().Err(err).Msgf("unable to retrieve user's multipliers from database")
-	}
-	for _, m := range usermultipliers {
-		pm, ok := ms.players[m.PlayerID]
-		if !ok {
-			pm = make(map[*boiler.Multiplier]*boiler.UserMultiplier)
-			ms.players[m.PlayerID] = pm
-		}
-		mlt, ok := ms.multipliers[m.MultiplierID]
-		if !ok {
-			gamelog.L.Error().Err(err).Msgf("unable to retrieve multiplier - this should never happen")
-		}
-		pm[mlt] = m
-	}
 }
 
 type TriggerDetails struct {
@@ -101,12 +76,16 @@ func (ms *MultiplierSystem) PlayerMultipliers(playerID uuid.UUID) ([]*Multiplier
 }
 
 func (ms *MultiplierSystem) getMultiplier(mtype, testString string, num int) (*boiler.Multiplier, bool) {
-	for _, m := range ms.multipliers {
-		if m.MultiplierType == mtype && m.TestString == testString && m.TestNumber == num {
-			return m, true
-		}
+	multiplier, err := boiler.Multipliers(
+		qm.Where(`multiplier_type = ?`, mtype),
+		qm.And(`test_string = ?`, testString),
+		qm.And(`test_number = ?`, num),
+	).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("m,type", mtype).Err(err).Msgf("unable to retrieve multiplier from database")
+		return nil, false
 	}
-	return nil, false
+	return multiplier, true
 }
 
 func (ms *MultiplierSystem) end(btlEndInfo *BattleEndDetail) {
@@ -274,7 +253,13 @@ outer:
 		abilitySums[contribution.AbilityOfferingID][contribution.PlayerID] = amnt.Add(contribution.Amount)
 	}
 
-	for _, m := range ms.multipliers {
+	multipliers, err := boiler.Multipliers().All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Panic().Err(err).Msg("unable to retrieve multipliers from db")
+		return
+	}
+
+	for _, m := range multipliers {
 		if m.MultiplierType == "spend_average" {
 			for playerID, amount := range sums {
 				perc := total.Mul(decimal.New(100-int64(m.TestNumber), 18).Div(decimal.New(100, 18)))

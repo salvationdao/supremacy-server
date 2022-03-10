@@ -667,6 +667,9 @@ func (arena *Arena) Battle() *Battle {
 		MapName: gameMap.Name,
 		gameMap: gameMap,
 		stage:   BattleStagStart,
+		users: usersMap{
+			m: make(map[uuid.UUID]*BattleUser),
+		},
 	}
 
 	err = btl.Load()

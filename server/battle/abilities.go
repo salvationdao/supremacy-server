@@ -408,7 +408,7 @@ func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID str
 	txid, err := ppClient.SpendSupMessage(passport.SpendSupsReq{
 		FromUserID:           userID,
 		Amount:               amount.String(),
-		TransactionReference: server.TransactionReference(fmt.Sprintf("ability_sup_contribute|%s", ga.OfferingID.String())),
+		TransactionReference: server.TransactionReference(fmt.Sprintf("ability_sup_contribute|%s|%d", ga.OfferingID.String(), time.Now().UnixNano())),
 		Group:                "battle",
 		SubGroup:             battleID,
 		Description:          "battle contribution: " + ga.Label,
@@ -419,7 +419,7 @@ func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID str
 	}
 
 	isAllSyndicates := false
-	if ga.BattleAbilityID.IsNil() {
+	if ga.BattleAbilityID == nil || ga.BattleAbilityID.IsNil() {
 		isAllSyndicates = true
 	}
 

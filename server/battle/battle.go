@@ -59,9 +59,7 @@ func (btl *Battle) start(payload *BattleStartPayload) {
 	}
 
 	// set up the abilities for current battle
-	btl.users = usersMap{
-		m: make(map[uuid.UUID]*BattleUser),
-	}
+
 	btl.abilities = NewAbilitiesSystem(btl)
 	btl.multipliers = NewMultiplierSystem(btl)
 	btl.spoils = NewSpoilsOfWar(btl, 5*time.Second, 5*time.Second)
@@ -388,25 +386,28 @@ func (arena *Arena) reset() {
 	gamelog.L.Warn().Msg("arena state resetting")
 }
 
-type JoinPaylod struct {
-	AssetHash   string `json:"asset_hash"`
-	NeedInsured bool   `json:"need_insured"`
+type JoinPayload struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		AssetHash   string `json:"asset_hash"`
+		NeedInsured bool   `json:"need_insured"`
+	} `json:"payload"`
 }
 
 func (arena *Arena) Join(ctx context.Context, wsc *hub.Client, payload []byte, factionID uuid.UUID, reply hub.ReplyFunc) error {
 	span := tracer.StartSpan("ws.Command", tracer.ResourceName(string(WSJoinQueue)))
 	defer span.Finish()
 
-	msg := &JoinPaylod{}
+	msg := &JoinPayload{}
 	err := json.Unmarshal(payload, msg)
 	if err != nil {
 		gamelog.L.Error().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal queue join")
 		return err
 	}
 
-	mechId, err := db.MechIDFromHash(msg.AssetHash)
+	mechId, err := db.MechIDFromHash(msg.Payload.AssetHash)
 	if err != nil {
-		gamelog.L.Error().Str("hash", msg.AssetHash).Err(err).Msg("unable to retrieve mech id from hash")
+		gamelog.L.Error().Str("hash", msg.Payload.AssetHash).Err(err).Msg("unable to retrieve mech id from hash")
 		return err
 	}
 
