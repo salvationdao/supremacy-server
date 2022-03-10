@@ -79,27 +79,6 @@ var IssuedContractRewardTableColumns = struct {
 
 // Generated where
 
-type whereHelperdecimal_Decimal struct{ field string }
-
-func (w whereHelperdecimal_Decimal) EQ(x decimal.Decimal) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.EQ, x)
-}
-func (w whereHelperdecimal_Decimal) NEQ(x decimal.Decimal) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.NEQ, x)
-}
-func (w whereHelperdecimal_Decimal) LT(x decimal.Decimal) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LT, x)
-}
-func (w whereHelperdecimal_Decimal) LTE(x decimal.Decimal) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LTE, x)
-}
-func (w whereHelperdecimal_Decimal) GT(x decimal.Decimal) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GT, x)
-}
-func (w whereHelperdecimal_Decimal) GTE(x decimal.Decimal) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GTE, x)
-}
-
 var IssuedContractRewardWhere = struct {
 	ID             whereHelperstring
 	BattleID       whereHelperstring

@@ -165,7 +165,7 @@ type HubNetSubscribeCommandFunc func(ctx context.Context, client *hub.Client, pa
 // NetSubscribeCommand registers a net message subscription command to the hub
 //
 // If fn is not provided, will use default
-func (api *API) NetSubscribeCommand(key hub.HubCommandKey, fn ...HubNetSubscribeCommandFunc) {
+func (api *API) NetSubscribeCommand(key hub.HubCommandKey, fn HubNetSubscribeCommandFunc) {
 	api.NetSubscribeCommandWithAuthCheck(key, fn, func(wsc *hub.Client) bool {
 		return false
 	})
@@ -174,7 +174,7 @@ func (api *API) NetSubscribeCommand(key hub.HubCommandKey, fn ...HubNetSubscribe
 // NetSecureUserSubscribeCommand registers a subscription command to the hub that will only run if the websocket has authenticated
 //
 // If fn is not provided, will use default
-func (api *API) NetSecureUserSubscribeCommand(key hub.HubCommandKey, fn ...HubNetSubscribeCommandFunc) {
+func (api *API) NetSecureUserSubscribeCommand(key hub.HubCommandKey, fn HubNetSubscribeCommandFunc) {
 	api.NetSubscribeCommandWithAuthCheck(key, fn, func(wsc *hub.Client) bool {
 		return wsc.Identifier() == ""
 	})
@@ -183,7 +183,7 @@ func (api *API) NetSecureUserSubscribeCommand(key hub.HubCommandKey, fn ...HubNe
 // NetSecureUserFactionSubscribeCommand registers a subscription command to the hub that will only run if the websocket has authenticated
 //
 // If fn is not provided, will use default
-func (api *API) NetSecureUserFactionSubscribeCommand(key hub.HubCommandKey, fn ...HubNetSubscribeCommandFunc) {
+func (api *API) NetSecureUserFactionSubscribeCommand(key hub.HubCommandKey, fn HubNetSubscribeCommandFunc) {
 	api.NetSubscribeCommandWithAuthCheck(key, fn, func(wsc *hub.Client) bool {
 		if wsc.Identifier() == "" {
 			return true
@@ -200,7 +200,7 @@ func (api *API) NetSecureUserFactionSubscribeCommand(key hub.HubCommandKey, fn .
 // NetSubscribeCommandWithAuthCheck registers a net message subscription command to the hub
 //
 // If fn is not provided, will use default
-func (api *API) NetSubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn []HubNetSubscribeCommandFunc, authCheck func(wsc *hub.Client) bool) {
+func (api *API) NetSubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn HubNetSubscribeCommandFunc, authCheck func(wsc *hub.Client) bool) {
 	var err error
 	var busKey messagebus.NetBusKey
 	busKey = ""
@@ -210,7 +210,7 @@ func (api *API) NetSubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn []Hub
 			return terror.Error(terror.ErrForbidden)
 		}
 
-		busKey, err = fn[0](ctx, wsc, payload)
+		busKey, err = fn(ctx, wsc, payload)
 		if err != nil {
 			return terror.Error(err)
 		}
