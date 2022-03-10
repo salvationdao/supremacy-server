@@ -321,6 +321,7 @@ type AuthRingCheckRequest struct {
 }
 
 func (pc *PassportWebhookController) AuthRingCheck(w http.ResponseWriter, r *http.Request) (int, error) {
+
 	req := &AuthRingCheckRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {

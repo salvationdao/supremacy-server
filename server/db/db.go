@@ -82,18 +82,22 @@ func Exec(ctx context.Context, conn Conn, q string, args ...interface{}) error {
 }
 
 func UpsertPlayer(p *boiler.Player) error {
+	boil.DebugMode = true
 	err := p.Upsert(
 		gamedb.StdConn,
-		false,
+		true,
 		[]string{
+			boiler.PlayerColumns.PublicAddress,
+		},
+		boil.Whitelist(
 			boiler.PlayerColumns.ID,
 			boiler.PlayerColumns.Username,
-			boiler.PlayerColumns.PublicAddress,
 			boiler.PlayerColumns.FactionID,
-		},
-		boil.None(),
+			boiler.PlayerColumns.PublicAddress,
+		),
 		boil.Infer(),
 	)
+	boil.DebugMode = false
 	if err != nil {
 		return terror.Error(err)
 	}

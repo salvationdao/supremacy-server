@@ -93,12 +93,14 @@ func (arena *Arena) HubKeyMultiplierUpdate(ctx context.Context, wsc *hub.Client,
 		return "", "", fmt.Errorf("no active battle")
 	}
 
-	m, total := arena.currentBattle.multipliers.PlayerMultipliers(id)
+	if arena.currentBattle.multipliers != nil {
+		m, total := arena.currentBattle.multipliers.PlayerMultipliers(id)
 
-	reply(&MultiplierUpdate{
-		UserMultipliers:  m,
-		TotalMultipliers: fmt.Sprintf("%dx", total),
-	})
+		reply(&MultiplierUpdate{
+			UserMultipliers:  m,
+			TotalMultipliers: fmt.Sprintf("%dx", total),
+		})
+	}
 
 	return req.TransactionID, messagebus.BusKey(HubKeyMultiplierUpdate), nil
 }
