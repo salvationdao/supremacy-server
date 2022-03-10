@@ -1,7 +1,6 @@
 package comms
 
 import (
-	"errors"
 	"fmt"
 	"server"
 	"server/db"
@@ -12,6 +11,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofrs/uuid"
+	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
@@ -34,8 +34,7 @@ type UserResp struct {
 
 // Mechs is a heavy func, do not use on a running server
 func (s *S) Mechs(req MechsReq, resp *MechsResp) error {
-	fmt.Println("s.Mechs")
-
+	gamelog.L.Debug().Msg("comms.Mechs")
 	mechs, err := boiler.Mechs().All(gamedb.StdConn)
 	if err != nil {
 		return err
@@ -64,12 +63,12 @@ func (s *S) Mechs(req MechsReq, resp *MechsResp) error {
 		gamelog.L.Debug().Str("id", mech.ID).Msg("fetch mech")
 		mechContainer, err := db.Mech(uuid.Must(uuid.FromString(mech.ID)))
 		if err != nil {
-			return fmt.Errorf("get mech: %w", err)
+			return terror.Error(err)
 		}
 		if mechContainer.ID == "" || mechContainer.ID == uuid.Nil.String() {
 			spew.Dump(mech)
 			spew.Dump(mechContainer)
-			return errors.New("null ID")
+			return terror.Error(fmt.Errorf("null ID"))
 		}
 
 		if mechContainer.Hash == "WQk0Qy80DJ" {
@@ -95,10 +94,10 @@ type MechResp struct {
 }
 
 func (s *S) Mech(req MechReq, resp *MechResp) error {
-	fmt.Println("s.Mech")
+	gamelog.L.Debug().Msg("comms.Mech")
 	result, err := db.Mech(req.MechID)
 	if err != nil {
-		return err
+		return terror.Error(err)
 	}
 	resp.MechContainer = result
 	return nil
@@ -112,10 +111,10 @@ type MechsByOwnerIDResp struct {
 }
 
 func (s *S) MechsByOwnerID(req MechsByOwnerIDReq, resp *MechsByOwnerIDResp) error {
-	fmt.Println("s.MechsByOwnerID")
+	gamelog.L.Debug().Msg("comms.MechsByOwnerID")
 	result, err := db.MechsByOwnerID(req.OwnerID)
 	if err != nil {
-		return err
+		return terror.Error(err)
 	}
 	resp.MechContainers = result
 	return nil
@@ -130,29 +129,29 @@ type MechRegisterResp struct {
 }
 
 func (s *S) MechRegister(req MechRegisterReq, resp *MechRegisterResp) error {
-	fmt.Println("s.MechRegister")
+	gamelog.L.Debug().Msg("comms.MechRegister")
 	userResp := &UserResp{}
-	err := s.C.Call("S.User", &UserReq{ID: req.OwnerID}, userResp)
+	err := s.passportRPC.Call("S.User", &UserReq{ID: req.OwnerID}, userResp)
 	if err != nil {
-		return fmt.Errorf("refresh player: %w", err)
+		return terror.Error(err)
 	}
 	player, err := boiler.FindPlayer(gamedb.StdConn, req.OwnerID.String())
 	if err != nil {
-		return fmt.Errorf("get player: %w", err)
+		return terror.Error(err)
 	}
 	player.FactionID = null.StringFrom(userResp.FactionID.String)
 	_, err = player.Update(gamedb.StdConn, boil.Whitelist(boiler.PlayerColumns.FactionID))
 	if err != nil {
-		return fmt.Errorf("update player: %w", err)
+		return terror.Error(err)
 	}
 
 	mechID, err := db.MechRegister(req.TemplateID, req.OwnerID)
 	if err != nil {
-		return fmt.Errorf("mech register: %w", err)
+		return terror.Error(err)
 	}
 	mech, err := db.Mech(mechID)
 	if err != nil {
-		return fmt.Errorf("get created mech: %w", err)
+		return terror.Error(err)
 	}
 
 	resp.MechContainer = mech
@@ -168,14 +167,14 @@ type MechSetNameResp struct {
 }
 
 func (s *S) MechSetName(req MechSetNameReq, resp *MechSetNameResp) error {
-	fmt.Println("s.MechSetName")
+	gamelog.L.Debug().Msg("comms.MechSetName")
 	err := db.MechSetName(req.MechID, req.Name)
 	if err != nil {
-		return err
+		return terror.Error(err)
 	}
 	mech, err := db.Mech(req.MechID)
 	if err != nil {
-		return err
+		return terror.Error(err)
 	}
 	resp.MechContainer = mech
 	return nil
@@ -190,14 +189,14 @@ type MechSetOwnerResp struct {
 }
 
 func (s *S) MechSetOwner(req MechSetOwnerReq, resp *MechSetOwnerResp) error {
-	fmt.Println("s.MechSetOwner")
+	gamelog.L.Debug().Msg("comms.MechSetOwner")
 	err := db.MechSetOwner(req.MechID, req.OwnerID)
 	if err != nil {
-		return err
+		return terror.Error(err)
 	}
 	mech, err := db.Mech(req.MechID)
 	if err != nil {
-		return err
+		return terror.Error(err)
 	}
 	resp.MechContainer = mech
 	return nil
