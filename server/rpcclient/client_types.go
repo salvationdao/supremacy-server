@@ -2,11 +2,18 @@ package rpcclient
 
 import (
 	"server"
+	"server/db/boiler"
 	"time"
 
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/types"
 )
+
+type InsertTransactionsResp struct {
+}
+type InsertTransactionsReq struct {
+	Transactions []*boiler.PendingTransaction
+}
 
 type DefaultWarMachinesResp struct {
 	WarMachines []*server.WarMachineMetadata `json:"warMachines"`

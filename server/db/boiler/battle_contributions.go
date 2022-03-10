@@ -14,6 +14,7 @@ import (
 
 	"github.com/friendsofgo/errors"
 	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -33,6 +34,7 @@ type BattleContribution struct {
 	IsAllSyndicates   bool            `boiler:"is_all_syndicates" boil:"is_all_syndicates" json:"is_all_syndicates" toml:"is_all_syndicates" yaml:"is_all_syndicates"`
 	Amount            decimal.Decimal `boiler:"amount" boil:"amount" json:"amount" toml:"amount" yaml:"amount"`
 	ContributedAt     time.Time       `boiler:"contributed_at" boil:"contributed_at" json:"contributed_at" toml:"contributed_at" yaml:"contributed_at"`
+	ProcessedAt       null.Time       `boiler:"processed_at" boil:"processed_at" json:"processed_at,omitempty" toml:"processed_at" yaml:"processed_at,omitempty"`
 
 	R *battleContributionR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleContributionL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -49,6 +51,7 @@ var BattleContributionColumns = struct {
 	IsAllSyndicates   string
 	Amount            string
 	ContributedAt     string
+	ProcessedAt       string
 }{
 	ID:                "id",
 	BattleID:          "battle_id",
@@ -60,6 +63,7 @@ var BattleContributionColumns = struct {
 	IsAllSyndicates:   "is_all_syndicates",
 	Amount:            "amount",
 	ContributedAt:     "contributed_at",
+	ProcessedAt:       "processed_at",
 }
 
 var BattleContributionTableColumns = struct {
@@ -73,6 +77,7 @@ var BattleContributionTableColumns = struct {
 	IsAllSyndicates   string
 	Amount            string
 	ContributedAt     string
+	ProcessedAt       string
 }{
 	ID:                "battle_contributions.id",
 	BattleID:          "battle_contributions.battle_id",
@@ -84,6 +89,7 @@ var BattleContributionTableColumns = struct {
 	IsAllSyndicates:   "battle_contributions.is_all_syndicates",
 	Amount:            "battle_contributions.amount",
 	ContributedAt:     "battle_contributions.contributed_at",
+	ProcessedAt:       "battle_contributions.processed_at",
 }
 
 // Generated where
@@ -120,6 +126,7 @@ var BattleContributionWhere = struct {
 	IsAllSyndicates   whereHelperbool
 	Amount            whereHelperdecimal_Decimal
 	ContributedAt     whereHelpertime_Time
+	ProcessedAt       whereHelpernull_Time
 }{
 	ID:                whereHelperstring{field: "\"battle_contributions\".\"id\""},
 	BattleID:          whereHelperstring{field: "\"battle_contributions\".\"battle_id\""},
@@ -131,6 +138,7 @@ var BattleContributionWhere = struct {
 	IsAllSyndicates:   whereHelperbool{field: "\"battle_contributions\".\"is_all_syndicates\""},
 	Amount:            whereHelperdecimal_Decimal{field: "\"battle_contributions\".\"amount\""},
 	ContributedAt:     whereHelpertime_Time{field: "\"battle_contributions\".\"contributed_at\""},
+	ProcessedAt:       whereHelpernull_Time{field: "\"battle_contributions\".\"processed_at\""},
 }
 
 // BattleContributionRels is where relationship names are stored.
@@ -160,9 +168,9 @@ func (*battleContributionR) NewStruct() *battleContributionR {
 type battleContributionL struct{}
 
 var (
-	battleContributionAllColumns            = []string{"id", "battle_id", "player_id", "ability_offering_id", "did_trigger", "faction_id", "ability_label", "is_all_syndicates", "amount", "contributed_at"}
+	battleContributionAllColumns            = []string{"id", "battle_id", "player_id", "ability_offering_id", "did_trigger", "faction_id", "ability_label", "is_all_syndicates", "amount", "contributed_at", "processed_at"}
 	battleContributionColumnsWithoutDefault = []string{"battle_id", "player_id", "ability_offering_id", "faction_id", "ability_label", "amount"}
-	battleContributionColumnsWithDefault    = []string{"id", "did_trigger", "is_all_syndicates", "contributed_at"}
+	battleContributionColumnsWithDefault    = []string{"id", "did_trigger", "is_all_syndicates", "contributed_at", "processed_at"}
 	battleContributionPrimaryKeyColumns     = []string{"id"}
 	battleContributionGeneratedColumns      = []string{}
 )
