@@ -6,18 +6,18 @@ import (
 	"net/rpc"
 	"server/gamelog"
 	"sync"
+	"sync/atomic"
 
 	"github.com/ninja-software/terror/v2"
-	"go.uber.org/atomic"
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 )
 
 // XrpcClient is a basic RPC client with retry function and also support multiple addresses for increase through-put
 type XrpcClient struct {
-	Addrs   []string       // list of rpc addresses available to use
-	clients []*rpc.Client  // holds rpc clients, same len/pos as the Addrs
-	counter *atomic.Uint64 // counter for cycling address/clients
-	mutex   *sync.Mutex    // lock and unlocks clients slice editing
+	Addrs   []string      // list of rpc addresses available to use
+	clients []*rpc.Client // holds rpc clients, same len/pos as the Addrs
+	counter uint64        // counter for cycling address/clients
+	mutex   *sync.Mutex   // lock and unlocks clients slice editing
 }
 
 // Gocall plan to deprecate if possible
@@ -51,9 +51,8 @@ func (c *XrpcClient) Call(serviceMethod string, args interface{}, reply interfac
 	gamelog.L.Debug().Str("fn", serviceMethod).Interface("args", args).Msg("rpc call")
 
 	// count up, and use the next client/address
-	c.counter.Add(1)
-	counter := c.counter.Load()
-	i := int(counter) % len(c.Addrs)
+	atomic.AddUint64(&c.counter, 1)
+	i := int(c.counter) % len(c.Addrs)
 	client := c.clients[i]
 
 	var err error
