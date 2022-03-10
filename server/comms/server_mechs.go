@@ -34,7 +34,6 @@ type UserResp struct {
 
 // Mechs is a heavy func, do not use on a running server
 func (s *S) Mechs(req MechsReq, resp *MechsResp) error {
-	fmt.Println("s.Mechs")
 
 	mechs, err := boiler.Mechs().All(gamedb.StdConn)
 	if err != nil {
@@ -95,7 +94,6 @@ type MechResp struct {
 }
 
 func (s *S) Mech(req MechReq, resp *MechResp) error {
-	fmt.Println("s.Mech")
 	result, err := db.Mech(req.MechID)
 	if err != nil {
 		return err
@@ -112,7 +110,6 @@ type MechsByOwnerIDResp struct {
 }
 
 func (s *S) MechsByOwnerID(req MechsByOwnerIDReq, resp *MechsByOwnerIDResp) error {
-	fmt.Println("s.MechsByOwnerID")
 	result, err := db.MechsByOwnerID(req.OwnerID)
 	if err != nil {
 		return err
@@ -130,7 +127,6 @@ type MechRegisterResp struct {
 }
 
 func (s *S) MechRegister(req MechRegisterReq, resp *MechRegisterResp) error {
-	fmt.Println("s.MechRegister")
 	userResp := &UserResp{}
 	err := s.C.Call("S.User", &UserReq{ID: req.OwnerID}, userResp)
 	if err != nil {
@@ -168,7 +164,6 @@ type MechSetNameResp struct {
 }
 
 func (s *S) MechSetName(req MechSetNameReq, resp *MechSetNameResp) error {
-	fmt.Println("s.MechSetName")
 	err := db.MechSetName(req.MechID, req.Name)
 	if err != nil {
 		return err
@@ -190,7 +185,6 @@ type MechSetOwnerResp struct {
 }
 
 func (s *S) MechSetOwner(req MechSetOwnerReq, resp *MechSetOwnerResp) error {
-	fmt.Println("s.MechSetOwner")
 	err := db.MechSetOwner(req.MechID, req.OwnerID)
 	if err != nil {
 		return err
