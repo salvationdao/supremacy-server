@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -22,14 +23,15 @@ import (
 
 // Multiplier is an object representing the database table.
 type Multiplier struct {
-	ID             string `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Description    string `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
-	Key            string `boiler:"key" boil:"key" json:"key" toml:"key" yaml:"key"`
-	ForGames       int    `boiler:"for_games" boil:"for_games" json:"for_games" toml:"for_games" yaml:"for_games"`
-	MultiplierType string `boiler:"multiplier_type" boil:"multiplier_type" json:"multiplier_type" toml:"multiplier_type" yaml:"multiplier_type"`
-	TestNumber     int    `boiler:"test_number" boil:"test_number" json:"test_number" toml:"test_number" yaml:"test_number"`
-	TestString     string `boiler:"test_string" boil:"test_string" json:"test_string" toml:"test_string" yaml:"test_string"`
-	Value          int    `boiler:"value" boil:"value" json:"value" toml:"value" yaml:"value"`
+	ID             string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Description    string          `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
+	Key            string          `boiler:"key" boil:"key" json:"key" toml:"key" yaml:"key"`
+	ForGames       int             `boiler:"for_games" boil:"for_games" json:"for_games" toml:"for_games" yaml:"for_games"`
+	MultiplierType string          `boiler:"multiplier_type" boil:"multiplier_type" json:"multiplier_type" toml:"multiplier_type" yaml:"multiplier_type"`
+	MustBeOnline   bool            `boiler:"must_be_online" boil:"must_be_online" json:"must_be_online" toml:"must_be_online" yaml:"must_be_online"`
+	TestNumber     int             `boiler:"test_number" boil:"test_number" json:"test_number" toml:"test_number" yaml:"test_number"`
+	TestString     string          `boiler:"test_string" boil:"test_string" json:"test_string" toml:"test_string" yaml:"test_string"`
+	Value          decimal.Decimal `boiler:"value" boil:"value" json:"value" toml:"value" yaml:"value"`
 
 	R *multiplierR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L multiplierL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -41,6 +43,7 @@ var MultiplierColumns = struct {
 	Key            string
 	ForGames       string
 	MultiplierType string
+	MustBeOnline   string
 	TestNumber     string
 	TestString     string
 	Value          string
@@ -50,6 +53,7 @@ var MultiplierColumns = struct {
 	Key:            "key",
 	ForGames:       "for_games",
 	MultiplierType: "multiplier_type",
+	MustBeOnline:   "must_be_online",
 	TestNumber:     "test_number",
 	TestString:     "test_string",
 	Value:          "value",
@@ -61,6 +65,7 @@ var MultiplierTableColumns = struct {
 	Key            string
 	ForGames       string
 	MultiplierType string
+	MustBeOnline   string
 	TestNumber     string
 	TestString     string
 	Value          string
@@ -70,6 +75,7 @@ var MultiplierTableColumns = struct {
 	Key:            "multipliers.key",
 	ForGames:       "multipliers.for_games",
 	MultiplierType: "multipliers.multiplier_type",
+	MustBeOnline:   "multipliers.must_be_online",
 	TestNumber:     "multipliers.test_number",
 	TestString:     "multipliers.test_string",
 	Value:          "multipliers.value",
@@ -83,18 +89,20 @@ var MultiplierWhere = struct {
 	Key            whereHelperstring
 	ForGames       whereHelperint
 	MultiplierType whereHelperstring
+	MustBeOnline   whereHelperbool
 	TestNumber     whereHelperint
 	TestString     whereHelperstring
-	Value          whereHelperint
+	Value          whereHelperdecimal_Decimal
 }{
 	ID:             whereHelperstring{field: "\"multipliers\".\"id\""},
 	Description:    whereHelperstring{field: "\"multipliers\".\"description\""},
 	Key:            whereHelperstring{field: "\"multipliers\".\"key\""},
 	ForGames:       whereHelperint{field: "\"multipliers\".\"for_games\""},
 	MultiplierType: whereHelperstring{field: "\"multipliers\".\"multiplier_type\""},
+	MustBeOnline:   whereHelperbool{field: "\"multipliers\".\"must_be_online\""},
 	TestNumber:     whereHelperint{field: "\"multipliers\".\"test_number\""},
 	TestString:     whereHelperstring{field: "\"multipliers\".\"test_string\""},
-	Value:          whereHelperint{field: "\"multipliers\".\"value\""},
+	Value:          whereHelperdecimal_Decimal{field: "\"multipliers\".\"value\""},
 }
 
 // MultiplierRels is where relationship names are stored.
@@ -118,9 +126,9 @@ func (*multiplierR) NewStruct() *multiplierR {
 type multiplierL struct{}
 
 var (
-	multiplierAllColumns            = []string{"id", "description", "key", "for_games", "multiplier_type", "test_number", "test_string", "value"}
+	multiplierAllColumns            = []string{"id", "description", "key", "for_games", "multiplier_type", "must_be_online", "test_number", "test_string", "value"}
 	multiplierColumnsWithoutDefault = []string{"description", "key", "multiplier_type", "test_number", "test_string"}
-	multiplierColumnsWithDefault    = []string{"id", "for_games", "value"}
+	multiplierColumnsWithDefault    = []string{"id", "for_games", "must_be_online", "value"}
 	multiplierPrimaryKeyColumns     = []string{"id"}
 	multiplierGeneratedColumns      = []string{}
 )
@@ -375,7 +383,7 @@ func (o *Multiplier) UserMultipliers(mods ...qm.QueryMod) userMultiplierQuery {
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"user_multipliers\".\"multiplier\"=?", o.ID),
+		qm.Where("\"user_multipliers\".\"multiplier_id\"=?", o.ID),
 	)
 
 	query := UserMultipliers(queryMods...)
@@ -429,7 +437,7 @@ func (multiplierL) LoadUserMultipliers(e boil.Executor, singular bool, maybeMult
 
 	query := NewQuery(
 		qm.From(`user_multipliers`),
-		qm.WhereIn(`user_multipliers.multiplier in ?`, args...),
+		qm.WhereIn(`user_multipliers.multiplier_id in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -465,19 +473,19 @@ func (multiplierL) LoadUserMultipliers(e boil.Executor, singular bool, maybeMult
 			if foreign.R == nil {
 				foreign.R = &userMultiplierR{}
 			}
-			foreign.R.UserMultiplierMultiplier = object
+			foreign.R.Multiplier = object
 		}
 		return nil
 	}
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if local.ID == foreign.Multiplier {
+			if local.ID == foreign.MultiplierID {
 				local.R.UserMultipliers = append(local.R.UserMultipliers, foreign)
 				if foreign.R == nil {
 					foreign.R = &userMultiplierR{}
 				}
-				foreign.R.UserMultiplierMultiplier = local
+				foreign.R.Multiplier = local
 				break
 			}
 		}
@@ -489,22 +497,22 @@ func (multiplierL) LoadUserMultipliers(e boil.Executor, singular bool, maybeMult
 // AddUserMultipliers adds the given related objects to the existing relationships
 // of the multiplier, optionally inserting them as new records.
 // Appends related to o.R.UserMultipliers.
-// Sets related.R.UserMultiplierMultiplier appropriately.
+// Sets related.R.Multiplier appropriately.
 func (o *Multiplier) AddUserMultipliers(exec boil.Executor, insert bool, related ...*UserMultiplier) error {
 	var err error
 	for _, rel := range related {
 		if insert {
-			rel.Multiplier = o.ID
+			rel.MultiplierID = o.ID
 			if err = rel.Insert(exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
 				"UPDATE \"user_multipliers\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"multiplier"}),
+				strmangle.SetParamNames("\"", "\"", 1, []string{"multiplier_id"}),
 				strmangle.WhereClause("\"", "\"", 2, userMultiplierPrimaryKeyColumns),
 			)
-			values := []interface{}{o.ID, rel.PlayerID, rel.FromBattleNumber, rel.Multiplier}
+			values := []interface{}{o.ID, rel.PlayerID, rel.FromBattleNumber, rel.MultiplierID}
 
 			if boil.DebugMode {
 				fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -514,7 +522,7 @@ func (o *Multiplier) AddUserMultipliers(exec boil.Executor, insert bool, related
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			rel.Multiplier = o.ID
+			rel.MultiplierID = o.ID
 		}
 	}
 
@@ -529,10 +537,10 @@ func (o *Multiplier) AddUserMultipliers(exec boil.Executor, insert bool, related
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &userMultiplierR{
-				UserMultiplierMultiplier: o,
+				Multiplier: o,
 			}
 		} else {
-			rel.R.UserMultiplierMultiplier = o
+			rel.R.Multiplier = o
 		}
 	}
 	return nil

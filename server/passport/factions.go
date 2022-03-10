@@ -17,7 +17,7 @@ type FactionAllResp struct {
 // FactionAll get all the factions from passport server
 func (pp *Passport) FactionAll() ([]*server.Faction, error) {
 	resp := &FactionAllResp{}
-	err := pp.Comms.Call("S.SupremacyFactionAllHandler", FactionAllReq{}, resp)
+	err := pp.RPCClient.Call("S.SupremacyFactionAllHandler", FactionAllReq{}, resp)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +42,7 @@ type FactionStatSendResp struct{}
 
 // FactionStatsSend send faction stat to passport serer
 func (pp *Passport) FactionStatsSend(factionStatSends []*FactionStatSend) {
-	err := pp.Comms.Call("S.SupremacyFactionStatSendHandler", FactionStatSendReq{factionStatSends}, &FactionStatSendResp{})
+	err := pp.RPCClient.Call("S.SupremacyFactionStatSendHandler", FactionStatSendReq{factionStatSends}, &FactionStatSendResp{})
 	if err != nil {
 		pp.Log.Err(err).Str("method", "SupremacyFactionStatSendHandler").Msg("rpc error")
 	}
@@ -67,7 +67,7 @@ func (pp *Passport) AssetContractRewardRedeem(userID server.UserID, factionID se
 	if amount.LessThanOrEqual(decimal.Zero) {
 		return fmt.Errorf("AssetContractRewardRedeem: amount must be greater than zero")
 	}
-	err := pp.Comms.Call(
+	err := pp.RPCClient.Call(
 		"S.SupremacyRedeemFactionContractRewardHandler",
 		RedeemFactionContractRewardReq{
 			UserID:               userID,
@@ -117,7 +117,7 @@ type FactionQueuePriceUpdateResp struct {
 }
 
 func (pp *Passport) FactionQueueCostUpdate(fcr *FactionQueuePriceUpdateReq) {
-	err := pp.Comms.Call("S.SupremacyFactionQueuingCostHandler", fcr, &FactionQueuePriceUpdateResp{})
+	err := pp.RPCClient.Call("S.SupremacyFactionQueuingCostHandler", fcr, &FactionQueuePriceUpdateResp{})
 	if err != nil {
 		pp.Log.Err(err).Str("method", "SupremacyFactionQueuingCostHandler").Msg("rpc error")
 	}

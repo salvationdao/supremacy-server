@@ -30,7 +30,7 @@ const EachMechIntroSecond = 1
 const InitIntroSecond = 1
 
 type LocationDeciders struct {
-	list []server.UserID
+	list []uuid.UUID
 }
 
 type AbilitiesSystem struct {
@@ -169,7 +169,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 
 		// initialise user vote map in gab ability pool
 		userContributeMap[factionID] = &UserContribution{
-			contributionMap: map[server.UserID]decimal.Decimal{},
+			contributionMap: map[uuid.UUID]decimal.Decimal{},
 		}
 	}
 
@@ -179,7 +179,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 		battleAbilityPool:      battleAbilityPool,
 		userContributeMap:      userContributeMap,
 		locationDeciders: &LocationDeciders{
-			list: []server.UserID{},
+			list: []uuid.UUID{},
 		},
 	}
 
@@ -362,7 +362,7 @@ func (ga *GameAbility) FactionUniqueAbilityPriceUpdate(minPrice decimal.Decimal)
 }
 
 // SupContribution contribute sups to specific game ability, return the actual sups spent and whether the ability is triggered
-func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID string, userID server.UserID, amount decimal.Decimal) (decimal.Decimal, bool) {
+func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID string, userID uuid.UUID, amount decimal.Decimal) (decimal.Decimal, bool) {
 
 	isTriggered := false
 
@@ -445,7 +445,7 @@ type GabsBribeStage struct {
 
 // track user contribution of current battle
 type UserContribution struct {
-	contributionMap map[server.UserID]decimal.Decimal
+	contributionMap map[uuid.UUID]decimal.Decimal
 }
 
 type BattleAbilityPool struct {
@@ -671,18 +671,18 @@ func (as *AbilitiesSystem) SetNewBattleAbility() (int, error) {
 
 type Contribution struct {
 	factionID       uuid.UUID
-	userID          server.UserID
+	userID          uuid.UUID
 	amount          decimal.Decimal
 	abilityIdentity string
 }
 
 // locationDecidersSet set a user list for location select for current ability triggered
-func (as *AbilitiesSystem) locationDecidersSet(factionID uuid.UUID, triggerByUserID ...server.UserID) {
+func (as *AbilitiesSystem) locationDecidersSet(factionID uuid.UUID, triggerByUserID ...uuid.UUID) {
 	// set triggered faction id
 	as.battleAbilityPool.TriggeredFactionID = factionID
 
 	type userSupSpent struct {
-		userID   server.UserID
+		userID   uuid.UUID
 		supSpent decimal.Decimal
 	}
 
@@ -697,7 +697,7 @@ func (as *AbilitiesSystem) locationDecidersSet(factionID uuid.UUID, triggerByUse
 	})
 
 	// initialise location select list
-	as.locationDeciders.list = []server.UserID{}
+	as.locationDeciders.list = []uuid.UUID{}
 
 	for _, tid := range triggerByUserID {
 		as.locationDeciders.list = append(as.locationDeciders.list, tid)
@@ -723,11 +723,11 @@ func (as *AbilitiesSystem) locationDecidersSet(factionID uuid.UUID, triggerByUse
 }
 
 // nextLocationDeciderGet return the uuid of the next player to select the location for ability
-func (as *AbilitiesSystem) nextLocationDeciderGet() (server.UserID, bool) {
+func (as *AbilitiesSystem) nextLocationDeciderGet() (uuid.UUID, bool) {
 	// clean up the location select list if there is no user left to select location
 	if len(as.locationDeciders.list) <= 1 {
-		as.locationDeciders.list = []server.UserID{}
-		return server.UserID(uuid.Nil), false
+		as.locationDeciders.list = []uuid.UUID{}
+		return uuid.UUID(uuid.Nil), false
 	}
 
 	// remove the first user from the list
@@ -853,7 +853,7 @@ func (as *AbilitiesSystem) BattleAbilityProgressBar() {
 // *********************
 // Handlers
 // *********************
-func (as *AbilitiesSystem) AbilityContribute(factionID uuid.UUID, userID server.UserID, abilityIdentity string, amount decimal.Decimal) {
+func (as *AbilitiesSystem) AbilityContribute(factionID uuid.UUID, userID uuid.UUID, abilityIdentity string, amount decimal.Decimal) {
 	if as.battle.stage != BattleStagStart || as.battleAbilityPool.Stage.Phase != BribeStageBribe {
 		return
 	}
@@ -901,7 +901,7 @@ func (as *AbilitiesSystem) WarMachineAbilitiesGet(factionID uuid.UUID, hash stri
 	return abilities
 }
 
-func (as *AbilitiesSystem) BribeGabs(factionID uuid.UUID, userID server.UserID, amount decimal.Decimal) {
+func (as *AbilitiesSystem) BribeGabs(factionID uuid.UUID, userID uuid.UUID, amount decimal.Decimal) {
 	if as.battle.stage != BattleStagStart || as.battleAbilityPool.Stage.Phase != BribeStageBribe {
 		return
 	}
@@ -930,7 +930,7 @@ func (as *AbilitiesSystem) FactionBattleAbilityGet(factionID uuid.UUID) *GameAbi
 	return ability
 }
 
-func (as *AbilitiesSystem) LocationSelect(userID server.UserID, x int, y int) error {
+func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error {
 	// check battle end
 	if as.battle.stage == BattleStageEnd {
 		gamelog.L.Warn().Str("func", "LocationSelect").Msg("battle stage has en ended")
