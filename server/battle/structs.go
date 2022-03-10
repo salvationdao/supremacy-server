@@ -203,6 +203,8 @@ type GameAbility struct {
 	Title string `json:"title"`
 
 	CooldownDurationSecond int `json:"cooldown_duration_second"`
+
+	OfferingID uuid.UUID // for tracking ability trigger
 }
 
 type GameAbilityPrice struct {

@@ -78,6 +78,8 @@ func (c *XrpcClient) Call(serviceMethod string, args interface{}, reply interfac
 			break
 		}
 
+		gamelog.L.Err(err).Msg("Go RPC call error")
+
 		// clean up before retry
 		if client != nil {
 			// close first

@@ -17,6 +17,7 @@ import (
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/gofrs/uuid"
@@ -117,6 +118,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 						Title:               wm.Name,
 						Colour:              ability.Colour,
 						TextColour:          ability.TextColour,
+						OfferingID:          uuid.Must(uuid.NewV4()),
 					}
 
 					// inject ability to war machines
@@ -161,6 +163,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 					Colour:              ability.Colour,
 					TextColour:          ability.TextColour,
 					Title:               "FACTION_WIDE",
+					OfferingID:          uuid.Must(uuid.NewV4()),
 				}
 				abilities[wmAbility.Identity] = wmAbility
 			}
@@ -261,18 +264,22 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 								},
 							)
 
-							// record ability triggered
-							err := db.AbilityTriggered(
-								null.StringFromPtr(nil),
-								as.battle.ID,
-								ability.FactionID,
-								false,
-								ability.Label,
-								ability.ID,
-							)
-							if err != nil {
-								gamelog.L.Err(err).Msg("Failed to record ability triggered")
+							bat := boiler.BattleAbilityTrigger{
+								PlayerID:          null.StringFromPtr(nil),
+								BattleID:          as.battle.ID.String(),
+								FactionID:         ability.FactionID.String(),
+								IsAllSyndicates:   false,
+								AbilityLabel:      ability.Label,
+								GameAbilityID:     ability.ID.String(),
+								AbilityOfferingID: ability.OfferingID.String(),
 							}
+							err := bat.Insert(gamedb.StdConn, boil.Infer())
+							if err != nil {
+								gamelog.L.Error().Err(err).Msg("Failed to record ability triggered")
+							}
+
+							// generate new offering id for current ability
+							ability.OfferingID = uuid.Must(uuid.NewV4())
 						}
 
 						// broadcast the new price
@@ -320,17 +327,22 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 							},
 						)
 
-						err := db.AbilityTriggered(
-							null.StringFrom(cont.userID.String()),
-							as.battle.ID,
-							cont.factionID,
-							false,
-							ability.Label,
-							ability.ID,
-						)
-						if err != nil {
-							gamelog.L.Err(err).Msg("Failed to record ability triggered")
+						bat := boiler.BattleAbilityTrigger{
+							PlayerID:          null.StringFrom(cont.userID.String()),
+							BattleID:          as.battle.ID.String(),
+							FactionID:         ability.FactionID.String(),
+							IsAllSyndicates:   false,
+							AbilityLabel:      ability.Label,
+							GameAbilityID:     ability.ID.String(),
+							AbilityOfferingID: ability.OfferingID.String(),
 						}
+						err := bat.Insert(gamedb.StdConn, boil.Infer())
+						if err != nil {
+							gamelog.L.Error().Err(err).Msg("Failed to record ability triggered")
+						}
+
+						// generate new offering id for current ability
+						ability.OfferingID = uuid.Must(uuid.NewV4())
 					}
 
 					// broadcast the new price
@@ -684,6 +696,7 @@ func (as *AbilitiesSystem) SetNewBattleAbility() (int, error) {
 			Colour:                 ga.Colour,
 			TextColour:             ga.TextColour,
 			CooldownDurationSecond: ba.CooldownDurationSecond,
+			OfferingID:             uuid.Must(uuid.NewV4()),
 		}
 		as.battleAbilityPool.Abilities[ga.FactionID] = gameAbility
 
@@ -1020,17 +1033,18 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 		},
 	)
 
-	// record ability triggered
-	err = db.AbilityTriggered(
-		null.StringFrom(userID.String()),
-		as.battle.ID,
-		ability.FactionID,
-		true,
-		ability.Label,
-		ability.ID,
-	)
+	bat := boiler.BattleAbilityTrigger{
+		PlayerID:          null.StringFrom(userID.String()),
+		BattleID:          as.battle.ID.String(),
+		FactionID:         ability.FactionID.String(),
+		IsAllSyndicates:   true,
+		AbilityLabel:      ability.Label,
+		GameAbilityID:     ability.ID.String(),
+		AbilityOfferingID: ability.OfferingID.String(),
+	}
+	err = bat.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {
-		gamelog.L.Err(err).Msg("Failed to record ability triggered")
+		gamelog.L.Error().Err(err).Msg("Failed to record ability triggered")
 	}
 
 	as.battle.arena.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
