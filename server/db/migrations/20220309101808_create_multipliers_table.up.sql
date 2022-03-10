@@ -10,7 +10,6 @@ CREATE TABLE battle_contributions (
     ability_offering_id UUID NOT NULL,
     did_trigger BOOL NOT NULL default false,
     faction_id UUID NOT NULL references factions(id),
-    winning_faction_id UUID NULL references factions(id),
     ability_label ABILITY_TYPE_ENUM NOT NULL,
     is_all_syndicates BOOL NOT NULL default false,
     amount NUMERIC(28) NOT NULL,
