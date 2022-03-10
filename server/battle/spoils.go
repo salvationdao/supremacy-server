@@ -35,20 +35,23 @@ type SpoilsOfWar struct {
 func NewSpoilsOfWar(btl *Battle, transactSpeed time.Duration, dripSpeed time.Duration) *SpoilsOfWar {
 	l := gamelog.L.With().Str("svc", "spoils_of_war").Logger()
 
-	return &SpoilsOfWar{
+	spw := &SpoilsOfWar{
 		battle:        btl,
 		l:             l,
 		transactSpeed: transactSpeed,
 		flushCh:       make(chan bool),
 		tickSpeed:     dripSpeed,
 	}
+	go spw.Run()
+
+	return spw
 }
 
 func (sow *SpoilsOfWar) End() {
 	sow.flushCh <- true
 }
 
-func (sow *SpoilsOfWar) Start() {
+func (sow *SpoilsOfWar) Run() {
 	sow.l.Debug().Msg("starting spoils of war service")
 	t := time.NewTicker(sow.transactSpeed)
 
