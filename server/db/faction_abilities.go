@@ -195,7 +195,7 @@ func AbilityTriggered(playerID null.String, battleID uuid.UUID, factionID uuid.U
 		BattleID:        battleID.String(),
 		FactionID:       factionID.String(),
 		IsAllSyndicates: isAllSyndicates,
-		TriggerLabel:    triggerLabel,
+		AbilityLabel:    triggerLabel,
 		GameAbilityID:   gameAbilityID.String(),
 	}
 

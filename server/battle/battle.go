@@ -860,7 +860,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 const HubKeyBattleEndDetailUpdated hub.HubCommandKey = "BATTLE:END:DETAIL:UPDATED"
 
 func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
-	btl.users.ForEach(func(user *BattleUser) bool {
+	btl.users.Range(func(user *BattleUser) bool {
 		info.MultiplierUpdate = &MultiplierUpdate{
 			UserMultipliers:  fakeMultipliers,
 			TotalMultipliers: "36x",
