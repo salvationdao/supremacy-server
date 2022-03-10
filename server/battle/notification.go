@@ -14,9 +14,9 @@ import (
 )
 
 type WarMachineDestroyedEventRecord struct {
-	DestroyedWarMachine *server.WarMachineBrief `json:"destroyedWarMachine"`
-	KilledByWarMachine  *server.WarMachineBrief `json:"killedByWarMachineID,omitempty"`
-	KilledBy            string                  `json:"killedBy"`
+	DestroyedWarMachine *WarMachineBrief `json:"destroyed_war_machine"`
+	KilledByWarMachine  *WarMachineBrief `json:"killed_by_war_machine_id,omitempty"`
+	KilledBy            string           `json:"killed_by"`
 }
 
 /**********************
@@ -50,23 +50,36 @@ const (
 )
 
 type GameNotificationLocationSelect struct {
-	Type        LocationSelectType   `json:"type"`
-	X           *int                 `json:"x,omitempty"`
-	Y           *int                 `json:"y,omitempty"`
-	CurrentUser *server.UserBrief    `json:"currentUser,omitempty"`
-	NextUser    *server.UserBrief    `json:"nextUser,omitempty"`
-	Ability     *server.AbilityBrief `json:"ability,omitempty"`
+	Type        LocationSelectType `json:"type"`
+	X           *int               `json:"x,omitempty"`
+	Y           *int               `json:"y,omitempty"`
+	CurrentUser *UserBrief         `json:"currentUser,omitempty"`
+	NextUser    *UserBrief         `json:"nextUser,omitempty"`
+	Ability     *AbilityBrief      `json:"ability,omitempty"`
 }
 
 type GameNotificationAbility struct {
-	User    *server.UserBrief    `json:"user,omitempty"`
-	Ability *server.AbilityBrief `json:"ability,omitempty"`
+	User    *UserBrief    `json:"user,omitempty"`
+	Ability *AbilityBrief `json:"ability,omitempty"`
 }
 
 type GameNotificationWarMachineAbility struct {
-	User       *server.UserBrief       `json:"user,omitempty"`
-	Ability    *server.AbilityBrief    `json:"ability,omitempty"`
-	WarMachine *server.WarMachineBrief `json:"warMachine,omitempty"`
+	User       *UserBrief       `json:"user,omitempty"`
+	Ability    *AbilityBrief    `json:"ability,omitempty"`
+	WarMachine *WarMachineBrief `json:"warMachine,omitempty"`
+}
+
+type AbilityBrief struct {
+	Label    string `json:"label"`
+	ImageUrl string `json:"image_url"`
+	Colour   string `json:"colour"`
+}
+
+type UserBrief struct {
+	ID       uuid.UUID     `json:"id"`
+	Username string        `json:"username"`
+	AvatarID *string       `json:"avatar_id,omitempty"`
+	Faction  *FactionBrief `json:"faction"`
 }
 
 type GameNotification struct {

@@ -148,8 +148,6 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		MostFrequentAbilityExecutors: fakedUsers,
 	}
 
-	btl.endInfoBroadcast(*endInfo)
-
 	ids := make([]uuid.UUID, len(btl.WarMachines))
 	err = db.ClearQueue(ids...)
 	if err != nil {
@@ -217,6 +215,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 
 	btl.multipliers.end(endInfo)
 	btl.spoils.End()
+	btl.endInfoBroadcast(*endInfo)
 }
 
 const HubKeyBattleEndDetailUpdated hub.HubCommandKey = "BATTLE:END:DETAIL:UPDATED"
@@ -679,6 +678,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 	// cache destroyed war machine
 	btl.destroyedWarMachineMap[wmd.DestroyedWarMachine.ParticipantID] = wmd
 
+	// broadcast destroy detail
 	btl.arena.messageBus.Send(context.Background(),
 		messagebus.BusKey(
 			fmt.Sprintf(
@@ -689,6 +689,14 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 		),
 		wmd,
 	)
+
+	// broadcast notification
+	btl.arena.BroadcastGameNotificationWarMachineDestroyed(&WarMachineDestroyedEventRecord{
+		DestroyedWarMachine: wmd.DestroyedWarMachine,
+		KilledByWarMachine:  wmd.KilledByWarMachine,
+		KilledBy:            wmd.KilledBy,
+	})
+
 }
 
 func (btl *Battle) Load() error {
