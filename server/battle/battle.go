@@ -636,7 +636,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 
 	winningWarMachines := make([]*WarMachine, len(payload.WinningWarMachines))
 
-	for i, _ := range payload.WinningWarMachines {
+	for i := range payload.WinningWarMachines {
 		for _, w := range btl.WarMachines {
 			if w.Hash == payload.WinningWarMachines[i].Hash {
 				winningWarMachines[i] = w
@@ -653,13 +653,15 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	}
 
 	fakedUsers := []*BattleUser{
-		&BattleUser{ID: uuid.Must(uuid.NewV4()),
+		{
+			ID:            uuid.Must(uuid.NewV4()),
 			Username:      "FakeUser1",
 			FactionID:     winningWarMachines[0].FactionID,
 			FactionColour: btl.factions[uuid.Must(uuid.FromString(winningWarMachines[0].FactionID))].PrimaryColor,
 			FactionLogoID: FactionLogos[winningWarMachines[0].FactionID],
 		},
-		&BattleUser{ID: uuid.Must(uuid.NewV4()),
+		{
+			ID:            uuid.Must(uuid.NewV4()),
 			Username:      "FakeUser2",
 			FactionID:     winningWarMachines[0].FactionID,
 			FactionColour: btl.factions[uuid.Must(uuid.FromString(winningWarMachines[0].FactionID))].PrimaryColor,
