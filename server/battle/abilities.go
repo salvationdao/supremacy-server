@@ -398,7 +398,7 @@ func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID str
 		TransactionReference: server.TransactionReference(fmt.Sprintf("ability_sup_contribute|%s", uuid.Must(uuid.NewV4()))),
 		Group:                "battle",
 		SubGroup:             battleID,
-		Description:          "battle vote.",
+		Description:          "battle contribution: " + ga.Label,
 		NotSafe:              true,
 	})
 	if err != nil {
