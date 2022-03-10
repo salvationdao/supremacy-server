@@ -96,7 +96,6 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 	}
 
 	//sort triggers by player / faction
-
 	fired := make(map[string]*TriggerDetails)
 	for _, trigger := range triggers {
 		td, ok := fired[trigger.AbilityLabel]
@@ -111,9 +110,9 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 	}
 
 	// create new multipliers map
-
 	newMultipliers := make(map[string]map[*boiler.Multiplier]bool)
 
+	// last gab ability last three gab abilities
 outer:
 	for triggerLabel, td := range fired {
 		m1, m1ok := ms.getMultiplier("gab_ability", triggerLabel, 1)
@@ -127,7 +126,6 @@ outer:
 			if !ok {
 				newMultipliers[td.PlayerIDs[0]] = map[*boiler.Multiplier]bool{}
 			}
-
 			newMultipliers[td.PlayerIDs[0]][m1] = true
 		}
 
@@ -277,6 +275,34 @@ outer:
 		}
 	}
 
-	// mech owner
+	// mech owner multipliers
+
+	winwar:
+	for _, wm := range btlEndInfo.WinningWarMachines {
+		if _, ok := newMultipliers[wm.OwnedByID]; !ok {
+			newMultipliers[wm.OwnedByID] = map[*boiler.Multiplier]bool{}
+		}
+
+		m1, ok := ms.getMultiplier("player_mech", "", 1)
+		if !ok {
+			gamelog.L.Error().Str("playerID", wm.OwnedByID).Err(err).Msg("unable to retrieve 'player_mech / mech win x1' from multipliers. maybe this code needs to be removed?")
+			continue
+		}
+		newMultipliers[wm.OwnedByID][m1] = true
+
+		for i := 0-; i < 3; i++ {
+			if lastWins[i].OwnerID != wm.OwnedByID {
+				continue winwar
+			}
+		}
+
+		m3, ok := ms.getMultiplier("player_mech", "", 3)
+		if !ok {
+			gamelog.L.Error().Str("playerID", wm.OwnedByID).Err(err).Msg("unable to retrieve 'player_mech / mech win x3' from multipliers. maybe this code needs to be removed?")
+			continue
+		}
+
+		newMultipliers[wm.OwnedByID][m3] = true
+	}
 
 }

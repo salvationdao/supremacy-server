@@ -48,15 +48,15 @@ INSERT INTO multipliers (key, value, description, for_games, multiplier_type, te
 
     ('a fool and his money', 50, 'A player who has put the most individual SUPS in but still didn''t trigger the ability.', 1, 'most_sups_lost', 0, '', true),
 
-    ('air support', 50, 'For a player who triggered an airstrike.', 1, 'gab_ability', 1, 'AIRSTRIKE', true),
-    ('air marshal', 50, 'For a player who triggered the last three airstrikes.', 1, 'gab_ability', 3, 'AIRSTRIKE', true),
+    ('air support', 50, 'For a player who triggered the last airstrike of the battle', 1, 'gab_ability', 1, 'AIRSTRIKE', true),
+    ('air marshal', 50, 'For a player who triggered the last three airstrikes', 1, 'gab_ability', 3, 'AIRSTRIKE', true),
     ('now i am become death', 50, 'For a player who triggered a nuke.', 1,  'gab_ability', 1, 'NUKE', true),
     ('destroyer of worlds', 100, 'For a player who has triggered the previous three nukes.', 1,  'gab_ability', 3, 'NUKE', true),
     ('grease monkey', 25,'For a player who triggered a repair drop.', 1,  'gab_ability', 1, 'REPAIR', true),
     ('field mechanic', 50, 'For a player who has triggered the previous three repair drops.', 1,  'gab_ability', 3, 'REPAIR', true),
 
-    ('combo breaker', 50, 'For a player who wins the vote for their syndicate after it has lost the last three rounds.', 1,  'combo_breaker', 3, '', true),
-    ('c-c-c-c-combo breaker', 50, 'For a player who wins the vote for their syndicate after it has lost the last ten rounds.', 3,  'combo_breaker', 10, '', true),
+    ('combo breaker', 50, 'For a player who triggers an ability for their syndicate after it has lost the last three rounds.', 1,  'combo_breaker', 3, '', true),
+    ('c-c-c-c-combo breaker', 50, 'For a player who triggers an ability for their syndicate after it has lost the last ten rounds.', 3,  'combo_breaker', 10, '', true),
 
     ('mech commander', 50, 'When a player''s mech wins the battles.', 1,  'player_mech', 1, '', false),
     ('admiral', 100, 'When a player''s mech wins the last 3 battles.', 1, 'player_mech', 3, '', false),
