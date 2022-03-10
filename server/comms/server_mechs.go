@@ -187,11 +187,11 @@ type MechSetOwnerResp struct {
 func (s *S) MechSetOwner(req MechSetOwnerReq, resp *MechSetOwnerResp) error {
 	err := db.MechSetOwner(req.MechID, req.OwnerID)
 	if err != nil {
-		return err
+		return fmt.Errorf("set mech %s to owner %s: %w", req.MechID, req.OwnerID, err)
 	}
 	mech, err := db.Mech(req.MechID)
 	if err != nil {
-		return err
+		return fmt.Errorf("get mech %s: %w", req.MechID, err)
 	}
 	resp.MechContainer = mech
 	return nil
