@@ -192,9 +192,9 @@ func main() {
 					go func() {
 						for {
 							x := 0
-							time.Sleep(time.Second * 6)
+							time.Sleep(time.Second * 3)
 							for i := 0; i < 10; i++ {
-								var resp string
+								resp := ""
 								rpcClient.Call("S.Ping", true, &resp)
 								fmt.Printf("%d: %s\n", x, resp)
 								x++
@@ -202,10 +202,9 @@ func main() {
 						}
 					}()
 					gamelog.L.Info().Msg("start rpc server")
-					rpcServer := &comms.S{
-						PassportRPC: rpcClient,
-					}
+					rpcServer := &comms.XrpcServer{}
 					err = rpcServer.Listen(
+						rpcClient,
 						"0.0.0.0:10011",
 						"0.0.0.0:10012",
 						"0.0.0.0:10013",

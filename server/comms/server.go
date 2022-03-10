@@ -10,16 +10,24 @@ import (
 	"github.com/ninja-software/terror/v2"
 )
 
-// S holds all the listeners together and also the RPC answer functions, remote rpc caller must use same naming
-type S struct {
-	PassportRPC *XrpcClient    // rpc client to call passport server
+// S holds all the listeners together
+type XrpcServer struct {
 	isListening bool           // is server initialized and in use?
 	listeners   []net.Listener // listening sockets
 	mutex       sync.Mutex     // basic lock for listeners modification
 }
 
-func (s *S) Listen(addrStrs ...string) error {
-	if s.PassportRPC == nil {
+// S holds all the RPC answer functions, remote rpc caller must use same naming.
+// Keep seperate from XrpcServer so it wont cause issue and complain about Listen and Shutdown being invalid length and trigger by remotely
+type S struct {
+	passportRPC *XrpcClient // rpc client to call passport server
+}
+
+func (s *XrpcServer) Listen(
+	passportRPC *XrpcClient,
+	addrStrs ...string,
+) error {
+	if passportRPC == nil {
 		return terror.Error(fmt.Errorf("passportRPC is nil"))
 	}
 	if len(addrStrs) == 0 {
@@ -39,7 +47,7 @@ func (s *S) Listen(addrStrs ...string) error {
 		}
 
 		listener := new(S)
-		listener.PassportRPC = s.PassportRPC
+		listener.passportRPC = passportRPC
 		rpc.Register(listener)
 		s.mutex.Lock()
 		s.listeners[i] = inbound
@@ -55,7 +63,7 @@ func (s *S) Listen(addrStrs ...string) error {
 	return nil
 }
 
-func (s *S) Shutdown() error {
+func (s *XrpcServer) Shutdown() error {
 	var lastError error
 
 	if !s.isListening {
