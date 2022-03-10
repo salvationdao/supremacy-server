@@ -15,6 +15,8 @@ import (
 	"server/passport"
 	"server/supermigrate"
 
+	"server/rpcclient"
+
 	zerologger "github.com/ninja-syndicate/hub/ext/zerolog"
 	"nhooyr.io/websocket"
 
@@ -185,7 +187,7 @@ func main() {
 						fmt.Sprintf("%s:10001", hostname),
 					}
 					gamelog.L.Info().Msg("start rpc client")
-					rpcClient := &comms.XrpcClient{
+					rpcClient := &rpcclient.XrpcClient{
 						Addrs: rpcAddrs,
 					}
 					// TODO delete me after test
@@ -352,12 +354,12 @@ func main() {
 						fmt.Sprintf("%s:10002", hostname),
 						fmt.Sprintf("%s:10001", hostname),
 					}
-					passportRPCclient := &comms.XrpcClient{
+					passportRPCclient := &rpcclient.XrpcClient{
 						Addrs: rpcAddrs,
 					}
 
-					result := &comms.GetAll{}
-					err = passportRPCclient.Call("S.SuperMigrate", comms.GetAllReq{}, result)
+					result := &rpcclient.GetAll{}
+					err = passportRPCclient.Call("S.SuperMigrate", rpcclient.GetAllReq{}, result)
 					if err != nil {
 						return terror.Error(err)
 					}

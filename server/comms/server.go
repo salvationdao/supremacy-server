@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/rpc"
 	"server/gamelog"
+	"server/rpcclient"
 	"sync"
 
 	"github.com/ninja-software/terror/v2"
@@ -20,11 +21,11 @@ type XrpcServer struct {
 // S holds all the RPC answer functions, remote rpc caller must use same naming.
 // Keep seperate from XrpcServer so it wont cause issue and complain about Listen and Shutdown being invalid length and trigger by remotely
 type S struct {
-	passportRPC *XrpcClient // rpc client to call passport server
+	passportRPC *rpcclient.XrpcClient // rpc client to call passport server
 }
 
 func (s *XrpcServer) Listen(
-	passportRPC *XrpcClient,
+	passportRPC *rpcclient.XrpcClient,
 	addrStrs ...string,
 ) error {
 	if passportRPC == nil {
