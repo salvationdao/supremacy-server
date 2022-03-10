@@ -47,7 +47,7 @@ func (ms *MultiplierSystem) init() {
 	if err != nil {
 		gamelog.L.Panic().Err(err).Msgf("unable to retrieve multipliers from database")
 	}
-	usermultipliers, err := boiler.UserMultipliers(qm.Where(`until_battle_number > ?`, ms.battle.battle.BattleNumber)).All(gamedb.StdConn)
+	usermultipliers, err := boiler.UserMultipliers(qm.Where(`until_battle_number >= ?`, ms.battle.battle.BattleNumber)).All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Panic().Err(err).Msgf("unable to retrieve user's multipliers from database")
 	}
