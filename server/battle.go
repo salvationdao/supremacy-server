@@ -36,7 +36,7 @@ type WarMachineDestroyedRecord struct {
 }
 
 type DamageRecord struct {
-	Amount             int                 `json:"amount"` // The total amount of damage taken from this source
+	Amount             int                 `json:"amount"` // The total amount of dam\age taken from this source
 	CausedByWarMachine *WarMachineMetadata `json:"caused_by_war_machine,omitempty"`
 	SourceName         string              `json:"source_name,omitempty"` // The name of the weapon / damage causer (in-case of now TokenID)
 }

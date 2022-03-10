@@ -21,7 +21,7 @@ CREATE TYPE BATTLE_EVENT AS ENUM ('killed', 'spawned_ai', 'kill','ability_trigge
 ALTER TABLE battles
     DROP COLUMN identifier,
     DROP COLUMN winning_condition,
-    ADD COLUMN battle_number SERIAL;
+    ADD COLUMN battle_number SERIAL UNIQUE;
 
 CREATE TABLE battle_mechs (
     battle_id UUID NOT NULL references battles(id),

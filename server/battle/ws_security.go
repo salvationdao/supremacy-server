@@ -34,7 +34,7 @@ func (opts *Opts) SecureUserCommand(key hub.HubCommandKey, fn hub.HubCommandFunc
 	})
 }
 
-type FactionCommandFunc func(ctx context.Context, hub *hub.Client, payload []byte, userFactionID server.FactionID, reply hub.ReplyFunc) error
+type FactionCommandFunc func(ctx context.Context, hub *hub.Client, payload []byte, userFactionID uuid.UUID, reply hub.ReplyFunc) error
 
 func (opts *Opts) SecureUserFactionCommand(key hub.HubCommandKey, fn FactionCommandFunc) {
 	opts.Hub.Handle(key, func(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {

@@ -261,6 +261,7 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.MechContainer, error) {
 			&mc.IsDefault,
 			&mc.ImageURL,
 			&mc.AnimationURL,
+			&mc.CardAnimationURL,
 			&mc.AvatarURL,
 			&mc.Hash,
 			&mc.Name,
@@ -338,6 +339,7 @@ func Mech(mechID uuid.UUID) (*server.MechContainer, error) {
 			&mc.IsDefault,
 			&mc.ImageURL,
 			&mc.AnimationURL,
+			&mc.CardAnimationURL,
 			&mc.AvatarURL,
 			&mc.Hash,
 			&mc.Name,
@@ -510,21 +512,22 @@ func MechRegister(templateID uuid.UUID, ownerID uuid.UUID) (uuid.UUID, error) {
 		return uuid.Nil, fmt.Errorf("get next external token id: %w", err)
 	}
 	newMech := &boiler.Mech{
-		ID:              newMechID.String(),
-		OwnerID:         ownerID.String(),
-		TemplateID:      templateID.String(),
-		ChassisID:       chassis.ID,
-		Tier:            template.Tier,
-		IsDefault:       template.IsDefault,
-		ImageURL:        template.ImageURL,
-		AnimationURL:    template.AnimationURL,
-		AvatarURL:       template.AvatarURL,
-		Hash:            shortID,
-		Name:            "",
-		ExternalTokenID: nextID,
-		Label:           template.Label,
-		Slug:            template.Slug,
-		AssetType:       template.AssetType,
+		ID:               newMechID.String(),
+		OwnerID:          ownerID.String(),
+		TemplateID:       templateID.String(),
+		ChassisID:        chassis.ID,
+		Tier:             template.Tier,
+		IsDefault:        template.IsDefault,
+		ImageURL:         template.ImageURL,
+		AnimationURL:     template.AnimationURL,
+		CardAnimationURL: template.CardAnimationURL,
+		AvatarURL:        template.AvatarURL,
+		Hash:             shortID,
+		Name:             "",
+		ExternalTokenID:  nextID,
+		Label:            template.Label,
+		Slug:             template.Slug,
+		AssetType:        template.AssetType,
 	}
 	err = newMech.Insert(tx, boil.Infer())
 	if err != nil {
@@ -540,7 +543,9 @@ func MechIDFromHash(hash string) (uuid.UUID, error) {
 	var id string
 	err := gamedb.Conn.QueryRow(context.Background(), q, hash).
 		Scan(&id)
-
+	if err != nil {
+		return uuid.Nil, err
+	}
 	uid, err := uuid.FromString(id)
 
 	if err != nil {

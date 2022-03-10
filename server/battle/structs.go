@@ -17,14 +17,9 @@ import (
 type BattleStage string
 
 const (
-	BattleStagStart BattleStage = "START"
-	BattleStageEnd  BattleStage = "END"
+	BattleStagStart = "START"
+	BattleStageEnd  = "END"
 )
-
-type BattleState struct {
-	deadlock.RWMutex
-	Stage BattleStage
-}
 
 type usersMap struct {
 	deadlock.RWMutex
@@ -82,7 +77,7 @@ func (u *usersMap) Delete(id uuid.UUID) {
 
 type Battle struct {
 	arena       *Arena
-	Stage       *BattleState
+	stage       string
 	battle      *boiler.Battle
 	ID          uuid.UUID     `json:"battleID" db:"id"`
 	MapName     string        `json:"mapName"`
@@ -135,15 +130,16 @@ func (bu *BattleUser) Send(key hub.HubCommandKey, payload interface{}) error {
 		return err
 	}
 
-	for wsc, _ := range bu.wsClient {
+	for wsc := range bu.wsClient {
 		go wsc.Send(b)
 	}
 	return nil
 }
 
 type Multiplier struct {
-	Key   string `json:"key"`
-	Value int    `json:"value"`
+	Key         string `json:"key"`
+	Value       string `json:"value"`
+	Description string `json:"description"`
 }
 
 type BattleEndDetail struct {
@@ -157,7 +153,7 @@ type BattleEndDetail struct {
 	TopSupsContributors          []*BattleUser `json:"top_sups_contributors"`
 	TopSupsContributeFactions    []*Faction    `json:"top_sups_contribute_factions"`
 	MostFrequentAbilityExecutors []*BattleUser `json:"most_frequent_ability_executors"`
-	UserMultipliers              []*Multiplier `json:"multipliers"`
+	*MultiplierUpdate
 }
 
 type WarMachine struct {
@@ -194,17 +190,20 @@ type WarMachine struct {
 }
 
 type GameAbility struct {
-	ID                  server.GameAbilityID `json:"id" db:"id"`
-	GameClientAbilityID byte                 `json:"game_client_ability_id" db:"game_client_ability_id"`
-	BattleAbilityID     *uuid.UUID           `json:"battle_ability_id,omitempty" db:"battle_ability_id,omitempty"`
-	Colour              string               `json:"colour" db:"colour"`
-	TextColour          string               `json:"text_colour" db:"text_colour"`
-	Description         string               `json:"description" db:"description"`
-	ImageUrl            string               `json:"image_url" db:"image_url"`
-	FactionID           uuid.UUID            `json:"faction_id" db:"faction_id"`
-	Label               string               `json:"label" db:"label"`
-	SupsCost            decimal.Decimal      `json:"sups_cost"`
-	CurrentSups         decimal.Decimal      `json:"current_sups"`
+	ID                  uuid.UUID       `json:"id" db:"id"`
+	GameClientAbilityID byte            `json:"game_client_ability_id" db:"game_client_ability_id"`
+	BattleAbilityID     *uuid.UUID      `json:"battle_ability_id,omitempty" db:"battle_ability_id,omitempty"`
+	Colour              string          `json:"colour" db:"colour"`
+	TextColour          string          `json:"text_colour" db:"text_colour"`
+	Description         string          `json:"description" db:"description"`
+	ImageUrl            string          `json:"image_url" db:"image_url"`
+	FactionID           uuid.UUID       `json:"faction_id" db:"faction_id"`
+	Label               string          `json:"label" db:"label"`
+	SupsCost            decimal.Decimal `json:"sups_cost"`
+	CurrentSups         decimal.Decimal `json:"current_sups"`
+
+	// used to track ability price update
+	Identity string `json:"identity"`
 
 	// if token id is not 0, it is a nft ability, otherwise it is a faction wide ability
 	WarMachineHash string
@@ -214,25 +213,24 @@ type GameAbility struct {
 	Title string `json:"title"`
 
 	// price locker
-	deadlock.RWMutex
 }
 
-type Ability struct {
-	ID                uuid.UUID `json:"id" db:"id"`  // used for zaibatsu faction ability
-	Identity          uuid.UUID `json:"identity"`    // used to track ability price update
-	Colour            string    `json:"colour"`      // used for game ability colour
-	TextColour        string    `json:"text_colour"` // used for game ability text colour
-	Hash              string    `json:"hash"`
-	Name              string    `json:"name"`
-	Description       string    `json:"description"`
-	ExternalUrl       string    `json:"external_url"`
-	Image             string    `json:"image"`
-	SupsCost          string    `json:"sups_cost"`
-	GameClientID      int       `json:"game_client_id"`
-	RequiredSlot      string    `json:"required_slot"`
-	RequiredPowerGrid int       `json:"required_power_grid"`
-	RequiredCPU       int       `json:"required_cpu"`
-}
+// type Ability struct {
+// 	ID                uuid.UUID `json:"id" db:"id"`  // used for zaibatsu faction ability
+// 	Identity          uuid.UUID `json:"identity"`    // used to track ability price update
+// 	Colour            string    `json:"colour"`      // used for game ability colour
+// 	TextColour        string    `json:"text_colour"` // used for game ability text colour
+// 	Hash              string    `json:"hash"`
+// 	Name              string    `json:"name"`
+// 	Description       string    `json:"description"`
+// 	ExternalUrl       string    `json:"external_url"`
+// 	Image             string    `json:"image"`
+// 	SupsCost          string    `json:"sups_cost"`
+// 	GameClientID      int       `json:"game_client_id"`
+// 	RequiredSlot      string    `json:"required_slot"`
+// 	RequiredPowerGrid int       `json:"required_power_grid"`
+// 	RequiredCPU       int       `json:"required_cpu"`
+// }
 
 type GameAbilityPrice struct {
 	GameAbility    *GameAbility
@@ -242,4 +240,47 @@ type GameAbilityPrice struct {
 	CurrentSups    decimal.Decimal
 
 	TxRefs []string
+}
+
+type MultiplierUpdate struct {
+	TotalMultipliers string        `json:"total_multipliers"`
+	UserMultipliers  []*Multiplier `json:"multipliers"`
+}
+
+var fakeMultipliers = []*Multiplier{
+	{
+		Key:         "citizen",
+		Value:       "1x",
+		Description: "When a player is within the top 80% of voting average.",
+	},
+	{
+		Key:         "contributor",
+		Value:       "5x",
+		Description: "When a player is within the top 50% of voting average.",
+	},
+	{
+		Key:         "super contributor",
+		Value:       "10x",
+		Description: "When a player is within the top 75% of voting average.",
+	},
+	{
+		Key:         "a fool and his money",
+		Description: "For a player who has put the most individual SUPS in to vote but still lost.",
+		Value:       "5x",
+	},
+	{
+		Key:         "air support",
+		Description: "For a player who triggered an airstrike.",
+		Value:       "5x",
+	},
+	{
+		Key:         "now i am become death",
+		Description: "For a player who triggered a nuke.",
+		Value:       "5x",
+	},
+	{
+		Key:         "destroyer of worlds",
+		Description: "For a player who has triggered the previous three nukes.",
+		Value:       "10x",
+	},
 }

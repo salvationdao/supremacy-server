@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
@@ -115,16 +116,28 @@ func NewArena(opts *Opts) *Arena {
 	}
 
 	opts.SecureUserFactionCommand(WSJoinQueue, arena.Join)
-	// todo: access ability from here
-	opts.SecureUserFactionCommand(HubKeFactionUniqueAbilityContribute, arena.FactionUniqueAbilityContribute)
 	opts.Command(HubKeyGameUserOnline, arena.UserOnline)
 
 	// subscribe functions
 	opts.SubscribeCommand(HubKeyGameSettingsUpdated, arena.SendSettings)
 
 	opts.SubscribeCommand(HubKeyGameNotification, arena.GameNotificationSubscribeHandler)
+	opts.SubscribeCommand(HubKeyMultiplierUpdate, arena.HubKeyMultiplierUpdate)
+
+	// battle ability related (bribing)
+	opts.SecureUserFactionCommand(HubKeyBattleAbilityBribe, arena.BattleAbilityBribe)
+	opts.SecureUserFactionCommand(HubKeyAbilityLocationSelect, arena.AbilityLocationSelect)
 	opts.SecureUserFactionSubscribeCommand(HubKeGabsBribeStageUpdateSubscribe, arena.GabsBribeStageSubscribe)
 	opts.SecureUserFactionSubscribeCommand(HubKeGabsBribingWinnerSubscribe, arena.GabsBribingWinnerSubscribe)
+	opts.SecureUserFactionSubscribeCommand(HubKeyBattleAbilityUpdated, arena.BattleAbilityUpdateSubscribeHandler)
+
+	// faction unique ability related (sup contribution)
+	opts.SecureUserFactionCommand(HubKeFactionUniqueAbilityContribute, arena.FactionUniqueAbilityContribute)
+	opts.SecureUserFactionSubscribeCommand(HubKeyFactionUniqueAbilityUpdated, arena.FactionAbilitiesUpdateSubscribeHandler)
+	opts.SecureUserFactionSubscribeCommand(HubKeyWarMachineAbilitiesUpdated, arena.WarMachineAbilitiesUpdateSubscribeHandler)
+
+	// net message subscribe
+	opts.NetSecureUserFactionSubscribeCommand(HubKeyFactionProgressBarUpdated, arena.FactionProgressBarUpdateSubscribeHandler)
 
 	go func() {
 		err = server.Serve(l)
@@ -197,16 +210,217 @@ func (arena *Arena) SetMessageBus(mb *messagebus.MessageBus, nb *messagebus.NetB
 	arena.messageBus = mb
 }
 
-func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, wsc *hub.Client, payload []byte, factionID server.FactionID, reply hub.ReplyFunc) error {
+type BribeGabRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		Amount int64 `json:"amount"` // 1, 25, 100
+	} `json:"payload"`
+}
+
+const HubKeyBattleAbilityBribe hub.HubCommandKey = "BATTLE:ABILITY:BRIBE"
+
+func (arena *Arena) BattleAbilityBribe(ctx context.Context, wsc *hub.Client, payload []byte, factionID uuid.UUID, reply hub.ReplyFunc) error {
+	// skip, if current not battle
 	if arena.currentBattle == nil {
 		return nil
 	}
-	btl := arena.currentBattle
-	err := btl.abilities.AbilityContribute(wsc, payload, factionID)
+
+	req := &BribeGabRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
+	if userID.IsNil() {
+		return terror.Error(terror.ErrForbidden)
+	}
+
+	arena.currentBattle.abilities.BribeGabs(factionID, userID, decimal.New(req.Payload.Amount, 18))
+
+	return nil
+}
+
+type LocationSelectRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		XIndex int `json:"x"`
+		YIndex int `json:"y"`
+	} `json:"payload"`
+}
+
+const HubKeyAbilityLocationSelect hub.HubCommandKey = "ABILITY:LOCATION:SELECT"
+
+func (arena *Arena) AbilityLocationSelect(ctx context.Context, wsc *hub.Client, payload []byte, factionID uuid.UUID, reply hub.ReplyFunc) error {
+	// skip, if current not battle
+	if arena.currentBattle == nil {
+		return nil
+	}
+
+	req := &LocationSelectRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
+	if userID.IsNil() {
+		return terror.Error(terror.ErrForbidden)
+	}
+
+	err = arena.currentBattle.abilities.LocationSelect(userID, req.Payload.XIndex, req.Payload.YIndex)
 	if err != nil {
 		return terror.Error(err)
 	}
+
 	return nil
+}
+
+const HubKeyBattleAbilityUpdated hub.HubCommandKey = "BATTLE:ABILITY:UPDATED"
+
+func (arena *Arena) BattleAbilityUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return "", "", terror.Error(err, "Invalid request received")
+	}
+
+	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
+	if userID.IsNil() {
+		return "", "", terror.Error(terror.ErrForbidden)
+	}
+
+	// get faction id
+	factionID, err := db.PlayerFactionIDGet(context.Background(), gamedb.Conn, userID)
+	if err != nil {
+		return "", "", terror.Error(err)
+	}
+
+	if factionID == nil || factionID.IsNil() {
+		return "", "", terror.Error(terror.ErrForbidden)
+	}
+
+	// return data if, current battle is not null
+	if arena.currentBattle != nil {
+		btl := arena.currentBattle
+		reply(btl.abilities.FactionBattleAbilityGet(*factionID))
+	}
+
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBattleAbilityUpdated, factionID.String())), nil
+}
+
+type GameAbilityContributeRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		AbilityIdentity string `json:"abilityIdentity"`
+		Amount          int64  `json:"amount"` // 1, 25, 100
+	} `json:"payload"`
+}
+
+const HubKeFactionUniqueAbilityContribute hub.HubCommandKey = "FACTION:UNIQUE:ABILITY:CONTRIBUTE"
+
+func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, wsc *hub.Client, payload []byte, factionID uuid.UUID, reply hub.ReplyFunc) error {
+	if arena.currentBattle == nil {
+		return nil
+	}
+
+	req := &GameAbilityContributeRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
+	if userID.IsNil() {
+		return terror.Error(terror.ErrForbidden)
+	}
+
+	arena.currentBattle.abilities.AbilityContribute(factionID, userID, req.Payload.AbilityIdentity, decimal.New(req.Payload.Amount, 18))
+
+	return nil
+}
+
+const HubKeyFactionUniqueAbilityUpdated hub.HubCommandKey = "FACTION:UNIQUE:ABILITY:UPDATED"
+
+func (arena *Arena) FactionAbilitiesUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return "", "", terror.Error(err, "Invalid request received")
+	}
+
+	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
+	if userID.IsNil() {
+		return "", "", terror.Error(terror.ErrForbidden)
+	}
+
+	// get faction id
+	factionID, err := db.PlayerFactionIDGet(context.Background(), gamedb.Conn, userID)
+	if err != nil {
+		return "", "", terror.Error(err)
+	}
+
+	// skip, if user is non faction or Zaibatsu faction
+	if factionID == nil || factionID.String() == server.ZaibatsuFactionID.String() {
+		return "", "", nil
+	}
+
+	// return data if, current battle is not null
+	if arena.currentBattle != nil {
+		btl := arena.currentBattle
+		reply(btl.abilities.FactionUniqueAbilityGet(*factionID))
+	}
+
+	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionUniqueAbilityUpdated, factionID.String()))
+	return req.TransactionID, busKey, nil
+}
+
+const HubKeyWarMachineAbilitiesUpdated hub.HubCommandKey = "WAR:MACHINE:ABILITIES:UPDATED"
+
+type WarMachineAbilitiesUpdatedRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		Hash string `json:"hash"`
+	} `json:"payload"`
+}
+
+// WarMachineAbilitiesUpdateSubscribeHandler subscribe on war machine abilities
+func (arena *Arena) WarMachineAbilitiesUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	gamelog.L.Info().Str("fn", "WarMachineAbilitiesUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
+	req := &WarMachineAbilitiesUpdatedRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return "", "", terror.Error(err, "Invalid request received")
+	}
+
+	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
+	if userID.IsNil() {
+		return "", "", terror.Error(terror.ErrForbidden)
+	}
+
+	// get faction id
+	factionID, err := db.PlayerFactionIDGet(context.Background(), gamedb.Conn, userID)
+	if err != nil {
+		return "", "", terror.Error(err)
+	}
+
+	// skip, if user is non faction or not Zaibatsu faction
+	if factionID == nil || factionID.String() != server.ZaibatsuFactionID.String() {
+		return "", "", nil
+	}
+
+	// NOTE: current only return faction unique ability
+	// get war machine ability
+	if arena.currentBattle != nil {
+		btl := arena.currentBattle
+		ga := btl.abilities.WarMachineAbilityGet(*factionID, req.Payload.Hash)
+		if ga != nil {
+			reply(ga)
+		}
+	}
+
+	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyWarMachineAbilitiesUpdated, req.Payload.Hash))
+	return req.TransactionID, busKey, nil
 }
 
 func (arena *Arena) UserOnline(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
@@ -247,6 +461,14 @@ func (arena *Arena) GabsBribeStageSubscribe(ctx context.Context, wsc *hub.Client
 	}
 
 	return req.TransactionID, messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), nil
+}
+
+const HubKeyFactionProgressBarUpdated hub.HubCommandKey = "FACTION:ABILITY:PROGRESS:BAR:UPDATED"
+
+func (arena *Arena) FactionProgressBarUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.NetBusKey, error) {
+	gamelog.L.Info().Str("fn", "FactionProgressBarUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
+
+	return messagebus.NetBusKey(HubKeyFactionProgressBarUpdated), nil
 }
 
 const HubKeGabsBribingWinnerSubscribe hub.HubCommandKey = "BRIBE:WINNER:SUBSCRIBE"
@@ -411,9 +633,7 @@ func (arena *Arena) Battle() *Battle {
 		ID:      uuid.Must(uuid.NewV4()),
 		MapName: gameMap.Name,
 		gameMap: gameMap,
-		Stage: &BattleState{
-			Stage: BattleStagStart,
-		},
+		stage:   BattleStagStart,
 	}
 
 	err = btl.Load()
@@ -505,7 +725,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 
 	winningWarMachines := make([]*WarMachine, len(payload.WinningWarMachines))
 
-	for i, _ := range payload.WinningWarMachines {
+	for i := range payload.WinningWarMachines {
 		for _, w := range btl.WarMachines {
 			if w.Hash == payload.WinningWarMachines[i].Hash {
 				winningWarMachines[i] = w
@@ -522,13 +742,15 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	}
 
 	fakedUsers := []*BattleUser{
-		&BattleUser{ID: uuid.Must(uuid.NewV4()),
+		{
+			ID:            uuid.Must(uuid.NewV4()),
 			Username:      "FakeUser1",
 			FactionID:     winningWarMachines[0].FactionID,
 			FactionColour: btl.factions[uuid.Must(uuid.FromString(winningWarMachines[0].FactionID))].PrimaryColor,
 			FactionLogoID: FactionLogos[winningWarMachines[0].FactionID],
 		},
-		&BattleUser{ID: uuid.Must(uuid.NewV4()),
+		{
+			ID:            uuid.Must(uuid.NewV4()),
 			Username:      "FakeUser2",
 			FactionID:     winningWarMachines[0].FactionID,
 			FactionColour: btl.factions[uuid.Must(uuid.FromString(winningWarMachines[0].FactionID))].PrimaryColor,
@@ -576,9 +798,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		return
 	}
 
-	btl.Stage.Lock()
-	btl.Stage.Stage = BattleStageEnd
-	btl.Stage.Unlock()
+	btl.stage = BattleStageEnd
 
 	mws := make([]*db.MechWithOwner, len(payload.WinningWarMachines))
 
@@ -640,14 +860,11 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 const HubKeyBattleEndDetailUpdated hub.HubCommandKey = "BATTLE:END:DETAIL:UPDATED"
 
 func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
-	fakeMultipliers := []*Multiplier{
-		&Multiplier{
-			Key:   "citizen",
-			Value: 1,
-		},
-	}
 	btl.users.ForEach(func(user *BattleUser) bool {
-		info.UserMultipliers = fakeMultipliers
+		info.MultiplierUpdate = &MultiplierUpdate{
+			UserMultipliers:  fakeMultipliers,
+			TotalMultipliers: "36x",
+		}
 		user.Send(HubKeyBattleEndDetailUpdated, info)
 		return true
 	})
@@ -780,7 +997,7 @@ type JoinPaylod struct {
 	NeedInsured bool   `json:"need_insured"`
 }
 
-func (arena *Arena) Join(ctx context.Context, wsc *hub.Client, payload []byte, factionID server.FactionID, reply hub.ReplyFunc) error {
+func (arena *Arena) Join(ctx context.Context, wsc *hub.Client, payload []byte, factionID uuid.UUID, reply hub.ReplyFunc) error {
 	span := tracer.StartSpan("ws.Command", tracer.ResourceName(string(WSJoinQueue)))
 	defer span.Finish()
 

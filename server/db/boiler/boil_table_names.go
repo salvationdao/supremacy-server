@@ -6,6 +6,7 @@ package boiler
 var TableNames = struct {
 	AssetRepair                                        string
 	BattleAbilities                                    string
+	BattleAbilityTriggers                              string
 	BattleEvents                                       string
 	BattleEventsGameAbility                            string
 	BattleEventsState                                  string
@@ -37,15 +38,18 @@ var TableNames = struct {
 	IssuedContractRewards                              string
 	Mechs                                              string
 	Modules                                            string
+	Multipliers                                        string
 	Players                                            string
 	SchemaMigrations                                   string
 	StreamList                                         string
 	Templates                                          string
+	UserMultipliers                                    string
 	Users                                              string
 	Weapons                                            string
 }{
 	AssetRepair:                     "asset_repair",
 	BattleAbilities:                 "battle_abilities",
+	BattleAbilityTriggers:           "battle_ability_triggers",
 	BattleEvents:                    "battle_events",
 	BattleEventsGameAbility:         "battle_events_game_ability",
 	BattleEventsState:               "battle_events_state",
@@ -77,10 +81,12 @@ var TableNames = struct {
 	IssuedContractRewards:            "issued_contract_rewards",
 	Mechs:                            "mechs",
 	Modules:                          "modules",
+	Multipliers:                      "multipliers",
 	Players:                          "players",
 	SchemaMigrations:                 "schema_migrations",
 	StreamList:                       "stream_list",
 	Templates:                        "templates",
+	UserMultipliers:                  "user_multipliers",
 	Users:                            "users",
 	Weapons:                          "weapons",
 }

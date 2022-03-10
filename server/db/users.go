@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/georgysavva/scany/pgxscan"
+	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
@@ -298,6 +299,7 @@ func UpsertPlayer(p *boiler.Player) error {
 			boiler.PlayerColumns.ID,
 			boiler.PlayerColumns.Username,
 			boiler.PlayerColumns.PublicAddress,
+			boiler.PlayerColumns.FactionID,
 		},
 		boil.None(),
 		boil.Infer(),
@@ -309,8 +311,8 @@ func UpsertPlayer(p *boiler.Player) error {
 }
 
 // PlayerFactionIDGet read user
-func PlayerFactionIDGet(ctx context.Context, conn Conn, userID server.UserID) (*server.FactionID, error) {
-	var factionID *server.FactionID
+func PlayerFactionIDGet(ctx context.Context, conn Conn, userID server.UserID) (*uuid.UUID, error) {
+	var factionID *uuid.UUID
 
 	q := `
 		SELECT faction_id FROM players WHERE id = $1
