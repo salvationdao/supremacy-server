@@ -2,6 +2,8 @@ package db
 
 import (
 	"server"
+	"server/db/boiler"
+	"server/gamedb"
 
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/ninja-software/terror/v2"
@@ -117,4 +119,13 @@ func FactionStatAll(ctx context.Context, conn Conn) ([]*server.FactionStat, erro
 		return nil, terror.Error(err)
 	}
 	return result, nil
+}
+
+func FactionAll(ctx context.Context, conn Conn) (boiler.FactionSlice, error) {
+	factions, err := boiler.Factions().All(gamedb.StdConn)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return factions, nil
 }

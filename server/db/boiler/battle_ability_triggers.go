@@ -29,7 +29,7 @@ type BattleAbilityTrigger struct {
 	FactionID       string      `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
 	IsAllSyndicates bool        `boiler:"is_all_syndicates" boil:"is_all_syndicates" json:"is_all_syndicates" toml:"is_all_syndicates" yaml:"is_all_syndicates"`
 	TriggeredAt     time.Time   `boiler:"triggered_at" boil:"triggered_at" json:"triggered_at" toml:"triggered_at" yaml:"triggered_at"`
-	TriggerLabel    string      `boiler:"trigger_label" boil:"trigger_label" json:"trigger_label" toml:"trigger_label" yaml:"trigger_label"`
+	AbilityLabel    string      `boiler:"ability_label" boil:"ability_label" json:"ability_label" toml:"ability_label" yaml:"ability_label"`
 	GameAbilityID   string      `boiler:"game_ability_id" boil:"game_ability_id" json:"game_ability_id" toml:"game_ability_id" yaml:"game_ability_id"`
 
 	R *battleAbilityTriggerR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -43,7 +43,7 @@ var BattleAbilityTriggerColumns = struct {
 	FactionID       string
 	IsAllSyndicates string
 	TriggeredAt     string
-	TriggerLabel    string
+	AbilityLabel    string
 	GameAbilityID   string
 }{
 	ID:              "id",
@@ -52,7 +52,7 @@ var BattleAbilityTriggerColumns = struct {
 	FactionID:       "faction_id",
 	IsAllSyndicates: "is_all_syndicates",
 	TriggeredAt:     "triggered_at",
-	TriggerLabel:    "trigger_label",
+	AbilityLabel:    "ability_label",
 	GameAbilityID:   "game_ability_id",
 }
 
@@ -63,7 +63,7 @@ var BattleAbilityTriggerTableColumns = struct {
 	FactionID       string
 	IsAllSyndicates string
 	TriggeredAt     string
-	TriggerLabel    string
+	AbilityLabel    string
 	GameAbilityID   string
 }{
 	ID:              "battle_ability_triggers.id",
@@ -72,7 +72,7 @@ var BattleAbilityTriggerTableColumns = struct {
 	FactionID:       "battle_ability_triggers.faction_id",
 	IsAllSyndicates: "battle_ability_triggers.is_all_syndicates",
 	TriggeredAt:     "battle_ability_triggers.triggered_at",
-	TriggerLabel:    "battle_ability_triggers.trigger_label",
+	AbilityLabel:    "battle_ability_triggers.ability_label",
 	GameAbilityID:   "battle_ability_triggers.game_ability_id",
 }
 
@@ -109,7 +109,7 @@ var BattleAbilityTriggerWhere = struct {
 	FactionID       whereHelperstring
 	IsAllSyndicates whereHelperbool
 	TriggeredAt     whereHelpertime_Time
-	TriggerLabel    whereHelperstring
+	AbilityLabel    whereHelperstring
 	GameAbilityID   whereHelperstring
 }{
 	ID:              whereHelperstring{field: "\"battle_ability_triggers\".\"id\""},
@@ -118,7 +118,7 @@ var BattleAbilityTriggerWhere = struct {
 	FactionID:       whereHelperstring{field: "\"battle_ability_triggers\".\"faction_id\""},
 	IsAllSyndicates: whereHelperbool{field: "\"battle_ability_triggers\".\"is_all_syndicates\""},
 	TriggeredAt:     whereHelpertime_Time{field: "\"battle_ability_triggers\".\"triggered_at\""},
-	TriggerLabel:    whereHelperstring{field: "\"battle_ability_triggers\".\"trigger_label\""},
+	AbilityLabel:    whereHelperstring{field: "\"battle_ability_triggers\".\"ability_label\""},
 	GameAbilityID:   whereHelperstring{field: "\"battle_ability_triggers\".\"game_ability_id\""},
 }
 
@@ -152,8 +152,8 @@ func (*battleAbilityTriggerR) NewStruct() *battleAbilityTriggerR {
 type battleAbilityTriggerL struct{}
 
 var (
-	battleAbilityTriggerAllColumns            = []string{"id", "player_id", "battle_id", "faction_id", "is_all_syndicates", "triggered_at", "trigger_label", "game_ability_id"}
-	battleAbilityTriggerColumnsWithoutDefault = []string{"battle_id", "faction_id", "trigger_label", "game_ability_id"}
+	battleAbilityTriggerAllColumns            = []string{"id", "player_id", "battle_id", "faction_id", "is_all_syndicates", "triggered_at", "ability_label", "game_ability_id"}
+	battleAbilityTriggerColumnsWithoutDefault = []string{"battle_id", "faction_id", "ability_label", "game_ability_id"}
 	battleAbilityTriggerColumnsWithDefault    = []string{"id", "player_id", "is_all_syndicates", "triggered_at"}
 	battleAbilityTriggerPrimaryKeyColumns     = []string{"id"}
 	battleAbilityTriggerGeneratedColumns      = []string{}

@@ -32,7 +32,7 @@ func (u *usersMap) Add(bu *BattleUser) {
 	u.Unlock()
 }
 
-func (u *usersMap) ForEach(fn func(user *BattleUser) bool) {
+func (u *usersMap) Range(fn func(user *BattleUser) bool) {
 	u.RLock()
 	for _, user := range u.m {
 		if !fn(user) {
