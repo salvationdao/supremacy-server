@@ -83,6 +83,7 @@ func (mt MessageType) String() string {
 }
 
 const WSJoinQueue hub.HubCommandKey = hub.HubCommandKey("BATTLE:QUEUE:JOIN")
+const WSLeaveQueue hub.HubCommandKey = hub.HubCommandKey("BATTLE:QUEUE:LEAVE")
 
 func NewArena(opts *Opts) *Arena {
 	l, err := net.Listen("tcp", opts.Addr)
@@ -116,6 +117,7 @@ func NewArena(opts *Opts) *Arena {
 	}
 
 	opts.SecureUserFactionCommand(WSJoinQueue, arena.Join)
+	opts.SecureUserFactionCommand(WSLeaveQueue, arena.Leave)
 	opts.Command(HubKeyGameUserOnline, arena.UserOnline)
 
 	// subscribe functions
@@ -1046,6 +1048,71 @@ func (arena *Arena) Join(ctx context.Context, wsc *hub.Client, payload []byte, f
 	}
 
 	reply(pos)
+
+	return err
+}
+
+type LeaveQueueRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		AssetHash string `json:"asset_hash"`
+	} `json:"payload"`
+}
+
+func (arena *Arena) Leave(ctx context.Context, wsc *hub.Client, payload []byte, factionID uuid.UUID, reply hub.ReplyFunc) error {
+	span := tracer.StartSpan("ws.Command", tracer.ResourceName(string(WSJoinQueue)))
+	defer span.Finish()
+
+	msg := &LeaveQueueRequest{}
+	err := json.Unmarshal(payload, msg)
+	if err != nil {
+		gamelog.L.Error().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal queue join")
+		return err
+	}
+
+	mechId, err := db.MechIDFromHash(msg.Payload.AssetHash)
+	if err != nil {
+		gamelog.L.Error().Str("hash", msg.Payload.AssetHash).Err(err).Msg("unable to retrieve mech id from hash")
+		return err
+	}
+
+	mech, err := db.Mech(mechId)
+	if err != nil {
+		gamelog.L.Error().Str("mech_id", mechId.String()).Err(err).Msg("unable to retrieve mech id from hash")
+		return err
+	}
+
+	if mech.Faction == nil {
+		gamelog.L.Error().Str("mech_id", mechId.String()).Err(err).Msg("mech's owner player has no faction")
+		return err
+	}
+
+	ownerID, err := uuid.FromString(mech.OwnerID)
+	if err != nil {
+		gamelog.L.Error().Str("ownerID", mech.OwnerID).Err(err).Msg("unable to convert owner id from string")
+		return err
+	}
+
+	userID := uuid.FromStringOrNil(wsc.Identifier())
+	if userID.IsNil() {
+		return terror.Error(terror.ErrForbidden)
+	}
+
+	if userID != ownerID {
+		return terror.Error(terror.ErrForbidden, "user is not mech owner")
+	}
+
+	err = db.LeaveQueue(&db.BattleMechData{
+		MechID:    mechId,
+		OwnerID:   ownerID,
+		FactionID: uuid.UUID(factionID),
+	})
+	if err != nil {
+		gamelog.L.Error().Interface("factionID", mech.FactionID).Err(err).Msg("unable to remove mech from queue")
+		return err
+	}
+
+	reply(true)
 
 	return err
 }

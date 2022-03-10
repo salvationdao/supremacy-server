@@ -354,6 +354,34 @@ func JoinQueue(mech *BattleMechData) (int64, error) {
 	return QueuePosition(mech.MechID, mech.FactionID)
 }
 
+func LeaveQueue(mech *BattleMechData) error {
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		gamelog.L.Error().Str("db func", "LeaveQueue").Err(err).Msg("unable to begin tx")
+		return err
+	}
+	defer tx.Rollback()
+	bw := &boiler.BattleQueue{
+		MechID: mech.MechID.String(),
+	}
+	_, err = bw.Delete(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().
+			Interface("mech", mech).
+			Str("db func", "LeaveQueue").Err(err).Msg("unable to remove mech from queue")
+		return err
+	}
+	err = tx.Commit()
+	if err != nil {
+		gamelog.L.Error().
+			Interface("mech", mech).
+			Str("db func", "LeaveQueue").Err(err).Msg("unable to commit mech deletion from queue")
+		return err
+	}
+
+	return nil
+}
+
 func ClearQueue(mechIDs ...uuid.UUID) error {
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
