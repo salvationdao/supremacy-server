@@ -12,7 +12,6 @@ import (
 	"server/passport"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
@@ -98,7 +97,17 @@ func (sow *SpoilsOfWar) Flush() error {
 			onlineUsers = append(onlineUsers, player)
 		}
 	}
+
+	if warchest.Amount.LessThanOrEqual(decimal.Zero) {
+		gamelog.L.Warn().Msgf("warchest amount is less than or equal to zero")
+		return nil
+	}
 	amount := warchest.Amount.Sub(warchest.AmountSent)
+
+	if totalShares.LessThanOrEqual(decimal.Zero) {
+		gamelog.L.Warn().Msgf("total share is less than or equal to zero")
+		return nil
+	}
 	amount = amount.Div(totalShares)
 
 	subgroup := fmt.Sprintf("Spoils of War from Battle #%d", sow.battle.BattleNumber-1)
@@ -108,7 +117,7 @@ func (sow *SpoilsOfWar) Flush() error {
 		userAmount := amount.Mul(player.TotalMultiplier)
 		_, err := sow.battle.arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
 			FromUserID:           SupremacyBattleUserID,
-			ToUserID:             &player.PlayerID,
+			ToUserID:             player.PlayerID,
 			Amount:               userAmount.StringFixed(18),
 			TransactionReference: server.TransactionReference(txr),
 			Group:                "spoil of war",
@@ -184,20 +193,24 @@ func (sow *SpoilsOfWar) ProcessSpoils(battleNumber int) (*boiler.SpoilsOfWar, er
 			return nil, terror.Error(err, "mark single contribution processed")
 		}
 	}
-	return nil, nil
+	return spoils, nil
 }
 
 func (sow *SpoilsOfWar) Drip() error {
 	var err error
-	if sow.warchest == nil {
-		sow.warchest, err = sow.ProcessSpoils(sow.battle.BattleNumber - 1)
-		if err != nil {
-			sow.l.Error().Err(err).Msg("unable to process spoils")
-		}
+	sow.warchest, err = sow.ProcessSpoils(sow.battle.BattleNumber - 1)
+	if err != nil {
+		sow.l.Error().Err(err).Msg("unable to process spoils")
 		return err
 	}
 
-	dripAllocations := sow.tickSpeed / time.Minute * 5
+	if sow.warchest.Amount.LessThanOrEqual(decimal.Zero) {
+		gamelog.L.Warn().Msgf("warchest amount is less than or equal to zero")
+		return nil
+	}
+
+	dripAllocations := 300
+
 	dripAmount := sow.warchest.Amount.Div(decimal.NewFromInt(int64(dripAllocations)))
 
 	multipliers, err := db.PlayerMultipliers(sow.battle.BattleNumber - 1)
@@ -213,7 +226,11 @@ func (sow *SpoilsOfWar) Drip() error {
 			onlineUsers = append(onlineUsers, player)
 		}
 	}
-	spew.Dump(onlineUsers)
+
+	if totalShares.LessThanOrEqual(decimal.Zero) {
+		gamelog.L.Warn().Msgf("total shares is less than or equal to zero")
+		return nil
+	}
 	subgroup := fmt.Sprintf("Spoils of War from Battle #%d", sow.battle.BattleNumber-1)
 	amountRemaining := sow.warchest.Amount.Sub(sow.warchest.AmountSent)
 	for _, player := range onlineUsers {
@@ -227,9 +244,12 @@ func (sow *SpoilsOfWar) Drip() error {
 
 		txr := fmt.Sprintf("spoils_of_war|%s|%d", player.PlayerID, time.Now().UnixNano())
 
+		fmt.Println(txr)
+		fmt.Println(userDrip.StringFixed(18))
+
 		_, err := sow.battle.arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
 			FromUserID:           SupremacyBattleUserID,
-			ToUserID:             &player.PlayerID,
+			ToUserID:             player.PlayerID,
 			Amount:               userDrip.StringFixed(18),
 			TransactionReference: server.TransactionReference(txr),
 			Group:                "spoil of war",

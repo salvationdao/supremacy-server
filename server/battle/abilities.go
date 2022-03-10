@@ -409,6 +409,7 @@ func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID str
 	// pay sup
 	txid, err := ppClient.SpendSupMessage(passport.SpendSupsReq{
 		FromUserID:           userID,
+		ToUserID:             SupremacyBattleUserID,
 		Amount:               amount.StringFixed(18),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("ability_sup_contribute|%s|%d", ga.OfferingID.String(), time.Now().UnixNano())),
 		Group:                "battle",
