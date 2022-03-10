@@ -24,6 +24,7 @@ CREATE TABLE battle_ability_triggers (
     is_all_syndicates BOOL NOT NULL default false,
     triggered_at TIMESTAMPTZ NOT NULL default NOW(),
     ability_label ABILITY_TYPE_ENUM NOT NULL,
+    ability_offering_id UUID NOT NULL,
     game_ability_id UUID NOT NULL references game_abilities(id)
 );
 
