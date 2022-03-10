@@ -38,6 +38,7 @@ type Battle struct {
 	abilities   *AbilitiesSystem
 	users       usersMap
 	factions    map[uuid.UUID]*boiler.Faction
+	multipliers *MultiplierSystem
 	*boiler.Battle
 }
 
@@ -54,10 +55,11 @@ func (btl *Battle) start(payload *BattleStartPayload) {
 	}
 
 	// set up the abilities for current battle
-	btl.abilities = NewAbilitiesSystem(btl)
 	btl.users = usersMap{
 		m: make(map[uuid.UUID]*BattleUser),
 	}
+	btl.abilities = NewAbilitiesSystem(btl)
+	btl.multipliers = NewMultiplierSystem(btl)
 
 	btl.BroadcastUpdate()
 }
@@ -122,7 +124,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		i++
 	}
 
-	endInfo := BattleEndDetail{
+	endInfo := &BattleEndDetail{
 		BattleID:                     btl.ID.String(),
 		BattleIdentifier:             btl.Battle.BattleNumber,
 		StartedAt:                    btl.Battle.StartedAt,
@@ -135,7 +137,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		MostFrequentAbilityExecutors: fakedUsers,
 	}
 
-	btl.endInfoBroadcast(endInfo)
+	btl.endInfoBroadcast(*endInfo)
 
 	ids := make([]uuid.UUID, len(btl.WarMachines))
 	err = db.ClearQueue(ids...)
@@ -201,6 +203,8 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 			Msg("unable to store mech wins")
 		return
 	}
+
+	btl.multipliers.end(endInfo)
 }
 
 const HubKeyBattleEndDetailUpdated hub.HubCommandKey = "BATTLE:END:DETAIL:UPDATED"
