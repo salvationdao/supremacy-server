@@ -8,6 +8,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 
+	"github.com/gofrs/uuid"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -74,6 +75,31 @@ type TriggerDetails struct {
 	FactionIDs []string
 }
 
+func (ms *MultiplierSystem) PlayerMultipliers(playerID uuid.UUID) ([]*Multiplier, int64) {
+	var total int64 = 0
+
+	usermultipliers, err := boiler.Multipliers(
+		qm.InnerJoin("user_multipliers um on um.multiplier_id = multipliers.id"),
+		qm.Where(`um.player_id = ?`, playerID.String()),
+		qm.And(`um.until_battle_number >= ?`, ms.battle.BattleNumber)).All(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Err(err).Msgf("unable to retrieve player multipliers")
+		return []*Multiplier{}, total
+	}
+
+	multipliers := make([]*Multiplier, len(usermultipliers))
+	for i, m := range usermultipliers {
+		multipliers[i] = &Multiplier{
+			Key:         m.Key,
+			Value:       m.Value.String(),
+			Description: m.Description,
+		}
+		total += m.Value.IntPart()
+	}
+
+	return multipliers, total
+}
+
 func (ms *MultiplierSystem) getMultiplier(mtype, testString string, num int) (*boiler.Multiplier, bool) {
 	for _, m := range ms.multipliers {
 		if m.MultiplierType == mtype && m.TestString == testString && m.TestNumber == num {
@@ -90,7 +116,6 @@ func (ms *MultiplierSystem) end(btlEndInfo *BattleEndDetail) {
 func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 	//fetch data
 	//fetch contributions
-
 	contributions, err := boiler.BattleContributions(qm.Where(`battle_id = ?`, ms.battle.ID)).All(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Panic().Err(err).Msgf("unable to retrieve trigger information from database")
