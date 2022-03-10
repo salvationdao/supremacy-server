@@ -199,23 +199,6 @@ type GameAbility struct {
 	// price locker
 }
 
-// type Ability struct {
-// 	ID                uuid.UUID `json:"id" db:"id"`  // used for zaibatsu faction ability
-// 	Identity          uuid.UUID `json:"identity"`    // used to track ability price update
-// 	Colour            string    `json:"colour"`      // used for game ability colour
-// 	TextColour        string    `json:"text_colour"` // used for game ability text colour
-// 	Hash              string    `json:"hash"`
-// 	Name              string    `json:"name"`
-// 	Description       string    `json:"description"`
-// 	ExternalUrl       string    `json:"external_url"`
-// 	Image             string    `json:"image"`
-// 	SupsCost          string    `json:"sups_cost"`
-// 	GameClientID      int       `json:"game_client_id"`
-// 	RequiredSlot      string    `json:"required_slot"`
-// 	RequiredPowerGrid int       `json:"required_power_grid"`
-// 	RequiredCPU       int       `json:"required_cpu"`
-// }
-
 type GameAbilityPrice struct {
 	GameAbility    *GameAbility
 	isReached      bool
