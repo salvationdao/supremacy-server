@@ -17,6 +17,7 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/gofrs/uuid"
@@ -36,7 +37,7 @@ type LocationDeciders struct {
 type AbilitiesSystem struct {
 	battle *Battle
 	// faction unique abilities
-	factionUniqueAbilities map[uuid.UUID]map[server.GameAbilityID]*GameAbility // map[faction_id]map[identity]*Ability
+	factionUniqueAbilities map[uuid.UUID]map[uuid.UUID]*GameAbility // map[faction_id]map[identity]*Ability
 
 	// gabs abilities (air craft, nuke, repair)
 	battleAbilityPool *BattleAbilityPool
@@ -44,12 +45,14 @@ type AbilitiesSystem struct {
 	// track the sups contribution of each user, use for location select
 	userContributeMap map[uuid.UUID]*UserContribution
 
+	bribe      chan *Contribution
+	contribute chan *Contribution
 	// location select winner list
 	locationDeciders *LocationDeciders
 }
 
 func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
-	factionAbilities := map[uuid.UUID]map[server.GameAbilityID]*GameAbility{}
+	factionAbilities := map[uuid.UUID]map[uuid.UUID]*GameAbility{}
 
 	// initialise new gabs ability pool
 	battleAbilityPool := &BattleAbilityPool{
@@ -65,7 +68,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 
 	for factionID := range battle.factions {
 		// initialise faction unique abilities
-		factionAbilities[factionID] = map[server.GameAbilityID]*GameAbility{}
+		factionAbilities[factionID] = map[uuid.UUID]*GameAbility{}
 
 		// faction unique abilities
 		factionUniqueAbilities, err := boiler.GameAbilities(qm.Where("faction_id = ?", factionID.String()), qm.And("battle_ability_id ISNULL")).All(gamedb.StdConn)
@@ -101,7 +104,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 
 					// build the ability
 					wmAbility := &GameAbility{
-						ID:                  server.GameAbilityID(uuid.Must(uuid.FromString(ability.ID))), // generate a uuid for frontend to track sups contribution
+						ID:                  uuid.Must(uuid.FromString(ability.ID)), // generate a uuid for frontend to track sups contribution
 						GameClientAbilityID: byte(ability.GameClientAbilityID),
 						ImageUrl:            ability.ImageURL,
 						Description:         ability.Description,
@@ -127,7 +130,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 
 		} else {
 			// for other faction unique abilities
-			abilities := map[server.GameAbilityID]*GameAbility{}
+			abilities := map[uuid.UUID]*GameAbility{}
 			for _, ability := range factionUniqueAbilities {
 
 				supsCost, err := decimal.NewFromString(ability.SupsCost)
@@ -147,7 +150,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 				}
 
 				wmAbility := &GameAbility{
-					ID:                  server.GameAbilityID(uuid.Must(uuid.FromString(ability.ID))), // generate a uuid for frontend to track sups contribution
+					ID:                  uuid.Must(uuid.FromString(ability.ID)), // generate a uuid for frontend to track sups contribution
 					GameClientAbilityID: byte(ability.GameClientAbilityID),
 					ImageUrl:            ability.ImageURL,
 					Description:         ability.Description,
@@ -210,23 +213,23 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 
 	minPrice := decimal.New(1, 18)
 
-	// start the battle
-	for _, abilities := range as.factionUniqueAbilities {
+	main_ticker := time.NewTicker(10 * time.Second)
 
-		// start ability price updater for each faction
-		go func(abilities map[server.GameAbilityID]*GameAbility) {
-			for {
+	as.contribute = make(chan *Contribution, 10)
+
+	// start the battle
+	for {
+		select {
+		case <-main_ticker.C:
+			for _, abilities := range as.factionUniqueAbilities {
+
+				// start ability price updater for each faction
 				// read the stage first
 				stage := as.battle.stage
 
 				// start ticker while still in battle
 				if stage == BattleStagStart {
 					for _, ability := range abilities {
-						// check battle stage before reduce update ability price
-						if as.battle.stage == BattleStageEnd {
-							return
-						}
-
 						// update ability price
 						if ability.FactionUniqueAbilityPriceUpdate(minPrice) {
 							// send message to game client, if ability trigger
@@ -239,23 +242,73 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 								},
 							)
 
+							// record ability triggered
+							err := db.AbilityTriggered(
+								null.StringFromPtr(nil),
+								as.battle.ID,
+								ability.FactionID,
+								false,
+								ability.Label,
+								ability.ID,
+							)
+							if err != nil {
+								gamelog.L.Err(err).Msg("Failed to record ability triggered")
+							}
+
 						}
-
 					}
-
-					time.Sleep(10 * time.Second)
-					continue
+				} else {
+					gamelog.L.Info().Msg("exiting ability price update")
+					return
 				}
 
-				break
 			}
+		case cont := <-as.contribute:
+			if abilities, ok := as.factionUniqueAbilities[cont.factionID]; ok {
 
-			// terminate the function when battle is end
-			fmt.Println("Exit battle price updater")
-			// do something after battle end...
+				// check ability exists
+				if ability, ok := abilities[cont.abilityID]; ok {
 
-		}(abilities)
+					// return early if battle stage is invalid
+					if as.battle.stage != BattleStagStart {
+						return
+					}
 
+					actualSupSpent, isTriggered := ability.SupContribution(as.battle.arena.ppClient, as.battle.ID.String(), cont.userID, cont.amount)
+
+					// cache user's sup contribution for generating location select order
+					if _, ok := as.userContributeMap[cont.factionID].contributionMap[cont.userID]; !ok {
+						as.userContributeMap[cont.factionID].contributionMap[cont.userID] = decimal.Zero
+					}
+					as.userContributeMap[cont.factionID].contributionMap[cont.userID] = as.userContributeMap[cont.factionID].contributionMap[cont.userID].Add(actualSupSpent)
+
+					// sups contribution
+					if isTriggered {
+						// send message to game client, if ability trigger
+						as.battle.arena.Message(
+							"BATTLE:ABILITY",
+							&server.GameAbilityEvent{
+								IsTriggered:         true,
+								GameClientAbilityID: ability.GameClientAbilityID,
+								ParticipantID:       ability.ParticipantID, // trigger on war machine
+							},
+						)
+
+						err := db.AbilityTriggered(
+							null.StringFrom(cont.userID.String()),
+							as.battle.ID,
+							cont.factionID,
+							false,
+							ability.Label,
+							ability.ID,
+						)
+						if err != nil {
+							gamelog.L.Err(err).Msg("Failed to record ability triggered")
+						}
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -291,44 +344,6 @@ func (ga *GameAbility) FactionUniqueAbilityPriceUpdate(minPrice decimal.Decimal)
 	}
 
 	return isTriggered
-}
-
-// FactionUniqueAbilityContribute contribute sups to specific faction unique ability
-func (as *AbilitiesSystem) FactionUniqueAbilityContribute(factionID uuid.UUID, abilityID server.GameAbilityID, userID server.UserID, amount decimal.Decimal) {
-	// check faction unique ability exist
-	if abilities, ok := as.factionUniqueAbilities[factionID]; ok {
-
-		// check ability exists
-		if ability, ok := abilities[abilityID]; ok {
-
-			// return early if battle stage is invalid
-			if as.battle.stage != BattleStagStart {
-				return
-			}
-
-			actualSupSpent, isTriggered := ability.SupContribution(as.battle.arena.ppClient, as.battle.ID.String(), userID, amount)
-
-			// cache user's sup contribution for generating location select order
-			if _, ok := as.userContributeMap[factionID].contributionMap[userID]; !ok {
-				as.userContributeMap[factionID].contributionMap[userID] = decimal.Zero
-			}
-			as.userContributeMap[factionID].contributionMap[userID] = as.userContributeMap[factionID].contributionMap[userID].Add(actualSupSpent)
-
-			// sups contribution
-			if isTriggered {
-				// send message to game client, if ability trigger
-				as.battle.arena.Message(
-					"BATTLE:ABILITY",
-					&server.GameAbilityEvent{
-						IsTriggered:         true,
-						GameClientAbilityID: ability.GameClientAbilityID,
-						ParticipantID:       ability.ParticipantID, // trigger on war machine
-					},
-				)
-			}
-
-		}
-	}
 }
 
 // SupContribution contribute sups to specific game ability, return the actual sups spent and whether the ability is triggered
@@ -442,11 +457,12 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 	as.battleAbilityPool.Stage.EndTime = time.Now().Add(BribeDurationSecond * time.Second)
 
 	// ability price updater
+	as.bribe = make(chan *Contribution, 10)
 
 	// initial a ticker for current battle
 	main_ticker := time.NewTicker(1 * time.Second)
 	price_ticker := time.NewTicker(1 * time.Second)
-	progress_ticker := time.NewTicker(1 * time.Millisecond)
+	progress_ticker := time.NewTicker(1 * time.Second)
 	// start ability pool cycle
 	for {
 		select {
@@ -458,7 +474,10 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 			// exit the loop, when battle is ended
 			if stage == BattleStageEnd {
 				main_ticker.Stop()
-				break
+				price_ticker.Stop()
+				progress_ticker.Stop()
+				gamelog.L.Info().Msg("Stop ability tickers after battle is end")
+				return
 			}
 
 			// skip, if the end time of current phase haven't been reached
@@ -540,12 +559,40 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 			}
 		case <-price_ticker.C:
 			as.BattleAbilityPriceUpdater()
+		case cont := <-as.bribe:
+			if factionAbility, ok := as.battleAbilityPool.Abilities[cont.factionID]; ok {
+
+				// contribute sups
+				actualSupSpent, abilityTriggered := factionAbility.SupContribution(as.battle.arena.ppClient, as.battle.ID.String(), cont.userID, cont.amount)
+
+				// cache user contribution for location select order
+				if _, ok := as.userContributeMap[cont.factionID].contributionMap[cont.userID]; !ok {
+					as.userContributeMap[cont.factionID].contributionMap[cont.userID] = decimal.Zero
+				}
+				as.userContributeMap[cont.factionID].contributionMap[cont.userID] = as.userContributeMap[cont.factionID].contributionMap[cont.userID].Add(actualSupSpent)
+
+				if abilityTriggered {
+					// generate location select order list
+					as.locationDecidersSet(cont.factionID, cont.userID)
+
+					// change bribing phase to location select
+					as.battleAbilityPool.Stage.Phase = BribeStageLocationSelect
+					as.battleAbilityPool.Stage.EndTime = time.Now().Add(time.Duration(LocationSelectDurationSecond) * time.Second)
+
+					// broadcast stage change
+					as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
+
+					// send message to the user who trigger the ability
+					as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeGabsBribingWinnerSubscribe, cont.userID)), &LocationSelectAnnouncement{
+						GameAbility: as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID],
+						EndTime:     as.battleAbilityPool.Stage.EndTime,
+					})
+				}
+			}
 		case <-progress_ticker.C:
 			as.BattleAbilityProgressBar()
 		}
 	}
-	// do some thing after battle end...
-	fmt.Println("Exit bribing ticker")
 }
 
 // SetNewBattleAbility set new battle ability and return the cooldown time
@@ -605,46 +652,15 @@ func (as *AbilitiesSystem) SetNewBattleAbility() (int, error) {
 	return ba.CooldownDurationSecond, nil
 }
 
-func (as *AbilitiesSystem) BattleAbilityBribing(factionID uuid.UUID, userID server.UserID, amount decimal.Decimal) {
-	// check current battle stage
-	// return early if battle stage or bribing stage are invalid
-	if as.battle.stage != BattleStagStart || as.battleAbilityPool.Stage.Phase != BribeStageBribe {
-		return
-	}
-
-	// check faction ability exists
-	if factionAbility, ok := as.battleAbilityPool.Abilities[factionID]; ok {
-
-		// contribute sups
-		actualSupSpent, abilityTriggered := factionAbility.SupContribution(as.battle.arena.ppClient, as.battle.ID.String(), userID, amount)
-
-		// cache user contribution for location select order
-		if _, ok := as.userContributeMap[factionID].contributionMap[userID]; !ok {
-			as.userContributeMap[factionID].contributionMap[userID] = decimal.Zero
-		}
-		as.userContributeMap[factionID].contributionMap[userID] = as.userContributeMap[factionID].contributionMap[userID].Add(actualSupSpent)
-
-		if abilityTriggered {
-			// generate location select order list
-			as.locationSelectListSet(factionID, userID)
-
-			// change bribing phase to location select
-			as.battleAbilityPool.Stage.Phase = BribeStageLocationSelect
-			as.battleAbilityPool.Stage.EndTime = time.Now().Add(time.Duration(LocationSelectDurationSecond) * time.Second)
-			// broadcast stage change
-			as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
-
-			// send message to the user who trigger the ability
-			as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeGabsBribingWinnerSubscribe, userID)), &LocationSelectAnnouncement{
-				GameAbility: as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID],
-				EndTime:     as.battleAbilityPool.Stage.EndTime,
-			})
-		}
-	}
+type Contribution struct {
+	factionID uuid.UUID
+	userID    server.UserID
+	amount    decimal.Decimal
+	abilityID uuid.UUID
 }
 
-// locationSelectListSet set a user list for location select for current ability triggered
-func (as *AbilitiesSystem) locationSelectListSet(factionID uuid.UUID, triggerByUserID ...server.UserID) {
+// locationDecidersSet set a user list for location select for current ability triggered
+func (as *AbilitiesSystem) locationDecidersSet(factionID uuid.UUID, triggerByUserID ...server.UserID) {
 	// set triggered faction id
 	as.battleAbilityPool.TriggeredFactionID = factionID
 
@@ -734,7 +750,7 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 			ability.SupsCost = decimal.New(1, 18)
 		}
 
-		// if ability not triggered, store ability to database
+		// if ability not triggered, store ability's new target price to database, and continue
 		if ability.SupsCost.Cmp(ability.CurrentSups) > 0 {
 			// store updated price to db
 			err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ability.ID, ability.SupsCost.String(), ability.CurrentSups.String())
@@ -752,9 +768,8 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 			gamelog.L.Err(err)
 		}
 
-		// change st
-		// generate location select order list
-		as.locationSelectListSet(factionID)
+		// set location deciders list
+		as.locationDecidersSet(factionID)
 
 		// if no user online, enter cooldown and exit the loop
 		if len(as.locationDeciders.list) == 0 {
@@ -825,12 +840,34 @@ func (as *AbilitiesSystem) BattleAbilityProgressBar() {
 // *********************
 // Handlers
 // *********************
-func (as *AbilitiesSystem) AbilityContribute(factionID server.FactionID, userID server.UserID, gameAbilityID server.GameAbilityID, amount decimal.Decimal) {
-	as.FactionUniqueAbilityContribute(uuid.UUID(factionID), gameAbilityID, userID, amount)
+func (as *AbilitiesSystem) AbilityContribute(factionID uuid.UUID, userID server.UserID, gameAbilityID uuid.UUID, amount decimal.Decimal) {
+	if as.battle.stage != BattleStagStart || as.battleAbilityPool.Stage.Phase != BribeStageBribe {
+		return
+	}
+
+	cont := &Contribution{
+		factionID,
+		userID,
+		amount,
+		gameAbilityID,
+	}
+
+	as.contribute <- cont
 }
 
-func (as *AbilitiesSystem) BribeGabs(factionID server.FactionID, userID server.UserID, amount decimal.Decimal) {
-	as.BattleAbilityBribing(uuid.UUID(factionID), userID, amount)
+func (as *AbilitiesSystem) BribeGabs(factionID uuid.UUID, userID server.UserID, amount decimal.Decimal) {
+	if as.battle.stage != BattleStagStart || as.battleAbilityPool.Stage.Phase != BribeStageBribe {
+		return
+	}
+
+	cont := &Contribution{
+		factionID,
+		userID,
+		amount,
+		uuid.Nil,
+	}
+
+	as.bribe <- cont
 }
 
 func (as *AbilitiesSystem) BribeStageGet() *GabsBribeStage {
@@ -873,6 +910,19 @@ func (as *AbilitiesSystem) LocationSelect(userID server.UserID, x int, y int) er
 			// TODO: Get user name
 		},
 	)
+
+	// record ability triggered
+	err := db.AbilityTriggered(
+		null.StringFrom(userID.String()),
+		as.battle.ID,
+		ability.FactionID,
+		true,
+		ability.Label,
+		ability.ID,
+	)
+	if err != nil {
+		gamelog.L.Err(err).Msg("Failed to record ability triggered")
+	}
 
 	// TODO: store ability event data
 	as.battle.arena.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{

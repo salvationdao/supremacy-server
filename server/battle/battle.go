@@ -214,7 +214,7 @@ type BribeGabRequest struct {
 
 const HubKeyBattleAbilityBribe hub.HubCommandKey = "BATTLE:ABILITY:BRIBE"
 
-func (arena *Arena) BattleAbilityBribe(ctx context.Context, wsc *hub.Client, payload []byte, factionID server.FactionID, reply hub.ReplyFunc) error {
+func (arena *Arena) BattleAbilityBribe(ctx context.Context, wsc *hub.Client, payload []byte, factionID uuid.UUID, reply hub.ReplyFunc) error {
 	// skip, if current not battle
 	if arena.currentBattle == nil {
 		return nil
@@ -246,7 +246,7 @@ type LocationSelectRequest struct {
 
 const HubKeyAbilityLocationSelect hub.HubCommandKey = "ABILITY:LOCATION:SELECT"
 
-func (arena *Arena) AbilityLocationSelect(ctx context.Context, wsc *hub.Client, payload []byte, factionID server.FactionID, reply hub.ReplyFunc) error {
+func (arena *Arena) AbilityLocationSelect(ctx context.Context, wsc *hub.Client, payload []byte, factionID uuid.UUID, reply hub.ReplyFunc) error {
 	// skip, if current not battle
 	if arena.currentBattle == nil {
 		return nil
@@ -307,14 +307,14 @@ func (arena *Arena) BattleAbilityUpdateSubscribeHandler(ctx context.Context, wsc
 type GameAbilityContributeRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		GameAbilityID server.GameAbilityID `json:"gameAbilityID"`
-		Amount        int64                `json:"amount"` // 1, 25, 100
+		GameAbilityID uuid.UUID `json:"gameAbilityID"`
+		Amount        int64     `json:"amount"` // 1, 25, 100
 	} `json:"payload"`
 }
 
 const HubKeFactionUniqueAbilityContribute hub.HubCommandKey = "FACTION:UNIQUE:ABILITY:CONTRIBUTE"
 
-func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, wsc *hub.Client, payload []byte, factionID server.FactionID, reply hub.ReplyFunc) error {
+func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, wsc *hub.Client, payload []byte, factionID uuid.UUID, reply hub.ReplyFunc) error {
 	if arena.currentBattle == nil {
 		return nil
 	}
@@ -636,7 +636,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 
 	winningWarMachines := make([]*WarMachine, len(payload.WinningWarMachines))
 
-	for i, _ := range payload.WinningWarMachines {
+	for i := range payload.WinningWarMachines {
 		for _, w := range btl.WarMachines {
 			if w.Hash == payload.WinningWarMachines[i].Hash {
 				winningWarMachines[i] = w
@@ -653,13 +653,15 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	}
 
 	fakedUsers := []*BattleUser{
-		&BattleUser{ID: uuid.Must(uuid.NewV4()),
+		{
+			ID:            uuid.Must(uuid.NewV4()),
 			Username:      "FakeUser1",
 			FactionID:     winningWarMachines[0].FactionID,
 			FactionColour: btl.factions[uuid.Must(uuid.FromString(winningWarMachines[0].FactionID))].PrimaryColor,
 			FactionLogoID: FactionLogos[winningWarMachines[0].FactionID],
 		},
-		&BattleUser{ID: uuid.Must(uuid.NewV4()),
+		{
+			ID:            uuid.Must(uuid.NewV4()),
 			Username:      "FakeUser2",
 			FactionID:     winningWarMachines[0].FactionID,
 			FactionColour: btl.factions[uuid.Must(uuid.FromString(winningWarMachines[0].FactionID))].PrimaryColor,
@@ -906,7 +908,7 @@ type JoinPaylod struct {
 	NeedInsured bool   `json:"need_insured"`
 }
 
-func (arena *Arena) Join(ctx context.Context, wsc *hub.Client, payload []byte, factionID server.FactionID, reply hub.ReplyFunc) error {
+func (arena *Arena) Join(ctx context.Context, wsc *hub.Client, payload []byte, factionID uuid.UUID, reply hub.ReplyFunc) error {
 	span := tracer.StartSpan("ws.Command", tracer.ResourceName(string(WSJoinQueue)))
 	defer span.Finish()
 
