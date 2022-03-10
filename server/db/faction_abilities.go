@@ -174,20 +174,13 @@ func FactionExclusiveAbilitiesByFactionID(ctx context.Context, conn Conn, factio
 
 // FactionAbilitiesSupsCostUpdate update faction exclusive ability
 func FactionAbilitiesSupsCostUpdate(ctx context.Context, conn Conn, gameAbilityID uuid.UUID, supsCost string, currentSups string) error {
-	q := `
-		UPDATE 
-			game_abilities
-		SET
-			sups_cost = $2,
-			current_sups = $3
-		where 
-			id = $1;
-	`
-	_, err := conn.Exec(ctx, q,
-		gameAbilityID,
-		supsCost,
-		currentSups,
-	)
+	asc := boiler.GameAbility{
+		ID:          gameAbilityID.String(),
+		SupsCost:    supsCost,
+		CurrentSups: currentSups,
+	}
+
+	_, err := asc.Update(gamedb.StdConn, boil.Whitelist(boiler.GameAbilityColumns.SupsCost, boiler.GameAbilityColumns.CurrentSups))
 	if err != nil {
 		return terror.Error(err)
 	}
