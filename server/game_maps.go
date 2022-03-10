@@ -105,7 +105,7 @@ type Vector3 struct {
 }
 
 type GameAbility struct {
-	ID                  GameAbilityID    `json:"id" db:"id"`
+	ID                  uuid.UUID        `json:"id" db:"id"`
 	Identity            uuid.UUID        `json:"identity"` // used for tracking ability price
 	GameClientAbilityID byte             `json:"game_client_ability_id" db:"game_client_ability_id"`
 	BattleAbilityID     *BattleAbilityID `json:"battle_ability_id,omitempty" db:"battle_ability_id,omitempty"`

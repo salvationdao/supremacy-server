@@ -2,10 +2,14 @@ package db
 
 import (
 	"server"
+	"server/db/boiler"
+	"server/gamedb"
 
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"golang.org/x/net/context"
 )
 
@@ -169,7 +173,7 @@ func FactionExclusiveAbilitiesByFactionID(ctx context.Context, conn Conn, factio
 }
 
 // FactionAbilitiesSupsCostUpdate update faction exclusive ability
-func FactionAbilitiesSupsCostUpdate(ctx context.Context, conn Conn, gameAbilityID server.GameAbilityID, supsCost string, currentSups string) error {
+func FactionAbilitiesSupsCostUpdate(ctx context.Context, conn Conn, gameAbilityID uuid.UUID, supsCost string, currentSups string) error {
 	q := `
 		UPDATE 
 			game_abilities
@@ -184,6 +188,25 @@ func FactionAbilitiesSupsCostUpdate(ctx context.Context, conn Conn, gameAbilityI
 		supsCost,
 		currentSups,
 	)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	return nil
+}
+
+// AbilityTriggered record ability is triggered
+func AbilityTriggered(playerID null.String, battleID uuid.UUID, factionID uuid.UUID, isAllSyndicates bool, triggerLabel string, gameAbilityID uuid.UUID) error {
+	bat := boiler.BattleAbilityTrigger{
+		PlayerID:        playerID,
+		BattleID:        battleID.String(),
+		FactionID:       factionID.String(),
+		IsAllSyndicates: isAllSyndicates,
+		TriggerLabel:    triggerLabel,
+		GameAbilityID:   gameAbilityID.String(),
+	}
+
+	err := bat.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {
 		return terror.Error(err)
 	}
