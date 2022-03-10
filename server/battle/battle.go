@@ -229,6 +229,7 @@ func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 			UserMultipliers:  m,
 			TotalMultipliers: fmt.Sprintf("%dx", total),
 		}
+
 		user.Send(HubKeyBattleEndDetailUpdated, info)
 		return true
 	})
