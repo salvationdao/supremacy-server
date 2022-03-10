@@ -7,6 +7,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
@@ -74,7 +75,16 @@ func (ms *MultiplierSystem) getGabMultiplier(mtype, testString string, num int) 
 }
 
 func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
+	//fetch data
 
+	//fetch contributions
+
+	contributions, err := boiler.BattleContributions(qm.Where(`battle_id = ?`, ms.battle.battle.ID)).All(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Panic().Err(err).Msgf("unable to retrieve trigger information from database")
+	}
+
+	//fetch triggers
 	triggers, err := boiler.BattleAbilityTriggers(
 		qm.Where(`battle_id = ?`, ms.battle.battle.ID),
 		qm.And(`is_all_syndicates = true`),
@@ -83,6 +93,8 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Panic().Err(err).Msgf("unable to retrieve trigger information from database")
 	}
+
+	//sort triggers by player / faction
 
 	fired := make(map[string]*TriggerDetails)
 	for _, trigger := range triggers {
@@ -96,6 +108,8 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 		}
 		td.FactionIDs = append(td.FactionIDs, trigger.FactionID)
 	}
+
+	// create new multipliers map
 
 	newMultipliers := make(map[string]map[*boiler.Multiplier]bool)
 
@@ -189,6 +203,14 @@ outer:
 		return true
 	})
 
-	// how many times fired
+	// average spend test
+
+	sums := map[string]decimal.Decimal{}
+	for _, contribution := range contributions {
+		if _, ok := newMultipliers[contribution.PlayerID]; !ok {
+			sums[contribution.PlayerID] = decimal.New(0, 18)
+		}
+		sums[contribution.PlayerID] = sums[contribution.PlayerID].Add(contribution.Amount)
+	}
 
 }

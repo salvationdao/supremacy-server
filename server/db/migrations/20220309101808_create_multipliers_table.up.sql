@@ -6,6 +6,7 @@ CREATE TYPE ABILITY_TYPE_ENUM AS ENUM ('AIRSTRIKE','NUKE','REPAIR', 'ROB','REINF
 CREATE TABLE battle_contributions (
     id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
     battle_id UUID NOT NULL references battles(id),
+    player_id UUID NOT NULL references players(id),
     ability_offering_id UUID NOT NULL,
     did_trigger BOOL NOT NULL default false,
     faction_id UUID NOT NULL references factions(id),
