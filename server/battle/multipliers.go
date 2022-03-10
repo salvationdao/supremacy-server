@@ -204,13 +204,19 @@ outer:
 	}
 
 	// check for syndicate wins
-	boil.DebugMode = true
+	/*
+		SELECT battle_id, faction_id
+		FROM "battle_wins"
+		group by battle_id, faction_id
+		order by max(created_at) asc
+		limit 3;
+	*/
 	lastWins, err := boiler.BattleWins(
-		qm.Distinct(boiler.BattleWinColumns.BattleID),
-		qm.OrderBy(boiler.BattleWinColumns.CreatedAt, "DESC"),
+		qm.Select(boiler.BattleWinColumns.BattleID, boiler.BattleWinColumns.FactionID),
+		qm.GroupBy(boiler.BattleWinColumns.BattleID+","+boiler.BattleWinColumns.FactionID),
+		qm.OrderBy("MAX("+boiler.BattleWinColumns.CreatedAt+") DESC"),
 		qm.Limit(3),
 	).All(gamedb.StdConn)
-	boil.DebugMode = false
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("unable to retrieve last 3 winning factions")
 	}
