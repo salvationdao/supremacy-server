@@ -35,6 +35,7 @@ type PendingTransaction struct {
 	DeletedAt            null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 	UpdatedAt            time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	CreatedAt            time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	Description          string          `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
 
 	R *pendingTransactionR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L pendingTransactionL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -52,6 +53,7 @@ var PendingTransactionColumns = struct {
 	DeletedAt            string
 	UpdatedAt            string
 	CreatedAt            string
+	Description          string
 }{
 	ID:                   "id",
 	FromUserID:           "from_user_id",
@@ -64,6 +66,7 @@ var PendingTransactionColumns = struct {
 	DeletedAt:            "deleted_at",
 	UpdatedAt:            "updated_at",
 	CreatedAt:            "created_at",
+	Description:          "description",
 }
 
 var PendingTransactionTableColumns = struct {
@@ -78,6 +81,7 @@ var PendingTransactionTableColumns = struct {
 	DeletedAt            string
 	UpdatedAt            string
 	CreatedAt            string
+	Description          string
 }{
 	ID:                   "pending_transactions.id",
 	FromUserID:           "pending_transactions.from_user_id",
@@ -90,6 +94,7 @@ var PendingTransactionTableColumns = struct {
 	DeletedAt:            "pending_transactions.deleted_at",
 	UpdatedAt:            "pending_transactions.updated_at",
 	CreatedAt:            "pending_transactions.created_at",
+	Description:          "pending_transactions.description",
 }
 
 // Generated where
@@ -106,6 +111,7 @@ var PendingTransactionWhere = struct {
 	DeletedAt            whereHelpernull_Time
 	UpdatedAt            whereHelpertime_Time
 	CreatedAt            whereHelpertime_Time
+	Description          whereHelperstring
 }{
 	ID:                   whereHelperstring{field: "\"pending_transactions\".\"id\""},
 	FromUserID:           whereHelperstring{field: "\"pending_transactions\".\"from_user_id\""},
@@ -118,6 +124,7 @@ var PendingTransactionWhere = struct {
 	DeletedAt:            whereHelpernull_Time{field: "\"pending_transactions\".\"deleted_at\""},
 	UpdatedAt:            whereHelpertime_Time{field: "\"pending_transactions\".\"updated_at\""},
 	CreatedAt:            whereHelpertime_Time{field: "\"pending_transactions\".\"created_at\""},
+	Description:          whereHelperstring{field: "\"pending_transactions\".\"description\""},
 }
 
 // PendingTransactionRels is where relationship names are stored.
@@ -141,9 +148,9 @@ func (*pendingTransactionR) NewStruct() *pendingTransactionR {
 type pendingTransactionL struct{}
 
 var (
-	pendingTransactionAllColumns            = []string{"id", "from_user_id", "to_user_id", "amount", "transaction_reference", "group", "subgroup", "processed_at", "deleted_at", "updated_at", "created_at"}
+	pendingTransactionAllColumns            = []string{"id", "from_user_id", "to_user_id", "amount", "transaction_reference", "group", "subgroup", "processed_at", "deleted_at", "updated_at", "created_at", "description"}
 	pendingTransactionColumnsWithoutDefault = []string{"from_user_id", "to_user_id", "amount", "transaction_reference", "group", "subgroup"}
-	pendingTransactionColumnsWithDefault    = []string{"id", "processed_at", "deleted_at", "updated_at", "created_at"}
+	pendingTransactionColumnsWithDefault    = []string{"id", "processed_at", "deleted_at", "updated_at", "created_at", "description"}
 	pendingTransactionPrimaryKeyColumns     = []string{"id"}
 	pendingTransactionGeneratedColumns      = []string{}
 )

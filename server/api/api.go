@@ -86,8 +86,6 @@ type API struct {
 	RingCheckAuthMap *RingCheckAuthMap
 }
 
-const SupremacyGameUserID = "4fae8fdf-584f-46bb-9cb9-bb32ae20177e"
-
 // NewAPI registers routes
 func NewAPI(
 	ctx context.Context,
@@ -133,7 +131,7 @@ func NewAPI(
 			r.Use(sentryHandler.Handle)
 		})
 		r.Mount("/check", CheckRouter(log_helpers.NamedLogger(log, "check router"), conn))
-		r.Mount(fmt.Sprintf("/%s/Supremacy_game", SupremacyGameUserID), PassportWebhookRouter(log, conn, config.PassportWebhookSecret, api))
+		r.Mount(fmt.Sprintf("/%s/Supremacy_game", server.SupremacyGameUserID), PassportWebhookRouter(log, conn, config.PassportWebhookSecret, api))
 
 		// Web sockets are long-lived, so we don't want the sentry performance tracer running for the life-time of the connection.
 		// See roothub.ServeHTTP for the setup of sentry on this route.

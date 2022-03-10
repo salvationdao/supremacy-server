@@ -10,9 +10,12 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/rpcclient"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/shopspring/decimal"
 
 	"github.com/volatiletech/null/v8"
 
@@ -39,6 +42,8 @@ type Battle struct {
 	users       usersMap
 	factions    map[uuid.UUID]*boiler.Faction
 	multipliers *MultiplierSystem
+	spoils      *SpoilsOfWar
+	rpcClient   *rpcclient.XrpcClient
 	*boiler.Battle
 }
 
@@ -60,8 +65,14 @@ func (btl *Battle) start(payload *BattleStartPayload) {
 	}
 	btl.abilities = NewAbilitiesSystem(btl)
 	btl.multipliers = NewMultiplierSystem(btl)
+	btl.spoils = NewSpoilsOfWar(btl, btl.arena.RPCClient, 5*time.Second, 5*time.Second, decimal.NewFromInt(30).Shift(18))
 
 	btl.BroadcastUpdate()
+}
+
+func (btl *Battle) isOnline(userID uuid.UUID) bool {
+	_, ok := btl.users.User(userID)
+	return ok
 }
 
 func (btl *Battle) end(payload *BattleEndPayload) {

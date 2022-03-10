@@ -12,6 +12,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/passport"
+	"server/rpcclient"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -32,8 +33,8 @@ type Arena struct {
 	currentBattle *Battle
 	syndicates    map[string]boiler.Faction
 	AIPlayers     map[string]db.PlayerWithFaction
-
-	ppClient *passport.Passport
+	RPCClient     *rpcclient.XrpcClient
+	ppClient      *passport.Passport
 }
 
 type Opts struct {
@@ -44,6 +45,7 @@ type Opts struct {
 	MessageBus    *messagebus.MessageBus
 	NetMessageBus *messagebus.NetBus
 	PPClient      *passport.Passport
+	RPCClient     *rpcclient.XrpcClient
 }
 
 type MessageType byte
@@ -85,6 +87,7 @@ func NewArena(opts *Opts) *Arena {
 	arena.netMessageBus = opts.NetMessageBus
 	arena.messageBus = opts.MessageBus
 	arena.ppClient = opts.PPClient
+	arena.RPCClient = opts.RPCClient
 
 	arena.AIPlayers, err = db.DefaultFactionPlayers()
 	if err != nil {

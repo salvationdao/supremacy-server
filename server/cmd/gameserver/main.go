@@ -13,13 +13,11 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/passport"
-	"server/spoilsofwar"
 	"server/supermigrate"
 
 	"server/rpcclient"
 
 	zerologger "github.com/ninja-syndicate/hub/ext/zerolog"
-	"github.com/shopspring/decimal"
 	"nhooyr.io/websocket"
 
 	"github.com/ninja-syndicate/hub"
@@ -247,6 +245,7 @@ func main() {
 						MessageBus:    messageBus,
 						Hub:           gsHub,
 						PPClient:      pp,
+						RPCClient:     rpcClient,
 					})
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("set up arena")
 
@@ -270,9 +269,6 @@ func main() {
 						fmt.Println(err)
 						os.Exit(1)
 					}
-
-					sow := spoilsofwar.New(rpcClient, 5*time.Second, 5*time.Second, decimal.NewFromInt(30).Shift(18))
-					go sow.Run()
 
 					gamelog.L.Info().Msg("Running webhook rest API")
 					err = api.Run(ctx)

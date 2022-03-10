@@ -5,13 +5,14 @@ import (
 	"server/gamedb"
 	"time"
 
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"golang.org/x/net/context"
 )
 
@@ -48,22 +49,17 @@ func TotalSpoils() (decimal.Decimal, error) {
 	return result.Sum, nil
 }
 
-func CappedSpoils(cappedAmount decimal.Decimal) ([]*boiler.BattleContribution, decimal.Decimal, error) {
-	contributions, err := boiler.BattleContributions().All(gamedb.StdConn)
+func Spoils(battleID string) ([]*boiler.BattleContribution, decimal.Decimal, error) {
+	contributions, err := boiler.BattleContributions(qm.Where("battle_id = ?", battleID)).All(gamedb.StdConn)
 	if err != nil {
 		return nil, decimal.Zero, err
 	}
 
-	result := []*boiler.BattleContribution{}
 	accumulator := decimal.Zero
 	for _, contrib := range contributions {
 		accumulator.Add(contrib.Amount)
-		result = append(result, contrib)
-		if accumulator.GreaterThanOrEqual(cappedAmount) {
-			break
-		}
 	}
-	return result, accumulator, nil
+	return contributions, accumulator, nil
 }
 
 func MarkAllContributionsProcessed() error {
@@ -73,23 +69,6 @@ func MarkAllContributionsProcessed() error {
 		return terror.Error(err)
 	}
 	return nil
-}
-
-func LatestBattleNumber() (int, bool, error) {
-	battleCount, err := boiler.Battles().Count(gamedb.StdConn)
-	if err != nil {
-		return 0, false, terror.Error(err)
-	}
-	if battleCount <= 0 {
-		return 0, true, nil
-	}
-	battle, err := boiler.Battles(
-		qm.OrderBy("battle_number DESC"),
-	).One(gamedb.StdConn)
-	if err != nil {
-		return 0, false, err
-	}
-	return battle.BattleNumber, false, nil
 }
 
 func MarkContributionProcessed(id uuid.UUID) error {

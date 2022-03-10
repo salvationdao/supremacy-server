@@ -44,6 +44,7 @@ var TableNames = struct {
 	PendingTransactions                                string
 	Players                                            string
 	SchemaMigrations                                   string
+	SpoilsOfWar                                        string
 	StreamList                                         string
 	Templates                                          string
 	UserMultipliers                                    string
@@ -90,6 +91,7 @@ var TableNames = struct {
 	PendingTransactions:              "pending_transactions",
 	Players:                          "players",
 	SchemaMigrations:                 "schema_migrations",
+	SpoilsOfWar:                      "spoils_of_war",
 	StreamList:                       "stream_list",
 	Templates:                        "templates",
 	UserMultipliers:                  "user_multipliers",
