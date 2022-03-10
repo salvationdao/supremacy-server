@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/shopspring/decimal"
@@ -456,10 +457,15 @@ func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID str
 				Amount:       amount,
 				AmountSent:   decimal.New(0, 18),
 			}
+			fmt.Println("create new")
 		} else {
 			spoil.Amount = spoil.Amount.Add(amount)
 			//broadcast spoil of war total and tick here
+
+			fmt.Println("already exists")
 		}
+
+		spew.Dump(spoil)
 
 		_, err = spoil.Update(tx, boil.Infer())
 		if err != nil {
