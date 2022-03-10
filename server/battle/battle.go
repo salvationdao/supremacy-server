@@ -211,9 +211,11 @@ const HubKeyBattleEndDetailUpdated hub.HubCommandKey = "BATTLE:END:DETAIL:UPDATE
 
 func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 	btl.users.Range(func(user *BattleUser) bool {
+		m, total := btl.multipliers.PlayerMultipliers(user.ID)
+
 		info.MultiplierUpdate = &MultiplierUpdate{
-			UserMultipliers:  fakeMultipliers,
-			TotalMultipliers: "36x",
+			UserMultipliers:  m,
+			TotalMultipliers: fmt.Sprintf("%dx", total),
 		}
 		user.Send(HubKeyBattleEndDetailUpdated, info)
 		return true

@@ -3,7 +3,11 @@ package battle
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"server"
+	"server/gamelog"
+
+	"github.com/gofrs/uuid"
 
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
@@ -80,9 +84,21 @@ func (arena *Arena) HubKeyMultiplierUpdate(ctx context.Context, wsc *hub.Client,
 		return "", "", terror.Error(err)
 	}
 
+	if arena.currentBattle == nil {
+		return "", "", fmt.Errorf("no active battle")
+	}
+
+	id, err := uuid.FromString(wsc.Identifier())
+	if err != nil {
+		gamelog.L.Warn().Err(err).Str("id", wsc.Identifier()).Msg("unable to create uuid from websocket client identifier id")
+		return "", "", fmt.Errorf("no active battle")
+	}
+
+	m, total := arena.currentBattle.multipliers.PlayerMultipliers(id)
+
 	reply(&MultiplierUpdate{
-		UserMultipliers:  fakeMultipliers,
-		TotalMultipliers: "36x",
+		UserMultipliers:  m,
+		TotalMultipliers: fmt.Sprintf("%dx", total),
 	})
 
 	return req.TransactionID, messagebus.BusKey(HubKeyMultiplierUpdate), nil
