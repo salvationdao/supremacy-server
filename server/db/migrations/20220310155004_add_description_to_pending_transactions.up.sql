@@ -4,7 +4,7 @@ ALTER TABLE pending_transactions
 CREATE TABLE spoils_of_war (
     id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
     battle_id UUID NOT NULL UNIQUE REFERENCES battles (id),
-    battle_number INT NOT NULL REFERENCES battles (battle_number),
+    battle_number INT NOT NULL UNIQUE REFERENCES battles (battle_number),
     amount numeric(28) NOT NULL,
     amount_sent numeric(28) NOT NULL default 0,
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
