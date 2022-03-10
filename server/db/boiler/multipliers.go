@@ -27,6 +27,7 @@ type Multiplier struct {
 	Key            string `boiler:"key" boil:"key" json:"key" toml:"key" yaml:"key"`
 	ForGames       int    `boiler:"for_games" boil:"for_games" json:"for_games" toml:"for_games" yaml:"for_games"`
 	MultiplierType string `boiler:"multiplier_type" boil:"multiplier_type" json:"multiplier_type" toml:"multiplier_type" yaml:"multiplier_type"`
+	MustBeOnline   bool   `boiler:"must_be_online" boil:"must_be_online" json:"must_be_online" toml:"must_be_online" yaml:"must_be_online"`
 	TestNumber     int    `boiler:"test_number" boil:"test_number" json:"test_number" toml:"test_number" yaml:"test_number"`
 	TestString     string `boiler:"test_string" boil:"test_string" json:"test_string" toml:"test_string" yaml:"test_string"`
 	Value          int    `boiler:"value" boil:"value" json:"value" toml:"value" yaml:"value"`
@@ -41,6 +42,7 @@ var MultiplierColumns = struct {
 	Key            string
 	ForGames       string
 	MultiplierType string
+	MustBeOnline   string
 	TestNumber     string
 	TestString     string
 	Value          string
@@ -50,6 +52,7 @@ var MultiplierColumns = struct {
 	Key:            "key",
 	ForGames:       "for_games",
 	MultiplierType: "multiplier_type",
+	MustBeOnline:   "must_be_online",
 	TestNumber:     "test_number",
 	TestString:     "test_string",
 	Value:          "value",
@@ -61,6 +64,7 @@ var MultiplierTableColumns = struct {
 	Key            string
 	ForGames       string
 	MultiplierType string
+	MustBeOnline   string
 	TestNumber     string
 	TestString     string
 	Value          string
@@ -70,6 +74,7 @@ var MultiplierTableColumns = struct {
 	Key:            "multipliers.key",
 	ForGames:       "multipliers.for_games",
 	MultiplierType: "multipliers.multiplier_type",
+	MustBeOnline:   "multipliers.must_be_online",
 	TestNumber:     "multipliers.test_number",
 	TestString:     "multipliers.test_string",
 	Value:          "multipliers.value",
@@ -83,6 +88,7 @@ var MultiplierWhere = struct {
 	Key            whereHelperstring
 	ForGames       whereHelperint
 	MultiplierType whereHelperstring
+	MustBeOnline   whereHelperbool
 	TestNumber     whereHelperint
 	TestString     whereHelperstring
 	Value          whereHelperint
@@ -92,6 +98,7 @@ var MultiplierWhere = struct {
 	Key:            whereHelperstring{field: "\"multipliers\".\"key\""},
 	ForGames:       whereHelperint{field: "\"multipliers\".\"for_games\""},
 	MultiplierType: whereHelperstring{field: "\"multipliers\".\"multiplier_type\""},
+	MustBeOnline:   whereHelperbool{field: "\"multipliers\".\"must_be_online\""},
 	TestNumber:     whereHelperint{field: "\"multipliers\".\"test_number\""},
 	TestString:     whereHelperstring{field: "\"multipliers\".\"test_string\""},
 	Value:          whereHelperint{field: "\"multipliers\".\"value\""},
@@ -118,9 +125,9 @@ func (*multiplierR) NewStruct() *multiplierR {
 type multiplierL struct{}
 
 var (
-	multiplierAllColumns            = []string{"id", "description", "key", "for_games", "multiplier_type", "test_number", "test_string", "value"}
+	multiplierAllColumns            = []string{"id", "description", "key", "for_games", "multiplier_type", "must_be_online", "test_number", "test_string", "value"}
 	multiplierColumnsWithoutDefault = []string{"description", "key", "multiplier_type", "test_number", "test_string"}
-	multiplierColumnsWithDefault    = []string{"id", "for_games", "value"}
+	multiplierColumnsWithDefault    = []string{"id", "for_games", "must_be_online", "value"}
 	multiplierPrimaryKeyColumns     = []string{"id"}
 	multiplierGeneratedColumns      = []string{}
 )

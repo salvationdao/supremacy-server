@@ -3,6 +3,7 @@ package battle
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -65,7 +66,7 @@ type TriggerDetails struct {
 	FactionIDs []string
 }
 
-func (ms *MultiplierSystem) getGabMultiplier(mtype, testString string, num int) (*boiler.Multiplier, bool) {
+func (ms *MultiplierSystem) getMultiplier(mtype, testString string, num int) (*boiler.Multiplier, bool) {
 	for _, m := range ms.multipliers {
 		if m.MultiplierType == mtype && m.TestString == testString && m.TestNumber == num {
 			return m, true
@@ -115,8 +116,8 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 
 outer:
 	for triggerLabel, td := range fired {
-		m1, m1ok := ms.getGabMultiplier("gab_ability", triggerLabel, 1)
-		m3, m3ok := ms.getGabMultiplier("gab_ability", triggerLabel, 1)
+		m1, m1ok := ms.getMultiplier("gab_ability", triggerLabel, 1)
+		m3, m3ok := ms.getMultiplier("gab_ability", triggerLabel, 1)
 
 		if !m1ok && !m3ok {
 			continue
@@ -187,8 +188,8 @@ outer:
 		}
 	}
 
-	m1, _ := ms.getGabMultiplier("syndicate_win", "", 1)
-	m3, _ := ms.getGabMultiplier("syndicate_win", "", 3)
+	m1, _ := ms.getMultiplier("syndicate_win", "", 1)
+	m3, _ := ms.getMultiplier("syndicate_win", "", 3)
 
 	ms.battle.users.Range(func(bu *BattleUser) bool {
 		if bu.FactionID == lastWins[0].FactionID {
@@ -207,23 +208,25 @@ outer:
 
 	total := decimal.New(0, 18)
 	sums := map[string]decimal.Decimal{}
-	ability_sums := map[string]map[string]decimal.Decimal{}
+	factions := map[string]string{}
+	abilitySums := map[string]map[string]decimal.Decimal{}
 
 	for _, contribution := range contributions {
+		factions[contribution.PlayerID] = contribution.FactionID
 		if _, ok := sums[contribution.PlayerID]; !ok {
 			sums[contribution.PlayerID] = decimal.New(0, 18)
 		}
 		sums[contribution.PlayerID] = sums[contribution.PlayerID].Add(contribution.Amount)
 		total = total.Add(contribution.Amount)
 
-		if _, ok := ability_sums[contribution.AbilityOfferingID]; !ok {
-			ability_sums[contribution.AbilityOfferingID] = map[string]decimal.Decimal{}
+		if _, ok := abilitySums[contribution.AbilityOfferingID]; !ok {
+			abilitySums[contribution.AbilityOfferingID] = map[string]decimal.Decimal{}
 		}
-		if _, ok := ability_sums[contribution.AbilityOfferingID][contribution.PlayerID]; !ok {
-			ability_sums[contribution.AbilityOfferingID][contribution.PlayerID] = decimal.New(0, 18)
+		if _, ok := abilitySums[contribution.AbilityOfferingID][contribution.PlayerID]; !ok {
+			abilitySums[contribution.AbilityOfferingID][contribution.PlayerID] = decimal.New(0, 18)
 		}
-		amnt := ability_sums[contribution.AbilityOfferingID][contribution.PlayerID]
-		ability_sums[contribution.AbilityOfferingID][contribution.PlayerID] = amnt.Add(contribution.Amount)
+		amnt := abilitySums[contribution.AbilityOfferingID][contribution.PlayerID]
+		abilitySums[contribution.AbilityOfferingID][contribution.PlayerID] = amnt.Add(contribution.Amount)
 	}
 
 	for _, m := range ms.multipliers {
@@ -241,11 +244,39 @@ outer:
 	}
 
 	// fool and his money
-
-	for _, contribution := range contributions {
-		if _, ok := ability_sums[contribution.AbilityOfferingID]; !ok {
-			gamelog.L.Error().Msg("ability offering ID is not in ability_sums. this is impossible.")
-			continue
+	for abilityID, abPlayers := range abilitySums {
+		topPlayerAmount := decimal.New(0, 18)
+		topPlayerID := ""
+		for playerID, amount := range abPlayers {
+			if amount.GreaterThan(topPlayerAmount) {
+				topPlayerAmount = amount
+				topPlayerID = playerID
+			}
+		}
+		if topPlayerID != "" {
+			abilityTrigger, err := boiler.BattleAbilityTriggers(
+				qm.Where(fmt.Sprintf("%s = ?", boiler.BattleAbilityTriggerColumns.AbilityOfferingID), abilityID)).One(gamedb.StdConn)
+			if errors.Is(err, sql.ErrNoRows) {
+				continue
+			}
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				gamelog.L.Error().Str("ability_offering_id", abilityID).Err(err).Msg("unable to retrieve trigger event for ability contribution")
+				continue
+			}
+			if abilityTrigger.FactionID != factions[topPlayerID] {
+				if _, ok := newMultipliers[topPlayerID]; !ok {
+					newMultipliers[topPlayerID] = map[*boiler.Multiplier]bool{}
+				}
+				m, ok := ms.getMultiplier("most_sups_lost", "", 0)
+				if !ok {
+					gamelog.L.Error().Str("most_sups_lost", topPlayerID).Err(err).Msg("unable to retrieve 'a fool and his money' from multipliers. maybe this code needs to be removed?")
+					continue
+				}
+				newMultipliers[topPlayerID][m] = true
+			}
 		}
 	}
+
+	// mech owner
+
 }
