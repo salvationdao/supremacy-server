@@ -405,22 +405,26 @@ func (pc *PassportWebhookController) AuthRingCheck(w http.ResponseWriter, r *htt
 	// set client identifier
 	client.SetIdentifier(req.User.ID.String())
 
-	user, err := boiler.FindPlayer(gamedb.StdConn, req.User.ID.String())
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Hub client not found")
+	var factionID *string
+	if !req.User.FactionID.IsNil() {
+		str := req.User.FactionID.String()
+		factionID = &str
 	}
-
-	// register user detail to user map
-	pc.API.UserMap.UserRegister(client, req.User)
 
 	// store user into player table
 	err = db.UpsertPlayer(&boiler.Player{
-		ID:            user.ID,
+		ID:            req.User.ID.String(),
 		Username:      null.StringFrom(req.User.Username),
 		PublicAddress: req.User.PublicAddress,
+		FactionID:     null.StringFromPtr(factionID),
 	})
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)
+	}
+
+	user, err := boiler.FindPlayer(gamedb.StdConn, req.User.ID.String())
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Hub client not found")
 	}
 
 	b, err := json.Marshal(&BroadcastPayload{

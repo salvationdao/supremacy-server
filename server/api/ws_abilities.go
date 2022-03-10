@@ -32,11 +32,11 @@ func NewFactionController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Fa
 		API:  api,
 	}
 
-	api.SecureUserFactionCommand(HubKeGameAbilityContribute, factionHub.GameAbilityContribute)
+	// api.SecureUserFactionCommand(HubKeGameAbilityContribute, factionHub.GameAbilityContribute)
 
-	// subscription
-	api.SecureUserFactionSubscribeCommand(HubKeyFactionAbilitiesUpdated, factionHub.FactionAbilitiesUpdateSubscribeHandler)
-	api.SecureUserFactionSubscribeCommand(HubKeyWarMachineAbilitiesUpdated, factionHub.WarMachineAbilitiesUpdateSubscribeHandler)
+	// // subscription
+	// api.SecureUserFactionSubscribeCommand(HubKeyFactionAbilitiesUpdated, factionHub.FactionAbilitiesUpdateSubscribeHandler)
+	// api.SecureUserFactionSubscribeCommand(HubKeyWarMachineAbilitiesUpdated, factionHub.WarMachineAbilitiesUpdateSubscribeHandler)
 	api.SecureUserSubscribeCommand(server.HubKeyFactionQueueJoin, factionHub.QueueSubscription)
 
 	return factionHub
