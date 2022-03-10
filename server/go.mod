@@ -3,7 +3,7 @@ module server
 go 1.17
 
 require (
-	github.com/antonholmquist/jason v1.0.0
+	github.com/antonholmquist/jason v1.0.0 // indirect
 	github.com/cosmtrek/air v1.27.8
 	github.com/georgysavva/scany v0.2.9
 	github.com/getsentry/sentry-go v0.11.0
@@ -15,7 +15,7 @@ require (
 	github.com/makiuchi-d/arelo v1.9.2
 	github.com/ninja-software/log_helpers v1.0.1-0.20211202070223-aff11d9a6ae6
 	github.com/ninja-software/terror/v2 v2.0.7
-	github.com/ninja-syndicate/hub v1.6.5
+	github.com/ninja-syndicate/hub v1.6.6
 	github.com/ory/dockertest/v3 v3.8.1
 	github.com/prometheus/client_golang v1.11.0
 	github.com/rs/zerolog v1.26.0
@@ -30,7 +30,6 @@ require (
 	github.com/h2non/filetype v1.1.3
 	github.com/jackc/pgconn v1.10.1
 	github.com/jackc/pgx v3.6.2+incompatible
-	github.com/jpillora/backoff v1.0.0
 	github.com/microcosm-cc/bluemonday v1.0.16
 	github.com/ninja-software/tickle v1.3.2
 	github.com/shopspring/decimal v1.2.0
@@ -38,7 +37,6 @@ require (
 	github.com/volatiletech/null/v8 v8.1.2
 	github.com/volatiletech/sqlboiler/v4 v4.8.6
 	github.com/volatiletech/strmangle v0.0.2
-	go.uber.org/atomic v1.7.0
 )
 
 require github.com/petermattis/goid v0.0.0-20180202154549-b0b1615b78e5 // indirect
@@ -69,6 +67,7 @@ require (
 	github.com/tinylib/msgp v1.1.2 // indirect
 	github.com/volatiletech/inflect v0.0.1 // indirect
 	github.com/volatiletech/randomize v0.0.1 // indirect
+	go.uber.org/atomic v1.7.0 // indirect
 	golang.org/x/time v0.0.0-20211116232009-f0f3c7e86c11 // indirect
 	gopkg.in/ini.v1 v1.63.2 // indirect
 )
@@ -133,7 +132,7 @@ require (
 	github.com/opencontainers/image-spec v1.0.2 // indirect
 	github.com/opencontainers/runc v1.0.2 // indirect
 	github.com/pelletier/go-toml v1.9.4 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
+	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/pquerna/cachecontrol v0.1.0 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
