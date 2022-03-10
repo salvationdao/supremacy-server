@@ -60,9 +60,9 @@ type UserOnlineStatusChange struct {
 }
 
 type BattleUserVote struct {
-	BattleID  BattleID `json:"battle_id" db:"battle_id"`
-	UserID    UserID   `json:"user_id" db:"user_id"`
-	VoteCount int64    `json:"vote_count" db:"vote_count"`
+	BattleID  uuid.UUID `json:"battle_id" db:"battle_id"`
+	UserID    UserID    `json:"user_id" db:"user_id"`
+	VoteCount int64     `json:"vote_count" db:"vote_count"`
 }
 
 type UserStat struct {

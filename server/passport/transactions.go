@@ -4,6 +4,7 @@ import (
 	"server"
 	"time"
 
+	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 )
 
@@ -13,8 +14,8 @@ type HoldSupsMessageResponse struct {
 
 type SpendSupsReq struct {
 	Amount               string                      `json:"amount"`
-	FromUserID           server.UserID               `json:"fromUserID"`
-	ToUserID             *server.UserID              `json:"toUserID,omitempty"`
+	FromUserID           uuid.UUID                   `json:"fromUserID"`
+	ToUserID             *uuid.UUID                  `json:"toUserID,omitempty"`
 	TransactionReference server.TransactionReference `json:"transactionReference"`
 	Group                string                      `json:"group,omitempty"`
 	SubGroup             string                      `json:"subGroup"`    //TODO: send battle id

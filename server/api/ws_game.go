@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"server"
-	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/log_helpers"
@@ -52,12 +51,6 @@ func (gc *GameControllerWS) AISpawnedSubscribeHandler(ctx context.Context, wsc *
 	return req.TransactionID, busKey, nil
 }
 
-type BattleEventRecord struct {
-	Type      server.BattleEventType `json:"type"`
-	CreatedAt time.Time              `json:"createdAt"`
-	Event     interface{}            `json:"event"`
-}
-
 type BattleAbilityEventRecord struct {
 	Ability               *server.AbilityBrief    `json:"ability"`
 	TriggeredByUser       *server.UserBrief       `json:"triggeredByUser,omitempty"`
@@ -72,36 +65,10 @@ type WarMachineDestroyedEventRecord struct {
 	KilledBy            string                  `json:"killedBy"`
 }
 
-const HubKeyBattleEndDetailUpdated hub.HubCommandKey = "BATTLE:END:DETAIL:UPDATED"
-
-func (gc *GameControllerWS) BattleEndDetailUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	req := &hub.HubCommandRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return "", "", terror.Error(err, "Invalid request received")
-	}
-
-	//TODO ALEX: fix
-	//if gc.API.BattleArena.GetCurrentState().EndedAt != nil {
-	//	reply(gc.API.battleEndInfo)
-	//}
-
-	return req.TransactionID, messagebus.BusKey(HubKeyBattleEndDetailUpdated), nil
-}
-
 /**********************
 *  Game Notification  *
 **********************/
 type GameNotificationType string
-
-const (
-	GameNotificationTypeText                GameNotificationType = "TEXT"
-	GameNotificationTypeLocationSelect      GameNotificationType = "LOCATION_SELECT"
-	GameNotificationTypeBattleAbility       GameNotificationType = "BATTLE_ABILITY"
-	GameNotificationTypeFactionAbility      GameNotificationType = "FACTION_ABILITY"
-	GameNotificationTypeWarMachineAbility   GameNotificationType = "WAR_MACHINE_ABILITY"
-	GameNotificationTypeWarMachineDestroyed GameNotificationType = "WAR_MACHINE_DESTROYED"
-)
 
 type GameNotificationKill struct {
 	DestroyedWarMachine *server.WarMachineBrief `json:"DestroyedWarMachine"`
@@ -110,14 +77,6 @@ type GameNotificationKill struct {
 }
 
 type LocationSelectType string
-
-const (
-	LocationSelectTypeFailedDisconnect    = "FAILED_DISCONNECT"
-	LocationSelectTypeFailedTimeout       = "FAILED_TIMEOUT"
-	LocationSelectTypeCancelledNoPlayer   = "CANCELLED_NO_PLAYER"
-	LocationSelectTypeCancelledDisconnect = "CANCELLED_DISCONNECT"
-	LocationSelectTypeTrigger             = "TRIGGER"
-)
 
 type GameNotificationLocationSelect struct {
 	Type        LocationSelectType   `json:"type"`

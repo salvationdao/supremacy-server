@@ -231,7 +231,7 @@ func (arena *Arena) BattleAbilityBribe(ctx context.Context, wsc *hub.Client, pay
 		return terror.Error(err, "Invalid request received")
 	}
 
-	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
+	userID := uuid.FromStringOrNil(wsc.Identifier())
 	if userID.IsNil() {
 		return terror.Error(terror.ErrForbidden)
 	}
@@ -263,7 +263,7 @@ func (arena *Arena) AbilityLocationSelect(ctx context.Context, wsc *hub.Client, 
 		return terror.Error(err, "Invalid request received")
 	}
 
-	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
+	userID := uuid.FromStringOrNil(wsc.Identifier())
 	if userID.IsNil() {
 		return terror.Error(terror.ErrForbidden)
 	}
@@ -285,25 +285,22 @@ func (arena *Arena) BattleAbilityUpdateSubscribeHandler(ctx context.Context, wsc
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
-	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
+	userID := uuid.FromStringOrNil(wsc.Identifier())
 	if userID.IsNil() {
 		return "", "", terror.Error(terror.ErrForbidden)
 	}
 
 	// get faction id
-	factionID, err := db.PlayerFactionIDGet(context.Background(), gamedb.Conn, userID)
-	if err != nil {
-		return "", "", terror.Error(err)
-	}
-
-	if factionID == nil || factionID.IsNil() {
+	factionID, err := GetPlayerFactionID(userID)
+	if err != nil || factionID.IsNil() {
+		gamelog.L.Error().Str("userID", userID.String()).Err(err).Msg("unable to find player from user id")
 		return "", "", terror.Error(terror.ErrForbidden)
 	}
 
 	// return data if, current battle is not null
 	if arena.currentBattle != nil {
 		btl := arena.currentBattle
-		reply(btl.abilities.FactionBattleAbilityGet(*factionID))
+		reply(btl.abilities.FactionBattleAbilityGet(factionID))
 	}
 
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBattleAbilityUpdated, factionID.String())), nil
@@ -330,7 +327,7 @@ func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, wsc *hub
 		return terror.Error(err, "Invalid request received")
 	}
 
-	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
+	userID := uuid.FromStringOrNil(wsc.Identifier())
 	if userID.IsNil() {
 		return terror.Error(terror.ErrForbidden)
 	}
@@ -349,26 +346,27 @@ func (arena *Arena) FactionAbilitiesUpdateSubscribeHandler(ctx context.Context, 
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
-	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
+	userID := uuid.FromStringOrNil(wsc.Identifier())
 	if userID.IsNil() {
 		return "", "", terror.Error(terror.ErrForbidden)
 	}
 
 	// get faction id
-	factionID, err := db.PlayerFactionIDGet(context.Background(), gamedb.Conn, userID)
-	if err != nil {
+	factionID, err := GetPlayerFactionID(userID)
+	if err != nil || factionID.IsNil() {
+		gamelog.L.Error().Str("userID", userID.String()).Err(err).Msg("unable to find player from user id")
 		return "", "", terror.Error(err)
 	}
 
 	// skip, if user is non faction or Zaibatsu faction
-	if factionID == nil || factionID.String() == server.ZaibatsuFactionID.String() {
+	if factionID.IsNil() || factionID.String() == server.ZaibatsuFactionID.String() {
 		return "", "", nil
 	}
 
 	// return data if, current battle is not null
 	if arena.currentBattle != nil {
 		btl := arena.currentBattle
-		reply(btl.abilities.FactionUniqueAbilitiesGet(*factionID))
+		reply(btl.abilities.FactionUniqueAbilitiesGet(factionID))
 	}
 
 	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionUniqueAbilitiesUpdated, factionID.String()))
@@ -393,19 +391,21 @@ func (arena *Arena) WarMachineAbilitiesUpdateSubscribeHandler(ctx context.Contex
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
-	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
+	userID := uuid.FromStringOrNil(wsc.Identifier())
 	if userID.IsNil() {
 		return "", "", terror.Error(terror.ErrForbidden)
 	}
 
 	// get faction id
-	factionID, err := db.PlayerFactionIDGet(context.Background(), gamedb.Conn, userID)
-	if err != nil {
+
+	factionID, err := GetPlayerFactionID(userID)
+	if err != nil || factionID.IsNil() {
+		gamelog.L.Error().Str("userID", userID.String()).Err(err).Msg("unable to find player from user id")
 		return "", "", terror.Error(err)
 	}
 
 	// skip, if user is non faction or not Zaibatsu faction
-	if factionID == nil || factionID.String() != server.ZaibatsuFactionID.String() {
+	if factionID.IsNil() || factionID.String() != server.ZaibatsuFactionID.String() {
 		return "", "", nil
 	}
 
@@ -413,7 +413,7 @@ func (arena *Arena) WarMachineAbilitiesUpdateSubscribeHandler(ctx context.Contex
 	// get war machine ability
 	if arena.currentBattle != nil {
 		btl := arena.currentBattle
-		ga := btl.abilities.WarMachineAbilitiesGet(*factionID, req.Payload.Hash)
+		ga := btl.abilities.WarMachineAbilitiesGet(factionID, req.Payload.Hash)
 		if ga != nil {
 			reply(ga)
 		}
@@ -449,7 +449,7 @@ func (arena *Arena) GabsBribeStageSubscribe(ctx context.Context, wsc *hub.Client
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
-	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
+	userID := uuid.FromStringOrNil(wsc.Identifier())
 	if userID.IsNil() {
 		return "", "", terror.Error(terror.ErrInvalidInput)
 	}
@@ -481,7 +481,7 @@ func (arena *Arena) GabsBribingWinnerSubscribe(ctx context.Context, wsc *hub.Cli
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
-	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
+	userID := uuid.FromStringOrNil(wsc.Identifier())
 	if userID.IsNil() {
 		return "", "", terror.Error(terror.ErrInvalidInput)
 	}

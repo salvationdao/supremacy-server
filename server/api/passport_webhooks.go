@@ -320,63 +320,6 @@ type WarMachineQueuePositionRequest struct {
 	AssetHash string           `json:"assethash"`
 }
 
-// PassportWarMachineQueuePositionHandler return the list of user's war machines in the queue
-func (pc *PassportWebhookController) WarMachineQueuePositionGet(w http.ResponseWriter, r *http.Request) (int, error) {
-	return 0, nil
-	//TODO ALEX: fix
-	//req := &WarMachineQueuePositionRequest{}
-	//err := json.NewDecoder(r.Body).Decode(req)
-	//if err != nil {
-	//	return http.StatusInternalServerError, terror.Error(err)
-	//}
-	//
-	//position, contractReward := pc.API.BattleArena.WarMachineQueue.GetWarMachineQueue(req.FactionID, req.AssetHash)
-	//if err != nil {
-	//	return http.StatusInternalServerError, terror.Error(err)
-	//}
-	//
-	//return helpers.EncodeJSON(w, struct {
-	//	Position       *int            `json:"position"`
-	//	ContractReward decimal.Decimal `json:"contractReward"`
-	//}{
-	//	Position:       position,
-	//	ContractReward: contractReward,
-	//})
-}
-
-type AssetRepairStatRequest struct {
-	Hash string `json:"hash"`
-}
-
-func (pc *PassportWebhookController) AssetRepairStatGet(w http.ResponseWriter, r *http.Request) (int, error) {
-	req := &AssetRepairStatRequest{}
-	err := json.NewDecoder(r.Body).Decode(req)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err)
-	}
-
-	record := &server.AssetRepairRecord{
-		Hash: req.Hash,
-	}
-	err = db.AssetRepairIncompleteGet(context.Background(), pc.Conn, record)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return helpers.EncodeJSON(w, struct {
-				AssetRepairRecord *server.AssetRepairRecord `json:"asset_repair_record"`
-			}{
-				AssetRepairRecord: &server.AssetRepairRecord{},
-			})
-		}
-
-		return http.StatusInternalServerError, terror.Error(err)
-	}
-	return helpers.EncodeJSON(w, struct {
-		AssetRepairRecord *server.AssetRepairRecord `json:"asset_repair_record"`
-	}{
-		AssetRepairRecord: record,
-	})
-}
-
 type AuthRingCheckRequest struct {
 	User                *server.User `json:"user"`
 	GameserverSessionID string       `json:"gameserver_session_id"`
