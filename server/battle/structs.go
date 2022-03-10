@@ -198,7 +198,7 @@ type GameAbility struct {
 
 	// price locker
 }
-
+ori
 type GameAbilityPrice struct {
 	GameAbility    *GameAbility
 	isReached      bool
