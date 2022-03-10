@@ -2,7 +2,6 @@ package passport
 
 import (
 	"server"
-	"server/comms"
 	"server/rpcclient"
 )
 
@@ -10,7 +9,7 @@ func (pp *Passport) WarMachineQueuePositionBroadcast(wmp []*rpcclient.WarMachine
 	if len(wmp) == 0 {
 		return
 	}
-	err := pp.RPCClient.Call("S.SupremacyWarMachineQueuePositionHandler", rpcclient.WarMachineQueuePositionReq{WarMachineQueuePosition: wmp}, &comms.WarMachineQueuePositionResp{})
+	err := pp.RPCClient.Call("S.SupremacyWarMachineQueuePositionHandler", rpcclient.WarMachineQueuePositionReq{WarMachineQueuePosition: wmp}, &rpcclient.WarMachineQueuePositionResp{})
 	if err != nil {
 		pp.Log.Err(err).Str("method", "SupremacyWarMachineQueuePositionHandler").Msg("rpc error")
 	}
@@ -18,7 +17,7 @@ func (pp *Passport) WarMachineQueuePositionBroadcast(wmp []*rpcclient.WarMachine
 
 // AssetRepairStat redeem faction contract reward
 func (pp *Passport) AssetRepairStat(arr *server.AssetRepairRecord) {
-	err := pp.RPCClient.Call("S.SupremacyAssetRepairStatUpdateHandler", rpcclient.AssetRepairStatReq{AssetRepairRecord: arr}, &comms.AssetRepairStatResp{})
+	err := pp.RPCClient.Call("S.SupremacyAssetRepairStatUpdateHandler", rpcclient.AssetRepairStatReq{AssetRepairRecord: arr}, &rpcclient.AssetRepairStatResp{})
 	if err != nil {
 		pp.Log.Err(err).Str("method", "SupremacyAssetRepairStatUpdateHandler").Msg("rpc error")
 	}
