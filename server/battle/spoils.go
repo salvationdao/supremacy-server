@@ -12,6 +12,7 @@ import (
 	"server/passport"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
@@ -146,14 +147,13 @@ func (sow *SpoilsOfWar) Flush() error {
 
 //ProcessSpoils work out how much was spent last battle
 func (sow *SpoilsOfWar) ProcessSpoils(battleNumber int) (*boiler.SpoilsOfWar, error) {
-	contributions, sumSpoils, err := db.Spoils(sow.battle.ID.String())
-	if err != nil {
-		return nil, terror.Error(err, "calculate total spoils for last battle failed")
-	}
-
 	battle, err := boiler.Battles(qm.Where(`battle_number = ?`, battleNumber)).One(gamedb.StdConn)
 	if err != nil {
 		return nil, terror.Error(err, "unable to retrieve battle from battle number")
+	}
+	contributions, sumSpoils, err := db.Spoils(battle.ID)
+	if err != nil {
+		return nil, terror.Error(err, "calculate total spoils for last battle failed")
 	}
 
 	spoils, err := boiler.SpoilsOfWars(qm.Where(`battle_number = ?`, battleNumber)).One(gamedb.StdConn)
@@ -169,12 +169,8 @@ func (sow *SpoilsOfWar) ProcessSpoils(battleNumber int) (*boiler.SpoilsOfWar, er
 	spoils.Amount = sumSpoils
 
 	err = spoils.Upsert(gamedb.StdConn, true, []string{
-		boiler.PlayerColumns.PublicAddress,
-	},
-		boil.Whitelist(
-			boiler.SpoilsOfWarColumns.BattleID,
-			boiler.SpoilsOfWarColumns.BattleNumber,
-		), boil.Infer())
+		boiler.SpoilsOfWarColumns.BattleID,
+	}, boil.Infer(), boil.Infer())
 	if err != nil {
 		return nil, terror.Error(err, "unable to insert spoils of war")
 	}
@@ -214,7 +210,7 @@ func (sow *SpoilsOfWar) Drip() error {
 			onlineUsers = append(onlineUsers, player)
 		}
 	}
-
+	spew.Dump(onlineUsers)
 	subgroup := fmt.Sprintf("Spoils of War from Battle #%d", sow.battle.BattleNumber-1)
 	amountRemaining := sow.warchest.Amount.Sub(sow.warchest.AmountSent)
 	for _, player := range onlineUsers {
