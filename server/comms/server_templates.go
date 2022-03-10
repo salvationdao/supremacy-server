@@ -17,7 +17,7 @@ type TemplatesResp struct {
 }
 
 // Templates is a heavy func, do not use on a running server
-func (s *RPCListener) Templates(req TemplatesReq, resp *TemplatesResp) error {
+func (s *S) Templates(req TemplatesReq, resp *TemplatesResp) error {
 	templates, err := boiler.Templates().All(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err)
@@ -42,7 +42,7 @@ type TemplateResp struct {
 	TemplateContainer *server.TemplateContainer
 }
 
-func (s *RPCListener) Template(req TemplateReq, resp *TemplateResp) error {
+func (s *S) Template(req TemplateReq, resp *TemplateResp) error {
 	template, err := db.Template(req.TemplateID)
 	if err != nil {
 		return terror.Error(err)
@@ -58,7 +58,7 @@ type TemplatePurchasedCountResp struct {
 	Count int
 }
 
-func (s *RPCListener) TemplatePurchasedCount(req TemplatePurchasedCountReq, resp *TemplatePurchasedCountResp) error {
+func (s *S) TemplatePurchasedCount(req TemplatePurchasedCountReq, resp *TemplatePurchasedCountResp) error {
 	count, err := db.TemplatePurchasedCount(req.TemplateID)
 	if err != nil {
 		return terror.Error(err)
