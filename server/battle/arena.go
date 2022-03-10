@@ -288,7 +288,9 @@ func (arena *Arena) BattleAbilityUpdateSubscribeHandler(ctx context.Context, wsc
 	// return data if, current battle is not null
 	if arena.currentBattle != nil {
 		btl := arena.currentBattle
-		reply(btl.abilities.FactionBattleAbilityGet(factionID))
+		if btl.abilities != nil {
+			reply(btl.abilities.FactionBattleAbilityGet(factionID))
+		}
 	}
 
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBattleAbilityUpdated, factionID.String())), nil
@@ -354,7 +356,9 @@ func (arena *Arena) FactionAbilitiesUpdateSubscribeHandler(ctx context.Context, 
 	// return data if, current battle is not null
 	if arena.currentBattle != nil {
 		btl := arena.currentBattle
-		reply(btl.abilities.FactionUniqueAbilitiesGet(factionID))
+		if btl.abilities != nil {
+			reply(btl.abilities.FactionUniqueAbilitiesGet(factionID))
+		}
 	}
 
 	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionUniqueAbilitiesUpdated, factionID.String()))
@@ -401,9 +405,11 @@ func (arena *Arena) WarMachineAbilitiesUpdateSubscribeHandler(ctx context.Contex
 	// get war machine ability
 	if arena.currentBattle != nil {
 		btl := arena.currentBattle
-		ga := btl.abilities.WarMachineAbilitiesGet(factionID, req.Payload.Hash)
-		if ga != nil {
-			reply(ga)
+		if btl.abilities != nil {
+			ga := btl.abilities.WarMachineAbilitiesGet(factionID, req.Payload.Hash)
+			if ga != nil {
+				reply(ga)
+			}
 		}
 	}
 
@@ -445,7 +451,9 @@ func (arena *Arena) GabsBribeStageSubscribe(ctx context.Context, wsc *hub.Client
 	// return data if, current battle is not null
 	if arena.currentBattle != nil {
 		btl := arena.currentBattle
-		reply(btl.abilities.BribeStageGet())
+		if btl.abilities != nil {
+			reply(btl.abilities.BribeStageGet())
+		}
 	}
 
 	return req.TransactionID, messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), nil
