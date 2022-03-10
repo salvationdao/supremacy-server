@@ -29,6 +29,7 @@ type BattleContribution struct {
 	AbilityOfferingID string          `boiler:"ability_offering_id" boil:"ability_offering_id" json:"ability_offering_id" toml:"ability_offering_id" yaml:"ability_offering_id"`
 	DidTrigger        bool            `boiler:"did_trigger" boil:"did_trigger" json:"did_trigger" toml:"did_trigger" yaml:"did_trigger"`
 	FactionID         string          `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
+	WinningFactionID  string          `boiler:"winning_faction_id" boil:"winning_faction_id" json:"winning_faction_id" toml:"winning_faction_id" yaml:"winning_faction_id"`
 	AbilityLabel      string          `boiler:"ability_label" boil:"ability_label" json:"ability_label" toml:"ability_label" yaml:"ability_label"`
 	IsAllSyndicates   bool            `boiler:"is_all_syndicates" boil:"is_all_syndicates" json:"is_all_syndicates" toml:"is_all_syndicates" yaml:"is_all_syndicates"`
 	Amount            decimal.Decimal `boiler:"amount" boil:"amount" json:"amount" toml:"amount" yaml:"amount"`
@@ -45,6 +46,7 @@ var BattleContributionColumns = struct {
 	AbilityOfferingID string
 	DidTrigger        string
 	FactionID         string
+	WinningFactionID  string
 	AbilityLabel      string
 	IsAllSyndicates   string
 	Amount            string
@@ -56,6 +58,7 @@ var BattleContributionColumns = struct {
 	AbilityOfferingID: "ability_offering_id",
 	DidTrigger:        "did_trigger",
 	FactionID:         "faction_id",
+	WinningFactionID:  "winning_faction_id",
 	AbilityLabel:      "ability_label",
 	IsAllSyndicates:   "is_all_syndicates",
 	Amount:            "amount",
@@ -69,6 +72,7 @@ var BattleContributionTableColumns = struct {
 	AbilityOfferingID string
 	DidTrigger        string
 	FactionID         string
+	WinningFactionID  string
 	AbilityLabel      string
 	IsAllSyndicates   string
 	Amount            string
@@ -80,6 +84,7 @@ var BattleContributionTableColumns = struct {
 	AbilityOfferingID: "battle_contributions.ability_offering_id",
 	DidTrigger:        "battle_contributions.did_trigger",
 	FactionID:         "battle_contributions.faction_id",
+	WinningFactionID:  "battle_contributions.winning_faction_id",
 	AbilityLabel:      "battle_contributions.ability_label",
 	IsAllSyndicates:   "battle_contributions.is_all_syndicates",
 	Amount:            "battle_contributions.amount",
@@ -116,6 +121,7 @@ var BattleContributionWhere = struct {
 	AbilityOfferingID whereHelperstring
 	DidTrigger        whereHelperbool
 	FactionID         whereHelperstring
+	WinningFactionID  whereHelperstring
 	AbilityLabel      whereHelperstring
 	IsAllSyndicates   whereHelperbool
 	Amount            whereHelperdecimal_Decimal
@@ -127,6 +133,7 @@ var BattleContributionWhere = struct {
 	AbilityOfferingID: whereHelperstring{field: "\"battle_contributions\".\"ability_offering_id\""},
 	DidTrigger:        whereHelperbool{field: "\"battle_contributions\".\"did_trigger\""},
 	FactionID:         whereHelperstring{field: "\"battle_contributions\".\"faction_id\""},
+	WinningFactionID:  whereHelperstring{field: "\"battle_contributions\".\"winning_faction_id\""},
 	AbilityLabel:      whereHelperstring{field: "\"battle_contributions\".\"ability_label\""},
 	IsAllSyndicates:   whereHelperbool{field: "\"battle_contributions\".\"is_all_syndicates\""},
 	Amount:            whereHelperdecimal_Decimal{field: "\"battle_contributions\".\"amount\""},
@@ -135,20 +142,23 @@ var BattleContributionWhere = struct {
 
 // BattleContributionRels is where relationship names are stored.
 var BattleContributionRels = struct {
-	Battle  string
-	Faction string
-	Player  string
+	Battle         string
+	Faction        string
+	Player         string
+	WinningFaction string
 }{
-	Battle:  "Battle",
-	Faction: "Faction",
-	Player:  "Player",
+	Battle:         "Battle",
+	Faction:        "Faction",
+	Player:         "Player",
+	WinningFaction: "WinningFaction",
 }
 
 // battleContributionR is where relationships are stored.
 type battleContributionR struct {
-	Battle  *Battle  `boiler:"Battle" boil:"Battle" json:"Battle" toml:"Battle" yaml:"Battle"`
-	Faction *Faction `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
-	Player  *Player  `boiler:"Player" boil:"Player" json:"Player" toml:"Player" yaml:"Player"`
+	Battle         *Battle  `boiler:"Battle" boil:"Battle" json:"Battle" toml:"Battle" yaml:"Battle"`
+	Faction        *Faction `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
+	Player         *Player  `boiler:"Player" boil:"Player" json:"Player" toml:"Player" yaml:"Player"`
+	WinningFaction *Faction `boiler:"WinningFaction" boil:"WinningFaction" json:"WinningFaction" toml:"WinningFaction" yaml:"WinningFaction"`
 }
 
 // NewStruct creates a new relationship struct
@@ -160,8 +170,8 @@ func (*battleContributionR) NewStruct() *battleContributionR {
 type battleContributionL struct{}
 
 var (
-	battleContributionAllColumns            = []string{"id", "battle_id", "player_id", "ability_offering_id", "did_trigger", "faction_id", "ability_label", "is_all_syndicates", "amount", "contributed_at"}
-	battleContributionColumnsWithoutDefault = []string{"battle_id", "player_id", "ability_offering_id", "faction_id", "ability_label", "amount"}
+	battleContributionAllColumns            = []string{"id", "battle_id", "player_id", "ability_offering_id", "did_trigger", "faction_id", "winning_faction_id", "ability_label", "is_all_syndicates", "amount", "contributed_at"}
+	battleContributionColumnsWithoutDefault = []string{"battle_id", "player_id", "ability_offering_id", "faction_id", "winning_faction_id", "ability_label", "amount"}
 	battleContributionColumnsWithDefault    = []string{"id", "did_trigger", "is_all_syndicates", "contributed_at"}
 	battleContributionPrimaryKeyColumns     = []string{"id"}
 	battleContributionGeneratedColumns      = []string{}
@@ -449,6 +459,21 @@ func (o *BattleContribution) Player(mods ...qm.QueryMod) playerQuery {
 
 	query := Players(queryMods...)
 	queries.SetFrom(query.Query, "\"players\"")
+
+	return query
+}
+
+// WinningFaction pointed to by the foreign key.
+func (o *BattleContribution) WinningFaction(mods ...qm.QueryMod) factionQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.WinningFactionID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Factions(queryMods...)
+	queries.SetFrom(query.Query, "\"factions\"")
 
 	return query
 }
@@ -767,6 +792,111 @@ func (battleContributionL) LoadPlayer(e boil.Executor, singular bool, maybeBattl
 	return nil
 }
 
+// LoadWinningFaction allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (battleContributionL) LoadWinningFaction(e boil.Executor, singular bool, maybeBattleContribution interface{}, mods queries.Applicator) error {
+	var slice []*BattleContribution
+	var object *BattleContribution
+
+	if singular {
+		object = maybeBattleContribution.(*BattleContribution)
+	} else {
+		slice = *maybeBattleContribution.(*[]*BattleContribution)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &battleContributionR{}
+		}
+		args = append(args, object.WinningFactionID)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &battleContributionR{}
+			}
+
+			for _, a := range args {
+				if a == obj.WinningFactionID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.WinningFactionID)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`factions`),
+		qm.WhereIn(`factions.id in ?`, args...),
+		qmhelper.WhereIsNull(`factions.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Faction")
+	}
+
+	var resultSlice []*Faction
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Faction")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for factions")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for factions")
+	}
+
+	if len(battleContributionAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.WinningFaction = foreign
+		if foreign.R == nil {
+			foreign.R = &factionR{}
+		}
+		foreign.R.WinningFactionBattleContributions = append(foreign.R.WinningFactionBattleContributions, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.WinningFactionID == foreign.ID {
+				local.R.WinningFaction = foreign
+				if foreign.R == nil {
+					foreign.R = &factionR{}
+				}
+				foreign.R.WinningFactionBattleContributions = append(foreign.R.WinningFactionBattleContributions, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetBattle of the battleContribution to the related item.
 // Sets o.R.Battle to related.
 // Adds o to related.R.BattleContributions.
@@ -900,6 +1030,52 @@ func (o *BattleContribution) SetPlayer(exec boil.Executor, insert bool, related 
 		}
 	} else {
 		related.R.BattleContributions = append(related.R.BattleContributions, o)
+	}
+
+	return nil
+}
+
+// SetWinningFaction of the battleContribution to the related item.
+// Sets o.R.WinningFaction to related.
+// Adds o to related.R.WinningFactionBattleContributions.
+func (o *BattleContribution) SetWinningFaction(exec boil.Executor, insert bool, related *Faction) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"battle_contributions\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"winning_faction_id"}),
+		strmangle.WhereClause("\"", "\"", 2, battleContributionPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.WinningFactionID = related.ID
+	if o.R == nil {
+		o.R = &battleContributionR{
+			WinningFaction: related,
+		}
+	} else {
+		o.R.WinningFaction = related
+	}
+
+	if related.R == nil {
+		related.R = &factionR{
+			WinningFactionBattleContributions: BattleContributionSlice{o},
+		}
+	} else {
+		related.R.WinningFactionBattleContributions = append(related.R.WinningFactionBattleContributions, o)
 	}
 
 	return nil

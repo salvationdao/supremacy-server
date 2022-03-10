@@ -203,14 +203,49 @@ outer:
 		return true
 	})
 
-	// average spend test
+	// average spend multipliers test
 
+	total := decimal.New(0, 18)
 	sums := map[string]decimal.Decimal{}
+	ability_sums := map[string]map[string]decimal.Decimal{}
+
 	for _, contribution := range contributions {
-		if _, ok := newMultipliers[contribution.PlayerID]; !ok {
+		if _, ok := sums[contribution.PlayerID]; !ok {
 			sums[contribution.PlayerID] = decimal.New(0, 18)
 		}
 		sums[contribution.PlayerID] = sums[contribution.PlayerID].Add(contribution.Amount)
+		total = total.Add(contribution.Amount)
+
+		if _, ok := ability_sums[contribution.AbilityOfferingID]; !ok {
+			ability_sums[contribution.AbilityOfferingID] = map[string]decimal.Decimal{}
+		}
+		if _, ok := ability_sums[contribution.AbilityOfferingID][contribution.PlayerID]; !ok {
+			ability_sums[contribution.AbilityOfferingID][contribution.PlayerID] = decimal.New(0, 18)
+		}
+		amnt := ability_sums[contribution.AbilityOfferingID][contribution.PlayerID]
+		ability_sums[contribution.AbilityOfferingID][contribution.PlayerID] = amnt.Add(contribution.Amount)
 	}
 
+	for _, m := range ms.multipliers {
+		if m.MultiplierType == "spend_average" {
+			for playerID, amount := range sums {
+				perc := total.Mul(decimal.New(100-int64(m.TestNumber), 18).Div(decimal.New(100, 18)))
+				if amount.GreaterThanOrEqual(perc) {
+					if _, ok := newMultipliers[playerID]; !ok {
+						newMultipliers[playerID] = map[*boiler.Multiplier]bool{}
+					}
+					newMultipliers[playerID][m] = true
+				}
+			}
+		}
+	}
+
+	// fool and his money
+
+	for _, contribution := range contributions {
+		if _, ok := ability_sums[contribution.AbilityOfferingID]; !ok {
+			gamelog.L.Error().Msg("ability offering ID is not in ability_sums. this is impossible.")
+			continue
+		}
+	}
 }
