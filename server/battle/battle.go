@@ -544,9 +544,7 @@ func (arena *Arena) Battle() *Battle {
 		ID:      uuid.Must(uuid.NewV4()),
 		MapName: gameMap.Name,
 		gameMap: gameMap,
-		Stage: &BattleState{
-			Stage: BattleStagStart,
-		},
+		stage:   BattleStagStart,
 	}
 
 	err = btl.Load()
@@ -709,9 +707,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		return
 	}
 
-	btl.Stage.Lock()
-	btl.Stage.Stage = BattleStageEnd
-	btl.Stage.Unlock()
+	btl.stage = BattleStageEnd
 
 	mws := make([]*db.MechWithOwner, len(payload.WinningWarMachines))
 

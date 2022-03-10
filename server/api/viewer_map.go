@@ -1,13 +1,9 @@
 package api
 
 import (
-	"context"
 	"fmt"
 	"server"
-	"server/battle_arena"
-	"time"
 
-	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
@@ -27,45 +23,6 @@ type ViewerLiveCount struct {
 	FactionViewerMap map[server.FactionID]*ViewerCount
 	ViewerIDMap      deadlock.Map
 	NetMessageBus    *messagebus.NetBus
-}
-
-func NewViewerLiveCount(nmb *messagebus.NetBus) *ViewerLiveCount {
-	vlc := &ViewerLiveCount{
-		FactionViewerMap: make(map[server.FactionID]*ViewerCount),
-		FactionViewerRW:  deadlock.RWMutex{},
-		ViewerIDMap:      deadlock.Map{},
-		NetMessageBus:    nmb,
-	}
-
-	vlc.FactionViewerMap[server.FactionID(uuid.Nil)] = &ViewerCount{0}
-	vlc.FactionViewerMap[server.RedMountainFactionID] = &ViewerCount{0}
-	vlc.FactionViewerMap[server.BostonCyberneticsFactionID] = &ViewerCount{0}
-	vlc.FactionViewerMap[server.ZaibatsuFactionID] = &ViewerCount{0}
-
-	go func() {
-		for {
-			// broadcast to users
-			payload := []byte{}
-			payload = append(payload, byte(battle_arena.NetMessageTypeViewerLiveCountTick))
-
-			vlc.FactionViewerRW.RLock()
-			payload = append(payload, []byte(fmt.Sprintf(
-				"B_%d|R_%d|Z_%d|O_%d",
-				vlc.FactionViewerMap[server.BostonCyberneticsFactionID].Count,
-				vlc.FactionViewerMap[server.RedMountainFactionID].Count,
-				vlc.FactionViewerMap[server.ZaibatsuFactionID].Count,
-				vlc.FactionViewerMap[server.FactionID(uuid.Nil)].Count,
-			))...)
-			vlc.FactionViewerRW.RUnlock()
-
-			nmb.Send(context.Background(), messagebus.NetBusKey(HubKeyViewerLiveCountUpdated), payload)
-
-			// sleep one second
-			time.Sleep(1 * time.Second)
-		}
-	}()
-
-	return vlc
 }
 
 func (vcm *ViewerLiveCount) Add(factionID server.FactionID) {

@@ -58,3 +58,14 @@ const (
 	BattleEventKill             = "kill"
 	BattleEventAbilityTriggered = "ability_triggered"
 )
+
+// Enum values for MultiplierTypeEnum
+const (
+	MultiplierTypeEnumSpendAverage = "spend_average"
+	MultiplierTypeEnumMostSupsLost = "most_sups_lost"
+	MultiplierTypeEnumGabAbility   = "gab_ability"
+	MultiplierTypeEnumComboBreaker = "combo_breaker"
+	MultiplierTypeEnumPlayerMech   = "player_mech"
+	MultiplierTypeEnumHoursOnline  = "hours_online"
+	MultiplierTypeEnumSyndicateWin = "syndicate_win"
+)

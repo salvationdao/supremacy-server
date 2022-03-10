@@ -17,14 +17,9 @@ import (
 type BattleStage string
 
 const (
-	BattleStagStart BattleStage = "START"
-	BattleStageEnd  BattleStage = "END"
+	BattleStagStart = "START"
+	BattleStageEnd  = "END"
 )
-
-type BattleState struct {
-	deadlock.RWMutex
-	Stage BattleStage
-}
 
 type usersMap struct {
 	deadlock.RWMutex
@@ -82,7 +77,7 @@ func (u *usersMap) Delete(id uuid.UUID) {
 
 type Battle struct {
 	arena       *Arena
-	Stage       *BattleState
+	stage       string
 	battle      *boiler.Battle
 	ID          uuid.UUID     `json:"battleID" db:"id"`
 	MapName     string        `json:"mapName"`
@@ -215,7 +210,6 @@ type GameAbility struct {
 	Title string `json:"title"`
 
 	// price locker
-	deadlock.RWMutex
 }
 
 type Ability struct {

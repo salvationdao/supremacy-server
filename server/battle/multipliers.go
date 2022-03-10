@@ -1,17 +1,86 @@
 package battle
 
+import (
+	"database/sql"
+	"errors"
+	"server/db/boiler"
+	"server/gamedb"
+	"server/gamelog"
+
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+)
+
+type MultiplierTypeEnum string
+
+const SPEND_AVERAGE MultiplierTypeEnum = "spend_average"
+const MOST_SUPS_LOST MultiplierTypeEnum = "most_sups_lost"
+const GAB_ABILITY MultiplierTypeEnum = "gab_ability"
+const COMBO_BREAKER MultiplierTypeEnum = "combo_breaker"
+const PLAYER_MECH MultiplierTypeEnum = "player_mech"
+const HOURS_ONLINE MultiplierTypeEnum = "hours_online"
+const SYNDICATE_WIN MultiplierTypeEnum = "syndicate_win"
+
 type MultiplierSystem struct {
-	battle *Battle
+	multipliers map[string]*boiler.Multiplier
+	players     map[string]map[string]*boiler.Multiplier
+	battle      *Battle
 }
 
 func NewMultiplierSystem(btl *Battle) *MultiplierSystem {
 	ms := &MultiplierSystem{
-		btl,
+		battle:      btl,
+		multipliers: make(map[string]*boiler.Multiplier),
+		players:     make(map[string]map[string]*boiler.Multiplier),
 	}
 	ms.init()
 	return ms
 }
 
 func (ms *MultiplierSystem) init() {
+	multipliers, err := boiler.Multipliers().All(gamedb.StdConn)
+	for _, m := range multipliers {
+		ms.multipliers[m.Key] = m
+	}
+	if err != nil {
+		gamelog.L.Panic().Err(err).Msgf("unable to retrieve multipliers from database")
+	}
+	usermultipliers, err := boiler.UserMultipliers(qm.Where(`until_battle_number > ?`, ms.battle.battle.BattleNumber)).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Panic().Err(err).Msgf("unable to retrieve user's multipliers from database")
+	}
+	for _, m := range usermultipliers {
+		pm, ok := ms.players[m.PlayerID]
+		if !ok {
+			pm = make(map[string]*boiler.Multiplier)
+			ms.players[m.PlayerID] = pm
+		}
+		pm[m.Multiplier] = ms.multipliers[m.Multiplier]
+	}
+}
+
+type TriggerDetails struct {
+	FireCount  int
+	PlayerIDs  []string
+	FactionIDs []string
+}
+
+func (ms *MultiplierSystem) calculate() {
+	triggers, err := boiler.BattleAbilityTriggers(qm.Where(`battle_id = ?`, ms.battle.battle.ID), qm.And(`is_all_syndicates = ?`), qm.OrderBy(`triggered_at DESC`)).All(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Panic().Err(err).Msgf("unable to retrieve trigger information from database")
+	}
+
+	// how many times fired
+	fired := make(map[string]*TriggerDetails)
+	for _, trigger := range triggers {
+		td, ok := fired[trigger.TriggerLabel]
+		if !ok {
+			td = &TriggerDetails{FireCount: 0, PlayerIDs: []string{}, FactionIDs: []string{}}
+		}
+		td.FireCount++
+		if trigger.PlayerID.Valid {
+			td.PlayerIDs = append(td.PlayerIDs, trigger.PlayerID.String)
+		}
+	}
 
 }
