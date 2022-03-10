@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"server"
-	"server/db/boiler"
 	"server/gamelog"
 	"time"
 
@@ -73,21 +72,6 @@ func (u *usersMap) Delete(id uuid.UUID) {
 	u.Lock()
 	delete(u.m, id)
 	u.Unlock()
-}
-
-type Battle struct {
-	arena       *Arena
-	stage       string
-	battle      *boiler.Battle
-	ID          uuid.UUID     `json:"battleID" db:"id"`
-	MapName     string        `json:"mapName"`
-	WarMachines []*WarMachine `json:"warMachines"`
-	SpawnedAI   []*WarMachine `json:"SpawnedAI"`
-	lastTick    *[]byte
-	gameMap     *server.GameMap
-	abilities   *AbilitiesSystem
-	users       usersMap
-	factions    map[uuid.UUID]*boiler.Faction
 }
 
 type Started struct {

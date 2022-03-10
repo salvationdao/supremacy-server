@@ -16,7 +16,7 @@ type PlayerRegisterReq struct {
 	PublicAddress common.Address
 }
 type PlayerRegisterResp struct {
-	Player *boiler.Player
+	*boiler.Player
 }
 
 func (s *S) PlayerRegister(req PlayerRegisterReq, resp *PlayerRegisterResp) error {

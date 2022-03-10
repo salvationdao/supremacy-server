@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"server"
 
+	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
@@ -86,6 +87,23 @@ func (arena *Arena) HubKeyMultiplierUpdate(ctx context.Context, wsc *hub.Client,
 	})
 
 	return req.TransactionID, messagebus.BusKey(HubKeyMultiplierUpdate), nil
+}
+
+const HubKeyViewerLiveCountUpdated = hub.HubCommandKey("VIEWER:LIVE:COUNT:UPDATED")
+
+func (arena *Arena) ViewerLiveCountUpdateSubscribeHandler(tx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return "", "", terror.Error(err)
+	}
+
+	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
+	if userID.IsNil() {
+		return "", "", terror.Error(terror.ErrForbidden)
+	}
+
+	return req.TransactionID, messagebus.BusKey(HubKeyViewerLiveCountUpdated), nil
 }
 
 const HubKeyGameNotification hub.HubCommandKey = "GAME:NOTIFICATION"
