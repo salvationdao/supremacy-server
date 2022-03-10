@@ -214,6 +214,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	}
 
 	btl.multipliers.end(endInfo)
+	btl.spoils.End()
 }
 
 const HubKeyBattleEndDetailUpdated hub.HubCommandKey = "BATTLE:END:DETAIL:UPDATED"

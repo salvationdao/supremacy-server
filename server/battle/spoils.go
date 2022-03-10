@@ -45,10 +45,6 @@ func NewSpoilsOfWar(btl *Battle, transactSpeed time.Duration, dripSpeed time.Dur
 }
 
 func (sow *SpoilsOfWar) End() {
-	err := sow.ProcessSpoils(sow.battle.BattleNumber)
-	if err != nil {
-		sow.l.Error().Err(err).Msg("unable to process spoils")
-	}
 	sow.flushCh <- true
 }
 
@@ -80,7 +76,7 @@ func (sow *SpoilsOfWar) Start() {
 }
 
 func (sow *SpoilsOfWar) Flush() error {
-	spoils, err := boiler.SpoilsOfWars(qm.Where(`battle_number = ?`, sow.battle.BattleNumber-1)).One(gamedb.StdConn)
+	warchest, err := sow.ProcessSpoils(sow.battle.BattleNumber)
 	if err != nil {
 		return terror.Error(err, "can't retrieve last battle's spoils")
 	}
@@ -98,7 +94,7 @@ func (sow *SpoilsOfWar) Flush() error {
 			onlineUsers = append(onlineUsers, player)
 		}
 	}
-	amount := spoils.Amount.Sub(spoils.AmountSent)
+	amount := warchest.Amount.Sub(warchest.AmountSent)
 	amount = amount.Div(totalShares)
 
 	subgroup := fmt.Sprintf("Spoils of War from Battle #%d", sow.battle.BattleNumber-1)
@@ -117,13 +113,13 @@ func (sow *SpoilsOfWar) Flush() error {
 			NotSafe:              false,
 		})
 		if err != nil {
-
+			return terror.Error(err, "unable to send sups spoil of war flush")
 		} else {
-			sow.warchest.AmountSent = sow.warchest.AmountSent.Add(userAmount)
-			_, err = sow.warchest.Update(gamedb.StdConn, boil.Infer())
+			warchest.AmountSent = warchest.AmountSent.Add(userAmount)
+			_, err = warchest.Update(gamedb.StdConn, boil.Infer())
 			if err != nil {
 				sow.l.Error().Err(err).Msg("unable to update spoils of war")
-				sow.warchest = nil
+				warchest = nil
 				return err
 			}
 			pt := boiler.PendingTransaction{
@@ -146,15 +142,15 @@ func (sow *SpoilsOfWar) Flush() error {
 }
 
 //ProcessSpoils work out how much was spent last battle
-func (sow *SpoilsOfWar) ProcessSpoils(battleNumber int) error {
+func (sow *SpoilsOfWar) ProcessSpoils(battleNumber int) (*boiler.SpoilsOfWar, error) {
 	contributions, sumSpoils, err := db.Spoils(sow.battle.ID.String())
 	if err != nil {
-		return terror.Error(err, "calculate total spoils for last battle failed")
+		return nil, terror.Error(err, "calculate total spoils for last battle failed")
 	}
 
 	battle, err := boiler.Battles(qm.Where(`battle_number = ?`, battleNumber)).One(gamedb.StdConn)
 	if err != nil {
-		return terror.Error(err, "unable to retrieve battle from battle number")
+		return nil, terror.Error(err, "unable to retrieve battle from battle number")
 	}
 
 	spoils, err := boiler.SpoilsOfWars(qm.Where(`battle_number = ?`, battleNumber)).One(gamedb.StdConn)
@@ -164,7 +160,7 @@ func (sow *SpoilsOfWar) ProcessSpoils(battleNumber int) error {
 			BattleNumber: battleNumber,
 		}
 	} else if err != nil {
-		return terror.Error(err, "unable to retrieve spoils from battle number")
+		return nil, terror.Error(err, "unable to retrieve spoils from battle number")
 	}
 
 	spoils.Amount = sumSpoils
@@ -177,23 +173,22 @@ func (sow *SpoilsOfWar) ProcessSpoils(battleNumber int) error {
 			boiler.SpoilsOfWarColumns.BattleNumber,
 		), boil.Infer())
 	if err != nil {
-		return terror.Error(err, "unable to insert spoils of war")
+		return nil, terror.Error(err, "unable to insert spoils of war")
 	}
-
-	sow.warchest = spoils
 
 	for _, contrib := range contributions {
 		err = db.MarkContributionProcessed(uuid.Must(uuid.FromString(contrib.ID)))
 		if err != nil {
-			return terror.Error(err, "mark single contribution processed")
+			return nil, terror.Error(err, "mark single contribution processed")
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 func (sow *SpoilsOfWar) Drip() error {
+	var err error
 	if sow.warchest == nil {
-		err := sow.ProcessSpoils(sow.battle.BattleNumber - 1)
+		sow.warchest, err = sow.ProcessSpoils(sow.battle.BattleNumber - 1)
 		if err != nil {
 			sow.l.Error().Err(err).Msg("unable to process spoils")
 		}
