@@ -161,18 +161,21 @@ func (sow *SpoilsOfWar) ProcessSpoils(battleNumber int) (*boiler.SpoilsOfWar, er
 		spoils = &boiler.SpoilsOfWar{
 			BattleID:     battle.ID,
 			BattleNumber: battleNumber,
+			Amount:       sumSpoils,
+			AmountSent:   decimal.New(0, 18),
+		}
+		err = spoils.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			return nil, terror.Error(err, "unable to insert spoils")
 		}
 	} else if err != nil {
 		return nil, terror.Error(err, "unable to retrieve spoils from battle number")
-	}
-
-	spoils.Amount = sumSpoils
-
-	err = spoils.Upsert(gamedb.StdConn, true, []string{
-		boiler.SpoilsOfWarColumns.BattleID,
-	}, boil.Infer(), boil.Infer())
-	if err != nil {
-		return nil, terror.Error(err, "unable to insert spoils of war")
+	} else {
+		spoils.Amount = sumSpoils
+		_, err = spoils.Update(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			return nil, terror.Error(err, "unable to update spoils")
+		}
 	}
 
 	for _, contrib := range contributions {
