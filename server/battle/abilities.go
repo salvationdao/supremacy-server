@@ -2,7 +2,6 @@ package battle
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"server"
 	"server/db"
@@ -182,6 +181,21 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 		locationDeciders: &LocationDeciders{
 			list: []server.UserID{},
 		},
+	}
+
+	// broadcast faction unique ability
+	for factionID, ga := range as.factionUniqueAbilities {
+		if factionID.String() == server.ZaibatsuFactionID.String() {
+			// broadcast the war machine abilities
+			for identity, ability := range ga {
+				as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyWarMachineAbilitiesUpdated, identity)), ability)
+			}
+		} else {
+			// broadcast faction ability
+			for _, ability := range ga {
+				as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionUniqueAbilitiesUpdated, factionID.String())), ability)
+			}
+		}
 	}
 
 	// init battle ability
@@ -426,7 +440,7 @@ const (
 
 type GabsBribeStage struct {
 	Phase   BribePhase `json:"phase"`
-	EndTime time.Time  `json:"endTime"`
+	EndTime time.Time  `json:"end_time"`
 }
 
 // track user contribution of current battle
@@ -444,8 +458,8 @@ type BattleAbilityPool struct {
 }
 
 type LocationSelectAnnouncement struct {
-	GameAbility *GameAbility `json:"gameAbility"`
-	EndTime     time.Time    `json:"endTime"`
+	GameAbility *GameAbility `json:"game_ability"`
+	EndTime     time.Time    `json:"end_time"`
 }
 
 // StartGabsAbilityPoolCycle
@@ -474,6 +488,8 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 			stage := as.battle.stage
 			// exit the loop, when battle is ended
 			if stage == BattleStageEnd {
+				as.battleAbilityPool.Stage.Phase = BribeStageHold
+				as.battleAbilityPool.Stage.EndTime = time.Now().AddDate(1, 0, 0) // HACK: set end time to far future to implement infinite time
 				main_ticker.Stop()
 				price_ticker.Stop()
 				progress_ticker.Stop()
@@ -827,14 +843,10 @@ func (as *AbilitiesSystem) BattleAbilityProgressBar() {
 		factionAbilityPrices = append(factionAbilityPrices, factionAbilityPrice)
 	}
 
-	// broadcast to frontend
-	data, err := json.Marshal(strings.Join(factionAbilityPrices, "|"))
-	if err != nil {
-		gamelog.L.Err(err).Msg("Failed to parse ability progress bar")
-		return
-	}
+	payload := []byte{byte(BattleAbilityProgressBarTick)}
+	payload = append(payload, []byte(strings.Join(factionAbilityPrices, "|"))...)
 
-	as.battle.arena.netMessageBus.Send(context.Background(), messagebus.NetBusKey(HubKeyFactionProgressBarUpdated), data)
+	as.battle.arena.netMessageBus.Send(context.Background(), messagebus.NetBusKey(HubKeyBattleAbilityProgressBarUpdated), payload)
 
 }
 
@@ -857,26 +869,36 @@ func (as *AbilitiesSystem) AbilityContribute(factionID uuid.UUID, userID server.
 }
 
 // FactionUniqueAbilityGet return the faction unique ability for the given faction
-func (as *AbilitiesSystem) FactionUniqueAbilityGet(factionID uuid.UUID) *GameAbility {
+func (as *AbilitiesSystem) FactionUniqueAbilitiesGet(factionID uuid.UUID) []*GameAbility {
+	abilities := []*GameAbility{}
 	for _, ga := range as.factionUniqueAbilities[factionID] {
-		return ga
+		abilities = append(abilities, ga)
 	}
 
-	return nil
+	if len(abilities) == 0 {
+		return nil
+	}
+
+	return abilities
 }
 
 // FactionUniqueAbilityGet return the faction unique ability for the given faction
-func (as *AbilitiesSystem) WarMachineAbilityGet(factionID uuid.UUID, hash string) *GameAbility {
+func (as *AbilitiesSystem) WarMachineAbilitiesGet(factionID uuid.UUID, hash string) []*GameAbility {
+	abilities := []*GameAbility{}
 	// NOTE: just pass down the faction unique abilities for now
 	if fua, ok := as.factionUniqueAbilities[factionID]; ok {
 		for h, ga := range fua {
 			if h == hash {
-				return ga
+				abilities = append(abilities, ga)
 			}
 		}
 	}
 
-	return nil
+	if len(abilities) == 0 {
+		return nil
+	}
+
+	return abilities
 }
 
 func (as *AbilitiesSystem) BribeGabs(factionID uuid.UUID, userID server.UserID, amount decimal.Decimal) {

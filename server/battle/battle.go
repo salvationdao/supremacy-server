@@ -64,7 +64,7 @@ const (
 	JSON MessageType = iota
 	Tick
 	LiveVotingTick
-	AbilityRightRatioTick
+	BattleAbilityProgressBarTick
 	VotePriceTick
 	VotePriceForecastTick
 	AbilityTargetPriceTick
@@ -133,11 +133,11 @@ func NewArena(opts *Opts) *Arena {
 
 	// faction unique ability related (sup contribution)
 	opts.SecureUserFactionCommand(HubKeFactionUniqueAbilityContribute, arena.FactionUniqueAbilityContribute)
-	opts.SecureUserFactionSubscribeCommand(HubKeyFactionUniqueAbilityUpdated, arena.FactionAbilitiesUpdateSubscribeHandler)
+	opts.SecureUserFactionSubscribeCommand(HubKeyFactionUniqueAbilitiesUpdated, arena.FactionAbilitiesUpdateSubscribeHandler)
 	opts.SecureUserFactionSubscribeCommand(HubKeyWarMachineAbilitiesUpdated, arena.WarMachineAbilitiesUpdateSubscribeHandler)
 
 	// net message subscribe
-	opts.NetSecureUserFactionSubscribeCommand(HubKeyFactionProgressBarUpdated, arena.FactionProgressBarUpdateSubscribeHandler)
+	opts.NetSecureUserFactionSubscribeCommand(HubKeyBattleAbilityProgressBarUpdated, arena.FactionProgressBarUpdateSubscribeHandler)
 
 	go func() {
 		err = server.Serve(l)
@@ -312,7 +312,7 @@ func (arena *Arena) BattleAbilityUpdateSubscribeHandler(ctx context.Context, wsc
 type GameAbilityContributeRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		AbilityIdentity string `json:"abilityIdentity"`
+		AbilityIdentity string `json:"ability_identity"`
 		Amount          int64  `json:"amount"` // 1, 25, 100
 	} `json:"payload"`
 }
@@ -340,7 +340,7 @@ func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, wsc *hub
 	return nil
 }
 
-const HubKeyFactionUniqueAbilityUpdated hub.HubCommandKey = "FACTION:UNIQUE:ABILITY:UPDATED"
+const HubKeyFactionUniqueAbilitiesUpdated hub.HubCommandKey = "FACTION:UNIQUE:ABILITIES:UPDATED"
 
 func (arena *Arena) FactionAbilitiesUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
@@ -368,10 +368,10 @@ func (arena *Arena) FactionAbilitiesUpdateSubscribeHandler(ctx context.Context, 
 	// return data if, current battle is not null
 	if arena.currentBattle != nil {
 		btl := arena.currentBattle
-		reply(btl.abilities.FactionUniqueAbilityGet(*factionID))
+		reply(btl.abilities.FactionUniqueAbilitiesGet(*factionID))
 	}
 
-	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionUniqueAbilityUpdated, factionID.String()))
+	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionUniqueAbilitiesUpdated, factionID.String()))
 	return req.TransactionID, busKey, nil
 }
 
@@ -413,7 +413,7 @@ func (arena *Arena) WarMachineAbilitiesUpdateSubscribeHandler(ctx context.Contex
 	// get war machine ability
 	if arena.currentBattle != nil {
 		btl := arena.currentBattle
-		ga := btl.abilities.WarMachineAbilityGet(*factionID, req.Payload.Hash)
+		ga := btl.abilities.WarMachineAbilitiesGet(*factionID, req.Payload.Hash)
 		if ga != nil {
 			reply(ga)
 		}
@@ -463,12 +463,12 @@ func (arena *Arena) GabsBribeStageSubscribe(ctx context.Context, wsc *hub.Client
 	return req.TransactionID, messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), nil
 }
 
-const HubKeyFactionProgressBarUpdated hub.HubCommandKey = "FACTION:ABILITY:PROGRESS:BAR:UPDATED"
+const HubKeyBattleAbilityProgressBarUpdated hub.HubCommandKey = "BATTLE:ABILITY:PROGRESS:BAR:UPDATED"
 
 func (arena *Arena) FactionProgressBarUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.NetBusKey, error) {
 	gamelog.L.Info().Str("fn", "FactionProgressBarUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
 
-	return messagebus.NetBusKey(HubKeyFactionProgressBarUpdated), nil
+	return messagebus.NetBusKey(HubKeyBattleAbilityProgressBarUpdated), nil
 }
 
 const HubKeGabsBribingWinnerSubscribe hub.HubCommandKey = "BRIBE:WINNER:SUBSCRIBE"
