@@ -14,9 +14,9 @@ import (
 )
 
 type WarMachineDestroyedEventRecord struct {
-	DestroyedWarMachine *server.WarMachineBrief `json:"destroyedWarMachine"`
-	KilledByWarMachine  *server.WarMachineBrief `json:"killedByWarMachineID,omitempty"`
-	KilledBy            string                  `json:"killedBy"`
+	DestroyedWarMachine *WarMachineBrief `json:"destroyed_war_machine"`
+	KilledByWarMachine  *WarMachineBrief `json:"killed_by_war_machine_id,omitempty"`
+	KilledBy            string           `json:"killed_by"`
 }
 
 /**********************
@@ -53,8 +53,8 @@ type GameNotificationLocationSelect struct {
 	Type        LocationSelectType   `json:"type"`
 	X           *int                 `json:"x,omitempty"`
 	Y           *int                 `json:"y,omitempty"`
-	CurrentUser *server.UserBrief    `json:"currentUser,omitempty"`
-	NextUser    *server.UserBrief    `json:"nextUser,omitempty"`
+	CurrentUser *server.UserBrief    `json:"current_user,omitempty"`
+	NextUser    *server.UserBrief    `json:"next_user,omitempty"`
 	Ability     *server.AbilityBrief `json:"ability,omitempty"`
 }
 
@@ -64,9 +64,9 @@ type GameNotificationAbility struct {
 }
 
 type GameNotificationWarMachineAbility struct {
-	User       *server.UserBrief       `json:"user,omitempty"`
-	Ability    *server.AbilityBrief    `json:"ability,omitempty"`
-	WarMachine *server.WarMachineBrief `json:"warMachine,omitempty"`
+	User       *server.UserBrief    `json:"user,omitempty"`
+	Ability    *server.AbilityBrief `json:"ability,omitempty"`
+	WarMachine *WarMachineBrief     `json:"war_machine,omitempty"`
 }
 
 type GameNotification struct {
