@@ -107,6 +107,7 @@ func NewArena(opts *Opts) *Arena {
 
 	opts.SecureUserFactionCommand(WSJoinQueue, arena.Join)
 	opts.SecureUserCommand(HubKeyGameUserOnline, arena.UserOnline)
+	opts.SubscribeCommand(HubKeyWarMachineDestroyedUpdated, arena.WarMachineDestroyedUpdatedSubscribeHandler)
 
 	// subscribe functions
 	opts.SubscribeCommand(HubKeyGameSettingsUpdated, arena.SendSettings)
@@ -130,6 +131,7 @@ func NewArena(opts *Opts) *Arena {
 	// net message subscribe
 	opts.NetSecureUserFactionSubscribeCommand(HubKeyBattleAbilityProgressBarUpdated, arena.FactionProgressBarUpdateSubscribeHandler)
 	opts.NetSecureUserFactionSubscribeCommand(HubKeyAbilityPriceUpdated, arena.FactionAbilityPriceUpdateSubscribeHandler)
+	opts.NetSecureUserFactionSubscribeCommand(HubKeyWarMachineLocationUpdated, arena.WarMachineLocationUpdateSubscribeHandler)
 
 	go func() {
 		err = server.Serve(l)
@@ -451,6 +453,25 @@ func (arena *Arena) UserOnline(ctx context.Context, wsc *hub.Client, payload []b
 	return nil
 }
 
+type WarMachineDestroyedUpdatedRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		ParticipantID byte `json:"participantID"`
+	} `json:"payload"`
+}
+
+const HubKeyWarMachineDestroyedUpdated = hub.HubCommandKey("WAR:MACHINE:DESTROYED:UPDATED")
+
+func (arena *Arena) WarMachineDestroyedUpdatedSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &WarMachineDestroyedUpdatedRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return "", "", terror.Error(err, "Invalid request received")
+	}
+
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%x", HubKeyWarMachineDestroyedUpdated, req.Payload.ParticipantID)), nil
+}
+
 const HubKeGabsBribeStageUpdateSubscribe hub.HubCommandKey = "BRIBE:STAGE:UPDATED:SUBSCRIBE"
 
 // GabsBribeStageSubscribe subscribe on bribing stage change
@@ -502,6 +523,10 @@ func (arena *Arena) FactionAbilityPriceUpdateSubscribeHandler(ctx context.Contex
 	}
 
 	return messagebus.NetBusKey(fmt.Sprintf("%s,%s", HubKeyAbilityPriceUpdated, req.Payload.AbilityIdentity)), nil
+}
+
+func (arena *Arena) WarMachineLocationUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.NetBusKey, error) {
+	return messagebus.NetBusKey(HubKeyWarMachineLocationUpdated), nil
 }
 
 const HubKeGabsBribingWinnerSubscribe hub.HubCommandKey = "BRIBE:WINNER:SUBSCRIBE"

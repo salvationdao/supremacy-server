@@ -683,7 +683,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 		messagebus.BusKey(
 			fmt.Sprintf(
 				"%s:%x",
-				hub.HubCommandKey("WAR:MACHINE:DESTROYED:UPDATED"),
+				HubKeyWarMachineDestroyedUpdated,
 				destroyedWarMachine.ParticipantID,
 			),
 		),
