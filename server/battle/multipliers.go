@@ -50,7 +50,7 @@ func (ms *MultiplierSystem) init() {
 
 	// fetch all active user multipliers
 
-	usermultipliers, err := boiler.UserMultipliers(qm.Where(`until_battle_number >= ?`, ms.battle.battle.BattleNumber)).All(gamedb.StdConn)
+	usermultipliers, err := boiler.UserMultipliers(qm.Where(`until_battle_number >= ?`, ms.battle.BattleNumber)).All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Panic().Err(err).Msgf("unable to retrieve user's multipliers from database")
 	}
@@ -91,14 +91,14 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 	//fetch data
 	//fetch contributions
 
-	contributions, err := boiler.BattleContributions(qm.Where(`battle_id = ?`, ms.battle.battle.ID)).All(gamedb.StdConn)
+	contributions, err := boiler.BattleContributions(qm.Where(`battle_id = ?`, ms.battle.ID)).All(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Panic().Err(err).Msgf("unable to retrieve trigger information from database")
 	}
 
 	//fetch triggers
 	triggers, err := boiler.BattleAbilityTriggers(
-		qm.Where(`battle_id = ?`, ms.battle.battle.ID),
+		qm.Where(`battle_id = ?`, ms.battle.ID),
 		qm.And(`is_all_syndicates = true`),
 		qm.OrderBy(`triggered_at DESC`),
 	).All(gamedb.StdConn)
@@ -322,8 +322,8 @@ winwar:
 		for m, _ := range mlts {
 			mlt := &boiler.UserMultiplier{
 				PlayerID:          pid,
-				FromBattleNumber:  ms.battle.battle.BattleNumber,
-				UntilBattleNumber: ms.battle.battle.BattleNumber + m.ForGames,
+				FromBattleNumber:  ms.battle.BattleNumber,
+				UntilBattleNumber: ms.battle.BattleNumber + m.ForGames,
 				MultiplierID:      m.ID,
 				Value:             m.Value,
 			}
