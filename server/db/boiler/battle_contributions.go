@@ -35,6 +35,7 @@ type BattleContribution struct {
 	Amount            decimal.Decimal `boiler:"amount" boil:"amount" json:"amount" toml:"amount" yaml:"amount"`
 	ContributedAt     time.Time       `boiler:"contributed_at" boil:"contributed_at" json:"contributed_at" toml:"contributed_at" yaml:"contributed_at"`
 	ProcessedAt       null.Time       `boiler:"processed_at" boil:"processed_at" json:"processed_at,omitempty" toml:"processed_at" yaml:"processed_at,omitempty"`
+	TransactionID     null.String     `boiler:"transaction_id" boil:"transaction_id" json:"transaction_id,omitempty" toml:"transaction_id" yaml:"transaction_id,omitempty"`
 
 	R *battleContributionR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleContributionL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -52,6 +53,7 @@ var BattleContributionColumns = struct {
 	Amount            string
 	ContributedAt     string
 	ProcessedAt       string
+	TransactionID     string
 }{
 	ID:                "id",
 	BattleID:          "battle_id",
@@ -64,6 +66,7 @@ var BattleContributionColumns = struct {
 	Amount:            "amount",
 	ContributedAt:     "contributed_at",
 	ProcessedAt:       "processed_at",
+	TransactionID:     "transaction_id",
 }
 
 var BattleContributionTableColumns = struct {
@@ -78,6 +81,7 @@ var BattleContributionTableColumns = struct {
 	Amount            string
 	ContributedAt     string
 	ProcessedAt       string
+	TransactionID     string
 }{
 	ID:                "battle_contributions.id",
 	BattleID:          "battle_contributions.battle_id",
@@ -90,6 +94,7 @@ var BattleContributionTableColumns = struct {
 	Amount:            "battle_contributions.amount",
 	ContributedAt:     "battle_contributions.contributed_at",
 	ProcessedAt:       "battle_contributions.processed_at",
+	TransactionID:     "battle_contributions.transaction_id",
 }
 
 // Generated where
@@ -127,6 +132,7 @@ var BattleContributionWhere = struct {
 	Amount            whereHelperdecimal_Decimal
 	ContributedAt     whereHelpertime_Time
 	ProcessedAt       whereHelpernull_Time
+	TransactionID     whereHelpernull_String
 }{
 	ID:                whereHelperstring{field: "\"battle_contributions\".\"id\""},
 	BattleID:          whereHelperstring{field: "\"battle_contributions\".\"battle_id\""},
@@ -139,6 +145,7 @@ var BattleContributionWhere = struct {
 	Amount:            whereHelperdecimal_Decimal{field: "\"battle_contributions\".\"amount\""},
 	ContributedAt:     whereHelpertime_Time{field: "\"battle_contributions\".\"contributed_at\""},
 	ProcessedAt:       whereHelpernull_Time{field: "\"battle_contributions\".\"processed_at\""},
+	TransactionID:     whereHelpernull_String{field: "\"battle_contributions\".\"transaction_id\""},
 }
 
 // BattleContributionRels is where relationship names are stored.
@@ -168,9 +175,9 @@ func (*battleContributionR) NewStruct() *battleContributionR {
 type battleContributionL struct{}
 
 var (
-	battleContributionAllColumns            = []string{"id", "battle_id", "player_id", "ability_offering_id", "did_trigger", "faction_id", "ability_label", "is_all_syndicates", "amount", "contributed_at", "processed_at"}
+	battleContributionAllColumns            = []string{"id", "battle_id", "player_id", "ability_offering_id", "did_trigger", "faction_id", "ability_label", "is_all_syndicates", "amount", "contributed_at", "processed_at", "transaction_id"}
 	battleContributionColumnsWithoutDefault = []string{"battle_id", "player_id", "ability_offering_id", "faction_id", "ability_label", "amount"}
-	battleContributionColumnsWithDefault    = []string{"id", "did_trigger", "is_all_syndicates", "contributed_at", "processed_at"}
+	battleContributionColumnsWithDefault    = []string{"id", "did_trigger", "is_all_syndicates", "contributed_at", "processed_at", "transaction_id"}
 	battleContributionPrimaryKeyColumns     = []string{"id"}
 	battleContributionGeneratedColumns      = []string{}
 )

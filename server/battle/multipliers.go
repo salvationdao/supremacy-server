@@ -252,6 +252,8 @@ outer:
 	factions := map[string]string{}
 	abilitySums := map[string]map[string]decimal.Decimal{}
 
+	isGabs := map[string]bool{}
+
 	for _, contribution := range contributions {
 		factions[contribution.PlayerID] = contribution.FactionID
 		if _, ok := sums[contribution.PlayerID]; !ok {
@@ -259,6 +261,8 @@ outer:
 		}
 		sums[contribution.PlayerID] = sums[contribution.PlayerID].Add(contribution.Amount)
 		total = total.Add(contribution.Amount)
+
+		isGabs[contribution.AbilityOfferingID] = contribution.IsAllSyndicates
 
 		if _, ok := abilitySums[contribution.AbilityOfferingID]; !ok {
 			abilitySums[contribution.AbilityOfferingID] = map[string]decimal.Decimal{}
@@ -286,6 +290,9 @@ outer:
 
 	// fool and his money
 	for abilityID, abPlayers := range abilitySums {
+		if !isGabs[abilityID] {
+			continue
+		}
 		topPlayerAmount := decimal.New(0, 18)
 		topPlayerID := ""
 		for playerID, amount := range abPlayers {
