@@ -43,6 +43,8 @@ type Battle struct {
 	spoils      *SpoilsOfWar
 	rpcClient   *rpcclient.XrpcClient
 	startedAt   time.Time
+
+	destroyedWarMachineMap map[byte]*WMDestroyedRecord
 	*boiler.Battle
 }
 
@@ -572,14 +574,6 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 			Msg("can't update battle mech")
 	}
 
-	// prepare destroyed record
-	destroyedRecord := &WMDestroyedRecord{
-		DestroyedWarMachine: destroyedWarMachine,
-		KilledByWarMachine:  killByWarMachine,
-		KilledBy:            dp.DestroyedWarMachineEvent.KilledBy,
-		DamageRecords:       []*DamageRecord{},
-	}
-
 	// calc total damage and merge the duplicated damage source
 	totalDamage := 0
 	newDamageHistory := []*DamageHistory{}
@@ -624,6 +618,21 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 		}
 	}
 
+	wmd := &WMDestroyedRecord{
+		DestroyedWarMachine: &WarMachineBrief{
+			ParticipantID: destroyedWarMachine.ParticipantID,
+			ImageUrl:      destroyedWarMachine.Image,
+			ImageAvatar:   destroyedWarMachine.ImageAvatar, // TODO: should be imageavatar
+			Name:          destroyedWarMachine.Name,
+			Hash:          destroyedWarMachine.Hash,
+			Faction: &FactionBrief{
+				ID:    destroyedWarMachine.FactionID,
+				Label: destroyedWarMachine.Faction.Label,
+				Theme: destroyedWarMachine.Faction.Theme,
+			},
+		},
+		KilledBy: dp.DestroyedWarMachineEvent.KilledBy,
+	}
 	// get total damage amount for calculating percentage
 	for _, damage := range newDamageHistory {
 		damageRecord := &DamageRecord{
@@ -633,45 +642,31 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 		if damage.InstigatorHash != "" {
 			for _, wm := range btl.WarMachines {
 				if wm.Hash == damage.InstigatorHash {
-					damageRecord.CausedByWarMachineHash = wm.Hash
+					damageRecord.CausedByWarMachine = &WarMachineBrief{
+						ParticipantID: wm.ParticipantID,
+						ImageUrl:      wm.Image,
+						ImageAvatar:   wm.ImageAvatar,
+						Name:          wm.Name,
+						Hash:          wm.Hash,
+						Faction: &FactionBrief{
+							ID:    wm.FactionID,
+							Label: wm.Faction.Label,
+							Theme: wm.Faction.Theme,
+						},
+					}
 				}
 			}
 		}
-		destroyedRecord.DamageRecords = append(destroyedRecord.DamageRecords, damageRecord)
-	}
-
-	//// cache record in battle, for future subscription
-	//btl.WarMachineDestroyedRecordMap[destroyedWarMachine.ParticipantID] = destroyedRecord
-
-	// send event to hub clients
-	//ba.Events.Trigger(ctx, EventWarMachineDestroyed, &EventData{
-	//	WarMachineDestroyedRecord: destroyedRecord,
-	//})
-
-	wmd := struct {
-		DestroyedWarMachine *WarMachineBrief `json:"destroyedWarMachine"`
-		KilledByWarMachine  *WarMachineBrief `json:"killedByWarMachineID,omitempty"`
-		KilledBy            string           `json:"killedBy"`
-	}{
-		DestroyedWarMachine: &WarMachineBrief{
-			ImageUrl:    destroyedWarMachine.Image,
-			ImageAvatar: destroyedWarMachine.Image, // TODO: should be imageavatar
-			Name:        destroyedWarMachine.Name,
-			Hash:        destroyedWarMachine.Hash,
-			Faction: &FactionBrief{
-				ID:    destroyedWarMachine.FactionID,
-				Label: destroyedWarMachine.Faction.Label,
-				Theme: destroyedWarMachine.Faction.Theme,
-			},
-		},
+		wmd.DamageRecords = append(wmd.DamageRecords, damageRecord)
 	}
 
 	if killByWarMachine != nil {
 		wmd.KilledByWarMachine = &WarMachineBrief{
-			ImageUrl:    killByWarMachine.Image,
-			ImageAvatar: killByWarMachine.Image, // TODO: should be imageavatar
-			Name:        killByWarMachine.Name,
-			Hash:        killByWarMachine.Hash,
+			ParticipantID: killByWarMachine.ParticipantID,
+			ImageUrl:      killByWarMachine.Image,
+			ImageAvatar:   killByWarMachine.ImageAvatar,
+			Name:          killByWarMachine.Name,
+			Hash:          killByWarMachine.Hash,
 			Faction: &FactionBrief{
 				ID:    killByWarMachine.FactionID,
 				Label: killByWarMachine.Faction.Label,
@@ -679,6 +674,9 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 			},
 		}
 	}
+
+	// cache destroyed war machine
+	btl.destroyedWarMachineMap[wmd.DestroyedWarMachine.ParticipantID] = wmd
 
 	btl.arena.messageBus.Send(context.Background(),
 		messagebus.BusKey(

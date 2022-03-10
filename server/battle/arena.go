@@ -469,6 +469,12 @@ func (arena *Arena) WarMachineDestroyedUpdatedSubscribeHandler(ctx context.Conte
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
+	if arena.currentBattle != nil {
+		if wmd, ok := arena.currentBattle.destroyedWarMachineMap[req.Payload.ParticipantID]; ok {
+			reply(wmd)
+		}
+	}
+
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%x", HubKeyWarMachineDestroyedUpdated, req.Payload.ParticipantID)), nil
 }
 
@@ -695,6 +701,7 @@ func (arena *Arena) Battle() *Battle {
 		users: usersMap{
 			m: make(map[uuid.UUID]*BattleUser),
 		},
+		destroyedWarMachineMap: make(map[byte]*WMDestroyedRecord),
 	}
 
 	err = btl.Load()
