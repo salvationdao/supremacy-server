@@ -189,10 +189,9 @@ func main() {
 						Addrs: rpcAddrs,
 					}
 					gamelog.L.Info().Msg("start rpc server")
-					rpcServer := &comms.XrpcServer{
-						PassportRPC: *rpcClient,
-					}
+					rpcServer := &comms.XrpcServer{}
 					err = rpcServer.Listen(
+						rpcClient,
 						"0.0.0.0:10011",
 						"0.0.0.0:10012",
 						"0.0.0.0:10013",

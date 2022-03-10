@@ -10,16 +10,25 @@ import (
 	"github.com/ninja-software/terror/v2"
 )
 
+// XrpcServer holds all the listeners together
 type XrpcServer struct {
-	PassportRPC XrpcClient     // common resource use by XrpcServer.clients
 	isListening bool           // is server initialized and in use?
 	listeners   []net.Listener // listening sockets
 	mutex       sync.Mutex     // basic lock for listeners modification
 }
 
-type RPCListener int
+// RPCListener holds the RPC answer function
+type RPCListener struct {
+	PassportRPC *XrpcClient
+}
 
-func (s *XrpcServer) Listen(addrStrs ...string) error {
+func (s *XrpcServer) Listen(
+	passportRPC *XrpcClient,
+	addrStrs ...string,
+) error {
+	if len(addrStrs) == 0 {
+		return terror.Error(fmt.Errorf("no rpc listen given, minimum of 1"))
+	}
 	s.listeners = make([]net.Listener, len(addrStrs))
 
 	for i, a := range addrStrs {
@@ -34,6 +43,7 @@ func (s *XrpcServer) Listen(addrStrs ...string) error {
 		}
 
 		listener := new(RPCListener)
+		listener.PassportRPC = passportRPC
 		rpc.Register(listener)
 		s.mutex.Lock()
 		s.listeners[i] = inbound
@@ -65,4 +75,10 @@ func (s *XrpcServer) Shutdown() error {
 
 	s.isListening = false
 	return lastError
+}
+
+// Ping to make sure it works and healthy
+func (s *RPCListener) Ping(req bool, resp *string) error {
+	*resp = "PONG from GAMESERVER"
+	return nil
 }
