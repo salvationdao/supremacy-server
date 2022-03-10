@@ -80,7 +80,7 @@ func (sow *SpoilsOfWar) Run() {
 }
 
 func (sow *SpoilsOfWar) Flush() error {
-	warchest, err := sow.ProcessSpoils(sow.battle.BattleNumber)
+	warchest, err := sow.ProcessSpoils(sow.battle.BattleNumber - 1)
 	if err != nil {
 		return terror.Error(err, "can't retrieve last battle's spoils")
 	}
