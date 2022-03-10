@@ -476,7 +476,7 @@ func (spoilsOfWarL) LoadBattle(e boil.Executor, singular bool, maybeSpoilsOfWar 
 		if foreign.R == nil {
 			foreign.R = &battleR{}
 		}
-		foreign.R.SpoilsOfWars = append(foreign.R.SpoilsOfWars, object)
+		foreign.R.SpoilsOfWar = object
 		return nil
 	}
 
@@ -487,7 +487,7 @@ func (spoilsOfWarL) LoadBattle(e boil.Executor, singular bool, maybeSpoilsOfWar 
 				if foreign.R == nil {
 					foreign.R = &battleR{}
 				}
-				foreign.R.SpoilsOfWars = append(foreign.R.SpoilsOfWars, local)
+				foreign.R.SpoilsOfWar = local
 				break
 			}
 		}
@@ -580,7 +580,7 @@ func (spoilsOfWarL) LoadBattleNumberBattle(e boil.Executor, singular bool, maybe
 		if foreign.R == nil {
 			foreign.R = &battleR{}
 		}
-		foreign.R.BattleNumberSpoilsOfWars = append(foreign.R.BattleNumberSpoilsOfWars, object)
+		foreign.R.BattleNumberSpoilsOfWar = object
 		return nil
 	}
 
@@ -591,7 +591,7 @@ func (spoilsOfWarL) LoadBattleNumberBattle(e boil.Executor, singular bool, maybe
 				if foreign.R == nil {
 					foreign.R = &battleR{}
 				}
-				foreign.R.BattleNumberSpoilsOfWars = append(foreign.R.BattleNumberSpoilsOfWars, local)
+				foreign.R.BattleNumberSpoilsOfWar = local
 				break
 			}
 		}
@@ -602,7 +602,7 @@ func (spoilsOfWarL) LoadBattleNumberBattle(e boil.Executor, singular bool, maybe
 
 // SetBattle of the spoilsOfWar to the related item.
 // Sets o.R.Battle to related.
-// Adds o to related.R.SpoilsOfWars.
+// Adds o to related.R.SpoilsOfWar.
 func (o *SpoilsOfWar) SetBattle(exec boil.Executor, insert bool, related *Battle) error {
 	var err error
 	if insert {
@@ -637,10 +637,10 @@ func (o *SpoilsOfWar) SetBattle(exec boil.Executor, insert bool, related *Battle
 
 	if related.R == nil {
 		related.R = &battleR{
-			SpoilsOfWars: SpoilsOfWarSlice{o},
+			SpoilsOfWar: o,
 		}
 	} else {
-		related.R.SpoilsOfWars = append(related.R.SpoilsOfWars, o)
+		related.R.SpoilsOfWar = o
 	}
 
 	return nil
@@ -648,7 +648,7 @@ func (o *SpoilsOfWar) SetBattle(exec boil.Executor, insert bool, related *Battle
 
 // SetBattleNumberBattle of the spoilsOfWar to the related item.
 // Sets o.R.BattleNumberBattle to related.
-// Adds o to related.R.BattleNumberSpoilsOfWars.
+// Adds o to related.R.BattleNumberSpoilsOfWar.
 func (o *SpoilsOfWar) SetBattleNumberBattle(exec boil.Executor, insert bool, related *Battle) error {
 	var err error
 	if insert {
@@ -683,10 +683,10 @@ func (o *SpoilsOfWar) SetBattleNumberBattle(exec boil.Executor, insert bool, rel
 
 	if related.R == nil {
 		related.R = &battleR{
-			BattleNumberSpoilsOfWars: SpoilsOfWarSlice{o},
+			BattleNumberSpoilsOfWar: o,
 		}
 	} else {
-		related.R.BattleNumberSpoilsOfWars = append(related.R.BattleNumberSpoilsOfWars, o)
+		related.R.BattleNumberSpoilsOfWar = o
 	}
 
 	return nil

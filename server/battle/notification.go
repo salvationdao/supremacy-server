@@ -50,23 +50,36 @@ const (
 )
 
 type GameNotificationLocationSelect struct {
-	Type        LocationSelectType   `json:"type"`
-	X           *int                 `json:"x,omitempty"`
-	Y           *int                 `json:"y,omitempty"`
-	CurrentUser *server.UserBrief    `json:"current_user,omitempty"`
-	NextUser    *server.UserBrief    `json:"next_user,omitempty"`
-	Ability     *server.AbilityBrief `json:"ability,omitempty"`
+	Type        LocationSelectType `json:"type"`
+	X           *int               `json:"x,omitempty"`
+	Y           *int               `json:"y,omitempty"`
+	CurrentUser *UserBrief         `json:"currentUser,omitempty"`
+	NextUser    *UserBrief         `json:"nextUser,omitempty"`
+	Ability     *AbilityBrief      `json:"ability,omitempty"`
 }
 
 type GameNotificationAbility struct {
-	User    *server.UserBrief    `json:"user,omitempty"`
-	Ability *server.AbilityBrief `json:"ability,omitempty"`
+	User    *UserBrief    `json:"user,omitempty"`
+	Ability *AbilityBrief `json:"ability,omitempty"`
 }
 
 type GameNotificationWarMachineAbility struct {
-	User       *server.UserBrief    `json:"user,omitempty"`
-	Ability    *server.AbilityBrief `json:"ability,omitempty"`
-	WarMachine *WarMachineBrief     `json:"war_machine,omitempty"`
+	User       *UserBrief       `json:"user,omitempty"`
+	Ability    *AbilityBrief    `json:"ability,omitempty"`
+	WarMachine *WarMachineBrief `json:"warMachine,omitempty"`
+}
+
+type AbilityBrief struct {
+	Label    string `json:"label"`
+	ImageUrl string `json:"image_url"`
+	Colour   string `json:"colour"`
+}
+
+type UserBrief struct {
+	ID       uuid.UUID     `json:"id"`
+	Username string        `json:"username"`
+	AvatarID *string       `json:"avatar_id,omitempty"`
+	Faction  *FactionBrief `json:"faction"`
 }
 
 type GameNotification struct {

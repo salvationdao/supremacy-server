@@ -288,7 +288,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 
 								//build notification
 								gameNotification := &GameNotificationWarMachineAbility{
-									Ability: &server.AbilityBrief{
+									Ability: &AbilityBrief{
 										Label:    ability.Label,
 										ImageUrl: ability.ImageUrl,
 										Colour:   ability.Colour,
@@ -296,7 +296,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 								}
 
 								// broadcast notification
-								if ability.ParticipantID != nil {
+								if ability.ParticipantID == nil {
 									as.battle.arena.BroadcastGameNotificationAbility(GameNotificationTypeFactionAbility, &GameNotificationAbility{
 										Ability: gameNotification.Ability,
 									})
@@ -406,20 +406,20 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 
 								//build notification
 								gameNotification := &GameNotificationWarMachineAbility{
-									User: &server.UserBrief{
+									User: &UserBrief{
 										ID:       cont.userID,
 										Username: player.Username.String,
-										Faction: &server.FactionBrief{
+										Faction: &FactionBrief{
 											Label:      faction.Label,
-											LogoBlobID: server.BlobID(uuid.FromStringOrNil(FactionLogos[faction.ID])),
-											Theme: &server.FactionTheme{
+											LogoBlobID: FactionLogos[faction.ID],
+											Theme: &FactionTheme{
 												Primary:    faction.PrimaryColor,
 												Secondary:  faction.SecondaryColor,
 												Background: faction.BackgroundColor,
 											},
 										},
 									},
-									Ability: &server.AbilityBrief{
+									Ability: &AbilityBrief{
 										Label:    ability.Label,
 										ImageUrl: ability.ImageUrl,
 										Colour:   ability.Colour,
@@ -427,7 +427,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 								}
 
 								// broadcast notification
-								if ability.ParticipantID != nil {
+								if ability.ParticipantID == nil {
 									as.battle.arena.BroadcastGameNotificationAbility(GameNotificationTypeFactionAbility, &GameNotificationAbility{
 										Ability: gameNotification.Ability,
 										User:    gameNotification.User,
@@ -751,7 +751,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 					// broadcast no ability
 					as.battle.arena.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
 						Type: LocationSelectTypeCancelledNoPlayer,
-						Ability: &server.AbilityBrief{
+						Ability: &AbilityBrief{
 							Label:    as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID].Label,
 							ImageUrl: as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID].ImageUrl,
 							Colour:   as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID].Colour,
@@ -784,18 +784,18 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 						// broadcast no ability
 						as.battle.arena.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
 							Type: LocationSelectTypeFailedTimeout,
-							Ability: &server.AbilityBrief{
+							Ability: &AbilityBrief{
 								Label:    as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID].Label,
 								ImageUrl: as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID].ImageUrl,
 								Colour:   as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID].Colour,
 							},
-							NextUser: &server.UserBrief{
+							NextUser: &UserBrief{
 								ID:       as.locationDeciders.list[0],
 								Username: player.Username.String,
-								Faction: &server.FactionBrief{
+								Faction: &FactionBrief{
 									Label:      faction.Label,
-									LogoBlobID: server.BlobID(uuid.FromStringOrNil(FactionLogos[faction.ID])),
-									Theme: &server.FactionTheme{
+									LogoBlobID: FactionLogos[faction.ID],
+									Theme: &FactionTheme{
 										Primary:    faction.PrimaryColor,
 										Secondary:  faction.SecondaryColor,
 										Background: faction.BackgroundColor,
@@ -873,18 +873,18 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 							gamelog.L.Error().Err(err).Msg("failed to get player faction")
 						} else {
 							as.battle.arena.BroadcastGameNotificationAbility(GameNotificationTypeBattleAbility, &GameNotificationAbility{
-								Ability: &server.AbilityBrief{
+								Ability: &AbilityBrief{
 									Label:    factionAbility.Label,
 									ImageUrl: factionAbility.ImageUrl,
 									Colour:   factionAbility.Colour,
 								},
-								User: &server.UserBrief{
+								User: &UserBrief{
 									ID:       cont.userID,
 									Username: player.Username.String,
-									Faction: &server.FactionBrief{
+									Faction: &FactionBrief{
 										Label:      faction.Label,
-										LogoBlobID: server.BlobID(uuid.FromStringOrNil(FactionLogos[faction.ID])),
-										Theme: &server.FactionTheme{
+										LogoBlobID: FactionLogos[faction.ID],
+										Theme: &FactionTheme{
 											Primary:    faction.PrimaryColor,
 											Secondary:  faction.SecondaryColor,
 											Background: faction.BackgroundColor,
@@ -1099,7 +1099,7 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 
 		// get player
 		as.battle.arena.BroadcastGameNotificationAbility(GameNotificationTypeBattleAbility, &GameNotificationAbility{
-			Ability: &server.AbilityBrief{
+			Ability: &AbilityBrief{
 				Label:    ability.Label,
 				ImageUrl: ability.ImageUrl,
 				Colour:   ability.Colour,
@@ -1115,7 +1115,7 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 			// broadcast no ability
 			as.battle.arena.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
 				Type: LocationSelectTypeCancelledNoPlayer,
-				Ability: &server.AbilityBrief{
+				Ability: &AbilityBrief{
 					Label:    ability.Label,
 					ImageUrl: ability.ImageUrl,
 					Colour:   ability.Colour,
@@ -1148,18 +1148,18 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 				// broadcast no ability
 				as.battle.arena.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
 					Type: LocationSelectTypeFailedTimeout,
-					Ability: &server.AbilityBrief{
+					Ability: &AbilityBrief{
 						Label:    ability.Label,
 						ImageUrl: ability.ImageUrl,
 						Colour:   ability.Colour,
 					},
-					NextUser: &server.UserBrief{
+					NextUser: &UserBrief{
 						ID:       as.locationDeciders.list[0],
 						Username: player.Username.String,
-						Faction: &server.FactionBrief{
+						Faction: &FactionBrief{
 							Label:      faction.Label,
-							LogoBlobID: server.BlobID(uuid.FromStringOrNil(FactionLogos[faction.ID])),
-							Theme: &server.FactionTheme{
+							LogoBlobID: FactionLogos[faction.ID],
+							Theme: &FactionTheme{
 								Primary:    faction.PrimaryColor,
 								Secondary:  faction.SecondaryColor,
 								Background: faction.BackgroundColor,
@@ -1362,18 +1362,18 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 		Type: LocationSelectTypeTrigger,
 		X:    &x,
 		Y:    &y,
-		Ability: &server.AbilityBrief{
+		Ability: &AbilityBrief{
 			Label:    ability.Label,
 			ImageUrl: ability.ImageUrl,
 			Colour:   ability.Colour,
 		},
-		CurrentUser: &server.UserBrief{
+		CurrentUser: &UserBrief{
 			ID:       userID,
 			Username: player.Username.String,
-			Faction: &server.FactionBrief{
+			Faction: &FactionBrief{
 				Label:      faction.Label,
-				LogoBlobID: server.BlobID(uuid.FromStringOrNil(FactionLogos[as.battleAbilityPool.TriggeredFactionID.String()])),
-				Theme: &server.FactionTheme{
+				LogoBlobID: FactionLogos[as.battleAbilityPool.TriggeredFactionID.String()],
+				Theme: &FactionTheme{
 					Primary:    faction.PrimaryColor,
 					Secondary:  faction.SecondaryColor,
 					Background: faction.BackgroundColor,
