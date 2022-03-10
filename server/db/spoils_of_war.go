@@ -57,7 +57,7 @@ func Spoils(battleID string) ([]*boiler.BattleContribution, decimal.Decimal, err
 
 	accumulator := decimal.Zero
 	for _, contrib := range contributions {
-		accumulator.Add(contrib.Amount)
+		accumulator = accumulator.Add(contrib.Amount)
 	}
 	return contributions, accumulator, nil
 }
