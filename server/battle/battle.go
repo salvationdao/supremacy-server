@@ -234,6 +234,13 @@ type GameSettingsResponse struct {
 	WarMachineLocation []byte          `json:"war_machine_location"`
 }
 
+type ViewerLiveCount struct {
+	RedMountain int64 `json:"red_mountain"`
+	Boston      int64 `json:"boston"`
+	Zaibatsu    int64 `json:"zaibatsu"`
+	Other       int64 `json:"other"`
+}
+
 func (btl *Battle) userOnline(user *BattleUser, wsc *hub.Client) {
 	u, ok := btl.users.User(user.ID)
 	if !ok {
@@ -244,6 +251,32 @@ func (btl *Battle) userOnline(user *BattleUser, wsc *hub.Client) {
 		u.wsClient[wsc] = true
 		u.Unlock()
 	}
+
+	resp := &ViewerLiveCount{
+		RedMountain: 0,
+		Boston:      0,
+		Zaibatsu:    0,
+		Other:       0,
+	}
+	btl.users.Range(func(user *BattleUser) bool {
+		if faction, ok := FactionNames[user.FactionID]; ok {
+			switch faction {
+			case "RedMountain":
+				resp.RedMountain++
+			case "Boston":
+				resp.Boston++
+			case "Zaibatsu":
+				resp.Zaibatsu++
+			default:
+				resp.Other++
+			}
+		} else {
+			resp.Other++
+		}
+		return true
+	})
+
+	btl.users.Send(HubKeyViewerLiveCountUpdated, resp)
 }
 
 func (btl *Battle) updatePayload() *GameSettingsResponse {

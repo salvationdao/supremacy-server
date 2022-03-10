@@ -105,13 +105,14 @@ func NewArena(opts *Opts) *Arena {
 	}
 
 	opts.SecureUserFactionCommand(WSJoinQueue, arena.Join)
-	opts.Command(HubKeyGameUserOnline, arena.UserOnline)
+	opts.SecureUserCommand(HubKeyGameUserOnline, arena.UserOnline)
 
 	// subscribe functions
 	opts.SubscribeCommand(HubKeyGameSettingsUpdated, arena.SendSettings)
 
 	opts.SubscribeCommand(HubKeyGameNotification, arena.GameNotificationSubscribeHandler)
 	opts.SubscribeCommand(HubKeyMultiplierUpdate, arena.HubKeyMultiplierUpdate)
+	opts.SecureUserSubscribeCommand(HubKeyViewerLiveCountUpdated, arena.ViewerLiveCountUpdateSubscribeHandler)
 
 	// battle ability related (bribing)
 	opts.SecureUserFactionCommand(HubKeyBattleAbilityBribe, arena.BattleAbilityBribe)
