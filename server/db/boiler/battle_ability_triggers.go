@@ -23,52 +23,57 @@ import (
 
 // BattleAbilityTrigger is an object representing the database table.
 type BattleAbilityTrigger struct {
-	ID            string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	PlayerID      null.String `boiler:"player_id" boil:"player_id" json:"player_id,omitempty" toml:"player_id" yaml:"player_id,omitempty"`
-	BattleID      string      `boiler:"battle_id" boil:"battle_id" json:"battle_id" toml:"battle_id" yaml:"battle_id"`
-	FactionID     string      `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
-	TriggeredAt   time.Time   `boiler:"triggered_at" boil:"triggered_at" json:"triggered_at" toml:"triggered_at" yaml:"triggered_at"`
-	TriggerLabel  string      `boiler:"trigger_label" boil:"trigger_label" json:"trigger_label" toml:"trigger_label" yaml:"trigger_label"`
-	GameAbilityID string      `boiler:"game_ability_id" boil:"game_ability_id" json:"game_ability_id" toml:"game_ability_id" yaml:"game_ability_id"`
+	ID              string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	PlayerID        null.String `boiler:"player_id" boil:"player_id" json:"player_id,omitempty" toml:"player_id" yaml:"player_id,omitempty"`
+	BattleID        string      `boiler:"battle_id" boil:"battle_id" json:"battle_id" toml:"battle_id" yaml:"battle_id"`
+	FactionID       string      `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
+	IsAllSyndicates bool        `boiler:"is_all_syndicates" boil:"is_all_syndicates" json:"is_all_syndicates" toml:"is_all_syndicates" yaml:"is_all_syndicates"`
+	TriggeredAt     time.Time   `boiler:"triggered_at" boil:"triggered_at" json:"triggered_at" toml:"triggered_at" yaml:"triggered_at"`
+	TriggerLabel    string      `boiler:"trigger_label" boil:"trigger_label" json:"trigger_label" toml:"trigger_label" yaml:"trigger_label"`
+	GameAbilityID   string      `boiler:"game_ability_id" boil:"game_ability_id" json:"game_ability_id" toml:"game_ability_id" yaml:"game_ability_id"`
 
 	R *battleAbilityTriggerR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleAbilityTriggerL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var BattleAbilityTriggerColumns = struct {
-	ID            string
-	PlayerID      string
-	BattleID      string
-	FactionID     string
-	TriggeredAt   string
-	TriggerLabel  string
-	GameAbilityID string
+	ID              string
+	PlayerID        string
+	BattleID        string
+	FactionID       string
+	IsAllSyndicates string
+	TriggeredAt     string
+	TriggerLabel    string
+	GameAbilityID   string
 }{
-	ID:            "id",
-	PlayerID:      "player_id",
-	BattleID:      "battle_id",
-	FactionID:     "faction_id",
-	TriggeredAt:   "triggered_at",
-	TriggerLabel:  "trigger_label",
-	GameAbilityID: "game_ability_id",
+	ID:              "id",
+	PlayerID:        "player_id",
+	BattleID:        "battle_id",
+	FactionID:       "faction_id",
+	IsAllSyndicates: "is_all_syndicates",
+	TriggeredAt:     "triggered_at",
+	TriggerLabel:    "trigger_label",
+	GameAbilityID:   "game_ability_id",
 }
 
 var BattleAbilityTriggerTableColumns = struct {
-	ID            string
-	PlayerID      string
-	BattleID      string
-	FactionID     string
-	TriggeredAt   string
-	TriggerLabel  string
-	GameAbilityID string
+	ID              string
+	PlayerID        string
+	BattleID        string
+	FactionID       string
+	IsAllSyndicates string
+	TriggeredAt     string
+	TriggerLabel    string
+	GameAbilityID   string
 }{
-	ID:            "battle_ability_triggers.id",
-	PlayerID:      "battle_ability_triggers.player_id",
-	BattleID:      "battle_ability_triggers.battle_id",
-	FactionID:     "battle_ability_triggers.faction_id",
-	TriggeredAt:   "battle_ability_triggers.triggered_at",
-	TriggerLabel:  "battle_ability_triggers.trigger_label",
-	GameAbilityID: "battle_ability_triggers.game_ability_id",
+	ID:              "battle_ability_triggers.id",
+	PlayerID:        "battle_ability_triggers.player_id",
+	BattleID:        "battle_ability_triggers.battle_id",
+	FactionID:       "battle_ability_triggers.faction_id",
+	IsAllSyndicates: "battle_ability_triggers.is_all_syndicates",
+	TriggeredAt:     "battle_ability_triggers.triggered_at",
+	TriggerLabel:    "battle_ability_triggers.trigger_label",
+	GameAbilityID:   "battle_ability_triggers.game_ability_id",
 }
 
 // Generated where
@@ -98,21 +103,23 @@ func (w whereHelpernull_String) IsNull() qm.QueryMod    { return qmhelper.WhereI
 func (w whereHelpernull_String) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
 
 var BattleAbilityTriggerWhere = struct {
-	ID            whereHelperstring
-	PlayerID      whereHelpernull_String
-	BattleID      whereHelperstring
-	FactionID     whereHelperstring
-	TriggeredAt   whereHelpertime_Time
-	TriggerLabel  whereHelperstring
-	GameAbilityID whereHelperstring
+	ID              whereHelperstring
+	PlayerID        whereHelpernull_String
+	BattleID        whereHelperstring
+	FactionID       whereHelperstring
+	IsAllSyndicates whereHelperbool
+	TriggeredAt     whereHelpertime_Time
+	TriggerLabel    whereHelperstring
+	GameAbilityID   whereHelperstring
 }{
-	ID:            whereHelperstring{field: "\"battle_ability_triggers\".\"id\""},
-	PlayerID:      whereHelpernull_String{field: "\"battle_ability_triggers\".\"player_id\""},
-	BattleID:      whereHelperstring{field: "\"battle_ability_triggers\".\"battle_id\""},
-	FactionID:     whereHelperstring{field: "\"battle_ability_triggers\".\"faction_id\""},
-	TriggeredAt:   whereHelpertime_Time{field: "\"battle_ability_triggers\".\"triggered_at\""},
-	TriggerLabel:  whereHelperstring{field: "\"battle_ability_triggers\".\"trigger_label\""},
-	GameAbilityID: whereHelperstring{field: "\"battle_ability_triggers\".\"game_ability_id\""},
+	ID:              whereHelperstring{field: "\"battle_ability_triggers\".\"id\""},
+	PlayerID:        whereHelpernull_String{field: "\"battle_ability_triggers\".\"player_id\""},
+	BattleID:        whereHelperstring{field: "\"battle_ability_triggers\".\"battle_id\""},
+	FactionID:       whereHelperstring{field: "\"battle_ability_triggers\".\"faction_id\""},
+	IsAllSyndicates: whereHelperbool{field: "\"battle_ability_triggers\".\"is_all_syndicates\""},
+	TriggeredAt:     whereHelpertime_Time{field: "\"battle_ability_triggers\".\"triggered_at\""},
+	TriggerLabel:    whereHelperstring{field: "\"battle_ability_triggers\".\"trigger_label\""},
+	GameAbilityID:   whereHelperstring{field: "\"battle_ability_triggers\".\"game_ability_id\""},
 }
 
 // BattleAbilityTriggerRels is where relationship names are stored.
@@ -145,9 +152,9 @@ func (*battleAbilityTriggerR) NewStruct() *battleAbilityTriggerR {
 type battleAbilityTriggerL struct{}
 
 var (
-	battleAbilityTriggerAllColumns            = []string{"id", "player_id", "battle_id", "faction_id", "triggered_at", "trigger_label", "game_ability_id"}
+	battleAbilityTriggerAllColumns            = []string{"id", "player_id", "battle_id", "faction_id", "is_all_syndicates", "triggered_at", "trigger_label", "game_ability_id"}
 	battleAbilityTriggerColumnsWithoutDefault = []string{"battle_id", "faction_id", "trigger_label", "game_ability_id"}
-	battleAbilityTriggerColumnsWithDefault    = []string{"id", "player_id", "triggered_at"}
+	battleAbilityTriggerColumnsWithDefault    = []string{"id", "player_id", "is_all_syndicates", "triggered_at"}
 	battleAbilityTriggerPrimaryKeyColumns     = []string{"id"}
 	battleAbilityTriggerGeneratedColumns      = []string{}
 )
