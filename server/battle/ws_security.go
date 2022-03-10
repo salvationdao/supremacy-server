@@ -67,7 +67,7 @@ type HubSubscribeCommandFunc func(ctx context.Context, client *hub.Client, paylo
 // SubscribeCommand registers a subscription command to the hub
 //
 // If fn is not provided, will use default
-func (opts *Opts) SubscribeCommand(key hub.HubCommandKey, fn ...HubSubscribeCommandFunc) {
+func (opts *Opts) SubscribeCommand(key hub.HubCommandKey, fn HubSubscribeCommandFunc) {
 	opts.SubscribeCommandWithAuthCheck(key, fn, func(wsc *hub.Client) bool {
 		return false
 	})
@@ -76,7 +76,7 @@ func (opts *Opts) SubscribeCommand(key hub.HubCommandKey, fn ...HubSubscribeComm
 // SecureUserSubscribeCommand registers a subscription command to the hub that will only run if the websocket has authenticated
 //
 // If fn is not provided, will use default
-func (opts *Opts) SecureUserSubscribeCommand(key hub.HubCommandKey, fn ...HubSubscribeCommandFunc) {
+func (opts *Opts) SecureUserSubscribeCommand(key hub.HubCommandKey, fn HubSubscribeCommandFunc) {
 	opts.SubscribeCommandWithAuthCheck(key, fn, func(wsc *hub.Client) bool {
 		return wsc.Identifier() == ""
 	})
@@ -85,7 +85,7 @@ func (opts *Opts) SecureUserSubscribeCommand(key hub.HubCommandKey, fn ...HubSub
 // SecureUserFactionSubscribeCommand registers a subscription command to the hub that will only run if the websocket has authenticated
 //
 // If fn is not provided, will use default
-func (opts *Opts) SecureUserFactionSubscribeCommand(key hub.HubCommandKey, fn ...HubSubscribeCommandFunc) {
+func (opts *Opts) SecureUserFactionSubscribeCommand(key hub.HubCommandKey, fn HubSubscribeCommandFunc) {
 	opts.SubscribeCommandWithAuthCheck(key, fn, func(wsc *hub.Client) bool {
 		userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
 		if userID.IsNil() {
@@ -105,7 +105,7 @@ func (opts *Opts) SecureUserFactionSubscribeCommand(key hub.HubCommandKey, fn ..
 // SubscribeCommandWithAuthCheck registers a subscription command to the hub
 //
 // If fn is not provided, will use default
-func (opts *Opts) SubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn []HubSubscribeCommandFunc, authCheck func(wsc *hub.Client) bool) {
+func (opts *Opts) SubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn HubSubscribeCommandFunc, authCheck func(wsc *hub.Client) bool) {
 	var err error
 	busKey := messagebus.BusKey("")
 	transactionID := ""
@@ -115,7 +115,7 @@ func (opts *Opts) SubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn []HubS
 			return terror.Error(terror.ErrForbidden)
 		}
 
-		transactionID, busKey, err = fn[0](ctx, wsc, payload, reply)
+		transactionID, busKey, err = fn(ctx, wsc, payload, reply)
 		if err != nil {
 			return terror.Error(err)
 		}
@@ -158,7 +158,7 @@ type HubNetSubscribeCommandFunc func(ctx context.Context, client *hub.Client, pa
 // NetSubscribeCommand registers a net message subscription command to the hub
 //
 // If fn is not provided, will use default
-func (opts *Opts) NetSubscribeCommand(key hub.HubCommandKey, fn ...HubNetSubscribeCommandFunc) {
+func (opts *Opts) NetSubscribeCommand(key hub.HubCommandKey, fn HubNetSubscribeCommandFunc) {
 	opts.NetSubscribeCommandWithAuthCheck(key, fn, func(wsc *hub.Client) bool {
 		return false
 	})
@@ -167,7 +167,7 @@ func (opts *Opts) NetSubscribeCommand(key hub.HubCommandKey, fn ...HubNetSubscri
 // NetSecureUserSubscribeCommand registers a subscription command to the hub that will only run if the websocket has authenticated
 //
 // If fn is not provided, will use default
-func (opts *Opts) NetSecureUserSubscribeCommand(key hub.HubCommandKey, fn ...HubNetSubscribeCommandFunc) {
+func (opts *Opts) NetSecureUserSubscribeCommand(key hub.HubCommandKey, fn HubNetSubscribeCommandFunc) {
 	opts.NetSubscribeCommandWithAuthCheck(key, fn, func(wsc *hub.Client) bool {
 		return wsc.Identifier() == ""
 	})
@@ -176,7 +176,7 @@ func (opts *Opts) NetSecureUserSubscribeCommand(key hub.HubCommandKey, fn ...Hub
 // NetSecureUserFactionSubscribeCommand registers a subscription command to the hub that will only run if the websocket has authenticated
 //
 // If fn is not provided, will use default
-func (opts *Opts) NetSecureUserFactionSubscribeCommand(key hub.HubCommandKey, fn ...HubNetSubscribeCommandFunc) {
+func (opts *Opts) NetSecureUserFactionSubscribeCommand(key hub.HubCommandKey, fn HubNetSubscribeCommandFunc) {
 	opts.NetSubscribeCommandWithAuthCheck(key, fn, func(wsc *hub.Client) bool {
 		userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
 		if userID.IsNil() {
@@ -196,7 +196,7 @@ func (opts *Opts) NetSecureUserFactionSubscribeCommand(key hub.HubCommandKey, fn
 // NetSubscribeCommandWithAuthCheck registers a net message subscription command to the hub
 //
 // If fn is not provided, will use default
-func (opts *Opts) NetSubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn []HubNetSubscribeCommandFunc, authCheck func(wsc *hub.Client) bool) {
+func (opts *Opts) NetSubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn HubNetSubscribeCommandFunc, authCheck func(wsc *hub.Client) bool) {
 	var err error
 	var busKey messagebus.NetBusKey
 	busKey = ""
@@ -206,7 +206,7 @@ func (opts *Opts) NetSubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn []H
 			return terror.Error(terror.ErrForbidden)
 		}
 
-		busKey, err = fn[0](ctx, wsc, payload)
+		busKey, err = fn(ctx, wsc, payload)
 		if err != nil {
 			return terror.Error(err)
 		}
