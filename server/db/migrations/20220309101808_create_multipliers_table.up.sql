@@ -1,5 +1,7 @@
 DROP TYPE IF EXISTS MULTIPLIER_TYPE_ENUM;
+DROP TYPE IF EXISTS TRIGGER_TYPE_ENUM;
 CREATE TYPE MULTIPLIER_TYPE_ENUM AS ENUM ('spend_average', 'most_sups_lost', 'gab_ability','combo_breaker','player_mech','hours_online','syndicate_win');
+CREATE TYPE TRIGGER_TYPE_ENUM AS ENUM ('AIRSTRIKE', 'NUKE', 'REPAIR');
 
 CREATE TABLE battle_ability_triggers (
     id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
@@ -8,7 +10,7 @@ CREATE TABLE battle_ability_triggers (
     faction_id UUID NOT NULL references factions(id),
     is_all_syndicates BOOL NOT NULL default false,
     triggered_at TIMESTAMPTZ NOT NULL default NOW(),
-    trigger_label TEXT NOT NULL,
+    trigger_label TRIGGER_TYPE_ENUM NOT NULL,
     game_ability_id UUID NOT NULL references game_abilities(id)
 );
 
