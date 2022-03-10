@@ -33,7 +33,7 @@ type UserResp struct {
 }
 
 // Mechs is a heavy func, do not use on a running server
-func (s *S) Mechs(req MechsReq, resp *MechsResp) error {
+func (s *XrpcServer) Mechs(req MechsReq, resp *MechsResp) error {
 	gamelog.L.Debug().Msg("comms.Mechs")
 	mechs, err := boiler.Mechs().All(gamedb.StdConn)
 	if err != nil {
@@ -93,7 +93,7 @@ type MechResp struct {
 	MechContainer *server.MechContainer
 }
 
-func (s *S) Mech(req MechReq, resp *MechResp) error {
+func (s *XrpcServer) Mech(req MechReq, resp *MechResp) error {
 	gamelog.L.Debug().Msg("comms.Mech")
 	result, err := db.Mech(req.MechID)
 	if err != nil {
@@ -110,7 +110,7 @@ type MechsByOwnerIDResp struct {
 	MechContainers []*server.MechContainer
 }
 
-func (s *S) MechsByOwnerID(req MechsByOwnerIDReq, resp *MechsByOwnerIDResp) error {
+func (s *XrpcServer) MechsByOwnerID(req MechsByOwnerIDReq, resp *MechsByOwnerIDResp) error {
 	gamelog.L.Debug().Msg("comms.MechsByOwnerID")
 	result, err := db.MechsByOwnerID(req.OwnerID)
 	if err != nil {
@@ -128,10 +128,10 @@ type MechRegisterResp struct {
 	MechContainer *server.MechContainer
 }
 
-func (s *S) MechRegister(req MechRegisterReq, resp *MechRegisterResp) error {
+func (s *XrpcServer) MechRegister(req MechRegisterReq, resp *MechRegisterResp) error {
 	gamelog.L.Debug().Msg("comms.MechRegister")
 	userResp := &UserResp{}
-	err := s.XrpcClient.Call("S.User", &UserReq{ID: req.OwnerID}, userResp)
+	err := s.PassportRPC.Call("S.User", &UserReq{ID: req.OwnerID}, userResp)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -166,7 +166,7 @@ type MechSetNameResp struct {
 	MechContainer *server.MechContainer
 }
 
-func (s *S) MechSetName(req MechSetNameReq, resp *MechSetNameResp) error {
+func (s *XrpcServer) MechSetName(req MechSetNameReq, resp *MechSetNameResp) error {
 	gamelog.L.Debug().Msg("comms.MechSetName")
 	err := db.MechSetName(req.MechID, req.Name)
 	if err != nil {
@@ -188,7 +188,7 @@ type MechSetOwnerResp struct {
 	MechContainer *server.MechContainer
 }
 
-func (s *S) MechSetOwner(req MechSetOwnerReq, resp *MechSetOwnerResp) error {
+func (s *XrpcServer) MechSetOwner(req MechSetOwnerReq, resp *MechSetOwnerResp) error {
 	gamelog.L.Debug().Msg("comms.MechSetOwner")
 	err := db.MechSetOwner(req.MechID, req.OwnerID)
 	if err != nil {

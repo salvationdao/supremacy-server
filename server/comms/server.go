@@ -9,16 +9,11 @@ import (
 	"github.com/ninja-software/terror/v2"
 )
 
-type S struct {
-	*XrpcClient
+type XrpcServer struct {
+	PassportRPC XrpcClient
 }
 
-func NewServer(c *XrpcClient) *S {
-	result := &S{c}
-	return result
-}
-
-func (s *S) listen(addrStr ...string) ([]net.Listener, error) {
+func listen(addrStr ...string) ([]net.Listener, error) {
 	listeners := make([]net.Listener, len(addrStr))
 	for i, a := range addrStr {
 		gamelog.L.Info().Str("addr", a).Msg("registering RPC server")
@@ -39,8 +34,8 @@ func (s *S) listen(addrStr ...string) ([]net.Listener, error) {
 	return listeners, nil
 }
 
-func Start(s *S) error {
-	listeners, err := s.listen("10011", "10012", "10013", "10014", "10015", "10016")
+func (s *XrpcServer) Listen(addrStr ...string) error {
+	listeners, err := listen(addrStr...)
 	if err != nil {
 		return err
 	}
