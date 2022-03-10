@@ -456,14 +456,14 @@ func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID str
 				Amount:       amount,
 				AmountSent:   decimal.New(0, 18),
 			}
+			err = spoil.Insert(gamedb.StdConn, boil.Infer())
+			gamelog.L.Error().Err(err).Msg("unable to insert spoils")
 		} else {
 			spoil.Amount = spoil.Amount.Add(amount)
-			//broadcast spoil of war total and tick here
-		}
-
-		_, err = spoil.Update(tx, boil.Infer())
-		if err != nil {
-			gamelog.L.Error().Err(err).Msg("unable to insert spoil of war")
+			_, err = spoil.Update(tx, boil.Infer())
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("unable to insert spoil of war")
+			}
 		}
 
 		err = tx.Commit()

@@ -169,12 +169,9 @@ func (sow *SpoilsOfWar) ProcessSpoils(battleNumber int) (*boiler.SpoilsOfWar, er
 	spoils.Amount = sumSpoils
 
 	err = spoils.Upsert(gamedb.StdConn, true, []string{
-		boiler.PlayerColumns.PublicAddress,
-	},
-		boil.Whitelist(
-			boiler.SpoilsOfWarColumns.BattleID,
-			boiler.SpoilsOfWarColumns.BattleNumber,
-		), boil.Infer())
+		boiler.SpoilsOfWarColumns.BattleID,
+		boiler.SpoilsOfWarColumns.BattleNumber,
+	}, boil.Infer(), boil.Infer())
 	if err != nil {
 		return nil, terror.Error(err, "unable to insert spoils of war")
 	}
