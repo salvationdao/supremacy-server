@@ -21,14 +21,14 @@ type XrpcClient struct {
 }
 
 // Gocall plan to deprecate if possible
-func (c *XrpcClient) GoCall(serviceMethod string, args interface{}, reply interface{}, callback func(error)) {
-	go func() {
-		err := c.Call(serviceMethod, args, reply)
-		if callback != nil {
-			callback(err)
-		}
-	}()
-}
+// func (c *XrpcClient) GoCall(serviceMethod string, args interface{}, reply interface{}, callback func(error)) {
+// 	go func() {
+// 		err := c.Call(serviceMethod, args, reply)
+// 		if callback != nil {
+// 			callback(err)
+// 		}
+// 	}()
+// }
 
 // Call calls RPC server and retry, also initialise if it is the first time
 func (c *XrpcClient) Call(serviceMethod string, args interface{}, reply interface{}) error {
@@ -60,8 +60,8 @@ func (c *XrpcClient) Call(serviceMethod string, args interface{}, reply interfac
 	var retryCall uint
 	for {
 		if client == nil {
-			// keep redialing until 30 times
-			client, err = dial(30, c.Addrs[i])
+			// keep redialing until rpc server comes back online
+			client, err = dial(-1, c.Addrs[i])
 			if err != nil {
 				return terror.Error(err)
 			}
