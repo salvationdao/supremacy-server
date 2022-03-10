@@ -8,8 +8,6 @@ import (
 	"server/gamelog"
 
 	"github.com/gofrs/uuid"
-
-	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
