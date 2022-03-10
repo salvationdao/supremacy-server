@@ -5,50 +5,64 @@ import (
 	"net"
 	"net/rpc"
 	"server/gamelog"
+	"sync"
 
 	"github.com/ninja-software/terror/v2"
 )
 
 type XrpcServer struct {
-	PassportRPC XrpcClient
+	PassportRPC XrpcClient     // common resource use by XrpcServer.clients
+	isListening bool           // is server initialized and in use?
+	listeners   []net.Listener // listening sockets
+	mutex       sync.Mutex     // basic lock for listeners modification
 }
 
-func listen(addrStr ...string) ([]net.Listener, error) {
-	listeners := make([]net.Listener, len(addrStr))
-	for i, a := range addrStr {
-		gamelog.L.Info().Str("addr", a).Msg("registering RPC server")
-		addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("0.0.0.0:%s", a))
-		if err != nil {
-			gamelog.L.Err(err).Str("addr", a).Msg("registering RPC server")
-			return listeners, nil
-		}
+type RPCListener int
 
-		l, err := net.ListenTCP("tcp", addr)
-		if err != nil {
-			return listeners, terror.Error(err)
-		}
+func (s *XrpcServer) Listen(addrStrs ...string) error {
+	s.listeners = make([]net.Listener, len(addrStrs))
 
-		listeners[i] = l
-	}
-
-	return listeners, nil
-}
-
-func (s *XrpcServer) Listen(addrStr ...string) error {
-	listeners, err := listen(addrStr...)
-	if err != nil {
-		return err
-	}
-	for _, l := range listeners {
-		srv := rpc.NewServer()
-		err = srv.Register(s)
+	for i, a := range addrStrs {
+		addy, err := net.ResolveTCPAddr("tcp", a)
 		if err != nil {
 			return terror.Error(err)
 		}
 
-		gamelog.L.Info().Str("addr", l.Addr().String()).Msg("starting up RPC server")
-		go srv.Accept(l)
+		inbound, err := net.ListenTCP("tcp", addy)
+		if err != nil {
+			return terror.Error(err)
+		}
+
+		listener := new(RPCListener)
+		rpc.Register(listener)
+		s.mutex.Lock()
+		s.listeners[i] = inbound
+		s.mutex.Unlock()
+
+		gamelog.L.Info().Str("addr", inbound.Addr().String()).Msg("starting up RPC server")
+
+		// spun off and have running/blocking rpc listner
+		go rpc.Accept(inbound)
 	}
 
+	s.isListening = true
 	return nil
+}
+
+func (s *XrpcServer) Shutdown() error {
+	var lastError error
+
+	if !s.isListening {
+		return terror.Error(fmt.Errorf("rpc server not yet started"))
+	}
+
+	for _, listener := range s.listeners {
+		err := listener.Close()
+		if err != nil {
+			lastError = err
+		}
+	}
+
+	s.isListening = false
+	return lastError
 }
