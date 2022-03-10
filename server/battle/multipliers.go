@@ -7,6 +7,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"time"
 
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -305,4 +306,14 @@ winwar:
 		newMultipliers[wm.OwnedByID][m3] = true
 	}
 
+	// insert multipliers
+
+	for _, m := newMultipliers {
+		mlt := &boiler.UserMultiplier{
+			PlayerID:          "",
+			FromBattleNumber:  0,
+			UntilBattleNumber: 0,
+			Multiplier:        "",
+		}
+	}
 }

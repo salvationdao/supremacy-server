@@ -72,7 +72,8 @@ CREATE TABLE user_multipliers (
     player_id UUID NOT NULL references players(id),
     from_battle_number INT NOT NULL references battles(battle_number),
     until_battle_number INT NOT NULL,
-    multiplier UUID NOT NULL references multipliers(id),
+    multiplier_id UUID NOT NULL references multipliers(id),
+    value NUMERIC(28) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL default NOW(),
-    PRIMARY KEY(player_id, from_battle_number, multiplier)
+    PRIMARY KEY(player_id, from_battle_number, multiplier_id)
 );

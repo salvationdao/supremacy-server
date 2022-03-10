@@ -382,7 +382,7 @@ func (o *Multiplier) UserMultipliers(mods ...qm.QueryMod) userMultiplierQuery {
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"user_multipliers\".\"multiplier\"=?", o.ID),
+		qm.Where("\"user_multipliers\".\"multiplier_id\"=?", o.ID),
 	)
 
 	query := UserMultipliers(queryMods...)
@@ -436,7 +436,7 @@ func (multiplierL) LoadUserMultipliers(e boil.Executor, singular bool, maybeMult
 
 	query := NewQuery(
 		qm.From(`user_multipliers`),
-		qm.WhereIn(`user_multipliers.multiplier in ?`, args...),
+		qm.WhereIn(`user_multipliers.multiplier_id in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -472,19 +472,19 @@ func (multiplierL) LoadUserMultipliers(e boil.Executor, singular bool, maybeMult
 			if foreign.R == nil {
 				foreign.R = &userMultiplierR{}
 			}
-			foreign.R.UserMultiplierMultiplier = object
+			foreign.R.Multiplier = object
 		}
 		return nil
 	}
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if local.ID == foreign.Multiplier {
+			if local.ID == foreign.MultiplierID {
 				local.R.UserMultipliers = append(local.R.UserMultipliers, foreign)
 				if foreign.R == nil {
 					foreign.R = &userMultiplierR{}
 				}
-				foreign.R.UserMultiplierMultiplier = local
+				foreign.R.Multiplier = local
 				break
 			}
 		}
@@ -496,22 +496,22 @@ func (multiplierL) LoadUserMultipliers(e boil.Executor, singular bool, maybeMult
 // AddUserMultipliers adds the given related objects to the existing relationships
 // of the multiplier, optionally inserting them as new records.
 // Appends related to o.R.UserMultipliers.
-// Sets related.R.UserMultiplierMultiplier appropriately.
+// Sets related.R.Multiplier appropriately.
 func (o *Multiplier) AddUserMultipliers(exec boil.Executor, insert bool, related ...*UserMultiplier) error {
 	var err error
 	for _, rel := range related {
 		if insert {
-			rel.Multiplier = o.ID
+			rel.MultiplierID = o.ID
 			if err = rel.Insert(exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
 				"UPDATE \"user_multipliers\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"multiplier"}),
+				strmangle.SetParamNames("\"", "\"", 1, []string{"multiplier_id"}),
 				strmangle.WhereClause("\"", "\"", 2, userMultiplierPrimaryKeyColumns),
 			)
-			values := []interface{}{o.ID, rel.PlayerID, rel.FromBattleNumber, rel.Multiplier}
+			values := []interface{}{o.ID, rel.PlayerID, rel.FromBattleNumber, rel.MultiplierID}
 
 			if boil.DebugMode {
 				fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -521,7 +521,7 @@ func (o *Multiplier) AddUserMultipliers(exec boil.Executor, insert bool, related
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			rel.Multiplier = o.ID
+			rel.MultiplierID = o.ID
 		}
 	}
 
@@ -536,10 +536,10 @@ func (o *Multiplier) AddUserMultipliers(exec boil.Executor, insert bool, related
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &userMultiplierR{
-				UserMultiplierMultiplier: o,
+				Multiplier: o,
 			}
 		} else {
-			rel.R.UserMultiplierMultiplier = o
+			rel.R.Multiplier = o
 		}
 	}
 	return nil

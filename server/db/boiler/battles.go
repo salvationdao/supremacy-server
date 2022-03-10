@@ -2539,7 +2539,7 @@ func (o *Battle) AddFromBattleNumberUserMultipliers(exec boil.Executor, insert b
 				strmangle.SetParamNames("\"", "\"", 1, []string{"from_battle_number"}),
 				strmangle.WhereClause("\"", "\"", 2, userMultiplierPrimaryKeyColumns),
 			)
-			values := []interface{}{o.BattleNumber, rel.PlayerID, rel.FromBattleNumber, rel.Multiplier}
+			values := []interface{}{o.BattleNumber, rel.PlayerID, rel.FromBattleNumber, rel.MultiplierID}
 
 			if boil.DebugMode {
 				fmt.Fprintln(boil.DebugWriter, updateQuery)
