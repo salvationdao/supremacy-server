@@ -1,23 +1,22 @@
 package passport
 
 import (
-	"server/comms"
+	"server/rpcclient"
 
 	"github.com/rs/zerolog"
 )
 
 type Passport struct {
 	Log         *zerolog.Logger
-	Comms       *comms.C
+	RPCClient   *rpcclient.XrpcClient
 	clientToken string
 }
 
-func NewPassport(logger *zerolog.Logger, addr, clientToken string, comms *comms.C) *Passport {
+func NewPassport(logger *zerolog.Logger, addr, clientToken string, comms *rpcclient.XrpcClient) *Passport {
 	newPP := &Passport{
-
 		Log:         logger,
 		clientToken: clientToken,
-		Comms:       comms,
+		RPCClient:   comms,
 	}
 
 	return newPP
