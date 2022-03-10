@@ -60,9 +60,7 @@ func (btl *Battle) start(payload *BattleStartPayload) {
 	}
 
 	// set up the abilities for current battle
-	btl.users = usersMap{
-		m: make(map[uuid.UUID]*BattleUser),
-	}
+
 	btl.abilities = NewAbilitiesSystem(btl)
 	btl.multipliers = NewMultiplierSystem(btl)
 	btl.spoils = NewSpoilsOfWar(btl, btl.arena.RPCClient, 5*time.Second, 5*time.Second, decimal.NewFromInt(30).Shift(18))
