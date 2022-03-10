@@ -433,7 +433,6 @@ func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID str
 		IsAllSyndicates:   isAllSyndicates,
 		Amount:            amount,
 		ContributedAt:     now,
-		ProcessedAt:       null.TimeFrom(time.Now()),
 		TransactionID:     null.StringFrom(txid),
 	}
 
