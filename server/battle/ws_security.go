@@ -97,7 +97,6 @@ func (opts *Opts) SecureUserFactionSubscribeCommand(key hub.HubCommandKey, fn Hu
 		if err != nil {
 			return true
 		}
-
 		return factionID == nil || factionID.IsNil()
 	})
 }

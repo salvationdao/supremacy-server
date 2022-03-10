@@ -15,6 +15,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/jackc/pgx/v4"
 	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
@@ -108,30 +109,20 @@ func (pc *PassportWebhookController) UserEnlistFaction(w http.ResponseWriter, r 
 		return http.StatusBadRequest, terror.Error(err, "Faction id is required")
 	}
 
-	user, err := pc.API.UserMap.GetUserDetailByID(req.UserID)
+	// get player
+	player, err := db.PlayerGet(req.UserID.String())
 	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "User not found")
+		return http.StatusBadRequest, terror.Error(err)
 	}
 
-	// update user faction
-	user.FactionID = req.FactionID
+	player.FactionID = null.StringFrom(req.FactionID.String())
 
-	faction, err := boiler.FindFaction(gamedb.StdConn, user.FactionID.String())
-
-	user.Faction = faction
-
-	broadcastData, err := json.Marshal(&BroadcastPayload{
-		Key:     HubKeyUserSubscribe,
-		Payload: user,
-	})
+	err = db.PlayerUpdateFactionID(player)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	// broadcast to all the client
-	for _, cl := range pc.API.UserMap.Update(user) {
-		go cl.Send(broadcastData)
-	}
+	pc.API.MessageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, player.ID)), player)
 
 	return helpers.EncodeJSON(w, struct {
 		IsSuccess bool `json:"is_success"`
@@ -409,6 +400,14 @@ func (pc *PassportWebhookController) AuthRingCheck(w http.ResponseWriter, r *htt
 	if !req.User.FactionID.IsNil() {
 		str := req.User.FactionID.String()
 		factionID = &str
+
+		// get faction detail
+		faction, err := db.FactionGet(str)
+		if err != nil {
+			return http.StatusBadRequest, terror.Error(err)
+		}
+
+		req.User.Faction = faction
 	}
 
 	// store user into player table
@@ -422,14 +421,9 @@ func (pc *PassportWebhookController) AuthRingCheck(w http.ResponseWriter, r *htt
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	user, err := boiler.FindPlayer(gamedb.StdConn, req.User.ID.String())
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Hub client not found")
-	}
-
 	b, err := json.Marshal(&BroadcastPayload{
-		Key:     HubKeyUserSubscribe,
-		Payload: user,
+		Key:     HubKeyUserRingCheck,
+		Payload: req.User,
 	})
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)

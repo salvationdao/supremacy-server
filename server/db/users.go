@@ -310,6 +310,23 @@ func UpsertPlayer(p *boiler.Player) error {
 	return nil
 }
 
+func PlayerGet(id string) (*boiler.Player, error) {
+	player, err := boiler.Players(boiler.PlayerWhere.ID.EQ(id)).One(gamedb.StdConn)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return player, nil
+}
+
+func PlayerUpdateFactionID(player *boiler.Player) error {
+	_, err := player.Update(gamedb.StdConn, boil.Whitelist(boiler.PlayerColumns.FactionID))
+	if err != nil {
+		return terror.Error(err)
+	}
+	return nil
+}
+
 // PlayerFactionIDGet read user
 func PlayerFactionIDGet(ctx context.Context, conn Conn, userID server.UserID) (*uuid.UUID, error) {
 	var factionID *uuid.UUID
@@ -318,7 +335,7 @@ func PlayerFactionIDGet(ctx context.Context, conn Conn, userID server.UserID) (*
 		SELECT faction_id FROM players WHERE id = $1
 	`
 
-	err := pgxscan.Get(ctx, conn, factionID, q, userID)
+	err := pgxscan.Get(ctx, conn, &factionID, q, userID)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
