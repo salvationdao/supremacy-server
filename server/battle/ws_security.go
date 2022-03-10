@@ -3,8 +3,9 @@ package battle
 import (
 	"context"
 	"encoding/json"
-	"server"
-	"server/db"
+	"server/db/boiler"
+	"server/gamedb"
+	"server/gamelog"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
@@ -36,28 +37,43 @@ func (opts *Opts) SecureUserCommand(key hub.HubCommandKey, fn hub.HubCommandFunc
 
 type FactionCommandFunc func(ctx context.Context, hub *hub.Client, payload []byte, userFactionID uuid.UUID, reply hub.ReplyFunc) error
 
+func GetPlayerFactionID(userID uuid.UUID) (uuid.UUID, error) {
+	player, err := boiler.FindPlayer(gamedb.StdConn, userID.String())
+	if err != nil {
+		gamelog.L.Error().Str("userID", userID.String()).Err(err).Msg("unable to find player from user id")
+		return uuid.Nil, terror.Error(err)
+	}
+
+	if !player.FactionID.Valid {
+		return uuid.Nil, terror.Error(terror.ErrForbidden)
+	}
+
+	fuuid, err := uuid.FromString(player.FactionID.String)
+	if err != nil || fuuid.IsNil() {
+		gamelog.L.Error().Str("userID", userID.String()).Err(err).Msg("unable to convert player faction id into uuid")
+		return uuid.Nil, terror.Error(err)
+	}
+	return fuuid, nil
+}
+
 func (opts *Opts) SecureUserFactionCommand(key hub.HubCommandKey, fn FactionCommandFunc) {
 	opts.Hub.Handle(key, func(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 		span := tracer.StartSpan("ws.SecureUserFactionCommand", tracer.ResourceName(string(key)))
 		span.SetTag("user", wsc.Identifier())
 		defer span.Finish()
 
-		userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
+		userID := uuid.FromStringOrNil(wsc.Identifier())
 		if userID.IsNil() {
 			return terror.Error(terror.ErrForbidden)
 		}
 
-		// get user faction
-		factionID, err := db.PlayerFactionIDGet(ctx, opts.Conn, userID)
-		if err != nil {
+		factionID, err := GetPlayerFactionID(userID)
+		if err != nil || factionID.IsNil() {
+			gamelog.L.Error().Str("userID", userID.String()).Err(err).Msg("unable to find player from user id")
 			return terror.Error(err)
 		}
 
-		if factionID == nil || factionID.IsNil() {
-			return terror.Error(terror.ErrForbidden)
-		}
-
-		return fn(ctx, wsc, payload, *factionID, reply)
+		return fn(ctx, wsc, payload, factionID, reply)
 	})
 }
 
@@ -87,17 +103,13 @@ func (opts *Opts) SecureUserSubscribeCommand(key hub.HubCommandKey, fn HubSubscr
 // If fn is not provided, will use default
 func (opts *Opts) SecureUserFactionSubscribeCommand(key hub.HubCommandKey, fn HubSubscribeCommandFunc) {
 	opts.SubscribeCommandWithAuthCheck(key, fn, func(wsc *hub.Client) bool {
-		userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
+		userID := uuid.FromStringOrNil(wsc.Identifier())
 		if userID.IsNil() {
 			return true
 		}
 
-		// get user faction
-		factionID, err := db.PlayerFactionIDGet(context.Background(), opts.Conn, userID)
-		if err != nil {
-			return true
-		}
-		return factionID == nil || factionID.IsNil()
+		factionID, _ := GetPlayerFactionID(userID)
+		return factionID.IsNil()
 	})
 }
 
@@ -177,18 +189,14 @@ func (opts *Opts) NetSecureUserSubscribeCommand(key hub.HubCommandKey, fn HubNet
 // If fn is not provided, will use default
 func (opts *Opts) NetSecureUserFactionSubscribeCommand(key hub.HubCommandKey, fn HubNetSubscribeCommandFunc) {
 	opts.NetSubscribeCommandWithAuthCheck(key, fn, func(wsc *hub.Client) bool {
-		userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
+		userID := uuid.FromStringOrNil(wsc.Identifier())
 		if userID.IsNil() {
 			return true
 		}
 
 		// get user faction
-		factionID, err := db.PlayerFactionIDGet(context.Background(), opts.Conn, userID)
-		if err != nil {
-			return true
-		}
-
-		return factionID == nil || factionID.IsNil()
+		factionID, _ := GetPlayerFactionID(userID)
+		return factionID.IsNil()
 	})
 }
 

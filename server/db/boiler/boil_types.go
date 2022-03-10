@@ -51,6 +51,17 @@ func makeCacheKey(cols boil.Columns, nzDefaults []string) string {
 	return str
 }
 
+// Enum values for AbilityTypeEnum
+const (
+	AbilityTypeEnumAIRSTRIKE      = "AIRSTRIKE"
+	AbilityTypeEnumNUKE           = "NUKE"
+	AbilityTypeEnumREPAIR         = "REPAIR"
+	AbilityTypeEnumROB            = "ROB"
+	AbilityTypeEnumREINFORCEMENTS = "REINFORCEMENTS"
+	AbilityTypeEnumROBOTDOGS      = "ROBOT DOGS"
+	AbilityTypeEnumOVERCHARGE     = "OVERCHARGE"
+)
+
 // Enum values for BattleEvent
 const (
 	BattleEventKilled           = "killed"

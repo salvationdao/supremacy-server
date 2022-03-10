@@ -135,7 +135,7 @@ func NewUserMap(vlc *ViewerLiveCount) *UserMap {
 func (um *UserMap) UserRegister(wsc *hub.Client, user *server.User) {
 	um.RWMutex.Lock()
 	defer um.RWMutex.Unlock()
-	um.ViewerLiveCount.IDRecord(user.ID)
+	um.ViewerLiveCount.IDRecord(server.UserID(user.ID))
 	hcm, ok := um.ClientMap[wsc.Identifier()]
 	if !ok {
 		hcm = &UserClientMap{

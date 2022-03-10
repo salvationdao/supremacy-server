@@ -17,7 +17,7 @@ type DefaultWarMachinesResp struct {
 // GetDefaultWarMachines gets the default war machines for a given faction
 func (pp *Passport) GetDefaultWarMachines(ctx context.Context, factionID server.FactionID) ([]*server.WarMachineMetadata, error) {
 	resp := &DefaultWarMachinesResp{}
-	err := pp.Comms.Call("S.SupremacyDefaultWarMachinesHandler", DefaultWarMachinesReq{factionID}, resp)
+	err := pp.RPCClient.Call("S.SupremacyDefaultWarMachinesHandler", DefaultWarMachinesReq{factionID}, resp)
 	if err != nil {
 		return nil, fmt.Errorf("GetDefaultWarMachines: %w", err)
 	}

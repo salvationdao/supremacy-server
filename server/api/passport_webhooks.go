@@ -19,6 +19,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
 type PassportWebhookController struct {
@@ -55,36 +56,36 @@ func (pc *PassportWebhookController) UserUpdated(w http.ResponseWriter, r *http.
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	// update users
-	user, err := pc.API.UserMap.GetUserDetailByID(req.User.ID)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "User not found")
-	}
-
-	// update user
-	user.FirstName = req.User.FirstName
-	user.LastName = req.User.LastName
-	user.Username = req.User.Username
-	user.AvatarID = req.User.AvatarID
-	user.FactionID = req.User.FactionID
-	if !user.FactionID.IsNil() {
-		faction, err := boiler.FindFaction(gamedb.StdConn, user.FactionID.String())
-		if err != nil {
-			return http.StatusInternalServerError, terror.Error(err, "faction not found")
-		}
-		user.Faction = faction
-	}
-
-	broadcastData, err := json.Marshal(&BroadcastPayload{
-		Key:     HubKeyUserSubscribe,
-		Payload: user,
-	})
+	// get player
+	player, err := boiler.FindPlayer(gamedb.StdConn, req.User.ID.String())
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)
 	}
-	for _, cl := range pc.API.UserMap.Update(user) {
-		go cl.Send(broadcastData)
+
+	// update user
+	player.Username = null.StringFrom(req.User.Username)
+	player.FactionID = null.StringFromPtr(nil)
+	if !req.User.FactionID.IsNil() {
+
+		player.FactionID = null.StringFrom(req.User.FactionID.String())
+
+		faction, err := boiler.FindFaction(gamedb.StdConn, req.User.FactionID.String())
+		if err != nil {
+			return http.StatusInternalServerError, terror.Error(err, "faction not found")
+		}
+		req.User.Faction = faction
 	}
+
+	// update player
+	_, err = player.Update(gamedb.StdConn, boil.Whitelist(
+		boiler.PlayerColumns.Username,
+		boiler.PlayerColumns.FactionID,
+	))
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err)
+	}
+
+	pc.API.MessageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, player.ID)), player)
 
 	return helpers.EncodeJSON(w, struct {
 		IsSuccess bool `json:"is_success"`
@@ -110,14 +111,17 @@ func (pc *PassportWebhookController) UserEnlistFaction(w http.ResponseWriter, r 
 	}
 
 	// get player
-	player, err := db.PlayerGet(req.UserID.String())
+	player, err := boiler.Players(boiler.PlayerWhere.ID.EQ(req.UserID.String())).One(gamedb.StdConn)
 	if err != nil {
 		return http.StatusBadRequest, terror.Error(err)
 	}
 
 	player.FactionID = null.StringFrom(req.FactionID.String())
 
-	err = db.PlayerUpdateFactionID(player)
+	// update player faction
+	_, err = player.Update(gamedb.StdConn, boil.Whitelist(
+		boiler.PlayerColumns.FactionID,
+	))
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)
 	}
@@ -309,63 +313,6 @@ func (pc *PassportWebhookController) FactionStatGet(w http.ResponseWriter, r *ht
 type WarMachineQueuePositionRequest struct {
 	FactionID server.FactionID `json:"factionID"`
 	AssetHash string           `json:"assethash"`
-}
-
-// PassportWarMachineQueuePositionHandler return the list of user's war machines in the queue
-func (pc *PassportWebhookController) WarMachineQueuePositionGet(w http.ResponseWriter, r *http.Request) (int, error) {
-	return 0, nil
-	//TODO ALEX: fix
-	//req := &WarMachineQueuePositionRequest{}
-	//err := json.NewDecoder(r.Body).Decode(req)
-	//if err != nil {
-	//	return http.StatusInternalServerError, terror.Error(err)
-	//}
-	//
-	//position, contractReward := pc.API.BattleArena.WarMachineQueue.GetWarMachineQueue(req.FactionID, req.AssetHash)
-	//if err != nil {
-	//	return http.StatusInternalServerError, terror.Error(err)
-	//}
-	//
-	//return helpers.EncodeJSON(w, struct {
-	//	Position       *int            `json:"position"`
-	//	ContractReward decimal.Decimal `json:"contractReward"`
-	//}{
-	//	Position:       position,
-	//	ContractReward: contractReward,
-	//})
-}
-
-type AssetRepairStatRequest struct {
-	Hash string `json:"hash"`
-}
-
-func (pc *PassportWebhookController) AssetRepairStatGet(w http.ResponseWriter, r *http.Request) (int, error) {
-	req := &AssetRepairStatRequest{}
-	err := json.NewDecoder(r.Body).Decode(req)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err)
-	}
-
-	record := &server.AssetRepairRecord{
-		Hash: req.Hash,
-	}
-	err = db.AssetRepairIncompleteGet(context.Background(), pc.Conn, record)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return helpers.EncodeJSON(w, struct {
-				AssetRepairRecord *server.AssetRepairRecord `json:"asset_repair_record"`
-			}{
-				AssetRepairRecord: &server.AssetRepairRecord{},
-			})
-		}
-
-		return http.StatusInternalServerError, terror.Error(err)
-	}
-	return helpers.EncodeJSON(w, struct {
-		AssetRepairRecord *server.AssetRepairRecord `json:"asset_repair_record"`
-	}{
-		AssetRepairRecord: record,
-	})
 }
 
 type AuthRingCheckRequest struct {

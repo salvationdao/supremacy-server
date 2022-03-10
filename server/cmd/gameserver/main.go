@@ -15,6 +15,8 @@ import (
 	"server/passport"
 	"server/supermigrate"
 
+	"server/rpcclient"
+
 	zerologger "github.com/ninja-syndicate/hub/ext/zerolog"
 	"nhooyr.io/websocket"
 
@@ -185,14 +187,20 @@ func main() {
 						fmt.Sprintf("%s:10001", hostname),
 					}
 					gamelog.L.Info().Msg("start rpc client")
-					rpcClient, err := comms.NewClient(rpcAddrs...)
-					if err != nil {
-						cancel()
-						return terror.Panic(err)
+					rpcClient := &rpcclient.XrpcClient{
+						Addrs: rpcAddrs,
 					}
 					gamelog.L.Info().Msg("start rpc server")
-					rpcServer := comms.NewServer(rpcClient)
-					err = comms.Start(rpcServer)
+					rpcServer := &comms.XrpcServer{}
+					err = rpcServer.Listen(
+						rpcClient,
+						"0.0.0.0:10011",
+						"0.0.0.0:10012",
+						"0.0.0.0:10013",
+						"0.0.0.0:10014",
+						"0.0.0.0:10015",
+						"0.0.0.0:10016",
+					)
 					if err != nil {
 						return terror.Error(err)
 					}
@@ -333,13 +341,12 @@ func main() {
 						fmt.Sprintf("%s:10002", hostname),
 						fmt.Sprintf("%s:10001", hostname),
 					}
-					passportRPC, err := comms.NewClient(rpcAddrs...)
-					if err != nil {
-						return terror.Panic(err)
+					passportRPCclient := &rpcclient.XrpcClient{
+						Addrs: rpcAddrs,
 					}
 
-					result := &comms.GetAll{}
-					err = passportRPC.Call("S.SuperMigrate", comms.GetAllReq{}, result)
+					result := &rpcclient.GetAll{}
+					err = passportRPCclient.Call("S.SuperMigrate", rpcclient.GetAllReq{}, result)
 					if err != nil {
 						return terror.Error(err)
 					}

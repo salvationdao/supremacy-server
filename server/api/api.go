@@ -66,19 +66,6 @@ type FactionVotePrice struct {
 	CurrentVotePerTick   int64
 }
 
-type BattleEndInfo struct {
-	BattleID                     server.BattleID           `json:"battle_id"`
-	StartedAt                    time.Time                 `json:"started_at"`
-	EndedAt                      time.Time                 `json:"ended_at"`
-	BattleIdentifier             int64                     `json:"battle_identifier"`
-	WinningCondition             string                    `json:"winning_condition"`
-	WinningFaction               *server.FactionBrief      `json:"winning_faction"`
-	WinningWarMachines           []*server.WarMachineBrief `json:"winning_war_machines"`
-	TopSupsContributeFactions    []*server.FactionBrief    `json:"top_sups_contribute_factions"`
-	TopSupsContributors          []*server.UserBrief       `json:"top_sups_contributors"`
-	MostFrequentAbilityExecutors []*server.UserBrief       `json:"most_frequent_ability_executors"`
-}
-
 // API server
 type API struct {
 	ctx    context.Context

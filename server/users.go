@@ -13,7 +13,7 @@ var XsynTreasuryUserID = UserID(uuid.Must(uuid.FromString("ebf30ca0-875b-4e84-9a
 
 // User is a single user on the platform
 type User struct {
-	ID                  UserID          `json:"id" db:"id"`
+	ID                  uuid.UUID       `json:"id" db:"id"`
 	Faction             *boiler.Faction `json:"faction"`
 	FactionID           FactionID       `json:"faction_id,omitempty"`
 	FirstName           string          `json:"first_name" db:"first_name"`
@@ -60,9 +60,9 @@ type UserOnlineStatusChange struct {
 }
 
 type BattleUserVote struct {
-	BattleID  BattleID `json:"battle_id" db:"battle_id"`
-	UserID    UserID   `json:"user_id" db:"user_id"`
-	VoteCount int64    `json:"vote_count" db:"vote_count"`
+	BattleID  uuid.UUID `json:"battle_id" db:"battle_id"`
+	UserID    UserID    `json:"user_id" db:"user_id"`
+	VoteCount int64     `json:"vote_count" db:"vote_count"`
 }
 
 type UserStat struct {
@@ -74,7 +74,7 @@ type UserStat struct {
 }
 
 type UserBrief struct {
-	ID       UserID        `json:"id"`
+	ID       uuid.UUID     `json:"id"`
 	Username string        `json:"username"`
 	AvatarID *BlobID       `json:"avatar_id,omitempty"`
 	Faction  *FactionBrief `json:"faction"`
