@@ -2,15 +2,12 @@ package api
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"math/big"
 	"server"
 	"server/gamelog"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/log_helpers"
-	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
@@ -298,106 +295,106 @@ func (fc *FactionControllerWS) GameAbilityContribute(ctx context.Context, wsc *h
 	return nil
 }
 
-const HubKeyFactionAbilitiesUpdated hub.HubCommandKey = "FACTION:ABILITIES:UPDATED"
+// const HubKeyFactionAbilitiesUpdated hub.HubCommandKey = "FACTION:ABILITIES:UPDATED"
 
-func (fc *FactionControllerWS) FactionAbilitiesUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	gamelog.L.Info().Str("fn", "FactionAbilitiesUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
-	req := &hub.HubCommandRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return "", "", terror.Error(err, "Invalid request received")
-	}
+// func (fc *FactionControllerWS) FactionAbilitiesUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+// 	gamelog.L.Info().Str("fn", "FactionAbilitiesUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
+// 	req := &hub.HubCommandRequest{}
+// 	err := json.Unmarshal(payload, req)
+// 	if err != nil {
+// 		return "", "", terror.Error(err, "Invalid request received")
+// 	}
 
-	hcd := fc.API.UserMap.GetUserDetail(wsc)
-	if hcd == nil {
-		return "", "", terror.Error(fmt.Errorf("hcd is nil"), "User not found")
-	}
+// 	hcd := fc.API.UserMap.GetUserDetail(wsc)
+// 	if hcd == nil {
+// 		return "", "", terror.Error(fmt.Errorf("hcd is nil"), "User not found")
+// 	}
 
-	// skip, if faction is zaibatsu
-	if hcd.FactionID == server.ZaibatsuFactionID {
-		return "", "", nil
-	}
+// 	// skip, if faction is zaibatsu
+// 	if hcd.FactionID == server.ZaibatsuFactionID {
+// 		return "", "", nil
+// 	}
 
-	// fc.API.gameAbilityPool[hcd.FactionID](func(fap *deadlock.Map) {
-	// 	abilities := []*server.GameAbility{}
+// 	// fc.API.gameAbilityPool[hcd.FactionID](func(fap *deadlock.Map) {
+// 	// 	abilities := []*server.GameAbility{}
 
-	// 	fap.Range(func(key interface{}, gameAbilityPrice interface{}) bool {
-	// 		fa := gameAbilityPrice.(*GameAbilityPrice)
-	// 		if fa.GameAbility.AbilityHash > "" {
-	// 			return true
-	// 		}
-	// 		fa.GameAbility.CurrentSups = fa.CurrentSups.String()
-	// 		abilities = append(abilities, fa.GameAbility)
+// 	// 	fap.Range(func(key interface{}, gameAbilityPrice interface{}) bool {
+// 	// 		fa := gameAbilityPrice.(*GameAbilityPrice)
+// 	// 		if fa.GameAbility.AbilityHash > "" {
+// 	// 			return true
+// 	// 		}
+// 	// 		fa.GameAbility.CurrentSups = fa.CurrentSups.String()
+// 	// 		abilities = append(abilities, fa.GameAbility)
 
-	// 		return true
-	// 	})
+// 	// 		return true
+// 	// 	})
 
-	// 	reply(abilities)
-	// })
-	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionAbilitiesUpdated, hcd.FactionID))
-	return req.TransactionID, busKey, nil
-}
+// 	// 	reply(abilities)
+// 	// })
+// 	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionAbilitiesUpdated, hcd.FactionID))
+// 	return req.TransactionID, busKey, nil
+// // }
 
-const HubKeyWarMachineAbilitiesUpdated hub.HubCommandKey = "WAR:MACHINE:ABILITIES:UPDATED"
+// const HubKeyWarMachineAbilitiesUpdated hub.HubCommandKey = "WAR:MACHINE:ABILITIES:UPDATED"
 
-type WarMachineAbilitiesUpdatedRequest struct {
-	*hub.HubCommandRequest
-	Payload struct {
-		ParticipantID byte `json:"participantID"`
-	} `json:"payload"`
-}
+// type WarMachineAbilitiesUpdatedRequest struct {
+// 	*hub.HubCommandRequest
+// 	Payload struct {
+// 		ParticipantID byte `json:"participantID"`
+// 	} `json:"payload"`
+// }
 
-// WarMachineAbilitiesUpdateSubscribeHandler subscribe on war machine abilities
-func (fc *FactionControllerWS) WarMachineAbilitiesUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	gamelog.L.Info().Str("fn", "WarMachineAbilitiesUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
-	req := &WarMachineAbilitiesUpdatedRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return "", "", terror.Error(err, "Invalid request received")
-	}
+// // WarMachineAbilitiesUpdateSubscribeHandler subscribe on war machine abilities
+// func (fc *FactionControllerWS) WarMachineAbilitiesUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+// 	gamelog.L.Info().Str("fn", "WarMachineAbilitiesUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
+// 	req := &WarMachineAbilitiesUpdatedRequest{}
+// 	err := json.Unmarshal(payload, req)
+// 	if err != nil {
+// 		return "", "", terror.Error(err, "Invalid request received")
+// 	}
 
-	hcd := fc.API.UserMap.GetUserDetail(wsc)
-	if hcd == nil {
-		return "", "", terror.Error(fmt.Errorf("hcd is nil"), "User not found")
-	}
-	//
-	//fc.API.gameAbilityPool[hcd.FactionID](func(fap *deadlock.Map) {
-	//	abilities := []*server.GameAbility{}
-	//	fap.Range(func(key interface{}, gameAbilityPrice interface{}) bool {
-	//		fa := gameAbilityPrice.(*GameAbilityPrice)
-	//		if hcd.FactionID == server.ZaibatsuFactionID {
-	//			if fa.GameAbility.ParticipantID == nil ||
-	//				*fa.GameAbility.ParticipantID != req.Payload.ParticipantID {
-	//				return true
-	//			}
-	//		} else {
-	//			if fa.GameAbility.AbilityHash == "" ||
-	//				fa.GameAbility.ParticipantID == nil ||
-	//				*fa.GameAbility.ParticipantID != req.Payload.ParticipantID {
-	//				return true
-	//			}
-	//		}
-	//
-	//		// filter dup
-	//		for _, ability := range abilities {
-	//			if ability.ID == fa.GameAbility.ID {
-	//				fap.Store(fa.GameAbility.Identity.String(), fa)
-	//				return true
-	//			}
-	//		}
-	//
-	//		fa.GameAbility.CurrentSups = fa.CurrentSups.String()
-	//		abilities = append(abilities, fa.GameAbility)
-	//		fap.Store(fa.GameAbility.Identity.String(), fa)
-	//
-	//		return true
-	//	})
-	//
-	//	reply(abilities)
-	//})
-	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s:%x", HubKeyWarMachineAbilitiesUpdated, hcd.FactionID, req.Payload.ParticipantID))
-	return req.TransactionID, busKey, nil
-}
+// 	hcd := fc.API.UserMap.GetUserDetail(wsc)
+// 	if hcd == nil {
+// 		return "", "", terror.Error(fmt.Errorf("hcd is nil"), "User not found")
+// 	}
+// 	//
+// 	//fc.API.gameAbilityPool[hcd.FactionID](func(fap *deadlock.Map) {
+// 	//	abilities := []*server.GameAbility{}
+// 	//	fap.Range(func(key interface{}, gameAbilityPrice interface{}) bool {
+// 	//		fa := gameAbilityPrice.(*GameAbilityPrice)
+// 	//		if hcd.FactionID == server.ZaibatsuFactionID {
+// 	//			if fa.GameAbility.ParticipantID == nil ||
+// 	//				*fa.GameAbility.ParticipantID != req.Payload.ParticipantID {
+// 	//				return true
+// 	//			}
+// 	//		} else {
+// 	//			if fa.GameAbility.AbilityHash == "" ||
+// 	//				fa.GameAbility.ParticipantID == nil ||
+// 	//				*fa.GameAbility.ParticipantID != req.Payload.ParticipantID {
+// 	//				return true
+// 	//			}
+// 	//		}
+// 	//
+// 	//		// filter dup
+// 	//		for _, ability := range abilities {
+// 	//			if ability.ID == fa.GameAbility.ID {
+// 	//				fap.Store(fa.GameAbility.Identity.String(), fa)
+// 	//				return true
+// 	//			}
+// 	//		}
+// 	//
+// 	//		fa.GameAbility.CurrentSups = fa.CurrentSups.String()
+// 	//		abilities = append(abilities, fa.GameAbility)
+// 	//		fap.Store(fa.GameAbility.Identity.String(), fa)
+// 	//
+// 	//		return true
+// 	//	})
+// 	//
+// 	//	reply(abilities)
+// 	//})
+// 	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s:%x", HubKeyWarMachineAbilitiesUpdated, hcd.FactionID, req.Payload.ParticipantID))
+// 	return req.TransactionID, busKey, nil
+// }
 
 type QueueFeed struct {
 	Length int      `json:"queue_length"`

@@ -82,8 +82,6 @@ type API struct {
 	NetMessageBus *messagebus.NetBus
 	Passport      *passport.Passport
 
-	// client detail
-	UserMap *UserMap
 	// ring check auth
 	RingCheckAuthMap *RingCheckAuthMap
 }
@@ -245,4 +243,36 @@ func (api *API) IconDisplay(w http.ResponseWriter, r *http.Request) (int, error)
 	}
 
 	return http.StatusOK, nil
+}
+
+/**********************
+* Auth Ring Check Map *
+**********************/
+
+type RingCheckAuthMap struct {
+	deadlock.Map
+}
+
+func NewRingCheckMap() *RingCheckAuthMap {
+	return &RingCheckAuthMap{
+		deadlock.Map{},
+	}
+}
+
+func (rcm *RingCheckAuthMap) Record(key string, cl *hub.Client) {
+	rcm.Store(key, cl)
+}
+
+func (rcm *RingCheckAuthMap) Check(key string) (*hub.Client, error) {
+	value, ok := rcm.Load(key)
+	if !ok {
+		return nil, terror.Error(fmt.Errorf("hub client not found"))
+	}
+
+	hubc, ok := value.(*hub.Client)
+	if !ok {
+		return nil, terror.Error(fmt.Errorf("hub client not found"))
+	}
+
+	return hubc, nil
 }
