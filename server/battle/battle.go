@@ -15,8 +15,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shopspring/decimal"
-
 	"github.com/volatiletech/null/v8"
 
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
@@ -44,6 +42,7 @@ type Battle struct {
 	multipliers *MultiplierSystem
 	spoils      *SpoilsOfWar
 	rpcClient   *rpcclient.XrpcClient
+	startedAt   time.Time
 	*boiler.Battle
 }
 
@@ -65,8 +64,9 @@ func (btl *Battle) start(payload *BattleStartPayload) {
 	}
 	btl.abilities = NewAbilitiesSystem(btl)
 	btl.multipliers = NewMultiplierSystem(btl)
-	btl.spoils = NewSpoilsOfWar(btl, btl.arena.RPCClient, 5*time.Second, 5*time.Second, decimal.NewFromInt(30).Shift(18))
+	btl.spoils = NewSpoilsOfWar(btl, 5*time.Second, 5*time.Second)
 
+	btl.startedAt = time.Now()
 	btl.BroadcastUpdate()
 }
 
