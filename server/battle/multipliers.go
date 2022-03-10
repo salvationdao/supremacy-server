@@ -66,7 +66,7 @@ func (ms *MultiplierSystem) PlayerMultipliers(playerID uuid.UUID) ([]*Multiplier
 	for i, m := range usermultipliers {
 		multipliers[i] = &Multiplier{
 			Key:         m.Key,
-			Value:       m.Value.String(),
+			Value:       fmt.Sprintf("%sx", m.Value.Shift(2).String()),
 			Description: m.Description,
 		}
 		total += m.Value.IntPart()
