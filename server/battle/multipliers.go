@@ -204,12 +204,13 @@ outer:
 	}
 
 	// check for syndicate wins
-
+	boil.DebugMode = true
 	lastWins, err := boiler.BattleWins(
 		qm.Distinct(boiler.BattleWinColumns.BattleID),
 		qm.OrderBy(boiler.BattleWinColumns.CreatedAt, "DESC"),
 		qm.Limit(3),
 	).All(gamedb.StdConn)
+	boil.DebugMode = false
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("unable to retrieve last 3 winning factions")
 	}
@@ -344,7 +345,7 @@ winwar:
 	// insert multipliers
 
 	for pid, mlts := range newMultipliers {
-		for m, _ := range mlts {
+		for m := range mlts {
 			mlt := &boiler.UserMultiplier{
 				PlayerID:          pid,
 				FromBattleNumber:  ms.battle.BattleNumber,

@@ -15,9 +15,11 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/jackc/pgx/v4"
 	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
 type PassportWebhookController struct {
@@ -54,36 +56,36 @@ func (pc *PassportWebhookController) UserUpdated(w http.ResponseWriter, r *http.
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	// update users
-	user, err := pc.API.UserMap.GetUserDetailByID(req.User.ID)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "User not found")
-	}
-
-	// update user
-	user.FirstName = req.User.FirstName
-	user.LastName = req.User.LastName
-	user.Username = req.User.Username
-	user.AvatarID = req.User.AvatarID
-	user.FactionID = req.User.FactionID
-	if !user.FactionID.IsNil() {
-		faction, err := boiler.FindFaction(gamedb.StdConn, user.FactionID.String())
-		if err != nil {
-			return http.StatusInternalServerError, terror.Error(err, "faction not found")
-		}
-		user.Faction = faction
-	}
-
-	broadcastData, err := json.Marshal(&BroadcastPayload{
-		Key:     HubKeyUserSubscribe,
-		Payload: user,
-	})
+	// get player
+	player, err := boiler.FindPlayer(gamedb.StdConn, req.User.ID.String())
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)
 	}
-	for _, cl := range pc.API.UserMap.Update(user) {
-		go cl.Send(broadcastData)
+
+	// update user
+	player.Username = null.StringFrom(req.User.Username)
+	player.FactionID = null.StringFromPtr(nil)
+	if !req.User.FactionID.IsNil() {
+
+		player.FactionID = null.StringFrom(req.User.FactionID.String())
+
+		faction, err := boiler.FindFaction(gamedb.StdConn, req.User.FactionID.String())
+		if err != nil {
+			return http.StatusInternalServerError, terror.Error(err, "faction not found")
+		}
+		req.User.Faction = faction
 	}
+
+	// update player
+	_, err = player.Update(gamedb.StdConn, boil.Whitelist(
+		boiler.PlayerColumns.Username,
+		boiler.PlayerColumns.FactionID,
+	))
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err)
+	}
+
+	pc.API.MessageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, player.ID)), player)
 
 	return helpers.EncodeJSON(w, struct {
 		IsSuccess bool `json:"is_success"`
@@ -108,30 +110,23 @@ func (pc *PassportWebhookController) UserEnlistFaction(w http.ResponseWriter, r 
 		return http.StatusBadRequest, terror.Error(err, "Faction id is required")
 	}
 
-	user, err := pc.API.UserMap.GetUserDetailByID(req.UserID)
+	// get player
+	player, err := boiler.Players(boiler.PlayerWhere.ID.EQ(req.UserID.String())).One(gamedb.StdConn)
 	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "User not found")
+		return http.StatusBadRequest, terror.Error(err)
 	}
 
-	// update user faction
-	user.FactionID = req.FactionID
+	player.FactionID = null.StringFrom(req.FactionID.String())
 
-	faction, err := boiler.FindFaction(gamedb.StdConn, user.FactionID.String())
-
-	user.Faction = faction
-
-	broadcastData, err := json.Marshal(&BroadcastPayload{
-		Key:     HubKeyUserSubscribe,
-		Payload: user,
-	})
+	// update player faction
+	_, err = player.Update(gamedb.StdConn, boil.Whitelist(
+		boiler.PlayerColumns.FactionID,
+	))
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	// broadcast to all the client
-	for _, cl := range pc.API.UserMap.Update(user) {
-		go cl.Send(broadcastData)
-	}
+	pc.API.MessageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, player.ID)), player)
 
 	return helpers.EncodeJSON(w, struct {
 		IsSuccess bool `json:"is_success"`
@@ -326,6 +321,7 @@ type AuthRingCheckRequest struct {
 }
 
 func (pc *PassportWebhookController) AuthRingCheck(w http.ResponseWriter, r *http.Request) (int, error) {
+
 	req := &AuthRingCheckRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
@@ -352,6 +348,14 @@ func (pc *PassportWebhookController) AuthRingCheck(w http.ResponseWriter, r *htt
 	if !req.User.FactionID.IsNil() {
 		str := req.User.FactionID.String()
 		factionID = &str
+
+		// get faction detail
+		faction, err := db.FactionGet(str)
+		if err != nil {
+			return http.StatusBadRequest, terror.Error(err)
+		}
+
+		req.User.Faction = faction
 	}
 
 	// store user into player table
@@ -365,14 +369,9 @@ func (pc *PassportWebhookController) AuthRingCheck(w http.ResponseWriter, r *htt
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	user, err := boiler.FindPlayer(gamedb.StdConn, req.User.ID.String())
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Hub client not found")
-	}
-
 	b, err := json.Marshal(&BroadcastPayload{
-		Key:     HubKeyUserSubscribe,
-		Payload: user,
+		Key:     HubKeyUserRingCheck,
+		Payload: req.User,
 	})
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)
