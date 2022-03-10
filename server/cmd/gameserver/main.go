@@ -190,19 +190,6 @@ func main() {
 					rpcClient := &rpcclient.XrpcClient{
 						Addrs: rpcAddrs,
 					}
-					// TODO delete me after test
-					go func() {
-						for {
-							x := 0
-							time.Sleep(time.Second * 3)
-							for i := 0; i < 10; i++ {
-								resp := ""
-								rpcClient.Call("S.Ping", true, &resp)
-								fmt.Printf("%d: %s\n", x, resp)
-								x++
-							}
-						}
-					}()
 					gamelog.L.Info().Msg("start rpc server")
 					rpcServer := &comms.XrpcServer{}
 					err = rpcServer.Listen(
