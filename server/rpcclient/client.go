@@ -1,6 +1,7 @@
 package rpcclient
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"math"
@@ -78,7 +79,10 @@ func (c *XrpcClient) Call(serviceMethod string, args interface{}, reply interfac
 			break
 		}
 
-		gamelog.L.Err(err).Msg("Go RPC call error")
+		if !errors.Is(err, rpc.ErrShutdown) {
+			gamelog.L.Error().Err(err).Msg("RPC call has failed.")
+			return err
+		}
 
 		// clean up before retry
 		if client != nil {
