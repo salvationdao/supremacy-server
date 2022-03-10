@@ -37,7 +37,7 @@ CREATE TABLE multipliers (
     must_be_online BOOL NOT NULL default true,
     test_number INT NOT NULL,
     test_string TEXT NOT NULL,
-    value INT NOT NULL default 1
+    value NUMERIC(28) NOT NULL default 1
 );
 
 INSERT INTO multipliers (key, value, description, for_games, multiplier_type, test_number, test_string, must_be_online) VALUES
@@ -68,6 +68,7 @@ INSERT INTO multipliers (key, value, description, for_games, multiplier_type, te
     ('won battle', 50, 'When a player''s syndicate has won the last battle.', 1, 'syndicate_win', 1, '', true),
     ('won last three battles', 100, 'When a player''s syndicate has won the last 3 battles.', 3, 'syndicate_win', 3, '', true);
 
+-- user multiplier must have the value as of when it is set
 CREATE TABLE user_multipliers (
     player_id UUID NOT NULL references players(id),
     from_battle_number INT NOT NULL references battles(battle_number),

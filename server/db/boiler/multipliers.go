@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -22,15 +23,15 @@ import (
 
 // Multiplier is an object representing the database table.
 type Multiplier struct {
-	ID             string `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Description    string `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
-	Key            string `boiler:"key" boil:"key" json:"key" toml:"key" yaml:"key"`
-	ForGames       int    `boiler:"for_games" boil:"for_games" json:"for_games" toml:"for_games" yaml:"for_games"`
-	MultiplierType string `boiler:"multiplier_type" boil:"multiplier_type" json:"multiplier_type" toml:"multiplier_type" yaml:"multiplier_type"`
-	MustBeOnline   bool   `boiler:"must_be_online" boil:"must_be_online" json:"must_be_online" toml:"must_be_online" yaml:"must_be_online"`
-	TestNumber     int    `boiler:"test_number" boil:"test_number" json:"test_number" toml:"test_number" yaml:"test_number"`
-	TestString     string `boiler:"test_string" boil:"test_string" json:"test_string" toml:"test_string" yaml:"test_string"`
-	Value          int    `boiler:"value" boil:"value" json:"value" toml:"value" yaml:"value"`
+	ID             string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Description    string          `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
+	Key            string          `boiler:"key" boil:"key" json:"key" toml:"key" yaml:"key"`
+	ForGames       int             `boiler:"for_games" boil:"for_games" json:"for_games" toml:"for_games" yaml:"for_games"`
+	MultiplierType string          `boiler:"multiplier_type" boil:"multiplier_type" json:"multiplier_type" toml:"multiplier_type" yaml:"multiplier_type"`
+	MustBeOnline   bool            `boiler:"must_be_online" boil:"must_be_online" json:"must_be_online" toml:"must_be_online" yaml:"must_be_online"`
+	TestNumber     int             `boiler:"test_number" boil:"test_number" json:"test_number" toml:"test_number" yaml:"test_number"`
+	TestString     string          `boiler:"test_string" boil:"test_string" json:"test_string" toml:"test_string" yaml:"test_string"`
+	Value          decimal.Decimal `boiler:"value" boil:"value" json:"value" toml:"value" yaml:"value"`
 
 	R *multiplierR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L multiplierL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -91,7 +92,7 @@ var MultiplierWhere = struct {
 	MustBeOnline   whereHelperbool
 	TestNumber     whereHelperint
 	TestString     whereHelperstring
-	Value          whereHelperint
+	Value          whereHelperdecimal_Decimal
 }{
 	ID:             whereHelperstring{field: "\"multipliers\".\"id\""},
 	Description:    whereHelperstring{field: "\"multipliers\".\"description\""},
@@ -101,7 +102,7 @@ var MultiplierWhere = struct {
 	MustBeOnline:   whereHelperbool{field: "\"multipliers\".\"must_be_online\""},
 	TestNumber:     whereHelperint{field: "\"multipliers\".\"test_number\""},
 	TestString:     whereHelperstring{field: "\"multipliers\".\"test_string\""},
-	Value:          whereHelperint{field: "\"multipliers\".\"value\""},
+	Value:          whereHelperdecimal_Decimal{field: "\"multipliers\".\"value\""},
 }
 
 // MultiplierRels is where relationship names are stored.

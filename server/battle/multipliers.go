@@ -7,9 +7,9 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"time"
 
 	"github.com/shopspring/decimal"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
@@ -25,7 +25,7 @@ const SYNDICATE_WIN MultiplierTypeEnum = "syndicate_win"
 
 type MultiplierSystem struct {
 	multipliers map[string]*boiler.Multiplier
-	players     map[string]map[string]*boiler.Multiplier
+	players     map[string]map[*boiler.Multiplier]*boiler.UserMultiplier
 	battle      *Battle
 }
 
@@ -33,7 +33,7 @@ func NewMultiplierSystem(btl *Battle) *MultiplierSystem {
 	ms := &MultiplierSystem{
 		battle:      btl,
 		multipliers: make(map[string]*boiler.Multiplier),
-		players:     make(map[string]map[string]*boiler.Multiplier),
+		players:     make(map[string]map[*boiler.Multiplier]*boiler.UserMultiplier),
 	}
 	ms.init()
 	return ms
@@ -54,10 +54,14 @@ func (ms *MultiplierSystem) init() {
 	for _, m := range usermultipliers {
 		pm, ok := ms.players[m.PlayerID]
 		if !ok {
-			pm = make(map[string]*boiler.Multiplier)
+			pm = make(map[*boiler.Multiplier]*boiler.UserMultiplier)
 			ms.players[m.PlayerID] = pm
 		}
-		pm[m.Multiplier] = ms.multipliers[m.Multiplier]
+		mlt, ok := ms.multipliers[m.MultiplierID]
+		if !ok {
+			gamelog.L.Error().Err(err).Msgf("unable to retrieve multiplier - this should never happen")
+		}
+		pm[mlt] = m
 	}
 }
 
@@ -76,9 +80,12 @@ func (ms *MultiplierSystem) getMultiplier(mtype, testString string, num int) (*b
 	return nil, false
 }
 
+func (ms *MultiplierSystem) end(btlEndInfo *BattleEndDetail) {
+	ms.calculate(btlEndInfo)
+}
+
 func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 	//fetch data
-
 	//fetch contributions
 
 	contributions, err := boiler.BattleContributions(qm.Where(`battle_id = ?`, ms.battle.battle.ID)).All(gamedb.StdConn)
@@ -308,12 +315,20 @@ winwar:
 
 	// insert multipliers
 
-	for _, m := newMultipliers {
-		mlt := &boiler.UserMultiplier{
-			PlayerID:          "",
-			FromBattleNumber:  0,
-			UntilBattleNumber: 0,
-			Multiplier:        "",
+	for pid, mlts := range newMultipliers {
+		for m, _ := range mlts {
+			mlt := &boiler.UserMultiplier{
+				PlayerID:          pid,
+				FromBattleNumber:  ms.battle.battle.BattleNumber,
+				UntilBattleNumber: ms.battle.battle.BattleNumber + m.ForGames,
+				MultiplierID:      m.ID,
+				Value:             m.Value,
+			}
+			err := mlt.Insert(gamedb.StdConn, boil.Infer())
+			if err != nil {
+				gamelog.L.Error().Str("playerID", pid).Interface("user_multiplier", mlt).Err(err).Msg("unable to insert user multiplier at battle end")
+				continue
+			}
 		}
 	}
 }
