@@ -277,7 +277,7 @@ outer:
 
 	// mech owner multipliers
 
-	winwar:
+winwar:
 	for _, wm := range btlEndInfo.WinningWarMachines {
 		if _, ok := newMultipliers[wm.OwnedByID]; !ok {
 			newMultipliers[wm.OwnedByID] = map[*boiler.Multiplier]bool{}
@@ -290,7 +290,7 @@ outer:
 		}
 		newMultipliers[wm.OwnedByID][m1] = true
 
-		for i := 0-; i < 3; i++ {
+		for i := 0; i < 3; i++ {
 			if lastWins[i].OwnerID != wm.OwnedByID {
 				continue winwar
 			}
