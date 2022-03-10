@@ -148,9 +148,6 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		MostFrequentAbilityExecutors: fakedUsers,
 	}
 
-	btl.multipliers.end(endInfo)
-	btl.endInfoBroadcast(*endInfo)
-
 	ids := make([]uuid.UUID, len(btl.WarMachines))
 	err = db.ClearQueue(ids...)
 	if err != nil {
@@ -216,7 +213,9 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		return
 	}
 
+	btl.multipliers.end(endInfo)
 	btl.spoils.End()
+	btl.endInfoBroadcast(*endInfo)
 }
 
 const HubKeyBattleEndDetailUpdated hub.HubCommandKey = "BATTLE:END:DETAIL:UPDATED"
