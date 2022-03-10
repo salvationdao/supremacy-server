@@ -21,6 +21,7 @@ import (
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"nhooyr.io/websocket"
 )
 
@@ -424,15 +425,29 @@ func (arena *Arena) UserOnline(ctx context.Context, wsc *hub.Client, payload []b
 	if arena.currentBattle == nil {
 		return nil
 	}
-
-	var user *BattleUser
-	err := json.Unmarshal(payload, user)
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("unable to unmarshal online user")
-		return err
+	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
+	if userID.IsNil() {
+		return terror.Error(terror.ErrInvalidInput)
 	}
 
-	arena.currentBattle.userOnline(user, wsc)
+	user, err := boiler.Players(
+		boiler.PlayerWhere.ID.EQ(userID.String()),
+		qm.Load(boiler.PlayerRels.Faction),
+	).One(gamedb.StdConn)
+	if err != nil || user == nil || user.R.Faction == nil {
+		return terror.Error(terror.ErrInvalidInput)
+	}
+
+	battleUser := &BattleUser{
+		ID:            uuid.FromStringOrNil(userID.String()),
+		Username:      user.Username.String,
+		FactionID:     user.FactionID.String,
+		FactionColour: arena.currentBattle.factions[uuid.Must(uuid.FromString(user.FactionID.String))].PrimaryColor,
+		FactionLogoID: FactionLogos[user.FactionID.String],
+		wsClient:      map[*hub.Client]bool{},
+	}
+
+	arena.currentBattle.userOnline(battleUser, wsc)
 	return nil
 }
 
