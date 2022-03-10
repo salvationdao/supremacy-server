@@ -37,7 +37,7 @@ type LocationDeciders struct {
 type AbilitiesSystem struct {
 	battle *Battle
 	// faction unique abilities
-	factionUniqueAbilities map[uuid.UUID]map[uuid.UUID]*GameAbility // map[faction_id]map[identity]*Ability
+	factionUniqueAbilities map[uuid.UUID]map[string]*GameAbility // map[faction_id]map[identity]*Ability
 
 	// gabs abilities (air craft, nuke, repair)
 	battleAbilityPool *BattleAbilityPool
@@ -52,7 +52,7 @@ type AbilitiesSystem struct {
 }
 
 func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
-	factionAbilities := map[uuid.UUID]map[uuid.UUID]*GameAbility{}
+	factionAbilities := map[uuid.UUID]map[string]*GameAbility{}
 
 	// initialise new gabs ability pool
 	battleAbilityPool := &BattleAbilityPool{
@@ -68,7 +68,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 
 	for factionID := range battle.factions {
 		// initialise faction unique abilities
-		factionAbilities[factionID] = map[uuid.UUID]*GameAbility{}
+		factionAbilities[factionID] = map[string]*GameAbility{}
 
 		// faction unique abilities
 		factionUniqueAbilities, err := boiler.GameAbilities(qm.Where("faction_id = ?", factionID.String()), qm.And("battle_ability_id ISNULL")).All(gamedb.StdConn)
@@ -105,6 +105,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 					// build the ability
 					wmAbility := &GameAbility{
 						ID:                  uuid.Must(uuid.FromString(ability.ID)), // generate a uuid for frontend to track sups contribution
+						Identity:            wm.Hash,
 						GameClientAbilityID: byte(ability.GameClientAbilityID),
 						ImageUrl:            ability.ImageURL,
 						Description:         ability.Description,
@@ -122,15 +123,14 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 					// inject ability to war machines
 					battle.WarMachines[i].Abilities = []*GameAbility{wmAbility}
 
-					// TODO: fix zaibatsu abilities mechanism
 					// store faction ability for price tracking
-					factionAbilities[factionID][wmAbility.ID] = wmAbility
+					factionAbilities[factionID][wmAbility.Identity] = wmAbility
 				}
 			}
 
 		} else {
 			// for other faction unique abilities
-			abilities := map[uuid.UUID]*GameAbility{}
+			abilities := map[string]*GameAbility{}
 			for _, ability := range factionUniqueAbilities {
 
 				supsCost, err := decimal.NewFromString(ability.SupsCost)
@@ -151,6 +151,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 
 				wmAbility := &GameAbility{
 					ID:                  uuid.Must(uuid.FromString(ability.ID)), // generate a uuid for frontend to track sups contribution
+					Identity:            ability.ID,
 					GameClientAbilityID: byte(ability.GameClientAbilityID),
 					ImageUrl:            ability.ImageURL,
 					Description:         ability.Description,
@@ -162,7 +163,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 					TextColour:          ability.TextColour,
 					Title:               "FACTION_WIDE",
 				}
-				abilities[wmAbility.ID] = wmAbility
+				abilities[wmAbility.Identity] = wmAbility
 			}
 			factionAbilities[factionID] = abilities
 		}
@@ -267,7 +268,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 			if abilities, ok := as.factionUniqueAbilities[cont.factionID]; ok {
 
 				// check ability exists
-				if ability, ok := abilities[cont.abilityID]; ok {
+				if ability, ok := abilities[cont.abilityIdentity]; ok {
 
 					// return early if battle stage is invalid
 					if as.battle.stage != BattleStagStart {
@@ -653,10 +654,10 @@ func (as *AbilitiesSystem) SetNewBattleAbility() (int, error) {
 }
 
 type Contribution struct {
-	factionID uuid.UUID
-	userID    server.UserID
-	amount    decimal.Decimal
-	abilityID uuid.UUID
+	factionID       uuid.UUID
+	userID          server.UserID
+	amount          decimal.Decimal
+	abilityIdentity string
 }
 
 // locationDecidersSet set a user list for location select for current ability triggered
@@ -840,7 +841,7 @@ func (as *AbilitiesSystem) BattleAbilityProgressBar() {
 // *********************
 // Handlers
 // *********************
-func (as *AbilitiesSystem) AbilityContribute(factionID uuid.UUID, userID server.UserID, gameAbilityID uuid.UUID, amount decimal.Decimal) {
+func (as *AbilitiesSystem) AbilityContribute(factionID uuid.UUID, userID server.UserID, abilityIdentity string, amount decimal.Decimal) {
 	if as.battle.stage != BattleStagStart || as.battleAbilityPool.Stage.Phase != BribeStageBribe {
 		return
 	}
@@ -849,10 +850,33 @@ func (as *AbilitiesSystem) AbilityContribute(factionID uuid.UUID, userID server.
 		factionID,
 		userID,
 		amount,
-		gameAbilityID,
+		abilityIdentity,
 	}
 
 	as.contribute <- cont
+}
+
+// FactionUniqueAbilityGet return the faction unique ability for the given faction
+func (as *AbilitiesSystem) FactionUniqueAbilityGet(factionID uuid.UUID) *GameAbility {
+	for _, ga := range as.factionUniqueAbilities[factionID] {
+		return ga
+	}
+
+	return nil
+}
+
+// FactionUniqueAbilityGet return the faction unique ability for the given faction
+func (as *AbilitiesSystem) WarMachineAbilityGet(factionID uuid.UUID, hash string) *GameAbility {
+	// NOTE: just pass down the faction unique abilities for now
+	if fua, ok := as.factionUniqueAbilities[factionID]; ok {
+		for h, ga := range fua {
+			if h == hash {
+				return ga
+			}
+		}
+	}
+
+	return nil
 }
 
 func (as *AbilitiesSystem) BribeGabs(factionID uuid.UUID, userID server.UserID, amount decimal.Decimal) {
@@ -864,7 +888,7 @@ func (as *AbilitiesSystem) BribeGabs(factionID uuid.UUID, userID server.UserID, 
 		factionID,
 		userID,
 		amount,
-		uuid.Nil,
+		"",
 	}
 
 	as.bribe <- cont

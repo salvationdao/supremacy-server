@@ -299,6 +299,7 @@ func UpsertPlayer(p *boiler.Player) error {
 			boiler.PlayerColumns.ID,
 			boiler.PlayerColumns.Username,
 			boiler.PlayerColumns.PublicAddress,
+			boiler.PlayerColumns.FactionID,
 		},
 		boil.None(),
 		boil.Infer(),

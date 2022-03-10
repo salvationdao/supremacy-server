@@ -15,7 +15,7 @@ var XsynTreasuryUserID = UserID(uuid.Must(uuid.FromString("ebf30ca0-875b-4e84-9a
 type User struct {
 	ID                  UserID          `json:"id" db:"id"`
 	Faction             *boiler.Faction `json:"faction"`
-	FactionID           FactionID       `json:"faction_id"`
+	FactionID           FactionID       `json:"faction_id,omitempty"`
 	FirstName           string          `json:"first_name" db:"first_name"`
 	LastName            string          `json:"last_name" db:"last_name"`
 	Email               null.String     `json:"email" db:"email"`
