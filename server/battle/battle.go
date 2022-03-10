@@ -26,6 +26,7 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/gofrs/uuid"
 
@@ -115,8 +116,8 @@ func NewArena(opts *Opts) *Arena {
 		WriteTimeout: arena.timeout,
 	}
 
+	opts.SecureUserCommand(HubKeyGameUserOnline, arena.UserOnline)
 	opts.SecureUserFactionCommand(WSJoinQueue, arena.Join)
-	opts.Command(HubKeyGameUserOnline, arena.UserOnline)
 
 	// subscribe functions
 	opts.SubscribeCommand(HubKeyGameSettingsUpdated, arena.SendSettings)
@@ -135,6 +136,7 @@ func NewArena(opts *Opts) *Arena {
 	opts.SecureUserFactionCommand(HubKeFactionUniqueAbilityContribute, arena.FactionUniqueAbilityContribute)
 	opts.SecureUserFactionSubscribeCommand(HubKeyFactionUniqueAbilitiesUpdated, arena.FactionAbilitiesUpdateSubscribeHandler)
 	opts.SecureUserFactionSubscribeCommand(HubKeyWarMachineAbilitiesUpdated, arena.WarMachineAbilitiesUpdateSubscribeHandler)
+	opts.SecureUserFactionSubscribeCommand(HubKeyViewerLiveCountUpdated, arena.ViewerLiveCountUpdateSubscribeHandler)
 
 	// net message subscribe
 	opts.NetSecureUserFactionSubscribeCommand(HubKeyBattleAbilityProgressBarUpdated, arena.FactionProgressBarUpdateSubscribeHandler)
@@ -375,6 +377,33 @@ func (arena *Arena) FactionAbilitiesUpdateSubscribeHandler(ctx context.Context, 
 	return req.TransactionID, busKey, nil
 }
 
+const HubKeyViewerLiveCountUpdated hub.HubCommandKey = "VIEWER:LIVE:COUNT:UPDATED"
+
+type ViewerLiveCount struct {
+	RedMountain int64 `json:"red_mountain"`
+	Boston      int64 `json:"boston"`
+	Zaibatsu    int64 `json:"zaibatsu"`
+	Other       int64 `json:"other"`
+}
+
+// ViewerLiveCountUpdateSubscribeHandler subscribe on viewer live count
+func (arena *Arena) ViewerLiveCountUpdateSubscribeHandler(tx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	gamelog.L.Info().Str("fn", "ViewerLiveCountUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
+
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return "", "", terror.Error(err)
+	}
+
+	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
+	if userID.IsNil() {
+		return "", "", terror.Error(terror.ErrForbidden)
+	}
+
+	return req.TransactionID, messagebus.BusKey(HubKeyViewerLiveCountUpdated), nil
+}
+
 const HubKeyWarMachineAbilitiesUpdated hub.HubCommandKey = "WAR:MACHINE:ABILITIES:UPDATED"
 
 type WarMachineAbilitiesUpdatedRequest struct {
@@ -423,19 +452,43 @@ func (arena *Arena) WarMachineAbilitiesUpdateSubscribeHandler(ctx context.Contex
 	return req.TransactionID, busKey, nil
 }
 
+type UserOnlineRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		User *BattleUser `json:"user"`
+	} `json:"payload"`
+}
+
 func (arena *Arena) UserOnline(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	if arena.currentBattle == nil {
 		return nil
 	}
 
-	var user *BattleUser
-	err := json.Unmarshal(payload, user)
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("unable to unmarshal online user")
-		return err
+	fmt.Println("Test Cakes", wsc.Identifier())
+	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
+	if userID.IsNil() {
+		return terror.Error(terror.ErrInvalidInput)
 	}
 
-	arena.currentBattle.userOnline(user, wsc)
+	user, err := boiler.Players(
+		boiler.PlayerWhere.ID.EQ(userID.String()),
+		qm.Load(boiler.PlayerRels.Faction),
+	).One(gamedb.StdConn)
+	if err != nil || user == nil || user.R.Faction == nil {
+		return terror.Error(terror.ErrInvalidInput)
+	}
+
+	battleUser := &BattleUser{
+		ID:            uuid.FromStringOrNil(userID.String()),
+		Username:      user.Username.String,
+		FactionColour: arena.currentBattle.factions[uuid.Must(uuid.FromString(user.FactionID.String))].PrimaryColor,
+		FactionLogoID: FactionLogos[user.FactionID.String],
+		wsClient:      map[*hub.Client]bool{},
+	}
+	battleUser.wsClient[wsc] = true
+
+	arena.currentBattle.userOnline(battleUser, wsc)
+
 	return nil
 }
 
@@ -892,6 +945,32 @@ func (btl *Battle) userOnline(user *BattleUser, wsc *hub.Client) {
 		u.wsClient[wsc] = true
 		u.Unlock()
 	}
+
+	resp := &ViewerLiveCount{
+		RedMountain: 0,
+		Boston:      0,
+		Zaibatsu:    0,
+		Other:       0,
+	}
+	btl.users.Range(func(user *BattleUser) bool {
+		if faction, ok := FactionNames[user.FactionID]; ok {
+			switch faction {
+			case "RedMountain":
+				resp.RedMountain++
+			case "Boston":
+				resp.Boston++
+			case "Zaibatsu":
+				resp.Zaibatsu++
+			default:
+				resp.Other++
+			}
+		} else {
+			resp.Other++
+		}
+		return true
+	})
+
+	btl.users.Send(HubKeyViewerLiveCountUpdated, resp)
 }
 
 func (btl *Battle) updatePayload() *GameSettingsResponse {
