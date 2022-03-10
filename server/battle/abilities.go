@@ -419,7 +419,7 @@ func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID str
 	}
 
 	isAllSyndicates := false
-	if ga.BattleAbilityID.IsNil() {
+	if ga.BattleAbilityID == nil || ga.BattleAbilityID.IsNil() {
 		isAllSyndicates = true
 	}
 
