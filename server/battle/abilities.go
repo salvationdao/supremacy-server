@@ -2,6 +2,8 @@ package battle
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"server"
 	"server/db"
@@ -305,7 +307,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 						return
 					}
 
-					actualSupSpent, isTriggered := ability.SupContribution(as.battle.arena.ppClient, as.battle.ID.String(), cont.userID, cont.amount)
+					actualSupSpent, isTriggered := ability.SupContribution(as.battle.arena.ppClient, as.battle.ID.String(), as.battle.BattleNumber, cont.userID, cont.amount)
 
 					// cache user's sup contribution for generating location select order
 					if _, ok := as.userContributeMap[cont.factionID].contributionMap[cont.userID]; !ok {
@@ -390,7 +392,7 @@ func (ga *GameAbility) FactionUniqueAbilityPriceUpdate(minPrice decimal.Decimal)
 }
 
 // SupContribution contribute sups to specific game ability, return the actual sups spent and whether the ability is triggered
-func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID string, userID uuid.UUID, amount decimal.Decimal) (decimal.Decimal, bool) {
+func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID string, battleNumber int, userID uuid.UUID, amount decimal.Decimal) (decimal.Decimal, bool) {
 
 	isTriggered := false
 
@@ -439,6 +441,38 @@ func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID str
 	err = battleContrib.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {
 		gamelog.L.Error().Str("txid", txid).Err(err).Msg("unable to insert battle contrib")
+	}
+
+	tx, err := gamedb.StdConn.Begin()
+	if err == nil {
+
+		defer tx.Rollback()
+
+		spoil, err := boiler.SpoilsOfWars(qm.Where(`battle_id = ?`, battleID)).One(tx)
+		if errors.Is(err, sql.ErrNoRows) {
+			spoil = &boiler.SpoilsOfWar{
+				BattleID:     battleID,
+				BattleNumber: battleNumber,
+				Amount:       amount,
+				AmountSent:   decimal.New(0, 18),
+			}
+		} else {
+			spoil.Amount = spoil.Amount.Add(amount)
+			//broadcast spoil of war total and tick here
+		}
+
+		_, err = spoil.Update(tx, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("unable to insert spoil of war")
+		}
+
+		err = tx.Commit()
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("unable to create tx")
+			tx.Rollback()
+		}
+	} else {
+		gamelog.L.Error().Err(err).Msg("unable to create tx to create spoil of war")
 	}
 
 	// update the current sups if not triggered
@@ -635,7 +669,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 			if factionAbility, ok := as.battleAbilityPool.Abilities[cont.factionID]; ok {
 
 				// contribute sups
-				actualSupSpent, abilityTriggered := factionAbility.SupContribution(as.battle.arena.ppClient, as.battle.ID.String(), cont.userID, cont.amount)
+				actualSupSpent, abilityTriggered := factionAbility.SupContribution(as.battle.arena.ppClient, as.battle.ID.String(), as.battle.BattleNumber, cont.userID, cont.amount)
 
 				// cache user contribution for location select order
 				if _, ok := as.userContributeMap[cont.factionID].contributionMap[cont.userID]; !ok {
