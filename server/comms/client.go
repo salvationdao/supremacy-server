@@ -3,10 +3,12 @@ package comms
 import (
 	"fmt"
 	"log"
+	"math"
 	"net/rpc"
 	"server/gamelog"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/ninja-software/terror/v2"
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
@@ -17,7 +19,7 @@ type XrpcClient struct {
 	Addrs   []string      // list of rpc addresses available to use
 	clients []*rpc.Client // holds rpc clients, same len/pos as the Addrs
 	counter uint64        // counter for cycling address/clients
-	mutex   *sync.Mutex   // lock and unlocks clients slice editing
+	mutex   sync.Mutex    // lock and unlocks clients slice editing
 }
 
 // Gocall plan to deprecate if possible
@@ -36,14 +38,15 @@ func (c *XrpcClient) Call(serviceMethod string, args interface{}, reply interfac
 	defer span.Finish()
 
 	// used for the first time, initialise
-	if c == nil {
+	if c.clients == nil {
 		gamelog.L.Debug().Msg("comms.Call init first time")
 		if len(c.Addrs) <= 0 {
 			log.Fatal("no rpc address set")
 		}
+
 		c.mutex.Lock()
 		for i := 0; i < len(c.Addrs); i++ {
-			c.clients = append(c.clients, &rpc.Client{})
+			c.clients = append(c.clients, nil)
 		}
 		c.mutex.Unlock()
 	}
@@ -96,24 +99,33 @@ func (c *XrpcClient) Call(serviceMethod string, args interface{}, reply interfac
 func dial(maxRetry int, addrAndPort string) (client *rpc.Client, err error) {
 	retry := 0
 	err = fmt.Errorf("x")
+	sleepTime := time.Millisecond * 1000 // 1 second
+	sleepTimeMax := time.Second * 10     // 10 seconds
+	sleepTimeScale := 1.01               // power scale, takes 12 retries to reach max 10 sec sleep, which is total of ~40 seconds later
 
 	for err != nil {
-		// rpc have own timeout probably 1~1.4 sec?
 		client, err = rpc.Dial("tcp", addrAndPort)
 		if err == nil {
 			break
 		}
 		gamelog.L.Debug().Err(err).Str("fn", "comms.dial").Msgf("err: dial fail, retrying... %d", retry)
 
+		// increase timeout each time upto max
+		time.Sleep(sleepTime)
+		sleepTime = time.Duration(math.Pow(float64(sleepTime), sleepTimeScale))
+		if sleepTime > sleepTimeMax {
+			sleepTime = sleepTimeMax
+		}
+
+		retry++
 		// unlimited retry
 		if maxRetry < 0 {
 			continue
 		}
 
-		retry++
 		// limited retry
 		if retry > maxRetry {
-			return nil, terror.Error(fmt.Errorf("rpc dial failed after %d retries", maxRetry))
+			return nil, terror.Error(fmt.Errorf("rpc dial failed after %d retries", retry))
 		}
 	}
 
