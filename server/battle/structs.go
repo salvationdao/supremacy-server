@@ -90,6 +90,12 @@ type BattleUser struct {
 	deadlock.RWMutex
 }
 
+var FactionNames = map[string]string{
+	"98bf7bb3-1a7c-4f21-8843-458d62884060": "RedMountain",
+	"c6dde21-b067-46cf-9e56-155c88a520e2":  "Boston",
+	"880db344-e405-428d-84e5-6ebebab1fe6d": "Zaibutsu",
+}
+
 var FactionLogos = map[string]string{
 	"98bf7bb3-1a7c-4f21-8843-458d62884060": "471354c5-d910-4408-852a-6b44b497680f",
 	"7c6dde21-b067-46cf-9e56-155c88a520e2": "e1973047-f120-4c36-ba5d-2d1c5100a22f",
@@ -212,10 +218,4 @@ type GameAbilityPrice struct {
 type MultiplierUpdate struct {
 	TotalMultipliers string        `json:"total_multipliers"`
 	UserMultipliers  []*Multiplier `json:"multipliers"`
-}
-
-var FactionNames = map[string]string{
-	"98bf7bb3-1a7c-4f21-8843-458d62884060": "RedMountain",
-	"c6dde21-b067-46cf-9e56-155c88a520e2":  "Boston",
-	"880db344-e405-428d-84e5-6ebebab1fe6d": "Zaibutsu",
 }
