@@ -32,7 +32,7 @@ AND um.until_battle_number >= $1
 GROUP BY p.id;
 `
 
-	err := pgxscan.Get(context.Background(), gamedb.Conn, &result, q, battle_number)
+	err := pgxscan.Select(context.Background(), gamedb.Conn, &result, q, battle_number)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
