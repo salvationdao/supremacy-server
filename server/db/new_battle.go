@@ -381,9 +381,9 @@ func QueueSetBattleID(battleID string, mechIDs ...uuid.UUID) error {
 	var paramrefs string
 	for i, id := range mechIDs {
 		paramrefs += `$` + strconv.Itoa(i+2) + `,`
-		args[i] = id.String()
+		args[i+1] = id.String()
 	}
-	if len(args) == 0 {
+	if len(args) == 1 {
 		fmt.Println("no mechs", len(mechIDs))
 	}
 
