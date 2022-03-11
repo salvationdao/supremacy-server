@@ -22,7 +22,7 @@ func (ht *HubTracer) OnConnect(ctx context.Context, r *http.Request) context.Con
 	return ctx
 }
 func (ht *HubTracer) OnEventStart(ctx context.Context, operation string, commandName string, transactionID string) context.Context {
-	span := tracer.StartSpan("hub_handler", tracer.ResourceName(operation))
+	span := tracer.StartSpan("hub_handler", tracer.ResourceName(commandName))
 	return context.WithValue(ctx, TracerContext("span"), span)
 
 }
