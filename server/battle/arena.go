@@ -777,5 +777,18 @@ func (uc *Arena) UserStatUpdatedSubscribeHandler(ctx context.Context, client *hu
 		return req.TransactionID, "", terror.Error(err, "Invalid request received")
 	}
 
+	userID, err := uuid.FromString(client.Identifier())
+	if err != nil {
+		return "", "", terror.Error(err, "Invalid request received")
+	}
+	us, err := db.UserStatGet(ctx, uc.conn, server.UserID(userID))
+	if err != nil {
+		return "", "", terror.Error(err, "failed to get user")
+	}
+
+	if us != nil {
+		reply(us)
+	}
+
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserStatSubscribe, client.Identifier())), nil
 }

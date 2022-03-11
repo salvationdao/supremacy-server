@@ -10,6 +10,7 @@ import (
 
 	"github.com/gofrs/uuid"
 	"github.com/shopspring/decimal"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
@@ -341,20 +342,20 @@ winwar:
 
 	// insert multipliers
 
-	// for pid, mlts := range newMultipliers {
-	// 	for m := range mlts {
-	// 		mlt := &boiler.UserMultiplier{
-	// 			PlayerID:          pid,
-	// 			FromBattleNumber:  ms.battle.BattleNumber,
-	// 			UntilBattleNumber: ms.battle.BattleNumber + m.ForGames,
-	// 			MultiplierID:      m.ID,
-	// 			Value:             m.Value,
-	// 		}
-	// 		err := mlt.Insert(gamedb.StdConn, boil.Infer())
-	// 		if err != nil {
-	// 			gamelog.L.Error().Str("playerID", pid).Interface("user_multiplier", mlt).Err(err).Msg("unable to insert user multiplier at battle end")
-	// 			continue
-	// 		}
-	// 	}
-	// }
+	for pid, mlts := range newMultipliers {
+		for m := range mlts {
+			mlt := &boiler.UserMultiplier{
+				PlayerID:          pid,
+				FromBattleNumber:  ms.battle.BattleNumber,
+				UntilBattleNumber: ms.battle.BattleNumber + m.ForGames,
+				MultiplierID:      m.ID,
+				Value:             m.Value,
+			}
+			err := mlt.Insert(gamedb.StdConn, boil.Infer())
+			if err != nil {
+				gamelog.L.Error().Str("playerID", pid).Interface("user_multiplier", mlt).Err(err).Msg("unable to insert user multiplier at battle end")
+				continue
+			}
+		}
+	}
 }

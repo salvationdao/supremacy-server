@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"errors"
 	"regexp"
 	"server"
 	"server/db/boiler"
@@ -119,6 +120,9 @@ func UserStatGet(ctx context.Context, conn Conn, userID server.UserID) (*server.
 	`
 
 	err := pgxscan.Get(ctx, conn, user, q, userID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, terror.Error(err)
 	}

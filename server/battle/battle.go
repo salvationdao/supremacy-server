@@ -250,6 +250,16 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 
 	go func() {
 		for _, u := range us {
+			fmt.Println("_________")
+			fmt.Println("_________")
+			fmt.Println("_________")
+			fmt.Println("_________")
+			fmt.Println("_________")
+			fmt.Println("_________")
+			fmt.Println("_________")
+			fmt.Println("_________")
+			fmt.Println("_________", u)
+
 			go btl.arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserStatSubscribe, u.ID.String())), u)
 		}
 	}()
