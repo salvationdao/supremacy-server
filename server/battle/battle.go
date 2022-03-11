@@ -48,6 +48,8 @@ type Battle struct {
 	*boiler.Battle
 }
 
+const HubKeyLiveVoteCountUpdated hub.HubCommandKey = "LIVE:VOTE:COUNT:UPDATED"
+
 const HubKeyWarMachineLocationUpdated hub.HubCommandKey = "WAR:MACHINE:LOCATION:UPDATED"
 
 func (btl *Battle) start(payload *BattleStartPayload) {

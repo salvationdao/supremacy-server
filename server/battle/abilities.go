@@ -17,6 +17,7 @@ import (
 
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
+	"github.com/sasha-s/go-deadlock"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -36,6 +37,27 @@ type LocationDeciders struct {
 	list []uuid.UUID
 }
 
+type LiveCount struct {
+	deadlock.Mutex
+	TotalVotes decimal.Decimal `json:"total_votes"`
+}
+
+func (lc *LiveCount) AddSups(amount decimal.Decimal) {
+	lc.Lock()
+	lc.TotalVotes = lc.TotalVotes.Add(amount)
+	lc.Unlock()
+}
+
+func (lc *LiveCount) ReadTotal() string {
+	lc.Lock()
+	defer lc.Unlock()
+
+	value := lc.TotalVotes.String()
+	lc.TotalVotes = decimal.Zero
+
+	return value
+}
+
 type AbilitiesSystem struct {
 	battle *Battle
 	// faction unique abilities
@@ -51,6 +73,8 @@ type AbilitiesSystem struct {
 	contribute chan *Contribution
 	// location select winner list
 	locationDeciders *LocationDeciders
+
+	liveCount *LiveCount
 }
 
 func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
@@ -186,6 +210,9 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 		locationDeciders: &LocationDeciders{
 			list: []uuid.UUID{},
 		},
+		liveCount: &LiveCount{
+			TotalVotes: decimal.Zero,
+		},
 	}
 
 	// broadcast faction unique ability
@@ -234,6 +261,8 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 	minPrice := decimal.New(1, 18)
 
 	main_ticker := time.NewTicker(1 * time.Second)
+
+	live_vote_ticker := time.NewTicker(1 * time.Second)
 
 	as.contribute = make(chan *Contribution, 10)
 
@@ -366,6 +395,8 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 					}
 					as.userContributeMap[cont.factionID].contributionMap[cont.userID] = as.userContributeMap[cont.factionID].contributionMap[cont.userID].Add(actualSupSpent)
 
+					as.liveCount.AddSups(actualSupSpent)
+
 					// sups contribution
 					triggeredFlag := "0"
 					if isTriggered {
@@ -477,6 +508,14 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 					as.battle.arena.netMessageBus.Send(context.Background(), messagebus.NetBusKey(fmt.Sprintf("%s,%s", HubKeyAbilityPriceUpdated, ability.Identity)), payload)
 				}
 			}
+
+		case <-live_vote_ticker.C:
+			total := as.liveCount.ReadTotal()
+
+			// broadcast
+			payload := []byte{byte(LiveVotingTick)}
+			payload = append(payload, []byte(total)...)
+			as.battle.arena.netMessageBus.Send(context.Background(), messagebus.NetBusKey(HubKeyLiveVoteCountUpdated), payload)
 		}
 	}
 }
@@ -852,6 +891,8 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 					as.userContributeMap[cont.factionID].contributionMap[cont.userID] = decimal.Zero
 				}
 				as.userContributeMap[cont.factionID].contributionMap[cont.userID] = as.userContributeMap[cont.factionID].contributionMap[cont.userID].Add(actualSupSpent)
+
+				as.liveCount.AddSups(actualSupSpent)
 
 				if abilityTriggered {
 					// generate location select order list
