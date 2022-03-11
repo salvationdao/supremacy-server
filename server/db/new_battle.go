@@ -324,6 +324,58 @@ func MechBattleStatus(mechID uuid.UUID) (bool, error) {
 	return count > 0, nil
 }
 
+type MechAndPosition struct {
+	MechID        uuid.UUID
+	QueuePosition int64
+}
+
+// AllMechsAfter gets all mechs that come after the specified position in the queue
+// It returns a list of mech IDs
+func AllMechsAfter(position int64, factionID uuid.UUID) ([]*MechAndPosition, error) {
+	query := `
+		select t.mech_id, t.rn
+		from (
+			select
+				mech_id,
+				faction_id, 
+				queued_at,
+				count(*) as cnt,
+				row_number() over ( order by max(queued_at) asc ) as rn
+			from battle_queue
+			group by mech_id
+			order by queued_at asc
+		) t
+		where faction_id = $1 AND t.rn > $2
+	`
+
+	rows, err := gamedb.Conn.Query(context.Background(), query, factionID.String(), position)
+	if err != nil {
+		gamelog.L.Error().
+			Str("position", strconv.Itoa(int(position))).
+			Str("faction_id", factionID.String()).
+			Str("db func", "AllMechsAfter").Err(err).Msg("unable to get mechs after")
+		return nil, err
+	}
+	defer rows.Close()
+
+	mechsAfter := make([]*MechAndPosition, 0)
+	for rows.Next() {
+		item := &MechAndPosition{}
+		err := rows.Scan(&item.MechID, &item.QueuePosition)
+		if err != nil {
+			gamelog.L.Error().
+				Str("position", strconv.Itoa(int(position))).
+				Str("faction_id", factionID.String()).
+				Str("db func", "AllMechsAfter").Err(err).Msg("unable to get mechs after")
+			return nil, err
+		}
+		mechsAfter = append(mechsAfter, item)
+	}
+	rows.Close()
+
+	return mechsAfter, nil
+}
+
 func QueueLength(factionID uuid.UUID) (int64, error) {
 	var count int64
 
@@ -393,13 +445,22 @@ func JoinQueue(mech *BattleMechData) (int64, error) {
 	return QueuePosition(mech.MechID, mech.FactionID)
 }
 
-func LeaveQueue(mech *BattleMechData) error {
+func LeaveQueue(mech *BattleMechData) (int64, error) {
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
 		gamelog.L.Error().Str("db func", "LeaveQueue").Err(err).Msg("unable to begin tx")
-		return err
+		return -1, err
 	}
 	defer tx.Rollback()
+	// Get queue position before deleting
+	position, err := QueuePosition(mech.MechID, mech.FactionID)
+	if err != nil {
+		gamelog.L.Error().
+			Interface("mech", mech).
+			Str("db func", "LeaveQueue").Err(err).Msg("unable to get mech position")
+		return -1, err
+	}
+
 	bw := &boiler.BattleQueue{
 		MechID: mech.MechID.String(),
 	}
@@ -408,17 +469,17 @@ func LeaveQueue(mech *BattleMechData) error {
 		gamelog.L.Error().
 			Interface("mech", mech).
 			Str("db func", "LeaveQueue").Err(err).Msg("unable to remove mech from queue")
-		return err
+		return -1, err
 	}
 	err = tx.Commit()
 	if err != nil {
 		gamelog.L.Error().
 			Interface("mech", mech).
 			Str("db func", "LeaveQueue").Err(err).Msg("unable to commit mech deletion from queue")
-		return err
+		return -1, err
 	}
 
-	return nil
+	return position, nil
 }
 
 func ClearQueue(mechIDs ...uuid.UUID) error {

@@ -526,7 +526,7 @@ func (arena *Arena) Leave(ctx context.Context, wsc *hub.Client, payload []byte, 
 		return terror.Error(terror.ErrForbidden, "user is not mech owner")
 	}
 
-	err = db.LeaveQueue(&db.BattleMechData{
+	position, err := db.LeaveQueue(&db.BattleMechData{
 		MechID:    mechID,
 		OwnerID:   ownerID,
 		FactionID: uuid.UUID(factionID),
@@ -559,7 +559,19 @@ func (arena *Arena) Leave(ctx context.Context, wsc *hub.Client, payload []byte, 
 		contractReward,
 	})
 
+	mechsAfterIDs, err := db.AllMechsAfter(position-1, factionID)
+	if err != nil {
+		gamelog.L.Error().Interface("factionID", factionID).Err(err).Msg("unable to get mechs after")
+		return err
+	}
+
 	// Send updated war machine queue status to all subscribers
+	for _, m := range mechsAfterIDs {
+		fmt.Println(m)
+		arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", WSWarMachineQueueStatus, m.MechID)), WarMachineQueueStatusResponse{
+			&m.QueuePosition,
+		})
+	}
 	arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", WSWarMachineQueueStatus, mechID)), WarMachineQueueStatusResponse{
 		nil,
 	})
