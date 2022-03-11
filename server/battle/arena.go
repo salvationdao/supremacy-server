@@ -74,6 +74,9 @@ func (mt MessageType) String() string {
 }
 
 const WSJoinQueue hub.HubCommandKey = hub.HubCommandKey("BATTLE:QUEUE:JOIN")
+const WSLeaveQueue hub.HubCommandKey = hub.HubCommandKey("BATTLE:QUEUE:LEAVE")
+const WSQueueStatus hub.HubCommandKey = hub.HubCommandKey("BATTLE:QUEUE:STATUS")
+const WSWarMachineQueueStatus hub.HubCommandKey = hub.HubCommandKey("WAR:MACHINE:QUEUE:STATUS")
 
 func NewArena(opts *Opts) *Arena {
 	l, err := net.Listen("tcp", opts.Addr)
@@ -107,7 +110,12 @@ func NewArena(opts *Opts) *Arena {
 		WriteTimeout: arena.timeout,
 	}
 
+	// queue
 	opts.SecureUserFactionCommand(WSJoinQueue, arena.Join)
+	opts.SecureUserFactionCommand(WSLeaveQueue, arena.Leave)
+	opts.SecureUserFactionSubscribeCommand(WSQueueStatus, arena.QueueStatus)
+	opts.SecureUserFactionSubscribeCommand(WSWarMachineQueueStatus, arena.WarMachineQueueStatus)
+
 	opts.SecureUserCommand(HubKeyGameUserOnline, arena.UserOnline)
 	opts.SubscribeCommand(HubKeyWarMachineDestroyedUpdated, arena.WarMachineDestroyedUpdatedSubscribeHandler)
 
