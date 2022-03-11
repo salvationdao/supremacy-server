@@ -435,32 +435,38 @@ func (arena *Arena) Join(ctx context.Context, wsc *hub.Client, payload []byte, f
 		return err
 	}
 
-	position, err := db.JoinQueue(&db.BattleMechData{
-		MechID:    mechID,
-		OwnerID:   ownerID,
-		FactionID: uuid.UUID(factionID),
-	})
-
-	if err != nil {
-		gamelog.L.Error().Interface("factionID", mech.FactionID).Err(err).Msg("unable to insert mech into queue")
-		return err
-	}
-
-	reply(position)
-
+	// Get current queue length and calculate queue fee and reward
 	result, err := db.QueueLength(factionID)
 	if err != nil {
 		gamelog.L.Error().Interface("factionID", factionID).Err(err).Msg("unable to retrieve queue length")
 		return err
 	}
 
-	queueLength := decimal.NewFromInt(result)
+	queueLength := decimal.NewFromInt(result + 1)
 	queueCost := decimal.New(25, 16)     // 0.25 sups
 	contractReward := decimal.New(2, 18) // 2 sups
 	if queueLength.GreaterThan(decimal.NewFromInt(0)) {
 		queueCost = queueLength.Mul(decimal.New(25, 16))     // 0.25x queue length
 		contractReward = queueLength.Mul(decimal.New(2, 18)) // 2x queue length
 	}
+
+	// Insert mech into queue
+	position, err := db.JoinQueue(&db.BattleMechData{
+		MechID:    mechID,
+		OwnerID:   ownerID,
+		FactionID: uuid.UUID(factionID),
+	},
+		contractReward,
+		queueCost,
+	)
+	if err != nil {
+		gamelog.L.Error().Interface("factionID", mech.FactionID).Err(err).Msg("unable to insert mech into queue")
+		return err
+	}
+
+	// TODO: Charge user, update battle contract to indicate paid
+
+	reply(position)
 
 	arena.messageBus.Send(context.Background(), messagebus.BusKey(WSQueueStatus), QueueStatusResponse{
 		result,
@@ -471,6 +477,7 @@ func (arena *Arena) Join(ctx context.Context, wsc *hub.Client, payload []byte, f
 	// Send updated war machine queue status to all subscribers
 	arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", WSWarMachineQueueStatus, mechID)), WarMachineQueueStatusResponse{
 		&position,
+		&contractReward,
 	})
 
 	return err
@@ -536,6 +543,8 @@ func (arena *Arena) Leave(ctx context.Context, wsc *hub.Client, payload []byte, 
 		return err
 	}
 
+	// TODO: Refund user
+
 	reply(true)
 
 	result, err := db.QueueLength(factionID)
@@ -567,12 +576,18 @@ func (arena *Arena) Leave(ctx context.Context, wsc *hub.Client, payload []byte, 
 
 	// Send updated war machine queue status to all subscribers
 	for _, m := range mechsAfterIDs {
-		fmt.Println(m)
+		contractReward, err := db.QueueContract(m.MechID, factionID)
+		if err != nil {
+			gamelog.L.Error().Interface("mechID", mechID).Interface("factionID", factionID).Err(err).Msg("unable to get mechs contract reward")
+			return err
+		}
 		arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", WSWarMachineQueueStatus, m.MechID)), WarMachineQueueStatusResponse{
 			&m.QueuePosition,
+			contractReward,
 		})
 	}
 	arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", WSWarMachineQueueStatus, mechID)), WarMachineQueueStatusResponse{
+		nil,
 		nil,
 	})
 
@@ -612,7 +627,7 @@ func (arena *Arena) QueueStatus(ctx context.Context, wsc *hub.Client, payload []
 		return "", "", terror.Error(err)
 	}
 
-	queueLength := decimal.NewFromInt(result)
+	queueLength := decimal.NewFromInt(result + 1)
 	queueCost := decimal.New(25, 16)     // 0.25 sups
 	contractReward := decimal.New(2, 18) // 2 sups
 	if queueLength.GreaterThan(decimal.NewFromInt(0)) {
@@ -637,7 +652,8 @@ type WarMachineQueueStatusRequest struct {
 }
 
 type WarMachineQueueStatusResponse struct {
-	QueuePosition *int64 `json:"queue_position"` // in-game: -1; in queue: > 0; not in queue: nil
+	QueuePosition  *int64           `json:"queue_position"` // in-game: -1; in queue: > 0; not in queue: nil
+	ContractReward *decimal.Decimal `json:"contract_reward"`
 }
 
 func (arena *Arena) WarMachineQueueStatus(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
@@ -684,9 +700,15 @@ func (arena *Arena) WarMachineQueueStatus(ctx context.Context, wsc *hub.Client, 
 		if errors.Is(err, pgx.ErrNoRows) {
 			reply(WarMachineQueueStatusResponse{
 				nil,
+				nil,
 			})
 			return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", WSWarMachineQueueStatus, mechID)), nil
 		}
+		return "", "", terror.Error(err)
+	}
+
+	contractReward, err := db.QueueContract(mechID, factionID)
+	if err != nil {
 		return "", "", terror.Error(err)
 	}
 
@@ -699,16 +721,9 @@ func (arena *Arena) WarMachineQueueStatus(ctx context.Context, wsc *hub.Client, 
 		position = -1
 	}
 
-	// queueLength := decimal.NewFromInt(result)
-	// queueCost := decimal.New(25, 16)     // 0.25 sups
-	// contractReward := decimal.New(2, 18) // 2 sups
-	// if queueLength.GreaterThan(decimal.NewFromInt(0)) {
-	// 	queueCost = queueLength.Mul(decimal.New(25, 16))     // 0.25x queue length
-	// 	contractReward = queueLength.Mul(decimal.New(2, 18)) // 2x queue length
-	// }
-
 	reply(WarMachineQueueStatusResponse{
 		&position,
+		contractReward,
 	})
 
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", WSWarMachineQueueStatus, mechID)), nil

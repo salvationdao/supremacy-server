@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gofrs/uuid"
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -416,7 +417,30 @@ func QueuePosition(mechID uuid.UUID, factionID uuid.UUID) (int64, error) {
 	return pos, nil
 }
 
-func JoinQueue(mech *BattleMechData) (int64, error) {
+func QueueContract(mechID uuid.UUID, factionID uuid.UUID) (*decimal.Decimal, error) {
+	var contractReward decimal.Decimal
+
+	// Get latest queue contract
+	query := `select contract_reward
+		from battle_contracts
+		where mech_id = $1 AND faction_id = $2
+		order by queued_at desc
+		limit 1
+	`
+
+	err := gamedb.Conn.QueryRow(context.Background(), query, mechID.String(), factionID.String()).Scan(&contractReward)
+	if err != nil {
+		gamelog.L.Error().
+			Str("mech_id", mechID.String()).
+			Str("faction_id", factionID.String()).
+			Str("db func", "QueueContract").Err(err).Msg("unable to get battle contract of mech")
+		return nil, err
+	}
+
+	return &contractReward, nil
+}
+
+func JoinQueue(mech *BattleMechData, contractReward decimal.Decimal, queueFee decimal.Decimal) (int64, error) {
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
 		gamelog.L.Error().Str("db func", "JoinQueue").Err(err).Msg("unable to begin tx")
@@ -432,18 +456,35 @@ func JoinQueue(mech *BattleMechData) (int64, error) {
 		gamelog.L.Debug().Str("db func", "JoinQueue").Str("mech_id", mech.MechID.String()).Err(err).Msg("mech already in queue")
 		return QueuePosition(mech.MechID, mech.FactionID)
 	}
-	bw := &boiler.BattleQueue{
+	bq := &boiler.BattleQueue{
 		MechID:    mech.MechID.String(),
 		QueuedAt:  time.Now(),
 		FactionID: mech.FactionID.String(),
 		OwnerID:   mech.OwnerID.String(),
 	}
-	err = bw.Insert(gamedb.StdConn, boil.Infer())
+	err = bq.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {
 		gamelog.L.Error().
 			Interface("mech", mech).
 			Str("db func", "JoinQueue").Err(err).Msg("unable to insert mech into queue")
 	}
+
+	bc := &boiler.BattleContract{
+		MechID:         mech.MechID.String(),
+		FactionID:      mech.FactionID.String(),
+		PlayerID:       mech.OwnerID.String(),
+		ContractReward: contractReward,
+		Fee:            queueFee,
+	}
+	err = bc.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().
+			Interface("mech", mech).
+			Str("contractReward", contractReward.String()).
+			Str("queueFee", queueFee.String()).
+			Str("db func", "JoinQueue").Err(err).Msg("unable to create battle contract")
+	}
+
 	err = tx.Commit()
 	if err != nil {
 		gamelog.L.Error().
