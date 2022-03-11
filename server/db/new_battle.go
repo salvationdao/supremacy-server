@@ -303,6 +303,27 @@ func LoadBattleQueue(ctx context.Context, lengthPerFaction int) ([]*boiler.Battl
 	return queue, nil
 }
 
+// MechBattleStatus returns true if the mech is currently in battle, and false if not
+func MechBattleStatus(mechID uuid.UUID) (bool, error) {
+	var count int64
+
+	query := `
+	select count(*) from battles b
+	inner join battle_mechs bm on bm.battle_id = b.id
+	where b.id = (select id from battles order by battle_number desc limit 1) and bm.mech_id = $1
+	`
+
+	err := gamedb.Conn.QueryRow(context.Background(), query, mechID.String()).Scan(&count)
+	if err != nil {
+		gamelog.L.Error().
+			Str("mech_id", mechID.String()).
+			Str("db func", "MechBattleStatus").Err(err).Msg("unable to get queue position of mech")
+		return false, err
+	}
+
+	return count > 0, nil
+}
+
 func QueueLength(factionID uuid.UUID) (int64, error) {
 	var count int64
 
@@ -319,14 +340,15 @@ func QueuePosition(mechID uuid.UUID, factionID uuid.UUID) (int64, error) {
 
 	query := `select t.rn
 		from (
-		   select 
-				  mech_id,  			      
-				  faction_id, 
-				  count(*) as cnt,
-				  row_number() over (order by count(*) desc) as rn
-		   from battle_queue
-		   group by mech_id
-           order by queued_at ASC
+			select
+				mech_id,
+				faction_id, 
+				queued_at,
+				count(*) as cnt,
+				row_number() over ( order by max(queued_at) asc ) as rn
+			from battle_queue
+			group by mech_id
+			order by queued_at asc
 		) t
 		where mech_id = $1 AND faction_id = $2`
 
