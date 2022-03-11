@@ -15,6 +15,8 @@ import (
 	"server/rpcclient"
 	"time"
 
+	"github.com/volatiletech/sqlboiler/v4/boil"
+
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
@@ -72,6 +74,9 @@ func (mt MessageType) String() string {
 }
 
 const WSJoinQueue hub.HubCommandKey = hub.HubCommandKey("BATTLE:QUEUE:JOIN")
+const WSLeaveQueue hub.HubCommandKey = hub.HubCommandKey("BATTLE:QUEUE:LEAVE")
+const WSQueueStatus hub.HubCommandKey = hub.HubCommandKey("BATTLE:QUEUE:STATUS")
+const WSWarMachineQueueStatus hub.HubCommandKey = hub.HubCommandKey("WAR:MACHINE:QUEUE:STATUS")
 
 func NewArena(opts *Opts) *Arena {
 	l, err := net.Listen("tcp", opts.Addr)
@@ -105,7 +110,12 @@ func NewArena(opts *Opts) *Arena {
 		WriteTimeout: arena.timeout,
 	}
 
+	// queue
 	opts.SecureUserFactionCommand(WSJoinQueue, arena.Join)
+	opts.SecureUserFactionCommand(WSLeaveQueue, arena.Leave)
+	opts.SecureUserFactionSubscribeCommand(WSQueueStatus, arena.QueueStatus)
+	opts.SecureUserFactionSubscribeCommand(WSWarMachineQueueStatus, arena.WarMachineQueueStatus)
+
 	opts.SecureUserCommand(HubKeyGameUserOnline, arena.UserOnline)
 	opts.SubscribeCommand(HubKeyWarMachineDestroyedUpdated, arena.WarMachineDestroyedUpdatedSubscribeHandler)
 
@@ -113,7 +123,7 @@ func NewArena(opts *Opts) *Arena {
 	opts.SubscribeCommand(HubKeyGameSettingsUpdated, arena.SendSettings)
 
 	opts.SubscribeCommand(HubKeyGameNotification, arena.GameNotificationSubscribeHandler)
-	opts.SubscribeCommand(HubKeyMultiplierUpdate, arena.HubKeyMultiplierUpdate)
+	opts.SecureUserSubscribeCommand(HubKeyMultiplierUpdate, arena.HubKeyMultiplierUpdate)
 	opts.SecureUserSubscribeCommand(HubKeyViewerLiveCountUpdated, arena.ViewerLiveCountUpdateSubscribeHandler)
 
 	opts.SecureUserSubscribeCommand(HubKeyUserStatSubscribe, arena.UserStatUpdatedSubscribeHandler)
@@ -134,6 +144,7 @@ func NewArena(opts *Opts) *Arena {
 	opts.NetSecureUserFactionSubscribeCommand(HubKeyBattleAbilityProgressBarUpdated, arena.FactionProgressBarUpdateSubscribeHandler)
 	opts.NetSecureUserFactionSubscribeCommand(HubKeyAbilityPriceUpdated, arena.FactionAbilityPriceUpdateSubscribeHandler)
 	opts.NetSecureUserFactionSubscribeCommand(HubKeyWarMachineLocationUpdated, arena.WarMachineLocationUpdateSubscribeHandler)
+	opts.NetSecureUserFactionSubscribeCommand(HubKeyLiveVoteCountUpdated, arena.LiveVoteCountUpdateSubscribeHandler)
 
 	go func() {
 		err = server.Serve(l)
@@ -444,11 +455,16 @@ func (arena *Arena) UserOnline(ctx context.Context, wsc *hub.Client, payload []b
 		return terror.Error(terror.ErrInvalidInput)
 	}
 
+	var color = "#000000"
+	if user.R.Faction != nil {
+		color = user.R.Faction.PrimaryColor
+	}
+
 	battleUser := &BattleUser{
 		ID:            uuid.FromStringOrNil(userID.String()),
 		Username:      user.Username.String,
 		FactionID:     user.FactionID.String,
-		FactionColour: arena.currentBattle.factions[uuid.Must(uuid.FromString(user.FactionID.String))].PrimaryColor,
+		FactionColour: color,
 		FactionLogoID: FactionLogos[user.FactionID.String],
 		wsClient:      map[*hub.Client]bool{},
 	}
@@ -533,6 +549,10 @@ func (arena *Arena) FactionAbilityPriceUpdateSubscribeHandler(ctx context.Contex
 	}
 
 	return messagebus.NetBusKey(fmt.Sprintf("%s,%s", HubKeyAbilityPriceUpdated, req.Payload.AbilityIdentity)), nil
+}
+
+func (arena *Arena) LiveVoteCountUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.NetBusKey, error) {
+	return messagebus.NetBusKey(HubKeyLiveVoteCountUpdated), nil
 }
 
 func (arena *Arena) WarMachineLocationUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.NetBusKey, error) {
@@ -696,16 +716,30 @@ func (arena *Arena) Battle() *Battle {
 		gamelog.L.Err(err).Msg("unable to get random map")
 		return nil
 	}
+	id := uuid.Must(uuid.NewV4())
+
 	btl := &Battle{
 		arena:   arena,
-		ID:      uuid.Must(uuid.NewV4()),
 		MapName: gameMap.Name,
 		gameMap: gameMap,
-		stage:   BattleStagStart,
+		Battle: &boiler.Battle{
+			ID:        id.String(),
+			GameMapID: gameMap.ID.String(),
+			StartedAt: time.Now(),
+		},
+		stage: BattleStagStart,
 		users: usersMap{
 			m: make(map[uuid.UUID]*BattleUser),
 		},
 		destroyedWarMachineMap: make(map[byte]*WMDestroyedRecord),
+	}
+
+	err = btl.Battle.Insert(gamedb.StdConn, boil.Infer())
+	btl.BattleID = btl.ID
+
+	if err != nil {
+		gamelog.L.Panic().Interface("battle", btl).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to insert Battle into database")
+		return nil
 	}
 
 	err = btl.Load()
@@ -747,7 +781,7 @@ func (arena *Arena) Battle() *Battle {
 			faction, err := boiler.FindFaction(gamedb.StdConn, factionID.String())
 			if err != nil {
 				gamelog.L.Error().
-					Str("Battle ID", btl.ID.String()).
+					Str("Battle ID", btl.ID).
 					Str("Faction ID", factionID.String()).
 					Err(err).Msg("unable to retrieve faction from database")
 
@@ -758,9 +792,9 @@ func (arena *Arena) Battle() *Battle {
 
 	btl.factions = factions
 
-	btl.Battle, err = db.Battle(btl.ID, uuid.UUID(gameMap.ID), bmd)
+	err = db.BattleMechs(btl.Battle, bmd)
 	if err != nil {
-		gamelog.L.Error().Str("Battle ID", btl.ID.String()).Err(err).Msg("unable to insert battle into database")
+		gamelog.L.Error().Str("Battle ID", btl.ID).Err(err).Msg("unable to insert battle into database")
 		//TODO: something more dramatic
 	}
 

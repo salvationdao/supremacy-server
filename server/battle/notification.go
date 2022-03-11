@@ -127,9 +127,33 @@ func (arena *Arena) ViewerLiveCountUpdateSubscribeHandler(tx context.Context, ws
 		return "", "", terror.Error(err)
 	}
 
-	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
-	if userID.IsNil() {
-		return "", "", terror.Error(terror.ErrForbidden)
+	if arena.currentBattle != nil {
+		btl := arena.currentBattle
+		resp := &ViewerLiveCount{
+			RedMountain: 0,
+			Boston:      0,
+			Zaibatsu:    0,
+			Other:       0,
+		}
+		btl.users.Range(func(user *BattleUser) bool {
+			if faction, ok := FactionNames[user.FactionID]; ok {
+				switch faction {
+				case "RedMountain":
+					resp.RedMountain++
+				case "Boston":
+					resp.Boston++
+				case "Zaibatsu":
+					resp.Zaibatsu++
+				default:
+					resp.Other++
+				}
+			} else {
+				resp.Other++
+			}
+			return true
+		})
+
+		reply(resp)
 	}
 
 	return req.TransactionID, messagebus.BusKey(HubKeyViewerLiveCountUpdated), nil

@@ -29,7 +29,6 @@ type SpoilsOfWar struct {
 	flushCh       chan bool
 	tickSpeed     time.Duration
 	transactSpeed time.Duration
-	warchest      *boiler.SpoilsOfWar
 }
 
 func NewSpoilsOfWar(btl *Battle, transactSpeed time.Duration, dripSpeed time.Duration) *SpoilsOfWar {
@@ -198,20 +197,25 @@ func (sow *SpoilsOfWar) ProcessSpoils(battleNumber int) (*boiler.SpoilsOfWar, er
 
 func (sow *SpoilsOfWar) Drip() error {
 	var err error
-	sow.warchest, err = sow.ProcessSpoils(sow.battle.BattleNumber - 1)
-	if err != nil {
-		sow.l.Error().Err(err).Msg("unable to process spoils")
+	bn := sow.battle.BattleNumber - 1
+
+	warchest, err := boiler.SpoilsOfWars(boiler.SpoilsOfWarWhere.BattleNumber.EQ(bn)).One(gamedb.StdConn)
+
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		warchest, err = sow.ProcessSpoils(bn)
+	} else if err != nil {
+		sow.l.Error().Err(err).Msg("unable to retrieve spoils of war")
 		return err
 	}
 
-	if sow.warchest.Amount.LessThanOrEqual(decimal.Zero) {
+	if warchest.Amount.LessThanOrEqual(decimal.Zero) {
 		gamelog.L.Warn().Msgf("warchest amount is less than or equal to zero")
 		return nil
 	}
 
 	dripAllocations := 300
 
-	dripAmount := sow.warchest.Amount.Div(decimal.NewFromInt(int64(dripAllocations)))
+	dripAmount := warchest.Amount.Div(decimal.NewFromInt(int64(dripAllocations)))
 
 	multipliers, err := db.PlayerMultipliers(sow.battle.BattleNumber - 1)
 	if err != nil {
@@ -222,6 +226,9 @@ func (sow *SpoilsOfWar) Drip() error {
 	onlineUsers := []*db.Multipliers{}
 	for _, player := range multipliers {
 		if sow.battle.isOnline(player.PlayerID) {
+			if player.TotalMultiplier.LessThanOrEqual(decimal.Zero) {
+				continue
+			}
 			totalShares = totalShares.Add(player.TotalMultiplier)
 			onlineUsers = append(onlineUsers, player)
 		}
@@ -232,7 +239,7 @@ func (sow *SpoilsOfWar) Drip() error {
 		return nil
 	}
 	subgroup := fmt.Sprintf("Spoils of War from Battle #%d", sow.battle.BattleNumber-1)
-	amountRemaining := sow.warchest.Amount.Sub(sow.warchest.AmountSent)
+	amountRemaining := warchest.Amount.Sub(warchest.AmountSent)
 	for _, player := range onlineUsers {
 		userDrip := dripAmount.Div(player.TotalMultiplier)
 
@@ -261,11 +268,11 @@ func (sow *SpoilsOfWar) Drip() error {
 			sow.l.Error().Err(err).Msg("unable to send spoils of war transaction")
 			continue
 		} else {
-			sow.warchest.AmountSent = sow.warchest.AmountSent.Add(userDrip)
-			_, err = sow.warchest.Update(gamedb.StdConn, boil.Infer())
+			warchest.AmountSent = warchest.AmountSent.Add(userDrip)
+			_, err = warchest.Update(gamedb.StdConn, boil.Infer())
 			if err != nil {
 				sow.l.Error().Err(err).Msg("unable to update spoils of war")
-				sow.warchest = nil
+				warchest = nil
 				return err
 			}
 			pt := boiler.PendingTransaction{

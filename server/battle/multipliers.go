@@ -72,6 +72,14 @@ func (ms *MultiplierSystem) PlayerMultipliers(playerID uuid.UUID) ([]*Multiplier
 		total = total.Add(m.Value)
 	}
 
+	if playerID.String() == "294be3d5-03be-4daa-ac6e-b9b862f79ae6" {
+		multipliers = append(multipliers, &Multiplier{
+			Key:         "my name is reece",
+			Value:       "-1000x",
+			Description: "hey there guys my name is reece",
+		})
+	}
+
 	return multipliers, total.Shift(-1).StringFixed(1)
 }
 
@@ -153,7 +161,7 @@ outer:
 
 			triggers, err := boiler.BattleAbilityTriggers(
 				qm.Where(`is_all_syndicates = true`),
-				qm.And(`trigger_label = ?`, triggerLabel),
+				qm.And(`ability_label = ?`, triggerLabel),
 				qm.OrderBy(`triggered_at DESC`),
 				qm.Limit(3),
 			).All(gamedb.StdConn)

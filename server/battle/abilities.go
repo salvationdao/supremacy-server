@@ -17,6 +17,7 @@ import (
 
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
+	"github.com/sasha-s/go-deadlock"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -36,6 +37,27 @@ type LocationDeciders struct {
 	list []uuid.UUID
 }
 
+type LiveCount struct {
+	deadlock.Mutex
+	TotalVotes decimal.Decimal `json:"total_votes"`
+}
+
+func (lc *LiveCount) AddSups(amount decimal.Decimal) {
+	lc.Lock()
+	lc.TotalVotes = lc.TotalVotes.Add(amount)
+	lc.Unlock()
+}
+
+func (lc *LiveCount) ReadTotal() string {
+	lc.Lock()
+	defer lc.Unlock()
+
+	value := lc.TotalVotes.String()
+	lc.TotalVotes = decimal.Zero
+
+	return value
+}
+
 type AbilitiesSystem struct {
 	battle *Battle
 	// faction unique abilities
@@ -51,6 +73,8 @@ type AbilitiesSystem struct {
 	contribute chan *Contribution
 	// location select winner list
 	locationDeciders *LocationDeciders
+
+	liveCount *LiveCount
 }
 
 func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
@@ -75,7 +99,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 		// faction unique abilities
 		factionUniqueAbilities, err := boiler.GameAbilities(qm.Where("faction_id = ?", factionID.String()), qm.And("battle_ability_id ISNULL")).All(gamedb.StdConn)
 		if err != nil {
-			gamelog.L.Error().Str("Battle ID", battle.ID.String()).Err(err).Msg("unable to retrieve game abilities")
+			gamelog.L.Error().Str("Battle ID", battle.ID).Err(err).Msg("unable to retrieve game abilities")
 		}
 
 		// for zaibatsu unique abilities
@@ -186,6 +210,9 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 		locationDeciders: &LocationDeciders{
 			list: []uuid.UUID{},
 		},
+		liveCount: &LiveCount{
+			TotalVotes: decimal.Zero,
+		},
 	}
 
 	// broadcast faction unique ability
@@ -235,6 +262,8 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 
 	main_ticker := time.NewTicker(1 * time.Second)
 
+	live_vote_ticker := time.NewTicker(1 * time.Second)
+
 	as.contribute = make(chan *Contribution, 10)
 
 	// start the battle
@@ -256,21 +285,25 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 						triggeredFlag := "0"
 						if isTriggered {
 							triggeredFlag = "1"
+
+							event := &server.GameAbilityEvent{
+								EventID:             ability.OfferingID,
+								IsTriggered:         true,
+								GameClientAbilityID: ability.GameClientAbilityID,
+								ParticipantID:       ability.ParticipantID, // trigger on war machine
+								WarMachineHash:      &ability.WarMachineHash,
+							}
+							as.battle.spawnReinforcementNearMech(event)
+
 							// send message to game client, if ability trigger
 							as.battle.arena.Message(
 								"BATTLE:ABILITY",
-								&server.GameAbilityEvent{
-									EventID:             ability.OfferingID,
-									IsTriggered:         true,
-									GameClientAbilityID: ability.GameClientAbilityID,
-									ParticipantID:       ability.ParticipantID, // trigger on war machine
-									WarMachineHash:      &ability.WarMachineHash,
-								},
+								event,
 							)
 
 							bat := boiler.BattleAbilityTrigger{
 								PlayerID:          null.StringFromPtr(nil),
-								BattleID:          as.battle.ID.String(),
+								BattleID:          as.battle.ID,
 								FactionID:         ability.FactionID.String(),
 								IsAllSyndicates:   false,
 								AbilityLabel:      ability.Label,
@@ -342,6 +375,9 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 
 					}
 				} else {
+					// stop all the tickers when battle is ended
+					main_ticker.Stop()
+					live_vote_ticker.Stop()
 					gamelog.L.Info().Msg("exiting ability price update")
 					return
 				}
@@ -358,7 +394,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 						return
 					}
 
-					actualSupSpent, isTriggered := ability.SupContribution(as.battle.arena.ppClient, as.battle.ID.String(), as.battle.BattleNumber, cont.userID, cont.amount)
+					actualSupSpent, isTriggered := ability.SupContribution(as.battle.arena.ppClient, as.battle.ID, as.battle.BattleNumber, cont.userID, cont.amount)
 
 					// cache user's sup contribution for generating location select order
 					if _, ok := as.userContributeMap[cont.factionID].contributionMap[cont.userID]; !ok {
@@ -366,25 +402,31 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 					}
 					as.userContributeMap[cont.factionID].contributionMap[cont.userID] = as.userContributeMap[cont.factionID].contributionMap[cont.userID].Add(actualSupSpent)
 
+					as.liveCount.AddSups(actualSupSpent)
+
 					// sups contribution
 					triggeredFlag := "0"
 					if isTriggered {
 						triggeredFlag = "1"
 						// send message to game client, if ability trigger
+
+						event := &server.GameAbilityEvent{
+							IsTriggered:         true,
+							GameClientAbilityID: ability.GameClientAbilityID,
+							ParticipantID:       ability.ParticipantID, // trigger on war machine
+							WarMachineHash:      &ability.WarMachineHash,
+							EventID:             ability.OfferingID,
+						}
+						as.battle.spawnReinforcementNearMech(event)
+
 						as.battle.arena.Message(
 							"BATTLE:ABILITY",
-							&server.GameAbilityEvent{
-								IsTriggered:         true,
-								GameClientAbilityID: ability.GameClientAbilityID,
-								ParticipantID:       ability.ParticipantID, // trigger on war machine
-								WarMachineHash:      &ability.WarMachineHash,
-								EventID:             ability.OfferingID,
-							},
+							event,
 						)
 
 						bat := boiler.BattleAbilityTrigger{
 							PlayerID:          null.StringFrom(cont.userID.String()),
-							BattleID:          as.battle.ID.String(),
+							BattleID:          as.battle.ID,
 							FactionID:         ability.FactionID.String(),
 							IsAllSyndicates:   false,
 							AbilityLabel:      ability.Label,
@@ -477,6 +519,14 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 					as.battle.arena.netMessageBus.Send(context.Background(), messagebus.NetBusKey(fmt.Sprintf("%s,%s", HubKeyAbilityPriceUpdated, ability.Identity)), payload)
 				}
 			}
+
+		case <-live_vote_ticker.C:
+			total := as.liveCount.ReadTotal()
+
+			// broadcast
+			payload := []byte{byte(LiveVotingTick)}
+			payload = append(payload, []byte(total)...)
+			as.battle.arena.netMessageBus.Send(context.Background(), messagebus.NetBusKey(HubKeyLiveVoteCountUpdated), payload)
 		}
 	}
 }
@@ -506,7 +556,7 @@ func (ga *GameAbility) FactionUniqueAbilityPriceUpdate(minPrice decimal.Decimal)
 	}
 
 	// store updated price to db
-	err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ga.ID, ga.SupsCost.String(), ga.CurrentSups.String())
+	err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ga.ID, ga.SupsCost, ga.CurrentSups)
 	if err != nil {
 		gamelog.L.Error().Err(err)
 		return isTriggered
@@ -529,6 +579,8 @@ func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID str
 		amount = diff
 	}
 	now := time.Now()
+
+	amount = amount.Truncate(0)
 
 	// pay sup
 	txid, err := ppClient.SpendSupMessage(passport.SpendSupsReq{
@@ -567,6 +619,8 @@ func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID str
 	if err != nil {
 		gamelog.L.Error().Str("txid", txid).Err(err).Msg("unable to insert battle contrib")
 	}
+
+	amount = amount.Truncate(0)
 
 	tx, err := gamedb.StdConn.Begin()
 	if err == nil {
@@ -607,7 +661,7 @@ func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID str
 		ga.CurrentSups = ga.CurrentSups.Add(amount)
 
 		// store updated price to db
-		err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ga.ID, ga.SupsCost.String(), ga.CurrentSups.String())
+		err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ga.ID, ga.SupsCost, ga.CurrentSups)
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("unable to insert faction ability sup cost update")
 			return amount, false
@@ -620,7 +674,7 @@ func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID str
 	ga.CurrentSups = decimal.Zero
 
 	// store updated price to db
-	err = db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ga.ID, ga.SupsCost.String(), ga.CurrentSups.String())
+	err = db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ga.ID, ga.SupsCost, ga.CurrentSups)
 	if err != nil {
 		gamelog.L.Error().Err(err)
 		return amount, true
@@ -842,13 +896,15 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 			if factionAbility, ok := as.battleAbilityPool.Abilities[cont.factionID]; ok {
 
 				// contribute sups
-				actualSupSpent, abilityTriggered := factionAbility.SupContribution(as.battle.arena.ppClient, as.battle.ID.String(), as.battle.BattleNumber, cont.userID, cont.amount)
+				actualSupSpent, abilityTriggered := factionAbility.SupContribution(as.battle.arena.ppClient, as.battle.ID, as.battle.BattleNumber, cont.userID, cont.amount)
 
 				// cache user contribution for location select order
 				if _, ok := as.userContributeMap[cont.factionID].contributionMap[cont.userID]; !ok {
 					as.userContributeMap[cont.factionID].contributionMap[cont.userID] = decimal.Zero
 				}
 				as.userContributeMap[cont.factionID].contributionMap[cont.userID] = as.userContributeMap[cont.factionID].contributionMap[cont.userID].Add(actualSupSpent)
+
+				as.liveCount.AddSups(actualSupSpent)
 
 				if abilityTriggered {
 					// generate location select order list
@@ -1053,7 +1109,7 @@ func (as *AbilitiesSystem) nextLocationDeciderGet() (uuid.UUID, bool) {
 // Ability Progression bar Broadcaster
 // ***********************************
 
-// 1 tick per second, each tick reduce 0,978 of current price
+// 1 tick per second, each tick reduce 0.93304 of current price (drop the price to half in 10 second)
 
 func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 
@@ -1073,7 +1129,7 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 	// update price
 	for factionID, ability := range as.battleAbilityPool.Abilities {
 		// reduce price
-		ability.SupsCost = ability.SupsCost.Mul(decimal.NewFromFloat(0.978))
+		ability.SupsCost = ability.SupsCost.Mul(decimal.NewFromFloat(0.93304))
 
 		// cap minmum price at 1 sup
 		if ability.SupsCost.Cmp(decimal.New(1, 18)) <= 0 {
@@ -1083,7 +1139,7 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 		// if ability not triggered, store ability's new target price to database, and continue
 		if ability.SupsCost.Cmp(ability.CurrentSups) > 0 {
 			// store updated price to db
-			err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ability.ID, ability.SupsCost.String(), ability.CurrentSups.String())
+			err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ability.ID, ability.SupsCost, ability.CurrentSups)
 			if err != nil {
 				gamelog.L.Error().Err(err)
 			}
@@ -1093,7 +1149,7 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 		// if ability triggered
 		ability.SupsCost = ability.SupsCost.Mul(decimal.NewFromInt(2))
 		ability.CurrentSups = decimal.Zero
-		err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ability.ID, ability.SupsCost.String(), ability.CurrentSups.String())
+		err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ability.ID, ability.SupsCost, ability.CurrentSups)
 		if err != nil {
 			gamelog.L.Error().Err(err)
 		}
@@ -1335,27 +1391,24 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 		return terror.Error(err, "player not exists")
 	}
 
+	event := &server.GameAbilityEvent{
+		IsTriggered:         true,
+		GameClientAbilityID: ability.GameClientAbilityID,
+		TriggeredOnCellX:    &x,
+		TriggeredOnCellY:    &y,
+		TriggeredByUserID:   &userID,
+		TriggeredByUsername: &player.Username.String,
+		EventID:             ability.OfferingID,
+	}
+
+	as.battle.calcTriggeredLocation(event)
+
 	// trigger location select
-	as.battle.arena.Message(
-		"BATTLE:ABILITY",
-		&server.GameAbilityEvent{
-			IsTriggered:         true,
-			GameClientAbilityID: ability.GameClientAbilityID,
-			TriggeredOnCellX:    &x,
-			TriggeredOnCellY:    &y,
-			TriggeredByUserID:   &userID,
-			TriggeredByUsername: &player.Username.String,
-			EventID:             ability.OfferingID,
-			GameLocation: struct {
-				X int `json:"x"`
-				Y int `json:"y"`
-			}{X: x, Y: y},
-		},
-	)
+	as.battle.arena.Message("BATTLE:ABILITY", event)
 
 	bat := boiler.BattleAbilityTrigger{
 		PlayerID:          null.StringFrom(userID.String()),
-		BattleID:          as.battle.ID.String(),
+		BattleID:          as.battle.ID,
 		FactionID:         ability.FactionID.String(),
 		IsAllSyndicates:   true,
 		AbilityLabel:      ability.Label,

@@ -4,20 +4,24 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"math/rand"
 	"server"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/passport"
 	"server/rpcclient"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v4"
+	"github.com/ninja-software/terror/v2"
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
-
-	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 
 	"github.com/ninja-syndicate/hub"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -30,7 +34,7 @@ import (
 type Battle struct {
 	arena       *Arena
 	stage       string
-	ID          uuid.UUID     `json:"battleID" db:"id"`
+	BattleID    string        `json:"battleID"`
 	MapName     string        `json:"mapName"`
 	WarMachines []*WarMachine `json:"warMachines"`
 	SpawnedAI   []*WarMachine `json:"SpawnedAI"`
@@ -47,6 +51,8 @@ type Battle struct {
 	destroyedWarMachineMap map[byte]*WMDestroyedRecord
 	*boiler.Battle
 }
+
+const HubKeyLiveVoteCountUpdated hub.HubCommandKey = "LIVE:VOTE:COUNT:UPDATED"
 
 const HubKeyWarMachineLocationUpdated hub.HubCommandKey = "WAR:MACHINE:LOCATION:UPDATED"
 
@@ -70,30 +76,104 @@ func (btl *Battle) start(payload *BattleStartPayload) {
 	btl.BroadcastUpdate()
 }
 
+// calcTriggeredLocation convert picked cell to the location in game
+func (btl *Battle) calcTriggeredLocation(abilityEvent *server.GameAbilityEvent) {
+	// To get the location in game its
+	//  ((cellX * GameClientTileSize) + GameClientTileSize / 2) + LeftPixels
+	//  ((cellY * GameClientTileSize) + GameClientTileSize / 2) + TopPixels
+	if abilityEvent.TriggeredOnCellX == nil || abilityEvent.TriggeredOnCellY == nil {
+		return
+	}
+
+	abilityEvent.GameLocation.X = ((*abilityEvent.TriggeredOnCellX * server.GameClientTileSize) + (server.GameClientTileSize / 2)) + btl.gameMap.LeftPixels
+	abilityEvent.GameLocation.Y = ((*abilityEvent.TriggeredOnCellY * server.GameClientTileSize) + (server.GameClientTileSize / 2)) + btl.gameMap.TopPixels
+
+}
+
+type WarMachinePosition struct {
+	X int
+	Y int
+}
+
+func (btl *Battle) spawnReinforcementNearMech(abilityEvent *server.GameAbilityEvent) {
+
+	// only calculate reinforcement location
+	if abilityEvent.GameClientAbilityID != 10 {
+		return
+	}
+
+	// get snapshots of the red mountain war machines health and postion
+	rmw := []WarMachinePosition{}
+	aliveWarMachines := []WarMachinePosition{}
+	for _, wm := range btl.WarMachines {
+		// store red mountain war machines
+		if wm.FactionID != server.RedMountainFactionID.String() || wm.Position == nil {
+			continue
+		}
+
+		// get snapshot of current war machine
+		x := wm.Position.X
+		y := wm.Position.Y
+
+		rmw = append(rmw, WarMachinePosition{
+			X: x,
+			Y: y,
+		})
+
+		// store alive red mountain war machines
+		if wm.Health <= 0 || wm.Health >= 10000 {
+			continue
+		}
+		aliveWarMachines = append(aliveWarMachines, WarMachinePosition{
+			X: x,
+			Y: y,
+		})
+	}
+
+	// should never happen, but just in case
+	if len(rmw) == 0 {
+		return
+	}
+
+	if len(aliveWarMachines) > 0 {
+		// random pick one of the red mountain postion
+		wm := aliveWarMachines[rand.Intn(len(aliveWarMachines))]
+
+		// set cell
+		abilityEvent.TriggeredOnCellX = &wm.X
+		abilityEvent.TriggeredOnCellY = &wm.Y
+
+		// calc in game location
+		btl.calcTriggeredLocation(abilityEvent)
+
+		return
+	}
+
+	wm := rmw[rand.Intn(len(rmw))]
+	// set cell
+	abilityEvent.TriggeredOnCellX = &wm.X
+	abilityEvent.TriggeredOnCellY = &wm.Y
+
+	// calc in game location
+	btl.calcTriggeredLocation(abilityEvent)
+
+}
+
 func (btl *Battle) isOnline(userID uuid.UUID) bool {
 	_, ok := btl.users.User(userID)
 	return ok
 }
 
 func (btl *Battle) end(payload *BattleEndPayload) {
-
-	fmt.Println("end")
-	fmt.Println("end")
-	fmt.Println("end")
-	fmt.Println("end")
-	fmt.Println("end")
-	fmt.Println("end")
-	fmt.Println("end")
-	fmt.Println("end")
-	fmt.Println("end")
-	fmt.Println("end")
-	fmt.Println("end")
-	fmt.Println("end")
-
-	btl.Battle.EndedAt = null.TimeFrom(time.Now())
-	_, err := btl.Battle.Update(gamedb.StdConn, boil.Infer())
+	btl.EndedAt = null.TimeFrom(time.Now())
+	_, err := btl.Update(gamedb.StdConn, boil.Infer())
 	if err != nil {
-		gamelog.L.Error().Str("Battle ID", btl.ID.String()).Time("EndedAt", btl.Battle.EndedAt.Time).Msg("unable to update database for endat battle")
+		gamelog.L.Error().Str("Battle ID", btl.ID).Time("EndedAt", btl.EndedAt.Time).Msg("unable to update database for endat battle")
+	}
+
+	err = db.ClearQueueByBattle(btl.ID)
+	if err != nil {
+		gamelog.L.Error().Str("Battle ID", btl.ID).Msg("unable to clear queue for battle")
 	}
 
 	winningWarMachines := make([]*WarMachine, len(payload.WinningWarMachines))
@@ -106,29 +186,68 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 			}
 		}
 		if winningWarMachines[i] == nil {
-			gamelog.L.Error().Str("Battle ID", btl.ID.String()).Msg("unable to match war machine to battle with hash")
+			gamelog.L.Error().Str("Battle ID", btl.ID).Msg("unable to match war machine to battle with hash")
 		}
 	}
 
 	if winningWarMachines[0] == nil {
-		gamelog.L.Panic().Str("Battle ID", btl.ID.String()).Msg("no winning war machines")
+		gamelog.L.Panic().Str("Battle ID", btl.ID).Msg("no winning war machines")
 	}
 
-	fakedUsers := []*BattleUser{
-		{
-			ID:            uuid.Must(uuid.NewV4()),
-			Username:      "FakeUser1",
+	topFactionContributorBoilers, err := db.TopSupsContributeFactions(uuid.Must(uuid.FromString(payload.BattleID)))
+	if err != nil {
+		gamelog.L.Warn().Err(err).Str("battle_id", payload.BattleID).Msg("get top faction contributors")
+	}
+	topPlayerContributorsBoilers, err := db.TopSupsContributors(uuid.Must(uuid.FromString(payload.BattleID)))
+	if err != nil {
+		gamelog.L.Warn().Err(err).Str("battle_id", payload.BattleID).Msg("get top player contributors")
+	}
+	topPlayerExecutorsBoilers, err := db.MostFrequentAbilityExecutors(uuid.Must(uuid.FromString(payload.BattleID)))
+	if err != nil {
+		gamelog.L.Warn().Err(err).Str("battle_id", payload.BattleID).Msg("get top player executors")
+	}
+
+	topFactionContributors := []*Faction{}
+	for _, f := range topFactionContributorBoilers {
+		topFactionContributors = append(topFactionContributors, &Faction{
+			ID:    f.ID,
+			Label: f.Label,
+			Theme: &FactionTheme{
+				Primary:    f.PrimaryColor,
+				Secondary:  f.SecondaryColor,
+				Background: f.BackgroundColor,
+			},
+		})
+	}
+	topPlayerContributors := []*BattleUser{}
+	for _, p := range topPlayerContributorsBoilers {
+		factionID := uuid.Must(uuid.FromString(winningWarMachines[0].FactionID))
+		if p.FactionID.Valid {
+			factionID = uuid.Must(uuid.FromString(p.FactionID.String))
+		}
+
+		topPlayerContributors = append(topPlayerContributors, &BattleUser{
+			ID:            uuid.Must(uuid.FromString(p.ID)),
+			Username:      p.Username.String,
 			FactionID:     winningWarMachines[0].FactionID,
-			FactionColour: btl.factions[uuid.Must(uuid.FromString(winningWarMachines[0].FactionID))].PrimaryColor,
-			FactionLogoID: FactionLogos[winningWarMachines[0].FactionID],
-		},
-		{
-			ID:            uuid.Must(uuid.NewV4()),
-			Username:      "FakeUser2",
-			FactionID:     winningWarMachines[0].FactionID,
-			FactionColour: btl.factions[uuid.Must(uuid.FromString(winningWarMachines[0].FactionID))].PrimaryColor,
-			FactionLogoID: FactionLogos[winningWarMachines[0].FactionID],
-		},
+			FactionColour: btl.factions[factionID].PrimaryColor,
+			FactionLogoID: FactionLogos[p.FactionID.String],
+		})
+	}
+
+	topPlayerExecutors := []*BattleUser{}
+	for _, p := range topPlayerExecutorsBoilers {
+		factionID := uuid.Must(uuid.FromString(winningWarMachines[0].FactionID))
+		if p.FactionID.Valid {
+			factionID = uuid.Must(uuid.FromString(p.FactionID.String))
+		}
+		topPlayerExecutors = append(topPlayerExecutors, &BattleUser{
+			ID:            uuid.Must(uuid.FromString(p.ID)),
+			Username:      p.Username.String,
+			FactionID:     p.FactionID.String,
+			FactionColour: btl.factions[factionID].PrimaryColor,
+			FactionLogoID: FactionLogos[p.FactionID.String],
+		})
 	}
 
 	fakedFactions := make([]*Faction, 2)
@@ -149,24 +268,23 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		i++
 	}
 
+	gamelog.L.Debug().
+		Int("top_faction_contributors", len(topFactionContributors)).
+		Int("top_player_executors", len(topPlayerExecutors)).
+		Int("top_player_contributors", len(topPlayerContributors)).
+		Msg("get top players and factions")
+
 	endInfo := &BattleEndDetail{
-		BattleID:                     btl.ID.String(),
+		BattleID:                     btl.ID,
 		BattleIdentifier:             btl.Battle.BattleNumber,
 		StartedAt:                    btl.Battle.StartedAt,
 		EndedAt:                      btl.Battle.EndedAt.Time,
 		WinningCondition:             payload.WinCondition,
 		WinningFaction:               winningWarMachines[0].Faction,
 		WinningWarMachines:           winningWarMachines,
-		TopSupsContributors:          fakedUsers,
-		TopSupsContributeFactions:    fakedFactions,
-		MostFrequentAbilityExecutors: fakedUsers,
-	}
-
-	ids := make([]uuid.UUID, len(btl.WarMachines))
-	err = db.ClearQueue(ids...)
-	if err != nil {
-		gamelog.L.Error().Interface("ids", ids).Err(err).Msg("db.ClearQueue() returned error")
-		return
+		TopSupsContributeFactions:    topFactionContributors,
+		TopSupsContributors:          topPlayerExecutors,
+		MostFrequentAbilityExecutors: topPlayerExecutors,
 	}
 
 	btl.stage = BattleStageEnd
@@ -182,13 +300,13 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 			}
 		}
 		if wm == nil {
-			gamelog.L.Error().Str("Battle ID", btl.ID.String()).Msg("unable to match war machine to battle with hash")
+			gamelog.L.Error().Str("Battle ID", btl.ID).Msg("unable to match war machine to battle with hash")
 			return
 		}
 		mechId, err := uuid.FromString(wm.ID)
 		if err != nil {
 			gamelog.L.Error().
-				Str("Battle ID", btl.ID.String()).
+				Str("Battle ID", btl.ID).
 				Str("mech ID", wm.ID).
 				Err(err).
 				Msg("unable to convert mech id to uuid")
@@ -197,7 +315,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		ownedById, err := uuid.FromString(wm.OwnedByID)
 		if err != nil {
 			gamelog.L.Error().
-				Str("Battle ID", btl.ID.String()).
+				Str("Battle ID", btl.ID).
 				Str("mech ID", wm.ID).
 				Err(err).
 				Msg("unable to convert owned id to uuid")
@@ -206,7 +324,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		factionId, err := uuid.FromString(wm.FactionID)
 		if err != nil {
 			gamelog.L.Error().
-				Str("Battle ID", btl.ID.String()).
+				Str("Battle ID", btl.ID).
 				Str("faction ID", wm.FactionID).
 				Err(err).
 				Msg("unable to convert faction id to uuid")
@@ -221,7 +339,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	err = db.WinBattle(btl.ID, payload.WinCondition, mws...)
 	if err != nil {
 		gamelog.L.Error().
-			Str("Battle ID", btl.ID.String()).
+			Str("Battle ID", btl.ID).
 			Err(err).
 			Msg("unable to store mech wins")
 		return
@@ -233,7 +351,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	err = db.UserStatsRefresh(context.Background(), gamedb.Conn)
 	if err != nil {
 		gamelog.L.Error().
-			Str("Battle ID", btl.ID.String()).
+			Str("Battle ID", btl.ID).
 			Err(err).
 			Msg("unable to refresh users stats")
 		return
@@ -242,7 +360,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	us, err := db.UserStatsAll(context.Background(), gamedb.Conn)
 	if err != nil {
 		gamelog.L.Error().
-			Str("Battle ID", btl.ID.String()).
+			Str("Battle ID", btl.ID).
 			Err(err).
 			Msg("unable to get users stats")
 		return
@@ -250,16 +368,6 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 
 	go func() {
 		for _, u := range us {
-			fmt.Println("_________")
-			fmt.Println("_________")
-			fmt.Println("_________")
-			fmt.Println("_________")
-			fmt.Println("_________")
-			fmt.Println("_________")
-			fmt.Println("_________")
-			fmt.Println("_________")
-			fmt.Println("_________", u)
-
 			go btl.arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserStatSubscribe, u.ID.String())), u)
 		}
 	}()
@@ -312,7 +420,7 @@ func (btl *Battle) userOnline(user *BattleUser, wsc *hub.Client) {
 		u.Unlock()
 	}
 
-	err := db.BattleViewerUpsert(context.Background(), gamedb.Conn, btl.ID.String(), wsc.Identifier())
+	err := db.BattleViewerUpsert(context.Background(), gamedb.Conn, btl.ID, wsc.Identifier())
 	if err != nil {
 		gamelog.L.Error().Err(err)
 	}
@@ -452,9 +560,6 @@ type JoinPayload struct {
 }
 
 func (arena *Arena) Join(ctx context.Context, wsc *hub.Client, payload []byte, factionID uuid.UUID, reply hub.ReplyFunc) error {
-	span := tracer.StartSpan("ws.Command", tracer.ResourceName(string(WSJoinQueue)))
-	defer span.Finish()
-
 	msg := &JoinPayload{}
 	err := json.Unmarshal(payload, msg)
 	if err != nil {
@@ -462,20 +567,20 @@ func (arena *Arena) Join(ctx context.Context, wsc *hub.Client, payload []byte, f
 		return err
 	}
 
-	mechId, err := db.MechIDFromHash(msg.Payload.AssetHash)
+	mechID, err := db.MechIDFromHash(msg.Payload.AssetHash)
 	if err != nil {
 		gamelog.L.Error().Str("hash", msg.Payload.AssetHash).Err(err).Msg("unable to retrieve mech id from hash")
 		return err
 	}
 
-	mech, err := db.Mech(mechId)
+	mech, err := db.Mech(mechID)
 	if err != nil {
-		gamelog.L.Error().Str("mech_id", mechId.String()).Err(err).Msg("unable to retrieve mech id from hash")
+		gamelog.L.Error().Str("mech_id", mechID.String()).Err(err).Msg("unable to retrieve mech id from hash")
 		return err
 	}
 
 	if mech.Faction == nil {
-		gamelog.L.Error().Str("mech_id", mechId.String()).Err(err).Msg("mech's owner player has no faction")
+		gamelog.L.Error().Str("mech_id", mechID.String()).Err(err).Msg("mech's owner player has no faction")
 		return err
 	}
 
@@ -485,26 +590,330 @@ func (arena *Arena) Join(ctx context.Context, wsc *hub.Client, payload []byte, f
 		return err
 	}
 
-	pos, err := db.JoinQueue(&db.BattleMechData{
-		MechID:    mechId,
+	// Get current queue length and calculate queue fee and reward
+	result, err := db.QueueLength(factionID)
+	if err != nil {
+		gamelog.L.Error().Interface("factionID", factionID).Err(err).Msg("unable to retrieve queue length")
+		return err
+	}
+
+	queueLength := decimal.NewFromInt(result + 1)
+	queueCost := decimal.New(25, 16)     // 0.25 sups
+	contractReward := decimal.New(2, 18) // 2 sups
+	if queueLength.GreaterThan(decimal.NewFromInt(0)) {
+		queueCost = queueLength.Mul(decimal.New(25, 16))     // 0.25x queue length
+		contractReward = queueLength.Mul(decimal.New(2, 18)) // 2x queue length
+	}
+
+	// Insert mech into queue
+	position, err := db.JoinQueue(&db.BattleMechData{
+		MechID:    mechID,
 		OwnerID:   ownerID,
 		FactionID: uuid.UUID(factionID),
-	})
-
+	},
+		contractReward,
+		queueCost,
+	)
 	if err != nil {
 		gamelog.L.Error().Interface("factionID", mech.FactionID).Err(err).Msg("unable to insert mech into queue")
 		return err
 	}
 
-	reply(pos)
+	// Charge user queue fee
+	txid, err := arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
+		Amount:               queueCost.StringFixed(18),
+		FromUserID:           ownerID,
+		ToUserID:             SupremacyBattleUserID,
+		TransactionReference: server.TransactionReference(fmt.Sprintf("war_machine_queueing_fee|%s|%d", msg.Payload.AssetHash, time.Now().UnixNano())),
+		Group:                "Battle",
+		SubGroup:             "Queue",
+		Description:          "Queued mech to battle arena",
+		NotSafe:              true,
+	})
+	if err != nil {
+		gamelog.L.Error().Str("txID", txid).Interface("mechID", mechID).Interface("factionID", mech.FactionID).Err(err).Msg("unable to charge user for insert mech into queue")
+		return err
+	}
+
+	reply(position)
+
+	// Send updated battle queue status to all subscribers
+	arena.messageBus.Send(context.Background(), messagebus.BusKey(WSQueueStatus), QueueStatusResponse{
+		result,
+		queueCost,
+		contractReward,
+	})
+
+	// Send updated war machine queue status to all subscribers
+	arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", WSWarMachineQueueStatus, mechID)), WarMachineQueueStatusResponse{
+		&position,
+		&contractReward,
+	})
 
 	return err
 }
 
+type LeaveQueueRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		AssetHash string `json:"asset_hash"`
+	} `json:"payload"`
+}
+
+func (arena *Arena) Leave(ctx context.Context, wsc *hub.Client, payload []byte, factionID uuid.UUID, reply hub.ReplyFunc) error {
+	msg := &LeaveQueueRequest{}
+	err := json.Unmarshal(payload, msg)
+	if err != nil {
+		gamelog.L.Error().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal queue leave")
+		return err
+	}
+
+	mechID, err := db.MechIDFromHash(msg.Payload.AssetHash)
+	if err != nil {
+		gamelog.L.Error().Str("hash", msg.Payload.AssetHash).Err(err).Msg("unable to retrieve mech id from hash")
+		return err
+	}
+
+	mech, err := db.Mech(mechID)
+	if err != nil {
+		gamelog.L.Error().Str("mech_id", mechID.String()).Err(err).Msg("unable to retrieve mech id from hash")
+		return err
+	}
+
+	if mech.Faction == nil {
+		gamelog.L.Error().Str("mech_id", mechID.String()).Err(err).Msg("mech's owner player has no faction")
+		return err
+	}
+
+	ownerID, err := uuid.FromString(mech.OwnerID)
+	if err != nil {
+		gamelog.L.Error().Str("ownerID", mech.OwnerID).Err(err).Msg("unable to convert owner id from string")
+		return err
+	}
+
+	userID := uuid.FromStringOrNil(wsc.Identifier())
+	if userID.IsNil() {
+		return terror.Error(terror.ErrForbidden)
+	}
+
+	if userID != ownerID {
+		return terror.Error(terror.ErrForbidden, "user is not mech owner")
+	}
+
+	originalQueueCost, err := db.QueueFee(mechID, factionID)
+	if err != nil {
+		gamelog.L.Error().Interface("mechID", mechID).Interface("factionID", mech.FactionID).Err(err).Msg("unable to remove mech from queue")
+		return err
+	}
+
+	position, err := db.LeaveQueue(&db.BattleMechData{
+		MechID:    mechID,
+		OwnerID:   ownerID,
+		FactionID: uuid.UUID(factionID),
+	})
+	if err != nil {
+		gamelog.L.Error().Interface("mechID", mechID).Interface("factionID", mech.FactionID).Err(err).Msg("unable to remove mech from queue")
+		return err
+	}
+
+	// Refund user queue fee
+	txid, err := arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
+		Amount:               originalQueueCost.StringFixed(18),
+		FromUserID:           SupremacyBattleUserID,
+		ToUserID:             ownerID,
+		TransactionReference: server.TransactionReference(fmt.Sprintf("refund_war_machine_queueing_fee|%s|%d", msg.Payload.AssetHash, time.Now().UnixNano())),
+		Group:                "Battle",
+		SubGroup:             "Queue",
+		Description:          "Refunded battle arena queing fee",
+		NotSafe:              true,
+	})
+	if err != nil {
+		gamelog.L.Error().Str("txID", txid).Interface("mechID", mechID).Interface("factionID", mech.FactionID).Err(err).Msg("unable to charge user for insert mech into queue")
+		return err
+	}
+
+	reply(true)
+
+	result, err := db.QueueLength(factionID)
+	if err != nil {
+		gamelog.L.Error().Interface("factionID", factionID).Err(err).Msg("unable to retrieve queue length")
+		return err
+	}
+
+	queueLength := decimal.NewFromInt(result)
+	queueCost := decimal.New(25, 16)     // 0.25 sups
+	contractReward := decimal.New(2, 18) // 2 sups
+	if queueLength.GreaterThan(decimal.NewFromInt(0)) {
+		queueCost = queueLength.Mul(decimal.New(25, 16))     // 0.25x queue length
+		contractReward = queueLength.Mul(decimal.New(2, 18)) // 2x queue length
+	}
+
+	// Send updated Battle queue status to all subscribers
+	arena.messageBus.Send(context.Background(), messagebus.BusKey(WSQueueStatus), QueueStatusResponse{
+		result,
+		queueCost,
+		contractReward,
+	})
+
+	mechsAfterIDs, err := db.AllMechsAfter(position-1, factionID)
+	if err != nil {
+		gamelog.L.Error().Interface("factionID", factionID).Err(err).Msg("unable to get mechs after")
+		return err
+	}
+
+	// Send updated war machine queue status to all subscribers
+	for _, m := range mechsAfterIDs {
+		contractReward, err := db.QueueContract(m.MechID, factionID)
+		if err != nil {
+			gamelog.L.Error().Interface("mechID", mechID).Interface("factionID", factionID).Err(err).Msg("unable to get mechs contract reward")
+			return err
+		}
+		arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", WSWarMachineQueueStatus, m.MechID)), WarMachineQueueStatusResponse{
+			&m.QueuePosition,
+			contractReward,
+		})
+	}
+	arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", WSWarMachineQueueStatus, mechID)), WarMachineQueueStatusResponse{
+		nil,
+		nil,
+	})
+
+	return err
+}
+
+type QueueStatusResponse struct {
+	QueueLength    int64           `json:"queue_length"`
+	QueueCost      decimal.Decimal `json:"queue_cost"`
+	ContractReward decimal.Decimal `json:"contract_reward"`
+}
+
+func (arena *Arena) QueueStatus(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return "", "", terror.Error(err, "Invalid request received")
+	}
+
+	userID := uuid.FromStringOrNil(wsc.Identifier())
+	if userID.IsNil() {
+		return "", "", terror.Error(terror.ErrInvalidInput)
+	}
+
+	factionID, err := GetPlayerFactionID(userID)
+	if err != nil || factionID.IsNil() {
+		gamelog.L.Error().Str("userID", userID.String()).Err(err).Msg("unable to find faction from user id")
+		return "", "", terror.Error(err)
+	}
+
+	result, err := db.QueueLength(factionID)
+	if err != nil {
+		gamelog.L.Error().Interface("factionID", factionID).Err(err).Msg("unable to retrieve queue length")
+		return "", "", terror.Error(err)
+	}
+
+	queueLength := decimal.NewFromInt(result + 1)
+	queueCost := decimal.New(25, 16)     // 0.25 sups
+	contractReward := decimal.New(2, 18) // 2 sups
+	if queueLength.GreaterThan(decimal.NewFromInt(0)) {
+		queueCost = queueLength.Mul(decimal.New(25, 16))     // 0.25x queue length
+		contractReward = queueLength.Mul(decimal.New(2, 18)) // 2x queue length
+	}
+
+	reply(QueueStatusResponse{
+		result,
+		queueCost,
+		contractReward,
+	})
+
+	return req.TransactionID, messagebus.BusKey(WSQueueStatus), nil
+}
+
+type WarMachineQueueStatusRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		AssetHash string `json:"asset_hash"`
+	} `json:"payload"`
+}
+
+type WarMachineQueueStatusResponse struct {
+	QueuePosition  *int64           `json:"queue_position"` // in-game: -1; in queue: > 0; not in queue: nil
+	ContractReward *decimal.Decimal `json:"contract_reward"`
+}
+
+func (arena *Arena) WarMachineQueueStatus(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &WarMachineQueueStatusRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return "", "", terror.Error(err, "Invalid request received")
+	}
+
+	mechID, err := db.MechIDFromHash(req.Payload.AssetHash)
+	if err != nil {
+		gamelog.L.Error().Str("hash", req.Payload.AssetHash).Err(err).Msg("unable to retrieve mech id from hash")
+		return "", "", terror.Error(err)
+	}
+
+	mech, err := db.Mech(mechID)
+	if err != nil {
+		gamelog.L.Error().Str("mech_id", mechID.String()).Err(err).Msg("unable to retrieve mech id from hash")
+		return "", "", terror.Error(err)
+	}
+
+	if mech.Faction == nil {
+		gamelog.L.Error().Str("mech_id", mechID.String()).Err(err).Msg("mech's owner player has no faction")
+		return "", "", terror.Error(err)
+	}
+
+	ownerID, err := uuid.FromString(mech.OwnerID)
+	if err != nil {
+		gamelog.L.Error().Str("ownerID", mech.OwnerID).Err(err).Msg("unable to convert owner id from string")
+		return "", "", terror.Error(err)
+	}
+
+	factionID, err := GetPlayerFactionID(ownerID)
+	if err != nil || factionID.IsNil() {
+		gamelog.L.Error().Str("userID", ownerID.String()).Err(err).Msg("unable to find faction from owner id")
+		return "", "", terror.Error(err)
+	}
+
+	position, err := db.QueuePosition(mechID, factionID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			reply(WarMachineQueueStatusResponse{
+				nil,
+				nil,
+			})
+			return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", WSWarMachineQueueStatus, mechID)), nil
+		}
+		return "", "", terror.Error(err)
+	}
+
+	contractReward, err := db.QueueContract(mechID, factionID)
+	if err != nil {
+		return "", "", terror.Error(err)
+	}
+
+	mechInBattle, err := db.MechBattleStatus(mechID)
+	if err != nil {
+		return "", "", terror.Error(err)
+	}
+
+	if mechInBattle {
+		position = -1
+	}
+
+	reply(WarMachineQueueStatusResponse{
+		&position,
+		contractReward,
+	})
+
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", WSWarMachineQueueStatus, mechID)), nil
+}
+
 func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 	// check destroyed war machine exist
-	if btl.ID.String() != dp.BattleID {
-		gamelog.L.Warn().Str("battle.ID", btl.ID.String()).Str("gameclient.ID", dp.BattleID).Msg("battle state does not match game client state")
+	if btl.ID != dp.BattleID {
+		gamelog.L.Warn().Str("battle.ID", btl.ID).Str("gameclient.ID", dp.BattleID).Msg("battle state does not match game client state")
 		btl.arena.reset()
 		return
 	}
@@ -559,7 +968,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 	if err != nil || len(ids) == 0 {
 		gamelog.L.Warn().
 			Str("hashes", fmt.Sprintf("%s, %s", destroyedWarMachine.Hash, dp.DestroyedWarMachineEvent.KillByWarMachineHash)).
-			Str("battle_id", btl.ID.String()).
+			Str("battle_id", btl.ID).
 			Err(err).
 			Msg("can't retrieve mech ids")
 
@@ -575,14 +984,14 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 			if err != nil {
 				gamelog.L.Warn().
 					Str("relatedEventuuid", dp.DestroyedWarMachineEvent.RelatedEventIDString).
-					Str("battle_id", btl.ID.String()).
+					Str("battle_id", btl.ID).
 					Msg("can't create uuid from non-empty related event idf")
 			}
 			dp.DestroyedWarMachineEvent.RelatedEventID = relatedEventuuid
 		}
 
 		evt := &db.BattleEvent{
-			BattleID:  btl.ID,
+			BattleID:  uuid.Must(uuid.FromString(btl.ID)),
 			WM1:       warMachineID,
 			WM2:       killByWarMachineID,
 			EventType: db.Btlevnt_Killed,
@@ -594,7 +1003,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 		if err != nil {
 			gamelog.L.Warn().
 				Interface("event_data", evt).
-				Str("battle_id", btl.ID.String()).
+				Str("battle_id", btl.ID).
 				Msg("unable to store mech event data")
 		}
 	}
@@ -622,7 +1031,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 	_, err = db.UpdateBattleMech(btl.ID, warMachineID, false, true, killByWarMachineID)
 	if err != nil {
 		gamelog.L.Error().
-			Str("battle_id", btl.ID.String()).
+			Str("battle_id", btl.ID).
 			Interface("mech_id", warMachineID).
 			Bool("killed", true).
 			Msg("can't update battle mech")
@@ -756,7 +1165,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 func (btl *Battle) Load() error {
 	q, err := db.LoadBattleQueue(context.Background(), 3)
 	if err != nil {
-		gamelog.L.Warn().Str("battle_id", btl.ID.String()).Err(err).Msg("unable to load out queue")
+		gamelog.L.Warn().Str("battle_id", btl.ID).Err(err).Msg("unable to load out queue")
 		return err
 	}
 
@@ -765,7 +1174,7 @@ func (btl *Battle) Load() error {
 
 		err = btl.DefaultMechs()
 		if err != nil {
-			gamelog.L.Warn().Str("battle_id", btl.ID.String()).Err(err).Msg("unable to load default mechs")
+			gamelog.L.Warn().Str("battle_id", btl.ID).Err(err).Msg("unable to load default mechs")
 			return err
 		}
 		return nil
@@ -782,10 +1191,16 @@ func (btl *Battle) Load() error {
 
 	mechs, err := db.Mechs(ids...)
 	if err != nil {
-		gamelog.L.Warn().Interface("mechs_ids", ids).Str("battle_id", btl.ID.String()).Err(err).Msg("failed to retrieve mechs from mech ids")
+		gamelog.L.Warn().Interface("mechs_ids", ids).Str("battle_id", btl.ID).Err(err).Msg("failed to retrieve mechs from mech ids")
 		return err
 	}
 	btl.WarMachines = btl.MechsToWarMachines(mechs)
+
+	err = db.QueueSetBattleID(btl.ID, ids...)
+	if err != nil {
+		gamelog.L.Error().Interface("mechs_ids", ids).Str("battle_id", btl.ID).Err(err).Msg("failed to set battle id in queue")
+		return err
+	}
 
 	return nil
 }
@@ -795,7 +1210,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.MechContainer) []*WarMachi
 	for i, mech := range mechs {
 		label := mech.Faction.Label
 		if label == "" {
-			gamelog.L.Warn().Interface("faction_id", mech.Faction.ID).Str("battle_id", btl.ID.String()).Msg("mech faction is an empty label")
+			gamelog.L.Warn().Interface("faction_id", mech.Faction.ID).Str("battle_id", btl.ID).Msg("mech faction is an empty label")
 		}
 		if len(label) > 10 {
 			words := strings.Split(label, " ")
@@ -809,7 +1224,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.MechContainer) []*WarMachi
 		for k, wpn := range mech.Weapons {
 			i, err := strconv.Atoi(k)
 			if err != nil {
-				gamelog.L.Warn().Str("key", k).Interface("weapon", wpn).Str("battle_id", btl.ID.String()).Msg("mech weapon's key is not an int")
+				gamelog.L.Warn().Str("key", k).Interface("weapon", wpn).Str("battle_id", btl.ID).Msg("mech weapon's key is not an int")
 			}
 			weaponNames[i] = wpn.Label
 		}
