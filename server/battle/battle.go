@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -81,6 +82,75 @@ func (btl *Battle) calcTriggeredLocation(abilityEvent *server.GameAbilityEvent) 
 
 	abilityEvent.GameLocation.X = ((*abilityEvent.TriggeredOnCellX * server.GameClientTileSize) + (server.GameClientTileSize / 2)) + btl.gameMap.LeftPixels
 	abilityEvent.GameLocation.Y = ((*abilityEvent.TriggeredOnCellY * server.GameClientTileSize) + (server.GameClientTileSize / 2)) + btl.gameMap.TopPixels
+
+}
+
+type WarMachinePosition struct {
+	X int
+	Y int
+}
+
+func (btl *Battle) spawnReinforcementNearMech(abilityEvent *server.GameAbilityEvent) {
+
+	// only calculate reinforcement location
+	if abilityEvent.GameClientAbilityID != 10 {
+		return
+	}
+
+	// get snapshots of the red mountain war machines health and postion
+	rmw := []WarMachinePosition{}
+	aliveWarMachines := []WarMachinePosition{}
+	for _, wm := range btl.WarMachines {
+		// store red mountain war machines
+		if wm.FactionID != server.RedMountainFactionID.String() {
+			continue
+		}
+
+		// get snapshot of current war machine
+		x := wm.Position.X
+		y := wm.Position.Y
+
+		rmw = append(rmw, WarMachinePosition{
+			X: x,
+			Y: y,
+		})
+
+		// store alive red mountain war machines
+		if wm.Health <= 0 || wm.Health >= 10000 {
+			continue
+		}
+		aliveWarMachines = append(aliveWarMachines, WarMachinePosition{
+			X: x,
+			Y: y,
+		})
+	}
+
+	// should never happen, but just in case
+	if len(rmw) == 0 {
+		return
+	}
+
+	if len(aliveWarMachines) > 0 {
+		// random pick one of the red mountain postion
+		wm := aliveWarMachines[rand.Intn(len(aliveWarMachines))]
+
+		// set cell
+		abilityEvent.TriggeredOnCellX = &wm.X
+		abilityEvent.TriggeredOnCellY = &wm.Y
+
+		// calc in game location
+		btl.calcTriggeredLocation(abilityEvent)
+
+		return
+	}
+
+	wm := rmw[rand.Intn(len(rmw))]
+	// set cell
+	abilityEvent.TriggeredOnCellX = &wm.X
+	abilityEvent.TriggeredOnCellY = &wm.Y
+
+	// calc in game location
+	btl.calcTriggeredLocation(abilityEvent)
 
 }
 

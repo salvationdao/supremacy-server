@@ -285,16 +285,20 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 						triggeredFlag := "0"
 						if isTriggered {
 							triggeredFlag = "1"
+
+							event := &server.GameAbilityEvent{
+								EventID:             ability.OfferingID,
+								IsTriggered:         true,
+								GameClientAbilityID: ability.GameClientAbilityID,
+								ParticipantID:       ability.ParticipantID, // trigger on war machine
+								WarMachineHash:      &ability.WarMachineHash,
+							}
+							as.battle.spawnReinforcementNearMech(event)
+
 							// send message to game client, if ability trigger
 							as.battle.arena.Message(
 								"BATTLE:ABILITY",
-								&server.GameAbilityEvent{
-									EventID:             ability.OfferingID,
-									IsTriggered:         true,
-									GameClientAbilityID: ability.GameClientAbilityID,
-									ParticipantID:       ability.ParticipantID, // trigger on war machine
-									WarMachineHash:      &ability.WarMachineHash,
-								},
+								event,
 							)
 
 							bat := boiler.BattleAbilityTrigger{
@@ -402,15 +406,19 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 					if isTriggered {
 						triggeredFlag = "1"
 						// send message to game client, if ability trigger
+
+						event := &server.GameAbilityEvent{
+							IsTriggered:         true,
+							GameClientAbilityID: ability.GameClientAbilityID,
+							ParticipantID:       ability.ParticipantID, // trigger on war machine
+							WarMachineHash:      &ability.WarMachineHash,
+							EventID:             ability.OfferingID,
+						}
+						as.battle.spawnReinforcementNearMech(event)
+
 						as.battle.arena.Message(
 							"BATTLE:ABILITY",
-							&server.GameAbilityEvent{
-								IsTriggered:         true,
-								GameClientAbilityID: ability.GameClientAbilityID,
-								ParticipantID:       ability.ParticipantID, // trigger on war machine
-								WarMachineHash:      &ability.WarMachineHash,
-								EventID:             ability.OfferingID,
-							},
+							event,
 						)
 
 						bat := boiler.BattleAbilityTrigger{
