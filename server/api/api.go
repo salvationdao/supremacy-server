@@ -261,6 +261,10 @@ func (rcm *RingCheckAuthMap) Record(key string, cl *hub.Client) {
 	rcm.Store(key, cl)
 }
 
+func (rcm *RingCheckAuthMap) Remove(key string) {
+	rcm.Delete(key)
+}
+
 func (rcm *RingCheckAuthMap) Check(key string) (*hub.Client, error) {
 	value, ok := rcm.Load(key)
 	if !ok {
