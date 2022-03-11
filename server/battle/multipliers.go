@@ -153,7 +153,7 @@ outer:
 
 			triggers, err := boiler.BattleAbilityTriggers(
 				qm.Where(`is_all_syndicates = true`),
-				qm.And(`trigger_label = ?`, triggerLabel),
+				qm.And(`ability_label = ?`, triggerLabel),
 				qm.OrderBy(`triggered_at DESC`),
 				qm.Limit(3),
 			).All(gamedb.StdConn)
