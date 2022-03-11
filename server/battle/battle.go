@@ -765,7 +765,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.MechContainer) []*WarMachi
 			Name:          mech.Name,
 			Hash:          mech.Hash,
 			ParticipantID: 0,
-			FactionID:     btl.arena.AIPlayers[mech.OwnerID].FactionID.String,
+			FactionID:     mech.Faction.ID,
 			MaxHealth:     uint32(mech.Chassis.MaxHitpoints),
 			Health:        uint32(mech.Chassis.MaxHitpoints),
 			MaxShield:     uint32(mech.Chassis.MaxShield),
