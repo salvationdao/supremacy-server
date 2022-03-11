@@ -641,7 +641,6 @@ func (b *TAtomBool) Get() bool {
 }
 
 type GameAbilityEvent struct {
-	ID                  uuid.UUID    `json:"id" db:"id"`
 	EventID             uuid.UUID    `json:"eventID" db:"event_id"`
 	GameAbilityID       *uuid.UUID   `json:"gameAbilityID,omitempty" db:"game_ability_id,omitempty"`
 	AbilityHash         *string      `json:"abilityHash,omitempty" db:"ability_hash,omitempty"`
@@ -655,7 +654,7 @@ type GameAbilityEvent struct {
 	TriggeredOnCellY    *int         `json:"triggeredOnCellY,omitempty" db:"triggered_on_cell_y,omitempty"`
 	GameAbility         *GameAbility `json:"gameAbility,omitempty"`
 	GameLocation        struct {
-		X int `json:"X"`
-		Y int `json:"Y"`
+		X int `json:"x"`
+		Y int `json:"y"`
 	} `json:"gameLocation"`
 }
