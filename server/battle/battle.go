@@ -1185,8 +1185,16 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.MechContainer) []*WarMachi
 		if len(label) > 10 {
 			words := strings.Split(label, " ")
 			label = ""
-			for _, word := range words {
-				label = label + string([]rune(word)[0])
+			for i, word := range words {
+				if i == 0 {
+					label = word
+					continue
+				}
+				if i%2 == 0 {
+					label = label + " " + word
+					continue
+				}
+				label = label + "\n" + word
 			}
 		}
 
