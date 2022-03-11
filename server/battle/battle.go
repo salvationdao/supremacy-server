@@ -2,6 +2,7 @@ package battle
 
 import (
 	"context"
+	"database/sql"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
@@ -671,7 +672,7 @@ func (arena *Arena) Leave(ctx context.Context, wsc *hub.Client, payload []byte, 
 	}
 
 	originalQueueCost, err := db.QueueFee(mechID, factionID)
-	if err != nil {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Interface("mechID", mechID).Interface("factionID", mech.FactionID).Err(err).Msg("unable to remove mech from queue")
 		return err
 	}
@@ -681,7 +682,8 @@ func (arena *Arena) Leave(ctx context.Context, wsc *hub.Client, payload []byte, 
 		OwnerID:   ownerID,
 		FactionID: uuid.UUID(factionID),
 	})
-	if err != nil {
+
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Interface("mechID", mechID).Interface("factionID", mech.FactionID).Err(err).Msg("unable to remove mech from queue")
 		return err
 	}
@@ -1190,7 +1192,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.MechContainer) []*WarMachi
 					label = word
 					continue
 				}
-				if i%2 == 0 {
+				if i%1 == 0 {
 					label = label + " " + word
 					continue
 				}
