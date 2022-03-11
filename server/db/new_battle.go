@@ -15,8 +15,6 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
-	"github.com/volatiletech/sqlboiler/v4/queries"
-
 	"golang.org/x/net/context"
 )
 
@@ -273,9 +271,9 @@ func DefaultFactionPlayers() (map[string]PlayerWithFaction, error) {
 	return result, err
 }
 
-func LoadBattleQueue(ctx context.Context, queue *[]*boiler.BattleQueue) error {
-	return queries.Raw(`SELECT
-	  * 
+func LoadBattleQueue(ctx context.Context, lengthPerFaction int) ([]*boiler.BattleQueue, error) {
+	query := `SELECT
+	  mech_id, queued_at, faction_id, owner_id, battle_id
 	FROM (
 	  SELECT
 		ROW_NUMBER() OVER (PARTITION BY faction_id ORDER BY queued_at ASC) AS r,
@@ -283,7 +281,26 @@ func LoadBattleQueue(ctx context.Context, queue *[]*boiler.BattleQueue) error {
 	  FROM
 		battle_queue t) x
 	WHERE
-	  x.r <= $1`, 3).Bind(ctx, gamedb.StdConn, queue)
+	  x.r <= $1`
+
+	result, err := gamedb.Conn.Query(ctx, query, lengthPerFaction)
+	if err != nil {
+		return nil, err
+	}
+	defer result.Close()
+
+	queue := []*boiler.BattleQueue{}
+
+	for result.Next() {
+		mc := &boiler.BattleQueue{}
+		err = result.Scan(&mc.MechID, &mc.QueuedAt, &mc.FactionID, &mc.OwnerID, &mc.BattleID)
+		if err != nil {
+			return nil, err
+		}
+		queue = append(queue, mc)
+	}
+
+	return queue, nil
 }
 
 func QueueLength(factionID uuid.UUID) (int64, error) {
