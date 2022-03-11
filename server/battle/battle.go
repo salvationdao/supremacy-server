@@ -76,6 +76,18 @@ func (btl *Battle) start(payload *BattleStartPayload) {
 	btl.startedAt = time.Now()
 	btl.BroadcastUpdate()
 
+	// insert spoil of war
+	spoil := &boiler.SpoilsOfWar{
+		BattleID:     btl.ID,
+		BattleNumber: btl.BattleNumber,
+		Amount:       decimal.New(0, 18),
+		AmountSent:   decimal.New(0, 18),
+	}
+	err := spoil.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("unable to insert spoils")
+	}
+
 	// broadcast spoil of war on the start of the battle
 	sows, err := db.LastTwoSpoilOfWarAmount()
 	if err != nil || len(sows) == 0 {

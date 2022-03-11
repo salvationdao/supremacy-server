@@ -162,11 +162,13 @@ func MostFrequentAbilityExecutors(battleID uuid.UUID) ([]*boiler.Player, error) 
 }
 
 func LastTwoSpoilOfWarAmount() ([]decimal.Decimal, error) {
-	amounts := []decimal.Decimal{}
+	amounts := []struct {
+		Amount decimal.Decimal `db:"amount"`
+	}{}
 
 	q := `
 		SELECT 
-			(sow.amount - sow.amount_sent) 
+			(sow.amount - sow.amount_sent) as amount
 		FROM 
 			spoils_of_war sow
 		ORDER BY 
@@ -177,8 +179,13 @@ func LastTwoSpoilOfWarAmount() ([]decimal.Decimal, error) {
 
 	err := pgxscan.Select(context.Background(), gamedb.Conn, &amounts, q)
 	if err != nil {
-		return amounts, terror.Error(err)
+		return []decimal.Decimal{}, terror.Error(err)
 	}
 
-	return amounts, nil
+	result := []decimal.Decimal{}
+	for _, a := range amounts {
+		result = append(result, a.Amount)
+	}
+
+	return result, nil
 }
