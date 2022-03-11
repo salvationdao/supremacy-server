@@ -97,15 +97,18 @@ var UserWhere = struct {
 // UserRels is where relationship names are stored.
 var UserRels = struct {
 	Player           string
+	Battles          string
 	BattlesUserVotes string
 }{
 	Player:           "Player",
+	Battles:          "Battles",
 	BattlesUserVotes: "BattlesUserVotes",
 }
 
 // userR is where relationships are stored.
 type userR struct {
 	Player           *Player              `boiler:"Player" boil:"Player" json:"Player" toml:"Player" yaml:"Player"`
+	Battles          BattleSlice          `boiler:"Battles" boil:"Battles" json:"Battles" toml:"Battles" yaml:"Battles"`
 	BattlesUserVotes BattlesUserVoteSlice `boiler:"BattlesUserVotes" boil:"BattlesUserVotes" json:"BattlesUserVotes" toml:"BattlesUserVotes" yaml:"BattlesUserVotes"`
 }
 
@@ -382,6 +385,28 @@ func (o *User) Player(mods ...qm.QueryMod) playerQuery {
 	return query
 }
 
+// Battles retrieves all the battle's Battles with an executor.
+func (o *User) Battles(mods ...qm.QueryMod) battleQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.InnerJoin("\"battles_user_views\" on \"battles\".\"id\" = \"battles_user_views\".\"battle_id\""),
+		qm.Where("\"battles_user_views\".\"player_id\"=?", o.ID),
+	)
+
+	query := Battles(queryMods...)
+	queries.SetFrom(query.Query, "\"battles\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"battles\".*"})
+	}
+
+	return query
+}
+
 // BattlesUserVotes retrieves all the battles_user_vote's BattlesUserVotes with an executor.
 func (o *User) BattlesUserVotes(mods ...qm.QueryMod) battlesUserVoteQuery {
 	var queryMods []qm.QueryMod
@@ -504,6 +529,121 @@ func (userL) LoadPlayer(e boil.Executor, singular bool, maybeUser interface{}, m
 					foreign.R = &playerR{}
 				}
 				foreign.R.Users = append(foreign.R.Users, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadBattles allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (userL) LoadBattles(e boil.Executor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+	var slice []*User
+	var object *User
+
+	if singular {
+		object = maybeUser.(*User)
+	} else {
+		slice = *maybeUser.(*[]*User)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &userR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &userR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.Select("\"battles\".id, \"battles\".game_map_id, \"battles\".started_at, \"battles\".ended_at, \"battles\".battle_number, \"a\".\"player_id\""),
+		qm.From("\"battles\""),
+		qm.InnerJoin("\"battles_user_views\" as \"a\" on \"battles\".\"id\" = \"a\".\"battle_id\""),
+		qm.WhereIn("\"a\".\"player_id\" in ?", args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load battles")
+	}
+
+	var resultSlice []*Battle
+
+	var localJoinCols []string
+	for results.Next() {
+		one := new(Battle)
+		var localJoinCol string
+
+		err = results.Scan(&one.ID, &one.GameMapID, &one.StartedAt, &one.EndedAt, &one.BattleNumber, &localJoinCol)
+		if err != nil {
+			return errors.Wrap(err, "failed to scan eager loaded results for battles")
+		}
+		if err = results.Err(); err != nil {
+			return errors.Wrap(err, "failed to plebian-bind eager loaded slice battles")
+		}
+
+		resultSlice = append(resultSlice, one)
+		localJoinCols = append(localJoinCols, localJoinCol)
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on battles")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battles")
+	}
+
+	if len(battleAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.Battles = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &battleR{}
+			}
+			foreign.R.PlayerUsers = append(foreign.R.PlayerUsers, object)
+		}
+		return nil
+	}
+
+	for i, foreign := range resultSlice {
+		localJoinCol := localJoinCols[i]
+		for _, local := range slice {
+			if local.ID == localJoinCol {
+				local.R.Battles = append(local.R.Battles, foreign)
+				if foreign.R == nil {
+					foreign.R = &battleR{}
+				}
+				foreign.R.PlayerUsers = append(foreign.R.PlayerUsers, local)
 				break
 			}
 		}
@@ -687,6 +827,147 @@ func (o *User) RemovePlayer(exec boil.Executor, related *Player) error {
 		break
 	}
 	return nil
+}
+
+// AddBattles adds the given related objects to the existing relationships
+// of the user, optionally inserting them as new records.
+// Appends related to o.R.Battles.
+// Sets related.R.PlayerUsers appropriately.
+func (o *User) AddBattles(exec boil.Executor, insert bool, related ...*Battle) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		}
+	}
+
+	for _, rel := range related {
+		query := "insert into \"battles_user_views\" (\"player_id\", \"battle_id\") values ($1, $2)"
+		values := []interface{}{o.ID, rel.ID}
+
+		if boil.DebugMode {
+			fmt.Fprintln(boil.DebugWriter, query)
+			fmt.Fprintln(boil.DebugWriter, values)
+		}
+		_, err = exec.Exec(query, values...)
+		if err != nil {
+			return errors.Wrap(err, "failed to insert into join table")
+		}
+	}
+	if o.R == nil {
+		o.R = &userR{
+			Battles: related,
+		}
+	} else {
+		o.R.Battles = append(o.R.Battles, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &battleR{
+				PlayerUsers: UserSlice{o},
+			}
+		} else {
+			rel.R.PlayerUsers = append(rel.R.PlayerUsers, o)
+		}
+	}
+	return nil
+}
+
+// SetBattles removes all previously related items of the
+// user replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.PlayerUsers's Battles accordingly.
+// Replaces o.R.Battles with related.
+// Sets related.R.PlayerUsers's Battles accordingly.
+func (o *User) SetBattles(exec boil.Executor, insert bool, related ...*Battle) error {
+	query := "delete from \"battles_user_views\" where \"player_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	removeBattlesFromPlayerUsersSlice(o, related)
+	if o.R != nil {
+		o.R.Battles = nil
+	}
+	return o.AddBattles(exec, insert, related...)
+}
+
+// RemoveBattles relationships from objects passed in.
+// Removes related items from R.Battles (uses pointer comparison, removal does not keep order)
+// Sets related.R.PlayerUsers.
+func (o *User) RemoveBattles(exec boil.Executor, related ...*Battle) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	query := fmt.Sprintf(
+		"delete from \"battles_user_views\" where \"player_id\" = $1 and \"battle_id\" in (%s)",
+		strmangle.Placeholders(dialect.UseIndexPlaceholders, len(related), 2, 1),
+	)
+	values := []interface{}{o.ID}
+	for _, rel := range related {
+		values = append(values, rel.ID)
+	}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err = exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+	removeBattlesFromPlayerUsersSlice(o, related)
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.Battles {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.Battles)
+			if ln > 1 && i < ln-1 {
+				o.R.Battles[i] = o.R.Battles[ln-1]
+			}
+			o.R.Battles = o.R.Battles[:ln-1]
+			break
+		}
+	}
+
+	return nil
+}
+
+func removeBattlesFromPlayerUsersSlice(o *User, related []*Battle) {
+	for _, rel := range related {
+		if rel.R == nil {
+			continue
+		}
+		for i, ri := range rel.R.PlayerUsers {
+			if o.ID != ri.ID {
+				continue
+			}
+
+			ln := len(rel.R.PlayerUsers)
+			if ln > 1 && i < ln-1 {
+				rel.R.PlayerUsers[i] = rel.R.PlayerUsers[ln-1]
+			}
+			rel.R.PlayerUsers = rel.R.PlayerUsers[:ln-1]
+			break
+		}
+	}
 }
 
 // AddBattlesUserVotes adds the given related objects to the existing relationships

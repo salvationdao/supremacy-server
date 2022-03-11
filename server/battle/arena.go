@@ -116,6 +116,8 @@ func NewArena(opts *Opts) *Arena {
 	opts.SubscribeCommand(HubKeyMultiplierUpdate, arena.HubKeyMultiplierUpdate)
 	opts.SecureUserSubscribeCommand(HubKeyViewerLiveCountUpdated, arena.ViewerLiveCountUpdateSubscribeHandler)
 
+	opts.SecureUserSubscribeCommand(HubKeyUserStatSubscribe, arena.UserStatUpdatedSubscribeHandler)
+
 	// battle ability related (bribing)
 	opts.SecureUserFactionCommand(HubKeyBattleAbilityBribe, arena.BattleAbilityBribe)
 	opts.SecureUserFactionCommand(HubKeyAbilityLocationSelect, arena.AbilityLocationSelect)
@@ -763,4 +765,17 @@ func (arena *Arena) Battle() *Battle {
 	}
 
 	return btl
+}
+
+const HubKeyUserStatSubscribe hub.HubCommandKey = "USER:STAT:SUBSCRIBE"
+
+func (uc *Arena) UserStatUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+	}
+
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserStatSubscribe, client.Identifier())), nil
 }

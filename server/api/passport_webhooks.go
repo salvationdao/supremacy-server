@@ -259,6 +259,10 @@ type UserStatGetRequest struct {
 }
 
 func (pc *PassportWebhookController) UserStatGet(w http.ResponseWriter, r *http.Request) (int, error) {
+
+	fmt.Println("aaaaaaa")
+	fmt.Println("aaaaaaa")
+	fmt.Println("aaaaaaa")
 	req := &UserSupsMultiplierGetRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
@@ -337,18 +341,18 @@ func (pc *PassportWebhookController) AuthRingCheck(w http.ResponseWriter, r *htt
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing user public address"), "User public address is required")
 	}
 
-	// skip the auth, if not whitelisted
-	if !IsWhitelistedAddress(req.User.PublicAddress.String) {
-		// remove key
-		pc.API.RingCheckAuthMap.Remove(req.GameserverSessionID)
-		return helpers.EncodeJSON(w, struct {
-			IsSuccess     bool `json:"is_success"`
-			IsWhitelisted bool `json:"is_whitelisted"`
-		}{
-			IsSuccess:     true,
-			IsWhitelisted: false,
-		})
-	}
+	// // skip the auth, if not whitelisted
+	// if !IsWhitelistedAddress(req.User.PublicAddress.String) {
+	// 	// remove key
+	// 	pc.API.RingCheckAuthMap.Remove(req.GameserverSessionID)
+	// 	return helpers.EncodeJSON(w, struct {
+	// 		IsSuccess     bool `json:"is_success"`
+	// 		IsWhitelisted bool `json:"is_whitelisted"`
+	// 	}{
+	// 		IsSuccess:     true,
+	// 		IsWhitelisted: false,
+	// 	})
+	// }
 
 	// check whitelist
 	client, err := pc.API.RingCheckAuthMap.Check(req.GameserverSessionID)
