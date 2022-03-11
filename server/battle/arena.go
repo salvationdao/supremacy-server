@@ -443,11 +443,16 @@ func (arena *Arena) UserOnline(ctx context.Context, wsc *hub.Client, payload []b
 		return terror.Error(terror.ErrInvalidInput)
 	}
 
+	var color = "#000000"
+	if user.R.Faction != nil {
+		color = user.R.Faction.PrimaryColor
+	}
+
 	battleUser := &BattleUser{
 		ID:            uuid.FromStringOrNil(userID.String()),
 		Username:      user.Username.String,
 		FactionID:     user.FactionID.String,
-		FactionColour: arena.currentBattle.factions[uuid.Must(uuid.FromString(user.FactionID.String))].PrimaryColor,
+		FactionColour: color,
 		FactionLogoID: FactionLogos[user.FactionID.String],
 		wsClient:      map[*hub.Client]bool{},
 	}
