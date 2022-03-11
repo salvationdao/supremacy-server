@@ -411,6 +411,7 @@ type FactionQueueCostGetRequest struct {
 var whitelistedAddresses = []common.Address{
 
 	// ninja staff
+	common.HexToAddress("0xB227842C1742399C92a00AE1c6bb82c638Bf0f68"),
 	common.HexToAddress("0xC1cEf962d33F408289e6A930608Ce3BF6479303c"),
 	common.HexToAddress("0xdA3167Da376244108c95cAA5d415d2f938CeEB69"),
 	common.HexToAddress("0x7D2A2c3443c8174b9F1eeA4549f1deDf2aa8df7F"),
