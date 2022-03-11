@@ -115,7 +115,7 @@ func NewArena(opts *Opts) *Arena {
 	opts.SubscribeCommand(HubKeyGameSettingsUpdated, arena.SendSettings)
 
 	opts.SubscribeCommand(HubKeyGameNotification, arena.GameNotificationSubscribeHandler)
-	opts.SubscribeCommand(HubKeyMultiplierUpdate, arena.HubKeyMultiplierUpdate)
+	opts.SecureUserSubscribeCommand(HubKeyMultiplierUpdate, arena.HubKeyMultiplierUpdate)
 	opts.SecureUserSubscribeCommand(HubKeyViewerLiveCountUpdated, arena.ViewerLiveCountUpdateSubscribeHandler)
 
 	// battle ability related (bribing)
