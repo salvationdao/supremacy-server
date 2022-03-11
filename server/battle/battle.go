@@ -670,7 +670,7 @@ func (arena *Arena) Leave(ctx context.Context, wsc *hub.Client, payload []byte, 
 		return terror.Error(terror.ErrForbidden, "user is not mech owner")
 	}
 
-	originalQueueCost, err := db.QueueContract(mechID, factionID)
+	originalQueueCost, err := db.QueueFee(mechID, factionID)
 	if err != nil {
 		gamelog.L.Error().Interface("mechID", mechID).Interface("factionID", mech.FactionID).Err(err).Msg("unable to remove mech from queue")
 		return err
