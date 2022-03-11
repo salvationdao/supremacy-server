@@ -1,11 +1,14 @@
 package db
 
 import (
+	"context"
 	"fmt"
+	"server"
 	"server/db/boiler"
 	"server/gamedb"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/georgysavva/scany/pgxscan"
 	"github.com/gofrs/uuid"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -52,4 +55,57 @@ func PlayerRegister(ID uuid.UUID, Username string, FactionID uuid.UUID, PublicAd
 	}
 	tx.Commit()
 	return player, nil
+}
+
+func UserStatsRefresh(ctx context.Context, conn Conn) error {
+
+	q := `
+	REFRESH MATERIALIZED view user_stats;
+	`
+	_, err := conn.Exec(ctx, q)
+	if err != nil {
+		return err
+	}
+
+	return nil
+
+}
+
+func UserStatsAll(ctx context.Context, conn Conn) ([]*server.UserStat, error) {
+	userStats := []*server.UserStat{}
+	q := `
+		SELECT 
+			us.id,
+			COALESCE(us.view_battle_count,0) AS view_battle_count,
+			COALESCE(us.total_vote_count,0) AS total_vote_count,
+			COALESCE(us.total_ability_triggered,0) AS total_ability_triggered,
+			COALESCE(us.kill_count,0) AS kill_count
+		FROM user_stats us`
+
+	err := pgxscan.Select(ctx, conn, &userStats, q)
+	if err != nil {
+		return nil, err
+	}
+	return userStats, nil
+
+}
+
+func UserStatsGet(ctx context.Context, conn Conn, userID server.UserID) (*server.UserStat, error) {
+	userStat := &server.UserStat{}
+	q := `
+		SELECT 
+			us.id,
+			COALESCE(us.view_battle_count,0) AS view_battle_count,
+			COALESCE(us.total_vote_count,0) AS total_vote_count,
+			COALESCE(us.total_ability_triggered,0) AS total_ability_triggered,
+			COALESCE(us.kill_count,0) AS kill_count
+		FROM user_stats us
+		WHERE us.id = $1`
+
+	err := pgxscan.Select(ctx, conn, userStat, q, userID)
+	if err != nil {
+		return nil, err
+	}
+	return userStat, nil
+
 }

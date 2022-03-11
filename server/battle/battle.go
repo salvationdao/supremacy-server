@@ -2,6 +2,7 @@ package battle
 
 import (
 	"context"
+	"database/sql"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
@@ -74,6 +75,21 @@ func (btl *Battle) start(payload *BattleStartPayload) {
 
 	btl.startedAt = time.Now()
 	btl.BroadcastUpdate()
+
+	// broadcast spoil of war on the start of the battle
+	sows, err := db.LastTwoSpoilOfWarAmount()
+	if err != nil || len(sows) == 0 {
+		gamelog.L.Error().Err(err).Msg("Failed to get last two spoil of war amount")
+		return
+	}
+
+	spoilOfWarPayload := []byte{byte(SpoilOfWarTick)}
+	spoilOfWarStr := []string{}
+	for _, sow := range sows {
+		spoilOfWarStr = append(spoilOfWarStr, sow.String())
+	}
+	spoilOfWarPayload = append(spoilOfWarPayload, []byte(strings.Join(spoilOfWarStr, "|"))...)
+	btl.arena.netMessageBus.Send(context.Background(), messagebus.NetBusKey(HubKeySpoilOfWarUpdated), spoilOfWarPayload)
 }
 
 // calcTriggeredLocation convert picked cell to the location in game
@@ -349,21 +365,30 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	btl.spoils.End()
 	btl.endInfoBroadcast(*endInfo)
 
-	// get spoil of war
-	sows, err := db.LastTwoSpoilOfWarAmount()
-	if err != nil || len(sows) == 0 {
-		gamelog.L.Error().Err(err).Msg("Failed to get last two spoil of war amount")
+	// update user stat
+	err = db.UserStatsRefresh(context.Background(), gamedb.Conn)
+	if err != nil {
+		gamelog.L.Error().
+			Str("Battle ID", btl.ID).
+			Err(err).
+			Msg("unable to refresh users stats")
 		return
 	}
 
-	// broadcast spoil of war
-	spoilOfWarPayload := []byte{byte(SpoilOfWarTick)}
-	spoilOfWarStr := []string{}
-	for _, sow := range sows {
-		spoilOfWarStr = append(spoilOfWarStr, sow.String())
+	us, err := db.UserStatsAll(context.Background(), gamedb.Conn)
+	if err != nil {
+		gamelog.L.Error().
+			Str("Battle ID", btl.ID).
+			Err(err).
+			Msg("unable to get users stats")
+		return
 	}
-	spoilOfWarPayload = append(spoilOfWarPayload, []byte(strings.Join(spoilOfWarStr, "|"))...)
-	btl.arena.netMessageBus.Send(context.Background(), messagebus.NetBusKey(HubKeySpoilOfWarUpdated), spoilOfWarPayload)
+
+	go func() {
+		for _, u := range us {
+			go btl.arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserStatSubscribe, u.ID.String())), u)
+		}
+	}()
 }
 
 const HubKeyBattleEndDetailUpdated hub.HubCommandKey = "BATTLE:END:DETAIL:UPDATED"
@@ -380,6 +405,21 @@ func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 		user.Send(HubKeyBattleEndDetailUpdated, info)
 		return true
 	})
+
+	// broadcast spoil of war on the end of the battle
+	sows, err := db.LastTwoSpoilOfWarAmount()
+	if err != nil || len(sows) == 0 {
+		gamelog.L.Error().Err(err).Msg("Failed to get last two spoil of war amount")
+		return
+	}
+
+	spoilOfWarPayload := []byte{byte(SpoilOfWarTick)}
+	spoilOfWarStr := []string{}
+	for _, sow := range sows {
+		spoilOfWarStr = append(spoilOfWarStr, sow.String())
+	}
+	spoilOfWarPayload = append(spoilOfWarPayload, []byte(strings.Join(spoilOfWarStr, "|"))...)
+	btl.arena.netMessageBus.Send(context.Background(), messagebus.NetBusKey(HubKeySpoilOfWarUpdated), spoilOfWarPayload)
 }
 
 type BroadcastPayload struct {
@@ -412,12 +452,18 @@ func (btl *Battle) userOnline(user *BattleUser, wsc *hub.Client) {
 		u.Unlock()
 	}
 
+	err := db.BattleViewerUpsert(context.Background(), gamedb.Conn, btl.ID, wsc.Identifier())
+	if err != nil {
+		gamelog.L.Error().Err(err)
+	}
+
 	resp := &ViewerLiveCount{
 		RedMountain: 0,
 		Boston:      0,
 		Zaibatsu:    0,
 		Other:       0,
 	}
+
 	btl.users.Range(func(user *BattleUser) bool {
 		if faction, ok := FactionNames[user.FactionID]; ok {
 			switch faction {
@@ -687,7 +733,7 @@ func (arena *Arena) Leave(ctx context.Context, wsc *hub.Client, payload []byte, 
 	}
 
 	originalQueueCost, err := db.QueueFee(mechID, factionID)
-	if err != nil {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Interface("mechID", mechID).Interface("factionID", mech.FactionID).Err(err).Msg("unable to remove mech from queue")
 		return err
 	}
@@ -697,7 +743,8 @@ func (arena *Arena) Leave(ctx context.Context, wsc *hub.Client, payload []byte, 
 		OwnerID:   ownerID,
 		FactionID: uuid.UUID(factionID),
 	})
-	if err != nil {
+
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Interface("mechID", mechID).Interface("factionID", mech.FactionID).Err(err).Msg("unable to remove mech from queue")
 		return err
 	}
@@ -1206,7 +1253,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.MechContainer) []*WarMachi
 					label = word
 					continue
 				}
-				if i%2 == 0 {
+				if i%1 == 0 {
 					label = label + " " + word
 					continue
 				}
