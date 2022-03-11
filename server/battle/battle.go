@@ -631,9 +631,6 @@ type LeaveQueueRequest struct {
 }
 
 func (arena *Arena) Leave(ctx context.Context, wsc *hub.Client, payload []byte, factionID uuid.UUID, reply hub.ReplyFunc) error {
-	span := tracer.StartSpan("ws.Command", tracer.ResourceName(string(WSLeaveQueue)))
-	defer span.Finish()
-
 	msg := &LeaveQueueRequest{}
 	err := json.Unmarshal(payload, msg)
 	if err != nil {
@@ -761,9 +758,6 @@ type QueueStatusResponse struct {
 }
 
 func (arena *Arena) QueueStatus(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	span := tracer.StartSpan("ws.SubscribeCommand", tracer.ResourceName(string(WSQueueStatus)))
-	defer span.Finish()
-
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -817,9 +811,6 @@ type WarMachineQueueStatusResponse struct {
 }
 
 func (arena *Arena) WarMachineQueueStatus(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	span := tracer.StartSpan("ws.SubscribeCommand", tracer.ResourceName(string(WSQueueStatus)))
-	defer span.Finish()
-
 	req := &WarMachineQueueStatusRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
