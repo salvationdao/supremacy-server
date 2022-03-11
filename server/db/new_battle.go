@@ -306,7 +306,7 @@ func LoadBattleQueue(ctx context.Context, lengthPerFaction int) ([]*boiler.Battl
 func QueueLength(factionID uuid.UUID) (int64, error) {
 	var count int64
 
-	err := gamedb.Conn.QueryRow(context.Background(), `SELECT COUNT(id) FROM battle_queue WHERE faction_id = $1`, factionID.String()).Scan(&count)
+	err := gamedb.Conn.QueryRow(context.Background(), `SELECT COUNT(mech_id) FROM battle_queue WHERE faction_id = $1`, factionID.String()).Scan(&count)
 	if err != nil {
 		return -1, err
 	}

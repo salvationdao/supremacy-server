@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/ninja-software/terror/v2"
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
@@ -445,6 +446,26 @@ func (arena *Arena) Join(ctx context.Context, wsc *hub.Client, payload []byte, f
 
 	reply(pos)
 
+	result, err := db.QueueLength(factionID)
+	if err != nil {
+		gamelog.L.Error().Interface("factionID", factionID).Err(err).Msg("unable to retrieve queue length")
+		return err
+	}
+
+	queueLength := decimal.NewFromInt(result)
+	queueCost := decimal.New(25, 16)     // 0.25 sups
+	contractReward := decimal.New(2, 18) // 2 sups
+	if queueLength.GreaterThan(decimal.NewFromInt(0)) {
+		queueCost = queueLength.Mul(decimal.New(25, 16))     // 0.25x queue length
+		contractReward = queueLength.Mul(decimal.New(2, 18)) // 2x queue length
+	}
+
+	arena.messageBus.Send(context.Background(), messagebus.BusKey(WSQueueStatus), QueueStatusResponse{
+		result,
+		queueCost,
+		contractReward,
+	})
+
 	return err
 }
 
@@ -456,13 +477,13 @@ type LeaveQueueRequest struct {
 }
 
 func (arena *Arena) Leave(ctx context.Context, wsc *hub.Client, payload []byte, factionID uuid.UUID, reply hub.ReplyFunc) error {
-	span := tracer.StartSpan("ws.Command", tracer.ResourceName(string(WSJoinQueue)))
+	span := tracer.StartSpan("ws.Command", tracer.ResourceName(string(WSLeaveQueue)))
 	defer span.Finish()
 
 	msg := &LeaveQueueRequest{}
 	err := json.Unmarshal(payload, msg)
 	if err != nil {
-		gamelog.L.Error().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal queue join")
+		gamelog.L.Error().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal queue leave")
 		return err
 	}
 
@@ -510,7 +531,77 @@ func (arena *Arena) Leave(ctx context.Context, wsc *hub.Client, payload []byte, 
 
 	reply(true)
 
+	result, err := db.QueueLength(factionID)
+	if err != nil {
+		gamelog.L.Error().Interface("factionID", factionID).Err(err).Msg("unable to retrieve queue length")
+		return err
+	}
+
+	queueLength := decimal.NewFromInt(result)
+	queueCost := decimal.New(25, 16)     // 0.25 sups
+	contractReward := decimal.New(2, 18) // 2 sups
+	if queueLength.GreaterThan(decimal.NewFromInt(0)) {
+		queueCost = queueLength.Mul(decimal.New(25, 16))     // 0.25x queue length
+		contractReward = queueLength.Mul(decimal.New(2, 18)) // 2x queue length
+	}
+
+	arena.messageBus.Send(context.Background(), messagebus.BusKey(WSQueueStatus), QueueStatusResponse{
+		result,
+		queueCost,
+		contractReward,
+	})
+
 	return err
+}
+
+type QueueStatusResponse struct {
+	QueueLength    int64           `json:"queue_length"`
+	QueueCost      decimal.Decimal `json:"queue_cost"`
+	ContractReward decimal.Decimal `json:"contract_reward"`
+}
+
+func (arena *Arena) QueueStatus(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	span := tracer.StartSpan("ws.SubscribeCommand", tracer.ResourceName(string(WSQueueStatus)))
+	defer span.Finish()
+
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return "", "", terror.Error(err, "Invalid request received")
+	}
+
+	userID := uuid.FromStringOrNil(wsc.Identifier())
+	if userID.IsNil() {
+		return "", "", terror.Error(terror.ErrInvalidInput)
+	}
+
+	factionID, err := GetPlayerFactionID(userID)
+	if err != nil || factionID.IsNil() {
+		gamelog.L.Error().Str("userID", userID.String()).Err(err).Msg("unable to find faction from user id")
+		return "", "", terror.Error(err)
+	}
+
+	result, err := db.QueueLength(factionID)
+	if err != nil {
+		gamelog.L.Error().Interface("factionID", factionID).Err(err).Msg("unable to retrieve queue length")
+		return "", "", terror.Error(err)
+	}
+
+	queueLength := decimal.NewFromInt(result)
+	queueCost := decimal.New(25, 16)     // 0.25 sups
+	contractReward := decimal.New(2, 18) // 2 sups
+	if queueLength.GreaterThan(decimal.NewFromInt(0)) {
+		queueCost = queueLength.Mul(decimal.New(25, 16))     // 0.25x queue length
+		contractReward = queueLength.Mul(decimal.New(2, 18)) // 2x queue length
+	}
+
+	reply(QueueStatusResponse{
+		result,
+		queueCost,
+		contractReward,
+	})
+
+	return req.TransactionID, messagebus.BusKey(WSQueueStatus), nil
 }
 
 func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
