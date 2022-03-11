@@ -70,6 +70,20 @@ func (btl *Battle) start(payload *BattleStartPayload) {
 	btl.BroadcastUpdate()
 }
 
+// calcTriggeredLocation convert picked cell to the location in game
+func (btl *Battle) calcTriggeredLocation(abilityEvent *server.GameAbilityEvent) {
+	// To get the location in game its
+	//  ((cellX * GameClientTileSize) + GameClientTileSize / 2) + LeftPixels
+	//  ((cellY * GameClientTileSize) + GameClientTileSize / 2) + TopPixels
+	if abilityEvent.TriggeredOnCellX == nil || abilityEvent.TriggeredOnCellY == nil {
+		return
+	}
+
+	abilityEvent.GameLocation.X = ((*abilityEvent.TriggeredOnCellX * server.GameClientTileSize) + (server.GameClientTileSize / 2)) + btl.gameMap.LeftPixels
+	abilityEvent.GameLocation.Y = ((*abilityEvent.TriggeredOnCellY * server.GameClientTileSize) + (server.GameClientTileSize / 2)) + btl.gameMap.TopPixels
+
+}
+
 func (btl *Battle) isOnline(userID uuid.UUID) bool {
 	_, ok := btl.users.User(userID)
 	return ok

@@ -1379,23 +1379,20 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 		return terror.Error(err, "player not exists")
 	}
 
+	event := &server.GameAbilityEvent{
+		IsTriggered:         true,
+		GameClientAbilityID: ability.GameClientAbilityID,
+		TriggeredOnCellX:    &x,
+		TriggeredOnCellY:    &y,
+		TriggeredByUserID:   &userID,
+		TriggeredByUsername: &player.Username.String,
+		EventID:             ability.OfferingID,
+	}
+
+	as.battle.calcTriggeredLocation(event)
+
 	// trigger location select
-	as.battle.arena.Message(
-		"BATTLE:ABILITY",
-		&server.GameAbilityEvent{
-			IsTriggered:         true,
-			GameClientAbilityID: ability.GameClientAbilityID,
-			TriggeredOnCellX:    &x,
-			TriggeredOnCellY:    &y,
-			TriggeredByUserID:   &userID,
-			TriggeredByUsername: &player.Username.String,
-			EventID:             ability.OfferingID,
-			GameLocation: struct {
-				X int `json:"x"`
-				Y int `json:"y"`
-			}{X: x, Y: y},
-		},
-	)
+	as.battle.arena.Message("BATTLE:ABILITY", event)
 
 	bat := boiler.BattleAbilityTrigger{
 		PlayerID:          null.StringFrom(userID.String()),
