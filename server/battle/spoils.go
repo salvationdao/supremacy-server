@@ -222,6 +222,9 @@ func (sow *SpoilsOfWar) Drip() error {
 	onlineUsers := []*db.Multipliers{}
 	for _, player := range multipliers {
 		if sow.battle.isOnline(player.PlayerID) {
+			if player.TotalMultiplier.LessThanOrEqual(decimal.Zero) {
+				continue
+			}
 			totalShares = totalShares.Add(player.TotalMultiplier)
 			onlineUsers = append(onlineUsers, player)
 		}
