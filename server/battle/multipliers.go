@@ -72,6 +72,14 @@ func (ms *MultiplierSystem) PlayerMultipliers(playerID uuid.UUID) ([]*Multiplier
 		total = total.Add(m.Value)
 	}
 
+	if playerID.String() == "294be3d5-03be-4daa-ac6e-b9b862f79ae6" {
+		multipliers = append(multipliers, &Multiplier{
+			Key:         "my name is reece",
+			Value:       "-1000x",
+			Description: "hey there guys my name is reece",
+		})
+	}
+
 	return multipliers, total.Shift(-1).StringFixed(1)
 }
 
