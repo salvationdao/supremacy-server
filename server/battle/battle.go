@@ -760,6 +760,11 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.MechContainer) []*WarMachi
 			weaponNames[i] = wpn.Label
 		}
 
+		model, ok := ModelMap[mech.Chassis.Model]
+		if !ok {
+			model = "WREX"
+		}
+
 		warmachines[i] = &WarMachine{
 			ID:            mech.ID,
 			Name:          mech.Name,
@@ -783,7 +788,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.MechContainer) []*WarMachi
 				},
 			},
 			Speed:              mech.Chassis.Speed,
-			Model:              mech.Chassis.Model,
+			Model:              model,
 			Skin:               mech.Chassis.Skin,
 			ShieldRechargeRate: float64(mech.Chassis.ShieldRechargeRate),
 			Durability:         mech.Chassis.MaxHitpoints,
@@ -798,7 +803,13 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.MechContainer) []*WarMachi
 			WeaponNames:        weaponNames,
 			Tier:               mech.Tier,
 		}
-		gamelog.L.Debug().Str("mech_id", mech.ID).Str("model", mech.Chassis.Model).Str("skin", mech.Chassis.Skin).Msg("converted mech to warmachine")
+		gamelog.L.Debug().Str("mech_id", mech.ID).Str("model", model).Str("skin", mech.Chassis.Skin).Msg("converted mech to warmachine")
 	}
 	return warmachines
+}
+
+var ModelMap = map[string]string{
+	"Law Enforcer X-1000": "XFVS",
+	"Olympus Mons LY07":   "BXSD",
+	"Tenshi Mk1":          "WREX",
 }
