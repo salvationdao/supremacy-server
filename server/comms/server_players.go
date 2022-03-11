@@ -2,7 +2,6 @@ package comms
 
 import (
 	"server/db"
-	"server/db/boiler"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofrs/uuid"
@@ -16,7 +15,7 @@ type PlayerRegisterReq struct {
 	PublicAddress common.Address
 }
 type PlayerRegisterResp struct {
-	*boiler.Player
+	ID uuid.UUID
 }
 
 func (s *S) PlayerRegister(req PlayerRegisterReq, resp *PlayerRegisterResp) error {
@@ -24,6 +23,8 @@ func (s *S) PlayerRegister(req PlayerRegisterReq, resp *PlayerRegisterResp) erro
 	if err != nil {
 		return terror.Error(err)
 	}
-	resp.Player = result
+
+	resp.ID = uuid.Must(uuid.FromString(result.ID))
+
 	return nil
 }

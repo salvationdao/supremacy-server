@@ -423,6 +423,15 @@ func JoinQueue(mech *BattleMechData) (int64, error) {
 		return 0, err
 	}
 	defer tx.Rollback()
+
+	exists, err := boiler.BattleQueueExists(tx, mech.MechID.String())
+	if err != nil {
+		gamelog.L.Error().Str("db func", "JoinQueue").Str("mech_id", mech.MechID.String()).Err(err).Msg("check mech exists in queue")
+	}
+	if exists {
+		gamelog.L.Debug().Str("db func", "JoinQueue").Str("mech_id", mech.MechID.String()).Err(err).Msg("mech already in queue")
+		return QueuePosition(mech.MechID, mech.FactionID)
+	}
 	bw := &boiler.BattleQueue{
 		MechID:    mech.MechID.String(),
 		QueuedAt:  time.Now(),

@@ -38,6 +38,7 @@ type Template struct {
 	DeletedAt          null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 	UpdatedAt          time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	CreatedAt          time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	LargeImageURL      string    `boiler:"large_image_url" boil:"large_image_url" json:"large_image_url" toml:"large_image_url" yaml:"large_image_url"`
 
 	R *templateR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L templateL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -59,6 +60,7 @@ var TemplateColumns = struct {
 	DeletedAt          string
 	UpdatedAt          string
 	CreatedAt          string
+	LargeImageURL      string
 }{
 	ID:                 "id",
 	BlueprintChassisID: "blueprint_chassis_id",
@@ -75,6 +77,7 @@ var TemplateColumns = struct {
 	DeletedAt:          "deleted_at",
 	UpdatedAt:          "updated_at",
 	CreatedAt:          "created_at",
+	LargeImageURL:      "large_image_url",
 }
 
 var TemplateTableColumns = struct {
@@ -93,6 +96,7 @@ var TemplateTableColumns = struct {
 	DeletedAt          string
 	UpdatedAt          string
 	CreatedAt          string
+	LargeImageURL      string
 }{
 	ID:                 "templates.id",
 	BlueprintChassisID: "templates.blueprint_chassis_id",
@@ -109,6 +113,7 @@ var TemplateTableColumns = struct {
 	DeletedAt:          "templates.deleted_at",
 	UpdatedAt:          "templates.updated_at",
 	CreatedAt:          "templates.created_at",
+	LargeImageURL:      "templates.large_image_url",
 }
 
 // Generated where
@@ -129,6 +134,7 @@ var TemplateWhere = struct {
 	DeletedAt          whereHelpernull_Time
 	UpdatedAt          whereHelpertime_Time
 	CreatedAt          whereHelpertime_Time
+	LargeImageURL      whereHelperstring
 }{
 	ID:                 whereHelperstring{field: "\"templates\".\"id\""},
 	BlueprintChassisID: whereHelperstring{field: "\"templates\".\"blueprint_chassis_id\""},
@@ -145,6 +151,7 @@ var TemplateWhere = struct {
 	DeletedAt:          whereHelpernull_Time{field: "\"templates\".\"deleted_at\""},
 	UpdatedAt:          whereHelpertime_Time{field: "\"templates\".\"updated_at\""},
 	CreatedAt:          whereHelpertime_Time{field: "\"templates\".\"created_at\""},
+	LargeImageURL:      whereHelperstring{field: "\"templates\".\"large_image_url\""},
 }
 
 // TemplateRels is where relationship names are stored.
@@ -174,8 +181,8 @@ func (*templateR) NewStruct() *templateR {
 type templateL struct{}
 
 var (
-	templateAllColumns            = []string{"id", "blueprint_chassis_id", "faction_id", "tier", "label", "slug", "is_default", "image_url", "animation_url", "card_animation_url", "avatar_url", "asset_type", "deleted_at", "updated_at", "created_at"}
-	templateColumnsWithoutDefault = []string{"id", "blueprint_chassis_id", "faction_id", "tier", "label", "slug", "image_url", "animation_url", "card_animation_url", "avatar_url", "asset_type"}
+	templateAllColumns            = []string{"id", "blueprint_chassis_id", "faction_id", "tier", "label", "slug", "is_default", "image_url", "animation_url", "card_animation_url", "avatar_url", "asset_type", "deleted_at", "updated_at", "created_at", "large_image_url"}
+	templateColumnsWithoutDefault = []string{"id", "blueprint_chassis_id", "faction_id", "tier", "label", "slug", "image_url", "animation_url", "card_animation_url", "avatar_url", "asset_type", "large_image_url"}
 	templateColumnsWithDefault    = []string{"is_default", "deleted_at", "updated_at", "created_at"}
 	templatePrimaryKeyColumns     = []string{"id"}
 	templateGeneratedColumns      = []string{}
