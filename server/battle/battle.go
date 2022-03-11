@@ -766,8 +766,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 }
 
 func (btl *Battle) Load() error {
-	q := []*boiler.BattleQueue{}
-	err := db.LoadBattleQueue(context.Background(), &q)
+	q, err := db.LoadBattleQueue(context.Background(), 3)
 	if err != nil {
 		gamelog.L.Warn().Str("battle_id", btl.ID.String()).Err(err).Msg("unable to load out queue")
 		return err
