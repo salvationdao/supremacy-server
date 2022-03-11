@@ -15,6 +15,8 @@ import (
 	"server/rpcclient"
 	"time"
 
+	"github.com/volatiletech/sqlboiler/v4/boil"
+
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
@@ -704,16 +706,29 @@ func (arena *Arena) Battle() *Battle {
 		gamelog.L.Err(err).Msg("unable to get random map")
 		return nil
 	}
+	id := uuid.Must(uuid.NewV4())
+
 	btl := &Battle{
 		arena:   arena,
-		ID:      uuid.Must(uuid.NewV4()),
+		ID:      id,
 		MapName: gameMap.Name,
 		gameMap: gameMap,
-		stage:   BattleStagStart,
+		Battle: &boiler.Battle{
+			ID:        id.String(),
+			GameMapID: gameMap.ID.String(),
+			StartedAt: time.Now(),
+		},
+		stage: BattleStagStart,
 		users: usersMap{
 			m: make(map[uuid.UUID]*BattleUser),
 		},
 		destroyedWarMachineMap: make(map[byte]*WMDestroyedRecord),
+	}
+
+	err = btl.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		gamelog.L.Panic().Interface("battle", btl).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to insert Battle into database")
+		return nil
 	}
 
 	err = btl.Load()
@@ -766,7 +781,7 @@ func (arena *Arena) Battle() *Battle {
 
 	btl.factions = factions
 
-	btl.Battle, err = db.Battle(btl.ID, uuid.UUID(gameMap.ID), bmd)
+	err = db.BattleMechs(btl.Battle, bmd)
 	if err != nil {
 		gamelog.L.Error().Str("Battle ID", btl.ID.String()).Err(err).Msg("unable to insert battle into database")
 		//TODO: something more dramatic

@@ -29,7 +29,6 @@ type SpoilsOfWar struct {
 	flushCh       chan bool
 	tickSpeed     time.Duration
 	transactSpeed time.Duration
-	warchest      *boiler.SpoilsOfWar
 }
 
 func NewSpoilsOfWar(btl *Battle, transactSpeed time.Duration, dripSpeed time.Duration) *SpoilsOfWar {
@@ -204,7 +203,7 @@ func (sow *SpoilsOfWar) Drip() error {
 		return err
 	}
 
-	if sow.warchest.Amount.LessThanOrEqual(decimal.Zero) {
+	if warchest.Amount.LessThanOrEqual(decimal.Zero) {
 		gamelog.L.Warn().Msgf("warchest amount is less than or equal to zero")
 		return nil
 	}
@@ -264,11 +263,11 @@ func (sow *SpoilsOfWar) Drip() error {
 			sow.l.Error().Err(err).Msg("unable to send spoils of war transaction")
 			continue
 		} else {
-			sow.warchest.AmountSent = sow.warchest.AmountSent.Add(userDrip)
-			_, err = sow.warchest.Update(gamedb.StdConn, boil.Infer())
+			warchest.AmountSent = warchest.AmountSent.Add(userDrip)
+			_, err = warchest.Update(gamedb.StdConn, boil.Infer())
 			if err != nil {
 				sow.l.Error().Err(err).Msg("unable to update spoils of war")
-				sow.warchest = nil
+				warchest = nil
 				return err
 			}
 			pt := boiler.PendingTransaction{
