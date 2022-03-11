@@ -222,7 +222,7 @@ func main() {
 					messageBus := messagebus.NewMessageBus(log_helpers.NamedLogger(gamelog.L, "message_bus"))
 					gsHub := hub.New(&hub.Config{
 						Log:            zerologger.New(*log_helpers.NamedLogger(gamelog.L, "hub library")),
-						LoggingEnabled: true,
+						LoggingEnabled: false,
 						WelcomeMsg: &hub.WelcomeMsg{
 							Key:     "WELCOME",
 							Payload: nil,
@@ -235,6 +235,7 @@ func main() {
 							netMessageBus.UnsubAll(cl)
 							messageBus.UnsubAll(cl)
 						},
+						Tracer: &api.HubTracer{},
 					})
 
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Set up hub")

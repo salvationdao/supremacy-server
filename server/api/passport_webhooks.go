@@ -146,110 +146,6 @@ type WarMachineJoinResp struct {
 	ContractReward decimal.Decimal `json:"contractReward"`
 }
 
-func (pc *PassportWebhookController) WarMachineJoin(w http.ResponseWriter, r *http.Request) (int, error) {
-	//TODO ALEX fix
-	return 0, nil
-	//req := &WarMachineJoinRequest{}
-	//err := json.NewDecoder(r.Body).Decode(req)
-	//if err != nil {
-	//	return http.StatusInternalServerError, terror.Error(err)
-	//}
-	//
-	//if req.WarMachineMetadata.FactionID.IsNil() {
-	//	return http.StatusBadRequest, terror.Error(fmt.Errorf("Non-faction war machine is not able to join"))
-	//}
-	//
-	//err = pc.API.BattleArena.WarMachineQueue.Join(req.WarMachineMetadata, req.NeedInsured)
-	//if err != nil {
-	//	return http.StatusBadRequest, terror.Error(err, err.Error())
-	//}
-	//
-	//// broadcast price change
-	//factionQueuePrice := &passport.FactionQueuePriceUpdateReq{
-	//	FactionID: req.WarMachineMetadata.FactionID,
-	//}
-	//switch req.WarMachineMetadata.FactionID {
-	//case server.RedMountainFactionID:
-	//	factionQueuePrice.QueuingLength = pc.API.BattleArena.WarMachineQueue.RedMountain.QueuingLength()
-	//case server.BostonCyberneticsFactionID:
-	//	factionQueuePrice.QueuingLength = pc.API.BattleArena.WarMachineQueue.Boston.QueuingLength()
-	//case server.ZaibatsuFactionID:
-	//	factionQueuePrice.QueuingLength = pc.API.BattleArena.WarMachineQueue.Zaibatsu.QueuingLength()
-	//}
-	//pc.API.Passport.FactionQueueCostUpdate(factionQueuePrice)
-	//
-	//errChan := make(chan error)
-	//
-	//// fire a payment to passport
-	//pc.API.Passport.SpendSupMessage(passport.SpendSupsReq{
-	//	FromUserID:           req.WarMachineMetadata.OwnedByID,
-	//	ToUserID:             &server.XsynTreasuryUserID,
-	//	Amount:               req.WarMachineMetadata.Fee.String(),
-	//	TransactionReference: server.TransactionReference(fmt.Sprintf("war_machine_queuing_fee|%s", uuid.Must(uuid.NewV4()))),
-	//	Group:                "Supremacy",
-	//	Description:          "Adding war machine to queue.",
-	//}, func(transaction string) {
-	//	errChan <- nil
-	//}, func(reqErr error) {
-	//	// check faction id
-	//	switch req.WarMachineMetadata.FactionID {
-	//	case server.RedMountainFactionID:
-	//		err = pc.API.BattleArena.WarMachineQueue.RedMountain.Leave(req.WarMachineMetadata.Hash)
-	//		if err != nil {
-	//			pc.Log.Err(err).Msg("")
-	//		}
-	//	case server.BostonCyberneticsFactionID:
-	//		err = pc.API.BattleArena.WarMachineQueue.Boston.Leave(req.WarMachineMetadata.Hash)
-	//		if err != nil {
-	//			pc.Log.Err(err).Msg("")
-	//		}
-	//	case server.ZaibatsuFactionID:
-	//		err = pc.API.BattleArena.WarMachineQueue.Zaibatsu.Leave(req.WarMachineMetadata.Hash)
-	//		if err != nil {
-	//			pc.Log.Err(err).Msg("")
-	//		}
-	//	}
-	//	pc.API.Passport.SupremacyQueueUpdate(&server.SupremacyQueueUpdateReq{
-	//		Hash: req.WarMachineMetadata.Hash,
-	//	})
-	//	errChan <- reqErr
-	//})
-	//
-	//err = <-errChan
-	//if err != nil {
-	//	return http.StatusInternalServerError, terror.Error(err, "Issue joining queue")
-	//}
-	//
-	//// prepare response
-	//resp := &WarMachineJoinResp{}
-	//// set insurance flag
-	//warMachinePosition, _ := pc.API.BattleArena.WarMachineQueue.GetWarMachineQueue(req.WarMachineMetadata.FactionID, req.WarMachineMetadata.Hash)
-	//if err != nil {
-	//	return http.StatusInternalServerError, terror.Error(err)
-	//}
-	//
-	//resp.Position = warMachinePosition
-	//resp.ContractReward = decimal.New(int64((*warMachinePosition+1)*2), 0)
-	//
-	//// get contract reward
-	//queuingStat, err := db.AssetQueuingStat(context.Background(), pc.Conn, req.WarMachineMetadata.Hash)
-	//if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-	//	return http.StatusInternalServerError, terror.Error(err)
-	//}
-	//
-	//queueingContractReward, err := decimal.NewFromString(queuingStat.ContractReward)
-	//if err != nil {
-	//	return http.StatusInternalServerError, terror.Error(err)
-	//}
-	//resp.ContractReward = decimal.Zero
-	//if queuingStat != nil {
-	//	resp.ContractReward = queueingContractReward
-	//}
-	//
-	//// return current queuing position
-	//return helpers.EncodeJSON(w, resp)
-}
-
 type UserSupsMultiplierGetRequest struct {
 	UserID server.UserID `json:"user_id"`
 }
@@ -447,7 +343,12 @@ var whitelistedAddresses = []common.Address{
 	common.HexToAddress("0xFa79b76602E644deBD585e254e7A0ea9271Da7f7"),
 	common.HexToAddress("0x8080833a93bD3F69A1972452B03dfb338Bef425e"),
 	common.HexToAddress("0x3e46B1a261616eb88C6e39B680065451B44Cd600"),
+	// this one is Reece ⌄⌄⌄⌄
 	common.HexToAddress("0xEeDBF8aB0D5e20dF93F1539A6b1c18A804335d4B"),
+	// this one is Reece ^^^^
+	common.HexToAddress("0x3Ca6425be53a9B9cA9650eB8a8B454f455781333"),
+	common.HexToAddress("0xEAA5693a4E3cA53A74687440db2E55773b2E3F7d"),
+
 	common.HexToAddress("0x4F99ca8cA1328C6F44242f7b7333f3637956f046"),
 
 	// whitelisted player
