@@ -102,7 +102,7 @@ func (btl *Battle) spawnReinforcementNearMech(abilityEvent *server.GameAbilityEv
 	aliveWarMachines := []WarMachinePosition{}
 	for _, wm := range btl.WarMachines {
 		// store red mountain war machines
-		if wm.FactionID != server.RedMountainFactionID.String() {
+		if wm.FactionID != server.RedMountainFactionID.String() || wm.Position == nil {
 			continue
 		}
 
