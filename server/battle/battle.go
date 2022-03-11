@@ -100,21 +100,60 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		gamelog.L.Panic().Str("Battle ID", btl.ID.String()).Msg("no winning war machines")
 	}
 
-	fakedUsers := []*BattleUser{
-		{
-			ID:            uuid.Must(uuid.NewV4()),
-			Username:      "FakeUser1",
+	topFactionContributorBoilers, err := db.TopSupsContributeFactions(uuid.Must(uuid.FromString(payload.BattleID)))
+	if err != nil {
+		gamelog.L.Warn().Err(err).Str("battle_id", payload.BattleID).Msg("get top faction contributors")
+	}
+	topPlayerContributorsBoilers, err := db.TopSupsContributors(uuid.Must(uuid.FromString(payload.BattleID)))
+	if err != nil {
+		gamelog.L.Warn().Err(err).Str("battle_id", payload.BattleID).Msg("get top player contributors")
+	}
+	topPlayerExecutorsBoilers, err := db.MostFrequentAbilityExecutors(uuid.Must(uuid.FromString(payload.BattleID)))
+	if err != nil {
+		gamelog.L.Warn().Err(err).Str("battle_id", payload.BattleID).Msg("get top player executors")
+	}
+
+	topFactionContributors := []*Faction{}
+	for _, f := range topFactionContributorBoilers {
+		topFactionContributors = append(topFactionContributors, &Faction{
+			ID:    f.ID,
+			Label: f.Label,
+			Theme: &FactionTheme{
+				Primary:    f.PrimaryColor,
+				Secondary:  f.SecondaryColor,
+				Background: f.BackgroundColor,
+			},
+		})
+	}
+	topPlayerContributors := []*BattleUser{}
+	for _, p := range topPlayerContributorsBoilers {
+		factionID := uuid.Must(uuid.FromString(winningWarMachines[0].FactionID))
+		if p.FactionID.Valid {
+			factionID = uuid.Must(uuid.FromString(p.FactionID.String))
+		}
+
+		topPlayerContributors = append(topPlayerContributors, &BattleUser{
+			ID:            uuid.Must(uuid.FromString(p.ID)),
+			Username:      p.Username.String,
 			FactionID:     winningWarMachines[0].FactionID,
-			FactionColour: btl.factions[uuid.Must(uuid.FromString(winningWarMachines[0].FactionID))].PrimaryColor,
-			FactionLogoID: FactionLogos[winningWarMachines[0].FactionID],
-		},
-		{
-			ID:            uuid.Must(uuid.NewV4()),
-			Username:      "FakeUser2",
-			FactionID:     winningWarMachines[0].FactionID,
-			FactionColour: btl.factions[uuid.Must(uuid.FromString(winningWarMachines[0].FactionID))].PrimaryColor,
-			FactionLogoID: FactionLogos[winningWarMachines[0].FactionID],
-		},
+			FactionColour: btl.factions[factionID].PrimaryColor,
+			FactionLogoID: FactionLogos[p.FactionID.String],
+		})
+	}
+
+	topPlayerExecutors := []*BattleUser{}
+	for _, p := range topPlayerExecutorsBoilers {
+		factionID := uuid.Must(uuid.FromString(winningWarMachines[0].FactionID))
+		if p.FactionID.Valid {
+			factionID = uuid.Must(uuid.FromString(p.FactionID.String))
+		}
+		topPlayerExecutors = append(topPlayerExecutors, &BattleUser{
+			ID:            uuid.Must(uuid.FromString(p.ID)),
+			Username:      p.Username.String,
+			FactionID:     p.FactionID.String,
+			FactionColour: btl.factions[factionID].PrimaryColor,
+			FactionLogoID: FactionLogos[p.FactionID.String],
+		})
 	}
 
 	fakedFactions := make([]*Faction, 2)
@@ -135,6 +174,12 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		i++
 	}
 
+	gamelog.L.Debug().
+		Int("top_faction_contributors", len(topFactionContributors)).
+		Int("top_player_executors", len(topPlayerExecutors)).
+		Int("top_player_contributors", len(topPlayerContributors)).
+		Msg("get top players and factions")
+
 	endInfo := &BattleEndDetail{
 		BattleID:                     btl.ID.String(),
 		BattleIdentifier:             btl.Battle.BattleNumber,
@@ -143,9 +188,9 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		WinningCondition:             payload.WinCondition,
 		WinningFaction:               winningWarMachines[0].Faction,
 		WinningWarMachines:           winningWarMachines,
-		TopSupsContributors:          fakedUsers,
-		TopSupsContributeFactions:    fakedFactions,
-		MostFrequentAbilityExecutors: fakedUsers,
+		TopSupsContributeFactions:    topFactionContributors,
+		TopSupsContributors:          topPlayerExecutors,
+		MostFrequentAbilityExecutors: topPlayerExecutors,
 	}
 
 	ids := make([]uuid.UUID, len(btl.WarMachines))

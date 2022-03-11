@@ -105,3 +105,58 @@ func MarkPendingTransactionProcessed(id uuid.UUID) error {
 	}
 	return nil
 }
+
+func TopSupsContributeFactions(battleID uuid.UUID) ([]*boiler.Faction, error) {
+	result := []*boiler.Faction{}
+	q := `
+	SELECT f.*
+	FROM battle_contributions bc 
+	INNER JOIN players p ON p.id = bc.player_id
+	INNER JOIN factions f ON f.id = p.faction_id
+	WHERE battle_id = $1 
+	GROUP BY f.id
+	ORDER BY SUM(amount) DESC LIMIT 2;
+`
+	err := pgxscan.Select(context.Background(), gamedb.Conn, &result, q, battleID)
+	if err != nil {
+		return result, err
+	}
+
+	return result, nil
+}
+
+func TopSupsContributors(battleID uuid.UUID) ([]*boiler.Player, error) {
+	result := []*boiler.Player{}
+	q := `
+	SELECT p.*
+	FROM battle_contributions bc 
+	INNER JOIN players p ON p.id = bc.player_id
+	INNER JOIN factions f ON f.id = p.faction_id
+	WHERE battle_id = $1 
+	GROUP BY p.id ORDER BY SUM(amount) DESC LIMIT 2;
+`
+
+	err := pgxscan.Select(context.Background(), gamedb.Conn, &result, q, battleID)
+	if err != nil {
+		return result, err
+	}
+
+	return result, nil
+}
+func MostFrequentAbilityExecutors(battleID uuid.UUID) ([]*boiler.Player, error) {
+	result := []*boiler.Player{}
+	q := `
+	SELECT p.*
+	FROM battle_contributions bc
+	INNER JOIN players p ON p.id = bc.player_id
+	INNER JOIN factions f ON f.id = p.faction_id
+	WHERE battle_id = $1 AND did_trigger = TRUE 
+	GROUP BY p.id ORDER BY COUNT(bc.id) DESC LIMIT 2;
+`
+	err := pgxscan.Select(context.Background(), gamedb.Conn, &result, q, battleID)
+	if err != nil {
+		return result, err
+	}
+
+	return result, nil
+}
