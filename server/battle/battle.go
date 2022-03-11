@@ -11,6 +11,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/passport"
 	"server/rpcclient"
 	"strconv"
 	"strings"
@@ -464,10 +465,25 @@ func (arena *Arena) Join(ctx context.Context, wsc *hub.Client, payload []byte, f
 		return err
 	}
 
-	// TODO: Charge user, update battle contract to indicate paid
+	// Charge user queue fee
+	txid, err := arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
+		Amount:               queueCost.StringFixed(18),
+		FromUserID:           ownerID,
+		ToUserID:             SupremacyBattleUserID,
+		TransactionReference: server.TransactionReference(fmt.Sprintf("war_machine_queueing_fee|%s|%d", msg.Payload.AssetHash, time.Now().UnixNano())),
+		Group:                "Battle",
+		SubGroup:             "Queue",
+		Description:          "Queued mech to battle arena",
+		NotSafe:              true,
+	})
+	if err != nil {
+		gamelog.L.Error().Str("txID", txid).Interface("mechID", mechID).Interface("factionID", mech.FactionID).Err(err).Msg("unable to charge user for insert mech into queue")
+		return err
+	}
 
 	reply(position)
 
+	// Send updated battle queue status to all subscribers
 	arena.messageBus.Send(context.Background(), messagebus.BusKey(WSQueueStatus), QueueStatusResponse{
 		result,
 		queueCost,
@@ -533,17 +549,37 @@ func (arena *Arena) Leave(ctx context.Context, wsc *hub.Client, payload []byte, 
 		return terror.Error(terror.ErrForbidden, "user is not mech owner")
 	}
 
+	originalQueueCost, err := db.QueueContract(mechID, factionID)
+	if err != nil {
+		gamelog.L.Error().Interface("mechID", mechID).Interface("factionID", mech.FactionID).Err(err).Msg("unable to remove mech from queue")
+		return err
+	}
+
 	position, err := db.LeaveQueue(&db.BattleMechData{
 		MechID:    mechID,
 		OwnerID:   ownerID,
 		FactionID: uuid.UUID(factionID),
 	})
 	if err != nil {
-		gamelog.L.Error().Interface("factionID", mech.FactionID).Err(err).Msg("unable to remove mech from queue")
+		gamelog.L.Error().Interface("mechID", mechID).Interface("factionID", mech.FactionID).Err(err).Msg("unable to remove mech from queue")
 		return err
 	}
 
-	// TODO: Refund user
+	// Refund user queue fee
+	txid, err := arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
+		Amount:               originalQueueCost.StringFixed(18),
+		FromUserID:           SupremacyBattleUserID,
+		ToUserID:             ownerID,
+		TransactionReference: server.TransactionReference(fmt.Sprintf("refund_war_machine_queueing_fee|%s|%d", msg.Payload.AssetHash, time.Now().UnixNano())),
+		Group:                "Battle",
+		SubGroup:             "Queue",
+		Description:          "Refunded battle arena queing fee",
+		NotSafe:              true,
+	})
+	if err != nil {
+		gamelog.L.Error().Str("txID", txid).Interface("mechID", mechID).Interface("factionID", mech.FactionID).Err(err).Msg("unable to charge user for insert mech into queue")
+		return err
+	}
 
 	reply(true)
 

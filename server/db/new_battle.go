@@ -440,6 +440,29 @@ func QueueContract(mechID uuid.UUID, factionID uuid.UUID) (*decimal.Decimal, err
 	return &contractReward, nil
 }
 
+func QueueFee(mechID uuid.UUID, factionID uuid.UUID) (*decimal.Decimal, error) {
+	var queueCost decimal.Decimal
+
+	// Get latest queue contract
+	query := `select fee
+		from battle_contracts
+		where mech_id = $1 AND faction_id = $2
+		order by queued_at desc
+		limit 1
+	`
+
+	err := gamedb.Conn.QueryRow(context.Background(), query, mechID.String(), factionID.String()).Scan(&queueCost)
+	if err != nil {
+		gamelog.L.Error().
+			Str("mech_id", mechID.String()).
+			Str("faction_id", factionID.String()).
+			Str("db func", "QueueFee").Err(err).Msg("unable to get battle contract of mech")
+		return nil, err
+	}
+
+	return &queueCost, nil
+}
+
 func JoinQueue(mech *BattleMechData, contractReward decimal.Decimal, queueFee decimal.Decimal) (int64, error) {
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
