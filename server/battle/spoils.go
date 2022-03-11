@@ -198,9 +198,9 @@ func (sow *SpoilsOfWar) ProcessSpoils(battleNumber int) (*boiler.SpoilsOfWar, er
 
 func (sow *SpoilsOfWar) Drip() error {
 	var err error
-	sow.warchest, err = sow.ProcessSpoils(sow.battle.BattleNumber - 1)
+	warchest, err := boiler.SpoilsOfWars(boiler.SpoilsOfWarWhere.BattleNumber.EQ(sow.battle.BattleNumber - 1)).One(gamedb.StdConn)
 	if err != nil {
-		sow.l.Error().Err(err).Msg("unable to process spoils")
+		sow.l.Error().Err(err).Msg("unable to retrieve spoils of war")
 		return err
 	}
 
@@ -211,7 +211,7 @@ func (sow *SpoilsOfWar) Drip() error {
 
 	dripAllocations := 300
 
-	dripAmount := sow.warchest.Amount.Div(decimal.NewFromInt(int64(dripAllocations)))
+	dripAmount := warchest.Amount.Div(decimal.NewFromInt(int64(dripAllocations)))
 
 	multipliers, err := db.PlayerMultipliers(sow.battle.BattleNumber - 1)
 	if err != nil {
@@ -232,7 +232,7 @@ func (sow *SpoilsOfWar) Drip() error {
 		return nil
 	}
 	subgroup := fmt.Sprintf("Spoils of War from Battle #%d", sow.battle.BattleNumber-1)
-	amountRemaining := sow.warchest.Amount.Sub(sow.warchest.AmountSent)
+	amountRemaining := warchest.Amount.Sub(warchest.AmountSent)
 	for _, player := range onlineUsers {
 		userDrip := dripAmount.Div(player.TotalMultiplier)
 
