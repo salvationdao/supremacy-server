@@ -17,8 +17,6 @@ import (
 
 	"github.com/volatiletech/null/v8"
 
-	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
-
 	"github.com/ninja-syndicate/hub"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 
@@ -445,9 +443,6 @@ type JoinPayload struct {
 }
 
 func (arena *Arena) Join(ctx context.Context, wsc *hub.Client, payload []byte, factionID uuid.UUID, reply hub.ReplyFunc) error {
-	span := tracer.StartSpan("ws.Command", tracer.ResourceName(string(WSJoinQueue)))
-	defer span.Finish()
-
 	msg := &JoinPayload{}
 	err := json.Unmarshal(payload, msg)
 	if err != nil {

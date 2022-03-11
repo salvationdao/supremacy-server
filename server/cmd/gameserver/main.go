@@ -235,6 +235,7 @@ func main() {
 							netMessageBus.UnsubAll(cl)
 							messageBus.UnsubAll(cl)
 						},
+						Tracer: &api.HubTracer{},
 					})
 
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Set up hub")
