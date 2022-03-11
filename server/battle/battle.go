@@ -263,8 +263,6 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		i++
 	}
 
-	err = db.ClearQueue()
-
 	gamelog.L.Debug().
 		Int("top_faction_contributors", len(topFactionContributors)).
 		Int("top_player_executors", len(topPlayerExecutors)).
@@ -282,13 +280,6 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		TopSupsContributeFactions:    topFactionContributors,
 		TopSupsContributors:          topPlayerExecutors,
 		MostFrequentAbilityExecutors: topPlayerExecutors,
-	}
-
-	ids := make([]uuid.UUID, len(btl.WarMachines))
-	err = db.ClearQueue(ids...)
-	if err != nil {
-		gamelog.L.Error().Interface("ids", ids).Err(err).Msg("db.ClearQueue() returned error")
-		return
 	}
 
 	btl.stage = BattleStageEnd
