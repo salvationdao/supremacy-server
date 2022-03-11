@@ -312,6 +312,11 @@ func (btl *Battle) userOnline(user *BattleUser, wsc *hub.Client) {
 		u.Unlock()
 	}
 
+	err := db.BattleViewerUpsert(context.Background(), gamedb.Conn, btl.ID.String(), wsc.Identifier())
+	if err != nil {
+		gamelog.L.Error().Err(err)
+	}
+
 	resp := &ViewerLiveCount{
 		RedMountain: 0,
 		Boston:      0,

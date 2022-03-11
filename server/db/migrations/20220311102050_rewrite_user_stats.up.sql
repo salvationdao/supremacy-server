@@ -1,7 +1,7 @@
-CREATE TABLE battles_user_views
+CREATE TABLE battles_viewers
 (
     battle_id  UUID NOT NULL REFERENCES battles (id),
-    player_id    UUID NOT NULL REFERENCES users (id),
+    player_id    UUID NOT NULL REFERENCES players (id),
     PRIMARY KEY (battle_id, player_id)
 );
 
@@ -15,7 +15,7 @@ from (
          FROM players p
      ) p1
          LEFT JOIN LATERAL (
-   		select count(*) as view_battle_count from battles_user_views buv
+   		select count(*) as view_battle_count from battles_viewers buv
    		where buv.player_id = p1.id
   		group by buv.player_id 
     ) p2 ON true 

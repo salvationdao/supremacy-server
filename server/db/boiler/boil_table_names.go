@@ -20,8 +20,8 @@ var TableNames = struct {
 	BattleWarMachineQueues                             string
 	BattleWins                                         string
 	Battles                                            string
-	BattlesUserViews                                   string
 	BattlesUserVotes                                   string
+	BattlesViewers                                     string
 	BattlesWinnerRecords                               string
 	Blobs                                              string
 	BlueprintChassis                                   string
@@ -68,8 +68,8 @@ var TableNames = struct {
 	BattleWarMachineQueues:           "battle_war_machine_queues",
 	BattleWins:                       "battle_wins",
 	Battles:                          "battles",
-	BattlesUserViews:                 "battles_user_views",
 	BattlesUserVotes:                 "battles_user_votes",
+	BattlesViewers:                   "battles_viewers",
 	BattlesWinnerRecords:             "battles_winner_records",
 	Blobs:                            "blobs",
 	BlueprintChassis:                 "blueprint_chassis",

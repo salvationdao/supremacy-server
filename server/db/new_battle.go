@@ -410,3 +410,17 @@ func ClearQueue(mechIDs ...uuid.UUID) error {
 
 	return tx.Commit()
 }
+
+func BattleViewerUpsert(ctx context.Context, conn Conn, battleID string, userID string) error {
+
+	q := `
+	insert into battles_viewers (battle_id, player_id) VALUES ($1, $2) on conflict (battle_id, player_id) do nothing; 
+	`
+	_, err := conn.Exec(ctx, q, battleID, userID)
+	if err != nil {
+		gamelog.L.Error().Str("db func", "BattleViewerUpsert").Err(err).Msg("unable to upsert battle views")
+		return err
+	}
+
+	return nil
+}
