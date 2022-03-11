@@ -568,6 +568,9 @@ func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID str
 		gamelog.L.Error().Str("txid", txid).Err(err).Msg("unable to insert battle contrib")
 	}
 
+	amount = amount.Truncate(0)
+	gamelog.L.Warn().Str("amount", amount.String()).Msg("truncating amount")
+
 	tx, err := gamedb.StdConn.Begin()
 	if err == nil {
 
