@@ -203,7 +203,14 @@ func (sow *SpoilsOfWar) Drip() error {
 
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		warchest, err = sow.ProcessSpoils(bn)
-	} else if err != nil {
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil
+			}
+			sow.l.Error().Err(err).Msg("unable to retrieve spoils of war")
+			return err
+		}
+	} else if err != nil || warchest == nil {
 		sow.l.Error().Err(err).Msg("unable to retrieve spoils of war")
 		return err
 	}
