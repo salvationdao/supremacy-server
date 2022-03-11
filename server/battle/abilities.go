@@ -99,7 +99,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 		// faction unique abilities
 		factionUniqueAbilities, err := boiler.GameAbilities(qm.Where("faction_id = ?", factionID.String()), qm.And("battle_ability_id ISNULL")).All(gamedb.StdConn)
 		if err != nil {
-			gamelog.L.Error().Str("Battle ID", battle.ID.String()).Err(err).Msg("unable to retrieve game abilities")
+			gamelog.L.Error().Str("Battle ID", battle.ID).Err(err).Msg("unable to retrieve game abilities")
 		}
 
 		// for zaibatsu unique abilities
@@ -303,7 +303,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 
 							bat := boiler.BattleAbilityTrigger{
 								PlayerID:          null.StringFromPtr(nil),
-								BattleID:          as.battle.ID.String(),
+								BattleID:          as.battle.ID,
 								FactionID:         ability.FactionID.String(),
 								IsAllSyndicates:   false,
 								AbilityLabel:      ability.Label,
@@ -391,7 +391,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 						return
 					}
 
-					actualSupSpent, isTriggered := ability.SupContribution(as.battle.arena.ppClient, as.battle.ID.String(), as.battle.BattleNumber, cont.userID, cont.amount)
+					actualSupSpent, isTriggered := ability.SupContribution(as.battle.arena.ppClient, as.battle.ID, as.battle.BattleNumber, cont.userID, cont.amount)
 
 					// cache user's sup contribution for generating location select order
 					if _, ok := as.userContributeMap[cont.factionID].contributionMap[cont.userID]; !ok {
@@ -423,7 +423,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 
 						bat := boiler.BattleAbilityTrigger{
 							PlayerID:          null.StringFrom(cont.userID.String()),
-							BattleID:          as.battle.ID.String(),
+							BattleID:          as.battle.ID,
 							FactionID:         ability.FactionID.String(),
 							IsAllSyndicates:   false,
 							AbilityLabel:      ability.Label,
@@ -894,7 +894,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 			if factionAbility, ok := as.battleAbilityPool.Abilities[cont.factionID]; ok {
 
 				// contribute sups
-				actualSupSpent, abilityTriggered := factionAbility.SupContribution(as.battle.arena.ppClient, as.battle.ID.String(), as.battle.BattleNumber, cont.userID, cont.amount)
+				actualSupSpent, abilityTriggered := factionAbility.SupContribution(as.battle.arena.ppClient, as.battle.ID, as.battle.BattleNumber, cont.userID, cont.amount)
 
 				// cache user contribution for location select order
 				if _, ok := as.userContributeMap[cont.factionID].contributionMap[cont.userID]; !ok {
@@ -1406,7 +1406,7 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 
 	bat := boiler.BattleAbilityTrigger{
 		PlayerID:          null.StringFrom(userID.String()),
-		BattleID:          as.battle.ID.String(),
+		BattleID:          as.battle.ID,
 		FactionID:         ability.FactionID.String(),
 		IsAllSyndicates:   true,
 		AbilityLabel:      ability.Label,

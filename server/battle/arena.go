@@ -710,7 +710,6 @@ func (arena *Arena) Battle() *Battle {
 
 	btl := &Battle{
 		arena:   arena,
-		ID:      id,
 		MapName: gameMap.Name,
 		gameMap: gameMap,
 		Battle: &boiler.Battle{
@@ -725,7 +724,9 @@ func (arena *Arena) Battle() *Battle {
 		destroyedWarMachineMap: make(map[byte]*WMDestroyedRecord),
 	}
 
-	err = btl.Insert(gamedb.StdConn, boil.Infer())
+	err = btl.Battle.Insert(gamedb.StdConn, boil.Infer())
+	btl.BattleID = btl.ID
+
 	if err != nil {
 		gamelog.L.Panic().Interface("battle", btl).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to insert Battle into database")
 		return nil
@@ -770,7 +771,7 @@ func (arena *Arena) Battle() *Battle {
 			faction, err := boiler.FindFaction(gamedb.StdConn, factionID.String())
 			if err != nil {
 				gamelog.L.Error().
-					Str("Battle ID", btl.ID.String()).
+					Str("Battle ID", btl.ID).
 					Str("Faction ID", factionID.String()).
 					Err(err).Msg("unable to retrieve faction from database")
 
@@ -783,7 +784,7 @@ func (arena *Arena) Battle() *Battle {
 
 	err = db.BattleMechs(btl.Battle, bmd)
 	if err != nil {
-		gamelog.L.Error().Str("Battle ID", btl.ID.String()).Err(err).Msg("unable to insert battle into database")
+		gamelog.L.Error().Str("Battle ID", btl.ID).Err(err).Msg("unable to insert battle into database")
 		//TODO: something more dramatic
 	}
 

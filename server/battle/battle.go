@@ -29,7 +29,7 @@ import (
 type Battle struct {
 	arena       *Arena
 	stage       string
-	ID          uuid.UUID     `json:"battleID" db:"id"`
+	BattleID    string        `json:"battleID"`
 	MapName     string        `json:"mapName"`
 	WarMachines []*WarMachine `json:"warMachines"`
 	SpawnedAI   []*WarMachine `json:"SpawnedAI"`
@@ -163,12 +163,12 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	btl.EndedAt = null.TimeFrom(time.Now())
 	_, err := btl.Update(gamedb.StdConn, boil.Infer())
 	if err != nil {
-		gamelog.L.Error().Str("Battle ID", btl.ID.String()).Time("EndedAt", btl.EndedAt.Time).Msg("unable to update database for endat battle")
+		gamelog.L.Error().Str("Battle ID", btl.ID).Time("EndedAt", btl.EndedAt.Time).Msg("unable to update database for endat battle")
 	}
 
 	err = db.ClearQueueByBattle(btl.ID)
 	if err != nil {
-		gamelog.L.Error().Str("Battle ID", btl.ID.String()).Msg("unable to clear queue for battle")
+		gamelog.L.Error().Str("Battle ID", btl.ID).Msg("unable to clear queue for battle")
 	}
 
 	winningWarMachines := make([]*WarMachine, len(payload.WinningWarMachines))
@@ -181,12 +181,12 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 			}
 		}
 		if winningWarMachines[i] == nil {
-			gamelog.L.Error().Str("Battle ID", btl.ID.String()).Msg("unable to match war machine to battle with hash")
+			gamelog.L.Error().Str("Battle ID", btl.ID).Msg("unable to match war machine to battle with hash")
 		}
 	}
 
 	if winningWarMachines[0] == nil {
-		gamelog.L.Panic().Str("Battle ID", btl.ID.String()).Msg("no winning war machines")
+		gamelog.L.Panic().Str("Battle ID", btl.ID).Msg("no winning war machines")
 	}
 
 	topFactionContributorBoilers, err := db.TopSupsContributeFactions(uuid.Must(uuid.FromString(payload.BattleID)))
@@ -272,7 +272,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		Msg("get top players and factions")
 
 	endInfo := &BattleEndDetail{
-		BattleID:                     btl.ID.String(),
+		BattleID:                     btl.ID,
 		BattleIdentifier:             btl.Battle.BattleNumber,
 		StartedAt:                    btl.Battle.StartedAt,
 		EndedAt:                      btl.Battle.EndedAt.Time,
@@ -304,13 +304,13 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 			}
 		}
 		if wm == nil {
-			gamelog.L.Error().Str("Battle ID", btl.ID.String()).Msg("unable to match war machine to battle with hash")
+			gamelog.L.Error().Str("Battle ID", btl.ID).Msg("unable to match war machine to battle with hash")
 			return
 		}
 		mechId, err := uuid.FromString(wm.ID)
 		if err != nil {
 			gamelog.L.Error().
-				Str("Battle ID", btl.ID.String()).
+				Str("Battle ID", btl.ID).
 				Str("mech ID", wm.ID).
 				Err(err).
 				Msg("unable to convert mech id to uuid")
@@ -319,7 +319,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		ownedById, err := uuid.FromString(wm.OwnedByID)
 		if err != nil {
 			gamelog.L.Error().
-				Str("Battle ID", btl.ID.String()).
+				Str("Battle ID", btl.ID).
 				Str("mech ID", wm.ID).
 				Err(err).
 				Msg("unable to convert owned id to uuid")
@@ -328,7 +328,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		factionId, err := uuid.FromString(wm.FactionID)
 		if err != nil {
 			gamelog.L.Error().
-				Str("Battle ID", btl.ID.String()).
+				Str("Battle ID", btl.ID).
 				Str("faction ID", wm.FactionID).
 				Err(err).
 				Msg("unable to convert faction id to uuid")
@@ -343,7 +343,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	err = db.WinBattle(btl.ID, payload.WinCondition, mws...)
 	if err != nil {
 		gamelog.L.Error().
-			Str("Battle ID", btl.ID.String()).
+			Str("Battle ID", btl.ID).
 			Err(err).
 			Msg("unable to store mech wins")
 		return
@@ -582,8 +582,8 @@ func (arena *Arena) Join(ctx context.Context, wsc *hub.Client, payload []byte, f
 
 func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 	// check destroyed war machine exist
-	if btl.ID.String() != dp.BattleID {
-		gamelog.L.Warn().Str("battle.ID", btl.ID.String()).Str("gameclient.ID", dp.BattleID).Msg("battle state does not match game client state")
+	if btl.ID != dp.BattleID {
+		gamelog.L.Warn().Str("battle.ID", btl.ID).Str("gameclient.ID", dp.BattleID).Msg("battle state does not match game client state")
 		btl.arena.reset()
 		return
 	}
@@ -638,7 +638,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 	if err != nil || len(ids) == 0 {
 		gamelog.L.Warn().
 			Str("hashes", fmt.Sprintf("%s, %s", destroyedWarMachine.Hash, dp.DestroyedWarMachineEvent.KillByWarMachineHash)).
-			Str("battle_id", btl.ID.String()).
+			Str("battle_id", btl.ID).
 			Err(err).
 			Msg("can't retrieve mech ids")
 
@@ -654,14 +654,14 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 			if err != nil {
 				gamelog.L.Warn().
 					Str("relatedEventuuid", dp.DestroyedWarMachineEvent.RelatedEventIDString).
-					Str("battle_id", btl.ID.String()).
+					Str("battle_id", btl.ID).
 					Msg("can't create uuid from non-empty related event idf")
 			}
 			dp.DestroyedWarMachineEvent.RelatedEventID = relatedEventuuid
 		}
 
 		evt := &db.BattleEvent{
-			BattleID:  btl.ID,
+			BattleID:  uuid.Must(uuid.FromString(btl.ID)),
 			WM1:       warMachineID,
 			WM2:       killByWarMachineID,
 			EventType: db.Btlevnt_Killed,
@@ -673,7 +673,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 		if err != nil {
 			gamelog.L.Warn().
 				Interface("event_data", evt).
-				Str("battle_id", btl.ID.String()).
+				Str("battle_id", btl.ID).
 				Msg("unable to store mech event data")
 		}
 	}
@@ -701,7 +701,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 	_, err = db.UpdateBattleMech(btl.ID, warMachineID, false, true, killByWarMachineID)
 	if err != nil {
 		gamelog.L.Error().
-			Str("battle_id", btl.ID.String()).
+			Str("battle_id", btl.ID).
 			Interface("mech_id", warMachineID).
 			Bool("killed", true).
 			Msg("can't update battle mech")
@@ -835,7 +835,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 func (btl *Battle) Load() error {
 	q, err := db.LoadBattleQueue(context.Background(), 3)
 	if err != nil {
-		gamelog.L.Warn().Str("battle_id", btl.ID.String()).Err(err).Msg("unable to load out queue")
+		gamelog.L.Warn().Str("battle_id", btl.ID).Err(err).Msg("unable to load out queue")
 		return err
 	}
 
@@ -844,7 +844,7 @@ func (btl *Battle) Load() error {
 
 		err = btl.DefaultMechs()
 		if err != nil {
-			gamelog.L.Warn().Str("battle_id", btl.ID.String()).Err(err).Msg("unable to load default mechs")
+			gamelog.L.Warn().Str("battle_id", btl.ID).Err(err).Msg("unable to load default mechs")
 			return err
 		}
 		return nil
@@ -861,14 +861,14 @@ func (btl *Battle) Load() error {
 
 	mechs, err := db.Mechs(ids...)
 	if err != nil {
-		gamelog.L.Warn().Interface("mechs_ids", ids).Str("battle_id", btl.ID.String()).Err(err).Msg("failed to retrieve mechs from mech ids")
+		gamelog.L.Warn().Interface("mechs_ids", ids).Str("battle_id", btl.ID).Err(err).Msg("failed to retrieve mechs from mech ids")
 		return err
 	}
 	btl.WarMachines = btl.MechsToWarMachines(mechs)
 
 	err = db.QueueSetBattleID(btl.ID, ids...)
 	if err != nil {
-		gamelog.L.Error().Interface("mechs_ids", ids).Str("battle_id", btl.ID.String()).Err(err).Msg("failed to set battle id in queue")
+		gamelog.L.Error().Interface("mechs_ids", ids).Str("battle_id", btl.ID).Err(err).Msg("failed to set battle id in queue")
 		return err
 	}
 
@@ -880,7 +880,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.MechContainer) []*WarMachi
 	for i, mech := range mechs {
 		label := mech.Faction.Label
 		if label == "" {
-			gamelog.L.Warn().Interface("faction_id", mech.Faction.ID).Str("battle_id", btl.ID.String()).Msg("mech faction is an empty label")
+			gamelog.L.Warn().Interface("faction_id", mech.Faction.ID).Str("battle_id", btl.ID).Msg("mech faction is an empty label")
 		}
 		if len(label) > 10 {
 			words := strings.Split(label, " ")
@@ -894,7 +894,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.MechContainer) []*WarMachi
 		for k, wpn := range mech.Weapons {
 			i, err := strconv.Atoi(k)
 			if err != nil {
-				gamelog.L.Warn().Str("key", k).Interface("weapon", wpn).Str("battle_id", btl.ID.String()).Msg("mech weapon's key is not an int")
+				gamelog.L.Warn().Str("key", k).Interface("weapon", wpn).Str("battle_id", btl.ID).Msg("mech weapon's key is not an int")
 			}
 			weaponNames[i] = wpn.Label
 		}
