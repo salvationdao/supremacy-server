@@ -621,7 +621,6 @@ func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID str
 	}
 
 	amount = amount.Truncate(0)
-	gamelog.L.Warn().Str("amount", amount.String()).Msg("truncating amount")
 
 	tx, err := gamedb.StdConn.Begin()
 	if err == nil {

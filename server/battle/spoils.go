@@ -197,8 +197,13 @@ func (sow *SpoilsOfWar) ProcessSpoils(battleNumber int) (*boiler.SpoilsOfWar, er
 
 func (sow *SpoilsOfWar) Drip() error {
 	var err error
-	warchest, err := boiler.SpoilsOfWars(boiler.SpoilsOfWarWhere.BattleNumber.EQ(sow.battle.BattleNumber - 1)).One(gamedb.StdConn)
-	if err != nil {
+	bn := sow.battle.BattleNumber - 1
+
+	warchest, err := boiler.SpoilsOfWars(boiler.SpoilsOfWarWhere.BattleNumber.EQ(bn)).One(gamedb.StdConn)
+
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		warchest, err = sow.ProcessSpoils(bn)
+	} else if err != nil {
 		sow.l.Error().Err(err).Msg("unable to retrieve spoils of war")
 		return err
 	}
