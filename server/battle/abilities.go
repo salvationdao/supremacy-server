@@ -1105,7 +1105,7 @@ func (as *AbilitiesSystem) nextLocationDeciderGet() (uuid.UUID, bool) {
 // Ability Progression bar Broadcaster
 // ***********************************
 
-// 1 tick per second, each tick reduce 0,978 of current price
+// 1 tick per second, each tick reduce 0.93304 of current price (drop the price to half in 10 second)
 
 func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 
@@ -1125,7 +1125,7 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 	// update price
 	for factionID, ability := range as.battleAbilityPool.Abilities {
 		// reduce price
-		ability.SupsCost = ability.SupsCost.Mul(decimal.NewFromFloat(0.978))
+		ability.SupsCost = ability.SupsCost.Mul(decimal.NewFromFloat(0.93304))
 
 		// cap minmum price at 1 sup
 		if ability.SupsCost.Cmp(decimal.New(1, 18)) <= 0 {
