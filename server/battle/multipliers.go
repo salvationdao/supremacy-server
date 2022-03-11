@@ -50,8 +50,8 @@ type TriggerDetails struct {
 	FactionIDs []string
 }
 
-func (ms *MultiplierSystem) PlayerMultipliers(playerID uuid.UUID) ([]*Multiplier, int64) {
-	var total int64 = 0
+func (ms *MultiplierSystem) PlayerMultipliers(playerID uuid.UUID) ([]*Multiplier, string) {
+	var total decimal.Decimal
 
 	usermultipliers, err := boiler.Multipliers(
 		qm.InnerJoin("user_multipliers um on um.multiplier_id = multipliers.id"),
@@ -59,7 +59,7 @@ func (ms *MultiplierSystem) PlayerMultipliers(playerID uuid.UUID) ([]*Multiplier
 		qm.And(`um.until_battle_number >= ?`, ms.battle.BattleNumber)).All(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Err(err).Msgf("unable to retrieve player multipliers")
-		return []*Multiplier{}, total
+		return []*Multiplier{}, "0"
 	}
 
 	multipliers := make([]*Multiplier, len(usermultipliers))
@@ -69,10 +69,10 @@ func (ms *MultiplierSystem) PlayerMultipliers(playerID uuid.UUID) ([]*Multiplier
 			Value:       fmt.Sprintf("%sx", m.Value.Shift(-1).String()),
 			Description: m.Description,
 		}
-		total += m.Value.IntPart()
+		total = total.Add(m.Value)
 	}
 
-	return multipliers, total
+	return multipliers, total.Shift(-1).StringFixed(1)
 }
 
 func (ms *MultiplierSystem) getMultiplier(mtype, testString string, num int) (*boiler.Multiplier, bool) {

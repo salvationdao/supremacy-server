@@ -260,9 +260,11 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 							as.battle.arena.Message(
 								"BATTLE:ABILITY",
 								&server.GameAbilityEvent{
+									EventID:             ability.OfferingID,
 									IsTriggered:         true,
 									GameClientAbilityID: ability.GameClientAbilityID,
 									ParticipantID:       ability.ParticipantID, // trigger on war machine
+									WarMachineHash:      &ability.WarMachineHash,
 								},
 							)
 
@@ -375,6 +377,8 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 								IsTriggered:         true,
 								GameClientAbilityID: ability.GameClientAbilityID,
 								ParticipantID:       ability.ParticipantID, // trigger on war machine
+								WarMachineHash:      &ability.WarMachineHash,
+								EventID:             ability.OfferingID,
 							},
 						)
 
@@ -1341,6 +1345,11 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 			TriggeredOnCellY:    &y,
 			TriggeredByUserID:   &userID,
 			TriggeredByUsername: &player.Username.String,
+			EventID:             ability.OfferingID,
+			GameLocation: struct {
+				X int `json:"x"`
+				Y int `json:"y"`
+			}{X: x, Y: y},
 		},
 	)
 
