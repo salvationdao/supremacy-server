@@ -577,6 +577,8 @@ func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID str
 	}
 	now := time.Now()
 
+	amount = amount.Truncate(0)
+
 	// pay sup
 	txid, err := ppClient.SpendSupMessage(passport.SpendSupsReq{
 		FromUserID:           userID,
