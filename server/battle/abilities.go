@@ -527,6 +527,22 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 			payload := []byte{byte(LiveVotingTick)}
 			payload = append(payload, []byte(total)...)
 			as.battle.arena.netMessageBus.Send(context.Background(), messagebus.NetBusKey(HubKeyLiveVoteCountUpdated), payload)
+
+			// get spoil of war
+			sows, err := db.LastTwoSpoilOfWarAmount()
+			if err != nil || len(sows) == 0 {
+				gamelog.L.Error().Err(err).Msg("Failed to get last two spoil of war amount")
+				continue
+			}
+
+			// broadcast the spoil of war
+			payload = []byte{byte(SpoilOfWarTick)}
+			spoilOfWarStr := []string{}
+			for _, sow := range sows {
+				spoilOfWarStr = append(spoilOfWarStr, sow.String())
+			}
+			payload = append(payload, []byte(strings.Join(spoilOfWarStr, "|"))...)
+			as.battle.arena.netMessageBus.Send(context.Background(), messagebus.NetBusKey(HubKeySpoilOfWarUpdated), payload)
 		}
 	}
 }

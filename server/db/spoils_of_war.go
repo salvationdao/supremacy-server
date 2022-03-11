@@ -160,3 +160,25 @@ func MostFrequentAbilityExecutors(battleID uuid.UUID) ([]*boiler.Player, error) 
 
 	return result, nil
 }
+
+func LastTwoSpoilOfWarAmount() ([]decimal.Decimal, error) {
+	amounts := []decimal.Decimal{}
+
+	q := `
+		SELECT 
+			(sow.amount - sow.amount_sent) 
+		FROM 
+			spoils_of_war sow
+		ORDER BY 
+			sow.created_at DESC
+		LIMIT
+			2
+	`
+
+	err := pgxscan.Select(context.Background(), gamedb.Conn, &amounts, q)
+	if err != nil {
+		return amounts, terror.Error(err)
+	}
+
+	return amounts, nil
+}
