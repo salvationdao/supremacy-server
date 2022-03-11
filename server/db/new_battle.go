@@ -393,7 +393,7 @@ func QueueSetBattleID(battleID string, mechIDs ...uuid.UUID) error {
 
 	_, err = gamedb.Conn.Exec(context.Background(), query, args...)
 	if err != nil {
-		gamelog.L.Error().Str("db func", "ClearQueue").Err(err).Msg("unable to delete mechs from queue")
+		gamelog.L.Error().Interface("paramrefs", paramrefs).Interface("args", args).Str("db func", "ClearQueue").Err(err).Msg("unable to delete mechs from queue")
 		return err
 	}
 
