@@ -821,10 +821,6 @@ func IsWhitelistedAddress(address string) bool {
 	addressHex := common.HexToAddress(address)
 	for _, a := range whitelistedAddresses {
 		if a.Hex() == addressHex.Hex() {
-			fmt.Println(a.Hex())
-			fmt.Println(addressHex.Hex())
-			fmt.Println("Pass the check!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-			fmt.Println("Pass the check!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 			return true
 		}
 	}
