@@ -2,11 +2,13 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
 	"server"
 	"server/battle"
+	"server/db"
 	"server/passport"
 	"time"
 
@@ -14,9 +16,12 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
+	"github.com/gofrs/uuid"
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-software/log_helpers"
+	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-software/tickle"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/auth"
@@ -61,19 +66,6 @@ type FactionVotePrice struct {
 	CurrentVotePerTick   int64
 }
 
-type BattleEndInfo struct {
-	BattleID                     server.BattleID           `json:"battle_id"`
-	StartedAt                    time.Time                 `json:"started_at"`
-	EndedAt                      time.Time                 `json:"ended_at"`
-	BattleIdentifier             int64                     `json:"battle_identifier"`
-	WinningCondition             string                    `json:"winning_condition"`
-	WinningFaction               *server.FactionBrief      `json:"winning_faction"`
-	WinningWarMachines           []*server.WarMachineBrief `json:"winning_war_machines"`
-	TopSupsContributeFactions    []*server.FactionBrief    `json:"top_sups_contribute_factions"`
-	TopSupsContributors          []*server.UserBrief       `json:"top_sups_contributors"`
-	MostFrequentAbilityExecutors []*server.UserBrief       `json:"most_frequent_ability_executors"`
-}
-
 // API server
 type API struct {
 	ctx    context.Context
@@ -90,13 +82,9 @@ type API struct {
 	NetMessageBus *messagebus.NetBus
 	Passport      *passport.Passport
 
-	// client detail
-	UserMap *UserMap
 	// ring check auth
 	RingCheckAuthMap *RingCheckAuthMap
 }
-
-const SupremacyGameUserID = "4fae8fdf-584f-46bb-9cb9-bb32ae20177e"
 
 // NewAPI registers routes
 func NewAPI(
@@ -143,7 +131,7 @@ func NewAPI(
 			r.Use(sentryHandler.Handle)
 		})
 		r.Mount("/check", CheckRouter(log_helpers.NamedLogger(log, "check router"), conn))
-		r.Mount(fmt.Sprintf("/%s/Supremacy_game", SupremacyGameUserID), PassportWebhookRouter(log, conn, config.PassportWebhookSecret, api))
+		r.Mount(fmt.Sprintf("/%s/Supremacy_game", server.SupremacyGameUserID), PassportWebhookRouter(log, conn, config.PassportWebhookSecret, api))
 
 		// Web sockets are long-lived, so we don't want the sentry performance tracer running for the life-time of the connection.
 		// See roothub.ServeHTTP for the setup of sentry on this route.
@@ -156,15 +144,14 @@ func NewAPI(
 		//r.Get("/faction_stats", WithError(api.BattleArena.FactionStats))
 		//r.Get("/user_stats", WithError(api.BattleArena.UserStats))
 		//r.Get("/abilities", WithError(api.BattleArena.GetAbility))
-		//r.Get("/blobs/{id}", WithError(api.BattleArena.GetBlob))
 
+		r.Get("/blobs/{id}", WithError(api.IconDisplay))
 		r.Post("/video_server", WithToken(config.ServerStreamKey, WithError((api.CreateStreamHandler))))
 		r.Get("/video_server", WithToken(config.ServerStreamKey, WithError((api.GetStreamsHandler))))
 		r.Delete("/video_server", WithToken(config.ServerStreamKey, WithError((api.DeleteStreamHandler))))
 		r.Post("/close_stream", WithToken(config.ServerStreamKey, WithError(api.CreateStreamCloseHandler)))
 		r.Get("/faction_data", WithError(api.GetFactionData))
 		r.Get("/trigger/ability_file_upload", WithError(api.GetFactionData))
-
 	})
 
 	///////////////////////////
@@ -209,4 +196,81 @@ func (api *API) Close() {
 	if err != nil {
 		api.Log.Warn().Err(err).Msg("")
 	}
+}
+
+func (api *API) IconDisplay(w http.ResponseWriter, r *http.Request) (int, error) {
+	defer r.Body.Close()
+
+	// Get blob id
+	idStr := chi.URLParam(r, "id")
+	if idStr == "" {
+		return http.StatusBadRequest, terror.Error(terror.ErrInvalidInput, "no id provided")
+	}
+	id, err := uuid.FromString(idStr)
+	blobID := server.BlobID(id)
+	if err != nil {
+		return http.StatusBadRequest, terror.Error(terror.ErrInvalidInput, "invalid id provided")
+	}
+
+	var blob server.Blob
+
+	// Get blob
+	err = db.FindBlob(context.Background(), api.Conn, &blob, blobID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return http.StatusNotFound, terror.Error(err, "attachment not found")
+		}
+		return http.StatusInternalServerError, terror.Error(err, "could not get attachment")
+	}
+
+	// Get disposition
+	disposition := "attachment"
+	isViewDisposition := r.URL.Query().Get("view")
+	if isViewDisposition == "true" {
+		disposition = "inline"
+	}
+
+	// tell the browser the returned content should be downloaded/inline
+	if blob.MimeType != "" && blob.MimeType != "unknown" {
+		w.Header().Add("Content-Type", blob.MimeType)
+	}
+	w.Header().Add("Content-Disposition", fmt.Sprintf("%s;filename=%s", disposition, blob.FileName))
+	_, err = w.Write(blob.File)
+	if err != nil {
+		return http.StatusInternalServerError, err
+	}
+
+	return http.StatusOK, nil
+}
+
+/**********************
+* Auth Ring Check Map *
+**********************/
+
+type RingCheckAuthMap struct {
+	deadlock.Map
+}
+
+func NewRingCheckMap() *RingCheckAuthMap {
+	return &RingCheckAuthMap{
+		deadlock.Map{},
+	}
+}
+
+func (rcm *RingCheckAuthMap) Record(key string, cl *hub.Client) {
+	rcm.Store(key, cl)
+}
+
+func (rcm *RingCheckAuthMap) Check(key string) (*hub.Client, error) {
+	value, ok := rcm.Load(key)
+	if !ok {
+		return nil, terror.Error(fmt.Errorf("hub client not found"))
+	}
+
+	hubc, ok := value.(*hub.Client)
+	if !ok {
+		return nil, terror.Error(fmt.Errorf("hub client not found"))
+	}
+
+	return hubc, nil
 }

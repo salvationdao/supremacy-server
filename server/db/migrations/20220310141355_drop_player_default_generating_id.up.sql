@@ -1,0 +1,1 @@
+alter table players alter column id drop default;

@@ -1,20 +1,18 @@
-package comms
+package rpcclient
 
 import (
 	"server"
+	"server/db/boiler"
 	"time"
 
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
-type AssetRepairStatReq struct {
-	AssetRepairRecord *server.AssetRepairRecord `json:"assetRepairRecord"`
+type InsertTransactionsResp struct {
 }
-
-type AssetRepairStatResp struct{}
-type DefaultWarMachinesReq struct {
-	FactionID server.FactionID `json:"factionID"`
+type InsertTransactionsReq struct {
+	Transactions []*boiler.PendingTransaction
 }
 
 type DefaultWarMachinesResp struct {

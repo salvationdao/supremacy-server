@@ -32,6 +32,7 @@ var TableNames = struct {
 	Chassis                                            string
 	ChassisModules                                     string
 	ChassisWeapons                                     string
+	Config                                             string
 	Factions                                           string
 	GameAbilities                                      string
 	GameMaps                                           string
@@ -40,8 +41,10 @@ var TableNames = struct {
 	Mechs                                              string
 	Modules                                            string
 	Multipliers                                        string
+	PendingTransactions                                string
 	Players                                            string
 	SchemaMigrations                                   string
+	SpoilsOfWar                                        string
 	StreamList                                         string
 	Templates                                          string
 	UserMultipliers                                    string
@@ -76,6 +79,7 @@ var TableNames = struct {
 	Chassis:                          "chassis",
 	ChassisModules:                   "chassis_modules",
 	ChassisWeapons:                   "chassis_weapons",
+	Config:                           "config",
 	Factions:                         "factions",
 	GameAbilities:                    "game_abilities",
 	GameMaps:                         "game_maps",
@@ -84,8 +88,10 @@ var TableNames = struct {
 	Mechs:                            "mechs",
 	Modules:                          "modules",
 	Multipliers:                      "multipliers",
+	PendingTransactions:              "pending_transactions",
 	Players:                          "players",
 	SchemaMigrations:                 "schema_migrations",
+	SpoilsOfWar:                      "spoils_of_war",
 	StreamList:                       "stream_list",
 	Templates:                        "templates",
 	UserMultipliers:                  "user_multipliers",

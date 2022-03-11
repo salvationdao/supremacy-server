@@ -639,3 +639,22 @@ func (b *TAtomBool) Set(value bool) {
 func (b *TAtomBool) Get() bool {
 	return atomic.LoadInt32(&(b.flag)) != 0
 }
+
+type GameAbilityEvent struct {
+	EventID             uuid.UUID    `json:"eventID" db:"event_id"`
+	GameAbilityID       *uuid.UUID   `json:"gameAbilityID,omitempty" db:"game_ability_id,omitempty"`
+	AbilityHash         *string      `json:"abilityHash,omitempty" db:"ability_hash,omitempty"`
+	GameClientAbilityID byte         `json:"gameClientAbilityID" db:"game_client_ability_id"`
+	ParticipantID       *byte        `json:"participantID,omitempty" db:"participant_id"`
+	WarMachineHash      *string      `json:"warMachineHash,omitempty"`
+	IsTriggered         bool         `json:"isTriggered" db:"is_triggered"`
+	TriggeredByUserID   *uuid.UUID   `json:"TriggeredByUserID,omitempty" db:"triggered_by_user_id,omitempty"`
+	TriggeredByUsername *string      `json:"triggeredByUsername"`
+	TriggeredOnCellX    *int         `json:"triggeredOnCellX,omitempty" db:"triggered_on_cell_x,omitempty"`
+	TriggeredOnCellY    *int         `json:"triggeredOnCellY,omitempty" db:"triggered_on_cell_y,omitempty"`
+	GameAbility         *GameAbility `json:"gameAbility,omitempty"`
+	GameLocation        struct {
+		X int `json:"x"`
+		Y int `json:"y"`
+	} `json:"gameLocation"`
+}

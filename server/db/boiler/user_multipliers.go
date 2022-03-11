@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -22,11 +23,12 @@ import (
 
 // UserMultiplier is an object representing the database table.
 type UserMultiplier struct {
-	PlayerID          string    `boiler:"player_id" boil:"player_id" json:"player_id" toml:"player_id" yaml:"player_id"`
-	FromBattleNumber  int       `boiler:"from_battle_number" boil:"from_battle_number" json:"from_battle_number" toml:"from_battle_number" yaml:"from_battle_number"`
-	UntilBattleNumber int       `boiler:"until_battle_number" boil:"until_battle_number" json:"until_battle_number" toml:"until_battle_number" yaml:"until_battle_number"`
-	Multiplier        string    `boiler:"multiplier" boil:"multiplier" json:"multiplier" toml:"multiplier" yaml:"multiplier"`
-	CreatedAt         time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	PlayerID          string          `boiler:"player_id" boil:"player_id" json:"player_id" toml:"player_id" yaml:"player_id"`
+	FromBattleNumber  int             `boiler:"from_battle_number" boil:"from_battle_number" json:"from_battle_number" toml:"from_battle_number" yaml:"from_battle_number"`
+	UntilBattleNumber int             `boiler:"until_battle_number" boil:"until_battle_number" json:"until_battle_number" toml:"until_battle_number" yaml:"until_battle_number"`
+	MultiplierID      string          `boiler:"multiplier_id" boil:"multiplier_id" json:"multiplier_id" toml:"multiplier_id" yaml:"multiplier_id"`
+	Value             decimal.Decimal `boiler:"value" boil:"value" json:"value" toml:"value" yaml:"value"`
+	CreatedAt         time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *userMultiplierR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L userMultiplierL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -36,13 +38,15 @@ var UserMultiplierColumns = struct {
 	PlayerID          string
 	FromBattleNumber  string
 	UntilBattleNumber string
-	Multiplier        string
+	MultiplierID      string
+	Value             string
 	CreatedAt         string
 }{
 	PlayerID:          "player_id",
 	FromBattleNumber:  "from_battle_number",
 	UntilBattleNumber: "until_battle_number",
-	Multiplier:        "multiplier",
+	MultiplierID:      "multiplier_id",
+	Value:             "value",
 	CreatedAt:         "created_at",
 }
 
@@ -50,13 +54,15 @@ var UserMultiplierTableColumns = struct {
 	PlayerID          string
 	FromBattleNumber  string
 	UntilBattleNumber string
-	Multiplier        string
+	MultiplierID      string
+	Value             string
 	CreatedAt         string
 }{
 	PlayerID:          "user_multipliers.player_id",
 	FromBattleNumber:  "user_multipliers.from_battle_number",
 	UntilBattleNumber: "user_multipliers.until_battle_number",
-	Multiplier:        "user_multipliers.multiplier",
+	MultiplierID:      "user_multipliers.multiplier_id",
+	Value:             "user_multipliers.value",
 	CreatedAt:         "user_multipliers.created_at",
 }
 
@@ -66,32 +72,34 @@ var UserMultiplierWhere = struct {
 	PlayerID          whereHelperstring
 	FromBattleNumber  whereHelperint
 	UntilBattleNumber whereHelperint
-	Multiplier        whereHelperstring
+	MultiplierID      whereHelperstring
+	Value             whereHelperdecimal_Decimal
 	CreatedAt         whereHelpertime_Time
 }{
 	PlayerID:          whereHelperstring{field: "\"user_multipliers\".\"player_id\""},
 	FromBattleNumber:  whereHelperint{field: "\"user_multipliers\".\"from_battle_number\""},
 	UntilBattleNumber: whereHelperint{field: "\"user_multipliers\".\"until_battle_number\""},
-	Multiplier:        whereHelperstring{field: "\"user_multipliers\".\"multiplier\""},
+	MultiplierID:      whereHelperstring{field: "\"user_multipliers\".\"multiplier_id\""},
+	Value:             whereHelperdecimal_Decimal{field: "\"user_multipliers\".\"value\""},
 	CreatedAt:         whereHelpertime_Time{field: "\"user_multipliers\".\"created_at\""},
 }
 
 // UserMultiplierRels is where relationship names are stored.
 var UserMultiplierRels = struct {
-	FromBattleNumberBattle   string
-	UserMultiplierMultiplier string
-	Player                   string
+	FromBattleNumberBattle string
+	Multiplier             string
+	Player                 string
 }{
-	FromBattleNumberBattle:   "FromBattleNumberBattle",
-	UserMultiplierMultiplier: "UserMultiplierMultiplier",
-	Player:                   "Player",
+	FromBattleNumberBattle: "FromBattleNumberBattle",
+	Multiplier:             "Multiplier",
+	Player:                 "Player",
 }
 
 // userMultiplierR is where relationships are stored.
 type userMultiplierR struct {
-	FromBattleNumberBattle   *Battle     `boiler:"FromBattleNumberBattle" boil:"FromBattleNumberBattle" json:"FromBattleNumberBattle" toml:"FromBattleNumberBattle" yaml:"FromBattleNumberBattle"`
-	UserMultiplierMultiplier *Multiplier `boiler:"UserMultiplierMultiplier" boil:"UserMultiplierMultiplier" json:"UserMultiplierMultiplier" toml:"UserMultiplierMultiplier" yaml:"UserMultiplierMultiplier"`
-	Player                   *Player     `boiler:"Player" boil:"Player" json:"Player" toml:"Player" yaml:"Player"`
+	FromBattleNumberBattle *Battle     `boiler:"FromBattleNumberBattle" boil:"FromBattleNumberBattle" json:"FromBattleNumberBattle" toml:"FromBattleNumberBattle" yaml:"FromBattleNumberBattle"`
+	Multiplier             *Multiplier `boiler:"Multiplier" boil:"Multiplier" json:"Multiplier" toml:"Multiplier" yaml:"Multiplier"`
+	Player                 *Player     `boiler:"Player" boil:"Player" json:"Player" toml:"Player" yaml:"Player"`
 }
 
 // NewStruct creates a new relationship struct
@@ -103,10 +111,10 @@ func (*userMultiplierR) NewStruct() *userMultiplierR {
 type userMultiplierL struct{}
 
 var (
-	userMultiplierAllColumns            = []string{"player_id", "from_battle_number", "until_battle_number", "multiplier", "created_at"}
-	userMultiplierColumnsWithoutDefault = []string{"player_id", "from_battle_number", "until_battle_number", "multiplier"}
+	userMultiplierAllColumns            = []string{"player_id", "from_battle_number", "until_battle_number", "multiplier_id", "value", "created_at"}
+	userMultiplierColumnsWithoutDefault = []string{"player_id", "from_battle_number", "until_battle_number", "multiplier_id", "value"}
 	userMultiplierColumnsWithDefault    = []string{"created_at"}
-	userMultiplierPrimaryKeyColumns     = []string{"player_id", "from_battle_number", "multiplier"}
+	userMultiplierPrimaryKeyColumns     = []string{"player_id", "from_battle_number", "multiplier_id"}
 	userMultiplierGeneratedColumns      = []string{}
 )
 
@@ -366,10 +374,10 @@ func (o *UserMultiplier) FromBattleNumberBattle(mods ...qm.QueryMod) battleQuery
 	return query
 }
 
-// UserMultiplierMultiplier pointed to by the foreign key.
-func (o *UserMultiplier) UserMultiplierMultiplier(mods ...qm.QueryMod) multiplierQuery {
+// Multiplier pointed to by the foreign key.
+func (o *UserMultiplier) Multiplier(mods ...qm.QueryMod) multiplierQuery {
 	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.Multiplier),
+		qm.Where("\"id\" = ?", o.MultiplierID),
 	}
 
 	queryMods = append(queryMods, mods...)
@@ -499,9 +507,9 @@ func (userMultiplierL) LoadFromBattleNumberBattle(e boil.Executor, singular bool
 	return nil
 }
 
-// LoadUserMultiplierMultiplier allows an eager lookup of values, cached into the
+// LoadMultiplier allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (userMultiplierL) LoadUserMultiplierMultiplier(e boil.Executor, singular bool, maybeUserMultiplier interface{}, mods queries.Applicator) error {
+func (userMultiplierL) LoadMultiplier(e boil.Executor, singular bool, maybeUserMultiplier interface{}, mods queries.Applicator) error {
 	var slice []*UserMultiplier
 	var object *UserMultiplier
 
@@ -516,7 +524,7 @@ func (userMultiplierL) LoadUserMultiplierMultiplier(e boil.Executor, singular bo
 		if object.R == nil {
 			object.R = &userMultiplierR{}
 		}
-		args = append(args, object.Multiplier)
+		args = append(args, object.MultiplierID)
 
 	} else {
 	Outer:
@@ -526,12 +534,12 @@ func (userMultiplierL) LoadUserMultiplierMultiplier(e boil.Executor, singular bo
 			}
 
 			for _, a := range args {
-				if a == obj.Multiplier {
+				if a == obj.MultiplierID {
 					continue Outer
 				}
 			}
 
-			args = append(args, obj.Multiplier)
+			args = append(args, obj.MultiplierID)
 
 		}
 	}
@@ -579,7 +587,7 @@ func (userMultiplierL) LoadUserMultiplierMultiplier(e boil.Executor, singular bo
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.UserMultiplierMultiplier = foreign
+		object.R.Multiplier = foreign
 		if foreign.R == nil {
 			foreign.R = &multiplierR{}
 		}
@@ -589,8 +597,8 @@ func (userMultiplierL) LoadUserMultiplierMultiplier(e boil.Executor, singular bo
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if local.Multiplier == foreign.ID {
-				local.R.UserMultiplierMultiplier = foreign
+			if local.MultiplierID == foreign.ID {
+				local.R.Multiplier = foreign
 				if foreign.R == nil {
 					foreign.R = &multiplierR{}
 				}
@@ -724,7 +732,7 @@ func (o *UserMultiplier) SetFromBattleNumberBattle(exec boil.Executor, insert bo
 		strmangle.SetParamNames("\"", "\"", 1, []string{"from_battle_number"}),
 		strmangle.WhereClause("\"", "\"", 2, userMultiplierPrimaryKeyColumns),
 	)
-	values := []interface{}{related.BattleNumber, o.PlayerID, o.FromBattleNumber, o.Multiplier}
+	values := []interface{}{related.BattleNumber, o.PlayerID, o.FromBattleNumber, o.MultiplierID}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -754,10 +762,10 @@ func (o *UserMultiplier) SetFromBattleNumberBattle(exec boil.Executor, insert bo
 	return nil
 }
 
-// SetUserMultiplierMultiplier of the userMultiplier to the related item.
-// Sets o.R.UserMultiplierMultiplier to related.
+// SetMultiplier of the userMultiplier to the related item.
+// Sets o.R.Multiplier to related.
 // Adds o to related.R.UserMultipliers.
-func (o *UserMultiplier) SetUserMultiplierMultiplier(exec boil.Executor, insert bool, related *Multiplier) error {
+func (o *UserMultiplier) SetMultiplier(exec boil.Executor, insert bool, related *Multiplier) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -767,10 +775,10 @@ func (o *UserMultiplier) SetUserMultiplierMultiplier(exec boil.Executor, insert 
 
 	updateQuery := fmt.Sprintf(
 		"UPDATE \"user_multipliers\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"multiplier"}),
+		strmangle.SetParamNames("\"", "\"", 1, []string{"multiplier_id"}),
 		strmangle.WhereClause("\"", "\"", 2, userMultiplierPrimaryKeyColumns),
 	)
-	values := []interface{}{related.ID, o.PlayerID, o.FromBattleNumber, o.Multiplier}
+	values := []interface{}{related.ID, o.PlayerID, o.FromBattleNumber, o.MultiplierID}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -780,13 +788,13 @@ func (o *UserMultiplier) SetUserMultiplierMultiplier(exec boil.Executor, insert 
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	o.Multiplier = related.ID
+	o.MultiplierID = related.ID
 	if o.R == nil {
 		o.R = &userMultiplierR{
-			UserMultiplierMultiplier: related,
+			Multiplier: related,
 		}
 	} else {
-		o.R.UserMultiplierMultiplier = related
+		o.R.Multiplier = related
 	}
 
 	if related.R == nil {
@@ -816,7 +824,7 @@ func (o *UserMultiplier) SetPlayer(exec boil.Executor, insert bool, related *Pla
 		strmangle.SetParamNames("\"", "\"", 1, []string{"player_id"}),
 		strmangle.WhereClause("\"", "\"", 2, userMultiplierPrimaryKeyColumns),
 	)
-	values := []interface{}{related.ID, o.PlayerID, o.FromBattleNumber, o.Multiplier}
+	values := []interface{}{related.ID, o.PlayerID, o.FromBattleNumber, o.MultiplierID}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -854,7 +862,7 @@ func UserMultipliers(mods ...qm.QueryMod) userMultiplierQuery {
 
 // FindUserMultiplier retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindUserMultiplier(exec boil.Executor, playerID string, fromBattleNumber int, multiplier string, selectCols ...string) (*UserMultiplier, error) {
+func FindUserMultiplier(exec boil.Executor, playerID string, fromBattleNumber int, multiplierID string, selectCols ...string) (*UserMultiplier, error) {
 	userMultiplierObj := &UserMultiplier{}
 
 	sel := "*"
@@ -862,10 +870,10 @@ func FindUserMultiplier(exec boil.Executor, playerID string, fromBattleNumber in
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"user_multipliers\" where \"player_id\"=$1 AND \"from_battle_number\"=$2 AND \"multiplier\"=$3", sel,
+		"select %s from \"user_multipliers\" where \"player_id\"=$1 AND \"from_battle_number\"=$2 AND \"multiplier_id\"=$3", sel,
 	)
 
-	q := queries.Raw(query, playerID, fromBattleNumber, multiplier)
+	q := queries.Raw(query, playerID, fromBattleNumber, multiplierID)
 
 	err := q.Bind(nil, exec, userMultiplierObj)
 	if err != nil {
@@ -1223,7 +1231,7 @@ func (o *UserMultiplier) Delete(exec boil.Executor) (int64, error) {
 	}
 
 	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), userMultiplierPrimaryKeyMapping)
-	sql := "DELETE FROM \"user_multipliers\" WHERE \"player_id\"=$1 AND \"from_battle_number\"=$2 AND \"multiplier\"=$3"
+	sql := "DELETE FROM \"user_multipliers\" WHERE \"player_id\"=$1 AND \"from_battle_number\"=$2 AND \"multiplier_id\"=$3"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1318,7 +1326,7 @@ func (o UserMultiplierSlice) DeleteAll(exec boil.Executor) (int64, error) {
 // Reload refetches the object from the database
 // using the primary keys with an executor.
 func (o *UserMultiplier) Reload(exec boil.Executor) error {
-	ret, err := FindUserMultiplier(exec, o.PlayerID, o.FromBattleNumber, o.Multiplier)
+	ret, err := FindUserMultiplier(exec, o.PlayerID, o.FromBattleNumber, o.MultiplierID)
 	if err != nil {
 		return err
 	}
@@ -1357,15 +1365,15 @@ func (o *UserMultiplierSlice) ReloadAll(exec boil.Executor) error {
 }
 
 // UserMultiplierExists checks if the UserMultiplier row exists.
-func UserMultiplierExists(exec boil.Executor, playerID string, fromBattleNumber int, multiplier string) (bool, error) {
+func UserMultiplierExists(exec boil.Executor, playerID string, fromBattleNumber int, multiplierID string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"user_multipliers\" where \"player_id\"=$1 AND \"from_battle_number\"=$2 AND \"multiplier\"=$3 limit 1)"
+	sql := "select exists(select 1 from \"user_multipliers\" where \"player_id\"=$1 AND \"from_battle_number\"=$2 AND \"multiplier_id\"=$3 limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
-		fmt.Fprintln(boil.DebugWriter, playerID, fromBattleNumber, multiplier)
+		fmt.Fprintln(boil.DebugWriter, playerID, fromBattleNumber, multiplierID)
 	}
-	row := exec.QueryRow(sql, playerID, fromBattleNumber, multiplier)
+	row := exec.QueryRow(sql, playerID, fromBattleNumber, multiplierID)
 
 	err := row.Scan(&exists)
 	if err != nil {

@@ -3,17 +3,20 @@ package battle
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"server"
+	"server/gamelog"
 
+	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 )
 
 type WarMachineDestroyedEventRecord struct {
-	DestroyedWarMachine *server.WarMachineBrief `json:"destroyedWarMachine"`
-	KilledByWarMachine  *server.WarMachineBrief `json:"killedByWarMachineID,omitempty"`
-	KilledBy            string                  `json:"killedBy"`
+	DestroyedWarMachine *WarMachineBrief `json:"destroyed_war_machine"`
+	KilledByWarMachine  *WarMachineBrief `json:"killed_by_war_machine_id,omitempty"`
+	KilledBy            string           `json:"killed_by"`
 }
 
 /**********************
@@ -47,23 +50,36 @@ const (
 )
 
 type GameNotificationLocationSelect struct {
-	Type        LocationSelectType   `json:"type"`
-	X           *int                 `json:"x,omitempty"`
-	Y           *int                 `json:"y,omitempty"`
-	CurrentUser *server.UserBrief    `json:"currentUser,omitempty"`
-	NextUser    *server.UserBrief    `json:"nextUser,omitempty"`
-	Ability     *server.AbilityBrief `json:"ability,omitempty"`
+	Type        LocationSelectType `json:"type"`
+	X           *int               `json:"x,omitempty"`
+	Y           *int               `json:"y,omitempty"`
+	CurrentUser *UserBrief         `json:"currentUser,omitempty"`
+	NextUser    *UserBrief         `json:"nextUser,omitempty"`
+	Ability     *AbilityBrief      `json:"ability,omitempty"`
 }
 
 type GameNotificationAbility struct {
-	User    *server.UserBrief    `json:"user,omitempty"`
-	Ability *server.AbilityBrief `json:"ability,omitempty"`
+	User    *UserBrief    `json:"user,omitempty"`
+	Ability *AbilityBrief `json:"ability,omitempty"`
 }
 
 type GameNotificationWarMachineAbility struct {
-	User       *server.UserBrief       `json:"user,omitempty"`
-	Ability    *server.AbilityBrief    `json:"ability,omitempty"`
-	WarMachine *server.WarMachineBrief `json:"warMachine,omitempty"`
+	User       *UserBrief       `json:"user,omitempty"`
+	Ability    *AbilityBrief    `json:"ability,omitempty"`
+	WarMachine *WarMachineBrief `json:"warMachine,omitempty"`
+}
+
+type AbilityBrief struct {
+	Label    string `json:"label"`
+	ImageUrl string `json:"image_url"`
+	Colour   string `json:"colour"`
+}
+
+type UserBrief struct {
+	ID       uuid.UUID     `json:"id"`
+	Username string        `json:"username"`
+	AvatarID *string       `json:"avatar_id,omitempty"`
+	Faction  *FactionBrief `json:"faction"`
 }
 
 type GameNotification struct {
@@ -80,12 +96,43 @@ func (arena *Arena) HubKeyMultiplierUpdate(ctx context.Context, wsc *hub.Client,
 		return "", "", terror.Error(err)
 	}
 
-	reply(&MultiplierUpdate{
-		UserMultipliers:  fakeMultipliers,
-		TotalMultipliers: "36x",
-	})
+	if arena.currentBattle == nil {
+		return "", "", fmt.Errorf("no active battle")
+	}
+
+	id, err := uuid.FromString(wsc.Identifier())
+	if err != nil {
+		gamelog.L.Warn().Err(err).Str("id", wsc.Identifier()).Msg("unable to create uuid from websocket client identifier id")
+		return "", "", fmt.Errorf("no active battle")
+	}
+
+	if arena.currentBattle.multipliers != nil {
+		m, total := arena.currentBattle.multipliers.PlayerMultipliers(id)
+
+		reply(&MultiplierUpdate{
+			UserMultipliers:  m,
+			TotalMultipliers: fmt.Sprintf("%sx", total),
+		})
+	}
 
 	return req.TransactionID, messagebus.BusKey(HubKeyMultiplierUpdate), nil
+}
+
+const HubKeyViewerLiveCountUpdated = hub.HubCommandKey("VIEWER:LIVE:COUNT:UPDATED")
+
+func (arena *Arena) ViewerLiveCountUpdateSubscribeHandler(tx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return "", "", terror.Error(err)
+	}
+
+	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
+	if userID.IsNil() {
+		return "", "", terror.Error(terror.ErrForbidden)
+	}
+
+	return req.TransactionID, messagebus.BusKey(HubKeyViewerLiveCountUpdated), nil
 }
 
 const HubKeyGameNotification hub.HubCommandKey = "GAME:NOTIFICATION"

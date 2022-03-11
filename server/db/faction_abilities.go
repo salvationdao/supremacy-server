@@ -8,7 +8,6 @@ import (
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
-	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"golang.org/x/net/context"
 )
@@ -181,25 +180,6 @@ func FactionAbilitiesSupsCostUpdate(ctx context.Context, conn Conn, gameAbilityI
 	}
 
 	_, err := asc.Update(gamedb.StdConn, boil.Whitelist(boiler.GameAbilityColumns.SupsCost, boiler.GameAbilityColumns.CurrentSups))
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	return nil
-}
-
-// AbilityTriggered record ability is triggered
-func AbilityTriggered(playerID null.String, battleID uuid.UUID, factionID uuid.UUID, isAllSyndicates bool, triggerLabel string, gameAbilityID uuid.UUID) error {
-	bat := boiler.BattleAbilityTrigger{
-		PlayerID:        playerID,
-		BattleID:        battleID.String(),
-		FactionID:       factionID.String(),
-		IsAllSyndicates: isAllSyndicates,
-		AbilityLabel:    triggerLabel,
-		GameAbilityID:   gameAbilityID.String(),
-	}
-
-	err := bat.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {
 		return terror.Error(err)
 	}

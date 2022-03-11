@@ -129,3 +129,12 @@ func FactionAll(ctx context.Context, conn Conn) (boiler.FactionSlice, error) {
 
 	return factions, nil
 }
+
+func FactionGet(factionID string) (*boiler.Faction, error) {
+	faction, err := boiler.Factions(boiler.FactionWhere.ID.EQ(factionID)).One(gamedb.StdConn)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return faction, nil
+}

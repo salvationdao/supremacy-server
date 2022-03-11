@@ -3,7 +3,14 @@ package db
 import (
 	"context"
 	"regexp"
+	"server"
+	"server/db/boiler"
+	"server/gamedb"
 	"strings"
+
+	"github.com/georgysavva/scany/pgxscan"
+	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
@@ -72,4 +79,49 @@ func ParseQueryText(queryText string, matchAll bool) string {
 func Exec(ctx context.Context, conn Conn, q string, args ...interface{}) error {
 	_, err := conn.Exec(ctx, q)
 	return err
+}
+
+func UpsertPlayer(p *boiler.Player) error {
+	boil.DebugMode = true
+	err := p.Upsert(
+		gamedb.StdConn,
+		true,
+		[]string{
+			boiler.PlayerColumns.PublicAddress,
+		},
+		boil.Whitelist(
+			boiler.PlayerColumns.ID,
+			boiler.PlayerColumns.Username,
+			boiler.PlayerColumns.FactionID,
+			boiler.PlayerColumns.PublicAddress,
+		),
+		boil.Infer(),
+	)
+	boil.DebugMode = false
+	if err != nil {
+		return terror.Error(err)
+	}
+	return nil
+}
+
+func UserStatGet(ctx context.Context, conn Conn, userID server.UserID) (*server.UserStat, error) {
+	user := &server.UserStat{}
+
+	q := `
+		SELECT 
+			us.id,
+			COALESCE(us.view_battle_count,0) AS view_battle_count,
+			COALESCE(us.total_vote_count,0) AS total_vote_count,
+			COALESCE(us.total_ability_triggered,0) AS total_ability_triggered,
+			COALESCE(us.kill_count,0) AS kill_count
+		FROM user_stats us
+		WHERE us.id = $1
+	`
+
+	err := pgxscan.Get(ctx, conn, user, q, userID)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return user, nil
 }

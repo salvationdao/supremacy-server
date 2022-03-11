@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"server"
-	"server/db/boiler"
 	"server/gamelog"
 	"time"
 
@@ -75,21 +74,6 @@ func (u *usersMap) Delete(id uuid.UUID) {
 	u.Unlock()
 }
 
-type Battle struct {
-	arena       *Arena
-	stage       string
-	battle      *boiler.Battle
-	ID          uuid.UUID     `json:"battleID" db:"id"`
-	MapName     string        `json:"mapName"`
-	WarMachines []*WarMachine `json:"warMachines"`
-	SpawnedAI   []*WarMachine `json:"SpawnedAI"`
-	lastTick    *[]byte
-	gameMap     *server.GameMap
-	abilities   *AbilitiesSystem
-	users       usersMap
-	factions    map[uuid.UUID]*boiler.Faction
-}
-
 type Started struct {
 	BattleID           string        `json:"battleID"`
 	WarMachines        []*WarMachine `json:"warMachines"`
@@ -104,6 +88,12 @@ type BattleUser struct {
 	FactionLogoID string    `json:"faction_logo_id"`
 	wsClient      map[*hub.Client]bool
 	deadlock.RWMutex
+}
+
+var FactionNames = map[string]string{
+	"98bf7bb3-1a7c-4f21-8843-458d62884060": "RedMountain",
+	"c6dde21-b067-46cf-9e56-155c88a520e2":  "Boston",
+	"880db344-e405-428d-84e5-6ebebab1fe6d": "Zaibutsu",
 }
 
 var FactionLogos = map[string]string{
@@ -212,25 +202,10 @@ type GameAbility struct {
 	// Category title for frontend to group the abilities together
 	Title string `json:"title"`
 
-	// price locker
-}
+	CooldownDurationSecond int `json:"cooldown_duration_second"`
 
-// type Ability struct {
-// 	ID                uuid.UUID `json:"id" db:"id"`  // used for zaibatsu faction ability
-// 	Identity          uuid.UUID `json:"identity"`    // used to track ability price update
-// 	Colour            string    `json:"colour"`      // used for game ability colour
-// 	TextColour        string    `json:"text_colour"` // used for game ability text colour
-// 	Hash              string    `json:"hash"`
-// 	Name              string    `json:"name"`
-// 	Description       string    `json:"description"`
-// 	ExternalUrl       string    `json:"external_url"`
-// 	Image             string    `json:"image"`
-// 	SupsCost          string    `json:"sups_cost"`
-// 	GameClientID      int       `json:"game_client_id"`
-// 	RequiredSlot      string    `json:"required_slot"`
-// 	RequiredPowerGrid int       `json:"required_power_grid"`
-// 	RequiredCPU       int       `json:"required_cpu"`
-// }
+	OfferingID uuid.UUID // for tracking ability trigger
+}
 
 type GameAbilityPrice struct {
 	GameAbility    *GameAbility
@@ -245,42 +220,4 @@ type GameAbilityPrice struct {
 type MultiplierUpdate struct {
 	TotalMultipliers string        `json:"total_multipliers"`
 	UserMultipliers  []*Multiplier `json:"multipliers"`
-}
-
-var fakeMultipliers = []*Multiplier{
-	{
-		Key:         "citizen",
-		Value:       "1x",
-		Description: "When a player is within the top 80% of voting average.",
-	},
-	{
-		Key:         "contributor",
-		Value:       "5x",
-		Description: "When a player is within the top 50% of voting average.",
-	},
-	{
-		Key:         "super contributor",
-		Value:       "10x",
-		Description: "When a player is within the top 75% of voting average.",
-	},
-	{
-		Key:         "a fool and his money",
-		Description: "For a player who has put the most individual SUPS in to vote but still lost.",
-		Value:       "5x",
-	},
-	{
-		Key:         "air support",
-		Description: "For a player who triggered an airstrike.",
-		Value:       "5x",
-	},
-	{
-		Key:         "now i am become death",
-		Description: "For a player who triggered a nuke.",
-		Value:       "5x",
-	},
-	{
-		Key:         "destroyer of worlds",
-		Description: "For a player who has triggered the previous three nukes.",
-		Value:       "10x",
-	},
 }

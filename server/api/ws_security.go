@@ -3,8 +3,9 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"server"
+	"server/db/boiler"
+	"server/gamedb"
 
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
@@ -42,12 +43,13 @@ func (api *API) SecureUserFactionCommand(key hub.HubCommandKey, fn hub.HubComman
 			return terror.Error(terror.ErrForbidden)
 		}
 
-		hcd := api.UserMap.GetUserDetail(wsc)
-		if hcd == nil {
-			return terror.Error(fmt.Errorf("User not found"))
+		// get user faction
+		player, err := boiler.FindPlayer(gamedb.StdConn, wsc.Identifier())
+		if err != nil {
+			return terror.Error(terror.ErrForbidden)
 		}
 
-		if hcd.FactionID.IsNil() {
+		if !player.FactionID.Valid {
 			return terror.Error(terror.ErrForbidden)
 		}
 
@@ -101,11 +103,12 @@ func (api *API) SecureUserFactionSubscribeCommand(key hub.HubCommandKey, fn ...H
 			return true
 		}
 
-		hcd := api.UserMap.GetUserDetail(wsc)
-		if hcd == nil {
+		// get user faction
+		player, err := boiler.FindPlayer(gamedb.StdConn, wsc.Identifier())
+		if err != nil {
 			return true
 		}
-		return hcd.FactionID.IsNil()
+		return !player.FactionID.Valid
 	})
 }
 
@@ -189,11 +192,12 @@ func (api *API) NetSecureUserFactionSubscribeCommand(key hub.HubCommandKey, fn H
 			return true
 		}
 
-		hcd := api.UserMap.GetUserDetail(wsc)
-		if hcd == nil {
+		// get user faction
+		player, err := boiler.FindPlayer(gamedb.StdConn, wsc.Identifier())
+		if err != nil {
 			return true
 		}
-		return hcd.FactionID.IsNil()
+		return !player.FactionID.Valid
 	})
 }
 
