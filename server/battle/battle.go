@@ -783,6 +783,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.MechContainer) []*WarMachi
 				},
 			},
 			Speed:              mech.Chassis.Speed,
+			Model:              mech.Chassis.Model,
 			Skin:               mech.Chassis.Skin,
 			ShieldRechargeRate: float64(mech.Chassis.ShieldRechargeRate),
 			Durability:         mech.Chassis.MaxHitpoints,

@@ -164,6 +164,7 @@ type WarMachine struct {
 	Description        *string         `json:"description"`
 	ExternalUrl        string          `json:"externalUrl"`
 	Image              string          `json:"image"`
+	Model              string          `json:"model"`
 	Skin               string          `json:"skin"`
 	ShieldRechargeRate float64         `json:"shieldRechargeRate"`
 	Speed              int             `json:"speed"`
