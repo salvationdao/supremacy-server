@@ -164,6 +164,8 @@ func (arena *Arena) Message(cmd string, payload interface{}) {
 		gamelog.L.Fatal().Interface("payload", payload).Err(err).Msg("unable to marshal data for battle arena")
 	}
 
+	gamelog.L.Debug().Str("message data", string(b)).Msg("sending packet to game client")
+
 	arena.socket.Write(ctx, websocket.MessageBinary, b)
 }
 
