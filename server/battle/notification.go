@@ -111,7 +111,7 @@ func (arena *Arena) HubKeyMultiplierUpdate(ctx context.Context, wsc *hub.Client,
 
 		reply(&MultiplierUpdate{
 			UserMultipliers:  m,
-			TotalMultipliers: fmt.Sprintf("%dx", total),
+			TotalMultipliers: fmt.Sprintf("%sx", total),
 		})
 	}
 
