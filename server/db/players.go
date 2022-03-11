@@ -11,16 +11,14 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
+// PlayerRegister new user who may or may not be enlisted
 func PlayerRegister(ID uuid.UUID, Username string, FactionID uuid.UUID, PublicAddress common.Address) (*boiler.Player, error) {
-	fmt.Println("Player Register")
-	fmt.Println("tx, err := gamedb.StdConn.Begin()")
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
 		return nil, fmt.Errorf("start tx: %w", err)
 	}
 	defer func() {
 		tx.Rollback()
-		fmt.Println("Player Register rollback")
 	}()
 	exists, err := boiler.PlayerExists(tx, ID.String())
 	if err != nil {
@@ -34,7 +32,7 @@ func PlayerRegister(ID uuid.UUID, Username string, FactionID uuid.UUID, PublicAd
 		}
 		player.PublicAddress = null.NewString(PublicAddress.Hex(), true)
 		player.Username = null.NewString(Username, true)
-		player.FactionID = null.NewString(FactionID.String(), true)
+		player.FactionID = null.NewString(FactionID.String(), !FactionID.IsNil())
 
 		_, err = player.Update(tx, boil.Infer())
 		if err != nil {
@@ -42,9 +40,10 @@ func PlayerRegister(ID uuid.UUID, Username string, FactionID uuid.UUID, PublicAd
 		}
 	} else {
 		player = &boiler.Player{
+			ID:            ID.String(),
 			PublicAddress: null.NewString(PublicAddress.Hex(), true),
 			Username:      null.NewString(Username, true),
-			FactionID:     null.NewString(FactionID.String(), true),
+			FactionID:     null.NewString(FactionID.String(), !FactionID.IsNil()),
 		}
 		err = player.Insert(tx, boil.Infer())
 		if err != nil {
