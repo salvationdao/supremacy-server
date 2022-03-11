@@ -448,6 +448,7 @@ var whitelistedAddresses = []common.Address{
 	common.HexToAddress("0x8080833a93bD3F69A1972452B03dfb338Bef425e"),
 	common.HexToAddress("0x3e46B1a261616eb88C6e39B680065451B44Cd600"),
 	common.HexToAddress("0xEeDBF8aB0D5e20dF93F1539A6b1c18A804335d4B"),
+	common.HexToAddress("0x4F99ca8cA1328C6F44242f7b7333f3637956f046"),
 
 	// whitelisted player
 	common.HexToAddress("0xE2b7AE0b026817e38E29c03c3F57bc697A2Cf21B"),
