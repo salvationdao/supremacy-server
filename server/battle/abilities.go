@@ -375,6 +375,9 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 
 					}
 				} else {
+					// stop all the tickers when battle is ended
+					main_ticker.Stop()
+					live_vote_ticker.Stop()
 					gamelog.L.Info().Msg("exiting ability price update")
 					return
 				}
