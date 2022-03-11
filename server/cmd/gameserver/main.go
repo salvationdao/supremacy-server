@@ -221,7 +221,8 @@ func main() {
 					// initialise message bus
 					messageBus := messagebus.NewMessageBus(log_helpers.NamedLogger(gamelog.L, "message_bus"))
 					gsHub := hub.New(&hub.Config{
-						Log: zerologger.New(*log_helpers.NamedLogger(gamelog.L, "hub library")),
+						Log:            zerologger.New(*log_helpers.NamedLogger(gamelog.L, "hub library")),
+						LoggingEnabled: true,
 						WelcomeMsg: &hub.WelcomeMsg{
 							Key:     "WELCOME",
 							Payload: nil,
