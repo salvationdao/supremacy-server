@@ -90,10 +90,15 @@ func (btl *Battle) isOnline(userID uuid.UUID) bool {
 }
 
 func (btl *Battle) end(payload *BattleEndPayload) {
-	btl.Battle.EndedAt = null.TimeFrom(time.Now())
-	_, err := btl.Battle.Update(gamedb.StdConn, boil.Infer())
+	btl.EndedAt = null.TimeFrom(time.Now())
+	_, err := btl.Update(gamedb.StdConn, boil.Infer())
 	if err != nil {
-		gamelog.L.Error().Str("Battle ID", btl.ID.String()).Time("EndedAt", btl.Battle.EndedAt.Time).Msg("unable to update database for endat battle")
+		gamelog.L.Error().Str("Battle ID", btl.ID.String()).Time("EndedAt", btl.EndedAt.Time).Msg("unable to update database for endat battle")
+	}
+
+	err = db.ClearQueueByBattle(btl.ID)
+	if err != nil {
+		gamelog.L.Error().Str("Battle ID", btl.ID.String()).Msg("unable to clear queue for battle")
 	}
 
 	winningWarMachines := make([]*WarMachine, len(payload.WinningWarMachines))
@@ -187,6 +192,8 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		}
 		i++
 	}
+
+	err = db.ClearQueue()
 
 	gamelog.L.Debug().
 		Int("top_faction_contributors", len(topFactionContributors)).
@@ -788,6 +795,12 @@ func (btl *Battle) Load() error {
 		return err
 	}
 	btl.WarMachines = btl.MechsToWarMachines(mechs)
+
+	err = db.QueueSetBattleID(btl.ID, ids...)
+	if err != nil {
+		gamelog.L.Error().Interface("mechs_ids", ids).Str("battle_id", btl.ID.String()).Err(err).Msg("failed to set battle id in queue")
+		return err
+	}
 
 	return nil
 }
