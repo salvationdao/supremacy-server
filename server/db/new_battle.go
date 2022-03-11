@@ -29,20 +29,14 @@ type BattleMechData struct {
 	FactionID uuid.UUID
 }
 
-func Battle(id, mapID uuid.UUID, mechData []*BattleMechData) (*boiler.Battle, error) {
-	btl := &boiler.Battle{ID: id.String(), GameMapID: mapID.String()}
+func BattleMechs(btl *boiler.Battle, mechData []*BattleMechData) error {
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
 		gamelog.L.Error().Str("db func", "Battle").Err(err).Msg("unable to begin tx")
-		return nil, err
+		return err
 	}
 	defer tx.Rollback()
 
-	err = btl.Insert(tx, boil.Infer())
-	if err != nil {
-		gamelog.L.Error().Interface("battle", btl).Str("db func", "Battle").Err(err).Msg("unable to insert Battle into database")
-		return nil, err
-	}
 	for _, md := range mechData {
 		bmd := boiler.BattleMech{
 			BattleID:  btl.ID,
@@ -53,17 +47,11 @@ func Battle(id, mapID uuid.UUID, mechData []*BattleMechData) (*boiler.Battle, er
 		err = bmd.Insert(tx, boil.Infer())
 		if err != nil {
 			gamelog.L.Error().Interface("battle mech", bmd).Str("db func", "Battle").Err(err).Msg("unable to insert Battle Mech into database")
-			return nil, err
+			return err
 		}
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		gamelog.L.Error().Err(err).Str("db Func", "Battle").Msg("unable to commit tx")
-		return nil, err
-	}
-
-	return btl, nil
+	return tx.Commit()
 }
 
 func UpdateBattleMech(battleID, mechID uuid.UUID, gotKill bool, gotKilled bool, killedByID ...uuid.UUID) (*boiler.BattleMech, error) {
