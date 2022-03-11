@@ -380,6 +380,56 @@ func JoinQueue(mech *BattleMechData) (int64, error) {
 	return QueuePosition(mech.MechID, mech.FactionID)
 }
 
+func QueueSetBattleID(battleID uuid.UUID, mechIDs ...uuid.UUID) error {
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		gamelog.L.Error().Str("db func", "ClearQueue").Err(err).Msg("unable to begin tx")
+		return err
+	}
+	defer tx.Rollback()
+
+	args := make([]interface{}, len(mechIDs)+1)
+	args[0] = battleID.String()
+	var paramrefs string
+	for i, id := range mechIDs {
+		paramrefs += `$` + strconv.Itoa(i+2) + `,`
+		args[i] = id.String()
+	}
+	if len(args) == 0 {
+		fmt.Println("no mechs", len(mechIDs))
+	}
+
+	paramrefs = paramrefs[:len(paramrefs)-1]
+
+	query := `UPDATE battle_queue SET battle_id=$1 WHERE mech_id IN (` + paramrefs + `)`
+
+	_, err = gamedb.Conn.Exec(context.Background(), query, args...)
+	if err != nil {
+		gamelog.L.Error().Str("db func", "ClearQueue").Err(err).Msg("unable to delete mechs from queue")
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func ClearQueueByBattle(battleID uuid.UUID) error {
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		gamelog.L.Error().Str("db func", "ClearQueue").Err(err).Msg("unable to begin tx")
+		return err
+	}
+	defer tx.Rollback()
+
+	query := `DELETE FROM battle_queue WHERE battle_id = $1`
+	_, err = gamedb.Conn.Exec(context.Background(), query, battleID.String())
+	if err != nil {
+		gamelog.L.Error().Str("db func", "ClearQueue").Err(err).Msg("unable to delete mechs from queue")
+		return err
+	}
+
+	return tx.Commit()
+}
+
 func ClearQueue(mechIDs ...uuid.UUID) error {
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
