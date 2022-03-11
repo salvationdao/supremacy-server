@@ -9,30 +9,30 @@ CREATE TABLE battles_viewers
 DROP MATERIALIZED VIEW user_stats;
 
 CREATE MATERIALIZED VIEW user_stats AS
-select * 
-from (
+SELECT * 
+FROM (
          SELECT p.id
          FROM players p
      ) p1
-         LEFT JOIN LATERAL (
-   		select count(*) as view_battle_count from battles_viewers buv
-   		where buv.player_id = p1.id
-  		group by buv.player_id 
+        LEFT JOIN LATERAL (
+   		SELECT COUNT(*) AS view_battle_count FROM battles_viewers buv
+   		WHERE buv.player_id = p1.id
+  		GROUP BY buv.player_id 
     ) p2 ON true 
-    	left join lateral(
-    	select count(bat.id ) as total_ability_triggered from battle_ability_triggers bat 
-    	where bat.player_id = p1.id
-    	group by bat.player_id 
-    )p3 on true
-    	left join lateral(
-    	select count(bh.id) as kill_count from battle_history bh 
-    	inner join battle_mechs bm on bm.mech_id = bh.war_machine_one_id and bm.owner_id = p1.id
-    	group by bm.owner_id 
-    )p4 on true
-      left join lateral (
-    select sum(bc.amount) as total_vote_count from battle_contributions bc where bc.player_id = p1.id
-    group by bc.player_id 
-    )p5 on true;
+    	LEFT JOIN lateral(
+    	SELECT COUNT(bat.id ) AS total_ability_triggered FROM battle_ability_triggers bat 
+    	WHERE bat.player_id = p1.id
+    	GROUP by bat.player_id 
+    )p3 ON true
+    	LEFT JOIN lateral(
+    	SELECT COUNT(bh.id) AS kill_count FROM battle_history bh 
+    	INNER JOIN battle_mechs bm ON bm.mech_id = bh.war_machine_one_id AND bm.owner_id = p1.id
+    	GROUP BY bm.owner_id 
+    )p4 ON true
+       LEFT JOIN lateral (
+       SELECT SUM(bc.amount) AS total_vote_count FROM battle_contributions bc WHERE bc.player_id = p1.id
+       GROUP BY bc.player_id 
+    )p5 ON true;
 
 CREATE UNIQUE INDEX user_id ON user_stats (id);
 
