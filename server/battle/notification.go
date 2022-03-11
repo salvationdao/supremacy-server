@@ -118,7 +118,7 @@ func (arena *Arena) HubKeyMultiplierUpdate(ctx context.Context, wsc *hub.Client,
 	return req.TransactionID, messagebus.BusKey(HubKeyMultiplierUpdate), nil
 }
 
-const HubKeyViewerLiveCountUpdated = hub.HubCommandKey("SPOIL:OF:VOTING:COUNT:UPDATED")
+const HubKeyViewerLiveCountUpdated = hub.HubCommandKey("VIEWER:LIVE:COUNT:UPDATED")
 
 func (arena *Arena) ViewerLiveCountUpdateSubscribeHandler(tx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
