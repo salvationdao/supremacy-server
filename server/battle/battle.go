@@ -798,6 +798,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.MechContainer) []*WarMachi
 			WeaponNames:        weaponNames,
 			Tier:               mech.Tier,
 		}
+		gamelog.L.Debug().Str("mech_id", mech.ID).Str("model", mech.Chassis.Model).Str("skin", mech.Chassis.Skin).Msg("converted mech to warmachine")
 	}
 	return warmachines
 }
