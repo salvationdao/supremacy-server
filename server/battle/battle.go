@@ -349,6 +349,30 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	btl.multipliers.end(endInfo)
 	btl.spoils.End()
 	btl.endInfoBroadcast(*endInfo)
+	err = db.UserStatsRefresh(context.Background(), gamedb.Conn)
+	if err != nil {
+		gamelog.L.Error().
+			Str("Battle ID", btl.ID).
+			Err(err).
+			Msg("unable to refresh users stats")
+		return
+	}
+
+	us, err := db.UserStatsAll(context.Background(), gamedb.Conn)
+	if err != nil {
+		gamelog.L.Error().
+			Str("Battle ID", btl.ID).
+			Err(err).
+			Msg("unable to get users stats")
+		return
+	}
+
+	go func() {
+		for _, u := range us {
+			go btl.arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserStatSubscribe, u.ID.String())), u)
+		}
+	}()
+
 }
 
 const HubKeyBattleEndDetailUpdated hub.HubCommandKey = "BATTLE:END:DETAIL:UPDATED"
@@ -397,12 +421,18 @@ func (btl *Battle) userOnline(user *BattleUser, wsc *hub.Client) {
 		u.Unlock()
 	}
 
+	err := db.BattleViewerUpsert(context.Background(), gamedb.Conn, btl.ID, wsc.Identifier())
+	if err != nil {
+		gamelog.L.Error().Err(err)
+	}
+
 	resp := &ViewerLiveCount{
 		RedMountain: 0,
 		Boston:      0,
 		Zaibatsu:    0,
 		Other:       0,
 	}
+
 	btl.users.Range(func(user *BattleUser) bool {
 		if faction, ok := FactionNames[user.FactionID]; ok {
 			switch faction {

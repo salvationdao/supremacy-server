@@ -349,7 +349,6 @@ winwar:
 	}
 
 	// insert multipliers
-
 	for pid, mlts := range newMultipliers {
 		for m := range mlts {
 			mlt := &boiler.UserMultiplier{
