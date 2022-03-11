@@ -271,6 +271,7 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.MechContainer, error) {
 			&mc.DeletedAt,
 			&mc.UpdatedAt,
 			&mc.CreatedAt,
+			&mc.LargeImageURL,
 			&mc.Chassis,
 			&mc.Weapons,
 			&mc.Turrets,
