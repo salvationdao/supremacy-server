@@ -716,9 +716,15 @@ func (arena *Arena) Leave(ctx context.Context, wsc *hub.Client, payload []byte, 
 		return err
 	}
 
+	bq, err := boiler.FindBattleQueue(gamedb.StdConn, mechID.String())
+	if err != nil {
+		gamelog.L.Error().Str("mech_id", mechID.String()).Err(err).Msg("probably not in queue")
+		return err
+	}
+
 	mech, err := db.Mech(mechID)
 	if err != nil {
-		gamelog.L.Error().Str("mech_id", mechID.String()).Err(err).Msg("unable to retrieve mech id from hash")
+		gamelog.L.Error().Str("mech_id", mechID.String()).Err(err).Msg("unable to retrieve mech")
 		return err
 	}
 
@@ -806,7 +812,7 @@ func (arena *Arena) Leave(ctx context.Context, wsc *hub.Client, payload []byte, 
 		contractReward,
 	})
 
-	mechsAfterIDs, err := db.AllMechsAfter(position-1, factionID)
+	mechsAfterIDs, err := db.AllMechsAfter(bq.QueuedAt, factionID)
 	if err != nil {
 		gamelog.L.Error().Interface("factionID", factionID).Err(err).Msg("unable to get mechs after")
 		return err
@@ -1362,4 +1368,7 @@ var ModelMap = map[string]string{
 	"Law Enforcer X-1000": "XFVS",
 	"Olympus Mons LY07":   "BXSD",
 	"Tenshi Mk1":          "WREX",
+	"BXSD":                "BXSD",
+	"XFVS":                "XFVS",
+	"WREX":                "WREX",
 }
