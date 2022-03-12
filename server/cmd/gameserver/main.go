@@ -120,9 +120,17 @@ func main() {
 					&cli.StringFlag{Name: "passport_server_token", Value: "aG93cyBpdCBnb2luZyBtYWM=", EnvVars: []string{envPrefix + "_PASSPORT_TOKEN"}, Usage: "Token to auth to passport server"},
 					&cli.StringFlag{Name: "server_stream_key", Value: "6c7b4a82-7797-4847-836e-978399830878", EnvVars: []string{envPrefix + "_SERVER_STREAM_KEY"}, Usage: "Authorization key to crud servers"},
 					&cli.StringFlag{Name: "passport_webhook_secret", Value: "e1BD3FF270804c6a9edJDzzDks87a8a4fde15c7=", EnvVars: []string{"PASSPORT_WEBHOOK_SECRET"}, Usage: "Authorization key to passport webhook"},
+
+					&cli.IntFlag{Name: "database_max_pool_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_POOL_CONNS"}, Usage: "Database max pool conns"},
+					&cli.IntFlag{Name: "database_max_idle_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_IDLE_CONNS"}, Usage: "Database max idle conns"},
+					&cli.IntFlag{Name: "database_max_open_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_OPEN_CONNS"}, Usage: "Database max open conns"},
 				},
 				Usage: "run server",
 				Action: func(c *cli.Context) error {
+
+					databaseMaxPoolConns := c.Int("database_max_pool_conns")
+					databaseMaxIdleConns := c.Int("database_max_idle_conns")
+					databaseMaxOpenConns := c.Int("database_max_open_conns")
 
 					databaseUser := c.String("database_user")
 					databasePass := c.String("database_pass")
@@ -154,6 +162,7 @@ func main() {
 						databaseName,
 						databaseAppName,
 						Version,
+						databaseMaxPoolConns,
 					)
 					if err != nil {
 						return terror.Panic(err)
@@ -164,6 +173,8 @@ func main() {
 						databaseHost,
 						databasePort,
 						databaseName,
+						databaseMaxIdleConns,
+						databaseMaxOpenConns,
 					)
 					if err != nil {
 						return terror.Panic(err)
@@ -293,8 +304,15 @@ func main() {
 					&cli.StringFlag{Name: "database_port", Value: "5437", EnvVars: []string{envPrefix + "_DATABASE_PORT", "DATABASE_PORT"}, Usage: "The database port"},
 					&cli.StringFlag{Name: "database_name", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_NAME", "DATABASE_NAME"}, Usage: "The database name"},
 					&cli.StringFlag{Name: "database_application_name", Value: "API Server", EnvVars: []string{envPrefix + "_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
+					&cli.IntFlag{Name: "database_max_pool_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_POOL_CONNS"}, Usage: "Database max pool conns"},
+					&cli.IntFlag{Name: "database_max_idle_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_IDLE_CONNS"}, Usage: "Database max idle conns"},
+					&cli.IntFlag{Name: "database_max_open_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_OPEN_CONNS"}, Usage: "Database max open conns"},
 				},
 				Action: func(c *cli.Context) error {
+
+					databaseMaxPoolConns := c.Int("database_max_pool_conns")
+					databaseMaxIdleConns := c.Int("database_max_idle_conns")
+					databaseMaxOpenConns := c.Int("database_max_open_conns")
 
 					databaseUser := c.String("database_user")
 					databasePass := c.String("database_pass")
@@ -310,6 +328,7 @@ func main() {
 						databaseName,
 						databaseAppName,
 						Version,
+						databaseMaxPoolConns,
 					)
 					if err != nil {
 						return terror.Panic(err)
@@ -320,6 +339,8 @@ func main() {
 						databaseHost,
 						databasePort,
 						databaseName,
+						databaseMaxIdleConns,
+						databaseMaxOpenConns,
 					)
 					if err != nil {
 						return terror.Panic(err)
@@ -451,6 +472,7 @@ func pgxconnect(
 	DatabaseName string,
 	DatabaseApplicationName string,
 	APIVersion string,
+	maxPoolConns int,
 ) (*pgxpool.Pool, error) {
 	params := url.Values{}
 	params.Add("sslmode", "disable")
@@ -471,7 +493,10 @@ func pgxconnect(
 	if err != nil {
 		return nil, terror.Panic(err, "could not initialise database")
 	}
+
 	poolConfig.ConnConfig.LogLevel = pgx.LogLevelTrace
+
+	poolConfig.MaxConns = int32(maxPoolConns)
 
 	ctx := context.Background()
 	conn, err := pgxpool.ConnectConfig(ctx, poolConfig)
@@ -488,6 +513,8 @@ func sqlConnect(
 	databaseHost string,
 	databasePort string,
 	databaseName string,
+	maxIdle int,
+	maxOpen int,
 ) (*sql.DB, error) {
 	params := url.Values{}
 	params.Add("sslmode", "disable")
@@ -503,10 +530,13 @@ func sqlConnect(
 	if err != nil {
 		return nil, err
 	}
+
 	conn := stdlib.OpenDB(*cfg)
 	if err != nil {
 		return nil, err
 	}
+	conn.SetMaxIdleConns(maxIdle)
+	conn.SetMaxOpenConns(maxOpen)
 	return conn, nil
 
 }
