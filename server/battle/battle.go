@@ -102,15 +102,6 @@ func (btl *Battle) start(payload *BattleStartPayload) {
 	}
 	spoilOfWarPayload = append(spoilOfWarPayload, []byte(strings.Join(spoilOfWarStr, "|"))...)
 	btl.arena.netMessageBus.Send(context.Background(), messagebus.NetBusKey(HubKeySpoilOfWarUpdated), spoilOfWarPayload)
-
-	// TESTING: check syndicate balance
-
-	// b1 := btl.arena.ppClient.UserBalanceGet(server.SupremacyRedMountainUserID)
-	// fmt.Println("Red mountain:", b1.String(), "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-	// b2 := btl.arena.ppClient.UserBalanceGet(server.SupremacyZaibatsuUserID)
-	// fmt.Println("zaibatsu:", b2.String(), "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-	// b3 := btl.arena.ppClient.UserBalanceGet(server.SupremacyBostonCyberneticsUserID)
-	// fmt.Println("boston:", b3.String(), "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 }
 
 // calcTriggeredLocation convert picked cell to the location in game
@@ -387,52 +378,82 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 				Str("faction ID", wm.FactionID).
 				Err(err).
 				Msg("unable to get hard coded syndicate player ID from faction ID")
-			continue
-		}
-
-		gamelog.L.Info().
-			Str("Battle ID", btl.ID).
-			Str("Faction ID", wm.FactionID).
-			Str("Faction Account ID", factionAccountID).
-			Str("Player ID", wm.OwnedByID).
-			Str("Contract ID", contract.ID).
-			Str("Amount", contract.ContractReward.StringFixed(0)).
-			Err(err).
-			Msg("paying out mech winnings from contract reward")
-
-		// pay sups
-		txid, err := btl.arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
-			FromUserID:           uuid.Must(uuid.FromString(factionAccountID)),
-			ToUserID:             uuid.Must(uuid.FromString(contract.PlayerID)),
-			Amount:               contract.ContractReward.StringFixed(0),
-			TransactionReference: server.TransactionReference(fmt.Sprintf("contract_rewards|%s|%d", contract.ID, time.Now().UnixNano())),
-			Group:                "battle",
-			SubGroup:             wmwin.Hash,
-			Description:          fmt.Sprintf("Mech won battle #%d", btl.BattleNumber),
-			NotSafe:              false,
-		})
-		if err != nil {
-			gamelog.L.Error().
+		} else {
+			//do contract payout for winning mech
+			gamelog.L.Info().
 				Str("Battle ID", btl.ID).
-				Str("faction ID", wm.FactionID).
+				Str("Faction ID", wm.FactionID).
+				Str("Faction Account ID", factionAccountID).
 				Str("Player ID", wm.OwnedByID).
+				Str("Contract ID", contract.ID).
+				Str("Amount", contract.ContractReward.StringFixed(0)).
 				Err(err).
-				Msg("unable to transfer funds to winning mech owner")
-			continue
-		}
+				Msg("paying out mech winnings from contract reward")
 
-		contract.PaidOut = true
-		contract.TransactionID = null.StringFrom(txid)
-		_, err = contract.Update(gamedb.StdConn, boil.Infer())
-		if err != nil {
-			gamelog.L.Error().
-				Str("Battle ID", btl.ID).
-				Str("faction ID", wm.FactionID).
-				Str("Player ID", wm.OwnedByID).
-				Str("TX ID", txid).
-				Err(err).
-				Msg("unable to save transaction ID on contract")
-			continue
+			factID := uuid.Must(uuid.FromString(factionAccountID))
+			syndicateBalance := btl.arena.ppClient.UserBalanceGet(factID)
+
+			if syndicateBalance.LessThanOrEqual(contract.ContractReward) {
+				txid, err := btl.arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
+					FromUserID:           uuid.UUID(server.XsynTreasuryUserID),
+					ToUserID:             factID,
+					Amount:               contract.ContractReward.StringFixed(0),
+					TransactionReference: server.TransactionReference(fmt.Sprintf("contract_rewards|%s|%d", contract.ID, time.Now().UnixNano())),
+					Group:                "battle",
+					SubGroup:             wmwin.Hash,
+					Description:          fmt.Sprintf("Mech won battle #%d", btl.BattleNumber),
+					NotSafe:              false,
+				})
+				if err != nil {
+					gamelog.L.Error().
+						Str("Faction ID", factionAccountID).
+						Str("Amount", contract.ContractReward.StringFixed(0)).
+						Err(err).
+						Msg("Could not transfer money from treasury into syndicate account!!")
+					continue
+				}
+				gamelog.L.Warn().
+					Str("Faction ID", factionAccountID).
+					Str("Amount", contract.ContractReward.StringFixed(0)).
+					Str("TXID", txid).
+					Err(err).
+					Msg("Had to transfer funds to the syndicate account")
+			}
+
+			// pay sups
+			txid, err := btl.arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
+				FromUserID:           factID,
+				ToUserID:             uuid.Must(uuid.FromString(contract.PlayerID)),
+				Amount:               contract.ContractReward.StringFixed(0),
+				TransactionReference: server.TransactionReference(fmt.Sprintf("contract_rewards|%s|%d", contract.ID, time.Now().UnixNano())),
+				Group:                "battle",
+				SubGroup:             wmwin.Hash,
+				Description:          fmt.Sprintf("Mech won battle #%d", btl.BattleNumber),
+				NotSafe:              false,
+			})
+			if err != nil {
+				gamelog.L.Error().
+					Str("Battle ID", btl.ID).
+					Str("faction ID", wm.FactionID).
+					Str("Player ID", wm.OwnedByID).
+					Err(err).
+					Msg("unable to transfer funds to winning mech owner")
+				continue
+			}
+
+			contract.PaidOut = true
+			contract.TransactionID = null.StringFrom(txid)
+			_, err = contract.Update(gamedb.StdConn, boil.Infer())
+			if err != nil {
+				gamelog.L.Error().
+					Str("Battle ID", btl.ID).
+					Str("faction ID", wm.FactionID).
+					Str("Player ID", wm.OwnedByID).
+					Str("TX ID", txid).
+					Err(err).
+					Msg("unable to save transaction ID on contract")
+				continue
+			}
 		}
 
 	}
