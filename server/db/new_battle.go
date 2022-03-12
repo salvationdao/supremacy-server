@@ -1,6 +1,7 @@
 package db
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"server/db/boiler"
@@ -388,12 +389,16 @@ func QueuePosition(mechID uuid.UUID, factionID uuid.UUID) (int64, error) {
 	WHERE s.mech_id = $2;`
 
 	err := gamedb.Conn.QueryRow(context.Background(), query, factionID.String(), mechID.String()).Scan(&pos)
-	if err != nil {
+	if err != nil && !errors.Is(sql.ErrNoRows, err) {
 		gamelog.L.Error().
 			Str("mech_id", mechID.String()).
 			Str("faction_id", factionID.String()).
 			Str("db func", "QueuePosition").Err(err).Msg("unable to get queue position of mech")
 		return -1, err
+	}
+
+	if errors.Is(sql.ErrNoRows, err) {
+		return -1, nil
 	}
 
 	return pos, nil
