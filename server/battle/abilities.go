@@ -454,8 +454,9 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 								//build notification
 								gameNotification := &GameNotificationWarMachineAbility{
 									User: &UserBrief{
-										ID:       cont.userID,
-										Username: player.Username.String,
+										ID:        cont.userID,
+										Username:  player.Username.String,
+										FactionID: player.FactionID.String,
 										Faction: &FactionBrief{
 											ID:         faction.ID,
 											Label:      faction.Label,
@@ -1400,8 +1401,9 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 			Colour:   ability.Colour,
 		},
 		CurrentUser: &UserBrief{
-			ID:       userID,
-			Username: player.Username.String,
+			ID:        userID,
+			Username:  player.Username.String,
+			FactionID: player.FactionID.String,
 			Faction: &FactionBrief{
 				ID:         faction.ID,
 				Label:      faction.Label,
@@ -1444,6 +1446,8 @@ func BuildUserDetailWithFaction(userID uuid.UUID) (*UserBrief, error) {
 	if !user.FactionID.Valid {
 		return userBrief, nil
 	}
+
+	userBrief.FactionID = user.FactionID.String
 
 	faction, err := db.FactionGet(user.FactionID.String)
 	if err != nil {

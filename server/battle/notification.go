@@ -76,10 +76,11 @@ type AbilityBrief struct {
 }
 
 type UserBrief struct {
-	ID       uuid.UUID     `json:"id"`
-	Username string        `json:"username"`
-	AvatarID *string       `json:"avatar_id,omitempty"`
-	Faction  *FactionBrief `json:"faction"`
+	ID        uuid.UUID     `json:"id"`
+	Username  string        `json:"username"`
+	AvatarID  *string       `json:"avatar_id,omitempty"`
+	FactionID string        `json:"faction_id,omitempty"`
+	Faction   *FactionBrief `json:"faction"`
 }
 
 type GameNotification struct {
