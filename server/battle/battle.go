@@ -1431,7 +1431,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.MechContainer) []*WarMachi
 			model = "WREX"
 		}
 
-		mechName := mech.Name
+		mechName := mech.Name[:10]
 
 		if len(mechName) < 3 {
 			owner, err := mech.Owner().One(gamedb.StdConn)
@@ -1447,7 +1447,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.MechContainer) []*WarMachi
 
 		warmachines[i] = &WarMachine{
 			ID:            mech.ID,
-			Name:          mechName,
+			Name:          TruncateString(mechName, 20),
 			Hash:          mech.Hash,
 			ParticipantID: 0,
 			FactionID:     mech.Faction.ID,
@@ -1486,6 +1486,32 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.MechContainer) []*WarMachi
 		gamelog.L.Debug().Str("mech_id", mech.ID).Str("model", model).Str("skin", mech.Chassis.Skin).Msg("converted mech to warmachine")
 	}
 	return warmachines
+}
+
+func TruncateString(str string, length int) string {
+	if length <= 0 {
+		return ""
+	}
+
+	// This code cannot support Japanese
+	// orgLen := len(str)
+	// if orgLen <= length {
+	//     return str
+	// }
+	// return str[:length]
+
+	// Support Japanese
+	// Ref: Range loops https://blog.golang.org/strings
+	truncated := ""
+	count := 0
+	for _, char := range str {
+		truncated += string(char)
+		count++
+		if count >= length {
+			break
+		}
+	}
+	return truncated
 }
 
 var ModelMap = map[string]string{
