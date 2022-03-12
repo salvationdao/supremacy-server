@@ -39,6 +39,23 @@ GROUP BY p.id;
 	return result, nil
 }
 
+func CitizenPlayerIDs(until_battle_number int) ([]uuid.UUID, error) {
+	userIDs := []uuid.UUID{}
+
+	q := `
+	select um.player_id  from user_multipliers um 
+	inner join multipliers m on m.id = um.multiplier_id and m."key" = 'citizen'
+	where um.until_battle_number >= $1
+	`
+
+	err := pgxscan.Select(context.Background(), gamedb.Conn, &userIDs, q, until_battle_number)
+	if err != nil {
+		return userIDs, terror.Error(err)
+	}
+
+	return userIDs, nil
+}
+
 func TotalSpoils() (decimal.Decimal, error) {
 	result := struct{ Sum decimal.Decimal }{}
 	q := `SELECT COALESCE(sum(amount), 0) as sum FROM battle_contributions WHERE processed_at IS NULL`

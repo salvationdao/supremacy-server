@@ -294,6 +294,11 @@ func (arena *Arena) AbilityLocationSelect(ctx context.Context, wsc *hub.Client, 
 	return nil
 }
 
+type MultiplierMapResponse struct {
+	Multipliers      []*db.Multipliers `json:"multipliers"`
+	CitizenPlayerIDs []uuid.UUID       `json:"citizen_player_ids"`
+}
+
 const HubKeyMultiplierMapSubscribe hub.HubCommandKey = "MULTIPLIER:MAP:SUBSCRIBE"
 
 func (arena *Arena) MultiplierMapSubScribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
@@ -313,7 +318,16 @@ func (arena *Arena) MultiplierMapSubScribeHandler(ctx context.Context, wsc *hub.
 			m.TotalMultiplier = m.TotalMultiplier.Shift(-1)
 		}
 
-		reply(multipliers)
+		// get the citizen list
+		citizenPlayerIDs, err := db.CitizenPlayerIDs(arena.currentBattle.BattleNumber)
+		if err != nil {
+			return "", "", terror.Error(err)
+		}
+
+		reply(&MultiplierMapResponse{
+			Multipliers:      multipliers,
+			CitizenPlayerIDs: citizenPlayerIDs,
+		})
 	}
 
 	return req.TransactionID, messagebus.BusKey(HubKeyMultiplierMapSubscribe), nil

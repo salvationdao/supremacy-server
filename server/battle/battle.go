@@ -510,13 +510,25 @@ func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 	})
 
 	multipliers, err := db.PlayerMultipliers(btl.BattleNumber + 1)
-	if err == nil {
-		for _, m := range multipliers {
-			m.TotalMultiplier = m.TotalMultiplier.Shift(-1)
-		}
-
-		go btl.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyMultiplierMapSubscribe), multipliers)
+	if err != nil {
+		gamelog.L.Error().Str("battle number #", strconv.Itoa(btl.BattleNumber+1)).Err(err).Msg("Failed to get player multipliers from db")
+		return
 	}
+	for _, m := range multipliers {
+		m.TotalMultiplier = m.TotalMultiplier.Shift(-1)
+	}
+
+	// get the citizen list
+	citizenPlayerIDs, err := db.CitizenPlayerIDs(btl.BattleNumber + 1)
+	if err != nil {
+		gamelog.L.Error().Str("battle number #", strconv.Itoa(btl.BattleNumber+1)).Err(err).Msg("Failed to get citizen player id list from db")
+		return
+	}
+
+	go btl.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyMultiplierMapSubscribe), &MultiplierMapResponse{
+		Multipliers:      multipliers,
+		CitizenPlayerIDs: citizenPlayerIDs,
+	})
 
 	// broadcast spoil of war on the end of the battle
 	sows, err := db.LastTwoSpoilOfWarAmount()
