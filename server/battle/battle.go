@@ -509,6 +509,15 @@ func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 		return true
 	})
 
+	multipliers, err := db.PlayerMultipliers(btl.BattleNumber + 1)
+	if err == nil {
+		for _, m := range multipliers {
+			m.TotalMultiplier = m.TotalMultiplier.Shift(-1)
+		}
+
+		go btl.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyMultiplierMapSubscribe), multipliers)
+	}
+
 	// broadcast spoil of war on the end of the battle
 	sows, err := db.LastTwoSpoilOfWarAmount()
 	if err != nil || len(sows) == 0 {

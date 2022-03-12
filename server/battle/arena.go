@@ -135,6 +135,8 @@ func NewArena(opts *Opts) *Arena {
 	opts.SecureUserFactionSubscribeCommand(HubKeGabsBribingWinnerSubscribe, arena.GabsBribingWinnerSubscribe)
 	opts.SecureUserFactionSubscribeCommand(HubKeyBattleAbilityUpdated, arena.BattleAbilityUpdateSubscribeHandler)
 
+	opts.SecureUserSubscribeCommand(HubKeyMultiplierMapSubscribe, arena.MultiplierMapSubScribeHandler)
+
 	// faction unique ability related (sup contribution)
 	opts.SecureUserFactionCommand(HubKeFactionUniqueAbilityContribute, arena.FactionUniqueAbilityContribute)
 	opts.SecureUserFactionSubscribeCommand(HubKeyFactionUniqueAbilitiesUpdated, arena.FactionAbilitiesUpdateSubscribeHandler)
@@ -290,6 +292,31 @@ func (arena *Arena) AbilityLocationSelect(ctx context.Context, wsc *hub.Client, 
 	}
 
 	return nil
+}
+
+const HubKeyMultiplierMapSubscribe hub.HubCommandKey = "MULTIPLIER:MAP:SUBSCRIBE"
+
+func (arena *Arena) MultiplierMapSubScribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return "", "", terror.Error(err, "Invalid request received")
+	}
+
+	if arena.currentBattle != nil {
+		multipliers, err := db.PlayerMultipliers(arena.currentBattle.BattleNumber)
+		if err != nil {
+			return "", "", terror.Error(err, "unable to retrieve multipliers")
+		}
+
+		for _, m := range multipliers {
+			m.TotalMultiplier = m.TotalMultiplier.Shift(-1)
+		}
+
+		reply(multipliers)
+	}
+
+	return req.TransactionID, messagebus.BusKey(HubKeyMultiplierMapSubscribe), nil
 }
 
 const HubKeyBattleAbilityUpdated hub.HubCommandKey = "BATTLE:ABILITY:UPDATED"

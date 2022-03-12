@@ -17,8 +17,8 @@ import (
 )
 
 type Multipliers struct {
-	PlayerID        uuid.UUID       `db:"player_id"`
-	TotalMultiplier decimal.Decimal `db:"multiplier_sum"`
+	PlayerID        uuid.UUID       `json:"player_id" db:"player_id"`
+	TotalMultiplier decimal.Decimal `json:"total_multiplier" db:"multiplier_sum"`
 }
 
 func PlayerMultipliers(battle_number int) ([]*Multipliers, error) {
