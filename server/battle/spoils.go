@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"math/rand"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -41,6 +42,35 @@ func NewSpoilsOfWar(btl *Battle, transactSpeed time.Duration, dripSpeed time.Dur
 		flushCh:       make(chan bool),
 		tickSpeed:     dripSpeed,
 	}
+
+	amnt := decimal.New(int64(rand.Intn(599)+500), 18)
+
+	sow := &boiler.SpoilsOfWar{
+		BattleID:     btl.ID,
+		BattleNumber: btl.BattleNumber,
+		Amount:       amnt,
+		AmountSent:   decimal.New(0, 18),
+	}
+
+	txr := fmt.Sprintf("spoils_of_war_fill_up|%s|%d", server.XsynTreasuryUserID, time.Now().UnixNano())
+
+	_, err := btl.arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
+		FromUserID:           uuid.UUID(server.XsynTreasuryUserID),
+		ToUserID:             SupremacyBattleUserID,
+		Amount:               amnt.String(),
+		TransactionReference: server.TransactionReference(txr),
+		Group:                "spoil of war",
+		SubGroup:             "system",
+		Description:          "system",
+		NotSafe:              false,
+	})
+
+	if err != nil {
+		gamelog.L.Warn().Err(err).Msgf("transferring to spoils failed")
+	}
+
+	_ = sow.Insert(gamedb.StdConn, boil.Infer())
+
 	go spw.Run()
 
 	return spw
