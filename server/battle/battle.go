@@ -749,6 +749,22 @@ func (arena *Arena) Join(ctx context.Context, wsc *hub.Client, payload []byte, f
 		contractReward = queueLength.Mul(decimal.New(2, 18)) // 2x queue length
 	}
 
+	// Charge user queue fee
+	txid, err := arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
+		Amount:               queueCost.StringFixed(18),
+		FromUserID:           ownerID,
+		ToUserID:             SupremacyBattleUserID,
+		TransactionReference: server.TransactionReference(fmt.Sprintf("war_machine_queueing_fee|%s|%d", msg.Payload.AssetHash, time.Now().UnixNano())),
+		Group:                "Battle",
+		SubGroup:             "Queue",
+		Description:          "Queued mech to battle arena",
+		NotSafe:              true,
+	})
+	if err != nil {
+		gamelog.L.Error().Str("txID", txid).Interface("mechID", mechID).Interface("factionID", mech.FactionID).Err(err).Msg("unable to charge user for insert mech into queue")
+		return err
+	}
+
 	// Insert mech into queue
 	position, err := db.JoinQueue(&db.BattleMechData{
 		MechID:    mechID,
@@ -769,22 +785,6 @@ func (arena *Arena) Join(ctx context.Context, wsc *hub.Client, payload []byte, f
 			nil,
 		})
 		return nil
-	}
-
-	// Charge user queue fee
-	txid, err := arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
-		Amount:               queueCost.StringFixed(18),
-		FromUserID:           ownerID,
-		ToUserID:             SupremacyBattleUserID,
-		TransactionReference: server.TransactionReference(fmt.Sprintf("war_machine_queueing_fee|%s|%d", msg.Payload.AssetHash, time.Now().UnixNano())),
-		Group:                "Battle",
-		SubGroup:             "Queue",
-		Description:          "Queued mech to battle arena",
-		NotSafe:              true,
-	})
-	if err != nil {
-		gamelog.L.Error().Str("txID", txid).Interface("mechID", mechID).Interface("factionID", mech.FactionID).Err(err).Msg("unable to charge user for insert mech into queue")
-		return err
 	}
 
 	reply(position)
