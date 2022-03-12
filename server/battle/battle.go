@@ -467,28 +467,28 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	btl.multipliers.end(endInfo)
 	btl.endInfoBroadcast(*endInfo)
 
-	// update user stat
-	err = db.UserStatsRefresh(context.Background(), gamedb.Conn)
-	if err != nil {
-		gamelog.L.Error().
-			Str("Battle ID", btl.ID).
-			Err(err).
-			Msg("unable to refresh users stats")
-	}
+	go func(id string) {
+		// update user stat
+		err = db.UserStatsRefresh(context.Background(), gamedb.Conn)
+		if err != nil {
+			gamelog.L.Error().
+				Str("Battle ID", id).
+				Err(err).
+				Msg("unable to refresh users stats")
+		}
 
-	us, err := db.UserStatsAll(context.Background(), gamedb.Conn)
-	if err != nil {
-		gamelog.L.Error().
-			Str("Battle ID", btl.ID).
-			Err(err).
-			Msg("unable to get users stats")
-	}
+		us, err := db.UserStatsAll(context.Background(), gamedb.Conn)
+		if err != nil {
+			gamelog.L.Error().
+				Str("Battle ID", id).
+				Err(err).
+				Msg("unable to get users stats")
+		}
 
-	go func() {
 		for _, u := range us {
 			go btl.arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserStatSubscribe, u.ID.String())), u)
 		}
-	}()
+	}(btl.ID)
 }
 
 const HubKeyBattleEndDetailUpdated hub.HubCommandKey = "BATTLE:END:DETAIL:UPDATED"
