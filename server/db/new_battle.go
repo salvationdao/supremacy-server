@@ -380,6 +380,11 @@ func QueueLength(factionID uuid.UUID) (int64, error) {
 func QueuePosition(mechID uuid.UUID, factionID uuid.UUID) (int64, error) {
 	var pos int64
 
+	exists, _ := boiler.BattleQueueExists(gamedb.StdConn, mechID)
+	if !exists {
+		return -1, nil
+	}
+
 	query := `WITH bqpos AS (
     SELECT t.*,
            ROW_NUMBER() OVER(ORDER BY t.queued_at) AS position
