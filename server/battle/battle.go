@@ -461,7 +461,6 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 			Str("Battle ID", btl.ID).
 			Err(err).
 			Msg("unable to store mech wins")
-		return
 	}
 
 	btl.multipliers.end(endInfo)
@@ -475,7 +474,6 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 			Str("Battle ID", btl.ID).
 			Err(err).
 			Msg("unable to refresh users stats")
-		return
 	}
 
 	us, err := db.UserStatsAll(context.Background(), gamedb.Conn)
@@ -484,7 +482,6 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 			Str("Battle ID", btl.ID).
 			Err(err).
 			Msg("unable to get users stats")
-		return
 	}
 
 	go func() {
