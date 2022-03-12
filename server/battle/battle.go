@@ -199,11 +199,6 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		gamelog.L.Error().Str("Battle ID", btl.ID).Time("EndedAt", btl.EndedAt.Time).Msg("unable to update database for endat battle")
 	}
 
-	err = db.ClearQueueByBattle(btl.ID)
-	if err != nil {
-		gamelog.L.Error().Str("Battle ID", btl.ID).Msg("unable to clear queue for battle")
-	}
-
 	winningWarMachines := make([]*WarMachine, len(payload.WinningWarMachines))
 
 	for i := range payload.WinningWarMachines {
@@ -394,6 +389,11 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 			Err(err).
 			Msg("unable to get users stats")
 		return
+	}
+
+	err = db.ClearQueueByBattle(btl.ID)
+	if err != nil {
+		gamelog.L.Error().Str("Battle ID", btl.ID).Msg("unable to clear queue for battle")
 	}
 
 	go func() {

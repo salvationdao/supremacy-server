@@ -1,6 +1,7 @@
 package db
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"server/db/boiler"
@@ -262,15 +263,15 @@ func DefaultFactionPlayers() (map[string]PlayerWithFaction, error) {
 
 func LoadBattleQueue(ctx context.Context, lengthPerFaction int) ([]*boiler.BattleQueue, error) {
 	query := `SELECT
-	  mech_id, queued_at, faction_id, owner_id, battle_id
-	FROM (
-	  SELECT
-		ROW_NUMBER() OVER (PARTITION BY faction_id ORDER BY queued_at ASC) AS r,
-		t.*
-	  FROM
-		battle_queue t) x
-	WHERE
-	  x.r <= $1`
+mech_id, queued_at, faction_id, owner_id, battle_id
+FROM (
+SELECT
+ROW_NUMBER() OVER (PARTITION BY faction_id ORDER BY queued_at ASC) AS r,
+t.*
+FROM
+battle_queue t) x
+WHERE
+x.r <= $1`
 
 	result, err := gamedb.Conn.Query(ctx, query, lengthPerFaction)
 	if err != nil {
@@ -379,27 +380,25 @@ func QueueLength(factionID uuid.UUID) (int64, error) {
 func QueuePosition(mechID uuid.UUID, factionID uuid.UUID) (int64, error) {
 	var pos int64
 
-	query := `select t.rn
-		from (
-			select
-				mech_id,
-				faction_id, 
-				queued_at,
-				count(*) as cnt,
-				row_number() over ( order by max(queued_at) asc ) as rn
-			from battle_queue
-			group by mech_id
-			order by queued_at asc
-		) t
-		where mech_id = $1 AND faction_id = $2`
+	query := `WITH bqpos AS (
+    SELECT t.*,
+           ROW_NUMBER() OVER(ORDER BY t.queued_at) AS position
+    FROM battle_queue t WHERE faction_id = $1)
+	SELECT s.position
+	FROM bqpos s
+	WHERE s.mech_id = $2;`
 
-	err := gamedb.Conn.QueryRow(context.Background(), query, mechID.String(), factionID.String()).Scan(&pos)
-	if err != nil {
+	err := gamedb.Conn.QueryRow(context.Background(), query, factionID.String(), mechID.String()).Scan(&pos)
+	if err != nil && !errors.Is(sql.ErrNoRows, err) {
 		gamelog.L.Error().
 			Str("mech_id", mechID.String()).
 			Str("faction_id", factionID.String()).
 			Str("db func", "QueuePosition").Err(err).Msg("unable to get queue position of mech")
 		return -1, err
+	}
+
+	if errors.Is(sql.ErrNoRows, err) {
+		return -1, nil
 	}
 
 	return pos, nil
