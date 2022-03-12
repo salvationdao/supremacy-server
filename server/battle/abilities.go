@@ -30,8 +30,8 @@ import (
 // Game Ability setup
 //******************************
 
-const EachMechIntroSecond = 3
-const InitIntroSecond = 7
+const EachMechIntroSecond = 0
+const InitIntroSecond = 1
 
 type LocationDeciders struct {
 	list []uuid.UUID

@@ -281,24 +281,6 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		})
 	}
 
-	fakedFactions := make([]*Faction, 2)
-	i := 0
-	for _, faction := range btl.factions {
-		fakedFactions[i] = &Faction{
-			ID:    faction.ID,
-			Label: faction.Label,
-			Theme: &FactionTheme{
-				Primary:    faction.PrimaryColor,
-				Secondary:  faction.SecondaryColor,
-				Background: faction.BackgroundColor,
-			},
-		}
-		if i == 1 {
-			break
-		}
-		i++
-	}
-
 	gamelog.L.Debug().
 		Int("top_faction_contributors", len(topFactionContributors)).
 		Int("top_player_executors", len(topPlayerExecutors)).
@@ -415,7 +397,7 @@ const HubKeyBattleEndDetailUpdated hub.HubCommandKey = "BATTLE:END:DETAIL:UPDATE
 
 func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 	btl.users.Range(func(user *BattleUser) bool {
-		m, total := btl.multipliers.PlayerMultipliers(user.ID)
+		m, total := btl.multipliers.PlayerMultipliers(user.ID, 1)
 
 		info.MultiplierUpdate = &MultiplierUpdate{
 			UserMultipliers:  m,

@@ -50,13 +50,13 @@ type TriggerDetails struct {
 	FactionIDs []string
 }
 
-func (ms *MultiplierSystem) PlayerMultipliers(playerID uuid.UUID) ([]*Multiplier, string) {
+func (ms *MultiplierSystem) PlayerMultipliers(playerID uuid.UUID, battleNumberAdjust int) ([]*Multiplier, string) {
 	var total decimal.Decimal
 
 	usermultipliers, err := boiler.Multipliers(
 		qm.InnerJoin("user_multipliers um on um.multiplier_id = multipliers.id"),
 		qm.Where(`um.player_id = ?`, playerID.String()),
-		qm.And(`um.until_battle_number >= ?`, ms.battle.BattleNumber)).All(gamedb.StdConn)
+		qm.And(`um.until_battle_number >= ?`, ms.battle.BattleNumber+battleNumberAdjust)).All(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Err(err).Msgf("unable to retrieve player multipliers")
 		return []*Multiplier{}, "0"
@@ -124,6 +124,7 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 		td, ok := fired[trigger.AbilityLabel]
 		if !ok {
 			td = &TriggerDetails{FireCount: 0, PlayerIDs: []string{}, FactionIDs: []string{}}
+			fired[trigger.AbilityLabel] = td
 		}
 		td.FireCount++
 		if trigger.PlayerID.Valid {
@@ -195,7 +196,7 @@ outer:
 		SELECT battle_id, faction_id
 		FROM "battle_wins"
 		group by battle_id, faction_id
-		order by max(created_at) asc
+		order by max(created_at) desc
 		limit 3;
 	*/
 	lastWins, err := boiler.BattleWins(
@@ -207,30 +208,6 @@ outer:
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("unable to retrieve last 3 winning factions")
 	}
-
-	hatTrick := true
-	for i := 1; i < len(lastWins); i++ {
-		if lastWins[i].FactionID != lastWins[i-1].FactionID {
-			hatTrick = false
-			break
-		}
-	}
-
-	m1, _ := ms.getMultiplier("syndicate_win", "", 1)
-	m3, _ := ms.getMultiplier("syndicate_win", "", 3)
-
-	ms.battle.users.Range(func(bu *BattleUser) bool {
-		if bu.FactionID == lastWins[0].FactionID {
-			if _, ok := newMultipliers[bu.ID.String()]; !ok {
-				newMultipliers[bu.ID.String()] = map[*boiler.Multiplier]bool{}
-			}
-			newMultipliers[bu.ID.String()][m1] = true
-			if hatTrick {
-				newMultipliers[bu.ID.String()][m3] = true
-			}
-		}
-		return true
-	})
 
 	// average spend multipliers test
 
@@ -347,6 +324,33 @@ winwar:
 
 		newMultipliers[wm.OwnedByID][m3] = true
 	}
+
+	// set syndicate win
+	hatTrick := true
+	for i := 1; i < len(lastWins); i++ {
+		if lastWins[i].FactionID != lastWins[i-1].FactionID {
+			hatTrick = false
+			break
+		}
+	}
+
+	m1, _ := ms.getMultiplier("syndicate_win", "", 1)
+	m3, _ := ms.getMultiplier("syndicate_win", "", 3)
+
+	ms.battle.users.Range(func(bu *BattleUser) bool {
+		if bu.FactionID == lastWins[0].FactionID {
+			// skip the players that is not active
+			if _, ok := newMultipliers[bu.ID.String()]; !ok {
+				return true
+			}
+
+			newMultipliers[bu.ID.String()][m1] = true
+			if hatTrick {
+				newMultipliers[bu.ID.String()][m3] = true
+			}
+		}
+		return true
+	})
 
 	// insert multipliers
 	for pid, mlts := range newMultipliers {
