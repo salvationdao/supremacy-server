@@ -190,7 +190,6 @@ func main() {
 					}
 					hostname := u.Hostname()
 					rpcAddrs := []string{
-						fmt.Sprintf("%s:10000", hostname),
 						fmt.Sprintf("%s:10001", hostname),
 						fmt.Sprintf("%s:10002", hostname),
 						fmt.Sprintf("%s:10003", hostname),
@@ -225,6 +224,7 @@ func main() {
 						fmt.Sprintf("%s:10032", hostname),
 						fmt.Sprintf("%s:10033", hostname),
 						fmt.Sprintf("%s:10034", hostname),
+						fmt.Sprintf("%s:10035", hostname),
 					}
 					gamelog.L.Info().Msg("start rpc client")
 					rpcClient := &rpcclient.XrpcClient{
@@ -234,41 +234,41 @@ func main() {
 					rpcServer := &comms.XrpcServer{}
 					err = rpcServer.Listen(
 						rpcClient,
-						"0.0.0.0:10000",
-						"0.0.0.0:10001",
-						"0.0.0.0:10002",
-						"0.0.0.0:10003",
-						"0.0.0.0:10004",
-						"0.0.0.0:10005",
-						"0.0.0.0:10006",
-						"0.0.0.0:10007",
-						"0.0.0.0:10008",
-						"0.0.0.0:10009",
-						"0.0.0.0:10010",
-						"0.0.0.0:10011",
-						"0.0.0.0:10012",
-						"0.0.0.0:10013",
-						"0.0.0.0:10014",
-						"0.0.0.0:10015",
-						"0.0.0.0:10016",
-						"0.0.0.0:10017",
-						"0.0.0.0:10018",
-						"0.0.0.0:10019",
-						"0.0.0.0:10020",
-						"0.0.0.0:10021",
-						"0.0.0.0:10022",
-						"0.0.0.0:10023",
-						"0.0.0.0:10024",
-						"0.0.0.0:10025",
-						"0.0.0.0:10026",
-						"0.0.0.0:10027",
-						"0.0.0.0:10028",
-						"0.0.0.0:10029",
-						"0.0.0.0:10030",
-						"0.0.0.0:10031",
-						"0.0.0.0:10032",
-						"0.0.0.0:10033",
-						"0.0.0.0:10034",
+						":11001",
+						":11002",
+						":11003",
+						":11004",
+						":11005",
+						":11006",
+						":11007",
+						":11008",
+						":11009",
+						":11010",
+						":11011",
+						":11012",
+						":11013",
+						":11014",
+						":11015",
+						":11016",
+						":11017",
+						":11018",
+						":11019",
+						":11020",
+						":11021",
+						":11022",
+						":11023",
+						":11024",
+						":11025",
+						":11026",
+						":11027",
+						":11028",
+						":11029",
+						":11030",
+						":11031",
+						":11032",
+						":11033",
+						":11034",
+						":11035",
 					)
 					if err != nil {
 						return terror.Error(err)
@@ -401,7 +401,6 @@ func main() {
 					}
 					hostname := u.Hostname()
 					rpcAddrs := []string{
-						fmt.Sprintf("%s:10000", hostname),
 						fmt.Sprintf("%s:10001", hostname),
 						fmt.Sprintf("%s:10002", hostname),
 						fmt.Sprintf("%s:10003", hostname),
@@ -436,6 +435,7 @@ func main() {
 						fmt.Sprintf("%s:10032", hostname),
 						fmt.Sprintf("%s:10033", hostname),
 						fmt.Sprintf("%s:10034", hostname),
+						fmt.Sprintf("%s:10035", hostname),
 					}
 					passportRPCclient := &rpcclient.XrpcClient{
 						Addrs: rpcAddrs,
