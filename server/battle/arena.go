@@ -223,7 +223,7 @@ func (arena *Arena) SetMessageBus(mb *messagebus.MessageBus, nb *messagebus.NetB
 type BribeGabRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		Amount int64 `json:"amount"` // 1, 25, 100
+		Amount string `json:"amount"` // "0.1", "1", "10"
 	} `json:"payload"`
 }
 
@@ -241,12 +241,18 @@ func (arena *Arena) BattleAbilityBribe(ctx context.Context, wsc *hub.Client, pay
 		return terror.Error(err, "Invalid request received")
 	}
 
+	d, err := decimal.NewFromString(req.Payload.Amount)
+	if err != nil {
+		return terror.Error(err, "Failed to parse string to decimal.deciaml")
+	}
+	amount := d.Mul(decimal.New(1, 18))
+
 	userID := uuid.FromStringOrNil(wsc.Identifier())
 	if userID.IsNil() {
 		return terror.Error(terror.ErrForbidden)
 	}
 
-	arena.currentBattle.abilities.BribeGabs(factionID, userID, decimal.New(req.Payload.Amount, 18))
+	arena.currentBattle.abilities.BribeGabs(factionID, userID, amount)
 
 	return nil
 }
@@ -322,7 +328,7 @@ type GameAbilityContributeRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
 		AbilityIdentity string `json:"ability_identity"`
-		Amount          int64  `json:"amount"` // 1, 25, 100
+		Amount          string `json:"amount"` // "0.1", "1", ""
 	} `json:"payload"`
 }
 
@@ -339,12 +345,18 @@ func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, wsc *hub
 		return terror.Error(err, "Invalid request received")
 	}
 
+	d, err := decimal.NewFromString(req.Payload.Amount)
+	if err != nil {
+		return terror.Error(err, "Failed to parse string to decimal.deciaml")
+	}
+	amount := d.Mul(decimal.New(1, 18))
+
 	userID := uuid.FromStringOrNil(wsc.Identifier())
 	if userID.IsNil() {
 		return terror.Error(terror.ErrForbidden)
 	}
 
-	arena.currentBattle.abilities.AbilityContribute(factionID, userID, req.Payload.AbilityIdentity, decimal.New(req.Payload.Amount, 18))
+	arena.currentBattle.abilities.AbilityContribute(factionID, userID, req.Payload.AbilityIdentity, amount)
 
 	return nil
 }
