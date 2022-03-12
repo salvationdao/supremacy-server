@@ -354,8 +354,18 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 			boiler.BattleContractWhere.MechID.EQ(mws[i].MechID.String()),
 		).One(gamedb.StdConn)
 
-		contract.DidWin = null.BoolFrom(true)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				gamelog.L.Warn().
+					Str("Battle ID", btl.ID).
+					Str("Mech ID", wm.ID).
+					Err(err).
+					Msg("no contract in database")
+				continue
+			}
+		}
 
+		contract.DidWin = null.BoolFrom(true)
 		factionAccountID, ok := server.FactionUsers[factionId.String()]
 		if !ok {
 			gamelog.L.Error().
