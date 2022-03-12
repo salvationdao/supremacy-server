@@ -1043,20 +1043,22 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 			dp.DestroyedWarMachineEvent.RelatedEventID = relatedEventuuid
 		}
 
-		evt := &db.BattleEvent{
-			BattleID:  uuid.Must(uuid.FromString(btl.ID)),
-			WM1:       warMachineID,
-			WM2:       killByWarMachineID,
-			EventType: db.Btlevnt_Killed,
-			CreatedAt: time.Now(),
-			RelatedID: dp.DestroyedWarMachineEvent.RelatedEventIDString,
+		bh := &boiler.BattleHistory{
+			BattleID:        btl.ID,
+			WarMachineOneID: warMachineID.String(),
+			EventType:       db.Btlevnt_Killed.String(),
 		}
 
-		_, err = db.StoreBattleEvent(btl.ID, dp.DestroyedWarMachineEvent.RelatedEventID, warMachineID, killByWarMachineID, db.Btlevnt_Killed, time.Now())
+		if dp.DestroyedWarMachineEvent.RelatedEventIDString != "" {
+			bh.RelatedID = null.StringFrom(dp.DestroyedWarMachineEvent.RelatedEventIDString)
+		}
+
+		err = bh.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {
 			gamelog.L.Warn().
-				Interface("event_data", evt).
+				Interface("event_data", bh).
 				Str("battle_id", btl.ID).
+				Err(err).
 				Msg("unable to store mech event data")
 		}
 	}
