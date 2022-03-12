@@ -35,6 +35,7 @@ type BattleContract struct {
 	PaidOut        bool            `boiler:"paid_out" boil:"paid_out" json:"paid_out" toml:"paid_out" yaml:"paid_out"`
 	QueuedAt       time.Time       `boiler:"queued_at" boil:"queued_at" json:"queued_at" toml:"queued_at" yaml:"queued_at"`
 	Cancelled      null.Bool       `boiler:"cancelled" boil:"cancelled" json:"cancelled,omitempty" toml:"cancelled" yaml:"cancelled,omitempty"`
+	TransactionID  null.String     `boiler:"transaction_id" boil:"transaction_id" json:"transaction_id,omitempty" toml:"transaction_id" yaml:"transaction_id,omitempty"`
 
 	R *battleContractR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleContractL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -52,6 +53,7 @@ var BattleContractColumns = struct {
 	PaidOut        string
 	QueuedAt       string
 	Cancelled      string
+	TransactionID  string
 }{
 	ID:             "id",
 	MechID:         "mech_id",
@@ -64,6 +66,7 @@ var BattleContractColumns = struct {
 	PaidOut:        "paid_out",
 	QueuedAt:       "queued_at",
 	Cancelled:      "cancelled",
+	TransactionID:  "transaction_id",
 }
 
 var BattleContractTableColumns = struct {
@@ -78,6 +81,7 @@ var BattleContractTableColumns = struct {
 	PaidOut        string
 	QueuedAt       string
 	Cancelled      string
+	TransactionID  string
 }{
 	ID:             "battle_contracts.id",
 	MechID:         "battle_contracts.mech_id",
@@ -90,6 +94,7 @@ var BattleContractTableColumns = struct {
 	PaidOut:        "battle_contracts.paid_out",
 	QueuedAt:       "battle_contracts.queued_at",
 	Cancelled:      "battle_contracts.cancelled",
+	TransactionID:  "battle_contracts.transaction_id",
 }
 
 // Generated where
@@ -151,6 +156,7 @@ var BattleContractWhere = struct {
 	PaidOut        whereHelperbool
 	QueuedAt       whereHelpertime_Time
 	Cancelled      whereHelpernull_Bool
+	TransactionID  whereHelpernull_String
 }{
 	ID:             whereHelperstring{field: "\"battle_contracts\".\"id\""},
 	MechID:         whereHelperstring{field: "\"battle_contracts\".\"mech_id\""},
@@ -163,6 +169,7 @@ var BattleContractWhere = struct {
 	PaidOut:        whereHelperbool{field: "\"battle_contracts\".\"paid_out\""},
 	QueuedAt:       whereHelpertime_Time{field: "\"battle_contracts\".\"queued_at\""},
 	Cancelled:      whereHelpernull_Bool{field: "\"battle_contracts\".\"cancelled\""},
+	TransactionID:  whereHelpernull_String{field: "\"battle_contracts\".\"transaction_id\""},
 }
 
 // BattleContractRels is where relationship names are stored.
@@ -195,9 +202,9 @@ func (*battleContractR) NewStruct() *battleContractR {
 type battleContractL struct{}
 
 var (
-	battleContractAllColumns            = []string{"id", "mech_id", "player_id", "faction_id", "battle_id", "contract_reward", "fee", "did_win", "paid_out", "queued_at", "cancelled"}
+	battleContractAllColumns            = []string{"id", "mech_id", "player_id", "faction_id", "battle_id", "contract_reward", "fee", "did_win", "paid_out", "queued_at", "cancelled", "transaction_id"}
 	battleContractColumnsWithoutDefault = []string{"mech_id", "player_id", "faction_id", "contract_reward", "fee"}
-	battleContractColumnsWithDefault    = []string{"id", "battle_id", "did_win", "paid_out", "queued_at", "cancelled"}
+	battleContractColumnsWithDefault    = []string{"id", "battle_id", "did_win", "paid_out", "queued_at", "cancelled", "transaction_id"}
 	battleContractPrimaryKeyColumns     = []string{"id"}
 	battleContractGeneratedColumns      = []string{}
 )

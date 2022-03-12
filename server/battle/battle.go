@@ -314,7 +314,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		}
 		if wm == nil {
 			gamelog.L.Error().Str("Battle ID", btl.ID).Msg("unable to match war machine to battle with hash")
-			return
+			continue
 		}
 		mechId, err := uuid.FromString(wm.ID)
 		if err != nil {
@@ -323,7 +323,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 				Str("mech ID", wm.ID).
 				Err(err).
 				Msg("unable to convert mech id to uuid")
-			return
+			continue
 		}
 		ownedById, err := uuid.FromString(wm.OwnedByID)
 		if err != nil {
@@ -332,7 +332,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 				Str("mech ID", wm.ID).
 				Err(err).
 				Msg("unable to convert owned id to uuid")
-			return
+			continue
 		}
 		factionId, err := uuid.FromString(wm.FactionID)
 		if err != nil {
@@ -341,13 +341,66 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 				Str("faction ID", wm.FactionID).
 				Err(err).
 				Msg("unable to convert faction id to uuid")
-			return
+			continue
 		}
 		mws[i] = &db.MechWithOwner{
 			OwnerID:   ownedById,
 			MechID:    mechId,
 			FactionID: factionId,
 		}
+
+		contract, err := boiler.BattleContracts(boiler.BattleContractWhere.BattleID.EQ(
+			null.StringFrom(btl.BattleID)),
+			boiler.BattleContractWhere.MechID.EQ(mws[i].MechID.String()),
+		).One(gamedb.StdConn)
+
+		contract.DidWin = null.BoolFrom(true)
+
+		factionAccountID, ok := server.FactionUsers[factionId.String()]
+		if !ok {
+			gamelog.L.Error().
+				Str("Battle ID", btl.ID).
+				Str("faction ID", wm.FactionID).
+				Err(err).
+				Msg("unable to get hard coded syndicate player ID from faction ID")
+			continue
+		}
+
+		// pay sup
+		txid, err := btl.arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
+			FromUserID:           uuid.Must(uuid.FromString(factionAccountID)),
+			ToUserID:             uuid.Must(uuid.FromString(contract.PlayerID)),
+			Amount:               contract.ContractReward.StringFixed(0),
+			TransactionReference: server.TransactionReference(fmt.Sprintf("contract_rewards|%s|%d", contract.ID, time.Now().UnixNano())),
+			Group:                "battle",
+			SubGroup:             wmwin.Hash,
+			Description:          fmt.Sprintf("Mech won battle #%d", btl.BattleNumber),
+			NotSafe:              false,
+		})
+		if err != nil {
+			gamelog.L.Error().
+				Str("Battle ID", btl.ID).
+				Str("faction ID", wm.FactionID).
+				Str("Player ID", wm.OwnedByID).
+				Err(err).
+				Msg("unable to transfer funds to winning mech owner")
+			continue
+		}
+
+		contract.PaidOut = true
+		contract.TransactionID = null.StringFrom(txid)
+		_, err = contract.Update(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().
+				Str("Battle ID", btl.ID).
+				Str("faction ID", wm.FactionID).
+				Str("Player ID", wm.OwnedByID).
+				Str("TX ID", txid).
+				Err(err).
+				Msg("unable to save transaction ID on contract")
+			continue
+		}
+
 	}
 	err = db.WinBattle(btl.ID, payload.WinCondition, mws...)
 	if err != nil {
