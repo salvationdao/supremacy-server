@@ -347,6 +347,7 @@ var whitelistedAddresses = []common.Address{
 	common.HexToAddress("0xFa79b76602E644deBD585e254e7A0ea9271Da7f7"),
 	common.HexToAddress("0x8080833a93bD3F69A1972452B03dfb338Bef425e"),
 	common.HexToAddress("0x3e46B1a261616eb88C6e39B680065451B44Cd600"),
+	common.HexToAddress("0x79d4b9CFf3C046F07e9270CE9948b961B3245999"),
 	common.HexToAddress("0xdBa43A5434B9BeEF4f473E0e5aEb3B172C7461EC"),
 	// this one is Reece ⌄⌄⌄⌄
 	common.HexToAddress("0xEeDBF8aB0D5e20dF93F1539A6b1c18A804335d4B"),
