@@ -781,7 +781,7 @@ func (arena *Arena) Join(ctx context.Context, wsc *hub.Client, payload []byte, f
 	reply(position)
 
 	// Send updated battle queue status to all subscribers
-	arena.messageBus.Send(context.Background(), messagebus.BusKey(WSQueueStatus), QueueStatusResponse{
+	arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", WSQueueStatus, factionID.String())), QueueStatusResponse{
 		result,
 		queueCost,
 		contractReward,
@@ -907,7 +907,7 @@ func (arena *Arena) Leave(ctx context.Context, wsc *hub.Client, payload []byte, 
 	}
 
 	// Send updated Battle queue status to all subscribers
-	arena.messageBus.Send(context.Background(), messagebus.BusKey(WSQueueStatus), QueueStatusResponse{
+	arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", WSQueueStatus, factionID.String())), QueueStatusResponse{
 		result,
 		queueCost,
 		contractReward,
@@ -983,7 +983,7 @@ func (arena *Arena) QueueStatus(ctx context.Context, wsc *hub.Client, payload []
 		contractReward,
 	})
 
-	return req.TransactionID, messagebus.BusKey(WSQueueStatus), nil
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", WSQueueStatus, factionID.String())), nil
 }
 
 type WarMachineQueueStatusRequest struct {
