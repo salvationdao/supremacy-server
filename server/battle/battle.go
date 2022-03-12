@@ -54,7 +54,6 @@ type Battle struct {
 }
 
 const HubKeyLiveVoteCountUpdated hub.HubCommandKey = "LIVE:VOTE:COUNT:UPDATED"
-
 const HubKeyWarMachineLocationUpdated hub.HubCommandKey = "WAR:MACHINE:LOCATION:UPDATED"
 
 func (btl *Battle) start(payload *BattleStartPayload) {
@@ -124,7 +123,6 @@ type WarMachinePosition struct {
 }
 
 func (btl *Battle) spawnReinforcementNearMech(abilityEvent *server.GameAbilityEvent) {
-
 	// only calculate reinforcement location
 	if abilityEvent.GameClientAbilityID != 10 {
 		return

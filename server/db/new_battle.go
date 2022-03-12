@@ -575,10 +575,16 @@ func QueueSetBattleID(battleID string, mechIDs ...uuid.UUID) error {
 	paramrefs = paramrefs[:len(paramrefs)-1]
 
 	query := `UPDATE battle_queue SET battle_id=$1 WHERE mech_id IN (` + paramrefs + `)`
-
 	_, err = gamedb.Conn.Exec(context.Background(), query, args...)
 	if err != nil {
-		gamelog.L.Error().Interface("paramrefs", paramrefs).Interface("args", args).Str("db func", "ClearQueue").Err(err).Msg("unable to delete mechs from queue")
+		gamelog.L.Error().Interface("paramrefs", paramrefs).Interface("args", args).Str("db func", "ClearQueue").Err(err).Msg("unable to set battle id for mechs from queue")
+		return err
+	}
+
+	query = `UPDATE battle_contracts SET battle_id=$1 WHERE mech_id IN (` + paramrefs + `)`
+	_, err = gamedb.Conn.Exec(context.Background(), query, args...)
+	if err != nil {
+		gamelog.L.Error().Interface("paramrefs", paramrefs).Interface("args", args).Str("db func", "ClearQueue").Err(err).Msg("unable to set battle id for mechs from battle_contracts")
 		return err
 	}
 
@@ -592,17 +598,6 @@ func ClearQueueByBattle(battleID string) error {
 		return err
 	}
 	defer tx.Rollback()
-
-	contract_query := `
-		UPDATE battle_contracts
-		SET battle_id = bq.battle_id
-		FROM battle_queue bq
-		WHERE bq.battle_id = $1
-	`
-	_, err = gamedb.StdConn.Exec(contract_query, battleID)
-	if err != nil {
-		gamelog.L.Error().Str("db func", "ClearQueue").Err(err).Msg("unable to set battle id in contracts")
-	}
 
 	query := `DELETE FROM battle_queue WHERE battle_id = $1`
 	_, err = gamedb.StdConn.Exec(query, battleID)
