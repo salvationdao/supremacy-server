@@ -224,7 +224,7 @@ func (sow *SpoilsOfWar) Drip() error {
 
 	dripAmount := warchest.Amount.Div(decimal.NewFromInt(int64(dripAllocations)))
 
-	multipliers, err := db.PlayerMultipliers(sow.battle.BattleNumber - 1)
+	multipliers, err := db.PlayerMultipliers(sow.battle.BattleNumber)
 	if err != nil {
 		return terror.Error(err, "unable to retrieve multipliers")
 	}
