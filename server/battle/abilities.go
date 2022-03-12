@@ -264,7 +264,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 
 	live_vote_ticker := time.NewTicker(1 * time.Second)
 
-	as.contribute = make(chan *Contribution, 10)
+	as.contribute = make(chan *Contribution, 100)
 
 	// start the battle
 	for {
@@ -755,7 +755,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 	time.Sleep(time.Duration(waitDurationSecond) * time.Second)
 
 	// ability price updater
-	as.bribe = make(chan *Contribution, 10)
+	as.bribe = make(chan *Contribution, 100)
 
 	// initial a ticker for current battle
 	main_ticker := time.NewTicker(1 * time.Second)
