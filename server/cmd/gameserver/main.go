@@ -232,6 +232,7 @@ func main() {
 					}
 					gamelog.L.Info().Msg("start rpc server")
 					rpcServer := &comms.XrpcServer{}
+
 					err = rpcServer.Listen(
 						rpcClient,
 						":11001",
