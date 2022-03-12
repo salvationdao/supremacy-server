@@ -1198,6 +1198,17 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 		wmd,
 	)
 
+	// check the "?" show up in killed by
+	if wmd.KilledBy == "?" {
+		// check whether there is a battle ability in the damage records
+		for _, dr := range wmd.DamageRecords {
+			if strings.ToLower(dr.SourceName) == "nuke" || strings.ToLower(dr.SourceName) == "airstrike" {
+				wmd.KilledBy = dr.SourceName
+				break
+			}
+		}
+	}
+
 	// broadcast notification
 	btl.arena.BroadcastGameNotificationWarMachineDestroyed(&WarMachineDestroyedEventRecord{
 		DestroyedWarMachine: wmd.DestroyedWarMachine,
