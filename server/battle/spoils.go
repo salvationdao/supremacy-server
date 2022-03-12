@@ -230,8 +230,10 @@ func (sow *SpoilsOfWar) Drip() error {
 	}
 	subgroup := fmt.Sprintf("Spoils of War from Battle #%d", sow.battle.BattleNumber-1)
 	amountRemaining := warchest.Amount.Sub(warchest.AmountSent)
+
+	onShareSups := dripAmount.Div(totalShares)
 	for _, player := range onlineUsers {
-		userDrip := dripAmount.Div(player.TotalMultiplier)
+		userDrip := onShareSups.Mul(player.TotalMultiplier)
 
 		amountRemaining = amountRemaining.Sub(userDrip)
 		if amountRemaining.LessThan(userDrip) {
