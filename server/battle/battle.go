@@ -1355,4 +1355,7 @@ var ModelMap = map[string]string{
 	"Law Enforcer X-1000": "XFVS",
 	"Olympus Mons LY07":   "BXSD",
 	"Tenshi Mk1":          "WREX",
+	"BXSD":                "BXSD",
+	"XFVS":                "XFVS",
+	"WREX":                "WREX",
 }
