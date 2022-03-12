@@ -275,6 +275,7 @@ x.r <= $1`
 
 	result, err := gamedb.Conn.Query(ctx, query, lengthPerFaction)
 	if err != nil {
+		gamelog.L.Error().Int("length", lengthPerFaction).Err(err).Msg("unable to retrieve mechs for load out")
 		return nil, err
 	}
 	defer result.Close()
