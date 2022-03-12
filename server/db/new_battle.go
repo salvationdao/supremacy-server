@@ -593,7 +593,12 @@ func ClearQueueByBattle(battleID string) error {
 	}
 	defer tx.Rollback()
 
-	contract_query := `UPDATE battle_contracts SET battle_id = $1 WHERE id = (SELECT battle_contract_id FROM battle_queue WHERE battle_id = $1)`
+	contract_query := `
+		UPDATE battle_contracts
+		SET battle_id = bq.battle_id
+		FROM battle_queue bq
+		WHERE bq.battle_id = $1
+	`
 	_, err = gamedb.StdConn.Exec(contract_query, battleID)
 	if err != nil {
 		gamelog.L.Error().Str("db func", "ClearQueue").Err(err).Msg("unable to set battle id in contracts")
