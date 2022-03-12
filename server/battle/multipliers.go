@@ -4,14 +4,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"server/db/boiler"
-	"server/gamedb"
-	"server/gamelog"
-
 	"github.com/gofrs/uuid"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"server/db/boiler"
+	"server/gamedb"
+	"server/gamelog"
 )
 
 type MultiplierTypeEnum string
