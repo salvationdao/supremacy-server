@@ -136,20 +136,21 @@ func ProcessMech(tx *sql.Tx, data *AssetPayload, metadata *MetadataPayload) (boo
 	}
 	label, slug := MechLabelSlug(att.Brand, att.Model, att.SubModel)
 	newMech := &boiler.Mech{
-		ID:              uuid.Must(uuid.NewV4()).String(),
-		ImageURL:        metadata.Image,
-		AnimationURL:    metadata.AnimationURL,
-		AvatarURL:       template.AvatarURL,
-		ExternalTokenID: externalTokenID,
-		Tier:            strings.ToUpper(strings.ReplaceAll(att.Rarity, " ", "_")),
-		OwnerID:         data.UserID,
-		TemplateID:      template.ID,
-		ChassisID:       chassis.ID,
-		Hash:            data.MetadataHash,
-		Name:            att.Name,
-		Label:           label,
-		Slug:            slug,
-		AssetType:       att.AssetType,
+		ID:               uuid.Must(uuid.NewV4()).String(),
+		ImageURL:         metadata.Image,
+		AnimationURL:     metadata.AnimationURL,
+		AvatarURL:        template.AvatarURL,
+		CardAnimationURL: template.CardAnimationURL,
+		ExternalTokenID:  externalTokenID,
+		Tier:             strings.ToUpper(strings.ReplaceAll(att.Rarity, " ", "_")),
+		OwnerID:          data.UserID,
+		TemplateID:       template.ID,
+		ChassisID:        chassis.ID,
+		Hash:             data.MetadataHash,
+		Name:             att.Name,
+		Label:            label,
+		Slug:             slug,
+		AssetType:        att.AssetType,
 	}
 
 	err = newMech.Insert(tx, boil.Infer())
