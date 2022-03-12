@@ -323,22 +323,15 @@ type MechAndPosition struct {
 // It returns a list of mech IDs
 func AllMechsAfter(position int64, factionID uuid.UUID) ([]*MechAndPosition, error) {
 	query := `
-		select t.mech_id, t.rn
-		from (
-			select
-				mech_id,
-				faction_id, 
-				queued_at,
-				count(*) as cnt,
-				row_number() over ( order by max(queued_at) asc ) as rn
-			from battle_queue
-			group by mech_id
-			order by queued_at asc
-		) t
-		where faction_id = $1 AND t.rn > $2
-	`
+		WITH bqpos AS (
+			SELECT t.*,
+				   ROW_NUMBER() OVER(ORDER BY t.queued_at) AS position
+			FROM battle_queue t WHERE faction_id = $1)
+			SELECT s.mech_id, s.position
+			FROM bqpos s
+		`
 
-	rows, err := gamedb.Conn.Query(context.Background(), query, factionID.String(), position)
+	rows, err := gamedb.StdConn.Query(query, factionID.String(), position)
 	if err != nil {
 		gamelog.L.Error().
 			Str("position", strconv.Itoa(int(position))).
@@ -380,6 +373,11 @@ func QueueLength(factionID uuid.UUID) (int64, error) {
 func QueuePosition(mechID uuid.UUID, factionID uuid.UUID) (int64, error) {
 	var pos int64
 
+	exists, _ := boiler.BattleQueueExists(gamedb.StdConn, mechID.String())
+	if !exists {
+		return -1, nil
+	}
+
 	query := `WITH bqpos AS (
     SELECT t.*,
            ROW_NUMBER() OVER(ORDER BY t.queued_at) AS position
@@ -388,17 +386,19 @@ func QueuePosition(mechID uuid.UUID, factionID uuid.UUID) (int64, error) {
 	FROM bqpos s
 	WHERE s.mech_id = $2;`
 
-	err := gamedb.Conn.QueryRow(context.Background(), query, factionID.String(), mechID.String()).Scan(&pos)
-	if err != nil && !errors.Is(sql.ErrNoRows, err) {
-		gamelog.L.Error().
-			Str("mech_id", mechID.String()).
-			Str("faction_id", factionID.String()).
-			Str("db func", "QueuePosition").Err(err).Msg("unable to get queue position of mech")
-		return -1, err
-	}
+	err := gamedb.StdConn.QueryRow(query, factionID.String(), mechID.String()).Scan(&pos)
 
 	if errors.Is(sql.ErrNoRows, err) {
 		return -1, nil
+	}
+
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().
+			Str("mech_id", mechID.String()).
+			Str("faction_id", factionID.String()).
+			Bool("NoRows?", errors.Is(sql.ErrNoRows, err)).
+			Str("db func", "QueuePosition").Err(err).Msg("unable to get queue position of mech")
+		return -1, err
 	}
 
 	return pos, nil

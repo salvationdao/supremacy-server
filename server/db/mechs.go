@@ -514,23 +514,24 @@ func MechRegister(templateID uuid.UUID, ownerID uuid.UUID) (uuid.UUID, error) {
 		return uuid.Nil, fmt.Errorf("get next external token id: %w", err)
 	}
 	newMech := &boiler.Mech{
-		ID:               newMechID.String(),
-		OwnerID:          ownerID.String(),
-		TemplateID:       templateID.String(),
-		ChassisID:        chassis.ID,
-		Tier:             template.Tier,
-		IsDefault:        template.IsDefault,
+		ID:              newMechID.String(),
+		OwnerID:         ownerID.String(),
+		TemplateID:      templateID.String(),
+		ChassisID:       chassis.ID,
+		Tier:            template.Tier,
+		IsDefault:       template.IsDefault,
+		Hash:            shortID,
+		Name:            "",
+		ExternalTokenID: nextID,
+		Label:           template.Label,
+		Slug:            template.Slug,
+		AssetType:       template.AssetType,
+
+		AvatarURL:        template.AvatarURL,
 		LargeImageURL:    template.LargeImageURL,
 		ImageURL:         template.ImageURL,
 		AnimationURL:     template.AnimationURL,
 		CardAnimationURL: template.CardAnimationURL,
-		AvatarURL:        template.AvatarURL,
-		Hash:             shortID,
-		Name:             "",
-		ExternalTokenID:  nextID,
-		Label:            template.Label,
-		Slug:             template.Slug,
-		AssetType:        template.AssetType,
 	}
 	err = newMech.Insert(tx, boil.Infer())
 	if err != nil {
