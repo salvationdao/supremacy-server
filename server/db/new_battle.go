@@ -323,22 +323,15 @@ type MechAndPosition struct {
 // It returns a list of mech IDs
 func AllMechsAfter(position int64, factionID uuid.UUID) ([]*MechAndPosition, error) {
 	query := `
-		select t.mech_id, t.rn
-		from (
-			select
-				mech_id,
-				faction_id, 
-				queued_at,
-				count(*) as cnt,
-				row_number() over ( order by max(queued_at) asc ) as rn
-			from battle_queue
-			group by mech_id
-			order by queued_at asc
-		) t
-		where faction_id = $1 AND t.rn > $2
-	`
+		WITH bqpos AS (
+			SELECT t.*,
+				   ROW_NUMBER() OVER(ORDER BY t.queued_at) AS position
+			FROM battle_queue t WHERE faction_id = $1)
+			SELECT s.mech_id, s.position
+			FROM bqpos s
+		`
 
-	rows, err := gamedb.Conn.Query(context.Background(), query, factionID.String(), position)
+	rows, err := gamedb.StdConn.Query(query, factionID.String(), position)
 	if err != nil {
 		gamelog.L.Error().
 			Str("position", strconv.Itoa(int(position))).
