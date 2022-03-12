@@ -14,8 +14,6 @@ import (
 	"time"
 
 	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
-
 	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	"github.com/gofrs/uuid"
@@ -108,7 +106,10 @@ func (sow *SpoilsOfWar) Run() {
 }
 
 func (sow *SpoilsOfWar) Flush() error {
-	warchest, err := sow.ProcessSpoils(sow.battle.BattleNumber - 1)
+	bn := sow.battle.BattleNumber - 1
+
+	warchest, err := boiler.SpoilsOfWars(boiler.SpoilsOfWarWhere.BattleNumber.EQ(bn)).One(gamedb.StdConn)
+
 	if err != nil {
 		return terror.Error(err, "can't retrieve last battle's spoils")
 	}
@@ -183,64 +184,16 @@ func (sow *SpoilsOfWar) Flush() error {
 	return nil
 }
 
-//ProcessSpoils work out how much was spent last battle
-func (sow *SpoilsOfWar) ProcessSpoils(battleNumber int) (*boiler.SpoilsOfWar, error) {
-	battle, err := boiler.Battles(qm.Where(`battle_number = ?`, battleNumber)).One(gamedb.StdConn)
-	if err != nil {
-		return nil, terror.Error(err, "unable to retrieve battle from battle number")
-	}
-	contributions, sumSpoils, err := db.Spoils(battle.ID)
-	if err != nil {
-		return nil, terror.Error(err, "calculate total spoils for last battle failed")
-	}
-
-	spoils, err := boiler.SpoilsOfWars(qm.Where(`battle_number = ?`, battleNumber)).One(gamedb.StdConn)
-	if err != nil && errors.Is(err, sql.ErrNoRows) {
-		spoils = &boiler.SpoilsOfWar{
-			BattleID:     battle.ID,
-			BattleNumber: battleNumber,
-			Amount:       sumSpoils,
-			AmountSent:   decimal.New(0, 18),
-		}
-		err = spoils.Insert(gamedb.StdConn, boil.Infer())
-		if err != nil {
-			return nil, terror.Error(err, "unable to insert spoils")
-		}
-	} else if err != nil {
-		return nil, terror.Error(err, "unable to retrieve spoils from battle number")
-	} else {
-		spoils.Amount = sumSpoils
-		_, err = spoils.Update(gamedb.StdConn, boil.Infer())
-		if err != nil {
-			return nil, terror.Error(err, "unable to update spoils")
-		}
-	}
-
-	for _, contrib := range contributions {
-		err = db.MarkContributionProcessed(uuid.Must(uuid.FromString(contrib.ID)))
-		if err != nil {
-			return nil, terror.Error(err, "mark single contribution processed")
-		}
-	}
-	return spoils, nil
-}
-
 func (sow *SpoilsOfWar) Drip() error {
 	var err error
 	bn := sow.battle.BattleNumber - 1
 
 	warchest, err := boiler.SpoilsOfWars(boiler.SpoilsOfWarWhere.BattleNumber.EQ(bn)).One(gamedb.StdConn)
 
-	if err != nil && errors.Is(err, sql.ErrNoRows) {
-		warchest, err = sow.ProcessSpoils(bn)
-		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return nil
-			}
-			sow.l.Error().Err(err).Msg("unable to retrieve spoils of war")
-			return err
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil
 		}
-	} else if err != nil || warchest == nil {
 		sow.l.Error().Err(err).Msg("unable to retrieve spoils of war")
 		return err
 	}

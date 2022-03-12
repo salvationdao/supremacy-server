@@ -509,6 +509,15 @@ func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 		return true
 	})
 
+	multipliers, err := db.PlayerMultipliers(btl.BattleNumber + 1)
+	if err == nil {
+		for _, m := range multipliers {
+			m.TotalMultiplier = m.TotalMultiplier.Shift(-1)
+		}
+
+		go btl.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyMultiplierMapSubscribe), multipliers)
+	}
+
 	// broadcast spoil of war on the end of the battle
 	sows, err := db.LastTwoSpoilOfWarAmount()
 	if err != nil || len(sows) == 0 {
@@ -1438,7 +1447,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.MechContainer) []*WarMachi
 
 		warmachines[i] = &WarMachine{
 			ID:            mech.ID,
-			Name:          mechName,
+			Name:          TruncateString(mechName, 20),
 			Hash:          mech.Hash,
 			ParticipantID: 0,
 			FactionID:     mech.Faction.ID,
@@ -1477,6 +1486,32 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.MechContainer) []*WarMachi
 		gamelog.L.Debug().Str("mech_id", mech.ID).Str("model", model).Str("skin", mech.Chassis.Skin).Msg("converted mech to warmachine")
 	}
 	return warmachines
+}
+
+func TruncateString(str string, length int) string {
+	if length <= 0 {
+		return ""
+	}
+
+	// This code cannot support Japanese
+	// orgLen := len(str)
+	// if orgLen <= length {
+	//     return str
+	// }
+	// return str[:length]
+
+	// Support Japanese
+	// Ref: Range loops https://blog.golang.org/strings
+	truncated := ""
+	count := 0
+	for _, char := range str {
+		truncated += string(char)
+		count++
+		if count >= length {
+			break
+		}
+	}
+	return truncated
 }
 
 var ModelMap = map[string]string{
