@@ -236,7 +236,7 @@ func (pc *PassportWebhookController) AuthRingCheck(w http.ResponseWriter, r *htt
 	}
 
 	// skip the auth, if not whitelisted
-	if os.Getenv("PASSPORT_ENVIRONMENT") == "development" || os.Getenv("PASSPORT_ENVIRONMENT") == "staging" {
+	if os.Getenv("PASSPORT_ENVIRONMENT") == "production" || os.Getenv("PASSPORT_ENVIRONMENT") == "staging" {
 		if !IsWhitelistedAddress(req.User.PublicAddress.String) {
 			// remove key
 			pc.API.RingCheckAuthMap.Remove(req.GameserverSessionID)

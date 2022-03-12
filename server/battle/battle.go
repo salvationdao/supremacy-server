@@ -1422,9 +1422,23 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.MechContainer) []*WarMachi
 			model = "WREX"
 		}
 
+		mechName := mech.Name
+
+		if len(mechName) < 3 {
+			owner, err := mech.Owner().One(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Warn().Str("mech_id", mech.ID).Msg("unable to retrieve mech's owner")
+			} else {
+				mechName = owner.Username.String
+				if mechName == "" {
+					mechName = fmt.Sprintf("%s%s%s", "🦾", mech.Hash, "🦾")
+				}
+			}
+		}
+
 		warmachines[i] = &WarMachine{
 			ID:            mech.ID,
-			Name:          mech.Name,
+			Name:          mechName,
 			Hash:          mech.Hash,
 			ParticipantID: 0,
 			FactionID:     mech.Faction.ID,
