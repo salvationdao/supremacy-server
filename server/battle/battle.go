@@ -102,6 +102,15 @@ func (btl *Battle) start(payload *BattleStartPayload) {
 	}
 	spoilOfWarPayload = append(spoilOfWarPayload, []byte(strings.Join(spoilOfWarStr, "|"))...)
 	btl.arena.netMessageBus.Send(context.Background(), messagebus.NetBusKey(HubKeySpoilOfWarUpdated), spoilOfWarPayload)
+
+	// TESTING: check syndicate balance
+
+	// b1 := btl.arena.ppClient.UserBalanceGet(server.SupremacyRedMountainUserID)
+	// fmt.Println("Red mountain:", b1.String(), "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+	// b2 := btl.arena.ppClient.UserBalanceGet(server.SupremacyZaibatsuUserID)
+	// fmt.Println("zaibatsu:", b2.String(), "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+	// b3 := btl.arena.ppClient.UserBalanceGet(server.SupremacyBostonCyberneticsUserID)
+	// fmt.Println("boston:", b3.String(), "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 }
 
 // calcTriggeredLocation convert picked cell to the location in game

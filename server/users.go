@@ -104,3 +104,9 @@ type SupsMultiplier struct {
 }
 
 const SupremacyGameUserID = "4fae8fdf-584f-46bb-9cb9-bb32ae20177e"
+
+var (
+	SupremacyZaibatsuUserID          = uuid.Must(uuid.FromString("1a657a32-778e-4612-8cc1-14e360665f2b"))
+	SupremacyRedMountainUserID       = uuid.Must(uuid.FromString("305da475-53dc-4973-8d78-a30d390d3de5"))
+	SupremacyBostonCyberneticsUserID = uuid.Must(uuid.FromString("15f29ee9-e834-4f76-aff8-31e39faabe2d"))
+)
