@@ -321,20 +321,20 @@ type MechAndPosition struct {
 
 // AllMechsAfter gets all mechs that come after the specified position in the queue
 // It returns a list of mech IDs
-func AllMechsAfter(position int64, factionID uuid.UUID) ([]*MechAndPosition, error) {
+func AllMechsAfter(queuedAt time.Time, factionID uuid.UUID) ([]*MechAndPosition, error) {
 	query := `
 		WITH bqpos AS (
 			SELECT t.*,
 				   ROW_NUMBER() OVER(ORDER BY t.queued_at) AS position
-			FROM battle_queue t WHERE faction_id = $1)
+			FROM battle_queue t WHERE faction_id = $1 AND queued_at > $2)
 			SELECT s.mech_id, s.position
 			FROM bqpos s
 		`
 
-	rows, err := gamedb.StdConn.Query(query, factionID.String(), position)
+	rows, err := gamedb.StdConn.Query(query, factionID.String(), queuedAt)
 	if err != nil {
 		gamelog.L.Error().
-			Str("position", strconv.Itoa(int(position))).
+			Time("queued_at", queuedAt).
 			Str("faction_id", factionID.String()).
 			Str("db func", "AllMechsAfter").Err(err).Msg("unable to get mechs after")
 		return nil, err
@@ -347,7 +347,7 @@ func AllMechsAfter(position int64, factionID uuid.UUID) ([]*MechAndPosition, err
 		err := rows.Scan(&item.MechID, &item.QueuePosition)
 		if err != nil {
 			gamelog.L.Error().
-				Str("position", strconv.Itoa(int(position))).
+				Time("queued_at", queuedAt).
 				Str("faction_id", factionID.String()).
 				Str("db func", "AllMechsAfter").Err(err).Msg("unable to get mechs after")
 			return nil, err
