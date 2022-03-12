@@ -388,7 +388,7 @@ func QueuePosition(mechID uuid.UUID, factionID uuid.UUID) (int64, error) {
 	FROM bqpos s
 	WHERE s.mech_id = $2;`
 
-	err := gamedb.Conn.QueryRow(context.Background(), query, factionID.String(), mechID.String()).Scan(&pos)
+	err := gamedb.StdConn.QueryRow(query, factionID.String(), mechID.String()).Scan(&pos)
 
 	if errors.Is(sql.ErrNoRows, err) {
 		return -1, nil
