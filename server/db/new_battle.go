@@ -380,7 +380,7 @@ func QueueLength(factionID uuid.UUID) (int64, error) {
 func QueuePosition(mechID uuid.UUID, factionID uuid.UUID) (int64, error) {
 	var pos int64
 
-	exists, _ := boiler.BattleQueueExists(gamedb.StdConn, mechID)
+	exists, _ := boiler.BattleQueueExists(gamedb.StdConn, mechID.String())
 	if !exists {
 		return -1, nil
 	}
