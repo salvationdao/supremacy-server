@@ -383,7 +383,7 @@ func QueuePosition(mechID uuid.UUID, factionID uuid.UUID) (int64, error) {
 	query := `WITH bqpos AS (
     SELECT t.*,
            ROW_NUMBER() OVER(ORDER BY t.queued_at) AS position
-    FROM battle_queue t WHERE faction_id = $1)20220312000917
+    FROM battle_queue t WHERE faction_id = $1)
 	SELECT s.position
 	FROM bqpos s
 	WHERE s.mech_id = $2;`
