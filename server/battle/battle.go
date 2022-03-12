@@ -463,8 +463,8 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 			Msg("unable to store mech wins")
 	}
 
-	btl.multipliers.end(endInfo)
 	btl.spoils.End()
+	btl.multipliers.end(endInfo)
 	btl.endInfoBroadcast(*endInfo)
 
 	// update user stat
