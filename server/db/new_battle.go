@@ -398,6 +398,7 @@ func QueuePosition(mechID uuid.UUID, factionID uuid.UUID) (int64, error) {
 		gamelog.L.Error().
 			Str("mech_id", mechID.String()).
 			Str("faction_id", factionID.String()).
+			Bool("NoRows?", errors.Is(sql.ErrNoRows, err)).
 			Str("db func", "QueuePosition").Err(err).Msg("unable to get queue position of mech")
 		return -1, err
 	}
