@@ -83,7 +83,7 @@ func (sow *SpoilsOfWar) Flush() error {
 		return terror.Error(err, "can't retrieve last battle's spoils")
 	}
 
-	multipliers, err := db.PlayerMultipliers(sow.battle.BattleNumber - 1)
+	multipliers, err := db.PlayerMultipliers(sow.battle.BattleNumber)
 	if err != nil {
 		return terror.Error(err, "unable to retrieve multipliers")
 	}
