@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -235,16 +236,18 @@ func (pc *PassportWebhookController) AuthRingCheck(w http.ResponseWriter, r *htt
 	}
 
 	// skip the auth, if not whitelisted
-	if !IsWhitelistedAddress(req.User.PublicAddress.String) {
-		// remove key
-		pc.API.RingCheckAuthMap.Remove(req.GameserverSessionID)
-		return helpers.EncodeJSON(w, struct {
-			IsSuccess     bool `json:"is_success"`
-			IsWhitelisted bool `json:"is_whitelisted"`
-		}{
-			IsSuccess:     true,
-			IsWhitelisted: false,
-		})
+	if os.Getenv("PASSPORT_ENVIRONMENT") == "development" || os.Getenv("PASSPORT_ENVIRONMENT") == "staging" {
+		if !IsWhitelistedAddress(req.User.PublicAddress.String) {
+			// remove key
+			pc.API.RingCheckAuthMap.Remove(req.GameserverSessionID)
+			return helpers.EncodeJSON(w, struct {
+				IsSuccess     bool `json:"is_success"`
+				IsWhitelisted bool `json:"is_whitelisted"`
+			}{
+				IsSuccess:     true,
+				IsWhitelisted: false,
+			})
+		}
 	}
 
 	// check whitelist
