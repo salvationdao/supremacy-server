@@ -347,6 +347,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 												ImageAvatar:   wm.ImageAvatar,
 												Name:          wm.Name,
 												Faction: &FactionBrief{
+													ID:         faction.ID,
 													Label:      faction.Label,
 													LogoBlobID: FactionLogos[faction.ID],
 													Theme: &FactionTheme{
@@ -456,6 +457,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 										ID:       cont.userID,
 										Username: player.Username.String,
 										Faction: &FactionBrief{
+											ID:         faction.ID,
 											Label:      faction.Label,
 											LogoBlobID: FactionLogos[faction.ID],
 											Theme: &FactionTheme{
@@ -491,6 +493,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 												ImageAvatar:   wm.ImageAvatar,
 												Name:          wm.Name,
 												Faction: &FactionBrief{
+													ID:         faction.ID,
 													Label:      faction.Label,
 													LogoBlobID: FactionLogos[faction.ID],
 													Theme: &FactionTheme{
@@ -819,7 +822,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 			// pass the location select to next player
 			case BribeStageLocationSelect:
 				// get the next location decider
-				userID, ok := as.nextLocationDeciderGet()
+				currentUserID, nextUserID, ok := as.nextLocationDeciderGet()
 				if !ok {
 
 					// broadcast no ability
@@ -845,40 +848,27 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 					continue
 				}
 
-				// get player
-				player, err := boiler.FindPlayer(gamedb.StdConn, as.locationDeciders.list[0].String())
-				if err != nil {
-					gamelog.L.Error().Err(err).Msg("failed to get player")
-				} else {
-					// get user faction
-					faction, err := db.FactionGet(player.FactionID.String)
-					if err != nil {
-						gamelog.L.Error().Err(err).Msg("failed to get player faction")
-					} else {
-						// broadcast no ability
-						as.battle.arena.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
-							Type: LocationSelectTypeFailedTimeout,
-							Ability: &AbilityBrief{
-								Label:    as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID].Label,
-								ImageUrl: as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID].ImageUrl,
-								Colour:   as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID].Colour,
-							},
-							NextUser: &UserBrief{
-								ID:       as.locationDeciders.list[0],
-								Username: player.Username.String,
-								Faction: &FactionBrief{
-									Label:      faction.Label,
-									LogoBlobID: FactionLogos[faction.ID],
-									Theme: &FactionTheme{
-										Primary:    faction.PrimaryColor,
-										Secondary:  faction.SecondaryColor,
-										Background: faction.BackgroundColor,
-									},
-								},
-							},
-						})
-					}
+				notification := &GameNotificationLocationSelect{
+					Type: LocationSelectTypeFailedTimeout,
+					Ability: &AbilityBrief{
+						Label:    as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID].Label,
+						ImageUrl: as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID].ImageUrl,
+						Colour:   as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID].Colour,
+					},
 				}
+
+				// get current player
+				currentPlayer, err := BuildUserDetailWithFaction(currentUserID)
+				if err == nil {
+					notification.CurrentUser = currentPlayer
+				}
+
+				// get next player
+				nextPlayer, err := BuildUserDetailWithFaction(nextUserID)
+				if err == nil {
+					notification.NextUser = nextPlayer
+				}
+				as.battle.arena.BroadcastGameNotificationLocationSelect(notification)
 
 				// extend location select phase duration
 				as.battleAbilityPool.Stage.Phase = BribeStageLocationSelect
@@ -887,7 +877,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 				as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
 
 				// broadcast the announcement to the next location decider
-				as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeGabsBribingWinnerSubscribe, userID)), &LocationSelectAnnouncement{
+				as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeGabsBribingWinnerSubscribe, nextUserID)), &LocationSelectAnnouncement{
 					GameAbility: as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID],
 					EndTime:     as.battleAbilityPool.Stage.EndTime,
 				})
@@ -938,38 +928,20 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 						GameAbility: as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID],
 						EndTime:     as.battleAbilityPool.Stage.EndTime,
 					})
-					// get player
-					player, err := boiler.FindPlayer(gamedb.StdConn, cont.userID.String())
-					if err != nil {
-						gamelog.L.Error().Err(err).Msg("failed to get player")
-					} else {
-						// get user faction
-						faction, err := db.FactionGet(player.FactionID.String)
-						if err != nil {
-							gamelog.L.Error().Err(err).Msg("failed to get player faction")
-						} else {
-							as.battle.arena.BroadcastGameNotificationAbility(GameNotificationTypeBattleAbility, &GameNotificationAbility{
-								Ability: &AbilityBrief{
-									Label:    factionAbility.Label,
-									ImageUrl: factionAbility.ImageUrl,
-									Colour:   factionAbility.Colour,
-								},
-								User: &UserBrief{
-									ID:       cont.userID,
-									Username: player.Username.String,
-									Faction: &FactionBrief{
-										Label:      faction.Label,
-										LogoBlobID: FactionLogos[faction.ID],
-										Theme: &FactionTheme{
-											Primary:    faction.PrimaryColor,
-											Secondary:  faction.SecondaryColor,
-											Background: faction.BackgroundColor,
-										},
-									},
-								},
-							})
-						}
+
+					notification := &GameNotificationAbility{
+						Ability: &AbilityBrief{
+							Label:    factionAbility.Label,
+							ImageUrl: factionAbility.ImageUrl,
+							Colour:   factionAbility.Colour,
+						},
 					}
+					// get player
+					currentUser, err := BuildUserDetailWithFaction(cont.userID)
+					if err == nil {
+						notification.User = currentUser
+					}
+					as.battle.arena.BroadcastGameNotificationAbility(GameNotificationTypeBattleAbility, notification)
 
 					// broadcast the latest result progress bar, when ability is triggered
 					go as.BroadcastAbilityProgressBar()
@@ -1108,17 +1080,20 @@ func (as *AbilitiesSystem) locationDecidersSet(factionID uuid.UUID, triggerByUse
 }
 
 // nextLocationDeciderGet return the uuid of the next player to select the location for ability
-func (as *AbilitiesSystem) nextLocationDeciderGet() (uuid.UUID, bool) {
+func (as *AbilitiesSystem) nextLocationDeciderGet() (uuid.UUID, uuid.UUID, bool) {
 	// clean up the location select list if there is no user left to select location
 	if len(as.locationDeciders.list) <= 1 {
 		as.locationDeciders.list = []uuid.UUID{}
-		return uuid.UUID(uuid.Nil), false
+		return uuid.UUID(uuid.Nil), uuid.UUID(uuid.Nil), false
 	}
+
+	currentUserID := as.locationDeciders.list[0]
+	nextUserID := as.locationDeciders.list[1]
 
 	// remove the first user from the list
 	as.locationDeciders.list = as.locationDeciders.list[1:]
 
-	return as.locationDeciders.list[0], true
+	return currentUserID, nextUserID, true
 }
 
 // ***********************************
@@ -1211,40 +1186,19 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 			return
 		}
 
-		// get player
-		player, err := boiler.FindPlayer(gamedb.StdConn, as.locationDeciders.list[0].String())
-		if err != nil {
-			gamelog.L.Error().Err(err).Msg("failed to get player")
-		} else {
-			// get user faction
-			faction, err := db.FactionGet(player.FactionID.String)
-			if err != nil {
-				gamelog.L.Error().Err(err).Msg("failed to get player faction")
-			} else {
-				// broadcast no ability
-				as.battle.arena.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
-					Type: LocationSelectTypeFailedTimeout,
-					Ability: &AbilityBrief{
-						Label:    ability.Label,
-						ImageUrl: ability.ImageUrl,
-						Colour:   ability.Colour,
-					},
-					NextUser: &UserBrief{
-						ID:       as.locationDeciders.list[0],
-						Username: player.Username.String,
-						Faction: &FactionBrief{
-							Label:      faction.Label,
-							LogoBlobID: FactionLogos[faction.ID],
-							Theme: &FactionTheme{
-								Primary:    faction.PrimaryColor,
-								Secondary:  faction.SecondaryColor,
-								Background: faction.BackgroundColor,
-							},
-						},
-					},
-				})
-			}
+		notification := &GameNotificationAbility{
+			Ability: &AbilityBrief{
+				Label:    ability.Label,
+				ImageUrl: ability.ImageUrl,
+				Colour:   ability.Colour,
+			},
 		}
+		// get player
+		currentUser, err := BuildUserDetailWithFaction(as.locationDeciders.list[0])
+		if err == nil {
+			notification.User = currentUser
+		}
+		as.battle.arena.BroadcastGameNotificationAbility(GameNotificationTypeBattleAbility, notification)
 
 		// if there is user, assign location decider and exit the loop
 		// change bribing phase to location select
@@ -1449,6 +1403,7 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 			ID:       userID,
 			Username: player.Username.String,
 			Faction: &FactionBrief{
+				ID:         faction.ID,
 				Label:      faction.Label,
 				LogoBlobID: FactionLogos[as.battleAbilityPool.TriggeredFactionID.String()],
 				Theme: &FactionTheme{
@@ -1472,4 +1427,40 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 	as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
 
 	return nil
+}
+
+func BuildUserDetailWithFaction(userID uuid.UUID) (*UserBrief, error) {
+	userBrief := &UserBrief{}
+
+	user, err := boiler.FindPlayer(gamedb.StdConn, userID.String())
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("failed to get next player")
+		return nil, terror.Error(err)
+	}
+
+	userBrief.ID = userID
+	userBrief.Username = user.Username.String
+
+	if !user.FactionID.Valid {
+		return userBrief, nil
+	}
+
+	faction, err := db.FactionGet(user.FactionID.String)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("failed to get next player faction")
+		return userBrief, nil
+	}
+
+	userBrief.Faction = &FactionBrief{
+		ID:         faction.ID,
+		Label:      faction.Label,
+		LogoBlobID: FactionLogos[faction.ID],
+		Theme: &FactionTheme{
+			Primary:    faction.PrimaryColor,
+			Secondary:  faction.SecondaryColor,
+			Background: faction.BackgroundColor,
+		},
+	}
+
+	return userBrief, nil
 }
