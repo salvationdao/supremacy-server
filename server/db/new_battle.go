@@ -466,18 +466,6 @@ func JoinQueue(mech *BattleMechData, contractReward decimal.Decimal, queueFee de
 		gamelog.L.Debug().Str("db func", "JoinQueue").Str("mech_id", mech.MechID.String()).Err(err).Msg("mech already in queue")
 		return QueuePosition(mech.MechID, mech.FactionID)
 	}
-	bq := &boiler.BattleQueue{
-		MechID:    mech.MechID.String(),
-		QueuedAt:  time.Now(),
-		FactionID: mech.FactionID.String(),
-		OwnerID:   mech.OwnerID.String(),
-	}
-	err = bq.Insert(gamedb.StdConn, boil.Infer())
-	if err != nil {
-		gamelog.L.Error().
-			Interface("mech", mech).
-			Str("db func", "JoinQueue").Err(err).Msg("unable to insert mech into queue")
-	}
 
 	bc := &boiler.BattleContract{
 		MechID:         mech.MechID.String(),
@@ -486,13 +474,27 @@ func JoinQueue(mech *BattleMechData, contractReward decimal.Decimal, queueFee de
 		ContractReward: contractReward,
 		Fee:            queueFee,
 	}
-	err = bc.Insert(gamedb.StdConn, boil.Infer())
+	err = bc.Insert(tx, boil.Infer())
 	if err != nil {
 		gamelog.L.Error().
 			Interface("mech", mech).
 			Str("contractReward", contractReward.String()).
 			Str("queueFee", queueFee.String()).
 			Str("db func", "JoinQueue").Err(err).Msg("unable to create battle contract")
+	}
+
+	bq := &boiler.BattleQueue{
+		MechID:           mech.MechID.String(),
+		QueuedAt:         time.Now(),
+		FactionID:        mech.FactionID.String(),
+		OwnerID:          mech.OwnerID.String(),
+		BattleContractID: null.StringFrom(bc.ID),
+	}
+	err = bq.Insert(tx, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().
+			Interface("mech", mech).
+			Str("db func", "JoinQueue").Err(err).Msg("unable to insert mech into queue")
 	}
 
 	err = tx.Commit()
@@ -521,6 +523,12 @@ func LeaveQueue(mech *BattleMechData) (int64, error) {
 		return -1, err
 	}
 
+	canxq := `UPDATE battle_contracts SET cancelled = true WHERE id = (SELECT battle_contract_id FROM battle_queue WHERE mech_id = $1)`
+	_, err = gamedb.StdConn.Exec(canxq, mech.MechID.String())
+	if err != nil {
+		gamelog.L.Warn().Err(err).Msg("unable to cancel battle contract. mech has left queue though.")
+	}
+
 	bw := &boiler.BattleQueue{
 		MechID: mech.MechID.String(),
 	}
@@ -538,6 +546,8 @@ func LeaveQueue(mech *BattleMechData) (int64, error) {
 			Str("db func", "LeaveQueue").Err(err).Msg("unable to commit mech deletion from queue")
 		return -1, err
 	}
+
+	//err = boiler.FindBattleContract()
 
 	return position, nil
 }
@@ -582,8 +592,14 @@ func ClearQueueByBattle(battleID string) error {
 	}
 	defer tx.Rollback()
 
+	contract_query := `UPDATE battle_contracts SET battle_id = $1 WHERE id = (SELECT battle_contract_id FROM battle_queue WHERE battle_id = $1)`
+	_, err = gamedb.StdConn.Exec(contract_query, battleID)
+	if err != nil {
+		gamelog.L.Error().Str("db func", "ClearQueue").Err(err).Msg("unable to set battle id in contracts")
+	}
+
 	query := `DELETE FROM battle_queue WHERE battle_id = $1`
-	_, err = gamedb.Conn.Exec(context.Background(), query, battleID)
+	_, err = gamedb.StdConn.Exec(query, battleID)
 	if err != nil {
 		gamelog.L.Error().Str("db func", "ClearQueue").Err(err).Msg("unable to delete mechs from queue")
 		return err
