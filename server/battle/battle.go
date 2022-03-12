@@ -366,7 +366,17 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 			continue
 		}
 
-		// pay sup
+		gamelog.L.Info().
+			Str("Battle ID", btl.ID).
+			Str("Faction ID", wm.FactionID).
+			Str("Faction Account ID", factionAccountID).
+			Str("Player ID", wm.OwnedByID).
+			Str("Contract ID", contract.ID).
+			Str("Amount", contract.ContractReward.StringFixed(0)).
+			Err(err).
+			Msg("paying out mech winnings from contract reward")
+
+		// pay sups
 		txid, err := btl.arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
 			FromUserID:           uuid.Must(uuid.FromString(factionAccountID)),
 			ToUserID:             uuid.Must(uuid.FromString(contract.PlayerID)),
