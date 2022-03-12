@@ -565,7 +565,7 @@ func (btl *Battle) Tick(payload []byte) {
 					btl.WarMachines[warMachineIndex].Position = &server.Vector3{}
 				}
 				btl.WarMachines[warMachineIndex].Position.X = x
-				btl.WarMachines[warMachineIndex].Position.X = y
+				btl.WarMachines[warMachineIndex].Position.Y = y
 				btl.WarMachines[warMachineIndex].Rotation = rotation
 			}
 		}
