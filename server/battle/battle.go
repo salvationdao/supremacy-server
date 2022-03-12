@@ -1431,7 +1431,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.MechContainer) []*WarMachi
 			model = "WREX"
 		}
 
-		mechName := mech.Name[:10]
+		mechName := mech.Name
 
 		if len(mechName) < 3 {
 			owner, err := mech.Owner().One(gamedb.StdConn)
