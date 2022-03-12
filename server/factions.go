@@ -14,6 +14,16 @@ var RedMountainFactionID = FactionID(uuid.Must(uuid.FromString("98bf7bb3-1a7c-4f
 var BostonCyberneticsFactionID = FactionID(uuid.Must(uuid.FromString("7c6dde21-b067-46cf-9e56-155c88a520e2")))
 var ZaibatsuFactionID = FactionID(uuid.Must(uuid.FromString("880db344-e405-428d-84e5-6ebebab1fe6d")))
 
+var ZaibatsuPlayerID = "1a657a32-778e-4612-8cc1-14e360665f2b"
+var BostonCyberneticsPlayerID = "15f29ee9-e834-4f76-aff8-31e39faabe2d"
+var RedMountainPlayerID = "305da475-53dc-4973-8d78-a30d390d3de5"
+
+var FactionUsers = map[string]string{
+	"98bf7bb3-1a7c-4f21-8843-458d62884060": "1a657a32-778e-4612-8cc1-14e360665f2b",
+	"7c6dde21-b067-46cf-9e56-155c88a520e2": "15f29ee9-e834-4f76-aff8-31e39faabe2d",
+	"880db344-e405-428d-84e5-6ebebab1fe6d": "305da475-53dc-4973-8d78-a30d390d3de5",
+}
+
 type Faction struct {
 	ID               FactionID     `json:"id" db:"id"`
 	Label            string        `json:"label" db:"label"`
