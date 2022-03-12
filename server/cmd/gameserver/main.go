@@ -190,12 +190,41 @@ func main() {
 					}
 					hostname := u.Hostname()
 					rpcAddrs := []string{
-						fmt.Sprintf("%s:10006", hostname),
-						fmt.Sprintf("%s:10005", hostname),
-						fmt.Sprintf("%s:10004", hostname),
-						fmt.Sprintf("%s:10003", hostname),
-						fmt.Sprintf("%s:10002", hostname),
+						fmt.Sprintf("%s:10000", hostname),
 						fmt.Sprintf("%s:10001", hostname),
+						fmt.Sprintf("%s:10002", hostname),
+						fmt.Sprintf("%s:10003", hostname),
+						fmt.Sprintf("%s:10004", hostname),
+						fmt.Sprintf("%s:10005", hostname),
+						fmt.Sprintf("%s:10006", hostname),
+						fmt.Sprintf("%s:10007", hostname),
+						fmt.Sprintf("%s:10008", hostname),
+						fmt.Sprintf("%s:10009", hostname),
+						fmt.Sprintf("%s:10010", hostname),
+						fmt.Sprintf("%s:10011", hostname),
+						fmt.Sprintf("%s:10012", hostname),
+						fmt.Sprintf("%s:10013", hostname),
+						fmt.Sprintf("%s:10014", hostname),
+						fmt.Sprintf("%s:10015", hostname),
+						fmt.Sprintf("%s:10016", hostname),
+						fmt.Sprintf("%s:10017", hostname),
+						fmt.Sprintf("%s:10018", hostname),
+						fmt.Sprintf("%s:10019", hostname),
+						fmt.Sprintf("%s:10020", hostname),
+						fmt.Sprintf("%s:10021", hostname),
+						fmt.Sprintf("%s:10022", hostname),
+						fmt.Sprintf("%s:10023", hostname),
+						fmt.Sprintf("%s:10024", hostname),
+						fmt.Sprintf("%s:10025", hostname),
+						fmt.Sprintf("%s:10026", hostname),
+						fmt.Sprintf("%s:10027", hostname),
+						fmt.Sprintf("%s:10028", hostname),
+						fmt.Sprintf("%s:10029", hostname),
+						fmt.Sprintf("%s:10030", hostname),
+						fmt.Sprintf("%s:10031", hostname),
+						fmt.Sprintf("%s:10032", hostname),
+						fmt.Sprintf("%s:10033", hostname),
+						fmt.Sprintf("%s:10034", hostname),
 					}
 					gamelog.L.Info().Msg("start rpc client")
 					rpcClient := &rpcclient.XrpcClient{
@@ -205,12 +234,41 @@ func main() {
 					rpcServer := &comms.XrpcServer{}
 					err = rpcServer.Listen(
 						rpcClient,
-						"0.0.0.0:10011",
-						"0.0.0.0:10012",
-						"0.0.0.0:10013",
-						"0.0.0.0:10014",
-						"0.0.0.0:10015",
-						"0.0.0.0:10016",
+						fmt.Sprintf("%s:11000", hostname),
+						fmt.Sprintf("%s:11001", hostname),
+						fmt.Sprintf("%s:11002", hostname),
+						fmt.Sprintf("%s:11003", hostname),
+						fmt.Sprintf("%s:11004", hostname),
+						fmt.Sprintf("%s:11005", hostname),
+						fmt.Sprintf("%s:11006", hostname),
+						fmt.Sprintf("%s:11007", hostname),
+						fmt.Sprintf("%s:11008", hostname),
+						fmt.Sprintf("%s:11009", hostname),
+						fmt.Sprintf("%s:11010", hostname),
+						fmt.Sprintf("%s:11011", hostname),
+						fmt.Sprintf("%s:11012", hostname),
+						fmt.Sprintf("%s:11013", hostname),
+						fmt.Sprintf("%s:11014", hostname),
+						fmt.Sprintf("%s:11015", hostname),
+						fmt.Sprintf("%s:11016", hostname),
+						fmt.Sprintf("%s:11017", hostname),
+						fmt.Sprintf("%s:11018", hostname),
+						fmt.Sprintf("%s:11019", hostname),
+						fmt.Sprintf("%s:11020", hostname),
+						fmt.Sprintf("%s:11021", hostname),
+						fmt.Sprintf("%s:11022", hostname),
+						fmt.Sprintf("%s:11023", hostname),
+						fmt.Sprintf("%s:11024", hostname),
+						fmt.Sprintf("%s:11025", hostname),
+						fmt.Sprintf("%s:11026", hostname),
+						fmt.Sprintf("%s:11027", hostname),
+						fmt.Sprintf("%s:11028", hostname),
+						fmt.Sprintf("%s:11029", hostname),
+						fmt.Sprintf("%s:11030", hostname),
+						fmt.Sprintf("%s:11031", hostname),
+						fmt.Sprintf("%s:11032", hostname),
+						fmt.Sprintf("%s:11033", hostname),
+						fmt.Sprintf("%s:11034", hostname),
 					)
 					if err != nil {
 						return terror.Error(err)
@@ -261,21 +319,6 @@ func main() {
 						RPCClient:     rpcClient,
 					})
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("set up arena")
-
-					fmt.Println("nbotblocking")
-
-					//battleArenaClient := battle_arena.NewBattleArenaClient(ctx, log_helpers.NamedLogger(gamelog.L, "battle-arena"), pgxconn, pp, battleArenaAddr)
-					//battleArenaClient.SetupAfterConnections(gamelog.L) // Blocks until setup properly, fetched and hydrated
-					//gamelog.L.Info().Int("factions", len(battleArenaClient.GetCurrentState().FactionMap)).Msg("Successfully setup battle queue")
-
-					//go func() {
-					//	err := battleArenaClient.Serve(ctx)
-					//	if err != nil {
-					//		fmt.Println(err)
-					//		os.Exit(1)
-					//	}
-					//}()
-
 					gamelog.L.Info().Msg("Setting up webhook rest API")
 					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, pgxconn, pp, messageBus, netMessageBus, gsHub)
 					if err != nil {
@@ -358,12 +401,41 @@ func main() {
 					}
 					hostname := u.Hostname()
 					rpcAddrs := []string{
-						fmt.Sprintf("%s:10006", hostname),
-						fmt.Sprintf("%s:10005", hostname),
-						fmt.Sprintf("%s:10004", hostname),
-						fmt.Sprintf("%s:10003", hostname),
-						fmt.Sprintf("%s:10002", hostname),
+						fmt.Sprintf("%s:10000", hostname),
 						fmt.Sprintf("%s:10001", hostname),
+						fmt.Sprintf("%s:10002", hostname),
+						fmt.Sprintf("%s:10003", hostname),
+						fmt.Sprintf("%s:10004", hostname),
+						fmt.Sprintf("%s:10005", hostname),
+						fmt.Sprintf("%s:10006", hostname),
+						fmt.Sprintf("%s:10007", hostname),
+						fmt.Sprintf("%s:10008", hostname),
+						fmt.Sprintf("%s:10009", hostname),
+						fmt.Sprintf("%s:10010", hostname),
+						fmt.Sprintf("%s:10011", hostname),
+						fmt.Sprintf("%s:10012", hostname),
+						fmt.Sprintf("%s:10013", hostname),
+						fmt.Sprintf("%s:10014", hostname),
+						fmt.Sprintf("%s:10015", hostname),
+						fmt.Sprintf("%s:10016", hostname),
+						fmt.Sprintf("%s:10017", hostname),
+						fmt.Sprintf("%s:10018", hostname),
+						fmt.Sprintf("%s:10019", hostname),
+						fmt.Sprintf("%s:10020", hostname),
+						fmt.Sprintf("%s:10021", hostname),
+						fmt.Sprintf("%s:10022", hostname),
+						fmt.Sprintf("%s:10023", hostname),
+						fmt.Sprintf("%s:10024", hostname),
+						fmt.Sprintf("%s:10025", hostname),
+						fmt.Sprintf("%s:10026", hostname),
+						fmt.Sprintf("%s:10027", hostname),
+						fmt.Sprintf("%s:10028", hostname),
+						fmt.Sprintf("%s:10029", hostname),
+						fmt.Sprintf("%s:10030", hostname),
+						fmt.Sprintf("%s:10031", hostname),
+						fmt.Sprintf("%s:10032", hostname),
+						fmt.Sprintf("%s:10033", hostname),
+						fmt.Sprintf("%s:10034", hostname),
 					}
 					passportRPCclient := &rpcclient.XrpcClient{
 						Addrs: rpcAddrs,
