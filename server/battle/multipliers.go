@@ -8,6 +8,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -208,6 +209,32 @@ outer:
 		gamelog.L.Error().Err(err).Msg("unable to retrieve last 3 winning factions")
 	}
 
+	// set syndicate win
+	hatTrick := true
+	for i := 1; i < len(lastWins); i++ {
+		if lastWins[i].FactionID != lastWins[i-1].FactionID {
+			hatTrick = false
+			break
+		}
+	}
+
+	m1, _ := ms.getMultiplier("syndicate_win", "", 1)
+	m3, _ := ms.getMultiplier("syndicate_win", "", 3)
+
+	ms.battle.users.Range(func(bu *BattleUser) bool {
+		if bu.FactionID == lastWins[0].FactionID {
+			if _, ok := newMultipliers[bu.ID.String()]; !ok {
+				newMultipliers[bu.ID.String()] = map[*boiler.Multiplier]bool{}
+			}
+
+			newMultipliers[bu.ID.String()][m1] = true
+			if hatTrick {
+				newMultipliers[bu.ID.String()][m3] = true
+			}
+		}
+		return true
+	})
+
 	// average spend multipliers test
 
 	total := decimal.New(0, 18)
@@ -218,6 +245,9 @@ outer:
 	isGabs := map[string]bool{}
 
 	for _, contribution := range contributions {
+		if contribution.PlayerID == server.XsynTreasuryUserID.String() {
+			continue
+		}
 		factions[contribution.PlayerID] = contribution.FactionID
 		if _, ok := sums[contribution.PlayerID]; !ok {
 			sums[contribution.PlayerID] = decimal.New(0, 18)
@@ -323,33 +353,6 @@ winwar:
 
 		newMultipliers[wm.OwnedByID][m3] = true
 	}
-
-	// set syndicate win
-	hatTrick := true
-	for i := 1; i < len(lastWins); i++ {
-		if lastWins[i].FactionID != lastWins[i-1].FactionID {
-			hatTrick = false
-			break
-		}
-	}
-
-	m1, _ := ms.getMultiplier("syndicate_win", "", 1)
-	m3, _ := ms.getMultiplier("syndicate_win", "", 3)
-
-	ms.battle.users.Range(func(bu *BattleUser) bool {
-		if bu.FactionID == lastWins[0].FactionID {
-			// skip the players that is not active
-			if _, ok := newMultipliers[bu.ID.String()]; !ok {
-				return true
-			}
-
-			newMultipliers[bu.ID.String()][m1] = true
-			if hatTrick {
-				newMultipliers[bu.ID.String()][m3] = true
-			}
-		}
-		return true
-	})
 
 	// insert multipliers
 	for pid, mlts := range newMultipliers {
