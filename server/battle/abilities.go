@@ -690,7 +690,18 @@ func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID str
 	}
 
 	// otherwise update target price and reset the current price
-	ga.SupsCost = ga.SupsCost.Mul(decimal.NewFromInt(2))
+	if ga.GameClientAbilityID == 11 {
+		// manipulate for overcharge
+		if ga.SupsCost.LessThan(decimal.New(1000, 18)) {
+			ga.SupsCost = ga.SupsCost.Add(decimal.New(1000, 18))
+		} else {
+			ga.SupsCost = ga.SupsCost.Mul(decimal.NewFromInt(4))
+		}
+
+	} else {
+		// increase price as the twice amount for normal value
+		ga.SupsCost = ga.SupsCost.Mul(decimal.NewFromInt(2))
+	}
 	ga.CurrentSups = decimal.Zero
 
 	// store updated price to db
