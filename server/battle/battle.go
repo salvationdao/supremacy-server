@@ -171,8 +171,8 @@ func (btl *Battle) spawnReinforcementNearMech(abilityEvent *server.GameAbilityEv
 		abilityEvent.TriggeredOnCellX = &wm.X
 		abilityEvent.TriggeredOnCellY = &wm.Y
 		abilityEvent.GameLocation = struct {
-			X int "json:\"x\""
-			Y int "json:\"y\""
+			X int `json:"x"`
+			Y int `json:"y"`
 		}{
 			X: wm.X,
 			Y: wm.Y,
@@ -187,8 +187,8 @@ func (btl *Battle) spawnReinforcementNearMech(abilityEvent *server.GameAbilityEv
 	abilityEvent.TriggeredOnCellY = &wm.Y
 
 	abilityEvent.GameLocation = struct {
-		X int "json:\"x\""
-		Y int "json:\"y\""
+		X int `json:"x"`
+		Y int `json:"y"`
 	}{
 		X: wm.X,
 		Y: wm.Y,
@@ -279,24 +279,6 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 			FactionColour: btl.factions[factionID].PrimaryColor,
 			FactionLogoID: FactionLogos[p.FactionID.String],
 		})
-	}
-
-	fakedFactions := make([]*Faction, 2)
-	i := 0
-	for _, faction := range btl.factions {
-		fakedFactions[i] = &Faction{
-			ID:    faction.ID,
-			Label: faction.Label,
-			Theme: &FactionTheme{
-				Primary:    faction.PrimaryColor,
-				Secondary:  faction.SecondaryColor,
-				Background: faction.BackgroundColor,
-			},
-		}
-		if i == 1 {
-			break
-		}
-		i++
 	}
 
 	gamelog.L.Debug().
@@ -415,7 +397,7 @@ const HubKeyBattleEndDetailUpdated hub.HubCommandKey = "BATTLE:END:DETAIL:UPDATE
 
 func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 	btl.users.Range(func(user *BattleUser) bool {
-		m, total := btl.multipliers.PlayerMultipliers(user.ID)
+		m, total := btl.multipliers.PlayerMultipliers(user.ID, 1)
 
 		info.MultiplierUpdate = &MultiplierUpdate{
 			UserMultipliers:  m,
@@ -671,6 +653,14 @@ func (arena *Arena) Join(ctx context.Context, wsc *hub.Client, payload []byte, f
 		return err
 	}
 
+	if position == -1 {
+		arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", WSWarMachineQueueStatus, mechID)), WarMachineQueueStatusResponse{
+			nil,
+			nil,
+		})
+		return nil
+	}
+
 	// Charge user queue fee
 	txid, err := arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
 		Amount:               queueCost.StringFixed(18),
@@ -726,9 +716,15 @@ func (arena *Arena) Leave(ctx context.Context, wsc *hub.Client, payload []byte, 
 		return err
 	}
 
+	bq, err := boiler.FindBattleQueue(gamedb.StdConn, mechID.String())
+	if err != nil {
+		gamelog.L.Error().Str("mech_id", mechID.String()).Err(err).Msg("probably not in queue")
+		return err
+	}
+
 	mech, err := db.Mech(mechID)
 	if err != nil {
-		gamelog.L.Error().Str("mech_id", mechID.String()).Err(err).Msg("unable to retrieve mech id from hash")
+		gamelog.L.Error().Str("mech_id", mechID.String()).Err(err).Msg("unable to retrieve mech")
 		return err
 	}
 
@@ -767,6 +763,14 @@ func (arena *Arena) Leave(ctx context.Context, wsc *hub.Client, payload []byte, 
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Interface("mechID", mechID).Interface("factionID", mech.FactionID).Err(err).Msg("unable to remove mech from queue")
 		return err
+	}
+
+	if position == -1 {
+		arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", WSWarMachineQueueStatus, mech.ID)), WarMachineQueueStatusResponse{
+			nil,
+			nil,
+		})
+		return nil
 	}
 
 	// Refund user queue fee
@@ -808,7 +812,7 @@ func (arena *Arena) Leave(ctx context.Context, wsc *hub.Client, payload []byte, 
 		contractReward,
 	})
 
-	mechsAfterIDs, err := db.AllMechsAfter(position-1, factionID)
+	mechsAfterIDs, err := db.AllMechsAfter(bq.QueuedAt, factionID)
 	if err != nil {
 		gamelog.L.Error().Interface("factionID", factionID).Err(err).Msg("unable to get mechs after")
 		return err
@@ -930,6 +934,7 @@ func (arena *Arena) WarMachineQueueStatus(ctx context.Context, wsc *hub.Client, 
 	}
 
 	position, err := db.QueuePosition(mechID, factionID)
+
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			reply(WarMachineQueueStatusResponse{
@@ -939,6 +944,14 @@ func (arena *Arena) WarMachineQueueStatus(ctx context.Context, wsc *hub.Client, 
 			return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", WSWarMachineQueueStatus, mechID)), nil
 		}
 		return "", "", terror.Error(err)
+	}
+
+	if position == -1 {
+		reply(WarMachineQueueStatusResponse{
+			nil,
+			nil,
+		})
+		return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", WSWarMachineQueueStatus, mechID)), nil
 	}
 
 	contractReward, err := db.QueueContract(mechID, factionID)
