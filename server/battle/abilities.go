@@ -1388,7 +1388,7 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 	}
 	err = bat.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to record ability triggered")
+		gamelog.L.Error().Interface("battle_ability_trigger", bat).Err(err).Msg("Failed to record ability triggered")
 	}
 
 	as.battle.arena.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
@@ -1436,7 +1436,7 @@ func BuildUserDetailWithFaction(userID uuid.UUID) (*UserBrief, error) {
 
 	user, err := boiler.FindPlayer(gamedb.StdConn, userID.String())
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("failed to get next player")
+		gamelog.L.Error().Str("player_id", userID.String()).Err(err).Msg("failed to get player from db")
 		return nil, terror.Error(err)
 	}
 
@@ -1451,7 +1451,7 @@ func BuildUserDetailWithFaction(userID uuid.UUID) (*UserBrief, error) {
 
 	faction, err := db.FactionGet(user.FactionID.String)
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("failed to get next player faction")
+		gamelog.L.Error().Str("player_id", userID.String()).Str("faction_id", user.FactionID.String).Err(err).Msg("failed to get player faction from db")
 		return userBrief, nil
 	}
 
