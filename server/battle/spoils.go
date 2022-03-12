@@ -241,9 +241,6 @@ func (sow *SpoilsOfWar) Drip() error {
 
 		txr := fmt.Sprintf("spoils_of_war|%s|%d", player.PlayerID, time.Now().UnixNano())
 
-		fmt.Println(txr)
-		fmt.Println(userDrip.StringFixed(18))
-
 		_, err := sow.battle.arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
 			FromUserID:           SupremacyBattleUserID,
 			ToUserID:             player.PlayerID,
