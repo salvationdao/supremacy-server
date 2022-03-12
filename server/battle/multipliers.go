@@ -8,6 +8,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -244,6 +245,9 @@ outer:
 	isGabs := map[string]bool{}
 
 	for _, contribution := range contributions {
+		if contribution.PlayerID == server.XsynTreasuryUserID.String() {
+			continue
+		}
 		factions[contribution.PlayerID] = contribution.FactionID
 		if _, ok := sums[contribution.PlayerID]; !ok {
 			sums[contribution.PlayerID] = decimal.New(0, 18)
