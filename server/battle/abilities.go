@@ -1314,7 +1314,7 @@ func (as *AbilitiesSystem) WarMachineAbilitiesGet(factionID uuid.UUID, hash stri
 }
 
 func (as *AbilitiesSystem) BribeGabs(factionID uuid.UUID, userID uuid.UUID, amount decimal.Decimal) {
-	if as.battle.stage != BattleStagStart || as.battleAbilityPool.Stage.Phase != BribeStageBribe {
+	if ac == nil || as.battle == nil || as.battle.stage != BattleStagStart || as.battleAbilityPool.Stage.Phase != BribeStageBribe {
 		return
 	}
 
