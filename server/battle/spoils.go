@@ -143,11 +143,11 @@ func (sow *SpoilsOfWar) Flush() error {
 
 	for _, player := range onlineUsers {
 		txr := fmt.Sprintf("spoils_of_war|%s|%d", player.PlayerID, time.Now().UnixNano())
-		userAmount := amount.Mul(player.TotalMultiplier)
+		userAmount := amount.Mul(player.TotalMultiplier).Truncate(0)
 		_, err := sow.battle.arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
 			FromUserID:           SupremacyBattleUserID,
 			ToUserID:             player.PlayerID,
-			Amount:               userAmount.StringFixed(18),
+			Amount:               userAmount.String(),
 			TransactionReference: server.TransactionReference(txr),
 			Group:                "spoil of war",
 			SubGroup:             subgroup,
