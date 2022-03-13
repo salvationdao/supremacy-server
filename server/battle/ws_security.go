@@ -3,6 +3,7 @@ package battle
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -122,6 +123,10 @@ func (opts *Opts) SubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn HubSub
 		}
 
 		// add subscription to the message bus
+		if string(busKey) == "" {
+			gamelog.L.Error().Msg("no bus key. no bus key. no bus key.")
+			return fmt.Errorf("no bus key: %s", wsc.Identifier())
+		}
 		opts.MessageBus.Sub(busKey, wsc, transactionID)
 
 		return nil
