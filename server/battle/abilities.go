@@ -332,7 +332,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 
 								// broadcast notification
 								if ability.ParticipantID == nil {
-									as.battle.arena.BroadcastGameNotificationAbility(GameNotificationTypeFactionAbility, &GameNotificationAbility{
+									as.battle.arena.BroadcastGameNotificationAbility(GameNotificationTypeFactionAbility, GameNotificationAbility{
 										Ability: gameNotification.Ability,
 									})
 
@@ -477,7 +477,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 
 								// broadcast notification
 								if ability.ParticipantID == nil {
-									as.battle.arena.BroadcastGameNotificationAbility(GameNotificationTypeFactionAbility, &GameNotificationAbility{
+									as.battle.arena.BroadcastGameNotificationAbility(GameNotificationTypeFactionAbility, GameNotificationAbility{
 										Ability: gameNotification.Ability,
 										User:    gameNotification.User,
 									})
@@ -778,12 +778,26 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 	as.battleAbilityPool.Stage.EndTime = time.Now().Add(BribeDurationSecond * time.Second)
 	as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
 
+	bn := as.battle.BattleNumber
+
+	go func() {
+		for {
+			<-progress_ticker.C
+			if as.battle == nil || as.battle.arena.currentBattle == nil || as.battle.arena.currentBattle.BattleNumber != bn {
+				return
+			}
+			as.BattleAbilityProgressBar()
+		}
+	}()
+
 	// start ability pool cycle
 	for {
 		select {
 		// wait for next tick
 		case <-main_ticker.C:
-
+			if as.battle == nil || as.battle.arena.currentBattle == nil || as.battle.arena.currentBattle.BattleNumber != bn {
+				return
+			}
 			// check phase
 			stage := as.battle.stage
 			// exit the loop, when battle is ended
@@ -926,8 +940,14 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 				gamelog.L.Error().Msg("hit default case switch on abilities loop")
 			}
 		case <-price_ticker.C:
+			if as.battle == nil || as.battle.arena.currentBattle == nil || as.battle.arena.currentBattle.BattleNumber != bn {
+				return
+			}
 			as.BattleAbilityPriceUpdater()
 		case cont := <-as.bribe:
+			if as.battle == nil || as.battle.arena.currentBattle == nil || as.battle.arena.currentBattle.BattleNumber != bn {
+				return
+			}
 			if factionAbility, ok := as.battleAbilityPool.Abilities[cont.factionID]; ok {
 
 				// contribute sups
@@ -950,15 +970,15 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 					as.battleAbilityPool.Stage.EndTime = time.Now().Add(time.Duration(LocationSelectDurationSecond) * time.Second)
 
 					// broadcast stage change
-					go as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
+					as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
 
 					// send message to the user who trigger the ability
-					go as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeGabsBribingWinnerSubscribe, cont.userID)), &LocationSelectAnnouncement{
+					as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeGabsBribingWinnerSubscribe, cont.userID)), &LocationSelectAnnouncement{
 						GameAbility: as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID],
 						EndTime:     as.battleAbilityPool.Stage.EndTime,
 					})
 
-					notification := &GameNotificationAbility{
+					notification := GameNotificationAbility{
 						Ability: &AbilityBrief{
 							Label:    factionAbility.Label,
 							ImageUrl: factionAbility.ImageUrl,
@@ -970,14 +990,12 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 					if err == nil {
 						notification.User = currentUser
 					}
-					go as.battle.arena.BroadcastGameNotificationAbility(GameNotificationTypeBattleAbility, notification)
+					as.battle.arena.BroadcastGameNotificationAbility(GameNotificationTypeBattleAbility, notification)
 
 					// broadcast the latest result progress bar, when ability is triggered
-					go as.BroadcastAbilityProgressBar()
+					as.BroadcastAbilityProgressBar()
 				}
 			}
-		case <-progress_ticker.C:
-			as.BattleAbilityProgressBar()
 		}
 	}
 }
@@ -1178,7 +1196,7 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 		as.BroadcastAbilityProgressBar()
 
 		// get player
-		as.battle.arena.BroadcastGameNotificationAbility(GameNotificationTypeBattleAbility, &GameNotificationAbility{
+		as.battle.arena.BroadcastGameNotificationAbility(GameNotificationTypeBattleAbility, GameNotificationAbility{
 			Ability: &AbilityBrief{
 				Label:    ability.Label,
 				ImageUrl: ability.ImageUrl,
@@ -1215,7 +1233,7 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 			return
 		}
 
-		notification := &GameNotificationAbility{
+		notification := GameNotificationAbility{
 			Ability: &AbilityBrief{
 				Label:    ability.Label,
 				ImageUrl: ability.ImageUrl,
