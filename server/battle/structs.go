@@ -120,9 +120,11 @@ func (bu *BattleUser) Send(key hub.HubCommandKey, payload interface{}) error {
 		return err
 	}
 
+	bu.RLock()
 	for wsc := range bu.wsClient {
 		go wsc.Send(b)
 	}
+	bu.RUnlock()
 	return nil
 }
 
