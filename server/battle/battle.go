@@ -1403,6 +1403,48 @@ func (btl *Battle) Load() error {
 	return nil
 }
 
+var SubmodelSkinMap = map[string]string{
+	"Crystal Blue":       "CrystalBlue",
+	"Rust Bucket":        "RustBucket",
+	"Dune":               "Dune",
+	"Dynamic Yellow":     "DynamicYellow",
+	"Molten":             "Molten",
+	"Mystermech":         "MysterMech",
+	"Nebula":             "Nebula",
+	"Sleek":              "Sleek",
+	"Blue White":         "BlueWhite",
+	"BioHazard":          "BioHazard",
+	"Cyber":              "Cyber",
+	"Light Blue Police":  "LightBluePolice",
+	"Vintage":            "Vintage",
+	"Red White":          "RedWhite",
+	"Red Hex":            "RedHex",
+	"Desert":             "Desert",
+	"Navy":               "Navy",
+	"Nautical":           "Nautical",
+	"Military":           "Military",
+	"Irradiated":         "Irradiated",
+	"Evo":                "EVA-02",
+	"Beetle":             "Beetle",
+	"Villain":            "Villain",
+	"Green Yellow":       "GreenYellow",
+	"Red Blue":           "RedBlue",
+	"White Gold":         "WhiteGold",
+	"Vector":             "Vector",
+	"Cherry Blossom":     "CherryBlossom",
+	"Warden":             "Warden",
+	"Gumdan":             "Gundam",
+	"White Gold Pattern": "WhiteGoldPattern",
+	"Evangelic":          "Evangelion",
+	"Chalky Neon":        "ChalkyNeon",
+	"Black Digi":         "BlackDigi",
+	"Purple Haze":        "PurpleHaze",
+	"Destroyer":          "Destroyer",
+	"Static":             "Static",
+	"Neon":               "Neon",
+	"Gold":               "Gold",
+}
+
 func (btl *Battle) MechsToWarMachines(mechs []*server.MechContainer) []*WarMachine {
 	warmachines := make([]*WarMachine, len(mechs))
 	for i, mech := range mechs {
@@ -1453,7 +1495,11 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.MechContainer) []*WarMachi
 				}
 			}
 		}
-
+		skin := mech.Chassis.Skin
+		mappedSkin, ok := SubmodelSkinMap[mech.Chassis.Skin]
+		if ok {
+			skin = mappedSkin
+		}
 		warmachines[i] = &WarMachine{
 			ID:            mech.ID,
 			Name:          TruncateString(mechName, 20),
@@ -1478,7 +1524,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.MechContainer) []*WarMachi
 			},
 			Speed:              mech.Chassis.Speed,
 			Model:              model,
-			Skin:               mech.Chassis.Skin,
+			Skin:               skin,
 			ShieldRechargeRate: float64(mech.Chassis.ShieldRechargeRate),
 			Durability:         mech.Chassis.MaxHitpoints,
 			WeaponHardpoint:    mech.Chassis.WeaponHardpoints,
