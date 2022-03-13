@@ -282,6 +282,8 @@ func main() {
 						rpcClient,
 					)
 
+					// sync user stats
+
 					// Start Gameserver - Gameclient server
 					// Passport
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Setting up battle arena client")
