@@ -40,6 +40,8 @@ func GetPlayerFactionID(userID uuid.UUID) (uuid.UUID, error) {
 	}
 
 	if !player.FactionID.Valid {
+		gamelog.L.Error().Str("userID", userID.String()).Err(err).Msg("faction id is invalid")
+
 		return uuid.Nil, terror.Error(terror.ErrForbidden)
 	}
 

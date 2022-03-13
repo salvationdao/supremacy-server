@@ -402,6 +402,8 @@ func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, wsc *hub
 
 	userID := uuid.FromStringOrNil(wsc.Identifier())
 	if userID.IsNil() {
+		gamelog.L.Error().Str("amount", req.Payload.Amount).
+			Str("userID", wsc.Identifier()).Msg("unable to contribute forbidden")
 		return terror.Error(terror.ErrForbidden)
 	}
 

@@ -1266,7 +1266,7 @@ func (as *AbilitiesSystem) BroadcastAbilityProgressBar() {
 // Handlers
 // *********************
 func (as *AbilitiesSystem) AbilityContribute(factionID uuid.UUID, userID uuid.UUID, abilityIdentity string, amount decimal.Decimal) {
-	if as != nil || as.battle == nil || as.battle.stage != BattleStagStart {
+	if as == nil || as.battle == nil || as.battle.stage != BattleStagStart {
 		return
 	}
 
