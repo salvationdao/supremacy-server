@@ -13,6 +13,7 @@ import (
 	"server/gamelog"
 	"server/passport"
 	"server/rpcclient"
+	"sync"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -26,16 +27,17 @@ import (
 )
 
 type Arena struct {
-	conn          db.Conn
-	socket        *websocket.Conn
-	timeout       time.Duration
-	messageBus    *messagebus.MessageBus
-	netMessageBus *messagebus.NetBus
-	currentBattle *Battle
-	syndicates    map[string]boiler.Faction
-	AIPlayers     map[string]db.PlayerWithFaction
-	RPCClient     *rpcclient.XrpcClient
-	ppClient      *passport.Passport
+	conn           db.Conn
+	socket         *websocket.Conn
+	timeout        time.Duration
+	messageBus     *messagebus.MessageBus
+	netMessageBus  *messagebus.NetBus
+	currentBattle  *Battle
+	syndicates     map[string]boiler.Faction
+	AIPlayers      map[string]db.PlayerWithFaction
+	RPCClient      *rpcclient.XrpcClient
+	ppClient       *passport.Passport
+	gameClientLock sync.Mutex
 }
 
 type Opts struct {
@@ -209,9 +211,13 @@ func (arena *Arena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		gamelog.L.Warn().Str("request_ip", ip).Err(err).Msg("unable to start Battle Arena server")
 	}
 
+	arena.gameClientLock.Lock()
 	arena.socket = c
 
-	defer c.Close(websocket.StatusInternalError, "game client has disconnected")
+	defer func() {
+		arena.gameClientLock.Unlock()
+		c.Close(websocket.StatusInternalError, "game client has disconnected")
+	}()
 
 	arena.Start()
 }
