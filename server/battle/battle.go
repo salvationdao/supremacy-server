@@ -280,6 +280,13 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		gamelog.L.Error().Str("Battle ID", btl.ID).Time("EndedAt", btl.EndedAt.Time).Msg("unable to update database for endat battle")
 	}
 
+	gamelog.L.Info().Msgf("cleaning up abilities: %s", btl.ID)
+
+	btl.abilities.end <- true
+
+	gamelog.L.Info().Msgf("cleaning up spoils: %s", btl.ID)
+	btl.spoils.End()
+
 	winningWarMachines := make([]*WarMachine, len(payload.WinningWarMachines))
 
 	gamelog.L.Info().Msgf("battle end: looping WinningWarMachines: %s", btl.ID)
@@ -380,6 +387,13 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		TopSupsContributors:          topPlayerExecutors,
 		MostFrequentAbilityExecutors: topPlayerExecutors,
 	}
+
+	gamelog.L.Info().Msgf("cleaning up multipliers: %s", btl.ID)
+	btl.multipliers.end(endInfo)
+
+	gamelog.L.Info().Msgf("battle has been cleaned up, sending broadcast %s", btl.ID)
+
+	btl.endInfoBroadcast(*endInfo)
 
 	mws := make([]*db.MechWithOwner, len(payload.WinningWarMachines))
 
@@ -542,20 +556,6 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 			Err(err).
 			Msg("unable to store mech wins")
 	}
-
-	gamelog.L.Info().Msgf("cleaning up abilities: %s", btl.ID)
-
-	btl.abilities.end <- true
-
-	gamelog.L.Info().Msgf("cleaning up spoils: %s", btl.ID)
-	btl.spoils.End()
-
-	gamelog.L.Info().Msgf("cleaning up multipliers: %s", btl.ID)
-	btl.multipliers.end(endInfo)
-
-	gamelog.L.Info().Msgf("battle has been cleaned up, sending broadcast %s", btl.ID)
-
-	btl.endInfoBroadcast(*endInfo)
 
 	go func(id string) {
 		us, err := db.UserStatsAll(context.Background(), gamedb.Conn)
