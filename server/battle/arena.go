@@ -504,10 +504,12 @@ func (arena *Arena) UserOnline(ctx context.Context, wsc *hub.Client, payload []b
 	if arena.currentBattle == nil {
 		return nil
 	}
-	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
-	if userID.IsNil() {
-		return terror.Error(terror.ErrInvalidInput)
+	uID, err := uuid.FromString(wsc.Identifier())
+	if uID.IsNil() || err != nil {
+		gamelog.L.Error().Str("uuid", wsc.Identifier()).Err(err).Msg("invalid input data")
+		return fmt.Errorf("unable to construct user uuid")
 	}
+	userID := server.UserID(uID)
 
 	user, err := boiler.Players(
 		boiler.PlayerWhere.ID.EQ(userID.String()),
