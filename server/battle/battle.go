@@ -388,13 +388,6 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		MostFrequentAbilityExecutors: topPlayerExecutors,
 	}
 
-	gamelog.L.Info().Msgf("cleaning up multipliers: %s", btl.ID)
-	btl.multipliers.end(endInfo)
-
-	gamelog.L.Info().Msgf("battle has been cleaned up, sending broadcast %s", btl.ID)
-
-	btl.endInfoBroadcast(*endInfo)
-
 	mws := make([]*db.MechWithOwner, len(payload.WinningWarMachines))
 
 	err = db.ClearQueueByBattle(btl.ID)
@@ -557,6 +550,12 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 			Msg("unable to store mech wins")
 	}
 
+	gamelog.L.Info().Msgf("cleaning up multipliers: %s", btl.ID)
+	btl.multipliers.end(endInfo)
+
+	gamelog.L.Info().Msgf("battle has been cleaned up, sending broadcast %s", btl.ID)
+
+	btl.endInfoBroadcast(*endInfo)
 	go func(id string) {
 		us, err := db.UserStatsAll(context.Background(), gamedb.Conn)
 		if err != nil {
@@ -570,6 +569,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 			go btl.arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserStatSubscribe, u.ID.String())), u)
 		}
 	}(btl.ID)
+
 }
 
 const HubKeyBattleEndDetailUpdated hub.HubCommandKey = "BATTLE:END:DETAIL:UPDATED"
