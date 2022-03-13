@@ -176,7 +176,7 @@ type WarMachine struct {
 	UtilitySlots       int             `json:"utilitySlots"`
 	Faction            *Faction        `json:"faction"`
 	WeaponNames        []string        `json:"weaponNames"`
-	Abilities          []*GameAbility  `json:"abilities"`
+	Abilities          []GameAbility   `json:"abilities"`
 	Tier               string          `json:"tier"`
 }
 
