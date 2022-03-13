@@ -385,6 +385,9 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 
 			}
 		case cont := <-as.contribute:
+			if as.factionUniqueAbilities == nil {
+				continue
+			}
 			if abilities, ok := as.factionUniqueAbilities[cont.factionID]; ok {
 				// check ability exists
 				if ability, ok := abilities[cont.abilityIdentity]; ok {
@@ -1283,13 +1286,13 @@ func (as *AbilitiesSystem) BattleAbilityProgressBar() {
 }
 
 func (as *AbilitiesSystem) BroadcastAbilityProgressBar() {
+	if as.battleAbilityPool == nil || as.battleAbilityPool.Abilities == nil {
+		return
+	}
 	factionAbilityPrices := []string{}
 	for factionID, ability := range as.battleAbilityPool.Abilities {
 		factionAbilityPrice := fmt.Sprintf("%s_%s_%s", factionID.String(), ability.SupsCost.String(), ability.CurrentSups.String())
 		factionAbilityPrices = append(factionAbilityPrices, factionAbilityPrice)
-		fmt.Println("battle ability", ability.Label)
-		fmt.Println("sups cost", ability.SupsCost.String())
-		fmt.Println("current sups", ability.CurrentSups.String())
 	}
 
 	payload := []byte{byte(BattleAbilityProgressTick)}
