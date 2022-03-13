@@ -87,7 +87,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 			EndTime: time.Now().AddDate(1, 0, 0), // HACK: set end time to far future to implement infinite time
 		},
 		BattleAbility: &server.BattleAbility{},
-		Abilities:     map[uuid.UUID]*GameAbility{},
+		Abilities:     map[uuid.UUID]GameAbility{},
 	}
 
 	userContributeMap := map[uuid.UUID]*UserContribution{}
@@ -750,14 +750,14 @@ type BattleAbilityPool struct {
 	Stage *GabsBribeStage
 
 	BattleAbility *server.BattleAbility
-	Abilities     map[uuid.UUID]*GameAbility // faction ability current, change on every bribing cycle
+	Abilities     map[uuid.UUID]GameAbility // faction ability current, change on every bribing cycle
 
 	TriggeredFactionID uuid.UUID
 }
 
 type LocationSelectAnnouncement struct {
-	GameAbility *GameAbility `json:"game_ability"`
-	EndTime     time.Time    `json:"end_time"`
+	GameAbility GameAbility `json:"game_ability"`
+	EndTime     time.Time   `json:"end_time"`
 }
 
 // StartGabsAbilityPoolCycle
@@ -860,12 +860,29 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 					continue
 				}
 
+				if as == nil {
+					gamelog.L.Error().Msg("abilities are nil")
+					continue
+				}
+				if as.battleAbilityPool == nil {
+					gamelog.L.Error().Msg("ability pool is nil")
+					continue
+				}
+				ab, ok := as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID]
+				if !ok {
+					gamelog.L.Error().
+						Str("triggered faction id", as.battleAbilityPool.TriggeredFactionID.String()).
+						Msg("nothing for triggered faction id")
+					continue
+
+				}
+
 				notification := &GameNotificationLocationSelect{
 					Type: LocationSelectTypeFailedTimeout,
 					Ability: &AbilityBrief{
-						Label:    as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID].Label,
-						ImageUrl: as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID].ImageUrl,
-						Colour:   as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID].Colour,
+						Label:    ab.Label,
+						ImageUrl: ab.ImageUrl,
+						Colour:   ab.Colour,
 					},
 				}
 
@@ -1003,7 +1020,7 @@ func (as *AbilitiesSystem) SetNewBattleAbility() (int, error) {
 		}
 
 		// initialise game ability
-		gameAbility := &GameAbility{
+		gameAbility := GameAbility{
 			ID:                     ga.ID,
 			GameClientAbilityID:    byte(ga.GameClientAbilityID),
 			ImageUrl:               ga.ImageUrl,
@@ -1335,17 +1352,21 @@ func (as *AbilitiesSystem) BribeStageGet() *GabsBribeStage {
 	return nil
 }
 
-func (as *AbilitiesSystem) FactionBattleAbilityGet(factionID uuid.UUID) *GameAbility {
-	if as.battleAbilityPool == nil || as.battleAbilityPool.Abilities == nil {
-		return nil
+func (as *AbilitiesSystem) FactionBattleAbilityGet(factionID uuid.UUID) (GameAbility, error) {
+	if as.battleAbilityPool == nil {
+		return GameAbility{}, fmt.Errorf("battleAbilityPool is nil, fid: %s", factionID.String())
 	}
+	if as.battleAbilityPool.Abilities == nil {
+		return GameAbility{}, fmt.Errorf("battleAbilityPool.Abilities is nil, fid: %s", factionID.String())
+	}
+
 	ability, ok := as.battleAbilityPool.Abilities[factionID]
 	if !ok {
 		gamelog.L.Warn().Str("func", "FactionBattleAbilityGet").Msg("unable to retrieve abilities for faction")
-		return nil
+		return GameAbility{}, fmt.Errorf("game ability does not exist for faction %s", factionID.String())
 	}
 
-	return ability
+	return ability, nil
 }
 
 func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error {
