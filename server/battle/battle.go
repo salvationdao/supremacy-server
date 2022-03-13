@@ -900,7 +900,7 @@ func (arena *Arena) Leave(ctx context.Context, wsc *hub.Client, payload []byte, 
 		TransactionReference: server.TransactionReference(fmt.Sprintf("refund_war_machine_queueing_fee|%s|%d", msg.Payload.AssetHash, time.Now().UnixNano())),
 		Group:                "Battle",
 		SubGroup:             "Queue",
-		Description:          "Refunded battle arena queing fee",
+		Description:          "Refunded battle arena queueing fee",
 		NotSafe:              true,
 	})
 	if err != nil {
