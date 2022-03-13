@@ -377,17 +377,25 @@ const HubKeFactionUniqueAbilityContribute hub.HubCommandKey = "FACTION:UNIQUE:AB
 
 func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, wsc *hub.Client, payload []byte, factionID uuid.UUID, reply hub.ReplyFunc) error {
 	if arena == nil || arena.currentBattle == nil || factionID.IsNil() {
+		gamelog.L.Error().Bool("arena", arena == nil).
+			Bool("factionID", factionID.IsNil()).
+			Bool("current_battle", arena.currentBattle == nil).
+			Str("userID", wsc.Identifier()).Msg("unable to find player from user id")
 		return nil
 	}
 
 	req := &GameAbilityContributeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
+		gamelog.L.Error().Interface("payload", req).
+			Str("userID", wsc.Identifier()).Msg("invalid request receieved")
 		return terror.Error(err, "Invalid request received")
 	}
 
 	d, err := decimal.NewFromString(req.Payload.Amount)
 	if err != nil {
+		gamelog.L.Error().Str("amount", req.Payload.Amount).
+			Str("userID", wsc.Identifier()).Msg("Failed to parse string to decimal.deciaml")
 		return terror.Error(err, "Failed to parse string to decimal.deciaml")
 	}
 	amount := d.Mul(decimal.New(1, 18))
