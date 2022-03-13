@@ -6,10 +6,12 @@ import (
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
+	"server/gamelog"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/gofrs/uuid"
+	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
@@ -57,27 +59,12 @@ func PlayerRegister(ID uuid.UUID, Username string, FactionID uuid.UUID, PublicAd
 	return player, nil
 }
 
-func UserStatsRefresh(ctx context.Context, conn Conn) error {
-
-	q := `
-	REFRESH MATERIALIZED view user_stats;
-	`
-	_, err := conn.Exec(ctx, q)
-	if err != nil {
-		return err
-	}
-
-	return nil
-
-}
-
 func UserStatsAll(ctx context.Context, conn Conn) ([]*server.UserStat, error) {
 	userStats := []*server.UserStat{}
 	q := `
 		SELECT 
 			us.id,
 			COALESCE(us.view_battle_count,0) AS view_battle_count,
-			COALESCE(us.total_vote_count,0) AS total_vote_count,
 			COALESCE(us.total_ability_triggered,0) AS total_ability_triggered,
 			COALESCE(us.kill_count,0) AS kill_count
 		FROM user_stats us`
@@ -96,7 +83,6 @@ func UserStatsGet(ctx context.Context, conn Conn, userID server.UserID) (*server
 		SELECT 
 			us.id,
 			COALESCE(us.view_battle_count,0) AS view_battle_count,
-			COALESCE(us.total_vote_count,0) AS total_vote_count,
 			COALESCE(us.total_ability_triggered,0) AS total_ability_triggered,
 			COALESCE(us.kill_count,0) AS kill_count
 		FROM user_stats us
@@ -107,5 +93,87 @@ func UserStatsGet(ctx context.Context, conn Conn, userID server.UserID) (*server
 		return nil, err
 	}
 	return userStat, nil
+}
 
+func UserStatAddKill(playerID string) (*boiler.UserStat, error) {
+	userStat, err := UserStatQuery(playerID)
+	if err != nil {
+		gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to query user stat")
+		return nil, terror.Error(err)
+	}
+
+	userStat.KillCount += 1
+
+	_, err = userStat.Update(gamedb.StdConn, boil.Whitelist(boiler.UserStatColumns.KillCount))
+	if err != nil {
+		gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to update user kill count")
+		return nil, terror.Error(err)
+	}
+
+	return userStat, nil
+}
+
+func UserStatAddTotalAbilityTriggered(playerID string) (*boiler.UserStat, error) {
+	userStat, err := UserStatQuery(playerID)
+	if err != nil {
+		gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to query user stat")
+		return nil, terror.Error(err)
+	}
+
+	userStat.TotalAbilityTriggered += 1
+
+	_, err = userStat.Update(gamedb.StdConn, boil.Whitelist(boiler.UserStatColumns.TotalAbilityTriggered))
+	if err != nil {
+		gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to update user total ability triggered")
+		return nil, terror.Error(err)
+	}
+
+	return userStat, nil
+}
+
+func UserStatAddViewBattleCount(playerID string) (*boiler.UserStat, error) {
+	userStat, err := UserStatQuery(playerID)
+	if err != nil {
+		gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to query user stat")
+		return nil, terror.Error(err)
+	}
+
+	userStat.ViewBattleCount += 1
+
+	_, err = userStat.Update(gamedb.StdConn, boil.Whitelist(boiler.UserStatColumns.ViewBattleCount))
+	if err != nil {
+		gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to update user view battle count")
+		return nil, terror.Error(err)
+	}
+
+	return userStat, nil
+}
+
+func UserStatQuery(playerID string) (*boiler.UserStat, error) {
+	userStat, err := boiler.FindUserStat(gamedb.StdConn, playerID)
+	if err != nil {
+		gamelog.L.Warn().Str("player_id", playerID).Err(err).Msg("Failed to get user stat, creating a new user stat")
+
+		userStat, err = UserStatCreate(playerID)
+		if err != nil {
+			gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to insert user stat")
+			return nil, terror.Error(err)
+		}
+	}
+
+	return userStat, nil
+}
+
+func UserStatCreate(playerID string) (*boiler.UserStat, error) {
+	userStat := &boiler.UserStat{
+		ID: playerID,
+	}
+
+	err := userStat.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to insert user stat")
+		return nil, terror.Error(err)
+	}
+
+	return userStat, nil
 }

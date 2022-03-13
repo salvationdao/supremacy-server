@@ -101,6 +101,7 @@ var PlayerWhere = struct {
 // PlayerRels is where relationship names are stored.
 var PlayerRels = struct {
 	Faction                   string
+	IDUserStat                string
 	BattleAbilityTriggers     string
 	BattleContracts           string
 	BattleContributions       string
@@ -114,6 +115,7 @@ var PlayerRels = struct {
 	Users                     string
 }{
 	Faction:                   "Faction",
+	IDUserStat:                "IDUserStat",
 	BattleAbilityTriggers:     "BattleAbilityTriggers",
 	BattleContracts:           "BattleContracts",
 	BattleContributions:       "BattleContributions",
@@ -130,6 +132,7 @@ var PlayerRels = struct {
 // playerR is where relationships are stored.
 type playerR struct {
 	Faction                   *Faction                  `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
+	IDUserStat                *UserStat                 `boiler:"IDUserStat" boil:"IDUserStat" json:"IDUserStat" toml:"IDUserStat" yaml:"IDUserStat"`
 	BattleAbilityTriggers     BattleAbilityTriggerSlice `boiler:"BattleAbilityTriggers" boil:"BattleAbilityTriggers" json:"BattleAbilityTriggers" toml:"BattleAbilityTriggers" yaml:"BattleAbilityTriggers"`
 	BattleContracts           BattleContractSlice       `boiler:"BattleContracts" boil:"BattleContracts" json:"BattleContracts" toml:"BattleContracts" yaml:"BattleContracts"`
 	BattleContributions       BattleContributionSlice   `boiler:"BattleContributions" boil:"BattleContributions" json:"BattleContributions" toml:"BattleContributions" yaml:"BattleContributions"`
@@ -412,6 +415,20 @@ func (o *Player) Faction(mods ...qm.QueryMod) factionQuery {
 
 	query := Factions(queryMods...)
 	queries.SetFrom(query.Query, "\"factions\"")
+
+	return query
+}
+
+// IDUserStat pointed to by the foreign key.
+func (o *Player) IDUserStat(mods ...qm.QueryMod) userStatQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.ID),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := UserStats(queryMods...)
+	queries.SetFrom(query.Query, "\"user_stats\"")
 
 	return query
 }
@@ -751,6 +768,107 @@ func (playerL) LoadFaction(e boil.Executor, singular bool, maybePlayer interface
 					foreign.R = &factionR{}
 				}
 				foreign.R.Players = append(foreign.R.Players, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadIDUserStat allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-1 relationship.
+func (playerL) LoadIDUserStat(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+	var slice []*Player
+	var object *Player
+
+	if singular {
+		object = maybePlayer.(*Player)
+	} else {
+		slice = *maybePlayer.(*[]*Player)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &playerR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &playerR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`user_stats`),
+		qm.WhereIn(`user_stats.id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load UserStat")
+	}
+
+	var resultSlice []*UserStat
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice UserStat")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for user_stats")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for user_stats")
+	}
+
+	if len(playerAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.IDUserStat = foreign
+		if foreign.R == nil {
+			foreign.R = &userStatR{}
+		}
+		foreign.R.IDPlayer = object
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.ID == foreign.ID {
+				local.R.IDUserStat = foreign
+				if foreign.R == nil {
+					foreign.R = &userStatR{}
+				}
+				foreign.R.IDPlayer = local
 				break
 			}
 		}
@@ -1931,6 +2049,56 @@ func (o *Player) RemoveFaction(exec boil.Executor, related *Faction) error {
 		}
 		related.R.Players = related.R.Players[:ln-1]
 		break
+	}
+	return nil
+}
+
+// SetIDUserStat of the player to the related item.
+// Sets o.R.IDUserStat to related.
+// Adds o to related.R.IDPlayer.
+func (o *Player) SetIDUserStat(exec boil.Executor, insert bool, related *UserStat) error {
+	var err error
+
+	if insert {
+		related.ID = o.ID
+
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	} else {
+		updateQuery := fmt.Sprintf(
+			"UPDATE \"user_stats\" SET %s WHERE %s",
+			strmangle.SetParamNames("\"", "\"", 1, []string{"id"}),
+			strmangle.WhereClause("\"", "\"", 2, userStatPrimaryKeyColumns),
+		)
+		values := []interface{}{o.ID, related.ID}
+
+		if boil.DebugMode {
+			fmt.Fprintln(boil.DebugWriter, updateQuery)
+			fmt.Fprintln(boil.DebugWriter, values)
+		}
+		if _, err = exec.Exec(updateQuery, values...); err != nil {
+			return errors.Wrap(err, "failed to update foreign table")
+		}
+
+		related.ID = o.ID
+
+	}
+
+	if o.R == nil {
+		o.R = &playerR{
+			IDUserStat: related,
+		}
+	} else {
+		o.R.IDUserStat = related
+	}
+
+	if related.R == nil {
+		related.R = &userStatR{
+			IDPlayer: o,
+		}
+	} else {
+		related.R.IDPlayer = o
 	}
 	return nil
 }

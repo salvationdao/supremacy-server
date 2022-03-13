@@ -6,7 +6,6 @@ import (
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-syndicate/hub"
-	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 )
 
@@ -67,11 +66,10 @@ type BattleUserVote struct {
 }
 
 type UserStat struct {
-	ID                    UserID          `json:"id" db:"id"`
-	ViewBattleCount       int64           `json:"view_battle_count" db:"view_battle_count"`
-	TotalVoteCount        decimal.Decimal `json:"total_vote_count" db:"total_vote_count"`
-	TotalAbilityTriggered int64           `json:"total_ability_triggered" db:"total_ability_triggered"`
-	KillCount             int64           `json:"kill_count" db:"kill_count"`
+	ID                    UserID `json:"id" db:"id"`
+	ViewBattleCount       int64  `json:"view_battle_count" db:"view_battle_count"`
+	TotalAbilityTriggered int64  `json:"total_ability_triggered" db:"total_ability_triggered"`
+	KillCount             int64  `json:"kill_count" db:"kill_count"`
 }
 
 type UserBrief struct {

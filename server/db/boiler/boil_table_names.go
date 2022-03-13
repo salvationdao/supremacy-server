@@ -50,6 +50,7 @@ var TableNames = struct {
 	StreamList                                         string
 	Templates                                          string
 	UserMultipliers                                    string
+	UserStats                                          string
 	Users                                              string
 	Weapons                                            string
 }{
@@ -99,6 +100,7 @@ var TableNames = struct {
 	StreamList:                       "stream_list",
 	Templates:                        "templates",
 	UserMultipliers:                  "user_multipliers",
+	UserStats:                        "user_stats",
 	Users:                            "users",
 	Weapons:                          "weapons",
 }

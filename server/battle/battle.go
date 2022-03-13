@@ -33,37 +33,126 @@ import (
 )
 
 type Battle struct {
-	arena       *Arena
-	stage       string
-	BattleID    string        `json:"battleID"`
-	MapName     string        `json:"mapName"`
-	WarMachines []*WarMachine `json:"warMachines"`
-	SpawnedAI   []*WarMachine `json:"SpawnedAI"`
-	lastTick    *[]byte
-	gameMap     *server.GameMap
-	abilities   *AbilitiesSystem
-	users       usersMap
-	factions    map[uuid.UUID]*boiler.Faction
-	multipliers *MultiplierSystem
-	spoils      *SpoilsOfWar
-	rpcClient   *rpcclient.XrpcClient
-	startedAt   time.Time
+	arena          *Arena
+	stage          string
+	BattleID       string        `json:"battleID"`
+	MapName        string        `json:"mapName"`
+	WarMachines    []*WarMachine `json:"warMachines"`
+	SpawnedAI      []*WarMachine `json:"SpawnedAI"`
+	warMachineIDs  []uuid.UUID   `json:"ids"`
+	lastTick       *[]byte
+	gameMap        *server.GameMap
+	abilities      *AbilitiesSystem
+	users          usersMap
+	factions       map[uuid.UUID]*boiler.Faction
+	multipliers    *MultiplierSystem
+	spoils         *SpoilsOfWar
+	rpcClient      *rpcclient.XrpcClient
+	battleMechData []*db.BattleMechData
+	startedAt      time.Time
 
 	destroyedWarMachineMap map[byte]*WMDestroyedRecord
 	*boiler.Battle
+
+	inserted bool
 }
 
 const HubKeyLiveVoteCountUpdated hub.HubCommandKey = "LIVE:VOTE:COUNT:UPDATED"
 const HubKeyWarMachineLocationUpdated hub.HubCommandKey = "WAR:MACHINE:LOCATION:UPDATED"
 
-func (btl *Battle) start(payload *BattleStartPayload) {
-	for _, wm := range payload.WarMachines {
-		for i, wm2 := range btl.WarMachines {
-			if wm.Hash == wm2.Hash {
-				btl.WarMachines[i].ParticipantID = wm.ParticipantID
-				continue
+func (btl *Battle) preIntro(payload *BattleStartPayload) error {
+	bmd := make([]*db.BattleMechData, len(btl.WarMachines))
+	factions := map[uuid.UUID]*boiler.Faction{}
+
+	for i, wm := range btl.WarMachines {
+		if payload.WarMachines[i].Hash == wm.Hash {
+			btl.WarMachines[i].ParticipantID = payload.WarMachines[i].ParticipantID
+		} else {
+			for _, wm2 := range payload.WarMachines {
+				if wm2.Hash == wm.Hash {
+					btl.WarMachines[i].ParticipantID = wm2.ParticipantID
+					break
+				}
 			}
 		}
+		wm.ParticipantID = payload.WarMachines[i].ParticipantID
+		mechID, err := uuid.FromString(wm.ID)
+		if err != nil {
+			gamelog.L.Error().Str("ownerID", wm.ID).Err(err).Msg("unable to convert owner id from string")
+			return err
+		}
+
+		ownerID, err := uuid.FromString(wm.OwnedByID)
+		if err != nil {
+			gamelog.L.Error().Str("ownerID", wm.OwnedByID).Err(err).Msg("unable to convert owner id from string")
+			return err
+		}
+
+		factionID, err := uuid.FromString(wm.FactionID)
+		if err != nil {
+			gamelog.L.Error().Str("factionID", wm.FactionID).Err(err).Msg("unable to convert faction id from string")
+			return err
+		}
+
+		bmd[i] = &db.BattleMechData{
+			MechID:    mechID,
+			OwnerID:   ownerID,
+			FactionID: factionID,
+		}
+
+		_, ok := factions[factionID]
+		if !ok {
+			faction, err := boiler.FindFaction(gamedb.StdConn, factionID.String())
+			if err != nil {
+				gamelog.L.Error().
+					Str("Battle ID", btl.ID).
+					Str("Faction ID", factionID.String()).
+					Err(err).Msg("unable to retrieve faction from database")
+
+			}
+			factions[factionID] = faction
+		}
+	}
+
+	btl.factions = factions
+	btl.battleMechData = bmd
+
+	return nil
+}
+
+func (btl *Battle) start() {
+	btl.startedAt = time.Now()
+	err := btl.Battle.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		gamelog.L.Panic().Interface("battle", btl).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to insert Battle into database")
+		return
+	}
+
+	btl.inserted = true
+	// insert current users to
+	btl.users.Range(func(user *BattleUser) bool {
+		err = db.BattleViewerUpsert(context.Background(), gamedb.Conn, btl.ID, user.ID.String())
+		if err != nil {
+			gamelog.L.Error().Str("battle_id", btl.ID).Str("player_id", user.ID.String()).Err(err).Msg("to upsert battle view")
+			return true
+		}
+		return true
+	})
+
+	err = db.QueueSetBattleID(btl.ID, btl.warMachineIDs...)
+	if err != nil {
+		gamelog.L.Error().Interface("mechs_ids", btl.warMachineIDs).Str("battle_id", btl.ID).Err(err).Msg("failed to set battle id in queue")
+		return
+	}
+
+	if btl.battleMechData == nil {
+		gamelog.L.Error().Str("battlemechdata", btl.ID).Msg("battle mech data failed nil check")
+	}
+
+	err = db.BattleMechs(btl.Battle, btl.battleMechData)
+	if err != nil {
+		gamelog.L.Error().Str("Battle ID", btl.ID).Err(err).Msg("unable to insert battle into database")
+		//TODO: something more dramatic
 	}
 
 	// set up the abilities for current battle
@@ -71,21 +160,7 @@ func (btl *Battle) start(payload *BattleStartPayload) {
 	btl.abilities = NewAbilitiesSystem(btl)
 	btl.multipliers = NewMultiplierSystem(btl)
 	btl.spoils = NewSpoilsOfWar(btl, 5*time.Second, 5*time.Second)
-
-	btl.startedAt = time.Now()
 	btl.BroadcastUpdate()
-
-	// insert spoil of war
-	spoil := &boiler.SpoilsOfWar{
-		BattleID:     btl.ID,
-		BattleNumber: btl.BattleNumber,
-		Amount:       decimal.New(0, 18),
-		AmountSent:   decimal.New(0, 18),
-	}
-	err := spoil.Insert(gamedb.StdConn, boil.Infer())
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("unable to insert spoils")
-	}
 
 	// broadcast spoil of war on the start of the battle
 	sows, err := db.LastTwoSpoilOfWarAmount()
@@ -100,7 +175,7 @@ func (btl *Battle) start(payload *BattleStartPayload) {
 		spoilOfWarStr = append(spoilOfWarStr, sow.String())
 	}
 	spoilOfWarPayload = append(spoilOfWarPayload, []byte(strings.Join(spoilOfWarStr, "|"))...)
-	btl.arena.netMessageBus.Send(context.Background(), messagebus.NetBusKey(HubKeySpoilOfWarUpdated), spoilOfWarPayload)
+	go btl.arena.netMessageBus.Send(context.Background(), messagebus.NetBusKey(HubKeySpoilOfWarUpdated), spoilOfWarPayload)
 }
 
 // calcTriggeredLocation convert picked cell to the location in game
@@ -468,15 +543,6 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	btl.endInfoBroadcast(*endInfo)
 
 	go func(id string) {
-		// update user stat
-		err = db.UserStatsRefresh(context.Background(), gamedb.Conn)
-		if err != nil {
-			gamelog.L.Error().
-				Str("Battle ID", id).
-				Err(err).
-				Msg("unable to refresh users stats")
-		}
-
 		us, err := db.UserStatsAll(context.Background(), gamedb.Conn)
 		if err != nil {
 			gamelog.L.Error().
@@ -573,9 +639,11 @@ func (btl *Battle) userOnline(user *BattleUser, wsc *hub.Client) {
 		u.Unlock()
 	}
 
-	err := db.BattleViewerUpsert(context.Background(), gamedb.Conn, btl.ID, wsc.Identifier())
-	if err != nil {
-		gamelog.L.Error().Err(err)
+	if btl.inserted {
+		err := db.BattleViewerUpsert(context.Background(), gamedb.Conn, btl.ID, wsc.Identifier())
+		if err != nil {
+			gamelog.L.Error().Str("battle_id", btl.ID).Str("player_id", wsc.Identifier()).Err(err)
+		}
 	}
 
 	resp := &ViewerLiveCount{
@@ -585,6 +653,7 @@ func (btl *Battle) userOnline(user *BattleUser, wsc *hub.Client) {
 		Other:       0,
 	}
 
+	// TODO: optimise at some point
 	btl.users.Range(func(user *BattleUser) bool {
 		if faction, ok := FactionNames[user.FactionID]; ok {
 			switch faction {
@@ -1123,6 +1192,14 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 		for _, wm := range btl.WarMachines {
 			if wm.Hash == dp.DestroyedWarMachineEvent.KillByWarMachineHash {
 				killByWarMachine = wm
+
+				// update user kill
+				if wm.OwnedByID != "" {
+					_, err := db.UserStatAddKill(wm.OwnedByID)
+					if err != nil {
+						gamelog.L.Error().Str("player_id", wm.OwnedByID).Err(err).Msg("Failed to update user kill count")
+					}
+				}
 			}
 		}
 		if destroyedWarMachine == nil {
@@ -1362,6 +1439,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 
 func (btl *Battle) Load() error {
 	q, err := db.LoadBattleQueue(context.Background(), 3)
+	ids := make([]uuid.UUID, len(q))
 	if err != nil {
 		gamelog.L.Warn().Str("battle_id", btl.ID).Err(err).Msg("unable to load out queue")
 		return err
@@ -1378,7 +1456,6 @@ func (btl *Battle) Load() error {
 		return nil
 	}
 
-	ids := make([]uuid.UUID, len(q))
 	for i, bq := range q {
 		ids[i], err = uuid.FromString(bq.MechID)
 		if err != nil {
@@ -1393,12 +1470,7 @@ func (btl *Battle) Load() error {
 		return err
 	}
 	btl.WarMachines = btl.MechsToWarMachines(mechs)
-
-	err = db.QueueSetBattleID(btl.ID, ids...)
-	if err != nil {
-		gamelog.L.Error().Interface("mechs_ids", ids).Str("battle_id", btl.ID).Err(err).Msg("failed to set battle id in queue")
-		return err
-	}
+	btl.warMachineIDs = ids
 
 	return nil
 }

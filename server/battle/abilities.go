@@ -29,10 +29,6 @@ import (
 //******************************
 // Game Ability setup
 //******************************
-
-const EachMechIntroSecond = 3
-const InitIntroSecond = 7
-
 type LocationDeciders struct {
 	list []uuid.UUID
 }
@@ -237,14 +233,11 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 		return nil
 	}
 
-	// calc the intro time, mech_amount * 3 + 7 second
-	waitDurationSecond := len(battle.WarMachines)*EachMechIntroSecond + InitIntroSecond
-
 	// start ability cycle
-	go as.FactionUniqueAbilityUpdater(waitDurationSecond)
+	go as.FactionUniqueAbilityUpdater()
 
 	// bribe cycle
-	go as.StartGabsAbilityPoolCycle(waitDurationSecond)
+	go as.StartGabsAbilityPoolCycle()
 
 	return as
 }
@@ -254,10 +247,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 // ***********************************
 
 // FactionUniqueAbilityUpdater update ability price every 10 seconds
-func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
-	// wait for mech intro
-	time.Sleep(time.Duration(waitDurationSecond) * time.Second)
-
+func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 	minPrice := decimal.New(1, 18)
 
 	main_ticker := time.NewTicker(1 * time.Second)
@@ -458,6 +448,11 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 						err := bat.Insert(gamedb.StdConn, boil.Infer())
 						if err != nil {
 							gamelog.L.Error().Err(err).Msg("Failed to record ability triggered")
+						}
+
+						_, err = db.UserStatAddTotalAbilityTriggered(cont.userID.String())
+						if err != nil {
+							gamelog.L.Error().Str("player_id", cont.userID.String()).Err(err).Msg("failed to update user ability triggered amount")
 						}
 
 						// get player
@@ -786,10 +781,7 @@ type LocationSelectAnnouncement struct {
 }
 
 // StartGabsAbilityPoolCycle
-func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
-	// wait for mech intro
-	time.Sleep(time.Duration(waitDurationSecond) * time.Second)
-
+func (as *AbilitiesSystem) StartGabsAbilityPoolCycle() {
 	// ability price updater
 	as.bribe = make(chan *Contribution, 1000)
 
@@ -1502,6 +1494,11 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 	err = bat.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {
 		gamelog.L.Error().Interface("battle_ability_trigger", bat).Err(err).Msg("Failed to record ability triggered")
+	}
+
+	_, err = db.UserStatAddTotalAbilityTriggered(userID.String())
+	if err != nil {
+		gamelog.L.Error().Str("player_id", userID.String()).Err(err).Msg("failed to update user ability triggered amount")
 	}
 
 	as.battle.arena.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
