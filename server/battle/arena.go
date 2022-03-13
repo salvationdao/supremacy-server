@@ -376,7 +376,7 @@ type GameAbilityContributeRequest struct {
 const HubKeFactionUniqueAbilityContribute hub.HubCommandKey = "FACTION:UNIQUE:ABILITY:CONTRIBUTE"
 
 func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, wsc *hub.Client, payload []byte, factionID uuid.UUID, reply hub.ReplyFunc) error {
-	if arena.currentBattle == nil {
+	if arena == nil || arena.currentBattle == nil || factionID.IsNil() {
 		return nil
 	}
 
@@ -506,6 +506,7 @@ func (arena *Arena) UserOnline(ctx context.Context, wsc *hub.Client, payload []b
 		qm.Load(boiler.PlayerRels.Faction),
 	).One(gamedb.StdConn)
 	if err != nil || user == nil || user.R.Faction == nil {
+		gamelog.L.Error().Err(err).Msg("invalid input data")
 		return terror.Error(terror.ErrInvalidInput)
 	}
 
