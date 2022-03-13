@@ -1436,6 +1436,7 @@ var SubmodelSkinMap = map[string]string{
 	"Gumdan":             "Gundam",
 	"White Gold Pattern": "WhiteGoldPattern",
 	"Evangelic":          "Evangelion",
+	"Evangelica":         "Evangelion",
 	"Chalky Neon":        "ChalkyNeon",
 	"Black Digi":         "BlackDigi",
 	"Purple Haze":        "PurpleHaze",
