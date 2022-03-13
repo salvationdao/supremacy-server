@@ -190,7 +190,7 @@ func (arena *Arena) BroadcastGameNotificationLocationSelect(data *GameNotificati
 }
 
 // BroadcastGameNotificationAbility broadcast game notification to client
-func (arena *Arena) BroadcastGameNotificationAbility(notificationType GameNotificationType, data *GameNotificationAbility) {
+func (arena *Arena) BroadcastGameNotificationAbility(notificationType GameNotificationType, data GameNotificationAbility) {
 	arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyGameNotification), &GameNotification{
 		Type: notificationType,
 		Data: data,

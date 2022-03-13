@@ -234,23 +234,28 @@ const HubKeyBattleAbilityBribe hub.HubCommandKey = "BATTLE:ABILITY:BRIBE"
 func (arena *Arena) BattleAbilityBribe(ctx context.Context, wsc *hub.Client, payload []byte, factionID uuid.UUID, reply hub.ReplyFunc) error {
 	// skip, if current not battle
 	if arena.currentBattle == nil {
+		gamelog.L.Warn().Str("bribe", wsc.Identifier()).Msg("current battle is nil")
 		return nil
 	}
 
 	req := &BribeGabRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
+		gamelog.L.Error().Str("json", string(payload)).Msg("json unmarshal failed")
 		return terror.Error(err, "Invalid request received")
 	}
 
 	d, err := decimal.NewFromString(req.Payload.Amount)
 	if err != nil {
+		gamelog.L.Error().Str("amount", req.Payload.Amount).Msg("cant make moneys")
 		return terror.Error(err, "Failed to parse string to decimal.deciaml")
 	}
 	amount := d.Mul(decimal.New(1, 18))
 
 	userID := uuid.FromStringOrNil(wsc.Identifier())
 	if userID.IsNil() {
+		gamelog.L.Error().Str("user id is nil", wsc.Identifier()).Msg("cant make users")
+
 		return terror.Error(terror.ErrForbidden)
 	}
 
@@ -272,22 +277,31 @@ const HubKeyAbilityLocationSelect hub.HubCommandKey = "ABILITY:LOCATION:SELECT"
 func (arena *Arena) AbilityLocationSelect(ctx context.Context, wsc *hub.Client, payload []byte, factionID uuid.UUID, reply hub.ReplyFunc) error {
 	// skip, if current not battle
 	if arena.currentBattle == nil {
+		gamelog.L.Warn().Msg("no current battle")
 		return nil
 	}
 
 	req := &LocationSelectRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
+		gamelog.L.Warn().Err(err).Msg("invalid request received")
 		return terror.Error(err, "Invalid request received")
 	}
 
-	userID := uuid.FromStringOrNil(wsc.Identifier())
-	if userID.IsNil() {
+	userID, err := uuid.FromString(wsc.Identifier())
+	if err != nil || userID.IsNil() {
+		gamelog.L.Warn().Err(err).Msgf("can't create uuid from wsc identifier %s", wsc.Identifier())
+		return terror.Error(terror.ErrForbidden)
+	}
+
+	if arena.currentBattle.abilities == nil {
+		gamelog.L.Error().Msg("abilities is nil even with current battle not being nil")
 		return terror.Error(terror.ErrForbidden)
 	}
 
 	err = arena.currentBattle.abilities.LocationSelect(userID, req.Payload.XIndex, req.Payload.YIndex)
 	if err != nil {
+		gamelog.L.Warn().Err(err).Msgf("can't create uuid from wsc identifier %s", wsc.Identifier())
 		return terror.Error(err)
 	}
 
