@@ -527,6 +527,10 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 			}
 
 		case <-live_vote_ticker.C:
+			if as.liveCount == nil {
+				continue
+			}
+
 			total := as.liveCount.ReadTotal()
 
 			// broadcast
@@ -853,13 +857,29 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 				currentUserID, nextUserID, ok := as.nextLocationDeciderGet()
 				if !ok {
 
+					if as == nil {
+						gamelog.L.Error().Msg("abilities are nil")
+						continue
+					}
+					if as.battleAbilityPool == nil {
+						gamelog.L.Error().Msg("ability pool is nil")
+						continue
+					}
+
+					if as.battleAbilityPool.Abilities == nil {
+						gamelog.L.Error().Msg("abilities map in battle ability pool is nil")
+						continue
+					}
+
+					ability := as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID]
+
 					// broadcast no ability
 					as.battle.arena.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
 						Type: LocationSelectTypeCancelledNoPlayer,
 						Ability: &AbilityBrief{
-							Label:    as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID].Label,
-							ImageUrl: as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID].ImageUrl,
-							Colour:   as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID].Colour,
+							Label:    ability.Label,
+							ImageUrl: ability.ImageUrl,
+							Colour:   ability.Colour,
 						},
 					})
 
@@ -884,6 +904,11 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 					gamelog.L.Error().Msg("ability pool is nil")
 					continue
 				}
+				if as.battleAbilityPool.Abilities == nil {
+					gamelog.L.Error().Msg("abilities map in battle ability pool is nil")
+					continue
+				}
+
 				ab, ok := as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID]
 				if !ok {
 					gamelog.L.Error().
@@ -1130,6 +1155,10 @@ func (as *AbilitiesSystem) locationDecidersSet(factionID uuid.UUID, triggerByUse
 
 // nextLocationDeciderGet return the uuid of the next player to select the location for ability
 func (as *AbilitiesSystem) nextLocationDeciderGet() (uuid.UUID, uuid.UUID, bool) {
+	if as.locationDeciders == nil {
+		return uuid.UUID(uuid.Nil), uuid.UUID(uuid.Nil), false
+	}
+
 	// clean up the location select list if there is no user left to select location
 	if len(as.locationDeciders.list) <= 1 {
 		as.locationDeciders.list = []uuid.UUID{}
