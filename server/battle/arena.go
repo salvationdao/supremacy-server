@@ -358,8 +358,8 @@ func (arena *Arena) BattleAbilityUpdateSubscribeHandler(ctx context.Context, wsc
 	if arena.currentBattle != nil {
 		btl := arena.currentBattle
 		if btl.abilities != nil {
-			_, abil := btl.abilities.FactionBattleAbilityGet(factionID)
-			reply(abil)
+			abili, _ := btl.abilities.FactionBattleAbilityGet(factionID)
+			reply(abili)
 		}
 	}
 

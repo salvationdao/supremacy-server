@@ -30,8 +30,8 @@ import (
 // Game Ability setup
 //******************************
 
-const EachMechIntroSecond = 3
-const InitIntroSecond = 7
+const EachMechIntroSecond = 0
+const InitIntroSecond = 1
 
 type LocationDeciders struct {
 	list []uuid.UUID
@@ -600,6 +600,22 @@ func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID str
 	}
 	now := time.Now()
 
+	fmt.Println("current sups", ga.CurrentSups.Div(decimal.New(1, 17)))
+	fmt.Println("current sups", ga.CurrentSups.Div(decimal.New(1, 17)))
+	fmt.Println("current sups", ga.CurrentSups.Div(decimal.New(1, 17)))
+	fmt.Println("current sups", ga.CurrentSups.Div(decimal.New(1, 17)))
+	fmt.Println("current sups", ga.CurrentSups.Div(decimal.New(1, 17)))
+	fmt.Println("current sups", ga.CurrentSups.Div(decimal.New(1, 17)))
+	fmt.Println("current sups", ga.CurrentSups.Div(decimal.New(1, 17)))
+	fmt.Println("current sups", ga.CurrentSups.Div(decimal.New(1, 17)))
+
+	fmt.Println("Amount", amount.Div(decimal.New(1, 17)))
+	fmt.Println("Amount", amount.Div(decimal.New(1, 17)))
+	fmt.Println("Amount", amount.Div(decimal.New(1, 17)))
+	fmt.Println("Amount", amount.Div(decimal.New(1, 17)))
+	fmt.Println("Amount", amount.Div(decimal.New(1, 17)))
+	fmt.Println("Amount", amount.Div(decimal.New(1, 17)))
+
 	amount = amount.Truncate(0)
 
 	// pay sup
@@ -679,6 +695,13 @@ func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID str
 	// update the current sups if not triggered
 	if !isTriggered {
 		ga.CurrentSups = ga.CurrentSups.Add(amount)
+
+		fmt.Println("after calcuelation", ga.CurrentSups.Div(decimal.New(1, 17)))
+		fmt.Println("after calcuelation", ga.CurrentSups.Div(decimal.New(1, 17)))
+		fmt.Println("after calcuelation", ga.CurrentSups.Div(decimal.New(1, 17)))
+		fmt.Println("after calcuelation", ga.CurrentSups.Div(decimal.New(1, 17)))
+		fmt.Println("after calcuelation", ga.CurrentSups.Div(decimal.New(1, 17)))
+		fmt.Println("after calcuelation", ga.CurrentSups.Div(decimal.New(1, 17)))
 
 		// store updated price to db
 		err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ga.ID, ga.SupsCost, ga.CurrentSups)
@@ -1271,6 +1294,9 @@ func (as *AbilitiesSystem) BroadcastAbilityProgressBar() {
 	for factionID, ability := range as.battleAbilityPool.Abilities {
 		factionAbilityPrice := fmt.Sprintf("%s_%s_%s", factionID.String(), ability.SupsCost.String(), ability.CurrentSups.String())
 		factionAbilityPrices = append(factionAbilityPrices, factionAbilityPrice)
+		fmt.Println("battle ability", ability.Label)
+		fmt.Println("sups cost", ability.SupsCost.String())
+		fmt.Println("current sups", ability.CurrentSups.String())
 	}
 
 	payload := []byte{byte(BattleAbilityProgressTick)}
