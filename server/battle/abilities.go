@@ -766,7 +766,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 	time.Sleep(time.Duration(waitDurationSecond) * time.Second)
 
 	// ability price updater
-	as.bribe = make(chan *Contribution, 100)
+	as.bribe = make(chan *Contribution, 1000)
 
 	// initial a ticker for current battle
 	main_ticker := time.NewTicker(1 * time.Second)
@@ -1340,6 +1340,9 @@ func (as *AbilitiesSystem) WarMachineAbilitiesGet(factionID uuid.UUID, hash stri
 
 func (as *AbilitiesSystem) BribeGabs(factionID uuid.UUID, userID uuid.UUID, amount decimal.Decimal) {
 	if as == nil || as.battle == nil || as.battle.stage != BattleStagStart || as.battleAbilityPool.Stage.Phase != BribeStageBribe {
+		gamelog.L.Error().
+			Bool("nil checks as", as == nil).
+			Msg("unable to retrieve abilities for faction")
 		return
 	}
 
