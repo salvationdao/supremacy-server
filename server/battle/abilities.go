@@ -386,7 +386,6 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 			}
 		case cont := <-as.contribute:
 			if abilities, ok := as.factionUniqueAbilities[cont.factionID]; ok {
-
 				// check ability exists
 				if ability, ok := abilities[cont.abilityIdentity]; ok {
 
@@ -1303,7 +1302,7 @@ func (as *AbilitiesSystem) BroadcastAbilityProgressBar() {
 // Handlers
 // *********************
 func (as *AbilitiesSystem) AbilityContribute(factionID uuid.UUID, userID uuid.UUID, abilityIdentity string, amount decimal.Decimal) {
-	if as == nil || as.battle == nil || as.battle.stage != BattleStagStart {
+	if as == nil || as.battle == nil || as.battle.stage != BattleStagStart || as.factionUniqueAbilities == nil {
 		return
 	}
 
