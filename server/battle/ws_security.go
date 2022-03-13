@@ -127,6 +127,10 @@ func (opts *Opts) SubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn HubSub
 			gamelog.L.Error().Msg("no bus key. no bus key. no bus key.")
 			return fmt.Errorf("no bus key: %s", wsc.Identifier())
 		}
+		if opts.MessageBus == nil {
+			gamelog.L.Error().Msg("messagebus is nil")
+			return fmt.Errorf("messagebus is nil")
+		}
 		opts.MessageBus.Sub(busKey, wsc, transactionID)
 
 		return nil
