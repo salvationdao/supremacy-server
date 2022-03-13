@@ -272,22 +272,31 @@ const HubKeyAbilityLocationSelect hub.HubCommandKey = "ABILITY:LOCATION:SELECT"
 func (arena *Arena) AbilityLocationSelect(ctx context.Context, wsc *hub.Client, payload []byte, factionID uuid.UUID, reply hub.ReplyFunc) error {
 	// skip, if current not battle
 	if arena.currentBattle == nil {
+		gamelog.L.Warn().Msg("no current battle")
 		return nil
 	}
 
 	req := &LocationSelectRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
+		gamelog.L.Warn().Err(err).Msg("invalid request received")
 		return terror.Error(err, "Invalid request received")
 	}
 
-	userID := uuid.FromStringOrNil(wsc.Identifier())
-	if userID.IsNil() {
+	userID, err := uuid.FromString(wsc.Identifier())
+	if err != nil || userID.IsNil() {
+		gamelog.L.Warn().Err(err).Msgf("can't create uuid from wsc identifier %s", wsc.Identifier())
+		return terror.Error(terror.ErrForbidden)
+	}
+
+	if arena.currentBattle.abilities == nil {
+		gamelog.L.Error().Msg("abilities is nil even with current battle not being nil")
 		return terror.Error(terror.ErrForbidden)
 	}
 
 	err = arena.currentBattle.abilities.LocationSelect(userID, req.Payload.XIndex, req.Payload.YIndex)
 	if err != nil {
+		gamelog.L.Warn().Err(err).Msgf("can't create uuid from wsc identifier %s", wsc.Identifier())
 		return terror.Error(err)
 	}
 
