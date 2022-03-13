@@ -30,8 +30,8 @@ import (
 // Game Ability setup
 //******************************
 
-const EachMechIntroSecond = 0
-const InitIntroSecond = 1
+const EachMechIntroSecond = 3
+const InitIntroSecond = 7
 
 type LocationDeciders struct {
 	list []uuid.UUID
@@ -380,6 +380,25 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 					main_ticker.Stop()
 					live_vote_ticker.Stop()
 					gamelog.L.Info().Msg("exiting ability price update")
+
+					// get spoil of war
+					sows, err := db.LastTwoSpoilOfWarAmount()
+					if err != nil || len(sows) == 0 {
+						gamelog.L.Error().Err(err).Msg("Failed to get last two spoil of war amount")
+						continue
+					}
+
+					// broadcast the spoil of war
+					payload := []byte{byte(SpoilOfWarTick)}
+					spoilOfWarStr := []string{}
+					for _, sow := range sows {
+						spoilOfWarStr = append(spoilOfWarStr, sow.String())
+					}
+					if len(spoilOfWarStr) > 0 {
+						payload = append(payload, []byte(spoilOfWarStr[0]+"|0")...)
+						as.battle.arena.netMessageBus.Send(context.Background(), messagebus.NetBusKey(HubKeySpoilOfWarUpdated), payload)
+					}
+
 					return
 				}
 
