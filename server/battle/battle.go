@@ -299,14 +299,17 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		gamelog.L.Panic().Str("Battle ID", btl.ID).Msg("no winning war machines")
 	}
 
+	gamelog.L.Info().Msgf("battle end: looping TopSupsContributeFactions: %s", btl.ID)
 	topFactionContributorBoilers, err := db.TopSupsContributeFactions(uuid.Must(uuid.FromString(payload.BattleID)))
 	if err != nil {
 		gamelog.L.Warn().Err(err).Str("battle_id", payload.BattleID).Msg("get top faction contributors")
 	}
+	gamelog.L.Info().Msgf("battle end: looping topPlayerContributorsBoilers: %s", btl.ID)
 	topPlayerContributorsBoilers, err := db.TopSupsContributors(uuid.Must(uuid.FromString(payload.BattleID)))
 	if err != nil {
 		gamelog.L.Warn().Err(err).Str("battle_id", payload.BattleID).Msg("get top player contributors")
 	}
+	gamelog.L.Info().Msgf("battle end: looping MostFrequentAbilityExecutors: %s", btl.ID)
 	topPlayerExecutorsBoilers, err := db.MostFrequentAbilityExecutors(uuid.Must(uuid.FromString(payload.BattleID)))
 	if err != nil {
 		gamelog.L.Warn().Err(err).Str("battle_id", payload.BattleID).Msg("get top player executors")
