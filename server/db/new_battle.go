@@ -322,17 +322,17 @@ type MechAndPosition struct {
 
 // AllMechsAfter gets all mechs that come after the specified position in the queue
 // It returns a list of mech IDs
-func AllMechsAfter(queuedAt time.Time, factionID uuid.UUID) ([]*MechAndPosition, error) {
+func AllMechsAfter(leavingMechPosition int, queuedAt time.Time, factionID uuid.UUID) ([]*MechAndPosition, error) {
 	query := `
 		WITH bqpos AS (
 			SELECT t.*,
 				   ROW_NUMBER() OVER(ORDER BY t.queued_at) AS position
 			FROM battle_queue t WHERE faction_id = $1 AND queued_at > $2)
-			SELECT s.mech_id, s.position
+			SELECT s.mech_id, s.position+$3-1
 			FROM bqpos s
 		`
 
-	rows, err := gamedb.StdConn.Query(query, factionID.String(), queuedAt)
+	rows, err := gamedb.StdConn.Query(query, factionID.String(), queuedAt, leavingMechPosition)
 	if err != nil {
 		gamelog.L.Error().
 			Time("queued_at", queuedAt).

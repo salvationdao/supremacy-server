@@ -931,7 +931,7 @@ func (arena *Arena) Leave(ctx context.Context, wsc *hub.Client, payload []byte, 
 		contractReward,
 	})
 
-	mechsAfterIDs, err := db.AllMechsAfter(bq.QueuedAt, factionID)
+	mechsAfterIDs, err := db.AllMechsAfter(int(position), bq.QueuedAt, factionID)
 	if err != nil {
 		gamelog.L.Error().Interface("factionID", factionID).Err(err).Msg("unable to get mechs after")
 		return err
