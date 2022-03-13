@@ -57,27 +57,12 @@ func PlayerRegister(ID uuid.UUID, Username string, FactionID uuid.UUID, PublicAd
 	return player, nil
 }
 
-func UserStatsRefresh(ctx context.Context, conn Conn) error {
-
-	q := `
-	REFRESH MATERIALIZED view user_stats;
-	`
-	_, err := conn.Exec(ctx, q)
-	if err != nil {
-		return err
-	}
-
-	return nil
-
-}
-
 func UserStatsAll(ctx context.Context, conn Conn) ([]*server.UserStat, error) {
 	userStats := []*server.UserStat{}
 	q := `
 		SELECT 
 			us.id,
 			COALESCE(us.view_battle_count,0) AS view_battle_count,
-			COALESCE(us.total_vote_count,0) AS total_vote_count,
 			COALESCE(us.total_ability_triggered,0) AS total_ability_triggered,
 			COALESCE(us.kill_count,0) AS kill_count
 		FROM user_stats us`
@@ -96,7 +81,6 @@ func UserStatsGet(ctx context.Context, conn Conn, userID server.UserID) (*server
 		SELECT 
 			us.id,
 			COALESCE(us.view_battle_count,0) AS view_battle_count,
-			COALESCE(us.total_vote_count,0) AS total_vote_count,
 			COALESCE(us.total_ability_triggered,0) AS total_ability_triggered,
 			COALESCE(us.kill_count,0) AS kill_count
 		FROM user_stats us
@@ -107,5 +91,43 @@ func UserStatsGet(ctx context.Context, conn Conn, userID server.UserID) (*server
 		return nil, err
 	}
 	return userStat, nil
+}
 
+func UserStatsRecalculate(ctx context.Context, conn Conn, CurrentBattleID string) error {
+	q := `
+	INSERT INTO 
+    user_stats (id, view_battle_count, kill_count, total_ability_triggered)
+	SELECT 
+	    p1.id, COALESCE(p2.view_battle_count,0), COALESCE(p4.kill_count,0), COALESCE(p3.total_ability_triggered,0)
+	FROM(
+	        SELECT p.id
+	        FROM players p
+	    ) p1
+	        LEFT JOIN LATERAL (
+	    	SELECT COUNT(*) AS view_battle_count FROM battles_viewers buv
+	    	WHERE buv.player_id = p1.id AND buv.battle_id = $1
+	    	GROUP BY buv.player_id 
+	    ) p2 ON true 
+	    	LEFT JOIN lateral(
+	    	SELECT COUNT(bat.id ) AS total_ability_triggered FROM battle_ability_triggers bat 
+	    	WHERE bat.player_id = p1.id AND bat.battle_id = $1
+	    	GROUP by bat.player_id 
+	    )p3 ON true
+	    	LEFT JOIN lateral(
+	    	SELECT COUNT(bh.id) AS kill_count FROM battle_history bh 
+	    	INNER JOIN battle_mechs bm ON bm.mech_id = bh.war_machine_one_id AND bm.owner_id = p1.id
+			WHERE bh.battle_id = $1
+	    	GROUP BY bm.owner_id 
+	    )p4 ON true
+	ON CONFLICT DO UPDATE SET 
+		view_battle_count = view_battle_count + EXCLUDED.view_battle_count
+		total_ability_triggered = total_ability_triggered + EXCLUDED.total_ability_triggered
+		kill_count = kill_count + EXCLUDED.kill_count
+	`
+	_, err := conn.Exec(ctx, q, CurrentBattleID)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

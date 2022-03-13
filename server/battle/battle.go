@@ -543,7 +543,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 
 	go func(id string) {
 		// update user stat
-		err = db.UserStatsRefresh(context.Background(), gamedb.Conn)
+		err = db.UserStatsRecalculate(context.Background(), gamedb.Conn, id)
 		if err != nil {
 			gamelog.L.Error().
 				Str("Battle ID", id).

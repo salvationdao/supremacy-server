@@ -1,7 +1,7 @@
 DROP MATERIALIZED VIEW user_stats;
 
 CREATE TABLE user_stats(
-    id uuid NOT NULL REFERENCES players (id),
+    id uuid PRIMARY KEY NOT NULL REFERENCES players (id),
     view_battle_count int NOT NULL DEFAULT 0,
     kill_count int NOT NULL DEFAULT 0,
     total_ability_triggered int NOT NULL DEFAULT 0

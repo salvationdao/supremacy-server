@@ -86,20 +86,17 @@ var UserMultiplierWhere = struct {
 
 // UserMultiplierRels is where relationship names are stored.
 var UserMultiplierRels = struct {
-	FromBattleNumberBattle string
-	Multiplier             string
-	Player                 string
+	Multiplier string
+	Player     string
 }{
-	FromBattleNumberBattle: "FromBattleNumberBattle",
-	Multiplier:             "Multiplier",
-	Player:                 "Player",
+	Multiplier: "Multiplier",
+	Player:     "Player",
 }
 
 // userMultiplierR is where relationships are stored.
 type userMultiplierR struct {
-	FromBattleNumberBattle *Battle     `boiler:"FromBattleNumberBattle" boil:"FromBattleNumberBattle" json:"FromBattleNumberBattle" toml:"FromBattleNumberBattle" yaml:"FromBattleNumberBattle"`
-	Multiplier             *Multiplier `boiler:"Multiplier" boil:"Multiplier" json:"Multiplier" toml:"Multiplier" yaml:"Multiplier"`
-	Player                 *Player     `boiler:"Player" boil:"Player" json:"Player" toml:"Player" yaml:"Player"`
+	Multiplier *Multiplier `boiler:"Multiplier" boil:"Multiplier" json:"Multiplier" toml:"Multiplier" yaml:"Multiplier"`
+	Player     *Player     `boiler:"Player" boil:"Player" json:"Player" toml:"Player" yaml:"Player"`
 }
 
 // NewStruct creates a new relationship struct
@@ -360,20 +357,6 @@ func (q userMultiplierQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
-// FromBattleNumberBattle pointed to by the foreign key.
-func (o *UserMultiplier) FromBattleNumberBattle(mods ...qm.QueryMod) battleQuery {
-	queryMods := []qm.QueryMod{
-		qm.Where("\"battle_number\" = ?", o.FromBattleNumber),
-	}
-
-	queryMods = append(queryMods, mods...)
-
-	query := Battles(queryMods...)
-	queries.SetFrom(query.Query, "\"battles\"")
-
-	return query
-}
-
 // Multiplier pointed to by the foreign key.
 func (o *UserMultiplier) Multiplier(mods ...qm.QueryMod) multiplierQuery {
 	queryMods := []qm.QueryMod{
@@ -401,110 +384,6 @@ func (o *UserMultiplier) Player(mods ...qm.QueryMod) playerQuery {
 	queries.SetFrom(query.Query, "\"players\"")
 
 	return query
-}
-
-// LoadFromBattleNumberBattle allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for an N-1 relationship.
-func (userMultiplierL) LoadFromBattleNumberBattle(e boil.Executor, singular bool, maybeUserMultiplier interface{}, mods queries.Applicator) error {
-	var slice []*UserMultiplier
-	var object *UserMultiplier
-
-	if singular {
-		object = maybeUserMultiplier.(*UserMultiplier)
-	} else {
-		slice = *maybeUserMultiplier.(*[]*UserMultiplier)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &userMultiplierR{}
-		}
-		args = append(args, object.FromBattleNumber)
-
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &userMultiplierR{}
-			}
-
-			for _, a := range args {
-				if a == obj.FromBattleNumber {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.FromBattleNumber)
-
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`battles`),
-		qm.WhereIn(`battles.battle_number in ?`, args...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load Battle")
-	}
-
-	var resultSlice []*Battle
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice Battle")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for battles")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battles")
-	}
-
-	if len(userMultiplierAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-
-	if len(resultSlice) == 0 {
-		return nil
-	}
-
-	if singular {
-		foreign := resultSlice[0]
-		object.R.FromBattleNumberBattle = foreign
-		if foreign.R == nil {
-			foreign.R = &battleR{}
-		}
-		foreign.R.FromBattleNumberUserMultipliers = append(foreign.R.FromBattleNumberUserMultipliers, object)
-		return nil
-	}
-
-	for _, local := range slice {
-		for _, foreign := range resultSlice {
-			if local.FromBattleNumber == foreign.BattleNumber {
-				local.R.FromBattleNumberBattle = foreign
-				if foreign.R == nil {
-					foreign.R = &battleR{}
-				}
-				foreign.R.FromBattleNumberUserMultipliers = append(foreign.R.FromBattleNumberUserMultipliers, local)
-				break
-			}
-		}
-	}
-
-	return nil
 }
 
 // LoadMultiplier allows an eager lookup of values, cached into the
@@ -711,52 +590,6 @@ func (userMultiplierL) LoadPlayer(e boil.Executor, singular bool, maybeUserMulti
 				break
 			}
 		}
-	}
-
-	return nil
-}
-
-// SetFromBattleNumberBattle of the userMultiplier to the related item.
-// Sets o.R.FromBattleNumberBattle to related.
-// Adds o to related.R.FromBattleNumberUserMultipliers.
-func (o *UserMultiplier) SetFromBattleNumberBattle(exec boil.Executor, insert bool, related *Battle) error {
-	var err error
-	if insert {
-		if err = related.Insert(exec, boil.Infer()); err != nil {
-			return errors.Wrap(err, "failed to insert into foreign table")
-		}
-	}
-
-	updateQuery := fmt.Sprintf(
-		"UPDATE \"user_multipliers\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"from_battle_number"}),
-		strmangle.WhereClause("\"", "\"", 2, userMultiplierPrimaryKeyColumns),
-	)
-	values := []interface{}{related.BattleNumber, o.PlayerID, o.FromBattleNumber, o.MultiplierID}
-
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, updateQuery)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	if _, err = exec.Exec(updateQuery, values...); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	o.FromBattleNumber = related.BattleNumber
-	if o.R == nil {
-		o.R = &userMultiplierR{
-			FromBattleNumberBattle: related,
-		}
-	} else {
-		o.R.FromBattleNumberBattle = related
-	}
-
-	if related.R == nil {
-		related.R = &battleR{
-			FromBattleNumberUserMultipliers: UserMultiplierSlice{o},
-		}
-	} else {
-		related.R.FromBattleNumberUserMultipliers = append(related.R.FromBattleNumberUserMultipliers, o)
 	}
 
 	return nil
