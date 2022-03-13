@@ -59,6 +59,7 @@ func (ms *MultiplierSystem) PlayerMultipliers(playerID uuid.UUID, battleNumberAd
 		qm.InnerJoin("user_multipliers um on um.multiplier_id = multipliers.id"),
 		qm.Where(`um.player_id = ?`, playerID.String()),
 		qm.And(`um.until_battle_number >= ?`, ms.battle.BattleNumber+battleNumberAdjust)).All(gamedb.StdConn)
+
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Err(err).Msgf("unable to retrieve player multipliers")
 		return []*Multiplier{}, "0"
@@ -91,6 +92,7 @@ func (ms *MultiplierSystem) getMultiplier(mtype, testString string, num int) (*b
 		qm.And(`test_string = ?`, testString),
 		qm.And(`test_number = ?`, num),
 	).One(gamedb.StdConn)
+	
 	if err != nil {
 		gamelog.L.Error().Str("m,type", mtype).Err(err).Msgf("unable to retrieve multiplier from database")
 		return nil, false

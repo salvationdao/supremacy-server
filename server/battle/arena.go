@@ -780,11 +780,6 @@ func (arena *Arena) start() {
 					return
 				}
 			case "BATTLE:INTRO_FINISHED":
-				var dataPayload *BattleStartPayload
-				if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
-					gamelog.L.Warn().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal battle message payload")
-					continue
-				}
 				btl.start()
 			case "BATTLE:WAR_MACHINE_DESTROYED":
 				var dataPayload BattleWMDestroyedPayload

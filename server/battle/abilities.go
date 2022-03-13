@@ -70,6 +70,8 @@ type AbilitiesSystem struct {
 	// location select winner list
 	locationDeciders *LocationDeciders
 
+	end chan bool
+
 	liveCount *LiveCount
 }
 
@@ -209,6 +211,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 		liveCount: &LiveCount{
 			TotalVotes: decimal.Zero,
 		},
+		end: make(chan bool),
 	}
 
 	// broadcast faction unique ability
@@ -259,6 +262,36 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 	// start the battle
 	for {
 		select {
+		case <-as.end:
+			as.battle.stage = BattleStageEnd
+			main_ticker.Stop()
+			live_vote_ticker.Stop()
+			gamelog.L.Info().Msg("exiting ability price update")
+
+			// get spoil of war
+			sows, err := db.LastTwoSpoilOfWarAmount()
+			if err != nil || len(sows) == 0 {
+				gamelog.L.Error().Err(err).Msg("Failed to get last two spoil of war amount")
+				continue
+			}
+
+			// broadcast the spoil of war
+			payload := []byte{byte(SpoilOfWarTick)}
+			spoilOfWarStr := []string{}
+			for _, sow := range sows {
+				spoilOfWarStr = append(spoilOfWarStr, sow.String())
+			}
+			if len(spoilOfWarStr) > 0 {
+				payload = append(payload, []byte(spoilOfWarStr[0]+"|0")...)
+				as.battle.arena.netMessageBus.Send(context.Background(), messagebus.NetBusKey(HubKeySpoilOfWarUpdated), payload)
+			}
+
+			gamelog.L.Info().Msgf("abilities system has been cleaned up: %s", as.battle.ID)
+
+			close(as.end)
+			close(as.contribute)
+
+			return
 		case <-main_ticker.C:
 			for _, abilities := range as.factionUniqueAbilities {
 
@@ -365,31 +398,6 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 						as.battle.arena.netMessageBus.Send(context.Background(), messagebus.NetBusKey(fmt.Sprintf("%s,%s", HubKeyAbilityPriceUpdated, ability.Identity)), payload)
 
 					}
-				} else {
-					// stop all the tickers when battle is ended
-					main_ticker.Stop()
-					live_vote_ticker.Stop()
-					gamelog.L.Info().Msg("exiting ability price update")
-
-					// get spoil of war
-					sows, err := db.LastTwoSpoilOfWarAmount()
-					if err != nil || len(sows) == 0 {
-						gamelog.L.Error().Err(err).Msg("Failed to get last two spoil of war amount")
-						continue
-					}
-
-					// broadcast the spoil of war
-					payload := []byte{byte(SpoilOfWarTick)}
-					spoilOfWarStr := []string{}
-					for _, sow := range sows {
-						spoilOfWarStr = append(spoilOfWarStr, sow.String())
-					}
-					if len(spoilOfWarStr) > 0 {
-						payload = append(payload, []byte(spoilOfWarStr[0]+"|0")...)
-						as.battle.arena.netMessageBus.Send(context.Background(), messagebus.NetBusKey(HubKeySpoilOfWarUpdated), payload)
-					}
-
-					return
 				}
 
 			}
