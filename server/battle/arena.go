@@ -15,8 +15,6 @@ import (
 	"server/rpcclient"
 	"time"
 
-	"github.com/volatiletech/sqlboiler/v4/boil"
-
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
@@ -770,7 +768,18 @@ func (arena *Arena) start() {
 					gamelog.L.Warn().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal battle message payload")
 					continue
 				}
-				btl.start(dataPayload)
+				err = btl.preIntro(dataPayload)
+				if err != nil {
+					gamelog.L.Error().Str("msg", string(payload)).Err(err).Msg("battle start load out has failed")
+					return
+				}
+			case "BATTLE:INTRO_FINISHED":
+				var dataPayload *BattleStartPayload
+				if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
+					gamelog.L.Warn().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal battle message payload")
+					continue
+				}
+				btl.start()
 			case "BATTLE:WAR_MACHINE_DESTROYED":
 				var dataPayload BattleWMDestroyedPayload
 				if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
@@ -808,9 +817,10 @@ func (arena *Arena) Battle() *Battle {
 	id := uuid.Must(uuid.NewV4())
 
 	btl := &Battle{
-		arena:   arena,
-		MapName: gameMap.Name,
-		gameMap: gameMap,
+		arena:    arena,
+		MapName:  gameMap.Name,
+		gameMap:  gameMap,
+		BattleID: id.String(),
 		Battle: &boiler.Battle{
 			ID:        id.String(),
 			GameMapID: gameMap.ID.String(),
@@ -823,68 +833,9 @@ func (arena *Arena) Battle() *Battle {
 		destroyedWarMachineMap: make(map[byte]*WMDestroyedRecord),
 	}
 
-	err = btl.Battle.Insert(gamedb.StdConn, boil.Infer())
-	btl.BattleID = btl.ID
-
-	if err != nil {
-		gamelog.L.Panic().Interface("battle", btl).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to insert Battle into database")
-		return nil
-	}
-
 	err = btl.Load()
 	if err != nil {
 		gamelog.L.Warn().Err(err).Msg("unable to load out mechs")
-	}
-
-	bmd := make([]*db.BattleMechData, len(btl.WarMachines))
-
-	factions := map[uuid.UUID]*boiler.Faction{}
-
-	for i, wm := range btl.WarMachines {
-		mechID, err := uuid.FromString(wm.ID)
-		if err != nil {
-			gamelog.L.Error().Str("ownerID", wm.ID).Err(err).Msg("unable to convert owner id from string")
-			return nil
-		}
-
-		ownerID, err := uuid.FromString(wm.OwnedByID)
-		if err != nil {
-			gamelog.L.Error().Str("ownerID", wm.OwnedByID).Err(err).Msg("unable to convert owner id from string")
-			return nil
-		}
-
-		factionID, err := uuid.FromString(wm.FactionID)
-		if err != nil {
-			gamelog.L.Error().Str("factionID", wm.FactionID).Err(err).Msg("unable to convert faction id from string")
-			return nil
-		}
-
-		bmd[i] = &db.BattleMechData{
-			MechID:    mechID,
-			OwnerID:   ownerID,
-			FactionID: factionID,
-		}
-
-		_, ok := factions[factionID]
-		if !ok {
-			faction, err := boiler.FindFaction(gamedb.StdConn, factionID.String())
-			if err != nil {
-				gamelog.L.Error().
-					Str("Battle ID", btl.ID).
-					Str("Faction ID", factionID.String()).
-					Err(err).Msg("unable to retrieve faction from database")
-
-			}
-			factions[factionID] = faction
-		}
-	}
-
-	btl.factions = factions
-
-	err = db.BattleMechs(btl.Battle, bmd)
-	if err != nil {
-		gamelog.L.Error().Str("Battle ID", btl.ID).Err(err).Msg("unable to insert battle into database")
-		//TODO: something more dramatic
 	}
 
 	return btl
