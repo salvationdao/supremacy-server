@@ -44,11 +44,13 @@ type SpendSupsResp struct {
 func (pp *Passport) SpendSupMessage(req SpendSupsReq) (string, error) {
 	resp := &SpendSupsResp{}
 	err := pp.RPCClient.Call("S.SupremacySpendSupsHandler", req, resp)
+	pp.Log.Info().Interface("request", req)
 	if err != nil {
 		pp.Log.Err(err).Str("method", "SupremacySpendSupsHandler").Msg("rpc error")
 
 		return "", terror.Error(err)
 	}
+
 	return resp.TXID, nil
 }
 
