@@ -3,6 +3,7 @@ package db
 import (
 	"server/db/boiler"
 	"server/gamedb"
+	"server/gamelog"
 	"time"
 
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -124,84 +125,142 @@ func MarkPendingTransactionProcessed(id uuid.UUID) error {
 }
 
 func TopSupsContributeFactions(battleID uuid.UUID) ([]*boiler.Faction, error) {
-	result := []*boiler.Faction{}
 	q := `
-	SELECT f.*
-	FROM battle_contributions bc 
-	INNER JOIN players p ON p.id = bc.player_id
-	INNER JOIN factions f ON f.id = p.faction_id
-	WHERE battle_id = $1 
-	GROUP BY f.id
-	ORDER BY SUM(amount) DESC LIMIT 2;
-`
-	err := pgxscan.Select(context.Background(), gamedb.Conn, &result, q, battleID)
+		SELECT f.id, f.vote_price, f.contract_reward, f.label, f.guild_id, f.created_at, f.primary_color, f.secondary_color, f.background_color
+		FROM battle_contributions bc 
+		INNER JOIN players p ON p.id = bc.player_id
+		INNER JOIN factions f ON f.id = p.faction_id
+		WHERE battle_id = $1 
+		GROUP BY f.id
+		ORDER BY SUM(amount) DESC LIMIT 2;
+	`
+
+	rows, err := gamedb.StdConn.Query(q, battleID)
 	if err != nil {
-		return result, err
+		gamelog.L.Error().
+			Str("db func", "TopSupsContributeFactions").Err(err).Msg("unable to query factions")
+		return nil, err
 	}
 
-	return result, nil
+	defer rows.Close()
+
+	factions := make([]*boiler.Faction, 0)
+
+	for rows.Next() {
+		f := &boiler.Faction{}
+
+		err := rows.Scan(&f.ID, &f.VotePrice, &f.ContractReward, &f.Label, &f.GuildID, &f.CreatedAt, &f.PrimaryColor, &f.SecondaryColor, &f.BackgroundColor)
+		if err != nil {
+
+			gamelog.L.Error().
+				Str("db func", "TopSupsContributeFactions").Err(err).Msg("unable to scan faction into struct")
+			return nil, err
+		}
+
+		factions = append(factions, f)
+	}
+
+	return factions, nil
 }
 
 func TopSupsContributors(battleID uuid.UUID) ([]*boiler.Player, error) {
-	result := []*boiler.Player{}
+	players := []*boiler.Player{}
 	q := `
-	SELECT p.*
-	FROM battle_contributions bc 
-	INNER JOIN players p ON p.id = bc.player_id
-	INNER JOIN factions f ON f.id = p.faction_id
-	WHERE battle_id = $1 
-	GROUP BY p.id ORDER BY SUM(amount) DESC LIMIT 2;
-`
+	 SELECT p.id, p.faction_id, p.username, p.public_address, p.is_ai, p.created_at
+	 FROM battle_contributions bc
+	 INNER JOIN players p ON p.id = bc.player_id
+	 INNER JOIN factions f ON f.id = p.faction_id
+	 WHERE battle_id = $1
+	 GROUP BY p.id ORDER BY SUM(amount) DESC LIMIT 2;
+	`
 
-	err := pgxscan.Select(context.Background(), gamedb.Conn, &result, q, battleID)
+	rows, err := gamedb.StdConn.Query(q, battleID)
 	if err != nil {
-		return result, err
+		gamelog.L.Error().
+			Str("db func", "TopSupsContributors").Err(err).Msg("unable to query factions")
+		return nil, err
 	}
 
-	return result, nil
+	defer rows.Close()
+	for rows.Next() {
+		pl := &boiler.Player{}
+		err := rows.Scan(&pl.ID, &pl.FactionID, &pl.Username, &pl.PublicAddress, &pl.IsAi, &pl.CreatedAt)
+		if err != nil {
+			gamelog.L.Error().
+				Str("db func", "TopSupsContributors").Err(err).Msg("unable to scan player into struct")
+			return nil, err
+		}
+		players = append(players, pl)
+	}
+
+	return players, err
 }
+
 func MostFrequentAbilityExecutors(battleID uuid.UUID) ([]*boiler.Player, error) {
-	result := []*boiler.Player{}
+	players := []*boiler.Player{}
 	q := `
-	SELECT p.*
-	FROM battle_contributions bc
-	INNER JOIN players p ON p.id = bc.player_id
-	INNER JOIN factions f ON f.id = p.faction_id
-	WHERE battle_id = $1 AND did_trigger = TRUE 
-	GROUP BY p.id ORDER BY COUNT(bc.id) DESC LIMIT 2;
-`
-	err := pgxscan.Select(context.Background(), gamedb.Conn, &result, q, battleID)
+	 SELECT p.id, p.faction_id, p.username, p.public_address, p.is_ai, p.created_at
+	 FROM battle_contributions bc
+	 INNER JOIN players p ON p.id = bc.player_id
+	 INNER JOIN factions f ON f.id = p.faction_id
+	 WHERE battle_id = $1 AND did_trigger = TRUE
+	 GROUP BY p.id ORDER BY COUNT(bc.id) DESC LIMIT 2;
+	`
+
+	rows, err := gamedb.StdConn.Query(q, battleID)
 	if err != nil {
-		return result, err
+		gamelog.L.Error().
+			Str("db func", "TopSupsContributors").Err(err).Msg("unable to query factions")
+		return nil, err
 	}
 
-	return result, nil
+	defer rows.Close()
+	for rows.Next() {
+		pl := &boiler.Player{}
+		err := rows.Scan(&pl.ID, &pl.FactionID, &pl.Username, &pl.PublicAddress, &pl.IsAi, &pl.CreatedAt)
+		if err != nil {
+			gamelog.L.Error().
+				Str("db func", "TopSupsContributors").Err(err).Msg("unable to scan player into struct")
+			return nil, err
+		}
+		players = append(players, pl)
+	}
+
+	return players, err
 }
 
 func LastTwoSpoilOfWarAmount() ([]decimal.Decimal, error) {
-	amounts := []struct {
-		Amount decimal.Decimal `db:"amount"`
-	}{}
-
 	q := `
-		SELECT 
-			(sow.amount - sow.amount_sent) as amount
-		FROM 
-			spoils_of_war sow
-		ORDER BY 
-			sow.created_at DESC
-		LIMIT
-			2
+	 SELECT 
+	  (sow.amount - sow.amount_sent) as amount
+	 FROM 
+	  spoils_of_war sow
+	 ORDER BY 
+	  sow.created_at DESC
+	 LIMIT
+	  2
 	`
 
-	err := pgxscan.Select(context.Background(), gamedb.Conn, &amounts, q)
+	rows, err := gamedb.StdConn.Query(q)
 	if err != nil {
+		gamelog.L.Error().
+			Str("db func", "LastTwoSpoilOfWarAmount").Err(err).Msg("unable to query spoils of war 2")
 		return []decimal.Decimal{}, terror.Error(err)
 	}
+	defer rows.Close()
 
-	result := []decimal.Decimal{}
-	for _, a := range amounts {
-		result = append(result, a.Amount)
+	result := make([]decimal.Decimal, 2)
+	i := 0
+	for rows.Next() {
+		var amnt decimal.Decimal
+		err := rows.Scan(&amnt)
+		if err != nil {
+			gamelog.L.Error().
+				Str("db func", "LastTwoSpoilOfWarAmount").Err(err).Msg("unable to scan spoils of war 2")
+			return nil, err
+		}
+		result[i] = amnt
+		i++
 	}
 
 	return result, nil
