@@ -282,6 +282,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 
 	winningWarMachines := make([]*WarMachine, len(payload.WinningWarMachines))
 
+	gamelog.L.Info().Msgf("battle end: looping WinningWarMachines: %s", btl.ID)
 	for i := range payload.WinningWarMachines {
 		for _, w := range btl.WarMachines {
 			if w.Hash == payload.WinningWarMachines[i].Hash {
@@ -312,6 +313,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	}
 
 	topFactionContributors := []*Faction{}
+	gamelog.L.Info().Msgf("battle end: looping topFactionContributorBoilers: %s", btl.ID)
 	for _, f := range topFactionContributorBoilers {
 		topFactionContributors = append(topFactionContributors, &Faction{
 			ID:    f.ID,
@@ -324,6 +326,8 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		})
 	}
 	topPlayerContributors := []*BattleUser{}
+
+	gamelog.L.Info().Msgf("battle end: looping topPlayerContributorsBoilers: %s", btl.ID)
 	for _, p := range topPlayerContributorsBoilers {
 		factionID := uuid.Must(uuid.FromString(winningWarMachines[0].FactionID))
 		if p.FactionID.Valid {
@@ -339,6 +343,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		})
 	}
 
+	gamelog.L.Info().Msgf("battle end: looping topPlayerExecutorsBoilers: %s", btl.ID)
 	topPlayerExecutors := []*BattleUser{}
 	for _, p := range topPlayerExecutorsBoilers {
 		factionID := uuid.Must(uuid.FromString(winningWarMachines[0].FactionID))
@@ -372,8 +377,6 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		TopSupsContributors:          topPlayerExecutors,
 		MostFrequentAbilityExecutors: topPlayerExecutors,
 	}
-
-	btl.stage = BattleStageEnd
 
 	mws := make([]*db.MechWithOwner, len(payload.WinningWarMachines))
 
@@ -528,7 +531,6 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 				continue
 			}
 		}
-
 	}
 	err = db.WinBattle(btl.ID, payload.WinCondition, mws...)
 	if err != nil {
@@ -538,8 +540,18 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 			Msg("unable to store mech wins")
 	}
 
+	gamelog.L.Info().Msgf("cleaning up abilities: %s", btl.ID)
+
+	btl.abilities.end <- true
+
+	gamelog.L.Info().Msgf("cleaning up spoils: %s", btl.ID)
 	btl.spoils.End()
+
+	gamelog.L.Info().Msgf("cleaning up multipliers: %s", btl.ID)
 	btl.multipliers.end(endInfo)
+
+	gamelog.L.Info().Msgf("battle has been cleaned up, sending broadcast %s", btl.ID)
+
 	btl.endInfoBroadcast(*endInfo)
 
 	go func(id string) {
@@ -577,6 +589,7 @@ func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 		gamelog.L.Error().Str("battle number #", strconv.Itoa(btl.BattleNumber+1)).Err(err).Msg("Failed to get player multipliers from db")
 		return
 	}
+
 	for _, m := range multipliers {
 		m.TotalMultiplier = m.TotalMultiplier.Shift(-1)
 	}
