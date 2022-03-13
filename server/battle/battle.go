@@ -53,6 +53,8 @@ type Battle struct {
 
 	destroyedWarMachineMap map[byte]*WMDestroyedRecord
 	*boiler.Battle
+
+	inserted bool
 }
 
 const HubKeyLiveVoteCountUpdated hub.HubCommandKey = "LIVE:VOTE:COUNT:UPDATED"
@@ -126,6 +128,17 @@ func (btl *Battle) start() {
 		return
 	}
 
+	btl.inserted = true
+	// insert current users to
+	btl.users.Range(func(user *BattleUser) bool {
+		err = db.BattleViewerUpsert(context.Background(), gamedb.Conn, btl.ID, user.ID.String())
+		if err != nil {
+			gamelog.L.Error().Str("battle_id", btl.ID).Str("player_id", user.ID.String()).Err(err).Msg("to upsert battle view")
+			return true
+		}
+		return true
+	})
+
 	err = db.QueueSetBattleID(btl.ID, btl.warMachineIDs...)
 	if err != nil {
 		gamelog.L.Error().Interface("mechs_ids", btl.warMachineIDs).Str("battle_id", btl.ID).Err(err).Msg("failed to set battle id in queue")
@@ -149,18 +162,6 @@ func (btl *Battle) start() {
 	btl.spoils = NewSpoilsOfWar(btl, 5*time.Second, 5*time.Second)
 	btl.BroadcastUpdate()
 
-	// insert spoil of war
-	spoil := &boiler.SpoilsOfWar{
-		BattleID:     btl.ID,
-		BattleNumber: btl.BattleNumber,
-		Amount:       decimal.New(0, 18),
-		AmountSent:   decimal.New(0, 18),
-	}
-	err = spoil.Insert(gamedb.StdConn, boil.Infer())
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("unable to insert spoils")
-	}
-
 	// broadcast spoil of war on the start of the battle
 	sows, err := db.LastTwoSpoilOfWarAmount()
 	if err != nil || len(sows) == 0 {
@@ -174,7 +175,7 @@ func (btl *Battle) start() {
 		spoilOfWarStr = append(spoilOfWarStr, sow.String())
 	}
 	spoilOfWarPayload = append(spoilOfWarPayload, []byte(strings.Join(spoilOfWarStr, "|"))...)
-	btl.arena.netMessageBus.Send(context.Background(), messagebus.NetBusKey(HubKeySpoilOfWarUpdated), spoilOfWarPayload)
+	go btl.arena.netMessageBus.Send(context.Background(), messagebus.NetBusKey(HubKeySpoilOfWarUpdated), spoilOfWarPayload)
 }
 
 // calcTriggeredLocation convert picked cell to the location in game
@@ -542,15 +543,6 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	btl.endInfoBroadcast(*endInfo)
 
 	go func(id string) {
-		// update user stat
-		err = db.UserStatsRecalculate(context.Background(), gamedb.Conn, id)
-		if err != nil {
-			gamelog.L.Error().
-				Str("Battle ID", id).
-				Err(err).
-				Msg("unable to refresh users stats")
-		}
-
 		us, err := db.UserStatsAll(context.Background(), gamedb.Conn)
 		if err != nil {
 			gamelog.L.Error().
@@ -647,9 +639,11 @@ func (btl *Battle) userOnline(user *BattleUser, wsc *hub.Client) {
 		u.Unlock()
 	}
 
-	err := db.BattleViewerUpsert(context.Background(), gamedb.Conn, btl.ID, wsc.Identifier())
-	if err != nil {
-		gamelog.L.Error().Err(err)
+	if btl.inserted {
+		err := db.BattleViewerUpsert(context.Background(), gamedb.Conn, btl.ID, wsc.Identifier())
+		if err != nil {
+			gamelog.L.Error().Str("battle_id", btl.ID).Str("player_id", wsc.Identifier()).Err(err)
+		}
 	}
 
 	resp := &ViewerLiveCount{
@@ -659,6 +653,7 @@ func (btl *Battle) userOnline(user *BattleUser, wsc *hub.Client) {
 		Other:       0,
 	}
 
+	// TODO: optimise at some point
 	btl.users.Range(func(user *BattleUser) bool {
 		if faction, ok := FactionNames[user.FactionID]; ok {
 			switch faction {
@@ -1197,6 +1192,14 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 		for _, wm := range btl.WarMachines {
 			if wm.Hash == dp.DestroyedWarMachineEvent.KillByWarMachineHash {
 				killByWarMachine = wm
+
+				// update user kill
+				if wm.OwnedByID != "" {
+					_, err := db.UserStatAddKill(wm.OwnedByID)
+					if err != nil {
+						gamelog.L.Error().Str("player_id", wm.OwnedByID).Err(err).Msg("Failed to update user kill count")
+					}
+				}
 			}
 		}
 		if destroyedWarMachine == nil {

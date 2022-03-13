@@ -112,7 +112,6 @@ func UserStatGet(ctx context.Context, conn Conn, userID server.UserID) (*server.
 		SELECT 
 			us.id,
 			COALESCE(us.view_battle_count,0) AS view_battle_count,
-			COALESCE(us.total_vote_count,0) AS total_vote_count,
 			COALESCE(us.total_ability_triggered,0) AS total_ability_triggered,
 			COALESCE(us.kill_count,0) AS kill_count
 		FROM user_stats us

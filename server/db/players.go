@@ -6,10 +6,12 @@ import (
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
+	"server/gamelog"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/gofrs/uuid"
+	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
@@ -93,41 +95,85 @@ func UserStatsGet(ctx context.Context, conn Conn, userID server.UserID) (*server
 	return userStat, nil
 }
 
-func UserStatsRecalculate(ctx context.Context, conn Conn, CurrentBattleID string) error {
-	q := `
-	INSERT INTO 
-    user_stats (id, view_battle_count, kill_count, total_ability_triggered)
-	SELECT 
-	    p1.id, COALESCE(p2.view_battle_count,0), COALESCE(p4.kill_count,0), COALESCE(p3.total_ability_triggered,0)
-	FROM(
-	        SELECT p.id
-	        FROM players p
-	    ) p1
-	        LEFT JOIN LATERAL (
-	    	SELECT COUNT(*) AS view_battle_count FROM battles_viewers buv
-	    	WHERE buv.player_id = p1.id AND buv.battle_id = $1
-	    	GROUP BY buv.player_id 
-	    ) p2 ON true 
-	    	LEFT JOIN lateral(
-	    	SELECT COUNT(bat.id ) AS total_ability_triggered FROM battle_ability_triggers bat 
-	    	WHERE bat.player_id = p1.id AND bat.battle_id = $1
-	    	GROUP by bat.player_id 
-	    )p3 ON true
-	    	LEFT JOIN lateral(
-	    	SELECT COUNT(bh.id) AS kill_count FROM battle_history bh 
-	    	INNER JOIN battle_mechs bm ON bm.mech_id = bh.war_machine_one_id AND bm.owner_id = p1.id
-			WHERE bh.battle_id = $1
-	    	GROUP BY bm.owner_id 
-	    )p4 ON true
-	ON CONFLICT DO UPDATE SET 
-		view_battle_count = view_battle_count + EXCLUDED.view_battle_count
-		total_ability_triggered = total_ability_triggered + EXCLUDED.total_ability_triggered
-		kill_count = kill_count + EXCLUDED.kill_count
-	`
-	_, err := conn.Exec(ctx, q, CurrentBattleID)
+func UserStatAddKill(playerID string) (*boiler.UserStat, error) {
+	userStat, err := UserStatQuery(playerID)
 	if err != nil {
-		return err
+		gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to query user stat")
+		return nil, terror.Error(err)
 	}
 
-	return nil
+	userStat.KillCount += 1
+
+	_, err = userStat.Update(gamedb.StdConn, boil.Whitelist(boiler.UserStatColumns.KillCount))
+	if err != nil {
+		gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to update user kill count")
+		return nil, terror.Error(err)
+	}
+
+	return userStat, nil
+}
+
+func UserStatAddTotalAbilityTriggered(playerID string) (*boiler.UserStat, error) {
+	userStat, err := UserStatQuery(playerID)
+	if err != nil {
+		gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to query user stat")
+		return nil, terror.Error(err)
+	}
+
+	userStat.TotalAbilityTriggered += 1
+
+	_, err = userStat.Update(gamedb.StdConn, boil.Whitelist(boiler.UserStatColumns.TotalAbilityTriggered))
+	if err != nil {
+		gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to update user total ability triggered")
+		return nil, terror.Error(err)
+	}
+
+	return userStat, nil
+}
+
+func UserStatAddViewBattleCount(playerID string) (*boiler.UserStat, error) {
+	userStat, err := UserStatQuery(playerID)
+	if err != nil {
+		gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to query user stat")
+		return nil, terror.Error(err)
+	}
+
+	userStat.ViewBattleCount += 1
+
+	_, err = userStat.Update(gamedb.StdConn, boil.Whitelist(boiler.UserStatColumns.ViewBattleCount))
+	if err != nil {
+		gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to update user view battle count")
+		return nil, terror.Error(err)
+	}
+
+	return userStat, nil
+}
+
+func UserStatQuery(playerID string) (*boiler.UserStat, error) {
+	userStat, err := boiler.FindUserStat(gamedb.StdConn, playerID)
+	if err != nil {
+		gamelog.L.Warn().Str("player_id", playerID).Err(err).Msg("Failed to get user stat, creating a new user stat")
+
+		userStat, err = UserStatCreate(playerID)
+		if err != nil {
+			gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to insert user stat")
+			return nil, terror.Error(err)
+		}
+	}
+
+	return userStat, nil
+}
+
+func UserStatCreate(playerID string) (*boiler.UserStat, error) {
+	userStat := &boiler.UserStat{
+		ID: playerID,
+	}
+
+	err := userStat.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to insert user stat")
+		return nil, terror.Error(err)
+	}
+
+	return userStat, nil
 }

@@ -10,7 +10,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/georgysavva/scany/pgxscan"
 	"github.com/gofrs/uuid"
+	"github.com/jackc/pgx/v4"
+	"github.com/ninja-software/terror/v2"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 
@@ -554,6 +557,11 @@ func LeaveQueue(mech *BattleMechData) (int64, error) {
 }
 
 func QueueSetBattleID(battleID string, mechIDs ...uuid.UUID) error {
+	if len(mechIDs) == 0 {
+		gamelog.L.Warn().Str("battle_id", battleID).Msg("Battle mech is empty")
+		return nil
+	}
+
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
 		gamelog.L.Error().Str("db func", "ClearQueue").Err(err).Msg("unable to begin tx")
@@ -640,15 +648,42 @@ func ClearQueue(mechIDs ...uuid.UUID) error {
 	return tx.Commit()
 }
 
-func BattleViewerUpsert(ctx context.Context, conn Conn, battleID string, userID string) error {
+type BattleViewer struct {
+	BattleID uuid.UUID `db:"battle_id"`
+	PlayerID uuid.UUID `db:"player_id"`
+}
 
+func BattleViewerUpsert(ctx context.Context, conn Conn, battleID string, userID string) error {
+	test := &BattleViewer{}
 	q := `
+		select bv.player_id from battles_viewers bv where battle_id = $1 and player_id = $2
+	`
+	err := pgxscan.Get(context.Background(), gamedb.Conn, test, q, battleID, userID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		gamelog.L.Error().Str("battle_id", battleID).Str("player_id", userID).Err(err).Msg("failed to get battles viewer")
+		return terror.Error(err)
+	}
+
+	// skip if user already insert
+	if err == nil {
+		return nil
+	}
+
+	// insert battle viewers
+	q = `
 	insert into battles_viewers (battle_id, player_id) VALUES ($1, $2) on conflict (battle_id, player_id) do nothing; 
 	`
-	_, err := conn.Exec(ctx, q, battleID, userID)
+	_, err = conn.Exec(ctx, q, battleID, userID)
 	if err != nil {
-		gamelog.L.Error().Str("db func", "BattleViewerUpsert").Err(err).Msg("unable to upsert battle views")
+		gamelog.L.Error().Str("db func", "BattleViewerUpsert").Str("battle_id", battleID).Str("player_id", userID).Err(err).Msg("unable to upsert battle views")
 		return err
+	}
+
+	// increase battle count
+	_, err = UserStatAddViewBattleCount(userID)
+	if err != nil {
+		gamelog.L.Error().Str("battle_id", battleID).Str("player_id", userID).Err(err).Msg("failed to update user battle view")
+		return terror.Error(err)
 	}
 
 	return nil
