@@ -810,11 +810,27 @@ func (arena *Arena) start() {
 }
 
 func (arena *Arena) Battle() *Battle {
-	gameMap, err := db.GameMapGetRandom(context.Background(), arena.conn)
+	gm, err := db.GameMapGetRandom(context.Background(), arena.conn)
 	if err != nil {
 		gamelog.L.Err(err).Msg("unable to get random map")
 		return nil
 	}
+
+	gameMap := &server.GameMap{
+		ID:            uuid.Must(uuid.FromString(gm.ID)),
+		Name:          gm.Name,
+		ImageUrl:      gm.ImageURL,
+		MaxSpawns:     gm.MaxSpawns,
+		Width:         gm.Width,
+		Height:        gm.Height,
+		CellsX:        gm.CellsX,
+		CellsY:        gm.CellsY,
+		TopPixels:     gm.TopPixels,
+		LeftPixels:    gm.LeftPixels,
+		Scale:         gm.Scale,
+		DisabledCells: gm.DisabledCells,
+	}
+
 	id := uuid.Must(uuid.NewV4())
 
 	btl := &Battle{

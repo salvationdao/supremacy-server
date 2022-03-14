@@ -1382,11 +1382,16 @@ func (as *AbilitiesSystem) WarMachineAbilitiesGet(factionID uuid.UUID, hash stri
 }
 
 func (as *AbilitiesSystem) BribeGabs(factionID uuid.UUID, userID uuid.UUID, amount decimal.Decimal) {
-	if as == nil || as.battle == nil || as.battle.stage != BattleStagStart || as.battleAbilityPool.Stage.Phase != BribeStageBribe {
+	if as == nil || as.battle == nil || as.battle.stage != BattleStagStart {
 		gamelog.L.Error().
 			Bool("nil checks as", as == nil).
 			Msg("unable to retrieve abilities for faction")
 		return
+	}
+
+	if as.battleAbilityPool.Stage.Phase != BribeStageBribe {
+		gamelog.L.Warn().
+			Msg("unable to retrieve abilities for faction")
 	}
 
 	cont := &Contribution{
