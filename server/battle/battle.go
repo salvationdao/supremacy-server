@@ -157,9 +157,9 @@ func (btl *Battle) start() {
 
 	// set up the abilities for current battle
 
+	btl.spoils = NewSpoilsOfWar(btl, 5*time.Second, 5*time.Second)
 	btl.abilities = NewAbilitiesSystem(btl)
 	btl.multipliers = NewMultiplierSystem(btl)
-	btl.spoils = NewSpoilsOfWar(btl, 5*time.Second, 5*time.Second)
 	btl.BroadcastUpdate()
 
 	// broadcast spoil of war on the start of the battle
@@ -1280,6 +1280,11 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 			BattleID:        btl.ID,
 			WarMachineOneID: warMachineID.String(),
 			EventType:       db.Btlevnt_Killed.String(),
+		}
+
+		// record killer war machine if exists
+		if !killByWarMachineID.IsNil() {
+			bh.WarMachineTwoID = null.StringFrom(killByWarMachineID.String())
 		}
 
 		if dp.DestroyedWarMachineEvent.RelatedEventIDString != "" {

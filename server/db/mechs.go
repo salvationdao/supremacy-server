@@ -570,7 +570,7 @@ func MechIDsFromHash(hashes ...string) ([]uuid.UUID, error) {
 		}
 	}
 	paramrefs = paramrefs[:len(paramrefs)-1]
-	q := `SELECT id FROM mechs WHERE mechs.hash IN (` + paramrefs + `)`
+	q := `SELECT id, hash FROM mechs WHERE mechs.hash IN (` + paramrefs + `)`
 
 	result, err := gamedb.Conn.Query(context.Background(), q, idintf...)
 	if err != nil {
@@ -582,7 +582,8 @@ func MechIDsFromHash(hashes ...string) ([]uuid.UUID, error) {
 	i := 0
 	for result.Next() {
 		var idStr string
-		err = result.Scan(&idStr)
+		var hash string
+		err = result.Scan(&idStr, &hash)
 		if err != nil {
 			return nil, err
 		}
@@ -591,8 +592,14 @@ func MechIDsFromHash(hashes ...string) ([]uuid.UUID, error) {
 		if err != nil {
 			gamelog.L.Error().Str("mechID", idStr).Str("db func", "MechIDsFromHash").Err(err).Msg("unable to convert id to uuid")
 		}
-		ids[i] = uid
-		i++
+
+		// set id in correct order
+		for index, h := range hashes {
+			if h == hash {
+				ids[index] = uid
+				i++
+			}
+		}
 	}
 
 	if i == 0 {
