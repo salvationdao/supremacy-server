@@ -991,7 +991,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle() {
 
 				if abilityTriggered {
 					// generate location select order list
-					as.locationDecidersSet(as.battle.ID, cont.factionID)
+					as.locationDecidersSet(as.battle.ID, cont.factionID, cont.userID)
 
 					// change bribing phase to location select
 					as.battleAbilityPool.Stage.Phase = BribeStageLocationSelect
