@@ -92,7 +92,7 @@ func (ms *MultiplierSystem) getMultiplier(mtype, testString string, num int) (*b
 		qm.And(`test_string = ?`, testString),
 		qm.And(`test_number = ?`, num),
 	).One(gamedb.StdConn)
-	
+
 	if err != nil {
 		gamelog.L.Error().Str("m,type", mtype).Err(err).Msgf("unable to retrieve multiplier from database")
 		return nil, false
@@ -350,17 +350,22 @@ outer:
 		order by max(created_at) desc
 		limit 3;
 	*/
-	lastWins, err := boiler.BattleWins(
-		qm.Select(boiler.BattleWinColumns.BattleID, boiler.BattleWinColumns.FactionID),
-		qm.GroupBy(boiler.BattleWinColumns.BattleID+","+boiler.BattleWinColumns.FactionID),
-		qm.OrderBy("MAX("+boiler.BattleWinColumns.CreatedAt+") DESC"),
-		qm.Limit(3),
-	).All(gamedb.StdConn)
+
+	lastWin, err := boiler.BattleWins(
+		boiler.BattleWinWhere.BattleID.EQ(ms.battle.ID),
+		qm.Limit(1),
+	).One(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("unable to retrieve last 3 winning factions")
+		gamelog.L.Error().Err(err).Msg("unable to retrieve last win")
 	}
 
+	lastWins, err := boiler.BattleWins(
+		qm.OrderBy(boiler.BattleWinColumns.CreatedAt, "DESC"),
+		qm.Limit(3),
+	).All(gamedb.StdConn)
+
 	// set syndicate win
+
 	hatTrick := true
 	for i := 1; i < len(lastWins); i++ {
 		if lastWins[i].FactionID != lastWins[i-1].FactionID {
@@ -373,12 +378,11 @@ outer:
 	m3, _ := ms.getMultiplier("syndicate_win", "", 3)
 
 	ms.battle.users.Range(func(bu *BattleUser) bool {
-		if bu.FactionID == lastWins[0].FactionID {
+		if bu.FactionID == lastWin.FactionID {
 			if _, ok := newMultipliers[bu.ID.String()]; !ok {
 				// newMultipliers[bu.ID.String()] = map[*boiler.Multiplier]bool{}
 				return true
 			}
-
 			newMultipliers[bu.ID.String()][m1] = true
 			if hatTrick {
 				newMultipliers[bu.ID.String()][m3] = true
