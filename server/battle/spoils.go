@@ -36,7 +36,7 @@ func NewSpoilsOfWar(btl *Battle, transactSpeed time.Duration, dripSpeed time.Dur
 		tickSpeed:     dripSpeed,
 	}
 
-	amnt := decimal.New(int64(rand.Intn(500)+500), 18)
+	amnt := decimal.New(int64(rand.Intn(500)+200), 18)
 
 	sow := &boiler.SpoilsOfWar{
 		BattleID:     btl.ID,
