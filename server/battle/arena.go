@@ -678,12 +678,12 @@ func (arena *Arena) SendSettings(ctx context.Context, wsc *hub.Client, payload [
 	if err != nil {
 		return "", "", errors.Wrap(err, "unable to unmarshal json payload for send settings subscribe")
 	}
-	if arena.currentBattle == nil {
-		return "", "", fmt.Errorf("battle is not currently running")
-	}
 
-	btl := arena.currentBattle
-	reply(btl.updatePayload())
+	// response game setting, if current battle exists
+	if arena.currentBattle != nil {
+		btl := arena.currentBattle
+		reply(btl.updatePayload())
+	}
 
 	return req.TransactionID, messagebus.BusKey(HubKeyGameSettingsUpdated), nil
 }
