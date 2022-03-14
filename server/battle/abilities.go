@@ -417,10 +417,12 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 					actualSupSpent, isTriggered := ability.SupContribution(as.battle.arena.ppClient, as.battle.ID, as.battle.BattleNumber, cont.userID, cont.amount)
 
 					// cache user's sup contribution for generating location select order
+					as.userContributeMap[cont.factionID].Lock()
 					if _, ok := as.userContributeMap[cont.factionID].contributionMap[cont.userID]; !ok {
 						as.userContributeMap[cont.factionID].contributionMap[cont.userID] = decimal.Zero
 					}
 					as.userContributeMap[cont.factionID].contributionMap[cont.userID] = as.userContributeMap[cont.factionID].contributionMap[cont.userID].Add(actualSupSpent)
+					as.userContributeMap[cont.factionID].Unlock()
 
 					as.liveCount.AddSups(actualSupSpent)
 
@@ -759,6 +761,7 @@ type GabsBribeStage struct {
 
 // track user contribution of current battle
 type UserContribution struct {
+	deadlock.RWMutex
 	contributionMap map[uuid.UUID]decimal.Decimal
 }
 
@@ -982,16 +985,24 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle() {
 			if as.battle == nil || as.battle.arena.currentBattle == nil || as.battle.arena.currentBattle.BattleNumber != bn {
 				return
 			}
+
+			// skip, if the bribe stage is incorrect
+			if as.battleAbilityPool == nil || as.battleAbilityPool.Stage == nil || as.battleAbilityPool.Stage.Phase != BribeStageBribe {
+				continue
+			}
+
 			if factionAbility, ok := as.battleAbilityPool.Abilities[cont.factionID]; ok {
 
 				// contribute sups
 				actualSupSpent, abilityTriggered := factionAbility.SupContribution(as.battle.arena.ppClient, as.battle.ID, as.battle.BattleNumber, cont.userID, cont.amount)
 
 				// cache user contribution for location select order
+				as.userContributeMap[cont.factionID].Lock()
 				if _, ok := as.userContributeMap[cont.factionID].contributionMap[cont.userID]; !ok {
 					as.userContributeMap[cont.factionID].contributionMap[cont.userID] = decimal.Zero
 				}
 				as.userContributeMap[cont.factionID].contributionMap[cont.userID] = as.userContributeMap[cont.factionID].contributionMap[cont.userID].Add(actualSupSpent)
+				as.userContributeMap[cont.factionID].Unlock()
 
 				as.liveCount.AddSups(actualSupSpent)
 
@@ -1125,9 +1136,11 @@ func (as *AbilitiesSystem) locationDecidersSet(factionID uuid.UUID, triggerByUse
 	}
 
 	list := []*userSupSpent{}
+	as.userContributeMap[factionID].RLock()
 	for userID, contribution := range as.userContributeMap[factionID].contributionMap {
 		list = append(list, &userSupSpent{userID, contribution})
 	}
+	as.userContributeMap[factionID].RUnlock()
 
 	// sort order
 	sort.Slice(list, func(i, j int) bool {
