@@ -608,21 +608,6 @@ func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 		Multipliers:      multipliers,
 		CitizenPlayerIDs: citizenPlayerIDs,
 	})
-
-	// broadcast spoil of war on the end of the battle
-	sows, err := db.LastTwoSpoilOfWarAmount()
-	if err != nil || len(sows) == 0 {
-		gamelog.L.Error().Err(err).Msg("Failed to get last two spoil of war amount")
-		return
-	}
-
-	spoilOfWarPayload := []byte{byte(SpoilOfWarTick)}
-	spoilOfWarStr := []string{}
-	for _, sow := range sows {
-		spoilOfWarStr = append(spoilOfWarStr, sow.String())
-	}
-	spoilOfWarPayload = append(spoilOfWarPayload, []byte(strings.Join(spoilOfWarStr, "|"))...)
-	go btl.arena.netMessageBus.Send(context.Background(), messagebus.NetBusKey(HubKeySpoilOfWarUpdated), spoilOfWarPayload)
 }
 
 type BroadcastPayload struct {

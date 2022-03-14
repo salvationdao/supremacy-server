@@ -11,7 +11,6 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/passport"
-	"sort"
 	"strings"
 	"time"
 
@@ -61,9 +60,6 @@ type AbilitiesSystem struct {
 
 	// gabs abilities (air craft, nuke, repair)
 	battleAbilityPool *BattleAbilityPool
-
-	// track the sups contribution of each user, use for location select
-	userContributeMap map[uuid.UUID]*UserContribution
 
 	bribe      chan *Contribution
 	contribute chan *Contribution
@@ -204,7 +200,6 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 		battle:                 battle,
 		factionUniqueAbilities: factionAbilities,
 		battleAbilityPool:      battleAbilityPool,
-		userContributeMap:      userContributeMap,
 		locationDeciders: &LocationDeciders{
 			list: []uuid.UUID{},
 		},
@@ -416,14 +411,6 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 
 					actualSupSpent, isTriggered := ability.SupContribution(as.battle.arena.ppClient, as.battle.ID, as.battle.BattleNumber, cont.userID, cont.amount)
 
-					// cache user's sup contribution for generating location select order
-					as.userContributeMap[cont.factionID].Lock()
-					if _, ok := as.userContributeMap[cont.factionID].contributionMap[cont.userID]; !ok {
-						as.userContributeMap[cont.factionID].contributionMap[cont.userID] = decimal.Zero
-					}
-					as.userContributeMap[cont.factionID].contributionMap[cont.userID] = as.userContributeMap[cont.factionID].contributionMap[cont.userID].Add(actualSupSpent)
-					as.userContributeMap[cont.factionID].Unlock()
-
 					as.liveCount.AddSups(actualSupSpent)
 
 					// sups contribution
@@ -561,6 +548,10 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 			payload := []byte{byte(LiveVotingTick)}
 			payload = append(payload, []byte(total)...)
 			as.battle.arena.netMessageBus.Send(context.Background(), messagebus.NetBusKey(HubKeyLiveVoteCountUpdated), payload)
+
+			if as.battle.stage != BattleStagStart {
+				continue
+			}
 
 			// get spoil of war
 			sows, err := db.LastTwoSpoilOfWarAmount()
@@ -996,19 +987,11 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle() {
 				// contribute sups
 				actualSupSpent, abilityTriggered := factionAbility.SupContribution(as.battle.arena.ppClient, as.battle.ID, as.battle.BattleNumber, cont.userID, cont.amount)
 
-				// cache user contribution for location select order
-				as.userContributeMap[cont.factionID].Lock()
-				if _, ok := as.userContributeMap[cont.factionID].contributionMap[cont.userID]; !ok {
-					as.userContributeMap[cont.factionID].contributionMap[cont.userID] = decimal.Zero
-				}
-				as.userContributeMap[cont.factionID].contributionMap[cont.userID] = as.userContributeMap[cont.factionID].contributionMap[cont.userID].Add(actualSupSpent)
-				as.userContributeMap[cont.factionID].Unlock()
-
 				as.liveCount.AddSups(actualSupSpent)
 
 				if abilityTriggered {
 					// generate location select order list
-					as.locationDecidersSet(cont.factionID, cont.userID)
+					as.locationDecidersSet(as.battle.ID, cont.factionID)
 
 					// change bribing phase to location select
 					as.battleAbilityPool.Stage.Phase = BribeStageLocationSelect
@@ -1126,7 +1109,7 @@ type Contribution struct {
 }
 
 // locationDecidersSet set a user list for location select for current ability triggered
-func (as *AbilitiesSystem) locationDecidersSet(factionID uuid.UUID, triggerByUserID ...uuid.UUID) {
+func (as *AbilitiesSystem) locationDecidersSet(battleID string, factionID uuid.UUID, triggerByUserID ...uuid.UUID) {
 	// set triggered faction id
 	as.battleAbilityPool.TriggeredFactionID = factionID
 
@@ -1135,17 +1118,10 @@ func (as *AbilitiesSystem) locationDecidersSet(factionID uuid.UUID, triggerByUse
 		supSpent decimal.Decimal
 	}
 
-	list := []*userSupSpent{}
-	as.userContributeMap[factionID].RLock()
-	for userID, contribution := range as.userContributeMap[factionID].contributionMap {
-		list = append(list, &userSupSpent{userID, contribution})
+	playerList, err := db.PlayerFactionContributionList(battleID, factionID)
+	if err != nil {
+		gamelog.L.Error().Str("battle_id", battleID).Str("faction_id", factionID.String()).Err(err).Msg("failed to get player list")
 	}
-	as.userContributeMap[factionID].RUnlock()
-
-	// sort order
-	sort.Slice(list, func(i, j int) bool {
-		return list[i].supSpent.GreaterThan(list[j].supSpent)
-	})
 
 	// initialise location select list
 	as.locationDeciders.list = []uuid.UUID{}
@@ -1154,12 +1130,10 @@ func (as *AbilitiesSystem) locationDecidersSet(factionID uuid.UUID, triggerByUse
 		as.locationDeciders.list = append(as.locationDeciders.list, tid)
 	}
 
-	// set location select order
-	for _, uss := range list {
-		// skip the user who trigger the location
+	for _, pid := range playerList {
 		exists := false
 		for _, tid := range triggerByUserID {
-			if uss.userID == tid {
+			if pid == tid {
 				exists = true
 				break
 			}
@@ -1167,9 +1141,7 @@ func (as *AbilitiesSystem) locationDecidersSet(factionID uuid.UUID, triggerByUse
 		if exists {
 			continue
 		}
-
-		// append user to the list
-		as.locationDeciders.list = append(as.locationDeciders.list, uss.userID)
+		as.locationDeciders.list = append(as.locationDeciders.list, pid)
 	}
 }
 
@@ -1255,7 +1227,7 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 		})
 
 		// set location deciders list
-		as.locationDecidersSet(factionID)
+		as.locationDecidersSet(as.battle.ID, factionID)
 
 		// if no user online, enter cooldown and exit the loop
 		if len(as.locationDeciders.list) == 0 {

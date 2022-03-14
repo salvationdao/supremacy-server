@@ -7,6 +7,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/georgysavva/scany/pgxscan"
@@ -176,4 +177,45 @@ func UserStatCreate(playerID string) (*boiler.UserStat, error) {
 	}
 
 	return userStat, nil
+}
+
+func PlayerFactionContributionList(battleID string, factionID uuid.UUID) ([]uuid.UUID, error) {
+	playerList := []uuid.UUID{}
+	q := `
+		select bc.player_id from battle_contributions bc 
+			where bc.battle_id = $1 and bc.faction_id = $2 
+			group by player_id
+		order by sum(amount) desc 
+	`
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
+	defer cancel()
+
+	result, err := gamedb.Conn.Query(ctx, q, battleID, factionID.String())
+	if err != nil {
+		gamelog.L.Error().Str("battle_id", battleID).Str("faction_id", factionID.String()).Err(err).Msg("failed to get player list from db")
+		return []uuid.UUID{}, err
+	}
+
+	defer result.Close()
+
+	for result.Next() {
+		var idStr string
+		err = result.Scan(
+			&idStr,
+		)
+		if err != nil {
+			gamelog.L.Error().Str("battle_id", battleID).Str("faction_id", factionID.String()).Err(err).Msg("failed to scan from result ")
+			return []uuid.UUID{}, err
+		}
+
+		playerID, err := uuid.FromString(idStr)
+		if err != nil {
+			gamelog.L.Error().Str("battle_id", battleID).Str("faction_id", factionID.String()).Err(err).Msg("failed to convert from result")
+			return []uuid.UUID{}, err
+		}
+
+		playerList = append(playerList, playerID)
+	}
+
+	return playerList, nil
 }
