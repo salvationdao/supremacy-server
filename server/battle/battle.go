@@ -883,11 +883,19 @@ func (arena *Arena) Join(ctx context.Context, wsc *hub.Client, payload []byte, f
 
 	reply(position)
 
+	nextQueueLength := queueLength.Add(decimal.NewFromInt(1))
+	nextQueueCost := decimal.New(25, 16)     // 0.25 sups
+	nextContractReward := decimal.New(2, 18) // 2 sups
+	if nextQueueLength.GreaterThan(decimal.NewFromInt(0)) {
+		nextQueueCost = nextQueueLength.Mul(decimal.New(25, 16))     // 0.25x queue length
+		nextContractReward = nextQueueLength.Mul(decimal.New(2, 18)) // 2x queue length
+	}
+
 	// Send updated battle queue status to all subscribers
 	arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", WSQueueStatus, factionID.String())), QueueStatusResponse{
-		result,
-		queueCost,
-		contractReward,
+		result + 1,
+		nextQueueCost,
+		nextContractReward,
 	})
 
 	// Send updated war machine queue status to all subscribers
@@ -1001,19 +1009,19 @@ func (arena *Arena) Leave(ctx context.Context, wsc *hub.Client, payload []byte, 
 		return err
 	}
 
-	queueLength := decimal.NewFromInt(result)
-	queueCost := decimal.New(25, 16)     // 0.25 sups
-	contractReward := decimal.New(2, 18) // 2 sups
-	if queueLength.GreaterThan(decimal.NewFromInt(0)) {
-		queueCost = queueLength.Mul(decimal.New(25, 16))     // 0.25x queue length
-		contractReward = queueLength.Mul(decimal.New(2, 18)) // 2x queue length
+	nextqueueLength := decimal.NewFromInt(result + 1)
+	nextQueueCost := decimal.New(25, 16)     // 0.25 sups
+	nextContractReward := decimal.New(2, 18) // 2 sups
+	if nextqueueLength.GreaterThan(decimal.NewFromInt(0)) {
+		nextQueueCost = nextqueueLength.Mul(decimal.New(25, 16))     // 0.25x queue length
+		nextContractReward = nextqueueLength.Mul(decimal.New(2, 18)) // 2x queue length
 	}
 
 	// Send updated Battle queue status to all subscribers
 	arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", WSQueueStatus, factionID.String())), QueueStatusResponse{
 		result,
-		queueCost,
-		contractReward,
+		nextQueueCost,
+		nextContractReward,
 	})
 
 	mechsAfterIDs, err := db.AllMechsAfter(int(position), bq.QueuedAt, factionID)
