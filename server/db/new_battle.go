@@ -469,7 +469,7 @@ func QueueSetBattleID(battleID string, mechIDs ...uuid.UUID) error {
 		return nil
 	}
 
-	bq, err := boiler.BattleQueues(qm.WhereIn("id IN ?", args...)).All(gamedb.StdConn)
+	bq, err := boiler.BattleQueues(qm.WhereIn("mech_id IN ?", args...)).All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Interface("args", args).Str("db func", "QueueSetBattleID").Err(err).Msg("unable to retrieve battle queue from WHERE IN query")
 		return err
