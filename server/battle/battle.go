@@ -1290,7 +1290,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 		for _, wm := range btl.WarMachines {
 			if wm.Hash == dp.DestroyedWarMachineEvent.KillByWarMachineHash {
 				killByWarMachine = wm
-
+				fmt.Println(wm.OwnedByID)
 				// update user kill
 				if wm.OwnedByID != "" {
 					_, err := db.UserStatAddKill(wm.OwnedByID)
