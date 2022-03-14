@@ -111,8 +111,8 @@ func NewArena(opts *Opts) *Arena {
 	}
 
 	// queue
-	opts.SecureUserFactionCommand(WSJoinQueue, arena.Join)
-	opts.SecureUserFactionCommand(WSLeaveQueue, arena.Leave)
+	opts.SecureUserFactionCommand(WSJoinQueue, arena.JoinQueue)
+	opts.SecureUserFactionCommand(WSLeaveQueue, arena.LeaveQueue)
 	opts.SecureUserFactionSubscribeCommand(WSQueueStatus, arena.QueueStatus)
 	opts.SecureUserFactionSubscribeCommand(WSWarMachineQueueStatus, arena.WarMachineQueueStatus)
 
