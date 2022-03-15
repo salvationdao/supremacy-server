@@ -326,6 +326,7 @@ func (arena *Arena) MultiplierMapSubScribeHandler(ctx context.Context, wsc *hub.
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
+	// don't pass back any multiplier value if there is no battle, but still complete the subscription
 	if arena.currentBattle != nil {
 		multipliers, err := db.PlayerMultipliers(arena.currentBattle.BattleNumber)
 		if err != nil {
@@ -872,7 +873,7 @@ func (uc *Arena) UserStatUpdatedSubscribeHandler(ctx context.Context, client *hu
 	if err != nil {
 		return "", "", terror.Error(err, "Invalid request received")
 	}
-	us, err := db.UserStatGet(ctx, uc.conn, server.UserID(userID))
+	us, err := db.UserStatsGet(userID.String())
 	if err != nil {
 		return "", "", terror.Error(err, "failed to get user")
 	}

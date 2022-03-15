@@ -167,15 +167,15 @@ func (pc *PassportWebhookController) UserStatGet(w http.ResponseWriter, r *http.
 		return http.StatusBadRequest, terror.Error(terror.ErrInvalidInput, "User id is required")
 	}
 
-	userStat, err := db.UserStatGet(context.Background(), pc.Conn, req.UserID)
+	userStat, err := db.UserStatsGet(req.UserID.String())
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get user stat")
 	}
 
 	if userStat == nil {
 		// build a empty user stat if there is no user stat in db
-		userStat = &server.UserStat{
-			ID: req.UserID,
+		userStat = &boiler.UserStat{
+			ID: req.UserID.String(),
 		}
 	}
 
@@ -197,16 +197,12 @@ func (pc *PassportWebhookController) FactionStatGet(w http.ResponseWriter, r *ht
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("faction id is empty"), "Faction id is required")
 	}
 
-	factionStat := &server.FactionStat{
-		ID: req.FactionID,
-	}
-
-	err = db.FactionStatGet(context.Background(), pc.Conn, factionStat)
+	fs, err := boiler.FactionStats(boiler.FactionStatWhere.ID.EQ(req.FactionID.String())).One(gamedb.StdConn)
 	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, fmt.Sprintf("Failed to get faction %s stat", req.FactionID))
+		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	return helpers.EncodeJSON(w, factionStat)
+	return helpers.EncodeJSON(w, fs)
 }
 
 type WarMachineQueuePositionRequest struct {

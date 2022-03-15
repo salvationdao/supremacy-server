@@ -661,6 +661,12 @@ func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID str
 		gamelog.L.Error().Str("txid", txid).Err(err).Msg("unable to insert battle contrib")
 	}
 
+	// update faction contribute
+	err = db.FactionAddContribute(ga.FactionID.String(), amount)
+	if err != nil {
+		gamelog.L.Error().Str("txid", txid).Err(err).Msg("unable to update faction contribution")
+	}
+
 	amount = amount.Truncate(0)
 
 	tx, err := gamedb.StdConn.Begin()
