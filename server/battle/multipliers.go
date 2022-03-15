@@ -360,10 +360,12 @@ outer:
 	}
 
 	lastWins, err := boiler.BattleWins(
-		qm.OrderBy(boiler.BattleWinColumns.CreatedAt, "DESC"),
+		qm.OrderBy(`created_at DESC`),
 		qm.Limit(3),
 	).All(gamedb.StdConn)
-
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("unable to retrieve last wins")
+	}
 	// set syndicate win
 
 	hatTrick := true
@@ -376,7 +378,7 @@ outer:
 
 	m1, _ := ms.getMultiplier("syndicate_win", "", 1)
 	m3, _ := ms.getMultiplier("syndicate_win", "", 3)
-
+	DESC
 	ms.battle.users.Range(func(bu *BattleUser) bool {
 		if bu.FactionID == lastWin.FactionID {
 			if _, ok := newMultipliers[bu.ID.String()]; !ok {
@@ -386,6 +388,7 @@ outer:
 			newMultipliers[bu.ID.String()][m1] = true
 			if hatTrick {
 				newMultipliers[bu.ID.String()][m3] = true
+				return true
 			}
 		}
 		return true
