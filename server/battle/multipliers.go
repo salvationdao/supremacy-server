@@ -410,10 +410,17 @@ winwar:
 		}
 		newMultipliers[wm.OwnedByID][m1] = true
 
-		for i := 0; i < 3; i++ {
-			if lastWins[i].OwnerID != wm.OwnedByID {
+		if hatTrick {
+			if len(lastWins) < 3 {
+				gamelog.L.Error().Interface("lastwins", lastWins).Msg("last wins is less than 3 - this should never happen")
 				continue winwar
 			}
+			for i := 0; i < 3; i++ {
+				if lastWins[i].OwnerID != wm.OwnedByID {
+					continue winwar
+				}
+			}
+
 		}
 
 		m3, ok := ms.getMultiplier("player_mech", "", 3)
