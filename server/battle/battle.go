@@ -620,6 +620,7 @@ type GameSettingsResponse struct {
 	WarMachines        []*WarMachine   `json:"war_machines"`
 	SpawnedAI          []*WarMachine   `json:"spawned_ai"`
 	WarMachineLocation []byte          `json:"war_machine_location"`
+	BattleIdentifier   int             `json:"battle_identifier"`
 }
 
 type ViewerLiveCount struct {
@@ -682,6 +683,7 @@ func (btl *Battle) updatePayload() *GameSettingsResponse {
 		lt = *btl.lastTick
 	}
 	return &GameSettingsResponse{
+		BattleIdentifier:   btl.BattleNumber,
 		GameMap:            btl.gameMap,
 		WarMachines:        btl.WarMachines,
 		SpawnedAI:          btl.SpawnedAI,
