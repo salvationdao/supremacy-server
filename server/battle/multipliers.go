@@ -378,7 +378,7 @@ outer:
 
 	m1, _ := ms.getMultiplier("syndicate_win", "", 1)
 	m3, _ := ms.getMultiplier("syndicate_win", "", 3)
-	DESC
+
 	ms.battle.users.Range(func(bu *BattleUser) bool {
 		if bu.FactionID == lastWin.FactionID {
 			if _, ok := newMultipliers[bu.ID.String()]; !ok {
