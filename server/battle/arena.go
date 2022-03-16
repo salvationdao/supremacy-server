@@ -2,6 +2,7 @@ package battle
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -680,7 +681,7 @@ func (arena *Arena) SendSettings(ctx context.Context, wsc *hub.Client, payload [
 	// response game setting, if current battle exists
 	if arena.currentBattle != nil {
 		btl := arena.currentBattle
-		reply(btl.updatePayload())
+		reply(btl.updatePayload(btl))
 	}
 
 	return req.TransactionID, messagebus.BusKey(HubKeyGameSettingsUpdated), nil
@@ -834,7 +835,7 @@ func (arena *Arena) Battle() *Battle {
 	var battleID string
 	var battle *boiler.Battle
 	inserted := false
-	if lastBattle == nil {
+	if lastBattle == nil || errors.Is(err, sql.ErrNoRows) {
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("not able to load previous battle")
 		}

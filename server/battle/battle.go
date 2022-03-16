@@ -717,6 +717,9 @@ func (btl *Battle) updatePayload() *GameSettingsResponse {
 	if btl.lastTick != nil {
 		lt = *btl.lastTick
 	}
+	if btl == nil {
+		return nil
+	}
 	return &GameSettingsResponse{
 		BattleIdentifier:   btl.BattleNumber,
 		GameMap:            btl.gameMap,
