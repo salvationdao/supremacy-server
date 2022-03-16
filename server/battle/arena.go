@@ -839,7 +839,7 @@ func (arena *Arena) Battle() *Battle {
 	var battleID string
 	var battle *boiler.Battle
 	inserted := false
-	if lastBattle == nil || errors.Is(err, sql.ErrNoRows) {
+	if lastBattle == nil || errors.Is(err, sql.ErrNoRows) || lastBattle.EndedAt.Valid {
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("not able to load previous battle")
 		}
@@ -850,7 +850,7 @@ func (arena *Arena) Battle() *Battle {
 			GameMapID: gameMap.ID.String(),
 			StartedAt: time.Now(),
 		}
-	} else if !lastBattle.EndedAt.Valid {
+	} else {
 		battle = lastBattle
 		battleID = lastBattle.ID
 		inserted = true
