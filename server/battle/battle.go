@@ -857,6 +857,8 @@ func (arena *Arena) JoinQueue(ctx context.Context, wsc *hub.Client, payload []by
 		if err != nil {
 			return err
 		}
+		reply(position)
+		return nil
 	}
 
 	bc := &boiler.BattleContract{
