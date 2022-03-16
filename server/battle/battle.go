@@ -557,6 +557,28 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 			Msg("unable to store mech wins")
 	}
 
+	// handle global announcements
+	ga, err := boiler.GlobalAnnouncements().One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Str("Battle ID", btl.ID).Msg("unable to get global announcement")
+	}
+
+	// global announcement exists
+	if ga != nil {
+		if ga.ShowUntilBattleNumber.Valid && ga.ShowUntilBattleNumber.Int <= btl.BattleNumber {
+			// delete from db
+			_, err := boiler.GlobalAnnouncements().DeleteAll(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Str("Battle ID", btl.ID).Msg("unable to delete global announcement")
+			}
+
+			// broadcast
+			const HubKeyGlobalAnnouncementSubscribe hub.HubCommandKey = "GLOBAL_ANNOUNCEMENT:SUBSCRIBE"
+			go btl.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), nil)
+
+		}
+	}
+
 	gamelog.L.Info().Msgf("cleaning up multipliers: %s", btl.ID)
 	btl.multipliers.end(endInfo)
 
