@@ -15,6 +15,7 @@ import (
 	"server/gamelog"
 	"server/passport"
 	"server/rpcclient"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -1825,6 +1826,11 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.MechContainer) []*WarMachi
 		}
 		gamelog.L.Debug().Str("mech_id", mech.ID).Str("model", model).Str("skin", mech.Chassis.Skin).Msg("converted mech to warmachine")
 	}
+
+	sort.Slice(warmachines, func(i, k int) bool {
+		return warmachines[i].FactionID == warmachines[k].FactionID
+	})
+
 	return warmachines
 }
 
