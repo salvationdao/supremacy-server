@@ -75,8 +75,9 @@ func (mt MessageType) String() string {
 
 const WSJoinQueue hub.HubCommandKey = hub.HubCommandKey("BATTLE:QUEUE:JOIN")
 const WSLeaveQueue hub.HubCommandKey = hub.HubCommandKey("BATTLE:QUEUE:LEAVE")
-const WSQueueStatus hub.HubCommandKey = hub.HubCommandKey("BATTLE:QUEUE:STATUS")
-const WSWarMachineQueueStatus hub.HubCommandKey = hub.HubCommandKey("WAR:MACHINE:QUEUE:STATUS")
+const WSQueueStatusSubscribe hub.HubCommandKey = hub.HubCommandKey("BATTLE:QUEUE:STATUS")
+const WSWarMachineQueueStatus hub.HubCommandKey = hub.HubCommandKey("WAR:MACHINE:QUEUE:STATUS:GET")
+const WSWarMachineQueueStatusSubscribe hub.HubCommandKey = hub.HubCommandKey("WAR:MACHINE:QUEUE:STATUS")
 
 func NewArena(opts *Opts) *Arena {
 	l, err := net.Listen("tcp", opts.Addr)
@@ -113,8 +114,9 @@ func NewArena(opts *Opts) *Arena {
 	// queue
 	opts.SecureUserFactionCommand(WSJoinQueue, arena.JoinQueue)
 	opts.SecureUserFactionCommand(WSLeaveQueue, arena.LeaveQueue)
-	opts.SecureUserFactionSubscribeCommand(WSQueueStatus, arena.QueueStatus)
-	opts.SecureUserFactionSubscribeCommand(WSWarMachineQueueStatus, arena.WarMachineQueueStatus)
+	opts.SecureUserFactionCommand(WSWarMachineQueueStatus, arena.WarMachineQueueStatus)
+	opts.SecureUserFactionSubscribeCommand(WSQueueStatusSubscribe, arena.QueueStatusSubscribeHandler)
+	opts.SecureUserFactionSubscribeCommand(WSWarMachineQueueStatusSubscribe, arena.WarMachineQueueStatusSubscribeHandler)
 
 	opts.SecureUserCommand(HubKeyGameUserOnline, arena.UserOnline)
 	opts.SubscribeCommand(HubKeyWarMachineDestroyedUpdated, arena.WarMachineDestroyedUpdatedSubscribeHandler)
