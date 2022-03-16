@@ -39,6 +39,7 @@ type Arena struct {
 	RPCClient      *rpcclient.XrpcClient
 	ppClient       *passport.Passport
 	gameClientLock sync.Mutex
+	sync.Mutex
 }
 
 type Opts struct {
@@ -599,6 +600,8 @@ func (arena *Arena) GabsBribeStageSubscribe(ctx context.Context, wsc *hub.Client
 	}
 
 	// return data if, current battle is not null
+	arena.Lock()
+	defer arena.Unlock()
 	if arena.currentBattle != nil {
 		btl := arena.currentBattle
 		if btl.abilities != nil {
@@ -680,8 +683,7 @@ func (arena *Arena) SendSettings(ctx context.Context, wsc *hub.Client, payload [
 
 	// response game setting, if current battle exists
 	if arena.currentBattle != nil {
-		btl := arena.currentBattle
-		reply(btl.updatePayload())
+		reply(UpdatePayload(arena.currentBattle))
 	}
 
 	return req.TransactionID, messagebus.BusKey(HubKeyGameSettingsUpdated), nil
@@ -727,9 +729,11 @@ type BattleWMDestroyedPayload struct {
 }
 
 func (arena *Arena) init() {
+	arena.Lock()
+	defer arena.Unlock()
 	btl := arena.Battle()
-	arena.Message(BATTLEINIT, btl)
 	arena.currentBattle = btl
+	arena.Message(BATTLEINIT, btl)
 }
 
 //listen listens for new commands and blocks indefinitely
