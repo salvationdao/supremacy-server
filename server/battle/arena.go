@@ -853,6 +853,7 @@ func (arena *Arena) Battle() *Battle {
 	} else {
 		battle = lastBattle
 		battleID = lastBattle.ID
+		
 		inserted = true
 	}
 
