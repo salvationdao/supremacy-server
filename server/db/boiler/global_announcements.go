@@ -23,58 +23,58 @@ import (
 
 // GlobalAnnouncement is an object representing the database table.
 type GlobalAnnouncement struct {
-	ID         string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Title      string    `boiler:"title" boil:"title" json:"title" toml:"title" yaml:"title"`
-	Message    string    `boiler:"message" boil:"message" json:"message" toml:"message" yaml:"message"`
-	GamesUntil null.Int  `boiler:"games_until" boil:"games_until" json:"games_until,omitempty" toml:"games_until" yaml:"games_until,omitempty"`
-	ShowUntil  null.Time `boiler:"show_until" boil:"show_until" json:"show_until,omitempty" toml:"show_until" yaml:"show_until,omitempty"`
+	ID                    string   `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Title                 string   `boiler:"title" boil:"title" json:"title" toml:"title" yaml:"title"`
+	Message               string   `boiler:"message" boil:"message" json:"message" toml:"message" yaml:"message"`
+	ShowFromBattleNumber  null.Int `boiler:"show_from_battle_number" boil:"show_from_battle_number" json:"show_from_battle_number,omitempty" toml:"show_from_battle_number" yaml:"show_from_battle_number,omitempty"`
+	ShowUntilBattleNumber null.Int `boiler:"show_until_battle_number" boil:"show_until_battle_number" json:"show_until_battle_number,omitempty" toml:"show_until_battle_number" yaml:"show_until_battle_number,omitempty"`
 
 	R *globalAnnouncementR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L globalAnnouncementL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var GlobalAnnouncementColumns = struct {
-	ID         string
-	Title      string
-	Message    string
-	GamesUntil string
-	ShowUntil  string
+	ID                    string
+	Title                 string
+	Message               string
+	ShowFromBattleNumber  string
+	ShowUntilBattleNumber string
 }{
-	ID:         "id",
-	Title:      "title",
-	Message:    "message",
-	GamesUntil: "games_until",
-	ShowUntil:  "show_until",
+	ID:                    "id",
+	Title:                 "title",
+	Message:               "message",
+	ShowFromBattleNumber:  "show_from_battle_number",
+	ShowUntilBattleNumber: "show_until_battle_number",
 }
 
 var GlobalAnnouncementTableColumns = struct {
-	ID         string
-	Title      string
-	Message    string
-	GamesUntil string
-	ShowUntil  string
+	ID                    string
+	Title                 string
+	Message               string
+	ShowFromBattleNumber  string
+	ShowUntilBattleNumber string
 }{
-	ID:         "global_announcements.id",
-	Title:      "global_announcements.title",
-	Message:    "global_announcements.message",
-	GamesUntil: "global_announcements.games_until",
-	ShowUntil:  "global_announcements.show_until",
+	ID:                    "global_announcements.id",
+	Title:                 "global_announcements.title",
+	Message:               "global_announcements.message",
+	ShowFromBattleNumber:  "global_announcements.show_from_battle_number",
+	ShowUntilBattleNumber: "global_announcements.show_until_battle_number",
 }
 
 // Generated where
 
 var GlobalAnnouncementWhere = struct {
-	ID         whereHelperstring
-	Title      whereHelperstring
-	Message    whereHelperstring
-	GamesUntil whereHelpernull_Int
-	ShowUntil  whereHelpernull_Time
+	ID                    whereHelperstring
+	Title                 whereHelperstring
+	Message               whereHelperstring
+	ShowFromBattleNumber  whereHelpernull_Int
+	ShowUntilBattleNumber whereHelpernull_Int
 }{
-	ID:         whereHelperstring{field: "\"global_announcements\".\"id\""},
-	Title:      whereHelperstring{field: "\"global_announcements\".\"title\""},
-	Message:    whereHelperstring{field: "\"global_announcements\".\"message\""},
-	GamesUntil: whereHelpernull_Int{field: "\"global_announcements\".\"games_until\""},
-	ShowUntil:  whereHelpernull_Time{field: "\"global_announcements\".\"show_until\""},
+	ID:                    whereHelperstring{field: "\"global_announcements\".\"id\""},
+	Title:                 whereHelperstring{field: "\"global_announcements\".\"title\""},
+	Message:               whereHelperstring{field: "\"global_announcements\".\"message\""},
+	ShowFromBattleNumber:  whereHelpernull_Int{field: "\"global_announcements\".\"show_from_battle_number\""},
+	ShowUntilBattleNumber: whereHelpernull_Int{field: "\"global_announcements\".\"show_until_battle_number\""},
 }
 
 // GlobalAnnouncementRels is where relationship names are stored.
@@ -94,9 +94,9 @@ func (*globalAnnouncementR) NewStruct() *globalAnnouncementR {
 type globalAnnouncementL struct{}
 
 var (
-	globalAnnouncementAllColumns            = []string{"id", "title", "message", "games_until", "show_until"}
+	globalAnnouncementAllColumns            = []string{"id", "title", "message", "show_from_battle_number", "show_until_battle_number"}
 	globalAnnouncementColumnsWithoutDefault = []string{"title", "message"}
-	globalAnnouncementColumnsWithDefault    = []string{"id", "games_until", "show_until"}
+	globalAnnouncementColumnsWithDefault    = []string{"id", "show_from_battle_number", "show_until_battle_number"}
 	globalAnnouncementPrimaryKeyColumns     = []string{"id"}
 	globalAnnouncementGeneratedColumns      = []string{}
 )
