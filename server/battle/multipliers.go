@@ -1,6 +1,7 @@
 package battle
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -14,6 +15,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
 type MultiplierTypeEnum string
@@ -344,14 +346,6 @@ outer:
 	}
 
 	// check for syndicate wins
-	/*
-		SELECT battle_id, faction_id
-		FROM "battle_wins"
-		group by battle_id, faction_id
-		order by max(created_at) desc
-		limit 3;
-	*/
-
 	lastWin, err := boiler.BattleWins(
 		boiler.BattleWinWhere.BattleID.EQ(ms.battle.ID),
 		qm.Limit(1),
@@ -360,11 +354,19 @@ outer:
 		gamelog.L.Error().Err(err).Msg("unable to retrieve last win")
 	}
 
-	lastWins, err := boiler.BattleWins(
-		qm.Distinct("battle_id"),
-		qm.OrderBy(`created_at DESC`),
+	lastWins := []struct {
+		BattleID  string            `boil:"battle_id"`
+		FactionID string            `boil:"faction_id"`
+		OwnerIDs  types.StringArray `boil:"owner_ids"`
+	}{}
+
+	err = boiler.NewQuery(
+		qm.Select("battle_id, faction_id, array_agg(owner_id) as owner_ids, max(created_at)"),
+		qm.From(boiler.TableNames.BattleWins),
+		qm.GroupBy("battle_id, faction_id"),
+		qm.OrderBy(`max(created_at) DESC`),
 		qm.Limit(3),
-	).All(gamedb.StdConn)
+	).Bind(context.Background(), gamedb.StdConn, &lastWins)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("unable to retrieve last wins")
 	}
@@ -417,12 +419,18 @@ winwar:
 				gamelog.L.Error().Interface("lastwins", lastWins).Msg("last wins is less than 3 - this should never happen")
 				continue winwar
 			}
-			for i := 0; i < 3; i++ {
-				if lastWins[i].OwnerID != wm.OwnedByID {
+			for _, lastWinItem := range lastWins {
+				found := false
+				for _, lastWinOwnerID := range lastWinItem.OwnerIDs {
+					if lastWinOwnerID == wm.OwnedByID {
+						found = true
+						break
+					}
+				}
+				if !found {
 					continue winwar
 				}
 			}
-
 		}
 
 		m3, ok := ms.getMultiplier("player_mech", "", 3)
