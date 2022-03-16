@@ -681,7 +681,7 @@ func (arena *Arena) SendSettings(ctx context.Context, wsc *hub.Client, payload [
 	// response game setting, if current battle exists
 	if arena.currentBattle != nil {
 		btl := arena.currentBattle
-		reply(btl.updatePayload(btl))
+		reply(btl.updatePayload())
 	}
 
 	return req.TransactionID, messagebus.BusKey(HubKeyGameSettingsUpdated), nil
