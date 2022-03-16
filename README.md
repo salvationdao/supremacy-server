@@ -1,4 +1,4 @@
-# supremacy-gameserver
+# Supremacy Gameserver
 
 [![Staging Deployment](https://github.com/ninja-syndicate/supremacy-gameserver/actions/workflows/deploy-staging.yml/badge.svg)](https://github.com/ninja-syndicate/supremacy-gameserver/actions/workflows/deploy-staging.yml)
 
