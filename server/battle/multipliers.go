@@ -288,25 +288,40 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 		}
 	}
 
-	// last gab ability last three gab abilities
-outer:
-	for triggerLabel, td := range fired {
-		m1, m1ok := ms.getMultiplier("gab_ability", triggerLabel, 1)
-		m3, m3ok := ms.getMultiplier("gab_ability", triggerLabel, 1)
+	gab_triggers, err := boiler.BattleAbilityTriggers(
+		qm.Where(`battle_id = ?`, ms.battle.ID),
+		qm.OrderBy(`triggered_at DESC`),
+		qm.Where(`is_all_syndicates = true`),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("unable to retrieve trigger event for battle")
+	}
 
-		if !m1ok && !m3ok {
-			continue
-		}
-		if m1ok {
-			_, ok := newMultipliers[td.PlayerIDs[0]]
+	for _, tr := range gab_triggers {
+		if tr.PlayerID.String != "" {
+			_, ok := newMultipliers[tr.PlayerID.String]
 			if !ok {
 				// skip if player not a citizen
 				// newMultipliers[td.PlayerIDs[0]] = map[*boiler.Multiplier]bool{}
 				continue
 			}
-			newMultipliers[td.PlayerIDs[0]][m1] = true
-		}
+			m1, m1ok := ms.getMultiplier("gab_ability", tr.AbilityLabel, 1)
+			if !m1ok {
+				continue
+			}
 
+			newMultipliers[tr.PlayerID.String][m1] = true
+		}
+	}
+
+	// last three gab abilities
+outer:
+	for triggerLabel, td := range fired {
+
+		m3, m3ok := ms.getMultiplier("gab_ability", triggerLabel, 1)
+		if !m3ok {
+			continue
+		}
 		if m3ok && td.FireCount < 3 {
 			for i := 1; i < len(td.PlayerIDs); i++ {
 				if td.PlayerIDs[i] != td.PlayerIDs[i-1] {
