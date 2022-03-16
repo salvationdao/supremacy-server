@@ -38,32 +38,39 @@ func NewSpoilsOfWar(btl *Battle, transactSpeed time.Duration, dripSpeed time.Dur
 
 	amnt := decimal.New(int64(rand.Intn(500)+200), 18)
 
-	sow := &boiler.SpoilsOfWar{
-		BattleID:     btl.ID,
-		BattleNumber: btl.BattleNumber,
-		Amount:       amnt,
-		AmountSent:   decimal.New(0, 18),
+	sow, err := boiler.SpoilsOfWars(boiler.SpoilsOfWarWhere.BattleID.EQ(btl.BattleID)).One(gamedb.StdConn)
+	if errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Info().Err(err).Msgf("spoil of war not found. this is expected.")
+	} else if err != nil {
+		gamelog.L.Info().Err(err).Msgf("spoil of war not found. strange error.")
 	}
 
-	txr := fmt.Sprintf("spoils_of_war_fill_up|%s|%d", server.XsynTreasuryUserID, time.Now().UnixNano())
+	if sow == nil {
+		sow = &boiler.SpoilsOfWar{
+			BattleID:     btl.ID,
+			BattleNumber: btl.BattleNumber,
+			Amount:       amnt,
+			AmountSent:   decimal.New(0, 18),
+		}
 
-	_, err := btl.arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
-		FromUserID:           uuid.UUID(server.XsynTreasuryUserID),
-		ToUserID:             SupremacyBattleUserID,
-		Amount:               amnt.String(),
-		TransactionReference: server.TransactionReference(txr),
-		Group:                "spoil of war",
-		SubGroup:             "system",
-		Description:          "system",
-		NotSafe:              false,
-	})
+		txr := fmt.Sprintf("spoils_of_war_fill_up|%s|%d", server.XsynTreasuryUserID, time.Now().UnixNano())
 
-	if err != nil {
-		gamelog.L.Warn().Err(err).Msgf("transferring to spoils failed")
+		_, err := btl.arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
+			FromUserID:           uuid.UUID(server.XsynTreasuryUserID),
+			ToUserID:             SupremacyBattleUserID,
+			Amount:               amnt.String(),
+			TransactionReference: server.TransactionReference(txr),
+			Group:                "spoil of war",
+			SubGroup:             "system",
+			Description:          "system",
+			NotSafe:              false,
+		})
+
+		if err != nil {
+			gamelog.L.Warn().Err(err).Msgf("transferring to spoils failed")
+		}
+		_ = sow.Insert(gamedb.StdConn, boil.Infer())
 	}
-
-	_ = sow.Insert(gamedb.StdConn, boil.Infer())
-
 	go spw.Run()
 
 	return spw

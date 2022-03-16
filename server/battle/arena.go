@@ -829,19 +829,36 @@ func (arena *Arena) Battle() *Battle {
 		DisabledCells: gm.DisabledCells,
 	}
 
-	id := uuid.Must(uuid.NewV4())
+	lastBattle, err := boiler.Battles(qm.OrderBy("battle_number"), qm.Limit(1)).One(gamedb.StdConn)
+
+	var battleID string
+	var battle *boiler.Battle
+	inserted := false
+	if lastBattle == nil {
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("not able to load previous battle")
+		}
+
+		battleID = uuid.Must(uuid.NewV4()).String()
+		battle = &boiler.Battle{
+			ID:        battleID,
+			GameMapID: gameMap.ID.String(),
+			StartedAt: time.Now(),
+		}
+	} else if !lastBattle.EndedAt.Valid {
+		battle = lastBattle
+		battleID = lastBattle.ID
+		inserted = true
+	}
 
 	btl := &Battle{
 		arena:    arena,
 		MapName:  gameMap.Name,
 		gameMap:  gameMap,
-		BattleID: id.String(),
-		Battle: &boiler.Battle{
-			ID:        id.String(),
-			GameMapID: gameMap.ID.String(),
-			StartedAt: time.Now(),
-		},
-		stage: BattleStagStart,
+		BattleID: battleID,
+		Battle:   battle,
+		inserted: inserted,
+		stage:    BattleStagStart,
 		users: usersMap{
 			m: make(map[uuid.UUID]*BattleUser),
 		},
