@@ -122,38 +122,44 @@ func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 }
 
 func (btl *Battle) start() {
+	var err error
 	btl.startedAt = time.Now()
-	err := btl.Battle.Insert(gamedb.StdConn, boil.Infer())
-	if err != nil {
-		gamelog.L.Panic().Interface("battle", btl).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to insert Battle into database")
-		return
-	}
+	if btl.inserted {
 
-	btl.inserted = true
-	// insert current users to
-	btl.users.Range(func(user *BattleUser) bool {
-		err = db.BattleViewerUpsert(context.Background(), gamedb.Conn, btl.ID, user.ID.String())
+	} else {
+		err := btl.Battle.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {
-			gamelog.L.Error().Str("battle_id", btl.ID).Str("player_id", user.ID.String()).Err(err).Msg("to upsert battle view")
-			return true
+			gamelog.L.Panic().Interface("battle", btl).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to insert Battle into database")
+			return
 		}
-		return true
-	})
 
-	err = db.QueueSetBattleID(btl.ID, btl.warMachineIDs...)
-	if err != nil {
-		gamelog.L.Error().Interface("mechs_ids", btl.warMachineIDs).Str("battle_id", btl.ID).Err(err).Msg("failed to set battle id in queue")
-		return
-	}
+		btl.inserted = true
 
-	if btl.battleMechData == nil {
-		gamelog.L.Error().Str("battlemechdata", btl.ID).Msg("battle mech data failed nil check")
-	}
+		// insert current users to
+		btl.users.Range(func(user *BattleUser) bool {
+			err = db.BattleViewerUpsert(context.Background(), gamedb.Conn, btl.ID, user.ID.String())
+			if err != nil {
+				gamelog.L.Error().Str("battle_id", btl.ID).Str("player_id", user.ID.String()).Err(err).Msg("to upsert battle view")
+				return true
+			}
+			return true
+		})
 
-	err = db.BattleMechs(btl.Battle, btl.battleMechData)
-	if err != nil {
-		gamelog.L.Error().Str("Battle ID", btl.ID).Err(err).Msg("unable to insert battle into database")
-		//TODO: something more dramatic
+		err = db.QueueSetBattleID(btl.ID, btl.warMachineIDs...)
+		if err != nil {
+			gamelog.L.Error().Interface("mechs_ids", btl.warMachineIDs).Str("battle_id", btl.ID).Err(err).Msg("failed to set battle id in queue")
+			return
+		}
+
+		if btl.battleMechData == nil {
+			gamelog.L.Error().Str("battlemechdata", btl.ID).Msg("battle mech data failed nil check")
+		}
+
+		err = db.BattleMechs(btl.Battle, btl.battleMechData)
+		if err != nil {
+			gamelog.L.Error().Str("Battle ID", btl.ID).Err(err).Msg("unable to insert battle into database")
+			//TODO: something more dramatic
+		}
 	}
 
 	// set up the abilities for current battle
