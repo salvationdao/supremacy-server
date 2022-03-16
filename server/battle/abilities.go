@@ -283,8 +283,9 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 
 			gamelog.L.Info().Msgf("abilities system has been cleaned up: %s", as.battle.ID)
 
-			close(as.end)
-			close(as.contribute)
+			// Caused panic
+			// close(as.end)
+			// close(as.contribute)
 
 			return
 		case <-main_ticker.C:
@@ -779,7 +780,7 @@ type LocationSelectAnnouncement struct {
 // StartGabsAbilityPoolCycle
 func (as *AbilitiesSystem) StartGabsAbilityPoolCycle() {
 	// ability price updater
-	as.bribe = make(chan *Contribution, 1000)
+	as.bribe = make(chan *Contribution)
 
 	// initial a ticker for current battle
 	main_ticker := time.NewTicker(1 * time.Second)
@@ -1407,7 +1408,9 @@ func (as *AbilitiesSystem) BribeGabs(factionID uuid.UUID, userID uuid.UUID, amou
 		"",
 	}
 
-	as.bribe <- cont
+	go func() {
+		as.bribe <- cont
+	}()
 }
 
 func (as *AbilitiesSystem) BribeStageGet() *GabsBribeStage {
