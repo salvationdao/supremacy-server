@@ -361,8 +361,8 @@ outer:
 	}
 
 	lastWins, err := boiler.BattleWins(
-		qm.OrderBy(`created_at DESC`),
 		qm.Distinct("battle_id"),
+		qm.OrderBy(`created_at DESC`),
 		qm.Limit(3),
 	).All(gamedb.StdConn)
 	if err != nil {
