@@ -58,7 +58,8 @@ func (ms *MultiplierSystem) PlayerMultipliers(playerID uuid.UUID, battleNumberAd
 	usermultipliers, err := boiler.Multipliers(
 		qm.InnerJoin("user_multipliers um on um.multiplier_id = multipliers.id"),
 		qm.Where(`um.player_id = ?`, playerID.String()),
-		qm.And(`um.until_battle_number >= ?`, ms.battle.BattleNumber+battleNumberAdjust)).All(gamedb.StdConn)
+		qm.And(`um.until_battle_number >= ?`, ms.battle.BattleNumber+battleNumberAdjust),
+	).All(gamedb.StdConn)
 
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Err(err).Msgf("unable to retrieve player multipliers")

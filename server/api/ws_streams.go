@@ -2,10 +2,14 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"server"
 	"server/db"
+	"server/db/boiler"
+	"server/gamedb"
 	"server/helpers"
 
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -36,6 +40,8 @@ func NewStreamController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Str
 
 	api.SubscribeCommand(HubKeyStreamList, streamHub.StreamListSubscribeSubscribeHandler)
 	api.SubscribeCommand(HubKeyStreamCloseSubscribe, streamHub.StreamCloseSubscribeHandler)
+
+	api.SubscribeCommand(HubKeyGlobalAnnouncementSubscribe, streamHub.GlobalAnnouncementSubscribe)
 
 	return streamHub
 }
@@ -152,4 +158,24 @@ func (api *API) DeleteStreamHandler(w http.ResponseWriter, r *http.Request) (int
 	//go api.MessageBus.Send(context.Background(), messagebus.BusKey(HubKeyVoteStageUpdated), streamList)
 
 	return http.StatusOK, nil
+}
+
+// global announcements
+const HubKeyGlobalAnnouncementSubscribe hub.HubCommandKey = "GLOBAL_ANNOUNCEMENT:SUBSCRIBE"
+
+func (s *StreamsWS) GlobalAnnouncementSubscribe(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return "", "", terror.Error(err, "Invalid request received")
+	}
+
+	// get announcement
+	ga, err := boiler.GlobalAnnouncements().One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return "", "", terror.Error(err, "failed to get announcement")
+	}
+
+	reply(ga)
+	return req.TransactionID, messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), nil
 }

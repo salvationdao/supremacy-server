@@ -3,14 +3,12 @@ package db
 import (
 	"context"
 	"fmt"
-	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/georgysavva/scany/pgxscan"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
@@ -60,37 +58,10 @@ func PlayerRegister(ID uuid.UUID, Username string, FactionID uuid.UUID, PublicAd
 	return player, nil
 }
 
-func UserStatsAll(ctx context.Context, conn Conn) ([]*server.UserStat, error) {
-	userStats := []*server.UserStat{}
-	q := `
-		SELECT 
-			us.id,
-			us.view_battle_count,
-			us.total_ability_triggered,
-			us.kill_count
-		FROM user_stats us`
-
-	err := pgxscan.Select(ctx, conn, &userStats, q)
+func UserStatsGet(playerID string) (*boiler.UserStat, error) {
+	userStat, err := boiler.FindUserStat(gamedb.StdConn, playerID)
 	if err != nil {
-		return nil, err
-	}
-	return userStats, nil
-
-}
-
-func UserStatsGet(ctx context.Context, conn Conn, userID server.UserID) (*server.UserStat, error) {
-	userStat := &server.UserStat{}
-	q := `
-		SELECT 
-			us.id,
-			us.view_battle_count,
-			us.total_ability_triggered,
-			us.kill_count
-		FROM user_stats us
-		WHERE us.id = $1`
-
-	err := pgxscan.Select(ctx, conn, userStat, q, userID)
-	if err != nil {
+		gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to find user stat")
 		return nil, err
 	}
 	return userStat, nil

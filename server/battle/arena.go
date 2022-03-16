@@ -75,8 +75,9 @@ func (mt MessageType) String() string {
 
 const WSJoinQueue hub.HubCommandKey = hub.HubCommandKey("BATTLE:QUEUE:JOIN")
 const WSLeaveQueue hub.HubCommandKey = hub.HubCommandKey("BATTLE:QUEUE:LEAVE")
-const WSQueueStatus hub.HubCommandKey = hub.HubCommandKey("BATTLE:QUEUE:STATUS")
-const WSWarMachineQueueStatus hub.HubCommandKey = hub.HubCommandKey("WAR:MACHINE:QUEUE:STATUS")
+const WSQueueStatusSubscribe hub.HubCommandKey = hub.HubCommandKey("BATTLE:QUEUE:STATUS")
+const WSWarMachineQueueStatus hub.HubCommandKey = hub.HubCommandKey("WAR:MACHINE:QUEUE:STATUS:GET")
+const WSWarMachineQueueStatusSubscribe hub.HubCommandKey = hub.HubCommandKey("WAR:MACHINE:QUEUE:STATUS")
 
 func NewArena(opts *Opts) *Arena {
 	l, err := net.Listen("tcp", opts.Addr)
@@ -113,8 +114,9 @@ func NewArena(opts *Opts) *Arena {
 	// queue
 	opts.SecureUserFactionCommand(WSJoinQueue, arena.JoinQueue)
 	opts.SecureUserFactionCommand(WSLeaveQueue, arena.LeaveQueue)
-	opts.SecureUserFactionSubscribeCommand(WSQueueStatus, arena.QueueStatus)
-	opts.SecureUserFactionSubscribeCommand(WSWarMachineQueueStatus, arena.WarMachineQueueStatus)
+	opts.SecureUserFactionCommand(WSWarMachineQueueStatus, arena.WarMachineQueueStatus)
+	opts.SecureUserFactionSubscribeCommand(WSQueueStatusSubscribe, arena.QueueStatusSubscribeHandler)
+	opts.SecureUserFactionSubscribeCommand(WSWarMachineQueueStatusSubscribe, arena.WarMachineQueueStatusSubscribeHandler)
 
 	opts.SecureUserCommand(HubKeyGameUserOnline, arena.UserOnline)
 	opts.SubscribeCommand(HubKeyWarMachineDestroyedUpdated, arena.WarMachineDestroyedUpdatedSubscribeHandler)
@@ -326,6 +328,7 @@ func (arena *Arena) MultiplierMapSubScribeHandler(ctx context.Context, wsc *hub.
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
+	// don't pass back any multiplier value if there is no battle, but still complete the subscription
 	if arena.currentBattle != nil {
 		multipliers, err := db.PlayerMultipliers(arena.currentBattle.BattleNumber)
 		if err != nil {
@@ -872,7 +875,7 @@ func (uc *Arena) UserStatUpdatedSubscribeHandler(ctx context.Context, client *hu
 	if err != nil {
 		return "", "", terror.Error(err, "Invalid request received")
 	}
-	us, err := db.UserStatGet(ctx, uc.conn, server.UserID(userID))
+	us, err := db.UserStatsGet(userID.String())
 	if err != nil {
 		return "", "", terror.Error(err, "failed to get user")
 	}

@@ -121,6 +121,7 @@ var FactionWhere = struct {
 
 // FactionRels is where relationship names are stored.
 var FactionRels = struct {
+	IDFactionStat         string
 	BattleAbilityTriggers string
 	BattleContracts       string
 	BattleContributions   string
@@ -131,6 +132,7 @@ var FactionRels = struct {
 	Players               string
 	Templates             string
 }{
+	IDFactionStat:         "IDFactionStat",
 	BattleAbilityTriggers: "BattleAbilityTriggers",
 	BattleContracts:       "BattleContracts",
 	BattleContributions:   "BattleContributions",
@@ -144,6 +146,7 @@ var FactionRels = struct {
 
 // factionR is where relationships are stored.
 type factionR struct {
+	IDFactionStat         *FactionStat              `boiler:"IDFactionStat" boil:"IDFactionStat" json:"IDFactionStat" toml:"IDFactionStat" yaml:"IDFactionStat"`
 	BattleAbilityTriggers BattleAbilityTriggerSlice `boiler:"BattleAbilityTriggers" boil:"BattleAbilityTriggers" json:"BattleAbilityTriggers" toml:"BattleAbilityTriggers" yaml:"BattleAbilityTriggers"`
 	BattleContracts       BattleContractSlice       `boiler:"BattleContracts" boil:"BattleContracts" json:"BattleContracts" toml:"BattleContracts" yaml:"BattleContracts"`
 	BattleContributions   BattleContributionSlice   `boiler:"BattleContributions" boil:"BattleContributions" json:"BattleContributions" toml:"BattleContributions" yaml:"BattleContributions"`
@@ -413,6 +416,20 @@ func (q factionQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
+// IDFactionStat pointed to by the foreign key.
+func (o *Faction) IDFactionStat(mods ...qm.QueryMod) factionStatQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.ID),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := FactionStats(queryMods...)
+	queries.SetFrom(query.Query, "\"faction_stats\"")
+
+	return query
+}
+
 // BattleAbilityTriggers retrieves all the battle_ability_trigger's BattleAbilityTriggers with an executor.
 func (o *Faction) BattleAbilityTriggers(mods ...qm.QueryMod) battleAbilityTriggerQuery {
 	var queryMods []qm.QueryMod
@@ -603,6 +620,107 @@ func (o *Faction) Templates(mods ...qm.QueryMod) templateQuery {
 	}
 
 	return query
+}
+
+// LoadIDFactionStat allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-1 relationship.
+func (factionL) LoadIDFactionStat(e boil.Executor, singular bool, maybeFaction interface{}, mods queries.Applicator) error {
+	var slice []*Faction
+	var object *Faction
+
+	if singular {
+		object = maybeFaction.(*Faction)
+	} else {
+		slice = *maybeFaction.(*[]*Faction)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &factionR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &factionR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`faction_stats`),
+		qm.WhereIn(`faction_stats.id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load FactionStat")
+	}
+
+	var resultSlice []*FactionStat
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice FactionStat")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for faction_stats")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for faction_stats")
+	}
+
+	if len(factionAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.IDFactionStat = foreign
+		if foreign.R == nil {
+			foreign.R = &factionStatR{}
+		}
+		foreign.R.IDFaction = object
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.ID == foreign.ID {
+				local.R.IDFactionStat = foreign
+				if foreign.R == nil {
+					foreign.R = &factionStatR{}
+				}
+				foreign.R.IDFaction = local
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadBattleAbilityTriggers allows an eager lookup of values, cached into the
@@ -1487,6 +1605,56 @@ func (factionL) LoadTemplates(e boil.Executor, singular bool, maybeFaction inter
 		}
 	}
 
+	return nil
+}
+
+// SetIDFactionStat of the faction to the related item.
+// Sets o.R.IDFactionStat to related.
+// Adds o to related.R.IDFaction.
+func (o *Faction) SetIDFactionStat(exec boil.Executor, insert bool, related *FactionStat) error {
+	var err error
+
+	if insert {
+		related.ID = o.ID
+
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	} else {
+		updateQuery := fmt.Sprintf(
+			"UPDATE \"faction_stats\" SET %s WHERE %s",
+			strmangle.SetParamNames("\"", "\"", 1, []string{"id"}),
+			strmangle.WhereClause("\"", "\"", 2, factionStatPrimaryKeyColumns),
+		)
+		values := []interface{}{o.ID, related.ID}
+
+		if boil.DebugMode {
+			fmt.Fprintln(boil.DebugWriter, updateQuery)
+			fmt.Fprintln(boil.DebugWriter, values)
+		}
+		if _, err = exec.Exec(updateQuery, values...); err != nil {
+			return errors.Wrap(err, "failed to update foreign table")
+		}
+
+		related.ID = o.ID
+
+	}
+
+	if o.R == nil {
+		o.R = &factionR{
+			IDFactionStat: related,
+		}
+	} else {
+		o.R.IDFactionStat = related
+	}
+
+	if related.R == nil {
+		related.R = &factionStatR{
+			IDFaction: o,
+		}
+	} else {
+		related.R.IDFaction = o
+	}
 	return nil
 }
 
