@@ -384,7 +384,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		WinningFaction:               winningWarMachines[0].Faction,
 		WinningWarMachines:           winningWarMachines,
 		TopSupsContributeFactions:    topFactionContributors,
-		TopSupsContributors:          topPlayerExecutors,
+		TopSupsContributors:          topPlayerContributors,
 		MostFrequentAbilityExecutors: topPlayerExecutors,
 	}
 
