@@ -18,6 +18,7 @@ import (
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 type StreamsWS struct {
@@ -176,6 +177,18 @@ func (s *StreamsWS) GlobalAnnouncementSubscribe(ctx context.Context, wsc *hub.Cl
 		return "", "", terror.Error(err, "failed to get announcement")
 	}
 
-	reply(ga)
+	currentBattle, err := boiler.Battles(qm.OrderBy("battle_number DESC")).One(gamedb.StdConn)
+	if err != nil {
+		return "", "", terror.Error(err, "failed to get current battle")
+	}
+
+	currBattleNum := currentBattle.BattleNumber
+
+	if ga != nil && !server.BattlePassed(currBattleNum, ga.ShowUntilBattleNumber.Int) {
+		reply(ga)
+	} else {
+		reply(nil)
+	}
+
 	return req.TransactionID, messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), nil
 }

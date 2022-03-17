@@ -19,11 +19,3 @@ type Stream struct {
 type GamesToCloseStream struct {
 	GamesToClose int `json:"games_to_close"`
 }
-
-type GlobalAnnouncement struct {
-	ID                    string `json:"id"`
-	Title                 string `json:"title"`
-	Message               string `json:"message"`
-	ShowFromBattleNumber  *int   `json:"show_from_battle_number,omitempty"`  // the battle number this announcement wil show
-	ShowUntilBattleNumber *int   `json:"show_until_battle_number,omitempty"` // the battle number this announcement will be deleted
-}
