@@ -374,11 +374,23 @@ func QueueLength(factionID uuid.UUID) (int64, error) {
 	return count, nil
 }
 
+// QueuePosition returns the current queue position of the specified mech.
+// QueuePosition returns -1 if the mech is in battle.
 func QueuePosition(mechID uuid.UUID, factionID uuid.UUID) (int64, error) {
 	var pos int64
 
-	exists, _ := boiler.BattleQueueExists(gamedb.StdConn, mechID.String())
-	if !exists {
+	inBattle, err := boiler.BattleQueues(
+		boiler.BattleQueueWhere.MechID.EQ(mechID.String()),
+		boiler.BattleQueueWhere.BattleID.IsNotNull(),
+	).Exists(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().
+			Str("mech_id", mechID.String()).
+			Str("faction_id", factionID.String()).
+			Str("db func", "QueuePosition").Err(err).Msg("unable to check battle status of mech")
+		return -1, err
+	}
+	if inBattle {
 		return -1, nil
 	}
 
@@ -389,19 +401,15 @@ func QueuePosition(mechID uuid.UUID, factionID uuid.UUID) (int64, error) {
 	SELECT s.position
 	FROM bqpos s
 	WHERE s.mech_id = $2;`
-
-	err := gamedb.StdConn.QueryRow(query, factionID.String(), mechID.String()).Scan(&pos)
-
-	if errors.Is(sql.ErrNoRows, err) {
-		return -1, nil
-	}
-
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().
-			Str("mech_id", mechID.String()).
-			Str("faction_id", factionID.String()).
-			Bool("NoRows?", errors.Is(sql.ErrNoRows, err)).
-			Str("db func", "QueuePosition").Err(err).Msg("unable to get queue position of mech")
+	err = gamedb.StdConn.QueryRow(query, factionID.String(), mechID.String()).Scan(&pos)
+	if err != nil {
+		if !errors.Is(sql.ErrNoRows, err) {
+			gamelog.L.Error().
+				Str("mech_id", mechID.String()).
+				Str("faction_id", factionID.String()).
+				Bool("NoRows?", errors.Is(sql.ErrNoRows, err)).
+				Str("db func", "QueuePosition").Err(err).Msg("unable to get queue position of mech")
+		}
 		return -1, err
 	}
 

@@ -187,6 +187,33 @@ func (btl *Battle) start() {
 	}
 	spoilOfWarPayload = append(spoilOfWarPayload, []byte(strings.Join(spoilOfWarStr, "|"))...)
 	go btl.arena.netMessageBus.Send(context.Background(), messagebus.NetBusKey(HubKeySpoilOfWarUpdated), spoilOfWarPayload)
+
+	// handle global announcements
+	ga, err := boiler.GlobalAnnouncements().One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Str("Battle ID", btl.ID).Msg("unable to get global announcement")
+	}
+
+	// global announcement exists
+	if ga != nil {
+		const HubKeyGlobalAnnouncementSubscribe hub.HubCommandKey = "GLOBAL_ANNOUNCEMENT:SUBSCRIBE"
+
+		if btl.BattleNumber > ga.ShowFromBattleNumber.Int && btl.BattleNumber < ga.ShowUntilBattleNumber.Int {
+			go btl.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), ga)
+		}
+
+		// has passed
+		if btl.BattleNumber > ga.ShowUntilBattleNumber.Int {
+			_, err := boiler.GlobalAnnouncements().DeleteAll(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Str("Battle ID", btl.ID).Msg("unable to delete global announcement")
+			}
+
+			go btl.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), nil)
+		}
+
+	}
+
 }
 
 // calcTriggeredLocation convert picked cell to the location in game
@@ -461,17 +488,16 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		contract, err := boiler.BattleContracts(boiler.BattleContractWhere.BattleID.EQ(
 			null.StringFrom(btl.BattleID)),
 			boiler.BattleContractWhere.MechID.EQ(mws[i].MechID.String()),
+			boiler.BattleContractWhere.Cancelled.EQ(null.BoolFrom(false)),
 		).One(gamedb.StdConn)
 
-		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				gamelog.L.Warn().
-					Str("Battle ID", btl.ID).
-					Str("Mech ID", wm.ID).
-					Err(err).
-					Msg("no contract in database")
-				continue
-			}
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Warn().
+				Str("Battle ID", btl.ID).
+				Str("Mech ID", wm.ID).
+				Err(err).
+				Msg("no contract in database")
+			continue
 		}
 
 		contract.DidWin = null.BoolFrom(true)
@@ -566,27 +592,6 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 			Str("Battle ID", btl.ID).
 			Err(err).
 			Msg("unable to store mech wins")
-	}
-
-	// handle global announcements
-	// get global announcement
-	ga, err := boiler.GlobalAnnouncements().One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Str("Battle ID", btl.ID).Msg("unable to get global announcement")
-	}
-
-	// global announcement exists
-	if ga != nil && ga.ShowUntilBattleNumber.Valid && ga.ShowUntilBattleNumber.Int <= btl.BattleNumber {
-		// delete from db
-		_, err := boiler.GlobalAnnouncements().DeleteAll(gamedb.StdConn)
-		if err != nil {
-			gamelog.L.Error().Str("Battle ID", btl.ID).Msg("unable to delete global announcement")
-		}
-
-		// broadcast
-		const HubKeyGlobalAnnouncementSubscribe hub.HubCommandKey = "GLOBAL_ANNOUNCEMENT:SUBSCRIBE"
-		go btl.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), nil)
-
 	}
 
 	gamelog.L.Info().Msgf("cleaning up multipliers: %s", btl.ID)
@@ -898,7 +903,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		if err != nil {
 			return err
 		}
-		reply(position)
+		reply(true)
 		return nil
 	}
 
@@ -961,6 +966,14 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 
 	// Get mech current queue position
 	position, err = db.QueuePosition(mechID, factionID)
+	if errors.Is(sql.ErrNoRows, err) {
+		// If mech is not in queue
+		arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", WSAssetQueueStatusSubscribe, mechID)), AssetQueueStatusResponse{
+			nil,
+			nil,
+		})
+		return nil
+	}
 	if err != nil {
 		gamelog.L.Error().
 			Str("mechID", mechID.String()).
@@ -969,15 +982,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		return err
 	}
 
-	if position == -1 {
-		arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", WSAssetQueueStatusSubscribe, mechID)), AssetQueueStatusResponse{
-			nil,
-			nil,
-		})
-		return nil
-	}
-
-	reply(position)
+	reply(true)
 
 	nextQueueLength := queueLength.Add(decimal.NewFromInt(1))
 	nextQueueCost := decimal.New(25, 16)     // 0.25 sups
@@ -994,7 +999,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		nextContractReward,
 	})
 
-	// Send updated war machine queue status to all subscribers
+	// Send updated war machine queue status to subscriber
 	arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", WSAssetQueueStatusSubscribe, mechID)), AssetQueueStatusResponse{
 		&position,
 		&contractReward,
@@ -1060,17 +1065,20 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 
 	// Get queue position before deleting
 	position, err := db.QueuePosition(mechID, factionID)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Interface("mechID", mechID).Interface("factionID", mech.FactionID).Err(err).Msg("unable to get mech position")
+	if errors.Is(sql.ErrNoRows, err) {
+		// If mech is not in queue
+		gamelog.L.Warn().Interface("mechID", mechID).Interface("factionID", mech.FactionID).Err(err).Msg("tried to remove already unqueued mech from queue")
+		return nil
+	}
+	if err != nil {
+		gamelog.L.Warn().Interface("mechID", mechID).Interface("factionID", mech.FactionID).Err(err).Msg("unable to get mech position")
 		return err
 	}
 
 	if position == -1 {
-		arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", WSAssetQueueStatusSubscribe, mech.ID)), AssetQueueStatusResponse{
-			nil,
-			nil,
-		})
-		return nil
+		// If mech is currently in battle
+		gamelog.L.Error().Interface("mechID", mechID).Interface("factionID", mech.FactionID).Err(err).Msg("cannot remove battling mech from queue")
+		return terror.Error(terror.ErrForbidden, "cannot remove battling mech from queue")
 	}
 
 	canxq := `UPDATE battle_contracts SET cancelled = true WHERE id = (SELECT battle_contract_id FROM battle_queue WHERE mech_id = $1)`
@@ -1277,37 +1285,22 @@ func (arena *Arena) AssetQueueStatusHandler(ctx context.Context, wsc *hub.Client
 	}
 
 	position, err := db.QueuePosition(mechID, mechFactionID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			reply(AssetQueueStatusResponse{
-				nil,
-				nil,
-			})
-			return nil
-		}
-		return terror.Error(err)
-	}
-
-	if position == -1 {
+	if errors.Is(sql.ErrNoRows, err) {
+		// If mech is not in queue
 		reply(AssetQueueStatusResponse{
 			nil,
 			nil,
 		})
 		return nil
 	}
+	if err != nil {
+		return terror.Error(err)
+	}
 
 	contractReward, err := db.QueueContract(mechID, mechFactionID)
 	if err != nil {
+		gamelog.L.Error().Str("mechID", mechID.String()).Str("mechFactionID", mechFactionID.String()).Err(err).Msg("unable to get contract reward")
 		return terror.Error(err)
-	}
-
-	mechInBattle, err := db.MechBattleStatus(mechID)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	if mechInBattle {
-		position = -1
 	}
 
 	reply(AssetQueueStatusResponse{
@@ -1357,38 +1350,23 @@ func (arena *Arena) AssetQueueStatusSubscribeHandler(ctx context.Context, wsc *h
 	}
 
 	position, err := db.QueuePosition(mechID, factionID)
-
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			reply(AssetQueueStatusResponse{
-				nil,
-				nil,
-			})
-			return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", WSAssetQueueStatusSubscribe, mechID)), nil
-		}
-		return "", "", terror.Error(err)
-	}
-
-	if position == -1 {
+	if errors.Is(sql.ErrNoRows, err) {
+		// If mech is not in queue
 		reply(AssetQueueStatusResponse{
 			nil,
 			nil,
 		})
 		return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", WSAssetQueueStatusSubscribe, mechID)), nil
 	}
+	if err != nil {
+		gamelog.L.Error().Str("mechID", mechID.String()).Str("factionID", factionID.String()).Err(err).Msg("unable to get mech queue position")
+		return "", "", terror.Error(err)
+	}
 
 	contractReward, err := db.QueueContract(mechID, factionID)
 	if err != nil {
+		gamelog.L.Error().Str("mechID", mechID.String()).Str("factionID", factionID.String()).Err(err).Msg("unable to get contract reward")
 		return "", "", terror.Error(err)
-	}
-
-	mechInBattle, err := db.MechBattleStatus(mechID)
-	if err != nil {
-		return "", "", terror.Error(err)
-	}
-
-	if mechInBattle {
-		position = -1
 	}
 
 	reply(AssetQueueStatusResponse{
