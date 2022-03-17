@@ -685,7 +685,11 @@ func (btl *Battle) userOnline(user *BattleUser, wsc *hub.Client) {
 	if btl.inserted {
 		err := db.BattleViewerUpsert(context.Background(), gamedb.Conn, btl.ID, wsc.Identifier())
 		if err != nil {
-			gamelog.L.Error().Str("battle_id", btl.ID).Str("player_id", wsc.Identifier()).Err(err)
+			gamelog.L.Error().
+				Str("battle_id", btl.ID).
+				Str("player_id", wsc.Identifier()).
+				Err(err).
+				Msg("could not upsert battle viewer")
 		}
 	}
 

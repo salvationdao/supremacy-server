@@ -600,7 +600,11 @@ func (ga *GameAbility) FactionUniqueAbilityPriceUpdate(minPrice decimal.Decimal)
 	// store updated price to db
 	err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ga.ID, ga.SupsCost, ga.CurrentSups)
 	if err != nil {
-		gamelog.L.Error().Err(err)
+		gamelog.L.Error().
+			Str("ability_id", ga.ID.String()).
+			Str("sups_cost", ga.SupsCost.StringFixed(4)).
+			Str("current_sups", ga.CurrentSups.StringFixed(4)).
+			Err(err).Msg("could not update faction ability cost")
 		return isTriggered
 	}
 
@@ -723,7 +727,11 @@ func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID str
 	// store updated price to db
 	err = db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ga.ID, ga.SupsCost, ga.CurrentSups)
 	if err != nil {
-		gamelog.L.Error().Err(err)
+		gamelog.L.Error().
+			Str("ability_id", ga.ID.String()).
+			Str("sups_cost", ga.SupsCost.StringFixed(4)).
+			Str("current_sups", ga.CurrentSups.StringFixed(4)).
+			Err(err).Msg("could not update faction ability cost")
 		return amount, true
 	}
 
@@ -1208,7 +1216,11 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 			// store updated price to db
 			err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ability.ID, ability.SupsCost, ability.CurrentSups)
 			if err != nil {
-				gamelog.L.Error().Err(err)
+				gamelog.L.Error().
+					Str("ability_id", ability.ID.String()).
+					Str("sups_cost", ability.SupsCost.StringFixed(4)).
+					Str("current_sups", ability.CurrentSups.StringFixed(4)).
+					Err(err).Msg("could not update faction ability cost")
 			}
 			continue
 		}
@@ -1218,7 +1230,11 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 		ability.CurrentSups = decimal.Zero
 		err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ability.ID, ability.SupsCost, ability.CurrentSups)
 		if err != nil {
-			gamelog.L.Error().Err(err)
+			gamelog.L.Error().
+				Str("ability_id", ability.ID.String()).
+				Str("sups_cost", ability.SupsCost.StringFixed(4)).
+				Str("current_sups", ability.CurrentSups.StringFixed(4)).
+				Err(err).Msg("could not update faction ability cost")
 		}
 
 		// broadcast the progress bar
