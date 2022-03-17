@@ -89,7 +89,7 @@ func (api *API) GlobalAnnouncementSend(w http.ResponseWriter, r *http.Request) (
 	}
 
 	resp := ga
-	if server.BattlePassed(currentBattle.BattleNumber, *req.ShowUntilBattleNumber) || server.BattleInFuture(currentBattle.BattleNumber, *req.ShowFromBattleNumber) {
+	if currentBattle.BattleNumber > *req.ShowUntilBattleNumber || currentBattle.BattleNumber < *req.ShowFromBattleNumber {
 		resp = nil
 	}
 
