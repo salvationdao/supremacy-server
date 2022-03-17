@@ -125,7 +125,11 @@ func (btl *Battle) start() {
 	var err error
 	btl.startedAt = time.Now()
 	if btl.inserted {
-
+		_, err := btl.Battle.Update(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			gamelog.L.Panic().Interface("battle", btl).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to update Battle in database")
+			return
+		}
 	} else {
 		err := btl.Battle.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {
@@ -712,10 +716,13 @@ func (btl *Battle) userOnline(user *BattleUser, wsc *hub.Client) {
 	btl.users.Send(HubKeyViewerLiveCountUpdated, resp)
 }
 
-func (btl *Battle) updatePayload() *GameSettingsResponse {
+func UpdatePayload(btl *Battle) *GameSettingsResponse {
 	var lt []byte
 	if btl.lastTick != nil {
 		lt = *btl.lastTick
+	}
+	if btl == nil {
+		return nil
 	}
 	return &GameSettingsResponse{
 		BattleIdentifier:   btl.BattleNumber,
@@ -730,7 +737,7 @@ const HubKeyGameSettingsUpdated = hub.HubCommandKey("GAME:SETTINGS:UPDATED")
 const HubKeyGameUserOnline = hub.HubCommandKey("GAME:ONLINE")
 
 func (btl *Battle) BroadcastUpdate() {
-	btl.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyGameSettingsUpdated), btl.updatePayload())
+	btl.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyGameSettingsUpdated), UpdatePayload(btl))
 }
 
 func (btl *Battle) Tick(payload []byte) {
