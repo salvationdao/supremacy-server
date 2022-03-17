@@ -1,7 +1,9 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"server"
@@ -44,19 +46,21 @@ func (api *API) GlobalAnnouncementSend(w http.ResponseWriter, r *http.Request) (
 	}
 
 	currentBattle, err := boiler.Battles(qm.OrderBy("battle_number DESC")).One(gamedb.StdConn)
-	if err != nil {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to get last battle: %v", err))
 	}
 
-	currBattleNum := currentBattle.BattleNumber
-
-	// check if battle number has passed
-	if *req.ShowFromBattleNumber < currBattleNum {
-		return http.StatusInternalServerError, terror.Error(fmt.Errorf("from battle number has passed, current battle number: %v", currBattleNum))
+	if currentBattle == nil {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to find current battle"))
 	}
 
-	if *req.ShowUntilBattleNumber < currBattleNum {
-		return http.StatusInternalServerError, terror.Error(fmt.Errorf("to battle battle number has passed, current battle number: %v", currBattleNum))
+	// check if battle number has passed
+	if *req.ShowFromBattleNumber < currentBattle.BattleNumber {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("from battle number has passed, current battle number: %v", currentBattle.BattleNumber))
+	}
+
+	if *req.ShowUntilBattleNumber < currentBattle.BattleNumber {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("to battle battle number has passed, current battle number: %v", currentBattle.BattleNumber))
 	}
 
 	if *req.ShowFromBattleNumber > *req.ShowUntilBattleNumber {
@@ -85,7 +89,7 @@ func (api *API) GlobalAnnouncementSend(w http.ResponseWriter, r *http.Request) (
 	}
 
 	resp := ga
-	if server.BattlePassed(currBattleNum, *req.ShowUntilBattleNumber) {
+	if server.BattlePassed(currentBattle.BattleNumber, *req.ShowUntilBattleNumber) || server.BattleInFuture(currentBattle.BattleNumber, *req.ShowFromBattleNumber) {
 		resp = nil
 	}
 

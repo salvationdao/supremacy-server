@@ -33,3 +33,7 @@ func (s Severity) IsValid() bool {
 func BattlePassed(btlNum int, showUntil int) bool {
 	return btlNum > showUntil
 }
+
+func BattleInFuture(btlNum int, showFrom int) bool {
+	return btlNum < showFrom
+}

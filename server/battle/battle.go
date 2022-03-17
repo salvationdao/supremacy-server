@@ -197,9 +197,12 @@ func (btl *Battle) start() {
 	// global announcement exists
 	if ga != nil {
 		const HubKeyGlobalAnnouncementSubscribe hub.HubCommandKey = "GLOBAL_ANNOUNCEMENT:SUBSCRIBE"
-		if !server.BattlePassed(btl.BattleNumber, ga.ShowUntilBattleNumber.Int) {
+
+		if !server.BattlePassed(btl.BattleNumber, ga.ShowUntilBattleNumber.Int) && !server.BattleInFuture(btl.BattleNumber, ga.ShowFromBattleNumber.Int) {
 			go btl.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), ga)
-		} else {
+		}
+
+		if server.BattlePassed(btl.BattleNumber, ga.ShowUntilBattleNumber.Int) {
 			_, err := boiler.GlobalAnnouncements().DeleteAll(gamedb.StdConn)
 			if err != nil {
 				gamelog.L.Error().Str("Battle ID", btl.ID).Msg("unable to delete global announcement")

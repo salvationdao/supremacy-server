@@ -178,13 +178,11 @@ func (s *StreamsWS) GlobalAnnouncementSubscribe(ctx context.Context, wsc *hub.Cl
 	}
 
 	currentBattle, err := boiler.Battles(qm.OrderBy("battle_number DESC")).One(gamedb.StdConn)
-	if err != nil {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return "", "", terror.Error(err, "failed to get current battle")
 	}
 
-	currBattleNum := currentBattle.BattleNumber
-
-	if ga != nil && !server.BattlePassed(currBattleNum, ga.ShowUntilBattleNumber.Int) {
+	if currentBattle != nil && ga != nil && !server.BattlePassed(currentBattle.BattleNumber, ga.ShowUntilBattleNumber.Int) && !server.BattleInFuture(currentBattle.BattleNumber, ga.ShowFromBattleNumber.Int) {
 		reply(ga)
 	} else {
 		reply(nil)
