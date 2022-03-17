@@ -59,6 +59,10 @@ func (api *API) GlobalAnnouncementSend(w http.ResponseWriter, r *http.Request) (
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("to battle battle number has passed, current battle number: %v", currBattleNum))
 	}
 
+	if *req.ShowFromBattleNumber > *req.ShowUntilBattleNumber {
+		return http.StatusInternalServerError, terror.Error(fmt.Errorf("show from battle number must be less than or equal to show until battle number"))
+	}
+
 	// delete old announcements
 	_, err = boiler.GlobalAnnouncements().DeleteAll(gamedb.StdConn)
 	if err != nil {
