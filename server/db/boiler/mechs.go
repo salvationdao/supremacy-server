@@ -42,6 +42,7 @@ type Mech struct {
 	DeletedAt        null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 	UpdatedAt        time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	CreatedAt        time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	LargeImageURL    string    `boiler:"large_image_url" boil:"large_image_url" json:"large_image_url" toml:"large_image_url" yaml:"large_image_url"`
 
 	R *mechR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L mechL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -67,6 +68,7 @@ var MechColumns = struct {
 	DeletedAt        string
 	UpdatedAt        string
 	CreatedAt        string
+	LargeImageURL    string
 }{
 	ID:               "id",
 	OwnerID:          "owner_id",
@@ -87,6 +89,7 @@ var MechColumns = struct {
 	DeletedAt:        "deleted_at",
 	UpdatedAt:        "updated_at",
 	CreatedAt:        "created_at",
+	LargeImageURL:    "large_image_url",
 }
 
 var MechTableColumns = struct {
@@ -109,6 +112,7 @@ var MechTableColumns = struct {
 	DeletedAt        string
 	UpdatedAt        string
 	CreatedAt        string
+	LargeImageURL    string
 }{
 	ID:               "mechs.id",
 	OwnerID:          "mechs.owner_id",
@@ -129,6 +133,7 @@ var MechTableColumns = struct {
 	DeletedAt:        "mechs.deleted_at",
 	UpdatedAt:        "mechs.updated_at",
 	CreatedAt:        "mechs.created_at",
+	LargeImageURL:    "mechs.large_image_url",
 }
 
 // Generated where
@@ -153,6 +158,7 @@ var MechWhere = struct {
 	DeletedAt        whereHelpernull_Time
 	UpdatedAt        whereHelpertime_Time
 	CreatedAt        whereHelpertime_Time
+	LargeImageURL    whereHelperstring
 }{
 	ID:               whereHelperstring{field: "\"mechs\".\"id\""},
 	OwnerID:          whereHelperstring{field: "\"mechs\".\"owner_id\""},
@@ -173,6 +179,7 @@ var MechWhere = struct {
 	DeletedAt:        whereHelpernull_Time{field: "\"mechs\".\"deleted_at\""},
 	UpdatedAt:        whereHelpertime_Time{field: "\"mechs\".\"updated_at\""},
 	CreatedAt:        whereHelpertime_Time{field: "\"mechs\".\"created_at\""},
+	LargeImageURL:    whereHelperstring{field: "\"mechs\".\"large_image_url\""},
 }
 
 // MechRels is where relationship names are stored.
@@ -181,6 +188,7 @@ var MechRels = struct {
 	Owner                        string
 	Template                     string
 	BattleQueue                  string
+	BattleContracts              string
 	WarMachineOneBattleHistories string
 	WarMachineTwoBattleHistories string
 	KilledBattleKills            string
@@ -193,6 +201,7 @@ var MechRels = struct {
 	Owner:                        "Owner",
 	Template:                     "Template",
 	BattleQueue:                  "BattleQueue",
+	BattleContracts:              "BattleContracts",
 	WarMachineOneBattleHistories: "WarMachineOneBattleHistories",
 	WarMachineTwoBattleHistories: "WarMachineTwoBattleHistories",
 	KilledBattleKills:            "KilledBattleKills",
@@ -204,17 +213,18 @@ var MechRels = struct {
 
 // mechR is where relationships are stored.
 type mechR struct {
-	Chassis                      *Chassis           `boiler:"Chassis" boil:"Chassis" json:"Chassis" toml:"Chassis" yaml:"Chassis"`
-	Owner                        *Player            `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
-	Template                     *Template          `boiler:"Template" boil:"Template" json:"Template" toml:"Template" yaml:"Template"`
-	BattleQueue                  *BattleQueue       `boiler:"BattleQueue" boil:"BattleQueue" json:"BattleQueue" toml:"BattleQueue" yaml:"BattleQueue"`
-	WarMachineOneBattleHistories BattleHistorySlice `boiler:"WarMachineOneBattleHistories" boil:"WarMachineOneBattleHistories" json:"WarMachineOneBattleHistories" toml:"WarMachineOneBattleHistories" yaml:"WarMachineOneBattleHistories"`
-	WarMachineTwoBattleHistories BattleHistorySlice `boiler:"WarMachineTwoBattleHistories" boil:"WarMachineTwoBattleHistories" json:"WarMachineTwoBattleHistories" toml:"WarMachineTwoBattleHistories" yaml:"WarMachineTwoBattleHistories"`
-	KilledBattleKills            BattleKillSlice    `boiler:"KilledBattleKills" boil:"KilledBattleKills" json:"KilledBattleKills" toml:"KilledBattleKills" yaml:"KilledBattleKills"`
-	BattleKills                  BattleKillSlice    `boiler:"BattleKills" boil:"BattleKills" json:"BattleKills" toml:"BattleKills" yaml:"BattleKills"`
-	KilledByBattleMechs          BattleMechSlice    `boiler:"KilledByBattleMechs" boil:"KilledByBattleMechs" json:"KilledByBattleMechs" toml:"KilledByBattleMechs" yaml:"KilledByBattleMechs"`
-	BattleMechs                  BattleMechSlice    `boiler:"BattleMechs" boil:"BattleMechs" json:"BattleMechs" toml:"BattleMechs" yaml:"BattleMechs"`
-	BattleWins                   BattleWinSlice     `boiler:"BattleWins" boil:"BattleWins" json:"BattleWins" toml:"BattleWins" yaml:"BattleWins"`
+	Chassis                      *Chassis            `boiler:"Chassis" boil:"Chassis" json:"Chassis" toml:"Chassis" yaml:"Chassis"`
+	Owner                        *Player             `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
+	Template                     *Template           `boiler:"Template" boil:"Template" json:"Template" toml:"Template" yaml:"Template"`
+	BattleQueue                  *BattleQueue        `boiler:"BattleQueue" boil:"BattleQueue" json:"BattleQueue" toml:"BattleQueue" yaml:"BattleQueue"`
+	BattleContracts              BattleContractSlice `boiler:"BattleContracts" boil:"BattleContracts" json:"BattleContracts" toml:"BattleContracts" yaml:"BattleContracts"`
+	WarMachineOneBattleHistories BattleHistorySlice  `boiler:"WarMachineOneBattleHistories" boil:"WarMachineOneBattleHistories" json:"WarMachineOneBattleHistories" toml:"WarMachineOneBattleHistories" yaml:"WarMachineOneBattleHistories"`
+	WarMachineTwoBattleHistories BattleHistorySlice  `boiler:"WarMachineTwoBattleHistories" boil:"WarMachineTwoBattleHistories" json:"WarMachineTwoBattleHistories" toml:"WarMachineTwoBattleHistories" yaml:"WarMachineTwoBattleHistories"`
+	KilledBattleKills            BattleKillSlice     `boiler:"KilledBattleKills" boil:"KilledBattleKills" json:"KilledBattleKills" toml:"KilledBattleKills" yaml:"KilledBattleKills"`
+	BattleKills                  BattleKillSlice     `boiler:"BattleKills" boil:"BattleKills" json:"BattleKills" toml:"BattleKills" yaml:"BattleKills"`
+	KilledByBattleMechs          BattleMechSlice     `boiler:"KilledByBattleMechs" boil:"KilledByBattleMechs" json:"KilledByBattleMechs" toml:"KilledByBattleMechs" yaml:"KilledByBattleMechs"`
+	BattleMechs                  BattleMechSlice     `boiler:"BattleMechs" boil:"BattleMechs" json:"BattleMechs" toml:"BattleMechs" yaml:"BattleMechs"`
+	BattleWins                   BattleWinSlice      `boiler:"BattleWins" boil:"BattleWins" json:"BattleWins" toml:"BattleWins" yaml:"BattleWins"`
 }
 
 // NewStruct creates a new relationship struct
@@ -226,8 +236,8 @@ func (*mechR) NewStruct() *mechR {
 type mechL struct{}
 
 var (
-	mechAllColumns            = []string{"id", "owner_id", "template_id", "chassis_id", "external_token_id", "tier", "is_default", "image_url", "animation_url", "card_animation_url", "avatar_url", "hash", "name", "label", "slug", "asset_type", "deleted_at", "updated_at", "created_at"}
-	mechColumnsWithoutDefault = []string{"owner_id", "template_id", "chassis_id", "external_token_id", "tier", "image_url", "animation_url", "card_animation_url", "avatar_url", "hash", "name", "label", "slug", "asset_type"}
+	mechAllColumns            = []string{"id", "owner_id", "template_id", "chassis_id", "external_token_id", "tier", "is_default", "image_url", "animation_url", "card_animation_url", "avatar_url", "hash", "name", "label", "slug", "asset_type", "deleted_at", "updated_at", "created_at", "large_image_url"}
+	mechColumnsWithoutDefault = []string{"owner_id", "template_id", "chassis_id", "external_token_id", "tier", "image_url", "animation_url", "card_animation_url", "avatar_url", "hash", "name", "label", "slug", "asset_type", "large_image_url"}
 	mechColumnsWithDefault    = []string{"id", "is_default", "deleted_at", "updated_at", "created_at"}
 	mechPrimaryKeyColumns     = []string{"id"}
 	mechGeneratedColumns      = []string{}
@@ -530,6 +540,27 @@ func (o *Mech) BattleQueue(mods ...qm.QueryMod) battleQueueQuery {
 
 	query := BattleQueues(queryMods...)
 	queries.SetFrom(query.Query, "\"battle_queue\"")
+
+	return query
+}
+
+// BattleContracts retrieves all the battle_contract's BattleContracts with an executor.
+func (o *Mech) BattleContracts(mods ...qm.QueryMod) battleContractQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"battle_contracts\".\"mech_id\"=?", o.ID),
+	)
+
+	query := BattleContracts(queryMods...)
+	queries.SetFrom(query.Query, "\"battle_contracts\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"battle_contracts\".*"})
+	}
 
 	return query
 }
@@ -1087,6 +1118,104 @@ func (mechL) LoadBattleQueue(e boil.Executor, singular bool, maybeMech interface
 				local.R.BattleQueue = foreign
 				if foreign.R == nil {
 					foreign.R = &battleQueueR{}
+				}
+				foreign.R.Mech = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadBattleContracts allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (mechL) LoadBattleContracts(e boil.Executor, singular bool, maybeMech interface{}, mods queries.Applicator) error {
+	var slice []*Mech
+	var object *Mech
+
+	if singular {
+		object = maybeMech.(*Mech)
+	} else {
+		slice = *maybeMech.(*[]*Mech)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &mechR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &mechR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`battle_contracts`),
+		qm.WhereIn(`battle_contracts.mech_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load battle_contracts")
+	}
+
+	var resultSlice []*BattleContract
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice battle_contracts")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on battle_contracts")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_contracts")
+	}
+
+	if len(battleContractAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.BattleContracts = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &battleContractR{}
+			}
+			foreign.R.Mech = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.MechID {
+				local.R.BattleContracts = append(local.R.BattleContracts, foreign)
+				if foreign.R == nil {
+					foreign.R = &battleContractR{}
 				}
 				foreign.R.Mech = local
 				break
@@ -1967,6 +2096,58 @@ func (o *Mech) SetBattleQueue(exec boil.Executor, insert bool, related *BattleQu
 		}
 	} else {
 		related.R.Mech = o
+	}
+	return nil
+}
+
+// AddBattleContracts adds the given related objects to the existing relationships
+// of the mech, optionally inserting them as new records.
+// Appends related to o.R.BattleContracts.
+// Sets related.R.Mech appropriately.
+func (o *Mech) AddBattleContracts(exec boil.Executor, insert bool, related ...*BattleContract) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.MechID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"battle_contracts\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"mech_id"}),
+				strmangle.WhereClause("\"", "\"", 2, battleContractPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.MechID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &mechR{
+			BattleContracts: related,
+		}
+	} else {
+		o.R.BattleContracts = append(o.R.BattleContracts, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &battleContractR{
+				Mech: o,
+			}
+		} else {
+			rel.R.Mech = o
+		}
 	}
 	return nil
 }

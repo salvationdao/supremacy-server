@@ -8,6 +8,7 @@ import (
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"golang.org/x/net/context"
 )
@@ -172,11 +173,13 @@ func FactionExclusiveAbilitiesByFactionID(ctx context.Context, conn Conn, factio
 }
 
 // FactionAbilitiesSupsCostUpdate update faction exclusive ability
-func FactionAbilitiesSupsCostUpdate(ctx context.Context, conn Conn, gameAbilityID uuid.UUID, supsCost string, currentSups string) error {
+func FactionAbilitiesSupsCostUpdate(ctx context.Context, conn Conn, gameAbilityID uuid.UUID, supsCost decimal.Decimal, currentSups decimal.Decimal) error {
+	supsCost = supsCost.Truncate(0)
+	currentSups = currentSups.Truncate(0)
 	asc := boiler.GameAbility{
 		ID:          gameAbilityID.String(),
-		SupsCost:    supsCost,
-		CurrentSups: currentSups,
+		SupsCost:    supsCost.String(),
+		CurrentSups: currentSups.String(),
 	}
 
 	_, err := asc.Update(gamedb.StdConn, boil.Whitelist(boiler.GameAbilityColumns.SupsCost, boiler.GameAbilityColumns.CurrentSups))

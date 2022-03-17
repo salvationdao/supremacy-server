@@ -120,9 +120,17 @@ func main() {
 					&cli.StringFlag{Name: "passport_server_token", Value: "aG93cyBpdCBnb2luZyBtYWM=", EnvVars: []string{envPrefix + "_PASSPORT_TOKEN"}, Usage: "Token to auth to passport server"},
 					&cli.StringFlag{Name: "server_stream_key", Value: "6c7b4a82-7797-4847-836e-978399830878", EnvVars: []string{envPrefix + "_SERVER_STREAM_KEY"}, Usage: "Authorization key to crud servers"},
 					&cli.StringFlag{Name: "passport_webhook_secret", Value: "e1BD3FF270804c6a9edJDzzDks87a8a4fde15c7=", EnvVars: []string{"PASSPORT_WEBHOOK_SECRET"}, Usage: "Authorization key to passport webhook"},
+
+					&cli.IntFlag{Name: "database_max_pool_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_POOL_CONNS"}, Usage: "Database max pool conns"},
+					&cli.IntFlag{Name: "database_max_idle_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_IDLE_CONNS"}, Usage: "Database max idle conns"},
+					&cli.IntFlag{Name: "database_max_open_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_OPEN_CONNS"}, Usage: "Database max open conns"},
 				},
 				Usage: "run server",
 				Action: func(c *cli.Context) error {
+
+					databaseMaxPoolConns := c.Int("database_max_pool_conns")
+					databaseMaxIdleConns := c.Int("database_max_idle_conns")
+					databaseMaxOpenConns := c.Int("database_max_open_conns")
 
 					databaseUser := c.String("database_user")
 					databasePass := c.String("database_pass")
@@ -154,6 +162,7 @@ func main() {
 						databaseName,
 						databaseAppName,
 						Version,
+						databaseMaxPoolConns,
 					)
 					if err != nil {
 						return terror.Panic(err)
@@ -164,6 +173,8 @@ func main() {
 						databaseHost,
 						databasePort,
 						databaseName,
+						databaseMaxIdleConns,
+						databaseMaxOpenConns,
 					)
 					if err != nil {
 						return terror.Panic(err)
@@ -179,12 +190,41 @@ func main() {
 					}
 					hostname := u.Hostname()
 					rpcAddrs := []string{
-						fmt.Sprintf("%s:10006", hostname),
-						fmt.Sprintf("%s:10005", hostname),
-						fmt.Sprintf("%s:10004", hostname),
-						fmt.Sprintf("%s:10003", hostname),
-						fmt.Sprintf("%s:10002", hostname),
 						fmt.Sprintf("%s:10001", hostname),
+						fmt.Sprintf("%s:10002", hostname),
+						fmt.Sprintf("%s:10003", hostname),
+						fmt.Sprintf("%s:10004", hostname),
+						fmt.Sprintf("%s:10005", hostname),
+						fmt.Sprintf("%s:10006", hostname),
+						fmt.Sprintf("%s:10007", hostname),
+						fmt.Sprintf("%s:10008", hostname),
+						fmt.Sprintf("%s:10009", hostname),
+						fmt.Sprintf("%s:10010", hostname),
+						fmt.Sprintf("%s:10011", hostname),
+						fmt.Sprintf("%s:10012", hostname),
+						fmt.Sprintf("%s:10013", hostname),
+						fmt.Sprintf("%s:10014", hostname),
+						fmt.Sprintf("%s:10015", hostname),
+						fmt.Sprintf("%s:10016", hostname),
+						fmt.Sprintf("%s:10017", hostname),
+						fmt.Sprintf("%s:10018", hostname),
+						fmt.Sprintf("%s:10019", hostname),
+						fmt.Sprintf("%s:10020", hostname),
+						fmt.Sprintf("%s:10021", hostname),
+						fmt.Sprintf("%s:10022", hostname),
+						fmt.Sprintf("%s:10023", hostname),
+						fmt.Sprintf("%s:10024", hostname),
+						fmt.Sprintf("%s:10025", hostname),
+						fmt.Sprintf("%s:10026", hostname),
+						fmt.Sprintf("%s:10027", hostname),
+						fmt.Sprintf("%s:10028", hostname),
+						fmt.Sprintf("%s:10029", hostname),
+						fmt.Sprintf("%s:10030", hostname),
+						fmt.Sprintf("%s:10031", hostname),
+						fmt.Sprintf("%s:10032", hostname),
+						fmt.Sprintf("%s:10033", hostname),
+						fmt.Sprintf("%s:10034", hostname),
+						fmt.Sprintf("%s:10035", hostname),
 					}
 					gamelog.L.Info().Msg("start rpc client")
 					rpcClient := &rpcclient.XrpcClient{
@@ -192,14 +232,44 @@ func main() {
 					}
 					gamelog.L.Info().Msg("start rpc server")
 					rpcServer := &comms.XrpcServer{}
+
 					err = rpcServer.Listen(
 						rpcClient,
-						"0.0.0.0:10011",
-						"0.0.0.0:10012",
-						"0.0.0.0:10013",
-						"0.0.0.0:10014",
-						"0.0.0.0:10015",
-						"0.0.0.0:10016",
+						":11001",
+						":11002",
+						":11003",
+						":11004",
+						":11005",
+						":11006",
+						":11007",
+						":11008",
+						":11009",
+						":11010",
+						":11011",
+						":11012",
+						":11013",
+						":11014",
+						":11015",
+						":11016",
+						":11017",
+						":11018",
+						":11019",
+						":11020",
+						":11021",
+						":11022",
+						":11023",
+						":11024",
+						":11025",
+						":11026",
+						":11027",
+						":11028",
+						":11029",
+						":11030",
+						":11031",
+						":11032",
+						":11033",
+						":11034",
+						":11035",
 					)
 					if err != nil {
 						return terror.Error(err)
@@ -212,6 +282,8 @@ func main() {
 						rpcClient,
 					)
 
+					// sync user stats
+
 					// Start Gameserver - Gameclient server
 					// Passport
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Setting up battle arena client")
@@ -221,7 +293,8 @@ func main() {
 					// initialise message bus
 					messageBus := messagebus.NewMessageBus(log_helpers.NamedLogger(gamelog.L, "message_bus"))
 					gsHub := hub.New(&hub.Config{
-						Log: zerologger.New(*log_helpers.NamedLogger(gamelog.L, "hub library")),
+						Log:            zerologger.New(*log_helpers.NamedLogger(gamelog.L, "hub library")),
+						LoggingEnabled: false,
 						WelcomeMsg: &hub.WelcomeMsg{
 							Key:     "WELCOME",
 							Payload: nil,
@@ -234,6 +307,7 @@ func main() {
 							netMessageBus.UnsubAll(cl)
 							messageBus.UnsubAll(cl)
 						},
+						Tracer: &api.HubTracer{},
 					})
 
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Set up hub")
@@ -248,21 +322,6 @@ func main() {
 						RPCClient:     rpcClient,
 					})
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("set up arena")
-
-					fmt.Println("nbotblocking")
-
-					//battleArenaClient := battle_arena.NewBattleArenaClient(ctx, log_helpers.NamedLogger(gamelog.L, "battle-arena"), pgxconn, pp, battleArenaAddr)
-					//battleArenaClient.SetupAfterConnections(gamelog.L) // Blocks until setup properly, fetched and hydrated
-					//gamelog.L.Info().Int("factions", len(battleArenaClient.GetCurrentState().FactionMap)).Msg("Successfully setup battle queue")
-
-					//go func() {
-					//	err := battleArenaClient.Serve(ctx)
-					//	if err != nil {
-					//		fmt.Println(err)
-					//		os.Exit(1)
-					//	}
-					//}()
-
 					gamelog.L.Info().Msg("Setting up webhook rest API")
 					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, pgxconn, pp, messageBus, netMessageBus, gsHub)
 					if err != nil {
@@ -291,8 +350,15 @@ func main() {
 					&cli.StringFlag{Name: "database_port", Value: "5437", EnvVars: []string{envPrefix + "_DATABASE_PORT", "DATABASE_PORT"}, Usage: "The database port"},
 					&cli.StringFlag{Name: "database_name", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_NAME", "DATABASE_NAME"}, Usage: "The database name"},
 					&cli.StringFlag{Name: "database_application_name", Value: "API Server", EnvVars: []string{envPrefix + "_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
+					&cli.IntFlag{Name: "database_max_pool_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_POOL_CONNS"}, Usage: "Database max pool conns"},
+					&cli.IntFlag{Name: "database_max_idle_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_IDLE_CONNS"}, Usage: "Database max idle conns"},
+					&cli.IntFlag{Name: "database_max_open_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_OPEN_CONNS"}, Usage: "Database max open conns"},
 				},
 				Action: func(c *cli.Context) error {
+
+					databaseMaxPoolConns := c.Int("database_max_pool_conns")
+					databaseMaxIdleConns := c.Int("database_max_idle_conns")
+					databaseMaxOpenConns := c.Int("database_max_open_conns")
 
 					databaseUser := c.String("database_user")
 					databasePass := c.String("database_pass")
@@ -308,6 +374,7 @@ func main() {
 						databaseName,
 						databaseAppName,
 						Version,
+						databaseMaxPoolConns,
 					)
 					if err != nil {
 						return terror.Panic(err)
@@ -318,6 +385,8 @@ func main() {
 						databaseHost,
 						databasePort,
 						databaseName,
+						databaseMaxIdleConns,
+						databaseMaxOpenConns,
 					)
 					if err != nil {
 						return terror.Panic(err)
@@ -335,12 +404,41 @@ func main() {
 					}
 					hostname := u.Hostname()
 					rpcAddrs := []string{
-						fmt.Sprintf("%s:10006", hostname),
-						fmt.Sprintf("%s:10005", hostname),
-						fmt.Sprintf("%s:10004", hostname),
-						fmt.Sprintf("%s:10003", hostname),
-						fmt.Sprintf("%s:10002", hostname),
 						fmt.Sprintf("%s:10001", hostname),
+						fmt.Sprintf("%s:10002", hostname),
+						fmt.Sprintf("%s:10003", hostname),
+						fmt.Sprintf("%s:10004", hostname),
+						fmt.Sprintf("%s:10005", hostname),
+						fmt.Sprintf("%s:10006", hostname),
+						fmt.Sprintf("%s:10007", hostname),
+						fmt.Sprintf("%s:10008", hostname),
+						fmt.Sprintf("%s:10009", hostname),
+						fmt.Sprintf("%s:10010", hostname),
+						fmt.Sprintf("%s:10011", hostname),
+						fmt.Sprintf("%s:10012", hostname),
+						fmt.Sprintf("%s:10013", hostname),
+						fmt.Sprintf("%s:10014", hostname),
+						fmt.Sprintf("%s:10015", hostname),
+						fmt.Sprintf("%s:10016", hostname),
+						fmt.Sprintf("%s:10017", hostname),
+						fmt.Sprintf("%s:10018", hostname),
+						fmt.Sprintf("%s:10019", hostname),
+						fmt.Sprintf("%s:10020", hostname),
+						fmt.Sprintf("%s:10021", hostname),
+						fmt.Sprintf("%s:10022", hostname),
+						fmt.Sprintf("%s:10023", hostname),
+						fmt.Sprintf("%s:10024", hostname),
+						fmt.Sprintf("%s:10025", hostname),
+						fmt.Sprintf("%s:10026", hostname),
+						fmt.Sprintf("%s:10027", hostname),
+						fmt.Sprintf("%s:10028", hostname),
+						fmt.Sprintf("%s:10029", hostname),
+						fmt.Sprintf("%s:10030", hostname),
+						fmt.Sprintf("%s:10031", hostname),
+						fmt.Sprintf("%s:10032", hostname),
+						fmt.Sprintf("%s:10033", hostname),
+						fmt.Sprintf("%s:10034", hostname),
+						fmt.Sprintf("%s:10035", hostname),
 					}
 					passportRPCclient := &rpcclient.XrpcClient{
 						Addrs: rpcAddrs,
@@ -449,6 +547,7 @@ func pgxconnect(
 	DatabaseName string,
 	DatabaseApplicationName string,
 	APIVersion string,
+	maxPoolConns int,
 ) (*pgxpool.Pool, error) {
 	params := url.Values{}
 	params.Add("sslmode", "disable")
@@ -469,7 +568,10 @@ func pgxconnect(
 	if err != nil {
 		return nil, terror.Panic(err, "could not initialise database")
 	}
+
 	poolConfig.ConnConfig.LogLevel = pgx.LogLevelTrace
+
+	poolConfig.MaxConns = int32(maxPoolConns)
 
 	ctx := context.Background()
 	conn, err := pgxpool.ConnectConfig(ctx, poolConfig)
@@ -486,6 +588,8 @@ func sqlConnect(
 	databaseHost string,
 	databasePort string,
 	databaseName string,
+	maxIdle int,
+	maxOpen int,
 ) (*sql.DB, error) {
 	params := url.Values{}
 	params.Add("sslmode", "disable")
@@ -501,10 +605,13 @@ func sqlConnect(
 	if err != nil {
 		return nil, err
 	}
+
 	conn := stdlib.OpenDB(*cfg)
 	if err != nil {
 		return nil, err
 	}
+	conn.SetMaxIdleConns(maxIdle)
+	conn.SetMaxOpenConns(maxOpen)
 	return conn, nil
 
 }

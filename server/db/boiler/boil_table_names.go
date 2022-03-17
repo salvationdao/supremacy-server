@@ -7,6 +7,7 @@ var TableNames = struct {
 	AssetRepair                                        string
 	BattleAbilities                                    string
 	BattleAbilityTriggers                              string
+	BattleContracts                                    string
 	BattleContributions                                string
 	BattleEvents                                       string
 	BattleEventsGameAbility                            string
@@ -21,6 +22,7 @@ var TableNames = struct {
 	BattleWins                                         string
 	Battles                                            string
 	BattlesUserVotes                                   string
+	BattlesViewers                                     string
 	BattlesWinnerRecords                               string
 	Blobs                                              string
 	BlueprintChassis                                   string
@@ -33,6 +35,7 @@ var TableNames = struct {
 	ChassisModules                                     string
 	ChassisWeapons                                     string
 	Config                                             string
+	FactionStats                                       string
 	Factions                                           string
 	GameAbilities                                      string
 	GameMaps                                           string
@@ -48,12 +51,14 @@ var TableNames = struct {
 	StreamList                                         string
 	Templates                                          string
 	UserMultipliers                                    string
+	UserStats                                          string
 	Users                                              string
 	Weapons                                            string
 }{
 	AssetRepair:                     "asset_repair",
 	BattleAbilities:                 "battle_abilities",
 	BattleAbilityTriggers:           "battle_ability_triggers",
+	BattleContracts:                 "battle_contracts",
 	BattleContributions:             "battle_contributions",
 	BattleEvents:                    "battle_events",
 	BattleEventsGameAbility:         "battle_events_game_ability",
@@ -68,6 +73,7 @@ var TableNames = struct {
 	BattleWins:                       "battle_wins",
 	Battles:                          "battles",
 	BattlesUserVotes:                 "battles_user_votes",
+	BattlesViewers:                   "battles_viewers",
 	BattlesWinnerRecords:             "battles_winner_records",
 	Blobs:                            "blobs",
 	BlueprintChassis:                 "blueprint_chassis",
@@ -80,6 +86,7 @@ var TableNames = struct {
 	ChassisModules:                   "chassis_modules",
 	ChassisWeapons:                   "chassis_weapons",
 	Config:                           "config",
+	FactionStats:                     "faction_stats",
 	Factions:                         "factions",
 	GameAbilities:                    "game_abilities",
 	GameMaps:                         "game_maps",
@@ -95,6 +102,7 @@ var TableNames = struct {
 	StreamList:                       "stream_list",
 	Templates:                        "templates",
 	UserMultipliers:                  "user_multipliers",
+	UserStats:                        "user_stats",
 	Users:                            "users",
 	Weapons:                          "weapons",
 }

@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/ninja-software/terror/v2"
-	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 )
 
 // XrpcClient is a basic RPC client with retry function and also support multiple addresses for increase through-put
@@ -35,9 +34,6 @@ type XrpcClient struct {
 
 // Call calls RPC server and retry, also initialise if it is the first time
 func (c *XrpcClient) Call(serviceMethod string, args interface{}, reply interface{}) error {
-	span := tracer.StartSpan("rpc.Call", tracer.ResourceName(serviceMethod))
-	defer span.Finish()
-
 	// used for the first time, initialise
 	if c.clients == nil {
 		gamelog.L.Debug().Msg("comms.Call init first time")

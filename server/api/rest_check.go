@@ -23,6 +23,7 @@ func CheckRouter(log *zerolog.Logger, conn db.Conn) chi.Router {
 	r := chi.NewRouter()
 	r.Get("/", c.Check)
 	r.Get("/game", c.CheckGame)
+	r.Get("/game/kill/next", c.CheckGame)
 
 	return r
 }

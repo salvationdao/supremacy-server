@@ -92,14 +92,14 @@ type BattleUser struct {
 
 var FactionNames = map[string]string{
 	"98bf7bb3-1a7c-4f21-8843-458d62884060": "RedMountain",
-	"c6dde21-b067-46cf-9e56-155c88a520e2":  "Boston",
-	"880db344-e405-428d-84e5-6ebebab1fe6d": "Zaibutsu",
+	"7c6dde21-b067-46cf-9e56-155c88a520e2": "Boston",
+	"880db344-e405-428d-84e5-6ebebab1fe6d": "Zaibatsu",
 }
 
 var FactionLogos = map[string]string{
-	"98bf7bb3-1a7c-4f21-8843-458d62884060": "471354c5-d910-4408-852a-6b44b497680f",
-	"7c6dde21-b067-46cf-9e56-155c88a520e2": "e1973047-f120-4c36-ba5d-2d1c5100a22f",
-	"880db344-e405-428d-84e5-6ebebab1fe6d": "fd3b1345-48e3-43ba-96bb-f0848dc70012",
+	"98bf7bb3-1a7c-4f21-8843-458d62884060": "red_mountain_logo",
+	"7c6dde21-b067-46cf-9e56-155c88a520e2": "boston_cybernetics_logo",
+	"880db344-e405-428d-84e5-6ebebab1fe6d": "zaibatsu_logo",
 }
 
 func (bu *BattleUser) AvatarID() string {
@@ -107,10 +107,11 @@ func (bu *BattleUser) AvatarID() string {
 }
 
 func (bu *BattleUser) Send(key hub.HubCommandKey, payload interface{}) error {
+	bu.Lock()
 	if bu.wsClient == nil || len(bu.wsClient) == 0 {
 		return fmt.Errorf("user does not have a websocket client")
 	}
-
+	bu.Unlock()
 	b, err := json.Marshal(&BroadcastPayload{
 		Key:     key,
 		Payload: payload,
@@ -120,9 +121,11 @@ func (bu *BattleUser) Send(key hub.HubCommandKey, payload interface{}) error {
 		return err
 	}
 
+	bu.RLock()
 	for wsc := range bu.wsClient {
 		go wsc.Send(b)
 	}
+	bu.RUnlock()
 	return nil
 }
 
@@ -164,6 +167,7 @@ type WarMachine struct {
 	Description        *string         `json:"description"`
 	ExternalUrl        string          `json:"externalUrl"`
 	Image              string          `json:"image"`
+	Model              string          `json:"model"`
 	Skin               string          `json:"skin"`
 	ShieldRechargeRate float64         `json:"shieldRechargeRate"`
 	Speed              int             `json:"speed"`
@@ -175,7 +179,7 @@ type WarMachine struct {
 	UtilitySlots       int             `json:"utilitySlots"`
 	Faction            *Faction        `json:"faction"`
 	WeaponNames        []string        `json:"weaponNames"`
-	Abilities          []*GameAbility  `json:"abilities"`
+	Abilities          []GameAbility   `json:"abilities"`
 	Tier               string          `json:"tier"`
 }
 

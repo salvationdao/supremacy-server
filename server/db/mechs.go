@@ -271,6 +271,7 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.MechContainer, error) {
 			&mc.DeletedAt,
 			&mc.UpdatedAt,
 			&mc.CreatedAt,
+			&mc.LargeImageURL,
 			&mc.Chassis,
 			&mc.Weapons,
 			&mc.Turrets,
@@ -349,6 +350,7 @@ func Mech(mechID uuid.UUID) (*server.MechContainer, error) {
 			&mc.DeletedAt,
 			&mc.UpdatedAt,
 			&mc.CreatedAt,
+			&mc.LargeImageURL,
 			&mc.Chassis,
 			&mc.Weapons,
 			&mc.Turrets,
@@ -512,22 +514,24 @@ func MechRegister(templateID uuid.UUID, ownerID uuid.UUID) (uuid.UUID, error) {
 		return uuid.Nil, fmt.Errorf("get next external token id: %w", err)
 	}
 	newMech := &boiler.Mech{
-		ID:               newMechID.String(),
-		OwnerID:          ownerID.String(),
-		TemplateID:       templateID.String(),
-		ChassisID:        chassis.ID,
-		Tier:             template.Tier,
-		IsDefault:        template.IsDefault,
+		ID:              newMechID.String(),
+		OwnerID:         ownerID.String(),
+		TemplateID:      templateID.String(),
+		ChassisID:       chassis.ID,
+		Tier:            template.Tier,
+		IsDefault:       template.IsDefault,
+		Hash:            shortID,
+		Name:            "",
+		ExternalTokenID: nextID,
+		Label:           template.Label,
+		Slug:            template.Slug,
+		AssetType:       template.AssetType,
+
+		AvatarURL:        template.AvatarURL,
+		LargeImageURL:    template.LargeImageURL,
 		ImageURL:         template.ImageURL,
 		AnimationURL:     template.AnimationURL,
 		CardAnimationURL: template.CardAnimationURL,
-		AvatarURL:        template.AvatarURL,
-		Hash:             shortID,
-		Name:             "",
-		ExternalTokenID:  nextID,
-		Label:            template.Label,
-		Slug:             template.Slug,
-		AssetType:        template.AssetType,
 	}
 	err = newMech.Insert(tx, boil.Infer())
 	if err != nil {
@@ -566,7 +570,7 @@ func MechIDsFromHash(hashes ...string) ([]uuid.UUID, error) {
 		}
 	}
 	paramrefs = paramrefs[:len(paramrefs)-1]
-	q := `SELECT id FROM mechs WHERE mechs.hash IN (` + paramrefs + `)`
+	q := `SELECT id, hash FROM mechs WHERE mechs.hash IN (` + paramrefs + `)`
 
 	result, err := gamedb.Conn.Query(context.Background(), q, idintf...)
 	if err != nil {
@@ -578,7 +582,8 @@ func MechIDsFromHash(hashes ...string) ([]uuid.UUID, error) {
 	i := 0
 	for result.Next() {
 		var idStr string
-		err = result.Scan(&idStr)
+		var hash string
+		err = result.Scan(&idStr, &hash)
 		if err != nil {
 			return nil, err
 		}
@@ -587,8 +592,14 @@ func MechIDsFromHash(hashes ...string) ([]uuid.UUID, error) {
 		if err != nil {
 			gamelog.L.Error().Str("mechID", idStr).Str("db func", "MechIDsFromHash").Err(err).Msg("unable to convert id to uuid")
 		}
-		ids[i] = uid
-		i++
+
+		// set id in correct order
+		for index, h := range hashes {
+			if h == hash {
+				ids[index] = uid
+				i++
+			}
+		}
 	}
 
 	if i == 0 {

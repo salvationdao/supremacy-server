@@ -7,8 +7,6 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"github.com/ninja-syndicate/hub"
-
 	"github.com/gofrs/uuid"
 )
 
@@ -284,8 +282,6 @@ func (f FactionID) IsValid() bool {
 	}
 	return false
 }
-
-const HubKeyFactionQueueJoin hub.HubCommandKey = "FACTION:QUEUE:JOIN"
 
 // FactionID aliases uuid.UUID.
 // Doing this prevents situations where you use FactionID where it doesn't belong.

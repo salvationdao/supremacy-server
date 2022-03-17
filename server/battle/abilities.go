@@ -11,12 +11,12 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/passport"
-	"sort"
 	"strings"
 	"time"
 
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
+	"github.com/sasha-s/go-deadlock"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -28,12 +28,29 @@ import (
 //******************************
 // Game Ability setup
 //******************************
-
-const EachMechIntroSecond = 3
-const InitIntroSecond = 7
-
 type LocationDeciders struct {
 	list []uuid.UUID
+}
+
+type LiveCount struct {
+	deadlock.Mutex
+	TotalVotes decimal.Decimal `json:"total_votes"`
+}
+
+func (lc *LiveCount) AddSups(amount decimal.Decimal) {
+	lc.Lock()
+	lc.TotalVotes = lc.TotalVotes.Add(amount)
+	lc.Unlock()
+}
+
+func (lc *LiveCount) ReadTotal() string {
+	lc.Lock()
+	defer lc.Unlock()
+
+	value := lc.TotalVotes.String()
+	lc.TotalVotes = decimal.Zero
+
+	return value
 }
 
 type AbilitiesSystem struct {
@@ -44,13 +61,14 @@ type AbilitiesSystem struct {
 	// gabs abilities (air craft, nuke, repair)
 	battleAbilityPool *BattleAbilityPool
 
-	// track the sups contribution of each user, use for location select
-	userContributeMap map[uuid.UUID]*UserContribution
-
 	bribe      chan *Contribution
 	contribute chan *Contribution
 	// location select winner list
 	locationDeciders *LocationDeciders
+
+	end chan bool
+
+	liveCount *LiveCount
 }
 
 func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
@@ -75,7 +93,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 		// faction unique abilities
 		factionUniqueAbilities, err := boiler.GameAbilities(qm.Where("faction_id = ?", factionID.String()), qm.And("battle_ability_id ISNULL")).All(gamedb.StdConn)
 		if err != nil {
-			gamelog.L.Error().Str("Battle ID", battle.ID.String()).Err(err).Msg("unable to retrieve game abilities")
+			gamelog.L.Error().Str("Battle ID", battle.ID).Err(err).Msg("unable to retrieve game abilities")
 		}
 
 		// for zaibatsu unique abilities
@@ -105,7 +123,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 					}
 
 					// build the ability
-					wmAbility := &GameAbility{
+					wmAbility := GameAbility{
 						ID:                  uuid.Must(uuid.FromString(ability.ID)), // generate a uuid for frontend to track sups contribution
 						Identity:            wm.Hash,
 						GameClientAbilityID: byte(ability.GameClientAbilityID),
@@ -124,10 +142,10 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 					}
 
 					// inject ability to war machines
-					battle.WarMachines[i].Abilities = []*GameAbility{wmAbility}
+					battle.WarMachines[i].Abilities = []GameAbility{wmAbility}
 
 					// store faction ability for price tracking
-					factionAbilities[factionID][wmAbility.Identity] = wmAbility
+					factionAbilities[factionID][wmAbility.Identity] = &wmAbility
 				}
 			}
 
@@ -152,7 +170,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 					currentSups = decimal.Zero
 				}
 
-				wmAbility := &GameAbility{
+				wmAbility := GameAbility{
 					ID:                  uuid.Must(uuid.FromString(ability.ID)), // generate a uuid for frontend to track sups contribution
 					Identity:            ability.ID,
 					GameClientAbilityID: byte(ability.GameClientAbilityID),
@@ -167,7 +185,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 					Title:               "FACTION_WIDE",
 					OfferingID:          uuid.Must(uuid.NewV4()),
 				}
-				abilities[wmAbility.Identity] = wmAbility
+				abilities[wmAbility.Identity] = &wmAbility
 			}
 			factionAbilities[factionID] = abilities
 		}
@@ -182,10 +200,13 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 		battle:                 battle,
 		factionUniqueAbilities: factionAbilities,
 		battleAbilityPool:      battleAbilityPool,
-		userContributeMap:      userContributeMap,
 		locationDeciders: &LocationDeciders{
 			list: []uuid.UUID{},
 		},
+		liveCount: &LiveCount{
+			TotalVotes: decimal.Zero,
+		},
+		end: make(chan bool),
 	}
 
 	// broadcast faction unique ability
@@ -193,12 +214,12 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 		if factionID.String() == server.ZaibatsuFactionID.String() {
 			// broadcast the war machine abilities
 			for identity, ability := range ga {
-				as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyWarMachineAbilitiesUpdated, identity)), []*GameAbility{ability})
+				as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyWarMachineAbilitiesUpdated, identity)), []GameAbility{*ability})
 			}
 		} else {
 			// broadcast faction ability
 			for _, ability := range ga {
-				as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionUniqueAbilitiesUpdated, factionID.String())), []*GameAbility{ability})
+				as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionUniqueAbilitiesUpdated, factionID.String())), []GameAbility{*ability})
 			}
 		}
 	}
@@ -210,14 +231,11 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 		return nil
 	}
 
-	// calc the intro time, mech_amount * 3 + 7 second
-	waitDurationSecond := len(battle.WarMachines)*EachMechIntroSecond + InitIntroSecond
-
 	// start ability cycle
-	go as.FactionUniqueAbilityUpdater(waitDurationSecond)
+	go as.FactionUniqueAbilityUpdater()
 
 	// bribe cycle
-	go as.StartGabsAbilityPoolCycle(waitDurationSecond)
+	go as.StartGabsAbilityPoolCycle()
 
 	return as
 }
@@ -227,19 +245,48 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 // ***********************************
 
 // FactionUniqueAbilityUpdater update ability price every 10 seconds
-func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
-	// wait for mech intro
-	time.Sleep(time.Duration(waitDurationSecond) * time.Second)
-
+func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 	minPrice := decimal.New(1, 18)
 
 	main_ticker := time.NewTicker(1 * time.Second)
 
-	as.contribute = make(chan *Contribution, 10)
+	live_vote_ticker := time.NewTicker(1 * time.Second)
+
+	as.contribute = make(chan *Contribution, 100)
 
 	// start the battle
 	for {
 		select {
+		case <-as.end:
+			as.battle.stage = BattleStageEnd
+			main_ticker.Stop()
+			live_vote_ticker.Stop()
+			gamelog.L.Info().Msg("exiting ability price update")
+
+			// get spoil of war
+			sows, err := db.LastTwoSpoilOfWarAmount()
+			if err != nil || len(sows) == 0 {
+				gamelog.L.Error().Err(err).Msg("Failed to get last two spoil of war amount")
+				continue
+			}
+
+			// broadcast the spoil of war
+			payload := []byte{byte(SpoilOfWarTick)}
+			spoilOfWarStr := []string{}
+			for _, sow := range sows {
+				spoilOfWarStr = append(spoilOfWarStr, sow.String())
+			}
+			if len(spoilOfWarStr) > 0 {
+				payload = append(payload, []byte(spoilOfWarStr[0]+"|0")...)
+				as.battle.arena.netMessageBus.Send(context.Background(), messagebus.NetBusKey(HubKeySpoilOfWarUpdated), payload)
+			}
+
+			gamelog.L.Info().Msgf("abilities system has been cleaned up: %s", as.battle.ID)
+
+			close(as.end)
+			close(as.contribute)
+
+			return
 		case <-main_ticker.C:
 			for _, abilities := range as.factionUniqueAbilities {
 
@@ -256,21 +303,25 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 						triggeredFlag := "0"
 						if isTriggered {
 							triggeredFlag = "1"
+
+							event := &server.GameAbilityEvent{
+								EventID:             ability.OfferingID,
+								IsTriggered:         true,
+								GameClientAbilityID: ability.GameClientAbilityID,
+								ParticipantID:       ability.ParticipantID, // trigger on war machine
+								WarMachineHash:      &ability.WarMachineHash,
+							}
+							as.battle.spawnReinforcementNearMech(event)
+
 							// send message to game client, if ability trigger
 							as.battle.arena.Message(
 								"BATTLE:ABILITY",
-								&server.GameAbilityEvent{
-									EventID:             ability.OfferingID,
-									IsTriggered:         true,
-									GameClientAbilityID: ability.GameClientAbilityID,
-									ParticipantID:       ability.ParticipantID, // trigger on war machine
-									WarMachineHash:      &ability.WarMachineHash,
-								},
+								event,
 							)
 
 							bat := boiler.BattleAbilityTrigger{
 								PlayerID:          null.StringFromPtr(nil),
-								BattleID:          as.battle.ID.String(),
+								BattleID:          as.battle.ID,
 								FactionID:         ability.FactionID.String(),
 								IsAllSyndicates:   false,
 								AbilityLabel:      ability.Label,
@@ -299,7 +350,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 
 								// broadcast notification
 								if ability.ParticipantID == nil {
-									as.battle.arena.BroadcastGameNotificationAbility(GameNotificationTypeFactionAbility, &GameNotificationAbility{
+									as.battle.arena.BroadcastGameNotificationAbility(GameNotificationTypeFactionAbility, GameNotificationAbility{
 										Ability: gameNotification.Ability,
 									})
 
@@ -314,6 +365,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 												ImageAvatar:   wm.ImageAvatar,
 												Name:          wm.Name,
 												Faction: &FactionBrief{
+													ID:         faction.ID,
 													Label:      faction.Label,
 													LogoBlobID: FactionLogos[faction.ID],
 													Theme: &FactionTheme{
@@ -341,15 +393,14 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 						as.battle.arena.netMessageBus.Send(context.Background(), messagebus.NetBusKey(fmt.Sprintf("%s,%s", HubKeyAbilityPriceUpdated, ability.Identity)), payload)
 
 					}
-				} else {
-					gamelog.L.Info().Msg("exiting ability price update")
-					return
 				}
 
 			}
 		case cont := <-as.contribute:
+			if as.factionUniqueAbilities == nil {
+				continue
+			}
 			if abilities, ok := as.factionUniqueAbilities[cont.factionID]; ok {
-
 				// check ability exists
 				if ability, ok := abilities[cont.abilityIdentity]; ok {
 
@@ -358,33 +409,33 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 						return
 					}
 
-					actualSupSpent, isTriggered := ability.SupContribution(as.battle.arena.ppClient, as.battle.ID.String(), as.battle.BattleNumber, cont.userID, cont.amount)
+					actualSupSpent, isTriggered := ability.SupContribution(as.battle.arena.ppClient, as.battle.ID, as.battle.BattleNumber, cont.userID, cont.amount)
 
-					// cache user's sup contribution for generating location select order
-					if _, ok := as.userContributeMap[cont.factionID].contributionMap[cont.userID]; !ok {
-						as.userContributeMap[cont.factionID].contributionMap[cont.userID] = decimal.Zero
-					}
-					as.userContributeMap[cont.factionID].contributionMap[cont.userID] = as.userContributeMap[cont.factionID].contributionMap[cont.userID].Add(actualSupSpent)
+					as.liveCount.AddSups(actualSupSpent)
 
 					// sups contribution
 					triggeredFlag := "0"
 					if isTriggered {
 						triggeredFlag = "1"
 						// send message to game client, if ability trigger
+
+						event := &server.GameAbilityEvent{
+							IsTriggered:         true,
+							GameClientAbilityID: ability.GameClientAbilityID,
+							ParticipantID:       ability.ParticipantID, // trigger on war machine
+							WarMachineHash:      &ability.WarMachineHash,
+							EventID:             ability.OfferingID,
+						}
+						as.battle.spawnReinforcementNearMech(event)
+
 						as.battle.arena.Message(
 							"BATTLE:ABILITY",
-							&server.GameAbilityEvent{
-								IsTriggered:         true,
-								GameClientAbilityID: ability.GameClientAbilityID,
-								ParticipantID:       ability.ParticipantID, // trigger on war machine
-								WarMachineHash:      &ability.WarMachineHash,
-								EventID:             ability.OfferingID,
-							},
+							event,
 						)
 
 						bat := boiler.BattleAbilityTrigger{
 							PlayerID:          null.StringFrom(cont.userID.String()),
-							BattleID:          as.battle.ID.String(),
+							BattleID:          as.battle.ID,
 							FactionID:         ability.FactionID.String(),
 							IsAllSyndicates:   false,
 							AbilityLabel:      ability.Label,
@@ -394,6 +445,11 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 						err := bat.Insert(gamedb.StdConn, boil.Infer())
 						if err != nil {
 							gamelog.L.Error().Err(err).Msg("Failed to record ability triggered")
+						}
+
+						_, err = db.UserStatAddTotalAbilityTriggered(cont.userID.String())
+						if err != nil {
+							gamelog.L.Error().Str("player_id", cont.userID.String()).Err(err).Msg("failed to update user ability triggered amount")
 						}
 
 						// get player
@@ -411,9 +467,11 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 								//build notification
 								gameNotification := &GameNotificationWarMachineAbility{
 									User: &UserBrief{
-										ID:       cont.userID,
-										Username: player.Username.String,
+										ID:        cont.userID,
+										Username:  player.Username.String,
+										FactionID: player.FactionID.String,
 										Faction: &FactionBrief{
+											ID:         faction.ID,
 											Label:      faction.Label,
 											LogoBlobID: FactionLogos[faction.ID],
 											Theme: &FactionTheme{
@@ -432,7 +490,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 
 								// broadcast notification
 								if ability.ParticipantID == nil {
-									as.battle.arena.BroadcastGameNotificationAbility(GameNotificationTypeFactionAbility, &GameNotificationAbility{
+									as.battle.arena.BroadcastGameNotificationAbility(GameNotificationTypeFactionAbility, GameNotificationAbility{
 										Ability: gameNotification.Ability,
 										User:    gameNotification.User,
 									})
@@ -449,6 +507,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 												ImageAvatar:   wm.ImageAvatar,
 												Name:          wm.Name,
 												Faction: &FactionBrief{
+													ID:         faction.ID,
 													Label:      faction.Label,
 													LogoBlobID: FactionLogos[faction.ID],
 													Theme: &FactionTheme{
@@ -477,6 +536,38 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater(waitDurationSecond int) {
 					as.battle.arena.netMessageBus.Send(context.Background(), messagebus.NetBusKey(fmt.Sprintf("%s,%s", HubKeyAbilityPriceUpdated, ability.Identity)), payload)
 				}
 			}
+
+		case <-live_vote_ticker.C:
+			if as.liveCount == nil {
+				continue
+			}
+
+			total := as.liveCount.ReadTotal()
+
+			// broadcast
+			payload := []byte{byte(LiveVotingTick)}
+			payload = append(payload, []byte(total)...)
+			as.battle.arena.netMessageBus.Send(context.Background(), messagebus.NetBusKey(HubKeyLiveVoteCountUpdated), payload)
+
+			if as.battle.stage != BattleStagStart {
+				continue
+			}
+
+			// get spoil of war
+			sows, err := db.LastTwoSpoilOfWarAmount()
+			if err != nil || len(sows) == 0 {
+				gamelog.L.Error().Err(err).Msg("Failed to get last two spoil of war amount")
+				continue
+			}
+
+			// broadcast the spoil of war
+			payload = []byte{byte(SpoilOfWarTick)}
+			spoilOfWarStr := []string{}
+			for _, sow := range sows {
+				spoilOfWarStr = append(spoilOfWarStr, sow.String())
+			}
+			payload = append(payload, []byte(strings.Join(spoilOfWarStr, "|"))...)
+			as.battle.arena.netMessageBus.Send(context.Background(), messagebus.NetBusKey(HubKeySpoilOfWarUpdated), payload)
 		}
 	}
 }
@@ -486,14 +577,14 @@ func (ga *GameAbility) FactionUniqueAbilityPriceUpdate(minPrice decimal.Decimal)
 	ga.SupsCost = ga.SupsCost.Mul(decimal.NewFromFloat(0.9977))
 
 	// if target price hit 1 sup, set it to 1 sup
-	if ga.SupsCost.Cmp(minPrice) <= 0 {
+	if ga.SupsCost.LessThanOrEqual(decimal.New(1, 18)) {
 		ga.SupsCost = decimal.New(1, 18)
 	}
 
 	isTriggered := false
 
 	// if the target price hit current price
-	if ga.SupsCost.Cmp(ga.CurrentSups) <= 0 {
+	if ga.SupsCost.LessThanOrEqual(ga.CurrentSups) {
 		// trigger the ability
 		isTriggered = true
 
@@ -506,7 +597,7 @@ func (ga *GameAbility) FactionUniqueAbilityPriceUpdate(minPrice decimal.Decimal)
 	}
 
 	// store updated price to db
-	err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ga.ID, ga.SupsCost.String(), ga.CurrentSups.String())
+	err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ga.ID, ga.SupsCost, ga.CurrentSups)
 	if err != nil {
 		gamelog.L.Error().Err(err)
 		return isTriggered
@@ -529,6 +620,8 @@ func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID str
 		amount = diff
 	}
 	now := time.Now()
+
+	amount = amount.Truncate(0)
 
 	// pay sup
 	txid, err := ppClient.SpendSupMessage(passport.SpendSupsReq{
@@ -567,6 +660,14 @@ func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID str
 	if err != nil {
 		gamelog.L.Error().Str("txid", txid).Err(err).Msg("unable to insert battle contrib")
 	}
+
+	// update faction contribute
+	err = db.FactionAddContribute(ga.FactionID.String(), amount)
+	if err != nil {
+		gamelog.L.Error().Str("txid", txid).Err(err).Msg("unable to update faction contribution")
+	}
+
+	amount = amount.Truncate(0)
 
 	tx, err := gamedb.StdConn.Begin()
 	if err == nil {
@@ -607,20 +708,19 @@ func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID str
 		ga.CurrentSups = ga.CurrentSups.Add(amount)
 
 		// store updated price to db
-		err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ga.ID, ga.SupsCost.String(), ga.CurrentSups.String())
+		err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ga.ID, ga.SupsCost, ga.CurrentSups)
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("unable to insert faction ability sup cost update")
 			return amount, false
 		}
 		return amount, false
 	}
-
-	// otherwise update target price and reset the current price
+	// increase price as the twice amount for normal value
 	ga.SupsCost = ga.SupsCost.Mul(decimal.NewFromInt(2))
 	ga.CurrentSups = decimal.Zero
 
 	// store updated price to db
-	err = db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ga.ID, ga.SupsCost.String(), ga.CurrentSups.String())
+	err = db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ga.ID, ga.SupsCost, ga.CurrentSups)
 	if err != nil {
 		gamelog.L.Error().Err(err)
 		return amount, true
@@ -658,6 +758,7 @@ type GabsBribeStage struct {
 
 // track user contribution of current battle
 type UserContribution struct {
+	deadlock.RWMutex
 	contributionMap map[uuid.UUID]decimal.Decimal
 }
 
@@ -671,17 +772,14 @@ type BattleAbilityPool struct {
 }
 
 type LocationSelectAnnouncement struct {
-	GameAbility *GameAbility `json:"game_ability"`
-	EndTime     time.Time    `json:"end_time"`
+	GameAbility GameAbility `json:"game_ability"`
+	EndTime     time.Time   `json:"end_time"`
 }
 
 // StartGabsAbilityPoolCycle
-func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
-	// wait for mech intro
-	time.Sleep(time.Duration(waitDurationSecond) * time.Second)
-
+func (as *AbilitiesSystem) StartGabsAbilityPoolCycle() {
 	// ability price updater
-	as.bribe = make(chan *Contribution, 10)
+	as.bribe = make(chan *Contribution, 1000)
 
 	// initial a ticker for current battle
 	main_ticker := time.NewTicker(1 * time.Second)
@@ -693,12 +791,26 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 	as.battleAbilityPool.Stage.EndTime = time.Now().Add(BribeDurationSecond * time.Second)
 	as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
 
+	bn := as.battle.BattleNumber
+
+	go func() {
+		for {
+			<-progress_ticker.C
+			if as.battle == nil || as.battle.arena.currentBattle == nil || as.battle.arena.currentBattle.BattleNumber != bn {
+				return
+			}
+			as.BattleAbilityProgressBar()
+		}
+	}()
+
 	// start ability pool cycle
 	for {
 		select {
 		// wait for next tick
 		case <-main_ticker.C:
-
+			if as.battle == nil || as.battle.arena.currentBattle == nil || as.battle.arena.currentBattle.BattleNumber != bn {
+				return
+			}
 			// check phase
 			stage := as.battle.stage
 			// exit the loop, when battle is ended
@@ -749,16 +861,32 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 			// pass the location select to next player
 			case BribeStageLocationSelect:
 				// get the next location decider
-				userID, ok := as.nextLocationDeciderGet()
+				currentUserID, nextUserID, ok := as.nextLocationDeciderGet()
 				if !ok {
+
+					if as == nil {
+						gamelog.L.Error().Msg("abilities are nil")
+						continue
+					}
+					if as.battleAbilityPool == nil {
+						gamelog.L.Error().Msg("ability pool is nil")
+						continue
+					}
+
+					if as.battleAbilityPool.Abilities == nil {
+						gamelog.L.Error().Msg("abilities map in battle ability pool is nil")
+						continue
+					}
+
+					ability := as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID]
 
 					// broadcast no ability
 					as.battle.arena.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
 						Type: LocationSelectTypeCancelledNoPlayer,
 						Ability: &AbilityBrief{
-							Label:    as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID].Label,
-							ImageUrl: as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID].ImageUrl,
-							Colour:   as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID].Colour,
+							Label:    ability.Label,
+							ImageUrl: ability.ImageUrl,
+							Colour:   ability.Colour,
 						},
 					})
 
@@ -775,50 +903,59 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 					continue
 				}
 
-				// get player
-				player, err := boiler.FindPlayer(gamedb.StdConn, as.locationDeciders.list[0].String())
-				if err != nil {
-					gamelog.L.Error().Err(err).Msg("failed to get player")
-				} else {
-					// get user faction
-					faction, err := db.FactionGet(player.FactionID.String)
-					if err != nil {
-						gamelog.L.Error().Err(err).Msg("failed to get player faction")
-					} else {
-						// broadcast no ability
-						as.battle.arena.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
-							Type: LocationSelectTypeFailedTimeout,
-							Ability: &AbilityBrief{
-								Label:    as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID].Label,
-								ImageUrl: as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID].ImageUrl,
-								Colour:   as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID].Colour,
-							},
-							NextUser: &UserBrief{
-								ID:       as.locationDeciders.list[0],
-								Username: player.Username.String,
-								Faction: &FactionBrief{
-									Label:      faction.Label,
-									LogoBlobID: FactionLogos[faction.ID],
-									Theme: &FactionTheme{
-										Primary:    faction.PrimaryColor,
-										Secondary:  faction.SecondaryColor,
-										Background: faction.BackgroundColor,
-									},
-								},
-							},
-						})
-					}
+				if as == nil {
+					gamelog.L.Error().Msg("abilities are nil")
+					continue
 				}
+				if as.battleAbilityPool == nil {
+					gamelog.L.Error().Msg("ability pool is nil")
+					continue
+				}
+				if as.battleAbilityPool.Abilities == nil {
+					gamelog.L.Error().Msg("abilities map in battle ability pool is nil")
+					continue
+				}
+
+				ab, ok := as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID]
+				if !ok {
+					gamelog.L.Error().
+						Str("triggered faction id", as.battleAbilityPool.TriggeredFactionID.String()).
+						Msg("nothing for triggered faction id")
+					continue
+
+				}
+
+				notification := &GameNotificationLocationSelect{
+					Type: LocationSelectTypeFailedTimeout,
+					Ability: &AbilityBrief{
+						Label:    ab.Label,
+						ImageUrl: ab.ImageUrl,
+						Colour:   ab.Colour,
+					},
+				}
+
+				// get current player
+				currentPlayer, err := BuildUserDetailWithFaction(currentUserID)
+				if err == nil {
+					notification.CurrentUser = currentPlayer
+				}
+
+				// get next player
+				nextPlayer, err := BuildUserDetailWithFaction(nextUserID)
+				if err == nil {
+					notification.NextUser = nextPlayer
+				}
+				go as.battle.arena.BroadcastGameNotificationLocationSelect(notification)
 
 				// extend location select phase duration
 				as.battleAbilityPool.Stage.Phase = BribeStageLocationSelect
 				as.battleAbilityPool.Stage.EndTime = time.Now().Add(time.Duration(LocationSelectDurationSecond) * time.Second)
 				// broadcast stage to frontend
-				as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
+				go as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
 
 				// broadcast the announcement to the next location decider
-				as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeGabsBribingWinnerSubscribe, userID)), &LocationSelectAnnouncement{
-					GameAbility: as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID],
+				go as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeGabsBribingWinnerSubscribe, nextUserID)), &LocationSelectAnnouncement{
+					GameAbility: *as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID],
 					EndTime:     as.battleAbilityPool.Stage.EndTime,
 				})
 
@@ -830,29 +967,37 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 				as.battleAbilityPool.Stage.Phase = BribeStageBribe
 				as.battleAbilityPool.Stage.EndTime = time.Now().Add(time.Duration(BribeDurationSecond) * time.Second)
 				// broadcast stage to frontend
-				as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
+				go as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
 
 				continue
 			default:
 				gamelog.L.Error().Msg("hit default case switch on abilities loop")
 			}
 		case <-price_ticker.C:
+			if as.battle == nil || as.battle.arena.currentBattle == nil || as.battle.arena.currentBattle.BattleNumber != bn {
+				return
+			}
 			as.BattleAbilityPriceUpdater()
 		case cont := <-as.bribe:
+			if as.battle == nil || as.battle.arena.currentBattle == nil || as.battle.arena.currentBattle.BattleNumber != bn {
+				return
+			}
+
+			// skip, if the bribe stage is incorrect
+			if as.battleAbilityPool == nil || as.battleAbilityPool.Stage == nil || as.battleAbilityPool.Stage.Phase != BribeStageBribe {
+				continue
+			}
+
 			if factionAbility, ok := as.battleAbilityPool.Abilities[cont.factionID]; ok {
 
 				// contribute sups
-				actualSupSpent, abilityTriggered := factionAbility.SupContribution(as.battle.arena.ppClient, as.battle.ID.String(), as.battle.BattleNumber, cont.userID, cont.amount)
+				actualSupSpent, abilityTriggered := factionAbility.SupContribution(as.battle.arena.ppClient, as.battle.ID, as.battle.BattleNumber, cont.userID, cont.amount)
 
-				// cache user contribution for location select order
-				if _, ok := as.userContributeMap[cont.factionID].contributionMap[cont.userID]; !ok {
-					as.userContributeMap[cont.factionID].contributionMap[cont.userID] = decimal.Zero
-				}
-				as.userContributeMap[cont.factionID].contributionMap[cont.userID] = as.userContributeMap[cont.factionID].contributionMap[cont.userID].Add(actualSupSpent)
+				as.liveCount.AddSups(actualSupSpent)
 
 				if abilityTriggered {
 					// generate location select order list
-					as.locationDecidersSet(cont.factionID, cont.userID)
+					as.locationDecidersSet(as.battle.ID, cont.factionID, cont.userID)
 
 					// change bribing phase to location select
 					as.battleAbilityPool.Stage.Phase = BribeStageLocationSelect
@@ -863,48 +1008,28 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(waitDurationSecond int) {
 
 					// send message to the user who trigger the ability
 					as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeGabsBribingWinnerSubscribe, cont.userID)), &LocationSelectAnnouncement{
-						GameAbility: as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID],
+						GameAbility: *as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID],
 						EndTime:     as.battleAbilityPool.Stage.EndTime,
 					})
-					// get player
-					player, err := boiler.FindPlayer(gamedb.StdConn, cont.userID.String())
-					if err != nil {
-						gamelog.L.Error().Err(err).Msg("failed to get player")
-					} else {
-						// get user faction
-						faction, err := db.FactionGet(player.FactionID.String)
-						if err != nil {
-							gamelog.L.Error().Err(err).Msg("failed to get player faction")
-						} else {
-							as.battle.arena.BroadcastGameNotificationAbility(GameNotificationTypeBattleAbility, &GameNotificationAbility{
-								Ability: &AbilityBrief{
-									Label:    factionAbility.Label,
-									ImageUrl: factionAbility.ImageUrl,
-									Colour:   factionAbility.Colour,
-								},
-								User: &UserBrief{
-									ID:       cont.userID,
-									Username: player.Username.String,
-									Faction: &FactionBrief{
-										Label:      faction.Label,
-										LogoBlobID: FactionLogos[faction.ID],
-										Theme: &FactionTheme{
-											Primary:    faction.PrimaryColor,
-											Secondary:  faction.SecondaryColor,
-											Background: faction.BackgroundColor,
-										},
-									},
-								},
-							})
-						}
+
+					notification := GameNotificationAbility{
+						Ability: &AbilityBrief{
+							Label:    factionAbility.Label,
+							ImageUrl: factionAbility.ImageUrl,
+							Colour:   factionAbility.Colour,
+						},
 					}
+					// get player
+					currentUser, err := BuildUserDetailWithFaction(cont.userID)
+					if err == nil {
+						notification.User = currentUser
+					}
+					as.battle.arena.BroadcastGameNotificationAbility(GameNotificationTypeBattleAbility, notification)
 
 					// broadcast the latest result progress bar, when ability is triggered
-					go as.BroadcastAbilityProgressBar()
+					as.BroadcastAbilityProgressBar()
 				}
 			}
-		case <-progress_ticker.C:
-			as.BattleAbilityProgressBar()
 		}
 	}
 }
@@ -990,7 +1115,7 @@ type Contribution struct {
 }
 
 // locationDecidersSet set a user list for location select for current ability triggered
-func (as *AbilitiesSystem) locationDecidersSet(factionID uuid.UUID, triggerByUserID ...uuid.UUID) {
+func (as *AbilitiesSystem) locationDecidersSet(battleID string, factionID uuid.UUID, triggerByUserID ...uuid.UUID) {
 	// set triggered faction id
 	as.battleAbilityPool.TriggeredFactionID = factionID
 
@@ -999,15 +1124,10 @@ func (as *AbilitiesSystem) locationDecidersSet(factionID uuid.UUID, triggerByUse
 		supSpent decimal.Decimal
 	}
 
-	list := []*userSupSpent{}
-	for userID, contribution := range as.userContributeMap[factionID].contributionMap {
-		list = append(list, &userSupSpent{userID, contribution})
+	playerList, err := db.PlayerFactionContributionList(battleID, factionID)
+	if err != nil {
+		gamelog.L.Error().Str("battle_id", battleID).Str("faction_id", factionID.String()).Err(err).Msg("failed to get player list")
 	}
-
-	// sort order
-	sort.Slice(list, func(i, j int) bool {
-		return list[i].supSpent.GreaterThan(list[j].supSpent)
-	})
 
 	// initialise location select list
 	as.locationDeciders.list = []uuid.UUID{}
@@ -1016,12 +1136,10 @@ func (as *AbilitiesSystem) locationDecidersSet(factionID uuid.UUID, triggerByUse
 		as.locationDeciders.list = append(as.locationDeciders.list, tid)
 	}
 
-	// set location select order
-	for _, uss := range list {
-		// skip the user who trigger the location
+	for _, pid := range playerList {
 		exists := false
 		for _, tid := range triggerByUserID {
-			if uss.userID == tid {
+			if pid == tid {
 				exists = true
 				break
 			}
@@ -1029,34 +1147,38 @@ func (as *AbilitiesSystem) locationDecidersSet(factionID uuid.UUID, triggerByUse
 		if exists {
 			continue
 		}
-
-		// append user to the list
-		as.locationDeciders.list = append(as.locationDeciders.list, uss.userID)
+		as.locationDeciders.list = append(as.locationDeciders.list, pid)
 	}
 }
 
 // nextLocationDeciderGet return the uuid of the next player to select the location for ability
-func (as *AbilitiesSystem) nextLocationDeciderGet() (uuid.UUID, bool) {
+func (as *AbilitiesSystem) nextLocationDeciderGet() (uuid.UUID, uuid.UUID, bool) {
+	if as.locationDeciders == nil {
+		return uuid.UUID(uuid.Nil), uuid.UUID(uuid.Nil), false
+	}
+
 	// clean up the location select list if there is no user left to select location
 	if len(as.locationDeciders.list) <= 1 {
 		as.locationDeciders.list = []uuid.UUID{}
-		return uuid.UUID(uuid.Nil), false
+		return uuid.UUID(uuid.Nil), uuid.UUID(uuid.Nil), false
 	}
+
+	currentUserID := as.locationDeciders.list[0]
+	nextUserID := as.locationDeciders.list[1]
 
 	// remove the first user from the list
 	as.locationDeciders.list = as.locationDeciders.list[1:]
 
-	return as.locationDeciders.list[0], true
+	return currentUserID, nextUserID, true
 }
 
 // ***********************************
 // Ability Progression bar Broadcaster
 // ***********************************
 
-// 1 tick per second, each tick reduce 0,978 of current price
+// 1 tick per second, each tick reduce 0.93304 of current price (drop the price to half in 10 second)
 
 func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
-
 	// check battle stage
 	stage := as.battle.stage
 	// exit the loop, when battle is ended
@@ -1073,7 +1195,7 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 	// update price
 	for factionID, ability := range as.battleAbilityPool.Abilities {
 		// reduce price
-		ability.SupsCost = ability.SupsCost.Mul(decimal.NewFromFloat(0.978))
+		ability.SupsCost = ability.SupsCost.Mul(decimal.NewFromFloat(0.93304))
 
 		// cap minmum price at 1 sup
 		if ability.SupsCost.Cmp(decimal.New(1, 18)) <= 0 {
@@ -1083,7 +1205,7 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 		// if ability not triggered, store ability's new target price to database, and continue
 		if ability.SupsCost.Cmp(ability.CurrentSups) > 0 {
 			// store updated price to db
-			err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ability.ID, ability.SupsCost.String(), ability.CurrentSups.String())
+			err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ability.ID, ability.SupsCost, ability.CurrentSups)
 			if err != nil {
 				gamelog.L.Error().Err(err)
 			}
@@ -1093,7 +1215,7 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 		// if ability triggered
 		ability.SupsCost = ability.SupsCost.Mul(decimal.NewFromInt(2))
 		ability.CurrentSups = decimal.Zero
-		err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ability.ID, ability.SupsCost.String(), ability.CurrentSups.String())
+		err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ability.ID, ability.SupsCost, ability.CurrentSups)
 		if err != nil {
 			gamelog.L.Error().Err(err)
 		}
@@ -1102,7 +1224,7 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 		as.BroadcastAbilityProgressBar()
 
 		// get player
-		as.battle.arena.BroadcastGameNotificationAbility(GameNotificationTypeBattleAbility, &GameNotificationAbility{
+		as.battle.arena.BroadcastGameNotificationAbility(GameNotificationTypeBattleAbility, GameNotificationAbility{
 			Ability: &AbilityBrief{
 				Label:    ability.Label,
 				ImageUrl: ability.ImageUrl,
@@ -1111,7 +1233,7 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 		})
 
 		// set location deciders list
-		as.locationDecidersSet(factionID)
+		as.locationDecidersSet(as.battle.ID, factionID)
 
 		// if no user online, enter cooldown and exit the loop
 		if len(as.locationDeciders.list) == 0 {
@@ -1139,40 +1261,19 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 			return
 		}
 
-		// get player
-		player, err := boiler.FindPlayer(gamedb.StdConn, as.locationDeciders.list[0].String())
-		if err != nil {
-			gamelog.L.Error().Err(err).Msg("failed to get player")
-		} else {
-			// get user faction
-			faction, err := db.FactionGet(player.FactionID.String)
-			if err != nil {
-				gamelog.L.Error().Err(err).Msg("failed to get player faction")
-			} else {
-				// broadcast no ability
-				as.battle.arena.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
-					Type: LocationSelectTypeFailedTimeout,
-					Ability: &AbilityBrief{
-						Label:    ability.Label,
-						ImageUrl: ability.ImageUrl,
-						Colour:   ability.Colour,
-					},
-					NextUser: &UserBrief{
-						ID:       as.locationDeciders.list[0],
-						Username: player.Username.String,
-						Faction: &FactionBrief{
-							Label:      faction.Label,
-							LogoBlobID: FactionLogos[faction.ID],
-							Theme: &FactionTheme{
-								Primary:    faction.PrimaryColor,
-								Secondary:  faction.SecondaryColor,
-								Background: faction.BackgroundColor,
-							},
-						},
-					},
-				})
-			}
+		notification := GameNotificationAbility{
+			Ability: &AbilityBrief{
+				Label:    ability.Label,
+				ImageUrl: ability.ImageUrl,
+				Colour:   ability.Colour,
+			},
 		}
+		// get player
+		currentUser, err := BuildUserDetailWithFaction(as.locationDeciders.list[0])
+		if err == nil {
+			notification.User = currentUser
+		}
+		as.battle.arena.BroadcastGameNotificationAbility(GameNotificationTypeBattleAbility, notification)
 
 		// if there is user, assign location decider and exit the loop
 		// change bribing phase to location select
@@ -1183,7 +1284,7 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 
 		// broadcast the announcement to the next location decider
 		as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeGabsBribingWinnerSubscribe, as.locationDeciders.list[0])), &LocationSelectAnnouncement{
-			GameAbility: as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID],
+			GameAbility: *as.battleAbilityPool.Abilities[as.battleAbilityPool.TriggeredFactionID],
 			EndTime:     as.battleAbilityPool.Stage.EndTime,
 		})
 
@@ -1212,6 +1313,9 @@ func (as *AbilitiesSystem) BattleAbilityProgressBar() {
 }
 
 func (as *AbilitiesSystem) BroadcastAbilityProgressBar() {
+	if as.battleAbilityPool == nil || as.battleAbilityPool.Abilities == nil {
+		return
+	}
 	factionAbilityPrices := []string{}
 	for factionID, ability := range as.battleAbilityPool.Abilities {
 		factionAbilityPrice := fmt.Sprintf("%s_%s_%s", factionID.String(), ability.SupsCost.String(), ability.CurrentSups.String())
@@ -1228,7 +1332,7 @@ func (as *AbilitiesSystem) BroadcastAbilityProgressBar() {
 // Handlers
 // *********************
 func (as *AbilitiesSystem) AbilityContribute(factionID uuid.UUID, userID uuid.UUID, abilityIdentity string, amount decimal.Decimal) {
-	if as.battle.stage != BattleStagStart {
+	if as == nil || as.battle == nil || as.battle.stage != BattleStagStart || as.factionUniqueAbilities == nil {
 		return
 	}
 
@@ -1243,10 +1347,10 @@ func (as *AbilitiesSystem) AbilityContribute(factionID uuid.UUID, userID uuid.UU
 }
 
 // FactionUniqueAbilityGet return the faction unique ability for the given faction
-func (as *AbilitiesSystem) FactionUniqueAbilitiesGet(factionID uuid.UUID) []*GameAbility {
-	abilities := []*GameAbility{}
+func (as *AbilitiesSystem) FactionUniqueAbilitiesGet(factionID uuid.UUID) []GameAbility {
+	abilities := []GameAbility{}
 	for _, ga := range as.factionUniqueAbilities[factionID] {
-		abilities = append(abilities, ga)
+		abilities = append(abilities, *ga)
 	}
 
 	if len(abilities) == 0 {
@@ -1257,13 +1361,21 @@ func (as *AbilitiesSystem) FactionUniqueAbilitiesGet(factionID uuid.UUID) []*Gam
 }
 
 // FactionUniqueAbilityGet return the faction unique ability for the given faction
-func (as *AbilitiesSystem) WarMachineAbilitiesGet(factionID uuid.UUID, hash string) []*GameAbility {
-	abilities := []*GameAbility{}
+func (as *AbilitiesSystem) WarMachineAbilitiesGet(factionID uuid.UUID, hash string) []GameAbility {
+	abilities := []GameAbility{}
+	if as == nil {
+		gamelog.L.Error().Str("factionID", factionID.String()).Str("hash", hash).Msg("nil pointer found as")
+		return abilities
+	}
+	if as.factionUniqueAbilities == nil {
+		gamelog.L.Error().Str("factionID", factionID.String()).Str("hash", hash).Msg("nil pointer found as.factionUniqueAbilities")
+		return abilities
+	}
 	// NOTE: just pass down the faction unique abilities for now
 	if fua, ok := as.factionUniqueAbilities[factionID]; ok {
 		for h, ga := range fua {
 			if h == hash {
-				abilities = append(abilities, ga)
+				abilities = append(abilities, *ga)
 			}
 		}
 	}
@@ -1276,8 +1388,16 @@ func (as *AbilitiesSystem) WarMachineAbilitiesGet(factionID uuid.UUID, hash stri
 }
 
 func (as *AbilitiesSystem) BribeGabs(factionID uuid.UUID, userID uuid.UUID, amount decimal.Decimal) {
-	if as.battle.stage != BattleStagStart || as.battleAbilityPool.Stage.Phase != BribeStageBribe {
+	if as == nil || as.battle == nil || as.battle.stage != BattleStagStart {
+		gamelog.L.Error().
+			Bool("nil checks as", as == nil).
+			Msg("unable to retrieve abilities for faction")
 		return
+	}
+
+	if as.battleAbilityPool.Stage.Phase != BribeStageBribe {
+		gamelog.L.Warn().
+			Msg("unable to retrieve abilities for faction")
 	}
 
 	cont := &Contribution{
@@ -1297,17 +1417,21 @@ func (as *AbilitiesSystem) BribeStageGet() *GabsBribeStage {
 	return nil
 }
 
-func (as *AbilitiesSystem) FactionBattleAbilityGet(factionID uuid.UUID) *GameAbility {
-	if as.battleAbilityPool == nil || as.battleAbilityPool.Abilities == nil {
-		return nil
+func (as *AbilitiesSystem) FactionBattleAbilityGet(factionID uuid.UUID) (GameAbility, error) {
+	if as.battleAbilityPool == nil {
+		return GameAbility{}, fmt.Errorf("battleAbilityPool is nil, fid: %s", factionID.String())
 	}
+	if as.battleAbilityPool.Abilities == nil {
+		return GameAbility{}, fmt.Errorf("battleAbilityPool.Abilities is nil, fid: %s", factionID.String())
+	}
+
 	ability, ok := as.battleAbilityPool.Abilities[factionID]
 	if !ok {
 		gamelog.L.Warn().Str("func", "FactionBattleAbilityGet").Msg("unable to retrieve abilities for faction")
-		return nil
+		return GameAbility{}, fmt.Errorf("game ability does not exist for faction %s", factionID.String())
 	}
 
-	return ability
+	return *ability, nil
 }
 
 func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error {
@@ -1335,27 +1459,24 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 		return terror.Error(err, "player not exists")
 	}
 
+	event := &server.GameAbilityEvent{
+		IsTriggered:         true,
+		GameClientAbilityID: ability.GameClientAbilityID,
+		TriggeredOnCellX:    &x,
+		TriggeredOnCellY:    &y,
+		TriggeredByUserID:   &userID,
+		TriggeredByUsername: &player.Username.String,
+		EventID:             ability.OfferingID,
+	}
+
+	as.battle.calcTriggeredLocation(event)
+
 	// trigger location select
-	as.battle.arena.Message(
-		"BATTLE:ABILITY",
-		&server.GameAbilityEvent{
-			IsTriggered:         true,
-			GameClientAbilityID: ability.GameClientAbilityID,
-			TriggeredOnCellX:    &x,
-			TriggeredOnCellY:    &y,
-			TriggeredByUserID:   &userID,
-			TriggeredByUsername: &player.Username.String,
-			EventID:             ability.OfferingID,
-			GameLocation: struct {
-				X int `json:"x"`
-				Y int `json:"y"`
-			}{X: x, Y: y},
-		},
-	)
+	as.battle.arena.Message("BATTLE:ABILITY", event)
 
 	bat := boiler.BattleAbilityTrigger{
 		PlayerID:          null.StringFrom(userID.String()),
-		BattleID:          as.battle.ID.String(),
+		BattleID:          as.battle.ID,
 		FactionID:         ability.FactionID.String(),
 		IsAllSyndicates:   true,
 		AbilityLabel:      ability.Label,
@@ -1364,7 +1485,12 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 	}
 	err = bat.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to record ability triggered")
+		gamelog.L.Error().Interface("battle_ability_trigger", bat).Err(err).Msg("Failed to record ability triggered")
+	}
+
+	_, err = db.UserStatAddTotalAbilityTriggered(userID.String())
+	if err != nil {
+		gamelog.L.Error().Str("player_id", userID.String()).Err(err).Msg("failed to update user ability triggered amount")
 	}
 
 	as.battle.arena.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
@@ -1377,9 +1503,11 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 			Colour:   ability.Colour,
 		},
 		CurrentUser: &UserBrief{
-			ID:       userID,
-			Username: player.Username.String,
+			ID:        userID,
+			Username:  player.Username.String,
+			FactionID: player.FactionID.String,
 			Faction: &FactionBrief{
+				ID:         faction.ID,
 				Label:      faction.Label,
 				LogoBlobID: FactionLogos[as.battleAbilityPool.TriggeredFactionID.String()],
 				Theme: &FactionTheme{
@@ -1403,4 +1531,42 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 	as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
 
 	return nil
+}
+
+func BuildUserDetailWithFaction(userID uuid.UUID) (*UserBrief, error) {
+	userBrief := &UserBrief{}
+
+	user, err := boiler.FindPlayer(gamedb.StdConn, userID.String())
+	if err != nil {
+		gamelog.L.Error().Str("player_id", userID.String()).Err(err).Msg("failed to get player from db")
+		return nil, terror.Error(err)
+	}
+
+	userBrief.ID = userID
+	userBrief.Username = user.Username.String
+
+	if !user.FactionID.Valid {
+		return userBrief, nil
+	}
+
+	userBrief.FactionID = user.FactionID.String
+
+	faction, err := db.FactionGet(user.FactionID.String)
+	if err != nil {
+		gamelog.L.Error().Str("player_id", userID.String()).Str("faction_id", user.FactionID.String).Err(err).Msg("failed to get player faction from db")
+		return userBrief, nil
+	}
+
+	userBrief.Faction = &FactionBrief{
+		ID:         faction.ID,
+		Label:      faction.Label,
+		LogoBlobID: FactionLogos[faction.ID],
+		Theme: &FactionTheme{
+			Primary:    faction.PrimaryColor,
+			Secondary:  faction.SecondaryColor,
+			Background: faction.BackgroundColor,
+		},
+	}
+
+	return userBrief, nil
 }

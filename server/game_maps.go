@@ -12,7 +12,7 @@ const GameClientTileSize = 2000
 //  ((cellY * GameClientTileSize) + GameClientTileSize / 2) + TopPixels
 
 type GameMap struct {
-	ID            GameMapID `json:"id" db:"id"`
+	ID            uuid.UUID `json:"id" db:"id"`
 	Name          string    `json:"name" db:"name"`
 	ImageUrl      string    `json:"image_url" db:"image_url"`
 	MaxSpawns     int       `json:"max_spawns" db:"max_spawns"`
@@ -23,7 +23,7 @@ type GameMap struct {
 	TopPixels     int       `json:"top" db:"top_pixels"`
 	LeftPixels    int       `json:"left" db:"left_pixels"`
 	Scale         float64   `json:"scale" db:"scale"`
-	DisabledCells []int     `json:"disabled_cells" db:"disabled_cells"`
+	DisabledCells []int64   `json:"disabled_cells" db:"disabled_cells"`
 }
 
 type WarMachineMetadata struct {

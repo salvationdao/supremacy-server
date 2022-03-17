@@ -76,10 +76,11 @@ type AbilityBrief struct {
 }
 
 type UserBrief struct {
-	ID       uuid.UUID     `json:"id"`
-	Username string        `json:"username"`
-	AvatarID *string       `json:"avatar_id,omitempty"`
-	Faction  *FactionBrief `json:"faction"`
+	ID        uuid.UUID     `json:"id"`
+	Username  string        `json:"username"`
+	AvatarID  *string       `json:"avatar_id,omitempty"`
+	FactionID string        `json:"faction_id,omitempty"`
+	Faction   *FactionBrief `json:"faction"`
 }
 
 type GameNotification struct {
@@ -107,7 +108,7 @@ func (arena *Arena) HubKeyMultiplierUpdate(ctx context.Context, wsc *hub.Client,
 	}
 
 	if arena.currentBattle.multipliers != nil {
-		m, total := arena.currentBattle.multipliers.PlayerMultipliers(id)
+		m, total := arena.currentBattle.multipliers.PlayerMultipliers(id, 0)
 
 		reply(&MultiplierUpdate{
 			UserMultipliers:  m,
@@ -127,9 +128,33 @@ func (arena *Arena) ViewerLiveCountUpdateSubscribeHandler(tx context.Context, ws
 		return "", "", terror.Error(err)
 	}
 
-	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
-	if userID.IsNil() {
-		return "", "", terror.Error(terror.ErrForbidden)
+	if arena.currentBattle != nil {
+		btl := arena.currentBattle
+		resp := &ViewerLiveCount{
+			RedMountain: 0,
+			Boston:      0,
+			Zaibatsu:    0,
+			Other:       0,
+		}
+		btl.users.Range(func(user *BattleUser) bool {
+			if faction, ok := FactionNames[user.FactionID]; ok {
+				switch faction {
+				case "RedMountain":
+					resp.RedMountain++
+				case "Boston":
+					resp.Boston++
+				case "Zaibatsu":
+					resp.Zaibatsu++
+				default:
+					resp.Other++
+				}
+			} else {
+				resp.Other++
+			}
+			return true
+		})
+
+		reply(resp)
 	}
 
 	return req.TransactionID, messagebus.BusKey(HubKeyViewerLiveCountUpdated), nil
@@ -165,7 +190,7 @@ func (arena *Arena) BroadcastGameNotificationLocationSelect(data *GameNotificati
 }
 
 // BroadcastGameNotificationAbility broadcast game notification to client
-func (arena *Arena) BroadcastGameNotificationAbility(notificationType GameNotificationType, data *GameNotificationAbility) {
+func (arena *Arena) BroadcastGameNotificationAbility(notificationType GameNotificationType, data GameNotificationAbility) {
 	arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyGameNotification), &GameNotification{
 		Type: notificationType,
 		Data: data,

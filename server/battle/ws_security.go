@@ -3,6 +3,7 @@ package battle
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -11,22 +12,16 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
-	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 )
 
 func (opts *Opts) Command(key hub.HubCommandKey, fn hub.HubCommandFunc) {
 	opts.Hub.Handle(key, func(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-		span := tracer.StartSpan("ws.Command", tracer.ResourceName(string(key)))
-		defer span.Finish()
 		return fn(ctx, wsc, payload, reply)
 	})
 }
 
 func (opts *Opts) SecureUserCommand(key hub.HubCommandKey, fn hub.HubCommandFunc) {
 	opts.Hub.Handle(key, func(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-		span := tracer.StartSpan("ws.SecureUserCommand", tracer.ResourceName(string(key)))
-		span.SetTag("user", wsc.Identifier())
-		defer span.Finish()
 		if wsc.Identifier() == "" {
 			return terror.Error(terror.ErrForbidden)
 		}
@@ -45,6 +40,8 @@ func GetPlayerFactionID(userID uuid.UUID) (uuid.UUID, error) {
 	}
 
 	if !player.FactionID.Valid {
+		gamelog.L.Error().Str("userID", userID.String()).Err(err).Msg("faction id is invalid")
+
 		return uuid.Nil, terror.Error(terror.ErrForbidden)
 	}
 
@@ -58,10 +55,6 @@ func GetPlayerFactionID(userID uuid.UUID) (uuid.UUID, error) {
 
 func (opts *Opts) SecureUserFactionCommand(key hub.HubCommandKey, fn FactionCommandFunc) {
 	opts.Hub.Handle(key, func(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-		span := tracer.StartSpan("ws.SecureUserFactionCommand", tracer.ResourceName(string(key)))
-		span.SetTag("user", wsc.Identifier())
-		defer span.Finish()
-
 		userID := uuid.FromStringOrNil(wsc.Identifier())
 		if userID.IsNil() {
 			return terror.Error(terror.ErrForbidden)
@@ -132,6 +125,10 @@ func (opts *Opts) SubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn HubSub
 		}
 
 		// add subscription to the message bus
+		if opts.MessageBus == nil {
+			gamelog.L.Error().Msg("messagebus is nil")
+			return fmt.Errorf("messagebus is nil")
+		}
 		opts.MessageBus.Sub(busKey, wsc, transactionID)
 
 		return nil

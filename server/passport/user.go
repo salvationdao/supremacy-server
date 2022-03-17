@@ -4,7 +4,9 @@ import (
 	"context"
 	"server"
 
+	"github.com/gofrs/uuid"
 	"github.com/ninja-syndicate/hub"
+	"github.com/shopspring/decimal"
 )
 
 type TickerTickReq struct {
@@ -88,4 +90,24 @@ func (pp *Passport) UserStatSend(ctx context.Context, userStatSends []*UserStatS
 	if err != nil {
 		pp.Log.Err(err).Str("method", "SupremacyUserStatSendHandler").Msg("rpc error")
 	}
+}
+
+type UserBalanceGetReq struct {
+	UserID uuid.UUID `json:"userID"`
+}
+
+type UserBalanceGetResp struct {
+	Balance decimal.Decimal `json:"balance"`
+}
+
+// UserBalanceGet return the sups balance from the given user id
+func (pp *Passport) UserBalanceGet(userID uuid.UUID) decimal.Decimal {
+	resp := &UserBalanceGetResp{}
+	err := pp.RPCClient.Call("S.SupremacyUserBalanceGetHandler", UserBalanceGetReq{userID}, resp)
+	if err != nil {
+		pp.Log.Err(err).Str("method", "SupremacyUserBalanceGetHandler").Msg("rpc error")
+		return decimal.Zero
+	}
+
+	return resp.Balance
 }
