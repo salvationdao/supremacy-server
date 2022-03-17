@@ -87,7 +87,7 @@ func (api *API) GlobalAnnouncementSend(w http.ResponseWriter, r *http.Request) (
 
 	go api.MessageBus.Send(r.Context(), messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), resp)
 
-	fmt.Fprintf(w, fmt.Sprintf("Global Announcement Inserted Successfully, will show from battle: %v to battle: %v", ga.ShowFromBattleNumber.Int, ga.ShowUntilBattleNumber.Int))
+	fmt.Fprintf(w, fmt.Sprintf("Global Announcement Inserted Successfully, will show from battle: %d to battle: %d", ga.ShowFromBattleNumber.Int, ga.ShowUntilBattleNumber.Int))
 
 	return http.StatusOK, nil
 }
