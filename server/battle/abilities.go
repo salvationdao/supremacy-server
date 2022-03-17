@@ -283,8 +283,9 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 
 			gamelog.L.Info().Msgf("abilities system has been cleaned up: %s", as.battle.ID)
 
-			close(as.end)
-			close(as.contribute)
+			// Caused panic
+			// close(as.end)
+			// close(as.contribute)
 
 			return
 		case <-main_ticker.C:
@@ -599,7 +600,11 @@ func (ga *GameAbility) FactionUniqueAbilityPriceUpdate(minPrice decimal.Decimal)
 	// store updated price to db
 	err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ga.ID, ga.SupsCost, ga.CurrentSups)
 	if err != nil {
-		gamelog.L.Error().Err(err)
+		gamelog.L.Error().
+			Str("ability_id", ga.ID.String()).
+			Str("sups_cost", ga.SupsCost.StringFixed(4)).
+			Str("current_sups", ga.CurrentSups.StringFixed(4)).
+			Err(err).Msg("could not update faction ability cost")
 		return isTriggered
 	}
 
@@ -722,7 +727,11 @@ func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID str
 	// store updated price to db
 	err = db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ga.ID, ga.SupsCost, ga.CurrentSups)
 	if err != nil {
-		gamelog.L.Error().Err(err)
+		gamelog.L.Error().
+			Str("ability_id", ga.ID.String()).
+			Str("sups_cost", ga.SupsCost.StringFixed(4)).
+			Str("current_sups", ga.CurrentSups.StringFixed(4)).
+			Err(err).Msg("could not update faction ability cost")
 		return amount, true
 	}
 
@@ -779,7 +788,7 @@ type LocationSelectAnnouncement struct {
 // StartGabsAbilityPoolCycle
 func (as *AbilitiesSystem) StartGabsAbilityPoolCycle() {
 	// ability price updater
-	as.bribe = make(chan *Contribution, 1000)
+	as.bribe = make(chan *Contribution)
 
 	// initial a ticker for current battle
 	main_ticker := time.NewTicker(1 * time.Second)
@@ -1207,7 +1216,11 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 			// store updated price to db
 			err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ability.ID, ability.SupsCost, ability.CurrentSups)
 			if err != nil {
-				gamelog.L.Error().Err(err)
+				gamelog.L.Error().
+					Str("ability_id", ability.ID.String()).
+					Str("sups_cost", ability.SupsCost.StringFixed(4)).
+					Str("current_sups", ability.CurrentSups.StringFixed(4)).
+					Err(err).Msg("could not update faction ability cost")
 			}
 			continue
 		}
@@ -1217,7 +1230,11 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 		ability.CurrentSups = decimal.Zero
 		err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ability.ID, ability.SupsCost, ability.CurrentSups)
 		if err != nil {
-			gamelog.L.Error().Err(err)
+			gamelog.L.Error().
+				Str("ability_id", ability.ID.String()).
+				Str("sups_cost", ability.SupsCost.StringFixed(4)).
+				Str("current_sups", ability.CurrentSups.StringFixed(4)).
+				Err(err).Msg("could not update faction ability cost")
 		}
 
 		// broadcast the progress bar
@@ -1407,7 +1424,9 @@ func (as *AbilitiesSystem) BribeGabs(factionID uuid.UUID, userID uuid.UUID, amou
 		"",
 	}
 
-	as.bribe <- cont
+	go func() {
+		as.bribe <- cont
+	}()
 }
 
 func (as *AbilitiesSystem) BribeStageGet() *GabsBribeStage {

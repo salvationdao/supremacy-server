@@ -301,6 +301,7 @@ func (rcm *RingCheckAuthMap) Remove(key string) {
 func (rcm *RingCheckAuthMap) Check(key string) (*hub.Client, error) {
 	value, ok := rcm.Load(key)
 	if !ok {
+		gamelog.L.Error().Str("key", key).Msg("hub client not found")
 		return nil, terror.Error(fmt.Errorf("hub client not found"))
 	}
 

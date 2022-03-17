@@ -1,6 +1,7 @@
 package battle
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -14,6 +15,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
 type MultiplierTypeEnum string
@@ -35,8 +37,8 @@ type MultiplierSystem struct {
 func NewMultiplierSystem(btl *Battle) *MultiplierSystem {
 	ms := &MultiplierSystem{
 		battle:      btl,
-		multipliers: make(map[string]*boiler.Multiplier),
 		players:     make(map[string]map[*boiler.Multiplier]*boiler.UserMultiplier),
+		multipliers: make(map[string]*boiler.Multiplier),
 	}
 	ms.init()
 	return ms
@@ -139,7 +141,7 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 	}
 
 	// create new multipliers map
-	newMultipliers := make(map[string]map[*boiler.Multiplier]bool)
+	newMultipliers := make(map[string]map[string]*boiler.Multiplier)
 
 	// average spend multipliers test
 	total := decimal.New(0, 18)
@@ -218,30 +220,30 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 				case "citizen":
 					for i := 0; i < citizenAmount; i++ {
 						if _, ok := newMultipliers[playerAmountList[i].playerID]; !ok {
-							newMultipliers[playerAmountList[i].playerID] = map[*boiler.Multiplier]bool{}
+							newMultipliers[playerAmountList[i].playerID] = map[string]*boiler.Multiplier{}
 						}
-						newMultipliers[playerAmountList[i].playerID][m] = true
+						newMultipliers[playerAmountList[i].playerID][m.ID] = m
 					}
 				case "supporter":
 					for i := 0; i < supportAmount; i++ {
 						if _, ok := newMultipliers[playerAmountList[i].playerID]; !ok {
-							newMultipliers[playerAmountList[i].playerID] = map[*boiler.Multiplier]bool{}
+							newMultipliers[playerAmountList[i].playerID] = map[string]*boiler.Multiplier{}
 						}
-						newMultipliers[playerAmountList[i].playerID][m] = true
+						newMultipliers[playerAmountList[i].playerID][m.ID] = m
 					}
 				case "contributor":
 					for i := 0; i < contributorAmount; i++ {
 						if _, ok := newMultipliers[playerAmountList[i].playerID]; !ok {
-							newMultipliers[playerAmountList[i].playerID] = map[*boiler.Multiplier]bool{}
+							newMultipliers[playerAmountList[i].playerID] = map[string]*boiler.Multiplier{}
 						}
-						newMultipliers[playerAmountList[i].playerID][m] = true
+						newMultipliers[playerAmountList[i].playerID][m.ID] = m
 					}
 				case "super contributor":
 					for i := 0; i < superContributorAmount; i++ {
 						if _, ok := newMultipliers[playerAmountList[i].playerID]; !ok {
-							newMultipliers[playerAmountList[i].playerID] = map[*boiler.Multiplier]bool{}
+							newMultipliers[playerAmountList[i].playerID] = map[string]*boiler.Multiplier{}
 						}
-						newMultipliers[playerAmountList[i].playerID][m] = true
+						newMultipliers[playerAmountList[i].playerID][m.ID] = m
 					}
 				}
 
@@ -274,37 +276,52 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 			}
 			if abilityTrigger.FactionID != factions[topPlayerID] {
 				if _, ok := newMultipliers[topPlayerID]; !ok {
-					newMultipliers[topPlayerID] = map[*boiler.Multiplier]bool{}
+					newMultipliers[topPlayerID] = map[string]*boiler.Multiplier{}
 				}
 				m, ok := ms.getMultiplier("most_sups_lost", "", 0)
 				if !ok {
 					gamelog.L.Error().Str("most_sups_lost", topPlayerID).Err(err).Msg("unable to retrieve 'a fool and his money' from multipliers. maybe this code needs to be removed?")
 					continue
 				}
-				newMultipliers[topPlayerID][m] = true
+				newMultipliers[topPlayerID][m.ID] = m
 			}
 		}
 	}
 
-	// last gab ability last three gab abilities
-outer:
-	for triggerLabel, td := range fired {
-		m1, m1ok := ms.getMultiplier("gab_ability", triggerLabel, 1)
-		m3, m3ok := ms.getMultiplier("gab_ability", triggerLabel, 1)
+	gab_triggers, err := boiler.BattleAbilityTriggers(
+		qm.Where(`battle_id = ?`, ms.battle.ID),
+		qm.OrderBy(`triggered_at DESC`),
+		qm.Where(`is_all_syndicates = true`),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("unable to retrieve trigger event for battle")
+	}
 
-		if !m1ok && !m3ok {
-			continue
-		}
-		if m1ok {
-			_, ok := newMultipliers[td.PlayerIDs[0]]
+	for _, tr := range gab_triggers {
+		if tr.PlayerID.String != "" {
+			_, ok := newMultipliers[tr.PlayerID.String]
 			if !ok {
 				// skip if player not a citizen
 				// newMultipliers[td.PlayerIDs[0]] = map[*boiler.Multiplier]bool{}
 				continue
 			}
-			newMultipliers[td.PlayerIDs[0]][m1] = true
-		}
+			m1, m1ok := ms.getMultiplier("gab_ability", tr.AbilityLabel, 1)
+			if !m1ok {
+				continue
+			}
 
+			newMultipliers[tr.PlayerID.String][m1.ID] = m1
+		}
+	}
+
+	// last three gab abilities
+outer:
+	for triggerLabel, td := range fired {
+
+		m3, m3ok := ms.getMultiplier("gab_ability", triggerLabel, 1)
+		if !m3ok {
+			continue
+		}
 		if m3ok && td.FireCount < 3 {
 			for i := 1; i < len(td.PlayerIDs); i++ {
 				if td.PlayerIDs[i] != td.PlayerIDs[i-1] {
@@ -329,7 +346,7 @@ outer:
 			}
 			//if it makes it here, it's because it was the last 3
 			gamelog.L.Info().Interface("td.PlayerIds", td.PlayerIDs).Msg("someone did the last 3!")
-			newMultipliers[td.PlayerIDs[0]][m3] = true
+			newMultipliers[td.PlayerIDs[0]][m3.ID] = m3
 		} else {
 			for i := 1; i < len(td.PlayerIDs); i++ {
 				if td.PlayerIDs[i] != td.PlayerIDs[i-1] {
@@ -338,20 +355,12 @@ outer:
 			}
 			//if it makes it here, it's because it was the last 3
 			gamelog.L.Info().Interface("td.PlayerIds", td.PlayerIDs).Msg("someone did the last 3!")
-			newMultipliers[td.PlayerIDs[0]][m3] = true
+			newMultipliers[td.PlayerIDs[0]][m3.ID] = m3
 		}
 
 	}
 
 	// check for syndicate wins
-	/*
-		SELECT battle_id, faction_id
-		FROM "battle_wins"
-		group by battle_id, faction_id
-		order by max(created_at) desc
-		limit 3;
-	*/
-
 	lastWin, err := boiler.BattleWins(
 		boiler.BattleWinWhere.BattleID.EQ(ms.battle.ID),
 		qm.Limit(1),
@@ -360,11 +369,19 @@ outer:
 		gamelog.L.Error().Err(err).Msg("unable to retrieve last win")
 	}
 
-	lastWins, err := boiler.BattleWins(
-		qm.Distinct("battle_id"),
-		qm.OrderBy(`created_at DESC`),
+	lastWins := []struct {
+		BattleID  string            `boil:"battle_id"`
+		FactionID string            `boil:"faction_id"`
+		OwnerIDs  types.StringArray `boil:"owner_ids"`
+	}{}
+
+	err = boiler.NewQuery(
+		qm.Select("battle_id, faction_id, array_agg(owner_id) as owner_ids, max(created_at)"),
+		qm.From(boiler.TableNames.BattleWins),
+		qm.GroupBy("battle_id, faction_id"),
+		qm.OrderBy(`max(created_at) DESC`),
 		qm.Limit(3),
-	).All(gamedb.StdConn)
+	).Bind(context.Background(), gamedb.StdConn, &lastWins)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("unable to retrieve last wins")
 	}
@@ -387,9 +404,9 @@ outer:
 				// newMultipliers[bu.ID.String()] = map[*boiler.Multiplier]bool{}
 				return true
 			}
-			newMultipliers[bu.ID.String()][m1] = true
+			newMultipliers[bu.ID.String()][m1.ID] = m1
 			if hatTrick {
-				newMultipliers[bu.ID.String()][m3] = true
+				newMultipliers[bu.ID.String()][m3.ID] = m3
 				return true
 			}
 		}
@@ -410,19 +427,25 @@ winwar:
 			gamelog.L.Error().Str("playerID", wm.OwnedByID).Err(err).Msg("unable to retrieve 'player_mech / mech win x1' from multipliers. maybe this code needs to be removed?")
 			continue
 		}
-		newMultipliers[wm.OwnedByID][m1] = true
+		newMultipliers[wm.OwnedByID][m1.ID] = m1
 
 		if hatTrick {
 			if len(lastWins) < 3 {
 				gamelog.L.Error().Interface("lastwins", lastWins).Msg("last wins is less than 3 - this should never happen")
 				continue winwar
 			}
-			for i := 0; i < 3; i++ {
-				if lastWins[i].OwnerID != wm.OwnedByID {
+			for _, lastWinItem := range lastWins {
+				found := false
+				for _, lastWinOwnerID := range lastWinItem.OwnerIDs {
+					if lastWinOwnerID == wm.OwnedByID {
+						found = true
+						break
+					}
+				}
+				if !found {
 					continue winwar
 				}
 			}
-
 		}
 
 		m3, ok := ms.getMultiplier("player_mech", "", 3)
@@ -431,12 +454,12 @@ winwar:
 			continue
 		}
 
-		newMultipliers[wm.OwnedByID][m3] = true
+		newMultipliers[wm.OwnedByID][m3.ID] = m3
 	}
 
 	// insert multipliers
 	for pid, mlts := range newMultipliers {
-		for m := range mlts {
+		for _, m := range mlts {
 			mlt := &boiler.UserMultiplier{
 				PlayerID:          pid,
 				FromBattleNumber:  ms.battle.BattleNumber,
