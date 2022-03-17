@@ -197,6 +197,8 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 	}
 
 	as := &AbilitiesSystem{
+		bribe:                  make(chan *Contribution),
+		contribute:             make(chan *Contribution),
 		battle:                 battle,
 		factionUniqueAbilities: factionAbilities,
 		battleAbilityPool:      battleAbilityPool,
@@ -235,7 +237,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 	go as.FactionUniqueAbilityUpdater()
 
 	// bribe cycle
-	go as.StartGabsAbilityPoolCycle()
+	go as.StartGabsAbilityPoolCycle(false)
 
 	return as
 }
@@ -251,8 +253,6 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 	main_ticker := time.NewTicker(1 * time.Second)
 
 	live_vote_ticker := time.NewTicker(1 * time.Second)
-
-	as.contribute = make(chan *Contribution, 100)
 
 	// start the battle
 	for {
@@ -786,9 +786,14 @@ type LocationSelectAnnouncement struct {
 }
 
 // StartGabsAbilityPoolCycle
-func (as *AbilitiesSystem) StartGabsAbilityPoolCycle() {
-	// ability price updater
-	as.bribe = make(chan *Contribution)
+func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
+	defer func() {
+		if err := recover(); err != nil {
+			gamelog.L.Error().Interface("err", err).Msg("Panic! Panic! Panic! Panic!")
+
+			as.StartGabsAbilityPoolCycle(true)
+		}
+	}()
 
 	// initial a ticker for current battle
 	main_ticker := time.NewTicker(1 * time.Second)
@@ -796,10 +801,11 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle() {
 	progress_ticker := time.NewTicker(1 * time.Second)
 
 	// start voting stage
-	as.battleAbilityPool.Stage.Phase = BribeStageBribe
-	as.battleAbilityPool.Stage.EndTime = time.Now().Add(BribeDurationSecond * time.Second)
-	as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
-
+	if !resume {
+		as.battleAbilityPool.Stage.Phase = BribeStageBribe
+		as.battleAbilityPool.Stage.EndTime = time.Now().Add(BribeDurationSecond * time.Second)
+		as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
+	}
 	bn := as.battle.BattleNumber
 
 	go func() {
