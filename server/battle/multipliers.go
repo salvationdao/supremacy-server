@@ -37,8 +37,8 @@ type MultiplierSystem struct {
 func NewMultiplierSystem(btl *Battle) *MultiplierSystem {
 	ms := &MultiplierSystem{
 		battle:      btl,
-		multipliers: make(map[string]*boiler.Multiplier),
 		players:     make(map[string]map[*boiler.Multiplier]*boiler.UserMultiplier),
+		multipliers: make(map[string]*boiler.Multiplier),
 	}
 	ms.init()
 	return ms
@@ -141,7 +141,7 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 	}
 
 	// create new multipliers map
-	newMultipliers := make(map[string]map[*boiler.Multiplier]bool)
+	newMultipliers := make(map[string]map[string]*boiler.Multiplier)
 
 	// average spend multipliers test
 	total := decimal.New(0, 18)
@@ -220,30 +220,30 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 				case "citizen":
 					for i := 0; i < citizenAmount; i++ {
 						if _, ok := newMultipliers[playerAmountList[i].playerID]; !ok {
-							newMultipliers[playerAmountList[i].playerID] = map[*boiler.Multiplier]bool{}
+							newMultipliers[playerAmountList[i].playerID] = map[string]*boiler.Multiplier{}
 						}
-						newMultipliers[playerAmountList[i].playerID][m] = true
+						newMultipliers[playerAmountList[i].playerID][m.ID] = m
 					}
 				case "supporter":
 					for i := 0; i < supportAmount; i++ {
 						if _, ok := newMultipliers[playerAmountList[i].playerID]; !ok {
-							newMultipliers[playerAmountList[i].playerID] = map[*boiler.Multiplier]bool{}
+							newMultipliers[playerAmountList[i].playerID] = map[string]*boiler.Multiplier{}
 						}
-						newMultipliers[playerAmountList[i].playerID][m] = true
+						newMultipliers[playerAmountList[i].playerID][m.ID] = m
 					}
 				case "contributor":
 					for i := 0; i < contributorAmount; i++ {
 						if _, ok := newMultipliers[playerAmountList[i].playerID]; !ok {
-							newMultipliers[playerAmountList[i].playerID] = map[*boiler.Multiplier]bool{}
+							newMultipliers[playerAmountList[i].playerID] = map[string]*boiler.Multiplier{}
 						}
-						newMultipliers[playerAmountList[i].playerID][m] = true
+						newMultipliers[playerAmountList[i].playerID][m.ID] = m
 					}
 				case "super contributor":
 					for i := 0; i < superContributorAmount; i++ {
 						if _, ok := newMultipliers[playerAmountList[i].playerID]; !ok {
-							newMultipliers[playerAmountList[i].playerID] = map[*boiler.Multiplier]bool{}
+							newMultipliers[playerAmountList[i].playerID] = map[string]*boiler.Multiplier{}
 						}
-						newMultipliers[playerAmountList[i].playerID][m] = true
+						newMultipliers[playerAmountList[i].playerID][m.ID] = m
 					}
 				}
 
@@ -276,14 +276,14 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 			}
 			if abilityTrigger.FactionID != factions[topPlayerID] {
 				if _, ok := newMultipliers[topPlayerID]; !ok {
-					newMultipliers[topPlayerID] = map[*boiler.Multiplier]bool{}
+					newMultipliers[topPlayerID] = map[string]*boiler.Multiplier{}
 				}
 				m, ok := ms.getMultiplier("most_sups_lost", "", 0)
 				if !ok {
 					gamelog.L.Error().Str("most_sups_lost", topPlayerID).Err(err).Msg("unable to retrieve 'a fool and his money' from multipliers. maybe this code needs to be removed?")
 					continue
 				}
-				newMultipliers[topPlayerID][m] = true
+				newMultipliers[topPlayerID][m.ID] = m
 			}
 		}
 	}
@@ -310,7 +310,7 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 				continue
 			}
 
-			newMultipliers[tr.PlayerID.String][m1] = true
+			newMultipliers[tr.PlayerID.String][m1.ID] = m1
 		}
 	}
 
@@ -346,7 +346,7 @@ outer:
 			}
 			//if it makes it here, it's because it was the last 3
 			gamelog.L.Info().Interface("td.PlayerIds", td.PlayerIDs).Msg("someone did the last 3!")
-			newMultipliers[td.PlayerIDs[0]][m3] = true
+			newMultipliers[td.PlayerIDs[0]][m3.ID] = m3
 		} else {
 			for i := 1; i < len(td.PlayerIDs); i++ {
 				if td.PlayerIDs[i] != td.PlayerIDs[i-1] {
@@ -355,7 +355,7 @@ outer:
 			}
 			//if it makes it here, it's because it was the last 3
 			gamelog.L.Info().Interface("td.PlayerIds", td.PlayerIDs).Msg("someone did the last 3!")
-			newMultipliers[td.PlayerIDs[0]][m3] = true
+			newMultipliers[td.PlayerIDs[0]][m3.ID] = m3
 		}
 
 	}
@@ -404,9 +404,9 @@ outer:
 				// newMultipliers[bu.ID.String()] = map[*boiler.Multiplier]bool{}
 				return true
 			}
-			newMultipliers[bu.ID.String()][m1] = true
+			newMultipliers[bu.ID.String()][m1.ID] = m1
 			if hatTrick {
-				newMultipliers[bu.ID.String()][m3] = true
+				newMultipliers[bu.ID.String()][m3.ID] = m3
 				return true
 			}
 		}
@@ -427,7 +427,7 @@ winwar:
 			gamelog.L.Error().Str("playerID", wm.OwnedByID).Err(err).Msg("unable to retrieve 'player_mech / mech win x1' from multipliers. maybe this code needs to be removed?")
 			continue
 		}
-		newMultipliers[wm.OwnedByID][m1] = true
+		newMultipliers[wm.OwnedByID][m1.ID] = m1
 
 		if hatTrick {
 			if len(lastWins) < 3 {
@@ -454,12 +454,12 @@ winwar:
 			continue
 		}
 
-		newMultipliers[wm.OwnedByID][m3] = true
+		newMultipliers[wm.OwnedByID][m3.ID] = m3
 	}
 
 	// insert multipliers
 	for pid, mlts := range newMultipliers {
-		for m := range mlts {
+		for _, m := range mlts {
 			mlt := &boiler.UserMultiplier{
 				PlayerID:          pid,
 				FromBattleNumber:  ms.battle.BattleNumber,
