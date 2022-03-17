@@ -319,7 +319,6 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 								ParticipantID:       ability.ParticipantID, // trigger on war machine
 								WarMachineHash:      &ability.WarMachineHash,
 							}
-							as.battle.spawnReinforcementNearMech(event)
 
 							// send message to game client, if ability trigger
 							as.battle.arena.Message(
@@ -434,7 +433,6 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 							WarMachineHash:      &ability.WarMachineHash,
 							EventID:             ability.OfferingID,
 						}
-						as.battle.spawnReinforcementNearMech(event)
 
 						as.battle.arena.Message(
 							"BATTLE:ABILITY",
