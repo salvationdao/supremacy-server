@@ -36,7 +36,7 @@ func NewSpoilsOfWar(btl *Battle, transactSpeed time.Duration, dripSpeed time.Dur
 		tickSpeed:     dripSpeed,
 	}
 
-	amnt := decimal.New(int64(rand.Intn(500)+200), 18)
+	amnt := decimal.New(int64(rand.Intn(200)), 18)
 
 	sow, err := boiler.SpoilsOfWars(boiler.SpoilsOfWarWhere.BattleID.EQ(btl.BattleID)).One(gamedb.StdConn)
 	if errors.Is(err, sql.ErrNoRows) {
