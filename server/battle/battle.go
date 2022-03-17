@@ -491,15 +491,13 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 			boiler.BattleContractWhere.Cancelled.EQ(null.BoolFrom(false)),
 		).One(gamedb.StdConn)
 
-		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				gamelog.L.Warn().
-					Str("Battle ID", btl.ID).
-					Str("Mech ID", wm.ID).
-					Err(err).
-					Msg("no contract in database")
-				continue
-			}
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Warn().
+				Str("Battle ID", btl.ID).
+				Str("Mech ID", wm.ID).
+				Err(err).
+				Msg("no contract in database")
+			continue
 		}
 
 		contract.DidWin = null.BoolFrom(true)
