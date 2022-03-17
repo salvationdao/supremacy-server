@@ -283,6 +283,9 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 					gamelog.L.Error().Str("most_sups_lost", topPlayerID).Err(err).Msg("unable to retrieve 'a fool and his money' from multipliers. maybe this code needs to be removed?")
 					continue
 				}
+				if _, ok := newMultipliers[topPlayerID]; !ok {
+					newMultipliers[topPlayerID] = make(map[string]*boiler.Multiplier)
+				}
 				newMultipliers[topPlayerID][m.ID] = m
 			}
 		}
@@ -310,6 +313,9 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 				continue
 			}
 
+			if _, ok := newMultipliers[tr.PlayerID.String]; !ok {
+				newMultipliers[tr.PlayerID.String] = make(map[string]*boiler.Multiplier)
+			}
 			newMultipliers[tr.PlayerID.String][m1.ID] = m1
 		}
 	}
@@ -322,7 +328,10 @@ outer:
 		if !m3ok {
 			continue
 		}
-		if m3ok && td.FireCount < 3 {
+		if len(td.PlayerIDs) < 3 {
+			continue
+		}
+		if td.FireCount < 3 {
 			for i := 1; i < len(td.PlayerIDs); i++ {
 				if td.PlayerIDs[i] != td.PlayerIDs[i-1] {
 					continue outer
@@ -345,9 +354,15 @@ outer:
 				}
 			}
 			//if it makes it here, it's because it was the last 3
-			gamelog.L.Info().Interface("td.PlayerIds", td.PlayerIDs).Msg("someone did the last 3!")
+			gamelog.L.Info().Interface("td.PlayerIds", td.PlayerIDs).Str("triggerLabel", triggerLabel).Msg("someone did the last 3!")
+			if _, ok := newMultipliers[td.PlayerIDs[0]]; !ok {
+				newMultipliers[td.PlayerIDs[0]] = map[string]*boiler.Multiplier{}
+			}
 			newMultipliers[td.PlayerIDs[0]][m3.ID] = m3
 		} else {
+			if len(td.PlayerIDs) < 3 {
+				return
+			}
 			for i := 1; i < len(td.PlayerIDs); i++ {
 				if td.PlayerIDs[i] != td.PlayerIDs[i-1] {
 					continue outer
@@ -355,6 +370,10 @@ outer:
 			}
 			//if it makes it here, it's because it was the last 3
 			gamelog.L.Info().Interface("td.PlayerIds", td.PlayerIDs).Msg("someone did the last 3!")
+
+			if _, ok := newMultipliers[td.PlayerIDs[0]]; !ok {
+				newMultipliers[td.PlayerIDs[0]] = map[string]*boiler.Multiplier{}
+			}
 			newMultipliers[td.PlayerIDs[0]][m3.ID] = m3
 		}
 
@@ -427,6 +446,9 @@ winwar:
 			gamelog.L.Error().Str("playerID", wm.OwnedByID).Err(err).Msg("unable to retrieve 'player_mech / mech win x1' from multipliers. maybe this code needs to be removed?")
 			continue
 		}
+		if _, ok := newMultipliers[wm.OwnedByID]; !ok {
+			newMultipliers[wm.OwnedByID] = make(map[string]*boiler.Multiplier)
+		}
 		newMultipliers[wm.OwnedByID][m1.ID] = m1
 
 		if hatTrick {
@@ -454,6 +476,9 @@ winwar:
 			continue
 		}
 
+		if _, ok := newMultipliers[wm.OwnedByID]; !ok {
+			newMultipliers[wm.OwnedByID] = make(map[string]*boiler.Multiplier)
+		}
 		newMultipliers[wm.OwnedByID][m3.ID] = m3
 	}
 
