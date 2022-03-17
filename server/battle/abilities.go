@@ -248,6 +248,13 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 
 // FactionUniqueAbilityUpdater update ability price every 10 seconds
 func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
+	defer func() {
+		if err := recover(); err != nil {
+			gamelog.L.Error().Interface("err", err).Msg("Panic! Panic! Panic! Panic at the FactionUniqueAbilityUpdater!")
+
+			as.FactionUniqueAbilityUpdater()
+		}
+	}()
 	minPrice := decimal.New(1, 18)
 
 	main_ticker := time.NewTicker(1 * time.Second)
@@ -789,7 +796,7 @@ type LocationSelectAnnouncement struct {
 func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 	defer func() {
 		if err := recover(); err != nil {
-			gamelog.L.Error().Interface("err", err).Msg("Panic! Panic! Panic! Panic!")
+			gamelog.L.Error().Interface("err", err).Msg("Panic! Panic! Panic! Panic at the StartGabsAbilityPoolCycle!")
 
 			as.StartGabsAbilityPoolCycle(true)
 		}
