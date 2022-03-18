@@ -182,7 +182,8 @@ func (s *StreamsWS) GlobalAnnouncementSubscribe(ctx context.Context, wsc *hub.Cl
 		return "", "", terror.Error(err, "failed to get current battle")
 	}
 
-	if currentBattle != nil && ga != nil && currentBattle.BattleNumber > ga.ShowFromBattleNumber.Int && currentBattle.BattleNumber < ga.ShowUntilBattleNumber.Int {
+	// show if battle number is equal or in between the global announcement's to and from battle number
+	if currentBattle != nil && ga != nil && currentBattle.BattleNumber >= ga.ShowFromBattleNumber.Int && currentBattle.BattleNumber <= ga.ShowUntilBattleNumber.Int {
 		reply(ga)
 	} else {
 		reply(nil)
