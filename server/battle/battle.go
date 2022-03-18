@@ -198,7 +198,7 @@ func (btl *Battle) start() {
 	if ga != nil {
 		const HubKeyGlobalAnnouncementSubscribe hub.HubCommandKey = "GLOBAL_ANNOUNCEMENT:SUBSCRIBE"
 
-		if btl.BattleNumber > ga.ShowFromBattleNumber.Int && btl.BattleNumber < ga.ShowUntilBattleNumber.Int {
+		if btl.BattleNumber >= ga.ShowFromBattleNumber.Int && btl.BattleNumber <= ga.ShowUntilBattleNumber.Int {
 			go btl.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), ga)
 		}
 
