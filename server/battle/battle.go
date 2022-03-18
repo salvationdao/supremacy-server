@@ -198,11 +198,12 @@ func (btl *Battle) start() {
 	if ga != nil {
 		const HubKeyGlobalAnnouncementSubscribe hub.HubCommandKey = "GLOBAL_ANNOUNCEMENT:SUBSCRIBE"
 
+		// show if battle number is equal or in between the global announcement's to and from battle number
 		if btl.BattleNumber >= ga.ShowFromBattleNumber.Int && btl.BattleNumber <= ga.ShowUntilBattleNumber.Int {
 			go btl.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), ga)
 		}
 
-		// has passed
+		// delete if global announcement expired/ is in the past
 		if btl.BattleNumber > ga.ShowUntilBattleNumber.Int {
 			_, err := boiler.GlobalAnnouncements().DeleteAll(gamedb.StdConn)
 			if err != nil {
