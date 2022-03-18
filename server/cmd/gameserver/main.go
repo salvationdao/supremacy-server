@@ -165,13 +165,7 @@ func main() {
 
 					if c.Bool("pprof") {
 						pint := c.Int("pprof_second")
-						if pint < 10 {
-							pint = 10
-						}
 						pport := c.Int("pprof_port")
-						if pport < 10 {
-							pport = 10
-						}
 						// dumping pprof at period bases
 						pprofMonitor(pint, pport)
 					}
