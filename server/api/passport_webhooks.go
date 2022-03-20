@@ -67,6 +67,7 @@ func (pc *PassportWebhookController) UserUpdated(w http.ResponseWriter, r *http.
 	// update user
 	player.Username = null.StringFrom(req.User.Username)
 	player.FactionID = null.StringFromPtr(nil)
+	player.MobileNumber = req.User.MobileNumber
 	if !req.User.FactionID.IsNil() {
 
 		player.FactionID = null.StringFrom(req.User.FactionID.String())
@@ -82,6 +83,7 @@ func (pc *PassportWebhookController) UserUpdated(w http.ResponseWriter, r *http.
 	_, err = player.Update(gamedb.StdConn, boil.Whitelist(
 		boiler.PlayerColumns.Username,
 		boiler.PlayerColumns.FactionID,
+		boiler.PlayerColumns.MobileNumber,
 	))
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)

@@ -82,6 +82,7 @@ type API struct {
 	MessageBus    *messagebus.MessageBus
 	NetMessageBus *messagebus.NetBus
 	Passport      *passport.Passport
+	SMS           server.SMS
 
 	// ring check auth
 	RingCheckAuthMap *RingCheckAuthMap
@@ -100,6 +101,7 @@ func NewAPI(
 	messageBus *messagebus.MessageBus,
 	netMessageBus *messagebus.NetBus,
 	gsHub *hub.Hub,
+	sms server.SMS,
 ) *API {
 
 	// initialise api
@@ -116,6 +118,7 @@ func NewAPI(
 		Conn:             conn,
 		Hub:              gsHub,
 		RingCheckAuthMap: NewRingCheckMap(),
+		SMS:              sms,
 	}
 
 	battleArenaClient.SetMessageBus(messageBus, netMessageBus)
@@ -167,6 +170,7 @@ func NewAPI(
 	// _ = NewFactionController(log, conn, api)
 	_ = NewGameController(log, conn, api)
 	_ = NewStreamController(log, conn, api)
+	_ = NewPlayerController(log, conn, api)
 
 	// create a tickle that update faction mvp every day 00:00 am
 	factionMvpUpdate := tickle.New("Calculate faction mvp player", 24*60*60, func() (int, error) {

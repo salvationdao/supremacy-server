@@ -45,6 +45,7 @@ var TableNames = struct {
 	Modules                                            string
 	Multipliers                                        string
 	PendingTransactions                                string
+	PlayerPreferences                                  string
 	Players                                            string
 	SchemaMigrations                                   string
 	SpoilsOfWar                                        string
@@ -96,6 +97,7 @@ var TableNames = struct {
 	Modules:                          "modules",
 	Multipliers:                      "multipliers",
 	PendingTransactions:              "pending_transactions",
+	PlayerPreferences:                "player_preferences",
 	Players:                          "players",
 	SchemaMigrations:                 "schema_migrations",
 	SpoilsOfWar:                      "spoils_of_war",
