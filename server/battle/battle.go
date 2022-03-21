@@ -186,26 +186,32 @@ func (btl *Battle) start() {
 			gamelog.L.Error().Interface("mechs_ids", btl.warMachineIDs).Str("battle_id", btl.ID).Err(err).Msg("failed to set battle id in queue")
 			return
 		}
+	}
 
-		if btl.battleMechData == nil {
-			gamelog.L.Error().Str("battlemechdata", btl.ID).Msg("battle mech data failed nil check")
-		}
+	if btl.battleMechData == nil {
+		gamelog.L.Error().Str("battlemechdata", btl.ID).Msg("battle mech data failed nil check")
+	}
 
-		err = db.BattleMechs(btl.Battle, btl.battleMechData)
-		if err != nil {
-			gamelog.L.Error().Str("Battle ID", btl.ID).Err(err).Msg("unable to insert battle into database")
-			//TODO: something more dramatic
-		}
+	err = db.BattleMechs(btl.Battle, btl.battleMechData)
+	if err != nil {
+		gamelog.L.Error().Str("Battle ID", btl.ID).Err(err).Msg("unable to insert battle into database")
+		//TODO: something more dramatic
 	}
 
 	// set up the abilities for current battle
 
+	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle spoils")
 	btl.spoils = NewSpoilsOfWar(btl, 5*time.Second, 5*time.Second)
+	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle abilities")
 	btl.abilities = NewAbilitiesSystem(btl)
+	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle multipliers")
 	btl.multipliers = NewMultiplierSystem(btl)
+	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Broadcasting battle start to players")
 	btl.BroadcastUpdate()
 
 	// broadcast spoil of war on the start of the battle
+	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Broadcasting spoils of war updates")
+
 	sows, err := db.LastTwoSpoilOfWarAmount()
 	if err != nil || len(sows) == 0 {
 		gamelog.L.Error().Err(err).Msg("Failed to get last two spoil of war amount")
@@ -223,7 +229,7 @@ func (btl *Battle) start() {
 	// handle global announcements
 	ga, err := boiler.GlobalAnnouncements().One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Str("Battle ID", btl.ID).Msg("unable to get global announcement")
+		gamelog.L.Error().Err(err).Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Broadcasting battle start to players")
 	}
 
 	// global announcement exists
