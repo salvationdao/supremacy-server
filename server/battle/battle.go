@@ -505,31 +505,6 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 				Err(err).
 				Msg("no contract in database")
 
-			gamelog.L.Error().
-				Str("Battle ID", btl.ID).
-				Str("Mech ID", wm.ID).
-				Err(err).
-				Msg("removing mech in queue as it does not have a contract")
-
-			m, err := boiler.BattleQueues(boiler.BattleQueueWhere.MechID.EQ(wm.ID)).One(gamedb.StdConn)
-
-			if err != nil {
-				gamelog.L.Panic().
-					Str("Battle ID", btl.ID).
-					Str("Mech ID", wm.ID).
-					Err(err).
-					Msg("removing mech in queue as it does not have a contract")
-			}
-
-			_, err = m.Delete(gamedb.StdConn)
-			if err != nil {
-				gamelog.L.Panic().
-					Str("Battle ID", btl.ID).
-					Str("Mech ID", wm.ID).
-					Err(err).
-					Msg("removing mech in queue as it does not have a contract")
-			}
-
 			continue
 		} else if err != nil {
 			gamelog.L.Error().
@@ -1636,28 +1611,13 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 
 	if err != nil {
 		gamelog.L.Error().
+			Err(err).
 			Str("battle_id", btl.ID).
 			Interface("mech_id", warMachineID).
 			Bool("killed", true).
 			Msg("can't update battle mech")
-		m, err := boiler.BattleQueues(boiler.BattleQueueWhere.MechID.EQ(warMachineID.String())).One(gamedb.StdConn)
 
-		if err != nil {
-			gamelog.L.Panic().
-				Str("Battle ID", btl.ID).
-				Str("Mech ID", warMachineID.String()).
-				Err(err).
-				Msg("removing mech in queue as it was unable to be updated")
-		}
-
-		_, err = m.Delete(gamedb.StdConn)
-		if err != nil {
-			gamelog.L.Panic().
-				Str("Battle ID", btl.ID).
-				Str("Mech ID", warMachineID.String()).
-				Err(err).
-				Msg("removing mech in queue as it does not have a contract")
-		}
+		return
 	}
 
 	// calc total damage and merge the duplicated damage source
