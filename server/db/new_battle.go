@@ -60,14 +60,7 @@ func BattleMechs(btl *boiler.Battle, mechData []*BattleMechData) error {
 }
 
 func UpdateBattleMech(battleID string, mechID uuid.UUID, ownerID string, factionID string, gotKill bool, gotKilled bool, killedByID ...uuid.UUID) (*boiler.BattleMech, error) {
-	tx, err := gamedb.StdConn.Begin()
-	if err != nil {
-		gamelog.L.Error().Str("db func", "UpdateBattleMech").Err(err).Msg("unable to begin tx")
-		return nil, err
-	}
-	defer tx.Rollback()
-
-	bmd, err := boiler.FindBattleMech(tx, battleID, mechID.String())
+	bmd, err := boiler.FindBattleMech(gamedb.StdConn, battleID, mechID.String())
 	if err != nil {
 		gamelog.L.Error().
 			Str("battleID", battleID).
@@ -105,7 +98,7 @@ func UpdateBattleMech(battleID string, mechID uuid.UUID, ownerID string, faction
 			bmd.KilledByID = null.StringFrom(killedByID[0].String())
 			kid, err := uuid.FromString(killedByID[0].String())
 
-			killerBmd, err := boiler.FindBattleMech(tx, battleID, kid.String())
+			killerBmd, err := boiler.FindBattleMech(gamedb.StdConn, battleID, kid.String())
 			if err != nil {
 				gamelog.L.Error().
 					Str("battleID", battleID).
@@ -123,35 +116,27 @@ func UpdateBattleMech(battleID string, mechID uuid.UUID, ownerID string, faction
 				CreatedAt: bmd.Killed.Time,
 				KilledID:  mechID.String(),
 			}
-			err = bk.Insert(tx, boil.Infer())
+			err = bk.Insert(gamedb.StdConn, boil.Infer())
 		}
-		_, err = bmd.Update(tx, boil.Infer())
+		_, err = bmd.Update(gamedb.StdConn, boil.Infer())
 		if err != nil {
 			gamelog.L.Error().Err(err).
 				Interface("boiler.BattleMech", bmd).
 				Msg("unable to update battle mech")
 			return nil, err
 		}
-
-		return bmd, nil
 	}
 
 	if gotKill {
 		bmd.Kills = bmd.Kills + 1
-		_, err = bmd.Update(tx, boil.Infer())
+		_, err = bmd.Update(gamedb.StdConn, boil.Infer())
 		if err != nil {
 			gamelog.L.Error().Err(err).
 				Interface("boiler.BattleMech", bmd).
 				Msg("unable to update battle mech")
 			return nil, err
 		}
-		return bmd, nil
-	}
 
-	err = tx.Commit()
-	if err != nil {
-		gamelog.L.Error().Err(err).Str("db Func", "UpdateBattleMech").Msg("unable to commit tx")
-		return nil, err
 	}
 
 	return bmd, nil
