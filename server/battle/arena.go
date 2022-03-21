@@ -803,7 +803,7 @@ func (arena *Arena) start() {
 				}
 				btl.end(dataPayload)
 				//TODO: this needs to be triggered by a message from the game client
-				time.Sleep(time.Second * 80)
+				time.Sleep(time.Second * 30)
 				arena.init()
 			default:
 				gamelog.L.Warn().Str("battleCommand", msg.BattleCommand).Err(err).Msg("Battle Arena WS: no command response")
@@ -838,7 +838,7 @@ func (arena *Arena) Battle() *Battle {
 		DisabledCells: gm.DisabledCells,
 	}
 
-	lastBattle, err := boiler.Battles(qm.OrderBy("battle_number"), qm.Limit(1)).One(gamedb.StdConn)
+	lastBattle, err := boiler.Battles(qm.OrderBy("battle_number DESC"), qm.Limit(1)).One(gamedb.StdConn)
 
 	var battleID string
 	var battle *boiler.Battle
