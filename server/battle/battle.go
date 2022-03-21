@@ -1632,13 +1632,32 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 		}
 	}
 
-	_, err = db.UpdateBattleMech(btl.ID, warMachineID, false, true, killByWarMachineID)
+	_, err = db.UpdateBattleMech(btl.ID, warMachineID, destroyedWarMachine.OwnedByID, destroyedWarMachine.FactionID, false, true, killByWarMachineID)
+
 	if err != nil {
 		gamelog.L.Error().
 			Str("battle_id", btl.ID).
 			Interface("mech_id", warMachineID).
 			Bool("killed", true).
 			Msg("can't update battle mech")
+		m, err := boiler.BattleQueues(boiler.BattleQueueWhere.MechID.EQ(warMachineID.String())).One(gamedb.StdConn)
+
+		if err != nil {
+			gamelog.L.Panic().
+				Str("Battle ID", btl.ID).
+				Str("Mech ID", warMachineID.String()).
+				Err(err).
+				Msg("removing mech in queue as it was unable to be updated")
+		}
+
+		_, err = m.Delete(gamedb.StdConn)
+		if err != nil {
+			gamelog.L.Panic().
+				Str("Battle ID", btl.ID).
+				Str("Mech ID", warMachineID.String()).
+				Err(err).
+				Msg("removing mech in queue as it does not have a contract")
+		}
 	}
 
 	// calc total damage and merge the duplicated damage source
