@@ -127,13 +127,13 @@ func (btl *Battle) start() {
 	if btl.inserted {
 		_, err := btl.Battle.Update(gamedb.StdConn, boil.Infer())
 		if err != nil {
-			gamelog.L.Panic().Interface("battle", btl).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to update Battle in database")
+			gamelog.L.Error().Interface("battle", btl).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to update Battle in database")
 			return
 		}
 	} else {
 		err := btl.Battle.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {
-			gamelog.L.Panic().Interface("battle", btl).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to insert Battle into database")
+			gamelog.L.Error().Interface("battle", btl).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to insert Battle into database")
 			return
 		}
 
