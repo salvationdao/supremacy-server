@@ -39,6 +39,7 @@ type Arena struct {
 	RPCClient      *rpcclient.XrpcClient
 	ppClient       *passport.Passport
 	gameClientLock sync.Mutex
+	sms            server.SMS
 	sync.Mutex
 }
 
@@ -51,6 +52,7 @@ type Opts struct {
 	NetMessageBus *messagebus.NetBus
 	PPClient      *passport.Passport
 	RPCClient     *rpcclient.XrpcClient
+	SMS           server.SMS
 }
 
 type MessageType byte
@@ -91,6 +93,7 @@ func NewArena(opts *Opts) *Arena {
 	arena.messageBus = opts.MessageBus
 	arena.ppClient = opts.PPClient
 	arena.RPCClient = opts.RPCClient
+	arena.sms = opts.SMS
 
 	arena.AIPlayers, err = db.DefaultFactionPlayers()
 	if err != nil {
@@ -734,9 +737,10 @@ func (arena *Arena) init() {
 	btl := arena.Battle()
 	arena.currentBattle = btl
 	arena.Message(BATTLEINIT, btl)
+
+	go arena.NotifyUpcomingWarMachines()
 }
 
-//listen listens for new commands and blocks indefinitely
 func (arena *Arena) start() {
 	ctx := context.Background()
 	arena.init()
@@ -853,7 +857,7 @@ func (arena *Arena) Battle() *Battle {
 	} else {
 		battle = lastBattle
 		battleID = lastBattle.ID
-		
+
 		inserted = true
 	}
 
@@ -881,7 +885,7 @@ func (arena *Arena) Battle() *Battle {
 
 const HubKeyUserStatSubscribe hub.HubCommandKey = "USER:STAT:SUBSCRIBE"
 
-func (uc *Arena) UserStatUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (arena *Arena) UserStatUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
 
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)

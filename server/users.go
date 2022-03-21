@@ -13,7 +13,7 @@ var XsynTreasuryUserID = UserID(uuid.Must(uuid.FromString("ebf30ca0-875b-4e84-9a
 
 // User is a single user on the platform
 type User struct {
-	ID                  uuid.UUID       `json:"id" db:"id"`
+	ID                  UserID          `json:"id" db:"id"`
 	Faction             *boiler.Faction `json:"faction"`
 	FactionID           FactionID       `json:"faction_id,omitempty"`
 	FirstName           string          `json:"first_name" db:"first_name"`
@@ -30,6 +30,7 @@ type User struct {
 	CreatedAt           time.Time       `json:"created_at" db:"created_at"`
 	UpdatedAt           time.Time       `json:"updated_at" db:"updated_at"`
 	DeletedAt           *time.Time      `json:"deleted_at" db:"deleted_at"`
+	MobileNumber        null.String     `json:"mobile_number"`
 
 	PublicAddress null.String `json:"public_address,omitempty" db:"public_address"`
 
@@ -81,7 +82,7 @@ type UserBrief struct {
 
 func (u *User) Brief() *UserBrief {
 	ub := &UserBrief{
-		ID:       u.ID,
+		ID:       uuid.UUID(u.ID),
 		Username: u.Username,
 		AvatarID: u.AvatarID,
 	}

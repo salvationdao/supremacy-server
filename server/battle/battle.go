@@ -393,9 +393,9 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		topPlayerContributors = append(topPlayerContributors, &BattleUser{
 			ID:            uuid.Must(uuid.FromString(p.ID)),
 			Username:      p.Username.String,
-			FactionID:     winningWarMachines[0].FactionID,
+			FactionID:     factionID.String(),
 			FactionColour: btl.factions[factionID].PrimaryColor,
-			FactionLogoID: FactionLogos[p.FactionID.String],
+			FactionLogoID: FactionLogos[factionID.String()],
 		})
 	}
 
@@ -409,9 +409,9 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		topPlayerExecutors = append(topPlayerExecutors, &BattleUser{
 			ID:            uuid.Must(uuid.FromString(p.ID)),
 			Username:      p.Username.String,
-			FactionID:     p.FactionID.String,
+			FactionID:     factionID.String(),
 			FactionColour: btl.factions[factionID].PrimaryColor,
-			FactionLogoID: FactionLogos[p.FactionID.String],
+			FactionLogoID: FactionLogos[factionID.String()],
 		})
 	}
 

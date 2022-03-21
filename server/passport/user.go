@@ -59,7 +59,7 @@ type UsersGetResp struct {
 	Users []*server.User `json:"users"`
 }
 
-// UserGet get user by id
+// UsersGet get user by id
 func (pp *Passport) UsersGet(userIDs []server.UserID, callback func(users []*server.User)) {
 	resp := &UsersGetResp{}
 	err := pp.RPCClient.Call("S.SupremacyUsersGetHandler", UsersGetReq{userIDs}, resp)
