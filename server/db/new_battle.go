@@ -59,7 +59,7 @@ func BattleMechs(btl *boiler.Battle, mechData []*BattleMechData) error {
 	return tx.Commit()
 }
 
-func UpdateBattleMech(battleID string, mechID uuid.UUID, gotKill bool, gotKilled bool, killedByID ...uuid.UUID) (*boiler.BattleMech, error) {
+func UpdateBattleMech(battleID string, mechID uuid.UUID, ownerID string, factionID string, gotKill bool, gotKilled bool, killedByID ...uuid.UUID) (*boiler.BattleMech, error) {
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
 		gamelog.L.Error().Str("db func", "UpdateBattleMech").Err(err).Msg("unable to begin tx")
@@ -75,7 +75,21 @@ func UpdateBattleMech(battleID string, mechID uuid.UUID, gotKill bool, gotKilled
 			Str("db func", "UpdateBattleMech").
 			Err(err).Msg("unable to retrieve Battle Mech from database")
 
-		return nil, err
+		bmd = &boiler.BattleMech{
+			BattleID:  battleID,
+			MechID:    mechID.String(),
+			OwnerID:   ownerID,
+			FactionID: factionID,
+		}
+		err = bmd.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().
+				Str("battleID", battleID).
+				Str("mechID", mechID.String()).
+				Str("db func", "UpdateBattleMech").
+				Err(err).Msg("unable to insert Battle Mech into database after not being able to retrieve it")
+			return nil, err
+		}
 	}
 
 	if gotKilled {
