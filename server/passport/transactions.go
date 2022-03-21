@@ -46,9 +46,9 @@ func (pp *Passport) SpendSupMessage(req SpendSupsReq) (string, error) {
 	err := pp.RPCClient.Call("S.SupremacySpendSupsHandler", req, resp)
 	if err != nil {
 		pp.Log.Err(err).Str("method", "SupremacySpendSupsHandler").Msg("rpc error")
-
 		return "", terror.Error(err)
 	}
+
 	return resp.TXID, nil
 }
 

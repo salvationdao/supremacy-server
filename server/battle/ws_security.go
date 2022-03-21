@@ -3,6 +3,7 @@ package battle
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -39,6 +40,8 @@ func GetPlayerFactionID(userID uuid.UUID) (uuid.UUID, error) {
 	}
 
 	if !player.FactionID.Valid {
+		gamelog.L.Error().Str("userID", userID.String()).Err(err).Msg("faction id is invalid")
+
 		return uuid.Nil, terror.Error(terror.ErrForbidden)
 	}
 
@@ -122,6 +125,10 @@ func (opts *Opts) SubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn HubSub
 		}
 
 		// add subscription to the message bus
+		if opts.MessageBus == nil {
+			gamelog.L.Error().Msg("messagebus is nil")
+			return fmt.Errorf("messagebus is nil")
+		}
 		opts.MessageBus.Sub(busKey, wsc, transactionID)
 
 		return nil

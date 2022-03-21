@@ -1,6 +1,8 @@
 package server
 
 import (
+	"server/db/boiler"
+
 	"github.com/gofrs/uuid"
 )
 
@@ -14,14 +16,14 @@ var RedMountainFactionID = FactionID(uuid.Must(uuid.FromString("98bf7bb3-1a7c-4f
 var BostonCyberneticsFactionID = FactionID(uuid.Must(uuid.FromString("7c6dde21-b067-46cf-9e56-155c88a520e2")))
 var ZaibatsuFactionID = FactionID(uuid.Must(uuid.FromString("880db344-e405-428d-84e5-6ebebab1fe6d")))
 
-var ZaibatsuPlayerID = "1a657a32-778e-4612-8cc1-14e360665f2b"
-var BostonCyberneticsPlayerID = "15f29ee9-e834-4f76-aff8-31e39faabe2d"
 var RedMountainPlayerID = "305da475-53dc-4973-8d78-a30d390d3de5"
+var BostonCyberneticsPlayerID = "15f29ee9-e834-4f76-aff8-31e39faabe2d"
+var ZaibatsuPlayerID = "1a657a32-778e-4612-8cc1-14e360665f2b"
 
 var FactionUsers = map[string]string{
-	"98bf7bb3-1a7c-4f21-8843-458d62884060": "1a657a32-778e-4612-8cc1-14e360665f2b",
-	"7c6dde21-b067-46cf-9e56-155c88a520e2": "15f29ee9-e834-4f76-aff8-31e39faabe2d",
-	"880db344-e405-428d-84e5-6ebebab1fe6d": "305da475-53dc-4973-8d78-a30d390d3de5",
+	RedMountainFactionID.String():       RedMountainPlayerID,
+	BostonCyberneticsFactionID.String(): BostonCyberneticsPlayerID,
+	ZaibatsuFactionID.String():          ZaibatsuPlayerID,
 }
 
 type Faction struct {
@@ -49,11 +51,8 @@ func (f *Faction) Brief() *FactionBrief {
 }
 
 type FactionStat struct {
-	ID         FactionID `json:"id" db:"id"`
-	WinCount   *int64    `json:"win_count" db:"win_count,omitempty"`
-	LossCount  *int64    `json:"loss_count" db:"loss_count,omitempty"`
-	KillCount  *int64    `json:"kill_count" db:"kill_count,omitempty"`
-	DeathCount *int64    `json:"death_count" db:"death_count,omitempty"`
+	*boiler.FactionStat
+	MvpPlayerUsername string `json:"mvp_player_id"`
 }
 
 type BattleAbility struct {

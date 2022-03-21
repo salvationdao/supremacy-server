@@ -93,26 +93,20 @@ var BattleHistoryWhere = struct {
 
 // BattleHistoryRels is where relationship names are stored.
 var BattleHistoryRels = struct {
-	Battle                 string
-	Related                string
-	WarMachineOne          string
-	WarMachineTwo          string
-	RelatedBattleHistories string
+	Battle        string
+	WarMachineOne string
+	WarMachineTwo string
 }{
-	Battle:                 "Battle",
-	Related:                "Related",
-	WarMachineOne:          "WarMachineOne",
-	WarMachineTwo:          "WarMachineTwo",
-	RelatedBattleHistories: "RelatedBattleHistories",
+	Battle:        "Battle",
+	WarMachineOne: "WarMachineOne",
+	WarMachineTwo: "WarMachineTwo",
 }
 
 // battleHistoryR is where relationships are stored.
 type battleHistoryR struct {
-	Battle                 *Battle            `boiler:"Battle" boil:"Battle" json:"Battle" toml:"Battle" yaml:"Battle"`
-	Related                *BattleHistory     `boiler:"Related" boil:"Related" json:"Related" toml:"Related" yaml:"Related"`
-	WarMachineOne          *Mech              `boiler:"WarMachineOne" boil:"WarMachineOne" json:"WarMachineOne" toml:"WarMachineOne" yaml:"WarMachineOne"`
-	WarMachineTwo          *Mech              `boiler:"WarMachineTwo" boil:"WarMachineTwo" json:"WarMachineTwo" toml:"WarMachineTwo" yaml:"WarMachineTwo"`
-	RelatedBattleHistories BattleHistorySlice `boiler:"RelatedBattleHistories" boil:"RelatedBattleHistories" json:"RelatedBattleHistories" toml:"RelatedBattleHistories" yaml:"RelatedBattleHistories"`
+	Battle        *Battle `boiler:"Battle" boil:"Battle" json:"Battle" toml:"Battle" yaml:"Battle"`
+	WarMachineOne *Mech   `boiler:"WarMachineOne" boil:"WarMachineOne" json:"WarMachineOne" toml:"WarMachineOne" yaml:"WarMachineOne"`
+	WarMachineTwo *Mech   `boiler:"WarMachineTwo" boil:"WarMachineTwo" json:"WarMachineTwo" toml:"WarMachineTwo" yaml:"WarMachineTwo"`
 }
 
 // NewStruct creates a new relationship struct
@@ -387,20 +381,6 @@ func (o *BattleHistory) Battle(mods ...qm.QueryMod) battleQuery {
 	return query
 }
 
-// Related pointed to by the foreign key.
-func (o *BattleHistory) Related(mods ...qm.QueryMod) battleHistoryQuery {
-	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.RelatedID),
-	}
-
-	queryMods = append(queryMods, mods...)
-
-	query := BattleHistories(queryMods...)
-	queries.SetFrom(query.Query, "\"battle_history\"")
-
-	return query
-}
-
 // WarMachineOne pointed to by the foreign key.
 func (o *BattleHistory) WarMachineOne(mods ...qm.QueryMod) mechQuery {
 	queryMods := []qm.QueryMod{
@@ -427,27 +407,6 @@ func (o *BattleHistory) WarMachineTwo(mods ...qm.QueryMod) mechQuery {
 
 	query := Mechs(queryMods...)
 	queries.SetFrom(query.Query, "\"mechs\"")
-
-	return query
-}
-
-// RelatedBattleHistories retrieves all the battle_history's BattleHistories with an executor via related_id column.
-func (o *BattleHistory) RelatedBattleHistories(mods ...qm.QueryMod) battleHistoryQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"battle_history\".\"related_id\"=?", o.ID),
-	)
-
-	query := BattleHistories(queryMods...)
-	queries.SetFrom(query.Query, "\"battle_history\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"battle_history\".*"})
-	}
 
 	return query
 }
@@ -548,114 +507,6 @@ func (battleHistoryL) LoadBattle(e boil.Executor, singular bool, maybeBattleHist
 					foreign.R = &battleR{}
 				}
 				foreign.R.BattleHistories = append(foreign.R.BattleHistories, local)
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadRelated allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for an N-1 relationship.
-func (battleHistoryL) LoadRelated(e boil.Executor, singular bool, maybeBattleHistory interface{}, mods queries.Applicator) error {
-	var slice []*BattleHistory
-	var object *BattleHistory
-
-	if singular {
-		object = maybeBattleHistory.(*BattleHistory)
-	} else {
-		slice = *maybeBattleHistory.(*[]*BattleHistory)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &battleHistoryR{}
-		}
-		if !queries.IsNil(object.RelatedID) {
-			args = append(args, object.RelatedID)
-		}
-
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &battleHistoryR{}
-			}
-
-			for _, a := range args {
-				if queries.Equal(a, obj.RelatedID) {
-					continue Outer
-				}
-			}
-
-			if !queries.IsNil(obj.RelatedID) {
-				args = append(args, obj.RelatedID)
-			}
-
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`battle_history`),
-		qm.WhereIn(`battle_history.id in ?`, args...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load BattleHistory")
-	}
-
-	var resultSlice []*BattleHistory
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice BattleHistory")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for battle_history")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_history")
-	}
-
-	if len(battleHistoryAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-
-	if len(resultSlice) == 0 {
-		return nil
-	}
-
-	if singular {
-		foreign := resultSlice[0]
-		object.R.Related = foreign
-		if foreign.R == nil {
-			foreign.R = &battleHistoryR{}
-		}
-		foreign.R.RelatedBattleHistories = append(foreign.R.RelatedBattleHistories, object)
-		return nil
-	}
-
-	for _, local := range slice {
-		for _, foreign := range resultSlice {
-			if queries.Equal(local.RelatedID, foreign.ID) {
-				local.R.Related = foreign
-				if foreign.R == nil {
-					foreign.R = &battleHistoryR{}
-				}
-				foreign.R.RelatedBattleHistories = append(foreign.R.RelatedBattleHistories, local)
 				break
 			}
 		}
@@ -878,104 +729,6 @@ func (battleHistoryL) LoadWarMachineTwo(e boil.Executor, singular bool, maybeBat
 	return nil
 }
 
-// LoadRelatedBattleHistories allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (battleHistoryL) LoadRelatedBattleHistories(e boil.Executor, singular bool, maybeBattleHistory interface{}, mods queries.Applicator) error {
-	var slice []*BattleHistory
-	var object *BattleHistory
-
-	if singular {
-		object = maybeBattleHistory.(*BattleHistory)
-	} else {
-		slice = *maybeBattleHistory.(*[]*BattleHistory)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &battleHistoryR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &battleHistoryR{}
-			}
-
-			for _, a := range args {
-				if queries.Equal(a, obj.ID) {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`battle_history`),
-		qm.WhereIn(`battle_history.related_id in ?`, args...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load battle_history")
-	}
-
-	var resultSlice []*BattleHistory
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice battle_history")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on battle_history")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_history")
-	}
-
-	if len(battleHistoryAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.RelatedBattleHistories = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &battleHistoryR{}
-			}
-			foreign.R.Related = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if queries.Equal(local.ID, foreign.RelatedID) {
-				local.R.RelatedBattleHistories = append(local.R.RelatedBattleHistories, foreign)
-				if foreign.R == nil {
-					foreign.R = &battleHistoryR{}
-				}
-				foreign.R.Related = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
 // SetBattle of the battleHistory to the related item.
 // Sets o.R.Battle to related.
 // Adds o to related.R.BattleHistories.
@@ -1019,85 +772,6 @@ func (o *BattleHistory) SetBattle(exec boil.Executor, insert bool, related *Batt
 		related.R.BattleHistories = append(related.R.BattleHistories, o)
 	}
 
-	return nil
-}
-
-// SetRelated of the battleHistory to the related item.
-// Sets o.R.Related to related.
-// Adds o to related.R.RelatedBattleHistories.
-func (o *BattleHistory) SetRelated(exec boil.Executor, insert bool, related *BattleHistory) error {
-	var err error
-	if insert {
-		if err = related.Insert(exec, boil.Infer()); err != nil {
-			return errors.Wrap(err, "failed to insert into foreign table")
-		}
-	}
-
-	updateQuery := fmt.Sprintf(
-		"UPDATE \"battle_history\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"related_id"}),
-		strmangle.WhereClause("\"", "\"", 2, battleHistoryPrimaryKeyColumns),
-	)
-	values := []interface{}{related.ID, o.ID}
-
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, updateQuery)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	if _, err = exec.Exec(updateQuery, values...); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	queries.Assign(&o.RelatedID, related.ID)
-	if o.R == nil {
-		o.R = &battleHistoryR{
-			Related: related,
-		}
-	} else {
-		o.R.Related = related
-	}
-
-	if related.R == nil {
-		related.R = &battleHistoryR{
-			RelatedBattleHistories: BattleHistorySlice{o},
-		}
-	} else {
-		related.R.RelatedBattleHistories = append(related.R.RelatedBattleHistories, o)
-	}
-
-	return nil
-}
-
-// RemoveRelated relationship.
-// Sets o.R.Related to nil.
-// Removes o from all passed in related items' relationships struct (Optional).
-func (o *BattleHistory) RemoveRelated(exec boil.Executor, related *BattleHistory) error {
-	var err error
-
-	queries.SetScanner(&o.RelatedID, nil)
-	if _, err = o.Update(exec, boil.Whitelist("related_id")); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	if o.R != nil {
-		o.R.Related = nil
-	}
-	if related == nil || related.R == nil {
-		return nil
-	}
-
-	for i, ri := range related.R.RelatedBattleHistories {
-		if queries.Equal(o.RelatedID, ri.RelatedID) {
-			continue
-		}
-
-		ln := len(related.R.RelatedBattleHistories)
-		if ln > 1 && i < ln-1 {
-			related.R.RelatedBattleHistories[i] = related.R.RelatedBattleHistories[ln-1]
-		}
-		related.R.RelatedBattleHistories = related.R.RelatedBattleHistories[:ln-1]
-		break
-	}
 	return nil
 }
 
@@ -1223,131 +897,6 @@ func (o *BattleHistory) RemoveWarMachineTwo(exec boil.Executor, related *Mech) e
 		related.R.WarMachineTwoBattleHistories = related.R.WarMachineTwoBattleHistories[:ln-1]
 		break
 	}
-	return nil
-}
-
-// AddRelatedBattleHistories adds the given related objects to the existing relationships
-// of the battle_history, optionally inserting them as new records.
-// Appends related to o.R.RelatedBattleHistories.
-// Sets related.R.Related appropriately.
-func (o *BattleHistory) AddRelatedBattleHistories(exec boil.Executor, insert bool, related ...*BattleHistory) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			queries.Assign(&rel.RelatedID, o.ID)
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"battle_history\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"related_id"}),
-				strmangle.WhereClause("\"", "\"", 2, battleHistoryPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			queries.Assign(&rel.RelatedID, o.ID)
-		}
-	}
-
-	if o.R == nil {
-		o.R = &battleHistoryR{
-			RelatedBattleHistories: related,
-		}
-	} else {
-		o.R.RelatedBattleHistories = append(o.R.RelatedBattleHistories, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &battleHistoryR{
-				Related: o,
-			}
-		} else {
-			rel.R.Related = o
-		}
-	}
-	return nil
-}
-
-// SetRelatedBattleHistories removes all previously related items of the
-// battle_history replacing them completely with the passed
-// in related items, optionally inserting them as new records.
-// Sets o.R.Related's RelatedBattleHistories accordingly.
-// Replaces o.R.RelatedBattleHistories with related.
-// Sets related.R.Related's RelatedBattleHistories accordingly.
-func (o *BattleHistory) SetRelatedBattleHistories(exec boil.Executor, insert bool, related ...*BattleHistory) error {
-	query := "update \"battle_history\" set \"related_id\" = null where \"related_id\" = $1"
-	values := []interface{}{o.ID}
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, query)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	_, err := exec.Exec(query, values...)
-	if err != nil {
-		return errors.Wrap(err, "failed to remove relationships before set")
-	}
-
-	if o.R != nil {
-		for _, rel := range o.R.RelatedBattleHistories {
-			queries.SetScanner(&rel.RelatedID, nil)
-			if rel.R == nil {
-				continue
-			}
-
-			rel.R.Related = nil
-		}
-
-		o.R.RelatedBattleHistories = nil
-	}
-	return o.AddRelatedBattleHistories(exec, insert, related...)
-}
-
-// RemoveRelatedBattleHistories relationships from objects passed in.
-// Removes related items from R.RelatedBattleHistories (uses pointer comparison, removal does not keep order)
-// Sets related.R.Related.
-func (o *BattleHistory) RemoveRelatedBattleHistories(exec boil.Executor, related ...*BattleHistory) error {
-	if len(related) == 0 {
-		return nil
-	}
-
-	var err error
-	for _, rel := range related {
-		queries.SetScanner(&rel.RelatedID, nil)
-		if rel.R != nil {
-			rel.R.Related = nil
-		}
-		if _, err = rel.Update(exec, boil.Whitelist("related_id")); err != nil {
-			return err
-		}
-	}
-	if o.R == nil {
-		return nil
-	}
-
-	for _, rel := range related {
-		for i, ri := range o.R.RelatedBattleHistories {
-			if rel != ri {
-				continue
-			}
-
-			ln := len(o.R.RelatedBattleHistories)
-			if ln > 1 && i < ln-1 {
-				o.R.RelatedBattleHistories[i] = o.R.RelatedBattleHistories[ln-1]
-			}
-			o.R.RelatedBattleHistories = o.R.RelatedBattleHistories[:ln-1]
-			break
-		}
-	}
-
 	return nil
 }
 

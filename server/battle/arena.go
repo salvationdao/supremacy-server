@@ -2,6 +2,7 @@ package battle
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -13,9 +14,8 @@ import (
 	"server/gamelog"
 	"server/passport"
 	"server/rpcclient"
+	"sync"
 	"time"
-
-	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
@@ -28,16 +28,18 @@ import (
 )
 
 type Arena struct {
-	conn          db.Conn
-	socket        *websocket.Conn
-	timeout       time.Duration
-	messageBus    *messagebus.MessageBus
-	netMessageBus *messagebus.NetBus
-	currentBattle *Battle
-	syndicates    map[string]boiler.Faction
-	AIPlayers     map[string]db.PlayerWithFaction
-	RPCClient     *rpcclient.XrpcClient
-	ppClient      *passport.Passport
+	conn           db.Conn
+	socket         *websocket.Conn
+	timeout        time.Duration
+	messageBus     *messagebus.MessageBus
+	netMessageBus  *messagebus.NetBus
+	currentBattle  *Battle
+	syndicates     map[string]boiler.Faction
+	AIPlayers      map[string]db.PlayerWithFaction
+	RPCClient      *rpcclient.XrpcClient
+	ppClient       *passport.Passport
+	gameClientLock sync.Mutex
+	sync.Mutex
 }
 
 type Opts struct {
@@ -73,11 +75,6 @@ func (mt MessageType) String() string {
 	return [...]string{"JSON", "Tick", "Live Vote Tick", "Viewer Live Count Tick", "Spoils of War Tick", "game ability progress tick", "battle ability progress tick"}[mt]
 }
 
-const WSJoinQueue hub.HubCommandKey = hub.HubCommandKey("BATTLE:QUEUE:JOIN")
-const WSLeaveQueue hub.HubCommandKey = hub.HubCommandKey("BATTLE:QUEUE:LEAVE")
-const WSQueueStatus hub.HubCommandKey = hub.HubCommandKey("BATTLE:QUEUE:STATUS")
-const WSWarMachineQueueStatus hub.HubCommandKey = hub.HubCommandKey("WAR:MACHINE:QUEUE:STATUS")
-
 func NewArena(opts *Opts) *Arena {
 	l, err := net.Listen("tcp", opts.Addr)
 
@@ -110,11 +107,13 @@ func NewArena(opts *Opts) *Arena {
 		WriteTimeout: arena.timeout,
 	}
 
-	// queue
-	opts.SecureUserFactionCommand(WSJoinQueue, arena.Join)
-	opts.SecureUserFactionCommand(WSLeaveQueue, arena.Leave)
-	opts.SecureUserFactionSubscribeCommand(WSQueueStatus, arena.QueueStatus)
-	opts.SecureUserFactionSubscribeCommand(WSWarMachineQueueStatus, arena.WarMachineQueueStatus)
+	// faction queue
+	opts.SecureUserFactionCommand(WSQueueJoin, arena.QueueJoinHandler)
+	opts.SecureUserFactionCommand(WSQueueLeave, arena.QueueLeaveHandler)
+	opts.SecureUserFactionCommand(WSAssetQueueStatus, arena.AssetQueueStatusHandler)
+	opts.SecureUserFactionSubscribeCommand(WSQueueStatusSubscribe, arena.QueueStatusSubscribeHandler)
+	opts.SecureUserFactionSubscribeCommand(WSQueueUpdatedSubscribe, arena.QueueUpdatedSubscribeHandler)
+	opts.SecureUserFactionSubscribeCommand(WSAssetQueueStatusSubscribe, arena.AssetQueueStatusSubscribeHandler)
 
 	opts.SecureUserCommand(HubKeyGameUserOnline, arena.UserOnline)
 	opts.SubscribeCommand(HubKeyWarMachineDestroyedUpdated, arena.WarMachineDestroyedUpdatedSubscribeHandler)
@@ -134,6 +133,8 @@ func NewArena(opts *Opts) *Arena {
 	opts.SecureUserFactionSubscribeCommand(HubKeGabsBribeStageUpdateSubscribe, arena.GabsBribeStageSubscribe)
 	opts.SecureUserFactionSubscribeCommand(HubKeGabsBribingWinnerSubscribe, arena.GabsBribingWinnerSubscribe)
 	opts.SecureUserFactionSubscribeCommand(HubKeyBattleAbilityUpdated, arena.BattleAbilityUpdateSubscribeHandler)
+
+	opts.SecureUserSubscribeCommand(HubKeyMultiplierMapSubscribe, arena.MultiplierMapSubScribeHandler)
 
 	// faction unique ability related (sup contribution)
 	opts.SecureUserFactionCommand(HubKeFactionUniqueAbilityContribute, arena.FactionUniqueAbilityContribute)
@@ -209,9 +210,13 @@ func (arena *Arena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		gamelog.L.Warn().Str("request_ip", ip).Err(err).Msg("unable to start Battle Arena server")
 	}
 
+	arena.gameClientLock.Lock()
 	arena.socket = c
 
-	defer c.Close(websocket.StatusInternalError, "game client has disconnected")
+	defer func() {
+		arena.gameClientLock.Unlock()
+		c.Close(websocket.StatusInternalError, "game client has disconnected")
+	}()
 
 	arena.Start()
 }
@@ -232,23 +237,28 @@ const HubKeyBattleAbilityBribe hub.HubCommandKey = "BATTLE:ABILITY:BRIBE"
 func (arena *Arena) BattleAbilityBribe(ctx context.Context, wsc *hub.Client, payload []byte, factionID uuid.UUID, reply hub.ReplyFunc) error {
 	// skip, if current not battle
 	if arena.currentBattle == nil {
+		gamelog.L.Warn().Str("bribe", wsc.Identifier()).Msg("current battle is nil")
 		return nil
 	}
 
 	req := &BribeGabRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
+		gamelog.L.Error().Str("json", string(payload)).Msg("json unmarshal failed")
 		return terror.Error(err, "Invalid request received")
 	}
 
 	d, err := decimal.NewFromString(req.Payload.Amount)
 	if err != nil {
+		gamelog.L.Error().Str("amount", req.Payload.Amount).Msg("cant make moneys")
 		return terror.Error(err, "Failed to parse string to decimal.deciaml")
 	}
 	amount := d.Mul(decimal.New(1, 18))
 
 	userID := uuid.FromStringOrNil(wsc.Identifier())
 	if userID.IsNil() {
+		gamelog.L.Error().Str("user id is nil", wsc.Identifier()).Msg("cant make users")
+
 		return terror.Error(terror.ErrForbidden)
 	}
 
@@ -270,26 +280,75 @@ const HubKeyAbilityLocationSelect hub.HubCommandKey = "ABILITY:LOCATION:SELECT"
 func (arena *Arena) AbilityLocationSelect(ctx context.Context, wsc *hub.Client, payload []byte, factionID uuid.UUID, reply hub.ReplyFunc) error {
 	// skip, if current not battle
 	if arena.currentBattle == nil {
+		gamelog.L.Warn().Msg("no current battle")
 		return nil
 	}
 
 	req := &LocationSelectRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
+		gamelog.L.Warn().Err(err).Msg("invalid request received")
 		return terror.Error(err, "Invalid request received")
 	}
 
-	userID := uuid.FromStringOrNil(wsc.Identifier())
-	if userID.IsNil() {
+	userID, err := uuid.FromString(wsc.Identifier())
+	if err != nil || userID.IsNil() {
+		gamelog.L.Warn().Err(err).Msgf("can't create uuid from wsc identifier %s", wsc.Identifier())
+		return terror.Error(terror.ErrForbidden)
+	}
+
+	if arena.currentBattle.abilities == nil {
+		gamelog.L.Error().Msg("abilities is nil even with current battle not being nil")
 		return terror.Error(terror.ErrForbidden)
 	}
 
 	err = arena.currentBattle.abilities.LocationSelect(userID, req.Payload.XIndex, req.Payload.YIndex)
 	if err != nil {
+		gamelog.L.Warn().Err(err).Msgf("can't create uuid from wsc identifier %s", wsc.Identifier())
 		return terror.Error(err)
 	}
 
 	return nil
+}
+
+type MultiplierMapResponse struct {
+	Multipliers      []*db.Multipliers `json:"multipliers"`
+	CitizenPlayerIDs []uuid.UUID       `json:"citizen_player_ids"`
+}
+
+const HubKeyMultiplierMapSubscribe hub.HubCommandKey = "MULTIPLIER:MAP:SUBSCRIBE"
+
+func (arena *Arena) MultiplierMapSubScribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return "", "", terror.Error(err, "Invalid request received")
+	}
+
+	// don't pass back any multiplier value if there is no battle, but still complete the subscription
+	if arena.currentBattle != nil {
+		multipliers, err := db.PlayerMultipliers(arena.currentBattle.BattleNumber)
+		if err != nil {
+			return "", "", terror.Error(err, "unable to retrieve multipliers")
+		}
+
+		for _, m := range multipliers {
+			m.TotalMultiplier = m.TotalMultiplier.Shift(-1)
+		}
+
+		// get the citizen list
+		citizenPlayerIDs, err := db.CitizenPlayerIDs(arena.currentBattle.BattleNumber)
+		if err != nil {
+			return "", "", terror.Error(err)
+		}
+
+		reply(&MultiplierMapResponse{
+			Multipliers:      multipliers,
+			CitizenPlayerIDs: citizenPlayerIDs,
+		})
+	}
+
+	return req.TransactionID, messagebus.BusKey(HubKeyMultiplierMapSubscribe), nil
 }
 
 const HubKeyBattleAbilityUpdated hub.HubCommandKey = "BATTLE:ABILITY:UPDATED"
@@ -317,7 +376,8 @@ func (arena *Arena) BattleAbilityUpdateSubscribeHandler(ctx context.Context, wsc
 	if arena.currentBattle != nil {
 		btl := arena.currentBattle
 		if btl.abilities != nil {
-			reply(btl.abilities.FactionBattleAbilityGet(factionID))
+			abili, _ := btl.abilities.FactionBattleAbilityGet(factionID)
+			reply(abili)
 		}
 	}
 
@@ -335,24 +395,34 @@ type GameAbilityContributeRequest struct {
 const HubKeFactionUniqueAbilityContribute hub.HubCommandKey = "FACTION:UNIQUE:ABILITY:CONTRIBUTE"
 
 func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, wsc *hub.Client, payload []byte, factionID uuid.UUID, reply hub.ReplyFunc) error {
-	if arena.currentBattle == nil {
+	if arena == nil || arena.currentBattle == nil || factionID.IsNil() {
+		gamelog.L.Error().Bool("arena", arena == nil).
+			Bool("factionID", factionID.IsNil()).
+			Bool("current_battle", arena.currentBattle == nil).
+			Str("userID", wsc.Identifier()).Msg("unable to find player from user id")
 		return nil
 	}
 
 	req := &GameAbilityContributeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
+		gamelog.L.Error().Interface("payload", req).
+			Str("userID", wsc.Identifier()).Msg("invalid request receieved")
 		return terror.Error(err, "Invalid request received")
 	}
 
 	d, err := decimal.NewFromString(req.Payload.Amount)
 	if err != nil {
+		gamelog.L.Error().Str("amount", req.Payload.Amount).
+			Str("userID", wsc.Identifier()).Msg("Failed to parse string to decimal.deciaml")
 		return terror.Error(err, "Failed to parse string to decimal.deciaml")
 	}
 	amount := d.Mul(decimal.New(1, 18))
 
 	userID := uuid.FromStringOrNil(wsc.Identifier())
 	if userID.IsNil() {
+		gamelog.L.Error().Str("amount", req.Payload.Amount).
+			Str("userID", wsc.Identifier()).Msg("unable to contribute forbidden")
 		return terror.Error(terror.ErrForbidden)
 	}
 
@@ -455,16 +525,19 @@ func (arena *Arena) UserOnline(ctx context.Context, wsc *hub.Client, payload []b
 	if arena.currentBattle == nil {
 		return nil
 	}
-	userID := server.UserID(uuid.FromStringOrNil(wsc.Identifier()))
-	if userID.IsNil() {
-		return terror.Error(terror.ErrInvalidInput)
+	uID, err := uuid.FromString(wsc.Identifier())
+	if uID.IsNil() || err != nil {
+		gamelog.L.Error().Str("uuid", wsc.Identifier()).Err(err).Msg("invalid input data")
+		return fmt.Errorf("unable to construct user uuid")
 	}
+	userID := server.UserID(uID)
 
 	user, err := boiler.Players(
 		boiler.PlayerWhere.ID.EQ(userID.String()),
 		qm.Load(boiler.PlayerRels.Faction),
 	).One(gamedb.StdConn)
 	if err != nil || user == nil || user.R.Faction == nil {
+		gamelog.L.Error().Err(err).Msg("invalid input data")
 		return terror.Error(terror.ErrInvalidInput)
 	}
 
@@ -527,6 +600,8 @@ func (arena *Arena) GabsBribeStageSubscribe(ctx context.Context, wsc *hub.Client
 	}
 
 	// return data if, current battle is not null
+	arena.Lock()
+	defer arena.Unlock()
 	if arena.currentBattle != nil {
 		btl := arena.currentBattle
 		if btl.abilities != nil {
@@ -605,12 +680,11 @@ func (arena *Arena) SendSettings(ctx context.Context, wsc *hub.Client, payload [
 	if err != nil {
 		return "", "", errors.Wrap(err, "unable to unmarshal json payload for send settings subscribe")
 	}
-	if arena.currentBattle == nil {
-		return "", "", fmt.Errorf("battle is not currently running")
-	}
 
-	btl := arena.currentBattle
-	reply(btl.updatePayload())
+	// response game setting, if current battle exists
+	if arena.currentBattle != nil {
+		reply(UpdatePayload(arena.currentBattle))
+	}
 
 	return req.TransactionID, messagebus.BusKey(HubKeyGameSettingsUpdated), nil
 }
@@ -655,9 +729,11 @@ type BattleWMDestroyedPayload struct {
 }
 
 func (arena *Arena) init() {
+	arena.Lock()
+	defer arena.Unlock()
 	btl := arena.Battle()
-	arena.Message(BATTLEINIT, btl)
 	arena.currentBattle = btl
+	arena.Message(BATTLEINIT, btl)
 }
 
 //listen listens for new commands and blocks indefinitely
@@ -701,7 +777,13 @@ func (arena *Arena) start() {
 					gamelog.L.Warn().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal battle message payload")
 					continue
 				}
-				btl.start(dataPayload)
+				err = btl.preIntro(dataPayload)
+				if err != nil {
+					gamelog.L.Error().Str("msg", string(payload)).Err(err).Msg("battle start load out has failed")
+					return
+				}
+			case "BATTLE:INTRO_FINISHED":
+				btl.start()
 			case "BATTLE:WAR_MACHINE_DESTROYED":
 				var dataPayload BattleWMDestroyedPayload
 				if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
@@ -731,91 +813,67 @@ func (arena *Arena) start() {
 }
 
 func (arena *Arena) Battle() *Battle {
-	gameMap, err := db.GameMapGetRandom(context.Background(), arena.conn)
+	gm, err := db.GameMapGetRandom(context.Background(), arena.conn)
 	if err != nil {
 		gamelog.L.Err(err).Msg("unable to get random map")
 		return nil
 	}
-	id := uuid.Must(uuid.NewV4())
 
-	btl := &Battle{
-		arena:   arena,
-		MapName: gameMap.Name,
-		gameMap: gameMap,
-		Battle: &boiler.Battle{
-			ID:        id.String(),
+	gameMap := &server.GameMap{
+		ID:            uuid.Must(uuid.FromString(gm.ID)),
+		Name:          gm.Name,
+		ImageUrl:      gm.ImageURL,
+		MaxSpawns:     gm.MaxSpawns,
+		Width:         gm.Width,
+		Height:        gm.Height,
+		CellsX:        gm.CellsX,
+		CellsY:        gm.CellsY,
+		TopPixels:     gm.TopPixels,
+		LeftPixels:    gm.LeftPixels,
+		Scale:         gm.Scale,
+		DisabledCells: gm.DisabledCells,
+	}
+
+	lastBattle, err := boiler.Battles(qm.OrderBy("battle_number"), qm.Limit(1)).One(gamedb.StdConn)
+
+	var battleID string
+	var battle *boiler.Battle
+	inserted := false
+	if lastBattle == nil || errors.Is(err, sql.ErrNoRows) || lastBattle.EndedAt.Valid {
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("not able to load previous battle")
+		}
+
+		battleID = uuid.Must(uuid.NewV4()).String()
+		battle = &boiler.Battle{
+			ID:        battleID,
 			GameMapID: gameMap.ID.String(),
 			StartedAt: time.Now(),
-		},
-		stage: BattleStagStart,
+		}
+	} else {
+		battle = lastBattle
+		battleID = lastBattle.ID
+		
+		inserted = true
+	}
+
+	btl := &Battle{
+		arena:    arena,
+		MapName:  gameMap.Name,
+		gameMap:  gameMap,
+		BattleID: battleID,
+		Battle:   battle,
+		inserted: inserted,
+		stage:    BattleStagStart,
 		users: usersMap{
 			m: make(map[uuid.UUID]*BattleUser),
 		},
 		destroyedWarMachineMap: make(map[byte]*WMDestroyedRecord),
 	}
 
-	err = btl.Battle.Insert(gamedb.StdConn, boil.Infer())
-	btl.BattleID = btl.ID
-
-	if err != nil {
-		gamelog.L.Panic().Interface("battle", btl).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to insert Battle into database")
-		return nil
-	}
-
 	err = btl.Load()
 	if err != nil {
 		gamelog.L.Warn().Err(err).Msg("unable to load out mechs")
-	}
-
-	bmd := make([]*db.BattleMechData, len(btl.WarMachines))
-
-	factions := map[uuid.UUID]*boiler.Faction{}
-
-	for i, wm := range btl.WarMachines {
-		mechID, err := uuid.FromString(wm.ID)
-		if err != nil {
-			gamelog.L.Error().Str("ownerID", wm.ID).Err(err).Msg("unable to convert owner id from string")
-			return nil
-		}
-
-		ownerID, err := uuid.FromString(wm.OwnedByID)
-		if err != nil {
-			gamelog.L.Error().Str("ownerID", wm.OwnedByID).Err(err).Msg("unable to convert owner id from string")
-			return nil
-		}
-
-		factionID, err := uuid.FromString(wm.FactionID)
-		if err != nil {
-			gamelog.L.Error().Str("factionID", wm.FactionID).Err(err).Msg("unable to convert faction id from string")
-			return nil
-		}
-
-		bmd[i] = &db.BattleMechData{
-			MechID:    mechID,
-			OwnerID:   ownerID,
-			FactionID: factionID,
-		}
-
-		_, ok := factions[factionID]
-		if !ok {
-			faction, err := boiler.FindFaction(gamedb.StdConn, factionID.String())
-			if err != nil {
-				gamelog.L.Error().
-					Str("Battle ID", btl.ID).
-					Str("Faction ID", factionID.String()).
-					Err(err).Msg("unable to retrieve faction from database")
-
-			}
-			factions[factionID] = faction
-		}
-	}
-
-	btl.factions = factions
-
-	err = db.BattleMechs(btl.Battle, bmd)
-	if err != nil {
-		gamelog.L.Error().Str("Battle ID", btl.ID).Err(err).Msg("unable to insert battle into database")
-		//TODO: something more dramatic
 	}
 
 	return btl
@@ -835,7 +893,7 @@ func (uc *Arena) UserStatUpdatedSubscribeHandler(ctx context.Context, client *hu
 	if err != nil {
 		return "", "", terror.Error(err, "Invalid request received")
 	}
-	us, err := db.UserStatGet(ctx, uc.conn, server.UserID(userID))
+	us, err := db.UserStatsGet(userID.String())
 	if err != nil {
 		return "", "", terror.Error(err, "failed to get user")
 	}

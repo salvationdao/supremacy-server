@@ -35,6 +35,7 @@ var TableNames = struct {
 	ChassisModules                                     string
 	ChassisWeapons                                     string
 	Config                                             string
+	FactionStats                                       string
 	Factions                                           string
 	GameAbilities                                      string
 	GameMaps                                           string
@@ -50,6 +51,7 @@ var TableNames = struct {
 	StreamList                                         string
 	Templates                                          string
 	UserMultipliers                                    string
+	UserStats                                          string
 	Users                                              string
 	Weapons                                            string
 }{
@@ -84,6 +86,7 @@ var TableNames = struct {
 	ChassisModules:                   "chassis_modules",
 	ChassisWeapons:                   "chassis_weapons",
 	Config:                           "config",
+	FactionStats:                     "faction_stats",
 	Factions:                         "factions",
 	GameAbilities:                    "game_abilities",
 	GameMaps:                         "game_maps",
@@ -99,6 +102,7 @@ var TableNames = struct {
 	StreamList:                       "stream_list",
 	Templates:                        "templates",
 	UserMultipliers:                  "user_multipliers",
+	UserStats:                        "user_stats",
 	Users:                            "users",
 	Weapons:                          "weapons",
 }
