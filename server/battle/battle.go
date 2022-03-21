@@ -130,6 +130,38 @@ func (btl *Battle) start() {
 			gamelog.L.Error().Interface("battle", btl).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to update Battle in database")
 			return
 		}
+
+		bmds, err := boiler.BattleMechs(boiler.BattleMechWhere.BattleID.EQ(btl.ID)).All(gamedb.StdConn)
+		if err == nil {
+			_, err = bmds.DeleteAll(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Err(err).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to delete delete stale battle mechs from database")
+			}
+		}
+
+		bws, err := boiler.BattleWins(boiler.BattleWinWhere.BattleID.EQ(btl.ID)).All(gamedb.StdConn)
+		if err == nil {
+			_, err = bws.DeleteAll(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Err(err).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to delete delete stale battle wins from database")
+			}
+		}
+
+		bks, err := boiler.BattleKills(boiler.BattleKillWhere.BattleID.EQ(btl.ID)).All(gamedb.StdConn)
+		if err == nil {
+			_, err = bks.DeleteAll(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Err(err).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to delete delete stale battle kills from database")
+			}
+		}
+
+		bhs, err := boiler.BattleHistories(boiler.BattleHistoryWhere.BattleID.EQ(btl.ID)).All(gamedb.StdConn)
+		if err == nil {
+			_, err = bhs.DeleteAll(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Err(err).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to delete delete stale battle historys from database")
+			}
+		}
 	} else {
 		err := btl.Battle.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {
