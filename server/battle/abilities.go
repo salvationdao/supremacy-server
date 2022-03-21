@@ -1070,6 +1070,7 @@ func (as *AbilitiesSystem) SetNewBattleAbility() (int, error) {
 	// get faction battle abilities
 	gabsAbilities, err := db.FactionBattleAbilityGet(context.Background(), gamedb.Conn, ba.ID)
 	if err != nil {
+		gamelog.L.Error().Err(err).Msg("FactionBattleAbilityGet failed to retrieve shit")
 		return ba.CooldownDurationSecond, terror.Error(err)
 	}
 
@@ -1174,11 +1175,14 @@ func (as *AbilitiesSystem) locationDecidersSet(battleID string, factionID uuid.U
 // nextLocationDeciderGet return the uuid of the next player to select the location for ability
 func (as *AbilitiesSystem) nextLocationDeciderGet() (uuid.UUID, uuid.UUID, bool) {
 	if as.locationDeciders == nil {
+		gamelog.L.Error().Msg("nil check failed as.locationDeciders")
+
 		return uuid.UUID(uuid.Nil), uuid.UUID(uuid.Nil), false
 	}
 
 	// clean up the location select list if there is no user left to select location
 	if len(as.locationDeciders.list) <= 1 {
+		gamelog.L.Error().Msg("no as.locationDeciders <= 1")
 		as.locationDeciders.list = []uuid.UUID{}
 		return uuid.UUID(uuid.Nil), uuid.UUID(uuid.Nil), false
 	}

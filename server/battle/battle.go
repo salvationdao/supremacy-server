@@ -127,13 +127,45 @@ func (btl *Battle) start() {
 	if btl.inserted {
 		_, err := btl.Battle.Update(gamedb.StdConn, boil.Infer())
 		if err != nil {
-			gamelog.L.Panic().Interface("battle", btl).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to update Battle in database")
+			gamelog.L.Error().Interface("battle", btl).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to update Battle in database")
 			return
+		}
+
+		bmds, err := boiler.BattleMechs(boiler.BattleMechWhere.BattleID.EQ(btl.ID)).All(gamedb.StdConn)
+		if err == nil {
+			_, err = bmds.DeleteAll(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Err(err).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to delete delete stale battle mechs from database")
+			}
+		}
+
+		bws, err := boiler.BattleWins(boiler.BattleWinWhere.BattleID.EQ(btl.ID)).All(gamedb.StdConn)
+		if err == nil {
+			_, err = bws.DeleteAll(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Err(err).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to delete delete stale battle wins from database")
+			}
+		}
+
+		bks, err := boiler.BattleKills(boiler.BattleKillWhere.BattleID.EQ(btl.ID)).All(gamedb.StdConn)
+		if err == nil {
+			_, err = bks.DeleteAll(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Err(err).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to delete delete stale battle kills from database")
+			}
+		}
+
+		bhs, err := boiler.BattleHistories(boiler.BattleHistoryWhere.BattleID.EQ(btl.ID)).All(gamedb.StdConn)
+		if err == nil {
+			_, err = bhs.DeleteAll(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Err(err).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to delete delete stale battle historys from database")
+			}
 		}
 	} else {
 		err := btl.Battle.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {
-			gamelog.L.Panic().Interface("battle", btl).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to insert Battle into database")
+			gamelog.L.Error().Interface("battle", btl).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to insert Battle into database")
 			return
 		}
 
@@ -154,26 +186,32 @@ func (btl *Battle) start() {
 			gamelog.L.Error().Interface("mechs_ids", btl.warMachineIDs).Str("battle_id", btl.ID).Err(err).Msg("failed to set battle id in queue")
 			return
 		}
+	}
 
-		if btl.battleMechData == nil {
-			gamelog.L.Error().Str("battlemechdata", btl.ID).Msg("battle mech data failed nil check")
-		}
+	if btl.battleMechData == nil {
+		gamelog.L.Error().Str("battlemechdata", btl.ID).Msg("battle mech data failed nil check")
+	}
 
-		err = db.BattleMechs(btl.Battle, btl.battleMechData)
-		if err != nil {
-			gamelog.L.Error().Str("Battle ID", btl.ID).Err(err).Msg("unable to insert battle into database")
-			//TODO: something more dramatic
-		}
+	err = db.BattleMechs(btl.Battle, btl.battleMechData)
+	if err != nil {
+		gamelog.L.Error().Str("Battle ID", btl.ID).Err(err).Msg("unable to insert battle into database")
+		//TODO: something more dramatic
 	}
 
 	// set up the abilities for current battle
 
+	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle spoils")
 	btl.spoils = NewSpoilsOfWar(btl, 5*time.Second, 5*time.Second)
+	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle abilities")
 	btl.abilities = NewAbilitiesSystem(btl)
+	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle multipliers")
 	btl.multipliers = NewMultiplierSystem(btl)
+	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Broadcasting battle start to players")
 	btl.BroadcastUpdate()
 
 	// broadcast spoil of war on the start of the battle
+	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Broadcasting spoils of war updates")
+
 	sows, err := db.LastTwoSpoilOfWarAmount()
 	if err != nil || len(sows) == 0 {
 		gamelog.L.Error().Err(err).Msg("Failed to get last two spoil of war amount")
@@ -191,7 +229,7 @@ func (btl *Battle) start() {
 	// handle global announcements
 	ga, err := boiler.GlobalAnnouncements().One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Str("Battle ID", btl.ID).Msg("unable to get global announcement")
+		gamelog.L.Error().Err(err).Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Broadcasting battle start to players")
 	}
 
 	// global announcement exists
@@ -313,45 +351,44 @@ func (btl *Battle) isOnline(userID uuid.UUID) bool {
 	return ok
 }
 
-func (btl *Battle) end(payload *BattleEndPayload) {
-	btl.EndedAt = null.TimeFrom(time.Now())
-	_, err := btl.Update(gamedb.StdConn, boil.Infer())
-	if err != nil {
-		gamelog.L.Error().Str("Battle ID", btl.ID).Time("EndedAt", btl.EndedAt.Time).Msg("unable to update database for endat battle")
-	}
+func (btl *Battle) endAbilities() {
+	defer func() {
+		if err := recover(); err != nil {
+			gamelog.L.Error().Interface("err", err).Msg("panic! panic! panic! Panic at the battle abilities end!")
+		}
+	}()
 
 	gamelog.L.Info().Msgf("cleaning up abilities: %s", btl.ID)
 
+	if btl.abilities == nil {
+		gamelog.L.Error().Msg("battle did not have abilities!")
+		return
+	}
+
 	btl.abilities.end <- true
-
+}
+func (btl *Battle) endSpoils() {
+	defer func() {
+		if err := recover(); err != nil {
+			gamelog.L.Error().Interface("err", err).Msg("panic! panic! panic! Panic at the spoils end!")
+		}
+	}()
 	gamelog.L.Info().Msgf("cleaning up spoils: %s", btl.ID)
+
+	if btl.spoils == nil {
+		gamelog.L.Error().Msg("battle did not have spoils!")
+		return
+	}
+
 	btl.spoils.End()
+}
 
-	winningWarMachines := make([]*WarMachine, len(payload.WinningWarMachines))
-
-	gamelog.L.Info().Msgf("battle end: looping WinningWarMachines: %s", btl.ID)
-	for i := range payload.WinningWarMachines {
-		for _, w := range btl.WarMachines {
-			if w.Hash == payload.WinningWarMachines[i].Hash {
-				winningWarMachines[i] = w
-				break
-			}
+func (btl *Battle) endCreateStats(payload *BattleEndPayload, winningWarMachines []*WarMachine) *BattleEndDetail {
+	defer func() {
+		if err := recover(); err != nil {
+			gamelog.L.Error().Interface("err", err).Msg("panic! panic! panic! Panic at the creation of ending info: endCreateStats!")
 		}
-		if winningWarMachines[i] == nil {
-			gamelog.L.Error().Str("Battle ID", btl.ID).Msg("unable to match war machine to battle with hash")
-		}
-	}
-
-	if len(winningWarMachines) == 0 || winningWarMachines[0] == nil {
-		gamelog.L.Panic().Str("Battle ID", btl.ID).Msg("no winning war machines")
-	} else {
-		// record faction win/loss count
-		err = db.FactionAddWinLossCount(winningWarMachines[0].FactionID)
-		if err != nil {
-			gamelog.L.Panic().Str("Battle ID", btl.ID).Str("winning_faction_id", winningWarMachines[0].FactionID).Msg("Failed to update faction win/loss count")
-		}
-	}
-
+	}()
 	gamelog.L.Info().Msgf("battle end: looping TopSupsContributeFactions: %s", btl.ID)
 	topFactionContributorBoilers, err := db.TopSupsContributeFactions(uuid.Must(uuid.FromString(payload.BattleID)))
 	if err != nil {
@@ -421,7 +458,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		Int("top_player_contributors", len(topPlayerContributors)).
 		Msg("get top players and factions")
 
-	endInfo := &BattleEndDetail{
+	return &BattleEndDetail{
 		BattleID:                     btl.ID,
 		BattleIdentifier:             btl.Battle.BattleNumber,
 		StartedAt:                    btl.Battle.StartedAt,
@@ -433,10 +470,17 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		TopSupsContributors:          topPlayerContributors,
 		MostFrequentAbilityExecutors: topPlayerExecutors,
 	}
+}
 
+func (btl *Battle) processWinners(payload *BattleEndPayload) {
+	defer func() {
+		if err := recover(); err != nil {
+			gamelog.L.Error().Interface("err", err).Msg("panic! panic! panic! Panic at the battle end processWinners!")
+		}
+	}()
 	mws := make([]*db.MechWithOwner, len(payload.WinningWarMachines))
 
-	err = db.ClearQueueByBattle(btl.ID)
+	err := db.ClearQueueByBattle(btl.ID)
 	if err != nil {
 		gamelog.L.Error().Str("Battle ID", btl.ID).Msg("unable to clear queue for battle")
 	}
@@ -498,6 +542,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 				Str("Mech ID", wm.ID).
 				Err(err).
 				Msg("no contract in database")
+
 			continue
 		} else if err != nil {
 			gamelog.L.Error().
@@ -601,14 +646,97 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 			Err(err).
 			Msg("unable to store mech wins")
 	}
+}
 
+func (btl *Battle) endWarMachines(payload *BattleEndPayload) []*WarMachine {
+	defer func() {
+		if err := recover(); err != nil {
+			gamelog.L.Error().Interface("err", err).Msg("panic! panic! panic! Panic at the sorting up ending war machines!")
+		}
+	}()
+	winningWarMachines := make([]*WarMachine, len(payload.WinningWarMachines))
+
+	gamelog.L.Info().Msgf("battle end: looping WinningWarMachines: %s", btl.ID)
+	for i := range payload.WinningWarMachines {
+		for _, w := range btl.WarMachines {
+			if w.Hash == payload.WinningWarMachines[i].Hash {
+				winningWarMachines[i] = w
+				break
+			}
+		}
+		if winningWarMachines[i] == nil {
+			gamelog.L.Error().Str("Battle ID", btl.ID).Msg("unable to match war machine to battle with hash")
+		}
+	}
+
+	if len(winningWarMachines) == 0 || winningWarMachines[0] == nil {
+		gamelog.L.Panic().Str("Battle ID", btl.ID).Msg("no winning war machines")
+	} else {
+		// record faction win/loss count
+		err := db.FactionAddWinLossCount(winningWarMachines[0].FactionID)
+		if err != nil {
+			gamelog.L.Panic().Str("Battle ID", btl.ID).Str("winning_faction_id", winningWarMachines[0].FactionID).Msg("Failed to update faction win/loss count")
+		}
+	}
+
+	return winningWarMachines
+}
+
+func (btl *Battle) endMultis(endInfo *BattleEndDetail) {
+	defer func() {
+		if err := recover(); err != nil {
+			gamelog.L.Error().Interface("err", err).Msg("panic! panic! panic! Panic at the ending of multis! btl.endMultis!")
+		}
+	}()
 	gamelog.L.Info().Msgf("cleaning up multipliers: %s", btl.ID)
+
+	if btl.multipliers == nil {
+		gamelog.L.Error().Msg("battle did not have multipliers!")
+		return
+	}
+
 	btl.multipliers.end(endInfo)
+}
+func (btl *Battle) endBroadcast(endInfo *BattleEndDetail) {
+	defer func() {
+		if err := recover(); err != nil {
+			gamelog.L.Error().Interface("err", err).Msg("panic! panic! panic! Panic at the ending of end broadcast!")
+		}
+	}()
+	btl.endInfoBroadcast(*endInfo)
+}
+
+func (btl *Battle) end(payload *BattleEndPayload) {
+	defer func() {
+		if err := recover(); err != nil {
+			gamelog.L.Error().Interface("err", err).Msg("panic! panic! panic! Panic at the battle end!")
+			exists, err := boiler.BattleExists(gamedb.StdConn, btl.ID)
+			if err != nil {
+				gamelog.L.Panic().Err(err).Msg("Panicing. Unable to even check if battle id exists")
+			}
+			if exists {
+
+			}
+		}
+	}()
+
+	btl.EndedAt = null.TimeFrom(time.Now())
+	_, err := btl.Update(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().Str("Battle ID", btl.ID).Time("EndedAt", btl.EndedAt.Time).Msg("unable to update database for endat battle")
+	}
+
+	btl.endAbilities()
+	btl.endSpoils()
+
+	winningWarMachines := btl.endWarMachines(payload)
+	endInfo := btl.endCreateStats(payload, winningWarMachines)
+
+	btl.processWinners(payload)
+	btl.endMultis(endInfo)
 
 	gamelog.L.Info().Msgf("battle has been cleaned up, sending broadcast %s", btl.ID)
-
-	btl.endInfoBroadcast(*endInfo)
-
+	btl.endBroadcast(endInfo)
 	// calculate faction mvp
 	// NOTE: it is very he
 }
@@ -1517,13 +1645,17 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 		}
 	}
 
-	_, err = db.UpdateBattleMech(btl.ID, warMachineID, false, true, killByWarMachineID)
+	_, err = db.UpdateBattleMech(btl.ID, warMachineID, destroyedWarMachine.OwnedByID, destroyedWarMachine.FactionID, false, true, killByWarMachineID)
+
 	if err != nil {
 		gamelog.L.Error().
+			Err(err).
 			Str("battle_id", btl.ID).
 			Interface("mech_id", warMachineID).
 			Bool("killed", true).
 			Msg("can't update battle mech")
+
+		return
 	}
 
 	// calc total damage and merge the duplicated damage source

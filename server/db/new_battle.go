@@ -59,15 +59,8 @@ func BattleMechs(btl *boiler.Battle, mechData []*BattleMechData) error {
 	return tx.Commit()
 }
 
-func UpdateBattleMech(battleID string, mechID uuid.UUID, gotKill bool, gotKilled bool, killedByID ...uuid.UUID) (*boiler.BattleMech, error) {
-	tx, err := gamedb.StdConn.Begin()
-	if err != nil {
-		gamelog.L.Error().Str("db func", "UpdateBattleMech").Err(err).Msg("unable to begin tx")
-		return nil, err
-	}
-	defer tx.Rollback()
-
-	bmd, err := boiler.FindBattleMech(tx, battleID, mechID.String())
+func UpdateBattleMech(battleID string, mechID uuid.UUID, ownerID string, factionID string, gotKill bool, gotKilled bool, killedByID ...uuid.UUID) (*boiler.BattleMech, error) {
+	bmd, err := boiler.FindBattleMech(gamedb.StdConn, battleID, mechID.String())
 	if err != nil {
 		gamelog.L.Error().
 			Str("battleID", battleID).
@@ -75,7 +68,21 @@ func UpdateBattleMech(battleID string, mechID uuid.UUID, gotKill bool, gotKilled
 			Str("db func", "UpdateBattleMech").
 			Err(err).Msg("unable to retrieve Battle Mech from database")
 
-		return nil, err
+		bmd = &boiler.BattleMech{
+			BattleID:  battleID,
+			MechID:    mechID.String(),
+			OwnerID:   ownerID,
+			FactionID: factionID,
+		}
+		err = bmd.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().
+				Str("battleID", battleID).
+				Str("mechID", mechID.String()).
+				Str("db func", "UpdateBattleMech").
+				Err(err).Msg("unable to insert Battle Mech into database after not being able to retrieve it")
+			return nil, err
+		}
 	}
 
 	if gotKilled {
@@ -91,7 +98,7 @@ func UpdateBattleMech(battleID string, mechID uuid.UUID, gotKill bool, gotKilled
 			bmd.KilledByID = null.StringFrom(killedByID[0].String())
 			kid, err := uuid.FromString(killedByID[0].String())
 
-			killerBmd, err := boiler.FindBattleMech(tx, battleID, kid.String())
+			killerBmd, err := boiler.FindBattleMech(gamedb.StdConn, battleID, kid.String())
 			if err != nil {
 				gamelog.L.Error().
 					Str("battleID", battleID).
@@ -109,35 +116,26 @@ func UpdateBattleMech(battleID string, mechID uuid.UUID, gotKill bool, gotKilled
 				CreatedAt: bmd.Killed.Time,
 				KilledID:  mechID.String(),
 			}
-			err = bk.Insert(tx, boil.Infer())
+			err = bk.Insert(gamedb.StdConn, boil.Infer())
 		}
-		_, err = bmd.Update(tx, boil.Infer())
+		_, err = bmd.Update(gamedb.StdConn, boil.Infer())
 		if err != nil {
 			gamelog.L.Error().Err(err).
 				Interface("boiler.BattleMech", bmd).
 				Msg("unable to update battle mech")
 			return nil, err
 		}
-
-		return bmd, nil
 	}
 
 	if gotKill {
 		bmd.Kills = bmd.Kills + 1
-		_, err = bmd.Update(tx, boil.Infer())
+		_, err = bmd.Update(gamedb.StdConn, boil.Infer())
 		if err != nil {
 			gamelog.L.Error().Err(err).
 				Interface("boiler.BattleMech", bmd).
 				Msg("unable to update battle mech")
 			return nil, err
 		}
-		return bmd, nil
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		gamelog.L.Error().Err(err).Str("db Func", "UpdateBattleMech").Msg("unable to commit tx")
-		return nil, err
 	}
 
 	return bmd, nil
