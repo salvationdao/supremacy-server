@@ -136,7 +136,6 @@ func UpdateBattleMech(battleID string, mechID uuid.UUID, ownerID string, faction
 				Msg("unable to update battle mech")
 			return nil, err
 		}
-
 	}
 
 	return bmd, nil
