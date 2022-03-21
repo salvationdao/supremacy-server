@@ -799,7 +799,7 @@ func (arena *Arena) start() {
 				}
 				btl.end(dataPayload)
 				//TODO: this needs to be triggered by a message from the game client
-				time.Sleep(time.Second * 20)
+				time.Sleep(time.Second * 80)
 				arena.init()
 			default:
 				gamelog.L.Warn().Str("battleCommand", msg.BattleCommand).Err(err).Msg("Battle Arena WS: no command response")
@@ -853,7 +853,7 @@ func (arena *Arena) Battle() *Battle {
 	} else {
 		battle = lastBattle
 		battleID = lastBattle.ID
-		
+
 		inserted = true
 	}
 
