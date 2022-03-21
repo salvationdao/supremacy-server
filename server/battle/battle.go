@@ -504,6 +504,32 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 				Str("Mech ID", wm.ID).
 				Err(err).
 				Msg("no contract in database")
+
+			gamelog.L.Error().
+				Str("Battle ID", btl.ID).
+				Str("Mech ID", wm.ID).
+				Err(err).
+				Msg("removing mech in queue as it does not have a contract")
+
+			m, err := boiler.BattleQueues(boiler.BattleQueueWhere.MechID.EQ(wm.ID)).One(gamedb.StdConn)
+
+			if err != nil {
+				gamelog.L.Panic().
+					Str("Battle ID", btl.ID).
+					Str("Mech ID", wm.ID).
+					Err(err).
+					Msg("removing mech in queue as it does not have a contract")
+			}
+
+			_, err = m.Delete(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Panic().
+					Str("Battle ID", btl.ID).
+					Str("Mech ID", wm.ID).
+					Err(err).
+					Msg("removing mech in queue as it does not have a contract")
+			}
+
 			continue
 		} else if err != nil {
 			gamelog.L.Error().
