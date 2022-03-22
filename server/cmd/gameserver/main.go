@@ -319,7 +319,7 @@ func main() {
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Setting up battle arena client")
 
 					// initialise smser
-					twilio, err := sms.NewTwilio(twilioSid, twilioApiKey, twilioApiSecrete, smsFromNumber, "staging")
+					twilio, err := sms.NewTwilio(twilioSid, twilioApiKey, twilioApiSecrete, smsFromNumber, environment)
 					if err != nil {
 						return terror.Error(err, "SMS init failed")
 					}
