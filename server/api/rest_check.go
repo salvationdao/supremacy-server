@@ -2,6 +2,8 @@ package api
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"net/http"
 	"server/battle"
@@ -57,7 +59,7 @@ func (c *CheckController) Check(w http.ResponseWriter, r *http.Request) {
 		// check if current battle over 15 mins
 		if diff.Minutes() > 15 {
 			ok = false
-			w.WriteHeader(http.StatusInternalServerError)
+			w.WriteHeader(http.StatusGone)
 			msg := fmt.Sprintf("current battle over 15 mins, battle started at: %s (%f mins ago)",
 				ba.StartedAt.String(),
 				diff.Minutes())
@@ -70,10 +72,14 @@ func (c *CheckController) Check(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// get contributions for the last  2 mins
-		_, err := ba.BattleContributions(boiler.BattleContributionWhere.ContributedAt.GT(now.Add(-2 * time.Minute))).One(gamedb.StdConn)
-		if err != nil {
+		btlContributions, err := ba.BattleContributions(boiler.BattleContributionWhere.ContributedAt.GT(now.Add(-2 * time.Minute))).All(gamedb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			c.Log.Err(err).Msg("failed to get battle contributions")
+		}
+
+		if btlContributions == nil || len(btlContributions) <= 0 {
 			ok = false
-			w.WriteHeader(http.StatusInternalServerError)
+			w.WriteHeader(http.StatusGone)
 			msg := "there has been no contributions on the last 2 mins"
 			c.Log.Err(err).Msg(msg)
 			_, err = w.Write([]byte("\n" + msg))
