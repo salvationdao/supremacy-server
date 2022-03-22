@@ -22,20 +22,66 @@ type Multipliers struct {
 	TotalMultiplier decimal.Decimal `json:"total_multiplier" db:"multiplier_sum"`
 }
 
+// read multiplier from db
+type PlayerMultiplier struct {
+	PlayerID         uuid.UUID       `db:"player_id"`
+	MultiplierValue  decimal.Decimal `db:"multiplier_value"`
+	IsMultiplicative bool            `db:"is_multiplicative"`
+}
+
 func PlayerMultipliers(battle_number int) ([]*Multipliers, error) {
 	result := []*Multipliers{}
+
+	dbResult := []*PlayerMultiplier{}
 	q := `
-SELECT p.id AS player_id, SUM(um.value) AS multiplier_sum FROM user_multipliers um 
+SELECT p.id AS player_id, um.value AS multiplier_value, m.is_multiplicative FROM user_multipliers um 
 INNER JOIN players p ON p.id = um.player_id
 INNER JOIN multipliers m ON m.id = um.multiplier_id
 WHERE um.from_battle_number <= $1
-AND um.until_battle_number >= $1
-GROUP BY p.id;
+AND um.until_battle_number >= $1;
 `
 
-	err := pgxscan.Select(context.Background(), gamedb.Conn, &result, q, battle_number)
+	err := pgxscan.Select(context.Background(), gamedb.Conn, &dbResult, q, battle_number)
 	if err != nil {
 		return nil, terror.Error(err)
+	}
+
+	// create temporary map the store player multipliers
+	type multiplierStat struct {
+		value               decimal.Decimal
+		multiplicativeValue decimal.Decimal
+	}
+
+	playerMultiplierStatMap := make(map[uuid.UUID]*multiplierStat)
+	for _, dr := range dbResult {
+		if _, ok := playerMultiplierStatMap[dr.PlayerID]; !ok {
+			playerMultiplierStatMap[dr.PlayerID] = &multiplierStat{
+				value:               decimal.Zero,
+				multiplicativeValue: decimal.Zero,
+			}
+		}
+
+		// add the value, if the multipliers is not multiplicative
+		if !dr.IsMultiplicative {
+			playerMultiplierStatMap[dr.PlayerID].value = playerMultiplierStatMap[dr.PlayerID].value.Add(dr.MultiplierValue)
+			continue
+		}
+
+		// increase multiplicative value
+		playerMultiplierStatMap[dr.PlayerID].multiplicativeValue = playerMultiplierStatMap[dr.PlayerID].multiplicativeValue.Add(dr.MultiplierValue)
+	}
+
+	// calculate actual total multiplier amount
+	for playerID, multiplierStat := range playerMultiplierStatMap {
+		// set multiplicative to 1 if the value is zero
+		if multiplierStat.multiplicativeValue.Equal(decimal.Zero) {
+			multiplierStat.multiplicativeValue = decimal.NewFromInt(1)
+		}
+
+		result = append(result, &Multipliers{
+			PlayerID:        playerID,
+			TotalMultiplier: multiplierStat.value.Mul(multiplierStat.multiplicativeValue),
+		})
 	}
 	return result, nil
 }

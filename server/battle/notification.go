@@ -104,17 +104,14 @@ func (arena *Arena) HubKeyMultiplierUpdate(ctx context.Context, wsc *hub.Client,
 		return "", "", terror.Error(err)
 	}
 
-	if arena.currentBattle == nil {
-		return "", "", fmt.Errorf("no active battle")
-	}
-
 	id, err := uuid.FromString(wsc.Identifier())
 	if err != nil {
 		gamelog.L.Warn().Err(err).Str("id", wsc.Identifier()).Msg("unable to create uuid from websocket client identifier id")
-		return "", "", fmt.Errorf("no active battle")
+		return "", "", terror.Error(err, "Unable to create uuid from websocket client identifier id")
 	}
 
-	if arena.currentBattle.multipliers != nil {
+	// return multiplier if battle is on
+	if arena.currentBattle != nil && arena.currentBattle.multipliers != nil {
 		m, total := arena.currentBattle.multipliers.PlayerMultipliers(id, 0)
 
 		reply(&MultiplierUpdate{
@@ -127,45 +124,6 @@ func (arena *Arena) HubKeyMultiplierUpdate(ctx context.Context, wsc *hub.Client,
 }
 
 const HubKeyViewerLiveCountUpdated = hub.HubCommandKey("VIEWER:LIVE:COUNT:UPDATED")
-
-func (arena *Arena) ViewerLiveCountUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	req := &hub.HubCommandRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return "", "", terror.Error(err)
-	}
-
-	if arena.currentBattle != nil {
-		btl := arena.currentBattle
-		resp := &ViewerLiveCount{
-			RedMountain: 0,
-			Boston:      0,
-			Zaibatsu:    0,
-			Other:       0,
-		}
-		btl.users.Range(func(user *BattleUser) bool {
-			if faction, ok := FactionNames[user.FactionID]; ok {
-				switch faction {
-				case "RedMountain":
-					resp.RedMountain++
-				case "Boston":
-					resp.Boston++
-				case "Zaibatsu":
-					resp.Zaibatsu++
-				default:
-					resp.Other++
-				}
-			} else {
-				resp.Other++
-			}
-			return true
-		})
-
-		reply(resp)
-	}
-
-	return req.TransactionID, messagebus.BusKey(HubKeyViewerLiveCountUpdated), nil
-}
 
 const HubKeyGameNotification hub.HubCommandKey = "GAME:NOTIFICATION"
 

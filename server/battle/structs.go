@@ -130,9 +130,10 @@ func (bu *BattleUser) Send(key hub.HubCommandKey, payload interface{}) error {
 }
 
 type Multiplier struct {
-	Key         string `json:"key"`
-	Value       string `json:"value"`
-	Description string `json:"description"`
+	Key              string `json:"key"`
+	Value            string `json:"value"`
+	Description      string `json:"description"`
+	IsMultiplicative bool   `json:"is_multiplicative"`
 }
 
 type BattleEndDetail struct {

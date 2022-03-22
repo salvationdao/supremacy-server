@@ -23,86 +23,93 @@ import (
 
 // Multiplier is an object representing the database table.
 type Multiplier struct {
-	ID             string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Description    string          `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
-	Key            string          `boiler:"key" boil:"key" json:"key" toml:"key" yaml:"key"`
-	ForGames       int             `boiler:"for_games" boil:"for_games" json:"for_games" toml:"for_games" yaml:"for_games"`
-	MultiplierType string          `boiler:"multiplier_type" boil:"multiplier_type" json:"multiplier_type" toml:"multiplier_type" yaml:"multiplier_type"`
-	MustBeOnline   bool            `boiler:"must_be_online" boil:"must_be_online" json:"must_be_online" toml:"must_be_online" yaml:"must_be_online"`
-	TestNumber     int             `boiler:"test_number" boil:"test_number" json:"test_number" toml:"test_number" yaml:"test_number"`
-	TestString     string          `boiler:"test_string" boil:"test_string" json:"test_string" toml:"test_string" yaml:"test_string"`
-	Value          decimal.Decimal `boiler:"value" boil:"value" json:"value" toml:"value" yaml:"value"`
+	ID               string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Description      string          `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
+	Key              string          `boiler:"key" boil:"key" json:"key" toml:"key" yaml:"key"`
+	ForGames         int             `boiler:"for_games" boil:"for_games" json:"for_games" toml:"for_games" yaml:"for_games"`
+	MultiplierType   string          `boiler:"multiplier_type" boil:"multiplier_type" json:"multiplier_type" toml:"multiplier_type" yaml:"multiplier_type"`
+	MustBeOnline     bool            `boiler:"must_be_online" boil:"must_be_online" json:"must_be_online" toml:"must_be_online" yaml:"must_be_online"`
+	TestNumber       int             `boiler:"test_number" boil:"test_number" json:"test_number" toml:"test_number" yaml:"test_number"`
+	TestString       string          `boiler:"test_string" boil:"test_string" json:"test_string" toml:"test_string" yaml:"test_string"`
+	Value            decimal.Decimal `boiler:"value" boil:"value" json:"value" toml:"value" yaml:"value"`
+	IsMultiplicative bool            `boiler:"is_multiplicative" boil:"is_multiplicative" json:"is_multiplicative" toml:"is_multiplicative" yaml:"is_multiplicative"`
 
 	R *multiplierR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L multiplierL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var MultiplierColumns = struct {
-	ID             string
-	Description    string
-	Key            string
-	ForGames       string
-	MultiplierType string
-	MustBeOnline   string
-	TestNumber     string
-	TestString     string
-	Value          string
+	ID               string
+	Description      string
+	Key              string
+	ForGames         string
+	MultiplierType   string
+	MustBeOnline     string
+	TestNumber       string
+	TestString       string
+	Value            string
+	IsMultiplicative string
 }{
-	ID:             "id",
-	Description:    "description",
-	Key:            "key",
-	ForGames:       "for_games",
-	MultiplierType: "multiplier_type",
-	MustBeOnline:   "must_be_online",
-	TestNumber:     "test_number",
-	TestString:     "test_string",
-	Value:          "value",
+	ID:               "id",
+	Description:      "description",
+	Key:              "key",
+	ForGames:         "for_games",
+	MultiplierType:   "multiplier_type",
+	MustBeOnline:     "must_be_online",
+	TestNumber:       "test_number",
+	TestString:       "test_string",
+	Value:            "value",
+	IsMultiplicative: "is_multiplicative",
 }
 
 var MultiplierTableColumns = struct {
-	ID             string
-	Description    string
-	Key            string
-	ForGames       string
-	MultiplierType string
-	MustBeOnline   string
-	TestNumber     string
-	TestString     string
-	Value          string
+	ID               string
+	Description      string
+	Key              string
+	ForGames         string
+	MultiplierType   string
+	MustBeOnline     string
+	TestNumber       string
+	TestString       string
+	Value            string
+	IsMultiplicative string
 }{
-	ID:             "multipliers.id",
-	Description:    "multipliers.description",
-	Key:            "multipliers.key",
-	ForGames:       "multipliers.for_games",
-	MultiplierType: "multipliers.multiplier_type",
-	MustBeOnline:   "multipliers.must_be_online",
-	TestNumber:     "multipliers.test_number",
-	TestString:     "multipliers.test_string",
-	Value:          "multipliers.value",
+	ID:               "multipliers.id",
+	Description:      "multipliers.description",
+	Key:              "multipliers.key",
+	ForGames:         "multipliers.for_games",
+	MultiplierType:   "multipliers.multiplier_type",
+	MustBeOnline:     "multipliers.must_be_online",
+	TestNumber:       "multipliers.test_number",
+	TestString:       "multipliers.test_string",
+	Value:            "multipliers.value",
+	IsMultiplicative: "multipliers.is_multiplicative",
 }
 
 // Generated where
 
 var MultiplierWhere = struct {
-	ID             whereHelperstring
-	Description    whereHelperstring
-	Key            whereHelperstring
-	ForGames       whereHelperint
-	MultiplierType whereHelperstring
-	MustBeOnline   whereHelperbool
-	TestNumber     whereHelperint
-	TestString     whereHelperstring
-	Value          whereHelperdecimal_Decimal
+	ID               whereHelperstring
+	Description      whereHelperstring
+	Key              whereHelperstring
+	ForGames         whereHelperint
+	MultiplierType   whereHelperstring
+	MustBeOnline     whereHelperbool
+	TestNumber       whereHelperint
+	TestString       whereHelperstring
+	Value            whereHelperdecimal_Decimal
+	IsMultiplicative whereHelperbool
 }{
-	ID:             whereHelperstring{field: "\"multipliers\".\"id\""},
-	Description:    whereHelperstring{field: "\"multipliers\".\"description\""},
-	Key:            whereHelperstring{field: "\"multipliers\".\"key\""},
-	ForGames:       whereHelperint{field: "\"multipliers\".\"for_games\""},
-	MultiplierType: whereHelperstring{field: "\"multipliers\".\"multiplier_type\""},
-	MustBeOnline:   whereHelperbool{field: "\"multipliers\".\"must_be_online\""},
-	TestNumber:     whereHelperint{field: "\"multipliers\".\"test_number\""},
-	TestString:     whereHelperstring{field: "\"multipliers\".\"test_string\""},
-	Value:          whereHelperdecimal_Decimal{field: "\"multipliers\".\"value\""},
+	ID:               whereHelperstring{field: "\"multipliers\".\"id\""},
+	Description:      whereHelperstring{field: "\"multipliers\".\"description\""},
+	Key:              whereHelperstring{field: "\"multipliers\".\"key\""},
+	ForGames:         whereHelperint{field: "\"multipliers\".\"for_games\""},
+	MultiplierType:   whereHelperstring{field: "\"multipliers\".\"multiplier_type\""},
+	MustBeOnline:     whereHelperbool{field: "\"multipliers\".\"must_be_online\""},
+	TestNumber:       whereHelperint{field: "\"multipliers\".\"test_number\""},
+	TestString:       whereHelperstring{field: "\"multipliers\".\"test_string\""},
+	Value:            whereHelperdecimal_Decimal{field: "\"multipliers\".\"value\""},
+	IsMultiplicative: whereHelperbool{field: "\"multipliers\".\"is_multiplicative\""},
 }
 
 // MultiplierRels is where relationship names are stored.
@@ -126,9 +133,9 @@ func (*multiplierR) NewStruct() *multiplierR {
 type multiplierL struct{}
 
 var (
-	multiplierAllColumns            = []string{"id", "description", "key", "for_games", "multiplier_type", "must_be_online", "test_number", "test_string", "value"}
+	multiplierAllColumns            = []string{"id", "description", "key", "for_games", "multiplier_type", "must_be_online", "test_number", "test_string", "value", "is_multiplicative"}
 	multiplierColumnsWithoutDefault = []string{"description", "key", "multiplier_type", "test_number", "test_string"}
-	multiplierColumnsWithDefault    = []string{"id", "for_games", "must_be_online", "value"}
+	multiplierColumnsWithDefault    = []string{"id", "for_games", "must_be_online", "value", "is_multiplicative"}
 	multiplierPrimaryKeyColumns     = []string{"id"}
 	multiplierGeneratedColumns      = []string{}
 )

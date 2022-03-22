@@ -296,6 +296,17 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 
 			return
 		case <-main_ticker.C:
+			if as.battle == nil || as.battle.arena.currentBattle == nil || as.battle.arena.currentBattle.BattleNumber != as.battle.BattleNumber {
+				return
+			}
+			// terminate ticker if battle missmatch
+			if as.battle != as.battle.arena.currentBattle {
+				main_ticker.Stop()
+				live_vote_ticker.Stop()
+				gamelog.L.Info().Msg("clean up ability price ticker update")
+				return
+			}
+
 			for _, abilities := range as.factionUniqueAbilities {
 
 				// start ability price updater for each faction
@@ -819,6 +830,13 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 			if as.battle == nil || as.battle.arena.currentBattle == nil || as.battle.arena.currentBattle.BattleNumber != bn {
 				return
 			}
+
+			// terminate ticker if battle missmatch
+			if as.battle != as.battle.arena.currentBattle {
+				progress_ticker.Stop()
+				gamelog.L.Info().Msg("clean up missmatch progress bar ticker")
+				return
+			}
 			as.BattleAbilityProgressBar()
 		}
 	}()
@@ -829,6 +847,13 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 		// wait for next tick
 		case <-main_ticker.C:
 			if as.battle == nil || as.battle.arena.currentBattle == nil || as.battle.arena.currentBattle.BattleNumber != bn {
+				return
+			}
+			// terminate ticker if battle missmatch
+			if as.battle != as.battle.arena.currentBattle {
+				main_ticker.Stop()
+				price_ticker.Stop()
+				gamelog.L.Info().Msg("clean up missmatch bribing ticker")
 				return
 			}
 			// check phase
