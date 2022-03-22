@@ -20,8 +20,6 @@ func NewTwilio(accountSid, apiKey, apiSecret, fromNumber, environment string) (*
 		AllowSending: false,
 	}
 
-	fmt.Println("this is env", environment)
-
 	// if prod or staging, check for envars and panic if missing and enable sending
 	if environment == "production" || environment == "staging" {
 		twil.AllowSending = true
