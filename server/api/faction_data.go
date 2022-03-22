@@ -9,6 +9,7 @@ import (
 	"server/helpers"
 
 	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
@@ -38,13 +39,19 @@ func (api *API) GetFactionData(w http.ResponseWriter, r *http.Request) (int, err
 			boiler.PlayerWhere.ID.EQ(fs.MVPPlayerID.String),
 		).One(gamedb.StdConn)
 		if err != nil {
-			return http.StatusInternalServerError, terror.Error(err, "failed to get faction MVP player")
+			return http.StatusInternalServerError, terror.Error(err, "Failed to get faction MVP player")
 		}
 
 		result.MvpPlayerUsername = p.Username.String
 	}
 
-	return helpers.EncodeJSON(w, fs)
+	// faction members
+	result.MemberCount, err = boiler.Players(boiler.PlayerWhere.FactionID.EQ(null.StringFrom(fID[0]))).Count(gamedb.StdConn)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to get faction member count")
+	}
+
+	return helpers.EncodeJSON(w, result)
 }
 
 func (api *API) TriggerAbilityFileUpload(w http.ResponseWriter, r *http.Request) (int, error) {

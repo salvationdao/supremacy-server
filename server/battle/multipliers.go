@@ -69,14 +69,31 @@ func (ms *MultiplierSystem) PlayerMultipliers(playerID uuid.UUID, battleNumberAd
 	}
 
 	multipliers := make([]*Multiplier, len(usermultipliers))
+	value := decimal.Zero
+	multiplicativeValue := decimal.Zero
 	for i, m := range usermultipliers {
 		multipliers[i] = &Multiplier{
-			Key:         m.Key,
-			Value:       fmt.Sprintf("%sx", m.Value.Shift(-1).String()),
-			Description: m.Description,
+			Key:              m.Key,
+			Description:      m.Description,
+			IsMultiplicative: m.IsMultiplicative,
 		}
-		total = total.Add(m.Value)
+
+		if !m.IsMultiplicative {
+			multipliers[i].Value = m.Value.Shift(-1).String()
+			value = value.Add(m.Value)
+			continue
+		}
+
+		multipliers[i].Value = m.Value.String()
+		multiplicativeValue = multiplicativeValue.Add(m.Value)
 	}
+
+	// set multiplicative to 1 if the value is zero
+	if multiplicativeValue.Equal(decimal.Zero) {
+		multiplicativeValue = decimal.NewFromInt(1)
+	}
+
+	total = value.Mul(multiplicativeValue)
 
 	if playerID.String() == "294be3d5-03be-4daa-ac6e-b9b862f79ae6" {
 		multipliers = append(multipliers, &Multiplier{
@@ -105,6 +122,11 @@ func (ms *MultiplierSystem) getMultiplier(mtype, testString string, num int) (*b
 
 func (ms *MultiplierSystem) end(btlEndInfo *BattleEndDetail) {
 	ms.calculate(btlEndInfo)
+}
+
+type PlayerContribution struct {
+	FactionID string
+	Amount    decimal.Decimal
 }
 
 func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
@@ -145,7 +167,7 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 
 	// average spend multipliers test
 	total := decimal.New(0, 18)
-	sums := map[string]decimal.Decimal{}
+	sums := map[string]*PlayerContribution{}
 	factions := map[string]string{}
 	abilitySums := map[string]map[string]decimal.Decimal{}
 
@@ -157,9 +179,12 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 		}
 		factions[contribution.PlayerID] = contribution.FactionID
 		if _, ok := sums[contribution.PlayerID]; !ok {
-			sums[contribution.PlayerID] = decimal.New(0, 18)
+			sums[contribution.PlayerID] = &PlayerContribution{
+				FactionID: contribution.FactionID,
+				Amount:    decimal.New(0, 18),
+			}
 		}
-		sums[contribution.PlayerID] = sums[contribution.PlayerID].Add(contribution.Amount)
+		sums[contribution.PlayerID].Amount = sums[contribution.PlayerID].Amount.Add(contribution.Amount)
 		total = total.Add(contribution.Amount)
 
 		isGabs[contribution.AbilityOfferingID] = contribution.IsAllSyndicates
@@ -182,14 +207,16 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 
 	// citizen tag
 	playerAmountList := []struct {
-		playerID string
-		amount   decimal.Decimal
+		playerID  string
+		factionID string
+		amount    decimal.Decimal
 	}{}
-	for playerID, amount := range sums {
+	for playerID, pc := range sums {
 		playerAmountList = append(playerAmountList, struct {
-			playerID string
-			amount   decimal.Decimal
-		}{playerID, amount})
+			playerID  string
+			factionID string
+			amount    decimal.Decimal
+		}{playerID, pc.FactionID, pc.Amount})
 	}
 
 	totalLength := len(playerAmountList)
@@ -197,18 +224,31 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 		// sort the total
 		sort.Slice(playerAmountList, func(i, j int) bool { return playerAmountList[i].amount.GreaterThan(playerAmountList[j].amount) })
 
+		// top 80% of contributors will become citizens
 		citizenAmount := totalLength * 80 / 100
 		if citizenAmount == 0 {
 			citizenAmount = 1
 		}
+
+		// top 95% of contributors and their faction win, will become citizens
+		winningFactionCitizenAmount := totalLength * 95 / 100
+		if winningFactionCitizenAmount == 0 {
+			winningFactionCitizenAmount = 1
+		}
+
+		// top 50% of contributors will become supporters
 		supportAmount := totalLength * 50 / 100
 		if supportAmount == 0 {
 			supportAmount = 1
 		}
+
+		// top 25% of contributors will become contributors
 		contributorAmount := totalLength * 25 / 100
 		if contributorAmount == 0 {
 			contributorAmount = 1
 		}
+
+		// top 10% of contributors will become super contributors
 		superContributorAmount := totalLength * 10 / 100
 		if superContributorAmount == 0 {
 			superContributorAmount = 1
@@ -218,7 +258,12 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 			if m.MultiplierType == "spend_average" {
 				switch m.Key {
 				case "citizen":
-					for i := 0; i < citizenAmount; i++ {
+					for i := 0; i < winningFactionCitizenAmount; i++ {
+						// skip, if the user is not from the winning faction and fall into 80% - 95% range
+						if i >= citizenAmount && playerAmountList[i].factionID != btlEndInfo.WinningFaction.ID {
+							continue
+						}
+
 						if _, ok := newMultipliers[playerAmountList[i].playerID]; !ok {
 							newMultipliers[playerAmountList[i].playerID] = map[string]*boiler.Multiplier{}
 						}

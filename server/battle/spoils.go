@@ -100,6 +100,12 @@ func (sow *SpoilsOfWar) Run() {
 			close(sow.flushCh)
 			return
 		case <-t.C:
+			// terminate ticker if the battle missmatch
+			if sow.battle != sow.battle.arena.currentBattle {
+				t.Stop()
+				gamelog.L.Info().Msg("Clean up spoil of war ticker when battle missmatch")
+				return
+			}
 			// Push all pending transactions to passport server
 			gamelog.L.Debug().Msg("running transaction pusher")
 			err := sow.Drip()
