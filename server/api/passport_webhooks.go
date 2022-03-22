@@ -282,16 +282,6 @@ func (pc *PassportWebhookController) AuthRingCheck(w http.ResponseWriter, r *htt
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	b, err := json.Marshal(&BroadcastPayload{
-		Key:     HubKeyUserRingCheck,
-		Payload: req.User,
-	})
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err)
-	}
-
-	go client.Send(b)
-
 	return helpers.EncodeJSON(w, struct {
 		IsSuccess     bool `json:"is_success"`
 		IsWhitelisted bool `json:"is_whitelisted"`
