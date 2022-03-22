@@ -23,42 +23,37 @@ import (
 
 // User is an object representing the database table.
 type User struct {
-	ID                          string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	ViewBattleCount             int         `boiler:"view_battle_count" boil:"view_battle_count" json:"view_battle_count" toml:"view_battle_count" yaml:"view_battle_count"`
-	SupsMultipliers             null.JSON   `boiler:"sups_multipliers" boil:"sups_multipliers" json:"sups_multipliers,omitempty" toml:"sups_multipliers" yaml:"sups_multipliers,omitempty"`
-	PlayerID                    null.String `boiler:"player_id" boil:"player_id" json:"player_id,omitempty" toml:"player_id" yaml:"player_id,omitempty"`
-	NotificationsBattleQueueSMS bool        `boiler:"notifications_battle_queue_sms" boil:"notifications_battle_queue_sms" json:"notifications_battle_queue_sms" toml:"notifications_battle_queue_sms" yaml:"notifications_battle_queue_sms"`
+	ID              string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	ViewBattleCount int         `boiler:"view_battle_count" boil:"view_battle_count" json:"view_battle_count" toml:"view_battle_count" yaml:"view_battle_count"`
+	SupsMultipliers null.JSON   `boiler:"sups_multipliers" boil:"sups_multipliers" json:"sups_multipliers,omitempty" toml:"sups_multipliers" yaml:"sups_multipliers,omitempty"`
+	PlayerID        null.String `boiler:"player_id" boil:"player_id" json:"player_id,omitempty" toml:"player_id" yaml:"player_id,omitempty"`
 
 	R *userR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L userL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var UserColumns = struct {
-	ID                          string
-	ViewBattleCount             string
-	SupsMultipliers             string
-	PlayerID                    string
-	NotificationsBattleQueueSMS string
+	ID              string
+	ViewBattleCount string
+	SupsMultipliers string
+	PlayerID        string
 }{
-	ID:                          "id",
-	ViewBattleCount:             "view_battle_count",
-	SupsMultipliers:             "sups_multipliers",
-	PlayerID:                    "player_id",
-	NotificationsBattleQueueSMS: "notifications_battle_queue_sms",
+	ID:              "id",
+	ViewBattleCount: "view_battle_count",
+	SupsMultipliers: "sups_multipliers",
+	PlayerID:        "player_id",
 }
 
 var UserTableColumns = struct {
-	ID                          string
-	ViewBattleCount             string
-	SupsMultipliers             string
-	PlayerID                    string
-	NotificationsBattleQueueSMS string
+	ID              string
+	ViewBattleCount string
+	SupsMultipliers string
+	PlayerID        string
 }{
-	ID:                          "users.id",
-	ViewBattleCount:             "users.view_battle_count",
-	SupsMultipliers:             "users.sups_multipliers",
-	PlayerID:                    "users.player_id",
-	NotificationsBattleQueueSMS: "users.notifications_battle_queue_sms",
+	ID:              "users.id",
+	ViewBattleCount: "users.view_battle_count",
+	SupsMultipliers: "users.sups_multipliers",
+	PlayerID:        "users.player_id",
 }
 
 // Generated where
@@ -88,17 +83,15 @@ func (w whereHelpernull_JSON) IsNull() qm.QueryMod    { return qmhelper.WhereIsN
 func (w whereHelpernull_JSON) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
 
 var UserWhere = struct {
-	ID                          whereHelperstring
-	ViewBattleCount             whereHelperint
-	SupsMultipliers             whereHelpernull_JSON
-	PlayerID                    whereHelpernull_String
-	NotificationsBattleQueueSMS whereHelperbool
+	ID              whereHelperstring
+	ViewBattleCount whereHelperint
+	SupsMultipliers whereHelpernull_JSON
+	PlayerID        whereHelpernull_String
 }{
-	ID:                          whereHelperstring{field: "\"users\".\"id\""},
-	ViewBattleCount:             whereHelperint{field: "\"users\".\"view_battle_count\""},
-	SupsMultipliers:             whereHelpernull_JSON{field: "\"users\".\"sups_multipliers\""},
-	PlayerID:                    whereHelpernull_String{field: "\"users\".\"player_id\""},
-	NotificationsBattleQueueSMS: whereHelperbool{field: "\"users\".\"notifications_battle_queue_sms\""},
+	ID:              whereHelperstring{field: "\"users\".\"id\""},
+	ViewBattleCount: whereHelperint{field: "\"users\".\"view_battle_count\""},
+	SupsMultipliers: whereHelpernull_JSON{field: "\"users\".\"sups_multipliers\""},
+	PlayerID:        whereHelpernull_String{field: "\"users\".\"player_id\""},
 }
 
 // UserRels is where relationship names are stored.
@@ -125,9 +118,9 @@ func (*userR) NewStruct() *userR {
 type userL struct{}
 
 var (
-	userAllColumns            = []string{"id", "view_battle_count", "sups_multipliers", "player_id", "notifications_battle_queue_sms"}
+	userAllColumns            = []string{"id", "view_battle_count", "sups_multipliers", "player_id"}
 	userColumnsWithoutDefault = []string{}
-	userColumnsWithDefault    = []string{"id", "view_battle_count", "sups_multipliers", "player_id", "notifications_battle_queue_sms"}
+	userColumnsWithDefault    = []string{"id", "view_battle_count", "sups_multipliers", "player_id"}
 	userPrimaryKeyColumns     = []string{"id"}
 	userGeneratedColumns      = []string{}
 )
