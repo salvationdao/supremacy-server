@@ -18,6 +18,7 @@ import (
 	"server/passport"
 	"server/sms"
 	"server/supermigrate"
+	"server/telegram"
 
 	"server/rpcclient"
 
@@ -324,6 +325,11 @@ func main() {
 						return terror.Error(err, "SMS init failed")
 					}
 
+					// initialise telegram client
+					telegram, err := telegram.NewTelegram()
+
+					telegram.Bot.Start()
+
 					// initialise net message bus
 					netMessageBus := messagebus.NewNetBus(log_helpers.NamedLogger(gamelog.L, "net_message_bus"))
 					// initialise message bus
@@ -357,10 +363,11 @@ func main() {
 						PPClient:      pp,
 						RPCClient:     rpcClient,
 						SMS:           twilio,
+						Telegram:      telegram,
 					})
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("set up arena")
 					gamelog.L.Info().Msg("Setting up webhook rest API")
-					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, pgxconn, pp, messageBus, netMessageBus, gsHub, twilio)
+					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, pgxconn, pp, messageBus, netMessageBus, gsHub, twilio, telegram)
 					if err != nil {
 						fmt.Println(err)
 						os.Exit(1)
@@ -533,7 +540,7 @@ func main() {
 	}
 }
 
-func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, battleArenaClient *battle.Arena, conn *pgxpool.Pool, passport *passport.Passport, messageBus *messagebus.MessageBus, netMessageBus *messagebus.NetBus, gsHub *hub.Hub, sms server.SMS) (*api.API, error) {
+func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, battleArenaClient *battle.Arena, conn *pgxpool.Pool, passport *passport.Passport, messageBus *messagebus.MessageBus, netMessageBus *messagebus.NetBus, gsHub *hub.Hub, sms server.SMS, telegram server.Telegram) (*api.API, error) {
 	environment := ctxCLI.String("environment")
 	sentryDSNBackend := ctxCLI.String("sentry_dsn_backend")
 	sentryServerName := ctxCLI.String("sentry_server_name")
@@ -579,7 +586,7 @@ func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, bat
 	HTMLSanitizePolicy.AllowAttrs("class").OnElements("img", "table", "tr", "td", "p")
 
 	// API Server
-	serverAPI := api.NewAPI(ctx, log, battleArenaClient, passport, apiAddr, HTMLSanitizePolicy, conn, config, messageBus, netMessageBus, gsHub, sms)
+	serverAPI := api.NewAPI(ctx, log, battleArenaClient, passport, apiAddr, HTMLSanitizePolicy, conn, config, messageBus, netMessageBus, gsHub, sms, telegram)
 	return serverAPI, nil
 }
 

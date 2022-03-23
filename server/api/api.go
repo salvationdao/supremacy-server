@@ -83,6 +83,7 @@ type API struct {
 	NetMessageBus *messagebus.NetBus
 	Passport      *passport.Passport
 	SMS           server.SMS
+	Telegram      server.Telegram
 
 	// ring check auth
 	RingCheckAuthMap *RingCheckAuthMap
@@ -102,6 +103,7 @@ func NewAPI(
 	netMessageBus *messagebus.NetBus,
 	gsHub *hub.Hub,
 	sms server.SMS,
+	telegram server.Telegram,
 ) *API {
 
 	// initialise api
@@ -119,6 +121,7 @@ func NewAPI(
 		Hub:              gsHub,
 		RingCheckAuthMap: NewRingCheckMap(),
 		SMS:              sms,
+		Telegram:         telegram,
 	}
 
 	battleArenaClient.SetMessageBus(messageBus, netMessageBus)
@@ -134,7 +137,7 @@ func NewAPI(
 			sentryHandler := sentryhttp.New(sentryhttp.Options{})
 			r.Use(sentryHandler.Handle)
 		})
-		r.Mount("/check", CheckRouter(log_helpers.NamedLogger(log, "check router"), conn, battleArenaClient))
+		r.Mount("/check", CheckRouter(log_helpers.NamedLogger(log, "check router"), conn, battleArenaClient, telegram))
 		r.Mount(fmt.Sprintf("/%s/Supremacy_game", server.SupremacyGameUserID), PassportWebhookRouter(log, conn, config.PassportWebhookSecret, api))
 
 		// Web sockets are long-lived, so we don't want the sentry performance tracer running for the life-time of the connection.

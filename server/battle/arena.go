@@ -41,6 +41,7 @@ type Arena struct {
 	ppClient       *passport.Passport
 	gameClientLock sync.Mutex
 	sms            server.SMS
+	telegram       server.Telegram
 	sync.Mutex
 }
 
@@ -54,6 +55,7 @@ type Opts struct {
 	PPClient      *passport.Passport
 	RPCClient     *rpcclient.XrpcClient
 	SMS           server.SMS
+	Telegram      server.Telegram
 }
 
 type MessageType byte
@@ -97,6 +99,7 @@ func NewArena(opts *Opts) *Arena {
 	arena.ppClient = opts.PPClient
 	arena.RPCClient = opts.RPCClient
 	arena.sms = opts.SMS
+	arena.telegram = opts.Telegram
 
 	arena.AIPlayers, err = db.DefaultFactionPlayers()
 	if err != nil {
