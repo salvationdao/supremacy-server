@@ -78,7 +78,7 @@ func (c *CheckController) Check(w http.ResponseWriter, r *http.Request) {
 
 		}
 
-		if btlContributions == nil || len(btlContributions) <= 0 {
+		if len(btlContributions) <= 0 {
 			ok = false
 			w.WriteHeader(http.StatusGone)
 			msg := "there has been no contributions on the last 2 mins"
