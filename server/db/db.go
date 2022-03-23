@@ -80,7 +80,6 @@ func Exec(ctx context.Context, conn Conn, q string, args ...interface{}) error {
 }
 
 func UpsertPlayer(p *boiler.Player) error {
-	boil.DebugMode = true
 	err := p.Upsert(
 		gamedb.StdConn,
 		true,
@@ -95,7 +94,6 @@ func UpsertPlayer(p *boiler.Player) error {
 		),
 		boil.Infer(),
 	)
-	boil.DebugMode = false
 	if err != nil {
 		return terror.Error(err)
 	}

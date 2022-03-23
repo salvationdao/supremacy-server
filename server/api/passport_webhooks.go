@@ -15,6 +15,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-chi/chi"
+	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
@@ -130,7 +131,19 @@ func (pc *PassportWebhookController) UserEnlistFaction(w http.ResponseWriter, r 
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	pc.API.MessageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, player.ID)), player)
+	user := &server.User{
+		ID:            server.UserID(uuid.FromStringOrNil(player.ID)),
+		Username:      player.Username.String,
+		PublicAddress: player.PublicAddress,
+		FactionID:     req.FactionID,
+	}
+
+	user.Faction, err = boiler.FindFaction(gamedb.StdConn, req.FactionID.String())
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Unable to find faction from db")
+	}
+
+	pc.API.MessageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, player.ID)), user)
 
 	return helpers.EncodeJSON(w, struct {
 		IsSuccess bool `json:"is_success"`
@@ -281,6 +294,16 @@ func (pc *PassportWebhookController) AuthRingCheck(w http.ResponseWriter, r *htt
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)
 	}
+
+	b, err := json.Marshal(&BroadcastPayload{
+		Key:     HubKeyUserRingCheck,
+		Payload: req.User,
+	})
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err)
+	}
+
+	go client.Send(b)
 
 	return helpers.EncodeJSON(w, struct {
 		IsSuccess     bool `json:"is_success"`
