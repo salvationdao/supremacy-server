@@ -85,6 +85,7 @@ func (ac *AuthControllerWS) RingCheckJWTAuth(ctx context.Context, wsc *hub.Clien
 		return terror.Error(err, "Failed to read JWT token please try again")
 	}
 
+	// get user id from token
 	player := &boiler.Player{}
 	playerID, ok := token.Get("user-id")
 	if !ok {
@@ -96,26 +97,18 @@ func (ac *AuthControllerWS) RingCheckJWTAuth(ctx context.Context, wsc *hub.Clien
 		return terror.Error(fmt.Errorf("unable to form UUID from token"), "Unable to get playerID from token")
 	}
 
-	// public address
-	publicAddress, ok := token.Get("public-address")
-	if !ok {
-		return terror.Error(fmt.Errorf("public address is required"), "Public address is required")
+	userID := server.UserID(uuid.FromStringOrNil(player.ID))
+
+	// get user from passport server
+	user, err := ac.API.Passport.UserGet(userID)
+	if err != nil {
+		return terror.Error(err, "Failed to get user from passport server")
 	}
 
-	pa, ok := publicAddress.(string)
-	if !ok {
-		return terror.Error(fmt.Errorf("public address is required"), "Public address is required")
-	}
-
-	player.PublicAddress = null.StringFrom(pa)
-
-	// faction id
-	fID, ok := token.Get("faction-id")
-	if ok {
-		factionID, ok := fID.(string)
-		if ok {
-			player.FactionID = null.StringFrom(factionID)
-		}
+	player.PublicAddress = user.PublicAddress
+	player.Username = null.StringFrom(user.Username)
+	if !user.FactionID.IsNil() {
+		player.FactionID = null.StringFrom(user.FactionID.String())
 	}
 
 	// store user into player table
@@ -125,18 +118,12 @@ func (ac *AuthControllerWS) RingCheckJWTAuth(ctx context.Context, wsc *hub.Clien
 		return terror.Error(err, "Failed to add user to database. Please try again")
 	}
 
-	user := &server.User{
-		ID:       server.UserID(uuid.FromStringOrNil(player.ID)),
-		Username: player.Username.String,
-	}
-
 	if player.FactionID.Valid {
 		user.FactionID = server.FactionID(uuid.FromStringOrNil(player.FactionID.String))
 		faction, err := boiler.FindFaction(gamedb.StdConn, player.FactionID.String)
 		if err != nil {
 			return terror.Error(err, "Unable to find faction from db")
 		}
-
 		user.Faction = faction
 	}
 

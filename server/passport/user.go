@@ -5,6 +5,7 @@ import (
 	"server"
 
 	"github.com/gofrs/uuid"
+	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/shopspring/decimal"
 )
@@ -51,23 +52,23 @@ func (pp *Passport) UserSupsMultiplierSend(ctx context.Context, userSupsMultipli
 	}
 }
 
-type UsersGetReq struct {
-	UserIDs []server.UserID `json:"userIDs"`
+type UserGetReq struct {
+	UserID server.UserID `json:"userID"`
 }
 
-type UsersGetResp struct {
-	Users []*server.User `json:"users"`
+type UserGetResp struct {
+	User *server.User `json:"user"`
 }
 
-// UsersGet get user by id
-func (pp *Passport) UsersGet(userIDs []server.UserID, callback func(users []*server.User)) {
-	resp := &UsersGetResp{}
-	err := pp.RPCClient.Call("S.SupremacyUsersGetHandler", UsersGetReq{userIDs}, resp)
+// UserGet get user by id
+func (pp *Passport) UserGet(userID server.UserID) (*server.User, error) {
+	resp := &UserGetResp{}
+	err := pp.RPCClient.Call("S.SupremacyUserGetHandler", UserGetReq{userID}, resp)
 	if err != nil {
-		pp.Log.Err(err).Str("method", "SupremacyUsersGetHandler").Msg("rpc error")
-		return
+		pp.Log.Err(err).Str("method", "SupremacyUserGetHandler").Msg("rpc error")
+		return nil, terror.Error(err, "Failed to get user from passport server")
 	}
-	callback(resp.Users)
+	return resp.User, nil
 }
 
 type UserStatSendReq struct {
