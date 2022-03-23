@@ -64,10 +64,10 @@ func (c *CheckController) Check(w http.ResponseWriter, r *http.Request) {
 				ba.StartedAt.String(),
 				diff.Minutes())
 
-			c.Log.Err(err).Msg(msg)
+			c.Log.Err(err).Str("battle_no", fmt.Sprintf("%d", ba.BattleNumber)).Msg(msg)
 			_, err = w.Write([]byte(msg))
 			if err != nil {
-				c.Log.Err(err).Msg("failed to send")
+				c.Log.Err(err).Str("battle_no", fmt.Sprintf("%d", ba.BattleNumber)).Msg("failed to send")
 			}
 		}
 
@@ -81,10 +81,10 @@ func (c *CheckController) Check(w http.ResponseWriter, r *http.Request) {
 			ok = false
 			w.WriteHeader(http.StatusGone)
 			msg := "there has been no contributions on the last 2 mins"
-			c.Log.Err(err).Msg(msg)
+			c.Log.Err(err).Str("battle_no", fmt.Sprintf("%d", ba.BattleNumber)).Msg(msg)
 			_, err = w.Write([]byte("\n" + msg))
 			if err != nil {
-				c.Log.Err(err).Msg("failed to send")
+				c.Log.Err(err).Str("battle_no", fmt.Sprintf("%d", ba.BattleNumber)).Msg("failed to send")
 			}
 		}
 	}
