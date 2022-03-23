@@ -143,7 +143,7 @@ func (pc *PassportWebhookController) UserEnlistFaction(w http.ResponseWriter, r 
 		return http.StatusInternalServerError, terror.Error(err, "Unable to find faction from db")
 	}
 
-	pc.API.MessageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, player.ID)), user)
+	pc.API.MessageBus.Send(r.Context(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, player.ID)), user)
 
 	return helpers.EncodeJSON(w, struct {
 		IsSuccess bool `json:"is_success"`
