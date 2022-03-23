@@ -383,6 +383,7 @@ func (btl *Battle) endSpoils() {
 	}
 
 	btl.spoils.End()
+	btl.spoils = nil
 }
 
 func (btl *Battle) endCreateStats(payload *BattleEndPayload, winningWarMachines []*WarMachine) *BattleEndDetail {
