@@ -34,6 +34,12 @@ func AssetStatsRouter(log *zerolog.Logger, conn db.Conn, api *API) chi.Router {
 	return r
 }
 
+type GetMechStatPercentageResponse struct {
+	Total      int64 `json:"total"`
+	Percentile uint8 `json:"percentile"`
+	Percentage uint8 `json:"percentage"`
+}
+
 func (sc *AssetStatsController) GetMechStatPercentage(w http.ResponseWriter, r *http.Request) (int, error) {
 	stat := r.URL.Query().Get("stat")     // the stat identifier e.g. speed
 	value := r.URL.Query().Get("value")   // the value of the stat e.g. 2000
@@ -63,33 +69,17 @@ func (sc *AssetStatsController) GetMechStatPercentage(w http.ResponseWriter, r *
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("invalid mech stat identifier"))
 	}
 
-	var rank int64
-	err = gamedb.Conn.QueryRow(context.Background(), fmt.Sprintf(`
-	SELECT
-		count(id)
-	FROM
-		chassis
-	WHERE
-		"%s" >= $1
-`, stat), valueInt).Scan(&rank)
-	if err != nil {
-		gamelog.L.Error().
-			Str("stat", stat).
-			Str("value", value).
-			Str("global", global).
-			Str("db func", "ChassisStatRank").Err(err).Msg("unable to get rank of chassis stat")
-		return http.StatusInternalServerError, err
-	}
-
-	var total int64
-	var max int64
+	var total int
+	var max int
+	var min int
 	err = gamedb.Conn.QueryRow(context.Background(), fmt.Sprintf(`
 	SELECT
 		count(id),
-		max("%s")
+		max("%[1]s"),
+		min("%[1]s")
 	FROM
 		chassis
-`, stat)).Scan(&total, &max)
+`, stat)).Scan(&total, &max, &min)
 	if err != nil {
 		gamelog.L.Error().
 			Str("stat", stat).
@@ -99,13 +89,18 @@ func (sc *AssetStatsController) GetMechStatPercentage(w http.ResponseWriter, r *
 		return http.StatusInternalServerError, err
 	}
 
-	return helpers.EncodeJSON(w, struct {
-		Total      int64 `json:"total"`
-		Percentile uint8 `json:"percentile"`
-		Percentage uint8 `json:"percentage"`
-	}{
-		total,
-		uint8((rank * 100) / total),
-		uint8((int64(valueInt) * 100) / max),
+	if max-min <= 0 {
+		return helpers.EncodeJSON(w, GetMechStatPercentageResponse{
+			int64(total),
+			0,
+			100,
+		})
+	}
+
+	percentage := uint8(float64(valueInt-min) * 100 / float64(max-min))
+	return helpers.EncodeJSON(w, GetMechStatPercentageResponse{
+		int64(total),
+		100 - percentage,
+		percentage,
 	})
 }
