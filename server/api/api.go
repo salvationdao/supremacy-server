@@ -134,8 +134,7 @@ func NewAPI(
 			sentryHandler := sentryhttp.New(sentryhttp.Options{})
 			r.Use(sentryHandler.Handle)
 		})
-		r.Mount("/check", CheckRouter(log_helpers.NamedLogger(log, "check router"), conn))
-		r.Mount("/stat", AssetStatsRouter(log, conn, api))
+		r.Mount("/check", CheckRouter(log_helpers.NamedLogger(log, "check router"), conn, battleArenaClient))
 		r.Mount(fmt.Sprintf("/%s/Supremacy_game", server.SupremacyGameUserID), PassportWebhookRouter(log, conn, config.PassportWebhookSecret, api))
 
 		// Web sockets are long-lived, so we don't want the sentry performance tracer running for the life-time of the connection.
