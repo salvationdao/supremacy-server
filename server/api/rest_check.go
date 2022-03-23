@@ -74,7 +74,8 @@ func (c *CheckController) Check(w http.ResponseWriter, r *http.Request) {
 		// get contributions for the last  2 mins
 		btlContributions, err := ba.BattleContributions(boiler.BattleContributionWhere.ContributedAt.GT(now.Add(-2 * time.Minute))).All(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			c.Log.Err(err).Msg("failed to get battle contributions")
+			c.Log.Err(err).Str("battle_no", fmt.Sprintf("%d", ba.BattleNumber)).Msg("failed to get battle contributions")
+
 		}
 
 		if btlContributions == nil || len(btlContributions) <= 0 {
