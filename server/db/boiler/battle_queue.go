@@ -29,6 +29,7 @@ type BattleQueue struct {
 	OwnerID          string      `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
 	BattleID         null.String `boiler:"battle_id" boil:"battle_id" json:"battle_id,omitempty" toml:"battle_id" yaml:"battle_id,omitempty"`
 	BattleContractID null.String `boiler:"battle_contract_id" boil:"battle_contract_id" json:"battle_contract_id,omitempty" toml:"battle_contract_id" yaml:"battle_contract_id,omitempty"`
+	Notified         bool        `boiler:"notified" boil:"notified" json:"notified" toml:"notified" yaml:"notified"`
 
 	R *battleQueueR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleQueueL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -41,6 +42,7 @@ var BattleQueueColumns = struct {
 	OwnerID          string
 	BattleID         string
 	BattleContractID string
+	Notified         string
 }{
 	MechID:           "mech_id",
 	QueuedAt:         "queued_at",
@@ -48,6 +50,7 @@ var BattleQueueColumns = struct {
 	OwnerID:          "owner_id",
 	BattleID:         "battle_id",
 	BattleContractID: "battle_contract_id",
+	Notified:         "notified",
 }
 
 var BattleQueueTableColumns = struct {
@@ -57,6 +60,7 @@ var BattleQueueTableColumns = struct {
 	OwnerID          string
 	BattleID         string
 	BattleContractID string
+	Notified         string
 }{
 	MechID:           "battle_queue.mech_id",
 	QueuedAt:         "battle_queue.queued_at",
@@ -64,6 +68,7 @@ var BattleQueueTableColumns = struct {
 	OwnerID:          "battle_queue.owner_id",
 	BattleID:         "battle_queue.battle_id",
 	BattleContractID: "battle_queue.battle_contract_id",
+	Notified:         "battle_queue.notified",
 }
 
 // Generated where
@@ -75,6 +80,7 @@ var BattleQueueWhere = struct {
 	OwnerID          whereHelperstring
 	BattleID         whereHelpernull_String
 	BattleContractID whereHelpernull_String
+	Notified         whereHelperbool
 }{
 	MechID:           whereHelperstring{field: "\"battle_queue\".\"mech_id\""},
 	QueuedAt:         whereHelpertime_Time{field: "\"battle_queue\".\"queued_at\""},
@@ -82,6 +88,7 @@ var BattleQueueWhere = struct {
 	OwnerID:          whereHelperstring{field: "\"battle_queue\".\"owner_id\""},
 	BattleID:         whereHelpernull_String{field: "\"battle_queue\".\"battle_id\""},
 	BattleContractID: whereHelpernull_String{field: "\"battle_queue\".\"battle_contract_id\""},
+	Notified:         whereHelperbool{field: "\"battle_queue\".\"notified\""},
 }
 
 // BattleQueueRels is where relationship names are stored.
@@ -114,9 +121,9 @@ func (*battleQueueR) NewStruct() *battleQueueR {
 type battleQueueL struct{}
 
 var (
-	battleQueueAllColumns            = []string{"mech_id", "queued_at", "faction_id", "owner_id", "battle_id", "battle_contract_id"}
+	battleQueueAllColumns            = []string{"mech_id", "queued_at", "faction_id", "owner_id", "battle_id", "battle_contract_id", "notified"}
 	battleQueueColumnsWithoutDefault = []string{"mech_id", "faction_id", "owner_id"}
-	battleQueueColumnsWithDefault    = []string{"queued_at", "battle_id", "battle_contract_id"}
+	battleQueueColumnsWithDefault    = []string{"queued_at", "battle_id", "battle_contract_id", "notified"}
 	battleQueuePrimaryKeyColumns     = []string{"mech_id"}
 	battleQueueGeneratedColumns      = []string{}
 )

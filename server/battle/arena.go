@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/gofrs/uuid"
+	leakybucket "github.com/kevinms/leakybucket-go"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
@@ -39,6 +40,7 @@ type Arena struct {
 	RPCClient      *rpcclient.XrpcClient
 	ppClient       *passport.Passport
 	gameClientLock sync.Mutex
+	sms            server.SMS
 	sync.Mutex
 }
 
@@ -51,6 +53,7 @@ type Opts struct {
 	NetMessageBus *messagebus.NetBus
 	PPClient      *passport.Passport
 	RPCClient     *rpcclient.XrpcClient
+	SMS           server.SMS
 }
 
 type MessageType byte
@@ -75,6 +78,8 @@ func (mt MessageType) String() string {
 	return [...]string{"JSON", "Tick", "Live Vote Tick", "Viewer Live Count Tick", "Spoils of War Tick", "game ability progress tick", "battle ability progress tick"}[mt]
 }
 
+var VoteBucket = leakybucket.NewCollector(8, 8, true)
+
 func NewArena(opts *Opts) *Arena {
 	l, err := net.Listen("tcp", opts.Addr)
 
@@ -91,6 +96,7 @@ func NewArena(opts *Opts) *Arena {
 	arena.messageBus = opts.MessageBus
 	arena.ppClient = opts.PPClient
 	arena.RPCClient = opts.RPCClient
+	arena.sms = opts.SMS
 
 	arena.AIPlayers, err = db.DefaultFactionPlayers()
 	if err != nil {
@@ -123,7 +129,6 @@ func NewArena(opts *Opts) *Arena {
 
 	opts.SubscribeCommand(HubKeyGameNotification, arena.GameNotificationSubscribeHandler)
 	opts.SecureUserSubscribeCommand(HubKeyMultiplierUpdate, arena.HubKeyMultiplierUpdate)
-	opts.SecureUserSubscribeCommand(HubKeyViewerLiveCountUpdated, arena.ViewerLiveCountUpdateSubscribeHandler)
 
 	opts.SecureUserSubscribeCommand(HubKeyUserStatSubscribe, arena.UserStatUpdatedSubscribeHandler)
 
@@ -144,7 +149,7 @@ func NewArena(opts *Opts) *Arena {
 	// net message subscribe
 	opts.NetSecureUserFactionSubscribeCommand(HubKeyBattleAbilityProgressBarUpdated, arena.FactionProgressBarUpdateSubscribeHandler)
 	opts.NetSecureUserFactionSubscribeCommand(HubKeyAbilityPriceUpdated, arena.FactionAbilityPriceUpdateSubscribeHandler)
-	opts.NetSecureUserFactionSubscribeCommand(HubKeyWarMachineLocationUpdated, arena.WarMachineLocationUpdateSubscribeHandler)
+	opts.NetSubscribeCommand(HubKeyWarMachineLocationUpdated, arena.WarMachineLocationUpdateSubscribeHandler)
 	opts.NetSecureUserFactionSubscribeCommand(HubKeyLiveVoteCountUpdated, arena.LiveVoteCountUpdateSubscribeHandler)
 	opts.NetSecureUserSubscribeCommand(HubKeySpoilOfWarUpdated, arena.SpoilOfWarUpdateSubscribeHandler)
 
@@ -235,6 +240,11 @@ type BribeGabRequest struct {
 const HubKeyBattleAbilityBribe hub.HubCommandKey = "BATTLE:ABILITY:BRIBE"
 
 func (arena *Arena) BattleAbilityBribe(ctx context.Context, wsc *hub.Client, payload []byte, factionID uuid.UUID, reply hub.ReplyFunc) error {
+	b := VoteBucket.Add(wsc.Identifier(), 1)
+	if b == 0 {
+		return nil
+	}
+
 	// skip, if current not battle
 	if arena.currentBattle == nil {
 		gamelog.L.Warn().Str("bribe", wsc.Identifier()).Msg("current battle is nil")
@@ -395,6 +405,11 @@ type GameAbilityContributeRequest struct {
 const HubKeFactionUniqueAbilityContribute hub.HubCommandKey = "FACTION:UNIQUE:ABILITY:CONTRIBUTE"
 
 func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, wsc *hub.Client, payload []byte, factionID uuid.UUID, reply hub.ReplyFunc) error {
+	b := VoteBucket.Add(wsc.Identifier(), 1)
+	if b == 0 {
+		return nil
+	}
+
 	if arena == nil || arena.currentBattle == nil || factionID.IsNil() {
 		gamelog.L.Error().Bool("arena", arena == nil).
 			Bool("factionID", factionID.IsNil()).
@@ -734,9 +749,10 @@ func (arena *Arena) init() {
 	btl := arena.Battle()
 	arena.currentBattle = btl
 	arena.Message(BATTLEINIT, btl)
+
+	go arena.NotifyUpcomingWarMachines()
 }
 
-//listen listens for new commands and blocks indefinitely
 func (arena *Arena) start() {
 	ctx := context.Background()
 	arena.init()
@@ -869,6 +885,7 @@ func (arena *Arena) Battle() *Battle {
 			m: make(map[uuid.UUID]*BattleUser),
 		},
 		destroyedWarMachineMap: make(map[byte]*WMDestroyedRecord),
+		viewerCountInputChan:   make(chan *ViewerLiveCount),
 	}
 
 	err = btl.Load()
@@ -876,12 +893,17 @@ func (arena *Arena) Battle() *Battle {
 		gamelog.L.Warn().Err(err).Msg("unable to load out mechs")
 	}
 
+	// set user online debounce
+	go btl.debounceSendingViewerCount(func(result ViewerLiveCount) {
+		btl.users.Send(HubKeyViewerLiveCountUpdated, result)
+	})
+
 	return btl
 }
 
 const HubKeyUserStatSubscribe hub.HubCommandKey = "USER:STAT:SUBSCRIBE"
 
-func (uc *Arena) UserStatUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (arena *Arena) UserStatUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
 
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)

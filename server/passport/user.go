@@ -5,6 +5,7 @@ import (
 	"server"
 
 	"github.com/gofrs/uuid"
+	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/shopspring/decimal"
 )
@@ -51,23 +52,32 @@ func (pp *Passport) UserSupsMultiplierSend(ctx context.Context, userSupsMultipli
 	}
 }
 
-type UsersGetReq struct {
-	UserIDs []server.UserID `json:"userIDs"`
+type UserGetReq struct {
+	UserID server.UserID `json:"userID"`
 }
 
-type UsersGetResp struct {
-	Users []*server.User `json:"users"`
+type UserGetResp struct {
+	User *server.PassportUser `json:"user"`
 }
 
 // UserGet get user by id
-func (pp *Passport) UsersGet(userIDs []server.UserID, callback func(users []*server.User)) {
-	resp := &UsersGetResp{}
-	err := pp.RPCClient.Call("S.SupremacyUsersGetHandler", UsersGetReq{userIDs}, resp)
+func (pp *Passport) UserGet(userID server.UserID) (*server.User, error) {
+	resp := &UserGetResp{}
+	err := pp.RPCClient.Call("S.SupremacyUserGetHandler", UserGetReq{userID}, resp)
 	if err != nil {
-		pp.Log.Err(err).Str("method", "SupremacyUsersGetHandler").Msg("rpc error")
-		return
+		pp.Log.Err(err).Str("method", "SupremacyUserGetHandler").Msg("rpc error")
+		return nil, terror.Error(err, "Failed to get user from passport server")
 	}
-	callback(resp.Users)
+	factionID := server.FactionID(uuid.Nil)
+	if resp.User.FactionID != nil {
+		factionID = *resp.User.FactionID
+	}
+	return &server.User{
+		ID:            resp.User.ID,
+		Username:      resp.User.Username,
+		PublicAddress: resp.User.PublicAddress,
+		FactionID:     factionID,
+	}, nil
 }
 
 type UserStatSendReq struct {

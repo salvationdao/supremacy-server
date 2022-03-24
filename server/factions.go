@@ -52,7 +52,8 @@ func (f *Faction) Brief() *FactionBrief {
 
 type FactionStat struct {
 	*boiler.FactionStat
-	MvpPlayerUsername string `json:"mvp_player_id"`
+	MvpPlayerUsername string `json:"mvp_username"`
+	MemberCount       int64  `json:"member_count"`
 }
 
 type BattleAbility struct {

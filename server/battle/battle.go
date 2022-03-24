@@ -56,6 +56,8 @@ type Battle struct {
 	*boiler.Battle
 
 	inserted bool
+
+	viewerCountInputChan chan (*ViewerLiveCount)
 }
 
 const HubKeyLiveVoteCountUpdated hub.HubCommandKey = "LIVE:VOTE:COUNT:UPDATED"
@@ -365,7 +367,8 @@ func (btl *Battle) endAbilities() {
 		return
 	}
 
-	btl.abilities.end <- true
+	btl.abilities.End()
+	btl.abilities = nil
 }
 func (btl *Battle) endSpoils() {
 	defer func() {
@@ -430,9 +433,9 @@ func (btl *Battle) endCreateStats(payload *BattleEndPayload, winningWarMachines 
 		topPlayerContributors = append(topPlayerContributors, &BattleUser{
 			ID:            uuid.Must(uuid.FromString(p.ID)),
 			Username:      p.Username.String,
-			FactionID:     winningWarMachines[0].FactionID,
+			FactionID:     factionID.String(),
 			FactionColour: btl.factions[factionID].PrimaryColor,
-			FactionLogoID: FactionLogos[p.FactionID.String],
+			FactionLogoID: FactionLogos[factionID.String()],
 		})
 	}
 
@@ -446,9 +449,9 @@ func (btl *Battle) endCreateStats(payload *BattleEndPayload, winningWarMachines 
 		topPlayerExecutors = append(topPlayerExecutors, &BattleUser{
 			ID:            uuid.Must(uuid.FromString(p.ID)),
 			Username:      p.Username.String,
-			FactionID:     p.FactionID.String,
+			FactionID:     factionID.String(),
 			FactionColour: btl.factions[factionID].PrimaryColor,
-			FactionLogoID: FactionLogos[p.FactionID.String],
+			FactionLogoID: FactionLogos[factionID.String()],
 		})
 	}
 
@@ -737,8 +740,6 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 
 	gamelog.L.Info().Msgf("battle has been cleaned up, sending broadcast %s", btl.ID)
 	btl.endBroadcast(endInfo)
-	// calculate faction mvp
-	// NOTE: it is very he
 }
 
 const HubKeyBattleEndDetailUpdated hub.HubCommandKey = "BATTLE:END:DETAIL:UPDATED"
@@ -811,14 +812,17 @@ type ViewerLiveCount struct {
 }
 
 func (btl *Battle) userOnline(user *BattleUser, wsc *hub.Client) {
+	exists := false
 	u, ok := btl.users.User(user.ID)
 	if !ok {
 		user.wsClient[wsc] = true
 		btl.users.Add(user)
 	} else {
+		// do not upsert battle viewer or broadcast viewer count if user is already counted
 		u.Lock()
 		u.wsClient[wsc] = true
 		u.Unlock()
+		exists = true
 	}
 
 	if btl.inserted {
@@ -858,7 +862,40 @@ func (btl *Battle) userOnline(user *BattleUser, wsc *hub.Client) {
 		return true
 	})
 
-	btl.users.Send(HubKeyViewerLiveCountUpdated, resp)
+	if !exists {
+		// send result to broadcast debounce function
+		btl.viewerCountInputChan <- resp
+	} else {
+		// broadcast result to current user only if the user already exists
+		btl.users.Send(HubKeyViewerLiveCountUpdated, resp, user.ID)
+	}
+
+	return
+}
+
+func (btl *Battle) debounceSendingViewerCount(cb func(result ViewerLiveCount)) {
+	var result *ViewerLiveCount
+	interval := 500 * time.Millisecond
+	timer := time.NewTimer(interval)
+	checker := time.NewTicker(1 * time.Second)
+	for {
+		select {
+		case result = <-btl.viewerCountInputChan:
+			timer.Reset(interval)
+		case <-timer.C:
+			if result != nil {
+				cb(*result)
+			}
+		case <-checker.C:
+			if btl != btl.arena.currentBattle {
+				timer.Stop()
+				checker.Stop()
+				gamelog.L.Info().Msg("Clean up live count debounce function due to battle missmatch")
+				close(btl.viewerCountInputChan)
+				return
+			}
+		}
+	}
 }
 
 func UpdatePayload(btl *Battle) *GameSettingsResponse {
