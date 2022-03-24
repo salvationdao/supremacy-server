@@ -84,11 +84,12 @@ func (sow *SpoilsOfWar) Run() {
 	gamelog.L.Debug().Msg("starting spoils of war service")
 	t := time.NewTicker(sow.transactSpeed)
 
+	defer t.Stop()
+
 	for {
 		select {
 		case <-sow.flushCh:
-			// Runs at the end of each battle, called with sow.Flush()
-			t.Stop()
+			// Runs at the end of each battle, called with sow.Flush(
 			gamelog.L.Debug().Msg("running full flush and returning out")
 			err := sow.Flush()
 			if err != nil {
@@ -98,12 +99,15 @@ func (sow *SpoilsOfWar) Run() {
 			gamelog.L.Info().Msgf("spoils system has been cleaned up: %s", sow.battle.ID)
 
 			close(sow.flushCh)
+			sow.battle = nil
+			sow = nil
 			return
 		case <-t.C:
-			// terminate ticker if the battle missmatch
+			// terminate ticker if the battle mismatch
 			if sow.battle != sow.battle.arena.currentBattle {
-				t.Stop()
-				gamelog.L.Info().Msg("Clean up spoil of war ticker when battle missmatch")
+				sow.battle = nil
+				sow = nil
+				gamelog.L.Info().Msg("Clean up spoil of war ticker when battle mismatch")
 				return
 			}
 			// Push all pending transactions to passport server
