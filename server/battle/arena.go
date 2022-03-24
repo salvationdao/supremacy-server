@@ -42,6 +42,9 @@ type Arena struct {
 	gameClientLock sync.Mutex
 	sms            server.SMS
 	sync.Mutex
+
+	// ban player vote
+	lostSelectionPrivilege *LostSelectionPrivilege
 }
 
 type Opts struct {
@@ -97,6 +100,7 @@ func NewArena(opts *Opts) *Arena {
 	arena.ppClient = opts.PPClient
 	arena.RPCClient = opts.RPCClient
 	arena.sms = opts.SMS
+	arena.lostSelectionPrivilege = NewLostSelectPrivilege()
 
 	arena.AIPlayers, err = db.DefaultFactionPlayers()
 	if err != nil {
@@ -145,6 +149,10 @@ func NewArena(opts *Opts) *Arena {
 	opts.SecureUserFactionCommand(HubKeFactionUniqueAbilityContribute, arena.FactionUniqueAbilityContribute)
 	opts.SecureUserFactionSubscribeCommand(HubKeyFactionUniqueAbilitiesUpdated, arena.FactionAbilitiesUpdateSubscribeHandler)
 	opts.SecureUserFactionSubscribeCommand(HubKeyWarMachineAbilitiesUpdated, arena.WarMachineAbilitiesUpdateSubscribeHandler)
+
+	// faction lose select privilege
+	opts.SecureUserFactionCommand(HubKeyLostSelectionPrivilegeVote, arena.LostSelectionPrivilegeVote)
+	opts.SecureUserFactionSubscribeCommand(LostSelectionPrivilegeSubscribe, arena.LostSelectionPrivilegeSubscribeHandler)
 
 	// net message subscribe
 	opts.NetSecureUserFactionSubscribeCommand(HubKeyBattleAbilityProgressBarUpdated, arena.FactionProgressBarUpdateSubscribeHandler)
@@ -925,4 +933,54 @@ func (arena *Arena) UserStatUpdatedSubscribeHandler(ctx context.Context, client 
 	}
 
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserStatSubscribe, client.Identifier())), nil
+}
+
+type LostSelectionPrivilegeRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		LSPID    uuid.UUID `json:"lost_selection_privilege_vote_id"`
+		IsAgreed bool      `json:"is_agreed"`
+	} `json:"payload"`
+}
+
+const HubKeyLostSelectionPrivilegeVote hub.HubCommandKey = "LOST:SELECTION:PRIVILEGE:VOTE"
+
+func (arena *Arena) LostSelectionPrivilegeVote(ctx context.Context, wsc *hub.Client, payload []byte, factionID uuid.UUID, reply hub.ReplyFunc) error {
+	req := &LostSelectionPrivilegeRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	// check whether the id exists
+	arena.lostSelectionPrivilege.RLock()
+	defer arena.lostSelectionPrivilege.RUnlock()
+
+	lsp, ok := arena.lostSelectionPrivilege.InstanceMap[req.Payload.LSPID]
+	if !ok {
+		gamelog.L.Warn().Str("lost_selection_privilege_id", req.Payload.LSPID.String()).Msg("lost selection privilege instance does not exists")
+		return terror.Error(fmt.Errorf("lost selection privilege instance not found"), "Lost selection privilege instance does not exists")
+	}
+
+	if lsp.EndedAt.Before(time.Now()) {
+		return nil
+	}
+
+	lsp.VoteChan <- &LSPVote{
+		playerID: uuid.FromStringOrNil(wsc.Identifier()),
+		isAgreed: req.Payload.IsAgreed,
+	}
+	return nil
+}
+
+const LostSelectionPrivilegeSubscribe hub.HubCommandKey = "LOST:SELECTION:PRIVILEGE:SUBSCRIBE"
+
+func (arena *Arena) LostSelectionPrivilegeSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+	}
+
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", LostSelectionPrivilegeSubscribe, client.Identifier())), nil
 }

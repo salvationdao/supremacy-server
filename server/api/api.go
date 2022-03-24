@@ -167,7 +167,6 @@ func NewAPI(
 	_ = NewCheckController(log, conn, api)
 	_ = NewUserController(log, conn, api)
 	_ = NewAuthController(log, conn, api, config)
-	// _ = NewFactionController(log, conn, api)
 	_ = NewGameController(log, conn, api)
 	_ = NewStreamController(log, conn, api)
 	_ = NewPlayerController(log, conn, api)
