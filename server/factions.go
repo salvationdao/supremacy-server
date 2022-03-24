@@ -1,6 +1,8 @@
 package server
 
 import (
+	"server/db/boiler"
+
 	"github.com/gofrs/uuid"
 )
 
@@ -49,11 +51,9 @@ func (f *Faction) Brief() *FactionBrief {
 }
 
 type FactionStat struct {
-	ID         FactionID `json:"id" db:"id"`
-	WinCount   *int64    `json:"win_count" db:"win_count,omitempty"`
-	LossCount  *int64    `json:"loss_count" db:"loss_count,omitempty"`
-	KillCount  *int64    `json:"kill_count" db:"kill_count,omitempty"`
-	DeathCount *int64    `json:"death_count" db:"death_count,omitempty"`
+	*boiler.FactionStat
+	MvpPlayerUsername string `json:"mvp_username"`
+	MemberCount       int64  `json:"member_count"`
 }
 
 type BattleAbility struct {

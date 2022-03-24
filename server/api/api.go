@@ -9,6 +9,7 @@ import (
 	"server"
 	"server/battle"
 	"server/db"
+	"server/gamelog"
 	"server/passport"
 	"time"
 
@@ -81,6 +82,7 @@ type API struct {
 	MessageBus    *messagebus.MessageBus
 	NetMessageBus *messagebus.NetBus
 	Passport      *passport.Passport
+	SMS           server.SMS
 
 	// ring check auth
 	RingCheckAuthMap *RingCheckAuthMap
@@ -99,6 +101,7 @@ func NewAPI(
 	messageBus *messagebus.MessageBus,
 	netMessageBus *messagebus.NetBus,
 	gsHub *hub.Hub,
+	sms server.SMS,
 ) *API {
 
 	// initialise api
@@ -115,6 +118,7 @@ func NewAPI(
 		Conn:             conn,
 		Hub:              gsHub,
 		RingCheckAuthMap: NewRingCheckMap(),
+		SMS:              sms,
 	}
 
 	battleArenaClient.SetMessageBus(messageBus, netMessageBus)
@@ -130,7 +134,7 @@ func NewAPI(
 			sentryHandler := sentryhttp.New(sentryhttp.Options{})
 			r.Use(sentryHandler.Handle)
 		})
-		r.Mount("/check", CheckRouter(log_helpers.NamedLogger(log, "check router"), conn))
+		r.Mount("/check", CheckRouter(log_helpers.NamedLogger(log, "check router"), conn, battleArenaClient))
 		r.Mount(fmt.Sprintf("/%s/Supremacy_game", server.SupremacyGameUserID), PassportWebhookRouter(log, conn, config.PassportWebhookSecret, api))
 
 		// Web sockets are long-lived, so we don't want the sentry performance tracer running for the life-time of the connection.
@@ -152,6 +156,9 @@ func NewAPI(
 		r.Post("/close_stream", WithToken(config.ServerStreamKey, WithError(api.CreateStreamCloseHandler)))
 		r.Get("/faction_data", WithError(api.GetFactionData))
 		r.Get("/trigger/ability_file_upload", WithError(api.GetFactionData))
+
+		r.Post("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.GlobalAnnouncementSend)))
+		r.Delete("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.GlobalAnnouncementDelete)))
 	})
 
 	///////////////////////////
@@ -159,10 +166,41 @@ func NewAPI(
 	///////////////////////////
 	_ = NewCheckController(log, conn, api)
 	_ = NewUserController(log, conn, api)
-	_ = NewAuthController(log, conn, api)
+	_ = NewAuthController(log, conn, api, config)
 	// _ = NewFactionController(log, conn, api)
 	_ = NewGameController(log, conn, api)
 	_ = NewStreamController(log, conn, api)
+	_ = NewPlayerController(log, conn, api)
+
+	// create a tickle that update faction mvp every day 00:00 am
+	factionMvpUpdate := tickle.New("Calculate faction mvp player", 24*60*60, func() (int, error) {
+		// set red mountain mvp player
+		gamelog.L.Info().Str("faction_id", server.RedMountainFactionID.String()).Msg("Recalculate Red Mountain mvp player")
+		err := db.FactionStatMVPUpdate(server.RedMountainFactionID.String())
+		if err != nil {
+			gamelog.L.Error().Str("faction_id", server.RedMountainFactionID.String()).Err(err).Msg("Failed to recalculate Red Mountain mvp player")
+		}
+
+		// set boston mvp player
+		gamelog.L.Info().Str("faction_id", server.BostonCyberneticsFactionID.String()).Msg("Recalculate Boston mvp player")
+		err = db.FactionStatMVPUpdate(server.BostonCyberneticsFactionID.String())
+		if err != nil {
+			gamelog.L.Error().Str("faction_id", server.BostonCyberneticsFactionID.String()).Err(err).Msg("Failed to recalculate Boston mvp player")
+		}
+
+		// set Zaibatsu mvp player
+		gamelog.L.Info().Str("faction_id", server.ZaibatsuFactionID.String()).Msg("Recalculate Zaibatsu mvp player")
+		err = db.FactionStatMVPUpdate(server.ZaibatsuFactionID.String())
+		if err != nil {
+			gamelog.L.Error().Str("faction_id", server.ZaibatsuFactionID.String()).Err(err).Msg("Failed to recalculate Zaibatsu mvp player")
+		}
+
+		return http.StatusOK, nil
+	})
+	err := factionMvpUpdate.SetIntervalAt(24*time.Hour, 0, 0)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to set up faction mvp user update tickle")
+	}
 
 	return api
 }
@@ -267,6 +305,7 @@ func (rcm *RingCheckAuthMap) Remove(key string) {
 func (rcm *RingCheckAuthMap) Check(key string) (*hub.Client, error) {
 	value, ok := rcm.Load(key)
 	if !ok {
+		gamelog.L.Error().Str("key", key).Msg("hub client not found")
 		return nil, terror.Error(fmt.Errorf("hub client not found"))
 	}
 

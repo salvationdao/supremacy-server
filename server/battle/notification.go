@@ -5,7 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"server"
+	"server/db"
+	"server/db/boiler"
+	"server/gamedb"
 	"server/gamelog"
+
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+
+	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
@@ -97,17 +104,14 @@ func (arena *Arena) HubKeyMultiplierUpdate(ctx context.Context, wsc *hub.Client,
 		return "", "", terror.Error(err)
 	}
 
-	if arena.currentBattle == nil {
-		return "", "", fmt.Errorf("no active battle")
-	}
-
 	id, err := uuid.FromString(wsc.Identifier())
 	if err != nil {
 		gamelog.L.Warn().Err(err).Str("id", wsc.Identifier()).Msg("unable to create uuid from websocket client identifier id")
-		return "", "", fmt.Errorf("no active battle")
+		return "", "", terror.Error(err, "Unable to create uuid from websocket client identifier id")
 	}
 
-	if arena.currentBattle.multipliers != nil {
+	// return multiplier if battle is on
+	if arena.currentBattle != nil && arena.currentBattle.multipliers != nil {
 		m, total := arena.currentBattle.multipliers.PlayerMultipliers(id, 0)
 
 		reply(&MultiplierUpdate{
@@ -121,48 +125,8 @@ func (arena *Arena) HubKeyMultiplierUpdate(ctx context.Context, wsc *hub.Client,
 
 const HubKeyViewerLiveCountUpdated = hub.HubCommandKey("VIEWER:LIVE:COUNT:UPDATED")
 
-func (arena *Arena) ViewerLiveCountUpdateSubscribeHandler(tx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	req := &hub.HubCommandRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return "", "", terror.Error(err)
-	}
-
-	if arena.currentBattle != nil {
-		btl := arena.currentBattle
-		resp := &ViewerLiveCount{
-			RedMountain: 0,
-			Boston:      0,
-			Zaibatsu:    0,
-			Other:       0,
-		}
-		btl.users.Range(func(user *BattleUser) bool {
-			if faction, ok := FactionNames[user.FactionID]; ok {
-				switch faction {
-				case "RedMountain":
-					resp.RedMountain++
-				case "Boston":
-					resp.Boston++
-				case "Zaibatsu":
-					resp.Zaibatsu++
-				default:
-					resp.Other++
-				}
-			} else {
-				resp.Other++
-			}
-			return true
-		})
-
-		reply(resp)
-	}
-
-	return req.TransactionID, messagebus.BusKey(HubKeyViewerLiveCountUpdated), nil
-}
-
 const HubKeyGameNotification hub.HubCommandKey = "GAME:NOTIFICATION"
 
-// WinnerAnnouncementSubscribeHandler subscribe on vote winner to pick location
 func (arena *Arena) GameNotificationSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
@@ -190,7 +154,7 @@ func (arena *Arena) BroadcastGameNotificationLocationSelect(data *GameNotificati
 }
 
 // BroadcastGameNotificationAbility broadcast game notification to client
-func (arena *Arena) BroadcastGameNotificationAbility(notificationType GameNotificationType, data *GameNotificationAbility) {
+func (arena *Arena) BroadcastGameNotificationAbility(notificationType GameNotificationType, data GameNotificationAbility) {
 	arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyGameNotification), &GameNotification{
 		Type: notificationType,
 		Data: data,
@@ -211,4 +175,72 @@ func (arena *Arena) BroadcastGameNotificationWarMachineDestroyed(data *WarMachin
 		Type: GameNotificationTypeWarMachineDestroyed,
 		Data: data,
 	})
+}
+
+const HubKeyPlayerBattleQueueBrowserSubscribe hub.HubCommandKey = "PLAYER:BROWSER_NOFTICATION_SUBSCRIBE"
+
+// NotifyUpcomingWarMachines sends out notifications to users with war machines in an upcoming battle
+func (arena *Arena) NotifyUpcomingWarMachines() {
+	// get next 10 war machines in queue for each faction
+	q, err := db.LoadBattleQueue(context.Background(), 13)
+	if err != nil {
+		gamelog.L.Warn().Err(err).Str("battle_id", arena.Battle().ID).Msg("unable to load out queue for notifications")
+		return
+	}
+
+	// for each war machine in queue, find ones that need to be notified
+	for _, bq := range q {
+		// if in battle or already notified skip
+		if bq.BattleID.Valid || bq.Notified {
+			continue
+		}
+
+		// add them to users to notify
+		player, err := boiler.Players(
+			boiler.PlayerWhere.ID.EQ(bq.OwnerID),
+			qm.Load(boiler.PlayerRels.PlayerPreference),
+		).One(gamedb.StdConn)
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("battle_id", arena.Battle().ID).Str("owner_id", bq.OwnerID).Msg("unable to find owner for battle queue notification")
+			continue
+		}
+
+		warMachine, err := bq.Mech().One(gamedb.StdConn)
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("mech_id", bq.MechID).Msg("unable to find war machine for battle queue notification")
+			continue
+		}
+
+		if player.R.PlayerPreference == nil {
+			continue
+		}
+
+		notificationMsg := fmt.Sprintf("%s, your War Machine %s is nearing battle, jump on to https://play.supremacy.game and prepare.", player.Username.String, warMachine.Name)
+
+		if player.R.PlayerPreference.NotificationsBattleQueueSMS && player.MobileNumber.Valid {
+			err := arena.sms.SendSMS(
+				player.MobileNumber.String,
+				notificationMsg,
+			)
+			if err != nil {
+				gamelog.L.Error().Err(err).Str("to", player.MobileNumber.String).Msg("failed to send battle queue notification sms")
+			}
+		}
+
+		if player.R.PlayerPreference.NotificationsBattleQueueBrowser {
+			arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPlayerBattleQueueBrowserSubscribe, player.ID)), notificationMsg)
+		}
+
+		if player.R.PlayerPreference.NotificationsBattleQueuePushNotifications {
+			// TODO: app notifications?
+		}
+
+		// TODO: telegram notifications?
+		// TODO: discord notifications?
+		bq.Notified = true
+		_, err = bq.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleQueueColumns.Notified))
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("mech_id", bq.MechID).Str("owner_id", bq.OwnerID).Str("queued_at", bq.QueuedAt.String()).Msg("failed to update notified column")
+		}
+	}
 }

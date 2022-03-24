@@ -1,7 +1,5 @@
 package server
 
-import "time"
-
 type Stream struct {
 	Host          string  `json:"host" db:"host"`
 	Name          string  `json:"name" db:"name"`
@@ -20,12 +18,4 @@ type Stream struct {
 
 type GamesToCloseStream struct {
 	GamesToClose int `json:"games_to_close"`
-}
-
-type GlobalAnnouncement struct {
-	ID         string     `json:"id"`
-	Title      string     `json:"title"`
-	Message    string     `json:"message"`
-	GamesUntil *int       `json:"games_until,omitempty"`
-	ShowUntil  *time.Time `json:"show_until,omitempty"`
 }

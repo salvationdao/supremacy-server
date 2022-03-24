@@ -33,9 +33,17 @@ type FactionStatSendReq struct {
 }
 
 type FactionStatSend struct {
-	FactionStat     *server.FactionStat `json:"factionStat"`
-	ToUserID        *server.UserID      `json:"toUserID,omitempty"`
-	ToUserSessionID *hub.SessionID      `json:"toUserSessionID,omitempty"`
+	FactionStat     *FactionStat   `json:"factionStat"`
+	ToUserID        *server.UserID `json:"toUserID,omitempty"`
+	ToUserSessionID *hub.SessionID `json:"toUserSessionID,omitempty"`
+}
+
+type FactionStat struct {
+	ID         server.FactionID `json:"id" db:"id"`
+	WinCount   *int64           `json:"win_count" db:"win_count,omitempty"`
+	LossCount  *int64           `json:"loss_count" db:"loss_count,omitempty"`
+	KillCount  *int64           `json:"kill_count" db:"kill_count,omitempty"`
+	DeathCount *int64           `json:"death_count" db:"death_count,omitempty"`
 }
 
 type FactionStatSendResp struct{}

@@ -2,11 +2,18 @@ package db
 
 import (
 	"context"
+	"math/rand"
 	"server"
+	"server/db/boiler"
+	"server/gamedb"
+	"time"
 
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/ninja-software/terror/v2"
 )
+
+var seed = rand.NewSource(time.Now().Unix())
+var rnd = rand.New(seed)
 
 // GameMapCreate create a new game map
 func GameMapCreate(ctx context.Context, conn Conn, gameMap *server.GameMap) error {
@@ -77,19 +84,14 @@ func GameMapGet(ctx context.Context, conn Conn, id server.GameMapID) (*server.Ga
 }
 
 // GameMapGetRamdom return a game map by given id
-func GameMapGetRandom(ctx context.Context, conn Conn) (*server.GameMap, error) {
-	gameMap := &server.GameMap{}
+func GameMapGetRandom(ctx context.Context, conn Conn) (*boiler.GameMap, error) {
+	maps, err := boiler.GameMaps().All(gamedb.StdConn)
 
-	q := `
-		SELECT * FROM game_maps
-		ORDER BY RANDOM()
-		LIMIT 1
-	`
-
-	err := pgxscan.Get(ctx, conn, gameMap, q)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
+
+	gameMap := maps[rnd.Intn(len(maps))]
 
 	return gameMap, nil
 }

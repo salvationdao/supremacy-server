@@ -15,12 +15,12 @@ require (
 	github.com/makiuchi-d/arelo v1.9.2
 	github.com/ninja-software/log_helpers v1.0.1-0.20211202070223-aff11d9a6ae6
 	github.com/ninja-software/terror/v2 v2.0.7
-	github.com/ninja-syndicate/hub v1.6.8
+	github.com/ninja-syndicate/hub v1.7.9
 	github.com/ory/dockertest/v3 v3.8.1
 	github.com/prometheus/client_golang v1.11.0
 	github.com/rs/zerolog v1.26.0
 	github.com/urfave/cli/v2 v2.3.0
-	golang.org/x/net v0.0.0-20211013171255-e13a2654a71e
+	golang.org/x/net v0.0.0-20211015210444-4f30a5c0130f
 	nhooyr.io/websocket v1.8.7
 )
 
@@ -30,10 +30,12 @@ require (
 	github.com/h2non/filetype v1.1.3
 	github.com/jackc/pgconn v1.10.1
 	github.com/jackc/pgx v3.6.2+incompatible
+	github.com/kevinms/leakybucket-go v0.0.0-20200115003610-082473db97ca
 	github.com/microcosm-cc/bluemonday v1.0.16
 	github.com/ninja-software/tickle v1.3.2
 	github.com/shopspring/decimal v1.2.0
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
+	github.com/twilio/twilio-go v0.22.2
 	github.com/volatiletech/null/v8 v8.1.2
 	github.com/volatiletech/sqlboiler/v4 v4.8.6
 	github.com/volatiletech/strmangle v0.0.2
@@ -50,6 +52,7 @@ require (
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/ericlagergren/decimal v0.0.0-20181231230500-73749d4874d5 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
+	github.com/golang/mock v1.6.0 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gosimple/unidecode v1.0.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
@@ -120,7 +123,7 @@ require (
 	github.com/lestrrat-go/blackmagic v1.0.0 // indirect
 	github.com/lestrrat-go/httpcc v1.0.0 // indirect
 	github.com/lestrrat-go/iter v1.0.1 // indirect
-	github.com/lestrrat-go/jwx v1.2.12 // indirect
+	github.com/lestrrat-go/jwx v1.2.12
 	github.com/lestrrat-go/option v1.0.0 // indirect
 	github.com/lib/pq v1.10.2 // indirect
 	github.com/mattn/go-colorable v0.1.8 // indirect

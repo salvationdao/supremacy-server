@@ -2,10 +2,13 @@ package main
 
 import (
 	"database/sql"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"net/url"
+	"runtime"
 	"server"
 	"server/api"
 	"server/battle"
@@ -13,6 +16,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/passport"
+	"server/sms"
 	"server/supermigrate"
 
 	"server/rpcclient"
@@ -29,6 +33,8 @@ import (
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-software/log_helpers"
 
+	_ "net/http/pprof"
+	rpprof "runtime/pprof"
 	"time"
 
 	"github.com/ninja-software/terror/v2"
@@ -112,10 +118,17 @@ func main() {
 					&cli.BoolFlag{Name: "cookie_secure", Value: true, EnvVars: []string{envPrefix + "_COOKIE_SECURE", "COOKIE_SECURE"}, Usage: "set cookie secure"},
 					&cli.StringFlag{Name: "google_client_id", Value: "", EnvVars: []string{envPrefix + "_GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_ID"}, Usage: "Google Client ID for OAuth functionaility."},
 
+					// SMS stuff
+					&cli.StringFlag{Name: "twilio_sid", Value: "", EnvVars: []string{envPrefix + "_TWILIO_ACCOUNT_SID"}, Usage: "Twilio account sid"},
+					&cli.StringFlag{Name: "twilio_api_key", Value: "", EnvVars: []string{envPrefix + "_TWILIO_API_KEY"}, Usage: "Twilio api key"},
+					&cli.StringFlag{Name: "twilio_api_secret", Value: "", EnvVars: []string{envPrefix + "_TWILIO_API_SECRET"}, Usage: "Twilio api secret"},
+					&cli.StringFlag{Name: "sms_from_number", Value: "", EnvVars: []string{envPrefix + "_SMS_FROM_NUMBER"}, Usage: "Number to send SMS from"},
+
 					// TODO: clear up token
 					&cli.BoolFlag{Name: "jwt_encrypt", Value: true, EnvVars: []string{envPrefix + "_JWT_ENCRYPT", "JWT_ENCRYPT"}, Usage: "set if to encrypt jwt tokens or not"},
 					&cli.StringFlag{Name: "jwt_encrypt_key", Value: "ITF1vauAxvJlF0PLNY9btOO9ZzbUmc6X", EnvVars: []string{envPrefix + "_JWT_KEY", "JWT_KEY"}, Usage: "supports key sizes of 16, 24 or 32 bytes"},
 					&cli.IntFlag{Name: "jwt_expiry_days", Value: 1, EnvVars: []string{envPrefix + "_JWT_EXPIRY_DAYS", "JWT_EXPIRY_DAYS"}, Usage: "expiry days for auth tokens"},
+					&cli.StringFlag{Name: "jwt_key", Value: "9a5b8421bbe14e5a904cfd150a9951d3", EnvVars: []string{"STREAM_SITE_JWT_KEY"}, Usage: "JWT Key for signing token on stream site"},
 
 					&cli.StringFlag{Name: "passport_server_token", Value: "aG93cyBpdCBnb2luZyBtYWM=", EnvVars: []string{envPrefix + "_PASSPORT_TOKEN"}, Usage: "Token to auth to passport server"},
 					&cli.StringFlag{Name: "server_stream_key", Value: "6c7b4a82-7797-4847-836e-978399830878", EnvVars: []string{envPrefix + "_SERVER_STREAM_KEY"}, Usage: "Authorization key to crud servers"},
@@ -124,6 +137,10 @@ func main() {
 					&cli.IntFlag{Name: "database_max_pool_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_POOL_CONNS"}, Usage: "Database max pool conns"},
 					&cli.IntFlag{Name: "database_max_idle_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_IDLE_CONNS"}, Usage: "Database max idle conns"},
 					&cli.IntFlag{Name: "database_max_open_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_OPEN_CONNS"}, Usage: "Database max open conns"},
+
+					&cli.BoolFlag{Name: "pprof", Value: true, EnvVars: []string{envPrefix + "_PPROF"}, Usage: "record pprof at regular interval to help debug"},
+					&cli.IntFlag{Name: "pprof_second", Value: 10, EnvVars: []string{envPrefix + "_PPROF_SECOND"}, Usage: "record pprof at x second interval"},
+					&cli.IntFlag{Name: "pprof_port", Value: 6060, EnvVars: []string{envPrefix + "_PPROF_PORT"}, Usage: "pprof local listening port"},
 				},
 				Usage: "run server",
 				Action: func(c *cli.Context) error {
@@ -138,6 +155,11 @@ func main() {
 					databasePort := c.String("database_port")
 					databaseName := c.String("database_name")
 					databaseAppName := c.String("database_application_name")
+
+					twilioSid := c.String("twilio_sid")
+					twilioApiKey := c.String("twilio_api_key")
+					twilioApiSecrete := c.String("twilio_api_secret")
+					smsFromNumber := c.String("sms_from_number")
 
 					passportAddr := c.String("passport_addr")
 					passportClientToken := c.String("passport_server_token")
@@ -154,6 +176,14 @@ func main() {
 						tracer.WithServiceVersion(Version),
 					)
 					defer tracer.Stop()
+
+					if c.Bool("pprof") {
+						pint := c.Int("pprof_second")
+						pport := c.Int("pprof_port")
+						// dumping pprof at period bases
+						pprofMonitor(pint, pport)
+					}
+
 					pgxconn, err := pgxconnect(
 						databaseUser,
 						databasePass,
@@ -190,12 +220,41 @@ func main() {
 					}
 					hostname := u.Hostname()
 					rpcAddrs := []string{
-						fmt.Sprintf("%s:10006", hostname),
-						fmt.Sprintf("%s:10005", hostname),
-						fmt.Sprintf("%s:10004", hostname),
-						fmt.Sprintf("%s:10003", hostname),
-						fmt.Sprintf("%s:10002", hostname),
 						fmt.Sprintf("%s:10001", hostname),
+						fmt.Sprintf("%s:10002", hostname),
+						fmt.Sprintf("%s:10003", hostname),
+						fmt.Sprintf("%s:10004", hostname),
+						fmt.Sprintf("%s:10005", hostname),
+						fmt.Sprintf("%s:10006", hostname),
+						fmt.Sprintf("%s:10007", hostname),
+						fmt.Sprintf("%s:10008", hostname),
+						fmt.Sprintf("%s:10009", hostname),
+						fmt.Sprintf("%s:10010", hostname),
+						fmt.Sprintf("%s:10011", hostname),
+						fmt.Sprintf("%s:10012", hostname),
+						fmt.Sprintf("%s:10013", hostname),
+						fmt.Sprintf("%s:10014", hostname),
+						fmt.Sprintf("%s:10015", hostname),
+						fmt.Sprintf("%s:10016", hostname),
+						fmt.Sprintf("%s:10017", hostname),
+						fmt.Sprintf("%s:10018", hostname),
+						fmt.Sprintf("%s:10019", hostname),
+						fmt.Sprintf("%s:10020", hostname),
+						fmt.Sprintf("%s:10021", hostname),
+						fmt.Sprintf("%s:10022", hostname),
+						fmt.Sprintf("%s:10023", hostname),
+						fmt.Sprintf("%s:10024", hostname),
+						fmt.Sprintf("%s:10025", hostname),
+						fmt.Sprintf("%s:10026", hostname),
+						fmt.Sprintf("%s:10027", hostname),
+						fmt.Sprintf("%s:10028", hostname),
+						fmt.Sprintf("%s:10029", hostname),
+						fmt.Sprintf("%s:10030", hostname),
+						fmt.Sprintf("%s:10031", hostname),
+						fmt.Sprintf("%s:10032", hostname),
+						fmt.Sprintf("%s:10033", hostname),
+						fmt.Sprintf("%s:10034", hostname),
+						fmt.Sprintf("%s:10035", hostname),
 					}
 					gamelog.L.Info().Msg("start rpc client")
 					rpcClient := &rpcclient.XrpcClient{
@@ -203,14 +262,44 @@ func main() {
 					}
 					gamelog.L.Info().Msg("start rpc server")
 					rpcServer := &comms.XrpcServer{}
+
 					err = rpcServer.Listen(
 						rpcClient,
-						"0.0.0.0:10011",
-						"0.0.0.0:10012",
-						"0.0.0.0:10013",
-						"0.0.0.0:10014",
-						"0.0.0.0:10015",
-						"0.0.0.0:10016",
+						":11001",
+						":11002",
+						":11003",
+						":11004",
+						":11005",
+						":11006",
+						":11007",
+						":11008",
+						":11009",
+						":11010",
+						":11011",
+						":11012",
+						":11013",
+						":11014",
+						":11015",
+						":11016",
+						":11017",
+						":11018",
+						":11019",
+						":11020",
+						":11021",
+						":11022",
+						":11023",
+						":11024",
+						":11025",
+						":11026",
+						":11027",
+						":11028",
+						":11029",
+						":11030",
+						":11031",
+						":11032",
+						":11033",
+						":11034",
+						":11035",
 					)
 					if err != nil {
 						return terror.Error(err)
@@ -223,9 +312,17 @@ func main() {
 						rpcClient,
 					)
 
+					// sync user stats
+
 					// Start Gameserver - Gameclient server
 					// Passport
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Setting up battle arena client")
+
+					// initialise smser
+					twilio, err := sms.NewTwilio(twilioSid, twilioApiKey, twilioApiSecrete, smsFromNumber, environment)
+					if err != nil {
+						return terror.Error(err, "SMS init failed")
+					}
 
 					// initialise net message bus
 					netMessageBus := messagebus.NewNetBus(log_helpers.NamedLogger(gamelog.L, "net_message_bus"))
@@ -259,25 +356,11 @@ func main() {
 						Hub:           gsHub,
 						PPClient:      pp,
 						RPCClient:     rpcClient,
+						SMS:           twilio,
 					})
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("set up arena")
-
-					fmt.Println("nbotblocking")
-
-					//battleArenaClient := battle_arena.NewBattleArenaClient(ctx, log_helpers.NamedLogger(gamelog.L, "battle-arena"), pgxconn, pp, battleArenaAddr)
-					//battleArenaClient.SetupAfterConnections(gamelog.L) // Blocks until setup properly, fetched and hydrated
-					//gamelog.L.Info().Int("factions", len(battleArenaClient.GetCurrentState().FactionMap)).Msg("Successfully setup battle queue")
-
-					//go func() {
-					//	err := battleArenaClient.Serve(ctx)
-					//	if err != nil {
-					//		fmt.Println(err)
-					//		os.Exit(1)
-					//	}
-					//}()
-
 					gamelog.L.Info().Msg("Setting up webhook rest API")
-					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, pgxconn, pp, messageBus, netMessageBus, gsHub)
+					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, pgxconn, pp, messageBus, netMessageBus, gsHub, twilio)
 					if err != nil {
 						fmt.Println(err)
 						os.Exit(1)
@@ -358,12 +441,41 @@ func main() {
 					}
 					hostname := u.Hostname()
 					rpcAddrs := []string{
-						fmt.Sprintf("%s:10006", hostname),
-						fmt.Sprintf("%s:10005", hostname),
-						fmt.Sprintf("%s:10004", hostname),
-						fmt.Sprintf("%s:10003", hostname),
-						fmt.Sprintf("%s:10002", hostname),
 						fmt.Sprintf("%s:10001", hostname),
+						fmt.Sprintf("%s:10002", hostname),
+						fmt.Sprintf("%s:10003", hostname),
+						fmt.Sprintf("%s:10004", hostname),
+						fmt.Sprintf("%s:10005", hostname),
+						fmt.Sprintf("%s:10006", hostname),
+						fmt.Sprintf("%s:10007", hostname),
+						fmt.Sprintf("%s:10008", hostname),
+						fmt.Sprintf("%s:10009", hostname),
+						fmt.Sprintf("%s:10010", hostname),
+						fmt.Sprintf("%s:10011", hostname),
+						fmt.Sprintf("%s:10012", hostname),
+						fmt.Sprintf("%s:10013", hostname),
+						fmt.Sprintf("%s:10014", hostname),
+						fmt.Sprintf("%s:10015", hostname),
+						fmt.Sprintf("%s:10016", hostname),
+						fmt.Sprintf("%s:10017", hostname),
+						fmt.Sprintf("%s:10018", hostname),
+						fmt.Sprintf("%s:10019", hostname),
+						fmt.Sprintf("%s:10020", hostname),
+						fmt.Sprintf("%s:10021", hostname),
+						fmt.Sprintf("%s:10022", hostname),
+						fmt.Sprintf("%s:10023", hostname),
+						fmt.Sprintf("%s:10024", hostname),
+						fmt.Sprintf("%s:10025", hostname),
+						fmt.Sprintf("%s:10026", hostname),
+						fmt.Sprintf("%s:10027", hostname),
+						fmt.Sprintf("%s:10028", hostname),
+						fmt.Sprintf("%s:10029", hostname),
+						fmt.Sprintf("%s:10030", hostname),
+						fmt.Sprintf("%s:10031", hostname),
+						fmt.Sprintf("%s:10032", hostname),
+						fmt.Sprintf("%s:10033", hostname),
+						fmt.Sprintf("%s:10034", hostname),
+						fmt.Sprintf("%s:10035", hostname),
 					}
 					passportRPCclient := &rpcclient.XrpcClient{
 						Addrs: rpcAddrs,
@@ -421,7 +533,7 @@ func main() {
 	}
 }
 
-func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, battleArenaClient *battle.Arena, conn *pgxpool.Pool, passport *passport.Passport, messageBus *messagebus.MessageBus, netMessageBus *messagebus.NetBus, gsHub *hub.Hub) (*api.API, error) {
+func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, battleArenaClient *battle.Arena, conn *pgxpool.Pool, passport *passport.Passport, messageBus *messagebus.MessageBus, netMessageBus *messagebus.NetBus, gsHub *hub.Hub, sms server.SMS) (*api.API, error) {
 	environment := ctxCLI.String("environment")
 	sentryDSNBackend := ctxCLI.String("sentry_dsn_backend")
 	sentryServerName := ctxCLI.String("sentry_server_name")
@@ -443,6 +555,12 @@ func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, bat
 		}
 	}
 
+	jwtKey := ctxCLI.String("jwt_key")
+	jwtKeyByteArray, err := base64.StdEncoding.DecodeString(jwtKey)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
 	apiAddr := ctxCLI.String("api_addr")
 
 	config := &server.Config{
@@ -453,6 +571,7 @@ func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, bat
 		TwitchUIHostURL:       ctxCLI.String("twitch_ui_web_host_url"),
 		ServerStreamKey:       ctxCLI.String("server_stream_key"),
 		PassportWebhookSecret: ctxCLI.String("passport_webhook_secret"),
+		JwtKey:                jwtKeyByteArray,
 	}
 
 	// HTML Sanitizer
@@ -460,7 +579,7 @@ func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, bat
 	HTMLSanitizePolicy.AllowAttrs("class").OnElements("img", "table", "tr", "td", "p")
 
 	// API Server
-	serverAPI := api.NewAPI(ctx, log, battleArenaClient, passport, apiAddr, HTMLSanitizePolicy, conn, config, messageBus, netMessageBus, gsHub)
+	serverAPI := api.NewAPI(ctx, log, battleArenaClient, passport, apiAddr, HTMLSanitizePolicy, conn, config, messageBus, netMessageBus, gsHub, sms)
 	return serverAPI, nil
 }
 
@@ -539,4 +658,69 @@ func sqlConnect(
 	conn.SetMaxOpenConns(maxOpen)
 	return conn, nil
 
+}
+
+// pprofMonitor monitor to help debug some invisible issues
+func pprofMonitor(intervalSecond, listenPort int) {
+	if intervalSecond < 10 {
+		intervalSecond = 10
+	}
+	if listenPort <= 0 || listenPort >= 65535 {
+		listenPort = 6060
+	}
+
+	// auto record at interval
+	err := os.Mkdir("/tmp/gameserver-pprof", 0755)
+	if err != nil {
+		log.Println("ERROR pprof mkdir fail", err)
+	}
+
+	go func() {
+		lists := []string{
+			"allocs",
+			"block",
+			"goroutine",
+			"heap",
+			"mutex",
+			"threadcreate",
+			"goroutine",
+		}
+		for {
+			log.Printf("total goroutines %d\n", runtime.NumGoroutine())
+
+			for _, list := range lists {
+				t := time.Now().Format("2006-01-02T15:04:05")
+				fName := fmt.Sprintf("/tmp/gameserver-pprof/%s-%s.dump", t, list)
+
+				f, err := os.Create(fName)
+				if err != nil {
+					log.Println("ERROR failed to create pprof file", err)
+					continue
+				}
+
+				err = rpprof.Lookup(list).WriteTo(f, 1)
+				if err != nil {
+					log.Println("ERROR failed to write pprof file", err)
+					continue
+				}
+
+				err = f.Close()
+				if err != nil {
+					log.Println("ERROR failed to close pprof file", err)
+					continue
+				}
+			}
+
+			time.Sleep(time.Duration(intervalSecond) * time.Second)
+		}
+	}()
+	// pprof for quick web check
+	go func() {
+		log.Println(
+			http.ListenAndServe(
+				fmt.Sprintf("localhost:%d", listenPort),
+				nil,
+			),
+		)
+	}()
 }

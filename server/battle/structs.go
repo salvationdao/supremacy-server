@@ -107,10 +107,11 @@ func (bu *BattleUser) AvatarID() string {
 }
 
 func (bu *BattleUser) Send(key hub.HubCommandKey, payload interface{}) error {
+	bu.Lock()
 	if bu.wsClient == nil || len(bu.wsClient) == 0 {
 		return fmt.Errorf("user does not have a websocket client")
 	}
-
+	bu.Unlock()
 	b, err := json.Marshal(&BroadcastPayload{
 		Key:     key,
 		Payload: payload,
@@ -120,16 +121,19 @@ func (bu *BattleUser) Send(key hub.HubCommandKey, payload interface{}) error {
 		return err
 	}
 
+	bu.RLock()
 	for wsc := range bu.wsClient {
 		go wsc.Send(b)
 	}
+	bu.RUnlock()
 	return nil
 }
 
 type Multiplier struct {
-	Key         string `json:"key"`
-	Value       string `json:"value"`
-	Description string `json:"description"`
+	Key              string `json:"key"`
+	Value            string `json:"value"`
+	Description      string `json:"description"`
+	IsMultiplicative bool   `json:"is_multiplicative"`
 }
 
 type BattleEndDetail struct {
@@ -176,7 +180,7 @@ type WarMachine struct {
 	UtilitySlots       int             `json:"utilitySlots"`
 	Faction            *Faction        `json:"faction"`
 	WeaponNames        []string        `json:"weaponNames"`
-	Abilities          []*GameAbility  `json:"abilities"`
+	Abilities          []GameAbility   `json:"abilities"`
 	Tier               string          `json:"tier"`
 }
 

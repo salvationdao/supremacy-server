@@ -8,4 +8,5 @@ type Config struct {
 	TwitchUIHostURL       string
 	ServerStreamKey       string
 	PassportWebhookSecret string
+	JwtKey                []byte
 }
