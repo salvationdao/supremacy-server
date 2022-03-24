@@ -107,6 +107,7 @@ func (ac *AuthControllerWS) RingCheckJWTAuth(ctx context.Context, wsc *hub.Clien
 
 	player.PublicAddress = user.PublicAddress
 	player.Username = null.StringFrom(user.Username)
+
 	if !user.FactionID.IsNil() {
 		player.FactionID = null.StringFrom(user.FactionID.String())
 	}
