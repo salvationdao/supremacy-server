@@ -307,7 +307,7 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 	// getting citizens of the next round (meaning they got citizen previous round)
 	citizenIDs, err := db.CitizenPlayerIDs(ms.battle.BattleNumber)
 	if err != nil {
-		gamelog.L.Error().Str("battle number", strconv.Itoa(ms.battle.BattleNumber+1)).Err(err).Msg("Failed to get citizen ids for next round")
+		gamelog.L.Error().Str("battle number", strconv.Itoa(ms.battle.BattleNumber)).Err(err).Msg("Failed to get citizen ids for next round")
 	}
 
 	for _, id := range citizenIDs {
@@ -563,7 +563,7 @@ winwar:
 					//setting query conditions
 					// check the player has citizen multi that ends this round
 					boiler.UserMultiplierWhere.PlayerID.EQ(pid),
-					boiler.UserMultiplierWhere.UntilBattleNumber.EQ(ms.battle.BattleNumber),
+					boiler.UserMultiplierWhere.UntilBattleNumber.LT(ms.battle.BattleNumber),
 					boiler.UserMultiplierWhere.MultiplierID.EQ(citizenMulti.ID),
 				).One(gamedb.StdConn)
 				if err != nil && !errors.Is(err, sql.ErrNoRows) {
