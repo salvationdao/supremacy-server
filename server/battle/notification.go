@@ -177,6 +177,8 @@ func (arena *Arena) BroadcastGameNotificationWarMachineDestroyed(data *WarMachin
 	})
 }
 
+const HubKeyPlayerBattleQueueBrowserSubscribe hub.HubCommandKey = "PLAYER:BROWSER_NOFTICATION_SUBSCRIBE"
+
 // NotifyUpcomingWarMachines sends out notifications to users with war machines in an upcoming battle
 func (arena *Arena) NotifyUpcomingWarMachines() {
 	// get next 10 war machines in queue for each faction
@@ -213,10 +215,12 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			continue
 		}
 
+		notificationMsg := fmt.Sprintf("%s, your War Machine %s is nearing battle, jump on to https://play.supremacy.game and prepare.", player.Username.String, warMachine.Name)
+
 		if player.R.PlayerPreference.NotificationsBattleQueueSMS && player.MobileNumber.Valid {
 			err := arena.sms.SendSMS(
 				player.MobileNumber.String,
-				fmt.Sprintf("%s your War Machine %s is nearing battle, jump on to https://play.supremacy.game and prepare.", player.Username.String, warMachine.Name),
+				notificationMsg,
 			)
 			if err != nil {
 				gamelog.L.Error().Err(err).Str("to", player.MobileNumber.String).Msg("failed to send battle queue notification sms")
@@ -224,8 +228,9 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 		}
 
 		if player.R.PlayerPreference.NotificationsBattleQueueBrowser {
-			// TODO: browser notifications
+			arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPlayerBattleQueueBrowserSubscribe, player.ID)), notificationMsg)
 		}
+
 		if player.R.PlayerPreference.NotificationsBattleQueuePushNotifications {
 			// TODO: app notifications?
 		}

@@ -25,6 +25,7 @@ require (
 )
 
 require (
+	github.com/apex/log v1.9.0
 	github.com/friendsofgo/errors v0.9.2
 	github.com/gosimple/slug v1.12.0
 	github.com/h2non/filetype v1.1.3
@@ -72,6 +73,7 @@ require (
 	github.com/tinylib/msgp v1.1.2 // indirect
 	github.com/volatiletech/inflect v0.0.1 // indirect
 	github.com/volatiletech/randomize v0.0.1 // indirect
+	go.etcd.io/bbolt v1.3.5 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	golang.org/x/time v0.0.0-20211116232009-f0f3c7e86c11 // indirect
 	gopkg.in/ini.v1 v1.63.2 // indirect
@@ -83,6 +85,7 @@ require (
 	github.com/Microsoft/go-winio v0.5.1 // indirect
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/TwiN/go-away v1.6.0 // indirect
+	github.com/asdine/storm/v3 v3.2.1
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bmatcuk/doublestar/v4 v4.0.2 // indirect

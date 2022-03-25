@@ -17,6 +17,7 @@ import (
 	"server/gamelog"
 	"server/passport"
 	"server/sms"
+	"server/stormdb"
 	"server/supermigrate"
 	"server/telegram"
 
@@ -214,6 +215,14 @@ func main() {
 					if err != nil {
 						return terror.Panic(err)
 					}
+
+					dbFile := "storm.db"
+					// initialise storm db (notifications)
+					stormDB, err := stormdb.NewStormDB(dbFile)
+					if err != nil {
+						return fmt.Errorf("db open error: %s : %w", dbFile, err)
+					}
+					fmt.Println(stormDB)
 
 					u, err := url.Parse(passportAddr)
 					if err != nil {

@@ -57,7 +57,7 @@ type UserGetReq struct {
 }
 
 type UserGetResp struct {
-	User *server.User `json:"user"`
+	User *server.PassportUser `json:"user"`
 }
 
 // UserGet get user by id
@@ -68,7 +68,16 @@ func (pp *Passport) UserGet(userID server.UserID) (*server.User, error) {
 		pp.Log.Err(err).Str("method", "SupremacyUserGetHandler").Msg("rpc error")
 		return nil, terror.Error(err, "Failed to get user from passport server")
 	}
-	return resp.User, nil
+	factionID := server.FactionID(uuid.Nil)
+	if resp.User.FactionID != nil {
+		factionID = *resp.User.FactionID
+	}
+	return &server.User{
+		ID:            resp.User.ID,
+		Username:      resp.User.Username,
+		PublicAddress: resp.User.PublicAddress,
+		FactionID:     factionID,
+	}, nil
 }
 
 type UserStatSendReq struct {

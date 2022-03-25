@@ -6,10 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"server"
+	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 	"sort"
+	"strconv"
 
 	"github.com/gofrs/uuid"
 	"github.com/shopspring/decimal"
@@ -219,6 +221,8 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 		}{playerID, pc.FactionID, pc.Amount})
 	}
 
+	//caching this value in memory- instantiating variable
+	citizenMulti := &boiler.Multiplier{}
 	totalLength := len(playerAmountList)
 	if totalLength > 0 {
 		// sort the total
@@ -258,6 +262,8 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 			if m.MultiplierType == "spend_average" {
 				switch m.Key {
 				case "citizen":
+					//this battle's citizen multiplier
+					citizenMulti = m
 					for i := 0; i < winningFactionCitizenAmount; i++ {
 						// skip, if the user is not from the winning faction and fall into 80% - 95% range
 						if i >= citizenAmount && playerAmountList[i].factionID != btlEndInfo.WinningFaction.ID {
@@ -267,6 +273,8 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 						if _, ok := newMultipliers[playerAmountList[i].playerID]; !ok {
 							newMultipliers[playerAmountList[i].playerID] = map[string]*boiler.Multiplier{}
 						}
+
+						//still creating new multiplier for players who already have it (thus far, still stacks)
 						newMultipliers[playerAmountList[i].playerID][m.ID] = m
 					}
 				case "supporter":
@@ -293,6 +301,23 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 				}
 
 			}
+		}
+	}
+
+	// getting citizens of the next round (meaning they got citizen previous round)
+	citizenIDs, err := db.CitizenPlayerIDs(ms.battle.BattleNumber + 1)
+	if err != nil {
+		gamelog.L.Error().Str("battle number", strconv.Itoa(ms.battle.BattleNumber+1)).Err(err).Msg("Failed to get citizen ids for next round")
+	}
+
+	for _, id := range citizenIDs {
+		// if citizen in last round is not in the list, add them
+		if _, ok := newMultipliers[id.String()]; !ok {
+			//adding to newMultiplier map- key = player ID value = new map of Multiplier.
+			newMultipliers[id.String()] = map[string]*boiler.Multiplier{}
+
+			//setting the citizenMultiplier equal to the cached citizen Multi which is equal to the current battle's multi
+			newMultipliers[id.String()][citizenMulti.ID] = citizenMulti
 		}
 	}
 
@@ -529,7 +554,37 @@ winwar:
 
 	// insert multipliers
 	for pid, mlts := range newMultipliers {
-		for _, m := range mlts {
+		for multiID, m := range mlts {
+
+			// if it is a citizen multi
+			if citizenMulti.ID == multiID {
+
+				um, err := boiler.UserMultipliers(
+					//setting query conditions
+					// check the player has citizen mutli that ends the round after (if so, player had gotten multi previous round)
+
+					boiler.UserMultiplierWhere.PlayerID.EQ(pid),
+					boiler.UserMultiplierWhere.UntilBattleNumber.EQ(ms.battle.BattleNumber+1),
+					boiler.UserMultiplierWhere.MultiplierID.EQ(citizenMulti.ID),
+				).One(gamedb.StdConn)
+				if err != nil && !errors.Is(err, sql.ErrNoRows) {
+					gamelog.L.Error().Str("player id", pid).Err(err).Msg("Unable to get player citizen multiplier from last round")
+					continue
+				}
+
+				if um != nil {
+					// if we get user multiplier back, update the db untilBattleNumber to +2, extending the duration +1 battle.
+					um.UntilBattleNumber = ms.battle.BattleNumber + 2
+					err = db.ExtendCitizenMulti(um)
+					if err != nil {
+						gamelog.L.Error().Str("player id", pid).Err(err).Msg("Unable to extend player citizen multi")
+						continue
+					}
+					//continues the loop, does not put extra multiplier in- does not stack
+					continue
+				}
+			}
+
 			mlt := &boiler.UserMultiplier{
 				PlayerID:          pid,
 				FromBattleNumber:  ms.battle.BattleNumber,

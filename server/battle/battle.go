@@ -367,7 +367,8 @@ func (btl *Battle) endAbilities() {
 		return
 	}
 
-	btl.abilities.end <- true
+	btl.abilities.End()
+	btl.abilities = nil
 }
 func (btl *Battle) endSpoils() {
 	defer func() {
@@ -890,6 +891,7 @@ func (btl *Battle) debounceSendingViewerCount(cb func(result ViewerLiveCount)) {
 				timer.Stop()
 				checker.Stop()
 				gamelog.L.Info().Msg("Clean up live count debounce function due to battle missmatch")
+				close(btl.viewerCountInputChan)
 				return
 			}
 		}
