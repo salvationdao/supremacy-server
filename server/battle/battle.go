@@ -767,9 +767,9 @@ func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 		return true
 	})
 
-	multipliers, err := db.PlayerMultipliers(btl.BattleNumber - 1)
+	multipliers, err := db.PlayerMultipliers(btl.BattleNumber)
 	if err != nil {
-		gamelog.L.Error().Str("battle number #", strconv.Itoa(btl.BattleNumber-1)).Err(err).Msg("Failed to get player multipliers from db")
+		gamelog.L.Error().Str("battle number #", strconv.Itoa(btl.BattleNumber)).Err(err).Msg("Failed to get player multipliers from db")
 		return
 	}
 
