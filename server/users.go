@@ -1,7 +1,6 @@
 package server
 
 import (
-	"server/db/boiler"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -13,24 +12,24 @@ var XsynTreasuryUserID = UserID(uuid.Must(uuid.FromString("ebf30ca0-875b-4e84-9a
 
 // User is a single user on the platform
 type User struct {
-	ID                  UserID          `json:"id" db:"id"`
-	Faction             *boiler.Faction `json:"faction"`
-	FactionID           FactionID       `json:"faction_id,omitempty"`
-	FirstName           string          `json:"first_name" db:"first_name"`
-	LastName            string          `json:"last_name" db:"last_name"`
-	Email               null.String     `json:"email" db:"email"`
-	Username            string          `json:"username" db:"username"`
-	Verified            bool            `json:"verified" db:"verified"`
-	OldPasswordRequired bool            `json:"old_password_required" db:"old_password_required"`
-	RoleID              RoleID          `json:"role_id" db:"role_id"`
-	Role                Role            `json:"role" db:"role"`
-	AvatarID            *BlobID         `json:"avatar_id" db:"avatar_id"`
-	HasRecoveryCode     bool            `json:"has_recovery_code" db:"has_recovery_code"`
-	Pass2FA             bool            `json:"pass_2_fa"`
-	CreatedAt           time.Time       `json:"created_at" db:"created_at"`
-	UpdatedAt           time.Time       `json:"updated_at" db:"updated_at"`
-	DeletedAt           *time.Time      `json:"deleted_at" db:"deleted_at"`
-	MobileNumber        null.String     `json:"mobile_number"`
+	ID                  UserID      `json:"id" db:"id"`
+	Faction             *Faction    `json:"faction"`
+	FactionID           FactionID   `json:"faction_id,omitempty"`
+	FirstName           string      `json:"first_name" db:"first_name"`
+	LastName            string      `json:"last_name" db:"last_name"`
+	Email               null.String `json:"email" db:"email"`
+	Username            string      `json:"username" db:"username"`
+	Verified            bool        `json:"verified" db:"verified"`
+	OldPasswordRequired bool        `json:"old_password_required" db:"old_password_required"`
+	RoleID              RoleID      `json:"role_id" db:"role_id"`
+	Role                Role        `json:"role" db:"role"`
+	AvatarID            *BlobID     `json:"avatar_id" db:"avatar_id"`
+	HasRecoveryCode     bool        `json:"has_recovery_code" db:"has_recovery_code"`
+	Pass2FA             bool        `json:"pass_2_fa"`
+	CreatedAt           time.Time   `json:"created_at" db:"created_at"`
+	UpdatedAt           time.Time   `json:"updated_at" db:"updated_at"`
+	DeletedAt           *time.Time  `json:"deleted_at" db:"deleted_at"`
+	MobileNumber        null.String `json:"mobile_number"`
 
 	PublicAddress null.String `json:"public_address,omitempty" db:"public_address"`
 
@@ -39,6 +38,57 @@ type User struct {
 	// for dev env only
 	TwitchID null.String `json:"twitch_id" db:"twitch_id"`
 }
+
+type PassportUser struct {
+	ID                               UserID      `json:"id" db:"id"`
+	FirstName                        string      `json:"first_name" db:"first_name"`
+	LastName                         string      `json:"last_name" db:"last_name"`
+	Email                            null.String `json:"email" db:"email"`
+	FacebookID                       null.String `json:"facebook_id" db:"facebook_id"`
+	GoogleID                         null.String `json:"google_id" db:"google_id"`
+	TwitchID                         null.String `json:"twitch_id" db:"twitch_id"`
+	TwitterID                        null.String `json:"twitter_id" db:"twitter_id"`
+	DiscordID                        null.String `json:"discord_id" db:"discord_id"`
+	FactionID                        *FactionID  `json:"faction_id" db:"faction_id"`
+	MobileNumber                     null.String `json:"mobile_number" db:"mobile_number"`
+	Faction                          *Faction    `json:"faction"`
+	Username                         string      `json:"username" db:"username"`
+	Verified                         bool        `json:"verified" db:"verified"`
+	OldPasswordRequired              bool        `json:"old_password_required" db:"old_password_required"`
+	RoleID                           RoleID      `json:"role_id" db:"role_id"`
+	Role                             Role        `json:"role" db:"role"`
+	AvatarID                         *BlobID     `json:"avatar_id" db:"avatar_id"`
+	Sups                             BigInt
+	Online                           bool         `json:"online"`
+	TwoFactorAuthenticationActivated bool         `json:"two_factor_authentication_activated" db:"two_factor_authentication_activated"`
+	TwoFactorAuthenticationSecret    string       `json:"two_factor_authentication_secret" db:"two_factor_authentication_secret"`
+	TwoFactorAuthenticationIsSet     bool         `json:"two_factor_authentication_is_set" db:"two_factor_authentication_is_set"`
+	HasRecoveryCode                  bool         `json:"has_recovery_code" db:"has_recovery_code"`
+	Pass2FA                          bool         `json:"pass_2_fa"`
+	Nonce                            null.String  `json:"-" db:"nonce"`
+	PublicAddress                    null.String  `json:"public_address,omitempty" db:"public_address"`
+	CreatedAt                        time.Time    `json:"created_at" db:"created_at"`
+	UpdatedAt                        time.Time    `json:"updated_at" db:"updated_at"`
+	DeletedAt                        *time.Time   `json:"deleted_at" db:"deleted_at"`
+	Metadata                         UserMetadata `json:"metadata" db:"metadata"`
+}
+
+type UserMetadata struct {
+	BoughtStarterWarmachines int  `json:"bought_starter_warmachines"`
+	BoughtLootboxes          int  `json:"bought_lootboxes"`
+	WatchedVideo             bool `json:"watched_video"`
+}
+
+type Organisation struct {
+	ID        OrganisationID `json:"id" db:"id"`
+	Slug      string         `json:"slug" db:"slug"`
+	Name      string         `json:"name" db:"name"`
+	CreatedAt time.Time      `json:"created_at" db:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at" db:"updated_at"`
+	DeletedAt *time.Time     `json:"deleted_at" db:"deleted_at"`
+}
+
+type OrganisationID uuid.UUID
 
 // IssueToken contains token information used for login and verifying accounts
 type IssueToken struct {

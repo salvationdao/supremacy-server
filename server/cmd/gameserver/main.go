@@ -15,7 +15,6 @@ import (
 	"server/comms"
 	"server/gamedb"
 	"server/gamelog"
-	"server/passport"
 	"server/sms"
 	"server/supermigrate"
 
@@ -130,7 +129,7 @@ func main() {
 					&cli.IntFlag{Name: "jwt_expiry_days", Value: 1, EnvVars: []string{envPrefix + "_JWT_EXPIRY_DAYS", "JWT_EXPIRY_DAYS"}, Usage: "expiry days for auth tokens"},
 					&cli.StringFlag{Name: "jwt_key", Value: "9a5b8421bbe14e5a904cfd150a9951d3", EnvVars: []string{"STREAM_SITE_JWT_KEY"}, Usage: "JWT Key for signing token on stream site"},
 
-					&cli.StringFlag{Name: "passport_server_token", Value: "aG93cyBpdCBnb2luZyBtYWM=", EnvVars: []string{envPrefix + "_PASSPORT_TOKEN"}, Usage: "Token to auth to passport server"},
+					&cli.StringFlag{Name: "passport_server_token", Value: "e79422b7-7bfe-4463-897b-a1d22bf2e0bc", EnvVars: []string{envPrefix + "_PASSPORT_TOKEN"}, Usage: "Token to auth to passport server"},
 					&cli.StringFlag{Name: "server_stream_key", Value: "6c7b4a82-7797-4847-836e-978399830878", EnvVars: []string{envPrefix + "_SERVER_STREAM_KEY"}, Usage: "Authorization key to crud servers"},
 					&cli.StringFlag{Name: "passport_webhook_secret", Value: "e1BD3FF270804c6a9edJDzzDks87a8a4fde15c7=", EnvVars: []string{"PASSPORT_WEBHOOK_SECRET"}, Usage: "Authorization key to passport webhook"},
 
@@ -257,9 +256,8 @@ func main() {
 						fmt.Sprintf("%s:10035", hostname),
 					}
 					gamelog.L.Info().Msg("start rpc client")
-					rpcClient := &rpcclient.XrpcClient{
-						Addrs: rpcAddrs,
-					}
+					rpcClient := rpcclient.NewPassportXrpcClient(passportClientToken, rpcAddrs)
+
 					gamelog.L.Info().Msg("start rpc server")
 					rpcServer := &comms.XrpcServer{}
 
@@ -305,12 +303,12 @@ func main() {
 						return terror.Error(err)
 					}
 					//// Connect to passport
-					pp := passport.NewPassport(
-						log_helpers.NamedLogger(gamelog.L, "passport"),
-						passportAddr,
-						passportClientToken,
-						rpcClient,
-					)
+					//pp := passport.NewPassport(
+					//	log_helpers.NamedLogger(gamelog.L, "passport"),
+					//	passportAddr,
+					//	passportClientToken,
+					//	rpcClient,
+					//)
 
 					// sync user stats
 
@@ -354,13 +352,12 @@ func main() {
 						NetMessageBus: netMessageBus,
 						MessageBus:    messageBus,
 						Hub:           gsHub,
-						PPClient:      pp,
 						RPCClient:     rpcClient,
 						SMS:           twilio,
 					})
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("set up arena")
 					gamelog.L.Info().Msg("Setting up webhook rest API")
-					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, pgxconn, pp, messageBus, netMessageBus, gsHub, twilio)
+					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, pgxconn, rpcClient, messageBus, netMessageBus, gsHub, twilio)
 					if err != nil {
 						fmt.Println(err)
 						os.Exit(1)
@@ -533,7 +530,7 @@ func main() {
 	}
 }
 
-func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, battleArenaClient *battle.Arena, conn *pgxpool.Pool, passport *passport.Passport, messageBus *messagebus.MessageBus, netMessageBus *messagebus.NetBus, gsHub *hub.Hub, sms server.SMS) (*api.API, error) {
+func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, battleArenaClient *battle.Arena, conn *pgxpool.Pool, passport *rpcclient.PassportXrpcClient, messageBus *messagebus.MessageBus, netMessageBus *messagebus.NetBus, gsHub *hub.Hub, sms server.SMS) (*api.API, error) {
 	environment := ctxCLI.String("environment")
 	sentryDSNBackend := ctxCLI.String("sentry_dsn_backend")
 	sentryServerName := ctxCLI.String("sentry_server_name")

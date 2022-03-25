@@ -10,7 +10,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"server/passport"
+	"server/rpcclient"
 	"strings"
 	"time"
 
@@ -438,7 +438,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 						return
 					}
 
-					actualSupSpent, isTriggered := ability.SupContribution(as.battle.arena.ppClient, as.battle.ID, as.battle.BattleNumber, cont.userID, cont.amount)
+					actualSupSpent, isTriggered := ability.SupContribution(as.battle.arena.RPCClient, as.battle.ID, as.battle.BattleNumber, cont.userID, cont.amount)
 
 					as.liveCount.AddSups(actualSupSpent)
 
@@ -639,7 +639,7 @@ func (ga *GameAbility) FactionUniqueAbilityPriceUpdate(minPrice decimal.Decimal)
 }
 
 // SupContribution contribute sups to specific game ability, return the actual sups spent and whether the ability is triggered
-func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID string, battleNumber int, userID uuid.UUID, amount decimal.Decimal) (decimal.Decimal, bool) {
+func (ga *GameAbility) SupContribution(ppClient *rpcclient.PassportXrpcClient, battleID string, battleNumber int, userID uuid.UUID, amount decimal.Decimal) (decimal.Decimal, bool) {
 
 	isTriggered := false
 
@@ -656,7 +656,7 @@ func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID str
 	amount = amount.Truncate(0)
 
 	// pay sup
-	txid, err := ppClient.SpendSupMessage(passport.SpendSupsReq{
+	txid, err := ppClient.SpendSupMessage(rpcclient.SpendSupsReq{
 		FromUserID:           userID,
 		ToUserID:             SupremacyBattleUserID,
 		Amount:               amount.StringFixed(18),
@@ -1055,7 +1055,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 			if factionAbility, ok := as.battleAbilityPool.Abilities[cont.factionID]; ok {
 
 				// contribute sups
-				actualSupSpent, abilityTriggered := factionAbility.SupContribution(as.battle.arena.ppClient, as.battle.ID, as.battle.BattleNumber, cont.userID, cont.amount)
+				actualSupSpent, abilityTriggered := factionAbility.SupContribution(as.battle.arena.RPCClient, as.battle.ID, as.battle.BattleNumber, cont.userID, cont.amount)
 
 				as.liveCount.AddSups(actualSupSpent)
 

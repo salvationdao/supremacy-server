@@ -10,7 +10,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"server/passport"
+	"server/rpcclient"
 	"time"
 
 	"github.com/volatiletech/null/v8"
@@ -55,7 +55,7 @@ func NewSpoilsOfWar(btl *Battle, transactSpeed time.Duration, dripSpeed time.Dur
 
 		txr := fmt.Sprintf("spoils_of_war_fill_up|%s|%d", server.XsynTreasuryUserID, time.Now().UnixNano())
 
-		_, err := btl.arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
+		_, err := btl.arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
 			FromUserID:           uuid.UUID(server.XsynTreasuryUserID),
 			ToUserID:             SupremacyBattleUserID,
 			Amount:               amnt.String(),
@@ -161,7 +161,7 @@ func (sow *SpoilsOfWar) Flush() error {
 	for _, player := range onlineUsers {
 		txr := fmt.Sprintf("spoils_of_war|%s|%d", player.PlayerID, time.Now().UnixNano())
 		userAmount := amount.Mul(player.TotalMultiplier).Truncate(0)
-		_, err := sow.battle.arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
+		_, err := sow.battle.arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
 			FromUserID:           SupremacyBattleUserID,
 			ToUserID:             player.PlayerID,
 			Amount:               userAmount.String(),
@@ -259,7 +259,7 @@ func (sow *SpoilsOfWar) Drip() error {
 
 		txr := fmt.Sprintf("spoils_of_war|%s|%d", player.PlayerID, time.Now().UnixNano())
 
-		_, err := sow.battle.arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
+		_, err := sow.battle.arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
 			FromUserID:           SupremacyBattleUserID,
 			ToUserID:             player.PlayerID,
 			Amount:               userDrip.StringFixed(18),

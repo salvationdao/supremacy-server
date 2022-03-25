@@ -12,7 +12,6 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"server/passport"
 	"server/rpcclient"
 	"sync"
 	"time"
@@ -37,8 +36,7 @@ type Arena struct {
 	currentBattle  *Battle
 	syndicates     map[string]boiler.Faction
 	AIPlayers      map[string]db.PlayerWithFaction
-	RPCClient      *rpcclient.XrpcClient
-	ppClient       *passport.Passport
+	RPCClient      *rpcclient.PassportXrpcClient
 	gameClientLock sync.Mutex
 	sms            server.SMS
 	sync.Mutex
@@ -51,8 +49,7 @@ type Opts struct {
 	Hub           *hub.Hub
 	MessageBus    *messagebus.MessageBus
 	NetMessageBus *messagebus.NetBus
-	PPClient      *passport.Passport
-	RPCClient     *rpcclient.XrpcClient
+	RPCClient     *rpcclient.PassportXrpcClient
 	SMS           server.SMS
 }
 
@@ -94,7 +91,6 @@ func NewArena(opts *Opts) *Arena {
 	arena.timeout = opts.Timeout
 	arena.netMessageBus = opts.NetMessageBus
 	arena.messageBus = opts.MessageBus
-	arena.ppClient = opts.PPClient
 	arena.RPCClient = opts.RPCClient
 	arena.sms = opts.SMS
 
