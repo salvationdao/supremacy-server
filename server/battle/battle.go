@@ -1056,11 +1056,6 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		contractReward = queueLength.Mul(decimal.New(2, 18)) // 2x queue length
 	}
 
-	// Increase queue cost by 10% if notifications are enabled
-	if msg.Payload.EnableNotifications {
-		queueCost = queueCost.Mul(decimal.NewFromFloat(1.1))
-	}
-
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("unable to begin tx")
@@ -1134,6 +1129,26 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		// Abort transaction if charge fails
 		gamelog.L.Error().Str("txID", supTransactionID).Interface("mechID", mechID).Interface("factionID", mech.FactionID).Err(err).Msg("unable to charge user for insert mech into queue")
 		return err
+	}
+
+	// Charge queue notification fee, if enabled (10% of queue cost)
+	if !bq.Notified {
+		notifyCost := queueCost.Mul(decimal.NewFromFloat(0.1))
+		notifyTransactionID, err := arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
+			Amount:               notifyCost.StringFixed(18),
+			FromUserID:           ownerID,
+			ToUserID:             SupremacyBattleUserID,
+			TransactionReference: server.TransactionReference(fmt.Sprintf("war_machine_queue_notification_fee|%s|%d", msg.Payload.AssetHash, time.Now().UnixNano())),
+			Group:                "Battle",
+			SubGroup:             "Queue",
+			Description:          "SMS notification surcharge for queued mech in arena",
+			NotSafe:              true,
+		})
+		if err != nil {
+			// Abort transaction if charge fails
+			gamelog.L.Error().Str("txID", notifyTransactionID).Err(err).Msg("unable to charge user for sms notification for mech in queue")
+			return err
+		}
 	}
 
 	// Commit transaction
@@ -1276,9 +1291,14 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 	defer tx.Rollback()
 
 	// Remove from queue
-	bq := &boiler.BattleQueue{
-		MechID: mechID.String(),
+	bq, err := boiler.BattleQueues(boiler.BattleQueueWhere.MechID.EQ(mechID.String())).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().
+			Interface("mech", mech).
+			Err(err).Msg("unable to get exisiting mech from queue")
+		return err
 	}
+
 	_, err = bq.Delete(tx)
 	if err != nil {
 		gamelog.L.Error().
@@ -1302,6 +1322,26 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 		// Abort transaction if refund fails
 		gamelog.L.Error().Str("txID", supTransactionID).Interface("mechID", mechID).Interface("factionID", mech.FactionID).Err(err).Msg("unable to charge user for insert mech into queue")
 		return err
+	}
+
+	// Refund queue notification fee, if enabled (10% of queue cost)
+	if !bq.Notified {
+		notifyCost := originalQueueCost.Mul(decimal.NewFromFloat(0.1))
+		notifyTransactionID, err := arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
+			Amount:               notifyCost.StringFixed(18),
+			FromUserID:           SupremacyBattleUserID,
+			ToUserID:             ownerID,
+			TransactionReference: server.TransactionReference(fmt.Sprintf("refund_war_machine_queue_notification_fee|%s|%d", msg.Payload.AssetHash, time.Now().UnixNano())),
+			Group:                "Battle",
+			SubGroup:             "Queue",
+			Description:          "Refunded SMS notification surcharge for queued mech in arena",
+			NotSafe:              true,
+		})
+		if err != nil {
+			// Abort transaction if charge fails
+			gamelog.L.Error().Str("txID", notifyTransactionID).Err(err).Msg("unable to charge user for sms notification for mech in queue")
+			return err
+		}
 	}
 
 	err = tx.Commit()
