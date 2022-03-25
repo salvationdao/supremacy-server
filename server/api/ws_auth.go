@@ -81,7 +81,6 @@ func (ac *AuthControllerWS) RingCheckJWTAuth(ctx context.Context, wsc *hub.Clien
 
 	token, err := readJWT(tokenStr, ac.Config.EncryptTokens, []byte(ac.Config.EncryptTokensKey), ac.Config.JwtKey)
 	if err != nil {
-		gamelog.L.Err(err).Str("reading-jwt", string(tokenStr)).Msg("Failed to read JWT token")
 		return terror.Error(err, "Failed to read JWT token please try again")
 	}
 

@@ -92,7 +92,7 @@ func (c *CheckController) Check(w http.ResponseWriter, r *http.Request) {
 			c.Log.Err(err).Str("battle_no", fmt.Sprintf("%d", ba.BattleNumber)).Msg("failed to send")
 		}
 	}
-	
+
 	if ok {
 		_, err = w.Write([]byte("\nok"))
 		if err != nil {
