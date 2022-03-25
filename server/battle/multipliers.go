@@ -561,10 +561,9 @@ winwar:
 
 				um, err := boiler.UserMultipliers(
 					//setting query conditions
-					// check the player has citizen mutli that ends the round after (if so, player had gotten multi previous round)
-
+					// check the player has citizen multi that ends this round
 					boiler.UserMultiplierWhere.PlayerID.EQ(pid),
-					boiler.UserMultiplierWhere.UntilBattleNumber.EQ(ms.battle.BattleNumber+1),
+					boiler.UserMultiplierWhere.UntilBattleNumber.EQ(ms.battle.BattleNumber),
 					boiler.UserMultiplierWhere.MultiplierID.EQ(citizenMulti.ID),
 				).One(gamedb.StdConn)
 				if err != nil && !errors.Is(err, sql.ErrNoRows) {

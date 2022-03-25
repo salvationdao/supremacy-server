@@ -104,7 +104,7 @@ func ExtendCitizenMulti(um *boiler.UserMultiplier) error {
 	return nil
 }
 
-func CitizenPlayerIDs(until_battle_number int) ([]uuid.UUID, error) {
+func CitizenPlayerIDs(untilBattleNumber int) ([]uuid.UUID, error) {
 	userIDs := []uuid.UUID{}
 
 	q := `
@@ -113,7 +113,7 @@ func CitizenPlayerIDs(until_battle_number int) ([]uuid.UUID, error) {
 	where um.until_battle_number > $1
 	`
 
-	err := pgxscan.Select(context.Background(), gamedb.Conn, &userIDs, q, until_battle_number)
+	err := pgxscan.Select(context.Background(), gamedb.Conn, &userIDs, q, untilBattleNumber)
 	if err != nil {
 		return userIDs, terror.Error(err)
 	}
