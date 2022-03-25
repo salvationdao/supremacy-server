@@ -575,18 +575,18 @@ winwar:
 					gamelog.L.Error().Str("player id", pid).Err(err).Msg("Unable to get player citizen multiplier from last round")
 					continue
 				}
-
-				if um != nil {
-					// if we get user multiplier back, update the db untilBattleNumber to +2, extending the duration +1 battle.
-					um.UntilBattleNumber = ms.battle.BattleNumber + 2
-					_, err = um.Update(gamedb.StdConn, boil.Infer())
-					if err != nil {
-						gamelog.L.Error().Str("player id", pid).Err(err).Msg("Unable to extend player citizen multi")
-						continue
-					}
-					//continues the loop, does not put extra multiplier in- does not stack
-					continue
-				}
+				//
+				//if um != nil {
+				//	// if we get user multiplier back, update the db untilBattleNumber to +2, extending the duration +1 battle.
+				//	um.UntilBattleNumber = um.UntilBattleNumber + 1
+				//	_, err = um.Update(gamedb.StdConn, boil.Infer())
+				//	if err != nil {
+				//		gamelog.L.Error().Str("player id", pid).Err(err).Msg("Unable to extend player citizen multi")
+				//		continue
+				//	}
+				//	//continues the loop, does not put extra multiplier in- does not stack
+				//	continue
+				//}
 			}
 
 			mlt := &boiler.UserMultiplier{
