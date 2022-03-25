@@ -14,8 +14,6 @@ import (
 	"server/gamelog"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
-
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/lestrrat-go/jwx/jwa"
@@ -133,7 +131,6 @@ func (ac *AuthControllerWS) RingCheckJWTAuth(ctx context.Context, wsc *hub.Clien
 			return terror.Error(err, "Issues finding faction, try again or contact support.")
 		}
 	}
-	spew.Dump(user.Faction)
 	b, err := json.Marshal(&BroadcastPayload{
 		Key:     HubKeyUserRingCheck,
 		Payload: user,
