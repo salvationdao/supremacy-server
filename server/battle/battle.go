@@ -13,7 +13,6 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"server/passport"
 	"server/rpcclient"
 	"sort"
 	"strconv"
@@ -577,10 +576,10 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 				Msg("paying out mech winnings from contract reward")
 
 			factID := uuid.Must(uuid.FromString(factionAccountID))
-			syndicateBalance := btl.arena.ppClient.UserBalanceGet(factID)
+			syndicateBalance := btl.arena.RPCClient.UserBalanceGet(factID)
 
 			if syndicateBalance.LessThanOrEqual(contract.ContractReward) {
-				txid, err := btl.arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
+				txid, err := btl.arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
 					FromUserID:           uuid.UUID(server.XsynTreasuryUserID),
 					ToUserID:             factID,
 					Amount:               contract.ContractReward.StringFixed(0),
@@ -607,7 +606,7 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 			}
 
 			// pay sups
-			txid, err := btl.arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
+			txid, err := btl.arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
 				FromUserID:           factID,
 				ToUserID:             uuid.Must(uuid.FromString(contract.PlayerID)),
 				Amount:               contract.ContractReward.StringFixed(0),
@@ -1003,8 +1002,9 @@ func (arena *Arena) reset() {
 type QueueJoinRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		AssetHash   string `json:"asset_hash"`
-		NeedInsured bool   `json:"need_insured"`
+		AssetHash           string `json:"asset_hash"`
+		NeedInsured         bool   `json:"need_insured"`
+		EnableNotifications bool   `json:"enable_notifications"`
 	} `json:"payload"`
 }
 
@@ -1056,6 +1056,11 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		contractReward = queueLength.Mul(decimal.New(2, 18)) // 2x queue length
 	}
 
+	// Increase queue cost by 10% if notifications are enabled
+	if msg.Payload.EnableNotifications {
+		queueCost = queueCost.Mul(decimal.NewFromFloat(1.1))
+	}
+
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("unable to begin tx")
@@ -1103,6 +1108,9 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		OwnerID:          ownerID.String(),
 		BattleContractID: null.StringFrom(bc.ID),
 	}
+	if !msg.Payload.EnableNotifications {
+		bq.Notified = true
+	}
 	err = bq.Insert(tx, boil.Infer())
 	if err != nil {
 		gamelog.L.Error().
@@ -1112,7 +1120,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 	}
 
 	// Charge user queue fee
-	supTransactionID, err := arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
+	supTransactionID, err := arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
 		Amount:               queueCost.StringFixed(18),
 		FromUserID:           ownerID,
 		ToUserID:             SupremacyBattleUserID,
@@ -1280,7 +1288,7 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 	}
 
 	// Refund user queue fee
-	supTransactionID, err := arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
+	supTransactionID, err := arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
 		Amount:               originalQueueCost.StringFixed(18),
 		FromUserID:           SupremacyBattleUserID,
 		ToUserID:             ownerID,
@@ -1585,15 +1593,15 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 				killByWarMachine = wm
 				// update user kill
 				if wm.OwnedByID != "" {
-					_, err := db.UserStatAddKill(wm.OwnedByID)
+					_, err := db.UserStatAddMechKill(wm.OwnedByID)
 					if err != nil {
-						gamelog.L.Error().Str("player_id", wm.OwnedByID).Err(err).Msg("Failed to update user kill count")
+						gamelog.L.Error().Str("player_id", wm.OwnedByID).Err(err).Msg("Failed to update user mech kill count")
 					}
 
 					// add faction kill count
-					err = db.FactionAddKillCount(killByWarMachine.FactionID)
+					err = db.FactionAddMechKillCount(killByWarMachine.FactionID)
 					if err != nil {
-						gamelog.L.Error().Str("faction_id", killByWarMachine.FactionID).Err(err).Msg("failed to update faction kill count")
+						gamelog.L.Error().Str("faction_id", killByWarMachine.FactionID).Err(err).Msg("failed to update faction mech kill count")
 					}
 				}
 			}
@@ -1612,17 +1620,33 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 		}
 
 		if abl != nil && abl.PlayerID.Valid {
-			// update user kill
-			_, err := db.UserStatAddKill(abl.PlayerID.String)
-			if err != nil {
-				gamelog.L.Error().Str("player_id", abl.PlayerID.String).Err(err).Msg("Failed to update user kill count")
+
+			if strings.EqualFold(destroyedWarMachine.FactionID, abl.FactionID) {
+				// update user kill
+				_, err := db.UserStatSubtractAbilityKill(abl.PlayerID.String)
+				if err != nil {
+					gamelog.L.Error().Str("player_id", abl.PlayerID.String).Err(err).Msg("Failed to subtract user ability kill count")
+				}
+
+				// subtract faction kill count
+				err = db.FactionSubtractAbilityKillCount(abl.FactionID)
+				if err != nil {
+					gamelog.L.Error().Str("faction_id", abl.FactionID).Err(err).Msg("Failed to subtract user ability kill count")
+				}
+			} else {
+				// update user kill
+				_, err := db.UserStatAddAbilityKill(abl.PlayerID.String)
+				if err != nil {
+					gamelog.L.Error().Str("player_id", abl.PlayerID.String).Err(err).Msg("Failed to add user ability kill count")
+				}
+
+				// add faction kill count
+				err = db.FactionAddAbilityKillCount(abl.FactionID)
+				if err != nil {
+					gamelog.L.Error().Str("faction_id", abl.FactionID).Err(err).Msg("Failed to add faction ability kill count")
+				}
 			}
 
-			// add faction kill count
-			err = db.FactionAddKillCount(abl.FactionID)
-			if err != nil {
-				gamelog.L.Error().Str("faction_id", abl.FactionID).Err(err).Msg("failed to update faction kill count")
-			}
 		}
 	}
 

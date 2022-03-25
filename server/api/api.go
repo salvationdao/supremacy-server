@@ -10,7 +10,7 @@ import (
 	"server/battle"
 	"server/db"
 	"server/gamelog"
-	"server/passport"
+	"server/rpcclient"
 	"time"
 
 	sentryhttp "github.com/getsentry/sentry-go/http"
@@ -81,7 +81,7 @@ type API struct {
 	Conn          *pgxpool.Pool
 	MessageBus    *messagebus.MessageBus
 	NetMessageBus *messagebus.NetBus
-	Passport      *passport.Passport
+	Passport      *rpcclient.PassportXrpcClient
 	SMS           server.SMS
 
 	// ring check auth
@@ -93,7 +93,7 @@ func NewAPI(
 	ctx context.Context,
 	log *zerolog.Logger,
 	battleArenaClient *battle.Arena,
-	pp *passport.Passport,
+	pp *rpcclient.PassportXrpcClient,
 	addr string,
 	HTMLSanitize *bluemonday.Policy,
 	conn *pgxpool.Pool,
@@ -135,6 +135,7 @@ func NewAPI(
 			r.Use(sentryHandler.Handle)
 		})
 		r.Mount("/check", CheckRouter(log_helpers.NamedLogger(log, "check router"), conn, battleArenaClient))
+		r.Mount("/stat", AssetStatsRouter(log, conn, api))
 		r.Mount(fmt.Sprintf("/%s/Supremacy_game", server.SupremacyGameUserID), PassportWebhookRouter(log, conn, config.PassportWebhookSecret, api))
 
 		// Web sockets are long-lived, so we don't want the sentry performance tracer running for the life-time of the connection.
