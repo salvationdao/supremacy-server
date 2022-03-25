@@ -328,8 +328,6 @@ func main() {
 					// initialise telegram client
 					telegram, err := telegram.NewTelegram()
 
-					telegram.Bot.Start()
-
 					// initialise net message bus
 					netMessageBus := messagebus.NewNetBus(log_helpers.NamedLogger(gamelog.L, "net_message_bus"))
 					// initialise message bus
