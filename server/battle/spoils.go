@@ -156,7 +156,7 @@ func (sow *SpoilsOfWar) Flush() error {
 	}
 	amount = amount.Div(totalShares)
 
-	subgroup := fmt.Sprintf("Spoils of War from Battle #%d", bn)
+	subgroup := fmt.Sprintf("Spoils of War from beginBattle #%d", bn)
 
 	for _, player := range onlineUsers {
 		txr := fmt.Sprintf("spoils_of_war|%s|%d", player.PlayerID, time.Now().UnixNano())
@@ -244,7 +244,7 @@ func (sow *SpoilsOfWar) Drip() error {
 		gamelog.L.Warn().Msgf("total shares is less than or equal to zero")
 		return nil
 	}
-	subgroup := fmt.Sprintf("Spoils of War from Battle #%d", bn)
+	subgroup := fmt.Sprintf("Spoils of War from beginBattle #%d", bn)
 	amountRemaining := warchest.Amount.Sub(warchest.AmountSent)
 
 	onShareSups := dripAmount.Div(totalShares)

@@ -37,7 +37,7 @@ type BattleMechData struct {
 func BattleMechs(btl *boiler.Battle, mechData []*BattleMechData) error {
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
-		gamelog.L.Error().Str("db func", "Battle").Err(err).Msg("unable to begin tx")
+		gamelog.L.Error().Str("db func", "beginBattle").Err(err).Msg("unable to begin tx")
 		return err
 	}
 	defer tx.Rollback()
@@ -51,7 +51,7 @@ func BattleMechs(btl *boiler.Battle, mechData []*BattleMechData) error {
 		}
 		err = bmd.Insert(tx, boil.Infer())
 		if err != nil {
-			gamelog.L.Error().Interface("battle mech", bmd).Str("db func", "Battle").Err(err).Msg("unable to insert Battle Mech into database")
+			gamelog.L.Error().Interface("battle mech", bmd).Str("db func", "beginBattle").Err(err).Msg("unable to insert beginBattle Mech into database")
 			return err
 		}
 	}
@@ -66,7 +66,7 @@ func UpdateBattleMech(battleID string, mechID uuid.UUID, ownerID string, faction
 			Str("battleID", battleID).
 			Str("mechID", mechID.String()).
 			Str("db func", "UpdateBattleMech").
-			Err(err).Msg("unable to retrieve Battle Mech from database")
+			Err(err).Msg("unable to retrieve beginBattle Mech from database")
 
 		bmd = &boiler.BattleMech{
 			BattleID:  battleID,
@@ -80,7 +80,7 @@ func UpdateBattleMech(battleID string, mechID uuid.UUID, ownerID string, faction
 				Str("battleID", battleID).
 				Str("mechID", mechID.String()).
 				Str("db func", "UpdateBattleMech").
-				Err(err).Msg("unable to insert Battle Mech into database after not being able to retrieve it")
+				Err(err).Msg("unable to insert beginBattle Mech into database after not being able to retrieve it")
 			return nil, err
 		}
 	}
@@ -104,7 +104,7 @@ func UpdateBattleMech(battleID string, mechID uuid.UUID, ownerID string, faction
 					Str("battleID", battleID).
 					Str("killerBmdID", killedByID[0].String()).
 					Str("db func", "UpdateBattleMech").
-					Err(err).Msg("unable to retrieve Battle Mech from database")
+					Err(err).Msg("unable to retrieve beginBattle Mech from database")
 
 				return nil, err
 			}
@@ -460,7 +460,7 @@ func QueueFee(mechID uuid.UUID, factionID uuid.UUID) (*decimal.Decimal, error) {
 
 func QueueSetBattleID(battleID string, mechIDs ...uuid.UUID) error {
 	if len(mechIDs) == 0 {
-		gamelog.L.Warn().Str("battle_id", battleID).Msg("Battle mech is empty")
+		gamelog.L.Warn().Str("battle_id", battleID).Msg("beginBattle mech is empty")
 		return nil
 	}
 

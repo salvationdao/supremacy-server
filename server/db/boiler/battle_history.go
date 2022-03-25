@@ -97,14 +97,14 @@ var BattleHistoryRels = struct {
 	WarMachineOne string
 	WarMachineTwo string
 }{
-	Battle:        "Battle",
+	Battle:        "beginBattle",
 	WarMachineOne: "WarMachineOne",
 	WarMachineTwo: "WarMachineTwo",
 }
 
 // battleHistoryR is where relationships are stored.
 type battleHistoryR struct {
-	Battle        *Battle `boiler:"Battle" boil:"Battle" json:"Battle" toml:"Battle" yaml:"Battle"`
+	Battle        *Battle `boiler:"beginBattle" boil:"beginBattle" json:"beginBattle" toml:"beginBattle" yaml:"beginBattle"`
 	WarMachineOne *Mech   `boiler:"WarMachineOne" boil:"WarMachineOne" json:"WarMachineOne" toml:"WarMachineOne" yaml:"WarMachineOne"`
 	WarMachineTwo *Mech   `boiler:"WarMachineTwo" boil:"WarMachineTwo" json:"WarMachineTwo" toml:"WarMachineTwo" yaml:"WarMachineTwo"`
 }
@@ -462,12 +462,12 @@ func (battleHistoryL) LoadBattle(e boil.Executor, singular bool, maybeBattleHist
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load Battle")
+		return errors.Wrap(err, "failed to eager load beginBattle")
 	}
 
 	var resultSlice []*Battle
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice Battle")
+		return errors.Wrap(err, "failed to bind eager loaded slice beginBattle")
 	}
 
 	if err = results.Close(); err != nil {
@@ -730,7 +730,7 @@ func (battleHistoryL) LoadWarMachineTwo(e boil.Executor, singular bool, maybeBat
 }
 
 // SetBattle of the battleHistory to the related item.
-// Sets o.R.Battle to related.
+// Sets o.R.beginBattle to related.
 // Adds o to related.R.BattleHistories.
 func (o *BattleHistory) SetBattle(exec boil.Executor, insert bool, related *Battle) error {
 	var err error

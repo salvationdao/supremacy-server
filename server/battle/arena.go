@@ -81,7 +81,7 @@ func NewArena(opts *Opts) *Arena {
 	l, err := net.Listen("tcp", opts.Addr)
 
 	if err != nil {
-		gamelog.L.Fatal().Str("Addr", opts.Addr).Err(err).Msg("unable to bind Arena to Battle Server address")
+		gamelog.L.Fatal().Str("Addr", opts.Addr).Err(err).Msg("unable to bind Arena to beginBattle Server address")
 	}
 
 	arena := &Arena{
@@ -153,7 +153,7 @@ func NewArena(opts *Opts) *Arena {
 		err = server.Serve(l)
 
 		if err != nil {
-			gamelog.L.Fatal().Str("Addr", opts.Addr).Err(err).Msg("unable to start Battle Arena server")
+			gamelog.L.Fatal().Str("Addr", opts.Addr).Err(err).Msg("unable to start beginBattle Arena server")
 		}
 	}()
 
@@ -208,7 +208,7 @@ func (arena *Arena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				ip = userIP.String()
 			}
 		}
-		gamelog.L.Warn().Str("request_ip", ip).Err(err).Msg("unable to start Battle Arena server")
+		gamelog.L.Warn().Str("request_ip", ip).Err(err).Msg("unable to start beginBattle Arena server")
 	}
 
 	arena.gameClientLock.Lock()
@@ -743,7 +743,7 @@ type BattleWMDestroyedPayload struct {
 func (arena *Arena) init() {
 	arena.Lock()
 	defer arena.Unlock()
-	btl := arena.Battle()
+	btl := arena.beginBattle()
 	arena.currentBattle = btl
 	arena.Message(BATTLEINIT, btl)
 
@@ -815,17 +815,17 @@ func (arena *Arena) start() {
 				time.Sleep(time.Second * 30)
 				arena.init()
 			default:
-				gamelog.L.Warn().Str("battleCommand", msg.BattleCommand).Err(err).Msg("Battle Arena WS: no command response")
+				gamelog.L.Warn().Str("battleCommand", msg.BattleCommand).Err(err).Msg("beginBattle Arena WS: no command response")
 			}
 		case Tick:
 			btl.Tick(payload)
 		default:
-			gamelog.L.Warn().Str("MessageType", MessageType(mt).String()).Err(err).Msg("Battle Arena WS: no message response")
+			gamelog.L.Warn().Str("MessageType", MessageType(mt).String()).Err(err).Msg("beginBattle Arena WS: no message response")
 		}
 	}
 }
 
-func (arena *Arena) Battle() *Battle {
+func (arena *Arena) beginBattle() *Battle {
 	gm, err := db.GameMapGetRandom(context.Background(), arena.conn)
 	if err != nil {
 		gamelog.L.Err(err).Msg("unable to get random map")
