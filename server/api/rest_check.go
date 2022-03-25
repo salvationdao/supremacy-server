@@ -50,7 +50,7 @@ func (c *CheckController) Check(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	ba, err := boiler.Battles(qm.OrderBy("order_number DESC"), qm.Limit(1)).One(gamedb.StdConn)
+	ba, err := boiler.Battles(qm.OrderBy(fmt.Sprintf("%s DESC", boiler.BattleColumns.BattleNumber)), qm.Limit(1)).One(gamedb.StdConn)
 	if err != nil {
 		c.Log.Err(err).Msg("failed to retrieve battle")
 		return
