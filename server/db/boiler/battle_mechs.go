@@ -120,7 +120,7 @@ var BattleMechRels = struct {
 	Mech     string
 	Owner    string
 }{
-	Battle:   "beginBattle",
+	Battle:   "Battle",
 	Faction:  "Faction",
 	KilledBy: "KilledBy",
 	Mech:     "Mech",
@@ -129,7 +129,7 @@ var BattleMechRels = struct {
 
 // battleMechR is where relationships are stored.
 type battleMechR struct {
-	Battle   *Battle  `boiler:"beginBattle" boil:"beginBattle" json:"beginBattle" toml:"beginBattle" yaml:"beginBattle"`
+	Battle   *Battle  `boiler:"Battle" boil:"Battle" json:"Battle" toml:"Battle" yaml:"Battle"`
 	Faction  *Faction `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
 	KilledBy *Mech    `boiler:"KilledBy" boil:"KilledBy" json:"KilledBy" toml:"KilledBy" yaml:"KilledBy"`
 	Mech     *Mech    `boiler:"Mech" boil:"Mech" json:"Mech" toml:"Mech" yaml:"Mech"`
@@ -519,12 +519,12 @@ func (battleMechL) LoadBattle(e boil.Executor, singular bool, maybeBattleMech in
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load beginBattle")
+		return errors.Wrap(err, "failed to eager load Battle")
 	}
 
 	var resultSlice []*Battle
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice beginBattle")
+		return errors.Wrap(err, "failed to bind eager loaded slice Battle")
 	}
 
 	if err = results.Close(); err != nil {
@@ -997,7 +997,7 @@ func (battleMechL) LoadOwner(e boil.Executor, singular bool, maybeBattleMech int
 }
 
 // SetBattle of the battleMech to the related item.
-// Sets o.R.beginBattle to related.
+// Sets o.R.Battle to related.
 // Adds o to related.R.BattleMechs.
 func (o *BattleMech) SetBattle(exec boil.Executor, insert bool, related *Battle) error {
 	var err error

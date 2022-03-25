@@ -98,7 +98,7 @@ var BattleQueueRels = struct {
 	Mech    string
 	Owner   string
 }{
-	Battle:  "beginBattle",
+	Battle:  "Battle",
 	Faction: "Faction",
 	Mech:    "Mech",
 	Owner:   "Owner",
@@ -106,7 +106,7 @@ var BattleQueueRels = struct {
 
 // battleQueueR is where relationships are stored.
 type battleQueueR struct {
-	Battle  *Battle  `boiler:"beginBattle" boil:"beginBattle" json:"beginBattle" toml:"beginBattle" yaml:"beginBattle"`
+	Battle  *Battle  `boiler:"Battle" boil:"Battle" json:"Battle" toml:"Battle" yaml:"Battle"`
 	Faction *Faction `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
 	Mech    *Mech    `boiler:"Mech" boil:"Mech" json:"Mech" toml:"Mech" yaml:"Mech"`
 	Owner   *Player  `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
@@ -484,12 +484,12 @@ func (battleQueueL) LoadBattle(e boil.Executor, singular bool, maybeBattleQueue 
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load beginBattle")
+		return errors.Wrap(err, "failed to eager load Battle")
 	}
 
 	var resultSlice []*Battle
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice beginBattle")
+		return errors.Wrap(err, "failed to bind eager loaded slice Battle")
 	}
 
 	if err = results.Close(); err != nil {
@@ -853,7 +853,7 @@ func (battleQueueL) LoadOwner(e boil.Executor, singular bool, maybeBattleQueue i
 }
 
 // SetBattle of the battleQueue to the related item.
-// Sets o.R.beginBattle to related.
+// Sets o.R.Battle to related.
 // Adds o to related.R.BattleQueues.
 func (o *BattleQueue) SetBattle(exec boil.Executor, insert bool, related *Battle) error {
 	var err error
@@ -899,7 +899,7 @@ func (o *BattleQueue) SetBattle(exec boil.Executor, insert bool, related *Battle
 }
 
 // RemoveBattle relationship.
-// Sets o.R.beginBattle to nil.
+// Sets o.R.Battle to nil.
 // Removes o from all passed in related items' relationships struct (Optional).
 func (o *BattleQueue) RemoveBattle(exec boil.Executor, related *Battle) error {
 	var err error
