@@ -563,18 +563,18 @@ winwar:
 				}
 				playersWithCitizenAlready[pid] = true
 
-				um, err := boiler.UserMultipliers(
-					//setting query conditions
-					// check the player has citizen multi that ends this round
-					boiler.UserMultiplierWhere.PlayerID.EQ(pid),
-					boiler.UserMultiplierWhere.UntilBattleNumber.GT(ms.battle.BattleNumber),
-					boiler.UserMultiplierWhere.FromBattleNumber.LTE(ms.battle.BattleNumber),
-					boiler.UserMultiplierWhere.MultiplierID.EQ(citizenMulti.ID),
-				).One(gamedb.StdConn)
-				if err != nil && !errors.Is(err, sql.ErrNoRows) {
-					gamelog.L.Error().Str("player id", pid).Err(err).Msg("Unable to get player citizen multiplier from last round")
-					continue
-				}
+				//um, err := boiler.UserMultipliers(
+				//	//setting query conditions
+				//	// check the player has citizen multi that ends this round
+				//	boiler.UserMultiplierWhere.PlayerID.EQ(pid),
+				//	boiler.UserMultiplierWhere.UntilBattleNumber.GT(ms.battle.BattleNumber),
+				//	boiler.UserMultiplierWhere.FromBattleNumber.LTE(ms.battle.BattleNumber),
+				//	boiler.UserMultiplierWhere.MultiplierID.EQ(citizenMulti.ID),
+				//).One(gamedb.StdConn)
+				//if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				//	gamelog.L.Error().Str("player id", pid).Err(err).Msg("Unable to get player citizen multiplier from last round")
+				//	continue
+				//}
 				//
 				//if um != nil {
 				//	// if we get user multiplier back, update the db untilBattleNumber to +2, extending the duration +1 battle.
