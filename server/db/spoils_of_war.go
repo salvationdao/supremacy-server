@@ -92,7 +92,7 @@ func CitizenPlayerIDs(until_battle_number int) ([]uuid.UUID, error) {
 	q := `
 	select um.player_id  from user_multipliers um 
 	inner join multipliers m on m.id = um.multiplier_id and m."key" = 'citizen'
-	where um.until_battle_number > $1
+	where um.from_battle_number <= $1 and um.until_battle_number > $1
 	`
 
 	err := pgxscan.Select(context.Background(), gamedb.Conn, &userIDs, q, until_battle_number)
