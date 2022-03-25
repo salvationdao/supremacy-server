@@ -66,8 +66,8 @@ type AbilitiesSystem struct {
 	// location select winner list
 	locationDeciders *LocationDeciders
 
-	end       chan bool
-	endGabs   chan bool
+	end chan bool
+
 	liveCount *LiveCount
 }
 
@@ -208,8 +208,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 		liveCount: &LiveCount{
 			TotalVotes: decimal.Zero,
 		},
-		end:     make(chan bool),
-		endGabs: make(chan bool),
+		end: make(chan bool),
 	}
 
 	// broadcast faction unique ability
@@ -262,23 +261,20 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 
 	live_vote_ticker := time.NewTicker(1 * time.Second)
 
-	defer func() {
-		main_ticker.Stop()
-		live_vote_ticker.Stop()
-	}()
-
 	// start the battle
 	for {
 		select {
 		case <-as.end:
 			as.battle.stage = BattleStageEnd
+			main_ticker.Stop()
+			live_vote_ticker.Stop()
 			gamelog.L.Info().Msg("exiting ability price update")
 
 			// get spoil of war
 			sows, err := db.LastTwoSpoilOfWarAmount()
 			if err != nil || len(sows) == 0 {
 				gamelog.L.Error().Err(err).Msg("Failed to get last two spoil of war amount")
-				return
+				continue
 			}
 
 			// broadcast the spoil of war
@@ -294,30 +290,12 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 
 			gamelog.L.Info().Msgf("abilities system has been cleaned up: %s", as.battle.ID)
 
-			// previously caused panic so wrapping in recover
-			func() {
-				defer func() {
-					if err := recover(); err != nil {
-						gamelog.L.Error().Interface("err", err).Msg("Panic! Panic! Panic! Panic at the cleaning up abilities channels!")
-					}
-				}()
-				close(as.end)
-				close(as.contribute)
-			}()
+			// Caused panic
+			// close(as.end)
+			// close(as.contribute)
 
 			return
 		case <-main_ticker.C:
-			if as.battle == nil || as.battle.arena.currentBattle == nil || as.battle.arena.currentBattle.BattleNumber != as.battle.BattleNumber {
-				return
-			}
-			// terminate ticker if battle mismatch
-			if as.battle != as.battle.arena.currentBattle {
-				main_ticker.Stop()
-				live_vote_ticker.Stop()
-				gamelog.L.Info().Msg("clean up ability price ticker update")
-				return
-			}
-
 			for _, abilities := range as.factionUniqueAbilities {
 
 				// start ability price updater for each faction
@@ -420,8 +398,10 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 						payload := []byte{byte(GameAbilityProgressTick)}
 						payload = append(payload, []byte(fmt.Sprintf("%s_%s_%s_%s", ability.Identity, ability.SupsCost.String(), ability.CurrentSups.String(), triggeredFlag))...)
 						as.battle.arena.netMessageBus.Send(context.Background(), messagebus.NetBusKey(fmt.Sprintf("%s,%s", HubKeyAbilityPriceUpdated, ability.Identity)), payload)
+
 					}
 				}
+
 			}
 		case cont := <-as.contribute:
 			if as.factionUniqueAbilities == nil {
@@ -825,13 +805,6 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 	price_ticker := time.NewTicker(1 * time.Second)
 	progress_ticker := time.NewTicker(1 * time.Second)
 
-	defer func() {
-		price_ticker.Stop()
-		main_ticker.Stop()
-	}()
-
-	end_progress := make(chan bool)
-
 	// start voting stage
 	if !resume {
 		as.battleAbilityPool.Stage.Phase = BribeStageBribe
@@ -841,19 +814,12 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 	bn := as.battle.BattleNumber
 
 	go func() {
-		defer progress_ticker.Stop()
 		for {
-			select {
-			case <-end_progress:
-				close(end_progress)
+			<-progress_ticker.C
+			if as.battle == nil || as.battle.arena.currentBattle == nil || as.battle.arena.currentBattle.BattleNumber != bn {
 				return
-			case <-progress_ticker.C:
-				if as.battle == nil || as.battle.arena.currentBattle == nil || as.battle.arena.currentBattle.BattleNumber != bn {
-					close(end_progress)
-					return
-				}
-				as.BattleAbilityProgressBar()
 			}
+			as.BattleAbilityProgressBar()
 		}
 	}()
 
@@ -861,19 +827,9 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 	for {
 		select {
 		// wait for next tick
-		case <-as.endGabs:
-			end_progress <- true
-			close(as.endGabs)
-			return
 		case <-main_ticker.C:
 			if as.battle == nil || as.battle.arena.currentBattle == nil || as.battle.arena.currentBattle.BattleNumber != bn {
 				return
-			}
-			// terminate ticker if battle mismatch
-			if as.battle != as.battle.arena.currentBattle {
-				gamelog.L.Info().Msg("clean up mismatch bribing ticker")
-				as.endGabs <- true
-				continue
 			}
 			// check phase
 			stage := as.battle.stage
@@ -885,6 +841,9 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
 
 				// stop all the ticker and exit the loop
+				main_ticker.Stop()
+				price_ticker.Stop()
+				progress_ticker.Stop()
 				gamelog.L.Info().Msg("Stop ability tickers after battle is end")
 				return
 			}
@@ -1405,6 +1364,11 @@ func (as *AbilitiesSystem) BroadcastAbilityProgressBar() {
 // Handlers
 // *********************
 func (as *AbilitiesSystem) AbilityContribute(factionID uuid.UUID, userID uuid.UUID, abilityIdentity string, amount decimal.Decimal) {
+	defer func() {
+		if err := recover(); err != nil {
+			gamelog.L.Error().Interface("err", err).Msg("AbilityContribute")
+		}
+	}()
 	if as == nil || as.battle == nil || as.battle.stage != BattleStagStart || as.factionUniqueAbilities == nil {
 		return
 	}
@@ -1481,6 +1445,11 @@ func (as *AbilitiesSystem) BribeGabs(factionID uuid.UUID, userID uuid.UUID, amou
 	}
 
 	go func() {
+		defer func() {
+			if err := recover(); err != nil {
+				gamelog.L.Error().Interface("err", err).Msg("BribeGabs")
+			}
+		}()
 		as.bribe <- cont
 	}()
 }
@@ -1606,12 +1575,6 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 	as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
 
 	return nil
-}
-
-func (as *AbilitiesSystem) End() {
-	as.end <- true
-	as.endGabs <- true
-	as.battle = nil
 }
 
 func BuildUserDetailWithFaction(userID uuid.UUID) (*UserBrief, error) {
