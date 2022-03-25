@@ -553,11 +553,16 @@ winwar:
 	}
 
 	// insert multipliers
+	playersWithCitizenAlready := make(map[string]bool)
 	for pid, mlts := range newMultipliers {
 		for multiID, m := range mlts {
 
 			// if it is a citizen multi
 			if citizenMulti.ID == multiID {
+				if _, ok := playersWithCitizenAlready[pid]; ok {
+					continue
+				}
+				playersWithCitizenAlready[pid] = true
 
 				um, err := boiler.UserMultipliers(
 					//setting query conditions
@@ -574,7 +579,7 @@ winwar:
 				if um != nil {
 					// if we get user multiplier back, update the db untilBattleNumber to +2, extending the duration +1 battle.
 					um.UntilBattleNumber = ms.battle.BattleNumber + 2
-					err = db.ExtendCitizenMulti(um)
+					_, err = um.Update(gamedb.StdConn, boil.Infer())
 					if err != nil {
 						gamelog.L.Error().Str("player id", pid).Err(err).Msg("Unable to extend player citizen multi")
 						continue
