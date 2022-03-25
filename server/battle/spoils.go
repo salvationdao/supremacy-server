@@ -130,7 +130,7 @@ func (sow *SpoilsOfWar) Flush() error {
 		return terror.Error(err, "can't retrieve last battle's spoils")
 	}
 
-	multipliers, err := db.PlayerMultipliers(sow.battle.BattleNumber)
+	multipliers, err := db.PlayerMultipliers(bn)
 	if err != nil {
 		return terror.Error(err, "unable to retrieve multipliers")
 	}
@@ -156,7 +156,7 @@ func (sow *SpoilsOfWar) Flush() error {
 	}
 	amount = amount.Div(totalShares)
 
-	subgroup := fmt.Sprintf("Spoils of War from Battle #%d", sow.battle.BattleNumber-1)
+	subgroup := fmt.Sprintf("Spoils of War from Battle #%d", bn)
 
 	for _, player := range onlineUsers {
 		txr := fmt.Sprintf("spoils_of_war|%s|%d", player.PlayerID, time.Now().UnixNano())
@@ -223,7 +223,7 @@ func (sow *SpoilsOfWar) Drip() error {
 
 	dripAmount := warchest.Amount.Div(decimal.NewFromInt(int64(dripAllocations)))
 
-	multipliers, err := db.PlayerMultipliers(sow.battle.BattleNumber)
+	multipliers, err := db.PlayerMultipliers(bn)
 	if err != nil {
 		return terror.Error(err, "unable to retrieve multipliers")
 	}
@@ -244,7 +244,7 @@ func (sow *SpoilsOfWar) Drip() error {
 		gamelog.L.Warn().Msgf("total shares is less than or equal to zero")
 		return nil
 	}
-	subgroup := fmt.Sprintf("Spoils of War from Battle #%d", sow.battle.BattleNumber-1)
+	subgroup := fmt.Sprintf("Spoils of War from Battle #%d", bn)
 	amountRemaining := warchest.Amount.Sub(warchest.AmountSent)
 
 	onShareSups := dripAmount.Div(totalShares)

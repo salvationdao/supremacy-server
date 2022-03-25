@@ -62,7 +62,7 @@ func (ms *MultiplierSystem) PlayerMultipliers(playerID uuid.UUID, battleNumberAd
 	usermultipliers, err := boiler.Multipliers(
 		qm.InnerJoin("user_multipliers um on um.multiplier_id = multipliers.id"),
 		qm.Where(`um.player_id = ?`, playerID.String()),
-		qm.And(`um.until_battle_number >= ?`, ms.battle.BattleNumber+battleNumberAdjust),
+		qm.And(`um.until_battle_number > ?`, ms.battle.BattleNumber+battleNumberAdjust),
 	).All(gamedb.StdConn)
 
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -305,7 +305,7 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 	}
 
 	// getting citizens of the next round (meaning they got citizen previous round)
-	citizenIDs, err := db.CitizenPlayerIDs(ms.battle.BattleNumber + 1)
+	citizenIDs, err := db.CitizenPlayerIDs(ms.battle.BattleNumber)
 	if err != nil {
 		gamelog.L.Error().Str("battle number", strconv.Itoa(ms.battle.BattleNumber+1)).Err(err).Msg("Failed to get citizen ids for next round")
 	}
