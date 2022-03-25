@@ -34,12 +34,12 @@ func PlayerMultipliers(battle_number int) ([]*Multipliers, error) {
 
 	dbResult := []*PlayerMultiplier{}
 	q := `
-SELECT p.id AS player_id, um.value AS multiplier_value, m.is_multiplicative FROM user_multipliers um 
-INNER JOIN players p ON p.id = um.player_id
-INNER JOIN multipliers m ON m.id = um.multiplier_id
-WHERE um.from_battle_number <= $1
-AND um.until_battle_number >= $1;
-`
+		SELECT p.id AS player_id, um.value AS multiplier_value, m.is_multiplicative FROM user_multipliers um 
+		INNER JOIN players p ON p.id = um.player_id
+		INNER JOIN multipliers m ON m.id = um.multiplier_id
+		WHERE um.from_battle_number <= $1
+		AND um.until_battle_number > $1;
+		`
 
 	err := pgxscan.Select(context.Background(), gamedb.Conn, &dbResult, q, battle_number)
 	if err != nil {
@@ -110,7 +110,7 @@ func CitizenPlayerIDs(until_battle_number int) ([]uuid.UUID, error) {
 	q := `
 	select um.player_id  from user_multipliers um 
 	inner join multipliers m on m.id = um.multiplier_id and m."key" = 'citizen'
-	where um.until_battle_number >= $1
+	where um.until_battle_number > $1
 	`
 
 	err := pgxscan.Select(context.Background(), gamedb.Conn, &userIDs, q, until_battle_number)
