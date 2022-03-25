@@ -884,6 +884,34 @@ func (arena *Arena) Battle() *Battle {
 		viewerCountInputChan:   make(chan *ViewerLiveCount),
 	}
 
+	if btl.inserted {
+		go func() {
+			// don't pass back any multiplier value if there is no battle, but still complete the subscription
+			if btl != nil {
+				multipliers, err := db.PlayerMultipliers(btl.BattleNumber - 1)
+				if err != nil {
+					return
+				}
+
+				for _, m := range multipliers {
+					m.TotalMultiplier = m.TotalMultiplier.Shift(-1)
+				}
+
+				// get the citizen list
+				citizenPlayerIDs, err := db.CitizenPlayerIDs(btl.BattleNumber - 1)
+				if err != nil {
+					return
+				}
+
+				go btl.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyMultiplierMapSubscribe), &MultiplierMapResponse{
+					Multipliers:      multipliers,
+					CitizenPlayerIDs: citizenPlayerIDs,
+				})
+			}
+		}()
+
+	}
+
 	err = btl.Load()
 	if err != nil {
 		gamelog.L.Warn().Err(err).Msg("unable to load out mechs")
@@ -893,31 +921,6 @@ func (arena *Arena) Battle() *Battle {
 	go btl.debounceSendingViewerCount(func(result ViewerLiveCount) {
 		btl.users.Send(HubKeyViewerLiveCountUpdated, result)
 	})
-
-	go func() {
-		// don't pass back any multiplier value if there is no battle, but still complete the subscription
-		if arena.currentBattle != nil {
-			multipliers, err := db.PlayerMultipliers(arena.currentBattle.BattleNumber - 1)
-			if err != nil {
-				return
-			}
-
-			for _, m := range multipliers {
-				m.TotalMultiplier = m.TotalMultiplier.Shift(-1)
-			}
-
-			// get the citizen list
-			citizenPlayerIDs, err := db.CitizenPlayerIDs(arena.currentBattle.BattleNumber - 1)
-			if err != nil {
-				return
-			}
-
-			go btl.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyMultiplierMapSubscribe), &MultiplierMapResponse{
-				Multipliers:      multipliers,
-				CitizenPlayerIDs: citizenPlayerIDs,
-			})
-		}
-	}()
 
 	return btl
 }
