@@ -738,17 +738,9 @@ type BattleWMDestroyedPayload struct {
 	BattleID string `json:"battleID"`
 }
 
-func (arena *Arena) init() {
-	btl := arena.Battle()
-	arena.currentBattle = btl
-	arena.Message(BATTLEINIT, btl)
-
-	go arena.NotifyUpcomingWarMachines()
-}
-
 func (arena *Arena) start() {
 	ctx := context.Background()
-	arena.init()
+	arena.beginBattle()
 
 	for {
 		_, payload, err := arena.socket.Read(ctx)
@@ -809,7 +801,7 @@ func (arena *Arena) start() {
 				btl.end(dataPayload)
 				//TODO: this needs to be triggered by a message from the game client
 				time.Sleep(time.Second * 30)
-				arena.init()
+				arena.beginBattle()
 			default:
 				gamelog.L.Warn().Str("battleCommand", msg.BattleCommand).Err(err).Msg("Battle Arena WS: no command response")
 			}
@@ -821,7 +813,7 @@ func (arena *Arena) start() {
 	}
 }
 
-func (arena *Arena) Battle() *Battle {
+func (arena *Arena) beginBattle() *Battle {
 	gm, err := db.GameMapGetRandom(context.Background(), arena.conn)
 	if err != nil {
 		gamelog.L.Err(err).Msg("unable to get random map")
