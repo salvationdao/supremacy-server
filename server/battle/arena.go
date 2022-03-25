@@ -83,7 +83,7 @@ func NewArena(opts *Opts) *Arena {
 	l, err := net.Listen("tcp", opts.Addr)
 
 	if err != nil {
-		gamelog.L.Fatal().Str("Addr", opts.Addr).Err(err).Msg("unable to bind Arena to Battle Server address")
+		gamelog.L.Fatal().Str("Addr", opts.Addr).Err(err).Msg("unable to bind Arena to beginBattle Server address")
 	}
 
 	arena := &Arena{
@@ -156,7 +156,7 @@ func NewArena(opts *Opts) *Arena {
 		err = server.Serve(l)
 
 		if err != nil {
-			gamelog.L.Fatal().Str("Addr", opts.Addr).Err(err).Msg("unable to start Battle Arena server")
+			gamelog.L.Fatal().Str("Addr", opts.Addr).Err(err).Msg("unable to start beginBattle Arena server")
 		}
 	}()
 
@@ -211,7 +211,7 @@ func (arena *Arena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				ip = userIP.String()
 			}
 		}
-		gamelog.L.Warn().Str("request_ip", ip).Err(err).Msg("unable to start Battle Arena server")
+		gamelog.L.Warn().Str("request_ip", ip).Err(err).Msg("unable to start beginBattle Arena server")
 	}
 
 	arena.socket = c
@@ -334,7 +334,7 @@ func (arena *Arena) MultiplierMapSubScribeHandler(ctx context.Context, wsc *hub.
 
 	// don't pass back any multiplier value if there is no battle, but still complete the subscription
 	if arena.currentBattle != nil {
-		multipliers, err := db.PlayerMultipliers(arena.currentBattle.BattleNumber)
+		multipliers, err := db.PlayerMultipliers(arena.currentBattle.BattleNumber - 1)
 		if err != nil {
 			return "", "", terror.Error(err, "unable to retrieve multipliers")
 		}
@@ -344,7 +344,7 @@ func (arena *Arena) MultiplierMapSubScribeHandler(ctx context.Context, wsc *hub.
 		}
 
 		// get the citizen list
-		citizenPlayerIDs, err := db.CitizenPlayerIDs(arena.currentBattle.BattleNumber)
+		citizenPlayerIDs, err := db.CitizenPlayerIDs(arena.currentBattle.BattleNumber - 1)
 		if err != nil {
 			return "", "", terror.Error(err)
 		}

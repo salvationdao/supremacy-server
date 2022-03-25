@@ -130,7 +130,7 @@ func (sow *SpoilsOfWar) Flush() error {
 		return terror.Error(err, "can't retrieve last battle's spoils")
 	}
 
-	multipliers, err := db.PlayerMultipliers(sow.battle.BattleNumber)
+	multipliers, err := db.PlayerMultipliers(bn)
 	if err != nil {
 		return terror.Error(err, "unable to retrieve multipliers")
 	}
@@ -223,7 +223,7 @@ func (sow *SpoilsOfWar) Drip() error {
 
 	dripAmount := warchest.Amount.Div(decimal.NewFromInt(int64(dripAllocations)))
 
-	multipliers, err := db.PlayerMultipliers(sow.battle.BattleNumber)
+	multipliers, err := db.PlayerMultipliers(bn)
 	if err != nil {
 		return terror.Error(err, "unable to retrieve multipliers")
 	}

@@ -112,7 +112,7 @@ func (arena *Arena) HubKeyMultiplierUpdate(ctx context.Context, wsc *hub.Client,
 
 	// return multiplier if battle is on
 	if arena.currentBattle != nil && arena.currentBattle.multipliers != nil {
-		m, total := arena.currentBattle.multipliers.PlayerMultipliers(id, 0)
+		m, total := arena.currentBattle.multipliers.PlayerMultipliers(id, -1)
 
 		reply(&MultiplierUpdate{
 			UserMultipliers:  m,
