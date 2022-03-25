@@ -41,7 +41,6 @@ type Arena struct {
 	ppClient       *passport.Passport
 	gameClientLock sync.Mutex
 	sms            server.SMS
-	sync.Mutex
 }
 
 type Opts struct {
@@ -215,11 +214,9 @@ func (arena *Arena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		gamelog.L.Warn().Str("request_ip", ip).Err(err).Msg("unable to start Battle Arena server")
 	}
 
-	arena.gameClientLock.Lock()
 	arena.socket = c
 
 	defer func() {
-		arena.gameClientLock.Unlock()
 		c.Close(websocket.StatusInternalError, "game client has disconnected")
 	}()
 
@@ -615,8 +612,6 @@ func (arena *Arena) GabsBribeStageSubscribe(ctx context.Context, wsc *hub.Client
 	}
 
 	// return data if, current battle is not null
-	arena.Lock()
-	defer arena.Unlock()
 	if arena.currentBattle != nil {
 		btl := arena.currentBattle
 		if btl.abilities != nil {
@@ -744,8 +739,6 @@ type BattleWMDestroyedPayload struct {
 }
 
 func (arena *Arena) init() {
-	arena.Lock()
-	defer arena.Unlock()
 	btl := arena.Battle()
 	arena.currentBattle = btl
 	arena.Message(BATTLEINIT, btl)

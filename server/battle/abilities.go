@@ -1097,6 +1097,11 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 
 // SetNewBattleAbility set new battle ability and return the cooldown time
 func (as *AbilitiesSystem) SetNewBattleAbility() (int, error) {
+	defer func() {
+		if err := recover(); err != nil {
+			gamelog.L.Error().Interface("err", err).Msg("panic! panic! panic! Panic at the SetNewBattleAbility!")
+		}
+	}()
 	// clean up triggered faction
 	as.battleAbilityPool.TriggeredFactionID = uuid.Nil
 
