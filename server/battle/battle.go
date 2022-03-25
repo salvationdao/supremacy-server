@@ -1003,8 +1003,9 @@ func (arena *Arena) reset() {
 type QueueJoinRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		AssetHash   string `json:"asset_hash"`
-		NeedInsured bool   `json:"need_insured"`
+		AssetHash           string `json:"asset_hash"`
+		NeedInsured         bool   `json:"need_insured"`
+		EnableNotifications bool   `json:"enable_notifications"`
 	} `json:"payload"`
 }
 
@@ -1056,6 +1057,11 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		contractReward = queueLength.Mul(decimal.New(2, 18)) // 2x queue length
 	}
 
+	// Increase queue cost by 10% if notifications are enabled
+	if msg.Payload.EnableNotifications {
+		queueCost = queueCost.Mul(decimal.NewFromFloat(1.1))
+	}
+
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("unable to begin tx")
@@ -1102,6 +1108,9 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		FactionID:        factionID.String(),
 		OwnerID:          ownerID.String(),
 		BattleContractID: null.StringFrom(bc.ID),
+	}
+	if !msg.Payload.EnableNotifications {
+		bq.Notified = true
 	}
 	err = bq.Insert(tx, boil.Infer())
 	if err != nil {
