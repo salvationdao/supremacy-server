@@ -894,6 +894,31 @@ func (arena *Arena) Battle() *Battle {
 		btl.users.Send(HubKeyViewerLiveCountUpdated, result)
 	})
 
+	go func() {
+		// don't pass back any multiplier value if there is no battle, but still complete the subscription
+		if arena.currentBattle != nil {
+			multipliers, err := db.PlayerMultipliers(arena.currentBattle.BattleNumber - 1)
+			if err != nil {
+				return
+			}
+
+			for _, m := range multipliers {
+				m.TotalMultiplier = m.TotalMultiplier.Shift(-1)
+			}
+
+			// get the citizen list
+			citizenPlayerIDs, err := db.CitizenPlayerIDs(arena.currentBattle.BattleNumber - 1)
+			if err != nil {
+				return
+			}
+
+			go btl.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyMultiplierMapSubscribe), &MultiplierMapResponse{
+				Multipliers:      multipliers,
+				CitizenPlayerIDs: citizenPlayerIDs,
+			})
+		}
+	}()
+
 	return btl
 }
 
