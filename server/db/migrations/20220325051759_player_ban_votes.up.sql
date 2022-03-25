@@ -1,6 +1,7 @@
 CREATE TABLE ban_votes(
     id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
     type TEXT NOT NULL,
+    reason TEXT NOT NULL,
     faction_id UUID NOT NULL REFERENCES factions(id),
     issued_by_id UUID NOT NULL REFERENCES players(id),
     issued_by_username TEXT NOT NULL,
@@ -28,3 +29,13 @@ CREATE TABLE player_votes(
 ALTER TABLE players
     ADD COLUMN IF NOT EXISTS issue_ban_fee DECIMAL NOT NULL DEFAULT 10, -- double up if anytime a player issue a ban vote
     ADD COLUMN IF NOT EXISTS reported_cost DECIMAL NOT NULL DEFAULT 10; -- double up if anytime a player is reported by the result failed
+
+CREATE TABLE banned_players(
+    id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
+    player_id UUID NOT NULL REFERENCES players (id),
+    ban_type TEXT NOT NULL,
+    ban_until TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    deleted_at TIMESTAMPTZ
+);

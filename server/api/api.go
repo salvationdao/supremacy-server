@@ -86,6 +86,8 @@ type API struct {
 
 	// ring check auth
 	RingCheckAuthMap *RingCheckAuthMap
+
+	factionBanVoteTracker map[string]*BanVoteTracker
 }
 
 // NewAPI registers routes
@@ -144,12 +146,6 @@ func NewAPI(
 
 		//TODO ALEX reimplement handlers
 
-		//r.Get("/battlequeue", WithError(api.BattleArena.GetBattleQueue))
-		//r.Get("/events", WithError(api.BattleArena.GetEvents))
-		//r.Get("/faction_stats", WithError(api.BattleArena.FactionStats))
-		//r.Get("/user_stats", WithError(api.BattleArena.UserStats))
-		//r.Get("/abilities", WithError(api.BattleArena.GetAbility))
-
 		r.Get("/blobs/{id}", WithError(api.IconDisplay))
 		r.Post("/video_server", WithToken(config.ServerStreamKey, WithError((api.CreateStreamHandler))))
 		r.Get("/video_server", WithToken(config.ServerStreamKey, WithError((api.GetStreamsHandler))))
@@ -201,6 +197,8 @@ func NewAPI(
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to set up faction mvp user update tickle")
 	}
+
+	// spin up a ban vote handlers for each faction
 
 	return api
 }

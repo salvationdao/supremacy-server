@@ -142,11 +142,6 @@ func NewArena(opts *Opts) *Arena {
 	opts.SecureUserFactionSubscribeCommand(HubKeyFactionUniqueAbilitiesUpdated, arena.FactionAbilitiesUpdateSubscribeHandler)
 	opts.SecureUserFactionSubscribeCommand(HubKeyWarMachineAbilitiesUpdated, arena.WarMachineAbilitiesUpdateSubscribeHandler)
 
-	// faction lose select privilege
-	opts.SecureUserFactionCommand(HubKeyIssueBanVote, arena.IssueBanVote)
-	opts.SecureUserFactionCommand(HubKeyBanVote, arena.BanVote)
-	opts.SecureUserFactionSubscribeCommand(HubKeyBanVoteSubscribe, arena.BanVoteSubscribeHandler)
-
 	// net message subscribe
 	opts.NetSecureUserFactionSubscribeCommand(HubKeyBattleAbilityProgressBarUpdated, arena.FactionProgressBarUpdateSubscribeHandler)
 	opts.NetSecureUserFactionSubscribeCommand(HubKeyAbilityPriceUpdated, arena.FactionAbilityPriceUpdateSubscribeHandler)
@@ -926,49 +921,4 @@ func (arena *Arena) UserStatUpdatedSubscribeHandler(ctx context.Context, client 
 	}
 
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserStatSubscribe, client.Identifier())), nil
-}
-
-type BanVoteStatus string
-
-const (
-	BanVoteStatusPassed  = "PASSED"
-	BanVoteStatusFailed  = "FAILED"
-	BanVoteStatusPending = "PENDING"
-)
-
-const HubKeyBanVoteSubscribe hub.HubCommandKey = "BAN:VOTE:SUBSCRIBE"
-
-func (arena *Arena) BanVoteSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	req := &hub.HubCommandRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received")
-	}
-
-	// get player
-	player, err := boiler.FindPlayer(gamedb.StdConn, client.Identifier())
-	if err != nil {
-		return "", "", terror.Error(err, "Failed to get player from db")
-	}
-
-	if !player.FactionID.Valid {
-		return "", "", terror.Error(fmt.Errorf("player should join faction to subscribe on ban vote"), "Player should join a faction to subscribe on ban vote")
-	}
-
-	// get current ongoing ban vote
-	// pending status with started_at and ended_at is set
-	bv, err := boiler.BanVotes(
-		boiler.BanVoteWhere.FactionID.EQ(player.FactionID.String),
-		boiler.BanVoteWhere.Status.EQ(BanVoteStatusPending),
-		boiler.BanVoteWhere.StartedAt.IsNotNull(),
-		boiler.BanVoteWhere.EndedAt.IsNotNull(),
-	).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return "", "", terror.Error(err, "Failed to get ongoing ban vote from db")
-	}
-
-	if bv != nil {
-		reply(bv)
-	}
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserStatSubscribe, player.FactionID.String)), nil
 }

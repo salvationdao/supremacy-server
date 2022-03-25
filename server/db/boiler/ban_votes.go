@@ -25,6 +25,7 @@ import (
 type BanVote struct {
 	ID                     string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	Type                   string    `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
+	Reason                 string    `boiler:"reason" boil:"reason" json:"reason" toml:"reason" yaml:"reason"`
 	FactionID              string    `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
 	IssuedByID             string    `boiler:"issued_by_id" boil:"issued_by_id" json:"issued_by_id" toml:"issued_by_id" yaml:"issued_by_id"`
 	IssuedByUsername       string    `boiler:"issued_by_username" boil:"issued_by_username" json:"issued_by_username" toml:"issued_by_username" yaml:"issued_by_username"`
@@ -44,6 +45,7 @@ type BanVote struct {
 var BanVoteColumns = struct {
 	ID                     string
 	Type                   string
+	Reason                 string
 	FactionID              string
 	IssuedByID             string
 	IssuedByUsername       string
@@ -58,6 +60,7 @@ var BanVoteColumns = struct {
 }{
 	ID:                     "id",
 	Type:                   "type",
+	Reason:                 "reason",
 	FactionID:              "faction_id",
 	IssuedByID:             "issued_by_id",
 	IssuedByUsername:       "issued_by_username",
@@ -74,6 +77,7 @@ var BanVoteColumns = struct {
 var BanVoteTableColumns = struct {
 	ID                     string
 	Type                   string
+	Reason                 string
 	FactionID              string
 	IssuedByID             string
 	IssuedByUsername       string
@@ -88,6 +92,7 @@ var BanVoteTableColumns = struct {
 }{
 	ID:                     "ban_votes.id",
 	Type:                   "ban_votes.type",
+	Reason:                 "ban_votes.reason",
 	FactionID:              "ban_votes.faction_id",
 	IssuedByID:             "ban_votes.issued_by_id",
 	IssuedByUsername:       "ban_votes.issued_by_username",
@@ -106,6 +111,7 @@ var BanVoteTableColumns = struct {
 var BanVoteWhere = struct {
 	ID                     whereHelperstring
 	Type                   whereHelperstring
+	Reason                 whereHelperstring
 	FactionID              whereHelperstring
 	IssuedByID             whereHelperstring
 	IssuedByUsername       whereHelperstring
@@ -120,6 +126,7 @@ var BanVoteWhere = struct {
 }{
 	ID:                     whereHelperstring{field: "\"ban_votes\".\"id\""},
 	Type:                   whereHelperstring{field: "\"ban_votes\".\"type\""},
+	Reason:                 whereHelperstring{field: "\"ban_votes\".\"reason\""},
 	FactionID:              whereHelperstring{field: "\"ban_votes\".\"faction_id\""},
 	IssuedByID:             whereHelperstring{field: "\"ban_votes\".\"issued_by_id\""},
 	IssuedByUsername:       whereHelperstring{field: "\"ban_votes\".\"issued_by_username\""},
@@ -163,8 +170,8 @@ func (*banVoteR) NewStruct() *banVoteR {
 type banVoteL struct{}
 
 var (
-	banVoteAllColumns            = []string{"id", "type", "faction_id", "issued_by_id", "issued_by_username", "reported_player_id", "reported_player_username", "status", "started_at", "ended_at", "created_at", "updated_at", "deleted_at"}
-	banVoteColumnsWithoutDefault = []string{"type", "faction_id", "issued_by_id", "issued_by_username", "reported_player_id", "reported_player_username", "status"}
+	banVoteAllColumns            = []string{"id", "type", "reason", "faction_id", "issued_by_id", "issued_by_username", "reported_player_id", "reported_player_username", "status", "started_at", "ended_at", "created_at", "updated_at", "deleted_at"}
+	banVoteColumnsWithoutDefault = []string{"type", "reason", "faction_id", "issued_by_id", "issued_by_username", "reported_player_id", "reported_player_username", "status"}
 	banVoteColumnsWithDefault    = []string{"id", "started_at", "ended_at", "created_at", "updated_at", "deleted_at"}
 	banVotePrimaryKeyColumns     = []string{"id"}
 	banVoteGeneratedColumns      = []string{}
