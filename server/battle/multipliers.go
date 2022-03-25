@@ -235,7 +235,7 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 		}
 
 		// top 95% of contributors and their faction win, will become citizens
-		winningFactionCitizenAmount := totalLength * 95 / 100
+		winningFactionCitizenAmount := totalLength * 85 / 100
 		if winningFactionCitizenAmount == 0 {
 			winningFactionCitizenAmount = 1
 		}
