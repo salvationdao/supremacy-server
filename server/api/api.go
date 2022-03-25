@@ -10,7 +10,7 @@ import (
 	"server/battle"
 	"server/db"
 	"server/gamelog"
-	"server/passport"
+	"server/rpcclient"
 	"time"
 
 	sentryhttp "github.com/getsentry/sentry-go/http"
@@ -81,7 +81,7 @@ type API struct {
 	Conn          *pgxpool.Pool
 	MessageBus    *messagebus.MessageBus
 	NetMessageBus *messagebus.NetBus
-	Passport      *passport.Passport
+	Passport      *rpcclient.PassportXrpcClient
 	SMS           server.SMS
 
 	// ring check auth
@@ -93,7 +93,7 @@ func NewAPI(
 	ctx context.Context,
 	log *zerolog.Logger,
 	battleArenaClient *battle.Arena,
-	pp *passport.Passport,
+	pp *rpcclient.PassportXrpcClient,
 	addr string,
 	HTMLSanitize *bluemonday.Policy,
 	conn *pgxpool.Pool,

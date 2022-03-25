@@ -21,11 +21,11 @@ type XrpcServer struct {
 // S holds all the RPC answer functions, remote rpc caller must use same naming.
 // Keep seperate from XrpcServer so it wont cause issue and complain about Listen and Shutdown being invalid length and trigger by remotely
 type S struct {
-	passportRPC *rpcclient.XrpcClient // rpc client to call passport server
+	passportRPC *rpcclient.PassportXrpcClient // rpc client to call passport server
 }
 
 func (s *XrpcServer) Listen(
-	passportRPC *rpcclient.XrpcClient,
+	passportRPC *rpcclient.PassportXrpcClient,
 	addrStrs ...string,
 ) error {
 	if passportRPC == nil {

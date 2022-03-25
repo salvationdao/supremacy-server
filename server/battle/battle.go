@@ -13,7 +13,6 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"server/passport"
 	"server/rpcclient"
 	"sort"
 	"strconv"
@@ -577,10 +576,10 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 				Msg("paying out mech winnings from contract reward")
 
 			factID := uuid.Must(uuid.FromString(factionAccountID))
-			syndicateBalance := btl.arena.ppClient.UserBalanceGet(factID)
+			syndicateBalance := btl.arena.RPCClient.UserBalanceGet(factID)
 
 			if syndicateBalance.LessThanOrEqual(contract.ContractReward) {
-				txid, err := btl.arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
+				txid, err := btl.arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
 					FromUserID:           uuid.UUID(server.XsynTreasuryUserID),
 					ToUserID:             factID,
 					Amount:               contract.ContractReward.StringFixed(0),
@@ -607,7 +606,7 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 			}
 
 			// pay sups
-			txid, err := btl.arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
+			txid, err := btl.arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
 				FromUserID:           factID,
 				ToUserID:             uuid.Must(uuid.FromString(contract.PlayerID)),
 				Amount:               contract.ContractReward.StringFixed(0),
@@ -1121,7 +1120,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 	}
 
 	// Charge user queue fee
-	supTransactionID, err := arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
+	supTransactionID, err := arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
 		Amount:               queueCost.StringFixed(18),
 		FromUserID:           ownerID,
 		ToUserID:             SupremacyBattleUserID,
@@ -1289,7 +1288,7 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 	}
 
 	// Refund user queue fee
-	supTransactionID, err := arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
+	supTransactionID, err := arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
 		Amount:               originalQueueCost.StringFixed(18),
 		FromUserID:           SupremacyBattleUserID,
 		ToUserID:             ownerID,

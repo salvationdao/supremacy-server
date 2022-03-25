@@ -1,7 +1,6 @@
 package server
 
 import (
-	"server/db/boiler"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -13,24 +12,24 @@ var XsynTreasuryUserID = UserID(uuid.Must(uuid.FromString("ebf30ca0-875b-4e84-9a
 
 // User is a single user on the platform
 type User struct {
-	ID                  UserID          `json:"id" db:"id"`
-	Faction             *boiler.Faction `json:"faction"`
-	FactionID           FactionID       `json:"faction_id,omitempty"`
-	FirstName           string          `json:"first_name" db:"first_name"`
-	LastName            string          `json:"last_name" db:"last_name"`
-	Email               null.String     `json:"email" db:"email"`
-	Username            string          `json:"username" db:"username"`
-	Verified            bool            `json:"verified" db:"verified"`
-	OldPasswordRequired bool            `json:"old_password_required" db:"old_password_required"`
-	RoleID              RoleID          `json:"role_id" db:"role_id"`
-	Role                Role            `json:"role" db:"role"`
-	AvatarID            *BlobID         `json:"avatar_id" db:"avatar_id"`
-	HasRecoveryCode     bool            `json:"has_recovery_code" db:"has_recovery_code"`
-	Pass2FA             bool            `json:"pass_2_fa"`
-	CreatedAt           time.Time       `json:"created_at" db:"created_at"`
-	UpdatedAt           time.Time       `json:"updated_at" db:"updated_at"`
-	DeletedAt           *time.Time      `json:"deleted_at" db:"deleted_at"`
-	MobileNumber        null.String     `json:"mobile_number"`
+	ID                  UserID      `json:"id" db:"id"`
+	Faction             *Faction    `json:"faction"`
+	FactionID           FactionID   `json:"faction_id,omitempty"`
+	FirstName           string      `json:"first_name" db:"first_name"`
+	LastName            string      `json:"last_name" db:"last_name"`
+	Email               null.String `json:"email" db:"email"`
+	Username            string      `json:"username" db:"username"`
+	Verified            bool        `json:"verified" db:"verified"`
+	OldPasswordRequired bool        `json:"old_password_required" db:"old_password_required"`
+	RoleID              RoleID      `json:"role_id" db:"role_id"`
+	Role                Role        `json:"role" db:"role"`
+	AvatarID            *BlobID     `json:"avatar_id" db:"avatar_id"`
+	HasRecoveryCode     bool        `json:"has_recovery_code" db:"has_recovery_code"`
+	Pass2FA             bool        `json:"pass_2_fa"`
+	CreatedAt           time.Time   `json:"created_at" db:"created_at"`
+	UpdatedAt           time.Time   `json:"updated_at" db:"updated_at"`
+	DeletedAt           *time.Time  `json:"deleted_at" db:"deleted_at"`
+	MobileNumber        null.String `json:"mobile_number"`
 
 	PublicAddress null.String `json:"public_address,omitempty" db:"public_address"`
 

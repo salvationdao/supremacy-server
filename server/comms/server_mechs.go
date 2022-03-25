@@ -9,7 +9,6 @@ import (
 	"server/gamelog"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
@@ -20,16 +19,6 @@ type MechsReq struct {
 }
 type MechsResp struct {
 	MechContainers []*server.MechContainer
-}
-
-type UserReq struct {
-	ID uuid.UUID
-}
-type UserResp struct {
-	ID            uuid.UUID
-	Username      string
-	FactionID     null.String
-	PublicAddress common.Address
 }
 
 // Mechs is a heavy func, do not use on a running server
@@ -130,16 +119,18 @@ type MechRegisterResp struct {
 
 func (s *S) MechRegister(req MechRegisterReq, resp *MechRegisterResp) error {
 	gamelog.L.Debug().Msg("comms.MechRegister")
-	userResp := &UserResp{}
-	err := s.passportRPC.Call("S.User", &UserReq{ID: req.OwnerID}, userResp)
+
+	userResp, err := s.passportRPC.UserGet(server.UserID(req.OwnerID))
 	if err != nil {
 		return terror.Error(err)
 	}
+
 	player, err := boiler.FindPlayer(gamedb.StdConn, req.OwnerID.String())
 	if err != nil {
 		return terror.Error(err)
 	}
-	player.FactionID = null.StringFrom(userResp.FactionID.String)
+
+	player.FactionID = null.StringFrom(userResp.FactionID.String())
 	_, err = player.Update(gamedb.StdConn, boil.Whitelist(boiler.PlayerColumns.FactionID))
 	if err != nil {
 		return terror.Error(err)

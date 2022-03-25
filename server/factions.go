@@ -1,7 +1,10 @@
 package server
 
 import (
+	"fmt"
 	"server/db/boiler"
+
+	"github.com/ninja-software/terror/v2"
 
 	"github.com/gofrs/uuid"
 )
@@ -34,6 +37,42 @@ type Faction struct {
 	BackgroundBlobID BlobID        `json:"background_blob_id,omitempty"`
 	VotePrice        string        `json:"vote_price" db:"vote_price"`
 	ContractReward   string        `json:"contract_reward" db:"contract_reward"`
+	Description      string        `json:"description" db:"description"`
+}
+
+func (f *Faction) ToBoilerFaction() *boiler.Faction {
+	newFaction := &boiler.Faction{
+		ID:             f.ID.String(),
+		VotePrice:      f.VotePrice,
+		ContractReward: f.ContractReward,
+		Label:          f.Label,
+		//GuildID: , ?
+		//DeletedAt:,
+		//UpdatedAt:,
+		//CreatedAt:,
+		PrimaryColor:    f.Theme.Primary,
+		SecondaryColor:  f.Theme.Secondary,
+		BackgroundColor: f.Theme.Background,
+	}
+	return newFaction
+}
+
+func (f *Faction) SetFromBoilerFaction(bf *boiler.Faction) error {
+	//f.LogoBlobID = bf. ?
+	//f.BackgroundBlobID = bf. ?
+
+	uuidFromString, err := uuid.FromString(bf.ID)
+	if err != nil {
+		return terror.Error(err, fmt.Sprintf("unable to parse %s to uuid", bf.ID))
+	}
+	f.ID = FactionID(uuidFromString)
+	f.Label = bf.Label
+	f.Theme = &FactionTheme{
+		bf.PrimaryColor, bf.SecondaryColor, bf.BackgroundColor,
+	}
+	f.VotePrice = bf.VotePrice
+	f.ContractReward = bf.ContractReward
+	return nil
 }
 
 type FactionBrief struct {

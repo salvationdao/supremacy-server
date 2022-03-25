@@ -14,6 +14,8 @@ import (
 	"server/gamelog"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
+
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/lestrrat-go/jwx/jwa"
@@ -123,11 +125,15 @@ func (ac *AuthControllerWS) RingCheckJWTAuth(ctx context.Context, wsc *hub.Clien
 		user.FactionID = server.FactionID(uuid.FromStringOrNil(player.FactionID.String))
 		faction, err := boiler.FindFaction(gamedb.StdConn, player.FactionID.String)
 		if err != nil {
-			return terror.Error(err, "Unable to find faction from db")
+			return terror.Error(err, "Issues finding faction, try again or contact support.")
 		}
-		user.Faction = faction
-	}
 
+		err = user.Faction.SetFromBoilerFaction(faction)
+		if err != nil {
+			return terror.Error(err, "Issues finding faction, try again or contact support.")
+		}
+	}
+	spew.Dump(user.Faction)
 	b, err := json.Marshal(&BroadcastPayload{
 		Key:     HubKeyUserRingCheck,
 		Payload: user,
