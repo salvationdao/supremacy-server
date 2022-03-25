@@ -86,6 +86,24 @@ AND um.until_battle_number >= $1;
 	return result, nil
 }
 
+func ExtendCitizenMulti(um *boiler.UserMultiplier) error {
+
+	q := `
+	update
+		user_multipliers
+	set
+		until_battle_number = $4
+	where 
+		player_id = $1 and multiplier_id = $2 and from_battle_number = $3;
+	`
+
+	_, err := gamedb.StdConn.Exec(q, um.PlayerID, um.MultiplierID, um.FromBattleNumber, um.UntilBattleNumber)
+	if err != nil {
+		return terror.Error(err)
+	}
+	return nil
+}
+
 func CitizenPlayerIDs(until_battle_number int) ([]uuid.UUID, error) {
 	userIDs := []uuid.UUID{}
 
