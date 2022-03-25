@@ -1405,6 +1405,11 @@ func (as *AbilitiesSystem) BroadcastAbilityProgressBar() {
 // Handlers
 // *********************
 func (as *AbilitiesSystem) AbilityContribute(factionID uuid.UUID, userID uuid.UUID, abilityIdentity string, amount decimal.Decimal) {
+	defer func() {
+		if err := recover(); err != nil {
+			gamelog.L.Error().Interface("err", err).Msg("Panic! Panic! Panic! Panic at the AbilityContribute!")
+		}
+	}()
 	if as == nil || as.battle == nil || as.battle.stage != BattleStagStart || as.factionUniqueAbilities == nil {
 		return
 	}
