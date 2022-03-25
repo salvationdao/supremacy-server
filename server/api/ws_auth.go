@@ -81,7 +81,7 @@ func (ac *AuthControllerWS) RingCheckJWTAuth(ctx context.Context, wsc *hub.Clien
 
 	token, err := readJWT(tokenStr, ac.Config.EncryptTokens, []byte(ac.Config.EncryptTokensKey), ac.Config.JwtKey)
 	if err != nil {
-		gamelog.L.Err(err).Str("reading-jwt", string(tokenStr)).Msg("Failed to read JWT token")
+		gamelog.L.Err(err).Str("reading-jwt", req.Payload.Token).Msg("Failed to read JWT token")
 		return terror.Error(err, "Failed to read JWT token please try again")
 	}
 
@@ -159,7 +159,7 @@ func readJWT(tokenB []byte, decryptToken bool, decryptKey, jwtKey []byte) (jwt.T
 
 	decrpytedToken, err := decrypt(decryptKey, tokenB)
 	if err != nil {
-		gamelog.L.Err(err).Str("decrypt", string(tokenB)).Msg("Failed to decrypt token")
+		gamelog.L.Err(err).Msg("Failed to decrypt token")
 		return nil, terror.Error(err, "Error decrypting JWT token")
 	}
 
@@ -169,7 +169,7 @@ func readJWT(tokenB []byte, decryptToken bool, decryptKey, jwtKey []byte) (jwt.T
 func decrypt(key, text []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		gamelog.L.Err(err).Str("decrypt", string(key)).Msg("Failed to decrypt token")
+		gamelog.L.Err(err).Msg("Failed to decrypt token")
 		return nil, terror.Error(err, "Failed to decrypt token")
 	}
 	if len(text) < aes.BlockSize {
@@ -181,7 +181,7 @@ func decrypt(key, text []byte) ([]byte, error) {
 	cfb.XORKeyStream(text, text)
 	data, err := base64.StdEncoding.DecodeString(string(text))
 	if err != nil {
-		gamelog.L.Err(err).Str("decrypt", string(key)).Msg("Failed to decrypt token")
+		gamelog.L.Err(err).Msg("Failed to decrypt token")
 		return nil, terror.Error(err, "Failed to decrypt token")
 	}
 	return data, nil
