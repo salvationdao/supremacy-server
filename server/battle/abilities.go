@@ -292,6 +292,8 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 				as.battle.arena.netMessageBus.Send(context.Background(), messagebus.NetBusKey(HubKeySpoilOfWarUpdated), payload)
 			}
 
+			// send hold stage
+
 			gamelog.L.Info().Msgf("abilities system has been cleaned up: %s", as.battle.ID)
 
 			// previously caused panic so wrapping in recover
@@ -828,6 +830,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 	defer func() {
 		price_ticker.Stop()
 		main_ticker.Stop()
+		close(as.endGabs)
 	}()
 
 	end_progress := make(chan bool)
@@ -862,8 +865,12 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 		select {
 		// wait for next tick
 		case <-as.endGabs:
+			// send hold phase to frontend to close the vote panel
+			as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), &GabsBribeStage{
+				Phase:   BribeStageHold,
+				EndTime: time.Now().AddDate(1, 0, 0),
+			})
 			end_progress <- true
-			close(as.endGabs)
 			return
 		case <-main_ticker.C:
 			if as.battle == nil || as.battle.arena.currentBattle == nil || as.battle.arena.currentBattle.BattleNumber != bn {
@@ -873,17 +880,13 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 			if as.battle != as.battle.arena.currentBattle {
 				gamelog.L.Info().Msg("clean up mismatch bribing ticker")
 				as.endGabs <- true
-				continue
+				return
 			}
 			// check phase
 			stage := as.battle.stage
 			// exit the loop, when battle is ended
 			if stage == BattleStageEnd {
-				// change phase to hold and broadcast to user
-				as.battleAbilityPool.Stage.Phase = BribeStageHold
-				as.battleAbilityPool.Stage.EndTime = time.Now().AddDate(1, 0, 0) // HACK: set end time to far future to implement infinite time
-				as.battle.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
-
+				as.endGabs <- true
 				// stop all the ticker and exit the loop
 				gamelog.L.Info().Msg("Stop ability tickers after battle is end")
 				return
