@@ -332,6 +332,7 @@ func (arena *Arena) MultiplierMapSubScribeHandler(ctx context.Context, wsc *hub.
 	}
 
 	// don't pass back any multiplier value if there is no battle, but still complete the subscription
+
 	if arena.currentBattle != nil {
 		multipliers, err := db.PlayerMultipliers(arena.currentBattle.BattleNumber - 1)
 		if err != nil {
