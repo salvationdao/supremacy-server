@@ -96,13 +96,13 @@ var SpoilsOfWarRels = struct {
 	Battle             string
 	BattleNumberBattle string
 }{
-	Battle:             "beginBattle",
+	Battle:             "Battle",
 	BattleNumberBattle: "BattleNumberBattle",
 }
 
 // spoilsOfWarR is where relationships are stored.
 type spoilsOfWarR struct {
-	Battle             *Battle `boiler:"beginBattle" boil:"beginBattle" json:"beginBattle" toml:"beginBattle" yaml:"beginBattle"`
+	Battle             *Battle `boiler:"Battle" boil:"Battle" json:"Battle" toml:"Battle" yaml:"Battle"`
 	BattleNumberBattle *Battle `boiler:"BattleNumberBattle" boil:"BattleNumberBattle" json:"BattleNumberBattle" toml:"BattleNumberBattle" yaml:"BattleNumberBattle"`
 }
 
@@ -443,12 +443,12 @@ func (spoilsOfWarL) LoadBattle(e boil.Executor, singular bool, maybeSpoilsOfWar 
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load beginBattle")
+		return errors.Wrap(err, "failed to eager load Battle")
 	}
 
 	var resultSlice []*Battle
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice beginBattle")
+		return errors.Wrap(err, "failed to bind eager loaded slice Battle")
 	}
 
 	if err = results.Close(); err != nil {
@@ -547,12 +547,12 @@ func (spoilsOfWarL) LoadBattleNumberBattle(e boil.Executor, singular bool, maybe
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load beginBattle")
+		return errors.Wrap(err, "failed to eager load Battle")
 	}
 
 	var resultSlice []*Battle
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice beginBattle")
+		return errors.Wrap(err, "failed to bind eager loaded slice Battle")
 	}
 
 	if err = results.Close(); err != nil {
@@ -601,7 +601,7 @@ func (spoilsOfWarL) LoadBattleNumberBattle(e boil.Executor, singular bool, maybe
 }
 
 // SetBattle of the spoilsOfWar to the related item.
-// Sets o.R.beginBattle to related.
+// Sets o.R.Battle to related.
 // Adds o to related.R.SpoilsOfWar.
 func (o *SpoilsOfWar) SetBattle(exec boil.Executor, insert bool, related *Battle) error {
 	var err error

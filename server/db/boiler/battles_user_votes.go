@@ -67,13 +67,13 @@ var BattlesUserVoteRels = struct {
 	Battle string
 	User   string
 }{
-	Battle: "beginBattle",
+	Battle: "Battle",
 	User:   "User",
 }
 
 // battlesUserVoteR is where relationships are stored.
 type battlesUserVoteR struct {
-	Battle *Battle `boiler:"beginBattle" boil:"beginBattle" json:"beginBattle" toml:"beginBattle" yaml:"beginBattle"`
+	Battle *Battle `boiler:"Battle" boil:"Battle" json:"Battle" toml:"Battle" yaml:"Battle"`
 	User   *User   `boiler:"User" boil:"User" json:"User" toml:"User" yaml:"User"`
 }
 
@@ -414,12 +414,12 @@ func (battlesUserVoteL) LoadBattle(e boil.Executor, singular bool, maybeBattlesU
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load beginBattle")
+		return errors.Wrap(err, "failed to eager load Battle")
 	}
 
 	var resultSlice []*Battle
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice beginBattle")
+		return errors.Wrap(err, "failed to bind eager loaded slice Battle")
 	}
 
 	if err = results.Close(); err != nil {
@@ -572,7 +572,7 @@ func (battlesUserVoteL) LoadUser(e boil.Executor, singular bool, maybeBattlesUse
 }
 
 // SetBattle of the battlesUserVote to the related item.
-// Sets o.R.beginBattle to related.
+// Sets o.R.Battle to related.
 // Adds o to related.R.BattlesUserVotes.
 func (o *BattlesUserVote) SetBattle(exec boil.Executor, insert bool, related *Battle) error {
 	var err error

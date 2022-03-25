@@ -103,12 +103,12 @@ var IssuedContractRewardWhere = struct {
 var IssuedContractRewardRels = struct {
 	Battle string
 }{
-	Battle: "beginBattle",
+	Battle: "Battle",
 }
 
 // issuedContractRewardR is where relationships are stored.
 type issuedContractRewardR struct {
-	Battle *Battle `boiler:"beginBattle" boil:"beginBattle" json:"beginBattle" toml:"beginBattle" yaml:"beginBattle"`
+	Battle *Battle `boiler:"Battle" boil:"Battle" json:"Battle" toml:"Battle" yaml:"Battle"`
 }
 
 // NewStruct creates a new relationship struct
@@ -434,12 +434,12 @@ func (issuedContractRewardL) LoadBattle(e boil.Executor, singular bool, maybeIss
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load beginBattle")
+		return errors.Wrap(err, "failed to eager load Battle")
 	}
 
 	var resultSlice []*Battle
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice beginBattle")
+		return errors.Wrap(err, "failed to bind eager loaded slice Battle")
 	}
 
 	if err = results.Close(); err != nil {
@@ -488,7 +488,7 @@ func (issuedContractRewardL) LoadBattle(e boil.Executor, singular bool, maybeIss
 }
 
 // SetBattle of the issuedContractReward to the related item.
-// Sets o.R.beginBattle to related.
+// Sets o.R.Battle to related.
 // Adds o to related.R.IssuedContractRewards.
 func (o *IssuedContractReward) SetBattle(exec boil.Executor, insert bool, related *Battle) error {
 	var err error

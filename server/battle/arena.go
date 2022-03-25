@@ -743,11 +743,8 @@ type BattleWMDestroyedPayload struct {
 func (arena *Arena) init() {
 	arena.Lock()
 	defer arena.Unlock()
-	btl := arena.beginBattle()
-	arena.currentBattle = btl
-	arena.Message(BATTLEINIT, btl)
+	arena.beginBattle()
 
-	go arena.NotifyUpcomingWarMachines()
 }
 
 func (arena *Arena) start() {
@@ -825,11 +822,11 @@ func (arena *Arena) start() {
 	}
 }
 
-func (arena *Arena) beginBattle() *Battle {
+func (arena *Arena) beginBattle() {
 	gm, err := db.GameMapGetRandom(context.Background(), arena.conn)
 	if err != nil {
 		gamelog.L.Err(err).Msg("unable to get random map")
-		return nil
+		return
 	}
 
 	gameMap := &server.GameMap{
@@ -915,7 +912,10 @@ func (arena *Arena) beginBattle() *Battle {
 		btl.users.Send(HubKeyViewerLiveCountUpdated, result)
 	})
 
-	return btl
+	arena.currentBattle = btl
+	arena.Message(BATTLEINIT, btl)
+
+	go arena.NotifyUpcomingWarMachines()
 }
 
 const HubKeyUserStatSubscribe hub.HubCommandKey = "USER:STAT:SUBSCRIBE"

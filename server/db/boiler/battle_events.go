@@ -78,7 +78,7 @@ var BattleEventRels = struct {
 	EventBattleEventsWarMachineDestroyeds        string
 	RelatedEventBattleEventsWarMachineDestroyeds string
 }{
-	Battle:                                       "beginBattle",
+	Battle:                                       "Battle",
 	EventBattleEventsGameAbilities:               "EventBattleEventsGameAbilities",
 	EventBattleEventsStates:                      "EventBattleEventsStates",
 	EventBattleEventsWarMachineDestroyeds:        "EventBattleEventsWarMachineDestroyeds",
@@ -87,7 +87,7 @@ var BattleEventRels = struct {
 
 // battleEventR is where relationships are stored.
 type battleEventR struct {
-	Battle                                       *Battle                              `boiler:"beginBattle" boil:"beginBattle" json:"beginBattle" toml:"beginBattle" yaml:"beginBattle"`
+	Battle                                       *Battle                              `boiler:"Battle" boil:"Battle" json:"Battle" toml:"Battle" yaml:"Battle"`
 	EventBattleEventsGameAbilities               BattleEventsGameAbilitySlice         `boiler:"EventBattleEventsGameAbilities" boil:"EventBattleEventsGameAbilities" json:"EventBattleEventsGameAbilities" toml:"EventBattleEventsGameAbilities" yaml:"EventBattleEventsGameAbilities"`
 	EventBattleEventsStates                      BattleEventsStateSlice               `boiler:"EventBattleEventsStates" boil:"EventBattleEventsStates" json:"EventBattleEventsStates" toml:"EventBattleEventsStates" yaml:"EventBattleEventsStates"`
 	EventBattleEventsWarMachineDestroyeds        BattleEventsWarMachineDestroyedSlice `boiler:"EventBattleEventsWarMachineDestroyeds" boil:"EventBattleEventsWarMachineDestroyeds" json:"EventBattleEventsWarMachineDestroyeds" toml:"EventBattleEventsWarMachineDestroyeds" yaml:"EventBattleEventsWarMachineDestroyeds"`
@@ -505,12 +505,12 @@ func (battleEventL) LoadBattle(e boil.Executor, singular bool, maybeBattleEvent 
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load beginBattle")
+		return errors.Wrap(err, "failed to eager load Battle")
 	}
 
 	var resultSlice []*Battle
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice beginBattle")
+		return errors.Wrap(err, "failed to bind eager loaded slice Battle")
 	}
 
 	if err = results.Close(); err != nil {
@@ -951,7 +951,7 @@ func (battleEventL) LoadRelatedEventBattleEventsWarMachineDestroyeds(e boil.Exec
 }
 
 // SetBattle of the battleEvent to the related item.
-// Sets o.R.beginBattle to related.
+// Sets o.R.Battle to related.
 // Adds o to related.R.BattleEvents.
 func (o *BattleEvent) SetBattle(exec boil.Executor, insert bool, related *Battle) error {
 	var err error
@@ -997,7 +997,7 @@ func (o *BattleEvent) SetBattle(exec boil.Executor, insert bool, related *Battle
 }
 
 // RemoveBattle relationship.
-// Sets o.R.beginBattle to nil.
+// Sets o.R.Battle to nil.
 // Removes o from all passed in related items' relationships struct (Optional).
 func (o *BattleEvent) RemoveBattle(exec boil.Executor, related *Battle) error {
 	var err error
