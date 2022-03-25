@@ -162,12 +162,48 @@ func FactionAddContribute(factionID string, amount decimal.Decimal) error {
 	return nil
 }
 
-func FactionAddKillCount(factionID string) error {
+func FactionAddAbilityKillCount(factionID string) error {
 	q := `
 		UPDATE
 			faction_stats
 		SET
 		kill_count = kill_count + 1
+		WHERE
+			id = $1
+	`
+	_, err := gamedb.StdConn.Exec(q, factionID)
+	if err != nil {
+		gamelog.L.Error().Str("faction_id", factionID).Err(err).Msg("Failed to update faction kill count")
+		return terror.Error(err)
+	}
+
+	return nil
+}
+
+func FactionSubtractAbilityKillCount(factionID string) error {
+	q := `
+		UPDATE
+			faction_stats
+		SET
+		kill_count = kill_count - 1
+		WHERE
+			id = $1
+	`
+	_, err := gamedb.StdConn.Exec(q, factionID)
+	if err != nil {
+		gamelog.L.Error().Str("faction_id", factionID).Err(err).Msg("Failed to update faction kill count")
+		return terror.Error(err)
+	}
+
+	return nil
+}
+
+func FactionAddMechKillCount(factionID string) error {
+	q := `
+		UPDATE
+			faction_stats
+		SET
+		mech_kill_count = mech_kill_count + 1
 		WHERE
 			id = $1
 	`

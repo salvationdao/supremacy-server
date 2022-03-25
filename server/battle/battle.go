@@ -1585,15 +1585,15 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 				killByWarMachine = wm
 				// update user kill
 				if wm.OwnedByID != "" {
-					_, err := db.UserStatAddKill(wm.OwnedByID)
+					_, err := db.UserStatAddMechKill(wm.OwnedByID)
 					if err != nil {
-						gamelog.L.Error().Str("player_id", wm.OwnedByID).Err(err).Msg("Failed to update user kill count")
+						gamelog.L.Error().Str("player_id", wm.OwnedByID).Err(err).Msg("Failed to update user mech kill count")
 					}
 
 					// add faction kill count
-					err = db.FactionAddKillCount(killByWarMachine.FactionID)
+					err = db.FactionAddMechKillCount(killByWarMachine.FactionID)
 					if err != nil {
-						gamelog.L.Error().Str("faction_id", killByWarMachine.FactionID).Err(err).Msg("failed to update faction kill count")
+						gamelog.L.Error().Str("faction_id", killByWarMachine.FactionID).Err(err).Msg("failed to update faction mech kill count")
 					}
 				}
 			}
@@ -1612,17 +1612,33 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 		}
 
 		if abl != nil && abl.PlayerID.Valid {
-			// update user kill
-			_, err := db.UserStatAddKill(abl.PlayerID.String)
-			if err != nil {
-				gamelog.L.Error().Str("player_id", abl.PlayerID.String).Err(err).Msg("Failed to update user kill count")
+
+			if strings.EqualFold(destroyedWarMachine.FactionID, abl.FactionID) {
+				// update user kill
+				_, err := db.UserStatSubtractAbilityKill(abl.PlayerID.String)
+				if err != nil {
+					gamelog.L.Error().Str("player_id", abl.PlayerID.String).Err(err).Msg("Failed to subtract user ability kill count")
+				}
+
+				// subtract faction kill count
+				err = db.FactionSubtractAbilityKillCount(abl.FactionID)
+				if err != nil {
+					gamelog.L.Error().Str("faction_id", abl.FactionID).Err(err).Msg("Failed to subtract user ability kill count")
+				}
+			} else {
+				// update user kill
+				_, err := db.UserStatAddAbilityKill(abl.PlayerID.String)
+				if err != nil {
+					gamelog.L.Error().Str("player_id", abl.PlayerID.String).Err(err).Msg("Failed to add user ability kill count")
+				}
+
+				// add faction kill count
+				err = db.FactionAddAbilityKillCount(abl.FactionID)
+				if err != nil {
+					gamelog.L.Error().Str("faction_id", abl.FactionID).Err(err).Msg("Failed to add faction ability kill count")
+				}
 			}
 
-			// add faction kill count
-			err = db.FactionAddKillCount(abl.FactionID)
-			if err != nil {
-				gamelog.L.Error().Str("faction_id", abl.FactionID).Err(err).Msg("failed to update faction kill count")
-			}
 		}
 	}
 
