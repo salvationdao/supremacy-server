@@ -74,6 +74,18 @@ func (u *usersMap) Delete(id uuid.UUID) {
 	u.Unlock()
 }
 
+func (um *usersMap) UsersByFactionID(factionID string) []BattleUser {
+	um.RLock()
+	users := []BattleUser{}
+	for _, bu := range um.m {
+		if bu.FactionID == factionID {
+			users = append(users, *bu)
+		}
+	}
+	um.RUnlock()
+	return users
+}
+
 type Started struct {
 	BattleID           string        `json:"battleID"`
 	WarMachines        []*WarMachine `json:"warMachines"`

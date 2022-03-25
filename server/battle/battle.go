@@ -1110,12 +1110,20 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 			Err(err).Msg("unable to insert mech into queue")
 		return err
 	}
+	factionAccountID, ok := server.FactionUsers[mech.FactionID]
+	if !ok {
+		gamelog.L.Error().
+			Str("mech ID", mech.ID).
+			Str("faction ID", mech.FactionID).
+			Err(err).
+			Msg("unable to get hard coded syndicate player ID from faction ID")
+	}
 
 	// Charge user queue fee
 	supTransactionID, err := arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
 		Amount:               queueCost.StringFixed(18),
 		FromUserID:           ownerID,
-		ToUserID:             SupremacyBattleUserID,
+		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("war_machine_queueing_fee|%s|%d", msg.Payload.AssetHash, time.Now().UnixNano())),
 		Group:                "Battle",
 		SubGroup:             "Queue",
@@ -1279,10 +1287,19 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 		return err
 	}
 
+	factionAccountID, ok := server.FactionUsers[mech.FactionID]
+	if !ok {
+		gamelog.L.Error().
+			Str("mech ID", mech.ID).
+			Str("faction ID", mech.FactionID).
+			Err(err).
+			Msg("unable to get hard coded syndicate player ID from faction ID")
+	}
+
 	// Refund user queue fee
 	supTransactionID, err := arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
 		Amount:               originalQueueCost.StringFixed(18),
-		FromUserID:           SupremacyBattleUserID,
+		FromUserID:           uuid.Must(uuid.FromString(factionAccountID)),
 		ToUserID:             ownerID,
 		TransactionReference: server.TransactionReference(fmt.Sprintf("refund_war_machine_queueing_fee|%s|%d", msg.Payload.AssetHash, time.Now().UnixNano())),
 		Group:                "Battle",

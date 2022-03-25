@@ -5,6 +5,7 @@ package boiler
 
 var TableNames = struct {
 	AssetRepair                                        string
+	BanVotes                                           string
 	BattleAbilities                                    string
 	BattleAbilityTriggers                              string
 	BattleContracts                                    string
@@ -46,6 +47,7 @@ var TableNames = struct {
 	Multipliers                                        string
 	PendingTransactions                                string
 	PlayerPreferences                                  string
+	PlayerVotes                                        string
 	Players                                            string
 	SchemaMigrations                                   string
 	SpoilsOfWar                                        string
@@ -57,6 +59,7 @@ var TableNames = struct {
 	Weapons                                            string
 }{
 	AssetRepair:                     "asset_repair",
+	BanVotes:                        "ban_votes",
 	BattleAbilities:                 "battle_abilities",
 	BattleAbilityTriggers:           "battle_ability_triggers",
 	BattleContracts:                 "battle_contracts",
@@ -98,6 +101,7 @@ var TableNames = struct {
 	Multipliers:                      "multipliers",
 	PendingTransactions:              "pending_transactions",
 	PlayerPreferences:                "player_preferences",
+	PlayerVotes:                      "player_votes",
 	Players:                          "players",
 	SchemaMigrations:                 "schema_migrations",
 	SpoilsOfWar:                      "spoils_of_war",
