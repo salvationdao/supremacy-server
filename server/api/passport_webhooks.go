@@ -13,8 +13,6 @@ import (
 	"server/gamedb"
 	"server/helpers"
 
-	"github.com/davecgh/go-spew/spew"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-chi/chi"
 	"github.com/gofrs/uuid"
@@ -318,7 +316,6 @@ func (pc *PassportWebhookController) AuthRingCheck(w http.ResponseWriter, r *htt
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	spew.Dump(req.User.Faction)
 	b, err := json.Marshal(&BroadcastPayload{
 		Key:     HubKeyUserRingCheck,
 		Payload: req.User,

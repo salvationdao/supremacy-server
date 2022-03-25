@@ -107,7 +107,7 @@ func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 			faction, err := boiler.FindFaction(gamedb.StdConn, factionID.String())
 			if err != nil {
 				gamelog.L.Error().
-					Str("Battle ID", btl.ID).
+					Str("beginBattle ID", btl.ID).
 					Str("Faction ID", factionID.String()).
 					Err(err).Msg("unable to retrieve faction from database")
 
@@ -128,7 +128,7 @@ func (btl *Battle) start() {
 	if btl.inserted {
 		_, err := btl.Battle.Update(gamedb.StdConn, boil.Infer())
 		if err != nil {
-			gamelog.L.Error().Interface("battle", btl).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to update Battle in database")
+			gamelog.L.Error().Interface("battle", btl).Str("battle.go", ":battle.go:battle.beginBattle()").Err(err).Msg("unable to update beginBattle in database")
 			return
 		}
 
@@ -136,7 +136,7 @@ func (btl *Battle) start() {
 		if err == nil {
 			_, err = bmds.DeleteAll(gamedb.StdConn)
 			if err != nil {
-				gamelog.L.Error().Err(err).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to delete delete stale battle mechs from database")
+				gamelog.L.Error().Err(err).Str("battle.go", ":battle.go:battle.beginBattle()").Err(err).Msg("unable to delete delete stale battle mechs from database")
 			}
 		}
 
@@ -144,7 +144,7 @@ func (btl *Battle) start() {
 		if err == nil {
 			_, err = bws.DeleteAll(gamedb.StdConn)
 			if err != nil {
-				gamelog.L.Error().Err(err).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to delete delete stale battle wins from database")
+				gamelog.L.Error().Err(err).Str("battle.go", ":battle.go:battle.beginBattle()").Err(err).Msg("unable to delete delete stale battle wins from database")
 			}
 		}
 
@@ -152,7 +152,7 @@ func (btl *Battle) start() {
 		if err == nil {
 			_, err = bks.DeleteAll(gamedb.StdConn)
 			if err != nil {
-				gamelog.L.Error().Err(err).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to delete delete stale battle kills from database")
+				gamelog.L.Error().Err(err).Str("battle.go", ":battle.go:battle.beginBattle()").Err(err).Msg("unable to delete delete stale battle kills from database")
 			}
 		}
 
@@ -160,13 +160,13 @@ func (btl *Battle) start() {
 		if err == nil {
 			_, err = bhs.DeleteAll(gamedb.StdConn)
 			if err != nil {
-				gamelog.L.Error().Err(err).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to delete delete stale battle historys from database")
+				gamelog.L.Error().Err(err).Str("battle.go", ":battle.go:battle.beginBattle()").Err(err).Msg("unable to delete delete stale battle historys from database")
 			}
 		}
 	} else {
 		err := btl.Battle.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {
-			gamelog.L.Error().Interface("battle", btl).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to insert Battle into database")
+			gamelog.L.Error().Interface("battle", btl).Str("battle.go", ":battle.go:battle.beginBattle()").Err(err).Msg("unable to insert beginBattle into database")
 			return
 		}
 
@@ -195,7 +195,7 @@ func (btl *Battle) start() {
 
 	err = db.BattleMechs(btl.Battle, btl.battleMechData)
 	if err != nil {
-		gamelog.L.Error().Str("Battle ID", btl.ID).Err(err).Msg("unable to insert battle into database")
+		gamelog.L.Error().Str("beginBattle ID", btl.ID).Err(err).Msg("unable to insert battle into database")
 		//TODO: something more dramatic
 	}
 
@@ -246,7 +246,7 @@ func (btl *Battle) start() {
 		if btl.BattleNumber > ga.ShowUntilBattleNumber.Int {
 			_, err := boiler.GlobalAnnouncements().DeleteAll(gamedb.StdConn)
 			if err != nil {
-				gamelog.L.Error().Str("Battle ID", btl.ID).Msg("unable to delete global announcement")
+				gamelog.L.Error().Str("beginBattle ID", btl.ID).Msg("unable to delete global announcement")
 			}
 
 			go btl.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), nil)
@@ -485,7 +485,7 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 
 	err := db.ClearQueueByBattle(btl.ID)
 	if err != nil {
-		gamelog.L.Error().Str("Battle ID", btl.ID).Msg("unable to clear queue for battle")
+		gamelog.L.Error().Str("beginBattle ID", btl.ID).Msg("unable to clear queue for battle")
 	}
 
 	for i, wmwin := range payload.WinningWarMachines {
@@ -497,13 +497,13 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 			}
 		}
 		if wm == nil {
-			gamelog.L.Error().Str("Battle ID", btl.ID).Msg("unable to match war machine to battle with hash")
+			gamelog.L.Error().Str("beginBattle ID", btl.ID).Msg("unable to match war machine to battle with hash")
 			continue
 		}
 		mechId, err := uuid.FromString(wm.ID)
 		if err != nil {
 			gamelog.L.Error().
-				Str("Battle ID", btl.ID).
+				Str("beginBattle ID", btl.ID).
 				Str("mech ID", wm.ID).
 				Err(err).
 				Msg("unable to convert mech id to uuid")
@@ -512,7 +512,7 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 		ownedById, err := uuid.FromString(wm.OwnedByID)
 		if err != nil {
 			gamelog.L.Error().
-				Str("Battle ID", btl.ID).
+				Str("beginBattle ID", btl.ID).
 				Str("mech ID", wm.ID).
 				Err(err).
 				Msg("unable to convert owned id to uuid")
@@ -521,7 +521,7 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 		factionId, err := uuid.FromString(wm.FactionID)
 		if err != nil {
 			gamelog.L.Error().
-				Str("Battle ID", btl.ID).
+				Str("beginBattle ID", btl.ID).
 				Str("faction ID", wm.FactionID).
 				Err(err).
 				Msg("unable to convert faction id to uuid")
@@ -541,7 +541,7 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 
 		if err != nil && errors.Is(err, sql.ErrNoRows) {
 			gamelog.L.Warn().
-				Str("Battle ID", btl.ID).
+				Str("beginBattle ID", btl.ID).
 				Str("Mech ID", wm.ID).
 				Err(err).
 				Msg("no contract in database")
@@ -549,7 +549,7 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 			continue
 		} else if err != nil {
 			gamelog.L.Error().
-				Str("Battle ID", btl.ID).
+				Str("beginBattle ID", btl.ID).
 				Str("Mech ID", wm.ID).
 				Err(err).
 				Msg("failed to retrieve contract")
@@ -560,14 +560,14 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 		factionAccountID, ok := server.FactionUsers[factionId.String()]
 		if !ok {
 			gamelog.L.Error().
-				Str("Battle ID", btl.ID).
+				Str("beginBattle ID", btl.ID).
 				Str("faction ID", wm.FactionID).
 				Err(err).
 				Msg("unable to get hard coded syndicate player ID from faction ID")
 		} else {
 			//do contract payout for winning mech
 			gamelog.L.Info().
-				Str("Battle ID", btl.ID).
+				Str("beginBattle ID", btl.ID).
 				Str("Faction ID", wm.FactionID).
 				Str("Faction Account ID", factionAccountID).
 				Str("Player ID", wm.OwnedByID).
@@ -619,7 +619,7 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 			})
 			if err != nil {
 				gamelog.L.Error().
-					Str("Battle ID", btl.ID).
+					Str("beginBattle ID", btl.ID).
 					Str("faction ID", wm.FactionID).
 					Str("Player ID", wm.OwnedByID).
 					Err(err).
@@ -632,7 +632,7 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 			_, err = contract.Update(gamedb.StdConn, boil.Infer())
 			if err != nil {
 				gamelog.L.Error().
-					Str("Battle ID", btl.ID).
+					Str("beginBattle ID", btl.ID).
 					Str("faction ID", wm.FactionID).
 					Str("Player ID", wm.OwnedByID).
 					Str("TX ID", txid).
@@ -645,7 +645,7 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 	err = db.WinBattle(btl.ID, payload.WinCondition, mws...)
 	if err != nil {
 		gamelog.L.Error().
-			Str("Battle ID", btl.ID).
+			Str("beginBattle ID", btl.ID).
 			Err(err).
 			Msg("unable to store mech wins")
 	}
@@ -668,17 +668,17 @@ func (btl *Battle) endWarMachines(payload *BattleEndPayload) []*WarMachine {
 			}
 		}
 		if winningWarMachines[i] == nil {
-			gamelog.L.Error().Str("Battle ID", btl.ID).Msg("unable to match war machine to battle with hash")
+			gamelog.L.Error().Str("beginBattle ID", btl.ID).Msg("unable to match war machine to battle with hash")
 		}
 	}
 
 	if len(winningWarMachines) == 0 || winningWarMachines[0] == nil {
-		gamelog.L.Panic().Str("Battle ID", btl.ID).Msg("no winning war machines")
+		gamelog.L.Panic().Str("beginBattle ID", btl.ID).Msg("no winning war machines")
 	} else {
 		// record faction win/loss count
 		err := db.FactionAddWinLossCount(winningWarMachines[0].FactionID)
 		if err != nil {
-			gamelog.L.Panic().Str("Battle ID", btl.ID).Str("winning_faction_id", winningWarMachines[0].FactionID).Msg("Failed to update faction win/loss count")
+			gamelog.L.Panic().Str("beginBattle ID", btl.ID).Str("winning_faction_id", winningWarMachines[0].FactionID).Msg("Failed to update faction win/loss count")
 		}
 	}
 
@@ -726,7 +726,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	btl.EndedAt = null.TimeFrom(time.Now())
 	_, err := btl.Update(gamedb.StdConn, boil.Infer())
 	if err != nil {
-		gamelog.L.Error().Str("Battle ID", btl.ID).Time("EndedAt", btl.EndedAt.Time).Msg("unable to update database for endat battle")
+		gamelog.L.Error().Str("beginBattle ID", btl.ID).Time("EndedAt", btl.EndedAt.Time).Msg("unable to update database for endat battle")
 	}
 
 	btl.endAbilities()
@@ -746,7 +746,7 @@ const HubKeyBattleEndDetailUpdated hub.HubCommandKey = "BATTLE:END:DETAIL:UPDATE
 
 func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 	btl.users.Range(func(user *BattleUser) bool {
-		m, total := btl.multipliers.PlayerMultipliers(user.ID, 1)
+		m, total := btl.multipliers.PlayerMultipliers(user.ID, 0)
 
 		info.MultiplierUpdate = &MultiplierUpdate{
 			UserMultipliers:  m,
@@ -768,9 +768,9 @@ func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 		return true
 	})
 
-	multipliers, err := db.PlayerMultipliers(btl.BattleNumber + 1)
+	multipliers, err := db.PlayerMultipliers(btl.BattleNumber)
 	if err != nil {
-		gamelog.L.Error().Str("battle number #", strconv.Itoa(btl.BattleNumber+1)).Err(err).Msg("Failed to get player multipliers from db")
+		gamelog.L.Error().Str("battle number #", strconv.Itoa(btl.BattleNumber)).Err(err).Msg("Failed to get player multipliers from db")
 		return
 	}
 
@@ -779,9 +779,9 @@ func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 	}
 
 	// get the citizen list
-	citizenPlayerIDs, err := db.CitizenPlayerIDs(btl.BattleNumber + 1)
+	citizenPlayerIDs, err := db.CitizenPlayerIDs(btl.BattleNumber)
 	if err != nil {
-		gamelog.L.Error().Str("battle number #", strconv.Itoa(btl.BattleNumber+1)).Err(err).Msg("Failed to get citizen player id list from db")
+		gamelog.L.Error().Str("battle number #", strconv.Itoa(btl.BattleNumber)).Err(err).Msg("Failed to get citizen player id list from db")
 		return
 	}
 
@@ -1121,7 +1121,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		FromUserID:           ownerID,
 		ToUserID:             SupremacyBattleUserID,
 		TransactionReference: server.TransactionReference(fmt.Sprintf("war_machine_queueing_fee|%s|%d", msg.Payload.AssetHash, time.Now().UnixNano())),
-		Group:                "Battle",
+		Group:                "beginBattle",
 		SubGroup:             "Queue",
 		Description:          "Queued mech to battle arena",
 		NotSafe:              true,
@@ -1140,7 +1140,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 			FromUserID:           ownerID,
 			ToUserID:             SupremacyBattleUserID,
 			TransactionReference: server.TransactionReference(fmt.Sprintf("war_machine_queue_notification_fee|%s|%d", msg.Payload.AssetHash, time.Now().UnixNano())),
-			Group:                "Battle",
+			Group:                "beginBattle",
 			SubGroup:             "Queue",
 			Description:          "SMS notification surcharge for queued mech in arena",
 			NotSafe:              true,
@@ -1314,7 +1314,7 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 		FromUserID:           SupremacyBattleUserID,
 		ToUserID:             ownerID,
 		TransactionReference: server.TransactionReference(fmt.Sprintf("refund_war_machine_queueing_fee|%s|%d", msg.Payload.AssetHash, time.Now().UnixNano())),
-		Group:                "Battle",
+		Group:                "beginBattle",
 		SubGroup:             "Queue",
 		Description:          "Refunded battle arena queueing fee",
 		NotSafe:              true,
@@ -1333,7 +1333,7 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 			FromUserID:           SupremacyBattleUserID,
 			ToUserID:             ownerID,
 			TransactionReference: server.TransactionReference(fmt.Sprintf("refund_war_machine_queue_notification_fee|%s|%d", msg.Payload.AssetHash, time.Now().UnixNano())),
-			Group:                "Battle",
+			Group:                "beginBattle",
 			SubGroup:             "Queue",
 			Description:          "Refunded SMS notification surcharge for queued mech in arena",
 			NotSafe:              true,
@@ -1369,7 +1369,7 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 		nextContractReward = nextQueueLength.Mul(decimal.New(2, 18)) // 2x queue length
 	}
 
-	// Send updated Battle queue status to all subscribers
+	// Send updated beginBattle queue status to all subscribers
 	arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", WSQueueStatusSubscribe, factionID.String())), QueueStatusResponse{
 		result,
 		nextQueueCost,

@@ -133,14 +133,14 @@ var BattleContributionRels = struct {
 	Faction string
 	Player  string
 }{
-	Battle:  "Battle",
+	Battle:  "beginBattle",
 	Faction: "Faction",
 	Player:  "Player",
 }
 
 // battleContributionR is where relationships are stored.
 type battleContributionR struct {
-	Battle  *Battle  `boiler:"Battle" boil:"Battle" json:"Battle" toml:"Battle" yaml:"Battle"`
+	Battle  *Battle  `boiler:"beginBattle" boil:"beginBattle" json:"beginBattle" toml:"beginBattle" yaml:"beginBattle"`
 	Faction *Faction `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
 	Player  *Player  `boiler:"Player" boil:"Player" json:"Player" toml:"Player" yaml:"Player"`
 }
@@ -498,12 +498,12 @@ func (battleContributionL) LoadBattle(e boil.Executor, singular bool, maybeBattl
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load Battle")
+		return errors.Wrap(err, "failed to eager load beginBattle")
 	}
 
 	var resultSlice []*Battle
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice Battle")
+		return errors.Wrap(err, "failed to bind eager loaded slice beginBattle")
 	}
 
 	if err = results.Close(); err != nil {
@@ -762,7 +762,7 @@ func (battleContributionL) LoadPlayer(e boil.Executor, singular bool, maybeBattl
 }
 
 // SetBattle of the battleContribution to the related item.
-// Sets o.R.Battle to related.
+// Sets o.R.beginBattle to related.
 // Adds o to related.R.BattleContributions.
 func (o *BattleContribution) SetBattle(exec boil.Executor, insert bool, related *Battle) error {
 	var err error

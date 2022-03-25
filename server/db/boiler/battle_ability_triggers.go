@@ -136,7 +136,7 @@ var BattleAbilityTriggerRels = struct {
 	GameAbility string
 	Player      string
 }{
-	Battle:      "Battle",
+	Battle:      "beginBattle",
 	Faction:     "Faction",
 	GameAbility: "GameAbility",
 	Player:      "Player",
@@ -144,7 +144,7 @@ var BattleAbilityTriggerRels = struct {
 
 // battleAbilityTriggerR is where relationships are stored.
 type battleAbilityTriggerR struct {
-	Battle      *Battle      `boiler:"Battle" boil:"Battle" json:"Battle" toml:"Battle" yaml:"Battle"`
+	Battle      *Battle      `boiler:"beginBattle" boil:"beginBattle" json:"beginBattle" toml:"beginBattle" yaml:"beginBattle"`
 	Faction     *Faction     `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
 	GameAbility *GameAbility `boiler:"GameAbility" boil:"GameAbility" json:"GameAbility" toml:"GameAbility" yaml:"GameAbility"`
 	Player      *Player      `boiler:"Player" boil:"Player" json:"Player" toml:"Player" yaml:"Player"`
@@ -517,12 +517,12 @@ func (battleAbilityTriggerL) LoadBattle(e boil.Executor, singular bool, maybeBat
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load Battle")
+		return errors.Wrap(err, "failed to eager load beginBattle")
 	}
 
 	var resultSlice []*Battle
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice Battle")
+		return errors.Wrap(err, "failed to bind eager loaded slice beginBattle")
 	}
 
 	if err = results.Close(); err != nil {
@@ -889,7 +889,7 @@ func (battleAbilityTriggerL) LoadPlayer(e boil.Executor, singular bool, maybeBat
 }
 
 // SetBattle of the battleAbilityTrigger to the related item.
-// Sets o.R.Battle to related.
+// Sets o.R.beginBattle to related.
 // Adds o to related.R.BattleAbilityTriggers.
 func (o *BattleAbilityTrigger) SetBattle(exec boil.Executor, insert bool, related *Battle) error {
 	var err error

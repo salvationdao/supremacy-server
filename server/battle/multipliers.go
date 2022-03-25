@@ -62,7 +62,7 @@ func (ms *MultiplierSystem) PlayerMultipliers(playerID uuid.UUID, battleNumberAd
 	usermultipliers, err := boiler.Multipliers(
 		qm.InnerJoin("user_multipliers um on um.multiplier_id = multipliers.id"),
 		qm.Where(`um.player_id = ?`, playerID.String()),
-		qm.And(`um.until_battle_number >= ?`, ms.battle.BattleNumber+battleNumberAdjust),
+		qm.And(`um.until_battle_number > ?`, ms.battle.BattleNumber+battleNumberAdjust),
 	).All(gamedb.StdConn)
 
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -304,10 +304,10 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 		}
 	}
 
-	// getting citizens of the next round (meaning they got citizen previous round)
-	citizenIDs, err := db.CitizenPlayerIDs(ms.battle.BattleNumber + 1)
+	// checking if they have citizen this round
+	citizenIDs, err := db.CitizenPlayerIDs(ms.battle.BattleNumber)
 	if err != nil {
-		gamelog.L.Error().Str("battle number", strconv.Itoa(ms.battle.BattleNumber+1)).Err(err).Msg("Failed to get citizen ids for next round")
+		gamelog.L.Error().Str("battle number", strconv.Itoa(ms.battle.BattleNumber)).Err(err).Msg("Failed to get citizen ids for next round")
 	}
 
 	for _, id := range citizenIDs {
@@ -553,18 +553,22 @@ winwar:
 	}
 
 	// insert multipliers
+	playersWithCitizenAlready := make(map[string]bool)
 	for pid, mlts := range newMultipliers {
 		for multiID, m := range mlts {
-
 			// if it is a citizen multi
 			if citizenMulti.ID == multiID {
+				if _, ok := playersWithCitizenAlready[pid]; ok {
+					continue
+				}
+				playersWithCitizenAlready[pid] = true
 
 				um, err := boiler.UserMultipliers(
 					//setting query conditions
-					// check the player has citizen mutli that ends the round after (if so, player had gotten multi previous round)
-
+					// check the player has citizen multi that ends this round
 					boiler.UserMultiplierWhere.PlayerID.EQ(pid),
-					boiler.UserMultiplierWhere.UntilBattleNumber.EQ(ms.battle.BattleNumber+1),
+					boiler.UserMultiplierWhere.UntilBattleNumber.GT(ms.battle.BattleNumber),
+					boiler.UserMultiplierWhere.FromBattleNumber.LTE(ms.battle.BattleNumber),
 					boiler.UserMultiplierWhere.MultiplierID.EQ(citizenMulti.ID),
 				).One(gamedb.StdConn)
 				if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -575,7 +579,7 @@ winwar:
 				if um != nil {
 					// if we get user multiplier back, update the db untilBattleNumber to +2, extending the duration +1 battle.
 					um.UntilBattleNumber = ms.battle.BattleNumber + 2
-					err = db.ExtendCitizenMulti(um)
+					_, err = um.Update(gamedb.StdConn, boil.Infer())
 					if err != nil {
 						gamelog.L.Error().Str("player id", pid).Err(err).Msg("Unable to extend player citizen multi")
 						continue
