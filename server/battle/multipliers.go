@@ -5,19 +5,16 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"server"
-	"server/db"
-	"server/db/boiler"
-	"server/gamedb"
-	"server/gamelog"
-	"sort"
-	"strconv"
-
 	"github.com/gofrs/uuid"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
+	"server"
+	"server/db/boiler"
+	"server/gamedb"
+	"server/gamelog"
+	"sort"
 )
 
 type MultiplierTypeEnum string
@@ -304,22 +301,22 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 		}
 	}
 
-	// checking if they have citizen this round
-	citizenIDs, err := db.CitizenPlayerIDs(ms.battle.BattleNumber)
-	if err != nil {
-		gamelog.L.Error().Str("battle number", strconv.Itoa(ms.battle.BattleNumber)).Err(err).Msg("Failed to get citizen ids for next round")
-	}
-
-	for _, id := range citizenIDs {
-		// if citizen in last round is not in the list, add them
-		if _, ok := newMultipliers[id.String()]; !ok {
-			//adding to newMultiplier map- key = player ID value = new map of Multiplier.
-			newMultipliers[id.String()] = map[string]*boiler.Multiplier{}
-
-			//setting the citizenMultiplier equal to the cached citizen Multi which is equal to the current battle's multi
-			newMultipliers[id.String()][citizenMulti.ID] = citizenMulti
-		}
-	}
+	//// checking if they have citizen this round
+	//citizenIDs, err := db.CitizenPlayerIDs(ms.battle.BattleNumber)
+	//if err != nil {
+	//	gamelog.L.Error().Str("battle number", strconv.Itoa(ms.battle.BattleNumber)).Err(err).Msg("Failed to get citizen ids for next round")
+	//}
+	//
+	//for _, id := range citizenIDs {
+	//	// if citizen in last round is not in the list, add them
+	//	if _, ok := newMultipliers[id.String()]; !ok {
+	//		//adding to newMultiplier map- key = player ID value = new map of Multiplier.
+	//		newMultipliers[id.String()] = map[string]*boiler.Multiplier{}
+	//
+	//		//setting the citizenMultiplier equal to the cached citizen Multi which is equal to the current battle's multi
+	//		newMultipliers[id.String()][citizenMulti.ID] = citizenMulti
+	//	}
+	//}
 
 	// fool and his money
 	for abilityID, abPlayers := range abilitySums {
