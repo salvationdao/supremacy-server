@@ -85,7 +85,7 @@ func GameMapGet(ctx context.Context, conn Conn, id server.GameMapID) (*server.Ga
 
 // GameMapGetRamdom return a game map by given id
 func GameMapGetRandom(ctx context.Context, conn Conn) (*boiler.GameMap, error) {
-	maps, err := boiler.GameMaps(boiler.GameMapWhere.Name.NEQ("ArcticBay")).All(gamedb.StdConn)
+	maps, err := boiler.GameMaps().All(gamedb.StdConn)
 
 	if err != nil {
 		return nil, terror.Error(err)
