@@ -736,10 +736,7 @@ type BattleWMDestroyedPayload struct {
 }
 
 func (arena *Arena) init() {
-	arena.Lock()
-	defer arena.Unlock()
 	arena.beginBattle()
-
 }
 
 func (arena *Arena) start() {

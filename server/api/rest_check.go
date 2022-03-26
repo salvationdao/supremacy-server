@@ -5,10 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"database/sql"
-	"errors"
-	"fmt"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"net/http"
 	"server/battle"
 	"server/db"
@@ -17,9 +13,6 @@ import (
 	"time"
 
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
-	"server/db/boiler"
-	"server/gamedb"
-	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/rs/zerolog"
