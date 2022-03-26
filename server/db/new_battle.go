@@ -264,7 +264,7 @@ func DefaultFactionPlayers() (map[string]PlayerWithFaction, error) {
 
 func LoadBattleQueue(ctx context.Context, lengthPerFaction int) ([]*boiler.BattleQueue, error) {
 	query := `
-		SELECT mech_id, queued_at, faction_id, owner_id, battle_id, notified
+		SELECT id, mech_id, queued_at, faction_id, owner_id, battle_id, notified
 		FROM (
 			SELECT ROW_NUMBER() OVER (PARTITION BY faction_id ORDER BY queued_at ASC) AS r, t.*
 			FROM battle_queue t
@@ -284,7 +284,7 @@ func LoadBattleQueue(ctx context.Context, lengthPerFaction int) ([]*boiler.Battl
 
 	for result.Next() {
 		mc := &boiler.BattleQueue{}
-		err = result.Scan(&mc.MechID, &mc.QueuedAt, &mc.FactionID, &mc.OwnerID, &mc.BattleID, &mc.Notified)
+		err = result.Scan(&mc.ID, &mc.MechID, &mc.QueuedAt, &mc.FactionID, &mc.OwnerID, &mc.BattleID, &mc.Notified)
 		if err != nil {
 			return nil, err
 		}
