@@ -80,7 +80,7 @@ func NewArena(opts *Opts) *Arena {
 	l, err := net.Listen("tcp", opts.Addr)
 
 	if err != nil {
-		gamelog.L.Fatal().Str("Addr", opts.Addr).Err(err).Msg("unable to bind Arena to beginBattle Server address")
+		gamelog.L.Fatal().Str("Addr", opts.Addr).Err(err).Msg("unable to bind Arena to Battle Server address")
 	}
 
 	arena := &Arena{
@@ -152,7 +152,7 @@ func NewArena(opts *Opts) *Arena {
 		err = server.Serve(l)
 
 		if err != nil {
-			gamelog.L.Fatal().Str("Addr", opts.Addr).Err(err).Msg("unable to start beginBattle Arena server")
+			gamelog.L.Fatal().Str("Addr", opts.Addr).Err(err).Msg("unable to start Battle Arena server")
 		}
 	}()
 
@@ -207,7 +207,7 @@ func (arena *Arena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				ip = userIP.String()
 			}
 		}
-		gamelog.L.Warn().Str("request_ip", ip).Err(err).Msg("unable to start beginBattle Arena server")
+		gamelog.L.Warn().Str("request_ip", ip).Err(err).Msg("unable to start Battle Arena server")
 	}
 
 	arena.socket = c
@@ -733,6 +733,13 @@ type BattleWMDestroyedPayload struct {
 		KilledBy string `json:"killedBy"`
 	} `json:"destroyedWarMachineEvent"`
 	BattleID string `json:"battleID"`
+}
+
+func (arena *Arena) init() {
+	arena.Lock()
+	defer arena.Unlock()
+	arena.beginBattle()
+
 }
 
 func (arena *Arena) start() {
