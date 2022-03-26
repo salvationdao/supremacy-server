@@ -42,11 +42,20 @@ type SpendSupsReq struct {
 	NotSafe bool `json:"notSafe"`
 }
 
+type RefundTransactionReq struct {
+	ApiKey        string
+	TransactionID string `json:"transaction_id"`
+}
+
+type RefundTransactionResp struct {
+	TransactionID string `json:"transaction_id"`
+}
 type TransactionGroup string
 
 type SpendSupsResp struct {
-	TXID string `json:"txid"`
+	TransactionID string `json:"transaction_id"`
 }
+
 type ReleaseTransactionsReq struct {
 	ApiKey string
 	TxIDs  []string `json:"txIDs"`

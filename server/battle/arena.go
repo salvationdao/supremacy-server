@@ -899,6 +899,8 @@ func (arena *Arena) beginBattle() {
 		gamelog.L.Warn().Err(err).Msg("unable to load out mechs")
 	}
 
+	// order the mechs by facton id
+
 	// set user online debounce
 	go btl.debounceSendingViewerCount(func(result ViewerLiveCount) {
 		btl.users.Send(HubKeyViewerLiveCountUpdated, result)

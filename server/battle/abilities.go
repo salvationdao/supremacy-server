@@ -93,7 +93,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 		// faction unique abilities
 		factionUniqueAbilities, err := boiler.GameAbilities(qm.Where("faction_id = ?", factionID.String()), qm.And("battle_ability_id ISNULL")).All(gamedb.StdConn)
 		if err != nil {
-			gamelog.L.Error().Str("beginBattle ID", battle.ID).Err(err).Msg("unable to retrieve game abilities")
+			gamelog.L.Error().Str("battle ID", battle.ID).Err(err).Msg("unable to retrieve game abilities")
 		}
 
 		// for zaibatsu unique abilities

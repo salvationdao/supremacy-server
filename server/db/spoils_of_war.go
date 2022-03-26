@@ -29,7 +29,7 @@ type PlayerMultiplier struct {
 	IsMultiplicative bool            `db:"is_multiplicative"`
 }
 
-func PlayerMultipliers(battle_number int) ([]*Multipliers, error) {
+func PlayerMultipliers(battleNumber int) ([]*Multipliers, error) {
 	result := []*Multipliers{}
 
 	dbResult := []*PlayerMultiplier{}
@@ -41,7 +41,7 @@ func PlayerMultipliers(battle_number int) ([]*Multipliers, error) {
 		AND um.until_battle_number > $1;
 		`
 
-	err := pgxscan.Select(context.Background(), gamedb.Conn, &dbResult, q, battle_number)
+	err := pgxscan.Select(context.Background(), gamedb.Conn, &dbResult, q, battleNumber)
 	if err != nil {
 		return nil, terror.Error(err)
 	}

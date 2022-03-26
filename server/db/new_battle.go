@@ -37,7 +37,7 @@ type BattleMechData struct {
 func BattleMechs(btl *boiler.Battle, mechData []*BattleMechData) error {
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
-		gamelog.L.Error().Str("db func", "beginBattle").Err(err).Msg("unable to begin tx")
+		gamelog.L.Error().Str("db func", "Battle").Err(err).Msg("unable to begin tx")
 		return err
 	}
 	defer tx.Rollback()
@@ -51,7 +51,7 @@ func BattleMechs(btl *boiler.Battle, mechData []*BattleMechData) error {
 		}
 		err = bmd.Insert(tx, boil.Infer())
 		if err != nil {
-			gamelog.L.Error().Interface("battle mech", bmd).Str("db func", "beginBattle").Err(err).Msg("unable to insert beginBattle Mech into database")
+			gamelog.L.Error().Interface("battle mech", bmd).Str("db func", "Battle").Err(err).Msg("unable to insert battle Mech into database")
 			return err
 		}
 	}
@@ -66,7 +66,7 @@ func UpdateBattleMech(battleID string, mechID uuid.UUID, ownerID string, faction
 			Str("battleID", battleID).
 			Str("mechID", mechID.String()).
 			Str("db func", "UpdateBattleMech").
-			Err(err).Msg("unable to retrieve beginBattle Mech from database")
+			Err(err).Msg("unable to retrieve battle Mech from database")
 
 		bmd = &boiler.BattleMech{
 			BattleID:  battleID,
@@ -80,7 +80,7 @@ func UpdateBattleMech(battleID string, mechID uuid.UUID, ownerID string, faction
 				Str("battleID", battleID).
 				Str("mechID", mechID.String()).
 				Str("db func", "UpdateBattleMech").
-				Err(err).Msg("unable to insert beginBattle Mech into database after not being able to retrieve it")
+				Err(err).Msg("unable to insert battle Mech into database after not being able to retrieve it")
 			return nil, err
 		}
 	}
@@ -104,7 +104,7 @@ func UpdateBattleMech(battleID string, mechID uuid.UUID, ownerID string, faction
 					Str("battleID", battleID).
 					Str("killerBmdID", killedByID[0].String()).
 					Str("db func", "UpdateBattleMech").
-					Err(err).Msg("unable to retrieve beginBattle Mech from database")
+					Err(err).Msg("unable to retrieve battle Mech from database")
 
 				return nil, err
 			}
@@ -268,8 +268,9 @@ func LoadBattleQueue(ctx context.Context, lengthPerFaction int) ([]*boiler.Battl
 		FROM (
 			SELECT ROW_NUMBER() OVER (PARTITION BY faction_id ORDER BY queued_at ASC) AS r, t.*
 			FROM battle_queue t
+			WHERE deleted_at IS NULL
 		) x
-		WHERE x.r <= $1
+		WHERE deleted_at IS NULL and x.r <= $1
 		`
 
 	result, err := gamedb.Conn.Query(ctx, query, lengthPerFaction)
@@ -326,7 +327,7 @@ func AllMechsAfter(leavingMechPosition int, queuedAt time.Time, factionID uuid.U
 		WITH bqpos AS (
 			SELECT t.*,
 				   ROW_NUMBER() OVER(ORDER BY t.queued_at) AS position
-			FROM battle_queue t WHERE faction_id = $1 AND queued_at > $2)
+			FROM battle_queue t WHERE t.deleted_at IS NULL AND faction_id = $1 AND queued_at > $2)
 			SELECT s.mech_id, s.position+$3-1
 			FROM bqpos s
 		`
@@ -362,7 +363,7 @@ func AllMechsAfter(leavingMechPosition int, queuedAt time.Time, factionID uuid.U
 func QueueLength(factionID uuid.UUID) (int64, error) {
 	var count int64
 
-	err := gamedb.Conn.QueryRow(context.Background(), `SELECT COUNT(mech_id) FROM battle_queue WHERE faction_id = $1`, factionID.String()).Scan(&count)
+	err := gamedb.Conn.QueryRow(context.Background(), `SELECT COUNT(mech_id) FROM battle_queue WHERE deleted_at IS NULL AND faction_id = $1`, factionID.String()).Scan(&count)
 	if err != nil {
 		return -1, err
 	}
@@ -393,7 +394,7 @@ func QueuePosition(mechID uuid.UUID, factionID uuid.UUID) (int64, error) {
 	query := `WITH bqpos AS (
     SELECT t.*,
            ROW_NUMBER() OVER(ORDER BY t.queued_at) AS position
-    FROM battle_queue t WHERE faction_id = $1)
+    FROM battle_queue t WHERE t.deleted_at IS NULL AND faction_id = $1)
 	SELECT s.position
 	FROM bqpos s
 	WHERE s.mech_id = $2;`
@@ -460,7 +461,7 @@ func QueueFee(mechID uuid.UUID, factionID uuid.UUID) (*decimal.Decimal, error) {
 
 func QueueSetBattleID(battleID string, mechIDs ...uuid.UUID) error {
 	if len(mechIDs) == 0 {
-		gamelog.L.Warn().Str("battle_id", battleID).Msg("beginBattle mech is empty")
+		gamelog.L.Warn().Str("battle_id", battleID).Msg("battle mech is empty")
 		return nil
 	}
 
@@ -514,7 +515,7 @@ func ClearQueueByBattle(battleID string) error {
 	}
 	defer tx.Rollback()
 
-	query := `DELETE FROM battle_queue WHERE battle_id = $1`
+	query := `UPDATE battle_queue SET deleted_at = NOW() WHERE battle_id = $1`
 	_, err = gamedb.StdConn.Exec(query, battleID)
 	if err != nil {
 		gamelog.L.Error().Str("db func", "ClearQueue").Err(err).Msg("unable to delete mechs from queue")
@@ -544,7 +545,7 @@ func ClearQueue(mechIDs ...uuid.UUID) error {
 
 	paramrefs = paramrefs[:len(paramrefs)-1]
 
-	query := `DELETE FROM battle_queue WHERE mech_id IN (` + paramrefs + `)`
+	query := `UPDATE battle_queue SET deleted_at = NOW() WHERE mech_id IN (` + paramrefs + `)`
 
 	_, err = gamedb.Conn.Exec(context.Background(), query, mechids...)
 	if err != nil {

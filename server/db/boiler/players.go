@@ -554,6 +554,7 @@ func (o *Player) OwnerBattleQueues(mods ...qm.QueryMod) battleQueueQuery {
 
 	queryMods = append(queryMods,
 		qm.Where("\"battle_queue\".\"owner_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"battle_queue\".\"deleted_at\""),
 	)
 
 	query := BattleQueues(queryMods...)
@@ -1462,6 +1463,7 @@ func (playerL) LoadOwnerBattleQueues(e boil.Executor, singular bool, maybePlayer
 	query := NewQuery(
 		qm.From(`battle_queue`),
 		qm.WhereIn(`battle_queue.owner_id in ?`, args...),
+		qmhelper.WhereIsNull(`battle_queue.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -2701,7 +2703,7 @@ func (o *Player) AddOwnerBattleQueues(exec boil.Executor, insert bool, related .
 				strmangle.SetParamNames("\"", "\"", 1, []string{"owner_id"}),
 				strmangle.WhereClause("\"", "\"", 2, battleQueuePrimaryKeyColumns),
 			)
-			values := []interface{}{o.ID, rel.MechID}
+			values := []interface{}{o.ID, rel.ID}
 
 			if boil.DebugMode {
 				fmt.Fprintln(boil.DebugWriter, updateQuery)

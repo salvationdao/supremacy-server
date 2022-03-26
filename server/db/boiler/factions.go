@@ -523,6 +523,7 @@ func (o *Faction) BattleQueues(mods ...qm.QueryMod) battleQueueQuery {
 
 	queryMods = append(queryMods,
 		qm.Where("\"battle_queue\".\"faction_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"battle_queue\".\"deleted_at\""),
 	)
 
 	query := BattleQueues(queryMods...)
@@ -1157,6 +1158,7 @@ func (factionL) LoadBattleQueues(e boil.Executor, singular bool, maybeFaction in
 	query := NewQuery(
 		qm.From(`battle_queue`),
 		qm.WhereIn(`battle_queue.faction_id in ?`, args...),
+		qmhelper.WhereIsNull(`battle_queue.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -1884,7 +1886,7 @@ func (o *Faction) AddBattleQueues(exec boil.Executor, insert bool, related ...*B
 				strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
 				strmangle.WhereClause("\"", "\"", 2, battleQueuePrimaryKeyColumns),
 			)
-			values := []interface{}{o.ID, rel.MechID}
+			values := []interface{}{o.ID, rel.ID}
 
 			if boil.DebugMode {
 				fmt.Fprintln(boil.DebugWriter, updateQuery)
