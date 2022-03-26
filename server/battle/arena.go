@@ -39,7 +39,6 @@ type Arena struct {
 	RPCClient      *rpcclient.PassportXrpcClient
 	gameClientLock sync.Mutex
 	sms            server.SMS
-	sync.Mutex
 }
 
 type Opts struct {
@@ -81,7 +80,7 @@ func NewArena(opts *Opts) *Arena {
 	l, err := net.Listen("tcp", opts.Addr)
 
 	if err != nil {
-		gamelog.L.Fatal().Str("Addr", opts.Addr).Err(err).Msg("unable to bind Arena to Battle Server address")
+		gamelog.L.Fatal().Str("Addr", opts.Addr).Err(err).Msg("unable to bind Arena to beginBattle Server address")
 	}
 
 	arena := &Arena{
@@ -153,7 +152,7 @@ func NewArena(opts *Opts) *Arena {
 		err = server.Serve(l)
 
 		if err != nil {
-			gamelog.L.Fatal().Str("Addr", opts.Addr).Err(err).Msg("unable to start Battle Arena server")
+			gamelog.L.Fatal().Str("Addr", opts.Addr).Err(err).Msg("unable to start beginBattle Arena server")
 		}
 	}()
 
@@ -208,14 +207,12 @@ func (arena *Arena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				ip = userIP.String()
 			}
 		}
-		gamelog.L.Warn().Str("request_ip", ip).Err(err).Msg("unable to start Battle Arena server")
+		gamelog.L.Warn().Str("request_ip", ip).Err(err).Msg("unable to start beginBattle Arena server")
 	}
 
-	arena.gameClientLock.Lock()
 	arena.socket = c
 
 	defer func() {
-		arena.gameClientLock.Unlock()
 		c.Close(websocket.StatusInternalError, "game client has disconnected")
 	}()
 
@@ -612,8 +609,6 @@ func (arena *Arena) GabsBribeStageSubscribe(ctx context.Context, wsc *hub.Client
 	}
 
 	// return data if, current battle is not null
-	arena.Lock()
-	defer arena.Unlock()
 	if arena.currentBattle != nil {
 		btl := arena.currentBattle
 		if btl.abilities != nil {
@@ -740,19 +735,9 @@ type BattleWMDestroyedPayload struct {
 	BattleID string `json:"battleID"`
 }
 
-func (arena *Arena) init() {
-	arena.Lock()
-	defer arena.Unlock()
-	btl := arena.Battle()
-	arena.currentBattle = btl
-	arena.Message(BATTLEINIT, btl)
-
-	go arena.NotifyUpcomingWarMachines()
-}
-
 func (arena *Arena) start() {
 	ctx := context.Background()
-	arena.init()
+	arena.beginBattle()
 
 	for {
 		_, payload, err := arena.socket.Read(ctx)
@@ -813,7 +798,7 @@ func (arena *Arena) start() {
 				btl.end(dataPayload)
 				//TODO: this needs to be triggered by a message from the game client
 				time.Sleep(time.Second * 30)
-				arena.init()
+				arena.beginBattle()
 			default:
 				gamelog.L.Warn().Str("battleCommand", msg.BattleCommand).Err(err).Msg("Battle Arena WS: no command response")
 			}
@@ -825,11 +810,11 @@ func (arena *Arena) start() {
 	}
 }
 
-func (arena *Arena) Battle() *Battle {
+func (arena *Arena) beginBattle() {
 	gm, err := db.GameMapGetRandom(context.Background(), arena.conn)
 	if err != nil {
 		gamelog.L.Err(err).Msg("unable to get random map")
-		return nil
+		return
 	}
 
 	gameMap := &server.GameMap{
@@ -915,7 +900,10 @@ func (arena *Arena) Battle() *Battle {
 		btl.users.Send(HubKeyViewerLiveCountUpdated, result)
 	})
 
-	return btl
+	arena.currentBattle = btl
+	arena.Message(BATTLEINIT, btl)
+
+	go arena.NotifyUpcomingWarMachines()
 }
 
 const HubKeyUserStatSubscribe hub.HubCommandKey = "USER:STAT:SUBSCRIBE"

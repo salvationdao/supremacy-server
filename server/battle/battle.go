@@ -873,6 +873,12 @@ func (btl *Battle) userOnline(user *BattleUser, wsc *hub.Client) {
 }
 
 func (btl *Battle) debounceSendingViewerCount(cb func(result ViewerLiveCount)) {
+	defer func() {
+		if err := recover(); err != nil {
+			gamelog.L.Error().Interface("err", err).Msg("panic! panic! panic! Panic at the debounceSendingViewerCount!")
+		}
+	}()
+
 	var result *ViewerLiveCount
 	interval := 500 * time.Millisecond
 	timer := time.NewTimer(interval)
