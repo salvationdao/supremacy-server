@@ -39,7 +39,6 @@ type Arena struct {
 	RPCClient      *rpcclient.PassportXrpcClient
 	gameClientLock sync.Mutex
 	sms            server.SMS
-	sync.Mutex
 }
 
 type Opts struct {
@@ -81,7 +80,7 @@ func NewArena(opts *Opts) *Arena {
 	l, err := net.Listen("tcp", opts.Addr)
 
 	if err != nil {
-		gamelog.L.Fatal().Str("Addr", opts.Addr).Err(err).Msg("unable to bind Arena to beginBattle Server address")
+		gamelog.L.Fatal().Str("Addr", opts.Addr).Err(err).Msg("unable to bind Arena to Battle Server address")
 	}
 
 	arena := &Arena{
@@ -153,7 +152,7 @@ func NewArena(opts *Opts) *Arena {
 		err = server.Serve(l)
 
 		if err != nil {
-			gamelog.L.Fatal().Str("Addr", opts.Addr).Err(err).Msg("unable to start beginBattle Arena server")
+			gamelog.L.Fatal().Str("Addr", opts.Addr).Err(err).Msg("unable to start Battle Arena server")
 		}
 	}()
 
@@ -208,14 +207,12 @@ func (arena *Arena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				ip = userIP.String()
 			}
 		}
-		gamelog.L.Warn().Str("request_ip", ip).Err(err).Msg("unable to start beginBattle Arena server")
+		gamelog.L.Warn().Str("request_ip", ip).Err(err).Msg("unable to start Battle Arena server")
 	}
 
-	arena.gameClientLock.Lock()
 	arena.socket = c
 
 	defer func() {
-		arena.gameClientLock.Unlock()
 		c.Close(websocket.StatusInternalError, "game client has disconnected")
 	}()
 
@@ -612,8 +609,6 @@ func (arena *Arena) GabsBribeStageSubscribe(ctx context.Context, wsc *hub.Client
 	}
 
 	// return data if, current battle is not null
-	arena.Lock()
-	defer arena.Unlock()
 	if arena.currentBattle != nil {
 		btl := arena.currentBattle
 		if btl.abilities != nil {
@@ -741,15 +736,12 @@ type BattleWMDestroyedPayload struct {
 }
 
 func (arena *Arena) init() {
-	arena.Lock()
-	defer arena.Unlock()
 	arena.beginBattle()
-
 }
 
 func (arena *Arena) start() {
 	ctx := context.Background()
-	arena.init()
+	arena.beginBattle()
 
 	for {
 		_, payload, err := arena.socket.Read(ctx)
@@ -810,14 +802,14 @@ func (arena *Arena) start() {
 				btl.end(dataPayload)
 				//TODO: this needs to be triggered by a message from the game client
 				time.Sleep(time.Second * 30)
-				arena.init()
+				arena.beginBattle()
 			default:
-				gamelog.L.Warn().Str("battleCommand", msg.BattleCommand).Err(err).Msg("beginBattle Arena WS: no command response")
+				gamelog.L.Warn().Str("battleCommand", msg.BattleCommand).Err(err).Msg("Battle Arena WS: no command response")
 			}
 		case Tick:
 			btl.Tick(payload)
 		default:
-			gamelog.L.Warn().Str("MessageType", MessageType(mt).String()).Err(err).Msg("beginBattle Arena WS: no message response")
+			gamelog.L.Warn().Str("MessageType", MessageType(mt).String()).Err(err).Msg("Battle Arena WS: no message response")
 		}
 	}
 }

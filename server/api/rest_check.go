@@ -5,13 +5,14 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"net/http"
 	"server/battle"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"time"
+
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/go-chi/chi"
 	"github.com/rs/zerolog"
@@ -50,11 +51,13 @@ func (c *CheckController) Check(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// get current battle
 	ba, err := boiler.Battles(qm.OrderBy(fmt.Sprintf("%s DESC", boiler.BattleColumns.BattleNumber)), qm.Limit(1)).One(gamedb.StdConn)
 	if err != nil {
 		c.Log.Err(err).Msg("failed to retrieve battle")
 		return
 	}
+
 	now := time.Now()
 	diff := now.Sub(ba.StartedAt)
 
@@ -77,6 +80,7 @@ func (c *CheckController) Check(w http.ResponseWriter, r *http.Request) {
 	btlContributions, err := ba.BattleContributions(boiler.BattleContributionWhere.ContributedAt.GT(now.Add(-2 * time.Minute))).All(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		c.Log.Err(err).Str("battle_no", fmt.Sprintf("%d", ba.BattleNumber)).Msg("failed to get battle contributions")
+
 	}
 
 	if len(btlContributions) <= 0 {
