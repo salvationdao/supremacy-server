@@ -51,16 +51,9 @@ func (c *CheckController) Check(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	// c.Telegram.CreateCode("eb098669-f705-4084-a071-bd8a5aea57bc")
-	// c.Telegram.CreateCode("eb098669-f705-4084-a071-bd8a5aea57bc")
-
-	// c.Telegram.Notify("shit", "shit")
-
-	// c.Telegram.GetCode("")
 
 	// get current battle
 	ba := c.BattleArena.Battle()
-
 	if ba != nil {
 		now := time.Now()
 		diff := now.Sub(ba.StartedAt)

@@ -326,22 +326,17 @@ func (rcm *RingCheckAuthMap) Check(key string) (*hub.Client, error) {
 	return hubc, nil
 }
 
+// TEST API Calls to be removed
 func (a *API) getNotifs(w http.ResponseWriter, r *http.Request) {
-
 	a.Telegram.List()
-
 }
 
 func (a *API) insertNotifs(w http.ResponseWriter, r *http.Request) {
-
 	a.Telegram.List()
-
 }
 
 func (a *API) addNotifs(w http.ResponseWriter, r *http.Request) {
-
 	a.Telegram.Insert()
-
 }
 
 func (a *API) genCode(w http.ResponseWriter, r *http.Request) {
