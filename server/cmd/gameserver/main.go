@@ -335,7 +335,7 @@ func main() {
 					}
 
 					// initialise telegram client
-					telegram, err := telegram.NewTelegram()
+					telegram, err := telegram.NewTelegram(stormDB)
 
 					// initialise net message bus
 					netMessageBus := messagebus.NewNetBus(log_helpers.NamedLogger(gamelog.L, "net_message_bus"))

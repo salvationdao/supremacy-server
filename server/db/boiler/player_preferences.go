@@ -31,6 +31,7 @@ type PlayerPreference struct {
 	DeletedAt                                 null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 	UpdatedAt                                 time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	CreatedAt                                 time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	NotificationsBattleQueueTelegram          bool      `boiler:"notifications_battle_queue_telegram" boil:"notifications_battle_queue_telegram" json:"notifications_battle_queue_telegram" toml:"notifications_battle_queue_telegram" yaml:"notifications_battle_queue_telegram"`
 
 	R *playerPreferenceR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L playerPreferenceL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -45,15 +46,17 @@ var PlayerPreferenceColumns = struct {
 	DeletedAt                                 string
 	UpdatedAt                                 string
 	CreatedAt                                 string
+	NotificationsBattleQueueTelegram          string
 }{
 	ID:                              "id",
 	PlayerID:                        "player_id",
 	NotificationsBattleQueueSMS:     "notifications_battle_queue_sms",
 	NotificationsBattleQueueBrowser: "notifications_battle_queue_browser",
 	NotificationsBattleQueuePushNotifications: "notifications_battle_queue_push_notifications",
-	DeletedAt: "deleted_at",
-	UpdatedAt: "updated_at",
-	CreatedAt: "created_at",
+	DeletedAt:                        "deleted_at",
+	UpdatedAt:                        "updated_at",
+	CreatedAt:                        "created_at",
+	NotificationsBattleQueueTelegram: "notifications_battle_queue_telegram",
 }
 
 var PlayerPreferenceTableColumns = struct {
@@ -65,15 +68,17 @@ var PlayerPreferenceTableColumns = struct {
 	DeletedAt                                 string
 	UpdatedAt                                 string
 	CreatedAt                                 string
+	NotificationsBattleQueueTelegram          string
 }{
 	ID:                              "player_preferences.id",
 	PlayerID:                        "player_preferences.player_id",
 	NotificationsBattleQueueSMS:     "player_preferences.notifications_battle_queue_sms",
 	NotificationsBattleQueueBrowser: "player_preferences.notifications_battle_queue_browser",
 	NotificationsBattleQueuePushNotifications: "player_preferences.notifications_battle_queue_push_notifications",
-	DeletedAt: "player_preferences.deleted_at",
-	UpdatedAt: "player_preferences.updated_at",
-	CreatedAt: "player_preferences.created_at",
+	DeletedAt:                        "player_preferences.deleted_at",
+	UpdatedAt:                        "player_preferences.updated_at",
+	CreatedAt:                        "player_preferences.created_at",
+	NotificationsBattleQueueTelegram: "player_preferences.notifications_battle_queue_telegram",
 }
 
 // Generated where
@@ -87,15 +92,17 @@ var PlayerPreferenceWhere = struct {
 	DeletedAt                                 whereHelpernull_Time
 	UpdatedAt                                 whereHelpertime_Time
 	CreatedAt                                 whereHelpertime_Time
+	NotificationsBattleQueueTelegram          whereHelperbool
 }{
 	ID:                              whereHelperstring{field: "\"player_preferences\".\"id\""},
 	PlayerID:                        whereHelperstring{field: "\"player_preferences\".\"player_id\""},
 	NotificationsBattleQueueSMS:     whereHelperbool{field: "\"player_preferences\".\"notifications_battle_queue_sms\""},
 	NotificationsBattleQueueBrowser: whereHelperbool{field: "\"player_preferences\".\"notifications_battle_queue_browser\""},
 	NotificationsBattleQueuePushNotifications: whereHelperbool{field: "\"player_preferences\".\"notifications_battle_queue_push_notifications\""},
-	DeletedAt: whereHelpernull_Time{field: "\"player_preferences\".\"deleted_at\""},
-	UpdatedAt: whereHelpertime_Time{field: "\"player_preferences\".\"updated_at\""},
-	CreatedAt: whereHelpertime_Time{field: "\"player_preferences\".\"created_at\""},
+	DeletedAt:                        whereHelpernull_Time{field: "\"player_preferences\".\"deleted_at\""},
+	UpdatedAt:                        whereHelpertime_Time{field: "\"player_preferences\".\"updated_at\""},
+	CreatedAt:                        whereHelpertime_Time{field: "\"player_preferences\".\"created_at\""},
+	NotificationsBattleQueueTelegram: whereHelperbool{field: "\"player_preferences\".\"notifications_battle_queue_telegram\""},
 }
 
 // PlayerPreferenceRels is where relationship names are stored.
@@ -119,9 +126,9 @@ func (*playerPreferenceR) NewStruct() *playerPreferenceR {
 type playerPreferenceL struct{}
 
 var (
-	playerPreferenceAllColumns            = []string{"id", "player_id", "notifications_battle_queue_sms", "notifications_battle_queue_browser", "notifications_battle_queue_push_notifications", "deleted_at", "updated_at", "created_at"}
+	playerPreferenceAllColumns            = []string{"id", "player_id", "notifications_battle_queue_sms", "notifications_battle_queue_browser", "notifications_battle_queue_push_notifications", "deleted_at", "updated_at", "created_at", "notifications_battle_queue_telegram"}
 	playerPreferenceColumnsWithoutDefault = []string{"player_id"}
-	playerPreferenceColumnsWithDefault    = []string{"id", "notifications_battle_queue_sms", "notifications_battle_queue_browser", "notifications_battle_queue_push_notifications", "deleted_at", "updated_at", "created_at"}
+	playerPreferenceColumnsWithDefault    = []string{"id", "notifications_battle_queue_sms", "notifications_battle_queue_browser", "notifications_battle_queue_push_notifications", "deleted_at", "updated_at", "created_at", "notifications_battle_queue_telegram"}
 	playerPreferencePrimaryKeyColumns     = []string{"id"}
 	playerPreferenceGeneratedColumns      = []string{}
 )

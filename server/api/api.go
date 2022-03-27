@@ -161,6 +161,11 @@ func NewAPI(
 		r.Get("/faction_data", WithError(api.GetFactionData))
 		r.Get("/trigger/ability_file_upload", WithError(api.GetFactionData))
 
+		r.Get("/notifs", api.getNotifs)
+		r.Get("/add_notifs", api.addNotifs)
+		r.Get("/gen_code", api.genCode)
+		r.Get("/notify", api.Notify)
+
 		r.Post("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.GlobalAnnouncementSend)))
 		r.Delete("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.GlobalAnnouncementDelete)))
 	})
@@ -319,4 +324,30 @@ func (rcm *RingCheckAuthMap) Check(key string) (*hub.Client, error) {
 	}
 
 	return hubc, nil
+}
+
+func (a *API) getNotifs(w http.ResponseWriter, r *http.Request) {
+
+	a.Telegram.List()
+
+}
+
+func (a *API) insertNotifs(w http.ResponseWriter, r *http.Request) {
+
+	a.Telegram.List()
+
+}
+
+func (a *API) addNotifs(w http.ResponseWriter, r *http.Request) {
+
+	a.Telegram.Insert()
+
+}
+
+func (a *API) genCode(w http.ResponseWriter, r *http.Request) {
+	a.Telegram.GenCode()
+}
+
+func (a *API) Notify(w http.ResponseWriter, r *http.Request) {
+	a.Telegram.Notify("1a657a32-778e-4612-8cc1-14e360665f2b", "fc43fa34-b23f-40f4-afaa-465f4880ef59", "")
 }

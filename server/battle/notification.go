@@ -235,9 +235,11 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			// TODO: app notifications?
 		}
 
-		// TODO: telegram notifications?
+		// telegram notification
+		if player.R.PlayerPreference.NotificationsBattleQueueTelegram {
+			arena.telegram.Notify(player.ID, warMachine.ID, "")
+		}
 
-		arena.telegram.Notify("", "")
 		// TODO: discord notifications?
 		bq.Notified = true
 		_, err = bq.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleQueueColumns.Notified))
