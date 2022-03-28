@@ -96,7 +96,7 @@ func (api *API) CreateStreamCloseHandler(w http.ResponseWriter, r *http.Request)
 
 	//api.BattleArena.PutGamesToClose(gamesToClose)
 
-	//go api.MessageBus.Send(context.Background(), messagebus.BusKey(HubKeyStreamCloseSubscribe), gamesToClose)
+	//go api.messageBus.Send(messagebus.BusKey(HubKeyStreamCloseSubscribe), gamesToClose)
 
 	return http.StatusOK, nil
 }
@@ -106,7 +106,7 @@ func (api *API) GetStreamsHandler(w http.ResponseWriter, r *http.Request) (int, 
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)
 	}
-	go api.MessageBus.Send(context.Background(), messagebus.BusKey(HubKeyStreamList), streams)
+	go api.MessageBus.Send(messagebus.BusKey(HubKeyStreamList), streams)
 
 	return helpers.EncodeJSON(w, streams)
 }
@@ -129,7 +129,7 @@ func (api *API) CreateStreamHandler(w http.ResponseWriter, r *http.Request) (int
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 	// Alex: wtf??
-	//go api.MessageBus.Send(context.Background(), messagebus.BusKey(HubKeyVoteStageUpdated), streamList)
+	//go api.messageBus.Send(messagebus.BusKey(HubKeyVoteStageUpdated), streamList)
 
 	return http.StatusOK, nil
 }
@@ -156,7 +156,7 @@ func (api *API) DeleteStreamHandler(w http.ResponseWriter, r *http.Request) (int
 	}
 
 	// wtf??
-	//go api.MessageBus.Send(context.Background(), messagebus.BusKey(HubKeyVoteStageUpdated), streamList)
+	//go api.messageBus.Send(messagebus.BusKey(HubKeyVoteStageUpdated), streamList)
 
 	return http.StatusOK, nil
 }

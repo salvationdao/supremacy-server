@@ -325,7 +325,7 @@ func main() {
 					}
 
 					// initialise net message bus
-					netMessageBus := messagebus.NewNetBus(log_helpers.NamedLogger(gamelog.L, "net_message_bus"))
+					netMessageBus := messagebus.NewMessageBus(log_helpers.NamedLogger(gamelog.L, "net_message_bus"))
 					// initialise message bus
 					messageBus := messagebus.NewMessageBus(log_helpers.NamedLogger(gamelog.L, "message_bus"))
 					gsHub := hub.New(&hub.Config{
@@ -340,7 +340,6 @@ func main() {
 							OriginPatterns:     []string{"*"},
 						},
 						ClientOfflineFn: func(cl *hub.Client) {
-							netMessageBus.UnsubAll(cl)
 							messageBus.UnsubAll(cl)
 						},
 						Tracer: &api.HubTracer{},
@@ -533,7 +532,7 @@ func main() {
 	}
 }
 
-func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, battleArenaClient *battle.Arena, conn *pgxpool.Pool, passport *passport.Passport, messageBus *messagebus.MessageBus, netMessageBus *messagebus.NetBus, gsHub *hub.Hub, sms server.SMS) (*api.API, error) {
+func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, battleArenaClient *battle.Arena, conn *pgxpool.Pool, passport *passport.Passport, messageBus *messagebus.MessageBus, netMessageBus *messagebus.MessageBus, gsHub *hub.Hub, sms server.SMS) (*api.API, error) {
 	environment := ctxCLI.String("environment")
 	sentryDSNBackend := ctxCLI.String("sentry_dsn_backend")
 	sentryServerName := ctxCLI.String("sentry_server_name")
