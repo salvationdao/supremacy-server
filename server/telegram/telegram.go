@@ -5,26 +5,26 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
-	"server/stormdb"
+	"server/db/boiler"
+	"server/gamedb"
 	"strconv"
 	"time"
 
 	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	tele "gopkg.in/telebot.v3"
 )
 
 type Telegram struct {
 	*tele.Bot
-	StormDB *stormdb.StormDB
 }
 
 var teleToken = "5179636156:AAFiG_uba7EZm9AFbkK5HRaez3LfhgvHPXI" // TODO: change to real token, get from env var
 
 // NewTelegram
-func NewTelegram(stormDB *stormdb.StormDB) (*Telegram, error) {
-	t := &Telegram{
-		StormDB: stormDB,
-	}
+func NewTelegram() (*Telegram, error) {
+	t := &Telegram{}
 	pref := tele.Settings{
 		Token:  teleToken, // get from env
 		Poller: &tele.LongPoller{Timeout: 10 * time.Second},
@@ -42,27 +42,38 @@ func NewTelegram(stormDB *stormdb.StormDB) (*Telegram, error) {
 }
 
 func (t *Telegram) RegisterHandler() {
-
 	// on /register
 	t.Bot.Handle("/register", func(c tele.Context) error {
 
 		// handle user reply
 		t.Bot.Handle(tele.OnText, func(c tele.Context) error {
-			text := c.Text()
-			teleID := c.Recipient().Recipient()
-			id, err := strconv.Atoi(teleID)
+			shortcode := c.Text()
+			telegramID := c.Recipient().Recipient()
+			_telegramID, err := strconv.Atoi(telegramID)
 			if err != nil {
 				fmt.Println(err)
 			}
 
 			reply := ""
 			// get notification by shortcode
-			_, err = t.StormDB.TelegramNotificationRegister(text, "", id)
+			notification, err := boiler.TelegramNotifications(boiler.TelegramNotificationWhere.Shortcode.EQ(shortcode)).One(gamedb.StdConn)
+			if err != nil {
+				return terror.Error(err)
+			}
+
+			// register that notification
+			notification.Registered = true
+			notification.TelegramID = null.IntFrom(_telegramID)
+
+			// update notification
+			_, err = notification.Update(gamedb.StdConn, boil.Infer())
+			if err != nil {
+				return terror.Error(err)
+			}
 			if err != nil {
 				reply = "invalid code!"
 			} else {
 				reply = "code registered!"
-
 			}
 
 			return c.Send(reply)
@@ -74,8 +85,13 @@ func (t *Telegram) RegisterHandler() {
 }
 
 func (t *Telegram) TelegramNotificationCreate(playerID string, mechID string, code string) error {
-	// save to storm with user + mech id's
-	err := t.StormDB.TelegramNotificationCreate(playerID, mechID, code)
+	notification := &boiler.TelegramNotification{
+		PlayerID:  playerID,
+		Shortcode: code,
+		MechID:    mechID,
+	}
+
+	err := notification.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -95,13 +111,14 @@ func genCode() string {
 
 func (t *Telegram) Notify(playerID string, mechID string, message string) error {
 	// get notification
-	notification, err := t.StormDB.TelegramGetNotificationByPlayerCode(playerID, mechID)
+	notification, err := boiler.TelegramNotifications(boiler.TelegramNotificationWhere.PlayerID.EQ(playerID), boiler.TelegramNotificationWhere.MechID.EQ(mechID)).One(gamedb.StdConn)
 	if err != nil {
-		return err
+		// TODO: handle no rows
+		return terror.Error(err)
 	}
 
 	// send notification
-	t.SendMessage(notification.TelegramID, "Your warmachine will be in battle soon!")
+	t.SendMessage(notification.TelegramID.Int, "Your warmachine will be in battle soon!")
 
 	return nil
 }
@@ -125,12 +142,13 @@ func (t *Telegram) SendMessage(chatId int, text string) error {
 }
 
 func (t *Telegram) List() {
-	n, err := t.StormDB.TelegramNotificationsList()
+	notifications, err := boiler.TelegramNotifications().All(gamedb.StdConn)
 	if err != nil {
 		fmt.Println(err)
+		return
 	}
 
-	for _, l := range n {
+	for _, l := range notifications {
 		fmt.Println("+++++++++++++++++")
 		fmt.Println("ID: ", l.ID)
 		fmt.Println("TelegramID: ", l.TelegramID)
@@ -138,28 +156,35 @@ func (t *Telegram) List() {
 		fmt.Println("PlayerID: ", l.PlayerID)
 		fmt.Println("Registered: ", l.Registered)
 		fmt.Println("Shortcode: ", l.Shortcode)
-		fmt.Println("QueuePosition: ", l.QueuePosition)
+		// fmt.Println("QueuePosition: ", l.QueuePosition)
 
 		fmt.Println("+++++++++++++++++")
-
 	}
+
 }
 
 func (t *Telegram) Insert() {
-	err := t.StormDB.TelegramNotificationCreate("1a657a32-778e-4612-8cc1-14e360665f2b", "", genCode())
-	if err != nil {
-		fmt.Println("error inserting", err)
+	expiry := time.Now().Add(time.Minute * 3)
+
+	notification := &boiler.TelegramNotification{
+		PlayerID:  "1a657a32-778e-4612-8cc1-14e360665f2b",
+		MechID:    "fc43fa34-b23f-40f4-afaa-465f4880ef59",
+		Shortcode: genCode(),
+		ExpiresAt: null.TimeFrom(expiry),
 	}
+
+	err := notification.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		fmt.Println("insert ", err)
+		return
+	}
+
+	fmt.Println("code here", notification.Shortcode)
+
 }
 
 func (t *Telegram) GenCode() {
-	te, err := t.StormDB.TelegramGenCodeTest()
-	if err != nil {
-		fmt.Println("error gen code test")
-		return
 
-	}
-	fmt.Println("code here", te.Shortcode)
 }
 
 // deploy mech

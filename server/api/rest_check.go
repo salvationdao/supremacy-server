@@ -13,6 +13,8 @@ import (
 	"server/gamedb"
 	"time"
 
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+
 	"github.com/go-chi/chi"
 	"github.com/rs/zerolog"
 )
@@ -53,42 +55,45 @@ func (c *CheckController) Check(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get current battle
-	ba := c.BattleArena.Battle()
-	if ba != nil {
-		now := time.Now()
-		diff := now.Sub(ba.StartedAt)
+	ba, err := boiler.Battles(qm.OrderBy(fmt.Sprintf("%s DESC", boiler.BattleColumns.BattleNumber)), qm.Limit(1)).One(gamedb.StdConn)
+	if err != nil {
+		c.Log.Err(err).Msg("failed to retrieve battle")
+		return
+	}
 
-		// check if current battle over 15 mins
-		if diff.Minutes() > 15 {
-			ok = false
-			w.WriteHeader(http.StatusGone)
-			msg := fmt.Sprintf("current battle over 15 mins, battle started at: %s (%f mins ago)",
-				ba.StartedAt.String(),
-				diff.Minutes())
+	now := time.Now()
+	diff := now.Sub(ba.StartedAt)
 
-			c.Log.Err(err).Str("battle_no", fmt.Sprintf("%d", ba.BattleNumber)).Msg(msg)
-			_, err = w.Write([]byte(msg))
-			if err != nil {
-				c.Log.Err(err).Str("battle_no", fmt.Sprintf("%d", ba.BattleNumber)).Msg("failed to send")
-			}
+	// check if current battle over 15 mins
+	if diff.Minutes() > 15 {
+		ok = false
+		w.WriteHeader(http.StatusGone)
+		msg := fmt.Sprintf("current battle over 15 mins, battle started at: %s (%f mins ago)",
+			ba.StartedAt.String(),
+			diff.Minutes())
+
+		c.Log.Err(err).Str("battle_no", fmt.Sprintf("%d", ba.BattleNumber)).Msg(msg)
+		_, err = w.Write([]byte(msg))
+		if err != nil {
+			c.Log.Err(err).Str("battle_no", fmt.Sprintf("%d", ba.BattleNumber)).Msg("failed to send")
 		}
+	}
 
-		// get contributions for the last  2 mins
-		btlContributions, err := ba.BattleContributions(boiler.BattleContributionWhere.ContributedAt.GT(now.Add(-2 * time.Minute))).All(gamedb.StdConn)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			c.Log.Err(err).Str("battle_no", fmt.Sprintf("%d", ba.BattleNumber)).Msg("failed to get battle contributions")
+	// get contributions for the last  2 mins
+	btlContributions, err := ba.BattleContributions(boiler.BattleContributionWhere.ContributedAt.GT(now.Add(-2 * time.Minute))).All(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		c.Log.Err(err).Str("battle_no", fmt.Sprintf("%d", ba.BattleNumber)).Msg("failed to get battle contributions")
 
-		}
+	}
 
-		if len(btlContributions) <= 0 {
-			ok = false
-			w.WriteHeader(http.StatusGone)
-			msg := "there has been no contributions on the last 2 mins"
-			c.Log.Err(err).Str("battle_no", fmt.Sprintf("%d", ba.BattleNumber)).Msg(msg)
-			_, err = w.Write([]byte("\n" + msg))
-			if err != nil {
-				c.Log.Err(err).Str("battle_no", fmt.Sprintf("%d", ba.BattleNumber)).Msg("failed to send")
-			}
+	if len(btlContributions) <= 0 {
+		ok = false
+		w.WriteHeader(http.StatusGone)
+		msg := "there has been no contributions on the last 2 mins"
+		c.Log.Err(err).Str("battle_no", fmt.Sprintf("%d", ba.BattleNumber)).Msg(msg)
+		_, err = w.Write([]byte("\n" + msg))
+		if err != nil {
+			c.Log.Err(err).Str("battle_no", fmt.Sprintf("%d", ba.BattleNumber)).Msg("failed to send")
 		}
 	}
 
@@ -98,7 +103,6 @@ func (c *CheckController) Check(w http.ResponseWriter, r *http.Request) {
 			c.Log.Err(err).Msg("failed to send")
 		}
 	}
-
 }
 
 // CheckGame return a game stat check

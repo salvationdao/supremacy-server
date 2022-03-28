@@ -67,7 +67,7 @@ func UserStatsGet(playerID string) (*boiler.UserStat, error) {
 	return userStat, nil
 }
 
-func UserStatAddKill(playerID string) (*boiler.UserStat, error) {
+func UserStatAddAbilityKill(playerID string) (*boiler.UserStat, error) {
 	userStat, err := UserStatQuery(playerID)
 	if err != nil {
 		gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to query user stat")
@@ -77,6 +77,42 @@ func UserStatAddKill(playerID string) (*boiler.UserStat, error) {
 	userStat.KillCount += 1
 
 	_, err = userStat.Update(gamedb.StdConn, boil.Whitelist(boiler.UserStatColumns.KillCount))
+	if err != nil {
+		gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to update user kill count")
+		return nil, terror.Error(err)
+	}
+
+	return userStat, nil
+}
+
+func UserStatSubtractAbilityKill(playerID string) (*boiler.UserStat, error) {
+	userStat, err := UserStatQuery(playerID)
+	if err != nil {
+		gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to query user stat")
+		return nil, terror.Error(err)
+	}
+
+	userStat.KillCount -= 1
+
+	_, err = userStat.Update(gamedb.StdConn, boil.Whitelist(boiler.UserStatColumns.KillCount))
+	if err != nil {
+		gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to update user kill count")
+		return nil, terror.Error(err)
+	}
+
+	return userStat, nil
+}
+
+func UserStatAddMechKill(playerID string) (*boiler.UserStat, error) {
+	userStat, err := UserStatQuery(playerID)
+	if err != nil {
+		gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to query user stat")
+		return nil, terror.Error(err)
+	}
+
+	userStat.MechKillCount += 1
+
+	_, err = userStat.Update(gamedb.StdConn, boil.Whitelist(boiler.UserStatColumns.MechKillCount))
 	if err != nil {
 		gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to update user kill count")
 		return nil, terror.Error(err)

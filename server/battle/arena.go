@@ -12,7 +12,6 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"server/passport"
 	"server/rpcclient"
 	"sync"
 	"time"
@@ -37,12 +36,10 @@ type Arena struct {
 	currentBattle  *Battle
 	syndicates     map[string]boiler.Faction
 	AIPlayers      map[string]db.PlayerWithFaction
-	RPCClient      *rpcclient.XrpcClient
-	ppClient       *passport.Passport
+	RPCClient      *rpcclient.PassportXrpcClient
 	gameClientLock sync.Mutex
 	sms            server.SMS
 	telegram       server.Telegram
-	sync.Mutex
 }
 
 type Opts struct {
@@ -52,8 +49,7 @@ type Opts struct {
 	Hub           *hub.Hub
 	MessageBus    *messagebus.MessageBus
 	NetMessageBus *messagebus.NetBus
-	PPClient      *passport.Passport
-	RPCClient     *rpcclient.XrpcClient
+	RPCClient     *rpcclient.PassportXrpcClient
 	SMS           server.SMS
 	Telegram      server.Telegram
 }
@@ -96,7 +92,6 @@ func NewArena(opts *Opts) *Arena {
 	arena.timeout = opts.Timeout
 	arena.netMessageBus = opts.NetMessageBus
 	arena.messageBus = opts.MessageBus
-	arena.ppClient = opts.PPClient
 	arena.RPCClient = opts.RPCClient
 	arena.sms = opts.SMS
 	arena.telegram = opts.Telegram
@@ -218,11 +213,9 @@ func (arena *Arena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		gamelog.L.Warn().Str("request_ip", ip).Err(err).Msg("unable to start Battle Arena server")
 	}
 
-	arena.gameClientLock.Lock()
 	arena.socket = c
 
 	defer func() {
-		arena.gameClientLock.Unlock()
 		c.Close(websocket.StatusInternalError, "game client has disconnected")
 	}()
 
@@ -339,8 +332,9 @@ func (arena *Arena) MultiplierMapSubScribeHandler(ctx context.Context, wsc *hub.
 	}
 
 	// don't pass back any multiplier value if there is no battle, but still complete the subscription
+
 	if arena.currentBattle != nil {
-		multipliers, err := db.PlayerMultipliers(arena.currentBattle.BattleNumber)
+		multipliers, err := db.PlayerMultipliers(arena.currentBattle.BattleNumber - 1)
 		if err != nil {
 			return "", "", terror.Error(err, "unable to retrieve multipliers")
 		}
@@ -350,7 +344,7 @@ func (arena *Arena) MultiplierMapSubScribeHandler(ctx context.Context, wsc *hub.
 		}
 
 		// get the citizen list
-		citizenPlayerIDs, err := db.CitizenPlayerIDs(arena.currentBattle.BattleNumber)
+		citizenPlayerIDs, err := db.CitizenPlayerIDs(arena.currentBattle.BattleNumber - 1)
 		if err != nil {
 			return "", "", terror.Error(err)
 		}
@@ -618,8 +612,6 @@ func (arena *Arena) GabsBribeStageSubscribe(ctx context.Context, wsc *hub.Client
 	}
 
 	// return data if, current battle is not null
-	arena.Lock()
-	defer arena.Unlock()
 	if arena.currentBattle != nil {
 		btl := arena.currentBattle
 		if btl.abilities != nil {
@@ -747,18 +739,12 @@ type BattleWMDestroyedPayload struct {
 }
 
 func (arena *Arena) init() {
-	arena.Lock()
-	defer arena.Unlock()
-	btl := arena.Battle()
-	arena.currentBattle = btl
-	arena.Message(BATTLEINIT, btl)
-
-	go arena.NotifyUpcomingWarMachines()
+	arena.beginBattle()
 }
 
 func (arena *Arena) start() {
 	ctx := context.Background()
-	arena.init()
+	arena.beginBattle()
 
 	for {
 		_, payload, err := arena.socket.Read(ctx)
@@ -819,7 +805,7 @@ func (arena *Arena) start() {
 				btl.end(dataPayload)
 				//TODO: this needs to be triggered by a message from the game client
 				time.Sleep(time.Second * 30)
-				arena.init()
+				arena.beginBattle()
 			default:
 				gamelog.L.Warn().Str("battleCommand", msg.BattleCommand).Err(err).Msg("Battle Arena WS: no command response")
 			}
@@ -831,11 +817,11 @@ func (arena *Arena) start() {
 	}
 }
 
-func (arena *Arena) Battle() *Battle {
+func (arena *Arena) beginBattle() {
 	gm, err := db.GameMapGetRandom(context.Background(), arena.conn)
 	if err != nil {
 		gamelog.L.Err(err).Msg("unable to get random map")
-		return nil
+		return
 	}
 
 	gameMap := &server.GameMap{
@@ -874,6 +860,26 @@ func (arena *Arena) Battle() *Battle {
 		battleID = lastBattle.ID
 
 		inserted = true
+
+		multipliers, err := db.PlayerMultipliers(lastBattle.BattleNumber)
+		if err != nil {
+			gamelog.L.Error().Err(err).Int("btl.BattleNumber", lastBattle.BattleNumber).Msg("failed to load PlayerMultipliers")
+		} else {
+			for _, m := range multipliers {
+				m.TotalMultiplier = m.TotalMultiplier.Shift(-1)
+			}
+
+			// get the citizen list
+			citizenPlayerIDs, err := db.CitizenPlayerIDs(lastBattle.BattleNumber)
+			if err != nil {
+				gamelog.L.Error().Err(err).Int("btl.BattleNumber", lastBattle.BattleNumber).Msg("failed to load CitizenPlayerIDs")
+			} else {
+				go arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyMultiplierMapSubscribe), &MultiplierMapResponse{
+					Multipliers:      multipliers,
+					CitizenPlayerIDs: citizenPlayerIDs,
+				})
+			}
+		}
 	}
 
 	btl := &Battle{
@@ -896,12 +902,17 @@ func (arena *Arena) Battle() *Battle {
 		gamelog.L.Warn().Err(err).Msg("unable to load out mechs")
 	}
 
+	// order the mechs by facton id
+
 	// set user online debounce
 	go btl.debounceSendingViewerCount(func(result ViewerLiveCount) {
 		btl.users.Send(HubKeyViewerLiveCountUpdated, result)
 	})
 
-	return btl
+	arena.currentBattle = btl
+	arena.Message(BATTLEINIT, btl)
+
+	go arena.NotifyUpcomingWarMachines()
 }
 
 const HubKeyUserStatSubscribe hub.HubCommandKey = "USER:STAT:SUBSCRIBE"

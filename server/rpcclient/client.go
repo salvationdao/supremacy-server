@@ -22,6 +22,20 @@ type XrpcClient struct {
 	mutex   sync.Mutex    // lock and unlocks clients slice editing
 }
 
+type PassportXrpcClient struct {
+	*XrpcClient
+	ApiKey string `json:"apiKey"`
+}
+
+func NewPassportXrpcClient(apiKey string, addrs []string) *PassportXrpcClient {
+	new := &PassportXrpcClient{
+		ApiKey:     apiKey,
+		XrpcClient: &XrpcClient{Addrs: addrs},
+	}
+
+	return new
+}
+
 // Gocall plan to deprecate if possible
 // func (c *XrpcClient) GoCall(serviceMethod string, args interface{}, reply interface{}, callback func(error)) {
 // 	go func() {

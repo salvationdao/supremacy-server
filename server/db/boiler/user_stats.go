@@ -26,6 +26,7 @@ type UserStat struct {
 	ViewBattleCount       int    `boiler:"view_battle_count" boil:"view_battle_count" json:"view_battle_count" toml:"view_battle_count" yaml:"view_battle_count"`
 	KillCount             int    `boiler:"kill_count" boil:"kill_count" json:"kill_count" toml:"kill_count" yaml:"kill_count"`
 	TotalAbilityTriggered int    `boiler:"total_ability_triggered" boil:"total_ability_triggered" json:"total_ability_triggered" toml:"total_ability_triggered" yaml:"total_ability_triggered"`
+	MechKillCount         int    `boiler:"mech_kill_count" boil:"mech_kill_count" json:"mech_kill_count" toml:"mech_kill_count" yaml:"mech_kill_count"`
 
 	R *userStatR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L userStatL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -36,11 +37,13 @@ var UserStatColumns = struct {
 	ViewBattleCount       string
 	KillCount             string
 	TotalAbilityTriggered string
+	MechKillCount         string
 }{
 	ID:                    "id",
 	ViewBattleCount:       "view_battle_count",
 	KillCount:             "kill_count",
 	TotalAbilityTriggered: "total_ability_triggered",
+	MechKillCount:         "mech_kill_count",
 }
 
 var UserStatTableColumns = struct {
@@ -48,11 +51,13 @@ var UserStatTableColumns = struct {
 	ViewBattleCount       string
 	KillCount             string
 	TotalAbilityTriggered string
+	MechKillCount         string
 }{
 	ID:                    "user_stats.id",
 	ViewBattleCount:       "user_stats.view_battle_count",
 	KillCount:             "user_stats.kill_count",
 	TotalAbilityTriggered: "user_stats.total_ability_triggered",
+	MechKillCount:         "user_stats.mech_kill_count",
 }
 
 // Generated where
@@ -62,11 +67,13 @@ var UserStatWhere = struct {
 	ViewBattleCount       whereHelperint
 	KillCount             whereHelperint
 	TotalAbilityTriggered whereHelperint
+	MechKillCount         whereHelperint
 }{
 	ID:                    whereHelperstring{field: "\"user_stats\".\"id\""},
 	ViewBattleCount:       whereHelperint{field: "\"user_stats\".\"view_battle_count\""},
 	KillCount:             whereHelperint{field: "\"user_stats\".\"kill_count\""},
 	TotalAbilityTriggered: whereHelperint{field: "\"user_stats\".\"total_ability_triggered\""},
+	MechKillCount:         whereHelperint{field: "\"user_stats\".\"mech_kill_count\""},
 }
 
 // UserStatRels is where relationship names are stored.
@@ -90,9 +97,9 @@ func (*userStatR) NewStruct() *userStatR {
 type userStatL struct{}
 
 var (
-	userStatAllColumns            = []string{"id", "view_battle_count", "kill_count", "total_ability_triggered"}
+	userStatAllColumns            = []string{"id", "view_battle_count", "kill_count", "total_ability_triggered", "mech_kill_count"}
 	userStatColumnsWithoutDefault = []string{"id"}
-	userStatColumnsWithDefault    = []string{"view_battle_count", "kill_count", "total_ability_triggered"}
+	userStatColumnsWithDefault    = []string{"view_battle_count", "kill_count", "total_ability_triggered", "mech_kill_count"}
 	userStatPrimaryKeyColumns     = []string{"id"}
 	userStatGeneratedColumns      = []string{}
 )

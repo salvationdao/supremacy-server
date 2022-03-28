@@ -81,7 +81,6 @@ func (ac *AuthControllerWS) RingCheckJWTAuth(ctx context.Context, wsc *hub.Clien
 
 	token, err := readJWT(tokenStr, ac.Config.EncryptTokens, []byte(ac.Config.EncryptTokensKey), ac.Config.JwtKey)
 	if err != nil {
-		gamelog.L.Err(err).Str("reading-jwt", req.Payload.Token).Msg("Failed to read JWT token")
 		return terror.Error(err, "Failed to read JWT token please try again")
 	}
 
@@ -123,11 +122,14 @@ func (ac *AuthControllerWS) RingCheckJWTAuth(ctx context.Context, wsc *hub.Clien
 		user.FactionID = server.FactionID(uuid.FromStringOrNil(player.FactionID.String))
 		faction, err := boiler.FindFaction(gamedb.StdConn, player.FactionID.String)
 		if err != nil {
-			return terror.Error(err, "Unable to find faction from db")
+			return terror.Error(err, "Issues finding faction, try again or contact support.")
 		}
-		user.Faction = faction
-	}
 
+		err = user.Faction.SetFromBoilerFaction(faction)
+		if err != nil {
+			return terror.Error(err, "Issues finding faction, try again or contact support.")
+		}
+	}
 	b, err := json.Marshal(&BroadcastPayload{
 		Key:     HubKeyUserRingCheck,
 		Payload: user,

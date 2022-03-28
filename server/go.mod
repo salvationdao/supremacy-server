@@ -95,7 +95,7 @@ require (
 	github.com/containerd/continuity v0.1.0 // indirect
 	github.com/coreos/go-oidc v2.2.1+incompatible // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
-	github.com/davecgh/go-spew v1.1.1
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.0-20210816181553-5444fa50b93d // indirect
 	github.com/dghubble/oauth1 v0.7.1 // indirect
 	github.com/docker/cli v20.10.11+incompatible // indirect

@@ -10,7 +10,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"server/passport"
+	"server/rpcclient"
 	"strings"
 	"time"
 
@@ -93,7 +93,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 		// faction unique abilities
 		factionUniqueAbilities, err := boiler.GameAbilities(qm.Where("faction_id = ?", factionID.String()), qm.And("battle_ability_id ISNULL")).All(gamedb.StdConn)
 		if err != nil {
-			gamelog.L.Error().Str("Battle ID", battle.ID).Err(err).Msg("unable to retrieve game abilities")
+			gamelog.L.Error().Str("battle ID", battle.ID).Err(err).Msg("unable to retrieve game abilities")
 		}
 
 		// for zaibatsu unique abilities
@@ -436,7 +436,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 						return
 					}
 
-					actualSupSpent, isTriggered := ability.SupContribution(as.battle.arena.ppClient, as.battle.ID, as.battle.BattleNumber, cont.userID, cont.amount)
+					actualSupSpent, isTriggered := ability.SupContribution(as.battle.arena.RPCClient, as.battle.ID, as.battle.BattleNumber, cont.userID, cont.amount)
 
 					as.liveCount.AddSups(actualSupSpent)
 
@@ -637,7 +637,7 @@ func (ga *GameAbility) FactionUniqueAbilityPriceUpdate(minPrice decimal.Decimal)
 }
 
 // SupContribution contribute sups to specific game ability, return the actual sups spent and whether the ability is triggered
-func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID string, battleNumber int, userID uuid.UUID, amount decimal.Decimal) (decimal.Decimal, bool) {
+func (ga *GameAbility) SupContribution(ppClient *rpcclient.PassportXrpcClient, battleID string, battleNumber int, userID uuid.UUID, amount decimal.Decimal) (decimal.Decimal, bool) {
 
 	isTriggered := false
 
@@ -654,7 +654,7 @@ func (ga *GameAbility) SupContribution(ppClient *passport.Passport, battleID str
 	amount = amount.Truncate(0)
 
 	// pay sup
-	txid, err := ppClient.SpendSupMessage(passport.SpendSupsReq{
+	txid, err := ppClient.SpendSupMessage(rpcclient.SpendSupsReq{
 		FromUserID:           userID,
 		ToUserID:             SupremacyBattleUserID,
 		Amount:               amount.StringFixed(18),
@@ -1052,7 +1052,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 			if factionAbility, ok := as.battleAbilityPool.Abilities[cont.factionID]; ok {
 
 				// contribute sups
-				actualSupSpent, abilityTriggered := factionAbility.SupContribution(as.battle.arena.ppClient, as.battle.ID, as.battle.BattleNumber, cont.userID, cont.amount)
+				actualSupSpent, abilityTriggered := factionAbility.SupContribution(as.battle.arena.RPCClient, as.battle.ID, as.battle.BattleNumber, cont.userID, cont.amount)
 
 				as.liveCount.AddSups(actualSupSpent)
 
@@ -1097,6 +1097,11 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 
 // SetNewBattleAbility set new battle ability and return the cooldown time
 func (as *AbilitiesSystem) SetNewBattleAbility() (int, error) {
+	defer func() {
+		if err := recover(); err != nil {
+			gamelog.L.Error().Interface("err", err).Msg("panic! panic! panic! Panic at the SetNewBattleAbility!")
+		}
+	}()
 	// clean up triggered faction
 	as.battleAbilityPool.TriggeredFactionID = uuid.Nil
 
@@ -1178,6 +1183,11 @@ type Contribution struct {
 
 // locationDecidersSet set a user list for location select for current ability triggered
 func (as *AbilitiesSystem) locationDecidersSet(battleID string, factionID uuid.UUID, triggerByUserID ...uuid.UUID) {
+	defer func() {
+		if err := recover(); err != nil {
+			gamelog.L.Error().Interface("err", err).Msg("panic! panic! panic! Panic at the locationDecidersSet!")
+		}
+	}()
 	// set triggered faction id
 	as.battleAbilityPool.TriggeredFactionID = factionID
 
@@ -1215,6 +1225,11 @@ func (as *AbilitiesSystem) locationDecidersSet(battleID string, factionID uuid.U
 
 // nextLocationDeciderGet return the uuid of the next player to select the location for ability
 func (as *AbilitiesSystem) nextLocationDeciderGet() (uuid.UUID, uuid.UUID, bool) {
+	defer func() {
+		if err := recover(); err != nil {
+			gamelog.L.Error().Interface("err", err).Msg("panic! panic! panic! Panic at the nextLocationDeciderGet!")
+		}
+	}()
 	if as.locationDeciders == nil {
 		gamelog.L.Error().Msg("nil check failed as.locationDeciders")
 
@@ -1244,6 +1259,11 @@ func (as *AbilitiesSystem) nextLocationDeciderGet() (uuid.UUID, uuid.UUID, bool)
 // 1 tick per second, each tick reduce 0.93304 of current price (drop the price to half in 10 second)
 
 func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
+	defer func() {
+		if err := recover(); err != nil {
+			gamelog.L.Error().Interface("err", err).Msg("panic! panic! panic! Panic at the BattleAbilityPriceUpdater!")
+		}
+	}()
 	// check battle stage
 	stage := as.battle.stage
 	// exit the loop, when battle is ended
@@ -1369,6 +1389,11 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 }
 
 func (as *AbilitiesSystem) BattleAbilityProgressBar() {
+	defer func() {
+		if err := recover(); err != nil {
+			gamelog.L.Error().Interface("err", err).Msg("panic! panic! panic! Panic at the BattleAbilityProgressBar!")
+		}
+	}()
 	// check battle stage
 	stage := as.battle.stage
 	// exit the loop, when battle is ended
@@ -1386,6 +1411,11 @@ func (as *AbilitiesSystem) BattleAbilityProgressBar() {
 }
 
 func (as *AbilitiesSystem) BroadcastAbilityProgressBar() {
+	defer func() {
+		if err := recover(); err != nil {
+			gamelog.L.Error().Interface("err", err).Msg("panic! panic! panic! Panic at the BroadcastAbilityProgressBar!")
+		}
+	}()
 	if as.battleAbilityPool == nil || as.battleAbilityPool.Abilities == nil {
 		return
 	}
@@ -1405,6 +1435,11 @@ func (as *AbilitiesSystem) BroadcastAbilityProgressBar() {
 // Handlers
 // *********************
 func (as *AbilitiesSystem) AbilityContribute(factionID uuid.UUID, userID uuid.UUID, abilityIdentity string, amount decimal.Decimal) {
+	defer func() {
+		if err := recover(); err != nil {
+			gamelog.L.Error().Interface("err", err).Msg("panic! panic! panic! Panic at the AbilityContribute!")
+		}
+	}()
 	if as == nil || as.battle == nil || as.battle.stage != BattleStagStart || as.factionUniqueAbilities == nil {
 		return
 	}
@@ -1421,6 +1456,11 @@ func (as *AbilitiesSystem) AbilityContribute(factionID uuid.UUID, userID uuid.UU
 
 // FactionUniqueAbilityGet return the faction unique ability for the given faction
 func (as *AbilitiesSystem) FactionUniqueAbilitiesGet(factionID uuid.UUID) []GameAbility {
+	defer func() {
+		if err := recover(); err != nil {
+			gamelog.L.Error().Interface("err", err).Msg("panic! panic! panic! Panic at the FactionUniqueAbilitiesGet!")
+		}
+	}()
 	abilities := []GameAbility{}
 	for _, ga := range as.factionUniqueAbilities[factionID] {
 		abilities = append(abilities, *ga)
@@ -1435,6 +1475,11 @@ func (as *AbilitiesSystem) FactionUniqueAbilitiesGet(factionID uuid.UUID) []Game
 
 // FactionUniqueAbilityGet return the faction unique ability for the given faction
 func (as *AbilitiesSystem) WarMachineAbilitiesGet(factionID uuid.UUID, hash string) []GameAbility {
+	defer func() {
+		if err := recover(); err != nil {
+			gamelog.L.Error().Interface("err", err).Msg("panic! panic! panic! Panic at the WarMachineAbilitiesGet!")
+		}
+	}()
 	abilities := []GameAbility{}
 	if as == nil {
 		gamelog.L.Error().Str("factionID", factionID.String()).Str("hash", hash).Msg("nil pointer found as")
@@ -1461,6 +1506,11 @@ func (as *AbilitiesSystem) WarMachineAbilitiesGet(factionID uuid.UUID, hash stri
 }
 
 func (as *AbilitiesSystem) BribeGabs(factionID uuid.UUID, userID uuid.UUID, amount decimal.Decimal) {
+	defer func() {
+		if err := recover(); err != nil {
+			gamelog.L.Error().Interface("err", err).Msg("panic! panic! panic! Panic at the BribeGabs!")
+		}
+	}()
 	if as == nil || as.battle == nil || as.battle.stage != BattleStagStart {
 		gamelog.L.Error().
 			Bool("nil checks as", as == nil).
@@ -1481,6 +1531,12 @@ func (as *AbilitiesSystem) BribeGabs(factionID uuid.UUID, userID uuid.UUID, amou
 	}
 
 	go func() {
+		defer func() {
+			if err := recover(); err != nil {
+				gamelog.L.Error().Interface("err", err).Msg("panic! panic! panic! Panic at the gabsbribe!")
+			}
+		}()
+
 		as.bribe <- cont
 	}()
 }
@@ -1493,6 +1549,11 @@ func (as *AbilitiesSystem) BribeStageGet() *GabsBribeStage {
 }
 
 func (as *AbilitiesSystem) FactionBattleAbilityGet(factionID uuid.UUID) (GameAbility, error) {
+	defer func() {
+		if err := recover(); err != nil {
+			gamelog.L.Error().Interface("err", err).Msg("panic! panic! panic! Panic at the FactionBattleAbilityGet!")
+		}
+	}()
 	if as.battleAbilityPool == nil {
 		return GameAbility{}, fmt.Errorf("battleAbilityPool is nil, fid: %s", factionID.String())
 	}
@@ -1510,6 +1571,11 @@ func (as *AbilitiesSystem) FactionBattleAbilityGet(factionID uuid.UUID) (GameAbi
 }
 
 func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error {
+	defer func() {
+		if err := recover(); err != nil {
+			gamelog.L.Error().Interface("err", err).Msg("panic! panic! panic! Panic at the LocationSelect!")
+		}
+	}()
 	// check battle end
 	if as.battle.stage == BattleStageEnd {
 		gamelog.L.Warn().Str("func", "LocationSelect").Msg("battle stage has en ended")
@@ -1609,12 +1675,23 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 }
 
 func (as *AbilitiesSystem) End() {
+	defer func() {
+		if err := recover(); err != nil {
+			gamelog.L.Error().Interface("err", err).Msg("Panic! Panic! Panic! Panic at the abilities.End!")
+			as.battle = nil
+		}
+	}()
 	as.end <- true
 	as.endGabs <- true
 	as.battle = nil
 }
 
 func BuildUserDetailWithFaction(userID uuid.UUID) (*UserBrief, error) {
+	defer func() {
+		if err := recover(); err != nil {
+			gamelog.L.Error().Interface("err", err).Msg("panic! panic! panic! Panic at the BuildUserDetailWithFaction!")
+		}
+	}()
 	userBrief := &UserBrief{}
 
 	user, err := boiler.FindPlayer(gamedb.StdConn, userID.String())

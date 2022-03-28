@@ -237,7 +237,8 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.MechContainer, error) {
 		INNER JOIN players ply ON ply.id = mechs.owner_id
 		INNER JOIN factions fct ON fct.id = ply.faction_id
 		WHERE mechs.id IN (` + paramrefs + `)
-		GROUP BY mechs.id, ply.id, fct.id`
+		GROUP BY mechs.id, ply.id, fct.id
+	 	ORDER BY fct.id;`
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
 	defer cancel()

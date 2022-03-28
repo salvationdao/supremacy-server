@@ -1,1 +1,0 @@
-ALTER TABLE player_preferences ADD COLUMN notifications_battle_queue_telegram BOOL NOT NULL DEFAULT FALSE;

@@ -29,19 +29,19 @@ type PlayerMultiplier struct {
 	IsMultiplicative bool            `db:"is_multiplicative"`
 }
 
-func PlayerMultipliers(battle_number int) ([]*Multipliers, error) {
+func PlayerMultipliers(battleNumber int) ([]*Multipliers, error) {
 	result := []*Multipliers{}
 
 	dbResult := []*PlayerMultiplier{}
 	q := `
-SELECT p.id AS player_id, um.value AS multiplier_value, m.is_multiplicative FROM user_multipliers um 
-INNER JOIN players p ON p.id = um.player_id
-INNER JOIN multipliers m ON m.id = um.multiplier_id
-WHERE um.from_battle_number <= $1
-AND um.until_battle_number >= $1;
-`
+		SELECT p.id AS player_id, um.value AS multiplier_value, m.is_multiplicative FROM user_multipliers um 
+		INNER JOIN players p ON p.id = um.player_id
+		INNER JOIN multipliers m ON m.id = um.multiplier_id
+		WHERE um.from_battle_number <= $1
+		AND um.until_battle_number > $1;
+		`
 
-	err := pgxscan.Select(context.Background(), gamedb.Conn, &dbResult, q, battle_number)
+	err := pgxscan.Select(context.Background(), gamedb.Conn, &dbResult, q, battleNumber)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -104,16 +104,16 @@ func ExtendCitizenMulti(um *boiler.UserMultiplier) error {
 	return nil
 }
 
-func CitizenPlayerIDs(until_battle_number int) ([]uuid.UUID, error) {
+func CitizenPlayerIDs(untilBattleNumber int) ([]uuid.UUID, error) {
 	userIDs := []uuid.UUID{}
 
 	q := `
 	select um.player_id  from user_multipliers um 
 	inner join multipliers m on m.id = um.multiplier_id and m."key" = 'citizen'
-	where um.until_battle_number >= $1
+	where um.from_battle_number <= $1 and um.until_battle_number > $1
 	`
 
-	err := pgxscan.Select(context.Background(), gamedb.Conn, &userIDs, q, until_battle_number)
+	err := pgxscan.Select(context.Background(), gamedb.Conn, &userIDs, q, untilBattleNumber)
 	if err != nil {
 		return userIDs, terror.Error(err)
 	}

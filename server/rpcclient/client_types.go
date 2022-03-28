@@ -2,23 +2,18 @@ package rpcclient
 
 import (
 	"server"
-	"server/db/boiler"
 	"time"
 
+	"github.com/gofrs/uuid"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/types"
 )
-
-type InsertTransactionsResp struct {
-}
-type InsertTransactionsReq struct {
-	Transactions []*boiler.PendingTransaction
-}
 
 type DefaultWarMachinesResp struct {
 	WarMachines []*server.WarMachineMetadata `json:"warMachines"`
 }
 type WarMachineQueuePositionReq struct {
+	ApiKey                  string
 	WarMachineQueuePosition []*WarMachineQueueStat `json:"warMachineQueuePosition"`
 }
 type WarMachineQueueStat struct {
@@ -35,22 +30,39 @@ type FactionAllResp struct {
 	Factions []*server.Faction `json:"factions"`
 }
 type SpendSupsReq struct {
+	ApiKey               string                      `json:"apiKey"`
 	Amount               string                      `json:"amount"`
-	FromUserID           server.UserID               `json:"fromUserID"`
-	ToUserID             *server.UserID              `json:"toUserID,omitempty"`
+	FromUserID           uuid.UUID                   `json:"fromUserID"`
+	ToUserID             uuid.UUID                   `json:"toUserID"`
 	TransactionReference server.TransactionReference `json:"transactionReference"`
-	GroupID              TransactionGroup            `json:"groupID,omitempty"`
+	Group                string                      `json:"group,omitempty"`
+	SubGroup             string                      `json:"subGroup"`    //TODO: send battle id
+	Description          string                      `json:"description"` //TODO: send descritpion
+
+	NotSafe bool `json:"notSafe"`
 }
 
-type TransactionGroup string
-type SpendSupsResp struct {
-	TXID string `json:"txid"`
+type RefundTransactionReq struct {
+	ApiKey        string
+	TransactionID string `json:"transaction_id"`
 }
+
+type RefundTransactionResp struct {
+	TransactionID string `json:"transaction_id"`
+}
+type TransactionGroup string
+
+type SpendSupsResp struct {
+	TransactionID string `json:"transaction_id"`
+}
+
 type ReleaseTransactionsReq struct {
-	TxIDs []string `json:"txIDs"`
+	ApiKey string
+	TxIDs  []string `json:"txIDs"`
 }
 type ReleaseTransactionsResp struct{}
 type TickerTickReq struct {
+	ApiKey  string
 	UserMap map[int][]server.UserID `json:"userMap"`
 }
 type TickerTickResp struct{}
@@ -60,6 +72,7 @@ type GetSpoilOfWarResp struct {
 	Amount string
 }
 type UserSupsMultiplierSendReq struct {
+	ApiKey                  string
 	UserSupsMultiplierSends []*server.UserSupsMultiplierSend `json:"userSupsMultiplierSends"`
 }
 
@@ -67,6 +80,7 @@ type UserSupsMultiplierSendResp struct{}
 type TransferBattleFundToSupPoolReq struct{}
 type TransferBattleFundToSupPoolResp struct{}
 type TopSupsContributorReq struct {
+	ApiKey    string    `json:"apiKey"`
 	StartTime time.Time `json:"startTime"`
 	EndTime   time.Time `json:"endTime"`
 }

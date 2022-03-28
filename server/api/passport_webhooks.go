@@ -77,7 +77,20 @@ func (pc *PassportWebhookController) UserUpdated(w http.ResponseWriter, r *http.
 		if err != nil {
 			return http.StatusInternalServerError, terror.Error(err, "faction not found")
 		}
-		req.User.Faction = faction
+		req.User.Faction = &server.Faction{
+			ID:    server.FactionID{},
+			Label: faction.Label,
+			Theme: &server.FactionTheme{
+				Primary:    faction.PrimaryColor,
+				Secondary:  faction.SecondaryColor,
+				Background: faction.BackgroundColor,
+			},
+			LogoBlobID:       server.BlobID{},
+			BackgroundBlobID: server.BlobID{},
+			VotePrice:        faction.VotePrice,
+			ContractReward:   faction.ContractReward,
+			Description:      "",
+		}
 	}
 
 	// update player
@@ -138,9 +151,14 @@ func (pc *PassportWebhookController) UserEnlistFaction(w http.ResponseWriter, r 
 		FactionID:     req.FactionID,
 	}
 
-	user.Faction, err = boiler.FindFaction(gamedb.StdConn, req.FactionID.String())
+	faction, err := boiler.FindFaction(gamedb.StdConn, req.FactionID.String())
 	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Unable to find faction from db")
+		return http.StatusInternalServerError, terror.Error(err, "Unable to find faction from db, contact support or try again.")
+	}
+
+	err = user.Faction.SetFromBoilerFaction(faction)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Unable to convert faction, contact support or try again.")
 	}
 
 	pc.API.MessageBus.Send(r.Context(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, player.ID)), user)
@@ -281,7 +299,10 @@ func (pc *PassportWebhookController) AuthRingCheck(w http.ResponseWriter, r *htt
 			return http.StatusBadRequest, terror.Error(err)
 		}
 
-		req.User.Faction = faction
+		err = req.User.Faction.SetFromBoilerFaction(faction)
+		if err != nil {
+			return http.StatusInternalServerError, terror.Error(err)
+		}
 	}
 
 	// store user into player table

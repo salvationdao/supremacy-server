@@ -10,7 +10,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"server/passport"
+	"server/rpcclient"
 	"time"
 
 	"github.com/volatiletech/null/v8"
@@ -36,7 +36,7 @@ func NewSpoilsOfWar(btl *Battle, transactSpeed time.Duration, dripSpeed time.Dur
 		tickSpeed:     dripSpeed,
 	}
 
-	amnt := decimal.New(int64(rand.Intn(200)), 18)
+	amnt := decimal.New(int64(rand.Intn(1000)), 18)
 
 	sow, err := boiler.SpoilsOfWars(boiler.SpoilsOfWarWhere.BattleID.EQ(btl.BattleID)).One(gamedb.StdConn)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -55,7 +55,7 @@ func NewSpoilsOfWar(btl *Battle, transactSpeed time.Duration, dripSpeed time.Dur
 
 		txr := fmt.Sprintf("spoils_of_war_fill_up|%s|%d", server.XsynTreasuryUserID, time.Now().UnixNano())
 
-		_, err := btl.arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
+		_, err := btl.arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
 			FromUserID:           uuid.UUID(server.XsynTreasuryUserID),
 			ToUserID:             SupremacyBattleUserID,
 			Amount:               amnt.String(),
@@ -130,7 +130,7 @@ func (sow *SpoilsOfWar) Flush() error {
 		return terror.Error(err, "can't retrieve last battle's spoils")
 	}
 
-	multipliers, err := db.PlayerMultipliers(sow.battle.BattleNumber)
+	multipliers, err := db.PlayerMultipliers(bn)
 	if err != nil {
 		return terror.Error(err, "unable to retrieve multipliers")
 	}
@@ -156,12 +156,12 @@ func (sow *SpoilsOfWar) Flush() error {
 	}
 	amount = amount.Div(totalShares)
 
-	subgroup := fmt.Sprintf("Spoils of War from Battle #%d", sow.battle.BattleNumber-1)
+	subgroup := fmt.Sprintf("Spoils of War from battle #%d", bn)
 
 	for _, player := range onlineUsers {
 		txr := fmt.Sprintf("spoils_of_war|%s|%d", player.PlayerID, time.Now().UnixNano())
 		userAmount := amount.Mul(player.TotalMultiplier).Truncate(0)
-		_, err := sow.battle.arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
+		_, err := sow.battle.arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
 			FromUserID:           SupremacyBattleUserID,
 			ToUserID:             player.PlayerID,
 			Amount:               userAmount.String(),
@@ -223,7 +223,7 @@ func (sow *SpoilsOfWar) Drip() error {
 
 	dripAmount := warchest.Amount.Div(decimal.NewFromInt(int64(dripAllocations)))
 
-	multipliers, err := db.PlayerMultipliers(sow.battle.BattleNumber)
+	multipliers, err := db.PlayerMultipliers(bn)
 	if err != nil {
 		return terror.Error(err, "unable to retrieve multipliers")
 	}
@@ -244,7 +244,7 @@ func (sow *SpoilsOfWar) Drip() error {
 		gamelog.L.Warn().Msgf("total shares is less than or equal to zero")
 		return nil
 	}
-	subgroup := fmt.Sprintf("Spoils of War from Battle #%d", sow.battle.BattleNumber-1)
+	subgroup := fmt.Sprintf("Spoils of War from battle #%d", bn)
 	amountRemaining := warchest.Amount.Sub(warchest.AmountSent)
 
 	onShareSups := dripAmount.Div(totalShares)
@@ -259,7 +259,7 @@ func (sow *SpoilsOfWar) Drip() error {
 
 		txr := fmt.Sprintf("spoils_of_war|%s|%d", player.PlayerID, time.Now().UnixNano())
 
-		_, err := sow.battle.arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
+		_, err := sow.battle.arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
 			FromUserID:           SupremacyBattleUserID,
 			ToUserID:             player.PlayerID,
 			Amount:               userDrip.StringFixed(18),

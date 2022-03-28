@@ -31,6 +31,7 @@ type FactionStat struct {
 	DeathCount     int             `boiler:"death_count" boil:"death_count" json:"death_count" toml:"death_count" yaml:"death_count"`
 	SupsContribute decimal.Decimal `boiler:"sups_contribute" boil:"sups_contribute" json:"sups_contribute" toml:"sups_contribute" yaml:"sups_contribute"`
 	MVPPlayerID    null.String     `boiler:"mvp_player_id" boil:"mvp_player_id" json:"mvp_player_id,omitempty" toml:"mvp_player_id" yaml:"mvp_player_id,omitempty"`
+	MechKillCount  int             `boiler:"mech_kill_count" boil:"mech_kill_count" json:"mech_kill_count" toml:"mech_kill_count" yaml:"mech_kill_count"`
 
 	R *factionStatR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L factionStatL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -44,6 +45,7 @@ var FactionStatColumns = struct {
 	DeathCount     string
 	SupsContribute string
 	MVPPlayerID    string
+	MechKillCount  string
 }{
 	ID:             "id",
 	WinCount:       "win_count",
@@ -52,6 +54,7 @@ var FactionStatColumns = struct {
 	DeathCount:     "death_count",
 	SupsContribute: "sups_contribute",
 	MVPPlayerID:    "mvp_player_id",
+	MechKillCount:  "mech_kill_count",
 }
 
 var FactionStatTableColumns = struct {
@@ -62,6 +65,7 @@ var FactionStatTableColumns = struct {
 	DeathCount     string
 	SupsContribute string
 	MVPPlayerID    string
+	MechKillCount  string
 }{
 	ID:             "faction_stats.id",
 	WinCount:       "faction_stats.win_count",
@@ -70,6 +74,7 @@ var FactionStatTableColumns = struct {
 	DeathCount:     "faction_stats.death_count",
 	SupsContribute: "faction_stats.sups_contribute",
 	MVPPlayerID:    "faction_stats.mvp_player_id",
+	MechKillCount:  "faction_stats.mech_kill_count",
 }
 
 // Generated where
@@ -82,6 +87,7 @@ var FactionStatWhere = struct {
 	DeathCount     whereHelperint
 	SupsContribute whereHelperdecimal_Decimal
 	MVPPlayerID    whereHelpernull_String
+	MechKillCount  whereHelperint
 }{
 	ID:             whereHelperstring{field: "\"faction_stats\".\"id\""},
 	WinCount:       whereHelperint{field: "\"faction_stats\".\"win_count\""},
@@ -90,6 +96,7 @@ var FactionStatWhere = struct {
 	DeathCount:     whereHelperint{field: "\"faction_stats\".\"death_count\""},
 	SupsContribute: whereHelperdecimal_Decimal{field: "\"faction_stats\".\"sups_contribute\""},
 	MVPPlayerID:    whereHelpernull_String{field: "\"faction_stats\".\"mvp_player_id\""},
+	MechKillCount:  whereHelperint{field: "\"faction_stats\".\"mech_kill_count\""},
 }
 
 // FactionStatRels is where relationship names are stored.
@@ -116,9 +123,9 @@ func (*factionStatR) NewStruct() *factionStatR {
 type factionStatL struct{}
 
 var (
-	factionStatAllColumns            = []string{"id", "win_count", "loss_count", "kill_count", "death_count", "sups_contribute", "mvp_player_id"}
+	factionStatAllColumns            = []string{"id", "win_count", "loss_count", "kill_count", "death_count", "sups_contribute", "mvp_player_id", "mech_kill_count"}
 	factionStatColumnsWithoutDefault = []string{"id"}
-	factionStatColumnsWithDefault    = []string{"win_count", "loss_count", "kill_count", "death_count", "sups_contribute", "mvp_player_id"}
+	factionStatColumnsWithDefault    = []string{"win_count", "loss_count", "kill_count", "death_count", "sups_contribute", "mvp_player_id", "mech_kill_count"}
 	factionStatPrimaryKeyColumns     = []string{"id"}
 	factionStatGeneratedColumns      = []string{}
 )
