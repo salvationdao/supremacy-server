@@ -26,6 +26,7 @@ import (
 
 	"github.com/ninja-syndicate/hub"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/gofrs/uuid"
 
@@ -868,9 +869,22 @@ func (btl *Battle) userOnline(user *BattleUser, wsc *hub.Client) {
 	} else {
 		// broadcast result to current user only if the user already exists
 		btl.users.Send(HubKeyViewerLiveCountUpdated, resp, user.ID)
-	}
 
-	return
+		userIDs := btl.users.OnlineUserIDs()
+		if len(userIDs) > 0 {
+			uss, err := boiler.UserStats(
+				boiler.UserStatWhere.ID.IN(userIDs),
+			).All(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to get user stats from db")
+			}
+
+			if uss != nil {
+				btl.users.Send(HubKeyUserStatChatSubscribe, uss, user.ID)
+			}
+		}
+
+	}
 }
 
 func (btl *Battle) debounceSendingViewerCount(cb func(result ViewerLiveCount)) {
@@ -891,6 +905,21 @@ func (btl *Battle) debounceSendingViewerCount(cb func(result ViewerLiveCount)) {
 		case <-timer.C:
 			if result != nil {
 				cb(*result)
+
+				userIDs := btl.users.OnlineUserIDs()
+				if len(userIDs) > 0 {
+					uss, err := boiler.UserStats(
+						qm.Select(boiler.UserStatColumns.ID, boiler.UserStatColumns.KillCount),
+						boiler.UserStatWhere.ID.IN(userIDs),
+					).All(gamedb.StdConn)
+					if err != nil {
+						gamelog.L.Error().Err(err).Msg("Failed to get user stats from db")
+					}
+
+					if uss != nil {
+						btl.users.Send(HubKeyUserStatChatSubscribe, uss)
+					}
+				}
 			}
 		case <-checker.C:
 			if btl != btl.arena.currentBattle {

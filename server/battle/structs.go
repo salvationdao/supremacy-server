@@ -39,7 +39,6 @@ func (u *usersMap) Range(fn func(user *BattleUser) bool) {
 		}
 	}
 	u.RUnlock()
-	return
 }
 
 func (u *usersMap) Send(key hub.HubCommandKey, payload interface{}, ids ...uuid.UUID) error {
@@ -59,6 +58,17 @@ func (u *usersMap) Send(key hub.HubCommandKey, payload interface{}, ids ...uuid.
 	}
 	u.RUnlock()
 	return nil
+}
+
+func (u *usersMap) OnlineUserIDs() []string {
+	userIDs := []string{}
+	u.RLock()
+	for uid := range u.m {
+		userIDs = append(userIDs, uid.String())
+	}
+	u.RUnlock()
+
+	return userIDs
 }
 
 func (u *usersMap) User(id uuid.UUID) (*BattleUser, bool) {

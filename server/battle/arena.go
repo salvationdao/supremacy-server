@@ -134,7 +134,7 @@ func NewArena(opts *Opts) *Arena {
 	opts.SecureUserFactionSubscribeCommand(HubKeGabsBribingWinnerSubscribe, arena.GabsBribingWinnerSubscribe)
 	opts.SecureUserFactionSubscribeCommand(HubKeyBattleAbilityUpdated, arena.BattleAbilityUpdateSubscribeHandler)
 
-	opts.SecureUserSubscribeCommand(HubKeyMultiplierMapSubscribe, arena.MultiplierMapSubScribeHandler)
+	opts.SecureUserSubscribeCommand(HubKeyMultiplierMapSubscribe, arena.MultiplierMapSubscribeHandler)
 
 	// faction unique ability related (sup contribution)
 	opts.SecureUserFactionCommand(HubKeFactionUniqueAbilityContribute, arena.FactionUniqueAbilityContribute)
@@ -321,7 +321,7 @@ type MultiplierMapResponse struct {
 
 const HubKeyMultiplierMapSubscribe hub.HubCommandKey = "MULTIPLIER:MAP:SUBSCRIBE"
 
-func (arena *Arena) MultiplierMapSubScribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (arena *Arena) MultiplierMapSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -354,6 +354,8 @@ func (arena *Arena) MultiplierMapSubScribeHandler(ctx context.Context, wsc *hub.
 
 	return req.TransactionID, messagebus.BusKey(HubKeyMultiplierMapSubscribe), nil
 }
+
+const HubKeyUserStatChatSubscribe hub.HubCommandKey = "PLAYER:USER:STAT:CHAT:SUBSCRIBE"
 
 const HubKeyBattleAbilityUpdated hub.HubCommandKey = "BATTLE:ABILITY:UPDATED"
 
