@@ -26,6 +26,7 @@ import (
 
 	"github.com/ninja-syndicate/hub"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/gofrs/uuid"
 
@@ -585,7 +586,7 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 					ToUserID:             factID,
 					Amount:               contract.ContractReward.StringFixed(0),
 					TransactionReference: server.TransactionReference(fmt.Sprintf("contract_rewards|%s|%d", contract.ID, time.Now().UnixNano())),
-					Group:                "battle",
+					Group:                string(server.TransactionGroupBattle),
 					SubGroup:             wmwin.Hash,
 					Description:          fmt.Sprintf("Mech won battle #%d", btl.BattleNumber),
 					NotSafe:              false,
@@ -612,7 +613,7 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 				ToUserID:             uuid.Must(uuid.FromString(contract.PlayerID)),
 				Amount:               contract.ContractReward.StringFixed(0),
 				TransactionReference: server.TransactionReference(fmt.Sprintf("contract_rewards|%s|%d", contract.ID, time.Now().UnixNano())),
-				Group:                "battle",
+				Group:                string(server.TransactionGroupBattle),
 				SubGroup:             wmwin.Hash,
 				Description:          fmt.Sprintf("Mech won battle #%d", btl.BattleNumber),
 				NotSafe:              false,
@@ -868,9 +869,22 @@ func (btl *Battle) userOnline(user *BattleUser, wsc *hub.Client) {
 	} else {
 		// broadcast result to current user only if the user already exists
 		btl.users.Send(HubKeyViewerLiveCountUpdated, resp, user.ID)
-	}
 
-	return
+		userIDs := btl.users.OnlineUserIDs()
+		if len(userIDs) > 0 {
+			uss, err := boiler.UserStats(
+				boiler.UserStatWhere.ID.IN(userIDs),
+			).All(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to get user stats from db")
+			}
+
+			if uss != nil {
+				btl.users.Send(HubKeyUserStatChatSubscribe, uss, user.ID)
+			}
+		}
+
+	}
 }
 
 func (btl *Battle) debounceSendingViewerCount(cb func(result ViewerLiveCount)) {
@@ -891,6 +905,21 @@ func (btl *Battle) debounceSendingViewerCount(cb func(result ViewerLiveCount)) {
 		case <-timer.C:
 			if result != nil {
 				cb(*result)
+
+				userIDs := btl.users.OnlineUserIDs()
+				if len(userIDs) > 0 {
+					uss, err := boiler.UserStats(
+						qm.Select(boiler.UserStatColumns.ID, boiler.UserStatColumns.KillCount),
+						boiler.UserStatWhere.ID.IN(userIDs),
+					).All(gamedb.StdConn)
+					if err != nil {
+						gamelog.L.Error().Err(err).Msg("Failed to get user stats from db")
+					}
+
+					if uss != nil {
+						btl.users.Send(HubKeyUserStatChatSubscribe, uss)
+					}
+				}
 			}
 		case <-checker.C:
 			if btl != btl.arena.currentBattle {
@@ -1127,7 +1156,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		FromUserID:           ownerID,
 		ToUserID:             SupremacyBattleUserID,
 		TransactionReference: server.TransactionReference(fmt.Sprintf("war_machine_queueing_fee|%s|%d", msg.Payload.AssetHash, time.Now().UnixNano())),
-		Group:                "Battle",
+		Group:                string(server.TransactionGroupBattle),
 		SubGroup:             "Queue",
 		Description:          "Queued mech to battle arena",
 		NotSafe:              true,
@@ -1155,7 +1184,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 			FromUserID:           ownerID,
 			ToUserID:             SupremacyBattleUserID,
 			TransactionReference: server.TransactionReference(fmt.Sprintf("war_machine_queue_notification_fee|%s|%d", msg.Payload.AssetHash, time.Now().UnixNano())),
-			Group:                "Battle",
+			Group:                string(server.TransactionGroupBattle),
 			SubGroup:             "Queue",
 			Description:          "Notification surcharge for queued mech in arena",
 			NotSafe:              true,
@@ -1345,7 +1374,7 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 				FromUserID:           SupremacyBattleUserID,
 				ToUserID:             ownerID,
 				TransactionReference: server.TransactionReference(fmt.Sprintf("refund_war_machine_queueing_fee|%s|%d", msg.Payload.AssetHash, time.Now().UnixNano())),
-				Group:                "Battle",
+				Group:                string(server.TransactionGroupBattle),
 				SubGroup:             "Queue",
 				Description:          "Refunded battle arena queueing fee",
 				NotSafe:              true,
@@ -1386,7 +1415,7 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 				FromUserID:           SupremacyBattleUserID,
 				ToUserID:             ownerID,
 				TransactionReference: server.TransactionReference(fmt.Sprintf("refund_war_machine_queue_notification_fee|%s|%d", msg.Payload.AssetHash, time.Now().UnixNano())),
-				Group:                "Battle",
+				Group:                string(server.TransactionGroupBattle),
 				SubGroup:             "Queue",
 				Description:          "Refunded notification surcharge for queued mech in arena",
 				NotSafe:              true,
