@@ -45,11 +45,11 @@ func NewPlayerController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Pla
 
 	// faction lose select privilege
 	api.SecureUserFactionCommand(HubKeyPlayerSearch, pc.FactionPlayerSearch)
-	api.SecureUserFactionCommand(HubKeyBanVote, pc.BanVote)
-	api.SecureUserFactionCommand(HubKeyBanTypes, pc.BanTypes)
-	api.SecureUserFactionCommand(HubKeyIssueBanVote, pc.IssueBanVote)
-	api.SecureUserFactionSubscribeCommand(HubKeyBanVoteSubscribe, pc.BanVoteSubscribeHandler)
-	api.SecureUserFactionSubscribeCommand(HubKeyBanVoteResultSubscribe, pc.BanVoteResultSubscribeHandler)
+	api.SecureUserFactionCommand(HubKeyPunishVote, pc.PunishVote)
+	api.SecureUserFactionCommand(HubKeyPunishOptions, pc.PunishOptions)
+	api.SecureUserFactionCommand(HubKeyIssuePunishVote, pc.IssuePunishVote)
+	api.SecureUserFactionSubscribeCommand(HubKeyPunishVoteSubscribe, pc.PunishVoteSubscribeHandler)
+	api.SecureUserFactionSubscribeCommand(HubKeyPunishVoteResultSubscribe, pc.PunishVoteResultSubscribeHandler)
 
 	return pc
 }
@@ -198,24 +198,24 @@ func (pc *PlayerController) FactionPlayerSearch(ctx context.Context, wsc *hub.Cl
 	return nil
 }
 
-type BanVoteRequest struct {
+type PunishVoteRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		BanVoteID string `json:"ban_vote_id"`
-		IsAgreed  bool   `json:"is_agreed"`
+		PunishVoteID string `json:"punish_vote_id"`
+		IsAgreed     bool   `json:"is_agreed"`
 	} `json:"payload"`
 }
 
-const HubKeyBanVote hub.HubCommandKey = "BAN:VOTE"
+const HubKeyPunishVote hub.HubCommandKey = "PUNISH:VOTE"
 
-func (pc *PlayerController) BanVote(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	req := &BanVoteRequest{}
+func (pc *PlayerController) PunishVote(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &PunishVoteRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received")
 	}
 
-	// check player is available to be banned
+	// check player is available to be punished
 	player, err := boiler.FindPlayer(gamedb.StdConn, wsc.Identifier())
 	if err != nil {
 		return terror.Error(err, "Failed to get current player from db")
@@ -230,26 +230,26 @@ func (pc *PlayerController) BanVote(ctx context.Context, wsc *hub.Client, payloa
 		return terror.Error(fmt.Errorf("Only players with positive ability kill count has the right"))
 	}
 
-	if pc.API.FactionBanVote[player.FactionID.String].Stage.Phase != BanVotePhaseVoting && pc.API.FactionBanVote[player.FactionID.String].BanVoteID != req.Payload.BanVoteID {
+	if pc.API.FactionPunishVote[player.FactionID.String].Stage.Phase != PunishVotePhaseVoting && pc.API.FactionPunishVote[player.FactionID.String].PunishVoteID != req.Payload.PunishVoteID {
 		return terror.Error(terror.ErrInvalidInput, "Incorrect vote phase or vote id")
 	}
 
 	// send vote into channel
-	pc.API.FactionBanVote[player.FactionID.String].VoteChan <- &BanVote{
-		BanVoteID: req.Payload.BanVoteID,
-		playerID:  player.ID,
-		IsAgreed:  req.Payload.IsAgreed,
+	pc.API.FactionPunishVote[player.FactionID.String].VoteChan <- &PunishVote{
+		PunishVoteID: req.Payload.PunishVoteID,
+		playerID:     player.ID,
+		IsAgreed:     req.Payload.IsAgreed,
 	}
 
 	return nil
 }
 
-const HubKeyBanTypes hub.HubCommandKey = "BAN:TYPES"
+const HubKeyPunishOptions hub.HubCommandKey = "PUNISH:OPTIONS"
 
-func (pc *PlayerController) BanTypes(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	bts, err := boiler.BanTypes().All(gamedb.StdConn)
+func (pc *PlayerController) PunishOptions(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	bts, err := boiler.PunishOptions().All(gamedb.StdConn)
 	if err != nil {
-		return terror.Error(err, "Failed to get ban types from db")
+		return terror.Error(err, "Failed to get punish options from db")
 	}
 
 	reply(bts)
@@ -257,79 +257,79 @@ func (pc *PlayerController) BanTypes(ctx context.Context, wsc *hub.Client, paylo
 	return nil
 }
 
-type IssueBanVoteRequest struct {
+type IssuePunishVoteRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		IntendToBanPlayerID uuid.UUID `json:"intend_to_ban_player_id"`
-		BanTypeID           string    `json:"ban_type_id"`
-		Reason              string    `json:"reason"`
+		IntendToPunishPlayerID uuid.UUID `json:"intend_to_punish_player_id"`
+		PunishOptionID         string    `json:"punish_option_id"`
+		Reason                 string    `json:"reason"`
 	} `json:"payload"`
 }
 
-const HubKeyIssueBanVote hub.HubCommandKey = "ISSUE:BAN:VOTE"
+const HubKeyIssuePunishVote hub.HubCommandKey = "ISSUE:PUNISH:VOTE"
 
-func (pc *PlayerController) IssueBanVote(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	req := &IssueBanVoteRequest{}
+func (pc *PlayerController) IssuePunishVote(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &IssuePunishVoteRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received")
 	}
 
-	// check player is available to be banned
+	// check player is available to be punished
 	// get players
 	currentPlayer, err := boiler.FindPlayer(gamedb.StdConn, wsc.Identifier())
 	if err != nil {
 		return terror.Error(err, "Failed to get current player from db")
 	}
 
-	intendToBenPlayer, err := boiler.FindPlayer(gamedb.StdConn, req.Payload.IntendToBanPlayerID.String())
+	intendToBenPlayer, err := boiler.FindPlayer(gamedb.StdConn, req.Payload.IntendToPunishPlayerID.String())
 	if err != nil {
-		return terror.Error(err, "Failed to get intend to ban player from db")
+		return terror.Error(err, "Failed to get intend to punish player from db")
 	}
 
 	if !intendToBenPlayer.FactionID.Valid || intendToBenPlayer.FactionID.String != currentPlayer.FactionID.String {
-		return terror.Error(fmt.Errorf("unable to ban player who is not in your faction"), "Unable to ban player who is not in your faction")
+		return terror.Error(fmt.Errorf("unable to punish player who is not in your faction"), "Unable to punish player who is not in your faction")
 	}
 
-	// ensure ban vote is issued synchroniously in faction
-	pc.API.FactionBanVote[currentPlayer.FactionID.String].Lock()
-	defer pc.API.FactionBanVote[currentPlayer.FactionID.String].Unlock()
+	// ensure punish vote is issued synchroniously in faction
+	pc.API.FactionPunishVote[currentPlayer.FactionID.String].Lock()
+	defer pc.API.FactionPunishVote[currentPlayer.FactionID.String].Unlock()
 
-	// if the player is already in ban period
-	bannedPlayer, err := boiler.BannedPlayers(
-		boiler.BannedPlayerWhere.ID.EQ(req.Payload.IntendToBanPlayerID.String()),
-		boiler.BannedPlayerWhere.BanUntil.GT(time.Now()),
-		qm.Load(boiler.BannedPlayerRels.BanType),
+	// if the player is already in punish period
+	punishedPlayer, err := boiler.PunishedPlayers(
+		boiler.PunishedPlayerWhere.ID.EQ(req.Payload.IntendToPunishPlayerID.String()),
+		boiler.PunishedPlayerWhere.PunishUntil.GT(time.Now()),
+		qm.Load(boiler.PunishedPlayerRels.PunishOption),
 	).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return terror.Error(err, "Failed to get the banned player from db")
+		return terror.Error(err, "Failed to get the punished player from db")
 	}
 
-	if bannedPlayer != nil {
-		return terror.Error(fmt.Errorf("Player is already banned"), fmt.Sprintf("The player is already banned for %s", bannedPlayer.R.BanType.Key))
+	if punishedPlayer != nil {
+		return terror.Error(fmt.Errorf("Player is already punished"), fmt.Sprintf("The player is already punished for %s", punishedPlayer.R.PunishOption.Key))
 	}
 
-	// get ban type
-	banType, err := boiler.FindBanType(gamedb.StdConn, req.Payload.BanTypeID)
+	// get punish type
+	punishOption, err := boiler.FindPunishOption(gamedb.StdConn, req.Payload.PunishOptionID)
 	if err != nil {
-		return terror.Error(err, "Failed to get ban type from db")
+		return terror.Error(err, "Failed to get punish type from db")
 	}
 
 	// check the player is reported
-	banVote, err := boiler.BanVotes(
-		boiler.BanVoteWhere.ReportedPlayerID.EQ(req.Payload.IntendToBanPlayerID.String()),
-		boiler.BanVoteWhere.Status.EQ(BanVoteStatusPending),
+	punishVote, err := boiler.PunishVotes(
+		boiler.PunishVoteWhere.ReportedPlayerID.EQ(req.Payload.IntendToPunishPlayerID.String()),
+		boiler.PunishVoteWhere.Status.EQ(string(PunishVoteStatusPending)),
 	).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return terror.Error(err, "Failed to check ban vote from db")
+		return terror.Error(err, "Failed to check punish vote from db")
 	}
 
-	if banVote != nil {
-		return terror.Error(fmt.Errorf("Player is already reported"), fmt.Sprintf("The player has a pending banning report issued by %s", banVote.IssuedByUsername))
+	if punishVote != nil {
+		return terror.Error(fmt.Errorf("Player is already reported"), fmt.Sprintf("The player has a pending punishning report issued by %s", punishVote.IssuedByUsername))
 	}
 
 	// get the highest price
-	price := currentPlayer.IssueBanFee
+	price := currentPlayer.IssuePunishFee
 	// if the reported cost is higher than issue fee, change price to report cost
 	if intendToBenPlayer.ReportedCost.GreaterThan(price) {
 		price = intendToBenPlayer.ReportedCost
@@ -359,28 +359,28 @@ func (pc *PlayerController) IssueBanVote(ctx context.Context, wsc *hub.Client, p
 		}
 	}()
 
-	// issue a ban vote
-	banVote = &boiler.BanVote{
-		BanTypeID:              banType.ID,
+	// issue a punish vote
+	punishVote = &boiler.PunishVote{
+		PunishOptionID:         punishOption.ID,
 		Reason:                 req.Payload.Reason,
 		FactionID:              currentPlayer.FactionID.String,
 		IssuedByID:             currentPlayer.ID,
 		IssuedByUsername:       currentPlayer.Username.String,
 		ReportedPlayerID:       intendToBenPlayer.ID,
 		ReportedPlayerUsername: intendToBenPlayer.Username.String,
-		Status:                 BanVoteStatusPending,
+		Status:                 string(PunishVoteStatusPending),
 	}
-	err = banVote.Insert(tx, boil.Infer())
+	err = punishVote.Insert(tx, boil.Infer())
 	if err != nil {
-		return terror.Error(err, "Failed to issue a ban vote")
+		return terror.Error(err, "Failed to issue a punish vote")
 	}
 
 	// double the issue fee of current user
-	currentPlayer.IssueBanFee = currentPlayer.IssueBanFee.Mul(decimal.NewFromInt(2))
+	currentPlayer.IssuePunishFee = currentPlayer.IssuePunishFee.Mul(decimal.NewFromInt(2))
 
-	_, err = currentPlayer.Update(tx, boil.Whitelist(boiler.PlayerColumns.IssueBanFee))
+	_, err = currentPlayer.Update(tx, boil.Whitelist(boiler.PlayerColumns.IssuePunishFee))
 	if err != nil {
-		return terror.Error(err, "Failed to update issue ban fee")
+		return terror.Error(err, "Failed to update issue punish fee")
 	}
 
 	// pay fee to syndicate
@@ -388,14 +388,14 @@ func (pc *PlayerController) IssueBanVote(ctx context.Context, wsc *hub.Client, p
 		FromUserID:           userID,
 		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
 		Amount:               price.Mul(decimal.New(1, 18)).String(),
-		TransactionReference: server.TransactionReference(fmt.Sprintf("issue_ban_vote|%s|%d", banVote.ID, time.Now().UnixNano())),
-		Group:                "issue ban vote",
-		SubGroup:             string(banType.Key),
-		Description:          "issue vote for banning player",
+		TransactionReference: server.TransactionReference(fmt.Sprintf("issue_punish_vote|%s|%d", punishVote.ID, time.Now().UnixNano())),
+		Group:                "issue punish vote",
+		SubGroup:             string(punishOption.Key),
+		Description:          "issue vote for punishning player",
 		NotSafe:              true,
 	})
 	if err != nil {
-		gamelog.L.Error().Str("player_id", currentPlayer.ID).Str("amount", price.Mul(decimal.New(1, 18)).String()).Err(err).Msg("Failed to pay sups for issuing player ban vote")
+		gamelog.L.Error().Str("player_id", currentPlayer.ID).Str("amount", price.Mul(decimal.New(1, 18)).String()).Err(err).Msg("Failed to pay sups for issuing player punish vote")
 		return terror.Error(err)
 	}
 
@@ -407,17 +407,17 @@ func (pc *PlayerController) IssueBanVote(ctx context.Context, wsc *hub.Client, p
 	return nil
 }
 
-type BanVoteStatus string
+type PunishVoteStatus string
 
 const (
-	BanVoteStatusPassed  = "PASSED"
-	BanVoteStatusFailed  = "FAILED"
-	BanVoteStatusPending = "PENDING"
+	PunishVoteStatusPassed  PunishVoteStatus = "PASSED"
+	PunishVoteStatusFailed  PunishVoteStatus = "FAILED"
+	PunishVoteStatusPending PunishVoteStatus = "PENDING"
 )
 
-const HubKeyBanVoteSubscribe hub.HubCommandKey = "BAN:VOTE:SUBSCRIBE"
+const HubKeyPunishVoteSubscribe hub.HubCommandKey = "PUNISH:VOTE:SUBSCRIBE"
 
-func (pc *PlayerController) BanVoteSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (pc *PlayerController) PunishVoteSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -431,35 +431,35 @@ func (pc *PlayerController) BanVoteSubscribeHandler(ctx context.Context, client 
 	}
 
 	if !player.FactionID.Valid {
-		return "", "", terror.Error(fmt.Errorf("player should join faction to subscribe on ban vote"), "Player should join a faction to subscribe on ban vote")
+		return "", "", terror.Error(fmt.Errorf("player should join faction to subscribe on punish vote"), "Player should join a faction to subscribe on punish vote")
 	}
 
 	// only pass down vote, if there is an ongoing vote
-	if fbv, ok := pc.API.FactionBanVote[player.FactionID.String]; ok && fbv.Stage.Phase == BanVotePhaseVoting {
-		bv, err := boiler.BanVotes(
-			boiler.BanVoteWhere.ID.EQ(fbv.BanVoteID),
-			qm.Load(boiler.BanVoteRels.BanType),
+	if fbv, ok := pc.API.FactionPunishVote[player.FactionID.String]; ok && fbv.Stage.Phase == PunishVotePhaseVoting {
+		bv, err := boiler.PunishVotes(
+			boiler.PunishVoteWhere.ID.EQ(fbv.PunishVoteID),
+			qm.Load(boiler.PunishVoteRels.PunishOption),
 		).One(gamedb.StdConn)
 		if err != nil {
-			return "", "", terror.Error(err, "Failed to get ban vote from db")
+			return "", "", terror.Error(err, "Failed to get punish vote from db")
 		}
-		reply(&BanVoteInstance{
-			BanVote: bv,
-			BanType: bv.R.BanType,
+		reply(&PunishVoteInstance{
+			PunishVote:   bv,
+			PunishOption: bv.R.PunishOption,
 		})
 	}
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBanVoteSubscribe, player.FactionID.String)), nil
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPunishVoteSubscribe, player.FactionID.String)), nil
 }
 
-type BanVoteResult struct {
-	BanVoteID             string `json:"ban_vote_id"`
+type PunishVoteResult struct {
+	PunishVoteID          string `json:"punish_vote_id"`
 	AgreedPlayerNumber    int    `json:"agreed_player_number"`
 	DisagreedPlayerNumber int    `json:"disagreed_player_number"`
 }
 
-const HubKeyBanVoteResultSubscribe hub.HubCommandKey = "BAN:VOTE:RESULT:SUBSCRIBE"
+const HubKeyPunishVoteResultSubscribe hub.HubCommandKey = "PUNISH:VOTE:RESULT:SUBSCRIBE"
 
-func (pc *PlayerController) BanVoteResultSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (pc *PlayerController) PunishVoteResultSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -473,17 +473,17 @@ func (pc *PlayerController) BanVoteResultSubscribeHandler(ctx context.Context, c
 	}
 
 	if !player.FactionID.Valid {
-		return "", "", terror.Error(fmt.Errorf("player should join faction to subscribe on ban vote"), "Player should join a faction to subscribe on ban vote")
+		return "", "", terror.Error(fmt.Errorf("player should join faction to subscribe on punish vote"), "Player should join a faction to subscribe on punish vote")
 	}
 
-	// only pass down vote result, if there is an ongoing ban vote
-	if fbv, ok := pc.API.FactionBanVote[player.FactionID.String]; ok && fbv.Stage.Phase == BanVotePhaseVoting {
-		reply(&BanVoteResult{
-			BanVoteID:             fbv.BanVoteID,
+	// only pass down vote result, if there is an ongoing punish vote
+	if fbv, ok := pc.API.FactionPunishVote[player.FactionID.String]; ok && fbv.Stage.Phase == PunishVotePhaseVoting {
+		reply(&PunishVoteResult{
+			PunishVoteID:          fbv.PunishVoteID,
 			AgreedPlayerNumber:    len(fbv.AgreedPlayerIDs),
 			DisagreedPlayerNumber: len(fbv.DisagreedPlayerIDs),
 		})
 	}
 
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBanVoteResultSubscribe, player.FactionID.String)), nil
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPunishVoteResultSubscribe, player.FactionID.String)), nil
 }

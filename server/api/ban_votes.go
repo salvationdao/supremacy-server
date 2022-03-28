@@ -18,34 +18,34 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
-type BanVotePhase string
+type PunishVotePhase string
 
 const (
-	BanVotePhaseVoting BanVotePhase = "VOTING"
-	BanVotePhaseHold   BanVotePhase = "HOLD"
+	PunishVotePhaseVoting PunishVotePhase = "VOTING"
+	PunishVotePhaseHold   PunishVotePhase = "HOLD"
 )
 
-type BanVoteStage struct {
-	Phase   BanVotePhase
+type PunishVoteStage struct {
+	Phase   PunishVotePhase
 	EndTime time.Time
 }
 
-type BanVoteInstance struct {
-	*boiler.BanVote
-	BanType *boiler.BanType `json:"ban_type"`
+type PunishVoteInstance struct {
+	*boiler.PunishVote
+	PunishOption *boiler.PunishOption `json:"punish_option"`
 }
 
-type BanVoteTracker struct {
+type PunishVoteTracker struct {
 	FactionID string
 
-	// ban vote tracker
-	BanVoteID string
-	StartedAt time.Time
-	EndedAt   time.Time
-	Stage     *BanVoteStage
+	// punish vote tracker
+	PunishVoteID string
+	StartedAt    time.Time
+	EndedAt      time.Time
+	Stage        *PunishVoteStage
 
 	// receive vote from player
-	VoteChan           chan *BanVote
+	VoteChan           chan *PunishVote
 	AgreedPlayerIDs    map[string]bool
 	DisagreedPlayerIDs map[string]bool
 
@@ -56,52 +56,52 @@ type BanVoteTracker struct {
 	MessageBus *messagebus.MessageBus
 
 	// broadcast result
-	broadcastResult chan *BanVoteResult
+	broadcastResult chan *PunishVoteResult
 }
 
-type BanVote struct {
-	BanVoteID string
-	playerID  string
-	IsAgreed  bool
+type PunishVote struct {
+	PunishVoteID string
+	playerID     string
+	IsAgreed     bool
 }
 
-func (api *API) BanVoteTrackerSetup() {
+func (api *API) PunishVoteTrackerSetup() {
 	// get factions
 	factions, err := boiler.Factions().All(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to setup faction ban vote tracker")
+		gamelog.L.Error().Err(err).Msg("Failed to setup faction punish vote tracker")
 		return
 	}
 
 	for _, f := range factions {
 		// initialise
-		bv := &BanVoteTracker{
+		bv := &PunishVoteTracker{
 			FactionID:          f.ID,
 			MessageBus:         api.MessageBus,
 			AgreedPlayerIDs:    make(map[string]bool),
 			DisagreedPlayerIDs: make(map[string]bool),
-			broadcastResult:    make(chan *BanVoteResult),
+			broadcastResult:    make(chan *PunishVoteResult),
 		}
 
-		// store ban vote instance of each faction
-		api.FactionBanVote[f.ID] = bv
+		// store punish vote instance of each faction
+		api.FactionPunishVote[f.ID] = bv
 
-		// run debounce broadcast ban vote result
+		// run debounce broadcast punish vote result
 		go bv.debounceBroadcastResult()
 
-		// start ban vote tracker
+		// start punish vote tracker
 		go bv.Run()
 	}
 }
 
-func (bv *BanVoteTracker) Run() {
+func (bv *PunishVoteTracker) Run() {
 	mainTicker := time.NewTicker(1 * time.Second)
 
 	for {
 		select {
 		case <-mainTicker.C:
 			switch bv.Stage.Phase {
-			case BanVotePhaseVoting:
+			case PunishVotePhaseVoting:
 				// skip, if voting still going on
 				if bv.EndedAt.After(time.Now()) {
 					continue
@@ -110,44 +110,44 @@ func (bv *BanVoteTracker) Run() {
 				now := time.Now()
 
 				// switch stage to hold (block incoming vote from players)
-				bv.Stage.Phase = BanVotePhaseHold
+				bv.Stage.Phase = PunishVotePhaseHold
 				bv.Stage.EndTime = now.AddDate(1, 0, 0)
 
-				// process the banning action
-				banVote, err := boiler.FindBanVote(gamedb.StdConn, bv.BanVoteID)
+				// process the punishning action
+				punishVote, err := boiler.FindPunishVote(gamedb.StdConn, bv.PunishVoteID)
 				if err != nil {
-					gamelog.L.Error().Str("ban vote id", bv.BanVoteID).Err(err).Msg("Failed to get ban vote from db")
+					gamelog.L.Error().Str("punish vote id", bv.PunishVoteID).Err(err).Msg("Failed to get punish vote from db")
 					return
 				}
 
 				// get all the agreed/disagreed count from db
-				playerBanVotes, err := boiler.PlayersBanVotes(
-					boiler.PlayersBanVoteWhere.BanVoteID.EQ(bv.BanVoteID),
+				playerPunishVotes, err := boiler.PlayersPunishVotes(
+					boiler.PlayersPunishVoteWhere.PunishVoteID.EQ(bv.PunishVoteID),
 				).All(gamedb.StdConn)
 				if err != nil {
-					gamelog.L.Error().Str("ban vote id", bv.BanVoteID).Err(err).Msg("Failed to get player ban vote from db")
+					gamelog.L.Error().Str("punish vote id", bv.PunishVoteID).Err(err).Msg("Failed to get player punish vote from db")
 					return
 				}
 
-				// ban is failed, finalize current ban vote
-				if len(playerBanVotes) == 0 {
-					banVote.EndedAt = null.TimeFrom(time.Now())
-					banVote.Status = BanVoteStatusFailed
+				// punish is failed, finalize current punish vote
+				if len(playerPunishVotes) == 0 {
+					punishVote.EndedAt = null.TimeFrom(time.Now())
+					punishVote.Status = string(PunishVoteStatusFailed)
 
-					_, err = banVote.Update(gamedb.StdConn, boil.Whitelist(boiler.BanVoteColumns.EndedAt, boiler.BanVoteColumns.Status))
+					_, err = punishVote.Update(gamedb.StdConn, boil.Whitelist(boiler.PunishVoteColumns.EndedAt, boiler.PunishVoteColumns.Status))
 					if err != nil {
 						gamelog.L.Error().
-							Str("ban vote id", bv.BanVoteID).
-							Str("finalise status", banVote.Status).
-							Str("ban vote end time", banVote.EndedAt.Time.String()).
-							Err(err).Msg("Failed to finalise current ban vote")
+							Str("punish vote id", bv.PunishVoteID).
+							Str("finalise status", punishVote.Status).
+							Str("punish vote end time", punishVote.EndedAt.Time.String()).
+							Err(err).Msg("Failed to finalise current punish vote")
 						return
 					}
 
 					// increase reported player fee
-					reportedPlayer, err := boiler.FindPlayer(gamedb.StdConn, banVote.ReportedPlayerID)
+					reportedPlayer, err := boiler.FindPlayer(gamedb.StdConn, punishVote.ReportedPlayerID)
 					if err != nil {
-						gamelog.L.Error().Str("player id", banVote.ReportedPlayerID).Err(err).Msg("Failed to get reported player from db")
+						gamelog.L.Error().Str("player id", punishVote.ReportedPlayerID).Err(err).Msg("Failed to get reported player from db")
 						return
 					}
 
@@ -155,18 +155,18 @@ func (bv *BanVoteTracker) Run() {
 
 					_, err = reportedPlayer.Update(gamedb.StdConn, boil.Whitelist(boiler.PlayerColumns.ReportedCost))
 					if err != nil {
-						gamelog.L.Error().Str("player id", banVote.ReportedPlayerID).Err(err).Msg("Failed to update report cost of the player")
+						gamelog.L.Error().Str("player id", punishVote.ReportedPlayerID).Err(err).Msg("Failed to update report cost of the player")
 						return
 					}
 
-					// TODO: broadcast failed ban result notification  on chat
+					// TODO: broadcast failed punish result notification  on chat
 					continue
 				}
 
 				// calculate result
 				agreedCount := 0
 				disagreedCount := 0
-				for _, pbv := range playerBanVotes {
+				for _, pbv := range playerPunishVotes {
 					if pbv.IsAgreed {
 						agreedCount += 1
 						continue
@@ -174,66 +174,66 @@ func (bv *BanVoteTracker) Run() {
 					disagreedCount += 1
 				}
 
-				// ban success
+				// punish success
 				if agreedCount >= disagreedCount {
-					// pass ban
-					banVote.EndedAt = null.TimeFrom(time.Now())
-					banVote.Status = BanVoteStatusPassed
-					_, err = banVote.Update(gamedb.StdConn, boil.Whitelist(boiler.BanVoteColumns.EndedAt, boiler.BanVoteColumns.Status))
+					// pass punish
+					punishVote.EndedAt = null.TimeFrom(time.Now())
+					punishVote.Status = string(PunishVoteStatusPassed)
+					_, err = punishVote.Update(gamedb.StdConn, boil.Whitelist(boiler.PunishVoteColumns.EndedAt, boiler.PunishVoteColumns.Status))
 					if err != nil {
 						gamelog.L.Error().
-							Str("ban vote id", bv.BanVoteID).
-							Str("finalise status", banVote.Status).
-							Str("ban vote end time", banVote.EndedAt.Time.String()).
-							Err(err).Msg("Failed to finalise current ban vote")
+							Str("punish vote id", bv.PunishVoteID).
+							Str("finalise status", punishVote.Status).
+							Str("punish vote end time", punishVote.EndedAt.Time.String()).
+							Err(err).Msg("Failed to finalise current punish vote")
 						return
 					}
 
-					// get ban type
-					banType, err := boiler.FindBanType(gamedb.StdConn, banVote.BanTypeID)
+					// get punish type
+					punishOption, err := boiler.FindPunishOption(gamedb.StdConn, punishVote.PunishOptionID)
 					if err != nil {
 						gamelog.L.Error().
-							Str("ban type id", banVote.BanTypeID).
-							Err(err).Msg("Failed to get ban type from db")
+							Str("punish type id", punishVote.PunishOptionID).
+							Err(err).Msg("Failed to get punish type from db")
 						return
 					}
 
-					// ban user
-					bp := &boiler.BannedPlayer{
-						PlayerID:         banVote.ReportedPlayerID,
-						BanTypeID:        banType.ID,
-						BanUntil:         time.Now().Add(time.Duration(banType.BanForHours) * time.Hour),
-						RelatedBanVoteID: null.StringFrom(banVote.ID),
+					// punish user
+					bp := &boiler.PunishedPlayer{
+						PlayerID:            punishVote.ReportedPlayerID,
+						PunishOptionID:      punishOption.ID,
+						PunishUntil:         time.Now().Add(time.Duration(punishOption.PunishDurationHours) * time.Hour),
+						RelatedPunishVoteID: null.StringFrom(punishVote.ID),
 					}
 					err = bp.Insert(gamedb.StdConn, boil.Infer())
 					if err != nil {
 						gamelog.L.Error().
-							Interface("ban player", bp).
-							Err(err).Msg("Failed to insert player into ban list")
+							Interface("punish player", bp).
+							Err(err).Msg("Failed to insert player into punish list")
 						return
 					}
 
-					// TODO: broadcast success ban notification on chat
+					// TODO: broadcast success punish notification on chat
 
 				} else {
-					// failed ban
-					banVote.EndedAt = null.TimeFrom(time.Now())
-					banVote.Status = BanVoteStatusFailed
+					// failed punish
+					punishVote.EndedAt = null.TimeFrom(time.Now())
+					punishVote.Status = string(PunishVoteStatusFailed)
 
-					_, err = banVote.Update(gamedb.StdConn, boil.Whitelist(boiler.BanVoteColumns.EndedAt, boiler.BanVoteColumns.Status))
+					_, err = punishVote.Update(gamedb.StdConn, boil.Whitelist(boiler.PunishVoteColumns.EndedAt, boiler.PunishVoteColumns.Status))
 					if err != nil {
 						gamelog.L.Error().
-							Str("ban vote id", bv.BanVoteID).
-							Str("finalise status", banVote.Status).
-							Str("ban vote end time", banVote.EndedAt.Time.String()).
-							Err(err).Msg("Failed to finalise current ban vote")
+							Str("punish vote id", bv.PunishVoteID).
+							Str("finalise status", punishVote.Status).
+							Str("punish vote end time", punishVote.EndedAt.Time.String()).
+							Err(err).Msg("Failed to finalise current punish vote")
 						return
 					}
 
 					// increase reported player fee
-					reportedPlayer, err := boiler.FindPlayer(gamedb.StdConn, banVote.ReportedPlayerID)
+					reportedPlayer, err := boiler.FindPlayer(gamedb.StdConn, punishVote.ReportedPlayerID)
 					if err != nil {
-						gamelog.L.Error().Str("player id", banVote.ReportedPlayerID).Err(err).Msg("Failed to get reported player from db")
+						gamelog.L.Error().Str("player id", punishVote.ReportedPlayerID).Err(err).Msg("Failed to get reported player from db")
 						return
 					}
 
@@ -241,28 +241,28 @@ func (bv *BanVoteTracker) Run() {
 
 					_, err = reportedPlayer.Update(gamedb.StdConn, boil.Whitelist(boiler.PlayerColumns.ReportedCost))
 					if err != nil {
-						gamelog.L.Error().Str("player id", banVote.ReportedPlayerID).Err(err).Msg("Failed to update report cost of the player")
+						gamelog.L.Error().Str("player id", punishVote.ReportedPlayerID).Err(err).Msg("Failed to update report cost of the player")
 						return
 					}
 
-					// TODO: broadcast failed ban notification on chat
+					// TODO: broadcast failed punish notification on chat
 				}
 
-			case BanVotePhaseHold:
-				// check whether there is another ban issue in db
-				banVote, err := boiler.BanVotes(
-					boiler.BanVoteWhere.FactionID.EQ(bv.FactionID),
-					boiler.BanVoteWhere.Status.EQ(BanVoteStatusPending),
-					qm.OrderBy(boiler.BanVoteColumns.CreatedAt),
-					qm.Load(boiler.BanVoteRels.BanType),
+			case PunishVotePhaseHold:
+				// check whether there is another punish issue in db
+				punishVote, err := boiler.PunishVotes(
+					boiler.PunishVoteWhere.FactionID.EQ(bv.FactionID),
+					boiler.PunishVoteWhere.Status.EQ(string(PunishVoteStatusPending)),
+					qm.OrderBy(boiler.PunishVoteColumns.CreatedAt),
+					qm.Load(boiler.PunishVoteRels.PunishOption),
 				).One(gamedb.StdConn)
 				if err != nil && !errors.Is(err, sql.ErrNoRows) {
-					gamelog.L.Error().Str("faction id", bv.FactionID).Err(err).Msg("Failed to load new ban vote from db")
+					gamelog.L.Error().Str("faction id", bv.FactionID).Err(err).Msg("Failed to load new punish vote from db")
 					return
 				}
 
-				// skip, if there is no ban vote
-				if banVote == nil {
+				// skip, if there is no punish vote
+				if punishVote == nil {
 					continue
 				}
 
@@ -277,50 +277,50 @@ func (bv *BanVoteTracker) Run() {
 				now := time.Now()
 				endTime := now.Add(20 * time.Second)
 
-				// update current ban vote, start/end time
-				banVote.StartedAt = null.TimeFrom(now)
-				banVote.EndedAt = null.TimeFrom(endTime)
-				_, err = banVote.Update(gamedb.StdConn, boil.Whitelist(boiler.BanVoteColumns.StartedAt, boiler.BanVoteColumns.EndedAt))
+				// update current punish vote, start/end time
+				punishVote.StartedAt = null.TimeFrom(now)
+				punishVote.EndedAt = null.TimeFrom(endTime)
+				_, err = punishVote.Update(gamedb.StdConn, boil.Whitelist(boiler.PunishVoteColumns.StartedAt, boiler.PunishVoteColumns.EndedAt))
 				if err != nil {
-					gamelog.L.Error().Str("ban vote id", banVote.ID).Err(err).Msg("Failed to update the start time of the ban vote")
+					gamelog.L.Error().Str("punish vote id", punishVote.ID).Err(err).Msg("Failed to update the start time of the punish vote")
 					return
 				}
 
-				// otherwise, set up the detail of ban vote
-				bv.BanVoteID = banVote.ID
+				// otherwise, set up the detail of punish vote
+				bv.PunishVoteID = punishVote.ID
 				bv.StartedAt = time.Now()
 
 				// change stage
-				bv.Stage.Phase = BanVotePhaseVoting
+				bv.Stage.Phase = PunishVotePhaseVoting
 				bv.Stage.EndTime = endTime
 
 				// broadcast initial result
-				bv.broadcastResult <- &BanVoteResult{
-					BanVoteID:             bv.BanVoteID,
+				bv.broadcastResult <- &PunishVoteResult{
+					PunishVoteID:          bv.PunishVoteID,
 					AgreedPlayerNumber:    0,
 					DisagreedPlayerNumber: 0,
 				}
 
 				// broadcast new vote to online faction users
-				bv.MessageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBanVoteSubscribe, bv.FactionID)), &BanVoteInstance{
-					BanVote: banVote,
-					BanType: banVote.R.BanType,
+				bv.MessageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPunishVoteSubscribe, bv.FactionID)), &PunishVoteInstance{
+					PunishVote:   punishVote,
+					PunishOption: punishVote.R.PunishOption,
 				})
 			}
 
 		case playerVote := <-bv.VoteChan:
 			// check voting phase and targeted vote is available
-			if bv.Stage.Phase != BanVotePhaseVoting || bv.Stage.EndTime.Before(time.Now()) || bv.BanVoteID != playerVote.BanVoteID {
+			if bv.Stage.Phase != PunishVotePhaseVoting || bv.Stage.EndTime.Before(time.Now()) || bv.PunishVoteID != playerVote.PunishVoteID {
 				continue
 			}
 
 			// check player has voted
-			pbv, err := boiler.PlayersBanVotes(
-				boiler.PlayersBanVoteWhere.BanVoteID.EQ(bv.BanVoteID),
-				boiler.PlayersBanVoteWhere.PlayerID.EQ(playerVote.playerID),
+			pbv, err := boiler.PlayersPunishVotes(
+				boiler.PlayersPunishVoteWhere.PunishVoteID.EQ(bv.PunishVoteID),
+				boiler.PlayersPunishVoteWhere.PlayerID.EQ(playerVote.playerID),
 			).One(gamedb.StdConn)
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
-				gamelog.L.Error().Str("ban_vote_id", bv.BanVoteID).Str("player_id", playerVote.playerID).Err(err).Msg("Failed to get player ban vote from db")
+				gamelog.L.Error().Str("punish_vote_id", bv.PunishVoteID).Str("player_id", playerVote.playerID).Err(err).Msg("Failed to get player punish vote from db")
 				continue
 			}
 
@@ -330,14 +330,14 @@ func (bv *BanVoteTracker) Run() {
 			}
 
 			// store player vote result into database
-			pbv = &boiler.PlayersBanVote{
-				BanVoteID: bv.BanVoteID,
-				PlayerID:  playerVote.playerID,
-				IsAgreed:  playerVote.IsAgreed,
+			pbv = &boiler.PlayersPunishVote{
+				PunishVoteID: bv.PunishVoteID,
+				PlayerID:     playerVote.playerID,
+				IsAgreed:     playerVote.IsAgreed,
 			}
 			err = pbv.Insert(gamedb.StdConn, boil.Infer())
 			if err != nil {
-				gamelog.L.Error().Str("ban_vote_id", bv.BanVoteID).Str("player_id", playerVote.playerID).Err(err).Msg("Failed to insert player vote result into db")
+				gamelog.L.Error().Str("punish_vote_id", bv.PunishVoteID).Str("player_id", playerVote.playerID).Err(err).Msg("Failed to insert player vote result into db")
 				continue
 			}
 
@@ -348,9 +348,9 @@ func (bv *BanVoteTracker) Run() {
 				bv.DisagreedPlayerIDs[playerVote.playerID] = true
 			}
 
-			// broadcast ban vote result
-			bv.broadcastResult <- &BanVoteResult{
-				BanVoteID:             bv.BanVoteID,
+			// broadcast punish vote result
+			bv.broadcastResult <- &PunishVoteResult{
+				PunishVoteID:          bv.PunishVoteID,
 				AgreedPlayerNumber:    len(bv.AgreedPlayerIDs),
 				DisagreedPlayerNumber: len(bv.DisagreedPlayerIDs),
 			}
@@ -358,8 +358,8 @@ func (bv *BanVoteTracker) Run() {
 	}
 }
 
-func (bv *BanVoteTracker) debounceBroadcastResult() {
-	var result *BanVoteResult
+func (bv *PunishVoteTracker) debounceBroadcastResult() {
+	var result *PunishVoteResult
 
 	interval := 500 * time.Millisecond
 	timer := time.NewTimer(interval)
@@ -370,7 +370,7 @@ func (bv *BanVoteTracker) debounceBroadcastResult() {
 			timer.Reset(interval)
 		case <-timer.C:
 			if result != nil {
-				bv.MessageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBanVoteResultSubscribe, bv.FactionID)), result)
+				bv.MessageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPunishVoteResultSubscribe, bv.FactionID)), result)
 			}
 		}
 	}

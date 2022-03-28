@@ -87,8 +87,8 @@ type API struct {
 	// ring check auth
 	RingCheckAuthMap *RingCheckAuthMap
 
-	// ban vote
-	FactionBanVote map[string]*BanVoteTracker
+	// punish vote
+	FactionPunishVote map[string]*PunishVoteTracker
 }
 
 // NewAPI registers routes
@@ -123,7 +123,7 @@ func NewAPI(
 		RingCheckAuthMap: NewRingCheckMap(),
 		SMS:              sms,
 
-		FactionBanVote: make(map[string]*BanVoteTracker),
+		FactionPunishVote: make(map[string]*PunishVoteTracker),
 	}
 
 	battleArenaClient.SetMessageBus(messageBus, netMessageBus)
@@ -201,7 +201,7 @@ func NewAPI(
 		gamelog.L.Error().Err(err).Msg("Failed to set up faction mvp user update tickle")
 	}
 
-	// spin up a ban vote handlers for each faction
+	// spin up a punish vote handlers for each faction
 
 	return api
 }

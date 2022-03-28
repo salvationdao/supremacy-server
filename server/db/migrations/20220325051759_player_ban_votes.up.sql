@@ -14,7 +14,7 @@ INSERT INTO punish_options (description, key, punish_duration_hours) VALUES
 
 CREATE TABLE punish_votes(
     id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
-    punish_type_id UUID NOT NULL REFERENCES punish_types (id),
+    punish_option_id UUID NOT NULL REFERENCES punish_options (id),
     reason TEXT NOT NULL,
     faction_id UUID NOT NULL REFERENCES factions(id),
     issued_by_id UUID NOT NULL REFERENCES players(id),
@@ -47,7 +47,7 @@ ALTER TABLE players
 CREATE TABLE punished_players(
     id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
     player_id UUID NOT NULL REFERENCES players (id),
-    punish_type_id UUID NOT NULL REFERENCES punish_types (id),
+    punish_option_id UUID NOT NULL REFERENCES punish_options (id),
     punish_until TIMESTAMPTZ NOT NULL,
     related_punish_vote_id UUID REFERENCES punish_votes(id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

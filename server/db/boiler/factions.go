@@ -122,7 +122,6 @@ var FactionWhere = struct {
 // FactionRels is where relationship names are stored.
 var FactionRels = struct {
 	IDFactionStat         string
-	BanVotes              string
 	BattleAbilityTriggers string
 	BattleContracts       string
 	BattleContributions   string
@@ -131,10 +130,10 @@ var FactionRels = struct {
 	BattleWins            string
 	Brands                string
 	Players               string
+	PunishVotes           string
 	Templates             string
 }{
 	IDFactionStat:         "IDFactionStat",
-	BanVotes:              "BanVotes",
 	BattleAbilityTriggers: "BattleAbilityTriggers",
 	BattleContracts:       "BattleContracts",
 	BattleContributions:   "BattleContributions",
@@ -143,13 +142,13 @@ var FactionRels = struct {
 	BattleWins:            "BattleWins",
 	Brands:                "Brands",
 	Players:               "Players",
+	PunishVotes:           "PunishVotes",
 	Templates:             "Templates",
 }
 
 // factionR is where relationships are stored.
 type factionR struct {
 	IDFactionStat         *FactionStat              `boiler:"IDFactionStat" boil:"IDFactionStat" json:"IDFactionStat" toml:"IDFactionStat" yaml:"IDFactionStat"`
-	BanVotes              BanVoteSlice              `boiler:"BanVotes" boil:"BanVotes" json:"BanVotes" toml:"BanVotes" yaml:"BanVotes"`
 	BattleAbilityTriggers BattleAbilityTriggerSlice `boiler:"BattleAbilityTriggers" boil:"BattleAbilityTriggers" json:"BattleAbilityTriggers" toml:"BattleAbilityTriggers" yaml:"BattleAbilityTriggers"`
 	BattleContracts       BattleContractSlice       `boiler:"BattleContracts" boil:"BattleContracts" json:"BattleContracts" toml:"BattleContracts" yaml:"BattleContracts"`
 	BattleContributions   BattleContributionSlice   `boiler:"BattleContributions" boil:"BattleContributions" json:"BattleContributions" toml:"BattleContributions" yaml:"BattleContributions"`
@@ -158,6 +157,7 @@ type factionR struct {
 	BattleWins            BattleWinSlice            `boiler:"BattleWins" boil:"BattleWins" json:"BattleWins" toml:"BattleWins" yaml:"BattleWins"`
 	Brands                BrandSlice                `boiler:"Brands" boil:"Brands" json:"Brands" toml:"Brands" yaml:"Brands"`
 	Players               PlayerSlice               `boiler:"Players" boil:"Players" json:"Players" toml:"Players" yaml:"Players"`
+	PunishVotes           PunishVoteSlice           `boiler:"PunishVotes" boil:"PunishVotes" json:"PunishVotes" toml:"PunishVotes" yaml:"PunishVotes"`
 	Templates             TemplateSlice             `boiler:"Templates" boil:"Templates" json:"Templates" toml:"Templates" yaml:"Templates"`
 }
 
@@ -433,28 +433,6 @@ func (o *Faction) IDFactionStat(mods ...qm.QueryMod) factionStatQuery {
 	return query
 }
 
-// BanVotes retrieves all the ban_vote's BanVotes with an executor.
-func (o *Faction) BanVotes(mods ...qm.QueryMod) banVoteQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"ban_votes\".\"faction_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"ban_votes\".\"deleted_at\""),
-	)
-
-	query := BanVotes(queryMods...)
-	queries.SetFrom(query.Query, "\"ban_votes\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"ban_votes\".*"})
-	}
-
-	return query
-}
-
 // BattleAbilityTriggers retrieves all the battle_ability_trigger's BattleAbilityTriggers with an executor.
 func (o *Faction) BattleAbilityTriggers(mods ...qm.QueryMod) battleAbilityTriggerQuery {
 	var queryMods []qm.QueryMod
@@ -625,6 +603,28 @@ func (o *Faction) Players(mods ...qm.QueryMod) playerQuery {
 	return query
 }
 
+// PunishVotes retrieves all the punish_vote's PunishVotes with an executor.
+func (o *Faction) PunishVotes(mods ...qm.QueryMod) punishVoteQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"punish_votes\".\"faction_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"punish_votes\".\"deleted_at\""),
+	)
+
+	query := PunishVotes(queryMods...)
+	queries.SetFrom(query.Query, "\"punish_votes\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"punish_votes\".*"})
+	}
+
+	return query
+}
+
 // Templates retrieves all the template's Templates with an executor.
 func (o *Faction) Templates(mods ...qm.QueryMod) templateQuery {
 	var queryMods []qm.QueryMod
@@ -740,105 +740,6 @@ func (factionL) LoadIDFactionStat(e boil.Executor, singular bool, maybeFaction i
 					foreign.R = &factionStatR{}
 				}
 				foreign.R.IDFaction = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadBanVotes allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (factionL) LoadBanVotes(e boil.Executor, singular bool, maybeFaction interface{}, mods queries.Applicator) error {
-	var slice []*Faction
-	var object *Faction
-
-	if singular {
-		object = maybeFaction.(*Faction)
-	} else {
-		slice = *maybeFaction.(*[]*Faction)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &factionR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &factionR{}
-			}
-
-			for _, a := range args {
-				if a == obj.ID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`ban_votes`),
-		qm.WhereIn(`ban_votes.faction_id in ?`, args...),
-		qmhelper.WhereIsNull(`ban_votes.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load ban_votes")
-	}
-
-	var resultSlice []*BanVote
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice ban_votes")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on ban_votes")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for ban_votes")
-	}
-
-	if len(banVoteAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.BanVotes = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &banVoteR{}
-			}
-			foreign.R.Faction = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if local.ID == foreign.FactionID {
-				local.R.BanVotes = append(local.R.BanVotes, foreign)
-				if foreign.R == nil {
-					foreign.R = &banVoteR{}
-				}
-				foreign.R.Faction = local
 				break
 			}
 		}
@@ -1633,6 +1534,105 @@ func (factionL) LoadPlayers(e boil.Executor, singular bool, maybeFaction interfa
 	return nil
 }
 
+// LoadPunishVotes allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (factionL) LoadPunishVotes(e boil.Executor, singular bool, maybeFaction interface{}, mods queries.Applicator) error {
+	var slice []*Faction
+	var object *Faction
+
+	if singular {
+		object = maybeFaction.(*Faction)
+	} else {
+		slice = *maybeFaction.(*[]*Faction)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &factionR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &factionR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`punish_votes`),
+		qm.WhereIn(`punish_votes.faction_id in ?`, args...),
+		qmhelper.WhereIsNull(`punish_votes.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load punish_votes")
+	}
+
+	var resultSlice []*PunishVote
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice punish_votes")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on punish_votes")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for punish_votes")
+	}
+
+	if len(punishVoteAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.PunishVotes = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &punishVoteR{}
+			}
+			foreign.R.Faction = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.FactionID {
+				local.R.PunishVotes = append(local.R.PunishVotes, foreign)
+				if foreign.R == nil {
+					foreign.R = &punishVoteR{}
+				}
+				foreign.R.Faction = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // LoadTemplates allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (factionL) LoadTemplates(e boil.Executor, singular bool, maybeFaction interface{}, mods queries.Applicator) error {
@@ -1778,58 +1778,6 @@ func (o *Faction) SetIDFactionStat(exec boil.Executor, insert bool, related *Fac
 		}
 	} else {
 		related.R.IDFaction = o
-	}
-	return nil
-}
-
-// AddBanVotes adds the given related objects to the existing relationships
-// of the faction, optionally inserting them as new records.
-// Appends related to o.R.BanVotes.
-// Sets related.R.Faction appropriately.
-func (o *Faction) AddBanVotes(exec boil.Executor, insert bool, related ...*BanVote) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			rel.FactionID = o.ID
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"ban_votes\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
-				strmangle.WhereClause("\"", "\"", 2, banVotePrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			rel.FactionID = o.ID
-		}
-	}
-
-	if o.R == nil {
-		o.R = &factionR{
-			BanVotes: related,
-		}
-	} else {
-		o.R.BanVotes = append(o.R.BanVotes, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &banVoteR{
-				Faction: o,
-			}
-		} else {
-			rel.R.Faction = o
-		}
 	}
 	return nil
 }
@@ -2320,6 +2268,58 @@ func (o *Faction) RemovePlayers(exec boil.Executor, related ...*Player) error {
 		}
 	}
 
+	return nil
+}
+
+// AddPunishVotes adds the given related objects to the existing relationships
+// of the faction, optionally inserting them as new records.
+// Appends related to o.R.PunishVotes.
+// Sets related.R.Faction appropriately.
+func (o *Faction) AddPunishVotes(exec boil.Executor, insert bool, related ...*PunishVote) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.FactionID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"punish_votes\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
+				strmangle.WhereClause("\"", "\"", 2, punishVotePrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.FactionID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &factionR{
+			PunishVotes: related,
+		}
+	} else {
+		o.R.PunishVotes = append(o.R.PunishVotes, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &punishVoteR{
+				Faction: o,
+			}
+		} else {
+			rel.R.Faction = o
+		}
+	}
 	return nil
 }
 

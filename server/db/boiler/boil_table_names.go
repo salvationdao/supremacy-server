@@ -5,9 +5,6 @@ package boiler
 
 var TableNames = struct {
 	AssetRepair                                        string
-	BanTypes                                           string
-	BanVotes                                           string
-	BannedPlayers                                      string
 	BattleAbilities                                    string
 	BattleAbilityTriggers                              string
 	BattleContracts                                    string
@@ -50,7 +47,10 @@ var TableNames = struct {
 	PendingTransactions                                string
 	PlayerPreferences                                  string
 	Players                                            string
-	PlayersBanVotes                                    string
+	PlayersPunishVotes                                 string
+	PunishOptions                                      string
+	PunishVotes                                        string
+	PunishedPlayers                                    string
 	SchemaMigrations                                   string
 	SpoilsOfWar                                        string
 	StreamList                                         string
@@ -61,9 +61,6 @@ var TableNames = struct {
 	Weapons                                            string
 }{
 	AssetRepair:                     "asset_repair",
-	BanTypes:                        "ban_types",
-	BanVotes:                        "ban_votes",
-	BannedPlayers:                   "banned_players",
 	BattleAbilities:                 "battle_abilities",
 	BattleAbilityTriggers:           "battle_ability_triggers",
 	BattleContracts:                 "battle_contracts",
@@ -106,7 +103,10 @@ var TableNames = struct {
 	PendingTransactions:              "pending_transactions",
 	PlayerPreferences:                "player_preferences",
 	Players:                          "players",
-	PlayersBanVotes:                  "players_ban_votes",
+	PlayersPunishVotes:               "players_punish_votes",
+	PunishOptions:                    "punish_options",
+	PunishVotes:                      "punish_votes",
+	PunishedPlayers:                  "punished_players",
 	SchemaMigrations:                 "schema_migrations",
 	SpoilsOfWar:                      "spoils_of_war",
 	StreamList:                       "stream_list",
