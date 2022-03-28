@@ -72,17 +72,16 @@ type API struct {
 	ctx    context.Context
 	server *http.Server
 	*auth.Auth
-	Log           *zerolog.Logger
-	Routes        chi.Router
-	Addr          string
-	BattleArena   *battle.Arena
-	HTMLSanitize  *bluemonday.Policy
-	Hub           *hub.Hub
-	Conn          *pgxpool.Pool
-	MessageBus    *messagebus.MessageBus
-	NetMessageBus *messagebus.NetBus
-	Passport      *rpcclient.PassportXrpcClient
-	SMS           server.SMS
+	Log          *zerolog.Logger
+	Routes       chi.Router
+	Addr         string
+	BattleArena  *battle.Arena
+	HTMLSanitize *bluemonday.Policy
+	Hub          *hub.Hub
+	Conn         *pgxpool.Pool
+	MessageBus   *messagebus.MessageBus
+	Passport     *rpcclient.PassportXrpcClient
+	SMS          server.SMS
 
 	// ring check auth
 	RingCheckAuthMap *RingCheckAuthMap
@@ -99,7 +98,6 @@ func NewAPI(
 	conn *pgxpool.Pool,
 	config *server.Config,
 	messageBus *messagebus.MessageBus,
-	netMessageBus *messagebus.NetBus,
 	gsHub *hub.Hub,
 	sms server.SMS,
 ) *API {
@@ -112,7 +110,6 @@ func NewAPI(
 		Passport:         pp,
 		Addr:             addr,
 		MessageBus:       messageBus,
-		NetMessageBus:    netMessageBus,
 		HTMLSanitize:     HTMLSanitize,
 		BattleArena:      battleArenaClient,
 		Conn:             conn,
@@ -121,7 +118,7 @@ func NewAPI(
 		SMS:              sms,
 	}
 
-	battleArenaClient.SetMessageBus(messageBus, netMessageBus)
+	battleArenaClient.SetMessageBus(messageBus)
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)

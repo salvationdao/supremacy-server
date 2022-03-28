@@ -32,7 +32,6 @@ type Arena struct {
 	socket         *websocket.Conn
 	timeout        time.Duration
 	messageBus     *messagebus.MessageBus
-	netMessageBus  *messagebus.NetBus
 	currentBattle  *Battle
 	syndicates     map[string]boiler.Faction
 	AIPlayers      map[string]db.PlayerWithFaction
@@ -42,14 +41,13 @@ type Arena struct {
 }
 
 type Opts struct {
-	Conn          db.Conn
-	Addr          string
-	Timeout       time.Duration
-	Hub           *hub.Hub
-	MessageBus    *messagebus.MessageBus
-	NetMessageBus *messagebus.NetBus
-	RPCClient     *rpcclient.PassportXrpcClient
-	SMS           server.SMS
+	Conn       db.Conn
+	Addr       string
+	Timeout    time.Duration
+	Hub        *hub.Hub
+	MessageBus *messagebus.MessageBus
+	RPCClient  *rpcclient.PassportXrpcClient
+	SMS        server.SMS
 }
 
 type MessageType byte
@@ -88,7 +86,6 @@ func NewArena(opts *Opts) *Arena {
 	}
 
 	arena.timeout = opts.Timeout
-	arena.netMessageBus = opts.NetMessageBus
 	arena.messageBus = opts.MessageBus
 	arena.RPCClient = opts.RPCClient
 	arena.sms = opts.SMS
@@ -219,7 +216,7 @@ func (arena *Arena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	arena.Start()
 }
 
-func (arena *Arena) SetMessageBus(mb *messagebus.MessageBus, nb *messagebus.NetBus) {
+func (arena *Arena) SetMessageBus(mb *messagebus.MessageBus) {
 	arena.messageBus = mb
 }
 
@@ -623,10 +620,10 @@ func (arena *Arena) GabsBribeStageSubscribe(ctx context.Context, wsc *hub.Client
 
 const HubKeyBattleAbilityProgressBarUpdated hub.HubCommandKey = "BATTLE:ABILITY:PROGRESS:BAR:UPDATED"
 
-func (arena *Arena) FactionProgressBarUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.NetBusKey, error) {
+func (arena *Arena) FactionProgressBarUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.BusKey, error) {
 	gamelog.L.Info().Str("fn", "FactionProgressBarUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
 
-	return messagebus.NetBusKey(HubKeyBattleAbilityProgressBarUpdated), nil
+	return messagebus.BusKey(HubKeyBattleAbilityProgressBarUpdated), nil
 }
 
 const HubKeyAbilityPriceUpdated hub.HubCommandKey = "ABILITY:PRICE:UPDATED"
@@ -638,29 +635,29 @@ type AbilityPriceUpdateRequest struct {
 	} `json:"payload"`
 }
 
-func (arena *Arena) FactionAbilityPriceUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.NetBusKey, error) {
+func (arena *Arena) FactionAbilityPriceUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.BusKey, error) {
 	req := &AbilityPriceUpdateRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return "", terror.Error(err, "Invalid request received")
 	}
 
-	return messagebus.NetBusKey(fmt.Sprintf("%s,%s", HubKeyAbilityPriceUpdated, req.Payload.AbilityIdentity)), nil
+	return messagebus.BusKey(fmt.Sprintf("%s,%s", HubKeyAbilityPriceUpdated, req.Payload.AbilityIdentity)), nil
 }
 
-func (arena *Arena) LiveVoteCountUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.NetBusKey, error) {
-	return messagebus.NetBusKey(HubKeyLiveVoteCountUpdated), nil
+func (arena *Arena) LiveVoteCountUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.BusKey, error) {
+	return messagebus.BusKey(HubKeyLiveVoteCountUpdated), nil
 }
 
-func (arena *Arena) WarMachineLocationUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.NetBusKey, error) {
-	return messagebus.NetBusKey(HubKeyWarMachineLocationUpdated), nil
+func (arena *Arena) WarMachineLocationUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.BusKey, error) {
+	return messagebus.BusKey(HubKeyWarMachineLocationUpdated), nil
 }
 
 const HubKeySpoilOfWarUpdated hub.HubCommandKey = "SPOIL:OF:WAR:UPDATED"
 
-func (arena *Arena) SpoilOfWarUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.NetBusKey, error) {
+func (arena *Arena) SpoilOfWarUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.BusKey, error) {
 	gamelog.L.Info().Str("fn", "SpoilOfWarUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
-	return messagebus.NetBusKey(HubKeySpoilOfWarUpdated), nil
+	return messagebus.BusKey(HubKeySpoilOfWarUpdated), nil
 }
 
 const HubKeGabsBribingWinnerSubscribe hub.HubCommandKey = "BRIBE:WINNER:SUBSCRIBE"
@@ -873,7 +870,7 @@ func (arena *Arena) beginBattle() {
 			if err != nil {
 				gamelog.L.Error().Err(err).Int("btl.BattleNumber", lastBattle.BattleNumber).Msg("failed to load CitizenPlayerIDs")
 			} else {
-				go arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyMultiplierMapSubscribe), &MultiplierMapResponse{
+				go arena.messageBus.Send(messagebus.BusKey(HubKeyMultiplierMapSubscribe), &MultiplierMapResponse{
 					Multipliers:      multipliers,
 					CitizenPlayerIDs: citizenPlayerIDs,
 				})

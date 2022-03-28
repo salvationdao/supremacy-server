@@ -93,7 +93,7 @@ func (api *API) GlobalAnnouncementSend(w http.ResponseWriter, r *http.Request) (
 		resp = nil
 	}
 
-	go api.MessageBus.Send(r.Context(), messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), resp)
+	go api.MessageBus.Send(messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), resp)
 
 	fmt.Fprintf(w, fmt.Sprintf("Global Announcement Inserted Successfully, will show from battle: %d to battle: %d", ga.ShowFromBattleNumber.Int, ga.ShowUntilBattleNumber.Int))
 
@@ -109,7 +109,7 @@ func (api *API) GlobalAnnouncementDelete(w http.ResponseWriter, r *http.Request)
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to delete announcement %w", err))
 	}
 
-	go api.MessageBus.Send(r.Context(), messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), nil)
+	go api.MessageBus.Send(messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), nil)
 
 	fmt.Fprintf(w, "Global Announcement Deleted Successfully")
 	return http.StatusOK, nil

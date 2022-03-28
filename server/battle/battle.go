@@ -226,7 +226,7 @@ func (btl *Battle) start() {
 		spoilOfWarStr = append(spoilOfWarStr, sow.String())
 	}
 	spoilOfWarPayload = append(spoilOfWarPayload, []byte(strings.Join(spoilOfWarStr, "|"))...)
-	go btl.arena.netMessageBus.Send(context.Background(), messagebus.NetBusKey(HubKeySpoilOfWarUpdated), spoilOfWarPayload)
+	go btl.arena.messageBus.SendBinary(messagebus.BusKey(HubKeySpoilOfWarUpdated), spoilOfWarPayload)
 
 	// handle global announcements
 	ga, err := boiler.GlobalAnnouncements().One(gamedb.StdConn)
@@ -240,7 +240,7 @@ func (btl *Battle) start() {
 
 		// show if battle number is equal or in between the global announcement's to and from battle number
 		if btl.BattleNumber >= ga.ShowFromBattleNumber.Int && btl.BattleNumber <= ga.ShowUntilBattleNumber.Int {
-			go btl.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), ga)
+			go btl.arena.messageBus.Send(messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), ga)
 		}
 
 		// delete if global announcement expired/ is in the past
@@ -250,7 +250,7 @@ func (btl *Battle) start() {
 				gamelog.L.Error().Str("Battle ID", btl.ID).Msg("unable to delete global announcement")
 			}
 
-			go btl.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), nil)
+			go btl.arena.messageBus.Send(messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), nil)
 		}
 
 	}
@@ -763,7 +763,7 @@ func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 
 		// broadcast user stat to user
 		if us != nil {
-			go btl.arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserStatSubscribe, us.ID)), us)
+			go btl.arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserStatSubscribe, us.ID)), us)
 		}
 
 		return true
@@ -786,7 +786,7 @@ func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 		return
 	}
 
-	go btl.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyMultiplierMapSubscribe), &MultiplierMapResponse{
+	go btl.arena.messageBus.Send(messagebus.BusKey(HubKeyMultiplierMapSubscribe), &MultiplierMapResponse{
 		Multipliers:      multipliers,
 		CitizenPlayerIDs: citizenPlayerIDs,
 	})
@@ -954,7 +954,7 @@ const HubKeyGameSettingsUpdated = hub.HubCommandKey("GAME:SETTINGS:UPDATED")
 const HubKeyGameUserOnline = hub.HubCommandKey("GAME:ONLINE")
 
 func (btl *Battle) BroadcastUpdate() {
-	btl.arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyGameSettingsUpdated), UpdatePayload(btl))
+	btl.arena.messageBus.Send(messagebus.BusKey(HubKeyGameSettingsUpdated), UpdatePayload(btl))
 }
 
 func (btl *Battle) Tick(payload []byte) {
@@ -968,7 +968,7 @@ func (btl *Battle) Tick(payload []byte) {
 	}
 	btl.lastTick = &payload
 
-	btl.arena.netMessageBus.Send(context.Background(), messagebus.NetBusKey(HubKeyWarMachineLocationUpdated), payload)
+	btl.arena.messageBus.SendBinary(messagebus.BusKey(HubKeyWarMachineLocationUpdated), payload)
 
 	// Update game settings (so new players get the latest position, health and shield of all warmachines)
 	count := payload[1]
@@ -1217,7 +1217,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 	position, err = db.QueuePosition(mechID, factionID)
 	if errors.Is(sql.ErrNoRows, err) {
 		// If mech is not in queue
-		arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", WSAssetQueueStatusSubscribe, mechID)), AssetQueueStatusResponse{
+		arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", WSAssetQueueStatusSubscribe, mechID)), AssetQueueStatusResponse{
 			nil,
 			nil,
 		})
@@ -1242,14 +1242,14 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 	}
 
 	// Send updated battle queue status to all subscribers
-	arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", WSQueueStatusSubscribe, factionID.String())), QueueStatusResponse{
+	arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", WSQueueStatusSubscribe, factionID.String())), QueueStatusResponse{
 		result + 1,
 		nextQueueCost,
 		nextContractReward,
 	})
 
 	// Send updated war machine queue status to subscriber
-	arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", WSAssetQueueStatusSubscribe, mechID)), AssetQueueStatusResponse{
+	arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", WSAssetQueueStatusSubscribe, mechID)), AssetQueueStatusResponse{
 		&position,
 		&contractReward,
 	})
@@ -1330,7 +1330,7 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 		return terror.Error(fmt.Errorf("cannot remove war machine from queue when it is in battle"), "You cannot remove war machines currently in battle.")
 	}
 
-	canxq := `UPDATE battle_contracts SET cancelled = true WHERE id = (SELECT battle_contract_id FROM battle_queue WHERE mech_id = $1 AND deleted_at IS NULL)`
+	canxq := `UPDATE battle_contracts SET cancelled = true WHERE id = (SELECT battle_contract_id FROM battle_queue WHERE mech_id = $1)`
 	_, err = gamedb.StdConn.Exec(canxq, mechID.String())
 	if err != nil {
 		gamelog.L.Warn().Err(err).Msg("unable to cancel battle contract. mech has left queue though.")
@@ -1469,14 +1469,14 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 	}
 
 	// Send updated Battle queue status to all subscribers
-	arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", WSQueueStatusSubscribe, factionID.String())), QueueStatusResponse{
+	arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", WSQueueStatusSubscribe, factionID.String())), QueueStatusResponse{
 		result,
 		nextQueueCost,
 		nextContractReward,
 	})
 
 	// Tell clients to refetch war machine queue status
-	arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", WSQueueUpdatedSubscribe, factionID.String())), true)
+	arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", WSQueueUpdatedSubscribe, factionID.String())), true)
 
 	return nil
 }
@@ -1964,7 +1964,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 	btl.destroyedWarMachineMap[wmd.DestroyedWarMachine.ParticipantID] = wmd
 
 	// broadcast destroy detail
-	btl.arena.messageBus.Send(context.Background(),
+	btl.arena.messageBus.Send(
 		messagebus.BusKey(
 			fmt.Sprintf(
 				"%s:%x",
