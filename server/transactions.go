@@ -24,3 +24,14 @@ type Transaction struct {
 	Description          string               `json:"description"`
 	CreatedAt            time.Time            `json:"created_at"`
 }
+
+type TransactionGroup string
+
+const (
+	TransactionGroupStore           TransactionGroup = "STORE"
+	TransactionGroupDeposit         TransactionGroup = "DEPOSIT"
+	TransactionGroupWithdrawal      TransactionGroup = "WITHDRAWAL"
+	TransactionGroupBattle          TransactionGroup = "BATTLE"
+	TransactionGroupSupremacy       TransactionGroup = "SUPREMACY"
+	TransactionGroupAssetManagement TransactionGroup = "ASSET MANAGEMENT"
+)

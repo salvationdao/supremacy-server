@@ -659,7 +659,7 @@ func (ga *GameAbility) SupContribution(ppClient *rpcclient.PassportXrpcClient, b
 		ToUserID:             SupremacyBattleUserID,
 		Amount:               amount.StringFixed(18),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("ability_sup_contribute|%s|%d", ga.OfferingID.String(), time.Now().UnixNano())),
-		Group:                "battle",
+		Group:                string(server.TransactionGroupBattle),
 		SubGroup:             battleID,
 		Description:          "battle contribution: " + ga.Label,
 		NotSafe:              true,
