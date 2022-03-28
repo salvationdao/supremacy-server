@@ -87,7 +87,8 @@ type API struct {
 	// ring check auth
 	RingCheckAuthMap *RingCheckAuthMap
 
-	factionBanVoteTracker map[string]*BanVoteTracker
+	// ban vote
+	FactionBanVote map[string]*BanVoteTracker
 }
 
 // NewAPI registers routes
@@ -121,6 +122,8 @@ func NewAPI(
 		Hub:              gsHub,
 		RingCheckAuthMap: NewRingCheckMap(),
 		SMS:              sms,
+
+		FactionBanVote: make(map[string]*BanVoteTracker),
 	}
 
 	battleArenaClient.SetMessageBus(messageBus, netMessageBus)

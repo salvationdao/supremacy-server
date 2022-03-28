@@ -23,84 +23,121 @@ import (
 
 // BannedPlayer is an object representing the database table.
 type BannedPlayer struct {
-	ID        string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	PlayerID  string    `boiler:"player_id" boil:"player_id" json:"player_id" toml:"player_id" yaml:"player_id"`
-	BanType   string    `boiler:"ban_type" boil:"ban_type" json:"ban_type" toml:"ban_type" yaml:"ban_type"`
-	BanUntil  time.Time `boiler:"ban_until" boil:"ban_until" json:"ban_until" toml:"ban_until" yaml:"ban_until"`
-	CreatedAt time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	UpdatedAt time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	DeletedAt null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	ID               string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	PlayerID         string      `boiler:"player_id" boil:"player_id" json:"player_id" toml:"player_id" yaml:"player_id"`
+	BanTypeID        string      `boiler:"ban_type_id" boil:"ban_type_id" json:"ban_type_id" toml:"ban_type_id" yaml:"ban_type_id"`
+	BanUntil         time.Time   `boiler:"ban_until" boil:"ban_until" json:"ban_until" toml:"ban_until" yaml:"ban_until"`
+	RelatedBanVoteID null.String `boiler:"related_ban_vote_id" boil:"related_ban_vote_id" json:"related_ban_vote_id,omitempty" toml:"related_ban_vote_id" yaml:"related_ban_vote_id,omitempty"`
+	CreatedAt        time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	UpdatedAt        time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	DeletedAt        null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 
 	R *bannedPlayerR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L bannedPlayerL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var BannedPlayerColumns = struct {
-	ID        string
-	PlayerID  string
-	BanType   string
-	BanUntil  string
-	CreatedAt string
-	UpdatedAt string
-	DeletedAt string
+	ID               string
+	PlayerID         string
+	BanTypeID        string
+	BanUntil         string
+	RelatedBanVoteID string
+	CreatedAt        string
+	UpdatedAt        string
+	DeletedAt        string
 }{
-	ID:        "id",
-	PlayerID:  "player_id",
-	BanType:   "ban_type",
-	BanUntil:  "ban_until",
-	CreatedAt: "created_at",
-	UpdatedAt: "updated_at",
-	DeletedAt: "deleted_at",
+	ID:               "id",
+	PlayerID:         "player_id",
+	BanTypeID:        "ban_type_id",
+	BanUntil:         "ban_until",
+	RelatedBanVoteID: "related_ban_vote_id",
+	CreatedAt:        "created_at",
+	UpdatedAt:        "updated_at",
+	DeletedAt:        "deleted_at",
 }
 
 var BannedPlayerTableColumns = struct {
-	ID        string
-	PlayerID  string
-	BanType   string
-	BanUntil  string
-	CreatedAt string
-	UpdatedAt string
-	DeletedAt string
+	ID               string
+	PlayerID         string
+	BanTypeID        string
+	BanUntil         string
+	RelatedBanVoteID string
+	CreatedAt        string
+	UpdatedAt        string
+	DeletedAt        string
 }{
-	ID:        "banned_players.id",
-	PlayerID:  "banned_players.player_id",
-	BanType:   "banned_players.ban_type",
-	BanUntil:  "banned_players.ban_until",
-	CreatedAt: "banned_players.created_at",
-	UpdatedAt: "banned_players.updated_at",
-	DeletedAt: "banned_players.deleted_at",
+	ID:               "banned_players.id",
+	PlayerID:         "banned_players.player_id",
+	BanTypeID:        "banned_players.ban_type_id",
+	BanUntil:         "banned_players.ban_until",
+	RelatedBanVoteID: "banned_players.related_ban_vote_id",
+	CreatedAt:        "banned_players.created_at",
+	UpdatedAt:        "banned_players.updated_at",
+	DeletedAt:        "banned_players.deleted_at",
 }
 
 // Generated where
 
+type whereHelpernull_String struct{ field string }
+
+func (w whereHelpernull_String) EQ(x null.String) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, false, x)
+}
+func (w whereHelpernull_String) NEQ(x null.String) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, true, x)
+}
+func (w whereHelpernull_String) LT(x null.String) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LT, x)
+}
+func (w whereHelpernull_String) LTE(x null.String) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LTE, x)
+}
+func (w whereHelpernull_String) GT(x null.String) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GT, x)
+}
+func (w whereHelpernull_String) GTE(x null.String) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GTE, x)
+}
+
+func (w whereHelpernull_String) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
+func (w whereHelpernull_String) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
+
 var BannedPlayerWhere = struct {
-	ID        whereHelperstring
-	PlayerID  whereHelperstring
-	BanType   whereHelperstring
-	BanUntil  whereHelpertime_Time
-	CreatedAt whereHelpertime_Time
-	UpdatedAt whereHelpertime_Time
-	DeletedAt whereHelpernull_Time
+	ID               whereHelperstring
+	PlayerID         whereHelperstring
+	BanTypeID        whereHelperstring
+	BanUntil         whereHelpertime_Time
+	RelatedBanVoteID whereHelpernull_String
+	CreatedAt        whereHelpertime_Time
+	UpdatedAt        whereHelpertime_Time
+	DeletedAt        whereHelpernull_Time
 }{
-	ID:        whereHelperstring{field: "\"banned_players\".\"id\""},
-	PlayerID:  whereHelperstring{field: "\"banned_players\".\"player_id\""},
-	BanType:   whereHelperstring{field: "\"banned_players\".\"ban_type\""},
-	BanUntil:  whereHelpertime_Time{field: "\"banned_players\".\"ban_until\""},
-	CreatedAt: whereHelpertime_Time{field: "\"banned_players\".\"created_at\""},
-	UpdatedAt: whereHelpertime_Time{field: "\"banned_players\".\"updated_at\""},
-	DeletedAt: whereHelpernull_Time{field: "\"banned_players\".\"deleted_at\""},
+	ID:               whereHelperstring{field: "\"banned_players\".\"id\""},
+	PlayerID:         whereHelperstring{field: "\"banned_players\".\"player_id\""},
+	BanTypeID:        whereHelperstring{field: "\"banned_players\".\"ban_type_id\""},
+	BanUntil:         whereHelpertime_Time{field: "\"banned_players\".\"ban_until\""},
+	RelatedBanVoteID: whereHelpernull_String{field: "\"banned_players\".\"related_ban_vote_id\""},
+	CreatedAt:        whereHelpertime_Time{field: "\"banned_players\".\"created_at\""},
+	UpdatedAt:        whereHelpertime_Time{field: "\"banned_players\".\"updated_at\""},
+	DeletedAt:        whereHelpernull_Time{field: "\"banned_players\".\"deleted_at\""},
 }
 
 // BannedPlayerRels is where relationship names are stored.
 var BannedPlayerRels = struct {
-	Player string
+	BanType        string
+	Player         string
+	RelatedBanVote string
 }{
-	Player: "Player",
+	BanType:        "BanType",
+	Player:         "Player",
+	RelatedBanVote: "RelatedBanVote",
 }
 
 // bannedPlayerR is where relationships are stored.
 type bannedPlayerR struct {
-	Player *Player `boiler:"Player" boil:"Player" json:"Player" toml:"Player" yaml:"Player"`
+	BanType        *BanType `boiler:"BanType" boil:"BanType" json:"BanType" toml:"BanType" yaml:"BanType"`
+	Player         *Player  `boiler:"Player" boil:"Player" json:"Player" toml:"Player" yaml:"Player"`
+	RelatedBanVote *BanVote `boiler:"RelatedBanVote" boil:"RelatedBanVote" json:"RelatedBanVote" toml:"RelatedBanVote" yaml:"RelatedBanVote"`
 }
 
 // NewStruct creates a new relationship struct
@@ -112,9 +149,9 @@ func (*bannedPlayerR) NewStruct() *bannedPlayerR {
 type bannedPlayerL struct{}
 
 var (
-	bannedPlayerAllColumns            = []string{"id", "player_id", "ban_type", "ban_until", "created_at", "updated_at", "deleted_at"}
-	bannedPlayerColumnsWithoutDefault = []string{"player_id", "ban_type", "ban_until"}
-	bannedPlayerColumnsWithDefault    = []string{"id", "created_at", "updated_at", "deleted_at"}
+	bannedPlayerAllColumns            = []string{"id", "player_id", "ban_type_id", "ban_until", "related_ban_vote_id", "created_at", "updated_at", "deleted_at"}
+	bannedPlayerColumnsWithoutDefault = []string{"player_id", "ban_type_id", "ban_until"}
+	bannedPlayerColumnsWithDefault    = []string{"id", "related_ban_vote_id", "created_at", "updated_at", "deleted_at"}
 	bannedPlayerPrimaryKeyColumns     = []string{"id"}
 	bannedPlayerGeneratedColumns      = []string{}
 )
@@ -361,6 +398,21 @@ func (q bannedPlayerQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
+// BanType pointed to by the foreign key.
+func (o *BannedPlayer) BanType(mods ...qm.QueryMod) banTypeQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.BanTypeID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := BanTypes(queryMods...)
+	queries.SetFrom(query.Query, "\"ban_types\"")
+
+	return query
+}
+
 // Player pointed to by the foreign key.
 func (o *BannedPlayer) Player(mods ...qm.QueryMod) playerQuery {
 	queryMods := []qm.QueryMod{
@@ -374,6 +426,126 @@ func (o *BannedPlayer) Player(mods ...qm.QueryMod) playerQuery {
 	queries.SetFrom(query.Query, "\"players\"")
 
 	return query
+}
+
+// RelatedBanVote pointed to by the foreign key.
+func (o *BannedPlayer) RelatedBanVote(mods ...qm.QueryMod) banVoteQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.RelatedBanVoteID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := BanVotes(queryMods...)
+	queries.SetFrom(query.Query, "\"ban_votes\"")
+
+	return query
+}
+
+// LoadBanType allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (bannedPlayerL) LoadBanType(e boil.Executor, singular bool, maybeBannedPlayer interface{}, mods queries.Applicator) error {
+	var slice []*BannedPlayer
+	var object *BannedPlayer
+
+	if singular {
+		object = maybeBannedPlayer.(*BannedPlayer)
+	} else {
+		slice = *maybeBannedPlayer.(*[]*BannedPlayer)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &bannedPlayerR{}
+		}
+		args = append(args, object.BanTypeID)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &bannedPlayerR{}
+			}
+
+			for _, a := range args {
+				if a == obj.BanTypeID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.BanTypeID)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`ban_types`),
+		qm.WhereIn(`ban_types.id in ?`, args...),
+		qmhelper.WhereIsNull(`ban_types.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load BanType")
+	}
+
+	var resultSlice []*BanType
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice BanType")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for ban_types")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for ban_types")
+	}
+
+	if len(bannedPlayerAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.BanType = foreign
+		if foreign.R == nil {
+			foreign.R = &banTypeR{}
+		}
+		foreign.R.BannedPlayers = append(foreign.R.BannedPlayers, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.BanTypeID == foreign.ID {
+				local.R.BanType = foreign
+				if foreign.R == nil {
+					foreign.R = &banTypeR{}
+				}
+				foreign.R.BannedPlayers = append(foreign.R.BannedPlayers, local)
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadPlayer allows an eager lookup of values, cached into the
@@ -481,6 +653,161 @@ func (bannedPlayerL) LoadPlayer(e boil.Executor, singular bool, maybeBannedPlaye
 	return nil
 }
 
+// LoadRelatedBanVote allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (bannedPlayerL) LoadRelatedBanVote(e boil.Executor, singular bool, maybeBannedPlayer interface{}, mods queries.Applicator) error {
+	var slice []*BannedPlayer
+	var object *BannedPlayer
+
+	if singular {
+		object = maybeBannedPlayer.(*BannedPlayer)
+	} else {
+		slice = *maybeBannedPlayer.(*[]*BannedPlayer)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &bannedPlayerR{}
+		}
+		if !queries.IsNil(object.RelatedBanVoteID) {
+			args = append(args, object.RelatedBanVoteID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &bannedPlayerR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.RelatedBanVoteID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.RelatedBanVoteID) {
+				args = append(args, obj.RelatedBanVoteID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`ban_votes`),
+		qm.WhereIn(`ban_votes.id in ?`, args...),
+		qmhelper.WhereIsNull(`ban_votes.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load BanVote")
+	}
+
+	var resultSlice []*BanVote
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice BanVote")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for ban_votes")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for ban_votes")
+	}
+
+	if len(bannedPlayerAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.RelatedBanVote = foreign
+		if foreign.R == nil {
+			foreign.R = &banVoteR{}
+		}
+		foreign.R.RelatedBanVoteBannedPlayers = append(foreign.R.RelatedBanVoteBannedPlayers, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.RelatedBanVoteID, foreign.ID) {
+				local.R.RelatedBanVote = foreign
+				if foreign.R == nil {
+					foreign.R = &banVoteR{}
+				}
+				foreign.R.RelatedBanVoteBannedPlayers = append(foreign.R.RelatedBanVoteBannedPlayers, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// SetBanType of the bannedPlayer to the related item.
+// Sets o.R.BanType to related.
+// Adds o to related.R.BannedPlayers.
+func (o *BannedPlayer) SetBanType(exec boil.Executor, insert bool, related *BanType) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"banned_players\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"ban_type_id"}),
+		strmangle.WhereClause("\"", "\"", 2, bannedPlayerPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.BanTypeID = related.ID
+	if o.R == nil {
+		o.R = &bannedPlayerR{
+			BanType: related,
+		}
+	} else {
+		o.R.BanType = related
+	}
+
+	if related.R == nil {
+		related.R = &banTypeR{
+			BannedPlayers: BannedPlayerSlice{o},
+		}
+	} else {
+		related.R.BannedPlayers = append(related.R.BannedPlayers, o)
+	}
+
+	return nil
+}
+
 // SetPlayer of the bannedPlayer to the related item.
 // Sets o.R.Player to related.
 // Adds o to related.R.BannedPlayers.
@@ -524,6 +851,85 @@ func (o *BannedPlayer) SetPlayer(exec boil.Executor, insert bool, related *Playe
 		related.R.BannedPlayers = append(related.R.BannedPlayers, o)
 	}
 
+	return nil
+}
+
+// SetRelatedBanVote of the bannedPlayer to the related item.
+// Sets o.R.RelatedBanVote to related.
+// Adds o to related.R.RelatedBanVoteBannedPlayers.
+func (o *BannedPlayer) SetRelatedBanVote(exec boil.Executor, insert bool, related *BanVote) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"banned_players\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"related_ban_vote_id"}),
+		strmangle.WhereClause("\"", "\"", 2, bannedPlayerPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.RelatedBanVoteID, related.ID)
+	if o.R == nil {
+		o.R = &bannedPlayerR{
+			RelatedBanVote: related,
+		}
+	} else {
+		o.R.RelatedBanVote = related
+	}
+
+	if related.R == nil {
+		related.R = &banVoteR{
+			RelatedBanVoteBannedPlayers: BannedPlayerSlice{o},
+		}
+	} else {
+		related.R.RelatedBanVoteBannedPlayers = append(related.R.RelatedBanVoteBannedPlayers, o)
+	}
+
+	return nil
+}
+
+// RemoveRelatedBanVote relationship.
+// Sets o.R.RelatedBanVote to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *BannedPlayer) RemoveRelatedBanVote(exec boil.Executor, related *BanVote) error {
+	var err error
+
+	queries.SetScanner(&o.RelatedBanVoteID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("related_ban_vote_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.RelatedBanVote = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.RelatedBanVoteBannedPlayers {
+		if queries.Equal(o.RelatedBanVoteID, ri.RelatedBanVoteID) {
+			continue
+		}
+
+		ln := len(related.R.RelatedBanVoteBannedPlayers)
+		if ln > 1 && i < ln-1 {
+			related.R.RelatedBanVoteBannedPlayers[i] = related.R.RelatedBanVoteBannedPlayers[ln-1]
+		}
+		related.R.RelatedBanVoteBannedPlayers = related.R.RelatedBanVoteBannedPlayers[:ln-1]
+		break
+	}
 	return nil
 }
 

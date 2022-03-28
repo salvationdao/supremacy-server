@@ -138,7 +138,7 @@ var PlayerRels = struct {
 	MVPPlayerFactionStats     string
 	OwnerMechs                string
 	ToUserPendingTransactions string
-	PlayerVotes               string
+	PlayersBanVotes           string
 	UserMultipliers           string
 	Users                     string
 }{
@@ -158,7 +158,7 @@ var PlayerRels = struct {
 	MVPPlayerFactionStats:     "MVPPlayerFactionStats",
 	OwnerMechs:                "OwnerMechs",
 	ToUserPendingTransactions: "ToUserPendingTransactions",
-	PlayerVotes:               "PlayerVotes",
+	PlayersBanVotes:           "PlayersBanVotes",
 	UserMultipliers:           "UserMultipliers",
 	Users:                     "Users",
 }
@@ -181,7 +181,7 @@ type playerR struct {
 	MVPPlayerFactionStats     FactionStatSlice          `boiler:"MVPPlayerFactionStats" boil:"MVPPlayerFactionStats" json:"MVPPlayerFactionStats" toml:"MVPPlayerFactionStats" yaml:"MVPPlayerFactionStats"`
 	OwnerMechs                MechSlice                 `boiler:"OwnerMechs" boil:"OwnerMechs" json:"OwnerMechs" toml:"OwnerMechs" yaml:"OwnerMechs"`
 	ToUserPendingTransactions PendingTransactionSlice   `boiler:"ToUserPendingTransactions" boil:"ToUserPendingTransactions" json:"ToUserPendingTransactions" toml:"ToUserPendingTransactions" yaml:"ToUserPendingTransactions"`
-	PlayerVotes               PlayerVoteSlice           `boiler:"PlayerVotes" boil:"PlayerVotes" json:"PlayerVotes" toml:"PlayerVotes" yaml:"PlayerVotes"`
+	PlayersBanVotes           PlayersBanVoteSlice       `boiler:"PlayersBanVotes" boil:"PlayersBanVotes" json:"PlayersBanVotes" toml:"PlayersBanVotes" yaml:"PlayersBanVotes"`
 	UserMultipliers           UserMultiplierSlice       `boiler:"UserMultipliers" boil:"UserMultipliers" json:"UserMultipliers" toml:"UserMultipliers" yaml:"UserMultipliers"`
 	Users                     UserSlice                 `boiler:"Users" boil:"Users" json:"Users" toml:"Users" yaml:"Users"`
 }
@@ -767,23 +767,23 @@ func (o *Player) ToUserPendingTransactions(mods ...qm.QueryMod) pendingTransacti
 	return query
 }
 
-// PlayerVotes retrieves all the player_vote's PlayerVotes with an executor.
-func (o *Player) PlayerVotes(mods ...qm.QueryMod) playerVoteQuery {
+// PlayersBanVotes retrieves all the players_ban_vote's PlayersBanVotes with an executor.
+func (o *Player) PlayersBanVotes(mods ...qm.QueryMod) playersBanVoteQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"player_votes\".\"player_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"player_votes\".\"deleted_at\""),
+		qm.Where("\"players_ban_votes\".\"player_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"players_ban_votes\".\"deleted_at\""),
 	)
 
-	query := PlayerVotes(queryMods...)
-	queries.SetFrom(query.Query, "\"player_votes\"")
+	query := PlayersBanVotes(queryMods...)
+	queries.SetFrom(query.Query, "\"players_ban_votes\"")
 
 	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"player_votes\".*"})
+		queries.SetSelect(query.Query, []string{"\"players_ban_votes\".*"})
 	}
 
 	return query
@@ -2439,9 +2439,9 @@ func (playerL) LoadToUserPendingTransactions(e boil.Executor, singular bool, may
 	return nil
 }
 
-// LoadPlayerVotes allows an eager lookup of values, cached into the
+// LoadPlayersBanVotes allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (playerL) LoadPlayerVotes(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+func (playerL) LoadPlayersBanVotes(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
 	var slice []*Player
 	var object *Player
 
@@ -2479,9 +2479,9 @@ func (playerL) LoadPlayerVotes(e boil.Executor, singular bool, maybePlayer inter
 	}
 
 	query := NewQuery(
-		qm.From(`player_votes`),
-		qm.WhereIn(`player_votes.player_id in ?`, args...),
-		qmhelper.WhereIsNull(`player_votes.deleted_at`),
+		qm.From(`players_ban_votes`),
+		qm.WhereIn(`players_ban_votes.player_id in ?`, args...),
+		qmhelper.WhereIsNull(`players_ban_votes.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -2489,22 +2489,22 @@ func (playerL) LoadPlayerVotes(e boil.Executor, singular bool, maybePlayer inter
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load player_votes")
+		return errors.Wrap(err, "failed to eager load players_ban_votes")
 	}
 
-	var resultSlice []*PlayerVote
+	var resultSlice []*PlayersBanVote
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice player_votes")
+		return errors.Wrap(err, "failed to bind eager loaded slice players_ban_votes")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on player_votes")
+		return errors.Wrap(err, "failed to close results in eager load on players_ban_votes")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for player_votes")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players_ban_votes")
 	}
 
-	if len(playerVoteAfterSelectHooks) != 0 {
+	if len(playersBanVoteAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -2512,10 +2512,10 @@ func (playerL) LoadPlayerVotes(e boil.Executor, singular bool, maybePlayer inter
 		}
 	}
 	if singular {
-		object.R.PlayerVotes = resultSlice
+		object.R.PlayersBanVotes = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
-				foreign.R = &playerVoteR{}
+				foreign.R = &playersBanVoteR{}
 			}
 			foreign.R.Player = object
 		}
@@ -2525,9 +2525,9 @@ func (playerL) LoadPlayerVotes(e boil.Executor, singular bool, maybePlayer inter
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
 			if local.ID == foreign.PlayerID {
-				local.R.PlayerVotes = append(local.R.PlayerVotes, foreign)
+				local.R.PlayersBanVotes = append(local.R.PlayersBanVotes, foreign)
 				if foreign.R == nil {
-					foreign.R = &playerVoteR{}
+					foreign.R = &playersBanVoteR{}
 				}
 				foreign.R.Player = local
 				break
@@ -3824,11 +3824,11 @@ func (o *Player) AddToUserPendingTransactions(exec boil.Executor, insert bool, r
 	return nil
 }
 
-// AddPlayerVotes adds the given related objects to the existing relationships
+// AddPlayersBanVotes adds the given related objects to the existing relationships
 // of the player, optionally inserting them as new records.
-// Appends related to o.R.PlayerVotes.
+// Appends related to o.R.PlayersBanVotes.
 // Sets related.R.Player appropriately.
-func (o *Player) AddPlayerVotes(exec boil.Executor, insert bool, related ...*PlayerVote) error {
+func (o *Player) AddPlayersBanVotes(exec boil.Executor, insert bool, related ...*PlayersBanVote) error {
 	var err error
 	for _, rel := range related {
 		if insert {
@@ -3838,9 +3838,9 @@ func (o *Player) AddPlayerVotes(exec boil.Executor, insert bool, related ...*Pla
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
-				"UPDATE \"player_votes\" SET %s WHERE %s",
+				"UPDATE \"players_ban_votes\" SET %s WHERE %s",
 				strmangle.SetParamNames("\"", "\"", 1, []string{"player_id"}),
-				strmangle.WhereClause("\"", "\"", 2, playerVotePrimaryKeyColumns),
+				strmangle.WhereClause("\"", "\"", 2, playersBanVotePrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
 
@@ -3858,15 +3858,15 @@ func (o *Player) AddPlayerVotes(exec boil.Executor, insert bool, related ...*Pla
 
 	if o.R == nil {
 		o.R = &playerR{
-			PlayerVotes: related,
+			PlayersBanVotes: related,
 		}
 	} else {
-		o.R.PlayerVotes = append(o.R.PlayerVotes, related...)
+		o.R.PlayersBanVotes = append(o.R.PlayersBanVotes, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
-			rel.R = &playerVoteR{
+			rel.R = &playersBanVoteR{
 				Player: o,
 			}
 		} else {

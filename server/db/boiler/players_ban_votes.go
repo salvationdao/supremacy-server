@@ -21,8 +21,8 @@ import (
 	"github.com/volatiletech/strmangle"
 )
 
-// PlayerVote is an object representing the database table.
-type PlayerVote struct {
+// PlayersBanVote is an object representing the database table.
+type PlayersBanVote struct {
 	ID        string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	BanVoteID string    `boiler:"ban_vote_id" boil:"ban_vote_id" json:"ban_vote_id" toml:"ban_vote_id" yaml:"ban_vote_id"`
 	PlayerID  string    `boiler:"player_id" boil:"player_id" json:"player_id" toml:"player_id" yaml:"player_id"`
@@ -31,11 +31,11 @@ type PlayerVote struct {
 	UpdatedAt time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	DeletedAt null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 
-	R *playerVoteR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
-	L playerVoteL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
+	R *playersBanVoteR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
+	L playersBanVoteL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
-var PlayerVoteColumns = struct {
+var PlayersBanVoteColumns = struct {
 	ID        string
 	BanVoteID string
 	PlayerID  string
@@ -53,7 +53,7 @@ var PlayerVoteColumns = struct {
 	DeletedAt: "deleted_at",
 }
 
-var PlayerVoteTableColumns = struct {
+var PlayersBanVoteTableColumns = struct {
 	ID        string
 	BanVoteID string
 	PlayerID  string
@@ -62,18 +62,18 @@ var PlayerVoteTableColumns = struct {
 	UpdatedAt string
 	DeletedAt string
 }{
-	ID:        "player_votes.id",
-	BanVoteID: "player_votes.ban_vote_id",
-	PlayerID:  "player_votes.player_id",
-	IsAgreed:  "player_votes.is_agreed",
-	CreatedAt: "player_votes.created_at",
-	UpdatedAt: "player_votes.updated_at",
-	DeletedAt: "player_votes.deleted_at",
+	ID:        "players_ban_votes.id",
+	BanVoteID: "players_ban_votes.ban_vote_id",
+	PlayerID:  "players_ban_votes.player_id",
+	IsAgreed:  "players_ban_votes.is_agreed",
+	CreatedAt: "players_ban_votes.created_at",
+	UpdatedAt: "players_ban_votes.updated_at",
+	DeletedAt: "players_ban_votes.deleted_at",
 }
 
 // Generated where
 
-var PlayerVoteWhere = struct {
+var PlayersBanVoteWhere = struct {
 	ID        whereHelperstring
 	BanVoteID whereHelperstring
 	PlayerID  whereHelperstring
@@ -82,17 +82,17 @@ var PlayerVoteWhere = struct {
 	UpdatedAt whereHelpertime_Time
 	DeletedAt whereHelpernull_Time
 }{
-	ID:        whereHelperstring{field: "\"player_votes\".\"id\""},
-	BanVoteID: whereHelperstring{field: "\"player_votes\".\"ban_vote_id\""},
-	PlayerID:  whereHelperstring{field: "\"player_votes\".\"player_id\""},
-	IsAgreed:  whereHelperbool{field: "\"player_votes\".\"is_agreed\""},
-	CreatedAt: whereHelpertime_Time{field: "\"player_votes\".\"created_at\""},
-	UpdatedAt: whereHelpertime_Time{field: "\"player_votes\".\"updated_at\""},
-	DeletedAt: whereHelpernull_Time{field: "\"player_votes\".\"deleted_at\""},
+	ID:        whereHelperstring{field: "\"players_ban_votes\".\"id\""},
+	BanVoteID: whereHelperstring{field: "\"players_ban_votes\".\"ban_vote_id\""},
+	PlayerID:  whereHelperstring{field: "\"players_ban_votes\".\"player_id\""},
+	IsAgreed:  whereHelperbool{field: "\"players_ban_votes\".\"is_agreed\""},
+	CreatedAt: whereHelpertime_Time{field: "\"players_ban_votes\".\"created_at\""},
+	UpdatedAt: whereHelpertime_Time{field: "\"players_ban_votes\".\"updated_at\""},
+	DeletedAt: whereHelpernull_Time{field: "\"players_ban_votes\".\"deleted_at\""},
 }
 
-// PlayerVoteRels is where relationship names are stored.
-var PlayerVoteRels = struct {
+// PlayersBanVoteRels is where relationship names are stored.
+var PlayersBanVoteRels = struct {
 	BanVote string
 	Player  string
 }{
@@ -100,51 +100,51 @@ var PlayerVoteRels = struct {
 	Player:  "Player",
 }
 
-// playerVoteR is where relationships are stored.
-type playerVoteR struct {
+// playersBanVoteR is where relationships are stored.
+type playersBanVoteR struct {
 	BanVote *BanVote `boiler:"BanVote" boil:"BanVote" json:"BanVote" toml:"BanVote" yaml:"BanVote"`
 	Player  *Player  `boiler:"Player" boil:"Player" json:"Player" toml:"Player" yaml:"Player"`
 }
 
 // NewStruct creates a new relationship struct
-func (*playerVoteR) NewStruct() *playerVoteR {
-	return &playerVoteR{}
+func (*playersBanVoteR) NewStruct() *playersBanVoteR {
+	return &playersBanVoteR{}
 }
 
-// playerVoteL is where Load methods for each relationship are stored.
-type playerVoteL struct{}
+// playersBanVoteL is where Load methods for each relationship are stored.
+type playersBanVoteL struct{}
 
 var (
-	playerVoteAllColumns            = []string{"id", "ban_vote_id", "player_id", "is_agreed", "created_at", "updated_at", "deleted_at"}
-	playerVoteColumnsWithoutDefault = []string{"ban_vote_id", "player_id", "is_agreed"}
-	playerVoteColumnsWithDefault    = []string{"id", "created_at", "updated_at", "deleted_at"}
-	playerVotePrimaryKeyColumns     = []string{"id"}
-	playerVoteGeneratedColumns      = []string{}
+	playersBanVoteAllColumns            = []string{"id", "ban_vote_id", "player_id", "is_agreed", "created_at", "updated_at", "deleted_at"}
+	playersBanVoteColumnsWithoutDefault = []string{"ban_vote_id", "player_id", "is_agreed"}
+	playersBanVoteColumnsWithDefault    = []string{"id", "created_at", "updated_at", "deleted_at"}
+	playersBanVotePrimaryKeyColumns     = []string{"id"}
+	playersBanVoteGeneratedColumns      = []string{}
 )
 
 type (
-	// PlayerVoteSlice is an alias for a slice of pointers to PlayerVote.
-	// This should almost always be used instead of []PlayerVote.
-	PlayerVoteSlice []*PlayerVote
-	// PlayerVoteHook is the signature for custom PlayerVote hook methods
-	PlayerVoteHook func(boil.Executor, *PlayerVote) error
+	// PlayersBanVoteSlice is an alias for a slice of pointers to PlayersBanVote.
+	// This should almost always be used instead of []PlayersBanVote.
+	PlayersBanVoteSlice []*PlayersBanVote
+	// PlayersBanVoteHook is the signature for custom PlayersBanVote hook methods
+	PlayersBanVoteHook func(boil.Executor, *PlayersBanVote) error
 
-	playerVoteQuery struct {
+	playersBanVoteQuery struct {
 		*queries.Query
 	}
 )
 
 // Cache for insert, update and upsert
 var (
-	playerVoteType                 = reflect.TypeOf(&PlayerVote{})
-	playerVoteMapping              = queries.MakeStructMapping(playerVoteType)
-	playerVotePrimaryKeyMapping, _ = queries.BindMapping(playerVoteType, playerVoteMapping, playerVotePrimaryKeyColumns)
-	playerVoteInsertCacheMut       sync.RWMutex
-	playerVoteInsertCache          = make(map[string]insertCache)
-	playerVoteUpdateCacheMut       sync.RWMutex
-	playerVoteUpdateCache          = make(map[string]updateCache)
-	playerVoteUpsertCacheMut       sync.RWMutex
-	playerVoteUpsertCache          = make(map[string]insertCache)
+	playersBanVoteType                 = reflect.TypeOf(&PlayersBanVote{})
+	playersBanVoteMapping              = queries.MakeStructMapping(playersBanVoteType)
+	playersBanVotePrimaryKeyMapping, _ = queries.BindMapping(playersBanVoteType, playersBanVoteMapping, playersBanVotePrimaryKeyColumns)
+	playersBanVoteInsertCacheMut       sync.RWMutex
+	playersBanVoteInsertCache          = make(map[string]insertCache)
+	playersBanVoteUpdateCacheMut       sync.RWMutex
+	playersBanVoteUpdateCache          = make(map[string]updateCache)
+	playersBanVoteUpsertCacheMut       sync.RWMutex
+	playersBanVoteUpsertCache          = make(map[string]insertCache)
 )
 
 var (
@@ -155,23 +155,23 @@ var (
 	_ = qmhelper.Where
 )
 
-var playerVoteAfterSelectHooks []PlayerVoteHook
+var playersBanVoteAfterSelectHooks []PlayersBanVoteHook
 
-var playerVoteBeforeInsertHooks []PlayerVoteHook
-var playerVoteAfterInsertHooks []PlayerVoteHook
+var playersBanVoteBeforeInsertHooks []PlayersBanVoteHook
+var playersBanVoteAfterInsertHooks []PlayersBanVoteHook
 
-var playerVoteBeforeUpdateHooks []PlayerVoteHook
-var playerVoteAfterUpdateHooks []PlayerVoteHook
+var playersBanVoteBeforeUpdateHooks []PlayersBanVoteHook
+var playersBanVoteAfterUpdateHooks []PlayersBanVoteHook
 
-var playerVoteBeforeDeleteHooks []PlayerVoteHook
-var playerVoteAfterDeleteHooks []PlayerVoteHook
+var playersBanVoteBeforeDeleteHooks []PlayersBanVoteHook
+var playersBanVoteAfterDeleteHooks []PlayersBanVoteHook
 
-var playerVoteBeforeUpsertHooks []PlayerVoteHook
-var playerVoteAfterUpsertHooks []PlayerVoteHook
+var playersBanVoteBeforeUpsertHooks []PlayersBanVoteHook
+var playersBanVoteAfterUpsertHooks []PlayersBanVoteHook
 
 // doAfterSelectHooks executes all "after Select" hooks.
-func (o *PlayerVote) doAfterSelectHooks(exec boil.Executor) (err error) {
-	for _, hook := range playerVoteAfterSelectHooks {
+func (o *PlayersBanVote) doAfterSelectHooks(exec boil.Executor) (err error) {
+	for _, hook := range playersBanVoteAfterSelectHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -181,8 +181,8 @@ func (o *PlayerVote) doAfterSelectHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeInsertHooks executes all "before insert" hooks.
-func (o *PlayerVote) doBeforeInsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range playerVoteBeforeInsertHooks {
+func (o *PlayersBanVote) doBeforeInsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range playersBanVoteBeforeInsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -192,8 +192,8 @@ func (o *PlayerVote) doBeforeInsertHooks(exec boil.Executor) (err error) {
 }
 
 // doAfterInsertHooks executes all "after Insert" hooks.
-func (o *PlayerVote) doAfterInsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range playerVoteAfterInsertHooks {
+func (o *PlayersBanVote) doAfterInsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range playersBanVoteAfterInsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -203,8 +203,8 @@ func (o *PlayerVote) doAfterInsertHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeUpdateHooks executes all "before Update" hooks.
-func (o *PlayerVote) doBeforeUpdateHooks(exec boil.Executor) (err error) {
-	for _, hook := range playerVoteBeforeUpdateHooks {
+func (o *PlayersBanVote) doBeforeUpdateHooks(exec boil.Executor) (err error) {
+	for _, hook := range playersBanVoteBeforeUpdateHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -214,8 +214,8 @@ func (o *PlayerVote) doBeforeUpdateHooks(exec boil.Executor) (err error) {
 }
 
 // doAfterUpdateHooks executes all "after Update" hooks.
-func (o *PlayerVote) doAfterUpdateHooks(exec boil.Executor) (err error) {
-	for _, hook := range playerVoteAfterUpdateHooks {
+func (o *PlayersBanVote) doAfterUpdateHooks(exec boil.Executor) (err error) {
+	for _, hook := range playersBanVoteAfterUpdateHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -225,8 +225,8 @@ func (o *PlayerVote) doAfterUpdateHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeDeleteHooks executes all "before Delete" hooks.
-func (o *PlayerVote) doBeforeDeleteHooks(exec boil.Executor) (err error) {
-	for _, hook := range playerVoteBeforeDeleteHooks {
+func (o *PlayersBanVote) doBeforeDeleteHooks(exec boil.Executor) (err error) {
+	for _, hook := range playersBanVoteBeforeDeleteHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -236,8 +236,8 @@ func (o *PlayerVote) doBeforeDeleteHooks(exec boil.Executor) (err error) {
 }
 
 // doAfterDeleteHooks executes all "after Delete" hooks.
-func (o *PlayerVote) doAfterDeleteHooks(exec boil.Executor) (err error) {
-	for _, hook := range playerVoteAfterDeleteHooks {
+func (o *PlayersBanVote) doAfterDeleteHooks(exec boil.Executor) (err error) {
+	for _, hook := range playersBanVoteAfterDeleteHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -247,8 +247,8 @@ func (o *PlayerVote) doAfterDeleteHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeUpsertHooks executes all "before Upsert" hooks.
-func (o *PlayerVote) doBeforeUpsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range playerVoteBeforeUpsertHooks {
+func (o *PlayersBanVote) doBeforeUpsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range playersBanVoteBeforeUpsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -258,8 +258,8 @@ func (o *PlayerVote) doBeforeUpsertHooks(exec boil.Executor) (err error) {
 }
 
 // doAfterUpsertHooks executes all "after Upsert" hooks.
-func (o *PlayerVote) doAfterUpsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range playerVoteAfterUpsertHooks {
+func (o *PlayersBanVote) doAfterUpsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range playersBanVoteAfterUpsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -268,33 +268,33 @@ func (o *PlayerVote) doAfterUpsertHooks(exec boil.Executor) (err error) {
 	return nil
 }
 
-// AddPlayerVoteHook registers your hook function for all future operations.
-func AddPlayerVoteHook(hookPoint boil.HookPoint, playerVoteHook PlayerVoteHook) {
+// AddPlayersBanVoteHook registers your hook function for all future operations.
+func AddPlayersBanVoteHook(hookPoint boil.HookPoint, playersBanVoteHook PlayersBanVoteHook) {
 	switch hookPoint {
 	case boil.AfterSelectHook:
-		playerVoteAfterSelectHooks = append(playerVoteAfterSelectHooks, playerVoteHook)
+		playersBanVoteAfterSelectHooks = append(playersBanVoteAfterSelectHooks, playersBanVoteHook)
 	case boil.BeforeInsertHook:
-		playerVoteBeforeInsertHooks = append(playerVoteBeforeInsertHooks, playerVoteHook)
+		playersBanVoteBeforeInsertHooks = append(playersBanVoteBeforeInsertHooks, playersBanVoteHook)
 	case boil.AfterInsertHook:
-		playerVoteAfterInsertHooks = append(playerVoteAfterInsertHooks, playerVoteHook)
+		playersBanVoteAfterInsertHooks = append(playersBanVoteAfterInsertHooks, playersBanVoteHook)
 	case boil.BeforeUpdateHook:
-		playerVoteBeforeUpdateHooks = append(playerVoteBeforeUpdateHooks, playerVoteHook)
+		playersBanVoteBeforeUpdateHooks = append(playersBanVoteBeforeUpdateHooks, playersBanVoteHook)
 	case boil.AfterUpdateHook:
-		playerVoteAfterUpdateHooks = append(playerVoteAfterUpdateHooks, playerVoteHook)
+		playersBanVoteAfterUpdateHooks = append(playersBanVoteAfterUpdateHooks, playersBanVoteHook)
 	case boil.BeforeDeleteHook:
-		playerVoteBeforeDeleteHooks = append(playerVoteBeforeDeleteHooks, playerVoteHook)
+		playersBanVoteBeforeDeleteHooks = append(playersBanVoteBeforeDeleteHooks, playersBanVoteHook)
 	case boil.AfterDeleteHook:
-		playerVoteAfterDeleteHooks = append(playerVoteAfterDeleteHooks, playerVoteHook)
+		playersBanVoteAfterDeleteHooks = append(playersBanVoteAfterDeleteHooks, playersBanVoteHook)
 	case boil.BeforeUpsertHook:
-		playerVoteBeforeUpsertHooks = append(playerVoteBeforeUpsertHooks, playerVoteHook)
+		playersBanVoteBeforeUpsertHooks = append(playersBanVoteBeforeUpsertHooks, playersBanVoteHook)
 	case boil.AfterUpsertHook:
-		playerVoteAfterUpsertHooks = append(playerVoteAfterUpsertHooks, playerVoteHook)
+		playersBanVoteAfterUpsertHooks = append(playersBanVoteAfterUpsertHooks, playersBanVoteHook)
 	}
 }
 
-// One returns a single playerVote record from the query.
-func (q playerVoteQuery) One(exec boil.Executor) (*PlayerVote, error) {
-	o := &PlayerVote{}
+// One returns a single playersBanVote record from the query.
+func (q playersBanVoteQuery) One(exec boil.Executor) (*PlayersBanVote, error) {
+	o := &PlayersBanVote{}
 
 	queries.SetLimit(q.Query, 1)
 
@@ -303,7 +303,7 @@ func (q playerVoteQuery) One(exec boil.Executor) (*PlayerVote, error) {
 		if errors.Cause(err) == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		return nil, errors.Wrap(err, "boiler: failed to execute a one query for player_votes")
+		return nil, errors.Wrap(err, "boiler: failed to execute a one query for players_ban_votes")
 	}
 
 	if err := o.doAfterSelectHooks(exec); err != nil {
@@ -313,16 +313,16 @@ func (q playerVoteQuery) One(exec boil.Executor) (*PlayerVote, error) {
 	return o, nil
 }
 
-// All returns all PlayerVote records from the query.
-func (q playerVoteQuery) All(exec boil.Executor) (PlayerVoteSlice, error) {
-	var o []*PlayerVote
+// All returns all PlayersBanVote records from the query.
+func (q playersBanVoteQuery) All(exec boil.Executor) (PlayersBanVoteSlice, error) {
+	var o []*PlayersBanVote
 
 	err := q.Bind(nil, exec, &o)
 	if err != nil {
-		return nil, errors.Wrap(err, "boiler: failed to assign all query results to PlayerVote slice")
+		return nil, errors.Wrap(err, "boiler: failed to assign all query results to PlayersBanVote slice")
 	}
 
-	if len(playerVoteAfterSelectHooks) != 0 {
+	if len(playersBanVoteAfterSelectHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doAfterSelectHooks(exec); err != nil {
 				return o, err
@@ -333,8 +333,8 @@ func (q playerVoteQuery) All(exec boil.Executor) (PlayerVoteSlice, error) {
 	return o, nil
 }
 
-// Count returns the count of all PlayerVote records in the query.
-func (q playerVoteQuery) Count(exec boil.Executor) (int64, error) {
+// Count returns the count of all PlayersBanVote records in the query.
+func (q playersBanVoteQuery) Count(exec boil.Executor) (int64, error) {
 	var count int64
 
 	queries.SetSelect(q.Query, nil)
@@ -342,14 +342,14 @@ func (q playerVoteQuery) Count(exec boil.Executor) (int64, error) {
 
 	err := q.Query.QueryRow(exec).Scan(&count)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to count player_votes rows")
+		return 0, errors.Wrap(err, "boiler: failed to count players_ban_votes rows")
 	}
 
 	return count, nil
 }
 
 // Exists checks if the row exists in the table.
-func (q playerVoteQuery) Exists(exec boil.Executor) (bool, error) {
+func (q playersBanVoteQuery) Exists(exec boil.Executor) (bool, error) {
 	var count int64
 
 	queries.SetSelect(q.Query, nil)
@@ -358,14 +358,14 @@ func (q playerVoteQuery) Exists(exec boil.Executor) (bool, error) {
 
 	err := q.Query.QueryRow(exec).Scan(&count)
 	if err != nil {
-		return false, errors.Wrap(err, "boiler: failed to check if player_votes exists")
+		return false, errors.Wrap(err, "boiler: failed to check if players_ban_votes exists")
 	}
 
 	return count > 0, nil
 }
 
 // BanVote pointed to by the foreign key.
-func (o *PlayerVote) BanVote(mods ...qm.QueryMod) banVoteQuery {
+func (o *PlayersBanVote) BanVote(mods ...qm.QueryMod) banVoteQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.BanVoteID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -380,7 +380,7 @@ func (o *PlayerVote) BanVote(mods ...qm.QueryMod) banVoteQuery {
 }
 
 // Player pointed to by the foreign key.
-func (o *PlayerVote) Player(mods ...qm.QueryMod) playerQuery {
+func (o *PlayersBanVote) Player(mods ...qm.QueryMod) playerQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.PlayerID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -396,20 +396,20 @@ func (o *PlayerVote) Player(mods ...qm.QueryMod) playerQuery {
 
 // LoadBanVote allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (playerVoteL) LoadBanVote(e boil.Executor, singular bool, maybePlayerVote interface{}, mods queries.Applicator) error {
-	var slice []*PlayerVote
-	var object *PlayerVote
+func (playersBanVoteL) LoadBanVote(e boil.Executor, singular bool, maybePlayersBanVote interface{}, mods queries.Applicator) error {
+	var slice []*PlayersBanVote
+	var object *PlayersBanVote
 
 	if singular {
-		object = maybePlayerVote.(*PlayerVote)
+		object = maybePlayersBanVote.(*PlayersBanVote)
 	} else {
-		slice = *maybePlayerVote.(*[]*PlayerVote)
+		slice = *maybePlayersBanVote.(*[]*PlayersBanVote)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &playerVoteR{}
+			object.R = &playersBanVoteR{}
 		}
 		args = append(args, object.BanVoteID)
 
@@ -417,7 +417,7 @@ func (playerVoteL) LoadBanVote(e boil.Executor, singular bool, maybePlayerVote i
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &playerVoteR{}
+				obj.R = &playersBanVoteR{}
 			}
 
 			for _, a := range args {
@@ -461,7 +461,7 @@ func (playerVoteL) LoadBanVote(e boil.Executor, singular bool, maybePlayerVote i
 		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for ban_votes")
 	}
 
-	if len(playerVoteAfterSelectHooks) != 0 {
+	if len(playersBanVoteAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -479,7 +479,7 @@ func (playerVoteL) LoadBanVote(e boil.Executor, singular bool, maybePlayerVote i
 		if foreign.R == nil {
 			foreign.R = &banVoteR{}
 		}
-		foreign.R.PlayerVotes = append(foreign.R.PlayerVotes, object)
+		foreign.R.PlayersBanVotes = append(foreign.R.PlayersBanVotes, object)
 		return nil
 	}
 
@@ -490,7 +490,7 @@ func (playerVoteL) LoadBanVote(e boil.Executor, singular bool, maybePlayerVote i
 				if foreign.R == nil {
 					foreign.R = &banVoteR{}
 				}
-				foreign.R.PlayerVotes = append(foreign.R.PlayerVotes, local)
+				foreign.R.PlayersBanVotes = append(foreign.R.PlayersBanVotes, local)
 				break
 			}
 		}
@@ -501,20 +501,20 @@ func (playerVoteL) LoadBanVote(e boil.Executor, singular bool, maybePlayerVote i
 
 // LoadPlayer allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (playerVoteL) LoadPlayer(e boil.Executor, singular bool, maybePlayerVote interface{}, mods queries.Applicator) error {
-	var slice []*PlayerVote
-	var object *PlayerVote
+func (playersBanVoteL) LoadPlayer(e boil.Executor, singular bool, maybePlayersBanVote interface{}, mods queries.Applicator) error {
+	var slice []*PlayersBanVote
+	var object *PlayersBanVote
 
 	if singular {
-		object = maybePlayerVote.(*PlayerVote)
+		object = maybePlayersBanVote.(*PlayersBanVote)
 	} else {
-		slice = *maybePlayerVote.(*[]*PlayerVote)
+		slice = *maybePlayersBanVote.(*[]*PlayersBanVote)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &playerVoteR{}
+			object.R = &playersBanVoteR{}
 		}
 		args = append(args, object.PlayerID)
 
@@ -522,7 +522,7 @@ func (playerVoteL) LoadPlayer(e boil.Executor, singular bool, maybePlayerVote in
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &playerVoteR{}
+				obj.R = &playersBanVoteR{}
 			}
 
 			for _, a := range args {
@@ -566,7 +566,7 @@ func (playerVoteL) LoadPlayer(e boil.Executor, singular bool, maybePlayerVote in
 		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players")
 	}
 
-	if len(playerVoteAfterSelectHooks) != 0 {
+	if len(playersBanVoteAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -584,7 +584,7 @@ func (playerVoteL) LoadPlayer(e boil.Executor, singular bool, maybePlayerVote in
 		if foreign.R == nil {
 			foreign.R = &playerR{}
 		}
-		foreign.R.PlayerVotes = append(foreign.R.PlayerVotes, object)
+		foreign.R.PlayersBanVotes = append(foreign.R.PlayersBanVotes, object)
 		return nil
 	}
 
@@ -595,7 +595,7 @@ func (playerVoteL) LoadPlayer(e boil.Executor, singular bool, maybePlayerVote in
 				if foreign.R == nil {
 					foreign.R = &playerR{}
 				}
-				foreign.R.PlayerVotes = append(foreign.R.PlayerVotes, local)
+				foreign.R.PlayersBanVotes = append(foreign.R.PlayersBanVotes, local)
 				break
 			}
 		}
@@ -604,10 +604,10 @@ func (playerVoteL) LoadPlayer(e boil.Executor, singular bool, maybePlayerVote in
 	return nil
 }
 
-// SetBanVote of the playerVote to the related item.
+// SetBanVote of the playersBanVote to the related item.
 // Sets o.R.BanVote to related.
-// Adds o to related.R.PlayerVotes.
-func (o *PlayerVote) SetBanVote(exec boil.Executor, insert bool, related *BanVote) error {
+// Adds o to related.R.PlayersBanVotes.
+func (o *PlayersBanVote) SetBanVote(exec boil.Executor, insert bool, related *BanVote) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -616,9 +616,9 @@ func (o *PlayerVote) SetBanVote(exec boil.Executor, insert bool, related *BanVot
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"player_votes\" SET %s WHERE %s",
+		"UPDATE \"players_ban_votes\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"ban_vote_id"}),
-		strmangle.WhereClause("\"", "\"", 2, playerVotePrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, playersBanVotePrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
 
@@ -632,7 +632,7 @@ func (o *PlayerVote) SetBanVote(exec boil.Executor, insert bool, related *BanVot
 
 	o.BanVoteID = related.ID
 	if o.R == nil {
-		o.R = &playerVoteR{
+		o.R = &playersBanVoteR{
 			BanVote: related,
 		}
 	} else {
@@ -641,19 +641,19 @@ func (o *PlayerVote) SetBanVote(exec boil.Executor, insert bool, related *BanVot
 
 	if related.R == nil {
 		related.R = &banVoteR{
-			PlayerVotes: PlayerVoteSlice{o},
+			PlayersBanVotes: PlayersBanVoteSlice{o},
 		}
 	} else {
-		related.R.PlayerVotes = append(related.R.PlayerVotes, o)
+		related.R.PlayersBanVotes = append(related.R.PlayersBanVotes, o)
 	}
 
 	return nil
 }
 
-// SetPlayer of the playerVote to the related item.
+// SetPlayer of the playersBanVote to the related item.
 // Sets o.R.Player to related.
-// Adds o to related.R.PlayerVotes.
-func (o *PlayerVote) SetPlayer(exec boil.Executor, insert bool, related *Player) error {
+// Adds o to related.R.PlayersBanVotes.
+func (o *PlayersBanVote) SetPlayer(exec boil.Executor, insert bool, related *Player) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -662,9 +662,9 @@ func (o *PlayerVote) SetPlayer(exec boil.Executor, insert bool, related *Player)
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"player_votes\" SET %s WHERE %s",
+		"UPDATE \"players_ban_votes\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"player_id"}),
-		strmangle.WhereClause("\"", "\"", 2, playerVotePrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, playersBanVotePrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
 
@@ -678,7 +678,7 @@ func (o *PlayerVote) SetPlayer(exec boil.Executor, insert bool, related *Player)
 
 	o.PlayerID = related.ID
 	if o.R == nil {
-		o.R = &playerVoteR{
+		o.R = &playersBanVoteR{
 			Player: related,
 		}
 	} else {
@@ -687,56 +687,56 @@ func (o *PlayerVote) SetPlayer(exec boil.Executor, insert bool, related *Player)
 
 	if related.R == nil {
 		related.R = &playerR{
-			PlayerVotes: PlayerVoteSlice{o},
+			PlayersBanVotes: PlayersBanVoteSlice{o},
 		}
 	} else {
-		related.R.PlayerVotes = append(related.R.PlayerVotes, o)
+		related.R.PlayersBanVotes = append(related.R.PlayersBanVotes, o)
 	}
 
 	return nil
 }
 
-// PlayerVotes retrieves all the records using an executor.
-func PlayerVotes(mods ...qm.QueryMod) playerVoteQuery {
-	mods = append(mods, qm.From("\"player_votes\""), qmhelper.WhereIsNull("\"player_votes\".\"deleted_at\""))
-	return playerVoteQuery{NewQuery(mods...)}
+// PlayersBanVotes retrieves all the records using an executor.
+func PlayersBanVotes(mods ...qm.QueryMod) playersBanVoteQuery {
+	mods = append(mods, qm.From("\"players_ban_votes\""), qmhelper.WhereIsNull("\"players_ban_votes\".\"deleted_at\""))
+	return playersBanVoteQuery{NewQuery(mods...)}
 }
 
-// FindPlayerVote retrieves a single record by ID with an executor.
+// FindPlayersBanVote retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindPlayerVote(exec boil.Executor, iD string, selectCols ...string) (*PlayerVote, error) {
-	playerVoteObj := &PlayerVote{}
+func FindPlayersBanVote(exec boil.Executor, iD string, selectCols ...string) (*PlayersBanVote, error) {
+	playersBanVoteObj := &PlayersBanVote{}
 
 	sel := "*"
 	if len(selectCols) > 0 {
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"player_votes\" where \"id\"=$1 and \"deleted_at\" is null", sel,
+		"select %s from \"players_ban_votes\" where \"id\"=$1 and \"deleted_at\" is null", sel,
 	)
 
 	q := queries.Raw(query, iD)
 
-	err := q.Bind(nil, exec, playerVoteObj)
+	err := q.Bind(nil, exec, playersBanVoteObj)
 	if err != nil {
 		if errors.Cause(err) == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		return nil, errors.Wrap(err, "boiler: unable to select from player_votes")
+		return nil, errors.Wrap(err, "boiler: unable to select from players_ban_votes")
 	}
 
-	if err = playerVoteObj.doAfterSelectHooks(exec); err != nil {
-		return playerVoteObj, err
+	if err = playersBanVoteObj.doAfterSelectHooks(exec); err != nil {
+		return playersBanVoteObj, err
 	}
 
-	return playerVoteObj, nil
+	return playersBanVoteObj, nil
 }
 
 // Insert a single record using an executor.
 // See boil.Columns.InsertColumnSet documentation to understand column list inference for inserts.
-func (o *PlayerVote) Insert(exec boil.Executor, columns boil.Columns) error {
+func (o *PlayersBanVote) Insert(exec boil.Executor, columns boil.Columns) error {
 	if o == nil {
-		return errors.New("boiler: no player_votes provided for insertion")
+		return errors.New("boiler: no players_ban_votes provided for insertion")
 	}
 
 	var err error
@@ -753,33 +753,33 @@ func (o *PlayerVote) Insert(exec boil.Executor, columns boil.Columns) error {
 		return err
 	}
 
-	nzDefaults := queries.NonZeroDefaultSet(playerVoteColumnsWithDefault, o)
+	nzDefaults := queries.NonZeroDefaultSet(playersBanVoteColumnsWithDefault, o)
 
 	key := makeCacheKey(columns, nzDefaults)
-	playerVoteInsertCacheMut.RLock()
-	cache, cached := playerVoteInsertCache[key]
-	playerVoteInsertCacheMut.RUnlock()
+	playersBanVoteInsertCacheMut.RLock()
+	cache, cached := playersBanVoteInsertCache[key]
+	playersBanVoteInsertCacheMut.RUnlock()
 
 	if !cached {
 		wl, returnColumns := columns.InsertColumnSet(
-			playerVoteAllColumns,
-			playerVoteColumnsWithDefault,
-			playerVoteColumnsWithoutDefault,
+			playersBanVoteAllColumns,
+			playersBanVoteColumnsWithDefault,
+			playersBanVoteColumnsWithoutDefault,
 			nzDefaults,
 		)
 
-		cache.valueMapping, err = queries.BindMapping(playerVoteType, playerVoteMapping, wl)
+		cache.valueMapping, err = queries.BindMapping(playersBanVoteType, playersBanVoteMapping, wl)
 		if err != nil {
 			return err
 		}
-		cache.retMapping, err = queries.BindMapping(playerVoteType, playerVoteMapping, returnColumns)
+		cache.retMapping, err = queries.BindMapping(playersBanVoteType, playersBanVoteMapping, returnColumns)
 		if err != nil {
 			return err
 		}
 		if len(wl) != 0 {
-			cache.query = fmt.Sprintf("INSERT INTO \"player_votes\" (\"%s\") %%sVALUES (%s)%%s", strings.Join(wl, "\",\""), strmangle.Placeholders(dialect.UseIndexPlaceholders, len(wl), 1, 1))
+			cache.query = fmt.Sprintf("INSERT INTO \"players_ban_votes\" (\"%s\") %%sVALUES (%s)%%s", strings.Join(wl, "\",\""), strmangle.Placeholders(dialect.UseIndexPlaceholders, len(wl), 1, 1))
 		} else {
-			cache.query = "INSERT INTO \"player_votes\" %sDEFAULT VALUES%s"
+			cache.query = "INSERT INTO \"players_ban_votes\" %sDEFAULT VALUES%s"
 		}
 
 		var queryOutput, queryReturning string
@@ -806,22 +806,22 @@ func (o *PlayerVote) Insert(exec boil.Executor, columns boil.Columns) error {
 	}
 
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to insert into player_votes")
+		return errors.Wrap(err, "boiler: unable to insert into players_ban_votes")
 	}
 
 	if !cached {
-		playerVoteInsertCacheMut.Lock()
-		playerVoteInsertCache[key] = cache
-		playerVoteInsertCacheMut.Unlock()
+		playersBanVoteInsertCacheMut.Lock()
+		playersBanVoteInsertCache[key] = cache
+		playersBanVoteInsertCacheMut.Unlock()
 	}
 
 	return o.doAfterInsertHooks(exec)
 }
 
-// Update uses an executor to update the PlayerVote.
+// Update uses an executor to update the PlayersBanVote.
 // See boil.Columns.UpdateColumnSet documentation to understand column list inference for updates.
 // Update does not automatically update the record in case of default values. Use .Reload() to refresh the records.
-func (o *PlayerVote) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
+func (o *PlayersBanVote) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
 	currTime := time.Now().In(boil.GetLocation())
 
 	o.UpdatedAt = currTime
@@ -831,28 +831,28 @@ func (o *PlayerVote) Update(exec boil.Executor, columns boil.Columns) (int64, er
 		return 0, err
 	}
 	key := makeCacheKey(columns, nil)
-	playerVoteUpdateCacheMut.RLock()
-	cache, cached := playerVoteUpdateCache[key]
-	playerVoteUpdateCacheMut.RUnlock()
+	playersBanVoteUpdateCacheMut.RLock()
+	cache, cached := playersBanVoteUpdateCache[key]
+	playersBanVoteUpdateCacheMut.RUnlock()
 
 	if !cached {
 		wl := columns.UpdateColumnSet(
-			playerVoteAllColumns,
-			playerVotePrimaryKeyColumns,
+			playersBanVoteAllColumns,
+			playersBanVotePrimaryKeyColumns,
 		)
 
 		if !columns.IsWhitelist() {
 			wl = strmangle.SetComplement(wl, []string{"created_at"})
 		}
 		if len(wl) == 0 {
-			return 0, errors.New("boiler: unable to update player_votes, could not build whitelist")
+			return 0, errors.New("boiler: unable to update players_ban_votes, could not build whitelist")
 		}
 
-		cache.query = fmt.Sprintf("UPDATE \"player_votes\" SET %s WHERE %s",
+		cache.query = fmt.Sprintf("UPDATE \"players_ban_votes\" SET %s WHERE %s",
 			strmangle.SetParamNames("\"", "\"", 1, wl),
-			strmangle.WhereClause("\"", "\"", len(wl)+1, playerVotePrimaryKeyColumns),
+			strmangle.WhereClause("\"", "\"", len(wl)+1, playersBanVotePrimaryKeyColumns),
 		)
-		cache.valueMapping, err = queries.BindMapping(playerVoteType, playerVoteMapping, append(wl, playerVotePrimaryKeyColumns...))
+		cache.valueMapping, err = queries.BindMapping(playersBanVoteType, playersBanVoteMapping, append(wl, playersBanVotePrimaryKeyColumns...))
 		if err != nil {
 			return 0, err
 		}
@@ -867,42 +867,42 @@ func (o *PlayerVote) Update(exec boil.Executor, columns boil.Columns) (int64, er
 	var result sql.Result
 	result, err = exec.Exec(cache.query, values...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update player_votes row")
+		return 0, errors.Wrap(err, "boiler: unable to update players_ban_votes row")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by update for player_votes")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by update for players_ban_votes")
 	}
 
 	if !cached {
-		playerVoteUpdateCacheMut.Lock()
-		playerVoteUpdateCache[key] = cache
-		playerVoteUpdateCacheMut.Unlock()
+		playersBanVoteUpdateCacheMut.Lock()
+		playersBanVoteUpdateCache[key] = cache
+		playersBanVoteUpdateCacheMut.Unlock()
 	}
 
 	return rowsAff, o.doAfterUpdateHooks(exec)
 }
 
 // UpdateAll updates all rows with the specified column values.
-func (q playerVoteQuery) UpdateAll(exec boil.Executor, cols M) (int64, error) {
+func (q playersBanVoteQuery) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 	queries.SetUpdate(q.Query, cols)
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update all for player_votes")
+		return 0, errors.Wrap(err, "boiler: unable to update all for players_ban_votes")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected for player_votes")
+		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected for players_ban_votes")
 	}
 
 	return rowsAff, nil
 }
 
 // UpdateAll updates all rows with the specified column values, using an executor.
-func (o PlayerVoteSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
+func (o PlayersBanVoteSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 	ln := int64(len(o))
 	if ln == 0 {
 		return 0, nil
@@ -924,13 +924,13 @@ func (o PlayerVoteSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 
 	// Append all of the primary key values for each column
 	for _, obj := range o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), playerVotePrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), playersBanVotePrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := fmt.Sprintf("UPDATE \"player_votes\" SET %s WHERE %s",
+	sql := fmt.Sprintf("UPDATE \"players_ban_votes\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, colNames),
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), len(colNames)+1, playerVotePrimaryKeyColumns, len(o)))
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), len(colNames)+1, playersBanVotePrimaryKeyColumns, len(o)))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -938,21 +938,21 @@ func (o PlayerVoteSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update all in playerVote slice")
+		return 0, errors.Wrap(err, "boiler: unable to update all in playersBanVote slice")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected all in update all playerVote")
+		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected all in update all playersBanVote")
 	}
 	return rowsAff, nil
 }
 
 // Upsert attempts an insert using an executor, and does an update or ignore on conflict.
 // See boil.Columns documentation for how to properly use updateColumns and insertColumns.
-func (o *PlayerVote) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
+func (o *PlayersBanVote) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
 	if o == nil {
-		return errors.New("boiler: no player_votes provided for upsert")
+		return errors.New("boiler: no players_ban_votes provided for upsert")
 	}
 	currTime := time.Now().In(boil.GetLocation())
 
@@ -965,7 +965,7 @@ func (o *PlayerVote) Upsert(exec boil.Executor, updateOnConflict bool, conflictC
 		return err
 	}
 
-	nzDefaults := queries.NonZeroDefaultSet(playerVoteColumnsWithDefault, o)
+	nzDefaults := queries.NonZeroDefaultSet(playersBanVoteColumnsWithDefault, o)
 
 	// Build cache key in-line uglily - mysql vs psql problems
 	buf := strmangle.GetBuffer()
@@ -995,42 +995,42 @@ func (o *PlayerVote) Upsert(exec boil.Executor, updateOnConflict bool, conflictC
 	key := buf.String()
 	strmangle.PutBuffer(buf)
 
-	playerVoteUpsertCacheMut.RLock()
-	cache, cached := playerVoteUpsertCache[key]
-	playerVoteUpsertCacheMut.RUnlock()
+	playersBanVoteUpsertCacheMut.RLock()
+	cache, cached := playersBanVoteUpsertCache[key]
+	playersBanVoteUpsertCacheMut.RUnlock()
 
 	var err error
 
 	if !cached {
 		insert, ret := insertColumns.InsertColumnSet(
-			playerVoteAllColumns,
-			playerVoteColumnsWithDefault,
-			playerVoteColumnsWithoutDefault,
+			playersBanVoteAllColumns,
+			playersBanVoteColumnsWithDefault,
+			playersBanVoteColumnsWithoutDefault,
 			nzDefaults,
 		)
 
 		update := updateColumns.UpdateColumnSet(
-			playerVoteAllColumns,
-			playerVotePrimaryKeyColumns,
+			playersBanVoteAllColumns,
+			playersBanVotePrimaryKeyColumns,
 		)
 
 		if updateOnConflict && len(update) == 0 {
-			return errors.New("boiler: unable to upsert player_votes, could not build update column list")
+			return errors.New("boiler: unable to upsert players_ban_votes, could not build update column list")
 		}
 
 		conflict := conflictColumns
 		if len(conflict) == 0 {
-			conflict = make([]string, len(playerVotePrimaryKeyColumns))
-			copy(conflict, playerVotePrimaryKeyColumns)
+			conflict = make([]string, len(playersBanVotePrimaryKeyColumns))
+			copy(conflict, playersBanVotePrimaryKeyColumns)
 		}
-		cache.query = buildUpsertQueryPostgres(dialect, "\"player_votes\"", updateOnConflict, ret, update, conflict, insert)
+		cache.query = buildUpsertQueryPostgres(dialect, "\"players_ban_votes\"", updateOnConflict, ret, update, conflict, insert)
 
-		cache.valueMapping, err = queries.BindMapping(playerVoteType, playerVoteMapping, insert)
+		cache.valueMapping, err = queries.BindMapping(playersBanVoteType, playersBanVoteMapping, insert)
 		if err != nil {
 			return err
 		}
 		if len(ret) != 0 {
-			cache.retMapping, err = queries.BindMapping(playerVoteType, playerVoteMapping, ret)
+			cache.retMapping, err = queries.BindMapping(playersBanVoteType, playersBanVoteMapping, ret)
 			if err != nil {
 				return err
 			}
@@ -1057,23 +1057,23 @@ func (o *PlayerVote) Upsert(exec boil.Executor, updateOnConflict bool, conflictC
 		_, err = exec.Exec(cache.query, vals...)
 	}
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to upsert player_votes")
+		return errors.Wrap(err, "boiler: unable to upsert players_ban_votes")
 	}
 
 	if !cached {
-		playerVoteUpsertCacheMut.Lock()
-		playerVoteUpsertCache[key] = cache
-		playerVoteUpsertCacheMut.Unlock()
+		playersBanVoteUpsertCacheMut.Lock()
+		playersBanVoteUpsertCache[key] = cache
+		playersBanVoteUpsertCacheMut.Unlock()
 	}
 
 	return o.doAfterUpsertHooks(exec)
 }
 
-// Delete deletes a single PlayerVote record with an executor.
+// Delete deletes a single PlayersBanVote record with an executor.
 // Delete will match against the primary key column to find the record to delete.
-func (o *PlayerVote) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
+func (o *PlayersBanVote) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
 	if o == nil {
-		return 0, errors.New("boiler: no PlayerVote provided for delete")
+		return 0, errors.New("boiler: no PlayersBanVote provided for delete")
 	}
 
 	if err := o.doBeforeDeleteHooks(exec); err != nil {
@@ -1085,16 +1085,16 @@ func (o *PlayerVote) Delete(exec boil.Executor, hardDelete bool) (int64, error) 
 		args []interface{}
 	)
 	if hardDelete {
-		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), playerVotePrimaryKeyMapping)
-		sql = "DELETE FROM \"player_votes\" WHERE \"id\"=$1"
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), playersBanVotePrimaryKeyMapping)
+		sql = "DELETE FROM \"players_ban_votes\" WHERE \"id\"=$1"
 	} else {
 		currTime := time.Now().In(boil.GetLocation())
 		o.DeletedAt = null.TimeFrom(currTime)
 		wl := []string{"deleted_at"}
-		sql = fmt.Sprintf("UPDATE \"player_votes\" SET %s WHERE \"id\"=$2",
+		sql = fmt.Sprintf("UPDATE \"players_ban_votes\" SET %s WHERE \"id\"=$2",
 			strmangle.SetParamNames("\"", "\"", 1, wl),
 		)
-		valueMapping, err := queries.BindMapping(playerVoteType, playerVoteMapping, append(wl, playerVotePrimaryKeyColumns...))
+		valueMapping, err := queries.BindMapping(playersBanVoteType, playersBanVoteMapping, append(wl, playersBanVotePrimaryKeyColumns...))
 		if err != nil {
 			return 0, err
 		}
@@ -1107,12 +1107,12 @@ func (o *PlayerVote) Delete(exec boil.Executor, hardDelete bool) (int64, error) 
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete from player_votes")
+		return 0, errors.Wrap(err, "boiler: unable to delete from players_ban_votes")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by delete for player_votes")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by delete for players_ban_votes")
 	}
 
 	if err := o.doAfterDeleteHooks(exec); err != nil {
@@ -1123,9 +1123,9 @@ func (o *PlayerVote) Delete(exec boil.Executor, hardDelete bool) (int64, error) 
 }
 
 // DeleteAll deletes all matching rows.
-func (q playerVoteQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
+func (q playersBanVoteQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if q.Query == nil {
-		return 0, errors.New("boiler: no playerVoteQuery provided for delete all")
+		return 0, errors.New("boiler: no playersBanVoteQuery provided for delete all")
 	}
 
 	if hardDelete {
@@ -1137,24 +1137,24 @@ func (q playerVoteQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, 
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete all from player_votes")
+		return 0, errors.Wrap(err, "boiler: unable to delete all from players_ban_votes")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for player_votes")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for players_ban_votes")
 	}
 
 	return rowsAff, nil
 }
 
 // DeleteAll deletes all rows in the slice, using an executor.
-func (o PlayerVoteSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
+func (o PlayersBanVoteSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if len(o) == 0 {
 		return 0, nil
 	}
 
-	if len(playerVoteBeforeDeleteHooks) != 0 {
+	if len(playersBanVoteBeforeDeleteHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doBeforeDeleteHooks(exec); err != nil {
 				return 0, err
@@ -1168,21 +1168,21 @@ func (o PlayerVoteSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, 
 	)
 	if hardDelete {
 		for _, obj := range o {
-			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), playerVotePrimaryKeyMapping)
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), playersBanVotePrimaryKeyMapping)
 			args = append(args, pkeyArgs...)
 		}
-		sql = "DELETE FROM \"player_votes\" WHERE " +
-			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, playerVotePrimaryKeyColumns, len(o))
+		sql = "DELETE FROM \"players_ban_votes\" WHERE " +
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, playersBanVotePrimaryKeyColumns, len(o))
 	} else {
 		currTime := time.Now().In(boil.GetLocation())
 		for _, obj := range o {
-			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), playerVotePrimaryKeyMapping)
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), playersBanVotePrimaryKeyMapping)
 			args = append(args, pkeyArgs...)
 			obj.DeletedAt = null.TimeFrom(currTime)
 		}
 		wl := []string{"deleted_at"}
-		sql = fmt.Sprintf("UPDATE \"player_votes\" SET %s WHERE "+
-			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, playerVotePrimaryKeyColumns, len(o)),
+		sql = fmt.Sprintf("UPDATE \"players_ban_votes\" SET %s WHERE "+
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, playersBanVotePrimaryKeyColumns, len(o)),
 			strmangle.SetParamNames("\"", "\"", 1, wl),
 		)
 		args = append([]interface{}{currTime}, args...)
@@ -1194,15 +1194,15 @@ func (o PlayerVoteSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, 
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete all from playerVote slice")
+		return 0, errors.Wrap(err, "boiler: unable to delete all from playersBanVote slice")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for player_votes")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for players_ban_votes")
 	}
 
-	if len(playerVoteAfterDeleteHooks) != 0 {
+	if len(playersBanVoteAfterDeleteHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doAfterDeleteHooks(exec); err != nil {
 				return 0, err
@@ -1215,8 +1215,8 @@ func (o PlayerVoteSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, 
 
 // Reload refetches the object from the database
 // using the primary keys with an executor.
-func (o *PlayerVote) Reload(exec boil.Executor) error {
-	ret, err := FindPlayerVote(exec, o.ID)
+func (o *PlayersBanVote) Reload(exec boil.Executor) error {
+	ret, err := FindPlayersBanVote(exec, o.ID)
 	if err != nil {
 		return err
 	}
@@ -1227,27 +1227,27 @@ func (o *PlayerVote) Reload(exec boil.Executor) error {
 
 // ReloadAll refetches every row with matching primary key column values
 // and overwrites the original object slice with the newly updated slice.
-func (o *PlayerVoteSlice) ReloadAll(exec boil.Executor) error {
+func (o *PlayersBanVoteSlice) ReloadAll(exec boil.Executor) error {
 	if o == nil || len(*o) == 0 {
 		return nil
 	}
 
-	slice := PlayerVoteSlice{}
+	slice := PlayersBanVoteSlice{}
 	var args []interface{}
 	for _, obj := range *o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), playerVotePrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), playersBanVotePrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := "SELECT \"player_votes\".* FROM \"player_votes\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, playerVotePrimaryKeyColumns, len(*o)) +
+	sql := "SELECT \"players_ban_votes\".* FROM \"players_ban_votes\" WHERE " +
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, playersBanVotePrimaryKeyColumns, len(*o)) +
 		"and \"deleted_at\" is null"
 
 	q := queries.Raw(sql, args...)
 
 	err := q.Bind(nil, exec, &slice)
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to reload all in PlayerVoteSlice")
+		return errors.Wrap(err, "boiler: unable to reload all in PlayersBanVoteSlice")
 	}
 
 	*o = slice
@@ -1255,10 +1255,10 @@ func (o *PlayerVoteSlice) ReloadAll(exec boil.Executor) error {
 	return nil
 }
 
-// PlayerVoteExists checks if the PlayerVote row exists.
-func PlayerVoteExists(exec boil.Executor, iD string) (bool, error) {
+// PlayersBanVoteExists checks if the PlayersBanVote row exists.
+func PlayersBanVoteExists(exec boil.Executor, iD string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"player_votes\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
+	sql := "select exists(select 1 from \"players_ban_votes\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1268,7 +1268,7 @@ func PlayerVoteExists(exec boil.Executor, iD string) (bool, error) {
 
 	err := row.Scan(&exists)
 	if err != nil {
-		return false, errors.Wrap(err, "boiler: unable to check if player_votes exists")
+		return false, errors.Wrap(err, "boiler: unable to check if players_ban_votes exists")
 	}
 
 	return exists, nil

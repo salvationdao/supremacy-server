@@ -1,6 +1,20 @@
-CREATE TABLE ban_votes(
+CREATE TABLE punish_options (
     id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
-    type TEXT NOT NULL,
+    description TEXT NOT NULL,
+    key TEXT NOT NULL UNIQUE,
+    punish_duration_hours INT NOT NULL DEFAULT 24,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    deleted_at TIMESTAMPTZ
+);
+
+INSERT INTO punish_options (description, key, punish_duration_hours) VALUES
+('Limit player to select location for 24 hours', 'limit_location_select', 24);
+
+
+CREATE TABLE punish_votes(
+    id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
+    punish_type_id UUID NOT NULL REFERENCES punish_types (id),
     reason TEXT NOT NULL,
     faction_id UUID NOT NULL REFERENCES factions(id),
     issued_by_id UUID NOT NULL REFERENCES players(id),
@@ -15,9 +29,9 @@ CREATE TABLE ban_votes(
     deleted_at TIMESTAMPTZ
 );
 
-CREATE TABLE player_votes(
+CREATE TABLE players_punish_votes(
     id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
-    ban_vote_id UUID NOT NULL REFERENCES ban_votes (id),
+    punish_vote_id UUID NOT NULL REFERENCES punish_votes (id),
     player_id UUID NOT NULL REFERENCES players (id),
     is_agreed BOOLEAN NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -27,14 +41,15 @@ CREATE TABLE player_votes(
 
 -- both cost will reduce half every day 00:00 am
 ALTER TABLE players
-    ADD COLUMN IF NOT EXISTS issue_ban_fee DECIMAL NOT NULL DEFAULT 10, -- double up if anytime a player issue a ban vote
+    ADD COLUMN IF NOT EXISTS issue_punish_fee DECIMAL NOT NULL DEFAULT 10, -- double up if anytime a player issue a punish vote
     ADD COLUMN IF NOT EXISTS reported_cost DECIMAL NOT NULL DEFAULT 10; -- double up if anytime a player is reported by the result failed
 
-CREATE TABLE banned_players(
+CREATE TABLE punished_players(
     id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
     player_id UUID NOT NULL REFERENCES players (id),
-    ban_type TEXT NOT NULL,
-    ban_until TIMESTAMPTZ NOT NULL,
+    punish_type_id UUID NOT NULL REFERENCES punish_types (id),
+    punish_until TIMESTAMPTZ NOT NULL,
+    related_punish_vote_id UUID REFERENCES punish_votes(id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted_at TIMESTAMPTZ
