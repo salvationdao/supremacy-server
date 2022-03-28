@@ -23,79 +23,86 @@ import (
 
 // TelegramNotification is an object representing the database table.
 type TelegramNotification struct {
-	ID         string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	PlayerID   string    `boiler:"player_id" boil:"player_id" json:"player_id" toml:"player_id" yaml:"player_id"`
-	MechID     string    `boiler:"mech_id" boil:"mech_id" json:"mech_id" toml:"mech_id" yaml:"mech_id"`
-	TelegramID null.Int  `boiler:"telegram_id" boil:"telegram_id" json:"telegram_id,omitempty" toml:"telegram_id" yaml:"telegram_id,omitempty"`
-	Registered bool      `boiler:"registered" boil:"registered" json:"registered" toml:"registered" yaml:"registered"`
-	Shortcode  string    `boiler:"shortcode" boil:"shortcode" json:"shortcode" toml:"shortcode" yaml:"shortcode"`
-	CreatedAt  time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	ExpiresAt  null.Time `boiler:"expires_at" boil:"expires_at" json:"expires_at,omitempty" toml:"expires_at" yaml:"expires_at,omitempty"`
+	ID                string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	PlayerID          string    `boiler:"player_id" boil:"player_id" json:"player_id" toml:"player_id" yaml:"player_id"`
+	MechID            string    `boiler:"mech_id" boil:"mech_id" json:"mech_id" toml:"mech_id" yaml:"mech_id"`
+	MechQueuePosition null.Int  `boiler:"mech_queue_position" boil:"mech_queue_position" json:"mech_queue_position,omitempty" toml:"mech_queue_position" yaml:"mech_queue_position,omitempty"`
+	TelegramID        null.Int  `boiler:"telegram_id" boil:"telegram_id" json:"telegram_id,omitempty" toml:"telegram_id" yaml:"telegram_id,omitempty"`
+	Registered        bool      `boiler:"registered" boil:"registered" json:"registered" toml:"registered" yaml:"registered"`
+	Shortcode         string    `boiler:"shortcode" boil:"shortcode" json:"shortcode" toml:"shortcode" yaml:"shortcode"`
+	CreatedAt         time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ExpiresAt         null.Time `boiler:"expires_at" boil:"expires_at" json:"expires_at,omitempty" toml:"expires_at" yaml:"expires_at,omitempty"`
 
 	R *telegramNotificationR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L telegramNotificationL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var TelegramNotificationColumns = struct {
-	ID         string
-	PlayerID   string
-	MechID     string
-	TelegramID string
-	Registered string
-	Shortcode  string
-	CreatedAt  string
-	ExpiresAt  string
+	ID                string
+	PlayerID          string
+	MechID            string
+	MechQueuePosition string
+	TelegramID        string
+	Registered        string
+	Shortcode         string
+	CreatedAt         string
+	ExpiresAt         string
 }{
-	ID:         "id",
-	PlayerID:   "player_id",
-	MechID:     "mech_id",
-	TelegramID: "telegram_id",
-	Registered: "registered",
-	Shortcode:  "shortcode",
-	CreatedAt:  "created_at",
-	ExpiresAt:  "expires_at",
+	ID:                "id",
+	PlayerID:          "player_id",
+	MechID:            "mech_id",
+	MechQueuePosition: "mech_queue_position",
+	TelegramID:        "telegram_id",
+	Registered:        "registered",
+	Shortcode:         "shortcode",
+	CreatedAt:         "created_at",
+	ExpiresAt:         "expires_at",
 }
 
 var TelegramNotificationTableColumns = struct {
-	ID         string
-	PlayerID   string
-	MechID     string
-	TelegramID string
-	Registered string
-	Shortcode  string
-	CreatedAt  string
-	ExpiresAt  string
+	ID                string
+	PlayerID          string
+	MechID            string
+	MechQueuePosition string
+	TelegramID        string
+	Registered        string
+	Shortcode         string
+	CreatedAt         string
+	ExpiresAt         string
 }{
-	ID:         "telegram_notifications.id",
-	PlayerID:   "telegram_notifications.player_id",
-	MechID:     "telegram_notifications.mech_id",
-	TelegramID: "telegram_notifications.telegram_id",
-	Registered: "telegram_notifications.registered",
-	Shortcode:  "telegram_notifications.shortcode",
-	CreatedAt:  "telegram_notifications.created_at",
-	ExpiresAt:  "telegram_notifications.expires_at",
+	ID:                "telegram_notifications.id",
+	PlayerID:          "telegram_notifications.player_id",
+	MechID:            "telegram_notifications.mech_id",
+	MechQueuePosition: "telegram_notifications.mech_queue_position",
+	TelegramID:        "telegram_notifications.telegram_id",
+	Registered:        "telegram_notifications.registered",
+	Shortcode:         "telegram_notifications.shortcode",
+	CreatedAt:         "telegram_notifications.created_at",
+	ExpiresAt:         "telegram_notifications.expires_at",
 }
 
 // Generated where
 
 var TelegramNotificationWhere = struct {
-	ID         whereHelperstring
-	PlayerID   whereHelperstring
-	MechID     whereHelperstring
-	TelegramID whereHelpernull_Int
-	Registered whereHelperbool
-	Shortcode  whereHelperstring
-	CreatedAt  whereHelpertime_Time
-	ExpiresAt  whereHelpernull_Time
+	ID                whereHelperstring
+	PlayerID          whereHelperstring
+	MechID            whereHelperstring
+	MechQueuePosition whereHelpernull_Int
+	TelegramID        whereHelpernull_Int
+	Registered        whereHelperbool
+	Shortcode         whereHelperstring
+	CreatedAt         whereHelpertime_Time
+	ExpiresAt         whereHelpernull_Time
 }{
-	ID:         whereHelperstring{field: "\"telegram_notifications\".\"id\""},
-	PlayerID:   whereHelperstring{field: "\"telegram_notifications\".\"player_id\""},
-	MechID:     whereHelperstring{field: "\"telegram_notifications\".\"mech_id\""},
-	TelegramID: whereHelpernull_Int{field: "\"telegram_notifications\".\"telegram_id\""},
-	Registered: whereHelperbool{field: "\"telegram_notifications\".\"registered\""},
-	Shortcode:  whereHelperstring{field: "\"telegram_notifications\".\"shortcode\""},
-	CreatedAt:  whereHelpertime_Time{field: "\"telegram_notifications\".\"created_at\""},
-	ExpiresAt:  whereHelpernull_Time{field: "\"telegram_notifications\".\"expires_at\""},
+	ID:                whereHelperstring{field: "\"telegram_notifications\".\"id\""},
+	PlayerID:          whereHelperstring{field: "\"telegram_notifications\".\"player_id\""},
+	MechID:            whereHelperstring{field: "\"telegram_notifications\".\"mech_id\""},
+	MechQueuePosition: whereHelpernull_Int{field: "\"telegram_notifications\".\"mech_queue_position\""},
+	TelegramID:        whereHelpernull_Int{field: "\"telegram_notifications\".\"telegram_id\""},
+	Registered:        whereHelperbool{field: "\"telegram_notifications\".\"registered\""},
+	Shortcode:         whereHelperstring{field: "\"telegram_notifications\".\"shortcode\""},
+	CreatedAt:         whereHelpertime_Time{field: "\"telegram_notifications\".\"created_at\""},
+	ExpiresAt:         whereHelpernull_Time{field: "\"telegram_notifications\".\"expires_at\""},
 }
 
 // TelegramNotificationRels is where relationship names are stored.
@@ -122,9 +129,9 @@ func (*telegramNotificationR) NewStruct() *telegramNotificationR {
 type telegramNotificationL struct{}
 
 var (
-	telegramNotificationAllColumns            = []string{"id", "player_id", "mech_id", "telegram_id", "registered", "shortcode", "created_at", "expires_at"}
+	telegramNotificationAllColumns            = []string{"id", "player_id", "mech_id", "mech_queue_position", "telegram_id", "registered", "shortcode", "created_at", "expires_at"}
 	telegramNotificationColumnsWithoutDefault = []string{"player_id", "mech_id", "shortcode"}
-	telegramNotificationColumnsWithDefault    = []string{"id", "telegram_id", "registered", "created_at", "expires_at"}
+	telegramNotificationColumnsWithDefault    = []string{"id", "mech_queue_position", "telegram_id", "registered", "created_at", "expires_at"}
 	telegramNotificationPrimaryKeyColumns     = []string{"id"}
 	telegramNotificationGeneratedColumns      = []string{}
 )
