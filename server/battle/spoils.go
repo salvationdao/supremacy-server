@@ -112,7 +112,6 @@ func (sow *SpoilsOfWar) Run() {
 			}
 			gamelog.L.Info().Msgf("spoils system has been cleaned up: %s", sow.battle().ID)
 
-			close(sow.flushCh)
 			sow.storeBattle(nil)
 			sow = nil
 			return
