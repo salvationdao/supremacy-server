@@ -371,6 +371,61 @@ func QueueLength(factionID uuid.UUID) (int64, error) {
 	return count, nil
 }
 
+// QueueOwnerList returns the mech's in queue from an owner.
+func QueueOwnerList(userID uuid.UUID) ([]*MechAndPosition, error) {
+	q := `
+		SELECT q.mech_id, q.position
+		FROM (
+			SELECT _q.mech_id, ROW_NUMBER() OVER(ORDER BY _q.queued_at) AS position, _q.owner_id
+			FROM battle_queue _q
+			WHERE _q.faction_id = (
+				SELECT _p.faction_id 
+				FROM players _p
+				WHERE _p.id = $1
+			)
+		) q
+		WHERE q.owner_id = $1`
+	rows, err := gamedb.StdConn.Query(q, userID.String())
+	if err != nil {
+		gamelog.L.Error().
+			Str("user_id", userID.String()).
+			Str("db func", "OueueOwnerList").Err(err).Msg("unable to grab queue status of mechs")
+		return nil, err
+	}
+	defer rows.Close()
+
+	output := []*MechAndPosition{}
+	for rows.Next() {
+		var (
+			mechID   string
+			position int64
+		)
+		err = rows.Scan(&mechID, &position)
+		if err != nil {
+			gamelog.L.Error().
+				Str("user_id", userID.String()).
+				Str("db func", "OueueOwnerList").Err(err).Msg("unable to scan queue status of mech")
+			return nil, err
+		}
+
+		mechUUID, err := uuid.FromString(mechID)
+		if err != nil {
+			gamelog.L.Error().
+				Str("user_id", userID.String()).
+				Str("mech_id", mechID).
+				Str("db func", "OueueOwnerList").Err(err).Msg("unable to parse queue mech id from queue status")
+			return nil, err
+		}
+
+		obj := &MechAndPosition{
+			MechID:        mechUUID,
+			QueuePosition: position,
+		}
+		output = append(output, obj)
+	}
+	return output, nil
+}
+
 // QueuePosition returns the current queue position of the specified mech.
 // QueuePosition returns -1 if the mech is in battle.
 func QueuePosition(mechID uuid.UUID, factionID uuid.UUID) (int64, error) {

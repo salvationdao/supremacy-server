@@ -1,6 +1,5 @@
 ALTER TABLE player_preferences ADD COLUMN notifications_battle_queue_telegram BOOL NOT NULL DEFAULT FALSE;
 
--- battles
 CREATE TABLE telegram_notifications
 (
     id                  UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),

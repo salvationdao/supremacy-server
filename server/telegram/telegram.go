@@ -1,12 +1,15 @@
 package telegram
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
 	"math/rand"
 	"net/http"
 	"net/url"
 	"server/db/boiler"
 	"server/gamedb"
+	"server/gamelog"
 	"strconv"
 	"time"
 
@@ -111,7 +114,10 @@ func genCode() string {
 
 func (t *Telegram) Notify(playerID string, mechID string, message string) error {
 	// get notification
-	notification, err := boiler.TelegramNotifications(boiler.TelegramNotificationWhere.PlayerID.EQ(playerID), boiler.TelegramNotificationWhere.MechID.EQ(mechID)).One(gamedb.StdConn)
+	notification, err := boiler.TelegramNotifications(
+		boiler.TelegramNotificationWhere.PlayerID.EQ(playerID),
+		boiler.TelegramNotificationWhere.MechID.EQ(mechID),
+		boiler.TelegramNotificationWhere.Registered.EQ(true)).One(gamedb.StdConn)
 	if err != nil {
 		// TODO: handle no rows
 		return terror.Error(err)
@@ -156,8 +162,6 @@ func (t *Telegram) List() {
 		fmt.Println("PlayerID: ", l.PlayerID)
 		fmt.Println("Registered: ", l.Registered)
 		fmt.Println("Shortcode: ", l.Shortcode)
-		// fmt.Println("QueuePosition: ", l.QueuePosition)
-
 		fmt.Println("+++++++++++++++++")
 	}
 
@@ -180,6 +184,47 @@ func (t *Telegram) Insert() {
 	}
 
 	fmt.Println("code here", notification.Shortcode)
+
+}
+
+func (t *Telegram) NotificationCreate(playerID string, mechID string) (*boiler.TelegramNotification, error) {
+	expiry := time.Now().Add(time.Minute * 3)
+
+	code := genCode()
+	codeExists := true
+
+	if codeExists {
+		// check if code already exists
+		exists, err := boiler.TelegramNotifications(boiler.TelegramNotificationWhere.Shortcode.EQ(code)).One(gamedb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return nil, terror.Error(err, "Unable to get telegram notifications")
+		}
+
+		if exists == nil {
+			codeExists = false
+		} else {
+			// if code already exist generate new one
+			code = genCode()
+		}
+	}
+
+	notification := &boiler.TelegramNotification{
+		PlayerID:  playerID,
+		MechID:    mechID,
+		Shortcode: code,
+		ExpiresAt: null.TimeFrom(expiry),
+	}
+
+	err := notification.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().
+			Str("mechID", mechID).
+			Str("playerID", playerID).
+			Err(err).Msg("unable to create telegram notification")
+		return nil, terror.Error(err, "Unable to create telegram notification")
+	}
+
+	return notification, nil
 
 }
 

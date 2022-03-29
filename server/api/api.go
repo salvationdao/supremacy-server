@@ -72,18 +72,17 @@ type API struct {
 	ctx    context.Context
 	server *http.Server
 	*auth.Auth
-	Log           *zerolog.Logger
-	Routes        chi.Router
-	Addr          string
-	BattleArena   *battle.Arena
-	HTMLSanitize  *bluemonday.Policy
-	Hub           *hub.Hub
-	Conn          *pgxpool.Pool
-	MessageBus    *messagebus.MessageBus
-	NetMessageBus *messagebus.NetBus
-	Passport      *rpcclient.PassportXrpcClient
-	SMS           server.SMS
-	Telegram      server.Telegram
+	Log          *zerolog.Logger
+	Routes       chi.Router
+	Addr         string
+	BattleArena  *battle.Arena
+	HTMLSanitize *bluemonday.Policy
+	Hub          *hub.Hub
+	Conn         *pgxpool.Pool
+	MessageBus   *messagebus.MessageBus
+	Passport     *rpcclient.PassportXrpcClient
+	SMS          server.SMS
+	Telegram     server.Telegram
 
 	// ring check auth
 	RingCheckAuthMap *RingCheckAuthMap
@@ -100,7 +99,6 @@ func NewAPI(
 	conn *pgxpool.Pool,
 	config *server.Config,
 	messageBus *messagebus.MessageBus,
-	netMessageBus *messagebus.NetBus,
 	gsHub *hub.Hub,
 	sms server.SMS,
 	telegram server.Telegram,
@@ -114,7 +112,6 @@ func NewAPI(
 		Passport:         pp,
 		Addr:             addr,
 		MessageBus:       messageBus,
-		NetMessageBus:    netMessageBus,
 		HTMLSanitize:     HTMLSanitize,
 		BattleArena:      battleArenaClient,
 		Conn:             conn,
@@ -124,7 +121,7 @@ func NewAPI(
 		Telegram:         telegram,
 	}
 
-	battleArenaClient.SetMessageBus(messageBus, netMessageBus)
+	battleArenaClient.SetMessageBus(messageBus)
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
@@ -163,7 +160,6 @@ func NewAPI(
 
 		r.Get("/notifs", api.getNotifs)
 		r.Get("/add_notifs", api.addNotifs)
-		r.Get("/gen_code", api.genCode)
 		r.Get("/notify", api.Notify)
 
 		r.Post("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.GlobalAnnouncementSend)))
@@ -337,10 +333,6 @@ func (a *API) insertNotifs(w http.ResponseWriter, r *http.Request) {
 
 func (a *API) addNotifs(w http.ResponseWriter, r *http.Request) {
 	a.Telegram.Insert()
-}
-
-func (a *API) genCode(w http.ResponseWriter, r *http.Request) {
-	a.Telegram.GenCode()
 }
 
 func (a *API) Notify(w http.ResponseWriter, r *http.Request) {

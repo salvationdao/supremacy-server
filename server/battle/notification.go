@@ -139,7 +139,7 @@ func (arena *Arena) GameNotificationSubscribeHandler(ctx context.Context, wsc *h
 
 // BroadcastGameNotificationText broadcast game notification to client
 func (arena *Arena) BroadcastGameNotificationText(data string) {
-	arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyGameNotification), &GameNotification{
+	arena.messageBus.Send(messagebus.BusKey(HubKeyGameNotification), &GameNotification{
 		Type: GameNotificationTypeText,
 		Data: data,
 	})
@@ -147,7 +147,7 @@ func (arena *Arena) BroadcastGameNotificationText(data string) {
 
 // BroadcastGameNotificationLocationSelect broadcast game notification to client
 func (arena *Arena) BroadcastGameNotificationLocationSelect(data *GameNotificationLocationSelect) {
-	arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyGameNotification), &GameNotification{
+	arena.messageBus.Send(messagebus.BusKey(HubKeyGameNotification), &GameNotification{
 		Type: GameNotificationTypeLocationSelect,
 		Data: data,
 	})
@@ -155,7 +155,7 @@ func (arena *Arena) BroadcastGameNotificationLocationSelect(data *GameNotificati
 
 // BroadcastGameNotificationAbility broadcast game notification to client
 func (arena *Arena) BroadcastGameNotificationAbility(notificationType GameNotificationType, data GameNotificationAbility) {
-	arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyGameNotification), &GameNotification{
+	arena.messageBus.Send(messagebus.BusKey(HubKeyGameNotification), &GameNotification{
 		Type: notificationType,
 		Data: data,
 	})
@@ -163,7 +163,7 @@ func (arena *Arena) BroadcastGameNotificationAbility(notificationType GameNotifi
 
 // BroadcastGameNotificationWarMachineAbility broadcast game notification to client
 func (arena *Arena) BroadcastGameNotificationWarMachineAbility(data *GameNotificationWarMachineAbility) {
-	arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyGameNotification), &GameNotification{
+	arena.messageBus.Send(messagebus.BusKey(HubKeyGameNotification), &GameNotification{
 		Type: GameNotificationTypeWarMachineAbility,
 		Data: data,
 	})
@@ -171,7 +171,7 @@ func (arena *Arena) BroadcastGameNotificationWarMachineAbility(data *GameNotific
 
 // BroadcastGameNotificationWarMachineDestroyed broadcast game notification to client
 func (arena *Arena) BroadcastGameNotificationWarMachineDestroyed(data *WarMachineDestroyedEventRecord) {
-	arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyGameNotification), &GameNotification{
+	arena.messageBus.Send(messagebus.BusKey(HubKeyGameNotification), &GameNotification{
 		Type: GameNotificationTypeWarMachineDestroyed,
 		Data: data,
 	})
@@ -228,7 +228,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 		}
 
 		if player.R.PlayerPreference.NotificationsBattleQueueBrowser {
-			arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPlayerBattleQueueBrowserSubscribe, player.ID)), notificationMsg)
+			arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPlayerBattleQueueBrowserSubscribe, player.ID)), notificationMsg)
 		}
 
 		if player.R.PlayerPreference.NotificationsBattleQueuePushNotifications {
@@ -236,8 +236,12 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 		}
 
 		// telegram notification
-		if player.R.PlayerPreference.NotificationsBattleQueueTelegram {
-			arena.telegram.Notify(player.ID, warMachine.ID, "")
+		if true {
+			err = arena.telegram.Notify(player.ID, warMachine.ID, "")
+			if err != nil {
+				gamelog.L.Error().Err(err).Str("mech_id", bq.MechID).Str("owner_id", bq.OwnerID).Str("queued_at", bq.QueuedAt.String()).Msg("failed to notify telegram")
+
+			}
 		}
 
 		// TODO: discord notifications?
