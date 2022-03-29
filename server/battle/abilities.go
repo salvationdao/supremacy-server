@@ -249,13 +249,6 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 
 // FactionUniqueAbilityUpdater update ability price every 10 seconds
 func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
-	defer func() {
-		if err := recover(); err != nil {
-			gamelog.L.Error().Interface("err", err).Msg("Panic! Panic! Panic! Panic at the FactionUniqueAbilityUpdater!")
-
-			as.FactionUniqueAbilityUpdater()
-		}
-	}()
 	minPrice := decimal.New(1, 18)
 
 	main_ticker := time.NewTicker(1 * time.Second)
@@ -263,8 +256,21 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 	live_vote_ticker := time.NewTicker(1 * time.Second)
 
 	defer func() {
+		if err := recover(); err != nil {
+			gamelog.L.Error().Interface("err", err).Msg("Panic! Panic! Panic! Panic at the FactionUniqueAbilityUpdater!")
+
+			// re-run ability updater if ability system has not been cleaned up yet
+			if as != nil && as.battle != nil {
+				as.FactionUniqueAbilityUpdater()
+			}
+		}
+	}()
+
+	defer func() {
 		main_ticker.Stop()
 		live_vote_ticker.Stop()
+		close(as.end)
+		close(as.contribute)
 	}()
 
 	// start the battle
@@ -301,8 +307,6 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 						gamelog.L.Error().Interface("err", err).Msg("Panic! Panic! Panic! Panic at the cleaning up abilities channels!")
 					}
 				}()
-				close(as.end)
-				close(as.contribute)
 			}()
 
 			return
@@ -815,8 +819,9 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 	defer func() {
 		if err := recover(); err != nil {
 			gamelog.L.Error().Interface("err", err).Msg("Panic! Panic! Panic! Panic at the StartGabsAbilityPoolCycle!")
-
-			as.StartGabsAbilityPoolCycle(true)
+			if as != nil && as.battle != nil {
+				as.StartGabsAbilityPoolCycle(true)
+			}
 		}
 	}()
 
@@ -824,18 +829,19 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 	main_ticker := time.NewTicker(1 * time.Second)
 	price_ticker := time.NewTicker(1 * time.Second)
 	progress_ticker := time.NewTicker(1 * time.Second)
+	end_progress := make(chan bool)
 
 	defer func() {
 		price_ticker.Stop()
 		main_ticker.Stop()
+		close(as.endGabs)
+		close(end_progress)
 	}()
-
-	end_progress := make(chan bool)
 
 	// start voting stage
 	if !resume {
-		as.battleAbilityPool.Stage.Phase = BribeStageBribe
-		as.battleAbilityPool.Stage.EndTime = time.Now().Add(BribeDurationSecond * time.Second)
+		as.battleAbilityPool.Stage.Phase = BribeStageCooldown
+		as.battleAbilityPool.Stage.EndTime = time.Now().Add(time.Duration(as.battleAbilityPool.BattleAbility.CooldownDurationSecond) * time.Second)
 		as.battle.arena.messageBus.Send(messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
 	}
 	bn := as.battle.BattleNumber
@@ -845,11 +851,9 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 		for {
 			select {
 			case <-end_progress:
-				close(end_progress)
 				return
 			case <-progress_ticker.C:
 				if as.battle == nil || as.battle.arena.currentBattle == nil || as.battle.arena.currentBattle.BattleNumber != bn {
-					close(end_progress)
 					return
 				}
 				as.BattleAbilityProgressBar()
@@ -862,8 +866,10 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 		select {
 		// wait for next tick
 		case <-as.endGabs:
+			as.battleAbilityPool.Stage.Phase = BribeStageHold
+			as.battleAbilityPool.Stage.EndTime = time.Now().AddDate(1, 0, 0)
+			as.battle.arena.messageBus.Send(messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
 			end_progress <- true
-			close(as.endGabs)
 			return
 		case <-main_ticker.C:
 			if as.battle == nil || as.battle.arena.currentBattle == nil || as.battle.arena.currentBattle.BattleNumber != bn {
@@ -879,11 +885,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 			stage := as.battle.stage
 			// exit the loop, when battle is ended
 			if stage == BattleStageEnd {
-				// change phase to hold and broadcast to user
-				as.battleAbilityPool.Stage.Phase = BribeStageHold
-				as.battleAbilityPool.Stage.EndTime = time.Now().AddDate(1, 0, 0) // HACK: set end time to far future to implement infinite time
-				as.battle.arena.messageBus.Send(messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
-
+				as.endGabs <- true
 				// stop all the ticker and exit the loop
 				gamelog.L.Info().Msg("Stop ability tickers after battle is end")
 				return
@@ -1316,15 +1318,6 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 		// broadcast the progress bar
 		as.BroadcastAbilityProgressBar()
 
-		// get player
-		as.battle.arena.BroadcastGameNotificationAbility(GameNotificationTypeBattleAbility, GameNotificationAbility{
-			Ability: &AbilityBrief{
-				Label:    ability.Label,
-				ImageUrl: ability.ImageUrl,
-				Colour:   ability.Colour,
-			},
-		})
-
 		// set location deciders list
 		as.locationDecidersSet(as.battle.ID, factionID)
 
@@ -1678,12 +1671,15 @@ func (as *AbilitiesSystem) End() {
 	defer func() {
 		if err := recover(); err != nil {
 			gamelog.L.Error().Interface("err", err).Msg("Panic! Panic! Panic! Panic at the abilities.End!")
-			as.battle = nil
 		}
 	}()
 	as.end <- true
 	as.endGabs <- true
+
+	// HACK: wait 1 second for program to clean stuff up
+	time.Sleep(1 * time.Second)
 	as.battle = nil
+
 }
 
 func BuildUserDetailWithFaction(userID uuid.UUID) (*UserBrief, error) {

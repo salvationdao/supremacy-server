@@ -368,6 +368,7 @@ func (btl *Battle) endAbilities() {
 	}
 
 	btl.abilities.End()
+	btl.abilities.battle = nil
 	btl.abilities = nil
 }
 func (btl *Battle) endSpoils() {
