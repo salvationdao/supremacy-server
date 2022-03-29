@@ -838,8 +838,8 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 
 	// start voting stage
 	if !resume {
-		as.battleAbilityPool.Stage.Phase = BribeStageBribe
-		as.battleAbilityPool.Stage.EndTime = time.Now().Add(BribeDurationSecond * time.Second)
+		as.battleAbilityPool.Stage.Phase = BribeStageCooldown
+		as.battleAbilityPool.Stage.EndTime = time.Now().Add(time.Duration(as.battleAbilityPool.BattleAbility.CooldownDurationSecond) * time.Second)
 		as.battle.arena.messageBus.Send(messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
 	}
 	bn := as.battle.BattleNumber
@@ -878,6 +878,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 			// terminate ticker if battle mismatch
 			if as.battle != as.battle.arena.currentBattle {
 				gamelog.L.Info().Msg("Battle mismatch is detected, clean up bribing ticker")
+				as.endGabs <- true
 				return
 			}
 			// check phase
@@ -1316,15 +1317,6 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 
 		// broadcast the progress bar
 		as.BroadcastAbilityProgressBar()
-
-		// get player
-		as.battle.arena.BroadcastGameNotificationAbility(GameNotificationTypeBattleAbility, GameNotificationAbility{
-			Ability: &AbilityBrief{
-				Label:    ability.Label,
-				ImageUrl: ability.ImageUrl,
-				Colour:   ability.Colour,
-			},
-		})
 
 		// set location deciders list
 		as.locationDecidersSet(as.battle.ID, factionID)

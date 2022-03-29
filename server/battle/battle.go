@@ -19,7 +19,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jackc/pgx/v4"
 	"github.com/ninja-software/terror/v2"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
@@ -1800,8 +1799,8 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 
 		// get ability via offering id
 		abl, err := boiler.BattleAbilityTriggers(boiler.BattleAbilityTriggerWhere.AbilityOfferingID.EQ(dp.DestroyedWarMachineEvent.RelatedEventIDString)).One(gamedb.StdConn)
-		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			gamelog.L.Error().Str("ability id", abl.ID).Err(err).Msg("Failed get ability from offering id")
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Str("related event id string", dp.DestroyedWarMachineEvent.RelatedEventIDString).Err(err).Msg("Failed get related ability from offering id")
 		}
 
 		if abl != nil && abl.PlayerID.Valid {
