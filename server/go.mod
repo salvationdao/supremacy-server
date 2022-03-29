@@ -15,7 +15,7 @@ require (
 	github.com/makiuchi-d/arelo v1.9.2
 	github.com/ninja-software/log_helpers v1.0.1-0.20211202070223-aff11d9a6ae6
 	github.com/ninja-software/terror/v2 v2.0.7
-	github.com/ninja-syndicate/hub v1.8.0
+	github.com/ninja-syndicate/hub v1.8.8
 	github.com/ory/dockertest/v3 v3.8.1
 	github.com/prometheus/client_golang v1.11.0
 	github.com/rs/zerolog v1.26.0
@@ -39,6 +39,7 @@ require (
 	github.com/volatiletech/null/v8 v8.1.2
 	github.com/volatiletech/sqlboiler/v4 v4.8.6
 	github.com/volatiletech/strmangle v0.0.2
+	go.uber.org/atomic v1.7.0
 )
 
 require github.com/petermattis/goid v0.0.0-20180202154549-b0b1615b78e5 // indirect
@@ -70,7 +71,6 @@ require (
 	github.com/tinylib/msgp v1.1.2 // indirect
 	github.com/volatiletech/inflect v0.0.1 // indirect
 	github.com/volatiletech/randomize v0.0.1 // indirect
-	go.uber.org/atomic v1.7.0 // indirect
 	golang.org/x/time v0.0.0-20211116232009-f0f3c7e86c11 // indirect
 	gopkg.in/ini.v1 v1.63.2 // indirect
 )

@@ -13,13 +13,6 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-type BattleStage string
-
-const (
-	BattleStagStart = "START"
-	BattleStageEnd  = "END"
-)
-
 type usersMap struct {
 	deadlock.RWMutex
 	m map[uuid.UUID]*BattleUser

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go.uber.org/atomic"
 	"math/rand"
 	"server"
 	"server/db"
@@ -18,6 +19,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v4"
@@ -33,9 +35,16 @@ import (
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 )
 
+type BattleStage int32
+
+const (
+	BattleStagStart = 1
+	BattleStageEnd  = 0
+)
+
 type Battle struct {
 	arena          *Arena
-	stage          string
+	stage          *atomic.Int32
 	BattleID       string        `json:"battleID"`
 	MapName        string        `json:"mapName"`
 	WarMachines    []*WarMachine `json:"warMachines"`
@@ -43,7 +52,7 @@ type Battle struct {
 	warMachineIDs  []uuid.UUID   `json:"ids"`
 	lastTick       *[]byte
 	gameMap        *server.GameMap
-	abilities      *AbilitiesSystem
+	_abilities     *AbilitiesSystem
 	users          usersMap
 	factions       map[uuid.UUID]*boiler.Faction
 	multipliers    *MultiplierSystem
@@ -58,6 +67,19 @@ type Battle struct {
 	inserted bool
 
 	viewerCountInputChan chan (*ViewerLiveCount)
+	sync.RWMutex
+}
+
+func (btl *Battle) abilities() *AbilitiesSystem {
+	btl.RLock()
+	defer btl.RUnlock()
+	return btl._abilities
+}
+
+func (btl *Battle) storeAbilities(as *AbilitiesSystem) {
+	btl.Lock()
+	defer btl.Unlock()
+	btl._abilities = as
 }
 
 const HubKeyLiveVoteCountUpdated hub.HubCommandKey = "LIVE:VOTE:COUNT:UPDATED"
@@ -205,7 +227,7 @@ func (btl *Battle) start() {
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle spoils")
 	btl.spoils = NewSpoilsOfWar(btl, 5*time.Second, 5*time.Second)
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle abilities")
-	btl.abilities = NewAbilitiesSystem(btl)
+	btl.storeAbilities(NewAbilitiesSystem(btl))
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle multipliers")
 	btl.multipliers = NewMultiplierSystem(btl)
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Broadcasting battle start to players")
@@ -226,7 +248,7 @@ func (btl *Battle) start() {
 		spoilOfWarStr = append(spoilOfWarStr, sow.String())
 	}
 	spoilOfWarPayload = append(spoilOfWarPayload, []byte(strings.Join(spoilOfWarStr, "|"))...)
-	go btl.arena.netMessageBus.SendBinary(messagebus.BusKey(HubKeySpoilOfWarUpdated), spoilOfWarPayload)
+	btl.arena.netMessageBus.SendBinary(messagebus.BusKey(HubKeySpoilOfWarUpdated), spoilOfWarPayload)
 
 	// handle global announcements
 	ga, err := boiler.GlobalAnnouncements().One(gamedb.StdConn)
@@ -240,7 +262,7 @@ func (btl *Battle) start() {
 
 		// show if battle number is equal or in between the global announcement's to and from battle number
 		if btl.BattleNumber >= ga.ShowFromBattleNumber.Int && btl.BattleNumber <= ga.ShowUntilBattleNumber.Int {
-			go btl.arena.messageBus.Send(messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), ga)
+			btl.arena.messageBus.Send(messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), ga)
 		}
 
 		// delete if global announcement expired/ is in the past
@@ -250,7 +272,7 @@ func (btl *Battle) start() {
 				gamelog.L.Error().Str("Battle ID", btl.ID).Msg("unable to delete global announcement")
 			}
 
-			go btl.arena.messageBus.Send(messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), nil)
+			btl.arena.messageBus.Send(messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), nil)
 		}
 
 	}
@@ -367,8 +389,9 @@ func (btl *Battle) endAbilities() {
 		return
 	}
 
-	btl.abilities.End()
-	btl.abilities = nil
+	btl.abilities().End()
+	btl.abilities().storeBattle(nil)
+	btl.storeAbilities(nil)
 }
 func (btl *Battle) endSpoils() {
 	defer func() {
@@ -762,7 +785,7 @@ func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 
 		// broadcast user stat to user
 		if us != nil {
-			go btl.arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserStatSubscribe, us.ID)), us)
+			btl.arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserStatSubscribe, us.ID)), us)
 		}
 
 		return true
@@ -785,7 +808,7 @@ func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 		return
 	}
 
-	go btl.arena.messageBus.Send(messagebus.BusKey(HubKeyMultiplierMapSubscribe), &MultiplierMapResponse{
+	btl.arena.messageBus.Send(messagebus.BusKey(HubKeyMultiplierMapSubscribe), &MultiplierMapResponse{
 		Multipliers:      multipliers,
 		CitizenPlayerIDs: citizenPlayerIDs,
 	})
@@ -873,7 +896,7 @@ func (btl *Battle) userOnline(user *BattleUser, wsc *hub.Client) {
 	return
 }
 
-func (btl *Battle) debounceSendingViewerCount(cb func(result ViewerLiveCount)) {
+func (btl *Battle) debounceSendingViewerCount(cb func(result ViewerLiveCount, btl *Battle)) {
 	defer func() {
 		if err := recover(); err != nil {
 			gamelog.L.Error().Interface("err", err).Msg("panic! panic! panic! Panic at the debounceSendingViewerCount!")
@@ -890,10 +913,10 @@ func (btl *Battle) debounceSendingViewerCount(cb func(result ViewerLiveCount)) {
 			timer.Reset(interval)
 		case <-timer.C:
 			if result != nil {
-				cb(*result)
+				cb(*result, btl)
 			}
 		case <-checker.C:
-			if btl != btl.arena.currentBattle {
+			if btl != btl.arena.currentBattle() {
 				timer.Stop()
 				checker.Stop()
 				gamelog.L.Info().Msg("Clean up live count debounce function due to battle missmatch")
