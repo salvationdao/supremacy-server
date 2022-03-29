@@ -1916,6 +1916,8 @@ var SubmodelSkinMap = map[string]string{
 	"Static":             "Static",
 	"Neon":               "Neon",
 	"Gold":               "Gold",
+	"Slava Ukraini":      "Ukraine",
+	"Ukraine":            "Ukraine",
 }
 
 func (btl *Battle) MechsToWarMachines(mechs []*server.MechContainer) []*WarMachine {
