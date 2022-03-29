@@ -69,6 +69,8 @@ type AbilitiesSystem struct {
 	// location select winner list
 	locationDeciders *LocationDeciders
 
+	closed *atomic.Bool
+
 	end       chan bool
 	endGabs   chan bool
 	liveCount *LiveCount
@@ -221,6 +223,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 		locationDeciders: &LocationDeciders{
 			list: []uuid.UUID{},
 		},
+		closed: atomic.NewBool(false),
 		liveCount: &LiveCount{
 			TotalVotes: decimal.Zero,
 		},
@@ -285,6 +288,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 	defer func() {
 		main_ticker.Stop()
 		live_vote_ticker.Stop()
+		as.closed.Store(true)
 		close(as.end)
 		close(as.contribute)
 	}()
@@ -1485,6 +1489,10 @@ func (as *AbilitiesSystem) AbilityContribute(factionID uuid.UUID, userID uuid.UU
 		return
 	}
 
+	if as.closed.Load() {
+		return
+	}
+
 	cont := &Contribution{
 		factionID,
 		userID,
@@ -1723,6 +1731,7 @@ func (as *AbilitiesSystem) End() {
 			as.storeBattle(nil)
 		}
 	}()
+
 	as.end <- true
 	as.endGabs <- true
 
