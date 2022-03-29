@@ -289,8 +289,6 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 		main_ticker.Stop()
 		live_vote_ticker.Stop()
 		as.closed.Store(true)
-		close(as.end)
-		close(as.contribute)
 	}()
 
 	// start the battle
