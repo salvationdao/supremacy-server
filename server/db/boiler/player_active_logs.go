@@ -23,10 +23,11 @@ import (
 
 // PlayerActiveLog is an object representing the database table.
 type PlayerActiveLog struct {
-	ID         string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	PlayerID   string    `boiler:"player_id" boil:"player_id" json:"player_id" toml:"player_id" yaml:"player_id"`
-	ActiveAt   time.Time `boiler:"active_at" boil:"active_at" json:"active_at" toml:"active_at" yaml:"active_at"`
-	InactiveAt null.Time `boiler:"inactive_at" boil:"inactive_at" json:"inactive_at,omitempty" toml:"inactive_at" yaml:"inactive_at,omitempty"`
+	ID         string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	PlayerID   string      `boiler:"player_id" boil:"player_id" json:"player_id" toml:"player_id" yaml:"player_id"`
+	FactionID  null.String `boiler:"faction_id" boil:"faction_id" json:"faction_id,omitempty" toml:"faction_id" yaml:"faction_id,omitempty"`
+	ActiveAt   time.Time   `boiler:"active_at" boil:"active_at" json:"active_at" toml:"active_at" yaml:"active_at"`
+	InactiveAt null.Time   `boiler:"inactive_at" boil:"inactive_at" json:"inactive_at,omitempty" toml:"inactive_at" yaml:"inactive_at,omitempty"`
 
 	R *playerActiveLogR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L playerActiveLogL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -35,11 +36,13 @@ type PlayerActiveLog struct {
 var PlayerActiveLogColumns = struct {
 	ID         string
 	PlayerID   string
+	FactionID  string
 	ActiveAt   string
 	InactiveAt string
 }{
 	ID:         "id",
 	PlayerID:   "player_id",
+	FactionID:  "faction_id",
 	ActiveAt:   "active_at",
 	InactiveAt: "inactive_at",
 }
@@ -47,11 +50,13 @@ var PlayerActiveLogColumns = struct {
 var PlayerActiveLogTableColumns = struct {
 	ID         string
 	PlayerID   string
+	FactionID  string
 	ActiveAt   string
 	InactiveAt string
 }{
 	ID:         "player_active_logs.id",
 	PlayerID:   "player_active_logs.player_id",
+	FactionID:  "player_active_logs.faction_id",
 	ActiveAt:   "player_active_logs.active_at",
 	InactiveAt: "player_active_logs.inactive_at",
 }
@@ -61,25 +66,30 @@ var PlayerActiveLogTableColumns = struct {
 var PlayerActiveLogWhere = struct {
 	ID         whereHelperstring
 	PlayerID   whereHelperstring
+	FactionID  whereHelpernull_String
 	ActiveAt   whereHelpertime_Time
 	InactiveAt whereHelpernull_Time
 }{
 	ID:         whereHelperstring{field: "\"player_active_logs\".\"id\""},
 	PlayerID:   whereHelperstring{field: "\"player_active_logs\".\"player_id\""},
+	FactionID:  whereHelpernull_String{field: "\"player_active_logs\".\"faction_id\""},
 	ActiveAt:   whereHelpertime_Time{field: "\"player_active_logs\".\"active_at\""},
 	InactiveAt: whereHelpernull_Time{field: "\"player_active_logs\".\"inactive_at\""},
 }
 
 // PlayerActiveLogRels is where relationship names are stored.
 var PlayerActiveLogRels = struct {
-	Player string
+	Faction string
+	Player  string
 }{
-	Player: "Player",
+	Faction: "Faction",
+	Player:  "Player",
 }
 
 // playerActiveLogR is where relationships are stored.
 type playerActiveLogR struct {
-	Player *Player `boiler:"Player" boil:"Player" json:"Player" toml:"Player" yaml:"Player"`
+	Faction *Faction `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
+	Player  *Player  `boiler:"Player" boil:"Player" json:"Player" toml:"Player" yaml:"Player"`
 }
 
 // NewStruct creates a new relationship struct
@@ -91,9 +101,9 @@ func (*playerActiveLogR) NewStruct() *playerActiveLogR {
 type playerActiveLogL struct{}
 
 var (
-	playerActiveLogAllColumns            = []string{"id", "player_id", "active_at", "inactive_at"}
+	playerActiveLogAllColumns            = []string{"id", "player_id", "faction_id", "active_at", "inactive_at"}
 	playerActiveLogColumnsWithoutDefault = []string{"player_id"}
-	playerActiveLogColumnsWithDefault    = []string{"id", "active_at", "inactive_at"}
+	playerActiveLogColumnsWithDefault    = []string{"id", "faction_id", "active_at", "inactive_at"}
 	playerActiveLogPrimaryKeyColumns     = []string{"id"}
 	playerActiveLogGeneratedColumns      = []string{}
 )
@@ -340,6 +350,21 @@ func (q playerActiveLogQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
+// Faction pointed to by the foreign key.
+func (o *PlayerActiveLog) Faction(mods ...qm.QueryMod) factionQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.FactionID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Factions(queryMods...)
+	queries.SetFrom(query.Query, "\"factions\"")
+
+	return query
+}
+
 // Player pointed to by the foreign key.
 func (o *PlayerActiveLog) Player(mods ...qm.QueryMod) playerQuery {
 	queryMods := []qm.QueryMod{
@@ -353,6 +378,115 @@ func (o *PlayerActiveLog) Player(mods ...qm.QueryMod) playerQuery {
 	queries.SetFrom(query.Query, "\"players\"")
 
 	return query
+}
+
+// LoadFaction allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (playerActiveLogL) LoadFaction(e boil.Executor, singular bool, maybePlayerActiveLog interface{}, mods queries.Applicator) error {
+	var slice []*PlayerActiveLog
+	var object *PlayerActiveLog
+
+	if singular {
+		object = maybePlayerActiveLog.(*PlayerActiveLog)
+	} else {
+		slice = *maybePlayerActiveLog.(*[]*PlayerActiveLog)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &playerActiveLogR{}
+		}
+		if !queries.IsNil(object.FactionID) {
+			args = append(args, object.FactionID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &playerActiveLogR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.FactionID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.FactionID) {
+				args = append(args, obj.FactionID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`factions`),
+		qm.WhereIn(`factions.id in ?`, args...),
+		qmhelper.WhereIsNull(`factions.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Faction")
+	}
+
+	var resultSlice []*Faction
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Faction")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for factions")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for factions")
+	}
+
+	if len(playerActiveLogAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Faction = foreign
+		if foreign.R == nil {
+			foreign.R = &factionR{}
+		}
+		foreign.R.PlayerActiveLogs = append(foreign.R.PlayerActiveLogs, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.FactionID, foreign.ID) {
+				local.R.Faction = foreign
+				if foreign.R == nil {
+					foreign.R = &factionR{}
+				}
+				foreign.R.PlayerActiveLogs = append(foreign.R.PlayerActiveLogs, local)
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadPlayer allows an eager lookup of values, cached into the
@@ -457,6 +591,85 @@ func (playerActiveLogL) LoadPlayer(e boil.Executor, singular bool, maybePlayerAc
 		}
 	}
 
+	return nil
+}
+
+// SetFaction of the playerActiveLog to the related item.
+// Sets o.R.Faction to related.
+// Adds o to related.R.PlayerActiveLogs.
+func (o *PlayerActiveLog) SetFaction(exec boil.Executor, insert bool, related *Faction) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"player_active_logs\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
+		strmangle.WhereClause("\"", "\"", 2, playerActiveLogPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.FactionID, related.ID)
+	if o.R == nil {
+		o.R = &playerActiveLogR{
+			Faction: related,
+		}
+	} else {
+		o.R.Faction = related
+	}
+
+	if related.R == nil {
+		related.R = &factionR{
+			PlayerActiveLogs: PlayerActiveLogSlice{o},
+		}
+	} else {
+		related.R.PlayerActiveLogs = append(related.R.PlayerActiveLogs, o)
+	}
+
+	return nil
+}
+
+// RemoveFaction relationship.
+// Sets o.R.Faction to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *PlayerActiveLog) RemoveFaction(exec boil.Executor, related *Faction) error {
+	var err error
+
+	queries.SetScanner(&o.FactionID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("faction_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.Faction = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.PlayerActiveLogs {
+		if queries.Equal(o.FactionID, ri.FactionID) {
+			continue
+		}
+
+		ln := len(related.R.PlayerActiveLogs)
+		if ln > 1 && i < ln-1 {
+			related.R.PlayerActiveLogs[i] = related.R.PlayerActiveLogs[ln-1]
+		}
+		related.R.PlayerActiveLogs = related.R.PlayerActiveLogs[:ln-1]
+		break
+	}
 	return nil
 }
 

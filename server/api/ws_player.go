@@ -43,6 +43,8 @@ func NewPlayerController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Pla
 	api.SecureUserSubscribeCommand(HubKeyPlayerPreferencesSubscribe, pc.PlayerPreferencesSubscribeHandler)
 	api.SecureUserSubscribeCommand(HubKeyPlayerBattleQueueBrowserSubscribe, pc.PlayerBattleQueueBrowserSubscribeHandler)
 
+	api.SecureUserCommand(HubKeyPlayerActiveCheck, pc.PlayerActiveCheckHandler)
+
 	// faction lose select privilege
 	api.SecureUserFactionCommand(HubKeyFactionPlayerSearch, pc.FactionPlayerSearch)
 	api.SecureUserFactionCommand(HubKeyPunishOptions, pc.PunishOptions)
@@ -150,6 +152,53 @@ func (pc *PlayerController) PlayerBattleQueueBrowserSubscribeHandler(ctx context
 	}
 
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPlayerBattleQueueBrowserSubscribe, wsc.Identifier())), nil
+}
+
+type PlayerActiveCheckRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		Fruit string `json:"fruit"`
+	} `json:"payload"`
+}
+
+const HubKeyPlayerActiveCheck hub.HubCommandKey = "GOJI:BERRY:TEA"
+
+func (pc *PlayerController) PlayerActiveCheckHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &PlayerActiveCheckRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	isActive := false
+	switch req.Payload.Fruit {
+	case "APPLE":
+		isActive = true
+	case "BANANA":
+		isActive = false
+	default:
+		return terror.Error(terror.ErrInvalidInput, "Invalid active stat")
+	}
+
+	// get player
+	player, err := boiler.FindPlayer(gamedb.StdConn, wsc.Identifier())
+	if err != nil {
+		return terror.Error(err, "Failed to get player from db")
+	}
+
+	if player.FactionID.Valid {
+		fap, ok := pc.API.FactionActivePlayers[player.FactionID.String]
+		if !ok {
+			return nil
+		}
+
+		err = fap.Set(player.ID, isActive)
+		if err != nil {
+			return terror.Error(err, "Failed to update player active stat")
+		}
+	}
+
+	return nil
 }
 
 type PlayerSearchRequest struct {

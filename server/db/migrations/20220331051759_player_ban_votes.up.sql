@@ -59,6 +59,7 @@ CREATE TABLE punished_players(
 CREATE TABLE player_active_logs(
     id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
     player_id UUID NOT NULL REFERENCES players (id),
+    faction_id UUID REFERENCES factions (id),
     active_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     inactive_at TIMESTAMPTZ
 );

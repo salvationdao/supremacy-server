@@ -53,7 +53,8 @@ type VotePriceSystem struct {
 	GlobalVotePerTick []int64 // store last 100 tick total vote
 	GlobalTotalVote   int64
 
-	FactionVotePriceMap map[server.FactionID]*FactionVotePrice
+	FactionVotePriceMap  map[server.FactionID]*FactionVotePrice
+	FactionActivePlayers map[server.FactionID]*ActivePlayers
 }
 
 type FactionVotePrice struct {
@@ -88,6 +89,8 @@ type API struct {
 
 	// punish vote
 	FactionPunishVote map[string]*PunishVoteTracker
+
+	FactionActivePlayers map[string]*ActivePlayers
 }
 
 // NewAPI registers routes
@@ -120,7 +123,8 @@ func NewAPI(
 		RingCheckAuthMap: NewRingCheckMap(),
 		SMS:              sms,
 
-		FactionPunishVote: make(map[string]*PunishVoteTracker),
+		FactionPunishVote:    make(map[string]*PunishVoteTracker),
+		FactionActivePlayers: make(map[string]*ActivePlayers),
 	}
 
 	battleArenaClient.SetMessageBus(messageBus)
@@ -200,6 +204,8 @@ func NewAPI(
 
 	// spin up a punish vote handlers for each faction
 	api.PunishVoteTrackerSetup()
+
+	api.FactionActivePlayerSetup()
 
 	return api
 }

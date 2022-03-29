@@ -129,6 +129,7 @@ var FactionRels = struct {
 	BattleQueues          string
 	BattleWins            string
 	Brands                string
+	PlayerActiveLogs      string
 	Players               string
 	PunishVotes           string
 	Templates             string
@@ -141,6 +142,7 @@ var FactionRels = struct {
 	BattleQueues:          "BattleQueues",
 	BattleWins:            "BattleWins",
 	Brands:                "Brands",
+	PlayerActiveLogs:      "PlayerActiveLogs",
 	Players:               "Players",
 	PunishVotes:           "PunishVotes",
 	Templates:             "Templates",
@@ -156,6 +158,7 @@ type factionR struct {
 	BattleQueues          BattleQueueSlice          `boiler:"BattleQueues" boil:"BattleQueues" json:"BattleQueues" toml:"BattleQueues" yaml:"BattleQueues"`
 	BattleWins            BattleWinSlice            `boiler:"BattleWins" boil:"BattleWins" json:"BattleWins" toml:"BattleWins" yaml:"BattleWins"`
 	Brands                BrandSlice                `boiler:"Brands" boil:"Brands" json:"Brands" toml:"Brands" yaml:"Brands"`
+	PlayerActiveLogs      PlayerActiveLogSlice      `boiler:"PlayerActiveLogs" boil:"PlayerActiveLogs" json:"PlayerActiveLogs" toml:"PlayerActiveLogs" yaml:"PlayerActiveLogs"`
 	Players               PlayerSlice               `boiler:"Players" boil:"Players" json:"Players" toml:"Players" yaml:"Players"`
 	PunishVotes           PunishVoteSlice           `boiler:"PunishVotes" boil:"PunishVotes" json:"PunishVotes" toml:"PunishVotes" yaml:"PunishVotes"`
 	Templates             TemplateSlice             `boiler:"Templates" boil:"Templates" json:"Templates" toml:"Templates" yaml:"Templates"`
@@ -576,6 +579,27 @@ func (o *Faction) Brands(mods ...qm.QueryMod) brandQuery {
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"brands\".*"})
+	}
+
+	return query
+}
+
+// PlayerActiveLogs retrieves all the player_active_log's PlayerActiveLogs with an executor.
+func (o *Faction) PlayerActiveLogs(mods ...qm.QueryMod) playerActiveLogQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"player_active_logs\".\"faction_id\"=?", o.ID),
+	)
+
+	query := PlayerActiveLogs(queryMods...)
+	queries.SetFrom(query.Query, "\"player_active_logs\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"player_active_logs\".*"})
 	}
 
 	return query
@@ -1435,6 +1459,104 @@ func (factionL) LoadBrands(e boil.Executor, singular bool, maybeFaction interfac
 	return nil
 }
 
+// LoadPlayerActiveLogs allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (factionL) LoadPlayerActiveLogs(e boil.Executor, singular bool, maybeFaction interface{}, mods queries.Applicator) error {
+	var slice []*Faction
+	var object *Faction
+
+	if singular {
+		object = maybeFaction.(*Faction)
+	} else {
+		slice = *maybeFaction.(*[]*Faction)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &factionR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &factionR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`player_active_logs`),
+		qm.WhereIn(`player_active_logs.faction_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load player_active_logs")
+	}
+
+	var resultSlice []*PlayerActiveLog
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice player_active_logs")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on player_active_logs")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for player_active_logs")
+	}
+
+	if len(playerActiveLogAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.PlayerActiveLogs = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &playerActiveLogR{}
+			}
+			foreign.R.Faction = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.FactionID) {
+				local.R.PlayerActiveLogs = append(local.R.PlayerActiveLogs, foreign)
+				if foreign.R == nil {
+					foreign.R = &playerActiveLogR{}
+				}
+				foreign.R.Faction = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // LoadPlayers allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (factionL) LoadPlayers(e boil.Executor, singular bool, maybeFaction interface{}, mods queries.Applicator) error {
@@ -2143,6 +2265,131 @@ func (o *Faction) AddBrands(exec boil.Executor, insert bool, related ...*Brand) 
 			rel.R.Faction = o
 		}
 	}
+	return nil
+}
+
+// AddPlayerActiveLogs adds the given related objects to the existing relationships
+// of the faction, optionally inserting them as new records.
+// Appends related to o.R.PlayerActiveLogs.
+// Sets related.R.Faction appropriately.
+func (o *Faction) AddPlayerActiveLogs(exec boil.Executor, insert bool, related ...*PlayerActiveLog) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.FactionID, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"player_active_logs\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
+				strmangle.WhereClause("\"", "\"", 2, playerActiveLogPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.FactionID, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &factionR{
+			PlayerActiveLogs: related,
+		}
+	} else {
+		o.R.PlayerActiveLogs = append(o.R.PlayerActiveLogs, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &playerActiveLogR{
+				Faction: o,
+			}
+		} else {
+			rel.R.Faction = o
+		}
+	}
+	return nil
+}
+
+// SetPlayerActiveLogs removes all previously related items of the
+// faction replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.Faction's PlayerActiveLogs accordingly.
+// Replaces o.R.PlayerActiveLogs with related.
+// Sets related.R.Faction's PlayerActiveLogs accordingly.
+func (o *Faction) SetPlayerActiveLogs(exec boil.Executor, insert bool, related ...*PlayerActiveLog) error {
+	query := "update \"player_active_logs\" set \"faction_id\" = null where \"faction_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.PlayerActiveLogs {
+			queries.SetScanner(&rel.FactionID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.Faction = nil
+		}
+
+		o.R.PlayerActiveLogs = nil
+	}
+	return o.AddPlayerActiveLogs(exec, insert, related...)
+}
+
+// RemovePlayerActiveLogs relationships from objects passed in.
+// Removes related items from R.PlayerActiveLogs (uses pointer comparison, removal does not keep order)
+// Sets related.R.Faction.
+func (o *Faction) RemovePlayerActiveLogs(exec boil.Executor, related ...*PlayerActiveLog) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.FactionID, nil)
+		if rel.R != nil {
+			rel.R.Faction = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("faction_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.PlayerActiveLogs {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.PlayerActiveLogs)
+			if ln > 1 && i < ln-1 {
+				o.R.PlayerActiveLogs[i] = o.R.PlayerActiveLogs[ln-1]
+			}
+			o.R.PlayerActiveLogs = o.R.PlayerActiveLogs[:ln-1]
+			break
+		}
+	}
+
 	return nil
 }
 
