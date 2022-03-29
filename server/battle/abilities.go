@@ -1678,7 +1678,7 @@ func (as *AbilitiesSystem) End() {
 	as.endGabs <- true
 
 	// HACK: wait 1 second for program to clean stuff up
-	time.Sleep(1 * time.Second)
+	time.Sleep(2 * time.Second)
 	as.battle = nil
 
 }
