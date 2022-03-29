@@ -2,9 +2,7 @@ package api
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"server/db/boiler"
 	"server/gamedb"
@@ -15,7 +13,6 @@ import (
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
 type PlayerController struct {
@@ -49,15 +46,15 @@ func (ctrlr *PlayerController) PlayerPreferencesSubscribeHandler(ctx context.Con
 
 	playerPrefs, err := boiler.PlayerPreferences(boiler.PlayerPreferenceWhere.PlayerID.EQ(wsc.Identifier())).One(gamedb.StdConn)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			playerPrefs := &boiler.PlayerPreference{PlayerID: wsc.Identifier()}
-			err := playerPrefs.Insert(gamedb.StdConn, boil.Infer())
-			if err != nil {
-				return "", "", terror.Error(err, "Issue getting settings, try again or contact support.")
-			}
-		} else {
-			return "", "", terror.Error(err, "Issue getting setting, try again or contact support.")
-		}
+		// if errors.Is(err, sql.ErrNoRows) {
+		// 	playerPrefs := &boiler.PlayerPreference{PlayerID: wsc.Identifier()}
+		// 	err := playerPrefs.Insert(gamedb.StdConn, boil.Infer())
+		// 	if err != nil {
+		// 		return "", "", terror.Error(err, "Issue getting settings, try again or contact support.")
+		// 	}
+		// } else {
+		// 	return "", "", terror.Error(err, "Issue getting setting, try again or contact support.")
+		// }
 	}
 	reply(playerPrefs)
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPlayerPreferencesSubscribe, wsc.Identifier())), nil
@@ -80,45 +77,45 @@ func (ctrlr *PlayerController) PlayerBattleQueueNotificationsHandler(ctx context
 		return terror.Error(err, "Invalid request received")
 	}
 
-	player, err := boiler.FindPlayer(gamedb.StdConn, wsc.Identifier())
-	if err != nil {
-		return terror.Error(err, "Failed to updated preference, try again or contact support.")
-	}
+	// player, err := boiler.FindPlayer(gamedb.StdConn, wsc.Identifier())
+	// if err != nil {
+	// 	return terror.Error(err, "Failed to updated preference, try again or contact support.")
+	// }
 
-	playerPrefs, err := boiler.PlayerPreferences(boiler.PlayerPreferenceWhere.PlayerID.EQ(wsc.Identifier())).One(gamedb.StdConn)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			playerPrefs := &boiler.PlayerPreference{PlayerID: wsc.Identifier()}
-			err := playerPrefs.Insert(gamedb.StdConn, boil.Infer())
-			if err != nil {
-				return terror.Error(err, "Issue updating setting, try again or contact support.")
-			}
-		} else {
-			return terror.Error(err, "Issue updating setting, try again or contact support.")
-		}
-	}
+	// playerPrefs, err := boiler.PlayerPreferences(boiler.PlayerPreferenceWhere.PlayerID.EQ(wsc.Identifier())).One(gamedb.StdConn)
+	// if err != nil {
+	// 	if errors.Is(err, sql.ErrNoRows) {
+	// 		playerPrefs := &boiler.PlayerPreference{PlayerID: wsc.Identifier()}
+	// 		err := playerPrefs.Insert(gamedb.StdConn, boil.Infer())
+	// 		if err != nil {
+	// 			return terror.Error(err, "Issue updating setting, try again or contact support.")
+	// 		}
+	// 	} else {
+	// 		return terror.Error(err, "Issue updating setting, try again or contact support.")
+	// 	}
+	// }
 
-	updateFields := []string{}
-	if playerPrefs.NotificationsBattleQueueSMS != req.Payload.BattleQueueSMS {
-		if !player.MobileNumber.Valid {
-			return terror.Warn(fmt.Errorf("no mobile set"), "Set your mobile number on Passport to enable this feature.")
-		}
-		playerPrefs.NotificationsBattleQueueSMS = req.Payload.BattleQueueSMS
-		updateFields = append(updateFields, boiler.PlayerPreferenceColumns.NotificationsBattleQueueSMS)
-	}
-	if playerPrefs.NotificationsBattleQueueBrowser != req.Payload.BattleQueueBrowser {
-		playerPrefs.NotificationsBattleQueueBrowser = req.Payload.BattleQueueBrowser
-		updateFields = append(updateFields, boiler.PlayerPreferenceColumns.NotificationsBattleQueueBrowser)
-	}
+	// updateFields := []string{}
+	// if playerPrefs.NotificationsBattleQueueSMS != req.Payload.BattleQueueSMS {
+	// 	if !player.MobileNumber.Valid {
+	// 		return terror.Warn(fmt.Errorf("no mobile set"), "Set your mobile number on Passport to enable this feature.")
+	// 	}
+	// 	playerPrefs.NotificationsBattleQueueSMS = req.Payload.BattleQueueSMS
+	// 	updateFields = append(updateFields, boiler.PlayerPreferenceColumns.NotificationsBattleQueueSMS)
+	// }
+	// if playerPrefs.NotificationsBattleQueueBrowser != req.Payload.BattleQueueBrowser {
+	// 	playerPrefs.NotificationsBattleQueueBrowser = req.Payload.BattleQueueBrowser
+	// 	updateFields = append(updateFields, boiler.PlayerPreferenceColumns.NotificationsBattleQueueBrowser)
+	// }
 
-	if len(updateFields) > 0 {
-		_, err = playerPrefs.Update(gamedb.StdConn, boil.Whitelist(updateFields...))
-		if err != nil {
-			return terror.Error(err, "Issue updating setting, try again or contact support.")
-		}
-	}
+	// if len(updateFields) > 0 {
+	// 	_, err = playerPrefs.Update(gamedb.StdConn, boil.Whitelist(updateFields...))
+	// 	if err != nil {
+	// 		return terror.Error(err, "Issue updating setting, try again or contact support.")
+	// 	}
+	// }
 
-	go ctrlr.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPlayerPreferencesSubscribe, wsc.Identifier())), playerPrefs)
+	// go ctrlr.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPlayerPreferencesSubscribe, wsc.Identifier())), playerPrefs)
 	reply(true)
 	return nil
 }

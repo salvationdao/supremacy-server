@@ -39,6 +39,7 @@ require (
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/twilio/twilio-go v0.22.2
 	github.com/volatiletech/null/v8 v8.1.2
+	github.com/volatiletech/sqlboiler v3.7.1+incompatible
 	github.com/volatiletech/sqlboiler/v4 v4.8.6
 	github.com/volatiletech/strmangle v0.0.2
 	gopkg.in/telebot.v3 v3.0.0

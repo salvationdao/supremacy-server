@@ -1111,7 +1111,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		gamelog.L.Debug().Str("mech_id", mechID.String()).Err(err).Msg("mech already in queue")
 		position, err = db.QueuePosition(mechID, factionID)
 		if err != nil {
-			return terror.Error(err, "Unable to join queue, check your balance and try again.")
+			return terror.Error(err, "Unable to join queue, mech already in queue.")
 		}
 		reply(true)
 		return nil
@@ -1145,10 +1145,11 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 	}
 	err = bq.Insert(tx, boil.Infer())
 	if err != nil {
+		fmt.Println("err", err)
 		gamelog.L.Error().
 			Interface("mech", mech).
 			Err(err).Msg("unable to insert mech into queue")
-		return terror.Error(err, "Unable to join queue, check your balance and try again.")
+		return terror.Error(err, "1Unable to join queue, check your balance and try again.")
 	}
 
 	// Charge user queue fee
@@ -1174,7 +1175,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		gamelog.L.Error().
 			Str("tx_id", supTransactionID).
 			Err(err).Msg("unable to update battle queue with queue transaction id")
-		return terror.Error(err, "Unable to join queue, check your balance and try again.")
+		return terror.Error(err, "2Unable to join queue, check your balance and try again.")
 	}
 
 	// Charge queue notification fee, if enabled (10% of queue cost)
@@ -1201,7 +1202,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 			gamelog.L.Error().
 				Str("tx_id", notifyTransactionID).
 				Err(err).Msg("unable to update battle queue with queue notification transaction id")
-			return terror.Error(err, "Unable to join queue, check your balance and try again.")
+			return terror.Error(err, "3Unable to join queue, check your balance and try again.")
 		}
 	}
 
@@ -1211,7 +1212,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		gamelog.L.Error().
 			Interface("mech", mech).
 			Err(err).Msg("unable to commit mech insertion into queue")
-		return terror.Error(err, "Unable to join queue, check your balance and try again.")
+		return terror.Error(err, "4Unable to join queue, check your balance and try again.")
 	}
 
 	// Get mech current queue position
@@ -1229,19 +1230,28 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 			Str("mechID", mechID.String()).
 			Str("factionID", factionID.String()).
 			Err(err).Msg("unable to retrieve mech queue position")
-		return terror.Error(err, "Unable to join queue, check your balance and try again.")
+		return terror.Error(err, "5Unable to join queue, check your balance and try again.")
 	}
+
+	fmt.Println("here1")
 
 	// if telegram notification enabled create a telegram notification and return shortcode
 	if !bq.Notified && msg.Payload.TelegramNotifications {
-		notification, err := arena.telegram.NotificationCreate(ownerID.String(), mechID.String())
+
+		fmt.Println("here2", arena.telegram)
+
+		notification, err := arena.telegram.NotificationCreate(mechID.String())
 		if err != nil {
+			fmt.Println("errr here boi", err)
 			gamelog.L.Error().
 				Str("mechID", mechID.String()).
 				Str("playerID", ownerID.String()).
 				Err(err).Msg("unable to create telegram notification")
 			return terror.Error(err, "Unable create telegram notification.")
 		}
+
+		fmt.Println("here3")
+
 		reply(struct {
 			Code string `json:"code"`
 		}{Code: notification.Shortcode})
@@ -1407,7 +1417,7 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 			gamelog.L.Error().
 				Str("queue_refund_transaction_id", bq.QueueFeeTXIDRefund.String).
 				Err(err).Msg("unable to update battle queue with refund transaction details")
-			return terror.Error(err, "Unable to join queue, check your balance and try again.")
+			return terror.Error(err, "6Unable to join queue, check your balance and try again.")
 		}
 	}
 

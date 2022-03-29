@@ -9,13 +9,13 @@ import (
 	"net/url"
 	"server/db/boiler"
 	"server/gamedb"
-	"server/gamelog"
 	"strconv"
 	"time"
 
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	tele "gopkg.in/telebot.v3"
 )
 
@@ -87,21 +87,6 @@ func (t *Telegram) RegisterHandler() {
 
 }
 
-func (t *Telegram) TelegramNotificationCreate(playerID string, mechID string, code string) error {
-	notification := &boiler.TelegramNotification{
-		PlayerID:  playerID,
-		Shortcode: code,
-		MechID:    mechID,
-	}
-
-	err := notification.Insert(gamedb.StdConn, boil.Infer())
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	return nil
-}
-
 func genCode() string {
 	letters := []rune("abcdefghijklmnopqrstuvwxyz")
 	n := 5
@@ -112,19 +97,20 @@ func genCode() string {
 	return string(b)
 }
 
-func (t *Telegram) Notify(playerID string, mechID string, message string) error {
-	// get notification
+func (t *Telegram) Notify(mechID string, message string) error {
+	// get telegram notification
 	notification, err := boiler.TelegramNotifications(
-		boiler.TelegramNotificationWhere.PlayerID.EQ(playerID),
-		boiler.TelegramNotificationWhere.MechID.EQ(mechID),
-		boiler.TelegramNotificationWhere.Registered.EQ(true)).One(gamedb.StdConn)
+		boiler.TelegramNotificationWhere.Registered.EQ(true),
+		qm.InnerJoin("battle_queue_notifications bqn ON bqn.telegram_notification_id = telegram_notifications.id"),
+		qm.Where(`bqn.mech_id = ?`, mechID),
+	).One(gamedb.StdConn)
 	if err != nil {
 		// TODO: handle no rows
 		return terror.Error(err)
 	}
 
 	// send notification
-	t.SendMessage(notification.TelegramID.Int, "Your warmachine will be in battle soon!")
+	t.SendMessage(notification.TelegramID.Int, message)
 
 	return nil
 }
@@ -147,48 +133,8 @@ func (t *Telegram) SendMessage(chatId int, text string) error {
 	return nil
 }
 
-func (t *Telegram) List() {
-	notifications, err := boiler.TelegramNotifications().All(gamedb.StdConn)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	for _, l := range notifications {
-		fmt.Println("+++++++++++++++++")
-		fmt.Println("ID: ", l.ID)
-		fmt.Println("TelegramID: ", l.TelegramID)
-		fmt.Println("MechID: ", l.MechID)
-		fmt.Println("PlayerID: ", l.PlayerID)
-		fmt.Println("Registered: ", l.Registered)
-		fmt.Println("Shortcode: ", l.Shortcode)
-		fmt.Println("+++++++++++++++++")
-	}
-
-}
-
-func (t *Telegram) Insert() {
-	expiry := time.Now().Add(time.Minute * 3)
-
-	notification := &boiler.TelegramNotification{
-		PlayerID:  "1a657a32-778e-4612-8cc1-14e360665f2b",
-		MechID:    "fc43fa34-b23f-40f4-afaa-465f4880ef59",
-		Shortcode: genCode(),
-		ExpiresAt: null.TimeFrom(expiry),
-	}
-
-	err := notification.Insert(gamedb.StdConn, boil.Infer())
-	if err != nil {
-		fmt.Println("insert ", err)
-		return
-	}
-
-	fmt.Println("code here", notification.Shortcode)
-
-}
-
-func (t *Telegram) NotificationCreate(playerID string, mechID string) (*boiler.TelegramNotification, error) {
-	expiry := time.Now().Add(time.Minute * 3)
+func (t *Telegram) NotificationCreate(mechID string) (*boiler.TelegramNotification, error) {
+	// expiry := time.Now().Add(time.Minute * 3)
 
 	code := genCode()
 	codeExists := true
@@ -208,27 +154,26 @@ func (t *Telegram) NotificationCreate(playerID string, mechID string) (*boiler.T
 		}
 	}
 
-	notification := &boiler.TelegramNotification{
-		PlayerID:  playerID,
-		MechID:    mechID,
-		Shortcode: code,
-		ExpiresAt: null.TimeFrom(expiry),
+	notification := &boiler.BattleQueueNotification{
+		MechID: mechID,
 	}
 
 	err := notification.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {
-		gamelog.L.Error().
-			Str("mechID", mechID).
-			Str("playerID", playerID).
-			Err(err).Msg("unable to create telegram notification")
-		return nil, terror.Error(err, "Unable to create telegram notification")
+		return nil, terror.Error(err, "Unable to insert notification")
 	}
 
-	return notification, nil
+	telegramNotification := &boiler.TelegramNotification{
+		Shortcode:  code,
+		Registered: false,
+	}
 
-}
+	err = notification.SetTelegramNotification(gamedb.StdConn, true, telegramNotification)
+	if err != nil {
+		return nil, terror.Error(err, "Unable to link notification to telegram notification")
+	}
 
-func (t *Telegram) GenCode() {
+	return telegramNotification, nil
 
 }
 

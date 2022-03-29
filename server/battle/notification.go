@@ -10,14 +10,11 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
-
-	"github.com/volatiletech/sqlboiler/v4/boil"
-
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
 type WarMachineDestroyedEventRecord struct {
@@ -198,7 +195,6 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 		// add them to users to notify
 		player, err := boiler.Players(
 			boiler.PlayerWhere.ID.EQ(bq.OwnerID),
-			qm.Load(boiler.PlayerRels.PlayerPreference),
 		).One(gamedb.StdConn)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("battle_id", arena.currentBattle.ID).Str("owner_id", bq.OwnerID).Msg("unable to find owner for battle queue notification")
@@ -211,33 +207,48 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			continue
 		}
 
-		if player.R.PlayerPreference == nil {
-			continue
-		}
+		// get notifications related to mech that has not been sent
+		notifications, err := boiler.BattleQueueNotifications(
+			boiler.BattleQueueNotificationWhere.MechID.EQ(bq.MechID),
+			boiler.BattleQueueNotificationWhere.SentAt.IsNull(),
+		).All(gamedb.StdConn)
 
 		notificationMsg := fmt.Sprintf("%s, your War Machine %s is nearing battle, jump on to https://play.supremacy.game and prepare.", player.Username.String, warMachine.Name)
 
-		if player.R.PlayerPreference.NotificationsBattleQueueSMS && player.MobileNumber.Valid {
-			err := arena.sms.SendSMS(
-				player.MobileNumber.String,
-				notificationMsg,
-			)
-			if err != nil {
-				gamelog.L.Error().Err(err).Str("to", player.MobileNumber.String).Msg("failed to send battle queue notification sms")
+		for _, n := range notifications {
+			// send telegram notification
+			if n.TelegramNotificationID.Valid {
+				err = arena.telegram.Notify(warMachine.ID, notificationMsg)
+				if err != nil {
+					gamelog.L.Error().Err(err).Str("mech_id", bq.MechID).Str("owner_id", bq.OwnerID).Str("queued_at", bq.QueuedAt.String()).Msg("failed to notify telegram")
+
+				}
 			}
-		}
 
-		if player.R.PlayerPreference.NotificationsBattleQueueBrowser {
-			arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPlayerBattleQueueBrowserSubscribe, player.ID)), notificationMsg)
-		}
+			// send sms
+			if n.MobileNumber.Valid {
+				err := arena.sms.SendSMS(
+					player.MobileNumber.String,
+					notificationMsg,
+				)
+				if err != nil {
+					gamelog.L.Error().Err(err).Str("to", player.MobileNumber.String).Msg("failed to send battle queue notification sms")
+				}
+			}
 
-		if player.R.PlayerPreference.NotificationsBattleQueuePushNotifications {
-			// TODO: app notifications?
+			// ??
+			// if n.PushNotifications {
+			// 	arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPlayerBattleQueueBrowserSubscribe, player.ID)), notificationMsg)
+			// }
+
+			// if player.R.PlayerPreference.NotificationsBattleQueuePushNotifications {
+			// 	// TODO: app notifications?
+			// }
 		}
 
 		// telegram notification
 		if true {
-			err = arena.telegram.Notify(player.ID, warMachine.ID, "")
+			err = arena.telegram.Notify(warMachine.ID, notificationMsg)
 			if err != nil {
 				gamelog.L.Error().Err(err).Str("mech_id", bq.MechID).Str("owner_id", bq.OwnerID).Str("queued_at", bq.QueuedAt.String()).Msg("failed to notify telegram")
 

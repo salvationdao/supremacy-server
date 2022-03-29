@@ -108,7 +108,6 @@ var PlayerWhere = struct {
 // PlayerRels is where relationship names are stored.
 var PlayerRels = struct {
 	Faction                   string
-	PlayerPreference          string
 	IDUserStat                string
 	BattleAbilityTriggers     string
 	BattleContracts           string
@@ -120,12 +119,11 @@ var PlayerRels = struct {
 	MVPPlayerFactionStats     string
 	OwnerMechs                string
 	ToUserPendingTransactions string
-	TelegramNotifications     string
+	PlayerPreferences         string
 	UserMultipliers           string
 	Users                     string
 }{
 	Faction:                   "Faction",
-	PlayerPreference:          "PlayerPreference",
 	IDUserStat:                "IDUserStat",
 	BattleAbilityTriggers:     "BattleAbilityTriggers",
 	BattleContracts:           "BattleContracts",
@@ -137,7 +135,7 @@ var PlayerRels = struct {
 	MVPPlayerFactionStats:     "MVPPlayerFactionStats",
 	OwnerMechs:                "OwnerMechs",
 	ToUserPendingTransactions: "ToUserPendingTransactions",
-	TelegramNotifications:     "TelegramNotifications",
+	PlayerPreferences:         "PlayerPreferences",
 	UserMultipliers:           "UserMultipliers",
 	Users:                     "Users",
 }
@@ -145,7 +143,6 @@ var PlayerRels = struct {
 // playerR is where relationships are stored.
 type playerR struct {
 	Faction                   *Faction                  `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
-	PlayerPreference          *PlayerPreference         `boiler:"PlayerPreference" boil:"PlayerPreference" json:"PlayerPreference" toml:"PlayerPreference" yaml:"PlayerPreference"`
 	IDUserStat                *UserStat                 `boiler:"IDUserStat" boil:"IDUserStat" json:"IDUserStat" toml:"IDUserStat" yaml:"IDUserStat"`
 	BattleAbilityTriggers     BattleAbilityTriggerSlice `boiler:"BattleAbilityTriggers" boil:"BattleAbilityTriggers" json:"BattleAbilityTriggers" toml:"BattleAbilityTriggers" yaml:"BattleAbilityTriggers"`
 	BattleContracts           BattleContractSlice       `boiler:"BattleContracts" boil:"BattleContracts" json:"BattleContracts" toml:"BattleContracts" yaml:"BattleContracts"`
@@ -157,7 +154,7 @@ type playerR struct {
 	MVPPlayerFactionStats     FactionStatSlice          `boiler:"MVPPlayerFactionStats" boil:"MVPPlayerFactionStats" json:"MVPPlayerFactionStats" toml:"MVPPlayerFactionStats" yaml:"MVPPlayerFactionStats"`
 	OwnerMechs                MechSlice                 `boiler:"OwnerMechs" boil:"OwnerMechs" json:"OwnerMechs" toml:"OwnerMechs" yaml:"OwnerMechs"`
 	ToUserPendingTransactions PendingTransactionSlice   `boiler:"ToUserPendingTransactions" boil:"ToUserPendingTransactions" json:"ToUserPendingTransactions" toml:"ToUserPendingTransactions" yaml:"ToUserPendingTransactions"`
-	TelegramNotifications     TelegramNotificationSlice `boiler:"TelegramNotifications" boil:"TelegramNotifications" json:"TelegramNotifications" toml:"TelegramNotifications" yaml:"TelegramNotifications"`
+	PlayerPreferences         PlayerPreferenceSlice     `boiler:"PlayerPreferences" boil:"PlayerPreferences" json:"PlayerPreferences" toml:"PlayerPreferences" yaml:"PlayerPreferences"`
 	UserMultipliers           UserMultiplierSlice       `boiler:"UserMultipliers" boil:"UserMultipliers" json:"UserMultipliers" toml:"UserMultipliers" yaml:"UserMultipliers"`
 	Users                     UserSlice                 `boiler:"Users" boil:"Users" json:"Users" toml:"Users" yaml:"Users"`
 }
@@ -435,21 +432,6 @@ func (o *Player) Faction(mods ...qm.QueryMod) factionQuery {
 	return query
 }
 
-// PlayerPreference pointed to by the foreign key.
-func (o *Player) PlayerPreference(mods ...qm.QueryMod) playerPreferenceQuery {
-	queryMods := []qm.QueryMod{
-		qm.Where("\"player_id\" = ?", o.ID),
-		qmhelper.WhereIsNull("deleted_at"),
-	}
-
-	queryMods = append(queryMods, mods...)
-
-	query := PlayerPreferences(queryMods...)
-	queries.SetFrom(query.Query, "\"player_preferences\"")
-
-	return query
-}
-
 // IDUserStat pointed to by the foreign key.
 func (o *Player) IDUserStat(mods ...qm.QueryMod) userStatQuery {
 	queryMods := []qm.QueryMod{
@@ -678,22 +660,22 @@ func (o *Player) ToUserPendingTransactions(mods ...qm.QueryMod) pendingTransacti
 	return query
 }
 
-// TelegramNotifications retrieves all the telegram_notification's TelegramNotifications with an executor.
-func (o *Player) TelegramNotifications(mods ...qm.QueryMod) telegramNotificationQuery {
+// PlayerPreferences retrieves all the player_preference's PlayerPreferences with an executor.
+func (o *Player) PlayerPreferences(mods ...qm.QueryMod) playerPreferenceQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"telegram_notifications\".\"player_id\"=?", o.ID),
+		qm.Where("\"player_preferences\".\"player_id\"=?", o.ID),
 	)
 
-	query := TelegramNotifications(queryMods...)
-	queries.SetFrom(query.Query, "\"telegram_notifications\"")
+	query := PlayerPreferences(queryMods...)
+	queries.SetFrom(query.Query, "\"player_preferences\"")
 
 	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"telegram_notifications\".*"})
+		queries.SetSelect(query.Query, []string{"\"player_preferences\".*"})
 	}
 
 	return query
@@ -842,108 +824,6 @@ func (playerL) LoadFaction(e boil.Executor, singular bool, maybePlayer interface
 					foreign.R = &factionR{}
 				}
 				foreign.R.Players = append(foreign.R.Players, local)
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadPlayerPreference allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-1 relationship.
-func (playerL) LoadPlayerPreference(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
-	var slice []*Player
-	var object *Player
-
-	if singular {
-		object = maybePlayer.(*Player)
-	} else {
-		slice = *maybePlayer.(*[]*Player)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &playerR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &playerR{}
-			}
-
-			for _, a := range args {
-				if a == obj.ID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`player_preferences`),
-		qm.WhereIn(`player_preferences.player_id in ?`, args...),
-		qmhelper.WhereIsNull(`player_preferences.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load PlayerPreference")
-	}
-
-	var resultSlice []*PlayerPreference
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice PlayerPreference")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for player_preferences")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for player_preferences")
-	}
-
-	if len(playerAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-
-	if len(resultSlice) == 0 {
-		return nil
-	}
-
-	if singular {
-		foreign := resultSlice[0]
-		object.R.PlayerPreference = foreign
-		if foreign.R == nil {
-			foreign.R = &playerPreferenceR{}
-		}
-		foreign.R.Player = object
-	}
-
-	for _, local := range slice {
-		for _, foreign := range resultSlice {
-			if local.ID == foreign.PlayerID {
-				local.R.PlayerPreference = foreign
-				if foreign.R == nil {
-					foreign.R = &playerPreferenceR{}
-				}
-				foreign.R.Player = local
 				break
 			}
 		}
@@ -2053,9 +1933,9 @@ func (playerL) LoadToUserPendingTransactions(e boil.Executor, singular bool, may
 	return nil
 }
 
-// LoadTelegramNotifications allows an eager lookup of values, cached into the
+// LoadPlayerPreferences allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (playerL) LoadTelegramNotifications(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+func (playerL) LoadPlayerPreferences(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
 	var slice []*Player
 	var object *Player
 
@@ -2093,8 +1973,8 @@ func (playerL) LoadTelegramNotifications(e boil.Executor, singular bool, maybePl
 	}
 
 	query := NewQuery(
-		qm.From(`telegram_notifications`),
-		qm.WhereIn(`telegram_notifications.player_id in ?`, args...),
+		qm.From(`player_preferences`),
+		qm.WhereIn(`player_preferences.player_id in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -2102,22 +1982,22 @@ func (playerL) LoadTelegramNotifications(e boil.Executor, singular bool, maybePl
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load telegram_notifications")
+		return errors.Wrap(err, "failed to eager load player_preferences")
 	}
 
-	var resultSlice []*TelegramNotification
+	var resultSlice []*PlayerPreference
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice telegram_notifications")
+		return errors.Wrap(err, "failed to bind eager loaded slice player_preferences")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on telegram_notifications")
+		return errors.Wrap(err, "failed to close results in eager load on player_preferences")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for telegram_notifications")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for player_preferences")
 	}
 
-	if len(telegramNotificationAfterSelectHooks) != 0 {
+	if len(playerPreferenceAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -2125,10 +2005,10 @@ func (playerL) LoadTelegramNotifications(e boil.Executor, singular bool, maybePl
 		}
 	}
 	if singular {
-		object.R.TelegramNotifications = resultSlice
+		object.R.PlayerPreferences = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
-				foreign.R = &telegramNotificationR{}
+				foreign.R = &playerPreferenceR{}
 			}
 			foreign.R.Player = object
 		}
@@ -2138,9 +2018,9 @@ func (playerL) LoadTelegramNotifications(e boil.Executor, singular bool, maybePl
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
 			if local.ID == foreign.PlayerID {
-				local.R.TelegramNotifications = append(local.R.TelegramNotifications, foreign)
+				local.R.PlayerPreferences = append(local.R.PlayerPreferences, foreign)
 				if foreign.R == nil {
-					foreign.R = &telegramNotificationR{}
+					foreign.R = &playerPreferenceR{}
 				}
 				foreign.R.Player = local
 				break
@@ -2422,56 +2302,6 @@ func (o *Player) RemoveFaction(exec boil.Executor, related *Faction) error {
 		}
 		related.R.Players = related.R.Players[:ln-1]
 		break
-	}
-	return nil
-}
-
-// SetPlayerPreference of the player to the related item.
-// Sets o.R.PlayerPreference to related.
-// Adds o to related.R.Player.
-func (o *Player) SetPlayerPreference(exec boil.Executor, insert bool, related *PlayerPreference) error {
-	var err error
-
-	if insert {
-		related.PlayerID = o.ID
-
-		if err = related.Insert(exec, boil.Infer()); err != nil {
-			return errors.Wrap(err, "failed to insert into foreign table")
-		}
-	} else {
-		updateQuery := fmt.Sprintf(
-			"UPDATE \"player_preferences\" SET %s WHERE %s",
-			strmangle.SetParamNames("\"", "\"", 1, []string{"player_id"}),
-			strmangle.WhereClause("\"", "\"", 2, playerPreferencePrimaryKeyColumns),
-		)
-		values := []interface{}{o.ID, related.ID}
-
-		if boil.DebugMode {
-			fmt.Fprintln(boil.DebugWriter, updateQuery)
-			fmt.Fprintln(boil.DebugWriter, values)
-		}
-		if _, err = exec.Exec(updateQuery, values...); err != nil {
-			return errors.Wrap(err, "failed to update foreign table")
-		}
-
-		related.PlayerID = o.ID
-
-	}
-
-	if o.R == nil {
-		o.R = &playerR{
-			PlayerPreference: related,
-		}
-	} else {
-		o.R.PlayerPreference = related
-	}
-
-	if related.R == nil {
-		related.R = &playerPreferenceR{
-			Player: o,
-		}
-	} else {
-		related.R.Player = o
 	}
 	return nil
 }
@@ -3281,11 +3111,11 @@ func (o *Player) AddToUserPendingTransactions(exec boil.Executor, insert bool, r
 	return nil
 }
 
-// AddTelegramNotifications adds the given related objects to the existing relationships
+// AddPlayerPreferences adds the given related objects to the existing relationships
 // of the player, optionally inserting them as new records.
-// Appends related to o.R.TelegramNotifications.
+// Appends related to o.R.PlayerPreferences.
 // Sets related.R.Player appropriately.
-func (o *Player) AddTelegramNotifications(exec boil.Executor, insert bool, related ...*TelegramNotification) error {
+func (o *Player) AddPlayerPreferences(exec boil.Executor, insert bool, related ...*PlayerPreference) error {
 	var err error
 	for _, rel := range related {
 		if insert {
@@ -3295,11 +3125,11 @@ func (o *Player) AddTelegramNotifications(exec boil.Executor, insert bool, relat
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
-				"UPDATE \"telegram_notifications\" SET %s WHERE %s",
+				"UPDATE \"player_preferences\" SET %s WHERE %s",
 				strmangle.SetParamNames("\"", "\"", 1, []string{"player_id"}),
-				strmangle.WhereClause("\"", "\"", 2, telegramNotificationPrimaryKeyColumns),
+				strmangle.WhereClause("\"", "\"", 2, playerPreferencePrimaryKeyColumns),
 			)
-			values := []interface{}{o.ID, rel.ID}
+			values := []interface{}{o.ID, rel.PlayerID, rel.Key}
 
 			if boil.DebugMode {
 				fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -3315,15 +3145,15 @@ func (o *Player) AddTelegramNotifications(exec boil.Executor, insert bool, relat
 
 	if o.R == nil {
 		o.R = &playerR{
-			TelegramNotifications: related,
+			PlayerPreferences: related,
 		}
 	} else {
-		o.R.TelegramNotifications = append(o.R.TelegramNotifications, related...)
+		o.R.PlayerPreferences = append(o.R.PlayerPreferences, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
-			rel.R = &telegramNotificationR{
+			rel.R = &playerPreferenceR{
 				Player: o,
 			}
 		} else {
