@@ -107,25 +107,25 @@ const HubKeyGameNotification hub.HubCommandKey = "GAME:NOTIFICATION"
 
 // BroadcastGameNotificationText broadcast game notification to client
 func (api *API) BroadcastGameNotificationText(data string) {
-	api.MessageBus.Send(context.Background(), messagebus.BusKey(HubKeyGameNotification), data)
+	api.MessageBus.Send(messagebus.BusKey(HubKeyGameNotification), data)
 }
 
 // BroadcastGameNotificationLocationSelect broadcast game notification to client
 func (api *API) BroadcastGameNotificationLocationSelect(data *GameNotificationLocationSelect) {
-	api.MessageBus.Send(context.Background(), messagebus.BusKey(HubKeyGameNotification), data)
+	api.MessageBus.Send(messagebus.BusKey(HubKeyGameNotification), data)
 }
 
 // BroadcastGameNotificationAbility broadcast game notification to client
 func (api *API) BroadcastGameNotificationAbility(notificationType GameNotificationType, data *GameNotificationAbility) {
-	api.MessageBus.Send(context.Background(), messagebus.BusKey(HubKeyGameNotification), data)
+	api.MessageBus.Send(messagebus.BusKey(HubKeyGameNotification), data)
 }
 
 // BroadcastGameNotificationWarMachineAbility broadcast game notification to client
 func (api *API) BroadcastGameNotificationWarMachineAbility(data *GameNotificationWarMachineAbility) {
-	api.MessageBus.Send(context.Background(), messagebus.BusKey(HubKeyGameNotification), data)
+	api.MessageBus.Send(messagebus.BusKey(HubKeyGameNotification), data)
 }
 
 // BroadcastGameNotificationWarMachineDestroyed broadcast game notification to client
 func (api *API) BroadcastGameNotificationWarMachineDestroyed(data *WarMachineDestroyedEventRecord) {
-	api.MessageBus.Send(context.Background(), messagebus.BusKey(HubKeyGameNotification), data)
+	api.MessageBus.Send(messagebus.BusKey(HubKeyGameNotification), data)
 }

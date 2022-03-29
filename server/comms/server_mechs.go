@@ -8,7 +8,6 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
@@ -55,8 +54,6 @@ func (s *S) Mechs(req MechsReq, resp *MechsResp) error {
 			return terror.Error(err)
 		}
 		if mechContainer.ID == "" || mechContainer.ID == uuid.Nil.String() {
-			spew.Dump(mech)
-			spew.Dump(mechContainer)
 			return terror.Error(fmt.Errorf("null ID"))
 		}
 

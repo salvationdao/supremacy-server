@@ -32,25 +32,22 @@ type Arena struct {
 	socket         *websocket.Conn
 	timeout        time.Duration
 	messageBus     *messagebus.MessageBus
-	netMessageBus  *messagebus.NetBus
 	currentBattle  *Battle
 	syndicates     map[string]boiler.Faction
 	AIPlayers      map[string]db.PlayerWithFaction
 	RPCClient      *rpcclient.PassportXrpcClient
 	gameClientLock sync.Mutex
 	sms            server.SMS
-	sync.Mutex
 }
 
 type Opts struct {
-	Conn          db.Conn
-	Addr          string
-	Timeout       time.Duration
-	Hub           *hub.Hub
-	MessageBus    *messagebus.MessageBus
-	NetMessageBus *messagebus.NetBus
-	RPCClient     *rpcclient.PassportXrpcClient
-	SMS           server.SMS
+	Conn       db.Conn
+	Addr       string
+	Timeout    time.Duration
+	Hub        *hub.Hub
+	MessageBus *messagebus.MessageBus
+	RPCClient  *rpcclient.PassportXrpcClient
+	SMS        server.SMS
 }
 
 type MessageType byte
@@ -89,7 +86,6 @@ func NewArena(opts *Opts) *Arena {
 	}
 
 	arena.timeout = opts.Timeout
-	arena.netMessageBus = opts.NetMessageBus
 	arena.messageBus = opts.MessageBus
 	arena.RPCClient = opts.RPCClient
 	arena.sms = opts.SMS
@@ -113,6 +109,7 @@ func NewArena(opts *Opts) *Arena {
 	opts.SecureUserFactionCommand(WSQueueJoin, arena.QueueJoinHandler)
 	opts.SecureUserFactionCommand(WSQueueLeave, arena.QueueLeaveHandler)
 	opts.SecureUserFactionCommand(WSAssetQueueStatus, arena.AssetQueueStatusHandler)
+	opts.SecureUserFactionCommand(WSAssetQueueStatusList, arena.AssetQueueStatusListHandler)
 	opts.SecureUserFactionSubscribeCommand(WSQueueStatusSubscribe, arena.QueueStatusSubscribeHandler)
 	opts.SecureUserFactionSubscribeCommand(WSQueueUpdatedSubscribe, arena.QueueUpdatedSubscribeHandler)
 	opts.SecureUserFactionSubscribeCommand(WSAssetQueueStatusSubscribe, arena.AssetQueueStatusSubscribeHandler)
@@ -135,7 +132,7 @@ func NewArena(opts *Opts) *Arena {
 	opts.SecureUserFactionSubscribeCommand(HubKeGabsBribingWinnerSubscribe, arena.GabsBribingWinnerSubscribe)
 	opts.SecureUserFactionSubscribeCommand(HubKeyBattleAbilityUpdated, arena.BattleAbilityUpdateSubscribeHandler)
 
-	opts.SecureUserSubscribeCommand(HubKeyMultiplierMapSubscribe, arena.MultiplierMapSubScribeHandler)
+	opts.SecureUserSubscribeCommand(HubKeyMultiplierMapSubscribe, arena.MultiplierMapSubscribeHandler)
 
 	// faction unique ability related (sup contribution)
 	opts.SecureUserFactionCommand(HubKeFactionUniqueAbilityContribute, arena.FactionUniqueAbilityContribute)
@@ -211,18 +208,16 @@ func (arena *Arena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		gamelog.L.Warn().Str("request_ip", ip).Err(err).Msg("unable to start Battle Arena server")
 	}
 
-	arena.gameClientLock.Lock()
 	arena.socket = c
 
 	defer func() {
-		arena.gameClientLock.Unlock()
 		c.Close(websocket.StatusInternalError, "game client has disconnected")
 	}()
 
 	arena.Start()
 }
 
-func (arena *Arena) SetMessageBus(mb *messagebus.MessageBus, nb *messagebus.NetBus) {
+func (arena *Arena) SetMessageBus(mb *messagebus.MessageBus) {
 	arena.messageBus = mb
 }
 
@@ -324,7 +319,7 @@ type MultiplierMapResponse struct {
 
 const HubKeyMultiplierMapSubscribe hub.HubCommandKey = "MULTIPLIER:MAP:SUBSCRIBE"
 
-func (arena *Arena) MultiplierMapSubScribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (arena *Arena) MultiplierMapSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -332,8 +327,9 @@ func (arena *Arena) MultiplierMapSubScribeHandler(ctx context.Context, wsc *hub.
 	}
 
 	// don't pass back any multiplier value if there is no battle, but still complete the subscription
+
 	if arena.currentBattle != nil {
-		multipliers, err := db.PlayerMultipliers(arena.currentBattle.BattleNumber)
+		multipliers, err := db.PlayerMultipliers(arena.currentBattle.BattleNumber - 1)
 		if err != nil {
 			return "", "", terror.Error(err, "unable to retrieve multipliers")
 		}
@@ -343,7 +339,7 @@ func (arena *Arena) MultiplierMapSubScribeHandler(ctx context.Context, wsc *hub.
 		}
 
 		// get the citizen list
-		citizenPlayerIDs, err := db.CitizenPlayerIDs(arena.currentBattle.BattleNumber)
+		citizenPlayerIDs, err := db.CitizenPlayerIDs(arena.currentBattle.BattleNumber - 1)
 		if err != nil {
 			return "", "", terror.Error(err)
 		}
@@ -356,6 +352,8 @@ func (arena *Arena) MultiplierMapSubScribeHandler(ctx context.Context, wsc *hub.
 
 	return req.TransactionID, messagebus.BusKey(HubKeyMultiplierMapSubscribe), nil
 }
+
+const HubKeyUserStatChatSubscribe hub.HubCommandKey = "PLAYER:USER:STAT:CHAT:SUBSCRIBE"
 
 const HubKeyBattleAbilityUpdated hub.HubCommandKey = "BATTLE:ABILITY:UPDATED"
 
@@ -611,8 +609,6 @@ func (arena *Arena) GabsBribeStageSubscribe(ctx context.Context, wsc *hub.Client
 	}
 
 	// return data if, current battle is not null
-	arena.Lock()
-	defer arena.Unlock()
 	if arena.currentBattle != nil {
 		btl := arena.currentBattle
 		if btl.abilities != nil {
@@ -625,10 +621,10 @@ func (arena *Arena) GabsBribeStageSubscribe(ctx context.Context, wsc *hub.Client
 
 const HubKeyBattleAbilityProgressBarUpdated hub.HubCommandKey = "BATTLE:ABILITY:PROGRESS:BAR:UPDATED"
 
-func (arena *Arena) FactionProgressBarUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.NetBusKey, error) {
+func (arena *Arena) FactionProgressBarUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.BusKey, error) {
 	gamelog.L.Info().Str("fn", "FactionProgressBarUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
 
-	return messagebus.NetBusKey(HubKeyBattleAbilityProgressBarUpdated), nil
+	return messagebus.BusKey(HubKeyBattleAbilityProgressBarUpdated), nil
 }
 
 const HubKeyAbilityPriceUpdated hub.HubCommandKey = "ABILITY:PRICE:UPDATED"
@@ -640,29 +636,29 @@ type AbilityPriceUpdateRequest struct {
 	} `json:"payload"`
 }
 
-func (arena *Arena) FactionAbilityPriceUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.NetBusKey, error) {
+func (arena *Arena) FactionAbilityPriceUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.BusKey, error) {
 	req := &AbilityPriceUpdateRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return "", terror.Error(err, "Invalid request received")
 	}
 
-	return messagebus.NetBusKey(fmt.Sprintf("%s,%s", HubKeyAbilityPriceUpdated, req.Payload.AbilityIdentity)), nil
+	return messagebus.BusKey(fmt.Sprintf("%s,%s", HubKeyAbilityPriceUpdated, req.Payload.AbilityIdentity)), nil
 }
 
-func (arena *Arena) LiveVoteCountUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.NetBusKey, error) {
-	return messagebus.NetBusKey(HubKeyLiveVoteCountUpdated), nil
+func (arena *Arena) LiveVoteCountUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.BusKey, error) {
+	return messagebus.BusKey(HubKeyLiveVoteCountUpdated), nil
 }
 
-func (arena *Arena) WarMachineLocationUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.NetBusKey, error) {
-	return messagebus.NetBusKey(HubKeyWarMachineLocationUpdated), nil
+func (arena *Arena) WarMachineLocationUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.BusKey, error) {
+	return messagebus.BusKey(HubKeyWarMachineLocationUpdated), nil
 }
 
 const HubKeySpoilOfWarUpdated hub.HubCommandKey = "SPOIL:OF:WAR:UPDATED"
 
-func (arena *Arena) SpoilOfWarUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.NetBusKey, error) {
+func (arena *Arena) SpoilOfWarUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.BusKey, error) {
 	gamelog.L.Info().Str("fn", "SpoilOfWarUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
-	return messagebus.NetBusKey(HubKeySpoilOfWarUpdated), nil
+	return messagebus.BusKey(HubKeySpoilOfWarUpdated), nil
 }
 
 const HubKeGabsBribingWinnerSubscribe hub.HubCommandKey = "BRIBE:WINNER:SUBSCRIBE"
@@ -740,18 +736,12 @@ type BattleWMDestroyedPayload struct {
 }
 
 func (arena *Arena) init() {
-	arena.Lock()
-	defer arena.Unlock()
-	btl := arena.Battle()
-	arena.currentBattle = btl
-	arena.Message(BATTLEINIT, btl)
-
-	go arena.NotifyUpcomingWarMachines()
+	arena.beginBattle()
 }
 
 func (arena *Arena) start() {
 	ctx := context.Background()
-	arena.init()
+	arena.beginBattle()
 
 	for {
 		_, payload, err := arena.socket.Read(ctx)
@@ -812,7 +802,7 @@ func (arena *Arena) start() {
 				btl.end(dataPayload)
 				//TODO: this needs to be triggered by a message from the game client
 				time.Sleep(time.Second * 30)
-				arena.init()
+				arena.beginBattle()
 			default:
 				gamelog.L.Warn().Str("battleCommand", msg.BattleCommand).Err(err).Msg("Battle Arena WS: no command response")
 			}
@@ -824,11 +814,11 @@ func (arena *Arena) start() {
 	}
 }
 
-func (arena *Arena) Battle() *Battle {
+func (arena *Arena) beginBattle() {
 	gm, err := db.GameMapGetRandom(context.Background(), arena.conn)
 	if err != nil {
 		gamelog.L.Err(err).Msg("unable to get random map")
-		return nil
+		return
 	}
 
 	gameMap := &server.GameMap{
@@ -867,6 +857,26 @@ func (arena *Arena) Battle() *Battle {
 		battleID = lastBattle.ID
 
 		inserted = true
+
+		multipliers, err := db.PlayerMultipliers(lastBattle.BattleNumber)
+		if err != nil {
+			gamelog.L.Error().Err(err).Int("btl.BattleNumber", lastBattle.BattleNumber).Msg("failed to load PlayerMultipliers")
+		} else {
+			for _, m := range multipliers {
+				m.TotalMultiplier = m.TotalMultiplier.Shift(-1)
+			}
+
+			// get the citizen list
+			citizenPlayerIDs, err := db.CitizenPlayerIDs(lastBattle.BattleNumber)
+			if err != nil {
+				gamelog.L.Error().Err(err).Int("btl.BattleNumber", lastBattle.BattleNumber).Msg("failed to load CitizenPlayerIDs")
+			} else {
+				go arena.messageBus.Send(messagebus.BusKey(HubKeyMultiplierMapSubscribe), &MultiplierMapResponse{
+					Multipliers:      multipliers,
+					CitizenPlayerIDs: citizenPlayerIDs,
+				})
+			}
+		}
 	}
 
 	btl := &Battle{
@@ -889,12 +899,17 @@ func (arena *Arena) Battle() *Battle {
 		gamelog.L.Warn().Err(err).Msg("unable to load out mechs")
 	}
 
+	// order the mechs by facton id
+
 	// set user online debounce
 	go btl.debounceSendingViewerCount(func(result ViewerLiveCount) {
 		btl.users.Send(HubKeyViewerLiveCountUpdated, result)
 	})
 
-	return btl
+	arena.currentBattle = btl
+	arena.Message(BATTLEINIT, btl)
+
+	go arena.NotifyUpcomingWarMachines()
 }
 
 const HubKeyUserStatSubscribe hub.HubCommandKey = "USER:STAT:SUBSCRIBE"

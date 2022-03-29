@@ -322,8 +322,6 @@ func main() {
 						return terror.Error(err, "SMS init failed")
 					}
 
-					// initialise net message bus
-					netMessageBus := messagebus.NewNetBus(log_helpers.NamedLogger(gamelog.L, "net_message_bus"))
 					// initialise message bus
 					messageBus := messagebus.NewMessageBus(log_helpers.NamedLogger(gamelog.L, "message_bus"))
 					gsHub := hub.New(&hub.Config{
@@ -338,7 +336,6 @@ func main() {
 							OriginPatterns:     []string{"*"},
 						},
 						ClientOfflineFn: func(cl *hub.Client) {
-							netMessageBus.UnsubAll(cl)
 							messageBus.UnsubAll(cl)
 						},
 						Tracer: &api.HubTracer{},
@@ -347,17 +344,16 @@ func main() {
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Set up hub")
 
 					ba := battle.NewArena(&battle.Opts{
-						Addr:          battleArenaAddr,
-						Conn:          pgxconn,
-						NetMessageBus: netMessageBus,
-						MessageBus:    messageBus,
-						Hub:           gsHub,
-						RPCClient:     rpcClient,
-						SMS:           twilio,
+						Addr:       battleArenaAddr,
+						Conn:       pgxconn,
+						MessageBus: messageBus,
+						Hub:        gsHub,
+						RPCClient:  rpcClient,
+						SMS:        twilio,
 					})
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("set up arena")
 					gamelog.L.Info().Msg("Setting up webhook rest API")
-					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, pgxconn, rpcClient, messageBus, netMessageBus, gsHub, twilio)
+					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, pgxconn, rpcClient, messageBus, gsHub, twilio)
 					if err != nil {
 						fmt.Println(err)
 						os.Exit(1)
@@ -530,7 +526,7 @@ func main() {
 	}
 }
 
-func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, battleArenaClient *battle.Arena, conn *pgxpool.Pool, passport *rpcclient.PassportXrpcClient, messageBus *messagebus.MessageBus, netMessageBus *messagebus.NetBus, gsHub *hub.Hub, sms server.SMS) (*api.API, error) {
+func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, battleArenaClient *battle.Arena, conn *pgxpool.Pool, passport *rpcclient.PassportXrpcClient, messageBus *messagebus.MessageBus, gsHub *hub.Hub, sms server.SMS) (*api.API, error) {
 	environment := ctxCLI.String("environment")
 	sentryDSNBackend := ctxCLI.String("sentry_dsn_backend")
 	sentryServerName := ctxCLI.String("sentry_server_name")
@@ -576,7 +572,7 @@ func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, bat
 	HTMLSanitizePolicy.AllowAttrs("class").OnElements("img", "table", "tr", "td", "p")
 
 	// API Server
-	serverAPI := api.NewAPI(ctx, log, battleArenaClient, passport, apiAddr, HTMLSanitizePolicy, conn, config, messageBus, netMessageBus, gsHub, sms)
+	serverAPI := api.NewAPI(ctx, log, battleArenaClient, passport, apiAddr, HTMLSanitizePolicy, conn, config, messageBus, gsHub, sms)
 	return serverAPI, nil
 }
 

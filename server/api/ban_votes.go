@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -302,7 +301,7 @@ func (bv *PunishVoteTracker) Run() {
 				}
 
 				// broadcast new vote to online faction users
-				bv.MessageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPunishVoteSubscribe, bv.FactionID)), &PunishVoteInstance{
+				bv.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPunishVoteSubscribe, bv.FactionID)), &PunishVoteInstance{
 					PunishVote:   punishVote,
 					PunishOption: punishVote.R.PunishOption,
 				})
@@ -370,7 +369,7 @@ func (bv *PunishVoteTracker) debounceBroadcastResult() {
 			timer.Reset(interval)
 		case <-timer.C:
 			if result != nil {
-				bv.MessageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPunishVoteResultSubscribe, bv.FactionID)), result)
+				bv.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPunishVoteResultSubscribe, bv.FactionID)), result)
 			}
 		}
 	}

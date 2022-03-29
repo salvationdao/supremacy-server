@@ -112,7 +112,7 @@ func (arena *Arena) HubKeyMultiplierUpdate(ctx context.Context, wsc *hub.Client,
 
 	// return multiplier if battle is on
 	if arena.currentBattle != nil && arena.currentBattle.multipliers != nil {
-		m, total := arena.currentBattle.multipliers.PlayerMultipliers(id, 0)
+		m, total := arena.currentBattle.multipliers.PlayerMultipliers(id, -1)
 
 		reply(&MultiplierUpdate{
 			UserMultipliers:  m,
@@ -139,7 +139,7 @@ func (arena *Arena) GameNotificationSubscribeHandler(ctx context.Context, wsc *h
 
 // BroadcastGameNotificationText broadcast game notification to client
 func (arena *Arena) BroadcastGameNotificationText(data string) {
-	arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyGameNotification), &GameNotification{
+	arena.messageBus.Send(messagebus.BusKey(HubKeyGameNotification), &GameNotification{
 		Type: GameNotificationTypeText,
 		Data: data,
 	})
@@ -147,7 +147,7 @@ func (arena *Arena) BroadcastGameNotificationText(data string) {
 
 // BroadcastGameNotificationLocationSelect broadcast game notification to client
 func (arena *Arena) BroadcastGameNotificationLocationSelect(data *GameNotificationLocationSelect) {
-	arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyGameNotification), &GameNotification{
+	arena.messageBus.Send(messagebus.BusKey(HubKeyGameNotification), &GameNotification{
 		Type: GameNotificationTypeLocationSelect,
 		Data: data,
 	})
@@ -155,7 +155,7 @@ func (arena *Arena) BroadcastGameNotificationLocationSelect(data *GameNotificati
 
 // BroadcastGameNotificationAbility broadcast game notification to client
 func (arena *Arena) BroadcastGameNotificationAbility(notificationType GameNotificationType, data GameNotificationAbility) {
-	arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyGameNotification), &GameNotification{
+	arena.messageBus.Send(messagebus.BusKey(HubKeyGameNotification), &GameNotification{
 		Type: notificationType,
 		Data: data,
 	})
@@ -163,7 +163,7 @@ func (arena *Arena) BroadcastGameNotificationAbility(notificationType GameNotifi
 
 // BroadcastGameNotificationWarMachineAbility broadcast game notification to client
 func (arena *Arena) BroadcastGameNotificationWarMachineAbility(data *GameNotificationWarMachineAbility) {
-	arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyGameNotification), &GameNotification{
+	arena.messageBus.Send(messagebus.BusKey(HubKeyGameNotification), &GameNotification{
 		Type: GameNotificationTypeWarMachineAbility,
 		Data: data,
 	})
@@ -171,7 +171,7 @@ func (arena *Arena) BroadcastGameNotificationWarMachineAbility(data *GameNotific
 
 // BroadcastGameNotificationWarMachineDestroyed broadcast game notification to client
 func (arena *Arena) BroadcastGameNotificationWarMachineDestroyed(data *WarMachineDestroyedEventRecord) {
-	arena.messageBus.Send(context.Background(), messagebus.BusKey(HubKeyGameNotification), &GameNotification{
+	arena.messageBus.Send(messagebus.BusKey(HubKeyGameNotification), &GameNotification{
 		Type: GameNotificationTypeWarMachineDestroyed,
 		Data: data,
 	})
@@ -184,7 +184,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 	// get next 10 war machines in queue for each faction
 	q, err := db.LoadBattleQueue(context.Background(), 13)
 	if err != nil {
-		gamelog.L.Warn().Err(err).Str("battle_id", arena.Battle().ID).Msg("unable to load out queue for notifications")
+		gamelog.L.Warn().Err(err).Str("battle_id", arena.currentBattle.ID).Msg("unable to load out queue for notifications")
 		return
 	}
 
@@ -201,7 +201,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			qm.Load(boiler.PlayerRels.PlayerPreference),
 		).One(gamedb.StdConn)
 		if err != nil {
-			gamelog.L.Error().Err(err).Str("battle_id", arena.Battle().ID).Str("owner_id", bq.OwnerID).Msg("unable to find owner for battle queue notification")
+			gamelog.L.Error().Err(err).Str("battle_id", arena.currentBattle.ID).Str("owner_id", bq.OwnerID).Msg("unable to find owner for battle queue notification")
 			continue
 		}
 
@@ -228,7 +228,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 		}
 
 		if player.R.PlayerPreference.NotificationsBattleQueueBrowser {
-			arena.messageBus.Send(context.Background(), messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPlayerBattleQueueBrowserSubscribe, player.ID)), notificationMsg)
+			arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPlayerBattleQueueBrowserSubscribe, player.ID)), notificationMsg)
 		}
 
 		if player.R.PlayerPreference.NotificationsBattleQueuePushNotifications {
