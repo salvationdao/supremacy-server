@@ -587,7 +587,6 @@ func (o *Battle) BattleQueues(mods ...qm.QueryMod) battleQueueQuery {
 
 	queryMods = append(queryMods,
 		qm.Where("\"battle_queue\".\"battle_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"battle_queue\".\"deleted_at\""),
 	)
 
 	query := BattleQueues(queryMods...)
@@ -1720,7 +1719,6 @@ func (battleL) LoadBattleQueues(e boil.Executor, singular bool, maybeBattle inte
 	query := NewQuery(
 		qm.From(`battle_queue`),
 		qm.WhereIn(`battle_queue.battle_id in ?`, args...),
-		qmhelper.WhereIsNull(`battle_queue.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)

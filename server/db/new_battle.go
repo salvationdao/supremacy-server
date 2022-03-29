@@ -268,9 +268,8 @@ func LoadBattleQueue(ctx context.Context, lengthPerFaction int) ([]*boiler.Battl
 		FROM (
 			SELECT ROW_NUMBER() OVER (PARTITION BY faction_id ORDER BY queued_at ASC) AS r, t.*
 			FROM battle_queue t
-			WHERE deleted_at IS NULL
 		) x
-		WHERE deleted_at IS NULL and x.r <= $1
+		WHERE x.r <= $1
 		`
 
 	result, err := gamedb.Conn.Query(ctx, query, lengthPerFaction)
