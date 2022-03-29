@@ -107,7 +107,7 @@ func (sow *SpoilsOfWar) Run() {
 			if sow.battle != sow.battle.arena.currentBattle {
 				sow.battle = nil
 				sow = nil
-				gamelog.L.Info().Msg("Clean up spoil of war ticker when battle mismatch")
+				gamelog.L.Info().Msg("Battle mismatch is detected, clean up spoil of war ticker")
 				return
 			}
 			// Push all pending transactions to passport server

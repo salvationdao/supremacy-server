@@ -249,13 +249,6 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 
 // FactionUniqueAbilityUpdater update ability price every 10 seconds
 func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
-	defer func() {
-		if err := recover(); err != nil {
-			gamelog.L.Error().Interface("err", err).Msg("Panic! Panic! Panic! Panic at the FactionUniqueAbilityUpdater!")
-
-			as.FactionUniqueAbilityUpdater()
-		}
-	}()
 	minPrice := decimal.New(1, 18)
 
 	main_ticker := time.NewTicker(1 * time.Second)
@@ -263,8 +256,18 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 	live_vote_ticker := time.NewTicker(1 * time.Second)
 
 	defer func() {
+		if err := recover(); err != nil {
+			gamelog.L.Error().Interface("err", err).Msg("Panic! Panic! Panic! Panic at the FactionUniqueAbilityUpdater!")
+
+			as.FactionUniqueAbilityUpdater()
+		}
+	}()
+
+	defer func() {
 		main_ticker.Stop()
 		live_vote_ticker.Stop()
+		close(as.end)
+		close(as.contribute)
 	}()
 
 	// start the battle
@@ -303,8 +306,6 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 						gamelog.L.Error().Interface("err", err).Msg("Panic! Panic! Panic! Panic at the cleaning up abilities channels!")
 					}
 				}()
-				close(as.end)
-				close(as.contribute)
 			}()
 
 			return
@@ -316,7 +317,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 			if as.battle != as.battle.arena.currentBattle {
 				main_ticker.Stop()
 				live_vote_ticker.Stop()
-				gamelog.L.Info().Msg("clean up ability price ticker update")
+				gamelog.L.Info().Msg("Battle mismatch is detected, clean up ability price update ticker")
 				return
 			}
 
@@ -826,14 +827,14 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 	main_ticker := time.NewTicker(1 * time.Second)
 	price_ticker := time.NewTicker(1 * time.Second)
 	progress_ticker := time.NewTicker(1 * time.Second)
+	end_progress := make(chan bool)
 
 	defer func() {
 		price_ticker.Stop()
 		main_ticker.Stop()
 		close(as.endGabs)
+		close(end_progress)
 	}()
-
-	end_progress := make(chan bool)
 
 	// start voting stage
 	if !resume {
@@ -848,11 +849,9 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 		for {
 			select {
 			case <-end_progress:
-				close(end_progress)
 				return
 			case <-progress_ticker.C:
 				if as.battle == nil || as.battle.arena.currentBattle == nil || as.battle.arena.currentBattle.BattleNumber != bn {
-					close(end_progress)
 					return
 				}
 				as.BattleAbilityProgressBar()
@@ -878,8 +877,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 			}
 			// terminate ticker if battle mismatch
 			if as.battle != as.battle.arena.currentBattle {
-				gamelog.L.Info().Msg("clean up mismatch bribing ticker")
-				as.endGabs <- true
+				gamelog.L.Info().Msg("Battle mismatch is detected, clean up bribing ticker")
 				return
 			}
 			// check phase
@@ -1681,12 +1679,10 @@ func (as *AbilitiesSystem) End() {
 	defer func() {
 		if err := recover(); err != nil {
 			gamelog.L.Error().Interface("err", err).Msg("Panic! Panic! Panic! Panic at the abilities.End!")
-			as.battle = nil
 		}
 	}()
 	as.end <- true
 	as.endGabs <- true
-	as.battle = nil
 }
 
 func BuildUserDetailWithFaction(userID uuid.UUID) (*UserBrief, error) {

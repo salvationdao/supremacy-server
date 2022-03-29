@@ -922,10 +922,15 @@ func (btl *Battle) debounceSendingViewerCount(cb func(result ViewerLiveCount)) {
 				}
 			}
 		case <-checker.C:
-			if btl != btl.arena.currentBattle {
+			if btl.stage == BattleStageEnd {
 				timer.Stop()
 				checker.Stop()
-				gamelog.L.Info().Msg("Clean up live count debounce function due to battle missmatch")
+				gamelog.L.Info().Msg("Clean up live count debounce function")
+				close(btl.viewerCountInputChan)
+			} else if btl != btl.arena.currentBattle {
+				timer.Stop()
+				checker.Stop()
+				gamelog.L.Info().Msg("Battle mismatch is detected, clean up live count debounce function")
 				close(btl.viewerCountInputChan)
 				return
 			}
