@@ -11,6 +11,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/passport"
+	"sync"
 	"time"
 
 	"github.com/volatiletech/null/v8"
@@ -22,15 +23,28 @@ import (
 )
 
 type SpoilsOfWar struct {
-	battle        *Battle
+	_battle       *Battle
 	flushCh       chan bool
 	tickSpeed     time.Duration
 	transactSpeed time.Duration
+	sync.RWMutex
+}
+
+func (sow *SpoilsOfWar) battle() *Battle {
+	sow.RLock()
+	defer sow.RUnlock()
+	return sow._battle
+}
+
+func (sow *SpoilsOfWar) storeBattle(btl *Battle) {
+	sow.Lock()
+	defer sow.Unlock()
+	sow._battle = btl
 }
 
 func NewSpoilsOfWar(btl *Battle, transactSpeed time.Duration, dripSpeed time.Duration) *SpoilsOfWar {
 	spw := &SpoilsOfWar{
-		battle:        btl,
+		_battle:       btl,
 		transactSpeed: transactSpeed,
 		flushCh:       make(chan bool),
 		tickSpeed:     dripSpeed,
@@ -96,16 +110,16 @@ func (sow *SpoilsOfWar) Run() {
 				gamelog.L.Err(err).Msg("blast out remainder failed of spoils of war")
 				continue
 			}
-			gamelog.L.Info().Msgf("spoils system has been cleaned up: %s", sow.battle.ID)
+			gamelog.L.Info().Msgf("spoils system has been cleaned up: %s", sow.battle().ID)
 
 			close(sow.flushCh)
-			sow.battle = nil
+			sow.storeBattle(nil)
 			sow = nil
 			return
 		case <-t.C:
 			// terminate ticker if the battle mismatch
-			if sow.battle != sow.battle.arena.currentBattle {
-				sow.battle = nil
+			if sow.battle() != sow.battle().arena.currentBattle() {
+				sow.storeBattle(nil)
 				sow = nil
 				gamelog.L.Info().Msg("Clean up spoil of war ticker when battle mismatch")
 				return
@@ -122,7 +136,7 @@ func (sow *SpoilsOfWar) Run() {
 }
 
 func (sow *SpoilsOfWar) Flush() error {
-	bn := sow.battle.BattleNumber - 1
+	bn := sow.battle().BattleNumber - 1
 
 	warchest, err := boiler.SpoilsOfWars(boiler.SpoilsOfWarWhere.BattleNumber.EQ(bn)).One(gamedb.StdConn)
 
@@ -138,7 +152,7 @@ func (sow *SpoilsOfWar) Flush() error {
 	totalShares := decimal.Zero
 	onlineUsers := []*db.Multipliers{}
 	for _, player := range multipliers {
-		if sow.battle.isOnline(player.PlayerID) {
+		if sow.battle().isOnline(player.PlayerID) {
 			totalShares = totalShares.Add(player.TotalMultiplier)
 			onlineUsers = append(onlineUsers, player)
 		}
@@ -156,12 +170,12 @@ func (sow *SpoilsOfWar) Flush() error {
 	}
 	amount = amount.Div(totalShares)
 
-	subgroup := fmt.Sprintf("Spoils of War from Battle #%d", sow.battle.BattleNumber-1)
+	subgroup := fmt.Sprintf("Spoils of War from Battle #%d", sow.battle().BattleNumber-1)
 
 	for _, player := range onlineUsers {
 		txr := fmt.Sprintf("spoils_of_war|%s|%d", player.PlayerID, time.Now().UnixNano())
 		userAmount := amount.Mul(player.TotalMultiplier).Truncate(0)
-		_, err := sow.battle.arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
+		_, err := sow.battle().arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
 			FromUserID:           SupremacyBattleUserID,
 			ToUserID:             player.PlayerID,
 			Amount:               userAmount.String(),
@@ -202,7 +216,7 @@ func (sow *SpoilsOfWar) Flush() error {
 
 func (sow *SpoilsOfWar) Drip() error {
 	var err error
-	bn := sow.battle.BattleNumber - 1
+	bn := sow.battle().BattleNumber - 1
 
 	warchest, err := boiler.SpoilsOfWars(boiler.SpoilsOfWarWhere.BattleNumber.EQ(bn)).One(gamedb.StdConn)
 
@@ -231,7 +245,7 @@ func (sow *SpoilsOfWar) Drip() error {
 	totalShares := decimal.Zero
 	onlineUsers := []*db.Multipliers{}
 	for _, player := range multipliers {
-		if sow.battle.isOnline(player.PlayerID) {
+		if sow.battle().isOnline(player.PlayerID) {
 			if player.TotalMultiplier.LessThanOrEqual(decimal.Zero) {
 				continue
 			}
@@ -244,7 +258,7 @@ func (sow *SpoilsOfWar) Drip() error {
 		gamelog.L.Warn().Msgf("total shares is less than or equal to zero")
 		return nil
 	}
-	subgroup := fmt.Sprintf("Spoils of War from Battle #%d", sow.battle.BattleNumber-1)
+	subgroup := fmt.Sprintf("Spoils of War from Battle #%d", sow.battle().BattleNumber-1)
 	amountRemaining := warchest.Amount.Sub(warchest.AmountSent)
 
 	onShareSups := dripAmount.Div(totalShares)
@@ -259,7 +273,7 @@ func (sow *SpoilsOfWar) Drip() error {
 
 		txr := fmt.Sprintf("spoils_of_war|%s|%d", player.PlayerID, time.Now().UnixNano())
 
-		_, err := sow.battle.arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
+		_, err := sow.battle().arena.ppClient.SpendSupMessage(passport.SpendSupsReq{
 			FromUserID:           SupremacyBattleUserID,
 			ToUserID:             player.PlayerID,
 			Amount:               userDrip.StringFixed(18),
