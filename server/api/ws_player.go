@@ -118,7 +118,7 @@ func (ctrlr *PlayerController) PlayerBattleQueueNotificationsHandler(ctx context
 		}
 	}
 
-	go ctrlr.API.MessageBus.Send(ctx, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPlayerPreferencesSubscribe, wsc.Identifier())), playerPrefs)
+	go ctrlr.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPlayerPreferencesSubscribe, wsc.Identifier())), playerPrefs)
 	reply(true)
 	return nil
 }

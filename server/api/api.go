@@ -80,7 +80,7 @@ type API struct {
 	Hub           *hub.Hub
 	Conn          *pgxpool.Pool
 	MessageBus    *messagebus.MessageBus
-	NetMessageBus *messagebus.NetBus
+	NetMessageBus *messagebus.MessageBus
 	Passport      *passport.Passport
 	SMS           server.SMS
 
@@ -99,7 +99,7 @@ func NewAPI(
 	conn *pgxpool.Pool,
 	config *server.Config,
 	messageBus *messagebus.MessageBus,
-	netMessageBus *messagebus.NetBus,
+	netMessageBus *messagebus.MessageBus,
 	gsHub *hub.Hub,
 	sms server.SMS,
 ) *API {

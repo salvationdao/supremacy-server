@@ -68,24 +68,9 @@ func GameMapCreate(ctx context.Context, conn Conn, gameMap *server.GameMap) erro
 	return nil
 }
 
-// GameMapGet return a game map by given id
-func GameMapGet(ctx context.Context, conn Conn, id server.GameMapID) (*server.GameMap, error) {
-	gameMap := &server.GameMap{}
-
-	q := `
-		SELECT * FROM game_maps WHERE id = $1 
-	`
-	err := pgxscan.Get(ctx, conn, gameMap, q, id)
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-
-	return gameMap, nil
-}
-
 // GameMapGetRamdom return a game map by given id
 func GameMapGetRandom(ctx context.Context, conn Conn) (*boiler.GameMap, error) {
-	maps, err := boiler.GameMaps().All(gamedb.StdConn)
+	maps, err := boiler.GameMaps(boiler.GameMapWhere.Name.NEQ("ArcticBay")).All(gamedb.StdConn)
 
 	if err != nil {
 		return nil, terror.Error(err)
