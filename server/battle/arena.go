@@ -88,7 +88,7 @@ const (
 const BATTLESPAWNCOUNT int = 3
 
 func (mt MessageType) String() string {
-	return [...]string{"JSON", "Tick", "Live Vote Tick", "Viewer Live Count Tick", "Spoils of War Tick", "game ability progress tick", "battle ability progress tick"}[mt]
+	return [...]string{"JSON", "Tick", "Live Vote Tick", "Viewer Live Count Tick", "Spoils of War Tick", "game ability progress tick", "battle ability progress tick", "unknown", "unknown wtf"}[mt]
 }
 
 var VoteBucket = leakybucket.NewCollector(8, 8, true)
@@ -822,7 +822,7 @@ func (arena *Arena) start() {
 		case Tick:
 			btl.Tick(payload)
 		default:
-			gamelog.L.Warn().Str("MessageType", MessageType(mt).String()).Err(err).Msg("Battle Arena WS: no message response")
+			gamelog.L.Warn().Str("MessageType", string(mt)).Err(err).Msg("Battle Arena WS: no message response")
 		}
 	}
 }
