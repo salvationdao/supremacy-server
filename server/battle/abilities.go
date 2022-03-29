@@ -1671,6 +1671,7 @@ func (as *AbilitiesSystem) End() {
 	defer func() {
 		if err := recover(); err != nil {
 			gamelog.L.Error().Interface("err", err).Msg("Panic! Panic! Panic! Panic at the abilities.End!")
+			as.battle = nil
 		}
 	}()
 	as.end <- true
