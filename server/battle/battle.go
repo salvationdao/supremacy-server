@@ -1081,6 +1081,10 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		return terror.Error(err)
 	}
 
+	if mech.OwnerID != wsc.Identifier() {
+		return terror.Error(fmt.Errorf("does not own the mech"), "Current mech does not own by you")
+	}
+
 	// Get current queue length and calculate queue fee and reward
 	result, err := db.QueueLength(factionID)
 	if err != nil {
@@ -1153,11 +1157,11 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 			Err(err).Msg("unable to insert mech into queue")
 		return terror.Error(err, "Unable to join queue, check your balance and try again.")
 	}
-	factionAccountID, ok := server.FactionUsers[mech.FactionID]
+	factionAccountID, ok := server.FactionUsers[factionID.String()]
 	if !ok {
 		gamelog.L.Error().
 			Str("mech ID", mech.ID).
-			Str("faction ID", mech.FactionID).
+			Str("faction ID", factionID.String()).
 			Err(err).
 			Msg("unable to get hard coded syndicate player ID from faction ID")
 	}
@@ -1175,7 +1179,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 	})
 	if err != nil {
 		// Abort transaction if charge fails
-		gamelog.L.Error().Str("txID", supTransactionID).Interface("mechID", mechID).Interface("factionID", mech.FactionID).Err(err).Msg("unable to charge user for insert mech into queue")
+		gamelog.L.Error().Str("txID", supTransactionID).Interface("mechID", mechID).Interface("factionID", factionID.String()).Err(err).Msg("unable to charge user for insert mech into queue")
 		return terror.Error(err, "Unable to process queue fee,  check your balance and try again.")
 	}
 

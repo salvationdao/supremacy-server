@@ -44,10 +44,11 @@ func NewPlayerController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Pla
 	api.SecureUserSubscribeCommand(HubKeyPlayerBattleQueueBrowserSubscribe, pc.PlayerBattleQueueBrowserSubscribeHandler)
 
 	// faction lose select privilege
-	api.SecureUserFactionCommand(HubKeyPlayerSearch, pc.FactionPlayerSearch)
-	api.SecureUserFactionCommand(HubKeyPunishVote, pc.PunishVote)
+	api.SecureUserFactionCommand(HubKeyFactionPlayerSearch, pc.FactionPlayerSearch)
 	api.SecureUserFactionCommand(HubKeyPunishOptions, pc.PunishOptions)
+	api.SecureUserFactionCommand(HubKeyPunishVote, pc.PunishVote)
 	api.SecureUserFactionCommand(HubKeyIssuePunishVote, pc.IssuePunishVote)
+	api.SecureUserFactionCommand(HubKeyPunishVotePriceQuote, pc.PunishVotePriceQuote)
 	api.SecureUserFactionSubscribeCommand(HubKeyPunishVoteSubscribe, pc.PunishVoteSubscribeHandler)
 	api.SecureUserFactionSubscribeCommand(HubKeyPunishVoteResultSubscribe, pc.PunishVoteResultSubscribeHandler)
 
@@ -158,7 +159,7 @@ type PlayerSearchRequest struct {
 	} `json:"payload"`
 }
 
-const HubKeyPlayerSearch hub.HubCommandKey = "PLAYER:SEARCH"
+const HubKeyFactionPlayerSearch hub.HubCommandKey = "FACTION:PLAYER:SEARCH"
 
 // FactionPlayerSearch return up to 5 players base on the given text
 func (pc *PlayerController) FactionPlayerSearch(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
@@ -184,6 +185,8 @@ func (pc *PlayerController) FactionPlayerSearch(ctx context.Context, wsc *hub.Cl
 			boiler.PlayerColumns.Username,
 		),
 		boiler.PlayerWhere.FactionID.EQ(player.FactionID),
+		boiler.PlayerWhere.IsAi.EQ(false),
+		boiler.PlayerWhere.ID.NEQ(wsc.Identifier()),
 		qm.Where(
 			fmt.Sprintf("LOWER(%s) LIKE ?", qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.Username)),
 			"%"+strings.ToLower(search)+"%",
@@ -241,6 +244,8 @@ func (pc *PlayerController) PunishVote(ctx context.Context, wsc *hub.Client, pay
 		IsAgreed:     req.Payload.IsAgreed,
 	}
 
+	reply(true)
+
 	return nil
 }
 
@@ -253,6 +258,49 @@ func (pc *PlayerController) PunishOptions(ctx context.Context, wsc *hub.Client, 
 	}
 
 	reply(bts)
+
+	return nil
+}
+
+type PunishVotePriceQuoteRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		IntendToPunishPlayerID uuid.UUID `json:"intend_to_punish_player_id"`
+	} `json:"payload"`
+}
+
+const HubKeyPunishVotePriceQuote hub.HubCommandKey = "PUNISH:VOTE:PRICE:QUOTE"
+
+func (pc *PlayerController) PunishVotePriceQuote(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &PunishVotePriceQuoteRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	// check player is available to be punished
+	currentPlayer, err := boiler.FindPlayer(gamedb.StdConn, wsc.Identifier())
+	if err != nil {
+		return terror.Error(err, "Failed to get current player from db")
+	}
+
+	intendToBenPlayer, err := boiler.FindPlayer(gamedb.StdConn, req.Payload.IntendToPunishPlayerID.String())
+	if err != nil {
+		return terror.Error(err, "Failed to get intend to punish player from db")
+	}
+
+	if !intendToBenPlayer.FactionID.Valid || intendToBenPlayer.FactionID.String != currentPlayer.FactionID.String {
+		return terror.Error(fmt.Errorf("unable to punish player who is not in your faction"), "Unable to quote the price of punish vote with a player in other faction")
+	}
+
+	// get the highest price
+	price := currentPlayer.IssuePunishFee
+	// if the reported cost is higher than issue fee, change price to report cost
+	if intendToBenPlayer.ReportedCost.GreaterThan(price) {
+		price = intendToBenPlayer.ReportedCost
+	}
+
+	reply(price)
 
 	return nil
 }
@@ -276,7 +324,6 @@ func (pc *PlayerController) IssuePunishVote(ctx context.Context, wsc *hub.Client
 	}
 
 	// check player is available to be punished
-	// get players
 	currentPlayer, err := boiler.FindPlayer(gamedb.StdConn, wsc.Identifier())
 	if err != nil {
 		return terror.Error(err, "Failed to get current player from db")
@@ -291,22 +338,8 @@ func (pc *PlayerController) IssuePunishVote(ctx context.Context, wsc *hub.Client
 		return terror.Error(fmt.Errorf("unable to punish player who is not in your faction"), "Unable to punish player who is not in your faction")
 	}
 
-	// ensure punish vote is issued synchroniously in faction
-	pc.API.FactionPunishVote[currentPlayer.FactionID.String].Lock()
-	defer pc.API.FactionPunishVote[currentPlayer.FactionID.String].Unlock()
-
-	// if the player is already in punish period
-	punishedPlayer, err := boiler.PunishedPlayers(
-		boiler.PunishedPlayerWhere.ID.EQ(req.Payload.IntendToPunishPlayerID.String()),
-		boiler.PunishedPlayerWhere.PunishUntil.GT(time.Now()),
-		qm.Load(boiler.PunishedPlayerRels.PunishOption),
-	).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return terror.Error(err, "Failed to get the punished player from db")
-	}
-
-	if punishedPlayer != nil {
-		return terror.Error(fmt.Errorf("Player is already punished"), fmt.Sprintf("The player is already punished for %s", punishedPlayer.R.PunishOption.Key))
+	if req.Payload.Reason == "" {
+		return terror.Error(terror.ErrInvalidInput, "Reason is required")
 	}
 
 	// get punish type
@@ -315,17 +348,41 @@ func (pc *PlayerController) IssuePunishVote(ctx context.Context, wsc *hub.Client
 		return terror.Error(err, "Failed to get punish type from db")
 	}
 
-	// check the player is reported
+	if _, ok := pc.API.FactionPunishVote[currentPlayer.FactionID.String]; !ok {
+		gamelog.L.Error().Str("faction id", currentPlayer.FactionID.String).Err(fmt.Errorf("faction punish vote not found")).Msg("Faction punish vote not found")
+		return terror.Error(fmt.Errorf("faction punish vote not found"), "Faction punish vote not found")
+	}
+
+	// ensure punish vote is issued synchroniously in faction
+	pc.API.FactionPunishVote[currentPlayer.FactionID.String].Lock()
+	defer pc.API.FactionPunishVote[currentPlayer.FactionID.String].Unlock()
+
+	// check player is currently punished with the same option
+	punishedPlayer, err := boiler.PunishedPlayers(
+		boiler.PunishedPlayerWhere.ID.EQ(req.Payload.IntendToPunishPlayerID.String()),
+		boiler.PunishedPlayerWhere.PunishUntil.GT(time.Now()),
+		boiler.PunishedPlayerWhere.PunishOptionID.EQ(punishOption.ID),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "Failed to get the punished player from db")
+	}
+
+	if punishedPlayer != nil {
+		return terror.Error(fmt.Errorf("Player is already punished"), fmt.Sprintf("The player is already punished for %s", punishOption.Key))
+	}
+
+	// check player has a pending punish vote with the same option
 	punishVote, err := boiler.PunishVotes(
 		boiler.PunishVoteWhere.ReportedPlayerID.EQ(req.Payload.IntendToPunishPlayerID.String()),
 		boiler.PunishVoteWhere.Status.EQ(string(PunishVoteStatusPending)),
+		boiler.PunishVoteWhere.PunishOptionID.EQ(punishOption.ID),
 	).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return terror.Error(err, "Failed to check punish vote from db")
 	}
 
 	if punishVote != nil {
-		return terror.Error(fmt.Errorf("Player is already reported"), fmt.Sprintf("The player has a pending punishning report issued by %s", punishVote.IssuedByUsername))
+		return terror.Error(fmt.Errorf("Player is already reported"), fmt.Sprintf("The player has a pending punishing report issued by %s", punishVote.IssuedByUsername))
 	}
 
 	// get the highest price
@@ -352,12 +409,7 @@ func (pc *PlayerController) IssuePunishVote(ctx context.Context, wsc *hub.Client
 		return terror.Error(err, "Failed to start a db transaction")
 	}
 
-	defer func() {
-		err = tx.Rollback()
-		if err != nil {
-			gamelog.L.Error().Err(err).Msg("Failed to rollback db")
-		}
-	}()
+	defer tx.Rollback()
 
 	// issue a punish vote
 	punishVote = &boiler.PunishVote{
@@ -403,6 +455,8 @@ func (pc *PlayerController) IssuePunishVote(ctx context.Context, wsc *hub.Client
 	if err != nil {
 		return terror.Error(err, "Failed to commit db transaction")
 	}
+
+	reply(true)
 
 	return nil
 }

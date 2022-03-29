@@ -199,6 +199,7 @@ func NewAPI(
 	}
 
 	// spin up a punish vote handlers for each faction
+	api.PunishVoteTrackerSetup()
 
 	return api
 }

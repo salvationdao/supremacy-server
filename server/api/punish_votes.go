@@ -74,57 +74,58 @@ func (api *API) PunishVoteTrackerSetup() {
 
 	for _, f := range factions {
 		// initialise
-		bv := &PunishVoteTracker{
+		pvt := &PunishVoteTracker{
 			FactionID:          f.ID,
 			MessageBus:         api.MessageBus,
 			AgreedPlayerIDs:    make(map[string]bool),
 			DisagreedPlayerIDs: make(map[string]bool),
 			broadcastResult:    make(chan *PunishVoteResult),
+			Stage:              &PunishVoteStage{PunishVotePhaseHold, time.Now().AddDate(1, 0, 0)},
 		}
 
 		// store punish vote instance of each faction
-		api.FactionPunishVote[f.ID] = bv
-
-		// run debounce broadcast punish vote result
-		go bv.debounceBroadcastResult()
+		api.FactionPunishVote[f.ID] = pvt
 
 		// start punish vote tracker
-		go bv.Run()
+		go pvt.Run()
 	}
 }
 
-func (bv *PunishVoteTracker) Run() {
+func (pvt *PunishVoteTracker) Run() {
 	mainTicker := time.NewTicker(1 * time.Second)
+
+	// run debounce broadcast punish vote result
+	go pvt.debounceBroadcastResult()
 
 	for {
 		select {
 		case <-mainTicker.C:
-			switch bv.Stage.Phase {
+			switch pvt.Stage.Phase {
 			case PunishVotePhaseVoting:
+				now := time.Now()
+
 				// skip, if voting still going on
-				if bv.EndedAt.After(time.Now()) {
+				if pvt.Stage.EndTime.After(now) {
 					continue
 				}
 
-				now := time.Now()
-
 				// switch stage to hold (block incoming vote from players)
-				bv.Stage.Phase = PunishVotePhaseHold
-				bv.Stage.EndTime = now.AddDate(1, 0, 0)
+				pvt.Stage.Phase = PunishVotePhaseHold
+				pvt.Stage.EndTime = now.AddDate(1, 0, 0)
 
 				// process the punishning action
-				punishVote, err := boiler.FindPunishVote(gamedb.StdConn, bv.PunishVoteID)
+				punishVote, err := boiler.FindPunishVote(gamedb.StdConn, pvt.PunishVoteID)
 				if err != nil {
-					gamelog.L.Error().Str("punish vote id", bv.PunishVoteID).Err(err).Msg("Failed to get punish vote from db")
+					gamelog.L.Error().Str("punish vote id", pvt.PunishVoteID).Err(err).Msg("Failed to get punish vote from db")
 					return
 				}
 
 				// get all the agreed/disagreed count from db
 				playerPunishVotes, err := boiler.PlayersPunishVotes(
-					boiler.PlayersPunishVoteWhere.PunishVoteID.EQ(bv.PunishVoteID),
+					boiler.PlayersPunishVoteWhere.PunishVoteID.EQ(pvt.PunishVoteID),
 				).All(gamedb.StdConn)
 				if err != nil {
-					gamelog.L.Error().Str("punish vote id", bv.PunishVoteID).Err(err).Msg("Failed to get player punish vote from db")
+					gamelog.L.Error().Str("punish vote id", pvt.PunishVoteID).Err(err).Msg("Failed to get player punish vote from db")
 					return
 				}
 
@@ -136,7 +137,7 @@ func (bv *PunishVoteTracker) Run() {
 					_, err = punishVote.Update(gamedb.StdConn, boil.Whitelist(boiler.PunishVoteColumns.EndedAt, boiler.PunishVoteColumns.Status))
 					if err != nil {
 						gamelog.L.Error().
-							Str("punish vote id", bv.PunishVoteID).
+							Str("punish vote id", pvt.PunishVoteID).
 							Str("finalise status", punishVote.Status).
 							Str("punish vote end time", punishVote.EndedAt.Time.String()).
 							Err(err).Msg("Failed to finalise current punish vote")
@@ -181,7 +182,7 @@ func (bv *PunishVoteTracker) Run() {
 					_, err = punishVote.Update(gamedb.StdConn, boil.Whitelist(boiler.PunishVoteColumns.EndedAt, boiler.PunishVoteColumns.Status))
 					if err != nil {
 						gamelog.L.Error().
-							Str("punish vote id", bv.PunishVoteID).
+							Str("punish vote id", pvt.PunishVoteID).
 							Str("finalise status", punishVote.Status).
 							Str("punish vote end time", punishVote.EndedAt.Time.String()).
 							Err(err).Msg("Failed to finalise current punish vote")
@@ -222,7 +223,7 @@ func (bv *PunishVoteTracker) Run() {
 					_, err = punishVote.Update(gamedb.StdConn, boil.Whitelist(boiler.PunishVoteColumns.EndedAt, boiler.PunishVoteColumns.Status))
 					if err != nil {
 						gamelog.L.Error().
-							Str("punish vote id", bv.PunishVoteID).
+							Str("punish vote id", pvt.PunishVoteID).
 							Str("finalise status", punishVote.Status).
 							Str("punish vote end time", punishVote.EndedAt.Time.String()).
 							Err(err).Msg("Failed to finalise current punish vote")
@@ -250,13 +251,13 @@ func (bv *PunishVoteTracker) Run() {
 			case PunishVotePhaseHold:
 				// check whether there is another punish issue in db
 				punishVote, err := boiler.PunishVotes(
-					boiler.PunishVoteWhere.FactionID.EQ(bv.FactionID),
+					boiler.PunishVoteWhere.FactionID.EQ(pvt.FactionID),
 					boiler.PunishVoteWhere.Status.EQ(string(PunishVoteStatusPending)),
 					qm.OrderBy(boiler.PunishVoteColumns.CreatedAt),
 					qm.Load(boiler.PunishVoteRels.PunishOption),
 				).One(gamedb.StdConn)
 				if err != nil && !errors.Is(err, sql.ErrNoRows) {
-					gamelog.L.Error().Str("faction id", bv.FactionID).Err(err).Msg("Failed to load new punish vote from db")
+					gamelog.L.Error().Str("faction id", pvt.FactionID).Err(err).Msg("Failed to load new punish vote from db")
 					return
 				}
 
@@ -266,15 +267,15 @@ func (bv *PunishVoteTracker) Run() {
 				}
 
 				// clean up map, before setup
-				for key := range bv.AgreedPlayerIDs {
-					delete(bv.AgreedPlayerIDs, key)
+				for key := range pvt.AgreedPlayerIDs {
+					delete(pvt.AgreedPlayerIDs, key)
 				}
-				for key := range bv.DisagreedPlayerIDs {
-					delete(bv.DisagreedPlayerIDs, key)
+				for key := range pvt.DisagreedPlayerIDs {
+					delete(pvt.DisagreedPlayerIDs, key)
 				}
 
 				now := time.Now()
-				endTime := now.Add(20 * time.Second)
+				endTime := now.Add(30 * time.Second)
 
 				// update current punish vote, start/end time
 				punishVote.StartedAt = null.TimeFrom(now)
@@ -286,40 +287,40 @@ func (bv *PunishVoteTracker) Run() {
 				}
 
 				// otherwise, set up the detail of punish vote
-				bv.PunishVoteID = punishVote.ID
-				bv.StartedAt = time.Now()
+				pvt.PunishVoteID = punishVote.ID
+				pvt.StartedAt = now
 
 				// change stage
-				bv.Stage.Phase = PunishVotePhaseVoting
-				bv.Stage.EndTime = endTime
+				pvt.Stage.Phase = PunishVotePhaseVoting
+				pvt.Stage.EndTime = endTime
 
 				// broadcast initial result
-				bv.broadcastResult <- &PunishVoteResult{
-					PunishVoteID:          bv.PunishVoteID,
+				pvt.broadcastResult <- &PunishVoteResult{
+					PunishVoteID:          pvt.PunishVoteID,
 					AgreedPlayerNumber:    0,
 					DisagreedPlayerNumber: 0,
 				}
 
 				// broadcast new vote to online faction users
-				bv.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPunishVoteSubscribe, bv.FactionID)), &PunishVoteInstance{
+				pvt.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPunishVoteSubscribe, pvt.FactionID)), &PunishVoteInstance{
 					PunishVote:   punishVote,
 					PunishOption: punishVote.R.PunishOption,
 				})
 			}
 
-		case playerVote := <-bv.VoteChan:
+		case playerVote := <-pvt.VoteChan:
 			// check voting phase and targeted vote is available
-			if bv.Stage.Phase != PunishVotePhaseVoting || bv.Stage.EndTime.Before(time.Now()) || bv.PunishVoteID != playerVote.PunishVoteID {
+			if pvt.Stage.Phase != PunishVotePhaseVoting || pvt.Stage.EndTime.Before(time.Now()) || pvt.PunishVoteID != playerVote.PunishVoteID {
 				continue
 			}
 
 			// check player has voted
 			pbv, err := boiler.PlayersPunishVotes(
-				boiler.PlayersPunishVoteWhere.PunishVoteID.EQ(bv.PunishVoteID),
+				boiler.PlayersPunishVoteWhere.PunishVoteID.EQ(pvt.PunishVoteID),
 				boiler.PlayersPunishVoteWhere.PlayerID.EQ(playerVote.playerID),
 			).One(gamedb.StdConn)
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
-				gamelog.L.Error().Str("punish_vote_id", bv.PunishVoteID).Str("player_id", playerVote.playerID).Err(err).Msg("Failed to get player punish vote from db")
+				gamelog.L.Error().Str("punish_vote_id", pvt.PunishVoteID).Str("player_id", playerVote.playerID).Err(err).Msg("Failed to get player punish vote from db")
 				continue
 			}
 
@@ -330,34 +331,34 @@ func (bv *PunishVoteTracker) Run() {
 
 			// store player vote result into database
 			pbv = &boiler.PlayersPunishVote{
-				PunishVoteID: bv.PunishVoteID,
+				PunishVoteID: pvt.PunishVoteID,
 				PlayerID:     playerVote.playerID,
 				IsAgreed:     playerVote.IsAgreed,
 			}
 			err = pbv.Insert(gamedb.StdConn, boil.Infer())
 			if err != nil {
-				gamelog.L.Error().Str("punish_vote_id", bv.PunishVoteID).Str("player_id", playerVote.playerID).Err(err).Msg("Failed to insert player vote result into db")
+				gamelog.L.Error().Str("punish_vote_id", pvt.PunishVoteID).Str("player_id", playerVote.playerID).Err(err).Msg("Failed to insert player vote result into db")
 				continue
 			}
 
 			// update result
 			if pbv.IsAgreed {
-				bv.AgreedPlayerIDs[playerVote.playerID] = true
+				pvt.AgreedPlayerIDs[playerVote.playerID] = true
 			} else {
-				bv.DisagreedPlayerIDs[playerVote.playerID] = true
+				pvt.DisagreedPlayerIDs[playerVote.playerID] = true
 			}
 
 			// broadcast punish vote result
-			bv.broadcastResult <- &PunishVoteResult{
-				PunishVoteID:          bv.PunishVoteID,
-				AgreedPlayerNumber:    len(bv.AgreedPlayerIDs),
-				DisagreedPlayerNumber: len(bv.DisagreedPlayerIDs),
+			pvt.broadcastResult <- &PunishVoteResult{
+				PunishVoteID:          pvt.PunishVoteID,
+				AgreedPlayerNumber:    len(pvt.AgreedPlayerIDs),
+				DisagreedPlayerNumber: len(pvt.DisagreedPlayerIDs),
 			}
 		}
 	}
 }
 
-func (bv *PunishVoteTracker) debounceBroadcastResult() {
+func (pvt *PunishVoteTracker) debounceBroadcastResult() {
 	var result *PunishVoteResult
 
 	interval := 500 * time.Millisecond
@@ -365,11 +366,11 @@ func (bv *PunishVoteTracker) debounceBroadcastResult() {
 
 	for {
 		select {
-		case result = <-bv.broadcastResult:
+		case result = <-pvt.broadcastResult:
 			timer.Reset(interval)
 		case <-timer.C:
 			if result != nil {
-				bv.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPunishVoteResultSubscribe, bv.FactionID)), result)
+				pvt.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPunishVoteResultSubscribe, pvt.FactionID)), result)
 			}
 		}
 	}
