@@ -45,6 +45,7 @@ var TableNames = struct {
 	Modules                                            string
 	Multipliers                                        string
 	PendingTransactions                                string
+	PlayerActiveLogs                                   string
 	PlayerPreferences                                  string
 	Players                                            string
 	PlayersPunishVotes                                 string
@@ -101,6 +102,7 @@ var TableNames = struct {
 	Modules:                          "modules",
 	Multipliers:                      "multipliers",
 	PendingTransactions:              "pending_transactions",
+	PlayerActiveLogs:                 "player_active_logs",
 	PlayerPreferences:                "player_preferences",
 	Players:                          "players",
 	PlayersPunishVotes:               "players_punish_votes",

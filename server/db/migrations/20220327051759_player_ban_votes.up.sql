@@ -54,3 +54,11 @@ CREATE TABLE punished_players(
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted_at TIMESTAMPTZ
 );
+
+-- active player log
+CREATE TABLE player_active_logs(
+    id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
+    player_id UUID NOT NULL REFERENCES players (id),
+    active_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    inactive_at TIMESTAMPTZ
+);
