@@ -1436,7 +1436,7 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 		}
 	}
 
-	_, err = bq.Delete(tx, false)
+	_, err = bq.Delete(tx)
 	if err != nil {
 		gamelog.L.Error().
 			Interface("mech", mech).
