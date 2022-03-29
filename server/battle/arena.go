@@ -109,6 +109,7 @@ func NewArena(opts *Opts) *Arena {
 	opts.SecureUserFactionCommand(WSQueueJoin, arena.QueueJoinHandler)
 	opts.SecureUserFactionCommand(WSQueueLeave, arena.QueueLeaveHandler)
 	opts.SecureUserFactionCommand(WSAssetQueueStatus, arena.AssetQueueStatusHandler)
+	opts.SecureUserFactionCommand(WSAssetQueueStatusList, arena.AssetQueueStatusListHandler)
 	opts.SecureUserFactionSubscribeCommand(WSQueueStatusSubscribe, arena.QueueStatusSubscribeHandler)
 	opts.SecureUserFactionSubscribeCommand(WSQueueUpdatedSubscribe, arena.QueueUpdatedSubscribeHandler)
 	opts.SecureUserFactionSubscribeCommand(WSAssetQueueStatusSubscribe, arena.AssetQueueStatusSubscribeHandler)

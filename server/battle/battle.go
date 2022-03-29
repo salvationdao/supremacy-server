@@ -1632,6 +1632,38 @@ func (arena *Arena) AssetQueueStatusHandler(ctx context.Context, wsc *hub.Client
 	return nil
 }
 
+const WSAssetQueueStatusList hub.HubCommandKey = hub.HubCommandKey("ASSET:QUEUE:STATUS:LIST")
+
+type AssetQueueStatusItem struct {
+	MechID        string `json:"mech_id"`
+	QueuePosition int64  `json:"queue_position"`
+}
+
+func (arena *Arena) AssetQueueStatusListHandler(ctx context.Context, hub *hub.Client, payload []byte, userFactionID uuid.UUID, reply hub.ReplyFunc) error {
+	userID, err := uuid.FromString(hub.Identifier())
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	queueList, err := db.QueueOwnerList(userID)
+	if err != nil {
+		return terror.Error(err, "Failed to list mechs in queue")
+	}
+
+	resp := []*AssetQueueStatusItem{}
+	for _, q := range queueList {
+		obj := &AssetQueueStatusItem{
+			MechID:        q.MechID.String(),
+			QueuePosition: q.QueuePosition,
+		}
+		resp = append(resp, obj)
+	}
+
+	reply(resp)
+
+	return nil
+}
+
 const WSAssetQueueStatusSubscribe hub.HubCommandKey = hub.HubCommandKey("ASSET:QUEUE:STATUS:SUBSCRIBE")
 
 func (arena *Arena) AssetQueueStatusSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
