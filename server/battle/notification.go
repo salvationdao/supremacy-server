@@ -9,11 +9,13 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"time"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
@@ -216,6 +218,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 		notificationMsg := fmt.Sprintf("%s, your War Machine %s is nearing battle, jump on to https://play.supremacy.game and prepare.", player.Username.String, warMachine.Name)
 
 		for _, n := range notifications {
+			sent := false
 			// send telegram notification
 			if n.TelegramNotificationID.Valid {
 				err = arena.telegram.Notify(warMachine.ID, notificationMsg)
@@ -223,6 +226,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 					gamelog.L.Error().Err(err).Str("mech_id", bq.MechID).Str("owner_id", bq.OwnerID).Str("queued_at", bq.QueuedAt.String()).Msg("failed to notify telegram")
 
 				}
+				sent = true
 			}
 
 			// send sms
@@ -234,6 +238,8 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 				if err != nil {
 					gamelog.L.Error().Err(err).Str("to", player.MobileNumber.String).Msg("failed to send battle queue notification sms")
 				}
+
+				sent = true
 			}
 
 			// ??
@@ -244,18 +250,20 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			// if player.R.PlayerPreference.NotificationsBattleQueuePushNotifications {
 			// 	// TODO: app notifications?
 			// }
-		}
 
-		// telegram notification
-		if true {
-			err = arena.telegram.Notify(warMachine.ID, notificationMsg)
-			if err != nil {
-				gamelog.L.Error().Err(err).Str("mech_id", bq.MechID).Str("owner_id", bq.OwnerID).Str("queued_at", bq.QueuedAt.String()).Msg("failed to notify telegram")
+			// TODO: discord notifications?
 
+			// delete notification after sent
+			if sent {
+				now := time.Now()
+				n.SentAt = null.TimeFrom(now)
+				_, err := n.Delete(gamedb.StdConn)
+				if err != nil {
+					gamelog.L.Error().Err(err).Str("to", player.MobileNumber.String).Msg("failed to update notification")
+				}
 			}
 		}
 
-		// TODO: discord notifications?
 		bq.Notified = true
 		_, err = bq.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleQueueColumns.Notified))
 		if err != nil {

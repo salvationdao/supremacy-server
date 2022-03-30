@@ -110,7 +110,10 @@ func (t *Telegram) Notify(mechID string, message string) error {
 	}
 
 	// send notification
-	t.SendMessage(notification.TelegramID.Int, message)
+	err = t.SendMessage(notification.TelegramID.Int, message)
+	if err != nil {
+		return terror.Error(err)
+	}
 
 	return nil
 }
@@ -134,11 +137,30 @@ func (t *Telegram) SendMessage(chatId int, text string) error {
 }
 
 func (t *Telegram) NotificationCreate(mechID string) (*boiler.TelegramNotification, error) {
-	// expiry := time.Now().Add(time.Minute * 3)
+	// check if there already a telegram notification for this mech
+	exists, err := boiler.BattleQueueNotifications(
+		qm.InnerJoin("telegram_notifications tn on tn.id = battle_queue_notifications.telegram_notification_id"),
+		qm.Where("battle_queue_notifications.mech_id = ?", mechID)).Exists(gamedb.StdConn)
+	if err != nil {
+		return nil, terror.Error(err, "Unable check if notification exists")
+	}
+
+	if exists {
+		return nil, terror.Error(err)
+
+	}
+
+	notification := &boiler.BattleQueueNotification{
+		MechID: mechID,
+	}
+
+	err = notification.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return nil, terror.Error(err, "Unable to insert notification")
+	}
 
 	code := genCode()
 	codeExists := true
-
 	if codeExists {
 		// check if code already exists
 		exists, err := boiler.TelegramNotifications(boiler.TelegramNotificationWhere.Shortcode.EQ(code)).One(gamedb.StdConn)
@@ -152,15 +174,6 @@ func (t *Telegram) NotificationCreate(mechID string) (*boiler.TelegramNotificati
 			// if code already exist generate new one
 			code = genCode()
 		}
-	}
-
-	notification := &boiler.BattleQueueNotification{
-		MechID: mechID,
-	}
-
-	err := notification.Insert(gamedb.StdConn, boil.Infer())
-	if err != nil {
-		return nil, terror.Error(err, "Unable to insert notification")
 	}
 
 	telegramNotification := &boiler.TelegramNotification{

@@ -1250,7 +1250,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 			return terror.Error(err, "Unable create telegram notification.")
 		}
 
-		fmt.Println("here3")
+		fmt.Println("here3", notification)
 
 		reply(struct {
 			Code string `json:"code"`
@@ -1462,7 +1462,7 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 		}
 	}
 
-	_, err = bq.Delete(tx, false)
+	_, err = bq.Delete(tx, true)
 	if err != nil {
 		gamelog.L.Error().
 			Interface("mech", mech).
