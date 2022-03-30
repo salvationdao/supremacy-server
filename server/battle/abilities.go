@@ -863,11 +863,11 @@ type AbilitiesMap struct {
 
 func (am *AbilitiesMap) Store(key string, ga *GameAbility) {
 	am.Lock()
+	defer am.Unlock()
 	if am.m == nil {
 		am.m = make(map[string]*GameAbility)
 	}
 	am.m[key] = ga
-	am.Unlock()
 }
 
 func (am *AbilitiesMap) Load(key string) (*GameAbility, bool) {
@@ -895,11 +895,13 @@ func (am *AbilitiesMap) Range(fn func(u string, ga *GameAbility) bool) {
 		}
 	}()
 
-	am.Lock()
-	defer am.Unlock()
 	if am.m == nil {
+		am.Lock()
 		am.m = make(map[string]*GameAbility)
+		am.Unlock()
 	}
+	am.RLock()
+	defer am.RUnlock()
 	for uid, ga := range am.m {
 		if !fn(uid, ga) {
 			return
