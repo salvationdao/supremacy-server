@@ -5,16 +5,17 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/gofrs/uuid"
-	"github.com/shopspring/decimal"
-	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
-	"github.com/volatiletech/sqlboiler/v4/types"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 	"sort"
+
+	"github.com/gofrs/uuid"
+	"github.com/shopspring/decimal"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
 type MultiplierTypeEnum string
@@ -204,6 +205,7 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 		return
 	}
 
+	removedPlayerAmount := 0
 	// citizen tag
 	playerAmountList := []struct {
 		playerID  string
@@ -211,12 +213,20 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 		amount    decimal.Decimal
 	}{}
 	for playerID, pc := range sums {
+
+		if pc.Amount.LessThan(decimal.New(3, 18)) {
+			removedPlayerAmount += 1
+			continue
+		}
+
 		playerAmountList = append(playerAmountList, struct {
 			playerID  string
 			factionID string
 			amount    decimal.Decimal
 		}{playerID, pc.FactionID, pc.Amount})
 	}
+
+	gamelog.L.Info().Msgf("%d players are removed from the list, due to spending less than 3 sups", removedPlayerAmount)
 
 	//caching this value in memory- instantiating variable
 	citizenMulti := &boiler.Multiplier{}

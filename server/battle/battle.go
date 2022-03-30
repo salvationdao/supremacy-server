@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"go.uber.org/atomic"
 	"math/rand"
 	"server"
 	"server/db"
@@ -22,7 +21,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jackc/pgx/v4"
+	"go.uber.org/atomic"
+
 	"github.com/ninja-software/terror/v2"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
@@ -920,7 +920,6 @@ func (btl *Battle) debounceSendingViewerCount(cb func(result ViewerLiveCount, bt
 				timer.Stop()
 				checker.Stop()
 				gamelog.L.Info().Msg("Clean up live count debounce function due to battle missmatch")
-				close(btl.viewerCountInputChan)
 				return
 			}
 		}
@@ -1636,8 +1635,8 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 
 		// get ability via offering id
 		abl, err := boiler.BattleAbilityTriggers(boiler.BattleAbilityTriggerWhere.AbilityOfferingID.EQ(dp.DestroyedWarMachineEvent.RelatedEventIDString)).One(gamedb.StdConn)
-		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			gamelog.L.Error().Str("ability id", abl.ID).Err(err).Msg("Failed get ability from offering id")
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Str("related event id", dp.DestroyedWarMachineEvent.RelatedEventIDString).Err(err).Msg("Failed get ability from offering id")
 		}
 
 		if abl != nil && abl.PlayerID.Valid {

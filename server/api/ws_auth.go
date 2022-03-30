@@ -158,7 +158,6 @@ func readJWT(tokenB []byte, decryptToken bool, decryptKey, jwtKey []byte) (jwt.T
 
 	decrpytedToken, err := decrypt(decryptKey, tokenB)
 	if err != nil {
-		gamelog.L.Err(err).Str("decrypt", string(tokenB)).Msg("Failed to decrypt token")
 		return nil, terror.Error(err, "Error decrypting JWT token")
 	}
 
@@ -168,7 +167,6 @@ func readJWT(tokenB []byte, decryptToken bool, decryptKey, jwtKey []byte) (jwt.T
 func decrypt(key, text []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		gamelog.L.Err(err).Str("decrypt", string(key)).Msg("Failed to decrypt token")
 		return nil, terror.Error(err, "Failed to decrypt token")
 	}
 	if len(text) < aes.BlockSize {
@@ -180,7 +178,6 @@ func decrypt(key, text []byte) ([]byte, error) {
 	cfb.XORKeyStream(text, text)
 	data, err := base64.StdEncoding.DecodeString(string(text))
 	if err != nil {
-		gamelog.L.Err(err).Str("decrypt", string(key)).Msg("Failed to decrypt token")
 		return nil, terror.Error(err, "Failed to decrypt token")
 	}
 	return data, nil
