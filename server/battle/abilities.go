@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"runtime"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -1659,29 +1658,6 @@ func (as *AbilitiesSystem) BribeGabs(factionID uuid.UUID, userID uuid.UUID, amou
 		amount,
 		"",
 	}
-
-	runtime.GOMAXPROCS(100000)
-
-	fn := func() {
-		for factionID, userID := range server.FactionUsers {
-			cont := &Contribution{
-				uuid.Must(uuid.FromString(factionID)),
-				uuid.Must(uuid.FromString(userID)),
-				amount,
-				"",
-			}
-			for i := 0; i < 1000; i++ {
-				as.bribe <- cont
-			}
-		}
-	}
-
-	go func() {
-		for i := 0; i < 10000; i++ {
-			fmt.Println("index", i)
-			go fn()
-		}
-	}()
 
 	go func() {
 		defer func() {
