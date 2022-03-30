@@ -154,6 +154,7 @@ func (opts *Opts) SubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn HubSub
 
 		return nil
 	})
+
 }
 
 /***************************

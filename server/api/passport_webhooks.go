@@ -148,6 +148,7 @@ func (pc *PassportWebhookController) UserEnlistFaction(w http.ResponseWriter, r 
 		Username:      player.Username.String,
 		PublicAddress: player.PublicAddress,
 		FactionID:     req.FactionID,
+		Faction:       &server.Faction{},
 	}
 
 	faction, err := boiler.FindFaction(gamedb.StdConn, req.FactionID.String())

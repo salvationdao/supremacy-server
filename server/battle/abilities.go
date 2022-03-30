@@ -923,7 +923,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 			if as.battle != as.battle.arena.currentBattle {
 				gamelog.L.Info().Msg("Battle mismatch is detected, clean up bribing ticker")
 				as.endGabs <- true
-				return
+				continue
 			}
 			// check phase
 			stage := as.battle.stage
@@ -932,7 +932,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				as.endGabs <- true
 				// stop all the ticker and exit the loop
 				gamelog.L.Info().Msg("Stop ability tickers after battle is end")
-				return
+				continue
 			}
 
 			// skip, if the end time of current phase haven't been reached

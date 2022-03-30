@@ -921,16 +921,11 @@ func (btl *Battle) debounceSendingViewerCount(cb func(result ViewerLiveCount)) {
 				}
 			}
 		case <-checker.C:
-			if btl.stage == BattleStageEnd {
+			if btl.stage == BattleStageEnd || btl != btl.arena.currentBattle {
 				timer.Stop()
 				checker.Stop()
+				close(btl.viewerCountInputChan)
 				gamelog.L.Info().Msg("Clean up live count debounce function")
-				close(btl.viewerCountInputChan)
-			} else if btl != btl.arena.currentBattle {
-				timer.Stop()
-				checker.Stop()
-				gamelog.L.Info().Msg("Battle mismatch is detected, clean up live count debounce function")
-				close(btl.viewerCountInputChan)
 				return
 			}
 		}

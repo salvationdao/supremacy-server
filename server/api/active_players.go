@@ -38,7 +38,7 @@ func (api *API) FactionActivePlayerSetup() {
 			Map:       make(map[string]*ActiveStat),
 		}
 
-		ap.Run()
+		go ap.Run()
 
 		api.FactionActivePlayers[f.ID] = ap
 	}
