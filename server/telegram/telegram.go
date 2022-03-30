@@ -1,8 +1,6 @@
 package telegram
 
 import (
-	"database/sql"
-	"errors"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -102,7 +100,7 @@ func (t *Telegram) Notify(mechID string, message string) error {
 	notification, err := boiler.TelegramNotifications(
 		boiler.TelegramNotificationWhere.Registered.EQ(true),
 		qm.InnerJoin("battle_queue_notifications bqn ON bqn.telegram_notification_id = telegram_notifications.id"),
-		qm.Where(`bqn.mech_id = ?`, mechID),
+		qm.Where(`bqn.mech_id = ? and bqn.sent_at is null`, mechID),
 	).One(gamedb.StdConn)
 	if err != nil {
 		// TODO: handle no rows
@@ -137,8 +135,9 @@ func (t *Telegram) SendMessage(chatId int, text string) error {
 }
 
 func (t *Telegram) NotificationCreate(mechID string) (*boiler.TelegramNotification, error) {
-	// check if there already a telegram notification for this mech
+	// check if there already a telegram notification for this mech that hasnt been sent
 	exists, err := boiler.BattleQueueNotifications(
+		boiler.BattleQueueNotificationWhere.SentAt.IsNull(),
 		qm.InnerJoin("telegram_notifications tn on tn.id = battle_queue_notifications.telegram_notification_id"),
 		qm.Where("battle_queue_notifications.mech_id = ?", mechID)).Exists(gamedb.StdConn)
 	if err != nil {
@@ -151,7 +150,8 @@ func (t *Telegram) NotificationCreate(mechID string) (*boiler.TelegramNotificati
 	}
 
 	notification := &boiler.BattleQueueNotification{
-		MechID: mechID,
+		MechID:      mechID,
+		QueueMechID: null.StringFrom(mechID),
 	}
 
 	err = notification.Insert(gamedb.StdConn, boil.Infer())
@@ -162,17 +162,20 @@ func (t *Telegram) NotificationCreate(mechID string) (*boiler.TelegramNotificati
 	code := genCode()
 	codeExists := true
 	if codeExists {
-		// check if code already exists
-		exists, err := boiler.TelegramNotifications(boiler.TelegramNotificationWhere.Shortcode.EQ(code)).One(gamedb.StdConn)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		// check if a notification that hasnt been sent has that short code
+		exists, err := boiler.BattleQueueNotifications(
+			boiler.BattleQueueNotificationWhere.SentAt.IsNull(),
+			qm.InnerJoin("telegram_notifications tn on tn.id = battle_queue_notifications.telegram_notification_id"),
+			qm.Where("tn.shortcode = ?", code)).Exists(gamedb.StdConn)
+		if err != nil {
 			return nil, terror.Error(err, "Unable to get telegram notifications")
 		}
 
-		if exists == nil {
-			codeExists = false
-		} else {
+		if exists {
 			// if code already exist generate new one
 			code = genCode()
+		} else {
+			codeExists = false
 		}
 	}
 

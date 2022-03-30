@@ -1462,6 +1462,19 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 		}
 	}
 
+	// delete related notifications
+	notifs, err := boiler.BattleQueueNotifications(
+		boiler.BattleQueueNotificationWhere.MechID.EQ(bq.MechID)).All(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Unable check if notification exists")
+	}
+
+	// todo: change to left at
+	_, err = notifs.UpdateAll(gamedb.StdConn, boiler.M{boiler.BattleQueueNotificationColumns.SentAt: time.Now()})
+	if err != nil {
+		return terror.Error(err, "Unable delete notifications")
+	}
+
 	_, err = bq.Delete(tx, true)
 	if err != nil {
 		gamelog.L.Error().
