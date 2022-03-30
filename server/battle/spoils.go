@@ -16,6 +16,7 @@ import (
 
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"go.uber.org/atomic"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
@@ -25,6 +26,7 @@ import (
 type SpoilsOfWar struct {
 	_battle       *Battle
 	flushCh       chan bool
+	flushed       *atomic.Bool
 	tickSpeed     time.Duration
 	transactSpeed time.Duration
 	sync.RWMutex
@@ -47,6 +49,7 @@ func NewSpoilsOfWar(btl *Battle, transactSpeed time.Duration, dripSpeed time.Dur
 		_battle:       btl,
 		transactSpeed: transactSpeed,
 		flushCh:       make(chan bool),
+		flushed:       atomic.NewBool(false),
 		tickSpeed:     dripSpeed,
 	}
 
@@ -98,11 +101,15 @@ func (sow *SpoilsOfWar) Run() {
 	gamelog.L.Debug().Msg("starting spoils of war service")
 	t := time.NewTicker(sow.transactSpeed)
 
+	mismatchCount := atomic.NewInt32(0)
 	defer t.Stop()
 
 	for {
 		select {
 		case <-sow.flushCh:
+			if sow.flushed.Load() {
+				return
+			}
 			// Runs at the end of each battle, called with sow.Flush(
 			gamelog.L.Debug().Msg("running full flush and returning out")
 			err := sow.Flush()
@@ -112,15 +119,24 @@ func (sow *SpoilsOfWar) Run() {
 			}
 			gamelog.L.Info().Msgf("spoils system has been cleaned up: %s", sow.battle().ID)
 
+			sow.flushed.Store(true)
 			sow.storeBattle(nil)
 			sow = nil
 			return
 		case <-t.C:
 			// terminate ticker if the battle mismatch
 			if sow.battle() != sow.battle().arena.currentBattle() {
+				mismatchCount.Add(1)
+				gamelog.L.Warn().
+					Int32("times", mismatchCount.Load()).
+					Msg("battle mismatch is detected on spoil of war ticker")
+				if mismatchCount.Load() < 10 {
+					continue
+				}
+
+				gamelog.L.Info().Msg("detect battle mismatch 10 times, cleaning up the spoil of war")
 				sow.storeBattle(nil)
 				sow = nil
-				gamelog.L.Info().Msg("Clean up spoil of war ticker when battle mismatch")
 				return
 			}
 			// Push all pending transactions to passport server

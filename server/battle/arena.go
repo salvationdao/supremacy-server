@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"go.uber.org/atomic"
 	"net"
 	"net/http"
 	"server"
@@ -17,6 +16,8 @@ import (
 	"server/rpcclient"
 	"sync"
 	"time"
+
+	"go.uber.org/atomic"
 
 	"github.com/gofrs/uuid"
 	leakybucket "github.com/kevinms/leakybucket-go"
@@ -397,7 +398,7 @@ func (arena *Arena) BattleAbilityUpdateSubscribeHandler(ctx context.Context, wsc
 	if arena.currentBattle() != nil {
 		btl := arena.currentBattle()
 		if btl.abilities() != nil {
-			abili, _ := btl.abilities().FactionBattleAbilityGet(factionID)
+			abili, _ := btl.abilities().FactionBattleAbilityGet(factionID.String())
 			reply(abili)
 		}
 	}
@@ -753,6 +754,12 @@ type BattleWMDestroyedPayload struct {
 }
 
 func (arena *Arena) start() {
+	defer func() {
+		if err := recover(); err != nil {
+			gamelog.L.Error().Interface("err", err).Msg("Panic! Panic! Panic! Panic on battle arena!")
+		}
+	}()
+
 	ctx := context.Background()
 	arena.beginBattle()
 
