@@ -13,6 +13,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/rpcclient"
+	"strconv"
 	"sync"
 	"time"
 
@@ -28,26 +29,28 @@ import (
 )
 
 type Arena struct {
-	conn           db.Conn
-	socket         *websocket.Conn
-	timeout        time.Duration
-	messageBus     *messagebus.MessageBus
-	currentBattle  *Battle
-	syndicates     map[string]boiler.Faction
-	AIPlayers      map[string]db.PlayerWithFaction
-	RPCClient      *rpcclient.PassportXrpcClient
-	gameClientLock sync.Mutex
-	sms            server.SMS
+	conn              db.Conn
+	socket            *websocket.Conn
+	timeout           time.Duration
+	messageBus        *messagebus.MessageBus
+	currentBattle     *Battle
+	syndicates        map[string]boiler.Faction
+	AIPlayers         map[string]db.PlayerWithFaction
+	RPCClient         *rpcclient.PassportXrpcClient
+	gameClientLock    sync.Mutex
+	sms               server.SMS
+	gameClientBuildNo uint64
 }
 
 type Opts struct {
-	Conn       db.Conn
-	Addr       string
-	Timeout    time.Duration
-	Hub        *hub.Hub
-	MessageBus *messagebus.MessageBus
-	RPCClient  *rpcclient.PassportXrpcClient
-	SMS        server.SMS
+	Conn              db.Conn
+	Addr              string
+	Timeout           time.Duration
+	Hub               *hub.Hub
+	MessageBus        *messagebus.MessageBus
+	RPCClient         *rpcclient.PassportXrpcClient
+	SMS               server.SMS
+	GameClientBuildNo uint64
 }
 
 type MessageType byte
@@ -89,6 +92,7 @@ func NewArena(opts *Opts) *Arena {
 	arena.messageBus = opts.MessageBus
 	arena.RPCClient = opts.RPCClient
 	arena.sms = opts.SMS
+	arena.gameClientBuildNo = opts.GameClientBuildNo
 
 	arena.AIPlayers, err = db.DefaultFactionPlayers()
 	if err != nil {
@@ -706,7 +710,8 @@ type BattleStartPayload struct {
 		Hash          string `json:"hash"`
 		ParticipantID byte   `json:"participantID"`
 	} `json:"warMachines"`
-	BattleID string `json:"battleID"`
+	BattleID      string `json:"battleID"`
+	ClientBuildNo string `json:"clientBuildNo"`
 }
 
 type BattleEndPayload struct {
@@ -779,6 +784,16 @@ func (arena *Arena) start() {
 					gamelog.L.Warn().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal battle message payload")
 					continue
 				}
+
+				gameClientBuildNo, err := strconv.ParseUint(dataPayload.ClientBuildNo, 10, 64)
+				if err != nil {
+					gamelog.L.Panic().Str("game_client_build_no", dataPayload.ClientBuildNo).Msg("invalid game client build number received")
+				}
+
+				if gameClientBuildNo < arena.gameClientBuildNo {
+					gamelog.L.Panic().Uint64("current_game_client_build", gameClientBuildNo).Uint64("minimum_game_client_build", arena.gameClientBuildNo).Msg("unsupported game client build number")
+				}
+
 				err = btl.preIntro(dataPayload)
 				if err != nil {
 					gamelog.L.Error().Str("msg", string(payload)).Err(err).Msg("battle start load out has failed")

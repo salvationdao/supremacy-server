@@ -18,6 +18,7 @@ export GOPRIVATE="github.com/ninja-software/*,github.com/ninja-syndicate/*"
 ```
 export GAMESERVER_DATABASE_PORT= - postgres database port
 export GAMESERVER_TWITCH_EXTENSION_SECRET="" - in your twitch dev console
+export GAMESERVER_GAMECLIENT_BUILD_NO="" - you must set this to the current build number for prod
 ```
 
 ### For spinup
@@ -183,9 +184,10 @@ AFFECTS:
 
 - request to start match
     - Response:
+        - game client build number
         - match number
         - participant war machines
-            - 2 from each faction
+            - 3 from each faction
 - match started
     - data structure
         - match number
