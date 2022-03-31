@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"runtime/debug"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -279,7 +278,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 
 	defer func() {
 		if err := recover(); err != nil {
-			gamelog.L.Error().Interface("err", err).Msg("Panic! Panic! Panic! Panic at the FactionUniqueAbilityUpdater!")
+			gamelog.L.Error().Interface("err", err).Stack().Msg("Panic! Panic! Panic! Panic at the FactionUniqueAbilityUpdater!")
 
 			// re-run ability updater if ability system has not been cleaned up yet
 			if as != nil && as.battle() != nil {
@@ -325,7 +324,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 			func() {
 				defer func() {
 					if err := recover(); err != nil {
-						gamelog.L.Error().Interface("err", err).Msg("Panic! Panic! Panic! Panic at the cleaning up abilities channels!")
+						gamelog.L.Error().Interface("err", err).Stack().Msg("Panic! Panic! Panic! Panic at the cleaning up abilities channels!")
 					}
 				}()
 			}()
@@ -891,7 +890,7 @@ func (am *AbilitiesMap) LoadUnsafe(key string) *GameAbility {
 func (am *AbilitiesMap) Range(fn func(u string, ga *GameAbility) bool) {
 	defer func() {
 		if err := recover(); err != nil {
-			gamelog.L.Error().Interface("err", err).Msg("Panic! Panic! Panic! Panic at the StartGabsAbilityPoolCycle!")
+			gamelog.L.Error().Interface("err", err).Stack().Msg("Panic! Panic! Panic! Panic at the StartGabsAbilityPoolCycle!")
 		}
 	}()
 
@@ -928,7 +927,7 @@ type LocationSelectAnnouncement struct {
 func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 	defer func() {
 		if err := recover(); err != nil {
-			gamelog.L.Error().Interface("err", err).Msg("Panic! Panic! Panic! Panic at the StartGabsAbilityPoolCycle!")
+			gamelog.L.Error().Interface("err", err).Stack().Msg("Panic! Panic! Panic! Panic at the StartGabsAbilityPoolCycle!")
 			if as != nil && as.battle() != nil {
 				as.StartGabsAbilityPoolCycle(true)
 			}
@@ -946,7 +945,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 	defer func() {
 		defer func() {
 			if err := recover(); err != nil {
-				gamelog.L.Error().Interface("err", err).Msg("Panic! Panic! Panic! Panic trying to close channels!")
+				gamelog.L.Error().Interface("err", err).Stack().Msg("Panic! Panic! Panic! Panic trying to close channels!")
 			}
 		}()
 		price_ticker.Stop()
@@ -1233,7 +1232,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 func (as *AbilitiesSystem) SetNewBattleAbility() (int, error) {
 	defer func() {
 		if err := recover(); err != nil {
-			gamelog.L.Error().Interface("err", err).Str("stack", string(debug.Stack())).Msg("panic! panic! panic! Panic at the SetNewBattleAbility!")
+			gamelog.L.Error().Interface("err", err).Stack().Msg("panic! panic! panic! Panic at the SetNewBattleAbility!")
 		}
 	}()
 	// clean up triggered faction
@@ -1319,7 +1318,7 @@ type Contribution struct {
 func (as *AbilitiesSystem) locationDecidersSet(battleID string, factionID string, triggerByUserID ...uuid.UUID) {
 	defer func() {
 		if err := recover(); err != nil {
-			gamelog.L.Error().Interface("err", err).Str("stack", string(debug.Stack())).Msg("panic! panic! panic! Panic at the locationDecidersSet!")
+			gamelog.L.Error().Interface("err", err).Stack().Msg("panic! panic! panic! Panic at the locationDecidersSet!")
 		}
 	}()
 	// set triggered faction id
@@ -1361,7 +1360,7 @@ func (as *AbilitiesSystem) locationDecidersSet(battleID string, factionID string
 func (as *AbilitiesSystem) nextLocationDeciderGet() (uuid.UUID, uuid.UUID, bool) {
 	defer func() {
 		if err := recover(); err != nil {
-			gamelog.L.Error().Interface("err", err).Str("stack", string(debug.Stack())).Msg("panic! panic! panic! Panic at the nextLocationDeciderGet!")
+			gamelog.L.Error().Interface("err", err).Stack().Msg("panic! panic! panic! Panic at the nextLocationDeciderGet!")
 		}
 	}()
 	if as.locationDeciders == nil {
@@ -1395,7 +1394,7 @@ func (as *AbilitiesSystem) nextLocationDeciderGet() (uuid.UUID, uuid.UUID, bool)
 func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 	defer func() {
 		if err := recover(); err != nil {
-			gamelog.L.Error().Interface("err", err).Str("stack", string(debug.Stack())).Msg("panic! panic! panic! Panic at the BattleAbilityPriceUpdater!")
+			gamelog.L.Error().Interface("err", err).Stack().Msg("panic! panic! panic! Panic at the BattleAbilityPriceUpdater!")
 		}
 	}()
 	// check battle stage
@@ -1515,7 +1514,7 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 func (as *AbilitiesSystem) BattleAbilityProgressBar() {
 	defer func() {
 		if err := recover(); err != nil {
-			gamelog.L.Error().Interface("err", err).Str("stack", string(debug.Stack())).Msg("panic! panic! panic! Panic at the BattleAbilityProgressBar!")
+			gamelog.L.Error().Interface("err", err).Stack().Msg("panic! panic! panic! Panic at the BattleAbilityProgressBar!")
 		}
 	}()
 	// check battle stage
@@ -1536,7 +1535,7 @@ func (as *AbilitiesSystem) BattleAbilityProgressBar() {
 func (as *AbilitiesSystem) BroadcastAbilityProgressBar() {
 	defer func() {
 		if err := recover(); err != nil {
-			gamelog.L.Error().Interface("err", err).Str("stack", string(debug.Stack())).Msg("panic! panic! panic! Panic at the BroadcastAbilityProgressBar!")
+			gamelog.L.Error().Interface("err", err).Stack().Msg("panic! panic! panic! Panic at the BroadcastAbilityProgressBar!")
 		}
 	}()
 	if as.battleAbilityPool == nil || as.battleAbilityPool.Abilities == nil {
@@ -1561,7 +1560,7 @@ func (as *AbilitiesSystem) BroadcastAbilityProgressBar() {
 func (as *AbilitiesSystem) AbilityContribute(factionID uuid.UUID, userID uuid.UUID, abilityIdentity string, amount decimal.Decimal) {
 	defer func() {
 		if err := recover(); err != nil {
-			gamelog.L.Error().Interface("err", err).Str("stack", string(debug.Stack())).Msg("panic! panic! panic! Panic at the AbilityContribute!")
+			gamelog.L.Error().Interface("err", err).Stack().Msg("panic! panic! panic! Panic at the AbilityContribute!")
 		}
 	}()
 	if as == nil || as.battle() == nil || as.battle().stage.Load() != BattleStagStart || as.factionUniqueAbilities == nil {
@@ -1586,7 +1585,7 @@ func (as *AbilitiesSystem) AbilityContribute(factionID uuid.UUID, userID uuid.UU
 func (as *AbilitiesSystem) FactionUniqueAbilitiesGet(factionID uuid.UUID) []GameAbility {
 	defer func() {
 		if err := recover(); err != nil {
-			gamelog.L.Error().Interface("err", err).Str("stack", string(debug.Stack())).Msg("panic! panic! panic! Panic at the FactionUniqueAbilitiesGet!")
+			gamelog.L.Error().Interface("err", err).Stack().Msg("panic! panic! panic! Panic at the FactionUniqueAbilitiesGet!")
 		}
 	}()
 	abilities := []GameAbility{}
@@ -1605,7 +1604,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilitiesGet(factionID uuid.UUID) []Game
 func (as *AbilitiesSystem) WarMachineAbilitiesGet(factionID uuid.UUID, hash string) []GameAbility {
 	defer func() {
 		if err := recover(); err != nil {
-			gamelog.L.Error().Interface("err", err).Str("stack", string(debug.Stack())).Msg("panic! panic! panic! Panic at the WarMachineAbilitiesGet!")
+			gamelog.L.Error().Interface("err", err).Stack().Msg("panic! panic! panic! Panic at the WarMachineAbilitiesGet!")
 		}
 	}()
 	abilities := []GameAbility{}
@@ -1636,7 +1635,7 @@ func (as *AbilitiesSystem) WarMachineAbilitiesGet(factionID uuid.UUID, hash stri
 func (as *AbilitiesSystem) BribeGabs(factionID uuid.UUID, userID uuid.UUID, amount decimal.Decimal) {
 	defer func() {
 		if err := recover(); err != nil {
-			gamelog.L.Error().Interface("err", err).Str("stack", string(debug.Stack())).Msg("panic! panic! panic! Panic at the BribeGabs!")
+			gamelog.L.Error().Interface("err", err).Stack().Msg("panic! panic! panic! Panic at the BribeGabs!")
 		}
 	}()
 
@@ -1664,7 +1663,7 @@ func (as *AbilitiesSystem) BribeGabs(factionID uuid.UUID, userID uuid.UUID, amou
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				gamelog.L.Error().Interface("err", err).Str("stack", string(debug.Stack())).Msg("panic! panic! panic! Panic at the gabsbribe!")
+				gamelog.L.Error().Interface("err", err).Stack().Msg("panic! panic! panic! Panic at the gabsbribe!")
 			}
 		}()
 
@@ -1682,7 +1681,7 @@ func (as *AbilitiesSystem) BribeStageGet() *GabsBribeStage {
 func (as *AbilitiesSystem) FactionBattleAbilityGet(factionID string) (*GameAbility, error) {
 	defer func() {
 		if err := recover(); err != nil {
-			gamelog.L.Error().Interface("err", err).Str("stack", string(debug.Stack())).Msg("panic! panic! panic! Panic at the FactionBattleAbilityGet!")
+			gamelog.L.Error().Interface("err", err).Stack().Msg("panic! panic! panic! Panic at the FactionBattleAbilityGet!")
 		}
 	}()
 	if as.battleAbilityPool == nil {
@@ -1704,7 +1703,7 @@ func (as *AbilitiesSystem) FactionBattleAbilityGet(factionID string) (*GameAbili
 func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error {
 	defer func() {
 		if err := recover(); err != nil {
-			gamelog.L.Error().Interface("err", err).Str("stack", string(debug.Stack())).Msg("panic! panic! panic! Panic at the LocationSelect!")
+			gamelog.L.Error().Interface("err", err).Stack().Msg("panic! panic! panic! Panic at the LocationSelect!")
 		}
 	}()
 	// check battle end
@@ -1807,7 +1806,7 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 func (as *AbilitiesSystem) End() {
 	defer func() {
 		if err := recover(); err != nil {
-			gamelog.L.Error().Interface("err", err).Msg("Panic! Panic! Panic! Panic at the abilities.End!")
+			gamelog.L.Error().Interface("err", err).Stack().Msg("Panic! Panic! Panic! Panic at the abilities.End!")
 		}
 	}()
 
@@ -1822,7 +1821,7 @@ func (as *AbilitiesSystem) End() {
 func BuildUserDetailWithFaction(userID uuid.UUID) (*UserBrief, error) {
 	defer func() {
 		if err := recover(); err != nil {
-			gamelog.L.Error().Interface("err", err).Str("stack", string(debug.Stack())).Msg("panic! panic! panic! Panic at the BuildUserDetailWithFaction!")
+			gamelog.L.Error().Interface("err", err).Stack().Msg("panic! panic! panic! Panic at the BuildUserDetailWithFaction!")
 		}
 	}()
 	userBrief := &UserBrief{}

@@ -378,7 +378,7 @@ func (btl *Battle) isOnline(userID uuid.UUID) bool {
 func (btl *Battle) endAbilities() {
 	defer func() {
 		if err := recover(); err != nil {
-			gamelog.L.Error().Interface("err", err).Msg("panic! panic! panic! Panic at the battle abilities end!")
+			gamelog.L.Error().Interface("err", err).Stack().Msg("panic! panic! panic! Panic at the battle abilities end!")
 		}
 	}()
 
@@ -396,7 +396,7 @@ func (btl *Battle) endAbilities() {
 func (btl *Battle) endSpoils() {
 	defer func() {
 		if err := recover(); err != nil {
-			gamelog.L.Error().Interface("err", err).Msg("panic! panic! panic! Panic at the spoils end!")
+			gamelog.L.Error().Interface("err", err).Stack().Msg("panic! panic! panic! Panic at the spoils end!")
 		}
 	}()
 	gamelog.L.Info().Msgf("cleaning up spoils: %s", btl.ID)
@@ -412,7 +412,7 @@ func (btl *Battle) endSpoils() {
 func (btl *Battle) endCreateStats(payload *BattleEndPayload, winningWarMachines []*WarMachine) *BattleEndDetail {
 	defer func() {
 		if err := recover(); err != nil {
-			gamelog.L.Error().Interface("err", err).Msg("panic! panic! panic! Panic at the creation of ending info: endCreateStats!")
+			gamelog.L.Error().Interface("err", err).Stack().Msg("panic! panic! panic! Panic at the creation of ending info: endCreateStats!")
 		}
 	}()
 	gamelog.L.Info().Msgf("battle end: looping TopSupsContributeFactions: %s", btl.ID)
@@ -501,7 +501,7 @@ func (btl *Battle) endCreateStats(payload *BattleEndPayload, winningWarMachines 
 func (btl *Battle) processWinners(payload *BattleEndPayload) {
 	defer func() {
 		if err := recover(); err != nil {
-			gamelog.L.Error().Interface("err", err).Msg("panic! panic! panic! Panic at the battle end processWinners!")
+			gamelog.L.Error().Interface("err", err).Stack().Msg("panic! panic! panic! Panic at the battle end processWinners!")
 		}
 	}()
 	mws := make([]*db.MechWithOwner, len(payload.WinningWarMachines))
@@ -677,7 +677,7 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 func (btl *Battle) endWarMachines(payload *BattleEndPayload) []*WarMachine {
 	defer func() {
 		if err := recover(); err != nil {
-			gamelog.L.Error().Interface("err", err).Msg("panic! panic! panic! Panic at the sorting up ending war machines!")
+			gamelog.L.Error().Interface("err", err).Stack().Msg("panic! panic! panic! Panic at the sorting up ending war machines!")
 		}
 	}()
 	winningWarMachines := make([]*WarMachine, len(payload.WinningWarMachines))
@@ -711,7 +711,7 @@ func (btl *Battle) endWarMachines(payload *BattleEndPayload) []*WarMachine {
 func (btl *Battle) endMultis(endInfo *BattleEndDetail) {
 	defer func() {
 		if err := recover(); err != nil {
-			gamelog.L.Error().Interface("err", err).Msg("panic! panic! panic! Panic at the ending of multis! btl.endMultis!")
+			gamelog.L.Error().Interface("err", err).Stack().Msg("panic! panic! panic! Panic at the ending of multis! btl.endMultis!")
 		}
 	}()
 	gamelog.L.Info().Msgf("cleaning up multipliers: %s", btl.ID)
@@ -726,7 +726,7 @@ func (btl *Battle) endMultis(endInfo *BattleEndDetail) {
 func (btl *Battle) endBroadcast(endInfo *BattleEndDetail) {
 	defer func() {
 		if err := recover(); err != nil {
-			gamelog.L.Error().Interface("err", err).Msg("panic! panic! panic! Panic at the ending of end broadcast!")
+			gamelog.L.Error().Interface("err", err).Stack().Msg("panic! panic! panic! Panic at the ending of end broadcast!")
 		}
 	}()
 	btl.endInfoBroadcast(*endInfo)
@@ -735,7 +735,7 @@ func (btl *Battle) endBroadcast(endInfo *BattleEndDetail) {
 func (btl *Battle) end(payload *BattleEndPayload) {
 	defer func() {
 		if err := recover(); err != nil {
-			gamelog.L.Error().Interface("err", err).Msg("panic! panic! panic! Panic at the battle end!")
+			gamelog.L.Error().Interface("err", err).Stack().Msg("panic! panic! panic! Panic at the battle end!")
 			exists, err := boiler.BattleExists(gamedb.StdConn, btl.ID)
 			if err != nil {
 				gamelog.L.Panic().Err(err).Msg("Panicing. Unable to even check if battle id exists")
@@ -899,7 +899,7 @@ func (btl *Battle) userOnline(user *BattleUser, wsc *hub.Client) {
 func (btl *Battle) debounceSendingViewerCount(cb func(result ViewerLiveCount, btl *Battle)) {
 	defer func() {
 		if err := recover(); err != nil {
-			gamelog.L.Error().Interface("err", err).Msg("panic! panic! panic! Panic at the debounceSendingViewerCount!")
+			gamelog.L.Error().Interface("err", err).Stack().Msg("panic! panic! panic! Panic at the debounceSendingViewerCount!")
 		}
 	}()
 

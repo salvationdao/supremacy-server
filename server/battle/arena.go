@@ -756,7 +756,7 @@ type BattleWMDestroyedPayload struct {
 func (arena *Arena) start() {
 	defer func() {
 		if err := recover(); err != nil {
-			gamelog.L.Error().Interface("err", err).Msg("Panic! Panic! Panic! Panic on battle arena!")
+			gamelog.L.Error().Interface("err", err).Stack().Msg("Panic! Panic! Panic! Panic on battle arena!")
 		}
 	}()
 
