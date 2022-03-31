@@ -273,6 +273,7 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.MechContainer, error) {
 			&mc.UpdatedAt,
 			&mc.CreatedAt,
 			&mc.LargeImageURL,
+			&mc.CollectionSlug,
 			&mc.Chassis,
 			&mc.Weapons,
 			&mc.Turrets,
@@ -352,6 +353,7 @@ func Mech(mechID uuid.UUID) (*server.MechContainer, error) {
 			&mc.UpdatedAt,
 			&mc.CreatedAt,
 			&mc.LargeImageURL,
+			&mc.CollectionSlug,
 			&mc.Chassis,
 			&mc.Weapons,
 			&mc.Turrets,
@@ -527,6 +529,7 @@ func MechRegister(templateID uuid.UUID, ownerID uuid.UUID) (uuid.UUID, error) {
 		Label:           template.Label,
 		Slug:            template.Slug,
 		AssetType:       template.AssetType,
+		CollectionSlug:  template.CollectionSlug,
 
 		AvatarURL:        template.AvatarURL,
 		LargeImageURL:    template.LargeImageURL,
