@@ -111,8 +111,8 @@ func (arena *Arena) HubKeyMultiplierUpdate(ctx context.Context, wsc *hub.Client,
 	}
 
 	// return multiplier if battle is on
-	if arena.currentBattle != nil && arena.currentBattle.multipliers != nil {
-		m, total := arena.currentBattle.multipliers.PlayerMultipliers(id, -1)
+	if arena.currentBattle() != nil && arena.currentBattle().multipliers != nil {
+		m, total := arena.currentBattle().multipliers.PlayerMultipliers(id, -1)
 
 		reply(&MultiplierUpdate{
 			UserMultipliers:  m,
@@ -182,7 +182,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 	// get next 10 war machines in queue for each faction
 	q, err := db.LoadBattleQueue(context.Background(), 13)
 	if err != nil {
-		gamelog.L.Warn().Err(err).Str("battle_id", arena.currentBattle.ID).Msg("unable to load out queue for notifications")
+		gamelog.L.Warn().Err(err).Str("battle_id", arena.currentBattle().ID).Msg("unable to load out queue for notifications")
 		return
 	}
 
@@ -190,7 +190,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 	for _, bq := range q {
 		// if in battle or already notified skip
 		if bq.BattleID.Valid {
-			gamelog.L.Warn().Err(err).Str("battle_id", arena.currentBattle.BattleID).Msg(fmt.Sprintf("battle has started or already happened before sending notification: %s", bq.BattleID.String))
+			gamelog.L.Warn().Err(err).Str("battle_id", arena.currentBattle().BattleID).Msg(fmt.Sprintf("battle has started or already happened before sending notification: %s", bq.BattleID.String))
 			continue
 		}
 		if bq.Notified {
@@ -203,7 +203,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			qm.Load(boiler.PlayerRels.PlayerPreferences),
 		).One(gamedb.StdConn)
 		if err != nil {
-			gamelog.L.Error().Err(err).Str("battle_id", arena.currentBattle.ID).Str("owner_id", bq.OwnerID).Msg("unable to find owner for battle queue notification")
+			gamelog.L.Error().Err(err).Str("battle_id", arena.currentBattle().ID).Str("owner_id", bq.OwnerID).Msg("unable to find owner for battle queue notification")
 			continue
 		}
 		warMachine, err := bq.Mech(qm.Load(boiler.MechRels.BattleQueueNotifications)).One(gamedb.StdConn)
@@ -223,7 +223,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			boiler.BattleQueueNotificationWhere.SentAt.IsNull(),
 		).One(gamedb.StdConn)
 		if err != nil {
-			gamelog.L.Error().Err(err).Str("battle_id", arena.currentBattle.ID).Msg("unable to find battle queue notifications")
+			gamelog.L.Error().Err(err).Str("battle_id", arena.currentBattle().ID).Msg("unable to find battle queue notifications")
 			continue
 		}
 

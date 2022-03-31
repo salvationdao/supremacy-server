@@ -14,7 +14,7 @@ func New(environment, level string) {
 
 	if environment == "production" || environment == "staging" {
 		logPtr := zerolog.New(os.Stdout)
-		logPtr = logPtr.With().Caller().Logger()
+		logPtr = logPtr.With().Logger()
 		log = &logPtr
 	}
 	log.Info().Msg("zerolog initialised")

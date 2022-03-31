@@ -3,12 +3,12 @@ package rpcclient
 import (
 	"errors"
 	"fmt"
+	"go.uber.org/atomic"
 	"log"
 	"math"
 	"net/rpc"
 	"server/gamelog"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/ninja-software/terror/v2"
@@ -18,7 +18,7 @@ import (
 type XrpcClient struct {
 	Addrs   []string      // list of rpc addresses available to use
 	clients []*rpc.Client // holds rpc clients, same len/pos as the Addrs
-	counter uint64        // counter for cycling address/clients
+	counter atomic.Int64  // counter for cycling address/clients
 	mutex   sync.Mutex    // lock and unlocks clients slice editing
 }
 
@@ -65,8 +65,8 @@ func (c *XrpcClient) Call(serviceMethod string, args interface{}, reply interfac
 	gamelog.L.Debug().Str("fn", serviceMethod).Interface("args", args).Msg("rpc call")
 
 	// count up, and use the next client/address
-	atomic.AddUint64(&c.counter, 1)
-	i := int(c.counter) % len(c.Addrs)
+	c.counter.Add(1)
+	i := int(c.counter.Load()) % len(c.Addrs)
 	client := c.clients[i]
 
 	var err error
