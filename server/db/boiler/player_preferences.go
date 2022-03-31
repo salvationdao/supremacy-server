@@ -13,88 +13,60 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
-	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/queries/qmhelper"
+	"github.com/volatiletech/sqlboiler/v4/types"
 	"github.com/volatiletech/strmangle"
 )
 
 // PlayerPreference is an object representing the database table.
 type PlayerPreference struct {
-	ID                                        string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	PlayerID                                  string    `boiler:"player_id" boil:"player_id" json:"player_id" toml:"player_id" yaml:"player_id"`
-	NotificationsBattleQueueSMS               bool      `boiler:"notifications_battle_queue_sms" boil:"notifications_battle_queue_sms" json:"notifications_battle_queue_sms" toml:"notifications_battle_queue_sms" yaml:"notifications_battle_queue_sms"`
-	NotificationsBattleQueueBrowser           bool      `boiler:"notifications_battle_queue_browser" boil:"notifications_battle_queue_browser" json:"notifications_battle_queue_browser" toml:"notifications_battle_queue_browser" yaml:"notifications_battle_queue_browser"`
-	NotificationsBattleQueuePushNotifications bool      `boiler:"notifications_battle_queue_push_notifications" boil:"notifications_battle_queue_push_notifications" json:"notifications_battle_queue_push_notifications" toml:"notifications_battle_queue_push_notifications" yaml:"notifications_battle_queue_push_notifications"`
-	DeletedAt                                 null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	UpdatedAt                                 time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt                                 time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	PlayerID  string     `boiler:"player_id" boil:"player_id" json:"player_id" toml:"player_id" yaml:"player_id"`
+	Key       string     `boiler:"key" boil:"key" json:"key" toml:"key" yaml:"key"`
+	Value     types.JSON `boiler:"value" boil:"value" json:"value" toml:"value" yaml:"value"`
+	CreatedAt time.Time  `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *playerPreferenceR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L playerPreferenceL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var PlayerPreferenceColumns = struct {
-	ID                                        string
-	PlayerID                                  string
-	NotificationsBattleQueueSMS               string
-	NotificationsBattleQueueBrowser           string
-	NotificationsBattleQueuePushNotifications string
-	DeletedAt                                 string
-	UpdatedAt                                 string
-	CreatedAt                                 string
+	PlayerID  string
+	Key       string
+	Value     string
+	CreatedAt string
 }{
-	ID:                              "id",
-	PlayerID:                        "player_id",
-	NotificationsBattleQueueSMS:     "notifications_battle_queue_sms",
-	NotificationsBattleQueueBrowser: "notifications_battle_queue_browser",
-	NotificationsBattleQueuePushNotifications: "notifications_battle_queue_push_notifications",
-	DeletedAt: "deleted_at",
-	UpdatedAt: "updated_at",
+	PlayerID:  "player_id",
+	Key:       "key",
+	Value:     "value",
 	CreatedAt: "created_at",
 }
 
 var PlayerPreferenceTableColumns = struct {
-	ID                                        string
-	PlayerID                                  string
-	NotificationsBattleQueueSMS               string
-	NotificationsBattleQueueBrowser           string
-	NotificationsBattleQueuePushNotifications string
-	DeletedAt                                 string
-	UpdatedAt                                 string
-	CreatedAt                                 string
+	PlayerID  string
+	Key       string
+	Value     string
+	CreatedAt string
 }{
-	ID:                              "player_preferences.id",
-	PlayerID:                        "player_preferences.player_id",
-	NotificationsBattleQueueSMS:     "player_preferences.notifications_battle_queue_sms",
-	NotificationsBattleQueueBrowser: "player_preferences.notifications_battle_queue_browser",
-	NotificationsBattleQueuePushNotifications: "player_preferences.notifications_battle_queue_push_notifications",
-	DeletedAt: "player_preferences.deleted_at",
-	UpdatedAt: "player_preferences.updated_at",
+	PlayerID:  "player_preferences.player_id",
+	Key:       "player_preferences.key",
+	Value:     "player_preferences.value",
 	CreatedAt: "player_preferences.created_at",
 }
 
 // Generated where
 
 var PlayerPreferenceWhere = struct {
-	ID                                        whereHelperstring
-	PlayerID                                  whereHelperstring
-	NotificationsBattleQueueSMS               whereHelperbool
-	NotificationsBattleQueueBrowser           whereHelperbool
-	NotificationsBattleQueuePushNotifications whereHelperbool
-	DeletedAt                                 whereHelpernull_Time
-	UpdatedAt                                 whereHelpertime_Time
-	CreatedAt                                 whereHelpertime_Time
+	PlayerID  whereHelperstring
+	Key       whereHelperstring
+	Value     whereHelpertypes_JSON
+	CreatedAt whereHelpertime_Time
 }{
-	ID:                              whereHelperstring{field: "\"player_preferences\".\"id\""},
-	PlayerID:                        whereHelperstring{field: "\"player_preferences\".\"player_id\""},
-	NotificationsBattleQueueSMS:     whereHelperbool{field: "\"player_preferences\".\"notifications_battle_queue_sms\""},
-	NotificationsBattleQueueBrowser: whereHelperbool{field: "\"player_preferences\".\"notifications_battle_queue_browser\""},
-	NotificationsBattleQueuePushNotifications: whereHelperbool{field: "\"player_preferences\".\"notifications_battle_queue_push_notifications\""},
-	DeletedAt: whereHelpernull_Time{field: "\"player_preferences\".\"deleted_at\""},
-	UpdatedAt: whereHelpertime_Time{field: "\"player_preferences\".\"updated_at\""},
+	PlayerID:  whereHelperstring{field: "\"player_preferences\".\"player_id\""},
+	Key:       whereHelperstring{field: "\"player_preferences\".\"key\""},
+	Value:     whereHelpertypes_JSON{field: "\"player_preferences\".\"value\""},
 	CreatedAt: whereHelpertime_Time{field: "\"player_preferences\".\"created_at\""},
 }
 
@@ -119,10 +91,10 @@ func (*playerPreferenceR) NewStruct() *playerPreferenceR {
 type playerPreferenceL struct{}
 
 var (
-	playerPreferenceAllColumns            = []string{"id", "player_id", "notifications_battle_queue_sms", "notifications_battle_queue_browser", "notifications_battle_queue_push_notifications", "deleted_at", "updated_at", "created_at"}
-	playerPreferenceColumnsWithoutDefault = []string{"player_id"}
-	playerPreferenceColumnsWithDefault    = []string{"id", "notifications_battle_queue_sms", "notifications_battle_queue_browser", "notifications_battle_queue_push_notifications", "deleted_at", "updated_at", "created_at"}
-	playerPreferencePrimaryKeyColumns     = []string{"id"}
+	playerPreferenceAllColumns            = []string{"player_id", "key", "value", "created_at"}
+	playerPreferenceColumnsWithoutDefault = []string{"player_id", "key", "value"}
+	playerPreferenceColumnsWithDefault    = []string{"created_at"}
+	playerPreferencePrimaryKeyColumns     = []string{"player_id", "key"}
 	playerPreferenceGeneratedColumns      = []string{}
 )
 
@@ -468,7 +440,7 @@ func (playerPreferenceL) LoadPlayer(e boil.Executor, singular bool, maybePlayerP
 		if foreign.R == nil {
 			foreign.R = &playerR{}
 		}
-		foreign.R.PlayerPreference = object
+		foreign.R.PlayerPreferences = append(foreign.R.PlayerPreferences, object)
 		return nil
 	}
 
@@ -479,7 +451,7 @@ func (playerPreferenceL) LoadPlayer(e boil.Executor, singular bool, maybePlayerP
 				if foreign.R == nil {
 					foreign.R = &playerR{}
 				}
-				foreign.R.PlayerPreference = local
+				foreign.R.PlayerPreferences = append(foreign.R.PlayerPreferences, local)
 				break
 			}
 		}
@@ -490,7 +462,7 @@ func (playerPreferenceL) LoadPlayer(e boil.Executor, singular bool, maybePlayerP
 
 // SetPlayer of the playerPreference to the related item.
 // Sets o.R.Player to related.
-// Adds o to related.R.PlayerPreference.
+// Adds o to related.R.PlayerPreferences.
 func (o *PlayerPreference) SetPlayer(exec boil.Executor, insert bool, related *Player) error {
 	var err error
 	if insert {
@@ -504,7 +476,7 @@ func (o *PlayerPreference) SetPlayer(exec boil.Executor, insert bool, related *P
 		strmangle.SetParamNames("\"", "\"", 1, []string{"player_id"}),
 		strmangle.WhereClause("\"", "\"", 2, playerPreferencePrimaryKeyColumns),
 	)
-	values := []interface{}{related.ID, o.ID}
+	values := []interface{}{related.ID, o.PlayerID, o.Key}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -525,10 +497,10 @@ func (o *PlayerPreference) SetPlayer(exec boil.Executor, insert bool, related *P
 
 	if related.R == nil {
 		related.R = &playerR{
-			PlayerPreference: o,
+			PlayerPreferences: PlayerPreferenceSlice{o},
 		}
 	} else {
-		related.R.PlayerPreference = o
+		related.R.PlayerPreferences = append(related.R.PlayerPreferences, o)
 	}
 
 	return nil
@@ -536,13 +508,13 @@ func (o *PlayerPreference) SetPlayer(exec boil.Executor, insert bool, related *P
 
 // PlayerPreferences retrieves all the records using an executor.
 func PlayerPreferences(mods ...qm.QueryMod) playerPreferenceQuery {
-	mods = append(mods, qm.From("\"player_preferences\""), qmhelper.WhereIsNull("\"player_preferences\".\"deleted_at\""))
+	mods = append(mods, qm.From("\"player_preferences\""))
 	return playerPreferenceQuery{NewQuery(mods...)}
 }
 
 // FindPlayerPreference retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindPlayerPreference(exec boil.Executor, iD string, selectCols ...string) (*PlayerPreference, error) {
+func FindPlayerPreference(exec boil.Executor, playerID string, key string, selectCols ...string) (*PlayerPreference, error) {
 	playerPreferenceObj := &PlayerPreference{}
 
 	sel := "*"
@@ -550,10 +522,10 @@ func FindPlayerPreference(exec boil.Executor, iD string, selectCols ...string) (
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"player_preferences\" where \"id\"=$1 and \"deleted_at\" is null", sel,
+		"select %s from \"player_preferences\" where \"player_id\"=$1 AND \"key\"=$2", sel,
 	)
 
-	q := queries.Raw(query, iD)
+	q := queries.Raw(query, playerID, key)
 
 	err := q.Bind(nil, exec, playerPreferenceObj)
 	if err != nil {
@@ -580,9 +552,6 @@ func (o *PlayerPreference) Insert(exec boil.Executor, columns boil.Columns) erro
 	var err error
 	currTime := time.Now().In(boil.GetLocation())
 
-	if o.UpdatedAt.IsZero() {
-		o.UpdatedAt = currTime
-	}
 	if o.CreatedAt.IsZero() {
 		o.CreatedAt = currTime
 	}
@@ -660,10 +629,6 @@ func (o *PlayerPreference) Insert(exec boil.Executor, columns boil.Columns) erro
 // See boil.Columns.UpdateColumnSet documentation to understand column list inference for updates.
 // Update does not automatically update the record in case of default values. Use .Reload() to refresh the records.
 func (o *PlayerPreference) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
-	currTime := time.Now().In(boil.GetLocation())
-
-	o.UpdatedAt = currTime
-
 	var err error
 	if err = o.doBeforeUpdateHooks(exec); err != nil {
 		return 0, err
@@ -794,7 +759,6 @@ func (o *PlayerPreference) Upsert(exec boil.Executor, updateOnConflict bool, con
 	}
 	currTime := time.Now().In(boil.GetLocation())
 
-	o.UpdatedAt = currTime
 	if o.CreatedAt.IsZero() {
 		o.CreatedAt = currTime
 	}
@@ -909,7 +873,7 @@ func (o *PlayerPreference) Upsert(exec boil.Executor, updateOnConflict bool, con
 
 // Delete deletes a single PlayerPreference record with an executor.
 // Delete will match against the primary key column to find the record to delete.
-func (o *PlayerPreference) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
+func (o *PlayerPreference) Delete(exec boil.Executor) (int64, error) {
 	if o == nil {
 		return 0, errors.New("boiler: no PlayerPreference provided for delete")
 	}
@@ -918,26 +882,8 @@ func (o *PlayerPreference) Delete(exec boil.Executor, hardDelete bool) (int64, e
 		return 0, err
 	}
 
-	var (
-		sql  string
-		args []interface{}
-	)
-	if hardDelete {
-		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), playerPreferencePrimaryKeyMapping)
-		sql = "DELETE FROM \"player_preferences\" WHERE \"id\"=$1"
-	} else {
-		currTime := time.Now().In(boil.GetLocation())
-		o.DeletedAt = null.TimeFrom(currTime)
-		wl := []string{"deleted_at"}
-		sql = fmt.Sprintf("UPDATE \"player_preferences\" SET %s WHERE \"id\"=$2",
-			strmangle.SetParamNames("\"", "\"", 1, wl),
-		)
-		valueMapping, err := queries.BindMapping(playerPreferenceType, playerPreferenceMapping, append(wl, playerPreferencePrimaryKeyColumns...))
-		if err != nil {
-			return 0, err
-		}
-		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), valueMapping)
-	}
+	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), playerPreferencePrimaryKeyMapping)
+	sql := "DELETE FROM \"player_preferences\" WHERE \"player_id\"=$1 AND \"key\"=$2"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -961,17 +907,12 @@ func (o *PlayerPreference) Delete(exec boil.Executor, hardDelete bool) (int64, e
 }
 
 // DeleteAll deletes all matching rows.
-func (q playerPreferenceQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
+func (q playerPreferenceQuery) DeleteAll(exec boil.Executor) (int64, error) {
 	if q.Query == nil {
 		return 0, errors.New("boiler: no playerPreferenceQuery provided for delete all")
 	}
 
-	if hardDelete {
-		queries.SetDelete(q.Query)
-	} else {
-		currTime := time.Now().In(boil.GetLocation())
-		queries.SetUpdate(q.Query, M{"deleted_at": currTime})
-	}
+	queries.SetDelete(q.Query)
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
@@ -987,7 +928,7 @@ func (q playerPreferenceQuery) DeleteAll(exec boil.Executor, hardDelete bool) (i
 }
 
 // DeleteAll deletes all rows in the slice, using an executor.
-func (o PlayerPreferenceSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
+func (o PlayerPreferenceSlice) DeleteAll(exec boil.Executor) (int64, error) {
 	if len(o) == 0 {
 		return 0, nil
 	}
@@ -1000,31 +941,14 @@ func (o PlayerPreferenceSlice) DeleteAll(exec boil.Executor, hardDelete bool) (i
 		}
 	}
 
-	var (
-		sql  string
-		args []interface{}
-	)
-	if hardDelete {
-		for _, obj := range o {
-			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), playerPreferencePrimaryKeyMapping)
-			args = append(args, pkeyArgs...)
-		}
-		sql = "DELETE FROM \"player_preferences\" WHERE " +
-			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, playerPreferencePrimaryKeyColumns, len(o))
-	} else {
-		currTime := time.Now().In(boil.GetLocation())
-		for _, obj := range o {
-			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), playerPreferencePrimaryKeyMapping)
-			args = append(args, pkeyArgs...)
-			obj.DeletedAt = null.TimeFrom(currTime)
-		}
-		wl := []string{"deleted_at"}
-		sql = fmt.Sprintf("UPDATE \"player_preferences\" SET %s WHERE "+
-			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, playerPreferencePrimaryKeyColumns, len(o)),
-			strmangle.SetParamNames("\"", "\"", 1, wl),
-		)
-		args = append([]interface{}{currTime}, args...)
+	var args []interface{}
+	for _, obj := range o {
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), playerPreferencePrimaryKeyMapping)
+		args = append(args, pkeyArgs...)
 	}
+
+	sql := "DELETE FROM \"player_preferences\" WHERE " +
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, playerPreferencePrimaryKeyColumns, len(o))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1054,7 +978,7 @@ func (o PlayerPreferenceSlice) DeleteAll(exec boil.Executor, hardDelete bool) (i
 // Reload refetches the object from the database
 // using the primary keys with an executor.
 func (o *PlayerPreference) Reload(exec boil.Executor) error {
-	ret, err := FindPlayerPreference(exec, o.ID)
+	ret, err := FindPlayerPreference(exec, o.PlayerID, o.Key)
 	if err != nil {
 		return err
 	}
@@ -1078,8 +1002,7 @@ func (o *PlayerPreferenceSlice) ReloadAll(exec boil.Executor) error {
 	}
 
 	sql := "SELECT \"player_preferences\".* FROM \"player_preferences\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, playerPreferencePrimaryKeyColumns, len(*o)) +
-		"and \"deleted_at\" is null"
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, playerPreferencePrimaryKeyColumns, len(*o))
 
 	q := queries.Raw(sql, args...)
 
@@ -1094,15 +1017,15 @@ func (o *PlayerPreferenceSlice) ReloadAll(exec boil.Executor) error {
 }
 
 // PlayerPreferenceExists checks if the PlayerPreference row exists.
-func PlayerPreferenceExists(exec boil.Executor, iD string) (bool, error) {
+func PlayerPreferenceExists(exec boil.Executor, playerID string, key string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"player_preferences\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
+	sql := "select exists(select 1 from \"player_preferences\" where \"player_id\"=$1 AND \"key\"=$2 limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
-		fmt.Fprintln(boil.DebugWriter, iD)
+		fmt.Fprintln(boil.DebugWriter, playerID, key)
 	}
-	row := exec.QueryRow(sql, iD)
+	row := exec.QueryRow(sql, playerID, key)
 
 	err := row.Scan(&exists)
 	if err != nil {

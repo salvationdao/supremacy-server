@@ -5,17 +5,19 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"server/db/boiler"
 	"server/gamedb"
+	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/log_helpers"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
-	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
 type PlayerController struct {
@@ -31,50 +33,88 @@ func NewPlayerController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Pla
 		API:  api,
 	}
 
-	api.SecureUserCommand(HubKeyPlayerBattleQueueNotifications, pctrlr.PlayerBattleQueueNotificationsHandler)
-	api.SecureUserSubscribeCommand(HubKeyPlayerPreferencesSubscribe, pctrlr.PlayerPreferencesSubscribeHandler)
-	api.SecureUserSubscribeCommand(HubKeyPlayerBattleQueueBrowserSubscribe, pctrlr.PlayerBattleQueueBrowserSubscribeHandler)
+	api.SecureUserCommand(HubKeyPlayerUpdateSettings, pctrlr.PlayerUpdateSettingsHandler)
+	api.SecureUserCommand(HubKeyPlayerGetSettings, pctrlr.PlayerGetSettingsHandler)
 
 	return pctrlr
 }
 
-const HubKeyPlayerPreferencesSubscribe hub.HubCommandKey = "PLAYER:PREFERENCES_SUBSCRIBE"
-
-func (ctrlr *PlayerController) PlayerPreferencesSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	req := &hub.HubCommandRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return "", "", terror.Error(err, "Invalid request received")
-	}
-
-	playerPrefs, err := boiler.PlayerPreferences(boiler.PlayerPreferenceWhere.PlayerID.EQ(wsc.Identifier())).One(gamedb.StdConn)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			playerPrefs := &boiler.PlayerPreference{PlayerID: wsc.Identifier()}
-			err := playerPrefs.Insert(gamedb.StdConn, boil.Infer())
-			if err != nil {
-				return "", "", terror.Error(err, "Issue getting settings, try again or contact support.")
-			}
-		} else {
-			return "", "", terror.Error(err, "Issue getting setting, try again or contact support.")
-		}
-	}
-	reply(playerPrefs)
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPlayerPreferencesSubscribe, wsc.Identifier())), nil
-}
-
-type PlayerBattleQueueNotificationsReq struct {
+type PlayerUpdateSettingsRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		BattleQueueSMS     bool `json:"battle_queue_sms"`
-		BattleQueueBrowser bool `json:"battle_queue_browser"`
+		Key   string     `json:"key"`
+		Value types.JSON `json:"value,omitempty"`
 	} `json:"payload"`
 }
 
-const HubKeyPlayerBattleQueueNotifications hub.HubCommandKey = "PLAYER:TOGGLE_BATTLE_QUEUE_NOTIFICATIONS"
+const HubKeyPlayerUpdateSettings hub.HubCommandKey = "PLAYER:UPDATE_SETTINGS"
 
-func (ctrlr *PlayerController) PlayerBattleQueueNotificationsHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	req := &PlayerBattleQueueNotificationsReq{}
+func (ctrlr *PlayerController) PlayerUpdateSettingsHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	errMsg := "Issue updating settings, try again or contact support."
+	req := &PlayerUpdateSettingsRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	player, err := boiler.FindPlayer(gamedb.StdConn, wsc.Identifier())
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	//getting user's notification settings from the database
+	userSettings, err := boiler.FindPlayerPreference(gamedb.StdConn, player.ID, req.Payload.Key)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// if there are no results, make an entry for the user with settings values sent from frontend
+			playerPrefs := &boiler.PlayerPreference{
+				PlayerID:  wsc.Identifier(),
+				Key:       req.Payload.Key,
+				Value:     req.Payload.Value,
+				CreatedAt: time.Now()}
+
+			err := playerPrefs.Insert(gamedb.StdConn, boil.Infer())
+			if err != nil {
+				return terror.Error(err, errMsg)
+			}
+
+			reply(playerPrefs.Value)
+			return nil
+		} else {
+			return terror.Error(err, errMsg)
+		}
+	}
+
+	payloadStr := req.Payload.Value.String()
+	dbStr := strings.ReplaceAll(userSettings.Value.String(), " ", "")
+
+	//if the payload includes a new value, update it in the db
+	if payloadStr != dbStr {
+		userSettings.Value = req.Payload.Value
+		_, err := userSettings.Update(gamedb.StdConn, boil.Whitelist(boiler.PlayerPreferenceColumns.Value))
+		if err != nil {
+			return terror.Error(err, errMsg)
+		}
+	}
+
+	//send back userSettings values
+	reply(userSettings.Value)
+	return nil
+}
+
+type PlayerGetSettingsRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		Key string `json:"key"`
+	} `json:"payload"`
+}
+
+const HubKeyPlayerGetSettings hub.HubCommandKey = "PLAYER:GET_SETTINGS"
+
+//gets settings based on key, sends settings value back as json
+func (ctrlr *PlayerController) PlayerGetSettingsHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	errMsg := "Issue getting settings, try again or contact support."
+	req := &PlayerGetSettingsRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received")
@@ -82,55 +122,22 @@ func (ctrlr *PlayerController) PlayerBattleQueueNotificationsHandler(ctx context
 
 	player, err := boiler.FindPlayer(gamedb.StdConn, wsc.Identifier())
 	if err != nil {
-		return terror.Error(err, "Failed to updated preference, try again or contact support.")
+		return terror.Error(err, errMsg)
 	}
 
-	playerPrefs, err := boiler.PlayerPreferences(boiler.PlayerPreferenceWhere.PlayerID.EQ(wsc.Identifier())).One(gamedb.StdConn)
+	//getting user's notification settings from the database
+	userSettings, err := boiler.FindPlayerPreference(gamedb.StdConn, player.ID, req.Payload.Key)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			playerPrefs := &boiler.PlayerPreference{PlayerID: wsc.Identifier()}
-			err := playerPrefs.Insert(gamedb.StdConn, boil.Infer())
-			if err != nil {
-				return terror.Error(err, "Issue updating setting, try again or contact support.")
-			}
+			// if there are no results, return a null json- tells frontend to use default settings
+			reply(null.JSON{})
+			return nil
 		} else {
-			return terror.Error(err, "Issue updating setting, try again or contact support.")
+			return terror.Error(err, errMsg)
 		}
 	}
 
-	updateFields := []string{}
-	if playerPrefs.NotificationsBattleQueueSMS != req.Payload.BattleQueueSMS {
-		if !player.MobileNumber.Valid {
-			return terror.Warn(fmt.Errorf("no mobile set"), "Set your mobile number on Passport to enable this feature.")
-		}
-		playerPrefs.NotificationsBattleQueueSMS = req.Payload.BattleQueueSMS
-		updateFields = append(updateFields, boiler.PlayerPreferenceColumns.NotificationsBattleQueueSMS)
-	}
-	if playerPrefs.NotificationsBattleQueueBrowser != req.Payload.BattleQueueBrowser {
-		playerPrefs.NotificationsBattleQueueBrowser = req.Payload.BattleQueueBrowser
-		updateFields = append(updateFields, boiler.PlayerPreferenceColumns.NotificationsBattleQueueBrowser)
-	}
-
-	if len(updateFields) > 0 {
-		_, err = playerPrefs.Update(gamedb.StdConn, boil.Whitelist(updateFields...))
-		if err != nil {
-			return terror.Error(err, "Issue updating setting, try again or contact support.")
-		}
-	}
-
-	go ctrlr.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPlayerPreferencesSubscribe, wsc.Identifier())), playerPrefs)
-	reply(true)
+	//send back userSettings
+	reply(userSettings.Value)
 	return nil
-}
-
-const HubKeyPlayerBattleQueueBrowserSubscribe hub.HubCommandKey = "PLAYER:BROWSER_NOFTICATION_SUBSCRIBE"
-
-func (ctrlr *PlayerController) PlayerBattleQueueBrowserSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	req := &hub.HubCommandRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return "", "", terror.Error(err, "Invalid request received")
-	}
-
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPlayerBattleQueueBrowserSubscribe, wsc.Identifier())), nil
 }

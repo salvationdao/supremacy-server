@@ -1038,9 +1038,10 @@ func (arena *Arena) reset() {
 type QueueJoinRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		AssetHash           string `json:"asset_hash"`
-		NeedInsured         bool   `json:"need_insured"`
-		EnableNotifications bool   `json:"enable_notifications"`
+		AssetHash               string `json:"asset_hash"`
+		NeedInsured             bool   `json:"need_insured"`
+		EnablePushNotifications bool   `json:"enable_push_notifications,omitempty"`
+		MobileNumber            string `json:"mobile_number,omitempty"`
 	} `json:"payload"`
 }
 
@@ -1139,7 +1140,9 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		OwnerID:          ownerID.String(),
 		BattleContractID: null.StringFrom(bc.ID),
 	}
-	if !msg.Payload.EnableNotifications {
+
+	notifications := (msg.Payload.EnablePushNotifications || msg.Payload.MobileNumber != "")
+	if !notifications {
 		bq.Notified = true
 	}
 	err = bq.Insert(tx, boil.Infer())
@@ -1200,6 +1203,23 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 			gamelog.L.Error().
 				Str("tx_id", notifyTransactionID).
 				Err(err).Msg("unable to update battle queue with queue notification transaction id")
+			return terror.Error(err, "Unable to join queue, check your balance and try again.")
+		}
+
+		//insert notification into db
+		bqn := &boiler.BattleQueueNotification{
+			MechID:            mechID.String(),
+			QueueMechID:       null.StringFrom(mechID.String()),
+			MobileNumber:      null.StringFrom(msg.Payload.MobileNumber),
+			PushNotifications: msg.Payload.EnablePushNotifications,
+			Fee:               notifyCost,
+		}
+
+		err = bqn.Insert(tx, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().
+				Interface("mech", mech).
+				Err(err).Msg("unable to insert queue notification for mech")
 			return terror.Error(err, "Unable to join queue, check your balance and try again.")
 		}
 	}
@@ -1393,6 +1413,12 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 				Err(err).Msg("unable to update battle queue with refund transaction details")
 			return terror.Error(err, "Unable to join queue, check your balance and try again.")
 		}
+	}
+
+	updateBQNq := `UPDATE battle_queue_notifications SET is_refunded = true, queue_mech_id = null WHERE mech_id = $1`
+	_, err = gamedb.StdConn.Exec(updateBQNq, mechID.String())
+	if err != nil {
+		gamelog.L.Warn().Err(err).Msg("unable to update battle_queue_notifications table during refund")
 	}
 
 	// Refund queue notification fee, if enabled and not already refunded

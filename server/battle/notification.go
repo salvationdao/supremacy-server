@@ -9,15 +9,15 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
-
-	"github.com/volatiletech/sqlboiler/v4/boil"
+	"time"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 type WarMachineDestroyedEventRecord struct {
@@ -177,8 +177,6 @@ func (arena *Arena) BroadcastGameNotificationWarMachineDestroyed(data *WarMachin
 	})
 }
 
-const HubKeyPlayerBattleQueueBrowserSubscribe hub.HubCommandKey = "PLAYER:BROWSER_NOFTICATION_SUBSCRIBE"
-
 // NotifyUpcomingWarMachines sends out notifications to users with war machines in an upcoming battle
 func (arena *Arena) NotifyUpcomingWarMachines() {
 	// get next 10 war machines in queue for each faction
@@ -191,33 +189,47 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 	// for each war machine in queue, find ones that need to be notified
 	for _, bq := range q {
 		// if in battle or already notified skip
-		if bq.BattleID.Valid || bq.Notified {
+		if bq.BattleID.Valid {
+			gamelog.L.Warn().Err(err).Str("battle_id", arena.currentBattle.BattleID).Msg(fmt.Sprintf("battle has started or already happened before sending notification: %s", bq.BattleID.String))
+			continue
+		}
+		if bq.Notified {
 			continue
 		}
 
-		// add them to users to notify
+		//add them to users to notify
 		player, err := boiler.Players(
 			boiler.PlayerWhere.ID.EQ(bq.OwnerID),
-			qm.Load(boiler.PlayerRels.PlayerPreference),
+			qm.Load(boiler.PlayerRels.PlayerPreferences),
 		).One(gamedb.StdConn)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("battle_id", arena.currentBattle.ID).Str("owner_id", bq.OwnerID).Msg("unable to find owner for battle queue notification")
 			continue
 		}
-
-		warMachine, err := bq.Mech().One(gamedb.StdConn)
+		warMachine, err := bq.Mech(qm.Load(boiler.MechRels.BattleQueueNotifications)).One(gamedb.StdConn)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("mech_id", bq.MechID).Msg("unable to find war machine for battle queue notification")
 			continue
 		}
 
-		if player.R.PlayerPreference == nil {
+		//continue loop if there the war machine does not have a relationship with the battle_queue_notifications table
+		if warMachine.R.BattleQueueNotifications == nil {
+			continue
+		}
+
+		bqn, err := bq.QueueMechBattleQueueNotifications(
+			boiler.BattleQueueNotificationWhere.QueueMechID.EQ(null.StringFrom(warMachine.ID)),
+			boiler.BattleQueueNotificationWhere.IsRefunded.EQ(false),
+			boiler.BattleQueueNotificationWhere.SentAt.IsNull(),
+		).One(gamedb.StdConn)
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("battle_id", arena.currentBattle.ID).Msg("unable to find battle queue notifications")
 			continue
 		}
 
 		notificationMsg := fmt.Sprintf("%s, your War Machine %s is nearing battle, jump on to https://play.supremacy.game and prepare.", player.Username.String, warMachine.Name)
 
-		if player.R.PlayerPreference.NotificationsBattleQueueSMS && player.MobileNumber.Valid {
+		if bqn.MobileNumber.Valid {
 			err := arena.sms.SendSMS(
 				player.MobileNumber.String,
 				notificationMsg,
@@ -227,17 +239,11 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			}
 		}
 
-		if player.R.PlayerPreference.NotificationsBattleQueueBrowser {
-			arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPlayerBattleQueueBrowserSubscribe, player.ID)), notificationMsg)
-		}
-
-		if player.R.PlayerPreference.NotificationsBattleQueuePushNotifications {
-			// TODO: app notifications?
-		}
-
+		//TODO: push notifications
 		// TODO: telegram notifications?
 		// TODO: discord notifications?
 		bq.Notified = true
+		bqn.SentAt = null.TimeFrom(time.Now())
 		_, err = bq.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleQueueColumns.Notified))
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("mech_id", bq.MechID).Str("owner_id", bq.OwnerID).Str("queued_at", bq.QueuedAt.String()).Msg("failed to update notified column")

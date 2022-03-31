@@ -326,7 +326,7 @@ func AllMechsAfter(leavingMechPosition int, queuedAt time.Time, factionID uuid.U
 		WITH bqpos AS (
 			SELECT t.*,
 				   ROW_NUMBER() OVER(ORDER BY t.queued_at) AS position
-			FROM battle_queue t WHERE t.deleted_at IS NULL AND faction_id = $1 AND queued_at > $2)
+			FROM battle_queue WHERE faction_id = $1 AND queued_at > $2)
 			SELECT s.mech_id, s.position+$3-1
 			FROM bqpos s
 		`
