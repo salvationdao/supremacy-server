@@ -151,6 +151,8 @@ func NewAPI(
 		//r.Get("/abilities", WithError(api.BattleArena.GetAbility))
 
 		r.Get("/blobs/{id}", WithError(api.IconDisplay))
+		r.Get("/notify", api.Notify)
+
 		r.Post("/video_server", WithToken(config.ServerStreamKey, WithError((api.CreateStreamHandler))))
 		r.Get("/video_server", WithToken(config.ServerStreamKey, WithError((api.GetStreamsHandler))))
 		r.Delete("/video_server", WithToken(config.ServerStreamKey, WithError((api.DeleteStreamHandler))))
@@ -316,4 +318,8 @@ func (rcm *RingCheckAuthMap) Check(key string) (*hub.Client, error) {
 	}
 
 	return hubc, nil
+}
+
+func (a *API) Notify(w http.ResponseWriter, r *http.Request) {
+	// a.Telegram.SendMessage(1032530847, "halo")
 }

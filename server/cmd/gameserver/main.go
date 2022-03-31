@@ -124,6 +124,9 @@ func main() {
 					&cli.StringFlag{Name: "twilio_api_secret", Value: "", EnvVars: []string{envPrefix + "_TWILIO_API_SECRET"}, Usage: "Twilio api secret"},
 					&cli.StringFlag{Name: "sms_from_number", Value: "", EnvVars: []string{envPrefix + "_SMS_FROM_NUMBER"}, Usage: "Number to send SMS from"},
 
+					// telegram bot token
+					&cli.StringFlag{Name: "telegram_bot_token", Value: "", EnvVars: []string{envPrefix + "_TELEGRAM_BOT_TOKEN"}, Usage: "telegram bot token"},
+
 					// TODO: clear up token
 					&cli.BoolFlag{Name: "jwt_encrypt", Value: true, EnvVars: []string{envPrefix + "_JWT_ENCRYPT", "JWT_ENCRYPT"}, Usage: "set if to encrypt jwt tokens or not"},
 					&cli.StringFlag{Name: "jwt_encrypt_key", Value: "ITF1vauAxvJlF0PLNY9btOO9ZzbUmc6X", EnvVars: []string{envPrefix + "_JWT_KEY", "JWT_KEY"}, Usage: "supports key sizes of 16, 24 or 32 bytes"},
@@ -160,6 +163,8 @@ func main() {
 					twilioApiKey := c.String("twilio_api_key")
 					twilioApiSecrete := c.String("twilio_api_secret")
 					smsFromNumber := c.String("sms_from_number")
+
+					telegramBotToken := c.String("telegram_bot_token")
 
 					passportAddr := c.String("passport_addr")
 					passportClientToken := c.String("passport_server_token")
@@ -323,8 +328,11 @@ func main() {
 						return terror.Error(err, "SMS init failed")
 					}
 
-					// initialise telegram client
-					telegram, err := telegram.NewTelegram()
+					// initialise telegram bot
+					telebot, err := telegram.NewTelegram(telegramBotToken)
+					if err != nil {
+						return terror.Error(err, "Telegram init failed")
+					}
 
 					// initialise message bus
 					messageBus := messagebus.NewMessageBus(log_helpers.NamedLogger(gamelog.L, "message_bus"))
@@ -354,15 +362,18 @@ func main() {
 						Hub:        gsHub,
 						RPCClient:  rpcClient,
 						SMS:        twilio,
-						Telegram:   telegram,
+						Telegram:   telebot,
 					})
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("set up arena")
 					gamelog.L.Info().Msg("Setting up webhook rest API")
-					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, pgxconn, rpcClient, messageBus, gsHub, twilio, telegram)
+					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, pgxconn, rpcClient, messageBus, gsHub, twilio, telebot)
 					if err != nil {
 						fmt.Println(err)
 						os.Exit(1)
 					}
+
+					gamelog.L.Info().Msg("Running telegram bot")
+					go telegram.RunTelegram(telebot.Bot)
 
 					gamelog.L.Info().Msg("Running webhook rest API")
 					err = api.Run(ctx)

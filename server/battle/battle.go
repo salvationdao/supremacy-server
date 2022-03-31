@@ -1214,6 +1214,21 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 			Fee: notifyCost,
 		}
 
+		// if telegram notification enabled create a telegram notification and return shortcode
+		shortcode := ""
+		if msg.Payload.TelegramNotifications {
+			telegramNotification, err := arena.telegram.NotificationCreate(mechID.String(), bqn)
+			if err != nil {
+				gamelog.L.Error().
+					Str("mechID", mechID.String()).
+					Str("playerID", ownerID.String()).
+					Err(err).Msg("unable to create telegram notification")
+				return terror.Error(err, "Unable create telegram notification.")
+			}
+			bqn.TelegramNotificationID = null.StringFrom(telegramNotification.ID)
+			shortcode = telegramNotification.Shortcode
+
+		}
 		err = bqn.Insert(tx, boil.Infer())
 		if err != nil {
 			gamelog.L.Error().
@@ -1222,22 +1237,10 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 			return terror.Error(err, "Unable to join queue, check your balance and try again.")
 		}
 
-		// if telegram notification enabled create a telegram notification and return shortcode
-		if msg.Payload.TelegramNotifications {
-
-			notification, err := arena.telegram.NotificationCreate(mechID.String(), bqn)
-			if err != nil {
-				gamelog.L.Error().
-					Str("mechID", mechID.String()).
-					Str("playerID", ownerID.String()).
-					Err(err).Msg("unable to create telegram notification")
-				return terror.Error(err, "Unable create telegram notification.")
-			}
-
+		if bqn.TelegramNotificationID.Valid && shortcode != "" {
 			reply(struct {
 				Code string `json:"code"`
-			}{Code: notification.Shortcode})
-
+			}{Code: shortcode})
 		} else {
 			reply(true)
 		}
