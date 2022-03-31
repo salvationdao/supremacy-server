@@ -186,7 +186,7 @@ func UserStatCreate(playerID string) (*boiler.UserStat, error) {
 	return userStat, nil
 }
 
-func PlayerFactionContributionList(battleID string, factionID uuid.UUID) ([]uuid.UUID, error) {
+func PlayerFactionContributionList(battleID string, factionID string) ([]uuid.UUID, error) {
 	playerList := []uuid.UUID{}
 	q := `
 		select bc.player_id from battle_contributions bc 
@@ -197,9 +197,9 @@ func PlayerFactionContributionList(battleID string, factionID uuid.UUID) ([]uuid
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
 	defer cancel()
 
-	result, err := gamedb.Conn.Query(ctx, q, battleID, factionID.String())
+	result, err := gamedb.Conn.Query(ctx, q, battleID, factionID)
 	if err != nil {
-		gamelog.L.Error().Str("battle_id", battleID).Str("faction_id", factionID.String()).Err(err).Msg("failed to get player list from db")
+		gamelog.L.Error().Str("battle_id", battleID).Str("faction_id", factionID).Err(err).Msg("failed to get player list from db")
 		return []uuid.UUID{}, err
 	}
 
@@ -211,13 +211,13 @@ func PlayerFactionContributionList(battleID string, factionID uuid.UUID) ([]uuid
 			&idStr,
 		)
 		if err != nil {
-			gamelog.L.Error().Str("battle_id", battleID).Str("faction_id", factionID.String()).Err(err).Msg("failed to scan from result ")
+			gamelog.L.Error().Str("battle_id", battleID).Str("faction_id", factionID).Err(err).Msg("failed to scan from result ")
 			return []uuid.UUID{}, err
 		}
 
 		playerID, err := uuid.FromString(idStr)
 		if err != nil {
-			gamelog.L.Error().Str("battle_id", battleID).Str("faction_id", factionID.String()).Err(err).Msg("failed to convert from result")
+			gamelog.L.Error().Str("battle_id", battleID).Str("faction_id", factionID).Err(err).Msg("failed to convert from result")
 			return []uuid.UUID{}, err
 		}
 

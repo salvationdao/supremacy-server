@@ -326,7 +326,7 @@ func AllMechsAfter(leavingMechPosition int, queuedAt time.Time, factionID uuid.U
 		WITH bqpos AS (
 			SELECT t.*,
 				   ROW_NUMBER() OVER(ORDER BY t.queued_at) AS position
-			FROM battle_queue t WHERE t.deleted_at IS NULL AND faction_id = $1 AND queued_at > $2)
+			FROM battle_queue WHERE faction_id = $1 AND queued_at > $2)
 			SELECT s.mech_id, s.position+$3-1
 			FROM bqpos s
 		`
@@ -362,7 +362,7 @@ func AllMechsAfter(leavingMechPosition int, queuedAt time.Time, factionID uuid.U
 func QueueLength(factionID uuid.UUID) (int64, error) {
 	var count int64
 
-	err := gamedb.Conn.QueryRow(context.Background(), `SELECT COUNT(mech_id) FROM battle_queue WHERE deleted_at IS NULL AND faction_id = $1`, factionID.String()).Scan(&count)
+	err := gamedb.Conn.QueryRow(context.Background(), `SELECT COUNT(mech_id) FROM battle_queue WHERE faction_id = $1`, factionID.String()).Scan(&count)
 	if err != nil {
 		return -1, err
 	}
@@ -448,7 +448,7 @@ func QueuePosition(mechID uuid.UUID, factionID uuid.UUID) (int64, error) {
 	query := `WITH bqpos AS (
     SELECT t.*,
            ROW_NUMBER() OVER(ORDER BY t.queued_at) AS position
-    FROM battle_queue t WHERE t.deleted_at IS NULL AND faction_id = $1)
+    FROM battle_queue t WHERE faction_id = $1)
 	SELECT s.position
 	FROM bqpos s
 	WHERE s.mech_id = $2;`
