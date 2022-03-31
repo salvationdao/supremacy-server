@@ -200,28 +200,3 @@ func (t *Telegram) NotificationCreate(mechID string, notification *boiler.Battle
 	return telegramNotification, nil
 
 }
-
-// deploy mech
-// - gen shortcode
-// - save that in storm (telegram_notifs)
-// - set registered false
-// - with users + mech details
-
-// go to telegram
-// - user send tele: register
-// - reply tele: type code
-// - query storm select * from telegram_notifs where shortcode = s
-// - set registered true
-// - reply tele: notification set for {mech} {queue number}
-// - save that in storm
-
-// on notify
-// get user info from storm
-// send tele mesage
-
-// telegram_notifs
-// shortcode
-// payer_id
-// mech_id
-// message
-// registered

@@ -1149,7 +1149,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		gamelog.L.Error().
 			Interface("mech", mech).
 			Err(err).Msg("unable to insert mech into queue")
-		return terror.Error(err, "1Unable to join queue, check your balance and try again.")
+		return terror.Error(err, "Unable to join queue, check your balance and try again.")
 	}
 
 	// Charge user queue fee
@@ -1175,7 +1175,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		gamelog.L.Error().
 			Str("tx_id", supTransactionID).
 			Err(err).Msg("unable to update battle queue with queue transaction id")
-		return terror.Error(err, "2Unable to join queue, check your balance and try again.")
+		return terror.Error(err, "Unable to join queue, check your balance and try again.")
 	}
 
 	// Charge queue notification fee, if enabled (10% of queue cost)
@@ -1249,7 +1249,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		gamelog.L.Error().
 			Interface("mech", mech).
 			Err(err).Msg("unable to commit mech insertion into queue")
-		return terror.Error(err, "4Unable to join queue, check your balance and try again.")
+		return terror.Error(err, "Unable to join queue, check your balance and try again.")
 	}
 
 	// Get mech current queue position
@@ -1267,7 +1267,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 			Str("mechID", mechID.String()).
 			Str("factionID", factionID.String()).
 			Err(err).Msg("unable to retrieve mech queue position")
-		return terror.Error(err, "5Unable to join queue, check your balance and try again.")
+		return terror.Error(err, "Unable to join queue, check your balance and try again.")
 	}
 
 	nextQueueLength := queueLength.Add(decimal.NewFromInt(1))
@@ -1428,7 +1428,7 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 			gamelog.L.Error().
 				Str("queue_refund_transaction_id", bq.QueueFeeTXIDRefund.String).
 				Err(err).Msg("unable to update battle queue with refund transaction details")
-			return terror.Error(err, "6Unable to join queue, check your balance and try again.")
+			return terror.Error(err, "Unable to join queue, check your balance and try again.")
 		}
 	}
 
