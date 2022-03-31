@@ -9,7 +9,9 @@ CREATE TABLE punish_options (
 );
 
 INSERT INTO punish_options (description, key, punish_duration_hours) VALUES
-('Limit player to select location for 24 hours', 'limit_location_select', 24);
+('Limit player to select location for 24 hours', 'limit_location_select', 24),
+('Limit player to chat for 24 hours', 'limit_chat', 24),
+('Limit player to contibute sups for 24 hours', 'limit_sups_contibution', 24);
 
 
 CREATE TABLE punish_votes(

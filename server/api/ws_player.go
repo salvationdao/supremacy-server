@@ -267,24 +267,34 @@ func (pc *PlayerController) PunishVote(ctx context.Context, wsc *hub.Client, pay
 		return terror.Error(err, "Invalid request received")
 	}
 
+	fmt.Println("111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111")
+
 	// check player is available to be punished
 	player, err := boiler.FindPlayer(gamedb.StdConn, wsc.Identifier())
 	if err != nil {
 		return terror.Error(err, "Failed to get current player from db")
 	}
 
+	fpv, ok := pc.API.FactionPunishVote[player.FactionID.String]
+	if !ok {
+		return nil
+	}
+
 	playerStat, err := boiler.FindUserStat(gamedb.StdConn, player.ID)
 	if err != nil {
 		return terror.Error(err, "Failed to get user stat from db")
 	}
+	fmt.Println("3333333333333333333333333333333333333333333333333333333333333333")
 
 	if playerStat.KillCount <= 0 {
 		return terror.Error(fmt.Errorf("Only players with positive ability kill count has the right"))
 	}
+	fmt.Println("444444444444444444444444444444444444444444444444444444444444444")
 
 	if pc.API.FactionPunishVote[player.FactionID.String].Stage.Phase != PunishVotePhaseVoting && pc.API.FactionPunishVote[player.FactionID.String].PunishVoteID != req.Payload.PunishVoteID {
 		return terror.Error(terror.ErrInvalidInput, "Incorrect vote phase or vote id")
 	}
+	fmt.Println("5555555555555555555555555555555555555555555555555555555555555555")
 
 	// send vote into channel
 	pc.API.FactionPunishVote[player.FactionID.String].VoteChan <- &PunishVote{
@@ -294,6 +304,7 @@ func (pc *PlayerController) PunishVote(ctx context.Context, wsc *hub.Client, pay
 	}
 
 	reply(true)
+	fmt.Println("66666666666666666666666666666666666666666666666666666666666666666666")
 
 	return nil
 }

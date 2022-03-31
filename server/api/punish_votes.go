@@ -81,6 +81,7 @@ func (api *API) PunishVoteTrackerSetup() {
 			DisagreedPlayerIDs: make(map[string]bool),
 			broadcastResult:    make(chan *PunishVoteResult),
 			Stage:              &PunishVoteStage{PunishVotePhaseHold, time.Now().AddDate(1, 0, 0)},
+			VoteChan:           make(chan *PunishVote),
 		}
 
 		// store punish vote instance of each faction

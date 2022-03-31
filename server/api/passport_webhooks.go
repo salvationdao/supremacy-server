@@ -76,19 +76,10 @@ func (pc *PassportWebhookController) UserUpdated(w http.ResponseWriter, r *http.
 		if err != nil {
 			return http.StatusInternalServerError, terror.Error(err, "faction not found")
 		}
-		req.User.Faction = &server.Faction{
-			ID:    server.FactionID{},
-			Label: faction.Label,
-			Theme: &server.FactionTheme{
-				Primary:    faction.PrimaryColor,
-				Secondary:  faction.SecondaryColor,
-				Background: faction.BackgroundColor,
-			},
-			LogoBlobID:       server.BlobID{},
-			BackgroundBlobID: server.BlobID{},
-			VotePrice:        faction.VotePrice,
-			ContractReward:   faction.ContractReward,
-			Description:      "",
+
+		err = req.User.Faction.SetFromBoilerFaction(faction)
+		if err != nil {
+			return http.StatusInternalServerError, terror.Error(err, "Unable to convert faction, contact support or try again.")
 		}
 	}
 
@@ -102,7 +93,7 @@ func (pc *PassportWebhookController) UserUpdated(w http.ResponseWriter, r *http.
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	pc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, player.ID)), player)
+	pc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, player.ID)), req.User)
 
 	return helpers.EncodeJSON(w, struct {
 		IsSuccess bool `json:"is_success"`
