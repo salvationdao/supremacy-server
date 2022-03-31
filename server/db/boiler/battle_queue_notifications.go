@@ -36,6 +36,7 @@ type BattleQueueNotification struct {
 	Fee                    decimal.Decimal `boiler:"fee" boil:"fee" json:"fee" toml:"fee" yaml:"fee"`
 	IsRefunded             bool            `boiler:"is_refunded" boil:"is_refunded" json:"is_refunded" toml:"is_refunded" yaml:"is_refunded"`
 	CreatedAt              time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	LeftAt                 null.Time       `boiler:"left_at" boil:"left_at" json:"left_at,omitempty" toml:"left_at" yaml:"left_at,omitempty"`
 
 	R *battleQueueNotificationR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleQueueNotificationL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -54,6 +55,7 @@ var BattleQueueNotificationColumns = struct {
 	Fee                    string
 	IsRefunded             string
 	CreatedAt              string
+	LeftAt                 string
 }{
 	ID:                     "id",
 	BattleID:               "battle_id",
@@ -67,6 +69,7 @@ var BattleQueueNotificationColumns = struct {
 	Fee:                    "fee",
 	IsRefunded:             "is_refunded",
 	CreatedAt:              "created_at",
+	LeftAt:                 "left_at",
 }
 
 var BattleQueueNotificationTableColumns = struct {
@@ -82,6 +85,7 @@ var BattleQueueNotificationTableColumns = struct {
 	Fee                    string
 	IsRefunded             string
 	CreatedAt              string
+	LeftAt                 string
 }{
 	ID:                     "battle_queue_notifications.id",
 	BattleID:               "battle_queue_notifications.battle_id",
@@ -95,6 +99,7 @@ var BattleQueueNotificationTableColumns = struct {
 	Fee:                    "battle_queue_notifications.fee",
 	IsRefunded:             "battle_queue_notifications.is_refunded",
 	CreatedAt:              "battle_queue_notifications.created_at",
+	LeftAt:                 "battle_queue_notifications.left_at",
 }
 
 // Generated where
@@ -112,6 +117,7 @@ var BattleQueueNotificationWhere = struct {
 	Fee                    whereHelperdecimal_Decimal
 	IsRefunded             whereHelperbool
 	CreatedAt              whereHelpertime_Time
+	LeftAt                 whereHelpernull_Time
 }{
 	ID:                     whereHelperstring{field: "\"battle_queue_notifications\".\"id\""},
 	BattleID:               whereHelpernull_String{field: "\"battle_queue_notifications\".\"battle_id\""},
@@ -125,6 +131,7 @@ var BattleQueueNotificationWhere = struct {
 	Fee:                    whereHelperdecimal_Decimal{field: "\"battle_queue_notifications\".\"fee\""},
 	IsRefunded:             whereHelperbool{field: "\"battle_queue_notifications\".\"is_refunded\""},
 	CreatedAt:              whereHelpertime_Time{field: "\"battle_queue_notifications\".\"created_at\""},
+	LeftAt:                 whereHelpernull_Time{field: "\"battle_queue_notifications\".\"left_at\""},
 }
 
 // BattleQueueNotificationRels is where relationship names are stored.
@@ -157,9 +164,9 @@ func (*battleQueueNotificationR) NewStruct() *battleQueueNotificationR {
 type battleQueueNotificationL struct{}
 
 var (
-	battleQueueNotificationAllColumns            = []string{"id", "battle_id", "queue_mech_id", "mech_id", "mobile_number", "push_notifications", "telegram_notification_id", "sent_at", "message", "fee", "is_refunded", "created_at"}
+	battleQueueNotificationAllColumns            = []string{"id", "battle_id", "queue_mech_id", "mech_id", "mobile_number", "push_notifications", "telegram_notification_id", "sent_at", "message", "fee", "is_refunded", "created_at", "left_at"}
 	battleQueueNotificationColumnsWithoutDefault = []string{"mech_id", "fee"}
-	battleQueueNotificationColumnsWithDefault    = []string{"id", "battle_id", "queue_mech_id", "mobile_number", "push_notifications", "telegram_notification_id", "sent_at", "message", "is_refunded", "created_at"}
+	battleQueueNotificationColumnsWithDefault    = []string{"id", "battle_id", "queue_mech_id", "mobile_number", "push_notifications", "telegram_notification_id", "sent_at", "message", "is_refunded", "created_at", "left_at"}
 	battleQueueNotificationPrimaryKeyColumns     = []string{"id"}
 	battleQueueNotificationGeneratedColumns      = []string{}
 )

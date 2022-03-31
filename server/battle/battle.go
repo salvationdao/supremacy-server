@@ -1202,7 +1202,44 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 			gamelog.L.Error().
 				Str("tx_id", notifyTransactionID).
 				Err(err).Msg("unable to update battle queue with queue notification transaction id")
-			return terror.Error(err, "3Unable to join queue, check your balance and try again.")
+			return terror.Error(err, "Unable to join queue, check your balance and try again.")
+		}
+
+		// insert notification into db
+		bqn := &boiler.BattleQueueNotification{
+			MechID:      mechID.String(),
+			QueueMechID: null.StringFrom(mechID.String()),
+			// MobileNumber:      null.StringFrom(msg.Payload.MobileNumber),
+			// PushNotifications: msg.Payload.EnablePushNotifications,
+			Fee: notifyCost,
+		}
+
+		err = bqn.Insert(tx, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().
+				Interface("mech", mech).
+				Err(err).Msg("unable to insert queue notification for mech")
+			return terror.Error(err, "Unable to join queue, check your balance and try again.")
+		}
+
+		// if telegram notification enabled create a telegram notification and return shortcode
+		if msg.Payload.TelegramNotifications {
+
+			notification, err := arena.telegram.NotificationCreate(mechID.String(), bqn)
+			if err != nil {
+				gamelog.L.Error().
+					Str("mechID", mechID.String()).
+					Str("playerID", ownerID.String()).
+					Err(err).Msg("unable to create telegram notification")
+				return terror.Error(err, "Unable create telegram notification.")
+			}
+
+			reply(struct {
+				Code string `json:"code"`
+			}{Code: notification.Shortcode})
+
+		} else {
+			reply(true)
 		}
 	}
 
@@ -1231,32 +1268,6 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 			Str("factionID", factionID.String()).
 			Err(err).Msg("unable to retrieve mech queue position")
 		return terror.Error(err, "5Unable to join queue, check your balance and try again.")
-	}
-
-	fmt.Println("here1")
-
-	// if telegram notification enabled create a telegram notification and return shortcode
-	if !bq.Notified && msg.Payload.TelegramNotifications {
-
-		fmt.Println("here2", arena.telegram)
-
-		notification, err := arena.telegram.NotificationCreate(mechID.String())
-		if err != nil {
-			fmt.Println("errr here boi", err)
-			gamelog.L.Error().
-				Str("mechID", mechID.String()).
-				Str("playerID", ownerID.String()).
-				Err(err).Msg("unable to create telegram notification")
-			return terror.Error(err, "Unable create telegram notification.")
-		}
-
-		fmt.Println("here3", notification)
-
-		reply(struct {
-			Code string `json:"code"`
-		}{Code: notification.Shortcode})
-	} else {
-		reply(true)
 	}
 
 	nextQueueLength := queueLength.Add(decimal.NewFromInt(1))
@@ -1462,17 +1473,10 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 		}
 	}
 
-	// delete related notifications
-	notifs, err := boiler.BattleQueueNotifications(
-		boiler.BattleQueueNotificationWhere.MechID.EQ(bq.MechID)).All(gamedb.StdConn)
+	updateBQNq := `UPDATE battle_queue_notifications SET is_refunded = true, queue_mech_id = null WHERE mech_id = $1`
+	_, err = gamedb.StdConn.Exec(updateBQNq, mechID.String())
 	if err != nil {
-		return terror.Error(err, "Unable check if notification exists")
-	}
-
-	// todo: change to left at
-	_, err = notifs.UpdateAll(gamedb.StdConn, boiler.M{boiler.BattleQueueNotificationColumns.SentAt: time.Now()})
-	if err != nil {
-		return terror.Error(err, "Unable delete notifications")
+		gamelog.L.Warn().Err(err).Msg("unable to update battle_queue_notifications table during refund")
 	}
 
 	_, err = bq.Delete(tx, true)

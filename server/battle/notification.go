@@ -209,59 +209,53 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			continue
 		}
 
-		// get notifications related to mech that has not been sent
-		notifications, err := boiler.BattleQueueNotifications(
+		// get notification related to mech that has not been sent and has not been refunded
+		notification, err := boiler.BattleQueueNotifications(
 			boiler.BattleQueueNotificationWhere.MechID.EQ(bq.MechID),
 			boiler.BattleQueueNotificationWhere.SentAt.IsNull(),
-		).All(gamedb.StdConn)
+			boiler.BattleQueueNotificationWhere.IsRefunded.EQ(false),
+		).One(gamedb.StdConn)
 
 		notificationMsg := fmt.Sprintf("%s, your War Machine %s is nearing battle, jump on to https://play.supremacy.game and prepare.", player.Username.String, warMachine.Name)
 
-		for _, n := range notifications {
-			sent := false
-			// send telegram notification
-			if n.TelegramNotificationID.Valid {
-				err = arena.telegram.Notify(warMachine.ID, notificationMsg)
-				if err != nil {
-					gamelog.L.Error().Err(err).Str("mech_id", bq.MechID).Str("owner_id", bq.OwnerID).Str("queued_at", bq.QueuedAt.String()).Msg("failed to notify telegram")
+		// send telegram notification
+		if notification.TelegramNotificationID.Valid {
+			err = arena.telegram.Notify(warMachine.ID, notificationMsg)
+			if err != nil {
+				gamelog.L.Error().Err(err).Str("mech_id", bq.MechID).Str("owner_id", bq.OwnerID).Str("queued_at", bq.QueuedAt.String()).Msg("failed to notify telegram")
 
-				}
-				sent = true
+			}
+		}
+
+		// send sms
+		if notification.MobileNumber.Valid {
+			err := arena.sms.SendSMS(
+				player.MobileNumber.String,
+				notificationMsg,
+			)
+			if err != nil {
+				gamelog.L.Error().Err(err).Str("to", player.MobileNumber.String).Msg("failed to send battle queue notification sms")
 			}
 
-			// send sms
-			if n.MobileNumber.Valid {
-				err := arena.sms.SendSMS(
-					player.MobileNumber.String,
-					notificationMsg,
-				)
-				if err != nil {
-					gamelog.L.Error().Err(err).Str("to", player.MobileNumber.String).Msg("failed to send battle queue notification sms")
-				}
+		}
 
-				sent = true
-			}
+		// ??
+		// if notification.PushNotifications {
+		// 	arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPlayerBattleQueueBrowserSubscribe, player.ID)), notificationMsg)
+		// }
 
-			// ??
-			// if n.PushNotifications {
-			// 	arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPlayerBattleQueueBrowserSubscribe, player.ID)), notificationMsg)
-			// }
+		// if player.R.PlayerPreference.NotificationsBattleQueuePushNotifications {
+		// 	// TODO: app notifications?
+		// }
 
-			// if player.R.PlayerPreference.NotificationsBattleQueuePushNotifications {
-			// 	// TODO: app notifications?
-			// }
+		// TODO: discord notifications?
 
-			// TODO: discord notifications?
-
-			// delete notification after sent
-			if sent {
-				now := time.Now()
-				n.SentAt = null.TimeFrom(now)
-				_, err := n.Delete(gamedb.StdConn)
-				if err != nil {
-					gamelog.L.Error().Err(err).Str("to", player.MobileNumber.String).Msg("failed to update notification")
-				}
-			}
+		// delete notification after sent
+		now := time.Now()
+		notification.SentAt = null.TimeFrom(now)
+		_, err = notification.Delete(gamedb.StdConn)
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("to", player.MobileNumber.String).Msg("failed to update notification")
 		}
 
 		bq.Notified = true
