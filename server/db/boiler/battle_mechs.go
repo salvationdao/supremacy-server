@@ -23,93 +23,107 @@ import (
 
 // BattleMech is an object representing the database table.
 type BattleMech struct {
-	BattleID    string      `boiler:"battle_id" boil:"battle_id" json:"battle_id" toml:"battle_id" yaml:"battle_id"`
-	MechID      string      `boiler:"mech_id" boil:"mech_id" json:"mech_id" toml:"mech_id" yaml:"mech_id"`
-	OwnerID     string      `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
-	FactionID   string      `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
-	Killed      null.Time   `boiler:"killed" boil:"killed" json:"killed,omitempty" toml:"killed" yaml:"killed,omitempty"`
-	KilledByID  null.String `boiler:"killed_by_id" boil:"killed_by_id" json:"killed_by_id,omitempty" toml:"killed_by_id" yaml:"killed_by_id,omitempty"`
-	Kills       int         `boiler:"kills" boil:"kills" json:"kills" toml:"kills" yaml:"kills"`
-	DamageTaken int         `boiler:"damage_taken" boil:"damage_taken" json:"damage_taken" toml:"damage_taken" yaml:"damage_taken"`
-	UpdatedAt   time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt   time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	BattleID     string      `boiler:"battle_id" boil:"battle_id" json:"battle_id" toml:"battle_id" yaml:"battle_id"`
+	MechID       string      `boiler:"mech_id" boil:"mech_id" json:"mech_id" toml:"mech_id" yaml:"mech_id"`
+	OwnerID      string      `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
+	FactionID    string      `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
+	Killed       null.Time   `boiler:"killed" boil:"killed" json:"killed,omitempty" toml:"killed" yaml:"killed,omitempty"`
+	KilledByID   null.String `boiler:"killed_by_id" boil:"killed_by_id" json:"killed_by_id,omitempty" toml:"killed_by_id" yaml:"killed_by_id,omitempty"`
+	Kills        int         `boiler:"kills" boil:"kills" json:"kills" toml:"kills" yaml:"kills"`
+	DamageTaken  int         `boiler:"damage_taken" boil:"damage_taken" json:"damage_taken" toml:"damage_taken" yaml:"damage_taken"`
+	UpdatedAt    time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt    time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	FactionWon   null.Bool   `boiler:"faction_won" boil:"faction_won" json:"faction_won,omitempty" toml:"faction_won" yaml:"faction_won,omitempty"`
+	MechSurvived null.Bool   `boiler:"mech_survived" boil:"mech_survived" json:"mech_survived,omitempty" toml:"mech_survived" yaml:"mech_survived,omitempty"`
 
 	R *battleMechR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleMechL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var BattleMechColumns = struct {
-	BattleID    string
-	MechID      string
-	OwnerID     string
-	FactionID   string
-	Killed      string
-	KilledByID  string
-	Kills       string
-	DamageTaken string
-	UpdatedAt   string
-	CreatedAt   string
+	BattleID     string
+	MechID       string
+	OwnerID      string
+	FactionID    string
+	Killed       string
+	KilledByID   string
+	Kills        string
+	DamageTaken  string
+	UpdatedAt    string
+	CreatedAt    string
+	FactionWon   string
+	MechSurvived string
 }{
-	BattleID:    "battle_id",
-	MechID:      "mech_id",
-	OwnerID:     "owner_id",
-	FactionID:   "faction_id",
-	Killed:      "killed",
-	KilledByID:  "killed_by_id",
-	Kills:       "kills",
-	DamageTaken: "damage_taken",
-	UpdatedAt:   "updated_at",
-	CreatedAt:   "created_at",
+	BattleID:     "battle_id",
+	MechID:       "mech_id",
+	OwnerID:      "owner_id",
+	FactionID:    "faction_id",
+	Killed:       "killed",
+	KilledByID:   "killed_by_id",
+	Kills:        "kills",
+	DamageTaken:  "damage_taken",
+	UpdatedAt:    "updated_at",
+	CreatedAt:    "created_at",
+	FactionWon:   "faction_won",
+	MechSurvived: "mech_survived",
 }
 
 var BattleMechTableColumns = struct {
-	BattleID    string
-	MechID      string
-	OwnerID     string
-	FactionID   string
-	Killed      string
-	KilledByID  string
-	Kills       string
-	DamageTaken string
-	UpdatedAt   string
-	CreatedAt   string
+	BattleID     string
+	MechID       string
+	OwnerID      string
+	FactionID    string
+	Killed       string
+	KilledByID   string
+	Kills        string
+	DamageTaken  string
+	UpdatedAt    string
+	CreatedAt    string
+	FactionWon   string
+	MechSurvived string
 }{
-	BattleID:    "battle_mechs.battle_id",
-	MechID:      "battle_mechs.mech_id",
-	OwnerID:     "battle_mechs.owner_id",
-	FactionID:   "battle_mechs.faction_id",
-	Killed:      "battle_mechs.killed",
-	KilledByID:  "battle_mechs.killed_by_id",
-	Kills:       "battle_mechs.kills",
-	DamageTaken: "battle_mechs.damage_taken",
-	UpdatedAt:   "battle_mechs.updated_at",
-	CreatedAt:   "battle_mechs.created_at",
+	BattleID:     "battle_mechs.battle_id",
+	MechID:       "battle_mechs.mech_id",
+	OwnerID:      "battle_mechs.owner_id",
+	FactionID:    "battle_mechs.faction_id",
+	Killed:       "battle_mechs.killed",
+	KilledByID:   "battle_mechs.killed_by_id",
+	Kills:        "battle_mechs.kills",
+	DamageTaken:  "battle_mechs.damage_taken",
+	UpdatedAt:    "battle_mechs.updated_at",
+	CreatedAt:    "battle_mechs.created_at",
+	FactionWon:   "battle_mechs.faction_won",
+	MechSurvived: "battle_mechs.mech_survived",
 }
 
 // Generated where
 
 var BattleMechWhere = struct {
-	BattleID    whereHelperstring
-	MechID      whereHelperstring
-	OwnerID     whereHelperstring
-	FactionID   whereHelperstring
-	Killed      whereHelpernull_Time
-	KilledByID  whereHelpernull_String
-	Kills       whereHelperint
-	DamageTaken whereHelperint
-	UpdatedAt   whereHelpertime_Time
-	CreatedAt   whereHelpertime_Time
+	BattleID     whereHelperstring
+	MechID       whereHelperstring
+	OwnerID      whereHelperstring
+	FactionID    whereHelperstring
+	Killed       whereHelpernull_Time
+	KilledByID   whereHelpernull_String
+	Kills        whereHelperint
+	DamageTaken  whereHelperint
+	UpdatedAt    whereHelpertime_Time
+	CreatedAt    whereHelpertime_Time
+	FactionWon   whereHelpernull_Bool
+	MechSurvived whereHelpernull_Bool
 }{
-	BattleID:    whereHelperstring{field: "\"battle_mechs\".\"battle_id\""},
-	MechID:      whereHelperstring{field: "\"battle_mechs\".\"mech_id\""},
-	OwnerID:     whereHelperstring{field: "\"battle_mechs\".\"owner_id\""},
-	FactionID:   whereHelperstring{field: "\"battle_mechs\".\"faction_id\""},
-	Killed:      whereHelpernull_Time{field: "\"battle_mechs\".\"killed\""},
-	KilledByID:  whereHelpernull_String{field: "\"battle_mechs\".\"killed_by_id\""},
-	Kills:       whereHelperint{field: "\"battle_mechs\".\"kills\""},
-	DamageTaken: whereHelperint{field: "\"battle_mechs\".\"damage_taken\""},
-	UpdatedAt:   whereHelpertime_Time{field: "\"battle_mechs\".\"updated_at\""},
-	CreatedAt:   whereHelpertime_Time{field: "\"battle_mechs\".\"created_at\""},
+	BattleID:     whereHelperstring{field: "\"battle_mechs\".\"battle_id\""},
+	MechID:       whereHelperstring{field: "\"battle_mechs\".\"mech_id\""},
+	OwnerID:      whereHelperstring{field: "\"battle_mechs\".\"owner_id\""},
+	FactionID:    whereHelperstring{field: "\"battle_mechs\".\"faction_id\""},
+	Killed:       whereHelpernull_Time{field: "\"battle_mechs\".\"killed\""},
+	KilledByID:   whereHelpernull_String{field: "\"battle_mechs\".\"killed_by_id\""},
+	Kills:        whereHelperint{field: "\"battle_mechs\".\"kills\""},
+	DamageTaken:  whereHelperint{field: "\"battle_mechs\".\"damage_taken\""},
+	UpdatedAt:    whereHelpertime_Time{field: "\"battle_mechs\".\"updated_at\""},
+	CreatedAt:    whereHelpertime_Time{field: "\"battle_mechs\".\"created_at\""},
+	FactionWon:   whereHelpernull_Bool{field: "\"battle_mechs\".\"faction_won\""},
+	MechSurvived: whereHelpernull_Bool{field: "\"battle_mechs\".\"mech_survived\""},
 }
 
 // BattleMechRels is where relationship names are stored.
@@ -145,9 +159,9 @@ func (*battleMechR) NewStruct() *battleMechR {
 type battleMechL struct{}
 
 var (
-	battleMechAllColumns            = []string{"battle_id", "mech_id", "owner_id", "faction_id", "killed", "killed_by_id", "kills", "damage_taken", "updated_at", "created_at"}
+	battleMechAllColumns            = []string{"battle_id", "mech_id", "owner_id", "faction_id", "killed", "killed_by_id", "kills", "damage_taken", "updated_at", "created_at", "faction_won", "mech_survived"}
 	battleMechColumnsWithoutDefault = []string{"battle_id", "mech_id", "owner_id", "faction_id"}
-	battleMechColumnsWithDefault    = []string{"killed", "killed_by_id", "kills", "damage_taken", "updated_at", "created_at"}
+	battleMechColumnsWithDefault    = []string{"killed", "killed_by_id", "kills", "damage_taken", "updated_at", "created_at", "faction_won", "mech_survived"}
 	battleMechPrimaryKeyColumns     = []string{"battle_id", "mech_id"}
 	battleMechGeneratedColumns      = []string{}
 )

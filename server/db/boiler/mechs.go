@@ -194,7 +194,6 @@ var MechRels = struct {
 	Chassis                      string
 	Owner                        string
 	Template                     string
-	BattleQueue                  string
 	BattleContracts              string
 	WarMachineOneBattleHistories string
 	WarMachineTwoBattleHistories string
@@ -202,13 +201,12 @@ var MechRels = struct {
 	BattleKills                  string
 	KilledByBattleMechs          string
 	BattleMechs                  string
-	BattleQueueNotifications     string
+	BattleQueues                 string
 	BattleWins                   string
 }{
 	Chassis:                      "Chassis",
 	Owner:                        "Owner",
 	Template:                     "Template",
-	BattleQueue:                  "BattleQueue",
 	BattleContracts:              "BattleContracts",
 	WarMachineOneBattleHistories: "WarMachineOneBattleHistories",
 	WarMachineTwoBattleHistories: "WarMachineTwoBattleHistories",
@@ -216,25 +214,24 @@ var MechRels = struct {
 	BattleKills:                  "BattleKills",
 	KilledByBattleMechs:          "KilledByBattleMechs",
 	BattleMechs:                  "BattleMechs",
-	BattleQueueNotifications:     "BattleQueueNotifications",
+	BattleQueues:                 "BattleQueues",
 	BattleWins:                   "BattleWins",
 }
 
 // mechR is where relationships are stored.
 type mechR struct {
-	Chassis                      *Chassis                     `boiler:"Chassis" boil:"Chassis" json:"Chassis" toml:"Chassis" yaml:"Chassis"`
-	Owner                        *Player                      `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
-	Template                     *Template                    `boiler:"Template" boil:"Template" json:"Template" toml:"Template" yaml:"Template"`
-	BattleQueue                  *BattleQueue                 `boiler:"BattleQueue" boil:"BattleQueue" json:"BattleQueue" toml:"BattleQueue" yaml:"BattleQueue"`
-	BattleContracts              BattleContractSlice          `boiler:"BattleContracts" boil:"BattleContracts" json:"BattleContracts" toml:"BattleContracts" yaml:"BattleContracts"`
-	WarMachineOneBattleHistories BattleHistorySlice           `boiler:"WarMachineOneBattleHistories" boil:"WarMachineOneBattleHistories" json:"WarMachineOneBattleHistories" toml:"WarMachineOneBattleHistories" yaml:"WarMachineOneBattleHistories"`
-	WarMachineTwoBattleHistories BattleHistorySlice           `boiler:"WarMachineTwoBattleHistories" boil:"WarMachineTwoBattleHistories" json:"WarMachineTwoBattleHistories" toml:"WarMachineTwoBattleHistories" yaml:"WarMachineTwoBattleHistories"`
-	KilledBattleKills            BattleKillSlice              `boiler:"KilledBattleKills" boil:"KilledBattleKills" json:"KilledBattleKills" toml:"KilledBattleKills" yaml:"KilledBattleKills"`
-	BattleKills                  BattleKillSlice              `boiler:"BattleKills" boil:"BattleKills" json:"BattleKills" toml:"BattleKills" yaml:"BattleKills"`
-	KilledByBattleMechs          BattleMechSlice              `boiler:"KilledByBattleMechs" boil:"KilledByBattleMechs" json:"KilledByBattleMechs" toml:"KilledByBattleMechs" yaml:"KilledByBattleMechs"`
-	BattleMechs                  BattleMechSlice              `boiler:"BattleMechs" boil:"BattleMechs" json:"BattleMechs" toml:"BattleMechs" yaml:"BattleMechs"`
-	BattleQueueNotifications     BattleQueueNotificationSlice `boiler:"BattleQueueNotifications" boil:"BattleQueueNotifications" json:"BattleQueueNotifications" toml:"BattleQueueNotifications" yaml:"BattleQueueNotifications"`
-	BattleWins                   BattleWinSlice               `boiler:"BattleWins" boil:"BattleWins" json:"BattleWins" toml:"BattleWins" yaml:"BattleWins"`
+	Chassis                      *Chassis            `boiler:"Chassis" boil:"Chassis" json:"Chassis" toml:"Chassis" yaml:"Chassis"`
+	Owner                        *Player             `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
+	Template                     *Template           `boiler:"Template" boil:"Template" json:"Template" toml:"Template" yaml:"Template"`
+	BattleContracts              BattleContractSlice `boiler:"BattleContracts" boil:"BattleContracts" json:"BattleContracts" toml:"BattleContracts" yaml:"BattleContracts"`
+	WarMachineOneBattleHistories BattleHistorySlice  `boiler:"WarMachineOneBattleHistories" boil:"WarMachineOneBattleHistories" json:"WarMachineOneBattleHistories" toml:"WarMachineOneBattleHistories" yaml:"WarMachineOneBattleHistories"`
+	WarMachineTwoBattleHistories BattleHistorySlice  `boiler:"WarMachineTwoBattleHistories" boil:"WarMachineTwoBattleHistories" json:"WarMachineTwoBattleHistories" toml:"WarMachineTwoBattleHistories" yaml:"WarMachineTwoBattleHistories"`
+	KilledBattleKills            BattleKillSlice     `boiler:"KilledBattleKills" boil:"KilledBattleKills" json:"KilledBattleKills" toml:"KilledBattleKills" yaml:"KilledBattleKills"`
+	BattleKills                  BattleKillSlice     `boiler:"BattleKills" boil:"BattleKills" json:"BattleKills" toml:"BattleKills" yaml:"BattleKills"`
+	KilledByBattleMechs          BattleMechSlice     `boiler:"KilledByBattleMechs" boil:"KilledByBattleMechs" json:"KilledByBattleMechs" toml:"KilledByBattleMechs" yaml:"KilledByBattleMechs"`
+	BattleMechs                  BattleMechSlice     `boiler:"BattleMechs" boil:"BattleMechs" json:"BattleMechs" toml:"BattleMechs" yaml:"BattleMechs"`
+	BattleQueues                 BattleQueueSlice    `boiler:"BattleQueues" boil:"BattleQueues" json:"BattleQueues" toml:"BattleQueues" yaml:"BattleQueues"`
+	BattleWins                   BattleWinSlice      `boiler:"BattleWins" boil:"BattleWins" json:"BattleWins" toml:"BattleWins" yaml:"BattleWins"`
 }
 
 // NewStruct creates a new relationship struct
@@ -540,20 +537,6 @@ func (o *Mech) Template(mods ...qm.QueryMod) templateQuery {
 	return query
 }
 
-// BattleQueue pointed to by the foreign key.
-func (o *Mech) BattleQueue(mods ...qm.QueryMod) battleQueueQuery {
-	queryMods := []qm.QueryMod{
-		qm.Where("\"mech_id\" = ?", o.ID),
-	}
-
-	queryMods = append(queryMods, mods...)
-
-	query := BattleQueues(queryMods...)
-	queries.SetFrom(query.Query, "\"battle_queue\"")
-
-	return query
-}
-
 // BattleContracts retrieves all the battle_contract's BattleContracts with an executor.
 func (o *Mech) BattleContracts(mods ...qm.QueryMod) battleContractQuery {
 	var queryMods []qm.QueryMod
@@ -701,22 +684,22 @@ func (o *Mech) BattleMechs(mods ...qm.QueryMod) battleMechQuery {
 	return query
 }
 
-// BattleQueueNotifications retrieves all the battle_queue_notification's BattleQueueNotifications with an executor.
-func (o *Mech) BattleQueueNotifications(mods ...qm.QueryMod) battleQueueNotificationQuery {
+// BattleQueues retrieves all the battle_queue's BattleQueues with an executor.
+func (o *Mech) BattleQueues(mods ...qm.QueryMod) battleQueueQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"battle_queue_notifications\".\"mech_id\"=?", o.ID),
+		qm.Where("\"battle_queue\".\"mech_id\"=?", o.ID),
 	)
 
-	query := BattleQueueNotifications(queryMods...)
-	queries.SetFrom(query.Query, "\"battle_queue_notifications\"")
+	query := BattleQueues(queryMods...)
+	queries.SetFrom(query.Query, "\"battle_queue\"")
 
 	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"battle_queue_notifications\".*"})
+		queries.SetSelect(query.Query, []string{"\"battle_queue\".*"})
 	}
 
 	return query
@@ -1050,107 +1033,6 @@ func (mechL) LoadTemplate(e boil.Executor, singular bool, maybeMech interface{},
 					foreign.R = &templateR{}
 				}
 				foreign.R.Mechs = append(foreign.R.Mechs, local)
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadBattleQueue allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-1 relationship.
-func (mechL) LoadBattleQueue(e boil.Executor, singular bool, maybeMech interface{}, mods queries.Applicator) error {
-	var slice []*Mech
-	var object *Mech
-
-	if singular {
-		object = maybeMech.(*Mech)
-	} else {
-		slice = *maybeMech.(*[]*Mech)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &mechR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &mechR{}
-			}
-
-			for _, a := range args {
-				if a == obj.ID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`battle_queue`),
-		qm.WhereIn(`battle_queue.mech_id in ?`, args...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load BattleQueue")
-	}
-
-	var resultSlice []*BattleQueue
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice BattleQueue")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for battle_queue")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_queue")
-	}
-
-	if len(mechAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-
-	if len(resultSlice) == 0 {
-		return nil
-	}
-
-	if singular {
-		foreign := resultSlice[0]
-		object.R.BattleQueue = foreign
-		if foreign.R == nil {
-			foreign.R = &battleQueueR{}
-		}
-		foreign.R.Mech = object
-	}
-
-	for _, local := range slice {
-		for _, foreign := range resultSlice {
-			if local.ID == foreign.MechID {
-				local.R.BattleQueue = foreign
-				if foreign.R == nil {
-					foreign.R = &battleQueueR{}
-				}
-				foreign.R.Mech = local
 				break
 			}
 		}
@@ -1845,9 +1727,9 @@ func (mechL) LoadBattleMechs(e boil.Executor, singular bool, maybeMech interface
 	return nil
 }
 
-// LoadBattleQueueNotifications allows an eager lookup of values, cached into the
+// LoadBattleQueues allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (mechL) LoadBattleQueueNotifications(e boil.Executor, singular bool, maybeMech interface{}, mods queries.Applicator) error {
+func (mechL) LoadBattleQueues(e boil.Executor, singular bool, maybeMech interface{}, mods queries.Applicator) error {
 	var slice []*Mech
 	var object *Mech
 
@@ -1885,8 +1767,8 @@ func (mechL) LoadBattleQueueNotifications(e boil.Executor, singular bool, maybeM
 	}
 
 	query := NewQuery(
-		qm.From(`battle_queue_notifications`),
-		qm.WhereIn(`battle_queue_notifications.mech_id in ?`, args...),
+		qm.From(`battle_queue`),
+		qm.WhereIn(`battle_queue.mech_id in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -1894,22 +1776,22 @@ func (mechL) LoadBattleQueueNotifications(e boil.Executor, singular bool, maybeM
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load battle_queue_notifications")
+		return errors.Wrap(err, "failed to eager load battle_queue")
 	}
 
-	var resultSlice []*BattleQueueNotification
+	var resultSlice []*BattleQueue
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice battle_queue_notifications")
+		return errors.Wrap(err, "failed to bind eager loaded slice battle_queue")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on battle_queue_notifications")
+		return errors.Wrap(err, "failed to close results in eager load on battle_queue")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_queue_notifications")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battle_queue")
 	}
 
-	if len(battleQueueNotificationAfterSelectHooks) != 0 {
+	if len(battleQueueAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -1917,10 +1799,10 @@ func (mechL) LoadBattleQueueNotifications(e boil.Executor, singular bool, maybeM
 		}
 	}
 	if singular {
-		object.R.BattleQueueNotifications = resultSlice
+		object.R.BattleQueues = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
-				foreign.R = &battleQueueNotificationR{}
+				foreign.R = &battleQueueR{}
 			}
 			foreign.R.Mech = object
 		}
@@ -1930,9 +1812,9 @@ func (mechL) LoadBattleQueueNotifications(e boil.Executor, singular bool, maybeM
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
 			if local.ID == foreign.MechID {
-				local.R.BattleQueueNotifications = append(local.R.BattleQueueNotifications, foreign)
+				local.R.BattleQueues = append(local.R.BattleQueues, foreign)
 				if foreign.R == nil {
-					foreign.R = &battleQueueNotificationR{}
+					foreign.R = &battleQueueR{}
 				}
 				foreign.R.Mech = local
 				break
@@ -2176,56 +2058,6 @@ func (o *Mech) SetTemplate(exec boil.Executor, insert bool, related *Template) e
 		related.R.Mechs = append(related.R.Mechs, o)
 	}
 
-	return nil
-}
-
-// SetBattleQueue of the mech to the related item.
-// Sets o.R.BattleQueue to related.
-// Adds o to related.R.Mech.
-func (o *Mech) SetBattleQueue(exec boil.Executor, insert bool, related *BattleQueue) error {
-	var err error
-
-	if insert {
-		related.MechID = o.ID
-
-		if err = related.Insert(exec, boil.Infer()); err != nil {
-			return errors.Wrap(err, "failed to insert into foreign table")
-		}
-	} else {
-		updateQuery := fmt.Sprintf(
-			"UPDATE \"battle_queue\" SET %s WHERE %s",
-			strmangle.SetParamNames("\"", "\"", 1, []string{"mech_id"}),
-			strmangle.WhereClause("\"", "\"", 2, battleQueuePrimaryKeyColumns),
-		)
-		values := []interface{}{o.ID, related.ID}
-
-		if boil.DebugMode {
-			fmt.Fprintln(boil.DebugWriter, updateQuery)
-			fmt.Fprintln(boil.DebugWriter, values)
-		}
-		if _, err = exec.Exec(updateQuery, values...); err != nil {
-			return errors.Wrap(err, "failed to update foreign table")
-		}
-
-		related.MechID = o.ID
-
-	}
-
-	if o.R == nil {
-		o.R = &mechR{
-			BattleQueue: related,
-		}
-	} else {
-		o.R.BattleQueue = related
-	}
-
-	if related.R == nil {
-		related.R = &battleQueueR{
-			Mech: o,
-		}
-	} else {
-		related.R.Mech = o
-	}
 	return nil
 }
 
@@ -2739,11 +2571,11 @@ func (o *Mech) AddBattleMechs(exec boil.Executor, insert bool, related ...*Battl
 	return nil
 }
 
-// AddBattleQueueNotifications adds the given related objects to the existing relationships
+// AddBattleQueues adds the given related objects to the existing relationships
 // of the mech, optionally inserting them as new records.
-// Appends related to o.R.BattleQueueNotifications.
+// Appends related to o.R.BattleQueues.
 // Sets related.R.Mech appropriately.
-func (o *Mech) AddBattleQueueNotifications(exec boil.Executor, insert bool, related ...*BattleQueueNotification) error {
+func (o *Mech) AddBattleQueues(exec boil.Executor, insert bool, related ...*BattleQueue) error {
 	var err error
 	for _, rel := range related {
 		if insert {
@@ -2753,9 +2585,9 @@ func (o *Mech) AddBattleQueueNotifications(exec boil.Executor, insert bool, rela
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
-				"UPDATE \"battle_queue_notifications\" SET %s WHERE %s",
+				"UPDATE \"battle_queue\" SET %s WHERE %s",
 				strmangle.SetParamNames("\"", "\"", 1, []string{"mech_id"}),
-				strmangle.WhereClause("\"", "\"", 2, battleQueueNotificationPrimaryKeyColumns),
+				strmangle.WhereClause("\"", "\"", 2, battleQueuePrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
 
@@ -2773,15 +2605,15 @@ func (o *Mech) AddBattleQueueNotifications(exec boil.Executor, insert bool, rela
 
 	if o.R == nil {
 		o.R = &mechR{
-			BattleQueueNotifications: related,
+			BattleQueues: related,
 		}
 	} else {
-		o.R.BattleQueueNotifications = append(o.R.BattleQueueNotifications, related...)
+		o.R.BattleQueues = append(o.R.BattleQueues, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
-			rel.R = &battleQueueNotificationR{
+			rel.R = &battleQueueR{
 				Mech: o,
 			}
 		} else {

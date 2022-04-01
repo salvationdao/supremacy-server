@@ -3,9 +3,11 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"server/db/boiler"
 
 	"github.com/georgysavva/scany/pgxscan"
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/log_helpers"
 	"github.com/ninja-software/terror/v2"
@@ -55,13 +57,13 @@ func (bc *BattleControllerWS) BattleMechHistoryListHandler(ctx context.Context, 
 	battleContracts := make([]*boiler.BattleContract, 0)
 	q := `
 		select *
-		from battle_contracts
+		from battle_mechs
 		where mech_id = $1
-		order by queued_at desc
+		order by created_at desc
 		limit 10
 	`
-	err = pgxscan.Get(ctx, bc.Conn, battleContracts, q, req.Payload.MechID)
-	if err != nil {
+	err = pgxscan.Get(ctx, bc.Conn, &battleContracts, q, req.Payload.MechID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return err
 	}
 
