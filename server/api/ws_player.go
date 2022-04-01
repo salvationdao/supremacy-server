@@ -139,5 +139,6 @@ func (ctrlr *PlayerController) PlayerGetSettingsHandler(ctx context.Context, wsc
 
 	//send back userSettings
 	reply(userSettings.Value)
+	reply(true)
 	return nil
 }

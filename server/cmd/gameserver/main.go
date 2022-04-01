@@ -324,7 +324,7 @@ func main() {
 					if err != nil {
 						return terror.Error(err, "SMS init failed")
 					}
-
+					
 					// initialise message bus
 					messageBus := messagebus.NewMessageBus(log_helpers.NamedLogger(gamelog.L, "message_bus"))
 					gsHub := hub.New(&hub.Config{
