@@ -267,44 +267,32 @@ func (pc *PlayerController) PunishVote(ctx context.Context, wsc *hub.Client, pay
 		return terror.Error(err, "Invalid request received")
 	}
 
-	fmt.Println("111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111")
-
 	// check player is available to be punished
 	player, err := boiler.FindPlayer(gamedb.StdConn, wsc.Identifier())
 	if err != nil {
 		return terror.Error(err, "Failed to get current player from db")
 	}
 
-	fpv, ok := pc.API.FactionPunishVote[player.FactionID.String]
-	if !ok {
-		return nil
-	}
-
 	playerStat, err := boiler.FindUserStat(gamedb.StdConn, player.ID)
 	if err != nil {
 		return terror.Error(err, "Failed to get user stat from db")
 	}
-	fmt.Println("3333333333333333333333333333333333333333333333333333333333333333")
 
 	if playerStat.KillCount <= 0 {
-		return terror.Error(fmt.Errorf("Only players with positive ability kill count has the right"))
+		return terror.Error(fmt.Errorf("only players with positive ability kill count has the right"), "Does not meet the minimum ability kill count to do the punishment vote")
 	}
-	fmt.Println("444444444444444444444444444444444444444444444444444444444444444")
 
-	if pc.API.FactionPunishVote[player.FactionID.String].Stage.Phase != PunishVotePhaseVoting && pc.API.FactionPunishVote[player.FactionID.String].PunishVoteID != req.Payload.PunishVoteID {
-		return terror.Error(terror.ErrInvalidInput, "Incorrect vote phase or vote id")
+	fpv, ok := pc.API.FactionPunishVote[player.FactionID.String]
+	if !ok {
+		return terror.Error(fmt.Errorf("player faction id does not exist"))
 	}
-	fmt.Println("5555555555555555555555555555555555555555555555555555555555555555")
 
-	// send vote into channel
-	pc.API.FactionPunishVote[player.FactionID.String].VoteChan <- &PunishVote{
-		PunishVoteID: req.Payload.PunishVoteID,
-		playerID:     player.ID,
-		IsAgreed:     req.Payload.IsAgreed,
+	err = fpv.Vote(req.Payload.PunishVoteID, wsc.Identifier(), req.Payload.IsAgreed)
+	if err != nil {
+		return terror.Error(err, err.Error())
 	}
 
 	reply(true)
-	fmt.Println("66666666666666666666666666666666666666666666666666666666666666666666")
 
 	return nil
 }
@@ -428,7 +416,7 @@ func (pc *PlayerController) IssuePunishVote(ctx context.Context, wsc *hub.Client
 	}
 
 	if punishedPlayer != nil {
-		return terror.Error(fmt.Errorf("Player is already punished"), fmt.Sprintf("The player is already punished for %s", punishOption.Key))
+		return terror.Error(fmt.Errorf("player is already punished"), fmt.Sprintf("The player is already punished for %s", punishOption.Key))
 	}
 
 	// check player has a pending punish vote with the same option
@@ -442,7 +430,7 @@ func (pc *PlayerController) IssuePunishVote(ctx context.Context, wsc *hub.Client
 	}
 
 	if punishVote != nil {
-		return terror.Error(fmt.Errorf("Player is already reported"), fmt.Sprintf("The player has a pending punishing report issued by %s", punishVote.IssuedByUsername))
+		return terror.Error(fmt.Errorf("player is already reported"), fmt.Sprintf("The player has a pending punishing report issued by %s", punishVote.IssuedByUsername))
 	}
 
 	// get the highest price
@@ -460,7 +448,7 @@ func (pc *PlayerController) IssuePunishVote(ctx context.Context, wsc *hub.Client
 		gamelog.L.Error().
 			Str("player id", currentPlayer.ID).
 			Str("faction ID", currentPlayer.FactionID.String).
-			Err(fmt.Errorf("Failed to get hard coded syndicate player id")).
+			Err(fmt.Errorf("failed to get hard coded syndicate player id")).
 			Msg("unable to get hard coded syndicate player ID from faction ID")
 	}
 
@@ -503,7 +491,7 @@ func (pc *PlayerController) IssuePunishVote(ctx context.Context, wsc *hub.Client
 		TransactionReference: server.TransactionReference(fmt.Sprintf("issue_punish_vote|%s|%d", punishVote.ID, time.Now().UnixNano())),
 		Group:                "issue punish vote",
 		SubGroup:             string(punishOption.Key),
-		Description:          "issue vote for punishning player",
+		Description:          "issue vote for punishing player",
 		NotSafe:              true,
 	})
 	if err != nil {
@@ -529,6 +517,11 @@ const (
 	PunishVoteStatusPending PunishVoteStatus = "PENDING"
 )
 
+type PunishVoteResponse struct {
+	*boiler.PunishVote
+	PunishOption *boiler.PunishOption `json:"punish_option"`
+}
+
 const HubKeyPunishVoteSubscribe hub.HubCommandKey = "PUNISH:VOTE:SUBSCRIBE"
 
 func (pc *PlayerController) PunishVoteSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
@@ -549,24 +542,29 @@ func (pc *PlayerController) PunishVoteSubscribeHandler(ctx context.Context, clie
 	}
 
 	// only pass down vote, if there is an ongoing vote
-	if fbv, ok := pc.API.FactionPunishVote[player.FactionID.String]; ok && fbv.Stage.Phase == PunishVotePhaseVoting {
-		bv, err := boiler.PunishVotes(
-			boiler.PunishVoteWhere.ID.EQ(fbv.PunishVoteID),
-			qm.Load(boiler.PunishVoteRels.PunishOption),
-		).One(gamedb.StdConn)
-		if err != nil {
-			return "", "", terror.Error(err, "Failed to get punish vote from db")
+	if fpv, ok := pc.API.FactionPunishVote[player.FactionID.String]; ok && fpv.Stage.Phase == PunishVotePhaseVoting {
+		fpv.RLock()
+		defer fpv.RUnlock()
+		if fpv.CurrentPunishVote != nil {
+			bv, err := boiler.PunishVotes(
+				boiler.PunishVoteWhere.ID.EQ(fpv.CurrentPunishVote.ID),
+				qm.Load(boiler.PunishVoteRels.PunishOption),
+			).One(gamedb.StdConn)
+			if err != nil {
+				return "", "", terror.Error(err, "Failed to get punish vote from db")
+			}
+			reply(&PunishVoteResponse{
+				PunishVote:   bv,
+				PunishOption: bv.R.PunishOption,
+			})
 		}
-		reply(&PunishVoteInstance{
-			PunishVote:   bv,
-			PunishOption: bv.R.PunishOption,
-		})
 	}
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPunishVoteSubscribe, player.FactionID.String)), nil
 }
 
 type PunishVoteResult struct {
 	PunishVoteID          string `json:"punish_vote_id"`
+	TotalPlayerNumber     int    `json:"total_player_number"`
 	AgreedPlayerNumber    int    `json:"agreed_player_number"`
 	DisagreedPlayerNumber int    `json:"disagreed_player_number"`
 }
@@ -591,12 +589,17 @@ func (pc *PlayerController) PunishVoteResultSubscribeHandler(ctx context.Context
 	}
 
 	// only pass down vote result, if there is an ongoing punish vote
-	if fbv, ok := pc.API.FactionPunishVote[player.FactionID.String]; ok && fbv.Stage.Phase == PunishVotePhaseVoting {
-		reply(&PunishVoteResult{
-			PunishVoteID:          fbv.PunishVoteID,
-			AgreedPlayerNumber:    len(fbv.AgreedPlayerIDs),
-			DisagreedPlayerNumber: len(fbv.DisagreedPlayerIDs),
-		})
+	if fpv, ok := pc.API.FactionPunishVote[player.FactionID.String]; ok && fpv.Stage.Phase == PunishVotePhaseVoting {
+		fpv.RLock()
+		defer fpv.RUnlock()
+		if fpv.CurrentPunishVote != nil {
+			reply(&PunishVoteResult{
+				PunishVoteID:          fpv.CurrentPunishVote.ID,
+				TotalPlayerNumber:     len(fpv.CurrentPunishVote.PlayerPool),
+				AgreedPlayerNumber:    len(fpv.CurrentPunishVote.AgreedPlayerIDs),
+				DisagreedPlayerNumber: len(fpv.CurrentPunishVote.DisagreedPlayerIDs),
+			})
+		}
 	}
 
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPunishVoteResultSubscribe, player.FactionID.String)), nil

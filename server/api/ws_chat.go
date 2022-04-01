@@ -4,16 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/gofrs/uuid"
-	"github.com/ninja-software/terror/v2"
-	"github.com/sasha-s/go-deadlock"
-	"github.com/volatiletech/null/v8"
 	"html"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 	"time"
+
+	"github.com/gofrs/uuid"
+	"github.com/ninja-software/terror/v2"
+	"github.com/sasha-s/go-deadlock"
+	"github.com/volatiletech/null/v8"
 
 	goaway "github.com/TwiN/go-away"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -40,8 +41,20 @@ const PersistChatMessageLimit = 20
 var profanityDetector = goaway.NewProfanityDetector().WithCustomDictionary(Profanities, []string{}, []string{})
 var bm = bluemonday.StrictPolicy()
 
-// ChatMessageSend contains chat message data to send.
-type ChatMessageSend struct {
+// ChatMessage contains chat message data to send.
+type ChatMessage struct {
+	Type ChatMessageType `json:"type"`
+	Data interface{}     `json:"data"`
+}
+
+type ChatMessageType string
+
+const (
+	ChatMessageTypeText       ChatMessageType = "TEXT"
+	ChatMessageTypePunishVote ChatMessageType = "PUNISH_VOTE"
+)
+
+type MessageText struct {
 	Message           string      `json:"message"`
 	MessageColor      string      `json:"message_color"`
 	FromUserID        string      `json:"from_user_id"`
@@ -53,14 +66,30 @@ type ChatMessageSend struct {
 	TotalAbilityKills int64 `json:"total_ability_kills"`
 }
 
+type MessagePunishVote struct {
+	IssuedByPlayerID        string `json:"issued_by_player_id"`
+	IssuedByPlayerUsername  string `json:"issued_by_player_username"`
+	IssuedByPlayerFactionID string `json:"issued_by_player_faction_id"`
+
+	ReportedPlayerID        string `json:"reported_player_id"`
+	ReportedPlayerUsername  string `json:"reported_player_username"`
+	ReportedPlayerFactionID string `json:"reported_player_faction_id"`
+
+	// vote result
+	IsPassed              bool `json:"is_passed"`
+	TotalPlayerNumber     int  `json:"total_player_number"`
+	AgreedPlayerNumber    int  `json:"agreed_player_number"`
+	DisagreedPlayerNumber int  `json:"disagreed_player_number"`
+}
+
 // Chatroom holds a specific chat room
 type Chatroom struct {
 	deadlock.RWMutex
 	factionID *server.FactionID
-	messages  []*ChatMessageSend
+	messages  []*ChatMessage
 }
 
-func (c *Chatroom) AddMessage(message *ChatMessageSend) {
+func (c *Chatroom) AddMessage(message *ChatMessage) {
 	c.Lock()
 	c.messages = append(c.messages, message)
 	if len(c.messages) >= PersistChatMessageLimit {
@@ -69,7 +98,7 @@ func (c *Chatroom) AddMessage(message *ChatMessageSend) {
 	c.Unlock()
 }
 
-func (c *Chatroom) Range(fn func(chatMessage *ChatMessageSend) bool) {
+func (c *Chatroom) Range(fn func(chatMessage *ChatMessage) bool) {
 	c.RLock()
 	for _, message := range c.messages {
 		if !fn(message) {
@@ -82,7 +111,7 @@ func (c *Chatroom) Range(fn func(chatMessage *ChatMessageSend) bool) {
 func NewChatroom(factionID *server.FactionID) *Chatroom {
 	chatroom := &Chatroom{
 		factionID: factionID,
-		messages:  []*ChatMessageSend{},
+		messages:  []*ChatMessage{},
 	}
 	return chatroom
 }
@@ -105,19 +134,19 @@ func NewChatController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *ChatC
 		Log:  log_helpers.NamedLogger(log, "chat_hub"),
 		API:  api,
 		GlobalChat: &Chatroom{
-			messages: []*ChatMessageSend{},
+			messages: []*ChatMessage{},
 		},
 		RedMountainChat: &Chatroom{
 			factionID: &server.RedMountainFactionID,
-			messages:  []*ChatMessageSend{},
+			messages:  []*ChatMessage{},
 		},
 		BostonChat: &Chatroom{
 			factionID: &server.BostonCyberneticsFactionID,
-			messages:  []*ChatMessageSend{},
+			messages:  []*ChatMessage{},
 		},
 		ZaibatsuChat: &Chatroom{
 			factionID: &server.ZaibatsuFactionID,
-			messages:  []*ChatMessageSend{},
+			messages:  []*ChatMessage{},
 		},
 	}
 
@@ -198,8 +227,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 
 	// if chat banned just return
 	if isBanned {
-		reply(true)
-		return nil
+		return terror.Error(fmt.Errorf("player is banned to chat"), "You are banned to chat")
 	}
 
 	// get faction primary colour from faction
@@ -220,13 +248,16 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 			return terror.Error(terror.ErrForbidden, "Users are not allow to join the faction chat which they are not belong to.")
 		}
 
-		chatMessage := &ChatMessageSend{
-			Message:           msg,
-			MessageColor:      req.Payload.MessageColor,
-			FromUserID:        player.ID,
-			FromUsername:      player.Username.String,
-			FromUserFactionID: player.FactionID,
-			SentAt:            time.Now(),
+		chatMessage := &ChatMessage{
+			Type: ChatMessageTypeText,
+			Data: MessageText{
+				Message:           msg,
+				MessageColor:      req.Payload.MessageColor,
+				FromUserID:        player.ID,
+				FromUsername:      player.Username.String,
+				FromUserFactionID: player.FactionID,
+				SentAt:            time.Now(),
+			},
 		}
 
 		// Ability kills
@@ -250,13 +281,16 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 	}
 
 	// global message
-	chatMessage := &ChatMessageSend{
-		Message:           msg,
-		MessageColor:      req.Payload.MessageColor,
-		FromUserID:        player.ID,
-		FromUsername:      player.Username.String,
-		FromUserFactionID: player.FactionID,
-		SentAt:            time.Now(),
+	chatMessage := &ChatMessage{
+		Type: ChatMessageTypeText,
+		Data: MessageText{
+			Message:           msg,
+			MessageColor:      req.Payload.MessageColor,
+			FromUserID:        player.ID,
+			FromUsername:      player.Username.String,
+			FromUserFactionID: player.FactionID,
+			SentAt:            time.Now(),
+		},
 	}
 	fc.GlobalChat.AddMessage(chatMessage)
 	fc.API.MessageBus.Send(messagebus.BusKey(HubKeyGlobalChatSubscribe), chatMessage)
@@ -289,8 +323,8 @@ func (fc *ChatController) ChatPastMessagesHandler(ctx context.Context, hubc *hub
 		}
 	}
 
-	resp := []*ChatMessageSend{}
-	chatRangeHandler := func(message *ChatMessageSend) bool {
+	resp := []*ChatMessage{}
+	chatRangeHandler := func(message *ChatMessage) bool {
 		resp = append(resp, message)
 		return true
 	}
