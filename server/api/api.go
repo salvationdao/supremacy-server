@@ -81,8 +81,8 @@ type API struct {
 	Hub          *hub.Hub
 	Conn         *pgxpool.Pool
 	MessageBus   *messagebus.MessageBus
-	Passport     *rpcclient.PassportXrpcClient
 	SMS          server.SMS
+	Passport     *rpcclient.PassportXrpcClient
 
 	// ring check auth
 	RingCheckAuthMap *RingCheckAuthMap
@@ -91,6 +91,12 @@ type API struct {
 	FactionPunishVote map[string]*PunishVoteTracker
 
 	FactionActivePlayers map[string]*ActivePlayers
+
+	// chatrooms
+	GlobalChat      *Chatroom
+	RedMountainChat *Chatroom
+	BostonChat      *Chatroom
+	ZaibatsuChat    *Chatroom
 }
 
 // NewAPI registers routes
@@ -113,7 +119,6 @@ func NewAPI(
 		ctx:              ctx,
 		Log:              log_helpers.NamedLogger(log, "api"),
 		Routes:           chi.NewRouter(),
-		Passport:         pp,
 		Addr:             addr,
 		MessageBus:       messageBus,
 		HTMLSanitize:     HTMLSanitize,
@@ -121,10 +126,17 @@ func NewAPI(
 		Conn:             conn,
 		Hub:              gsHub,
 		RingCheckAuthMap: NewRingCheckMap(),
+		Passport:         pp,
 		SMS:              sms,
 
 		FactionPunishVote:    make(map[string]*PunishVoteTracker),
 		FactionActivePlayers: make(map[string]*ActivePlayers),
+
+		// chatroom
+		GlobalChat:      NewChatroom(nil),
+		RedMountainChat: NewChatroom(&server.RedMountainFactionID),
+		BostonChat:      NewChatroom(&server.BostonCyberneticsFactionID),
+		ZaibatsuChat:    NewChatroom(&server.ZaibatsuFactionID),
 	}
 
 	battleArenaClient.SetMessageBus(messageBus)

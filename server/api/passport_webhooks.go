@@ -83,6 +83,8 @@ func (pc *PassportWebhookController) UserUpdated(w http.ResponseWriter, r *http.
 		}
 	}
 
+	req.User.Gid = player.Gid
+
 	// update player
 	_, err = player.Update(gamedb.StdConn, boil.Whitelist(
 		boiler.PlayerColumns.Username,
@@ -140,6 +142,7 @@ func (pc *PassportWebhookController) UserEnlistFaction(w http.ResponseWriter, r 
 		PublicAddress: player.PublicAddress,
 		FactionID:     req.FactionID,
 		Faction:       &server.Faction{},
+		Gid:           player.Gid,
 	}
 
 	faction, err := boiler.FindFaction(gamedb.StdConn, req.FactionID.String())

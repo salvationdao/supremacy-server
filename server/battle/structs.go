@@ -13,13 +13,6 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-type BattleStage string
-
-const (
-	BattleStagStart = "START"
-	BattleStageEnd  = "END"
-)
-
 type usersMap struct {
 	deadlock.RWMutex
 	m map[uuid.UUID]*BattleUser
@@ -130,10 +123,10 @@ func (bu *BattleUser) AvatarID() string {
 
 func (bu *BattleUser) Send(key hub.HubCommandKey, payload interface{}) error {
 	bu.Lock()
+	defer bu.Unlock()
 	if bu.wsClient == nil || len(bu.wsClient) == 0 {
 		return fmt.Errorf("user does not have a websocket client")
 	}
-	bu.Unlock()
 	b, err := json.Marshal(&BroadcastPayload{
 		Key:     key,
 		Payload: payload,
@@ -143,11 +136,9 @@ func (bu *BattleUser) Send(key hub.HubCommandKey, payload interface{}) error {
 		return err
 	}
 
-	bu.RLock()
 	for wsc := range bu.wsClient {
 		go wsc.Send(b)
 	}
-	bu.RUnlock()
 	return nil
 }
 

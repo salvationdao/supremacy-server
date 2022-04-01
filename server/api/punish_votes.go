@@ -9,6 +9,8 @@ import (
 	"server/gamelog"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
+
 	"github.com/ninja-software/terror/v2"
 
 	"github.com/ninja-syndicate/hub/ext/messagebus"
@@ -145,6 +147,8 @@ func (pvt *PunishVoteTracker) CurrentEligiblePlayers() map[string]bool {
 		}
 	}
 
+	spew.Dump(result)
+
 	// fill the list with voted players
 	for pid := range pvt.CurrentPunishVote.AgreedPlayerIDs {
 		result[pid] = true
@@ -170,7 +174,7 @@ func (pvt *PunishVoteTracker) VotingPhaseProcess() {
 	playerPool := pvt.CurrentEligiblePlayers()
 
 	// vote passed, if the amount of the agreed players pass 50%
-	if len(pvt.CurrentPunishVote.AgreedPlayerIDs) >= len(playerPool)/2 {
+	if len(pvt.CurrentPunishVote.AgreedPlayerIDs) > len(playerPool)/2 {
 		err := pvt.VotePassed()
 		if err != nil {
 			gamelog.L.Error().Str("punish vote id", pvt.CurrentPunishVote.ID).Err(err).Msgf("Failed to process passed vote due to %s", err.Error())
@@ -292,6 +296,10 @@ func (pvt *PunishVoteTracker) Vote(punishVoteID string, playerID string, isAgree
 				gamelog.L.Error().Str("punish vote id", pvt.CurrentPunishVote.ID).Err(err).Msgf("Failed to process failed vote due to %s", err.Error())
 				return terror.Error(err, "Failed to process the result")
 			}
+
+			// broadcast undefined to clean up the form in the frontend
+			pvt.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPunishVoteSubscribe, pvt.FactionID)), nil)
+			return nil
 		}
 	} else {
 		pvt.CurrentPunishVote.DisagreedPlayerIDs[playerID] = true
@@ -302,6 +310,10 @@ func (pvt *PunishVoteTracker) Vote(punishVoteID string, playerID string, isAgree
 				gamelog.L.Error().Str("punish vote id", pvt.CurrentPunishVote.ID).Err(err).Msgf("Failed to process failed vote due to %s", err.Error())
 				return terror.Error(err, "Failed to process the result")
 			}
+
+			// broadcast undefined to clean up the form in the frontend
+			pvt.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPunishVoteSubscribe, pvt.FactionID)), nil)
+			return nil
 		}
 	}
 
@@ -388,6 +400,7 @@ func (pvt *PunishVoteTracker) VotePassed() error {
 	}
 
 	// TODO: broadcast success punish notification on chat
+	pvt.BroadcastPunishVoteResult(true)
 	return nil
 }
 
@@ -435,6 +448,7 @@ func (pvt *PunishVoteTracker) VoteFailed() error {
 	}
 
 	// TODO: broadcast failed punish result notification on chat
+	pvt.BroadcastPunishVoteResult(false)
 	return nil
 }
 
@@ -454,4 +468,50 @@ func (pvt *PunishVoteTracker) debounceBroadcastResult() {
 			}
 		}
 	}
+}
+
+func (pvt *PunishVoteTracker) BroadcastPunishVoteResult(isPassed bool) {
+	// get punish vote
+	punishVote, err := boiler.FindPunishVote(gamedb.StdConn, pvt.CurrentPunishVote.ID)
+	if err != nil {
+		gamelog.L.Error().Str("punish vote id", pvt.CurrentPunishVote.ID).Err(err).Msg("Failed to get current punish vote from db")
+		return
+	}
+
+	punishOption, err := punishVote.PunishOption().One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("punish vote id", pvt.CurrentPunishVote.ID).Err(err).Msg("Failed to get punish option from punish vote")
+		return
+	}
+
+	// construct punish vote message
+	chatMessage := &ChatMessage{
+		Type:   ChatMessageTypePunishVote,
+		SentAt: time.Now(),
+		Data: MessagePunishVote{
+			IssuedByPlayerID:        punishVote.IssuedByID,
+			IssuedByPlayerUsername:  punishVote.IssuedByUsername,
+			IssuedByPlayerFactionID: punishVote.FactionID,
+			IssuedByPlayerGid:       punishVote.IssuedByGid,
+
+			ReportedPlayerID:        punishVote.ReportedPlayerID,
+			ReportedPlayerUsername:  punishVote.ReportedPlayerUsername,
+			ReportedPlayerGid:       punishVote.ReportedPlayerGid,
+			ReportedPlayerFactionID: punishVote.FactionID,
+
+			// vote result
+			IsPassed:              isPassed,
+			TotalPlayerNumber:     len(pvt.CurrentPunishVote.PlayerPool),
+			AgreedPlayerNumber:    len(pvt.CurrentPunishVote.AgreedPlayerIDs),
+			DisagreedPlayerNumber: len(pvt.CurrentPunishVote.DisagreedPlayerIDs),
+			PunishOption:          *punishOption,
+			PunishReason:          punishVote.Reason,
+		},
+	}
+
+	// store message to the chat
+	pvt.api.AddFactionChatMessage(pvt.FactionID, chatMessage)
+
+	// broadcast
+	pvt.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionChatSubscribe, pvt.FactionID)), chatMessage)
 }

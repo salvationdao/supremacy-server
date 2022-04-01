@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"html"
@@ -10,6 +11,10 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"time"
+
+	"github.com/shopspring/decimal"
+
+	"github.com/friendsofgo/errors"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
@@ -43,8 +48,9 @@ var bm = bluemonday.StrictPolicy()
 
 // ChatMessage contains chat message data to send.
 type ChatMessage struct {
-	Type ChatMessageType `json:"type"`
-	Data interface{}     `json:"data"`
+	Type   ChatMessageType `json:"type"`
+	SentAt time.Time       `json:"sent_at"`
+	Data   interface{}     `json:"data"`
 }
 
 type ChatMessageType string
@@ -55,31 +61,36 @@ const (
 )
 
 type MessageText struct {
-	Message           string      `json:"message"`
-	MessageColor      string      `json:"message_color"`
-	FromUserID        string      `json:"from_user_id"`
-	FromUsername      string      `json:"from_username"`
-	FromUserFactionID null.String `json:"from_user_faction_id"`
-	SentAt            time.Time   `json:"sent_at"`
+	Message           string           `json:"message"`
+	MessageColor      string           `json:"message_color"`
+	FromUserID        string           `json:"from_user_id"`
+	FromUsername      string           `json:"from_username"`
+	FromUserStat      *boiler.UserStat `json:"from_user_stat"`
+	FromUserFactionID null.String      `json:"from_user_faction_id"`
+	FromUserGID       int              `json:"from_user_gid"`
 
-	TotalMultiplier   int64 `json:"total_multiplier"`
-	TotalAbilityKills int64 `json:"total_ability_kills"`
+	TotalMultiplier string `json:"total_multiplier"`
+	IsCitizen       bool   `json:"is_citizen"`
 }
 
 type MessagePunishVote struct {
 	IssuedByPlayerID        string `json:"issued_by_player_id"`
 	IssuedByPlayerUsername  string `json:"issued_by_player_username"`
 	IssuedByPlayerFactionID string `json:"issued_by_player_faction_id"`
+	IssuedByPlayerGid       int    `json:"issued_by_player_gid"`
 
 	ReportedPlayerID        string `json:"reported_player_id"`
 	ReportedPlayerUsername  string `json:"reported_player_username"`
 	ReportedPlayerFactionID string `json:"reported_player_faction_id"`
+	ReportedPlayerGid       int    `json:"reported_player_gid"`
 
 	// vote result
-	IsPassed              bool `json:"is_passed"`
-	TotalPlayerNumber     int  `json:"total_player_number"`
-	AgreedPlayerNumber    int  `json:"agreed_player_number"`
-	DisagreedPlayerNumber int  `json:"disagreed_player_number"`
+	IsPassed              bool                `json:"is_passed"`
+	TotalPlayerNumber     int                 `json:"total_player_number"`
+	AgreedPlayerNumber    int                 `json:"agreed_player_number"`
+	DisagreedPlayerNumber int                 `json:"disagreed_player_number"`
+	PunishOption          boiler.PunishOption `json:"punish_option"`
+	PunishReason          string              `json:"punish_reason"`
 }
 
 // Chatroom holds a specific chat room
@@ -118,13 +129,9 @@ func NewChatroom(factionID *server.FactionID) *Chatroom {
 
 // ChatController holds handlers for chat
 type ChatController struct {
-	Conn            *pgxpool.Pool
-	Log             *zerolog.Logger
-	API             *API
-	GlobalChat      *Chatroom
-	RedMountainChat *Chatroom
-	BostonChat      *Chatroom
-	ZaibatsuChat    *Chatroom
+	Conn *pgxpool.Pool
+	Log  *zerolog.Logger
+	API  *API
 }
 
 // NewChatController creates the role hub
@@ -133,21 +140,6 @@ func NewChatController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *ChatC
 		Conn: conn,
 		Log:  log_helpers.NamedLogger(log, "chat_hub"),
 		API:  api,
-		GlobalChat: &Chatroom{
-			messages: []*ChatMessage{},
-		},
-		RedMountainChat: &Chatroom{
-			factionID: &server.RedMountainFactionID,
-			messages:  []*ChatMessage{},
-		},
-		BostonChat: &Chatroom{
-			factionID: &server.BostonCyberneticsFactionID,
-			messages:  []*ChatMessage{},
-		},
-		ZaibatsuChat: &Chatroom{
-			factionID: &server.ZaibatsuFactionID,
-			messages:  []*ChatMessage{},
-		},
 	}
 
 	api.Command(HubKeyChatPastMessages, chatHub.ChatPastMessagesHandler)
@@ -229,7 +221,6 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 	if isBanned {
 		return terror.Error(fmt.Errorf("player is banned to chat"), "You are banned to chat")
 	}
-
 	// get faction primary colour from faction
 
 	msg := html.UnescapeString(bm.Sanitize(req.Payload.Message))
@@ -237,6 +228,16 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 	if len(msg) > 280 {
 		msg = firstN(msg, 280)
 	}
+
+	// get player current stat
+	playerStat, err := boiler.UserStats(
+		boiler.UserStatWhere.ID.EQ(player.ID),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "Unable to get player stat from db")
+	}
+
+	totalMultiplier, isCitizen := GetCurrentPlayerTotalMultiAndCitizenship(player.ID)
 
 	// check if the faction id is provided
 	if !req.Payload.FactionID.IsNil() {
@@ -249,30 +250,23 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 		}
 
 		chatMessage := &ChatMessage{
-			Type: ChatMessageTypeText,
+			Type:   ChatMessageTypeText,
+			SentAt: time.Now(),
 			Data: MessageText{
 				Message:           msg,
 				MessageColor:      req.Payload.MessageColor,
 				FromUserID:        player.ID,
 				FromUsername:      player.Username.String,
 				FromUserFactionID: player.FactionID,
-				SentAt:            time.Now(),
+				FromUserStat:      playerStat,
+				FromUserGID:       player.Gid,
+				TotalMultiplier:   totalMultiplier,
+				IsCitizen:         isCitizen,
 			},
 		}
 
 		// Ability kills
-
-		switch player.FactionID.String {
-		case server.RedMountainFactionID.String():
-			fc.RedMountainChat.AddMessage(chatMessage)
-		case server.BostonCyberneticsFactionID.String():
-			fc.BostonChat.AddMessage(chatMessage)
-		case server.ZaibatsuFactionID.String():
-			fc.ZaibatsuChat.AddMessage(chatMessage)
-		default:
-			// skip, if the faction id is not on the list
-			return nil
-		}
+		fc.API.AddFactionChatMessage(player.FactionID.String, chatMessage)
 
 		// send message
 		fc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionChatSubscribe, player.FactionID.String)), chatMessage)
@@ -282,21 +276,65 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 
 	// global message
 	chatMessage := &ChatMessage{
-		Type: ChatMessageTypeText,
+		Type:   ChatMessageTypeText,
+		SentAt: time.Now(),
 		Data: MessageText{
 			Message:           msg,
 			MessageColor:      req.Payload.MessageColor,
 			FromUserID:        player.ID,
 			FromUsername:      player.Username.String,
 			FromUserFactionID: player.FactionID,
-			SentAt:            time.Now(),
+			FromUserStat:      playerStat,
+			TotalMultiplier:   totalMultiplier,
+			IsCitizen:         isCitizen,
+			FromUserGID:       player.Gid,
 		},
 	}
-	fc.GlobalChat.AddMessage(chatMessage)
+	fc.API.GlobalChat.AddMessage(chatMessage)
 	fc.API.MessageBus.Send(messagebus.BusKey(HubKeyGlobalChatSubscribe), chatMessage)
 	reply(true)
 
 	return nil
+}
+
+func GetCurrentPlayerTotalMultiAndCitizenship(playerID string) (string, bool) {
+	latestBattle, err := boiler.Battles(
+		qm.OrderBy(boiler.BattleColumns.BattleNumber + " DESC"),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return "0", false
+	}
+
+	// get a copy of battle number
+	ums, err := boiler.Multipliers(
+		qm.InnerJoin("user_multipliers um on um.multiplier_id = multipliers.id"),
+		qm.Where(`um.player_id = ?`, playerID),
+		qm.And(`um.until_battle_number > ?`, latestBattle.BattleNumber),
+	).All(gamedb.StdConn)
+	if err != nil && len(ums) == 0 {
+		return "0", false
+	}
+
+	value := decimal.Zero
+	multiplier := decimal.Zero
+	isCitizen := false
+
+	for _, m := range ums {
+		if m.Key == "citizen" {
+			isCitizen = true
+		}
+		if !m.IsMultiplicative {
+			value = value.Add(m.Value)
+			continue
+		}
+		multiplier = multiplier.Add(m.Value)
+	}
+
+	if multiplier.Equal(decimal.Zero) {
+		multiplier = decimal.NewFromInt(1)
+	}
+
+	return value.Mul(multiplier).String(), isCitizen
 }
 
 // ChatPastMessagesRequest sends chat message to specific faction.
@@ -331,13 +369,13 @@ func (fc *ChatController) ChatPastMessagesHandler(ctx context.Context, hubc *hub
 
 	switch req.Payload.FactionID {
 	case server.RedMountainFactionID:
-		fc.RedMountainChat.Range(chatRangeHandler)
+		fc.API.RedMountainChat.Range(chatRangeHandler)
 	case server.BostonCyberneticsFactionID:
-		fc.BostonChat.Range(chatRangeHandler)
+		fc.API.BostonChat.Range(chatRangeHandler)
 	case server.ZaibatsuFactionID:
-		fc.ZaibatsuChat.Range(chatRangeHandler)
+		fc.API.ZaibatsuChat.Range(chatRangeHandler)
 	default:
-		fc.GlobalChat.Range(chatRangeHandler)
+		fc.API.GlobalChat.Range(chatRangeHandler)
 	}
 
 	reply(resp)
@@ -363,7 +401,7 @@ func (fc *ChatController) FactionChatUpdatedSubscribeHandler(ctx context.Context
 	if !player.FactionID.Valid || player.FactionID.String == uuid.Nil.String() {
 		return "", "", terror.Error(terror.ErrInvalidInput, "Require to join faction to receive messages.")
 	}
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionChatSubscribe, player.FactionID)), nil
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionChatSubscribe, player.FactionID.String)), nil
 }
 
 const HubKeyGlobalChatSubscribe hub.HubCommandKey = "GLOBAL:CHAT:SUBSCRIBE"
@@ -375,4 +413,15 @@ func (fc *ChatController) GlobalChatUpdatedSubscribeHandler(ctx context.Context,
 		return req.TransactionID, "", terror.Error(err, "Could not subscribe to global chat updates, try again or contact support.")
 	}
 	return req.TransactionID, messagebus.BusKey(HubKeyGlobalChatSubscribe), nil
+}
+
+func (api *API) AddFactionChatMessage(factionID string, msg *ChatMessage) {
+	switch factionID {
+	case server.RedMountainFactionID.String():
+		api.RedMountainChat.AddMessage(msg)
+	case server.BostonCyberneticsFactionID.String():
+		api.BostonChat.AddMessage(msg)
+	case server.ZaibatsuFactionID.String():
+		api.ZaibatsuChat.AddMessage(msg)
+	}
 }

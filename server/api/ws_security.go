@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
@@ -70,7 +69,7 @@ type HubSubscribeCommandFunc func(ctx context.Context, client *hub.Client, paylo
 // SubscribeCommand registers a subscription command to the hub
 //
 // If fn is not provided, will use default
-func (api *API) SubscribeCommand(key hub.HubCommandKey, fn ...HubSubscribeCommandFunc) {
+func (api *API) SubscribeCommand(key hub.HubCommandKey, fn HubSubscribeCommandFunc) {
 	api.SubscribeCommandWithAuthCheck(key, fn, func(wsc *hub.Client) bool {
 		return false
 	})
@@ -79,7 +78,7 @@ func (api *API) SubscribeCommand(key hub.HubCommandKey, fn ...HubSubscribeComman
 // SecureUserSubscribeCommand registers a subscription command to the hub that will only run if the websocket has authenticated
 //
 // If fn is not provided, will use default
-func (api *API) SecureUserSubscribeCommand(key hub.HubCommandKey, fn ...HubSubscribeCommandFunc) {
+func (api *API) SecureUserSubscribeCommand(key hub.HubCommandKey, fn HubSubscribeCommandFunc) {
 	api.SubscribeCommandWithAuthCheck(key, fn, func(wsc *hub.Client) bool {
 		return wsc.Identifier() == ""
 	})
@@ -88,7 +87,7 @@ func (api *API) SecureUserSubscribeCommand(key hub.HubCommandKey, fn ...HubSubsc
 // SecureUserFactionSubscribeCommand registers a subscription command to the hub that will only run if the websocket has authenticated
 //
 // If fn is not provided, will use default
-func (api *API) SecureUserFactionSubscribeCommand(key hub.HubCommandKey, fn ...HubSubscribeCommandFunc) {
+func (api *API) SecureUserFactionSubscribeCommand(key hub.HubCommandKey, fn HubSubscribeCommandFunc) {
 	api.SubscribeCommandWithAuthCheck(key, fn, func(wsc *hub.Client) bool {
 		if wsc.Identifier() == "" {
 			return true
@@ -106,17 +105,13 @@ func (api *API) SecureUserFactionSubscribeCommand(key hub.HubCommandKey, fn ...H
 // SubscribeCommandWithAuthCheck registers a subscription command to the hub
 //
 // If fn is not provided, will use default
-func (api *API) SubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn []HubSubscribeCommandFunc, authCheck func(wsc *hub.Client) bool) {
-	var err error
-	busKey := messagebus.BusKey("")
-	transactionID := ""
-
+func (api *API) SubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn HubSubscribeCommandFunc, authCheck func(wsc *hub.Client) bool) {
 	api.Hub.Handle(key, func(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 		if authCheck(wsc) {
 			return terror.Error(terror.ErrForbidden)
 		}
 
-		transactionID, busKey, err = fn[0](ctx, wsc, payload, reply)
+		transactionID, busKey, err := fn(ctx, wsc, payload, reply)
 		if err != nil {
 			return terror.Error(err)
 		}
@@ -126,27 +121,23 @@ func (api *API) SubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn []HubSub
 
 		return nil
 	})
-
-	// Unsubscribe
 	unsubscribeKey := hub.HubCommandKey(key + ":UNSUBSCRIBE")
 	api.Hub.Handle(unsubscribeKey, func(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 		if authCheck(wsc) {
 			return terror.Error(terror.ErrForbidden)
 		}
 
-		req := &hub.HubCommandRequest{}
-		err := json.Unmarshal(payload, req)
+		transactionID, busKey, err := fn(ctx, wsc, payload, reply)
 		if err != nil {
-			return terror.Error(err, "Invalid request received")
+			return terror.Error(err)
 		}
 
-		// remove subscription if buskey not empty from message bus
-		if busKey != "" {
-			api.MessageBus.Unsub(busKey, wsc, req.TransactionID)
-		}
+		// add subscription to the message bus
+		api.MessageBus.Unsub(busKey, wsc, transactionID)
 
 		return nil
 	})
+
 }
 
 /***************************

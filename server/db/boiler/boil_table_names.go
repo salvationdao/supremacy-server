@@ -18,6 +18,7 @@ var TableNames = struct {
 	BattleKills                                        string
 	BattleMechs                                        string
 	BattleQueue                                        string
+	BattleQueueNotifications                           string
 	BattleWarMachineQueues                             string
 	BattleWins                                         string
 	Battles                                            string
@@ -55,6 +56,7 @@ var TableNames = struct {
 	SchemaMigrations                                   string
 	SpoilsOfWar                                        string
 	StreamList                                         string
+	TelegramNotifications                              string
 	Templates                                          string
 	UserMultipliers                                    string
 	UserStats                                          string
@@ -75,6 +77,7 @@ var TableNames = struct {
 	BattleKills:                      "battle_kills",
 	BattleMechs:                      "battle_mechs",
 	BattleQueue:                      "battle_queue",
+	BattleQueueNotifications:         "battle_queue_notifications",
 	BattleWarMachineQueues:           "battle_war_machine_queues",
 	BattleWins:                       "battle_wins",
 	Battles:                          "battles",
@@ -112,6 +115,7 @@ var TableNames = struct {
 	SchemaMigrations:                 "schema_migrations",
 	SpoilsOfWar:                      "spoils_of_war",
 	StreamList:                       "stream_list",
+	TelegramNotifications:            "telegram_notifications",
 	Templates:                        "templates",
 	UserMultipliers:                  "user_multipliers",
 	UserStats:                        "user_stats",

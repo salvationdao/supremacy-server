@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/aes"
 	"crypto/cipher"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -13,6 +14,10 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"time"
+
+	"github.com/volatiletech/sqlboiler/v4/boil"
+
+	"github.com/friendsofgo/errors"
 
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -97,11 +102,15 @@ func (ac *AuthControllerWS) RingCheckJWTAuth(ctx context.Context, wsc *hub.Clien
 	}
 
 	userID := server.UserID(uuid.FromStringOrNil(player.ID))
+	if userID.IsNil() {
+		return terror.Error(terror.ErrInvalidInput, "User id is required")
+	}
 
 	// get user from passport server
 	user, err := ac.API.Passport.UserGet(userID)
 	if err != nil {
-		return terror.Error(err, "Failed to get user from passport server")
+		gamelog.L.Warn().Str("player_id", player.ID).Msg("Failed to get user from passport server")
+		return nil
 	}
 
 	player.PublicAddress = user.PublicAddress
@@ -116,6 +125,24 @@ func (ac *AuthControllerWS) RingCheckJWTAuth(ctx context.Context, wsc *hub.Clien
 	if err != nil {
 		gamelog.L.Error().Interface("player", player).Err(err).Msg("Failed to upsert player")
 		return terror.Error(err, "Failed to add user to database. Please try again")
+	}
+
+	user.Gid = player.Gid
+	// check whether player has a user stat set up
+	us, err := db.UserStatsGet(player.ID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err)
+	}
+
+	// insert a new user stat for current player
+	if us == nil {
+		us = &boiler.UserStat{
+			ID: player.ID,
+		}
+		err = us.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			return terror.Error(err)
+		}
 	}
 
 	if player.FactionID.Valid {

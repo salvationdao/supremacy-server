@@ -21,8 +21,10 @@ CREATE TABLE punish_votes(
     faction_id UUID NOT NULL REFERENCES factions(id),
     issued_by_id UUID NOT NULL REFERENCES players(id),
     issued_by_username TEXT NOT NULL,
+    issued_by_gid INT NOT NULL,
     reported_player_id UUID NOT NULL REFERENCES players (id),
     reported_player_username TEXT NOT NULL,
+    reported_player_gid INT NOT NULL,
     status TEXT NOT NULL CHECK(status IN ('PASSED','FAILED','PENDING')),
     started_at TIMESTAMPTZ,
     ended_at TIMESTAMPTZ,
@@ -65,3 +67,12 @@ CREATE TABLE player_active_logs(
     active_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     inactive_at TIMESTAMPTZ
 );
+
+CREATE SEQUENCE IF NOT EXISTS players_gid_seq
+    INCREMENT 1
+    MINVALUE 1
+    MAXVALUE 9223372036854775807
+    START 1024
+    CACHE 1;
+
+ALTER TABLE players ADD COLUMN gid integer NOT NULL DEFAULT nextval('players_gid_seq');

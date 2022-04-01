@@ -2,7 +2,6 @@ package battle
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"server/db/boiler"
 	"server/gamedb"
@@ -110,16 +109,12 @@ func (opts *Opts) SecureUserFactionSubscribeCommand(key hub.HubCommandKey, fn Hu
 //
 // If fn is not provided, will use default
 func (opts *Opts) SubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn HubSubscribeCommandFunc, authCheck func(wsc *hub.Client) bool) {
-	var err error
-	busKey := messagebus.BusKey("")
-	transactionID := ""
-
 	opts.Hub.Handle(key, func(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 		if authCheck(wsc) {
 			return terror.Error(terror.ErrForbidden)
 		}
 
-		transactionID, busKey, err = fn(ctx, wsc, payload, reply)
+		transactionID, busKey, err := fn(ctx, wsc, payload, reply)
 		if err != nil {
 			return terror.Error(err)
 		}
@@ -129,29 +124,8 @@ func (opts *Opts) SubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn HubSub
 			gamelog.L.Error().Msg("messagebus is nil")
 			return fmt.Errorf("messagebus is nil")
 		}
+
 		opts.MessageBus.Sub(busKey, wsc, transactionID)
-
-		return nil
-	})
-
-	// Unsubscribe
-	unsubscribeKey := hub.HubCommandKey(key + ":UNSUBSCRIBE")
-	opts.Hub.Handle(unsubscribeKey, func(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-		if authCheck(wsc) {
-			return terror.Error(terror.ErrForbidden)
-		}
-
-		req := &hub.HubCommandRequest{}
-		err := json.Unmarshal(payload, req)
-		if err != nil {
-			return terror.Error(err, "Invalid request received")
-		}
-
-		// remove subscription if buskey not empty from message bus
-		if busKey != "" {
-			opts.MessageBus.Unsub(busKey, wsc, req.TransactionID)
-		}
-
 		return nil
 	})
 
@@ -202,37 +176,18 @@ func (opts *Opts) NetSecureUserFactionSubscribeCommand(key hub.HubCommandKey, fn
 //
 // If fn is not provided, will use default
 func (opts *Opts) NetSubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn HubNetSubscribeCommandFunc, authCheck func(wsc *hub.Client) bool) {
-	var err error
-	var busKey messagebus.BusKey
-	busKey = ""
-
 	opts.Hub.Handle(key, func(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 		if authCheck(wsc) {
 			return terror.Error(terror.ErrForbidden)
 		}
 
-		busKey, err = fn(ctx, wsc, payload)
+		busKey, err := fn(ctx, wsc, payload)
 		if err != nil {
 			return terror.Error(err)
 		}
 
 		// add subscription to the message bus
 		opts.MessageBus.SubClient(busKey, wsc)
-
-		return nil
-	})
-
-	// Unsubscribe
-	unsubscribeKey := hub.HubCommandKey(key + ":UNSUBSCRIBE")
-	opts.Hub.Handle(unsubscribeKey, func(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-		if authCheck(wsc) {
-			return terror.Error(terror.ErrForbidden)
-		}
-
-		if busKey != "" {
-			// remove subscription if buskey not empty from message bus
-			opts.MessageBus.UnsubClient(busKey, wsc)
-		}
 
 		return nil
 	})

@@ -35,6 +35,8 @@ type User struct {
 
 	PassportURL string `json:"passport_url"`
 	Sups        BigInt `json:"sups"`
+	Gid         int    `json:"gid" db:"gid"`
+
 	// for dev env only
 	TwitchID null.String `json:"twitch_id" db:"twitch_id"`
 }
@@ -126,18 +128,8 @@ type UserStat struct {
 type UserBrief struct {
 	ID       uuid.UUID     `json:"id"`
 	Username string        `json:"username"`
-	AvatarID *BlobID       `json:"avatar_id,omitempty"`
+	Gid      int           `json:"gid"`
 	Faction  *FactionBrief `json:"faction"`
-}
-
-func (u *User) Brief() *UserBrief {
-	ub := &UserBrief{
-		ID:       uuid.UUID(u.ID),
-		Username: u.Username,
-		AvatarID: u.AvatarID,
-	}
-
-	return ub
 }
 
 type UserSupsMultiplierSend struct {

@@ -52,5 +52,4 @@ func Gotimeout(cb func(), timeout time.Duration, errorCallback func(error)) {
 		}
 	}()
 	start <- true
-	close(start)
 }

@@ -29,8 +29,10 @@ type PunishVote struct {
 	FactionID              string    `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
 	IssuedByID             string    `boiler:"issued_by_id" boil:"issued_by_id" json:"issued_by_id" toml:"issued_by_id" yaml:"issued_by_id"`
 	IssuedByUsername       string    `boiler:"issued_by_username" boil:"issued_by_username" json:"issued_by_username" toml:"issued_by_username" yaml:"issued_by_username"`
+	IssuedByGid            int       `boiler:"issued_by_gid" boil:"issued_by_gid" json:"issued_by_gid" toml:"issued_by_gid" yaml:"issued_by_gid"`
 	ReportedPlayerID       string    `boiler:"reported_player_id" boil:"reported_player_id" json:"reported_player_id" toml:"reported_player_id" yaml:"reported_player_id"`
 	ReportedPlayerUsername string    `boiler:"reported_player_username" boil:"reported_player_username" json:"reported_player_username" toml:"reported_player_username" yaml:"reported_player_username"`
+	ReportedPlayerGid      int       `boiler:"reported_player_gid" boil:"reported_player_gid" json:"reported_player_gid" toml:"reported_player_gid" yaml:"reported_player_gid"`
 	Status                 string    `boiler:"status" boil:"status" json:"status" toml:"status" yaml:"status"`
 	StartedAt              null.Time `boiler:"started_at" boil:"started_at" json:"started_at,omitempty" toml:"started_at" yaml:"started_at,omitempty"`
 	EndedAt                null.Time `boiler:"ended_at" boil:"ended_at" json:"ended_at,omitempty" toml:"ended_at" yaml:"ended_at,omitempty"`
@@ -49,8 +51,10 @@ var PunishVoteColumns = struct {
 	FactionID              string
 	IssuedByID             string
 	IssuedByUsername       string
+	IssuedByGid            string
 	ReportedPlayerID       string
 	ReportedPlayerUsername string
+	ReportedPlayerGid      string
 	Status                 string
 	StartedAt              string
 	EndedAt                string
@@ -64,8 +68,10 @@ var PunishVoteColumns = struct {
 	FactionID:              "faction_id",
 	IssuedByID:             "issued_by_id",
 	IssuedByUsername:       "issued_by_username",
+	IssuedByGid:            "issued_by_gid",
 	ReportedPlayerID:       "reported_player_id",
 	ReportedPlayerUsername: "reported_player_username",
+	ReportedPlayerGid:      "reported_player_gid",
 	Status:                 "status",
 	StartedAt:              "started_at",
 	EndedAt:                "ended_at",
@@ -81,8 +87,10 @@ var PunishVoteTableColumns = struct {
 	FactionID              string
 	IssuedByID             string
 	IssuedByUsername       string
+	IssuedByGid            string
 	ReportedPlayerID       string
 	ReportedPlayerUsername string
+	ReportedPlayerGid      string
 	Status                 string
 	StartedAt              string
 	EndedAt                string
@@ -96,8 +104,10 @@ var PunishVoteTableColumns = struct {
 	FactionID:              "punish_votes.faction_id",
 	IssuedByID:             "punish_votes.issued_by_id",
 	IssuedByUsername:       "punish_votes.issued_by_username",
+	IssuedByGid:            "punish_votes.issued_by_gid",
 	ReportedPlayerID:       "punish_votes.reported_player_id",
 	ReportedPlayerUsername: "punish_votes.reported_player_username",
+	ReportedPlayerGid:      "punish_votes.reported_player_gid",
 	Status:                 "punish_votes.status",
 	StartedAt:              "punish_votes.started_at",
 	EndedAt:                "punish_votes.ended_at",
@@ -115,8 +125,10 @@ var PunishVoteWhere = struct {
 	FactionID              whereHelperstring
 	IssuedByID             whereHelperstring
 	IssuedByUsername       whereHelperstring
+	IssuedByGid            whereHelperint
 	ReportedPlayerID       whereHelperstring
 	ReportedPlayerUsername whereHelperstring
+	ReportedPlayerGid      whereHelperint
 	Status                 whereHelperstring
 	StartedAt              whereHelpernull_Time
 	EndedAt                whereHelpernull_Time
@@ -130,8 +142,10 @@ var PunishVoteWhere = struct {
 	FactionID:              whereHelperstring{field: "\"punish_votes\".\"faction_id\""},
 	IssuedByID:             whereHelperstring{field: "\"punish_votes\".\"issued_by_id\""},
 	IssuedByUsername:       whereHelperstring{field: "\"punish_votes\".\"issued_by_username\""},
+	IssuedByGid:            whereHelperint{field: "\"punish_votes\".\"issued_by_gid\""},
 	ReportedPlayerID:       whereHelperstring{field: "\"punish_votes\".\"reported_player_id\""},
 	ReportedPlayerUsername: whereHelperstring{field: "\"punish_votes\".\"reported_player_username\""},
+	ReportedPlayerGid:      whereHelperint{field: "\"punish_votes\".\"reported_player_gid\""},
 	Status:                 whereHelperstring{field: "\"punish_votes\".\"status\""},
 	StartedAt:              whereHelpernull_Time{field: "\"punish_votes\".\"started_at\""},
 	EndedAt:                whereHelpernull_Time{field: "\"punish_votes\".\"ended_at\""},
@@ -176,8 +190,8 @@ func (*punishVoteR) NewStruct() *punishVoteR {
 type punishVoteL struct{}
 
 var (
-	punishVoteAllColumns            = []string{"id", "punish_option_id", "reason", "faction_id", "issued_by_id", "issued_by_username", "reported_player_id", "reported_player_username", "status", "started_at", "ended_at", "created_at", "updated_at", "deleted_at"}
-	punishVoteColumnsWithoutDefault = []string{"punish_option_id", "reason", "faction_id", "issued_by_id", "issued_by_username", "reported_player_id", "reported_player_username", "status"}
+	punishVoteAllColumns            = []string{"id", "punish_option_id", "reason", "faction_id", "issued_by_id", "issued_by_username", "issued_by_gid", "reported_player_id", "reported_player_username", "reported_player_gid", "status", "started_at", "ended_at", "created_at", "updated_at", "deleted_at"}
+	punishVoteColumnsWithoutDefault = []string{"punish_option_id", "reason", "faction_id", "issued_by_id", "issued_by_username", "issued_by_gid", "reported_player_id", "reported_player_username", "reported_player_gid", "status"}
 	punishVoteColumnsWithDefault    = []string{"id", "started_at", "ended_at", "created_at", "updated_at", "deleted_at"}
 	punishVotePrimaryKeyColumns     = []string{"id"}
 	punishVoteGeneratedColumns      = []string{}
