@@ -569,7 +569,7 @@ func ClearQueueByBattle(battleID string) error {
 	}
 	defer tx.Rollback()
 
-	query := `UPDATE battle_queue SET deleted_at = NOW() WHERE battle_id = $1`
+	query := `DELETE FROM battle_queue WHERE battle_id = $1`
 	_, err = gamedb.StdConn.Exec(query, battleID)
 	if err != nil {
 		gamelog.L.Error().Str("db func", "ClearQueue").Err(err).Msg("unable to delete mechs from queue")
