@@ -539,7 +539,6 @@ func (o *Player) OwnerBattleQueues(mods ...qm.QueryMod) battleQueueQuery {
 
 	queryMods = append(queryMods,
 		qm.Where("\"battle_queue\".\"owner_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"battle_queue\".\"deleted_at\""),
 	)
 
 	query := BattleQueues(queryMods...)
@@ -1367,7 +1366,6 @@ func (playerL) LoadOwnerBattleQueues(e boil.Executor, singular bool, maybePlayer
 	query := NewQuery(
 		qm.From(`battle_queue`),
 		qm.WhereIn(`battle_queue.owner_id in ?`, args...),
-		qmhelper.WhereIsNull(`battle_queue.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)

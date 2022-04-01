@@ -94,6 +94,8 @@ func main() {
 				Name:    "serve",
 				Aliases: []string{"s"},
 				Flags: []cli.Flag{
+					&cli.Uint64Flag{Name: "gameclient_build_no", Value: 0, EnvVars: []string{envPrefix + "_GAMECLIENT_BUILD_NO", "GAMECLIENT_BUILD_NO"}, Usage: "The gameclient version the server is using."},
+
 					&cli.StringFlag{Name: "database_user", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_USER", "DATABASE_USER"}, Usage: "The database user"},
 					&cli.StringFlag{Name: "database_pass", Value: "dev", EnvVars: []string{envPrefix + "_DATABASE_PASS", "DATABASE_PASS"}, Usage: "The database pass"},
 					&cli.StringFlag{Name: "database_host", Value: "localhost", EnvVars: []string{envPrefix + "_DATABASE_HOST", "DATABASE_HOST"}, Usage: "The database host"},
@@ -147,6 +149,7 @@ func main() {
 				},
 				Usage: "run server",
 				Action: func(c *cli.Context) error {
+					gameClientBuildNo := c.Uint64("gameclient_build_no")
 
 					databaseMaxPoolConns := c.Int("database_max_pool_conns")
 					databaseMaxIdleConns := c.Int("database_max_idle_conns")
@@ -356,13 +359,14 @@ func main() {
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Set up hub")
 
 					ba := battle.NewArena(&battle.Opts{
-						Addr:       battleArenaAddr,
-						Conn:       pgxconn,
-						MessageBus: messageBus,
-						Hub:        gsHub,
-						RPCClient:  rpcClient,
-						SMS:        twilio,
-						Telegram:   telebot,
+						Addr:              battleArenaAddr,
+						Conn:              pgxconn,
+						MessageBus:        messageBus,
+						Hub:               gsHub,
+						RPCClient:         rpcClient,
+						SMS:               twilio,
+						Telegram:          telebot,
+						GameClientBuildNo: gameClientBuildNo,
 					})
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("set up arena")
 					gamelog.L.Info().Msg("Setting up webhook rest API")

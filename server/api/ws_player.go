@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"server/db/boiler"
 	"server/gamedb"
 	"strings"
@@ -15,8 +16,9 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/rs/zerolog"
-	"github.com/volatiletech/sqlboiler/types"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/types"
 )
 
 type PlayerController struct {
@@ -32,12 +34,13 @@ func NewPlayerController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Pla
 		API:  api,
 	}
 
-	api.SecureUserCommand(HubKeyPlayerBattleQueueNotifications, pctrlr.PlayerBattleQueueNotificationsHandler)
+	api.SecureUserCommand(HubKeyPlayerUpdateSettings, pctrlr.PlayerUpdateSettingsHandler)
+	api.SecureUserCommand(HubKeyPlayerGetSettings, pctrlr.PlayerGetSettingsHandler)
 
 	return pctrlr
 }
 
-type PlayerBattleQueueNotificationsReq struct {
+type PlayerUpdateSettingsRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
 		Key   string     `json:"key"`
@@ -45,11 +48,75 @@ type PlayerBattleQueueNotificationsReq struct {
 	} `json:"payload"`
 }
 
-const HubKeyPlayerBattleQueueNotifications hub.HubCommandKey = "PLAYER:TOGGLE_BATTLE_QUEUE_NOTIFICATIONS"
+const HubKeyPlayerUpdateSettings hub.HubCommandKey = "PLAYER:UPDATE_SETTINGS"
 
-func (ctrlr *PlayerController) PlayerBattleQueueNotificationsHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (ctrlr *PlayerController) PlayerUpdateSettingsHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	errMsg := "Issue updating settings, try again or contact support."
+	req := &PlayerUpdateSettingsRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	player, err := boiler.FindPlayer(gamedb.StdConn, wsc.Identifier())
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	//getting user's notification settings from the database
+	userSettings, err := boiler.FindPlayerPreference(gamedb.StdConn, player.ID, req.Payload.Key)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// if there are no results, make an entry for the user with settings values sent from frontend
+			playerPrefs := &boiler.PlayerPreference{
+				PlayerID:  wsc.Identifier(),
+				Key:       req.Payload.Key,
+				Value:     req.Payload.Value,
+				CreatedAt: time.Now()}
+
+			err := playerPrefs.Insert(gamedb.StdConn, boil.Infer())
+			if err != nil {
+				return terror.Error(err, errMsg)
+			}
+
+			reply(playerPrefs.Value)
+			return nil
+		} else {
+			return terror.Error(err, errMsg)
+		}
+	}
+
+	payloadStr := req.Payload.Value.String()
+	dbStr := strings.ReplaceAll(userSettings.Value.String(), " ", "")
+
+	//if the payload includes a new value, update it in the db
+	if payloadStr != dbStr {
+		userSettings.Value = req.Payload.Value
+		fmt.Println(">>>>>>>>>>>>>>>>>>>", req.Payload.Value)
+		_, err := userSettings.Update(gamedb.StdConn, boil.Whitelist(boiler.PlayerPreferenceColumns.Value))
+		if err != nil {
+			return terror.Error(err, errMsg)
+		}
+	}
+
+	//send back userSettings values
+	reply(userSettings.Value)
+	return nil
+}
+
+type PlayerGetSettingsRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		Key string `json:"key"`
+	} `json:"payload"`
+}
+
+const HubKeyPlayerGetSettings hub.HubCommandKey = "PLAYER:GET_SETTINGS"
+
+//gets settings based on key, sends settings value back as json
+func (ctrlr *PlayerController) PlayerGetSettingsHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	errMsg := "Issue getting settings, try again or contact support."
-	req := &PlayerBattleQueueNotificationsReq{}
+	req := &PlayerGetSettingsRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received")
@@ -60,37 +127,20 @@ func (ctrlr *PlayerController) PlayerBattleQueueNotificationsHandler(ctx context
 		return terror.Error(err, errMsg)
 	}
 
-	// getting user's notification settings from the database
+	//getting user's notification settings from the database
 	userSettings, err := boiler.FindPlayerPreference(gamedb.StdConn, player.ID, req.Payload.Key)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			// if there are no results, make an entry for the user with base settings
-			playerPrefs := &boiler.PlayerPreference{
-				PlayerID:  wsc.Identifier(),
-				Key:       req.Payload.Key,
-				Value:     []byte{},
-				CreatedAt: time.Now()}
-			err := playerPrefs.Insert(gamedb.StdConn, boil.Infer())
-			if err != nil {
-				return terror.Error(err, errMsg)
-			}
+			// if there are no results, return a null json- tells frontend to use default settings
+			reply(null.JSON{})
+			return nil
 		} else {
 			return terror.Error(err, errMsg)
 		}
 	}
 
-	payloadStr := req.Payload.Value.String()
-	dbStr := strings.ReplaceAll(userSettings.Value.String(), " ", "")
-
-	// if the payload includes a new value, update it in the db
-	if payloadStr != dbStr {
-		userSettings.Value = []byte(req.Payload.Value)
-		_, err := userSettings.Update(gamedb.StdConn, boil.Whitelist(boiler.PlayerPreferenceColumns.Value))
-		if err != nil {
-			return terror.Error(err, errMsg)
-		}
-	}
-
-	reply(userSettings)
+	//send back userSettings
+	reply(userSettings.Value)
+	reply(true)
 	return nil
 }

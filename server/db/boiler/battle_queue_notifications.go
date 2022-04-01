@@ -439,7 +439,6 @@ func (o *BattleQueueNotification) Mech(mods ...qm.QueryMod) mechQuery {
 func (o *BattleQueueNotification) QueueMech(mods ...qm.QueryMod) battleQueueQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"mech_id\" = ?", o.QueueMechID),
-		qmhelper.WhereIsNull("deleted_at"),
 	}
 
 	queryMods = append(queryMods, mods...)
@@ -725,7 +724,6 @@ func (battleQueueNotificationL) LoadQueueMech(e boil.Executor, singular bool, ma
 	query := NewQuery(
 		qm.From(`battle_queue`),
 		qm.WhereIn(`battle_queue.mech_id in ?`, args...),
-		qmhelper.WhereIsNull(`battle_queue.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)

@@ -80,7 +80,7 @@ func (c *CheckController) Check(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get contributions for the last  2 mins
-	btlContributions, err := ba.BattleContributions(boiler.BattleContributionWhere.ContributedAt.GT(now.Add(-2 * time.Minute))).All(gamedb.StdConn)
+	btlContributions, err := ba.BattleContributions(boiler.BattleContributionWhere.ContributedAt.GT(now.Add(-10 * time.Minute))).All(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		c.Log.Err(err).Str("battle_no", fmt.Sprintf("%d", ba.BattleNumber)).Msg("failed to get battle contributions")
 
@@ -89,7 +89,7 @@ func (c *CheckController) Check(w http.ResponseWriter, r *http.Request) {
 	if len(btlContributions) <= 0 {
 		ok = false
 		w.WriteHeader(http.StatusGone)
-		msg := "there has been no contributions on the last 2 mins"
+		msg := "there has been no contributions on the last 10 mins"
 		c.Log.Err(err).Str("battle_no", fmt.Sprintf("%d", ba.BattleNumber)).Msg(msg)
 		_, err = w.Write([]byte("\n" + msg))
 		if err != nil {

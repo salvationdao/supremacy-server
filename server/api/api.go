@@ -80,8 +80,8 @@ type API struct {
 	Hub          *hub.Hub
 	Conn         *pgxpool.Pool
 	MessageBus   *messagebus.MessageBus
-	Passport     *rpcclient.PassportXrpcClient
 	SMS          server.SMS
+	Passport     *rpcclient.PassportXrpcClient
 	Telegram     server.Telegram
 
 	// ring check auth
@@ -109,7 +109,6 @@ func NewAPI(
 		ctx:              ctx,
 		Log:              log_helpers.NamedLogger(log, "api"),
 		Routes:           chi.NewRouter(),
-		Passport:         pp,
 		Addr:             addr,
 		MessageBus:       messageBus,
 		HTMLSanitize:     HTMLSanitize,
@@ -117,6 +116,7 @@ func NewAPI(
 		Conn:             conn,
 		Hub:              gsHub,
 		RingCheckAuthMap: NewRingCheckMap(),
+		Passport:         pp,
 		SMS:              sms,
 		Telegram:         telegram,
 	}

@@ -23,22 +23,23 @@ import (
 
 // Template is an object representing the database table.
 type Template struct {
-	ID                 string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	BlueprintChassisID string    `boiler:"blueprint_chassis_id" boil:"blueprint_chassis_id" json:"blueprint_chassis_id" toml:"blueprint_chassis_id" yaml:"blueprint_chassis_id"`
-	FactionID          string    `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
-	Tier               string    `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
-	Label              string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	Slug               string    `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
-	IsDefault          bool      `boiler:"is_default" boil:"is_default" json:"is_default" toml:"is_default" yaml:"is_default"`
-	ImageURL           string    `boiler:"image_url" boil:"image_url" json:"image_url" toml:"image_url" yaml:"image_url"`
-	AnimationURL       string    `boiler:"animation_url" boil:"animation_url" json:"animation_url" toml:"animation_url" yaml:"animation_url"`
-	CardAnimationURL   string    `boiler:"card_animation_url" boil:"card_animation_url" json:"card_animation_url" toml:"card_animation_url" yaml:"card_animation_url"`
-	AvatarURL          string    `boiler:"avatar_url" boil:"avatar_url" json:"avatar_url" toml:"avatar_url" yaml:"avatar_url"`
-	AssetType          string    `boiler:"asset_type" boil:"asset_type" json:"asset_type" toml:"asset_type" yaml:"asset_type"`
-	DeletedAt          null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	UpdatedAt          time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt          time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	LargeImageURL      string    `boiler:"large_image_url" boil:"large_image_url" json:"large_image_url" toml:"large_image_url" yaml:"large_image_url"`
+	ID                 string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	BlueprintChassisID string      `boiler:"blueprint_chassis_id" boil:"blueprint_chassis_id" json:"blueprint_chassis_id" toml:"blueprint_chassis_id" yaml:"blueprint_chassis_id"`
+	FactionID          string      `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
+	Tier               string      `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
+	Label              string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	Slug               string      `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
+	IsDefault          bool        `boiler:"is_default" boil:"is_default" json:"is_default" toml:"is_default" yaml:"is_default"`
+	ImageURL           string      `boiler:"image_url" boil:"image_url" json:"image_url" toml:"image_url" yaml:"image_url"`
+	AnimationURL       string      `boiler:"animation_url" boil:"animation_url" json:"animation_url" toml:"animation_url" yaml:"animation_url"`
+	CardAnimationURL   string      `boiler:"card_animation_url" boil:"card_animation_url" json:"card_animation_url" toml:"card_animation_url" yaml:"card_animation_url"`
+	AvatarURL          string      `boiler:"avatar_url" boil:"avatar_url" json:"avatar_url" toml:"avatar_url" yaml:"avatar_url"`
+	AssetType          string      `boiler:"asset_type" boil:"asset_type" json:"asset_type" toml:"asset_type" yaml:"asset_type"`
+	DeletedAt          null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt          time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt          time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	LargeImageURL      string      `boiler:"large_image_url" boil:"large_image_url" json:"large_image_url" toml:"large_image_url" yaml:"large_image_url"`
+	CollectionSlug     null.String `boiler:"collection_slug" boil:"collection_slug" json:"collection_slug,omitempty" toml:"collection_slug" yaml:"collection_slug,omitempty"`
 
 	R *templateR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L templateL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -61,6 +62,7 @@ var TemplateColumns = struct {
 	UpdatedAt          string
 	CreatedAt          string
 	LargeImageURL      string
+	CollectionSlug     string
 }{
 	ID:                 "id",
 	BlueprintChassisID: "blueprint_chassis_id",
@@ -78,6 +80,7 @@ var TemplateColumns = struct {
 	UpdatedAt:          "updated_at",
 	CreatedAt:          "created_at",
 	LargeImageURL:      "large_image_url",
+	CollectionSlug:     "collection_slug",
 }
 
 var TemplateTableColumns = struct {
@@ -97,6 +100,7 @@ var TemplateTableColumns = struct {
 	UpdatedAt          string
 	CreatedAt          string
 	LargeImageURL      string
+	CollectionSlug     string
 }{
 	ID:                 "templates.id",
 	BlueprintChassisID: "templates.blueprint_chassis_id",
@@ -114,6 +118,7 @@ var TemplateTableColumns = struct {
 	UpdatedAt:          "templates.updated_at",
 	CreatedAt:          "templates.created_at",
 	LargeImageURL:      "templates.large_image_url",
+	CollectionSlug:     "templates.collection_slug",
 }
 
 // Generated where
@@ -135,6 +140,7 @@ var TemplateWhere = struct {
 	UpdatedAt          whereHelpertime_Time
 	CreatedAt          whereHelpertime_Time
 	LargeImageURL      whereHelperstring
+	CollectionSlug     whereHelpernull_String
 }{
 	ID:                 whereHelperstring{field: "\"templates\".\"id\""},
 	BlueprintChassisID: whereHelperstring{field: "\"templates\".\"blueprint_chassis_id\""},
@@ -152,6 +158,7 @@ var TemplateWhere = struct {
 	UpdatedAt:          whereHelpertime_Time{field: "\"templates\".\"updated_at\""},
 	CreatedAt:          whereHelpertime_Time{field: "\"templates\".\"created_at\""},
 	LargeImageURL:      whereHelperstring{field: "\"templates\".\"large_image_url\""},
+	CollectionSlug:     whereHelpernull_String{field: "\"templates\".\"collection_slug\""},
 }
 
 // TemplateRels is where relationship names are stored.
@@ -181,9 +188,9 @@ func (*templateR) NewStruct() *templateR {
 type templateL struct{}
 
 var (
-	templateAllColumns            = []string{"id", "blueprint_chassis_id", "faction_id", "tier", "label", "slug", "is_default", "image_url", "animation_url", "card_animation_url", "avatar_url", "asset_type", "deleted_at", "updated_at", "created_at", "large_image_url"}
+	templateAllColumns            = []string{"id", "blueprint_chassis_id", "faction_id", "tier", "label", "slug", "is_default", "image_url", "animation_url", "card_animation_url", "avatar_url", "asset_type", "deleted_at", "updated_at", "created_at", "large_image_url", "collection_slug"}
 	templateColumnsWithoutDefault = []string{"id", "blueprint_chassis_id", "faction_id", "tier", "label", "slug", "image_url", "animation_url", "card_animation_url", "avatar_url", "asset_type", "large_image_url"}
-	templateColumnsWithDefault    = []string{"is_default", "deleted_at", "updated_at", "created_at"}
+	templateColumnsWithDefault    = []string{"is_default", "deleted_at", "updated_at", "created_at", "collection_slug"}
 	templatePrimaryKeyColumns     = []string{"id"}
 	templateGeneratedColumns      = []string{}
 )
