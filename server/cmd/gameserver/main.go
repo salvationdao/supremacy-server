@@ -331,12 +331,6 @@ func main() {
 						return terror.Error(err, "SMS init failed")
 					}
 
-					// initialise telegram bot
-					telebot, err := telegram.NewTelegram(telegramBotToken)
-					if err != nil {
-						return terror.Error(err, "Telegram init failed")
-					}
-
 					// initialise message bus
 					messageBus := messagebus.NewMessageBus(log_helpers.NamedLogger(gamelog.L, "message_bus"))
 					gsHub := hub.New(&hub.Config{
@@ -355,6 +349,12 @@ func main() {
 						},
 						Tracer: &api.HubTracer{},
 					})
+
+					// initialise telegram bot
+					telebot, err := telegram.NewTelegram(telegramBotToken)
+					if err != nil {
+						return terror.Error(err, "Telegram init failed")
+					}
 
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Set up hub")
 
@@ -377,7 +377,7 @@ func main() {
 					}
 
 					gamelog.L.Info().Msg("Running telegram bot")
-					go telegram.RunTelegram(telebot.Bot)
+					go telebot.RunTelegram(telebot.Bot)
 
 					gamelog.L.Info().Msg("Running webhook rest API")
 					err = api.Run(ctx)

@@ -239,10 +239,9 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 
 		// send telegram notification
 		if bqn.TelegramNotificationID.Valid {
-			err = arena.telegram.Notify(warMachine.ID, notificationMsg)
+			err = arena.telegram.Notify(bqn.TelegramNotificationID.String, notificationMsg)
 			if err != nil {
 				gamelog.L.Error().Err(err).Str("mech_id", bq.MechID).Str("owner_id", bq.OwnerID).Str("queued_at", bq.QueuedAt.String()).Msg("failed to notify telegram")
-
 			}
 		}
 

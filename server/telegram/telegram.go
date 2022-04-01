@@ -30,13 +30,16 @@ func genCode() string {
 
 type Telegram struct {
 	*tele.Bot
+	// Hub *hub.Client
 }
 
 // NewTelegram
 func NewTelegram(token string) (*Telegram, error) {
-	t := &Telegram{}
+	t := &Telegram{
+		// Hub: hub,
+	}
 	pref := tele.Settings{
-		Token:  token, // get from env
+		Token:  token,
 		Poller: &tele.LongPoller{Timeout: 10 * time.Second},
 	}
 
@@ -54,7 +57,7 @@ func NewTelegram(token string) (*Telegram, error) {
 
 var telegramNotifications = map[string][]string{}
 
-func RunTelegram(bot *tele.Bot) error {
+func (t *Telegram) RunTelegram(bot *tele.Bot) error {
 
 	bot.Handle("/register", func(c tele.Context) error {
 		return c.Send("Enter shortcode", tele.ForceReply)
@@ -74,7 +77,7 @@ func RunTelegram(bot *tele.Bot) error {
 			return terror.Error(err)
 		}
 
-		// check if a notification via shortcode
+		// get if a notification via shortcode
 		notification, err := boiler.BattleQueueNotifications(
 			boiler.BattleQueueNotificationWhere.IsRefunded.EQ(false),
 			boiler.BattleQueueNotificationWhere.SentAt.IsNull(),
@@ -88,6 +91,11 @@ func RunTelegram(bot *tele.Bot) error {
 			gamelog.L.Error().Err(err).Msg("unable to get notification by shortcode")
 			return c.Send("unable to get notification by shortcode")
 		}
+
+		// check if replier is the owner of this mech
+		// ownerID := notification.R.Mech.OwnerID
+
+		// notification.MobileNumber ==
 
 		reply := ""
 
@@ -127,7 +135,6 @@ func RunTelegram(bot *tele.Bot) error {
 		return c.Send(reply)
 	})
 	bot.Start()
-
 	return nil
 }
 
@@ -155,8 +162,7 @@ func (t *Telegram) NotificationCreate(mechID string, notification *boiler.Battle
 	}
 
 	telegramNotification := &boiler.TelegramNotification{
-		Shortcode:  code,
-		Registered: false,
+		Shortcode: code,
 	}
 
 	err := telegramNotification.Insert(gamedb.StdConn, boil.Infer())
@@ -167,13 +173,10 @@ func (t *Telegram) NotificationCreate(mechID string, notification *boiler.Battle
 	return telegramNotification, nil
 }
 
-func (t *Telegram) Notify(mechID string, message string) error {
+func (t *Telegram) Notify(id string, message string) error {
 	// get telegram notification
-	notification, err := boiler.TelegramNotifications(
-		boiler.TelegramNotificationWhere.Registered.EQ(true),
-		qm.InnerJoin("battle_queue_notifications bqn ON bqn.telegram_notification_id = telegram_notifications.id"),
-		qm.Where(`bqn.mech_id = ? and bqn.sent_at is null and bqn.is_refunded = false`, mechID),
-	).One(gamedb.StdConn)
+	// fmt.
+	notification, err := boiler.FindTelegramNotification(gamedb.StdConn, id)
 	if err != nil {
 		return terror.Error(err, "failed get notification")
 	}
