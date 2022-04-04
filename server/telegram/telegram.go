@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -30,20 +31,19 @@ func genCode() string {
 
 type Telegram struct {
 	*tele.Bot
-	// Hub *hub.Client
+	MessageBus *messagebus.MessageBus
 }
 
 // NewTelegram
-func NewTelegram(token string) (*Telegram, error) {
+func NewTelegram(token string, messageBus *messagebus.MessageBus) (*Telegram, error) {
 	t := &Telegram{
-		// Hub: hub,
+		MessageBus: messageBus,
 	}
 	pref := tele.Settings{
 		Token:  token,
 		Poller: &tele.LongPoller{Timeout: 10 * time.Second},
 	}
 
-	fmt.Println("this is token", token)
 	b, err := tele.NewBot(pref)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("unable initialise telegram bot")
@@ -56,6 +56,8 @@ func NewTelegram(token string) (*Telegram, error) {
 }
 
 var telegramNotifications = map[string][]string{}
+
+const HubKeyTelegramShortcodeRegistered = "USER:TELEGRAM_SHORTCODE_REGISTERED"
 
 func (t *Telegram) RunTelegram(bot *tele.Bot) error {
 
@@ -77,11 +79,12 @@ func (t *Telegram) RunTelegram(bot *tele.Bot) error {
 			return terror.Error(err)
 		}
 
-		// get if a notification via shortcode
+		// get notification via shortcode
 		notification, err := boiler.BattleQueueNotifications(
 			boiler.BattleQueueNotificationWhere.IsRefunded.EQ(false),
 			boiler.BattleQueueNotificationWhere.SentAt.IsNull(),
 			qm.InnerJoin("telegram_notifications tn on tn.id = battle_queue_notifications.telegram_notification_id"),
+			qm.Where("tn.registered = false"),
 			qm.Where("tn.shortcode = ?", shortcode),
 
 			// load mech, telegramNotification rels
@@ -91,11 +94,6 @@ func (t *Telegram) RunTelegram(bot *tele.Bot) error {
 			gamelog.L.Error().Err(err).Msg("unable to get notification by shortcode")
 			return c.Send("unable to get notification by shortcode")
 		}
-
-		// check if replier is the owner of this mech
-		// ownerID := notification.R.Mech.OwnerID
-
-		// notification.MobileNumber ==
 
 		reply := ""
 
@@ -120,15 +118,19 @@ func (t *Telegram) RunTelegram(bot *tele.Bot) error {
 				Msg("unable to update telegram notification")
 			return terror.Error(err)
 		}
+		wmName := notification.R.Mech.Label
+		wmOwner := notification.R.Mech.OwnerID
 
 		if err != nil {
 			reply = "invalid shortcode!"
+			go t.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTelegramShortcodeRegistered, wmOwner)), false)
 		} else {
-			wmName := notification.R.Mech.Label
+
 			if notification.R.Mech.Name != "" {
 				wmName = notification.R.Mech.Name
 			}
 			reply = fmt.Sprintf("Shortcode registered! you will be notified when your war machine (%s) is nearing battle", wmName)
+			go t.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTelegramShortcodeRegistered, wmOwner)), true)
 
 		}
 
@@ -148,7 +150,8 @@ func (t *Telegram) NotificationCreate(mechID string, notification *boiler.Battle
 			boiler.BattleQueueNotificationWhere.IsRefunded.EQ(false),
 			boiler.BattleQueueNotificationWhere.SentAt.IsNull(),
 			qm.InnerJoin("telegram_notifications tn on tn.id = battle_queue_notifications.telegram_notification_id"),
-			qm.Where("tn.shortcode = ?", code)).Exists(gamedb.StdConn)
+			qm.Where("tn.shortcode = ?"),
+			qm.Where("tn.Registered = false", code)).Exists(gamedb.StdConn)
 		if err != nil {
 			return nil, terror.Error(err, "Unable to get telegram notifications")
 		}
@@ -175,7 +178,6 @@ func (t *Telegram) NotificationCreate(mechID string, notification *boiler.Battle
 
 func (t *Telegram) Notify(id string, message string) error {
 	// get telegram notification
-	// fmt.
 	notification, err := boiler.FindTelegramNotification(gamedb.StdConn, id)
 	if err != nil {
 		return terror.Error(err, "failed get notification")

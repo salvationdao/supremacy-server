@@ -351,7 +351,7 @@ func main() {
 					})
 
 					// initialise telegram bot
-					telebot, err := telegram.NewTelegram(telegramBotToken)
+					telebot, err := telegram.NewTelegram(telegramBotToken, messageBus)
 					if err != nil {
 						return terror.Error(err, "Telegram init failed")
 					}
