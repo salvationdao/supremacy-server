@@ -9,6 +9,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/ninja-software/terror/v2"
@@ -21,7 +22,7 @@ import (
 
 func genCode() string {
 	letters := []rune("abcdefghijklmnopqrstuvwxyz")
-	n := 5
+	n := 6
 	b := make([]rune, n)
 	for i := range b {
 		b[i] = letters[rand.Intn(len(letters))]
@@ -85,7 +86,7 @@ func (t *Telegram) RunTelegram(bot *tele.Bot) error {
 			boiler.BattleQueueNotificationWhere.SentAt.IsNull(),
 			qm.InnerJoin("telegram_notifications tn on tn.id = battle_queue_notifications.telegram_notification_id"),
 			qm.Where("tn.registered = false"),
-			qm.Where("tn.shortcode = ?", shortcode),
+			qm.Where("tn.shortcode = ?", strings.ToLower(shortcode)),
 
 			// load mech, telegramNotification rels
 			qm.Load(boiler.BattleQueueNotificationRels.TelegramNotification),
