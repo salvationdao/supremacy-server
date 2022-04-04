@@ -1170,7 +1170,6 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 	}
 	err = bq.Insert(tx, boil.Infer())
 	if err != nil {
-		fmt.Println("err", err)
 		gamelog.L.Error().
 			Interface("mech", mech).
 			Err(err).Msg("unable to insert mech into queue")
@@ -1262,7 +1261,6 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 			return terror.Error(err, "Unable to join queue, check your balance and try again.")
 		}
 
-		fmt.Println("<<><<>><><<><,", bqn.TelegramNotificationID)
 		if bqn.TelegramNotificationID.Valid && shortcode != "" {
 			reply(struct {
 				Code string `json:"code"`
