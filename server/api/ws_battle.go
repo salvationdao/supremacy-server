@@ -42,9 +42,19 @@ type BattleMechHistoryRequest struct {
 	} `json:"payload"`
 }
 
+type BattleDetailed struct {
+	*boiler.Battle
+	GameMap *boiler.GameMap `json:"game_map"`
+}
+
+type BattleMechDetailed struct {
+	*boiler.BattleMech
+	Battle *BattleDetailed `json:"battle"`
+}
+
 type BattleMechHistoryResponse struct {
 	Total         int                  `json:"total"`
-	BattleHistory []*boiler.BattleMech `json:"battle_history"`
+	BattleHistory []BattleMechDetailed `json:"battle_history"`
 }
 
 func (bc *BattleControllerWS) BattleMechHistoryListHandler(ctx context.Context, hub *hub.Client, payload []byte, reply hub.ReplyFunc) error {
@@ -68,11 +78,22 @@ func (bc *BattleControllerWS) BattleMechHistoryListHandler(ctx context.Context, 
 	// if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 	// 	return err
 	// }
-	battleMechs, err := boiler.BattleMechs(boiler.BattleMechWhere.MechID.EQ(req.Payload.MechID), qm.Limit(10)).All(gamedb.StdConn)
+	battleMechs, err := boiler.BattleMechs(boiler.BattleMechWhere.MechID.EQ(req.Payload.MechID), qm.Limit(10), qm.Load(qm.Rels(boiler.BattleMechRels.Battle, boiler.BattleRels.GameMap))).All(gamedb.StdConn)
+
+	output := []BattleMechDetailed{}
+	for _, o := range battleMechs {
+		output = append(output, BattleMechDetailed{
+			BattleMech: o,
+			Battle: &BattleDetailed{
+				Battle:  o.R.Battle,
+				GameMap: o.R.Battle.R.GameMap,
+			},
+		})
+	}
 
 	reply(BattleMechHistoryResponse{
-		len(battleMechs),
-		battleMechs,
+		len(output),
+		output,
 	})
 
 	return nil
