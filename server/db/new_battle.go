@@ -59,7 +59,7 @@ func BattleMechs(btl *boiler.Battle, mechData []*BattleMechData) error {
 	return tx.Commit()
 }
 
-func UpdateBattleMech(battleID string, mechID uuid.UUID, ownerID string, factionID string, gotKill bool, gotKilled bool, killedByID ...uuid.UUID) (*boiler.BattleMech, error) {
+func UpdateKilledBattleMech(battleID string, mechID uuid.UUID, ownerID string, factionID string, killedByID ...uuid.UUID) (*boiler.BattleMech, error) {
 	bmd, err := boiler.FindBattleMech(gamedb.StdConn, battleID, mechID.String())
 	if err != nil {
 		gamelog.L.Error().
@@ -85,57 +85,56 @@ func UpdateBattleMech(battleID string, mechID uuid.UUID, ownerID string, faction
 		}
 	}
 
-	if gotKilled {
-		bmd.Killed = null.TimeFrom(time.Now())
-		if len(killedByID) > 0 && !killedByID[0].IsNil() {
-			if len(killedByID) > 1 {
-				warn := gamelog.L.Warn()
-				for i, id := range killedByID {
-					warn = warn.Str(fmt.Sprintf("killedByID[%d]", i), id.String())
-				}
-				warn.Str("db func", "UpdateBattleMech").Msg("more than 1 killer mech provided, only the zero indexed mech will be saved")
+	bmd.Killed = null.TimeFrom(time.Now())
+	if len(killedByID) > 0 && !killedByID[0].IsNil() {
+		if len(killedByID) > 1 {
+			warn := gamelog.L.Warn()
+			for i, id := range killedByID {
+				warn = warn.Str(fmt.Sprintf("killedByID[%d]", i), id.String())
 			}
-			bmd.KilledByID = null.StringFrom(killedByID[0].String())
-			kid, err := uuid.FromString(killedByID[0].String())
-
-			killerBmd, err := boiler.FindBattleMech(gamedb.StdConn, battleID, kid.String())
-			if err != nil {
-				gamelog.L.Error().
-					Str("battleID", battleID).
-					Str("killerBmdID", killedByID[0].String()).
-					Str("db func", "UpdateBattleMech").
-					Err(err).Msg("unable to retrieve battle Mech from database")
-
-				return nil, err
-			}
-
-			killerBmd.Kills++
-			bk := &boiler.BattleKill{
-				MechID:    killedByID[0].String(),
-				BattleID:  battleID,
-				CreatedAt: bmd.Killed.Time,
-				KilledID:  mechID.String(),
-			}
-			err = bk.Insert(gamedb.StdConn, boil.Infer())
+			warn.Str("db func", "UpdateBattleMech").Msg("more than 1 killer mech provided, only the zero indexed mech will be saved")
 		}
-		_, err = bmd.Update(gamedb.StdConn, boil.Infer())
+		bmd.KilledByID = null.StringFrom(killedByID[0].String())
+		kid, err := uuid.FromString(killedByID[0].String())
+
+		killerBmd, err := boiler.FindBattleMech(gamedb.StdConn, battleID, kid.String())
 		if err != nil {
-			gamelog.L.Error().Err(err).
-				Interface("boiler.BattleMech", bmd).
-				Msg("unable to update battle mech")
+			gamelog.L.Error().
+				Str("battleID", battleID).
+				Str("killerBmdID", killedByID[0].String()).
+				Str("db func", "UpdateBattleMech").
+				Err(err).Msg("unable to retrieve battle Mech from database")
+
 			return nil, err
+		}
+
+		killerBmd.Kills = killerBmd.Kills + 1
+		_, err = killerBmd.Update(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			gamelog.L.Warn().Err(err).
+				Interface("boiler.BattleKill", killerBmd).
+				Msg("unable to update killer battle mech")
+		}
+
+		bk := &boiler.BattleKill{
+			MechID:    killedByID[0].String(),
+			BattleID:  battleID,
+			CreatedAt: bmd.Killed.Time,
+			KilledID:  mechID.String(),
+		}
+		err = bk.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			gamelog.L.Warn().Err(err).
+				Interface("boiler.BattleKill", bk).
+				Msg("unable to insert battle kill")
 		}
 	}
-
-	if gotKill {
-		bmd.Kills = bmd.Kills + 1
-		_, err = bmd.Update(gamedb.StdConn, boil.Infer())
-		if err != nil {
-			gamelog.L.Error().Err(err).
-				Interface("boiler.BattleMech", bmd).
-				Msg("unable to update battle mech")
-			return nil, err
-		}
+	_, err = bmd.Update(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().Err(err).
+			Interface("boiler.BattleMech", bmd).
+			Msg("unable to update battle mech")
+		return nil, err
 	}
 
 	return bmd, nil

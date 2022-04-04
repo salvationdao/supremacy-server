@@ -3,16 +3,16 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"errors"
+	"fmt"
 	"server/db/boiler"
+	"server/gamedb"
 
-	"github.com/georgysavva/scany/pgxscan"
-	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/log_helpers"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/rs/zerolog"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 type BattleControllerWS struct {
@@ -43,8 +43,8 @@ type BattleMechHistoryRequest struct {
 }
 
 type BattleMechHistoryResponse struct {
-	Total           int                      `json:"total"`
-	BattleContracts []*boiler.BattleContract `json:"battle_contracts"`
+	Total         int                  `json:"total"`
+	BattleHistory []*boiler.BattleMech `json:"battle_history"`
 }
 
 func (bc *BattleControllerWS) BattleMechHistoryListHandler(ctx context.Context, hub *hub.Client, payload []byte, reply hub.ReplyFunc) error {
@@ -54,22 +54,25 @@ func (bc *BattleControllerWS) BattleMechHistoryListHandler(ctx context.Context, 
 		return terror.Error(err, "Invalid request received")
 	}
 
-	battleContracts := make([]*boiler.BattleContract, 0)
-	q := `
-		select *
-		from battle_mechs
-		where mech_id = $1
-		order by created_at desc
-		limit 10
-	`
-	err = pgxscan.Get(ctx, bc.Conn, &battleContracts, q, req.Payload.MechID)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return err
-	}
+	fmt.Println("-----------mech id-----------")
+	fmt.Println(req.Payload.MechID)
+	// battleMechs := make([]*boiler.BattleMech, 0)
+	// q := `
+	// 	select *
+	// 	from battle_mechs
+	// 	where mech_id = $1
+	// 	order by created_at desc
+	// 	limit 10
+	// `
+	// err = pgxscan.Select(ctx, bc.Conn, &battleMechs, q, req.Payload.MechID)
+	// if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+	// 	return err
+	// }
+	battleMechs, err := boiler.BattleMechs(boiler.BattleMechWhere.MechID.EQ(req.Payload.MechID), qm.Limit(10)).All(gamedb.StdConn)
 
 	reply(BattleMechHistoryResponse{
-		len(battleContracts),
-		battleContracts,
+		len(battleMechs),
+		battleMechs,
 	})
 
 	return nil
