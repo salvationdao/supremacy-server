@@ -65,7 +65,7 @@ func UpdateKilledBattleMech(battleID string, mechID uuid.UUID, ownerID string, f
 		gamelog.L.Error().
 			Str("battleID", battleID).
 			Str("mechID", mechID.String()).
-			Str("db func", "UpdateBattleMech").
+			Str("db func", "UpdateKilledBattleMech").
 			Err(err).Msg("unable to retrieve battle Mech from database")
 
 		bmd = &boiler.BattleMech{
@@ -79,7 +79,7 @@ func UpdateKilledBattleMech(battleID string, mechID uuid.UUID, ownerID string, f
 			gamelog.L.Error().
 				Str("battleID", battleID).
 				Str("mechID", mechID.String()).
-				Str("db func", "UpdateBattleMech").
+				Str("db func", "UpdateKilledBattleMech").
 				Err(err).Msg("unable to insert battle Mech into database after not being able to retrieve it")
 			return nil, err
 		}
@@ -92,7 +92,7 @@ func UpdateKilledBattleMech(battleID string, mechID uuid.UUID, ownerID string, f
 			for i, id := range killedByID {
 				warn = warn.Str(fmt.Sprintf("killedByID[%d]", i), id.String())
 			}
-			warn.Str("db func", "UpdateBattleMech").Msg("more than 1 killer mech provided, only the zero indexed mech will be saved")
+			warn.Str("db func", "UpdateKilledBattleMech").Msg("more than 1 killer mech provided, only the zero indexed mech will be saved")
 		}
 		bmd.KilledByID = null.StringFrom(killedByID[0].String())
 		kid, err := uuid.FromString(killedByID[0].String())
@@ -102,8 +102,8 @@ func UpdateKilledBattleMech(battleID string, mechID uuid.UUID, ownerID string, f
 			gamelog.L.Error().
 				Str("battleID", battleID).
 				Str("killerBmdID", killedByID[0].String()).
-				Str("db func", "UpdateBattleMech").
-				Err(err).Msg("unable to retrieve battle Mech from database")
+				Str("db func", "UpdateKilledBattleMech").
+				Err(err).Msg("unable to retrieve killer battle Mech from database")
 
 			return nil, err
 		}
@@ -112,7 +112,7 @@ func UpdateKilledBattleMech(battleID string, mechID uuid.UUID, ownerID string, f
 		_, err = killerBmd.Update(gamedb.StdConn, boil.Infer())
 		if err != nil {
 			gamelog.L.Warn().Err(err).
-				Interface("boiler.BattleKill", killerBmd).
+				Interface("boiler.BattleMech", killerBmd).
 				Msg("unable to update killer battle mech")
 		}
 
