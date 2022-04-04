@@ -1262,6 +1262,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 			return terror.Error(err, "Unable to join queue, check your balance and try again.")
 		}
 
+		fmt.Println("<<><<>><><<><,", bqn.TelegramNotificationID)
 		if bqn.TelegramNotificationID.Valid && shortcode != "" {
 			reply(struct {
 				Code string `json:"code"`
