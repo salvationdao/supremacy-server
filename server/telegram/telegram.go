@@ -149,8 +149,9 @@ func (t *Telegram) NotificationCreate(mechID string, notification *boiler.Battle
 			boiler.BattleQueueNotificationWhere.IsRefunded.EQ(false),
 			boiler.BattleQueueNotificationWhere.SentAt.IsNull(),
 			qm.InnerJoin("telegram_notifications tn on tn.id = battle_queue_notifications.telegram_notification_id"),
-			qm.Where("tn.shortcode = ?", strings.ToLower(shortCode)),
-			qm.Where("tn.Registered = false")).Exists(gamedb.StdConn)
+			boiler.TelegramNotificationWhere.Registered.EQ(false),
+			boiler.TelegramNotificationWhere.Shortcode.EQ(strings.ToLower(shortCode)),
+		).Exists(gamedb.StdConn)
 		if err != nil {
 			return nil, terror.Error(err, "Unable to get telegram notifications")
 		}
