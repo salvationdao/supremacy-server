@@ -110,6 +110,9 @@ func (t *Telegram) RunTelegram(bot *tele.Bot) error {
 		telegramNotification.Registered = true
 		telegramNotification.TelegramID = null.IntFrom(_telegramID)
 
+		// mech owner
+		wmOwner := notification.R.Mech.OwnerID
+
 		// update notification
 		_, err = telegramNotification.Update(gamedb.StdConn, boil.Infer())
 		if err != nil {
@@ -120,18 +123,19 @@ func (t *Telegram) RunTelegram(bot *tele.Bot) error {
 			return terror.Error(err)
 		}
 
-		wmName := notification.R.Mech.Label
 		if err != nil {
 			reply = "Issue regestering telegram shortcode, try again or contact support"
 			go t.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTelegramShortcodeRegistered, wmOwner)), false)
-		} else {
-			if notification.R.Mech.Name != "" {
-				wmName = notification.R.Mech.Name
-			}
-			reply = fmt.Sprintf("Shortcode registered! you will be notified when your war machine (%s) is nearing battle", wmName)
-			go t.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTelegramShortcodeRegistered, wmOwner)), true)
+			return c.Send(reply)
 
 		}
+
+		wmName := notification.R.Mech.Label
+		if notification.R.Mech.Name != "" {
+			wmName = notification.R.Mech.Name
+		}
+		reply = fmt.Sprintf("Shortcode registered! you will be notified when your war machine (%s) is nearing battle", wmName)
+		go t.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTelegramShortcodeRegistered, wmOwner)), true)
 		return c.Send(reply)
 	})
 	bot.Start()
