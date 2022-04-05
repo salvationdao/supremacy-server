@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"math/rand"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -13,21 +12,12 @@ import (
 	"time"
 
 	"github.com/ninja-software/terror/v2"
+	"github.com/teris-io/shortid"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	tele "gopkg.in/telebot.v3"
 )
-
-func genCode() string {
-	letters := []rune("abcdefghijklmnopqrstuvwxyz")
-	n := 6
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
-	}
-	return string(b)
-}
 
 type Telegram struct {
 	*tele.Bot
@@ -142,7 +132,11 @@ func (t *Telegram) RunTelegram(bot *tele.Bot) error {
 
 func (t *Telegram) NotificationCreate(mechID string, notification *boiler.BattleQueueNotification) (*boiler.TelegramNotification, error) {
 
-	code := genCode()
+	shortCode, err := shortid.Generate()
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
 	codeExists := true
 	if codeExists {
 		// check if a notification that hasnt been sent/ not refunded has that short code
@@ -150,25 +144,28 @@ func (t *Telegram) NotificationCreate(mechID string, notification *boiler.Battle
 			boiler.BattleQueueNotificationWhere.IsRefunded.EQ(false),
 			boiler.BattleQueueNotificationWhere.SentAt.IsNull(),
 			qm.InnerJoin("telegram_notifications tn on tn.id = battle_queue_notifications.telegram_notification_id"),
-			qm.Where("tn.shortcode = ?"),
-			qm.Where("tn.Registered = false", code)).Exists(gamedb.StdConn)
+			qm.Where("tn.shortcode = ?", strings.ToLower(shortCode)),
+			qm.Where("tn.Registered = false")).Exists(gamedb.StdConn)
 		if err != nil {
 			return nil, terror.Error(err, "Unable to get telegram notifications")
 		}
 
 		if exists {
 			// if code already exist generate new one
-			code = genCode()
+			shortCode, err = shortid.Generate()
+			if err != nil {
+				return nil, terror.Error(err)
+			}
 		} else {
 			codeExists = false
 		}
 	}
 
 	telegramNotification := &boiler.TelegramNotification{
-		Shortcode: code,
+		Shortcode: strings.ToLower(shortCode),
 	}
 
-	err := telegramNotification.Insert(gamedb.StdConn, boil.Infer())
+	err = telegramNotification.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {
 		return nil, terror.Error(err, "Unable to link notification to telegram notification")
 	}
