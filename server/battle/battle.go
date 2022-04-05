@@ -1141,7 +1141,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		gamelog.L.Debug().Str("mech_id", mechID.String()).Err(err).Msg("mech already in queue")
 		position, err = db.QueuePosition(mechID, factionID)
 		if err != nil {
-			return terror.Error(err, "Unable to join queue, check your balance and try again.")
+			return terror.Error(err, "Already in queue, failed to get position. Contact support or try again.")
 		}
 		reply(true)
 		return nil
@@ -1161,6 +1161,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 			Str("contractReward", contractReward.String()).
 			Str("queueFee", queueCost.String()).
 			Err(err).Msg("unable to create battle contract")
+		return terror.Error(err, "Unable to join queue, contact support or try again.")
 	}
 
 	bq := &boiler.BattleQueue{
@@ -1171,7 +1172,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		BattleContractID: null.StringFrom(bc.ID),
 	}
 
-	notifications := (msg.Payload.EnablePushNotifications || msg.Payload.MobileNumber != "")
+	notifications := msg.Payload.EnablePushNotifications || msg.Payload.MobileNumber != ""
 	if !notifications {
 		bq.Notified = true
 	}
@@ -1180,7 +1181,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		gamelog.L.Error().
 			Interface("mech", mech).
 			Err(err).Msg("unable to insert mech into queue")
-		return terror.Error(err, "Unable to join queue, check your balance and try again.")
+		return terror.Error(err, "Unable to join queue, contact support or try again.")
 	}
 
 	// Charge user queue fee
@@ -1206,14 +1207,14 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		gamelog.L.Error().
 			Str("tx_id", supTransactionID).
 			Err(err).Msg("unable to update battle queue with queue transaction id")
-		return terror.Error(err, "Unable to join queue, check your balance and try again.")
+		return terror.Error(err, "Unable to join queue, contact support or try again.")
 	}
 
 	// Charge queue notification fee, if enabled (10% of queue cost)
 	if !bq.Notified {
 		notifyCost := queueCost.Mul(decimal.NewFromFloat(0.1))
 		notifyTransactionID, err := arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
-			Amount:               notifyCost.StringFixed(18),
+			Amount:               notifyCost.String(),
 			FromUserID:           ownerID,
 			ToUserID:             SupremacyBattleUserID,
 			TransactionReference: server.TransactionReference(fmt.Sprintf("war_machine_queue_notification_fee|%s|%d", msg.Payload.AssetHash, time.Now().UnixNano())),
@@ -1223,6 +1224,12 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 			NotSafe:              true,
 		})
 		if err != nil {
+			if bq.QueueFeeTXID.Valid {
+				_, err = arena.RPCClient.RefundSupsMessage(bq.QueueFeeTXID.String)
+				if err != nil {
+					gamelog.L.Error().Str("txID", bq.QueueFeeTXID.String).Err(err).Msg("failed to refund queue fee")
+				}
+			}
 			// Abort transaction if charge fails
 			gamelog.L.Error().Str("txID", notifyTransactionID).Err(err).Msg("unable to charge user for sms notification for mech in queue")
 			return terror.Error(err, "Unable to process notification fee, please check your balance and try again.")
@@ -1230,10 +1237,22 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		bq.QueueNotificationFeeTXID = null.StringFrom(notifyTransactionID)
 		_, err = bq.Update(tx, boil.Infer())
 		if err != nil {
+			if bq.QueueFeeTXID.Valid {
+				_, err = arena.RPCClient.RefundSupsMessage(bq.QueueFeeTXID.String)
+				if err != nil {
+					gamelog.L.Error().Str("txID", bq.QueueFeeTXID.String).Err(err).Msg("failed to refund queue fee")
+				}
+			}
+			if bq.QueueNotificationFeeTXID.Valid {
+				_, err = arena.RPCClient.RefundSupsMessage(bq.QueueNotificationFeeTXID.String)
+				if err != nil {
+					gamelog.L.Error().Str("txID", bq.QueueNotificationFeeTXID.String).Err(err).Msg("failed to refund queue notification fee")
+				}
+			}
 			gamelog.L.Error().
 				Str("tx_id", notifyTransactionID).
 				Err(err).Msg("unable to update battle queue with queue notification transaction id")
-			return terror.Error(err, "Unable to join queue, check your balance and try again.")
+			return terror.Error(err, "Unable to join queue, contact support or try again.")
 		}
 
 		//insert notification into db
@@ -1247,20 +1266,44 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 
 		err = bqn.Insert(tx, boil.Infer())
 		if err != nil {
+			if bq.QueueFeeTXID.Valid {
+				_, err = arena.RPCClient.RefundSupsMessage(bq.QueueFeeTXID.String)
+				if err != nil {
+					gamelog.L.Error().Str("txID", bq.QueueFeeTXID.String).Err(err).Msg("failed to refund queue fee")
+				}
+			}
+			if bq.QueueNotificationFeeTXID.Valid {
+				_, err = arena.RPCClient.RefundSupsMessage(bq.QueueNotificationFeeTXID.String)
+				if err != nil {
+					gamelog.L.Error().Str("txID", bq.QueueNotificationFeeTXID.String).Err(err).Msg("failed to refund queue notification fee")
+				}
+			}
 			gamelog.L.Error().
 				Interface("mech", mech).
 				Err(err).Msg("unable to insert queue notification for mech")
-			return terror.Error(err, "Unable to join queue, check your balance and try again.")
+			return terror.Error(err, "Unable to join queue, contact support or try again.")
 		}
 	}
 
 	// Commit transaction
 	err = tx.Commit()
 	if err != nil {
+		if bq.QueueFeeTXID.Valid {
+			_, err = arena.RPCClient.RefundSupsMessage(bq.QueueFeeTXID.String)
+			if err != nil {
+				gamelog.L.Error().Str("txID", bq.QueueFeeTXID.String).Err(err).Msg("failed to refund queue fee")
+			}
+		}
+		if bq.QueueNotificationFeeTXID.Valid {
+			_, err = arena.RPCClient.RefundSupsMessage(bq.QueueNotificationFeeTXID.String)
+			if err != nil {
+				gamelog.L.Error().Str("txID", bq.QueueNotificationFeeTXID.String).Err(err).Msg("failed to refund queue notification fee")
+			}
+		}
 		gamelog.L.Error().
 			Interface("mech", mech).
 			Err(err).Msg("unable to commit mech insertion into queue")
-		return terror.Error(err, "Unable to join queue, check your balance and try again.")
+		return terror.Error(err, "Unable to join queue, contact support or try again.")
 	}
 
 	// Get mech current queue position
