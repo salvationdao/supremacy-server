@@ -42,6 +42,7 @@ var TableNames = struct {
 	GameMaps                                           string
 	GlobalAnnouncements                                string
 	IssuedContractRewards                              string
+	MechStats                                          string
 	Mechs                                              string
 	Modules                                            string
 	Multipliers                                        string
@@ -101,6 +102,7 @@ var TableNames = struct {
 	GameMaps:                         "game_maps",
 	GlobalAnnouncements:              "global_announcements",
 	IssuedContractRewards:            "issued_contract_rewards",
+	MechStats:                        "mech_stats",
 	Mechs:                            "mechs",
 	Modules:                          "modules",
 	Multipliers:                      "multipliers",

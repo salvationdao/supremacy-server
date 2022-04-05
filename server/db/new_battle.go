@@ -59,13 +59,13 @@ func BattleMechs(btl *boiler.Battle, mechData []*BattleMechData) error {
 	return tx.Commit()
 }
 
-func UpdateBattleMech(battleID string, mechID uuid.UUID, ownerID string, factionID string, gotKill bool, gotKilled bool, killedByID ...uuid.UUID) (*boiler.BattleMech, error) {
+func UpdateKilledBattleMech(battleID string, mechID uuid.UUID, ownerID string, factionID string, killedByID ...uuid.UUID) (*boiler.BattleMech, error) {
 	bmd, err := boiler.FindBattleMech(gamedb.StdConn, battleID, mechID.String())
 	if err != nil {
 		gamelog.L.Error().
 			Str("battleID", battleID).
 			Str("mechID", mechID.String()).
-			Str("db func", "UpdateBattleMech").
+			Str("db func", "UpdateKilledBattleMech").
 			Err(err).Msg("unable to retrieve battle Mech from database")
 
 		bmd = &boiler.BattleMech{
@@ -79,62 +79,114 @@ func UpdateBattleMech(battleID string, mechID uuid.UUID, ownerID string, faction
 			gamelog.L.Error().
 				Str("battleID", battleID).
 				Str("mechID", mechID.String()).
-				Str("db func", "UpdateBattleMech").
+				Str("db func", "UpdateKilledBattleMech").
 				Err(err).Msg("unable to insert battle Mech into database after not being able to retrieve it")
 			return nil, err
 		}
 	}
 
-	if gotKilled {
-		bmd.Killed = null.TimeFrom(time.Now())
-		if len(killedByID) > 0 && !killedByID[0].IsNil() {
-			if len(killedByID) > 1 {
-				warn := gamelog.L.Warn()
-				for i, id := range killedByID {
-					warn = warn.Str(fmt.Sprintf("killedByID[%d]", i), id.String())
-				}
-				warn.Str("db func", "UpdateBattleMech").Msg("more than 1 killer mech provided, only the zero indexed mech will be saved")
+	bmd.Killed = null.TimeFrom(time.Now())
+	if len(killedByID) > 0 && !killedByID[0].IsNil() {
+		if len(killedByID) > 1 {
+			warn := gamelog.L.Warn()
+			for i, id := range killedByID {
+				warn = warn.Str(fmt.Sprintf("killedByID[%d]", i), id.String())
 			}
-			bmd.KilledByID = null.StringFrom(killedByID[0].String())
-			kid, err := uuid.FromString(killedByID[0].String())
-
-			killerBmd, err := boiler.FindBattleMech(gamedb.StdConn, battleID, kid.String())
-			if err != nil {
-				gamelog.L.Error().
-					Str("battleID", battleID).
-					Str("killerBmdID", killedByID[0].String()).
-					Str("db func", "UpdateBattleMech").
-					Err(err).Msg("unable to retrieve battle Mech from database")
-
-				return nil, err
-			}
-
-			killerBmd.Kills++
-			bk := &boiler.BattleKill{
-				MechID:    killedByID[0].String(),
-				BattleID:  battleID,
-				CreatedAt: bmd.Killed.Time,
-				KilledID:  mechID.String(),
-			}
-			err = bk.Insert(gamedb.StdConn, boil.Infer())
+			warn.Str("db func", "UpdateKilledBattleMech").Msg("more than 1 killer mech provided, only the zero indexed mech will be saved")
 		}
-		_, err = bmd.Update(gamedb.StdConn, boil.Infer())
+		bmd.KilledByID = null.StringFrom(killedByID[0].String())
+		kid, err := uuid.FromString(killedByID[0].String())
+
+		killerBmd, err := boiler.FindBattleMech(gamedb.StdConn, battleID, kid.String())
 		if err != nil {
-			gamelog.L.Error().Err(err).
-				Interface("boiler.BattleMech", bmd).
-				Msg("unable to update battle mech")
+			gamelog.L.Error().
+				Str("battleID", battleID).
+				Str("killerBmdID", killedByID[0].String()).
+				Str("db func", "UpdateKilledBattleMech").
+				Err(err).Msg("unable to retrieve killer battle Mech from database")
+
 			return nil, err
+		}
+
+		killerBmd.Kills = killerBmd.Kills + 1
+		_, err = killerBmd.Update(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			gamelog.L.Warn().Err(err).
+				Interface("boiler.BattleMech", killerBmd).
+				Msg("unable to update killer battle mech")
+		}
+
+		// Update mech_stats for killer mech
+		killerMS, err := boiler.MechStats(boiler.MechStatWhere.MechID.EQ(killedByID[0].String())).One(gamedb.StdConn)
+		if errors.Is(err, sql.ErrNoRows) {
+			// If mech stats not exist then create it
+			newMs := boiler.MechStat{
+				MechID:     killedByID[0].String(),
+				TotalKills: 1,
+			}
+			err := newMs.Insert(gamedb.StdConn, boil.Infer())
+			gamelog.L.Warn().Err(err).
+				Interface("boiler.MechStat", newMs).
+				Msg("unable to create killer mech stat")
+		} else if err != nil {
+			gamelog.L.Warn().Err(err).
+				Str("mechID", killedByID[0].String()).
+				Msg("unable to get killer mech stat")
+		} else {
+			killerMS.TotalKills = killerMS.TotalKills + 1
+			_, err = killerMS.Update(gamedb.StdConn, boil.Infer())
+			if err != nil {
+				gamelog.L.Warn().Err(err).
+					Interface("boiler.MechStat", killerMS).
+					Msg("unable to update killer mech stat")
+			}
+		}
+
+		// Create new entry in battle_kills
+		bk := &boiler.BattleKill{
+			MechID:    killedByID[0].String(),
+			BattleID:  battleID,
+			CreatedAt: bmd.Killed.Time,
+			KilledID:  mechID.String(),
+		}
+		err = bk.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			gamelog.L.Warn().Err(err).
+				Interface("boiler.BattleKill", bk).
+				Msg("unable to insert battle kill")
 		}
 	}
+	_, err = bmd.Update(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().Err(err).
+			Interface("boiler.BattleMech", bmd).
+			Msg("unable to update battle mech")
+		return nil, err
+	}
 
-	if gotKill {
-		bmd.Kills = bmd.Kills + 1
-		_, err = bmd.Update(gamedb.StdConn, boil.Infer())
+	// Update mech_stats for killed mech
+	ms, err := boiler.MechStats(boiler.MechStatWhere.MechID.EQ(mechID.String())).One(gamedb.StdConn)
+	if errors.Is(err, sql.ErrNoRows) {
+		// If mech stats not exist then create it
+		newMs := boiler.MechStat{
+			MechID:      mechID.String(),
+			TotalDeaths: 1,
+		}
+		err := newMs.Insert(gamedb.StdConn, boil.Infer())
+		gamelog.L.Warn().Err(err).
+			Interface("boiler.MechStat", newMs).
+			Msg("unable to create mech stat")
+	} else if err != nil {
+		gamelog.L.Warn().Err(err).
+			Str("mechID", mechID.String()).
+			Msg("unable to get mech stat")
+	} else {
+		ms.TotalDeaths = ms.TotalDeaths + 1
+		_, err = ms.Update(gamedb.StdConn, boil.Infer())
 		if err != nil {
-			gamelog.L.Error().Err(err).
-				Interface("boiler.BattleMech", bmd).
-				Msg("unable to update battle mech")
-			return nil, err
+			gamelog.L.Warn().Err(err).
+				Interface("boiler.MechStat", ms).
+				Msg("unable to update mech stat")
 		}
 	}
 
@@ -559,6 +611,24 @@ func QueueSetBattleID(battleID string, mechIDs ...uuid.UUID) error {
 	}
 
 	return nil
+}
+
+func ClearQueueByBattle(battleID string) error {
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		gamelog.L.Error().Str("db func", "ClearQueue").Err(err).Msg("unable to begin tx")
+		return err
+	}
+	defer tx.Rollback()
+
+	query := `DELETE FROM battle_queue WHERE battle_id = $1`
+	_, err = gamedb.StdConn.Exec(query, battleID)
+	if err != nil {
+		gamelog.L.Error().Str("db func", "ClearQueue").Err(err).Msg("unable to delete mechs from queue")
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func ClearQueue(mechIDs ...uuid.UUID) error {
