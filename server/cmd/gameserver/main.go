@@ -186,10 +186,9 @@ func main() {
 						pprofMonitor(pint, pport)
 					}
 
-					// TODO: Turn it back on before merging into dev
-					//if gameClientMinimumBuildNo == 0 {
-					//	gamelog.L.Panic().Msg("game_client_minimum_build_no not set or zero value")
-					//}
+					if gameClientMinimumBuildNo == 0 {
+						gamelog.L.Panic().Msg("game_client_minimum_build_no not set or zero value")
+					}
 
 					pgxconn, err := pgxconnect(
 						databaseUser,
