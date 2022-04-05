@@ -46,6 +46,7 @@ func NewPlayerController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Pla
 	api.SecureUserCommand(HubKeyPlayerGetSettings, pc.PlayerGetSettingsHandler)
 
 	// punish vote related
+	api.SecureUserCommand(HubKeyPlayerPunishmentList, pc.PlayerPunishmentList)
 	api.SecureUserCommand(HubKeyPlayerActiveCheck, pc.PlayerActiveCheckHandler)
 	api.SecureUserFactionCommand(HubKeyFactionPlayerSearch, pc.FactionPlayerSearch)
 	api.SecureUserFactionCommand(HubKeyPunishOptions, pc.PunishOptions)
@@ -172,6 +173,45 @@ func (pc *PlayerController) PlayerBattleQueueBrowserSubscribeHandler(ctx context
 	}
 
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPlayerBattleQueueBrowserSubscribe, wsc.Identifier())), nil
+}
+
+type PlayerPunishment struct {
+	*boiler.PunishedPlayer
+	RelatedPunishVote *boiler.PunishVote   `json:"related_punish_vote"`
+	PunishOption      *boiler.PunishOption `json:"punish_option"`
+}
+
+const HubKeyPlayerPunishmentList hub.HubCommandKey = "PLAYER:PUNISHMENT:LIST"
+
+func (pc *PlayerController) PlayerPunishmentList(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	punishments, err := boiler.PunishedPlayers(
+		boiler.PunishedPlayerWhere.PlayerID.EQ(wsc.Identifier()),
+		boiler.PunishedPlayerWhere.PunishUntil.GT(time.Now()),
+		qm.Load(boiler.PunishedPlayerRels.PunishOption),
+		qm.Load(boiler.PunishedPlayerRels.RelatedPunishVote),
+	).All(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Str("player id", wsc.Identifier()).Err(err).Msg("Failed to get player's punishment from db")
+		return terror.Error(err, "Failed to get player's punishment from db")
+	}
+
+	if punishments == nil || len(punishments) == 0 {
+		reply([]*PlayerPunishment{})
+		return nil
+	}
+
+	playerPunishments := []*PlayerPunishment{}
+	for _, punishment := range punishments {
+		playerPunishments = append(playerPunishments, &PlayerPunishment{
+			PunishedPlayer:    punishment,
+			RelatedPunishVote: punishment.R.RelatedPunishVote,
+			PunishOption:      punishment.R.PunishOption,
+		})
+	}
+
+	reply(playerPunishments)
+
+	return nil
 }
 
 type PlayerActiveCheckRequest struct {

@@ -158,7 +158,7 @@ func (opts *Opts) SubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn HubSub
 ***************************/
 
 // HubNetSubscribeCommandFunc is a registered handler for the hub to route to for subscriptions
-type HubNetSubscribeCommandFunc func(ctx context.Context, client *hub.Client, payload []byte) (messagebus.BusKey, error)
+type HubNetSubscribeCommandFunc func(ctx context.Context, client *hub.Client, payload []byte, needProcess bool) (messagebus.BusKey, error)
 
 // NetSubscribeCommand registers a net message subscription command to the hub
 //
@@ -203,7 +203,7 @@ func (opts *Opts) NetSubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn Hub
 			return terror.Error(terror.ErrForbidden)
 		}
 
-		busKey, err := fn(ctx, wsc, payload)
+		busKey, err := fn(ctx, wsc, payload, true)
 		if err != nil {
 			return terror.Error(err)
 		}
@@ -211,6 +211,22 @@ func (opts *Opts) NetSubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn Hub
 		// add subscription to the message bus
 		opts.MessageBus.SubClient(busKey, wsc)
 
+		return nil
+	})
+
+	unsubscribeKey := hub.HubCommandKey(key + ":UNSUBSCRIBE")
+	opts.Hub.Handle(unsubscribeKey, func(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+		if authCheck(wsc) {
+			return terror.Error(terror.ErrForbidden)
+		}
+
+		busKey, err := fn(ctx, wsc, payload, false)
+		if err != nil {
+			return terror.Error(err)
+		}
+
+		// add subscription to the message bus
+		opts.MessageBus.UnsubClient(busKey, wsc)
 		return nil
 	})
 }

@@ -9,7 +9,7 @@ import (
 	"server/gamelog"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
+	"github.com/gofrs/uuid"
 
 	"github.com/ninja-software/terror/v2"
 
@@ -146,8 +146,6 @@ func (pvt *PunishVoteTracker) CurrentEligiblePlayers() map[string]bool {
 			result[player.ID] = true
 		}
 	}
-
-	spew.Dump(result)
 
 	// fill the list with voted players
 	for pid := range pvt.CurrentPunishVote.AgreedPlayerIDs {
@@ -516,4 +514,36 @@ func (pvt *PunishVoteTracker) BroadcastPunishVoteResult(isPassed bool) {
 
 	// broadcast
 	pvt.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionChatSubscribe, pvt.FactionID)), chatMessage)
+
+	if isPassed {
+		// get current player's punishment
+		punishments, err := boiler.PunishedPlayers(
+			boiler.PunishedPlayerWhere.PlayerID.EQ(punishVote.ReportedPlayerID),
+			boiler.PunishedPlayerWhere.PunishUntil.GT(time.Now()),
+			qm.Load(boiler.PunishedPlayerRels.PunishOption),
+			qm.Load(boiler.PunishedPlayerRels.RelatedPunishVote),
+		).All(gamedb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Str("player id", punishVote.ReportedPlayerID).Err(err).Msg("Failed to get player's punishment from db")
+			return
+		}
+
+		if punishments == nil || len(punishments) == 0 {
+			return
+		}
+
+		playerPunishments := []*PlayerPunishment{}
+		for _, punishment := range punishments {
+			playerPunishments = append(playerPunishments, &PlayerPunishment{
+				PunishedPlayer:    punishment,
+				RelatedPunishVote: punishment.R.RelatedPunishVote,
+				PunishOption:      punishment.R.PunishOption,
+			})
+		}
+
+		punishedPlayerID := uuid.FromStringOrNil(punishVote.ReportedPlayerID)
+
+		// send to the player
+		pvt.api.BattleArena.SendToOnlinePlayer(punishedPlayerID, HubKeyPlayerPunishmentList, playerPunishments)
+	}
 }

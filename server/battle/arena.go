@@ -85,6 +85,16 @@ func (arena *Arena) currentBattleUsersCopy() []*BattleUser {
 	return battleUsers
 }
 
+func (arena *Arena) SendToOnlinePlayer(playerID uuid.UUID, key hub.HubCommandKey, payload interface{}) {
+	arena.RLock()
+	defer arena.RUnlock()
+	if arena._currentBattle == nil {
+		return
+	}
+
+	arena._currentBattle.users.Send(key, payload, playerID)
+}
+
 type Opts struct {
 	Conn              db.Conn
 	Addr              string
@@ -712,7 +722,7 @@ func (arena *Arena) GabsBribeStageSubscribe(ctx context.Context, wsc *hub.Client
 
 const HubKeyBattleAbilityProgressBarUpdated hub.HubCommandKey = "BATTLE:ABILITY:PROGRESS:BAR:UPDATED"
 
-func (arena *Arena) FactionProgressBarUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.BusKey, error) {
+func (arena *Arena) FactionProgressBarUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, needProcess bool) (messagebus.BusKey, error) {
 	gamelog.L.Info().Str("fn", "FactionProgressBarUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
 
 	return messagebus.BusKey(HubKeyBattleAbilityProgressBarUpdated), nil
@@ -727,7 +737,7 @@ type AbilityPriceUpdateRequest struct {
 	} `json:"payload"`
 }
 
-func (arena *Arena) FactionAbilityPriceUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.BusKey, error) {
+func (arena *Arena) FactionAbilityPriceUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, needProcess bool) (messagebus.BusKey, error) {
 	req := &AbilityPriceUpdateRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -737,17 +747,17 @@ func (arena *Arena) FactionAbilityPriceUpdateSubscribeHandler(ctx context.Contex
 	return messagebus.BusKey(fmt.Sprintf("%s,%s", HubKeyAbilityPriceUpdated, req.Payload.AbilityIdentity)), nil
 }
 
-func (arena *Arena) LiveVoteCountUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.BusKey, error) {
+func (arena *Arena) LiveVoteCountUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, needProcess bool) (messagebus.BusKey, error) {
 	return messagebus.BusKey(HubKeyLiveVoteCountUpdated), nil
 }
 
-func (arena *Arena) WarMachineLocationUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.BusKey, error) {
+func (arena *Arena) WarMachineLocationUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, needProcess bool) (messagebus.BusKey, error) {
 	return messagebus.BusKey(HubKeyWarMachineLocationUpdated), nil
 }
 
 const HubKeySpoilOfWarUpdated hub.HubCommandKey = "SPOIL:OF:WAR:UPDATED"
 
-func (arena *Arena) SpoilOfWarUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.BusKey, error) {
+func (arena *Arena) SpoilOfWarUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, needProcess bool) (messagebus.BusKey, error) {
 	gamelog.L.Info().Str("fn", "SpoilOfWarUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
 	return messagebus.BusKey(HubKeySpoilOfWarUpdated), nil
 }
@@ -876,6 +886,7 @@ func (arena *Arena) start() {
 					continue
 				}
 
+				// TODO: turn this back on before pushing to staging
 				//gameClientBuildNo, err := strconv.ParseUint(dataPayload.ClientBuildNo, 10, 64)
 				//if err != nil {
 				//	gamelog.L.Panic().Str("game_client_build_no", dataPayload.ClientBuildNo).Msg("invalid game client build number received")
