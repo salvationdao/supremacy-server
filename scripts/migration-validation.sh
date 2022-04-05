@@ -3,14 +3,14 @@
 
 BASE_BRANCH=$1
 
-OLDEST_NEW_MIGRATION_FILE=$(git diff --name-only origin/$BASE_BRANCH --diff-filter=d | grep -m1 db/migrations/)
+OLDEST_NEW_MIGRATION_FILE=$(git diff --name-only origin/$BASE_BRANCH --diff-filter=d | grep -m1 server/db/migrations/)
 
 if [[ -z $OLDEST_NEW_MIGRATION_FILE ]]; then
     echo "no new migrations"
     exit 0
 fi
 
-NEWEST_EXISTING_MIGRATION_FILE=$(git ls-tree -r origin/$BASE_BRANCH --name-only | grep db/migrations/ | tail -1)
+NEWEST_EXISTING_MIGRATION_FILE=$(git ls-tree -r origin/$BASE_BRANCH --name-only | grep server/db/migrations/ | tail -1)
 
 if [[ -z $NEWEST_EXISTING_MIGRATION_FILE ]]; then
     echo "no existing migrations"
