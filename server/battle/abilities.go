@@ -1196,6 +1196,31 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 					// generate location select order list
 					as.locationDecidersSet(as.battle().ID, cont.factionID.String(), cont.userID)
 
+					// enter cooldown phase if there is no player to select location
+					if len(as.locationDeciders.list) == 0 {
+						// broadcast no ability
+						as.battle().arena.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
+							Type: LocationSelectTypeCancelledNoPlayer,
+							Ability: &AbilityBrief{
+								Label:    factionAbility.Label,
+								ImageUrl: factionAbility.ImageUrl,
+								Colour:   factionAbility.Colour,
+							},
+						})
+
+						// set new battle ability
+						cooldownSecond, err := as.SetNewBattleAbility()
+						if err != nil {
+							gamelog.L.Error().Err(err).Msg("Failed to set new battle ability")
+						}
+
+						// enter cooldown phase, if there is no user left for location select
+						as.battleAbilityPool.Stage.Phase.Store(BribeStageCooldown)
+						as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(cooldownSecond) * time.Second))
+						as.battle().arena.messageBus.Send(messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
+						continue
+					}
+
 					// change bribing phase to location select
 					as.battleAbilityPool.Stage.Phase.Store(BribeStageLocationSelect)
 					as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(LocationSelectDurationSecond) * time.Second))
@@ -1206,7 +1231,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 					ab, _ := as.battleAbilityPool.Abilities.Load(as.battleAbilityPool.TriggeredFactionID.Load())
 
 					// send message to the user who trigger the ability
-					as.battle().arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeGabsBribingWinnerSubscribe, cont.userID)), &LocationSelectAnnouncement{
+					as.battle().arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeGabsBribingWinnerSubscribe, as.locationDeciders.list[0])), &LocationSelectAnnouncement{
 						GameAbility: ab,
 						EndTime:     as.battleAbilityPool.Stage.EndTime(),
 					})
@@ -1219,7 +1244,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 						},
 					}
 					// get player
-					currentUser, err := BuildUserDetailWithFaction(cont.userID)
+					currentUser, err := BuildUserDetailWithFaction(as.locationDeciders.list[0])
 					if err == nil {
 						notification.User = currentUser
 					}
@@ -1360,10 +1385,6 @@ func (as *AbilitiesSystem) locationDecidersSet(battleID string, factionID string
 
 	// get location select limited players
 	punishedPlayers, err := boiler.PunishedPlayers(
-		qm.Select(
-			boiler.PunishedPlayerColumns.ID,
-			boiler.PunishedPlayerColumns.PlayerID,
-		),
 		boiler.PunishedPlayerWhere.PunishUntil.GT(time.Now()),
 		qm.InnerJoin(
 			fmt.Sprintf(
@@ -1378,7 +1399,6 @@ func (as *AbilitiesSystem) locationDecidersSet(battleID string, factionID string
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Err(err).Msg("Failed to get limited select players from db")
 	}
-
 	// initialise location select list
 	as.locationDeciders.list = []uuid.UUID{}
 
@@ -1386,6 +1406,7 @@ func (as *AbilitiesSystem) locationDecidersSet(battleID string, factionID string
 		isPunished := false
 		// check user is banned
 		for _, pp := range punishedPlayers {
+
 			if pp.PlayerID == pid.String() {
 				isPunished = true
 				break
