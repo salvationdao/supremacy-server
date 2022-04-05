@@ -507,11 +507,6 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 	}()
 	mws := make([]*db.MechWithOwner, len(payload.WinningWarMachines))
 
-	err := db.ClearQueueByBattle(btl.ID)
-	if err != nil {
-		gamelog.L.Error().Str("Battle ID", btl.ID).Msg("unable to clear queue for battle")
-	}
-
 	for i, wmwin := range payload.WinningWarMachines {
 		var wm *WarMachine
 		for _, w := range btl.WarMachines {
@@ -666,7 +661,7 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 			}
 		}
 	}
-	err = db.WinBattle(btl.ID, payload.WinCondition, mws...)
+	err := db.WinBattle(btl.ID, payload.WinCondition, mws...)
 	if err != nil {
 		gamelog.L.Error().
 			Str("Battle ID", btl.ID).
@@ -761,6 +756,19 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 
 	btl.processWinners(payload)
 	btl.endMultis(endInfo)
+
+	notifications, err := boiler.BattleQueueNotifications(boiler.BattleQueueNotificationWhere.BattleID.EQ(null.StringFrom(btl.ID))).All(gamedb.StdConn)
+
+	_, err = notifications.UpdateAll(gamedb.StdConn, boiler.M{
+		boiler.BattleQueueNotificationColumns.QueueMechID: null.NewString("", false),
+	})
+	if err != nil {
+		gamelog.L.Panic().Str("Battle ID", btl.ID).Str("battle_id", payload.BattleID).Msg("Failed to remove queue mechs id from battle queue notifications.")
+	}
+	_, err = boiler.BattleQueues(boiler.BattleQueueWhere.BattleID.EQ(null.StringFrom(btl.BattleID))).DeleteAll(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Panic().Str("Battle ID", btl.ID).Str("battle_id", payload.BattleID).Msg("Failed to remove mechs from battle queue.")
+	}
 
 	gamelog.L.Info().Msgf("battle has been cleaned up, sending broadcast %s", btl.ID)
 	btl.endBroadcast(endInfo)
