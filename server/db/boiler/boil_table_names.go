@@ -46,8 +46,13 @@ var TableNames = struct {
 	Modules                                            string
 	Multipliers                                        string
 	PendingTransactions                                string
+	PlayerActiveLogs                                   string
 	PlayerPreferences                                  string
 	Players                                            string
+	PlayersPunishVotes                                 string
+	PunishOptions                                      string
+	PunishVotes                                        string
+	PunishedPlayers                                    string
 	SchemaMigrations                                   string
 	SpoilsOfWar                                        string
 	StreamList                                         string
@@ -100,8 +105,13 @@ var TableNames = struct {
 	Modules:                          "modules",
 	Multipliers:                      "multipliers",
 	PendingTransactions:              "pending_transactions",
+	PlayerActiveLogs:                 "player_active_logs",
 	PlayerPreferences:                "player_preferences",
 	Players:                          "players",
+	PlayersPunishVotes:               "players_punish_votes",
+	PunishOptions:                    "punish_options",
+	PunishVotes:                      "punish_votes",
+	PunishedPlayers:                  "punished_players",
 	SchemaMigrations:                 "schema_migrations",
 	SpoilsOfWar:                      "spoils_of_war",
 	StreamList:                       "stream_list",

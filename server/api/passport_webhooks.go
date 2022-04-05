@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -37,7 +36,7 @@ func PassportWebhookRouter(log *zerolog.Logger, conn db.Conn, webhookSecret stri
 		API:  api,
 	}
 	r := chi.NewRouter()
-	r.Post("/auth_ring_check", WithPassportSecret(webhookSecret, WithError(c.AuthRingCheck)))
+	//r.Post("/auth_ring_check", WithPassportSecret(webhookSecret, WithError(c.AuthRingCheck
 	r.Post("/user_update", WithPassportSecret(webhookSecret, WithError(c.UserUpdated)))
 	r.Post("/user_enlist_faction", WithPassportSecret(webhookSecret, WithError(c.UserEnlistFaction)))
 	r.Post("/user_stat", WithPassportSecret(webhookSecret, WithError(c.UserStatGet)))
@@ -76,21 +75,14 @@ func (pc *PassportWebhookController) UserUpdated(w http.ResponseWriter, r *http.
 		if err != nil {
 			return http.StatusInternalServerError, terror.Error(err, "faction not found")
 		}
-		req.User.Faction = &server.Faction{
-			ID:    server.FactionID{},
-			Label: faction.Label,
-			Theme: &server.FactionTheme{
-				Primary:    faction.PrimaryColor,
-				Secondary:  faction.SecondaryColor,
-				Background: faction.BackgroundColor,
-			},
-			LogoBlobID:       server.BlobID{},
-			BackgroundBlobID: server.BlobID{},
-			VotePrice:        faction.VotePrice,
-			ContractReward:   faction.ContractReward,
-			Description:      "",
+
+		err = req.User.Faction.SetFromBoilerFaction(faction)
+		if err != nil {
+			return http.StatusInternalServerError, terror.Error(err, "Unable to convert faction, contact support or try again.")
 		}
 	}
+
+	req.User.Gid = player.Gid
 
 	// update player
 	_, err = player.Update(gamedb.StdConn, boil.Whitelist(
@@ -102,7 +94,7 @@ func (pc *PassportWebhookController) UserUpdated(w http.ResponseWriter, r *http.
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	pc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, player.ID)), player)
+	pc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, player.ID)), req.User)
 
 	return helpers.EncodeJSON(w, struct {
 		IsSuccess bool `json:"is_success"`
@@ -148,6 +140,8 @@ func (pc *PassportWebhookController) UserEnlistFaction(w http.ResponseWriter, r 
 		Username:      player.Username.String,
 		PublicAddress: player.PublicAddress,
 		FactionID:     req.FactionID,
+		Faction:       &server.Faction{},
+		Gid:           player.Gid,
 	}
 
 	faction, err := boiler.FindFaction(gamedb.StdConn, req.FactionID.String())
@@ -244,99 +238,6 @@ func (pc *PassportWebhookController) FactionStatGet(w http.ResponseWriter, r *ht
 type WarMachineQueuePositionRequest struct {
 	FactionID server.FactionID `json:"factionID"`
 	AssetHash string           `json:"assethash"`
-}
-
-type AuthRingCheckRequest struct {
-	User                *server.User `json:"user"`
-	GameserverSessionID string       `json:"gameserver_session_id"`
-}
-
-func (pc *PassportWebhookController) AuthRingCheck(w http.ResponseWriter, r *http.Request) (int, error) {
-
-	req := &AuthRingCheckRequest{}
-	err := json.NewDecoder(r.Body).Decode(req)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err)
-	}
-
-	if req.GameserverSessionID == "" {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("no auth ring check key provided"), "Ring check key is required")
-	}
-
-	if !req.User.PublicAddress.Valid {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing user public address"), "User public address is required")
-	}
-
-	// skip the auth, if not whitelisted
-	if os.Getenv("PASSPORT_ENVIRONMENT") == "production" || os.Getenv("PASSPORT_ENVIRONMENT") == "staging" {
-		if !IsWhitelistedAddress(req.User.PublicAddress.String) {
-			// remove key
-			pc.API.RingCheckAuthMap.Remove(req.GameserverSessionID)
-			return helpers.EncodeJSON(w, struct {
-				IsSuccess     bool `json:"is_success"`
-				IsWhitelisted bool `json:"is_whitelisted"`
-			}{
-				IsSuccess:     true,
-				IsWhitelisted: false,
-			})
-		}
-	}
-
-	// check whitelist
-	client, err := pc.API.RingCheckAuthMap.Check(req.GameserverSessionID)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Hub client not found")
-	}
-
-	// set client identifier
-	client.SetIdentifier(req.User.ID.String())
-
-	var factionID *string
-	if !req.User.FactionID.IsNil() {
-		str := req.User.FactionID.String()
-		factionID = &str
-
-		// get faction detail
-		faction, err := db.FactionGet(str)
-		if err != nil {
-			return http.StatusBadRequest, terror.Error(err)
-		}
-
-		err = req.User.Faction.SetFromBoilerFaction(faction)
-		if err != nil {
-			return http.StatusInternalServerError, terror.Error(err)
-		}
-	}
-
-	// store user into player table
-	err = db.UpsertPlayer(&boiler.Player{
-		ID:            req.User.ID.String(),
-		Username:      null.StringFrom(req.User.Username),
-		PublicAddress: req.User.PublicAddress,
-		FactionID:     null.StringFromPtr(factionID),
-	})
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err)
-	}
-
-	b, err := json.Marshal(&BroadcastPayload{
-		Key:     HubKeyUserRingCheck,
-		Payload: req.User,
-	})
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err)
-	}
-
-	go client.Send(b)
-
-	return helpers.EncodeJSON(w, struct {
-		IsSuccess     bool `json:"is_success"`
-		IsWhitelisted bool `json:"is_whitelisted"`
-	}{
-		IsSuccess:     true,
-		IsWhitelisted: true,
-	})
-
 }
 
 type FactionQueueCostGetRequest struct {

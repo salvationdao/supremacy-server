@@ -6,8 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ninja-software/terror/v2"
-	"github.com/volatiletech/null/v8"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -17,6 +15,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
 
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/shopspring/decimal"
@@ -835,16 +836,20 @@ func (p *GabsBribeStage) StoreEndTime(t time.Time) {
 	p.endTime = t
 }
 
-func (p *GabsBribeStage) MarshalJSON() ([]byte, error) {
-	res := struct {
-		Phase   string    `json:"phase"`
-		EndTime time.Time `json:"end_time"`
-	}{
+func (p *GabsBribeStage) Normalise() *GabsBribeStageNormalised {
+	return &GabsBribeStageNormalised{
 		Phase:   BribeStages[p.Phase.Load()],
 		EndTime: p.endTime,
 	}
+}
 
-	return json.Marshal(&res)
+type GabsBribeStageNormalised struct {
+	Phase   string    `json:"phase"`
+	EndTime time.Time `json:"end_time"`
+}
+
+func (p *GabsBribeStage) MarshalJSON() ([]byte, error) {
+	return json.Marshal(p.Normalise())
 }
 
 // track user contribution of current battle
@@ -948,6 +953,8 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 		}()
 		price_ticker.Stop()
 		main_ticker.Stop()
+		close(as.endGabs)
+		close(end_progress)
 	}()
 
 	// start voting stage
@@ -1189,6 +1196,31 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 					// generate location select order list
 					as.locationDecidersSet(as.battle().ID, cont.factionID.String(), cont.userID)
 
+					// enter cooldown phase if there is no player to select location
+					if len(as.locationDeciders.list) == 0 {
+						// broadcast no ability
+						as.battle().arena.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
+							Type: LocationSelectTypeCancelledNoPlayer,
+							Ability: &AbilityBrief{
+								Label:    factionAbility.Label,
+								ImageUrl: factionAbility.ImageUrl,
+								Colour:   factionAbility.Colour,
+							},
+						})
+
+						// set new battle ability
+						cooldownSecond, err := as.SetNewBattleAbility()
+						if err != nil {
+							gamelog.L.Error().Err(err).Msg("Failed to set new battle ability")
+						}
+
+						// enter cooldown phase, if there is no user left for location select
+						as.battleAbilityPool.Stage.Phase.Store(BribeStageCooldown)
+						as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(cooldownSecond) * time.Second))
+						as.battle().arena.messageBus.Send(messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
+						continue
+					}
+
 					// change bribing phase to location select
 					as.battleAbilityPool.Stage.Phase.Store(BribeStageLocationSelect)
 					as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(LocationSelectDurationSecond) * time.Second))
@@ -1199,7 +1231,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 					ab, _ := as.battleAbilityPool.Abilities.Load(as.battleAbilityPool.TriggeredFactionID.Load())
 
 					// send message to the user who trigger the ability
-					as.battle().arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeGabsBribingWinnerSubscribe, cont.userID)), &LocationSelectAnnouncement{
+					as.battle().arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeGabsBribingWinnerSubscribe, as.locationDeciders.list[0])), &LocationSelectAnnouncement{
 						GameAbility: ab,
 						EndTime:     as.battleAbilityPool.Stage.EndTime(),
 					})
@@ -1212,7 +1244,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 						},
 					}
 					// get player
-					currentUser, err := BuildUserDetailWithFaction(cont.userID)
+					currentUser, err := BuildUserDetailWithFaction(as.locationDeciders.list[0])
 					if err == nil {
 						notification.User = currentUser
 					}
@@ -1332,13 +1364,11 @@ func (as *AbilitiesSystem) locationDecidersSet(battleID string, factionID string
 		gamelog.L.Error().Str("battle_id", battleID).Str("faction_id", factionID).Err(err).Msg("failed to get player list")
 	}
 
-	// initialise location select list
-	as.locationDeciders.list = []uuid.UUID{}
-
+	// sort the order of the list
+	tempList := []uuid.UUID{}
 	for _, tid := range triggerByUserID {
-		as.locationDeciders.list = append(as.locationDeciders.list, tid)
+		tempList = append(tempList, tid)
 	}
-
 	for _, pid := range playerList {
 		exists := false
 		for _, tid := range triggerByUserID {
@@ -1350,7 +1380,43 @@ func (as *AbilitiesSystem) locationDecidersSet(battleID string, factionID string
 		if exists {
 			continue
 		}
-		as.locationDeciders.list = append(as.locationDeciders.list, pid)
+		tempList = append(tempList, pid)
+	}
+
+	// get location select limited players
+	punishedPlayers, err := boiler.PunishedPlayers(
+		boiler.PunishedPlayerWhere.PunishUntil.GT(time.Now()),
+		qm.InnerJoin(
+			fmt.Sprintf(
+				"%s on %s = %s and %s = 'limit_location_select'",
+				boiler.TableNames.PunishOptions,
+				qm.Rels(boiler.TableNames.PunishOptions, boiler.PunishOptionColumns.ID),
+				qm.Rels(boiler.TableNames.PunishedPlayers, boiler.PunishedPlayerColumns.PunishOptionID),
+				qm.Rels(boiler.TableNames.PunishOptions, boiler.PunishOptionColumns.Key),
+			),
+		),
+	).All(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Err(err).Msg("Failed to get limited select players from db")
+	}
+	// initialise location select list
+	as.locationDeciders.list = []uuid.UUID{}
+
+	for _, pid := range tempList {
+		isPunished := false
+		// check user is banned
+		for _, pp := range punishedPlayers {
+
+			if pp.PlayerID == pid.String() {
+				isPunished = true
+				break
+			}
+		}
+
+		// append to the list if player is not punished
+		if !isPunished {
+			as.locationDeciders.list = append(as.locationDeciders.list, pid)
+		}
 	}
 }
 
@@ -1598,7 +1664,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilitiesGet(factionID uuid.UUID) []Game
 	return abilities
 }
 
-// FactionUniqueAbilityGet return the faction unique ability for the given faction
+// WarMachineAbilitiesGet return the faction unique ability for the given faction
 func (as *AbilitiesSystem) WarMachineAbilitiesGet(factionID uuid.UUID, hash string) []GameAbility {
 	defer func() {
 		if err := recover(); err != nil {
@@ -1669,9 +1735,9 @@ func (as *AbilitiesSystem) BribeGabs(factionID uuid.UUID, userID uuid.UUID, amou
 	}()
 }
 
-func (as *AbilitiesSystem) BribeStageGet() *GabsBribeStage {
+func (as *AbilitiesSystem) BribeStageGet() *GabsBribeStageNormalised {
 	if as.battleAbilityPool != nil {
-		return as.battleAbilityPool.Stage
+		return as.battleAbilityPool.Stage.Normalise()
 	}
 	return nil
 }
@@ -1832,6 +1898,7 @@ func BuildUserDetailWithFaction(userID uuid.UUID) (*UserBrief, error) {
 
 	userBrief.ID = userID
 	userBrief.Username = user.Username.String
+	userBrief.Gid = user.Gid
 
 	if !user.FactionID.Valid {
 		return userBrief, nil
