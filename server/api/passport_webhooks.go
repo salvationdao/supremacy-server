@@ -149,6 +149,10 @@ func (pc *PassportWebhookController) UserEnlistFaction(w http.ResponseWriter, r 
 		return http.StatusInternalServerError, terror.Error(err, "Unable to find faction from db, contact support or try again.")
 	}
 
+	if user.Faction == nil {
+		user.Faction = &server.Faction{}
+	}
+
 	err = user.Faction.SetFromBoilerFaction(faction)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Unable to convert faction, contact support or try again.")

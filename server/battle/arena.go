@@ -30,17 +30,17 @@ import (
 )
 
 type Arena struct {
-	conn              db.Conn
-	socket            *websocket.Conn
-	timeout           time.Duration
-	messageBus        *messagebus.MessageBus
-	_currentBattle    *Battle
-	syndicates        map[string]boiler.Faction
-	AIPlayers         map[string]db.PlayerWithFaction
-	RPCClient         *rpcclient.PassportXrpcClient
-	gameClientLock    sync.Mutex
-	sms               server.SMS
-	gameClientBuildNo uint64
+	conn                     db.Conn
+	socket                   *websocket.Conn
+	timeout                  time.Duration
+	messageBus               *messagebus.MessageBus
+	_currentBattle           *Battle
+	syndicates               map[string]boiler.Faction
+	AIPlayers                map[string]db.PlayerWithFaction
+	RPCClient                *rpcclient.PassportXrpcClient
+	gameClientLock           sync.Mutex
+	sms                      server.SMS
+	gameClientMinimumBuildNo uint64
 
 	sync.RWMutex
 }
@@ -96,14 +96,14 @@ func (arena *Arena) SendToOnlinePlayer(playerID uuid.UUID, key hub.HubCommandKey
 }
 
 type Opts struct {
-	Conn              db.Conn
-	Addr              string
-	Timeout           time.Duration
-	Hub               *hub.Hub
-	MessageBus        *messagebus.MessageBus
-	RPCClient         *rpcclient.PassportXrpcClient
-	SMS               server.SMS
-	GameClientBuildNo uint64
+	Conn                     db.Conn
+	Addr                     string
+	Timeout                  time.Duration
+	Hub                      *hub.Hub
+	MessageBus               *messagebus.MessageBus
+	RPCClient                *rpcclient.PassportXrpcClient
+	SMS                      server.SMS
+	GameClientMinimumBuildNo uint64
 }
 
 type MessageType byte
@@ -145,7 +145,7 @@ func NewArena(opts *Opts) *Arena {
 	arena.messageBus = opts.MessageBus
 	arena.RPCClient = opts.RPCClient
 	arena.sms = opts.SMS
-	arena.gameClientBuildNo = opts.GameClientBuildNo
+	arena.gameClientMinimumBuildNo = opts.GameClientMinimumBuildNo
 
 	arena.AIPlayers, err = db.DefaultFactionPlayers()
 	if err != nil {
@@ -886,14 +886,14 @@ func (arena *Arena) start() {
 					continue
 				}
 
-				// TODO: turn this back on before pushing to staging
+				// TODO: Turn it back on before merging into dev
 				//gameClientBuildNo, err := strconv.ParseUint(dataPayload.ClientBuildNo, 10, 64)
 				//if err != nil {
 				//	gamelog.L.Panic().Str("game_client_build_no", dataPayload.ClientBuildNo).Msg("invalid game client build number received")
 				//}
 				//
-				//if gameClientBuildNo < arena.gameClientBuildNo {
-				//	gamelog.L.Panic().Uint64("current_game_client_build", gameClientBuildNo).Uint64("minimum_game_client_build", arena.gameClientBuildNo).Msg("unsupported game client build number")
+				//if gameClientBuildNo < arena.gameClientMinimumBuildNo {
+				//	gamelog.L.Panic().Str("current_game_client_build", dataPayload.ClientBuildNo).Uint64("minimum_game_client_build", arena.gameClientMinimumBuildNo).Msg("unsupported game client build number")
 				//}
 
 				err = btl.preIntro(dataPayload)
