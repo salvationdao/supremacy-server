@@ -1546,7 +1546,7 @@ type QueueStatusResponse struct {
 
 const WSQueueStatusSubscribe hub.HubCommandKey = hub.HubCommandKey("BATTLE:QUEUE:STATUS:SUBSCRIBE")
 
-func (arena *Arena) QueueStatusSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (arena *Arena) QueueStatusSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -1564,32 +1564,34 @@ func (arena *Arena) QueueStatusSubscribeHandler(ctx context.Context, wsc *hub.Cl
 		return "", "", terror.Error(err)
 	}
 
-	result, err := db.QueueLength(factionID)
-	if err != nil {
-		gamelog.L.Error().Interface("factionID", factionID).Err(err).Msg("unable to retrieve queue length")
-		return "", "", terror.Error(err)
-	}
+	if needProcess {
+		result, err := db.QueueLength(factionID)
+		if err != nil {
+			gamelog.L.Error().Interface("factionID", factionID).Err(err).Msg("unable to retrieve queue length")
+			return "", "", terror.Error(err)
+		}
 
-	queueLength := decimal.NewFromInt(result + 1)
-	queueCost := decimal.New(25, 16)     // 0.25 sups
-	contractReward := decimal.New(2, 18) // 2 sups
-	if queueLength.GreaterThan(decimal.NewFromInt(0)) {
-		queueCost = queueLength.Mul(decimal.New(25, 16))     // 0.25x queue length
-		contractReward = queueLength.Mul(decimal.New(2, 18)) // 2x queue length
-	}
+		queueLength := decimal.NewFromInt(result + 1)
+		queueCost := decimal.New(25, 16)     // 0.25 sups
+		contractReward := decimal.New(2, 18) // 2 sups
+		if queueLength.GreaterThan(decimal.NewFromInt(0)) {
+			queueCost = queueLength.Mul(decimal.New(25, 16))     // 0.25x queue length
+			contractReward = queueLength.Mul(decimal.New(2, 18)) // 2x queue length
+		}
 
-	reply(QueueStatusResponse{
-		result,
-		queueCost,
-		contractReward,
-	})
+		reply(QueueStatusResponse{
+			result,
+			queueCost,
+			contractReward,
+		})
+	}
 
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", WSQueueStatusSubscribe, factionID.String())), nil
 }
 
 const WSQueueUpdatedSubscribe hub.HubCommandKey = hub.HubCommandKey("BATTLE:QUEUE:UPDATED")
 
-func (arena *Arena) QueueUpdatedSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (arena *Arena) QueueUpdatedSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -1607,8 +1609,9 @@ func (arena *Arena) QueueUpdatedSubscribeHandler(ctx context.Context, wsc *hub.C
 		return "", "", terror.Error(err)
 	}
 
-	reply(true)
-
+	if needProcess {
+		reply(true)
+	}
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", WSQueueUpdatedSubscribe, factionID)), nil
 }
 
@@ -1723,7 +1726,7 @@ func (arena *Arena) AssetQueueStatusListHandler(ctx context.Context, hub *hub.Cl
 
 const WSAssetQueueStatusSubscribe hub.HubCommandKey = hub.HubCommandKey("ASSET:QUEUE:STATUS:SUBSCRIBE")
 
-func (arena *Arena) AssetQueueStatusSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (arena *Arena) AssetQueueStatusSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	req := &AssetQueueStatusRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -1747,6 +1750,11 @@ func (arena *Arena) AssetQueueStatusSubscribeHandler(ctx context.Context, wsc *h
 		return "", "", terror.Error(err)
 	}
 
+	if mech.OwnerID != wsc.Identifier() {
+		gamelog.L.Warn().Str("player id", wsc.Identifier()).Str("mech id", mechID.String()).Msg("Someone attempt to subscribe on a mech's queuing status which is not belong to them")
+		return "", "", terror.Error(terror.ErrForbidden, "Cannot subscribe on mech which is not belong to you")
+	}
+
 	ownerID, err := uuid.FromString(mech.OwnerID)
 	if err != nil {
 		gamelog.L.Error().Str("ownerID", mech.OwnerID).Err(err).Msg("unable to convert owner id from string")
@@ -1759,30 +1767,32 @@ func (arena *Arena) AssetQueueStatusSubscribeHandler(ctx context.Context, wsc *h
 		return "", "", terror.Error(err)
 	}
 
-	position, err := db.QueuePosition(mechID, factionID)
-	if errors.Is(sql.ErrNoRows, err) {
-		// If mech is not in queue
+	if needProcess {
+		position, err := db.QueuePosition(mechID, factionID)
+		if errors.Is(sql.ErrNoRows, err) {
+			// If mech is not in queue
+			reply(AssetQueueStatusResponse{
+				nil,
+				nil,
+			})
+			return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", WSAssetQueueStatusSubscribe, mechID)), nil
+		}
+		if err != nil {
+			gamelog.L.Error().Str("mechID", mechID.String()).Str("factionID", factionID.String()).Err(err).Msg("unable to get mech queue position")
+			return "", "", terror.Error(err)
+		}
+
+		contractReward, err := db.QueueContract(mechID, factionID)
+		if err != nil {
+			gamelog.L.Error().Str("mechID", mechID.String()).Str("factionID", factionID.String()).Err(err).Msg("unable to get contract reward")
+			return "", "", terror.Error(err)
+		}
+
 		reply(AssetQueueStatusResponse{
-			nil,
-			nil,
+			&position,
+			contractReward,
 		})
-		return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", WSAssetQueueStatusSubscribe, mechID)), nil
 	}
-	if err != nil {
-		gamelog.L.Error().Str("mechID", mechID.String()).Str("factionID", factionID.String()).Err(err).Msg("unable to get mech queue position")
-		return "", "", terror.Error(err)
-	}
-
-	contractReward, err := db.QueueContract(mechID, factionID)
-	if err != nil {
-		gamelog.L.Error().Str("mechID", mechID.String()).Str("factionID", factionID.String()).Err(err).Msg("unable to get contract reward")
-		return "", "", terror.Error(err)
-	}
-
-	reply(AssetQueueStatusResponse{
-		&position,
-		contractReward,
-	})
 
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", WSAssetQueueStatusSubscribe, mechID)), nil
 }

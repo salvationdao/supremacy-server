@@ -98,7 +98,7 @@ type GameNotification struct {
 
 const HubKeyMultiplierUpdate hub.HubCommandKey = "USER:SUPS:MULTIPLIER:SUBSCRIBE"
 
-func (arena *Arena) HubKeyMultiplierUpdate(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (arena *Arena) HubKeyMultiplierUpdate(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -111,14 +111,16 @@ func (arena *Arena) HubKeyMultiplierUpdate(ctx context.Context, wsc *hub.Client,
 		return "", "", terror.Error(err, "Unable to create uuid from websocket client identifier id")
 	}
 
-	// return multiplier if battle is on
-	if arena.currentBattle() != nil && arena.currentBattle().multipliers != nil {
-		m, total := arena.currentBattle().multipliers.PlayerMultipliers(id, -1)
+	if needProcess {
+		// return multiplier if battle is on
+		if arena.currentBattle() != nil && arena.currentBattle().multipliers != nil {
+			m, total := arena.currentBattle().multipliers.PlayerMultipliers(id, -1)
 
-		reply(&MultiplierUpdate{
-			UserMultipliers:  m,
-			TotalMultipliers: fmt.Sprintf("%sx", total),
-		})
+			reply(&MultiplierUpdate{
+				UserMultipliers:  m,
+				TotalMultipliers: fmt.Sprintf("%sx", total),
+			})
+		}
 	}
 
 	return req.TransactionID, messagebus.BusKey(HubKeyMultiplierUpdate), nil
@@ -128,7 +130,7 @@ const HubKeyViewerLiveCountUpdated = hub.HubCommandKey("VIEWER:LIVE:COUNT:UPDATE
 
 const HubKeyGameNotification hub.HubCommandKey = "GAME:NOTIFICATION"
 
-func (arena *Arena) GameNotificationSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (arena *Arena) GameNotificationSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {

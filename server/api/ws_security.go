@@ -64,7 +64,7 @@ func (api *API) SecureUserCommandWithPerm(key hub.HubCommandKey, fn hub.HubComma
 }
 
 // HubSubscribeCommandFunc is a registered handler for the hub to route to for subscriptions (returns sessionID and arguments)
-type HubSubscribeCommandFunc func(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error)
+type HubSubscribeCommandFunc func(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error)
 
 // SubscribeCommand registers a subscription command to the hub
 //
@@ -111,7 +111,7 @@ func (api *API) SubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn HubSubsc
 			return terror.Error(terror.ErrForbidden)
 		}
 
-		transactionID, busKey, err := fn(ctx, wsc, payload, reply)
+		transactionID, busKey, err := fn(ctx, wsc, payload, reply, true)
 		if err != nil {
 			return terror.Error(err)
 		}
@@ -127,7 +127,7 @@ func (api *API) SubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn HubSubsc
 			return terror.Error(terror.ErrForbidden)
 		}
 
-		transactionID, busKey, err := fn(ctx, wsc, payload, reply)
+		transactionID, busKey, err := fn(ctx, wsc, payload, reply, false)
 		if err != nil {
 			return terror.Error(err)
 		}

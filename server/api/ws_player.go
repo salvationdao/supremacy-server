@@ -557,7 +557,7 @@ type PunishVoteDecision struct {
 
 const HubKeyPunishVoteSubscribe hub.HubCommandKey = "PUNISH:VOTE:SUBSCRIBE"
 
-func (pc *PlayerController) PunishVoteSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (pc *PlayerController) PunishVoteSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -574,42 +574,45 @@ func (pc *PlayerController) PunishVoteSubscribeHandler(ctx context.Context, clie
 		return "", "", terror.Error(fmt.Errorf("player should join faction to subscribe on punish vote"), "Player should join a faction to subscribe on punish vote")
 	}
 
-	// only pass down vote, if there is an ongoing vote
-	if fpv, ok := pc.API.FactionPunishVote[player.FactionID.String]; ok {
-		fpv.RLock()
-		defer fpv.RUnlock()
-		if fpv.CurrentPunishVote != nil && fpv.Stage.Phase == PunishVotePhaseVoting {
-			bv, err := boiler.PunishVotes(
-				boiler.PunishVoteWhere.ID.EQ(fpv.CurrentPunishVote.ID),
-				qm.Load(boiler.PunishVoteRels.PunishOption),
-			).One(gamedb.StdConn)
-			if err != nil {
-				return "", "", terror.Error(err, "Failed to get punish vote from db")
-			}
-
-			pvr := &PunishVoteResponse{
-				PunishVote:   bv,
-				PunishOption: bv.R.PunishOption,
-			}
-
-			// check user has voted
-			decision, err := boiler.PlayersPunishVotes(
-				boiler.PlayersPunishVoteWhere.PunishVoteID.EQ(bv.ID),
-				boiler.PlayersPunishVoteWhere.PlayerID.EQ(client.Identifier()),
-			).One(gamedb.StdConn)
-			if err != nil && !errors.Is(err, sql.ErrNoRows) {
-				return "", "", terror.Error(err, "Failed to check player had voted")
-			}
-
-			if decision != nil {
-				pvr.Decision = &PunishVoteDecision{
-					IsAgreed: decision.IsAgreed,
+	if needProcess {
+		// only pass down vote, if there is an ongoing vote
+		if fpv, ok := pc.API.FactionPunishVote[player.FactionID.String]; ok {
+			fpv.RLock()
+			defer fpv.RUnlock()
+			if fpv.CurrentPunishVote != nil && fpv.Stage.Phase == PunishVotePhaseVoting {
+				bv, err := boiler.PunishVotes(
+					boiler.PunishVoteWhere.ID.EQ(fpv.CurrentPunishVote.ID),
+					qm.Load(boiler.PunishVoteRels.PunishOption),
+				).One(gamedb.StdConn)
+				if err != nil {
+					return "", "", terror.Error(err, "Failed to get punish vote from db")
 				}
-			}
 
-			reply(pvr)
+				pvr := &PunishVoteResponse{
+					PunishVote:   bv,
+					PunishOption: bv.R.PunishOption,
+				}
+
+				// check user has voted
+				decision, err := boiler.PlayersPunishVotes(
+					boiler.PlayersPunishVoteWhere.PunishVoteID.EQ(bv.ID),
+					boiler.PlayersPunishVoteWhere.PlayerID.EQ(client.Identifier()),
+				).One(gamedb.StdConn)
+				if err != nil && !errors.Is(err, sql.ErrNoRows) {
+					return "", "", terror.Error(err, "Failed to check player had voted")
+				}
+
+				if decision != nil {
+					pvr.Decision = &PunishVoteDecision{
+						IsAgreed: decision.IsAgreed,
+					}
+				}
+
+				reply(pvr)
+			}
 		}
 	}
+
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPunishVoteSubscribe, player.FactionID.String)), nil
 }
 
@@ -622,7 +625,7 @@ type PunishVoteResult struct {
 
 const HubKeyPunishVoteResultSubscribe hub.HubCommandKey = "PUNISH:VOTE:RESULT:SUBSCRIBE"
 
-func (pc *PlayerController) PunishVoteResultSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (pc *PlayerController) PunishVoteResultSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -639,17 +642,19 @@ func (pc *PlayerController) PunishVoteResultSubscribeHandler(ctx context.Context
 		return "", "", terror.Error(fmt.Errorf("player should join faction to subscribe on punish vote"), "Player should join a faction to subscribe on punish vote")
 	}
 
-	// only pass down vote result, if there is an ongoing punish vote
-	if fpv, ok := pc.API.FactionPunishVote[player.FactionID.String]; ok && fpv.Stage.Phase == PunishVotePhaseVoting {
-		fpv.RLock()
-		defer fpv.RUnlock()
-		if fpv.CurrentPunishVote != nil {
-			reply(&PunishVoteResult{
-				PunishVoteID:          fpv.CurrentPunishVote.ID,
-				TotalPlayerNumber:     len(fpv.CurrentPunishVote.PlayerPool),
-				AgreedPlayerNumber:    len(fpv.CurrentPunishVote.AgreedPlayerIDs),
-				DisagreedPlayerNumber: len(fpv.CurrentPunishVote.DisagreedPlayerIDs),
-			})
+	if needProcess {
+		// only pass down vote result, if there is an ongoing punish vote
+		if fpv, ok := pc.API.FactionPunishVote[player.FactionID.String]; ok && fpv.Stage.Phase == PunishVotePhaseVoting {
+			fpv.RLock()
+			defer fpv.RUnlock()
+			if fpv.CurrentPunishVote != nil {
+				reply(&PunishVoteResult{
+					PunishVoteID:          fpv.CurrentPunishVote.ID,
+					TotalPlayerNumber:     len(fpv.CurrentPunishVote.PlayerPool),
+					AgreedPlayerNumber:    len(fpv.CurrentPunishVote.AgreedPlayerIDs),
+					DisagreedPlayerNumber: len(fpv.CurrentPunishVote.DisagreedPlayerIDs),
+				})
+			}
 		}
 	}
 

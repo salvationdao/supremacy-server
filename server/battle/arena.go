@@ -409,7 +409,7 @@ const HubKeyUserStatChatSubscribe hub.HubCommandKey = "PLAYER:USER:STAT:CHAT:SUB
 
 const HubKeyBattleAbilityUpdated hub.HubCommandKey = "BATTLE:ABILITY:UPDATED"
 
-func (arena *Arena) BattleAbilityUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (arena *Arena) BattleAbilityUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -428,12 +428,14 @@ func (arena *Arena) BattleAbilityUpdateSubscribeHandler(ctx context.Context, wsc
 		return "", "", terror.Error(terror.ErrForbidden)
 	}
 
-	// return data if, current battle is not null
-	if arena.currentBattle() != nil {
-		btl := arena.currentBattle()
-		if btl.abilities() != nil {
-			abili, _ := btl.abilities().FactionBattleAbilityGet(factionID.String())
-			reply(abili)
+	if needProcess {
+		// return data if, current battle is not null
+		if arena.currentBattle() != nil {
+			btl := arena.currentBattle()
+			if btl.abilities() != nil {
+				ability, _ := btl.abilities().FactionBattleAbilityGet(factionID.String())
+				reply(ability)
+			}
 		}
 	}
 
@@ -518,7 +520,7 @@ func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, wsc *hub
 
 const HubKeyFactionUniqueAbilitiesUpdated hub.HubCommandKey = "FACTION:UNIQUE:ABILITIES:UPDATED"
 
-func (arena *Arena) FactionAbilitiesUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (arena *Arena) FactionAbilitiesUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -542,11 +544,13 @@ func (arena *Arena) FactionAbilitiesUpdateSubscribeHandler(ctx context.Context, 
 		return "", "", nil
 	}
 
-	// return data if, current battle is not null
-	if arena.currentBattle() != nil {
+	if needProcess {
+		// return data if, current battle is not null
 		btl := arena.currentBattle()
-		if btl.abilities() != nil {
-			reply(btl.abilities().FactionUniqueAbilitiesGet(factionID))
+		if btl != nil {
+			if btl.abilities() != nil {
+				reply(btl.abilities().FactionUniqueAbilitiesGet(factionID))
+			}
 		}
 	}
 
@@ -564,7 +568,7 @@ type WarMachineAbilitiesUpdatedRequest struct {
 }
 
 // WarMachineAbilitiesUpdateSubscribeHandler subscribe on war machine abilities
-func (arena *Arena) WarMachineAbilitiesUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (arena *Arena) WarMachineAbilitiesUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	gamelog.L.Info().Str("fn", "WarMachineAbilitiesUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &WarMachineAbilitiesUpdatedRequest{}
 	err := json.Unmarshal(payload, req)
@@ -590,14 +594,16 @@ func (arena *Arena) WarMachineAbilitiesUpdateSubscribeHandler(ctx context.Contex
 		return "", "", nil
 	}
 
-	// NOTE: current only return faction unique ability
-	// get war machine ability
-	if arena.currentBattle() != nil {
-		btl := arena.currentBattle()
-		if btl.abilities() != nil {
-			ga := btl.abilities().WarMachineAbilitiesGet(factionID, req.Payload.Hash)
-			if ga != nil {
-				reply(ga)
+	if needProcess {
+		// NOTE: current only return faction unique ability
+		// get war machine ability
+		if arena.currentBattle() != nil {
+			btl := arena.currentBattle()
+			if btl.abilities() != nil {
+				ga := btl.abilities().WarMachineAbilitiesGet(factionID, req.Payload.Hash)
+				if ga != nil {
+					reply(ga)
+				}
 			}
 		}
 	}
@@ -658,16 +664,18 @@ type WarMachineDestroyedUpdatedRequest struct {
 
 const HubKeyWarMachineDestroyedUpdated = hub.HubCommandKey("WAR:MACHINE:DESTROYED:UPDATED")
 
-func (arena *Arena) WarMachineDestroyedUpdatedSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (arena *Arena) WarMachineDestroyedUpdatedSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	req := &WarMachineDestroyedUpdatedRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
-	if arena.currentBattle() != nil {
-		if wmd, ok := arena.currentBattle().destroyedWarMachineMap[req.Payload.ParticipantID]; ok {
-			reply(wmd)
+	if needProcess {
+		if arena.currentBattle() != nil {
+			if wmd, ok := arena.currentBattle().destroyedWarMachineMap[req.Payload.ParticipantID]; ok {
+				reply(wmd)
+			}
 		}
 	}
 
@@ -677,7 +685,7 @@ func (arena *Arena) WarMachineDestroyedUpdatedSubscribeHandler(ctx context.Conte
 const HubKeGabsBribeStageUpdateSubscribe hub.HubCommandKey = "BRIBE:STAGE:UPDATED:SUBSCRIBE"
 
 // GabsBribeStageSubscribe subscribe on bribing stage change
-func (arena *Arena) GabsBribeStageSubscribe(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (arena *Arena) GabsBribeStageSubscribe(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -689,11 +697,13 @@ func (arena *Arena) GabsBribeStageSubscribe(ctx context.Context, wsc *hub.Client
 		return "", "", terror.Error(terror.ErrInvalidInput)
 	}
 
-	// return data if, current battle is not null
-	if arena.currentBattle() != nil {
-		btl := arena.currentBattle()
-		if btl.abilities() != nil {
-			reply(btl.abilities().BribeStageGet())
+	if needProcess {
+		// return data if, current battle is not null
+		if arena.currentBattle() != nil {
+			btl := arena.currentBattle()
+			if btl.abilities() != nil {
+				reply(btl.abilities().BribeStageGet())
+			}
 		}
 	}
 
@@ -745,7 +755,7 @@ func (arena *Arena) SpoilOfWarUpdateSubscribeHandler(ctx context.Context, wsc *h
 const HubKeGabsBribingWinnerSubscribe hub.HubCommandKey = "BRIBE:WINNER:SUBSCRIBE"
 
 // GabsBribingWinnerSubscribe subscribe on winner notification
-func (arena *Arena) GabsBribingWinnerSubscribe(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (arena *Arena) GabsBribingWinnerSubscribe(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -762,16 +772,18 @@ func (arena *Arena) GabsBribingWinnerSubscribe(ctx context.Context, wsc *hub.Cli
 	return req.TransactionID, busKey, nil
 }
 
-func (arena *Arena) SendSettings(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (arena *Arena) SendSettings(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return "", "", errors.Wrap(err, "unable to unmarshal json payload for send settings subscribe")
 	}
 
-	// response game setting, if current battle exists
-	if arena.currentBattle() != nil {
-		reply(UpdatePayload(arena.currentBattle()))
+	if needProcess {
+		// response game setting, if current battle exists
+		if arena.currentBattle() != nil {
+			reply(UpdatePayload(arena.currentBattle()))
+		}
 	}
 
 	return req.TransactionID, messagebus.BusKey(HubKeyGameSettingsUpdated), nil
@@ -998,8 +1010,7 @@ func (arena *Arena) beginBattle() {
 
 const HubKeyUserStatSubscribe hub.HubCommandKey = "USER:STAT:SUBSCRIBE"
 
-func (arena *Arena) UserStatUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-
+func (arena *Arena) UserStatUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -1010,13 +1021,15 @@ func (arena *Arena) UserStatUpdatedSubscribeHandler(ctx context.Context, client 
 	if err != nil {
 		return "", "", terror.Error(err, "Invalid request received")
 	}
-	us, err := db.UserStatsGet(userID.String())
-	if err != nil {
-		return "", "", terror.Error(err, "failed to get user stats")
-	}
 
-	if us != nil {
-		reply(us)
+	if needProcess {
+		us, err := db.UserStatsGet(userID.String())
+		if err != nil {
+			return "", "", terror.Error(err, "failed to get user stats")
+		}
+		if us != nil {
+			reply(us)
+		}
 	}
 
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserStatSubscribe, client.Identifier())), nil

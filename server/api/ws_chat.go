@@ -183,7 +183,16 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	player, err := boiler.FindPlayer(gamedb.StdConn, hubc.Identifier())
+	player, err := boiler.Players(
+		qm.Select(
+			boiler.PlayerColumns.ID,
+			boiler.PlayerColumns.Username,
+			boiler.PlayerColumns.Gid,
+			boiler.PlayerColumns.FactionID,
+			boiler.PlayerColumns.Rank,
+		),
+		boiler.PlayerWhere.ID.EQ(hubc.Identifier()),
+	).One(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
@@ -245,6 +254,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 				Message:         msg,
 				MessageColor:    req.Payload.MessageColor,
 				FromUser:        *player,
+				UserRank:        player.Rank,
 				FromUserStat:    playerStat,
 				TotalMultiplier: totalMultiplier,
 				IsCitizen:       isCitizen,
@@ -268,6 +278,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 			Message:         msg,
 			MessageColor:    req.Payload.MessageColor,
 			FromUser:        *player,
+			UserRank:        player.Rank,
 			FromUserStat:    playerStat,
 			TotalMultiplier: totalMultiplier,
 			IsCitizen:       isCitizen,
@@ -368,7 +379,7 @@ func (fc *ChatController) ChatPastMessagesHandler(ctx context.Context, hubc *hub
 
 const HubKeyFactionChatSubscribe hub.HubCommandKey = "FACTION:CHAT:SUBSCRIBE"
 
-func (fc *ChatController) FactionChatUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (fc *ChatController) FactionChatUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	errMsg := "Could not subscribe to faction chat updates, try again or contact support."
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
@@ -384,12 +395,13 @@ func (fc *ChatController) FactionChatUpdatedSubscribeHandler(ctx context.Context
 	if !player.FactionID.Valid || player.FactionID.String == uuid.Nil.String() {
 		return "", "", terror.Error(terror.ErrInvalidInput, "Require to join faction to receive messages.")
 	}
+
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionChatSubscribe, player.FactionID.String)), nil
 }
 
 const HubKeyGlobalChatSubscribe hub.HubCommandKey = "GLOBAL:CHAT:SUBSCRIBE"
 
-func (fc *ChatController) GlobalChatUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (fc *ChatController) GlobalChatUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {

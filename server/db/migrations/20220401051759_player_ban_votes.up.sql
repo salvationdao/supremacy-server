@@ -89,14 +89,14 @@ SELECT p.id, p.faction_id ,(p1.positive_kills - p2.team_kills) as kill_count fro
 left join lateral (
     -- get positive ability kills
     SELECT count(bh.id) as positive_kills from battle_history bh
-        inner join battle_ability_triggers bat on bat.ability_offering_id = bh.related_id and bat.player_id = p.id
-        inner join battle_mechs bm on bm.mech_id = bh.war_machine_one_id
+        INNER JOIN battle_ability_triggers bat on bat.ability_offering_id = bh.related_id AND bat.player_id = p.id
+        INNER JOIN battle_mechs bm on bm.mech_id = bh.war_machine_one_id AND bm.battle_id = bat.battle_id
     where bat.faction_id != bm.faction_id and bh.created_at > NOW() - INTERVAL '7 DAY'
     ) p1 on true left join lateral (
     -- get team kill count
     SELECT count(bh.id) as team_kills from battle_history bh
-        inner join battle_ability_triggers bat on bat.ability_offering_id = bh.related_id and bat.player_id = p.id
-        inner join battle_mechs bm on bm.mech_id = bh.war_machine_one_id
+        INNER JOIN battle_ability_triggers bat on bat.ability_offering_id = bh.related_id AND bat.player_id = p.id
+        INNER JOIN battle_mechs bm on bm.mech_id = bh.war_machine_one_id AND bm.battle_id = bat.battle_id
     where bat.faction_id = bm.faction_id and bh.created_at > NOW() - INTERVAL '7 DAY'
     ) p2 on true;
 
