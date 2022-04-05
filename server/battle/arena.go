@@ -41,7 +41,7 @@ type Arena struct {
 	RPCClient         *rpcclient.PassportXrpcClient
 	gameClientLock    sync.Mutex
 	sms               server.SMS
-	gameClientBuildNo uint64
+	gameClientMinimumBuildNo uint64
 
 	sync.RWMutex
 }
@@ -66,7 +66,7 @@ type Opts struct {
 	MessageBus        *messagebus.MessageBus
 	RPCClient         *rpcclient.PassportXrpcClient
 	SMS               server.SMS
-	GameClientBuildNo uint64
+	GameClientMinimumBuildNo uint64
 }
 
 type MessageType byte
@@ -108,7 +108,7 @@ func NewArena(opts *Opts) *Arena {
 	arena.messageBus = opts.MessageBus
 	arena.RPCClient = opts.RPCClient
 	arena.sms = opts.SMS
-	arena.gameClientBuildNo = opts.GameClientBuildNo
+	arena.gameClientMinimumBuildNo = opts.GameClientMinimumBuildNo
 
 	arena.AIPlayers, err = db.DefaultFactionPlayers()
 	if err != nil {
@@ -807,8 +807,8 @@ func (arena *Arena) start() {
 					gamelog.L.Panic().Str("game_client_build_no", dataPayload.ClientBuildNo).Msg("invalid game client build number received")
 				}
 
-				if gameClientBuildNo < arena.gameClientBuildNo {
-					gamelog.L.Panic().Uint64("current_game_client_build", gameClientBuildNo).Uint64("minimum_game_client_build", arena.gameClientBuildNo).Msg("unsupported game client build number")
+				if gameClientBuildNo < arena.gameClientMinimumBuildNo {
+					gamelog.L.Panic().Str("current_game_client_build", dataPayload.ClientBuildNo).Uint64("minimum_game_client_build", arena.gameClientMinimumBuildNo).Msg("unsupported game client build number")
 				}
 
 				err = btl.preIntro(dataPayload)
