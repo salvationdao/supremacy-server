@@ -13,6 +13,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/rpcclient"
+	"server/telegram"
 	"strconv"
 	"sync"
 	"time"
@@ -31,17 +32,18 @@ import (
 )
 
 type Arena struct {
-	conn              db.Conn
-	socket            *websocket.Conn
-	timeout           time.Duration
-	messageBus        *messagebus.MessageBus
-	_currentBattle    *Battle
-	syndicates        map[string]boiler.Faction
-	AIPlayers         map[string]db.PlayerWithFaction
-	RPCClient         *rpcclient.PassportXrpcClient
-	gameClientLock    sync.Mutex
-	sms               server.SMS
+	conn                     db.Conn
+	socket                   *websocket.Conn
+	timeout                  time.Duration
+	messageBus               *messagebus.MessageBus
+	_currentBattle           *Battle
+	syndicates               map[string]boiler.Faction
+	AIPlayers                map[string]db.PlayerWithFaction
+	RPCClient                *rpcclient.PassportXrpcClient
+	gameClientLock           sync.Mutex
+	sms                      server.SMS
 	gameClientMinimumBuildNo uint64
+	telegram                 server.Telegram
 
 	sync.RWMutex
 }
@@ -59,14 +61,15 @@ func (arena *Arena) storeCurrentBattle(btl *Battle) {
 }
 
 type Opts struct {
-	Conn              db.Conn
-	Addr              string
-	Timeout           time.Duration
-	Hub               *hub.Hub
-	MessageBus        *messagebus.MessageBus
-	RPCClient         *rpcclient.PassportXrpcClient
-	SMS               server.SMS
+	Conn                     db.Conn
+	Addr                     string
+	Timeout                  time.Duration
+	Hub                      *hub.Hub
+	MessageBus               *messagebus.MessageBus
+	RPCClient                *rpcclient.PassportXrpcClient
+	SMS                      server.SMS
 	GameClientMinimumBuildNo uint64
+	Telegram                 *telegram.Telegram
 }
 
 type MessageType byte
@@ -109,6 +112,7 @@ func NewArena(opts *Opts) *Arena {
 	arena.RPCClient = opts.RPCClient
 	arena.sms = opts.SMS
 	arena.gameClientMinimumBuildNo = opts.GameClientMinimumBuildNo
+	arena.telegram = opts.Telegram
 
 	arena.AIPlayers, err = db.DefaultFactionPlayers()
 	if err != nil {

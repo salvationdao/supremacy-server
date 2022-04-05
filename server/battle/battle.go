@@ -1057,13 +1057,19 @@ func (arena *Arena) reset() {
 	gamelog.L.Warn().Msg("arena state resetting")
 }
 
+type QueueJoinHandlerResponse struct {
+	Success bool   `json:"success"`
+	Code    string `json:"code"`
+}
+
 type QueueJoinRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		AssetHash               string `json:"asset_hash"`
-		NeedInsured             bool   `json:"need_insured"`
-		EnablePushNotifications bool   `json:"enable_push_notifications,omitempty"`
-		MobileNumber            string `json:"mobile_number,omitempty"`
+		AssetHash                   string `json:"asset_hash"`
+		NeedInsured                 bool   `json:"need_insured"`
+		EnablePushNotifications     bool   `json:"enable_push_notifications,omitempty"`
+		MobileNumber                string `json:"mobile_number,omitempty"`
+		EnableTelegramNotifications bool   `json:"enable_telegram_notifications"`
 	} `json:"payload"`
 }
 
@@ -1163,7 +1169,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		BattleContractID: null.StringFrom(bc.ID),
 	}
 
-	notifications := (msg.Payload.EnablePushNotifications || msg.Payload.MobileNumber != "")
+	notifications := (msg.Payload.EnablePushNotifications || msg.Payload.MobileNumber != "" || msg.Payload.EnableTelegramNotifications)
 	if !notifications {
 		bq.Notified = true
 	}
@@ -1201,6 +1207,8 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		return terror.Error(err, "Unable to join queue, check your balance and try again.")
 	}
 
+	shortcode := ""
+	bqn := &boiler.BattleQueueNotification{}
 	// Charge queue notification fee, if enabled (10% of queue cost)
 	if !bq.Notified {
 		notifyCost := queueCost.Mul(decimal.NewFromFloat(0.1))
@@ -1229,12 +1237,26 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		}
 
 		//insert notification into db
-		bqn := &boiler.BattleQueueNotification{
+		bqn = &boiler.BattleQueueNotification{
 			MechID:            mechID.String(),
 			QueueMechID:       null.StringFrom(mechID.String()),
 			MobileNumber:      null.StringFrom(msg.Payload.MobileNumber),
 			PushNotifications: msg.Payload.EnablePushNotifications,
 			Fee:               notifyCost,
+		}
+
+		if msg.Payload.EnableTelegramNotifications {
+			telegramNotification, err := arena.telegram.NotificationCreate(mechID.String(), bqn)
+			if err != nil {
+				gamelog.L.Error().
+					Str("mechID", mechID.String()).
+					Str("playerID", ownerID.String()).
+					Err(err).Msg("unable to create telegram notification")
+				return terror.Error(err, "Unable create telegram notification. Contact support.")
+			}
+			bqn.TelegramNotificationID = null.StringFrom(telegramNotification.ID)
+			shortcode = telegramNotification.Shortcode
+
 		}
 
 		err = bqn.Insert(tx, boil.Infer())
@@ -1244,6 +1266,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 				Err(err).Msg("unable to insert queue notification for mech")
 			return terror.Error(err, "Unable to join queue, check your balance and try again.")
 		}
+
 	}
 
 	// Commit transaction
@@ -1273,14 +1296,25 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		return terror.Error(err, "Unable to join queue, check your balance and try again.")
 	}
 
-	reply(true)
-
 	nextQueueLength := queueLength.Add(decimal.NewFromInt(1))
 	nextQueueCost := decimal.New(25, 16)     // 0.25 sups
 	nextContractReward := decimal.New(2, 18) // 2 sups
 	if nextQueueLength.GreaterThan(decimal.NewFromInt(0)) {
 		nextQueueCost = nextQueueLength.Mul(decimal.New(25, 16))     // 0.25x queue length
 		nextContractReward = nextQueueLength.Mul(decimal.New(2, 18)) // 2x queue length
+	}
+
+	// reply with shortcode if telegram notifs enabled
+	if bqn.TelegramNotificationID.Valid && shortcode != "" {
+		reply(QueueJoinHandlerResponse{
+			Success: true,
+			Code:    shortcode,
+		})
+	} else {
+		reply(QueueJoinHandlerResponse{
+			Success: true,
+			Code:    "",
+		})
 	}
 
 	// Send updated battle queue status to all subscribers

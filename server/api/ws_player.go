@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"server/db/boiler"
 	"server/gamedb"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	"github.com/ninja-software/log_helpers"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
+	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -35,6 +37,7 @@ func NewPlayerController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Pla
 
 	api.SecureUserCommand(HubKeyPlayerUpdateSettings, pctrlr.PlayerUpdateSettingsHandler)
 	api.SecureUserCommand(HubKeyPlayerGetSettings, pctrlr.PlayerGetSettingsHandler)
+	api.SecureUserSubscribeCommand(HubKeyTelegramShortcodeRegistered, pctrlr.PlayerGetTelegramShortcodeRegistered)
 
 	return pctrlr
 }
@@ -141,4 +144,18 @@ func (ctrlr *PlayerController) PlayerGetSettingsHandler(ctx context.Context, wsc
 	reply(userSettings.Value)
 	reply(true)
 	return nil
+}
+
+const HubKeyTelegramShortcodeRegistered hub.HubCommandKey = "USER:TELEGRAM_SHORTCODE_REGISTERED"
+
+func (ctrlr *PlayerController) PlayerGetTelegramShortcodeRegistered(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return "", "", terror.Error(err, "Invalid request received")
+	}
+
+	reply(false)
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTelegramShortcodeRegistered, wsc.Identifier())), nil
+
 }

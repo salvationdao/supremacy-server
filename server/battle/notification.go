@@ -197,7 +197,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			continue
 		}
 
-		//add them to users to notify
+		// add them to users to notify
 		player, err := boiler.Players(
 			boiler.PlayerWhere.ID.EQ(bq.OwnerID),
 			qm.Load(boiler.PlayerRels.PlayerPreferences),
@@ -212,7 +212,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			continue
 		}
 
-		//continue loop if there the war machine does not have a relationship with the battle_queue_notifications table
+		// continue loop if there the war machine does not have a relationship with the battle_queue_notifications table
 		if warMachine.R.BattleQueueNotifications == nil {
 			continue
 		}
@@ -221,14 +221,31 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			boiler.BattleQueueNotificationWhere.QueueMechID.EQ(null.StringFrom(warMachine.ID)),
 			boiler.BattleQueueNotificationWhere.IsRefunded.EQ(false),
 			boiler.BattleQueueNotificationWhere.SentAt.IsNull(),
+			qm.Load(boiler.BattleQueueNotificationRels.Mech),
 		).One(gamedb.StdConn)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("battle_id", arena.currentBattle().ID).Msg("unable to find battle queue notifications")
 			continue
 		}
 
-		notificationMsg := fmt.Sprintf("%s, your War Machine %s is nearing battle, jump on to https://play.supremacy.game and prepare.", player.Username.String, warMachine.Name)
+		wmName := ""
+		if bqn.R != nil && bqn.R.Mech != nil {
+			wmName = fmt.Sprintf("(%s)", bqn.R.Mech.Label)
+			if bqn.R.Mech.Name != "" {
+				wmName = fmt.Sprintf("(%s)", bqn.R.Mech.Name)
+			}
+		}
+		notificationMsg := fmt.Sprintf("%s, your War Machine %s is nearing battle, jump on to https://play.supremacy.game and prepare.", player.Username.String, wmName)
 
+		// send telegram notification
+		if bqn.TelegramNotificationID.Valid {
+			err = arena.telegram.Notify(bqn.TelegramNotificationID.String, notificationMsg)
+			if err != nil {
+				gamelog.L.Error().Err(err).Str("mech_id", bq.MechID).Str("owner_id", bq.OwnerID).Str("queued_at", bq.QueuedAt.String()).Msg("failed to notify telegram")
+			}
+		}
+
+		// send sms
 		if bqn.MobileNumber.Valid {
 			err := arena.sms.SendSMS(
 				player.MobileNumber.String,
@@ -240,8 +257,8 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 		}
 
 		//TODO: push notifications
-		// TODO: telegram notifications?
 		// TODO: discord notifications?
+
 		bq.Notified = true
 		bqn.SentAt = null.TimeFrom(time.Now())
 		_, err = bq.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleQueueColumns.Notified))
