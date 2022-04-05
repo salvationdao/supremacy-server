@@ -148,7 +148,13 @@ func (t *Telegram) NotificationCreate(mechID string, notification *boiler.Battle
 		exists, err := boiler.BattleQueueNotifications(
 			boiler.BattleQueueNotificationWhere.IsRefunded.EQ(false),
 			boiler.BattleQueueNotificationWhere.SentAt.IsNull(),
-			qm.InnerJoin("telegram_notifications tn on tn.id = battle_queue_notifications.telegram_notification_id"),
+			// join battle queue notification with telegram notifications
+			qm.InnerJoin(fmt.Sprintf("%[1]s ON %[1]s.%[2]s = %[3]s.%[4]s ",
+				boiler.TableNames.TelegramNotifications,
+				boiler.TelegramNotificationColumns.ID,
+				boiler.TableNames.BattleQueueNotifications,
+				boiler.BattleQueueNotificationColumns.TelegramNotificationID)),
+
 			boiler.TelegramNotificationWhere.Registered.EQ(false),
 			boiler.TelegramNotificationWhere.Shortcode.EQ(strings.ToLower(shortCode)),
 		).Exists(gamedb.StdConn)
