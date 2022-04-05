@@ -44,15 +44,12 @@ func NewTelegram(token string, messageBus *messagebus.MessageBus) (*Telegram, er
 		Token:  token,
 		Poller: &tele.LongPoller{Timeout: 10 * time.Second},
 	}
-
 	b, err := tele.NewBot(pref)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("unable initialise telegram bot")
 		return nil, terror.Error(err)
 	}
-
 	t.Bot = b
-
 	return t, nil
 }
 
