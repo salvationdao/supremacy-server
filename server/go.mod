@@ -25,7 +25,6 @@ require (
 )
 
 require (
-	github.com/apex/log v1.9.0
 	github.com/friendsofgo/errors v0.9.2
 	github.com/gosimple/slug v1.12.0
 	github.com/h2non/filetype v1.1.3
@@ -33,17 +32,15 @@ require (
 	github.com/jackc/pgx v3.6.2+incompatible
 	github.com/kevinms/leakybucket-go v0.0.0-20200115003610-082473db97ca
 	github.com/microcosm-cc/bluemonday v1.0.16
-	github.com/ninja-software/terror v1.0.0
 	github.com/ninja-software/tickle v1.3.2
 	github.com/shopspring/decimal v1.2.0
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/twilio/twilio-go v0.22.2
 	github.com/volatiletech/null/v8 v8.1.2
-	github.com/volatiletech/sqlboiler v3.7.1+incompatible
 	github.com/volatiletech/sqlboiler/v4 v4.8.6
 	github.com/volatiletech/strmangle v0.0.2
-	gopkg.in/telebot.v3 v3.0.0
 	go.uber.org/atomic v1.7.0
+	gopkg.in/telebot.v3 v3.0.0
 )
 
 require github.com/petermattis/goid v0.0.0-20180202154549-b0b1615b78e5 // indirect
@@ -74,10 +71,7 @@ require (
 	github.com/subosito/gotenv v1.2.0 // indirect
 	github.com/tinylib/msgp v1.1.2 // indirect
 	github.com/volatiletech/inflect v0.0.1 // indirect
-	github.com/volatiletech/null v8.0.0+incompatible // indirect
 	github.com/volatiletech/randomize v0.0.1 // indirect
-	go.etcd.io/bbolt v1.3.5 // indirect
-	go.uber.org/atomic v1.7.0 // indirect
 	golang.org/x/time v0.0.0-20211116232009-f0f3c7e86c11 // indirect
 	gopkg.in/ini.v1 v1.63.2 // indirect
 )
@@ -88,7 +82,6 @@ require (
 	github.com/Microsoft/go-winio v0.5.1 // indirect
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/TwiN/go-away v1.6.0 // indirect
-	github.com/asdine/storm/v3 v3.2.1
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bmatcuk/doublestar/v4 v4.0.2 // indirect
