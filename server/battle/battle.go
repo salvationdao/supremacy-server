@@ -1207,6 +1207,8 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		return terror.Error(err, "Unable to join queue, check your balance and try again.")
 	}
 
+	shortcode := ""
+	bqn := &boiler.BattleQueueNotification{}
 	// Charge queue notification fee, if enabled (10% of queue cost)
 	if !bq.Notified {
 		notifyCost := queueCost.Mul(decimal.NewFromFloat(0.1))
@@ -1235,7 +1237,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		}
 
 		//insert notification into db
-		bqn := &boiler.BattleQueueNotification{
+		bqn = &boiler.BattleQueueNotification{
 			MechID:            mechID.String(),
 			QueueMechID:       null.StringFrom(mechID.String()),
 			MobileNumber:      null.StringFrom(msg.Payload.MobileNumber),
@@ -1243,7 +1245,6 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 			Fee:               notifyCost,
 		}
 
-		shortcode := ""
 		if msg.Payload.EnableTelegramNotifications {
 			telegramNotification, err := arena.telegram.NotificationCreate(mechID.String(), bqn)
 			if err != nil {
@@ -1266,18 +1267,6 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 			return terror.Error(err, "Unable to join queue, check your balance and try again.")
 		}
 
-		// reply with shortcode if telegram notifs enabled
-		if bqn.TelegramNotificationID.Valid && shortcode != "" {
-			reply(QueueJoinHandlerResponse{
-				Success: true,
-				Code:    shortcode,
-			})
-		} else {
-			reply(QueueJoinHandlerResponse{
-				Success: true,
-				Code:    "",
-			})
-		}
 	}
 
 	// Commit transaction
@@ -1313,6 +1302,19 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 	if nextQueueLength.GreaterThan(decimal.NewFromInt(0)) {
 		nextQueueCost = nextQueueLength.Mul(decimal.New(25, 16))     // 0.25x queue length
 		nextContractReward = nextQueueLength.Mul(decimal.New(2, 18)) // 2x queue length
+	}
+
+	// reply with shortcode if telegram notifs enabled
+	if bqn.TelegramNotificationID.Valid && shortcode != "" {
+		reply(QueueJoinHandlerResponse{
+			Success: true,
+			Code:    shortcode,
+		})
+	} else {
+		reply(QueueJoinHandlerResponse{
+			Success: true,
+			Code:    "",
+		})
 	}
 
 	// Send updated battle queue status to all subscribers
