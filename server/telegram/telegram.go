@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -32,13 +31,15 @@ func genCode() string {
 
 type Telegram struct {
 	*tele.Bot
-	MessageBus *messagebus.MessageBus
+	RegisterCallback func(ownderID string, success bool)
+	// MessageBus *messagebus.MessageBus
 }
 
 // NewTelegram
-func NewTelegram(token string, messageBus *messagebus.MessageBus) (*Telegram, error) {
+func NewTelegram(token string, registerCallback func(shortCode string, success bool)) (*Telegram, error) {
 	t := &Telegram{
-		MessageBus: messageBus,
+		// MessageBus: messageBus,
+		RegisterCallback: registerCallback,
 	}
 	pref := tele.Settings{
 		Token:  token,
@@ -122,7 +123,7 @@ func (t *Telegram) RunTelegram(bot *tele.Bot) error {
 
 		if err != nil {
 			reply = "Issue regestering telegram shortcode, try again or contact support"
-			go t.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTelegramShortcodeRegistered, wmOwner)), false)
+			go t.RegisterCallback(wmOwner, false)
 			return c.Send(reply)
 
 		}
@@ -132,7 +133,7 @@ func (t *Telegram) RunTelegram(bot *tele.Bot) error {
 			wmName = notification.R.Mech.Name
 		}
 		reply = fmt.Sprintf("Shortcode registered! you will be notified when your war machine (%s) is nearing battle", wmName)
-		go t.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTelegramShortcodeRegistered, wmOwner)), true)
+		go t.RegisterCallback(wmOwner, true)
 		return c.Send(reply)
 	})
 	bot.Start()

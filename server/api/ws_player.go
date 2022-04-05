@@ -155,7 +155,7 @@ func (ctrlr *PlayerController) PlayerGetTelegramShortcodeRegistered(ctx context.
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
-	reply(nil)
+	reply(false)
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTelegramShortcodeRegistered, wsc.Identifier())), nil
 
 }

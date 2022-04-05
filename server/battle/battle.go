@@ -1057,6 +1057,11 @@ func (arena *Arena) reset() {
 	gamelog.L.Warn().Msg("arena state resetting")
 }
 
+type QueueJoinHandlerResponse struct {
+	Success bool   `json:"success"`
+	Code    string `json:"code"`
+}
+
 type QueueJoinRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
@@ -1134,7 +1139,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		gamelog.L.Debug().Str("mech_id", mechID.String()).Err(err).Msg("mech already in queue")
 		position, err = db.QueuePosition(mechID, factionID)
 		if err != nil {
-			return terror.Error(err, "Unable to join queue, mech already in queue.")
+			return terror.Error(err, "Unable to join queue, check your balance and try again.")
 		}
 		reply(true)
 		return nil
@@ -1246,7 +1251,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 					Str("mechID", mechID.String()).
 					Str("playerID", ownerID.String()).
 					Err(err).Msg("unable to create telegram notification")
-				return terror.Error(err, "Unable create telegram notification.")
+				return terror.Error(err, "Unable create telegram notification. Contact support.")
 			}
 			bqn.TelegramNotificationID = null.StringFrom(telegramNotification.ID)
 			shortcode = telegramNotification.Shortcode
@@ -1261,12 +1266,17 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 			return terror.Error(err, "Unable to join queue, check your balance and try again.")
 		}
 
+		// reply with shortcode if telegram notifs enabled
 		if bqn.TelegramNotificationID.Valid && shortcode != "" {
-			reply(struct {
-				Code string `json:"code"`
-			}{Code: shortcode})
+			reply(QueueJoinHandlerResponse{
+				Success: true,
+				Code:    shortcode,
+			})
 		} else {
-			reply(true)
+			reply(QueueJoinHandlerResponse{
+				Success: true,
+				Code:    "",
+			})
 		}
 	}
 
