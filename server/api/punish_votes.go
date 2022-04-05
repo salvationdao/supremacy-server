@@ -399,7 +399,7 @@ func (pvt *PunishVoteTracker) VotePassed() error {
 		return terror.Error(err, "Failed to insert player into punish list")
 	}
 
-	// TODO: broadcast success punish notification on chat
+	// broadcast success punish notification on chat
 	pvt.BroadcastPunishVoteResult(true)
 	return nil
 }
@@ -447,7 +447,7 @@ func (pvt *PunishVoteTracker) VoteFailed() error {
 		return terror.Error(err, "Failed to update report cost of the player")
 	}
 
-	// TODO: broadcast failed punish result notification on chat
+	// broadcast failed punish result notification on chat
 	pvt.BroadcastPunishVoteResult(false)
 	return nil
 }
@@ -489,16 +489,18 @@ func (pvt *PunishVoteTracker) BroadcastPunishVoteResult(isPassed bool) {
 		Type:   ChatMessageTypePunishVote,
 		SentAt: time.Now(),
 		Data: MessagePunishVote{
-			IssuedByPlayerID:        punishVote.IssuedByID,
-			IssuedByPlayerUsername:  punishVote.IssuedByUsername,
-			IssuedByPlayerFactionID: punishVote.FactionID,
-			IssuedByPlayerGid:       punishVote.IssuedByGid,
-
-			ReportedPlayerID:        punishVote.ReportedPlayerID,
-			ReportedPlayerUsername:  punishVote.ReportedPlayerUsername,
-			ReportedPlayerGid:       punishVote.ReportedPlayerGid,
-			ReportedPlayerFactionID: punishVote.FactionID,
-
+			IssuedByUser: boiler.Player{
+				ID:        punishVote.IssuedByID,
+				Username:  null.StringFrom(punishVote.IssuedByUsername),
+				FactionID: null.StringFrom(punishVote.FactionID),
+				Gid:       punishVote.IssuedByGid,
+			},
+			ReportedUser: boiler.Player{
+				ID:        punishVote.ReportedPlayerID,
+				Username:  null.StringFrom(punishVote.ReportedPlayerUsername),
+				FactionID: null.StringFrom(punishVote.FactionID),
+				Gid:       punishVote.ReportedPlayerGid,
+			},
 			// vote result
 			IsPassed:              isPassed,
 			TotalPlayerNumber:     len(pvt.CurrentPunishVote.PlayerPool),

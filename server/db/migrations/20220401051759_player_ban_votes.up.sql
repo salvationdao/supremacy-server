@@ -75,4 +75,37 @@ CREATE SEQUENCE IF NOT EXISTS players_gid_seq
     START 1024
     CACHE 1;
 
-ALTER TABLE players ADD COLUMN gid integer NOT NULL DEFAULT nextval('players_gid_seq');
+
+DROP TYPE IF EXISTS PLAYER_RANK_ENUM;
+CREATE TYPE PLAYER_RANK_ENUM AS ENUM ('GENERAL','CORPORAL','PRIVATE','NEW_RECRUIT');
+
+ALTER TABLE players
+    ADD COLUMN gid integer NOT NULL DEFAULT nextval('players_gid_seq'),
+    ADD COLUMN rank PLAYER_RANK_ENUM NOT NULL DEFAULT 'NEW_RECRUIT',
+    ADD COLUMN sent_message_count int NOT NULL default 0 ;
+
+CREATE MATERIALIZED VIEW player_last_seven_day_ability_kills AS
+SELECT p.id, p.faction_id ,(p1.positive_kills - p2.team_kills) as kill_count from players p
+left join lateral (
+    -- get positive ability kills
+    SELECT count(bh.id) as positive_kills from battle_history bh
+        inner join battle_ability_triggers bat on bat.ability_offering_id = bh.related_id and bat.player_id = p.id
+        inner join battle_mechs bm on bm.mech_id = bh.war_machine_one_id
+    where bat.faction_id != bm.faction_id and bh.created_at > NOW() - INTERVAL '7 DAY'
+    ) p1 on true left join lateral (
+    -- get team kill count
+    SELECT count(bh.id) as team_kills from battle_history bh
+        inner join battle_ability_triggers bat on bat.ability_offering_id = bh.related_id and bat.player_id = p.id
+        inner join battle_mechs bm on bm.mech_id = bh.war_machine_one_id
+    where bat.faction_id = bm.faction_id and bh.created_at > NOW() - INTERVAL '7 DAY'
+    ) p2 on true;
+
+CREATE UNIQUE INDEX ON player_last_seven_day_ability_kills (id);
+
+REFRESH MATERIALIZED VIEW CONCURRENTLY player_last_seven_day_ability_kills;
+
+-- set private rank players (accounts are created over 24 hrs)
+UPDATE players SET rank = 'PRIVATE' WHERE created_at > NOW() - INTERVAL '1 DAY';
+
+-- set corporal rank players (any private players who have positive ability kill count)
+UPDATE players p SET rank = 'CORPORAL' WHERE p.rank = 'PRIVATE' AND EXISTS (SELECT 1 FROM user_stats us WHERE us.id = p.id AND us.kill_count >0);

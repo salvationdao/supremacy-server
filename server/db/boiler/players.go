@@ -24,107 +24,121 @@ import (
 
 // Player is an object representing the database table.
 type Player struct {
-	ID             string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	FactionID      null.String     `boiler:"faction_id" boil:"faction_id" json:"faction_id,omitempty" toml:"faction_id" yaml:"faction_id,omitempty"`
-	Username       null.String     `boiler:"username" boil:"username" json:"username,omitempty" toml:"username" yaml:"username,omitempty"`
-	PublicAddress  null.String     `boiler:"public_address" boil:"public_address" json:"public_address,omitempty" toml:"public_address" yaml:"public_address,omitempty"`
-	IsAi           bool            `boiler:"is_ai" boil:"is_ai" json:"is_ai" toml:"is_ai" yaml:"is_ai"`
-	DeletedAt      null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	UpdatedAt      time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt      time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	MobileNumber   null.String     `boiler:"mobile_number" boil:"mobile_number" json:"mobile_number,omitempty" toml:"mobile_number" yaml:"mobile_number,omitempty"`
-	IssuePunishFee decimal.Decimal `boiler:"issue_punish_fee" boil:"issue_punish_fee" json:"issue_punish_fee" toml:"issue_punish_fee" yaml:"issue_punish_fee"`
-	ReportedCost   decimal.Decimal `boiler:"reported_cost" boil:"reported_cost" json:"reported_cost" toml:"reported_cost" yaml:"reported_cost"`
-	Gid            int             `boiler:"gid" boil:"gid" json:"gid" toml:"gid" yaml:"gid"`
+	ID               string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	FactionID        null.String     `boiler:"faction_id" boil:"faction_id" json:"faction_id,omitempty" toml:"faction_id" yaml:"faction_id,omitempty"`
+	Username         null.String     `boiler:"username" boil:"username" json:"username,omitempty" toml:"username" yaml:"username,omitempty"`
+	PublicAddress    null.String     `boiler:"public_address" boil:"public_address" json:"public_address,omitempty" toml:"public_address" yaml:"public_address,omitempty"`
+	IsAi             bool            `boiler:"is_ai" boil:"is_ai" json:"is_ai" toml:"is_ai" yaml:"is_ai"`
+	DeletedAt        null.Time       `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt        time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt        time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	MobileNumber     null.String     `boiler:"mobile_number" boil:"mobile_number" json:"mobile_number,omitempty" toml:"mobile_number" yaml:"mobile_number,omitempty"`
+	IssuePunishFee   decimal.Decimal `boiler:"issue_punish_fee" boil:"issue_punish_fee" json:"issue_punish_fee" toml:"issue_punish_fee" yaml:"issue_punish_fee"`
+	ReportedCost     decimal.Decimal `boiler:"reported_cost" boil:"reported_cost" json:"reported_cost" toml:"reported_cost" yaml:"reported_cost"`
+	Gid              int             `boiler:"gid" boil:"gid" json:"gid" toml:"gid" yaml:"gid"`
+	Rank             string          `boiler:"rank" boil:"rank" json:"rank" toml:"rank" yaml:"rank"`
+	SentMessageCount int             `boiler:"sent_message_count" boil:"sent_message_count" json:"sent_message_count" toml:"sent_message_count" yaml:"sent_message_count"`
 
 	R *playerR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L playerL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var PlayerColumns = struct {
-	ID             string
-	FactionID      string
-	Username       string
-	PublicAddress  string
-	IsAi           string
-	DeletedAt      string
-	UpdatedAt      string
-	CreatedAt      string
-	MobileNumber   string
-	IssuePunishFee string
-	ReportedCost   string
-	Gid            string
+	ID               string
+	FactionID        string
+	Username         string
+	PublicAddress    string
+	IsAi             string
+	DeletedAt        string
+	UpdatedAt        string
+	CreatedAt        string
+	MobileNumber     string
+	IssuePunishFee   string
+	ReportedCost     string
+	Gid              string
+	Rank             string
+	SentMessageCount string
 }{
-	ID:             "id",
-	FactionID:      "faction_id",
-	Username:       "username",
-	PublicAddress:  "public_address",
-	IsAi:           "is_ai",
-	DeletedAt:      "deleted_at",
-	UpdatedAt:      "updated_at",
-	CreatedAt:      "created_at",
-	MobileNumber:   "mobile_number",
-	IssuePunishFee: "issue_punish_fee",
-	ReportedCost:   "reported_cost",
-	Gid:            "gid",
+	ID:               "id",
+	FactionID:        "faction_id",
+	Username:         "username",
+	PublicAddress:    "public_address",
+	IsAi:             "is_ai",
+	DeletedAt:        "deleted_at",
+	UpdatedAt:        "updated_at",
+	CreatedAt:        "created_at",
+	MobileNumber:     "mobile_number",
+	IssuePunishFee:   "issue_punish_fee",
+	ReportedCost:     "reported_cost",
+	Gid:              "gid",
+	Rank:             "rank",
+	SentMessageCount: "sent_message_count",
 }
 
 var PlayerTableColumns = struct {
-	ID             string
-	FactionID      string
-	Username       string
-	PublicAddress  string
-	IsAi           string
-	DeletedAt      string
-	UpdatedAt      string
-	CreatedAt      string
-	MobileNumber   string
-	IssuePunishFee string
-	ReportedCost   string
-	Gid            string
+	ID               string
+	FactionID        string
+	Username         string
+	PublicAddress    string
+	IsAi             string
+	DeletedAt        string
+	UpdatedAt        string
+	CreatedAt        string
+	MobileNumber     string
+	IssuePunishFee   string
+	ReportedCost     string
+	Gid              string
+	Rank             string
+	SentMessageCount string
 }{
-	ID:             "players.id",
-	FactionID:      "players.faction_id",
-	Username:       "players.username",
-	PublicAddress:  "players.public_address",
-	IsAi:           "players.is_ai",
-	DeletedAt:      "players.deleted_at",
-	UpdatedAt:      "players.updated_at",
-	CreatedAt:      "players.created_at",
-	MobileNumber:   "players.mobile_number",
-	IssuePunishFee: "players.issue_punish_fee",
-	ReportedCost:   "players.reported_cost",
-	Gid:            "players.gid",
+	ID:               "players.id",
+	FactionID:        "players.faction_id",
+	Username:         "players.username",
+	PublicAddress:    "players.public_address",
+	IsAi:             "players.is_ai",
+	DeletedAt:        "players.deleted_at",
+	UpdatedAt:        "players.updated_at",
+	CreatedAt:        "players.created_at",
+	MobileNumber:     "players.mobile_number",
+	IssuePunishFee:   "players.issue_punish_fee",
+	ReportedCost:     "players.reported_cost",
+	Gid:              "players.gid",
+	Rank:             "players.rank",
+	SentMessageCount: "players.sent_message_count",
 }
 
 // Generated where
 
 var PlayerWhere = struct {
-	ID             whereHelperstring
-	FactionID      whereHelpernull_String
-	Username       whereHelpernull_String
-	PublicAddress  whereHelpernull_String
-	IsAi           whereHelperbool
-	DeletedAt      whereHelpernull_Time
-	UpdatedAt      whereHelpertime_Time
-	CreatedAt      whereHelpertime_Time
-	MobileNumber   whereHelpernull_String
-	IssuePunishFee whereHelperdecimal_Decimal
-	ReportedCost   whereHelperdecimal_Decimal
-	Gid            whereHelperint
+	ID               whereHelperstring
+	FactionID        whereHelpernull_String
+	Username         whereHelpernull_String
+	PublicAddress    whereHelpernull_String
+	IsAi             whereHelperbool
+	DeletedAt        whereHelpernull_Time
+	UpdatedAt        whereHelpertime_Time
+	CreatedAt        whereHelpertime_Time
+	MobileNumber     whereHelpernull_String
+	IssuePunishFee   whereHelperdecimal_Decimal
+	ReportedCost     whereHelperdecimal_Decimal
+	Gid              whereHelperint
+	Rank             whereHelperstring
+	SentMessageCount whereHelperint
 }{
-	ID:             whereHelperstring{field: "\"players\".\"id\""},
-	FactionID:      whereHelpernull_String{field: "\"players\".\"faction_id\""},
-	Username:       whereHelpernull_String{field: "\"players\".\"username\""},
-	PublicAddress:  whereHelpernull_String{field: "\"players\".\"public_address\""},
-	IsAi:           whereHelperbool{field: "\"players\".\"is_ai\""},
-	DeletedAt:      whereHelpernull_Time{field: "\"players\".\"deleted_at\""},
-	UpdatedAt:      whereHelpertime_Time{field: "\"players\".\"updated_at\""},
-	CreatedAt:      whereHelpertime_Time{field: "\"players\".\"created_at\""},
-	MobileNumber:   whereHelpernull_String{field: "\"players\".\"mobile_number\""},
-	IssuePunishFee: whereHelperdecimal_Decimal{field: "\"players\".\"issue_punish_fee\""},
-	ReportedCost:   whereHelperdecimal_Decimal{field: "\"players\".\"reported_cost\""},
-	Gid:            whereHelperint{field: "\"players\".\"gid\""},
+	ID:               whereHelperstring{field: "\"players\".\"id\""},
+	FactionID:        whereHelpernull_String{field: "\"players\".\"faction_id\""},
+	Username:         whereHelpernull_String{field: "\"players\".\"username\""},
+	PublicAddress:    whereHelpernull_String{field: "\"players\".\"public_address\""},
+	IsAi:             whereHelperbool{field: "\"players\".\"is_ai\""},
+	DeletedAt:        whereHelpernull_Time{field: "\"players\".\"deleted_at\""},
+	UpdatedAt:        whereHelpertime_Time{field: "\"players\".\"updated_at\""},
+	CreatedAt:        whereHelpertime_Time{field: "\"players\".\"created_at\""},
+	MobileNumber:     whereHelpernull_String{field: "\"players\".\"mobile_number\""},
+	IssuePunishFee:   whereHelperdecimal_Decimal{field: "\"players\".\"issue_punish_fee\""},
+	ReportedCost:     whereHelperdecimal_Decimal{field: "\"players\".\"reported_cost\""},
+	Gid:              whereHelperint{field: "\"players\".\"gid\""},
+	Rank:             whereHelperstring{field: "\"players\".\"rank\""},
+	SentMessageCount: whereHelperint{field: "\"players\".\"sent_message_count\""},
 }
 
 // PlayerRels is where relationship names are stored.
@@ -205,9 +219,9 @@ func (*playerR) NewStruct() *playerR {
 type playerL struct{}
 
 var (
-	playerAllColumns            = []string{"id", "faction_id", "username", "public_address", "is_ai", "deleted_at", "updated_at", "created_at", "mobile_number", "issue_punish_fee", "reported_cost", "gid"}
+	playerAllColumns            = []string{"id", "faction_id", "username", "public_address", "is_ai", "deleted_at", "updated_at", "created_at", "mobile_number", "issue_punish_fee", "reported_cost", "gid", "rank", "sent_message_count"}
 	playerColumnsWithoutDefault = []string{"id"}
-	playerColumnsWithDefault    = []string{"faction_id", "username", "public_address", "is_ai", "deleted_at", "updated_at", "created_at", "mobile_number", "issue_punish_fee", "reported_cost", "gid"}
+	playerColumnsWithDefault    = []string{"faction_id", "username", "public_address", "is_ai", "deleted_at", "updated_at", "created_at", "mobile_number", "issue_punish_fee", "reported_cost", "gid", "rank", "sent_message_count"}
 	playerPrimaryKeyColumns     = []string{"id"}
 	playerGeneratedColumns      = []string{}
 )

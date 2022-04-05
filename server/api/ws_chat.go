@@ -19,7 +19,6 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/sasha-s/go-deadlock"
-	"github.com/volatiletech/null/v8"
 
 	goaway "github.com/TwiN/go-away"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -61,28 +60,19 @@ const (
 )
 
 type MessageText struct {
-	Message           string           `json:"message"`
-	MessageColor      string           `json:"message_color"`
-	FromUserID        string           `json:"from_user_id"`
-	FromUsername      string           `json:"from_username"`
-	FromUserStat      *boiler.UserStat `json:"from_user_stat"`
-	FromUserFactionID null.String      `json:"from_user_faction_id"`
-	FromUserGID       int              `json:"from_user_gid"`
+	Message      string           `json:"message"`
+	MessageColor string           `json:"message_color"`
+	FromUser     boiler.Player    `json:"from_user"`
+	UserRank     string           `json:"user_rank"`
+	FromUserStat *boiler.UserStat `json:"from_user_stat"`
 
 	TotalMultiplier string `json:"total_multiplier"`
 	IsCitizen       bool   `json:"is_citizen"`
 }
 
 type MessagePunishVote struct {
-	IssuedByPlayerID        string `json:"issued_by_player_id"`
-	IssuedByPlayerUsername  string `json:"issued_by_player_username"`
-	IssuedByPlayerFactionID string `json:"issued_by_player_faction_id"`
-	IssuedByPlayerGid       int    `json:"issued_by_player_gid"`
-
-	ReportedPlayerID        string `json:"reported_player_id"`
-	ReportedPlayerUsername  string `json:"reported_player_username"`
-	ReportedPlayerFactionID string `json:"reported_player_faction_id"`
-	ReportedPlayerGid       int    `json:"reported_player_gid"`
+	IssuedByUser boiler.Player `json:"issued_by_user"`
+	ReportedUser boiler.Player `json:"reported_user"`
 
 	// vote result
 	IsPassed              bool                `json:"is_passed"`
@@ -161,7 +151,6 @@ type FactionChatRequest struct {
 	} `json:"payload"`
 }
 
-// rootHub.SecureCommand(HubKeyFactionChat, factionHub.ChatMessageHandler)
 const HubKeyChatMessage hub.HubCommandKey = "CHAT:MESSAGE"
 
 func firstN(s string, n int) string {
@@ -253,15 +242,12 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 			Type:   ChatMessageTypeText,
 			SentAt: time.Now(),
 			Data: MessageText{
-				Message:           msg,
-				MessageColor:      req.Payload.MessageColor,
-				FromUserID:        player.ID,
-				FromUsername:      player.Username.String,
-				FromUserFactionID: player.FactionID,
-				FromUserStat:      playerStat,
-				FromUserGID:       player.Gid,
-				TotalMultiplier:   totalMultiplier,
-				IsCitizen:         isCitizen,
+				Message:         msg,
+				MessageColor:    req.Payload.MessageColor,
+				FromUser:        *player,
+				FromUserStat:    playerStat,
+				TotalMultiplier: totalMultiplier,
+				IsCitizen:       isCitizen,
 			},
 		}
 
@@ -279,15 +265,12 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 		Type:   ChatMessageTypeText,
 		SentAt: time.Now(),
 		Data: MessageText{
-			Message:           msg,
-			MessageColor:      req.Payload.MessageColor,
-			FromUserID:        player.ID,
-			FromUsername:      player.Username.String,
-			FromUserFactionID: player.FactionID,
-			FromUserStat:      playerStat,
-			TotalMultiplier:   totalMultiplier,
-			IsCitizen:         isCitizen,
-			FromUserGID:       player.Gid,
+			Message:         msg,
+			MessageColor:    req.Payload.MessageColor,
+			FromUser:        *player,
+			FromUserStat:    playerStat,
+			TotalMultiplier: totalMultiplier,
+			IsCitizen:       isCitizen,
 		},
 	}
 	fc.API.GlobalChat.AddMessage(chatMessage)

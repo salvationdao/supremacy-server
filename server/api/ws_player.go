@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"server"
+	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -44,7 +45,7 @@ func NewPlayerController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Pla
 	api.SecureUserCommand(HubKeyPlayerUpdateSettings, pc.PlayerUpdateSettingsHandler)
 	api.SecureUserCommand(HubKeyPlayerGetSettings, pc.PlayerGetSettingsHandler)
 
-	// faction lose select privilege
+	// punish vote related
 	api.SecureUserCommand(HubKeyPlayerActiveCheck, pc.PlayerActiveCheckHandler)
 	api.SecureUserFactionCommand(HubKeyFactionPlayerSearch, pc.FactionPlayerSearch)
 	api.SecureUserFactionCommand(HubKeyPunishOptions, pc.PunishOptions)
@@ -129,7 +130,7 @@ type PlayerGetSettingsRequest struct {
 
 const HubKeyPlayerGetSettings hub.HubCommandKey = "PLAYER:GET_SETTINGS"
 
-//gets settings based on key, sends settings value back as json
+//PlayerGetSettingsHandler gets settings based on key, sends settings value back as json
 func (pc *PlayerController) PlayerGetSettingsHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	errMsg := "Issue getting settings, try again or contact support."
 	req := &PlayerGetSettingsRequest{}
@@ -247,8 +248,6 @@ func (pc *PlayerController) FactionPlayerSearch(ctx context.Context, wsc *hub.Cl
 		return terror.Error(err, "Failed to player from db")
 	}
 
-	// TODO: fix player searching function
-	boil.DebugMode = true
 	ps, err := boiler.Players(
 		qm.Select(
 			boiler.PlayerColumns.ID,
@@ -267,7 +266,6 @@ func (pc *PlayerController) FactionPlayerSearch(ctx context.Context, wsc *hub.Cl
 		),
 		qm.Limit(5),
 	).All(gamedb.StdConn)
-	boil.DebugMode = false
 	if err != nil {
 		return terror.Error(err, "Failed to search players from db")
 	}
@@ -299,12 +297,14 @@ func (pc *PlayerController) PunishVote(ctx context.Context, wsc *hub.Client, pay
 		return terror.Error(err, "Failed to get current player from db")
 	}
 
-	playerStat, err := boiler.FindUserStat(gamedb.StdConn, player.ID)
-	if err != nil {
-		return terror.Error(err, "Failed to get user stat from db")
+	// get player last 7 days kills count
+	playerKill, err := db.GetPlayerAbilityKills(player.ID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Str("player_id", player.ID).Err(err).Msg("Failed to get player ability kills from db")
+		return terror.Error(err, "Failed to get player ability kills from db")
 	}
 
-	if playerStat.KillCount <= 0 {
+	if playerKill <= 0 {
 		return terror.Error(fmt.Errorf("only players with positive ability kill count has the right"), "Does not meet the minimum ability kill count to do the punishment vote")
 	}
 

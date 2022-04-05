@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"os"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -115,6 +116,14 @@ func (ac *AuthControllerWS) RingCheckJWTAuth(ctx context.Context, wsc *hub.Clien
 
 	player.PublicAddress = user.PublicAddress
 	player.Username = null.StringFrom(user.Username)
+
+	// if it is in staging, return error if player is not whitelisted
+	if os.Getenv("GAMESERVER_ENVIRONMENT") == "staging" {
+		if !IsWhitelistedAddress(user.PublicAddress.String) {
+			gamelog.L.Warn().Str("player id", user.ID.String()).Msg("Player is not whitelisted")
+			return terror.Error(fmt.Errorf("player not whitelisted"), "Player not whitelisted")
+		}
+	}
 
 	if !user.FactionID.IsNil() {
 		player.FactionID = null.StringFrom(user.FactionID.String())

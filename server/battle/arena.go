@@ -13,7 +13,6 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/rpcclient"
-	"strconv"
 	"sync"
 	"time"
 
@@ -65,6 +64,25 @@ func (arena *Arena) currentBattleNumber() int {
 		return -1
 	}
 	return arena._currentBattle.BattleNumber
+}
+
+// return a copy of current battle user list
+func (arena *Arena) currentBattleUsersCopy() []*BattleUser {
+	arena.RLock()
+	defer arena.RUnlock()
+	if arena._currentBattle == nil {
+		return nil
+	}
+
+	// copy current user map to list
+	battleUsers := []*BattleUser{}
+	arena._currentBattle.users.RLock()
+	for _, bu := range arena._currentBattle.users.m {
+		battleUsers = append(battleUsers, bu)
+	}
+	arena._currentBattle.users.RUnlock()
+
+	return battleUsers
 }
 
 type Opts struct {
@@ -144,6 +162,7 @@ func NewArena(opts *Opts) *Arena {
 	opts.SecureUserFactionSubscribeCommand(WSAssetQueueStatusSubscribe, arena.AssetQueueStatusSubscribeHandler)
 
 	opts.SecureUserCommand(HubKeyGameUserOnline, arena.UserOnline)
+	opts.SecureUserCommand(HubKeyPlayerRankGet, arena.PlayerRankGet)
 	opts.SubscribeCommand(HubKeyWarMachineDestroyedUpdated, arena.WarMachineDestroyedUpdatedSubscribeHandler)
 
 	// subscribe functions
@@ -172,6 +191,9 @@ func NewArena(opts *Opts) *Arena {
 	opts.NetSubscribeCommand(HubKeyWarMachineLocationUpdated, arena.WarMachineLocationUpdateSubscribeHandler)
 	opts.NetSecureUserFactionSubscribeCommand(HubKeyLiveVoteCountUpdated, arena.LiveVoteCountUpdateSubscribeHandler)
 	opts.NetSecureUserSubscribeCommand(HubKeySpoilOfWarUpdated, arena.SpoilOfWarUpdateSubscribeHandler)
+
+	// start player rank updater
+	arena.PlayerRankUpdater()
 
 	go func() {
 		err = server.Serve(l)
@@ -359,6 +381,26 @@ func (arena *Arena) AbilityLocationSelect(ctx context.Context, wsc *hub.Client, 
 		gamelog.L.Warn().Err(err).Msgf("can't create uuid from wsc identifier %s", wsc.Identifier())
 		return terror.Error(err)
 	}
+
+	return nil
+}
+
+const HubKeyPlayerRankGet hub.HubCommandKey = "PLAYER:RANK:GET"
+
+func (arena *Arena) PlayerRankGet(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	player, err := boiler.Players(
+		qm.Select(
+			boiler.PlayerColumns.ID,
+			boiler.PlayerColumns.Rank,
+		),
+		boiler.PlayerWhere.ID.EQ(wsc.Identifier()),
+	).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Str("player id", wsc.Identifier()).Err(err).Msg("Failed to get player rank from db")
+		return terror.Error(err, "Failed to get player rank from db")
+	}
+
+	reply(player.Rank)
 
 	return nil
 }
@@ -822,14 +864,14 @@ func (arena *Arena) start() {
 					continue
 				}
 
-				gameClientBuildNo, err := strconv.ParseUint(dataPayload.ClientBuildNo, 10, 64)
-				if err != nil {
-					gamelog.L.Panic().Str("game_client_build_no", dataPayload.ClientBuildNo).Msg("invalid game client build number received")
-				}
-
-				if gameClientBuildNo < arena.gameClientBuildNo {
-					gamelog.L.Panic().Uint64("current_game_client_build", gameClientBuildNo).Uint64("minimum_game_client_build", arena.gameClientBuildNo).Msg("unsupported game client build number")
-				}
+				//gameClientBuildNo, err := strconv.ParseUint(dataPayload.ClientBuildNo, 10, 64)
+				//if err != nil {
+				//	gamelog.L.Panic().Str("game_client_build_no", dataPayload.ClientBuildNo).Msg("invalid game client build number received")
+				//}
+				//
+				//if gameClientBuildNo < arena.gameClientBuildNo {
+				//	gamelog.L.Panic().Uint64("current_game_client_build", gameClientBuildNo).Uint64("minimum_game_client_build", arena.gameClientBuildNo).Msg("unsupported game client build number")
+				//}
 
 				err = btl.preIntro(dataPayload)
 				if err != nil {
