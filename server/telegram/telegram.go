@@ -143,7 +143,7 @@ func (t *Telegram) NotificationCreate(mechID string, notification *boiler.Battle
 	}
 
 	codeExists := true
-	if codeExists {
+	for codeExists {
 		// check if a notification that hasnt been sent/ not refunded has that short code
 		exists, err := boiler.BattleQueueNotifications(
 			boiler.BattleQueueNotificationWhere.IsRefunded.EQ(false),
