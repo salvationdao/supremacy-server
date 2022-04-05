@@ -43,7 +43,7 @@ type UserUpdatedRequest struct {
 
 const HubKeyUserSubscribe hub.HubCommandKey = hub.HubCommandKey("USER:SUBSCRIBE")
 
-func (uch *UserControllerWS) UserSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (uch *UserControllerWS) UserSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	req := &UserUpdatedRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {

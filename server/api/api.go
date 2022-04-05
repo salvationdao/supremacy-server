@@ -53,7 +53,8 @@ type VotePriceSystem struct {
 	GlobalVotePerTick []int64 // store last 100 tick total vote
 	GlobalTotalVote   int64
 
-	FactionVotePriceMap map[server.FactionID]*FactionVotePrice
+	FactionVotePriceMap  map[server.FactionID]*FactionVotePrice
+	FactionActivePlayers map[server.FactionID]*ActivePlayers
 }
 
 type FactionVotePrice struct {
@@ -82,9 +83,21 @@ type API struct {
 	MessageBus   *messagebus.MessageBus
 	SMS          server.SMS
 	Passport     *rpcclient.PassportXrpcClient
+	Telegram     server.Telegram
 
 	// ring check auth
 	RingCheckAuthMap *RingCheckAuthMap
+
+	// punish vote
+	FactionPunishVote map[string]*PunishVoteTracker
+
+	FactionActivePlayers map[string]*ActivePlayers
+
+	// chatrooms
+	GlobalChat      *Chatroom
+	RedMountainChat *Chatroom
+	BostonChat      *Chatroom
+	ZaibatsuChat    *Chatroom
 }
 
 // NewAPI registers routes
@@ -100,6 +113,7 @@ func NewAPI(
 	messageBus *messagebus.MessageBus,
 	gsHub *hub.Hub,
 	sms server.SMS,
+	telegram server.Telegram,
 ) *API {
 
 	// initialise api
@@ -116,6 +130,16 @@ func NewAPI(
 		RingCheckAuthMap: NewRingCheckMap(),
 		Passport:         pp,
 		SMS:              sms,
+		Telegram:         telegram,
+
+		FactionPunishVote:    make(map[string]*PunishVoteTracker),
+		FactionActivePlayers: make(map[string]*ActivePlayers),
+
+		// chatroom
+		GlobalChat:      NewChatroom(nil),
+		RedMountainChat: NewChatroom(&server.RedMountainFactionID),
+		BostonChat:      NewChatroom(&server.BostonCyberneticsFactionID),
+		ZaibatsuChat:    NewChatroom(&server.ZaibatsuFactionID),
 	}
 
 	battleArenaClient.SetMessageBus(messageBus)
@@ -131,7 +155,7 @@ func NewAPI(
 			sentryHandler := sentryhttp.New(sentryhttp.Options{})
 			r.Use(sentryHandler.Handle)
 		})
-		r.Mount("/check", CheckRouter(log_helpers.NamedLogger(log, "check router"), conn, battleArenaClient))
+		r.Mount("/check", CheckRouter(log_helpers.NamedLogger(log, "check router"), conn, battleArenaClient, telegram))
 		r.Mount("/stat", AssetStatsRouter(log, conn, api))
 		r.Mount(fmt.Sprintf("/%s/Supremacy_game", server.SupremacyGameUserID), PassportWebhookRouter(log, conn, config.PassportWebhookSecret, api))
 
@@ -141,13 +165,8 @@ func NewAPI(
 
 		//TODO ALEX reimplement handlers
 
-		//r.Get("/battlequeue", WithError(api.BattleArena.GetBattleQueue))
-		//r.Get("/events", WithError(api.BattleArena.GetEvents))
-		//r.Get("/faction_stats", WithError(api.BattleArena.FactionStats))
-		//r.Get("/user_stats", WithError(api.BattleArena.UserStats))
-		//r.Get("/abilities", WithError(api.BattleArena.GetAbility))
-
 		r.Get("/blobs/{id}", WithError(api.IconDisplay))
+
 		r.Post("/video_server", WithToken(config.ServerStreamKey, WithError((api.CreateStreamHandler))))
 		r.Get("/video_server", WithToken(config.ServerStreamKey, WithError((api.GetStreamsHandler))))
 		r.Delete("/video_server", WithToken(config.ServerStreamKey, WithError((api.DeleteStreamHandler))))
@@ -169,6 +188,7 @@ func NewAPI(
 	_ = NewGameController(log, conn, api)
 	_ = NewStreamController(log, conn, api)
 	_ = NewPlayerController(log, conn, api)
+	_ = NewChatController(log, conn, api)
 	_ = NewBattleController(log, conn, api)
 
 	// create a tickle that update faction mvp every day 00:00 am
@@ -200,6 +220,11 @@ func NewAPI(
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to set up faction mvp user update tickle")
 	}
+
+	// spin up a punish vote handlers for each faction
+	api.PunishVoteTrackerSetup()
+
+	api.FactionActivePlayerSetup()
 
 	return api
 }

@@ -13,6 +13,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/rpcclient"
+	"server/telegram"
 	"strconv"
 	"sync"
 	"time"
@@ -31,17 +32,18 @@ import (
 )
 
 type Arena struct {
-	conn              db.Conn
-	socket            *websocket.Conn
-	timeout           time.Duration
-	messageBus        *messagebus.MessageBus
-	_currentBattle    *Battle
-	syndicates        map[string]boiler.Faction
-	AIPlayers         map[string]db.PlayerWithFaction
-	RPCClient         *rpcclient.PassportXrpcClient
-	gameClientLock    sync.Mutex
-	sms               server.SMS
+	conn                     db.Conn
+	socket                   *websocket.Conn
+	timeout                  time.Duration
+	messageBus               *messagebus.MessageBus
+	_currentBattle           *Battle
+	syndicates               map[string]boiler.Faction
+	AIPlayers                map[string]db.PlayerWithFaction
+	RPCClient                *rpcclient.PassportXrpcClient
+	gameClientLock           sync.Mutex
+	sms                      server.SMS
 	gameClientMinimumBuildNo uint64
+	telegram                 server.Telegram
 
 	sync.RWMutex
 }
@@ -58,15 +60,54 @@ func (arena *Arena) storeCurrentBattle(btl *Battle) {
 	arena._currentBattle = btl
 }
 
+func (arena *Arena) currentBattleNumber() int {
+	arena.RLock()
+	defer arena.RUnlock()
+	if arena._currentBattle == nil {
+		return -1
+	}
+	return arena._currentBattle.BattleNumber
+}
+
+// return a copy of current battle user list
+func (arena *Arena) currentBattleUsersCopy() []*BattleUser {
+	arena.RLock()
+	defer arena.RUnlock()
+	if arena._currentBattle == nil {
+		return nil
+	}
+
+	// copy current user map to list
+	battleUsers := []*BattleUser{}
+	arena._currentBattle.users.RLock()
+	for _, bu := range arena._currentBattle.users.m {
+		battleUsers = append(battleUsers, bu)
+	}
+	arena._currentBattle.users.RUnlock()
+
+	return battleUsers
+}
+
+func (arena *Arena) SendToOnlinePlayer(playerID uuid.UUID, key hub.HubCommandKey, payload interface{}) {
+	arena.RLock()
+	defer arena.RUnlock()
+	if arena._currentBattle == nil {
+		return
+	}
+
+	arena._currentBattle.users.Send(key, payload, playerID)
+}
+
 type Opts struct {
-	Conn              db.Conn
-	Addr              string
-	Timeout           time.Duration
-	Hub               *hub.Hub
-	MessageBus        *messagebus.MessageBus
-	RPCClient         *rpcclient.PassportXrpcClient
-	SMS               server.SMS
+	Conn                     db.Conn
+	Addr                     string
+	Timeout                  time.Duration
+	Hub                      *hub.Hub
+	MessageBus               *messagebus.MessageBus
+	RPCClient                *rpcclient.PassportXrpcClient
+	SMS                      server.SMS
 	GameClientMinimumBuildNo uint64
+	Telegram                 *telegram.Telegram
 }
 
 type MessageType byte
@@ -109,6 +150,7 @@ func NewArena(opts *Opts) *Arena {
 	arena.RPCClient = opts.RPCClient
 	arena.sms = opts.SMS
 	arena.gameClientMinimumBuildNo = opts.GameClientMinimumBuildNo
+	arena.telegram = opts.Telegram
 
 	arena.AIPlayers, err = db.DefaultFactionPlayers()
 	if err != nil {
@@ -135,6 +177,7 @@ func NewArena(opts *Opts) *Arena {
 	opts.SecureUserFactionSubscribeCommand(WSAssetQueueStatusSubscribe, arena.AssetQueueStatusSubscribeHandler)
 
 	opts.SecureUserCommand(HubKeyGameUserOnline, arena.UserOnline)
+	opts.SecureUserCommand(HubKeyPlayerRankGet, arena.PlayerRankGet)
 	opts.SubscribeCommand(HubKeyWarMachineDestroyedUpdated, arena.WarMachineDestroyedUpdatedSubscribeHandler)
 
 	// subscribe functions
@@ -152,8 +195,6 @@ func NewArena(opts *Opts) *Arena {
 	opts.SecureUserFactionSubscribeCommand(HubKeGabsBribingWinnerSubscribe, arena.GabsBribingWinnerSubscribe)
 	opts.SecureUserFactionSubscribeCommand(HubKeyBattleAbilityUpdated, arena.BattleAbilityUpdateSubscribeHandler)
 
-	opts.SecureUserSubscribeCommand(HubKeyMultiplierMapSubscribe, arena.MultiplierMapSubScribeHandler)
-
 	// faction unique ability related (sup contribution)
 	opts.SecureUserFactionCommand(HubKeFactionUniqueAbilityContribute, arena.FactionUniqueAbilityContribute)
 	opts.SecureUserFactionSubscribeCommand(HubKeyFactionUniqueAbilitiesUpdated, arena.FactionAbilitiesUpdateSubscribeHandler)
@@ -165,6 +206,9 @@ func NewArena(opts *Opts) *Arena {
 	opts.NetSubscribeCommand(HubKeyWarMachineLocationUpdated, arena.WarMachineLocationUpdateSubscribeHandler)
 	opts.NetSecureUserFactionSubscribeCommand(HubKeyLiveVoteCountUpdated, arena.LiveVoteCountUpdateSubscribeHandler)
 	opts.NetSecureUserSubscribeCommand(HubKeySpoilOfWarUpdated, arena.SpoilOfWarUpdateSubscribeHandler)
+
+	// start player rank updater
+	arena.PlayerRankUpdater()
 
 	go func() {
 		err = server.Serve(l)
@@ -269,6 +313,30 @@ func (arena *Arena) BattleAbilityBribe(ctx context.Context, wsc *hub.Client, pay
 		return terror.Error(err, "Invalid request received")
 	}
 
+	// check user is banned on limit sups contribution
+	isBanned, err := boiler.PunishedPlayers(
+		boiler.PunishedPlayerWhere.PunishUntil.GT(time.Now()),
+		boiler.PunishedPlayerWhere.PlayerID.EQ(wsc.Identifier()),
+		qm.InnerJoin(
+			fmt.Sprintf(
+				"%s on %s = %s and %s = 'limit_sups_contibution'",
+				boiler.TableNames.PunishOptions,
+				qm.Rels(boiler.TableNames.PunishOptions, boiler.PunishOptionColumns.ID),
+				qm.Rels(boiler.TableNames.PunishedPlayers, boiler.PunishedPlayerColumns.PunishOptionID),
+				qm.Rels(boiler.TableNames.PunishOptions, boiler.PunishOptionColumns.Key),
+			),
+		),
+	).Exists(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to check player on the banned list")
+		return terror.Error(err)
+	}
+
+	// if limited sups contribute, return
+	if isBanned {
+		return terror.Error(fmt.Errorf("player is banned to contribute sups"), "You are banned to contribute sups")
+	}
+
 	d, err := decimal.NewFromString(req.Payload.Amount)
 	if err != nil {
 		gamelog.L.Error().Str("amount", req.Payload.Amount).Msg("cant make moneys")
@@ -332,51 +400,31 @@ func (arena *Arena) AbilityLocationSelect(ctx context.Context, wsc *hub.Client, 
 	return nil
 }
 
-type MultiplierMapResponse struct {
-	Multipliers      []*db.Multipliers `json:"multipliers"`
-	CitizenPlayerIDs []uuid.UUID       `json:"citizen_player_ids"`
-}
+const HubKeyPlayerRankGet hub.HubCommandKey = "PLAYER:RANK:GET"
 
-const HubKeyMultiplierMapSubscribe hub.HubCommandKey = "MULTIPLIER:MAP:SUBSCRIBE"
-
-func (arena *Arena) MultiplierMapSubScribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	req := &hub.HubCommandRequest{}
-	err := json.Unmarshal(payload, req)
+func (arena *Arena) PlayerRankGet(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	player, err := boiler.Players(
+		qm.Select(
+			boiler.PlayerColumns.ID,
+			boiler.PlayerColumns.Rank,
+		),
+		boiler.PlayerWhere.ID.EQ(wsc.Identifier()),
+	).One(gamedb.StdConn)
 	if err != nil {
-		return "", "", terror.Error(err, "Invalid request received")
+		gamelog.L.Error().Str("player id", wsc.Identifier()).Err(err).Msg("Failed to get player rank from db")
+		return terror.Error(err, "Failed to get player rank from db")
 	}
 
-	// don't pass back any multiplier value if there is no battle, but still complete the subscription
-	if arena.currentBattle() != nil {
-		multipliers, err := db.PlayerMultipliers(arena.currentBattle().BattleNumber - 1)
-		if err != nil {
-			return "", "", terror.Error(err, "unable to retrieve multipliers")
-		}
+	reply(player.Rank)
 
-		for _, m := range multipliers {
-			m.TotalMultiplier = m.TotalMultiplier.Shift(-1)
-		}
-
-		// get the citizen list
-		citizenPlayerIDs, err := db.CitizenPlayerIDs(arena.currentBattle().BattleNumber - 1)
-		if err != nil {
-			return "", "", terror.Error(err)
-		}
-
-		reply(&MultiplierMapResponse{
-			Multipliers:      multipliers,
-			CitizenPlayerIDs: citizenPlayerIDs,
-		})
-	}
-
-	return req.TransactionID, messagebus.BusKey(HubKeyMultiplierMapSubscribe), nil
+	return nil
 }
 
 const HubKeyUserStatChatSubscribe hub.HubCommandKey = "PLAYER:USER:STAT:CHAT:SUBSCRIBE"
 
 const HubKeyBattleAbilityUpdated hub.HubCommandKey = "BATTLE:ABILITY:UPDATED"
 
-func (arena *Arena) BattleAbilityUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (arena *Arena) BattleAbilityUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -395,12 +443,14 @@ func (arena *Arena) BattleAbilityUpdateSubscribeHandler(ctx context.Context, wsc
 		return "", "", terror.Error(terror.ErrForbidden)
 	}
 
-	// return data if, current battle is not null
-	if arena.currentBattle() != nil {
-		btl := arena.currentBattle()
-		if btl.abilities() != nil {
-			abili, _ := btl.abilities().FactionBattleAbilityGet(factionID.String())
-			reply(abili)
+	if needProcess {
+		// return data if, current battle is not null
+		if arena.currentBattle() != nil {
+			btl := arena.currentBattle()
+			if btl.abilities() != nil {
+				ability, _ := btl.abilities().FactionBattleAbilityGet(factionID.String())
+				reply(ability)
+			}
 		}
 	}
 
@@ -439,6 +489,30 @@ func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, wsc *hub
 		return terror.Error(err, "Invalid request received")
 	}
 
+	// check user is banned on limit sups contribution
+	isBanned, err := boiler.PunishedPlayers(
+		boiler.PunishedPlayerWhere.PunishUntil.GT(time.Now()),
+		boiler.PunishedPlayerWhere.PlayerID.EQ(wsc.Identifier()),
+		qm.InnerJoin(
+			fmt.Sprintf(
+				"%s on %s = %s and %s = 'limit_sups_contibution'",
+				boiler.TableNames.PunishOptions,
+				qm.Rels(boiler.TableNames.PunishOptions, boiler.PunishOptionColumns.ID),
+				qm.Rels(boiler.TableNames.PunishedPlayers, boiler.PunishedPlayerColumns.PunishOptionID),
+				qm.Rels(boiler.TableNames.PunishOptions, boiler.PunishOptionColumns.Key),
+			),
+		),
+	).Exists(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to check player on the banned list")
+		return terror.Error(err)
+	}
+
+	// if limited sups contribute, return
+	if isBanned {
+		return terror.Error(fmt.Errorf("player is banned to contribute sups"), "You are banned to contribute sups")
+	}
+
 	d, err := decimal.NewFromString(req.Payload.Amount)
 	if err != nil {
 		gamelog.L.Error().Str("amount", req.Payload.Amount).
@@ -461,7 +535,7 @@ func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, wsc *hub
 
 const HubKeyFactionUniqueAbilitiesUpdated hub.HubCommandKey = "FACTION:UNIQUE:ABILITIES:UPDATED"
 
-func (arena *Arena) FactionAbilitiesUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (arena *Arena) FactionAbilitiesUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -485,11 +559,13 @@ func (arena *Arena) FactionAbilitiesUpdateSubscribeHandler(ctx context.Context, 
 		return "", "", nil
 	}
 
-	// return data if, current battle is not null
-	if arena.currentBattle() != nil {
+	if needProcess {
+		// return data if, current battle is not null
 		btl := arena.currentBattle()
-		if btl.abilities() != nil {
-			reply(btl.abilities().FactionUniqueAbilitiesGet(factionID))
+		if btl != nil {
+			if btl.abilities() != nil {
+				reply(btl.abilities().FactionUniqueAbilitiesGet(factionID))
+			}
 		}
 	}
 
@@ -507,7 +583,7 @@ type WarMachineAbilitiesUpdatedRequest struct {
 }
 
 // WarMachineAbilitiesUpdateSubscribeHandler subscribe on war machine abilities
-func (arena *Arena) WarMachineAbilitiesUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (arena *Arena) WarMachineAbilitiesUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	gamelog.L.Info().Str("fn", "WarMachineAbilitiesUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &WarMachineAbilitiesUpdatedRequest{}
 	err := json.Unmarshal(payload, req)
@@ -533,14 +609,16 @@ func (arena *Arena) WarMachineAbilitiesUpdateSubscribeHandler(ctx context.Contex
 		return "", "", nil
 	}
 
-	// NOTE: current only return faction unique ability
-	// get war machine ability
-	if arena.currentBattle() != nil {
-		btl := arena.currentBattle()
-		if btl.abilities() != nil {
-			ga := btl.abilities().WarMachineAbilitiesGet(factionID, req.Payload.Hash)
-			if ga != nil {
-				reply(ga)
+	if needProcess {
+		// NOTE: current only return faction unique ability
+		// get war machine ability
+		if arena.currentBattle() != nil {
+			btl := arena.currentBattle()
+			if btl.abilities() != nil {
+				ga := btl.abilities().WarMachineAbilitiesGet(factionID, req.Payload.Hash)
+				if ga != nil {
+					reply(ga)
+				}
 			}
 		}
 	}
@@ -564,9 +642,14 @@ func (arena *Arena) UserOnline(ctx context.Context, wsc *hub.Client, payload []b
 		boiler.PlayerWhere.ID.EQ(userID.String()),
 		qm.Load(boiler.PlayerRels.Faction),
 	).One(gamedb.StdConn)
-	if err != nil || user == nil || user.R.Faction == nil {
-		gamelog.L.Error().Err(err).Msg("invalid input data")
+	if err != nil || user == nil {
+		gamelog.L.Error().Str("player id", user.ID).Err(err).Msg("player does not have a faction")
 		return terror.Error(terror.ErrInvalidInput)
+	}
+
+	// TODO: handle faction swap from non-faction to faction
+	if !user.FactionID.Valid {
+		return nil
 	}
 
 	var color = "#000000"
@@ -596,16 +679,18 @@ type WarMachineDestroyedUpdatedRequest struct {
 
 const HubKeyWarMachineDestroyedUpdated = hub.HubCommandKey("WAR:MACHINE:DESTROYED:UPDATED")
 
-func (arena *Arena) WarMachineDestroyedUpdatedSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (arena *Arena) WarMachineDestroyedUpdatedSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	req := &WarMachineDestroyedUpdatedRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
-	if arena.currentBattle() != nil {
-		if wmd, ok := arena.currentBattle().destroyedWarMachineMap[req.Payload.ParticipantID]; ok {
-			reply(wmd)
+	if needProcess {
+		if arena.currentBattle() != nil {
+			if wmd, ok := arena.currentBattle().destroyedWarMachineMap[req.Payload.ParticipantID]; ok {
+				reply(wmd)
+			}
 		}
 	}
 
@@ -615,7 +700,7 @@ func (arena *Arena) WarMachineDestroyedUpdatedSubscribeHandler(ctx context.Conte
 const HubKeGabsBribeStageUpdateSubscribe hub.HubCommandKey = "BRIBE:STAGE:UPDATED:SUBSCRIBE"
 
 // GabsBribeStageSubscribe subscribe on bribing stage change
-func (arena *Arena) GabsBribeStageSubscribe(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (arena *Arena) GabsBribeStageSubscribe(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -627,11 +712,13 @@ func (arena *Arena) GabsBribeStageSubscribe(ctx context.Context, wsc *hub.Client
 		return "", "", terror.Error(terror.ErrInvalidInput)
 	}
 
-	// return data if, current battle is not null
-	if arena.currentBattle() != nil {
-		btl := arena.currentBattle()
-		if btl.abilities() != nil {
-			reply(btl.abilities().BribeStageGet())
+	if needProcess {
+		// return data if, current battle is not null
+		if arena.currentBattle() != nil {
+			btl := arena.currentBattle()
+			if btl.abilities() != nil {
+				reply(btl.abilities().BribeStageGet())
+			}
 		}
 	}
 
@@ -640,7 +727,7 @@ func (arena *Arena) GabsBribeStageSubscribe(ctx context.Context, wsc *hub.Client
 
 const HubKeyBattleAbilityProgressBarUpdated hub.HubCommandKey = "BATTLE:ABILITY:PROGRESS:BAR:UPDATED"
 
-func (arena *Arena) FactionProgressBarUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.BusKey, error) {
+func (arena *Arena) FactionProgressBarUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, needProcess bool) (messagebus.BusKey, error) {
 	gamelog.L.Info().Str("fn", "FactionProgressBarUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
 
 	return messagebus.BusKey(HubKeyBattleAbilityProgressBarUpdated), nil
@@ -655,7 +742,7 @@ type AbilityPriceUpdateRequest struct {
 	} `json:"payload"`
 }
 
-func (arena *Arena) FactionAbilityPriceUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.BusKey, error) {
+func (arena *Arena) FactionAbilityPriceUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, needProcess bool) (messagebus.BusKey, error) {
 	req := &AbilityPriceUpdateRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -665,17 +752,17 @@ func (arena *Arena) FactionAbilityPriceUpdateSubscribeHandler(ctx context.Contex
 	return messagebus.BusKey(fmt.Sprintf("%s,%s", HubKeyAbilityPriceUpdated, req.Payload.AbilityIdentity)), nil
 }
 
-func (arena *Arena) LiveVoteCountUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.BusKey, error) {
+func (arena *Arena) LiveVoteCountUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, needProcess bool) (messagebus.BusKey, error) {
 	return messagebus.BusKey(HubKeyLiveVoteCountUpdated), nil
 }
 
-func (arena *Arena) WarMachineLocationUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.BusKey, error) {
+func (arena *Arena) WarMachineLocationUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, needProcess bool) (messagebus.BusKey, error) {
 	return messagebus.BusKey(HubKeyWarMachineLocationUpdated), nil
 }
 
 const HubKeySpoilOfWarUpdated hub.HubCommandKey = "SPOIL:OF:WAR:UPDATED"
 
-func (arena *Arena) SpoilOfWarUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte) (messagebus.BusKey, error) {
+func (arena *Arena) SpoilOfWarUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, needProcess bool) (messagebus.BusKey, error) {
 	gamelog.L.Info().Str("fn", "SpoilOfWarUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
 	return messagebus.BusKey(HubKeySpoilOfWarUpdated), nil
 }
@@ -683,7 +770,7 @@ func (arena *Arena) SpoilOfWarUpdateSubscribeHandler(ctx context.Context, wsc *h
 const HubKeGabsBribingWinnerSubscribe hub.HubCommandKey = "BRIBE:WINNER:SUBSCRIBE"
 
 // GabsBribingWinnerSubscribe subscribe on winner notification
-func (arena *Arena) GabsBribingWinnerSubscribe(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (arena *Arena) GabsBribingWinnerSubscribe(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -700,16 +787,18 @@ func (arena *Arena) GabsBribingWinnerSubscribe(ctx context.Context, wsc *hub.Cli
 	return req.TransactionID, busKey, nil
 }
 
-func (arena *Arena) SendSettings(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (arena *Arena) SendSettings(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return "", "", errors.Wrap(err, "unable to unmarshal json payload for send settings subscribe")
 	}
 
-	// response game setting, if current battle exists
-	if arena.currentBattle() != nil {
-		reply(UpdatePayload(arena.currentBattle()))
+	if needProcess {
+		// response game setting, if current battle exists
+		if arena.currentBattle() != nil {
+			reply(UpdatePayload(arena.currentBattle()))
+		}
 	}
 
 	return req.TransactionID, messagebus.BusKey(HubKeyGameSettingsUpdated), nil
@@ -898,16 +987,6 @@ func (arena *Arena) beginBattle() {
 				m.TotalMultiplier = m.TotalMultiplier.Shift(-1)
 			}
 
-			// get the citizen list
-			citizenPlayerIDs, err := db.CitizenPlayerIDs(lastBattle.BattleNumber)
-			if err != nil {
-				gamelog.L.Error().Err(err).Int("btl.BattleNumber", lastBattle.BattleNumber).Msg("failed to load CitizenPlayerIDs")
-			} else {
-				go arena.messageBus.Send(messagebus.BusKey(HubKeyMultiplierMapSubscribe), &MultiplierMapResponse{
-					Multipliers:      multipliers,
-					CitizenPlayerIDs: citizenPlayerIDs,
-				})
-			}
 		}
 	}
 
@@ -946,8 +1025,7 @@ func (arena *Arena) beginBattle() {
 
 const HubKeyUserStatSubscribe hub.HubCommandKey = "USER:STAT:SUBSCRIBE"
 
-func (arena *Arena) UserStatUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-
+func (arena *Arena) UserStatUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -958,13 +1036,15 @@ func (arena *Arena) UserStatUpdatedSubscribeHandler(ctx context.Context, client 
 	if err != nil {
 		return "", "", terror.Error(err, "Invalid request received")
 	}
-	us, err := db.UserStatsGet(userID.String())
-	if err != nil {
-		return "", "", terror.Error(err, "failed to get user")
-	}
 
-	if us != nil {
-		reply(us)
+	if needProcess {
+		us, err := db.UserStatsGet(userID.String())
+		if err != nil {
+			return "", "", terror.Error(err, "failed to get user stats")
+		}
+		if us != nil {
+			reply(us)
+		}
 	}
 
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserStatSubscribe, client.Identifier())), nil

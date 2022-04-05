@@ -1,6 +1,7 @@
 package db
 
 import (
+	"math/rand"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
@@ -66,18 +67,19 @@ func GameAbilityCreate(ctx context.Context, conn Conn, gameAbility *server.GameA
 
 // BattleAbilityGetRandom return three random abilities
 func BattleAbilityGetRandom(ctx context.Context, conn Conn) (*server.BattleAbility, error) {
-	result := &server.BattleAbility{}
+	battleAbilities := []*server.BattleAbility{}
 	q := `
-		SELECT * FROM battle_abilities
-		ORDER BY RANDOM()
-		LIMIT 1;
+		SELECT * FROM battle_abilities;
 	`
-	err := pgxscan.Get(ctx, conn, result, q)
+	err := pgxscan.Select(ctx, conn, &battleAbilities, q)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
 
-	return result, nil
+	// NOTE: need to ensure there is always a battle ability on the list, otherwise the system will crash
+	battleAbility := battleAbilities[rand.Intn(len(battleAbilities))]
+
+	return battleAbility, nil
 }
 
 // FactionBattleAbilityGet return the battle ability of the faction

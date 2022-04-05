@@ -2,7 +2,10 @@ package db
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
+	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -61,7 +64,7 @@ func PlayerRegister(ID uuid.UUID, Username string, FactionID uuid.UUID, PublicAd
 func UserStatsGet(playerID string) (*boiler.UserStat, error) {
 	userStat, err := boiler.FindUserStat(gamedb.StdConn, playerID)
 	if err != nil {
-		gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to find user stat")
+		//gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to find user stat")
 		return nil, err
 	}
 	return userStat, nil
@@ -190,7 +193,7 @@ func PlayerFactionContributionList(battleID string, factionID string) ([]uuid.UU
 	playerList := []uuid.UUID{}
 	q := `
 		select bc.player_id from battle_contributions bc 
-			where bc.battle_id = $1 and bc.faction_id = $2 
+			where bc.battle_id = $1 and bc.faction_id = $2
 			group by player_id
 		order by sum(amount) desc 
 	`
@@ -225,4 +228,54 @@ func PlayerFactionContributionList(battleID string, factionID string) ([]uuid.UU
 	}
 
 	return playerList, nil
+}
+
+func RefreshPlayerLastSevenAbilityKill() error {
+	q := `
+		REFRESH MATERIALIZED VIEW CONCURRENTLY player_last_seven_day_ability_kills
+	`
+	_, err := gamedb.StdConn.Exec(q)
+	if err != nil {
+		return terror.Error(err, "Failed to refresh player last seven days kills table")
+	}
+	return nil
+}
+
+func GetPlayerAbilityKills(playerID string) (int, error) {
+	killCount := 0
+	q := `
+		SELECT kill_count FROM player_last_seven_day_ability_kills WHERE id = $1
+	`
+	err := gamedb.StdConn.QueryRow(q, playerID).Scan(&killCount)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return 0, terror.Error(err, "Failed to get player ability kills from db")
+	}
+
+	return killCount, nil
+}
+
+// GetPositivePlayerAbilityKillByFactionID return player ability kill by given faction id
+func GetPositivePlayerAbilityKillByFactionID(factionID server.FactionID) ([]*server.PlayerAbilityKills, error) {
+	q := `
+		SELECT id, faction_id, kill_count FROM player_last_seven_day_ability_kills WHERE faction_id = $1 AND kill_count > 0 ORDER BY kill_count DESC 
+	`
+
+	result, err := gamedb.StdConn.Query(q, factionID.String())
+	if err != nil {
+		return nil, terror.Error(err, "Failed to get player ability kills from db")
+	}
+
+	playerAbilityKills := []*server.PlayerAbilityKills{}
+	for result.Next() {
+		playerKillCount := &server.PlayerAbilityKills{}
+
+		err = result.Scan(&playerKillCount.ID, &playerKillCount.FactionID, &playerKillCount.KillCount)
+		if err != nil {
+			return nil, terror.Error(err, "Failed to scan player kill count from db")
+		}
+
+		playerAbilityKills = append(playerAbilityKills, playerKillCount)
+	}
+
+	return playerAbilityKills, nil
 }
