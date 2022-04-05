@@ -94,7 +94,6 @@ func (ctrlr *PlayerController) PlayerUpdateSettingsHandler(ctx context.Context, 
 	//if the payload includes a new value, update it in the db
 	if payloadStr != dbStr {
 		userSettings.Value = req.Payload.Value
-		fmt.Println(">>>>>>>>>>>>>>>>>>>", req.Payload.Value)
 		_, err := userSettings.Update(gamedb.StdConn, boil.Whitelist(boiler.PlayerPreferenceColumns.Value))
 		if err != nil {
 			return terror.Error(err, errMsg)
