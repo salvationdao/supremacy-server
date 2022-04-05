@@ -44,6 +44,7 @@ func NewPlayerController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Pla
 
 	api.SecureUserCommand(HubKeyPlayerUpdateSettings, pc.PlayerUpdateSettingsHandler)
 	api.SecureUserCommand(HubKeyPlayerGetSettings, pc.PlayerGetSettingsHandler)
+	api.SecureUserSubscribeCommand(HubKeyTelegramShortcodeRegistered, pc.PlayerGetTelegramShortcodeRegistered)
 
 	// punish vote related
 	api.SecureUserCommand(HubKeyPlayerPunishmentList, pc.PlayerPunishmentList)
@@ -161,6 +162,23 @@ func (pc *PlayerController) PlayerGetSettingsHandler(ctx context.Context, wsc *h
 	reply(userSettings.Value)
 	reply(true)
 	return nil
+}
+
+const HubKeyTelegramShortcodeRegistered hub.HubCommandKey = "USER:TELEGRAM_SHORTCODE_REGISTERED"
+
+func (pc *PlayerController) PlayerGetTelegramShortcodeRegistered(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return "", "", terror.Error(err, "Invalid request received")
+	}
+
+	if needProcess {
+		reply(false)
+	}
+
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTelegramShortcodeRegistered, wsc.Identifier())), nil
+
 }
 
 const HubKeyPlayerBattleQueueBrowserSubscribe hub.HubCommandKey = "PLAYER:BROWSER_NOFTICATION_SUBSCRIBE"

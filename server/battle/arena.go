@@ -13,6 +13,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/rpcclient"
+	"server/telegram"
 	"strconv"
 	"sync"
 	"time"
@@ -42,6 +43,7 @@ type Arena struct {
 	gameClientLock           sync.Mutex
 	sms                      server.SMS
 	gameClientMinimumBuildNo uint64
+	telegram                 server.Telegram
 
 	sync.RWMutex
 }
@@ -105,6 +107,7 @@ type Opts struct {
 	RPCClient                *rpcclient.PassportXrpcClient
 	SMS                      server.SMS
 	GameClientMinimumBuildNo uint64
+	Telegram                 *telegram.Telegram
 }
 
 type MessageType byte
@@ -147,6 +150,7 @@ func NewArena(opts *Opts) *Arena {
 	arena.RPCClient = opts.RPCClient
 	arena.sms = opts.SMS
 	arena.gameClientMinimumBuildNo = opts.GameClientMinimumBuildNo
+	arena.telegram = opts.Telegram
 
 	arena.AIPlayers, err = db.DefaultFactionPlayers()
 	if err != nil {

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -22,37 +23,58 @@ import (
 
 // TelegramNotification is an object representing the database table.
 type TelegramNotification struct {
-	ID        string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	CreatedAt time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ID         string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	CreatedAt  time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	Shortcode  string    `boiler:"shortcode" boil:"shortcode" json:"shortcode" toml:"shortcode" yaml:"shortcode"`
+	Registered bool      `boiler:"registered" boil:"registered" json:"registered" toml:"registered" yaml:"registered"`
+	TelegramID null.Int  `boiler:"telegram_id" boil:"telegram_id" json:"telegram_id,omitempty" toml:"telegram_id" yaml:"telegram_id,omitempty"`
 
 	R *telegramNotificationR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L telegramNotificationL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var TelegramNotificationColumns = struct {
-	ID        string
-	CreatedAt string
+	ID         string
+	CreatedAt  string
+	Shortcode  string
+	Registered string
+	TelegramID string
 }{
-	ID:        "id",
-	CreatedAt: "created_at",
+	ID:         "id",
+	CreatedAt:  "created_at",
+	Shortcode:  "shortcode",
+	Registered: "registered",
+	TelegramID: "telegram_id",
 }
 
 var TelegramNotificationTableColumns = struct {
-	ID        string
-	CreatedAt string
+	ID         string
+	CreatedAt  string
+	Shortcode  string
+	Registered string
+	TelegramID string
 }{
-	ID:        "telegram_notifications.id",
-	CreatedAt: "telegram_notifications.created_at",
+	ID:         "telegram_notifications.id",
+	CreatedAt:  "telegram_notifications.created_at",
+	Shortcode:  "telegram_notifications.shortcode",
+	Registered: "telegram_notifications.registered",
+	TelegramID: "telegram_notifications.telegram_id",
 }
 
 // Generated where
 
 var TelegramNotificationWhere = struct {
-	ID        whereHelperstring
-	CreatedAt whereHelpertime_Time
+	ID         whereHelperstring
+	CreatedAt  whereHelpertime_Time
+	Shortcode  whereHelperstring
+	Registered whereHelperbool
+	TelegramID whereHelpernull_Int
 }{
-	ID:        whereHelperstring{field: "\"telegram_notifications\".\"id\""},
-	CreatedAt: whereHelpertime_Time{field: "\"telegram_notifications\".\"created_at\""},
+	ID:         whereHelperstring{field: "\"telegram_notifications\".\"id\""},
+	CreatedAt:  whereHelpertime_Time{field: "\"telegram_notifications\".\"created_at\""},
+	Shortcode:  whereHelperstring{field: "\"telegram_notifications\".\"shortcode\""},
+	Registered: whereHelperbool{field: "\"telegram_notifications\".\"registered\""},
+	TelegramID: whereHelpernull_Int{field: "\"telegram_notifications\".\"telegram_id\""},
 }
 
 // TelegramNotificationRels is where relationship names are stored.
@@ -76,9 +98,9 @@ func (*telegramNotificationR) NewStruct() *telegramNotificationR {
 type telegramNotificationL struct{}
 
 var (
-	telegramNotificationAllColumns            = []string{"id", "created_at"}
-	telegramNotificationColumnsWithoutDefault = []string{}
-	telegramNotificationColumnsWithDefault    = []string{"id", "created_at"}
+	telegramNotificationAllColumns            = []string{"id", "created_at", "shortcode", "registered", "telegram_id"}
+	telegramNotificationColumnsWithoutDefault = []string{"shortcode"}
+	telegramNotificationColumnsWithDefault    = []string{"id", "created_at", "registered", "telegram_id"}
 	telegramNotificationPrimaryKeyColumns     = []string{"id"}
 	telegramNotificationGeneratedColumns      = []string{}
 )

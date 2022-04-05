@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"server"
 	"server/battle"
 	"server/db"
 	"server/db/boiler"
@@ -23,13 +24,15 @@ type CheckController struct {
 	Conn        db.Conn
 	Log         *zerolog.Logger
 	BattleArena *battle.Arena
+	Telegram    server.Telegram
 }
 
-func CheckRouter(log *zerolog.Logger, conn db.Conn, battleArena *battle.Arena) chi.Router {
+func CheckRouter(log *zerolog.Logger, conn db.Conn, battleArena *battle.Arena, telegram server.Telegram) chi.Router {
 	c := &CheckController{
 		Conn:        conn,
 		Log:         log,
 		BattleArena: battleArena,
+		Telegram:    telegram,
 	}
 	r := chi.NewRouter()
 	r.Get("/", c.Check)
@@ -100,7 +103,6 @@ func (c *CheckController) Check(w http.ResponseWriter, r *http.Request) {
 			c.Log.Err(err).Msg("failed to send")
 		}
 	}
-
 }
 
 // CheckGame return a game stat check

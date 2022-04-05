@@ -83,6 +83,7 @@ type API struct {
 	MessageBus   *messagebus.MessageBus
 	SMS          server.SMS
 	Passport     *rpcclient.PassportXrpcClient
+	Telegram     server.Telegram
 
 	// ring check auth
 	RingCheckAuthMap *RingCheckAuthMap
@@ -112,6 +113,7 @@ func NewAPI(
 	messageBus *messagebus.MessageBus,
 	gsHub *hub.Hub,
 	sms server.SMS,
+	telegram server.Telegram,
 ) *API {
 
 	// initialise api
@@ -128,6 +130,7 @@ func NewAPI(
 		RingCheckAuthMap: NewRingCheckMap(),
 		Passport:         pp,
 		SMS:              sms,
+		Telegram:         telegram,
 
 		FactionPunishVote:    make(map[string]*PunishVoteTracker),
 		FactionActivePlayers: make(map[string]*ActivePlayers),
@@ -152,7 +155,7 @@ func NewAPI(
 			sentryHandler := sentryhttp.New(sentryhttp.Options{})
 			r.Use(sentryHandler.Handle)
 		})
-		r.Mount("/check", CheckRouter(log_helpers.NamedLogger(log, "check router"), conn, battleArenaClient))
+		r.Mount("/check", CheckRouter(log_helpers.NamedLogger(log, "check router"), conn, battleArenaClient, telegram))
 		r.Mount("/stat", AssetStatsRouter(log, conn, api))
 		r.Mount(fmt.Sprintf("/%s/Supremacy_game", server.SupremacyGameUserID), PassportWebhookRouter(log, conn, config.PassportWebhookSecret, api))
 
@@ -163,6 +166,7 @@ func NewAPI(
 		//TODO ALEX reimplement handlers
 
 		r.Get("/blobs/{id}", WithError(api.IconDisplay))
+
 		r.Post("/video_server", WithToken(config.ServerStreamKey, WithError((api.CreateStreamHandler))))
 		r.Get("/video_server", WithToken(config.ServerStreamKey, WithError((api.GetStreamsHandler))))
 		r.Delete("/video_server", WithToken(config.ServerStreamKey, WithError((api.DeleteStreamHandler))))
