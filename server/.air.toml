@@ -4,7 +4,7 @@ tmp_dir = "tmp"
 [build]
 cmd = "go build -race -o ./tmp/main ./cmd/gameserver"
 bin = "tmp/main"
-full_bin = "APP_ENV=dev APP_USER=air ./tmp/main serve"
+full_bin = "APP_ENV=dev APP_USER=air ./tmp/main serve --game_client_minimum_build_no 1"
 include_ext = ["go", "tpl", "tmpl", "html"]
 exclude_dir = ["assets", "tmp", "vendor", "web/node_modules"]
 include_dir = []

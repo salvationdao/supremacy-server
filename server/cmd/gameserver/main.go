@@ -94,7 +94,7 @@ func main() {
 				Name:    "serve",
 				Aliases: []string{"s"},
 				Flags: []cli.Flag{
-					&cli.Uint64Flag{Name: "gameclient_build_no", Value: 0, EnvVars: []string{envPrefix + "_GAMECLIENT_BUILD_NO", "GAMECLIENT_BUILD_NO"}, Usage: "The gameclient version the server is using."},
+					&cli.Uint64Flag{Name: "game_client_minimum_build_no", EnvVars: []string{envPrefix + "_GAMECLIENT_MINIMUM_BUILD_NO", "GAMECLIENT_MINIMUM_BUILD_NO"}, Usage: "The gameclient version the server is using."},
 
 					&cli.StringFlag{Name: "database_user", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_USER", "DATABASE_USER"}, Usage: "The database user"},
 					&cli.StringFlag{Name: "database_pass", Value: "dev", EnvVars: []string{envPrefix + "_DATABASE_PASS", "DATABASE_PASS"}, Usage: "The database pass"},
@@ -149,7 +149,7 @@ func main() {
 				},
 				Usage: "run server",
 				Action: func(c *cli.Context) error {
-					gameClientBuildNo := c.Uint64("gameclient_build_no")
+					gameClientMinimumBuildNo := c.Uint64("game_client_minimum_build_no")
 
 					databaseMaxPoolConns := c.Int("database_max_pool_conns")
 					databaseMaxIdleConns := c.Int("database_max_idle_conns")
@@ -190,6 +190,10 @@ func main() {
 						pport := c.Int("pprof_port")
 						// dumping pprof at period bases
 						pprofMonitor(pint, pport)
+					}
+
+					if gameClientMinimumBuildNo == 0 {
+						gamelog.L.Panic().Msg("game_client_minimum_build_no not set or zero value")
 					}
 
 					pgxconn, err := pgxconnect(
@@ -361,14 +365,14 @@ func main() {
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Set up hub")
 
 					ba := battle.NewArena(&battle.Opts{
-						Addr:              battleArenaAddr,
-						Conn:              pgxconn,
-						MessageBus:        messageBus,
-						Hub:               gsHub,
-						RPCClient:         rpcClient,
-						SMS:               twilio,
-						Telegram:          telebot,
-						GameClientBuildNo: gameClientBuildNo,
+						Addr:                     battleArenaAddr,
+						Conn:                     pgxconn,
+						MessageBus:               messageBus,
+						Hub:                      gsHub,
+						RPCClient:                rpcClient,
+						SMS:                      twilio,
+						Telegram:                 telebot,
+						GameClientMinimumBuildNo: gameClientMinimumBuildNo,
 					})
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("set up arena")
 					gamelog.L.Info().Msg("Setting up webhook rest API")
