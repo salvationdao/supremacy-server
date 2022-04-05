@@ -708,6 +708,7 @@ func (btl *Battle) endWarMachines(payload *BattleEndPayload) []*WarMachine {
 					Str("mechID", w.ID).
 					Str("db func", "endWarMachines").
 					Err(err).Msg("unable to retrieve battle mech from database")
+				continue
 			}
 
 			bm.MechSurvived = null.BoolFrom(true)
@@ -730,6 +731,7 @@ func (btl *Battle) endWarMachines(payload *BattleEndPayload) []*WarMachine {
 				gamelog.L.Warn().Err(err).
 					Interface("boiler.MechStat", newMs).
 					Msg("unable to create mech stat")
+				continue
 			} else if err != nil {
 				gamelog.L.Warn().Err(err).
 					Str("mechID", w.ID).
