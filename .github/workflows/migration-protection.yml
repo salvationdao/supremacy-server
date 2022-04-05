@@ -1,0 +1,20 @@
+# Checks that migration dates are in date order
+# Source: https://github.com/golang-migrate/migrate/issues/179#issuecomment-947094417
+
+name: migration-validation
+on:
+  pull_request:
+    types: [opened, synchronize, edited, reopened]
+    branches:
+      - main
+jobs:
+  migration-validation:
+    name: migration-validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: update checkout
+        run: git fetch --prune
+      - name: migration-validation
+        run: scripts/migration-validation.sh ${{ github.event.pull_request.base.ref }}
+        shell: bash
