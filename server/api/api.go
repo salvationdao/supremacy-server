@@ -53,7 +53,8 @@ type VotePriceSystem struct {
 	GlobalVotePerTick []int64 // store last 100 tick total vote
 	GlobalTotalVote   int64
 
-	FactionVotePriceMap map[server.FactionID]*FactionVotePrice
+	FactionVotePriceMap  map[server.FactionID]*FactionVotePrice
+	FactionActivePlayers map[server.FactionID]*ActivePlayers
 }
 
 type FactionVotePrice struct {
@@ -86,6 +87,17 @@ type API struct {
 
 	// ring check auth
 	RingCheckAuthMap *RingCheckAuthMap
+
+	// punish vote
+	FactionPunishVote map[string]*PunishVoteTracker
+
+	FactionActivePlayers map[string]*ActivePlayers
+
+	// chatrooms
+	GlobalChat      *Chatroom
+	RedMountainChat *Chatroom
+	BostonChat      *Chatroom
+	ZaibatsuChat    *Chatroom
 }
 
 // NewAPI registers routes
@@ -119,6 +131,15 @@ func NewAPI(
 		Passport:         pp,
 		SMS:              sms,
 		Telegram:         telegram,
+
+		FactionPunishVote:    make(map[string]*PunishVoteTracker),
+		FactionActivePlayers: make(map[string]*ActivePlayers),
+
+		// chatroom
+		GlobalChat:      NewChatroom(nil),
+		RedMountainChat: NewChatroom(&server.RedMountainFactionID),
+		BostonChat:      NewChatroom(&server.BostonCyberneticsFactionID),
+		ZaibatsuChat:    NewChatroom(&server.ZaibatsuFactionID),
 	}
 
 	battleArenaClient.SetMessageBus(messageBus)
@@ -144,12 +165,6 @@ func NewAPI(
 
 		//TODO ALEX reimplement handlers
 
-		//r.Get("/battlequeue", WithError(api.BattleArena.GetBattleQueue))
-		//r.Get("/events", WithError(api.BattleArena.GetEvents))
-		//r.Get("/faction_stats", WithError(api.BattleArena.FactionStats))
-		//r.Get("/user_stats", WithError(api.BattleArena.UserStats))
-		//r.Get("/abilities", WithError(api.BattleArena.GetAbility))
-
 		r.Get("/blobs/{id}", WithError(api.IconDisplay))
 
 		r.Post("/video_server", WithToken(config.ServerStreamKey, WithError((api.CreateStreamHandler))))
@@ -169,10 +184,10 @@ func NewAPI(
 	_ = NewCheckController(log, conn, api)
 	_ = NewUserController(log, conn, api)
 	_ = NewAuthController(log, conn, api, config)
-	// _ = NewFactionController(log, conn, api)
 	_ = NewGameController(log, conn, api)
 	_ = NewStreamController(log, conn, api)
 	_ = NewPlayerController(log, conn, api)
+	_ = NewChatController(log, conn, api)
 
 	// create a tickle that update faction mvp every day 00:00 am
 	factionMvpUpdate := tickle.New("Calculate faction mvp player", 24*60*60, func() (int, error) {
@@ -203,6 +218,11 @@ func NewAPI(
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to set up faction mvp user update tickle")
 	}
+
+	// spin up a punish vote handlers for each faction
+	api.PunishVoteTrackerSetup()
+
+	api.FactionActivePlayerSetup()
 
 	return api
 }

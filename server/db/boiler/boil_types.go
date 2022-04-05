@@ -80,3 +80,11 @@ const (
 	MultiplierTypeEnumHoursOnline  = "hours_online"
 	MultiplierTypeEnumSyndicateWin = "syndicate_win"
 )
+
+// Enum values for PlayerRankEnum
+const (
+	PlayerRankEnumGENERAL     = "GENERAL"
+	PlayerRankEnumCORPORAL    = "CORPORAL"
+	PlayerRankEnumPRIVATE     = "PRIVATE"
+	PlayerRankEnumNEW_RECRUIT = "NEW_RECRUIT"
+)

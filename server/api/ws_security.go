@@ -2,12 +2,13 @@ package api
 
 import (
 	"context"
-	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-syndicate/hub"
-	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
+
+	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/hub"
+	"github.com/ninja-syndicate/hub/ext/messagebus"
 )
 
 func (api *API) Command(key hub.HubCommandKey, fn hub.HubCommandFunc) {
@@ -63,7 +64,7 @@ func (api *API) SecureUserCommandWithPerm(key hub.HubCommandKey, fn hub.HubComma
 }
 
 // HubSubscribeCommandFunc is a registered handler for the hub to route to for subscriptions (returns sessionID and arguments)
-type HubSubscribeCommandFunc func(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error)
+type HubSubscribeCommandFunc func(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error)
 
 // SubscribeCommand registers a subscription command to the hub
 //
@@ -110,7 +111,7 @@ func (api *API) SubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn HubSubsc
 			return terror.Error(terror.ErrForbidden)
 		}
 
-		transactionID, busKey, err := fn(ctx, wsc, payload, reply)
+		transactionID, busKey, err := fn(ctx, wsc, payload, reply, true)
 		if err != nil {
 			return terror.Error(err)
 		}
@@ -120,6 +121,23 @@ func (api *API) SubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn HubSubsc
 
 		return nil
 	})
+	unsubscribeKey := hub.HubCommandKey(key + ":UNSUBSCRIBE")
+	api.Hub.Handle(unsubscribeKey, func(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+		if authCheck(wsc) {
+			return terror.Error(terror.ErrForbidden)
+		}
+
+		transactionID, busKey, err := fn(ctx, wsc, payload, reply, false)
+		if err != nil {
+			return terror.Error(err)
+		}
+
+		// add subscription to the message bus
+		api.MessageBus.Unsub(busKey, wsc, transactionID)
+
+		return nil
+	})
+
 }
 
 /***************************

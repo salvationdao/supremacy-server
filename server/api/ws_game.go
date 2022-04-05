@@ -38,7 +38,7 @@ func NewGameController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *GameC
 const HubKeyAISpawned hub.HubCommandKey = "AI:SPAWNED"
 
 // AISpawnedSubscribeHandler to subscribe on war machine destroyed
-func (gc *GameControllerWS) AISpawnedSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (gc *GameControllerWS) AISpawnedSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	req := &struct {
 		*hub.HubCommandRequest
 	}{}
@@ -63,69 +63,4 @@ type WarMachineDestroyedEventRecord struct {
 	DestroyedWarMachine *server.WarMachineBrief `json:"destroyedWarMachine"`
 	KilledByWarMachine  *server.WarMachineBrief `json:"killedByWarMachineID,omitempty"`
 	KilledBy            string                  `json:"killedBy"`
-}
-
-/**********************
-*  Game Notification  *
-**********************/
-type GameNotificationType string
-
-type GameNotificationKill struct {
-	DestroyedWarMachine *server.WarMachineBrief `json:"DestroyedWarMachine"`
-	KillerWarMachine    *server.WarMachineBrief `json:"killerWarMachine,omitempty"`
-	KilledByAbility     *server.AbilityBrief    `json:"killedByAbility,omitempty"`
-}
-
-type LocationSelectType string
-
-type GameNotificationLocationSelect struct {
-	Type        LocationSelectType   `json:"type"`
-	X           *int                 `json:"x,omitempty"`
-	Y           *int                 `json:"y,omitempty"`
-	CurrentUser *server.UserBrief    `json:"currentUser,omitempty"`
-	NextUser    *server.UserBrief    `json:"nextUser,omitempty"`
-	Ability     *server.AbilityBrief `json:"ability,omitempty"`
-}
-
-type GameNotificationAbility struct {
-	User    *server.UserBrief    `json:"user,omitempty"`
-	Ability *server.AbilityBrief `json:"ability,omitempty"`
-}
-
-type GameNotificationWarMachineAbility struct {
-	User       *server.UserBrief       `json:"user,omitempty"`
-	Ability    *server.AbilityBrief    `json:"ability,omitempty"`
-	WarMachine *server.WarMachineBrief `json:"warMachine,omitempty"`
-}
-
-type GameNotification struct {
-	Type GameNotificationType `json:"type"`
-	Data interface{}          `json:"data"`
-}
-
-const HubKeyGameNotification hub.HubCommandKey = "GAME:NOTIFICATION"
-
-// BroadcastGameNotificationText broadcast game notification to client
-func (api *API) BroadcastGameNotificationText(data string) {
-	api.MessageBus.Send(messagebus.BusKey(HubKeyGameNotification), data)
-}
-
-// BroadcastGameNotificationLocationSelect broadcast game notification to client
-func (api *API) BroadcastGameNotificationLocationSelect(data *GameNotificationLocationSelect) {
-	api.MessageBus.Send(messagebus.BusKey(HubKeyGameNotification), data)
-}
-
-// BroadcastGameNotificationAbility broadcast game notification to client
-func (api *API) BroadcastGameNotificationAbility(notificationType GameNotificationType, data *GameNotificationAbility) {
-	api.MessageBus.Send(messagebus.BusKey(HubKeyGameNotification), data)
-}
-
-// BroadcastGameNotificationWarMachineAbility broadcast game notification to client
-func (api *API) BroadcastGameNotificationWarMachineAbility(data *GameNotificationWarMachineAbility) {
-	api.MessageBus.Send(messagebus.BusKey(HubKeyGameNotification), data)
-}
-
-// BroadcastGameNotificationWarMachineDestroyed broadcast game notification to client
-func (api *API) BroadcastGameNotificationWarMachineDestroyed(data *WarMachineDestroyedEventRecord) {
-	api.MessageBus.Send(messagebus.BusKey(HubKeyGameNotification), data)
 }
