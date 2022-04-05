@@ -561,24 +561,6 @@ func QueueSetBattleID(battleID string, mechIDs ...uuid.UUID) error {
 	return nil
 }
 
-func ClearQueueByBattle(battleID string) error {
-	tx, err := gamedb.StdConn.Begin()
-	if err != nil {
-		gamelog.L.Error().Str("db func", "ClearQueue").Err(err).Msg("unable to begin tx")
-		return err
-	}
-	defer tx.Rollback()
-
-	query := `UPDATE battle_queue SET deleted_at = NOW() WHERE battle_id = $1`
-	_, err = gamedb.StdConn.Exec(query, battleID)
-	if err != nil {
-		gamelog.L.Error().Str("db func", "ClearQueue").Err(err).Msg("unable to delete mechs from queue")
-		return err
-	}
-
-	return tx.Commit()
-}
-
 func ClearQueue(mechIDs ...uuid.UUID) error {
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {

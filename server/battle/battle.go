@@ -507,11 +507,6 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 	}()
 	mws := make([]*db.MechWithOwner, len(payload.WinningWarMachines))
 
-	err := db.ClearQueueByBattle(btl.ID)
-	if err != nil {
-		gamelog.L.Error().Str("Battle ID", btl.ID).Msg("unable to clear queue for battle")
-	}
-
 	for i, wmwin := range payload.WinningWarMachines {
 		var wm *WarMachine
 		for _, w := range btl.WarMachines {
@@ -666,7 +661,7 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 			}
 		}
 	}
-	err = db.WinBattle(btl.ID, payload.WinCondition, mws...)
+	err := db.WinBattle(btl.ID, payload.WinCondition, mws...)
 	if err != nil {
 		gamelog.L.Error().
 			Str("Battle ID", btl.ID).
@@ -761,6 +756,19 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 
 	btl.processWinners(payload)
 	btl.endMultis(endInfo)
+
+	notifications, err := boiler.BattleQueueNotifications(boiler.BattleQueueNotificationWhere.BattleID.EQ(null.StringFrom(btl.ID))).All(gamedb.StdConn)
+
+	_, err = notifications.UpdateAll(gamedb.StdConn, boiler.M{
+		boiler.BattleQueueNotificationColumns.QueueMechID: null.NewString("", false),
+	})
+	if err != nil {
+		gamelog.L.Panic().Str("Battle ID", btl.ID).Str("battle_id", payload.BattleID).Msg("Failed to remove queue mechs id from battle queue notifications.")
+	}
+	_, err = boiler.BattleQueues(boiler.BattleQueueWhere.BattleID.EQ(null.StringFrom(btl.BattleID))).DeleteAll(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Panic().Str("Battle ID", btl.ID).Str("battle_id", payload.BattleID).Msg("Failed to remove mechs from battle queue.")
+	}
 
 	gamelog.L.Info().Msgf("battle has been cleaned up, sending broadcast %s", btl.ID)
 	btl.endBroadcast(endInfo)
@@ -1139,7 +1147,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		gamelog.L.Debug().Str("mech_id", mechID.String()).Err(err).Msg("mech already in queue")
 		position, err = db.QueuePosition(mechID, factionID)
 		if err != nil {
-			return terror.Error(err, "Unable to join queue, check your balance and try again.")
+			return terror.Error(err, "Already in queue, failed to get position. Contact support or try again.")
 		}
 		reply(true)
 		return nil
@@ -1159,6 +1167,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 			Str("contractReward", contractReward.String()).
 			Str("queueFee", queueCost.String()).
 			Err(err).Msg("unable to create battle contract")
+		return terror.Error(err, "Unable to join queue, contact support or try again.")
 	}
 
 	bq := &boiler.BattleQueue{
@@ -1169,7 +1178,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		BattleContractID: null.StringFrom(bc.ID),
 	}
 
-	notifications := (msg.Payload.EnablePushNotifications || msg.Payload.MobileNumber != "" || msg.Payload.EnableTelegramNotifications)
+	notifications := msg.Payload.EnablePushNotifications || msg.Payload.MobileNumber != "" || msg.Payload.EnableTelegramNotifications
 	if !notifications {
 		bq.Notified = true
 	}
@@ -1178,7 +1187,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		gamelog.L.Error().
 			Interface("mech", mech).
 			Err(err).Msg("unable to insert mech into queue")
-		return terror.Error(err, "Unable to join queue, check your balance and try again.")
+		return terror.Error(err, "Unable to join queue, contact support or try again.")
 	}
 
 	// Charge user queue fee
@@ -1201,10 +1210,16 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 	bq.QueueFeeTXID = null.StringFrom(supTransactionID)
 	_, err = bq.Update(tx, boil.Infer())
 	if err != nil {
+		if bq.QueueFeeTXID.Valid {
+			_, err = arena.RPCClient.RefundSupsMessage(bq.QueueFeeTXID.String)
+			if err != nil {
+				gamelog.L.Error().Str("txID", bq.QueueFeeTXID.String).Err(err).Msg("failed to refund queue fee")
+			}
+		}
 		gamelog.L.Error().
 			Str("tx_id", supTransactionID).
 			Err(err).Msg("unable to update battle queue with queue transaction id")
-		return terror.Error(err, "Unable to join queue, check your balance and try again.")
+		return terror.Error(err, "Unable to join queue, contact support or try again.")
 	}
 
 	shortcode := ""
@@ -1213,7 +1228,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 	if !bq.Notified {
 		notifyCost := queueCost.Mul(decimal.NewFromFloat(0.1))
 		notifyTransactionID, err := arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
-			Amount:               notifyCost.StringFixed(18),
+			Amount:               notifyCost.String(),
 			FromUserID:           ownerID,
 			ToUserID:             SupremacyBattleUserID,
 			TransactionReference: server.TransactionReference(fmt.Sprintf("war_machine_queue_notification_fee|%s|%d", msg.Payload.AssetHash, time.Now().UnixNano())),
@@ -1223,6 +1238,12 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 			NotSafe:              true,
 		})
 		if err != nil {
+			if bq.QueueFeeTXID.Valid {
+				_, err = arena.RPCClient.RefundSupsMessage(bq.QueueFeeTXID.String)
+				if err != nil {
+					gamelog.L.Error().Str("txID", bq.QueueFeeTXID.String).Err(err).Msg("failed to refund queue fee")
+				}
+			}
 			// Abort transaction if charge fails
 			gamelog.L.Error().Str("txID", notifyTransactionID).Err(err).Msg("unable to charge user for sms notification for mech in queue")
 			return terror.Error(err, "Unable to process notification fee, please check your balance and try again.")
@@ -1230,10 +1251,22 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		bq.QueueNotificationFeeTXID = null.StringFrom(notifyTransactionID)
 		_, err = bq.Update(tx, boil.Infer())
 		if err != nil {
+			if bq.QueueFeeTXID.Valid {
+				_, err = arena.RPCClient.RefundSupsMessage(bq.QueueFeeTXID.String)
+				if err != nil {
+					gamelog.L.Error().Str("txID", bq.QueueFeeTXID.String).Err(err).Msg("failed to refund queue fee")
+				}
+			}
+			if bq.QueueNotificationFeeTXID.Valid {
+				_, err = arena.RPCClient.RefundSupsMessage(bq.QueueNotificationFeeTXID.String)
+				if err != nil {
+					gamelog.L.Error().Str("txID", bq.QueueNotificationFeeTXID.String).Err(err).Msg("failed to refund queue notification fee")
+				}
+			}
 			gamelog.L.Error().
 				Str("tx_id", notifyTransactionID).
 				Err(err).Msg("unable to update battle queue with queue notification transaction id")
-			return terror.Error(err, "Unable to join queue, check your balance and try again.")
+			return terror.Error(err, "Unable to join queue, contact support or try again.")
 		}
 
 		//insert notification into db
@@ -1248,6 +1281,18 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		if msg.Payload.EnableTelegramNotifications {
 			telegramNotification, err := arena.telegram.NotificationCreate(mechID.String(), bqn)
 			if err != nil {
+				if bq.QueueFeeTXID.Valid {
+					_, err = arena.RPCClient.RefundSupsMessage(bq.QueueFeeTXID.String)
+					if err != nil {
+						gamelog.L.Error().Str("txID", bq.QueueFeeTXID.String).Err(err).Msg("failed to refund queue fee")
+					}
+				}
+				if bq.QueueNotificationFeeTXID.Valid {
+					_, err = arena.RPCClient.RefundSupsMessage(bq.QueueNotificationFeeTXID.String)
+					if err != nil {
+						gamelog.L.Error().Str("txID", bq.QueueNotificationFeeTXID.String).Err(err).Msg("failed to refund queue notification fee")
+					}
+				}
 				gamelog.L.Error().
 					Str("mechID", mechID.String()).
 					Str("playerID", ownerID.String()).
@@ -1256,15 +1301,26 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 			}
 			bqn.TelegramNotificationID = null.StringFrom(telegramNotification.ID)
 			shortcode = telegramNotification.Shortcode
-
 		}
 
 		err = bqn.Insert(tx, boil.Infer())
 		if err != nil {
+			if bq.QueueFeeTXID.Valid {
+				_, err = arena.RPCClient.RefundSupsMessage(bq.QueueFeeTXID.String)
+				if err != nil {
+					gamelog.L.Error().Str("txID", bq.QueueFeeTXID.String).Err(err).Msg("failed to refund queue fee")
+				}
+			}
+			if bq.QueueNotificationFeeTXID.Valid {
+				_, err = arena.RPCClient.RefundSupsMessage(bq.QueueNotificationFeeTXID.String)
+				if err != nil {
+					gamelog.L.Error().Str("txID", bq.QueueNotificationFeeTXID.String).Err(err).Msg("failed to refund queue notification fee")
+				}
+			}
 			gamelog.L.Error().
 				Interface("mech", mech).
 				Err(err).Msg("unable to insert queue notification for mech")
-			return terror.Error(err, "Unable to join queue, check your balance and try again.")
+			return terror.Error(err, "Unable to join queue, contact support or try again.")
 		}
 
 	}
@@ -1272,10 +1328,22 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 	// Commit transaction
 	err = tx.Commit()
 	if err != nil {
+		if bq.QueueFeeTXID.Valid {
+			_, err = arena.RPCClient.RefundSupsMessage(bq.QueueFeeTXID.String)
+			if err != nil {
+				gamelog.L.Error().Str("txID", bq.QueueFeeTXID.String).Err(err).Msg("failed to refund queue fee")
+			}
+		}
+		if bq.QueueNotificationFeeTXID.Valid {
+			_, err = arena.RPCClient.RefundSupsMessage(bq.QueueNotificationFeeTXID.String)
+			if err != nil {
+				gamelog.L.Error().Str("txID", bq.QueueNotificationFeeTXID.String).Err(err).Msg("failed to refund queue notification fee")
+			}
+		}
 		gamelog.L.Error().
 			Interface("mech", mech).
 			Err(err).Msg("unable to commit mech insertion into queue")
-		return terror.Error(err, "Unable to join queue, check your balance and try again.")
+		return terror.Error(err, "Unable to join queue, contact support or try again.")
 	}
 
 	// Get mech current queue position
