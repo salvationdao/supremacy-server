@@ -116,6 +116,33 @@ func UpdateKilledBattleMech(battleID string, mechID uuid.UUID, ownerID string, f
 				Msg("unable to update killer battle mech")
 		}
 
+		// Update mech_stats for killer mech
+		killerMS, err := boiler.MechStats(boiler.MechStatWhere.MechID.EQ(killedByID[0].String())).One(gamedb.StdConn)
+		if errors.Is(err, sql.ErrNoRows) {
+			// If mech stats not exist then create it
+			newMs := boiler.MechStat{
+				MechID:     killedByID[0].String(),
+				TotalKills: 1,
+			}
+			err := newMs.Insert(gamedb.StdConn, boil.Infer())
+			gamelog.L.Warn().Err(err).
+				Interface("boiler.MechStat", newMs).
+				Msg("unable to create killer mech stat")
+		} else if err != nil {
+			gamelog.L.Warn().Err(err).
+				Str("mechID", killedByID[0].String()).
+				Msg("unable to get killer mech stat")
+		} else {
+			killerMS.TotalKills = killerMS.TotalKills + 1
+			_, err = killerMS.Update(gamedb.StdConn, boil.Infer())
+			if err != nil {
+				gamelog.L.Warn().Err(err).
+					Interface("boiler.MechStat", killerMS).
+					Msg("unable to update killer mech stat")
+			}
+		}
+
+		// Create new entry in battle_kills
 		bk := &boiler.BattleKill{
 			MechID:    killedByID[0].String(),
 			BattleID:  battleID,
@@ -135,6 +162,32 @@ func UpdateKilledBattleMech(battleID string, mechID uuid.UUID, ownerID string, f
 			Interface("boiler.BattleMech", bmd).
 			Msg("unable to update battle mech")
 		return nil, err
+	}
+
+	// Update mech_stats for killed mech
+	ms, err := boiler.MechStats(boiler.MechStatWhere.MechID.EQ(mechID.String())).One(gamedb.StdConn)
+	if errors.Is(err, sql.ErrNoRows) {
+		// If mech stats not exist then create it
+		newMs := boiler.MechStat{
+			MechID:      mechID.String(),
+			TotalDeaths: 1,
+		}
+		err := newMs.Insert(gamedb.StdConn, boil.Infer())
+		gamelog.L.Warn().Err(err).
+			Interface("boiler.MechStat", newMs).
+			Msg("unable to create mech stat")
+	} else if err != nil {
+		gamelog.L.Warn().Err(err).
+			Str("mechID", mechID.String()).
+			Msg("unable to get mech stat")
+	} else {
+		ms.TotalDeaths = ms.TotalDeaths + 1
+		_, err = ms.Update(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			gamelog.L.Warn().Err(err).
+				Interface("boiler.MechStat", ms).
+				Msg("unable to update mech stat")
+		}
 	}
 
 	return bmd, nil

@@ -195,6 +195,7 @@ var MechRels = struct {
 	Owner                        string
 	Template                     string
 	BattleQueue                  string
+	MechStat                     string
 	BattleContracts              string
 	WarMachineOneBattleHistories string
 	WarMachineTwoBattleHistories string
@@ -209,6 +210,7 @@ var MechRels = struct {
 	Owner:                        "Owner",
 	Template:                     "Template",
 	BattleQueue:                  "BattleQueue",
+	MechStat:                     "MechStat",
 	BattleContracts:              "BattleContracts",
 	WarMachineOneBattleHistories: "WarMachineOneBattleHistories",
 	WarMachineTwoBattleHistories: "WarMachineTwoBattleHistories",
@@ -226,6 +228,7 @@ type mechR struct {
 	Owner                        *Player                      `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
 	Template                     *Template                    `boiler:"Template" boil:"Template" json:"Template" toml:"Template" yaml:"Template"`
 	BattleQueue                  *BattleQueue                 `boiler:"BattleQueue" boil:"BattleQueue" json:"BattleQueue" toml:"BattleQueue" yaml:"BattleQueue"`
+	MechStat                     *MechStat                    `boiler:"MechStat" boil:"MechStat" json:"MechStat" toml:"MechStat" yaml:"MechStat"`
 	BattleContracts              BattleContractSlice          `boiler:"BattleContracts" boil:"BattleContracts" json:"BattleContracts" toml:"BattleContracts" yaml:"BattleContracts"`
 	WarMachineOneBattleHistories BattleHistorySlice           `boiler:"WarMachineOneBattleHistories" boil:"WarMachineOneBattleHistories" json:"WarMachineOneBattleHistories" toml:"WarMachineOneBattleHistories" yaml:"WarMachineOneBattleHistories"`
 	WarMachineTwoBattleHistories BattleHistorySlice           `boiler:"WarMachineTwoBattleHistories" boil:"WarMachineTwoBattleHistories" json:"WarMachineTwoBattleHistories" toml:"WarMachineTwoBattleHistories" yaml:"WarMachineTwoBattleHistories"`
@@ -550,6 +553,20 @@ func (o *Mech) BattleQueue(mods ...qm.QueryMod) battleQueueQuery {
 
 	query := BattleQueues(queryMods...)
 	queries.SetFrom(query.Query, "\"battle_queue\"")
+
+	return query
+}
+
+// MechStat pointed to by the foreign key.
+func (o *Mech) MechStat(mods ...qm.QueryMod) mechStatQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"mech_id\" = ?", o.ID),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := MechStats(queryMods...)
+	queries.SetFrom(query.Query, "\"mech_stats\"")
 
 	return query
 }
@@ -1149,6 +1166,107 @@ func (mechL) LoadBattleQueue(e boil.Executor, singular bool, maybeMech interface
 				local.R.BattleQueue = foreign
 				if foreign.R == nil {
 					foreign.R = &battleQueueR{}
+				}
+				foreign.R.Mech = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadMechStat allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-1 relationship.
+func (mechL) LoadMechStat(e boil.Executor, singular bool, maybeMech interface{}, mods queries.Applicator) error {
+	var slice []*Mech
+	var object *Mech
+
+	if singular {
+		object = maybeMech.(*Mech)
+	} else {
+		slice = *maybeMech.(*[]*Mech)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &mechR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &mechR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`mech_stats`),
+		qm.WhereIn(`mech_stats.mech_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load MechStat")
+	}
+
+	var resultSlice []*MechStat
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice MechStat")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for mech_stats")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mech_stats")
+	}
+
+	if len(mechAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.MechStat = foreign
+		if foreign.R == nil {
+			foreign.R = &mechStatR{}
+		}
+		foreign.R.Mech = object
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.ID == foreign.MechID {
+				local.R.MechStat = foreign
+				if foreign.R == nil {
+					foreign.R = &mechStatR{}
 				}
 				foreign.R.Mech = local
 				break
@@ -2221,6 +2339,56 @@ func (o *Mech) SetBattleQueue(exec boil.Executor, insert bool, related *BattleQu
 
 	if related.R == nil {
 		related.R = &battleQueueR{
+			Mech: o,
+		}
+	} else {
+		related.R.Mech = o
+	}
+	return nil
+}
+
+// SetMechStat of the mech to the related item.
+// Sets o.R.MechStat to related.
+// Adds o to related.R.Mech.
+func (o *Mech) SetMechStat(exec boil.Executor, insert bool, related *MechStat) error {
+	var err error
+
+	if insert {
+		related.MechID = o.ID
+
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	} else {
+		updateQuery := fmt.Sprintf(
+			"UPDATE \"mech_stats\" SET %s WHERE %s",
+			strmangle.SetParamNames("\"", "\"", 1, []string{"mech_id"}),
+			strmangle.WhereClause("\"", "\"", 2, mechStatPrimaryKeyColumns),
+		)
+		values := []interface{}{o.ID, related.MechID}
+
+		if boil.DebugMode {
+			fmt.Fprintln(boil.DebugWriter, updateQuery)
+			fmt.Fprintln(boil.DebugWriter, values)
+		}
+		if _, err = exec.Exec(updateQuery, values...); err != nil {
+			return errors.Wrap(err, "failed to update foreign table")
+		}
+
+		related.MechID = o.ID
+
+	}
+
+	if o.R == nil {
+		o.R = &mechR{
+			MechStat: related,
+		}
+	} else {
+		o.R.MechStat = related
+	}
+
+	if related.R == nil {
+		related.R = &mechStatR{
 			Mech: o,
 		}
 	} else {
