@@ -119,14 +119,12 @@ func (t *Telegram) RunTelegram(bot *tele.Bot) error {
 				Msg("unable to update telegram notification")
 			return terror.Error(err)
 		}
-		wmName := notification.R.Mech.Label
-		wmOwner := notification.R.Mech.OwnerID
 
+		wmName := notification.R.Mech.Label
 		if err != nil {
-			reply = "invalid shortcode!"
+			reply = "Issue regestering telegram shortcode, try again or contact support"
 			go t.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTelegramShortcodeRegistered, wmOwner)), false)
 		} else {
-
 			if notification.R.Mech.Name != "" {
 				wmName = notification.R.Mech.Name
 			}
@@ -134,7 +132,6 @@ func (t *Telegram) RunTelegram(bot *tele.Bot) error {
 			go t.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTelegramShortcodeRegistered, wmOwner)), true)
 
 		}
-
 		return c.Send(reply)
 	})
 	bot.Start()
