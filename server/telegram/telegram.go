@@ -22,13 +22,11 @@ import (
 type Telegram struct {
 	*tele.Bot
 	RegisterCallback func(ownderID string, success bool)
-	// MessageBus *messagebus.MessageBus
 }
 
 // NewTelegram
 func NewTelegram(token string, registerCallback func(shortCode string, success bool)) (*Telegram, error) {
 	t := &Telegram{
-		// MessageBus: messageBus,
 		RegisterCallback: registerCallback,
 	}
 	pref := tele.Settings{
