@@ -60,6 +60,7 @@ func (ms *MultiplierSystem) PlayerMultipliers(playerID uuid.UUID, battleNumberAd
 	usermultipliers, err := boiler.Multipliers(
 		qm.InnerJoin("user_multipliers um on um.multiplier_id = multipliers.id"),
 		qm.Where(`um.player_id = ?`, playerID.String()),
+		qm.And(`um.from_battle_number <= ?`, ms.battle.BattleNumber+battleNumberAdjust),
 		qm.And(`um.until_battle_number > ?`, ms.battle.BattleNumber+battleNumberAdjust),
 	).All(gamedb.StdConn)
 
