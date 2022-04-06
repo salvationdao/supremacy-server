@@ -239,6 +239,9 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 		notificationMsg := fmt.Sprintf("%s, your War Machine %s is nearing battle, jump on to https://play.supremacy.game and prepare.", player.Username.String, wmName)
 
 		for _, n := range warMachine.R.BattleQueueNotifications {
+			if n.SentAt.Valid {
+				continue
+			}
 			// send telegram notification
 			if n.TelegramNotificationID.Valid {
 				gamelog.L.Info().Str("TelegramNotificationID", n.TelegramNotificationID.String).Msg("sending telegram notification")
@@ -261,7 +264,8 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			}
 
 			n.SentAt = null.TimeFrom(time.Now())
-			_, err = n.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleQueueNotificationColumns.SentAt))
+			n.QueueMechID = null.NewString("", false)
+			_, err = n.Update(gamedb.StdConn, boil.Infer())
 			if err != nil {
 				gamelog.L.Error().Err(err).Str("bqn id", n.ID).Msg("failed to update BattleQueueNotificationColumns")
 			}
