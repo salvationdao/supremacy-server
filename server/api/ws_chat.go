@@ -64,14 +64,14 @@ const (
 )
 
 type MessageText struct {
-	Message      string           `json:"message"`
-	MessageColor string           `json:"message_color"`
-	FromUser     boiler.Player    `json:"from_user"`
-	UserRank     string           `json:"user_rank"`
-	FromUserStat *server.UserStat `json:"from_user_stat"`
-
-	TotalMultiplier string `json:"total_multiplier"`
-	IsCitizen       bool   `json:"is_citizen"`
+	Message         string           `json:"message"`
+	MessageColor    string           `json:"message_color"`
+	FromUser        boiler.Player    `json:"from_user"`
+	UserRank        string           `json:"user_rank"`
+	FromUserStat    *server.UserStat `json:"from_user_stat"`
+	Lang            string           `json:"lang"`
+	TotalMultiplier string           `json:"total_multiplier"`
+	IsCitizen       bool             `json:"is_citizen"`
 }
 
 type MessagePunishVote struct {
@@ -277,11 +277,48 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 	}
 
 	msg := html.UnescapeString(bm.Sanitize(req.Payload.Message))
+
+	linguaLanguage, exists := fc.API.LanguageDetector.DetectLanguageOf(msg)
+	language := linguaLanguage.String()
+	if language == "Unknown" {
+		language = db.GetUserLanguage(player.ID)
+	}
+
+	func() {
+		if exists && language != "English" {
+			dbLanguageExists, err := boiler.Languages(boiler.LanguageWhere.Name.EQ(language)).Exists(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Warn().Err(err).Msg("can't find language")
+				return
+			}
+			if !dbLanguageExists {
+				//insert into language db
+				languageStruct := &boiler.Language{
+					Name: language,
+				}
+				languageStruct.Insert(gamedb.StdConn, boil.Infer())
+			}
+
+			dbLanguage, err := boiler.Languages(boiler.LanguageWhere.Name.EQ(language)).One(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Warn().Err(err).Msg("can't find language")
+				return
+			}
+
+			playerLanguageStruct := &boiler.PlayerLanguage{
+				PlayerID:       player.ID,
+				LanguageID:     dbLanguage.ID,
+				TextIdentified: msg,
+				FactionID:      player.FactionID.String,
+			}
+			playerLanguageStruct.Insert(gamedb.StdConn, boil.Infer())
+		}
+	}()
+
 	msg = profanityDetector.Censor(msg)
 	if len(msg) > 280 {
 		msg = firstN(msg, 280)
 	}
-
 	// get player current stat
 	playerStat, err := db.UserStatsGet(player.ID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -311,6 +348,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 				FromUserStat:    playerStat,
 				TotalMultiplier: totalMultiplier,
 				IsCitizen:       isCitizen,
+				Lang:            language,
 			},
 		}
 
@@ -326,7 +364,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 			Text:            msg,
 			ChatStream:      player.FactionID.String,
 			IsCitizen:       isCitizen,
-			Lang:            "English",
+			Lang:            language,
 		}
 
 		err = cm.Insert(gamedb.StdConn, boil.Infer())
@@ -355,6 +393,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 			FromUserStat:    playerStat,
 			TotalMultiplier: totalMultiplier,
 			IsCitizen:       isCitizen,
+			Lang:            language,
 		},
 	}
 
@@ -370,7 +409,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 		Text:            msg,
 		ChatStream:      "global",
 		IsCitizen:       isCitizen,
-		Lang:            "English",
+		Lang:            language,
 	}
 
 	err = cm.Insert(gamedb.StdConn, boil.Infer())
@@ -379,6 +418,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 	}
 
 	fc.API.GlobalChat.AddMessage(chatMessage)
+
 	fc.API.MessageBus.Send(messagebus.BusKey(HubKeyGlobalChatSubscribe), chatMessage)
 	reply(true)
 

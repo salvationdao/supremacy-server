@@ -35,6 +35,7 @@ var TableNames = struct {
 	Chassis                                            string
 	ChassisModules                                     string
 	ChassisWeapons                                     string
+	ChatHistory                                        string
 	Config                                             string
 	FactionStats                                       string
 	Factions                                           string
@@ -43,12 +44,14 @@ var TableNames = struct {
 	GlobalAnnouncements                                string
 	IssuedContractRewards                              string
 	KV                                                 string
+	Languages                                          string
 	MechStats                                          string
 	Mechs                                              string
 	Modules                                            string
 	Multipliers                                        string
 	PendingTransactions                                string
 	PlayerActiveLogs                                   string
+	PlayerLanguages                                    string
 	PlayerPreferences                                  string
 	Players                                            string
 	PlayersPunishVotes                                 string
@@ -96,6 +99,7 @@ var TableNames = struct {
 	Chassis:                          "chassis",
 	ChassisModules:                   "chassis_modules",
 	ChassisWeapons:                   "chassis_weapons",
+	ChatHistory:                      "chat_history",
 	Config:                           "config",
 	FactionStats:                     "faction_stats",
 	Factions:                         "factions",
@@ -104,12 +108,14 @@ var TableNames = struct {
 	GlobalAnnouncements:              "global_announcements",
 	IssuedContractRewards:            "issued_contract_rewards",
 	KV:                               "kv",
+	Languages:                        "languages",
 	MechStats:                        "mech_stats",
 	Mechs:                            "mechs",
 	Modules:                          "modules",
 	Multipliers:                      "multipliers",
 	PendingTransactions:              "pending_transactions",
 	PlayerActiveLogs:                 "player_active_logs",
+	PlayerLanguages:                  "player_languages",
 	PlayerPreferences:                "player_preferences",
 	Players:                          "players",
 	PlayersPunishVotes:               "players_punish_votes",
