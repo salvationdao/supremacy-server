@@ -291,9 +291,10 @@ var whitelistedAddresses = []common.Address{
 	// this one is Reece ^^^^
 	common.HexToAddress("0x3Ca6425be53a9B9cA9650eB8a8B454f455781333"),
 	common.HexToAddress("0xEAA5693a4E3cA53A74687440db2E55773b2E3F7d"),
-
+	common.HexToAddress("0x77F9e1c5a2e99Bf0F6129cDb79bAB7a7BeFE879f"),
 	common.HexToAddress("0x4F99ca8cA1328C6F44242f7b7333f3637956f046"),
-
+	common.HexToAddress("0x049347822a1535b3159726df32fe264513d9D68E"),
+	common.HexToAddress("0xCaC57750dAC844408e5dA080441E09b6619Fb6aA"),
 	// whitelisted player
 	common.HexToAddress("0xE2b7AE0b026817e38E29c03c3F57bc697A2Cf21B"),
 	common.HexToAddress("0x1C809993d33e5ecE03330996542536861ED8fb2a"),
