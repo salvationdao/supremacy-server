@@ -215,8 +215,9 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			continue
 		}
 
-		// continue loop if there the war machine does not have a relationship with the battle_queue_notifications table
+		// continue loop if their war machine does not have a relationship with the battle_queue_notifications table
 		if warMachine.R.BattleQueueNotifications == nil {
+			gamelog.L.Warn().Str("mech id", warMachine.ID).Str("mech name", warMachine.Name).Msg("Skipping mech notification, no relation found on battle_queue_notifications table")
 			continue
 		}
 
@@ -242,6 +243,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 
 		// send telegram notification
 		if bqn.TelegramNotificationID.Valid {
+			gamelog.L.Info().Str("TelegramNotificationID", bqn.TelegramNotificationID.String).Msg("sending telegram notification")
 			err = arena.telegram.Notify(bqn.TelegramNotificationID.String, notificationMsg)
 			if err != nil {
 				gamelog.L.Error().Err(err).Str("mech_id", bq.MechID).Str("owner_id", bq.OwnerID).Str("queued_at", bq.QueuedAt.String()).Msg("failed to notify telegram")
@@ -250,6 +252,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 
 		// send sms
 		if bqn.MobileNumber.Valid {
+			gamelog.L.Info().Str("MobileNumber", bqn.MobileNumber.String).Msg("sending sms notification")
 			err := arena.sms.SendSMS(
 				player.MobileNumber.String,
 				notificationMsg,
