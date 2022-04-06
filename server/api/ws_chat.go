@@ -300,7 +300,8 @@ func GetCurrentPlayerTotalMultiAndCitizenship(playerID string) (string, bool) {
 	battleNumber := latestBattle.BattleNumber
 
 	// if the latest battle has a ended at time, we are in the intro phase so we need to get current battle multi, if intro has finished and ended at is null we need last battle
-	if !latestBattle.EndedAt.Valid {
+	// but if the battle ended less than 30 seconds ago, we're in outro
+	if !latestBattle.EndedAt.Valid || latestBattle.EndedAt.Time.Before(time.Now().Add(-30*time.Second)) {
 		battleNumber = battleNumber - 1
 	}
 
