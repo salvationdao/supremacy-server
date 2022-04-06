@@ -71,6 +71,13 @@ const (
 	BattleEventAbilityTriggered = "ability_triggered"
 )
 
+// Enum values for AbilityLevel
+const (
+	AbilityLevelMECH    = "MECH"
+	AbilityLevelFACTION = "FACTION"
+	AbilityLevelPLAYER  = "PLAYER"
+)
+
 // Enum values for MultiplierTypeEnum
 const (
 	MultiplierTypeEnumSpendAverage = "spend_average"
