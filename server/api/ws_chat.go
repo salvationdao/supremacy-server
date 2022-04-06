@@ -303,6 +303,7 @@ func GetCurrentPlayerTotalMultiAndCitizenship(playerID string) (string, bool) {
 		qm.InnerJoin("user_multipliers um on um.multiplier_id = multipliers.id"),
 		qm.Where(`um.player_id = ?`, playerID),
 		qm.And(`um.until_battle_number > ?`, latestBattle.BattleNumber),
+		qm.And(`um.from_battle_number <= ?`, latestBattle.BattleNumber),
 	).All(gamedb.StdConn)
 	if err != nil && len(ums) == 0 {
 		return "0", false
