@@ -12,6 +12,8 @@ import (
 	"server/gamelog"
 	"time"
 
+	"github.com/volatiletech/sqlboiler/v4/boil"
+
 	"github.com/shopspring/decimal"
 
 	"github.com/friendsofgo/errors"
@@ -190,6 +192,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 			boiler.PlayerColumns.Gid,
 			boiler.PlayerColumns.FactionID,
 			boiler.PlayerColumns.Rank,
+			boiler.PlayerColumns.SentMessageCount,
 		),
 		boiler.PlayerWhere.ID.EQ(hubc.Identifier()),
 	).One(gamedb.StdConn)
@@ -219,7 +222,13 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 	if isBanned {
 		return terror.Error(fmt.Errorf("player is banned to chat"), "You are banned to chat")
 	}
-	// get faction primary colour from faction
+
+	// update player sent message count
+	player.SentMessageCount += 1
+	_, err = player.Update(gamedb.StdConn, boil.Whitelist(boiler.PlayerColumns.SentMessageCount))
+	if err != nil {
+		return terror.Error(err, "Failed to update player sent message count")
+	}
 
 	msg := html.UnescapeString(bm.Sanitize(req.Payload.Message))
 	msg = profanityDetector.Censor(msg)

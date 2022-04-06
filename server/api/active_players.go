@@ -1,10 +1,13 @@
 package api
 
 import (
+	"fmt"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 	"time"
+
+	"github.com/ninja-syndicate/hub/ext/messagebus"
 
 	"github.com/ninja-software/terror/v2"
 	"github.com/sasha-s/go-deadlock"
@@ -16,10 +19,19 @@ import (
 type ActivePlayers struct {
 	FactionID string
 	Map       map[string]*ActiveStat
-	deadlock.Mutex
+	deadlock.RWMutex
+
+	// channel for debounce broadcast
+	ActivePlayerListChan chan *ActivePlayerBroadcast
+
+	MessageBus *messagebus.MessageBus
 }
 
 type ActiveStat struct {
+	// player stat
+	Player *boiler.Player
+
+	// active stat
 	ActivedAt time.Time
 	ExpiredAt time.Time
 }
@@ -34,13 +46,52 @@ func (api *API) FactionActivePlayerSetup() {
 
 	for _, f := range factions {
 		ap := &ActivePlayers{
-			FactionID: f.ID,
-			Map:       make(map[string]*ActiveStat),
+			FactionID:            f.ID,
+			Map:                  make(map[string]*ActiveStat),
+			ActivePlayerListChan: make(chan *ActivePlayerBroadcast),
+			MessageBus:           api.MessageBus,
 		}
 
 		go ap.Run()
 
+		go ap.debounceBroadcastActivePlayers()
+
 		api.FactionActivePlayers[f.ID] = ap
+	}
+}
+
+// CurrentFactionActivePlayer return a copy of current faction active player list
+func (ap *ActivePlayers) CurrentFactionActivePlayer() []boiler.Player {
+	ap.RLock()
+	defer ap.RUnlock()
+
+	players := []boiler.Player{}
+	for _, as := range ap.Map {
+		players = append(players, *as.Player)
+	}
+
+	return players
+}
+
+type ActivePlayerBroadcast struct {
+	Players []boiler.Player
+}
+
+func (ap *ActivePlayers) debounceBroadcastActivePlayers() {
+	var result *ActivePlayerBroadcast
+
+	interval := 500 * time.Millisecond
+	timer := time.NewTimer(interval)
+
+	for {
+		select {
+		case result = <-ap.ActivePlayerListChan:
+			timer.Reset(interval)
+		case <-timer.C:
+			if result != nil {
+				ap.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionActivePlayersSubscribe, ap.FactionID)), result.Players)
+			}
+		}
 	}
 }
 
@@ -58,10 +109,14 @@ func (ap *ActivePlayers) CheckExpiry() {
 
 	now := time.Now()
 
+	// collect active player list for broadcast
+	players := []boiler.Player{}
+
 	for playerID, activeStat := range ap.Map {
 
 		// skip, if active stat is not expired
 		if activeStat.ExpiredAt.After(now) {
+			players = append(players, *activeStat.Player)
 			continue
 		}
 
@@ -85,6 +140,11 @@ func (ap *ActivePlayers) CheckExpiry() {
 		}
 
 		delete(ap.Map, playerID)
+	}
+
+	// broadcast current online player
+	ap.ActivePlayerListChan <- &ActivePlayerBroadcast{
+		Players: players,
 	}
 }
 
@@ -119,15 +179,26 @@ func (ap *ActivePlayers) Add(playerID string) error {
 	}
 
 	// Otherwise, add player into the map
-	ap.Map[playerID] = &ActiveStat{
-		ActivedAt: now,
-		ExpiredAt: now.Add(2 * time.Minute),
-	}
 
 	// get player
-	player, err := boiler.FindPlayer(gamedb.StdConn, playerID)
+	player, err := boiler.Players(
+		qm.Select(
+			boiler.PlayerColumns.ID,
+			boiler.PlayerColumns.Username,
+			boiler.PlayerColumns.Gid,
+			boiler.PlayerColumns.FactionID,
+		),
+		boiler.PlayerWhere.ID.EQ(playerID),
+	).One(gamedb.StdConn)
 	if err != nil {
+		gamelog.L.Error().Str("player id", playerID).Err(err).Msg("Failed to get player from db")
 		return terror.Error(err, "Failed to get player from db")
+	}
+
+	ap.Map[playerID] = &ActiveStat{
+		Player:    player,
+		ActivedAt: now,
+		ExpiredAt: now.Add(2 * time.Minute),
 	}
 
 	// store user active log into db

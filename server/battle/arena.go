@@ -14,7 +14,6 @@ import (
 	"server/gamelog"
 	"server/rpcclient"
 	"server/telegram"
-	"strconv"
 	"sync"
 	"time"
 
@@ -891,14 +890,15 @@ func (arena *Arena) start() {
 					continue
 				}
 
-				gameClientBuildNo, err := strconv.ParseUint(dataPayload.ClientBuildNo, 10, 64)
-				if err != nil {
-					gamelog.L.Panic().Str("game_client_build_no", dataPayload.ClientBuildNo).Msg("invalid game client build number received")
-				}
-
-				if gameClientBuildNo < arena.gameClientMinimumBuildNo {
-					gamelog.L.Panic().Str("current_game_client_build", dataPayload.ClientBuildNo).Uint64("minimum_game_client_build", arena.gameClientMinimumBuildNo).Msg("unsupported game client build number")
-				}
+				// todocheck
+				//gameClientBuildNo, err := strconv.ParseUint(dataPayload.ClientBuildNo, 10, 64)
+				//if err != nil {
+				//	gamelog.L.Panic().Str("game_client_build_no", dataPayload.ClientBuildNo).Msg("invalid game client build number received")
+				//}
+				//
+				//if gameClientBuildNo < arena.gameClientMinimumBuildNo {
+				//	gamelog.L.Panic().Str("current_game_client_build", dataPayload.ClientBuildNo).Uint64("minimum_game_client_build", arena.gameClientMinimumBuildNo).Msg("unsupported game client build number")
+				//}
 
 				err = btl.preIntro(dataPayload)
 				if err != nil {

@@ -57,6 +57,8 @@ func NewPlayerController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Pla
 	api.SecureUserFactionSubscribeCommand(HubKeyPunishVoteSubscribe, pc.PunishVoteSubscribeHandler)
 	api.SecureUserFactionSubscribeCommand(HubKeyPunishVoteResultSubscribe, pc.PunishVoteResultSubscribeHandler)
 
+	api.SecureUserFactionSubscribeCommand(HubKeyFactionActivePlayersSubscribe, pc.FactionActivePlayersSubscribeHandler)
+
 	return pc
 }
 
@@ -273,6 +275,11 @@ func (pc *PlayerController) PlayerActiveCheckHandler(ctx context.Context, wsc *h
 		err = fap.Set(player.ID, isActive)
 		if err != nil {
 			return terror.Error(err, "Failed to update player active stat")
+		}
+
+		// debounce broadcast active player
+		fap.ActivePlayerListChan <- &ActivePlayerBroadcast{
+			Players: fap.CurrentFactionActivePlayer(),
 		}
 	}
 
@@ -714,6 +721,32 @@ func (pc *PlayerController) PunishVoteResultSubscribeHandler(ctx context.Context
 				})
 			}
 		}
+	}
+
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPunishVoteResultSubscribe, player.FactionID.String)), nil
+}
+
+const HubKeyFactionActivePlayersSubscribe hub.HubCommandKey = "FACTION:ACTIVE:PLAYER:SUBSCRIBE"
+
+func (pc *PlayerController) FactionActivePlayersSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return req.TransactionID, "", terror.Error(err, "Invalid request received")
+	}
+
+	player, err := boiler.FindPlayer(gamedb.StdConn, client.Identifier())
+	if err != nil {
+		return "", "", terror.Error(err, "Failed to get player from db")
+	}
+
+	fap, ok := pc.API.FactionActivePlayers[player.FactionID.String]
+	if !ok {
+		return "", "", terror.Error(terror.ErrForbidden, "Faction does not exist in the list")
+	}
+
+	if needProcess {
+		reply(fap.CurrentFactionActivePlayer())
 	}
 
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPunishVoteResultSubscribe, player.FactionID.String)), nil
