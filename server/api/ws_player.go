@@ -749,5 +749,5 @@ func (pc *PlayerController) FactionActivePlayersSubscribeHandler(ctx context.Con
 		reply(fap.CurrentFactionActivePlayer())
 	}
 
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPunishVoteResultSubscribe, player.FactionID.String)), nil
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionActivePlayersSubscribe, player.FactionID.String)), nil
 }
