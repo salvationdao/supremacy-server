@@ -824,7 +824,10 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	btl.processWinners(payload)
 	btl.endMultis(endInfo)
 
-	notifications, err := boiler.BattleQueueNotifications(boiler.BattleQueueNotificationWhere.QueueMechID.IsNotNull()).All(gamedb.StdConn)
+	notifications, err := boiler.BattleQueueNotifications(
+		boiler.BattleQueueNotificationWhere.QueueMechID.IsNotNull(),
+		boiler.BattleQueueNotificationWhere.BattleID.EQ(null.StringFrom(btl.BattleID)),
+	).All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Panic().Err(err).Str("Battle ID", btl.ID).Str("battle_id", payload.BattleID).Msg("Failed to get battle queue notifications with a queue mech id")
 	}
