@@ -825,7 +825,6 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	btl.endMultis(endInfo)
 
 	notifications, err := boiler.BattleQueueNotifications(
-		boiler.BattleQueueNotificationWhere.QueueMechID.IsNotNull(),
 		boiler.BattleQueueNotificationWhere.BattleID.EQ(null.StringFrom(btl.BattleID)),
 	).All(gamedb.StdConn)
 	if err != nil {
@@ -2306,6 +2305,20 @@ func (btl *Battle) Load() error {
 		if err != nil {
 			gamelog.L.Warn().Str("mech_id", bq.MechID).Msg("failed to convert mech id string to uuid")
 			return terror.Error(err)
+		}
+		bqns, err := boiler.BattleQueueNotifications(
+			boiler.BattleQueueNotificationWhere.QueueMechID.EQ(null.StringFrom(bq.MechID)),
+		).All(gamedb.StdConn)
+		if err != nil {
+			gamelog.L.Warn().Str("mech_id", bq.MechID).Msg("failed to get BattleQueueNotifications")
+		}
+		// update the bq notifications with battle id
+		for _, bqn := range bqns {
+			bqn.BattleID = null.StringFrom(btl.BattleID)
+			_, err := bqn.Update(gamedb.StdConn, boil.Infer())
+			if err != nil {
+				gamelog.L.Warn().Str("mech_id", bq.MechID).Msg("failed to get update BattleQueueNotification")
+			}
 		}
 	}
 
