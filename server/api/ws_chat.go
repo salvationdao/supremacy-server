@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/volatiletech/null/v8"
 	"html"
 	"server"
 	"server/db"
@@ -43,7 +44,7 @@ var Profanities = []string{
 	"retard",
 }
 
-const PersistChatMessageLimit = 20
+const PersistChatMessageLimit = 50
 
 var profanityDetector = goaway.NewProfanityDetector().WithCustomDictionary(Profanities, []string{}, []string{})
 var bm = bluemonday.StrictPolicy()
@@ -113,9 +114,53 @@ func (c *Chatroom) Range(fn func(chatMessage *ChatMessage) bool) {
 }
 
 func NewChatroom(factionID *server.FactionID) *Chatroom {
+	stream := "global"
+	if factionID != nil {
+		stream = factionID.String()
+	}
+	msgs, _ := boiler.ChatHistories(
+		boiler.ChatHistoryWhere.ChatStream.EQ(stream),
+		qm.OrderBy(boiler.ChatHistoryColumns.CreatedAt),
+		qm.Limit(PersistChatMessageLimit),
+	).All(gamedb.StdConn)
+
+	players := map[string]*boiler.Player{}
+	stats := map[string]*server.UserStat{}
+
+	cms := make([]*ChatMessage, len(msgs))
+	for i, msg := range msgs {
+		player, ok := players[msg.PlayerID]
+		if !ok {
+			player, _ = boiler.FindPlayer(gamedb.StdConn, msg.PlayerID)
+			if player == nil {
+				continue
+			}
+			playerStat, err := db.UserStatsGet(player.ID)
+			if err != nil {
+				continue
+			}
+			stats[player.ID] = playerStat
+		}
+		stat := stats[player.ID]
+
+		cms[i] = &ChatMessage{
+			Type:   ChatMessageType(msg.MSGType),
+			SentAt: msg.CreatedAt,
+			Data: &MessageText{
+				Message:         msg.Text,
+				MessageColor:    msg.MessageColor,
+				FromUser:        *player,
+				UserRank:        player.Rank,
+				FromUserStat:    stat,
+				TotalMultiplier: msg.TotalMultiplier,
+				IsCitizen:       msg.IsCitizen,
+			},
+		}
+	}
+
 	chatroom := &Chatroom{
 		factionID: factionID,
-		messages:  []*ChatMessage{},
+		messages:  cms,
 	}
 	return chatroom
 }
@@ -269,6 +314,26 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 			},
 		}
 
+		cm := boiler.ChatHistory{
+			FactionID:       player.FactionID.String,
+			PlayerID:        player.ID,
+			MessageColor:    req.Payload.MessageColor,
+			BattleID:        null.String{},
+			MSGType:         boiler.ChatMSGTypeEnumTEXT,
+			UserRank:        player.Rank,
+			TotalMultiplier: totalMultiplier,
+			KillCount:       fmt.Sprintf("%d", playerStat.KillCount),
+			Text:            msg,
+			ChatStream:      player.FactionID.String,
+			IsCitizen:       isCitizen,
+			Lang:            "English",
+		}
+
+		err = cm.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("unable to insert msg into chat history")
+		}
+
 		// Ability kills
 		fc.API.AddFactionChatMessage(player.FactionID.String, chatMessage)
 
@@ -292,6 +357,27 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 			IsCitizen:       isCitizen,
 		},
 	}
+
+	cm := boiler.ChatHistory{
+		FactionID:       player.FactionID.String,
+		PlayerID:        player.ID,
+		MessageColor:    req.Payload.MessageColor,
+		BattleID:        null.String{},
+		MSGType:         boiler.ChatMSGTypeEnumTEXT,
+		UserRank:        player.Rank,
+		TotalMultiplier: totalMultiplier,
+		KillCount:       fmt.Sprintf("%d", playerStat.KillCount),
+		Text:            msg,
+		ChatStream:      "global",
+		IsCitizen:       isCitizen,
+		Lang:            "English",
+	}
+
+	err = cm.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("unable to insert msg into chat history")
+	}
+
 	fc.API.GlobalChat.AddMessage(chatMessage)
 	fc.API.MessageBus.Send(messagebus.BusKey(HubKeyGlobalChatSubscribe), chatMessage)
 	reply(true)
