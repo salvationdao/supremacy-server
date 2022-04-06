@@ -161,7 +161,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 				OfferingID:          uuid.Must(uuid.NewV4()),
 			}
 			abilities[wmAbility.Identity] = &wmAbility
-			
+
 		}
 
 		factionAbilities[factionID] = abilities
@@ -194,7 +194,6 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 				currentSups, err := decimal.NewFromString(ability.CurrentSups)
 				if err != nil {
 					gamelog.L.Error().Err(err).Msg("Failed to ability current sups to decimal")
-
 					// set current sups to initial price
 					currentSups = decimal.Zero
 				}
@@ -263,7 +262,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 	// broadcast war machine abilities
 	for _, wm := range battle.WarMachines {
 		if len(wm.Abilities) > 0 {
-			as.battle().arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionUniqueAbilitiesUpdated, wm.Hash)), wm.Abilities)
+			as.battle().arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyWarMachineAbilitiesUpdated, wm.Hash)), wm.Abilities)
 		}
 	}
 
