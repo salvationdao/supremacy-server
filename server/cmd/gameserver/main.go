@@ -22,6 +22,7 @@ import (
 	"server/rpcclient"
 
 	zerologger "github.com/ninja-syndicate/hub/ext/zerolog"
+	"github.com/pemistahl/lingua-go"
 	"nhooyr.io/websocket"
 
 	"github.com/ninja-syndicate/hub"
@@ -363,6 +364,26 @@ func main() {
 						return terror.Error(err, "Telegram init failed")
 					}
 
+					//initialize lingua language detector
+					languages := []lingua.Language{
+						lingua.English,
+						lingua.French,
+						lingua.German,
+						lingua.Spanish,
+						lingua.Italian,
+						lingua.Tagalog,
+						lingua.Vietnamese,
+						lingua.Japanese,
+						lingua.Chinese,
+						lingua.Russian,
+						lingua.Indonesian,
+						lingua.Hindi,
+						lingua.Portuguese,
+						lingua.Dutch,
+						lingua.Croatian,
+					}
+					detector := lingua.NewLanguageDetectorBuilder().FromLanguages(languages...).WithPreloadedLanguageModels().Build()
+
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Set up hub")
 
 					ba := battle.NewArena(&battle.Opts{
@@ -377,7 +398,7 @@ func main() {
 					})
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("set up arena")
 					gamelog.L.Info().Msg("Setting up webhook rest API")
-					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, pgxconn, rpcClient, messageBus, gsHub, twilio, telebot)
+					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, pgxconn, rpcClient, messageBus, gsHub, twilio, telebot, detector)
 					if err != nil {
 						fmt.Println(err)
 						os.Exit(1)
@@ -555,7 +576,7 @@ func main() {
 	}
 }
 
-func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, battleArenaClient *battle.Arena, conn *pgxpool.Pool, passport *rpcclient.PassportXrpcClient, messageBus *messagebus.MessageBus, gsHub *hub.Hub, sms server.SMS, telegram server.Telegram) (*api.API, error) {
+func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, battleArenaClient *battle.Arena, conn *pgxpool.Pool, passport *rpcclient.PassportXrpcClient, messageBus *messagebus.MessageBus, gsHub *hub.Hub, sms server.SMS, telegram server.Telegram, languageDetector lingua.LanguageDetector) (*api.API, error) {
 	environment := ctxCLI.String("environment")
 	sentryDSNBackend := ctxCLI.String("sentry_dsn_backend")
 	sentryServerName := ctxCLI.String("sentry_server_name")
@@ -601,7 +622,7 @@ func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, bat
 	HTMLSanitizePolicy.AllowAttrs("class").OnElements("img", "table", "tr", "td", "p")
 
 	// API Server
-	serverAPI := api.NewAPI(ctx, log, battleArenaClient, passport, apiAddr, HTMLSanitizePolicy, conn, config, messageBus, gsHub, sms, telegram)
+	serverAPI := api.NewAPI(ctx, log, battleArenaClient, passport, apiAddr, HTMLSanitizePolicy, conn, config, messageBus, gsHub, sms, telegram, languageDetector)
 	return serverAPI, nil
 }
 

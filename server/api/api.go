@@ -27,6 +27,7 @@ import (
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/auth"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
+	"github.com/pemistahl/lingua-go"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 	"github.com/sasha-s/go-deadlock"
@@ -73,17 +74,18 @@ type API struct {
 	ctx    context.Context
 	server *http.Server
 	*auth.Auth
-	Log          *zerolog.Logger
-	Routes       chi.Router
-	Addr         string
-	BattleArena  *battle.Arena
-	HTMLSanitize *bluemonday.Policy
-	Hub          *hub.Hub
-	Conn         *pgxpool.Pool
-	MessageBus   *messagebus.MessageBus
-	SMS          server.SMS
-	Passport     *rpcclient.PassportXrpcClient
-	Telegram     server.Telegram
+	Log              *zerolog.Logger
+	Routes           chi.Router
+	Addr             string
+	BattleArena      *battle.Arena
+	HTMLSanitize     *bluemonday.Policy
+	Hub              *hub.Hub
+	Conn             *pgxpool.Pool
+	MessageBus       *messagebus.MessageBus
+	SMS              server.SMS
+	Passport         *rpcclient.PassportXrpcClient
+	Telegram         server.Telegram
+	LanguageDetector lingua.LanguageDetector
 
 	// ring check auth
 	RingCheckAuthMap *RingCheckAuthMap
@@ -114,6 +116,7 @@ func NewAPI(
 	gsHub *hub.Hub,
 	sms server.SMS,
 	telegram server.Telegram,
+	languageDetector lingua.LanguageDetector,
 ) *API {
 
 	// initialise api
@@ -131,6 +134,7 @@ func NewAPI(
 		Passport:         pp,
 		SMS:              sms,
 		Telegram:         telegram,
+		LanguageDetector: languageDetector,
 
 		FactionPunishVote:    make(map[string]*PunishVoteTracker),
 		FactionActivePlayers: make(map[string]*ActivePlayers),

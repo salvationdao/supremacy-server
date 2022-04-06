@@ -71,6 +71,12 @@ const (
 	BattleEventAbilityTriggered = "ability_triggered"
 )
 
+// Enum values for ChatMSGTypeEnum
+const (
+	ChatMSGTypeEnumTEXT        = "TEXT"
+	ChatMSGTypeEnumPUNISH_VOTE = "PUNISH_VOTE"
+)
+
 // Enum values for AbilityLevel
 const (
 	AbilityLevelMECH    = "MECH"

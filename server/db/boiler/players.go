@@ -152,10 +152,12 @@ var PlayerRels = struct {
 	OwnerBattleQueues         string
 	OwnerBattleWins           string
 	Battles                   string
+	ChatHistories             string
 	MVPPlayerFactionStats     string
 	OwnerMechs                string
 	ToUserPendingTransactions string
 	PlayerActiveLogs          string
+	PlayerLanguages           string
 	PlayerPreferences         string
 	PlayersPunishVotes        string
 	IssuedByPunishVotes       string
@@ -173,10 +175,12 @@ var PlayerRels = struct {
 	OwnerBattleQueues:         "OwnerBattleQueues",
 	OwnerBattleWins:           "OwnerBattleWins",
 	Battles:                   "Battles",
+	ChatHistories:             "ChatHistories",
 	MVPPlayerFactionStats:     "MVPPlayerFactionStats",
 	OwnerMechs:                "OwnerMechs",
 	ToUserPendingTransactions: "ToUserPendingTransactions",
 	PlayerActiveLogs:          "PlayerActiveLogs",
+	PlayerLanguages:           "PlayerLanguages",
 	PlayerPreferences:         "PlayerPreferences",
 	PlayersPunishVotes:        "PlayersPunishVotes",
 	IssuedByPunishVotes:       "IssuedByPunishVotes",
@@ -197,10 +201,12 @@ type playerR struct {
 	OwnerBattleQueues         BattleQueueSlice          `boiler:"OwnerBattleQueues" boil:"OwnerBattleQueues" json:"OwnerBattleQueues" toml:"OwnerBattleQueues" yaml:"OwnerBattleQueues"`
 	OwnerBattleWins           BattleWinSlice            `boiler:"OwnerBattleWins" boil:"OwnerBattleWins" json:"OwnerBattleWins" toml:"OwnerBattleWins" yaml:"OwnerBattleWins"`
 	Battles                   BattleSlice               `boiler:"Battles" boil:"Battles" json:"Battles" toml:"Battles" yaml:"Battles"`
+	ChatHistories             ChatHistorySlice          `boiler:"ChatHistories" boil:"ChatHistories" json:"ChatHistories" toml:"ChatHistories" yaml:"ChatHistories"`
 	MVPPlayerFactionStats     FactionStatSlice          `boiler:"MVPPlayerFactionStats" boil:"MVPPlayerFactionStats" json:"MVPPlayerFactionStats" toml:"MVPPlayerFactionStats" yaml:"MVPPlayerFactionStats"`
 	OwnerMechs                MechSlice                 `boiler:"OwnerMechs" boil:"OwnerMechs" json:"OwnerMechs" toml:"OwnerMechs" yaml:"OwnerMechs"`
 	ToUserPendingTransactions PendingTransactionSlice   `boiler:"ToUserPendingTransactions" boil:"ToUserPendingTransactions" json:"ToUserPendingTransactions" toml:"ToUserPendingTransactions" yaml:"ToUserPendingTransactions"`
 	PlayerActiveLogs          PlayerActiveLogSlice      `boiler:"PlayerActiveLogs" boil:"PlayerActiveLogs" json:"PlayerActiveLogs" toml:"PlayerActiveLogs" yaml:"PlayerActiveLogs"`
+	PlayerLanguages           PlayerLanguageSlice       `boiler:"PlayerLanguages" boil:"PlayerLanguages" json:"PlayerLanguages" toml:"PlayerLanguages" yaml:"PlayerLanguages"`
 	PlayerPreferences         PlayerPreferenceSlice     `boiler:"PlayerPreferences" boil:"PlayerPreferences" json:"PlayerPreferences" toml:"PlayerPreferences" yaml:"PlayerPreferences"`
 	PlayersPunishVotes        PlayersPunishVoteSlice    `boiler:"PlayersPunishVotes" boil:"PlayersPunishVotes" json:"PlayersPunishVotes" toml:"PlayersPunishVotes" yaml:"PlayersPunishVotes"`
 	IssuedByPunishVotes       PunishVoteSlice           `boiler:"IssuedByPunishVotes" boil:"IssuedByPunishVotes" json:"IssuedByPunishVotes" toml:"IssuedByPunishVotes" yaml:"IssuedByPunishVotes"`
@@ -645,6 +651,27 @@ func (o *Player) Battles(mods ...qm.QueryMod) battleQuery {
 	return query
 }
 
+// ChatHistories retrieves all the chat_history's ChatHistories with an executor.
+func (o *Player) ChatHistories(mods ...qm.QueryMod) chatHistoryQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"chat_history\".\"player_id\"=?", o.ID),
+	)
+
+	query := ChatHistories(queryMods...)
+	queries.SetFrom(query.Query, "\"chat_history\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"chat_history\".*"})
+	}
+
+	return query
+}
+
 // MVPPlayerFactionStats retrieves all the faction_stat's FactionStats with an executor via mvp_player_id column.
 func (o *Player) MVPPlayerFactionStats(mods ...qm.QueryMod) factionStatQuery {
 	var queryMods []qm.QueryMod
@@ -726,6 +753,27 @@ func (o *Player) PlayerActiveLogs(mods ...qm.QueryMod) playerActiveLogQuery {
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"player_active_logs\".*"})
+	}
+
+	return query
+}
+
+// PlayerLanguages retrieves all the player_language's PlayerLanguages with an executor.
+func (o *Player) PlayerLanguages(mods ...qm.QueryMod) playerLanguageQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"player_languages\".\"player_id\"=?", o.ID),
+	)
+
+	query := PlayerLanguages(queryMods...)
+	queries.SetFrom(query.Query, "\"player_languages\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"player_languages\".*"})
 	}
 
 	return query
@@ -1795,6 +1843,104 @@ func (playerL) LoadBattles(e boil.Executor, singular bool, maybePlayer interface
 	return nil
 }
 
+// LoadChatHistories allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (playerL) LoadChatHistories(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+	var slice []*Player
+	var object *Player
+
+	if singular {
+		object = maybePlayer.(*Player)
+	} else {
+		slice = *maybePlayer.(*[]*Player)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &playerR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &playerR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`chat_history`),
+		qm.WhereIn(`chat_history.player_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load chat_history")
+	}
+
+	var resultSlice []*ChatHistory
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice chat_history")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on chat_history")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for chat_history")
+	}
+
+	if len(chatHistoryAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.ChatHistories = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &chatHistoryR{}
+			}
+			foreign.R.Player = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.PlayerID {
+				local.R.ChatHistories = append(local.R.ChatHistories, foreign)
+				if foreign.R == nil {
+					foreign.R = &chatHistoryR{}
+				}
+				foreign.R.Player = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // LoadMVPPlayerFactionStats allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (playerL) LoadMVPPlayerFactionStats(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
@@ -2179,6 +2325,104 @@ func (playerL) LoadPlayerActiveLogs(e boil.Executor, singular bool, maybePlayer 
 				local.R.PlayerActiveLogs = append(local.R.PlayerActiveLogs, foreign)
 				if foreign.R == nil {
 					foreign.R = &playerActiveLogR{}
+				}
+				foreign.R.Player = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadPlayerLanguages allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (playerL) LoadPlayerLanguages(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+	var slice []*Player
+	var object *Player
+
+	if singular {
+		object = maybePlayer.(*Player)
+	} else {
+		slice = *maybePlayer.(*[]*Player)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &playerR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &playerR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`player_languages`),
+		qm.WhereIn(`player_languages.player_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load player_languages")
+	}
+
+	var resultSlice []*PlayerLanguage
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice player_languages")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on player_languages")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for player_languages")
+	}
+
+	if len(playerLanguageAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.PlayerLanguages = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &playerLanguageR{}
+			}
+			foreign.R.Player = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.PlayerID {
+				local.R.PlayerLanguages = append(local.R.PlayerLanguages, foreign)
+				if foreign.R == nil {
+					foreign.R = &playerLanguageR{}
 				}
 				foreign.R.Player = local
 				break
@@ -3534,6 +3778,58 @@ func removeBattlesFromPlayersSlice(o *Player, related []*Battle) {
 	}
 }
 
+// AddChatHistories adds the given related objects to the existing relationships
+// of the player, optionally inserting them as new records.
+// Appends related to o.R.ChatHistories.
+// Sets related.R.Player appropriately.
+func (o *Player) AddChatHistories(exec boil.Executor, insert bool, related ...*ChatHistory) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.PlayerID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"chat_history\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"player_id"}),
+				strmangle.WhereClause("\"", "\"", 2, chatHistoryPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.PlayerID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &playerR{
+			ChatHistories: related,
+		}
+	} else {
+		o.R.ChatHistories = append(o.R.ChatHistories, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &chatHistoryR{
+				Player: o,
+			}
+		} else {
+			rel.R.Player = o
+		}
+	}
+	return nil
+}
+
 // AddMVPPlayerFactionStats adds the given related objects to the existing relationships
 // of the player, optionally inserting them as new records.
 // Appends related to o.R.MVPPlayerFactionStats.
@@ -3806,6 +4102,58 @@ func (o *Player) AddPlayerActiveLogs(exec boil.Executor, insert bool, related ..
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &playerActiveLogR{
+				Player: o,
+			}
+		} else {
+			rel.R.Player = o
+		}
+	}
+	return nil
+}
+
+// AddPlayerLanguages adds the given related objects to the existing relationships
+// of the player, optionally inserting them as new records.
+// Appends related to o.R.PlayerLanguages.
+// Sets related.R.Player appropriately.
+func (o *Player) AddPlayerLanguages(exec boil.Executor, insert bool, related ...*PlayerLanguage) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.PlayerID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"player_languages\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"player_id"}),
+				strmangle.WhereClause("\"", "\"", 2, playerLanguagePrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.PlayerID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &playerR{
+			PlayerLanguages: related,
+		}
+	} else {
+		o.R.PlayerLanguages = append(o.R.PlayerLanguages, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &playerLanguageR{
 				Player: o,
 			}
 		} else {
