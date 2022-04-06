@@ -824,14 +824,19 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	btl.processWinners(payload)
 	btl.endMultis(endInfo)
 
-	notifications, err := boiler.BattleQueueNotifications(boiler.BattleQueueNotificationWhere.BattleID.EQ(null.StringFrom(btl.ID))).All(gamedb.StdConn)
-
-	_, err = notifications.UpdateAll(gamedb.StdConn, boiler.M{
-		boiler.BattleQueueNotificationColumns.QueueMechID: null.NewString("", false),
-	})
+	notifications, err := boiler.BattleQueueNotifications(boiler.BattleQueueNotificationWhere.QueueMechID.IsNotNull()).All(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Panic().Err(err).Str("Battle ID", btl.ID).Str("battle_id", payload.BattleID).Msg("Failed to remove queue mechs id from battle queue notifications.")
+		gamelog.L.Panic().Err(err).Str("Battle ID", btl.ID).Str("battle_id", payload.BattleID).Msg("Failed to get battle queue notifications with a queue mech id")
 	}
+
+	for _, n := range notifications {
+		n.QueueMechID = null.NewString("", false)
+		_, err = n.Update(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			gamelog.L.Panic().Err(err).Str("Battle ID", btl.ID).Str("battle_id", payload.BattleID).Msg("Failed to remove queue mech id from battle queue notifications.")
+		}
+	}
+
 	_, err = boiler.BattleQueues(boiler.BattleQueueWhere.BattleID.EQ(null.StringFrom(btl.BattleID))).DeleteAll(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Panic().Err(err).Str("Battle ID", btl.ID).Str("battle_id", payload.BattleID).Msg("Failed to remove mechs from battle queue.")
