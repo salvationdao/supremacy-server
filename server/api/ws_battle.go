@@ -67,7 +67,7 @@ func (bc *BattleControllerWS) BattleMechHistoryListHandler(ctx context.Context, 
 		return terror.Error(err, "Invalid request received")
 	}
 
-	battleMechs, err := boiler.BattleMechs(boiler.BattleMechWhere.MechID.EQ(req.Payload.MechID), qm.Limit(10), qm.Load(qm.Rels(boiler.BattleMechRels.Battle, boiler.BattleRels.GameMap))).All(gamedb.StdConn)
+	battleMechs, err := boiler.BattleMechs(boiler.BattleMechWhere.MechID.EQ(req.Payload.MechID), qm.OrderBy("created_at desc"), qm.Limit(10), qm.Load(qm.Rels(boiler.BattleMechRels.Battle, boiler.BattleRels.GameMap))).All(gamedb.StdConn)
 
 	output := []BattleMechDetailed{}
 	for _, o := range battleMechs {
