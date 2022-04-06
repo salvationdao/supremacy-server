@@ -184,7 +184,6 @@ func NewAPI(
 	_ = NewCheckController(log, conn, api)
 	_ = NewUserController(log, conn, api)
 	_ = NewAuthController(log, conn, api, config)
-	// _ = NewFactionController(log, conn, api)
 	_ = NewGameController(log, conn, api)
 	_ = NewStreamController(log, conn, api)
 	_ = NewPlayerController(log, conn, api)
@@ -222,7 +221,10 @@ func NewAPI(
 	}
 
 	// spin up a punish vote handlers for each faction
-	api.PunishVoteTrackerSetup()
+	err = api.PunishVoteTrackerSetup()
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to setup punish vote tracker")
+	}
 
 	api.FactionActivePlayerSetup()
 

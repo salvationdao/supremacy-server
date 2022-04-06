@@ -76,7 +76,20 @@ func (arena *Arena) PlayerRankUpdater() {
 				for _, player := range players {
 					if player.ID == bu.ID.String() {
 						// broadcast player rank to every player
-						go bu.Send(HubKeyPlayerRankGet, player.Rank)
+						go func(bu *BattleUser, player *boiler.Player) {
+							// broadcast stat
+							bu.Send(HubKeyPlayerRankGet, player.Rank)
+
+							// broadcast user stat (player_last_seven_days_kills)
+							us, err := db.UserStatsGet(player.ID)
+							if err != nil {
+								gamelog.L.Error().Err(err).Msg("failed to get user stat")
+							}
+
+							if us != nil {
+								bu.Send(HubKeyUserStatSubscribe, us)
+							}
+						}(bu, player)
 
 						break
 					}

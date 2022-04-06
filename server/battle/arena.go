@@ -419,8 +419,6 @@ func (arena *Arena) PlayerRankGet(ctx context.Context, wsc *hub.Client, payload 
 	return nil
 }
 
-const HubKeyUserStatChatSubscribe hub.HubCommandKey = "PLAYER:USER:STAT:CHAT:SUBSCRIBE"
-
 const HubKeyBattleAbilityUpdated hub.HubCommandKey = "BATTLE:ABILITY:UPDATED"
 
 func (arena *Arena) BattleAbilityUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
@@ -981,15 +979,15 @@ func (arena *Arena) beginBattle() {
 
 		inserted = true
 
-		multipliers, err := db.PlayerMultipliers(lastBattle.BattleNumber)
-		if err != nil {
-			gamelog.L.Error().Err(err).Int("btl.BattleNumber", lastBattle.BattleNumber).Msg("failed to load PlayerMultipliers")
-		} else {
-			for _, m := range multipliers {
-				m.TotalMultiplier = m.TotalMultiplier.Shift(-1)
-			}
-
-		}
+		//multipliers, err := db.PlayerMultipliers(lastBattle.BattleNumber)
+		//if err != nil {
+		//	gamelog.L.Error().Err(err).Int("btl.BattleNumber", lastBattle.BattleNumber).Msg("failed to load PlayerMultipliers")
+		//} else {
+		//	for _, m := range multipliers {
+		//		m.TotalMultiplier = m.TotalMultiplier.Shift(-1)
+		//	}
+		//
+		//}
 	}
 
 	btl := &Battle{

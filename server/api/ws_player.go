@@ -180,7 +180,6 @@ func (pc *PlayerController) PlayerGetTelegramShortcodeRegistered(ctx context.Con
 	}
 
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyTelegramShortcodeRegistered, wsc.Identifier())), nil
-
 }
 
 const HubKeyPlayerBattleQueueBrowserSubscribe hub.HubCommandKey = "PLAYER:BROWSER_NOFTICATION_SUBSCRIBE"

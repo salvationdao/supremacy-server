@@ -145,8 +145,10 @@ func (ac *AuthControllerWS) RingCheckJWTAuth(ctx context.Context, wsc *hub.Clien
 
 	// insert a new user stat for current player
 	if us == nil {
-		us = &boiler.UserStat{
-			ID: player.ID,
+		us = &server.UserStat{
+			UserStat: &boiler.UserStat{
+				ID: player.ID,
+			},
 		}
 		err = us.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {

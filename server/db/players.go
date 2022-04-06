@@ -61,12 +61,26 @@ func PlayerRegister(ID uuid.UUID, Username string, FactionID uuid.UUID, PublicAd
 	return player, nil
 }
 
-func UserStatsGet(playerID string) (*boiler.UserStat, error) {
-	userStat, err := boiler.FindUserStat(gamedb.StdConn, playerID)
+func UserStatsGet(playerID string) (*server.UserStat, error) {
+	us, err := boiler.FindUserStat(gamedb.StdConn, playerID)
 	if err != nil {
-		//gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to find user stat")
 		return nil, err
 	}
+
+	userStat := &server.UserStat{
+		UserStat:           us,
+		LastSevenDaysKills: 0,
+	}
+
+	// get last seven days kills
+	q := `
+		select kill_count from player_last_seven_day_ability_kills where id = $1
+	`
+	err = gamedb.StdConn.QueryRow(q, playerID).Scan(&userStat.LastSevenDaysKills)
+	if err != nil {
+		return userStat, nil
+	}
+
 	return userStat, nil
 }
 
@@ -278,4 +292,39 @@ func GetPositivePlayerAbilityKillByFactionID(factionID server.FactionID) ([]*ser
 	}
 
 	return playerAbilityKills, nil
+}
+
+func UpdatePunishVoteCost() error {
+	// update punish vote cost
+	q := `
+		UPDATE
+			players
+		SET
+			issue_punish_fee = issue_punish_fee / 2
+		WHERE
+			issue_punish_fee > 10
+	`
+
+	_, err := gamedb.StdConn.Exec(q)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to update players' punish vote cost")
+		return terror.Error(err, "Failed to update players' punish vote cost")
+	}
+
+	// update report cost
+	q = `
+		UPDATE
+			players
+		SET 
+			reported_cost = reported_cost / 2
+		WHERE
+			reported_cost > 10
+	`
+	_, err = gamedb.StdConn.Exec(q)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to update players' report cost")
+		return terror.Error(err, "Failed to update players' report cost")
+	}
+
+	return nil
 }

@@ -1894,6 +1894,7 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 			ID:        userID,
 			Username:  player.Username.String,
 			FactionID: player.FactionID.String,
+			Gid:       player.Gid,
 			Faction: &FactionBrief{
 				ID:         faction.ID,
 				Label:      faction.Label,

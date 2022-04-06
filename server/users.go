@@ -1,6 +1,7 @@
 package server
 
 import (
+	"server/db/boiler"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -106,25 +107,6 @@ func (i IssueToken) TokenID() uuid.UUID {
 	return uuid.UUID(i.ID)
 }
 
-// UserOnlineStatusChange is the payload sent to when a user online status changes
-type UserOnlineStatusChange struct {
-	ID     UserID `json:"id" db:"id"`
-	Online bool   `json:"online"`
-}
-
-type BattleUserVote struct {
-	BattleID  uuid.UUID `json:"battle_id" db:"battle_id"`
-	UserID    UserID    `json:"user_id" db:"user_id"`
-	VoteCount int64     `json:"vote_count" db:"vote_count"`
-}
-
-type UserStat struct {
-	ID                    UserID `json:"id" db:"id"`
-	ViewBattleCount       int64  `json:"view_battle_count" db:"view_battle_count"`
-	TotalAbilityTriggered int64  `json:"total_ability_triggered" db:"total_ability_triggered"`
-	KillCount             int64  `json:"kill_count" db:"kill_count"`
-}
-
 type UserBrief struct {
 	ID       uuid.UUID     `json:"id"`
 	Username string        `json:"username"`
@@ -151,3 +133,8 @@ var (
 	SupremacyRedMountainUserID       = uuid.Must(uuid.FromString("305da475-53dc-4973-8d78-a30d390d3de5"))
 	SupremacyBostonCyberneticsUserID = uuid.Must(uuid.FromString("15f29ee9-e834-4f76-aff8-31e39faabe2d"))
 )
+
+type UserStat struct {
+	*boiler.UserStat
+	LastSevenDaysKills int `json:"last_seven_days_kills"`
+}

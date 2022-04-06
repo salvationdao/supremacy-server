@@ -216,7 +216,6 @@ func (ap *ActivePlayers) Add(playerID string) error {
 }
 
 func (ap *ActivePlayers) Remove(playerID string) error {
-	// check player is in the list
 	if _, ok := ap.Map[playerID]; !ok {
 		// skip, if player is not in the list
 		return nil
