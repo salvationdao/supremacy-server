@@ -236,14 +236,15 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			wmName = fmt.Sprintf("(%s)", warMachine.Name)
 		}
 
-		notificationMsg := fmt.Sprintf("%s, your War Machine %s is nearing battle, jump on to https://play.supremacy.game and prepare.", player.Username.String, wmName)
-
 		for _, n := range warMachine.R.BattleQueueNotifications {
 			if n.SentAt.Valid {
 				continue
 			}
 			// send telegram notification
 			if n.TelegramNotificationID.Valid {
+				notificationMsg := fmt.Sprintf(`🦾 %s, your War Machine %s is approaching the front of the queue!
+				⚔️ Jump into the Battle Arena now to prepare. Your survival has its rewards.
+				⚠️ (Reminder: In order to combat scams we will NEVER send you links)`, player.Username.String, wmName)
 				gamelog.L.Info().Str("TelegramNotificationID", n.TelegramNotificationID.String).Msg("sending telegram notification")
 				err = arena.telegram.Notify(n.TelegramNotificationID.String, notificationMsg)
 				if err != nil {
@@ -253,6 +254,9 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 
 			// send sms
 			if n.MobileNumber.Valid {
+				notificationMsg := fmt.Sprintf(`%s, your War Machine %s is approaching the front of the queue!
+				Jump into the Battle Arena now to prepare. Your survival has its rewards. 
+				(Reminder: In order to combat scams we will NEVER send you links)`, player.Username.String, wmName)
 				gamelog.L.Info().Str("MobileNumber", n.MobileNumber.String).Msg("sending sms notification")
 				err := arena.sms.SendSMS(
 					player.MobileNumber.String,
