@@ -337,7 +337,7 @@ func GetCurrentPlayerTotalMultiAndCitizenship(playerID string) (string, bool) {
 		multiplier = decimal.NewFromInt(1)
 	}
 
-	return value.Mul(multiplier).String(), isCitizen
+	return value.Mul(multiplier).Shift(-1).String(), isCitizen
 }
 
 // ChatPastMessagesRequest sends chat message to specific faction.

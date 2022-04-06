@@ -553,8 +553,8 @@ func (arena *Arena) FactionAbilitiesUpdateSubscribeHandler(ctx context.Context, 
 		return "", "", terror.Error(err)
 	}
 
-	// skip, if user is non faction or Zaibatsu faction
-	if factionID.IsNil() || factionID.String() == server.ZaibatsuFactionID.String() {
+	// skip, if user is non faction
+	if factionID.IsNil() {
 		return "", "", nil
 	}
 
@@ -581,6 +581,8 @@ type WarMachineAbilitiesUpdatedRequest struct {
 	} `json:"payload"`
 }
 
+// TODO: refactor this to become a fetch instead of a subscription
+
 // WarMachineAbilitiesUpdateSubscribeHandler subscribe on war machine abilities
 func (arena *Arena) WarMachineAbilitiesUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	gamelog.L.Info().Str("fn", "WarMachineAbilitiesUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
@@ -603,8 +605,8 @@ func (arena *Arena) WarMachineAbilitiesUpdateSubscribeHandler(ctx context.Contex
 		return "", "", terror.Error(err)
 	}
 
-	// skip, if user is non faction or not Zaibatsu faction
-	if factionID.IsNil() || factionID.String() != server.ZaibatsuFactionID.String() {
+	// skip, if user is non faction
+	if factionID.IsNil() {
 		return "", "", nil
 	}
 
@@ -613,10 +615,10 @@ func (arena *Arena) WarMachineAbilitiesUpdateSubscribeHandler(ctx context.Contex
 		// get war machine ability
 		if arena.currentBattle() != nil {
 			btl := arena.currentBattle()
-			if btl.abilities() != nil {
-				ga := btl.abilities().WarMachineAbilitiesGet(factionID, req.Payload.Hash)
-				if ga != nil {
-					reply(ga)
+			for _, wm := range btl.WarMachines {
+				if wm.Hash == req.Payload.Hash {
+					reply(wm.Abilities)
+					break
 				}
 			}
 		}

@@ -104,6 +104,11 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 
 	userContributeMap := map[uuid.UUID]*UserContribution{}
 
+	// initialise all war machine abilities list
+	for _, wm := range battle.WarMachines {
+		wm.Abilities = []GameAbility{}
+	}
+
 	for factionID := range battle.factions {
 		// initialise faction unique abilities
 		factionAbilities[factionID] = map[string]*GameAbility{}
@@ -117,13 +122,16 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 		// for zaibatsu unique abilities
 		if factionID.String() == server.ZaibatsuFactionID.String() {
 
-			for _, ability := range factionUniqueAbilities {
-				for i, wm := range battle.WarMachines {
-					// skip if mech is not zaibatsu mech
-					if wm.FactionID != factionID.String() {
-						continue
-					}
+			for _, wm := range battle.WarMachines {
+				// skip if mech is not zaibatsu mech
+				if wm.FactionID != factionID.String() {
+					continue
+				}
 
+				// loop through abilities
+				for _, ability := range factionUniqueAbilities {
+
+					// get the ability cost
 					supsCost, err := decimal.NewFromString(ability.SupsCost)
 					if err != nil {
 						gamelog.L.Error().Err(err).Msg("Failed to ability sups cost to decimal")
@@ -142,8 +150,8 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 
 					// build the ability
 					wmAbility := GameAbility{
-						ID:                  uuid.Must(uuid.FromString(ability.ID)), // generate a uuid for frontend to track sups contribution
-						Identity:            wm.Hash,
+						ID:                  uuid.Must(uuid.FromString(ability.ID)),
+						Identity:            uuid.Must(uuid.NewV4()).String(), // generate an uuid for frontend to track sups contribution
 						GameClientAbilityID: byte(ability.GameClientAbilityID),
 						ImageUrl:            ability.ImageURL,
 						Description:         ability.Description,
@@ -159,8 +167,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 						OfferingID:          uuid.Must(uuid.NewV4()),
 					}
 
-					// inject ability to war machines
-					battle.WarMachines[i].Abilities = []GameAbility{wmAbility}
+					wm.Abilities = append(wm.Abilities, wmAbility)
 
 					// store faction ability for price tracking
 					factionAbilities[factionID][wmAbility.Identity] = &wmAbility
@@ -170,8 +177,9 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 		} else {
 			// for other faction unique abilities
 			abilities := map[string]*GameAbility{}
-			for _, ability := range factionUniqueAbilities {
 
+			for _, ability := range factionUniqueAbilities {
+				// get the cost of the ability
 				supsCost, err := decimal.NewFromString(ability.SupsCost)
 				if err != nil {
 					gamelog.L.Error().Err(err).Msg("Failed to ability sups cost to decimal")
@@ -188,23 +196,62 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 					currentSups = decimal.Zero
 				}
 
-				wmAbility := GameAbility{
-					ID:                  uuid.Must(uuid.FromString(ability.ID)), // generate a uuid for frontend to track sups contribution
-					Identity:            ability.ID,
-					GameClientAbilityID: byte(ability.GameClientAbilityID),
-					ImageUrl:            ability.ImageURL,
-					Description:         ability.Description,
-					FactionID:           factionID,
-					Label:               ability.Label,
-					SupsCost:            supsCost,
-					CurrentSups:         currentSups,
-					Colour:              ability.Colour,
-					TextColour:          ability.TextColour,
-					Title:               "FACTION_WIDE",
-					OfferingID:          uuid.Must(uuid.NewV4()),
+				// TODO: need to refactor ability db struct
+				// check whether it is FIREWORKS
+				if ability.Label == "FIREWORKS" {
+					// add the ability to faction war machine
+					for _, wm := range battle.WarMachines {
+						// skip if mech is not in same faction
+						if wm.FactionID != factionID.String() {
+							continue
+						}
+
+						// build the ability
+						wmAbility := GameAbility{
+							ID:                  uuid.Must(uuid.FromString(ability.ID)),
+							Identity:            uuid.Must(uuid.NewV4()).String(), // generate an uuid for frontend to track sups contribution
+							GameClientAbilityID: byte(ability.GameClientAbilityID),
+							ImageUrl:            ability.ImageURL,
+							Description:         ability.Description,
+							FactionID:           factionID,
+							Label:               ability.Label,
+							SupsCost:            supsCost,
+							CurrentSups:         currentSups,
+							WarMachineHash:      wm.Hash,
+							ParticipantID:       &wm.ParticipantID,
+							Title:               wm.Name,
+							Colour:              ability.Colour,
+							TextColour:          ability.TextColour,
+							OfferingID:          uuid.Must(uuid.NewV4()),
+						}
+
+						wm.Abilities = append(wm.Abilities, wmAbility)
+
+						// store faction ability for price tracking
+						abilities[wmAbility.Identity] = &wmAbility
+					}
+				} else {
+
+					// treat the ability as faction wide ability
+					wmAbility := GameAbility{
+						ID:                  uuid.Must(uuid.FromString(ability.ID)),
+						Identity:            uuid.Must(uuid.NewV4()).String(), // generate an uuid for frontend to track sups contribution
+						GameClientAbilityID: byte(ability.GameClientAbilityID),
+						ImageUrl:            ability.ImageURL,
+						Description:         ability.Description,
+						FactionID:           factionID,
+						Label:               ability.Label,
+						SupsCost:            supsCost,
+						CurrentSups:         currentSups,
+						Colour:              ability.Colour,
+						TextColour:          ability.TextColour,
+						Title:               "FACTION_WIDE",
+						OfferingID:          uuid.Must(uuid.NewV4()),
+					}
+					abilities[wmAbility.Identity] = &wmAbility
 				}
-				abilities[wmAbility.Identity] = &wmAbility
 			}
+
 			factionAbilities[factionID] = abilities
 		}
 
@@ -233,16 +280,20 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 
 	// broadcast faction unique ability
 	for factionID, ga := range as.factionUniqueAbilities {
-		if factionID.String() == server.ZaibatsuFactionID.String() {
-			// broadcast the war machine abilities
-			for identity, ability := range ga {
-				as.battle().arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyWarMachineAbilitiesUpdated, identity)), []GameAbility{*ability})
+		// broadcast faction ability
+		factionAbilities := []GameAbility{}
+		for _, ability := range ga {
+			if ability.Title == "FACTION_WIDE" {
+				factionAbilities = append(factionAbilities, *ability)
 			}
-		} else {
-			// broadcast faction ability
-			for _, ability := range ga {
-				as.battle().arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionUniqueAbilitiesUpdated, factionID.String())), []GameAbility{*ability})
-			}
+		}
+		as.battle().arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionUniqueAbilitiesUpdated, factionID.String())), factionAbilities)
+	}
+
+	// broadcast war machine abilities
+	for _, wm := range battle.WarMachines {
+		if len(wm.Abilities) > 0 {
+			as.battle().arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionUniqueAbilitiesUpdated, wm.Hash)), wm.Abilities)
 		}
 	}
 
@@ -1654,7 +1705,10 @@ func (as *AbilitiesSystem) FactionUniqueAbilitiesGet(factionID uuid.UUID) []Game
 	}()
 	abilities := []GameAbility{}
 	for _, ga := range as.factionUniqueAbilities[factionID] {
-		abilities = append(abilities, *ga)
+		// only include return faction wide ability
+		if ga.Title == "FACTION_WIDE" {
+			abilities = append(abilities, *ga)
+		}
 	}
 
 	if len(abilities) == 0 {
