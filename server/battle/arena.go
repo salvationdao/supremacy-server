@@ -420,8 +420,6 @@ func (arena *Arena) PlayerRankGet(ctx context.Context, wsc *hub.Client, payload 
 	return nil
 }
 
-const HubKeyUserStatChatSubscribe hub.HubCommandKey = "PLAYER:USER:STAT:CHAT:SUBSCRIBE"
-
 const HubKeyBattleAbilityUpdated hub.HubCommandKey = "BATTLE:ABILITY:UPDATED"
 
 func (arena *Arena) BattleAbilityUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {

@@ -36,7 +36,6 @@ func PassportWebhookRouter(log *zerolog.Logger, conn db.Conn, webhookSecret stri
 		API:  api,
 	}
 	r := chi.NewRouter()
-	//r.Post("/auth_ring_check", WithPassportSecret(webhookSecret, WithError(c.AuthRingCheck
 	r.Post("/user_update", WithPassportSecret(webhookSecret, WithError(c.UserUpdated)))
 	r.Post("/user_enlist_faction", WithPassportSecret(webhookSecret, WithError(c.UserEnlistFaction)))
 	r.Post("/user_stat", WithPassportSecret(webhookSecret, WithError(c.UserStatGet)))
@@ -203,9 +202,11 @@ func (pc *PassportWebhookController) UserStatGet(w http.ResponseWriter, r *http.
 	}
 
 	if userStat == nil {
-		// build a empty user stat if there is no user stat in db
-		userStat = &boiler.UserStat{
-			ID: req.UserID.String(),
+		// build an empty user stat if there is no user stat in db
+		userStat = &server.UserStat{
+			UserStat: &boiler.UserStat{
+				ID: req.UserID.String(),
+			},
 		}
 	}
 

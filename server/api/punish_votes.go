@@ -4,10 +4,14 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/http"
+	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 	"time"
+
+	"github.com/ninja-software/tickle"
 
 	"github.com/gofrs/uuid"
 
@@ -65,12 +69,12 @@ type PunishVote struct {
 	IsAgreed     bool
 }
 
-func (api *API) PunishVoteTrackerSetup() {
+func (api *API) PunishVoteTrackerSetup() error {
 	// get factions
 	factions, err := boiler.Factions().All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to setup faction punish vote tracker")
-		return
+		return terror.Error(err, "Failed to setup faction punish vote tracker")
 	}
 
 	for _, f := range factions {
@@ -89,6 +93,23 @@ func (api *API) PunishVoteTrackerSetup() {
 		// store punish vote instance of each faction
 		api.FactionPunishVote[f.ID] = pvt
 	}
+
+	// create a tickle to update vote price every 24 hours
+	playerPunishVoteCostUpdater := tickle.New("Player Punish Vote Cost updater", 24*60*60, func() (int, error) {
+		err = db.UpdatePunishVoteCost()
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("Failed to update player punish vote cost and report cost")
+			return http.StatusInternalServerError, terror.Error(err)
+		}
+		return http.StatusOK, nil
+	})
+
+	err = playerPunishVoteCostUpdater.SetIntervalAt(24*time.Hour, 1, 0)
+	if err != nil {
+		return terror.Error(err, "Failed to setup player punish vote cost updater")
+	}
+
+	return nil
 }
 
 func (pvt *PunishVoteTracker) Run() {
@@ -294,9 +315,6 @@ func (pvt *PunishVoteTracker) Vote(punishVoteID string, playerID string, isAgree
 				gamelog.L.Error().Str("punish vote id", pvt.CurrentPunishVote.ID).Err(err).Msgf("Failed to process failed vote due to %s", err.Error())
 				return terror.Error(err, "Failed to process the result")
 			}
-
-			// broadcast undefined to clean up the form in the frontend
-			pvt.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPunishVoteSubscribe, pvt.FactionID)), nil)
 			return nil
 		}
 	} else {
@@ -308,9 +326,6 @@ func (pvt *PunishVoteTracker) Vote(punishVoteID string, playerID string, isAgree
 				gamelog.L.Error().Str("punish vote id", pvt.CurrentPunishVote.ID).Err(err).Msgf("Failed to process failed vote due to %s", err.Error())
 				return terror.Error(err, "Failed to process the result")
 			}
-
-			// broadcast undefined to clean up the form in the frontend
-			pvt.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPunishVoteSubscribe, pvt.FactionID)), nil)
 			return nil
 		}
 	}
@@ -481,6 +496,9 @@ func (pvt *PunishVoteTracker) BroadcastPunishVoteResult(isPassed bool) {
 		gamelog.L.Error().Str("punish vote id", pvt.CurrentPunishVote.ID).Err(err).Msg("Failed to get punish option from punish vote")
 		return
 	}
+
+	// broadcast undefined to clean up the form in the frontend
+	pvt.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPunishVoteSubscribe, pvt.FactionID)), nil)
 
 	// construct punish vote message
 	chatMessage := &ChatMessage{

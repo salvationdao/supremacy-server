@@ -28,7 +28,6 @@ import (
 
 	"github.com/ninja-syndicate/hub"
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/gofrs/uuid"
 
@@ -836,29 +835,6 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 const HubKeyBattleEndDetailUpdated hub.HubCommandKey = "BATTLE:END:DETAIL:UPDATED"
 
 func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
-	btl.users.Range(func(user *BattleUser) bool {
-		m, total := btl.multipliers.PlayerMultipliers(user.ID, 0)
-
-		info.MultiplierUpdate = &MultiplierUpdate{
-			UserMultipliers:  m,
-			TotalMultipliers: fmt.Sprintf("%sx", total),
-		}
-
-		user.Send(HubKeyBattleEndDetailUpdated, info)
-
-		us, err := db.UserStatsGet(user.ID.String())
-		if err != nil {
-			gamelog.L.Error().Str("player_id", user.ID.String()).Err(err).Msg("Failed to get user stats")
-		}
-
-		// broadcast user stat to user
-		if us != nil {
-			go btl.arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserStatSubscribe, us.ID)), us)
-		}
-
-		return true
-	})
-
 	multipliers, err := db.PlayerMultipliers(btl.BattleNumber)
 	if err != nil {
 		gamelog.L.Error().Str("battle number #", strconv.Itoa(btl.BattleNumber)).Err(err).Msg("Failed to get player multipliers from db")
@@ -868,6 +844,32 @@ func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 	for _, m := range multipliers {
 		m.TotalMultiplier = m.TotalMultiplier.Shift(-1)
 	}
+
+	btl.users.Range(func(user *BattleUser) bool {
+
+		m, total := btl.multipliers.PlayerMultipliers(user.ID, 0)
+
+		info.MultiplierUpdate = &MultiplierUpdate{
+			UserMultipliers:  m,
+			TotalMultipliers: fmt.Sprintf("%sx", total),
+		}
+
+		user.Send(HubKeyBattleEndDetailUpdated, info)
+
+		// broadcast user stat to user
+		go func(user *BattleUser) {
+			us, err := db.UserStatsGet(user.ID.String())
+			if err != nil {
+				gamelog.L.Error().Str("player_id", user.ID.String()).Err(err).Msg("Failed to get user stats")
+			}
+			if us != nil {
+				btl.arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserStatSubscribe, us.ID)), us)
+			}
+		}(user)
+
+		return true
+	})
+
 }
 
 type BroadcastPayload struct {
@@ -947,21 +949,6 @@ func (btl *Battle) userOnline(user *BattleUser, wsc *hub.Client) {
 	} else {
 		// broadcast result to current user only if the user already exists
 		btl.users.Send(HubKeyViewerLiveCountUpdated, resp, user.ID)
-
-		userIDs := btl.users.OnlineUserIDs()
-		if len(userIDs) > 0 {
-			uss, err := boiler.UserStats(
-				boiler.UserStatWhere.ID.IN(userIDs),
-			).All(gamedb.StdConn)
-			if err != nil {
-				gamelog.L.Error().Err(err).Msg("Failed to get user stats from db")
-			}
-
-			if uss != nil {
-				btl.users.Send(HubKeyUserStatChatSubscribe, uss, user.ID)
-			}
-		}
-
 	}
 }
 
@@ -983,21 +970,6 @@ func (btl *Battle) debounceSendingViewerCount(cb func(result ViewerLiveCount, bt
 		case <-timer.C:
 			if result != nil {
 				cb(*result, btl)
-
-				userIDs := btl.users.OnlineUserIDs()
-				if len(userIDs) > 0 {
-					uss, err := boiler.UserStats(
-						qm.Select(boiler.UserStatColumns.ID, boiler.UserStatColumns.KillCount),
-						boiler.UserStatWhere.ID.IN(userIDs),
-					).All(gamedb.StdConn)
-					if err != nil {
-						gamelog.L.Error().Err(err).Msg("Failed to get user stats from db")
-					}
-
-					if uss != nil {
-						btl.users.Send(HubKeyUserStatChatSubscribe, uss)
-					}
-				}
 			}
 		case <-checker.C:
 			if btl != btl.arena.currentBattle() {
@@ -2044,6 +2016,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 				if err != nil {
 					gamelog.L.Error().Str("faction_id", abl.FactionID).Err(err).Msg("Failed to subtract user ability kill count")
 				}
+
 			} else {
 				// update user kill
 				_, err := db.UserStatAddAbilityKill(abl.PlayerID.String)

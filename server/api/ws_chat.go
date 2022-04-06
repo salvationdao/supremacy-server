@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"html"
 	"server"
+	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -64,7 +65,7 @@ type MessageText struct {
 	MessageColor string           `json:"message_color"`
 	FromUser     boiler.Player    `json:"from_user"`
 	UserRank     string           `json:"user_rank"`
-	FromUserStat *boiler.UserStat `json:"from_user_stat"`
+	FromUserStat *server.UserStat `json:"from_user_stat"`
 
 	TotalMultiplier string `json:"total_multiplier"`
 	IsCitizen       bool   `json:"is_citizen"`
@@ -228,9 +229,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 	}
 
 	// get player current stat
-	playerStat, err := boiler.UserStats(
-		boiler.UserStatWhere.ID.EQ(player.ID),
-	).One(gamedb.StdConn)
+	playerStat, err := db.UserStatsGet(player.ID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return terror.Error(err, "Unable to get player stat from db")
 	}
