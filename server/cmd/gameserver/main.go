@@ -355,7 +355,7 @@ func main() {
 					})
 
 					// initialise telegram bot
-					telebot, err := telegram.NewTelegram(telegramBotToken, func(owner string, success bool) {
+					telebot, err := telegram.NewTelegram(telegramBotToken, environment, func(owner string, success bool) {
 						go messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", telegram.HubKeyTelegramShortcodeRegistered, owner)), success)
 					})
 					if err != nil {
@@ -382,8 +382,10 @@ func main() {
 						os.Exit(1)
 					}
 
-					gamelog.L.Info().Msg("Running telegram bot")
-					go telebot.RunTelegram(telebot.Bot)
+					if environment == "production" || environment == "staging" {
+						gamelog.L.Info().Msg("Running telegram bot")
+						go telebot.RunTelegram(telebot.Bot)
+					}
 
 					gamelog.L.Info().Msg("Running webhook rest API")
 					err = api.Run(ctx)
