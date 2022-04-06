@@ -144,60 +144,24 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 				currentSups = decimal.Zero
 			}
 
-			// TODO: need to refactor ability db struct
-			// check whether it is FIREWORKS
-			if ability.Label == "FIREWORKS" {
-				// add the ability to faction war machine
-				for _, wm := range battle.WarMachines {
-					// skip if mech is not in same faction
-					if wm.FactionID != factionID.String() {
-						continue
-					}
-
-					// build the ability
-					wmAbility := GameAbility{
-						ID:                  ability.ID,
-						Identity:            uuid.Must(uuid.NewV4()).String(), // generate an uuid for frontend to track sups contribution
-						GameClientAbilityID: byte(ability.GameClientAbilityID),
-						ImageUrl:            ability.ImageURL,
-						Description:         ability.Description,
-						FactionID:           factionID.String(),
-						Label:               ability.Label,
-						SupsCost:            supsCost,
-						CurrentSups:         currentSups,
-						WarMachineHash:      wm.Hash,
-						ParticipantID:       &wm.ParticipantID,
-						Title:               wm.Name,
-						Colour:              ability.Colour,
-						TextColour:          ability.TextColour,
-						OfferingID:          uuid.Must(uuid.NewV4()),
-					}
-
-					wm.Abilities = append(wm.Abilities, wmAbility)
-
-					// store faction ability for price tracking
-					abilities[wmAbility.Identity] = &wmAbility
-				}
-			} else {
-
-				// treat the ability as faction wide ability
-				wmAbility := GameAbility{
-					ID:                  ability.ID,
-					Identity:            uuid.Must(uuid.NewV4()).String(), // generate an uuid for frontend to track sups contribution
-					GameClientAbilityID: byte(ability.GameClientAbilityID),
-					ImageUrl:            ability.ImageURL,
-					Description:         ability.Description,
-					FactionID:           factionID.String(),
-					Label:               ability.Label,
-					SupsCost:            supsCost,
-					CurrentSups:         currentSups,
-					Colour:              ability.Colour,
-					TextColour:          ability.TextColour,
-					Title:               "FACTION_WIDE",
-					OfferingID:          uuid.Must(uuid.NewV4()),
-				}
-				abilities[wmAbility.Identity] = &wmAbility
+			// treat the ability as faction wide ability
+			wmAbility := GameAbility{
+				ID:                  ability.ID,
+				Identity:            uuid.Must(uuid.NewV4()).String(), // generate an uuid for frontend to track sups contribution
+				GameClientAbilityID: byte(ability.GameClientAbilityID),
+				ImageUrl:            ability.ImageURL,
+				Description:         ability.Description,
+				FactionID:           factionID.String(),
+				Label:               ability.Label,
+				SupsCost:            supsCost,
+				CurrentSups:         currentSups,
+				Colour:              ability.Colour,
+				TextColour:          ability.TextColour,
+				Title:               "FACTION_WIDE",
+				OfferingID:          uuid.Must(uuid.NewV4()),
 			}
+			abilities[wmAbility.Identity] = &wmAbility
+			
 		}
 
 		factionAbilities[factionID] = abilities
