@@ -297,13 +297,19 @@ func GetCurrentPlayerTotalMultiAndCitizenship(playerID string) (string, bool) {
 	if err != nil {
 		return "0", false
 	}
+	battleNumber := latestBattle.BattleNumber
+
+	// if the latest battle has a ended at time, we are in the intro phase so we need to get current battle multi, if intro has finished and ended at is null we need last battle
+	if !latestBattle.EndedAt.Valid {
+		battleNumber = battleNumber - 1
+	}
 
 	// get a copy of battle number
 	ums, err := boiler.Multipliers(
 		qm.InnerJoin("user_multipliers um on um.multiplier_id = multipliers.id"),
 		qm.Where(`um.player_id = ?`, playerID),
-		qm.And(`um.until_battle_number > ?`, latestBattle.BattleNumber-1),
-		qm.And(`um.from_battle_number <= ?`, latestBattle.BattleNumber-1),
+		qm.And(`um.until_battle_number > ?`, battleNumber),
+		qm.And(`um.from_battle_number <= ?`, battleNumber),
 	).All(gamedb.StdConn)
 	if err != nil && len(ums) == 0 {
 		return "0", false
@@ -328,7 +334,7 @@ func GetCurrentPlayerTotalMultiAndCitizenship(playerID string) (string, bool) {
 		multiplier = decimal.NewFromInt(1)
 	}
 
-	return value.Mul(multiplier).String(), isCitizen
+	return value.Mul(multiplier).Div(decimal.NewFromInt(10)).String(), isCitizen
 }
 
 // ChatPastMessagesRequest sends chat message to specific faction.
