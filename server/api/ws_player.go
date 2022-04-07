@@ -23,7 +23,6 @@ import (
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
 	"github.com/shopspring/decimal"
-	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
@@ -125,6 +124,12 @@ func (pc *PlayerController) PlayerUpdateSettingsHandler(ctx context.Context, wsc
 	return nil
 }
 
+type PlayerNotificationPreferences struct {
+	SMSNotifications      bool `json:"sms_notifications"`
+	PushNotifications     bool `json:"push_notifications"`
+	TelegramNotifications bool `json:"telegram_notifications"`
+}
+
 type PlayerGetSettingsRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
@@ -150,10 +155,26 @@ func (pc *PlayerController) PlayerGetSettingsHandler(ctx context.Context, wsc *h
 
 	//getting user's notification settings from the database
 	userSettings, err := boiler.FindPlayerPreference(gamedb.StdConn, player.ID, req.Payload.Key)
+
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			// if there are no results, return a null json- tells frontend to use default settings
-			reply(null.JSON{})
+			// if there are no results, create entry in table and rreturn a null json- tells frontend to use default settings
+			playerPrefs := &boiler.PlayerPreference{
+				PlayerID:  wsc.Identifier(),
+				Key:       req.Payload.Key,
+				CreatedAt: time.Now()}
+
+			playerPrefs.Value.Marshal(PlayerNotificationPreferences{
+				SMSNotifications:      false,
+				PushNotifications:     false,
+				TelegramNotifications: false,
+			})
+
+			err := playerPrefs.Insert(gamedb.StdConn, boil.Infer())
+			if err != nil {
+				return terror.Error(err, errMsg)
+			}
+			reply(playerPrefs.Value)
 			return nil
 		} else {
 			return terror.Error(err, errMsg)
@@ -162,7 +183,6 @@ func (pc *PlayerController) PlayerGetSettingsHandler(ctx context.Context, wsc *h
 
 	//send back userSettings
 	reply(userSettings.Value)
-	reply(true)
 	return nil
 }
 
