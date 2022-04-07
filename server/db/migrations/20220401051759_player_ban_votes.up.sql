@@ -105,7 +105,7 @@ CREATE UNIQUE INDEX ON player_last_seven_day_ability_kills (id);
 REFRESH MATERIALIZED VIEW CONCURRENTLY player_last_seven_day_ability_kills;
 
 -- set private rank players (accounts are created over 24 hrs)
-UPDATE players SET rank = 'PRIVATE' WHERE created_at > NOW() - INTERVAL '1 DAY';
+UPDATE players SET rank = 'PRIVATE' WHERE created_at <= NOW() - INTERVAL '1 DAY';
 
 -- set corporal rank players (any private players who have positive ability kill count)
-UPDATE players p SET rank = 'CORPORAL' WHERE p.rank = 'PRIVATE' AND EXISTS (SELECT 1 FROM user_stats us WHERE us.id = p.id AND us.kill_count >0);
+UPDATE players p SET rank = 'CORPORAL' WHERE p.rank = 'PRIVATE' AND EXISTS (SELECT 1 FROM user_stats us WHERE us.id = p.id AND us.kill_count > 0);

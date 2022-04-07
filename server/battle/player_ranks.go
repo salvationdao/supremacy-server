@@ -129,7 +129,7 @@ func calcSyndicatePlayerRank(factionID server.FactionID) error {
 	// update general players
 	_, err = boiler.Players(
 		boiler.PlayerWhere.ID.IN(generalPlayerIDs),
-		boiler.PlayerWhere.CreatedAt.GT(time.Now().AddDate(0, 0, -1)), // should be created more than a day
+		boiler.PlayerWhere.CreatedAt.LT(time.Now().AddDate(0, 0, -1)), // should be created more than a day
 	).UpdateAll(gamedb.StdConn, boiler.M{"rank": PlayerRankGeneral})
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to update general rank player")
@@ -139,7 +139,7 @@ func calcSyndicatePlayerRank(factionID server.FactionID) error {
 	// update corporal players
 	_, err = boiler.Players(
 		boiler.PlayerWhere.ID.NIN(generalPlayerIDs),
-		boiler.PlayerWhere.CreatedAt.GT(time.Now().AddDate(0, 0, -1)),
+		boiler.PlayerWhere.CreatedAt.LT(time.Now().AddDate(0, 0, -1)),
 		qm.InnerJoin(
 			fmt.Sprintf(
 				"%s ON %s = %s AND %s > 0",
@@ -158,7 +158,7 @@ func calcSyndicatePlayerRank(factionID server.FactionID) error {
 	// update private players
 	_, err = boiler.Players(
 		boiler.PlayerWhere.ID.NIN(generalPlayerIDs),
-		boiler.PlayerWhere.CreatedAt.GT(time.Now().AddDate(0, 0, -1)),
+		boiler.PlayerWhere.CreatedAt.LT(time.Now().AddDate(0, 0, -1)),
 		boiler.PlayerWhere.SentMessageCount.GT(0),
 		qm.InnerJoin(
 			fmt.Sprintf(
