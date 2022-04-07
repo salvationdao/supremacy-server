@@ -615,6 +615,8 @@ func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, bat
 		ServerStreamKey:       ctxCLI.String("server_stream_key"),
 		PassportWebhookSecret: ctxCLI.String("passport_webhook_secret"),
 		JwtKey:                jwtKeyByteArray,
+		Environment:           environment,
+		Address:               apiAddr,
 	}
 
 	// HTML Sanitizer
@@ -622,7 +624,7 @@ func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, bat
 	HTMLSanitizePolicy.AllowAttrs("class").OnElements("img", "table", "tr", "td", "p")
 
 	// API Server
-	serverAPI := api.NewAPI(ctx, log, battleArenaClient, passport, apiAddr, HTMLSanitizePolicy, conn, config, messageBus, gsHub, sms, telegram, languageDetector)
+	serverAPI := api.NewAPI(ctx, log, battleArenaClient, passport, HTMLSanitizePolicy, conn, config, messageBus, gsHub, sms, telegram, languageDetector)
 	return serverAPI, nil
 }
 

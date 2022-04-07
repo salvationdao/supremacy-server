@@ -76,7 +76,6 @@ type API struct {
 	*auth.Auth
 	Log              *zerolog.Logger
 	Routes           chi.Router
-	Addr             string
 	BattleArena      *battle.Arena
 	HTMLSanitize     *bluemonday.Policy
 	Hub              *hub.Hub
@@ -100,6 +99,8 @@ type API struct {
 	RedMountainChat *Chatroom
 	BostonChat      *Chatroom
 	ZaibatsuChat    *Chatroom
+
+	Config *server.Config
 }
 
 // NewAPI registers routes
@@ -108,7 +109,6 @@ func NewAPI(
 	log *zerolog.Logger,
 	battleArenaClient *battle.Arena,
 	pp *rpcclient.PassportXrpcClient,
-	addr string,
 	HTMLSanitize *bluemonday.Policy,
 	conn *pgxpool.Pool,
 	config *server.Config,
@@ -124,7 +124,6 @@ func NewAPI(
 		ctx:              ctx,
 		Log:              log_helpers.NamedLogger(log, "api"),
 		Routes:           chi.NewRouter(),
-		Addr:             addr,
 		MessageBus:       messageBus,
 		HTMLSanitize:     HTMLSanitize,
 		BattleArena:      battleArenaClient,
@@ -238,7 +237,7 @@ func NewAPI(
 // Run the API service
 func (api *API) Run(ctx context.Context) error {
 	api.server = &http.Server{
-		Addr:    api.Addr,
+		Addr:    api.Config.Address,
 		Handler: api.Routes,
 		BaseContext: func(_ net.Listener) context.Context {
 			return ctx

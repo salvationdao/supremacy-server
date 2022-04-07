@@ -397,11 +397,17 @@ func (pvt *PunishVoteTracker) VotePassed() error {
 		return terror.Error(err, "Failed to get punish type from db")
 	}
 
+	punishDuration := time.Now().Add(time.Duration(punishOption.PunishDurationHours) * time.Hour)
+
+	if pvt.api.Config.Address == "staging" || pvt.api.Config.Address == "development" {
+		punishDuration = time.Now().Add(time.Duration(5) * time.Minute)
+	}
+
 	// punish user
 	bp := &boiler.PunishedPlayer{
 		PlayerID:            punishVote.ReportedPlayerID,
 		PunishOptionID:      punishOption.ID,
-		PunishUntil:         time.Now().Add(time.Duration(punishOption.PunishDurationHours) * time.Hour),
+		PunishUntil:         punishDuration,
 		RelatedPunishVoteID: null.StringFrom(punishVote.ID),
 	}
 	err = bp.Insert(gamedb.StdConn, boil.Infer())
