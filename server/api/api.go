@@ -121,6 +121,7 @@ func NewAPI(
 
 	// initialise api
 	api := &API{
+		Config:           config,
 		ctx:              ctx,
 		Log:              log_helpers.NamedLogger(log, "api"),
 		Routes:           chi.NewRouter(),
