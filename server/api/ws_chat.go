@@ -277,7 +277,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 	}
 
 	msg := html.UnescapeString(bm.Sanitize(req.Payload.Message))
-	
+
 	linguaLanguage, exists := fc.API.LanguageDetector.DetectLanguageOf(msg)
 	language := linguaLanguage.String()
 	if language == "Unknown" {
