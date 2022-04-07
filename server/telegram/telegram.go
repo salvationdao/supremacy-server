@@ -89,7 +89,7 @@ func (t *Telegram) RunTelegram(bot *tele.Bot) error {
 			qm.Load(boiler.BattleQueueNotificationRels.Mech)).One(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			gamelog.L.Error().Err(err).Msg("unable to get notification by shortcode")
-			return c.Send("unable to get notification by shortcode")
+			return c.Send("Unable to find shortcode, you may have entered your shortcode too fast, please try again or contact support.")
 		}
 
 		reply := ""

@@ -242,9 +242,9 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			}
 			// send telegram notification
 			if n.TelegramNotificationID.Valid {
-				notificationMsg := fmt.Sprintf(`🦾 %s, your War Machine %s is approaching the front of the queue!
-				⚔️ Jump into the Battle Arena now to prepare. Your survival has its rewards.
-				⚠️ (Reminder: In order to combat scams we will NEVER send you links)`, player.Username.String, wmName)
+
+				notificationMsg := fmt.Sprintf("🦾 %s, your War Machine %s is approaching the front of the queue!\n\n⚔️ Jump into the Battle Arena now to prepare. Your survival has its rewards.\n\n⚠️ (Reminder: In order to combat scams we will NEVER send you links)", player.Username.String, wmName)
+
 				gamelog.L.Info().Str("TelegramNotificationID", n.TelegramNotificationID.String).Msg("sending telegram notification")
 				err = arena.telegram.Notify(n.TelegramNotificationID.String, notificationMsg)
 				if err != nil {
@@ -254,9 +254,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 
 			// send sms
 			if n.MobileNumber.Valid {
-				notificationMsg := fmt.Sprintf(`%s, your War Machine %s is approaching the front of the queue!
-				Jump into the Battle Arena now to prepare. Your survival has its rewards. 
-				(Reminder: In order to combat scams we will NEVER send you links)`, player.Username.String, wmName)
+				notificationMsg := fmt.Sprintf("%s, your War Machine %s is approaching the front of the queue!\n\nJump into the Battle Arena now to prepare. Your survival has its rewards.\n\n(Reminder: In order to combat scams we will NEVER send you links)", player.Username.String, wmName)
 				gamelog.L.Info().Str("MobileNumber", n.MobileNumber.String).Msg("sending sms notification")
 				err := arena.sms.SendSMS(
 					player.MobileNumber.String,
