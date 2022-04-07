@@ -198,15 +198,16 @@ type WarMachine struct {
 }
 
 type GameAbility struct {
-	ID                  uuid.UUID       `json:"id" db:"id"`
+	ID                  string          `json:"id" db:"id"`
 	GameClientAbilityID byte            `json:"game_client_ability_id" db:"game_client_ability_id"`
-	BattleAbilityID     *uuid.UUID      `json:"battle_ability_id,omitempty" db:"battle_ability_id,omitempty"`
+	BattleAbilityID     *string         `json:"battle_ability_id,omitempty" db:"battle_ability_id,omitempty"`
 	Colour              string          `json:"colour" db:"colour"`
 	TextColour          string          `json:"text_colour" db:"text_colour"`
 	Description         string          `json:"description" db:"description"`
 	ImageUrl            string          `json:"image_url" db:"image_url"`
-	FactionID           uuid.UUID       `json:"faction_id" db:"faction_id"`
+	FactionID           string          `json:"faction_id" db:"faction_id"`
 	Label               string          `json:"label" db:"label"`
+	Level               string          `json:"level" db:"level"`
 	SupsCost            decimal.Decimal `json:"sups_cost"`
 	CurrentSups         decimal.Decimal `json:"current_sups"`
 

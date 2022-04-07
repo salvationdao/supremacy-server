@@ -61,6 +61,19 @@ func PlayerRegister(ID uuid.UUID, Username string, FactionID uuid.UUID, PublicAd
 	return player, nil
 }
 
+func GetUserLanguage(playerID string) string {
+	q := `SELECT mode() within group (order by lang) from chat_history WHERE player_id = $1 LIMIT 10;`
+	row := gamedb.StdConn.QueryRow(q, playerID)
+	lang := "English"
+	switch err := row.Scan(&lang); err {
+	case sql.ErrNoRows:
+		return "English"
+	case nil:
+		return lang
+	default:
+		return "English"
+	}
+}
 func UserStatsGet(playerID string) (*server.UserStat, error) {
 	us, err := boiler.FindUserStat(gamedb.StdConn, playerID)
 	if err != nil {

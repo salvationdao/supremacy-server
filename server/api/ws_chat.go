@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/volatiletech/null/v8"
 	"html"
 	"server"
 	"server/db"
@@ -12,6 +13,8 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"time"
+
+	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	"github.com/shopspring/decimal"
 
@@ -41,7 +44,7 @@ var Profanities = []string{
 	"retard",
 }
 
-const PersistChatMessageLimit = 20
+const PersistChatMessageLimit = 50
 
 var profanityDetector = goaway.NewProfanityDetector().WithCustomDictionary(Profanities, []string{}, []string{})
 var bm = bluemonday.StrictPolicy()
@@ -61,14 +64,14 @@ const (
 )
 
 type MessageText struct {
-	Message      string           `json:"message"`
-	MessageColor string           `json:"message_color"`
-	FromUser     boiler.Player    `json:"from_user"`
-	UserRank     string           `json:"user_rank"`
-	FromUserStat *server.UserStat `json:"from_user_stat"`
-
-	TotalMultiplier string `json:"total_multiplier"`
-	IsCitizen       bool   `json:"is_citizen"`
+	Message         string           `json:"message"`
+	MessageColor    string           `json:"message_color"`
+	FromUser        boiler.Player    `json:"from_user"`
+	UserRank        string           `json:"user_rank"`
+	FromUserStat    *server.UserStat `json:"from_user_stat"`
+	Lang            string           `json:"lang"`
+	TotalMultiplier string           `json:"total_multiplier"`
+	IsCitizen       bool             `json:"is_citizen"`
 }
 
 type MessagePunishVote struct {
@@ -111,9 +114,53 @@ func (c *Chatroom) Range(fn func(chatMessage *ChatMessage) bool) {
 }
 
 func NewChatroom(factionID *server.FactionID) *Chatroom {
+	stream := "global"
+	if factionID != nil {
+		stream = factionID.String()
+	}
+	msgs, _ := boiler.ChatHistories(
+		boiler.ChatHistoryWhere.ChatStream.EQ(stream),
+		qm.OrderBy(boiler.ChatHistoryColumns.CreatedAt),
+		qm.Limit(PersistChatMessageLimit),
+	).All(gamedb.StdConn)
+
+	players := map[string]*boiler.Player{}
+	stats := map[string]*server.UserStat{}
+
+	cms := make([]*ChatMessage, len(msgs))
+	for i, msg := range msgs {
+		player, ok := players[msg.PlayerID]
+		if !ok {
+			player, _ = boiler.FindPlayer(gamedb.StdConn, msg.PlayerID)
+			if player == nil {
+				continue
+			}
+			playerStat, err := db.UserStatsGet(player.ID)
+			if err != nil {
+				continue
+			}
+			stats[player.ID] = playerStat
+		}
+		stat := stats[player.ID]
+
+		cms[i] = &ChatMessage{
+			Type:   ChatMessageType(msg.MSGType),
+			SentAt: msg.CreatedAt,
+			Data: &MessageText{
+				Message:         msg.Text,
+				MessageColor:    msg.MessageColor,
+				FromUser:        *player,
+				UserRank:        player.Rank,
+				FromUserStat:    stat,
+				TotalMultiplier: msg.TotalMultiplier,
+				IsCitizen:       msg.IsCitizen,
+			},
+		}
+	}
+
 	chatroom := &Chatroom{
 		factionID: factionID,
-		messages:  []*ChatMessage{},
+		messages:  cms,
 	}
 	return chatroom
 }
@@ -191,6 +238,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 			boiler.PlayerColumns.Gid,
 			boiler.PlayerColumns.FactionID,
 			boiler.PlayerColumns.Rank,
+			boiler.PlayerColumns.SentMessageCount,
 		),
 		boiler.PlayerWhere.ID.EQ(hubc.Identifier()),
 	).One(gamedb.StdConn)
@@ -220,14 +268,57 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 	if isBanned {
 		return terror.Error(fmt.Errorf("player is banned to chat"), "You are banned to chat")
 	}
-	// get faction primary colour from faction
+
+	// update player sent message count
+	player.SentMessageCount += 1
+	_, err = player.Update(gamedb.StdConn, boil.Whitelist(boiler.PlayerColumns.SentMessageCount))
+	if err != nil {
+		return terror.Error(err, "Failed to update player sent message count")
+	}
 
 	msg := html.UnescapeString(bm.Sanitize(req.Payload.Message))
+
+	linguaLanguage, exists := fc.API.LanguageDetector.DetectLanguageOf(msg)
+	language := linguaLanguage.String()
+	if language == "Unknown" {
+		language = db.GetUserLanguage(player.ID)
+	}
+
+	func() {
+		if exists && language != "English" {
+			dbLanguageExists, err := boiler.Languages(boiler.LanguageWhere.Name.EQ(language)).Exists(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Warn().Err(err).Msg("can't find language")
+				return
+			}
+			if !dbLanguageExists {
+				//insert into language db
+				languageStruct := &boiler.Language{
+					Name: language,
+				}
+				languageStruct.Insert(gamedb.StdConn, boil.Infer())
+			}
+
+			dbLanguage, err := boiler.Languages(boiler.LanguageWhere.Name.EQ(language)).One(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Warn().Err(err).Msg("can't find language")
+				return
+			}
+
+			playerLanguageStruct := &boiler.PlayerLanguage{
+				PlayerID:       player.ID,
+				LanguageID:     dbLanguage.ID,
+				TextIdentified: msg,
+				FactionID:      player.FactionID.String,
+			}
+			playerLanguageStruct.Insert(gamedb.StdConn, boil.Infer())
+		}
+	}()
+
 	msg = profanityDetector.Censor(msg)
 	if len(msg) > 280 {
 		msg = firstN(msg, 280)
 	}
-
 	// get player current stat
 	playerStat, err := db.UserStatsGet(player.ID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -257,7 +348,28 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 				FromUserStat:    playerStat,
 				TotalMultiplier: totalMultiplier,
 				IsCitizen:       isCitizen,
+				Lang:            language,
 			},
+		}
+
+		cm := boiler.ChatHistory{
+			FactionID:       player.FactionID.String,
+			PlayerID:        player.ID,
+			MessageColor:    req.Payload.MessageColor,
+			BattleID:        null.String{},
+			MSGType:         boiler.ChatMSGTypeEnumTEXT,
+			UserRank:        player.Rank,
+			TotalMultiplier: totalMultiplier,
+			KillCount:       fmt.Sprintf("%d", playerStat.KillCount),
+			Text:            msg,
+			ChatStream:      player.FactionID.String,
+			IsCitizen:       isCitizen,
+			Lang:            language,
+		}
+
+		err = cm.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("unable to insert msg into chat history")
 		}
 
 		// Ability kills
@@ -281,9 +393,32 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 			FromUserStat:    playerStat,
 			TotalMultiplier: totalMultiplier,
 			IsCitizen:       isCitizen,
+			Lang:            language,
 		},
 	}
+
+	cm := boiler.ChatHistory{
+		FactionID:       player.FactionID.String,
+		PlayerID:        player.ID,
+		MessageColor:    req.Payload.MessageColor,
+		BattleID:        null.String{},
+		MSGType:         boiler.ChatMSGTypeEnumTEXT,
+		UserRank:        player.Rank,
+		TotalMultiplier: totalMultiplier,
+		KillCount:       fmt.Sprintf("%d", playerStat.KillCount),
+		Text:            msg,
+		ChatStream:      "global",
+		IsCitizen:       isCitizen,
+		Lang:            language,
+	}
+
+	err = cm.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("unable to insert msg into chat history")
+	}
+
 	fc.API.GlobalChat.AddMessage(chatMessage)
+
 	fc.API.MessageBus.Send(messagebus.BusKey(HubKeyGlobalChatSubscribe), chatMessage)
 	reply(true)
 
@@ -335,7 +470,7 @@ func GetCurrentPlayerTotalMultiAndCitizenship(playerID string) (string, bool) {
 		multiplier = decimal.NewFromInt(1)
 	}
 
-	return value.Mul(multiplier).Div(decimal.NewFromInt(10)).String(), isCitizen
+	return value.Mul(multiplier).Shift(-1).String(), isCitizen
 }
 
 // ChatPastMessagesRequest sends chat message to specific faction.

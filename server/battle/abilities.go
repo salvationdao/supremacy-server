@@ -104,74 +104,85 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 
 	userContributeMap := map[uuid.UUID]*UserContribution{}
 
+	// initialise all war machine abilities list
+	for _, wm := range battle.WarMachines {
+		wm.Abilities = []GameAbility{}
+	}
+
 	for factionID := range battle.factions {
 		// initialise faction unique abilities
 		factionAbilities[factionID] = map[string]*GameAbility{}
 
 		// faction unique abilities
-		factionUniqueAbilities, err := boiler.GameAbilities(qm.Where("faction_id = ?", factionID.String()), qm.And("battle_ability_id ISNULL")).All(gamedb.StdConn)
+		factionUniqueAbilities, err := boiler.GameAbilities(
+			boiler.GameAbilityWhere.FactionID.EQ(factionID.String()),
+			boiler.GameAbilityWhere.BattleAbilityID.IsNull(),
+			boiler.GameAbilityWhere.Level.NEQ(boiler.AbilityLevelMECH),
+		).All(gamedb.StdConn)
 		if err != nil {
 			gamelog.L.Error().Str("battle ID", battle.ID).Err(err).Msg("unable to retrieve game abilities")
 		}
 
-		// for zaibatsu unique abilities
-		if factionID.String() == server.ZaibatsuFactionID.String() {
+		// for other faction unique abilities
+		abilities := map[string]*GameAbility{}
 
-			for _, ability := range factionUniqueAbilities {
-				for i, wm := range battle.WarMachines {
-					// skip if mech is not zaibatsu mech
-					if wm.FactionID != factionID.String() {
-						continue
-					}
+		for _, ability := range factionUniqueAbilities {
+			// get the cost of the ability
+			supsCost, err := decimal.NewFromString(ability.SupsCost)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to ability sups cost to decimal")
 
-					supsCost, err := decimal.NewFromString(ability.SupsCost)
-					if err != nil {
-						gamelog.L.Error().Err(err).Msg("Failed to ability sups cost to decimal")
-
-						// set sups cost to initial price
-						supsCost = decimal.New(100, 18)
-					}
-
-					currentSups, err := decimal.NewFromString(ability.CurrentSups)
-					if err != nil {
-						gamelog.L.Error().Err(err).Msg("Failed to ability current sups to decimal")
-
-						// set current sups to initial price
-						currentSups = decimal.Zero
-					}
-
-					// build the ability
-					wmAbility := GameAbility{
-						ID:                  uuid.Must(uuid.FromString(ability.ID)), // generate a uuid for frontend to track sups contribution
-						Identity:            wm.Hash,
-						GameClientAbilityID: byte(ability.GameClientAbilityID),
-						ImageUrl:            ability.ImageURL,
-						Description:         ability.Description,
-						FactionID:           factionID,
-						Label:               ability.Label,
-						SupsCost:            supsCost,
-						CurrentSups:         currentSups,
-						WarMachineHash:      wm.Hash,
-						ParticipantID:       &wm.ParticipantID,
-						Title:               wm.Name,
-						Colour:              ability.Colour,
-						TextColour:          ability.TextColour,
-						OfferingID:          uuid.Must(uuid.NewV4()),
-					}
-
-					// inject ability to war machines
-					battle.WarMachines[i].Abilities = []GameAbility{wmAbility}
-
-					// store faction ability for price tracking
-					factionAbilities[factionID][wmAbility.Identity] = &wmAbility
-				}
+				// set sups cost to initial price
+				supsCost = decimal.New(100, 18)
 			}
 
-		} else {
-			// for other faction unique abilities
-			abilities := map[string]*GameAbility{}
-			for _, ability := range factionUniqueAbilities {
+			currentSups, err := decimal.NewFromString(ability.CurrentSups)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to ability current sups to decimal")
 
+				// set current sups to initial price
+				currentSups = decimal.Zero
+			}
+
+			// treat the ability as faction wide ability
+			wmAbility := GameAbility{
+				ID:                  ability.ID,
+				Identity:            uuid.Must(uuid.NewV4()).String(), // generate an uuid for frontend to track sups contribution
+				GameClientAbilityID: byte(ability.GameClientAbilityID),
+				ImageUrl:            ability.ImageURL,
+				Description:         ability.Description,
+				FactionID:           factionID.String(),
+				Label:               ability.Label,
+				SupsCost:            supsCost,
+				CurrentSups:         currentSups,
+				Colour:              ability.Colour,
+				TextColour:          ability.TextColour,
+				Title:               "FACTION_WIDE",
+				OfferingID:          uuid.Must(uuid.NewV4()),
+			}
+			abilities[wmAbility.Identity] = &wmAbility
+
+		}
+
+		factionAbilities[factionID] = abilities
+
+		for _, wm := range battle.WarMachines {
+			// loop through abilities
+			if wm.FactionID != factionID.String() {
+				continue
+			}
+			mechFactionAbilities, err := boiler.GameAbilities(
+				boiler.GameAbilityWhere.FactionID.EQ(factionID.String()),
+				boiler.GameAbilityWhere.BattleAbilityID.IsNull(),
+				boiler.GameAbilityWhere.Level.EQ(boiler.AbilityLevelMECH),
+			).All(gamedb.StdConn)
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				gamelog.L.Error().Str("battle ID", battle.ID).Err(err).Msg("unable to retrieve game abilities")
+			}
+
+			for _, ability := range mechFactionAbilities {
+
+				// get the ability cost
 				supsCost, err := decimal.NewFromString(ability.SupsCost)
 				if err != nil {
 					gamelog.L.Error().Err(err).Msg("Failed to ability sups cost to decimal")
@@ -183,29 +194,34 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 				currentSups, err := decimal.NewFromString(ability.CurrentSups)
 				if err != nil {
 					gamelog.L.Error().Err(err).Msg("Failed to ability current sups to decimal")
-
 					// set current sups to initial price
 					currentSups = decimal.Zero
 				}
 
+				// build the ability
 				wmAbility := GameAbility{
-					ID:                  uuid.Must(uuid.FromString(ability.ID)), // generate a uuid for frontend to track sups contribution
-					Identity:            ability.ID,
+					ID:                  ability.ID,
+					Identity:            uuid.Must(uuid.NewV4()).String(), // generate an uuid for frontend to track sups contribution
 					GameClientAbilityID: byte(ability.GameClientAbilityID),
 					ImageUrl:            ability.ImageURL,
 					Description:         ability.Description,
-					FactionID:           factionID,
+					FactionID:           factionID.String(),
 					Label:               ability.Label,
 					SupsCost:            supsCost,
 					CurrentSups:         currentSups,
+					WarMachineHash:      wm.Hash,
+					ParticipantID:       &wm.ParticipantID,
+					Title:               wm.Name,
 					Colour:              ability.Colour,
 					TextColour:          ability.TextColour,
-					Title:               "FACTION_WIDE",
 					OfferingID:          uuid.Must(uuid.NewV4()),
 				}
-				abilities[wmAbility.Identity] = &wmAbility
+
+				wm.Abilities = append(wm.Abilities, wmAbility)
+
+				// store faction ability for price tracking
+				factionAbilities[factionID][wmAbility.Identity] = &wmAbility
 			}
-			factionAbilities[factionID] = abilities
 		}
 
 		// initialise user vote map in gab ability pool
@@ -233,16 +249,20 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 
 	// broadcast faction unique ability
 	for factionID, ga := range as.factionUniqueAbilities {
-		if factionID.String() == server.ZaibatsuFactionID.String() {
-			// broadcast the war machine abilities
-			for identity, ability := range ga {
-				as.battle().arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyWarMachineAbilitiesUpdated, identity)), []GameAbility{*ability})
+		// broadcast faction ability
+		factionAbilities := []GameAbility{}
+		for _, ability := range ga {
+			if ability.Title == "FACTION_WIDE" {
+				factionAbilities = append(factionAbilities, *ability)
 			}
-		} else {
-			// broadcast faction ability
-			for _, ability := range ga {
-				as.battle().arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionUniqueAbilitiesUpdated, factionID.String())), []GameAbility{*ability})
-			}
+		}
+		as.battle().arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionUniqueAbilitiesUpdated, factionID.String())), factionAbilities)
+	}
+
+	// broadcast war machine abilities
+	for _, wm := range battle.WarMachines {
+		if len(wm.Abilities) > 0 {
+			as.battle().arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyWarMachineAbilitiesUpdated, wm.Hash)), wm.Abilities)
 		}
 	}
 
@@ -382,10 +402,10 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 							bat := boiler.BattleAbilityTrigger{
 								PlayerID:          null.StringFromPtr(nil),
 								BattleID:          as.battle().ID,
-								FactionID:         ability.FactionID.String(),
+								FactionID:         ability.FactionID,
 								IsAllSyndicates:   false,
 								AbilityLabel:      ability.Label,
-								GameAbilityID:     ability.ID.String(),
+								GameAbilityID:     ability.ID,
 								AbilityOfferingID: ability.OfferingID.String(),
 							}
 							err := bat.Insert(gamedb.StdConn, boil.Infer())
@@ -394,7 +414,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 							}
 
 							// get ability faction
-							faction, err := db.FactionGet(ability.FactionID.String())
+							faction, err := db.FactionGet(ability.FactionID)
 							if err != nil {
 								gamelog.L.Error().Err(err).Msg("failed to get player faction")
 							} else {
@@ -492,10 +512,10 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 						bat := boiler.BattleAbilityTrigger{
 							PlayerID:          null.StringFrom(cont.userID.String()),
 							BattleID:          as.battle().ID,
-							FactionID:         ability.FactionID.String(),
+							FactionID:         ability.FactionID,
 							IsAllSyndicates:   false,
 							AbilityLabel:      ability.Label,
-							GameAbilityID:     ability.ID.String(),
+							GameAbilityID:     ability.ID,
 							AbilityOfferingID: ability.OfferingID.String(),
 						}
 						err := bat.Insert(gamedb.StdConn, boil.Infer())
@@ -656,7 +676,7 @@ func (ga *GameAbility) FactionUniqueAbilityPriceUpdate(minPrice decimal.Decimal)
 	err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ga.ID, ga.SupsCost, ga.CurrentSups)
 	if err != nil {
 		gamelog.L.Error().
-			Str("ability_id", ga.ID.String()).
+			Str("ability_id", ga.ID).
 			Str("sups_cost", ga.SupsCost.StringFixed(4)).
 			Str("current_sups", ga.CurrentSups.StringFixed(4)).
 			Err(err).Msg("could not update faction ability cost")
@@ -699,7 +719,7 @@ func (ga *GameAbility) SupContribution(ppClient *rpcclient.PassportXrpcClient, b
 	}
 
 	isAllSyndicates := false
-	if ga.BattleAbilityID == nil || ga.BattleAbilityID.IsNil() {
+	if ga.BattleAbilityID == nil || *ga.BattleAbilityID == "" {
 		isAllSyndicates = true
 	}
 
@@ -708,7 +728,7 @@ func (ga *GameAbility) SupContribution(ppClient *rpcclient.PassportXrpcClient, b
 		PlayerID:          userID.String(),
 		AbilityOfferingID: ga.OfferingID.String(),
 		DidTrigger:        isTriggered,
-		FactionID:         ga.FactionID.String(),
+		FactionID:         ga.FactionID,
 		AbilityLabel:      ga.Label,
 		IsAllSyndicates:   isAllSyndicates,
 		Amount:            amount,
@@ -722,7 +742,7 @@ func (ga *GameAbility) SupContribution(ppClient *rpcclient.PassportXrpcClient, b
 	}
 
 	// update faction contribute
-	err = db.FactionAddContribute(ga.FactionID.String(), amount)
+	err = db.FactionAddContribute(ga.FactionID, amount)
 	if err != nil {
 		gamelog.L.Error().Str("txid", txid).Err(err).Msg("unable to update faction contribution")
 	}
@@ -783,7 +803,7 @@ func (ga *GameAbility) SupContribution(ppClient *rpcclient.PassportXrpcClient, b
 	err = db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ga.ID, ga.SupsCost, ga.CurrentSups)
 	if err != nil {
 		gamelog.L.Error().
-			Str("ability_id", ga.ID.String()).
+			Str("ability_id", ga.ID).
 			Str("sups_cost", ga.SupsCost.StringFixed(4)).
 			Str("current_sups", ga.CurrentSups.StringFixed(4)).
 			Err(err).Msg("could not update faction ability cost")
@@ -1277,7 +1297,9 @@ func (as *AbilitiesSystem) SetNewBattleAbility() (int, error) {
 	as.battleAbilityPool.BattleAbility = ba
 
 	// get faction battle abilities
-	gabsAbilities, err := db.FactionBattleAbilityGet(context.Background(), gamedb.Conn, ba.ID)
+	gabsAbilities, err := boiler.GameAbilities(
+		boiler.GameAbilityWhere.BattleAbilityID.EQ(null.StringFrom(ba.ID)),
+	).All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("FactionBattleAbilityGet failed to retrieve shit")
 		return ba.CooldownDurationSecond, terror.Error(err)
@@ -1305,7 +1327,7 @@ func (as *AbilitiesSystem) SetNewBattleAbility() (int, error) {
 		gameAbility := &GameAbility{
 			ID:                     ga.ID,
 			GameClientAbilityID:    byte(ga.GameClientAbilityID),
-			ImageUrl:               ga.ImageUrl,
+			ImageUrl:               ga.ImageURL,
 			Description:            ga.Description,
 			FactionID:              ga.FactionID,
 			Label:                  ga.Label,
@@ -1316,9 +1338,9 @@ func (as *AbilitiesSystem) SetNewBattleAbility() (int, error) {
 			CooldownDurationSecond: ba.CooldownDurationSecond,
 			OfferingID:             uuid.Must(uuid.NewV4()),
 		}
-		as.battleAbilityPool.Abilities.Store(ga.FactionID.String(), gameAbility)
+		as.battleAbilityPool.Abilities.Store(ga.FactionID, gameAbility)
 		// broadcast ability update to faction users
-		as.battle().arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBattleAbilityUpdated, gameAbility.FactionID.String())), gameAbility)
+		as.battle().arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyBattleAbilityUpdated, gameAbility.FactionID)), gameAbility)
 	}
 
 	// broadcast the latest result progress bar, when ability is triggered
@@ -1489,7 +1511,7 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 			err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ability.ID, ability.SupsCost, ability.CurrentSups)
 			if err != nil {
 				gamelog.L.Error().
-					Str("ability_id", ability.ID.String()).
+					Str("ability_id", ability.ID).
 					Str("sups_cost", ability.SupsCost.StringFixed(4)).
 					Str("current_sups", ability.CurrentSups.StringFixed(4)).
 					Err(err).Msg("could not update faction ability cost")
@@ -1503,7 +1525,7 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 		err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ability.ID, ability.SupsCost, ability.CurrentSups)
 		if err != nil {
 			gamelog.L.Error().
-				Str("ability_id", ability.ID.String()).
+				Str("ability_id", ability.ID).
 				Str("sups_cost", ability.SupsCost.StringFixed(4)).
 				Str("current_sups", ability.CurrentSups.StringFixed(4)).
 				Err(err).Msg("could not update faction ability cost")
@@ -1654,7 +1676,10 @@ func (as *AbilitiesSystem) FactionUniqueAbilitiesGet(factionID uuid.UUID) []Game
 	}()
 	abilities := []GameAbility{}
 	for _, ga := range as.factionUniqueAbilities[factionID] {
-		abilities = append(abilities, *ga)
+		// only include return faction wide ability
+		if ga.Title == "FACTION_WIDE" {
+			abilities = append(abilities, *ga)
+		}
 	}
 
 	if len(abilities) == 0 {
@@ -1811,10 +1836,10 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 	bat := boiler.BattleAbilityTrigger{
 		PlayerID:          null.StringFrom(userID.String()),
 		BattleID:          as.battle().ID,
-		FactionID:         ability.FactionID.String(),
+		FactionID:         ability.FactionID,
 		IsAllSyndicates:   true,
 		AbilityLabel:      ability.Label,
-		GameAbilityID:     ability.ID.String(),
+		GameAbilityID:     ability.ID,
 		AbilityOfferingID: ability.OfferingID.String(),
 	}
 	err = bat.Insert(gamedb.StdConn, boil.Infer())
