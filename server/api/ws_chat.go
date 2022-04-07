@@ -252,12 +252,13 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 		boiler.PunishedPlayerWhere.PunishUntil.GT(time.Now()),
 		qm.InnerJoin(
 			fmt.Sprintf(
-				"%s on %s = %s and %s = 'limit_chat'",
+				"%s on %s = %s and %s = ?",
 				boiler.TableNames.PunishOptions,
 				qm.Rels(boiler.TableNames.PunishOptions, boiler.PunishOptionColumns.ID),
 				qm.Rels(boiler.TableNames.PunishedPlayers, boiler.PunishedPlayerColumns.PunishOptionID),
 				qm.Rels(boiler.TableNames.PunishOptions, boiler.PunishOptionColumns.Key),
 			),
+			server.PunishmentOptionRestrictChat,
 		),
 	).Exists(gamedb.StdConn)
 	if err != nil {

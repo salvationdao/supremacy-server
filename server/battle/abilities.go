@@ -1410,12 +1410,13 @@ func (as *AbilitiesSystem) locationDecidersSet(battleID string, factionID string
 		boiler.PunishedPlayerWhere.PunishUntil.GT(time.Now()),
 		qm.InnerJoin(
 			fmt.Sprintf(
-				"%s on %s = %s and %s = 'limit_location_select'",
+				"%s on %s = %s and %s = ?",
 				boiler.TableNames.PunishOptions,
 				qm.Rels(boiler.TableNames.PunishOptions, boiler.PunishOptionColumns.ID),
 				qm.Rels(boiler.TableNames.PunishedPlayers, boiler.PunishedPlayerColumns.PunishOptionID),
 				qm.Rels(boiler.TableNames.PunishOptions, boiler.PunishOptionColumns.Key),
 			),
+			server.PunishmentOptionRestrictLocationSelect,
 		),
 	).All(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {

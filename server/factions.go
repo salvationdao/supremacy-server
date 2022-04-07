@@ -112,3 +112,11 @@ func (ga *BattleAbility) Brief() *AbilityBrief {
 		Colour:   ga.Colour,
 	}
 }
+
+type PunishmentOption string
+
+const (
+	PunishmentOptionRestrictLocationSelect   = "restrict_location_select"
+	PunishmentOptionRestrictChat             = "restrict_chat"
+	PunishmentOptionRestrictSupsContribution = "restrict_sups_contribution"
+)
