@@ -32,7 +32,7 @@ require (
 	github.com/kevinms/leakybucket-go v0.0.0-20200115003610-082473db97ca
 	github.com/microcosm-cc/bluemonday v1.0.16
 	github.com/ninja-software/tickle v1.3.2
-	github.com/shopspring/decimal v1.2.0
+	github.com/shopspring/decimal v1.3.0
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/twilio/twilio-go v0.22.2
 	github.com/volatiletech/null/v8 v8.1.2

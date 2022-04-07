@@ -52,7 +52,9 @@ var telegramNotifications = map[string][]string{}
 const HubKeyTelegramShortcodeRegistered = "USER:TELEGRAM_SHORTCODE_REGISTERED"
 
 func (t *Telegram) RunTelegram(bot *tele.Bot) error {
-
+	if t.Bot == nil {
+		return nil
+	}
 	bot.Handle("/register", func(c tele.Context) error {
 		return c.Send("Enter shortcode", tele.ForceReply)
 	})
@@ -189,12 +191,18 @@ func (t *Telegram) NotificationCreate(mechID string, notification *boiler.Battle
 }
 
 func (t *Telegram) Notify(id string, message string) error {
+	if t.Bot == nil {
+		return nil
+	}
 	// get telegram notification
 	notification, err := boiler.FindTelegramNotification(gamedb.StdConn, id)
 	if err != nil {
 		return terror.Error(err, "failed get notification")
 	}
-
+	if !notification.TelegramID.Valid {
+		gamelog.L.Warn().Msg("invalid telegram ID")
+		return nil
+	}
 	// send notification
 	_, err = t.Send(&tele.Chat{ID: int64(notification.TelegramID.Int)}, message)
 	if err != nil {

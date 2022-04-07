@@ -334,7 +334,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 				spoilOfWarStr = append(spoilOfWarStr, sow.String())
 			}
 			if len(spoilOfWarStr) > 0 {
-				payload = append(payload, []byte(spoilOfWarStr[0]+"|0")...)
+				payload = append(payload, []byte(strings.Join(spoilOfWarStr, "|"))...)
 				as.battle().arena.messageBus.SendBinary(messagebus.BusKey(HubKeySpoilOfWarUpdated), payload)
 			}
 

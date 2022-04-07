@@ -375,6 +375,16 @@ func (pc *PlayerController) PunishVote(ctx context.Context, wsc *hub.Client, pay
 		return terror.Error(err, "Invalid request received")
 	}
 
+	// check player has at least 5 kills in the last 7 days
+	killCount, err := db.GetPlayerAbilityKills(wsc.Identifier())
+	if err != nil {
+		return terror.Error(err, "Failed to get player last 7 days kill count from db")
+	}
+
+	if killCount < 5 {
+		return terror.Error(terror.ErrForbidden, "Require at least 5 kills in last 7 days to vote")
+	}
+
 	// check player is available to be punished
 	player, err := boiler.FindPlayer(gamedb.StdConn, wsc.Identifier())
 	if err != nil {
@@ -479,6 +489,16 @@ func (pc *PlayerController) IssuePunishVote(ctx context.Context, wsc *hub.Client
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received")
+	}
+
+	// check player has at least 5 kills in the last 7 days
+	killCount, err := db.GetPlayerAbilityKills(wsc.Identifier())
+	if err != nil {
+		return terror.Error(err, "Failed to get player last 7 days kill count from db")
+	}
+
+	if killCount < 5 {
+		return terror.Error(terror.ErrForbidden, "Require at least 5 kills in last 7 days to issue vote")
 	}
 
 	// check player is available to be punished

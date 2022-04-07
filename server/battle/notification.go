@@ -96,34 +96,43 @@ type GameNotification struct {
 	Data interface{}          `json:"data"`
 }
 
-const HubKeyMultiplierUpdate hub.HubCommandKey = "USER:SUPS:MULTIPLIER:SUBSCRIBE"
+const HubKeyMultiplierUpdate hub.HubCommandKey = "USER:MULTIPLIERS:GET"
 
-func (arena *Arena) HubKeyMultiplierUpdate(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
+const HubKeyUserMultiplierSignalUpdate hub.HubCommandKey = "USER:MULTIPLIER:SIGNAL:SUBSCRIBE"
+
+func (arena *Arena) HubKeyMultiplierUpdate(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return "", "", terror.Error(err)
+		return terror.Error(err)
 	}
 
 	id, err := uuid.FromString(wsc.Identifier())
 	if err != nil {
 		gamelog.L.Warn().Err(err).Str("id", wsc.Identifier()).Msg("unable to create uuid from websocket client identifier id")
-		return "", "", terror.Error(err, "Unable to create uuid from websocket client identifier id")
+		return terror.Error(err, "Unable to create uuid from websocket client identifier id")
 	}
 
-	if needProcess {
-		// return multiplier if battle is on
-		if arena.currentBattle() != nil && arena.currentBattle().multipliers != nil {
-			m, total := arena.currentBattle().multipliers.PlayerMultipliers(id, -1)
+	// return multiplier if battle is on
+	m, total := PlayerMultipliers(id, arena.BattleSeconds())
 
-			reply(&MultiplierUpdate{
-				UserMultipliers:  m,
-				TotalMultipliers: fmt.Sprintf("%sx", total),
-			})
+	reply(&MultiplierUpdate{
+		UserMultipliers:  m,
+		TotalMultipliers: fmt.Sprintf("%sx", total),
+	})
+
+	// if battle is started send tick down signal
+	if arena.currentBattle() != nil && arena.currentBattle().battleSecondCloseChan != nil {
+		b, err := json.Marshal(&BroadcastPayload{
+			Key:     HubKeyUserMultiplierSignalUpdate,
+			Payload: true,
+		})
+		if err != nil {
+			return terror.Error(err, "Failed to send ticker signal")
 		}
+		go wsc.Send(b)
 	}
-
-	return req.TransactionID, messagebus.BusKey(HubKeyMultiplierUpdate), nil
+	return nil
 }
 
 const HubKeyViewerLiveCountUpdated = hub.HubCommandKey("VIEWER:LIVE:COUNT:UPDATED")

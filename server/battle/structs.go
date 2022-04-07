@@ -147,6 +147,7 @@ type Multiplier struct {
 	Value            string `json:"value"`
 	Description      string `json:"description"`
 	IsMultiplicative bool   `json:"is_multiplicative"`
+	ExpiresInSeconds int64  `json:"expires_in_seconds"`
 }
 
 type BattleEndDetail struct {

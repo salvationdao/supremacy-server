@@ -121,7 +121,7 @@ func NewChatroom(factionID *server.FactionID) *Chatroom {
 	}
 	msgs, _ := boiler.ChatHistories(
 		boiler.ChatHistoryWhere.ChatStream.EQ(stream),
-		qm.OrderBy(boiler.ChatHistoryColumns.CreatedAt),
+		qm.OrderBy(fmt.Sprintf("%s %s", boiler.ChatHistoryColumns.CreatedAt, "DESC")),
 		qm.Limit(PersistChatMessageLimit),
 	).All(gamedb.StdConn)
 
@@ -327,8 +327,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 		return terror.Error(err, "Unable to get player stat from db")
 	}
 
-	totalMultiplier, isCitizen := GetCurrentPlayerTotalMultiAndCitizenship(player.ID)
-
+	totalMultiplier, isCitizen := GetCurrentPlayerTotalMultiAndCitizenship(player.ID, fc.API.BattleArena.BattleSeconds())
 	// check if the faction id is provided
 	if !req.Payload.FactionID.IsNil() {
 		if !player.FactionID.Valid || player.FactionID.String == "" {
@@ -427,29 +426,17 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 	return nil
 }
 
-func GetCurrentPlayerTotalMultiAndCitizenship(playerID string) (string, bool) {
-	latestBattle, err := boiler.Battles(
-		qm.OrderBy(boiler.BattleColumns.BattleNumber + " DESC"),
-	).One(gamedb.StdConn)
-	if err != nil {
-		return "0", false
-	}
-	battleNumber := latestBattle.BattleNumber
-
-	// if ended at is null, get last battle multi
-	// if ended at is valid and it ended less than 30 seconds ago, get last battle multi
-	if !latestBattle.EndedAt.Valid {
-		battleNumber = latestBattle.BattleNumber - 1
-	}
-
+func GetCurrentPlayerTotalMultiAndCitizenship(playerID string, battleSeconds decimal.Decimal) (string, bool) {
 	// get a copy of battle number
-	ums, err := boiler.Multipliers(
-		qm.InnerJoin("user_multipliers um on um.multiplier_id = multipliers.id"),
-		qm.Where(`um.player_id = ?`, playerID),
-		qm.And(`um.until_battle_number > ?`, battleNumber),
-		qm.And(`um.from_battle_number <= ?`, battleNumber),
+	ums, err := boiler.UserMultipliers(
+		boiler.UserMultiplierWhere.PlayerID.EQ(playerID),
+		boiler.UserMultiplierWhere.ExpiresAtBattleSeconds.GTE(battleSeconds),
+		qm.Load(
+			boiler.UserMultiplierRels.Multiplier,
+		),
 	).All(gamedb.StdConn)
-	if err != nil && len(ums) == 0 {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Err(err).Msgf("unable to retrieve player multipliers")
 		return "0", false
 	}
 
@@ -458,10 +445,10 @@ func GetCurrentPlayerTotalMultiAndCitizenship(playerID string) (string, bool) {
 	isCitizen := false
 
 	for _, m := range ums {
-		if m.Key == "citizen" {
+		if m.R.Multiplier.Key == "citizen" {
 			isCitizen = true
 		}
-		if !m.IsMultiplicative {
+		if !m.R.Multiplier.IsMultiplicative {
 			value = value.Add(m.Value)
 			continue
 		}

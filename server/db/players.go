@@ -268,6 +268,7 @@ func RefreshPlayerLastSevenAbilityKill() error {
 	return nil
 }
 
+// GetPlayerAbilityKills return the ability kill count the player has within the last 7 days
 func GetPlayerAbilityKills(playerID string) (int, error) {
 	killCount := 0
 	q := `

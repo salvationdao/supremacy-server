@@ -15,6 +15,8 @@ import (
 	"time"
 
 	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"go.uber.org/atomic"
 
@@ -53,7 +55,7 @@ func NewSpoilsOfWar(btl *Battle, transactSpeed time.Duration, dripSpeed time.Dur
 		tickSpeed:     dripSpeed,
 	}
 
-	amnt := decimal.New(int64(rand.Intn(1000)), 18)
+	amnt := decimal.New(int64(rand.Intn(150)), 18)
 
 	sow, err := boiler.SpoilsOfWars(boiler.SpoilsOfWarWhere.BattleID.EQ(btl.BattleID)).One(gamedb.StdConn)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -112,12 +114,6 @@ func (sow *SpoilsOfWar) Run() {
 			}
 			// Runs at the end of each battle, called with sow.Flush(
 			gamelog.L.Debug().Msg("running full flush and returning out")
-			err := sow.Flush()
-			if err != nil {
-				gamelog.L.Err(err).Msg("blast out remainder failed of spoils of war")
-				continue
-			}
-			gamelog.L.Info().Msgf("spoils system has been cleaned up: %s", sow.battle().ID)
 
 			sow.flushed.Store(true)
 			sow.storeBattle(nil)
@@ -150,90 +146,20 @@ func (sow *SpoilsOfWar) Run() {
 	}
 }
 
-func (sow *SpoilsOfWar) Flush() error {
-	bn := sow.battle().BattleNumber - 1
-
-	warchest, err := boiler.SpoilsOfWars(boiler.SpoilsOfWarWhere.BattleNumber.EQ(bn)).One(gamedb.StdConn)
-
-	if err != nil {
-		return terror.Error(err, "can't retrieve last battle's spoils")
-	}
-
-	multipliers, err := db.PlayerMultipliers(bn)
-	if err != nil {
-		return terror.Error(err, "unable to retrieve multipliers")
-	}
-
-	totalShares := decimal.Zero
-	onlineUsers := []*db.Multipliers{}
-	for _, player := range multipliers {
-		if sow.battle().isOnline(player.PlayerID) {
-			totalShares = totalShares.Add(player.TotalMultiplier)
-			onlineUsers = append(onlineUsers, player)
-		}
-	}
-
-	if warchest.Amount.LessThanOrEqual(decimal.Zero) {
-		gamelog.L.Warn().Msgf("warchest amount is less than or equal to zero")
-		return nil
-	}
-	amount := warchest.Amount.Sub(warchest.AmountSent)
-
-	if totalShares.LessThanOrEqual(decimal.Zero) {
-		gamelog.L.Warn().Msgf("total share is less than or equal to zero")
-		return nil
-	}
-	amount = amount.Div(totalShares)
-
-	subgroup := fmt.Sprintf("Spoils of War from Battle #%d", sow.battle().BattleNumber-1)
-
-	for _, player := range onlineUsers {
-		txr := fmt.Sprintf("spoils_of_war|%s|%d", player.PlayerID, time.Now().UnixNano())
-		userAmount := amount.Mul(player.TotalMultiplier).Truncate(0)
-		_, err := sow.battle().arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
-			FromUserID:           SupremacyBattleUserID,
-			ToUserID:             player.PlayerID,
-			Amount:               userAmount.String(),
-			TransactionReference: server.TransactionReference(txr),
-			Group:                string(server.TransactionGroupBattle),
-			SubGroup:             subgroup,
-			Description:          subgroup,
-			NotSafe:              false,
-		})
-		if err != nil {
-			return terror.Error(err, "unable to send sups spoil of war flush")
-		} else {
-			warchest.AmountSent = warchest.AmountSent.Add(userAmount)
-			_, err = warchest.Update(gamedb.StdConn, boil.Infer())
-			if err != nil {
-				gamelog.L.Error().Err(err).Msg("unable to update spoils of war")
-				warchest = nil
-				return err
-			}
-			pt := boiler.PendingTransaction{
-				FromUserID:           SupremacyBattleUserID.String(),
-				ToUserID:             player.PlayerID.String(),
-				Amount:               userAmount,
-				TransactionReference: txr,
-				Group:                string(server.TransactionGroupBattle),
-				Subgroup:             subgroup,
-				ProcessedAt:          null.TimeFrom(time.Now()),
-				Description:          subgroup,
-			}
-			err = pt.Insert(gamedb.StdConn, boil.Infer())
-			if err != nil {
-				gamelog.L.Error().Err(err).Msg("unable to save spoils of war transaction")
-			}
-		}
-	}
-	return nil
-}
-
 func (sow *SpoilsOfWar) Drip() error {
+	if sow.battle() == nil {
+		return nil
+	}
 	var err error
-	bn := sow.battle().BattleNumber - 1
 
-	warchest, err := boiler.SpoilsOfWars(boiler.SpoilsOfWarWhere.BattleNumber.EQ(bn)).One(gamedb.StdConn)
+	yesterday := time.Now().Add(time.Hour * -24)
+
+	warchests, err := boiler.SpoilsOfWars(
+		boiler.SpoilsOfWarWhere.CreatedAt.GT(yesterday),
+		boiler.SpoilsOfWarWhere.BattleID.NEQ(sow.battle().ID),
+		qm.And(`amount_sent < amount`),
+		qm.OrderBy(fmt.Sprintf("%s %s", boiler.SpoilsOfWarColumns.CreatedAt, "DESC")),
+	).All(gamedb.StdConn)
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -243,16 +169,16 @@ func (sow *SpoilsOfWar) Drip() error {
 		return err
 	}
 
-	if warchest.Amount.LessThanOrEqual(decimal.Zero) {
-		gamelog.L.Warn().Msgf("warchest amount is less than or equal to zero")
-		return nil
+	dripAllocations := 120
+
+	totalAmount := decimal.NewFromInt(0)
+	for _, warchest := range warchests {
+		totalAmount = totalAmount.Add(warchest.Amount).Sub(warchest.AmountSent)
 	}
 
-	dripAllocations := 300
+	dripAmount := totalAmount.Div(decimal.NewFromInt(int64(dripAllocations)))
 
-	dripAmount := warchest.Amount.Div(decimal.NewFromInt(int64(dripAllocations)))
-
-	multipliers, err := db.PlayerMultipliers(bn)
+	multipliers, err := db.PlayerMultipliers(sow.battle().battleSeconds().IntPart())
 	if err != nil {
 		return terror.Error(err, "unable to retrieve multipliers")
 	}
@@ -274,7 +200,7 @@ func (sow *SpoilsOfWar) Drip() error {
 		return nil
 	}
 	subgroup := fmt.Sprintf("Spoils of War from Battle #%d", sow.battle().BattleNumber-1)
-	amountRemaining := warchest.Amount.Sub(warchest.AmountSent)
+	amountRemaining := totalAmount.Copy()
 
 	onShareSups := dripAmount.Div(totalShares)
 	for _, player := range onlineUsers {
@@ -286,33 +212,36 @@ func (sow *SpoilsOfWar) Drip() error {
 			return nil
 		}
 
-		txr := fmt.Sprintf("spoils_of_war|%s|%d", player.PlayerID, time.Now().UnixNano())
-
-		_, err := sow.battle().arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
-			FromUserID:           SupremacyBattleUserID,
-			ToUserID:             player.PlayerID,
-			Amount:               userDrip.StringFixed(18),
-			TransactionReference: server.TransactionReference(txr),
-			Group:                string(server.TransactionGroupBattle),
-			SubGroup:             subgroup,
-			Description:          subgroup,
-			NotSafe:              false,
-		})
-		if err != nil {
-			gamelog.L.Error().Err(err).Msg("unable to send spoils of war transaction")
-			continue
-		} else {
-			warchest.AmountSent = warchest.AmountSent.Add(userDrip)
+		sendSups := func(warchest *boiler.SpoilsOfWar, dripAmnt decimal.Decimal) error {
+			warchest.AmountSent = warchest.AmountSent.Add(dripAmnt)
 			_, err = warchest.Update(gamedb.StdConn, boil.Infer())
 			if err != nil {
 				gamelog.L.Error().Err(err).Msg("unable to update spoils of war")
 				warchest = nil
 				return err
 			}
+
+			txr := fmt.Sprintf("spoils_of_war|%s|%d", player.PlayerID, time.Now().UnixNano())
+
+			_, err := sow.battle().arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
+				FromUserID:           SupremacyBattleUserID,
+				ToUserID:             player.PlayerID,
+				Amount:               dripAmnt.StringFixed(18),
+				TransactionReference: server.TransactionReference(txr),
+				Group:                string(server.TransactionGroupBattle),
+				SubGroup:             subgroup,
+				Description:          subgroup,
+				NotSafe:              false,
+			})
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("unable to send spoils of war transaction")
+				return err
+			}
+
 			pt := boiler.PendingTransaction{
 				FromUserID:           SupremacyBattleUserID.String(),
 				ToUserID:             player.PlayerID.String(),
-				Amount:               userDrip,
+				Amount:               dripAmnt,
 				TransactionReference: txr,
 				Group:                string(server.TransactionGroupBattle),
 				Subgroup:             subgroup,
@@ -323,6 +252,40 @@ func (sow *SpoilsOfWar) Drip() error {
 			if err != nil {
 				gamelog.L.Error().Err(err).Msg("unable to save spoils of war transaction")
 			}
+			totalAmount = totalAmount.Add(warchest.Amount).Sub(warchest.AmountSent)
+			userDrip = userDrip.Sub(dripAmnt)
+			return nil
+		}
+
+		for _, warchest := range warchests {
+
+			if userDrip.LessThanOrEqual(decimal.Zero) {
+				break
+			}
+			remaining := warchest.Amount.Sub(warchest.AmountSent)
+			if remaining.LessThanOrEqual(decimal.Zero) {
+				continue
+			}
+			if remaining.LessThan(userDrip) {
+				userDrip = userDrip.Sub(remaining)
+
+				err = sendSups(warchest, remaining)
+				if err != nil {
+					return err
+				}
+				continue
+			}
+
+			err = sendSups(warchest, userDrip)
+			if err != nil {
+				return err
+			}
+			break
+		}
+
+		if userDrip.GreaterThan(decimal.Zero) {
+			gamelog.L.Info().Str("battle_id", sow.battle().ID).Msg("no more money in spoils of war for distribution")
+			return nil
 		}
 	}
 

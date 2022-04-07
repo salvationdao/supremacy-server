@@ -48,6 +48,23 @@ type Arena struct {
 	sync.RWMutex
 }
 
+func (arena *Arena) BattleSeconds() decimal.Decimal {
+	btl := arena.currentBattle()
+	if btl == nil {
+		lastBattle, err := boiler.Battles(qm.OrderBy("battle_number DESC"), qm.Limit(1)).One(gamedb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Err(err).Msg("not able to load previous battle")
+			return decimal.Zero
+		}
+		if lastBattle.EndedBattleSeconds.Valid {
+			return lastBattle.EndedBattleSeconds.Decimal.Copy()
+		} else {
+			return lastBattle.StartedBattleSeconds.Decimal.Copy()
+		}
+	}
+	return btl.battleSeconds()
+}
+
 func (arena *Arena) currentBattle() *Battle {
 	arena.RLock()
 	defer arena.RUnlock()
@@ -184,7 +201,7 @@ func NewArena(opts *Opts) *Arena {
 	opts.SubscribeCommand(HubKeyGameSettingsUpdated, arena.SendSettings)
 
 	opts.SubscribeCommand(HubKeyGameNotification, arena.GameNotificationSubscribeHandler)
-	opts.SecureUserSubscribeCommand(HubKeyMultiplierUpdate, arena.HubKeyMultiplierUpdate)
+	opts.SecureUserCommand(HubKeyMultiplierUpdate, arena.HubKeyMultiplierUpdate)
 
 	opts.SecureUserSubscribeCommand(HubKeyUserStatSubscribe, arena.UserStatUpdatedSubscribeHandler)
 
@@ -275,7 +292,9 @@ func (arena *Arena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	arena.socket = c
 
 	defer func() {
-		c.Close(websocket.StatusInternalError, "game client has disconnected")
+		if c != nil {
+			c.Close(websocket.StatusInternalError, "game client has disconnected")
+		}
 	}()
 
 	arena.Start()
@@ -847,11 +866,11 @@ type BattleWMDestroyedPayload struct {
 }
 
 func (arena *Arena) start() {
-	defer func() {
-		if err := recover(); err != nil {
-			gamelog.L.Error().Interface("err", err).Stack().Msg("Panic! Panic! Panic! Panic on battle arena!")
-		}
-	}()
+	//defer func() {
+	//	if err := recover(); err != nil {
+	//		gamelog.L.Error().Interface("err", err).Stack().Msg("Panic! Panic! Panic! Panic on battle arena!")
+	//	}
+	//}()
 
 	ctx := context.Background()
 	arena.beginBattle()
@@ -959,47 +978,66 @@ func (arena *Arena) beginBattle() {
 		DisabledCells: gm.DisabledCells,
 	}
 
-	lastBattle, err := boiler.Battles(qm.OrderBy("battle_number DESC"), qm.Limit(1)).One(gamedb.StdConn)
-
 	var battleID string
 	var battle *boiler.Battle
 	inserted := false
+
+	// query last battle
+	lastBattle, err := boiler.Battles(qm.OrderBy("battle_number DESC"), qm.Limit(1)).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Err(err).Msg("not able to load previous battle")
+	}
+
+	// if last battle is ended or does not exist, create a new battle
 	if lastBattle == nil || errors.Is(err, sql.ErrNoRows) || lastBattle.EndedAt.Valid {
-		if err != nil {
-			gamelog.L.Error().Err(err).Msg("not able to load previous battle")
-		}
 
 		battleID = uuid.Must(uuid.NewV4()).String()
 		battle = &boiler.Battle{
-			ID:        battleID,
-			GameMapID: gameMap.ID.String(),
-			StartedAt: time.Now(),
+			ID:                   battleID,
+			GameMapID:            gameMap.ID.String(),
+			StartedAt:            time.Now(),
+			StartedBattleSeconds: decimal.NullDecimal{decimal.Zero, true},
 		}
+		// set started battle second to the last battle is ended properly
+		if lastBattle != nil && lastBattle.EndedBattleSeconds.Valid {
+			battle.StartedBattleSeconds.Decimal = lastBattle.EndedBattleSeconds.Decimal
+		}
+
 	} else {
+
+		// if there is an unfinished battle
 		battle = lastBattle
 		battleID = lastBattle.ID
 
 		inserted = true
 
-		//multipliers, err := db.PlayerMultipliers(lastBattle.BattleNumber)
-		//if err != nil {
-		//	gamelog.L.Error().Err(err).Int("btl.BattleNumber", lastBattle.BattleNumber).Msg("failed to load PlayerMultipliers")
-		//} else {
-		//	for _, m := range multipliers {
-		//		m.TotalMultiplier = m.TotalMultiplier.Shift(-1)
-		//	}
-		//
-		//}
+		// if last battle does not have started at
+		if !battle.StartedBattleSeconds.Valid {
+			battle.StartedBattleSeconds = decimal.NullDecimal{decimal.Zero, true}
+		}
+	}
+
+	var bs decimal.Decimal
+	if inserted {
+		bs = battle.StartedBattleSeconds.Decimal
+	} else {
+		if lastBattle != nil && lastBattle.EndedBattleSeconds.Valid {
+			bs = lastBattle.EndedBattleSeconds.Decimal
+			battle.StartedBattleSeconds = lastBattle.EndedBattleSeconds
+		} else {
+			bs = decimal.NewFromInt(0)
+		}
 	}
 
 	btl := &Battle{
-		arena:    arena,
-		MapName:  gameMap.Name,
-		gameMap:  gameMap,
-		BattleID: battleID,
-		Battle:   battle,
-		inserted: inserted,
-		stage:    atomic.NewInt32(BattleStagStart),
+		arena:          arena,
+		MapName:        gameMap.Name,
+		gameMap:        gameMap,
+		BattleID:       battleID,
+		Battle:         battle,
+		inserted:       inserted,
+		_battleSeconds: bs,
+		stage:          atomic.NewInt32(BattleStagStart),
 		users: usersMap{
 			m: make(map[uuid.UUID]*BattleUser),
 		},

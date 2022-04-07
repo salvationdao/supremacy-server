@@ -23,65 +23,79 @@ import (
 
 // UserMultiplier is an object representing the database table.
 type UserMultiplier struct {
-	PlayerID          string          `boiler:"player_id" boil:"player_id" json:"player_id" toml:"player_id" yaml:"player_id"`
-	FromBattleNumber  int             `boiler:"from_battle_number" boil:"from_battle_number" json:"from_battle_number" toml:"from_battle_number" yaml:"from_battle_number"`
-	UntilBattleNumber int             `boiler:"until_battle_number" boil:"until_battle_number" json:"until_battle_number" toml:"until_battle_number" yaml:"until_battle_number"`
-	MultiplierID      string          `boiler:"multiplier_id" boil:"multiplier_id" json:"multiplier_id" toml:"multiplier_id" yaml:"multiplier_id"`
-	Value             decimal.Decimal `boiler:"value" boil:"value" json:"value" toml:"value" yaml:"value"`
-	CreatedAt         time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	PlayerID                string          `boiler:"player_id" boil:"player_id" json:"player_id" toml:"player_id" yaml:"player_id"`
+	FromBattleNumber        int             `boiler:"from_battle_number" boil:"from_battle_number" json:"from_battle_number" toml:"from_battle_number" yaml:"from_battle_number"`
+	UntilBattleNumber       int             `boiler:"until_battle_number" boil:"until_battle_number" json:"until_battle_number" toml:"until_battle_number" yaml:"until_battle_number"`
+	MultiplierID            string          `boiler:"multiplier_id" boil:"multiplier_id" json:"multiplier_id" toml:"multiplier_id" yaml:"multiplier_id"`
+	Value                   decimal.Decimal `boiler:"value" boil:"value" json:"value" toml:"value" yaml:"value"`
+	CreatedAt               time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ObtainedAtBattleSeconds decimal.Decimal `boiler:"obtained_at_battle_seconds" boil:"obtained_at_battle_seconds" json:"obtained_at_battle_seconds" toml:"obtained_at_battle_seconds" yaml:"obtained_at_battle_seconds"`
+	ExpiresAtBattleSeconds  decimal.Decimal `boiler:"expires_at_battle_seconds" boil:"expires_at_battle_seconds" json:"expires_at_battle_seconds" toml:"expires_at_battle_seconds" yaml:"expires_at_battle_seconds"`
 
 	R *userMultiplierR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L userMultiplierL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var UserMultiplierColumns = struct {
-	PlayerID          string
-	FromBattleNumber  string
-	UntilBattleNumber string
-	MultiplierID      string
-	Value             string
-	CreatedAt         string
+	PlayerID                string
+	FromBattleNumber        string
+	UntilBattleNumber       string
+	MultiplierID            string
+	Value                   string
+	CreatedAt               string
+	ObtainedAtBattleSeconds string
+	ExpiresAtBattleSeconds  string
 }{
-	PlayerID:          "player_id",
-	FromBattleNumber:  "from_battle_number",
-	UntilBattleNumber: "until_battle_number",
-	MultiplierID:      "multiplier_id",
-	Value:             "value",
-	CreatedAt:         "created_at",
+	PlayerID:                "player_id",
+	FromBattleNumber:        "from_battle_number",
+	UntilBattleNumber:       "until_battle_number",
+	MultiplierID:            "multiplier_id",
+	Value:                   "value",
+	CreatedAt:               "created_at",
+	ObtainedAtBattleSeconds: "obtained_at_battle_seconds",
+	ExpiresAtBattleSeconds:  "expires_at_battle_seconds",
 }
 
 var UserMultiplierTableColumns = struct {
-	PlayerID          string
-	FromBattleNumber  string
-	UntilBattleNumber string
-	MultiplierID      string
-	Value             string
-	CreatedAt         string
+	PlayerID                string
+	FromBattleNumber        string
+	UntilBattleNumber       string
+	MultiplierID            string
+	Value                   string
+	CreatedAt               string
+	ObtainedAtBattleSeconds string
+	ExpiresAtBattleSeconds  string
 }{
-	PlayerID:          "user_multipliers.player_id",
-	FromBattleNumber:  "user_multipliers.from_battle_number",
-	UntilBattleNumber: "user_multipliers.until_battle_number",
-	MultiplierID:      "user_multipliers.multiplier_id",
-	Value:             "user_multipliers.value",
-	CreatedAt:         "user_multipliers.created_at",
+	PlayerID:                "user_multipliers.player_id",
+	FromBattleNumber:        "user_multipliers.from_battle_number",
+	UntilBattleNumber:       "user_multipliers.until_battle_number",
+	MultiplierID:            "user_multipliers.multiplier_id",
+	Value:                   "user_multipliers.value",
+	CreatedAt:               "user_multipliers.created_at",
+	ObtainedAtBattleSeconds: "user_multipliers.obtained_at_battle_seconds",
+	ExpiresAtBattleSeconds:  "user_multipliers.expires_at_battle_seconds",
 }
 
 // Generated where
 
 var UserMultiplierWhere = struct {
-	PlayerID          whereHelperstring
-	FromBattleNumber  whereHelperint
-	UntilBattleNumber whereHelperint
-	MultiplierID      whereHelperstring
-	Value             whereHelperdecimal_Decimal
-	CreatedAt         whereHelpertime_Time
+	PlayerID                whereHelperstring
+	FromBattleNumber        whereHelperint
+	UntilBattleNumber       whereHelperint
+	MultiplierID            whereHelperstring
+	Value                   whereHelperdecimal_Decimal
+	CreatedAt               whereHelpertime_Time
+	ObtainedAtBattleSeconds whereHelperdecimal_Decimal
+	ExpiresAtBattleSeconds  whereHelperdecimal_Decimal
 }{
-	PlayerID:          whereHelperstring{field: "\"user_multipliers\".\"player_id\""},
-	FromBattleNumber:  whereHelperint{field: "\"user_multipliers\".\"from_battle_number\""},
-	UntilBattleNumber: whereHelperint{field: "\"user_multipliers\".\"until_battle_number\""},
-	MultiplierID:      whereHelperstring{field: "\"user_multipliers\".\"multiplier_id\""},
-	Value:             whereHelperdecimal_Decimal{field: "\"user_multipliers\".\"value\""},
-	CreatedAt:         whereHelpertime_Time{field: "\"user_multipliers\".\"created_at\""},
+	PlayerID:                whereHelperstring{field: "\"user_multipliers\".\"player_id\""},
+	FromBattleNumber:        whereHelperint{field: "\"user_multipliers\".\"from_battle_number\""},
+	UntilBattleNumber:       whereHelperint{field: "\"user_multipliers\".\"until_battle_number\""},
+	MultiplierID:            whereHelperstring{field: "\"user_multipliers\".\"multiplier_id\""},
+	Value:                   whereHelperdecimal_Decimal{field: "\"user_multipliers\".\"value\""},
+	CreatedAt:               whereHelpertime_Time{field: "\"user_multipliers\".\"created_at\""},
+	ObtainedAtBattleSeconds: whereHelperdecimal_Decimal{field: "\"user_multipliers\".\"obtained_at_battle_seconds\""},
+	ExpiresAtBattleSeconds:  whereHelperdecimal_Decimal{field: "\"user_multipliers\".\"expires_at_battle_seconds\""},
 }
 
 // UserMultiplierRels is where relationship names are stored.
@@ -108,9 +122,9 @@ func (*userMultiplierR) NewStruct() *userMultiplierR {
 type userMultiplierL struct{}
 
 var (
-	userMultiplierAllColumns            = []string{"player_id", "from_battle_number", "until_battle_number", "multiplier_id", "value", "created_at"}
+	userMultiplierAllColumns            = []string{"player_id", "from_battle_number", "until_battle_number", "multiplier_id", "value", "created_at", "obtained_at_battle_seconds", "expires_at_battle_seconds"}
 	userMultiplierColumnsWithoutDefault = []string{"player_id", "from_battle_number", "until_battle_number", "multiplier_id", "value"}
-	userMultiplierColumnsWithDefault    = []string{"created_at"}
+	userMultiplierColumnsWithDefault    = []string{"created_at", "obtained_at_battle_seconds", "expires_at_battle_seconds"}
 	userMultiplierPrimaryKeyColumns     = []string{"player_id", "from_battle_number", "multiplier_id"}
 	userMultiplierGeneratedColumns      = []string{}
 )

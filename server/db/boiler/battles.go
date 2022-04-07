@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
@@ -23,58 +24,98 @@ import (
 
 // Battle is an object representing the database table.
 type Battle struct {
-	ID           string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	GameMapID    string    `boiler:"game_map_id" boil:"game_map_id" json:"game_map_id" toml:"game_map_id" yaml:"game_map_id"`
-	StartedAt    time.Time `boiler:"started_at" boil:"started_at" json:"started_at" toml:"started_at" yaml:"started_at"`
-	EndedAt      null.Time `boiler:"ended_at" boil:"ended_at" json:"ended_at,omitempty" toml:"ended_at" yaml:"ended_at,omitempty"`
-	BattleNumber int       `boiler:"battle_number" boil:"battle_number" json:"battle_number" toml:"battle_number" yaml:"battle_number"`
+	ID                   string              `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	GameMapID            string              `boiler:"game_map_id" boil:"game_map_id" json:"game_map_id" toml:"game_map_id" yaml:"game_map_id"`
+	StartedAt            time.Time           `boiler:"started_at" boil:"started_at" json:"started_at" toml:"started_at" yaml:"started_at"`
+	EndedAt              null.Time           `boiler:"ended_at" boil:"ended_at" json:"ended_at,omitempty" toml:"ended_at" yaml:"ended_at,omitempty"`
+	BattleNumber         int                 `boiler:"battle_number" boil:"battle_number" json:"battle_number" toml:"battle_number" yaml:"battle_number"`
+	StartedBattleSeconds decimal.NullDecimal `boiler:"started_battle_seconds" boil:"started_battle_seconds" json:"started_battle_seconds,omitempty" toml:"started_battle_seconds" yaml:"started_battle_seconds,omitempty"`
+	EndedBattleSeconds   decimal.NullDecimal `boiler:"ended_battle_seconds" boil:"ended_battle_seconds" json:"ended_battle_seconds,omitempty" toml:"ended_battle_seconds" yaml:"ended_battle_seconds,omitempty"`
 
 	R *battleR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var BattleColumns = struct {
-	ID           string
-	GameMapID    string
-	StartedAt    string
-	EndedAt      string
-	BattleNumber string
+	ID                   string
+	GameMapID            string
+	StartedAt            string
+	EndedAt              string
+	BattleNumber         string
+	StartedBattleSeconds string
+	EndedBattleSeconds   string
 }{
-	ID:           "id",
-	GameMapID:    "game_map_id",
-	StartedAt:    "started_at",
-	EndedAt:      "ended_at",
-	BattleNumber: "battle_number",
+	ID:                   "id",
+	GameMapID:            "game_map_id",
+	StartedAt:            "started_at",
+	EndedAt:              "ended_at",
+	BattleNumber:         "battle_number",
+	StartedBattleSeconds: "started_battle_seconds",
+	EndedBattleSeconds:   "ended_battle_seconds",
 }
 
 var BattleTableColumns = struct {
-	ID           string
-	GameMapID    string
-	StartedAt    string
-	EndedAt      string
-	BattleNumber string
+	ID                   string
+	GameMapID            string
+	StartedAt            string
+	EndedAt              string
+	BattleNumber         string
+	StartedBattleSeconds string
+	EndedBattleSeconds   string
 }{
-	ID:           "battles.id",
-	GameMapID:    "battles.game_map_id",
-	StartedAt:    "battles.started_at",
-	EndedAt:      "battles.ended_at",
-	BattleNumber: "battles.battle_number",
+	ID:                   "battles.id",
+	GameMapID:            "battles.game_map_id",
+	StartedAt:            "battles.started_at",
+	EndedAt:              "battles.ended_at",
+	BattleNumber:         "battles.battle_number",
+	StartedBattleSeconds: "battles.started_battle_seconds",
+	EndedBattleSeconds:   "battles.ended_battle_seconds",
 }
 
 // Generated where
 
+type whereHelperdecimal_NullDecimal struct{ field string }
+
+func (w whereHelperdecimal_NullDecimal) EQ(x decimal.NullDecimal) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, false, x)
+}
+func (w whereHelperdecimal_NullDecimal) NEQ(x decimal.NullDecimal) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, true, x)
+}
+func (w whereHelperdecimal_NullDecimal) LT(x decimal.NullDecimal) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LT, x)
+}
+func (w whereHelperdecimal_NullDecimal) LTE(x decimal.NullDecimal) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LTE, x)
+}
+func (w whereHelperdecimal_NullDecimal) GT(x decimal.NullDecimal) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GT, x)
+}
+func (w whereHelperdecimal_NullDecimal) GTE(x decimal.NullDecimal) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GTE, x)
+}
+
+func (w whereHelperdecimal_NullDecimal) IsNull() qm.QueryMod { return qmhelper.WhereIsNull(w.field) }
+func (w whereHelperdecimal_NullDecimal) IsNotNull() qm.QueryMod {
+	return qmhelper.WhereIsNotNull(w.field)
+}
+
 var BattleWhere = struct {
-	ID           whereHelperstring
-	GameMapID    whereHelperstring
-	StartedAt    whereHelpertime_Time
-	EndedAt      whereHelpernull_Time
-	BattleNumber whereHelperint
+	ID                   whereHelperstring
+	GameMapID            whereHelperstring
+	StartedAt            whereHelpertime_Time
+	EndedAt              whereHelpernull_Time
+	BattleNumber         whereHelperint
+	StartedBattleSeconds whereHelperdecimal_NullDecimal
+	EndedBattleSeconds   whereHelperdecimal_NullDecimal
 }{
-	ID:           whereHelperstring{field: "\"battles\".\"id\""},
-	GameMapID:    whereHelperstring{field: "\"battles\".\"game_map_id\""},
-	StartedAt:    whereHelpertime_Time{field: "\"battles\".\"started_at\""},
-	EndedAt:      whereHelpernull_Time{field: "\"battles\".\"ended_at\""},
-	BattleNumber: whereHelperint{field: "\"battles\".\"battle_number\""},
+	ID:                   whereHelperstring{field: "\"battles\".\"id\""},
+	GameMapID:            whereHelperstring{field: "\"battles\".\"game_map_id\""},
+	StartedAt:            whereHelpertime_Time{field: "\"battles\".\"started_at\""},
+	EndedAt:              whereHelpernull_Time{field: "\"battles\".\"ended_at\""},
+	BattleNumber:         whereHelperint{field: "\"battles\".\"battle_number\""},
+	StartedBattleSeconds: whereHelperdecimal_NullDecimal{field: "\"battles\".\"started_battle_seconds\""},
+	EndedBattleSeconds:   whereHelperdecimal_NullDecimal{field: "\"battles\".\"ended_battle_seconds\""},
 }
 
 // BattleRels is where relationship names are stored.
@@ -146,9 +187,9 @@ func (*battleR) NewStruct() *battleR {
 type battleL struct{}
 
 var (
-	battleAllColumns            = []string{"id", "game_map_id", "started_at", "ended_at", "battle_number"}
+	battleAllColumns            = []string{"id", "game_map_id", "started_at", "ended_at", "battle_number", "started_battle_seconds", "ended_battle_seconds"}
 	battleColumnsWithoutDefault = []string{"game_map_id"}
-	battleColumnsWithDefault    = []string{"id", "started_at", "ended_at", "battle_number"}
+	battleColumnsWithDefault    = []string{"id", "started_at", "ended_at", "battle_number", "started_battle_seconds", "ended_battle_seconds"}
 	battlePrimaryKeyColumns     = []string{"id"}
 	battleGeneratedColumns      = []string{}
 )

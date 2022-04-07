@@ -33,6 +33,7 @@ type Multiplier struct {
 	TestString       string          `boiler:"test_string" boil:"test_string" json:"test_string" toml:"test_string" yaml:"test_string"`
 	Value            decimal.Decimal `boiler:"value" boil:"value" json:"value" toml:"value" yaml:"value"`
 	IsMultiplicative bool            `boiler:"is_multiplicative" boil:"is_multiplicative" json:"is_multiplicative" toml:"is_multiplicative" yaml:"is_multiplicative"`
+	RemainSeconds    int             `boiler:"remain_seconds" boil:"remain_seconds" json:"remain_seconds" toml:"remain_seconds" yaml:"remain_seconds"`
 
 	R *multiplierR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L multiplierL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -49,6 +50,7 @@ var MultiplierColumns = struct {
 	TestString       string
 	Value            string
 	IsMultiplicative string
+	RemainSeconds    string
 }{
 	ID:               "id",
 	Description:      "description",
@@ -60,6 +62,7 @@ var MultiplierColumns = struct {
 	TestString:       "test_string",
 	Value:            "value",
 	IsMultiplicative: "is_multiplicative",
+	RemainSeconds:    "remain_seconds",
 }
 
 var MultiplierTableColumns = struct {
@@ -73,6 +76,7 @@ var MultiplierTableColumns = struct {
 	TestString       string
 	Value            string
 	IsMultiplicative string
+	RemainSeconds    string
 }{
 	ID:               "multipliers.id",
 	Description:      "multipliers.description",
@@ -84,6 +88,7 @@ var MultiplierTableColumns = struct {
 	TestString:       "multipliers.test_string",
 	Value:            "multipliers.value",
 	IsMultiplicative: "multipliers.is_multiplicative",
+	RemainSeconds:    "multipliers.remain_seconds",
 }
 
 // Generated where
@@ -99,6 +104,7 @@ var MultiplierWhere = struct {
 	TestString       whereHelperstring
 	Value            whereHelperdecimal_Decimal
 	IsMultiplicative whereHelperbool
+	RemainSeconds    whereHelperint
 }{
 	ID:               whereHelperstring{field: "\"multipliers\".\"id\""},
 	Description:      whereHelperstring{field: "\"multipliers\".\"description\""},
@@ -110,6 +116,7 @@ var MultiplierWhere = struct {
 	TestString:       whereHelperstring{field: "\"multipliers\".\"test_string\""},
 	Value:            whereHelperdecimal_Decimal{field: "\"multipliers\".\"value\""},
 	IsMultiplicative: whereHelperbool{field: "\"multipliers\".\"is_multiplicative\""},
+	RemainSeconds:    whereHelperint{field: "\"multipliers\".\"remain_seconds\""},
 }
 
 // MultiplierRels is where relationship names are stored.
@@ -133,9 +140,9 @@ func (*multiplierR) NewStruct() *multiplierR {
 type multiplierL struct{}
 
 var (
-	multiplierAllColumns            = []string{"id", "description", "key", "for_games", "multiplier_type", "must_be_online", "test_number", "test_string", "value", "is_multiplicative"}
+	multiplierAllColumns            = []string{"id", "description", "key", "for_games", "multiplier_type", "must_be_online", "test_number", "test_string", "value", "is_multiplicative", "remain_seconds"}
 	multiplierColumnsWithoutDefault = []string{"description", "key", "multiplier_type", "test_number", "test_string"}
-	multiplierColumnsWithDefault    = []string{"id", "for_games", "must_be_online", "value", "is_multiplicative"}
+	multiplierColumnsWithDefault    = []string{"id", "for_games", "must_be_online", "value", "is_multiplicative", "remain_seconds"}
 	multiplierPrimaryKeyColumns     = []string{"id"}
 	multiplierGeneratedColumns      = []string{}
 )
