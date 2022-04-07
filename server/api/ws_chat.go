@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/volatiletech/null/v8"
 	"html"
 	"server"
 	"server/db"
@@ -13,6 +12,8 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"time"
+
+	"github.com/volatiletech/null/v8"
 
 	"github.com/volatiletech/sqlboiler/v4/boil"
 
