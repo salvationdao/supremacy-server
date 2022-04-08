@@ -254,29 +254,47 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 			Fee:               notifyCost,
 		}
 
-		if msg.Payload.EnableTelegramNotifications {
-			telegramNotification, err := arena.telegram.NotificationCreate(mechID.String(), bqn)
+		// get telegram registered player
+		telegramPlayer, err := boiler.TelegramPlayers(
+			boiler.TelegramPlayerWhere.PlayerID.EQ(ownerID.String()),
+			// boiler.TelegramPlayerWhere.TelegramID.IsNotNull(),
+		).One(gamedb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().
+				Str("PlayerID", ownerID.String()).
+				Err(err).Msg("unable to get telegram user")
+			return terror.Error(err, "Unable to get registered telegram user")
+
+		}
+
+		telegramUnregistered := errors.Is(err, sql.ErrNoRows) || telegramPlayer == nil
+
+		// if telegram notifications enabled but unregistered
+		if msg.Payload.EnableTelegramNotifications && telegramUnregistered {
+			// create new tele player return short code
+			player, err := boiler.FindPlayer(gamedb.StdConn, ownerID.String())
 			if err != nil {
 				gamelog.L.Error().
-					Str("mechID", mechID.String()).
-					Str("playerID", ownerID.String()).
-					Err(err).Msg("unable to create telegram notification")
-				if bq.QueueFeeTXID.Valid {
-					_, err = arena.RPCClient.RefundSupsMessage(bq.QueueFeeTXID.String)
-					if err != nil {
-						gamelog.L.Error().Str("txID", bq.QueueFeeTXID.String).Err(err).Msg("failed to refund queue fee")
-					}
-				}
-				if bq.QueueNotificationFeeTXID.Valid {
-					_, err = arena.RPCClient.RefundSupsMessage(bq.QueueNotificationFeeTXID.String)
-					if err != nil {
-						gamelog.L.Error().Str("txID", bq.QueueNotificationFeeTXID.String).Err(err).Msg("failed to refund queue notification fee")
-					}
-				}
-				return terror.Error(err, "Unable create telegram notification. Contact support.")
+					Str("PlayerID", ownerID.String()).
+					Err(err).Msg("unable to get telegram user")
+				return terror.Error(err, "Unable create telegram user")
 			}
-			bqn.TelegramNotificationID = null.StringFrom(telegramNotification.ID)
-			shortcode = telegramNotification.Shortcode
+
+			newTelegramPlayer, err := arena.telegram.PlayerCreate(player)
+			if err != nil {
+				gamelog.L.Error().
+					Str("PlayerID", ownerID.String()).
+					Err(err).Msg("unable to get telegram user")
+				return terror.Error(err, "Unable create telegram user")
+			}
+
+			bqn.TelegramPlayerID = null.StringFrom(newTelegramPlayer.ID)
+
+		}
+
+		// if telegram notifications enabled and registered
+		if msg.Payload.EnableTelegramNotifications && !telegramUnregistered {
+			bqn.TelegramPlayerID = null.StringFrom(telegramPlayer.ID)
 		}
 
 		err = bqn.Insert(tx, boil.Infer())
@@ -350,6 +368,16 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		nextContractReward = nextQueueLength.Mul(decimal.New(2, 18)) // 2x queue length
 	}
 
+	// check if telegram notifs enabled
+	// check if registered reply true
+
+	// if not registered reply with shortcode
+	if bqn.TelegramNotificationID.Valid {
+		reply(QueueJoinHandlerResponse{
+			Success: true,
+			Code:    shortcode,
+		})
+	}
 	// reply with shortcode if telegram notifs enabled
 	if bqn.TelegramNotificationID.Valid && shortcode != "" {
 		reply(QueueJoinHandlerResponse{

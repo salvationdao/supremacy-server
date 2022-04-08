@@ -36,6 +36,7 @@ type BattleQueueNotification struct {
 	Fee                    decimal.Decimal `boiler:"fee" boil:"fee" json:"fee" toml:"fee" yaml:"fee"`
 	IsRefunded             bool            `boiler:"is_refunded" boil:"is_refunded" json:"is_refunded" toml:"is_refunded" yaml:"is_refunded"`
 	CreatedAt              time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	TelegramPlayerID       null.String     `boiler:"telegram_player_id" boil:"telegram_player_id" json:"telegram_player_id,omitempty" toml:"telegram_player_id" yaml:"telegram_player_id,omitempty"`
 
 	R *battleQueueNotificationR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleQueueNotificationL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -54,6 +55,7 @@ var BattleQueueNotificationColumns = struct {
 	Fee                    string
 	IsRefunded             string
 	CreatedAt              string
+	TelegramPlayerID       string
 }{
 	ID:                     "id",
 	BattleID:               "battle_id",
@@ -67,6 +69,7 @@ var BattleQueueNotificationColumns = struct {
 	Fee:                    "fee",
 	IsRefunded:             "is_refunded",
 	CreatedAt:              "created_at",
+	TelegramPlayerID:       "telegram_player_id",
 }
 
 var BattleQueueNotificationTableColumns = struct {
@@ -82,6 +85,7 @@ var BattleQueueNotificationTableColumns = struct {
 	Fee                    string
 	IsRefunded             string
 	CreatedAt              string
+	TelegramPlayerID       string
 }{
 	ID:                     "battle_queue_notifications.id",
 	BattleID:               "battle_queue_notifications.battle_id",
@@ -95,6 +99,7 @@ var BattleQueueNotificationTableColumns = struct {
 	Fee:                    "battle_queue_notifications.fee",
 	IsRefunded:             "battle_queue_notifications.is_refunded",
 	CreatedAt:              "battle_queue_notifications.created_at",
+	TelegramPlayerID:       "battle_queue_notifications.telegram_player_id",
 }
 
 // Generated where
@@ -112,6 +117,7 @@ var BattleQueueNotificationWhere = struct {
 	Fee                    whereHelperdecimal_Decimal
 	IsRefunded             whereHelperbool
 	CreatedAt              whereHelpertime_Time
+	TelegramPlayerID       whereHelpernull_String
 }{
 	ID:                     whereHelperstring{field: "\"battle_queue_notifications\".\"id\""},
 	BattleID:               whereHelpernull_String{field: "\"battle_queue_notifications\".\"battle_id\""},
@@ -125,6 +131,7 @@ var BattleQueueNotificationWhere = struct {
 	Fee:                    whereHelperdecimal_Decimal{field: "\"battle_queue_notifications\".\"fee\""},
 	IsRefunded:             whereHelperbool{field: "\"battle_queue_notifications\".\"is_refunded\""},
 	CreatedAt:              whereHelpertime_Time{field: "\"battle_queue_notifications\".\"created_at\""},
+	TelegramPlayerID:       whereHelpernull_String{field: "\"battle_queue_notifications\".\"telegram_player_id\""},
 }
 
 // BattleQueueNotificationRels is where relationship names are stored.
@@ -133,11 +140,13 @@ var BattleQueueNotificationRels = struct {
 	Mech                 string
 	QueueMech            string
 	TelegramNotification string
+	TelegramPlayer       string
 }{
 	Battle:               "Battle",
 	Mech:                 "Mech",
 	QueueMech:            "QueueMech",
 	TelegramNotification: "TelegramNotification",
+	TelegramPlayer:       "TelegramPlayer",
 }
 
 // battleQueueNotificationR is where relationships are stored.
@@ -146,6 +155,7 @@ type battleQueueNotificationR struct {
 	Mech                 *Mech                 `boiler:"Mech" boil:"Mech" json:"Mech" toml:"Mech" yaml:"Mech"`
 	QueueMech            *BattleQueue          `boiler:"QueueMech" boil:"QueueMech" json:"QueueMech" toml:"QueueMech" yaml:"QueueMech"`
 	TelegramNotification *TelegramNotification `boiler:"TelegramNotification" boil:"TelegramNotification" json:"TelegramNotification" toml:"TelegramNotification" yaml:"TelegramNotification"`
+	TelegramPlayer       *TelegramPlayer       `boiler:"TelegramPlayer" boil:"TelegramPlayer" json:"TelegramPlayer" toml:"TelegramPlayer" yaml:"TelegramPlayer"`
 }
 
 // NewStruct creates a new relationship struct
@@ -157,9 +167,9 @@ func (*battleQueueNotificationR) NewStruct() *battleQueueNotificationR {
 type battleQueueNotificationL struct{}
 
 var (
-	battleQueueNotificationAllColumns            = []string{"id", "battle_id", "queue_mech_id", "mech_id", "mobile_number", "push_notifications", "telegram_notification_id", "sent_at", "message", "fee", "is_refunded", "created_at"}
+	battleQueueNotificationAllColumns            = []string{"id", "battle_id", "queue_mech_id", "mech_id", "mobile_number", "push_notifications", "telegram_notification_id", "sent_at", "message", "fee", "is_refunded", "created_at", "telegram_player_id"}
 	battleQueueNotificationColumnsWithoutDefault = []string{"mech_id", "fee"}
-	battleQueueNotificationColumnsWithDefault    = []string{"id", "battle_id", "queue_mech_id", "mobile_number", "push_notifications", "telegram_notification_id", "sent_at", "message", "is_refunded", "created_at"}
+	battleQueueNotificationColumnsWithDefault    = []string{"id", "battle_id", "queue_mech_id", "mobile_number", "push_notifications", "telegram_notification_id", "sent_at", "message", "is_refunded", "created_at", "telegram_player_id"}
 	battleQueueNotificationPrimaryKeyColumns     = []string{"id"}
 	battleQueueNotificationGeneratedColumns      = []string{}
 )
@@ -459,6 +469,20 @@ func (o *BattleQueueNotification) TelegramNotification(mods ...qm.QueryMod) tele
 
 	query := TelegramNotifications(queryMods...)
 	queries.SetFrom(query.Query, "\"telegram_notifications\"")
+
+	return query
+}
+
+// TelegramPlayer pointed to by the foreign key.
+func (o *BattleQueueNotification) TelegramPlayer(mods ...qm.QueryMod) telegramPlayerQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.TelegramPlayerID),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := TelegramPlayers(queryMods...)
+	queries.SetFrom(query.Query, "\"telegram_players\"")
 
 	return query
 }
@@ -892,6 +916,114 @@ func (battleQueueNotificationL) LoadTelegramNotification(e boil.Executor, singul
 	return nil
 }
 
+// LoadTelegramPlayer allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (battleQueueNotificationL) LoadTelegramPlayer(e boil.Executor, singular bool, maybeBattleQueueNotification interface{}, mods queries.Applicator) error {
+	var slice []*BattleQueueNotification
+	var object *BattleQueueNotification
+
+	if singular {
+		object = maybeBattleQueueNotification.(*BattleQueueNotification)
+	} else {
+		slice = *maybeBattleQueueNotification.(*[]*BattleQueueNotification)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &battleQueueNotificationR{}
+		}
+		if !queries.IsNil(object.TelegramPlayerID) {
+			args = append(args, object.TelegramPlayerID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &battleQueueNotificationR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.TelegramPlayerID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.TelegramPlayerID) {
+				args = append(args, obj.TelegramPlayerID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`telegram_players`),
+		qm.WhereIn(`telegram_players.id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load TelegramPlayer")
+	}
+
+	var resultSlice []*TelegramPlayer
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice TelegramPlayer")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for telegram_players")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for telegram_players")
+	}
+
+	if len(battleQueueNotificationAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.TelegramPlayer = foreign
+		if foreign.R == nil {
+			foreign.R = &telegramPlayerR{}
+		}
+		foreign.R.BattleQueueNotifications = append(foreign.R.BattleQueueNotifications, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.TelegramPlayerID, foreign.ID) {
+				local.R.TelegramPlayer = foreign
+				if foreign.R == nil {
+					foreign.R = &telegramPlayerR{}
+				}
+				foreign.R.BattleQueueNotifications = append(foreign.R.BattleQueueNotifications, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetBattle of the battleQueueNotification to the related item.
 // Sets o.R.Battle to related.
 // Adds o to related.R.BattleQueueNotifications.
@@ -1162,6 +1294,85 @@ func (o *BattleQueueNotification) RemoveTelegramNotification(exec boil.Executor,
 
 	for i, ri := range related.R.BattleQueueNotifications {
 		if queries.Equal(o.TelegramNotificationID, ri.TelegramNotificationID) {
+			continue
+		}
+
+		ln := len(related.R.BattleQueueNotifications)
+		if ln > 1 && i < ln-1 {
+			related.R.BattleQueueNotifications[i] = related.R.BattleQueueNotifications[ln-1]
+		}
+		related.R.BattleQueueNotifications = related.R.BattleQueueNotifications[:ln-1]
+		break
+	}
+	return nil
+}
+
+// SetTelegramPlayer of the battleQueueNotification to the related item.
+// Sets o.R.TelegramPlayer to related.
+// Adds o to related.R.BattleQueueNotifications.
+func (o *BattleQueueNotification) SetTelegramPlayer(exec boil.Executor, insert bool, related *TelegramPlayer) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"battle_queue_notifications\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"telegram_player_id"}),
+		strmangle.WhereClause("\"", "\"", 2, battleQueueNotificationPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.TelegramPlayerID, related.ID)
+	if o.R == nil {
+		o.R = &battleQueueNotificationR{
+			TelegramPlayer: related,
+		}
+	} else {
+		o.R.TelegramPlayer = related
+	}
+
+	if related.R == nil {
+		related.R = &telegramPlayerR{
+			BattleQueueNotifications: BattleQueueNotificationSlice{o},
+		}
+	} else {
+		related.R.BattleQueueNotifications = append(related.R.BattleQueueNotifications, o)
+	}
+
+	return nil
+}
+
+// RemoveTelegramPlayer relationship.
+// Sets o.R.TelegramPlayer to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *BattleQueueNotification) RemoveTelegramPlayer(exec boil.Executor, related *TelegramPlayer) error {
+	var err error
+
+	queries.SetScanner(&o.TelegramPlayerID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("telegram_player_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.TelegramPlayer = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.BattleQueueNotifications {
+		if queries.Equal(o.TelegramPlayerID, ri.TelegramPlayerID) {
 			continue
 		}
 

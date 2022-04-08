@@ -3,7 +3,6 @@ package telegram
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -15,7 +14,6 @@ import (
 	"github.com/teris-io/shortid"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	tele "gopkg.in/telebot.v3"
 )
 
@@ -51,10 +49,13 @@ var telegramNotifications = map[string][]string{}
 
 const HubKeyTelegramShortcodeRegistered = "USER:TELEGRAM_SHORTCODE_REGISTERED"
 
+// registers new players
 func (t *Telegram) RunTelegram(bot *tele.Bot) error {
 	if t.Bot == nil {
 		return nil
 	}
+
+	// registers fist time user
 	bot.Handle("/register", func(c tele.Context) error {
 		return c.Send("Enter shortcode", tele.ForceReply)
 	})
@@ -70,25 +71,13 @@ func (t *Telegram) RunTelegram(bot *tele.Bot) error {
 		_telegramID, err := strconv.Atoi(telegramID)
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("unable convert telegramID to int")
-			return terror.Error(err)
+			return c.Send("Unable to register shortcode, try again or contact support.")
 		}
 
-		// get notification via shortcode
-		notification, err := boiler.BattleQueueNotifications(
-			boiler.BattleQueueNotificationWhere.IsRefunded.EQ(false),
-			boiler.BattleQueueNotificationWhere.SentAt.IsNull(),
-			// join battle queue notification with telegram notifications
-			qm.InnerJoin(fmt.Sprintf("%[1]s ON %[1]s.%[2]s = %[3]s.%[4]s ",
-				boiler.TableNames.TelegramNotifications,
-				boiler.TelegramNotificationColumns.ID,
-				boiler.TableNames.BattleQueueNotifications,
-				boiler.BattleQueueNotificationColumns.TelegramNotificationID)),
-
-			boiler.TelegramNotificationWhere.Registered.EQ(false),
-			boiler.TelegramNotificationWhere.Shortcode.EQ(strings.ToLower(shortcode)),
-			// load mech, telegramNotification rels
-			qm.Load(boiler.BattleQueueNotificationRels.TelegramNotification),
-			qm.Load(boiler.BattleQueueNotificationRels.Mech)).One(gamedb.StdConn)
+		// get telegram player via short code
+		telegramPlayer, err := boiler.TelegramPlayers(
+			boiler.TelegramPlayerWhere.TelegramID.IsNull(),
+			boiler.TelegramPlayerWhere.Shortcode.EQ(strings.ToLower(shortcode))).One(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			gamelog.L.Error().Err(err).Msg("unable to get notification by shortcode")
 			return c.Send("Unable to find shortcode, you may have entered your shortcode too fast, please try again or contact support.")
@@ -96,80 +85,57 @@ func (t *Telegram) RunTelegram(bot *tele.Bot) error {
 
 		reply := ""
 
-		// cant find telgram notification by shortcode
-		if errors.Is(err, sql.ErrNoRows) || notification.R == nil || notification.R.TelegramNotification == nil {
-			reply = "invalid shortcode!"
+		// cant find telgram player by shortcode
+		if errors.Is(err, sql.ErrNoRows) {
+			reply = "Invalid shortcode!"
 			return c.Send(reply)
 		}
 
-		telegramNotification := notification.R.TelegramNotification
+		// if found
+		telegramPlayer.TelegramID = null.Int64From(int64(_telegramID))
 
-		// register that notification
-		telegramNotification.Registered = true
-		telegramNotification.TelegramID = null.IntFrom(_telegramID)
-
-		// mech owner
-		wmOwner := notification.R.Mech.OwnerID
-
-		// update notification
-		_, err = telegramNotification.Update(gamedb.StdConn, boil.Infer())
+		_, err = telegramPlayer.Update(gamedb.StdConn, boil.Infer())
 		if err != nil {
 			gamelog.L.Error().Err(err).
 				Str("telegramID", telegramID).
-				Str("notificationID", telegramNotification.ID).
-				Msg("unable to update telegram notification")
+				Str("telegramPlayer", telegramPlayer.ID).
+				Msg("unable to update telegram player")
 			return terror.Error(err)
 		}
 
 		if err != nil {
-			reply = "Issue regestering telegram shortcode, try again or contact support"
-			go t.RegisterCallback(wmOwner, false)
+			reply = "Issue regestering, try again or contact support"
+			go t.RegisterCallback(telegramPlayer.PlayerID, false)
 			return c.Send(reply)
 
 		}
 
-		wmName := notification.R.Mech.Label
-		if notification.R.Mech.Name != "" {
-			wmName = notification.R.Mech.Name
-		}
-		reply = fmt.Sprintf("Shortcode registered! you will be notified when your war machine (%s) is nearing battle", wmName)
-		go t.RegisterCallback(wmOwner, true)
+		reply = "Shortcode registered! You will be notified when your war machine is nearing battle"
+		go t.RegisterCallback(telegramPlayer.PlayerID, true)
 		return c.Send(reply)
 	})
 	bot.Start()
 	return nil
 }
 
-func (t *Telegram) NotificationCreate(mechID string, notification *boiler.BattleQueueNotification) (*boiler.TelegramNotification, error) {
+func (t *Telegram) PlayerCreate(player *boiler.Player) (*boiler.TelegramPlayer, error) {
 
-	shortCode, err := shortid.Generate()
+	shortcode, err := shortid.Generate()
 	if err != nil {
 		return nil, terror.Error(err)
 	}
 
 	codeExists := true
 	for codeExists {
-		// check if a notification that hasnt been sent/ not refunded has that short code
-		exists, err := boiler.BattleQueueNotifications(
-			boiler.BattleQueueNotificationWhere.IsRefunded.EQ(false),
-			boiler.BattleQueueNotificationWhere.SentAt.IsNull(),
-			// join battle queue notification with telegram notifications
-			qm.InnerJoin(fmt.Sprintf("%[1]s ON %[1]s.%[2]s = %[3]s.%[4]s ",
-				boiler.TableNames.TelegramNotifications,
-				boiler.TelegramNotificationColumns.ID,
-				boiler.TableNames.BattleQueueNotifications,
-				boiler.BattleQueueNotificationColumns.TelegramNotificationID)),
-
-			boiler.TelegramNotificationWhere.Registered.EQ(false),
-			boiler.TelegramNotificationWhere.Shortcode.EQ(strings.ToLower(shortCode)),
-		).Exists(gamedb.StdConn)
+		// check if a telegram player already has that shortcode
+		exists, err := boiler.TelegramPlayers(boiler.TelegramPlayerWhere.Shortcode.EQ(strings.ToLower(shortcode))).Exists(gamedb.StdConn)
 		if err != nil {
-			return nil, terror.Error(err, "Unable to get telegram notifications")
+			return nil, terror.Error(err, "Unable to check if telegram player exists")
 		}
 
 		if exists {
 			// if code already exist generate new one
-			shortCode, err = shortid.Generate()
+			shortcode, err = shortid.Generate()
 			if err != nil {
 				return nil, terror.Error(err)
 			}
@@ -178,24 +144,27 @@ func (t *Telegram) NotificationCreate(mechID string, notification *boiler.Battle
 		}
 	}
 
-	telegramNotification := &boiler.TelegramNotification{
-		Shortcode: strings.ToLower(shortCode),
+	// create telegram player
+	tPlayer := &boiler.TelegramPlayer{
+		PlayerID:  player.ID,
+		Shortcode: strings.ToLower(shortcode),
 	}
 
-	err = telegramNotification.Insert(gamedb.StdConn, boil.Infer())
+	err = player.AddTelegramPlayers(gamedb.StdConn, true, tPlayer)
 	if err != nil {
-		return nil, terror.Error(err, "Unable to link notification to telegram notification")
+		return nil, terror.Error(err, "Unable to create telegram player")
 	}
 
-	return telegramNotification, nil
+	return tPlayer, nil
+
 }
 
-func (t *Telegram) Notify(id string, message string) error {
+func (t *Telegram) Notify(telegramNotificationID string, message string) error {
 	if t.Bot == nil {
 		return nil
 	}
 	// get telegram notification
-	notification, err := boiler.FindTelegramNotification(gamedb.StdConn, id)
+	notification, err := boiler.FindTelegramNotification(gamedb.StdConn, telegramNotificationID)
 	if err != nil {
 		return terror.Error(err, "failed get notification")
 	}
@@ -205,6 +174,20 @@ func (t *Telegram) Notify(id string, message string) error {
 	}
 	// send notification
 	_, err = t.Send(&tele.Chat{ID: int64(notification.TelegramID.Int)}, message)
+	if err != nil {
+		return terror.Error(err, "failed to send telegram message")
+	}
+
+	return nil
+}
+
+func (t *Telegram) Notify2(telegramID int64, message string) error {
+	if t.Bot == nil {
+		return nil
+	}
+
+	// send notification
+	_, err := t.Send(&tele.Chat{ID: int64(telegramID)}, message)
 	if err != nil {
 		return terror.Error(err, "failed to send telegram message")
 	}
