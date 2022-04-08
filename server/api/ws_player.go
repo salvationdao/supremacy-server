@@ -375,31 +375,19 @@ func (pc *PlayerController) PunishVote(ctx context.Context, wsc *hub.Client, pay
 		return terror.Error(err, "Invalid request received")
 	}
 
-	// check player has at least 5 kills in the last 7 days
-	killCount, err := db.GetPlayerAbilityKills(wsc.Identifier())
+	us, err := db.UserStatsGet(wsc.Identifier())
 	if err != nil {
-		return terror.Error(err, "Failed to get player last 7 days kill count from db")
+		return terror.Error(err, "Failed to get user stat from db")
 	}
 
-	if killCount < 5 {
-		return terror.Error(terror.ErrForbidden, "Require at least 5 kills in last 7 days to vote")
+	if us.LastSevenDaysKills < 5 && us.AbilityKillCount < 100 {
+		return terror.Error(terror.ErrForbidden, "Require at least 5 kills in last 7 days or 100 kills in lifetime to vote")
 	}
 
 	// check player is available to be punished
 	player, err := boiler.FindPlayer(gamedb.StdConn, wsc.Identifier())
 	if err != nil {
 		return terror.Error(err, "Failed to get current player from db")
-	}
-
-	// get player last 7 days kills count
-	playerKill, err := db.GetPlayerAbilityKills(player.ID)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Str("player_id", player.ID).Err(err).Msg("Failed to get player ability kills from db")
-		return terror.Error(err, "Failed to get player ability kills from db")
-	}
-
-	if playerKill <= 0 {
-		return terror.Error(fmt.Errorf("only players with positive ability kill count has the right"), "Does not meet the minimum ability kill count to do the punishment vote")
 	}
 
 	fpv, ok := pc.API.FactionPunishVote[player.FactionID.String]
@@ -491,14 +479,13 @@ func (pc *PlayerController) IssuePunishVote(ctx context.Context, wsc *hub.Client
 		return terror.Error(err, "Invalid request received")
 	}
 
-	// check player has at least 5 kills in the last 7 days
-	killCount, err := db.GetPlayerAbilityKills(wsc.Identifier())
+	us, err := db.UserStatsGet(wsc.Identifier())
 	if err != nil {
-		return terror.Error(err, "Failed to get player last 7 days kill count from db")
+		return terror.Error(err, "Failed to get user stat from db")
 	}
 
-	if killCount < 5 {
-		return terror.Error(terror.ErrForbidden, "Require at least 5 kills in last 7 days to issue vote")
+	if us.LastSevenDaysKills < 5 && us.AbilityKillCount < 100 {
+		return terror.Error(terror.ErrForbidden, "Require at least 5 kills in last 7 days or 100 kills in lifetime to vote")
 	}
 
 	// check player is available to be punished
