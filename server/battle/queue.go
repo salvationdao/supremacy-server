@@ -24,6 +24,37 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
+func CalcNextQueueStatus(length int64) QueueStatusResponse {
+	ql := float64(length + 1)
+	queueLength := decimal.NewFromFloat(ql)
+
+	// min cost will be one forth of the queue length
+	minQueueCost := queueLength.Div(decimal.NewFromFloat(4)).Mul(decimal.New(1, 18))
+
+	// calc queue cost
+	feeMultiplier := math.Log(float64(ql)/3.25) * 0.25
+	queueCost := queueLength.Mul(decimal.NewFromFloat(feeMultiplier)).Mul(decimal.New(1, 18))
+
+	// calc contract reward
+	contractReward := queueLength.Mul(decimal.New(2, 18))
+
+	// fee never get under queue length
+	if queueCost.LessThan(minQueueCost) {
+		queueCost = minQueueCost
+	}
+
+	// length * 2 sups
+	return QueueStatusResponse{
+		QueueLength: length, // return the current queue length
+
+		// the fee player have to pay if they want to queue their mech
+		QueueCost: queueCost,
+
+		// the reward, player will get if their mech won the battle
+		ContractReward: contractReward,
+	}
+}
+
 type QueueJoinHandlerResponse struct {
 	Success bool   `json:"success"`
 	Code    string `json:"code"`
@@ -84,15 +115,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		return terror.Error(err)
 	}
 
-	ql := float64(result + 1)
-	queueLength := decimal.NewFromFloat(ql)
-	queueFee := math.Log(float64(ql)/3.25) * 0.25
-	queueCost := decimal.NewFromFloat(queueFee)
-	contractReward := decimal.New(2, 18) // 2 sups
-	if queueLength.GreaterThan(decimal.NewFromInt(0)) {
-		queueCost = queueLength.Mul(decimal.New(25, 16))     // 0.25x queue length
-		contractReward = queueLength.Mul(decimal.New(2, 18)) // 2x queue length
-	}
+	queueStatus := CalcNextQueueStatus(result)
 
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
@@ -122,15 +145,15 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		MechID:         mechID.String(),
 		FactionID:      factionID.String(),
 		PlayerID:       ownerID.String(),
-		ContractReward: contractReward,
-		Fee:            queueCost,
+		ContractReward: queueStatus.ContractReward,
+		Fee:            queueStatus.QueueCost,
 	}
 	err = bc.Insert(tx, boil.Infer())
 	if err != nil {
 		gamelog.L.Error().
 			Interface("mech", mech).
-			Str("contractReward", contractReward.String()).
-			Str("queueFee", queueCost.String()).
+			Str("contractReward", queueStatus.ContractReward.String()).
+			Str("queueFee", queueStatus.QueueCost.String()).
 			Err(err).Msg("unable to create battle contract")
 		return terror.Error(err, "Unable to join queue, contact support or try again.")
 	}
@@ -165,7 +188,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 
 	// Charge user queue fee
 	supTransactionID, err := arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
-		Amount:               queueCost.StringFixed(18),
+		Amount:               queueStatus.QueueCost.StringFixed(18),
 		FromUserID:           ownerID,
 		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("war_machine_queueing_fee|%s|%d", msg.Payload.AssetHash, time.Now().UnixNano())),
@@ -200,7 +223,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 	bqn := &boiler.BattleQueueNotification{}
 	// Charge queue notification fee, if enabled (10% of queue cost)
 	if !bq.Notified {
-		notifyCost := queueCost.Mul(decimal.NewFromFloat(0.1))
+		notifyCost := queueStatus.QueueCost.Mul(decimal.NewFromFloat(0.1))
 		notifyTransactionID, err := arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
 			Amount:               notifyCost.String(),
 			FromUserID:           ownerID,
@@ -342,14 +365,6 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		return terror.Error(err, "Unable to join queue, check your balance and try again.")
 	}
 
-	nextQueueLength := queueLength.Add(decimal.NewFromInt(1))
-	nextQueueCost := decimal.New(25, 16)     // 0.25 sups
-	nextContractReward := decimal.New(2, 18) // 2 sups
-	if nextQueueLength.GreaterThan(decimal.NewFromInt(0)) {
-		nextQueueCost = nextQueueLength.Mul(decimal.New(25, 16))     // 0.25x queue length
-		nextContractReward = nextQueueLength.Mul(decimal.New(2, 18)) // 2x queue length
-	}
-
 	// reply with shortcode if telegram notifs enabled
 	if bqn.TelegramNotificationID.Valid && shortcode != "" {
 		reply(QueueJoinHandlerResponse{
@@ -363,18 +378,15 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		})
 	}
 
-	// Send updated battle queue status to all subscribers
-	arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", WSQueueStatusSubscribe, factionID.String())), QueueStatusResponse{
-		result + 1,
-		nextQueueCost,
-		nextContractReward,
-	})
-
 	// Send updated war machine queue status to subscriber
 	arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", WSAssetQueueStatusSubscribe, mechID)), AssetQueueStatusResponse{
 		&position,
-		&contractReward,
+		&queueStatus.ContractReward,
 	})
+
+	// Send updated battle queue status to all subscribers
+	nextQueueStatus := CalcNextQueueStatus(queueStatus.QueueLength + 1)
+	arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", WSQueueStatusSubscribe, factionID.String())), nextQueueStatus)
 
 	return nil
 }
@@ -591,29 +603,18 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 
 	reply(true)
 
+	// Tell clients to refetch war machine queue status
+	arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", WSQueueUpdatedSubscribe, factionID.String())), true)
+
 	result, err := db.QueueLength(factionID)
 	if err != nil {
 		gamelog.L.Error().Interface("factionID", factionID).Err(err).Msg("unable to retrieve queue length")
 		return terror.Error(err, "Unable to leave queue, try again or contact support.")
 	}
-
-	nextQueueLength := decimal.NewFromInt(result + 1)
-	nextQueueCost := decimal.New(25, 16)     // 0.25 sups
-	nextContractReward := decimal.New(2, 18) // 2 sups
-	if nextQueueLength.GreaterThan(decimal.NewFromInt(0)) {
-		nextQueueCost = nextQueueLength.Mul(decimal.New(25, 16))     // 0.25x queue length
-		nextContractReward = nextQueueLength.Mul(decimal.New(2, 18)) // 2x queue length
-	}
+	nextQueueStatus := CalcNextQueueStatus(result)
 
 	// Send updated Battle queue status to all subscribers
-	arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", WSQueueStatusSubscribe, factionID.String())), QueueStatusResponse{
-		result,
-		nextQueueCost,
-		nextContractReward,
-	})
-
-	// Tell clients to refetch war machine queue status
-	arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", WSQueueUpdatedSubscribe, factionID.String())), true)
+	arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", WSQueueStatusSubscribe, factionID.String())), nextQueueStatus)
 
 	return nil
 }
@@ -651,19 +652,7 @@ func (arena *Arena) QueueStatusSubscribeHandler(ctx context.Context, wsc *hub.Cl
 			return "", "", terror.Error(err)
 		}
 
-		queueLength := decimal.NewFromInt(result + 1)
-		queueCost := decimal.New(25, 16)     // 0.25 sups
-		contractReward := decimal.New(2, 18) // 2 sups
-		if queueLength.GreaterThan(decimal.NewFromInt(0)) {
-			queueCost = queueLength.Mul(decimal.New(25, 16))     // 0.25x queue length
-			contractReward = queueLength.Mul(decimal.New(2, 18)) // 2x queue length
-		}
-
-		reply(QueueStatusResponse{
-			result,
-			queueCost,
-			contractReward,
-		})
+		reply(CalcNextQueueStatus(result))
 	}
 
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", WSQueueStatusSubscribe, factionID.String())), nil

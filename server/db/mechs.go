@@ -14,6 +14,7 @@ import (
 
 	"github.com/gofrs/uuid"
 	"github.com/teris-io/shortid"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
@@ -373,9 +374,10 @@ func Mech(mechID uuid.UUID) (*server.MechContainer, error) {
 	return mc, err
 }
 
-func NextExternalTokenID(tx *sql.Tx, isDefault bool) (int, error) {
+func NextExternalTokenID(tx *sql.Tx, isDefault bool, collectionSlug null.String) (int, error) {
 	count, err := boiler.Mechs(
 		boiler.MechWhere.IsDefault.EQ(isDefault),
+		boiler.MechWhere.CollectionSlug.EQ(collectionSlug),
 	).Count(tx)
 	if err != nil {
 		return 0, err
@@ -386,6 +388,7 @@ func NextExternalTokenID(tx *sql.Tx, isDefault bool) (int, error) {
 
 	highestMechID, err := boiler.Mechs(
 		boiler.MechWhere.IsDefault.EQ(isDefault),
+		boiler.MechWhere.CollectionSlug.EQ(collectionSlug),
 		qm.OrderBy("external_token_id DESC"),
 	).One(tx)
 	if err != nil {
@@ -512,7 +515,7 @@ func MechRegister(templateID uuid.UUID, ownerID uuid.UUID) (uuid.UUID, error) {
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("create short id: %w", err)
 	}
-	nextID, err := NextExternalTokenID(tx, template.IsDefault)
+	nextID, err := NextExternalTokenID(tx, template.IsDefault, template.CollectionSlug)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("get next external token id: %w", err)
 	}
