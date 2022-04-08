@@ -853,7 +853,7 @@ func (btl *Battle) endWarMachines(payload *BattleEndPayload) []*WarMachine {
 					Msg("unable to update mech stat")
 			}
 
-			bqn, err := boiler.BattleQueueNotifications(boiler.BattleQueueNotificationWhere.MechID.EQ(bm.MechID), qm.OrderBy(boiler.BattleQueueNotificationColumns.SentAt, " DESC")).One(gamedb.StdConn)
+			bqn, err := boiler.BattleQueueNotifications(boiler.BattleQueueNotificationWhere.MechID.EQ(bm.MechID), qm.OrderBy(boiler.BattleQueueNotificationColumns.SentAt+" DESC")).One(gamedb.StdConn)
 			if err != nil {
 				gamelog.L.Error().Str("bm.MechID", bm.MechID).Err(err).Msg("failed to get BattleQueueNotifications")
 			} else {
@@ -1229,7 +1229,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 		gamelog.L.Warn().Str("hash", dHash).Msg("can't match destroyed mech with battle state")
 		return
 	}
-	bqn, err := boiler.BattleQueueNotifications(boiler.BattleQueueNotificationWhere.MechID.EQ(destroyedWarMachine.ID), qm.OrderBy(boiler.BattleQueueNotificationColumns.SentAt, " DESC")).One(gamedb.StdConn)
+	bqn, err := boiler.BattleQueueNotifications(boiler.BattleQueueNotificationWhere.MechID.EQ(destroyedWarMachine.ID), qm.OrderBy(boiler.BattleQueueNotificationColumns.SentAt+" DESC")).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Str("destroyedWarMachine.ID", destroyedWarMachine.ID).Err(err).Msg("failed to get BattleQueueNotifications")
 	}
@@ -1260,7 +1260,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 					if err != nil {
 						gamelog.L.Error().Str("faction_id", killByWarMachine.FactionID).Err(err).Msg("failed to update faction mech kill count")
 					}
-					bqn, err := boiler.BattleQueueNotifications(boiler.BattleQueueNotificationWhere.MechID.EQ(wm.ID), qm.OrderBy(boiler.BattleQueueNotificationColumns.SentAt, " DESC")).One(gamedb.StdConn)
+					bqn, err := boiler.BattleQueueNotifications(boiler.BattleQueueNotificationWhere.MechID.EQ(wm.ID), qm.OrderBy(boiler.BattleQueueNotificationColumns.SentAt+" DESC")).One(gamedb.StdConn)
 					if err != nil {
 						gamelog.L.Error().Str("wm.ID", wm.ID).Err(err).Msg("failed to get BattleQueueNotifications")
 					} else {
