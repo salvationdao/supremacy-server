@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"math/rand"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -31,8 +32,15 @@ func CalcNextQueueStatus(length int64) QueueStatusResponse {
 	// min cost will be one forth of the queue length
 	minQueueCost := queueLength.Div(decimal.NewFromFloat(4)).Mul(decimal.New(1, 18))
 
+	x := 3.25
+
+	if server.Env() == "staging" {
+		x = 0.2 + rand.Float64()*(8.0-0.2)
+		minQueueCost = decimal.NewFromFloat(1.5)
+	}
+
 	// calc queue cost
-	feeMultiplier := math.Log(float64(ql)) / 3.25 * 0.25
+	feeMultiplier := math.Log(float64(ql)) / x * 0.25
 	queueCost := queueLength.Mul(decimal.NewFromFloat(feeMultiplier)).Mul(decimal.New(1, 18))
 
 	// calc contract reward

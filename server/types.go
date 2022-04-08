@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"sync"
 	"sync/atomic"
 
 	"github.com/gofrs/uuid"
@@ -659,4 +660,19 @@ type GameAbilityEvent struct {
 		X int `json:"x"`
 		Y int `json:"y"`
 	} `json:"gameLocation"`
+}
+
+var env string
+var lock = sync.RWMutex{}
+
+func SetEnv(environment string) {
+	lock.Lock()
+	defer lock.Unlock()
+	env = environment
+}
+
+func Env() string {
+	lock.RLock()
+	defer lock.RUnlock()
+	return env
 }
