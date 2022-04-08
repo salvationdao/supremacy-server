@@ -131,6 +131,7 @@ var FactionRels = struct {
 	Brands                string
 	ChatHistories         string
 	PlayerActiveLogs      string
+	PlayerKillLogs        string
 	PlayerLanguages       string
 	Players               string
 	PunishVotes           string
@@ -146,6 +147,7 @@ var FactionRels = struct {
 	Brands:                "Brands",
 	ChatHistories:         "ChatHistories",
 	PlayerActiveLogs:      "PlayerActiveLogs",
+	PlayerKillLogs:        "PlayerKillLogs",
 	PlayerLanguages:       "PlayerLanguages",
 	Players:               "Players",
 	PunishVotes:           "PunishVotes",
@@ -164,6 +166,7 @@ type factionR struct {
 	Brands                BrandSlice                `boiler:"Brands" boil:"Brands" json:"Brands" toml:"Brands" yaml:"Brands"`
 	ChatHistories         ChatHistorySlice          `boiler:"ChatHistories" boil:"ChatHistories" json:"ChatHistories" toml:"ChatHistories" yaml:"ChatHistories"`
 	PlayerActiveLogs      PlayerActiveLogSlice      `boiler:"PlayerActiveLogs" boil:"PlayerActiveLogs" json:"PlayerActiveLogs" toml:"PlayerActiveLogs" yaml:"PlayerActiveLogs"`
+	PlayerKillLogs        PlayerKillLogSlice        `boiler:"PlayerKillLogs" boil:"PlayerKillLogs" json:"PlayerKillLogs" toml:"PlayerKillLogs" yaml:"PlayerKillLogs"`
 	PlayerLanguages       PlayerLanguageSlice       `boiler:"PlayerLanguages" boil:"PlayerLanguages" json:"PlayerLanguages" toml:"PlayerLanguages" yaml:"PlayerLanguages"`
 	Players               PlayerSlice               `boiler:"Players" boil:"Players" json:"Players" toml:"Players" yaml:"Players"`
 	PunishVotes           PunishVoteSlice           `boiler:"PunishVotes" boil:"PunishVotes" json:"PunishVotes" toml:"PunishVotes" yaml:"PunishVotes"`
@@ -627,6 +630,27 @@ func (o *Faction) PlayerActiveLogs(mods ...qm.QueryMod) playerActiveLogQuery {
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"player_active_logs\".*"})
+	}
+
+	return query
+}
+
+// PlayerKillLogs retrieves all the player_kill_log's PlayerKillLogs with an executor.
+func (o *Faction) PlayerKillLogs(mods ...qm.QueryMod) playerKillLogQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"player_kill_log\".\"faction_id\"=?", o.ID),
+	)
+
+	query := PlayerKillLogs(queryMods...)
+	queries.SetFrom(query.Query, "\"player_kill_log\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"player_kill_log\".*"})
 	}
 
 	return query
@@ -1703,6 +1727,104 @@ func (factionL) LoadPlayerActiveLogs(e boil.Executor, singular bool, maybeFactio
 	return nil
 }
 
+// LoadPlayerKillLogs allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (factionL) LoadPlayerKillLogs(e boil.Executor, singular bool, maybeFaction interface{}, mods queries.Applicator) error {
+	var slice []*Faction
+	var object *Faction
+
+	if singular {
+		object = maybeFaction.(*Faction)
+	} else {
+		slice = *maybeFaction.(*[]*Faction)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &factionR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &factionR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`player_kill_log`),
+		qm.WhereIn(`player_kill_log.faction_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load player_kill_log")
+	}
+
+	var resultSlice []*PlayerKillLog
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice player_kill_log")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on player_kill_log")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for player_kill_log")
+	}
+
+	if len(playerKillLogAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.PlayerKillLogs = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &playerKillLogR{}
+			}
+			foreign.R.Faction = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.FactionID {
+				local.R.PlayerKillLogs = append(local.R.PlayerKillLogs, foreign)
+				if foreign.R == nil {
+					foreign.R = &playerKillLogR{}
+				}
+				foreign.R.Faction = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // LoadPlayerLanguages allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (factionL) LoadPlayerLanguages(e boil.Executor, singular bool, maybeFaction interface{}, mods queries.Applicator) error {
@@ -2686,6 +2808,58 @@ func (o *Faction) RemovePlayerActiveLogs(exec boil.Executor, related ...*PlayerA
 		}
 	}
 
+	return nil
+}
+
+// AddPlayerKillLogs adds the given related objects to the existing relationships
+// of the faction, optionally inserting them as new records.
+// Appends related to o.R.PlayerKillLogs.
+// Sets related.R.Faction appropriately.
+func (o *Faction) AddPlayerKillLogs(exec boil.Executor, insert bool, related ...*PlayerKillLog) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.FactionID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"player_kill_log\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
+				strmangle.WhereClause("\"", "\"", 2, playerKillLogPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.FactionID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &factionR{
+			PlayerKillLogs: related,
+		}
+	} else {
+		o.R.PlayerKillLogs = append(o.R.PlayerKillLogs, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &playerKillLogR{
+				Faction: o,
+			}
+		} else {
+			rel.R.Faction = o
+		}
+	}
 	return nil
 }
 

@@ -84,45 +84,6 @@ func FactionContractRewardUpdate(ctx context.Context, conn Conn, factionID serve
 	return nil
 }
 
-// FactionStatMaterialisedViewRefresh
-func FactionStatMaterialisedViewRefresh(ctx context.Context, conn Conn) error {
-	q := `
-		REFRESH MATERIALIZED VIEW faction_stats;
-	`
-	_, err := conn.Exec(ctx, q)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	return nil
-}
-
-// // FactionStatGet return the stat by the given faction id
-// func FactionStatGet(ctx context.Context, conn Conn, factionStat *server.FactionStat) error {
-// 	q := `
-// 		SELECT * FROM faction_stats
-// 		WHERE id = $1;
-// 	`
-// 	err := pgxscan.Get(ctx, conn, factionStat, q, factionStat.ID)
-// 	if err != nil {
-// 		return terror.Error(err)
-// 	}
-// 	return nil
-// }
-
-// // FactionStatAll return the stat of all factions
-// func FactionStatAll(ctx context.Context, conn Conn) ([]*server.FactionStat, error) {
-// 	result := []*server.FactionStat{}
-// 	q := `
-// 		SELECT * FROM faction_stats;
-// 	`
-// 	err := pgxscan.Select(ctx, conn, &result, q)
-// 	if err != nil {
-// 		return nil, terror.Error(err)
-// 	}
-// 	return result, nil
-// }
-
 func FactionAll(ctx context.Context, conn Conn) (boiler.FactionSlice, error) {
 	factions, err := boiler.Factions().All(gamedb.StdConn)
 	if err != nil {

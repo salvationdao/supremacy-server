@@ -28,16 +28,9 @@ const (
 
 func (arena *Arena) PlayerRankUpdater() {
 	// create a tickle to constantly update player ability kill and ranks
-	updateTickle := tickle.New("Player rank and kill update", 60*60, func() (int, error) {
-		// refresh player last seven days ability kill materialised view
-		err := db.RefreshPlayerLastSevenAbilityKill()
-		if err != nil {
-			gamelog.L.Error().Err(err).Msg("Failed to refresh player last seven days ability kills")
-			return http.StatusInternalServerError, terror.Error(err, "Failed to refresh player last seven days ability kills")
-		}
-
+	updateTickle := tickle.New("Player rank and kill update", 30*60, func() (int, error) {
 		// calculate player rank of each syndicate
-		err = calcSyndicatePlayerRank(server.RedMountainFactionID)
+		err := calcSyndicatePlayerRank(server.RedMountainFactionID)
 		if err != nil {
 			gamelog.L.Error().Str("faction id", server.RedMountainFactionID.String()).Err(err).Msg("Failed to re-calculate player rank in syndicate")
 		}
@@ -123,7 +116,7 @@ func calcSyndicatePlayerRank(factionID server.FactionID) error {
 
 	generalPlayerIDs := []string{}
 	for i := 0; i < topTwentyPercentCount; i++ {
-		generalPlayerIDs = append(generalPlayerIDs, playerAbilityKills[i].ID.String())
+		generalPlayerIDs = append(generalPlayerIDs, playerAbilityKills[i].ID)
 	}
 
 	// update general players
@@ -146,7 +139,7 @@ func calcSyndicatePlayerRank(factionID server.FactionID) error {
 				boiler.TableNames.UserStats,
 				qm.Rels(boiler.TableNames.UserStats, boiler.UserStatColumns.ID),
 				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.ID),
-				qm.Rels(boiler.TableNames.UserStats, boiler.UserStatColumns.KillCount),
+				qm.Rels(boiler.TableNames.UserStats, boiler.UserStatColumns.AbilityKillCount),
 			),
 		),
 	).UpdateAll(gamedb.StdConn, boiler.M{"rank": PlayerRankCorporal})
@@ -166,7 +159,7 @@ func calcSyndicatePlayerRank(factionID server.FactionID) error {
 				boiler.TableNames.UserStats,
 				qm.Rels(boiler.TableNames.UserStats, boiler.UserStatColumns.ID),
 				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.ID),
-				qm.Rels(boiler.TableNames.UserStats, boiler.UserStatColumns.KillCount),
+				qm.Rels(boiler.TableNames.UserStats, boiler.UserStatColumns.AbilityKillCount),
 			),
 		),
 	).UpdateAll(gamedb.StdConn, boiler.M{"rank": PlayerRankPrivate})
