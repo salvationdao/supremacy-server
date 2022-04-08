@@ -32,7 +32,7 @@ func CalcNextQueueStatus(length int64) QueueStatusResponse {
 	minQueueCost := queueLength.Div(decimal.NewFromFloat(4)).Mul(decimal.New(1, 18))
 
 	// calc queue cost
-	feeMultiplier := math.Log(float64(ql)/3.25) * 0.25
+	feeMultiplier := math.Log(float64(ql)) / 3.25 * 0.25
 	queueCost := queueLength.Mul(decimal.NewFromFloat(feeMultiplier)).Mul(decimal.New(1, 18))
 
 	// calc contract reward
