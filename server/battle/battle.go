@@ -310,7 +310,7 @@ func (btl *Battle) start() {
 	// set up the abilities for current battle
 
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle spoils")
-	btl.spoils = NewSpoilsOfWar(btl, 5*time.Second, 5*time.Second)
+	btl.spoils = NewSpoilsOfWar(btl, 30*time.Second, 30*time.Second)
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle abilities")
 	btl.storeAbilities(NewAbilitiesSystem(btl))
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle multipliers")
@@ -852,6 +852,20 @@ func (btl *Battle) endWarMachines(payload *BattleEndPayload) []*WarMachine {
 					Interface("boiler.MechStat", ms).
 					Msg("unable to update mech stat")
 			}
+
+			bqn, err := boiler.BattleQueueNotifications(boiler.BattleQueueNotificationWhere.MechID.EQ(bm.MechID), qm.OrderBy(boiler.BattleQueueNotificationColumns.SentAt, " DESC")).One(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Str("bm.MechID", bm.MechID).Err(err).Msg("failed to get BattleQueueNotifications")
+			} else {
+				if bqn.TelegramNotificationID.Valid {
+					// killed a war machine
+					msg := fmt.Sprintf("Your War machine %s is Victorious! \U0001F9BE ", w.Name)
+					err := btl.arena.telegram.Notify(bqn.TelegramNotificationID.String, msg)
+					if err != nil {
+						gamelog.L.Error().Str("bqn.TelegramNotificationID.String", bqn.TelegramNotificationID.String).Err(err).Msg("failed to send notification")
+					}
+				}
+			}
 		}
 
 		// update battle_mechs to indicate faction win
@@ -1215,6 +1229,18 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 		gamelog.L.Warn().Str("hash", dHash).Msg("can't match destroyed mech with battle state")
 		return
 	}
+	bqn, err := boiler.BattleQueueNotifications(boiler.BattleQueueNotificationWhere.MechID.EQ(destroyedWarMachine.ID), qm.OrderBy(boiler.BattleQueueNotificationColumns.SentAt, " DESC")).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Str("destroyedWarMachine.ID", destroyedWarMachine.ID).Err(err).Msg("failed to get BattleQueueNotifications")
+	}
+	if bqn != nil && bqn.TelegramNotificationID.Valid {
+		// killed a war machine
+		msg := fmt.Sprintf("Your War machine %s has been destroyed ☠️", destroyedWarMachine.Name)
+		err := btl.arena.telegram.Notify(bqn.TelegramNotificationID.String, msg)
+		if err != nil {
+			gamelog.L.Error().Str("bqn.TelegramNotificationID.String", bqn.TelegramNotificationID.String).Err(err).Msg("failed to send telegram notification")
+		}
+	}
 
 	var killedByUser *UserBrief
 	var killByWarMachine *WarMachine
@@ -1233,6 +1259,19 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 					err = db.FactionAddMechKillCount(killByWarMachine.FactionID)
 					if err != nil {
 						gamelog.L.Error().Str("faction_id", killByWarMachine.FactionID).Err(err).Msg("failed to update faction mech kill count")
+					}
+					bqn, err := boiler.BattleQueueNotifications(boiler.BattleQueueNotificationWhere.MechID.EQ(wm.ID), qm.OrderBy(boiler.BattleQueueNotificationColumns.SentAt, " DESC")).One(gamedb.StdConn)
+					if err != nil {
+						gamelog.L.Error().Str("wm.ID", wm.ID).Err(err).Msg("failed to get BattleQueueNotifications")
+					} else {
+						if bqn.TelegramNotificationID.Valid {
+							// killed a war machine
+							msg := fmt.Sprintf("Your War machine is %s is destroyed.", destroyedWarMachine.Name)
+							err := btl.arena.telegram.Notify(bqn.TelegramNotificationID.String, msg)
+							if err != nil {
+								gamelog.L.Error().Str("bqn.TelegramNotificationID.String", bqn.TelegramNotificationID.String).Err(err).Msg("failed to send notification")
+							}
+						}
 					}
 				}
 			}

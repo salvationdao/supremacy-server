@@ -169,7 +169,7 @@ func (sow *SpoilsOfWar) Drip() error {
 		return err
 	}
 
-	dripAllocations := 120
+	dripAllocations := 20
 
 	totalAmount := decimal.NewFromInt(0)
 	for _, warchest := range warchests {
