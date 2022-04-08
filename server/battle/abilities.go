@@ -604,12 +604,12 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 
 						// generate new offering id for current ability
 						ability.OfferingID = uuid.Must(uuid.NewV4())
-					}
 
-					// broadcast the new price
-					payload := []byte{byte(GameAbilityProgressTick)}
-					payload = append(payload, []byte(fmt.Sprintf("%s_%s_%s_%s", ability.Identity, ability.SupsCost.String(), ability.CurrentSups.String(), triggeredFlag))...)
-					as.battle().arena.messageBus.SendBinary(messagebus.BusKey(fmt.Sprintf("%s,%s", HubKeyAbilityPriceUpdated, ability.Identity)), payload)
+						// only broadcast if the ability is triggered
+						payload := []byte{byte(GameAbilityProgressTick)}
+						payload = append(payload, []byte(fmt.Sprintf("%s_%s_%s_%s", ability.Identity, ability.SupsCost.String(), ability.CurrentSups.String(), triggeredFlag))...)
+						as.battle().arena.messageBus.SendBinary(messagebus.BusKey(fmt.Sprintf("%s,%s", HubKeyAbilityPriceUpdated, ability.Identity)), payload)
+					}
 				}
 			}
 
