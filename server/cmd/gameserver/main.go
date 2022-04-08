@@ -21,6 +21,7 @@ import (
 
 	"server/rpcclient"
 
+	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
 	zerologger "github.com/ninja-syndicate/hub/ext/zerolog"
 	"github.com/pemistahl/lingua-go"
 	"nhooyr.io/websocket"
@@ -352,7 +353,7 @@ func main() {
 						ClientOfflineFn: func(cl *hub.Client) {
 							messageBus.UnsubAll(cl)
 						},
-						Tracer: &api.HubTracer{},
+						Tracer: DatadogTracer.New(),
 					})
 
 					// initialise telegram bot
