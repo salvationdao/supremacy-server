@@ -289,6 +289,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 			}
 
 			bqn.TelegramPlayerID = null.StringFrom(newTelegramPlayer.ID)
+			shortcode = newTelegramPlayer
 
 		}
 
