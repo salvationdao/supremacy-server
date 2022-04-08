@@ -130,13 +130,13 @@ func (ap *ActivePlayers) CheckExpiry() {
 		).One(gamedb.StdConn)
 		if err != nil {
 			gamelog.L.Error().Str("player id", playerID).Err(err).Msg("Failed to get player active log")
-		}
-
-		// update player active log
-		pvl.InactiveAt = null.TimeFrom(time.Now())
-		_, err = pvl.Update(gamedb.StdConn, boil.Whitelist(boiler.PlayerActiveLogColumns.InactiveAt))
-		if err != nil {
-			gamelog.L.Error().Str("player id", playerID).Err(err).Msg("Failed update player inactive log")
+		} else {
+			// update player active log
+			pvl.InactiveAt = null.TimeFrom(time.Now())
+			_, err = pvl.Update(gamedb.StdConn, boil.Whitelist(boiler.PlayerActiveLogColumns.InactiveAt))
+			if err != nil {
+				gamelog.L.Error().Str("player id", playerID).Err(err).Msg("Failed update player inactive log")
+			}
 		}
 
 		delete(ap.Map, playerID)

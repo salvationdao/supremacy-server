@@ -26,6 +26,7 @@ import (
 	"github.com/ninja-software/tickle"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/auth"
+	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/pemistahl/lingua-go"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -152,6 +153,7 @@ func NewAPI(
 	api.Routes.Use(middleware.RealIP)
 	api.Routes.Use(middleware.Logger)
 	api.Routes.Use(cors.New(cors.Options{AllowedOrigins: []string{"*"}}).Handler)
+	api.Routes.Use(DatadogTracer.Middleware())
 
 	api.Routes.Handle("/metrics", promhttp.Handler())
 	api.Routes.Route("/api", func(r chi.Router) {
@@ -170,10 +172,9 @@ func NewAPI(
 		//TODO ALEX reimplement handlers
 
 		r.Get("/blobs/{id}", WithError(api.IconDisplay))
-
-		r.Post("/video_server", WithToken(config.ServerStreamKey, WithError((api.CreateStreamHandler))))
-		r.Get("/video_server", WithToken(config.ServerStreamKey, WithError((api.GetStreamsHandler))))
-		r.Delete("/video_server", WithToken(config.ServerStreamKey, WithError((api.DeleteStreamHandler))))
+		r.Post("/video_server", WithToken(config.ServerStreamKey, WithError(api.CreateStreamHandler)))
+		r.Get("/video_server", WithToken(config.ServerStreamKey, WithError(api.GetStreamsHandler)))
+		r.Delete("/video_server", WithToken(config.ServerStreamKey, WithError(api.DeleteStreamHandler)))
 		r.Post("/close_stream", WithToken(config.ServerStreamKey, WithError(api.CreateStreamCloseHandler)))
 		r.Get("/faction_data", WithError(api.GetFactionData))
 		r.Get("/trigger/ability_file_upload", WithError(api.GetFactionData))

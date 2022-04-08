@@ -152,20 +152,51 @@ func (pvt *PunishVoteTracker) CurrentEligiblePlayers() map[string]bool {
 
 	// get active player with positive ability kill count
 	if len(dbSearchList) > 0 {
-		us, err := boiler.UserStats(
-			qm.Select(
-				boiler.UserStatColumns.ID,
-				boiler.UserStatColumns.KillCount,
-			),
-			boiler.UserStatWhere.KillCount.GT(0),
+		uss, err := boiler.UserStats(
 			boiler.UserStatWhere.ID.IN(dbSearchList),
 		).All(gamedb.StdConn)
 		if err != nil {
-			gamelog.L.Error().Str("punish vote id", pvt.CurrentPunishVote.ID).Err(err).Msg("Failed to get player kill count from db")
+			gamelog.L.Error().Str("punish vote id", pvt.CurrentPunishVote.ID).Err(err).Msg("Failed to get player stat from db")
 		}
-		for _, player := range us {
+
+		secondCheckList := []string{}
+		for _, player := range uss {
+			// add player list to second check list
+			if player.AbilityKillCount < 100 {
+				secondCheckList = append(secondCheckList, player.ID)
+				continue
+			}
+			// player is eligible to vote if they have more than 100 kills in lifetime
 			result[player.ID] = true
 		}
+
+		if len(secondCheckList) > 0 {
+			// check last 7 days kills count
+			paks, err := boiler.PlayerKillLogs(
+				boiler.PlayerKillLogWhere.PlayerID.IN(secondCheckList),
+				boiler.PlayerKillLogWhere.CreatedAt.GT(time.Now().AddDate(0, 0, -7)),
+			).All(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Str("punish vote id", pvt.CurrentPunishVote.ID).Err(err).Msg("Failed to get player kill count from db")
+			}
+
+			for _, pak := range paks {
+				killCount := 0
+				for _, pak := range paks {
+					if !pak.IsTeamKill {
+						killCount++
+						continue
+					}
+					killCount--
+				}
+
+				// player is eligible to vote if they have more than 5 kills in last 7 days
+				if killCount >= 5 {
+					result[pak.PlayerID] = true
+				}
+			}
+		}
+
 	}
 
 	// fill the list with voted players

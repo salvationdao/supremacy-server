@@ -2,12 +2,15 @@ package api
 
 import (
 	"context"
-	"github.com/go-chi/chi"
-	"github.com/rs/zerolog"
 	"net/http"
 	"server"
 	"server/battle"
 	"server/db"
+
+	"github.com/go-chi/chi"
+	"github.com/rs/zerolog"
+
+	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
 )
 
 // CheckController holds connection data for handlers
@@ -37,11 +40,14 @@ func (c *CheckController) Check(w http.ResponseWriter, r *http.Request) {
 	err := check(context.Background(), c.Conn)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		_, err = w.Write([]byte(err.Error()))
-		if err != nil {
+		_, wErr := w.Write([]byte(err.Error()))
+		if wErr != nil {
+			DatadogTracer.HttpFinishSpan(r.Context(), http.StatusInternalServerError, wErr)
 			c.Log.Err(err).Msg("failed to send")
-			return
+		} else {
+			DatadogTracer.HttpFinishSpan(r.Context(), http.StatusInternalServerError, err)
 		}
+		return
 	}
 
 	//// get current battle
@@ -91,7 +97,7 @@ func (c *CheckController) Check(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		c.Log.Err(err).Msg("failed to send")
 	}
-
+	DatadogTracer.HttpFinishSpan(r.Context(), http.StatusOK, nil)
 }
 
 // CheckGame return a game stat check
@@ -99,14 +105,19 @@ func (c *CheckController) CheckGame(w http.ResponseWriter, r *http.Request) {
 	err := check(r.Context(), c.Conn)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		_, err = w.Write([]byte(err.Error()))
-		if err != nil {
+		_, wErr := w.Write([]byte(err.Error()))
+		if wErr != nil {
 			c.Log.Err(err).Msg("failed to send")
-			return
+			DatadogTracer.HttpFinishSpan(r.Context(), http.StatusInternalServerError, wErr)
+		} else {
+			DatadogTracer.HttpFinishSpan(r.Context(), http.StatusInternalServerError, err)
 		}
+		return
 	}
 	_, err = w.Write([]byte("ok"))
 	if err != nil {
 		c.Log.Err(err).Msg("failed to send")
+		DatadogTracer.HttpFinishSpan(r.Context(), http.StatusInternalServerError, err)
 	}
+	DatadogTracer.HttpFinishSpan(r.Context(), http.StatusOK, nil)
 }

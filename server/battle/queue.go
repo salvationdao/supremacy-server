@@ -197,7 +197,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		Description:          "Queued mech to battle arena",
 		NotSafe:              true,
 	})
-	if err != nil {
+	if err != nil || supTransactionID == "TRANSACTION_FAILED" {
 		// Abort transaction if charge fails
 		gamelog.L.Error().Str("txID", supTransactionID).Interface("mechID", mechID).Interface("factionID", factionID.String()).Err(err).Msg("unable to charge user for insert mech into queue")
 		return terror.Error(err, "Unable to process queue fee,  check your balance and try again.")
