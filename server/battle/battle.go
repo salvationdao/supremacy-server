@@ -1261,7 +1261,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 						gamelog.L.Error().Str("faction_id", killByWarMachine.FactionID).Err(err).Msg("failed to update faction mech kill count")
 					}
 					bqn, err := boiler.BattleQueueNotifications(boiler.BattleQueueNotificationWhere.MechID.EQ(wm.ID), qm.OrderBy(boiler.BattleQueueNotificationColumns.SentAt+" DESC")).One(gamedb.StdConn)
-					if err != nil {
+					if err != nil && !errors.Is(err, sql.ErrNoRows) {
 						gamelog.L.Error().Str("wm.ID", wm.ID).Err(err).Msg("failed to get BattleQueueNotifications")
 					} else {
 						if bqn.TelegramNotificationID.Valid {
