@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/ninja-software/terror/v2"
+	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
 )
 
 type ErrorMessage string
@@ -31,15 +32,18 @@ func WithError(next func(w http.ResponseWriter, r *http.Request) (int, error)) f
 		if err != nil {
 			terror.Echo(err)
 			errObj := &ErrorObject{Message: err.Error()}
-			jsonErr, err := json.Marshal(errObj)
-			if err != nil {
-				terror.Echo(err)
+			jsonErr, wErr := json.Marshal(errObj)
+			if wErr != nil {
+				DatadogTracer.HttpFinishSpan(r.Context(), code, wErr)
+				terror.Echo(wErr)
 				http.Error(w, `{"message":"JSON failed, please contact IT.","error_code":"00001"}`, code)
 				return
 			}
+			DatadogTracer.HttpFinishSpan(r.Context(), code, err)
 			http.Error(w, string(jsonErr), code)
 			return
 		}
+		DatadogTracer.HttpFinishSpan(r.Context(), code, nil)
 	}
 	return fn
 }

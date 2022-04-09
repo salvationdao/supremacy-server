@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"server"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/log_helpers"
@@ -49,18 +48,4 @@ func (gc *GameControllerWS) AISpawnedSubscribeHandler(ctx context.Context, wsc *
 
 	busKey := messagebus.BusKey(HubKeyAISpawned)
 	return req.TransactionID, busKey, nil
-}
-
-type BattleAbilityEventRecord struct {
-	Ability               *server.AbilityBrief    `json:"ability"`
-	TriggeredByUser       *server.UserBrief       `json:"triggeredByUser,omitempty"`
-	TriggeredOnCellX      *int                    `json:"x,omitempty"`
-	TriggeredOnCellY      *int                    `json:"y,omitempty"`
-	TriggeredOnWarMachine *server.WarMachineBrief `json:"triggeredOnWarMachine,omitempty"`
-}
-
-type WarMachineDestroyedEventRecord struct {
-	DestroyedWarMachine *server.WarMachineBrief `json:"destroyedWarMachine"`
-	KilledByWarMachine  *server.WarMachineBrief `json:"killedByWarMachineID,omitempty"`
-	KilledBy            string                  `json:"killedBy"`
 }

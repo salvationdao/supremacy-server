@@ -337,9 +337,9 @@ func (id *FactionID) Scan(src interface{}) error {
 }
 
 type PlayerAbilityKills struct {
-	ID        uuid.UUID `json:"id" db:"id"`
-	FactionID uuid.UUID `json:"faction_id" db:"faction_id"`
-	KillCount int64     `json:"kill_count" db:"kill_count"`
+	ID        string `json:"id" db:"id"`
+	FactionID string `json:"faction_id" db:"faction_id"`
+	KillCount int64  `json:"kill_count" db:"kill_count"`
 }
 
 // GameAbilityID aliases uuid.UUID.

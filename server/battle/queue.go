@@ -32,7 +32,7 @@ func CalcNextQueueStatus(length int64) QueueStatusResponse {
 	minQueueCost := queueLength.Div(decimal.NewFromFloat(4)).Mul(decimal.New(1, 18))
 
 	// calc queue cost
-	feeMultiplier := math.Log(float64(ql)/3.25) * 0.25
+	feeMultiplier := math.Log(float64(ql)) / 3.15 * 0.25
 	queueCost := queueLength.Mul(decimal.NewFromFloat(feeMultiplier)).Mul(decimal.New(1, 18))
 
 	// calc contract reward
@@ -197,7 +197,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		Description:          "Queued mech to battle arena",
 		NotSafe:              true,
 	})
-	if err != nil {
+	if err != nil || supTransactionID == "TRANSACTION_FAILED" {
 		// Abort transaction if charge fails
 		gamelog.L.Error().Str("txID", supTransactionID).Interface("mechID", mechID).Interface("factionID", factionID.String()).Err(err).Msg("unable to charge user for insert mech into queue")
 		return terror.Error(err, "Unable to process queue fee,  check your balance and try again.")
@@ -514,7 +514,7 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 			// Refund user queue fee
 			queueRefundTransactionID, err := arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
 				Amount:               originalQueueCost.StringFixed(18),
-				FromUserID:           uuid.Must(uuid.FromString(factionAccountID)),
+				FromUserID:           SupremacyBattleUserID,
 				ToUserID:             ownerID,
 				TransactionReference: server.TransactionReference(fmt.Sprintf("refund_war_machine_queueing_fee|%s|%d", msg.Payload.AssetHash, time.Now().UnixNano())),
 				Group:                string(server.TransactionGroupBattle),
