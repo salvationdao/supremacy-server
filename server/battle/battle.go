@@ -670,7 +670,7 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 		).One(gamedb.StdConn)
 
 		if err != nil && errors.Is(err, sql.ErrNoRows) {
-			gamelog.L.Warn().
+			gamelog.L.Error().
 				Str("Battle ID", btl.ID).
 				Str("Mech ID", wm.ID).
 				Err(err).
@@ -692,7 +692,6 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 			gamelog.L.Error().
 				Str("Battle ID", btl.ID).
 				Str("faction ID", wm.FactionID).
-				Err(err).
 				Msg("unable to get hard coded syndicate player ID from faction ID")
 		} else {
 			//do contract payout for winning mech
@@ -703,7 +702,6 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 				Str("Player ID", wm.OwnedByID).
 				Str("Contract ID", contract.ID).
 				Str("Amount", contract.ContractReward.StringFixed(0)).
-				Err(err).
 				Msg("paying out mech winnings from contract reward")
 
 			factID := uuid.Must(uuid.FromString(factionAccountID))

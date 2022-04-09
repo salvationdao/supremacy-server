@@ -464,11 +464,7 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 		return terror.Error(fmt.Errorf("cannot remove war machine from queue when it is in battle"), "You cannot remove war machines currently in battle.")
 	}
 
-	canxq := `UPDATE battle_contracts SET cancelled = true WHERE id = (SELECT battle_contract_id FROM battle_queue WHERE mech_id = $1)`
-	_, err = gamedb.StdConn.Exec(canxq, mechID.String())
-	if err != nil {
-		gamelog.L.Warn().Err(err).Msg("unable to cancel battle contract. mech has left queue though.")
-	}
+
 
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
@@ -477,8 +473,14 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 	}
 	defer tx.Rollback()
 
+	canxq := `UPDATE battle_contracts SET cancelled = true WHERE id = (SELECT battle_contract_id FROM battle_queue WHERE mech_id = $1)`
+	_, err = tx.Exec(canxq, mechID.String())
+	if err != nil {
+		gamelog.L.Warn().Err(err).Msg("unable to cancel battle contract. mech has left queue though.")
+	}
+
 	// Remove from queue
-	bq, err := boiler.BattleQueues(boiler.BattleQueueWhere.MechID.EQ(mechID.String())).One(gamedb.StdConn)
+	bq, err := boiler.BattleQueues(boiler.BattleQueueWhere.MechID.EQ(mechID.String())).One(tx)
 	if err != nil {
 		gamelog.L.Error().
 			Err(err).
@@ -487,14 +489,6 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 		return terror.Error(err, "Issue leaving queue, try again or contact support.")
 	}
 
-	factionAccountID, ok := server.FactionUsers[factionID.String()]
-	if !ok {
-		gamelog.L.Error().
-			Str("mech ID", mech.ID).
-			Str("faction ID", factionID.String()).
-			Err(err).
-			Msg("unable to get hard coded syndicate player ID from faction ID")
-	}
 
 	// refund queue fee if not already refunded
 	if !bq.QueueFeeTXIDRefund.Valid {
@@ -587,6 +581,14 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 			}
 			bq.QueueNotificationFeeTXIDRefund = null.StringFrom(queueNotificationRefundTransactionID)
 		} else {
+			factionAccountID, ok := server.FactionUsers[factionID.String()]
+			if !ok {
+				gamelog.L.Error().
+					Str("mech ID", mech.ID).
+					Str("faction ID", factionID.String()).
+					Msg("unable to get hard coded syndicate player ID from faction ID")
+				return terror.Error(fmt.Errorf("unable to get hard coded syndicate player ID from faction ID"), "Unable to process refund, try again or contact support.")
+			}
 			// TODO: Eventually all battle queues will have transaction ids to refund against, but legency queue will not. So keeping below until all legacy queues have passed
 			notifyCost := originalQueueCost.Mul(decimal.NewFromFloat(0.1))
 			queueNotificationRefundTransactionID, err := arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
