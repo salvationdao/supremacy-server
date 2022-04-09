@@ -802,6 +802,10 @@ func (arena *Arena) AssetQueueStatusSubscribeHandler(ctx context.Context, wsc *h
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
+	if req.Payload.AssetHash == "" {
+		return "", "", terror.Warn(fmt.error("empty asset hash"), "Empty asset data, please try again or contact support.")
+	}
+
 	mechID, err := db.MechIDFromHash(req.Payload.AssetHash)
 	if err != nil {
 		gamelog.L.Error().Str("hash", req.Payload.AssetHash).Err(err).Msg("unable to retrieve mech id from hash")
