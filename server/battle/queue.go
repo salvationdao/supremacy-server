@@ -32,7 +32,7 @@ func CalcNextQueueStatus(length int64) QueueStatusResponse {
 	minQueueCost := queueLength.Div(decimal.NewFromFloat(4)).Mul(decimal.New(1, 18))
 
 	// calc queue cost
-	feeMultiplier := math.Log(float64(ql)) / 3.15 * 0.25
+	feeMultiplier := math.Log(float64(ql)) / 4 * 0.25
 	queueCost := queueLength.Mul(decimal.NewFromFloat(feeMultiplier)).Mul(decimal.New(1, 18))
 
 	// calc contract reward
@@ -833,7 +833,7 @@ func (arena *Arena) AssetQueueStatusSubscribeHandler(ctx context.Context, wsc *h
 	}
 
 	if req.Payload.AssetHash == "" {
-		return "", "", terror.Warn(fmt.error("empty asset hash"), "Empty asset data, please try again or contact support.")
+		return "", "", terror.Warn(fmt.Errorf("empty asset hash"), "Empty asset data, please try again or contact support.")
 	}
 
 	mechID, err := db.MechIDFromHash(req.Payload.AssetHash)
