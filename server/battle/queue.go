@@ -500,13 +500,43 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 	if !bq.QueueFeeTXIDRefund.Valid {
 		// check if they have a transaction ID
 		if bq.QueueFeeTXID.Valid && bq.QueueFeeTXID.String != "" {
+			factionAccUUID, _ := uuid.FromString(factionAccountID)
+			syndicateBalance := arena.RPCClient.UserBalanceGet(factionAccUUID)
+
+			if syndicateBalance.LessThanOrEqual(*originalQueueCost) {
+				txid, err := arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
+					FromUserID:           uuid.UUID(server.XsynTreasuryUserID),
+					ToUserID:             factionAccUUID,
+					Amount:               originalQueueCost.StringFixed(0),
+					TransactionReference: server.TransactionReference(fmt.Sprintf("queue_fee_reversal_shortfall|%s|%d", bq.QueueFeeTXID.String, time.Now().UnixNano())),
+					Group:                string(server.TransactionGroupBattle),
+					SubGroup:             "Queue",
+					Description:          "Queue reversal shortfall",
+					NotSafe:              false,
+				})
+				if err != nil {
+					gamelog.L.Error().
+						Str("Faction ID", factionAccountID).
+						Str("Amount", originalQueueCost.StringFixed(0)).
+						Err(err).
+						Msg("Could not transfer money from treasury into syndicate account!!")
+					return terror.Error(err, "Unable to remove your mech from the queue. Please contact support.")
+				}
+				gamelog.L.Warn().
+					Str("Faction ID", factionAccountID).
+					Str("Amount", originalQueueCost.StringFixed(0)).
+					Str("TXID", txid).
+					Err(err).
+					Msg("Had to transfer funds to the syndicate account")
+			}
+
 			queueRefundTransactionID, err := arena.RPCClient.RefundSupsMessage(bq.QueueFeeTXID.String)
 			if err != nil {
 				gamelog.L.Error().
 					Str("queue_transaction_id", bq.QueueFeeTXID.String).
 					Err(err).
 					Msg("failed to refund users queue fee")
-				return terror.Error(err, "Unable to process refund, try again or contact support.")
+				return terror.Error(err, "Unable to remove your mech from the queue, please try again in five minutes or contact support.")
 			}
 			bq.QueueFeeTXIDRefund = null.StringFrom(queueRefundTransactionID)
 		} else {
