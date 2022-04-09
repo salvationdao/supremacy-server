@@ -54,8 +54,8 @@ build: setup-git
 .PHONY: tools
 tools: go-mod-tidy
 	@mkdir -p $(BIN)
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.43.0 go get -u golang.org/x/tools/cmd/goimports
-	go get -u golang.org/x/tools/cmd/goimports
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.43.0 go install golang.org/x/tools/cmd/goimports@latest
+	go install golang.org/x/tools/cmd/goimports@latest
 	cd $(SERVER) && go generate -tags tools ./tools/...
 
 .PHONY: go-mod-tidy
