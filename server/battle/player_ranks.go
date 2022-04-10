@@ -8,8 +8,10 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"sort"
 	"time"
 
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/ninja-software/terror/v2"
@@ -115,7 +117,7 @@ func calcSyndicatePlayerRank(factionID server.FactionID) error {
 	}
 
 	// sort the slice
-	sort.Slice(playerAbilityKills, func(i, j int) bool { return playerAbilityKills[i].killCount > playerAbilityKills[j].killCount })
+	sort.Slice(playerAbilityKills, func(i, j int) bool { return playerAbilityKills[i].KillCount > playerAbilityKills[j].KillCount })
 
 	generalPlayerIDs := []string{}
 	for i := 0; i < topTwentyPercentCount; i++ {
