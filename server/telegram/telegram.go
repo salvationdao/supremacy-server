@@ -79,7 +79,7 @@ func (t *Telegram) RunTelegram(bot *tele.Bot) error {
 			boiler.TelegramPlayerWhere.TelegramID.IsNull(),
 			boiler.TelegramPlayerWhere.Shortcode.EQ(strings.ToLower(shortcode))).One(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			gamelog.L.Error().Err(err).Msg("unable to get notification by shortcode")
+			gamelog.L.Error().Err(err).Msg("unable to get player by shortcode")
 			return c.Send("Unable to find shortcode, you may have entered your shortcode too fast, please try again or contact support.")
 		}
 
@@ -110,7 +110,7 @@ func (t *Telegram) RunTelegram(bot *tele.Bot) error {
 
 		}
 
-		reply = "Shortcode registered! You will be notified when your war machine is nearing battle"
+		reply = "Registered Successfully! You will be notified when your war machine is nearing battle"
 		go t.RegisterCallback(telegramPlayer.PlayerID, true)
 		return c.Send(reply)
 	})

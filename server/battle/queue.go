@@ -317,7 +317,17 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 
 		// if telegram notifications enabled and registered
 		if msg.Payload.EnableTelegramNotifications && !telegramUnregistered {
+			wmName := mech.Label
+			if mech.Name != "" {
+				wmName = mech.Name
+			}
 			bqn.TelegramPlayerID = null.StringFrom(telegramPlayer.ID)
+			err := arena.telegram.Notify2(telegramPlayer.TelegramID.Int64, fmt.Sprintf("🦾 Your War Machine (%[1]s) has been deployed, you will be notified when it is nearing battle.", wmName))
+			if err != nil {
+				gamelog.L.Error().
+					Err(err).Msg("unable to send telegram message (war machine deployed)")
+				return terror.Error(err, "Unable send telegram message")
+			}
 		}
 
 		err = bqn.Insert(tx, boil.Infer())
