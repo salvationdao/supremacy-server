@@ -83,6 +83,18 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		return terror.Error(err)
 	}
 
+	// check mobile phone, if player required notifyed through mobile sms
+	if msg.Payload.EnablePushNotifications && msg.Payload.MobileNumber != "" {
+		mobileNumber, err := arena.sms.Lookup(msg.Payload.MobileNumber)
+		if err != nil {
+			gamelog.L.Warn().Str("mobile number", msg.Payload.MobileNumber).Msg("Failed to lookup mobile number through twilio api")
+			return terror.Error(err)
+		}
+
+		// set the verifyed mobile number
+		msg.Payload.MobileNumber = mobileNumber
+	}
+
 	mechID, err := db.MechIDFromHash(msg.Payload.AssetHash)
 	if err != nil {
 		gamelog.L.Error().Str("hash", msg.Payload.AssetHash).Err(err).Msg("unable to retrieve mech id from hash")
