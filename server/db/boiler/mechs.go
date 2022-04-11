@@ -44,6 +44,7 @@ type Mech struct {
 	CreatedAt        time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	LargeImageURL    string      `boiler:"large_image_url" boil:"large_image_url" json:"large_image_url" toml:"large_image_url" yaml:"large_image_url"`
 	CollectionSlug   null.String `boiler:"collection_slug" boil:"collection_slug" json:"collection_slug,omitempty" toml:"collection_slug" yaml:"collection_slug,omitempty"`
+	IsInsured        bool        `boiler:"is_insured" boil:"is_insured" json:"is_insured" toml:"is_insured" yaml:"is_insured"`
 
 	R *mechR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L mechL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -71,6 +72,7 @@ var MechColumns = struct {
 	CreatedAt        string
 	LargeImageURL    string
 	CollectionSlug   string
+	IsInsured        string
 }{
 	ID:               "id",
 	OwnerID:          "owner_id",
@@ -93,6 +95,7 @@ var MechColumns = struct {
 	CreatedAt:        "created_at",
 	LargeImageURL:    "large_image_url",
 	CollectionSlug:   "collection_slug",
+	IsInsured:        "is_insured",
 }
 
 var MechTableColumns = struct {
@@ -117,6 +120,7 @@ var MechTableColumns = struct {
 	CreatedAt        string
 	LargeImageURL    string
 	CollectionSlug   string
+	IsInsured        string
 }{
 	ID:               "mechs.id",
 	OwnerID:          "mechs.owner_id",
@@ -139,6 +143,7 @@ var MechTableColumns = struct {
 	CreatedAt:        "mechs.created_at",
 	LargeImageURL:    "mechs.large_image_url",
 	CollectionSlug:   "mechs.collection_slug",
+	IsInsured:        "mechs.is_insured",
 }
 
 // Generated where
@@ -165,6 +170,7 @@ var MechWhere = struct {
 	CreatedAt        whereHelpertime_Time
 	LargeImageURL    whereHelperstring
 	CollectionSlug   whereHelpernull_String
+	IsInsured        whereHelperbool
 }{
 	ID:               whereHelperstring{field: "\"mechs\".\"id\""},
 	OwnerID:          whereHelperstring{field: "\"mechs\".\"owner_id\""},
@@ -187,6 +193,7 @@ var MechWhere = struct {
 	CreatedAt:        whereHelpertime_Time{field: "\"mechs\".\"created_at\""},
 	LargeImageURL:    whereHelperstring{field: "\"mechs\".\"large_image_url\""},
 	CollectionSlug:   whereHelpernull_String{field: "\"mechs\".\"collection_slug\""},
+	IsInsured:        whereHelperbool{field: "\"mechs\".\"is_insured\""},
 }
 
 // MechRels is where relationship names are stored.
@@ -249,9 +256,9 @@ func (*mechR) NewStruct() *mechR {
 type mechL struct{}
 
 var (
-	mechAllColumns            = []string{"id", "owner_id", "template_id", "chassis_id", "external_token_id", "tier", "is_default", "image_url", "animation_url", "card_animation_url", "avatar_url", "hash", "name", "label", "slug", "asset_type", "deleted_at", "updated_at", "created_at", "large_image_url", "collection_slug"}
+	mechAllColumns            = []string{"id", "owner_id", "template_id", "chassis_id", "external_token_id", "tier", "is_default", "image_url", "animation_url", "card_animation_url", "avatar_url", "hash", "name", "label", "slug", "asset_type", "deleted_at", "updated_at", "created_at", "large_image_url", "collection_slug", "is_insured"}
 	mechColumnsWithoutDefault = []string{"owner_id", "template_id", "chassis_id", "external_token_id", "tier", "image_url", "animation_url", "card_animation_url", "avatar_url", "hash", "name", "label", "slug", "asset_type", "large_image_url"}
-	mechColumnsWithDefault    = []string{"id", "is_default", "deleted_at", "updated_at", "created_at", "collection_slug"}
+	mechColumnsWithDefault    = []string{"id", "is_default", "deleted_at", "updated_at", "created_at", "collection_slug", "is_insured"}
 	mechPrimaryKeyColumns     = []string{"id"}
 	mechGeneratedColumns      = []string{}
 )
