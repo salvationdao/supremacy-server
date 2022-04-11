@@ -24,6 +24,7 @@ require (
 )
 
 require (
+	github.com/DataDog/gostackparse v0.5.0
 	github.com/friendsofgo/errors v0.9.2
 	github.com/gosimple/slug v1.12.0
 	github.com/h2non/filetype v1.1.3
