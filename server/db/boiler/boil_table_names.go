@@ -35,6 +35,7 @@ var TableNames = struct {
 	Chassis                                            string
 	ChassisModules                                     string
 	ChassisWeapons                                     string
+	ChatHistory                                        string
 	Config                                             string
 	FactionStats                                       string
 	Factions                                           string
@@ -42,13 +43,22 @@ var TableNames = struct {
 	GameMaps                                           string
 	GlobalAnnouncements                                string
 	IssuedContractRewards                              string
+	KV                                                 string
+	Languages                                          string
 	MechStats                                          string
 	Mechs                                              string
 	Modules                                            string
 	Multipliers                                        string
 	PendingTransactions                                string
+	PlayerActiveLogs                                   string
+	PlayerKillLog                                      string
+	PlayerLanguages                                    string
 	PlayerPreferences                                  string
 	Players                                            string
+	PlayersPunishVotes                                 string
+	PunishOptions                                      string
+	PunishVotes                                        string
+	PunishedPlayers                                    string
 	SchemaMigrations                                   string
 	SpoilsOfWar                                        string
 	StreamList                                         string
@@ -90,6 +100,7 @@ var TableNames = struct {
 	Chassis:                          "chassis",
 	ChassisModules:                   "chassis_modules",
 	ChassisWeapons:                   "chassis_weapons",
+	ChatHistory:                      "chat_history",
 	Config:                           "config",
 	FactionStats:                     "faction_stats",
 	Factions:                         "factions",
@@ -97,13 +108,22 @@ var TableNames = struct {
 	GameMaps:                         "game_maps",
 	GlobalAnnouncements:              "global_announcements",
 	IssuedContractRewards:            "issued_contract_rewards",
+	KV:                               "kv",
+	Languages:                        "languages",
 	MechStats:                        "mech_stats",
 	Mechs:                            "mechs",
 	Modules:                          "modules",
 	Multipliers:                      "multipliers",
 	PendingTransactions:              "pending_transactions",
+	PlayerActiveLogs:                 "player_active_logs",
+	PlayerKillLog:                    "player_kill_log",
+	PlayerLanguages:                  "player_languages",
 	PlayerPreferences:                "player_preferences",
 	Players:                          "players",
+	PlayersPunishVotes:               "players_punish_votes",
+	PunishOptions:                    "punish_options",
+	PunishVotes:                      "punish_votes",
+	PunishedPlayers:                  "punished_players",
 	SchemaMigrations:                 "schema_migrations",
 	SpoilsOfWar:                      "spoils_of_war",
 	StreamList:                       "stream_list",

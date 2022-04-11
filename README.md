@@ -19,6 +19,7 @@ export GOPRIVATE="github.com/ninja-software/*,github.com/ninja-syndicate/*"
 export GAMESERVER_DATABASE_PORT= - postgres database port
 export GAMESERVER_TWITCH_EXTENSION_SECRET="" - in your twitch dev console
 export GAMESERVER_GAMECLIENT_BUILD_NO="" - you must set this to the current build number for prod
+export GAMESERVER_TELEGRAM_BOT_TOKEN= (in 1Password)
 ```
 
 ### For spinup

@@ -54,15 +54,23 @@ type TriggerDetails struct {
 	FactionIDs []string
 }
 
-func (ms *MultiplierSystem) PlayerMultipliers(playerID uuid.UUID, battleNumberAdjust int) ([]*Multiplier, string) {
+func PlayerMultipliers(playerID uuid.UUID, battleSeconds decimal.Decimal, specificBattleNumber ...int) ([]*Multiplier, string) {
 	var total decimal.Decimal
 
-	usermultipliers, err := boiler.Multipliers(
-		qm.InnerJoin("user_multipliers um on um.multiplier_id = multipliers.id"),
-		qm.Where(`um.player_id = ?`, playerID.String()),
-		qm.And(`um.until_battle_number > ?`, ms.battle.BattleNumber+battleNumberAdjust),
-	).All(gamedb.StdConn)
+	queries := []qm.QueryMod{
+		boiler.UserMultiplierWhere.PlayerID.EQ(playerID.String()),
+		boiler.UserMultiplierWhere.ExpiresAtBattleSeconds.GTE(battleSeconds),
+		qm.Load(
+			boiler.UserMultiplierRels.Multiplier,
+		),
+	}
 
+	// only obtaining multiplier on specific battle
+	if specificBattleNumber != nil && len(specificBattleNumber) > 0 {
+		queries = append(queries, boiler.UserMultiplierWhere.FromBattleNumber.EQ(specificBattleNumber[0]))
+	}
+
+	usermultipliers, err := boiler.UserMultipliers(queries...).All(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Err(err).Msgf("unable to retrieve player multipliers")
 		return []*Multiplier{}, "0"
@@ -73,12 +81,13 @@ func (ms *MultiplierSystem) PlayerMultipliers(playerID uuid.UUID, battleNumberAd
 	multiplicativeValue := decimal.Zero
 	for i, m := range usermultipliers {
 		multipliers[i] = &Multiplier{
-			Key:              m.Key,
-			Description:      m.Description,
-			IsMultiplicative: m.IsMultiplicative,
+			Key:              m.R.Multiplier.Key,
+			Description:      m.R.Multiplier.Description,
+			IsMultiplicative: m.R.Multiplier.IsMultiplicative,
+			ExpiresInSeconds: m.ExpiresAtBattleSeconds.Sub(battleSeconds).IntPart(),
 		}
 
-		if !m.IsMultiplicative {
+		if !m.R.Multiplier.IsMultiplicative {
 			multipliers[i].Value = m.Value.Shift(-1).String()
 			value = value.Add(m.Value)
 			continue
@@ -97,9 +106,10 @@ func (ms *MultiplierSystem) PlayerMultipliers(playerID uuid.UUID, battleNumberAd
 
 	if playerID.String() == "294be3d5-03be-4daa-ac6e-b9b862f79ae6" {
 		multipliers = append(multipliers, &Multiplier{
-			Key:         "reece 🍭🍭🍭",
-			Value:       "-🍭",
-			Description: "no lollipop for reece",
+			Key:              "reece \U0001F9CB\U0001F9CB\U0001F9CB",
+			Value:            "\U0001F9CB",
+			Description:      "no bbt for reece",
+			ExpiresInSeconds: 10000000000,
 		})
 	}
 
@@ -236,25 +246,25 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 		sort.Slice(playerAmountList, func(i, j int) bool { return playerAmountList[i].amount.GreaterThan(playerAmountList[j].amount) })
 
 		// top 80% of contributors will become citizens
-		citizenAmount := totalLength * 80 / 100
+		citizenAmount := totalLength * 95 / 100
 		if citizenAmount == 0 {
 			citizenAmount = 1
 		}
 
 		// top 95% of contributors and their faction win, will become citizens
-		winningFactionCitizenAmount := totalLength * 85 / 100
+		winningFactionCitizenAmount := totalLength * 95 / 100
 		if winningFactionCitizenAmount == 0 {
 			winningFactionCitizenAmount = 1
 		}
 
 		// top 50% of contributors will become supporters
-		supportAmount := totalLength * 50 / 100
+		supportAmount := totalLength * 40 / 100
 		if supportAmount == 0 {
 			supportAmount = 1
 		}
 
 		// top 25% of contributors will become contributors
-		contributorAmount := totalLength * 25 / 100
+		contributorAmount := totalLength * 20 / 100
 		if contributorAmount == 0 {
 			contributorAmount = 1
 		}
@@ -561,6 +571,7 @@ winwar:
 
 	// insert multipliers
 	playersWithCitizenAlready := make(map[string]bool)
+	battleEndSeconds := ms.battle.battleSeconds()
 	for pid, mlts := range newMultipliers {
 		for multiID, m := range mlts {
 			// if it is a citizen multi
@@ -597,11 +608,13 @@ winwar:
 			}
 
 			mlt := &boiler.UserMultiplier{
-				PlayerID:          pid,
-				FromBattleNumber:  ms.battle.BattleNumber,
-				UntilBattleNumber: ms.battle.BattleNumber + m.ForGames,
-				MultiplierID:      m.ID,
-				Value:             m.Value,
+				PlayerID:                pid,
+				FromBattleNumber:        ms.battle.BattleNumber,
+				UntilBattleNumber:       ms.battle.BattleNumber + m.ForGames,
+				MultiplierID:            m.ID,
+				Value:                   m.Value,
+				ObtainedAtBattleSeconds: battleEndSeconds,
+				ExpiresAtBattleSeconds:  battleEndSeconds.Add(decimal.NewFromInt(int64(m.RemainSeconds))),
 			}
 			err := mlt.Insert(gamedb.StdConn, boil.Infer())
 			if err != nil {

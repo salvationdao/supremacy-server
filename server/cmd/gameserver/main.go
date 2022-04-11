@@ -17,10 +17,13 @@ import (
 	"server/gamelog"
 	"server/sms"
 	"server/supermigrate"
+	"server/telegram"
 
 	"server/rpcclient"
 
+	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
 	zerologger "github.com/ninja-syndicate/hub/ext/zerolog"
+	"github.com/pemistahl/lingua-go"
 	"nhooyr.io/websocket"
 
 	"github.com/ninja-syndicate/hub"
@@ -125,6 +128,9 @@ func main() {
 					&cli.StringFlag{Name: "twilio_api_secret", Value: "", EnvVars: []string{envPrefix + "_TWILIO_API_SECRET"}, Usage: "Twilio api secret"},
 					&cli.StringFlag{Name: "sms_from_number", Value: "", EnvVars: []string{envPrefix + "_SMS_FROM_NUMBER"}, Usage: "Number to send SMS from"},
 
+					// telegram bot token
+					&cli.StringFlag{Name: "telegram_bot_token", Value: "", EnvVars: []string{envPrefix + "_TELEGRAM_BOT_TOKEN"}, Usage: "telegram bot token"},
+
 					// TODO: clear up token
 					&cli.BoolFlag{Name: "jwt_encrypt", Value: true, EnvVars: []string{envPrefix + "_JWT_ENCRYPT", "JWT_ENCRYPT"}, Usage: "set if to encrypt jwt tokens or not"},
 					&cli.StringFlag{Name: "jwt_encrypt_key", Value: "ITF1vauAxvJlF0PLNY9btOO9ZzbUmc6X", EnvVars: []string{envPrefix + "_JWT_KEY", "JWT_KEY"}, Usage: "supports key sizes of 16, 24 or 32 bytes"},
@@ -163,6 +169,8 @@ func main() {
 					twilioApiSecrete := c.String("twilio_api_secret")
 					smsFromNumber := c.String("sms_from_number")
 
+					telegramBotToken := c.String("telegram_bot_token")
+
 					passportAddr := c.String("passport_addr")
 					passportClientToken := c.String("passport_server_token")
 
@@ -186,9 +194,10 @@ func main() {
 						pprofMonitor(pint, pport)
 					}
 
-					if gameClientMinimumBuildNo == 0 {
-						gamelog.L.Panic().Msg("game_client_minimum_build_no not set or zero value")
-					}
+					// todocheck
+					//if gameClientMinimumBuildNo == 0 {
+					//	gamelog.L.Panic().Msg("game_client_minimum_build_no not set or zero value")
+					//}
 
 					pgxconn, err := pgxconnect(
 						databaseUser,
@@ -345,8 +354,36 @@ func main() {
 						ClientOfflineFn: func(cl *hub.Client) {
 							messageBus.UnsubAll(cl)
 						},
-						Tracer: &api.HubTracer{},
+						Tracer: DatadogTracer.New(),
 					})
+
+					// initialise telegram bot
+					telebot, err := telegram.NewTelegram(telegramBotToken, environment, func(owner string, success bool) {
+						go messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", telegram.HubKeyTelegramShortcodeRegistered, owner)), success)
+					})
+					if err != nil {
+						return terror.Error(err, "Telegram init failed")
+					}
+
+					//initialize lingua language detector
+					languages := []lingua.Language{
+						lingua.English,
+						lingua.French,
+						lingua.German,
+						lingua.Spanish,
+						lingua.Italian,
+						lingua.Tagalog,
+						lingua.Vietnamese,
+						lingua.Japanese,
+						lingua.Chinese,
+						lingua.Russian,
+						lingua.Indonesian,
+						lingua.Hindi,
+						lingua.Portuguese,
+						lingua.Dutch,
+						lingua.Croatian,
+					}
+					detector := lingua.NewLanguageDetectorBuilder().FromLanguages(languages...).WithPreloadedLanguageModels().Build()
 
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Set up hub")
 
@@ -357,14 +394,20 @@ func main() {
 						Hub:                      gsHub,
 						RPCClient:                rpcClient,
 						SMS:                      twilio,
+						Telegram:                 telebot,
 						GameClientMinimumBuildNo: gameClientMinimumBuildNo,
 					})
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("set up arena")
 					gamelog.L.Info().Msg("Setting up webhook rest API")
-					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, pgxconn, rpcClient, messageBus, gsHub, twilio)
+					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, pgxconn, rpcClient, messageBus, gsHub, twilio, telebot, detector)
 					if err != nil {
 						fmt.Println(err)
 						os.Exit(1)
+					}
+
+					if environment == "production" || environment == "staging" {
+						gamelog.L.Info().Msg("Running telegram bot")
+						go telebot.RunTelegram(telebot.Bot)
 					}
 
 					gamelog.L.Info().Msg("Running webhook rest API")
@@ -534,7 +577,7 @@ func main() {
 	}
 }
 
-func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, battleArenaClient *battle.Arena, conn *pgxpool.Pool, passport *rpcclient.PassportXrpcClient, messageBus *messagebus.MessageBus, gsHub *hub.Hub, sms server.SMS) (*api.API, error) {
+func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, battleArenaClient *battle.Arena, conn *pgxpool.Pool, passport *rpcclient.PassportXrpcClient, messageBus *messagebus.MessageBus, gsHub *hub.Hub, sms server.SMS, telegram server.Telegram, languageDetector lingua.LanguageDetector) (*api.API, error) {
 	environment := ctxCLI.String("environment")
 	sentryDSNBackend := ctxCLI.String("sentry_dsn_backend")
 	sentryServerName := ctxCLI.String("sentry_server_name")
@@ -573,6 +616,8 @@ func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, bat
 		ServerStreamKey:       ctxCLI.String("server_stream_key"),
 		PassportWebhookSecret: ctxCLI.String("passport_webhook_secret"),
 		JwtKey:                jwtKeyByteArray,
+		Environment:           environment,
+		Address:               apiAddr,
 	}
 
 	// HTML Sanitizer
@@ -580,7 +625,7 @@ func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, bat
 	HTMLSanitizePolicy.AllowAttrs("class").OnElements("img", "table", "tr", "td", "p")
 
 	// API Server
-	serverAPI := api.NewAPI(ctx, log, battleArenaClient, passport, apiAddr, HTMLSanitizePolicy, conn, config, messageBus, gsHub, sms)
+	serverAPI := api.NewAPI(ctx, log, battleArenaClient, passport, HTMLSanitizePolicy, conn, config, messageBus, gsHub, sms, telegram, languageDetector)
 	return serverAPI, nil
 }
 

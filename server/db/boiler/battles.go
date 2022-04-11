@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
@@ -23,58 +24,98 @@ import (
 
 // Battle is an object representing the database table.
 type Battle struct {
-	ID           string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	GameMapID    string    `boiler:"game_map_id" boil:"game_map_id" json:"game_map_id" toml:"game_map_id" yaml:"game_map_id"`
-	StartedAt    time.Time `boiler:"started_at" boil:"started_at" json:"started_at" toml:"started_at" yaml:"started_at"`
-	EndedAt      null.Time `boiler:"ended_at" boil:"ended_at" json:"ended_at,omitempty" toml:"ended_at" yaml:"ended_at,omitempty"`
-	BattleNumber int       `boiler:"battle_number" boil:"battle_number" json:"battle_number" toml:"battle_number" yaml:"battle_number"`
+	ID                   string              `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	GameMapID            string              `boiler:"game_map_id" boil:"game_map_id" json:"game_map_id" toml:"game_map_id" yaml:"game_map_id"`
+	StartedAt            time.Time           `boiler:"started_at" boil:"started_at" json:"started_at" toml:"started_at" yaml:"started_at"`
+	EndedAt              null.Time           `boiler:"ended_at" boil:"ended_at" json:"ended_at,omitempty" toml:"ended_at" yaml:"ended_at,omitempty"`
+	BattleNumber         int                 `boiler:"battle_number" boil:"battle_number" json:"battle_number" toml:"battle_number" yaml:"battle_number"`
+	StartedBattleSeconds decimal.NullDecimal `boiler:"started_battle_seconds" boil:"started_battle_seconds" json:"started_battle_seconds,omitempty" toml:"started_battle_seconds" yaml:"started_battle_seconds,omitempty"`
+	EndedBattleSeconds   decimal.NullDecimal `boiler:"ended_battle_seconds" boil:"ended_battle_seconds" json:"ended_battle_seconds,omitempty" toml:"ended_battle_seconds" yaml:"ended_battle_seconds,omitempty"`
 
 	R *battleR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var BattleColumns = struct {
-	ID           string
-	GameMapID    string
-	StartedAt    string
-	EndedAt      string
-	BattleNumber string
+	ID                   string
+	GameMapID            string
+	StartedAt            string
+	EndedAt              string
+	BattleNumber         string
+	StartedBattleSeconds string
+	EndedBattleSeconds   string
 }{
-	ID:           "id",
-	GameMapID:    "game_map_id",
-	StartedAt:    "started_at",
-	EndedAt:      "ended_at",
-	BattleNumber: "battle_number",
+	ID:                   "id",
+	GameMapID:            "game_map_id",
+	StartedAt:            "started_at",
+	EndedAt:              "ended_at",
+	BattleNumber:         "battle_number",
+	StartedBattleSeconds: "started_battle_seconds",
+	EndedBattleSeconds:   "ended_battle_seconds",
 }
 
 var BattleTableColumns = struct {
-	ID           string
-	GameMapID    string
-	StartedAt    string
-	EndedAt      string
-	BattleNumber string
+	ID                   string
+	GameMapID            string
+	StartedAt            string
+	EndedAt              string
+	BattleNumber         string
+	StartedBattleSeconds string
+	EndedBattleSeconds   string
 }{
-	ID:           "battles.id",
-	GameMapID:    "battles.game_map_id",
-	StartedAt:    "battles.started_at",
-	EndedAt:      "battles.ended_at",
-	BattleNumber: "battles.battle_number",
+	ID:                   "battles.id",
+	GameMapID:            "battles.game_map_id",
+	StartedAt:            "battles.started_at",
+	EndedAt:              "battles.ended_at",
+	BattleNumber:         "battles.battle_number",
+	StartedBattleSeconds: "battles.started_battle_seconds",
+	EndedBattleSeconds:   "battles.ended_battle_seconds",
 }
 
 // Generated where
 
+type whereHelperdecimal_NullDecimal struct{ field string }
+
+func (w whereHelperdecimal_NullDecimal) EQ(x decimal.NullDecimal) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, false, x)
+}
+func (w whereHelperdecimal_NullDecimal) NEQ(x decimal.NullDecimal) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, true, x)
+}
+func (w whereHelperdecimal_NullDecimal) LT(x decimal.NullDecimal) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LT, x)
+}
+func (w whereHelperdecimal_NullDecimal) LTE(x decimal.NullDecimal) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LTE, x)
+}
+func (w whereHelperdecimal_NullDecimal) GT(x decimal.NullDecimal) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GT, x)
+}
+func (w whereHelperdecimal_NullDecimal) GTE(x decimal.NullDecimal) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GTE, x)
+}
+
+func (w whereHelperdecimal_NullDecimal) IsNull() qm.QueryMod { return qmhelper.WhereIsNull(w.field) }
+func (w whereHelperdecimal_NullDecimal) IsNotNull() qm.QueryMod {
+	return qmhelper.WhereIsNotNull(w.field)
+}
+
 var BattleWhere = struct {
-	ID           whereHelperstring
-	GameMapID    whereHelperstring
-	StartedAt    whereHelpertime_Time
-	EndedAt      whereHelpernull_Time
-	BattleNumber whereHelperint
+	ID                   whereHelperstring
+	GameMapID            whereHelperstring
+	StartedAt            whereHelpertime_Time
+	EndedAt              whereHelpernull_Time
+	BattleNumber         whereHelperint
+	StartedBattleSeconds whereHelperdecimal_NullDecimal
+	EndedBattleSeconds   whereHelperdecimal_NullDecimal
 }{
-	ID:           whereHelperstring{field: "\"battles\".\"id\""},
-	GameMapID:    whereHelperstring{field: "\"battles\".\"game_map_id\""},
-	StartedAt:    whereHelpertime_Time{field: "\"battles\".\"started_at\""},
-	EndedAt:      whereHelpernull_Time{field: "\"battles\".\"ended_at\""},
-	BattleNumber: whereHelperint{field: "\"battles\".\"battle_number\""},
+	ID:                   whereHelperstring{field: "\"battles\".\"id\""},
+	GameMapID:            whereHelperstring{field: "\"battles\".\"game_map_id\""},
+	StartedAt:            whereHelpertime_Time{field: "\"battles\".\"started_at\""},
+	EndedAt:              whereHelpernull_Time{field: "\"battles\".\"ended_at\""},
+	BattleNumber:         whereHelperint{field: "\"battles\".\"battle_number\""},
+	StartedBattleSeconds: whereHelperdecimal_NullDecimal{field: "\"battles\".\"started_battle_seconds\""},
+	EndedBattleSeconds:   whereHelperdecimal_NullDecimal{field: "\"battles\".\"ended_battle_seconds\""},
 }
 
 // BattleRels is where relationship names are stored.
@@ -94,7 +135,9 @@ var BattleRels = struct {
 	BattleWins               string
 	BattlesUserVotes         string
 	Players                  string
+	ChatHistories            string
 	IssuedContractRewards    string
+	PlayerKillLogs           string
 }{
 	GameMap:                  "GameMap",
 	SpoilsOfWar:              "SpoilsOfWar",
@@ -111,7 +154,9 @@ var BattleRels = struct {
 	BattleWins:               "BattleWins",
 	BattlesUserVotes:         "BattlesUserVotes",
 	Players:                  "Players",
+	ChatHistories:            "ChatHistories",
 	IssuedContractRewards:    "IssuedContractRewards",
+	PlayerKillLogs:           "PlayerKillLogs",
 }
 
 // battleR is where relationships are stored.
@@ -131,7 +176,9 @@ type battleR struct {
 	BattleWins               BattleWinSlice               `boiler:"BattleWins" boil:"BattleWins" json:"BattleWins" toml:"BattleWins" yaml:"BattleWins"`
 	BattlesUserVotes         BattlesUserVoteSlice         `boiler:"BattlesUserVotes" boil:"BattlesUserVotes" json:"BattlesUserVotes" toml:"BattlesUserVotes" yaml:"BattlesUserVotes"`
 	Players                  PlayerSlice                  `boiler:"Players" boil:"Players" json:"Players" toml:"Players" yaml:"Players"`
+	ChatHistories            ChatHistorySlice             `boiler:"ChatHistories" boil:"ChatHistories" json:"ChatHistories" toml:"ChatHistories" yaml:"ChatHistories"`
 	IssuedContractRewards    IssuedContractRewardSlice    `boiler:"IssuedContractRewards" boil:"IssuedContractRewards" json:"IssuedContractRewards" toml:"IssuedContractRewards" yaml:"IssuedContractRewards"`
+	PlayerKillLogs           PlayerKillLogSlice           `boiler:"PlayerKillLogs" boil:"PlayerKillLogs" json:"PlayerKillLogs" toml:"PlayerKillLogs" yaml:"PlayerKillLogs"`
 }
 
 // NewStruct creates a new relationship struct
@@ -143,9 +190,9 @@ func (*battleR) NewStruct() *battleR {
 type battleL struct{}
 
 var (
-	battleAllColumns            = []string{"id", "game_map_id", "started_at", "ended_at", "battle_number"}
+	battleAllColumns            = []string{"id", "game_map_id", "started_at", "ended_at", "battle_number", "started_battle_seconds", "ended_battle_seconds"}
 	battleColumnsWithoutDefault = []string{"game_map_id"}
-	battleColumnsWithDefault    = []string{"id", "started_at", "ended_at", "battle_number"}
+	battleColumnsWithDefault    = []string{"id", "started_at", "ended_at", "battle_number", "started_battle_seconds", "ended_battle_seconds"}
 	battlePrimaryKeyColumns     = []string{"id"}
 	battleGeneratedColumns      = []string{}
 )
@@ -687,6 +734,27 @@ func (o *Battle) Players(mods ...qm.QueryMod) playerQuery {
 	return query
 }
 
+// ChatHistories retrieves all the chat_history's ChatHistories with an executor.
+func (o *Battle) ChatHistories(mods ...qm.QueryMod) chatHistoryQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"chat_history\".\"battle_id\"=?", o.ID),
+	)
+
+	query := ChatHistories(queryMods...)
+	queries.SetFrom(query.Query, "\"chat_history\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"chat_history\".*"})
+	}
+
+	return query
+}
+
 // IssuedContractRewards retrieves all the issued_contract_reward's IssuedContractRewards with an executor.
 func (o *Battle) IssuedContractRewards(mods ...qm.QueryMod) issuedContractRewardQuery {
 	var queryMods []qm.QueryMod
@@ -704,6 +772,27 @@ func (o *Battle) IssuedContractRewards(mods ...qm.QueryMod) issuedContractReward
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"issued_contract_rewards\".*"})
+	}
+
+	return query
+}
+
+// PlayerKillLogs retrieves all the player_kill_log's PlayerKillLogs with an executor.
+func (o *Battle) PlayerKillLogs(mods ...qm.QueryMod) playerKillLogQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"player_kill_log\".\"battle_id\"=?", o.ID),
+	)
+
+	query := PlayerKillLogs(queryMods...)
+	queries.SetFrom(query.Query, "\"player_kill_log\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"player_kill_log\".*"})
 	}
 
 	return query
@@ -2133,7 +2222,7 @@ func (battleL) LoadPlayers(e boil.Executor, singular bool, maybeBattle interface
 	}
 
 	query := NewQuery(
-		qm.Select("\"players\".id, \"players\".faction_id, \"players\".username, \"players\".public_address, \"players\".is_ai, \"players\".deleted_at, \"players\".updated_at, \"players\".created_at, \"players\".mobile_number, \"a\".\"battle_id\""),
+		qm.Select("\"players\".id, \"players\".faction_id, \"players\".username, \"players\".public_address, \"players\".is_ai, \"players\".deleted_at, \"players\".updated_at, \"players\".created_at, \"players\".mobile_number, \"players\".issue_punish_fee, \"players\".reported_cost, \"players\".gid, \"players\".rank, \"players\".sent_message_count, \"a\".\"battle_id\""),
 		qm.From("\"players\""),
 		qm.InnerJoin("\"battles_viewers\" as \"a\" on \"players\".\"id\" = \"a\".\"player_id\""),
 		qm.WhereIn("\"a\".\"battle_id\" in ?", args...),
@@ -2155,7 +2244,7 @@ func (battleL) LoadPlayers(e boil.Executor, singular bool, maybeBattle interface
 		one := new(Player)
 		var localJoinCol string
 
-		err = results.Scan(&one.ID, &one.FactionID, &one.Username, &one.PublicAddress, &one.IsAi, &one.DeletedAt, &one.UpdatedAt, &one.CreatedAt, &one.MobileNumber, &localJoinCol)
+		err = results.Scan(&one.ID, &one.FactionID, &one.Username, &one.PublicAddress, &one.IsAi, &one.DeletedAt, &one.UpdatedAt, &one.CreatedAt, &one.MobileNumber, &one.IssuePunishFee, &one.ReportedCost, &one.Gid, &one.Rank, &one.SentMessageCount, &localJoinCol)
 		if err != nil {
 			return errors.Wrap(err, "failed to scan eager loaded results for players")
 		}
@@ -2201,6 +2290,104 @@ func (battleL) LoadPlayers(e boil.Executor, singular bool, maybeBattle interface
 					foreign.R = &playerR{}
 				}
 				foreign.R.Battles = append(foreign.R.Battles, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadChatHistories allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (battleL) LoadChatHistories(e boil.Executor, singular bool, maybeBattle interface{}, mods queries.Applicator) error {
+	var slice []*Battle
+	var object *Battle
+
+	if singular {
+		object = maybeBattle.(*Battle)
+	} else {
+		slice = *maybeBattle.(*[]*Battle)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &battleR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &battleR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`chat_history`),
+		qm.WhereIn(`chat_history.battle_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load chat_history")
+	}
+
+	var resultSlice []*ChatHistory
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice chat_history")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on chat_history")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for chat_history")
+	}
+
+	if len(chatHistoryAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.ChatHistories = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &chatHistoryR{}
+			}
+			foreign.R.Battle = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.BattleID) {
+				local.R.ChatHistories = append(local.R.ChatHistories, foreign)
+				if foreign.R == nil {
+					foreign.R = &chatHistoryR{}
+				}
+				foreign.R.Battle = local
 				break
 			}
 		}
@@ -2298,6 +2485,104 @@ func (battleL) LoadIssuedContractRewards(e boil.Executor, singular bool, maybeBa
 				local.R.IssuedContractRewards = append(local.R.IssuedContractRewards, foreign)
 				if foreign.R == nil {
 					foreign.R = &issuedContractRewardR{}
+				}
+				foreign.R.Battle = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadPlayerKillLogs allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (battleL) LoadPlayerKillLogs(e boil.Executor, singular bool, maybeBattle interface{}, mods queries.Applicator) error {
+	var slice []*Battle
+	var object *Battle
+
+	if singular {
+		object = maybeBattle.(*Battle)
+	} else {
+		slice = *maybeBattle.(*[]*Battle)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &battleR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &battleR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`player_kill_log`),
+		qm.WhereIn(`player_kill_log.battle_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load player_kill_log")
+	}
+
+	var resultSlice []*PlayerKillLog
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice player_kill_log")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on player_kill_log")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for player_kill_log")
+	}
+
+	if len(playerKillLogAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.PlayerKillLogs = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &playerKillLogR{}
+			}
+			foreign.R.Battle = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.BattleID {
+				local.R.PlayerKillLogs = append(local.R.PlayerKillLogs, foreign)
+				if foreign.R == nil {
+					foreign.R = &playerKillLogR{}
 				}
 				foreign.R.Battle = local
 				break
@@ -3459,6 +3744,131 @@ func removePlayersFromBattlesSlice(o *Battle, related []*Player) {
 	}
 }
 
+// AddChatHistories adds the given related objects to the existing relationships
+// of the battle, optionally inserting them as new records.
+// Appends related to o.R.ChatHistories.
+// Sets related.R.Battle appropriately.
+func (o *Battle) AddChatHistories(exec boil.Executor, insert bool, related ...*ChatHistory) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.BattleID, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"chat_history\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"battle_id"}),
+				strmangle.WhereClause("\"", "\"", 2, chatHistoryPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.BattleID, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &battleR{
+			ChatHistories: related,
+		}
+	} else {
+		o.R.ChatHistories = append(o.R.ChatHistories, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &chatHistoryR{
+				Battle: o,
+			}
+		} else {
+			rel.R.Battle = o
+		}
+	}
+	return nil
+}
+
+// SetChatHistories removes all previously related items of the
+// battle replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.Battle's ChatHistories accordingly.
+// Replaces o.R.ChatHistories with related.
+// Sets related.R.Battle's ChatHistories accordingly.
+func (o *Battle) SetChatHistories(exec boil.Executor, insert bool, related ...*ChatHistory) error {
+	query := "update \"chat_history\" set \"battle_id\" = null where \"battle_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.ChatHistories {
+			queries.SetScanner(&rel.BattleID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.Battle = nil
+		}
+
+		o.R.ChatHistories = nil
+	}
+	return o.AddChatHistories(exec, insert, related...)
+}
+
+// RemoveChatHistories relationships from objects passed in.
+// Removes related items from R.ChatHistories (uses pointer comparison, removal does not keep order)
+// Sets related.R.Battle.
+func (o *Battle) RemoveChatHistories(exec boil.Executor, related ...*ChatHistory) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.BattleID, nil)
+		if rel.R != nil {
+			rel.R.Battle = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("battle_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.ChatHistories {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.ChatHistories)
+			if ln > 1 && i < ln-1 {
+				o.R.ChatHistories[i] = o.R.ChatHistories[ln-1]
+			}
+			o.R.ChatHistories = o.R.ChatHistories[:ln-1]
+			break
+		}
+	}
+
+	return nil
+}
+
 // AddIssuedContractRewards adds the given related objects to the existing relationships
 // of the battle, optionally inserting them as new records.
 // Appends related to o.R.IssuedContractRewards.
@@ -3502,6 +3912,58 @@ func (o *Battle) AddIssuedContractRewards(exec boil.Executor, insert bool, relat
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &issuedContractRewardR{
+				Battle: o,
+			}
+		} else {
+			rel.R.Battle = o
+		}
+	}
+	return nil
+}
+
+// AddPlayerKillLogs adds the given related objects to the existing relationships
+// of the battle, optionally inserting them as new records.
+// Appends related to o.R.PlayerKillLogs.
+// Sets related.R.Battle appropriately.
+func (o *Battle) AddPlayerKillLogs(exec boil.Executor, insert bool, related ...*PlayerKillLog) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.BattleID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"player_kill_log\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"battle_id"}),
+				strmangle.WhereClause("\"", "\"", 2, playerKillLogPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.BattleID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &battleR{
+			PlayerKillLogs: related,
+		}
+	} else {
+		o.R.PlayerKillLogs = append(o.R.PlayerKillLogs, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &playerKillLogR{
 				Battle: o,
 			}
 		} else {

@@ -2,7 +2,9 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -54,16 +56,54 @@ func PlayerRegister(ID uuid.UUID, Username string, FactionID uuid.UUID, PublicAd
 			return nil, err
 		}
 	}
-	tx.Commit()
+	err = tx.Commit()
+	if err != nil {
+		return nil, terror.Error(err, "Failed to commit db transaction")
+	}
 	return player, nil
 }
 
-func UserStatsGet(playerID string) (*boiler.UserStat, error) {
-	userStat, err := boiler.FindUserStat(gamedb.StdConn, playerID)
+func GetUserLanguage(playerID string) string {
+	q := `SELECT mode() within group (order by lang) from chat_history WHERE player_id = $1 LIMIT 10;`
+	row := gamedb.StdConn.QueryRow(q, playerID)
+	lang := "English"
+	switch err := row.Scan(&lang); err {
+	case sql.ErrNoRows:
+		return "English"
+	case nil:
+		return lang
+	default:
+		return "English"
+	}
+}
+func UserStatsGet(playerID string) (*server.UserStat, error) {
+	us, err := boiler.FindUserStat(gamedb.StdConn, playerID)
 	if err != nil {
-		gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to find user stat")
 		return nil, err
 	}
+
+	userStat := &server.UserStat{
+		UserStat:           us,
+		LastSevenDaysKills: 0,
+	}
+
+	// get last seven days kills
+	abilityKills, err := boiler.PlayerKillLogs(
+		boiler.PlayerKillLogWhere.PlayerID.EQ(playerID),
+		boiler.PlayerKillLogWhere.CreatedAt.GT(time.Now().AddDate(0, 0, -7)),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return userStat, nil
+	}
+
+	for _, abilityKill := range abilityKills {
+		if abilityKill.IsTeamKill {
+			userStat.LastSevenDaysKills -= 1
+			continue
+		}
+		userStat.LastSevenDaysKills += 1
+	}
+
 	return userStat, nil
 }
 
@@ -74,9 +114,9 @@ func UserStatAddAbilityKill(playerID string) (*boiler.UserStat, error) {
 		return nil, terror.Error(err)
 	}
 
-	userStat.KillCount += 1
+	userStat.AbilityKillCount += 1
 
-	_, err = userStat.Update(gamedb.StdConn, boil.Whitelist(boiler.UserStatColumns.KillCount))
+	_, err = userStat.Update(gamedb.StdConn, boil.Whitelist(boiler.UserStatColumns.AbilityKillCount))
 	if err != nil {
 		gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to update user kill count")
 		return nil, terror.Error(err)
@@ -92,9 +132,9 @@ func UserStatSubtractAbilityKill(playerID string) (*boiler.UserStat, error) {
 		return nil, terror.Error(err)
 	}
 
-	userStat.KillCount -= 1
+	userStat.AbilityKillCount -= 1
 
-	_, err = userStat.Update(gamedb.StdConn, boil.Whitelist(boiler.UserStatColumns.KillCount))
+	_, err = userStat.Update(gamedb.StdConn, boil.Whitelist(boiler.UserStatColumns.AbilityKillCount))
 	if err != nil {
 		gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to update user kill count")
 		return nil, terror.Error(err)
@@ -190,7 +230,7 @@ func PlayerFactionContributionList(battleID string, factionID string) ([]uuid.UU
 	playerList := []uuid.UUID{}
 	q := `
 		select bc.player_id from battle_contributions bc 
-			where bc.battle_id = $1 and bc.faction_id = $2 
+			where bc.battle_id = $1 and bc.faction_id = $2
 			group by player_id
 		order by sum(amount) desc 
 	`
@@ -225,4 +265,77 @@ func PlayerFactionContributionList(battleID string, factionID string) ([]uuid.UU
 	}
 
 	return playerList, nil
+}
+
+// GetPositivePlayerAbilityKillByFactionID return player ability kill by given faction id
+func GetPositivePlayerAbilityKillByFactionID(factionID server.FactionID) ([]*server.PlayerAbilityKills, error) {
+	abilityKills, err := boiler.PlayerKillLogs(
+		boiler.PlayerKillLogWhere.FactionID.EQ(factionID.String()),
+		boiler.PlayerKillLogWhere.CreatedAt.GT(time.Now().AddDate(0, 0, -7)),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return nil, terror.Error(err, "Failed to get player ability kills from db")
+	}
+
+	// build ability kill map
+	playerAbilityKillMap := make(map[string]int64)
+	for _, abilityKill := range abilityKills {
+		pak, ok := playerAbilityKillMap[abilityKill.PlayerID]
+		if !ok {
+			pak = 0
+		}
+
+		if !abilityKill.IsTeamKill {
+			pak++
+		} else {
+			pak--
+		}
+		playerAbilityKillMap[abilityKill.PlayerID] = pak
+	}
+
+	playerAbilityKills := []*server.PlayerAbilityKills{}
+	for playerID, killCount := range playerAbilityKillMap {
+		if killCount <= 0 {
+			continue
+		}
+
+		playerAbilityKills = append(playerAbilityKills, &server.PlayerAbilityKills{playerID, factionID.String(), killCount})
+	}
+
+	return playerAbilityKills, nil
+}
+
+func UpdatePunishVoteCost() error {
+	// update punish vote cost
+	q := `
+		UPDATE
+			players
+		SET
+			issue_punish_fee = issue_punish_fee / 2
+		WHERE
+			issue_punish_fee > 10
+	`
+
+	_, err := gamedb.StdConn.Exec(q)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to update players' punish vote cost")
+		return terror.Error(err, "Failed to update players' punish vote cost")
+	}
+
+	// update report cost
+	q = `
+		UPDATE
+			players
+		SET 
+			reported_cost = reported_cost / 2
+		WHERE
+			reported_cost > 10
+	`
+	_, err = gamedb.StdConn.Exec(q)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to update players' report cost")
+		return terror.Error(err, "Failed to update players' report cost")
+	}
+
+	return nil
 }

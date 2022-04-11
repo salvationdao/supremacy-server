@@ -26,7 +26,9 @@ import (
 	"github.com/ninja-software/tickle"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/auth"
+	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
+	"github.com/pemistahl/lingua-go"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 	"github.com/sasha-s/go-deadlock"
@@ -53,7 +55,8 @@ type VotePriceSystem struct {
 	GlobalVotePerTick []int64 // store last 100 tick total vote
 	GlobalTotalVote   int64
 
-	FactionVotePriceMap map[server.FactionID]*FactionVotePrice
+	FactionVotePriceMap  map[server.FactionID]*FactionVotePrice
+	FactionActivePlayers map[server.FactionID]*ActivePlayers
 }
 
 type FactionVotePrice struct {
@@ -72,19 +75,33 @@ type API struct {
 	ctx    context.Context
 	server *http.Server
 	*auth.Auth
-	Log          *zerolog.Logger
-	Routes       chi.Router
-	Addr         string
-	BattleArena  *battle.Arena
-	HTMLSanitize *bluemonday.Policy
-	Hub          *hub.Hub
-	Conn         *pgxpool.Pool
-	MessageBus   *messagebus.MessageBus
-	SMS          server.SMS
-	Passport     *rpcclient.PassportXrpcClient
+	Log              *zerolog.Logger
+	Routes           chi.Router
+	BattleArena      *battle.Arena
+	HTMLSanitize     *bluemonday.Policy
+	Hub              *hub.Hub
+	Conn             *pgxpool.Pool
+	MessageBus       *messagebus.MessageBus
+	SMS              server.SMS
+	Passport         *rpcclient.PassportXrpcClient
+	Telegram         server.Telegram
+	LanguageDetector lingua.LanguageDetector
 
 	// ring check auth
 	RingCheckAuthMap *RingCheckAuthMap
+
+	// punish vote
+	FactionPunishVote map[string]*PunishVoteTracker
+
+	FactionActivePlayers map[string]*ActivePlayers
+
+	// chatrooms
+	GlobalChat      *Chatroom
+	RedMountainChat *Chatroom
+	BostonChat      *Chatroom
+	ZaibatsuChat    *Chatroom
+
+	Config *server.Config
 }
 
 // NewAPI registers routes
@@ -93,21 +110,22 @@ func NewAPI(
 	log *zerolog.Logger,
 	battleArenaClient *battle.Arena,
 	pp *rpcclient.PassportXrpcClient,
-	addr string,
 	HTMLSanitize *bluemonday.Policy,
 	conn *pgxpool.Pool,
 	config *server.Config,
 	messageBus *messagebus.MessageBus,
 	gsHub *hub.Hub,
 	sms server.SMS,
+	telegram server.Telegram,
+	languageDetector lingua.LanguageDetector,
 ) *API {
 
 	// initialise api
 	api := &API{
+		Config:           config,
 		ctx:              ctx,
 		Log:              log_helpers.NamedLogger(log, "api"),
 		Routes:           chi.NewRouter(),
-		Addr:             addr,
 		MessageBus:       messageBus,
 		HTMLSanitize:     HTMLSanitize,
 		BattleArena:      battleArenaClient,
@@ -116,6 +134,17 @@ func NewAPI(
 		RingCheckAuthMap: NewRingCheckMap(),
 		Passport:         pp,
 		SMS:              sms,
+		Telegram:         telegram,
+		LanguageDetector: languageDetector,
+
+		FactionPunishVote:    make(map[string]*PunishVoteTracker),
+		FactionActivePlayers: make(map[string]*ActivePlayers),
+
+		// chatroom
+		GlobalChat:      NewChatroom(nil),
+		RedMountainChat: NewChatroom(&server.RedMountainFactionID),
+		BostonChat:      NewChatroom(&server.BostonCyberneticsFactionID),
+		ZaibatsuChat:    NewChatroom(&server.ZaibatsuFactionID),
 	}
 
 	battleArenaClient.SetMessageBus(messageBus)
@@ -124,6 +153,7 @@ func NewAPI(
 	api.Routes.Use(middleware.RealIP)
 	api.Routes.Use(middleware.Logger)
 	api.Routes.Use(cors.New(cors.Options{AllowedOrigins: []string{"*"}}).Handler)
+	api.Routes.Use(DatadogTracer.Middleware())
 
 	api.Routes.Handle("/metrics", promhttp.Handler())
 	api.Routes.Route("/api", func(r chi.Router) {
@@ -131,7 +161,7 @@ func NewAPI(
 			sentryHandler := sentryhttp.New(sentryhttp.Options{})
 			r.Use(sentryHandler.Handle)
 		})
-		r.Mount("/check", CheckRouter(log_helpers.NamedLogger(log, "check router"), conn, battleArenaClient))
+		r.Mount("/check", CheckRouter(log_helpers.NamedLogger(log, "check router"), conn, battleArenaClient, telegram))
 		r.Mount("/stat", AssetStatsRouter(log, conn, api))
 		r.Mount(fmt.Sprintf("/%s/Supremacy_game", server.SupremacyGameUserID), PassportWebhookRouter(log, conn, config.PassportWebhookSecret, api))
 
@@ -141,16 +171,10 @@ func NewAPI(
 
 		//TODO ALEX reimplement handlers
 
-		//r.Get("/battlequeue", WithError(api.BattleArena.GetBattleQueue))
-		//r.Get("/events", WithError(api.BattleArena.GetEvents))
-		//r.Get("/faction_stats", WithError(api.BattleArena.FactionStats))
-		//r.Get("/user_stats", WithError(api.BattleArena.UserStats))
-		//r.Get("/abilities", WithError(api.BattleArena.GetAbility))
-
 		r.Get("/blobs/{id}", WithError(api.IconDisplay))
-		r.Post("/video_server", WithToken(config.ServerStreamKey, WithError((api.CreateStreamHandler))))
-		r.Get("/video_server", WithToken(config.ServerStreamKey, WithError((api.GetStreamsHandler))))
-		r.Delete("/video_server", WithToken(config.ServerStreamKey, WithError((api.DeleteStreamHandler))))
+		r.Post("/video_server", WithToken(config.ServerStreamKey, WithError(api.CreateStreamHandler)))
+		r.Get("/video_server", WithToken(config.ServerStreamKey, WithError(api.GetStreamsHandler)))
+		r.Delete("/video_server", WithToken(config.ServerStreamKey, WithError(api.DeleteStreamHandler)))
 		r.Post("/close_stream", WithToken(config.ServerStreamKey, WithError(api.CreateStreamCloseHandler)))
 		r.Get("/faction_data", WithError(api.GetFactionData))
 		r.Get("/trigger/ability_file_upload", WithError(api.GetFactionData))
@@ -165,10 +189,10 @@ func NewAPI(
 	_ = NewCheckController(log, conn, api)
 	_ = NewUserController(log, conn, api)
 	_ = NewAuthController(log, conn, api, config)
-	// _ = NewFactionController(log, conn, api)
 	_ = NewGameController(log, conn, api)
 	_ = NewStreamController(log, conn, api)
 	_ = NewPlayerController(log, conn, api)
+	_ = NewChatController(log, conn, api)
 	_ = NewBattleController(log, conn, api)
 
 	// create a tickle that update faction mvp every day 00:00 am
@@ -201,13 +225,21 @@ func NewAPI(
 		gamelog.L.Error().Err(err).Msg("Failed to set up faction mvp user update tickle")
 	}
 
+	// spin up a punish vote handlers for each faction
+	err = api.PunishVoteTrackerSetup()
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to setup punish vote tracker")
+	}
+
+	api.FactionActivePlayerSetup()
+
 	return api
 }
 
 // Run the API service
 func (api *API) Run(ctx context.Context) error {
 	api.server = &http.Server{
-		Addr:    api.Addr,
+		Addr:    api.Config.Address,
 		Handler: api.Routes,
 		BaseContext: func(_ net.Listener) context.Context {
 			return ctx

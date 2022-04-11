@@ -24,107 +24,114 @@ import (
 
 // BattleContribution is an object representing the database table.
 type BattleContribution struct {
-	ID                string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	BattleID          string          `boiler:"battle_id" boil:"battle_id" json:"battle_id" toml:"battle_id" yaml:"battle_id"`
-	PlayerID          string          `boiler:"player_id" boil:"player_id" json:"player_id" toml:"player_id" yaml:"player_id"`
-	AbilityOfferingID string          `boiler:"ability_offering_id" boil:"ability_offering_id" json:"ability_offering_id" toml:"ability_offering_id" yaml:"ability_offering_id"`
-	DidTrigger        bool            `boiler:"did_trigger" boil:"did_trigger" json:"did_trigger" toml:"did_trigger" yaml:"did_trigger"`
-	FactionID         string          `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
-	AbilityLabel      string          `boiler:"ability_label" boil:"ability_label" json:"ability_label" toml:"ability_label" yaml:"ability_label"`
-	IsAllSyndicates   bool            `boiler:"is_all_syndicates" boil:"is_all_syndicates" json:"is_all_syndicates" toml:"is_all_syndicates" yaml:"is_all_syndicates"`
-	Amount            decimal.Decimal `boiler:"amount" boil:"amount" json:"amount" toml:"amount" yaml:"amount"`
-	ContributedAt     time.Time       `boiler:"contributed_at" boil:"contributed_at" json:"contributed_at" toml:"contributed_at" yaml:"contributed_at"`
-	ProcessedAt       null.Time       `boiler:"processed_at" boil:"processed_at" json:"processed_at,omitempty" toml:"processed_at" yaml:"processed_at,omitempty"`
-	TransactionID     null.String     `boiler:"transaction_id" boil:"transaction_id" json:"transaction_id,omitempty" toml:"transaction_id" yaml:"transaction_id,omitempty"`
+	ID                  string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	BattleID            string          `boiler:"battle_id" boil:"battle_id" json:"battle_id" toml:"battle_id" yaml:"battle_id"`
+	PlayerID            string          `boiler:"player_id" boil:"player_id" json:"player_id" toml:"player_id" yaml:"player_id"`
+	AbilityOfferingID   string          `boiler:"ability_offering_id" boil:"ability_offering_id" json:"ability_offering_id" toml:"ability_offering_id" yaml:"ability_offering_id"`
+	DidTrigger          bool            `boiler:"did_trigger" boil:"did_trigger" json:"did_trigger" toml:"did_trigger" yaml:"did_trigger"`
+	FactionID           string          `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
+	AbilityLabel        string          `boiler:"ability_label" boil:"ability_label" json:"ability_label" toml:"ability_label" yaml:"ability_label"`
+	IsAllSyndicates     bool            `boiler:"is_all_syndicates" boil:"is_all_syndicates" json:"is_all_syndicates" toml:"is_all_syndicates" yaml:"is_all_syndicates"`
+	Amount              decimal.Decimal `boiler:"amount" boil:"amount" json:"amount" toml:"amount" yaml:"amount"`
+	ContributedAt       time.Time       `boiler:"contributed_at" boil:"contributed_at" json:"contributed_at" toml:"contributed_at" yaml:"contributed_at"`
+	ProcessedAt         null.Time       `boiler:"processed_at" boil:"processed_at" json:"processed_at,omitempty" toml:"processed_at" yaml:"processed_at,omitempty"`
+	TransactionID       null.String     `boiler:"transaction_id" boil:"transaction_id" json:"transaction_id,omitempty" toml:"transaction_id" yaml:"transaction_id,omitempty"`
+	RefundTransactionID null.String     `boiler:"refund_transaction_id" boil:"refund_transaction_id" json:"refund_transaction_id,omitempty" toml:"refund_transaction_id" yaml:"refund_transaction_id,omitempty"`
 
 	R *battleContributionR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleContributionL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var BattleContributionColumns = struct {
-	ID                string
-	BattleID          string
-	PlayerID          string
-	AbilityOfferingID string
-	DidTrigger        string
-	FactionID         string
-	AbilityLabel      string
-	IsAllSyndicates   string
-	Amount            string
-	ContributedAt     string
-	ProcessedAt       string
-	TransactionID     string
+	ID                  string
+	BattleID            string
+	PlayerID            string
+	AbilityOfferingID   string
+	DidTrigger          string
+	FactionID           string
+	AbilityLabel        string
+	IsAllSyndicates     string
+	Amount              string
+	ContributedAt       string
+	ProcessedAt         string
+	TransactionID       string
+	RefundTransactionID string
 }{
-	ID:                "id",
-	BattleID:          "battle_id",
-	PlayerID:          "player_id",
-	AbilityOfferingID: "ability_offering_id",
-	DidTrigger:        "did_trigger",
-	FactionID:         "faction_id",
-	AbilityLabel:      "ability_label",
-	IsAllSyndicates:   "is_all_syndicates",
-	Amount:            "amount",
-	ContributedAt:     "contributed_at",
-	ProcessedAt:       "processed_at",
-	TransactionID:     "transaction_id",
+	ID:                  "id",
+	BattleID:            "battle_id",
+	PlayerID:            "player_id",
+	AbilityOfferingID:   "ability_offering_id",
+	DidTrigger:          "did_trigger",
+	FactionID:           "faction_id",
+	AbilityLabel:        "ability_label",
+	IsAllSyndicates:     "is_all_syndicates",
+	Amount:              "amount",
+	ContributedAt:       "contributed_at",
+	ProcessedAt:         "processed_at",
+	TransactionID:       "transaction_id",
+	RefundTransactionID: "refund_transaction_id",
 }
 
 var BattleContributionTableColumns = struct {
-	ID                string
-	BattleID          string
-	PlayerID          string
-	AbilityOfferingID string
-	DidTrigger        string
-	FactionID         string
-	AbilityLabel      string
-	IsAllSyndicates   string
-	Amount            string
-	ContributedAt     string
-	ProcessedAt       string
-	TransactionID     string
+	ID                  string
+	BattleID            string
+	PlayerID            string
+	AbilityOfferingID   string
+	DidTrigger          string
+	FactionID           string
+	AbilityLabel        string
+	IsAllSyndicates     string
+	Amount              string
+	ContributedAt       string
+	ProcessedAt         string
+	TransactionID       string
+	RefundTransactionID string
 }{
-	ID:                "battle_contributions.id",
-	BattleID:          "battle_contributions.battle_id",
-	PlayerID:          "battle_contributions.player_id",
-	AbilityOfferingID: "battle_contributions.ability_offering_id",
-	DidTrigger:        "battle_contributions.did_trigger",
-	FactionID:         "battle_contributions.faction_id",
-	AbilityLabel:      "battle_contributions.ability_label",
-	IsAllSyndicates:   "battle_contributions.is_all_syndicates",
-	Amount:            "battle_contributions.amount",
-	ContributedAt:     "battle_contributions.contributed_at",
-	ProcessedAt:       "battle_contributions.processed_at",
-	TransactionID:     "battle_contributions.transaction_id",
+	ID:                  "battle_contributions.id",
+	BattleID:            "battle_contributions.battle_id",
+	PlayerID:            "battle_contributions.player_id",
+	AbilityOfferingID:   "battle_contributions.ability_offering_id",
+	DidTrigger:          "battle_contributions.did_trigger",
+	FactionID:           "battle_contributions.faction_id",
+	AbilityLabel:        "battle_contributions.ability_label",
+	IsAllSyndicates:     "battle_contributions.is_all_syndicates",
+	Amount:              "battle_contributions.amount",
+	ContributedAt:       "battle_contributions.contributed_at",
+	ProcessedAt:         "battle_contributions.processed_at",
+	TransactionID:       "battle_contributions.transaction_id",
+	RefundTransactionID: "battle_contributions.refund_transaction_id",
 }
 
 // Generated where
 
 var BattleContributionWhere = struct {
-	ID                whereHelperstring
-	BattleID          whereHelperstring
-	PlayerID          whereHelperstring
-	AbilityOfferingID whereHelperstring
-	DidTrigger        whereHelperbool
-	FactionID         whereHelperstring
-	AbilityLabel      whereHelperstring
-	IsAllSyndicates   whereHelperbool
-	Amount            whereHelperdecimal_Decimal
-	ContributedAt     whereHelpertime_Time
-	ProcessedAt       whereHelpernull_Time
-	TransactionID     whereHelpernull_String
+	ID                  whereHelperstring
+	BattleID            whereHelperstring
+	PlayerID            whereHelperstring
+	AbilityOfferingID   whereHelperstring
+	DidTrigger          whereHelperbool
+	FactionID           whereHelperstring
+	AbilityLabel        whereHelperstring
+	IsAllSyndicates     whereHelperbool
+	Amount              whereHelperdecimal_Decimal
+	ContributedAt       whereHelpertime_Time
+	ProcessedAt         whereHelpernull_Time
+	TransactionID       whereHelpernull_String
+	RefundTransactionID whereHelpernull_String
 }{
-	ID:                whereHelperstring{field: "\"battle_contributions\".\"id\""},
-	BattleID:          whereHelperstring{field: "\"battle_contributions\".\"battle_id\""},
-	PlayerID:          whereHelperstring{field: "\"battle_contributions\".\"player_id\""},
-	AbilityOfferingID: whereHelperstring{field: "\"battle_contributions\".\"ability_offering_id\""},
-	DidTrigger:        whereHelperbool{field: "\"battle_contributions\".\"did_trigger\""},
-	FactionID:         whereHelperstring{field: "\"battle_contributions\".\"faction_id\""},
-	AbilityLabel:      whereHelperstring{field: "\"battle_contributions\".\"ability_label\""},
-	IsAllSyndicates:   whereHelperbool{field: "\"battle_contributions\".\"is_all_syndicates\""},
-	Amount:            whereHelperdecimal_Decimal{field: "\"battle_contributions\".\"amount\""},
-	ContributedAt:     whereHelpertime_Time{field: "\"battle_contributions\".\"contributed_at\""},
-	ProcessedAt:       whereHelpernull_Time{field: "\"battle_contributions\".\"processed_at\""},
-	TransactionID:     whereHelpernull_String{field: "\"battle_contributions\".\"transaction_id\""},
+	ID:                  whereHelperstring{field: "\"battle_contributions\".\"id\""},
+	BattleID:            whereHelperstring{field: "\"battle_contributions\".\"battle_id\""},
+	PlayerID:            whereHelperstring{field: "\"battle_contributions\".\"player_id\""},
+	AbilityOfferingID:   whereHelperstring{field: "\"battle_contributions\".\"ability_offering_id\""},
+	DidTrigger:          whereHelperbool{field: "\"battle_contributions\".\"did_trigger\""},
+	FactionID:           whereHelperstring{field: "\"battle_contributions\".\"faction_id\""},
+	AbilityLabel:        whereHelperstring{field: "\"battle_contributions\".\"ability_label\""},
+	IsAllSyndicates:     whereHelperbool{field: "\"battle_contributions\".\"is_all_syndicates\""},
+	Amount:              whereHelperdecimal_Decimal{field: "\"battle_contributions\".\"amount\""},
+	ContributedAt:       whereHelpertime_Time{field: "\"battle_contributions\".\"contributed_at\""},
+	ProcessedAt:         whereHelpernull_Time{field: "\"battle_contributions\".\"processed_at\""},
+	TransactionID:       whereHelpernull_String{field: "\"battle_contributions\".\"transaction_id\""},
+	RefundTransactionID: whereHelpernull_String{field: "\"battle_contributions\".\"refund_transaction_id\""},
 }
 
 // BattleContributionRels is where relationship names are stored.
@@ -154,9 +161,9 @@ func (*battleContributionR) NewStruct() *battleContributionR {
 type battleContributionL struct{}
 
 var (
-	battleContributionAllColumns            = []string{"id", "battle_id", "player_id", "ability_offering_id", "did_trigger", "faction_id", "ability_label", "is_all_syndicates", "amount", "contributed_at", "processed_at", "transaction_id"}
+	battleContributionAllColumns            = []string{"id", "battle_id", "player_id", "ability_offering_id", "did_trigger", "faction_id", "ability_label", "is_all_syndicates", "amount", "contributed_at", "processed_at", "transaction_id", "refund_transaction_id"}
 	battleContributionColumnsWithoutDefault = []string{"battle_id", "player_id", "ability_offering_id", "faction_id", "ability_label", "amount"}
-	battleContributionColumnsWithDefault    = []string{"id", "did_trigger", "is_all_syndicates", "contributed_at", "processed_at", "transaction_id"}
+	battleContributionColumnsWithDefault    = []string{"id", "did_trigger", "is_all_syndicates", "contributed_at", "processed_at", "transaction_id", "refund_transaction_id"}
 	battleContributionPrimaryKeyColumns     = []string{"id"}
 	battleContributionGeneratedColumns      = []string{}
 )

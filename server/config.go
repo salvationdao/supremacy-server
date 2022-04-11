@@ -9,4 +9,6 @@ type Config struct {
 	ServerStreamKey       string
 	PassportWebhookSecret string
 	JwtKey                []byte
+	Environment           string
+	Address               string
 }

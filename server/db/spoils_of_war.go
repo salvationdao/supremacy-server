@@ -1,10 +1,13 @@
 package db
 
 import (
+	"database/sql"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 	"time"
+
+	"github.com/friendsofgo/errors"
 
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
@@ -29,7 +32,7 @@ type PlayerMultiplier struct {
 	IsMultiplicative bool            `db:"is_multiplicative"`
 }
 
-func PlayerMultipliers(battleNumber int) ([]*Multipliers, error) {
+func PlayerMultipliers(battleSeconds int64) ([]*Multipliers, error) {
 	result := []*Multipliers{}
 
 	dbResult := []*PlayerMultiplier{}
@@ -37,11 +40,10 @@ func PlayerMultipliers(battleNumber int) ([]*Multipliers, error) {
 		SELECT p.id AS player_id, um.value AS multiplier_value, m.is_multiplicative FROM user_multipliers um 
 		INNER JOIN players p ON p.id = um.player_id
 		INNER JOIN multipliers m ON m.id = um.multiplier_id
-		WHERE um.from_battle_number <= $1
-		AND um.until_battle_number > $1;
+		WHERE um.expires_at_battle_seconds > $1;
 		`
 
-	err := pgxscan.Select(context.Background(), gamedb.Conn, &dbResult, q, battleNumber)
+	err := pgxscan.Select(context.Background(), gamedb.Conn, &dbResult, q, battleSeconds)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -294,38 +296,47 @@ func MostFrequentAbilityExecutors(battleID uuid.UUID) ([]*boiler.Player, error) 
 }
 
 func LastTwoSpoilOfWarAmount() ([]decimal.Decimal, error) {
-	q := `
-	 SELECT 
-	  (sow.amount - sow.amount_sent) as amount
-	 FROM 
-	  spoils_of_war sow
-	 ORDER BY 
-	  sow.created_at DESC
-	 LIMIT
-	  2
-	`
+	result := []decimal.Decimal{}
 
-	rows, err := gamedb.StdConn.Query(q)
+	// get the latest sow
+	latestSOW, err := boiler.SpoilsOfWars(
+		qm.Select(
+			boiler.SpoilsOfWarColumns.ID,
+			boiler.SpoilsOfWarColumns.Amount,
+			boiler.SpoilsOfWarColumns.AmountSent,
+		),
+		qm.OrderBy(boiler.SpoilsOfWarColumns.BattleNumber+" DESC"),
+		qm.Limit(1),
+	).One(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().
-			Str("db func", "LastTwoSpoilOfWarAmount").Err(err).Msg("unable to query spoils of war 2")
-		return []decimal.Decimal{}, terror.Error(err)
+		return []decimal.Decimal{}, terror.Error(err, "Failed to get the latest spoil of war")
 	}
-	defer rows.Close()
 
-	result := make([]decimal.Decimal, 2)
-	i := 0
-	for rows.Next() {
-		var amnt decimal.Decimal
-		err := rows.Scan(&amnt)
-		if err != nil {
-			gamelog.L.Error().
-				Str("db func", "LastTwoSpoilOfWarAmount").Err(err).Msg("unable to scan spoils of war 2")
-			return nil, err
-		}
-		result[i] = amnt
-		i++
+	// append the latest spoil of war to the result
+	result = append(result, latestSOW.Amount.Sub(latestSOW.AmountSent))
+
+	// unfinished spoil of wor
+	unfinishedSOWs, err := boiler.SpoilsOfWars(
+		qm.Select(
+			boiler.SpoilsOfWarColumns.ID,
+			boiler.SpoilsOfWarColumns.Amount,
+			boiler.SpoilsOfWarColumns.AmountSent,
+		),
+		boiler.SpoilsOfWarWhere.CreatedAt.GT(time.Now().AddDate(0, 0, -1)),
+		boiler.SpoilsOfWarWhere.ID.NEQ(latestSOW.ID),
+		qm.And("amount > amount_sent"),
+	).All(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return []decimal.Decimal{}, terror.Error(err, "Failed to get the unfinished spoil of war")
 	}
+
+	totalRemain := decimal.Zero
+	for _, unfinishedSOW := range unfinishedSOWs {
+		totalRemain = totalRemain.Add(unfinishedSOW.Amount.Sub(unfinishedSOW.AmountSent))
+	}
+
+	// append total remain spoil of war amount
+	result = append(result, totalRemain)
 
 	return result, nil
 }

@@ -49,19 +49,21 @@ func NewStreamController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Str
 
 const HubKeyStreamList hub.HubCommandKey = "STREAMLIST:SUBSCRIBE"
 
-func (s *StreamsWS) StreamListSubscribeSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (s *StreamsWS) StreamListSubscribeSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	req := &StreamListRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
-	streamList, err := db.GetStreamList(ctx, s.Conn)
-	if err != nil {
-		return req.TransactionID, "", terror.Error(err)
-	}
+	if needProcess {
+		streamList, err := db.GetStreamList(ctx, s.Conn)
+		if err != nil {
+			return req.TransactionID, "", terror.Error(err)
+		}
 
-	reply(streamList)
+		reply(streamList)
+	}
 
 	return req.TransactionID, messagebus.BusKey(HubKeyStreamList), nil
 }
@@ -69,7 +71,7 @@ func (s *StreamsWS) StreamListSubscribeSubscribeHandler(ctx context.Context, wsc
 const HubKeyStreamCloseSubscribe hub.HubCommandKey = "STREAM:CLOSE:SUBSCRIBE"
 
 //sets up subscription socket to push games left until stream closes
-func (s *StreamsWS) StreamCloseSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (s *StreamsWS) StreamCloseSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	req := &StreamListRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -164,29 +166,31 @@ func (api *API) DeleteStreamHandler(w http.ResponseWriter, r *http.Request) (int
 // global announcements
 const HubKeyGlobalAnnouncementSubscribe hub.HubCommandKey = "GLOBAL_ANNOUNCEMENT:SUBSCRIBE"
 
-func (s *StreamsWS) GlobalAnnouncementSubscribe(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
+func (s *StreamsWS) GlobalAnnouncementSubscribe(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
-	// get announcement
-	ga, err := boiler.GlobalAnnouncements().One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return "", "", terror.Error(err, "failed to get announcement")
-	}
+	if needProcess {
+		// get announcement
+		ga, err := boiler.GlobalAnnouncements().One(gamedb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return "", "", terror.Error(err, "failed to get announcement")
+		}
 
-	currentBattle, err := boiler.Battles(qm.OrderBy("battle_number DESC")).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return "", "", terror.Error(err, "failed to get current battle")
-	}
+		currentBattle, err := boiler.Battles(qm.OrderBy("battle_number DESC")).One(gamedb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return "", "", terror.Error(err, "failed to get current battle")
+		}
 
-	// show if battle number is equal or in between the global announcement's to and from battle number
-	if currentBattle != nil && ga != nil && currentBattle.BattleNumber >= ga.ShowFromBattleNumber.Int && currentBattle.BattleNumber <= ga.ShowUntilBattleNumber.Int {
-		reply(ga)
-	} else {
-		reply(nil)
+		// show if battle number is equal or in between the global announcement's to and from battle number
+		if currentBattle != nil && ga != nil && currentBattle.BattleNumber >= ga.ShowFromBattleNumber.Int && currentBattle.BattleNumber <= ga.ShowUntilBattleNumber.Int {
+			reply(ga)
+		} else {
+			reply(nil)
+		}
 	}
 
 	return req.TransactionID, messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), nil

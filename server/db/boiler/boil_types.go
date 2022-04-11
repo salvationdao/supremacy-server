@@ -60,6 +60,7 @@ const (
 	AbilityTypeEnumREINFORCEMENTS = "REINFORCEMENTS"
 	AbilityTypeEnumROBOTDOGS      = "ROBOT DOGS"
 	AbilityTypeEnumOVERCHARGE     = "OVERCHARGE"
+	AbilityTypeEnumFIREWORKS      = "FIREWORKS"
 )
 
 // Enum values for BattleEvent
@@ -68,6 +69,19 @@ const (
 	BattleEventSpawnedAi        = "spawned_ai"
 	BattleEventKill             = "kill"
 	BattleEventAbilityTriggered = "ability_triggered"
+)
+
+// Enum values for ChatMSGTypeEnum
+const (
+	ChatMSGTypeEnumTEXT        = "TEXT"
+	ChatMSGTypeEnumPUNISH_VOTE = "PUNISH_VOTE"
+)
+
+// Enum values for AbilityLevel
+const (
+	AbilityLevelMECH    = "MECH"
+	AbilityLevelFACTION = "FACTION"
+	AbilityLevelPLAYER  = "PLAYER"
 )
 
 // Enum values for MultiplierTypeEnum
@@ -79,4 +93,12 @@ const (
 	MultiplierTypeEnumPlayerMech   = "player_mech"
 	MultiplierTypeEnumHoursOnline  = "hours_online"
 	MultiplierTypeEnumSyndicateWin = "syndicate_win"
+)
+
+// Enum values for PlayerRankEnum
+const (
+	PlayerRankEnumGENERAL     = "GENERAL"
+	PlayerRankEnumCORPORAL    = "CORPORAL"
+	PlayerRankEnumPRIVATE     = "PRIVATE"
+	PlayerRankEnumNEW_RECRUIT = "NEW_RECRUIT"
 )

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -37,7 +36,6 @@ func PassportWebhookRouter(log *zerolog.Logger, conn db.Conn, webhookSecret stri
 		API:  api,
 	}
 	r := chi.NewRouter()
-	r.Post("/auth_ring_check", WithPassportSecret(webhookSecret, WithError(c.AuthRingCheck)))
 	r.Post("/user_update", WithPassportSecret(webhookSecret, WithError(c.UserUpdated)))
 	r.Post("/user_enlist_faction", WithPassportSecret(webhookSecret, WithError(c.UserEnlistFaction)))
 	r.Post("/user_stat", WithPassportSecret(webhookSecret, WithError(c.UserStatGet)))
@@ -76,21 +74,14 @@ func (pc *PassportWebhookController) UserUpdated(w http.ResponseWriter, r *http.
 		if err != nil {
 			return http.StatusInternalServerError, terror.Error(err, "faction not found")
 		}
-		req.User.Faction = &server.Faction{
-			ID:    server.FactionID{},
-			Label: faction.Label,
-			Theme: &server.FactionTheme{
-				Primary:    faction.PrimaryColor,
-				Secondary:  faction.SecondaryColor,
-				Background: faction.BackgroundColor,
-			},
-			LogoBlobID:       server.BlobID{},
-			BackgroundBlobID: server.BlobID{},
-			VotePrice:        faction.VotePrice,
-			ContractReward:   faction.ContractReward,
-			Description:      "",
+
+		err = req.User.Faction.SetFromBoilerFaction(faction)
+		if err != nil {
+			return http.StatusInternalServerError, terror.Error(err, "Unable to convert faction, contact support or try again.")
 		}
 	}
+
+	req.User.Gid = player.Gid
 
 	// update player
 	_, err = player.Update(gamedb.StdConn, boil.Whitelist(
@@ -102,7 +93,7 @@ func (pc *PassportWebhookController) UserUpdated(w http.ResponseWriter, r *http.
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	pc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, player.ID)), player)
+	pc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, player.ID)), req.User)
 
 	return helpers.EncodeJSON(w, struct {
 		IsSuccess bool `json:"is_success"`
@@ -148,6 +139,8 @@ func (pc *PassportWebhookController) UserEnlistFaction(w http.ResponseWriter, r 
 		Username:      player.Username.String,
 		PublicAddress: player.PublicAddress,
 		FactionID:     req.FactionID,
+		Faction:       &server.Faction{},
+		Gid:           player.Gid,
 	}
 
 	faction, err := boiler.FindFaction(gamedb.StdConn, req.FactionID.String())
@@ -209,9 +202,11 @@ func (pc *PassportWebhookController) UserStatGet(w http.ResponseWriter, r *http.
 	}
 
 	if userStat == nil {
-		// build a empty user stat if there is no user stat in db
-		userStat = &boiler.UserStat{
-			ID: req.UserID.String(),
+		// build an empty user stat if there is no user stat in db
+		userStat = &server.UserStat{
+			UserStat: &boiler.UserStat{
+				ID: req.UserID.String(),
+			},
 		}
 	}
 
@@ -244,99 +239,6 @@ func (pc *PassportWebhookController) FactionStatGet(w http.ResponseWriter, r *ht
 type WarMachineQueuePositionRequest struct {
 	FactionID server.FactionID `json:"factionID"`
 	AssetHash string           `json:"assethash"`
-}
-
-type AuthRingCheckRequest struct {
-	User                *server.User `json:"user"`
-	GameserverSessionID string       `json:"gameserver_session_id"`
-}
-
-func (pc *PassportWebhookController) AuthRingCheck(w http.ResponseWriter, r *http.Request) (int, error) {
-
-	req := &AuthRingCheckRequest{}
-	err := json.NewDecoder(r.Body).Decode(req)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err)
-	}
-
-	if req.GameserverSessionID == "" {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("no auth ring check key provided"), "Ring check key is required")
-	}
-
-	if !req.User.PublicAddress.Valid {
-		return http.StatusBadRequest, terror.Error(fmt.Errorf("missing user public address"), "User public address is required")
-	}
-
-	// skip the auth, if not whitelisted
-	if os.Getenv("PASSPORT_ENVIRONMENT") == "production" || os.Getenv("PASSPORT_ENVIRONMENT") == "staging" {
-		if !IsWhitelistedAddress(req.User.PublicAddress.String) {
-			// remove key
-			pc.API.RingCheckAuthMap.Remove(req.GameserverSessionID)
-			return helpers.EncodeJSON(w, struct {
-				IsSuccess     bool `json:"is_success"`
-				IsWhitelisted bool `json:"is_whitelisted"`
-			}{
-				IsSuccess:     true,
-				IsWhitelisted: false,
-			})
-		}
-	}
-
-	// check whitelist
-	client, err := pc.API.RingCheckAuthMap.Check(req.GameserverSessionID)
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err, "Hub client not found")
-	}
-
-	// set client identifier
-	client.SetIdentifier(req.User.ID.String())
-
-	var factionID *string
-	if !req.User.FactionID.IsNil() {
-		str := req.User.FactionID.String()
-		factionID = &str
-
-		// get faction detail
-		faction, err := db.FactionGet(str)
-		if err != nil {
-			return http.StatusBadRequest, terror.Error(err)
-		}
-
-		err = req.User.Faction.SetFromBoilerFaction(faction)
-		if err != nil {
-			return http.StatusInternalServerError, terror.Error(err)
-		}
-	}
-
-	// store user into player table
-	err = db.UpsertPlayer(&boiler.Player{
-		ID:            req.User.ID.String(),
-		Username:      null.StringFrom(req.User.Username),
-		PublicAddress: req.User.PublicAddress,
-		FactionID:     null.StringFromPtr(factionID),
-	})
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err)
-	}
-
-	b, err := json.Marshal(&BroadcastPayload{
-		Key:     HubKeyUserRingCheck,
-		Payload: req.User,
-	})
-	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err)
-	}
-
-	go client.Send(b)
-
-	return helpers.EncodeJSON(w, struct {
-		IsSuccess     bool `json:"is_success"`
-		IsWhitelisted bool `json:"is_whitelisted"`
-	}{
-		IsSuccess:     true,
-		IsWhitelisted: true,
-	})
-
 }
 
 type FactionQueueCostGetRequest struct {
@@ -384,14 +286,16 @@ var whitelistedAddresses = []common.Address{
 	common.HexToAddress("0x3e46B1a261616eb88C6e39B680065451B44Cd600"),
 	common.HexToAddress("0x79d4b9CFf3C046F07e9270CE9948b961B3245999"),
 	common.HexToAddress("0xdBa43A5434B9BeEF4f473E0e5aEb3B172C7461EC"),
+	common.HexToAddress("0x51627A7e67b86decf28a50a9207060f634D6C6d4"),
 	// this one is Reece ⌄⌄⌄⌄
 	common.HexToAddress("0xEeDBF8aB0D5e20dF93F1539A6b1c18A804335d4B"),
 	// this one is Reece ^^^^
 	common.HexToAddress("0x3Ca6425be53a9B9cA9650eB8a8B454f455781333"),
 	common.HexToAddress("0xEAA5693a4E3cA53A74687440db2E55773b2E3F7d"),
-
+	common.HexToAddress("0x77F9e1c5a2e99Bf0F6129cDb79bAB7a7BeFE879f"),
 	common.HexToAddress("0x4F99ca8cA1328C6F44242f7b7333f3637956f046"),
-
+	common.HexToAddress("0x049347822a1535b3159726df32fe264513d9D68E"),
+	common.HexToAddress("0xCaC57750dAC844408e5dA080441E09b6619Fb6aA"),
 	// whitelisted player
 	common.HexToAddress("0xE2b7AE0b026817e38E29c03c3F57bc697A2Cf21B"),
 	common.HexToAddress("0x1C809993d33e5ecE03330996542536861ED8fb2a"),

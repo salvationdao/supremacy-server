@@ -96,13 +96,13 @@ type FactionStat struct {
 }
 
 type BattleAbility struct {
-	ID                     BattleAbilityID `json:"id" db:"id"`
-	Label                  string          `json:"label" db:"label"`
-	Description            string          `json:"description" db:"description"`
-	CooldownDurationSecond int             `json:"cooldown_duration_second" db:"cooldown_duration_second"`
-	Colour                 string          `json:"colour"`
-	TextColour             string          `json:"text_colour"`
-	ImageUrl               string          `json:"image_url"`
+	ID                     string `json:"id" db:"id"`
+	Label                  string `json:"label" db:"label"`
+	Description            string `json:"description" db:"description"`
+	CooldownDurationSecond int    `json:"cooldown_duration_second" db:"cooldown_duration_second"`
+	Colour                 string `json:"colour"`
+	TextColour             string `json:"text_colour"`
+	ImageUrl               string `json:"image_url"`
 }
 
 func (ga *BattleAbility) Brief() *AbilityBrief {
@@ -112,3 +112,11 @@ func (ga *BattleAbility) Brief() *AbilityBrief {
 		Colour:   ga.Colour,
 	}
 }
+
+type PunishmentOption string
+
+const (
+	PunishmentOptionRestrictLocationSelect   = "restrict_location_select"
+	PunishmentOptionRestrictChat             = "restrict_chat"
+	PunishmentOptionRestrictSupsContribution = "restrict_sups_contribution"
+)
