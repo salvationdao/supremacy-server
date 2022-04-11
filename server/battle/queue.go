@@ -31,8 +31,10 @@ func CalcNextQueueStatus(length int64) QueueStatusResponse {
 	// min cost will be one forth of the queue length
 	minQueueCost := queueLength.Div(decimal.NewFromFloat(4)).Mul(decimal.New(1, 18))
 
+	mul := db.GetDecimalWithDefault("queue_fee_log_multi", decimal.NewFromFloat(3.25))
+	mulFloat, _ := mul.Float64()
 	// calc queue cost
-	feeMultiplier := math.Log(float64(ql)) / 4 * 0.25
+	feeMultiplier := math.Log(float64(ql)) / mulFloat * 0.25
 	queueCost := queueLength.Mul(decimal.NewFromFloat(feeMultiplier)).Mul(decimal.New(1, 18))
 
 	// calc contract reward
