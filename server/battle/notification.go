@@ -2,20 +2,20 @@ package battle
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"server"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"time"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
-	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
@@ -210,9 +210,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 		}
 
 		// add them to users to notify
-		player, err := boiler.Players(
-			boiler.PlayerWhere.ID.EQ(bq.OwnerID),
-		).One(gamedb.StdConn)
+		player, err := boiler.Players(boiler.PlayerWhere.ID.EQ(bq.OwnerID)).One(gamedb.StdConn)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("battle_id", arena.currentBattle().ID).Str("owner_id", bq.OwnerID).Msg("unable to find owner for battle queue notification")
 			continue
@@ -226,72 +224,59 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			continue
 		}
 
-		// continue loop if their war machine does not have a relationship with the battle_queue_notifications table
-		if warMachine.R.BattleQueueNotifications == nil {
-			gamelog.L.Warn().Str("mech id", warMachine.ID).Str("mech name", warMachine.Name).Msg("Skipping mech notification, no relation found on battle_queue_notifications table")
-			continue
-		}
-
 		wmName := fmt.Sprintf("(%s)", warMachine.Label)
 		if warMachine.Name != "" {
 			wmName = fmt.Sprintf("(%s)", warMachine.Name)
 		}
 
-		for _, n := range warMachine.R.BattleQueueNotifications {
-			if n.SentAt.Valid {
-				continue
-			}
+		playerProfile, err := boiler.PlayerProfiles(boiler.PlayerProfileWhere.PlayerID.EQ(player.ID)).One(gamedb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Err(err).Str("player_id", player.ID).Msg("unable to get player prefs")
+			continue
+		}
 
-			// telegram notification
-			if n.R != nil && n.R.TelegramPlayer != nil && n.R.TelegramPlayer.TelegramID.Valid {
-				notificationMsg := fmt.Sprintf("🦾 %s, your War Machine %s is approaching the front of the queue!\n\n⚔️ Jump into the Battle Arena now to prepare. Your survival has its rewards.\n\n⚠️ (Reminder: In order to combat scams we will NEVER send you links)", player.Username.String, wmName)
-				gamelog.L.Info().Str("TelegramNotificationID", n.ID).Msg("sending telegram notification")
-				err = arena.telegram.Notify2(n.R.TelegramPlayer.TelegramID.Int64, notificationMsg)
-				if err != nil {
-					gamelog.L.Error().Err(err).Str("mech_id", bq.MechID).Str("owner_id", bq.OwnerID).Str("queued_at", bq.QueuedAt.String()).Str("telegram id", n.TelegramNotificationID.String).Msg("failed to notify telegram")
-				}
-			}
+		if playerProfile == nil {
+			continue
+		}
 
-			// telegram notifications old (will be removed)
-			if n.TelegramNotificationID.Valid {
-				notificationMsg := fmt.Sprintf("🦾 %s, your War Machine %s is approaching the front of the queue!\n\n⚔️ Jump into the Battle Arena now to prepare. Your survival has its rewards.\n\n⚠️ (Reminder: In order to combat scams we will NEVER send you links)", player.Username.String, wmName)
-				gamelog.L.Info().Str("TelegramNotificationID", n.TelegramNotificationID.String).Msg("sending telegram notification")
-				err = arena.telegram.Notify(n.TelegramNotificationID.String, notificationMsg)
-				if err != nil {
-					gamelog.L.Error().Err(err).Str("mech_id", bq.MechID).Str("owner_id", bq.OwnerID).Str("queued_at", bq.QueuedAt.String()).Str("telegram id", n.TelegramNotificationID.String).Msg("failed to notify telegram")
-				}
-			}
-
-			// send sms
-			if n.MobileNumber.Valid {
-				notificationMsg := fmt.Sprintf("%s, your War Machine %s is approaching the front of the queue!\n\nJump into the Battle Arena now to prepare. Your survival has its rewards.\n\n(Reminder: In order to combat scams we will NEVER send you links)", player.Username.String, wmName)
-				gamelog.L.Info().Str("MobileNumber", n.MobileNumber.String).Msg("sending sms notification")
-				err := arena.sms.SendSMS(
-					player.MobileNumber.String,
-					notificationMsg,
-				)
-				if err != nil {
-					gamelog.L.Error().Err(err).Str("to", n.MobileNumber.String).Msg("failed to send battle queue notification sms")
-				}
-			}
-
-			n.SentAt = null.TimeFrom(time.Now())
-			n.QueueMechID = null.NewString("", false)
-			_, err = n.Update(gamedb.StdConn, boil.Infer())
+		// sms notifications
+		if playerProfile.EnableSMSNotifications && playerProfile.MobileNumber.Valid {
+			notificationMsg := fmt.Sprintf("%s, your War Machine %s is approaching the front of the queue!\n\nJump into the Battle Arena now to prepare. Your survival has its rewards.\n\n(Reminder: In order to combat scams we will NEVER send you links)", player.Username.String, wmName)
+			gamelog.L.Info().Str("MobileNumber", playerProfile.MobileNumber.String).Msg("sending sms notification")
+			err := arena.sms.SendSMS(
+				player.MobileNumber.String,
+				notificationMsg,
+			)
 			if err != nil {
-				gamelog.L.Error().Err(err).Str("bqn id", n.ID).Msg("failed to update BattleQueueNotificationColumns")
+				gamelog.L.Error().Err(err).Str("to", playerProfile.MobileNumber.String).Msg("failed to send battle queue notification sms")
 			}
+		}
+
+		// telegram notifications
+		if playerProfile.EnableTelegramNotifications && playerProfile.TelegramID.Valid {
+			notificationMsg := fmt.Sprintf("🦾 %s, your War Machine %s is approaching the front of the queue!\n\n⚔️ Jump into the Battle Arena now to prepare. Your survival has its rewards.\n\n⚠️ (Reminder: In order to combat scams we will NEVER send you links)", player.Username.String, wmName)
+			gamelog.L.Info().Str("player_id", player.ID).Msg("sending telegram notification")
+			err = arena.telegram.Notify2(playerProfile.TelegramID.Int64, notificationMsg)
+			if err != nil {
+				gamelog.L.Error().Err(err).Str("mech_id", bq.MechID).Str("owner_id", bq.OwnerID).Str("queued_at", bq.QueuedAt.String()).Str("telegram id", fmt.Sprintf("%v", playerProfile.TelegramID)).Msg("failed to notify telegram")
+			}
+		}
+
+		if playerProfile.EnablePushNotifications {
+
 		}
 
 		//TODO: push notifications
 		// TODO: discord notifications?
 
 		bq.Notified = true
-
 		_, err = bq.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleQueueColumns.Notified))
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("mech_id", bq.MechID).Str("owner_id", bq.OwnerID).Str("queued_at", bq.QueuedAt.String()).Msg("failed to update notified column")
 		}
+
+		// charge notification fee
+		// bq.fee
 
 	}
 }

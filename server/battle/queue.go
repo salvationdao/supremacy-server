@@ -220,7 +220,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 	}
 
 	shortcode := ""
-	bqn := &boiler.BattleQueueNotification{}
+	// bqn := &boiler.BattleQueueNotification{}
 	// Charge queue notification fee, if enabled (10% of queue cost)
 	if !bq.Notified {
 		notifyCost := queueStatus.QueueCost.Mul(decimal.NewFromFloat(0.1))
@@ -269,17 +269,17 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		}
 
 		//insert notification into db
-		bqn = &boiler.BattleQueueNotification{
-			MechID:            mechID.String(),
-			QueueMechID:       null.StringFrom(mechID.String()),
-			MobileNumber:      null.StringFrom(msg.Payload.MobileNumber),
-			PushNotifications: msg.Payload.EnablePushNotifications,
-			Fee:               notifyCost,
-		}
+		// bqn = &boiler.BattleQueueNotification{
+		// 	MechID:            mechID.String(),
+		// 	QueueMechID:       null.StringFrom(mechID.String()),
+		// 	MobileNumber:      null.StringFrom(msg.Payload.MobileNumber),
+		// 	PushNotifications: msg.Payload.EnablePushNotifications,
+		// 	Fee:               notifyCost,
+		// }
 
 		// get telegram registered player
-		telegramPlayer, err := boiler.TelegramPlayers(
-			boiler.TelegramPlayerWhere.PlayerID.EQ(ownerID.String()),
+		playerProfile, err := boiler.PlayerProfiles(
+			boiler.PlayerProfileWhere.PlayerID.EQ(ownerID.String()),
 		).One(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			gamelog.L.Error().
@@ -289,7 +289,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 
 		}
 
-		telegramUnregistered := errors.Is(err, sql.ErrNoRows) || telegramPlayer == nil
+		telegramUnregistered := errors.Is(err, sql.ErrNoRows) || playerProfile == nil
 
 		// if telegram notifications enabled but unregistered
 		if msg.Payload.EnableTelegramNotifications && telegramUnregistered {
@@ -302,7 +302,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 				return terror.Error(err, "Unable create telegram user")
 			}
 
-			newTelegramPlayer, err := arena.telegram.PlayerCreate(player)
+			profile, err := arena.telegram.ProfileUpdate(player)
 			if err != nil {
 				gamelog.L.Error().
 					Str("PlayerID", ownerID.String()).
@@ -310,8 +310,8 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 				return terror.Error(err, "Unable create telegram user")
 			}
 
-			bqn.TelegramPlayerID = null.StringFrom(newTelegramPlayer.ID)
-			shortcode = newTelegramPlayer.Shortcode
+			// bqn.TelegramPlayerID = null.StringFrom(newTelegramPlayer.ID)
+			shortcode = profile.Shortcode
 
 		}
 
@@ -321,7 +321,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 			if mech.Name != "" {
 				wmName = mech.Name
 			}
-			bqn.TelegramPlayerID = null.StringFrom(telegramPlayer.ID)
+			// bqn.TelegramPlayerID = null.StringFrom(telegramPlayer.ID)
 			err := arena.telegram.Notify2(telegramPlayer.TelegramID.Int64, fmt.Sprintf("🦾 Your War Machine (%[1]s) has been deployed, you will be notified when it is nearing battle.", wmName))
 			if err != nil {
 				gamelog.L.Error().
@@ -330,26 +330,26 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 			}
 		}
 
-		err = bqn.Insert(tx, boil.Infer())
-		if err != nil {
-			gamelog.L.Error().
-				Interface("mech", mech).
-				Err(err).Msg("unable to insert queue notification for mech")
-			if bq.QueueFeeTXID.Valid {
-				_, err = arena.RPCClient.RefundSupsMessage(bq.QueueFeeTXID.String)
-				if err != nil {
-					gamelog.L.Error().Str("txID", bq.QueueFeeTXID.String).Err(err).Msg("failed to refund queue fee")
-				}
-			}
-			if bq.QueueNotificationFeeTXID.Valid {
-				_, err = arena.RPCClient.RefundSupsMessage(bq.QueueNotificationFeeTXID.String)
-				if err != nil {
-					gamelog.L.Error().Str("txID", bq.QueueNotificationFeeTXID.String).Err(err).Msg("failed to refund queue notification fee")
-				}
-			}
+		// err = bqn.Insert(tx, boil.Infer())
+		// if err != nil {
+		// 	gamelog.L.Error().
+		// 		Interface("mech", mech).
+		// 		Err(err).Msg("unable to insert queue notification for mech")
+		// 	if bq.QueueFeeTXID.Valid {
+		// 		_, err = arena.RPCClient.RefundSupsMessage(bq.QueueFeeTXID.String)
+		// 		if err != nil {
+		// 			gamelog.L.Error().Str("txID", bq.QueueFeeTXID.String).Err(err).Msg("failed to refund queue fee")
+		// 		}
+		// 	}
+		// 	if bq.QueueNotificationFeeTXID.Valid {
+		// 		_, err = arena.RPCClient.RefundSupsMessage(bq.QueueNotificationFeeTXID.String)
+		// 		if err != nil {
+		// 			gamelog.L.Error().Str("txID", bq.QueueNotificationFeeTXID.String).Err(err).Msg("failed to refund queue notification fee")
+		// 		}
+		// 	}
 
-			return terror.Error(err, "Unable to join queue, contact support or try again.")
-		}
+		// 	return terror.Error(err, "Unable to join queue, contact support or try again.")
+		// }
 
 	}
 
@@ -393,7 +393,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		return terror.Error(err, "Unable to join queue, check your balance and try again.")
 	}
 
-	if bqn.TelegramPlayerID.Valid && shortcode != "" {
+	if shortcode != "" {
 		reply(QueueJoinHandlerResponse{
 			Success: true,
 			Code:    shortcode,

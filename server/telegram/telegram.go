@@ -45,8 +45,6 @@ func NewTelegram(token string, environment string, registerCallback func(shortCo
 	return t, nil
 }
 
-var telegramNotifications = map[string][]string{}
-
 const HubKeyTelegramShortcodeRegistered = "USER:TELEGRAM_SHORTCODE_REGISTERED"
 
 // registers new players
@@ -74,10 +72,10 @@ func (t *Telegram) RunTelegram(bot *tele.Bot) error {
 			return c.Send("Unable to register shortcode, try again or contact support.")
 		}
 
-		// get telegram player via short code
-		telegramPlayer, err := boiler.TelegramPlayers(
-			boiler.TelegramPlayerWhere.TelegramID.IsNull(),
-			boiler.TelegramPlayerWhere.Shortcode.EQ(strings.ToLower(shortcode))).One(gamedb.StdConn)
+		// get player profile via short code
+		playerProfile, err := boiler.PlayerProfiles(
+			boiler.PlayerProfileWhere.TelegramID.IsNull(),
+			boiler.PlayerProfileWhere.Shortcode.EQ(strings.ToLower(shortcode))).One(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			gamelog.L.Error().Err(err).Msg("unable to get player by shortcode")
 			return c.Send("Unable to find shortcode, you may have entered your shortcode too fast, please try again or contact support.")
@@ -87,38 +85,38 @@ func (t *Telegram) RunTelegram(bot *tele.Bot) error {
 
 		// cant find telgram player by shortcode
 		if errors.Is(err, sql.ErrNoRows) {
-			reply = "Invalid shortcode!"
+			reply = "Invalid shortcodefjfjfj!"
 			return c.Send(reply)
 		}
 
 		// if found
-		telegramPlayer.TelegramID = null.Int64From(int64(_telegramID))
+		playerProfile.TelegramID = null.Int64From(int64(_telegramID))
 
-		_, err = telegramPlayer.Update(gamedb.StdConn, boil.Infer())
+		_, err = playerProfile.Update(gamedb.StdConn, boil.Infer())
 		if err != nil {
 			gamelog.L.Error().Err(err).
 				Str("telegramID", telegramID).
-				Str("telegramPlayer", telegramPlayer.ID).
+				Str("playerProfile", playerProfile.ID).
 				Msg("unable to update telegram player")
 			return terror.Error(err)
 		}
 
 		if err != nil {
 			reply = "Issue regestering, try again or contact support"
-			go t.RegisterCallback(telegramPlayer.PlayerID, false)
+			go t.RegisterCallback(playerProfile.PlayerID, false)
 			return c.Send(reply)
 
 		}
 
 		reply = "Registered Successfully! You will be notified when your war machine is nearing battle"
-		go t.RegisterCallback(telegramPlayer.PlayerID, true)
+		go t.RegisterCallback(playerProfile.PlayerID, true)
 		return c.Send(reply)
 	})
 	bot.Start()
 	return nil
 }
 
-func (t *Telegram) PlayerCreate(player *boiler.Player) (*boiler.TelegramPlayer, error) {
+func (t *Telegram) ProfileUpdate(player *boiler.Player) (*boiler.PlayerProfile, error) {
 
 	shortcode, err := shortid.Generate()
 	if err != nil {
@@ -128,7 +126,7 @@ func (t *Telegram) PlayerCreate(player *boiler.Player) (*boiler.TelegramPlayer, 
 	codeExists := true
 	for codeExists {
 		// check if a telegram player already has that shortcode
-		exists, err := boiler.TelegramPlayers(boiler.TelegramPlayerWhere.Shortcode.EQ(strings.ToLower(shortcode))).Exists(gamedb.StdConn)
+		exists, err := boiler.PlayerProfiles(boiler.PlayerProfileWhere.Shortcode.EQ(strings.ToLower(shortcode))).Exists(gamedb.StdConn)
 		if err != nil {
 			return nil, terror.Error(err, "Unable to check if telegram player exists")
 		}
@@ -144,18 +142,35 @@ func (t *Telegram) PlayerCreate(player *boiler.Player) (*boiler.TelegramPlayer, 
 		}
 	}
 
-	// create telegram player
-	tPlayer := &boiler.TelegramPlayer{
-		PlayerID:  player.ID,
-		Shortcode: strings.ToLower(shortcode),
+	profile, err := boiler.PlayerProfiles(boiler.PlayerProfileWhere.PlayerID.EQ(player.ID)).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, terror.Error(err, "Unable to get player profile")
 	}
 
-	err = player.AddTelegramPlayers(gamedb.StdConn, true, tPlayer)
-	if err != nil {
-		return nil, terror.Error(err, "Unable to create telegram player")
+	if errors.Is(err, sql.ErrNoRows) {
+		// create new player profile
+		_profile := &boiler.PlayerProfile{
+			Shortcode:                   strings.ToLower(shortcode),
+			EnableTelegramNotifications: true,
+		}
+
+		err = player.AddPlayerProfiles(gamedb.StdConn, true, _profile)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return nil, terror.Error(err, "Unable to insert player profile")
+		}
+
+		return _profile, nil
 	}
 
-	return tPlayer, nil
+	// update player profile
+	profile.EnableTelegramNotifications = true
+	profile.Shortcode = strings.ToLower(shortcode)
+	_, err = profile.Update(gamedb.StdConn, boil.Infer())
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, terror.Error(err, "Unable to update player profile")
+	}
+
+	return profile, nil
 
 }
 

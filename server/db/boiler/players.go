@@ -160,6 +160,7 @@ var PlayerRels = struct {
 	PlayerKillLogs            string
 	PlayerLanguages           string
 	PlayerPreferences         string
+	PlayerProfiles            string
 	PlayersPunishVotes        string
 	IssuedByPunishVotes       string
 	ReportedPlayerPunishVotes string
@@ -185,6 +186,7 @@ var PlayerRels = struct {
 	PlayerKillLogs:            "PlayerKillLogs",
 	PlayerLanguages:           "PlayerLanguages",
 	PlayerPreferences:         "PlayerPreferences",
+	PlayerProfiles:            "PlayerProfiles",
 	PlayersPunishVotes:        "PlayersPunishVotes",
 	IssuedByPunishVotes:       "IssuedByPunishVotes",
 	ReportedPlayerPunishVotes: "ReportedPlayerPunishVotes",
@@ -213,6 +215,7 @@ type playerR struct {
 	PlayerKillLogs            PlayerKillLogSlice        `boiler:"PlayerKillLogs" boil:"PlayerKillLogs" json:"PlayerKillLogs" toml:"PlayerKillLogs" yaml:"PlayerKillLogs"`
 	PlayerLanguages           PlayerLanguageSlice       `boiler:"PlayerLanguages" boil:"PlayerLanguages" json:"PlayerLanguages" toml:"PlayerLanguages" yaml:"PlayerLanguages"`
 	PlayerPreferences         PlayerPreferenceSlice     `boiler:"PlayerPreferences" boil:"PlayerPreferences" json:"PlayerPreferences" toml:"PlayerPreferences" yaml:"PlayerPreferences"`
+	PlayerProfiles            PlayerProfileSlice        `boiler:"PlayerProfiles" boil:"PlayerProfiles" json:"PlayerProfiles" toml:"PlayerProfiles" yaml:"PlayerProfiles"`
 	PlayersPunishVotes        PlayersPunishVoteSlice    `boiler:"PlayersPunishVotes" boil:"PlayersPunishVotes" json:"PlayersPunishVotes" toml:"PlayersPunishVotes" yaml:"PlayersPunishVotes"`
 	IssuedByPunishVotes       PunishVoteSlice           `boiler:"IssuedByPunishVotes" boil:"IssuedByPunishVotes" json:"IssuedByPunishVotes" toml:"IssuedByPunishVotes" yaml:"IssuedByPunishVotes"`
 	ReportedPlayerPunishVotes PunishVoteSlice           `boiler:"ReportedPlayerPunishVotes" boil:"ReportedPlayerPunishVotes" json:"ReportedPlayerPunishVotes" toml:"ReportedPlayerPunishVotes" yaml:"ReportedPlayerPunishVotes"`
@@ -822,6 +825,27 @@ func (o *Player) PlayerPreferences(mods ...qm.QueryMod) playerPreferenceQuery {
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"player_preferences\".*"})
+	}
+
+	return query
+}
+
+// PlayerProfiles retrieves all the player_profile's PlayerProfiles with an executor.
+func (o *Player) PlayerProfiles(mods ...qm.QueryMod) playerProfileQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"player_profile\".\"player_id\"=?", o.ID),
+	)
+
+	query := PlayerProfiles(queryMods...)
+	queries.SetFrom(query.Query, "\"player_profile\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"player_profile\".*"})
 	}
 
 	return query
@@ -2677,6 +2701,104 @@ func (playerL) LoadPlayerPreferences(e boil.Executor, singular bool, maybePlayer
 	return nil
 }
 
+// LoadPlayerProfiles allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (playerL) LoadPlayerProfiles(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+	var slice []*Player
+	var object *Player
+
+	if singular {
+		object = maybePlayer.(*Player)
+	} else {
+		slice = *maybePlayer.(*[]*Player)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &playerR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &playerR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`player_profile`),
+		qm.WhereIn(`player_profile.player_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load player_profile")
+	}
+
+	var resultSlice []*PlayerProfile
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice player_profile")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on player_profile")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for player_profile")
+	}
+
+	if len(playerProfileAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.PlayerProfiles = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &playerProfileR{}
+			}
+			foreign.R.Player = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.PlayerID {
+				local.R.PlayerProfiles = append(local.R.PlayerProfiles, foreign)
+				if foreign.R == nil {
+					foreign.R = &playerProfileR{}
+				}
+				foreign.R.Player = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // LoadPlayersPunishVotes allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (playerL) LoadPlayersPunishVotes(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
@@ -4502,6 +4624,58 @@ func (o *Player) AddPlayerPreferences(exec boil.Executor, insert bool, related .
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &playerPreferenceR{
+				Player: o,
+			}
+		} else {
+			rel.R.Player = o
+		}
+	}
+	return nil
+}
+
+// AddPlayerProfiles adds the given related objects to the existing relationships
+// of the player, optionally inserting them as new records.
+// Appends related to o.R.PlayerProfiles.
+// Sets related.R.Player appropriately.
+func (o *Player) AddPlayerProfiles(exec boil.Executor, insert bool, related ...*PlayerProfile) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.PlayerID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"player_profile\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"player_id"}),
+				strmangle.WhereClause("\"", "\"", 2, playerProfilePrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.PlayerID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &playerR{
+			PlayerProfiles: related,
+		}
+	} else {
+		o.R.PlayerProfiles = append(o.R.PlayerProfiles, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &playerProfileR{
 				Player: o,
 			}
 		} else {
