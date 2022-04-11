@@ -1828,6 +1828,7 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 		TriggeredByUserID:   &userID,
 		TriggeredByUsername: &player.Username.String,
 		EventID:             ability.OfferingID,
+		FactionID:           &faction.ID,
 	}
 
 	as.battle().calcTriggeredLocation(event)

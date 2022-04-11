@@ -649,6 +649,7 @@ type GameAbilityEvent struct {
 	GameClientAbilityID byte         `json:"gameClientAbilityID" db:"game_client_ability_id"`
 	ParticipantID       *byte        `json:"participantID,omitempty" db:"participant_id"`
 	WarMachineHash      *string      `json:"warMachineHash,omitempty"`
+	FactionID           *string      `json:"factionID,omitempty"`
 	IsTriggered         bool         `json:"isTriggered" db:"is_triggered"`
 	TriggeredByUserID   *uuid.UUID   `json:"TriggeredByUserID,omitempty" db:"triggered_by_user_id,omitempty"`
 	TriggeredByUsername *string      `json:"triggeredByUsername"`
