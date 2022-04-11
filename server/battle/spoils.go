@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"math/rand"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -55,8 +54,6 @@ func NewSpoilsOfWar(btl *Battle, transactSpeed time.Duration, dripSpeed time.Dur
 		tickSpeed:     dripSpeed,
 	}
 
-	amnt := decimal.New(int64(rand.Intn(150)), 18)
-
 	sow, err := boiler.SpoilsOfWars(boiler.SpoilsOfWarWhere.BattleID.EQ(btl.BattleID)).One(gamedb.StdConn)
 	if errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Info().Err(err).Msgf("spoil of war not found. this is expected.")
@@ -68,26 +65,10 @@ func NewSpoilsOfWar(btl *Battle, transactSpeed time.Duration, dripSpeed time.Dur
 		sow = &boiler.SpoilsOfWar{
 			BattleID:     btl.ID,
 			BattleNumber: btl.BattleNumber,
-			Amount:       amnt,
-			AmountSent:   decimal.New(0, 18),
+			Amount:       decimal.Zero,
+			AmountSent:   decimal.Zero,
 		}
 
-		txr := fmt.Sprintf("spoils_of_war_fill_up|%s|%d", server.XsynTreasuryUserID, time.Now().UnixNano())
-
-		_, err := btl.arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
-			FromUserID:           uuid.UUID(server.XsynTreasuryUserID),
-			ToUserID:             SupremacyBattleUserID,
-			Amount:               amnt.String(),
-			TransactionReference: server.TransactionReference(txr),
-			Group:                string(server.TransactionGroupBattle),
-			SubGroup:             "system",
-			Description:          "system",
-			NotSafe:              false,
-		})
-
-		if err != nil {
-			gamelog.L.Warn().Err(err).Msgf("transferring to spoils failed")
-		}
 		_ = sow.Insert(gamedb.StdConn, boil.Infer())
 	}
 	go spw.Run()
@@ -169,7 +150,7 @@ func (sow *SpoilsOfWar) Drip() error {
 		return err
 	}
 
-	dripAllocations := 120
+	dripAllocations := 20
 
 	totalAmount := decimal.NewFromInt(0)
 	for _, warchest := range warchests {

@@ -246,25 +246,25 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 		sort.Slice(playerAmountList, func(i, j int) bool { return playerAmountList[i].amount.GreaterThan(playerAmountList[j].amount) })
 
 		// top 80% of contributors will become citizens
-		citizenAmount := totalLength * 80 / 100
+		citizenAmount := totalLength * 95 / 100
 		if citizenAmount == 0 {
 			citizenAmount = 1
 		}
 
 		// top 95% of contributors and their faction win, will become citizens
-		winningFactionCitizenAmount := totalLength * 85 / 100
+		winningFactionCitizenAmount := totalLength * 95 / 100
 		if winningFactionCitizenAmount == 0 {
 			winningFactionCitizenAmount = 1
 		}
 
 		// top 50% of contributors will become supporters
-		supportAmount := totalLength * 50 / 100
+		supportAmount := totalLength * 40 / 100
 		if supportAmount == 0 {
 			supportAmount = 1
 		}
 
 		// top 25% of contributors will become contributors
-		contributorAmount := totalLength * 25 / 100
+		contributorAmount := totalLength * 20 / 100
 		if contributorAmount == 0 {
 			contributorAmount = 1
 		}

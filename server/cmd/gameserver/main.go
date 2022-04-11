@@ -21,6 +21,7 @@ import (
 
 	"server/rpcclient"
 
+	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
 	zerologger "github.com/ninja-syndicate/hub/ext/zerolog"
 	"github.com/pemistahl/lingua-go"
 	"nhooyr.io/websocket"
@@ -193,9 +194,10 @@ func main() {
 						pprofMonitor(pint, pport)
 					}
 
-					if gameClientMinimumBuildNo == 0 {
-						gamelog.L.Panic().Msg("game_client_minimum_build_no not set or zero value")
-					}
+					// todocheck
+					//if gameClientMinimumBuildNo == 0 {
+					//	gamelog.L.Panic().Msg("game_client_minimum_build_no not set or zero value")
+					//}
 
 					pgxconn, err := pgxconnect(
 						databaseUser,
@@ -352,7 +354,7 @@ func main() {
 						ClientOfflineFn: func(cl *hub.Client) {
 							messageBus.UnsubAll(cl)
 						},
-						Tracer: &api.HubTracer{},
+						Tracer: DatadogTracer.New(),
 					})
 
 					// initialise telegram bot
@@ -403,10 +405,10 @@ func main() {
 						os.Exit(1)
 					}
 
-					if environment == "production" || environment == "staging" {
-						gamelog.L.Info().Msg("Running telegram bot")
-						go telebot.RunTelegram(telebot.Bot)
-					}
+					// if environment == "production" || environment == "staging" {
+					gamelog.L.Info().Msg("Running telegram bot")
+					go telebot.RunTelegram(telebot.Bot)
+					// }
 
 					gamelog.L.Info().Msg("Running webhook rest API")
 					err = api.Run(ctx)
