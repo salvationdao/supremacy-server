@@ -194,7 +194,7 @@ func NewAPI(
 	_ = NewPlayerController(log, conn, api)
 	_ = NewChatController(log, conn, api)
 	_ = NewBattleController(log, conn, api)
-	_ = NewGameAbilitiesController(log, conn, api)
+	_ = NewPlayerAbilitiesController(log, conn, api)
 
 	// create a tickle that update faction mvp every day 00:00 am
 	factionMvpUpdate := tickle.New("Calculate faction mvp player", 24*60*60, func() (int, error) {

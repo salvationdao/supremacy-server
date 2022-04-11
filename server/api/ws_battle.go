@@ -68,6 +68,11 @@ func (bc *BattleControllerWS) BattleMechHistoryListHandler(ctx context.Context, 
 	}
 
 	battleMechs, err := boiler.BattleMechs(boiler.BattleMechWhere.MechID.EQ(req.Payload.MechID), qm.OrderBy("created_at desc"), qm.Limit(10), qm.Load(qm.Rels(boiler.BattleMechRels.Battle, boiler.BattleRels.GameMap))).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().
+			Str("db func", "BattleMechs").Err(err).Msg("unable to get battle mech history")
+		return terror.Error(err)
+	}
 
 	output := []BattleMechDetailed{}
 	for _, o := range battleMechs {
@@ -142,7 +147,7 @@ func (bc *BattleControllerWS) BattleMechStatsHandler(ctx context.Context, hub *h
 	if err != nil {
 		gamelog.L.Error().
 			Str("db func", "QueryRow").Err(err).Msg("unable to get max, min value of total_kills")
-		return err
+		return terror.Error(err)
 	}
 
 	var killPercentile uint8
