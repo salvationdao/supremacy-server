@@ -290,6 +290,7 @@ func (arena *Arena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		gamelog.L.Warn().Str("request_ip", ip).Err(err).Msg("unable to start Battle Arena server")
+		return
 	}
 
 	arena.socket = c
@@ -870,8 +871,8 @@ type BattleWMDestroyedPayload struct {
 
 func (arena *Arena) start() {
 	defer func() {
-		if err := recover(); err != nil {
-			gamelog.L.Error().Interface("err", err).Stack().Msg("Panic! Panic! Panic! Panic on battle arena!")
+		if r := recover(); r != nil {
+			gamelog.LogPanicRecovery("Panic! Panic! Panic! Panic on battle arena!", r)
 		}
 	}()
 
