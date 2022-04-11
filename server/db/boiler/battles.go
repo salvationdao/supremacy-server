@@ -121,6 +121,7 @@ var BattleWhere = struct {
 // BattleRels is where relationship names are stored.
 var BattleRels = struct {
 	GameMap                  string
+	ConsumedAbility          string
 	SpoilsOfWar              string
 	BattleNumberSpoilsOfWar  string
 	BattleAbilityTriggers    string
@@ -140,6 +141,7 @@ var BattleRels = struct {
 	PlayerKillLogs           string
 }{
 	GameMap:                  "GameMap",
+	ConsumedAbility:          "ConsumedAbility",
 	SpoilsOfWar:              "SpoilsOfWar",
 	BattleNumberSpoilsOfWar:  "BattleNumberSpoilsOfWar",
 	BattleAbilityTriggers:    "BattleAbilityTriggers",
@@ -162,6 +164,7 @@ var BattleRels = struct {
 // battleR is where relationships are stored.
 type battleR struct {
 	GameMap                  *GameMap                     `boiler:"GameMap" boil:"GameMap" json:"GameMap" toml:"GameMap" yaml:"GameMap"`
+	ConsumedAbility          *ConsumedAbility             `boiler:"ConsumedAbility" boil:"ConsumedAbility" json:"ConsumedAbility" toml:"ConsumedAbility" yaml:"ConsumedAbility"`
 	SpoilsOfWar              *SpoilsOfWar                 `boiler:"SpoilsOfWar" boil:"SpoilsOfWar" json:"SpoilsOfWar" toml:"SpoilsOfWar" yaml:"SpoilsOfWar"`
 	BattleNumberSpoilsOfWar  *SpoilsOfWar                 `boiler:"BattleNumberSpoilsOfWar" boil:"BattleNumberSpoilsOfWar" json:"BattleNumberSpoilsOfWar" toml:"BattleNumberSpoilsOfWar" yaml:"BattleNumberSpoilsOfWar"`
 	BattleAbilityTriggers    BattleAbilityTriggerSlice    `boiler:"BattleAbilityTriggers" boil:"BattleAbilityTriggers" json:"BattleAbilityTriggers" toml:"BattleAbilityTriggers" yaml:"BattleAbilityTriggers"`
@@ -449,6 +452,20 @@ func (o *Battle) GameMap(mods ...qm.QueryMod) gameMapQuery {
 
 	query := GameMaps(queryMods...)
 	queries.SetFrom(query.Query, "\"game_maps\"")
+
+	return query
+}
+
+// ConsumedAbility pointed to by the foreign key.
+func (o *Battle) ConsumedAbility(mods ...qm.QueryMod) consumedAbilityQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"battle_id\" = ?", o.ID),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := ConsumedAbilities(queryMods...)
+	queries.SetFrom(query.Query, "\"consumed_abilities\"")
 
 	return query
 }
@@ -894,6 +911,107 @@ func (battleL) LoadGameMap(e boil.Executor, singular bool, maybeBattle interface
 					foreign.R = &gameMapR{}
 				}
 				foreign.R.Battles = append(foreign.R.Battles, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadConsumedAbility allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-1 relationship.
+func (battleL) LoadConsumedAbility(e boil.Executor, singular bool, maybeBattle interface{}, mods queries.Applicator) error {
+	var slice []*Battle
+	var object *Battle
+
+	if singular {
+		object = maybeBattle.(*Battle)
+	} else {
+		slice = *maybeBattle.(*[]*Battle)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &battleR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &battleR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`consumed_abilities`),
+		qm.WhereIn(`consumed_abilities.battle_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load ConsumedAbility")
+	}
+
+	var resultSlice []*ConsumedAbility
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice ConsumedAbility")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for consumed_abilities")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for consumed_abilities")
+	}
+
+	if len(battleAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.ConsumedAbility = foreign
+		if foreign.R == nil {
+			foreign.R = &consumedAbilityR{}
+		}
+		foreign.R.Battle = object
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.ID == foreign.BattleID {
+				local.R.ConsumedAbility = foreign
+				if foreign.R == nil {
+					foreign.R = &consumedAbilityR{}
+				}
+				foreign.R.Battle = local
 				break
 			}
 		}
@@ -2636,6 +2754,56 @@ func (o *Battle) SetGameMap(exec boil.Executor, insert bool, related *GameMap) e
 		related.R.Battles = append(related.R.Battles, o)
 	}
 
+	return nil
+}
+
+// SetConsumedAbility of the battle to the related item.
+// Sets o.R.ConsumedAbility to related.
+// Adds o to related.R.Battle.
+func (o *Battle) SetConsumedAbility(exec boil.Executor, insert bool, related *ConsumedAbility) error {
+	var err error
+
+	if insert {
+		related.BattleID = o.ID
+
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	} else {
+		updateQuery := fmt.Sprintf(
+			"UPDATE \"consumed_abilities\" SET %s WHERE %s",
+			strmangle.SetParamNames("\"", "\"", 1, []string{"battle_id"}),
+			strmangle.WhereClause("\"", "\"", 2, consumedAbilityPrimaryKeyColumns),
+		)
+		values := []interface{}{o.ID, related.BattleID}
+
+		if boil.DebugMode {
+			fmt.Fprintln(boil.DebugWriter, updateQuery)
+			fmt.Fprintln(boil.DebugWriter, values)
+		}
+		if _, err = exec.Exec(updateQuery, values...); err != nil {
+			return errors.Wrap(err, "failed to update foreign table")
+		}
+
+		related.BattleID = o.ID
+
+	}
+
+	if o.R == nil {
+		o.R = &battleR{
+			ConsumedAbility: related,
+		}
+	} else {
+		o.R.ConsumedAbility = related
+	}
+
+	if related.R == nil {
+		related.R = &consumedAbilityR{
+			Battle: o,
+		}
+	} else {
+		related.R.Battle = o
+	}
 	return nil
 }
 
