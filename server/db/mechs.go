@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/ninja-software/terror/v2"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
@@ -614,4 +615,47 @@ func MechIDsFromHash(hashes ...string) ([]uuid.UUID, error) {
 	}
 
 	return ids, err
+}
+
+func MechQueuePosition(factionID string, ownerID string) ([]*MechAndPosition, error) {
+	q := `
+		SELECT
+			x.mech_id,
+			x.queue_position
+		FROM
+			(
+				SELECT
+					bq.id,
+					bq.mech_id,
+				    bq.owner_id,
+				    bq.battle_id,
+					ROW_NUMBER () OVER (ORDER BY bq.queued_at) as queue_position
+				FROM
+					battle_queue bq
+				where 
+					bq.faction_id = $1
+			) x
+		WHERE
+			x.owner_id = $1
+		order by
+			x.queue_position
+	`
+
+	result, err := gamedb.StdConn.Query(q, factionID, ownerID)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	mqp := []*MechAndPosition{}
+	for result.Next() {
+		qp := &MechAndPosition{}
+		err = result.Scan(&qp.MechID, &qp.QueuePosition)
+		if err != nil {
+			return nil, terror.Error(err)
+		}
+
+		mqp = append(mqp, qp)
+	}
+
+	return mqp, nil
 }

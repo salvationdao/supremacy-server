@@ -196,6 +196,8 @@ func NewArena(opts *Opts) *Arena {
 	opts.SecureUserFactionSubscribeCommand(WSQueueUpdatedSubscribe, arena.QueueUpdatedSubscribeHandler)
 	opts.SecureUserFactionSubscribeCommand(WSAssetQueueStatusSubscribe, arena.AssetQueueStatusSubscribeHandler)
 
+	opts.SecureUserFactionCommand(HubKeyAssetQueueMany, arena.AssetQueueManyHandler)
+
 	opts.SecureUserCommand(HubKeyGameUserOnline, arena.UserOnline)
 	opts.SecureUserCommand(HubKeyPlayerRankGet, arena.PlayerRankGet)
 	opts.SubscribeCommand(HubKeyWarMachineDestroyedUpdated, arena.WarMachineDestroyedUpdatedSubscribeHandler)

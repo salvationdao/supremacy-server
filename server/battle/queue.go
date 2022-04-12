@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"math"
 	"server"
 	"server/db"
@@ -898,4 +899,123 @@ func (arena *Arena) AssetQueueStatusSubscribeHandler(ctx context.Context, wsc *h
 	}
 
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", WSAssetQueueStatusSubscribe, mechID)), nil
+}
+
+type AssetQueueManyRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		PageNumber int `json:"page_number"`
+		PageSize   int `json:"page_size"`
+	} `json:"payload"`
+}
+
+type AssetQueueManyResponse struct {
+	AssetQueueList []*AssetQueue `json:"asset_queue_list"`
+	Total          int64         `json:"total"`
+}
+
+type AssetQueue struct {
+	MechID   string `json:"mech_id"`
+	Hash     string `json:"hash"`
+	Position *int64 `json:"position"`
+}
+
+const HubKeyAssetQueueMany hub.HubCommandKey = hub.HubCommandKey("ASSET:QUEUE:MANY")
+
+func (arena *Arena) AssetQueueManyHandler(ctx context.Context, hubc *hub.Client, payload []byte, userFactionID uuid.UUID, reply hub.ReplyFunc) error {
+	req := &AssetQueueManyRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	resp := &AssetQueueManyResponse{
+		AssetQueueList: []*AssetQueue{},
+	}
+
+	// get the list of player mech (id, hash)
+	mechs, err := boiler.Mechs(
+		qm.Select(boiler.MechColumns.ID, boiler.MechColumns.Hash, boiler.MechColumns.CreatedAt),
+		boiler.MechWhere.OwnerID.EQ(hubc.Identifier()),
+		qm.OrderBy(boiler.MechColumns.CreatedAt),
+	).All(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Str("player id", hubc.Identifier()).Err(err).Msg("Failed to get player's mechs")
+		return terror.Error(err, "Failed to get mech data")
+	}
+
+	// reply empty
+	if mechs == nil || len(mechs) == 0 {
+		reply(resp)
+		return nil
+	}
+
+	// calc mech id list
+	mechIDs := []string{}
+	for _, mech := range mechs {
+		mechIDs = append(mechIDs, mech.ID)
+	}
+
+	// get queue position
+	queuePosition, err := db.MechQueuePosition(userFactionID.String(), hubc.Identifier())
+	if err != nil {
+		gamelog.L.Error().Str("player id", hubc.Identifier()).Err(err).Msg("Failed to get player mech position")
+		return terror.Error(err, "Failed to get mech position")
+	}
+
+	// manually handle mech pagination
+
+	// resort the order
+	newList := []*AssetQueue{}
+
+	// fill queued mech
+	for _, qp := range queuePosition {
+		newList = append(newList, &AssetQueue{
+			MechID:   qp.MechID.String(),
+			Position: &qp.QueuePosition,
+		})
+	}
+
+	// fill mech detail
+	for _, mech := range mechs {
+		existOnIndex := -1
+
+		// check whether it is in queue
+		for i, nl := range queuePosition {
+			if mech.ID == nl.MechID.String() {
+				existOnIndex = i
+				break
+			}
+		}
+
+		if existOnIndex > 0 {
+			// update mech hash
+			newList[existOnIndex].Hash = mech.Hash
+		} else {
+			// append to new list
+			newList = append(newList, &AssetQueue{
+				MechID: mech.ID,
+				Hash:   mech.Hash,
+			})
+		}
+	}
+
+	offset := req.Payload.PageNumber * req.Payload.PageSize
+	limit := req.Payload.PageSize
+
+	for i, nl := range newList {
+		if i < offset {
+			continue
+		}
+
+		resp.AssetQueueList = append(resp.AssetQueueList, nl)
+
+		if len(resp.AssetQueueList) >= limit {
+			break
+		}
+	}
+
+	reply(resp)
+
+	return nil
 }
