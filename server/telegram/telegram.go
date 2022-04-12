@@ -147,14 +147,15 @@ func (t *Telegram) ProfileUpdate(player *boiler.Player) (*boiler.PlayerProfile, 
 		return nil, terror.Error(err, "Unable to get player profile")
 	}
 
+	// create new player profile
 	if errors.Is(err, sql.ErrNoRows) {
-		// create new player profile
 		_profile := &boiler.PlayerProfile{
+			PlayerID:                    player.ID,
 			Shortcode:                   strings.ToLower(shortcode),
 			EnableTelegramNotifications: true,
 		}
 
-		err = player.AddPlayerProfiles(gamedb.StdConn, true, _profile)
+		err = _profile.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			return nil, terror.Error(err, "Unable to insert player profile")
 		}

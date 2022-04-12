@@ -23,6 +23,7 @@ import (
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
 	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
@@ -43,6 +44,11 @@ func NewPlayerController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *Pla
 
 	api.SecureUserCommand(HubKeyPlayerUpdateSettings, pc.PlayerUpdateSettingsHandler)
 	api.SecureUserCommand(HubKeyPlayerGetSettings, pc.PlayerGetSettingsHandler)
+
+	// new ones
+	api.SecureUserCommand(HubKeyPlayerProfileGet, pc.PlayerProfileGetHandler)
+	api.SecureUserCommand(HubKeyPlayerProfileUpdate, pc.PlayerProfileUpdateHandler)
+
 	api.SecureUserSubscribeCommand(HubKeyTelegramShortcodeRegistered, pc.PlayerGetTelegramShortcodeRegistered)
 
 	// punish vote related
@@ -139,7 +145,7 @@ type PlayerGetSettingsRequest struct {
 
 const HubKeyPlayerGetSettings hub.HubCommandKey = "PLAYER:GET_SETTINGS"
 
-//PlayerGetSettingsHandler gets settings based on key, sends settings value back as json
+// PlayerGetSettingsHandler gets settings based on key, sends settings value back as json
 func (pc *PlayerController) PlayerGetSettingsHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	errMsg := "Issue getting settings, try again or contact support."
 	req := &PlayerGetSettingsRequest{}
@@ -183,6 +189,119 @@ func (pc *PlayerController) PlayerGetSettingsHandler(ctx context.Context, wsc *h
 
 	//send back userSettings
 	reply(userSettings.Value)
+	return nil
+}
+
+const HubKeyPlayerProfileGet hub.HubCommandKey = "PLAYER:PROFILE_GET"
+
+// PlayerGetProfileHandler gets player's profile
+func (pc *PlayerController) PlayerProfileGetHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	errMsg := "Issue getting player profile, try again or contact support."
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request")
+
+	}
+
+	// try get player's profile
+	playerProfile, err := boiler.PlayerProfiles(boiler.PlayerProfileWhere.PlayerID.EQ(wsc.Identifier())).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, errMsg)
+	}
+	fmt.Println("ypyp")
+
+	// if there are no results, create new player profile
+	if errors.Is(err, sql.ErrNoRows) {
+		fmt.Println("ypyp2")
+
+		_playerProfile := &boiler.PlayerProfile{
+			PlayerID: wsc.Identifier(),
+		}
+
+		err := _playerProfile.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			return terror.Error(err, errMsg)
+		}
+		reply(_playerProfile)
+		return nil
+	}
+
+	fmt.Println("ypyp3")
+
+	reply(playerProfile)
+	return nil
+
+}
+
+const HubKeyPlayerProfileUpdate hub.HubCommandKey = "PLAYER:PROFILE_UPDATE"
+
+type PlayerProfileUpdateRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		EnableTelegramNotifications bool   `json:"enable_telegram_notifications"`
+		EnableSMSNotifications      bool   `json:"enable_sms_notifications"`
+		EnablePushNotifications     bool   `json:"enable_push_notifications"`
+		MobileNumber                string `json:"mobile_number"`
+	} `json:"payload"`
+}
+
+func (pc *PlayerController) PlayerProfileUpdateHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	errMsg := "Issue updating settings, try again or contact support."
+	req := &PlayerProfileUpdateRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+	fmt.Println("here")
+
+	fmt.Println("here2")
+
+	// getting player's profile
+	playerProfile, err := boiler.PlayerProfiles(boiler.PlayerProfileWhere.PlayerID.EQ(wsc.Identifier())).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, errMsg)
+	}
+
+	fmt.Println("here3")
+
+	// if player doesnt have profile saved, create a new one
+	if errors.Is(err, sql.ErrNoRows) {
+
+		fmt.Println("here4")
+
+		_playerProfile := &boiler.PlayerProfile{
+			PlayerID:                    wsc.Identifier(),
+			EnableTelegramNotifications: req.Payload.EnableTelegramNotifications,
+			EnableSMSNotifications:      req.Payload.EnableSMSNotifications,
+			EnablePushNotifications:     req.Payload.EnablePushNotifications,
+			MobileNumber:                null.StringFrom(req.Payload.MobileNumber),
+		}
+
+		err = _playerProfile.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			return terror.Error(err, errMsg)
+		}
+
+		reply(_playerProfile)
+
+		return nil
+	}
+
+	fmt.Println("here5")
+	fmt.Printf("%+v\n", req.Payload)
+
+	// update profile
+	playerProfile.EnableTelegramNotifications = req.Payload.EnableTelegramNotifications
+	playerProfile.EnableSMSNotifications = req.Payload.EnableSMSNotifications
+	playerProfile.EnablePushNotifications = req.Payload.EnablePushNotifications
+	_, err = playerProfile.Update(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	reply(playerProfile)
+	// pc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPlayerProfileSubscribe, wsc.Identifier())), playerProfile)
 	return nil
 }
 

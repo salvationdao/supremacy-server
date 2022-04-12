@@ -98,7 +98,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 			return terror.Error(err)
 		}
 
-		// set the verifyed mobile number
+		// set the verified mobile number
 		msg.Payload.MobileNumber = mobileNumber
 	}
 
