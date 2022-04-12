@@ -670,7 +670,7 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 		).One(gamedb.StdConn)
 
 		if err != nil && errors.Is(err, sql.ErrNoRows) {
-			gamelog.L.Warn().
+			gamelog.L.Error().
 				Str("Battle ID", btl.ID).
 				Str("Mech ID", wm.ID).
 				Err(err).
@@ -692,7 +692,6 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 			gamelog.L.Error().
 				Str("Battle ID", btl.ID).
 				Str("faction ID", wm.FactionID).
-				Err(err).
 				Msg("unable to get hard coded syndicate player ID from faction ID")
 		} else {
 			//do contract payout for winning mech
@@ -703,7 +702,6 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 				Str("Player ID", wm.OwnedByID).
 				Str("Contract ID", contract.ID).
 				Str("Amount", contract.ContractReward.StringFixed(0)).
-				Err(err).
 				Msg("paying out mech winnings from contract reward")
 
 			factID := uuid.Must(uuid.FromString(factionAccountID))
@@ -830,8 +828,8 @@ func (btl *Battle) endWarMachines(payload *BattleEndPayload) []*WarMachine {
 			if errors.Is(err, sql.ErrNoRows) {
 				// If mech stats not exist then create it
 				newMs := boiler.MechStat{
-					MechID:    w.ID,
-					TotalWins: 1,
+					MechID:          w.ID,
+					BattlesSurvived: 1,
 				}
 				err := newMs.Insert(gamedb.StdConn, boil.Infer())
 				gamelog.L.Warn().Err(err).
@@ -845,7 +843,7 @@ func (btl *Battle) endWarMachines(payload *BattleEndPayload) []*WarMachine {
 				continue
 			}
 
-			ms.TotalWins = ms.TotalWins + 1
+			ms.BattlesSurvived = ms.BattlesSurvived + 1
 			_, err = ms.Update(gamedb.StdConn, boil.Infer())
 			if err != nil {
 				gamelog.L.Warn().Err(err).
@@ -884,6 +882,84 @@ func (btl *Battle) endWarMachines(payload *BattleEndPayload) []*WarMachine {
 			gamelog.L.Warn().Err(err).
 				Interface("boiler.BattleMech", bms).
 				Msg("unable to update faction battle mechs")
+		}
+
+		// update mech_stats total_wins (total faction wins)
+		wonBms, err := boiler.BattleMechs(boiler.BattleMechWhere.FactionID.EQ(winningWarMachines[0].FactionID), boiler.BattleMechWhere.BattleID.EQ(btl.ID)).All(gamedb.StdConn)
+		if err != nil {
+			gamelog.L.Error().
+				Str("battleID", btl.ID).
+				Str("factionID", winningWarMachines[0].FactionID).
+				Str("db func", "endWarMachines").
+				Err(err).Msg("unable to retrieve winning faction battle mechs from database")
+		}
+		for _, w := range wonBms {
+			// update mech_stats, total_losses column
+			wms, err := boiler.MechStats(boiler.MechStatWhere.MechID.EQ(w.MechID)).One(gamedb.StdConn)
+			if errors.Is(err, sql.ErrNoRows) {
+				// If mech stats not exist then create it
+				newMs := boiler.MechStat{
+					MechID:    w.MechID,
+					TotalWins: 1,
+				}
+				err := newMs.Insert(gamedb.StdConn, boil.Infer())
+				gamelog.L.Warn().Err(err).
+					Interface("boiler.MechStat", newMs).
+					Msg("unable to create mech stat")
+				continue
+			} else if err != nil {
+				gamelog.L.Warn().Err(err).
+					Str("mechID", w.MechID).
+					Msg("unable to get mech stat")
+				continue
+			}
+
+			wms.TotalWins = wms.TotalWins + 1
+			_, err = wms.Update(gamedb.StdConn, boil.Infer())
+			if err != nil {
+				gamelog.L.Warn().Err(err).
+					Interface("boiler.MechStat", wms).
+					Msg("unable to update mech stat")
+			}
+		}
+
+		// update mech_stats total_losses
+		lostBms, err := boiler.BattleMechs(boiler.BattleMechWhere.FactionID.NEQ(winningWarMachines[0].FactionID), boiler.BattleMechWhere.BattleID.EQ(btl.ID)).All(gamedb.StdConn)
+		if err != nil {
+			gamelog.L.Error().
+				Str("battleID", btl.ID).
+				Str("factionID", winningWarMachines[0].FactionID).
+				Str("db func", "endWarMachines").
+				Err(err).Msg("unable to retrieve losing faction battle mechs from database")
+		}
+		for _, l := range lostBms {
+			// update mech_stats, total_losses column
+			lms, err := boiler.MechStats(boiler.MechStatWhere.MechID.EQ(l.MechID)).One(gamedb.StdConn)
+			if errors.Is(err, sql.ErrNoRows) {
+				// If mech stats not exist then create it
+				newMs := boiler.MechStat{
+					MechID:      l.MechID,
+					TotalLosses: 1,
+				}
+				err := newMs.Insert(gamedb.StdConn, boil.Infer())
+				gamelog.L.Warn().Err(err).
+					Interface("boiler.MechStat", newMs).
+					Msg("unable to create mech stat")
+				continue
+			} else if err != nil {
+				gamelog.L.Warn().Err(err).
+					Str("mechID", l.MechID).
+					Msg("unable to get mech stat")
+				continue
+			}
+
+			lms.TotalLosses = lms.TotalLosses + 1
+			_, err = lms.Update(gamedb.StdConn, boil.Infer())
+			if err != nil {
+				gamelog.L.Warn().Err(err).
+					Interface("boiler.MechStat", lms).
+					Msg("unable to update mech stat")
+			}
 		}
 
 		// record faction win/loss count
@@ -1272,7 +1348,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 					} else {
 						if bqn.TelegramNotificationID.Valid {
 							// killed a war machine
-							msg := fmt.Sprintf("Your War machine destoryed %s \U0001F9BE ", destroyedWarMachine.Name)
+							msg := fmt.Sprintf("Your War machine destroyed %s \U0001F9BE ", destroyedWarMachine.Name)
 							err := btl.arena.telegram.Notify(bqn.TelegramNotificationID.String, msg)
 							if err != nil {
 								gamelog.L.Error().Str("bqn.TelegramNotificationID.String", bqn.TelegramNotificationID.String).Err(err).Msg("failed to send notification")
