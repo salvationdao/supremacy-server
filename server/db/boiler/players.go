@@ -156,7 +156,7 @@ var PlayerRels = struct {
 	MVPPlayerFactionStats     string
 	OwnerMechs                string
 	ToUserPendingTransactions string
-	BlueprintPlayerAbilities  string
+	OwnerPlayerAbilities      string
 	PlayerActiveLogs          string
 	PlayerKillLogs            string
 	PlayerLanguages           string
@@ -181,7 +181,7 @@ var PlayerRels = struct {
 	MVPPlayerFactionStats:     "MVPPlayerFactionStats",
 	OwnerMechs:                "OwnerMechs",
 	ToUserPendingTransactions: "ToUserPendingTransactions",
-	BlueprintPlayerAbilities:  "BlueprintPlayerAbilities",
+	OwnerPlayerAbilities:      "OwnerPlayerAbilities",
 	PlayerActiveLogs:          "PlayerActiveLogs",
 	PlayerKillLogs:            "PlayerKillLogs",
 	PlayerLanguages:           "PlayerLanguages",
@@ -196,30 +196,30 @@ var PlayerRels = struct {
 
 // playerR is where relationships are stored.
 type playerR struct {
-	Faction                   *Faction                    `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
-	IDUserStat                *UserStat                   `boiler:"IDUserStat" boil:"IDUserStat" json:"IDUserStat" toml:"IDUserStat" yaml:"IDUserStat"`
-	BattleAbilityTriggers     BattleAbilityTriggerSlice   `boiler:"BattleAbilityTriggers" boil:"BattleAbilityTriggers" json:"BattleAbilityTriggers" toml:"BattleAbilityTriggers" yaml:"BattleAbilityTriggers"`
-	BattleContracts           BattleContractSlice         `boiler:"BattleContracts" boil:"BattleContracts" json:"BattleContracts" toml:"BattleContracts" yaml:"BattleContracts"`
-	BattleContributions       BattleContributionSlice     `boiler:"BattleContributions" boil:"BattleContributions" json:"BattleContributions" toml:"BattleContributions" yaml:"BattleContributions"`
-	OwnerBattleMechs          BattleMechSlice             `boiler:"OwnerBattleMechs" boil:"OwnerBattleMechs" json:"OwnerBattleMechs" toml:"OwnerBattleMechs" yaml:"OwnerBattleMechs"`
-	OwnerBattleQueues         BattleQueueSlice            `boiler:"OwnerBattleQueues" boil:"OwnerBattleQueues" json:"OwnerBattleQueues" toml:"OwnerBattleQueues" yaml:"OwnerBattleQueues"`
-	OwnerBattleWins           BattleWinSlice              `boiler:"OwnerBattleWins" boil:"OwnerBattleWins" json:"OwnerBattleWins" toml:"OwnerBattleWins" yaml:"OwnerBattleWins"`
-	Battles                   BattleSlice                 `boiler:"Battles" boil:"Battles" json:"Battles" toml:"Battles" yaml:"Battles"`
-	ChatHistories             ChatHistorySlice            `boiler:"ChatHistories" boil:"ChatHistories" json:"ChatHistories" toml:"ChatHistories" yaml:"ChatHistories"`
-	MVPPlayerFactionStats     FactionStatSlice            `boiler:"MVPPlayerFactionStats" boil:"MVPPlayerFactionStats" json:"MVPPlayerFactionStats" toml:"MVPPlayerFactionStats" yaml:"MVPPlayerFactionStats"`
-	OwnerMechs                MechSlice                   `boiler:"OwnerMechs" boil:"OwnerMechs" json:"OwnerMechs" toml:"OwnerMechs" yaml:"OwnerMechs"`
-	ToUserPendingTransactions PendingTransactionSlice     `boiler:"ToUserPendingTransactions" boil:"ToUserPendingTransactions" json:"ToUserPendingTransactions" toml:"ToUserPendingTransactions" yaml:"ToUserPendingTransactions"`
-	BlueprintPlayerAbilities  BlueprintPlayerAbilitySlice `boiler:"BlueprintPlayerAbilities" boil:"BlueprintPlayerAbilities" json:"BlueprintPlayerAbilities" toml:"BlueprintPlayerAbilities" yaml:"BlueprintPlayerAbilities"`
-	PlayerActiveLogs          PlayerActiveLogSlice        `boiler:"PlayerActiveLogs" boil:"PlayerActiveLogs" json:"PlayerActiveLogs" toml:"PlayerActiveLogs" yaml:"PlayerActiveLogs"`
-	PlayerKillLogs            PlayerKillLogSlice          `boiler:"PlayerKillLogs" boil:"PlayerKillLogs" json:"PlayerKillLogs" toml:"PlayerKillLogs" yaml:"PlayerKillLogs"`
-	PlayerLanguages           PlayerLanguageSlice         `boiler:"PlayerLanguages" boil:"PlayerLanguages" json:"PlayerLanguages" toml:"PlayerLanguages" yaml:"PlayerLanguages"`
-	PlayerPreferences         PlayerPreferenceSlice       `boiler:"PlayerPreferences" boil:"PlayerPreferences" json:"PlayerPreferences" toml:"PlayerPreferences" yaml:"PlayerPreferences"`
-	PlayersPunishVotes        PlayersPunishVoteSlice      `boiler:"PlayersPunishVotes" boil:"PlayersPunishVotes" json:"PlayersPunishVotes" toml:"PlayersPunishVotes" yaml:"PlayersPunishVotes"`
-	IssuedByPunishVotes       PunishVoteSlice             `boiler:"IssuedByPunishVotes" boil:"IssuedByPunishVotes" json:"IssuedByPunishVotes" toml:"IssuedByPunishVotes" yaml:"IssuedByPunishVotes"`
-	ReportedPlayerPunishVotes PunishVoteSlice             `boiler:"ReportedPlayerPunishVotes" boil:"ReportedPlayerPunishVotes" json:"ReportedPlayerPunishVotes" toml:"ReportedPlayerPunishVotes" yaml:"ReportedPlayerPunishVotes"`
-	PunishedPlayers           PunishedPlayerSlice         `boiler:"PunishedPlayers" boil:"PunishedPlayers" json:"PunishedPlayers" toml:"PunishedPlayers" yaml:"PunishedPlayers"`
-	UserMultipliers           UserMultiplierSlice         `boiler:"UserMultipliers" boil:"UserMultipliers" json:"UserMultipliers" toml:"UserMultipliers" yaml:"UserMultipliers"`
-	Users                     UserSlice                   `boiler:"Users" boil:"Users" json:"Users" toml:"Users" yaml:"Users"`
+	Faction                   *Faction                  `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
+	IDUserStat                *UserStat                 `boiler:"IDUserStat" boil:"IDUserStat" json:"IDUserStat" toml:"IDUserStat" yaml:"IDUserStat"`
+	BattleAbilityTriggers     BattleAbilityTriggerSlice `boiler:"BattleAbilityTriggers" boil:"BattleAbilityTriggers" json:"BattleAbilityTriggers" toml:"BattleAbilityTriggers" yaml:"BattleAbilityTriggers"`
+	BattleContracts           BattleContractSlice       `boiler:"BattleContracts" boil:"BattleContracts" json:"BattleContracts" toml:"BattleContracts" yaml:"BattleContracts"`
+	BattleContributions       BattleContributionSlice   `boiler:"BattleContributions" boil:"BattleContributions" json:"BattleContributions" toml:"BattleContributions" yaml:"BattleContributions"`
+	OwnerBattleMechs          BattleMechSlice           `boiler:"OwnerBattleMechs" boil:"OwnerBattleMechs" json:"OwnerBattleMechs" toml:"OwnerBattleMechs" yaml:"OwnerBattleMechs"`
+	OwnerBattleQueues         BattleQueueSlice          `boiler:"OwnerBattleQueues" boil:"OwnerBattleQueues" json:"OwnerBattleQueues" toml:"OwnerBattleQueues" yaml:"OwnerBattleQueues"`
+	OwnerBattleWins           BattleWinSlice            `boiler:"OwnerBattleWins" boil:"OwnerBattleWins" json:"OwnerBattleWins" toml:"OwnerBattleWins" yaml:"OwnerBattleWins"`
+	Battles                   BattleSlice               `boiler:"Battles" boil:"Battles" json:"Battles" toml:"Battles" yaml:"Battles"`
+	ChatHistories             ChatHistorySlice          `boiler:"ChatHistories" boil:"ChatHistories" json:"ChatHistories" toml:"ChatHistories" yaml:"ChatHistories"`
+	MVPPlayerFactionStats     FactionStatSlice          `boiler:"MVPPlayerFactionStats" boil:"MVPPlayerFactionStats" json:"MVPPlayerFactionStats" toml:"MVPPlayerFactionStats" yaml:"MVPPlayerFactionStats"`
+	OwnerMechs                MechSlice                 `boiler:"OwnerMechs" boil:"OwnerMechs" json:"OwnerMechs" toml:"OwnerMechs" yaml:"OwnerMechs"`
+	ToUserPendingTransactions PendingTransactionSlice   `boiler:"ToUserPendingTransactions" boil:"ToUserPendingTransactions" json:"ToUserPendingTransactions" toml:"ToUserPendingTransactions" yaml:"ToUserPendingTransactions"`
+	OwnerPlayerAbilities      PlayerAbilitySlice        `boiler:"OwnerPlayerAbilities" boil:"OwnerPlayerAbilities" json:"OwnerPlayerAbilities" toml:"OwnerPlayerAbilities" yaml:"OwnerPlayerAbilities"`
+	PlayerActiveLogs          PlayerActiveLogSlice      `boiler:"PlayerActiveLogs" boil:"PlayerActiveLogs" json:"PlayerActiveLogs" toml:"PlayerActiveLogs" yaml:"PlayerActiveLogs"`
+	PlayerKillLogs            PlayerKillLogSlice        `boiler:"PlayerKillLogs" boil:"PlayerKillLogs" json:"PlayerKillLogs" toml:"PlayerKillLogs" yaml:"PlayerKillLogs"`
+	PlayerLanguages           PlayerLanguageSlice       `boiler:"PlayerLanguages" boil:"PlayerLanguages" json:"PlayerLanguages" toml:"PlayerLanguages" yaml:"PlayerLanguages"`
+	PlayerPreferences         PlayerPreferenceSlice     `boiler:"PlayerPreferences" boil:"PlayerPreferences" json:"PlayerPreferences" toml:"PlayerPreferences" yaml:"PlayerPreferences"`
+	PlayersPunishVotes        PlayersPunishVoteSlice    `boiler:"PlayersPunishVotes" boil:"PlayersPunishVotes" json:"PlayersPunishVotes" toml:"PlayersPunishVotes" yaml:"PlayersPunishVotes"`
+	IssuedByPunishVotes       PunishVoteSlice           `boiler:"IssuedByPunishVotes" boil:"IssuedByPunishVotes" json:"IssuedByPunishVotes" toml:"IssuedByPunishVotes" yaml:"IssuedByPunishVotes"`
+	ReportedPlayerPunishVotes PunishVoteSlice           `boiler:"ReportedPlayerPunishVotes" boil:"ReportedPlayerPunishVotes" json:"ReportedPlayerPunishVotes" toml:"ReportedPlayerPunishVotes" yaml:"ReportedPlayerPunishVotes"`
+	PunishedPlayers           PunishedPlayerSlice       `boiler:"PunishedPlayers" boil:"PunishedPlayers" json:"PunishedPlayers" toml:"PunishedPlayers" yaml:"PunishedPlayers"`
+	UserMultipliers           UserMultiplierSlice       `boiler:"UserMultipliers" boil:"UserMultipliers" json:"UserMultipliers" toml:"UserMultipliers" yaml:"UserMultipliers"`
+	Users                     UserSlice                 `boiler:"Users" boil:"Users" json:"Users" toml:"Users" yaml:"Users"`
 }
 
 // NewStruct creates a new relationship struct
@@ -743,23 +743,22 @@ func (o *Player) ToUserPendingTransactions(mods ...qm.QueryMod) pendingTransacti
 	return query
 }
 
-// BlueprintPlayerAbilities retrieves all the blueprint_player_ability's BlueprintPlayerAbilities with an executor.
-func (o *Player) BlueprintPlayerAbilities(mods ...qm.QueryMod) blueprintPlayerAbilityQuery {
+// OwnerPlayerAbilities retrieves all the player_ability's PlayerAbilities with an executor via owner_id column.
+func (o *Player) OwnerPlayerAbilities(mods ...qm.QueryMod) playerAbilityQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.InnerJoin("\"player_abilities\" on \"blueprint_player_abilities\".\"id\" = \"player_abilities\".\"blueprint_player_ability_id\""),
 		qm.Where("\"player_abilities\".\"owner_id\"=?", o.ID),
 	)
 
-	query := BlueprintPlayerAbilities(queryMods...)
-	queries.SetFrom(query.Query, "\"blueprint_player_abilities\"")
+	query := PlayerAbilities(queryMods...)
+	queries.SetFrom(query.Query, "\"player_abilities\"")
 
 	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"blueprint_player_abilities\".*"})
+		queries.SetSelect(query.Query, []string{"\"player_abilities\".*"})
 	}
 
 	return query
@@ -2286,9 +2285,9 @@ func (playerL) LoadToUserPendingTransactions(e boil.Executor, singular bool, may
 	return nil
 }
 
-// LoadBlueprintPlayerAbilities allows an eager lookup of values, cached into the
+// LoadOwnerPlayerAbilities allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (playerL) LoadBlueprintPlayerAbilities(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+func (playerL) LoadOwnerPlayerAbilities(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
 	var slice []*Player
 	var object *Player
 
@@ -2326,10 +2325,8 @@ func (playerL) LoadBlueprintPlayerAbilities(e boil.Executor, singular bool, mayb
 	}
 
 	query := NewQuery(
-		qm.Select("\"blueprint_player_abilities\".id, \"blueprint_player_abilities\".game_client_ability_id, \"blueprint_player_abilities\".label, \"blueprint_player_abilities\".colour, \"blueprint_player_abilities\".image_url, \"blueprint_player_abilities\".description, \"blueprint_player_abilities\".text_colour, \"a\".\"owner_id\""),
-		qm.From("\"blueprint_player_abilities\""),
-		qm.InnerJoin("\"player_abilities\" as \"a\" on \"blueprint_player_abilities\".\"id\" = \"a\".\"blueprint_player_ability_id\""),
-		qm.WhereIn("\"a\".\"owner_id\" in ?", args...),
+		qm.From(`player_abilities`),
+		qm.WhereIn(`player_abilities.owner_id in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -2337,36 +2334,22 @@ func (playerL) LoadBlueprintPlayerAbilities(e boil.Executor, singular bool, mayb
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load blueprint_player_abilities")
+		return errors.Wrap(err, "failed to eager load player_abilities")
 	}
 
-	var resultSlice []*BlueprintPlayerAbility
-
-	var localJoinCols []string
-	for results.Next() {
-		one := new(BlueprintPlayerAbility)
-		var localJoinCol string
-
-		err = results.Scan(&one.ID, &one.GameClientAbilityID, &one.Label, &one.Colour, &one.ImageURL, &one.Description, &one.TextColour, &localJoinCol)
-		if err != nil {
-			return errors.Wrap(err, "failed to scan eager loaded results for blueprint_player_abilities")
-		}
-		if err = results.Err(); err != nil {
-			return errors.Wrap(err, "failed to plebian-bind eager loaded slice blueprint_player_abilities")
-		}
-
-		resultSlice = append(resultSlice, one)
-		localJoinCols = append(localJoinCols, localJoinCol)
+	var resultSlice []*PlayerAbility
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice player_abilities")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on blueprint_player_abilities")
+		return errors.Wrap(err, "failed to close results in eager load on player_abilities")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_player_abilities")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for player_abilities")
 	}
 
-	if len(blueprintPlayerAbilityAfterSelectHooks) != 0 {
+	if len(playerAbilityAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -2374,25 +2357,24 @@ func (playerL) LoadBlueprintPlayerAbilities(e boil.Executor, singular bool, mayb
 		}
 	}
 	if singular {
-		object.R.BlueprintPlayerAbilities = resultSlice
+		object.R.OwnerPlayerAbilities = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
-				foreign.R = &blueprintPlayerAbilityR{}
+				foreign.R = &playerAbilityR{}
 			}
-			foreign.R.OwnerPlayers = append(foreign.R.OwnerPlayers, object)
+			foreign.R.Owner = object
 		}
 		return nil
 	}
 
-	for i, foreign := range resultSlice {
-		localJoinCol := localJoinCols[i]
+	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if local.ID == localJoinCol {
-				local.R.BlueprintPlayerAbilities = append(local.R.BlueprintPlayerAbilities, foreign)
+			if local.ID == foreign.OwnerID {
+				local.R.OwnerPlayerAbilities = append(local.R.OwnerPlayerAbilities, foreign)
 				if foreign.R == nil {
-					foreign.R = &blueprintPlayerAbilityR{}
+					foreign.R = &playerAbilityR{}
 				}
-				foreign.R.OwnerPlayers = append(foreign.R.OwnerPlayers, local)
+				foreign.R.Owner = local
 				break
 			}
 		}
@@ -4321,145 +4303,56 @@ func (o *Player) AddToUserPendingTransactions(exec boil.Executor, insert bool, r
 	return nil
 }
 
-// AddBlueprintPlayerAbilities adds the given related objects to the existing relationships
+// AddOwnerPlayerAbilities adds the given related objects to the existing relationships
 // of the player, optionally inserting them as new records.
-// Appends related to o.R.BlueprintPlayerAbilities.
-// Sets related.R.OwnerPlayers appropriately.
-func (o *Player) AddBlueprintPlayerAbilities(exec boil.Executor, insert bool, related ...*BlueprintPlayerAbility) error {
+// Appends related to o.R.OwnerPlayerAbilities.
+// Sets related.R.Owner appropriately.
+func (o *Player) AddOwnerPlayerAbilities(exec boil.Executor, insert bool, related ...*PlayerAbility) error {
 	var err error
 	for _, rel := range related {
 		if insert {
+			rel.OwnerID = o.ID
 			if err = rel.Insert(exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"player_abilities\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"owner_id"}),
+				strmangle.WhereClause("\"", "\"", 2, playerAbilityPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.OwnerID = o.ID
 		}
 	}
 
-	for _, rel := range related {
-		query := "insert into \"player_abilities\" (\"owner_id\", \"blueprint_player_ability_id\") values ($1, $2)"
-		values := []interface{}{o.ID, rel.ID}
-
-		if boil.DebugMode {
-			fmt.Fprintln(boil.DebugWriter, query)
-			fmt.Fprintln(boil.DebugWriter, values)
-		}
-		_, err = exec.Exec(query, values...)
-		if err != nil {
-			return errors.Wrap(err, "failed to insert into join table")
-		}
-	}
 	if o.R == nil {
 		o.R = &playerR{
-			BlueprintPlayerAbilities: related,
+			OwnerPlayerAbilities: related,
 		}
 	} else {
-		o.R.BlueprintPlayerAbilities = append(o.R.BlueprintPlayerAbilities, related...)
+		o.R.OwnerPlayerAbilities = append(o.R.OwnerPlayerAbilities, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
-			rel.R = &blueprintPlayerAbilityR{
-				OwnerPlayers: PlayerSlice{o},
+			rel.R = &playerAbilityR{
+				Owner: o,
 			}
 		} else {
-			rel.R.OwnerPlayers = append(rel.R.OwnerPlayers, o)
+			rel.R.Owner = o
 		}
 	}
 	return nil
-}
-
-// SetBlueprintPlayerAbilities removes all previously related items of the
-// player replacing them completely with the passed
-// in related items, optionally inserting them as new records.
-// Sets o.R.OwnerPlayers's BlueprintPlayerAbilities accordingly.
-// Replaces o.R.BlueprintPlayerAbilities with related.
-// Sets related.R.OwnerPlayers's BlueprintPlayerAbilities accordingly.
-func (o *Player) SetBlueprintPlayerAbilities(exec boil.Executor, insert bool, related ...*BlueprintPlayerAbility) error {
-	query := "delete from \"player_abilities\" where \"owner_id\" = $1"
-	values := []interface{}{o.ID}
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, query)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	_, err := exec.Exec(query, values...)
-	if err != nil {
-		return errors.Wrap(err, "failed to remove relationships before set")
-	}
-
-	removeBlueprintPlayerAbilitiesFromOwnerPlayersSlice(o, related)
-	if o.R != nil {
-		o.R.BlueprintPlayerAbilities = nil
-	}
-	return o.AddBlueprintPlayerAbilities(exec, insert, related...)
-}
-
-// RemoveBlueprintPlayerAbilities relationships from objects passed in.
-// Removes related items from R.BlueprintPlayerAbilities (uses pointer comparison, removal does not keep order)
-// Sets related.R.OwnerPlayers.
-func (o *Player) RemoveBlueprintPlayerAbilities(exec boil.Executor, related ...*BlueprintPlayerAbility) error {
-	if len(related) == 0 {
-		return nil
-	}
-
-	var err error
-	query := fmt.Sprintf(
-		"delete from \"player_abilities\" where \"owner_id\" = $1 and \"blueprint_player_ability_id\" in (%s)",
-		strmangle.Placeholders(dialect.UseIndexPlaceholders, len(related), 2, 1),
-	)
-	values := []interface{}{o.ID}
-	for _, rel := range related {
-		values = append(values, rel.ID)
-	}
-
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, query)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	_, err = exec.Exec(query, values...)
-	if err != nil {
-		return errors.Wrap(err, "failed to remove relationships before set")
-	}
-	removeBlueprintPlayerAbilitiesFromOwnerPlayersSlice(o, related)
-	if o.R == nil {
-		return nil
-	}
-
-	for _, rel := range related {
-		for i, ri := range o.R.BlueprintPlayerAbilities {
-			if rel != ri {
-				continue
-			}
-
-			ln := len(o.R.BlueprintPlayerAbilities)
-			if ln > 1 && i < ln-1 {
-				o.R.BlueprintPlayerAbilities[i] = o.R.BlueprintPlayerAbilities[ln-1]
-			}
-			o.R.BlueprintPlayerAbilities = o.R.BlueprintPlayerAbilities[:ln-1]
-			break
-		}
-	}
-
-	return nil
-}
-
-func removeBlueprintPlayerAbilitiesFromOwnerPlayersSlice(o *Player, related []*BlueprintPlayerAbility) {
-	for _, rel := range related {
-		if rel.R == nil {
-			continue
-		}
-		for i, ri := range rel.R.OwnerPlayers {
-			if o.ID != ri.ID {
-				continue
-			}
-
-			ln := len(rel.R.OwnerPlayers)
-			if ln > 1 && i < ln-1 {
-				rel.R.OwnerPlayers[i] = rel.R.OwnerPlayers[ln-1]
-			}
-			rel.R.OwnerPlayers = rel.R.OwnerPlayers[:ln-1]
-			break
-		}
-	}
 }
 
 // AddPlayerActiveLogs adds the given related objects to the existing relationships
