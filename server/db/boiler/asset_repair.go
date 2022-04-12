@@ -14,7 +14,6 @@ import (
 
 	"github.com/friendsofgo/errors"
 	"github.com/shopspring/decimal"
-	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -24,57 +23,47 @@ import (
 
 // AssetRepair is an object representing the database table.
 type AssetRepair struct {
-	Hash              string          `boiler:"hash" boil:"hash" json:"hash" toml:"hash" yaml:"hash"`
-	ExpectCompletedAt time.Time       `boiler:"expect_completed_at" boil:"expect_completed_at" json:"expect_completed_at" toml:"expect_completed_at" yaml:"expect_completed_at"`
-	RepairMode        string          `boiler:"repair_mode" boil:"repair_mode" json:"repair_mode" toml:"repair_mode" yaml:"repair_mode"`
-	IsPaidToComplete  bool            `boiler:"is_paid_to_complete" boil:"is_paid_to_complete" json:"is_paid_to_complete" toml:"is_paid_to_complete" yaml:"is_paid_to_complete"`
-	CompletedAt       null.Time       `boiler:"completed_at" boil:"completed_at" json:"completed_at,omitempty" toml:"completed_at" yaml:"completed_at,omitempty"`
-	CreatedAt         time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	ID                string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	FullRepairFee     decimal.Decimal `boiler:"full_repair_fee" boil:"full_repair_fee" json:"full_repair_fee" toml:"full_repair_fee" yaml:"full_repair_fee"`
+	ID            string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	MechID        string          `boiler:"mech_id" boil:"mech_id" json:"mech_id" toml:"mech_id" yaml:"mech_id"`
+	RepairMode    string          `boiler:"repair_mode" boil:"repair_mode" json:"repair_mode" toml:"repair_mode" yaml:"repair_mode"`
+	CompleteUntil time.Time       `boiler:"complete_until" boil:"complete_until" json:"complete_until" toml:"complete_until" yaml:"complete_until"`
+	FullRepairFee decimal.Decimal `boiler:"full_repair_fee" boil:"full_repair_fee" json:"full_repair_fee" toml:"full_repair_fee" yaml:"full_repair_fee"`
+	CreatedAt     time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *assetRepairR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L assetRepairL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var AssetRepairColumns = struct {
-	Hash              string
-	ExpectCompletedAt string
-	RepairMode        string
-	IsPaidToComplete  string
-	CompletedAt       string
-	CreatedAt         string
-	ID                string
-	FullRepairFee     string
+	ID            string
+	MechID        string
+	RepairMode    string
+	CompleteUntil string
+	FullRepairFee string
+	CreatedAt     string
 }{
-	Hash:              "hash",
-	ExpectCompletedAt: "expect_completed_at",
-	RepairMode:        "repair_mode",
-	IsPaidToComplete:  "is_paid_to_complete",
-	CompletedAt:       "completed_at",
-	CreatedAt:         "created_at",
-	ID:                "id",
-	FullRepairFee:     "full_repair_fee",
+	ID:            "id",
+	MechID:        "mech_id",
+	RepairMode:    "repair_mode",
+	CompleteUntil: "complete_until",
+	FullRepairFee: "full_repair_fee",
+	CreatedAt:     "created_at",
 }
 
 var AssetRepairTableColumns = struct {
-	Hash              string
-	ExpectCompletedAt string
-	RepairMode        string
-	IsPaidToComplete  string
-	CompletedAt       string
-	CreatedAt         string
-	ID                string
-	FullRepairFee     string
+	ID            string
+	MechID        string
+	RepairMode    string
+	CompleteUntil string
+	FullRepairFee string
+	CreatedAt     string
 }{
-	Hash:              "asset_repair.hash",
-	ExpectCompletedAt: "asset_repair.expect_completed_at",
-	RepairMode:        "asset_repair.repair_mode",
-	IsPaidToComplete:  "asset_repair.is_paid_to_complete",
-	CompletedAt:       "asset_repair.completed_at",
-	CreatedAt:         "asset_repair.created_at",
-	ID:                "asset_repair.id",
-	FullRepairFee:     "asset_repair.full_repair_fee",
+	ID:            "asset_repair.id",
+	MechID:        "asset_repair.mech_id",
+	RepairMode:    "asset_repair.repair_mode",
+	CompleteUntil: "asset_repair.complete_until",
+	FullRepairFee: "asset_repair.full_repair_fee",
+	CreatedAt:     "asset_repair.created_at",
 }
 
 // Generated where
@@ -123,39 +112,6 @@ func (w whereHelpertime_Time) GTE(x time.Time) qm.QueryMod {
 	return qmhelper.Where(w.field, qmhelper.GTE, x)
 }
 
-type whereHelperbool struct{ field string }
-
-func (w whereHelperbool) EQ(x bool) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.EQ, x) }
-func (w whereHelperbool) NEQ(x bool) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.NEQ, x) }
-func (w whereHelperbool) LT(x bool) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.LT, x) }
-func (w whereHelperbool) LTE(x bool) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.LTE, x) }
-func (w whereHelperbool) GT(x bool) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.GT, x) }
-func (w whereHelperbool) GTE(x bool) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.GTE, x) }
-
-type whereHelpernull_Time struct{ field string }
-
-func (w whereHelpernull_Time) EQ(x null.Time) qm.QueryMod {
-	return qmhelper.WhereNullEQ(w.field, false, x)
-}
-func (w whereHelpernull_Time) NEQ(x null.Time) qm.QueryMod {
-	return qmhelper.WhereNullEQ(w.field, true, x)
-}
-func (w whereHelpernull_Time) LT(x null.Time) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LT, x)
-}
-func (w whereHelpernull_Time) LTE(x null.Time) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LTE, x)
-}
-func (w whereHelpernull_Time) GT(x null.Time) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GT, x)
-}
-func (w whereHelpernull_Time) GTE(x null.Time) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GTE, x)
-}
-
-func (w whereHelpernull_Time) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
-func (w whereHelpernull_Time) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
-
 type whereHelperdecimal_Decimal struct{ field string }
 
 func (w whereHelperdecimal_Decimal) EQ(x decimal.Decimal) qm.QueryMod {
@@ -178,31 +134,31 @@ func (w whereHelperdecimal_Decimal) GTE(x decimal.Decimal) qm.QueryMod {
 }
 
 var AssetRepairWhere = struct {
-	Hash              whereHelperstring
-	ExpectCompletedAt whereHelpertime_Time
-	RepairMode        whereHelperstring
-	IsPaidToComplete  whereHelperbool
-	CompletedAt       whereHelpernull_Time
-	CreatedAt         whereHelpertime_Time
-	ID                whereHelperstring
-	FullRepairFee     whereHelperdecimal_Decimal
+	ID            whereHelperstring
+	MechID        whereHelperstring
+	RepairMode    whereHelperstring
+	CompleteUntil whereHelpertime_Time
+	FullRepairFee whereHelperdecimal_Decimal
+	CreatedAt     whereHelpertime_Time
 }{
-	Hash:              whereHelperstring{field: "\"asset_repair\".\"hash\""},
-	ExpectCompletedAt: whereHelpertime_Time{field: "\"asset_repair\".\"expect_completed_at\""},
-	RepairMode:        whereHelperstring{field: "\"asset_repair\".\"repair_mode\""},
-	IsPaidToComplete:  whereHelperbool{field: "\"asset_repair\".\"is_paid_to_complete\""},
-	CompletedAt:       whereHelpernull_Time{field: "\"asset_repair\".\"completed_at\""},
-	CreatedAt:         whereHelpertime_Time{field: "\"asset_repair\".\"created_at\""},
-	ID:                whereHelperstring{field: "\"asset_repair\".\"id\""},
-	FullRepairFee:     whereHelperdecimal_Decimal{field: "\"asset_repair\".\"full_repair_fee\""},
+	ID:            whereHelperstring{field: "\"asset_repair\".\"id\""},
+	MechID:        whereHelperstring{field: "\"asset_repair\".\"mech_id\""},
+	RepairMode:    whereHelperstring{field: "\"asset_repair\".\"repair_mode\""},
+	CompleteUntil: whereHelpertime_Time{field: "\"asset_repair\".\"complete_until\""},
+	FullRepairFee: whereHelperdecimal_Decimal{field: "\"asset_repair\".\"full_repair_fee\""},
+	CreatedAt:     whereHelpertime_Time{field: "\"asset_repair\".\"created_at\""},
 }
 
 // AssetRepairRels is where relationship names are stored.
 var AssetRepairRels = struct {
-}{}
+	Mech string
+}{
+	Mech: "Mech",
+}
 
 // assetRepairR is where relationships are stored.
 type assetRepairR struct {
+	Mech *Mech `boiler:"Mech" boil:"Mech" json:"Mech" toml:"Mech" yaml:"Mech"`
 }
 
 // NewStruct creates a new relationship struct
@@ -214,9 +170,9 @@ func (*assetRepairR) NewStruct() *assetRepairR {
 type assetRepairL struct{}
 
 var (
-	assetRepairAllColumns            = []string{"hash", "expect_completed_at", "repair_mode", "is_paid_to_complete", "completed_at", "created_at", "id", "full_repair_fee"}
-	assetRepairColumnsWithoutDefault = []string{"hash", "expect_completed_at", "repair_mode"}
-	assetRepairColumnsWithDefault    = []string{"is_paid_to_complete", "completed_at", "created_at", "id", "full_repair_fee"}
+	assetRepairAllColumns            = []string{"id", "mech_id", "repair_mode", "complete_until", "full_repair_fee", "created_at"}
+	assetRepairColumnsWithoutDefault = []string{"mech_id", "complete_until", "full_repair_fee"}
+	assetRepairColumnsWithDefault    = []string{"id", "repair_mode", "created_at"}
 	assetRepairPrimaryKeyColumns     = []string{"id"}
 	assetRepairGeneratedColumns      = []string{}
 )
@@ -461,6 +417,172 @@ func (q assetRepairQuery) Exists(exec boil.Executor) (bool, error) {
 	}
 
 	return count > 0, nil
+}
+
+// Mech pointed to by the foreign key.
+func (o *AssetRepair) Mech(mods ...qm.QueryMod) mechQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.MechID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Mechs(queryMods...)
+	queries.SetFrom(query.Query, "\"mechs\"")
+
+	return query
+}
+
+// LoadMech allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (assetRepairL) LoadMech(e boil.Executor, singular bool, maybeAssetRepair interface{}, mods queries.Applicator) error {
+	var slice []*AssetRepair
+	var object *AssetRepair
+
+	if singular {
+		object = maybeAssetRepair.(*AssetRepair)
+	} else {
+		slice = *maybeAssetRepair.(*[]*AssetRepair)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &assetRepairR{}
+		}
+		args = append(args, object.MechID)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &assetRepairR{}
+			}
+
+			for _, a := range args {
+				if a == obj.MechID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.MechID)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`mechs`),
+		qm.WhereIn(`mechs.id in ?`, args...),
+		qmhelper.WhereIsNull(`mechs.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Mech")
+	}
+
+	var resultSlice []*Mech
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Mech")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for mechs")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mechs")
+	}
+
+	if len(assetRepairAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Mech = foreign
+		if foreign.R == nil {
+			foreign.R = &mechR{}
+		}
+		foreign.R.AssetRepairs = append(foreign.R.AssetRepairs, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.MechID == foreign.ID {
+				local.R.Mech = foreign
+				if foreign.R == nil {
+					foreign.R = &mechR{}
+				}
+				foreign.R.AssetRepairs = append(foreign.R.AssetRepairs, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// SetMech of the assetRepair to the related item.
+// Sets o.R.Mech to related.
+// Adds o to related.R.AssetRepairs.
+func (o *AssetRepair) SetMech(exec boil.Executor, insert bool, related *Mech) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"asset_repair\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"mech_id"}),
+		strmangle.WhereClause("\"", "\"", 2, assetRepairPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.MechID = related.ID
+	if o.R == nil {
+		o.R = &assetRepairR{
+			Mech: related,
+		}
+	} else {
+		o.R.Mech = related
+	}
+
+	if related.R == nil {
+		related.R = &mechR{
+			AssetRepairs: AssetRepairSlice{o},
+		}
+	} else {
+		related.R.AssetRepairs = append(related.R.AssetRepairs, o)
+	}
+
+	return nil
 }
 
 // AssetRepairs retrieves all the records using an executor.

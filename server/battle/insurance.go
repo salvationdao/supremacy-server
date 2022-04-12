@@ -2,13 +2,17 @@ package battle
 
 import (
 	"github.com/shopspring/decimal"
-	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 	"time"
+)
+
+const (
+	RepairModeStandard = "STANDARD"
+	RepairModeFast     = "FAST"
 )
 
 func (btl *Battle) processWarMachineRepair(payload *BattleEndPayload) {
@@ -32,47 +36,45 @@ func (btl *Battle) processWarMachineRepair(payload *BattleEndPayload) {
 		return
 	}
 
-	// get contract data from each mech
-	bcs, err := boiler.BattleContracts(
-		boiler.BattleContractWhere.MechID.IN(requireRepairedWarMachinIDs),
-		boiler.BattleContractWhere.BattleID.EQ(null.StringFrom(btl.ID)),
-		qm.Load(
-			boiler.BattleContractRels.Mech,
-		),
+	mechs, err := boiler.Mechs(
+		qm.Select(boiler.MechColumns.ID, boiler.MechColumns.IsInsured),
+		boiler.MechWhere.ID.IN(requireRepairedWarMachinIDs),
 	).All(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Warn().Str("battle id", btl.ID).Interface("war machine ids", requireRepairedWarMachinIDs).Msg("Failed to get battle contract from war machine ids")
+		gamelog.L.Error().Err(err).Str("battle id", btl.ID).Interface("mech id list", requireRepairedWarMachinIDs).Msg("Failed to get mechs from db")
 		return
 	}
 
 	now := time.Now()
-	// insert mech repair table
-	for _, bc := range bcs {
-		// calc repair fee
-		repairFee := bc.Fee.Div(decimal.NewFromInt(10))
-		repairCompleteUntil := now.Add(30 * time.Minute)
-
-		// if mech is not insured
-		if !bc.R.Mech.IsInsured {
-			repairFee = repairFee.Mul(decimal.NewFromInt(3)) // three time issurance fee
-			repairCompleteUntil = now.Add(24 * time.Hour)    // change repair time to 24 hours
-		}
+	for _, mech := range mechs {
+		repairFee := btl.arena.InsurancePrice(mech.ID)
 
 		ar := boiler.AssetRepair{
-			Hash:              bc.R.Mech.Hash,
-			ExpectCompletedAt: repairCompleteUntil,
-			RepairMode:        "FAST",
-			FullRepairFee:     repairFee,
+			MechID:        mech.ID,
+			RepairMode:    RepairModeFast,
+			CompleteUntil: now.Add(30 * time.Minute),
+			FullRepairFee: repairFee,
 		}
 
-		err = ar.Insert(gamedb.StdConn, boil.Infer())
+		// if mech is not insured
+		if !mech.IsInsured {
+			ar.RepairMode = RepairModeStandard
+			ar.CompleteUntil = now.Add(24 * time.Hour)              // change repair time to 24 hours
+			ar.FullRepairFee = repairFee.Mul(decimal.NewFromInt(3)) // three time insurance fee
+		}
+
+		err := ar.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {
-			gamelog.L.Error().Str("mech hash", bc.R.Mech.Hash).Err(err).Msg("Failed to insert asset repair")
+			gamelog.L.Error().Str("mech id", mech.ID).Err(err).Msg("Failed to insert asset repair")
 		}
 	}
 }
 
 // InsurancePrice handle price calculation
-func (arena *Arena) InsurancePrice() decimal.Decimal {
+func (arena *Arena) InsurancePrice(mechID string) decimal.Decimal {
+	// get insurance price from mech
+
+	// else get current global insurance price
+
 	return decimal.New(10, 18)
 }

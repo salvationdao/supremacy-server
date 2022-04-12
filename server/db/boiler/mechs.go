@@ -203,6 +203,7 @@ var MechRels = struct {
 	Template                     string
 	BattleQueue                  string
 	MechStat                     string
+	AssetRepairs                 string
 	BattleContracts              string
 	WarMachineOneBattleHistories string
 	WarMachineTwoBattleHistories string
@@ -218,6 +219,7 @@ var MechRels = struct {
 	Template:                     "Template",
 	BattleQueue:                  "BattleQueue",
 	MechStat:                     "MechStat",
+	AssetRepairs:                 "AssetRepairs",
 	BattleContracts:              "BattleContracts",
 	WarMachineOneBattleHistories: "WarMachineOneBattleHistories",
 	WarMachineTwoBattleHistories: "WarMachineTwoBattleHistories",
@@ -236,6 +238,7 @@ type mechR struct {
 	Template                     *Template                    `boiler:"Template" boil:"Template" json:"Template" toml:"Template" yaml:"Template"`
 	BattleQueue                  *BattleQueue                 `boiler:"BattleQueue" boil:"BattleQueue" json:"BattleQueue" toml:"BattleQueue" yaml:"BattleQueue"`
 	MechStat                     *MechStat                    `boiler:"MechStat" boil:"MechStat" json:"MechStat" toml:"MechStat" yaml:"MechStat"`
+	AssetRepairs                 AssetRepairSlice             `boiler:"AssetRepairs" boil:"AssetRepairs" json:"AssetRepairs" toml:"AssetRepairs" yaml:"AssetRepairs"`
 	BattleContracts              BattleContractSlice          `boiler:"BattleContracts" boil:"BattleContracts" json:"BattleContracts" toml:"BattleContracts" yaml:"BattleContracts"`
 	WarMachineOneBattleHistories BattleHistorySlice           `boiler:"WarMachineOneBattleHistories" boil:"WarMachineOneBattleHistories" json:"WarMachineOneBattleHistories" toml:"WarMachineOneBattleHistories" yaml:"WarMachineOneBattleHistories"`
 	WarMachineTwoBattleHistories BattleHistorySlice           `boiler:"WarMachineTwoBattleHistories" boil:"WarMachineTwoBattleHistories" json:"WarMachineTwoBattleHistories" toml:"WarMachineTwoBattleHistories" yaml:"WarMachineTwoBattleHistories"`
@@ -574,6 +577,27 @@ func (o *Mech) MechStat(mods ...qm.QueryMod) mechStatQuery {
 
 	query := MechStats(queryMods...)
 	queries.SetFrom(query.Query, "\"mech_stats\"")
+
+	return query
+}
+
+// AssetRepairs retrieves all the asset_repair's AssetRepairs with an executor.
+func (o *Mech) AssetRepairs(mods ...qm.QueryMod) assetRepairQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"asset_repair\".\"mech_id\"=?", o.ID),
+	)
+
+	query := AssetRepairs(queryMods...)
+	queries.SetFrom(query.Query, "\"asset_repair\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"asset_repair\".*"})
+	}
 
 	return query
 }
@@ -1274,6 +1298,104 @@ func (mechL) LoadMechStat(e boil.Executor, singular bool, maybeMech interface{},
 				local.R.MechStat = foreign
 				if foreign.R == nil {
 					foreign.R = &mechStatR{}
+				}
+				foreign.R.Mech = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadAssetRepairs allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (mechL) LoadAssetRepairs(e boil.Executor, singular bool, maybeMech interface{}, mods queries.Applicator) error {
+	var slice []*Mech
+	var object *Mech
+
+	if singular {
+		object = maybeMech.(*Mech)
+	} else {
+		slice = *maybeMech.(*[]*Mech)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &mechR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &mechR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`asset_repair`),
+		qm.WhereIn(`asset_repair.mech_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load asset_repair")
+	}
+
+	var resultSlice []*AssetRepair
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice asset_repair")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on asset_repair")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for asset_repair")
+	}
+
+	if len(assetRepairAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.AssetRepairs = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &assetRepairR{}
+			}
+			foreign.R.Mech = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.MechID {
+				local.R.AssetRepairs = append(local.R.AssetRepairs, foreign)
+				if foreign.R == nil {
+					foreign.R = &assetRepairR{}
 				}
 				foreign.R.Mech = local
 				break
@@ -2400,6 +2522,58 @@ func (o *Mech) SetMechStat(exec boil.Executor, insert bool, related *MechStat) e
 		}
 	} else {
 		related.R.Mech = o
+	}
+	return nil
+}
+
+// AddAssetRepairs adds the given related objects to the existing relationships
+// of the mech, optionally inserting them as new records.
+// Appends related to o.R.AssetRepairs.
+// Sets related.R.Mech appropriately.
+func (o *Mech) AddAssetRepairs(exec boil.Executor, insert bool, related ...*AssetRepair) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.MechID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"asset_repair\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"mech_id"}),
+				strmangle.WhereClause("\"", "\"", 2, assetRepairPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.MechID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &mechR{
+			AssetRepairs: related,
+		}
+	} else {
+		o.R.AssetRepairs = append(o.R.AssetRepairs, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &assetRepairR{
+				Mech: o,
+			}
+		} else {
+			rel.R.Mech = o
+		}
 	}
 	return nil
 }

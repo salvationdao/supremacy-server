@@ -130,6 +130,19 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		return terror.Error(fmt.Errorf("does not own the mech"), "Current mech does not own by you")
 	}
 
+	// check mech is still in repair
+	ar, err := boiler.AssetRepairs(
+		boiler.AssetRepairWhere.MechID.EQ(mech.ID),
+		boiler.AssetRepairWhere.CompleteUntil.GT(time.Now()),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "Failed to check asset repair table")
+	}
+
+	if ar != nil {
+		return terror.Error(fmt.Errorf("mech is still in repair center"), "Your mech is still in the repair center")
+	}
+
 	// Get current queue length and calculate queue fee and reward
 	result, err := db.QueueLength(factionID)
 	if err != nil {
@@ -1103,6 +1116,84 @@ func (arena *Arena) AssetQueueManyHandler(ctx context.Context, hubc *hub.Client,
 	}
 
 	reply(resp)
+
+	return nil
+}
+
+type AssetRepairPayFeeRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		MechID string `json:"mech_id"`
+	} `json:"payload"`
+}
+
+const HubKeyAssetRepairPayFee hub.HubCommandKey = hub.HubCommandKey("ASSET:REPAIR:PAY:FEE")
+
+func (arena *Arena) AssetRepairPayFeeHandler(ctx context.Context, hubc *hub.Client, payload []byte, userFactionID uuid.UUID, reply hub.ReplyFunc) error {
+	req := &AssetRepairPayFeeRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	playerID := uuid.FromStringOrNil(hubc.Identifier())
+	if playerID.IsNil() {
+		return terror.Error(terror.ErrForbidden, "You are not login")
+	}
+
+	// get mech
+	mech, err := boiler.FindMech(gamedb.StdConn, req.Payload.MechID)
+	if err != nil {
+		return terror.Error(err, "Failed to get mech from db")
+	}
+
+	if mech.OwnerID != hubc.Identifier() {
+		return terror.Error(terror.ErrForbidden, "You are not the owner of the mech")
+	}
+
+	now := time.Now()
+
+	// check repair center
+	ar, err := boiler.AssetRepairs(
+		boiler.AssetRepairWhere.MechID.EQ(mech.ID),
+		boiler.AssetRepairWhere.CompleteUntil.GT(now),
+	).One(gamedb.StdConn)
+	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			return terror.Error(err, "Your mech is not in the repair center")
+		}
+
+		return terror.Error(err, "Failed to get asset repair record from db")
+	}
+
+	// calculate pay fee
+	fullDurationSecond := decimal.NewFromFloat(ar.CompleteUntil.Sub(ar.CreatedAt).Seconds())
+	alreadyPassedSeconds := decimal.NewFromFloat(now.Sub(ar.CreatedAt).Seconds())
+	remainSeconds := fullDurationSecond.Sub(alreadyPassedSeconds)
+	ratio := remainSeconds.Div(fullDurationSecond)
+
+	fee := ar.FullRepairFee.Mul(ratio)
+
+	factionAccountID, ok := server.FactionUsers[userFactionID.String()]
+	if !ok {
+		gamelog.L.Error().
+			Str("player id", playerID.String()).
+			Str("faction ID", userFactionID.String()).
+			Err(fmt.Errorf("failed to get hard coded syndicate player id")).
+			Msg("unable to get hard coded syndicate player ID from faction ID")
+		return terror.Error(err, "Failed to load syndicate id")
+	}
+
+	// pay sups
+	_, err = arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
+		FromUserID:           playerID,
+		ToUserID:             uuid.FromStringOrNil(factionAccountID),
+		Amount:               fee.StringFixed(18),
+		TransactionReference: server.TransactionReference(fmt.Sprintf("ability_sup_contribute|%s|%d", ga.OfferingID.String(), time.Now().UnixNano())),
+		Group:                string(server.TransactionGroupBattle),
+		Description:          "battle contribution: " + ga.Label,
+		NotSafe:              true,
+	})
 
 	return nil
 }
