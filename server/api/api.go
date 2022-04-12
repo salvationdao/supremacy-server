@@ -9,6 +9,7 @@ import (
 	"server"
 	"server/battle"
 	"server/db"
+	"server/gamedb"
 	"server/gamelog"
 	"server/rpcclient"
 	"time"
@@ -186,13 +187,13 @@ func NewAPI(
 	///////////////////////////
 	//		 Controllers	 //
 	///////////////////////////
-	_ = NewCheckController(log, conn, api)
-	_ = NewUserController(log, conn, api)
-	_ = NewAuthController(log, conn, api, config)
-	_ = NewGameController(log, conn, api)
-	_ = NewStreamController(log, conn, api)
-	_ = NewPlayerController(log, conn, api)
-	_ = NewChatController(log, conn, api)
+	_ = NewCheckController(api)
+	_ = NewUserController(api)
+	_ = NewAuthController(api)
+	_ = NewGameController(api)
+	_ = NewStreamController(api)
+	_ = NewPlayerController(api)
+	_ = NewChatController(api)
 	_ = NewBattleController(api)
 	_ = NewPlayerAbilitiesController(api)
 
@@ -284,7 +285,7 @@ func (api *API) IconDisplay(w http.ResponseWriter, r *http.Request) (int, error)
 	var blob server.Blob
 
 	// Get blob
-	err = db.FindBlob(context.Background(), api.Conn, &blob, blobID)
+	err = db.FindBlob(context.Background(), gamedb.Conn, &blob, blobID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return http.StatusNotFound, terror.Error(err, "attachment not found")

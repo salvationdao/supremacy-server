@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -22,59 +23,125 @@ import (
 
 // ConsumedAbility is an object representing the database table.
 type ConsumedAbility struct {
-	BattleID        string    `boiler:"battle_id" boil:"battle_id" json:"battle_id" toml:"battle_id" yaml:"battle_id"`
-	PlayerAbilityID string    `boiler:"player_ability_id" boil:"player_ability_id" json:"player_ability_id" toml:"player_ability_id" yaml:"player_ability_id"`
-	ConsumedAt      time.Time `boiler:"consumed_at" boil:"consumed_at" json:"consumed_at" toml:"consumed_at" yaml:"consumed_at"`
+	ID                  string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	BattleID            string      `boiler:"battle_id" boil:"battle_id" json:"battle_id" toml:"battle_id" yaml:"battle_id"`
+	ConsumedBy          string      `boiler:"consumed_by" boil:"consumed_by" json:"consumed_by" toml:"consumed_by" yaml:"consumed_by"`
+	BlueprintID         string      `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
+	GameClientAbilityID int         `boiler:"game_client_ability_id" boil:"game_client_ability_id" json:"game_client_ability_id" toml:"game_client_ability_id" yaml:"game_client_ability_id"`
+	Label               string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	Colour              string      `boiler:"colour" boil:"colour" json:"colour" toml:"colour" yaml:"colour"`
+	ImageURL            string      `boiler:"image_url" boil:"image_url" json:"image_url" toml:"image_url" yaml:"image_url"`
+	Description         string      `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
+	TextColour          string      `boiler:"text_colour" boil:"text_colour" json:"text_colour" toml:"text_colour" yaml:"text_colour"`
+	Type                null.String `boiler:"type" boil:"type" json:"type,omitempty" toml:"type" yaml:"type,omitempty"`
+	ConsumedAt          time.Time   `boiler:"consumed_at" boil:"consumed_at" json:"consumed_at" toml:"consumed_at" yaml:"consumed_at"`
 
 	R *consumedAbilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L consumedAbilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var ConsumedAbilityColumns = struct {
-	BattleID        string
-	PlayerAbilityID string
-	ConsumedAt      string
+	ID                  string
+	BattleID            string
+	ConsumedBy          string
+	BlueprintID         string
+	GameClientAbilityID string
+	Label               string
+	Colour              string
+	ImageURL            string
+	Description         string
+	TextColour          string
+	Type                string
+	ConsumedAt          string
 }{
-	BattleID:        "battle_id",
-	PlayerAbilityID: "player_ability_id",
-	ConsumedAt:      "consumed_at",
+	ID:                  "id",
+	BattleID:            "battle_id",
+	ConsumedBy:          "consumed_by",
+	BlueprintID:         "blueprint_id",
+	GameClientAbilityID: "game_client_ability_id",
+	Label:               "label",
+	Colour:              "colour",
+	ImageURL:            "image_url",
+	Description:         "description",
+	TextColour:          "text_colour",
+	Type:                "type",
+	ConsumedAt:          "consumed_at",
 }
 
 var ConsumedAbilityTableColumns = struct {
-	BattleID        string
-	PlayerAbilityID string
-	ConsumedAt      string
+	ID                  string
+	BattleID            string
+	ConsumedBy          string
+	BlueprintID         string
+	GameClientAbilityID string
+	Label               string
+	Colour              string
+	ImageURL            string
+	Description         string
+	TextColour          string
+	Type                string
+	ConsumedAt          string
 }{
-	BattleID:        "consumed_abilities.battle_id",
-	PlayerAbilityID: "consumed_abilities.player_ability_id",
-	ConsumedAt:      "consumed_abilities.consumed_at",
+	ID:                  "consumed_abilities.id",
+	BattleID:            "consumed_abilities.battle_id",
+	ConsumedBy:          "consumed_abilities.consumed_by",
+	BlueprintID:         "consumed_abilities.blueprint_id",
+	GameClientAbilityID: "consumed_abilities.game_client_ability_id",
+	Label:               "consumed_abilities.label",
+	Colour:              "consumed_abilities.colour",
+	ImageURL:            "consumed_abilities.image_url",
+	Description:         "consumed_abilities.description",
+	TextColour:          "consumed_abilities.text_colour",
+	Type:                "consumed_abilities.type",
+	ConsumedAt:          "consumed_abilities.consumed_at",
 }
 
 // Generated where
 
 var ConsumedAbilityWhere = struct {
-	BattleID        whereHelperstring
-	PlayerAbilityID whereHelperstring
-	ConsumedAt      whereHelpertime_Time
+	ID                  whereHelperstring
+	BattleID            whereHelperstring
+	ConsumedBy          whereHelperstring
+	BlueprintID         whereHelperstring
+	GameClientAbilityID whereHelperint
+	Label               whereHelperstring
+	Colour              whereHelperstring
+	ImageURL            whereHelperstring
+	Description         whereHelperstring
+	TextColour          whereHelperstring
+	Type                whereHelpernull_String
+	ConsumedAt          whereHelpertime_Time
 }{
-	BattleID:        whereHelperstring{field: "\"consumed_abilities\".\"battle_id\""},
-	PlayerAbilityID: whereHelperstring{field: "\"consumed_abilities\".\"player_ability_id\""},
-	ConsumedAt:      whereHelpertime_Time{field: "\"consumed_abilities\".\"consumed_at\""},
+	ID:                  whereHelperstring{field: "\"consumed_abilities\".\"id\""},
+	BattleID:            whereHelperstring{field: "\"consumed_abilities\".\"battle_id\""},
+	ConsumedBy:          whereHelperstring{field: "\"consumed_abilities\".\"consumed_by\""},
+	BlueprintID:         whereHelperstring{field: "\"consumed_abilities\".\"blueprint_id\""},
+	GameClientAbilityID: whereHelperint{field: "\"consumed_abilities\".\"game_client_ability_id\""},
+	Label:               whereHelperstring{field: "\"consumed_abilities\".\"label\""},
+	Colour:              whereHelperstring{field: "\"consumed_abilities\".\"colour\""},
+	ImageURL:            whereHelperstring{field: "\"consumed_abilities\".\"image_url\""},
+	Description:         whereHelperstring{field: "\"consumed_abilities\".\"description\""},
+	TextColour:          whereHelperstring{field: "\"consumed_abilities\".\"text_colour\""},
+	Type:                whereHelpernull_String{field: "\"consumed_abilities\".\"type\""},
+	ConsumedAt:          whereHelpertime_Time{field: "\"consumed_abilities\".\"consumed_at\""},
 }
 
 // ConsumedAbilityRels is where relationship names are stored.
 var ConsumedAbilityRels = struct {
-	Battle        string
-	PlayerAbility string
+	Battle           string
+	Blueprint        string
+	ConsumedByPlayer string
 }{
-	Battle:        "Battle",
-	PlayerAbility: "PlayerAbility",
+	Battle:           "Battle",
+	Blueprint:        "Blueprint",
+	ConsumedByPlayer: "ConsumedByPlayer",
 }
 
 // consumedAbilityR is where relationships are stored.
 type consumedAbilityR struct {
-	Battle        *Battle        `boiler:"Battle" boil:"Battle" json:"Battle" toml:"Battle" yaml:"Battle"`
-	PlayerAbility *PlayerAbility `boiler:"PlayerAbility" boil:"PlayerAbility" json:"PlayerAbility" toml:"PlayerAbility" yaml:"PlayerAbility"`
+	Battle           *Battle                 `boiler:"Battle" boil:"Battle" json:"Battle" toml:"Battle" yaml:"Battle"`
+	Blueprint        *BlueprintPlayerAbility `boiler:"Blueprint" boil:"Blueprint" json:"Blueprint" toml:"Blueprint" yaml:"Blueprint"`
+	ConsumedByPlayer *Player                 `boiler:"ConsumedByPlayer" boil:"ConsumedByPlayer" json:"ConsumedByPlayer" toml:"ConsumedByPlayer" yaml:"ConsumedByPlayer"`
 }
 
 // NewStruct creates a new relationship struct
@@ -86,10 +153,10 @@ func (*consumedAbilityR) NewStruct() *consumedAbilityR {
 type consumedAbilityL struct{}
 
 var (
-	consumedAbilityAllColumns            = []string{"battle_id", "player_ability_id", "consumed_at"}
-	consumedAbilityColumnsWithoutDefault = []string{"battle_id", "player_ability_id"}
-	consumedAbilityColumnsWithDefault    = []string{"consumed_at"}
-	consumedAbilityPrimaryKeyColumns     = []string{"battle_id"}
+	consumedAbilityAllColumns            = []string{"id", "battle_id", "consumed_by", "blueprint_id", "game_client_ability_id", "label", "colour", "image_url", "description", "text_colour", "type", "consumed_at"}
+	consumedAbilityColumnsWithoutDefault = []string{"battle_id", "consumed_by", "blueprint_id", "game_client_ability_id", "label", "colour", "image_url", "description", "text_colour"}
+	consumedAbilityColumnsWithDefault    = []string{"id", "type", "consumed_at"}
+	consumedAbilityPrimaryKeyColumns     = []string{"id"}
 	consumedAbilityGeneratedColumns      = []string{}
 )
 
@@ -349,16 +416,31 @@ func (o *ConsumedAbility) Battle(mods ...qm.QueryMod) battleQuery {
 	return query
 }
 
-// PlayerAbility pointed to by the foreign key.
-func (o *ConsumedAbility) PlayerAbility(mods ...qm.QueryMod) playerAbilityQuery {
+// Blueprint pointed to by the foreign key.
+func (o *ConsumedAbility) Blueprint(mods ...qm.QueryMod) blueprintPlayerAbilityQuery {
 	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.PlayerAbilityID),
+		qm.Where("\"id\" = ?", o.BlueprintID),
 	}
 
 	queryMods = append(queryMods, mods...)
 
-	query := PlayerAbilities(queryMods...)
-	queries.SetFrom(query.Query, "\"player_abilities\"")
+	query := BlueprintPlayerAbilities(queryMods...)
+	queries.SetFrom(query.Query, "\"blueprint_player_abilities\"")
+
+	return query
+}
+
+// ConsumedByPlayer pointed to by the foreign key.
+func (o *ConsumedAbility) ConsumedByPlayer(mods ...qm.QueryMod) playerQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.ConsumedBy),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Players(queryMods...)
+	queries.SetFrom(query.Query, "\"players\"")
 
 	return query
 }
@@ -447,7 +529,7 @@ func (consumedAbilityL) LoadBattle(e boil.Executor, singular bool, maybeConsumed
 		if foreign.R == nil {
 			foreign.R = &battleR{}
 		}
-		foreign.R.ConsumedAbility = object
+		foreign.R.ConsumedAbilities = append(foreign.R.ConsumedAbilities, object)
 		return nil
 	}
 
@@ -458,7 +540,7 @@ func (consumedAbilityL) LoadBattle(e boil.Executor, singular bool, maybeConsumed
 				if foreign.R == nil {
 					foreign.R = &battleR{}
 				}
-				foreign.R.ConsumedAbility = local
+				foreign.R.ConsumedAbilities = append(foreign.R.ConsumedAbilities, local)
 				break
 			}
 		}
@@ -467,9 +549,9 @@ func (consumedAbilityL) LoadBattle(e boil.Executor, singular bool, maybeConsumed
 	return nil
 }
 
-// LoadPlayerAbility allows an eager lookup of values, cached into the
+// LoadBlueprint allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (consumedAbilityL) LoadPlayerAbility(e boil.Executor, singular bool, maybeConsumedAbility interface{}, mods queries.Applicator) error {
+func (consumedAbilityL) LoadBlueprint(e boil.Executor, singular bool, maybeConsumedAbility interface{}, mods queries.Applicator) error {
 	var slice []*ConsumedAbility
 	var object *ConsumedAbility
 
@@ -484,7 +566,7 @@ func (consumedAbilityL) LoadPlayerAbility(e boil.Executor, singular bool, maybeC
 		if object.R == nil {
 			object.R = &consumedAbilityR{}
 		}
-		args = append(args, object.PlayerAbilityID)
+		args = append(args, object.BlueprintID)
 
 	} else {
 	Outer:
@@ -494,12 +576,12 @@ func (consumedAbilityL) LoadPlayerAbility(e boil.Executor, singular bool, maybeC
 			}
 
 			for _, a := range args {
-				if a == obj.PlayerAbilityID {
+				if a == obj.BlueprintID {
 					continue Outer
 				}
 			}
 
-			args = append(args, obj.PlayerAbilityID)
+			args = append(args, obj.BlueprintID)
 
 		}
 	}
@@ -509,8 +591,8 @@ func (consumedAbilityL) LoadPlayerAbility(e boil.Executor, singular bool, maybeC
 	}
 
 	query := NewQuery(
-		qm.From(`player_abilities`),
-		qm.WhereIn(`player_abilities.id in ?`, args...),
+		qm.From(`blueprint_player_abilities`),
+		qm.WhereIn(`blueprint_player_abilities.id in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -518,19 +600,19 @@ func (consumedAbilityL) LoadPlayerAbility(e boil.Executor, singular bool, maybeC
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load PlayerAbility")
+		return errors.Wrap(err, "failed to eager load BlueprintPlayerAbility")
 	}
 
-	var resultSlice []*PlayerAbility
+	var resultSlice []*BlueprintPlayerAbility
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice PlayerAbility")
+		return errors.Wrap(err, "failed to bind eager loaded slice BlueprintPlayerAbility")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for player_abilities")
+		return errors.Wrap(err, "failed to close results of eager load for blueprint_player_abilities")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for player_abilities")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_player_abilities")
 	}
 
 	if len(consumedAbilityAfterSelectHooks) != 0 {
@@ -547,22 +629,127 @@ func (consumedAbilityL) LoadPlayerAbility(e boil.Executor, singular bool, maybeC
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.PlayerAbility = foreign
+		object.R.Blueprint = foreign
 		if foreign.R == nil {
-			foreign.R = &playerAbilityR{}
+			foreign.R = &blueprintPlayerAbilityR{}
 		}
-		foreign.R.ConsumedAbilities = append(foreign.R.ConsumedAbilities, object)
+		foreign.R.BlueprintConsumedAbilities = append(foreign.R.BlueprintConsumedAbilities, object)
 		return nil
 	}
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if local.PlayerAbilityID == foreign.ID {
-				local.R.PlayerAbility = foreign
+			if local.BlueprintID == foreign.ID {
+				local.R.Blueprint = foreign
 				if foreign.R == nil {
-					foreign.R = &playerAbilityR{}
+					foreign.R = &blueprintPlayerAbilityR{}
 				}
-				foreign.R.ConsumedAbilities = append(foreign.R.ConsumedAbilities, local)
+				foreign.R.BlueprintConsumedAbilities = append(foreign.R.BlueprintConsumedAbilities, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadConsumedByPlayer allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (consumedAbilityL) LoadConsumedByPlayer(e boil.Executor, singular bool, maybeConsumedAbility interface{}, mods queries.Applicator) error {
+	var slice []*ConsumedAbility
+	var object *ConsumedAbility
+
+	if singular {
+		object = maybeConsumedAbility.(*ConsumedAbility)
+	} else {
+		slice = *maybeConsumedAbility.(*[]*ConsumedAbility)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &consumedAbilityR{}
+		}
+		args = append(args, object.ConsumedBy)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &consumedAbilityR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ConsumedBy {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ConsumedBy)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`players`),
+		qm.WhereIn(`players.id in ?`, args...),
+		qmhelper.WhereIsNull(`players.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Player")
+	}
+
+	var resultSlice []*Player
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Player")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for players")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players")
+	}
+
+	if len(consumedAbilityAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.ConsumedByPlayer = foreign
+		if foreign.R == nil {
+			foreign.R = &playerR{}
+		}
+		foreign.R.ConsumedByConsumedAbilities = append(foreign.R.ConsumedByConsumedAbilities, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.ConsumedBy == foreign.ID {
+				local.R.ConsumedByPlayer = foreign
+				if foreign.R == nil {
+					foreign.R = &playerR{}
+				}
+				foreign.R.ConsumedByConsumedAbilities = append(foreign.R.ConsumedByConsumedAbilities, local)
 				break
 			}
 		}
@@ -573,7 +760,7 @@ func (consumedAbilityL) LoadPlayerAbility(e boil.Executor, singular bool, maybeC
 
 // SetBattle of the consumedAbility to the related item.
 // Sets o.R.Battle to related.
-// Adds o to related.R.ConsumedAbility.
+// Adds o to related.R.ConsumedAbilities.
 func (o *ConsumedAbility) SetBattle(exec boil.Executor, insert bool, related *Battle) error {
 	var err error
 	if insert {
@@ -587,7 +774,7 @@ func (o *ConsumedAbility) SetBattle(exec boil.Executor, insert bool, related *Ba
 		strmangle.SetParamNames("\"", "\"", 1, []string{"battle_id"}),
 		strmangle.WhereClause("\"", "\"", 2, consumedAbilityPrimaryKeyColumns),
 	)
-	values := []interface{}{related.ID, o.BattleID}
+	values := []interface{}{related.ID, o.ID}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -608,19 +795,19 @@ func (o *ConsumedAbility) SetBattle(exec boil.Executor, insert bool, related *Ba
 
 	if related.R == nil {
 		related.R = &battleR{
-			ConsumedAbility: o,
+			ConsumedAbilities: ConsumedAbilitySlice{o},
 		}
 	} else {
-		related.R.ConsumedAbility = o
+		related.R.ConsumedAbilities = append(related.R.ConsumedAbilities, o)
 	}
 
 	return nil
 }
 
-// SetPlayerAbility of the consumedAbility to the related item.
-// Sets o.R.PlayerAbility to related.
-// Adds o to related.R.ConsumedAbilities.
-func (o *ConsumedAbility) SetPlayerAbility(exec boil.Executor, insert bool, related *PlayerAbility) error {
+// SetBlueprint of the consumedAbility to the related item.
+// Sets o.R.Blueprint to related.
+// Adds o to related.R.BlueprintConsumedAbilities.
+func (o *ConsumedAbility) SetBlueprint(exec boil.Executor, insert bool, related *BlueprintPlayerAbility) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -630,10 +817,10 @@ func (o *ConsumedAbility) SetPlayerAbility(exec boil.Executor, insert bool, rela
 
 	updateQuery := fmt.Sprintf(
 		"UPDATE \"consumed_abilities\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"player_ability_id"}),
+		strmangle.SetParamNames("\"", "\"", 1, []string{"blueprint_id"}),
 		strmangle.WhereClause("\"", "\"", 2, consumedAbilityPrimaryKeyColumns),
 	)
-	values := []interface{}{related.ID, o.BattleID}
+	values := []interface{}{related.ID, o.ID}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -643,21 +830,67 @@ func (o *ConsumedAbility) SetPlayerAbility(exec boil.Executor, insert bool, rela
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	o.PlayerAbilityID = related.ID
+	o.BlueprintID = related.ID
 	if o.R == nil {
 		o.R = &consumedAbilityR{
-			PlayerAbility: related,
+			Blueprint: related,
 		}
 	} else {
-		o.R.PlayerAbility = related
+		o.R.Blueprint = related
 	}
 
 	if related.R == nil {
-		related.R = &playerAbilityR{
-			ConsumedAbilities: ConsumedAbilitySlice{o},
+		related.R = &blueprintPlayerAbilityR{
+			BlueprintConsumedAbilities: ConsumedAbilitySlice{o},
 		}
 	} else {
-		related.R.ConsumedAbilities = append(related.R.ConsumedAbilities, o)
+		related.R.BlueprintConsumedAbilities = append(related.R.BlueprintConsumedAbilities, o)
+	}
+
+	return nil
+}
+
+// SetConsumedByPlayer of the consumedAbility to the related item.
+// Sets o.R.ConsumedByPlayer to related.
+// Adds o to related.R.ConsumedByConsumedAbilities.
+func (o *ConsumedAbility) SetConsumedByPlayer(exec boil.Executor, insert bool, related *Player) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"consumed_abilities\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"consumed_by"}),
+		strmangle.WhereClause("\"", "\"", 2, consumedAbilityPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.ConsumedBy = related.ID
+	if o.R == nil {
+		o.R = &consumedAbilityR{
+			ConsumedByPlayer: related,
+		}
+	} else {
+		o.R.ConsumedByPlayer = related
+	}
+
+	if related.R == nil {
+		related.R = &playerR{
+			ConsumedByConsumedAbilities: ConsumedAbilitySlice{o},
+		}
+	} else {
+		related.R.ConsumedByConsumedAbilities = append(related.R.ConsumedByConsumedAbilities, o)
 	}
 
 	return nil
@@ -671,7 +904,7 @@ func ConsumedAbilities(mods ...qm.QueryMod) consumedAbilityQuery {
 
 // FindConsumedAbility retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindConsumedAbility(exec boil.Executor, battleID string, selectCols ...string) (*ConsumedAbility, error) {
+func FindConsumedAbility(exec boil.Executor, iD string, selectCols ...string) (*ConsumedAbility, error) {
 	consumedAbilityObj := &ConsumedAbility{}
 
 	sel := "*"
@@ -679,10 +912,10 @@ func FindConsumedAbility(exec boil.Executor, battleID string, selectCols ...stri
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"consumed_abilities\" where \"battle_id\"=$1", sel,
+		"select %s from \"consumed_abilities\" where \"id\"=$1", sel,
 	)
 
-	q := queries.Raw(query, battleID)
+	q := queries.Raw(query, iD)
 
 	err := q.Bind(nil, exec, consumedAbilityObj)
 	if err != nil {
@@ -1030,7 +1263,7 @@ func (o *ConsumedAbility) Delete(exec boil.Executor) (int64, error) {
 	}
 
 	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), consumedAbilityPrimaryKeyMapping)
-	sql := "DELETE FROM \"consumed_abilities\" WHERE \"battle_id\"=$1"
+	sql := "DELETE FROM \"consumed_abilities\" WHERE \"id\"=$1"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1125,7 +1358,7 @@ func (o ConsumedAbilitySlice) DeleteAll(exec boil.Executor) (int64, error) {
 // Reload refetches the object from the database
 // using the primary keys with an executor.
 func (o *ConsumedAbility) Reload(exec boil.Executor) error {
-	ret, err := FindConsumedAbility(exec, o.BattleID)
+	ret, err := FindConsumedAbility(exec, o.ID)
 	if err != nil {
 		return err
 	}
@@ -1164,15 +1397,15 @@ func (o *ConsumedAbilitySlice) ReloadAll(exec boil.Executor) error {
 }
 
 // ConsumedAbilityExists checks if the ConsumedAbility row exists.
-func ConsumedAbilityExists(exec boil.Executor, battleID string) (bool, error) {
+func ConsumedAbilityExists(exec boil.Executor, iD string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"consumed_abilities\" where \"battle_id\"=$1 limit 1)"
+	sql := "select exists(select 1 from \"consumed_abilities\" where \"id\"=$1 limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
-		fmt.Fprintln(boil.DebugWriter, battleID)
+		fmt.Fprintln(boil.DebugWriter, iD)
 	}
-	row := exec.QueryRow(sql, battleID)
+	row := exec.QueryRow(sql, iD)
 
 	err := row.Scan(&exists)
 	if err != nil {

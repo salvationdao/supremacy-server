@@ -177,6 +177,6 @@ func (gac *PlayerAbilitiesControllerWS) PlayerAbilitiesPurchaseHandler(ctx conte
 		gamelog.L.Error().Err(err).Msg("failed to commit transaction")
 		return terror.Error(err, "Issue purchasing player ability, please try again or contact support.")
 	}
-
+	reply(true)
 	return nil
 }

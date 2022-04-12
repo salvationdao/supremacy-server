@@ -13,7 +13,6 @@ import (
 	"server/helpers"
 
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/ninja-software/log_helpers"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
@@ -32,16 +31,13 @@ type StreamListRequest struct {
 	*hub.HubCommandRequest
 }
 
-func NewStreamController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *StreamsWS {
+func NewStreamController(api *API) *StreamsWS {
 	streamHub := &StreamsWS{
-		Conn: conn,
-		Log:  log_helpers.NamedLogger(log, "game_hub"),
-		API:  api,
+		API: api,
 	}
 
 	api.SubscribeCommand(HubKeyStreamList, streamHub.StreamListSubscribeSubscribeHandler)
 	api.SubscribeCommand(HubKeyStreamCloseSubscribe, streamHub.StreamCloseSubscribeHandler)
-
 	api.SubscribeCommand(HubKeyGlobalAnnouncementSubscribe, streamHub.GlobalAnnouncementSubscribe)
 
 	return streamHub
@@ -57,7 +53,7 @@ func (s *StreamsWS) StreamListSubscribeSubscribeHandler(ctx context.Context, wsc
 	}
 
 	if needProcess {
-		streamList, err := db.GetStreamList(ctx, s.Conn)
+		streamList, err := db.GetStreamList(ctx, gamedb.Conn)
 		if err != nil {
 			return req.TransactionID, "", terror.Error(err)
 		}
@@ -104,7 +100,7 @@ func (api *API) CreateStreamCloseHandler(w http.ResponseWriter, r *http.Request)
 }
 
 func (api *API) GetStreamsHandler(w http.ResponseWriter, r *http.Request) (int, error) {
-	streams, err := db.GetStreamList(context.Background(), api.Conn)
+	streams, err := db.GetStreamList(context.Background(), gamedb.Conn)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)
 	}
@@ -121,12 +117,12 @@ func (api *API) CreateStreamHandler(w http.ResponseWriter, r *http.Request) (int
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	err = db.CreateStream(context.Background(), api.Conn, stream)
+	err = db.CreateStream(context.Background(), gamedb.Conn, stream)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	_, err = db.GetStreamList(context.Background(), api.Conn)
+	_, err = db.GetStreamList(context.Background(), gamedb.Conn)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)
 	}
@@ -147,12 +143,12 @@ func (api *API) DeleteStreamHandler(w http.ResponseWriter, r *http.Request) (int
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	err = db.DeleteStream(context.Background(), api.Conn, stream.Host)
+	err = db.DeleteStream(context.Background(), gamedb.Conn, stream.Host)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)
 	}
 
-	_, err = db.GetStreamList(context.Background(), api.Conn)
+	_, err = db.GetStreamList(context.Background(), gamedb.Conn)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err)
 	}

@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 
-	"github.com/ninja-software/log_helpers"
 	"github.com/ninja-syndicate/hub"
 
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -18,11 +17,9 @@ type CheckControllerWS struct {
 }
 
 // NewCheckController creates the check hub
-func NewCheckController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *CheckControllerWS {
+func NewCheckController(api *API) *CheckControllerWS {
 	checkHub := &CheckControllerWS{
-		Conn: conn,
-		Log:  log_helpers.NamedLogger(log, "check_hub"),
-		API:  api,
+		API: api,
 	}
 
 	api.Command(HubKeyCheck, checkHub.Handler)
