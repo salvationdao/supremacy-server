@@ -215,10 +215,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			gamelog.L.Error().Err(err).Str("battle_id", arena.currentBattle().ID).Str("owner_id", bq.OwnerID).Msg("unable to find owner for battle queue notification")
 			continue
 		}
-		warMachine, err := bq.Mech(
-			qm.Load(boiler.MechRels.BattleQueueNotifications),
-			qm.Load(qm.Rels(boiler.MechRels.BattleQueueNotifications, boiler.BattleQueueNotificationRels.TelegramPlayer)),
-		).One(gamedb.StdConn)
+		warMachine, err := bq.Mech(qm.Load(boiler.MechRels.BattleQueueNotifications)).One(gamedb.StdConn)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("mech_id", bq.MechID).Msg("unable to find war machine for battle queue notification")
 			continue
@@ -260,10 +257,6 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			if err != nil {
 				gamelog.L.Error().Err(err).Str("mech_id", bq.MechID).Str("owner_id", bq.OwnerID).Str("queued_at", bq.QueuedAt.String()).Str("telegram id", fmt.Sprintf("%v", playerProfile.TelegramID)).Msg("failed to notify telegram")
 			}
-		}
-
-		if playerProfile.EnablePushNotifications {
-
 		}
 
 		//TODO: push notifications
