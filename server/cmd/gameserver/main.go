@@ -177,6 +177,9 @@ func main() {
 					ctx, cancel := context.WithCancel(c.Context)
 					defer cancel()
 					environment := c.String("environment")
+
+					server.SetEnv(environment)
+
 					battleArenaAddr := c.String("battle_arena_addr")
 					level := c.String("log_level")
 					gamelog.New(environment, level)

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"math/rand"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -31,8 +32,16 @@ func CalcNextQueueStatus(length int64) QueueStatusResponse {
 	// min cost will be one forth of the queue length
 	minQueueCost := queueLength.Div(decimal.NewFromFloat(4)).Mul(decimal.New(1, 18))
 
+	mul := db.GetDecimalWithDefault("queue_fee_log_multi", decimal.NewFromFloat(3.25))
+	mulFloat, _ := mul.Float64()
+
+	if server.Env() == "staging" {
+		mulFloat = 0.2 + rand.Float64()*(8.0-0.2)
+		minQueueCost = decimal.NewFromFloat(1.5)
+	}
+
 	// calc queue cost
-	feeMultiplier := math.Log(float64(ql)) / 4 * 0.25
+	feeMultiplier := math.Log(float64(ql)) / mulFloat * 0.25
 	queueCost := queueLength.Mul(decimal.NewFromFloat(feeMultiplier)).Mul(decimal.New(1, 18))
 
 	// calc contract reward
@@ -79,6 +88,18 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 	if err != nil {
 		gamelog.L.Error().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal queue join")
 		return terror.Error(err)
+	}
+
+	// check mobile phone, if player required notifyed through mobile sms
+	if msg.Payload.EnablePushNotifications && msg.Payload.MobileNumber != "" {
+		mobileNumber, err := arena.sms.Lookup(msg.Payload.MobileNumber)
+		if err != nil {
+			gamelog.L.Warn().Str("mobile number", msg.Payload.MobileNumber).Msg("Failed to lookup mobile number through twilio api")
+			return terror.Error(err)
+		}
+
+		// set the verifyed mobile number
+		msg.Payload.MobileNumber = mobileNumber
 	}
 
 	mechID, err := db.MechIDFromHash(msg.Payload.AssetHash)
@@ -458,12 +479,6 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 		return terror.Error(fmt.Errorf("cannot remove war machine from queue when it is in battle"), "You cannot remove war machines currently in battle.")
 	}
 
-	canxq := `UPDATE battle_contracts SET cancelled = true WHERE id = (SELECT battle_contract_id FROM battle_queue WHERE mech_id = $1)`
-	_, err = gamedb.StdConn.Exec(canxq, mechID.String())
-	if err != nil {
-		gamelog.L.Warn().Err(err).Msg("unable to cancel battle contract. mech has left queue though.")
-	}
-
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("unable to begin tx")
@@ -471,8 +486,14 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 	}
 	defer tx.Rollback()
 
+	canxq := `UPDATE battle_contracts SET cancelled = true WHERE id = (SELECT battle_contract_id FROM battle_queue WHERE mech_id = $1)`
+	_, err = tx.Exec(canxq, mechID.String())
+	if err != nil {
+		gamelog.L.Warn().Err(err).Msg("unable to cancel battle contract. mech has left queue though.")
+	}
+
 	// Remove from queue
-	bq, err := boiler.BattleQueues(boiler.BattleQueueWhere.MechID.EQ(mechID.String())).One(gamedb.StdConn)
+	bq, err := boiler.BattleQueues(boiler.BattleQueueWhere.MechID.EQ(mechID.String())).One(tx)
 	if err != nil {
 		gamelog.L.Error().
 			Err(err).
@@ -538,7 +559,7 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 			// Refund user queue fee
 			queueRefundTransactionID, err := arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
 				Amount:               originalQueueCost.StringFixed(18),
-				FromUserID:           SupremacyBattleUserID,
+				FromUserID:           uuid.Must(uuid.FromString(factionAccountID)),
 				ToUserID:             ownerID,
 				TransactionReference: server.TransactionReference(fmt.Sprintf("refund_war_machine_queueing_fee|%s|%d", msg.Payload.AssetHash, time.Now().UnixNano())),
 				Group:                string(server.TransactionGroupBattle),

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"sync"
 	"sync/atomic"
 
 	"github.com/gofrs/uuid"
@@ -649,6 +650,7 @@ type GameAbilityEvent struct {
 	GameClientAbilityID byte         `json:"gameClientAbilityID" db:"game_client_ability_id"`
 	ParticipantID       *byte        `json:"participantID,omitempty" db:"participant_id"`
 	WarMachineHash      *string      `json:"warMachineHash,omitempty"`
+	FactionID           *string      `json:"factionID,omitempty"`
 	IsTriggered         bool         `json:"isTriggered" db:"is_triggered"`
 	TriggeredByUserID   *uuid.UUID   `json:"TriggeredByUserID,omitempty" db:"triggered_by_user_id,omitempty"`
 	TriggeredByUsername *string      `json:"triggeredByUsername"`
@@ -659,4 +661,19 @@ type GameAbilityEvent struct {
 		X int `json:"x"`
 		Y int `json:"y"`
 	} `json:"gameLocation"`
+}
+
+var env string
+var lock = sync.RWMutex{}
+
+func SetEnv(environment string) {
+	lock.Lock()
+	defer lock.Unlock()
+	env = environment
+}
+
+func Env() string {
+	lock.RLock()
+	defer lock.RUnlock()
+	return env
 }
