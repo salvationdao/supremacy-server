@@ -9,25 +9,18 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 
-	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/ninja-software/log_helpers"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
-	"github.com/rs/zerolog"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 type BattleControllerWS struct {
-	Conn *pgxpool.Pool
-	Log  *zerolog.Logger
-	API  *API
+	API *API
 }
 
-func NewBattleController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *BattleControllerWS {
+func NewBattleController(api *API) *BattleControllerWS {
 	bc := &BattleControllerWS{
-		Conn: conn,
-		Log:  log_helpers.NamedLogger(log, "twitch_hub"),
-		API:  api,
+		API: api,
 	}
 
 	api.Command(HubKeyBattleMechHistoryList, bc.BattleMechHistoryListHandler)
@@ -70,8 +63,9 @@ func (bc *BattleControllerWS) BattleMechHistoryListHandler(ctx context.Context, 
 	battleMechs, err := boiler.BattleMechs(boiler.BattleMechWhere.MechID.EQ(req.Payload.MechID), qm.OrderBy("created_at desc"), qm.Limit(10), qm.Load(qm.Rels(boiler.BattleMechRels.Battle, boiler.BattleRels.GameMap))).All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().
+			Str("BattleMechWhere", req.Payload.MechID).
 			Str("db func", "BattleMechs").Err(err).Msg("unable to get battle mech history")
-		return terror.Error(err)
+		return terror.Error(err, "Unable to retrieve battle history, try again or contact support.")
 	}
 
 	output := []BattleMechDetailed{}
@@ -89,7 +83,6 @@ func (bc *BattleControllerWS) BattleMechHistoryListHandler(ctx context.Context, 
 		len(output),
 		output,
 	})
-
 	return nil
 }
 
@@ -148,7 +141,7 @@ func (bc *BattleControllerWS) BattleMechStatsHandler(ctx context.Context, hub *h
 	if err != nil {
 		gamelog.L.Error().
 			Str("db func", "QueryRow").Err(err).Msg("unable to get max, min value of total_kills")
-		return terror.Error(err)
+		return terror.Error(err, "Unable to retrieve ")
 	}
 
 	var killPercentile uint8

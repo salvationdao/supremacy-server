@@ -1,36 +1,40 @@
-create table blueprint_player_abilities (
-    id uuid primary key not null default gen_random_uuid(),
-    game_client_ability_id int4 NOT NULL,
-    label text not null,
-	colour text NOT NULL,
-	image_url text NOT NULL,
-	description text NOT NULL,
-	text_colour text NOT NULL,
-    "type" TEXT CHECK ("type" IN ('MECH_SELECT', 'LOCATION_SELECT', 'GLOBAL'))
+CREATE TABLE blueprint_player_abilities
+(
+    id                     UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
+    game_client_ability_id INT4             NOT NULL,
+    label                  TEXT             NOT NULL,
+    colour                 TEXT             NOT NULL,
+    image_url              TEXT             NOT NULL,
+    description            TEXT             NOT NULL,
+    text_colour            TEXT             NOT NULL,
+    "type"                 TEXT CHECK ("type" IN ('MECH_SELECT', 'LOCATION_SELECT', 'GLOBAL'))
 );
 
-create table player_abilities ( -- ephemeral, entries are removed on use
-    id uuid primary key not null default gen_random_uuid(),
-    owner_id uuid not null references players (id),
-    blueprint_id uuid not null references blueprint_player_abilities (id),
-    game_client_ability_id int4 NOT NULL,
-    label text not null,
-	colour text NOT NULL,
-	image_url text NOT NULL,
-	description text NOT NULL,
-	text_colour text NOT NULL,
-    "type" TEXT CHECK ("type" IN ('MECH_SELECT', 'LOCATION_SELECT', 'GLOBAL')),
-    purchased_at timestamptz not null default now()
+CREATE TABLE player_abilities
+( -- ephemeral, entries are removed on use
+    id                     UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
+    owner_id               UUID             NOT NULL REFERENCES players (id),
+    blueprint_id           UUID             NOT NULL REFERENCES blueprint_player_abilities (id),
+    game_client_ability_id INT4             NOT NULL,
+    label                  TEXT             NOT NULL,
+    colour                 TEXT             NOT NULL,
+    image_url              TEXT             NOT NULL,
+    description            TEXT             NOT NULL,
+    text_colour            TEXT             NOT NULL,
+    "type"                 TEXT CHECK ("type" IN ('MECH_SELECT', 'LOCATION_SELECT', 'GLOBAL')),
+    purchased_at           TIMESTAMPTZ      NOT NULL DEFAULT NOW()
 );
 
-create table sale_player_abilities (
-    blueprint_id uuid not null primary key references blueprint_player_abilities (id),
-    current_price numeric(28) not null,
-    available_until timestamptz
+CREATE TABLE sale_player_abilities
+(
+    blueprint_id    UUID        NOT NULL PRIMARY KEY REFERENCES blueprint_player_abilities (id),
+    current_price   NUMERIC(28) NOT NULL,
+    available_until TIMESTAMPTZ
 );
 
-create table consumed_abilities (
-    battle_id uuid not null primary key references battles (id),
-    player_ability_id uuid not null references player_abilities (id),
-    consumed_at timestamptz not null default now()
+CREATE TABLE consumed_abilities
+(
+    battle_id         UUID        NOT NULL PRIMARY KEY REFERENCES battles (id),
+    player_ability_id UUID        NOT NULL REFERENCES player_abilities (id),
+    consumed_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
