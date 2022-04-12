@@ -32,15 +32,16 @@ func CalcNextQueueStatus(length int64) QueueStatusResponse {
 	// min cost will be one forth of the queue length
 	minQueueCost := queueLength.Div(decimal.NewFromFloat(4)).Mul(decimal.New(1, 18))
 
-	x := 3.25
+	mul := db.GetDecimalWithDefault("queue_fee_log_multi", decimal.NewFromFloat(3.25))
+	mulFloat, _ := mul.Float64()
 
 	if server.Env() == "staging" {
-		x = 0.2 + rand.Float64()*(8.0-0.2)
+		mulFloat = 0.2 + rand.Float64()*(8.0-0.2)
 		minQueueCost = decimal.NewFromFloat(1.5)
 	}
 
 	// calc queue cost
-	feeMultiplier := math.Log(float64(ql)) / x * 0.25
+	feeMultiplier := math.Log(float64(ql)) / mulFloat * 0.25
 	queueCost := queueLength.Mul(decimal.NewFromFloat(feeMultiplier)).Mul(decimal.New(1, 18))
 
 	// calc contract reward
@@ -87,6 +88,18 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 	if err != nil {
 		gamelog.L.Error().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal queue join")
 		return terror.Error(err)
+	}
+
+	// check mobile phone, if player required notifyed through mobile sms
+	if msg.Payload.EnablePushNotifications && msg.Payload.MobileNumber != "" {
+		mobileNumber, err := arena.sms.Lookup(msg.Payload.MobileNumber)
+		if err != nil {
+			gamelog.L.Warn().Str("mobile number", msg.Payload.MobileNumber).Msg("Failed to lookup mobile number through twilio api")
+			return terror.Error(err)
+		}
+
+		// set the verifyed mobile number
+		msg.Payload.MobileNumber = mobileNumber
 	}
 
 	mechID, err := db.MechIDFromHash(msg.Payload.AssetHash)
@@ -472,12 +485,6 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 		return terror.Error(fmt.Errorf("cannot remove war machine from queue when it is in battle"), "You cannot remove war machines currently in battle.")
 	}
 
-	canxq := `UPDATE battle_contracts SET cancelled = true WHERE id = (SELECT battle_contract_id FROM battle_queue WHERE mech_id = $1)`
-	_, err = gamedb.StdConn.Exec(canxq, mechID.String())
-	if err != nil {
-		gamelog.L.Warn().Err(err).Msg("unable to cancel battle contract. mech has left queue though.")
-	}
-
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("unable to begin tx")
@@ -485,8 +492,14 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 	}
 	defer tx.Rollback()
 
+	canxq := `UPDATE battle_contracts SET cancelled = true WHERE id = (SELECT battle_contract_id FROM battle_queue WHERE mech_id = $1)`
+	_, err = tx.Exec(canxq, mechID.String())
+	if err != nil {
+		gamelog.L.Warn().Err(err).Msg("unable to cancel battle contract. mech has left queue though.")
+	}
+
 	// Remove from queue
-	bq, err := boiler.BattleQueues(boiler.BattleQueueWhere.MechID.EQ(mechID.String())).One(gamedb.StdConn)
+	bq, err := boiler.BattleQueues(boiler.BattleQueueWhere.MechID.EQ(mechID.String())).One(tx)
 	if err != nil {
 		gamelog.L.Error().
 			Err(err).
@@ -508,13 +521,43 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 	if !bq.QueueFeeTXIDRefund.Valid {
 		// check if they have a transaction ID
 		if bq.QueueFeeTXID.Valid && bq.QueueFeeTXID.String != "" {
+			factionAccUUID, _ := uuid.FromString(factionAccountID)
+			syndicateBalance := arena.RPCClient.UserBalanceGet(factionAccUUID)
+
+			if syndicateBalance.LessThanOrEqual(*originalQueueCost) {
+				txid, err := arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
+					FromUserID:           uuid.UUID(server.XsynTreasuryUserID),
+					ToUserID:             factionAccUUID,
+					Amount:               originalQueueCost.StringFixed(0),
+					TransactionReference: server.TransactionReference(fmt.Sprintf("queue_fee_reversal_shortfall|%s|%d", bq.QueueFeeTXID.String, time.Now().UnixNano())),
+					Group:                string(server.TransactionGroupBattle),
+					SubGroup:             "Queue",
+					Description:          "Queue reversal shortfall",
+					NotSafe:              false,
+				})
+				if err != nil {
+					gamelog.L.Error().
+						Str("Faction ID", factionAccountID).
+						Str("Amount", originalQueueCost.StringFixed(0)).
+						Err(err).
+						Msg("Could not transfer money from treasury into syndicate account!!")
+					return terror.Error(err, "Unable to remove your mech from the queue. Please contact support.")
+				}
+				gamelog.L.Warn().
+					Str("Faction ID", factionAccountID).
+					Str("Amount", originalQueueCost.StringFixed(0)).
+					Str("TXID", txid).
+					Err(err).
+					Msg("Had to transfer funds to the syndicate account")
+			}
+
 			queueRefundTransactionID, err := arena.RPCClient.RefundSupsMessage(bq.QueueFeeTXID.String)
 			if err != nil {
 				gamelog.L.Error().
 					Str("queue_transaction_id", bq.QueueFeeTXID.String).
 					Err(err).
 					Msg("failed to refund users queue fee")
-				return terror.Error(err, "Unable to process refund, try again or contact support.")
+				return terror.Error(err, "Unable to remove your mech from the queue, please try again in five minutes or contact support.")
 			}
 			bq.QueueFeeTXIDRefund = null.StringFrom(queueRefundTransactionID)
 		} else {
@@ -808,6 +851,10 @@ func (arena *Arena) AssetQueueStatusSubscribeHandler(ctx context.Context, wsc *h
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return "", "", terror.Error(err, "Invalid request received")
+	}
+
+	if req.Payload.AssetHash == "" {
+		return "", "", terror.Warn(fmt.Errorf("empty asset hash"), "Empty asset data, please try again or contact support.")
 	}
 
 	mechID, err := db.MechIDFromHash(req.Payload.AssetHash)

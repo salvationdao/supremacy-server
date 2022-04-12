@@ -180,31 +180,28 @@ func (pvt *PunishVoteTracker) CurrentEligiblePlayers() map[string]bool {
 				gamelog.L.Error().Str("punish vote id", pvt.CurrentPunishVote.ID).Err(err).Msg("Failed to get player kill count from db")
 			}
 
-			for _, pak := range paks {
-				killCount := 0
-				for _, pak := range paks {
-					if !pak.IsTeamKill {
-						killCount++
-						continue
+			if paks != nil && len(paks) > 0 {
+				for _, playerID := range secondCheckList {
+					killCount := 0
+					for _, pak := range paks {
+						if playerID != pak.PlayerID {
+							continue
+						}
+						if !pak.IsTeamKill {
+							killCount++
+							continue
+						}
+						killCount--
 					}
-					killCount--
-				}
 
-				// player is eligible to vote if they have more than 5 kills in last 7 days
-				if killCount >= 5 {
-					result[pak.PlayerID] = true
+					// player is eligible to vote if they have more than 5 kills in last 7 days
+					if killCount >= 5 {
+						result[playerID] = true
+					}
 				}
 			}
 		}
 
-	}
-
-	// fill the list with voted players
-	for pid := range pvt.CurrentPunishVote.AgreedPlayerIDs {
-		result[pid] = true
-	}
-	for pid := range pvt.CurrentPunishVote.DisagreedPlayerIDs {
-		result[pid] = true
 	}
 
 	return result
@@ -220,11 +217,8 @@ func (pvt *PunishVoteTracker) VotingPhaseProcess() {
 		return
 	}
 
-	// get latest eligible user list
-	playerPool := pvt.CurrentEligiblePlayers()
-
 	// vote passed, if the amount of the agreed players pass 50%
-	if len(pvt.CurrentPunishVote.AgreedPlayerIDs) > len(playerPool)/2 {
+	if len(pvt.CurrentPunishVote.AgreedPlayerIDs) > len(pvt.CurrentPunishVote.PlayerPool)/2 {
 		err := pvt.VotePassed()
 		if err != nil {
 			gamelog.L.Error().Str("punish vote id", pvt.CurrentPunishVote.ID).Err(err).Msgf("Failed to process passed vote due to %s", err.Error())
@@ -340,7 +334,7 @@ func (pvt *PunishVoteTracker) Vote(punishVoteID string, playerID string, isAgree
 	if isAgreed {
 		pvt.CurrentPunishVote.AgreedPlayerIDs[playerID] = true
 		// check result
-		if len(pvt.CurrentPunishVote.AgreedPlayerIDs) > len(pvt.CurrentPunishVote.PlayerPool)/2 && pvt.VerifyResult(isAgreed) {
+		if len(pvt.CurrentPunishVote.AgreedPlayerIDs) > len(pvt.CurrentPunishVote.PlayerPool)/2 {
 			err := pvt.VotePassed()
 			if err != nil {
 				gamelog.L.Error().Str("punish vote id", pvt.CurrentPunishVote.ID).Err(err).Msgf("Failed to process failed vote due to %s", err.Error())
@@ -351,7 +345,7 @@ func (pvt *PunishVoteTracker) Vote(punishVoteID string, playerID string, isAgree
 	} else {
 		pvt.CurrentPunishVote.DisagreedPlayerIDs[playerID] = true
 		// check result
-		if len(pvt.CurrentPunishVote.DisagreedPlayerIDs) > len(pvt.CurrentPunishVote.PlayerPool)/2 && pvt.VerifyResult(isAgreed) {
+		if len(pvt.CurrentPunishVote.DisagreedPlayerIDs) > len(pvt.CurrentPunishVote.PlayerPool)/2 {
 			err := pvt.VoteFailed()
 			if err != nil {
 				gamelog.L.Error().Str("punish vote id", pvt.CurrentPunishVote.ID).Err(err).Msgf("Failed to process failed vote due to %s", err.Error())
@@ -370,26 +364,6 @@ func (pvt *PunishVoteTracker) Vote(punishVoteID string, playerID string, isAgree
 	}
 
 	return nil
-}
-
-// VerifyResult return true if the latest result is correct
-func (pvt *PunishVoteTracker) VerifyResult(checkAgree bool) bool {
-	// get the latest player pools
-	pvt.CurrentPunishVote.PlayerPool = pvt.CurrentEligiblePlayers()
-
-	// check on agreed result
-	if checkAgree {
-		if len(pvt.CurrentPunishVote.AgreedPlayerIDs) > len(pvt.CurrentPunishVote.PlayerPool)/2 {
-			return true
-		}
-		return false
-	}
-
-	// otherwise, check on disagreed result
-	if len(pvt.CurrentPunishVote.DisagreedPlayerIDs) > len(pvt.CurrentPunishVote.PlayerPool)/2 {
-		return true
-	}
-	return false
 }
 
 // VotePassed punish player when the vote is passed

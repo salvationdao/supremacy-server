@@ -97,6 +97,7 @@ type BattleMechStatsRequest struct {
 
 type BattleMechExtraStats struct {
 	WinRate            float32 `json:"win_rate"`
+	SurvivalRate       float32 `json:"survival_rate"`
 	KillPercentile     uint8   `json:"kill_percentile"`
 	SurvivalPercentile uint8   `json:"survival_percentile"`
 }
@@ -160,7 +161,8 @@ func (bc *BattleControllerWS) BattleMechStatsHandler(ctx context.Context, hub *h
 	reply(BattleMechStatsResponse{
 		MechStat: ms,
 		ExtraStats: BattleMechExtraStats{
-			WinRate:            float32(ms.TotalWins) / float32(ms.TotalDeaths+ms.TotalWins),
+			WinRate:            float32(ms.TotalWins) / float32(ms.TotalLosses+ms.TotalWins),
+			SurvivalRate:       float32(ms.BattlesSurvived) / float32(ms.TotalDeaths+ms.BattlesSurvived),
 			KillPercentile:     killPercentile,
 			SurvivalPercentile: survivePercentile,
 		},

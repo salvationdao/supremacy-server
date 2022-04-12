@@ -20,7 +20,7 @@ INSERT INTO player_kill_log (battle_id, player_id, faction_id, is_team_kill, cre
 SELECT bh.battle_id, bat.player_id, bat.faction_id, bat.faction_id = bm.faction_id, bh.created_at from battle_history bh
     INNER JOIN battle_ability_triggers bat on bat.ability_offering_id = bh.related_id
     INNER JOIN battle_mechs bm on bm.mech_id = bh.war_machine_one_id AND bm.battle_id = bat.battle_id
-where bh.related_id notnull and bh.event_type = 'killed';
+where bh.related_id notnull and bh.event_type = 'killed' and bat.player_id is not null;
 
 delete from user_stats;
 alter table user_stats RENAME COLUMN kill_count TO ability_kill_count;
