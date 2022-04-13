@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"server"
 	"server/battle"
+	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -21,7 +22,6 @@ import (
 	"github.com/ninja-syndicate/hub"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 type PlayerAbilitiesControllerWS struct {
@@ -35,24 +35,60 @@ func NewPlayerAbilitiesController(api *API) *PlayerAbilitiesControllerWS {
 		API: api,
 	}
 
-	api.SecureUserCommand(HubKeyPlayerAbilitiesList, gac.PlayerAbilitiesListHandler)
+	api.SecureUserCommand(HubKeySaleAbilitiesList, gac.PlayerAbilitiesListHandler)
 	api.SecureUserCommand(HubKeyPlayerAbilitiesPurchase, gac.PlayerAbilitiesPurchaseHandler)
 
 	return gac
 }
 
-const HubKeyPlayerAbilitiesList = hub.HubCommandKey("PLAYER:ABILITIES:LIST")
+type SaleAbilitiesListRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		SortDir  db.SortByDir           `json:"sort_dir"`
+		SortBy   db.PlayerAbilityColumn `json:"sort_by"`
+		Filter   *db.ListFilterRequest  `json:"filter,omitempty"`
+		Search   string                 `json:"search"`
+		PageSize int                    `json:"page_size"`
+		Page     int                    `json:"page"`
+	} `json:"payload"`
+}
+
+// TransactionListResponse is the response from get Transaction list
+type SaleAbilitiesListResponse struct {
+	Total      int      `json:"total"`
+	AbilityIDs []string `json:"ability_ids"`
+}
+
+const HubKeySaleAbilitiesList = hub.HubCommandKey("SALE:ABILITIES:LIST")
 
 func (gac *PlayerAbilitiesControllerWS) PlayerAbilitiesListHandler(ctx context.Context, hub *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	// TODO: paginate
-	pas, err := boiler.SalePlayerAbilities(qm.Limit(10)).All(gamedb.StdConn)
+	req := &SaleAbilitiesListRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	offset := 0
+	if req.Payload.Page > 0 {
+		offset = req.Payload.Page * req.Payload.PageSize
+	}
+
+	total, saleAbilities, err := db.SaleAbilitiesList(ctx, gac.Conn, req.Payload.Search, req.Payload.Filter, offset, req.Payload.PageSize, req.Payload.SortBy, req.Payload.SortDir)
 	if err != nil {
 		gamelog.L.Error().
 			Str("db func", "SalePlayerAbilities").Err(err).Msg("unable to get list of player abilities")
 		return terror.Error(err, "Unable to retrieve abilities, try again or contact support.")
 	}
 
-	reply(pas)
+	sIDs := make([]string, 0)
+	for _, s := range saleAbilities {
+		sIDs = append(sIDs, s.BlueprintID)
+	}
+
+	reply(SaleAbilitiesListResponse{
+		total,
+		sIDs,
+	})
 	return nil
 }
 

@@ -31,12 +31,14 @@ func (p PlayerAbilityColumn) IsValid() error {
 	return terror.Error(fmt.Errorf("invalid player ability column"))
 }
 
-type SalePlayerAbilityDetailed struct {
+type SaleAbilityDetailed struct {
 	*boiler.SalePlayerAbility
 	PlayerAbility boiler.BlueprintPlayerAbility `json:"player_ability"`
 }
 
-func SalePlayerAbilitiesList(
+// SaleAbilitiesList returns a list of IDs from the sale_player_abilities table.
+// Filter and sorting options can be passed in to manipulate the end result.
+func SaleAbilitiesList(
 	ctx context.Context,
 	conn pgxscan.Querier,
 	search string,
@@ -45,22 +47,24 @@ func SalePlayerAbilitiesList(
 	pageSize int,
 	sortBy PlayerAbilityColumn,
 	sortDir SortByDir,
-) (int, []SalePlayerAbilityDetailed, error) {
-	fromQ := fmt.Sprintf("FROM %s spa\n", boiler.TableNames.SalePlayerAbilities) +
-		fmt.Sprintf("INNER JOIN %[1]s bpa ON spa.%[2]s = bpa.%[3]s\n", boiler.TableNames.BlueprintPlayerAbilities, boiler.SalePlayerAbilityColumns.BlueprintID, boiler.BlueprintPlayerAbilityColumns.ID)
+) (int, []SaleAbilityDetailed, error) {
+	spaAlias := "spa" // alias for sale_player_abilities table
+	bpaAlias := "bpa" /// alias for blueprint_player_abilities table
+	fromQ := fmt.Sprintf("FROM %s %s\n", boiler.TableNames.SalePlayerAbilities, spaAlias) +
+		fmt.Sprintf("INNER JOIN %[1]s %[4]s ON %[5]s.%[2]s = %[4]s.%[3]s\n", boiler.TableNames.BlueprintPlayerAbilities, boiler.SalePlayerAbilityColumns.BlueprintID, boiler.BlueprintPlayerAbilityColumns.ID, bpaAlias, spaAlias)
 
 	selectQ := "SELECT\n" +
-		fmt.Sprintf("spa.%s,\n", boiler.SalePlayerAbilityColumns.BlueprintID) +
-		fmt.Sprintf("spa.%s,\n", boiler.SalePlayerAbilityColumns.CurrentPrice) +
-		fmt.Sprintf("spa.%s,\n", boiler.SalePlayerAbilityColumns.AvailableUntil) +
-		fmt.Sprintf("bpa.%s,\n", boiler.BlueprintPlayerAbilityColumns.ID) +
-		fmt.Sprintf("bpa.%s,\n", boiler.BlueprintPlayerAbilityColumns.GameClientAbilityID) +
-		fmt.Sprintf("bpa.%s,\n", boiler.BlueprintPlayerAbilityColumns.Label) +
-		fmt.Sprintf("bpa.%s,\n", boiler.BlueprintPlayerAbilityColumns.Colour) +
-		fmt.Sprintf("bpa.%s,\n", boiler.BlueprintPlayerAbilityColumns.ImageURL) +
-		fmt.Sprintf("bpa.%s,\n", boiler.BlueprintPlayerAbilityColumns.Description) +
-		fmt.Sprintf("bpa.%s,\n", boiler.BlueprintPlayerAbilityColumns.TextColour) +
-		fmt.Sprintf("bpa.%s,\n", boiler.BlueprintPlayerAbilityColumns.Type) + fromQ
+		fmt.Sprintf("%s.%s,\n", spaAlias, boiler.SalePlayerAbilityColumns.BlueprintID) +
+		fmt.Sprintf("%s.%s,\n", spaAlias, boiler.SalePlayerAbilityColumns.CurrentPrice) +
+		fmt.Sprintf("%s.%s,\n", spaAlias, boiler.SalePlayerAbilityColumns.AvailableUntil) +
+		fmt.Sprintf("%s.%s,\n", bpaAlias, boiler.BlueprintPlayerAbilityColumns.ID) +
+		fmt.Sprintf("%s.%s,\n", bpaAlias, boiler.BlueprintPlayerAbilityColumns.GameClientAbilityID) +
+		fmt.Sprintf("%s.%s,\n", bpaAlias, boiler.BlueprintPlayerAbilityColumns.Label) +
+		fmt.Sprintf("%s.%s,\n", bpaAlias, boiler.BlueprintPlayerAbilityColumns.Colour) +
+		fmt.Sprintf("%s.%s,\n", bpaAlias, boiler.BlueprintPlayerAbilityColumns.ImageURL) +
+		fmt.Sprintf("%s.%s,\n", bpaAlias, boiler.BlueprintPlayerAbilityColumns.Description) +
+		fmt.Sprintf("%s.%s,\n", bpaAlias, boiler.BlueprintPlayerAbilityColumns.TextColour) +
+		fmt.Sprintf("%s.%s,\n", bpaAlias, boiler.BlueprintPlayerAbilityColumns.Type) + fromQ
 
 	var args []interface{}
 
@@ -98,15 +102,15 @@ func SalePlayerAbilitiesList(
 		xsearch := ParseQueryText(search, true)
 		if len(xsearch) > 0 {
 			args = append(args, xsearch)
-			searchCondition = fmt.Sprintf(" AND ((to_tsvector('english', bpa.%[1]s) @@ to_tsquery($%[3]d)) OR (to_tsvector('english', bpa.%[2]s) @@ to_tsquery($%[3]d)))", boiler.BlueprintPlayerAbilityColumns.Label, boiler.BlueprintPlayerAbilityColumns.Description, len(args))
+			searchCondition = fmt.Sprintf(" AND ((to_tsvector('english', %[4]s.%[1]s) @@ to_tsquery($%[3]d)) OR (to_tsvector('english', %[4]s.%[2]s) @@ to_tsquery($%[3]d)))", boiler.BlueprintPlayerAbilityColumns.Label, boiler.BlueprintPlayerAbilityColumns.Description, len(args), bpaAlias)
 		}
 	}
 
 	// Get Total Found
 	countQ := fmt.Sprintf(`--sql
-		SELECT COUNT(DISTINCT spa.%[1]s)
+		SELECT COUNT(DISTINCT %[5]s.%[1]s)
 		%[2]s
-		WHERE spa.%[1]s IS NOT NULL
+		WHERE %[5]s.%[1]s IS NOT NULL
 			%[3]s
 			%[4]s
 		`,
@@ -114,6 +118,7 @@ func SalePlayerAbilitiesList(
 		selectQ,
 		filterConditionsString,
 		searchCondition,
+		spaAlias,
 	)
 
 	var totalRows int
@@ -123,11 +128,11 @@ func SalePlayerAbilitiesList(
 		return 0, nil, terror.Error(err)
 	}
 	if totalRows == 0 {
-		return 0, make([]SalePlayerAbilityDetailed, 0), nil
+		return 0, make([]SaleAbilityDetailed, 0), nil
 	}
 
 	// Order and Limit
-	orderBy := fmt.Sprintf(" ORDER BY spa.%s DESC", boiler.SalePlayerAbilityColumns.AvailableUntil)
+	orderBy := fmt.Sprintf(" ORDER BY %s.%s DESC", spaAlias, boiler.SalePlayerAbilityColumns.AvailableUntil)
 	if sortBy != "" {
 		err := sortBy.IsValid()
 		if err != nil {
@@ -143,11 +148,12 @@ func SalePlayerAbilitiesList(
 	// Get Paginated Result
 	q := fmt.Sprintf(
 		selectQ+`--sql
-		WHERE spa.%s IS NOT NULL
+		WHERE %s.%s IS NOT NULL
 			%s
 			%s
 		%s
 		%s`,
+		spaAlias,
 		boiler.SalePlayerAbilityColumns.BlueprintID,
 		filterConditionsString,
 		searchCondition,
@@ -164,9 +170,9 @@ func SalePlayerAbilitiesList(
 		return 0, nil, terror.Error(err)
 	}
 
-	resultResult := make([]SalePlayerAbilityDetailed, 0)
+	resultResult := make([]SaleAbilityDetailed, 0)
 	for _, r := range result {
-		resultResult = append(resultResult, SalePlayerAbilityDetailed{
+		resultResult = append(resultResult, SaleAbilityDetailed{
 			SalePlayerAbility: &boiler.SalePlayerAbility{
 				BlueprintID:    r.BlueprintID,
 				CurrentPrice:   r.CurrentPrice,
@@ -186,4 +192,136 @@ func SalePlayerAbilitiesList(
 	}
 
 	return totalRows, resultResult, nil
+}
+
+// PlayerAbilitiesList returns a list of IDs from the sale_player_abilities table.
+// Filter and sorting options can be passed in to manipulate the end result.
+func PlayerAbilitiesList(
+	ctx context.Context,
+	conn pgxscan.Querier,
+	search string,
+	filter *ListFilterRequest,
+	offset int,
+	pageSize int,
+	sortBy PlayerAbilityColumn,
+	sortDir SortByDir,
+) (int, boiler.PlayerAbilitySlice, error) {
+	paAlias := "pa" // alias for sale_player_abilities table
+	fromQ := fmt.Sprintf("FROM %s %s\n", boiler.TableNames.SalePlayerAbilities, paAlias)
+
+	selectQ := "SELECT\n" +
+		fmt.Sprintf("%s.%s,\n", paAlias, boiler.PlayerAbilityColumns.ID) +
+		fmt.Sprintf("%s.%s,\n", paAlias, boiler.PlayerAbilityColumns.OwnerID) +
+		fmt.Sprintf("%s.%s,\n", paAlias, boiler.PlayerAbilityColumns.BlueprintID) +
+		fmt.Sprintf("%s.%s,\n", paAlias, boiler.PlayerAbilityColumns.GameClientAbilityID) +
+		fmt.Sprintf("%s.%s,\n", paAlias, boiler.PlayerAbilityColumns.Label) +
+		fmt.Sprintf("%s.%s,\n", paAlias, boiler.PlayerAbilityColumns.Colour) +
+		fmt.Sprintf("%s.%s,\n", paAlias, boiler.PlayerAbilityColumns.ImageURL) +
+		fmt.Sprintf("%s.%s,\n", paAlias, boiler.PlayerAbilityColumns.Description) +
+		fmt.Sprintf("%s.%s,\n", paAlias, boiler.PlayerAbilityColumns.TextColour) +
+		fmt.Sprintf("%s.%s,\n", paAlias, boiler.PlayerAbilityColumns.Type) +
+		fmt.Sprintf("%s.%s,\n", paAlias, boiler.PlayerAbilityColumns.PurchasedAt) + fromQ
+
+	var args []interface{}
+
+	// Prepare Filters
+	filterConditionsString := ""
+	argIndex := 1
+	if filter != nil {
+		filterConditions := []string{}
+		for _, f := range filter.Items {
+			column := PlayerAbilityColumn(f.ColumnField)
+			err := column.IsValid()
+			if err != nil {
+				return 0, nil, terror.Error(err)
+			}
+
+			condition, value := GenerateListFilterSQL(f.ColumnField, f.Value, f.OperatorValue, argIndex)
+			if condition != "" {
+				switch f.OperatorValue {
+				case OperatorValueTypeIsNull, OperatorValueTypeIsNotNull:
+					break
+				default:
+					argIndex += 1
+					args = append(args, value)
+				}
+				filterConditions = append(filterConditions, condition)
+			}
+		}
+		if len(filterConditions) > 0 {
+			filterConditionsString = " AND (" + strings.Join(filterConditions, " "+string(filter.LinkOperator)+" ") + ")"
+		}
+	}
+
+	searchCondition := ""
+	if search != "" {
+		xsearch := ParseQueryText(search, true)
+		if len(xsearch) > 0 {
+			args = append(args, xsearch)
+			searchCondition = fmt.Sprintf(" AND ((to_tsvector('english', %[4]s.%[1]s) @@ to_tsquery($%[3]d)) OR (to_tsvector('english', %[4]s.%[2]s) @@ to_tsquery($%[3]d)))", boiler.BlueprintPlayerAbilityColumns.Label, boiler.BlueprintPlayerAbilityColumns.Description, len(args), paAlias)
+		}
+	}
+
+	// Get Total Found
+	countQ := fmt.Sprintf(`--sql
+		SELECT COUNT(DISTINCT %[5]s.%[1]s)
+		%[2]s
+		WHERE %[5]s.%[1]s IS NOT NULL
+			%[3]s
+			%[4]s
+		`,
+		boiler.SalePlayerAbilityColumns.BlueprintID,
+		selectQ,
+		filterConditionsString,
+		searchCondition,
+		paAlias,
+	)
+
+	var totalRows int
+
+	err := pgxscan.Get(ctx, conn, &totalRows, countQ, args...)
+	if err != nil {
+		return 0, nil, terror.Error(err)
+	}
+	if totalRows == 0 {
+		return 0, make(boiler.PlayerAbilitySlice, 0), nil
+	}
+
+	// Order and Limit
+	orderBy := fmt.Sprintf(" ORDER BY %s.%s DESC", paAlias, boiler.SalePlayerAbilityColumns.AvailableUntil)
+	if sortBy != "" {
+		err := sortBy.IsValid()
+		if err != nil {
+			return 0, nil, terror.Error(err)
+		}
+		orderBy = fmt.Sprintf(" ORDER BY %s %s", sortBy, sortDir)
+	}
+	limit := ""
+	if pageSize > 0 {
+		limit = fmt.Sprintf(" LIMIT %d OFFSET %d", pageSize, offset)
+	}
+
+	// Get Paginated Result
+	q := fmt.Sprintf(
+		selectQ+`--sql
+		WHERE %s.%s IS NOT NULL
+			%s
+			%s
+		%s
+		%s`,
+		paAlias,
+		boiler.SalePlayerAbilityColumns.BlueprintID,
+		filterConditionsString,
+		searchCondition,
+		orderBy,
+		limit,
+	)
+
+	result := make(boiler.PlayerAbilitySlice, 0)
+	err = pgxscan.Select(ctx, conn, &result, q, args...)
+	if err != nil {
+		return 0, nil, terror.Error(err)
+	}
+
+	return totalRows, result, nil
 }
