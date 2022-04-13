@@ -21,27 +21,27 @@ func NewTwilio(accountSid, apiKey, apiSecret, fromNumber, environment string) (*
 	}
 
 	// if prod or staging, check for envars and panic if missing and enable sending
-	if environment == "production" || environment == "staging" {
-		twil.AllowSending = true
-		if accountSid == "" {
-			return nil, terror.Error(fmt.Errorf("missing var accountSid"))
-		}
-		if apiKey == "" {
-			return nil, terror.Error(fmt.Errorf("missing var apiKey"))
-		}
-		if apiSecret == "" {
-			return nil, terror.Error(fmt.Errorf("missing var apiSecret"))
-		}
-		if fromNumber == "" {
-			return nil, terror.Error(fmt.Errorf("missing var fromNumber"))
-		}
-
-		twil.RestClient = twilio.NewRestClientWithParams(twilio.RestClientParams{
-			Username:   apiKey,
-			Password:   apiSecret,
-			AccountSid: accountSid,
-		})
+	// if environment == "production" || environment == "staging" {
+	twil.AllowSending = true
+	if accountSid == "" {
+		return nil, terror.Error(fmt.Errorf("missing var accountSid"))
 	}
+	if apiKey == "" {
+		return nil, terror.Error(fmt.Errorf("missing var apiKey"))
+	}
+	if apiSecret == "" {
+		return nil, terror.Error(fmt.Errorf("missing var apiSecret"))
+	}
+	if fromNumber == "" {
+		return nil, terror.Error(fmt.Errorf("missing var fromNumber"))
+	}
+
+	twil.RestClient = twilio.NewRestClientWithParams(twilio.RestClientParams{
+		Username:   apiKey,
+		Password:   apiSecret,
+		AccountSid: accountSid,
+	})
+	// }
 
 	return twil, nil
 }

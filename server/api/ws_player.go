@@ -224,8 +224,6 @@ func (pc *PlayerController) PlayerProfileGetHandler(ctx context.Context, wsc *hu
 		return nil
 	}
 
-	fmt.Println("ypyp3")
-
 	reply(playerProfile)
 	return nil
 
