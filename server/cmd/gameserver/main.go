@@ -628,7 +628,7 @@ func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, bat
 	HTMLSanitizePolicy.AllowAttrs("class").OnElements("img", "table", "tr", "td", "p")
 
 	// API Server
-	serverAPI := api.NewAPI(ctx, log, battleArenaClient, passport, HTMLSanitizePolicy, conn, config, messageBus, gsHub, sms, telegram, languageDetector)
+	serverAPI := api.NewAPI(ctx, battleArenaClient, passport, HTMLSanitizePolicy, config, messageBus, gsHub, sms, telegram, languageDetector)
 	return serverAPI, nil
 }
 

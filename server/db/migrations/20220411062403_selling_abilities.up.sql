@@ -28,8 +28,9 @@ CREATE TABLE player_abilities
 
 CREATE TABLE sale_player_abilities
 (
-    blueprint_id    UUID        NOT NULL PRIMARY KEY REFERENCES blueprint_player_abilities (id),
-    current_price   NUMERIC(28) NOT NULL,
+    id              UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
+    blueprint_id    UUID             NOT NULL REFERENCES blueprint_player_abilities (id),
+    current_price   NUMERIC(28)      NOT NULL,
     available_until TIMESTAMPTZ
 );
 

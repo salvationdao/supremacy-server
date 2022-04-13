@@ -24,6 +24,7 @@ import (
 
 // SalePlayerAbility is an object representing the database table.
 type SalePlayerAbility struct {
+	ID             string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	BlueprintID    string          `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
 	CurrentPrice   decimal.Decimal `boiler:"current_price" boil:"current_price" json:"current_price" toml:"current_price" yaml:"current_price"`
 	AvailableUntil null.Time       `boiler:"available_until" boil:"available_until" json:"available_until,omitempty" toml:"available_until" yaml:"available_until,omitempty"`
@@ -33,20 +34,24 @@ type SalePlayerAbility struct {
 }
 
 var SalePlayerAbilityColumns = struct {
+	ID             string
 	BlueprintID    string
 	CurrentPrice   string
 	AvailableUntil string
 }{
+	ID:             "id",
 	BlueprintID:    "blueprint_id",
 	CurrentPrice:   "current_price",
 	AvailableUntil: "available_until",
 }
 
 var SalePlayerAbilityTableColumns = struct {
+	ID             string
 	BlueprintID    string
 	CurrentPrice   string
 	AvailableUntil string
 }{
+	ID:             "sale_player_abilities.id",
 	BlueprintID:    "sale_player_abilities.blueprint_id",
 	CurrentPrice:   "sale_player_abilities.current_price",
 	AvailableUntil: "sale_player_abilities.available_until",
@@ -55,10 +60,12 @@ var SalePlayerAbilityTableColumns = struct {
 // Generated where
 
 var SalePlayerAbilityWhere = struct {
+	ID             whereHelperstring
 	BlueprintID    whereHelperstring
 	CurrentPrice   whereHelperdecimal_Decimal
 	AvailableUntil whereHelpernull_Time
 }{
+	ID:             whereHelperstring{field: "\"sale_player_abilities\".\"id\""},
 	BlueprintID:    whereHelperstring{field: "\"sale_player_abilities\".\"blueprint_id\""},
 	CurrentPrice:   whereHelperdecimal_Decimal{field: "\"sale_player_abilities\".\"current_price\""},
 	AvailableUntil: whereHelpernull_Time{field: "\"sale_player_abilities\".\"available_until\""},
@@ -85,10 +92,10 @@ func (*salePlayerAbilityR) NewStruct() *salePlayerAbilityR {
 type salePlayerAbilityL struct{}
 
 var (
-	salePlayerAbilityAllColumns            = []string{"blueprint_id", "current_price", "available_until"}
+	salePlayerAbilityAllColumns            = []string{"id", "blueprint_id", "current_price", "available_until"}
 	salePlayerAbilityColumnsWithoutDefault = []string{"blueprint_id", "current_price"}
-	salePlayerAbilityColumnsWithDefault    = []string{"available_until"}
-	salePlayerAbilityPrimaryKeyColumns     = []string{"blueprint_id"}
+	salePlayerAbilityColumnsWithDefault    = []string{"id", "available_until"}
+	salePlayerAbilityPrimaryKeyColumns     = []string{"id"}
 	salePlayerAbilityGeneratedColumns      = []string{}
 )
 
@@ -432,7 +439,7 @@ func (salePlayerAbilityL) LoadBlueprint(e boil.Executor, singular bool, maybeSal
 		if foreign.R == nil {
 			foreign.R = &blueprintPlayerAbilityR{}
 		}
-		foreign.R.BlueprintSalePlayerAbility = object
+		foreign.R.BlueprintSalePlayerAbilities = append(foreign.R.BlueprintSalePlayerAbilities, object)
 		return nil
 	}
 
@@ -443,7 +450,7 @@ func (salePlayerAbilityL) LoadBlueprint(e boil.Executor, singular bool, maybeSal
 				if foreign.R == nil {
 					foreign.R = &blueprintPlayerAbilityR{}
 				}
-				foreign.R.BlueprintSalePlayerAbility = local
+				foreign.R.BlueprintSalePlayerAbilities = append(foreign.R.BlueprintSalePlayerAbilities, local)
 				break
 			}
 		}
@@ -454,7 +461,7 @@ func (salePlayerAbilityL) LoadBlueprint(e boil.Executor, singular bool, maybeSal
 
 // SetBlueprint of the salePlayerAbility to the related item.
 // Sets o.R.Blueprint to related.
-// Adds o to related.R.BlueprintSalePlayerAbility.
+// Adds o to related.R.BlueprintSalePlayerAbilities.
 func (o *SalePlayerAbility) SetBlueprint(exec boil.Executor, insert bool, related *BlueprintPlayerAbility) error {
 	var err error
 	if insert {
@@ -468,7 +475,7 @@ func (o *SalePlayerAbility) SetBlueprint(exec boil.Executor, insert bool, relate
 		strmangle.SetParamNames("\"", "\"", 1, []string{"blueprint_id"}),
 		strmangle.WhereClause("\"", "\"", 2, salePlayerAbilityPrimaryKeyColumns),
 	)
-	values := []interface{}{related.ID, o.BlueprintID}
+	values := []interface{}{related.ID, o.ID}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -489,10 +496,10 @@ func (o *SalePlayerAbility) SetBlueprint(exec boil.Executor, insert bool, relate
 
 	if related.R == nil {
 		related.R = &blueprintPlayerAbilityR{
-			BlueprintSalePlayerAbility: o,
+			BlueprintSalePlayerAbilities: SalePlayerAbilitySlice{o},
 		}
 	} else {
-		related.R.BlueprintSalePlayerAbility = o
+		related.R.BlueprintSalePlayerAbilities = append(related.R.BlueprintSalePlayerAbilities, o)
 	}
 
 	return nil
@@ -506,7 +513,7 @@ func SalePlayerAbilities(mods ...qm.QueryMod) salePlayerAbilityQuery {
 
 // FindSalePlayerAbility retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindSalePlayerAbility(exec boil.Executor, blueprintID string, selectCols ...string) (*SalePlayerAbility, error) {
+func FindSalePlayerAbility(exec boil.Executor, iD string, selectCols ...string) (*SalePlayerAbility, error) {
 	salePlayerAbilityObj := &SalePlayerAbility{}
 
 	sel := "*"
@@ -514,10 +521,10 @@ func FindSalePlayerAbility(exec boil.Executor, blueprintID string, selectCols ..
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"sale_player_abilities\" where \"blueprint_id\"=$1", sel,
+		"select %s from \"sale_player_abilities\" where \"id\"=$1", sel,
 	)
 
-	q := queries.Raw(query, blueprintID)
+	q := queries.Raw(query, iD)
 
 	err := q.Bind(nil, exec, salePlayerAbilityObj)
 	if err != nil {
@@ -865,7 +872,7 @@ func (o *SalePlayerAbility) Delete(exec boil.Executor) (int64, error) {
 	}
 
 	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), salePlayerAbilityPrimaryKeyMapping)
-	sql := "DELETE FROM \"sale_player_abilities\" WHERE \"blueprint_id\"=$1"
+	sql := "DELETE FROM \"sale_player_abilities\" WHERE \"id\"=$1"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -960,7 +967,7 @@ func (o SalePlayerAbilitySlice) DeleteAll(exec boil.Executor) (int64, error) {
 // Reload refetches the object from the database
 // using the primary keys with an executor.
 func (o *SalePlayerAbility) Reload(exec boil.Executor) error {
-	ret, err := FindSalePlayerAbility(exec, o.BlueprintID)
+	ret, err := FindSalePlayerAbility(exec, o.ID)
 	if err != nil {
 		return err
 	}
@@ -999,15 +1006,15 @@ func (o *SalePlayerAbilitySlice) ReloadAll(exec boil.Executor) error {
 }
 
 // SalePlayerAbilityExists checks if the SalePlayerAbility row exists.
-func SalePlayerAbilityExists(exec boil.Executor, blueprintID string) (bool, error) {
+func SalePlayerAbilityExists(exec boil.Executor, iD string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"sale_player_abilities\" where \"blueprint_id\"=$1 limit 1)"
+	sql := "select exists(select 1 from \"sale_player_abilities\" where \"id\"=$1 limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
-		fmt.Fprintln(boil.DebugWriter, blueprintID)
+		fmt.Fprintln(boil.DebugWriter, iD)
 	}
-	row := exec.QueryRow(sql, blueprintID)
+	row := exec.QueryRow(sql, iD)
 
 	err := row.Scan(&exists)
 	if err != nil {

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"server/gamedb"
 	"time"
 
 	"github.com/georgysavva/scany/pgxscan"
@@ -33,7 +32,7 @@ func (s *Seeder) Run() error {
 	// seed review icons
 	fmt.Println("Seed game maps")
 	ctx := context.Background()
-	err := gameMaps(ctx, gamedb.Conn)
+	err := gameMaps(ctx, s.Conn)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -51,7 +50,7 @@ func (s *Seeder) Run() error {
 	}
 
 	fmt.Println("Seed faction abilities")
-	err = factionAbilities(ctx, gamedb.Conn)
+	err = factionAbilities(ctx, s.Conn)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -505,13 +504,13 @@ func FactionStatMaterialisedViewRefresh(ctx context.Context, conn *pgxpool.Pool)
 
 func (s *Seeder) factions(ctx context.Context) ([]*Faction, error) {
 	for _, faction := range factions {
-		err := FactionCreate(ctx, gamedb.Conn, faction)
+		err := FactionCreate(ctx, s.Conn, faction)
 		if err != nil {
 			return nil, terror.Error(err)
 		}
 	}
 
-	err := FactionStatMaterialisedViewRefresh(ctx, gamedb.Conn)
+	err := FactionStatMaterialisedViewRefresh(ctx, s.Conn)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -609,7 +608,7 @@ func CreateStream(ctx context.Context, conn *pgxpool.Pool, stream *Stream) error
 
 func (s *Seeder) streams(ctx context.Context) ([]*Stream, error) {
 	for _, stream := range streams {
-		err := CreateStream(ctx, gamedb.Conn, stream)
+		err := CreateStream(ctx, s.Conn, stream)
 		if err != nil {
 			return nil, terror.Error(err)
 		}
@@ -658,7 +657,7 @@ func (s *Seeder) assets(ctx context.Context) ([]*Blob, error) {
 		blob.File = fileData
 		blob.Hash = &hash
 
-		err = BlobInsert(ctx, gamedb.Conn, blob, blob.ID, blob.FileName, blob.MimeType, blob.FileSizeBytes, blob.Extension, blob.File, blob.Hash)
+		err = BlobInsert(ctx, s.Conn, blob, blob.ID, blob.FileName, blob.MimeType, blob.FileSizeBytes, blob.Extension, blob.File, blob.Hash)
 		if err != nil {
 			return nil, terror.Error(err, "blob upsert error")
 		}

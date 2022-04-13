@@ -221,7 +221,6 @@ func (opts *Opts) NetSubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn Hub
 
 		// add subscription to the message bus
 		opts.MessageBus.SubClient(busKey, wsc)
-
 		return nil
 	})
 
