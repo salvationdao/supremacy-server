@@ -103,6 +103,7 @@ func (api *API) PunishVoteTrackerSetup() error {
 		}
 		return http.StatusOK, nil
 	})
+	playerPunishVoteCostUpdater.Log = gamelog.L
 
 	err = playerPunishVoteCostUpdater.SetIntervalAt(24*time.Hour, 1, 0)
 	if err != nil {

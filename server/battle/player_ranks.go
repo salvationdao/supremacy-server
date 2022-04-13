@@ -95,6 +95,8 @@ func (arena *Arena) PlayerRankUpdater() {
 		return http.StatusOK, nil
 	})
 
+	updateTickle.Log = gamelog.L
+
 	// start tickle
 	updateTickle.Start()
 }
