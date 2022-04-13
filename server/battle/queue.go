@@ -236,63 +236,6 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		return terror.Error(err, "Unable to join queue, contact support or try again.")
 	}
 
-	// shortcode := ""
-	// Charge queue notification fee, if enabled (10% of queue cost)
-	if !bq.Notified {
-
-		// // get telegram registered player
-		// playerProfile, err := boiler.PlayerProfiles(
-		// 	boiler.PlayerProfileWhere.PlayerID.EQ(ownerID.String()),
-		// ).One(gamedb.StdConn)
-		// if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		// 	gamelog.L.Error().
-		// 		Str("PlayerID", ownerID.String()).
-		// 		Err(err).Msg("unable to get telegram user")
-		// 	return terror.Error(err, "Unable to get registered telegram user")
-
-		// }
-
-		// telegramUnregistered := errors.Is(err, sql.ErrNoRows) || playerProfile == nil || !playerProfile.TelegramID.Valid
-
-		// if telegram notifications enabled but unregistered
-		// if msg.Payload.EnableTelegramNotifications && telegramUnregistered {
-		// 	// create new tele player return short code
-		// 	player, err := boiler.FindPlayer(gamedb.StdConn, ownerID.String())
-		// 	if err != nil {
-		// 		gamelog.L.Error().
-		// 			Str("PlayerID", ownerID.String()).
-		// 			Err(err).Msg("unable to get telegram user")
-		// 		return terror.Error(err, "Unable create telegram user")
-		// 	}
-
-		// 	profile, err := arena.telegram.ProfileUpdate(player)
-		// 	if err != nil {
-		// 		gamelog.L.Error().
-		// 			Str("PlayerID", ownerID.String()).
-		// 			Err(err).Msg("unable to get telegram user")
-		// 		return terror.Error(err, "Unable create telegram user")
-		// 	}
-
-		// 	shortcode = profile.Shortcode
-
-		// }
-
-		// // if telegram notifications enabled and registered
-		// if !telegramUnregistered  {
-		// 	wmName := mech.Label
-		// 	if mech.Name != "" {
-		// 		wmName = mech.Name
-		// 	}
-		// 	err := arena.telegram.Notify2(playerProfile.TelegramID.Int64, fmt.Sprintf("🦾 Your War Machine (%[1]s) has been deployed, you will be notified when it is nearing battle.", wmName))
-		// 	if err != nil {
-		// 		gamelog.L.Error().
-		// 			Err(err).Msg("unable to send telegram message (war machine deployed)")
-		// 		return terror.Error(err, "Unable send telegram message")
-		// 	}
-		// }
-
-	}
-
 	// Commit transaction
 	err = tx.Commit()
 	if err != nil {

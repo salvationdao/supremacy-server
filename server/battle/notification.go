@@ -238,6 +238,21 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			continue
 		}
 
+		wmName := fmt.Sprintf("(%s)", warMachine.Label)
+		if warMachine.Name != "" {
+			wmName = fmt.Sprintf("(%s)", warMachine.Name)
+		}
+
+		playerProfile, err := boiler.PlayerProfiles(boiler.PlayerProfileWhere.PlayerID.EQ(player.ID)).One(gamedb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Err(err).Str("player_id", player.ID).Msg("unable to get player prefs")
+			continue
+		}
+
+		if playerProfile == nil {
+			continue
+		}
+
 		// get faction account
 		factionAccountID, ok := server.FactionUsers[player.FactionID.String]
 		if !ok {
@@ -286,22 +301,6 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 					gamelog.L.Error().Str("txID", bq.QueueNotificationFeeTXID.String).Err(err).Msg("failed to refund queue notification fee")
 				}
 			}
-
-		}
-
-		wmName := fmt.Sprintf("(%s)", warMachine.Label)
-		if warMachine.Name != "" {
-			wmName = fmt.Sprintf("(%s)", warMachine.Name)
-		}
-
-		playerProfile, err := boiler.PlayerProfiles(boiler.PlayerProfileWhere.PlayerID.EQ(player.ID)).One(gamedb.StdConn)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			gamelog.L.Error().Err(err).Str("player_id", player.ID).Msg("unable to get player prefs")
-			continue
-		}
-
-		if playerProfile == nil {
-			continue
 		}
 
 		// sms notifications
