@@ -30,7 +30,7 @@ const (
 
 func (arena *Arena) PlayerRankUpdater() {
 	// create a tickle to constantly update player ability kill and ranks
-	updateTickle := tickle.New("Player rank and kill update", 60, func() (int, error) {
+	updateTickle := tickle.New("Player rank and kill update", 30*60, func() (int, error) {
 		// calculate player rank of each syndicate
 		err := calcSyndicatePlayerRank(server.RedMountainFactionID)
 		if err != nil {
