@@ -209,12 +209,9 @@ func (pc *PlayerController) PlayerProfileGetHandler(ctx context.Context, wsc *hu
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return terror.Error(err, errMsg)
 	}
-	fmt.Println("ypyp")
 
 	// if there are no results, create new player profile
 	if errors.Is(err, sql.ErrNoRows) {
-		fmt.Println("ypyp2")
-
 		_playerProfile := &boiler.PlayerProfile{
 			PlayerID: wsc.Identifier(),
 		}
@@ -283,13 +280,22 @@ func (pc *PlayerController) PlayerProfileUpdateHandler(ctx context.Context, wsc 
 			return terror.Error(err, errMsg)
 		}
 
+		// if new profile and has telegram notifcations enabled, must register to telebot
+		if _playerProfile.EnableTelegramNotifications {
+			playerProfile, err = pc.API.Telegram.ProfileUpdate(wsc.Identifier())
+			if err != nil {
+				return terror.Error(err, errMsg)
+			}
+		}
+		fmt.Printf("%+v \nthis is player profile", playerProfile)
+
 		reply(_playerProfile)
 
 		return nil
 	}
 
 	fmt.Println("here5")
-	fmt.Printf("%+v\n", req.Payload)
+	fmt.Printf("%+v \nthis is player profile out", playerProfile)
 
 	// update profile
 	playerProfile.EnableTelegramNotifications = req.Payload.EnableTelegramNotifications
@@ -300,8 +306,16 @@ func (pc *PlayerController) PlayerProfileUpdateHandler(ctx context.Context, wsc 
 		return terror.Error(err, errMsg)
 	}
 
+	// if telegram enbled but is not registered
+	if playerProfile.EnableTelegramNotifications && (!playerProfile.TelegramID.Valid && playerProfile.Shortcode == "") {
+		fmt.Println("ininiinniininin")
+		playerProfile, err = pc.API.Telegram.ProfileUpdate(wsc.Identifier())
+		if err != nil {
+			return terror.Error(err, errMsg)
+		}
+	}
+
 	reply(playerProfile)
-	// pc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPlayerProfileSubscribe, wsc.Identifier())), playerProfile)
 	return nil
 }
 

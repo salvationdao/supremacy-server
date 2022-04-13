@@ -11,11 +11,14 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/rpcclient"
+	"time"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
@@ -198,6 +201,13 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 		return
 	}
 
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("unable to begin tx")
+		return
+	}
+	defer tx.Rollback()
+
 	// for each war machine in queue, find ones that need to be notified
 	for _, bq := range q {
 		// if in battle or already notified skip
@@ -209,16 +219,74 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			continue
 		}
 
-		// add them to users to notify
+		// get mech owner
 		player, err := boiler.Players(boiler.PlayerWhere.ID.EQ(bq.OwnerID)).One(gamedb.StdConn)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("battle_id", arena.currentBattle().ID).Str("owner_id", bq.OwnerID).Msg("unable to find owner for battle queue notification")
 			continue
 		}
+
+		playerUUID, err := uuid.FromString(player.ID)
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("player_id", bq.MechID).Msg("unable to get player UUID")
+			continue
+		}
+
 		warMachine, err := bq.Mech(qm.Load(boiler.MechRels.BattleQueueNotifications)).One(gamedb.StdConn)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("mech_id", bq.MechID).Msg("unable to find war machine for battle queue notification")
 			continue
+		}
+
+		// get faction account
+		factionAccountID, ok := server.FactionUsers[player.FactionID.String]
+		if !ok {
+			gamelog.L.Error().
+				Str("mech ID", bq.MechID).
+				Str("faction ID", player.FactionID.String).
+				Err(err).
+				Msg("unable to get hard coded syndicate player ID from faction ID")
+		}
+
+		// charge for notification
+		notifyTransactionID, err := arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
+			Amount:               "5000000000000000000", // 5 sups
+			FromUserID:           playerUUID,
+			ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
+			TransactionReference: server.TransactionReference(fmt.Sprintf("war_machine_queue_notification_fee|%s|%d", warMachine.Hash, time.Now().UnixNano())),
+			Group:                string(server.TransactionGroupBattle),
+			SubGroup:             "Queue",
+			Description:          "Notification surcharge for queued mech in arena",
+			NotSafe:              true,
+		})
+		if err != nil {
+			gamelog.L.Error().Str("txID", notifyTransactionID).Err(err).Msg("unable to charge user for sms notification for mech in queue")
+			if bq.QueueFeeTXID.Valid {
+				_, err = arena.RPCClient.RefundSupsMessage(bq.QueueFeeTXID.String)
+				if err != nil {
+					gamelog.L.Error().Str("txID", bq.QueueFeeTXID.String).Err(err).Msg("failed to refund queue fee")
+				}
+			}
+		}
+		bq.QueueNotificationFeeTXID = null.StringFrom(notifyTransactionID)
+		_, err = bq.Update(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().
+				Str("tx_id", notifyTransactionID).
+				Err(err).Msg("unable to update battle queue with queue notification transaction id")
+			if bq.QueueFeeTXID.Valid {
+				_, err = arena.RPCClient.RefundSupsMessage(bq.QueueFeeTXID.String)
+				if err != nil {
+					gamelog.L.Error().Str("txID", bq.QueueFeeTXID.String).Err(err).Msg("failed to refund queue fee")
+				}
+			}
+			if bq.QueueNotificationFeeTXID.Valid {
+				_, err = arena.RPCClient.RefundSupsMessage(bq.QueueNotificationFeeTXID.String)
+				if err != nil {
+					gamelog.L.Error().Str("txID", bq.QueueNotificationFeeTXID.String).Err(err).Msg("failed to refund queue notification fee")
+				}
+			}
+
 		}
 
 		wmName := fmt.Sprintf("(%s)", warMachine.Label)
@@ -267,9 +335,6 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("mech_id", bq.MechID).Str("owner_id", bq.OwnerID).Str("queued_at", bq.QueuedAt.String()).Msg("failed to update notified column")
 		}
-
-		// charge notification fee
-		// bq.fee
 
 	}
 }

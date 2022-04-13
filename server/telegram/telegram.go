@@ -116,7 +116,7 @@ func (t *Telegram) RunTelegram(bot *tele.Bot) error {
 	return nil
 }
 
-func (t *Telegram) ProfileUpdate(player *boiler.Player) (*boiler.PlayerProfile, error) {
+func (t *Telegram) ProfileUpdate(playerID string) (*boiler.PlayerProfile, error) {
 
 	shortcode, err := shortid.Generate()
 	if err != nil {
@@ -142,7 +142,7 @@ func (t *Telegram) ProfileUpdate(player *boiler.Player) (*boiler.PlayerProfile, 
 		}
 	}
 
-	profile, err := boiler.PlayerProfiles(boiler.PlayerProfileWhere.PlayerID.EQ(player.ID)).One(gamedb.StdConn)
+	profile, err := boiler.PlayerProfiles(boiler.PlayerProfileWhere.PlayerID.EQ(playerID)).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, terror.Error(err, "Unable to get player profile")
 	}
@@ -150,7 +150,7 @@ func (t *Telegram) ProfileUpdate(player *boiler.Player) (*boiler.PlayerProfile, 
 	// create new player profile
 	if errors.Is(err, sql.ErrNoRows) {
 		_profile := &boiler.PlayerProfile{
-			PlayerID:                    player.ID,
+			PlayerID:                    playerID,
 			Shortcode:                   strings.ToLower(shortcode),
 			EnableTelegramNotifications: true,
 		}
