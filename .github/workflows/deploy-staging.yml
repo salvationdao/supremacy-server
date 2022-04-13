@@ -114,21 +114,11 @@ jobs:
     needs: [build]
     runs-on: ubuntu-20.04
     steps:
-      - uses: ravsamhq/notify-slack-action@v1
-      - if: always()
-        with:
-            status: ${{ job.status }}
-            token: ${{ secrets.GITHUB_TOKEN }}
-            notification_title: '{workflow} has {status_message}'
-            message_format: '{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}>'
-            footer: 'Linked Repo <{repo_url}|{repo}> | <{workflow_url}|View Workflow>'
-            notify_when: 'failure'
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
       - uses: actions/download-artifact@v2
         if: ${{ !env.ACT }} # if running in local test environment
         with:
           name: ${{ needs.build.outputs.artifact_filename }}
+
 
       - name: untar deploy directory
         run: tar -xvf ${{ needs.build.outputs.artifact_filename }}
@@ -168,3 +158,17 @@ jobs:
       - name: restart web-server
         if: ${{ !env.ACT }} # if running in local test environment
         run: ssh ${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }} 'sudo nginx -t && sudo nginx -s reload'
+
+      - name: slack-notification
+          if: always()
+          uses: ravsamhq/notify-slack-action@v1
+          with:
+            status: ${{ job.status }}
+            token: ${{ secrets.GITHUB_TOKEN }}
+            notification_title: '{workflow} has {status_message}'
+            message_format: '{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}>'
+            footer: 'Linked Repo <{repo_url}|{repo}> | <{workflow_url}|View Workflow>'
+            notify_when: 'failure'
+          env:
+            SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+            
