@@ -29,7 +29,6 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	leakybucket "github.com/kevinms/leakybucket-go"
 	"github.com/microcosm-cc/bluemonday"
-	"github.com/ninja-software/log_helpers"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
@@ -174,11 +173,9 @@ type ChatController struct {
 }
 
 // NewChatController creates the role hub
-func NewChatController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *ChatController {
+func NewChatController(api *API) *ChatController {
 	chatHub := &ChatController{
-		Conn: conn,
-		Log:  log_helpers.NamedLogger(log, "chat_hub"),
-		API:  api,
+		API: api,
 	}
 
 	api.Command(HubKeyChatPastMessages, chatHub.ChatPastMessagesHandler)

@@ -31,6 +31,7 @@ type BlueprintPlayerAbility struct {
 	Description         string      `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
 	TextColour          string      `boiler:"text_colour" boil:"text_colour" json:"text_colour" toml:"text_colour" yaml:"text_colour"`
 	Type                null.String `boiler:"type" boil:"type" json:"type,omitempty" toml:"type" yaml:"type,omitempty"`
+	CreatedAt           time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *blueprintPlayerAbilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintPlayerAbilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -45,6 +46,7 @@ var BlueprintPlayerAbilityColumns = struct {
 	Description         string
 	TextColour          string
 	Type                string
+	CreatedAt           string
 }{
 	ID:                  "id",
 	GameClientAbilityID: "game_client_ability_id",
@@ -54,6 +56,7 @@ var BlueprintPlayerAbilityColumns = struct {
 	Description:         "description",
 	TextColour:          "text_colour",
 	Type:                "type",
+	CreatedAt:           "created_at",
 }
 
 var BlueprintPlayerAbilityTableColumns = struct {
@@ -65,6 +68,7 @@ var BlueprintPlayerAbilityTableColumns = struct {
 	Description         string
 	TextColour          string
 	Type                string
+	CreatedAt           string
 }{
 	ID:                  "blueprint_player_abilities.id",
 	GameClientAbilityID: "blueprint_player_abilities.game_client_ability_id",
@@ -74,6 +78,7 @@ var BlueprintPlayerAbilityTableColumns = struct {
 	Description:         "blueprint_player_abilities.description",
 	TextColour:          "blueprint_player_abilities.text_colour",
 	Type:                "blueprint_player_abilities.type",
+	CreatedAt:           "blueprint_player_abilities.created_at",
 }
 
 // Generated where
@@ -87,6 +92,7 @@ var BlueprintPlayerAbilityWhere = struct {
 	Description         whereHelperstring
 	TextColour          whereHelperstring
 	Type                whereHelpernull_String
+	CreatedAt           whereHelpertime_Time
 }{
 	ID:                  whereHelperstring{field: "\"blueprint_player_abilities\".\"id\""},
 	GameClientAbilityID: whereHelperint{field: "\"blueprint_player_abilities\".\"game_client_ability_id\""},
@@ -96,21 +102,25 @@ var BlueprintPlayerAbilityWhere = struct {
 	Description:         whereHelperstring{field: "\"blueprint_player_abilities\".\"description\""},
 	TextColour:          whereHelperstring{field: "\"blueprint_player_abilities\".\"text_colour\""},
 	Type:                whereHelpernull_String{field: "\"blueprint_player_abilities\".\"type\""},
+	CreatedAt:           whereHelpertime_Time{field: "\"blueprint_player_abilities\".\"created_at\""},
 }
 
 // BlueprintPlayerAbilityRels is where relationship names are stored.
 var BlueprintPlayerAbilityRels = struct {
-	BlueprintSalePlayerAbility string
-	BlueprintPlayerAbilities   string
+	BlueprintConsumedAbilities   string
+	BlueprintPlayerAbilities     string
+	BlueprintSalePlayerAbilities string
 }{
-	BlueprintSalePlayerAbility: "BlueprintSalePlayerAbility",
-	BlueprintPlayerAbilities:   "BlueprintPlayerAbilities",
+	BlueprintConsumedAbilities:   "BlueprintConsumedAbilities",
+	BlueprintPlayerAbilities:     "BlueprintPlayerAbilities",
+	BlueprintSalePlayerAbilities: "BlueprintSalePlayerAbilities",
 }
 
 // blueprintPlayerAbilityR is where relationships are stored.
 type blueprintPlayerAbilityR struct {
-	BlueprintSalePlayerAbility *SalePlayerAbility `boiler:"BlueprintSalePlayerAbility" boil:"BlueprintSalePlayerAbility" json:"BlueprintSalePlayerAbility" toml:"BlueprintSalePlayerAbility" yaml:"BlueprintSalePlayerAbility"`
-	BlueprintPlayerAbilities   PlayerAbilitySlice `boiler:"BlueprintPlayerAbilities" boil:"BlueprintPlayerAbilities" json:"BlueprintPlayerAbilities" toml:"BlueprintPlayerAbilities" yaml:"BlueprintPlayerAbilities"`
+	BlueprintConsumedAbilities   ConsumedAbilitySlice   `boiler:"BlueprintConsumedAbilities" boil:"BlueprintConsumedAbilities" json:"BlueprintConsumedAbilities" toml:"BlueprintConsumedAbilities" yaml:"BlueprintConsumedAbilities"`
+	BlueprintPlayerAbilities     PlayerAbilitySlice     `boiler:"BlueprintPlayerAbilities" boil:"BlueprintPlayerAbilities" json:"BlueprintPlayerAbilities" toml:"BlueprintPlayerAbilities" yaml:"BlueprintPlayerAbilities"`
+	BlueprintSalePlayerAbilities SalePlayerAbilitySlice `boiler:"BlueprintSalePlayerAbilities" boil:"BlueprintSalePlayerAbilities" json:"BlueprintSalePlayerAbilities" toml:"BlueprintSalePlayerAbilities" yaml:"BlueprintSalePlayerAbilities"`
 }
 
 // NewStruct creates a new relationship struct
@@ -122,9 +132,9 @@ func (*blueprintPlayerAbilityR) NewStruct() *blueprintPlayerAbilityR {
 type blueprintPlayerAbilityL struct{}
 
 var (
-	blueprintPlayerAbilityAllColumns            = []string{"id", "game_client_ability_id", "label", "colour", "image_url", "description", "text_colour", "type"}
+	blueprintPlayerAbilityAllColumns            = []string{"id", "game_client_ability_id", "label", "colour", "image_url", "description", "text_colour", "type", "created_at"}
 	blueprintPlayerAbilityColumnsWithoutDefault = []string{"game_client_ability_id", "label", "colour", "image_url", "description", "text_colour"}
-	blueprintPlayerAbilityColumnsWithDefault    = []string{"id", "type"}
+	blueprintPlayerAbilityColumnsWithDefault    = []string{"id", "type", "created_at"}
 	blueprintPlayerAbilityPrimaryKeyColumns     = []string{"id"}
 	blueprintPlayerAbilityGeneratedColumns      = []string{}
 )
@@ -371,16 +381,23 @@ func (q blueprintPlayerAbilityQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
-// BlueprintSalePlayerAbility pointed to by the foreign key.
-func (o *BlueprintPlayerAbility) BlueprintSalePlayerAbility(mods ...qm.QueryMod) salePlayerAbilityQuery {
-	queryMods := []qm.QueryMod{
-		qm.Where("\"blueprint_id\" = ?", o.ID),
+// BlueprintConsumedAbilities retrieves all the consumed_ability's ConsumedAbilities with an executor via blueprint_id column.
+func (o *BlueprintPlayerAbility) BlueprintConsumedAbilities(mods ...qm.QueryMod) consumedAbilityQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
 	}
 
-	queryMods = append(queryMods, mods...)
+	queryMods = append(queryMods,
+		qm.Where("\"consumed_abilities\".\"blueprint_id\"=?", o.ID),
+	)
 
-	query := SalePlayerAbilities(queryMods...)
-	queries.SetFrom(query.Query, "\"sale_player_abilities\"")
+	query := ConsumedAbilities(queryMods...)
+	queries.SetFrom(query.Query, "\"consumed_abilities\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"consumed_abilities\".*"})
+	}
 
 	return query
 }
@@ -406,9 +423,30 @@ func (o *BlueprintPlayerAbility) BlueprintPlayerAbilities(mods ...qm.QueryMod) p
 	return query
 }
 
-// LoadBlueprintSalePlayerAbility allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-1 relationship.
-func (blueprintPlayerAbilityL) LoadBlueprintSalePlayerAbility(e boil.Executor, singular bool, maybeBlueprintPlayerAbility interface{}, mods queries.Applicator) error {
+// BlueprintSalePlayerAbilities retrieves all the sale_player_ability's SalePlayerAbilities with an executor via blueprint_id column.
+func (o *BlueprintPlayerAbility) BlueprintSalePlayerAbilities(mods ...qm.QueryMod) salePlayerAbilityQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"sale_player_abilities\".\"blueprint_id\"=?", o.ID),
+	)
+
+	query := SalePlayerAbilities(queryMods...)
+	queries.SetFrom(query.Query, "\"sale_player_abilities\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"sale_player_abilities\".*"})
+	}
+
+	return query
+}
+
+// LoadBlueprintConsumedAbilities allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (blueprintPlayerAbilityL) LoadBlueprintConsumedAbilities(e boil.Executor, singular bool, maybeBlueprintPlayerAbility interface{}, mods queries.Applicator) error {
 	var slice []*BlueprintPlayerAbility
 	var object *BlueprintPlayerAbility
 
@@ -446,8 +484,8 @@ func (blueprintPlayerAbilityL) LoadBlueprintSalePlayerAbility(e boil.Executor, s
 	}
 
 	query := NewQuery(
-		qm.From(`sale_player_abilities`),
-		qm.WhereIn(`sale_player_abilities.blueprint_id in ?`, args...),
+		qm.From(`consumed_abilities`),
+		qm.WhereIn(`consumed_abilities.blueprint_id in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -455,48 +493,45 @@ func (blueprintPlayerAbilityL) LoadBlueprintSalePlayerAbility(e boil.Executor, s
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load SalePlayerAbility")
+		return errors.Wrap(err, "failed to eager load consumed_abilities")
 	}
 
-	var resultSlice []*SalePlayerAbility
+	var resultSlice []*ConsumedAbility
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice SalePlayerAbility")
+		return errors.Wrap(err, "failed to bind eager loaded slice consumed_abilities")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for sale_player_abilities")
+		return errors.Wrap(err, "failed to close results in eager load on consumed_abilities")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for sale_player_abilities")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for consumed_abilities")
 	}
 
-	if len(blueprintPlayerAbilityAfterSelectHooks) != 0 {
+	if len(consumedAbilityAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
 			}
 		}
 	}
-
-	if len(resultSlice) == 0 {
+	if singular {
+		object.R.BlueprintConsumedAbilities = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &consumedAbilityR{}
+			}
+			foreign.R.Blueprint = object
+		}
 		return nil
 	}
 
-	if singular {
-		foreign := resultSlice[0]
-		object.R.BlueprintSalePlayerAbility = foreign
-		if foreign.R == nil {
-			foreign.R = &salePlayerAbilityR{}
-		}
-		foreign.R.Blueprint = object
-	}
-
-	for _, local := range slice {
-		for _, foreign := range resultSlice {
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
 			if local.ID == foreign.BlueprintID {
-				local.R.BlueprintSalePlayerAbility = foreign
+				local.R.BlueprintConsumedAbilities = append(local.R.BlueprintConsumedAbilities, foreign)
 				if foreign.R == nil {
-					foreign.R = &salePlayerAbilityR{}
+					foreign.R = &consumedAbilityR{}
 				}
 				foreign.R.Blueprint = local
 				break
@@ -605,52 +640,152 @@ func (blueprintPlayerAbilityL) LoadBlueprintPlayerAbilities(e boil.Executor, sin
 	return nil
 }
 
-// SetBlueprintSalePlayerAbility of the blueprintPlayerAbility to the related item.
-// Sets o.R.BlueprintSalePlayerAbility to related.
-// Adds o to related.R.Blueprint.
-func (o *BlueprintPlayerAbility) SetBlueprintSalePlayerAbility(exec boil.Executor, insert bool, related *SalePlayerAbility) error {
-	var err error
+// LoadBlueprintSalePlayerAbilities allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (blueprintPlayerAbilityL) LoadBlueprintSalePlayerAbilities(e boil.Executor, singular bool, maybeBlueprintPlayerAbility interface{}, mods queries.Applicator) error {
+	var slice []*BlueprintPlayerAbility
+	var object *BlueprintPlayerAbility
 
-	if insert {
-		related.BlueprintID = o.ID
-
-		if err = related.Insert(exec, boil.Infer()); err != nil {
-			return errors.Wrap(err, "failed to insert into foreign table")
-		}
+	if singular {
+		object = maybeBlueprintPlayerAbility.(*BlueprintPlayerAbility)
 	} else {
-		updateQuery := fmt.Sprintf(
-			"UPDATE \"sale_player_abilities\" SET %s WHERE %s",
-			strmangle.SetParamNames("\"", "\"", 1, []string{"blueprint_id"}),
-			strmangle.WhereClause("\"", "\"", 2, salePlayerAbilityPrimaryKeyColumns),
-		)
-		values := []interface{}{o.ID, related.BlueprintID}
+		slice = *maybeBlueprintPlayerAbility.(*[]*BlueprintPlayerAbility)
+	}
 
-		if boil.DebugMode {
-			fmt.Fprintln(boil.DebugWriter, updateQuery)
-			fmt.Fprintln(boil.DebugWriter, values)
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &blueprintPlayerAbilityR{}
 		}
-		if _, err = exec.Exec(updateQuery, values...); err != nil {
-			return errors.Wrap(err, "failed to update foreign table")
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &blueprintPlayerAbilityR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
 		}
+	}
 
-		related.BlueprintID = o.ID
+	if len(args) == 0 {
+		return nil
+	}
 
+	query := NewQuery(
+		qm.From(`sale_player_abilities`),
+		qm.WhereIn(`sale_player_abilities.blueprint_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load sale_player_abilities")
+	}
+
+	var resultSlice []*SalePlayerAbility
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice sale_player_abilities")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on sale_player_abilities")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for sale_player_abilities")
+	}
+
+	if len(salePlayerAbilityAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.BlueprintSalePlayerAbilities = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &salePlayerAbilityR{}
+			}
+			foreign.R.Blueprint = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.BlueprintID {
+				local.R.BlueprintSalePlayerAbilities = append(local.R.BlueprintSalePlayerAbilities, foreign)
+				if foreign.R == nil {
+					foreign.R = &salePlayerAbilityR{}
+				}
+				foreign.R.Blueprint = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// AddBlueprintConsumedAbilities adds the given related objects to the existing relationships
+// of the blueprint_player_ability, optionally inserting them as new records.
+// Appends related to o.R.BlueprintConsumedAbilities.
+// Sets related.R.Blueprint appropriately.
+func (o *BlueprintPlayerAbility) AddBlueprintConsumedAbilities(exec boil.Executor, insert bool, related ...*ConsumedAbility) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.BlueprintID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"consumed_abilities\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"blueprint_id"}),
+				strmangle.WhereClause("\"", "\"", 2, consumedAbilityPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.BlueprintID = o.ID
+		}
 	}
 
 	if o.R == nil {
 		o.R = &blueprintPlayerAbilityR{
-			BlueprintSalePlayerAbility: related,
+			BlueprintConsumedAbilities: related,
 		}
 	} else {
-		o.R.BlueprintSalePlayerAbility = related
+		o.R.BlueprintConsumedAbilities = append(o.R.BlueprintConsumedAbilities, related...)
 	}
 
-	if related.R == nil {
-		related.R = &salePlayerAbilityR{
-			Blueprint: o,
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &consumedAbilityR{
+				Blueprint: o,
+			}
+		} else {
+			rel.R.Blueprint = o
 		}
-	} else {
-		related.R.Blueprint = o
 	}
 	return nil
 }
@@ -707,6 +842,58 @@ func (o *BlueprintPlayerAbility) AddBlueprintPlayerAbilities(exec boil.Executor,
 	return nil
 }
 
+// AddBlueprintSalePlayerAbilities adds the given related objects to the existing relationships
+// of the blueprint_player_ability, optionally inserting them as new records.
+// Appends related to o.R.BlueprintSalePlayerAbilities.
+// Sets related.R.Blueprint appropriately.
+func (o *BlueprintPlayerAbility) AddBlueprintSalePlayerAbilities(exec boil.Executor, insert bool, related ...*SalePlayerAbility) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.BlueprintID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"sale_player_abilities\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"blueprint_id"}),
+				strmangle.WhereClause("\"", "\"", 2, salePlayerAbilityPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.BlueprintID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &blueprintPlayerAbilityR{
+			BlueprintSalePlayerAbilities: related,
+		}
+	} else {
+		o.R.BlueprintSalePlayerAbilities = append(o.R.BlueprintSalePlayerAbilities, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &salePlayerAbilityR{
+				Blueprint: o,
+			}
+		} else {
+			rel.R.Blueprint = o
+		}
+	}
+	return nil
+}
+
 // BlueprintPlayerAbilities retrieves all the records using an executor.
 func BlueprintPlayerAbilities(mods ...qm.QueryMod) blueprintPlayerAbilityQuery {
 	mods = append(mods, qm.From("\"blueprint_player_abilities\""))
@@ -751,6 +938,11 @@ func (o *BlueprintPlayerAbility) Insert(exec boil.Executor, columns boil.Columns
 	}
 
 	var err error
+	currTime := time.Now().In(boil.GetLocation())
+
+	if o.CreatedAt.IsZero() {
+		o.CreatedAt = currTime
+	}
 
 	if err := o.doBeforeInsertHooks(exec); err != nil {
 		return err
@@ -952,6 +1144,11 @@ func (o BlueprintPlayerAbilitySlice) UpdateAll(exec boil.Executor, cols M) (int6
 func (o *BlueprintPlayerAbility) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
 	if o == nil {
 		return errors.New("boiler: no blueprint_player_abilities provided for upsert")
+	}
+	currTime := time.Now().In(boil.GetLocation())
+
+	if o.CreatedAt.IsZero() {
+		o.CreatedAt = currTime
 	}
 
 	if err := o.doBeforeUpsertHooks(exec); err != nil {
