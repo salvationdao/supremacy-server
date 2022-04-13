@@ -15,6 +15,18 @@ jobs:
       version: ${{ steps.version.outputs.v }}
 
     steps:
+      - name: slack-notification
+        if: always()
+        uses: ravsamhq/notify-slack-action@v1
+        with:
+          status: ${{ job.status }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          notification_title: '{workflow} has {status_message}'
+          message_format: '{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}>'
+          footer: 'Linked Repo <{repo_url}|{repo}> | <{workflow_url}|View Workflow>'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
       - uses: actions/checkout@v2
         with:
           fetch-depth: "0"
@@ -22,6 +34,9 @@ jobs:
       - uses: actions/setup-go@v2 # install go
         with:
           go-version: ${{env.GO_VERSION}}
+
+
+
       # Setup
       # Multi key private go repos
       # https://gist.github.com/jrapoport/d12f60029eef017354d0ec982b918258
@@ -168,6 +183,5 @@ jobs:
           notification_title: '{workflow} has {status_message}'
           message_format: '{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}>'
           footer: 'Linked Repo <{repo_url}|{repo}> | <{workflow_url}|View Workflow>'
-          notify_when: 'failure'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
