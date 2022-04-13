@@ -1174,6 +1174,20 @@ func (arena *Arena) AssetRepairPayFeeHandler(ctx context.Context, hubc *hub.Clie
 
 	fee := ar.FullRepairFee.Mul(ratio)
 
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		return terror.Error(err, "Failed to start db transaction")
+	}
+
+	defer tx.Rollback()
+
+	ar.CompleteUntil = now
+	_, err = ar.Update(tx, boil.Whitelist(boiler.AssetRepairColumns.CompleteUntil))
+	if err != nil {
+		return terror.Error(err, "Failed to update asset repair")
+	}
+
+	// get syndicate account
 	factionAccountID, ok := server.FactionUsers[userFactionID.String()]
 	if !ok {
 		gamelog.L.Error().
@@ -1189,11 +1203,20 @@ func (arena *Arena) AssetRepairPayFeeHandler(ctx context.Context, hubc *hub.Clie
 		FromUserID:           playerID,
 		ToUserID:             uuid.FromStringOrNil(factionAccountID),
 		Amount:               fee.StringFixed(18),
-		TransactionReference: server.TransactionReference(fmt.Sprintf("ability_sup_contribute|%s|%d", ga.OfferingID.String(), time.Now().UnixNano())),
+		TransactionReference: server.TransactionReference(fmt.Sprintf("pay_asset_repair_fee|%s|%d", ar.ID, time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupBattle),
-		Description:          "battle contribution: " + ga.Label,
+		Description:          "pay asset repair fee: " + ar.ID,
 		NotSafe:              true,
 	})
+	if err != nil {
+		gamelog.L.Error().Str("asset repair id", ar.ID).Err(err).Msg("Failed to pay asset repair fee")
+		return terror.Error(err, "Failed to pay asset repair fee")
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return terror.Error(err, "Failed to commit db transaction")
+	}
 
 	return nil
 }
