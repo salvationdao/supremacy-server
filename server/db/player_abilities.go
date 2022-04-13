@@ -69,7 +69,7 @@ func SaleAbilitiesList(
 		fmt.Sprintf("INNER JOIN %[1]s %[4]s ON %[5]s.%[2]s = %[4]s.%[3]s\n", boiler.TableNames.BlueprintPlayerAbilities, boiler.SalePlayerAbilityColumns.BlueprintID, boiler.BlueprintPlayerAbilityColumns.ID, bpaAlias, spaAlias)
 
 	selectQ := "SELECT\n" +
-		fmt.Sprintf("%s.%s,\n", spaAlias, boiler.SalePlayerAbilityColumns.ID) + fromQ
+		fmt.Sprintf("%s.%s\n", spaAlias, boiler.SalePlayerAbilityColumns.ID) + fromQ
 
 	var args []interface{}
 
@@ -119,15 +119,14 @@ func SaleAbilitiesList(
 			%[3]s
 			%[4]s
 		`,
-		boiler.SalePlayerAbilityColumns.BlueprintID,
-		selectQ,
+		boiler.SalePlayerAbilityColumns.ID,
+		fromQ,
 		filterConditionsString,
 		searchCondition,
 		spaAlias,
 	)
 
 	var totalRows int
-
 	err := pgxscan.Get(ctx, conn, &totalRows, countQ, args...)
 	if err != nil {
 		return 0, nil, terror.Error(err)
@@ -159,7 +158,7 @@ func SaleAbilitiesList(
 		%s
 		%s`,
 		spaAlias,
-		boiler.SalePlayerAbilityColumns.BlueprintID,
+		boiler.SalePlayerAbilityColumns.ID,
 		filterConditionsString,
 		searchCondition,
 		orderBy,
@@ -188,10 +187,10 @@ func PlayerAbilitiesList(
 	sortDir SortByDir,
 ) (int, []string, error) {
 	paAlias := "pa" // alias for player_abilities table
-	fromQ := fmt.Sprintf("FROM %s %s\n", boiler.TableNames.SalePlayerAbilities, paAlias)
+	fromQ := fmt.Sprintf("FROM %s %s\n", boiler.TableNames.PlayerAbilities, paAlias)
 
 	selectQ := "SELECT\n" +
-		fmt.Sprintf("%s.%s,\n", paAlias, boiler.PlayerAbilityColumns.ID) + fromQ
+		fmt.Sprintf("%s.%s\n", paAlias, boiler.PlayerAbilityColumns.ID) + fromQ
 
 	var args []interface{}
 
@@ -229,7 +228,7 @@ func PlayerAbilitiesList(
 		xsearch := ParseQueryText(search, true)
 		if len(xsearch) > 0 {
 			args = append(args, xsearch)
-			searchCondition = fmt.Sprintf(" AND ((to_tsvector('english', %[4]s.%[1]s) @@ to_tsquery($%[3]d)) OR (to_tsvector('english', %[4]s.%[2]s) @@ to_tsquery($%[3]d)))", boiler.BlueprintPlayerAbilityColumns.Label, boiler.BlueprintPlayerAbilityColumns.Description, len(args), paAlias)
+			searchCondition = fmt.Sprintf(" AND ((to_tsvector('english', %[4]s.%[1]s) @@ to_tsquery($%[3]d)) OR (to_tsvector('english', %[4]s.%[2]s) @@ to_tsquery($%[3]d)))", boiler.PlayerAbilityColumns.Label, boiler.PlayerAbilityColumns.Description, len(args), paAlias)
 		}
 	}
 
@@ -241,8 +240,8 @@ func PlayerAbilitiesList(
 			%[3]s
 			%[4]s
 		`,
-		boiler.SalePlayerAbilityColumns.BlueprintID,
-		selectQ,
+		boiler.PlayerAbilityColumns.ID,
+		fromQ,
 		filterConditionsString,
 		searchCondition,
 		paAlias,
@@ -259,7 +258,7 @@ func PlayerAbilitiesList(
 	}
 
 	// Order and Limit
-	orderBy := fmt.Sprintf(" ORDER BY %s.%s DESC", paAlias, boiler.SalePlayerAbilityColumns.AvailableUntil)
+	orderBy := fmt.Sprintf(" ORDER BY %s.%s DESC", paAlias, boiler.PlayerAbilityColumns.PurchasedAt)
 	if sortBy != "" {
 		err := sortBy.IsValid()
 		if err != nil {
@@ -281,7 +280,7 @@ func PlayerAbilitiesList(
 		%s
 		%s`,
 		paAlias,
-		boiler.SalePlayerAbilityColumns.BlueprintID,
+		boiler.PlayerAbilityColumns.ID,
 		filterConditionsString,
 		searchCondition,
 		orderBy,

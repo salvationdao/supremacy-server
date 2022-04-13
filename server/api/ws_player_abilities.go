@@ -73,7 +73,7 @@ func (gac *PlayerAbilitiesControllerWS) PlayerAbilitiesListHandler(ctx context.C
 		offset = req.Payload.Page * req.Payload.PageSize
 	}
 
-	total, pIDs, err := db.PlayerAbilitiesList(ctx, gac.Conn, req.Payload.Search, req.Payload.Filter, offset, req.Payload.PageSize, req.Payload.SortBy, req.Payload.SortDir)
+	total, pIDs, err := db.PlayerAbilitiesList(ctx, gamedb.Conn, req.Payload.Search, req.Payload.Filter, offset, req.Payload.PageSize, req.Payload.SortBy, req.Payload.SortDir)
 	if err != nil {
 		gamelog.L.Error().
 			Str("db func", "PlayerAbilitiesList").Err(err).Msg("unable to get list of player abilities")
@@ -113,7 +113,7 @@ func (gac *PlayerAbilitiesControllerWS) SaleAbilitiesListHandler(ctx context.Con
 		offset = req.Payload.Page * req.Payload.PageSize
 	}
 
-	total, sIDs, err := db.SaleAbilitiesList(ctx, gac.Conn, req.Payload.Search, req.Payload.Filter, offset, req.Payload.PageSize, req.Payload.SortBy, req.Payload.SortDir)
+	total, sIDs, err := db.SaleAbilitiesList(ctx, gamedb.Conn, req.Payload.Search, req.Payload.Filter, offset, req.Payload.PageSize, req.Payload.SortBy, req.Payload.SortDir)
 	if err != nil {
 		gamelog.L.Error().
 			Str("db func", "SaleAbilitiesList").Err(err).Msg("unable to get list of sale abilities")
