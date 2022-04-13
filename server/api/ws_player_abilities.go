@@ -20,6 +20,7 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
+	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
@@ -31,15 +32,46 @@ type PlayerAbilitiesControllerWS struct {
 }
 
 func NewPlayerAbilitiesController(api *API) *PlayerAbilitiesControllerWS {
-	gac := &PlayerAbilitiesControllerWS{
+	pac := &PlayerAbilitiesControllerWS{
 		API: api,
 	}
 
-	api.SecureUserCommand(HubKeyPlayerAbilitiesList, gac.PlayerAbilitiesListHandler)
-	api.SecureUserCommand(HubKeySaleAbilitiesList, gac.SaleAbilitiesListHandler)
-	api.SecureUserCommand(HubKeySaleAbilitiesPurchase, gac.SaleAbilitiesPurchaseHandler)
+	api.SecureUserCommand(HubKeyPlayerAbilitiesList, pac.PlayerAbilitiesListHandler)
+	api.SecureUserCommand(HubKeySaleAbilitiesList, pac.SaleAbilitiesListHandler)
+	api.SecureUserCommand(HubKeySaleAbilitiesPurchase, pac.SaleAbilitiesPurchaseHandler)
 
-	return gac
+	api.SecureUserSubscribeCommand(HubKeyPlayerAbilitySubscribe, pac.PlayerAbilitySubscribeHandler)
+	api.SecureUserSubscribeCommand(HubKeySaleAbilitySubscribe, pac.SaleAbilitySubscribeHandler)
+
+	return pac
+}
+
+type AbilitySubscribeRequest struct {
+	AbilityID string `json:"ability_id"`
+}
+
+const HubKeyPlayerAbilitySubscribe = hub.HubCommandKey("PLAYER:ABILITY:SUBSCRIBE")
+
+func (pac *PlayerAbilitiesControllerWS) PlayerAbilitySubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
+	req := &AbilitySubscribeRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return "", "", terror.Error(err, "Invalid request received.")
+	}
+
+	return "", messagebus.BusKey(HubKeyPlayerAbilitySubscribe), nil
+}
+
+const HubKeySaleAbilitySubscribe = hub.HubCommandKey("SALE:ABILITY:SUBSCRIBE")
+
+func (pac *PlayerAbilitiesControllerWS) SaleAbilitySubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
+	req := &AbilitySubscribeRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return "", "", terror.Error(err, "Invalid request received.")
+	}
+
+	return "", messagebus.BusKey(HubKeySaleAbilitySubscribe), nil
 }
 
 type AbilitiesListResponse struct {
@@ -61,7 +93,7 @@ type PlayerAbilitiesListRequest struct {
 
 const HubKeyPlayerAbilitiesList = hub.HubCommandKey("PLAYER:ABILITIES:LIST")
 
-func (gac *PlayerAbilitiesControllerWS) PlayerAbilitiesListHandler(ctx context.Context, hub *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (pac *PlayerAbilitiesControllerWS) PlayerAbilitiesListHandler(ctx context.Context, hub *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &PlayerAbilitiesListRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -101,7 +133,7 @@ type SaleAbilitiesListRequest struct {
 
 const HubKeySaleAbilitiesList = hub.HubCommandKey("SALE:ABILITIES:LIST")
 
-func (gac *PlayerAbilitiesControllerWS) SaleAbilitiesListHandler(ctx context.Context, hub *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (pac *PlayerAbilitiesControllerWS) SaleAbilitiesListHandler(ctx context.Context, hub *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &SaleAbilitiesListRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -137,7 +169,7 @@ type SaleAbilitiesPurchaseRequest struct {
 
 const HubKeySaleAbilitiesPurchase = hub.HubCommandKey("SALE:ABILITIES:PURCHASE")
 
-func (gac *PlayerAbilitiesControllerWS) SaleAbilitiesPurchaseHandler(ctx context.Context, hub *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (pac *PlayerAbilitiesControllerWS) SaleAbilitiesPurchaseHandler(ctx context.Context, hub *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &SaleAbilitiesPurchaseRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -182,7 +214,7 @@ func (gac *PlayerAbilitiesControllerWS) SaleAbilitiesPurchaseHandler(ctx context
 	}
 
 	// Charge player for ability
-	supTransactionID, err := gac.API.Passport.SpendSupMessage(rpcclient.SpendSupsReq{
+	supTransactionID, err := pac.API.Passport.SpendSupMessage(rpcclient.SpendSupsReq{
 		Amount:               spa.CurrentPrice.String(),
 		FromUserID:           userID,
 		ToUserID:             battle.SupremacyBattleUserID,
@@ -203,7 +235,7 @@ func (gac *PlayerAbilitiesControllerWS) SaleAbilitiesPurchaseHandler(ctx context
 
 	refundFunc := func() {
 		// Refund player ability cost
-		refundSupTransactionID, err := gac.API.Passport.RefundSupsMessage(supTransactionID)
+		refundSupTransactionID, err := pac.API.Passport.RefundSupsMessage(supTransactionID)
 		if err != nil {
 			gamelog.L.Error().Str("txID", refundSupTransactionID).Err(err).Msg("unable to refund user for player ability purchase cost")
 		}
