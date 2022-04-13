@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/ninja-software/log_helpers"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
@@ -20,11 +19,9 @@ type GameControllerWS struct {
 }
 
 // NewGameController creates the check hub
-func NewGameController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *GameControllerWS {
+func NewGameController(api *API) *GameControllerWS {
 	gameHub := &GameControllerWS{
-		Conn: conn,
-		Log:  log_helpers.NamedLogger(log, "game_hub"),
-		API:  api,
+		API: api,
 	}
 
 	//api.SubscribeCommand(HubKeyBattleEndDetailUpdated, gameHub.BattleEndDetailUpdateSubscribeHandler)

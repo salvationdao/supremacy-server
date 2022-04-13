@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -13,20 +12,15 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/ninja-software/terror/v2"
-	"github.com/rs/zerolog"
 )
 
 type AssetStatsController struct {
-	Conn db.Conn
-	Log  *zerolog.Logger
-	API  *API
+	API *API
 }
 
-func AssetStatsRouter(log *zerolog.Logger, conn db.Conn, api *API) chi.Router {
+func AssetStatsRouter(api *API) chi.Router {
 	c := &AssetStatsController{
-		Conn: conn,
-		Log:  log,
-		API:  api,
+		API: api,
 	}
 	r := chi.NewRouter()
 	r.Get("/mech", WithError(c.GetMechStatPercentage))

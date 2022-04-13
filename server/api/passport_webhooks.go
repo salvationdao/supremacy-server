@@ -17,23 +17,18 @@ import (
 	"github.com/jackc/pgx/v4"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
-	"github.com/rs/zerolog"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
 type PassportWebhookController struct {
-	Conn db.Conn
-	Log  *zerolog.Logger
-	API  *API
+	API *API
 }
 
-func PassportWebhookRouter(log *zerolog.Logger, conn db.Conn, webhookSecret string, api *API) chi.Router {
+func PassportWebhookRouter(webhookSecret string, api *API) chi.Router {
 	c := &PassportWebhookController{
-		Conn: conn,
-		Log:  log,
-		API:  api,
+		API: api,
 	}
 	r := chi.NewRouter()
 	r.Post("/user_update", WithPassportSecret(webhookSecret, WithError(c.UserUpdated)))
