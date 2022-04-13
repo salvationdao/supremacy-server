@@ -199,6 +199,7 @@ func NewArena(opts *Opts) *Arena {
 
 	opts.SecureUserFactionCommand(HubKeyAssetQueueMany, arena.AssetQueueManyHandler)
 	opts.SecureUserFactionCommand(HubKeyAssetRepairPayFee, arena.AssetRepairPayFeeHandler)
+	opts.SecureUserFactionCommand(HubKeyAssetRepairStatus, arena.AssetRepairStatusHandler)
 
 	opts.SecureUserCommand(HubKeyGameUserOnline, arena.UserOnline)
 	opts.SecureUserCommand(HubKeyPlayerRankGet, arena.PlayerRankGet)
