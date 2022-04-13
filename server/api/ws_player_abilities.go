@@ -35,13 +35,19 @@ func NewPlayerAbilitiesController(api *API) *PlayerAbilitiesControllerWS {
 		API: api,
 	}
 
-	api.SecureUserCommand(HubKeySaleAbilitiesList, gac.PlayerAbilitiesListHandler)
-	api.SecureUserCommand(HubKeyPlayerAbilitiesPurchase, gac.PlayerAbilitiesPurchaseHandler)
+	api.SecureUserCommand(HubKeyPlayerAbilitiesList, gac.PlayerAbilitiesListHandler)
+	api.SecureUserCommand(HubKeySaleAbilitiesList, gac.SaleAbilitiesListHandler)
+	api.SecureUserCommand(HubKeySaleAbilitiesPurchase, gac.SaleAbilitiesPurchaseHandler)
 
 	return gac
 }
 
-type SaleAbilitiesListRequest struct {
+type AbilitiesListResponse struct {
+	Total      int      `json:"total"`
+	AbilityIDs []string `json:"ability_ids"`
+}
+
+type PlayerAbilitiesListRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
 		SortDir  db.SortByDir           `json:"sort_dir"`
@@ -53,15 +59,49 @@ type SaleAbilitiesListRequest struct {
 	} `json:"payload"`
 }
 
-// TransactionListResponse is the response from get Transaction list
-type SaleAbilitiesListResponse struct {
-	Total      int      `json:"total"`
-	AbilityIDs []string `json:"ability_ids"`
+const HubKeyPlayerAbilitiesList = hub.HubCommandKey("PLAYER:ABILITIES:LIST")
+
+func (gac *PlayerAbilitiesControllerWS) PlayerAbilitiesListHandler(ctx context.Context, hub *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &PlayerAbilitiesListRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	offset := 0
+	if req.Payload.Page > 0 {
+		offset = req.Payload.Page * req.Payload.PageSize
+	}
+
+	total, pIDs, err := db.PlayerAbilitiesList(ctx, gac.Conn, req.Payload.Search, req.Payload.Filter, offset, req.Payload.PageSize, req.Payload.SortBy, req.Payload.SortDir)
+	if err != nil {
+		gamelog.L.Error().
+			Str("db func", "PlayerAbilitiesList").Err(err).Msg("unable to get list of player abilities")
+		return terror.Error(err, "Unable to retrieve abilities, try again or contact support.")
+	}
+
+	reply(AbilitiesListResponse{
+		total,
+		pIDs,
+	})
+	return nil
+}
+
+type SaleAbilitiesListRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		SortDir  db.SortByDir               `json:"sort_dir"`
+		SortBy   db.SalePlayerAbilityColumn `json:"sort_by"`
+		Filter   *db.ListFilterRequest      `json:"filter,omitempty"`
+		Search   string                     `json:"search"`
+		PageSize int                        `json:"page_size"`
+		Page     int                        `json:"page"`
+	} `json:"payload"`
 }
 
 const HubKeySaleAbilitiesList = hub.HubCommandKey("SALE:ABILITIES:LIST")
 
-func (gac *PlayerAbilitiesControllerWS) PlayerAbilitiesListHandler(ctx context.Context, hub *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (gac *PlayerAbilitiesControllerWS) SaleAbilitiesListHandler(ctx context.Context, hub *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &SaleAbilitiesListRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -73,26 +113,21 @@ func (gac *PlayerAbilitiesControllerWS) PlayerAbilitiesListHandler(ctx context.C
 		offset = req.Payload.Page * req.Payload.PageSize
 	}
 
-	total, saleAbilities, err := db.SaleAbilitiesList(ctx, gac.Conn, req.Payload.Search, req.Payload.Filter, offset, req.Payload.PageSize, req.Payload.SortBy, req.Payload.SortDir)
+	total, sIDs, err := db.SaleAbilitiesList(ctx, gac.Conn, req.Payload.Search, req.Payload.Filter, offset, req.Payload.PageSize, req.Payload.SortBy, req.Payload.SortDir)
 	if err != nil {
 		gamelog.L.Error().
-			Str("db func", "SalePlayerAbilities").Err(err).Msg("unable to get list of player abilities")
+			Str("db func", "SaleAbilitiesList").Err(err).Msg("unable to get list of sale abilities")
 		return terror.Error(err, "Unable to retrieve abilities, try again or contact support.")
 	}
 
-	sIDs := make([]string, 0)
-	for _, s := range saleAbilities {
-		sIDs = append(sIDs, s.BlueprintID)
-	}
-
-	reply(SaleAbilitiesListResponse{
+	reply(AbilitiesListResponse{
 		total,
 		sIDs,
 	})
 	return nil
 }
 
-type PlayerAbilitiesPurchaseRequest struct {
+type SaleAbilitiesPurchaseRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
 		PlayerAbilityID string `json:"player_ability_id"`
@@ -100,10 +135,10 @@ type PlayerAbilitiesPurchaseRequest struct {
 	} `json:"payload"`
 }
 
-const HubKeyPlayerAbilitiesPurchase = hub.HubCommandKey("PLAYER:ABILITIES:PURCHASE")
+const HubKeySaleAbilitiesPurchase = hub.HubCommandKey("SALE:ABILITIES:PURCHASE")
 
-func (gac *PlayerAbilitiesControllerWS) PlayerAbilitiesPurchaseHandler(ctx context.Context, hub *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	req := &PlayerAbilitiesPurchaseRequest{}
+func (gac *PlayerAbilitiesControllerWS) SaleAbilitiesPurchaseHandler(ctx context.Context, hub *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &SaleAbilitiesPurchaseRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received")
