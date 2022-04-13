@@ -7,7 +7,7 @@ CREATE TABLE blueprint_player_abilities
     image_url              TEXT             NOT NULL,
     description            TEXT             NOT NULL,
     text_colour            TEXT             NOT NULL,
-    "type"                 TEXT CHECK ("type" IN ('MECH_SELECT', 'LOCATION_SELECT', 'GLOBAL')),
+    "type"                 TEXT NOT NULL CHECK ("type" IN ('MECH_SELECT', 'LOCATION_SELECT', 'GLOBAL')),
     created_at             TIMESTAMPTZ      NOT NULL DEFAULT NOW()
 );
 
@@ -22,7 +22,7 @@ CREATE TABLE player_abilities
     image_url              TEXT             NOT NULL,
     description            TEXT             NOT NULL,
     text_colour            TEXT             NOT NULL,
-    "type"                 TEXT CHECK ("type" IN ('MECH_SELECT', 'LOCATION_SELECT', 'GLOBAL')),
+    "type"                 TEXT NOT NULL CHECK ("type" IN ('MECH_SELECT', 'LOCATION_SELECT', 'GLOBAL')),
     purchased_at           TIMESTAMPTZ      NOT NULL DEFAULT NOW()
 );
 

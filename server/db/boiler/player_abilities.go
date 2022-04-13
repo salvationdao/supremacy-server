@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
-	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -23,17 +22,17 @@ import (
 
 // PlayerAbility is an object representing the database table.
 type PlayerAbility struct {
-	ID                  string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	OwnerID             string      `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
-	BlueprintID         string      `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
-	GameClientAbilityID int         `boiler:"game_client_ability_id" boil:"game_client_ability_id" json:"game_client_ability_id" toml:"game_client_ability_id" yaml:"game_client_ability_id"`
-	Label               string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	Colour              string      `boiler:"colour" boil:"colour" json:"colour" toml:"colour" yaml:"colour"`
-	ImageURL            string      `boiler:"image_url" boil:"image_url" json:"image_url" toml:"image_url" yaml:"image_url"`
-	Description         string      `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
-	TextColour          string      `boiler:"text_colour" boil:"text_colour" json:"text_colour" toml:"text_colour" yaml:"text_colour"`
-	Type                null.String `boiler:"type" boil:"type" json:"type,omitempty" toml:"type" yaml:"type,omitempty"`
-	PurchasedAt         time.Time   `boiler:"purchased_at" boil:"purchased_at" json:"purchased_at" toml:"purchased_at" yaml:"purchased_at"`
+	ID                  string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	OwnerID             string    `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
+	BlueprintID         string    `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
+	GameClientAbilityID int       `boiler:"game_client_ability_id" boil:"game_client_ability_id" json:"game_client_ability_id" toml:"game_client_ability_id" yaml:"game_client_ability_id"`
+	Label               string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	Colour              string    `boiler:"colour" boil:"colour" json:"colour" toml:"colour" yaml:"colour"`
+	ImageURL            string    `boiler:"image_url" boil:"image_url" json:"image_url" toml:"image_url" yaml:"image_url"`
+	Description         string    `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
+	TextColour          string    `boiler:"text_colour" boil:"text_colour" json:"text_colour" toml:"text_colour" yaml:"text_colour"`
+	Type                string    `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
+	PurchasedAt         time.Time `boiler:"purchased_at" boil:"purchased_at" json:"purchased_at" toml:"purchased_at" yaml:"purchased_at"`
 
 	R *playerAbilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L playerAbilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -103,7 +102,7 @@ var PlayerAbilityWhere = struct {
 	ImageURL            whereHelperstring
 	Description         whereHelperstring
 	TextColour          whereHelperstring
-	Type                whereHelpernull_String
+	Type                whereHelperstring
 	PurchasedAt         whereHelpertime_Time
 }{
 	ID:                  whereHelperstring{field: "\"player_abilities\".\"id\""},
@@ -115,7 +114,7 @@ var PlayerAbilityWhere = struct {
 	ImageURL:            whereHelperstring{field: "\"player_abilities\".\"image_url\""},
 	Description:         whereHelperstring{field: "\"player_abilities\".\"description\""},
 	TextColour:          whereHelperstring{field: "\"player_abilities\".\"text_colour\""},
-	Type:                whereHelpernull_String{field: "\"player_abilities\".\"type\""},
+	Type:                whereHelperstring{field: "\"player_abilities\".\"type\""},
 	PurchasedAt:         whereHelpertime_Time{field: "\"player_abilities\".\"purchased_at\""},
 }
 
@@ -144,8 +143,8 @@ type playerAbilityL struct{}
 
 var (
 	playerAbilityAllColumns            = []string{"id", "owner_id", "blueprint_id", "game_client_ability_id", "label", "colour", "image_url", "description", "text_colour", "type", "purchased_at"}
-	playerAbilityColumnsWithoutDefault = []string{"owner_id", "blueprint_id", "game_client_ability_id", "label", "colour", "image_url", "description", "text_colour"}
-	playerAbilityColumnsWithDefault    = []string{"id", "type", "purchased_at"}
+	playerAbilityColumnsWithoutDefault = []string{"owner_id", "blueprint_id", "game_client_ability_id", "label", "colour", "image_url", "description", "text_colour", "type"}
+	playerAbilityColumnsWithDefault    = []string{"id", "purchased_at"}
 	playerAbilityPrimaryKeyColumns     = []string{"id"}
 	playerAbilityGeneratedColumns      = []string{}
 )
