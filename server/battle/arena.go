@@ -198,8 +198,10 @@ func NewArena(opts *Opts) *Arena {
 	opts.SecureUserFactionSubscribeCommand(WSAssetQueueStatusSubscribe, arena.AssetQueueStatusSubscribeHandler)
 
 	opts.SecureUserFactionCommand(HubKeyAssetQueueMany, arena.AssetQueueManyHandler)
-	opts.SecureUserFactionCommand(HubKeyAssetRepairPayFee, arena.AssetRepairPayFeeHandler)
-	opts.SecureUserFactionCommand(HubKeyAssetRepairStatus, arena.AssetRepairStatusHandler)
+
+	// TODO: handle insurance and repair
+	//opts.SecureUserFactionCommand(HubKeyAssetRepairPayFee, arena.AssetRepairPayFeeHandler)
+	//opts.SecureUserFactionCommand(HubKeyAssetRepairStatus, arena.AssetRepairStatusHandler)
 
 	opts.SecureUserCommand(HubKeyGameUserOnline, arena.UserOnline)
 	opts.SecureUserCommand(HubKeyPlayerRankGet, arena.PlayerRankGet)

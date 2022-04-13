@@ -1030,8 +1030,9 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	endInfo := btl.endCreateStats(payload, winningWarMachines)
 
 	btl.processWinners(payload)
-	// process repair
-	btl.processWarMachineRepair(payload)
+
+	// TODO: process mech repair
+	//btl.processWarMachineRepair(payload)
 
 	btl.endMultis(endInfo)
 
