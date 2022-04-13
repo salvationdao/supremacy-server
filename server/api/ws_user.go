@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/ninja-software/log_helpers"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
@@ -19,11 +18,9 @@ type UserControllerWS struct {
 	API  *API
 }
 
-func NewUserController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *UserControllerWS {
+func NewUserController(api *API) *UserControllerWS {
 	uch := &UserControllerWS{
-		Conn: conn,
-		Log:  log_helpers.NamedLogger(log, "twitch_hub"),
-		API:  api,
+		API: api,
 	}
 
 	api.SecureUserSubscribeCommand(HubKeyUserSubscribe, uch.UserSubscribeHandler)

@@ -21,31 +21,22 @@ import (
 	"github.com/friendsofgo/errors"
 
 	"github.com/gofrs/uuid"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/lestrrat-go/jwx/jwa"
 	"github.com/lestrrat-go/jwx/jwt"
-	"github.com/ninja-software/log_helpers"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
-	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
 )
 
 // AuthControllerWS holds handlers for checking server status
 type AuthControllerWS struct {
-	Conn   *pgxpool.Pool
-	Log    *zerolog.Logger
-	API    *API
-	Config *server.Config
+	API *API
 }
 
 // NewAuthController creates the check hub
-func NewAuthController(log *zerolog.Logger, conn *pgxpool.Pool, api *API, config *server.Config) *AuthControllerWS {
+func NewAuthController(api *API) *AuthControllerWS {
 	authHub := &AuthControllerWS{
-		Conn:   conn,
-		Log:    log_helpers.NamedLogger(log, "auth_hub"),
-		API:    api,
-		Config: config,
+		API: api,
 	}
 
 	api.Command(HubKeyAuthSessionIDGet, authHub.GetHubSessionID)
@@ -85,7 +76,7 @@ func (ac *AuthControllerWS) RingCheckJWTAuth(ctx context.Context, wsc *hub.Clien
 		return terror.Error(err, "Failed to convert string to byte array")
 	}
 
-	token, err := readJWT(tokenStr, ac.Config.EncryptTokens, []byte(ac.Config.EncryptTokensKey), ac.Config.JwtKey)
+	token, err := readJWT(tokenStr, ac.API.Config.EncryptTokens, []byte(ac.API.Config.EncryptTokensKey), ac.API.Config.JwtKey)
 	if err != nil {
 		return terror.Error(err, "Failed to read JWT token please try again")
 	}
