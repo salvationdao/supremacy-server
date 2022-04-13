@@ -22,7 +22,7 @@ jobs:
           status: ${{ job.status }}
           token: ${{ secrets.GITHUB_TOKEN }}
           notification_title: '{workflow} has started'
-          message_format: '{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}>'
+          message_format: '{emoji} *{workflow}* started in <{repo_url}|{repo}>'
           footer: 'Linked Repo <{repo_url}|{repo}> | <{workflow_url}|View Workflow>'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
@@ -124,6 +124,19 @@ jobs:
         with:
           name: ${{ steps.artifact.outputs.filename }}
           path: ${{ steps.artifact.outputs.filename }}
+
+      - name: slack-notification
+        if: always()
+        uses: ravsamhq/notify-slack-action@v1
+        with:
+          status: ${{ job.status }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          notification_title: '{workflow} has {status_message}'
+          message_format: '{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}>'
+          footer: 'Linked Repo <{repo_url}|{repo}> | <{workflow_url}|View Workflow>'
+          notify_when: 'failure'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
   deploy:
     needs: [build]
