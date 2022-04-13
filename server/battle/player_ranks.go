@@ -143,9 +143,9 @@ func calcSyndicatePlayerRank(factionID server.FactionID) error {
 		boiler.PlayerWhere.FactionID.EQ(null.StringFrom(factionID.String())),
 		boiler.PlayerWhere.CreatedAt.LT(time.Now().AddDate(0, 0, -1)),
 		boiler.PlayerWhere.SentMessageCount.GT(0),
-		qm.InnerJoin(
+		qm.Where(
 			fmt.Sprintf(
-				"%s ON %s = %s AND %s > 0",
+				"EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s > 0)",
 				boiler.TableNames.UserStats,
 				qm.Rels(boiler.TableNames.UserStats, boiler.UserStatColumns.ID),
 				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.ID),
@@ -164,9 +164,9 @@ func calcSyndicatePlayerRank(factionID server.FactionID) error {
 		boiler.PlayerWhere.FactionID.EQ(null.StringFrom(factionID.String())),
 		boiler.PlayerWhere.CreatedAt.LT(time.Now().AddDate(0, 0, -1)),
 		boiler.PlayerWhere.SentMessageCount.GT(0),
-		qm.InnerJoin(
+		qm.Where(
 			fmt.Sprintf(
-				"%s ON %s = %s AND %s <= 0",
+				"EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s <= 0)",
 				boiler.TableNames.UserStats,
 				qm.Rels(boiler.TableNames.UserStats, boiler.UserStatColumns.ID),
 				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.ID),
