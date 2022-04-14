@@ -51,6 +51,38 @@ func (p PlayerAbilityColumn) IsValid() error {
 	return terror.Error(fmt.Errorf("invalid player ability column"))
 }
 
+type SaleAbilityDetailed struct {
+	*boiler.SalePlayerAbility
+	Ability *boiler.BlueprintPlayerAbility `json:"ability,omitempty"`
+}
+
+func SaleAbilityGet(
+	ctx context.Context,
+	conn pgxscan.Querier,
+	abilityID string,
+) (*SaleAbilityDetailed, error) {
+	spaAlias := "spa"
+	bpaAlias := "bpa"
+	fromQ := fmt.Sprintf("FROM %s %s\n", boiler.TableNames.SalePlayerAbilities, spaAlias) +
+		fmt.Sprintf("INNER JOIN %[1]s %[2]s ON %[3]s.%[4]s = %[2]s.%[5]s\n", boiler.TableNames.BlueprintPlayerAbilities, bpaAlias, spaAlias, boiler.SalePlayerAbilityColumns.BlueprintID, boiler.BlueprintPlayerAbilityColumns.ID)
+
+	selectQ := "SELECT\n" +
+		fmt.Sprintf("row_to_json(%s) as ability,\n", bpaAlias) +
+		fmt.Sprintf("%s.%s,\n", spaAlias, boiler.SalePlayerAbilityColumns.ID) +
+		fmt.Sprintf("%s.%s,\n", spaAlias, boiler.SalePlayerAbilityColumns.BlueprintID) +
+		fmt.Sprintf("%s.%s,\n", spaAlias, boiler.SalePlayerAbilityColumns.CurrentPrice) +
+		fmt.Sprintf("%s.%s\n", spaAlias, boiler.SalePlayerAbilityColumns.AvailableUntil) + fromQ
+
+	q := selectQ + fmt.Sprintf("WHERE %s.%s = $1\n", spaAlias, boiler.SalePlayerAbilityColumns.ID)
+	var result SaleAbilityDetailed
+	err := pgxscan.Get(ctx, conn, &result, q, abilityID)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return &result, nil
+}
+
 // SaleAbilitiesList returns a list of IDs from the sale_player_abilities table.
 // Filter and sorting options can be passed in to manipulate the end result.
 func SaleAbilitiesList(
@@ -67,7 +99,6 @@ func SaleAbilitiesList(
 	bpaAlias := "bpa" /// alias for blueprint_player_abilities table
 	fromQ := fmt.Sprintf("FROM %s %s\n", boiler.TableNames.SalePlayerAbilities, spaAlias) +
 		fmt.Sprintf("INNER JOIN %[1]s %[4]s ON %[5]s.%[2]s = %[4]s.%[3]s\n", boiler.TableNames.BlueprintPlayerAbilities, boiler.SalePlayerAbilityColumns.BlueprintID, boiler.BlueprintPlayerAbilityColumns.ID, bpaAlias, spaAlias)
-
 	selectQ := "SELECT\n" +
 		fmt.Sprintf("%s.%s\n", spaAlias, boiler.SalePlayerAbilityColumns.ID) + fromQ
 

@@ -38,7 +38,7 @@ func NewPlayerAbilitiesController(api *API) *PlayerAbilitiesControllerWS {
 
 	api.SecureUserCommand(HubKeyPlayerAbilitiesList, pac.PlayerAbilitiesListHandler)
 	api.SecureUserCommand(HubKeySaleAbilitiesList, pac.SaleAbilitiesListHandler)
-	api.SecureUserCommand(HubKeySaleAbilitiesPurchase, pac.SaleAbilitiesPurchaseHandler)
+	api.SecureUserCommand(HubKeySaleAbilityPurchase, pac.SaleAbilityPurchaseHandler)
 
 	api.SecureUserSubscribeCommand(HubKeyPlayerAbilitySubscribe, pac.PlayerAbilitySubscribeHandler)
 	api.SecureUserSubscribeCommand(HubKeySaleAbilitySubscribe, pac.SaleAbilitySubscribeHandler)
@@ -47,7 +47,10 @@ func NewPlayerAbilitiesController(api *API) *PlayerAbilitiesControllerWS {
 }
 
 type AbilitySubscribeRequest struct {
-	AbilityID string `json:"ability_id"`
+	*hub.HubCommandRequest
+	Payload struct {
+		AbilityID string `json:"ability_id"`
+	} `json:"payload"`
 }
 
 const HubKeyPlayerAbilitySubscribe = hub.HubCommandKey("PLAYER:ABILITY:SUBSCRIBE")
@@ -71,7 +74,21 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilitySubscribeHandler(ctx context.
 		return "", "", terror.Error(err, "Invalid request received.")
 	}
 
-	return "", messagebus.BusKey(HubKeySaleAbilitySubscribe), nil
+	if req.Payload.AbilityID == "" {
+		gamelog.L.Error().
+			Str("handler", "SaleAbilitySubscribeHandler").Msg("empty ability ID provided")
+		return "", "", terror.Error(err, "Ability ID must be provided.")
+	}
+
+	sAbility, err := db.SaleAbilityGet(ctx, gamedb.Conn, req.Payload.AbilityID)
+	if err != nil {
+		gamelog.L.Error().
+			Str("db func", "SaleAbilityGet").Err(err).Msg("unable to get sale ability details")
+		return "", "", terror.Error(err, "Unable to retrieve sale ability, please try again or contact support.")
+	}
+
+	reply(sAbility)
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeySaleAbilitySubscribe, sAbility.ID)), nil
 }
 
 type AbilitiesListResponse struct {
@@ -167,9 +184,9 @@ type SaleAbilitiesPurchaseRequest struct {
 	} `json:"payload"`
 }
 
-const HubKeySaleAbilitiesPurchase = hub.HubCommandKey("SALE:ABILITIES:PURCHASE")
+const HubKeySaleAbilityPurchase = hub.HubCommandKey("SALE:ABILITY:PURCHASE")
 
-func (pac *PlayerAbilitiesControllerWS) SaleAbilitiesPurchaseHandler(ctx context.Context, hub *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.Context, hub *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &SaleAbilitiesPurchaseRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
