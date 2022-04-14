@@ -131,7 +131,6 @@ func (sow *SpoilsOfWar) Drip() error {
 	if sow.battle() == nil {
 		return nil
 	}
-	var err error
 
 	yesterday := time.Now().Add(time.Hour * -24)
 
@@ -149,14 +148,6 @@ func (sow *SpoilsOfWar) Drip() error {
 		gamelog.L.Error().Err(err).Msg("unable to retrieve spoils of war")
 		return err
 	}
-
-	// for each spoilsOfWars,
-	// if on last tick todo
-	// get all user spoils
-	// check they're online
-	// if they are send out a drip
-	// update users spoils of war entry
-	// update warchest entry
 
 	for _, spoils := range spoilsOfWars {
 		spoils.CurrentTick++
@@ -203,15 +194,10 @@ func (sow *SpoilsOfWar) Drip() error {
 					func(userID uuid.UUID) bool { return sow.battle().isOnline(userID) },
 					sendSups,
 				)
-				if err != nil {
-					// errors are all logged within payoutUserSpoils
-					continue
-				}
-
 			}
 		}
 
-		// for each user, updat em!
+		// for each user, update em! (payoutRemainingUserSpoils/payoutUserSpoils mutates them)
 		for _, user := range userSpoils {
 			_, err = user.Update(gamedb.StdConn, boil.Infer())
 			if err != nil {
@@ -223,7 +209,7 @@ func (sow *SpoilsOfWar) Drip() error {
 			}
 		}
 
-		// update spoils
+		// update spoils (payoutRemainingUserSpoils/payoutUserSpoils mutates it)
 		_, err = spoils.Update(gamedb.StdConn, boil.Infer())
 		if err != nil {
 			gamelog.L.Error().
