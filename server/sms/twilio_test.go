@@ -1,6 +1,7 @@
 package sms_test
 
 import (
+	"fmt"
 	"os"
 	"server/sms"
 	"testing"
@@ -11,6 +12,7 @@ func TestTwilio_SendSMS(t *testing.T) {
 	apiKey := os.Getenv("GAMESERVER_TWILIO_API_KEY")
 	apiSecret := os.Getenv("GAMESERVER_TWILIO_API_SECRET")
 	fromNumber := os.Getenv("GAMESERVER_SMS_FROM_NUMBER")
+
 	toNumber := "+61478147822"
 
 	twil, err := sms.NewTwilio(
@@ -27,7 +29,8 @@ func TestTwilio_SendSMS(t *testing.T) {
 
 	_, err = twil.Lookup(toNumber)
 	if err != nil {
-		t.Log(err)
+		fmt.Println("here", err)
+		t.Log("here", err)
 		t.Fatalf("failed to lookup number %s", toNumber)
 	}
 

@@ -41,6 +41,7 @@ func NewTwilio(accountSid, apiKey, apiSecret, fromNumber, environment string) (*
 		Password:   apiSecret,
 		AccountSid: accountSid,
 	})
+
 	// }
 
 	return twil, nil
@@ -56,10 +57,11 @@ func (t *Twilio) SendSMS(to string, message string) error {
 	smsParams.SetFrom(t.FromNumber)
 	smsParams.SetBody(message)
 
-	_, err := t.ApiV2010.CreateMessage(smsParams)
+	m, err := t.ApiV2010.CreateMessage(smsParams)
 	if err != nil {
 		return terror.Error(err, "Failed send SMS")
 	}
+	fmt.Println("message --------------------------------", m)
 	return nil
 }
 
@@ -71,6 +73,7 @@ func (t *Twilio) Lookup(number string) (string, error) {
 	// returns 404 if number invalid
 	resp, err := t.LookupsV1.FetchPhoneNumber(number, nil)
 	if err != nil {
+		fmt.Println(err)
 		return "", terror.Warn(fmt.Errorf("invalid mobile number %s", number), "Invalid mobile number, please insure correct country code.")
 	}
 	if resp.PhoneNumber == nil {

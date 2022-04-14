@@ -308,7 +308,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			notificationMsg := fmt.Sprintf("%s, your War Machine %s is approaching the front of the queue!\n\nJump into the Battle Arena now to prepare. Your survival has its rewards.\n\n(Reminder: In order to combat scams we will NEVER send you links)", player.Username.String, wmName)
 			gamelog.L.Info().Str("MobileNumber", playerProfile.MobileNumber.String).Msg("sending sms notification")
 			err := arena.sms.SendSMS(
-				player.MobileNumber.String,
+				playerProfile.MobileNumber.String,
 				notificationMsg,
 			)
 			if err != nil {

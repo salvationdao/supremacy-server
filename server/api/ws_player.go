@@ -270,7 +270,7 @@ func (pc *PlayerController) PlayerProfileUpdateHandler(ctx context.Context, wsc 
 			if req.Payload.EnableSMSNotifications && req.Payload.MobileNumber != "" {
 				mobileNumber, err := pc.API.SMS.Lookup(req.Payload.MobileNumber)
 				if err != nil {
-					gamelog.L.Warn().Str("mobile number", req.Payload.MobileNumber).Msg("Failed to lookup mobile number through twilio api")
+					gamelog.L.Warn().Err(err).Str("mobile number", req.Payload.MobileNumber).Msg("Failed to lookup mobile number through twilio api")
 					return terror.Error(err, "Invalid phone number")
 				}
 
@@ -296,31 +296,26 @@ func (pc *PlayerController) PlayerProfileUpdateHandler(ctx context.Context, wsc 
 		return nil
 	}
 
-	fmt.Println("here5")
-	fmt.Printf("%+v \nthis is player profile out", req.Payload)
-
 	// update profile
 	playerProfile.EnableTelegramNotifications = req.Payload.EnableTelegramNotifications
 	playerProfile.EnableSMSNotifications = req.Payload.EnableSMSNotifications
 	playerProfile.EnablePushNotifications = req.Payload.EnablePushNotifications
 
 	// check mobile number
-	if req.Payload.MobileNumber != "" {
+	if req.Payload.EnableSMSNotifications && req.Payload.MobileNumber != "" {
 		// check mobile phone, if player required notifyed through mobile sms
-		if req.Payload.EnableSMSNotifications && req.Payload.MobileNumber != "" {
-			fmt.Println("number check", req.Payload.MobileNumber)
-			mobileNumber, err := pc.API.SMS.Lookup(req.Payload.MobileNumber)
-			if err != nil {
-				gamelog.L.Warn().Str("mobile number", req.Payload.MobileNumber).Msg("Failed to lookup mobile number through twilio api")
-				return terror.Error(err, "Invalid phone number")
-			}
-
-			fmt.Println("after")
-
-			// set the verifyed mobile number
-			playerProfile.MobileNumber = null.StringFrom(mobileNumber)
+		mobileNumber, err := pc.API.SMS.Lookup(req.Payload.MobileNumber)
+		if err != nil {
+			gamelog.L.Warn().Err(err).Str("mobile number", req.Payload.MobileNumber).Msg("Failed to lookup mobile number through twilio api")
+			return terror.Error(err, "Invalid phone number")
 		}
 
+		// set the verified mobile number
+		playerProfile.MobileNumber = null.StringFrom(mobileNumber)
+	}
+
+	if req.Payload.MobileNumber == "" {
+		playerProfile.MobileNumber = null.String{}
 	}
 
 	_, err = playerProfile.Update(gamedb.StdConn, boil.Infer())
