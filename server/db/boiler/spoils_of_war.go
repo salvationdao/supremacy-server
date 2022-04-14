@@ -30,6 +30,8 @@ type SpoilsOfWar struct {
 	AmountSent   decimal.Decimal `boiler:"amount_sent" boil:"amount_sent" json:"amount_sent" toml:"amount_sent" yaml:"amount_sent"`
 	CreatedAt    time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	UpdatedAt    time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CurrentTick  int             `boiler:"current_tick" boil:"current_tick" json:"current_tick" toml:"current_tick" yaml:"current_tick"`
+	MaxTicks     int             `boiler:"max_ticks" boil:"max_ticks" json:"max_ticks" toml:"max_ticks" yaml:"max_ticks"`
 
 	R *spoilsOfWarR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L spoilsOfWarL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -43,6 +45,8 @@ var SpoilsOfWarColumns = struct {
 	AmountSent   string
 	CreatedAt    string
 	UpdatedAt    string
+	CurrentTick  string
+	MaxTicks     string
 }{
 	ID:           "id",
 	BattleID:     "battle_id",
@@ -51,6 +55,8 @@ var SpoilsOfWarColumns = struct {
 	AmountSent:   "amount_sent",
 	CreatedAt:    "created_at",
 	UpdatedAt:    "updated_at",
+	CurrentTick:  "current_tick",
+	MaxTicks:     "max_ticks",
 }
 
 var SpoilsOfWarTableColumns = struct {
@@ -61,6 +67,8 @@ var SpoilsOfWarTableColumns = struct {
 	AmountSent   string
 	CreatedAt    string
 	UpdatedAt    string
+	CurrentTick  string
+	MaxTicks     string
 }{
 	ID:           "spoils_of_war.id",
 	BattleID:     "spoils_of_war.battle_id",
@@ -69,6 +77,8 @@ var SpoilsOfWarTableColumns = struct {
 	AmountSent:   "spoils_of_war.amount_sent",
 	CreatedAt:    "spoils_of_war.created_at",
 	UpdatedAt:    "spoils_of_war.updated_at",
+	CurrentTick:  "spoils_of_war.current_tick",
+	MaxTicks:     "spoils_of_war.max_ticks",
 }
 
 // Generated where
@@ -81,6 +91,8 @@ var SpoilsOfWarWhere = struct {
 	AmountSent   whereHelperdecimal_Decimal
 	CreatedAt    whereHelpertime_Time
 	UpdatedAt    whereHelpertime_Time
+	CurrentTick  whereHelperint
+	MaxTicks     whereHelperint
 }{
 	ID:           whereHelperstring{field: "\"spoils_of_war\".\"id\""},
 	BattleID:     whereHelperstring{field: "\"spoils_of_war\".\"battle_id\""},
@@ -89,6 +101,8 @@ var SpoilsOfWarWhere = struct {
 	AmountSent:   whereHelperdecimal_Decimal{field: "\"spoils_of_war\".\"amount_sent\""},
 	CreatedAt:    whereHelpertime_Time{field: "\"spoils_of_war\".\"created_at\""},
 	UpdatedAt:    whereHelpertime_Time{field: "\"spoils_of_war\".\"updated_at\""},
+	CurrentTick:  whereHelperint{field: "\"spoils_of_war\".\"current_tick\""},
+	MaxTicks:     whereHelperint{field: "\"spoils_of_war\".\"max_ticks\""},
 }
 
 // SpoilsOfWarRels is where relationship names are stored.
@@ -115,9 +129,9 @@ func (*spoilsOfWarR) NewStruct() *spoilsOfWarR {
 type spoilsOfWarL struct{}
 
 var (
-	spoilsOfWarAllColumns            = []string{"id", "battle_id", "battle_number", "amount", "amount_sent", "created_at", "updated_at"}
+	spoilsOfWarAllColumns            = []string{"id", "battle_id", "battle_number", "amount", "amount_sent", "created_at", "updated_at", "current_tick", "max_ticks"}
 	spoilsOfWarColumnsWithoutDefault = []string{"battle_id", "battle_number", "amount"}
-	spoilsOfWarColumnsWithDefault    = []string{"id", "amount_sent", "created_at", "updated_at"}
+	spoilsOfWarColumnsWithDefault    = []string{"id", "amount_sent", "created_at", "updated_at", "current_tick", "max_ticks"}
 	spoilsOfWarPrimaryKeyColumns     = []string{"id"}
 	spoilsOfWarGeneratedColumns      = []string{}
 )

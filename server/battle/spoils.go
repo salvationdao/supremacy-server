@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"server"
-	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -13,16 +12,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"go.uber.org/atomic"
 
 	"github.com/gofrs/uuid"
-	"github.com/ninja-software/terror/v2"
 	"github.com/shopspring/decimal"
 )
+
+var SupremacyBattleUserID = uuid.Must(uuid.FromString("87c60803-b051-4abb-aa60-487104946bd7"))
 
 type SpoilsOfWar struct {
 	_battle       *Battle
@@ -67,6 +66,8 @@ func NewSpoilsOfWar(btl *Battle, transactSpeed time.Duration, dripSpeed time.Dur
 			BattleNumber: btl.BattleNumber,
 			Amount:       decimal.Zero,
 			AmountSent:   decimal.Zero,
+			CurrentTick:  0,
+			MaxTicks:     20,
 		}
 
 		_ = sow.Insert(gamedb.StdConn, boil.Infer())
@@ -116,8 +117,7 @@ func (sow *SpoilsOfWar) Run() {
 				sow = nil
 				return
 			}
-			// Push all pending transactions to passport server
-			gamelog.L.Debug().Msg("running transaction pusher")
+
 			err := sow.Drip()
 			if err != nil {
 				gamelog.L.Err(err).Msg("push transactions over rpc")
@@ -135,13 +135,13 @@ func (sow *SpoilsOfWar) Drip() error {
 
 	yesterday := time.Now().Add(time.Hour * -24)
 
-	warchests, err := boiler.SpoilsOfWars(
+	// get all sow with spoils left on them
+	spoilsOfWars, err := boiler.SpoilsOfWars(
 		boiler.SpoilsOfWarWhere.CreatedAt.GT(yesterday),
 		boiler.SpoilsOfWarWhere.BattleID.NEQ(sow.battle().ID),
 		qm.And(`amount_sent < amount`),
 		qm.OrderBy(fmt.Sprintf("%s %s", boiler.SpoilsOfWarColumns.CreatedAt, "DESC")),
 	).All(gamedb.StdConn)
-
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil
@@ -150,127 +150,228 @@ func (sow *SpoilsOfWar) Drip() error {
 		return err
 	}
 
-	dripAllocations := 20
+	// for each spoilsOfWars,
+	// if on last tick todo
+	// get all user spoils
+	// check they're online
+	// if they are send out a drip
+	// update users spoils of war entry
+	// update warchest entry
 
-	totalAmount := decimal.NewFromInt(0)
-	for _, warchest := range warchests {
-		totalAmount = totalAmount.Add(warchest.Amount).Sub(warchest.AmountSent)
-	}
+	for _, spoils := range spoilsOfWars {
+		spoils.CurrentTick++
 
-	dripAmount := totalAmount.Div(decimal.NewFromInt(int64(dripAllocations)))
-
-	multipliers, err := db.PlayerMultipliers(sow.battle().battleSeconds().IntPart())
-	if err != nil {
-		return terror.Error(err, "unable to retrieve multipliers")
-	}
-
-	totalShares := decimal.Zero
-	onlineUsers := []*db.Multipliers{}
-	for _, player := range multipliers {
-		if sow.battle().isOnline(player.PlayerID) {
-			if player.TotalMultiplier.LessThanOrEqual(decimal.Zero) {
-				continue
-			}
-			totalShares = totalShares.Add(player.TotalMultiplier)
-			onlineUsers = append(onlineUsers, player)
-		}
-	}
-
-	if totalShares.LessThanOrEqual(decimal.Zero) {
-		gamelog.L.Warn().Msgf("total shares is less than or equal to zero")
-		return nil
-	}
-	subgroup := fmt.Sprintf("Spoils of War from Battle #%d", sow.battle().BattleNumber-1)
-	amountRemaining := totalAmount.Copy()
-
-	onShareSups := dripAmount.Div(totalShares)
-	for _, player := range onlineUsers {
-		userDrip := onShareSups.Mul(player.TotalMultiplier)
-
-		amountRemaining = amountRemaining.Sub(userDrip)
-		if amountRemaining.LessThan(userDrip) {
-			gamelog.L.Warn().Msg("not enough funds in the spoils of war to do a tick")
-			return nil
+		// get all user spoils of war for this battle
+		userSpoils, err := boiler.UserSpoilsOfWars(
+			boiler.UserSpoilsOfWarWhere.BattleID.EQ(spoils.BattleID),
+		).All(gamedb.StdConn)
+		if err != nil {
+			gamelog.L.Error().
+				Err(err).
+				Str("spoils.BattleID", spoils.BattleID).
+				Msg("failed to get user spoils for battle")
+			continue
 		}
 
-		sendSups := func(warchest *boiler.SpoilsOfWar, dripAmnt decimal.Decimal) error {
-			warchest.AmountSent = warchest.AmountSent.Add(dripAmnt)
-			_, err = warchest.Update(gamedb.StdConn, boil.Infer())
-			if err != nil {
-				gamelog.L.Error().Err(err).Msg("unable to update spoils of war")
-				warchest = nil
-				return err
-			}
-
-			txr := fmt.Sprintf("spoils_of_war|%s|%d", player.PlayerID, time.Now().UnixNano())
-
-			_, err := sow.battle().arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
+		subgroup := fmt.Sprintf("Spoils of War from Battle #%d", spoils.BattleNumber)
+		sendSups := func(userID uuid.UUID, amount string, txr string) (string, error) {
+			return sow.battle().arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
 				FromUserID:           SupremacyBattleUserID,
-				ToUserID:             player.PlayerID,
-				Amount:               dripAmnt.StringFixed(18),
+				ToUserID:             userID,
+				Amount:               amount,
 				TransactionReference: server.TransactionReference(txr),
 				Group:                string(server.TransactionGroupBattle),
 				SubGroup:             subgroup,
 				Description:          subgroup,
 				NotSafe:              false,
 			})
-			if err != nil {
-				gamelog.L.Error().Err(err).Msg("unable to send spoils of war transaction")
-				return err
-			}
-
-			pt := boiler.PendingTransaction{
-				FromUserID:           SupremacyBattleUserID.String(),
-				ToUserID:             player.PlayerID.String(),
-				Amount:               dripAmnt,
-				TransactionReference: txr,
-				Group:                string(server.TransactionGroupBattle),
-				Subgroup:             subgroup,
-				ProcessedAt:          null.TimeFrom(time.Now()),
-				Description:          subgroup,
-			}
-			err = pt.Insert(gamedb.StdConn, boil.Infer())
-			if err != nil {
-				gamelog.L.Error().Err(err).Msg("unable to save spoils of war transaction")
-			}
-			totalAmount = totalAmount.Add(warchest.Amount).Sub(warchest.AmountSent)
-			userDrip = userDrip.Sub(dripAmnt)
-			return nil
 		}
 
-		for _, warchest := range warchests {
-
-			if userDrip.LessThanOrEqual(decimal.Zero) {
-				break
-			}
-			remaining := warchest.Amount.Sub(warchest.AmountSent)
-			if remaining.LessThanOrEqual(decimal.Zero) {
-				continue
-			}
-			if remaining.LessThan(userDrip) {
-				userDrip = userDrip.Sub(remaining)
-
-				err = sendSups(warchest, remaining)
+		// if current tick = last tick, dump the rest to online users
+		if spoils.CurrentTick == spoils.MaxTicks {
+			userSpoils, spoils = payoutRemainingUserSpoils(
+				userSpoils,
+				spoils,
+				func(userID uuid.UUID) bool { return sow.battle().isOnline(userID) },
+				sendSups,
+			)
+		} else { // else drip out normally
+			for _, user := range userSpoils {
+				user, spoils = payoutUserSpoils(
+					user,
+					spoils,
+					func(userID uuid.UUID) bool { return sow.battle().isOnline(userID) },
+					sendSups,
+				)
 				if err != nil {
-					return err
+					// errors are all logged within payoutUserSpoils
+					continue
 				}
-				continue
-			}
 
-			err = sendSups(warchest, userDrip)
-			if err != nil {
-				return err
 			}
-			break
 		}
 
-		if userDrip.GreaterThan(decimal.Zero) {
-			gamelog.L.Info().Str("battle_id", sow.battle().ID).Msg("no more money in spoils of war for distribution")
-			return nil
+		// for each user, updat em!
+		for _, user := range userSpoils {
+			_, err = user.Update(gamedb.StdConn, boil.Infer())
+			if err != nil {
+				gamelog.L.Error().
+					Err(err).
+					Interface("user spoils", user).
+					Msg("failed to update user spoils")
+				continue
+			}
+		}
+
+		// update spoils
+		_, err = spoils.Update(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().
+				Err(err).
+				Interface("battle spoils", spoils).
+				Msg("failed to update battle spoils")
 		}
 	}
 
 	return nil
 }
 
-var SupremacyBattleUserID = uuid.Must(uuid.FromString("87c60803-b051-4abb-aa60-487104946bd7"))
+// payoutUserSpoils checks the user is online,
+// checks there is enough spoils left,
+// checks paying the user doesn't over pay them for the given spoils
+// then calls the sendSups function
+// mutates and returns userSpoils and spoils
+func payoutUserSpoils(
+	user *boiler.UserSpoilsOfWar,
+	spoils *boiler.SpoilsOfWar,
+	isOnline func(userID uuid.UUID) bool,
+	sendSups func(userID uuid.UUID, amount string, txr string) (string, error),
+) (*boiler.UserSpoilsOfWar, *boiler.SpoilsOfWar) {
+	userID, err := uuid.FromString(user.PlayerID)
+	if err != nil {
+		gamelog.L.Error().
+			Err(err).
+			Str("user.PlayerID", user.PlayerID).
+			Msg("failed to create uuid from player id")
+		return user, spoils
+	}
+
+	if !isOnline(userID) {
+		return user, spoils
+	}
+
+	warChestSpoilsLeft := spoils.Amount.Sub(spoils.AmountSent)
+
+	// check the spoils for this battle have enough left for a tick (always should)
+	if warChestSpoilsLeft.LessThan(user.TickAmount) {
+		gamelog.L.Error().
+			Err(fmt.Errorf("warChestSpoilsLeft.LessThan(user.TickAmount)")).
+			Str("battle_id", spoils.BattleID).
+			Str("warChestSpoilsLeft", warChestSpoilsLeft.String()).
+			Str("user.TickAmount", user.TickAmount.String()).
+			Msg("not enough spoils to pay out a user spoil tick (issue!)")
+		return user, spoils
+	}
+
+	// check paying this tick out doesn't over pay them
+	if user.PaidSow.Add(user.TickAmount).GreaterThan(user.TotalSow) {
+		gamelog.L.Error().
+			Err(fmt.Errorf("user.PaidSow.Add(user.TickAmount).GreaterThan(user.TotalSow)")).
+			Str("battle_id", spoils.BattleID).
+			Str("warChestSpoilsLeft", warChestSpoilsLeft.String()).
+			Str("user.PaidSow", user.PaidSow.String()).
+			Str("user.TickAmount", user.TickAmount.String()).
+			Str("user.TotalSow", user.TotalSow.String()).
+			Msg("paying the user this tick over pays them")
+		return user, spoils
+	}
+
+	txr := fmt.Sprintf("spoils_of_war|%s|%d", userID, time.Now().UnixNano())
+	txID, err := sendSups(userID, user.TickAmount.String(), txr)
+	if err != nil {
+		gamelog.L.Error().
+			Err(err).
+			Str("FromUserID", SupremacyBattleUserID.String()).
+			Str("ToUserID", userID.String()).
+			Str("Amount", user.TickAmount.String()).
+			Str("TransactionReference", txr).
+			Msg("unable to send spoils of war transaction")
+		return user, spoils
+	}
+
+	// update relative fields
+	spoils.AmountSent = spoils.AmountSent.Add(user.TickAmount)            // add this battles amount sent
+	user.PaidSow = user.PaidSow.Add(user.TickAmount)                      // add this user sow amount sent
+	user.RelatedTransactionIds = append(user.RelatedTransactionIds, txID) // add the tx id from sending spoils
+
+	return user, spoils
+}
+
+// payoutRemainingUserSpoils takes the leftover spoils and gives them out to online users,
+// mutates and returns userSpoils and spoils
+func payoutRemainingUserSpoils(
+	userSpoils []*boiler.UserSpoilsOfWar,
+	spoils *boiler.SpoilsOfWar,
+	isOnline func(userID uuid.UUID) bool,
+	sendSups func(userID uuid.UUID, amount string, txr string) (string, error),
+) ([]*boiler.UserSpoilsOfWar, *boiler.SpoilsOfWar) {
+	var onlineUserSpoils []*boiler.UserSpoilsOfWar
+	var offlineUserSpoils []*boiler.UserSpoilsOfWar
+	for _, user := range userSpoils {
+		userID, err := uuid.FromString(user.PlayerID)
+		if err != nil {
+			gamelog.L.Error().
+				Err(err).
+				Str("user.PlayerID", user.PlayerID).
+				Msg("failed to create uuid from player id")
+			continue
+		}
+		if isOnline(userID) {
+			onlineUserSpoils = append(onlineUserSpoils, user)
+		} else {
+			offlineUserSpoils = append(offlineUserSpoils, user)
+		}
+	}
+
+	spoilsAmountLeft := spoils.Amount.Sub(spoils.AmountSent)
+	totalMulties := decimal.Zero
+	for _, user := range onlineUserSpoils {
+		totalMulties = totalMulties.Add(decimal.NewFromInt(int64(user.TotalMultiplierForBattle)))
+	}
+
+	oneMultiWorth := spoilsAmountLeft.Div(totalMulties)
+
+	for _, user := range onlineUserSpoils {
+		usersPayout := oneMultiWorth.Mul(decimal.NewFromInt(int64(user.TotalMultiplierForBattle)))
+		userID, err := uuid.FromString(user.PlayerID)
+		if err != nil {
+			gamelog.L.Error().
+				Err(err).
+				Str("user.PlayerID", user.PlayerID).
+				Msg("failed to create uuid from player id")
+			continue
+		}
+		txr := fmt.Sprintf("spoils_of_war|%s|%d", userID, time.Now().UnixNano())
+		txID, err := sendSups(userID, usersPayout.String(), txr)
+		if err != nil {
+			gamelog.L.Error().
+				Err(err).
+				Str("FromUserID", SupremacyBattleUserID.String()).
+				Str("ToUserID", userID.String()).
+				Str("Amount", user.TickAmount.String()).
+				Str("TransactionReference", txr).
+				Msg("unable to send spoils of war transaction")
+			continue
+		}
+		spoils.AmountSent = spoils.AmountSent.Add(usersPayout)                // add this battles amount sent
+		user.PaidSow = user.PaidSow.Add(usersPayout)                          // add this user sow amount sent
+		user.RelatedTransactionIds = append(user.RelatedTransactionIds, txID) // add the tx id from sending spoils
+	}
+
+	// for all the offline users set their low sow
+	for _, user := range offlineUserSpoils {
+		user.LostSow = user.TotalSow.Sub(user.PaidSow)
+	}
+
+	return append(onlineUserSpoils, offlineUserSpoils...), spoils
+}

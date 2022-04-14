@@ -760,7 +760,9 @@ func (ga *GameAbility) SupContribution(ppClient *rpcclient.PassportXrpcClient, b
 				BattleID:     battleID,
 				BattleNumber: battleNumber,
 				Amount:       amount,
-				AmountSent:   decimal.New(0, 18),
+				AmountSent:   decimal.Zero,
+				CurrentTick:  0,
+				MaxTicks:     20,
 			}
 			err = spoil.Insert(gamedb.StdConn, boil.Infer())
 			if err != nil {
