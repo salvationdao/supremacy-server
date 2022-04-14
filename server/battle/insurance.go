@@ -10,6 +10,7 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"server"
@@ -60,16 +61,14 @@ func (btl *Battle) processWarMachineRepair(payload *BattleEndPayload) {
 		repairFee := btl.arena.InsurancePrice(mech.ID)
 
 		ar := boiler.AssetRepair{
-			MechID:        mech.ID,
-			RepairMode:    RepairModeFast,
-			CompleteUntil: now.Add(30 * time.Minute),
-			FullRepairFee: repairFee,
+			MechID:           mech.ID,
+			RepairCompleteAt: now.Add(30 * time.Minute),
+			FullRepairFee:    repairFee,
 		}
 
 		// if mech is not insured
 		if !mech.IsInsured {
-			ar.RepairMode = RepairModeStandard
-			ar.CompleteUntil = now.Add(24 * time.Hour)              // change repair time to 24 hours
+			ar.RepairCompleteAt = now.Add(24 * time.Hour)           // change repair time to 24 hours
 			ar.FullRepairFee = repairFee.Mul(decimal.NewFromInt(3)) // three time insurance fee
 		}
 
@@ -125,7 +124,7 @@ func (arena *Arena) AssetRepairPayFeeHandler(ctx context.Context, hubc *hub.Clie
 	// check repair center
 	ar, err := boiler.AssetRepairs(
 		boiler.AssetRepairWhere.MechID.EQ(mech.ID),
-		boiler.AssetRepairWhere.CompleteUntil.GT(now),
+		boiler.AssetRepairWhere.RepairCompleteAt.GT(now),
 	).One(gamedb.StdConn)
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
@@ -136,7 +135,7 @@ func (arena *Arena) AssetRepairPayFeeHandler(ctx context.Context, hubc *hub.Clie
 	}
 
 	// calculate pay fee
-	fullDurationSecond := decimal.NewFromFloat(ar.CompleteUntil.Sub(ar.CreatedAt).Seconds())
+	fullDurationSecond := decimal.NewFromFloat(ar.RepairCompleteAt.Sub(ar.CreatedAt).Seconds())
 	alreadyPassedSeconds := decimal.NewFromFloat(now.Sub(ar.CreatedAt).Seconds())
 	remainSeconds := fullDurationSecond.Sub(alreadyPassedSeconds)
 	ratio := remainSeconds.Div(fullDurationSecond)
@@ -150,8 +149,8 @@ func (arena *Arena) AssetRepairPayFeeHandler(ctx context.Context, hubc *hub.Clie
 
 	defer tx.Rollback()
 
-	ar.CompleteUntil = now
-	_, err = ar.Update(tx, boil.Whitelist(boiler.AssetRepairColumns.CompleteUntil))
+	ar.RepairCompleteAt = now
+	_, err = ar.Update(tx, boil.Whitelist(boiler.AssetRepairColumns.RepairCompleteAt))
 	if err != nil {
 		return terror.Error(err, "Failed to update asset repair")
 	}
@@ -168,13 +167,13 @@ func (arena *Arena) AssetRepairPayFeeHandler(ctx context.Context, hubc *hub.Clie
 	}
 
 	// pay sups
-	_, err = arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
+	txID, err := arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
 		FromUserID:           playerID,
 		ToUserID:             uuid.FromStringOrNil(factionAccountID),
 		Amount:               fee.StringFixed(18),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("pay_asset_repair_fee|%s|%d", ar.ID, time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupBattle),
-		Description:          "pay asset repair fee: " + ar.ID,
+		Description:          "Paying asset repair fee " + ar.ID + ".",
 		NotSafe:              true,
 	})
 	if err != nil {
@@ -185,6 +184,12 @@ func (arena *Arena) AssetRepairPayFeeHandler(ctx context.Context, hubc *hub.Clie
 	err = tx.Commit()
 	if err != nil {
 		return terror.Error(err, "Failed to commit db transaction")
+	}
+
+	ar.PayToRepairTXID = null.StringFrom(txID)
+	_, err = ar.Update(gamedb.StdConn, boil.Whitelist(boiler.AssetRepairColumns.PayToRepairTXID))
+	if err != nil {
+		return terror.Error(err, "Failed to update asset repair")
 	}
 
 	reply(true)
@@ -234,7 +239,7 @@ func (arena *Arena) AssetRepairStatusHandler(ctx context.Context, hubc *hub.Clie
 	// check repair center
 	ar, err := boiler.AssetRepairs(
 		boiler.AssetRepairWhere.MechID.EQ(mech.ID),
-		boiler.AssetRepairWhere.CompleteUntil.GT(now),
+		boiler.AssetRepairWhere.RepairCompleteAt.GT(now),
 	).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return terror.Error(err, "Failed to get asset repair record from db")
@@ -247,8 +252,8 @@ func (arena *Arena) AssetRepairStatusHandler(ctx context.Context, hubc *hub.Clie
 
 	// reply asset repair status
 	reply(&AssetRepairStatusResponse{
-		TotalRequiredSeconds: int(ar.CompleteUntil.Sub(ar.CreatedAt).Seconds()),
-		RemainSeconds:        int(ar.CompleteUntil.Sub(now).Seconds()),
+		TotalRequiredSeconds: int(ar.RepairCompleteAt.Sub(ar.CreatedAt).Seconds()),
+		RemainSeconds:        int(ar.RepairCompleteAt.Sub(now).Seconds()),
 		FullRepairFee:        ar.FullRepairFee,
 	})
 

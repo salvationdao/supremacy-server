@@ -133,7 +133,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 	// check mech is still in repair
 	ar, err := boiler.AssetRepairs(
 		boiler.AssetRepairWhere.MechID.EQ(mech.ID),
-		boiler.AssetRepairWhere.CompleteUntil.GT(time.Now()),
+		boiler.AssetRepairWhere.RepairCompleteAt.GT(time.Now()),
 	).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return terror.Error(err, "Failed to check asset repair table")
@@ -957,9 +957,9 @@ type AssetQueue struct {
 	BattleContractID string
 }
 
-const HubKeyAssetQueueMany hub.HubCommandKey = hub.HubCommandKey("ASSET:QUEUE:MANY")
+const HubKeyAssetMany hub.HubCommandKey = hub.HubCommandKey("ASSET:MANY")
 
-func (arena *Arena) AssetQueueManyHandler(ctx context.Context, hubc *hub.Client, payload []byte, userFactionID uuid.UUID, reply hub.ReplyFunc) error {
+func (arena *Arena) AssetManyHandler(ctx context.Context, hubc *hub.Client, payload []byte, userFactionID uuid.UUID, reply hub.ReplyFunc) error {
 	req := &AssetQueueManyRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -982,7 +982,7 @@ func (arena *Arena) AssetQueueManyHandler(ctx context.Context, hubc *hub.Client,
 	}
 
 	// reply empty
-	if mechs == nil || len(mechs) == 0 {
+	if len(mechs) == 0 {
 		reply(resp)
 		return nil
 	}

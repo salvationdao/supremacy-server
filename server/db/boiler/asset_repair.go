@@ -14,6 +14,7 @@ import (
 
 	"github.com/friendsofgo/errors"
 	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -23,47 +24,47 @@ import (
 
 // AssetRepair is an object representing the database table.
 type AssetRepair struct {
-	ID            string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	MechID        string          `boiler:"mech_id" boil:"mech_id" json:"mech_id" toml:"mech_id" yaml:"mech_id"`
-	RepairMode    string          `boiler:"repair_mode" boil:"repair_mode" json:"repair_mode" toml:"repair_mode" yaml:"repair_mode"`
-	CompleteUntil time.Time       `boiler:"complete_until" boil:"complete_until" json:"complete_until" toml:"complete_until" yaml:"complete_until"`
-	FullRepairFee decimal.Decimal `boiler:"full_repair_fee" boil:"full_repair_fee" json:"full_repair_fee" toml:"full_repair_fee" yaml:"full_repair_fee"`
-	CreatedAt     time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ID               string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	MechID           string          `boiler:"mech_id" boil:"mech_id" json:"mech_id" toml:"mech_id" yaml:"mech_id"`
+	RepairCompleteAt time.Time       `boiler:"repair_complete_at" boil:"repair_complete_at" json:"repair_complete_at" toml:"repair_complete_at" yaml:"repair_complete_at"`
+	FullRepairFee    decimal.Decimal `boiler:"full_repair_fee" boil:"full_repair_fee" json:"full_repair_fee" toml:"full_repair_fee" yaml:"full_repair_fee"`
+	PayToRepairTXID  null.String     `boiler:"pay_to_repair_tx_id" boil:"pay_to_repair_tx_id" json:"pay_to_repair_tx_id,omitempty" toml:"pay_to_repair_tx_id" yaml:"pay_to_repair_tx_id,omitempty"`
+	CreatedAt        time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *assetRepairR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L assetRepairL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var AssetRepairColumns = struct {
-	ID            string
-	MechID        string
-	RepairMode    string
-	CompleteUntil string
-	FullRepairFee string
-	CreatedAt     string
+	ID               string
+	MechID           string
+	RepairCompleteAt string
+	FullRepairFee    string
+	PayToRepairTXID  string
+	CreatedAt        string
 }{
-	ID:            "id",
-	MechID:        "mech_id",
-	RepairMode:    "repair_mode",
-	CompleteUntil: "complete_until",
-	FullRepairFee: "full_repair_fee",
-	CreatedAt:     "created_at",
+	ID:               "id",
+	MechID:           "mech_id",
+	RepairCompleteAt: "repair_complete_at",
+	FullRepairFee:    "full_repair_fee",
+	PayToRepairTXID:  "pay_to_repair_tx_id",
+	CreatedAt:        "created_at",
 }
 
 var AssetRepairTableColumns = struct {
-	ID            string
-	MechID        string
-	RepairMode    string
-	CompleteUntil string
-	FullRepairFee string
-	CreatedAt     string
+	ID               string
+	MechID           string
+	RepairCompleteAt string
+	FullRepairFee    string
+	PayToRepairTXID  string
+	CreatedAt        string
 }{
-	ID:            "asset_repair.id",
-	MechID:        "asset_repair.mech_id",
-	RepairMode:    "asset_repair.repair_mode",
-	CompleteUntil: "asset_repair.complete_until",
-	FullRepairFee: "asset_repair.full_repair_fee",
-	CreatedAt:     "asset_repair.created_at",
+	ID:               "asset_repair.id",
+	MechID:           "asset_repair.mech_id",
+	RepairCompleteAt: "asset_repair.repair_complete_at",
+	FullRepairFee:    "asset_repair.full_repair_fee",
+	PayToRepairTXID:  "asset_repair.pay_to_repair_tx_id",
+	CreatedAt:        "asset_repair.created_at",
 }
 
 // Generated where
@@ -133,20 +134,44 @@ func (w whereHelperdecimal_Decimal) GTE(x decimal.Decimal) qm.QueryMod {
 	return qmhelper.Where(w.field, qmhelper.GTE, x)
 }
 
+type whereHelpernull_String struct{ field string }
+
+func (w whereHelpernull_String) EQ(x null.String) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, false, x)
+}
+func (w whereHelpernull_String) NEQ(x null.String) qm.QueryMod {
+	return qmhelper.WhereNullEQ(w.field, true, x)
+}
+func (w whereHelpernull_String) LT(x null.String) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LT, x)
+}
+func (w whereHelpernull_String) LTE(x null.String) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LTE, x)
+}
+func (w whereHelpernull_String) GT(x null.String) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GT, x)
+}
+func (w whereHelpernull_String) GTE(x null.String) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GTE, x)
+}
+
+func (w whereHelpernull_String) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
+func (w whereHelpernull_String) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
+
 var AssetRepairWhere = struct {
-	ID            whereHelperstring
-	MechID        whereHelperstring
-	RepairMode    whereHelperstring
-	CompleteUntil whereHelpertime_Time
-	FullRepairFee whereHelperdecimal_Decimal
-	CreatedAt     whereHelpertime_Time
+	ID               whereHelperstring
+	MechID           whereHelperstring
+	RepairCompleteAt whereHelpertime_Time
+	FullRepairFee    whereHelperdecimal_Decimal
+	PayToRepairTXID  whereHelpernull_String
+	CreatedAt        whereHelpertime_Time
 }{
-	ID:            whereHelperstring{field: "\"asset_repair\".\"id\""},
-	MechID:        whereHelperstring{field: "\"asset_repair\".\"mech_id\""},
-	RepairMode:    whereHelperstring{field: "\"asset_repair\".\"repair_mode\""},
-	CompleteUntil: whereHelpertime_Time{field: "\"asset_repair\".\"complete_until\""},
-	FullRepairFee: whereHelperdecimal_Decimal{field: "\"asset_repair\".\"full_repair_fee\""},
-	CreatedAt:     whereHelpertime_Time{field: "\"asset_repair\".\"created_at\""},
+	ID:               whereHelperstring{field: "\"asset_repair\".\"id\""},
+	MechID:           whereHelperstring{field: "\"asset_repair\".\"mech_id\""},
+	RepairCompleteAt: whereHelpertime_Time{field: "\"asset_repair\".\"repair_complete_at\""},
+	FullRepairFee:    whereHelperdecimal_Decimal{field: "\"asset_repair\".\"full_repair_fee\""},
+	PayToRepairTXID:  whereHelpernull_String{field: "\"asset_repair\".\"pay_to_repair_tx_id\""},
+	CreatedAt:        whereHelpertime_Time{field: "\"asset_repair\".\"created_at\""},
 }
 
 // AssetRepairRels is where relationship names are stored.
@@ -170,9 +195,9 @@ func (*assetRepairR) NewStruct() *assetRepairR {
 type assetRepairL struct{}
 
 var (
-	assetRepairAllColumns            = []string{"id", "mech_id", "repair_mode", "complete_until", "full_repair_fee", "created_at"}
-	assetRepairColumnsWithoutDefault = []string{"mech_id", "complete_until", "full_repair_fee"}
-	assetRepairColumnsWithDefault    = []string{"id", "repair_mode", "created_at"}
+	assetRepairAllColumns            = []string{"id", "mech_id", "repair_complete_at", "full_repair_fee", "pay_to_repair_tx_id", "created_at"}
+	assetRepairColumnsWithoutDefault = []string{"mech_id", "repair_complete_at", "full_repair_fee"}
+	assetRepairColumnsWithDefault    = []string{"id", "pay_to_repair_tx_id", "created_at"}
 	assetRepairPrimaryKeyColumns     = []string{"id"}
 	assetRepairGeneratedColumns      = []string{}
 )
