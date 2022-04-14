@@ -481,13 +481,25 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 			if abilities, ok := as.factionUniqueAbilities[cont.factionID]; ok {
 				// check ability exists
 				if ability, ok := abilities[cont.abilityIdentity]; ok {
+					// check contribute is for the current offered ability
+					abilityOfferingID, err := uuid.FromString(cont.abilityOfferingID)
+					if err != nil || abilityOfferingID.IsNil() {
+						gamelog.L.Error().Err(err).Msg("invalid ability offer id received")
+						continue
+					}
+					if abilityOfferingID != ability.OfferingID {
+						continue
+					}
+
+					// calculate amount from percentage of current sups
+					amount := ability.CurrentSups.Mul(cont.percentage)
 
 					// return early if battle stage is invalid
 					if as.battle().stage.Load() != BattleStagStart {
 						continue
 					}
 
-					actualSupSpent, isTriggered := ability.SupContribution(as.battle().arena.RPCClient, as.battle().ID, as.battle().BattleNumber, cont.userID, cont.amount)
+					actualSupSpent, isTriggered := ability.SupContribution(as.battle().arena.RPCClient, as.battle().ID, as.battle().BattleNumber, cont.userID, amount)
 					as.liveCount.AddSups(actualSupSpent)
 
 					// sups contribution
@@ -1209,8 +1221,20 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 			}
 
 			if factionAbility, ok := as.battleAbilityPool.Abilities.Load(cont.factionID.String()); ok {
+				// check contribute is for the current offered ability
+				abilityOfferingID, err := uuid.FromString(cont.abilityOfferingID)
+				if err != nil || abilityOfferingID.IsNil() {
+					gamelog.L.Error().Err(err).Msg("invalid ability offer id received")
+					continue
+				}
+				if abilityOfferingID != factionAbility.OfferingID {
+					continue
+				}
+				amount := factionAbility.CurrentSups.Mul(cont.percentage)
+				// amount := d.Mul(decimal.New(1, 18))
+
 				// contribute sups
-				actualSupSpent, abilityTriggered := factionAbility.SupContribution(as.battle().arena.RPCClient, as.battle().ID, as.battle().BattleNumber, cont.userID, cont.amount)
+				actualSupSpent, abilityTriggered := factionAbility.SupContribution(as.battle().arena.RPCClient, as.battle().ID, as.battle().BattleNumber, cont.userID, amount)
 				as.liveCount.AddSups(actualSupSpent)
 
 				if abilityTriggered {
@@ -1361,10 +1385,11 @@ func (as *AbilitiesSystem) SetNewBattleAbility() (int, error) {
 }
 
 type Contribution struct {
-	factionID       uuid.UUID
-	userID          uuid.UUID
-	amount          decimal.Decimal
-	abilityIdentity string
+	factionID         uuid.UUID
+	userID            uuid.UUID
+	percentage        decimal.Decimal
+	abilityOfferingID string
+	abilityIdentity   string
 }
 
 // locationDecidersSet set a user list for location select for current ability triggered
@@ -1645,7 +1670,7 @@ func (as *AbilitiesSystem) BroadcastAbilityProgressBar() {
 // *********************
 // Handlers
 // *********************
-func (as *AbilitiesSystem) AbilityContribute(factionID uuid.UUID, userID uuid.UUID, abilityIdentity string, amount decimal.Decimal) {
+func (as *AbilitiesSystem) AbilityContribute(factionID uuid.UUID, userID uuid.UUID, abilityIdentity string, abilityOfferingID string, percentage decimal.Decimal) {
 	defer func() {
 		if r := recover(); r != nil {
 			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the AbilityContribute!", r)
@@ -1662,7 +1687,8 @@ func (as *AbilitiesSystem) AbilityContribute(factionID uuid.UUID, userID uuid.UU
 	cont := &Contribution{
 		factionID,
 		userID,
-		amount,
+		percentage,
+		abilityOfferingID,
 		abilityIdentity,
 	}
 
@@ -1723,7 +1749,7 @@ func (as *AbilitiesSystem) WarMachineAbilitiesGet(factionID uuid.UUID, hash stri
 	return abilities
 }
 
-func (as *AbilitiesSystem) BribeGabs(factionID uuid.UUID, userID uuid.UUID, amount decimal.Decimal) {
+func (as *AbilitiesSystem) BribeGabs(factionID uuid.UUID, userID uuid.UUID, abilityOfferingID string, percentage decimal.Decimal) {
 	defer func() {
 		if r := recover(); r != nil {
 			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the BribeGabs!", r)
@@ -1747,7 +1773,8 @@ func (as *AbilitiesSystem) BribeGabs(factionID uuid.UUID, userID uuid.UUID, amou
 	cont := &Contribution{
 		factionID,
 		userID,
-		amount,
+		percentage,
+		abilityOfferingID,
 		"",
 	}
 

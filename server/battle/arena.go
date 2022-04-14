@@ -311,7 +311,8 @@ func (arena *Arena) SetMessageBus(mb *messagebus.MessageBus) {
 type BribeGabRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		Amount string `json:"amount"` // "0.1", "1", "10"
+		AbilityOfferingID string          `json:"ability_offering_id"`
+		Percentage        decimal.Decimal `json:"percentage"` // "0.1", "0.5%", "1%"
 	} `json:"payload"`
 }
 
@@ -361,13 +362,6 @@ func (arena *Arena) BattleAbilityBribe(ctx context.Context, wsc *hub.Client, pay
 		return terror.Error(fmt.Errorf("player is banned to contribute sups"), "You are banned to contribute sups")
 	}
 
-	d, err := decimal.NewFromString(req.Payload.Amount)
-	if err != nil {
-		gamelog.L.Error().Str("amount", req.Payload.Amount).Msg("cant make moneys")
-		return terror.Error(err, "Failed to parse string to decimal.deciaml")
-	}
-	amount := d.Mul(decimal.New(1, 18))
-
 	userID := uuid.FromStringOrNil(wsc.Identifier())
 	if userID.IsNil() {
 		gamelog.L.Error().Str("user id is nil", wsc.Identifier()).Msg("cant make users")
@@ -375,7 +369,7 @@ func (arena *Arena) BattleAbilityBribe(ctx context.Context, wsc *hub.Client, pay
 		return terror.Error(terror.ErrForbidden)
 	}
 
-	arena.currentBattle().abilities().BribeGabs(factionID, userID, amount)
+	arena.currentBattle().abilities().BribeGabs(factionID, userID, req.Payload.AbilityOfferingID, req.Payload.Percentage)
 
 	return nil
 }
@@ -482,8 +476,9 @@ func (arena *Arena) BattleAbilityUpdateSubscribeHandler(ctx context.Context, wsc
 type GameAbilityContributeRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		AbilityIdentity string `json:"ability_identity"`
-		Amount          string `json:"amount"` // "0.1", "1", ""
+		AbilityIdentity   string          `json:"ability_identity"`
+		AbilityOfferingID string          `json:"ability_offering_id"`
+		Percentage        decimal.Decimal `json:"decimal"` // "0.1", "0.5%", "1%"
 	} `json:"payload"`
 }
 
@@ -536,22 +531,22 @@ func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, wsc *hub
 		return terror.Error(fmt.Errorf("player is banned to contribute sups"), "You are banned to contribute sups")
 	}
 
-	d, err := decimal.NewFromString(req.Payload.Amount)
-	if err != nil {
-		gamelog.L.Error().Str("amount", req.Payload.Amount).
-			Str("userID", wsc.Identifier()).Msg("Failed to parse string to decimal.deciaml")
-		return terror.Error(err, "Failed to parse string to decimal.deciaml")
-	}
-	amount := d.Mul(decimal.New(1, 18))
+	// d, err := decimal.NewFromString(req.Payload.Amount)
+	// if err != nil {
+	// 	gamelog.L.Error().Str("amount", req.Payload.Amount).
+	// 		Str("userID", wsc.Identifier()).Msg("Failed to parse string to decimal.deciaml")
+	// 	return terror.Error(err, "Failed to parse string to decimal.deciaml")
+	// }
+	// amount := d.Mul(decimal.New(1, 18))
 
 	userID := uuid.FromStringOrNil(wsc.Identifier())
 	if userID.IsNil() {
-		gamelog.L.Error().Str("amount", req.Payload.Amount).
+		gamelog.L.Error().Str("percentage", req.Payload.Percentage.String()).
 			Str("userID", wsc.Identifier()).Msg("unable to contribute forbidden")
 		return terror.Error(terror.ErrForbidden)
 	}
 
-	arena.currentBattle().abilities().AbilityContribute(factionID, userID, req.Payload.AbilityIdentity, amount)
+	arena.currentBattle().abilities().AbilityContribute(factionID, userID, req.Payload.AbilityIdentity, req.Payload.AbilityOfferingID, req.Payload.Percentage)
 
 	return nil
 }
