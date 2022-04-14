@@ -14,6 +14,8 @@ import (
 	"server/rpcclient"
 	"time"
 
+	"github.com/rs/zerolog"
+
 	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
