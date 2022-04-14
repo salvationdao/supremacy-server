@@ -170,7 +170,7 @@ func (arena *Arena) AssetRepairPayFeeHandler(ctx context.Context, hubc *hub.Clie
 	txID, err := arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
 		FromUserID:           playerID,
 		ToUserID:             uuid.FromStringOrNil(factionAccountID),
-		Amount:               fee.StringFixed(18),
+		Amount:               fee.StringFixed(0),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("pay_asset_repair_fee|%s|%d", ar.ID, time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupBattle),
 		Description:          "Paying asset repair fee " + ar.ID + ".",
