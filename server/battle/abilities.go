@@ -762,7 +762,7 @@ func (ga *GameAbility) SupContribution(ppClient *rpcclient.PassportXrpcClient, b
 				Amount:       amount,
 				AmountSent:   decimal.Zero,
 				CurrentTick:  0,
-				MaxTicks:     20,
+				MaxTicks:     20, // ideally this comes from the sow config?
 			}
 			err = spoil.Insert(gamedb.StdConn, boil.Infer())
 			if err != nil {

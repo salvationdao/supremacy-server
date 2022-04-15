@@ -309,7 +309,7 @@ func (btl *Battle) start() {
 	// set up the abilities for current battle
 
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle spoils")
-	btl.spoils = NewSpoilsOfWar(btl, 30*time.Second, 30*time.Second)
+	btl.spoils = NewSpoilsOfWar(btl, 15*time.Second, 15*time.Second, 20)
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle abilities")
 	btl.storeAbilities(NewAbilitiesSystem(btl))
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle multipliers")
@@ -1097,15 +1097,15 @@ func (btl *Battle) insertUserSpoils(btlEndInfo *BattleEndDetail) {
 		totalAssignedToPlayers = totalAssignedToPlayers.Add(playerTotalSow)
 	}
 
-	if totalAssignedToPlayers.RoundDown(0).Equal(spoils.Amount) { // we gucci
+	if totalAssignedToPlayers.Round(0).Equal(spoils.Amount) { // we gucci
 		return
-	} else if totalAssignedToPlayers.RoundDown(0).GreaterThan(spoils.Amount) { // if we assigned too much, panic because shit broke
+	} else if totalAssignedToPlayers.Round(0).GreaterThan(spoils.Amount) { // if we assigned too much, panic because shit broke
 		gamelog.L.Panic().
 			Str("totalAssignedToPlayers", totalAssignedToPlayers.String()).
 			Str("spoils.Amount", spoils.Amount.String()).
 			Err(fmt.Errorf("assigned more sups than what is in the spoils")).
 			Msg("issue assigning spoils")
-	} else if totalAssignedToPlayers.RoundDown(0).LessThan(spoils.Amount) { // we didn't give them all out
+	} else if totalAssignedToPlayers.Round(0).LessThan(spoils.Amount) { // we didn't give them all out
 		gamelog.L.Error().
 			Str("totalAssignedToPlayers", totalAssignedToPlayers.String()).
 			Str("spoils.Amount", spoils.Amount.String()).
@@ -1128,13 +1128,38 @@ func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 					TotalMultipliers: multipliers.FriendlyFormatMultiplier(total),
 					UserMultipliers:  m,
 				},
-			},
-		}
+			}}
 
 		user.Send(HubKeyBattleEndDetailUpdated, info)
 
-		// broadcast user stat to user
+		// broadcast users multies and stats
 		go func(user *BattleUser) {
+			// get last 3 battles
+			spoils, err := boiler.SpoilsOfWars(
+				boiler.SpoilsOfWarWhere.CreatedAt.GT(time.Now().AddDate(0, 0, -1)),
+				boiler.SpoilsOfWarWhere.LeftoversTransactionID.IsNull(),
+				qm.And("amount > amount_sent"),
+			).All(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Str("SpoilsOfWarWhere.CreatedAt.GT", time.Now().AddDate(0, 0, -1).String()).Err(err).Msg("issue getting SpoilsOfWars")
+				// handle
+			} else {
+				resp := &MultiplierUpdate{
+					Battles: []*MultiplierUpdateBattles{},
+				}
+
+				for _, spoil := range spoils {
+					m, total, _ := multipliers.GetPlayerMultipliersForBattle(user.ID.String(), spoil.BattleNumber)
+					resp.Battles = append(resp.Battles, &MultiplierUpdateBattles{
+						BattleNumber:     spoil.BattleNumber,
+						TotalMultipliers: multipliers.FriendlyFormatMultiplier(total),
+						UserMultipliers:  m,
+					})
+				}
+
+				btl.arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyMultiplierSubscribe, user.ID.String())), resp)
+			}
+
 			us, err := db.UserStatsGet(user.ID.String())
 			if err != nil {
 				gamelog.L.Error().Str("player_id", user.ID.String()).Err(err).Msg("Failed to get user stats")

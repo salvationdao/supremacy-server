@@ -97,32 +97,31 @@ type GameNotification struct {
 	Data interface{}          `json:"data"`
 }
 
-const HubKeyMultiplierUpdate hub.HubCommandKey = "USER:MULTIPLIERS:GET"
+const HubKeyMultiplierSubscribe hub.HubCommandKey = "USER:MULTIPLIERS:SUBSCRIBE"
 
 const HubKeyUserMultiplierSignalUpdate hub.HubCommandKey = "USER:MULTIPLIER:SIGNAL:SUBSCRIBE"
 
-func (arena *Arena) HubKeyMultiplierUpdate(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (arena *Arena) HubKeyMultiplierUpdate(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err)
+		return "", "", terror.Error(err)
 	}
 
 	id, err := uuid.FromString(wsc.Identifier())
 	if err != nil {
 		gamelog.L.Warn().Err(err).Str("id", wsc.Identifier()).Msg("unable to create uuid from websocket client identifier id")
-		return terror.Error(err, "Unable to create uuid from websocket client identifier id")
+		return "", "", terror.Error(err, "Unable to create uuid from websocket client identifier id")
 	}
 
-	// get last 5 battles
-	last5Battles, err := boiler.Battles(
-		boiler.BattleWhere.EndedAt.IsNotNull(),
-		qm.OrderBy("ended_at desc"),
-		qm.Limit(5),
+	spoils, err := boiler.SpoilsOfWars(
+		boiler.SpoilsOfWarWhere.CreatedAt.GT(time.Now().AddDate(0, 0, -1)),
+		boiler.SpoilsOfWarWhere.LeftoversTransactionID.IsNull(),
+		qm.And("amount > amount_sent"),
 	).All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("")
-		return terror.Error(err, "Unable to get recently battle multipliers.")
+		return "", "", terror.Error(err, "Unable to get recently battle multipliers.")
 		// handle
 	}
 
@@ -130,17 +129,17 @@ func (arena *Arena) HubKeyMultiplierUpdate(ctx context.Context, wsc *hub.Client,
 		Battles: []*MultiplierUpdateBattles{},
 	}
 
-	for _, battle := range last5Battles {
-		m, total, _ := multipliers.GetPlayerMultipliersForBattle(id.String(), battle.BattleNumber)
+	for _, spoil := range spoils {
+		m, total, _ := multipliers.GetPlayerMultipliersForBattle(id.String(), spoil.BattleNumber)
 		resp.Battles = append(resp.Battles, &MultiplierUpdateBattles{
-			BattleNumber:     battle.BattleNumber,
+			BattleNumber:     spoil.BattleNumber,
 			TotalMultipliers: multipliers.FriendlyFormatMultiplier(total),
 			UserMultipliers:  m,
 		})
 	}
 
-	reply(reply)
-	return nil
+	reply(resp)
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyMultiplierSubscribe, wsc.Identifier())), nil
 }
 
 const HubKeyViewerLiveCountUpdated = hub.HubCommandKey("VIEWER:LIVE:COUNT:UPDATED")

@@ -8,9 +8,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 
-	"github.com/davecgh/go-spew/spew"
-
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+		"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/shopspring/decimal"
 )
@@ -25,6 +23,7 @@ type PlayerMultiplier struct {
 	Description      string          `json:"description"`
 	Value            decimal.Decimal `json:"value"`
 	IsMultiplicative bool            `json:"is_multiplicative"`
+	BattleNumber     int             `json:"battle_number"`
 }
 
 // GetPlayersMultiplierSummaryForBattle gets the summary for multipliers for all user multis in a battle
@@ -58,8 +57,6 @@ func GetPlayersMultiplierSummaryForBattle(battleNumber int) ([]*MultiplierSummar
 		})
 	}
 
-	spew.Dump(result)
-
 	return result, nil
 }
 
@@ -71,13 +68,16 @@ func GetPlayerMultipliersForBattle(playerID string, battleNumber int) ([]*Player
 		boiler.UserMultiplierWhere.UntilBattleNumber.GT(battleNumber),
 		qm.Load(boiler.UserMultiplierRels.Multiplier),
 	).All(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().
-			Str("playerID.String()", playerID).
-			Int("battleNumber", battleNumber).
-			Err(err).
-			Msg("unable to retrieve player multipliers")
-		return []*PlayerMultiplier{}, decimal.Decimal{}, false
+	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().
+				Str("playerID.String()", playerID).
+				Int("battleNumber", battleNumber).
+				Err(err).
+				Msg("unable to retrieve player multipliers")
+			return []*PlayerMultiplier{}, decimal.Zero, false
+		}
+		return nil, decimal.Zero, false
 	}
 
 	playerMulties, total := calculateSingleUserMultiplierValues(userMultipliers)
@@ -95,6 +95,7 @@ func calculateSingleUserMultiplierValues(userMultipliers []*boiler.UserMultiplie
 			Key:              m.R.Multiplier.Key,
 			Description:      m.R.Multiplier.Description,
 			IsMultiplicative: m.R.Multiplier.IsMultiplicative,
+			BattleNumber:     m.FromBattleNumber,
 		}
 
 		if !m.R.Multiplier.IsMultiplicative {
@@ -137,5 +138,5 @@ func CalculateMultipliersWorth(oneMultiWorth decimal.Decimal, totalMultiplier de
 
 // FriendlyFormatMultiplier returns a total multiplier in the format "65.5x", example FriendlyFormatMultiplier(5665) = 566.5x
 func FriendlyFormatMultiplier(multi decimal.Decimal) string {
-	return fmt.Sprintf("%sx", multi.Shift(1).Round(1))
+	return fmt.Sprintf("%sx", multi.Shift(-1).Round(1))
 }

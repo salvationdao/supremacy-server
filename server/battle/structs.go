@@ -154,7 +154,7 @@ type BattleEndDetail struct {
 	TopSupsContributors          []*BattleUser `json:"top_sups_contributors"`
 	TopSupsContributeFactions    []*Faction    `json:"top_sups_contribute_factions"`
 	MostFrequentAbilityExecutors []*BattleUser `json:"most_frequent_ability_executors"`
-	*MultiplierUpdate
+	*MultiplierUpdate `json:"battle_multipliers"`
 }
 
 type MultiplierUpdate struct {

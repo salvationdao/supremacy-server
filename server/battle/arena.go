@@ -204,7 +204,7 @@ func NewArena(opts *Opts) *Arena {
 	opts.SubscribeCommand(HubKeyGameSettingsUpdated, arena.SendSettings)
 
 	opts.SubscribeCommand(HubKeyGameNotification, arena.GameNotificationSubscribeHandler)
-	opts.SecureUserCommand(HubKeyMultiplierUpdate, arena.HubKeyMultiplierUpdate)
+	opts.SecureUserSubscribeCommand(HubKeyMultiplierSubscribe, arena.HubKeyMultiplierUpdate)
 
 	opts.SecureUserSubscribeCommand(HubKeyUserStatSubscribe, arena.UserStatUpdatedSubscribeHandler)
 

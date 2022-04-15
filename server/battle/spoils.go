@@ -8,6 +8,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/multipliers"
 	"server/rpcclient"
 	"sync"
 	"time"
@@ -32,6 +33,7 @@ type SpoilsOfWar struct {
 	flushed       *atomic.Bool
 	tickSpeed     time.Duration
 	transactSpeed time.Duration
+	maxTicks      int
 	sync.RWMutex
 }
 
@@ -47,13 +49,14 @@ func (sow *SpoilsOfWar) storeBattle(btl *Battle) {
 	sow._battle = btl
 }
 
-func NewSpoilsOfWar(btl *Battle, transactSpeed time.Duration, dripSpeed time.Duration) *SpoilsOfWar {
+func NewSpoilsOfWar(btl *Battle, transactSpeed time.Duration, dripSpeed time.Duration, maxTicks int) *SpoilsOfWar {
 	spw := &SpoilsOfWar{
 		_battle:       btl,
 		transactSpeed: transactSpeed,
 		flushCh:       make(chan bool),
 		flushed:       atomic.NewBool(false),
 		tickSpeed:     dripSpeed,
+		maxTicks:      maxTicks,
 	}
 
 	sow, err := boiler.SpoilsOfWars(boiler.SpoilsOfWarWhere.BattleID.EQ(btl.BattleID)).One(gamedb.StdConn)
@@ -70,7 +73,7 @@ func NewSpoilsOfWar(btl *Battle, transactSpeed time.Duration, dripSpeed time.Dur
 			Amount:       decimal.Zero,
 			AmountSent:   decimal.Zero,
 			CurrentTick:  0,
-			MaxTicks:     20,
+			MaxTicks:     maxTicks,
 		}
 
 		_ = sow.Insert(gamedb.StdConn, boil.Infer())
@@ -141,6 +144,8 @@ func (sow *SpoilsOfWar) Drip() error {
 	spoilsOfWars, err := boiler.SpoilsOfWars(
 		boiler.SpoilsOfWarWhere.CreatedAt.GT(yesterday),
 		boiler.SpoilsOfWarWhere.BattleID.NEQ(sow.battle().ID),
+		boiler.SpoilsOfWarWhere.LeftoversTransactionID.IsNull(),
+		boiler.SpoilsOfWarWhere.CurrentTick.LTE(sow.maxTicks),
 		qm.And(`amount_sent < amount`),
 		qm.OrderBy(fmt.Sprintf("%s %s", boiler.SpoilsOfWarColumns.CreatedAt, "DESC")),
 	).All(gamedb.StdConn)
@@ -183,7 +188,24 @@ func (sow *SpoilsOfWar) Drip() error {
 
 		// the below code cleans up legacy spoils paymout methods, can be removed in future deployments
 		if userSpoils == nil || len(userSpoils) == 0 {
-			// TODO: if userspoils is missing, assume old battle and flush out the spoils
+			multipliers, err := multipliers.GetPlayersMultiplierSummaryForBattle(spoils.BattleNumber)
+			if err != nil {
+				gamelog.L.Error().
+					Err(err).
+					Int("spoils.BattleNumber", spoils.BattleNumber).
+					Msg("failed to get player multipliers for battle")
+				continue
+			}
+
+			spoils = flushOutOldSpoils(spoils, multipliers, sendSups)
+
+			_, err = spoils.Update(gamedb.StdConn, boil.Infer())
+			if err != nil {
+				gamelog.L.Error().
+					Err(err).
+					Interface("battle spoils", spoils).
+					Msg("failed to update battle spoils")
+			}
 			continue
 		}
 
@@ -217,7 +239,6 @@ func (sow *SpoilsOfWar) Drip() error {
 			}
 		}
 
-		// update spoils (payoutRemainingUserSpoils/payoutUserSpoils mutates it)
 		_, err = spoils.Update(gamedb.StdConn, boil.Infer())
 		if err != nil {
 			gamelog.L.Error().
@@ -228,6 +249,60 @@ func (sow *SpoilsOfWar) Drip() error {
 	}
 
 	return nil
+}
+
+// flushOutOldSpoils gets all user multipliers for that battle and flushes out the remaining spoils
+func flushOutOldSpoils(
+	spoils *boiler.SpoilsOfWar,
+	multipliers []*multipliers.MultiplierSummary,
+	sendSups func(userID uuid.UUID, amount string, txr string) (string, error),
+) *boiler.SpoilsOfWar {
+	amountLeft := spoils.Amount.Sub(spoils.AmountSent)
+	oneMultiWorth := decimal.Zero
+	totalMultis := decimal.Zero
+
+	for _, multi := range multipliers {
+		totalMultis = totalMultis.Add(multi.TotalMultiplier)
+	}
+
+	oneMultiWorth = amountLeft.Div(totalMultis)
+
+	for _, multi := range multipliers {
+		userAmount := oneMultiWorth.Mul(multi.TotalMultiplier)
+		playerUUID, err := uuid.FromString(multi.PlayerID)
+		if err != nil {
+			gamelog.L.Error().
+				Err(err).
+				Str("multi.PlayerID", multi.PlayerID).
+				Msg("failed to make uuid from string")
+			continue
+		}
+
+		if spoils.AmountSent.Add(userAmount).GreaterThan(spoils.Amount) {
+			gamelog.L.Error().
+				Err(err).
+				Str("userAmount", userAmount.String()).
+				Str("spoils.AmountSent", spoils.AmountSent.String()).
+				Str("spoils.Amount", spoils.Amount.String()).
+				Msg("spoils doesn't have enough to make this payout")
+			continue
+		}
+
+		_, err = sendSups(playerUUID, userAmount.String(), fmt.Sprintf("spoils_of_war|%s|%d", multi.PlayerID, time.Now().UnixNano()))
+		if err != nil {
+			gamelog.L.Error().
+				Err(err).
+				Str("playerUUID", playerUUID.String()).
+				Str("userAmount.", userAmount.String()).
+				Str("txr", "").
+				Msg("failed to send user their spoils")
+			continue
+		}
+
+		spoils.AmountSent = spoils.AmountSent.Add(userAmount)
+	}
+
+	return spoils
 }
 
 // payoutUserSpoils checks the user is online,
@@ -341,72 +416,3 @@ func takeRemainingSpoils(
 
 	return userSpoils, spoils
 }
-
-//// payoutRemainingUserSpoils takes the leftover spoils and gives them out to online users,
-//// mutates and returns userSpoils and spoils
-//func payoutRemainingUserSpoils(
-//	userSpoils []*boiler.UserSpoilsOfWar,
-//	spoils *boiler.SpoilsOfWar,
-//	isOnline func(userID uuid.UUID) bool,
-//	sendSups func(userID uuid.UUID, amount string, txr string) (string, error),
-//) ([]*boiler.UserSpoilsOfWar, *boiler.SpoilsOfWar) {
-//	var onlineUserSpoils []*boiler.UserSpoilsOfWar
-//	var offlineUserSpoils []*boiler.UserSpoilsOfWar
-//	for _, user := range userSpoils {
-//		userID, err := uuid.FromString(user.PlayerID)
-//		if err != nil {
-//			gamelog.L.Error().
-//				Err(err).
-//				Str("user.PlayerID", user.PlayerID).
-//				Msg("failed to create uuid from player id")
-//			continue
-//		}
-//		if isOnline(userID) {
-//			onlineUserSpoils = append(onlineUserSpoils, user)
-//		} else {
-//			offlineUserSpoils = append(offlineUserSpoils, user)
-//		}
-//	}
-//
-//	spoilsAmountLeft := spoils.Amount.Sub(spoils.AmountSent)
-//	totalMulties := decimal.Zero
-//	for _, user := range onlineUserSpoils {
-//		totalMulties = totalMulties.Add(decimal.NewFromInt(int64(user.TotalMultiplierForBattle)))
-//	}
-//
-//	oneMultiWorth := spoilsAmountLeft.Div(totalMulties)
-//
-//	for _, user := range onlineUserSpoils {
-//		usersPayout := oneMultiWorth.Mul(decimal.NewFromInt(int64(user.TotalMultiplierForBattle)))
-//		userID, err := uuid.FromString(user.PlayerID)
-//		if err != nil {
-//			gamelog.L.Error().
-//				Err(err).
-//				Str("user.PlayerID", user.PlayerID).
-//				Msg("failed to create uuid from player id")
-//			continue
-//		}
-//		txr := fmt.Sprintf("spoils_of_war|%s|%d", userID, time.Now().UnixNano())
-//		txID, err := sendSups(userID, usersPayout.String(), txr)
-//		if err != nil {
-//			gamelog.L.Error().
-//				Err(err).
-//				Str("FromUserID", SupremacyBattleUserID.String()).
-//				Str("ToUserID", userID.String()).
-//				Str("Amount", user.TickAmount.String()).
-//				Str("TransactionReference", txr).
-//				Msg("unable to send spoils of war transaction")
-//			continue
-//		}
-//		spoils.AmountSent = spoils.AmountSent.Add(usersPayout)                // add this battles amount sent
-//		user.PaidSow = user.PaidSow.Add(usersPayout)                          // add this user sow amount sent
-//		user.RelatedTransactionIds = append(user.RelatedTransactionIds, txID) // add the tx id from sending spoils
-//	}
-//
-//	// for all the offline users set their low sow
-//	for _, user := range offlineUserSpoils {
-//		user.LostSow = user.TotalSow.Sub(user.PaidSow)
-//	}
-//
-//	return append(onlineUserSpoils, offlineUserSpoils...), spoils
-//}
