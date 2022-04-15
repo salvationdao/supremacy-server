@@ -543,7 +543,7 @@ winwar:
 			mlt := &boiler.UserMultiplier{
 				PlayerID:          pid,
 				FromBattleNumber:  ms.battle.BattleNumber,
-				UntilBattleNumber: ms.battle.BattleNumber,
+				UntilBattleNumber: ms.battle.BattleNumber + 1,
 				MultiplierID:      m.ID,
 				Value:             m.Value,
 				//ObtainedAtBattleSeconds: battleEndSeconds,

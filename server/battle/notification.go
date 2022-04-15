@@ -121,10 +121,14 @@ func (arena *Arena) HubKeyMultiplierUpdate(ctx context.Context, wsc *hub.Client,
 		qm.Limit(5),
 	).All(gamedb.StdConn)
 	if err != nil {
+		gamelog.L.Error().Err(err).Msg("")
+		return terror.Error(err, "Unable to get recently battle multipliers.")
 		// handle
 	}
 
-	var resp *MultiplierUpdate
+	resp := &MultiplierUpdate{
+		Battles: []*MultiplierUpdateBattles{},
+	}
 
 	for _, battle := range last5Battles {
 		m, total, _ := multipliers.GetPlayerMultipliersForBattle(id.String(), battle.BattleNumber)

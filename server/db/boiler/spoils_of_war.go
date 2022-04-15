@@ -33,6 +33,7 @@ type SpoilsOfWar struct {
 	UpdatedAt              time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	CurrentTick            int             `boiler:"current_tick" boil:"current_tick" json:"current_tick" toml:"current_tick" yaml:"current_tick"`
 	MaxTicks               int             `boiler:"max_ticks" boil:"max_ticks" json:"max_ticks" toml:"max_ticks" yaml:"max_ticks"`
+	LeftoverAmount         decimal.Decimal `boiler:"leftover_amount" boil:"leftover_amount" json:"leftover_amount" toml:"leftover_amount" yaml:"leftover_amount"`
 	LeftoversTransactionID null.String     `boiler:"leftovers_transaction_id" boil:"leftovers_transaction_id" json:"leftovers_transaction_id,omitempty" toml:"leftovers_transaction_id" yaml:"leftovers_transaction_id,omitempty"`
 
 	R *spoilsOfWarR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -49,6 +50,7 @@ var SpoilsOfWarColumns = struct {
 	UpdatedAt              string
 	CurrentTick            string
 	MaxTicks               string
+	LeftoverAmount         string
 	LeftoversTransactionID string
 }{
 	ID:                     "id",
@@ -60,6 +62,7 @@ var SpoilsOfWarColumns = struct {
 	UpdatedAt:              "updated_at",
 	CurrentTick:            "current_tick",
 	MaxTicks:               "max_ticks",
+	LeftoverAmount:         "leftover_amount",
 	LeftoversTransactionID: "leftovers_transaction_id",
 }
 
@@ -73,6 +76,7 @@ var SpoilsOfWarTableColumns = struct {
 	UpdatedAt              string
 	CurrentTick            string
 	MaxTicks               string
+	LeftoverAmount         string
 	LeftoversTransactionID string
 }{
 	ID:                     "spoils_of_war.id",
@@ -84,6 +88,7 @@ var SpoilsOfWarTableColumns = struct {
 	UpdatedAt:              "spoils_of_war.updated_at",
 	CurrentTick:            "spoils_of_war.current_tick",
 	MaxTicks:               "spoils_of_war.max_ticks",
+	LeftoverAmount:         "spoils_of_war.leftover_amount",
 	LeftoversTransactionID: "spoils_of_war.leftovers_transaction_id",
 }
 
@@ -99,6 +104,7 @@ var SpoilsOfWarWhere = struct {
 	UpdatedAt              whereHelpertime_Time
 	CurrentTick            whereHelperint
 	MaxTicks               whereHelperint
+	LeftoverAmount         whereHelperdecimal_Decimal
 	LeftoversTransactionID whereHelpernull_String
 }{
 	ID:                     whereHelperstring{field: "\"spoils_of_war\".\"id\""},
@@ -110,6 +116,7 @@ var SpoilsOfWarWhere = struct {
 	UpdatedAt:              whereHelpertime_Time{field: "\"spoils_of_war\".\"updated_at\""},
 	CurrentTick:            whereHelperint{field: "\"spoils_of_war\".\"current_tick\""},
 	MaxTicks:               whereHelperint{field: "\"spoils_of_war\".\"max_ticks\""},
+	LeftoverAmount:         whereHelperdecimal_Decimal{field: "\"spoils_of_war\".\"leftover_amount\""},
 	LeftoversTransactionID: whereHelpernull_String{field: "\"spoils_of_war\".\"leftovers_transaction_id\""},
 }
 
@@ -137,9 +144,9 @@ func (*spoilsOfWarR) NewStruct() *spoilsOfWarR {
 type spoilsOfWarL struct{}
 
 var (
-	spoilsOfWarAllColumns            = []string{"id", "battle_id", "battle_number", "amount", "amount_sent", "created_at", "updated_at", "current_tick", "max_ticks", "leftovers_transaction_id"}
+	spoilsOfWarAllColumns            = []string{"id", "battle_id", "battle_number", "amount", "amount_sent", "created_at", "updated_at", "current_tick", "max_ticks", "leftover_amount", "leftovers_transaction_id"}
 	spoilsOfWarColumnsWithoutDefault = []string{"battle_id", "battle_number", "amount"}
-	spoilsOfWarColumnsWithDefault    = []string{"id", "amount_sent", "created_at", "updated_at", "current_tick", "max_ticks", "leftovers_transaction_id"}
+	spoilsOfWarColumnsWithDefault    = []string{"id", "amount_sent", "created_at", "updated_at", "current_tick", "max_ticks", "leftover_amount", "leftovers_transaction_id"}
 	spoilsOfWarPrimaryKeyColumns     = []string{"id"}
 	spoilsOfWarGeneratedColumns      = []string{}
 )

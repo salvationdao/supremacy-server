@@ -321,6 +321,7 @@ func takeRemainingSpoils(
 		return userSpoils, spoils
 	}
 
+	spoils.LeftoverAmount = remainingSpoils
 	spoils.LeftoversTransactionID = null.StringFrom(txid)
 
 	// update all users with their lost spoils

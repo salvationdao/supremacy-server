@@ -8,6 +8,8 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 
+	"github.com/davecgh/go-spew/spew"
+
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/shopspring/decimal"
@@ -55,6 +57,8 @@ func GetPlayersMultiplierSummaryForBattle(battleNumber int) ([]*MultiplierSummar
 			TotalMultiplier: total,
 		})
 	}
+
+	spew.Dump(result)
 
 	return result, nil
 }
@@ -117,6 +121,10 @@ func CalculateOneMultiWorth(multis []*MultiplierSummary, spoilsTotal decimal.Dec
 
 	for _, player := range multis {
 		totalMultis = totalMultis.Add(player.TotalMultiplier)
+	}
+
+	if totalMultis.IsZero() {
+		return decimal.Zero
 	}
 
 	return spoilsTotal.Div(totalMultis)

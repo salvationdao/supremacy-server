@@ -669,12 +669,15 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 		).One(gamedb.StdConn)
 
 		if err != nil && errors.Is(err, sql.ErrNoRows) {
-			gamelog.L.Error().
-				Str("Battle ID", btl.ID).
-				Str("Mech ID", wm.ID).
-				Err(err).
-				Msg("no contract in database")
-
+			if mws[i].OwnerID.String() != server.RedMountainPlayerID &&
+				mws[i].OwnerID.String() != server.BostonCyberneticsPlayerID &&
+				mws[i].OwnerID.String() != server.ZaibatsuPlayerID {
+				gamelog.L.Error().
+					Str("Battle ID", btl.ID).
+					Str("Mech ID", wm.ID).
+					Err(err).
+					Msg("no contract in database")
+			}
 			continue
 		} else if err != nil {
 			gamelog.L.Error().
@@ -852,7 +855,9 @@ func (btl *Battle) endWarMachines(payload *BattleEndPayload) []*WarMachine {
 
 			bqn, err := boiler.BattleQueueNotifications(boiler.BattleQueueNotificationWhere.MechID.EQ(bm.MechID), qm.OrderBy(boiler.BattleQueueNotificationColumns.SentAt+" DESC")).One(gamedb.StdConn)
 			if err != nil {
-				gamelog.L.Error().Str("bm.MechID", bm.MechID).Err(err).Msg("failed to get BattleQueueNotifications")
+				if !errors.Is(err, sql.ErrNoRows) {
+					gamelog.L.Error().Str("bm.MechID", bm.MechID).Err(err).Msg("failed to get BattleQueueNotifications")
+				}
 			} else {
 				if bqn.TelegramNotificationID.Valid {
 					// killed a war machine
@@ -1051,6 +1056,10 @@ func (btl *Battle) insertUserSpoils(btlEndInfo *BattleEndDetail) {
 		return
 	}
 
+	if spoils.Amount.IsZero() {
+		return
+	}
+
 	// get player multies
 	playerMultis, err := multipliers.GetPlayersMultiplierSummaryForBattle(btlEndInfo.BattleIdentifier)
 	if err != nil {
@@ -1088,15 +1097,15 @@ func (btl *Battle) insertUserSpoils(btlEndInfo *BattleEndDetail) {
 		totalAssignedToPlayers = totalAssignedToPlayers.Add(playerTotalSow)
 	}
 
-	if totalAssignedToPlayers.Equal(spoils.Amount) { // we gucci
+	if totalAssignedToPlayers.RoundDown(0).Equal(spoils.Amount) { // we gucci
 		return
-	} else if totalAssignedToPlayers.GreaterThan(spoils.Amount) { // if we assigned too much, panic because shit broke
+	} else if totalAssignedToPlayers.RoundDown(0).GreaterThan(spoils.Amount) { // if we assigned too much, panic because shit broke
 		gamelog.L.Panic().
 			Str("totalAssignedToPlayers", totalAssignedToPlayers.String()).
 			Str("spoils.Amount", spoils.Amount.String()).
 			Err(fmt.Errorf("assigned more sups than what is in the spoils")).
 			Msg("issue assigning spoils")
-	} else if totalAssignedToPlayers.LessThan(spoils.Amount) { // we didn't give them all out
+	} else if totalAssignedToPlayers.RoundDown(0).LessThan(spoils.Amount) { // we didn't give them all out
 		gamelog.L.Error().
 			Str("totalAssignedToPlayers", totalAssignedToPlayers.String()).
 			Str("spoils.Amount", spoils.Amount.String()).

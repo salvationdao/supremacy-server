@@ -209,7 +209,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 
 	// Charge user queue fee
 	supTransactionID, err := arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
-		Amount:               queueStatus.QueueCost.StringFixed(18),
+		Amount:               queueStatus.QueueCost.String(),
 		FromUserID:           ownerID,
 		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("war_machine_queueing_fee|%s|%d", msg.Payload.AssetHash, time.Now().UnixNano())),
@@ -564,7 +564,7 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 			// TODO: Eventually all battle queues will have transaction ids to refund against, but legency queue will not. So keeping below until all legacy queues have passed
 			// Refund user queue fee
 			queueRefundTransactionID, err := arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
-				Amount:               originalQueueCost.StringFixed(18),
+				Amount:               originalQueueCost.String(),
 				FromUserID:           uuid.Must(uuid.FromString(factionAccountID)),
 				ToUserID:             ownerID,
 				TransactionReference: server.TransactionReference(fmt.Sprintf("refund_war_machine_queueing_fee|%s|%d", msg.Payload.AssetHash, time.Now().UnixNano())),
@@ -611,7 +611,7 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 			// TODO: Eventually all battle queues will have transaction ids to refund against, but legency queue will not. So keeping below until all legacy queues have passed
 			notifyCost := originalQueueCost.Mul(decimal.NewFromFloat(0.1))
 			queueNotificationRefundTransactionID, err := arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
-				Amount:               notifyCost.StringFixed(18),
+				Amount:               notifyCost.String(),
 				FromUserID:           uuid.Must(uuid.FromString(factionAccountID)),
 				ToUserID:             ownerID,
 				TransactionReference: server.TransactionReference(fmt.Sprintf("refund_war_machine_queue_notification_fee|%s|%d", msg.Payload.AssetHash, time.Now().UnixNano())),
