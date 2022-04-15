@@ -9,6 +9,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/multipliers"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -113,25 +114,28 @@ func (arena *Arena) HubKeyMultiplierUpdate(ctx context.Context, wsc *hub.Client,
 		return terror.Error(err, "Unable to create uuid from websocket client identifier id")
 	}
 
-	// return multiplier if battle is on
-	m, total := PlayerMultipliers(id, arena.BattleSeconds())
-
-	reply(&MultiplierUpdate{
-		UserMultipliers:  m,
-		TotalMultipliers: fmt.Sprintf("%sx", total),
-	})
-
-	// if battle is started send tick down signal
-	if arena.currentBattle() != nil && arena.currentBattle().battleSecondCloseChan != nil {
-		b, err := json.Marshal(&BroadcastPayload{
-			Key:     HubKeyUserMultiplierSignalUpdate,
-			Payload: true,
-		})
-		if err != nil {
-			return terror.Error(err, "Failed to send ticker signal")
-		}
-		go wsc.Send(b)
+	// get last 5 battles
+	last5Battles, err := boiler.Battles(
+		boiler.BattleWhere.EndedAt.IsNotNull(),
+		qm.OrderBy("ended_at desc"),
+		qm.Limit(5),
+	).All(gamedb.StdConn)
+	if err != nil {
+		// handle
 	}
+
+	var resp *MultiplierUpdate
+
+	for _, battle := range last5Battles {
+		m, total, _ := multipliers.GetPlayerMultipliersForBattle(id.String(), battle.BattleNumber)
+		resp.Battles = append(resp.Battles, &MultiplierUpdateBattles{
+			BattleNumber:     battle.BattleNumber,
+			TotalMultipliers: multipliers.FriendlyFormatMultiplier(total),
+			UserMultipliers:  m,
+		})
+	}
+
+	reply(reply)
 	return nil
 }
 

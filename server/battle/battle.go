@@ -12,14 +12,13 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/multipliers"
 	"server/rpcclient"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/sasha-s/go-deadlock"
 
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
@@ -45,58 +44,58 @@ const (
 )
 
 type Battle struct {
-	arena                 *Arena
-	stage                 *atomic.Int32
-	BattleID              string        `json:"battleID"`
-	MapName               string        `json:"mapName"`
-	WarMachines           []*WarMachine `json:"warMachines"`
-	SpawnedAI             []*WarMachine `json:"SpawnedAI"`
-	warMachineIDs         []uuid.UUID   `json:"ids"`
-	lastTick              *[]byte
-	gameMap               *server.GameMap
-	_abilities            *AbilitiesSystem
-	_battleSeconds        decimal.Decimal
-	battleSecondCloseChan chan bool
-	users                 usersMap
-	factions              map[uuid.UUID]*boiler.Faction
-	multipliers           *MultiplierSystem
-	spoils                *SpoilsOfWar
-	rpcClient             *rpcclient.XrpcClient
-	battleMechData        []*db.BattleMechData
-	startedAt             time.Time
+	arena         *Arena
+	stage         *atomic.Int32
+	BattleID      string        `json:"battleID"`
+	MapName       string        `json:"mapName"`
+	WarMachines   []*WarMachine `json:"warMachines"`
+	SpawnedAI     []*WarMachine `json:"SpawnedAI"`
+	warMachineIDs []uuid.UUID   `json:"ids"`
+	lastTick      *[]byte
+	gameMap       *server.GameMap
+	_abilities    *AbilitiesSystem
+	//_battleSeconds        decimal.Decimal
+	//battleSecondCloseChan chan bool
+	users          usersMap
+	factions       map[uuid.UUID]*boiler.Faction
+	multipliers    *MultiplierSystem
+	spoils         *SpoilsOfWar
+	rpcClient      *rpcclient.XrpcClient
+	battleMechData []*db.BattleMechData
+	startedAt      time.Time
 
 	destroyedWarMachineMap map[byte]*WMDestroyedRecord
 	*boiler.Battle
 
 	inserted bool
 
-	viewerCountInputChan chan (*ViewerLiveCount)
+	viewerCountInputChan chan *ViewerLiveCount
 	sync.RWMutex
 }
 
-type BattleSeconds struct {
-	Current decimal.Decimal
-	deadlock.RWMutex
-}
+//type BattleSeconds struct {
+//	Current decimal.Decimal
+//	deadlock.RWMutex
+//}
 
-func (btl *Battle) battleSeconds() decimal.Decimal {
-	btl.RLock()
-	defer btl.RUnlock()
-	return btl._battleSeconds
-}
+//func (btl *Battle) battleSeconds() decimal.Decimal {
+//	btl.RLock()
+//	defer btl.RUnlock()
+//	return btl._battleSeconds
+//}
 
-func (btl *Battle) storeBattleSeconds(d decimal.Decimal) {
-	btl.Lock()
-	defer btl.Unlock()
-	btl._battleSeconds = d
-}
+//func (btl *Battle) storeBattleSeconds(d decimal.Decimal) {
+//	btl.Lock()
+//	defer btl.Unlock()
+//	btl._battleSeconds = d
+//}
 
-func (btl *Battle) increaseBattleSeconds(i int64) decimal.Decimal {
-	btl.Lock()
-	defer btl.Unlock()
-	btl._battleSeconds = btl._battleSeconds.Add(decimal.NewFromInt(i))
-	return btl._battleSeconds
-}
+//func (btl *Battle) increaseBattleSeconds(i int64) decimal.Decimal {
+//	btl.Lock()
+//	defer btl.Unlock()
+//	btl._battleSeconds = btl._battleSeconds.Add(decimal.NewFromInt(i))
+//	return btl._battleSeconds
+//}
 
 func (btl *Battle) abilities() *AbilitiesSystem {
 	btl.RLock()
@@ -289,7 +288,7 @@ func (btl *Battle) start() {
 	}
 
 	// start battle seconds ticker
-	btl.battleSecondCloseChan = btl.BattleSecondStartTicking()
+	//btl.battleSecondCloseChan = btl.BattleSecondStartTicking()
 
 	// insert current users to
 	btl.users.Range(func(user *BattleUser) bool {
@@ -370,25 +369,25 @@ func (btl *Battle) start() {
 
 }
 
-func (btl *Battle) BattleSecondStartTicking() chan bool {
-	interval := int64(1)
-	main_ticker := time.NewTicker(time.Duration(interval) * time.Second)
-	closeChan := make(chan bool)
-
-	go func() {
-		for {
-			select {
-			case <-main_ticker.C:
-				btl.increaseBattleSeconds(interval)
-			case <-closeChan:
-				main_ticker.Stop()
-				return
-			}
-		}
-	}()
-
-	return closeChan
-}
+//func (btl *Battle) BattleSecondStartTicking() chan bool {
+//	interval := int64(1)
+//	main_ticker := time.NewTicker(time.Duration(interval) * time.Second)
+//	closeChan := make(chan bool)
+//
+//	go func() {
+//		for {
+//			select {
+//			case <-main_ticker.C:
+//				btl.increaseBattleSeconds(interval)
+//			case <-closeChan:
+//				main_ticker.Stop()
+//				return
+//			}
+//		}
+//	}()
+//
+//	return closeChan
+//}
 
 // calcTriggeredLocation convert picked cell to the location in game
 func (btl *Battle) calcTriggeredLocation(abilityEvent *server.GameAbilityEvent) {
@@ -1011,8 +1010,8 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		}
 	}()
 
-	btl.battleSecondCloseChan <- true
-	btl.Battle.EndedBattleSeconds = decimal.NullDecimal{btl.battleSeconds(), true}
+	//btl.battleSecondCloseChan <- true
+	//btl.Battle.EndedBattleSeconds = decimal.NullDecimal{btl.battleSeconds(), true}
 	btl.Battle.EndedAt = null.TimeFrom(time.Now())
 	_, err := btl.Battle.Update(gamedb.StdConn, boil.Infer())
 	if err != nil {
@@ -1028,6 +1027,8 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	btl.processWinners(payload)
 	btl.endMultis(endInfo)
 
+	btl.insertUserSpoils(endInfo)
+
 	_, err = boiler.BattleQueues(boiler.BattleQueueWhere.BattleID.EQ(null.StringFrom(btl.BattleID))).DeleteAll(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Panic().Err(err).Str("Battle ID", btl.ID).Str("battle_id", payload.BattleID).Msg("Failed to remove mechs from battle queue.")
@@ -1037,16 +1038,88 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	btl.endBroadcast(endInfo)
 }
 
+// insertUserSpoils gets the spoils for given battle, gets players multis for given battle and calculates and inserts the user spoils for this battle
+func (btl *Battle) insertUserSpoils(btlEndInfo *BattleEndDetail) {
+	// get battle sow
+	spoils, err := boiler.SpoilsOfWars(boiler.SpoilsOfWarWhere.BattleID.EQ(btlEndInfo.BattleID)).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().
+			Str("btlEndInfo.BattleID", btlEndInfo.BattleID).
+			Int("btlEndInfo.BattleIdentifier", btlEndInfo.BattleIdentifier).
+			Err(err).
+			Msg("issue getting SpoilsOfWars")
+		return
+	}
+
+	// get player multies
+	playerMultis, err := multipliers.GetPlayersMultiplierSummaryForBattle(btlEndInfo.BattleIdentifier)
+	if err != nil {
+		gamelog.L.Error().
+			Str("btlEndInfo.BattleID", btlEndInfo.BattleID).
+			Int("btlEndInfo.BattleIdentifier", btlEndInfo.BattleIdentifier).
+			Err(err).
+			Msg("issue getting PlayerMultipliers")
+		return
+	}
+
+	oneMultiWorth := multipliers.CalculateOneMultiWorth(playerMultis, spoils.Amount)
+
+	totalAssignedToPlayers := decimal.Zero
+
+	for _, player := range playerMultis {
+		playerTotalSow := multipliers.CalculateMultipliersWorth(oneMultiWorth, player.TotalMultiplier)
+		userSpoils := &boiler.UserSpoilsOfWar{
+			PlayerID:                 player.PlayerID,
+			BattleID:                 btlEndInfo.BattleID,
+			TotalMultiplierForBattle: int(player.TotalMultiplier.IntPart()),
+			TotalSow:                 playerTotalSow,
+			PaidSow:                  decimal.Zero,
+			TickAmount:               playerTotalSow.Div(decimal.NewFromInt(int64(spoils.MaxTicks))),
+			LostSow:                  decimal.Zero,
+		}
+
+		err := userSpoils.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().
+				Interface("userSpoils", userSpoils).
+				Err(err).
+				Msg("issue inserting userSpoils")
+		}
+		totalAssignedToPlayers = totalAssignedToPlayers.Add(playerTotalSow)
+	}
+
+	if totalAssignedToPlayers.Equal(spoils.Amount) { // we gucci
+		return
+	} else if totalAssignedToPlayers.GreaterThan(spoils.Amount) { // if we assigned too much, panic because shit broke
+		gamelog.L.Panic().
+			Str("totalAssignedToPlayers", totalAssignedToPlayers.String()).
+			Str("spoils.Amount", spoils.Amount.String()).
+			Err(fmt.Errorf("assigned more sups than what is in the spoils")).
+			Msg("issue assigning spoils")
+	} else if totalAssignedToPlayers.LessThan(spoils.Amount) { // we didn't give them all out
+		gamelog.L.Error().
+			Str("totalAssignedToPlayers", totalAssignedToPlayers.String()).
+			Str("spoils.Amount", spoils.Amount.String()).
+			Err(fmt.Errorf("assigned less sups than what is in the spoils")).
+			Msg("issue assigning spoils")
+	}
+}
+
 const HubKeyBattleEndDetailUpdated hub.HubCommandKey = "BATTLE:END:DETAIL:UPDATED"
 
 func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 	btl.users.Range(func(user *BattleUser) bool {
 
-		m, total := PlayerMultipliers(user.ID, btl.battleSeconds(), btl.BattleNumber)
+		m, total, _ := multipliers.GetPlayerMultipliersForBattle(user.ID.String(), btl.BattleNumber)
 
 		info.MultiplierUpdate = &MultiplierUpdate{
-			UserMultipliers:  m,
-			TotalMultipliers: fmt.Sprintf("%sx", total),
+			Battles: []*MultiplierUpdateBattles{
+				{
+					BattleNumber:     btl.BattleNumber,
+					TotalMultipliers: multipliers.FriendlyFormatMultiplier(total),
+					UserMultipliers:  m,
+				},
+			},
 		}
 
 		user.Send(HubKeyBattleEndDetailUpdated, info)
