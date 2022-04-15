@@ -132,6 +132,8 @@ func (ms *MultiplierSystem) getMultiplier(mtype, testString string, num int) (*b
 
 func (ms *MultiplierSystem) end(btlEndInfo *BattleEndDetail) {
 	ms.calculate(btlEndInfo)
+
+	// insert user spoils of war
 }
 
 type PlayerContribution struct {
@@ -610,7 +612,7 @@ winwar:
 			mlt := &boiler.UserMultiplier{
 				PlayerID:                pid,
 				FromBattleNumber:        ms.battle.BattleNumber,
-				UntilBattleNumber:       ms.battle.BattleNumber + m.ForGames,
+				UntilBattleNumber:       ms.battle.BattleNumber,
 				MultiplierID:            m.ID,
 				Value:                   m.Value,
 				ObtainedAtBattleSeconds: battleEndSeconds,

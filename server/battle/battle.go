@@ -197,14 +197,14 @@ func (btl *Battle) start() {
 					Msg("contribution does not have a transaction id")
 				continue
 			}
-			queueRefundTransactionID, err := btl.arena.RPCClient.RefundSupsMessage(c.TransactionID.String)
+			contributeRefundTransactionID, err := btl.arena.RPCClient.RefundSupsMessage(c.TransactionID.String)
 			if err != nil {
 				gamelog.L.Error().
 					Str("queue_transaction_id", c.TransactionID.String).
 					Err(err).
 					Msg("failed to refund users queue fee")
 			}
-			c.RefundTransactionID = null.StringFrom(queueRefundTransactionID)
+			c.RefundTransactionID = null.StringFrom(contributeRefundTransactionID)
 			if _, err := c.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleContributionColumns.RefundTransactionID)); err != nil {
 				gamelog.L.Error().
 					Str("battle_contributions_id", c.ID).

@@ -18,3 +18,5 @@ ALTER TABLE spoils_of_war
     ADD COLUMN current_tick INT NOT NULL DEFAULT 0;
 ALTER TABLE spoils_of_war
     ADD COLUMN max_ticks INT NOT NULL DEFAULT 20;
+ALTER TABLE spoils_of_war
+    ADD COLUMN leftovers_transaction_id TEXT;
