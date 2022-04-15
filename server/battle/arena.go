@@ -962,7 +962,7 @@ func (arena *Arena) start() {
 }
 
 func (arena *Arena) beginBattle() {
-	gm, err := db.GameMapGetRandom(context.Background(), arena.conn)
+	gm, err := db.GameMapGetRandom(false)
 	if err != nil {
 		gamelog.L.Err(err).Msg("unable to get random map")
 		return

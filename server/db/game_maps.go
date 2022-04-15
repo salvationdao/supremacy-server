@@ -8,6 +8,8 @@ import (
 	"server/gamedb"
 	"time"
 
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/ninja-software/terror/v2"
 )
@@ -66,15 +68,28 @@ func GameMapCreate(ctx context.Context, conn Conn, gameMap *server.GameMap) erro
 }
 
 // GameMapGetRandom return a game map by given id
-func GameMapGetRandom(ctx context.Context, conn Conn) (*boiler.GameMap, error) {
+func GameMapGetRandom(allowLastMap bool) (*boiler.GameMap, error) {
+	lastBattle, err := boiler.Battles(
+		boiler.BattleWhere.EndedAt.IsNotNull(),
+		qm.OrderBy("ended_at desc"),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
 	maps, err := boiler.GameMaps().All(gamedb.StdConn)
-
 	if err != nil {
 		return nil, terror.Error(err)
 	}
 
 	rand.Seed(time.Now().UnixNano())
 	gameMap := maps[rand.Intn(len(maps))]
+
+	if !allowLastMap {
+		for gameMap.ID == lastBattle.GameMapID {
+			rand.Seed(time.Now().UnixNano())
+			gameMap = maps[rand.Intn(len(maps))]
+		}
+	}
 
 	return gameMap, nil
 }
