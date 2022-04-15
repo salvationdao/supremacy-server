@@ -261,6 +261,10 @@ func flushOutOldSpoils(
 	oneMultiWorth := decimal.Zero
 	totalMultis := decimal.Zero
 
+	if amountLeft.IsZero() || totalMultis.IsZero() {
+		return spoils
+	}
+
 	for _, multi := range multipliers {
 		totalMultis = totalMultis.Add(multi.TotalMultiplier)
 	}
@@ -268,7 +272,7 @@ func flushOutOldSpoils(
 	oneMultiWorth = amountLeft.Div(totalMultis)
 
 	for _, multi := range multipliers {
-		userAmount := oneMultiWorth.Mul(multi.TotalMultiplier)
+		userAmount := oneMultiWorth.Mul(multi.TotalMultiplier).RoundDown(0)
 		playerUUID, err := uuid.FromString(multi.PlayerID)
 		if err != nil {
 			gamelog.L.Error().
