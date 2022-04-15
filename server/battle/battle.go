@@ -44,18 +44,16 @@ const (
 )
 
 type Battle struct {
-	arena         *Arena
-	stage         *atomic.Int32
-	BattleID      string        `json:"battleID"`
-	MapName       string        `json:"mapName"`
-	WarMachines   []*WarMachine `json:"warMachines"`
-	SpawnedAI     []*WarMachine `json:"SpawnedAI"`
-	warMachineIDs []uuid.UUID   `json:"ids"`
-	lastTick      *[]byte
-	gameMap       *server.GameMap
-	_abilities    *AbilitiesSystem
-	//_battleSeconds        decimal.Decimal
-	//battleSecondCloseChan chan bool
+	arena          *Arena
+	stage          *atomic.Int32
+	BattleID       string        `json:"battleID"`
+	MapName        string        `json:"mapName"`
+	WarMachines    []*WarMachine `json:"warMachines"`
+	SpawnedAI      []*WarMachine `json:"SpawnedAI"`
+	warMachineIDs  []uuid.UUID   `json:"ids"`
+	lastTick       *[]byte
+	gameMap        *server.GameMap
+	_abilities     *AbilitiesSystem
 	users          usersMap
 	factions       map[uuid.UUID]*boiler.Faction
 	multipliers    *MultiplierSystem
@@ -72,30 +70,6 @@ type Battle struct {
 	viewerCountInputChan chan *ViewerLiveCount
 	sync.RWMutex
 }
-
-//type BattleSeconds struct {
-//	Current decimal.Decimal
-//	deadlock.RWMutex
-//}
-
-//func (btl *Battle) battleSeconds() decimal.Decimal {
-//	btl.RLock()
-//	defer btl.RUnlock()
-//	return btl._battleSeconds
-//}
-
-//func (btl *Battle) storeBattleSeconds(d decimal.Decimal) {
-//	btl.Lock()
-//	defer btl.Unlock()
-//	btl._battleSeconds = d
-//}
-
-//func (btl *Battle) increaseBattleSeconds(i int64) decimal.Decimal {
-//	btl.Lock()
-//	defer btl.Unlock()
-//	btl._battleSeconds = btl._battleSeconds.Add(decimal.NewFromInt(i))
-//	return btl._battleSeconds
-//}
 
 func (btl *Battle) abilities() *AbilitiesSystem {
 	btl.RLock()
@@ -369,25 +343,6 @@ func (btl *Battle) start() {
 
 }
 
-//func (btl *Battle) BattleSecondStartTicking() chan bool {
-//	interval := int64(1)
-//	main_ticker := time.NewTicker(time.Duration(interval) * time.Second)
-//	closeChan := make(chan bool)
-//
-//	go func() {
-//		for {
-//			select {
-//			case <-main_ticker.C:
-//				btl.increaseBattleSeconds(interval)
-//			case <-closeChan:
-//				main_ticker.Stop()
-//				return
-//			}
-//		}
-//	}()
-//
-//	return closeChan
-//}
 
 // calcTriggeredLocation convert picked cell to the location in game
 func (btl *Battle) calcTriggeredLocation(abilityEvent *server.GameAbilityEvent) {
@@ -1015,8 +970,6 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 		}
 	}()
 
-	//btl.battleSecondCloseChan <- true
-	//btl.Battle.EndedBattleSeconds = decimal.NullDecimal{btl.battleSeconds(), true}
 	btl.Battle.EndedAt = null.TimeFrom(time.Now())
 	_, err := btl.Battle.Update(gamedb.StdConn, boil.Infer())
 	if err != nil {

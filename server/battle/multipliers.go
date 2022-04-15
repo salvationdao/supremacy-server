@@ -546,8 +546,6 @@ winwar:
 				UntilBattleNumber: ms.battle.BattleNumber + 1,
 				MultiplierID:      m.ID,
 				Value:             m.Value,
-				//ObtainedAtBattleSeconds: battleEndSeconds,
-				//ExpiresAtBattleSeconds:  battleEndSeconds.Add(decimal.NewFromInt(int64(m.RemainSeconds))),
 			}
 			err := mlt.Insert(gamedb.StdConn, boil.Infer())
 			if err != nil {

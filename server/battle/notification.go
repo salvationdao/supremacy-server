@@ -120,9 +120,8 @@ func (arena *Arena) HubKeyMultiplierUpdate(ctx context.Context, wsc *hub.Client,
 		qm.And("amount > amount_sent"),
 	).All(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("")
+		gamelog.L.Error().Err(err).Msg("failed to call SpoilsOfWars")
 		return "", "", terror.Error(err, "Unable to get recently battle multipliers.")
-		// handle
 	}
 
 	resp := &MultiplierUpdate{

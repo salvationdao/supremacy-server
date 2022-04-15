@@ -47,27 +47,6 @@ type Arena struct {
 	sync.RWMutex
 }
 
-//func (arena *Arena) BattleSeconds() decimal.Decimal {
-//	btl := arena.currentBattle()
-//	if btl == nil {
-//		lastBattle, err := boiler.Battles(qm.OrderBy("battle_number DESC"), qm.Limit(1)).One(gamedb.StdConn)
-//		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-//			gamelog.L.Error().Err(err).Msg("not able to load previous battle")
-//			return decimal.Zero
-//		}
-//		if lastBattle != nil {
-//			if lastBattle.EndedBattleSeconds.Valid {
-//				return lastBattle.EndedBattleSeconds.Decimal.Copy()
-//			} else {
-//				return lastBattle.StartedBattleSeconds.Decimal.Copy()
-//			}
-//		}
-//
-//		return decimal.Zero
-//	}
-//	return btl.battleSeconds()
-//}
-
 func (arena *Arena) currentBattle() *Battle {
 	arena.RLock()
 	defer arena.RUnlock()
@@ -1001,38 +980,15 @@ func (arena *Arena) beginBattle() {
 			ID:        battleID,
 			GameMapID: gameMap.ID.String(),
 			StartedAt: time.Now(),
-			//StartedBattleSeconds: decimal.NullDecimal{decimal.Zero, true},
 		}
-		// set started battle second to the last battle is ended properly
-		//if lastBattle != nil && lastBattle.EndedBattleSeconds.Valid {
-		//	battle.StartedBattleSeconds.Decimal = lastBattle.EndedBattleSeconds.Decimal
-		//}
 
 	} else {
-
 		// if there is an unfinished battle
 		battle = lastBattle
 		battleID = lastBattle.ID
 
 		inserted = true
-
-		//// if last battle does not have started at
-		//if !battle.StartedBattleSeconds.Valid {
-		//	battle.StartedBattleSeconds = decimal.NullDecimal{decimal.Zero, true}
-		//}
 	}
-
-	//var bs decimal.Decimal
-	//if inserted {
-	//	//bs = battle.StartedBattleSeconds.Decimal
-	//} else {
-	//	if lastBattle != nil && lastBattle.EndedBattleSeconds.Valid {
-	//		//bs = lastBattle.EndedBattleSeconds.Decimal
-	//		//battle.StartedBattleSeconds = lastBattle.EndedBattleSeconds
-	//	} else {
-	//		//bs = decimal.NewFromInt(0)
-	//	}
-	//}
 
 	btl := &Battle{
 		arena:    arena,
@@ -1041,8 +997,7 @@ func (arena *Arena) beginBattle() {
 		BattleID: battleID,
 		Battle:   battle,
 		inserted: inserted,
-		//_battleSeconds: bs,
-		stage: atomic.NewInt32(BattleStagStart),
+		stage:    atomic.NewInt32(BattleStagStart),
 		users: usersMap{
 			m: make(map[uuid.UUID]*BattleUser),
 		},
