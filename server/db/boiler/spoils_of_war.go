@@ -14,6 +14,7 @@ import (
 
 	"github.com/friendsofgo/errors"
 	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -23,72 +24,100 @@ import (
 
 // SpoilsOfWar is an object representing the database table.
 type SpoilsOfWar struct {
-	ID           string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	BattleID     string          `boiler:"battle_id" boil:"battle_id" json:"battle_id" toml:"battle_id" yaml:"battle_id"`
-	BattleNumber int             `boiler:"battle_number" boil:"battle_number" json:"battle_number" toml:"battle_number" yaml:"battle_number"`
-	Amount       decimal.Decimal `boiler:"amount" boil:"amount" json:"amount" toml:"amount" yaml:"amount"`
-	AmountSent   decimal.Decimal `boiler:"amount_sent" boil:"amount_sent" json:"amount_sent" toml:"amount_sent" yaml:"amount_sent"`
-	CreatedAt    time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	UpdatedAt    time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	ID                     string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	BattleID               string          `boiler:"battle_id" boil:"battle_id" json:"battle_id" toml:"battle_id" yaml:"battle_id"`
+	BattleNumber           int             `boiler:"battle_number" boil:"battle_number" json:"battle_number" toml:"battle_number" yaml:"battle_number"`
+	Amount                 decimal.Decimal `boiler:"amount" boil:"amount" json:"amount" toml:"amount" yaml:"amount"`
+	AmountSent             decimal.Decimal `boiler:"amount_sent" boil:"amount_sent" json:"amount_sent" toml:"amount_sent" yaml:"amount_sent"`
+	CreatedAt              time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	UpdatedAt              time.Time       `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CurrentTick            int             `boiler:"current_tick" boil:"current_tick" json:"current_tick" toml:"current_tick" yaml:"current_tick"`
+	MaxTicks               int             `boiler:"max_ticks" boil:"max_ticks" json:"max_ticks" toml:"max_ticks" yaml:"max_ticks"`
+	LeftoverAmount         decimal.Decimal `boiler:"leftover_amount" boil:"leftover_amount" json:"leftover_amount" toml:"leftover_amount" yaml:"leftover_amount"`
+	LeftoversTransactionID null.String     `boiler:"leftovers_transaction_id" boil:"leftovers_transaction_id" json:"leftovers_transaction_id,omitempty" toml:"leftovers_transaction_id" yaml:"leftovers_transaction_id,omitempty"`
 
 	R *spoilsOfWarR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L spoilsOfWarL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var SpoilsOfWarColumns = struct {
-	ID           string
-	BattleID     string
-	BattleNumber string
-	Amount       string
-	AmountSent   string
-	CreatedAt    string
-	UpdatedAt    string
+	ID                     string
+	BattleID               string
+	BattleNumber           string
+	Amount                 string
+	AmountSent             string
+	CreatedAt              string
+	UpdatedAt              string
+	CurrentTick            string
+	MaxTicks               string
+	LeftoverAmount         string
+	LeftoversTransactionID string
 }{
-	ID:           "id",
-	BattleID:     "battle_id",
-	BattleNumber: "battle_number",
-	Amount:       "amount",
-	AmountSent:   "amount_sent",
-	CreatedAt:    "created_at",
-	UpdatedAt:    "updated_at",
+	ID:                     "id",
+	BattleID:               "battle_id",
+	BattleNumber:           "battle_number",
+	Amount:                 "amount",
+	AmountSent:             "amount_sent",
+	CreatedAt:              "created_at",
+	UpdatedAt:              "updated_at",
+	CurrentTick:            "current_tick",
+	MaxTicks:               "max_ticks",
+	LeftoverAmount:         "leftover_amount",
+	LeftoversTransactionID: "leftovers_transaction_id",
 }
 
 var SpoilsOfWarTableColumns = struct {
-	ID           string
-	BattleID     string
-	BattleNumber string
-	Amount       string
-	AmountSent   string
-	CreatedAt    string
-	UpdatedAt    string
+	ID                     string
+	BattleID               string
+	BattleNumber           string
+	Amount                 string
+	AmountSent             string
+	CreatedAt              string
+	UpdatedAt              string
+	CurrentTick            string
+	MaxTicks               string
+	LeftoverAmount         string
+	LeftoversTransactionID string
 }{
-	ID:           "spoils_of_war.id",
-	BattleID:     "spoils_of_war.battle_id",
-	BattleNumber: "spoils_of_war.battle_number",
-	Amount:       "spoils_of_war.amount",
-	AmountSent:   "spoils_of_war.amount_sent",
-	CreatedAt:    "spoils_of_war.created_at",
-	UpdatedAt:    "spoils_of_war.updated_at",
+	ID:                     "spoils_of_war.id",
+	BattleID:               "spoils_of_war.battle_id",
+	BattleNumber:           "spoils_of_war.battle_number",
+	Amount:                 "spoils_of_war.amount",
+	AmountSent:             "spoils_of_war.amount_sent",
+	CreatedAt:              "spoils_of_war.created_at",
+	UpdatedAt:              "spoils_of_war.updated_at",
+	CurrentTick:            "spoils_of_war.current_tick",
+	MaxTicks:               "spoils_of_war.max_ticks",
+	LeftoverAmount:         "spoils_of_war.leftover_amount",
+	LeftoversTransactionID: "spoils_of_war.leftovers_transaction_id",
 }
 
 // Generated where
 
 var SpoilsOfWarWhere = struct {
-	ID           whereHelperstring
-	BattleID     whereHelperstring
-	BattleNumber whereHelperint
-	Amount       whereHelperdecimal_Decimal
-	AmountSent   whereHelperdecimal_Decimal
-	CreatedAt    whereHelpertime_Time
-	UpdatedAt    whereHelpertime_Time
+	ID                     whereHelperstring
+	BattleID               whereHelperstring
+	BattleNumber           whereHelperint
+	Amount                 whereHelperdecimal_Decimal
+	AmountSent             whereHelperdecimal_Decimal
+	CreatedAt              whereHelpertime_Time
+	UpdatedAt              whereHelpertime_Time
+	CurrentTick            whereHelperint
+	MaxTicks               whereHelperint
+	LeftoverAmount         whereHelperdecimal_Decimal
+	LeftoversTransactionID whereHelpernull_String
 }{
-	ID:           whereHelperstring{field: "\"spoils_of_war\".\"id\""},
-	BattleID:     whereHelperstring{field: "\"spoils_of_war\".\"battle_id\""},
-	BattleNumber: whereHelperint{field: "\"spoils_of_war\".\"battle_number\""},
-	Amount:       whereHelperdecimal_Decimal{field: "\"spoils_of_war\".\"amount\""},
-	AmountSent:   whereHelperdecimal_Decimal{field: "\"spoils_of_war\".\"amount_sent\""},
-	CreatedAt:    whereHelpertime_Time{field: "\"spoils_of_war\".\"created_at\""},
-	UpdatedAt:    whereHelpertime_Time{field: "\"spoils_of_war\".\"updated_at\""},
+	ID:                     whereHelperstring{field: "\"spoils_of_war\".\"id\""},
+	BattleID:               whereHelperstring{field: "\"spoils_of_war\".\"battle_id\""},
+	BattleNumber:           whereHelperint{field: "\"spoils_of_war\".\"battle_number\""},
+	Amount:                 whereHelperdecimal_Decimal{field: "\"spoils_of_war\".\"amount\""},
+	AmountSent:             whereHelperdecimal_Decimal{field: "\"spoils_of_war\".\"amount_sent\""},
+	CreatedAt:              whereHelpertime_Time{field: "\"spoils_of_war\".\"created_at\""},
+	UpdatedAt:              whereHelpertime_Time{field: "\"spoils_of_war\".\"updated_at\""},
+	CurrentTick:            whereHelperint{field: "\"spoils_of_war\".\"current_tick\""},
+	MaxTicks:               whereHelperint{field: "\"spoils_of_war\".\"max_ticks\""},
+	LeftoverAmount:         whereHelperdecimal_Decimal{field: "\"spoils_of_war\".\"leftover_amount\""},
+	LeftoversTransactionID: whereHelpernull_String{field: "\"spoils_of_war\".\"leftovers_transaction_id\""},
 }
 
 // SpoilsOfWarRels is where relationship names are stored.
@@ -115,9 +144,9 @@ func (*spoilsOfWarR) NewStruct() *spoilsOfWarR {
 type spoilsOfWarL struct{}
 
 var (
-	spoilsOfWarAllColumns            = []string{"id", "battle_id", "battle_number", "amount", "amount_sent", "created_at", "updated_at"}
+	spoilsOfWarAllColumns            = []string{"id", "battle_id", "battle_number", "amount", "amount_sent", "created_at", "updated_at", "current_tick", "max_ticks", "leftover_amount", "leftovers_transaction_id"}
 	spoilsOfWarColumnsWithoutDefault = []string{"battle_id", "battle_number", "amount"}
-	spoilsOfWarColumnsWithDefault    = []string{"id", "amount_sent", "created_at", "updated_at"}
+	spoilsOfWarColumnsWithDefault    = []string{"id", "amount_sent", "created_at", "updated_at", "current_tick", "max_ticks", "leftover_amount", "leftovers_transaction_id"}
 	spoilsOfWarPrimaryKeyColumns     = []string{"id"}
 	spoilsOfWarGeneratedColumns      = []string{}
 )

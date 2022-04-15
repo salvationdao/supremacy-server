@@ -707,7 +707,7 @@ func (ga *GameAbility) SupContribution(ppClient *rpcclient.PassportXrpcClient, b
 	txid, err := ppClient.SpendSupMessage(rpcclient.SpendSupsReq{
 		FromUserID:           userID,
 		ToUserID:             SupremacyBattleUserID,
-		Amount:               amount.StringFixed(18),
+		Amount:               amount.String(),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("ability_sup_contribute|%s|%d", ga.OfferingID.String(), time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupBattle),
 		SubGroup:             battleID,
@@ -760,7 +760,9 @@ func (ga *GameAbility) SupContribution(ppClient *rpcclient.PassportXrpcClient, b
 				BattleID:     battleID,
 				BattleNumber: battleNumber,
 				Amount:       amount,
-				AmountSent:   decimal.New(0, 18),
+				AmountSent:   decimal.Zero,
+				CurrentTick:  0,
+				MaxTicks:     20, // ideally this comes from the sow config?
 			}
 			err = spoil.Insert(gamedb.StdConn, boil.Infer())
 			if err != nil {
