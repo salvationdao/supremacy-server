@@ -69,6 +69,7 @@ var TableNames = struct {
 	TelegramNotifications                              string
 	Templates                                          string
 	UserMultipliers                                    string
+	UserSpoilsOfWar                                    string
 	UserStats                                          string
 	Users                                              string
 	Weapons                                            string
@@ -138,6 +139,7 @@ var TableNames = struct {
 	TelegramNotifications:            "telegram_notifications",
 	Templates:                        "templates",
 	UserMultipliers:                  "user_multipliers",
+	UserSpoilsOfWar:                  "user_spoils_of_war",
 	UserStats:                        "user_stats",
 	Users:                            "users",
 	Weapons:                          "weapons",

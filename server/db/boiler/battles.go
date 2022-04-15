@@ -139,6 +139,7 @@ var BattleRels = struct {
 	ConsumedAbilities        string
 	IssuedContractRewards    string
 	PlayerKillLogs           string
+	UserSpoilsOfWars         string
 }{
 	GameMap:                  "GameMap",
 	SpoilsOfWar:              "SpoilsOfWar",
@@ -159,6 +160,7 @@ var BattleRels = struct {
 	ConsumedAbilities:        "ConsumedAbilities",
 	IssuedContractRewards:    "IssuedContractRewards",
 	PlayerKillLogs:           "PlayerKillLogs",
+	UserSpoilsOfWars:         "UserSpoilsOfWars",
 }
 
 // battleR is where relationships are stored.
@@ -182,6 +184,7 @@ type battleR struct {
 	ConsumedAbilities        ConsumedAbilitySlice         `boiler:"ConsumedAbilities" boil:"ConsumedAbilities" json:"ConsumedAbilities" toml:"ConsumedAbilities" yaml:"ConsumedAbilities"`
 	IssuedContractRewards    IssuedContractRewardSlice    `boiler:"IssuedContractRewards" boil:"IssuedContractRewards" json:"IssuedContractRewards" toml:"IssuedContractRewards" yaml:"IssuedContractRewards"`
 	PlayerKillLogs           PlayerKillLogSlice           `boiler:"PlayerKillLogs" boil:"PlayerKillLogs" json:"PlayerKillLogs" toml:"PlayerKillLogs" yaml:"PlayerKillLogs"`
+	UserSpoilsOfWars         UserSpoilsOfWarSlice         `boiler:"UserSpoilsOfWars" boil:"UserSpoilsOfWars" json:"UserSpoilsOfWars" toml:"UserSpoilsOfWars" yaml:"UserSpoilsOfWars"`
 }
 
 // NewStruct creates a new relationship struct
@@ -817,6 +820,28 @@ func (o *Battle) PlayerKillLogs(mods ...qm.QueryMod) playerKillLogQuery {
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"player_kill_log\".*"})
+	}
+
+	return query
+}
+
+// UserSpoilsOfWars retrieves all the user_spoils_of_war's UserSpoilsOfWars with an executor.
+func (o *Battle) UserSpoilsOfWars(mods ...qm.QueryMod) userSpoilsOfWarQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"user_spoils_of_war\".\"battle_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"user_spoils_of_war\".\"deleted_at\""),
+	)
+
+	query := UserSpoilsOfWars(queryMods...)
+	queries.SetFrom(query.Query, "\"user_spoils_of_war\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"user_spoils_of_war\".*"})
 	}
 
 	return query
@@ -2715,6 +2740,105 @@ func (battleL) LoadPlayerKillLogs(e boil.Executor, singular bool, maybeBattle in
 	return nil
 }
 
+// LoadUserSpoilsOfWars allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (battleL) LoadUserSpoilsOfWars(e boil.Executor, singular bool, maybeBattle interface{}, mods queries.Applicator) error {
+	var slice []*Battle
+	var object *Battle
+
+	if singular {
+		object = maybeBattle.(*Battle)
+	} else {
+		slice = *maybeBattle.(*[]*Battle)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &battleR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &battleR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`user_spoils_of_war`),
+		qm.WhereIn(`user_spoils_of_war.battle_id in ?`, args...),
+		qmhelper.WhereIsNull(`user_spoils_of_war.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load user_spoils_of_war")
+	}
+
+	var resultSlice []*UserSpoilsOfWar
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice user_spoils_of_war")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on user_spoils_of_war")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for user_spoils_of_war")
+	}
+
+	if len(userSpoilsOfWarAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.UserSpoilsOfWars = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &userSpoilsOfWarR{}
+			}
+			foreign.R.Battle = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.BattleID {
+				local.R.UserSpoilsOfWars = append(local.R.UserSpoilsOfWars, foreign)
+				if foreign.R == nil {
+					foreign.R = &userSpoilsOfWarR{}
+				}
+				foreign.R.Battle = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetGameMap of the battle to the related item.
 // Sets o.R.GameMap to related.
 // Adds o to related.R.Battles.
@@ -4138,6 +4262,58 @@ func (o *Battle) AddPlayerKillLogs(exec boil.Executor, insert bool, related ...*
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &playerKillLogR{
+				Battle: o,
+			}
+		} else {
+			rel.R.Battle = o
+		}
+	}
+	return nil
+}
+
+// AddUserSpoilsOfWars adds the given related objects to the existing relationships
+// of the battle, optionally inserting them as new records.
+// Appends related to o.R.UserSpoilsOfWars.
+// Sets related.R.Battle appropriately.
+func (o *Battle) AddUserSpoilsOfWars(exec boil.Executor, insert bool, related ...*UserSpoilsOfWar) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.BattleID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"user_spoils_of_war\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"battle_id"}),
+				strmangle.WhereClause("\"", "\"", 2, userSpoilsOfWarPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.BattleID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &battleR{
+			UserSpoilsOfWars: related,
+		}
+	} else {
+		o.R.UserSpoilsOfWars = append(o.R.UserSpoilsOfWars, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &userSpoilsOfWarR{
 				Battle: o,
 			}
 		} else {

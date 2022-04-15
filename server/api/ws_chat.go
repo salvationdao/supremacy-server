@@ -11,13 +11,12 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/multipliers"
 	"time"
 
 	"github.com/volatiletech/null/v8"
 
 	"github.com/volatiletech/sqlboiler/v4/boil"
-
-	"github.com/shopspring/decimal"
 
 	"github.com/friendsofgo/errors"
 
@@ -324,7 +323,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 		return terror.Error(err, "Unable to get player stat from db")
 	}
 
-	totalMultiplier, isCitizen := GetCurrentPlayerTotalMultiAndCitizenship(player.ID, fc.API.BattleArena.BattleSeconds())
+	_, totalMultiplier, isCitizen := multipliers.GetPlayerMultipliersForBattle(player.ID, 10)
 	// check if the faction id is provided
 	if !req.Payload.FactionID.IsNil() {
 		if !player.FactionID.Valid || player.FactionID.String == "" {
@@ -344,7 +343,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 				FromUser:        *player,
 				UserRank:        player.Rank,
 				FromUserStat:    playerStat,
-				TotalMultiplier: totalMultiplier,
+				TotalMultiplier: multipliers.FriendlyFormatMultiplier(totalMultiplier),
 				IsCitizen:       isCitizen,
 				Lang:            language,
 			},
@@ -357,7 +356,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 			BattleID:        null.String{},
 			MSGType:         boiler.ChatMSGTypeEnumTEXT,
 			UserRank:        player.Rank,
-			TotalMultiplier: totalMultiplier,
+			TotalMultiplier: multipliers.FriendlyFormatMultiplier(totalMultiplier),
 			KillCount:       fmt.Sprintf("%d", playerStat.AbilityKillCount),
 			Text:            msg,
 			ChatStream:      player.FactionID.String,
@@ -389,7 +388,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 			FromUser:        *player,
 			UserRank:        player.Rank,
 			FromUserStat:    playerStat,
-			TotalMultiplier: totalMultiplier,
+			TotalMultiplier: multipliers.FriendlyFormatMultiplier(totalMultiplier),
 			IsCitizen:       isCitizen,
 			Lang:            language,
 		},
@@ -402,7 +401,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 		BattleID:        null.String{},
 		MSGType:         boiler.ChatMSGTypeEnumTEXT,
 		UserRank:        player.Rank,
-		TotalMultiplier: totalMultiplier,
+		TotalMultiplier: multipliers.FriendlyFormatMultiplier(totalMultiplier),
 		KillCount:       fmt.Sprintf("%d", playerStat.AbilityKillCount),
 		Text:            msg,
 		ChatStream:      "global",
@@ -421,42 +420,6 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 	reply(true)
 
 	return nil
-}
-
-func GetCurrentPlayerTotalMultiAndCitizenship(playerID string, battleSeconds decimal.Decimal) (string, bool) {
-	// get a copy of battle number
-	ums, err := boiler.UserMultipliers(
-		boiler.UserMultiplierWhere.PlayerID.EQ(playerID),
-		boiler.UserMultiplierWhere.ExpiresAtBattleSeconds.GTE(battleSeconds),
-		qm.Load(
-			boiler.UserMultiplierRels.Multiplier,
-		),
-	).All(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Err(err).Msgf("unable to retrieve player multipliers")
-		return "0", false
-	}
-
-	value := decimal.Zero
-	multiplier := decimal.Zero
-	isCitizen := false
-
-	for _, m := range ums {
-		if m.R.Multiplier.Key == "citizen" {
-			isCitizen = true
-		}
-		if !m.R.Multiplier.IsMultiplicative {
-			value = value.Add(m.Value)
-			continue
-		}
-		multiplier = multiplier.Add(m.Value)
-	}
-
-	if multiplier.Equal(decimal.Zero) {
-		multiplier = decimal.NewFromInt(1)
-	}
-
-	return value.Mul(multiplier).Shift(-1).String(), isCitizen
 }
 
 // ChatPastMessagesRequest sends chat message to specific faction.
