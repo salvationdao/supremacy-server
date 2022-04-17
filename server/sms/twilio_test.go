@@ -13,7 +13,8 @@ func TestTwilio_SendSMS(t *testing.T) {
 	apiSecret := os.Getenv("GAMESERVER_TWILIO_API_SECRET")
 	fromNumber := os.Getenv("GAMESERVER_SMS_FROM_NUMBER")
 
-	toNumber := "+61478147822"
+	toNumber := "+61416315945"
+	// 61416315945
 
 	twil, err := sms.NewTwilio(
 		accountSid,

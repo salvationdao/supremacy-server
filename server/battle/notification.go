@@ -243,12 +243,52 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			wmName = fmt.Sprintf("(%s)", warMachine.Name)
 		}
 
+		// OLD NOTIFICATION SYSTEM WILL BE REMOVED///////////////////////////////////////////////////////////////
+		for _, n := range warMachine.R.BattleQueueNotifications {
+			if n.SentAt.Valid {
+				continue
+			}
+			// send telegram notification
+			if n.TelegramNotificationID.Valid {
+
+				notificationMsg := fmt.Sprintf("🦾 %s, your War Machine %s is approaching the front of the queue!\n\n⚔️ Jump into the Battle Arena now to prepare. Your survival has its rewards.\n\n⚠️ (Reminder: In order to combat scams we will NEVER send you links)", player.Username.String, wmName)
+
+				gamelog.L.Info().Str("TelegramNotificationID", n.TelegramNotificationID.String).Msg("sending telegram notification")
+				err = arena.telegram.Notify(n.TelegramNotificationID.String, notificationMsg)
+				if err != nil {
+					gamelog.L.Error().Err(err).Str("mech_id", bq.MechID).Str("owner_id", bq.OwnerID).Str("queued_at", bq.QueuedAt.String()).Str("telegram id", n.TelegramNotificationID.String).Msg("failed to notify telegram")
+				}
+			}
+
+			// send sms
+			if n.MobileNumber.Valid {
+				notificationMsg := fmt.Sprintf("%s, your War Machine %s is approaching the front of the queue!\n\nJump into the Battle Arena now to prepare. Your survival has its rewards.\n\n(Reminder: In order to combat scams we will NEVER send you links)", player.Username.String, wmName)
+				gamelog.L.Info().Str("MobileNumber", n.MobileNumber.String).Msg("sending sms notification")
+				err := arena.sms.SendSMS(
+					player.MobileNumber.String,
+					notificationMsg,
+				)
+				if err != nil {
+					gamelog.L.Error().Err(err).Str("to", n.MobileNumber.String).Msg("failed to send battle queue notification sms")
+				}
+			}
+
+			n.SentAt = null.TimeFrom(time.Now())
+			n.QueueMechID = null.NewString("", false)
+			_, err = n.Update(gamedb.StdConn, boil.Infer())
+			if err != nil {
+				gamelog.L.Error().Err(err).Str("bqn id", n.ID).Msg("failed to update BattleQueueNotificationColumns")
+			}
+		}
+		////////////////////////////////////////////////////////////////////////////////////////////
+
 		playerProfile, err := boiler.PlayerProfiles(boiler.PlayerProfileWhere.PlayerID.EQ(player.ID)).One(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			gamelog.L.Error().Err(err).Str("player_id", player.ID).Msg("unable to get player prefs")
 			continue
 		}
 
+		//// new notification system based on player profile
 		if playerProfile == nil {
 			continue
 		}

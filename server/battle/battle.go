@@ -851,6 +851,7 @@ func (btl *Battle) endWarMachines(payload *BattleEndPayload) []*WarMachine {
 					Msg("unable to update mech stat")
 			}
 
+			//// OLD
 			bqn, err := boiler.BattleQueueNotifications(boiler.BattleQueueNotificationWhere.MechID.EQ(bm.MechID), qm.OrderBy(boiler.BattleQueueNotificationColumns.SentAt+" DESC")).One(gamedb.StdConn)
 			if err != nil {
 				gamelog.L.Error().Str("bm.MechID", bm.MechID).Err(err).Msg("failed to get BattleQueueNotifications")
@@ -864,6 +865,24 @@ func (btl *Battle) endWarMachines(payload *BattleEndPayload) []*WarMachine {
 					}
 				}
 			}
+
+			//// NEW
+			playerProfile, err := boiler.PlayerProfiles(boiler.PlayerProfileWhere.PlayerID.EQ(bm.OwnerID)).One(gamedb.StdConn)
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				gamelog.L.Error().Err(err).Str("player_id", bm.OwnerID).Msg("unable to get player prefs")
+				continue
+			}
+
+			if playerProfile.EnableTelegramNotifications {
+				// killed a war machine
+				msg := fmt.Sprintf("Your War machine %s is Victorious! 🎉", w.Name)
+				err := btl.arena.telegram.Notify2(playerProfile.TelegramID.Int64, msg)
+				if err != nil {
+					gamelog.L.Error().Str("bqn.TelegramNotificationID.String", bqn.TelegramNotificationID.String).Err(err).Msg("failed to send notification")
+				}
+			}
+			/////////
+
 		}
 
 		// update battle_mechs to indicate faction win

@@ -31,6 +31,7 @@ type PlayerProfile struct {
 	EnablePushNotifications     bool        `boiler:"enable_push_notifications" boil:"enable_push_notifications" json:"enable_push_notifications" toml:"enable_push_notifications" yaml:"enable_push_notifications"`
 	TelegramID                  null.Int64  `boiler:"telegram_id" boil:"telegram_id" json:"telegram_id,omitempty" toml:"telegram_id" yaml:"telegram_id,omitempty"`
 	MobileNumber                null.String `boiler:"mobile_number" boil:"mobile_number" json:"mobile_number,omitempty" toml:"mobile_number" yaml:"mobile_number,omitempty"`
+	CreatedAt                   time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *playerProfileR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L playerProfileL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -45,6 +46,7 @@ var PlayerProfileColumns = struct {
 	EnablePushNotifications     string
 	TelegramID                  string
 	MobileNumber                string
+	CreatedAt                   string
 }{
 	ID:                          "id",
 	PlayerID:                    "player_id",
@@ -54,6 +56,7 @@ var PlayerProfileColumns = struct {
 	EnablePushNotifications:     "enable_push_notifications",
 	TelegramID:                  "telegram_id",
 	MobileNumber:                "mobile_number",
+	CreatedAt:                   "created_at",
 }
 
 var PlayerProfileTableColumns = struct {
@@ -65,6 +68,7 @@ var PlayerProfileTableColumns = struct {
 	EnablePushNotifications     string
 	TelegramID                  string
 	MobileNumber                string
+	CreatedAt                   string
 }{
 	ID:                          "player_profile.id",
 	PlayerID:                    "player_profile.player_id",
@@ -74,6 +78,7 @@ var PlayerProfileTableColumns = struct {
 	EnablePushNotifications:     "player_profile.enable_push_notifications",
 	TelegramID:                  "player_profile.telegram_id",
 	MobileNumber:                "player_profile.mobile_number",
+	CreatedAt:                   "player_profile.created_at",
 }
 
 // Generated where
@@ -111,6 +116,7 @@ var PlayerProfileWhere = struct {
 	EnablePushNotifications     whereHelperbool
 	TelegramID                  whereHelpernull_Int64
 	MobileNumber                whereHelpernull_String
+	CreatedAt                   whereHelpertime_Time
 }{
 	ID:                          whereHelperstring{field: "\"player_profile\".\"id\""},
 	PlayerID:                    whereHelperstring{field: "\"player_profile\".\"player_id\""},
@@ -120,6 +126,7 @@ var PlayerProfileWhere = struct {
 	EnablePushNotifications:     whereHelperbool{field: "\"player_profile\".\"enable_push_notifications\""},
 	TelegramID:                  whereHelpernull_Int64{field: "\"player_profile\".\"telegram_id\""},
 	MobileNumber:                whereHelpernull_String{field: "\"player_profile\".\"mobile_number\""},
+	CreatedAt:                   whereHelpertime_Time{field: "\"player_profile\".\"created_at\""},
 }
 
 // PlayerProfileRels is where relationship names are stored.
@@ -143,9 +150,9 @@ func (*playerProfileR) NewStruct() *playerProfileR {
 type playerProfileL struct{}
 
 var (
-	playerProfileAllColumns            = []string{"id", "player_id", "shortcode", "enable_telegram_notifications", "enable_sms_notifications", "enable_push_notifications", "telegram_id", "mobile_number"}
+	playerProfileAllColumns            = []string{"id", "player_id", "shortcode", "enable_telegram_notifications", "enable_sms_notifications", "enable_push_notifications", "telegram_id", "mobile_number", "created_at"}
 	playerProfileColumnsWithoutDefault = []string{"player_id", "shortcode"}
-	playerProfileColumnsWithDefault    = []string{"id", "enable_telegram_notifications", "enable_sms_notifications", "enable_push_notifications", "telegram_id", "mobile_number"}
+	playerProfileColumnsWithDefault    = []string{"id", "enable_telegram_notifications", "enable_sms_notifications", "enable_push_notifications", "telegram_id", "mobile_number", "created_at"}
 	playerProfilePrimaryKeyColumns     = []string{"id"}
 	playerProfileGeneratedColumns      = []string{}
 )
@@ -492,7 +499,7 @@ func (playerProfileL) LoadPlayer(e boil.Executor, singular bool, maybePlayerProf
 		if foreign.R == nil {
 			foreign.R = &playerR{}
 		}
-		foreign.R.PlayerProfiles = append(foreign.R.PlayerProfiles, object)
+		foreign.R.PlayerProfile = object
 		return nil
 	}
 
@@ -503,7 +510,7 @@ func (playerProfileL) LoadPlayer(e boil.Executor, singular bool, maybePlayerProf
 				if foreign.R == nil {
 					foreign.R = &playerR{}
 				}
-				foreign.R.PlayerProfiles = append(foreign.R.PlayerProfiles, local)
+				foreign.R.PlayerProfile = local
 				break
 			}
 		}
@@ -514,7 +521,7 @@ func (playerProfileL) LoadPlayer(e boil.Executor, singular bool, maybePlayerProf
 
 // SetPlayer of the playerProfile to the related item.
 // Sets o.R.Player to related.
-// Adds o to related.R.PlayerProfiles.
+// Adds o to related.R.PlayerProfile.
 func (o *PlayerProfile) SetPlayer(exec boil.Executor, insert bool, related *Player) error {
 	var err error
 	if insert {
@@ -549,10 +556,10 @@ func (o *PlayerProfile) SetPlayer(exec boil.Executor, insert bool, related *Play
 
 	if related.R == nil {
 		related.R = &playerR{
-			PlayerProfiles: PlayerProfileSlice{o},
+			PlayerProfile: o,
 		}
 	} else {
-		related.R.PlayerProfiles = append(related.R.PlayerProfiles, o)
+		related.R.PlayerProfile = o
 	}
 
 	return nil
@@ -602,6 +609,11 @@ func (o *PlayerProfile) Insert(exec boil.Executor, columns boil.Columns) error {
 	}
 
 	var err error
+	currTime := time.Now().In(boil.GetLocation())
+
+	if o.CreatedAt.IsZero() {
+		o.CreatedAt = currTime
+	}
 
 	if err := o.doBeforeInsertHooks(exec); err != nil {
 		return err
@@ -803,6 +815,11 @@ func (o PlayerProfileSlice) UpdateAll(exec boil.Executor, cols M) (int64, error)
 func (o *PlayerProfile) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
 	if o == nil {
 		return errors.New("boiler: no player_profile provided for upsert")
+	}
+	currTime := time.Now().In(boil.GetLocation())
+
+	if o.CreatedAt.IsZero() {
+		o.CreatedAt = currTime
 	}
 
 	if err := o.doBeforeUpsertHooks(exec); err != nil {
