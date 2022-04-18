@@ -11,6 +11,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/multipliers"
 	"server/rpcclient"
 	"time"
 
@@ -99,43 +100,48 @@ type GameNotification struct {
 	Data interface{}          `json:"data"`
 }
 
-const HubKeyMultiplierUpdate hub.HubCommandKey = "USER:MULTIPLIERS:GET"
+const HubKeyMultiplierSubscribe hub.HubCommandKey = "USER:MULTIPLIERS:SUBSCRIBE"
 
 const HubKeyUserMultiplierSignalUpdate hub.HubCommandKey = "USER:MULTIPLIER:SIGNAL:SUBSCRIBE"
 
-func (arena *Arena) HubKeyMultiplierUpdate(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (arena *Arena) HubKeyMultiplierUpdate(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return terror.Error(err)
+		return "", "", terror.Error(err)
 	}
 
 	id, err := uuid.FromString(wsc.Identifier())
 	if err != nil {
 		gamelog.L.Warn().Err(err).Str("id", wsc.Identifier()).Msg("unable to create uuid from websocket client identifier id")
-		return terror.Error(err, "Unable to create uuid from websocket client identifier id")
+		return "", "", terror.Error(err, "Unable to create uuid from websocket client identifier id")
 	}
 
-	// return multiplier if battle is on
-	m, total := PlayerMultipliers(id, arena.BattleSeconds())
+	spoils, err := boiler.SpoilsOfWars(
+		boiler.SpoilsOfWarWhere.CreatedAt.GT(time.Now().AddDate(0, 0, -1)),
+		boiler.SpoilsOfWarWhere.LeftoversTransactionID.IsNull(),
+		qm.And("amount > amount_sent"),
+	).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("failed to call SpoilsOfWars")
+		return "", "", terror.Error(err, "Unable to get recently battle multipliers.")
+	}
 
-	reply(&MultiplierUpdate{
-		UserMultipliers:  m,
-		TotalMultipliers: fmt.Sprintf("%sx", total),
-	})
+	resp := &MultiplierUpdate{
+		Battles: []*MultiplierUpdateBattles{},
+	}
 
-	// if battle is started send tick down signal
-	if arena.currentBattle() != nil && arena.currentBattle().battleSecondCloseChan != nil {
-		b, err := json.Marshal(&BroadcastPayload{
-			Key:     HubKeyUserMultiplierSignalUpdate,
-			Payload: true,
+	for _, spoil := range spoils {
+		m, total, _ := multipliers.GetPlayerMultipliersForBattle(id.String(), spoil.BattleNumber)
+		resp.Battles = append(resp.Battles, &MultiplierUpdateBattles{
+			BattleNumber:     spoil.BattleNumber,
+			TotalMultipliers: multipliers.FriendlyFormatMultiplier(total),
+			UserMultipliers:  m,
 		})
-		if err != nil {
-			return terror.Error(err, "Failed to send ticker signal")
-		}
-		go wsc.Send(b)
 	}
-	return nil
+
+	reply(resp)
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyMultiplierSubscribe, wsc.Identifier())), nil
 }
 
 const HubKeyViewerLiveCountUpdated = hub.HubCommandKey("VIEWER:LIVE:COUNT:UPDATED")

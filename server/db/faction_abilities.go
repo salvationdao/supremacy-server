@@ -175,8 +175,8 @@ func FactionExclusiveAbilitiesByFactionID(ctx context.Context, conn Conn, factio
 
 // FactionAbilitiesSupsCostUpdate update faction exclusive ability
 func FactionAbilitiesSupsCostUpdate(ctx context.Context, conn Conn, gameAbilityID string, supsCost decimal.Decimal, currentSups decimal.Decimal) error {
-	supsCost = supsCost.Truncate(0)
-	currentSups = currentSups.Truncate(0)
+	supsCost = supsCost.RoundDown(0)
+	currentSups = currentSups.RoundDown(0)
 	asc := boiler.GameAbility{
 		ID:          gameAbilityID,
 		SupsCost:    supsCost.String(),

@@ -6,6 +6,8 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 
+	"github.com/sasha-s/go-deadlock"
+
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
@@ -102,10 +104,18 @@ func (api *API) SecureUserFactionSubscribeCommand(key hub.HubCommandKey, fn HubS
 	})
 }
 
+type UnsubBusKey struct {
+	deadlock.RWMutex
+	Key  messagebus.BusKey
+	TxID string
+}
+
 // SubscribeCommandWithAuthCheck registers a subscription command to the hub
 //
 // If fn is not provided, will use default
 func (api *API) SubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn HubSubscribeCommandFunc, authCheck func(wsc *hub.Client) bool) {
+	unsubBusKey := &UnsubBusKey{}
+
 	api.Hub.Handle(key, func(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 		if authCheck(wsc) {
 			return terror.Error(terror.ErrForbidden)
@@ -116,28 +126,23 @@ func (api *API) SubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn HubSubsc
 			return terror.Error(err)
 		}
 
+		unsubBusKey.Lock()
+		unsubBusKey.Key = busKey
+		unsubBusKey.TxID = transactionID
+		unsubBusKey.Unlock()
+
 		// add subscription to the message bus
 		api.MessageBus.Sub(busKey, wsc, transactionID)
-
 		return nil
 	})
 	unsubscribeKey := hub.HubCommandKey(key + ":UNSUBSCRIBE")
 	api.Hub.Handle(unsubscribeKey, func(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-		if authCheck(wsc) {
-			return terror.Error(terror.ErrForbidden)
-		}
-
-		transactionID, busKey, err := fn(ctx, wsc, payload, reply, false)
-		if err != nil {
-			return terror.Error(err)
-		}
-
 		// add subscription to the message bus
-		api.MessageBus.Unsub(busKey, wsc, transactionID)
-
+		unsubBusKey.RLock()
+		api.MessageBus.Unsub(unsubBusKey.Key, wsc, unsubBusKey.TxID)
+		unsubBusKey.RUnlock()
 		return nil
 	})
-
 }
 
 /***************************

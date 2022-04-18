@@ -17,7 +17,6 @@ import (
 
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/ninja-software/log_helpers"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
@@ -35,11 +34,9 @@ type PlayerController struct {
 	API  *API
 }
 
-func NewPlayerController(log *zerolog.Logger, conn *pgxpool.Pool, api *API) *PlayerController {
+func NewPlayerController(api *API) *PlayerController {
 	pc := &PlayerController{
-		Conn: conn,
-		Log:  log_helpers.NamedLogger(log, "player_controller"),
-		API:  api,
+		API: api,
 	}
 
 	api.SecureUserCommand(HubKeyPlayerUpdateSettings, pc.PlayerUpdateSettingsHandler)

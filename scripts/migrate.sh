@@ -45,3 +45,4 @@ source /home/ubuntu/.profile # load PGPASSWORD
 
 # Cant use the project default user due to adjusted permisions on some tables
 bin/migrate -database "postgres://postgres:${PGPASSWORD}@${PASSPORT_DATABASE_HOST}:${PASSPORT_DATABASE_PORT}/${PASSPORT_DATABASE_NAME}" -path migrations $1 $2
+

@@ -11,6 +11,7 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
+	"github.com/sasha-s/go-deadlock"
 )
 
 func (opts *Opts) Command(key hub.HubCommandKey, fn hub.HubCommandFunc) {
@@ -105,10 +106,17 @@ func (opts *Opts) SecureUserFactionSubscribeCommand(key hub.HubCommandKey, fn Hu
 	})
 }
 
+type UnsubBusKey struct {
+	deadlock.RWMutex
+	Key  messagebus.BusKey
+	TxID string
+}
+
 // SubscribeCommandWithAuthCheck registers a subscription command to the hub
 //
 // If fn is not provided, will use default
 func (opts *Opts) SubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn HubSubscribeCommandFunc, authCheck func(wsc *hub.Client) bool) {
+	unsubBusKey := &UnsubBusKey{}
 	opts.Hub.Handle(key, func(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 		if authCheck(wsc) {
 			return terror.Error(terror.ErrForbidden)
@@ -118,6 +126,11 @@ func (opts *Opts) SubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn HubSub
 		if err != nil {
 			return terror.Error(err)
 		}
+
+		unsubBusKey.Lock()
+		unsubBusKey.Key = busKey
+		unsubBusKey.TxID = transactionID
+		unsubBusKey.Unlock()
 
 		// add subscription to the message bus
 		if opts.MessageBus == nil {
@@ -132,22 +145,14 @@ func (opts *Opts) SubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn HubSub
 	// Unsubscribe
 	unsubscribeKey := hub.HubCommandKey(key + ":UNSUBSCRIBE")
 	opts.Hub.Handle(unsubscribeKey, func(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-		if authCheck(wsc) {
-			return terror.Error(terror.ErrForbidden)
-		}
-
-		transactionID, busKey, err := fn(ctx, wsc, payload, reply, false)
-		if err != nil {
-			return terror.Error(err)
-		}
-
 		// remove subscription to the message bus
 		if opts.MessageBus == nil {
 			gamelog.L.Error().Msg("messagebus is nil")
 			return fmt.Errorf("messagebus is nil")
 		}
-
-		opts.MessageBus.Unsub(busKey, wsc, transactionID)
+		unsubBusKey.RLock()
+		opts.MessageBus.Unsub(unsubBusKey.Key, wsc, unsubBusKey.TxID)
+		unsubBusKey.RUnlock()
 		return nil
 	})
 
@@ -198,6 +203,8 @@ func (opts *Opts) NetSecureUserFactionSubscribeCommand(key hub.HubCommandKey, fn
 //
 // If fn is not provided, will use default
 func (opts *Opts) NetSubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn HubNetSubscribeCommandFunc, authCheck func(wsc *hub.Client) bool) {
+	unsubBusKey := &UnsubBusKey{}
+
 	opts.Hub.Handle(key, func(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 		if authCheck(wsc) {
 			return terror.Error(terror.ErrForbidden)
@@ -208,25 +215,21 @@ func (opts *Opts) NetSubscribeCommandWithAuthCheck(key hub.HubCommandKey, fn Hub
 			return terror.Error(err)
 		}
 
+		unsubBusKey.Lock()
+		unsubBusKey.Key = busKey
+		unsubBusKey.Unlock()
+
 		// add subscription to the message bus
 		opts.MessageBus.SubClient(busKey, wsc)
-
 		return nil
 	})
 
 	unsubscribeKey := hub.HubCommandKey(key + ":UNSUBSCRIBE")
 	opts.Hub.Handle(unsubscribeKey, func(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-		if authCheck(wsc) {
-			return terror.Error(terror.ErrForbidden)
-		}
-
-		busKey, err := fn(ctx, wsc, payload, false)
-		if err != nil {
-			return terror.Error(err)
-		}
-
 		// add subscription to the message bus
-		opts.MessageBus.UnsubClient(busKey, wsc)
+		unsubBusKey.RLock()
+		opts.MessageBus.UnsubClient(unsubBusKey.Key, wsc)
+		unsubBusKey.RUnlock()
 		return nil
 	})
 }

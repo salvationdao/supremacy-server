@@ -16,15 +16,15 @@ import (
 	"server/rpcclient"
 	"time"
 
+	"github.com/rs/zerolog"
+
 	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/microcosm-cc/bluemonday"
-	"github.com/ninja-software/log_helpers"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-software/tickle"
 	"github.com/ninja-syndicate/hub"
@@ -33,7 +33,6 @@ import (
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/pemistahl/lingua-go"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/rs/zerolog"
 	"github.com/sasha-s/go-deadlock"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -81,12 +80,10 @@ type API struct {
 	ctx    context.Context
 	server *http.Server
 	*auth.Auth
-	Log              *zerolog.Logger
 	Routes           chi.Router
 	BattleArena      *battle.Arena
 	HTMLSanitize     *bluemonday.Policy
 	Hub              *hub.Hub
-	Conn             *pgxpool.Pool
 	MessageBus       *messagebus.MessageBus
 	SMS              server.SMS
 	Passport         *rpcclient.PassportXrpcClient
@@ -113,11 +110,9 @@ type API struct {
 // NewAPI registers routes
 func NewAPI(
 	ctx context.Context,
-	log *zerolog.Logger,
 	battleArenaClient *battle.Arena,
 	pp *rpcclient.PassportXrpcClient,
 	HTMLSanitize *bluemonday.Policy,
-	conn *pgxpool.Pool,
 	config *server.Config,
 	messageBus *messagebus.MessageBus,
 	gsHub *hub.Hub,
@@ -130,12 +125,10 @@ func NewAPI(
 	api := &API{
 		Config:           config,
 		ctx:              ctx,
-		Log:              log_helpers.NamedLogger(log, "api"),
 		Routes:           chi.NewRouter(),
 		MessageBus:       messageBus,
 		HTMLSanitize:     HTMLSanitize,
 		BattleArena:      battleArenaClient,
-		Conn:             conn,
 		Hub:              gsHub,
 		RingCheckAuthMap: NewRingCheckMap(),
 		Passport:         pp,
@@ -157,7 +150,7 @@ func NewAPI(
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
-	api.Routes.Use(middleware.Logger)
+	api.Routes.Use(gamelog.ChiLogger(zerolog.DebugLevel))
 	api.Routes.Use(cors.New(cors.Options{AllowedOrigins: []string{"*"}}).Handler)
 	api.Routes.Use(DatadogTracer.Middleware())
 
@@ -167,9 +160,9 @@ func NewAPI(
 			sentryHandler := sentryhttp.New(sentryhttp.Options{})
 			r.Use(sentryHandler.Handle)
 		})
-		r.Mount("/check", CheckRouter(log_helpers.NamedLogger(log, "check router"), conn, battleArenaClient, telegram))
-		r.Mount("/stat", AssetStatsRouter(log, conn, api))
-		r.Mount(fmt.Sprintf("/%s/Supremacy_game", server.SupremacyGameUserID), PassportWebhookRouter(log, conn, config.PassportWebhookSecret, api))
+		r.Mount("/check", CheckRouter(battleArenaClient, telegram))
+		r.Mount("/stat", AssetStatsRouter(api))
+		r.Mount(fmt.Sprintf("/%s/Supremacy_game", server.SupremacyGameUserID), PassportWebhookRouter(config.PassportWebhookSecret, api))
 
 		// Web sockets are long-lived, so we don't want the sentry performance tracer running for the life-time of the connection.
 		// See roothub.ServeHTTP for the setup of sentry on this route.
@@ -193,14 +186,15 @@ func NewAPI(
 	///////////////////////////
 	//		 Controllers	 //
 	///////////////////////////
-	_ = NewCheckController(log, conn, api)
-	_ = NewUserController(log, conn, api)
-	_ = NewAuthController(log, conn, api, config)
-	_ = NewGameController(log, conn, api)
-	_ = NewStreamController(log, conn, api)
-	_ = NewPlayerController(log, conn, api)
-	_ = NewChatController(log, conn, api)
-	_ = NewBattleController(log, conn, api)
+	_ = NewCheckController(api)
+	_ = NewUserController(api)
+	_ = NewAuthController(api)
+	_ = NewGameController(api)
+	_ = NewStreamController(api)
+	_ = NewPlayerController(api)
+	_ = NewChatController(api)
+	_ = NewBattleController(api)
+	_ = NewPlayerAbilitiesController(api)
 
 	// create a tickle that update faction mvp every day 00:00 am
 	factionMvpUpdate := tickle.New("Calculate faction mvp player", 24*60*60, func() (int, error) {
@@ -227,6 +221,8 @@ func NewAPI(
 
 		return http.StatusOK, nil
 	})
+	factionMvpUpdate.Log = gamelog.L
+
 	err := factionMvpUpdate.SetIntervalAt(24*time.Hour, 0, 0)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to set up faction mvp user update tickle")
@@ -253,7 +249,7 @@ func (api *API) Run(ctx context.Context) error {
 		},
 	}
 
-	api.Log.Info().Msgf("Starting API Server on %v", api.server.Addr)
+	gamelog.L.Info().Msgf("Starting API Server on %v", api.server.Addr)
 
 	go func() {
 		<-ctx.Done()
@@ -266,10 +262,10 @@ func (api *API) Run(ctx context.Context) error {
 func (api *API) Close() {
 	ctx, cancel := context.WithTimeout(api.ctx, 5*time.Second)
 	defer cancel()
-	api.Log.Info().Msg("Stopping API")
+	gamelog.L.Info().Msg("Stopping API")
 	err := api.server.Shutdown(ctx)
 	if err != nil {
-		api.Log.Warn().Err(err).Msg("")
+		gamelog.L.Warn().Err(err).Msg("")
 	}
 }
 
@@ -290,7 +286,7 @@ func (api *API) IconDisplay(w http.ResponseWriter, r *http.Request) (int, error)
 	var blob server.Blob
 
 	// Get blob
-	err = db.FindBlob(context.Background(), api.Conn, &blob, blobID)
+	err = db.FindBlob(context.Background(), gamedb.Conn, &blob, blobID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return http.StatusNotFound, terror.Error(err, "attachment not found")

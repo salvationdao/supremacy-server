@@ -30,6 +30,7 @@ var TableNames = struct {
 	BlueprintChassisBlueprintModules                   string
 	BlueprintChassisBlueprintWeapons                   string
 	BlueprintModules                                   string
+	BlueprintPlayerAbilities                           string
 	BlueprintWeapons                                   string
 	Brands                                             string
 	Chassis                                            string
@@ -37,6 +38,7 @@ var TableNames = struct {
 	ChassisWeapons                                     string
 	ChatHistory                                        string
 	Config                                             string
+	ConsumedAbilities                                  string
 	FactionStats                                       string
 	Factions                                           string
 	GameAbilities                                      string
@@ -50,6 +52,7 @@ var TableNames = struct {
 	Modules                                            string
 	Multipliers                                        string
 	PendingTransactions                                string
+	PlayerAbilities                                    string
 	PlayerActiveLogs                                   string
 	PlayerKillLog                                      string
 	PlayerLanguages                                    string
@@ -60,12 +63,14 @@ var TableNames = struct {
 	PunishOptions                                      string
 	PunishVotes                                        string
 	PunishedPlayers                                    string
+	SalePlayerAbilities                                string
 	SchemaMigrations                                   string
 	SpoilsOfWar                                        string
 	StreamList                                         string
 	TelegramNotifications                              string
 	Templates                                          string
 	UserMultipliers                                    string
+	UserSpoilsOfWar                                    string
 	UserStats                                          string
 	Users                                              string
 	Weapons                                            string
@@ -96,6 +101,7 @@ var TableNames = struct {
 	BlueprintChassisBlueprintModules: "blueprint_chassis_blueprint_modules",
 	BlueprintChassisBlueprintWeapons: "blueprint_chassis_blueprint_weapons",
 	BlueprintModules:                 "blueprint_modules",
+	BlueprintPlayerAbilities:         "blueprint_player_abilities",
 	BlueprintWeapons:                 "blueprint_weapons",
 	Brands:                           "brands",
 	Chassis:                          "chassis",
@@ -103,6 +109,7 @@ var TableNames = struct {
 	ChassisWeapons:                   "chassis_weapons",
 	ChatHistory:                      "chat_history",
 	Config:                           "config",
+	ConsumedAbilities:                "consumed_abilities",
 	FactionStats:                     "faction_stats",
 	Factions:                         "factions",
 	GameAbilities:                    "game_abilities",
@@ -116,6 +123,7 @@ var TableNames = struct {
 	Modules:                          "modules",
 	Multipliers:                      "multipliers",
 	PendingTransactions:              "pending_transactions",
+	PlayerAbilities:                  "player_abilities",
 	PlayerActiveLogs:                 "player_active_logs",
 	PlayerKillLog:                    "player_kill_log",
 	PlayerLanguages:                  "player_languages",
@@ -126,12 +134,14 @@ var TableNames = struct {
 	PunishOptions:                    "punish_options",
 	PunishVotes:                      "punish_votes",
 	PunishedPlayers:                  "punished_players",
+	SalePlayerAbilities:              "sale_player_abilities",
 	SchemaMigrations:                 "schema_migrations",
 	SpoilsOfWar:                      "spoils_of_war",
 	StreamList:                       "stream_list",
 	TelegramNotifications:            "telegram_notifications",
 	Templates:                        "templates",
 	UserMultipliers:                  "user_multipliers",
+	UserSpoilsOfWar:                  "user_spoils_of_war",
 	UserStats:                        "user_stats",
 	Users:                            "users",
 	Weapons:                          "weapons",
