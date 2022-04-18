@@ -117,7 +117,6 @@ func (t *Telegram) RunTelegram(bot *tele.Bot) error {
 }
 
 func (t *Telegram) ProfileUpdate(playerID string) (*boiler.PlayerProfile, error) {
-
 	shortcode, err := shortid.Generate()
 	if err != nil {
 		return nil, terror.Error(err)

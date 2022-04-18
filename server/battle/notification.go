@@ -243,21 +243,22 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			wmName = fmt.Sprintf("(%s)", warMachine.Name)
 		}
 
+		sent := false
 		// OLD NOTIFICATION SYSTEM WILL BE REMOVED///////////////////////////////////////////////////////////////
 		for _, n := range warMachine.R.BattleQueueNotifications {
 			if n.SentAt.Valid {
 				continue
 			}
+
 			// send telegram notification
 			if n.TelegramNotificationID.Valid {
-
 				notificationMsg := fmt.Sprintf("🦾 %s, your War Machine %s is approaching the front of the queue!\n\n⚔️ Jump into the Battle Arena now to prepare. Your survival has its rewards.\n\n⚠️ (Reminder: In order to combat scams we will NEVER send you links)", player.Username.String, wmName)
-
 				gamelog.L.Info().Str("TelegramNotificationID", n.TelegramNotificationID.String).Msg("sending telegram notification")
 				err = arena.telegram.Notify(n.TelegramNotificationID.String, notificationMsg)
 				if err != nil {
 					gamelog.L.Error().Err(err).Str("mech_id", bq.MechID).Str("owner_id", bq.OwnerID).Str("queued_at", bq.QueuedAt.String()).Str("telegram id", n.TelegramNotificationID.String).Msg("failed to notify telegram")
 				}
+				sent = true
 			}
 
 			// send sms
@@ -271,6 +272,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 				if err != nil {
 					gamelog.L.Error().Err(err).Str("to", n.MobileNumber.String).Msg("failed to send battle queue notification sms")
 				}
+				sent = true
 			}
 
 			n.SentAt = null.TimeFrom(time.Now())
@@ -281,6 +283,15 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			}
 		}
 		////////////////////////////////////////////////////////////////////////////////////////////
+
+		if sent {
+			bq.Notified = true
+			_, err = bq.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleQueueColumns.Notified))
+			if err != nil {
+				gamelog.L.Error().Err(err).Str("mech_id", bq.MechID).Str("owner_id", bq.OwnerID).Str("queued_at", bq.QueuedAt.String()).Msg("failed to update notified column")
+			}
+			continue
+		}
 
 		playerProfile, err := boiler.PlayerProfiles(boiler.PlayerProfileWhere.PlayerID.EQ(player.ID)).One(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
