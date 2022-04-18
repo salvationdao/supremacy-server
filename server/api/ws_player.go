@@ -262,18 +262,15 @@ func (pc *PlayerController) PlayerProfileUpdateHandler(ctx context.Context, wsc 
 		}
 
 		// check mobile number
-		if req.Payload.MobileNumber != "" {
-			// check mobile phone, if player required notifyed through mobile sms
-			if req.Payload.EnableSMSNotifications && req.Payload.MobileNumber != "" {
-				mobileNumber, err := pc.API.SMS.Lookup(req.Payload.MobileNumber)
-				if err != nil {
-					gamelog.L.Warn().Err(err).Str("mobile number", req.Payload.MobileNumber).Msg("Failed to lookup mobile number through twilio api")
-					return terror.Error(err, "Invalid phone number")
-				}
-
-				// set the verifyed mobile number
-				_playerProfile.MobileNumber = null.StringFrom(mobileNumber)
+		if req.Payload.MobileNumber != "" && req.Payload.EnableSMSNotifications {
+			mobileNumber, err := pc.API.SMS.Lookup(req.Payload.MobileNumber)
+			if err != nil {
+				gamelog.L.Warn().Err(err).Str("mobile number", req.Payload.MobileNumber).Msg("Failed to lookup mobile number through twilio api")
+				return terror.Error(err, "Invalid phone number")
 			}
+
+			// set the verified mobile number
+			_playerProfile.MobileNumber = null.StringFrom(mobileNumber)
 		}
 
 		err = _playerProfile.Insert(gamedb.StdConn, boil.Infer())
@@ -281,7 +278,7 @@ func (pc *PlayerController) PlayerProfileUpdateHandler(ctx context.Context, wsc 
 			return terror.Error(err, errMsg)
 		}
 
-		// if new profile and has telegram notifcations enabled, must register to telebot
+		// if new profile and has telegram notifications enabled, must register to telebot
 		if _playerProfile.EnableTelegramNotifications {
 			playerProfile, err = pc.API.Telegram.ProfileUpdate(wsc.Identifier())
 			if err != nil {
@@ -298,9 +295,8 @@ func (pc *PlayerController) PlayerProfileUpdateHandler(ctx context.Context, wsc 
 	playerProfile.EnableSMSNotifications = req.Payload.EnableSMSNotifications
 	playerProfile.EnablePushNotifications = req.Payload.EnablePushNotifications
 
-	// check mobile number
 	if req.Payload.EnableSMSNotifications && req.Payload.MobileNumber != "" {
-		// check mobile phone, if player required notifyed through mobile sms
+		// check mobile number
 		mobileNumber, err := pc.API.SMS.Lookup(req.Payload.MobileNumber)
 		if err != nil {
 			gamelog.L.Warn().Err(err).Str("mobile number", req.Payload.MobileNumber).Msg("Failed to lookup mobile number through twilio api")
@@ -320,7 +316,7 @@ func (pc *PlayerController) PlayerProfileUpdateHandler(ctx context.Context, wsc 
 		return terror.Error(err, errMsg)
 	}
 
-	// if telegram enbled but is not registered
+	// if telegram enabled but is not registered
 	if playerProfile.EnableTelegramNotifications && (!playerProfile.TelegramID.Valid && playerProfile.Shortcode == "") {
 		playerProfile, err = pc.API.Telegram.ProfileUpdate(wsc.Identifier())
 		if err != nil {

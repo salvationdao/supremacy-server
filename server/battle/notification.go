@@ -251,6 +251,12 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 
 		sent := false
 		// OLD NOTIFICATION SYSTEM WILL BE REMOVED///////////////////////////////////////////////////////////////
+
+		// continue loop if their war machine does not have a relationship with the battle_queue_notifications table
+		if warMachine.R.BattleQueueNotifications == nil {
+			gamelog.L.Warn().Str("mech id", warMachine.ID).Str("mech name", warMachine.Name).Msg("Skipping mech notification, no relation found on battle_queue_notifications table")
+			continue
+		}
 		for _, n := range warMachine.R.BattleQueueNotifications {
 			if n.SentAt.Valid {
 				continue

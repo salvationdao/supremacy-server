@@ -343,7 +343,6 @@ func (btl *Battle) start() {
 
 }
 
-
 // calcTriggeredLocation convert picked cell to the location in game
 func (btl *Battle) calcTriggeredLocation(abilityEvent *server.GameAbilityEvent) {
 	// To get the location in game its
@@ -832,7 +831,7 @@ func (btl *Battle) endWarMachines(payload *BattleEndPayload) []*WarMachine {
 				continue
 			}
 
-			if playerProfile != nil && playerProfile.EnableTelegramNotifications {
+			if playerProfile != nil && playerProfile.TelegramID.Valid && playerProfile.EnableTelegramNotifications {
 				// killed a war machine
 				msg := fmt.Sprintf("Your War machine %s is Victorious! 🎉", w.Name)
 				err := btl.arena.telegram.Notify2(playerProfile.TelegramID.Int64, msg)
@@ -1407,7 +1406,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 
 	}
 
-	if playerProfile != nil && playerProfile.EnableTelegramNotifications {
+	if playerProfile != nil && playerProfile.TelegramID.Valid && playerProfile.EnableTelegramNotifications {
 		// killed a war machine
 		msg := fmt.Sprintf("Your War machine %s has been destroyed ☠️", destroyedWarMachine.Name)
 		err := btl.arena.telegram.Notify2(playerProfile.TelegramID.Int64, msg)
@@ -1453,8 +1452,6 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 						}
 					}
 
-					/// NEW
-
 					//// NEW
 					playerProfile, err := boiler.PlayerProfiles(boiler.PlayerProfileWhere.PlayerID.EQ(destroyedWarMachine.OwnedByID)).One(gamedb.StdConn)
 					if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -1462,10 +1459,10 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 
 					}
 
-					if playerProfile != nil && playerProfile.EnableTelegramNotifications {
+					if playerProfile != nil && playerProfile.TelegramID.Valid && playerProfile.EnableTelegramNotifications {
 						// killed a war machine
 						msg := fmt.Sprintf("Your War machine destroyed %s \U0001F9BE ", destroyedWarMachine.Name)
-						err := btl.arena.telegram.Notify(bqn.TelegramNotificationID.String, msg)
+						err := btl.arena.telegram.Notify2(playerProfile.TelegramID.Int64, msg)
 						if err != nil {
 							gamelog.L.Error().Str("playerID", playerProfile.PlayerID).Str("telegramID", fmt.Sprintf("%v", playerProfile.TelegramID)).Err(err).Msg("failed to send notification")
 						}

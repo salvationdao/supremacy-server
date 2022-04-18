@@ -64,15 +64,18 @@ func (t *Telegram) RunTelegram(bot *tele.Bot) error {
 			return nil
 		}
 
+		// shortcode from recipient's reply
 		shortcode := c.Text()
-		telegramID := c.Recipient().Recipient()
-		_telegramID, err := strconv.Atoi(telegramID)
+		recipient := c.Recipient().Recipient()
+
+		// telegram id from recipient
+		telegramID, err := strconv.Atoi(recipient)
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("unable convert telegramID to int")
 			return c.Send("Unable to register shortcode, try again or contact support.")
 		}
 
-		// get player profile via short code
+		// get player's profile via short code
 		playerProfile, err := boiler.PlayerProfiles(
 			boiler.PlayerProfileWhere.TelegramID.IsNull(),
 			boiler.PlayerProfileWhere.Shortcode.EQ(strings.ToLower(shortcode))).One(gamedb.StdConn)
@@ -85,17 +88,16 @@ func (t *Telegram) RunTelegram(bot *tele.Bot) error {
 
 		// cant find telgram player by shortcode
 		if errors.Is(err, sql.ErrNoRows) {
-			reply = "Invalid shortcodefjfjfj!"
+			reply = "Unable to find shortcode, you may have entered your shortcode too fast, please try again or contact support."
 			return c.Send(reply)
 		}
 
-		// if found
-		playerProfile.TelegramID = null.Int64From(int64(_telegramID))
-
+		// if found set the player's telegram id
+		playerProfile.TelegramID = null.Int64From(int64(telegramID))
 		_, err = playerProfile.Update(gamedb.StdConn, boil.Infer())
 		if err != nil {
 			gamelog.L.Error().Err(err).
-				Str("telegramID", telegramID).
+				Str("telegramID", recipient).
 				Str("playerProfile", playerProfile.ID).
 				Msg("unable to update telegram player")
 			return terror.Error(err)
@@ -108,7 +110,7 @@ func (t *Telegram) RunTelegram(bot *tele.Bot) error {
 
 		}
 
-		reply = "Registered Successfully! You will be notified when your war machine is nearing battle"
+		reply = "Registered Successfully! Telegram notifications are now enabled. You will be notified when your war machine is nearing battle. You can disable it by going to your preferences. NOTE: you will be charged 5 $SUPS when a notification is sent"
 		go t.RegisterCallback(playerProfile.PlayerID, true)
 		return c.Send(reply)
 	})
@@ -116,7 +118,10 @@ func (t *Telegram) RunTelegram(bot *tele.Bot) error {
 	return nil
 }
 
+// ProfileUpdate will either create or update a players profile with new telegram notification enabled status
 func (t *Telegram) ProfileUpdate(playerID string) (*boiler.PlayerProfile, error) {
+
+	// generate shortcode
 	shortcode, err := shortid.Generate()
 	if err != nil {
 		return nil, terror.Error(err)
@@ -124,8 +129,11 @@ func (t *Telegram) ProfileUpdate(playerID string) (*boiler.PlayerProfile, error)
 
 	codeExists := true
 	for codeExists {
-		// check if a telegram player already has that shortcode
-		exists, err := boiler.PlayerProfiles(boiler.PlayerProfileWhere.Shortcode.EQ(strings.ToLower(shortcode))).Exists(gamedb.StdConn)
+		// check if a registered player profile already has that shortcode
+		exists, err := boiler.PlayerProfiles(
+			boiler.PlayerProfileWhere.Shortcode.EQ(strings.ToLower(shortcode)),
+			boiler.PlayerProfileWhere.TelegramID.IsNotNull(),
+		).Exists(gamedb.StdConn)
 		if err != nil {
 			return nil, terror.Error(err, "Unable to check if telegram player exists")
 		}
@@ -141,12 +149,13 @@ func (t *Telegram) ProfileUpdate(playerID string) (*boiler.PlayerProfile, error)
 		}
 	}
 
+	// try to find player profile
 	profile, err := boiler.PlayerProfiles(boiler.PlayerProfileWhere.PlayerID.EQ(playerID)).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, terror.Error(err, "Unable to get player profile")
 	}
 
-	// create new player profile
+	// if player profile does not exist make a new one
 	if errors.Is(err, sql.ErrNoRows) {
 		_profile := &boiler.PlayerProfile{
 			PlayerID:                    playerID,
@@ -174,6 +183,7 @@ func (t *Telegram) ProfileUpdate(playerID string) (*boiler.PlayerProfile, error)
 
 }
 
+// OLD Notify Method, will be removed
 func (t *Telegram) Notify(telegramNotificationID string, message string) error {
 	if t.Bot == nil {
 		return nil

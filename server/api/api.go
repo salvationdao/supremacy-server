@@ -403,5 +403,4 @@ func (a *API) createNotif(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("insert bqn ", err)
 		return
 	}
-
 }
