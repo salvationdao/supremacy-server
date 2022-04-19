@@ -1,6 +1,7 @@
 package rpcclient
 
 import (
+	"server"
 	"server/gamelog"
 	"strings"
 
@@ -12,11 +13,11 @@ type AssetOnChainStatusReq struct {
 }
 
 type AssetOnChainStatusResp struct {
-	OnChainStatus string `json:"on_chain_status"`
+	OnChainStatus server.OnChainStatus `json:"on_chain_status"`
 }
 
 // AssetOnChainStatus return an assets on chain status
-func (pp *PassportXrpcClient) AssetOnChainStatus(assetID string) (string, error) {
+func (pp *PassportXrpcClient) AssetOnChainStatus(assetID string) (server.OnChainStatus, error) {
 	resp := &AssetOnChainStatusResp{}
 	err := pp.XrpcClient.Call("S.AssetOnChainStatusHandler", AssetOnChainStatusReq{assetID}, resp)
 	if err != nil {
@@ -28,15 +29,15 @@ func (pp *PassportXrpcClient) AssetOnChainStatus(assetID string) (string, error)
 }
 
 type AssetsOnChainStatusReq struct {
-	AssetIDs []string `json:"asset_IDs"`
+	AssetIDs []string `json:"asset_ids"`
 }
 
 type AssetsOnChainStatusResp struct {
-	OnChainStatuses map[string]string `json:"on_chain_statuses"`
+	OnChainStatuses map[string]server.OnChainStatus `json:"on_chain_statuses"`
 }
 
 // AssetsOnChainStatus return a map of assets on chain statuses map[assetID]onChainStatus
-func (pp *PassportXrpcClient) AssetsOnChainStatus(assetIDs []string) (map[string]string, error) {
+func (pp *PassportXrpcClient) AssetsOnChainStatus(assetIDs []string) (map[string]server.OnChainStatus, error) {
 	resp := &AssetsOnChainStatusResp{}
 	err := pp.XrpcClient.Call("S.AssetsOnChainStatusHandler", AssetsOnChainStatusReq{assetIDs}, resp)
 	if err != nil {

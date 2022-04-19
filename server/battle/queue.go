@@ -115,7 +115,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		return terror.Error(err, "Unable to get asset ownership details, please try again or contact support.")
 	}
 
-	if onChainStatus != "MINTABLE" && onChainStatus != "UNSTAKABLE" {
+	if onChainStatus != server.OnChainStatusMintable && onChainStatus != server.OnChainStatusUnstakable {
 		return terror.Error(fmt.Errorf("asset on chain status is %s", onChainStatus), "This asset isn't on world, please transition on world.")
 	}
 
@@ -829,7 +829,7 @@ func (arena *Arena) AssetQueueStatusListHandler(ctx context.Context, hub *hub.Cl
 
 	resp := []*AssetQueueStatusItem{}
 	for _, q := range queueList {
-		if onChainStatus, ok := assetMap[q.MechID.String()]; ok && (onChainStatus == "MINTABLE" || onChainStatus == "UNSTAKABLE") {
+		if onChainStatus, ok := assetMap[q.MechID.String()]; ok && (onChainStatus == server.OnChainStatusMintable || onChainStatus == server.OnChainStatusUnstakable) {
 			obj := &AssetQueueStatusItem{
 				MechID:        q.MechID.String(),
 				QueuePosition: q.QueuePosition,
