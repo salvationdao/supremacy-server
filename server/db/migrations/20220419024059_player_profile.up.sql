@@ -7,8 +7,5 @@ CREATE TABLE player_profile (
     enable_push_notifications       BOOLEAN NOT NULL DEFAULT FALSE,
     telegram_id                     BIGINT,
     mobile_number                   TEXT,
-    created_at TIMESTAMPTZ      NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ          NOT NULL DEFAULT NOW()
 );
-
--- populate player profile
-
