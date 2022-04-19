@@ -110,6 +110,15 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		return terror.Error(err)
 	}
 
+	onChainStatus, err := arena.RPCClient.AssetOnChainStatus(mechID.String())
+	if err != nil {
+		return terror.Error(err, "Unable to get asset ownership details, please try again or contact support.")
+	}
+
+	if onChainStatus != "MINTABLE" && onChainStatus != "UNSTAKABLE" {
+		return terror.Error(fmt.Errorf("asset on chain status is %s", onChainStatus), "This asset isn't on world, please transition on world.")
+	}
+
 	mech, err := db.Mech(mechID)
 	if err != nil {
 		gamelog.L.Error().Str("mech_id", mechID.String()).Err(err).Msg("unable to retrieve mech id from hash")
