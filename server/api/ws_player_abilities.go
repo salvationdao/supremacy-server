@@ -10,6 +10,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/player_abilities"
 	"server/rpcclient"
 	"time"
 
@@ -225,7 +226,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilitiesListHandler(ctx context.Con
 type SaleAbilitiesPurchaseRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		AbilityID string `json:"ability_id"` // blueprint ability id
+		AbilityID string `json:"ability_id"` // sale ability id
 		Amount    string `json:"amount"`
 	} `json:"payload"`
 }
@@ -246,12 +247,12 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 		return terror.Error(fmt.Errorf("user id is nil"), "Issue retriving user, please try again or contact support.")
 	}
 
-	spa, err := boiler.SalePlayerAbilities(boiler.SalePlayerAbilityWhere.BlueprintID.EQ(req.Payload.AbilityID)).One(gamedb.StdConn)
+	spa, err := boiler.SalePlayerAbilities(boiler.SalePlayerAbilityWhere.ID.EQ(req.Payload.AbilityID)).One(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().
-			Str("req.Payload.PlayerAbilityID", req.Payload.AbilityID).
-			Str("db func", "SalePlayerAbilities").Err(err).Msg("unable to get player ability")
-		return terror.Error(err, "Unable to process player ability purchase,  check your balance and try again.")
+			Str("req.Payload.AbilityID", req.Payload.AbilityID).
+			Str("db func", "SalePlayerAbilities").Err(err).Msg("unable to get sale ability")
+		return terror.Error(err, "Unable to process sale ability purchase,  check your balance and try again.")
 	}
 
 	if spa.AvailableUntil.Time.Before(time.Now()) {
@@ -342,5 +343,11 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 		return terror.Error(err, "Issue purchasing player ability, please try again or contact support.")
 	}
 	reply(true)
+
+	// Update price of sale ability
+	pac.API.PlayerAbilitiesSystem.Purchase <- &player_abilities.Purchase{
+		PlayerID:  userID,
+		AbilityID: pa.ID,
+	}
 	return nil
 }

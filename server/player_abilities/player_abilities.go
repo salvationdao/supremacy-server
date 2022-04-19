@@ -1,4 +1,4 @@
-package battle
+package player_abilities
 
 import (
 	"database/sql"
@@ -24,7 +24,6 @@ import (
 type Purchase struct {
 	PlayerID  uuid.UUID
 	AbilityID string
-	Amount    decimal.Decimal
 }
 
 type PlayerAbilitiesSystem struct {
@@ -32,26 +31,21 @@ type PlayerAbilitiesSystem struct {
 	salePlayerAbilities map[string]*boiler.SalePlayerAbility // map[ability_id]*Ability
 
 	// ability purchase
-	purchase chan *Purchase
+	Purchase chan *Purchase
 
-	_battle *Battle
-	closed  *atomic.Bool
+	messageBus *messagebus.MessageBus
+	closed     *atomic.Bool
 	sync.RWMutex
 }
 
-func (as *PlayerAbilitiesSystem) battle() *Battle {
-	as.RLock()
-	defer as.RUnlock()
-	return as._battle
-}
-
-func NewPlayerAbilitiesSystem(battle *Battle) *PlayerAbilitiesSystem {
+func NewPlayerAbilitiesSystem(messagebus *messagebus.MessageBus) *PlayerAbilitiesSystem {
 	salePlayerAbilities := map[string]*boiler.SalePlayerAbility{}
 
 	pas := &PlayerAbilitiesSystem{
 		salePlayerAbilities: salePlayerAbilities,
-		purchase:            make(chan *Purchase),
+		Purchase:            make(chan *Purchase),
 		closed:              atomic.NewBool(false),
+		messageBus:          messagebus,
 	}
 
 	go pas.SalePlayerAbilitiesUpdater()
@@ -100,12 +94,12 @@ func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 
 				_, err := s.Update(gamedb.StdConn, boil.Infer())
 				if err != nil {
-					gamelog.L.Error().Str("salePlayerAbilityID", s.ID).Str("new currentPrice", s.CurrentPrice.String()).Err(err).Msg("failed to update sale ability price")
+					gamelog.L.Error().Str("salePlayerAbilityID", s.ID).Str("new price", s.CurrentPrice.String()).Err(err).Msg("failed to update sale ability price")
 					continue
 				}
 
 				// Broadcast updated sale ability
-				pas.battle().arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeySaleAbilityPriceSubscribe, s.ID)), s.CurrentPrice)
+				pas.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeySaleAbilityPriceSubscribe, s.ID)), s.CurrentPrice)
 			}
 			pas.Unlock()
 			break
@@ -152,13 +146,23 @@ func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 					pas.salePlayerAbilities[s.ID] = s
 				}
 				// Broadcast trigger of sale abilities list update
-				pas.battle().arena.messageBus.Send(messagebus.BusKey(server.HubKeySaleAbilitiesListUpdated), true)
+				pas.messageBus.Send(messagebus.BusKey(server.HubKeySaleAbilitiesListUpdated), true)
 			}
 			pas.Unlock()
 			break
-			// case purchase := <- pas.purchase:
-
-			// 	break
+		case purchase := <-pas.Purchase:
+			if saleAbility, ok := pas.salePlayerAbilities[purchase.AbilityID]; ok {
+				oneHundred := decimal.NewFromFloat(100.0)
+				inflationPercentage := db.GetDecimalWithDefault("sale_ability_inflation_percentage", decimal.NewFromFloat(20.0)) // default 20%
+				saleAbility.CurrentPrice = saleAbility.CurrentPrice.Mul(oneHundred.Add(inflationPercentage).Div(oneHundred))
+				_, err := saleAbility.Update(gamedb.StdConn, boil.Infer())
+				if err != nil {
+					gamelog.L.Error().Str("salePlayerAbilityID", saleAbility.ID).Str("new price", saleAbility.CurrentPrice.String()).Err(err).Msg("failed to update sale ability price")
+					break
+				}
+				pas.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeySaleAbilityPriceSubscribe, saleAbility.ID)), saleAbility.CurrentPrice)
+			}
+			break
 		}
 	}
 }
