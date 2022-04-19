@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"math"
 	"math/rand"
 	"server"
@@ -16,6 +15,8 @@ import (
 	"server/gamelog"
 	"server/rpcclient"
 	"time"
+
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
@@ -107,6 +108,15 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 	if err != nil {
 		gamelog.L.Error().Str("hash", msg.Payload.AssetHash).Err(err).Msg("unable to retrieve mech id from hash")
 		return terror.Error(err)
+	}
+
+	onChainStatus, err := arena.RPCClient.AssetOnChainStatus(mechID.String())
+	if err != nil {
+		return terror.Error(err, "Unable to get asset ownership details, please try again or contact support.")
+	}
+
+	if onChainStatus != server.OnChainStatusMintable && onChainStatus != server.OnChainStatusUnstakable {
+		return terror.Error(fmt.Errorf("asset on chain status is %s", onChainStatus), "This asset isn't on world, please transition on world.")
 	}
 
 	mech, err := db.Mech(mechID)
@@ -788,7 +798,7 @@ func (arena *Arena) AssetQueueStatusHandler(ctx context.Context, wsc *hub.Client
 	return nil
 }
 
-const WSAssetQueueStatusList hub.HubCommandKey = hub.HubCommandKey("ASSET:QUEUE:STATUS:LIST")
+const WSAssetQueueStatusList hub.HubCommandKey = "ASSET:QUEUE:STATUS:LIST"
 
 type AssetQueueStatusItem struct {
 	MechID        string `json:"mech_id"`
@@ -803,20 +813,32 @@ func (arena *Arena) AssetQueueStatusListHandler(ctx context.Context, hub *hub.Cl
 
 	queueList, err := db.QueueOwnerList(userID)
 	if err != nil {
-		return terror.Error(err, "Failed to list mechs in queue")
+		return terror.Error(err, "Failed to list war machines in queue")
+	}
+
+	// check their on world / off world status
+	assetIDsToCheck := []string{}
+	for _, q := range queueList {
+		assetIDsToCheck = append(assetIDsToCheck, q.MechID.String())
+	}
+
+	assetMap, err := arena.RPCClient.AssetsOnChainStatus(assetIDsToCheck)
+	if err != nil {
+		return terror.Error(err, "Unable to get asset ownership details, please try again or contact support.")
 	}
 
 	resp := []*AssetQueueStatusItem{}
 	for _, q := range queueList {
-		obj := &AssetQueueStatusItem{
-			MechID:        q.MechID.String(),
-			QueuePosition: q.QueuePosition,
+		if onChainStatus, ok := assetMap[q.MechID.String()]; ok && (onChainStatus == server.OnChainStatusMintable || onChainStatus == server.OnChainStatusUnstakable) {
+			obj := &AssetQueueStatusItem{
+				MechID:        q.MechID.String(),
+				QueuePosition: q.QueuePosition,
+			}
+			resp = append(resp, obj)
 		}
-		resp = append(resp, obj)
 	}
 
 	reply(resp)
-
 	return nil
 }
 

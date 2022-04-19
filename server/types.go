@@ -677,3 +677,11 @@ func Env() string {
 	defer lock.RUnlock()
 	return env
 }
+
+type OnChainStatus string
+
+const (
+	OnChainStatusMintable   OnChainStatus = "MINTABLE"
+	OnChainStatusStakable   OnChainStatus = "STAKABLE"
+	OnChainStatusUnstakable OnChainStatus = "UNSTAKABLE"
+)
