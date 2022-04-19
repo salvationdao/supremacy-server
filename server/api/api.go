@@ -14,8 +14,6 @@ import (
 	"server/rpcclient"
 	"time"
 
-	"github.com/rs/zerolog"
-
 	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
@@ -31,6 +29,7 @@ import (
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/pemistahl/lingua-go"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/rs/zerolog"
 	"github.com/sasha-s/go-deadlock"
 )
 

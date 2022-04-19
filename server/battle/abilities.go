@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -19,6 +20,7 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
 
+	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -71,6 +73,7 @@ type AbilitiesSystem struct {
 
 	closed *atomic.Bool
 
+	startedAt time.Time
 	end       chan bool
 	endGabs   chan bool
 	liveCount *LiveCount
@@ -243,8 +246,9 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 		liveCount: &LiveCount{
 			TotalVotes: decimal.Zero,
 		},
-		end:     make(chan bool, 5),
-		endGabs: make(chan bool, 5),
+		end:       make(chan bool, 5),
+		endGabs:   make(chan bool, 5),
+		startedAt: time.Now(),
 	}
 
 	// broadcast faction unique ability
@@ -285,6 +289,8 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 // ***********************************
 // Faction Unique Ability Contribution
 // ***********************************
+
+const BattleContributorUpdateKey hub.HubCommandKey = "BATTLE:CONTRIBUTOR:UPDATE"
 
 // FactionUniqueAbilityUpdater update ability price every 10 seconds
 func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
@@ -487,7 +493,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 						continue
 					}
 
-					actualSupSpent, isTriggered := ability.SupContribution(as.battle().arena.RPCClient, as.battle().ID, as.battle().BattleNumber, cont.userID, cont.amount)
+					actualSupSpent, multiAmount, isTriggered := ability.SupContribution(as.battle().arena.RPCClient, as, as.battle().ID, as.battle().BattleNumber, cont.userID, cont.amount)
 
 					if isTriggered {
 						// increase price as the twice amount for normal value
@@ -506,6 +512,8 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 					}
 
 					as.liveCount.AddSups(actualSupSpent)
+
+					as.battle().users.Send(BattleContributorUpdateKey, multiAmount, cont.userID)
 
 					// sups contribution
 					triggeredFlag := "0"
@@ -704,7 +712,7 @@ func (ga *GameAbility) FactionUniqueAbilityPriceUpdate(minPrice decimal.Decimal)
 }
 
 // SupContribution contribute sups to specific game ability, return the actual sups spent and whether the ability is triggered
-func (ga *GameAbility) SupContribution(ppClient *rpcclient.PassportXrpcClient, battleID string, battleNumber int, userID uuid.UUID, amount decimal.Decimal) (decimal.Decimal, bool) {
+func (ga *GameAbility) SupContribution(ppClient *rpcclient.PassportXrpcClient, as *AbilitiesSystem, battleID string, battleNumber int, userID uuid.UUID, amount decimal.Decimal) (decimal.Decimal, decimal.Decimal, bool) {
 
 	isTriggered := false
 
@@ -732,13 +740,15 @@ func (ga *GameAbility) SupContribution(ppClient *rpcclient.PassportXrpcClient, b
 		NotSafe:              true,
 	})
 	if err != nil {
-		return decimal.Zero, false
+		return decimal.Zero, decimal.Zero, false
 	}
 
 	isAllSyndicates := false
 	if ga.BattleAbilityID == nil || *ga.BattleAbilityID == "" {
 		isAllSyndicates = true
 	}
+
+	multiAmount := as.calculateUserContributeMultiplier(amount)
 
 	battleContrib := &boiler.BattleContribution{
 		BattleID:          battleID,
@@ -751,6 +761,7 @@ func (ga *GameAbility) SupContribution(ppClient *rpcclient.PassportXrpcClient, b
 		Amount:            amount,
 		ContributedAt:     now,
 		TransactionID:     null.StringFrom(txid),
+		MultiAmount:       multiAmount,
 	}
 
 	err = battleContrib.Insert(gamedb.StdConn, boil.Infer())
@@ -809,13 +820,13 @@ func (ga *GameAbility) SupContribution(ppClient *rpcclient.PassportXrpcClient, b
 		// store updated price to db
 		err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ga.ID, ga.SupsCost, ga.CurrentSups)
 		if err != nil {
-			gamelog.L.Error().Err(err).Msg("unable to insert faction ability sup cost update")
-			return amount, false
+			gamelog.L.Error().Str("ga.ID", ga.ID).Str("ga.SupsCost", ga.SupsCost.String()).Str("ga.CurrentSups", ga.CurrentSups.String()).Err(err).Msg("unable to insert faction ability sup cost update")
+			return amount, multiAmount, false
 		}
-		return amount, false
+		return amount, multiAmount, false
 	}
 
-	return amount, true
+	return amount, multiAmount, true
 }
 
 // ***************************
@@ -951,6 +962,8 @@ type LocationSelectAnnouncement struct {
 	EndTime     time.Time    `json:"end_time"`
 }
 
+const ContributorMultiAmount hub.HubCommandKey = "CONTRIBUTOR:MULTI:AMOUNT"
+
 // StartGabsAbilityPoolCycle
 func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 	defer func() {
@@ -1009,6 +1022,12 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 					continue
 				}
 				as.BattleAbilityProgressBar()
+
+				multiplier := as.calculateUserContributeMultiplier(decimal.New(1, 18))
+
+				if multiplier.GreaterThan(decimal.Zero) {
+					as.battle().users.Send(ContributorMultiAmount, multiplier)
+				}
 			}
 		}
 	}()
@@ -1215,7 +1234,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 
 			if factionAbility, ok := as.battleAbilityPool.Abilities.Load(cont.factionID.String()); ok {
 				// contribute sups
-				actualSupSpent, abilityTriggered := factionAbility.SupContribution(as.battle().arena.RPCClient, as.battle().ID, as.battle().BattleNumber, cont.userID, cont.amount)
+				actualSupSpent, multiAmount, abilityTriggered := factionAbility.SupContribution(as.battle().arena.RPCClient, as, as.battle().ID, as.battle().BattleNumber, cont.userID, cont.amount)
 
 				// broadcast the latest result progress bar, when ability is triggered
 				as.BroadcastAbilityProgressBar()
@@ -1237,6 +1256,9 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				}
 
 				as.liveCount.AddSups(actualSupSpent)
+
+				// TODO: broadcast to user the contributor they get
+				as.battle().users.Send(BattleContributorUpdateKey, multiAmount, cont.userID)
 
 				if abilityTriggered {
 					// generate location select order list
@@ -1974,4 +1996,25 @@ func BuildUserDetailWithFaction(userID uuid.UUID) (*UserBrief, error) {
 	}
 
 	return userBrief, nil
+}
+
+// Formula based off https://www.desmos.com/calculator/vbfa5llasg
+func (as *AbilitiesSystem) calculateUserContributeMultiplier(amount decimal.Decimal) decimal.Decimal {
+	durationSeconds := time.Since(as.startedAt).Seconds()
+
+	maxMultiplier := db.GetDecimalWithDefault(db.KeyContributorMaxMultiplier, decimal.NewFromFloat(3.0))
+	minMultiplier := db.GetDecimalWithDefault(db.KeyContributorMinMultiplier, decimal.NewFromFloat(0.5))
+	decayMultiplier := db.GetDecimalWithDefault(db.KeyContributorDecayMultiplier, decimal.NewFromFloat(2.0))
+	sharpnessMultiplier := db.GetDecimalWithDefault(db.KeyContributorSharpnessMultiplier, decimal.NewFromFloat(0.02))
+
+	e := sharpnessMultiplier.InexactFloat64() * durationSeconds
+	pow := math.Pow(decayMultiplier.InexactFloat64(), e)
+
+	x := maxMultiplier.Sub(minMultiplier)
+	y := decimal.NewFromFloat(1.0).Div(decimal.NewFromFloat(pow))
+	z := x.Mul(y)
+	total := z.Add(minMultiplier).Mul(amount.Shift(-18))
+
+	return total
+
 }

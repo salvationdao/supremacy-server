@@ -855,6 +855,12 @@ type BattleWMDestroyedPayload struct {
 	BattleID string `json:"battleID"`
 }
 
+type BattleWMPickupPayload struct {
+	WarMachineHash string `json:"warMachineHash"`
+	EventID        string `json:"eventID"`
+	BattleID       string `json:"battleID"`
+}
+
 func (arena *Arena) start() {
 	defer func() {
 		if r := recover(); r != nil {
@@ -925,6 +931,13 @@ func (arena *Arena) start() {
 					continue
 				}
 				btl.Destroyed(&dataPayload)
+			case "BATTLE:WAR_MACHINE_PICKUP":
+				var dataPayload BattleWMPickupPayload
+				if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
+					gamelog.L.Warn().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal battle message warmachine pickup payload")
+					continue
+				}
+				btl.Pickup(&dataPayload)
 			case "BATTLE:END":
 				var dataPayload *BattleEndPayload
 				if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {

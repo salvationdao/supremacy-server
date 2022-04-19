@@ -69,6 +69,7 @@ const (
 	BattleEventSpawnedAi        = "spawned_ai"
 	BattleEventKill             = "kill"
 	BattleEventAbilityTriggered = "ability_triggered"
+	BattleEventPickup           = "pickup"
 )
 
 // Enum values for ChatMSGTypeEnum
@@ -93,6 +94,7 @@ const (
 	MultiplierTypeEnumPlayerMech   = "player_mech"
 	MultiplierTypeEnumHoursOnline  = "hours_online"
 	MultiplierTypeEnumSyndicateWin = "syndicate_win"
+	MultiplierTypeEnumContribute   = "contribute"
 )
 
 // Enum values for PlayerRankEnum
