@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"server"
+	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -82,17 +83,19 @@ func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 	for {
 		select {
 		case <-priceTicker.C:
+			oneHundred := decimal.NewFromFloat(100.0)
+			reductionPercentage := db.GetDecimalWithDefault("sale_ability_reduction_percentage", decimal.NewFromFloat(1.0)) // default 1%
+			floorPrice := db.GetDecimalWithDefault("sale_ability_floor_price", decimal.NewFromFloat(10))                    // default 10 sups
+
 			pas.Lock()
 			for _, s := range pas.salePlayerAbilities {
 				if s.AvailableUntil.Time.Before(time.Now()) {
 					continue
 				}
 
-				// todo: make this multiplier a kv value
-				s.CurrentPrice = s.CurrentPrice.Mul(decimal.NewFromFloat(0.99)) // decrease by 1%
-				// todo: make this check a kv value
-				if s.CurrentPrice.LessThan(decimal.NewFromInt(10)) {
-					s.CurrentPrice = decimal.NewFromInt(10)
+				s.CurrentPrice = s.CurrentPrice.Mul(oneHundred.Sub(reductionPercentage).Div(oneHundred))
+				if s.CurrentPrice.LessThan(floorPrice) {
+					s.CurrentPrice = floorPrice
 				}
 
 				_, err := s.Update(gamedb.StdConn, boil.Infer())
@@ -126,20 +129,36 @@ func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 					saleAbilities, err = boiler.SalePlayerAbilities(qm.OrderBy("random()"), qm.Limit(limit)).All(gamedb.StdConn)
 					if err != nil {
 						gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed to get %d random sale abilities", limit))
+						pas.Unlock()
+						break
 					}
-					for _, s := range saleAbilities {
-						s.AvailableUntil = null.TimeFrom(s.AvailableUntil.Time.Add(time.Hour))
+					_, err = saleAbilities.UpdateAll(gamedb.StdConn, boiler.M{
+						"available_until": time.Now().Add(time.Hour),
+					})
+					if err != nil {
+						gamelog.L.Error().Err(err).Msg("failed to update sale ability with new expiration date")
+						continue
 					}
+					// for _, s := range saleAbilities {
+					// 	s.AvailableUntil = null.TimeFrom(time.Now().Add(time.Hour))
+					// 	_, err = s.Update(gamedb.StdConn, boil.Infer())
+					// }
 				} else if err != nil {
 					gamelog.L.Error().Err(err).Msg("failed to fill sale player abilities map with new sale abilities")
+					pas.Unlock()
 					break
 				}
 				for _, s := range saleAbilities {
 					pas.salePlayerAbilities[s.ID] = s
 				}
-				break
+				// Broadcast trigger of sale abilities list update
+				pas.battle().arena.messageBus.Send(messagebus.BusKey(server.HubKeySaleAbilitiesListUpdated), true)
 			}
 			pas.Unlock()
+			break
+			// case purchase := <- pas.purchase:
+
+			// 	break
 		}
 	}
 }

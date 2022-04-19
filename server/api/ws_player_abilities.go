@@ -42,8 +42,41 @@ func NewPlayerAbilitiesController(api *API) *PlayerAbilitiesControllerWS {
 
 	api.SecureUserSubscribeCommand(server.HubKeyPlayerAbilitySubscribe, pac.PlayerAbilitySubscribeHandler)
 	api.SecureUserSubscribeCommand(server.HubKeySaleAbilityPriceSubscribe, pac.SaleAbilitySubscribePriceHandler)
+	api.SecureUserSubscribeCommand(server.HubKeyPlayerAbilitiesListUpdated, pac.PlayerAbilitiesListUpdatedHandler)
+	api.SecureUserSubscribeCommand(server.HubKeySaleAbilitiesListUpdated, pac.SaleAbilitiesListUpdatedHandler)
 
 	return pac
+}
+
+func (pac *PlayerAbilitiesControllerWS) PlayerAbilitiesListUpdatedHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return "", "", terror.Error(err, "Invalid request received.")
+	}
+
+	userID, err := uuid.FromString(client.Identifier())
+	if err != nil {
+		gamelog.L.Error().Str("client.Identifier()", client.Identifier()).Err(err).Msg("failed to convert hub id to user id")
+		return "", "", terror.Error(err)
+	} else if userID.IsNil() {
+		gamelog.L.Error().Str("client.Identifier()", client.Identifier()).Err(err).Msg("failed to convert hub id to user id, user id is nil")
+		return "", "", terror.Error(fmt.Errorf("user id is nil"), "Issue retriving user, please try again or contact support.")
+	}
+
+	reply(true)
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeyPlayerAbilitiesListUpdated, userID)), nil
+}
+
+func (pac *PlayerAbilitiesControllerWS) SaleAbilitiesListUpdatedHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return "", "", terror.Error(err, "Invalid request received.")
+	}
+
+	reply(true)
+	return req.TransactionID, messagebus.BusKey(server.HubKeySaleAbilitiesListUpdated), nil
 }
 
 type PlayerAbilitySubscribeRequest struct {
@@ -53,7 +86,7 @@ type PlayerAbilitySubscribeRequest struct {
 	} `json:"payload"`
 }
 
-func (pac *PlayerAbilitiesControllerWS) PlayerAbilitySubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
+func (pac *PlayerAbilitiesControllerWS) PlayerAbilitySubscribeHandler(ctx context.Context, hub *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	req := &PlayerAbilitySubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -69,12 +102,12 @@ func (pac *PlayerAbilitiesControllerWS) PlayerAbilitySubscribeHandler(ctx contex
 	pAbility, err := boiler.FindPlayerAbility(gamedb.StdConn, req.Payload.AbilityID)
 	if err != nil {
 		gamelog.L.Error().
-			Str("db func", "SaleAbilityGet").Err(err).Msg("unable to get sale ability details")
-		return "", "", terror.Error(err, "Unable to retrieve sale ability, please try again or contact support.")
+			Str("db func", "SaleAbilityGet").Err(err).Msg("unable to get player ability details")
+		return "", "", terror.Error(err, "Unable to retrieve player ability, please try again or contact support.")
 	}
 
 	reply(pAbility)
-	return "", messagebus.BusKey(server.HubKeyPlayerAbilitySubscribe), nil
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeyPlayerAbilitySubscribe, pAbility.ID)), nil
 }
 
 type SaleAbilitySubscribePriceRequest struct {
@@ -84,7 +117,7 @@ type SaleAbilitySubscribePriceRequest struct {
 	} `json:"payload"`
 }
 
-func (pac *PlayerAbilitiesControllerWS) SaleAbilitySubscribePriceHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
+func (pac *PlayerAbilitiesControllerWS) SaleAbilitySubscribePriceHandler(ctx context.Context, hub *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	req := &SaleAbilitySubscribePriceRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
