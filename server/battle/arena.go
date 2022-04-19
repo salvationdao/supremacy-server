@@ -324,7 +324,7 @@ func (arena *Arena) BattleAbilityBribe(ctx context.Context, wsc *hub.Client, pay
 	}
 
 	// check percentage amount is valid
-	if _, ok := MinVotePercentageCost[req.Payload.Percentage]; !ok {
+	if _, ok := MinVotePercentageCost[req.Payload.Percentage.String()]; !ok {
 		gamelog.L.Error().Interface("payload", req).
 			Str("userID", wsc.Identifier()).
 			Str("percentage", req.Payload.Percentage.String()).
@@ -473,7 +473,7 @@ type GameAbilityContributeRequest struct {
 	Payload struct {
 		AbilityIdentity   string          `json:"ability_identity"`
 		AbilityOfferingID string          `json:"ability_offering_id"`
-		Percentage        decimal.Decimal `json:"decimal"` // "0.1", "0.5%", "1%"
+		Percentage        decimal.Decimal `json:"percentage"` // "0.1", "0.5%", "1%"
 	} `json:"payload"`
 }
 
@@ -502,7 +502,7 @@ func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, wsc *hub
 	}
 
 	// check percentage amount is valid
-	if _, ok := MinVotePercentageCost[req.Payload.Percentage]; !ok {
+	if _, ok := MinVotePercentageCost[req.Payload.Percentage.String()]; !ok {
 		gamelog.L.Error().Interface("payload", req).
 			Str("userID", wsc.Identifier()).
 			Str("percentage", req.Payload.Percentage.String()).

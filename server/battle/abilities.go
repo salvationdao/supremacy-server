@@ -32,10 +32,10 @@ import (
 // Voting Options
 //*******************************
 
-var MinVotePercentageCost = map[decimal.Decimal]decimal.Decimal{
-	decimal.NewFromFloat(0.0001): decimal.NewFromFloat(0.1),
-	decimal.NewFromFloat(0.001):  decimal.NewFromFloat(0.5),
-	decimal.NewFromFloat(0.01):   decimal.NewFromFloat(1),
+var MinVotePercentageCost = map[string]decimal.Decimal{
+	"0.0001": decimal.NewFromFloat(0.1),
+	"0.001":  decimal.NewFromFloat(0.5),
+	"0.01":   decimal.NewFromFloat(1),
 }
 
 //******************************
@@ -502,7 +502,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 					}
 
 					// calculate amount from percentage of current sups
-					minAmount, ok := MinVotePercentageCost[cont.percentage]
+					minAmount, ok := MinVotePercentageCost[cont.percentage.String()]
 					if !ok {
 						gamelog.L.Error().Err(err).Msg("invalid offer percentage received")
 						continue
@@ -511,6 +511,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 					if amount.LessThan(minAmount) {
 						amount = minAmount
 					}
+					amount = amount.Mul(decimal.New(1, 18))
 
 					// return early if battle stage is invalid
 					if as.battle().stage.Load() != BattleStagStart {
@@ -1254,7 +1255,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 					continue
 				}
 
-				minAmount, ok := MinVotePercentageCost[cont.percentage]
+				minAmount, ok := MinVotePercentageCost[cont.percentage.String()]
 				if !ok {
 					gamelog.L.Error().Err(err).Msg("invalid offer percentage received")
 					continue
@@ -1263,7 +1264,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				if amount.LessThan(minAmount) {
 					amount = minAmount
 				}
-				// amount := d.Mul(decimal.New(1, 18))
+				amount = amount.Mul(decimal.New(1, 18))
 
 				// contribute sups
 				actualSupSpent, abilityTriggered := factionAbility.SupContribution(as.battle().arena.RPCClient, as.battle().ID, as.battle().BattleNumber, cont.userID, amount)
