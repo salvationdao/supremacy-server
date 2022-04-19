@@ -6,9 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/http"
 	"net/url"
-	"runtime"
 	"server"
 	"server/api"
 	"server/battle"
@@ -36,12 +34,12 @@ import (
 	"github.com/ninja-software/log_helpers"
 
 	_ "net/http/pprof"
-	rpprof "runtime/pprof"
 	"time"
 
 	"github.com/ninja-software/terror/v2"
 	"github.com/rs/zerolog"
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
+	"gopkg.in/DataDog/dd-trace-go.v1/profiler"
 
 	"context"
 	"os"
@@ -145,9 +143,10 @@ func main() {
 					&cli.IntFlag{Name: "database_max_idle_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_IDLE_CONNS"}, Usage: "Database max idle conns"},
 					&cli.IntFlag{Name: "database_max_open_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_OPEN_CONNS"}, Usage: "Database max open conns"},
 
-					&cli.BoolFlag{Name: "pprof", Value: true, EnvVars: []string{envPrefix + "_PPROF"}, Usage: "record pprof at regular interval to help debug"},
-					&cli.IntFlag{Name: "pprof_second", Value: 10, EnvVars: []string{envPrefix + "_PPROF_SECOND"}, Usage: "record pprof at x second interval"},
-					&cli.IntFlag{Name: "pprof_port", Value: 6060, EnvVars: []string{envPrefix + "_PPROF_PORT"}, Usage: "pprof local listening port"},
+					&cli.BoolFlag{Name: "pprof_datadog", Value: true, EnvVars: []string{envPrefix + "_PPROF_DATADOG"}, Usage: "Use datadog pprof to collect debug info"},
+					&cli.StringSliceFlag{Name: "pprof_datadog_profiles", Value: cli.NewStringSlice("cpu", "heap"), EnvVars: []string{envPrefix + "_PPROF_DATADOG_PROFILES"}, Usage: "Comma seprated list of profiles to collect. Options: cpu,heap,block,mutex,goroutine,metrics"},
+					&cli.DurationFlag{Name: "pprof_datadog_interval_sec", Value: 60, EnvVars: []string{envPrefix + "_PPROF_DATADOG_INTERVAL_SEC"}, Usage: "Specifies the period at which profiles will be collected"},
+					&cli.DurationFlag{Name: "pprof_datadog_duration_sec", Value: 60, EnvVars: []string{envPrefix + "_PPROF_DATADOG_DURATION_SEC"}, Usage: "Specifies the length of the CPU profile snapshot"},
 				},
 				Usage: "run server",
 				Action: func(c *cli.Context) error {
@@ -183,18 +182,60 @@ func main() {
 					battleArenaAddr := c.String("battle_arena_addr")
 					level := c.String("log_level")
 					gamelog.New(environment, level)
+
 					tracer.Start(
 						tracer.WithEnv(environment),
 						tracer.WithService(envPrefix),
 						tracer.WithServiceVersion(Version),
+						tracer.WithLogger(gamelog.DatadogLog{L: gamelog.L}), // configure before profiler so profiler will use this logger
 					)
 					defer tracer.Stop()
 
-					if c.Bool("pprof") {
-						pint := c.Int("pprof_second")
-						pport := c.Int("pprof_port")
-						// dumping pprof at period bases
-						pprofMonitor(pint, pport)
+					// Datadog Tracing an profiling
+					if c.Bool("pprof_datadog") {
+						// Decode Profile types
+						active := c.StringSlice("pprof_datadog_profiles")
+						profilers := []profiler.ProfileType{}
+						for _, act := range active {
+							switch act {
+							case profiler.CPUProfile.String():
+								gamelog.L.Debug().Msgf("Adding Datadog profiler: %s", profiler.CPUProfile)
+								profilers = append(profilers, profiler.CPUProfile)
+							case profiler.HeapProfile.String():
+								gamelog.L.Debug().Msgf("Adding Datadog profiler: %s", profiler.HeapProfile)
+								profilers = append(profilers, profiler.HeapProfile)
+							case profiler.BlockProfile.String():
+								gamelog.L.Debug().Msgf("Adding Datadog profiler: %s", profiler.BlockProfile)
+								profilers = append(profilers, profiler.BlockProfile)
+							case profiler.MutexProfile.String():
+								gamelog.L.Debug().Msgf("Adding Datadog profiler: %s", profiler.MutexProfile)
+								profilers = append(profilers, profiler.MutexProfile)
+							case profiler.GoroutineProfile.String():
+								gamelog.L.Debug().Msgf("Adding Datadog profiler: %s", profiler.GoroutineProfile)
+								profilers = append(profilers, profiler.GoroutineProfile)
+							case profiler.MetricsProfile.String():
+								gamelog.L.Debug().Msgf("Adding Datadog profiler: %s", profiler.MetricsProfile)
+								profilers = append(profilers, profiler.MetricsProfile)
+							}
+						}
+						err := profiler.Start(
+							// Service configuration
+							profiler.WithService(envPrefix),
+							profiler.WithVersion(Version),
+							profiler.WithEnv(environment),
+							// This doesn't have a WithLogger option but it can use the tracer logger if tracer is configured first.
+							// Profiler configuration
+							profiler.WithPeriod(c.Duration("pprof_datadog_interval_sec")*time.Second),
+							profiler.CPUDuration(c.Duration("pprof_datadog_duration_sec")*time.Second),
+							profiler.WithProfileTypes(
+								profilers...,
+							),
+						)
+						if err != nil {
+							gamelog.L.Error().Err(err).Msg("Failed to start Datadog Profiler")
+						}
+						gamelog.L.Info().Strs("with", active).Msg("Starting datadog profiler")
+						defer profiler.Stop()
 					}
 
 					if gameClientMinimumBuildNo == 0 {
@@ -220,6 +261,8 @@ func main() {
 						databaseHost,
 						databasePort,
 						databaseName,
+						databaseAppName,
+						Version,
 						databaseMaxIdleConns,
 						databaseMaxOpenConns,
 					)
@@ -468,6 +511,8 @@ func main() {
 						databaseHost,
 						databasePort,
 						databaseName,
+						databaseAppName,
+						Version,
 						databaseMaxIdleConns,
 						databaseMaxOpenConns,
 					)
@@ -627,7 +672,7 @@ func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, bat
 	HTMLSanitizePolicy.AllowAttrs("class").OnElements("img", "table", "tr", "td", "p")
 
 	// API Server
-	serverAPI := api.NewAPI(ctx, log, battleArenaClient, passport, HTMLSanitizePolicy, conn, config, messageBus, gsHub, sms, telegram, languageDetector)
+	serverAPI := api.NewAPI(ctx, battleArenaClient, passport, HTMLSanitizePolicy, config, messageBus, gsHub, sms, telegram, languageDetector)
 	return serverAPI, nil
 }
 
@@ -680,11 +725,16 @@ func sqlConnect(
 	databaseHost string,
 	databasePort string,
 	databaseName string,
+	DatabaseApplicationName string,
+	APIVersion string,
 	maxIdle int,
 	maxOpen int,
 ) (*sql.DB, error) {
 	params := url.Values{}
 	params.Add("sslmode", "disable")
+	if DatabaseApplicationName != "" {
+		params.Add("application_name", fmt.Sprintf("%s %s", DatabaseApplicationName, APIVersion))
+	}
 	connString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?%s",
 		databaseTxUser,
 		databaseTxPass,
@@ -706,69 +756,4 @@ func sqlConnect(
 	conn.SetMaxOpenConns(maxOpen)
 	return conn, nil
 
-}
-
-// pprofMonitor monitor to help debug some invisible issues
-func pprofMonitor(intervalSecond, listenPort int) {
-	if intervalSecond < 10 {
-		intervalSecond = 10
-	}
-	if listenPort <= 0 || listenPort >= 65535 {
-		listenPort = 6060
-	}
-
-	// auto record at interval
-	err := os.Mkdir("/tmp/gameserver-pprof", 0755)
-	if err != nil {
-		log.Println("ERROR pprof mkdir fail", err)
-	}
-
-	go func() {
-		lists := []string{
-			"allocs",
-			"block",
-			"goroutine",
-			"heap",
-			"mutex",
-			"threadcreate",
-			"goroutine",
-		}
-		for {
-			log.Printf("total goroutines %d\n", runtime.NumGoroutine())
-
-			for _, list := range lists {
-				t := time.Now().Format("2006-01-02T15:04:05")
-				fName := fmt.Sprintf("/tmp/gameserver-pprof/%s-%s.dump", t, list)
-
-				f, err := os.Create(fName)
-				if err != nil {
-					log.Println("ERROR failed to create pprof file", err)
-					continue
-				}
-
-				err = rpprof.Lookup(list).WriteTo(f, 1)
-				if err != nil {
-					log.Println("ERROR failed to write pprof file", err)
-					continue
-				}
-
-				err = f.Close()
-				if err != nil {
-					log.Println("ERROR failed to close pprof file", err)
-					continue
-				}
-			}
-
-			time.Sleep(time.Duration(intervalSecond) * time.Second)
-		}
-	}()
-	// pprof for quick web check
-	go func() {
-		log.Println(
-			http.ListenAndServe(
-				fmt.Sprintf("localhost:%d", listenPort),
-				nil,
-			),
-		)
-	}()
 }

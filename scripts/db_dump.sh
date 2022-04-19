@@ -26,9 +26,11 @@ source ${PACKAGE}_online/init/${PACKAGE}.env
 source /home/ubuntu/.profile # load PGPASSWORD
 
 # Cant use the project default user due to adjusted permisions on some tables
-pg_dump --dbname="$PASSPORT_DATABASE_NAME" --host="$PASSPORT_DATABASE_HOST" --port="$PASSPORT_DATABASE_PORT" --username="postgres" > ${DBFILE}
+pg_dump --dbname="$GAMESERVER_DATABASE_NAME" --host="$GAMESERVER_DATABASE_HOST" --port="$GAMESERVER_DATABASE_PORT" --username="postgres" > ${DBFILE}
 
 if [ ! -s "${DBFILE}" ]; then
     echo "db copy is zero size" >&2
     exit 2
 fi
+echo "Dumpt to"
+echo "$DBFILE"

@@ -223,7 +223,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 
 	// Charge user queue fee
 	supTransactionID, err := arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
-		Amount:               queueStatus.QueueCost.StringFixed(18),
+		Amount:               queueStatus.QueueCost.String(),
 		FromUserID:           ownerID,
 		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("war_machine_queueing_fee|%s|%d", msg.Payload.AssetHash, time.Now().UnixNano())),
@@ -577,25 +577,6 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 				return terror.Error(err, "Unable to remove your mech from the queue, please try again in five minutes or contact support.")
 			}
 			bq.QueueFeeTXIDRefund = null.StringFrom(queueRefundTransactionID)
-		} else {
-			// TODO: Eventually all battle queues will have transaction ids to refund against, but legency queue will not. So keeping below until all legacy queues have passed
-			// Refund user queue fee
-			queueRefundTransactionID, err := arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
-				Amount:               originalQueueCost.StringFixed(18),
-				FromUserID:           uuid.Must(uuid.FromString(factionAccountID)),
-				ToUserID:             ownerID,
-				TransactionReference: server.TransactionReference(fmt.Sprintf("refund_war_machine_queueing_fee|%s|%d", msg.Payload.AssetHash, time.Now().UnixNano())),
-				Group:                string(server.TransactionGroupBattle),
-				SubGroup:             "Queue",
-				Description:          "Refunded battle arena queueing fee",
-				NotSafe:              true,
-			})
-			if err != nil {
-				// Abort transaction if refund fails
-				gamelog.L.Error().Str("txID", queueRefundTransactionID).Interface("mechID", mechID).Interface("factionID", mech.FactionID).Err(err).Msg("unable to charge user for insert mech into queue")
-				return terror.Error(err, "Unable to process refund, try again or contact support.")
-			}
-			bq.QueueFeeTXIDRefund = null.StringFrom(queueRefundTransactionID)
 		}
 		_, err = bq.Update(tx, boil.Infer())
 		if err != nil {
@@ -621,25 +602,6 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 					Err(err).
 					Str("queue_notification_transaction_id", bq.QueueNotificationFeeTXID.String).
 					Msg("failed to refund users notification fee")
-				return terror.Error(err, "Unable to process refund, try again or contact support.")
-			}
-			bq.QueueNotificationFeeTXIDRefund = null.StringFrom(queueNotificationRefundTransactionID)
-		} else {
-			// TODO: Eventually all battle queues will have transaction ids to refund against, but legency queue will not. So keeping below until all legacy queues have passed
-			notifyCost := originalQueueCost.Mul(decimal.NewFromFloat(0.1))
-			queueNotificationRefundTransactionID, err := arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
-				Amount:               notifyCost.StringFixed(18),
-				FromUserID:           uuid.Must(uuid.FromString(factionAccountID)),
-				ToUserID:             ownerID,
-				TransactionReference: server.TransactionReference(fmt.Sprintf("refund_war_machine_queue_notification_fee|%s|%d", msg.Payload.AssetHash, time.Now().UnixNano())),
-				Group:                string(server.TransactionGroupBattle),
-				SubGroup:             "Queue",
-				Description:          "Refunded notification surcharge for queued mech in arena",
-				NotSafe:              true,
-			})
-			if err != nil {
-				// Abort transaction if charge fails
-				gamelog.L.Error().Str("txID", queueNotificationRefundTransactionID).Err(err).Msg("unable to refund user for notification for mech in queue")
 				return terror.Error(err, "Unable to process refund, try again or contact support.")
 			}
 			bq.QueueNotificationFeeTXIDRefund = null.StringFrom(queueNotificationRefundTransactionID)

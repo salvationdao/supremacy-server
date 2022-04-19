@@ -5,26 +5,23 @@ import (
 	"net/http"
 	"server"
 	"server/battle"
-	"server/db"
+
+	"server/gamedb"
+	"server/gamelog"
 
 	"github.com/go-chi/chi"
-	"github.com/rs/zerolog"
 
 	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
 )
 
 // CheckController holds connection data for handlers
 type CheckController struct {
-	Conn        db.Conn
-	Log         *zerolog.Logger
 	BattleArena *battle.Arena
 	Telegram    server.Telegram
 }
 
-func CheckRouter(log *zerolog.Logger, conn db.Conn, battleArena *battle.Arena, telegram server.Telegram) chi.Router {
+func CheckRouter(battleArena *battle.Arena, telegram server.Telegram) chi.Router {
 	c := &CheckController{
-		Conn:        conn,
-		Log:         log,
 		BattleArena: battleArena,
 		Telegram:    telegram,
 	}
@@ -37,13 +34,13 @@ func CheckRouter(log *zerolog.Logger, conn db.Conn, battleArena *battle.Arena, t
 }
 
 func (c *CheckController) Check(w http.ResponseWriter, r *http.Request) {
-	err := check(context.Background(), c.Conn)
+	err := check(context.Background(), gamedb.Conn)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, wErr := w.Write([]byte(err.Error()))
 		if wErr != nil {
 			DatadogTracer.HttpFinishSpan(r.Context(), http.StatusInternalServerError, wErr)
-			c.Log.Err(err).Msg("failed to send")
+			gamelog.L.Err(err).Msg("failed to send")
 		} else {
 			DatadogTracer.HttpFinishSpan(r.Context(), http.StatusInternalServerError, err)
 		}
@@ -53,7 +50,7 @@ func (c *CheckController) Check(w http.ResponseWriter, r *http.Request) {
 	//// get current battle
 	//ba, err := boiler.Battles(qm.OrderBy(fmt.Sprintf("%s DESC", boiler.BattleColumns.BattleNumber)), qm.Limit(1)).One(gamedb.StdConn)
 	//if err != nil {
-	//	c.Log.Err(err).Msg("failed to retrieve battle")
+	//	gamelog.L.Err(err).Msg("failed to retrieve battle")
 	//	return
 	//}
 
@@ -68,17 +65,17 @@ func (c *CheckController) Check(w http.ResponseWriter, r *http.Request) {
 	//		ba.StartedAt.String(),
 	//		diff.Minutes())
 	//
-	//	c.Log.Err(err).Str("battle_no", fmt.Sprintf("%d", ba.BattleNumber)).Msg(msg)
+	//	gamelog.L.Err(err).Str("battle_no", fmt.Sprintf("%d", ba.BattleNumber)).Msg(msg)
 	//	_, err = w.Write([]byte(msg))
 	//	if err != nil {
-	//		c.Log.Err(err).Str("battle_no", fmt.Sprintf("%d", ba.BattleNumber)).Msg("failed to send")
+	//		gamelog.L.Err(err).Str("battle_no", fmt.Sprintf("%d", ba.BattleNumber)).Msg("failed to send")
 	//	}
 	//}
 	//
 	//// get contributions for the last  2 mins
 	//btlContributions, err := ba.BattleContributions(boiler.BattleContributionWhere.ContributedAt.GT(now.Add(-10 * time.Minute))).All(gamedb.StdConn)
 	//if err != nil && !errors.Is(err, sql.ErrNoRows) {
-	//	c.Log.Err(err).Str("battle_no", fmt.Sprintf("%d", ba.BattleNumber)).Msg("failed to get battle contributions")
+	//	gamelog.L.Err(err).Str("battle_no", fmt.Sprintf("%d", ba.BattleNumber)).Msg("failed to get battle contributions")
 	//
 	//}
 	//
@@ -86,28 +83,28 @@ func (c *CheckController) Check(w http.ResponseWriter, r *http.Request) {
 	//	ok = false
 	//	w.WriteHeader(http.StatusGone)
 	//	msg := "there has been no contributions on the last 10 mins"
-	//	c.Log.Err(err).Str("battle_no", fmt.Sprintf("%d", ba.BattleNumber)).Msg(msg)
+	//	gamelog.L.Err(err).Str("battle_no", fmt.Sprintf("%d", ba.BattleNumber)).Msg(msg)
 	//	_, err = w.Write([]byte("\n" + msg))
 	//	if err != nil {
-	//		c.Log.Err(err).Str("battle_no", fmt.Sprintf("%d", ba.BattleNumber)).Msg("failed to send")
+	//		gamelog.L.Err(err).Str("battle_no", fmt.Sprintf("%d", ba.BattleNumber)).Msg("failed to send")
 	//	}
 	//}
 
 	_, err = w.Write([]byte("\nok"))
 	if err != nil {
-		c.Log.Err(err).Msg("failed to send")
+		gamelog.L.Err(err).Msg("failed to send")
 	}
 	DatadogTracer.HttpFinishSpan(r.Context(), http.StatusOK, nil)
 }
 
 // CheckGame return a game stat check
 func (c *CheckController) CheckGame(w http.ResponseWriter, r *http.Request) {
-	err := check(r.Context(), c.Conn)
+	err := check(r.Context(), gamedb.Conn)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, wErr := w.Write([]byte(err.Error()))
 		if wErr != nil {
-			c.Log.Err(err).Msg("failed to send")
+			gamelog.L.Err(err).Msg("failed to send")
 			DatadogTracer.HttpFinishSpan(r.Context(), http.StatusInternalServerError, wErr)
 		} else {
 			DatadogTracer.HttpFinishSpan(r.Context(), http.StatusInternalServerError, err)
@@ -116,7 +113,7 @@ func (c *CheckController) CheckGame(w http.ResponseWriter, r *http.Request) {
 	}
 	_, err = w.Write([]byte("ok"))
 	if err != nil {
-		c.Log.Err(err).Msg("failed to send")
+		gamelog.L.Err(err).Msg("failed to send")
 		DatadogTracer.HttpFinishSpan(r.Context(), http.StatusInternalServerError, err)
 	}
 	DatadogTracer.HttpFinishSpan(r.Context(), http.StatusOK, nil)
