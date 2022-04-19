@@ -9,9 +9,9 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+
 	"sort"
 
-	"github.com/gofrs/uuid"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -40,80 +40,13 @@ func NewMultiplierSystem(btl *Battle) *MultiplierSystem {
 		players:     make(map[string]map[*boiler.Multiplier]*boiler.UserMultiplier),
 		multipliers: make(map[string]*boiler.Multiplier),
 	}
-	ms.init()
 	return ms
-}
-
-func (ms *MultiplierSystem) init() {
-
 }
 
 type TriggerDetails struct {
 	FireCount  int
 	PlayerIDs  []string
 	FactionIDs []string
-}
-
-func PlayerMultipliers(playerID uuid.UUID, battleSeconds decimal.Decimal, specificBattleNumber ...int) ([]*Multiplier, string) {
-	var total decimal.Decimal
-
-	queries := []qm.QueryMod{
-		boiler.UserMultiplierWhere.PlayerID.EQ(playerID.String()),
-		boiler.UserMultiplierWhere.ExpiresAtBattleSeconds.GTE(battleSeconds),
-		qm.Load(
-			boiler.UserMultiplierRels.Multiplier,
-		),
-	}
-
-	// only obtaining multiplier on specific battle
-	if specificBattleNumber != nil && len(specificBattleNumber) > 0 {
-		queries = append(queries, boiler.UserMultiplierWhere.FromBattleNumber.EQ(specificBattleNumber[0]))
-	}
-
-	usermultipliers, err := boiler.UserMultipliers(queries...).All(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Err(err).Msgf("unable to retrieve player multipliers")
-		return []*Multiplier{}, "0"
-	}
-
-	multipliers := make([]*Multiplier, len(usermultipliers))
-	value := decimal.Zero
-	multiplicativeValue := decimal.Zero
-	for i, m := range usermultipliers {
-		multipliers[i] = &Multiplier{
-			Key:              m.R.Multiplier.Key,
-			Description:      m.R.Multiplier.Description,
-			IsMultiplicative: m.R.Multiplier.IsMultiplicative,
-			ExpiresInSeconds: m.ExpiresAtBattleSeconds.Sub(battleSeconds).IntPart(),
-		}
-
-		if !m.R.Multiplier.IsMultiplicative {
-			multipliers[i].Value = m.Value.Shift(-1).String()
-			value = value.Add(m.Value)
-			continue
-		}
-
-		multipliers[i].Value = m.Value.String()
-		multiplicativeValue = multiplicativeValue.Add(m.Value)
-	}
-
-	// set multiplicative to 1 if the value is zero
-	if multiplicativeValue.Equal(decimal.Zero) {
-		multiplicativeValue = decimal.NewFromInt(1)
-	}
-
-	total = value.Mul(multiplicativeValue)
-
-	if playerID.String() == "294be3d5-03be-4daa-ac6e-b9b862f79ae6" {
-		multipliers = append(multipliers, &Multiplier{
-			Key:              "reece \U0001F9CB\U0001F9CB\U0001F9CB",
-			Value:            "\U0001F9CB",
-			Description:      "no bbt for reece",
-			ExpiresInSeconds: 10000000000,
-		})
-	}
-
-	return multipliers, total.Shift(-1).StringFixed(1)
 }
 
 func (ms *MultiplierSystem) getMultiplier(mtype, testString string, num int) (*boiler.Multiplier, bool) {
@@ -571,7 +504,7 @@ winwar:
 
 	// insert multipliers
 	playersWithCitizenAlready := make(map[string]bool)
-	battleEndSeconds := ms.battle.battleSeconds()
+	//battleEndSeconds := ms.battle.battleSeconds()
 	for pid, mlts := range newMultipliers {
 		for multiID, m := range mlts {
 			// if it is a citizen multi
@@ -608,13 +541,11 @@ winwar:
 			}
 
 			mlt := &boiler.UserMultiplier{
-				PlayerID:                pid,
-				FromBattleNumber:        ms.battle.BattleNumber,
-				UntilBattleNumber:       ms.battle.BattleNumber + m.ForGames,
-				MultiplierID:            m.ID,
-				Value:                   m.Value,
-				ObtainedAtBattleSeconds: battleEndSeconds,
-				ExpiresAtBattleSeconds:  battleEndSeconds.Add(decimal.NewFromInt(int64(m.RemainSeconds))),
+				PlayerID:          pid,
+				FromBattleNumber:  ms.battle.BattleNumber,
+				UntilBattleNumber: ms.battle.BattleNumber + 1,
+				MultiplierID:      m.ID,
+				Value:             m.Value,
 			}
 			err := mlt.Insert(gamedb.StdConn, boil.Infer())
 			if err != nil {
@@ -623,4 +554,8 @@ winwar:
 			}
 		}
 	}
+}
+
+func (ms *MultiplierSystem) getMultipliersForBattle(battleNumber int) {
+
 }

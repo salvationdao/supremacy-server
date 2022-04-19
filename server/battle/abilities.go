@@ -518,6 +518,23 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 					}
 
 					actualSupSpent, isTriggered := ability.SupContribution(as.battle().arena.RPCClient, as.battle().ID, as.battle().BattleNumber, cont.userID, amount)
+
+					if isTriggered {
+						// increase price as the twice amount for normal value
+						ability.SupsCost = ability.SupsCost.Mul(decimal.NewFromInt(2))
+						ability.CurrentSups = decimal.Zero
+
+						// store updated price to db
+						err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ability.ID, ability.SupsCost, ability.CurrentSups)
+						if err != nil {
+							gamelog.L.Error().
+								Str("ability_id", ability.ID).
+								Str("sups_cost", ability.SupsCost.String()).
+								Str("current_sups", ability.CurrentSups.String()).
+								Err(err).Msg("could not update faction ability cost")
+						}
+					}
+
 					as.liveCount.AddSups(actualSupSpent)
 
 					// sups contribution
@@ -680,11 +697,11 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 
 // FactionUniqueAbilityPriceUpdate update target price on every tick
 func (ga *GameAbility) FactionUniqueAbilityPriceUpdate(minPrice decimal.Decimal) bool {
-	ga.SupsCost = ga.SupsCost.Mul(decimal.NewFromFloat(0.9977))
+	ga.SupsCost = ga.SupsCost.Mul(decimal.NewFromFloat(0.9977)).RoundDown(0)
 
 	// if target price hit 1 sup, set it to 1 sup
-	if ga.SupsCost.LessThanOrEqual(decimal.New(1, 18)) {
-		ga.SupsCost = decimal.New(1, 18)
+	if ga.SupsCost.LessThanOrEqual(minPrice) {
+		ga.SupsCost = minPrice
 	}
 
 	isTriggered := false
@@ -695,7 +712,7 @@ func (ga *GameAbility) FactionUniqueAbilityPriceUpdate(minPrice decimal.Decimal)
 		isTriggered = true
 
 		// double the target price
-		ga.SupsCost = ga.SupsCost.Mul(decimal.NewFromInt(2))
+		ga.SupsCost = ga.SupsCost.Mul(decimal.NewFromInt(2)).RoundDown(0)
 
 		// reset current sups to zero
 		ga.CurrentSups = decimal.Zero
@@ -707,8 +724,8 @@ func (ga *GameAbility) FactionUniqueAbilityPriceUpdate(minPrice decimal.Decimal)
 	if err != nil {
 		gamelog.L.Error().
 			Str("ability_id", ga.ID).
-			Str("sups_cost", ga.SupsCost.StringFixed(4)).
-			Str("current_sups", ga.CurrentSups.StringFixed(4)).
+			Str("sups_cost", ga.SupsCost.String()).
+			Str("current_sups", ga.CurrentSups.String()).
 			Err(err).Msg("could not update faction ability cost")
 		return isTriggered
 	}
@@ -737,7 +754,7 @@ func (ga *GameAbility) SupContribution(ppClient *rpcclient.PassportXrpcClient, b
 	txid, err := ppClient.SpendSupMessage(rpcclient.SpendSupsReq{
 		FromUserID:           userID,
 		ToUserID:             SupremacyBattleUserID,
-		Amount:               amount.StringFixed(18),
+		Amount:               amount.String(),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("ability_sup_contribute|%s|%d", ga.OfferingID.String(), time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupBattle),
 		SubGroup:             battleID,
@@ -790,7 +807,9 @@ func (ga *GameAbility) SupContribution(ppClient *rpcclient.PassportXrpcClient, b
 				BattleID:     battleID,
 				BattleNumber: battleNumber,
 				Amount:       amount,
-				AmountSent:   decimal.New(0, 18),
+				AmountSent:   decimal.Zero,
+				CurrentTick:  0,
+				MaxTicks:     20, // ideally this comes from the sow config?
 			}
 			err = spoil.Insert(gamedb.StdConn, boil.Infer())
 			if err != nil {
@@ -824,20 +843,6 @@ func (ga *GameAbility) SupContribution(ppClient *rpcclient.PassportXrpcClient, b
 			return amount, false
 		}
 		return amount, false
-	}
-	// increase price as the twice amount for normal value
-	ga.SupsCost = ga.SupsCost.Mul(decimal.NewFromInt(2))
-	ga.CurrentSups = decimal.Zero
-
-	// store updated price to db
-	err = db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ga.ID, ga.SupsCost, ga.CurrentSups)
-	if err != nil {
-		gamelog.L.Error().
-			Str("ability_id", ga.ID).
-			Str("sups_cost", ga.SupsCost.StringFixed(4)).
-			Str("current_sups", ga.CurrentSups.StringFixed(4)).
-			Err(err).Msg("could not update faction ability cost")
-		return amount, true
 	}
 
 	return amount, true
@@ -1262,6 +1267,26 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 
 				// contribute sups
 				actualSupSpent, abilityTriggered := factionAbility.SupContribution(as.battle().arena.RPCClient, as.battle().ID, as.battle().BattleNumber, cont.userID, amount)
+
+				// broadcast the latest result progress bar, when ability is triggered
+				as.BroadcastAbilityProgressBar()
+
+				if abilityTriggered {
+					// increase price as the twice amount for normal value
+					factionAbility.SupsCost = factionAbility.SupsCost.Mul(decimal.NewFromInt(2))
+					factionAbility.CurrentSups = decimal.Zero
+
+					// store updated price to db
+					err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, factionAbility.ID, factionAbility.SupsCost, factionAbility.CurrentSups)
+					if err != nil {
+						gamelog.L.Error().
+							Str("factionAbility_id", factionAbility.ID).
+							Str("sups_cost", factionAbility.SupsCost.String()).
+							Str("current_sups", factionAbility.CurrentSups.String()).
+							Err(err).Msg("could not update faction ability cost")
+					}
+				}
+
 				as.liveCount.AddSups(actualSupSpent)
 
 				if abilityTriggered {
@@ -1322,8 +1347,6 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 					}
 					as.battle().arena.BroadcastGameNotificationAbility(GameNotificationTypeBattleAbility, notification)
 
-					// broadcast the latest result progress bar, when ability is triggered
-					as.BroadcastAbilityProgressBar()
 				}
 			}
 		}
@@ -1366,6 +1389,7 @@ func (as *AbilitiesSystem) SetNewBattleAbility() (int, error) {
 			// set sups cost to initial price
 			supsCost = decimal.New(100, 18)
 		}
+		supsCost = supsCost.RoundDown(0)
 
 		currentSups, err := decimal.NewFromString(ga.CurrentSups)
 		if err != nil {
@@ -1552,12 +1576,15 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 	// update price
 	as.battleAbilityPool.Abilities.Range(func(factionID string, ability *GameAbility) bool {
 		// reduce price
-		ability.SupsCost = ability.SupsCost.Mul(decimal.NewFromFloat(0.93304))
+		ability.SupsCost = ability.SupsCost.Mul(decimal.NewFromFloat(0.93304)).RoundDown(0)
 
 		// cap minmum price at 1 sup
 		if ability.SupsCost.Cmp(decimal.New(1, 18)) <= 0 {
 			ability.SupsCost = decimal.New(1, 18)
 		}
+
+		// broadcast the progress bar
+		as.BroadcastAbilityProgressBar()
 
 		// if ability not triggered, store ability's new target price to database, and continue
 		if ability.SupsCost.Cmp(ability.CurrentSups) > 0 {
@@ -1566,27 +1593,24 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 			if err != nil {
 				gamelog.L.Error().
 					Str("ability_id", ability.ID).
-					Str("sups_cost", ability.SupsCost.StringFixed(4)).
-					Str("current_sups", ability.CurrentSups.StringFixed(4)).
+					Str("sups_cost", ability.SupsCost.String()).
+					Str("current_sups", ability.CurrentSups.String()).
 					Err(err).Msg("could not update faction ability cost")
 			}
 			return true
 		}
 
 		// if ability triggered
-		ability.SupsCost = ability.SupsCost.Mul(decimal.NewFromInt(2))
+		ability.SupsCost = ability.SupsCost.Mul(decimal.NewFromInt(2)).RoundDown(0)
 		ability.CurrentSups = decimal.Zero
 		err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ability.ID, ability.SupsCost, ability.CurrentSups)
 		if err != nil {
 			gamelog.L.Error().
 				Str("ability_id", ability.ID).
-				Str("sups_cost", ability.SupsCost.StringFixed(4)).
-				Str("current_sups", ability.CurrentSups.StringFixed(4)).
+				Str("sups_cost", ability.SupsCost.String()).
+				Str("current_sups", ability.CurrentSups.String()).
 				Err(err).Msg("could not update faction ability cost")
 		}
-
-		// broadcast the progress bar
-		as.BroadcastAbilityProgressBar()
 
 		// set location deciders list
 		as.locationDecidersSet(as.battle().ID, factionID)
@@ -1646,9 +1670,6 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 
 		return false
 	})
-
-	// broadcast the progress bar
-	go as.BroadcastAbilityProgressBar()
 }
 
 func (as *AbilitiesSystem) BattleAbilityProgressBar() {

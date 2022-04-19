@@ -15,6 +15,18 @@ jobs:
       version: ${{ steps.version.outputs.v }}
 
     steps:
+      - name: slack-notification
+        if: always()
+        uses: ravsamhq/notify-slack-action@v1
+        with:
+          status: ${{ job.status }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          notification_title: '{workflow} has started'
+          message_format: '{emoji} *{workflow}* started in <{repo_url}|{repo}>'
+          footer: 'Linked Repo <{repo_url}|{repo}> | <{run_url}|View Run>'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
       - uses: actions/checkout@v2
         with:
           fetch-depth: "0"
@@ -22,6 +34,9 @@ jobs:
       - uses: actions/setup-go@v2 # install go
         with:
           go-version: ${{env.GO_VERSION}}
+
+
+
       # Setup
       # Multi key private go repos
       # https://gist.github.com/jrapoport/d12f60029eef017354d0ec982b918258
@@ -110,6 +125,19 @@ jobs:
           name: ${{ steps.artifact.outputs.filename }}
           path: ${{ steps.artifact.outputs.filename }}
 
+      - name: slack-notification
+        if: always()
+        uses: ravsamhq/notify-slack-action@v1
+        with:
+          status: ${{ job.status }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          notification_title: '{workflow} has {status_message}'
+          message_format: '{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}>'
+          footer: 'Linked Repo <{repo_url}|{repo}> | <{run_url}|View Run>'
+          notify_when: 'failure'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
   deploy:
     needs: [build]
     runs-on: ubuntu-20.04
@@ -118,6 +146,7 @@ jobs:
         if: ${{ !env.ACT }} # if running in local test environment
         with:
           name: ${{ needs.build.outputs.artifact_filename }}
+
 
       - name: untar deploy directory
         run: tar -xvf ${{ needs.build.outputs.artifact_filename }}
@@ -157,3 +186,15 @@ jobs:
       - name: restart web-server
         if: ${{ !env.ACT }} # if running in local test environment
         run: ssh ${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }} 'sudo nginx -t && sudo nginx -s reload'
+
+      - name: slack-notification
+        if: always()
+        uses: ravsamhq/notify-slack-action@v1
+        with:
+          status: ${{ job.status }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          notification_title: '{workflow} has {status_message}'
+          message_format: '{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}>'
+          footer: 'Linked Repo <{repo_url}|{repo}> | <{run_url}|View Run>'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

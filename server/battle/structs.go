@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"server"
 	"server/gamelog"
+	"server/multipliers"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -142,14 +143,6 @@ func (bu *BattleUser) Send(key hub.HubCommandKey, payload interface{}) error {
 	return nil
 }
 
-type Multiplier struct {
-	Key              string `json:"key"`
-	Value            string `json:"value"`
-	Description      string `json:"description"`
-	IsMultiplicative bool   `json:"is_multiplicative"`
-	ExpiresInSeconds int64  `json:"expires_in_seconds"`
-}
-
 type BattleEndDetail struct {
 	BattleID                     string        `json:"battle_id"`
 	BattleIdentifier             int           `json:"battle_identifier"`
@@ -161,7 +154,17 @@ type BattleEndDetail struct {
 	TopSupsContributors          []*BattleUser `json:"top_sups_contributors"`
 	TopSupsContributeFactions    []*Faction    `json:"top_sups_contribute_factions"`
 	MostFrequentAbilityExecutors []*BattleUser `json:"most_frequent_ability_executors"`
-	*MultiplierUpdate
+	*MultiplierUpdate `json:"battle_multipliers"`
+}
+
+type MultiplierUpdate struct {
+	Battles []*MultiplierUpdateBattles `json:"battles"`
+}
+
+type MultiplierUpdateBattles struct {
+	BattleNumber     int                             `json:"battle_number"`
+	TotalMultipliers string                          `json:"total_multipliers"`
+	UserMultipliers  []*multipliers.PlayerMultiplier `json:"multipliers"`
 }
 
 type WarMachine struct {
@@ -235,9 +238,4 @@ type GameAbilityPrice struct {
 	CurrentSups    decimal.Decimal
 
 	TxRefs []string
-}
-
-type MultiplierUpdate struct {
-	TotalMultipliers string        `json:"total_multipliers"`
-	UserMultipliers  []*Multiplier `json:"multipliers"`
 }

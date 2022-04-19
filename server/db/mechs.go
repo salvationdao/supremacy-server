@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/ninja-software/terror/v2"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
@@ -275,6 +276,7 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.MechContainer, error) {
 			&mc.CreatedAt,
 			&mc.LargeImageURL,
 			&mc.CollectionSlug,
+			&mc.IsInsured,
 			&mc.Chassis,
 			&mc.Weapons,
 			&mc.Turrets,
@@ -355,12 +357,14 @@ func Mech(mechID uuid.UUID) (*server.MechContainer, error) {
 			&mc.CreatedAt,
 			&mc.LargeImageURL,
 			&mc.CollectionSlug,
+			&mc.IsInsured,
 			&mc.Chassis,
 			&mc.Weapons,
 			&mc.Turrets,
 			&mc.Modules,
 			&mc.Player,
-			&mc.Faction)
+			&mc.Faction,
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -614,4 +618,55 @@ func MechIDsFromHash(hashes ...string) ([]uuid.UUID, error) {
 	}
 
 	return ids, err
+}
+
+type BattleQueuePosition struct {
+	MechID           uuid.UUID `db:"mech_id"`
+	QueuePosition    int64     `db:"queue_position"`
+	BattleContractID string    `db:"battle_contract_id"`
+}
+
+// MechQueuePosition return a list of mech queue position of the player (exclude in battle)
+func MechQueuePosition(factionID string, ownerID string) ([]*BattleQueuePosition, error) {
+	q := `
+		SELECT
+			x.mech_id,
+			x.queue_position,
+		    x.battle_contract_id
+		FROM
+			(
+				SELECT
+					bq.id,
+					bq.mech_id,
+				    bq.owner_id,
+				    bq.battle_contract_id,
+					ROW_NUMBER () OVER (ORDER BY bq.queued_at) as queue_position
+				FROM
+					battle_queue bq
+				where 
+					bq.faction_id = $1 and bq.battle_id isnull
+			) x
+		WHERE
+			x.owner_id = $2
+		order by
+			x.queue_position
+	`
+
+	result, err := gamedb.StdConn.Query(q, factionID, ownerID)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	mqp := []*BattleQueuePosition{}
+	for result.Next() {
+		qp := &BattleQueuePosition{}
+		err = result.Scan(&qp.MechID, &qp.QueuePosition, &qp.BattleContractID)
+		if err != nil {
+			return nil, terror.Error(err)
+		}
+
+		mqp = append(mqp, qp)
+	}
+
+	return mqp, nil
 }

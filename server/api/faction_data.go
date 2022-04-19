@@ -6,6 +6,7 @@ import (
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
+	"server/gamelog"
 	"server/helpers"
 
 	"github.com/ninja-software/terror/v2"
@@ -24,7 +25,7 @@ func (api *API) GetFactionData(w http.ResponseWriter, r *http.Request) (int, err
 
 	fs, err := boiler.FindFactionStat(gamedb.StdConn, fID[0])
 	if err != nil {
-		api.Log.Err(err).Msgf("Failed to get faction %s stat", fID[0])
+		gamelog.L.Err(err).Msgf("Failed to get faction %s stat", fID[0])
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to get faction stat"))
 	}
 

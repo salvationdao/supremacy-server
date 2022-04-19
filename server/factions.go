@@ -120,3 +120,8 @@ const (
 	PunishmentOptionRestrictChat             = "restrict_chat"
 	PunishmentOptionRestrictSupsContribution = "restrict_sups_contribution"
 )
+
+type MechQueuePosition struct {
+	MechID   uuid.UUID `json:"mechID"`
+	Position int       `json:"position"`
+}

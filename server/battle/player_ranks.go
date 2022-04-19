@@ -8,8 +8,10 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"sort"
 	"time"
 
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/ninja-software/terror/v2"
@@ -93,6 +95,8 @@ func (arena *Arena) PlayerRankUpdater() {
 		return http.StatusOK, nil
 	})
 
+	updateTickle.Log = gamelog.L
+
 	// start tickle
 	updateTickle.Start()
 }
@@ -114,6 +118,9 @@ func calcSyndicatePlayerRank(factionID server.FactionID) error {
 		topTwentyPercentCount = 1
 	}
 
+	// sort the slice
+	sort.Slice(playerAbilityKills, func(i, j int) bool { return playerAbilityKills[i].KillCount > playerAbilityKills[j].KillCount })
+
 	generalPlayerIDs := []string{}
 	for i := 0; i < topTwentyPercentCount; i++ {
 		generalPlayerIDs = append(generalPlayerIDs, playerAbilityKills[i].ID)
@@ -122,6 +129,7 @@ func calcSyndicatePlayerRank(factionID server.FactionID) error {
 	// update general players
 	_, err = boiler.Players(
 		boiler.PlayerWhere.ID.IN(generalPlayerIDs),
+		boiler.PlayerWhere.FactionID.EQ(null.StringFrom(factionID.String())),
 		boiler.PlayerWhere.CreatedAt.LT(time.Now().AddDate(0, 0, -1)), // should be created more than a day
 	).UpdateAll(gamedb.StdConn, boiler.M{"rank": PlayerRankGeneral})
 	if err != nil {
@@ -132,10 +140,12 @@ func calcSyndicatePlayerRank(factionID server.FactionID) error {
 	// update corporal players
 	_, err = boiler.Players(
 		boiler.PlayerWhere.ID.NIN(generalPlayerIDs),
+		boiler.PlayerWhere.FactionID.EQ(null.StringFrom(factionID.String())),
 		boiler.PlayerWhere.CreatedAt.LT(time.Now().AddDate(0, 0, -1)),
-		qm.InnerJoin(
+		boiler.PlayerWhere.SentMessageCount.GT(0),
+		qm.Where(
 			fmt.Sprintf(
-				"%s ON %s = %s AND %s > 0",
+				"EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s > 0)",
 				boiler.TableNames.UserStats,
 				qm.Rels(boiler.TableNames.UserStats, boiler.UserStatColumns.ID),
 				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.ID),
@@ -151,11 +161,12 @@ func calcSyndicatePlayerRank(factionID server.FactionID) error {
 	// update private players
 	_, err = boiler.Players(
 		boiler.PlayerWhere.ID.NIN(generalPlayerIDs),
+		boiler.PlayerWhere.FactionID.EQ(null.StringFrom(factionID.String())),
 		boiler.PlayerWhere.CreatedAt.LT(time.Now().AddDate(0, 0, -1)),
 		boiler.PlayerWhere.SentMessageCount.GT(0),
-		qm.InnerJoin(
+		qm.Where(
 			fmt.Sprintf(
-				"%s ON %s = %s AND %s <= 0",
+				"EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s <= 0)",
 				boiler.TableNames.UserStats,
 				qm.Rels(boiler.TableNames.UserStats, boiler.UserStatColumns.ID),
 				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.ID),
