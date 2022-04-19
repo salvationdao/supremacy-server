@@ -14,6 +14,7 @@ import (
 	"server/gamelog"
 	"server/rpcclient"
 	"server/telegram"
+	"strconv"
 	"sync"
 	"time"
 
@@ -45,27 +46,6 @@ type Arena struct {
 	telegram                 server.Telegram
 
 	sync.RWMutex
-}
-
-func (arena *Arena) BattleSeconds() decimal.Decimal {
-	btl := arena.currentBattle()
-	if btl == nil {
-		lastBattle, err := boiler.Battles(qm.OrderBy("battle_number DESC"), qm.Limit(1)).One(gamedb.StdConn)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			gamelog.L.Error().Err(err).Msg("not able to load previous battle")
-			return decimal.Zero
-		}
-		if lastBattle != nil {
-			if lastBattle.EndedBattleSeconds.Valid {
-				return lastBattle.EndedBattleSeconds.Decimal.Copy()
-			} else {
-				return lastBattle.StartedBattleSeconds.Decimal.Copy()
-			}
-		}
-
-		return decimal.Zero
-	}
-	return btl.battleSeconds()
 }
 
 func (arena *Arena) currentBattle() *Battle {
@@ -196,6 +176,12 @@ func NewArena(opts *Opts) *Arena {
 	opts.SecureUserFactionSubscribeCommand(WSQueueUpdatedSubscribe, arena.QueueUpdatedSubscribeHandler)
 	opts.SecureUserFactionSubscribeCommand(WSAssetQueueStatusSubscribe, arena.AssetQueueStatusSubscribeHandler)
 
+	opts.SecureUserFactionCommand(HubKeyAssetMany, arena.AssetManyHandler)
+
+	// TODO: handle insurance and repair
+	//opts.SecureUserFactionCommand(HubKeyAssetRepairPayFee, arena.AssetRepairPayFeeHandler)
+	//opts.SecureUserFactionCommand(HubKeyAssetRepairStatus, arena.AssetRepairStatusHandler)
+
 	opts.SecureUserCommand(HubKeyGameUserOnline, arena.UserOnline)
 	opts.SecureUserCommand(HubKeyPlayerRankGet, arena.PlayerRankGet)
 	opts.SubscribeCommand(HubKeyWarMachineDestroyedUpdated, arena.WarMachineDestroyedUpdatedSubscribeHandler)
@@ -204,7 +190,7 @@ func NewArena(opts *Opts) *Arena {
 	opts.SubscribeCommand(HubKeyGameSettingsUpdated, arena.SendSettings)
 
 	opts.SubscribeCommand(HubKeyGameNotification, arena.GameNotificationSubscribeHandler)
-	opts.SecureUserCommand(HubKeyMultiplierUpdate, arena.HubKeyMultiplierUpdate)
+	opts.SecureUserSubscribeCommand(HubKeyMultiplierSubscribe, arena.HubKeyMultiplierUpdate)
 
 	opts.SecureUserSubscribeCommand(HubKeyUserStatSubscribe, arena.UserStatUpdatedSubscribeHandler)
 
@@ -916,15 +902,14 @@ func (arena *Arena) start() {
 					continue
 				}
 
-				// todocheck
-				//gameClientBuildNo, err := strconv.ParseUint(dataPayload.ClientBuildNo, 10, 64)
-				//if err != nil {
-				//	gamelog.L.Panic().Str("game_client_build_no", dataPayload.ClientBuildNo).Msg("invalid game client build number received")
-				//}
-				//
-				//if gameClientBuildNo < arena.gameClientMinimumBuildNo {
-				//	gamelog.L.Panic().Str("current_game_client_build", dataPayload.ClientBuildNo).Uint64("minimum_game_client_build", arena.gameClientMinimumBuildNo).Msg("unsupported game client build number")
-				//}
+				gameClientBuildNo, err := strconv.ParseUint(dataPayload.ClientBuildNo, 10, 64)
+				if err != nil {
+					gamelog.L.Panic().Str("game_client_build_no", dataPayload.ClientBuildNo).Msg("invalid game client build number received")
+				}
+
+				if gameClientBuildNo < arena.gameClientMinimumBuildNo {
+					gamelog.L.Panic().Str("current_game_client_build", dataPayload.ClientBuildNo).Uint64("minimum_game_client_build", arena.gameClientMinimumBuildNo).Msg("unsupported game client build number")
+				}
 
 				err = btl.preIntro(dataPayload)
 				if err != nil {
@@ -962,7 +947,7 @@ func (arena *Arena) start() {
 }
 
 func (arena *Arena) beginBattle() {
-	gm, err := db.GameMapGetRandom(context.Background(), arena.conn)
+	gm, err := db.GameMapGetRandom(false)
 	if err != nil {
 		gamelog.L.Err(err).Msg("unable to get random map")
 		return
@@ -998,51 +983,27 @@ func (arena *Arena) beginBattle() {
 
 		battleID = uuid.Must(uuid.NewV4()).String()
 		battle = &boiler.Battle{
-			ID:                   battleID,
-			GameMapID:            gameMap.ID.String(),
-			StartedAt:            time.Now(),
-			StartedBattleSeconds: decimal.NullDecimal{decimal.Zero, true},
-		}
-		// set started battle second to the last battle is ended properly
-		if lastBattle != nil && lastBattle.EndedBattleSeconds.Valid {
-			battle.StartedBattleSeconds.Decimal = lastBattle.EndedBattleSeconds.Decimal
+			ID:        battleID,
+			GameMapID: gameMap.ID.String(),
+			StartedAt: time.Now(),
 		}
 
 	} else {
-
 		// if there is an unfinished battle
 		battle = lastBattle
 		battleID = lastBattle.ID
 
 		inserted = true
-
-		// if last battle does not have started at
-		if !battle.StartedBattleSeconds.Valid {
-			battle.StartedBattleSeconds = decimal.NullDecimal{decimal.Zero, true}
-		}
-	}
-
-	var bs decimal.Decimal
-	if inserted {
-		bs = battle.StartedBattleSeconds.Decimal
-	} else {
-		if lastBattle != nil && lastBattle.EndedBattleSeconds.Valid {
-			bs = lastBattle.EndedBattleSeconds.Decimal
-			battle.StartedBattleSeconds = lastBattle.EndedBattleSeconds
-		} else {
-			bs = decimal.NewFromInt(0)
-		}
 	}
 
 	btl := &Battle{
-		arena:          arena,
-		MapName:        gameMap.Name,
-		gameMap:        gameMap,
-		BattleID:       battleID,
-		Battle:         battle,
-		inserted:       inserted,
-		_battleSeconds: bs,
-		stage:          atomic.NewInt32(BattleStagStart),
+		arena:    arena,
+		MapName:  gameMap.Name,
+		gameMap:  gameMap,
+		BattleID: battleID,
+		Battle:   battle,
+		inserted: inserted,
+		stage:    atomic.NewInt32(BattleStagStart),
 		users: usersMap{
 			m: make(map[uuid.UUID]*BattleUser),
 		},

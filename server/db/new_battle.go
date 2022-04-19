@@ -367,8 +367,8 @@ func MechBattleStatus(mechID uuid.UUID) (bool, error) {
 }
 
 type MechAndPosition struct {
-	MechID        uuid.UUID
-	QueuePosition int64
+	MechID        uuid.UUID `db:"mech_id"`
+	QueuePosition int64     `db:"queue_position"`
 }
 
 // AllMechsAfter gets all mechs that come after the specified position in the queue

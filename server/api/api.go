@@ -15,6 +15,8 @@ import (
 	"server/rpcclient"
 	"time"
 
+	"github.com/rs/zerolog"
+
 	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
@@ -148,7 +150,7 @@ func NewAPI(
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
-	api.Routes.Use(middleware.Logger)
+	api.Routes.Use(gamelog.ChiLogger(zerolog.DebugLevel))
 	api.Routes.Use(cors.New(cors.Options{AllowedOrigins: []string{"*"}}).Handler)
 	api.Routes.Use(DatadogTracer.Middleware())
 
@@ -218,6 +220,8 @@ func NewAPI(
 
 		return http.StatusOK, nil
 	})
+	factionMvpUpdate.Log = gamelog.L
+
 	err := factionMvpUpdate.SetIntervalAt(24*time.Hour, 0, 0)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to set up faction mvp user update tickle")
