@@ -135,10 +135,12 @@ func (s *S) MechRegister(req MechRegisterReq, resp *MechRegisterResp) error {
 
 	mechID, err := db.MechRegister(req.TemplateID, req.OwnerID)
 	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to register mech")
 		return terror.Error(err)
 	}
 	mech, err := db.Mech(mechID)
 	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to get mech")
 		return terror.Error(err)
 	}
 

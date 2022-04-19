@@ -143,17 +143,11 @@ func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 	btl.factions = factions
 	btl.battleMechData = bmd
 
-	return nil
-}
-
-func (btl *Battle) start() {
-	var err error
-	btl.startedAt = time.Now()
 	if btl.inserted {
 		_, err := btl.Battle.Update(gamedb.StdConn, boil.Infer())
 		if err != nil {
 			gamelog.L.Error().Interface("battle", btl).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to update Battle in database")
-			return
+			return terror.Error(err, "unable to update battle in database")
 		}
 
 		// clean up battle contributions
@@ -239,7 +233,7 @@ func (btl *Battle) start() {
 		err := btl.Battle.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {
 			gamelog.L.Error().Interface("battle", btl).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to insert Battle into database")
-			return
+			return terror.Error(err, "unable to insert battle into database")
 		}
 
 		btl.inserted = true
@@ -257,9 +251,20 @@ func (btl *Battle) start() {
 		err = db.QueueSetBattleID(btl.ID, btl.warMachineIDs...)
 		if err != nil {
 			gamelog.L.Error().Interface("mechs_ids", btl.warMachineIDs).Str("battle_id", btl.ID).Err(err).Msg("failed to set battle id in queue")
-			return
+			return terror.Error(err, "Failed to set battle id in queue")
 		}
+
+		// Tell clients to refetch war machine queue status
+		btl.arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", WSQueueUpdatedSubscribe, server.RedMountainFactionID)), true)
+		btl.arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", WSQueueUpdatedSubscribe, server.BostonCyberneticsFactionID)), true)
+		btl.arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", WSQueueUpdatedSubscribe, server.ZaibatsuFactionID)), true)
 	}
+
+	return nil
+}
+
+func (btl *Battle) start() {
+	var err error
 
 	// start battle seconds ticker
 	//btl.battleSecondCloseChan = btl.BattleSecondStartTicking()
@@ -342,7 +347,6 @@ func (btl *Battle) start() {
 	}
 
 }
-
 
 // calcTriggeredLocation convert picked cell to the location in game
 func (btl *Battle) calcTriggeredLocation(abilityEvent *server.GameAbilityEvent) {
@@ -983,6 +987,10 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	endInfo := btl.endCreateStats(payload, winningWarMachines)
 
 	btl.processWinners(payload)
+
+	// TODO: process mech repair
+	//btl.processWarMachineRepair(payload)
+
 	btl.endMultis(endInfo)
 
 	btl.insertUserSpoils(endInfo)
