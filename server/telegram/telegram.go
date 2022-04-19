@@ -212,7 +212,7 @@ func (t *Telegram) Notify2(telegramID int64, message string) error {
 	}
 
 	// send notification
-	_, err := t.Send(&tele.Chat{ID: int64(telegramID)}, message)
+	_, err := t.Send(&tele.Chat{ID: telegramID}, message)
 	if err != nil {
 		return terror.Error(err, "failed to send telegram message")
 	}
