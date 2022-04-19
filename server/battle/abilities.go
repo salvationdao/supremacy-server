@@ -28,6 +28,16 @@ import (
 	"github.com/gofrs/uuid"
 )
 
+//*******************************
+// Voting Options
+//*******************************
+
+var MinVotePercentageCost = map[decimal.Decimal]decimal.Decimal{
+	decimal.NewFromFloat(0.0001): decimal.NewFromFloat(0.1),
+	decimal.NewFromFloat(0.001):  decimal.NewFromFloat(0.5),
+	decimal.NewFromFloat(0.01):   decimal.NewFromFloat(1),
+}
+
 //******************************
 // Game Ability setup
 //******************************
@@ -492,7 +502,15 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 					}
 
 					// calculate amount from percentage of current sups
+					minAmount, ok := MinVotePercentageCost[cont.percentage]
+					if !ok {
+						gamelog.L.Error().Err(err).Msg("invalid offer percentage received")
+						continue
+					}
 					amount := ability.CurrentSups.Mul(cont.percentage)
+					if amount.LessThan(minAmount) {
+						amount = minAmount
+					}
 
 					// return early if battle stage is invalid
 					if as.battle().stage.Load() != BattleStagStart {
@@ -1230,7 +1248,16 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				if abilityOfferingID != factionAbility.OfferingID {
 					continue
 				}
+
+				minAmount, ok := MinVotePercentageCost[cont.percentage]
+				if !ok {
+					gamelog.L.Error().Err(err).Msg("invalid offer percentage received")
+					continue
+				}
 				amount := factionAbility.CurrentSups.Mul(cont.percentage)
+				if amount.LessThan(minAmount) {
+					amount = minAmount
+				}
 				// amount := d.Mul(decimal.New(1, 18))
 
 				// contribute sups

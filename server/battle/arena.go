@@ -337,6 +337,15 @@ func (arena *Arena) BattleAbilityBribe(ctx context.Context, wsc *hub.Client, pay
 		return terror.Error(err, "Invalid request received")
 	}
 
+	// check percentage amount is valid
+	if _, ok := MinVotePercentageCost[req.Payload.Percentage]; !ok {
+		gamelog.L.Error().Interface("payload", req).
+			Str("userID", wsc.Identifier()).
+			Str("percentage", req.Payload.Percentage.String()).
+			Msg("invalid vote percentage amount received")
+		return terror.Error(err, "Invalid vote percentage amount received")
+	}
+
 	// check user is banned on limit sups contribution
 	isBanned, err := boiler.PunishedPlayers(
 		boiler.PunishedPlayerWhere.PunishUntil.GT(time.Now()),
@@ -502,8 +511,17 @@ func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, wsc *hub
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		gamelog.L.Error().Interface("payload", req).
-			Str("userID", wsc.Identifier()).Msg("invalid request receieved")
+			Str("userID", wsc.Identifier()).Msg("invalid request received")
 		return terror.Error(err, "Invalid request received")
+	}
+
+	// check percentage amount is valid
+	if _, ok := MinVotePercentageCost[req.Payload.Percentage]; !ok {
+		gamelog.L.Error().Interface("payload", req).
+			Str("userID", wsc.Identifier()).
+			Str("percentage", req.Payload.Percentage.String()).
+			Msg("invalid vote percentage amount received")
+		return terror.Error(err, "Invalid vote percentage amount received")
 	}
 
 	// check user is banned on limit sups contribution
