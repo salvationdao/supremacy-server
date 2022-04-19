@@ -36,39 +36,56 @@ func NewPlayerAbilitiesController(api *API) *PlayerAbilitiesControllerWS {
 		API: api,
 	}
 
-	api.SecureUserCommand(HubKeyPlayerAbilitiesList, pac.PlayerAbilitiesListHandler)
-	api.SecureUserCommand(HubKeySaleAbilitiesList, pac.SaleAbilitiesListHandler)
-	api.SecureUserCommand(HubKeySaleAbilityPurchase, pac.SaleAbilityPurchaseHandler)
+	api.SecureUserCommand(server.HubKeyPlayerAbilitiesList, pac.PlayerAbilitiesListHandler)
+	api.SecureUserCommand(server.HubKeySaleAbilitiesList, pac.SaleAbilitiesListHandler)
+	api.SecureUserCommand(server.HubKeySaleAbilityPurchase, pac.SaleAbilityPurchaseHandler)
 
-	api.SecureUserSubscribeCommand(HubKeyPlayerAbilitySubscribe, pac.PlayerAbilitySubscribeHandler)
-	api.SecureUserSubscribeCommand(HubKeySaleAbilitySubscribe, pac.SaleAbilitySubscribeHandler)
+	api.SecureUserSubscribeCommand(server.HubKeyPlayerAbilitySubscribe, pac.PlayerAbilitySubscribeHandler)
+	api.SecureUserSubscribeCommand(server.HubKeySaleAbilityPriceSubscribe, pac.SaleAbilitySubscribePriceHandler)
 
 	return pac
 }
 
-type AbilitySubscribeRequest struct {
+type PlayerAbilitySubscribeRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		AbilityID string `json:"ability_id"`
+		AbilityID string `json:"ability_id"` // player ability id
 	} `json:"payload"`
 }
 
-const HubKeyPlayerAbilitySubscribe = hub.HubCommandKey("PLAYER:ABILITY:SUBSCRIBE")
-
 func (pac *PlayerAbilitiesControllerWS) PlayerAbilitySubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
-	req := &AbilitySubscribeRequest{}
+	req := &PlayerAbilitySubscribeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return "", "", terror.Error(err, "Invalid request received.")
 	}
 
-	return "", messagebus.BusKey(HubKeyPlayerAbilitySubscribe), nil
+	if req.Payload.AbilityID == "" {
+		gamelog.L.Error().
+			Str("handler", "SaleAbilitySubscribeHandler").Msg("empty ability ID provided")
+		return "", "", terror.Error(err, "Ability ID must be provided.")
+	}
+
+	pAbility, err := boiler.FindPlayerAbility(gamedb.StdConn, req.Payload.AbilityID)
+	if err != nil {
+		gamelog.L.Error().
+			Str("db func", "SaleAbilityGet").Err(err).Msg("unable to get sale ability details")
+		return "", "", terror.Error(err, "Unable to retrieve sale ability, please try again or contact support.")
+	}
+
+	reply(pAbility)
+	return "", messagebus.BusKey(server.HubKeyPlayerAbilitySubscribe), nil
 }
 
-const HubKeySaleAbilitySubscribe = hub.HubCommandKey("SALE:ABILITY:SUBSCRIBE")
+type SaleAbilitySubscribePriceRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		AbilityID string `json:"ability_id"` // sale ability id
+	} `json:"payload"`
+}
 
-func (pac *PlayerAbilitiesControllerWS) SaleAbilitySubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
-	req := &AbilitySubscribeRequest{}
+func (pac *PlayerAbilitiesControllerWS) SaleAbilitySubscribePriceHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
+	req := &SaleAbilitySubscribePriceRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return "", "", terror.Error(err, "Invalid request received.")
@@ -87,8 +104,8 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilitySubscribeHandler(ctx context.
 		return "", "", terror.Error(err, "Unable to retrieve sale ability, please try again or contact support.")
 	}
 
-	reply(sAbility)
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeySaleAbilitySubscribe, sAbility.ID)), nil
+	reply(sAbility.CurrentPrice)
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeySaleAbilityPriceSubscribe, sAbility.ID)), nil
 }
 
 type AbilitiesListResponse struct {
@@ -107,8 +124,6 @@ type PlayerAbilitiesListRequest struct {
 		Page     int                    `json:"page"`
 	} `json:"payload"`
 }
-
-const HubKeyPlayerAbilitiesList = hub.HubCommandKey("PLAYER:ABILITIES:LIST")
 
 func (pac *PlayerAbilitiesControllerWS) PlayerAbilitiesListHandler(ctx context.Context, hub *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &PlayerAbilitiesListRequest{}
@@ -148,8 +163,6 @@ type SaleAbilitiesListRequest struct {
 	} `json:"payload"`
 }
 
-const HubKeySaleAbilitiesList = hub.HubCommandKey("SALE:ABILITIES:LIST")
-
 func (pac *PlayerAbilitiesControllerWS) SaleAbilitiesListHandler(ctx context.Context, hub *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &SaleAbilitiesListRequest{}
 	err := json.Unmarshal(payload, req)
@@ -179,12 +192,10 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilitiesListHandler(ctx context.Con
 type SaleAbilitiesPurchaseRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		PlayerAbilityID string `json:"player_ability_id"`
-		Amount          string `json:"amount"`
+		AbilityID string `json:"ability_id"` // blueprint ability id
+		Amount    string `json:"amount"`
 	} `json:"payload"`
 }
-
-const HubKeySaleAbilityPurchase = hub.HubCommandKey("SALE:ABILITY:PURCHASE")
 
 func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.Context, hub *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &SaleAbilitiesPurchaseRequest{}
@@ -202,10 +213,10 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 		return terror.Error(fmt.Errorf("user id is nil"), "Issue retriving user, please try again or contact support.")
 	}
 
-	spa, err := boiler.SalePlayerAbilities(boiler.SalePlayerAbilityWhere.BlueprintID.EQ(req.Payload.PlayerAbilityID)).One(gamedb.StdConn)
+	spa, err := boiler.SalePlayerAbilities(boiler.SalePlayerAbilityWhere.BlueprintID.EQ(req.Payload.AbilityID)).One(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().
-			Str("req.Payload.PlayerAbilityID", req.Payload.PlayerAbilityID).
+			Str("req.Payload.PlayerAbilityID", req.Payload.AbilityID).
 			Str("db func", "SalePlayerAbilities").Err(err).Msg("unable to get player ability")
 		return terror.Error(err, "Unable to process player ability purchase,  check your balance and try again.")
 	}
@@ -235,7 +246,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 		Amount:               spa.CurrentPrice.String(),
 		FromUserID:           userID,
 		ToUserID:             battle.SupremacyBattleUserID,
-		TransactionReference: server.TransactionReference(fmt.Sprintf("player_ability_purchase|%s|%d", req.Payload.PlayerAbilityID, time.Now().UnixNano())),
+		TransactionReference: server.TransactionReference(fmt.Sprintf("player_ability_purchase|%s|%d", req.Payload.AbilityID, time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             "Player Abilities",
 		Description:          fmt.Sprintf("Purchased player ability %s", spa.R.Blueprint.Label),
@@ -246,7 +257,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 			err = fmt.Errorf("transaction failed")
 		}
 		// Abort transaction if charge fails
-		gamelog.L.Error().Str("txID", supTransactionID).Str("playerAbilityID", req.Payload.PlayerAbilityID).Err(err).Msg("unable to charge user for player ability purchase")
+		gamelog.L.Error().Str("txID", supTransactionID).Str("playerAbilityID", req.Payload.AbilityID).Err(err).Msg("unable to charge user for player ability purchase")
 		return terror.Error(err, "Unable to process player ability purchase,  check your balance and try again.")
 	}
 
@@ -266,16 +277,16 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 	}
 	defer tx.Rollback()
 
-	bpa, err := boiler.FindBlueprintPlayerAbility(tx, req.Payload.PlayerAbilityID)
+	bpa, err := boiler.FindBlueprintPlayerAbility(tx, req.Payload.AbilityID)
 	if err != nil {
 		refundFunc()
-		gamelog.L.Error().Err(err).Str("blueprintID", req.Payload.PlayerAbilityID).Msg("unable to begin tx")
+		gamelog.L.Error().Err(err).Str("blueprintID", req.Payload.AbilityID).Msg("unable to begin tx")
 		return terror.Error(err, "Issue purchasing player ability, please try again or contact support.")
 	}
 
 	pa := boiler.PlayerAbility{
 		OwnerID:             userID.String(),
-		BlueprintID:         req.Payload.PlayerAbilityID,
+		BlueprintID:         req.Payload.AbilityID,
 		GameClientAbilityID: bpa.GameClientAbilityID,
 		Label:               bpa.Label,
 		Colour:              bpa.Colour,
