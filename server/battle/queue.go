@@ -16,6 +16,8 @@ import (
 	"server/rpcclient"
 	"time"
 
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
@@ -96,6 +98,15 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		return terror.Error(err)
 	}
 
+	onChainStatus, err := arena.RPCClient.AssetOnChainStatus(mechID.String())
+	if err != nil {
+		return terror.Error(err, "Unable to get asset ownership details, please try again or contact support.")
+	}
+
+	if onChainStatus != server.OnChainStatusMintable && onChainStatus != server.OnChainStatusUnstakable {
+		return terror.Error(fmt.Errorf("asset on chain status is %s", onChainStatus), "This asset isn't on world, please transition on world.")
+	}
+
 	mech, err := db.Mech(mechID)
 	if err != nil {
 		gamelog.L.Error().Str("mech_id", mechID.String()).Err(err).Msg("unable to retrieve mech id from hash")
@@ -115,6 +126,19 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 
 	if mech.OwnerID != wsc.Identifier() {
 		return terror.Error(fmt.Errorf("does not own the mech"), "Current mech does not own by you")
+	}
+
+	// check mech is still in repair
+	ar, err := boiler.AssetRepairs(
+		boiler.AssetRepairWhere.MechID.EQ(mech.ID),
+		boiler.AssetRepairWhere.RepairCompleteAt.GT(time.Now()),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "Failed to check asset repair table")
+	}
+
+	if ar != nil {
+		return terror.Error(fmt.Errorf("mech is still in repair center"), "Your mech is still in the repair center")
 	}
 
 	// Get current queue length and calculate queue fee and reward
@@ -263,6 +287,9 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 			Err(err).Msg("unable to retrieve mech queue position")
 		return terror.Error(err, "Unable to join queue, check your balance and try again.")
 	}
+
+	// Tell clients to refetch war machine queue status
+	arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", WSQueueUpdatedSubscribe, factionID.String())), true)
 
 	reply(QueueJoinHandlerResponse{
 		Success: true,
@@ -561,9 +588,6 @@ func (arena *Arena) QueueUpdatedSubscribeHandler(ctx context.Context, wsc *hub.C
 		return "", "", terror.Error(err)
 	}
 
-	if needProcess {
-		reply(true)
-	}
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", WSQueueUpdatedSubscribe, factionID)), nil
 }
 
@@ -644,7 +668,7 @@ func (arena *Arena) AssetQueueStatusHandler(ctx context.Context, wsc *hub.Client
 	return nil
 }
 
-const WSAssetQueueStatusList hub.HubCommandKey = hub.HubCommandKey("ASSET:QUEUE:STATUS:LIST")
+const WSAssetQueueStatusList hub.HubCommandKey = "ASSET:QUEUE:STATUS:LIST"
 
 type AssetQueueStatusItem struct {
 	MechID        string `json:"mech_id"`
@@ -659,20 +683,32 @@ func (arena *Arena) AssetQueueStatusListHandler(ctx context.Context, hub *hub.Cl
 
 	queueList, err := db.QueueOwnerList(userID)
 	if err != nil {
-		return terror.Error(err, "Failed to list mechs in queue")
+		return terror.Error(err, "Failed to list war machines in queue")
+	}
+
+	// check their on world / off world status
+	assetIDsToCheck := []string{}
+	for _, q := range queueList {
+		assetIDsToCheck = append(assetIDsToCheck, q.MechID.String())
+	}
+
+	assetMap, err := arena.RPCClient.AssetsOnChainStatus(assetIDsToCheck)
+	if err != nil {
+		return terror.Error(err, "Unable to get asset ownership details, please try again or contact support.")
 	}
 
 	resp := []*AssetQueueStatusItem{}
 	for _, q := range queueList {
-		obj := &AssetQueueStatusItem{
-			MechID:        q.MechID.String(),
-			QueuePosition: q.QueuePosition,
+		if onChainStatus, ok := assetMap[q.MechID.String()]; ok && (onChainStatus == server.OnChainStatusMintable || onChainStatus == server.OnChainStatusUnstakable) {
+			obj := &AssetQueueStatusItem{
+				MechID:        q.MechID.String(),
+				QueuePosition: q.QueuePosition,
+			}
+			resp = append(resp, obj)
 		}
-		resp = append(resp, obj)
 	}
 
 	reply(resp)
-
 	return nil
 }
 
@@ -751,4 +787,189 @@ func (arena *Arena) AssetQueueStatusSubscribeHandler(ctx context.Context, wsc *h
 	}
 
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", WSAssetQueueStatusSubscribe, mechID)), nil
+}
+
+type AssetQueueManyRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		PageNumber int `json:"page_number"`
+		PageSize   int `json:"page_size"`
+	} `json:"payload"`
+}
+
+type AssetQueueManyResponse struct {
+	AssetQueueList []*AssetQueue `json:"asset_queue_list"`
+	Total          int           `json:"total"`
+}
+
+type AssetQueue struct {
+	MechID           string          `json:"mech_id"`
+	Hash             string          `json:"hash"`
+	Position         *int64          `json:"position"`
+	ContractReward   decimal.Decimal `json:"contract_reward"`
+	InBattle         bool            `json:"in_battle"`
+	BattleContractID string
+}
+
+const HubKeyAssetMany hub.HubCommandKey = hub.HubCommandKey("ASSET:MANY")
+
+func (arena *Arena) AssetManyHandler(ctx context.Context, hubc *hub.Client, payload []byte, userFactionID uuid.UUID, reply hub.ReplyFunc) error {
+	req := &AssetQueueManyRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	resp := &AssetQueueManyResponse{
+		AssetQueueList: []*AssetQueue{},
+	}
+
+	// get the list of player's mechs (id, hash, created_at)
+	mechs, err := boiler.Mechs(
+		qm.Select(boiler.MechColumns.ID, boiler.MechColumns.Hash, boiler.MechColumns.CreatedAt),
+		boiler.MechWhere.OwnerID.EQ(hubc.Identifier()),
+		qm.OrderBy(boiler.MechColumns.CreatedAt),
+	).All(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Str("player id", hubc.Identifier()).Err(err).Msg("Failed to get player's mechs")
+		return terror.Error(err, "Failed to get mech data")
+	}
+
+	// reply empty
+	if len(mechs) == 0 {
+		reply(resp)
+		return nil
+	}
+
+	// set total
+	resp.Total = len(mechs)
+
+	// calc mech id list
+	mechIDs := []string{}
+	for _, mech := range mechs {
+		mechIDs = append(mechIDs, mech.ID)
+	}
+
+	// get queue position
+	queuePosition, err := db.MechQueuePosition(userFactionID.String(), hubc.Identifier())
+	if err != nil {
+		gamelog.L.Error().Str("player id", hubc.Identifier()).Err(err).Msg("Failed to get player mech position")
+		return terror.Error(err, "Failed to get mech position")
+	}
+
+	// get player's in-battle mech
+	bqs, err := boiler.BattleQueues(
+		qm.Select(
+			boiler.BattleQueueColumns.ID,
+			boiler.BattleQueueColumns.BattleContractID,
+			boiler.BattleQueueColumns.MechID,
+		),
+		boiler.BattleQueueWhere.OwnerID.EQ(hubc.Identifier()),
+		boiler.BattleQueueWhere.BattleID.IsNotNull(),
+		boiler.BattleQueueWhere.BattleContractID.IsNotNull(),
+		qm.Load(boiler.BattleQueueRels.Mech),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to get player's in-battle mechs")
+	}
+
+	// manually handle mech pagination
+
+	// resort the order
+	newList := []*AssetQueue{}
+
+	// insert in-battle mech
+	for _, bq := range bqs {
+		newList = append(newList, &AssetQueue{
+			MechID:           bq.MechID,
+			Hash:             bq.R.Mech.Hash,
+			InBattle:         true,
+			BattleContractID: bq.BattleContractID.String,
+		})
+
+	}
+
+	// fill queued mech
+	for _, qp := range queuePosition {
+		newList = append(newList, &AssetQueue{
+			MechID:           qp.MechID.String(),
+			Position:         &qp.QueuePosition,
+			BattleContractID: qp.BattleContractID,
+		})
+	}
+
+	// fill mech detail
+	for _, mech := range mechs {
+		existOnIndex := -1
+
+		// check whether it is in queue
+		for i, nl := range newList {
+			if mech.ID == nl.MechID {
+				existOnIndex = i
+				break
+			}
+		}
+
+		if existOnIndex >= 0 {
+			// update mech hash
+			newList[existOnIndex].Hash = mech.Hash
+		} else {
+			// append to new list
+			newList = append(newList, &AssetQueue{
+				MechID: mech.ID,
+				Hash:   mech.Hash,
+			})
+		}
+	}
+
+	offset := req.Payload.PageNumber * req.Payload.PageSize
+	limit := req.Payload.PageSize
+
+	for i, nl := range newList {
+		if i < offset {
+			continue
+		}
+
+		resp.AssetQueueList = append(resp.AssetQueueList, nl)
+
+		if len(resp.AssetQueueList) >= limit {
+			break
+		}
+	}
+
+	// fetch battle contract for contract reward
+	battleContractIDs := []string{}
+	for _, bc := range resp.AssetQueueList {
+		if bc.BattleContractID != "" {
+			battleContractIDs = append(battleContractIDs, bc.BattleContractID)
+		}
+	}
+
+	// if there contain any battle contract id
+	if len(battleContractIDs) > 0 {
+		bcs, err := boiler.BattleContracts(
+			qm.Select(
+				boiler.BattleContractColumns.ID,
+				boiler.BattleContractColumns.MechID,
+				boiler.BattleContractColumns.ContractReward,
+			),
+			boiler.BattleContractWhere.ID.IN(battleContractIDs),
+		).All(gamedb.StdConn)
+		if err != nil {
+			return terror.Error(err, "Failed to get battle contract")
+		}
+
+		for _, bc := range bcs {
+			for _, asset := range resp.AssetQueueList {
+				if asset.MechID == bc.MechID {
+					asset.ContractReward = bc.ContractReward
+					break
+				}
+			}
+		}
+	}
+
+	reply(resp)
+
+	return nil
 }

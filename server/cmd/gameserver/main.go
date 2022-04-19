@@ -218,30 +218,32 @@ func main() {
 								profilers = append(profilers, profiler.MetricsProfile)
 							}
 						}
-						err := profiler.Start(
-							// Service configuration
-							profiler.WithService(envPrefix),
-							profiler.WithVersion(Version),
-							profiler.WithEnv(environment),
-							// This doesn't have a WithLogger option but it can use the tracer logger if tracer is configured first.
-							// Profiler configuration
-							profiler.WithPeriod(c.Duration("pprof_datadog_interval_sec")*time.Second),
-							profiler.CPUDuration(c.Duration("pprof_datadog_duration_sec")*time.Second),
-							profiler.WithProfileTypes(
-								profilers...,
-							),
-						)
-						if err != nil {
-							gamelog.L.Error().Err(err).Msg("Failed to start Datadog Profiler")
+						if environment != "development" {
+							err := profiler.Start(
+								// Service configuration
+								profiler.WithService(envPrefix),
+								profiler.WithVersion(Version),
+								profiler.WithEnv(environment),
+								// This doesn't have a WithLogger option but it can use the tracer logger if tracer is configured first.
+								// Profiler configuration
+								profiler.WithPeriod(c.Duration("pprof_datadog_interval_sec")*time.Second),
+								profiler.CPUDuration(c.Duration("pprof_datadog_duration_sec")*time.Second),
+								profiler.WithProfileTypes(
+									profilers...,
+								),
+							)
+							if err != nil {
+								gamelog.L.Error().Err(err).Msg("Failed to start Datadog Profiler")
+							}
+							gamelog.L.Info().Strs("with", active).Msg("Starting datadog profiler")
+							defer profiler.Stop()
 						}
-						gamelog.L.Info().Strs("with", active).Msg("Starting datadog profiler")
-						defer profiler.Stop()
+
 					}
 
-					// todocheck
-					//if gameClientMinimumBuildNo == 0 {
-					//	gamelog.L.Panic().Msg("game_client_minimum_build_no not set or zero value")
-					//}
+					if gameClientMinimumBuildNo == 0 {
+						gamelog.L.Panic().Msg("game_client_minimum_build_no not set or zero value")
+					}
 
 					pgxconn, err := pgxconnect(
 						databaseUser,
