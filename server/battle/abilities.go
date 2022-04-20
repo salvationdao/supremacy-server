@@ -1262,7 +1262,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 
 				if abilityTriggered {
 					// generate location select order list
-					as.locationDecidersSet(as.battle().ID, cont.factionID.String(), cont.userID)
+					as.locationDecidersSet(as.battle().ID, cont.factionID.String(), factionAbility.OfferingID.String(), cont.userID)
 
 					// enter cooldown phase if there is no player to select location
 					if len(as.locationDeciders.list) == 0 {
@@ -1418,7 +1418,7 @@ type Contribution struct {
 }
 
 // locationDecidersSet set a user list for location select for current ability triggered
-func (as *AbilitiesSystem) locationDecidersSet(battleID string, factionID string, triggerByUserID ...uuid.UUID) {
+func (as *AbilitiesSystem) locationDecidersSet(battleID string, factionID string, abilityOfferingID string, triggerByUserID ...uuid.UUID) {
 	defer func() {
 		if r := recover(); r != nil {
 			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the locationDecidersSet!", r)
@@ -1432,7 +1432,7 @@ func (as *AbilitiesSystem) locationDecidersSet(battleID string, factionID string
 		supSpent decimal.Decimal
 	}
 
-	playerList, err := db.PlayerFactionContributionList(battleID, factionID)
+	playerList, err := db.PlayerFactionContributionList(battleID, factionID, abilityOfferingID)
 	if err != nil {
 		gamelog.L.Error().Str("battle_id", battleID).Str("faction_id", factionID).Err(err).Msg("failed to get player list")
 	}
@@ -1587,7 +1587,7 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 		}
 
 		// set location deciders list
-		as.locationDecidersSet(as.battle().ID, factionID)
+		as.locationDecidersSet(as.battle().ID, factionID, ability.OfferingID.String())
 
 		// if no user online, enter cooldown and exit the loop
 		if len(as.locationDeciders.list) == 0 {
