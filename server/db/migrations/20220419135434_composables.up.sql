@@ -6,44 +6,10 @@ CREATE TABLE supremacy_general_collection
     item_id   UUID NOT NULL UNIQUE
 );
 
-
+-- Create enums for models, weapon types and utility types
 
 DROP TYPE IF EXISTS CHASSIS_MODEL;
 CREATE TYPE CHASSIS_MODEL AS ENUM ('Law Enforcer X-1000','Olympus Mons LY07', 'Tenshi Mk1');
-/*
-  UPDATING DEFAULTS
-  For some reason the ai/default mechs had different models, fixing that
- */
-UPDATE chassis
-SET model = 'Olympus Mons LY07',
-    skin  = 'Beetle'
-WHERE model = 'BXSD';
-UPDATE chassis
-SET model = 'Tenshi Mk1',
-    skin  = 'Warden'
-WHERE model = 'WREX';
-UPDATE chassis
-SET model = 'Law Enforcer X-1000',
-    skin  = 'Blue White'
-WHERE model = 'XFVS';
-
-UPDATE blueprint_chassis
-SET model = 'Olympus Mons LY07',
-    skin  = 'Beetle'
-WHERE model = 'BXSD';
-UPDATE blueprint_chassis
-SET model = 'Tenshi Mk1',
-    skin  = 'Warden'
-WHERE model = 'WREX';
-UPDATE blueprint_chassis
-SET model = 'Law Enforcer X-1000',
-    skin  = 'Blue White'
-WHERE model = 'XFVS';
-
-/*
-  WEAPON TYPES
- */
-
 
 DROP TYPE IF EXISTS WEAPON_TYPE;
 CREATE TYPE WEAPON_TYPE AS ENUM ('Grenade Launcher', 'Cannon', 'Minigun', 'Plasma Gun', 'Flak',
@@ -53,6 +19,38 @@ CREATE TYPE WEAPON_TYPE AS ENUM ('Grenade Launcher', 'Cannon', 'Minigun', 'Plasm
 DROP TYPE IF EXISTS UTILITY_TYPE;
 CREATE TYPE UTILITY_TYPE AS ENUM ('SHIELD', 'ATTACK DRONE', 'REPAIR DRONE', 'ANTI MISSILE',
     'ACCELERATOR');
+
+
+/*
+  UPDATING DEFAULTS
+  For some reason the ai/default mechs had different models, fixing that
+ */
+
+UPDATE chassis
+SET model = 'Olympus Mons LY07',
+    skin  = 'Beetle'
+WHERE model = 'BXSD';
+UPDATE chassis
+SET model = 'Tenshi Mk1',
+    skin  = 'Warden'
+WHERE model = 'WREX';
+UPDATE chassis
+SET model = 'Law Enforcer X-1000',
+    skin  = 'Blue White'
+WHERE model = 'XFVS';
+
+UPDATE blueprint_chassis
+SET model = 'Olympus Mons LY07',
+    skin  = 'Beetle'
+WHERE model = 'BXSD';
+UPDATE blueprint_chassis
+SET model = 'Tenshi Mk1',
+    skin  = 'Warden'
+WHERE model = 'WREX';
+UPDATE blueprint_chassis
+SET model = 'Law Enforcer X-1000',
+    skin  = 'Blue White'
+WHERE model = 'XFVS';
 
 /*
   ENERGY CORES
@@ -158,6 +156,7 @@ CREATE TABLE blueprint_chassis_animation
  */
 
 ALTER TABLE chassis
+--     unused/unneeded columns
     DROP COLUMN IF EXISTS turret_hardpoints,
     DROP COLUMN IF EXISTS health_remaining,
     DROP COLUMN IF EXISTS shield_recharge_rate,
@@ -168,9 +167,9 @@ ALTER TABLE chassis
     ADD COLUMN genesis_token_id        INTEGER,
     ADD COLUMN owner_id                UUID REFERENCES players (id),
     ADD COLUMN energy_core_size        TEXT NOT NULL DEFAULT 'MEDIUM' CHECK ( energy_core_size IN ('SMALL', 'MEDIUM', 'LARGE') ),
-    ADD COLUMN default_chassis_skin_id UUID REFERENCES blueprint_chassis_skin (id),
+    ADD COLUMN default_chassis_skin_id UUID REFERENCES blueprint_chassis_skin (id), -- default skin
     ADD COLUMN tier                    TEXT,
-    ADD COLUMN chassis_skin_id         UUID REFERENCES chassis_skin (id),
+    ADD COLUMN chassis_skin_id         UUID REFERENCES chassis_skin (id), -- equipped skin
     ADD COLUMN energy_core_id          UUID REFERENCES energy_cores (id),
     ADD COLUMN intro_animation_id      UUID REFERENCES chassis_animation (id),
     ADD COLUMN outro_animation_id      UUID REFERENCES chassis_animation (id);
@@ -198,7 +197,7 @@ FROM genesis
 WHERE c.id = genesis.chassis_id;
 
 
--- insert current skin blueprints
+-- extract and insert current skin blueprints
 WITH new_skins AS (SELECT DISTINCT c.skin, c.model, image_url, animation_url, card_animation_url, avatar_url, t.tier
                    FROM templates t
                             INNER JOIN blueprint_chassis c ON t.blueprint_chassis_id = c.id)
@@ -214,7 +213,7 @@ SELECT new_skins.model::CHASSIS_MODEL,
 FROM new_skins
 ON CONFLICT (chassis_model, label) DO NOTHING;
 
--- insert current skins
+-- extract and insert current equipped skins
 WITH new_skins AS (SELECT DISTINCT c.skin,
                                    c.model,
                                    image_url,
@@ -263,11 +262,11 @@ SET genesis_token_id = genesis.external_token_id
 FROM genesis
 WHERE cs.equipped_on = genesis.chassis_id;
 
-
+-- update the owners of the newly extracted and inserted skins
 UPDATE chassis c
 SET chassis_skin_id = (SELECT id FROM chassis_skin cs WHERE cs.equipped_on = c.id);
 
--- update all the default model skins
+-- update all the default model skins, picked random mega skins to be the default fallback..
 UPDATE chassis c
 SET default_chassis_skin_id = (SELECT bcs.id
                                FROM blueprint_chassis_skin bcs
