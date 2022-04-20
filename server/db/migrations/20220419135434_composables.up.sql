@@ -1,35 +1,49 @@
+-- This table is for the look up on supremacy_general_collection token ids since the token ids go across tables
+CREATE TABLE supremacy_general_collection
+(
+    token_id  SERIAL PRIMARY KEY,
+    item_type TEXT NOT NULL CHECK (item_type IN ('utility', 'weapon', 'chassis', 'chassis_skin')),
+    item_id   UUID NOT NULL UNIQUE
+);
+
+
+
+DROP TYPE IF EXISTS CHASSIS_MODEL;
+CREATE TYPE CHASSIS_MODEL AS ENUM ('Law Enforcer X-1000','Olympus Mons LY07', 'Tenshi Mk1');
+/*
+  UPDATING DEFAULTS
+  For some reason the ai/default mechs had different models, fixing that
+ */
+UPDATE chassis
+SET model = 'Olympus Mons LY07',
+    skin  = 'Beetle'
+WHERE model = 'BXSD';
+UPDATE chassis
+SET model = 'Tenshi Mk1',
+    skin  = 'Warden'
+WHERE model = 'WREX';
+UPDATE chassis
+SET model = 'Law Enforcer X-1000',
+    skin  = 'Blue White'
+WHERE model = 'XFVS';
+
+UPDATE blueprint_chassis
+SET model = 'Olympus Mons LY07',
+    skin  = 'Beetle'
+WHERE model = 'BXSD';
+UPDATE blueprint_chassis
+SET model = 'Tenshi Mk1',
+    skin  = 'Warden'
+WHERE model = 'WREX';
+UPDATE blueprint_chassis
+SET model = 'Law Enforcer X-1000',
+    skin  = 'Blue White'
+WHERE model = 'XFVS';
+
 /*
   WEAPON TYPES
  */
 
-DROP TYPE IF EXISTS CHASSIS_MODEL;
-CREATE TYPE CHASSIS_MODEL AS ENUM ('Law Enforcer X-1000','Olympus Mons LY07', 'Tenshi Mk1');
--- remove old model types
-UPDATE chassis
-SET model = 'Olympus Mons LY07',
-    skin  = 'Beetle'
-WHERE model = 'BXSD';
-UPDATE chassis
-SET model = 'Tenshi Mk1',
-    skin  = 'Warden'
-WHERE model = 'WREX';
-UPDATE chassis
-SET model = 'Law Enforcer X-1000',
-    skin  = 'Blue White'
-WHERE model = 'XFVS';
-
-UPDATE blueprint_chassis
-SET model = 'Olympus Mons LY07',
-    skin  = 'Beetle'
-WHERE model = 'BXSD';
-UPDATE blueprint_chassis
-SET model = 'Tenshi Mk1',
-    skin  = 'Warden'
-WHERE model = 'WREX';
-UPDATE blueprint_chassis
-SET model = 'Law Enforcer X-1000',
-    skin  = 'Blue White'
-WHERE model = 'XFVS';
 
 DROP TYPE IF EXISTS WEAPON_TYPE;
 CREATE TYPE WEAPON_TYPE AS ENUM ('Grenade Launcher', 'Cannon', 'Minigun', 'Plasma Gun', 'Flak',
@@ -95,6 +109,9 @@ CREATE TABLE blueprint_chassis_skin
 CREATE TABLE chassis_skin
 (
     id                 UUID PRIMARY KEY       DEFAULT gen_random_uuid(),
+    collection_slug    TEXT          NOT NULL DEFAULT 'supremacy-general',
+    token_id           INTEGER REFERENCES supremacy_general_collection (token_id),
+    genesis_token_id   NUMERIC,
     label              TEXT          NOT NULL,
     owner_id           UUID          NOT NULL REFERENCES players (id),
     chassis_model      CHASSIS_MODEL NOT NULL,
@@ -146,6 +163,9 @@ ALTER TABLE chassis
     DROP COLUMN IF EXISTS shield_recharge_rate,
     DROP COLUMN IF EXISTS max_shield,
     DROP COLUMN IF EXISTS turret_hardpoints,
+    ADD COLUMN collection_slug         TEXT NOT NULL DEFAULT 'supremacy-general',
+    ADD COLUMN token_id                INTEGER REFERENCES supremacy_general_collection (token_id),
+    ADD COLUMN genesis_token_id        INTEGER,
     ADD COLUMN owner_id                UUID REFERENCES players (id),
     ADD COLUMN energy_core_size        TEXT NOT NULL DEFAULT 'MEDIUM' CHECK ( energy_core_size IN ('SMALL', 'MEDIUM', 'LARGE') ),
     ADD COLUMN default_chassis_skin_id UUID REFERENCES blueprint_chassis_skin (id),
@@ -154,6 +174,28 @@ ALTER TABLE chassis
     ADD COLUMN energy_core_id          UUID REFERENCES energy_cores (id),
     ADD COLUMN intro_animation_id      UUID REFERENCES chassis_animation (id),
     ADD COLUMN outro_animation_id      UUID REFERENCES chassis_animation (id);
+
+
+-- This inserts a new supremacy_general_collection entry for each chassis and updates the chassis table with token id
+WITH insrt AS (
+    WITH chass AS (SELECT 'chassis' AS item_type, id FROM chassis)
+        INSERT INTO supremacy_general_collection (item_type, item_id)
+            SELECT chass.item_type, chass.id
+            FROM chass
+            RETURNING token_id, item_id)
+UPDATE chassis c
+SET token_id = insrt.token_id
+FROM insrt
+WHERE c.id = insrt.item_id;
+
+-- this updates all genesis_token_id for chassis that are in genesis
+WITH genesis AS (SELECT external_token_id, collection_slug, chassis_id
+                 FROM mechs
+                 WHERE collection_slug = 'supremacy-genesis')
+UPDATE chassis c
+SET genesis_token_id = genesis.external_token_id
+FROM genesis
+WHERE c.id = genesis.chassis_id;
 
 
 -- insert current skin blueprints
@@ -197,6 +239,30 @@ SELECT new_skins.owner_id,
        new_skins.card_animation_url,
        new_skins.avatar_url
 FROM new_skins;
+
+
+-- This inserts a new supremacy_general_collection entry for each chassis_skin and updates the chassis_skin table with token id
+WITH insrt AS (
+    WITH chass_skin AS (SELECT 'chassis_skin' AS item_type, id FROM chassis_skin)
+        INSERT INTO supremacy_general_collection (item_type, item_id)
+            SELECT chass_skin.item_type, chass_skin.id
+            FROM chass_skin
+            RETURNING token_id, item_id)
+UPDATE chassis_skin cs
+SET token_id = insrt.token_id
+FROM insrt
+WHERE cs.id = insrt.item_id;
+
+-- this updates all genesis_token_id for chassis_skin that are in genesis
+WITH genesis AS (SELECT external_token_id, m.collection_slug, chassis_id
+                 FROM chassis_skin _cs
+                          INNER JOIN mechs m ON m.chassis_id = _cs.equipped_on
+                 WHERE m.collection_slug = 'supremacy-genesis')
+UPDATE chassis_skin cs
+SET genesis_token_id = genesis.external_token_id
+FROM genesis
+WHERE cs.equipped_on = genesis.chassis_id;
+
 
 UPDATE chassis c
 SET chassis_skin_id = (SELECT id FROM chassis_skin cs WHERE cs.equipped_on = c.id);
@@ -280,7 +346,8 @@ ALTER TABLE blueprint_chassis
 UPDATE blueprint_chassis bc
 SET chassis_skin_id = (SELECT id
                        FROM blueprint_chassis_skin bcs
-                       WHERE bcs.label = bc.skin AND bcs.chassis_model = bc.model);
+                       WHERE bcs.label = bc.skin
+                         AND bcs.chassis_model = bc.model);
 
 
 /*
@@ -313,7 +380,7 @@ CREATE TABLE weapon_skin
 
 ALTER TABLE blueprint_weapons
     DROP COLUMN IF EXISTS weapon_type,
-    ADD COLUMN weapon_type             WEAPON_TYPE NOT NULL,
+    ADD COLUMN weapon_type             WEAPON_TYPE,
     ADD COLUMN is_melee                BOOL DEFAULT FALSE,
     ADD COLUMN damage_falloff          INT  DEFAULT 0,
     ADD COLUMN damage_falloff_rate     INT  DEFAULT 0,
@@ -327,43 +394,39 @@ ALTER TABLE blueprint_weapons
     ADD COLUMN energy_cost             INT  DEFAULT 0;
 
 UPDATE blueprint_weapons
-SET ammo_type   = 'BULLET',
-    weapon_type = 'Sniper Rifle'
+SET weapon_type = 'Sniper Rifle'
 WHERE label = 'Sniper Rifle';
 
 UPDATE blueprint_weapons
-SET ammo_type   = 'NONE',
-    weapon_type = 'Sword',
+SET weapon_type = 'Sword',
     is_melee    = TRUE
 WHERE label = 'Laser Sword';
 
 UPDATE blueprint_weapons
-SET ammo_type   = 'MISSILE',
-    weapon_type = 'Missile Launcher'
+SET weapon_type = 'Missile Launcher'
 WHERE label = 'Rocket Pod';
 
 UPDATE blueprint_weapons
-SET ammo_type   = 'BULLET',
-    weapon_type = 'Cannon'
+SET weapon_type = 'Cannon'
 WHERE label = 'Auto Cannon';
 
 UPDATE blueprint_weapons
-SET ammo_type   = 'ENERGY CELL',
-    weapon_type = 'Plasma Gun'
+SET weapon_type = 'Plasma Gun'
 WHERE label = 'Plasma Rifle';
 
 UPDATE blueprint_weapons
-SET ammo_type   = 'NONE',
-    is_melee    = TRUE,
+SET is_melee    = TRUE,
     weapon_type = 'Sword'
 WHERE label = 'Sword';
 
 ALTER TABLE blueprint_weapons
-    ALTER COLUMN ammo_type SET NOT NULL,
     ALTER COLUMN weapon_type SET NOT NULL;
 
 ALTER TABLE weapons
     DROP COLUMN IF EXISTS weapon_type,
+    ADD COLUMN collection_slug         TEXT NOT NULL DEFAULT 'supremacy-general',
+    ADD COLUMN token_id                INTEGER REFERENCES supremacy_general_collection (token_id),
+    ADD COLUMN genesis_token_id        NUMERIC,
     ADD COLUMN weapon_type             WEAPON_TYPE,
     ADD COLUMN owner_id                UUID REFERENCES players (id),
     ADD COLUMN is_melee                BOOL DEFAULT FALSE,
@@ -379,34 +442,28 @@ ALTER TABLE weapons
     ADD COLUMN energy_cost             INT  DEFAULT 0;
 
 UPDATE weapons
-SET ammo_type   = 'BULLET',
-    weapon_type = 'Sniper Rifle'
+SET weapon_type = 'Sniper Rifle'
 WHERE label = 'Sniper Rifle';
 
 UPDATE weapons
-SET ammo_type   = 'NONE',
-    weapon_type = 'Sword',
+SET weapon_type = 'Sword',
     is_melee    = TRUE
 WHERE label = 'Laser Sword';
 
 UPDATE weapons
-SET ammo_type   = 'MISSILE',
-    weapon_type = 'Missile Launcher'
+SET weapon_type = 'Missile Launcher'
 WHERE label = 'Rocket Pod';
 
 UPDATE weapons
-SET ammo_type   = 'BULLET',
-    weapon_type = 'Cannon'
+SET weapon_type = 'Cannon'
 WHERE label = 'Auto Cannon';
 
 UPDATE weapons
-SET ammo_type   = 'ENERGY CELL',
-    weapon_type = 'Plasma Gun'
+SET weapon_type = 'Plasma Gun'
 WHERE label = 'Plasma Rifle';
 
 UPDATE weapons
-SET ammo_type   = 'NONE',
-    is_melee    = TRUE,
+SET is_melee    = TRUE,
     weapon_type = 'Sword'
 WHERE label = 'Sword';
 
@@ -418,9 +475,32 @@ SET owner_id = weapon_owners.owner_id
 FROM weapon_owners
 WHERE w.id = weapon_owners.weapon_id;
 
+-- This inserts a new supremacy_general_collection entry for each weapons and updates the weapons table with token id
+WITH insrt AS (
+    WITH weapon AS (SELECT 'weapon' AS item_type, id FROM weapons)
+        INSERT INTO supremacy_general_collection (item_type, item_id)
+            SELECT weapon.item_type, weapon.id
+            FROM weapon
+            RETURNING token_id, item_id)
+UPDATE weapons w
+SET token_id = insrt.token_id
+FROM insrt
+WHERE w.id = insrt.item_id;
+
+-- this updates all genesis_token_id for weapons that are in genesis
+WITH genesis AS (SELECT external_token_id, m.collection_slug, m.chassis_id, _cw.weapon_id
+                 FROM chassis_weapons _cw
+                          INNER JOIN mechs m ON m.chassis_id = _cw.chassis_id
+                 WHERE m.collection_slug = 'supremacy-genesis')
+UPDATE weapons w
+SET genesis_token_id = genesis.external_token_id
+FROM genesis
+WHERE w.id = genesis.weapon_id;
+
+
 ALTER TABLE weapons
+    ALTER COLUMN token_id SET NOT NULL,
     ALTER COLUMN owner_id SET NOT NULL,
-    ALTER COLUMN ammo_type SET NOT NULL,
     ALTER COLUMN weapon_type SET NOT NULL;
 
 
@@ -475,13 +555,12 @@ ALTER TABLE blueprint_modules
 ALTER TABLE blueprint_utility
     DROP COLUMN hitpoint_modifier,
     DROP COLUMN shield_modifier,
-    ADD COLUMN type TEXT CHECK (type IN ('SHIELD', 'ATTACK DRONE', 'REPAIR DRONE', 'ANTI MISSILE',
-                                         'ACCELERATOR'));
+    ADD COLUMN type UTILITY_TYPE;
+
 UPDATE blueprint_utility
 SET type = 'SHIELD';
 ALTER TABLE blueprint_utility
     ALTER COLUMN type SET NOT NULL;
-
 
 CREATE TABLE blueprint_utility_shield
 (
@@ -544,9 +623,12 @@ ALTER TABLE modules
 ALTER TABLE utility
     DROP COLUMN hitpoint_modifier,
     DROP COLUMN shield_modifier,
-    ADD COLUMN owner_id    UUID REFERENCES players (id),
-    ADD COLUMN equipped_on UUID REFERENCES chassis (id),
-    ADD COLUMN type        UTILITY_TYPE NOT NULL;
+    ADD COLUMN collection_slug  TEXT NOT NULL DEFAULT 'supremacy-general',
+    ADD COLUMN token_id         INTEGER REFERENCES supremacy_general_collection (token_id),
+    ADD COLUMN genesis_token_id NUMERIC,
+    ADD COLUMN owner_id         UUID REFERENCES players (id),
+    ADD COLUMN equipped_on      UUID REFERENCES chassis (id),
+    ADD COLUMN type             UTILITY_TYPE;
 
 WITH utility_owners AS (SELECT m.owner_id, cu.utility_id
                         FROM chassis_utility cu
@@ -556,7 +638,32 @@ SET owner_id = utility_owners.owner_id
 FROM utility_owners
 WHERE u.id = utility_owners.utility_id;
 
+
+-- This inserts a new supremacy_general_collection entry for each utility and updates the utility table with token id
+WITH insrt AS (
+    WITH utily AS (SELECT 'utility' AS item_type, id FROM utility)
+        INSERT INTO supremacy_general_collection (item_type, item_id)
+            SELECT utily.item_type, utily.id
+            FROM utily
+            RETURNING token_id, item_id)
+UPDATE utility u
+SET token_id = insrt.token_id
+FROM insrt
+WHERE u.id = insrt.item_id;
+
+-- this updates all genesis_token_id for weapons that are in genesis
+WITH genesis AS (SELECT external_token_id, m.collection_slug, m.chassis_id, _cu.utility_id
+                 FROM chassis_utility _cu
+                          INNER JOIN mechs m ON m.chassis_id = _cu.chassis_id
+                 WHERE m.collection_slug = 'supremacy-genesis')
+UPDATE utility u
+SET genesis_token_id = genesis.external_token_id
+FROM genesis
+WHERE u.id = genesis.utility_id;
+
+
 ALTER TABLE utility
+    ALTER COLUMN token_id SET NOT NULL,
     ALTER COLUMN owner_id SET NOT NULL;
 
 UPDATE utility
@@ -606,6 +713,3 @@ CREATE TABLE utility_accelerator
     boost_seconds INT NOT NULL,
     boost_amount  INT NOT NULL
 );
-
-
-
