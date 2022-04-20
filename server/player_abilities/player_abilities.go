@@ -55,7 +55,7 @@ func NewPlayerAbilitiesSystem(messagebus *messagebus.MessageBus) *PlayerAbilitie
 
 func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 	priceTicker := time.NewTicker(1 * time.Second)
-	saleTicker := time.NewTicker(1 * time.Minute)
+	saleTicker := time.NewTicker(5 * time.Second)
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -81,7 +81,6 @@ func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 			reductionPercentage := db.GetDecimalWithDefault("sale_ability_reduction_percentage", decimal.NewFromFloat(1.0)) // default 1%
 			floorPrice := db.GetDecimalWithDefault("sale_ability_floor_price", decimal.NewFromFloat(10))                    // default 10 sups
 
-			pas.Lock()
 			for _, s := range pas.salePlayerAbilities {
 				if s.AvailableUntil.Time.Before(time.Now()) {
 					continue
@@ -101,10 +100,8 @@ func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 				// Broadcast updated sale ability
 				pas.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeySaleAbilityPriceSubscribe, s.ID)), s.CurrentPrice)
 			}
-			pas.Unlock()
 			break
 		case <-saleTicker.C:
-			pas.Lock()
 			// Check each ability that is on sale, remove them if expired
 			for _, s := range pas.salePlayerAbilities {
 				if !s.AvailableUntil.Time.After(time.Now()) {
@@ -116,14 +113,13 @@ func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 			if len(pas.salePlayerAbilities) < 1 {
 				// If no abilities are on sale, refill sale abilities
 				saleAbilities, err := boiler.SalePlayerAbilities(boiler.SalePlayerAbilityWhere.AvailableUntil.GT(null.TimeFrom(time.Now()))).All(gamedb.StdConn)
-				if errors.Is(err, sql.ErrNoRows) {
+				if errors.Is(err, sql.ErrNoRows) || len(saleAbilities) == 0 {
 					// If no sale abilities, get 3 random sale abilities and update their time to an hour from now
 					// todo: change to kv value
 					limit := 3
 					saleAbilities, err = boiler.SalePlayerAbilities(qm.OrderBy("random()"), qm.Limit(limit)).All(gamedb.StdConn)
 					if err != nil {
 						gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed to get %d random sale abilities", limit))
-						pas.Unlock()
 						break
 					}
 					_, err = saleAbilities.UpdateAll(gamedb.StdConn, boiler.M{
@@ -133,13 +129,8 @@ func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 						gamelog.L.Error().Err(err).Msg("failed to update sale ability with new expiration date")
 						continue
 					}
-					// for _, s := range saleAbilities {
-					// 	s.AvailableUntil = null.TimeFrom(time.Now().Add(time.Hour))
-					// 	_, err = s.Update(gamedb.StdConn, boil.Infer())
-					// }
 				} else if err != nil {
 					gamelog.L.Error().Err(err).Msg("failed to fill sale player abilities map with new sale abilities")
-					pas.Unlock()
 					break
 				}
 				for _, s := range saleAbilities {
@@ -148,7 +139,6 @@ func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 				// Broadcast trigger of sale abilities list update
 				pas.messageBus.Send(messagebus.BusKey(server.HubKeySaleAbilitiesListUpdated), true)
 			}
-			pas.Unlock()
 			break
 		case purchase := <-pas.Purchase:
 			if saleAbility, ok := pas.salePlayerAbilities[purchase.AbilityID]; ok {
