@@ -430,65 +430,6 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 		}
 	}
 
-	// last three gab abilities
-outer:
-	for triggerLabel, td := range fired {
-
-		m3, m3ok := ms.getMultiplier("gab_ability", triggerLabel, 1)
-		if !m3ok {
-			continue
-		}
-		if len(td.PlayerIDs) < 3 {
-			continue
-		}
-		if td.FireCount < 3 {
-			for i := 1; i < len(td.PlayerIDs); i++ {
-				if td.PlayerIDs[i] != td.PlayerIDs[i-1] {
-					continue outer
-				}
-			}
-
-			triggers, err := boiler.BattleAbilityTriggers(
-				qm.Where(`is_all_syndicates = true`),
-				qm.And(`ability_label = ?`, triggerLabel),
-				qm.OrderBy(`triggered_at DESC`),
-				qm.Limit(3),
-			).All(gamedb.StdConn)
-			if err != nil {
-				gamelog.L.Error().Err(err).Msgf("unable to retrieve last three triggers information from database")
-				continue outer
-			}
-			for i := 1; i < len(triggers); i++ {
-				if triggers[i].PlayerID != triggers[i-1].PlayerID {
-					continue outer
-				}
-			}
-			//if it makes it here, it's because it was the last 3
-			gamelog.L.Info().Interface("td.PlayerIds", td.PlayerIDs).Str("triggerLabel", triggerLabel).Msg("someone did the last 3!")
-			if _, ok := newMultipliers[td.PlayerIDs[0]]; !ok {
-				newMultipliers[td.PlayerIDs[0]] = map[string][]*boiler.Multiplier{}
-			}
-			newMultipliers[td.PlayerIDs[0]][m3.ID] = append(newMultipliers[td.PlayerIDs[0]][m3.ID], m3)
-		} else {
-			if len(td.PlayerIDs) < 3 {
-				return
-			}
-			for i := 1; i < len(td.PlayerIDs); i++ {
-				if td.PlayerIDs[i] != td.PlayerIDs[i-1] {
-					continue outer
-				}
-			}
-			//if it makes it here, it's because it was the last 3
-			gamelog.L.Info().Interface("td.PlayerIds", td.PlayerIDs).Msg("someone did the last 3!")
-
-			if _, ok := newMultipliers[td.PlayerIDs[0]]; !ok {
-				newMultipliers[td.PlayerIDs[0]] = map[string][]*boiler.Multiplier{}
-			}
-			newMultipliers[td.PlayerIDs[0]][m3.ID] = append(newMultipliers[td.PlayerIDs[0]][m3.ID], m3)
-		}
-
-	}
-
 	// check for syndicate wins
 	lastWin, err := boiler.BattleWins(
 		boiler.BattleWinWhere.BattleID.EQ(ms.battle.ID),
