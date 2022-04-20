@@ -23,4 +23,38 @@ CREATE TABLE item_sales (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- for checking if item exists and belongs to the owner
+CREATE OR REPLACE FUNCTION checkItemOwnerConstraint()
+    RETURNS TRIGGER
+AS
+$checkItemOwnerConstraint$
+DECLARE
+    record_found BOOL;
+BEGIN
+	record_found := false;	
+
+	CASE NEW.item_type 
+	WHEN 'mech' THEN 
+		record_found := EXISTS (
+			SELECT id
+			FROM mechs
+			WHERE id = NEW.item_id
+				AND owner_id = NEW.owner_id
+		);
+	END CASE;
+
+	IF record_found = FALSE THEN
+		RAISE EXCEPTION '% not found', NEW.item_type;
+	END IF;
+
+    RETURN NULL;
+END;
+$checkItemOwnerConstraint$
+    LANGUAGE plpgsql;
+
+CREATE TRIGGER checkItemOwnerConstraint
+    BEFORE INSERT OR UPDATE
+    ON item_sales
+EXECUTE PROCEDURE checkItemOwnerConstraint();
+
 COMMIT;
