@@ -5,7 +5,7 @@ CREATE TABLE item_sales (
 	item_type TEXT NOT NULL,
 	item_id UUID NOT NULL,
 	listing_fee_tx_id UUID NOT NULL,
-	owner_id UUID NOT NULL REFERENCES users(id),
+	owner_id UUID NOT NULL REFERENCES players(id),
 
 	auction BOOL NOT NULL,
 	auction_current_price TEXT,
@@ -56,5 +56,11 @@ CREATE TRIGGER checkItemOwnerConstraint
     BEFORE INSERT OR UPDATE
     ON item_sales
 EXECUTE PROCEDURE checkItemOwnerConstraint();
+
+CREATE TABLE item_sales_buyout_price_history (
+    id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
+	item_sale_id UUID NOT NULL,
+	buyout_price TEXT NOT NULL
+);
 
 COMMIT;
