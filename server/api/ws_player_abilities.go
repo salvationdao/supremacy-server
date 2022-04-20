@@ -37,6 +37,7 @@ func NewPlayerAbilitiesController(api *API) *PlayerAbilitiesControllerWS {
 		API: api,
 	}
 
+	api.SecureUserCommand(server.HubKeySaleAbilityDetailed, pac.SaleAbilityDetailedHandler)
 	api.SecureUserCommand(server.HubKeyPlayerAbilitiesList, pac.PlayerAbilitiesListHandler)
 	api.SecureUserCommand(server.HubKeySaleAbilitiesList, pac.SaleAbilitiesListHandler)
 	api.SecureUserCommand(server.HubKeySaleAbilityPurchase, pac.SaleAbilityPurchaseHandler)
@@ -47,6 +48,37 @@ func NewPlayerAbilitiesController(api *API) *PlayerAbilitiesControllerWS {
 	api.SecureUserSubscribeCommand(server.HubKeySaleAbilitiesListUpdated, pac.SaleAbilitiesListUpdatedHandler)
 
 	return pac
+}
+
+type SaleAbilityDetailsRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		AbilityID string `json:"ability_id"`
+	} `json:"payload"`
+}
+
+func (pac *PlayerAbilitiesControllerWS) SaleAbilityDetailedHandler(ctx context.Context, hub *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &SaleAbilityDetailsRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	if req.Payload.AbilityID == "" {
+		gamelog.L.Error().
+			Str("handler", "SaleAbilityDetailsHandler").Msg("empty ability ID provided")
+		return terror.Error(err, "Ability ID must be provided.")
+	}
+
+	sAbility, err := db.SaleAbilityGet(ctx, gamedb.Conn, req.Payload.AbilityID)
+	if err != nil {
+		gamelog.L.Error().
+			Str("db func", "SaleAbilityGet").Err(err).Msg("unable to get sale ability details")
+		return terror.Error(err, "Unable to retrieve sale ability, please try again or contact support.")
+	}
+
+	reply(sAbility)
+	return nil
 }
 
 func (pac *PlayerAbilitiesControllerWS) PlayerAbilitiesListUpdatedHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
@@ -96,14 +128,14 @@ func (pac *PlayerAbilitiesControllerWS) PlayerAbilitySubscribeHandler(ctx contex
 
 	if req.Payload.AbilityID == "" {
 		gamelog.L.Error().
-			Str("handler", "SaleAbilitySubscribeHandler").Msg("empty ability ID provided")
+			Str("handler", "PlayerAbilitySubscribeHandler").Msg("empty ability ID provided")
 		return "", "", terror.Error(err, "Ability ID must be provided.")
 	}
 
 	pAbility, err := boiler.FindPlayerAbility(gamedb.StdConn, req.Payload.AbilityID)
 	if err != nil {
 		gamelog.L.Error().
-			Str("db func", "SaleAbilityGet").Err(err).Msg("unable to get player ability details")
+			Str("db func", "boiler.FindPlayerAbility").Err(err).Msg("unable to get player ability details")
 		return "", "", terror.Error(err, "Unable to retrieve player ability, please try again or contact support.")
 	}
 
@@ -131,10 +163,10 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilitySubscribePriceHandler(ctx con
 		return "", "", terror.Error(err, "Ability ID must be provided.")
 	}
 
-	sAbility, err := db.SaleAbilityGet(ctx, gamedb.Conn, req.Payload.AbilityID)
+	sAbility, err := boiler.FindSalePlayerAbility(gamedb.StdConn, req.Payload.AbilityID)
 	if err != nil {
 		gamelog.L.Error().
-			Str("db func", "SaleAbilityGet").Err(err).Msg("unable to get sale ability details")
+			Str("db func", "boiler.FindSalePlayerAbility").Err(err).Msg("unable to get sale ability details")
 		return "", "", terror.Error(err, "Unable to retrieve sale ability, please try again or contact support.")
 	}
 
