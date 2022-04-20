@@ -30,6 +30,16 @@ import (
 	"github.com/gofrs/uuid"
 )
 
+//*******************************
+// Voting Options
+//*******************************
+
+var MinVotePercentageCost = map[string]decimal.Decimal{
+	"0.1": decimal.NewFromFloat(0.001).Mul(decimal.New(1, 18)),
+	"0.5": decimal.NewFromFloat(0.005).Mul(decimal.New(1, 18)),
+	"1":   decimal.NewFromFloat(0.01).Mul(decimal.New(1, 18)),
+}
+
 //******************************
 // Game Ability setup
 //******************************
@@ -475,7 +485,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 
 						// broadcast the new price
 						payload := []byte{byte(GameAbilityProgressTick)}
-						payload = append(payload, []byte(fmt.Sprintf("%s_%s_%s_%s", ability.Identity, ability.SupsCost.String(), ability.CurrentSups.String(), triggeredFlag))...)
+						payload = append(payload, []byte(fmt.Sprintf("%s_%s_%s_%s_%s", ability.Identity, ability.OfferingID.String(), ability.SupsCost.String(), ability.CurrentSups.String(), triggeredFlag))...)
 						as.battle().arena.messageBus.SendBinary(messagebus.BusKey(fmt.Sprintf("%s,%s", HubKeyAbilityPriceUpdated, ability.Identity)), payload)
 					}
 				}
@@ -487,13 +497,33 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 			if abilities, ok := as.factionUniqueAbilities[cont.factionID]; ok {
 				// check ability exists
 				if ability, ok := abilities[cont.abilityIdentity]; ok {
+					// check contribute is for the current offered ability
+					abilityOfferingID, err := uuid.FromString(cont.abilityOfferingID)
+					if err != nil || abilityOfferingID.IsNil() {
+						gamelog.L.Error().Err(err).Msg("invalid ability offer id received")
+						continue
+					}
+					if abilityOfferingID != ability.OfferingID {
+						continue
+					}
+
+					// calculate amount from percentage of current sups
+					minAmount, ok := MinVotePercentageCost[cont.percentage.String()]
+					if !ok {
+						gamelog.L.Error().Err(err).Msg("invalid offer percentage received")
+						continue
+					}
+					amount := ability.SupsCost.Mul(cont.percentage).Div(decimal.NewFromInt(100))
+					if amount.LessThan(minAmount) {
+						amount = minAmount
+					}
 
 					// return early if battle stage is invalid
 					if as.battle().stage.Load() != BattleStagStart {
 						continue
 					}
 
-					actualSupSpent, multiAmount, isTriggered := ability.SupContribution(as.battle().arena.RPCClient, as, as.battle().ID, as.battle().BattleNumber, cont.userID, cont.amount)
+					actualSupSpent, multiAmount, isTriggered := ability.SupContribution(as.battle().arena.RPCClient, as, as.battle().ID, as.battle().BattleNumber, cont.userID, amount)
 
 					if isTriggered {
 						// increase price as the twice amount for normal value
@@ -632,7 +662,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 
 						// only broadcast if the ability is triggered
 						payload := []byte{byte(GameAbilityProgressTick)}
-						payload = append(payload, []byte(fmt.Sprintf("%s_%s_%s_%s", ability.Identity, ability.SupsCost.String(), ability.CurrentSups.String(), triggeredFlag))...)
+						payload = append(payload, []byte(fmt.Sprintf("%s_%s_%s_%s_%s", ability.Identity, ability.OfferingID.String(), ability.SupsCost.String(), ability.CurrentSups.String(), triggeredFlag))...)
 						as.battle().arena.messageBus.SendBinary(messagebus.BusKey(fmt.Sprintf("%s,%s", HubKeyAbilityPriceUpdated, ability.Identity)), payload)
 					}
 				}
@@ -1233,8 +1263,28 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 			}
 
 			if factionAbility, ok := as.battleAbilityPool.Abilities.Load(cont.factionID.String()); ok {
+				// check contribute is for the current offered ability
+				abilityOfferingID, err := uuid.FromString(cont.abilityOfferingID)
+				if err != nil || abilityOfferingID.IsNil() {
+					gamelog.L.Error().Err(err).Msg("invalid ability offer id received")
+					continue
+				}
+				if abilityOfferingID != factionAbility.OfferingID {
+					continue
+				}
+
+				minAmount, ok := MinVotePercentageCost[cont.percentage.String()]
+				if !ok {
+					gamelog.L.Error().Err(err).Msg("invalid offer percentage received")
+					continue
+				}
+				amount := factionAbility.SupsCost.Mul(cont.percentage).Div(decimal.NewFromInt(100))
+				if amount.LessThan(minAmount) {
+					amount = minAmount
+				}
+
 				// contribute sups
-				actualSupSpent, multiAmount, abilityTriggered := factionAbility.SupContribution(as.battle().arena.RPCClient, as, as.battle().ID, as.battle().BattleNumber, cont.userID, cont.amount)
+				actualSupSpent, multiAmount, abilityTriggered := factionAbility.SupContribution(as.battle().arena.RPCClient, as, as.battle().ID, as.battle().BattleNumber, cont.userID, amount)
 
 				// broadcast the latest result progress bar, when ability is triggered
 				as.BroadcastAbilityProgressBar()
@@ -1411,10 +1461,11 @@ func (as *AbilitiesSystem) SetNewBattleAbility(isFirstAbility bool) (int, error)
 }
 
 type Contribution struct {
-	factionID       uuid.UUID
-	userID          uuid.UUID
-	amount          decimal.Decimal
-	abilityIdentity string
+	factionID         uuid.UUID
+	userID            uuid.UUID
+	percentage        decimal.Decimal
+	abilityOfferingID string
+	abilityIdentity   string
 }
 
 // locationDecidersSet set a user list for location select for current ability triggered
@@ -1527,7 +1578,7 @@ func (as *AbilitiesSystem) nextLocationDeciderGet() (uuid.UUID, uuid.UUID, bool)
 // Ability Progression bar Broadcaster
 // ***********************************
 
-// 1 tick per second, each tick reduce 0.93304 of current price (drop the price to half in 10 second)
+// 1 tick per second, each tick reduce 0.93304 of current price (drop the price to half in 20 second)
 
 func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 	defer func() {
@@ -1550,7 +1601,7 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 	// update price
 	as.battleAbilityPool.Abilities.Range(func(factionID string, ability *GameAbility) bool {
 		// reduce price
-		ability.SupsCost = ability.SupsCost.Mul(decimal.NewFromFloat(0.93304)).RoundDown(0)
+		ability.SupsCost = ability.SupsCost.Mul(decimal.NewFromFloat(0.96595)).RoundDown(0)
 
 		// cap minmum price at 1 sup
 		if ability.SupsCost.Cmp(decimal.New(1, 18)) <= 0 {
@@ -1692,7 +1743,7 @@ func (as *AbilitiesSystem) BroadcastAbilityProgressBar() {
 // *********************
 // Handlers
 // *********************
-func (as *AbilitiesSystem) AbilityContribute(factionID uuid.UUID, userID uuid.UUID, abilityIdentity string, amount decimal.Decimal) {
+func (as *AbilitiesSystem) AbilityContribute(factionID uuid.UUID, userID uuid.UUID, abilityIdentity string, abilityOfferingID string, percentage decimal.Decimal) {
 	defer func() {
 		if r := recover(); r != nil {
 			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the AbilityContribute!", r)
@@ -1709,7 +1760,8 @@ func (as *AbilitiesSystem) AbilityContribute(factionID uuid.UUID, userID uuid.UU
 	cont := &Contribution{
 		factionID,
 		userID,
-		amount,
+		percentage,
+		abilityOfferingID,
 		abilityIdentity,
 	}
 
@@ -1770,7 +1822,7 @@ func (as *AbilitiesSystem) WarMachineAbilitiesGet(factionID uuid.UUID, hash stri
 	return abilities
 }
 
-func (as *AbilitiesSystem) BribeGabs(factionID uuid.UUID, userID uuid.UUID, amount decimal.Decimal) {
+func (as *AbilitiesSystem) BribeGabs(factionID uuid.UUID, userID uuid.UUID, abilityOfferingID string, percentage decimal.Decimal) {
 	defer func() {
 		if r := recover(); r != nil {
 			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the BribeGabs!", r)
@@ -1794,7 +1846,8 @@ func (as *AbilitiesSystem) BribeGabs(factionID uuid.UUID, userID uuid.UUID, amou
 	cont := &Contribution{
 		factionID,
 		userID,
-		amount,
+		percentage,
+		abilityOfferingID,
 		"",
 	}
 
