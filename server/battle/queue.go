@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"math/rand"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -36,11 +35,6 @@ func CalcNextQueueStatus(length int64) QueueStatusResponse {
 
 	mul := db.GetDecimalWithDefault("queue_fee_log_multi", decimal.NewFromFloat(3.25))
 	mulFloat, _ := mul.Float64()
-
-	if server.Env() == "staging" {
-		mulFloat = 0.2 + rand.Float64()*(8.0-0.2)
-		minQueueCost = decimal.NewFromFloat(1.5)
-	}
 
 	// calc queue cost
 	feeMultiplier := math.Log(float64(ql)) / mulFloat * 0.25

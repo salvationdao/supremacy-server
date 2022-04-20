@@ -366,6 +366,8 @@ func (arena *Arena) BattleAbilityBribe(ctx context.Context, wsc *hub.Client, pay
 
 	arena.currentBattle().abilities().BribeGabs(factionID, userID, req.Payload.AbilityOfferingID, req.Payload.Percentage)
 
+	reply(true)
+
 	return nil
 }
 
