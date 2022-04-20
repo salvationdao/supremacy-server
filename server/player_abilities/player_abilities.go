@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"math/rand"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -17,7 +18,6 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"go.uber.org/atomic"
 )
 
@@ -55,7 +55,7 @@ func NewPlayerAbilitiesSystem(messagebus *messagebus.MessageBus) *PlayerAbilitie
 
 func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 	priceTicker := time.NewTicker(1 * time.Second)
-	saleTicker := time.NewTicker(1 * time.Minute)
+	saleTicker := time.NewTicker(10 * time.Second)
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -104,25 +104,34 @@ func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 		case <-saleTicker.C:
 			// Check each ability that is on sale, remove them if expired
 			for _, s := range pas.salePlayerAbilities {
-				if !s.AvailableUntil.Time.After(time.Now()) {
+				if s.AvailableUntil.Time.After(time.Now()) {
 					continue
 				}
 				delete(pas.salePlayerAbilities, s.ID)
 			}
 
 			if len(pas.salePlayerAbilities) < 1 {
+				gamelog.L.Debug().Msg("repopulating sale abilities since there aren't any more")
 				// If no abilities are on sale, refill sale abilities
 				saleAbilities, err := boiler.SalePlayerAbilities(boiler.SalePlayerAbilityWhere.AvailableUntil.GT(null.TimeFrom(time.Now()))).All(gamedb.StdConn)
 				if errors.Is(err, sql.ErrNoRows) || len(saleAbilities) == 0 {
+					gamelog.L.Debug().Msg("refreshing sale abilities in db")
 					// If no sale abilities, get 3 random sale abilities and update their time to an hour from now
 					limit := db.GetIntWithDefault("sale_ability_limit", 3) // default 3
-					saleAbilities, err = boiler.SalePlayerAbilities(qm.OrderBy("random()"), qm.Limit(limit)).All(gamedb.StdConn)
+					allSaleAbilities, err := boiler.SalePlayerAbilities().All(gamedb.StdConn)
 					if err != nil {
 						gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed to get %d random sale abilities", limit))
 						break
 					}
+
+					rand.Seed(time.Now().UnixNano())
+					randomIndexes := rand.Perm(len(allSaleAbilities))
+					for _, i := range randomIndexes[:limit] {
+						saleAbilities = append(saleAbilities, allSaleAbilities[i])
+					}
+
 					_, err = saleAbilities.UpdateAll(gamedb.StdConn, boiler.M{
-						"available_until": time.Now().Add(time.Hour),
+						"available_until": time.Now().Add(time.Minute), // todo: change this
 					})
 					if err != nil {
 						gamelog.L.Error().Err(err).Msg("failed to update sale ability with new expiration date")
