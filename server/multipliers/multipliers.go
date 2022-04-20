@@ -3,12 +3,11 @@ package multipliers
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 
-		"github.com/volatiletech/sqlboiler/v4/queries/qm"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/shopspring/decimal"
 )
@@ -138,5 +137,5 @@ func CalculateMultipliersWorth(oneMultiWorth decimal.Decimal, totalMultiplier de
 
 // FriendlyFormatMultiplier returns a total multiplier in the format "65.5x", example FriendlyFormatMultiplier(5665) = 566.5x
 func FriendlyFormatMultiplier(multi decimal.Decimal) string {
-	return fmt.Sprintf("%sx", multi.Shift(-1).Round(1))
+	return multi.Shift(-1).Round(1).String()
 }
