@@ -73,7 +73,7 @@ func GenerateListFilterSQL(column string, value string, operator OperatorValueTy
 
 	case OperatorValueTypeIs, OperatorValueTypeIsNot, OperatorValueTypeIsAfter, OperatorValueTypeIsOnOrAfter, OperatorValueTypeIsBefore, OperatorValueTypeIsOnOrBefore:
 		// Dates (convert column to date to compare by day)
-		column += "::date"
+		// column += "::date"
 		if checkValue == "" {
 			return "", checkValue // don't filter if no value is set
 		}

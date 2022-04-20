@@ -55,7 +55,7 @@ func NewPlayerAbilitiesSystem(messagebus *messagebus.MessageBus) *PlayerAbilitie
 
 func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 	priceTicker := time.NewTicker(1 * time.Second)
-	saleTicker := time.NewTicker(5 * time.Second)
+	saleTicker := time.NewTicker(1 * time.Minute)
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -115,8 +115,7 @@ func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 				saleAbilities, err := boiler.SalePlayerAbilities(boiler.SalePlayerAbilityWhere.AvailableUntil.GT(null.TimeFrom(time.Now()))).All(gamedb.StdConn)
 				if errors.Is(err, sql.ErrNoRows) || len(saleAbilities) == 0 {
 					// If no sale abilities, get 3 random sale abilities and update their time to an hour from now
-					// todo: change to kv value
-					limit := 3
+					limit := db.GetIntWithDefault("sale_ability_limit", 3) // default 3
 					saleAbilities, err = boiler.SalePlayerAbilities(qm.OrderBy("random()"), qm.Limit(limit)).All(gamedb.StdConn)
 					if err != nil {
 						gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed to get %d random sale abilities", limit))
