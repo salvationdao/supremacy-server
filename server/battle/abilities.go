@@ -35,9 +35,9 @@ import (
 //*******************************
 
 var MinVotePercentageCost = map[string]decimal.Decimal{
-	"0.0001": decimal.NewFromFloat(0.1).Mul(decimal.New(1, 18)),
-	"0.001":  decimal.NewFromFloat(0.5).Mul(decimal.New(1, 18)),
-	"0.01":   decimal.NewFromFloat(1).Mul(decimal.New(1, 18)),
+	"0.1": decimal.NewFromFloat(0.001).Mul(decimal.New(1, 18)),
+	"0.5": decimal.NewFromFloat(0.005).Mul(decimal.New(1, 18)),
+	"1":   decimal.NewFromFloat(0.01).Mul(decimal.New(1, 18)),
 }
 
 //******************************
@@ -513,7 +513,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 						gamelog.L.Error().Err(err).Msg("invalid offer percentage received")
 						continue
 					}
-					amount := ability.SupsCost.Mul(cont.percentage)
+					amount := ability.SupsCost.Mul(cont.percentage).Div(decimal.NewFromInt(100))
 					if amount.LessThan(minAmount) {
 						amount = minAmount
 					}
@@ -1278,18 +1278,10 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 					gamelog.L.Error().Err(err).Msg("invalid offer percentage received")
 					continue
 				}
-				amount := factionAbility.SupsCost.Mul(cont.percentage)
-				fmt.Println("Spent", cont.percentage.String(), amount.String())
+				amount := factionAbility.SupsCost.Mul(cont.percentage).Div(decimal.NewFromInt(100))
 				if amount.LessThan(minAmount) {
 					amount = minAmount
 				}
-				fmt.Println(
-					"Spent",
-					factionAbility.SupsCost,
-					cont.percentage.String(),
-					amount.String(),
-					minAmount.String(),
-				)
 
 				// contribute sups
 				actualSupSpent, multiAmount, abilityTriggered := factionAbility.SupContribution(as.battle().arena.RPCClient, as, as.battle().ID, as.battle().BattleNumber, cont.userID, amount)
@@ -1582,7 +1574,7 @@ func (as *AbilitiesSystem) nextLocationDeciderGet() (uuid.UUID, uuid.UUID, bool)
 // Ability Progression bar Broadcaster
 // ***********************************
 
-// 1 tick per second, each tick reduce 0.93304 of current price (drop the price to half in 10 second)
+// 1 tick per second, each tick reduce 0.93304 of current price (drop the price to half in 20 second)
 
 func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 	defer func() {
@@ -1605,7 +1597,7 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 	// update price
 	as.battleAbilityPool.Abilities.Range(func(factionID string, ability *GameAbility) bool {
 		// reduce price
-		ability.SupsCost = ability.SupsCost.Mul(decimal.NewFromFloat(0.93304)).RoundDown(0)
+		ability.SupsCost = ability.SupsCost.Mul(decimal.NewFromFloat(0.96595)).RoundDown(0)
 
 		// cap minmum price at 1 sup
 		if ability.SupsCost.Cmp(decimal.New(1, 18)) <= 0 {

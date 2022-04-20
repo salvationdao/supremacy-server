@@ -535,14 +535,6 @@ func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, wsc *hub
 		return terror.Error(fmt.Errorf("player is banned to contribute sups"), "You are banned to contribute sups")
 	}
 
-	// d, err := decimal.NewFromString(req.Payload.Amount)
-	// if err != nil {
-	// 	gamelog.L.Error().Str("amount", req.Payload.Amount).
-	// 		Str("userID", wsc.Identifier()).Msg("Failed to parse string to decimal.deciaml")
-	// 	return terror.Error(err, "Failed to parse string to decimal.deciaml")
-	// }
-	// amount := d.Mul(decimal.New(1, 18))
-
 	userID := uuid.FromStringOrNil(wsc.Identifier())
 	if userID.IsNil() {
 		gamelog.L.Error().Str("percentage", req.Payload.Percentage.String()).
