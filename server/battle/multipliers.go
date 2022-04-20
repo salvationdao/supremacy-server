@@ -351,18 +351,20 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 				}
 
 				mult, ok := newMultipliers[triggeredPlayer.PlayerID]
-				if ok {
-					if killStreak > 3 {
-						killStreak = 3
-					}
-
-					if killStreak > 1 {
-						triggeredMulti.Value = triggeredMulti.Value.Mul(decimal.NewFromInt(int64(killStreak)))
-					}
-
-					mult[triggeredMulti.ID] = append(mult[triggeredMulti.ID], &triggeredMulti)
-					newMultipliers[triggeredPlayer.PlayerID] = mult
+				if !ok {
+					mult = make(map[string][]*boiler.Multiplier)
 				}
+
+				if killStreak > 3 {
+					killStreak = 3
+				}
+
+				if killStreak > 1 {
+					triggeredMulti.Value = triggeredMulti.Value.Mul(decimal.NewFromInt(int64(killStreak)))
+				}
+
+				mult[triggeredMulti.ID] = append(mult[triggeredMulti.ID], &triggeredMulti)
+				newMultipliers[triggeredPlayer.PlayerID] = mult
 
 				eventContributors, err := boiler.BattleContributions(
 					qm.Select(boiler.BattleContributionColumns.PlayerID),
