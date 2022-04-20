@@ -79,7 +79,7 @@ func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 		case <-priceTicker.C:
 			oneHundred := decimal.NewFromFloat(100.0)
 			reductionPercentage := db.GetDecimalWithDefault("sale_ability_reduction_percentage", decimal.NewFromFloat(1.0)) // default 1%
-			floorPrice := db.GetDecimalWithDefault("sale_ability_floor_price", decimal.NewFromFloat(10))                    // default 10 sups
+			floorPrice := db.GetDecimalWithDefault("sale_ability_floor_price", decimal.New(10, 18))                         // default 10 sups
 
 			for _, s := range pas.salePlayerAbilities {
 				if s.AvailableUntil.Time.Before(time.Now()) {
