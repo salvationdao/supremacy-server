@@ -485,7 +485,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 
 						// broadcast the new price
 						payload := []byte{byte(GameAbilityProgressTick)}
-						payload = append(payload, []byte(fmt.Sprintf("%s_%s_%s_%s", ability.Identity, ability.SupsCost.String(), ability.CurrentSups.String(), triggeredFlag))...)
+						payload = append(payload, []byte(fmt.Sprintf("%s_%s_%s_%s_%s", ability.Identity, ability.OfferingID.String(), ability.SupsCost.String(), ability.CurrentSups.String(), triggeredFlag))...)
 						as.battle().arena.messageBus.SendBinary(messagebus.BusKey(fmt.Sprintf("%s,%s", HubKeyAbilityPriceUpdated, ability.Identity)), payload)
 					}
 				}
@@ -662,7 +662,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 
 						// only broadcast if the ability is triggered
 						payload := []byte{byte(GameAbilityProgressTick)}
-						payload = append(payload, []byte(fmt.Sprintf("%s_%s_%s_%s", ability.Identity, ability.SupsCost.String(), ability.CurrentSups.String(), triggeredFlag))...)
+						payload = append(payload, []byte(fmt.Sprintf("%s_%s_%s_%s_%s", ability.Identity, ability.OfferingID.String(), ability.SupsCost.String(), ability.CurrentSups.String(), triggeredFlag))...)
 						as.battle().arena.messageBus.SendBinary(messagebus.BusKey(fmt.Sprintf("%s,%s", HubKeyAbilityPriceUpdated, ability.Identity)), payload)
 					}
 				}
