@@ -10,8 +10,6 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 
-	"sort"
-
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -68,8 +66,9 @@ func (ms *MultiplierSystem) end(btlEndInfo *BattleEndDetail) {
 }
 
 type PlayerContribution struct {
-	FactionID string
-	Amount    decimal.Decimal
+	FactionID        string
+	Amount           decimal.Decimal
+	ContributorMulti decimal.Decimal
 }
 
 func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
@@ -106,10 +105,9 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 	}
 
 	// create new multipliers map
-	newMultipliers := make(map[string]map[string]*boiler.Multiplier)
+	newMultipliers := make(map[string]map[string][]*boiler.Multiplier)
 
 	// average spend multipliers test
-	total := decimal.New(0, 18)
 	sums := map[string]*PlayerContribution{}
 	factions := map[string]string{}
 	abilitySums := map[string]map[string]decimal.Decimal{}
@@ -123,12 +121,14 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 		factions[contribution.PlayerID] = contribution.FactionID
 		if _, ok := sums[contribution.PlayerID]; !ok {
 			sums[contribution.PlayerID] = &PlayerContribution{
-				FactionID: contribution.FactionID,
-				Amount:    decimal.New(0, 18),
+				FactionID:        contribution.FactionID,
+				Amount:           decimal.New(0, 18),
+				ContributorMulti: decimal.Zero,
 			}
 		}
 		sums[contribution.PlayerID].Amount = sums[contribution.PlayerID].Amount.Add(contribution.Amount)
-		total = total.Add(contribution.Amount)
+
+		sums[contribution.PlayerID].ContributorMulti = sums[contribution.PlayerID].ContributorMulti.Add(contribution.MultiAmount)
 
 		isGabs[contribution.AbilityOfferingID] = contribution.IsAllSyndicates
 
@@ -142,12 +142,6 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 		abilitySums[contribution.AbilityOfferingID][contribution.PlayerID] = amnt.Add(contribution.Amount)
 	}
 
-	multipliers, err := boiler.Multipliers().All(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Panic().Err(err).Msg("unable to retrieve multipliers from db")
-		return
-	}
-
 	removedPlayerAmount := 0
 	// citizen tag
 	playerAmountList := []struct {
@@ -156,7 +150,6 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 		amount    decimal.Decimal
 	}{}
 	for playerID, pc := range sums {
-
 		if pc.Amount.LessThan(decimal.New(3, 18)) {
 			removedPlayerAmount += 1
 			continue
@@ -171,105 +164,231 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 
 	gamelog.L.Info().Msgf("%d players are removed from the list, due to spending less than 3 sups", removedPlayerAmount)
 
-	//caching this value in memory- instantiating variable
-	citizenMulti := &boiler.Multiplier{}
+	citizenMultiplier, err := boiler.Multipliers(boiler.MultiplierWhere.Key.EQ("citizen")).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("unable to get citizen from multipliers table")
+	}
+
+	contributorMultiplier, err := boiler.Multipliers(boiler.MultiplierWhere.Key.EQ("contributor")).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("unable to get contributor from multipliers table")
+	}
+
 	totalLength := len(playerAmountList)
 	if totalLength > 0 {
-		// sort the total
-		sort.Slice(playerAmountList, func(i, j int) bool { return playerAmountList[i].amount.GreaterThan(playerAmountList[j].amount) })
-
-		// top 80% of contributors will become citizens
-		citizenAmount := totalLength * 95 / 100
-		if citizenAmount == 0 {
-			citizenAmount = 1
-		}
-
-		// top 95% of contributors and their faction win, will become citizens
-		winningFactionCitizenAmount := totalLength * 95 / 100
-		if winningFactionCitizenAmount == 0 {
-			winningFactionCitizenAmount = 1
-		}
-
-		// top 50% of contributors will become supporters
-		supportAmount := totalLength * 40 / 100
-		if supportAmount == 0 {
-			supportAmount = 1
-		}
-
-		// top 25% of contributors will become contributors
-		contributorAmount := totalLength * 20 / 100
-		if contributorAmount == 0 {
-			contributorAmount = 1
-		}
-
-		// top 10% of contributors will become super contributors
-		superContributorAmount := totalLength * 10 / 100
-		if superContributorAmount == 0 {
-			superContributorAmount = 1
-		}
-
-		for _, m := range multipliers {
-			if m.MultiplierType == "spend_average" {
-				switch m.Key {
-				case "citizen":
-					//this battle's citizen multiplier
-					citizenMulti = m
-					for i := 0; i < winningFactionCitizenAmount; i++ {
-						// skip, if the user is not from the winning faction and fall into 80% - 95% range
-						if i >= citizenAmount && playerAmountList[i].factionID != btlEndInfo.WinningFaction.ID {
-							continue
-						}
-
-						if _, ok := newMultipliers[playerAmountList[i].playerID]; !ok {
-							newMultipliers[playerAmountList[i].playerID] = map[string]*boiler.Multiplier{}
-						}
-
-						//still creating new multiplier for players who already have it (thus far, still stacks)
-						newMultipliers[playerAmountList[i].playerID][m.ID] = m
-					}
-				case "supporter":
-					for i := 0; i < supportAmount; i++ {
-						if _, ok := newMultipliers[playerAmountList[i].playerID]; !ok {
-							newMultipliers[playerAmountList[i].playerID] = map[string]*boiler.Multiplier{}
-						}
-						newMultipliers[playerAmountList[i].playerID][m.ID] = m
-					}
-				case "contributor":
-					for i := 0; i < contributorAmount; i++ {
-						if _, ok := newMultipliers[playerAmountList[i].playerID]; !ok {
-							newMultipliers[playerAmountList[i].playerID] = map[string]*boiler.Multiplier{}
-						}
-						newMultipliers[playerAmountList[i].playerID][m.ID] = m
-					}
-				case "super contributor":
-					for i := 0; i < superContributorAmount; i++ {
-						if _, ok := newMultipliers[playerAmountList[i].playerID]; !ok {
-							newMultipliers[playerAmountList[i].playerID] = map[string]*boiler.Multiplier{}
-						}
-						newMultipliers[playerAmountList[i].playerID][m.ID] = m
-					}
-				}
-
+		for i := 0; i < totalLength; i++ {
+			mult, ok := newMultipliers[playerAmountList[i].playerID]
+			if !ok {
+				mult = make(map[string][]*boiler.Multiplier)
 			}
+
+			mult[citizenMultiplier.ID] = append(mult[citizenMultiplier.ID], citizenMultiplier)
+			newMultipliers[playerAmountList[i].playerID] = mult
 		}
 	}
 
-	//// checking if they have citizen this round
-	//citizenIDs, err := db.CitizenPlayerIDs(ms.battle.BattleNumber)
-	//if err != nil {
-	//	gamelog.L.Error().Str("battle number", strconv.Itoa(ms.battle.BattleNumber)).Err(err).Msg("Failed to get citizen ids for next round")
-	//}
-	//
-	//for _, id := range citizenIDs {
-	//	// if citizen in last round is not in the list, add them
-	//	if _, ok := newMultipliers[id.String()]; !ok {
-	//		//adding to newMultiplier map- key = player ID value = new map of Multiplier.
-	//		newMultipliers[id.String()] = map[string]*boiler.Multiplier{}
-	//
-	//		//setting the citizenMultiplier equal to the cached citizen Multi which is equal to the current battle's multi
-	//		newMultipliers[id.String()][citizenMulti.ID] = citizenMulti
-	//	}
-	//}
+	for playerID, sum := range sums {
+		if sum.FactionID != btlEndInfo.WinningFaction.ID {
+			continue
+		}
+		mult, ok := newMultipliers[playerID]
+		if !ok {
+			continue
+		}
+
+		copiedMulti := *contributorMultiplier
+
+		copiedMulti.Value = sum.ContributorMulti.Mul(decimal.NewFromInt(10))
+
+		mult[contributorMultiplier.ID] = append(mult[contributorMultiplier.ID], &copiedMulti)
+
+		newMultipliers[playerID] = mult
+	}
+
+	// TODO: move this to it own function
+	repairEvents, err := boiler.BattleHistories(
+		boiler.BattleHistoryWhere.EventType.EQ(boiler.BattleEventPickup),
+		boiler.BattleHistoryWhere.BattleID.EQ(ms.battle.BattleID),
+		boiler.BattleHistoryWhere.RelatedID.IsNotNull(),
+		qm.Load(boiler.BattleHistoryRels.WarMachineOne),
+	).All(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Err(err).Msg("Failed to get repair events")
+	}
+
+	repairContributorMultiplier, err := boiler.Multipliers(boiler.MultiplierWhere.Key.EQ("grease monkey")).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Err(err).Msg("Failed to get repair events")
+	}
+
+	repairTriggerMultiplier, err := boiler.Multipliers(boiler.MultiplierWhere.Key.EQ("field mechanic")).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Err(err).Msg("Failed to get repair events")
+	}
+
+	if repairContributorMultiplier != nil && repairTriggerMultiplier != nil {
+
+		for _, repairEvent := range repairEvents {
+			triggeredPlayer, err := boiler.BattleContributions(boiler.BattleContributionWhere.AbilityOfferingID.EQ(repairEvent.RelatedID.String), boiler.BattleContributionWhere.DidTrigger.EQ(true)).One(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Str("event triggered", repairEvent.RelatedID.String).Err(err).Msg("Failed to get triggered player")
+				continue
+			}
+			mechOwner, err := boiler.Players(boiler.PlayerWhere.ID.EQ(repairEvent.R.WarMachineOne.OwnerID)).One(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to get mech owner contributors")
+				continue
+			}
+
+			eventContributors, err := boiler.BattleContributions(
+				qm.Select(boiler.BattleContributionColumns.PlayerID),
+				boiler.BattleContributionWhere.AbilityOfferingID.EQ(repairEvent.RelatedID.String),
+				boiler.BattleContributionWhere.PlayerID.NEQ(triggeredPlayer.PlayerID),
+				boiler.BattleContributionWhere.FactionID.EQ(mechOwner.FactionID.String),
+				qm.GroupBy(boiler.BattleContributionColumns.PlayerID),
+			).All(gamedb.StdConn)
+
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to find event contributors")
+				continue
+			}
+
+			mult, ok := newMultipliers[triggeredPlayer.PlayerID]
+			if !ok {
+				mult = make(map[string][]*boiler.Multiplier)
+			}
+			mult[repairTriggerMultiplier.ID] = append(mult[repairTriggerMultiplier.ID], repairTriggerMultiplier)
+			newMultipliers[triggeredPlayer.PlayerID] = mult
+
+			for _, eventContributor := range eventContributors {
+				mult, ok := newMultipliers[eventContributor.PlayerID]
+				if !ok {
+					mult = make(map[string][]*boiler.Multiplier)
+				}
+				mult[repairContributorMultiplier.ID] = append(mult[repairContributorMultiplier.ID], repairContributorMultiplier)
+				newMultipliers[eventContributor.PlayerID] = mult
+			}
+
+		}
+	}
+
+	killedEvents, err := boiler.BattleHistories(
+		boiler.BattleHistoryWhere.EventType.EQ(boiler.BattleEventKilled),
+		boiler.BattleHistoryWhere.BattleID.EQ(btlEndInfo.BattleID),
+		boiler.BattleHistoryWhere.RelatedID.IsNotNull(),
+		qm.Load(boiler.BattleHistoryRels.WarMachineOne),
+		qm.OrderBy(boiler.BattleHistoryColumns.RelatedID),
+	).All(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Str("event type", boiler.BattleEventKilled).Str("btlEndInfo.BattleID", btlEndInfo.BattleID).Err(err).Msg("Failed to get airstrike events")
+
+	}
+
+	airstrikeContributorMultiplier, err := boiler.Multipliers(boiler.MultiplierWhere.Key.EQ("air support")).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to get airstrike contributor from db")
+	}
+
+	airstrikeTriggerMultiplier, err := boiler.Multipliers(boiler.MultiplierWhere.Key.EQ("air marshal")).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to get airstrike trigger from db")
+	}
+
+	nukeContributorMultiplier, err := boiler.Multipliers(boiler.MultiplierWhere.Key.EQ("now i am become death")).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to get nuke contributor from db")
+	}
+
+	nukeTriggerMultiplier, err := boiler.Multipliers(boiler.MultiplierWhere.Key.EQ("destroyer of worlds")).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to get nuke trigger from db")
+	}
+
+	if airstrikeContributorMultiplier != nil && airstrikeTriggerMultiplier != nil && nukeContributorMultiplier != nil && nukeTriggerMultiplier != nil {
+		killStreak := 0
+		var sameKilledEvents []boiler.BattleHistory = nil
+		killedTotalLength := len(killedEvents)
+		for i, killedEvent := range killedEvents {
+			if i+1 < killedTotalLength {
+				if killedEvent.RelatedID == killedEvents[i+1].RelatedID {
+					sameKilledEvents = append(sameKilledEvents, *killedEvent)
+					continue
+				}
+			}
+			sameKilledEvents = append(sameKilledEvents, *killedEvent)
+
+			triggeredPlayer, err := boiler.BattleContributions(boiler.BattleContributionWhere.AbilityOfferingID.EQ(killedEvent.RelatedID.String), boiler.BattleContributionWhere.DidTrigger.EQ(true)).One(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Str("event triggered", killedEvent.RelatedID.String).Err(err).Msg("Failed to get triggered player")
+				continue
+			}
+			for _, sameKilledEvent := range sameKilledEvents {
+				mechOwner, err := boiler.Players(boiler.PlayerWhere.ID.EQ(sameKilledEvent.R.WarMachineOne.OwnerID)).One(gamedb.StdConn)
+				if err != nil {
+					gamelog.L.Error().Str("WarMachineOne.OwnerID", sameKilledEvent.R.WarMachineOne.OwnerID).Err(err).Msg("Failed to get mech owner contributors")
+					continue
+				}
+
+				if mechOwner.FactionID.String == triggeredPlayer.FactionID {
+					killStreak -= 1
+					continue
+				}
+				killStreak += 1
+			}
+
+			if killStreak > 0 {
+
+				var contributedMulti boiler.Multiplier
+				var triggeredMulti boiler.Multiplier
+
+				switch triggeredPlayer.AbilityLabel {
+				case "NUKE":
+					triggeredMulti = *nukeTriggerMultiplier
+					contributedMulti = *nukeContributorMultiplier
+				case "AIRSTRIKE":
+					triggeredMulti = *airstrikeTriggerMultiplier
+					contributedMulti = *airstrikeContributorMultiplier
+				}
+
+				mult, ok := newMultipliers[triggeredPlayer.PlayerID]
+				if ok {
+					if killStreak > 3 {
+						killStreak = 3
+					}
+
+					if killStreak > 1 {
+						triggeredMulti.Value = triggeredMulti.Value.Mul(decimal.NewFromInt(int64(killStreak)))
+					}
+
+					mult[triggeredMulti.ID] = append(mult[triggeredMulti.ID], &triggeredMulti)
+					newMultipliers[triggeredPlayer.PlayerID] = mult
+				}
+
+				eventContributors, err := boiler.BattleContributions(
+					qm.Select(boiler.BattleContributionColumns.PlayerID),
+					boiler.BattleContributionWhere.AbilityOfferingID.EQ(killedEvent.RelatedID.String),
+					boiler.BattleContributionWhere.PlayerID.NEQ(triggeredPlayer.ID),
+					boiler.BattleContributionWhere.DidTrigger.EQ(false),
+					qm.GroupBy(boiler.BattleContributionColumns.PlayerID),
+				).All(gamedb.StdConn)
+				if err != nil {
+					gamelog.L.Error().Str("ability_offering_id", killedEvent.RelatedID.String).Err(err).Msg("Failed to find event contributors")
+					continue
+				}
+				for _, eventContributor := range eventContributors {
+					mult, ok := newMultipliers[eventContributor.PlayerID]
+					if !ok {
+						mult = make(map[string][]*boiler.Multiplier)
+					}
+
+					mult[contributedMulti.ID] = append(mult[contributedMulti.ID], &contributedMulti)
+					newMultipliers[eventContributor.PlayerID] = mult
+				}
+			}
+			killStreak = 0
+			sameKilledEvents = nil
+		}
+	}
 
 	// fool and his money
 	for abilityID, abPlayers := range abilitySums {
@@ -296,7 +415,7 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 			}
 			if abilityTrigger.FactionID != factions[topPlayerID] {
 				if _, ok := newMultipliers[topPlayerID]; !ok {
-					newMultipliers[topPlayerID] = map[string]*boiler.Multiplier{}
+					newMultipliers[topPlayerID] = map[string][]*boiler.Multiplier{}
 				}
 				m, ok := ms.getMultiplier("most_sups_lost", "", 0)
 				if !ok {
@@ -304,39 +423,10 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 					continue
 				}
 				if _, ok := newMultipliers[topPlayerID]; !ok {
-					newMultipliers[topPlayerID] = make(map[string]*boiler.Multiplier)
+					newMultipliers[topPlayerID] = make(map[string][]*boiler.Multiplier)
 				}
-				newMultipliers[topPlayerID][m.ID] = m
+				newMultipliers[topPlayerID][m.ID] = append(newMultipliers[topPlayerID][m.ID], m)
 			}
-		}
-	}
-
-	gab_triggers, err := boiler.BattleAbilityTriggers(
-		qm.Where(`battle_id = ?`, ms.battle.ID),
-		qm.OrderBy(`triggered_at DESC`),
-		qm.Where(`is_all_syndicates = true`),
-	).All(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("unable to retrieve trigger event for battle")
-	}
-
-	for _, tr := range gab_triggers {
-		if tr.PlayerID.String != "" {
-			_, ok := newMultipliers[tr.PlayerID.String]
-			if !ok {
-				// skip if player not a citizen
-				// newMultipliers[td.PlayerIDs[0]] = map[*boiler.Multiplier]bool{}
-				continue
-			}
-			m1, m1ok := ms.getMultiplier("gab_ability", tr.AbilityLabel, 1)
-			if !m1ok {
-				continue
-			}
-
-			if _, ok := newMultipliers[tr.PlayerID.String]; !ok {
-				newMultipliers[tr.PlayerID.String] = make(map[string]*boiler.Multiplier)
-			}
-			newMultipliers[tr.PlayerID.String][m1.ID] = m1
 		}
 	}
 
@@ -376,9 +466,9 @@ outer:
 			//if it makes it here, it's because it was the last 3
 			gamelog.L.Info().Interface("td.PlayerIds", td.PlayerIDs).Str("triggerLabel", triggerLabel).Msg("someone did the last 3!")
 			if _, ok := newMultipliers[td.PlayerIDs[0]]; !ok {
-				newMultipliers[td.PlayerIDs[0]] = map[string]*boiler.Multiplier{}
+				newMultipliers[td.PlayerIDs[0]] = map[string][]*boiler.Multiplier{}
 			}
-			newMultipliers[td.PlayerIDs[0]][m3.ID] = m3
+			newMultipliers[td.PlayerIDs[0]][m3.ID] = append(newMultipliers[td.PlayerIDs[0]][m3.ID], m3)
 		} else {
 			if len(td.PlayerIDs) < 3 {
 				return
@@ -392,9 +482,9 @@ outer:
 			gamelog.L.Info().Interface("td.PlayerIds", td.PlayerIDs).Msg("someone did the last 3!")
 
 			if _, ok := newMultipliers[td.PlayerIDs[0]]; !ok {
-				newMultipliers[td.PlayerIDs[0]] = map[string]*boiler.Multiplier{}
+				newMultipliers[td.PlayerIDs[0]] = map[string][]*boiler.Multiplier{}
 			}
-			newMultipliers[td.PlayerIDs[0]][m3.ID] = m3
+			newMultipliers[td.PlayerIDs[0]][m3.ID] = append(newMultipliers[td.PlayerIDs[0]][m3.ID], m3)
 		}
 
 	}
@@ -434,7 +524,6 @@ outer:
 		}
 	}
 
-	m1, _ := ms.getMultiplier("syndicate_win", "", 1)
 	m3, _ := ms.getMultiplier("syndicate_win", "", 3)
 
 	ms.battle.users.Range(func(bu *BattleUser) bool {
@@ -443,9 +532,8 @@ outer:
 				// newMultipliers[bu.ID.String()] = map[*boiler.Multiplier]bool{}
 				return true
 			}
-			newMultipliers[bu.ID.String()][m1.ID] = m1
 			if hatTrick {
-				newMultipliers[bu.ID.String()][m3.ID] = m3
+				newMultipliers[bu.ID.String()][m3.ID] = append(newMultipliers[bu.ID.String()][m3.ID], m3)
 				return true
 			}
 		}
@@ -467,9 +555,9 @@ winwar:
 			continue
 		}
 		if _, ok := newMultipliers[wm.OwnedByID]; !ok {
-			newMultipliers[wm.OwnedByID] = make(map[string]*boiler.Multiplier)
+			newMultipliers[wm.OwnedByID] = make(map[string][]*boiler.Multiplier)
 		}
-		newMultipliers[wm.OwnedByID][m1.ID] = m1
+		newMultipliers[wm.OwnedByID][m1.ID] = append(newMultipliers[wm.OwnedByID][m1.ID], m1)
 
 		if hatTrick {
 			if len(lastWins) < 3 {
@@ -497,65 +585,30 @@ winwar:
 		}
 
 		if _, ok := newMultipliers[wm.OwnedByID]; !ok {
-			newMultipliers[wm.OwnedByID] = make(map[string]*boiler.Multiplier)
+			newMultipliers[wm.OwnedByID] = make(map[string][]*boiler.Multiplier)
 		}
-		newMultipliers[wm.OwnedByID][m3.ID] = m3
+		newMultipliers[wm.OwnedByID][m3.ID] = append(newMultipliers[wm.OwnedByID][m3.ID], m3)
 	}
 
 	// insert multipliers
-	playersWithCitizenAlready := make(map[string]bool)
-	//battleEndSeconds := ms.battle.battleSeconds()
 	for pid, mlts := range newMultipliers {
-		for multiID, m := range mlts {
+		for _, mlt := range mlts {
 			// if it is a citizen multi
-			if citizenMulti.ID == multiID {
-				if _, ok := playersWithCitizenAlready[pid]; ok {
+			for _, m := range mlt {
+				mlt := &boiler.UserMultiplier{
+					PlayerID:          pid,
+					FromBattleNumber:  ms.battle.BattleNumber,
+					UntilBattleNumber: ms.battle.BattleNumber + 1,
+					MultiplierID:      m.ID,
+					Value:             m.Value,
+				}
+				err := mlt.Insert(gamedb.StdConn, boil.Infer())
+				if err != nil {
+					gamelog.L.Error().Str("playerID", pid).Interface("user_multiplier", mlt).Err(err).Msg("unable to insert user multiplier at battle end")
 					continue
 				}
-				playersWithCitizenAlready[pid] = true
-
-				//um, err := boiler.UserMultipliers(
-				//	//setting query conditions
-				//	// check the player has citizen multi that ends this round
-				//	boiler.UserMultiplierWhere.PlayerID.EQ(pid),
-				//	boiler.UserMultiplierWhere.UntilBattleNumber.GT(ms.battle.BattleNumber),
-				//	boiler.UserMultiplierWhere.FromBattleNumber.LTE(ms.battle.BattleNumber),
-				//	boiler.UserMultiplierWhere.MultiplierID.EQ(citizenMulti.ID),
-				//).One(gamedb.StdConn)
-				//if err != nil && !errors.Is(err, sql.ErrNoRows) {
-				//	gamelog.L.Error().Str("player id", pid).Err(err).Msg("Unable to get player citizen multiplier from last round")
-				//	continue
-				//}
-				//
-				//if um != nil {
-				//	// if we get user multiplier back, update the db untilBattleNumber to +2, extending the duration +1 battle.
-				//	um.UntilBattleNumber = um.UntilBattleNumber + 1
-				//	_, err = um.Update(gamedb.StdConn, boil.Infer())
-				//	if err != nil {
-				//		gamelog.L.Error().Str("player id", pid).Err(err).Msg("Unable to extend player citizen multi")
-				//		continue
-				//	}
-				//	//continues the loop, does not put extra multiplier in- does not stack
-				//	continue
-				//}
 			}
 
-			mlt := &boiler.UserMultiplier{
-				PlayerID:          pid,
-				FromBattleNumber:  ms.battle.BattleNumber,
-				UntilBattleNumber: ms.battle.BattleNumber + 1,
-				MultiplierID:      m.ID,
-				Value:             m.Value,
-			}
-			err := mlt.Insert(gamedb.StdConn, boil.Infer())
-			if err != nil {
-				gamelog.L.Error().Str("playerID", pid).Interface("user_multiplier", mlt).Err(err).Msg("unable to insert user multiplier at battle end")
-				continue
-			}
 		}
 	}
-}
-
-func (ms *MultiplierSystem) getMultipliersForBattle(battleNumber int) {
-
 }

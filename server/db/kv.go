@@ -14,6 +14,16 @@ import (
 
 type KVKey string
 
+// Default contributor formula https://www.desmos.com/calculator/vbfa5llasg
+// KeyContributorMaxMultiplier = 3
+// KeyContributorMinMultiplier = 0.5
+// KeyContributorDecayMultiplier = 2
+// KeyContributorSharpnessMultiplier = 0.02
+const KeyContributorMaxMultiplier KVKey = "contributor_max_multiplier"
+const KeyContributorMinMultiplier KVKey = "contributor_min_multiplier"
+const KeyContributorDecayMultiplier KVKey = "contributor_decay_multiplier"
+const KeyContributorSharpnessMultiplier KVKey = "contributor_sharpness_multiplier"
+
 func get(key KVKey) string {
 	exists, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).Exists(gamedb.StdConn)
 	if err != nil {

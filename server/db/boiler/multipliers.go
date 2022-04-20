@@ -526,7 +526,7 @@ func (o *Multiplier) AddUserMultipliers(exec boil.Executor, insert bool, related
 				strmangle.SetParamNames("\"", "\"", 1, []string{"multiplier_id"}),
 				strmangle.WhereClause("\"", "\"", 2, userMultiplierPrimaryKeyColumns),
 			)
-			values := []interface{}{o.ID, rel.PlayerID, rel.FromBattleNumber, rel.MultiplierID}
+			values := []interface{}{o.ID, rel.ID}
 
 			if boil.DebugMode {
 				fmt.Fprintln(boil.DebugWriter, updateQuery)
