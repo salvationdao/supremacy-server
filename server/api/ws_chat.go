@@ -323,7 +323,20 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 		return terror.Error(err, "Unable to get player stat from db")
 	}
 
-	_, totalMultiplier, isCitizen := multipliers.GetPlayerMultipliersForBattle(player.ID, 10)
+	battleNum := 0
+	lastBattle, err := boiler.Battles(
+		qm.Select(boiler.BattleColumns.BattleNumber),
+		qm.OrderBy(fmt.Sprintf("%s %s", boiler.BattleColumns.BattleNumber, "DESC")),
+		boiler.BattleWhere.EndedAt.IsNotNull()).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "Unable to get last battle for chat")
+	}
+
+	if lastBattle != nil {
+		battleNum = lastBattle.BattleNumber
+	}
+
+	_, totalMultiplier, isCitizen := multipliers.GetPlayerMultipliersForBattle(player.ID, battleNum)
 	// check if the faction id is provided
 	if !req.Payload.FactionID.IsNil() {
 		if !player.FactionID.Valid || player.FactionID.String == "" {

@@ -271,7 +271,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 	}
 
 	// init battle ability
-	_, err := as.SetNewBattleAbility()
+	_, err := as.SetNewBattleAbility(true)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to set up battle ability")
 		return nil
@@ -1090,7 +1090,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				// change bribing phase
 
 				// set new battle ability
-				cooldownSecond, err := as.SetNewBattleAbility()
+				cooldownSecond, err := as.SetNewBattleAbility(false)
 				if err != nil {
 					gamelog.L.Error().Err(err).Msg("Failed to set new battle ability")
 				}
@@ -1134,7 +1134,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 					})
 
 					// set new battle ability
-					cooldownSecond, err := as.SetNewBattleAbility()
+					cooldownSecond, err := as.SetNewBattleAbility(false)
 					if err != nil {
 						gamelog.L.Error().Err(err).Msg("Failed to set new battle ability")
 					}
@@ -1262,7 +1262,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 
 				if abilityTriggered {
 					// generate location select order list
-					as.locationDecidersSet(as.battle().ID, cont.factionID.String(), cont.userID)
+					as.locationDecidersSet(as.battle().ID, cont.factionID.String(), factionAbility.OfferingID.String(), cont.userID)
 
 					// enter cooldown phase if there is no player to select location
 					if len(as.locationDeciders.list) == 0 {
@@ -1277,7 +1277,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 						})
 
 						// set new battle ability
-						cooldownSecond, err := as.SetNewBattleAbility()
+						cooldownSecond, err := as.SetNewBattleAbility(false)
 						if err != nil {
 							gamelog.L.Error().Err(err).Msg("Failed to set new battle ability")
 						}
@@ -1325,7 +1325,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 }
 
 // SetNewBattleAbility set new battle ability and return the cooldown time
-func (as *AbilitiesSystem) SetNewBattleAbility() (int, error) {
+func (as *AbilitiesSystem) SetNewBattleAbility(isFirstAbility bool) (int, error) {
 	defer func() {
 		if r := recover(); r != nil {
 			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the SetNewBattleAbility!", r)
@@ -1339,6 +1339,10 @@ func (as *AbilitiesSystem) SetNewBattleAbility() (int, error) {
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to get battle ability from db")
 		return 0, terror.Error(err)
+	}
+
+	if isFirstAbility {
+		ba.CooldownDurationSecond = db.GetIntWithDefault(db.KeyFirstAbilityCooldown, 5)
 	}
 	as.battleAbilityPool.BattleAbility = ba
 
@@ -1414,7 +1418,7 @@ type Contribution struct {
 }
 
 // locationDecidersSet set a user list for location select for current ability triggered
-func (as *AbilitiesSystem) locationDecidersSet(battleID string, factionID string, triggerByUserID ...uuid.UUID) {
+func (as *AbilitiesSystem) locationDecidersSet(battleID string, factionID string, abilityOfferingID string, triggerByUserID ...uuid.UUID) {
 	defer func() {
 		if r := recover(); r != nil {
 			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the locationDecidersSet!", r)
@@ -1428,7 +1432,7 @@ func (as *AbilitiesSystem) locationDecidersSet(battleID string, factionID string
 		supSpent decimal.Decimal
 	}
 
-	playerList, err := db.PlayerFactionContributionList(battleID, factionID)
+	playerList, err := db.PlayerFactionContributionList(battleID, factionID, abilityOfferingID)
 	if err != nil {
 		gamelog.L.Error().Str("battle_id", battleID).Str("faction_id", factionID).Err(err).Msg("failed to get player list")
 	}
@@ -1583,7 +1587,7 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 		}
 
 		// set location deciders list
-		as.locationDecidersSet(as.battle().ID, factionID)
+		as.locationDecidersSet(as.battle().ID, factionID, ability.OfferingID.String())
 
 		// if no user online, enter cooldown and exit the loop
 		if len(as.locationDeciders.list) == 0 {
@@ -1599,7 +1603,7 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 			})
 
 			// set new battle ability
-			cooldownSecond, err := as.SetNewBattleAbility()
+			cooldownSecond, err := as.SetNewBattleAbility(false)
 			if err != nil {
 				gamelog.L.Error().Err(err).Msg("Failed to set new battle ability")
 			}
@@ -1926,7 +1930,7 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 	})
 
 	// enter the cooldown phase
-	cooldownSecond, err := as.SetNewBattleAbility()
+	cooldownSecond, err := as.SetNewBattleAbility(false)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to set new battle ability")
 	}

@@ -24,6 +24,8 @@ const KeyContributorMinMultiplier KVKey = "contributor_min_multiplier"
 const KeyContributorDecayMultiplier KVKey = "contributor_decay_multiplier"
 const KeyContributorSharpnessMultiplier KVKey = "contributor_sharpness_multiplier"
 
+const KeyFirstAbilityCooldown KVKey = "first_ability_cooldown"
+
 func get(key KVKey) string {
 	exists, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).Exists(gamedb.StdConn)
 	if err != nil {
