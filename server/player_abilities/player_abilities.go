@@ -55,7 +55,7 @@ func NewPlayerAbilitiesSystem(messagebus *messagebus.MessageBus) *PlayerAbilitie
 
 func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 	priceTicker := time.NewTicker(1 * time.Second)
-	saleTicker := time.NewTicker(10 * time.Second)
+	saleTicker := time.NewTicker(1 * time.Minute)
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -131,12 +131,14 @@ func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 					}
 
 					_, err = saleAbilities.UpdateAll(gamedb.StdConn, boiler.M{
-						"available_until": time.Now().Add(time.Minute), // todo: change this
+						"available_until": time.Now().Add(time.Hour), // todo: change this
 					})
 					if err != nil {
 						gamelog.L.Error().Err(err).Msg("failed to update sale ability with new expiration date")
 						continue
 					}
+					// Broadcast trigger of sale abilities list update
+					pas.messageBus.Send(messagebus.BusKey(server.HubKeySaleAbilitiesListUpdated), true)
 				} else if err != nil {
 					gamelog.L.Error().Err(err).Msg("failed to fill sale player abilities map with new sale abilities")
 					break
@@ -144,8 +146,6 @@ func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 				for _, s := range saleAbilities {
 					pas.salePlayerAbilities[s.ID] = s
 				}
-				// Broadcast trigger of sale abilities list update
-				pas.messageBus.Send(messagebus.BusKey(server.HubKeySaleAbilitiesListUpdated), true)
 			}
 			break
 		case purchase := <-pas.Purchase:
