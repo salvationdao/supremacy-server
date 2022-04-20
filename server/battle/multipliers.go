@@ -241,7 +241,10 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 			}
 
 			eventContributors, err := boiler.BattleContributions(
-				qm.Select(boiler.BattleContributionColumns.PlayerID),
+				qm.Select(
+					boiler.BattleContributionColumns.PlayerID,
+					fmt.Sprintf("SUM (%s) AS amount", qm.Rels(boiler.TableNames.BattleContributions, boiler.BattleContributionColumns.Amount)),
+				),
 				boiler.BattleContributionWhere.AbilityOfferingID.EQ(repairEvent.RelatedID.String),
 				boiler.BattleContributionWhere.PlayerID.NEQ(triggeredPlayer.PlayerID),
 				boiler.BattleContributionWhere.FactionID.EQ(mechOwner.FactionID.String),
@@ -260,7 +263,31 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 			mult[repairTriggerMultiplier.ID] = append(mult[repairTriggerMultiplier.ID], repairTriggerMultiplier)
 			newMultipliers[triggeredPlayer.PlayerID] = mult
 
+			playerSpending, err := boiler.BattleContributions(
+				qm.Select(
+					boiler.BattleContributionColumns.PlayerID,
+					fmt.Sprintf("SUM (%s) AS amount", qm.Rels(boiler.TableNames.BattleContributions, boiler.BattleContributionColumns.Amount)),
+				),
+				boiler.BattleContributionWhere.AbilityOfferingID.EQ(repairEvent.RelatedID.String),
+				qm.GroupBy(boiler.BattleContributionColumns.PlayerID),
+			).All(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Str("event triggered", repairEvent.RelatedID.String).Err(err).Msg("Failed to get players amount sum")
+				continue
+			}
+
+			totalSpendings := decimal.Zero
+
+			for _, totalSpending := range playerSpending {
+				totalSpendings = totalSpendings.Add(totalSpending.Amount)
+			}
+
+			minimumSpending := totalSpendings.Div(decimal.NewFromInt(10))
+
 			for _, eventContributor := range eventContributors {
+				if eventContributor.Amount.LessThanOrEqual(minimumSpending) || eventContributor.PlayerID == triggeredPlayer.PlayerID {
+					continue
+				}
 				mult, ok := newMultipliers[eventContributor.PlayerID]
 				if !ok {
 					mult = make(map[string][]*boiler.Multiplier)
@@ -366,8 +393,32 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 				mult[triggeredMulti.ID] = append(mult[triggeredMulti.ID], &triggeredMulti)
 				newMultipliers[triggeredPlayer.PlayerID] = mult
 
+				playerSpending, err := boiler.BattleContributions(
+					qm.Select(
+						boiler.BattleContributionColumns.PlayerID,
+						fmt.Sprintf("SUM (%s) AS amount", qm.Rels(boiler.TableNames.BattleContributions, boiler.BattleContributionColumns.Amount)),
+					),
+					boiler.BattleContributionWhere.AbilityOfferingID.EQ(killedEvent.RelatedID.String),
+					qm.GroupBy(boiler.BattleContributionColumns.PlayerID),
+				).All(gamedb.StdConn)
+				if err != nil {
+					gamelog.L.Error().Str("event triggered", killedEvent.RelatedID.String).Err(err).Msg("Failed to get players amount sum")
+					continue
+				}
+
+				totalSpendings := decimal.Zero
+
+				for _, totalSpending := range playerSpending {
+					totalSpendings = totalSpendings.Add(totalSpending.Amount)
+				}
+
+				minimumSpending := totalSpendings.Div(decimal.NewFromInt(10))
+
 				eventContributors, err := boiler.BattleContributions(
-					qm.Select(boiler.BattleContributionColumns.PlayerID),
+					qm.Select(
+						boiler.BattleContributionColumns.PlayerID,
+						fmt.Sprintf("SUM (%s) AS amount", qm.Rels(boiler.TableNames.BattleContributions, boiler.BattleContributionColumns.Amount)),
+					),
 					boiler.BattleContributionWhere.AbilityOfferingID.EQ(killedEvent.RelatedID.String),
 					boiler.BattleContributionWhere.PlayerID.NEQ(triggeredPlayer.ID),
 					boiler.BattleContributionWhere.DidTrigger.EQ(false),
@@ -378,6 +429,9 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 					continue
 				}
 				for _, eventContributor := range eventContributors {
+					if eventContributor.Amount.LessThanOrEqual(minimumSpending) || eventContributor.PlayerID == triggeredPlayer.PlayerID {
+						continue
+					}
 					mult, ok := newMultipliers[eventContributor.PlayerID]
 					if !ok {
 						mult = make(map[string][]*boiler.Multiplier)
