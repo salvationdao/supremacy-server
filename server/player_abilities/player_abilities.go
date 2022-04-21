@@ -42,7 +42,7 @@ func NewPlayerAbilitiesSystem(messagebus *messagebus.MessageBus) *PlayerAbilitie
 
 	saleAbilities, err := boiler.SalePlayerAbilities(boiler.SalePlayerAbilityWhere.AvailableUntil.GT(null.TimeFrom(time.Now()))).All(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Warn().Err(err).Msg("failed to populate salePlayerAbilities map with existing abilities from db")
+		gamelog.L.Error().Err(err).Msg("failed to populate salePlayerAbilities map with existing abilities from db")
 	}
 	salePlayerAbilities := map[string]*boiler.SalePlayerAbility{}
 	for _, s := range saleAbilities {
@@ -67,7 +67,7 @@ func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 
 	defer func() {
 		if r := recover(); r != nil {
-			gamelog.LogPanicRecovery("Panic! Panic! Panic! Panic at the FactionUniqueAbilityUpdater!", r)
+			gamelog.LogPanicRecovery("Panic! Panic! Panic! Panic at the SalePlayerAbilitiesUpdater!", r)
 
 			// re-run ability updater if ability system has not been cleaned up yet
 			if pas != nil {
@@ -82,10 +82,10 @@ func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 		pas.closed.Store(true)
 	}()
 
+	oneHundred := decimal.NewFromFloat(100.0)
 	for {
 		select {
 		case <-priceTicker.C:
-			oneHundred := decimal.NewFromFloat(100.0)
 			reductionPercentage := db.GetDecimalWithDefault("sale_ability_reduction_percentage", decimal.NewFromFloat(1.0)) // default 1%
 			floorPrice := db.GetDecimalWithDefault("sale_ability_floor_price", decimal.New(10, 18))                         // default 10 sups
 
@@ -101,7 +101,7 @@ func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 
 				_, err := s.Update(gamedb.StdConn, boil.Infer())
 				if err != nil {
-					gamelog.L.Error().Str("salePlayerAbilityID", s.ID).Str("new price", s.CurrentPrice.String()).Err(err).Msg("failed to update sale ability price")
+					gamelog.L.Error().Err(err).Str("salePlayerAbilityID", s.ID).Str("new price", s.CurrentPrice.String()).Interface("sale ability", s).Msg("failed to update sale ability price")
 					continue
 				}
 
@@ -157,17 +157,14 @@ func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 			}
 			break
 		case purchase := <-pas.Purchase:
-			gamelog.L.Debug().Msg(fmt.Sprintf("ability %s was purchased", purchase.AbilityID))
 			if saleAbility, ok := pas.salePlayerAbilities[purchase.AbilityID]; ok {
-				oneHundred := decimal.NewFromFloat(100.0)
 				inflationPercentage := db.GetDecimalWithDefault("sale_ability_inflation_percentage", decimal.NewFromFloat(20.0)) // default 20%
 				saleAbility.CurrentPrice = saleAbility.CurrentPrice.Mul(oneHundred.Add(inflationPercentage).Div(oneHundred))
 				_, err := saleAbility.Update(gamedb.StdConn, boil.Infer())
 				if err != nil {
-					gamelog.L.Error().Str("salePlayerAbilityID", saleAbility.ID).Str("new price", saleAbility.CurrentPrice.String()).Err(err).Msg("failed to update sale ability price")
+					gamelog.L.Error().Err(err).Str("salePlayerAbilityID", saleAbility.ID).Str("new price", saleAbility.CurrentPrice.String()).Interface("sale ability", saleAbility).Msg("failed to update sale ability price")
 					break
 				}
-				gamelog.L.Debug().Msg(fmt.Sprintf("ability %s price was updated to %s", purchase.AbilityID, saleAbility.CurrentPrice))
 				pas.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeySaleAbilityPriceSubscribe, saleAbility.ID)), saleAbility.CurrentPrice)
 			}
 			break
