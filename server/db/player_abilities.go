@@ -28,7 +28,7 @@ func (p SalePlayerAbilityColumn) IsValid() error {
 		boiler.BlueprintPlayerAbilityColumns.ImageURL,
 		boiler.BlueprintPlayerAbilityColumns.Description,
 		boiler.BlueprintPlayerAbilityColumns.TextColour,
-		boiler.BlueprintPlayerAbilityColumns.Type:
+		boiler.BlueprintPlayerAbilityColumns.LocationSelectType:
 		return nil
 	}
 	return terror.Error(fmt.Errorf("invalid sale player ability column"))
@@ -44,7 +44,7 @@ func (p PlayerAbilityColumn) IsValid() error {
 		boiler.PlayerAbilityColumns.ImageURL,
 		boiler.PlayerAbilityColumns.Description,
 		boiler.PlayerAbilityColumns.TextColour,
-		boiler.PlayerAbilityColumns.Type,
+		boiler.PlayerAbilityColumns.LocationSelectType,
 		boiler.PlayerAbilityColumns.PurchasedAt:
 		return nil
 	}

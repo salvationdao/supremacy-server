@@ -33,7 +33,7 @@ type ConsumedAbility struct {
 	ImageURL            string      `boiler:"image_url" boil:"image_url" json:"image_url" toml:"image_url" yaml:"image_url"`
 	Description         string      `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
 	TextColour          string      `boiler:"text_colour" boil:"text_colour" json:"text_colour" toml:"text_colour" yaml:"text_colour"`
-	Type                null.String `boiler:"type" boil:"type" json:"type,omitempty" toml:"type" yaml:"type,omitempty"`
+	LocationSelectType  null.String `boiler:"location_select_type" boil:"location_select_type" json:"location_select_type,omitempty" toml:"location_select_type" yaml:"location_select_type,omitempty"`
 	ConsumedAt          time.Time   `boiler:"consumed_at" boil:"consumed_at" json:"consumed_at" toml:"consumed_at" yaml:"consumed_at"`
 
 	R *consumedAbilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -51,7 +51,7 @@ var ConsumedAbilityColumns = struct {
 	ImageURL            string
 	Description         string
 	TextColour          string
-	Type                string
+	LocationSelectType  string
 	ConsumedAt          string
 }{
 	ID:                  "id",
@@ -64,7 +64,7 @@ var ConsumedAbilityColumns = struct {
 	ImageURL:            "image_url",
 	Description:         "description",
 	TextColour:          "text_colour",
-	Type:                "type",
+	LocationSelectType:  "location_select_type",
 	ConsumedAt:          "consumed_at",
 }
 
@@ -79,7 +79,7 @@ var ConsumedAbilityTableColumns = struct {
 	ImageURL            string
 	Description         string
 	TextColour          string
-	Type                string
+	LocationSelectType  string
 	ConsumedAt          string
 }{
 	ID:                  "consumed_abilities.id",
@@ -92,7 +92,7 @@ var ConsumedAbilityTableColumns = struct {
 	ImageURL:            "consumed_abilities.image_url",
 	Description:         "consumed_abilities.description",
 	TextColour:          "consumed_abilities.text_colour",
-	Type:                "consumed_abilities.type",
+	LocationSelectType:  "consumed_abilities.location_select_type",
 	ConsumedAt:          "consumed_abilities.consumed_at",
 }
 
@@ -109,7 +109,7 @@ var ConsumedAbilityWhere = struct {
 	ImageURL            whereHelperstring
 	Description         whereHelperstring
 	TextColour          whereHelperstring
-	Type                whereHelpernull_String
+	LocationSelectType  whereHelpernull_String
 	ConsumedAt          whereHelpertime_Time
 }{
 	ID:                  whereHelperstring{field: "\"consumed_abilities\".\"id\""},
@@ -122,7 +122,7 @@ var ConsumedAbilityWhere = struct {
 	ImageURL:            whereHelperstring{field: "\"consumed_abilities\".\"image_url\""},
 	Description:         whereHelperstring{field: "\"consumed_abilities\".\"description\""},
 	TextColour:          whereHelperstring{field: "\"consumed_abilities\".\"text_colour\""},
-	Type:                whereHelpernull_String{field: "\"consumed_abilities\".\"type\""},
+	LocationSelectType:  whereHelpernull_String{field: "\"consumed_abilities\".\"location_select_type\""},
 	ConsumedAt:          whereHelpertime_Time{field: "\"consumed_abilities\".\"consumed_at\""},
 }
 
@@ -153,9 +153,9 @@ func (*consumedAbilityR) NewStruct() *consumedAbilityR {
 type consumedAbilityL struct{}
 
 var (
-	consumedAbilityAllColumns            = []string{"id", "battle_id", "consumed_by", "blueprint_id", "game_client_ability_id", "label", "colour", "image_url", "description", "text_colour", "type", "consumed_at"}
+	consumedAbilityAllColumns            = []string{"id", "battle_id", "consumed_by", "blueprint_id", "game_client_ability_id", "label", "colour", "image_url", "description", "text_colour", "location_select_type", "consumed_at"}
 	consumedAbilityColumnsWithoutDefault = []string{"battle_id", "consumed_by", "blueprint_id", "game_client_ability_id", "label", "colour", "image_url", "description", "text_colour"}
-	consumedAbilityColumnsWithDefault    = []string{"id", "type", "consumed_at"}
+	consumedAbilityColumnsWithDefault    = []string{"id", "location_select_type", "consumed_at"}
 	consumedAbilityPrimaryKeyColumns     = []string{"id"}
 	consumedAbilityGeneratedColumns      = []string{}
 )

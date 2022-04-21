@@ -354,7 +354,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 		ImageURL:            bpa.ImageURL,
 		Description:         bpa.Description,
 		TextColour:          bpa.TextColour,
-		Type:                bpa.Type,
+		LocationSelectType:  bpa.LocationSelectType,
 	}
 	err = pa.Insert(tx, boil.Infer())
 	if err != nil {

@@ -31,7 +31,7 @@ type PlayerAbility struct {
 	ImageURL            string    `boiler:"image_url" boil:"image_url" json:"image_url" toml:"image_url" yaml:"image_url"`
 	Description         string    `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
 	TextColour          string    `boiler:"text_colour" boil:"text_colour" json:"text_colour" toml:"text_colour" yaml:"text_colour"`
-	Type                string    `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
+	LocationSelectType  string    `boiler:"location_select_type" boil:"location_select_type" json:"location_select_type" toml:"location_select_type" yaml:"location_select_type"`
 	PurchasedAt         time.Time `boiler:"purchased_at" boil:"purchased_at" json:"purchased_at" toml:"purchased_at" yaml:"purchased_at"`
 
 	R *playerAbilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -48,7 +48,7 @@ var PlayerAbilityColumns = struct {
 	ImageURL            string
 	Description         string
 	TextColour          string
-	Type                string
+	LocationSelectType  string
 	PurchasedAt         string
 }{
 	ID:                  "id",
@@ -60,7 +60,7 @@ var PlayerAbilityColumns = struct {
 	ImageURL:            "image_url",
 	Description:         "description",
 	TextColour:          "text_colour",
-	Type:                "type",
+	LocationSelectType:  "location_select_type",
 	PurchasedAt:         "purchased_at",
 }
 
@@ -74,7 +74,7 @@ var PlayerAbilityTableColumns = struct {
 	ImageURL            string
 	Description         string
 	TextColour          string
-	Type                string
+	LocationSelectType  string
 	PurchasedAt         string
 }{
 	ID:                  "player_abilities.id",
@@ -86,7 +86,7 @@ var PlayerAbilityTableColumns = struct {
 	ImageURL:            "player_abilities.image_url",
 	Description:         "player_abilities.description",
 	TextColour:          "player_abilities.text_colour",
-	Type:                "player_abilities.type",
+	LocationSelectType:  "player_abilities.location_select_type",
 	PurchasedAt:         "player_abilities.purchased_at",
 }
 
@@ -102,7 +102,7 @@ var PlayerAbilityWhere = struct {
 	ImageURL            whereHelperstring
 	Description         whereHelperstring
 	TextColour          whereHelperstring
-	Type                whereHelperstring
+	LocationSelectType  whereHelperstring
 	PurchasedAt         whereHelpertime_Time
 }{
 	ID:                  whereHelperstring{field: "\"player_abilities\".\"id\""},
@@ -114,7 +114,7 @@ var PlayerAbilityWhere = struct {
 	ImageURL:            whereHelperstring{field: "\"player_abilities\".\"image_url\""},
 	Description:         whereHelperstring{field: "\"player_abilities\".\"description\""},
 	TextColour:          whereHelperstring{field: "\"player_abilities\".\"text_colour\""},
-	Type:                whereHelperstring{field: "\"player_abilities\".\"type\""},
+	LocationSelectType:  whereHelperstring{field: "\"player_abilities\".\"location_select_type\""},
 	PurchasedAt:         whereHelpertime_Time{field: "\"player_abilities\".\"purchased_at\""},
 }
 
@@ -142,8 +142,8 @@ func (*playerAbilityR) NewStruct() *playerAbilityR {
 type playerAbilityL struct{}
 
 var (
-	playerAbilityAllColumns            = []string{"id", "owner_id", "blueprint_id", "game_client_ability_id", "label", "colour", "image_url", "description", "text_colour", "type", "purchased_at"}
-	playerAbilityColumnsWithoutDefault = []string{"owner_id", "blueprint_id", "game_client_ability_id", "label", "colour", "image_url", "description", "text_colour", "type"}
+	playerAbilityAllColumns            = []string{"id", "owner_id", "blueprint_id", "game_client_ability_id", "label", "colour", "image_url", "description", "text_colour", "location_select_type", "purchased_at"}
+	playerAbilityColumnsWithoutDefault = []string{"owner_id", "blueprint_id", "game_client_ability_id", "label", "colour", "image_url", "description", "text_colour", "location_select_type"}
 	playerAbilityColumnsWithDefault    = []string{"id", "purchased_at"}
 	playerAbilityPrimaryKeyColumns     = []string{"id"}
 	playerAbilityGeneratedColumns      = []string{}
