@@ -62,7 +62,8 @@ func NewPlayerAbilitiesSystem(messagebus *messagebus.MessageBus) *PlayerAbilitie
 }
 
 func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
-	priceTicker := time.NewTicker(1 * time.Second)
+	priceTickerInterval := db.GetIntWithDefault("sale_ability_price_ticker_interval_seconds", 5) // default 5 seconds
+	priceTicker := time.NewTicker(time.Duration(priceTickerInterval) * time.Second)
 	saleTicker := time.NewTicker(1 * time.Minute)
 
 	defer func() {
@@ -89,27 +90,6 @@ func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 			reductionPercentage := db.GetDecimalWithDefault("sale_ability_reduction_percentage", decimal.NewFromFloat(1.0)) // default 1%
 			floorPrice := db.GetDecimalWithDefault("sale_ability_floor_price", decimal.New(10, 18))                         // default 10 sups
 
-			for _, s := range pas.salePlayerAbilities {
-				if s.AvailableUntil.Time.Before(time.Now()) {
-					continue
-				}
-
-				s.CurrentPrice = s.CurrentPrice.Mul(oneHundred.Sub(reductionPercentage).Div(oneHundred))
-				if s.CurrentPrice.LessThan(floorPrice) {
-					s.CurrentPrice = floorPrice
-				}
-
-				_, err := s.Update(gamedb.StdConn, boil.Infer())
-				if err != nil {
-					gamelog.L.Error().Err(err).Str("salePlayerAbilityID", s.ID).Str("new price", s.CurrentPrice.String()).Interface("sale ability", s).Msg("failed to update sale ability price")
-					continue
-				}
-
-				// Broadcast updated sale ability
-				pas.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeySaleAbilityPriceSubscribe, s.ID)), s.CurrentPrice)
-			}
-			break
-		case <-saleTicker.C:
 			// Check each ability that is on sale, remove them if expired
 			for _, s := range pas.salePlayerAbilities {
 				if s.AvailableUntil.Time.After(time.Now()) {
@@ -139,7 +119,7 @@ func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 					}
 
 					_, err = saleAbilities.UpdateAll(gamedb.StdConn, boiler.M{
-						"available_until": time.Now().Add(time.Hour), // todo: change this
+						"available_until": time.Now().Add(time.Hour),
 					})
 					if err != nil {
 						gamelog.L.Error().Err(err).Msg("failed to update sale ability with new expiration date")
@@ -154,6 +134,22 @@ func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 				for _, s := range saleAbilities {
 					pas.salePlayerAbilities[s.ID] = s
 				}
+			}
+
+			for _, s := range pas.salePlayerAbilities {
+				s.CurrentPrice = s.CurrentPrice.Mul(oneHundred.Sub(reductionPercentage).Div(oneHundred))
+				if s.CurrentPrice.LessThan(floorPrice) {
+					s.CurrentPrice = floorPrice
+				}
+
+				_, err := s.Update(gamedb.StdConn, boil.Infer())
+				if err != nil {
+					gamelog.L.Error().Err(err).Str("salePlayerAbilityID", s.ID).Str("new price", s.CurrentPrice.String()).Interface("sale ability", s).Msg("failed to update sale ability price")
+					continue
+				}
+
+				// Broadcast updated sale ability
+				pas.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeySaleAbilityPriceSubscribe, s.ID)), s.CurrentPrice)
 			}
 			break
 		case purchase := <-pas.Purchase:
