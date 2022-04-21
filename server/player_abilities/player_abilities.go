@@ -109,6 +109,10 @@ func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 						gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed to get %d random sale abilities", limit))
 						break
 					}
+					if len(allSaleAbilities) == 0 {
+						gamelog.L.Warn().Msg("no sale abilities could be found in the db")
+						break
+					}
 
 					oneHourFromNow := time.Now().Add(time.Hour)
 					rand.Seed(time.Now().UnixNano())
