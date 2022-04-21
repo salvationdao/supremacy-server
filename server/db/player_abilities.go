@@ -3,10 +3,12 @@ package db
 import (
 	"fmt"
 	"server/db/boiler"
+	"server/gamedb"
 	"strings"
 
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"golang.org/x/net/context"
 )
 
@@ -61,23 +63,14 @@ func SaleAbilityGet(
 	conn pgxscan.Querier,
 	abilityID string,
 ) (*SaleAbilityDetailed, error) {
-	spaAlias := "spa"
-	bpaAlias := "bpa"
-	fromQ := fmt.Sprintf("FROM %s %s\n", boiler.TableNames.SalePlayerAbilities, spaAlias) +
-		fmt.Sprintf("INNER JOIN %[1]s %[2]s ON %[3]s.%[4]s = %[2]s.%[5]s\n", boiler.TableNames.BlueprintPlayerAbilities, bpaAlias, spaAlias, boiler.SalePlayerAbilityColumns.BlueprintID, boiler.BlueprintPlayerAbilityColumns.ID)
-
-	selectQ := "SELECT\n" +
-		fmt.Sprintf("row_to_json(%s) as ability,\n", bpaAlias) +
-		fmt.Sprintf("%s.%s,\n", spaAlias, boiler.SalePlayerAbilityColumns.ID) +
-		fmt.Sprintf("%s.%s,\n", spaAlias, boiler.SalePlayerAbilityColumns.BlueprintID) +
-		fmt.Sprintf("%s.%s,\n", spaAlias, boiler.SalePlayerAbilityColumns.CurrentPrice) +
-		fmt.Sprintf("%s.%s\n", spaAlias, boiler.SalePlayerAbilityColumns.AvailableUntil) + fromQ
-
-	q := selectQ + fmt.Sprintf("WHERE %s.%s = $1\n", spaAlias, boiler.SalePlayerAbilityColumns.ID)
-	var result SaleAbilityDetailed
-	err := pgxscan.Get(ctx, conn, &result, q, abilityID)
+	spa, err := boiler.SalePlayerAbilities(boiler.SalePlayerAbilityWhere.ID.EQ(abilityID), qm.Load(boiler.SalePlayerAbilityRels.Blueprint)).One(gamedb.StdConn)
 	if err != nil {
 		return nil, terror.Error(err)
+	}
+
+	result := SaleAbilityDetailed{
+		SalePlayerAbility: spa,
+		Ability:           spa.R.Blueprint,
 	}
 
 	return &result, nil
