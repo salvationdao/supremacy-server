@@ -110,14 +110,16 @@ func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 						break
 					}
 
+					oneHourFromNow := time.Now().Add(time.Hour)
 					rand.Seed(time.Now().UnixNano())
 					randomIndexes := rand.Perm(len(allSaleAbilities))
 					for _, i := range randomIndexes[:limit] {
+						allSaleAbilities[i].AvailableUntil = null.TimeFrom(oneHourFromNow)
 						saleAbilities = append(saleAbilities, allSaleAbilities[i])
 					}
 
 					_, err = saleAbilities.UpdateAll(gamedb.StdConn, boiler.M{
-						"available_until": time.Now().Add(time.Hour),
+						"available_until": oneHourFromNow,
 					})
 					if err != nil {
 						gamelog.L.Error().Err(err).Msg("failed to update sale ability with new expiration date")
