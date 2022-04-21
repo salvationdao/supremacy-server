@@ -2,19 +2,19 @@ BEGIN;
 
 CREATE TABLE item_sales (
     id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
-	item_type TEXT NOT NULL,
+	item_type TEXT NOT NULL CHECK (item_type IN ('MECH')),
 	item_id UUID NOT NULL,
 	listing_fee_tx_id UUID NOT NULL,
 	owner_id UUID NOT NULL REFERENCES players(id),
 
-	auction BOOL NOT NULL,
+	auction BOOL NOT NULL DEFAULT FALSE,
 	auction_current_price TEXT,
 	auction_reverse_price TEXT,
 
-	buyout BOOL NOT NULL,
+	buyout BOOL NOT NULL DEFAULT FALSE,
 	buyout_price TEXT,
 
-	dutch_auction BOOL NOT NULL,
+	dutch_auction BOOL NOT NULL DEFAULT FALSE,
 	dutch_action_rate INT,
 	dutch_action_next_price_drop INT,
 
@@ -34,7 +34,7 @@ BEGIN
 	record_found := false;	
 
 	CASE NEW.item_type 
-	WHEN 'mech' THEN 
+	WHEN 'MECH' THEN 
 		record_found := EXISTS (
 			SELECT id
 			FROM mechs
@@ -44,7 +44,7 @@ BEGIN
 	END CASE;
 
 	IF record_found = FALSE THEN
-		RAISE EXCEPTION '% not found', NEW.item_type;
+		RAISE EXCEPTION '% not found, item_id=%, owner_id=%', NEW.item_type, NEW.item_id, NEW.owner_id;
 	END IF;
 
     RETURN NULL;
@@ -57,10 +57,31 @@ CREATE TRIGGER checkItemOwnerConstraint
     ON item_sales
 EXECUTE PROCEDURE checkItemOwnerConstraint();
 
-CREATE TABLE item_sales_buyout_price_history (
-    id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
-	item_sale_id UUID NOT NULL,
-	buyout_price TEXT NOT NULL
-);
+-- TODO: do these tables
+-- CREATE TABLE item_sales_buyout_price_history (
+--     id UUID NOT NULL DEFAULT gen_random_uuid(),
+-- 	item_sale_id UUID NOT NULL,
+-- 	buyout_price TEXT NOT NULL,
+-- 	created_by UUID REFERENCES players (id),
+--     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+-- 	PRIMARY KEY (id, item_sale_id)
+-- );
+
+-- CREATE TABLE item_sales_bid_history (
+-- 	item_sale_id UUID NOT NULL REFERENCES item_sales (id),
+-- 	buyout_price TEXT NOT NULL,
+-- 	created_by UUID REFERENCES players (id),
+--     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+-- 	PRIMARY KEY (item_sale_id)
+-- );
+
+-- CREATE TABLE item_sales_completed (
+-- 	item_sale_id UUID PRIMARY KEY NOT NULL REFERENCES item_sales (id),
+-- 	tx_id UUID NOT NULL,
+--     sold_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+-- 	sold_for TEXT NOT NULL,
+-- 	sold_method TEXT NOT NULL CHECK (sold_method IN ('AUCTION', 'BUY_OUT')),
+--     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+-- );
 
 COMMIT;
