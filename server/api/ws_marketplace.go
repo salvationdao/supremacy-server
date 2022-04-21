@@ -6,6 +6,7 @@ import (
 	"server"
 	"server/db"
 
+	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/shopspring/decimal"
@@ -58,11 +59,17 @@ const HubKeyMarketplaceSalesCreate hub.HubCommandKey = "MARKETPLACE:SALES:CREATE
 type MarketplaceSalesCreateRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		SaleType            server.MarketplaceSaleType `json:"sale_type"`
-		ItemType            server.MarketplaceItemType `json:"item_type"`
-		AuctionReservePrice *decimal.Decimal           `json:"auction_reverse_price"`
-		BuyoutPrice         *decimal.Decimal           `json:"buyout_price"`
+		SaleType server.MarketplaceSaleType `json:"sale_type"`
+		ItemType server.MarketplaceItemType `json:"item_type"`
+		ItemID   uuid.UUID                  `json:"item_id"`
+		Price    *decimal.Decimal           `json:"price"`
 	} `json:"payload"`
+}
+
+type MarketplaceSalesCreateResponse struct {
+	ID       string `json:"id"`
+	ItemType string `json:"item_type"`
+	SaleType string `json:"sale_type"`
 }
 
 func (fc *MarketplaceController) SalesCreateHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
@@ -71,5 +78,18 @@ func (fc *MarketplaceController) SalesCreateHandler(ctx context.Context, hubc *h
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
 	}
+
+	obj, err := db.MarketplaceSaleCreate(req.Payload.SaleType, req.Payload.ItemType, req.Payload.ItemID, req.Payload.Price)
+	if err != nil {
+		return terror.Error(err, "Unable to create new sale item.")
+	}
+
+	resp := &MarketplaceSalesCreateResponse{
+		ID:       obj.ID,
+		ItemType: obj.ItemType,
+		SaleType: string(req.Payload.SaleType),
+	}
+	reply(resp)
+
 	return nil
 }
