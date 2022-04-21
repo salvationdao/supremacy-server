@@ -64,7 +64,6 @@ func NewPlayerAbilitiesSystem(messagebus *messagebus.MessageBus) *PlayerAbilitie
 func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 	priceTickerInterval := db.GetIntWithDefault("sale_ability_price_ticker_interval_seconds", 5) // default 5 seconds
 	priceTicker := time.NewTicker(time.Duration(priceTickerInterval) * time.Second)
-	saleTicker := time.NewTicker(1 * time.Minute)
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -79,7 +78,6 @@ func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 
 	defer func() {
 		priceTicker.Stop()
-		saleTicker.Stop()
 		pas.closed.Store(true)
 	}()
 
