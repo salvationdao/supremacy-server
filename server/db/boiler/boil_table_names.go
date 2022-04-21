@@ -45,6 +45,7 @@ var TableNames = struct {
 	GameMaps                                           string
 	GlobalAnnouncements                                string
 	IssuedContractRewards                              string
+	ItemSales                                          string
 	KV                                                 string
 	Languages                                          string
 	MechStats                                          string
@@ -115,6 +116,7 @@ var TableNames = struct {
 	GameMaps:                         "game_maps",
 	GlobalAnnouncements:              "global_announcements",
 	IssuedContractRewards:            "issued_contract_rewards",
+	ItemSales:                        "item_sales",
 	KV:                               "kv",
 	Languages:                        "languages",
 	MechStats:                        "mech_stats",

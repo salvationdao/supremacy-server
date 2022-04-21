@@ -8,6 +8,7 @@ import (
 
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
+	"github.com/shopspring/decimal"
 )
 
 // MarketplaceController holds handlers for marketplace
@@ -22,6 +23,7 @@ func NewMarketplaceController(api *API) *MarketplaceController {
 	}
 
 	api.SecureUserCommand(HubKeyMarketplaceSalesList, marketplaceHub.SalesListHandler)
+	api.SecureUserCommand(HubKeyMarketplaceSalesCreate, marketplaceHub.SalesCreateHandler)
 
 	return marketplaceHub
 }
@@ -44,6 +46,27 @@ type MarketplaceSalesListRequest struct {
 
 func (fc *MarketplaceController) SalesListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &MarketplaceSalesListRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+	return nil
+}
+
+const HubKeyMarketplaceSalesCreate hub.HubCommandKey = "MARKETPLACE:SALES:CREATE"
+
+type MarketplaceSalesCreateRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		SaleType            server.MarketplaceSaleType `json:"sale_type"`
+		ItemType            server.MarketplaceItemType `json:"item_type"`
+		AuctionReservePrice *decimal.Decimal           `json:"auction_reverse_price"`
+		BuyoutPrice         *decimal.Decimal           `json:"buyout_price"`
+	} `json:"payload"`
+}
+
+func (fc *MarketplaceController) SalesCreateHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &MarketplaceSalesCreateRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")

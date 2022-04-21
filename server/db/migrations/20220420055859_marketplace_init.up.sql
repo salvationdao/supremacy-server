@@ -4,7 +4,7 @@ CREATE TABLE item_sales (
     id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
 	item_type TEXT NOT NULL CHECK (item_type IN ('MECH')),
 	item_id UUID NOT NULL,
-	listing_fee_tx_id UUID NOT NULL,
+	listing_fee_tx_id UUID,
 	owner_id UUID NOT NULL REFERENCES players(id),
 
 	auction BOOL NOT NULL DEFAULT FALSE,
@@ -29,22 +29,23 @@ CREATE OR REPLACE FUNCTION checkItemOwnerConstraint()
 AS
 $checkItemOwnerConstraint$
 DECLARE
-    record_found BOOL;
+    owner_id UUID;
 BEGIN
-	record_found := false;	
-
 	CASE NEW.item_type 
 	WHEN 'MECH' THEN 
-		record_found := EXISTS (
-			SELECT id
+		owner_id := (
+			SELECT owner_id
 			FROM mechs
 			WHERE id = NEW.item_id
-				AND owner_id = NEW.owner_id
 		);
+	ELSE 
+		RAISE EXCEPTION 'invalid item_type %', NEW.item_type; 
 	END CASE;
 
-	IF record_found = FALSE THEN
+	IF owner_id IS NULL THEN
 		RAISE EXCEPTION '% not found, item_id=%, owner_id=%', NEW.item_type, NEW.item_id, NEW.owner_id;
+	ELSEIF owner_id != NEW.owner_id THEN 
+		RAISE EXCEPTION '% does not belong to owner, item_id=%, owner_id=%', NEW.item_type, NEW.item_id, NEW.owner_id;
 	END IF;
 
     RETURN NULL;
