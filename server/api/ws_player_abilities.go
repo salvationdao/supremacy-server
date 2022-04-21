@@ -24,6 +24,7 @@ import (
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 type PlayerAbilitiesControllerWS struct {
@@ -279,7 +280,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 		return terror.Error(fmt.Errorf("user id is nil"), "Issue retriving user, please try again or contact support.")
 	}
 
-	spa, err := boiler.SalePlayerAbilities(boiler.SalePlayerAbilityWhere.ID.EQ(req.Payload.AbilityID)).One(gamedb.StdConn)
+	spa, err := boiler.SalePlayerAbilities(boiler.SalePlayerAbilityWhere.ID.EQ(req.Payload.AbilityID), qm.Load(boiler.SalePlayerAbilityRels.Blueprint)).One(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().
 			Str("req.Payload.AbilityID", req.Payload.AbilityID).
@@ -298,13 +299,13 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 	if err != nil {
 		gamelog.L.Error().
 			Str("req.Payload.Amount", req.Payload.Amount).Err(err).Msg("failed to convert amount to decimal")
-		return terror.Error(err, "Unable to process player ability purchase,  please try again or contract support.")
+		return terror.Error(err, "Unable to process player ability purchase, please try again or contract support.")
 	}
 
 	// if price has gone up, tell them
 	if spa.CurrentPrice.GreaterThan(givenAmount) {
 		gamelog.L.Debug().Str("spa.CurrentPrice", spa.CurrentPrice.String()).Str("givenAmount", givenAmount.String()).Msg("purchase attempt when price increased since user clicked purchase")
-		return terror.Warn(fmt.Errorf("price gone up since purchase attempted"), "Item no longer available.")
+		return terror.Warn(fmt.Errorf("price gone up since purchase attempted"), "Purchase failed. This item is no longer available at this price.")
 	}
 
 	// Charge player for ability
@@ -343,16 +344,10 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 	}
 	defer tx.Rollback()
 
-	bpa, err := boiler.FindBlueprintPlayerAbility(tx, req.Payload.AbilityID)
-	if err != nil {
-		refundFunc()
-		gamelog.L.Error().Err(err).Str("blueprintID", req.Payload.AbilityID).Msg("unable to begin tx")
-		return terror.Error(err, "Issue purchasing player ability, please try again or contact support.")
-	}
-
+	bpa := spa.R.Blueprint
 	pa := boiler.PlayerAbility{
 		OwnerID:             userID.String(),
-		BlueprintID:         req.Payload.AbilityID,
+		BlueprintID:         bpa.ID,
 		GameClientAbilityID: bpa.GameClientAbilityID,
 		Label:               bpa.Label,
 		Colour:              bpa.Colour,
@@ -379,7 +374,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 	// Update price of sale ability
 	pac.API.PlayerAbilitiesSystem.Purchase <- &player_abilities.Purchase{
 		PlayerID:  userID,
-		AbilityID: pa.ID,
+		AbilityID: spa.ID,
 	}
 	return nil
 }

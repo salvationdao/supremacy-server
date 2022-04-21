@@ -23,7 +23,7 @@ import (
 
 type Purchase struct {
 	PlayerID  uuid.UUID
-	AbilityID string
+	AbilityID string // sale ability id
 }
 
 type PlayerAbilitiesSystem struct {
@@ -39,7 +39,15 @@ type PlayerAbilitiesSystem struct {
 }
 
 func NewPlayerAbilitiesSystem(messagebus *messagebus.MessageBus) *PlayerAbilitiesSystem {
+
+	saleAbilities, err := boiler.SalePlayerAbilities(boiler.SalePlayerAbilityWhere.AvailableUntil.GT(null.TimeFrom(time.Now()))).All(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Warn().Err(err).Msg("failed to populate salePlayerAbilities map with existing abilities from db")
+	}
 	salePlayerAbilities := map[string]*boiler.SalePlayerAbility{}
+	for _, s := range saleAbilities {
+		salePlayerAbilities[s.ID] = s
+	}
 
 	pas := &PlayerAbilitiesSystem{
 		salePlayerAbilities: salePlayerAbilities,
@@ -149,6 +157,7 @@ func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 			}
 			break
 		case purchase := <-pas.Purchase:
+			gamelog.L.Debug().Msg(fmt.Sprintf("ability %s was purchased", purchase.AbilityID))
 			if saleAbility, ok := pas.salePlayerAbilities[purchase.AbilityID]; ok {
 				oneHundred := decimal.NewFromFloat(100.0)
 				inflationPercentage := db.GetDecimalWithDefault("sale_ability_inflation_percentage", decimal.NewFromFloat(20.0)) // default 20%
@@ -158,6 +167,7 @@ func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 					gamelog.L.Error().Str("salePlayerAbilityID", saleAbility.ID).Str("new price", saleAbility.CurrentPrice.String()).Err(err).Msg("failed to update sale ability price")
 					break
 				}
+				gamelog.L.Debug().Msg(fmt.Sprintf("ability %s price was updated to %s", purchase.AbilityID, saleAbility.CurrentPrice))
 				pas.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeySaleAbilityPriceSubscribe, saleAbility.ID)), saleAbility.CurrentPrice)
 			}
 			break
