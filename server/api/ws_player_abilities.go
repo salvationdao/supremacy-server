@@ -130,7 +130,7 @@ func (pac *PlayerAbilitiesControllerWS) PlayerAbilitySubscribeHandler(ctx contex
 	if req.Payload.AbilityID == "" {
 		gamelog.L.Error().
 			Str("handler", "PlayerAbilitySubscribeHandler").Msg("empty ability ID provided")
-		return "", "", terror.Error(fmt.Errorf("ability ID was not provided in request payload"))
+		return "", "", terror.Error(fmt.Errorf("ability ID was not provided in request payload"), "Unable to retrieve player ability, please try again or contact support.")
 	}
 
 	pAbility, err := boiler.FindPlayerAbility(gamedb.StdConn, req.Payload.AbilityID)
