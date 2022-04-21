@@ -68,7 +68,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityDetailedHandler(ctx context.C
 	if req.Payload.AbilityID == "" {
 		gamelog.L.Error().
 			Str("handler", "SaleAbilityDetailsHandler").Msg("empty ability ID provided")
-		return terror.Error(fmt.Errorf("ability ID was not provided in request payload"))
+		return terror.Error(fmt.Errorf("ability ID was not provided in request payload"), "Unable to retrieve sale ability, please try again or contact support.")
 	}
 
 	sAbility, err := db.SaleAbilityGet(ctx, gamedb.Conn, req.Payload.AbilityID)
