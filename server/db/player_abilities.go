@@ -13,8 +13,9 @@ import (
 )
 
 type (
-	SalePlayerAbilityColumn string
-	PlayerAbilityColumn     string
+	SalePlayerAbilityColumn      string
+	PlayerAbilityColumn          string
+	BlueprintPlayerAbilityColumn string
 )
 
 func (p SalePlayerAbilityColumn) IsValid() error {
@@ -23,14 +24,7 @@ func (p SalePlayerAbilityColumn) IsValid() error {
 		boiler.SalePlayerAbilityColumns.ID,
 		boiler.SalePlayerAbilityColumns.BlueprintID,
 		boiler.SalePlayerAbilityColumns.CurrentPrice,
-		boiler.SalePlayerAbilityColumns.AvailableUntil,
-		boiler.BlueprintPlayerAbilityColumns.GameClientAbilityID,
-		boiler.BlueprintPlayerAbilityColumns.Label,
-		boiler.BlueprintPlayerAbilityColumns.Colour,
-		boiler.BlueprintPlayerAbilityColumns.ImageURL,
-		boiler.BlueprintPlayerAbilityColumns.Description,
-		boiler.BlueprintPlayerAbilityColumns.TextColour,
-		boiler.BlueprintPlayerAbilityColumns.LocationSelectType:
+		boiler.SalePlayerAbilityColumns.AvailableUntil:
 		return nil
 	}
 	return terror.Error(fmt.Errorf("invalid sale player ability column"))
@@ -51,6 +45,22 @@ func (p PlayerAbilityColumn) IsValid() error {
 		return nil
 	}
 	return terror.Error(fmt.Errorf("invalid player ability column"))
+}
+
+func (p BlueprintPlayerAbilityColumn) IsValid() error {
+	switch string(p) {
+	case
+		boiler.BlueprintPlayerAbilityColumns.ID,
+		boiler.BlueprintPlayerAbilityColumns.GameClientAbilityID,
+		boiler.BlueprintPlayerAbilityColumns.Label,
+		boiler.BlueprintPlayerAbilityColumns.Colour,
+		boiler.BlueprintPlayerAbilityColumns.ImageURL,
+		boiler.BlueprintPlayerAbilityColumns.Description,
+		boiler.BlueprintPlayerAbilityColumns.TextColour,
+		boiler.BlueprintPlayerAbilityColumns.LocationSelectType:
+		return nil
+	}
+	return terror.Error(fmt.Errorf("invalid blueprint player ability column"))
 }
 
 type SaleAbilityDetailed struct {
@@ -88,6 +98,7 @@ func SaleAbilitiesList(
 	sortBy SalePlayerAbilityColumn,
 	sortDir SortByDir,
 ) (int, []string, error) {
+
 	spaAlias := "spa" // alias for sale_player_abilities table
 	bpaAlias := "bpa" /// alias for blueprint_player_abilities table
 	fromQ := fmt.Sprintf("FROM %s %s\n", boiler.TableNames.SalePlayerAbilities, spaAlias) +
@@ -95,23 +106,53 @@ func SaleAbilitiesList(
 	selectQ := "SELECT\n" +
 		fmt.Sprintf("%s.%s\n", spaAlias, boiler.SalePlayerAbilityColumns.ID) + fromQ
 
-	var args []interface{}
+	saleAbilities := boiler.SalePlayerAbilities(
+		qm.InnerJoin(fmt.Sprintf("%[1]s %[4]s ON %[5]s.%[2]s = %[4]s.%[3]s", // "blueprint_player_abilities bpa ON spa.blueprint_id = bpa.id"
+			boiler.TableNames.BlueprintPlayerAbilities,
+			boiler.SalePlayerAbilityColumns.BlueprintID,
+			boiler.BlueprintPlayerAbilityColumns.ID,
+			bpaAlias,
+			spaAlias)),
+	)
 
+	filterQueryMods := []qm.QueryMod{}
+	if filter != nil {
+		for i, f := range filter.Items {
+			if f.Table == boiler.TableNames.BlueprintPlayerAbilities {
+				column := BlueprintPlayerAbilityColumn(f.Column)
+				err := column.IsValid()
+				if err != nil {
+					return 0, nil, terror.Error(err)
+				}
+			} else if f.Table == boiler.TableNames.SalePlayerAbilities {
+				column := SalePlayerAbilityColumn(f.Column)
+				err := column.IsValid()
+				if err != nil {
+					return 0, nil, terror.Error(err)
+				}
+			}
+
+			queryMod := GenerateListFilterQueryMod(f.Table, f.Column, f.Value, f.Operator, i, filter.LinkOperator)
+			filterQueryMods = append(filterQueryMods, queryMod)
+		}
+	}
+
+	var args []interface{}
 	// Prepare Filters
 	filterConditionsString := ""
 	argIndex := 1
 	if filter != nil {
 		filterConditions := []string{}
 		for _, f := range filter.Items {
-			column := SalePlayerAbilityColumn(f.ColumnField)
+			column := SalePlayerAbilityColumn(f.Column)
 			err := column.IsValid()
 			if err != nil {
 				return 0, nil, terror.Error(err)
 			}
 
-			condition, value := GenerateListFilterSQL(f.ColumnField, f.Value, f.OperatorValue, argIndex)
+			condition, value := GenerateListFilterSQL(f.Column, f.Value, f.Operator, argIndex)
 			if condition != "" {
-				switch f.OperatorValue {
+				switch f.Operator {
 				case OperatorValueTypeIsNull, OperatorValueTypeIsNotNull:
 					break
 				default:
@@ -224,15 +265,15 @@ func PlayerAbilitiesList(
 	if filter != nil {
 		filterConditions := []string{}
 		for _, f := range filter.Items {
-			column := PlayerAbilityColumn(f.ColumnField)
+			column := PlayerAbilityColumn(f.Column)
 			err := column.IsValid()
 			if err != nil {
 				return 0, nil, terror.Error(err)
 			}
 
-			condition, value := GenerateListFilterSQL(f.ColumnField, f.Value, f.OperatorValue, argIndex)
+			condition, value := GenerateListFilterSQL(f.Column, f.Value, f.Operator, argIndex)
 			if condition != "" {
-				switch f.OperatorValue {
+				switch f.Operator {
 				case OperatorValueTypeIsNull, OperatorValueTypeIsNotNull:
 					break
 				default:

@@ -2,6 +2,8 @@ package db
 
 import (
 	"fmt"
+
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 type (
@@ -40,15 +42,76 @@ const (
 
 // ListFilterRequest contains filter data commonly used in list requests
 type ListFilterRequest struct {
-	LinkOperator LinkOperatorType         `json:"linkOperator"`
+	LinkOperator LinkOperatorType         `json:"link_operator"`
 	Items        []*ListFilterRequestItem `json:"items"`
 }
 
 // ListFilterRequestItem contains instructions on filtering
 type ListFilterRequestItem struct {
-	ColumnField   string            `json:"columnField"`
-	OperatorValue OperatorValueType `json:"operatorValue"`
-	Value         string            `json:"value"`
+	Table    string            `json:"table"`
+	Column   string            `json:"column"`
+	Operator OperatorValueType `json:"operator"`
+	Value    string            `json:"value"`
+}
+
+func GenerateListFilterQueryMod(table, column, value string, operator OperatorValueType, index int, linkOperator LinkOperatorType) qm.QueryMod {
+	checkValue := value
+	checkColumn := column
+	if table != "" {
+		checkColumn = fmt.Sprintf("%s.%s", table, column)
+	}
+
+	condition := fmt.Sprintf("%s %s ?", checkColumn, operator)
+
+	switch operator {
+	case OperatorValueTypeContains, OperatorValueTypeStartsWith, OperatorValueTypeEndsWith:
+		switch operator {
+		case OperatorValueTypeContains:
+			checkValue = "%" + value + "%"
+		case OperatorValueTypeStartsWith:
+			checkValue = value + "%"
+		case OperatorValueTypeEndsWith:
+			checkValue = "%" + value
+		}
+		break
+	}
+
+	switch operator {
+	case OperatorValueTypeIsNull:
+		condition = fmt.Sprintf("%s IS NULL", checkColumn)
+		break
+	case OperatorValueTypeIsNotNull:
+		condition = fmt.Sprintf("%s IS NOT NULL", checkColumn)
+		break
+	case OperatorValueTypeEquals, OperatorValueTypeIs, OperatorValueTypeNumberEquals:
+		condition = fmt.Sprintf("%s = ?", checkColumn)
+		break
+	case OperatorValueTypeIsNot, OperatorValueTypeNumberNotEquals:
+		condition = fmt.Sprintf("%s <> ?", checkColumn)
+		break
+	case OperatorValueTypeIsAfter, OperatorValueTypeGreaterThan:
+		condition = fmt.Sprintf("%s > ?", checkColumn)
+		break
+	case OperatorValueTypeIsOnOrAfter, OperatorValueTypeGreaterOrEqual:
+		condition = fmt.Sprintf("%s >= ?", checkColumn)
+		break
+	case OperatorValueTypeIsBefore, OperatorValueTypeLessThan:
+		condition = fmt.Sprintf("%s < ?", checkColumn)
+		break
+	case OperatorValueTypeIsOnOrBefore, OperatorValueTypeLessOrEqual:
+		condition = fmt.Sprintf("%s <= ?", checkColumn)
+		break
+	case OperatorValueTypeContains, OperatorValueTypeStartsWith, OperatorValueTypeEndsWith:
+		condition = fmt.Sprintf("%s ILIKE ?", checkColumn)
+	}
+
+	if index == 0 {
+		return qm.Where(condition, checkValue)
+	}
+	if linkOperator == LinkOperatorTypeOr {
+		return qm.Or(condition, checkValue)
+	}
+	return qm.And(condition, checkValue)
 }
 
 // ColumnFilter generates SQL for filtering a column
