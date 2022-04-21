@@ -374,7 +374,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 	// Update price of sale ability
 	pac.API.PlayerAbilitiesSystem.Purchase <- &player_abilities.Purchase{
 		PlayerID:  userID,
-		AbilityID: spa.ID,
+		AbilityID: uuid.FromStringOrNil(spa.ID),
 	}
 	return nil
 }

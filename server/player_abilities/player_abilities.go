@@ -23,12 +23,12 @@ import (
 
 type Purchase struct {
 	PlayerID  uuid.UUID
-	AbilityID string // sale ability id
+	AbilityID uuid.UUID // sale ability id
 }
 
 type PlayerAbilitiesSystem struct {
 	// player abilities
-	salePlayerAbilities map[string]*boiler.SalePlayerAbility // map[ability_id]*Ability
+	salePlayerAbilities map[uuid.UUID]*boiler.SalePlayerAbility // map[ability_id]*Ability
 
 	// ability purchase
 	Purchase chan *Purchase
@@ -44,9 +44,10 @@ func NewPlayerAbilitiesSystem(messagebus *messagebus.MessageBus) *PlayerAbilitie
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("failed to populate salePlayerAbilities map with existing abilities from db")
 	}
-	salePlayerAbilities := map[string]*boiler.SalePlayerAbility{}
+	salePlayerAbilities := map[uuid.UUID]*boiler.SalePlayerAbility{}
 	for _, s := range saleAbilities {
-		salePlayerAbilities[s.ID] = s
+		sID := uuid.FromStringOrNil(s.ID)
+		salePlayerAbilities[sID] = s
 	}
 
 	pas := &PlayerAbilitiesSystem{
@@ -93,7 +94,8 @@ func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 				if s.AvailableUntil.Time.After(time.Now()) {
 					continue
 				}
-				delete(pas.salePlayerAbilities, s.ID)
+				sID := uuid.FromStringOrNil(s.ID)
+				delete(pas.salePlayerAbilities, sID)
 			}
 
 			if len(pas.salePlayerAbilities) < 1 {
@@ -136,7 +138,8 @@ func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 					break
 				}
 				for _, s := range saleAbilities {
-					pas.salePlayerAbilities[s.ID] = s
+					sID := uuid.FromStringOrNil(s.ID)
+					pas.salePlayerAbilities[sID] = s
 				}
 			}
 
