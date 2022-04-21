@@ -63,7 +63,7 @@ func NewPlayerAbilitiesSystem(messagebus *messagebus.MessageBus) *PlayerAbilitie
 }
 
 func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
-	priceTickerInterval := db.GetIntWithDefault("sale_ability_price_ticker_interval_seconds", 5) // default 5 seconds
+	priceTickerInterval := db.GetIntWithDefault(db.SaleAbilityPriceTickerIntervalSeconds, 5) // default 5 seconds
 	priceTicker := time.NewTicker(time.Duration(priceTickerInterval) * time.Second)
 
 	defer func() {
@@ -86,8 +86,8 @@ func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 	for {
 		select {
 		case <-priceTicker.C:
-			reductionPercentage := db.GetDecimalWithDefault("sale_ability_reduction_percentage", decimal.NewFromFloat(1.0)) // default 1%
-			floorPrice := db.GetDecimalWithDefault("sale_ability_floor_price", decimal.New(10, 18))                         // default 10 sups
+			reductionPercentage := db.GetDecimalWithDefault(db.SaleAbilityReductionPercentage, decimal.NewFromFloat(1.0)) // default 1%
+			floorPrice := db.GetDecimalWithDefault(db.SaleAbilityFloorPrice, decimal.New(10, 18))                         // default 10 sups
 
 			// Check each ability that is on sale, remove them if expired
 			for _, s := range pas.salePlayerAbilities {
@@ -105,7 +105,7 @@ func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 				if errors.Is(err, sql.ErrNoRows) || len(saleAbilities) == 0 {
 					gamelog.L.Debug().Msg("refreshing sale abilities in db")
 					// If no sale abilities, get 3 random sale abilities and update their time to an hour from now
-					limit := db.GetIntWithDefault("sale_ability_limit", 3) // default 3
+					limit := db.GetIntWithDefault(db.SaleAbilityLimit, 3) // default 3
 					allSaleAbilities, err := boiler.SalePlayerAbilities().All(gamedb.StdConn)
 					if err != nil {
 						gamelog.L.Error().Err(err).Msg(fmt.Sprintf("failed to get %d random sale abilities", limit))
@@ -161,7 +161,7 @@ func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 			break
 		case purchase := <-pas.Purchase:
 			if saleAbility, ok := pas.salePlayerAbilities[purchase.AbilityID]; ok {
-				inflationPercentage := db.GetDecimalWithDefault("sale_ability_inflation_percentage", decimal.NewFromFloat(20.0)) // default 20%
+				inflationPercentage := db.GetDecimalWithDefault(db.SaleAbilityInflationPercentage, decimal.NewFromFloat(20.0)) // default 20%
 				saleAbility.CurrentPrice = saleAbility.CurrentPrice.Mul(oneHundred.Add(inflationPercentage).Div(oneHundred))
 				_, err := saleAbility.Update(gamedb.StdConn, boil.Infer())
 				if err != nil {
