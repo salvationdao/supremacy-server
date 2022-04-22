@@ -291,7 +291,7 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.MechContainer, error) {
 	}
 
 	if i < len(mechIDs) {
-		mcs = mcs[:len(mcs)-len(mechIDs)-i]
+		mcs = mcs[:len(mcs)-i]
 		return mcs, ErrNotAllMechsReturned
 	}
 
