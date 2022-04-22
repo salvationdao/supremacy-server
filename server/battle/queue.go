@@ -130,7 +130,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		return terror.Error(err)
 	}
 
-	if mech.OwnerID != wsc.Identifier() {
+	if !mech.IsDefault && mech.OwnerID != wsc.Identifier() {
 		return terror.Error(fmt.Errorf("does not own the mech"), "Current mech does not own by you")
 	}
 
@@ -513,7 +513,7 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 	}
 	defer tx.Rollback()
 
-	canxq := `UPDATE battle_contracts SET cancelled = true WHERE id = (SELECT battle_contract_id FROM battle_queue WHERE mech_id = $1)`
+	canxq := `UPDATE battle_contracts SET cancelled = TRUE WHERE id = (SELECT battle_contract_id FROM battle_queue WHERE mech_id = $1)`
 	_, err = tx.Exec(canxq, mechID.String())
 	if err != nil {
 		gamelog.L.Warn().Err(err).Msg("unable to cancel battle contract. mech has left queue though.")
@@ -591,7 +591,7 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 		}
 	}
 
-	updateBQNq := `UPDATE battle_queue_notifications SET is_refunded = true, queue_mech_id = null WHERE mech_id = $1`
+	updateBQNq := `UPDATE battle_queue_notifications SET is_refunded = TRUE, queue_mech_id = NULL WHERE mech_id = $1`
 	_, err = gamedb.StdConn.Exec(updateBQNq, mechID.String())
 	if err != nil {
 		gamelog.L.Warn().Err(err).Msg("unable to update battle_queue_notifications table during refund")
