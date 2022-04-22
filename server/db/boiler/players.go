@@ -143,92 +143,98 @@ var PlayerWhere = struct {
 
 // PlayerRels is where relationship names are stored.
 var PlayerRels = struct {
-	Faction                     string
-	IDUserStat                  string
-	BattleAbilityTriggers       string
-	BattleContracts             string
-	BattleContributions         string
-	OwnerBattleMechs            string
-	OwnerBattleQueues           string
-	OwnerBattleWins             string
-	Battles                     string
-	ChatHistories               string
-	ConsumedByConsumedAbilities string
-	MVPPlayerFactionStats       string
-	OwnerItemSales              string
-	OwnerMechs                  string
-	ToUserPendingTransactions   string
-	OwnerPlayerAbilities        string
-	PlayerActiveLogs            string
-	PlayerKillLogs              string
-	PlayerLanguages             string
-	PlayerPreferences           string
-	PlayersPunishVotes          string
-	IssuedByPunishVotes         string
-	ReportedPlayerPunishVotes   string
-	PunishedPlayers             string
-	UserMultipliers             string
-	UserSpoilsOfWars            string
-	Users                       string
+	Faction                                string
+	IDUserStat                             string
+	BattleAbilityTriggers                  string
+	BattleContracts                        string
+	BattleContributions                    string
+	OwnerBattleMechs                       string
+	OwnerBattleQueues                      string
+	OwnerBattleWins                        string
+	Battles                                string
+	ChatHistories                          string
+	ConsumedByConsumedAbilities            string
+	MVPPlayerFactionStats                  string
+	OwnerItemSales                         string
+	BidderItemSalesBidHistories            string
+	CreatedByItemSalesBuyoutPriceHistories string
+	OwnerMechs                             string
+	ToUserPendingTransactions              string
+	OwnerPlayerAbilities                   string
+	PlayerActiveLogs                       string
+	PlayerKillLogs                         string
+	PlayerLanguages                        string
+	PlayerPreferences                      string
+	PlayersPunishVotes                     string
+	IssuedByPunishVotes                    string
+	ReportedPlayerPunishVotes              string
+	PunishedPlayers                        string
+	UserMultipliers                        string
+	UserSpoilsOfWars                       string
+	Users                                  string
 }{
-	Faction:                     "Faction",
-	IDUserStat:                  "IDUserStat",
-	BattleAbilityTriggers:       "BattleAbilityTriggers",
-	BattleContracts:             "BattleContracts",
-	BattleContributions:         "BattleContributions",
-	OwnerBattleMechs:            "OwnerBattleMechs",
-	OwnerBattleQueues:           "OwnerBattleQueues",
-	OwnerBattleWins:             "OwnerBattleWins",
-	Battles:                     "Battles",
-	ChatHistories:               "ChatHistories",
-	ConsumedByConsumedAbilities: "ConsumedByConsumedAbilities",
-	MVPPlayerFactionStats:       "MVPPlayerFactionStats",
-	OwnerItemSales:              "OwnerItemSales",
-	OwnerMechs:                  "OwnerMechs",
-	ToUserPendingTransactions:   "ToUserPendingTransactions",
-	OwnerPlayerAbilities:        "OwnerPlayerAbilities",
-	PlayerActiveLogs:            "PlayerActiveLogs",
-	PlayerKillLogs:              "PlayerKillLogs",
-	PlayerLanguages:             "PlayerLanguages",
-	PlayerPreferences:           "PlayerPreferences",
-	PlayersPunishVotes:          "PlayersPunishVotes",
-	IssuedByPunishVotes:         "IssuedByPunishVotes",
-	ReportedPlayerPunishVotes:   "ReportedPlayerPunishVotes",
-	PunishedPlayers:             "PunishedPlayers",
-	UserMultipliers:             "UserMultipliers",
-	UserSpoilsOfWars:            "UserSpoilsOfWars",
-	Users:                       "Users",
+	Faction:                                "Faction",
+	IDUserStat:                             "IDUserStat",
+	BattleAbilityTriggers:                  "BattleAbilityTriggers",
+	BattleContracts:                        "BattleContracts",
+	BattleContributions:                    "BattleContributions",
+	OwnerBattleMechs:                       "OwnerBattleMechs",
+	OwnerBattleQueues:                      "OwnerBattleQueues",
+	OwnerBattleWins:                        "OwnerBattleWins",
+	Battles:                                "Battles",
+	ChatHistories:                          "ChatHistories",
+	ConsumedByConsumedAbilities:            "ConsumedByConsumedAbilities",
+	MVPPlayerFactionStats:                  "MVPPlayerFactionStats",
+	OwnerItemSales:                         "OwnerItemSales",
+	BidderItemSalesBidHistories:            "BidderItemSalesBidHistories",
+	CreatedByItemSalesBuyoutPriceHistories: "CreatedByItemSalesBuyoutPriceHistories",
+	OwnerMechs:                             "OwnerMechs",
+	ToUserPendingTransactions:              "ToUserPendingTransactions",
+	OwnerPlayerAbilities:                   "OwnerPlayerAbilities",
+	PlayerActiveLogs:                       "PlayerActiveLogs",
+	PlayerKillLogs:                         "PlayerKillLogs",
+	PlayerLanguages:                        "PlayerLanguages",
+	PlayerPreferences:                      "PlayerPreferences",
+	PlayersPunishVotes:                     "PlayersPunishVotes",
+	IssuedByPunishVotes:                    "IssuedByPunishVotes",
+	ReportedPlayerPunishVotes:              "ReportedPlayerPunishVotes",
+	PunishedPlayers:                        "PunishedPlayers",
+	UserMultipliers:                        "UserMultipliers",
+	UserSpoilsOfWars:                       "UserSpoilsOfWars",
+	Users:                                  "Users",
 }
 
 // playerR is where relationships are stored.
 type playerR struct {
-	Faction                     *Faction                  `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
-	IDUserStat                  *UserStat                 `boiler:"IDUserStat" boil:"IDUserStat" json:"IDUserStat" toml:"IDUserStat" yaml:"IDUserStat"`
-	BattleAbilityTriggers       BattleAbilityTriggerSlice `boiler:"BattleAbilityTriggers" boil:"BattleAbilityTriggers" json:"BattleAbilityTriggers" toml:"BattleAbilityTriggers" yaml:"BattleAbilityTriggers"`
-	BattleContracts             BattleContractSlice       `boiler:"BattleContracts" boil:"BattleContracts" json:"BattleContracts" toml:"BattleContracts" yaml:"BattleContracts"`
-	BattleContributions         BattleContributionSlice   `boiler:"BattleContributions" boil:"BattleContributions" json:"BattleContributions" toml:"BattleContributions" yaml:"BattleContributions"`
-	OwnerBattleMechs            BattleMechSlice           `boiler:"OwnerBattleMechs" boil:"OwnerBattleMechs" json:"OwnerBattleMechs" toml:"OwnerBattleMechs" yaml:"OwnerBattleMechs"`
-	OwnerBattleQueues           BattleQueueSlice          `boiler:"OwnerBattleQueues" boil:"OwnerBattleQueues" json:"OwnerBattleQueues" toml:"OwnerBattleQueues" yaml:"OwnerBattleQueues"`
-	OwnerBattleWins             BattleWinSlice            `boiler:"OwnerBattleWins" boil:"OwnerBattleWins" json:"OwnerBattleWins" toml:"OwnerBattleWins" yaml:"OwnerBattleWins"`
-	Battles                     BattleSlice               `boiler:"Battles" boil:"Battles" json:"Battles" toml:"Battles" yaml:"Battles"`
-	ChatHistories               ChatHistorySlice          `boiler:"ChatHistories" boil:"ChatHistories" json:"ChatHistories" toml:"ChatHistories" yaml:"ChatHistories"`
-	ConsumedByConsumedAbilities ConsumedAbilitySlice      `boiler:"ConsumedByConsumedAbilities" boil:"ConsumedByConsumedAbilities" json:"ConsumedByConsumedAbilities" toml:"ConsumedByConsumedAbilities" yaml:"ConsumedByConsumedAbilities"`
-	MVPPlayerFactionStats       FactionStatSlice          `boiler:"MVPPlayerFactionStats" boil:"MVPPlayerFactionStats" json:"MVPPlayerFactionStats" toml:"MVPPlayerFactionStats" yaml:"MVPPlayerFactionStats"`
-	OwnerItemSales              ItemSaleSlice             `boiler:"OwnerItemSales" boil:"OwnerItemSales" json:"OwnerItemSales" toml:"OwnerItemSales" yaml:"OwnerItemSales"`
-	OwnerMechs                  MechSlice                 `boiler:"OwnerMechs" boil:"OwnerMechs" json:"OwnerMechs" toml:"OwnerMechs" yaml:"OwnerMechs"`
-	ToUserPendingTransactions   PendingTransactionSlice   `boiler:"ToUserPendingTransactions" boil:"ToUserPendingTransactions" json:"ToUserPendingTransactions" toml:"ToUserPendingTransactions" yaml:"ToUserPendingTransactions"`
-	OwnerPlayerAbilities        PlayerAbilitySlice        `boiler:"OwnerPlayerAbilities" boil:"OwnerPlayerAbilities" json:"OwnerPlayerAbilities" toml:"OwnerPlayerAbilities" yaml:"OwnerPlayerAbilities"`
-	PlayerActiveLogs            PlayerActiveLogSlice      `boiler:"PlayerActiveLogs" boil:"PlayerActiveLogs" json:"PlayerActiveLogs" toml:"PlayerActiveLogs" yaml:"PlayerActiveLogs"`
-	PlayerKillLogs              PlayerKillLogSlice        `boiler:"PlayerKillLogs" boil:"PlayerKillLogs" json:"PlayerKillLogs" toml:"PlayerKillLogs" yaml:"PlayerKillLogs"`
-	PlayerLanguages             PlayerLanguageSlice       `boiler:"PlayerLanguages" boil:"PlayerLanguages" json:"PlayerLanguages" toml:"PlayerLanguages" yaml:"PlayerLanguages"`
-	PlayerPreferences           PlayerPreferenceSlice     `boiler:"PlayerPreferences" boil:"PlayerPreferences" json:"PlayerPreferences" toml:"PlayerPreferences" yaml:"PlayerPreferences"`
-	PlayersPunishVotes          PlayersPunishVoteSlice    `boiler:"PlayersPunishVotes" boil:"PlayersPunishVotes" json:"PlayersPunishVotes" toml:"PlayersPunishVotes" yaml:"PlayersPunishVotes"`
-	IssuedByPunishVotes         PunishVoteSlice           `boiler:"IssuedByPunishVotes" boil:"IssuedByPunishVotes" json:"IssuedByPunishVotes" toml:"IssuedByPunishVotes" yaml:"IssuedByPunishVotes"`
-	ReportedPlayerPunishVotes   PunishVoteSlice           `boiler:"ReportedPlayerPunishVotes" boil:"ReportedPlayerPunishVotes" json:"ReportedPlayerPunishVotes" toml:"ReportedPlayerPunishVotes" yaml:"ReportedPlayerPunishVotes"`
-	PunishedPlayers             PunishedPlayerSlice       `boiler:"PunishedPlayers" boil:"PunishedPlayers" json:"PunishedPlayers" toml:"PunishedPlayers" yaml:"PunishedPlayers"`
-	UserMultipliers             UserMultiplierSlice       `boiler:"UserMultipliers" boil:"UserMultipliers" json:"UserMultipliers" toml:"UserMultipliers" yaml:"UserMultipliers"`
-	UserSpoilsOfWars            UserSpoilsOfWarSlice      `boiler:"UserSpoilsOfWars" boil:"UserSpoilsOfWars" json:"UserSpoilsOfWars" toml:"UserSpoilsOfWars" yaml:"UserSpoilsOfWars"`
-	Users                       UserSlice                 `boiler:"Users" boil:"Users" json:"Users" toml:"Users" yaml:"Users"`
+	Faction                                *Faction                         `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
+	IDUserStat                             *UserStat                        `boiler:"IDUserStat" boil:"IDUserStat" json:"IDUserStat" toml:"IDUserStat" yaml:"IDUserStat"`
+	BattleAbilityTriggers                  BattleAbilityTriggerSlice        `boiler:"BattleAbilityTriggers" boil:"BattleAbilityTriggers" json:"BattleAbilityTriggers" toml:"BattleAbilityTriggers" yaml:"BattleAbilityTriggers"`
+	BattleContracts                        BattleContractSlice              `boiler:"BattleContracts" boil:"BattleContracts" json:"BattleContracts" toml:"BattleContracts" yaml:"BattleContracts"`
+	BattleContributions                    BattleContributionSlice          `boiler:"BattleContributions" boil:"BattleContributions" json:"BattleContributions" toml:"BattleContributions" yaml:"BattleContributions"`
+	OwnerBattleMechs                       BattleMechSlice                  `boiler:"OwnerBattleMechs" boil:"OwnerBattleMechs" json:"OwnerBattleMechs" toml:"OwnerBattleMechs" yaml:"OwnerBattleMechs"`
+	OwnerBattleQueues                      BattleQueueSlice                 `boiler:"OwnerBattleQueues" boil:"OwnerBattleQueues" json:"OwnerBattleQueues" toml:"OwnerBattleQueues" yaml:"OwnerBattleQueues"`
+	OwnerBattleWins                        BattleWinSlice                   `boiler:"OwnerBattleWins" boil:"OwnerBattleWins" json:"OwnerBattleWins" toml:"OwnerBattleWins" yaml:"OwnerBattleWins"`
+	Battles                                BattleSlice                      `boiler:"Battles" boil:"Battles" json:"Battles" toml:"Battles" yaml:"Battles"`
+	ChatHistories                          ChatHistorySlice                 `boiler:"ChatHistories" boil:"ChatHistories" json:"ChatHistories" toml:"ChatHistories" yaml:"ChatHistories"`
+	ConsumedByConsumedAbilities            ConsumedAbilitySlice             `boiler:"ConsumedByConsumedAbilities" boil:"ConsumedByConsumedAbilities" json:"ConsumedByConsumedAbilities" toml:"ConsumedByConsumedAbilities" yaml:"ConsumedByConsumedAbilities"`
+	MVPPlayerFactionStats                  FactionStatSlice                 `boiler:"MVPPlayerFactionStats" boil:"MVPPlayerFactionStats" json:"MVPPlayerFactionStats" toml:"MVPPlayerFactionStats" yaml:"MVPPlayerFactionStats"`
+	OwnerItemSales                         ItemSaleSlice                    `boiler:"OwnerItemSales" boil:"OwnerItemSales" json:"OwnerItemSales" toml:"OwnerItemSales" yaml:"OwnerItemSales"`
+	BidderItemSalesBidHistories            ItemSalesBidHistorySlice         `boiler:"BidderItemSalesBidHistories" boil:"BidderItemSalesBidHistories" json:"BidderItemSalesBidHistories" toml:"BidderItemSalesBidHistories" yaml:"BidderItemSalesBidHistories"`
+	CreatedByItemSalesBuyoutPriceHistories ItemSalesBuyoutPriceHistorySlice `boiler:"CreatedByItemSalesBuyoutPriceHistories" boil:"CreatedByItemSalesBuyoutPriceHistories" json:"CreatedByItemSalesBuyoutPriceHistories" toml:"CreatedByItemSalesBuyoutPriceHistories" yaml:"CreatedByItemSalesBuyoutPriceHistories"`
+	OwnerMechs                             MechSlice                        `boiler:"OwnerMechs" boil:"OwnerMechs" json:"OwnerMechs" toml:"OwnerMechs" yaml:"OwnerMechs"`
+	ToUserPendingTransactions              PendingTransactionSlice          `boiler:"ToUserPendingTransactions" boil:"ToUserPendingTransactions" json:"ToUserPendingTransactions" toml:"ToUserPendingTransactions" yaml:"ToUserPendingTransactions"`
+	OwnerPlayerAbilities                   PlayerAbilitySlice               `boiler:"OwnerPlayerAbilities" boil:"OwnerPlayerAbilities" json:"OwnerPlayerAbilities" toml:"OwnerPlayerAbilities" yaml:"OwnerPlayerAbilities"`
+	PlayerActiveLogs                       PlayerActiveLogSlice             `boiler:"PlayerActiveLogs" boil:"PlayerActiveLogs" json:"PlayerActiveLogs" toml:"PlayerActiveLogs" yaml:"PlayerActiveLogs"`
+	PlayerKillLogs                         PlayerKillLogSlice               `boiler:"PlayerKillLogs" boil:"PlayerKillLogs" json:"PlayerKillLogs" toml:"PlayerKillLogs" yaml:"PlayerKillLogs"`
+	PlayerLanguages                        PlayerLanguageSlice              `boiler:"PlayerLanguages" boil:"PlayerLanguages" json:"PlayerLanguages" toml:"PlayerLanguages" yaml:"PlayerLanguages"`
+	PlayerPreferences                      PlayerPreferenceSlice            `boiler:"PlayerPreferences" boil:"PlayerPreferences" json:"PlayerPreferences" toml:"PlayerPreferences" yaml:"PlayerPreferences"`
+	PlayersPunishVotes                     PlayersPunishVoteSlice           `boiler:"PlayersPunishVotes" boil:"PlayersPunishVotes" json:"PlayersPunishVotes" toml:"PlayersPunishVotes" yaml:"PlayersPunishVotes"`
+	IssuedByPunishVotes                    PunishVoteSlice                  `boiler:"IssuedByPunishVotes" boil:"IssuedByPunishVotes" json:"IssuedByPunishVotes" toml:"IssuedByPunishVotes" yaml:"IssuedByPunishVotes"`
+	ReportedPlayerPunishVotes              PunishVoteSlice                  `boiler:"ReportedPlayerPunishVotes" boil:"ReportedPlayerPunishVotes" json:"ReportedPlayerPunishVotes" toml:"ReportedPlayerPunishVotes" yaml:"ReportedPlayerPunishVotes"`
+	PunishedPlayers                        PunishedPlayerSlice              `boiler:"PunishedPlayers" boil:"PunishedPlayers" json:"PunishedPlayers" toml:"PunishedPlayers" yaml:"PunishedPlayers"`
+	UserMultipliers                        UserMultiplierSlice              `boiler:"UserMultipliers" boil:"UserMultipliers" json:"UserMultipliers" toml:"UserMultipliers" yaml:"UserMultipliers"`
+	UserSpoilsOfWars                       UserSpoilsOfWarSlice             `boiler:"UserSpoilsOfWars" boil:"UserSpoilsOfWars" json:"UserSpoilsOfWars" toml:"UserSpoilsOfWars" yaml:"UserSpoilsOfWars"`
+	Users                                  UserSlice                        `boiler:"Users" boil:"Users" json:"Users" toml:"Users" yaml:"Users"`
 }
 
 // NewStruct creates a new relationship struct
@@ -746,6 +752,48 @@ func (o *Player) OwnerItemSales(mods ...qm.QueryMod) itemSaleQuery {
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"item_sales\".*"})
+	}
+
+	return query
+}
+
+// BidderItemSalesBidHistories retrieves all the item_sales_bid_history's ItemSalesBidHistories with an executor via bidder_id column.
+func (o *Player) BidderItemSalesBidHistories(mods ...qm.QueryMod) itemSalesBidHistoryQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"item_sales_bid_history\".\"bidder_id\"=?", o.ID),
+	)
+
+	query := ItemSalesBidHistories(queryMods...)
+	queries.SetFrom(query.Query, "\"item_sales_bid_history\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"item_sales_bid_history\".*"})
+	}
+
+	return query
+}
+
+// CreatedByItemSalesBuyoutPriceHistories retrieves all the item_sales_buyout_price_history's ItemSalesBuyoutPriceHistories with an executor via created_by column.
+func (o *Player) CreatedByItemSalesBuyoutPriceHistories(mods ...qm.QueryMod) itemSalesBuyoutPriceHistoryQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"item_sales_buyout_price_history\".\"created_by\"=?", o.ID),
+	)
+
+	query := ItemSalesBuyoutPriceHistories(queryMods...)
+	queries.SetFrom(query.Query, "\"item_sales_buyout_price_history\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"item_sales_buyout_price_history\".*"})
 	}
 
 	return query
@@ -2350,6 +2398,202 @@ func (playerL) LoadOwnerItemSales(e boil.Executor, singular bool, maybePlayer in
 					foreign.R = &itemSaleR{}
 				}
 				foreign.R.Owner = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadBidderItemSalesBidHistories allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (playerL) LoadBidderItemSalesBidHistories(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+	var slice []*Player
+	var object *Player
+
+	if singular {
+		object = maybePlayer.(*Player)
+	} else {
+		slice = *maybePlayer.(*[]*Player)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &playerR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &playerR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`item_sales_bid_history`),
+		qm.WhereIn(`item_sales_bid_history.bidder_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load item_sales_bid_history")
+	}
+
+	var resultSlice []*ItemSalesBidHistory
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice item_sales_bid_history")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on item_sales_bid_history")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for item_sales_bid_history")
+	}
+
+	if len(itemSalesBidHistoryAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.BidderItemSalesBidHistories = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &itemSalesBidHistoryR{}
+			}
+			foreign.R.Bidder = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.BidderID {
+				local.R.BidderItemSalesBidHistories = append(local.R.BidderItemSalesBidHistories, foreign)
+				if foreign.R == nil {
+					foreign.R = &itemSalesBidHistoryR{}
+				}
+				foreign.R.Bidder = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadCreatedByItemSalesBuyoutPriceHistories allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (playerL) LoadCreatedByItemSalesBuyoutPriceHistories(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+	var slice []*Player
+	var object *Player
+
+	if singular {
+		object = maybePlayer.(*Player)
+	} else {
+		slice = *maybePlayer.(*[]*Player)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &playerR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &playerR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`item_sales_buyout_price_history`),
+		qm.WhereIn(`item_sales_buyout_price_history.created_by in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load item_sales_buyout_price_history")
+	}
+
+	var resultSlice []*ItemSalesBuyoutPriceHistory
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice item_sales_buyout_price_history")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on item_sales_buyout_price_history")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for item_sales_buyout_price_history")
+	}
+
+	if len(itemSalesBuyoutPriceHistoryAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.CreatedByItemSalesBuyoutPriceHistories = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &itemSalesBuyoutPriceHistoryR{}
+			}
+			foreign.R.CreatedByPlayer = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.CreatedBy) {
+				local.R.CreatedByItemSalesBuyoutPriceHistories = append(local.R.CreatedByItemSalesBuyoutPriceHistories, foreign)
+				if foreign.R == nil {
+					foreign.R = &itemSalesBuyoutPriceHistoryR{}
+				}
+				foreign.R.CreatedByPlayer = local
 				break
 			}
 		}
@@ -4670,6 +4914,183 @@ func (o *Player) AddOwnerItemSales(exec boil.Executor, insert bool, related ...*
 			rel.R.Owner = o
 		}
 	}
+	return nil
+}
+
+// AddBidderItemSalesBidHistories adds the given related objects to the existing relationships
+// of the player, optionally inserting them as new records.
+// Appends related to o.R.BidderItemSalesBidHistories.
+// Sets related.R.Bidder appropriately.
+func (o *Player) AddBidderItemSalesBidHistories(exec boil.Executor, insert bool, related ...*ItemSalesBidHistory) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.BidderID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"item_sales_bid_history\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"bidder_id"}),
+				strmangle.WhereClause("\"", "\"", 2, itemSalesBidHistoryPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ItemSaleID, rel.BidderID, rel.BidAt}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.BidderID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &playerR{
+			BidderItemSalesBidHistories: related,
+		}
+	} else {
+		o.R.BidderItemSalesBidHistories = append(o.R.BidderItemSalesBidHistories, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &itemSalesBidHistoryR{
+				Bidder: o,
+			}
+		} else {
+			rel.R.Bidder = o
+		}
+	}
+	return nil
+}
+
+// AddCreatedByItemSalesBuyoutPriceHistories adds the given related objects to the existing relationships
+// of the player, optionally inserting them as new records.
+// Appends related to o.R.CreatedByItemSalesBuyoutPriceHistories.
+// Sets related.R.CreatedByPlayer appropriately.
+func (o *Player) AddCreatedByItemSalesBuyoutPriceHistories(exec boil.Executor, insert bool, related ...*ItemSalesBuyoutPriceHistory) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.CreatedBy, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"item_sales_buyout_price_history\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"created_by"}),
+				strmangle.WhereClause("\"", "\"", 2, itemSalesBuyoutPriceHistoryPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID, rel.ItemSaleID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.CreatedBy, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &playerR{
+			CreatedByItemSalesBuyoutPriceHistories: related,
+		}
+	} else {
+		o.R.CreatedByItemSalesBuyoutPriceHistories = append(o.R.CreatedByItemSalesBuyoutPriceHistories, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &itemSalesBuyoutPriceHistoryR{
+				CreatedByPlayer: o,
+			}
+		} else {
+			rel.R.CreatedByPlayer = o
+		}
+	}
+	return nil
+}
+
+// SetCreatedByItemSalesBuyoutPriceHistories removes all previously related items of the
+// player replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.CreatedByPlayer's CreatedByItemSalesBuyoutPriceHistories accordingly.
+// Replaces o.R.CreatedByItemSalesBuyoutPriceHistories with related.
+// Sets related.R.CreatedByPlayer's CreatedByItemSalesBuyoutPriceHistories accordingly.
+func (o *Player) SetCreatedByItemSalesBuyoutPriceHistories(exec boil.Executor, insert bool, related ...*ItemSalesBuyoutPriceHistory) error {
+	query := "update \"item_sales_buyout_price_history\" set \"created_by\" = null where \"created_by\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.CreatedByItemSalesBuyoutPriceHistories {
+			queries.SetScanner(&rel.CreatedBy, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.CreatedByPlayer = nil
+		}
+
+		o.R.CreatedByItemSalesBuyoutPriceHistories = nil
+	}
+	return o.AddCreatedByItemSalesBuyoutPriceHistories(exec, insert, related...)
+}
+
+// RemoveCreatedByItemSalesBuyoutPriceHistories relationships from objects passed in.
+// Removes related items from R.CreatedByItemSalesBuyoutPriceHistories (uses pointer comparison, removal does not keep order)
+// Sets related.R.CreatedByPlayer.
+func (o *Player) RemoveCreatedByItemSalesBuyoutPriceHistories(exec boil.Executor, related ...*ItemSalesBuyoutPriceHistory) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.CreatedBy, nil)
+		if rel.R != nil {
+			rel.R.CreatedByPlayer = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("created_by")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.CreatedByItemSalesBuyoutPriceHistories {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.CreatedByItemSalesBuyoutPriceHistories)
+			if ln > 1 && i < ln-1 {
+				o.R.CreatedByItemSalesBuyoutPriceHistories[i] = o.R.CreatedByItemSalesBuyoutPriceHistories[ln-1]
+			}
+			o.R.CreatedByItemSalesBuyoutPriceHistories = o.R.CreatedByItemSalesBuyoutPriceHistories[:ln-1]
+			break
+		}
+	}
+
 	return nil
 }
 

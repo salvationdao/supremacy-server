@@ -4,7 +4,7 @@ CREATE TABLE item_sales (
     id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
 	item_type TEXT NOT NULL CHECK (item_type IN ('MECH')),
 	item_id UUID NOT NULL,
-	listing_fee_tx_id UUID,
+	listing_fee_tx_id TEXT NOT NULL,
 	owner_id UUID NOT NULL REFERENCES players(id),
 
 	auction BOOL NOT NULL DEFAULT FALSE,
@@ -12,11 +12,15 @@ CREATE TABLE item_sales (
 	auction_reverse_price TEXT,
 
 	buyout BOOL NOT NULL DEFAULT FALSE,
-	buyout_price TEXT,
+	buyout_price TEXT, -- also is used for dutch auction
 
 	dutch_auction BOOL NOT NULL DEFAULT FALSE,
 	dutch_action_rate INT,
 	dutch_action_next_price_drop INT,
+
+    sold_at TIMESTAMPTZ,
+	sold_for TEXT,
+	sold_tx_id TEXT,
 
     deleted_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -48,7 +52,7 @@ BEGIN
 		RAISE EXCEPTION '% does not belong to owner, item_id=%, owner_id=%', NEW.item_type, NEW.item_id, NEW.owner_id;
 	END IF;
 
-    RETURN NULL;
+    RETURN NEW;
 END;
 $checkItemOwnerConstraint$
     LANGUAGE plpgsql;
@@ -56,33 +60,26 @@ $checkItemOwnerConstraint$
 CREATE TRIGGER checkItemOwnerConstraint
     BEFORE INSERT OR UPDATE
     ON item_sales
-EXECUTE PROCEDURE checkItemOwnerConstraint();
+FOR EACH ROW EXECUTE PROCEDURE checkItemOwnerConstraint();
 
--- TODO: do these tables
--- CREATE TABLE item_sales_buyout_price_history (
---     id UUID NOT NULL DEFAULT gen_random_uuid(),
--- 	item_sale_id UUID NOT NULL,
--- 	buyout_price TEXT NOT NULL,
--- 	created_by UUID REFERENCES players (id),
---     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
--- 	PRIMARY KEY (id, item_sale_id)
--- );
+-- For Dutch Auctions
+CREATE TABLE item_sales_buyout_price_history (
+    id UUID NOT NULL DEFAULT gen_random_uuid(),
+	item_sale_id UUID NOT NULL REFERENCES item_sales (id),
+	buyout_price TEXT NOT NULL,
+	created_by UUID REFERENCES players (id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	PRIMARY KEY (id, item_sale_id)
+);
 
--- CREATE TABLE item_sales_bid_history (
--- 	item_sale_id UUID NOT NULL REFERENCES item_sales (id),
--- 	buyout_price TEXT NOT NULL,
--- 	created_by UUID REFERENCES players (id),
---     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
--- 	PRIMARY KEY (item_sale_id)
--- );
-
--- CREATE TABLE item_sales_completed (
--- 	item_sale_id UUID PRIMARY KEY NOT NULL REFERENCES item_sales (id),
--- 	tx_id UUID NOT NULL,
---     sold_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
--- 	sold_for TEXT NOT NULL,
--- 	sold_method TEXT NOT NULL CHECK (sold_method IN ('AUCTION', 'BUY_OUT')),
---     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
--- );
+-- For Auctions
+CREATE TABLE item_sales_bid_history (
+	item_sale_id UUID NOT NULL REFERENCES item_sales (id),
+	bidder_id UUID NOT NULL REFERENCES players (id),
+    bid_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	bid_price TEXT NOT NULL,
+    cancelled_at TIMESTAMPTZ,
+	PRIMARY KEY (item_sale_id, bidder_id, bid_at)
+);
 
 COMMIT;

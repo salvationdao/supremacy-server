@@ -46,6 +46,8 @@ var TableNames = struct {
 	GlobalAnnouncements                                string
 	IssuedContractRewards                              string
 	ItemSales                                          string
+	ItemSalesBidHistory                                string
+	ItemSalesBuyoutPriceHistory                        string
 	KV                                                 string
 	Languages                                          string
 	MechStats                                          string
@@ -117,6 +119,8 @@ var TableNames = struct {
 	GlobalAnnouncements:              "global_announcements",
 	IssuedContractRewards:            "issued_contract_rewards",
 	ItemSales:                        "item_sales",
+	ItemSalesBidHistory:              "item_sales_bid_history",
+	ItemSalesBuyoutPriceHistory:      "item_sales_buyout_price_history",
 	KV:                               "kv",
 	Languages:                        "languages",
 	MechStats:                        "mech_stats",
