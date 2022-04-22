@@ -16,8 +16,7 @@ CREATE TABLE item_sales (
 	buyout_price TEXT, -- also is used for dutch auction
 
 	dutch_auction BOOL NOT NULL DEFAULT FALSE,
-	dutch_action_rate INT,
-	dutch_action_next_price_drop INT,
+	dutch_action_drop_rate TEXT,
 
     sold_at TIMESTAMPTZ,
 	sold_for TEXT,

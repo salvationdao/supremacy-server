@@ -23,163 +23,156 @@ import (
 
 // ItemSale is an object representing the database table.
 type ItemSale struct {
-	ID                       string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	ItemType                 string      `boiler:"item_type" boil:"item_type" json:"item_type" toml:"item_type" yaml:"item_type"`
-	FactionID                string      `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
-	ItemID                   string      `boiler:"item_id" boil:"item_id" json:"item_id" toml:"item_id" yaml:"item_id"`
-	ListingFeeTXID           string      `boiler:"listing_fee_tx_id" boil:"listing_fee_tx_id" json:"listing_fee_tx_id" toml:"listing_fee_tx_id" yaml:"listing_fee_tx_id"`
-	OwnerID                  string      `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
-	Auction                  bool        `boiler:"auction" boil:"auction" json:"auction" toml:"auction" yaml:"auction"`
-	AuctionCurrentPrice      null.String `boiler:"auction_current_price" boil:"auction_current_price" json:"auction_current_price,omitempty" toml:"auction_current_price" yaml:"auction_current_price,omitempty"`
-	AuctionReversePrice      null.String `boiler:"auction_reverse_price" boil:"auction_reverse_price" json:"auction_reverse_price,omitempty" toml:"auction_reverse_price" yaml:"auction_reverse_price,omitempty"`
-	Buyout                   bool        `boiler:"buyout" boil:"buyout" json:"buyout" toml:"buyout" yaml:"buyout"`
-	BuyoutPrice              null.String `boiler:"buyout_price" boil:"buyout_price" json:"buyout_price,omitempty" toml:"buyout_price" yaml:"buyout_price,omitempty"`
-	DutchAuction             bool        `boiler:"dutch_auction" boil:"dutch_auction" json:"dutch_auction" toml:"dutch_auction" yaml:"dutch_auction"`
-	DutchActionRate          null.Int    `boiler:"dutch_action_rate" boil:"dutch_action_rate" json:"dutch_action_rate,omitempty" toml:"dutch_action_rate" yaml:"dutch_action_rate,omitempty"`
-	DutchActionNextPriceDrop null.Int    `boiler:"dutch_action_next_price_drop" boil:"dutch_action_next_price_drop" json:"dutch_action_next_price_drop,omitempty" toml:"dutch_action_next_price_drop" yaml:"dutch_action_next_price_drop,omitempty"`
-	SoldAt                   null.Time   `boiler:"sold_at" boil:"sold_at" json:"sold_at,omitempty" toml:"sold_at" yaml:"sold_at,omitempty"`
-	SoldFor                  null.String `boiler:"sold_for" boil:"sold_for" json:"sold_for,omitempty" toml:"sold_for" yaml:"sold_for,omitempty"`
-	SoldTXID                 null.String `boiler:"sold_tx_id" boil:"sold_tx_id" json:"sold_tx_id,omitempty" toml:"sold_tx_id" yaml:"sold_tx_id,omitempty"`
-	DeletedAt                null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	UpdatedAt                time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt                time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ID                  string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	ItemType            string      `boiler:"item_type" boil:"item_type" json:"item_type" toml:"item_type" yaml:"item_type"`
+	FactionID           string      `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
+	ItemID              string      `boiler:"item_id" boil:"item_id" json:"item_id" toml:"item_id" yaml:"item_id"`
+	ListingFeeTXID      string      `boiler:"listing_fee_tx_id" boil:"listing_fee_tx_id" json:"listing_fee_tx_id" toml:"listing_fee_tx_id" yaml:"listing_fee_tx_id"`
+	OwnerID             string      `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
+	Auction             bool        `boiler:"auction" boil:"auction" json:"auction" toml:"auction" yaml:"auction"`
+	AuctionCurrentPrice null.String `boiler:"auction_current_price" boil:"auction_current_price" json:"auction_current_price,omitempty" toml:"auction_current_price" yaml:"auction_current_price,omitempty"`
+	AuctionReversePrice null.String `boiler:"auction_reverse_price" boil:"auction_reverse_price" json:"auction_reverse_price,omitempty" toml:"auction_reverse_price" yaml:"auction_reverse_price,omitempty"`
+	Buyout              bool        `boiler:"buyout" boil:"buyout" json:"buyout" toml:"buyout" yaml:"buyout"`
+	BuyoutPrice         null.String `boiler:"buyout_price" boil:"buyout_price" json:"buyout_price,omitempty" toml:"buyout_price" yaml:"buyout_price,omitempty"`
+	DutchAuction        bool        `boiler:"dutch_auction" boil:"dutch_auction" json:"dutch_auction" toml:"dutch_auction" yaml:"dutch_auction"`
+	DutchActionDropRate null.String `boiler:"dutch_action_drop_rate" boil:"dutch_action_drop_rate" json:"dutch_action_drop_rate,omitempty" toml:"dutch_action_drop_rate" yaml:"dutch_action_drop_rate,omitempty"`
+	SoldAt              null.Time   `boiler:"sold_at" boil:"sold_at" json:"sold_at,omitempty" toml:"sold_at" yaml:"sold_at,omitempty"`
+	SoldFor             null.String `boiler:"sold_for" boil:"sold_for" json:"sold_for,omitempty" toml:"sold_for" yaml:"sold_for,omitempty"`
+	SoldTXID            null.String `boiler:"sold_tx_id" boil:"sold_tx_id" json:"sold_tx_id,omitempty" toml:"sold_tx_id" yaml:"sold_tx_id,omitempty"`
+	DeletedAt           null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt           time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt           time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *itemSaleR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L itemSaleL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var ItemSaleColumns = struct {
-	ID                       string
-	ItemType                 string
-	FactionID                string
-	ItemID                   string
-	ListingFeeTXID           string
-	OwnerID                  string
-	Auction                  string
-	AuctionCurrentPrice      string
-	AuctionReversePrice      string
-	Buyout                   string
-	BuyoutPrice              string
-	DutchAuction             string
-	DutchActionRate          string
-	DutchActionNextPriceDrop string
-	SoldAt                   string
-	SoldFor                  string
-	SoldTXID                 string
-	DeletedAt                string
-	UpdatedAt                string
-	CreatedAt                string
+	ID                  string
+	ItemType            string
+	FactionID           string
+	ItemID              string
+	ListingFeeTXID      string
+	OwnerID             string
+	Auction             string
+	AuctionCurrentPrice string
+	AuctionReversePrice string
+	Buyout              string
+	BuyoutPrice         string
+	DutchAuction        string
+	DutchActionDropRate string
+	SoldAt              string
+	SoldFor             string
+	SoldTXID            string
+	DeletedAt           string
+	UpdatedAt           string
+	CreatedAt           string
 }{
-	ID:                       "id",
-	ItemType:                 "item_type",
-	FactionID:                "faction_id",
-	ItemID:                   "item_id",
-	ListingFeeTXID:           "listing_fee_tx_id",
-	OwnerID:                  "owner_id",
-	Auction:                  "auction",
-	AuctionCurrentPrice:      "auction_current_price",
-	AuctionReversePrice:      "auction_reverse_price",
-	Buyout:                   "buyout",
-	BuyoutPrice:              "buyout_price",
-	DutchAuction:             "dutch_auction",
-	DutchActionRate:          "dutch_action_rate",
-	DutchActionNextPriceDrop: "dutch_action_next_price_drop",
-	SoldAt:                   "sold_at",
-	SoldFor:                  "sold_for",
-	SoldTXID:                 "sold_tx_id",
-	DeletedAt:                "deleted_at",
-	UpdatedAt:                "updated_at",
-	CreatedAt:                "created_at",
+	ID:                  "id",
+	ItemType:            "item_type",
+	FactionID:           "faction_id",
+	ItemID:              "item_id",
+	ListingFeeTXID:      "listing_fee_tx_id",
+	OwnerID:             "owner_id",
+	Auction:             "auction",
+	AuctionCurrentPrice: "auction_current_price",
+	AuctionReversePrice: "auction_reverse_price",
+	Buyout:              "buyout",
+	BuyoutPrice:         "buyout_price",
+	DutchAuction:        "dutch_auction",
+	DutchActionDropRate: "dutch_action_drop_rate",
+	SoldAt:              "sold_at",
+	SoldFor:             "sold_for",
+	SoldTXID:            "sold_tx_id",
+	DeletedAt:           "deleted_at",
+	UpdatedAt:           "updated_at",
+	CreatedAt:           "created_at",
 }
 
 var ItemSaleTableColumns = struct {
-	ID                       string
-	ItemType                 string
-	FactionID                string
-	ItemID                   string
-	ListingFeeTXID           string
-	OwnerID                  string
-	Auction                  string
-	AuctionCurrentPrice      string
-	AuctionReversePrice      string
-	Buyout                   string
-	BuyoutPrice              string
-	DutchAuction             string
-	DutchActionRate          string
-	DutchActionNextPriceDrop string
-	SoldAt                   string
-	SoldFor                  string
-	SoldTXID                 string
-	DeletedAt                string
-	UpdatedAt                string
-	CreatedAt                string
+	ID                  string
+	ItemType            string
+	FactionID           string
+	ItemID              string
+	ListingFeeTXID      string
+	OwnerID             string
+	Auction             string
+	AuctionCurrentPrice string
+	AuctionReversePrice string
+	Buyout              string
+	BuyoutPrice         string
+	DutchAuction        string
+	DutchActionDropRate string
+	SoldAt              string
+	SoldFor             string
+	SoldTXID            string
+	DeletedAt           string
+	UpdatedAt           string
+	CreatedAt           string
 }{
-	ID:                       "item_sales.id",
-	ItemType:                 "item_sales.item_type",
-	FactionID:                "item_sales.faction_id",
-	ItemID:                   "item_sales.item_id",
-	ListingFeeTXID:           "item_sales.listing_fee_tx_id",
-	OwnerID:                  "item_sales.owner_id",
-	Auction:                  "item_sales.auction",
-	AuctionCurrentPrice:      "item_sales.auction_current_price",
-	AuctionReversePrice:      "item_sales.auction_reverse_price",
-	Buyout:                   "item_sales.buyout",
-	BuyoutPrice:              "item_sales.buyout_price",
-	DutchAuction:             "item_sales.dutch_auction",
-	DutchActionRate:          "item_sales.dutch_action_rate",
-	DutchActionNextPriceDrop: "item_sales.dutch_action_next_price_drop",
-	SoldAt:                   "item_sales.sold_at",
-	SoldFor:                  "item_sales.sold_for",
-	SoldTXID:                 "item_sales.sold_tx_id",
-	DeletedAt:                "item_sales.deleted_at",
-	UpdatedAt:                "item_sales.updated_at",
-	CreatedAt:                "item_sales.created_at",
+	ID:                  "item_sales.id",
+	ItemType:            "item_sales.item_type",
+	FactionID:           "item_sales.faction_id",
+	ItemID:              "item_sales.item_id",
+	ListingFeeTXID:      "item_sales.listing_fee_tx_id",
+	OwnerID:             "item_sales.owner_id",
+	Auction:             "item_sales.auction",
+	AuctionCurrentPrice: "item_sales.auction_current_price",
+	AuctionReversePrice: "item_sales.auction_reverse_price",
+	Buyout:              "item_sales.buyout",
+	BuyoutPrice:         "item_sales.buyout_price",
+	DutchAuction:        "item_sales.dutch_auction",
+	DutchActionDropRate: "item_sales.dutch_action_drop_rate",
+	SoldAt:              "item_sales.sold_at",
+	SoldFor:             "item_sales.sold_for",
+	SoldTXID:            "item_sales.sold_tx_id",
+	DeletedAt:           "item_sales.deleted_at",
+	UpdatedAt:           "item_sales.updated_at",
+	CreatedAt:           "item_sales.created_at",
 }
 
 // Generated where
 
 var ItemSaleWhere = struct {
-	ID                       whereHelperstring
-	ItemType                 whereHelperstring
-	FactionID                whereHelperstring
-	ItemID                   whereHelperstring
-	ListingFeeTXID           whereHelperstring
-	OwnerID                  whereHelperstring
-	Auction                  whereHelperbool
-	AuctionCurrentPrice      whereHelpernull_String
-	AuctionReversePrice      whereHelpernull_String
-	Buyout                   whereHelperbool
-	BuyoutPrice              whereHelpernull_String
-	DutchAuction             whereHelperbool
-	DutchActionRate          whereHelpernull_Int
-	DutchActionNextPriceDrop whereHelpernull_Int
-	SoldAt                   whereHelpernull_Time
-	SoldFor                  whereHelpernull_String
-	SoldTXID                 whereHelpernull_String
-	DeletedAt                whereHelpernull_Time
-	UpdatedAt                whereHelpertime_Time
-	CreatedAt                whereHelpertime_Time
+	ID                  whereHelperstring
+	ItemType            whereHelperstring
+	FactionID           whereHelperstring
+	ItemID              whereHelperstring
+	ListingFeeTXID      whereHelperstring
+	OwnerID             whereHelperstring
+	Auction             whereHelperbool
+	AuctionCurrentPrice whereHelpernull_String
+	AuctionReversePrice whereHelpernull_String
+	Buyout              whereHelperbool
+	BuyoutPrice         whereHelpernull_String
+	DutchAuction        whereHelperbool
+	DutchActionDropRate whereHelpernull_String
+	SoldAt              whereHelpernull_Time
+	SoldFor             whereHelpernull_String
+	SoldTXID            whereHelpernull_String
+	DeletedAt           whereHelpernull_Time
+	UpdatedAt           whereHelpertime_Time
+	CreatedAt           whereHelpertime_Time
 }{
-	ID:                       whereHelperstring{field: "\"item_sales\".\"id\""},
-	ItemType:                 whereHelperstring{field: "\"item_sales\".\"item_type\""},
-	FactionID:                whereHelperstring{field: "\"item_sales\".\"faction_id\""},
-	ItemID:                   whereHelperstring{field: "\"item_sales\".\"item_id\""},
-	ListingFeeTXID:           whereHelperstring{field: "\"item_sales\".\"listing_fee_tx_id\""},
-	OwnerID:                  whereHelperstring{field: "\"item_sales\".\"owner_id\""},
-	Auction:                  whereHelperbool{field: "\"item_sales\".\"auction\""},
-	AuctionCurrentPrice:      whereHelpernull_String{field: "\"item_sales\".\"auction_current_price\""},
-	AuctionReversePrice:      whereHelpernull_String{field: "\"item_sales\".\"auction_reverse_price\""},
-	Buyout:                   whereHelperbool{field: "\"item_sales\".\"buyout\""},
-	BuyoutPrice:              whereHelpernull_String{field: "\"item_sales\".\"buyout_price\""},
-	DutchAuction:             whereHelperbool{field: "\"item_sales\".\"dutch_auction\""},
-	DutchActionRate:          whereHelpernull_Int{field: "\"item_sales\".\"dutch_action_rate\""},
-	DutchActionNextPriceDrop: whereHelpernull_Int{field: "\"item_sales\".\"dutch_action_next_price_drop\""},
-	SoldAt:                   whereHelpernull_Time{field: "\"item_sales\".\"sold_at\""},
-	SoldFor:                  whereHelpernull_String{field: "\"item_sales\".\"sold_for\""},
-	SoldTXID:                 whereHelpernull_String{field: "\"item_sales\".\"sold_tx_id\""},
-	DeletedAt:                whereHelpernull_Time{field: "\"item_sales\".\"deleted_at\""},
-	UpdatedAt:                whereHelpertime_Time{field: "\"item_sales\".\"updated_at\""},
-	CreatedAt:                whereHelpertime_Time{field: "\"item_sales\".\"created_at\""},
+	ID:                  whereHelperstring{field: "\"item_sales\".\"id\""},
+	ItemType:            whereHelperstring{field: "\"item_sales\".\"item_type\""},
+	FactionID:           whereHelperstring{field: "\"item_sales\".\"faction_id\""},
+	ItemID:              whereHelperstring{field: "\"item_sales\".\"item_id\""},
+	ListingFeeTXID:      whereHelperstring{field: "\"item_sales\".\"listing_fee_tx_id\""},
+	OwnerID:             whereHelperstring{field: "\"item_sales\".\"owner_id\""},
+	Auction:             whereHelperbool{field: "\"item_sales\".\"auction\""},
+	AuctionCurrentPrice: whereHelpernull_String{field: "\"item_sales\".\"auction_current_price\""},
+	AuctionReversePrice: whereHelpernull_String{field: "\"item_sales\".\"auction_reverse_price\""},
+	Buyout:              whereHelperbool{field: "\"item_sales\".\"buyout\""},
+	BuyoutPrice:         whereHelpernull_String{field: "\"item_sales\".\"buyout_price\""},
+	DutchAuction:        whereHelperbool{field: "\"item_sales\".\"dutch_auction\""},
+	DutchActionDropRate: whereHelpernull_String{field: "\"item_sales\".\"dutch_action_drop_rate\""},
+	SoldAt:              whereHelpernull_Time{field: "\"item_sales\".\"sold_at\""},
+	SoldFor:             whereHelpernull_String{field: "\"item_sales\".\"sold_for\""},
+	SoldTXID:            whereHelpernull_String{field: "\"item_sales\".\"sold_tx_id\""},
+	DeletedAt:           whereHelpernull_Time{field: "\"item_sales\".\"deleted_at\""},
+	UpdatedAt:           whereHelpertime_Time{field: "\"item_sales\".\"updated_at\""},
+	CreatedAt:           whereHelpertime_Time{field: "\"item_sales\".\"created_at\""},
 }
 
 // ItemSaleRels is where relationship names are stored.
@@ -212,9 +205,9 @@ func (*itemSaleR) NewStruct() *itemSaleR {
 type itemSaleL struct{}
 
 var (
-	itemSaleAllColumns            = []string{"id", "item_type", "faction_id", "item_id", "listing_fee_tx_id", "owner_id", "auction", "auction_current_price", "auction_reverse_price", "buyout", "buyout_price", "dutch_auction", "dutch_action_rate", "dutch_action_next_price_drop", "sold_at", "sold_for", "sold_tx_id", "deleted_at", "updated_at", "created_at"}
+	itemSaleAllColumns            = []string{"id", "item_type", "faction_id", "item_id", "listing_fee_tx_id", "owner_id", "auction", "auction_current_price", "auction_reverse_price", "buyout", "buyout_price", "dutch_auction", "dutch_action_drop_rate", "sold_at", "sold_for", "sold_tx_id", "deleted_at", "updated_at", "created_at"}
 	itemSaleColumnsWithoutDefault = []string{"item_type", "faction_id", "item_id", "listing_fee_tx_id", "owner_id"}
-	itemSaleColumnsWithDefault    = []string{"id", "auction", "auction_current_price", "auction_reverse_price", "buyout", "buyout_price", "dutch_auction", "dutch_action_rate", "dutch_action_next_price_drop", "sold_at", "sold_for", "sold_tx_id", "deleted_at", "updated_at", "created_at"}
+	itemSaleColumnsWithDefault    = []string{"id", "auction", "auction_current_price", "auction_reverse_price", "buyout", "buyout_price", "dutch_auction", "dutch_action_drop_rate", "sold_at", "sold_for", "sold_tx_id", "deleted_at", "updated_at", "created_at"}
 	itemSalePrimaryKeyColumns     = []string{"id"}
 	itemSaleGeneratedColumns      = []string{}
 )

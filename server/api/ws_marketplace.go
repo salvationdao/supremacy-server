@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"server"
-	"server/battle"
 	"server/db"
+	"server/db/boiler"
+	"server/gamedb"
 	"server/gamelog"
 	"server/rpcclient"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/shopspring/decimal"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 // MarketplaceController holds handlers for marketplace
@@ -64,10 +66,11 @@ const HubKeyMarketplaceSalesCreate hub.HubCommandKey = "MARKETPLACE:SALES:CREATE
 type MarketplaceSalesCreateRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		SaleType    server.MarketplaceSaleType `json:"sale_type"`
-		ItemType    server.MarketplaceItemType `json:"item_type"`
-		ItemID      uuid.UUID                  `json:"item_id"`
-		AskingPrice *decimal.Decimal           `json:"asking_price"`
+		SaleType             server.MarketplaceSaleType `json:"sale_type"`
+		ItemType             server.MarketplaceItemType `json:"item_type"`
+		ItemID               uuid.UUID                  `json:"item_id"`
+		AskingPrice          *decimal.Decimal           `json:"asking_price"`
+		DutchAuctionDropRate *decimal.Decimal           `json:"dutch_auction_drop_rate"`
 	} `json:"payload"`
 }
 
@@ -78,6 +81,7 @@ type MarketplaceSalesCreateResponse struct {
 }
 
 func (fc *MarketplaceController) SalesCreateHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	errMsg := "Issue processing list sale item, try again or contact support."
 	req := &MarketplaceSalesCreateRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -88,6 +92,32 @@ func (fc *MarketplaceController) SalesCreateHandler(ctx context.Context, hubc *h
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to get player requesting to sell item")
 		return terror.Error(err)
+	}
+
+	user, err := boiler.Players(
+		qm.Select(
+			boiler.PlayerColumns.FactionID,
+		),
+		boiler.PlayerWhere.ID.EQ(hubc.Identifier()),
+		boiler.PlayerWhere.FactionID.IsNotNull(),
+	).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().
+			Str("user_id", hubc.Identifier()).
+			Err(err).
+			Msg("Unable to load player's faction")
+		return terror.Error(err, errMsg)
+	}
+
+	factionAccountID, ok := server.FactionUsers[user.FactionID.String]
+	if !ok {
+		err = fmt.Errorf("failed to get hard coded syndicate player id")
+		gamelog.L.Error().
+			Str("player_id", hubc.Identifier()).
+			Str("faction_id", user.FactionID.String).
+			Err(err).
+			Msg("unable to get hard coded syndicate player ID from faction ID")
+		return terror.Error(err, errMsg)
 	}
 
 	balance := fc.API.Passport.UserBalanceGet(userID)
@@ -113,7 +143,7 @@ func (fc *MarketplaceController) SalesCreateHandler(ctx context.Context, hubc *h
 	// pay sup
 	txid, err := fc.API.Passport.SpendSupMessage(rpcclient.SpendSupsReq{
 		FromUserID:           userID,
-		ToUserID:             battle.SupremacyUserID,
+		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
 		Amount:               feePrice.String(),
 		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_fee|%s|%s|%s|%d", req.Payload.SaleType, req.Payload.ItemType, req.Payload.ItemID.String(), time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupMarketplace),
@@ -135,7 +165,7 @@ func (fc *MarketplaceController) SalesCreateHandler(ctx context.Context, hubc *h
 	}
 
 	// Create Sales Item
-	obj, err := db.MarketplaceSaleCreate(req.Payload.SaleType, req.Payload.ItemType, txid, req.Payload.ItemID, req.Payload.AskingPrice)
+	obj, err := db.MarketplaceSaleCreate(req.Payload.SaleType, req.Payload.ItemType, txid, req.Payload.ItemID, req.Payload.AskingPrice, req.Payload.DutchAuctionDropRate)
 	if err != nil {
 		return terror.Error(err, "Unable to create new sale item.")
 	}
