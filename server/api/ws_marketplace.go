@@ -183,6 +183,7 @@ func (fc *MarketplaceController) SalesCreateHandler(ctx context.Context, hubc *h
 	// Create Sales Item
 	obj, err := db.MarketplaceSaleCreate(req.Payload.SaleType, userID, factionID, txid, req.Payload.ItemType, req.Payload.ItemID, req.Payload.AskingPrice, req.Payload.DutchAuctionDropRate)
 	if err != nil {
+		fc.API.Passport.RefundSupsMessage(txid)
 		return terror.Error(err, "Unable to create new sale item.")
 	}
 
