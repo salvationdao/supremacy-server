@@ -196,6 +196,8 @@ func DefaultMechs() ([]*server.MechContainer, error) {
 	return Mechs(ids...)
 }
 
+var ErrNotAllMechsReturned = fmt.Errorf("not all mechs returned")
+
 func Mechs(mechIDs ...uuid.UUID) ([]*server.MechContainer, error) {
 	if len(mechIDs) == 0 {
 		return nil, errors.New("no mech ids provided")
@@ -286,6 +288,10 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.MechContainer, error) {
 		}
 		mcs[i] = mc
 		i++
+	}
+
+	if len(mcs) < len(mechIDs) {
+		return mcs, ErrNotAllMechsReturned
 	}
 
 	return mcs, err
