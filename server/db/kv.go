@@ -12,6 +12,12 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
+const SaleAbilityPriceTickerIntervalSeconds KVKey = "sale_ability_price_ticker_interval_seconds"
+const SaleAbilityReductionPercentage KVKey = "sale_ability_reduction_percentage"
+const SaleAbilityFloorPrice KVKey = "sale_ability_floor_price"
+const SaleAbilityLimit KVKey = "sale_ability_limit"
+const SaleAbilityInflationPercentage KVKey = "sale_ability_inflation_percentage"
+
 type KVKey string
 
 // Default contributor formula https://www.desmos.com/calculator/vbfa5llasg
