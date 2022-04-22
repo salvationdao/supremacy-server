@@ -18,19 +18,22 @@ func MarketplaceSaleList(search string, archived bool, filter *ListFilterRequest
 }
 
 // MarketplaceSaleCreate inserts a new sale item.
-func MarketplaceSaleCreate(saleType server.MarketplaceSaleType, itemType server.MarketplaceItemType, itemID uuid.UUID, price *decimal.Decimal) (*boiler.ItemSale, error) {
+func MarketplaceSaleCreate(saleType server.MarketplaceSaleType, itemType server.MarketplaceItemType, listFeeTxnID string, itemID uuid.UUID, askingPrice *decimal.Decimal) (*boiler.ItemSale, error) {
 	obj := &boiler.ItemSale{
-		ItemType: string(itemType),
-		ItemID:   itemID.String(),
+		ListingFeeTXID: listFeeTxnID,
+		ItemType:       string(itemType),
+		ItemID:         itemID.String(),
 	}
 	switch saleType {
 	case server.MarketplaceSaleTypeBuyout:
 		obj.Buyout = true
-		obj.BuyoutPrice = null.StringFrom(price.String())
+		obj.BuyoutPrice = null.StringFrom(askingPrice.String())
 	case server.MarketplaceSaleTypeAuction:
 		obj.Auction = true
+		obj.AuctionCurrentPrice = null.StringFrom(askingPrice.String())
 	case server.MarketplaceSaleTypeDutchAuction:
 		obj.DutchAuction = true
+		obj.BuyoutPrice = null.StringFrom(askingPrice.String())
 	}
 	err := obj.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {

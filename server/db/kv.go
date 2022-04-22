@@ -24,6 +24,11 @@ const KeyContributorMinMultiplier KVKey = "contributor_min_multiplier"
 const KeyContributorDecayMultiplier KVKey = "contributor_decay_multiplier"
 const KeyContributorSharpnessMultiplier KVKey = "contributor_sharpness_multiplier"
 
+// Marketplace Fees
+const KeyMarketplaceListingFee KVKey = "marketplace_listing_fee"
+const KeyMarketplaceListingBuyoutFee KVKey = "marketplace_listing_buyout_fee"
+const KeyMarketplaceSaleCutPercentage KVKey = "marketplace_sale_cut_percentage"
+
 func get(key KVKey) string {
 	exists, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).Exists(gamedb.StdConn)
 	if err != nil {
