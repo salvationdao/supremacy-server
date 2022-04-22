@@ -12,11 +12,14 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/helpers"
 	"server/rpcclient"
 	"server/telegram"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	"go.uber.org/atomic"
 
@@ -252,13 +255,40 @@ func (arena *Arena) Message(cmd string, payload interface{}) {
 	arena.socket.Write(ctx, websocket.MessageBinary, b)
 }
 
-func (btl *Battle) DefaultMechs() error {
+func (btl *Battle) QueueDefaultMechs() error {
 	defMechs, err := db.DefaultMechs()
 	if err != nil {
 		return err
 	}
 
-	btl.WarMachines = btl.MechsToWarMachines(defMechs)
+	var req QueueJoinRequest
+	ctx := context.Background()
+	var reply hub.ReplyFunc = func(_ interface{}) {}
+	for _, mech := range defMechs {
+		mech.Name = helpers.GenerateStupidName()
+		_, _ = mech.Update(gamedb.StdConn, boil.Whitelist(boiler.MechColumns.Label))
+		req = QueueJoinRequest{
+			HubCommandRequest: nil,
+			Payload: struct {
+				AssetHash                   string `json:"asset_hash"`
+				NeedInsured                 bool   `json:"need_insured"`
+				EnablePushNotifications     bool   `json:"enable_push_notifications,omitempty"`
+				MobileNumber                string `json:"mobile_number,omitempty"`
+				EnableTelegramNotifications bool   `json:"enable_telegram_notifications"`
+			}{
+				AssetHash:                   mech.Hash,
+				NeedInsured:                 false,
+				EnableTelegramNotifications: false,
+				MobileNumber:                "",
+				EnablePushNotifications:     false,
+			},
+		}
+
+		b, _ := json.Marshal(req)
+
+		btl.arena.QueueJoinHandler(ctx, nil, b, uuid.FromStringOrNil(mech.FactionID), reply)
+	}
+
 	return nil
 }
 
