@@ -18,8 +18,10 @@ func MarketplaceSaleList(search string, archived bool, filter *ListFilterRequest
 }
 
 // MarketplaceSaleCreate inserts a new sale item.
-func MarketplaceSaleCreate(saleType server.MarketplaceSaleType, itemType server.MarketplaceItemType, listFeeTxnID string, itemID uuid.UUID, askingPrice *decimal.Decimal, dutchOptionDropRate *decimal.Decimal) (*boiler.ItemSale, error) {
+func MarketplaceSaleCreate(saleType server.MarketplaceSaleType, ownerID uuid.UUID, factionID uuid.UUID, listFeeTxnID string, itemType server.MarketplaceItemType, itemID uuid.UUID, askingPrice *decimal.Decimal, dutchOptionDropRate *decimal.Decimal) (*boiler.ItemSale, error) {
 	obj := &boiler.ItemSale{
+		OwnerID:        ownerID.String(),
+		FactionID:      factionID.String(),
 		ListingFeeTXID: listFeeTxnID,
 		ItemType:       string(itemType),
 		ItemID:         itemID.String(),

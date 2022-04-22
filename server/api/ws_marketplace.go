@@ -108,6 +108,22 @@ func (fc *MarketplaceController) SalesCreateHandler(ctx context.Context, hubc *h
 			Msg("Unable to load player's faction")
 		return terror.Error(err, errMsg)
 	}
+	if user.FactionID.IsZero() {
+		err := fmt.Errorf("player is not enlisted in a faction")
+		gamelog.L.Error().
+			Str("user_id", hubc.Identifier()).
+			Err(err).
+			Msg("Player is not in a faction")
+		return terror.Error(err, "You are not enlisted in a faction.")
+	}
+	factionID, err := uuid.FromString(user.FactionID.String)
+	if err != nil {
+		gamelog.L.Error().
+			Str("user_id", hubc.Identifier()).
+			Err(err).
+			Msg("Player is not in a faction")
+		return terror.Error(err, errMsg)
+	}
 
 	factionAccountID, ok := server.FactionUsers[user.FactionID.String]
 	if !ok {
@@ -165,7 +181,7 @@ func (fc *MarketplaceController) SalesCreateHandler(ctx context.Context, hubc *h
 	}
 
 	// Create Sales Item
-	obj, err := db.MarketplaceSaleCreate(req.Payload.SaleType, req.Payload.ItemType, txid, req.Payload.ItemID, req.Payload.AskingPrice, req.Payload.DutchAuctionDropRate)
+	obj, err := db.MarketplaceSaleCreate(req.Payload.SaleType, userID, factionID, txid, req.Payload.ItemType, req.Payload.ItemID, req.Payload.AskingPrice, req.Payload.DutchAuctionDropRate)
 	if err != nil {
 		return terror.Error(err, "Unable to create new sale item.")
 	}
