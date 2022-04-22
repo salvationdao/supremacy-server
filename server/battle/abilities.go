@@ -34,9 +34,9 @@ import (
 //*******************************
 
 var MinVotePercentageCost = map[string]decimal.Decimal{
-	"0.01": decimal.NewFromFloat(0.0001).Mul(decimal.New(1, 18)),
-	"0.1":  decimal.NewFromFloat(0.001).Mul(decimal.New(1, 18)),
-	"1":    decimal.NewFromFloat(0.01).Mul(decimal.New(1, 18)),
+	"0.01": decimal.NewFromFloat(0.01).Mul(decimal.New(1, 18)),
+	"0.1":  decimal.NewFromFloat(0.1).Mul(decimal.New(1, 18)),
+	"1":    decimal.NewFromFloat(1).Mul(decimal.New(1, 18)),
 }
 
 //******************************
