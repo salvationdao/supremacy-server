@@ -183,12 +183,11 @@ type AbilitiesListResponse struct {
 type PlayerAbilitiesListRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		SortDir  db.SortByDir           `json:"sort_dir"`
-		SortBy   db.PlayerAbilityColumn `json:"sort_by"`
-		Filter   *db.ListFilterRequest  `json:"filter,omitempty"`
-		Search   string                 `json:"search"`
-		PageSize int                    `json:"page_size"`
-		Page     int                    `json:"page"`
+		Search   string                `json:"search"`
+		Filter   *db.ListFilterRequest `json:"filter"`
+		Sort     *db.ListSortRequest   `json:"sort"`
+		PageSize int                   `json:"page_size"`
+		Page     int                   `json:"page"`
 	} `json:"payload"`
 }
 
@@ -204,7 +203,7 @@ func (pac *PlayerAbilitiesControllerWS) PlayerAbilitiesListHandler(ctx context.C
 		offset = req.Payload.Page * req.Payload.PageSize
 	}
 
-	total, pIDs, err := db.PlayerAbilitiesList(ctx, gamedb.Conn, req.Payload.Search, req.Payload.Filter, offset, req.Payload.PageSize, req.Payload.SortBy, req.Payload.SortDir)
+	total, pIDs, err := db.PlayerAbilitiesList(ctx, gamedb.Conn, req.Payload.Search, req.Payload.Filter, req.Payload.Sort, offset, req.Payload.PageSize)
 	if err != nil {
 		gamelog.L.Error().
 			Str("db func", "PlayerAbilitiesList").Err(err).Interface("arguments", req.Payload).Msg("unable to get list of player abilities")
@@ -221,12 +220,11 @@ func (pac *PlayerAbilitiesControllerWS) PlayerAbilitiesListHandler(ctx context.C
 type SaleAbilitiesListRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		SortDir  db.SortByDir               `json:"sort_dir"`
-		SortBy   db.SalePlayerAbilityColumn `json:"sort_by"`
-		Filter   *db.ListFilterRequest      `json:"filter,omitempty"`
-		Search   string                     `json:"search"`
-		PageSize int                        `json:"page_size"`
-		Page     int                        `json:"page"`
+		Search   string                `json:"search"`
+		Filter   *db.ListFilterRequest `json:"filter"`
+		Sort     *db.ListSortRequest   `json:"sort"`
+		PageSize int                   `json:"page_size"`
+		Page     int                   `json:"page"`
 	} `json:"payload"`
 }
 
@@ -242,7 +240,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilitiesListHandler(ctx context.Con
 		offset = req.Payload.Page * req.Payload.PageSize
 	}
 
-	total, sIDs, err := db.SaleAbilitiesList(ctx, gamedb.Conn, req.Payload.Search, req.Payload.Filter, offset, req.Payload.PageSize, req.Payload.SortBy, req.Payload.SortDir)
+	total, sIDs, err := db.SaleAbilitiesList(ctx, gamedb.Conn, req.Payload.Search, req.Payload.Filter, req.Payload.Sort, offset, req.Payload.PageSize)
 	if err != nil {
 		gamelog.L.Error().
 			Str("db func", "SaleAbilitiesList").Err(err).Interface("arguments", req.Payload).Msg("unable to get list of sale abilities")

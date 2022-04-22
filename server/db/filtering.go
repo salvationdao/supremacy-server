@@ -48,35 +48,34 @@ type ListFilterRequest struct {
 
 // ListFilterRequestItem contains instructions on filtering
 type ListFilterRequestItem struct {
-	Table    string            `json:"table"`
+	Table    *string           `json:"table"`
 	Column   string            `json:"column"`
 	Operator OperatorValueType `json:"operator"`
 	Value    string            `json:"value"`
 }
 
-func GenerateListFilterQueryMod(table, column, value string, operator OperatorValueType, index int, linkOperator LinkOperatorType) qm.QueryMod {
-	checkValue := value
-	checkColumn := column
-	if table != "" {
-		checkColumn = fmt.Sprintf("%s.%s", table, column)
+func GenerateListFilterQueryMod(filterItem ListFilterRequestItem, index int, linkOperator LinkOperatorType) qm.QueryMod {
+	checkValue := filterItem.Value
+	checkColumn := filterItem.Column
+	if filterItem.Table != nil && *filterItem.Table != "" {
+		checkColumn = fmt.Sprintf("%s.%s", *filterItem.Table, filterItem.Column)
 	}
+	condition := fmt.Sprintf("%s %s ?", checkColumn, filterItem.Operator)
 
-	condition := fmt.Sprintf("%s %s ?", checkColumn, operator)
-
-	switch operator {
+	switch filterItem.Operator {
 	case OperatorValueTypeContains, OperatorValueTypeStartsWith, OperatorValueTypeEndsWith:
-		switch operator {
+		switch filterItem.Operator {
 		case OperatorValueTypeContains:
-			checkValue = "%" + value + "%"
+			checkValue = "%" + filterItem.Value + "%"
 		case OperatorValueTypeStartsWith:
-			checkValue = value + "%"
+			checkValue = filterItem.Value + "%"
 		case OperatorValueTypeEndsWith:
-			checkValue = "%" + value
+			checkValue = "%" + filterItem.Value
 		}
 		break
 	}
 
-	switch operator {
+	switch filterItem.Operator {
 	case OperatorValueTypeIsNull:
 		condition = fmt.Sprintf("%s IS NULL", checkColumn)
 		break
