@@ -225,6 +225,19 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 			Msg("unable to get hard coded syndicate player ID from faction ID")
 	}
 
+	if ownerID.String() == factionAccountID {
+		err = tx.Commit()
+		if err != nil {
+			gamelog.L.Error().
+				Str("mech ID", mech.ID).
+				Str("faction ID", factionID.String()).
+				Err(err).
+				Msg("unable to save battle queue join for faction owned mech")
+			return err
+		}
+		return nil
+	}
+
 	// Charge user queue fee
 	supTransactionID, err := arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
 		Amount:               queueStatus.QueueCost.String(),
