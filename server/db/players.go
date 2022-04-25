@@ -226,18 +226,18 @@ func UserStatCreate(playerID string) (*boiler.UserStat, error) {
 	return userStat, nil
 }
 
-func PlayerFactionContributionList(battleID string, factionID string) ([]uuid.UUID, error) {
+func PlayerFactionContributionList(battleID string, factionID string, abilityOfferingID string) ([]uuid.UUID, error) {
 	playerList := []uuid.UUID{}
 	q := `
 		select bc.player_id from battle_contributions bc 
-			where bc.battle_id = $1 and bc.faction_id = $2
+			where bc.battle_id = $1 and bc.faction_id = $2 and bc.ability_offering_id = $3
 			group by player_id
 		order by sum(amount) desc 
 	`
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
 	defer cancel()
 
-	result, err := gamedb.Conn.Query(ctx, q, battleID, factionID)
+	result, err := gamedb.Conn.Query(ctx, q, battleID, factionID, abilityOfferingID)
 	if err != nil {
 		gamelog.L.Error().Str("battle_id", battleID).Str("faction_id", factionID).Err(err).Msg("failed to get player list from db")
 		return []uuid.UUID{}, err

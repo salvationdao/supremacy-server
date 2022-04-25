@@ -13,10 +13,9 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/player_abilities"
 	"server/rpcclient"
 	"time"
-
-	"github.com/rs/zerolog"
 
 	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/go-chi/chi"
@@ -33,6 +32,7 @@ import (
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/pemistahl/lingua-go"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/rs/zerolog"
 	"github.com/sasha-s/go-deadlock"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -90,6 +90,8 @@ type API struct {
 	Telegram         server.Telegram
 	LanguageDetector lingua.LanguageDetector
 
+	PlayerAbilitiesSystem *player_abilities.PlayerAbilitiesSystem
+
 	// ring check auth
 	RingCheckAuthMap *RingCheckAuthMap
 
@@ -135,6 +137,8 @@ func NewAPI(
 		SMS:              sms,
 		Telegram:         telegram,
 		LanguageDetector: languageDetector,
+
+		PlayerAbilitiesSystem: player_abilities.NewPlayerAbilitiesSystem(messageBus),
 
 		FactionPunishVote:    make(map[string]*PunishVoteTracker),
 		FactionActivePlayers: make(map[string]*ActivePlayers),

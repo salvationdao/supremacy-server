@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
-	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -23,15 +22,15 @@ import (
 
 // BlueprintPlayerAbility is an object representing the database table.
 type BlueprintPlayerAbility struct {
-	ID                  string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	GameClientAbilityID int         `boiler:"game_client_ability_id" boil:"game_client_ability_id" json:"game_client_ability_id" toml:"game_client_ability_id" yaml:"game_client_ability_id"`
-	Label               string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	Colour              string      `boiler:"colour" boil:"colour" json:"colour" toml:"colour" yaml:"colour"`
-	ImageURL            string      `boiler:"image_url" boil:"image_url" json:"image_url" toml:"image_url" yaml:"image_url"`
-	Description         string      `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
-	TextColour          string      `boiler:"text_colour" boil:"text_colour" json:"text_colour" toml:"text_colour" yaml:"text_colour"`
-	Type                null.String `boiler:"type" boil:"type" json:"type,omitempty" toml:"type" yaml:"type,omitempty"`
-	CreatedAt           time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ID                  string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	GameClientAbilityID int       `boiler:"game_client_ability_id" boil:"game_client_ability_id" json:"game_client_ability_id" toml:"game_client_ability_id" yaml:"game_client_ability_id"`
+	Label               string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	Colour              string    `boiler:"colour" boil:"colour" json:"colour" toml:"colour" yaml:"colour"`
+	ImageURL            string    `boiler:"image_url" boil:"image_url" json:"image_url" toml:"image_url" yaml:"image_url"`
+	Description         string    `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
+	TextColour          string    `boiler:"text_colour" boil:"text_colour" json:"text_colour" toml:"text_colour" yaml:"text_colour"`
+	LocationSelectType  string    `boiler:"location_select_type" boil:"location_select_type" json:"location_select_type" toml:"location_select_type" yaml:"location_select_type"`
+	CreatedAt           time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *blueprintPlayerAbilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintPlayerAbilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -45,7 +44,7 @@ var BlueprintPlayerAbilityColumns = struct {
 	ImageURL            string
 	Description         string
 	TextColour          string
-	Type                string
+	LocationSelectType  string
 	CreatedAt           string
 }{
 	ID:                  "id",
@@ -55,7 +54,7 @@ var BlueprintPlayerAbilityColumns = struct {
 	ImageURL:            "image_url",
 	Description:         "description",
 	TextColour:          "text_colour",
-	Type:                "type",
+	LocationSelectType:  "location_select_type",
 	CreatedAt:           "created_at",
 }
 
@@ -67,7 +66,7 @@ var BlueprintPlayerAbilityTableColumns = struct {
 	ImageURL            string
 	Description         string
 	TextColour          string
-	Type                string
+	LocationSelectType  string
 	CreatedAt           string
 }{
 	ID:                  "blueprint_player_abilities.id",
@@ -77,7 +76,7 @@ var BlueprintPlayerAbilityTableColumns = struct {
 	ImageURL:            "blueprint_player_abilities.image_url",
 	Description:         "blueprint_player_abilities.description",
 	TextColour:          "blueprint_player_abilities.text_colour",
-	Type:                "blueprint_player_abilities.type",
+	LocationSelectType:  "blueprint_player_abilities.location_select_type",
 	CreatedAt:           "blueprint_player_abilities.created_at",
 }
 
@@ -91,7 +90,7 @@ var BlueprintPlayerAbilityWhere = struct {
 	ImageURL            whereHelperstring
 	Description         whereHelperstring
 	TextColour          whereHelperstring
-	Type                whereHelpernull_String
+	LocationSelectType  whereHelperstring
 	CreatedAt           whereHelpertime_Time
 }{
 	ID:                  whereHelperstring{field: "\"blueprint_player_abilities\".\"id\""},
@@ -101,7 +100,7 @@ var BlueprintPlayerAbilityWhere = struct {
 	ImageURL:            whereHelperstring{field: "\"blueprint_player_abilities\".\"image_url\""},
 	Description:         whereHelperstring{field: "\"blueprint_player_abilities\".\"description\""},
 	TextColour:          whereHelperstring{field: "\"blueprint_player_abilities\".\"text_colour\""},
-	Type:                whereHelpernull_String{field: "\"blueprint_player_abilities\".\"type\""},
+	LocationSelectType:  whereHelperstring{field: "\"blueprint_player_abilities\".\"location_select_type\""},
 	CreatedAt:           whereHelpertime_Time{field: "\"blueprint_player_abilities\".\"created_at\""},
 }
 
@@ -132,9 +131,9 @@ func (*blueprintPlayerAbilityR) NewStruct() *blueprintPlayerAbilityR {
 type blueprintPlayerAbilityL struct{}
 
 var (
-	blueprintPlayerAbilityAllColumns            = []string{"id", "game_client_ability_id", "label", "colour", "image_url", "description", "text_colour", "type", "created_at"}
-	blueprintPlayerAbilityColumnsWithoutDefault = []string{"game_client_ability_id", "label", "colour", "image_url", "description", "text_colour"}
-	blueprintPlayerAbilityColumnsWithDefault    = []string{"id", "type", "created_at"}
+	blueprintPlayerAbilityAllColumns            = []string{"id", "game_client_ability_id", "label", "colour", "image_url", "description", "text_colour", "location_select_type", "created_at"}
+	blueprintPlayerAbilityColumnsWithoutDefault = []string{"game_client_ability_id", "label", "colour", "image_url", "description", "text_colour", "location_select_type"}
+	blueprintPlayerAbilityColumnsWithDefault    = []string{"id", "created_at"}
 	blueprintPlayerAbilityPrimaryKeyColumns     = []string{"id"}
 	blueprintPlayerAbilityGeneratedColumns      = []string{}
 )

@@ -37,6 +37,7 @@ type BattleContribution struct {
 	ProcessedAt         null.Time       `boiler:"processed_at" boil:"processed_at" json:"processed_at,omitempty" toml:"processed_at" yaml:"processed_at,omitempty"`
 	TransactionID       null.String     `boiler:"transaction_id" boil:"transaction_id" json:"transaction_id,omitempty" toml:"transaction_id" yaml:"transaction_id,omitempty"`
 	RefundTransactionID null.String     `boiler:"refund_transaction_id" boil:"refund_transaction_id" json:"refund_transaction_id,omitempty" toml:"refund_transaction_id" yaml:"refund_transaction_id,omitempty"`
+	MultiAmount         decimal.Decimal `boiler:"multi_amount" boil:"multi_amount" json:"multi_amount" toml:"multi_amount" yaml:"multi_amount"`
 
 	R *battleContributionR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleContributionL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -56,6 +57,7 @@ var BattleContributionColumns = struct {
 	ProcessedAt         string
 	TransactionID       string
 	RefundTransactionID string
+	MultiAmount         string
 }{
 	ID:                  "id",
 	BattleID:            "battle_id",
@@ -70,6 +72,7 @@ var BattleContributionColumns = struct {
 	ProcessedAt:         "processed_at",
 	TransactionID:       "transaction_id",
 	RefundTransactionID: "refund_transaction_id",
+	MultiAmount:         "multi_amount",
 }
 
 var BattleContributionTableColumns = struct {
@@ -86,6 +89,7 @@ var BattleContributionTableColumns = struct {
 	ProcessedAt         string
 	TransactionID       string
 	RefundTransactionID string
+	MultiAmount         string
 }{
 	ID:                  "battle_contributions.id",
 	BattleID:            "battle_contributions.battle_id",
@@ -100,6 +104,7 @@ var BattleContributionTableColumns = struct {
 	ProcessedAt:         "battle_contributions.processed_at",
 	TransactionID:       "battle_contributions.transaction_id",
 	RefundTransactionID: "battle_contributions.refund_transaction_id",
+	MultiAmount:         "battle_contributions.multi_amount",
 }
 
 // Generated where
@@ -142,6 +147,7 @@ var BattleContributionWhere = struct {
 	ProcessedAt         whereHelpernull_Time
 	TransactionID       whereHelpernull_String
 	RefundTransactionID whereHelpernull_String
+	MultiAmount         whereHelperdecimal_Decimal
 }{
 	ID:                  whereHelperstring{field: "\"battle_contributions\".\"id\""},
 	BattleID:            whereHelperstring{field: "\"battle_contributions\".\"battle_id\""},
@@ -156,6 +162,7 @@ var BattleContributionWhere = struct {
 	ProcessedAt:         whereHelpernull_Time{field: "\"battle_contributions\".\"processed_at\""},
 	TransactionID:       whereHelpernull_String{field: "\"battle_contributions\".\"transaction_id\""},
 	RefundTransactionID: whereHelpernull_String{field: "\"battle_contributions\".\"refund_transaction_id\""},
+	MultiAmount:         whereHelperdecimal_Decimal{field: "\"battle_contributions\".\"multi_amount\""},
 }
 
 // BattleContributionRels is where relationship names are stored.
@@ -185,9 +192,9 @@ func (*battleContributionR) NewStruct() *battleContributionR {
 type battleContributionL struct{}
 
 var (
-	battleContributionAllColumns            = []string{"id", "battle_id", "player_id", "ability_offering_id", "did_trigger", "faction_id", "ability_label", "is_all_syndicates", "amount", "contributed_at", "processed_at", "transaction_id", "refund_transaction_id"}
+	battleContributionAllColumns            = []string{"id", "battle_id", "player_id", "ability_offering_id", "did_trigger", "faction_id", "ability_label", "is_all_syndicates", "amount", "contributed_at", "processed_at", "transaction_id", "refund_transaction_id", "multi_amount"}
 	battleContributionColumnsWithoutDefault = []string{"battle_id", "player_id", "ability_offering_id", "faction_id", "ability_label", "amount"}
-	battleContributionColumnsWithDefault    = []string{"id", "did_trigger", "is_all_syndicates", "contributed_at", "processed_at", "transaction_id", "refund_transaction_id"}
+	battleContributionColumnsWithDefault    = []string{"id", "did_trigger", "is_all_syndicates", "contributed_at", "processed_at", "transaction_id", "refund_transaction_id", "multi_amount"}
 	battleContributionPrimaryKeyColumns     = []string{"id"}
 	battleContributionGeneratedColumns      = []string{}
 )
