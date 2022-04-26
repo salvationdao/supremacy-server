@@ -52,12 +52,34 @@ type MarketplaceSalesListRequest struct {
 	} `json:"payload"`
 }
 
+type MarketplaceSalesListResponse struct {
+	Total int64 `json:"total"`
+}
+
 func (fc *MarketplaceController) SalesListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &MarketplaceSalesListRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
 	}
+
+	offset := 0
+	if req.Payload.Page > 0 {
+		offset = req.Payload.Page * req.Payload.PageSize
+	}
+
+	total, _, err := db.MarketplaceSaleList(req.Payload.Search, req.Payload.Archived, req.Payload.Filter, offset, req.Payload.PageSize, req.Payload.SortBy, req.Payload.SortDir)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to get list of items for sale")
+		return terror.Error(err, "Failed to get list of items for sale")
+	}
+
+	// TODO: Figure out how to present this data
+	resp := &MarketplaceSalesListResponse{
+		Total: total,
+	}
+	reply(resp)
+
 	return nil
 }
 
@@ -91,7 +113,7 @@ func (fc *MarketplaceController) SalesCreateHandler(ctx context.Context, hubc *h
 	userID, err := uuid.FromString(hubc.Identifier())
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to get player requesting to sell item")
-		return terror.Error(err)
+		return terror.Error(err, errMsg)
 	}
 
 	user, err := boiler.Players(
