@@ -630,8 +630,6 @@ type WarMachineAbilitiesUpdatedRequest struct {
 	} `json:"payload"`
 }
 
-// TODO: refactor this to become a fetch instead of a subscription
-
 // WarMachineAbilitiesUpdateSubscribeHandler subscribe on war machine abilities
 func (arena *Arena) WarMachineAbilitiesUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	gamelog.L.Info().Str("fn", "WarMachineAbilitiesUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
@@ -868,6 +866,11 @@ type BattleStartPayload struct {
 	ClientBuildNo string `json:"clientBuildNo"`
 }
 
+type MapDetailsPayload struct {
+	Details  server.GameMap `json:"details"`
+	BattleID string         `json:"battleID"`
+}
+
 type BattleEndPayload struct {
 	WinningWarMachines []struct {
 		Hash   string `json:"hash"`
@@ -940,6 +943,16 @@ func (arena *Arena) start() {
 			gamelog.L.Info().Str("game_client_data", string(data)).Int("message_type", int(mt)).Msg("game client message")
 
 			switch msg.BattleCommand {
+			case "BATTLE:MAP_DETAILS":
+				var dataPayload *MapDetailsPayload
+				if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
+					gamelog.L.Warn().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal battle message payload")
+					continue
+				}
+
+				// update map detail
+				btl.storeGameMap(dataPayload.Details)
+
 			case "BATTLE:START":
 				var dataPayload *BattleStartPayload
 				if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
@@ -1006,18 +1019,8 @@ func (arena *Arena) beginBattle() {
 	}
 
 	gameMap := &server.GameMap{
-		ID:            uuid.Must(uuid.FromString(gm.ID)),
-		Name:          gm.Name,
-		ImageUrl:      gm.ImageURL,
-		MaxSpawns:     gm.MaxSpawns,
-		Width:         gm.Width,
-		Height:        gm.Height,
-		CellsX:        gm.CellsX,
-		CellsY:        gm.CellsY,
-		TopPixels:     gm.TopPixels,
-		LeftPixels:    gm.LeftPixels,
-		Scale:         gm.Scale,
-		DisabledCells: gm.DisabledCells,
+		ID:   uuid.Must(uuid.FromString(gm.ID)),
+		Name: gm.Name,
 	}
 
 	var battleID string

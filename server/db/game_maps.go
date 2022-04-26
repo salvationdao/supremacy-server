@@ -70,27 +70,39 @@ func GameMapCreate(ctx context.Context, conn Conn, gameMap *server.GameMap) erro
 
 // GameMapGetRandom return a game map by given id
 func GameMapGetRandom(allowLastMap bool) (*boiler.GameMap, error) {
-	lastBattle, err := boiler.Battles(
-		boiler.BattleWhere.EndedAt.IsNotNull(),
-		qm.OrderBy("ended_at desc"),
-	).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return nil, terror.Error(err)
+	mapQueries := []qm.QueryMod{
+		qm.Select(
+			boiler.GameMapColumns.ID,
+			boiler.GameMapColumns.Name,
+		),
 	}
-	maps, err := boiler.GameMaps().All(gamedb.StdConn)
+
+	if !allowLastMap {
+		lastBattle, err := boiler.Battles(
+			qm.Select(
+				boiler.BattleColumns.ID,
+				boiler.BattleColumns.GameMapID,
+			),
+			boiler.BattleWhere.EndedAt.IsNotNull(),
+			qm.OrderBy("ended_at desc"),
+		).One(gamedb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return nil, terror.Error(err)
+		}
+
+		if lastBattle != nil {
+			mapQueries = append(mapQueries, boiler.GameMapWhere.ID.NEQ(lastBattle.GameMapID))
+		}
+	}
+
+	maps, err := boiler.GameMaps(mapQueries...).All(gamedb.StdConn)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
 
 	rand.Seed(time.Now().UnixNano())
-	gameMap := maps[rand.Intn(len(maps))]
 
-	if !allowLastMap && lastBattle != nil {
-		for gameMap.ID == lastBattle.GameMapID {
-			rand.Seed(time.Now().UnixNano())
-			gameMap = maps[rand.Intn(len(maps))]
-		}
-	}
+	gameMap := maps[rand.Intn(len(maps))]
 
 	return gameMap, nil
 }
