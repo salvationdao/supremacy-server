@@ -84,10 +84,28 @@ func (btl *Battle) storeAbilities(as *AbilitiesSystem) {
 	btl._abilities = as
 }
 
+// storeGameMap set the game map detail from game client
+func (btl *Battle) storeGameMap(gm server.GameMap) {
+	btl.Lock()
+	defer btl.Unlock()
+
+	btl.gameMap.ImageUrl = gm.ImageUrl
+	btl.gameMap.Width = gm.Width
+	btl.gameMap.Height = gm.Height
+	btl.gameMap.CellsX = gm.CellsX
+	btl.gameMap.CellsY = gm.CellsY
+	btl.gameMap.LeftPixels = gm.LeftPixels
+	btl.gameMap.TopPixels = gm.TopPixels
+	btl.gameMap.DisabledCells = gm.DisabledCells
+}
+
 const HubKeyLiveVoteCountUpdated hub.HubCommandKey = "LIVE:VOTE:COUNT:UPDATED"
 const HubKeyWarMachineLocationUpdated hub.HubCommandKey = "WAR:MACHINE:LOCATION:UPDATED"
 
 func (btl *Battle) preIntro(payload *BattleStartPayload) error {
+	btl.Lock()
+	defer btl.Unlock()
+
 	bmd := make([]*db.BattleMechData, len(btl.WarMachines))
 	factions := map[uuid.UUID]*boiler.Faction{}
 
@@ -261,6 +279,10 @@ func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 		btl.arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", WSQueueUpdatedSubscribe, server.ZaibatsuFactionID)), true)
 	}
 
+	// broadcast battle settings
+	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Broadcasting battle start to players")
+	btl.BroadcastUpdate()
+
 	return nil
 }
 
@@ -294,8 +316,6 @@ func (btl *Battle) start() {
 	btl.storeAbilities(NewAbilitiesSystem(btl))
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle multipliers")
 	btl.multipliers = NewMultiplierSystem(btl)
-	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Broadcasting battle start to players")
-	btl.BroadcastUpdate()
 
 	// broadcast spoil of war on the start of the battle
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Broadcasting spoils of war updates")
@@ -1274,11 +1294,6 @@ func (btl *Battle) Tick(payload []byte) {
 	// Save to history
 	// btl.BattleHistory = append(btl.BattleHistory, payload)
 
-	broadcast := false
-	// broadcast
-	if btl.lastTick == nil {
-		broadcast = true
-	}
 	btl.lastTick = &payload
 
 	btl.arena.messageBus.SendBinary(messagebus.BusKey(HubKeyWarMachineLocationUpdated), payload)
@@ -1347,9 +1362,6 @@ func (btl *Battle) Tick(payload []byte) {
 				btl.WarMachines[warMachineIndex].Energy = energy
 			}
 		}
-	}
-	if broadcast {
-		btl.BroadcastUpdate()
 	}
 }
 
