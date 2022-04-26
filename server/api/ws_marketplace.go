@@ -15,6 +15,7 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
+	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
@@ -32,6 +33,8 @@ func NewMarketplaceController(api *API) *MarketplaceController {
 
 	api.SecureUserCommand(HubKeyMarketplaceSalesList, marketplaceHub.SalesListHandler)
 	api.SecureUserCommand(HubKeyMarketplaceSalesCreate, marketplaceHub.SalesCreateHandler)
+
+	api.SecureUserSubscribeCommand(HubKeyMarketplaceSalesItemUpdate, marketplaceHub.SalesItemUpdateSubscriber)
 
 	return marketplaceHub
 }
@@ -217,4 +220,32 @@ func (fc *MarketplaceController) SalesCreateHandler(ctx context.Context, hubc *h
 	reply(resp)
 
 	return nil
+}
+
+const HubKeyMarketplaceSalesItemUpdate hub.HubCommandKey = "MARKETPLACE:SALES:ITEM:UPDATE"
+
+type MarketplaceSalesItemUpdateSubscribe struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		ID uuid.UUID `json:"id"` // item id
+	} `json:"payload"`
+}
+
+func (mp *MarketplaceController) SalesItemUpdateSubscriber(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
+	req := &MarketplaceSalesItemUpdateSubscribe{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return "", "", terror.Error(err, "Invalid request received")
+	}
+
+	exists, err := db.MarketplaceSaleItemExists(req.Payload.ID)
+	if err != nil {
+		return "", "", terror.Error(err, "Invalid request received")
+	}
+	if !exists {
+		return "", "", terror.Error(fmt.Errorf("sale item not found"), "Sale Item not found.")
+	}
+
+	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyMarketplaceSalesItemUpdate, req.Payload.ID))
+	return req.TransactionID, busKey, nil
 }

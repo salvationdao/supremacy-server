@@ -119,3 +119,8 @@ func MarketplaceSaleCreate(saleType server.MarketplaceSaleType, ownerID uuid.UUI
 	}
 	return obj, nil
 }
+
+// MarketplaceSaleItemExists checks whether given sales item exists.
+func MarketplaceSaleItemExists(id uuid.UUID) (bool, error) {
+	return boiler.ItemSaleExists(gamedb.StdConn, id.String())
+}
