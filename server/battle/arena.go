@@ -576,6 +576,8 @@ func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, wsc *hub
 
 	arena.currentBattle().abilities().AbilityContribute(factionID, userID, req.Payload.AbilityIdentity, req.Payload.AbilityOfferingID, req.Payload.Percentage)
 
+	reply(true)
+
 	return nil
 }
 
