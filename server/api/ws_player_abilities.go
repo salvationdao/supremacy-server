@@ -176,7 +176,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilitySubscribePriceHandler(ctx con
 }
 
 type AbilitiesListResponse struct {
-	Total      int      `json:"total"`
+	Total      int64    `json:"total"`
 	AbilityIDs []string `json:"ability_ids"`
 }
 
