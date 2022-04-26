@@ -962,7 +962,7 @@ func (arena *Arena) AssetManyHandler(ctx context.Context, hubc *hub.Client, payl
 	}
 
 	// get the list of player's mechs (id, hash, created_at)
-	mechs, err := boiler.Mechs(
+	allMechs, err := boiler.Mechs(
 		qm.Select(boiler.MechColumns.ID, boiler.MechColumns.Hash, boiler.MechColumns.CreatedAt),
 		boiler.MechWhere.OwnerID.EQ(hubc.Identifier()),
 		qm.OrderBy(boiler.MechColumns.CreatedAt),
@@ -972,20 +972,33 @@ func (arena *Arena) AssetManyHandler(ctx context.Context, hubc *hub.Client, payl
 		return terror.Error(err, "Failed to get mech data")
 	}
 
+	mechs := []*boiler.Mech{}
+
 	// reply empty
-	if len(mechs) == 0 {
+	if len(allMechs) == 0 {
 		reply(resp)
 		return nil
 	}
 
-	// set total
-	resp.Total = len(mechs)
-
 	// calc mech id list
 	mechIDs := []string{}
-	for _, mech := range mechs {
+	for _, mech := range allMechs {
 		mechIDs = append(mechIDs, mech.ID)
 	}
+
+	assetMap, err := arena.RPCClient.AssetsOnChainStatus(mechIDs)
+	if err != nil {
+		return terror.Error(err, "Unable to get asset ownership details, please try again or contact support.")
+	}
+
+	for _, m := range allMechs {
+		if onChainStatus, ok := assetMap[m.ID]; ok && (onChainStatus == server.OnChainStatusMintable || onChainStatus == server.OnChainStatusUnstakable) {
+			mechs = append(mechs, m)
+		}
+	}
+
+	// set total
+	resp.Total = len(mechs)
 
 	// get queue position
 	queuePosition, err := db.MechQueuePosition(userFactionID.String(), hubc.Identifier())
