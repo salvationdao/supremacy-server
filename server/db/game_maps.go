@@ -28,9 +28,7 @@ func GameMapCreate(ctx context.Context, conn Conn, gameMap *server.GameMap) erro
 				cells_y, 
 				top_pixels, 
 				left_pixels, 
-				scale, 
 				disabled_cells,
-				max_spawns
 			)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		RETURNING 
@@ -43,9 +41,7 @@ func GameMapCreate(ctx context.Context, conn Conn, gameMap *server.GameMap) erro
 			cells_y, 
 			top_pixels, 
 			left_pixels, 
-			scale,
 			disabled_cells,
-			max_spawns
 		
 	`
 	err := pgxscan.Get(ctx, conn, gameMap, q,
@@ -57,9 +53,7 @@ func GameMapCreate(ctx context.Context, conn Conn, gameMap *server.GameMap) erro
 		gameMap.CellsY,
 		gameMap.TopPixels,
 		gameMap.LeftPixels,
-		gameMap.Scale,
 		gameMap.DisabledCells,
-		gameMap.MaxSpawns,
 	)
 	if err != nil {
 		return terror.Error(err)
