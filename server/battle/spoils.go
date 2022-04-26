@@ -350,6 +350,7 @@ func payoutUserSpoils(
 	// check the spoils for this battle have enough left for a tick (always should)
 	if warChestSpoilsLeft.LessThan(user.TickAmount) {
 		difference := user.TickAmount.Sub(warChestSpoilsLeft)
+		// if difference is > than 1000, throw an error since that is more than a rounding issue.
 		if difference.GreaterThan(decimal.NewFromInt(1000)) {
 			gamelog.L.Error().
 				Err(fmt.Errorf("warChestSpoilsLeft.LessThan(user.TickAmount)")).
