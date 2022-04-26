@@ -12,6 +12,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/helpers"
 	"server/multipliers"
 	"server/rpcclient"
 	"sort"
@@ -1301,10 +1302,11 @@ func (btl *Battle) Tick(payload []byte) {
 
 		// Get Sync byte (tells us which data was updated for this warmachine)
 		syncByte := payload[offset]
+		booleans := helpers.UnpackBooleansFromByte(syncByte)
 		offset++
 
 		// Position + Yaw
-		if syncByte >= 100 {
+		if booleans[0] {
 			x := int(binary.BigEndian.Uint32(payload[offset : offset+4]))
 			offset += 4
 			y := int(binary.BigEndian.Uint32(payload[offset : offset+4]))
@@ -1322,7 +1324,7 @@ func (btl *Battle) Tick(payload []byte) {
 			}
 		}
 		// Health
-		if syncByte == 1 || syncByte == 11 || syncByte == 101 || syncByte == 111 {
+		if booleans[1] {
 			health := binary.BigEndian.Uint32(payload[offset : offset+4])
 			offset += 4
 			if warMachineIndex != -1 {
@@ -1330,11 +1332,19 @@ func (btl *Battle) Tick(payload []byte) {
 			}
 		}
 		// Shield
-		if syncByte == 10 || syncByte == 11 || syncByte == 110 || syncByte == 111 {
+		if booleans[2] {
 			shield := binary.BigEndian.Uint32(payload[offset : offset+4])
 			offset += 4
 			if warMachineIndex != -1 {
 				btl.WarMachines[warMachineIndex].Shield = shield
+			}
+		}
+		// Energy
+		if booleans[3] {
+			energy := binary.BigEndian.Uint32(payload[offset : offset+4])
+			offset += 4
+			if warMachineIndex != -1 {
+				btl.WarMachines[warMachineIndex].Energy = energy
 			}
 		}
 	}
