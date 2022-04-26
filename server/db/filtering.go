@@ -3,7 +3,7 @@ package db
 import (
 	"fmt"
 
-	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 type (
@@ -42,15 +42,75 @@ const (
 
 // ListFilterRequest contains filter data commonly used in list requests
 type ListFilterRequest struct {
-	LinkOperator LinkOperatorType         `json:"linkOperator"`
+	LinkOperator LinkOperatorType         `json:"link_operator"`
 	Items        []*ListFilterRequestItem `json:"items"`
 }
 
 // ListFilterRequestItem contains instructions on filtering
 type ListFilterRequestItem struct {
-	ColumnField   string            `json:"columnField"`
-	OperatorValue OperatorValueType `json:"operatorValue"`
-	Value         string            `json:"value"`
+	Table    *string           `json:"table"`
+	Column   string            `json:"column"`
+	Operator OperatorValueType `json:"operator"`
+	Value    string            `json:"value"`
+}
+
+func GenerateListFilterQueryMod(filterItem ListFilterRequestItem, index int, linkOperator LinkOperatorType) qm.QueryMod {
+	checkValue := filterItem.Value
+	checkColumn := filterItem.Column
+	if filterItem.Table != nil && *filterItem.Table != "" {
+		checkColumn = fmt.Sprintf("%s.%s", *filterItem.Table, filterItem.Column)
+	}
+	condition := fmt.Sprintf("%s %s ?", checkColumn, filterItem.Operator)
+
+	switch filterItem.Operator {
+	case OperatorValueTypeContains, OperatorValueTypeStartsWith, OperatorValueTypeEndsWith:
+		switch filterItem.Operator {
+		case OperatorValueTypeContains:
+			checkValue = "%" + filterItem.Value + "%"
+		case OperatorValueTypeStartsWith:
+			checkValue = filterItem.Value + "%"
+		case OperatorValueTypeEndsWith:
+			checkValue = "%" + filterItem.Value
+		}
+		break
+	}
+
+	switch filterItem.Operator {
+	case OperatorValueTypeIsNull:
+		condition = fmt.Sprintf("%s IS NULL", checkColumn)
+		break
+	case OperatorValueTypeIsNotNull:
+		condition = fmt.Sprintf("%s IS NOT NULL", checkColumn)
+		break
+	case OperatorValueTypeEquals, OperatorValueTypeIs, OperatorValueTypeNumberEquals:
+		condition = fmt.Sprintf("%s = ?", checkColumn)
+		break
+	case OperatorValueTypeIsNot, OperatorValueTypeNumberNotEquals:
+		condition = fmt.Sprintf("%s <> ?", checkColumn)
+		break
+	case OperatorValueTypeIsAfter, OperatorValueTypeGreaterThan:
+		condition = fmt.Sprintf("%s > ?", checkColumn)
+		break
+	case OperatorValueTypeIsOnOrAfter, OperatorValueTypeGreaterOrEqual:
+		condition = fmt.Sprintf("%s >= ?", checkColumn)
+		break
+	case OperatorValueTypeIsBefore, OperatorValueTypeLessThan:
+		condition = fmt.Sprintf("%s < ?", checkColumn)
+		break
+	case OperatorValueTypeIsOnOrBefore, OperatorValueTypeLessOrEqual:
+		condition = fmt.Sprintf("%s <= ?", checkColumn)
+		break
+	case OperatorValueTypeContains, OperatorValueTypeStartsWith, OperatorValueTypeEndsWith:
+		condition = fmt.Sprintf("%s ILIKE ?", checkColumn)
+	}
+
+	if index == 0 {
+		return qm.Where(condition, checkValue)
+	}
+	if linkOperator == LinkOperatorTypeOr {
+		return qm.Or(condition, checkValue)
+	}
+	return qm.And(condition, checkValue)
 }
 
 // ColumnFilter generates SQL for filtering a column
@@ -75,7 +135,7 @@ func GenerateListFilterSQL(column string, value string, operator OperatorValueTy
 
 	case OperatorValueTypeIs, OperatorValueTypeIsNot, OperatorValueTypeIsAfter, OperatorValueTypeIsOnOrAfter, OperatorValueTypeIsBefore, OperatorValueTypeIsOnOrBefore:
 		// Dates (convert column to date to compare by day)
-		column += "::date"
+		// column += "::date"
 		if checkValue == "" {
 			return "", checkValue // don't filter if no value is set
 		}
@@ -107,53 +167,6 @@ func GenerateListFilterSQL(column string, value string, operator OperatorValueTy
 	}
 
 	return condition, checkValue
-}
-
-type (
-	TraitType string
-)
-
-const (
-	TraitTypeTier                  TraitType = "tier"
-	TraitTypeBrand                 TraitType = "brand"
-	TraitTypeModel                 TraitType = "model"
-	TraitTypeSkin                  TraitType = "skin"
-	TraitTypeName                  TraitType = "name"
-	TraitTypeAssetType             TraitType = "asset_type"
-	TraitTypeMaxStructureHitPoints TraitType = "max_structure_hit_points"
-	TraitTypeMaxShieldHitPoints    TraitType = "max_shield_hit_points"
-	TraitTypeSpeed                 TraitType = "speed"
-	TraitTypeWeaponHardpoints      TraitType = "weapon_hardpoints"
-	TraitTypeUtilitySlots          TraitType = "utility_slots"
-	TraitTypeWeaponOne             TraitType = "weapon_one"
-	TraitTypeWeaponTwo             TraitType = "weapon_two"
-	TraitTypeUtilityOne            TraitType = "utility_one"
-	TraitTypeAbilityOne            TraitType = "ability_one"
-	TraitTypeAbilityTwo            TraitType = "ability_two"
-)
-
-func (t TraitType) IsValid() error {
-	switch t {
-	case
-		TraitTypeTier,
-		TraitTypeBrand,
-		TraitTypeModel,
-		TraitTypeSkin,
-		TraitTypeName,
-		TraitTypeAssetType,
-		TraitTypeMaxStructureHitPoints,
-		TraitTypeMaxShieldHitPoints,
-		TraitTypeSpeed,
-		TraitTypeWeaponHardpoints,
-		TraitTypeUtilitySlots,
-		TraitTypeWeaponOne,
-		TraitTypeWeaponTwo,
-		TraitTypeUtilityOne,
-		TraitTypeAbilityOne,
-		TraitTypeAbilityTwo:
-		return nil
-	}
-	return terror.Error(fmt.Errorf("invalid attribute trait type"))
 }
 
 // AttributeFilterRequest contains attribute-specific filter data commonly used in list requests

@@ -14,13 +14,6 @@ import (
 	"github.com/jackc/pgx/v4"
 )
 
-type SortByDir string
-
-const (
-	SortByDirAsc  SortByDir = "asc"
-	SortByDirDesc SortByDir = "desc"
-)
-
 // SnakeCaseRegexp looks for snakecase words
 var SnakeCaseRegexp = regexp.MustCompile(`(^|[_-])([a-z])`)
 

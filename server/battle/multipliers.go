@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"server"
+	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -240,31 +241,37 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 				continue
 			}
 
-			eventContributors, err := boiler.BattleContributions(
-				qm.Select(boiler.BattleContributionColumns.PlayerID),
-				boiler.BattleContributionWhere.AbilityOfferingID.EQ(repairEvent.RelatedID.String),
-				boiler.BattleContributionWhere.PlayerID.NEQ(triggeredPlayer.PlayerID),
-				boiler.BattleContributionWhere.FactionID.EQ(mechOwner.FactionID.String),
-				qm.GroupBy(boiler.BattleContributionColumns.PlayerID),
-			).All(gamedb.StdConn)
-
-			if err != nil {
-				gamelog.L.Error().Err(err).Msg("Failed to find event contributors")
+			if mechOwner.FactionID.String != triggeredPlayer.FactionID {
 				continue
 			}
 
-			mult, ok := newMultipliers[triggeredPlayer.PlayerID]
-			if !ok {
-				mult = make(map[string][]*boiler.Multiplier)
+			eventContributors, err := db.GetPlayerContributions(repairEvent.RelatedID.String)
+			if err != nil {
+				continue
 			}
-			mult[repairTriggerMultiplier.ID] = append(mult[repairTriggerMultiplier.ID], repairTriggerMultiplier)
-			newMultipliers[triggeredPlayer.PlayerID] = mult
+
+			totalSpendings := decimal.Zero
+
+			for _, totalSpending := range eventContributors {
+				totalSpendings = totalSpendings.Add(totalSpending.Amount)
+			}
+
+			minimumSpending := totalSpendings.Div(decimal.NewFromInt(10))
 
 			for _, eventContributor := range eventContributors {
+				if eventContributor.Amount.LessThan(minimumSpending) {
+					continue
+				}
 				mult, ok := newMultipliers[eventContributor.PlayerID]
 				if !ok {
 					mult = make(map[string][]*boiler.Multiplier)
 				}
+				if eventContributor.DidTrigger {
+					mult[repairTriggerMultiplier.ID] = append(mult[repairTriggerMultiplier.ID], repairTriggerMultiplier)
+					newMultipliers[triggeredPlayer.PlayerID] = mult
+					continue
+				}
+
 				mult[repairContributorMultiplier.ID] = append(mult[repairContributorMultiplier.ID], repairContributorMultiplier)
 				newMultipliers[eventContributor.PlayerID] = mult
 			}
@@ -350,35 +357,50 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 					contributedMulti = *airstrikeContributorMultiplier
 				}
 
-				mult, ok := newMultipliers[triggeredPlayer.PlayerID]
-				if ok {
-					if killStreak > 3 {
-						killStreak = 3
-					}
-
-					if killStreak > 1 {
-						triggeredMulti.Value = triggeredMulti.Value.Mul(decimal.NewFromInt(int64(killStreak)))
-					}
-
-					mult[triggeredMulti.ID] = append(mult[triggeredMulti.ID], &triggeredMulti)
-					newMultipliers[triggeredPlayer.PlayerID] = mult
+				eventContributors, err := db.GetPlayerContributions(killedEvent.RelatedID.String)
+				if err != nil {
+					continue
 				}
 
-				eventContributors, err := boiler.BattleContributions(
-					qm.Select(boiler.BattleContributionColumns.PlayerID),
-					boiler.BattleContributionWhere.AbilityOfferingID.EQ(killedEvent.RelatedID.String),
-					boiler.BattleContributionWhere.PlayerID.NEQ(triggeredPlayer.ID),
-					boiler.BattleContributionWhere.DidTrigger.EQ(false),
-					qm.GroupBy(boiler.BattleContributionColumns.PlayerID),
-				).All(gamedb.StdConn)
 				if err != nil {
 					gamelog.L.Error().Str("ability_offering_id", killedEvent.RelatedID.String).Err(err).Msg("Failed to find event contributors")
 					continue
 				}
+
+				totalSpendings := decimal.Zero
+
+				for _, totalSpending := range eventContributors {
+					totalSpendings = totalSpendings.Add(totalSpending.Amount)
+				}
+
+				minimumSpending := totalSpendings.Div(decimal.NewFromInt(10))
+
 				for _, eventContributor := range eventContributors {
+					if eventContributor.Amount.LessThan(minimumSpending) {
+						continue
+					}
 					mult, ok := newMultipliers[eventContributor.PlayerID]
 					if !ok {
 						mult = make(map[string][]*boiler.Multiplier)
+					}
+
+					if eventContributor.DidTrigger {
+						mult, ok := newMultipliers[eventContributor.PlayerID]
+						if !ok {
+							mult = make(map[string][]*boiler.Multiplier)
+						}
+
+						if killStreak > 3 {
+							killStreak = 3
+						}
+
+						if killStreak > 1 {
+							triggeredMulti.Value = triggeredMulti.Value.Mul(decimal.NewFromInt(int64(killStreak)))
+						}
+
+						mult[triggeredMulti.ID] = append(mult[triggeredMulti.ID], &triggeredMulti)
+						newMultipliers[eventContributor.PlayerID] = mult
+						continue
 					}
 
 					mult[contributedMulti.ID] = append(mult[contributedMulti.ID], &contributedMulti)
@@ -428,65 +450,6 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 				newMultipliers[topPlayerID][m.ID] = append(newMultipliers[topPlayerID][m.ID], m)
 			}
 		}
-	}
-
-	// last three gab abilities
-outer:
-	for triggerLabel, td := range fired {
-
-		m3, m3ok := ms.getMultiplier("gab_ability", triggerLabel, 1)
-		if !m3ok {
-			continue
-		}
-		if len(td.PlayerIDs) < 3 {
-			continue
-		}
-		if td.FireCount < 3 {
-			for i := 1; i < len(td.PlayerIDs); i++ {
-				if td.PlayerIDs[i] != td.PlayerIDs[i-1] {
-					continue outer
-				}
-			}
-
-			triggers, err := boiler.BattleAbilityTriggers(
-				qm.Where(`is_all_syndicates = true`),
-				qm.And(`ability_label = ?`, triggerLabel),
-				qm.OrderBy(`triggered_at DESC`),
-				qm.Limit(3),
-			).All(gamedb.StdConn)
-			if err != nil {
-				gamelog.L.Error().Err(err).Msgf("unable to retrieve last three triggers information from database")
-				continue outer
-			}
-			for i := 1; i < len(triggers); i++ {
-				if triggers[i].PlayerID != triggers[i-1].PlayerID {
-					continue outer
-				}
-			}
-			//if it makes it here, it's because it was the last 3
-			gamelog.L.Info().Interface("td.PlayerIds", td.PlayerIDs).Str("triggerLabel", triggerLabel).Msg("someone did the last 3!")
-			if _, ok := newMultipliers[td.PlayerIDs[0]]; !ok {
-				newMultipliers[td.PlayerIDs[0]] = map[string][]*boiler.Multiplier{}
-			}
-			newMultipliers[td.PlayerIDs[0]][m3.ID] = append(newMultipliers[td.PlayerIDs[0]][m3.ID], m3)
-		} else {
-			if len(td.PlayerIDs) < 3 {
-				return
-			}
-			for i := 1; i < len(td.PlayerIDs); i++ {
-				if td.PlayerIDs[i] != td.PlayerIDs[i-1] {
-					continue outer
-				}
-			}
-			//if it makes it here, it's because it was the last 3
-			gamelog.L.Info().Interface("td.PlayerIds", td.PlayerIDs).Msg("someone did the last 3!")
-
-			if _, ok := newMultipliers[td.PlayerIDs[0]]; !ok {
-				newMultipliers[td.PlayerIDs[0]] = map[string][]*boiler.Multiplier{}
-			}
-			newMultipliers[td.PlayerIDs[0]][m3.ID] = append(newMultipliers[td.PlayerIDs[0]][m3.ID], m3)
-		}
-
 	}
 
 	// check for syndicate wins

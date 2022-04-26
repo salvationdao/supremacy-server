@@ -288,7 +288,7 @@ func (btl *Battle) start() {
 	// set up the abilities for current battle
 
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle spoils")
-	btl.spoils = NewSpoilsOfWar(btl, 15*time.Second, 15*time.Second, 20)
+	btl.spoils = NewSpoilsOfWar(btl.arena.RPCClient, btl.arena.messageBus, btl.isOnline, btl.BattleID, btl.BattleNumber, 15*time.Second, 20)
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle abilities")
 	btl.storeAbilities(NewAbilitiesSystem(btl))
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle multipliers")
@@ -1770,13 +1770,13 @@ func (btl *Battle) Load() error {
 	if len(q) < 9 {
 		gamelog.L.Warn().Msg("not enough mechs to field a battle. replacing with default battle.")
 
-		err = btl.DefaultMechs()
+		err = btl.QueueDefaultMechs()
 		if err != nil {
 			gamelog.L.Warn().Str("battle_id", btl.ID).Err(err).Msg("unable to load default mechs")
 			return terror.Error(err)
 		}
 
-		return nil
+		return btl.Load()
 	}
 
 	for i, bq := range q {
@@ -1788,6 +1788,40 @@ func (btl *Battle) Load() error {
 	}
 
 	mechs, err := db.Mechs(ids...)
+	if errors.Is(err, db.ErrNotAllMechsReturned) || len(mechs) != len(ids) {
+		for _, m := range mechs {
+			for i, v := range ids {
+				if v.String() == m.ID {
+					ids = append(ids[:i], ids[i+1:]...)
+					break
+				}
+			}
+		}
+		tx, err := gamedb.StdConn.Begin()
+		if err != nil {
+			gamelog.L.Panic().Err(err).Msg("unable to begin tx")
+		}
+		defer tx.Rollback()
+		for _, id := range ids {
+			gamelog.L.Warn().Str("mechID", id.String()).Msg("mech did not load - likely has no faction associated with its owner")
+			canxq := `UPDATE battle_contracts SET cancelled = TRUE WHERE id = (SELECT battle_contract_id FROM battle_queue WHERE mech_id = $1)`
+			_, err = tx.Exec(canxq, id.String())
+			if err != nil {
+				gamelog.L.Warn().Err(err).Msg("unable to cancel battle contract. mech has left queue though.")
+			}
+			bq, _ := boiler.BattleQueues(boiler.BattleQueueWhere.MechID.EQ(id.String())).One(tx)
+			_, err = bq.Delete(tx)
+			if err != nil {
+				gamelog.L.Panic().Str("mechID", id.String()).Err(err).Msg("unable to delete factionless mech from queue")
+			}
+		}
+		err = tx.Commit()
+		if err != nil {
+			gamelog.L.Panic().Err(err).Msg("unable to begin tx")
+		}
+		return btl.Load()
+	}
+
 	if err != nil {
 		gamelog.L.Warn().Interface("mechs_ids", ids).Str("battle_id", btl.ID).Err(err).Msg("failed to retrieve mechs from mech ids")
 		return terror.Error(err)

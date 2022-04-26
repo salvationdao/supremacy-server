@@ -12,6 +12,12 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
+const SaleAbilityPriceTickerIntervalSeconds KVKey = "sale_ability_price_ticker_interval_seconds"
+const SaleAbilityReductionPercentage KVKey = "sale_ability_reduction_percentage"
+const SaleAbilityFloorPrice KVKey = "sale_ability_floor_price"
+const SaleAbilityLimit KVKey = "sale_ability_limit"
+const SaleAbilityInflationPercentage KVKey = "sale_ability_inflation_percentage"
+
 type KVKey string
 
 // Default contributor formula https://www.desmos.com/calculator/vbfa5llasg
@@ -24,10 +30,11 @@ const KeyContributorMinMultiplier KVKey = "contributor_min_multiplier"
 const KeyContributorDecayMultiplier KVKey = "contributor_decay_multiplier"
 const KeyContributorSharpnessMultiplier KVKey = "contributor_sharpness_multiplier"
 
-// Marketplace Fees
 const KeyMarketplaceListingFee KVKey = "marketplace_listing_fee"
 const KeyMarketplaceListingBuyoutFee KVKey = "marketplace_listing_buyout_fee"
 const KeyMarketplaceSaleCutPercentage KVKey = "marketplace_sale_cut_percentage"
+
+const KeyFirstAbilityCooldown KVKey = "first_ability_cooldown"
 
 func get(key KVKey) string {
 	exists, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).Exists(gamedb.StdConn)

@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"math/rand"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -36,11 +35,6 @@ func CalcNextQueueStatus(length int64) QueueStatusResponse {
 
 	mul := db.GetDecimalWithDefault("queue_fee_log_multi", decimal.NewFromFloat(3.25))
 	mulFloat, _ := mul.Float64()
-
-	if server.Env() == "staging" {
-		mulFloat = 0.2 + rand.Float64()*(8.0-0.2)
-		minQueueCost = decimal.NewFromFloat(1.5)
-	}
 
 	// calc queue cost
 	feeMultiplier := math.Log(float64(ql)) / mulFloat * 0.25
@@ -136,7 +130,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		return terror.Error(err)
 	}
 
-	if mech.OwnerID != wsc.Identifier() {
+	if !mech.IsDefault && mech.OwnerID != wsc.Identifier() {
 		return terror.Error(fmt.Errorf("does not own the mech"), "Current mech does not own by you")
 	}
 
@@ -229,6 +223,19 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 			Str("faction ID", factionID.String()).
 			Err(err).
 			Msg("unable to get hard coded syndicate player ID from faction ID")
+	}
+
+	if ownerID.String() == factionAccountID {
+		err = tx.Commit()
+		if err != nil {
+			gamelog.L.Error().
+				Str("mech ID", mech.ID).
+				Str("faction ID", factionID.String()).
+				Err(err).
+				Msg("unable to save battle queue join for faction owned mech")
+			return err
+		}
+		return nil
 	}
 
 	// Charge user queue fee
@@ -519,7 +526,7 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 	}
 	defer tx.Rollback()
 
-	canxq := `UPDATE battle_contracts SET cancelled = true WHERE id = (SELECT battle_contract_id FROM battle_queue WHERE mech_id = $1)`
+	canxq := `UPDATE battle_contracts SET cancelled = TRUE WHERE id = (SELECT battle_contract_id FROM battle_queue WHERE mech_id = $1)`
 	_, err = tx.Exec(canxq, mechID.String())
 	if err != nil {
 		gamelog.L.Warn().Err(err).Msg("unable to cancel battle contract. mech has left queue though.")
@@ -597,7 +604,7 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 		}
 	}
 
-	updateBQNq := `UPDATE battle_queue_notifications SET is_refunded = true, queue_mech_id = null WHERE mech_id = $1`
+	updateBQNq := `UPDATE battle_queue_notifications SET is_refunded = TRUE, queue_mech_id = NULL WHERE mech_id = $1`
 	_, err = gamedb.StdConn.Exec(updateBQNq, mechID.String())
 	if err != nil {
 		gamelog.L.Warn().Err(err).Msg("unable to update battle_queue_notifications table during refund")
