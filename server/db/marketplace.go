@@ -14,8 +14,14 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
+// MarketplaceSaleItem conatains the sale item details and the item itself.
+type MarketplaceSaleItem struct {
+	*boiler.ItemSale
+	Mech *boiler.Mech `json:"mech,omitempty"`
+}
+
 // MarketplaceSaleList returns a numeric paginated result of sales list.
-func MarketplaceSaleList(search string, archived bool, filter *ListFilterRequest, offset int, pageSize int, sortBy string, sortDir SortByDir) (int64, []*boiler.ItemSale, error) {
+func MarketplaceSaleList(search string, archived bool, filter *ListFilterRequest, offset int, pageSize int, sortBy string, sortDir SortByDir) (int64, []*MarketplaceSaleItem, error) {
 	queryMods := []qm.QueryMod{
 		qm.LeftOuterJoin(
 			fmt.Sprintf(
@@ -66,7 +72,7 @@ func MarketplaceSaleList(search string, archived bool, filter *ListFilterRequest
 		return 0, nil, terror.Error(err)
 	}
 	if total == 0 {
-		return 0, []*boiler.ItemSale{}, nil
+		return 0, []*MarketplaceSaleItem{}, nil
 	}
 
 	// Sort
@@ -78,12 +84,39 @@ func MarketplaceSaleList(search string, archived bool, filter *ListFilterRequest
 		queryMods = append(queryMods, qm.Limit(pageSize), qm.Offset(offset))
 	}
 
-	result, err := boiler.ItemSales(queryMods...).All(gamedb.StdConn)
+	itemSales, err := boiler.ItemSales(queryMods...).All(gamedb.StdConn)
 	if err != nil {
 		return 0, nil, terror.Error(err)
 	}
 
-	return total, result, nil
+	// Load in related items
+	records := []*MarketplaceSaleItem{}
+	mechIDs := []string{}
+	for _, row := range itemSales {
+		if row.ItemType == string(server.MarketplaceItemTypeMech) {
+			mechIDs = append(mechIDs, row.ItemID)
+		}
+		records = append(records, &MarketplaceSaleItem{
+			ItemSale: row,
+		})
+	}
+	if len(mechIDs) > 0 {
+		mechs, err := boiler.Mechs(
+			boiler.MechWhere.ID.IN(mechIDs),
+		).All(gamedb.StdConn)
+		if err != nil {
+			return 0, nil, terror.Error(err)
+		}
+		for i, row := range records {
+			for _, mech := range mechs {
+				if row.ItemType == string(server.MarketplaceItemTypeMech) && row.ItemID == mech.ID {
+					records[i].Mech = mech
+				}
+			}
+		}
+	}
+
+	return total, records, nil
 }
 
 // MarketplaceSaleCreate inserts a new sale item.

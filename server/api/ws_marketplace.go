@@ -56,7 +56,8 @@ type MarketplaceSalesListRequest struct {
 }
 
 type MarketplaceSalesListResponse struct {
-	Total int64 `json:"total"`
+	Total   int64                     `json:"total"`
+	Records []*db.MarketplaceSaleItem `json:"records"`
 }
 
 func (fc *MarketplaceController) SalesListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
@@ -71,15 +72,15 @@ func (fc *MarketplaceController) SalesListHandler(ctx context.Context, hubc *hub
 		offset = req.Payload.Page * req.Payload.PageSize
 	}
 
-	total, _, err := db.MarketplaceSaleList(req.Payload.Search, req.Payload.Archived, req.Payload.Filter, offset, req.Payload.PageSize, req.Payload.SortBy, req.Payload.SortDir)
+	total, records, err := db.MarketplaceSaleList(req.Payload.Search, req.Payload.Archived, req.Payload.Filter, offset, req.Payload.PageSize, req.Payload.SortBy, req.Payload.SortDir)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to get list of items for sale")
 		return terror.Error(err, "Failed to get list of items for sale")
 	}
 
-	// TODO: Figure out how to present this data
 	resp := &MarketplaceSalesListResponse{
-		Total: total,
+		Total:   total,
+		Records: records,
 	}
 	reply(resp)
 
