@@ -280,8 +280,8 @@ func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 	}
 
 	// broadcast battle settings
-	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Broadcasting battle start to players")
-	btl.BroadcastUpdate()
+	//gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Broadcasting battle start to players")
+	//btl.BroadcastUpdate()
 
 	return nil
 }
@@ -316,7 +316,8 @@ func (btl *Battle) start() {
 	btl.storeAbilities(NewAbilitiesSystem(btl))
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle multipliers")
 	btl.multipliers = NewMultiplierSystem(btl)
-
+	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Broadcasting battle start to players")
+	btl.BroadcastUpdate()
 	// broadcast spoil of war on the start of the battle
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Broadcasting spoils of war updates")
 
