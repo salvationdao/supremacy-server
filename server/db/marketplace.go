@@ -30,27 +30,21 @@ func MarketplaceSaleList(search string, archived bool, filter *ListFilterRequest
 	}
 
 	// Filters
-	// if filter != nil {
-	// 	for i, f := range filter.Items {
-	// 		if f.Table != nil && *f.Table != "" {
-	// 			if *f.Table == boiler.TableNames.BlueprintPlayerAbilities {
-	// 				column := BlueprintPlayerAbilityColumn(f.Column)
-	// 				err := column.IsValid()
-	// 				if err != nil {
-	// 					return 0, nil, terror.Error(err)
-	// 				}
-	// 			} else if *f.Table == boiler.TableNames.SalePlayerAbilities {
-	// 				column := SalePlayerAbilityColumn(f.Column)
-	// 				err := column.IsValid()
-	// 				if err != nil {
-	// 					return 0, nil, terror.Error(err)
-	// 				}
-	// 			}
-	// 		}
-	// 		queryMod := GenerateListFilterQueryMod(*f, i, filter.LinkOperator)
-	// 		queryMods = append(queryMods, queryMod)
-	// 	}
-	// }
+	if filter != nil {
+		for i, f := range filter.Items {
+			if f.Table != nil && *f.Table != "" {
+				if *f.Table == boiler.TableNames.Mechs {
+					column := MechColumns(f.Column)
+					err := column.IsValid()
+					if err != nil {
+						return 0, nil, terror.Error(err)
+					}
+				}
+			}
+			queryMod := GenerateListFilterQueryMod(*f, i, filter.LinkOperator)
+			queryMods = append(queryMods, queryMod)
+		}
+	}
 
 	// Search
 	if search != "" {
