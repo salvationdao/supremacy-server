@@ -906,6 +906,7 @@ type BattleWMPickupPayload struct {
 func (arena *Arena) start() {
 	defer func() {
 		if r := recover(); r != nil {
+
 			gamelog.LogPanicRecovery("Panic! Panic! Panic! Panic on battle arena!", r)
 		}
 	}()

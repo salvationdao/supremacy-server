@@ -1314,6 +1314,10 @@ func (btl *Battle) Tick(payload []byte) {
 	var c byte
 	offset := 2
 	for c = 0; c < count; c++ {
+		if offset > len(payload) {
+			gamelog.L.Error().Err(fmt.Errorf("offset > len(payload)")).Int("offset", offset).Int("len(payload)", len(payload)).Msg("offset > len(payload)")
+			return
+		}
 		participantID := payload[offset]
 		offset++
 
