@@ -156,7 +156,7 @@ func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 				}
 
 				// Broadcast updated sale ability
-				pas.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeySaleAbilityPriceSubscribe, s.ID)), s.CurrentPrice)
+				pas.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeySaleAbilityPriceSubscribe, s.ID)), s.CurrentPrice.StringFixed(0))
 			}
 			break
 		case purchase := <-pas.Purchase:
@@ -168,7 +168,7 @@ func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 					gamelog.L.Error().Err(err).Str("salePlayerAbilityID", saleAbility.ID).Str("new price", saleAbility.CurrentPrice.String()).Interface("sale ability", saleAbility).Msg("failed to update sale ability price")
 					break
 				}
-				pas.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeySaleAbilityPriceSubscribe, saleAbility.ID)), saleAbility.CurrentPrice)
+				pas.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeySaleAbilityPriceSubscribe, saleAbility.ID)), saleAbility.CurrentPrice.StringFixed(0))
 			}
 			break
 		}

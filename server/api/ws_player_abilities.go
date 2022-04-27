@@ -171,7 +171,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilitySubscribePriceHandler(ctx con
 		return "", "", terror.Error(err, "Unable to retrieve sale ability, please try again or contact support.")
 	}
 
-	reply(sAbility.CurrentPrice)
+	reply(sAbility.CurrentPrice.StringFixed(0))
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeySaleAbilityPriceSubscribe, sAbility.ID)), nil
 }
 
@@ -301,7 +301,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 	}
 
 	// if price has gone up, tell them
-	if spa.CurrentPrice.GreaterThan(givenAmount) {
+	if spa.CurrentPrice.Round(0).GreaterThan(givenAmount) {
 		gamelog.L.Debug().Str("spa.CurrentPrice", spa.CurrentPrice.String()).Str("givenAmount", givenAmount.String()).Msg("purchase attempt when price increased since user clicked purchase")
 		return terror.Warn(fmt.Errorf("price gone up since purchase attempted"), "Purchase failed. This item is no longer available at this price.")
 	}
