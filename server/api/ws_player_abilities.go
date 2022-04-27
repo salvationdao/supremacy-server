@@ -370,7 +370,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 	reply(true)
 
 	// Update price of sale ability
-	pac.API.PlayerAbilitiesSystem.Purchase <- &player_abilities.Purchase{
+	pac.API.SalePlayerAbilitiesSystem.Purchase <- &player_abilities.Purchase{
 		PlayerID:  userID,
 		AbilityID: uuid.FromStringOrNil(spa.ID),
 	}
