@@ -22,6 +22,17 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
+type MechColumns string
+
+func (c MechColumns) IsValid() error {
+	switch string(c) {
+	case boiler.MechColumns.Name:
+	case boiler.MechColumns.Tier:
+		return nil
+	}
+	return terror.Error(fmt.Errorf("invalid mech column"))
+}
+
 func MechsByOwnerID(ownerID uuid.UUID) ([]*server.MechContainer, error) {
 	mechs, err := boiler.Mechs(boiler.MechWhere.OwnerID.EQ(ownerID.String())).All(gamedb.StdConn)
 	if err != nil {
