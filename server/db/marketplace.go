@@ -17,7 +17,8 @@ import (
 // MarketplaceSaleItem conatains the sale item details and the item itself.
 type MarketplaceSaleItem struct {
 	*boiler.ItemSale
-	Mech *boiler.Mech `json:"mech,omitempty"`
+	Owner *boiler.Player `json:"owner"`
+	Mech  *boiler.Mech   `json:"mech,omitempty"`
 }
 
 // MarketplaceSaleList returns a numeric paginated result of sales list.
@@ -33,6 +34,7 @@ func MarketplaceSaleList(search string, archived bool, filter *ListFilterRequest
 			),
 			server.MarketplaceItemTypeMech,
 		),
+		qm.Load(boiler.ItemSaleRels.Owner),
 	}
 
 	// Filters
@@ -98,6 +100,7 @@ func MarketplaceSaleList(search string, archived bool, filter *ListFilterRequest
 		}
 		records = append(records, &MarketplaceSaleItem{
 			ItemSale: row,
+			Owner:    row.R.Owner,
 		})
 	}
 	if len(mechIDs) > 0 {
