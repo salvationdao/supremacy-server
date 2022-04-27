@@ -15,14 +15,12 @@ type GameMap struct {
 	ID            uuid.UUID `json:"id" db:"id"`
 	Name          string    `json:"name" db:"name"`
 	ImageUrl      string    `json:"image_url" db:"image_url"`
-	MaxSpawns     int       `json:"max_spawns" db:"max_spawns"`
 	Width         int       `json:"width" db:"width"`
 	Height        int       `json:"height" db:"height"`
 	CellsX        int       `json:"cells_x" db:"cells_x"`
 	CellsY        int       `json:"cells_y" db:"cells_y"`
-	TopPixels     int       `json:"top" db:"top_pixels"`
-	LeftPixels    int       `json:"left" db:"left_pixels"`
-	Scale         float64   `json:"scale" db:"scale"`
+	TopPixels     int       `json:"top_pixels" db:"top_pixels"`
+	LeftPixels    int       `json:"left_pixels" db:"left_pixels"`
 	DisabledCells []int64   `json:"disabled_cells" db:"disabled_cells"`
 }
 

@@ -53,3 +53,23 @@ func Gotimeout(cb func(), timeout time.Duration, errorCallback func(error)) {
 	}()
 	start <- true
 }
+
+// Unpacks 8 booleans from a single byte
+func UnpackBooleansFromByte(packedByte byte) []bool {
+	booleans := make([]bool, 8)
+	for i := 0; i < 8; i++ {
+		booleans[i] = (packedByte & (1 << i)) != 0
+	}
+	return booleans
+}
+
+// Packs up to 8 booleans into a single byte/
+func PackBooleansIntoByte(booleans []bool) byte {
+	var packedByte byte
+	for i, b := range booleans {
+		if b {
+			packedByte |= 1 << i
+		}
+	}
+	return packedByte
+}
