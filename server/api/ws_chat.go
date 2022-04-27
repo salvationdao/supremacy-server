@@ -130,12 +130,25 @@ func NewChatroom(factionID *server.FactionID) *Chatroom {
 	for i, msg := range msgs {
 		player, ok := players[msg.PlayerID]
 		if !ok {
-			player, _ = boiler.FindPlayer(gamedb.StdConn, msg.PlayerID)
-			if player == nil {
+			var err error
+			player, err = boiler.Players(
+				qm.Select(
+					boiler.PlayerColumns.ID,
+					boiler.PlayerColumns.Username,
+					boiler.PlayerColumns.Gid,
+					boiler.PlayerColumns.FactionID,
+					boiler.PlayerColumns.Rank,
+					boiler.PlayerColumns.SentMessageCount,
+				),
+				boiler.PlayerWhere.ID.EQ(msg.PlayerID),
+			).One(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Warn().Err(err).Interface("msg.PlayerID", msg.PlayerID).Msg("issue finding player")
 				continue
 			}
 			playerStat, err := db.UserStatsGet(player.ID)
 			if err != nil {
+				gamelog.L.Warn().Err(err).Interface("player.ID", player.ID).Msg("issue UserStatsGet")
 				continue
 			}
 			stats[player.ID] = playerStat
