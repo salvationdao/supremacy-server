@@ -833,7 +833,7 @@ func (btl *Battle) endWarMachines(payload *BattleEndPayload) []*WarMachine {
 					Msg("unable to update mech stat")
 			}
 
-			//// OLD
+			// OLD
 			bqn, err := boiler.BattleQueueNotifications(boiler.BattleQueueNotificationWhere.MechID.EQ(bm.MechID), qm.OrderBy(boiler.BattleQueueNotificationColumns.SentAt+" DESC")).One(gamedb.StdConn)
 			if err != nil {
 				if !errors.Is(err, sql.ErrNoRows) {
@@ -850,7 +850,7 @@ func (btl *Battle) endWarMachines(payload *BattleEndPayload) []*WarMachine {
 				}
 			}
 
-			//// NEW
+			// NEW
 			playerProfile, err := boiler.PlayerProfiles(boiler.PlayerProfileWhere.PlayerID.EQ(bm.OwnerID)).One(gamedb.StdConn)
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				gamelog.L.Error().Err(err).Str("player_id", bm.OwnerID).Msg("unable to get player prefs")
