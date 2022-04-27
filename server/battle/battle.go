@@ -12,6 +12,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/helpers"
 	"server/multipliers"
 	"server/rpcclient"
 	"sort"
@@ -83,10 +84,28 @@ func (btl *Battle) storeAbilities(as *AbilitiesSystem) {
 	btl._abilities = as
 }
 
+// storeGameMap set the game map detail from game client
+func (btl *Battle) storeGameMap(gm server.GameMap) {
+	btl.Lock()
+	defer btl.Unlock()
+
+	btl.gameMap.ImageUrl = gm.ImageUrl
+	btl.gameMap.Width = gm.Width
+	btl.gameMap.Height = gm.Height
+	btl.gameMap.CellsX = gm.CellsX
+	btl.gameMap.CellsY = gm.CellsY
+	btl.gameMap.LeftPixels = gm.LeftPixels
+	btl.gameMap.TopPixels = gm.TopPixels
+	btl.gameMap.DisabledCells = gm.DisabledCells
+}
+
 const HubKeyLiveVoteCountUpdated hub.HubCommandKey = "LIVE:VOTE:COUNT:UPDATED"
 const HubKeyWarMachineLocationUpdated hub.HubCommandKey = "WAR:MACHINE:LOCATION:UPDATED"
 
 func (btl *Battle) preIntro(payload *BattleStartPayload) error {
+	btl.Lock()
+	defer btl.Unlock()
+
 	bmd := make([]*db.BattleMechData, len(btl.WarMachines))
 	factions := map[uuid.UUID]*boiler.Faction{}
 
@@ -260,6 +279,10 @@ func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 		btl.arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", WSQueueUpdatedSubscribe, server.ZaibatsuFactionID)), true)
 	}
 
+	// broadcast battle settings
+	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Broadcasting battle start to players")
+	btl.BroadcastUpdate()
+
 	return nil
 }
 
@@ -293,8 +316,6 @@ func (btl *Battle) start() {
 	btl.storeAbilities(NewAbilitiesSystem(btl))
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle multipliers")
 	btl.multipliers = NewMultiplierSystem(btl)
-	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Broadcasting battle start to players")
-	btl.BroadcastUpdate()
 
 	// broadcast spoil of war on the start of the battle
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Broadcasting spoils of war updates")
@@ -1273,11 +1294,6 @@ func (btl *Battle) Tick(payload []byte) {
 	// Save to history
 	// btl.BattleHistory = append(btl.BattleHistory, payload)
 
-	broadcast := false
-	// broadcast
-	if btl.lastTick == nil {
-		broadcast = true
-	}
 	btl.lastTick = &payload
 
 	btl.arena.messageBus.SendBinary(messagebus.BusKey(HubKeyWarMachineLocationUpdated), payload)
@@ -1301,10 +1317,11 @@ func (btl *Battle) Tick(payload []byte) {
 
 		// Get Sync byte (tells us which data was updated for this warmachine)
 		syncByte := payload[offset]
+		booleans := helpers.UnpackBooleansFromByte(syncByte)
 		offset++
 
 		// Position + Yaw
-		if syncByte >= 100 {
+		if booleans[0] {
 			x := int(binary.BigEndian.Uint32(payload[offset : offset+4]))
 			offset += 4
 			y := int(binary.BigEndian.Uint32(payload[offset : offset+4]))
@@ -1322,7 +1339,7 @@ func (btl *Battle) Tick(payload []byte) {
 			}
 		}
 		// Health
-		if syncByte == 1 || syncByte == 11 || syncByte == 101 || syncByte == 111 {
+		if booleans[1] {
 			health := binary.BigEndian.Uint32(payload[offset : offset+4])
 			offset += 4
 			if warMachineIndex != -1 {
@@ -1330,16 +1347,21 @@ func (btl *Battle) Tick(payload []byte) {
 			}
 		}
 		// Shield
-		if syncByte == 10 || syncByte == 11 || syncByte == 110 || syncByte == 111 {
+		if booleans[2] {
 			shield := binary.BigEndian.Uint32(payload[offset : offset+4])
 			offset += 4
 			if warMachineIndex != -1 {
 				btl.WarMachines[warMachineIndex].Shield = shield
 			}
 		}
-	}
-	if broadcast {
-		btl.BroadcastUpdate()
+		// Energy
+		if booleans[3] {
+			energy := binary.BigEndian.Uint32(payload[offset : offset+4])
+			offset += 4
+			if warMachineIndex != -1 {
+				btl.WarMachines[warMachineIndex].Energy = energy
+			}
+		}
 	}
 }
 

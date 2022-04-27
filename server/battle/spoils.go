@@ -349,13 +349,19 @@ func payoutUserSpoils(
 
 	// check the spoils for this battle have enough left for a tick (always should)
 	if warChestSpoilsLeft.LessThan(user.TickAmount) {
-		gamelog.L.Error().
-			Err(fmt.Errorf("warChestSpoilsLeft.LessThan(user.TickAmount)")).
-			Str("battle_id", spoils.BattleID).
-			Str("warChestSpoilsLeft", warChestSpoilsLeft.String()).
-			Str("user.TickAmount", user.TickAmount.String()).
-			Msg("not enough spoils to pay out a user spoil tick (issue!)")
-		return user, spoils
+		difference := user.TickAmount.Sub(warChestSpoilsLeft)
+		// if difference is > than 1000, throw an error since that is more than a rounding issue.
+		if difference.GreaterThan(decimal.NewFromInt(1000)) {
+			gamelog.L.Error().
+				Err(fmt.Errorf("warChestSpoilsLeft.LessThan(user.TickAmount)")).
+				Str("battle_id", spoils.BattleID).
+				Str("warChestSpoilsLeft", warChestSpoilsLeft.String()).
+				Str("user.TickAmount", user.TickAmount.String()).
+				Msg("not enough spoils to pay out a user spoil tick (issue!)")
+			return user, spoils
+		}
+		// if difference is < than 1000, give them what we can
+		user.TickAmount = user.TickAmount.Sub(difference)
 	}
 
 	// check paying this tick out doesn't over pay them

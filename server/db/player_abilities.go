@@ -33,6 +33,7 @@ func (p PlayerAbilityColumn) IsValid() error {
 	switch string(p) {
 	case
 		boiler.PlayerAbilityColumns.ID,
+		boiler.PlayerAbilityColumns.OwnerID,
 		boiler.PlayerAbilityColumns.GameClientAbilityID,
 		boiler.PlayerAbilityColumns.Label,
 		boiler.PlayerAbilityColumns.Colour,
@@ -231,7 +232,7 @@ func PlayerAbilitiesList(
 	}
 
 	// Sort
-	orderBy := qm.OrderBy(fmt.Sprintf("%s desc", boiler.SalePlayerAbilityColumns.AvailableUntil))
+	orderBy := qm.OrderBy(fmt.Sprintf("%s desc", boiler.PlayerAbilityColumns.PurchasedAt))
 	if sort != nil {
 		sortColumn := sort.Column
 		if sort.Table != nil && *sort.Table != "" {

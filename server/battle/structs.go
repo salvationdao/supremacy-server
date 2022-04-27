@@ -154,7 +154,7 @@ type BattleEndDetail struct {
 	TopSupsContributors          []*BattleUser `json:"top_sups_contributors"`
 	TopSupsContributeFactions    []*Faction    `json:"top_sups_contribute_factions"`
 	MostFrequentAbilityExecutors []*BattleUser `json:"most_frequent_ability_executors"`
-	*MultiplierUpdate `json:"battle_multipliers"`
+	*MultiplierUpdate            `json:"battle_multipliers"`
 }
 
 type MultiplierUpdate struct {
@@ -176,6 +176,7 @@ type WarMachine struct {
 	Health             uint32          `json:"health"`
 	MaxShield          uint32          `json:"maxShield"`
 	Shield             uint32          `json:"shield"`
+	Energy             uint32          `json:"energy"`
 	Stat               *Stat           `json:"stat"`
 	ImageAvatar        string          `json:"imageAvatar"`
 	Position           *server.Vector3 `json:"position"`
