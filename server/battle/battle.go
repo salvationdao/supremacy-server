@@ -1299,12 +1299,6 @@ func (btl *Battle) Tick(payload []byte) {
 	// Save to history
 	// btl.BattleHistory = append(btl.BattleHistory, payload)
 
-
-	broadcast := false
-	// broadcast
-	if btl.lastTick == nil {
-		broadcast = true
-	}
 	btl.lastTick = &payload
 
 	btl.arena.messageBus.SendBinary(messagebus.BusKey(HubKeyWarMachineLocationUpdated), payload)
@@ -1378,9 +1372,6 @@ func (btl *Battle) Tick(payload []byte) {
 			}
 		}
 	}
-		if broadcast {
-    		btl.BroadcastUpdate()
-    	}
 }
 
 func (arena *Arena) reset() {
