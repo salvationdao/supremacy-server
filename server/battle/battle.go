@@ -1292,9 +1292,19 @@ func (btl *Battle) BroadcastUpdate() {
 }
 
 func (btl *Battle) Tick(payload []byte) {
+	if len(payload) < 1 {
+		gamelog.L.Error().Err(fmt.Errorf("len(payload) < 1")).Interface("payload", payload).Msg("len(payload) < 1")
+		return
+	}
 	// Save to history
 	// btl.BattleHistory = append(btl.BattleHistory, payload)
 
+
+	broadcast := false
+	// broadcast
+	if btl.lastTick == nil {
+		broadcast = true
+	}
 	btl.lastTick = &payload
 
 	btl.arena.messageBus.SendBinary(messagebus.BusKey(HubKeyWarMachineLocationUpdated), payload)
@@ -1364,6 +1374,9 @@ func (btl *Battle) Tick(payload []byte) {
 			}
 		}
 	}
+		if broadcast {
+    		btl.BroadcastUpdate()
+    	}
 }
 
 func (arena *Arena) reset() {
