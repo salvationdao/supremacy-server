@@ -434,6 +434,8 @@ func takeRemainingSpoils(
 		gamelog.L.Error().Err(fmt.Errorf("remainingSpoils not equal totalLostSpoils")).
 			Str("remainingSpoils", remainingSpoils.String()).
 			Str("totalLostSpoils", totalLostSpoils.String()).
+			Str("spoils.BattleID", spoils.BattleID).
+			Int("spoils.BattleNumber", spoils.BattleNumber).
 			Msg("issue with the remaining/lost spoils")
 	}
 
