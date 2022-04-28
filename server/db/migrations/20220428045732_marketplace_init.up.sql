@@ -18,6 +18,8 @@ CREATE TABLE item_sales (
 	dutch_auction BOOL NOT NULL DEFAULT FALSE,
 	dutch_action_drop_rate TEXT,
 
+    end_at TIMESTAMPTZ NOT NULL,
+
     sold_at TIMESTAMPTZ,
 	sold_for TEXT,
 	sold_tx_id TEXT,

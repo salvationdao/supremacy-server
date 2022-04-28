@@ -97,6 +97,7 @@ type MarketplaceSalesCreateRequest struct {
 		ItemID               uuid.UUID                  `json:"item_id"`
 		AskingPrice          *decimal.Decimal           `json:"asking_price"`
 		DutchAuctionDropRate *decimal.Decimal           `json:"dutch_auction_drop_rate"`
+		ListingDurationHours int64                      `json:"listing_duration_hours"`
 	} `json:"payload"`
 }
 
@@ -112,6 +113,11 @@ func (fc *MarketplaceController) SalesCreateHandler(ctx context.Context, hubc *h
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
+	}
+
+	if req.Payload.ListingDurationHours <= 0 {
+		err = fmt.Errorf("listing duration hours required")
+		return terror.Error(err, "Invalid request received")
 	}
 
 	userID, err := uuid.FromString(hubc.Identifier())
@@ -168,6 +174,7 @@ func (fc *MarketplaceController) SalesCreateHandler(ctx context.Context, hubc *h
 	if req.Payload.SaleType == server.MarketplaceSaleTypeBuyout {
 		feePrice = feePrice.Add(db.GetDecimalWithDefault(db.KeyMarketplaceListingBuyoutFee, decimal.NewFromInt(5)))
 	}
+	feePrice = feePrice.Mul(decimal.NewFromInt(req.Payload.ListingDurationHours))
 
 	if balance.Sub(feePrice).LessThan(decimal.Zero) {
 		err = fmt.Errorf("insufficient funds")
@@ -207,7 +214,8 @@ func (fc *MarketplaceController) SalesCreateHandler(ctx context.Context, hubc *h
 	}
 
 	// Create Sales Item
-	obj, err := db.MarketplaceSaleCreate(req.Payload.SaleType, userID, factionID, txid, req.Payload.ItemType, req.Payload.ItemID, req.Payload.AskingPrice, req.Payload.DutchAuctionDropRate)
+	endAt := time.Now().Add(time.Hour * time.Duration(req.Payload.ListingDurationHours))
+	obj, err := db.MarketplaceSaleCreate(req.Payload.SaleType, userID, factionID, txid, endAt, req.Payload.ItemType, req.Payload.ItemID, req.Payload.AskingPrice, req.Payload.DutchAuctionDropRate)
 	if err != nil {
 		fc.API.Passport.RefundSupsMessage(txid)
 		return terror.Error(err, "Unable to create new sale item.")

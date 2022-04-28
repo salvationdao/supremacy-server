@@ -5,6 +5,7 @@ import (
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
+	"time"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
@@ -33,6 +34,20 @@ var itemSaleQueryMods = []qm.QueryMod{
 		server.MarketplaceItemTypeMech,
 	),
 	qm.Load(boiler.ItemSaleRels.Owner),
+}
+
+// MarketplaceLoadItemSaleObject loads the specific item type's object.
+func MarketplaceLoadItemSaleObject(obj *MarketplaceSaleItem) (*MarketplaceSaleItem, error) {
+	if obj.ItemType == string(server.MarketplaceItemTypeMech) {
+		mech, err := boiler.Mechs(
+			boiler.MechWhere.ID.EQ(obj.ItemID),
+		).One(gamedb.StdConn)
+		if err != nil {
+			return nil, terror.Error(err)
+		}
+		obj.Mech = mech
+	}
+	return obj, nil
 }
 
 // MarketplaceItemSale gets a specific item sale.
@@ -154,13 +169,14 @@ func MarketplaceItemSaleList(search string, archived bool, filter *ListFilterReq
 }
 
 // MarketplaceSaleCreate inserts a new sale item.
-func MarketplaceSaleCreate(saleType server.MarketplaceSaleType, ownerID uuid.UUID, factionID uuid.UUID, listFeeTxnID string, itemType server.MarketplaceItemType, itemID uuid.UUID, askingPrice *decimal.Decimal, dutchOptionDropRate *decimal.Decimal) (*boiler.ItemSale, error) {
+func MarketplaceSaleCreate(saleType server.MarketplaceSaleType, ownerID uuid.UUID, factionID uuid.UUID, listFeeTxnID string, endAt time.Time, itemType server.MarketplaceItemType, itemID uuid.UUID, askingPrice *decimal.Decimal, dutchOptionDropRate *decimal.Decimal) (*boiler.ItemSale, error) {
 	obj := &boiler.ItemSale{
 		OwnerID:        ownerID.String(),
 		FactionID:      factionID.String(),
 		ListingFeeTXID: listFeeTxnID,
 		ItemType:       string(itemType),
 		ItemID:         itemID.String(),
+		EndAt:          endAt,
 	}
 	switch saleType {
 	case server.MarketplaceSaleTypeBuyout:
