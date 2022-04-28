@@ -63,6 +63,14 @@ func (p BlueprintPlayerAbilityColumn) IsValid() error {
 	return terror.Error(fmt.Errorf("invalid blueprint player ability column"))
 }
 
+type LocationSelectType string
+
+const (
+	MechSelect     LocationSelectType = "MECH_SELECT"
+	LocationSelect LocationSelectType = "LOCATION_SELECT"
+	Global         LocationSelectType = "GLOBAL"
+)
+
 type SaleAbilityDetailed struct {
 	*boiler.SalePlayerAbility
 	Ability *boiler.BlueprintPlayerAbility `json:"ability,omitempty"`
@@ -96,7 +104,7 @@ func SaleAbilitiesList(
 	sort *ListSortRequest,
 	offset int,
 	pageSize int,
-) (int, []string, error) {
+) (int64, []string, error) {
 	queryMods := []qm.QueryMod{}
 
 	// Filters
@@ -134,6 +142,11 @@ func SaleAbilitiesList(
 				xsearch,
 			))
 		}
+	}
+
+	total, err := boiler.SalePlayerAbilities(queryMods...).Count(gamedb.StdConn)
+	if err != nil {
+		return 0, nil, err
 	}
 
 	// Sort
@@ -183,7 +196,7 @@ func SaleAbilitiesList(
 		sIDs = append(sIDs, s.ID)
 	}
 
-	return len(sIDs), sIDs, nil
+	return total, sIDs, nil
 }
 
 // PlayerAbilitiesList returns a list of IDs from the player_abilities table.
@@ -196,7 +209,7 @@ func PlayerAbilitiesList(
 	sort *ListSortRequest,
 	offset int,
 	pageSize int,
-) (int, []string, error) {
+) (int64, []string, error) {
 	queryMods := []qm.QueryMod{}
 
 	// Filters
@@ -229,6 +242,11 @@ func PlayerAbilitiesList(
 				xsearch,
 			))
 		}
+	}
+
+	total, err := boiler.PlayerAbilities(queryMods...).Count(gamedb.StdConn)
+	if err != nil {
+		return 0, nil, terror.Error(err)
 	}
 
 	// Sort
@@ -267,5 +285,5 @@ func PlayerAbilitiesList(
 		aIDs = append(aIDs, s.ID)
 	}
 
-	return len(aIDs), aIDs, nil
+	return total, aIDs, nil
 }
