@@ -1600,9 +1600,11 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 		// reduce price
 		ability.SupsCost = ability.SupsCost.Mul(decimal.NewFromFloat(0.96595)).RoundDown(0)
 
+		abilityFloorPrice := db.GetDecimalWithDefault(db.KeyAbilityFloorPrice, decimal.New(100, 18))
+
 		// cap minmum price at 1 sup
-		if ability.SupsCost.Cmp(decimal.New(1, 18)) <= 0 {
-			ability.SupsCost = decimal.New(1, 18)
+		if ability.SupsCost.LessThan(abilityFloorPrice) {
+			ability.SupsCost = abilityFloorPrice
 		}
 
 		// broadcast the progress bar

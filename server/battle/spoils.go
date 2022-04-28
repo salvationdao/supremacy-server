@@ -104,12 +104,6 @@ func (sow *SpoilsOfWar) Run() {
 	t := time.NewTicker(sow.tickSpeed)
 	defer t.Stop()
 
-	// run the first drip as soon as the battle starts!
-	err := sow.Drip()
-	if err != nil {
-		gamelog.L.Err(err).Interface("sow", sow).Msg("failed to drip spoils of war")
-	}
-
 	for {
 		select {
 		case <-sow.cleanUp:
