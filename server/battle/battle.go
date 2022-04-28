@@ -336,7 +336,7 @@ func (btl *Battle) start() {
 	spoilOfWarPayload := []byte{byte(SpoilOfWarTick)}
 	amnt := decimal.NewFromInt(0)
 	for _, sow := range warchests {
-		amnt = amnt.Add(sow.Amount.Sub(sow.AmountSent))
+		amnt = amnt.Add(sow.Amount.Sub(sow.AmountSent).Sub(sow.LeftoverAmount))
 	}
 	spoilOfWarPayload = append(spoilOfWarPayload, []byte(strings.Join([]string{warchest.Amount.String(), amnt.String()}, "|"))...)
 	go btl.arena.messageBus.SendBinary(messagebus.BusKey(HubKeySpoilOfWarUpdated), spoilOfWarPayload)
