@@ -42,4 +42,4 @@ VALUES ((SELECT id FROM blueprint_player_abilities bpa WHERE bpa.game_client_abi
         NOW());
 
 
-CREATE INDEX CONCURRENTLY IF NOT EXISTS user_multi_index ON user_multipliers (player_id, from_battle_number, until_battle_number)
+CREATE INDEX IF NOT EXISTS user_multi_index ON user_multipliers (player_id, from_battle_number, until_battle_number)
