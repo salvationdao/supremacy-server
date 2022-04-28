@@ -30,6 +30,7 @@ const KeyContributorMinMultiplier KVKey = "contributor_min_multiplier"
 const KeyContributorDecayMultiplier KVKey = "contributor_decay_multiplier"
 const KeyContributorSharpnessMultiplier KVKey = "contributor_sharpness_multiplier"
 const KeyAbilityFloorPrice KVKey = "ability_floor_price"
+const KeyBattleAbilityPriceDropRate KVKey = "battle_ability_price_drop_rate"
 
 const KeyFirstAbilityCooldown KVKey = "first_ability_cooldown"
 
