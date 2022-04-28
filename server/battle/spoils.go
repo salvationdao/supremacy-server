@@ -360,15 +360,22 @@ func payoutUserSpoils(
 
 	// check paying this tick out doesn't over pay them
 	if user.PaidSow.Add(user.TickAmount).GreaterThan(user.TotalSow) {
-		gamelog.L.Error().
-			Err(fmt.Errorf("user.PaidSow.Add(user.TickAmount).GreaterThan(user.TotalSow)")).
-			Str("battle_id", spoils.BattleID).
-			Str("warChestSpoilsLeft", warChestSpoilsLeft.String()).
-			Str("user.PaidSow", user.PaidSow.String()).
-			Str("user.TickAmount", user.TickAmount.String()).
-			Str("user.TotalSow", user.TotalSow.String()).
-			Msg("paying the user this tick over pays them")
-		return user, spoils
+		// sometimes on the last tick it can just be rounding issues,
+		// so check if it's less than a 0.000000000000010000 sup difference and if so just pay them what is left
+		difference := user.TotalSow.Sub(user.PaidSow.Add(user.TickAmount))
+		if difference.GreaterThan(decimal.NewFromInt(1000)) {
+			gamelog.L.Error().
+				Err(fmt.Errorf("user.PaidSow.Add(user.TickAmount).GreaterThan(user.TotalSow)")).
+				Str("battle_id", spoils.BattleID).
+				Str("warChestSpoilsLeft", warChestSpoilsLeft.String()).
+				Str("user.PaidSow", user.PaidSow.String()).
+				Str("user.TickAmount", user.TickAmount.String()).
+				Str("user.TotalSow", user.TotalSow.String()).
+				Msg("paying the user this tick over pays them by more than 0.000000000000010000 possibly not a rounding error")
+			return user, spoils
+		}
+		// if just rounder error give them what we can
+		user.TickAmount = user.TotalSow.Sub(user.PaidSow)
 	}
 
 	txr := fmt.Sprintf("spoils_of_war|%s|%d", userID, time.Now().UnixNano())
