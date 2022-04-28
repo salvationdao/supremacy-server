@@ -412,14 +412,18 @@ func AllMechsAfter(leavingMechPosition int, queuedAt time.Time, factionID uuid.U
 }
 
 func QueueLength(factionID uuid.UUID) (int64, error) {
-	var count int64
-
-	err := gamedb.Conn.QueryRow(context.Background(), `SELECT COUNT(mech_id) FROM battle_queue WHERE faction_id = $1`, factionID.String()).Scan(&count)
+	bqs, err := boiler.BattleQueues(
+		qm.Select(
+			boiler.BattleQueueColumns.ID,
+		),
+		boiler.BattleQueueWhere.FactionID.EQ(factionID.String()),
+		boiler.BattleQueueWhere.BattleID.IsNull(), // only count the mech that is not in battle
+	).All(gamedb.StdConn)
 	if err != nil {
 		return -1, err
 	}
 
-	return count, nil
+	return int64(len(bqs)), nil
 }
 
 // QueueOwnerList returns the mech's in queue from an owner.
@@ -482,6 +486,7 @@ func QueueOwnerList(userID uuid.UUID) ([]*MechAndPosition, error) {
 func QueuePosition(mechID uuid.UUID, factionID uuid.UUID) (int64, error) {
 	var pos int64
 
+	// check whether it is in battle
 	inBattle, err := boiler.BattleQueues(
 		boiler.BattleQueueWhere.MechID.EQ(mechID.String()),
 		boiler.BattleQueueWhere.BattleID.IsNotNull(),
@@ -497,13 +502,16 @@ func QueuePosition(mechID uuid.UUID, factionID uuid.UUID) (int64, error) {
 		return -1, nil
 	}
 
-	query := `WITH bqpos AS (
-    SELECT t.*,
-           ROW_NUMBER() OVER(ORDER BY t.queued_at) AS position
-    FROM battle_queue t WHERE faction_id = $1)
-	SELECT s.position
-	FROM bqpos s
-	WHERE s.mech_id = $2;`
+	query := `
+		WITH bqpos AS (
+    		SELECT 	t.mech_id,
+           			ROW_NUMBER() OVER(ORDER BY t.queued_at) AS position
+    		FROM battle_queue t WHERE t.faction_id = $1 AND t.battle_id isnull
+    	)
+		SELECT s.position
+		FROM bqpos s
+		WHERE s.mech_id = $2;
+	`
 	err = gamedb.StdConn.QueryRow(query, factionID.String(), mechID.String()).Scan(&pos)
 	if err != nil {
 		if !errors.Is(sql.ErrNoRows, err) {
