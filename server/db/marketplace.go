@@ -21,21 +21,52 @@ type MarketplaceSaleItem struct {
 	Mech  *boiler.Mech   `json:"mech,omitempty"`
 }
 
-// MarketplaceSaleList returns a numeric paginated result of sales list.
-func MarketplaceSaleList(search string, archived bool, filter *ListFilterRequest, offset int, pageSize int, sortBy string, sortDir SortByDir) (int64, []*MarketplaceSaleItem, error) {
-	queryMods := []qm.QueryMod{
-		qm.LeftOuterJoin(
-			fmt.Sprintf(
-				"%s ON %s = %s AND %s = ?",
-				boiler.TableNames.Mechs,
-				qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
-				qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.ItemID),
-				qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.ItemType),
-			),
-			server.MarketplaceItemTypeMech,
+var itemSaleQueryMods = []qm.QueryMod{
+	qm.LeftOuterJoin(
+		fmt.Sprintf(
+			"%s ON %s = %s AND %s = ?",
+			boiler.TableNames.Mechs,
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.ItemID),
+			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.ItemType),
 		),
-		qm.Load(boiler.ItemSaleRels.Owner),
+		server.MarketplaceItemTypeMech,
+	),
+	qm.Load(boiler.ItemSaleRels.Owner),
+}
+
+// MarketplaceItemSale gets a specific item sale.
+func MarketplaceItemSale(id uuid.UUID) (*MarketplaceSaleItem, error) {
+	item, err := boiler.ItemSales(
+		append(
+			itemSaleQueryMods,
+			boiler.ItemSaleWhere.ID.EQ(id.String()),
+		)...,
+	).One(gamedb.StdConn)
+	if err != nil {
+		return nil, terror.Error(err)
 	}
+
+	// Get sale item details and the item for sale
+	output := &MarketplaceSaleItem{
+		ItemSale: item,
+		Owner:    item.R.Owner,
+	}
+	if item.ItemType == string(server.MarketplaceItemTypeMech) {
+		mech, err := boiler.Mechs(
+			boiler.MechWhere.ID.EQ(item.ItemID),
+		).One(gamedb.StdConn)
+		if err != nil {
+			return nil, terror.Error(err)
+		}
+		output.Mech = mech
+	}
+	return output, nil
+}
+
+// MarketplaceItemSaleList returns a numeric paginated result of sales list.
+func MarketplaceItemSaleList(search string, archived bool, filter *ListFilterRequest, offset int, pageSize int, sortBy string, sortDir SortByDir) (int64, []*MarketplaceSaleItem, error) {
+	queryMods := itemSaleQueryMods
 
 	// Filters
 	if filter != nil {
