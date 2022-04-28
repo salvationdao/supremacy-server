@@ -72,6 +72,17 @@ func (arena *Arena) currentBattleNumber() int {
 	return arena._currentBattle.BattleNumber
 }
 
+func (arena *Arena) currentBattleWarMachineIDs() []uuid.UUID {
+	arena.RLock()
+	defer arena.RUnlock()
+
+	if arena._currentBattle == nil {
+		return []uuid.UUID{}
+	}
+
+	return arena._currentBattle.warMachineIDs
+}
+
 // return a copy of current battle user list
 func (arena *Arena) currentBattleUsersCopy() []*BattleUser {
 	arena.RLock()
