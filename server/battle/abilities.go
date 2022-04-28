@@ -278,8 +278,18 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 		}
 	}
 
+	// update battle ability price to not lower than min price
+	abilityFloorPrice := db.GetDecimalWithDefault(db.KeyAbilityFloorPrice, decimal.New(100, 18))
+	_, err := boiler.GameAbilities(
+		boiler.GameAbilityWhere.BattleAbilityID.IsNotNull(),
+		boiler.GameAbilityWhere.SupsCost.LT(abilityFloorPrice.String()),
+	).UpdateAll(gamedb.StdConn, boiler.M{"sups_cost": abilityFloorPrice})
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to set battle ability price to not lower than min price")
+	}
+
 	// init battle ability
-	_, err := as.SetNewBattleAbility(true)
+	_, err = as.SetNewBattleAbility(true)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to set up battle ability")
 		return nil
@@ -1600,13 +1610,12 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 	as.battleAbilityPool.Abilities.Range(func(factionID string, ability *GameAbility) bool {
 		// reduce price
 		priceDropRate := db.GetDecimalWithDefault(db.KeyBattleAbilityPriceDropRate, decimal.NewFromFloat(0.97716))
+		abilityFloorPrice := db.GetDecimalWithDefault(db.KeyAbilityFloorPrice, decimal.New(100, 18))
 
 		// cash old sups cost to not trigger the ability
 		oldSupsCost := ability.SupsCost
 
 		ability.SupsCost = ability.SupsCost.Mul(priceDropRate).RoundDown(0)
-
-		abilityFloorPrice := db.GetDecimalWithDefault(db.KeyAbilityFloorPrice, decimal.New(100, 18))
 
 		// cap minmum price at 1 sup
 		if ability.SupsCost.LessThan(abilityFloorPrice) {
