@@ -526,8 +526,11 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 						continue
 					}
 
-					actualSupSpent, multiAmount, isTriggered := ability.SupContribution(as.battle().arena.RPCClient, as, as.battle().ID, as.battle().BattleNumber, cont.userID, amount)
-
+					actualSupSpent, multiAmount, isTriggered, err := ability.SupContribution(as.battle().arena.RPCClient, as, as.battle().ID, as.battle().BattleNumber, cont.userID, amount)
+					if err != nil {
+						cont.reply(false)
+						continue
+					}
 					cont.reply(true)
 
 					if isTriggered {
@@ -748,7 +751,7 @@ func (ga *GameAbility) FactionUniqueAbilityPriceUpdate(minPrice decimal.Decimal)
 }
 
 // SupContribution contribute sups to specific game ability, return the actual sups spent and whether the ability is triggered
-func (ga *GameAbility) SupContribution(ppClient *rpcclient.PassportXrpcClient, as *AbilitiesSystem, battleID string, battleNumber int, userID uuid.UUID, amount decimal.Decimal) (decimal.Decimal, decimal.Decimal, bool) {
+func (ga *GameAbility) SupContribution(ppClient *rpcclient.PassportXrpcClient, as *AbilitiesSystem, battleID string, battleNumber int, userID uuid.UUID, amount decimal.Decimal) (decimal.Decimal, decimal.Decimal, bool, error) {
 
 	isTriggered := false
 
@@ -776,7 +779,7 @@ func (ga *GameAbility) SupContribution(ppClient *rpcclient.PassportXrpcClient, a
 		NotSafe:              true,
 	})
 	if err != nil {
-		return decimal.Zero, decimal.Zero, false
+		return decimal.Zero, decimal.Zero, false, err
 	}
 
 	isAllSyndicates := false
@@ -857,12 +860,12 @@ func (ga *GameAbility) SupContribution(ppClient *rpcclient.PassportXrpcClient, a
 		err := db.FactionAbilitiesSupsCostUpdate(ga.ID, ga.SupsCost, ga.CurrentSups)
 		if err != nil {
 			gamelog.L.Error().Str("ga.ID", ga.ID).Str("ga.SupsCost", ga.SupsCost.String()).Str("ga.CurrentSups", ga.CurrentSups.String()).Err(err).Msg("unable to insert faction ability sup cost update")
-			return amount, multiAmount, false
+			return amount, multiAmount, false, err
 		}
-		return amount, multiAmount, false
+		return amount, multiAmount, false, nil
 	}
 
-	return amount, multiAmount, true
+	return amount, multiAmount, true, nil
 }
 
 // ***************************
@@ -1294,9 +1297,13 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				}
 
 				// contribute sups
-				actualSupSpent, multiAmount, abilityTriggered := factionAbility.SupContribution(as.battle().arena.RPCClient, as, as.battle().ID, as.battle().BattleNumber, cont.userID, amount)
-
+				actualSupSpent, multiAmount, abilityTriggered, err := factionAbility.SupContribution(as.battle().arena.RPCClient, as, as.battle().ID, as.battle().BattleNumber, cont.userID, amount)
 				// tell frontend the contribution is success
+				if err != nil {
+					cont.reply(false)
+					continue
+				}
+
 				cont.reply(true)
 
 				if abilityTriggered {

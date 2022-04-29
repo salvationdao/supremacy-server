@@ -401,7 +401,6 @@ func (arena *Arena) BattleAbilityBribe(ctx context.Context, wsc *hub.Client, pay
 	userID := uuid.FromStringOrNil(wsc.Identifier())
 	if userID.IsNil() {
 		gamelog.L.Error().Str("user id is nil", wsc.Identifier()).Msg("cant make users")
-
 		return terror.Error(terror.ErrForbidden)
 	}
 
