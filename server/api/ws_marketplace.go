@@ -101,12 +101,6 @@ type MarketplaceSalesCreateRequest struct {
 	} `json:"payload"`
 }
 
-type MarketplaceSalesCreateResponse struct {
-	ID       string `json:"id"`
-	ItemType string `json:"item_type"`
-	SaleType string `json:"sale_type"`
-}
-
 func (fc *MarketplaceController) SalesCreateHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	errMsg := "Issue processing list sale item, try again or contact support."
 	req := &MarketplaceSalesCreateRequest{}
@@ -218,15 +212,30 @@ func (fc *MarketplaceController) SalesCreateHandler(ctx context.Context, hubc *h
 	obj, err := db.MarketplaceSaleCreate(req.Payload.SaleType, userID, factionID, txid, endAt, req.Payload.ItemType, req.Payload.ItemID, req.Payload.AskingPrice, req.Payload.DutchAuctionDropRate)
 	if err != nil {
 		fc.API.Passport.RefundSupsMessage(txid)
+		gamelog.L.Error().
+			Str("user_id", hubc.Identifier()).
+			Str("sale_type", string(req.Payload.SaleType)).
+			Str("item_type", string(req.Payload.ItemType)).
+			Str("item_id", req.Payload.ItemID.String()).
+			Err(err).
+			Msg("Unable to create new sale item.")
 		return terror.Error(err, "Unable to create new sale item.")
 	}
 
-	resp := &MarketplaceSalesCreateResponse{
-		ID:       obj.ID,
-		ItemType: obj.ItemType,
-		SaleType: string(req.Payload.SaleType),
+	obj, err = db.MarketplaceLoadItemSaleObject(obj)
+	if err != nil {
+		fc.API.Passport.RefundSupsMessage(txid)
+		gamelog.L.Error().
+			Str("user_id", hubc.Identifier()).
+			Str("sale_type", string(req.Payload.SaleType)).
+			Str("item_type", string(req.Payload.ItemType)).
+			Str("item_id", req.Payload.ItemID.String()).
+			Err(err).
+			Msg("Unable to create new sale item (post create).")
+		return terror.Error(err, "Unable to create new sale item.")
 	}
-	reply(resp)
+
+	reply(obj)
 
 	return nil
 }
@@ -247,13 +256,12 @@ func (mp *MarketplaceController) SalesItemUpdateSubscriber(ctx context.Context, 
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
-	exists, err := db.MarketplaceSaleItemExists(req.Payload.ID)
+	obj, err := db.MarketplaceItemSale(req.Payload.ID)
 	if err != nil {
 		return "", "", terror.Error(err, "Invalid request received")
 	}
-	if !exists {
-		return "", "", terror.Error(fmt.Errorf("sale item not found"), "Sale Item not found.")
-	}
+
+	reply(obj)
 
 	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyMarketplaceSalesItemUpdate, req.Payload.ID))
 	return req.TransactionID, busKey, nil

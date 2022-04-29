@@ -67,14 +67,9 @@ func MarketplaceItemSale(id uuid.UUID) (*MarketplaceSaleItem, error) {
 		ItemSale: item,
 		Owner:    item.R.Owner,
 	}
-	if item.ItemType == string(server.MarketplaceItemTypeMech) {
-		mech, err := boiler.Mechs(
-			boiler.MechWhere.ID.EQ(item.ItemID),
-		).One(gamedb.StdConn)
-		if err != nil {
-			return nil, terror.Error(err)
-		}
-		output.Mech = mech
+	output, err = MarketplaceLoadItemSaleObject(output)
+	if err != nil {
+		return nil, terror.Error(err)
 	}
 	return output, nil
 }
@@ -169,7 +164,7 @@ func MarketplaceItemSaleList(search string, archived bool, filter *ListFilterReq
 }
 
 // MarketplaceSaleCreate inserts a new sale item.
-func MarketplaceSaleCreate(saleType server.MarketplaceSaleType, ownerID uuid.UUID, factionID uuid.UUID, listFeeTxnID string, endAt time.Time, itemType server.MarketplaceItemType, itemID uuid.UUID, askingPrice *decimal.Decimal, dutchOptionDropRate *decimal.Decimal) (*boiler.ItemSale, error) {
+func MarketplaceSaleCreate(saleType server.MarketplaceSaleType, ownerID uuid.UUID, factionID uuid.UUID, listFeeTxnID string, endAt time.Time, itemType server.MarketplaceItemType, itemID uuid.UUID, askingPrice *decimal.Decimal, dutchOptionDropRate *decimal.Decimal) (*MarketplaceSaleItem, error) {
 	obj := &boiler.ItemSale{
 		OwnerID:        ownerID.String(),
 		FactionID:      factionID.String(),
@@ -194,7 +189,10 @@ func MarketplaceSaleCreate(saleType server.MarketplaceSaleType, ownerID uuid.UUI
 	if err != nil {
 		return nil, terror.Error(err)
 	}
-	return obj, nil
+	output := &MarketplaceSaleItem{
+		ItemSale: obj,
+	}
+	return output, nil
 }
 
 // MarketplaceSaleItemExists checks whether given sales item exists.
