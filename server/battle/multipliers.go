@@ -230,7 +230,7 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 	if repairContributorMultiplier != nil && repairTriggerMultiplier != nil {
 
 		for _, repairEvent := range repairEvents {
-			triggeredPlayer, err := boiler.BattleContributions(boiler.BattleContributionWhere.AbilityOfferingID.EQ(repairEvent.RelatedID.String), boiler.BattleContributionWhere.DidTrigger.EQ(true)).One(gamedb.StdConn)
+			triggeredPlayer, err := boiler.BattleAbilityTriggers(boiler.BattleAbilityTriggerWhere.AbilityOfferingID.EQ(repairEvent.RelatedID.String)).One(gamedb.StdConn)
 			if err != nil {
 				gamelog.L.Error().Str("event triggered", repairEvent.RelatedID.String).Err(err).Msg("Failed to get triggered player")
 				continue
@@ -266,9 +266,9 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 				if !ok {
 					mult = make(map[string][]*boiler.Multiplier)
 				}
-				if eventContributor.DidTrigger {
+				if eventContributor.PlayerID == triggeredPlayer.PlayerID.String {
 					mult[repairTriggerMultiplier.ID] = append(mult[repairTriggerMultiplier.ID], repairTriggerMultiplier)
-					newMultipliers[triggeredPlayer.PlayerID] = mult
+					newMultipliers[triggeredPlayer.PlayerID.String] = mult
 					continue
 				}
 
@@ -324,7 +324,7 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 			}
 			sameKilledEvents = append(sameKilledEvents, *killedEvent)
 
-			triggeredPlayer, err := boiler.BattleContributions(boiler.BattleContributionWhere.AbilityOfferingID.EQ(killedEvent.RelatedID.String), boiler.BattleContributionWhere.DidTrigger.EQ(true)).One(gamedb.StdConn)
+			triggeredPlayer, err := boiler.BattleAbilityTriggers(boiler.BattleAbilityTriggerWhere.AbilityOfferingID.EQ(killedEvent.RelatedID.String)).One(gamedb.StdConn)
 			if err != nil {
 				gamelog.L.Error().Str("event triggered", killedEvent.RelatedID.String).Err(err).Msg("Failed to get triggered player")
 				continue
@@ -384,7 +384,7 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 						mult = make(map[string][]*boiler.Multiplier)
 					}
 
-					if eventContributor.DidTrigger {
+					if eventContributor.PlayerID == triggeredPlayer.PlayerID.String {
 						mult, ok := newMultipliers[eventContributor.PlayerID]
 						if !ok {
 							mult = make(map[string][]*boiler.Multiplier)
@@ -527,17 +527,17 @@ winwar:
 				gamelog.L.Error().Interface("lastwins", lastWins).Msg("last wins is less than 3 - this should never happen")
 				continue winwar
 			}
+			foundTimes := 0
 			for _, lastWinItem := range lastWins {
-				found := false
 				for _, lastWinOwnerID := range lastWinItem.OwnerIDs {
 					if lastWinOwnerID == wm.OwnedByID {
-						found = true
+						foundTimes++
 						break
 					}
 				}
-				if !found {
-					continue winwar
-				}
+			}
+			if foundTimes < 3 {
+				continue winwar
 			}
 		}
 
@@ -549,8 +549,8 @@ winwar:
 
 		if _, ok := newMultipliers[wm.OwnedByID]; !ok {
 			newMultipliers[wm.OwnedByID] = make(map[string][]*boiler.Multiplier)
+			newMultipliers[wm.OwnedByID][m3.ID] = append(newMultipliers[wm.OwnedByID][m3.ID], m3)
 		}
-		newMultipliers[wm.OwnedByID][m3.ID] = append(newMultipliers[wm.OwnedByID][m3.ID], m3)
 	}
 
 	// insert multipliers
