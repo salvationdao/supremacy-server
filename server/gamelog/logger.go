@@ -60,7 +60,7 @@ func LogPanicRecovery(msg string, r interface{}) {
 	}
 
 	// Execute log
-	event.RawJSON("stack", jStack).Msg(msg)
+	event.RawJSON("stack_trace", jStack).Msg(msg)
 }
 
 // DatadogLog implements the datadog logger interface
