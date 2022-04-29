@@ -666,8 +666,6 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 						// generate new offering id for current ability
 						ability.OfferingID = uuid.Must(uuid.NewV4())
 
-						fmt.Println(fmt.Sprintf("%s_%s_%s_%s_1", ability.Identity, ability.OfferingID.String(), ability.SupsCost.String(), ability.CurrentSups.String()))
-
 						// only broadcast if the ability is triggered
 						payload := []byte{byte(GameAbilityProgressTick)}
 						payload = append(payload, []byte(fmt.Sprintf("%s_%s_%s_%s_1", ability.Identity, ability.OfferingID.String(), ability.SupsCost.String(), ability.CurrentSups.String()))...)
