@@ -369,6 +369,9 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 	}
 	reply(true)
 
+	// Tell client to update their player abilities list
+	pac.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeyPlayerAbilitiesListUpdated, userID)), true)
+
 	// Update price of sale ability
 	pac.API.SalePlayerAbilitiesSystem.Purchase <- &player_abilities.Purchase{
 		PlayerID:  userID,
