@@ -528,6 +528,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 
 					actualSupSpent, multiAmount, isTriggered, err := ability.SupContribution(as.battle().arena.RPCClient, as, as.battle().ID, as.battle().BattleNumber, cont.userID, amount)
 					if err != nil {
+						gamelog.L.Error().Err(err).Msg("Failed to contribute sups to faction ability")
 						cont.reply(false)
 						continue
 					}
