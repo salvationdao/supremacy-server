@@ -147,6 +147,26 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		return terror.Error(fmt.Errorf("mech is still in repair center"), "Your mech is still in the repair center")
 	}
 
+	// Insert mech into queue
+	existMech, err := boiler.BattleQueues(boiler.BattleQueueWhere.MechID.EQ(mechID.String())).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Str("mech_id", mechID.String()).Err(err).Msg("check mech exists in queue")
+		return terror.Error(err, "Failed to check whether mech is in the battle queue")
+	}
+	if existMech != nil {
+		gamelog.L.Debug().Str("mech_id", mechID.String()).Err(err).Msg("mech already in queue")
+		position, err := db.QueuePosition(mechID, factionID)
+		if err != nil {
+			return terror.Error(err, "Already in queue, failed to get position. Contact support or try again.")
+		}
+
+		if position == -1 {
+			return terror.Error(terror.ErrInvalidInput, "Your mech is in battle.")
+		}
+
+		return terror.Error(terror.ErrInvalidInput, fmt.Sprintf("Your mech is already in queue, current position is %d.", position))
+	}
+
 	// Get current queue length and calculate queue fee and reward
 	result, err := db.QueueLength(factionID)
 	if err != nil {
@@ -162,23 +182,6 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		return fmt.Errorf(terror.Echo(err))
 	}
 	defer tx.Rollback()
-
-	var position int64
-
-	// Insert mech into queue
-	exists, err := boiler.BattleQueueExists(tx, mechID.String())
-	if err != nil {
-		gamelog.L.Error().Str("mech_id", mechID.String()).Err(err).Msg("check mech exists in queue")
-	}
-	if exists {
-		gamelog.L.Debug().Str("mech_id", mechID.String()).Err(err).Msg("mech already in queue")
-		position, err = db.QueuePosition(mechID, factionID)
-		if err != nil {
-			return terror.Error(err, "Already in queue, failed to get position. Contact support or try again.")
-		}
-		reply(true)
-		return nil
-	}
 
 	bc := &boiler.BattleContract{
 		MechID:         mechID.String(),
@@ -216,6 +219,8 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 			Err(err).Msg("unable to insert mech into queue")
 		return terror.Error(err, "Unable to join queue, contact support or try again.")
 	}
+
+	// get faction user account
 	factionAccountID, ok := server.FactionUsers[factionID.String()]
 	if !ok {
 		gamelog.L.Error().
@@ -400,16 +405,8 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 	}
 
 	// Get mech current queue position
-	position, err = db.QueuePosition(mechID, factionID)
-	if errors.Is(sql.ErrNoRows, err) {
-		// If mech is not in queue
-		arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", WSAssetQueueStatusSubscribe, mechID)), AssetQueueStatusResponse{
-			nil,
-			nil,
-		})
-		return nil
-	}
-	if err != nil {
+	position, err := db.QueuePosition(mechID, factionID)
+	if err != nil && !errors.Is(sql.ErrNoRows, err) {
 		gamelog.L.Error().
 			Str("mechID", mechID.String()).
 			Str("factionID", factionID.String()).
@@ -517,6 +514,14 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 		// If mech is currently in battle
 		gamelog.L.Error().Interface("mechID", mechID).Interface("factionID", mech.FactionID).Err(err).Msg("cannot remove battling mech from queue")
 		return terror.Error(fmt.Errorf("cannot remove war machine from queue when it is in battle"), "You cannot remove war machines currently in battle.")
+	}
+
+	// check current battle war machine id list
+	for _, wmID := range arena.currentBattleWarMachineIDs() {
+		if wmID == mechID {
+			gamelog.L.Error().Interface("mechID", mechID).Interface("factionID", mech.FactionID).Err(err).Msg("cannot remove battling mech from queue")
+			return terror.Error(fmt.Errorf("cannot remove war machine from queue when it is in battle"), "You cannot remove war machines currently in battle.")
+		}
 	}
 
 	tx, err := gamedb.StdConn.Begin()

@@ -73,6 +73,17 @@ func (arena *Arena) currentBattleNumber() int {
 	return arena._currentBattle.BattleNumber
 }
 
+func (arena *Arena) currentBattleWarMachineIDs() []uuid.UUID {
+	arena.RLock()
+	defer arena.RUnlock()
+
+	if arena._currentBattle == nil {
+		return []uuid.UUID{}
+	}
+
+	return arena._currentBattle.warMachineIDs
+}
+
 // return a copy of current battle user list
 func (arena *Arena) currentBattleUsersCopy() []*BattleUser {
 	arena.RLock()
@@ -201,9 +212,9 @@ func NewArena(opts *Opts) *Arena {
 	// battle ability related (bribing)
 	opts.SecureUserFactionCommand(HubKeyBattleAbilityBribe, arena.BattleAbilityBribe)
 	opts.SecureUserFactionCommand(HubKeyAbilityLocationSelect, arena.AbilityLocationSelect)
-	opts.SecureUserFactionSubscribeCommand(HubKeGabsBribeStageUpdateSubscribe, arena.GabsBribeStageSubscribe)
+	opts.SubscribeCommand(HubKeGabsBribeStageUpdateSubscribe, arena.GabsBribeStageSubscribe)
 	opts.SecureUserFactionSubscribeCommand(HubKeGabsBribingWinnerSubscribe, arena.GabsBribingWinnerSubscribe)
-	opts.SecureUserFactionSubscribeCommand(HubKeyBattleAbilityUpdated, arena.BattleAbilityUpdateSubscribeHandler)
+	opts.SubscribeCommand(HubKeyBattleAbilityUpdated, arena.BattleAbilityUpdateSubscribeHandler)
 
 	// faction unique ability related (sup contribution)
 	opts.SecureUserFactionCommand(HubKeFactionUniqueAbilityContribute, arena.FactionUniqueAbilityContribute)
@@ -211,11 +222,11 @@ func NewArena(opts *Opts) *Arena {
 	opts.SecureUserFactionSubscribeCommand(HubKeyWarMachineAbilitiesUpdated, arena.WarMachineAbilitiesUpdateSubscribeHandler)
 
 	// net message subscribe
-	opts.NetSecureUserFactionSubscribeCommand(HubKeyBattleAbilityProgressBarUpdated, arena.FactionProgressBarUpdateSubscribeHandler)
+	opts.NetSubscribeCommand(HubKeyBattleAbilityProgressBarUpdated, arena.BattleAbilityProgressBarUpdateSubscribeHandler)
 	opts.NetSecureUserFactionSubscribeCommand(HubKeyAbilityPriceUpdated, arena.FactionAbilityPriceUpdateSubscribeHandler)
 	opts.NetSubscribeCommand(HubKeyWarMachineLocationUpdated, arena.WarMachineLocationUpdateSubscribeHandler)
-	opts.NetSecureUserFactionSubscribeCommand(HubKeyLiveVoteCountUpdated, arena.LiveVoteCountUpdateSubscribeHandler)
-	opts.NetSecureUserSubscribeCommand(HubKeySpoilOfWarUpdated, arena.SpoilOfWarUpdateSubscribeHandler)
+	opts.NetSubscribeCommand(HubKeyLiveVoteCountUpdated, arena.LiveVoteCountUpdateSubscribeHandler)
+	opts.NetSubscribeCommand(HubKeySpoilOfWarUpdated, arena.SpoilOfWarUpdateSubscribeHandler)
 
 	// start player rank updater
 	arena.PlayerRankUpdater()
@@ -391,13 +402,10 @@ func (arena *Arena) BattleAbilityBribe(ctx context.Context, wsc *hub.Client, pay
 	userID := uuid.FromStringOrNil(wsc.Identifier())
 	if userID.IsNil() {
 		gamelog.L.Error().Str("user id is nil", wsc.Identifier()).Msg("cant make users")
-
 		return terror.Error(terror.ErrForbidden)
 	}
 
-	arena.currentBattle().abilities().BribeGabs(factionID, userID, req.Payload.AbilityOfferingID, req.Payload.Percentage)
-
-	reply(true)
+	arena.currentBattle().abilities().BribeGabs(factionID, userID, req.Payload.AbilityOfferingID, req.Payload.Percentage, reply)
 
 	return nil
 }
@@ -622,16 +630,22 @@ func (arena *Arena) BattleAbilityUpdateSubscribeHandler(ctx context.Context, wsc
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
+	factionID := uuid.Nil
+
 	userID := uuid.FromStringOrNil(wsc.Identifier())
-	if userID.IsNil() {
-		return "", "", terror.Error(terror.ErrForbidden)
+	if !userID.IsNil() {
+		// update player's faction id
+		factionID, err = GetPlayerFactionID(userID)
+		if err != nil || factionID.IsNil() {
+			gamelog.L.Error().Str("userID", userID.String()).Err(err).Msg("unable to find player from user id")
+			return "", "", terror.Error(terror.ErrForbidden)
+		}
 	}
 
-	// get faction id
-	factionID, err := GetPlayerFactionID(userID)
-	if err != nil || factionID.IsNil() {
-		gamelog.L.Error().Str("userID", userID.String()).Err(err).Msg("unable to find player from user id")
-		return "", "", terror.Error(terror.ErrForbidden)
+	// HACK: update player's faction id to red mountain, enable player to view the vote panel
+	// for those who first join the battle arena and want to understand how things work
+	if factionID.IsNil() {
+		factionID = uuid.UUID(server.RedMountainFactionID)
 	}
 
 	if needProcess {
@@ -722,9 +736,7 @@ func (arena *Arena) FactionUniqueAbilityContribute(ctx context.Context, wsc *hub
 		return terror.Error(terror.ErrForbidden)
 	}
 
-	arena.currentBattle().abilities().AbilityContribute(factionID, userID, req.Payload.AbilityIdentity, req.Payload.AbilityOfferingID, req.Payload.Percentage)
-
-	reply(true)
+	arena.currentBattle().abilities().AbilityContribute(factionID, userID, req.Payload.AbilityIdentity, req.Payload.AbilityOfferingID, req.Payload.Percentage, reply)
 
 	return nil
 }
@@ -903,11 +915,6 @@ func (arena *Arena) GabsBribeStageSubscribe(ctx context.Context, wsc *hub.Client
 		return "", "", terror.Error(err, "Invalid request received")
 	}
 
-	userID := uuid.FromStringOrNil(wsc.Identifier())
-	if userID.IsNil() {
-		return "", "", terror.Error(terror.ErrInvalidInput)
-	}
-
 	if needProcess {
 		// return data if, current battle is not null
 		if arena.currentBattle() != nil {
@@ -923,8 +930,8 @@ func (arena *Arena) GabsBribeStageSubscribe(ctx context.Context, wsc *hub.Client
 
 const HubKeyBattleAbilityProgressBarUpdated hub.HubCommandKey = "BATTLE:ABILITY:PROGRESS:BAR:UPDATED"
 
-func (arena *Arena) FactionProgressBarUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, needProcess bool) (messagebus.BusKey, error) {
-	gamelog.L.Info().Str("fn", "FactionProgressBarUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
+func (arena *Arena) BattleAbilityProgressBarUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, needProcess bool) (messagebus.BusKey, error) {
+	gamelog.L.Info().Str("fn", "BattleAbilityProgressBarUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
 
 	return messagebus.BusKey(HubKeyBattleAbilityProgressBarUpdated), nil
 }
@@ -1054,6 +1061,7 @@ type BattleWMPickupPayload struct {
 func (arena *Arena) start() {
 	defer func() {
 		if r := recover(); r != nil {
+
 			gamelog.LogPanicRecovery("Panic! Panic! Panic! Panic on battle arena!", r)
 		}
 	}()
