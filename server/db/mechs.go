@@ -5,13 +5,15 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/ninja-software/terror/v2"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 	"strconv"
+	"strings"
 	"time"
+
+	"github.com/ninja-software/terror/v2"
 
 	"github.com/gofrs/uuid"
 	"github.com/teris-io/shortid"
@@ -197,6 +199,115 @@ func DefaultMechs() ([]*server.MechContainer, error) {
 	return Mechs(ids...)
 }
 
+var ErrNotAllMechsReturned = fmt.Errorf("not all mechs returned")
+
+func Mech(mechID uuid.UUID) (*server.MechContainer, error) {
+	mc := &server.MechContainer{}
+	query := `SELECT
+       ` + strings.Join([]string{
+		`mechs.` + boiler.MechColumns.ID,
+		`mechs.` + boiler.MechColumns.OwnerID,
+		`mechs.` + boiler.MechColumns.TemplateID,
+		`mechs.` + boiler.MechColumns.ChassisID,
+		`mechs.` + boiler.MechColumns.ExternalTokenID,
+		`mechs.` + boiler.MechColumns.Tier,
+		`mechs.` + boiler.MechColumns.IsDefault,
+		`mechs.` + boiler.MechColumns.ImageURL,
+		`mechs.` + boiler.MechColumns.AnimationURL,
+		`mechs.` + boiler.MechColumns.CardAnimationURL,
+		`mechs.` + boiler.MechColumns.AvatarURL,
+		`mechs.` + boiler.MechColumns.Hash,
+		`mechs.` + boiler.MechColumns.Name,
+		`mechs.` + boiler.MechColumns.Label,
+		`mechs.` + boiler.MechColumns.Slug,
+		`mechs.` + boiler.MechColumns.AssetType,
+		`mechs.` + boiler.MechColumns.DeletedAt,
+		`mechs.` + boiler.MechColumns.UpdatedAt,
+		`mechs.` + boiler.MechColumns.CreatedAt,
+		`mechs.` + boiler.MechColumns.LargeImageURL,
+		`mechs.` + boiler.MechColumns.CollectionSlug,
+	}, ",") + `,
+       (SELECT to_json(chassis.*) FROM chassis WHERE id=mechs.` + boiler.MechColumns.ChassisID + `) as chassis,
+       to_json(
+           (SELECT jsonb_object_agg(cw.` + boiler.ChassisWeaponColumns.SlotNumber + `, wpn.* ORDER BY cw.` + boiler.ChassisWeaponColumns.SlotNumber + ` ASC)
+            FROM chassis_weapons cw
+            INNER JOIN weapons wpn ON wpn.id = cw.` + boiler.ChassisWeaponColumns.WeaponID + `
+            WHERE cw.chassis_id=` + `mechs.` + boiler.MechColumns.ChassisID + ` AND cw.` + boiler.ChassisWeaponColumns.MountLocation + ` = 'ARM')
+        ) as weapons,
+       to_json(
+           (SELECT jsonb_object_agg(cwt.` + boiler.ChassisWeaponColumns.SlotNumber + `, wpn.* ORDER BY cwt.` + boiler.ChassisWeaponColumns.SlotNumber + ` ASC)
+            FROM chassis_weapons cwt
+            INNER JOIN weapons wpn ON wpn.id = cwt.` + boiler.ChassisWeaponColumns.WeaponID + `
+            WHERE cwt.` + boiler.MechColumns.ChassisID + `=` + `mechs.` + boiler.MechColumns.ChassisID + ` AND cwt.` + boiler.ChassisWeaponColumns.MountLocation + ` = 'TURRET'
+            )
+        ) as turrets,
+        to_json(
+            (SELECT jsonb_object_agg(mods.` + boiler.ChassisModuleColumns.SlotNumber + `, mds.* ORDER BY mods.` + boiler.ChassisModuleColumns.SlotNumber + ` ASC)
+                FROM chassis_modules mods
+                INNER JOIN modules mds ON mds.` + boiler.ModuleColumns.ID + ` = mods.` + boiler.ChassisModuleColumns.ModuleID + `
+             WHERE mods.` + boiler.ChassisModuleColumns.ChassisID + `=` + `mechs.` + boiler.MechColumns.ChassisID + `)
+        ) as modules,
+       to_json(ply.*) as player,
+       to_json(fct.*) as faction
+		from mechs
+		INNER JOIN players ply ON ply.id = mechs.` + boiler.MechColumns.OwnerID + `
+		INNER JOIN factions fct ON fct.id = ply.` + boiler.PlayerColumns.FactionID + `
+        WHERE mechs.id = $1
+        GROUP BY mechs.id, ply.id, fct.id`
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
+	defer cancel()
+
+	result, err := gamedb.Conn.Query(ctx, query, mechID.String())
+	if err != nil {
+		return nil, err
+	}
+	defer result.Close()
+
+	for result.Next() {
+		err = result.Scan(
+			&mc.ID,
+			&mc.OwnerID,
+			&mc.TemplateID,
+			&mc.ChassisID,
+			&mc.ExternalTokenID,
+			&mc.Tier,
+			&mc.IsDefault,
+			&mc.ImageURL,
+			&mc.AnimationURL,
+			&mc.CardAnimationURL,
+			&mc.AvatarURL,
+			&mc.Hash,
+			&mc.Name,
+			&mc.Label,
+			&mc.Slug,
+			&mc.AssetType,
+			&mc.DeletedAt,
+			&mc.UpdatedAt,
+			&mc.CreatedAt,
+			&mc.LargeImageURL,
+			&mc.CollectionSlug,
+			&mc.Chassis,
+			&mc.Weapons,
+			&mc.Turrets,
+			&mc.Modules,
+			&mc.Player,
+			&mc.Faction)
+		if mc.Faction != nil {
+			mc.FactionID = mc.Faction.ID
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+	result.Close()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return mc, err
+}
 func Mechs(mechIDs ...uuid.UUID) ([]*server.MechContainer, error) {
 	if len(mechIDs) == 0 {
 		return nil, errors.New("no mech ids provided")
@@ -212,32 +323,54 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.MechContainer, error) {
 	paramrefs = paramrefs[:len(paramrefs)-1]
 
 	query := `SELECT
-       mechs.*,
-       (SELECT to_json(chassis.*) FROM chassis WHERE id=mechs.chassis_id) as chassis,
+       ` + strings.Join([]string{
+		`mechs.` + boiler.MechColumns.ID,
+		`mechs.` + boiler.MechColumns.OwnerID,
+		`mechs.` + boiler.MechColumns.TemplateID,
+		`mechs.` + boiler.MechColumns.ChassisID,
+		`mechs.` + boiler.MechColumns.ExternalTokenID,
+		`mechs.` + boiler.MechColumns.Tier,
+		`mechs.` + boiler.MechColumns.IsDefault,
+		`mechs.` + boiler.MechColumns.ImageURL,
+		`mechs.` + boiler.MechColumns.AnimationURL,
+		`mechs.` + boiler.MechColumns.CardAnimationURL,
+		`mechs.` + boiler.MechColumns.AvatarURL,
+		`mechs.` + boiler.MechColumns.Hash,
+		`mechs.` + boiler.MechColumns.Name,
+		`mechs.` + boiler.MechColumns.Label,
+		`mechs.` + boiler.MechColumns.Slug,
+		`mechs.` + boiler.MechColumns.AssetType,
+		`mechs.` + boiler.MechColumns.DeletedAt,
+		`mechs.` + boiler.MechColumns.UpdatedAt,
+		`mechs.` + boiler.MechColumns.CreatedAt,
+		`mechs.` + boiler.MechColumns.LargeImageURL,
+		`mechs.` + boiler.MechColumns.CollectionSlug,
+	}, ",") + `,
+       (SELECT to_json(chassis.*) FROM chassis WHERE id=mechs.` + boiler.MechColumns.ChassisID + `) as chassis,
        to_json(
-           (SELECT jsonb_object_agg(cw.slot_number, wpn.* ORDER BY cw.slot_number ASC)
+           (SELECT jsonb_object_agg(cw.` + boiler.ChassisWeaponColumns.SlotNumber + `, wpn.* ORDER BY cw.` + boiler.ChassisWeaponColumns.SlotNumber + ` ASC)
             FROM chassis_weapons cw
-            INNER JOIN weapons wpn ON wpn.id = cw.weapon_id
-            WHERE cw.chassis_id=mechs.chassis_id AND cw.mount_location = 'ARM')
+            INNER JOIN weapons wpn ON wpn.id = cw.` + boiler.ChassisWeaponColumns.WeaponID + `
+            WHERE cw.chassis_id=` + `mechs.` + boiler.MechColumns.ChassisID + ` AND cw.` + boiler.ChassisWeaponColumns.MountLocation + ` = 'ARM')
         ) as weapons,
        to_json(
-           (SELECT jsonb_object_agg(cwt.slot_number, wpn.* ORDER BY cwt.slot_number ASC)
+           (SELECT jsonb_object_agg(cwt.` + boiler.ChassisWeaponColumns.SlotNumber + `, wpn.* ORDER BY cwt.` + boiler.ChassisWeaponColumns.SlotNumber + ` ASC)
             FROM chassis_weapons cwt
-            INNER JOIN weapons wpn ON wpn.id = cwt.weapon_id
-            WHERE cwt.chassis_id=mechs.chassis_id AND cwt.mount_location = 'TURRET'
+            INNER JOIN weapons wpn ON wpn.id = cwt.` + boiler.ChassisWeaponColumns.WeaponID + `
+            WHERE cwt.` + boiler.MechColumns.ChassisID + `=` + `mechs.` + boiler.MechColumns.ChassisID + ` AND cwt.` + boiler.ChassisWeaponColumns.MountLocation + ` = 'TURRET'
             )
         ) as turrets,
         to_json(
-            (SELECT jsonb_object_agg(mods.slot_number, mds.* ORDER BY mods.slot_number ASC)
+            (SELECT jsonb_object_agg(mods.` + boiler.ChassisModuleColumns.SlotNumber + `, mds.* ORDER BY mods.` + boiler.ChassisModuleColumns.SlotNumber + ` ASC)
                 FROM chassis_modules mods
-                INNER JOIN modules mds ON mds.id = mods.module_id
-             WHERE mods.chassis_id=mechs.chassis_id)
+                INNER JOIN modules mds ON mds.` + boiler.ModuleColumns.ID + ` = mods.` + boiler.ChassisModuleColumns.ModuleID + `
+             WHERE mods.` + boiler.ChassisModuleColumns.ChassisID + `=` + `mechs.` + boiler.MechColumns.ChassisID + `)
         ) as modules,
        to_json(ply.*) as player,
        to_json(fct.*) as faction
 		from mechs
-		INNER JOIN players ply ON ply.id = mechs.owner_id
-		INNER JOIN factions fct ON fct.id = ply.faction_id
+		INNER JOIN players ply ON ply.id = mechs.` + boiler.MechColumns.OwnerID + `
+		INNER JOIN factions fct ON fct.id = ply.` + boiler.PlayerColumns.FactionID + `
 		WHERE mechs.id IN (` + paramrefs + `)
 		GROUP BY mechs.id, ply.id, fct.id
 	 	ORDER BY fct.id;`
@@ -276,7 +409,6 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.MechContainer, error) {
 			&mc.CreatedAt,
 			&mc.LargeImageURL,
 			&mc.CollectionSlug,
-			&mc.IsInsured,
 			&mc.Chassis,
 			&mc.Weapons,
 			&mc.Turrets,
@@ -286,98 +418,20 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.MechContainer, error) {
 		if err != nil {
 			return nil, err
 		}
+		if mc.Faction != nil {
+			mc.FactionID = mc.Faction.ID
+		}
 		mcs[i] = mc
 		i++
 	}
 
+	if i < len(mechIDs) {
+		mcs = mcs[:len(mcs)-i]
+		return mcs, ErrNotAllMechsReturned
+	}
+
 	return mcs, err
 }
-
-func Mech(mechID uuid.UUID) (*server.MechContainer, error) {
-	mc := &server.MechContainer{}
-	query := `SELECT
-       mechs.*,
-       (SELECT to_json(chassis.*) FROM chassis WHERE id=mechs.chassis_id) as chassis,
-       to_json(
-           (SELECT jsonb_object_agg(cw.slot_number, wpn.* ORDER BY cw.slot_number ASC)
-            FROM chassis_weapons cw
-            INNER JOIN weapons wpn ON wpn.id = cw.weapon_id
-            WHERE cw.chassis_id=mechs.chassis_id AND cw.mount_location = 'ARM')
-        ) as weapons,
-       to_json(
-           (SELECT jsonb_object_agg(cwt.slot_number, wpn.* ORDER BY cwt.slot_number ASC)
-            FROM chassis_weapons cwt
-            INNER JOIN weapons wpn ON wpn.id = cwt.weapon_id
-            WHERE cwt.chassis_id=mechs.chassis_id AND cwt.mount_location = 'TURRET'
-            )
-        ) as turrets,
-        to_json(
-            (SELECT jsonb_object_agg(mods.slot_number, mds.* ORDER BY mods.slot_number ASC)
-                FROM chassis_modules mods
-                INNER JOIN modules mds ON mds.id = mods.module_id
-             WHERE mods.chassis_id=mechs.chassis_id)
-        ) as modules,
-       to_json(ply.*) as player,
-       to_json(fct.*) as faction
-		from mechs
-		INNER JOIN players ply ON ply.id = mechs.owner_id
-		LEFT JOIN factions fct ON fct.id = ply.faction_id
-		WHERE mechs.id = $1
-		GROUP BY mechs.id, ply.id, fct.id`
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
-	defer cancel()
-
-	result, err := gamedb.Conn.Query(ctx, query, mechID.String())
-	if err != nil {
-		return nil, err
-	}
-	defer result.Close()
-
-	for result.Next() {
-		err = result.Scan(
-			&mc.ID,
-			&mc.OwnerID,
-			&mc.TemplateID,
-			&mc.ChassisID,
-			&mc.ExternalTokenID,
-			&mc.Tier,
-			&mc.IsDefault,
-			&mc.ImageURL,
-			&mc.AnimationURL,
-			&mc.CardAnimationURL,
-			&mc.AvatarURL,
-			&mc.Hash,
-			&mc.Name,
-			&mc.Label,
-			&mc.Slug,
-			&mc.AssetType,
-			&mc.DeletedAt,
-			&mc.UpdatedAt,
-			&mc.CreatedAt,
-			&mc.LargeImageURL,
-			&mc.CollectionSlug,
-			&mc.IsInsured,
-			&mc.Chassis,
-			&mc.Weapons,
-			&mc.Turrets,
-			&mc.Modules,
-			&mc.Player,
-			&mc.Faction,
-		)
-		if err != nil {
-			return nil, err
-		}
-	}
-	result.Close()
-
-	if err != nil {
-		return nil, err
-	}
-
-	return mc, err
-}
-
 func NextExternalTokenID(tx *sql.Tx, isDefault bool, collectionSlug null.String) (int, error) {
 	count, err := boiler.Mechs(
 		boiler.MechWhere.IsDefault.EQ(isDefault),
@@ -640,15 +694,15 @@ func MechQueuePosition(factionID string, ownerID string) ([]*BattleQueuePosition
 					bq.mech_id,
 				    bq.owner_id,
 				    bq.battle_contract_id,
-					ROW_NUMBER () OVER (ORDER BY bq.queued_at) as queue_position
+					row_number () over (ORDER BY bq.queued_at) AS queue_position
 				FROM
 					battle_queue bq
-				where 
-					bq.faction_id = $1 and bq.battle_id isnull
+				WHERE 
+					bq.faction_id = $1 AND bq.battle_id isnull
 			) x
 		WHERE
 			x.owner_id = $2
-		order by
+		ORDER BY
 			x.queue_position
 	`
 

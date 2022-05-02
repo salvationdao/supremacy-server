@@ -13,12 +13,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ninja-syndicate/hub/ext/messagebus"
+
 	"github.com/volatiletech/null/v8"
 
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/volatiletech/sqlboiler/v4/boil"
-	"go.uber.org/atomic"
 
 	"github.com/gofrs/uuid"
 	"github.com/shopspring/decimal"
@@ -28,38 +29,53 @@ var SupremacyBattleUserID = uuid.Must(uuid.FromString("87c60803-b051-4abb-aa60-4
 var SupremacyUserID = uuid.Must(uuid.FromString("4fae8fdf-584f-46bb-9cb9-bb32ae20177e"))
 
 type SpoilsOfWar struct {
-	_battle       *Battle
-	flushCh       chan bool
-	flushed       *atomic.Bool
-	tickSpeed     time.Duration
-	transactSpeed time.Duration
-	maxTicks      int
+	messageBus   *messagebus.MessageBus
+	passport     *rpcclient.PassportXrpcClient
+	isOnline     func(userID uuid.UUID) bool
+	battleID     string
+	battleNumber int
+	tickSpeed    time.Duration
+	maxTicks     int
+	cleanUp      chan bool
 	sync.RWMutex
 }
 
-func (sow *SpoilsOfWar) battle() *Battle {
+func (sow *SpoilsOfWar) End() {
+	sow.cleanUp <- true
+}
+func (sow *SpoilsOfWar) BattleID() string {
 	sow.RLock()
 	defer sow.RUnlock()
-	return sow._battle
+	return sow.battleID
 }
 
-func (sow *SpoilsOfWar) storeBattle(btl *Battle) {
-	sow.Lock()
-	defer sow.Unlock()
-	sow._battle = btl
+func (sow *SpoilsOfWar) BattleNumber() int {
+	sow.RLock()
+	defer sow.RUnlock()
+	return sow.battleNumber
 }
 
-func NewSpoilsOfWar(btl *Battle, transactSpeed time.Duration, dripSpeed time.Duration, maxTicks int) *SpoilsOfWar {
+func NewSpoilsOfWar(
+	passport *rpcclient.PassportXrpcClient,
+	messageBus *messagebus.MessageBus,
+	isOnline func(userID uuid.UUID) bool,
+	battleID string,
+	battleNumber int,
+	dripSpeed time.Duration,
+	maxTicks int,
+) *SpoilsOfWar {
 	spw := &SpoilsOfWar{
-		_battle:       btl,
-		transactSpeed: transactSpeed,
-		flushCh:       make(chan bool),
-		flushed:       atomic.NewBool(false),
-		tickSpeed:     dripSpeed,
-		maxTicks:      maxTicks,
+		isOnline:     isOnline,
+		battleID:     battleID,
+		battleNumber: battleNumber,
+		messageBus:   messageBus,
+		passport:     passport,
+		tickSpeed:    dripSpeed,
+		maxTicks:     maxTicks,
+		cleanUp:      make(chan bool),
 	}
 
-	sow, err := boiler.SpoilsOfWars(boiler.SpoilsOfWarWhere.BattleID.EQ(btl.BattleID)).One(gamedb.StdConn)
+	sow, err := boiler.SpoilsOfWars(boiler.SpoilsOfWarWhere.BattleID.EQ(spw.BattleID())).One(gamedb.StdConn)
 	if errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Info().Err(err).Msgf("spoil of war not found. this is expected.")
 	} else if err != nil {
@@ -68,8 +84,8 @@ func NewSpoilsOfWar(btl *Battle, transactSpeed time.Duration, dripSpeed time.Dur
 
 	if sow == nil {
 		sow = &boiler.SpoilsOfWar{
-			BattleID:     btl.ID,
-			BattleNumber: btl.BattleNumber,
+			BattleID:     spw.BattleID(),
+			BattleNumber: spw.BattleNumber(),
 			Amount:       decimal.Zero,
 			AmountSent:   decimal.Zero,
 			CurrentTick:  0,
@@ -83,50 +99,25 @@ func NewSpoilsOfWar(btl *Battle, transactSpeed time.Duration, dripSpeed time.Dur
 	return spw
 }
 
-func (sow *SpoilsOfWar) End() {
-	sow.flushCh <- true
-}
-
 func (sow *SpoilsOfWar) Run() {
 	gamelog.L.Debug().Msg("starting spoils of war service")
-	t := time.NewTicker(sow.transactSpeed)
-
-	mismatchCount := atomic.NewInt32(0)
+	t := time.NewTicker(sow.tickSpeed)
 	defer t.Stop()
+
+	// run the first drip as soon as the battle starts!
+	err := sow.Drip()
+	if err != nil {
+		gamelog.L.Err(err).Interface("sow", sow).Msg("failed to drip spoils of war")
+	}
 
 	for {
 		select {
-		case <-sow.flushCh:
-			if sow.flushed.Load() {
-				return
-			}
-			// Runs at the end of each battle, called with sow.Flush(
-			gamelog.L.Debug().Msg("running full flush and returning out")
-
-			sow.flushed.Store(true)
-			sow.storeBattle(nil)
-			sow = nil
+		case <-sow.cleanUp:
 			return
 		case <-t.C:
-			// terminate ticker if the battle mismatch
-			if sow.battle() != sow.battle().arena.currentBattle() {
-				mismatchCount.Add(1)
-				gamelog.L.Warn().
-					Int32("times", mismatchCount.Load()).
-					Msg("battle mismatch is detected on spoil of war ticker")
-				if mismatchCount.Load() < 10 {
-					continue
-				}
-
-				gamelog.L.Info().Msg("detect battle mismatch 10 times, cleaning up the spoil of war")
-				sow.storeBattle(nil)
-				sow = nil
-				return
-			}
-
 			err := sow.Drip()
 			if err != nil {
-				gamelog.L.Err(err).Msg("push transactions over rpc")
+				gamelog.L.Err(err).Interface("sow", sow).Msg("failed to drip spoils of war")
 				continue
 			}
 		}
@@ -134,7 +125,7 @@ func (sow *SpoilsOfWar) Run() {
 }
 
 func (sow *SpoilsOfWar) Drip() error {
-	if sow.battle() == nil {
+	if sow.BattleID() == "" || sow.battleNumber == 0 {
 		return nil
 	}
 
@@ -143,7 +134,7 @@ func (sow *SpoilsOfWar) Drip() error {
 	// get all sow with spoils left on them
 	spoilsOfWars, err := boiler.SpoilsOfWars(
 		boiler.SpoilsOfWarWhere.CreatedAt.GT(yesterday),
-		boiler.SpoilsOfWarWhere.BattleID.NEQ(sow.battle().ID),
+		boiler.SpoilsOfWarWhere.BattleID.NEQ(sow.BattleID()),
 		boiler.SpoilsOfWarWhere.LeftoversTransactionID.IsNull(),
 		boiler.SpoilsOfWarWhere.CurrentTick.LTE(sow.maxTicks),
 		qm.And(`amount_sent < amount`),
@@ -174,7 +165,7 @@ func (sow *SpoilsOfWar) Drip() error {
 
 		subgroup := fmt.Sprintf("Spoils of War from Battle #%d", spoils.BattleNumber)
 		sendSups := func(userID uuid.UUID, amount string, txr string) (string, error) {
-			return sow.battle().arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
+			return sow.passport.SpendSupMessage(rpcclient.SpendSupsReq{
 				FromUserID:           SupremacyBattleUserID,
 				ToUserID:             userID,
 				Amount:               amount,
@@ -186,7 +177,7 @@ func (sow *SpoilsOfWar) Drip() error {
 			})
 		}
 
-		// the below code cleans up legacy spoils paymout methods, can be removed in future deployments
+		// the below code cleans up legacy spoils payout methods, can be removed in future deployments
 		if userSpoils == nil || len(userSpoils) == 0 {
 			multipliers, err := multipliers.GetPlayersMultiplierSummaryForBattle(spoils.BattleNumber)
 			if err != nil {
@@ -194,6 +185,27 @@ func (sow *SpoilsOfWar) Drip() error {
 					Err(err).
 					Int("spoils.BattleNumber", spoils.BattleNumber).
 					Msg("failed to get player multipliers for battle")
+				continue
+			}
+
+			// if no multipliers flush out sups to us
+			// this can happen when there are spoils but no contributor put in more than 3 sups
+			if len(multipliers) == 0 {
+				amountLeft := spoils.Amount.Sub(spoils.AmountSent)
+				txr := fmt.Sprintf("spoils_of_war_leftovers|%s|%d", spoils.BattleID, time.Now().UnixNano())
+				txID, err := sendSups(SupremacyUserID, amountLeft.String(), txr)
+				if err != nil {
+					gamelog.L.Error().
+						Err(err).
+						Str("FromUserID", SupremacyBattleUserID.String()).
+						Str("ToUserID", SupremacyUserID.String()).
+						Str("Amount", amountLeft.String()).
+						Str("TransactionReference", txr).
+						Msg("unable to send left over spoils")
+					continue
+				}
+				spoils.LeftoverAmount = amountLeft
+				spoils.LeftoversTransactionID = null.StringFrom(txID)
 				continue
 			}
 
@@ -221,7 +233,7 @@ func (sow *SpoilsOfWar) Drip() error {
 				user, spoils = payoutUserSpoils(
 					user,
 					spoils,
-					func(userID uuid.UUID) bool { return sow.battle().isOnline(userID) },
+					sow.isOnline,
 					sendSups,
 				)
 			}
@@ -261,12 +273,12 @@ func flushOutOldSpoils(
 	oneMultiWorth := decimal.Zero
 	totalMultis := decimal.Zero
 
-	if amountLeft.IsZero() || totalMultis.IsZero() {
-		return spoils
-	}
-
 	for _, multi := range multipliers {
 		totalMultis = totalMultis.Add(multi.TotalMultiplier)
+	}
+
+	if amountLeft.IsZero() || totalMultis.IsZero() {
+		return spoils
 	}
 
 	oneMultiWorth = amountLeft.Div(totalMultis)
@@ -337,13 +349,19 @@ func payoutUserSpoils(
 
 	// check the spoils for this battle have enough left for a tick (always should)
 	if warChestSpoilsLeft.LessThan(user.TickAmount) {
-		gamelog.L.Error().
-			Err(fmt.Errorf("warChestSpoilsLeft.LessThan(user.TickAmount)")).
-			Str("battle_id", spoils.BattleID).
-			Str("warChestSpoilsLeft", warChestSpoilsLeft.String()).
-			Str("user.TickAmount", user.TickAmount.String()).
-			Msg("not enough spoils to pay out a user spoil tick (issue!)")
-		return user, spoils
+		difference := user.TickAmount.Sub(warChestSpoilsLeft)
+		// if difference is > than 1000, throw an error since that is more than a rounding issue.
+		if difference.GreaterThan(decimal.NewFromInt(1000)) {
+			gamelog.L.Error().
+				Err(fmt.Errorf("warChestSpoilsLeft.LessThan(user.TickAmount)")).
+				Str("battle_id", spoils.BattleID).
+				Str("warChestSpoilsLeft", warChestSpoilsLeft.String()).
+				Str("user.TickAmount", user.TickAmount.String()).
+				Msg("not enough spoils to pay out a user spoil tick (issue!)")
+			return user, spoils
+		}
+		// if difference is < than 1000, give them what we can
+		user.TickAmount = user.TickAmount.Sub(difference)
 	}
 
 	// check paying this tick out doesn't over pay them
@@ -388,7 +406,7 @@ func takeRemainingSpoils(
 	// get remaining, send it to supremacy user
 	remainingSpoils := spoils.Amount.Sub(spoils.AmountSent)
 	txr := fmt.Sprintf("spoils_of_war_leftovers|%s|%d", spoils.BattleID, time.Now().UnixNano())
-	txid, err := sendSups(SupremacyUserID, remainingSpoils.String(), txr)
+	txID, err := sendSups(SupremacyUserID, remainingSpoils.String(), txr)
 	if err != nil {
 		gamelog.L.Error().
 			Err(err).
@@ -401,7 +419,7 @@ func takeRemainingSpoils(
 	}
 
 	spoils.LeftoverAmount = remainingSpoils
-	spoils.LeftoversTransactionID = null.StringFrom(txid)
+	spoils.LeftoversTransactionID = null.StringFrom(txID)
 
 	// update all users with their lost spoils
 	totalLostSpoils := decimal.Zero

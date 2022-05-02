@@ -1,7 +1,6 @@
 package battle
 
 import (
-	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -35,9 +34,9 @@ import (
 //*******************************
 
 var MinVotePercentageCost = map[string]decimal.Decimal{
-	"0.1": decimal.NewFromFloat(0.001).Mul(decimal.New(1, 18)),
-	"0.5": decimal.NewFromFloat(0.005).Mul(decimal.New(1, 18)),
-	"1":   decimal.NewFromFloat(0.01).Mul(decimal.New(1, 18)),
+	"0.01": decimal.NewFromFloat(0.01).Mul(decimal.New(1, 18)),
+	"0.1":  decimal.NewFromFloat(0.1).Mul(decimal.New(1, 18)),
+	"1":    decimal.NewFromFloat(1).Mul(decimal.New(1, 18)),
 }
 
 //******************************
@@ -111,7 +110,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 			Phase:   atomic.NewInt32(BribeStageHold),
 			endTime: time.Now().AddDate(1, 0, 0), // HACK: set end time to far future to implement infinite time
 		},
-		BattleAbility: &server.BattleAbility{},
+		BattleAbility: &boiler.BattleAbility{},
 		Abilities:     &AbilitiesMap{m: make(map[string]*GameAbility)},
 	}
 
@@ -194,7 +193,6 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 			}
 
 			for _, ability := range mechFactionAbilities {
-
 				// get the ability cost
 				supsCost, err := decimal.NewFromString(ability.SupsCost)
 				if err != nil {
@@ -531,7 +529,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 						ability.CurrentSups = decimal.Zero
 
 						// store updated price to db
-						err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ability.ID, ability.SupsCost, ability.CurrentSups)
+						err := db.FactionAbilitiesSupsCostUpdate(ability.ID, ability.SupsCost, ability.CurrentSups)
 						if err != nil {
 							gamelog.L.Error().
 								Str("ability_id", ability.ID).
@@ -728,7 +726,7 @@ func (ga *GameAbility) FactionUniqueAbilityPriceUpdate(minPrice decimal.Decimal)
 	}
 
 	// store updated price to db
-	err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ga.ID, ga.SupsCost, ga.CurrentSups)
+	err := db.FactionAbilitiesSupsCostUpdate(ga.ID, ga.SupsCost, ga.CurrentSups)
 	if err != nil {
 		gamelog.L.Error().
 			Str("ability_id", ga.ID).
@@ -848,7 +846,7 @@ func (ga *GameAbility) SupContribution(ppClient *rpcclient.PassportXrpcClient, a
 		ga.CurrentSups = ga.CurrentSups.Add(amount)
 
 		// store updated price to db
-		err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ga.ID, ga.SupsCost, ga.CurrentSups)
+		err := db.FactionAbilitiesSupsCostUpdate(ga.ID, ga.SupsCost, ga.CurrentSups)
 		if err != nil {
 			gamelog.L.Error().Str("ga.ID", ga.ID).Str("ga.SupsCost", ga.SupsCost.String()).Str("ga.CurrentSups", ga.CurrentSups.String()).Err(err).Msg("unable to insert faction ability sup cost update")
 			return amount, multiAmount, false
@@ -980,7 +978,7 @@ func (am *AbilitiesMap) Range(fn func(u string, ga *GameAbility) bool) {
 type BattleAbilityPool struct {
 	Stage *GabsBribeStage
 
-	BattleAbility *server.BattleAbility
+	BattleAbility *boiler.BattleAbility
 	Abilities     *AbilitiesMap // faction ability current, change on every bribing cycle
 
 	TriggeredFactionID atomic.String
@@ -994,7 +992,6 @@ type LocationSelectAnnouncement struct {
 
 const ContributorMultiAmount hub.HubCommandKey = "CONTRIBUTOR:MULTI:AMOUNT"
 
-// StartGabsAbilityPoolCycle
 func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -1007,10 +1004,10 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 	}()
 
 	// initial a ticker for current battle
-	main_ticker := time.NewTicker(1 * time.Second)
-	price_ticker := time.NewTicker(1 * time.Second)
-	progress_ticker := time.NewTicker(1 * time.Second)
-	end_progress := make(chan bool)
+	mainTicker := time.NewTicker(1 * time.Second)
+	priceTicker := time.NewTicker(1 * time.Second)
+	progressTicker := time.NewTicker(1 * time.Second)
+	endProgress := make(chan bool)
 
 	mismatchCount := atomic.NewInt32(0)
 
@@ -1020,10 +1017,10 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				gamelog.LogPanicRecovery("Panic! Panic! Panic! Panic trying to close channels!", r)
 			}
 		}()
-		price_ticker.Stop()
-		main_ticker.Stop()
+		priceTicker.Stop()
+		mainTicker.Stop()
 		close(as.endGabs)
-		close(end_progress)
+		close(endProgress)
 	}()
 
 	// start voting stage
@@ -1035,12 +1032,12 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 	bn := as.battle().BattleNumber
 
 	go func() {
-		defer progress_ticker.Stop()
+		defer progressTicker.Stop()
 		for {
 			select {
-			case <-end_progress:
+			case <-endProgress:
 				return
-			case <-progress_ticker.C:
+			case <-progressTicker.C:
 				if as.battle() == nil || as.battle().arena.currentBattle() == nil {
 					return
 				}
@@ -1070,9 +1067,9 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 			as.battleAbilityPool.Stage.Phase.Store(BribeStageHold)
 			as.battleAbilityPool.Stage.StoreEndTime(time.Now().AddDate(1, 0, 0))
 			as.battle().arena.messageBus.Send(messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
-			end_progress <- true
+			endProgress <- true
 			return
-		case <-main_ticker.C:
+		case <-mainTicker.C:
 			if as.battle() == nil || as.battle().arena.currentBattle() == nil {
 				gamelog.L.Warn().Msg("Battle is nil")
 				continue
@@ -1091,7 +1088,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 
 				gamelog.L.Info().Msg("detect battle mismatch 20 times, cleaning up the gab ability tickers")
 				// exit, if mismatch detect 20 times
-				end_progress <- true
+				endProgress <- true
 				return
 			}
 			// check phase
@@ -1247,7 +1244,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 			default:
 				gamelog.L.Error().Msg("hit default case switch on abilities loop")
 			}
-		case <-price_ticker.C:
+		case <-priceTicker.C:
 			if as.battle() == nil || as.battle().arena.currentBattle() == nil || as.battle().arena.currentBattle().BattleNumber != bn {
 				continue
 			}
@@ -1295,7 +1292,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 					factionAbility.CurrentSups = decimal.Zero
 
 					// store updated price to db
-					err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, factionAbility.ID, factionAbility.SupsCost, factionAbility.CurrentSups)
+					err := db.FactionAbilitiesSupsCostUpdate(factionAbility.ID, factionAbility.SupsCost, factionAbility.CurrentSups)
 					if err != nil {
 						gamelog.L.Error().
 							Str("factionAbility_id", factionAbility.ID).
@@ -1385,7 +1382,7 @@ func (as *AbilitiesSystem) SetNewBattleAbility(isFirstAbility bool) (int, error)
 	as.battleAbilityPool.TriggeredFactionID.Store(uuid.Nil.String())
 
 	// initialise new gabs ability pool
-	ba, err := db.BattleAbilityGetRandom(context.Background(), gamedb.Conn)
+	ba, err := db.BattleAbilityGetRandom()
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to get battle ability from db")
 		return 0, terror.Error(err)
@@ -1614,7 +1611,7 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 		// if ability not triggered, store ability's new target price to database, and continue
 		if ability.SupsCost.Cmp(ability.CurrentSups) > 0 {
 			// store updated price to db
-			err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ability.ID, ability.SupsCost, ability.CurrentSups)
+			err := db.FactionAbilitiesSupsCostUpdate(ability.ID, ability.SupsCost, ability.CurrentSups)
 			if err != nil {
 				gamelog.L.Error().
 					Str("ability_id", ability.ID).
@@ -1628,7 +1625,7 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 		// if ability triggered
 		ability.SupsCost = ability.SupsCost.Mul(decimal.NewFromInt(2)).RoundDown(0)
 		ability.CurrentSups = decimal.Zero
-		err := db.FactionAbilitiesSupsCostUpdate(context.Background(), gamedb.Conn, ability.ID, ability.SupsCost, ability.CurrentSups)
+		err := db.FactionAbilitiesSupsCostUpdate(ability.ID, ability.SupsCost, ability.CurrentSups)
 		if err != nil {
 			gamelog.L.Error().
 				Str("ability_id", ability.ID).

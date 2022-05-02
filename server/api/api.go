@@ -11,6 +11,7 @@ import (
 	"server/db"
 	"server/gamedb"
 	"server/gamelog"
+	"server/player_abilities"
 	"server/rpcclient"
 	"time"
 
@@ -84,6 +85,8 @@ type API struct {
 	Telegram         server.Telegram
 	LanguageDetector lingua.LanguageDetector
 
+	SalePlayerAbilitiesSystem *player_abilities.SalePlayerAbilitiesSystem
+
 	// ring check auth
 	RingCheckAuthMap *RingCheckAuthMap
 
@@ -129,6 +132,8 @@ func NewAPI(
 		SMS:              sms,
 		Telegram:         telegram,
 		LanguageDetector: languageDetector,
+
+		SalePlayerAbilitiesSystem: player_abilities.NewSalePlayerAbilitiesSystem(messageBus),
 
 		FactionPunishVote:    make(map[string]*PunishVoteTracker),
 		FactionActivePlayers: make(map[string]*ActivePlayers),

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"server"
+	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -240,58 +241,37 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 				continue
 			}
 
-			eventContributors, err := boiler.BattleContributions(
-				qm.Select(
-					boiler.BattleContributionColumns.PlayerID,
-					fmt.Sprintf("SUM (%s) AS amount", qm.Rels(boiler.TableNames.BattleContributions, boiler.BattleContributionColumns.Amount)),
-				),
-				boiler.BattleContributionWhere.AbilityOfferingID.EQ(repairEvent.RelatedID.String),
-				boiler.BattleContributionWhere.PlayerID.NEQ(triggeredPlayer.PlayerID),
-				boiler.BattleContributionWhere.FactionID.EQ(mechOwner.FactionID.String),
-				qm.GroupBy(boiler.BattleContributionColumns.PlayerID),
-			).All(gamedb.StdConn)
-
-			if err != nil {
-				gamelog.L.Error().Err(err).Msg("Failed to find event contributors")
+			if mechOwner.FactionID.String != triggeredPlayer.FactionID {
 				continue
 			}
 
-			mult, ok := newMultipliers[triggeredPlayer.PlayerID]
-			if !ok {
-				mult = make(map[string][]*boiler.Multiplier)
-			}
-			mult[repairTriggerMultiplier.ID] = append(mult[repairTriggerMultiplier.ID], repairTriggerMultiplier)
-			newMultipliers[triggeredPlayer.PlayerID] = mult
-
-			playerSpending, err := boiler.BattleContributions(
-				qm.Select(
-					boiler.BattleContributionColumns.PlayerID,
-					fmt.Sprintf("SUM (%s) AS amount", qm.Rels(boiler.TableNames.BattleContributions, boiler.BattleContributionColumns.Amount)),
-				),
-				boiler.BattleContributionWhere.AbilityOfferingID.EQ(repairEvent.RelatedID.String),
-				qm.GroupBy(boiler.BattleContributionColumns.PlayerID),
-			).All(gamedb.StdConn)
+			eventContributors, err := db.GetPlayerContributions(repairEvent.RelatedID.String)
 			if err != nil {
-				gamelog.L.Error().Str("event triggered", repairEvent.RelatedID.String).Err(err).Msg("Failed to get players amount sum")
 				continue
 			}
 
 			totalSpendings := decimal.Zero
 
-			for _, totalSpending := range playerSpending {
+			for _, totalSpending := range eventContributors {
 				totalSpendings = totalSpendings.Add(totalSpending.Amount)
 			}
 
 			minimumSpending := totalSpendings.Div(decimal.NewFromInt(10))
 
 			for _, eventContributor := range eventContributors {
-				if eventContributor.Amount.LessThanOrEqual(minimumSpending) || eventContributor.PlayerID == triggeredPlayer.PlayerID {
+				if eventContributor.Amount.LessThan(minimumSpending) {
 					continue
 				}
 				mult, ok := newMultipliers[eventContributor.PlayerID]
 				if !ok {
 					mult = make(map[string][]*boiler.Multiplier)
 				}
+				if eventContributor.DidTrigger {
+					mult[repairTriggerMultiplier.ID] = append(mult[repairTriggerMultiplier.ID], repairTriggerMultiplier)
+					newMultipliers[triggeredPlayer.PlayerID] = mult
+					continue
+				}
+
 				mult[repairContributorMultiplier.ID] = append(mult[repairContributorMultiplier.ID], repairContributorMultiplier)
 				newMultipliers[eventContributor.PlayerID] = mult
 			}
@@ -377,64 +357,50 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 					contributedMulti = *airstrikeContributorMultiplier
 				}
 
-				mult, ok := newMultipliers[triggeredPlayer.PlayerID]
-				if !ok {
-					mult = make(map[string][]*boiler.Multiplier)
-				}
-
-				if killStreak > 3 {
-					killStreak = 3
-				}
-
-				if killStreak > 1 {
-					triggeredMulti.Value = triggeredMulti.Value.Mul(decimal.NewFromInt(int64(killStreak)))
-				}
-
-				mult[triggeredMulti.ID] = append(mult[triggeredMulti.ID], &triggeredMulti)
-				newMultipliers[triggeredPlayer.PlayerID] = mult
-
-				playerSpending, err := boiler.BattleContributions(
-					qm.Select(
-						boiler.BattleContributionColumns.PlayerID,
-						fmt.Sprintf("SUM (%s) AS amount", qm.Rels(boiler.TableNames.BattleContributions, boiler.BattleContributionColumns.Amount)),
-					),
-					boiler.BattleContributionWhere.AbilityOfferingID.EQ(killedEvent.RelatedID.String),
-					qm.GroupBy(boiler.BattleContributionColumns.PlayerID),
-				).All(gamedb.StdConn)
+				eventContributors, err := db.GetPlayerContributions(killedEvent.RelatedID.String)
 				if err != nil {
-					gamelog.L.Error().Str("event triggered", killedEvent.RelatedID.String).Err(err).Msg("Failed to get players amount sum")
+					continue
+				}
+
+				if err != nil {
+					gamelog.L.Error().Str("ability_offering_id", killedEvent.RelatedID.String).Err(err).Msg("Failed to find event contributors")
 					continue
 				}
 
 				totalSpendings := decimal.Zero
 
-				for _, totalSpending := range playerSpending {
+				for _, totalSpending := range eventContributors {
 					totalSpendings = totalSpendings.Add(totalSpending.Amount)
 				}
 
 				minimumSpending := totalSpendings.Div(decimal.NewFromInt(10))
 
-				eventContributors, err := boiler.BattleContributions(
-					qm.Select(
-						boiler.BattleContributionColumns.PlayerID,
-						fmt.Sprintf("SUM (%s) AS amount", qm.Rels(boiler.TableNames.BattleContributions, boiler.BattleContributionColumns.Amount)),
-					),
-					boiler.BattleContributionWhere.AbilityOfferingID.EQ(killedEvent.RelatedID.String),
-					boiler.BattleContributionWhere.PlayerID.NEQ(triggeredPlayer.ID),
-					boiler.BattleContributionWhere.DidTrigger.EQ(false),
-					qm.GroupBy(boiler.BattleContributionColumns.PlayerID),
-				).All(gamedb.StdConn)
-				if err != nil {
-					gamelog.L.Error().Str("ability_offering_id", killedEvent.RelatedID.String).Err(err).Msg("Failed to find event contributors")
-					continue
-				}
 				for _, eventContributor := range eventContributors {
-					if eventContributor.Amount.LessThanOrEqual(minimumSpending) || eventContributor.PlayerID == triggeredPlayer.PlayerID {
+					if eventContributor.Amount.LessThan(minimumSpending) {
 						continue
 					}
 					mult, ok := newMultipliers[eventContributor.PlayerID]
 					if !ok {
 						mult = make(map[string][]*boiler.Multiplier)
+					}
+
+					if eventContributor.DidTrigger {
+						mult, ok := newMultipliers[eventContributor.PlayerID]
+						if !ok {
+							mult = make(map[string][]*boiler.Multiplier)
+						}
+
+						if killStreak > 3 {
+							killStreak = 3
+						}
+
+						if killStreak > 1 {
+							triggeredMulti.Value = triggeredMulti.Value.Mul(decimal.NewFromInt(int64(killStreak)))
+						}
+
+						mult[triggeredMulti.ID] = append(mult[triggeredMulti.ID], &triggeredMulti)
+						newMultipliers[eventContributor.PlayerID] = mult
+						continue
 					}
 
 					mult[contributedMulti.ID] = append(mult[contributedMulti.ID], &contributedMulti)

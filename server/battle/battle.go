@@ -12,6 +12,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/helpers"
 	"server/multipliers"
 	"server/rpcclient"
 	"sort"
@@ -83,10 +84,28 @@ func (btl *Battle) storeAbilities(as *AbilitiesSystem) {
 	btl._abilities = as
 }
 
+// storeGameMap set the game map detail from game client
+func (btl *Battle) storeGameMap(gm server.GameMap) {
+	btl.Lock()
+	defer btl.Unlock()
+
+	btl.gameMap.ImageUrl = gm.ImageUrl
+	btl.gameMap.Width = gm.Width
+	btl.gameMap.Height = gm.Height
+	btl.gameMap.CellsX = gm.CellsX
+	btl.gameMap.CellsY = gm.CellsY
+	btl.gameMap.LeftPixels = gm.LeftPixels
+	btl.gameMap.TopPixels = gm.TopPixels
+	btl.gameMap.DisabledCells = gm.DisabledCells
+}
+
 const HubKeyLiveVoteCountUpdated hub.HubCommandKey = "LIVE:VOTE:COUNT:UPDATED"
 const HubKeyWarMachineLocationUpdated hub.HubCommandKey = "WAR:MACHINE:LOCATION:UPDATED"
 
 func (btl *Battle) preIntro(payload *BattleStartPayload) error {
+	btl.Lock()
+	defer btl.Unlock()
+
 	bmd := make([]*db.BattleMechData, len(btl.WarMachines))
 	factions := map[uuid.UUID]*boiler.Faction{}
 
@@ -260,6 +279,10 @@ func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 		btl.arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", WSQueueUpdatedSubscribe, server.ZaibatsuFactionID)), true)
 	}
 
+	// broadcast battle settings
+	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Broadcasting battle start to players")
+	btl.BroadcastUpdate()
+
 	return nil
 }
 
@@ -288,13 +311,11 @@ func (btl *Battle) start() {
 	// set up the abilities for current battle
 
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle spoils")
-	btl.spoils = NewSpoilsOfWar(btl, 15*time.Second, 15*time.Second, 20)
+	btl.spoils = NewSpoilsOfWar(btl.arena.RPCClient, btl.arena.messageBus, btl.isOnline, btl.BattleID, btl.BattleNumber, 15*time.Second, 20)
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle abilities")
 	btl.storeAbilities(NewAbilitiesSystem(btl))
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle multipliers")
 	btl.multipliers = NewMultiplierSystem(btl)
-	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Broadcasting battle start to players")
-	btl.BroadcastUpdate()
 
 	// broadcast spoil of war on the start of the battle
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Broadcasting spoils of war updates")
@@ -1273,11 +1294,6 @@ func (btl *Battle) Tick(payload []byte) {
 	// Save to history
 	// btl.BattleHistory = append(btl.BattleHistory, payload)
 
-	broadcast := false
-	// broadcast
-	if btl.lastTick == nil {
-		broadcast = true
-	}
 	btl.lastTick = &payload
 
 	btl.arena.messageBus.SendBinary(messagebus.BusKey(HubKeyWarMachineLocationUpdated), payload)
@@ -1301,10 +1317,11 @@ func (btl *Battle) Tick(payload []byte) {
 
 		// Get Sync byte (tells us which data was updated for this warmachine)
 		syncByte := payload[offset]
+		booleans := helpers.UnpackBooleansFromByte(syncByte)
 		offset++
 
 		// Position + Yaw
-		if syncByte >= 100 {
+		if booleans[0] {
 			x := int(binary.BigEndian.Uint32(payload[offset : offset+4]))
 			offset += 4
 			y := int(binary.BigEndian.Uint32(payload[offset : offset+4]))
@@ -1322,7 +1339,7 @@ func (btl *Battle) Tick(payload []byte) {
 			}
 		}
 		// Health
-		if syncByte == 1 || syncByte == 11 || syncByte == 101 || syncByte == 111 {
+		if booleans[1] {
 			health := binary.BigEndian.Uint32(payload[offset : offset+4])
 			offset += 4
 			if warMachineIndex != -1 {
@@ -1330,16 +1347,21 @@ func (btl *Battle) Tick(payload []byte) {
 			}
 		}
 		// Shield
-		if syncByte == 10 || syncByte == 11 || syncByte == 110 || syncByte == 111 {
+		if booleans[2] {
 			shield := binary.BigEndian.Uint32(payload[offset : offset+4])
 			offset += 4
 			if warMachineIndex != -1 {
 				btl.WarMachines[warMachineIndex].Shield = shield
 			}
 		}
-	}
-	if broadcast {
-		btl.BroadcastUpdate()
+		// Energy
+		if booleans[3] {
+			energy := binary.BigEndian.Uint32(payload[offset : offset+4])
+			offset += 4
+			if warMachineIndex != -1 {
+				btl.WarMachines[warMachineIndex].Energy = energy
+			}
+		}
 	}
 }
 
@@ -1770,13 +1792,13 @@ func (btl *Battle) Load() error {
 	if len(q) < 9 {
 		gamelog.L.Warn().Msg("not enough mechs to field a battle. replacing with default battle.")
 
-		err = btl.DefaultMechs()
+		err = btl.QueueDefaultMechs()
 		if err != nil {
 			gamelog.L.Warn().Str("battle_id", btl.ID).Err(err).Msg("unable to load default mechs")
 			return terror.Error(err)
 		}
 
-		return nil
+		return btl.Load()
 	}
 
 	for i, bq := range q {
@@ -1788,6 +1810,40 @@ func (btl *Battle) Load() error {
 	}
 
 	mechs, err := db.Mechs(ids...)
+	if errors.Is(err, db.ErrNotAllMechsReturned) || len(mechs) != len(ids) {
+		for _, m := range mechs {
+			for i, v := range ids {
+				if v.String() == m.ID {
+					ids = append(ids[:i], ids[i+1:]...)
+					break
+				}
+			}
+		}
+		tx, err := gamedb.StdConn.Begin()
+		if err != nil {
+			gamelog.L.Panic().Err(err).Msg("unable to begin tx")
+		}
+		defer tx.Rollback()
+		for _, id := range ids {
+			gamelog.L.Warn().Str("mechID", id.String()).Msg("mech did not load - likely has no faction associated with its owner")
+			canxq := `UPDATE battle_contracts SET cancelled = TRUE WHERE id = (SELECT battle_contract_id FROM battle_queue WHERE mech_id = $1)`
+			_, err = tx.Exec(canxq, id.String())
+			if err != nil {
+				gamelog.L.Warn().Err(err).Msg("unable to cancel battle contract. mech has left queue though.")
+			}
+			bq, _ := boiler.BattleQueues(boiler.BattleQueueWhere.MechID.EQ(id.String())).One(tx)
+			_, err = bq.Delete(tx)
+			if err != nil {
+				gamelog.L.Panic().Str("mechID", id.String()).Err(err).Msg("unable to delete factionless mech from queue")
+			}
+		}
+		err = tx.Commit()
+		if err != nil {
+			gamelog.L.Panic().Err(err).Msg("unable to begin tx")
+		}
+		return btl.Load()
+	}
+
 	if err != nil {
 		gamelog.L.Warn().Interface("mechs_ids", ids).Str("battle_id", btl.ID).Err(err).Msg("failed to retrieve mechs from mech ids")
 		return terror.Error(err)
