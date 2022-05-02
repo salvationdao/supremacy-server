@@ -376,11 +376,11 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 					Int32("times", mismatchCount.Load()).
 					Msg("battle mismatch is detected on faction ability ticker")
 
-				if mismatchCount.Load() < 20 {
+				if mismatchCount.Load() < 10 {
 					continue
 				}
 
-				gamelog.L.Info().Msg("detect battle mismatch 20 times, cleaning up the faction ability tickers")
+				gamelog.L.Info().Msg("detect battle mismatch 10 times, cleaning up the faction ability tickers")
 				return
 			}
 
@@ -1095,11 +1095,11 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 					Int32("times", mismatchCount.Load()).
 					Msg("Battle mismatch is detected on bribing ticker")
 
-				if mismatchCount.Load() < 20 {
+				if mismatchCount.Load() < 10 {
 					continue
 				}
 
-				gamelog.L.Info().Msg("detect battle mismatch 20 times, cleaning up the gab ability tickers")
+				gamelog.L.Info().Msg("detect battle mismatch 10 times, cleaning up the gab ability tickers")
 				// exit, if mismatch detect 20 times
 				endProgress <- true
 				return
@@ -1629,17 +1629,17 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 		priceDropRate := db.GetDecimalWithDefault(db.KeyBattleAbilityPriceDropRate, decimal.NewFromFloat(0.97716))
 		abilityFloorPrice := db.GetDecimalWithDefault(db.KeyAbilityFloorPrice, decimal.New(100, 18))
 
-		// cash old sups cost to not trigger the ability
+		// cache old sups cost to not trigger the ability
 		oldSupsCost := ability.SupsCost
 
 		ability.SupsCost = ability.SupsCost.Mul(priceDropRate).RoundDown(0)
 
-		// cap minmum price at 1 sup
+		// cap minimum price
 		if ability.SupsCost.LessThan(abilityFloorPrice) {
 			ability.SupsCost = abilityFloorPrice
 		}
 
-		// HACK: check ability is triggered and if there is no player vote on current ability
+		// check ability is triggered and if there is no player vote on current ability
 		if ability.CurrentSups.GreaterThanOrEqual(ability.SupsCost) {
 			// check whether anyone bribes on the ability
 			bc, err := boiler.BattleContributions(
@@ -1656,9 +1656,6 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 			}
 		}
 
-		// broadcast the progress bar
-		as.BroadcastAbilityProgressBar()
-
 		// if ability not triggered, store ability's new target price to database, and continue
 		if ability.SupsCost.GreaterThan(ability.CurrentSups) {
 			// store updated price to db
@@ -1670,6 +1667,10 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 					Str("current_sups", ability.CurrentSups.String()).
 					Err(err).Msg("could not update faction ability cost")
 			}
+
+			// broadcast the progress bar
+			as.BroadcastAbilityProgressBar()
+
 			return true
 		}
 
@@ -1687,32 +1688,6 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 
 		// set location deciders list
 		as.locationDecidersSet(as.battle().ID, factionID, ability.OfferingID.String())
-
-		// if no user online, enter cooldown and exit the loop
-		if len(as.locationDeciders.list) == 0 {
-
-			// broadcast no ability
-			as.battle().arena.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
-				Type: LocationSelectTypeCancelledNoPlayer,
-				Ability: &AbilityBrief{
-					Label:    ability.Label,
-					ImageUrl: ability.ImageUrl,
-					Colour:   ability.Colour,
-				},
-			})
-
-			// TODO: Fix deadlock in set new battle ability
-			// set new battle ability
-			cooldownSecond, err := as.SetNewBattleAbility(false)
-			if err != nil {
-				gamelog.L.Error().Err(err).Msg("Failed to set new battle ability")
-			}
-
-			as.battleAbilityPool.Stage.Phase.Store(BribeStageCooldown)
-			as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(cooldownSecond) * time.Second))
-			as.battle().arena.messageBus.Send(messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
-			return false
-		}
 
 		notification := GameNotificationAbility{
 			Ability: &AbilityBrief{
