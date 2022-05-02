@@ -765,8 +765,7 @@ func (ga *GameAbility) SupContribution(ppClient *rpcclient.PassportXrpcClient, a
 
 	amount = amount.Truncate(0)
 
-	// pay sup
-	txid, err := ppClient.SpendSupMessage(rpcclient.SpendSupsReq{
+	supSpendReq := rpcclient.SpendSupsReq{
 		FromUserID:           userID,
 		ToUserID:             SupremacyBattleUserID,
 		Amount:               amount.String(),
@@ -775,8 +774,12 @@ func (ga *GameAbility) SupContribution(ppClient *rpcclient.PassportXrpcClient, a
 		SubGroup:             battleID,
 		Description:          "battle contribution: " + ga.Label,
 		NotSafe:              true,
-	})
+	}
+
+	// pay sup
+	txid, err := ppClient.SpendSupMessage(supSpendReq)
 	if err != nil {
+		gamelog.L.Error().Interface("sups spend detail", supSpendReq).Err(err).Msg("Failed to pay sups")
 		return decimal.Zero, decimal.Zero, false, err
 	}
 
@@ -1298,6 +1301,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				actualSupSpent, multiAmount, abilityTriggered, err := factionAbility.SupContribution(as.battle().arena.RPCClient, as, as.battle().ID, as.battle().BattleNumber, cont.userID, amount)
 				// tell frontend the contribution is success
 				if err != nil {
+					gamelog.L.Error().Str("ability offering id", factionAbility.OfferingID.String()).Err(err).Msg("Failed to bribe battle ability")
 					cont.reply(false)
 					continue
 				}
