@@ -765,8 +765,7 @@ func (ga *GameAbility) SupContribution(ppClient *rpcclient.PassportXrpcClient, a
 
 	amount = amount.Truncate(0)
 
-	// pay sup
-	txid, err := ppClient.SpendSupMessage(rpcclient.SpendSupsReq{
+	supsSpendReq := rpcclient.SpendSupsReq{
 		FromUserID:           userID,
 		ToUserID:             SupremacyBattleUserID,
 		Amount:               amount.String(),
@@ -775,8 +774,12 @@ func (ga *GameAbility) SupContribution(ppClient *rpcclient.PassportXrpcClient, a
 		SubGroup:             battleID,
 		Description:          "battle contribution: " + ga.Label,
 		NotSafe:              true,
-	})
+	}
+
+	// pay sup
+	txid, err := ppClient.SpendSupMessage(supsSpendReq)
 	if err != nil {
+		gamelog.L.Error().Interface("sups spend request", supsSpendReq).Err(err).Msg("Failed to spend sups")
 		return decimal.Zero, decimal.Zero, false, err
 	}
 
@@ -1260,12 +1263,14 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 			as.BattleAbilityPriceUpdater()
 		case cont := <-as.bribe:
 			if as.battle() == nil || as.battle().arena.currentBattle() == nil || as.battle().arena.currentBattle().BattleNumber != bn {
+				gamelog.L.Warn().Msg("battle number miss match")
 				cont.reply(false)
 				continue
 			}
 
 			// skip, if the bribe stage is incorrect
 			if as.battleAbilityPool == nil || as.battleAbilityPool.Stage == nil || as.battleAbilityPool.Stage.Phase.Load() != BribeStageBribe {
+				gamelog.L.Warn().Msg("incorrect bribing stage")
 				cont.reply(false)
 				continue
 			}
@@ -1279,6 +1284,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 					continue
 				}
 				if abilityOfferingID != factionAbility.OfferingID {
+					gamelog.L.Warn().Str("provided offering id", abilityOfferingID.String()).Str("current offering id", factionAbility.OfferingID.String()).Msg("incorrect offering id received")
 					cont.reply(false)
 					continue
 				}
@@ -1298,6 +1304,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				actualSupSpent, multiAmount, abilityTriggered, err := factionAbility.SupContribution(as.battle().arena.RPCClient, as, as.battle().ID, as.battle().BattleNumber, cont.userID, amount)
 				// tell frontend the contribution is success
 				if err != nil {
+					gamelog.L.Error().Err(err).Msg("Failed to pay sups")
 					cont.reply(false)
 					continue
 				}
@@ -1887,7 +1894,8 @@ func (as *AbilitiesSystem) BribeGabs(factionID uuid.UUID, userID uuid.UUID, abil
 
 	if as.battleAbilityPool.Stage.Phase.Load() != BribeStageBribe {
 		gamelog.L.Warn().
-			Msg("unable to retrieve abilities for faction")
+			Int32("current bribing stage", as.battleAbilityPool.Stage.Phase.Load()).
+			Msg("incorrect bribing stage")
 		reply(false)
 		return
 	}
