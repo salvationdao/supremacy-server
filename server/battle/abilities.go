@@ -1894,7 +1894,8 @@ func (as *AbilitiesSystem) BribeGabs(factionID uuid.UUID, userID uuid.UUID, abil
 
 	if as.battleAbilityPool.Stage.Phase.Load() != BribeStageBribe {
 		gamelog.L.Warn().
-			Msg("unable to retrieve abilities for faction")
+			Int32("current bribing stage", as.battleAbilityPool.Stage.Phase.Load()).
+			Msg("incorrect bribing stage")
 		reply(false)
 		return
 	}
