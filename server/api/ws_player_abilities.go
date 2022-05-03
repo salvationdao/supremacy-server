@@ -116,7 +116,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilitiesListUpdatedHandler(ctx cont
 type PlayerAbilitySubscribeRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		AbilityID string `json:"ability_id"` // player ability id
+		BlueprintAbilityID string `json:"blueprint_ability_id"` // blueprint ability id
 	} `json:"payload"`
 }
 
@@ -127,21 +127,21 @@ func (pac *PlayerAbilitiesControllerWS) PlayerAbilitySubscribeHandler(ctx contex
 		return "", "", terror.Error(err, "Invalid request received.")
 	}
 
-	if req.Payload.AbilityID == "" {
+	if req.Payload.BlueprintAbilityID == "" {
 		gamelog.L.Error().
-			Str("handler", "PlayerAbilitySubscribeHandler").Msg("empty ability ID provided")
+			Str("handler", "PlayerAbilitySubscribeHandler").Msg("empty blueprint ability ID provided")
 		return "", "", terror.Error(fmt.Errorf("ability ID was not provided in request payload"), "Unable to retrieve player ability, please try again or contact support.")
 	}
 
-	pAbility, err := boiler.FindPlayerAbility(gamedb.StdConn, req.Payload.AbilityID)
+	bpAbility, err := boiler.PlayerAbilities(boiler.PlayerAbilityWhere.BlueprintID.EQ(req.Payload.BlueprintAbilityID)).One(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().
-			Str("db func", "boiler.FindPlayerAbility").Str("req.Payload.AbilityID", req.Payload.AbilityID).Err(err).Msg("unable to get player ability details")
+			Str("db func", "boiler.FindBlueprintPlayerAbility").Str("req.Payload.BlueprintAbilityID", req.Payload.BlueprintAbilityID).Err(err).Msg("unable to get blueprint ability details")
 		return "", "", terror.Error(err, "Unable to retrieve player ability, please try again or contact support.")
 	}
 
-	reply(pAbility)
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeyPlayerAbilitySubscribe, pAbility.ID)), nil
+	reply(bpAbility)
+	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeyPlayerAbilitySubscribe, bpAbility.ID)), nil
 }
 
 type SaleAbilitySubscribePriceRequest struct {
@@ -175,9 +175,9 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilitySubscribePriceHandler(ctx con
 	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeySaleAbilityPriceSubscribe, sAbility.ID)), nil
 }
 
-type AbilitiesListResponse struct {
-	Total      int64    `json:"total"`
-	AbilityIDs []string `json:"ability_ids"`
+type PlayerAbilitiesListResponse struct {
+	Total             int64                     `json:"total"`
+	TalliedAbilityIDs []db.TalliedPlayerAbility `json:"tallied_ability_ids"`
 }
 
 type PlayerAbilitiesListRequest struct {
@@ -185,7 +185,6 @@ type PlayerAbilitiesListRequest struct {
 	Payload struct {
 		Search   string                `json:"search"`
 		Filter   *db.ListFilterRequest `json:"filter"`
-		Sort     *db.ListSortRequest   `json:"sort"`
 		PageSize int                   `json:"page_size"`
 		Page     int                   `json:"page"`
 	} `json:"payload"`
@@ -203,16 +202,16 @@ func (pac *PlayerAbilitiesControllerWS) PlayerAbilitiesListHandler(ctx context.C
 		offset = req.Payload.Page * req.Payload.PageSize
 	}
 
-	total, pIDs, err := db.PlayerAbilitiesList(ctx, gamedb.Conn, req.Payload.Search, req.Payload.Filter, req.Payload.Sort, offset, req.Payload.PageSize)
+	total, talliedPIDs, err := db.PlayerAbilitiesList(ctx, gamedb.Conn, req.Payload.Search, req.Payload.Filter, offset, req.Payload.PageSize)
 	if err != nil {
 		gamelog.L.Error().
 			Str("db func", "PlayerAbilitiesList").Err(err).Interface("arguments", req.Payload).Msg("unable to get list of player abilities")
 		return terror.Error(err, "Unable to retrieve abilities, try again or contact support.")
 	}
 
-	reply(AbilitiesListResponse{
+	reply(PlayerAbilitiesListResponse{
 		total,
-		pIDs,
+		talliedPIDs,
 	})
 	return nil
 }
@@ -226,6 +225,11 @@ type SaleAbilitiesListRequest struct {
 		PageSize int                   `json:"page_size"`
 		Page     int                   `json:"page"`
 	} `json:"payload"`
+}
+
+type SaleAbilitiesListResponse struct {
+	Total      int64    `json:"total"`
+	AbilityIDs []string `json:"ability_ids"`
 }
 
 func (pac *PlayerAbilitiesControllerWS) SaleAbilitiesListHandler(ctx context.Context, hub *hub.Client, payload []byte, reply hub.ReplyFunc) error {
@@ -247,7 +251,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilitiesListHandler(ctx context.Con
 		return terror.Error(err, "Unable to retrieve abilities, try again or contact support.")
 	}
 
-	reply(AbilitiesListResponse{
+	reply(SaleAbilitiesListResponse{
 		total,
 		sIDs,
 	})

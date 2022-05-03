@@ -199,6 +199,11 @@ func SaleAbilitiesList(
 	return total, sIDs, nil
 }
 
+type TalliedPlayerAbility struct {
+	BlueprintID string `boil:"blueprint_id" json:"blueprint_id"`
+	Count       int64  `boil:"count" json:"count"`
+}
+
 // PlayerAbilitiesList returns a list of IDs from the player_abilities table.
 // Filter and sorting options can be passed in to manipulate the end result.
 func PlayerAbilitiesList(
@@ -206,10 +211,9 @@ func PlayerAbilitiesList(
 	conn pgxscan.Querier,
 	search string,
 	filter *ListFilterRequest,
-	sort *ListSortRequest,
 	offset int,
 	pageSize int,
-) (int64, []string, error) {
+) (int64, []TalliedPlayerAbility, error) {
 	queryMods := []qm.QueryMod{}
 
 	// Filters
@@ -244,46 +248,42 @@ func PlayerAbilitiesList(
 		}
 	}
 
-	total, err := boiler.PlayerAbilities(queryMods...).Count(gamedb.StdConn)
+	var totalQueryMods []qm.QueryMod
+	totalQueryMods = append(totalQueryMods, queryMods...)
+	totalQueryMods = append(totalQueryMods,
+		qm.Select(fmt.Sprintf("count(distinct(%s))", boiler.PlayerAbilityColumns.BlueprintID)),
+		qm.From(boiler.TableNames.PlayerAbilities),
+	)
+	total := struct {
+		Total int64 `boil:"count"`
+	}{}
+	err := boiler.NewQuery(
+		totalQueryMods...,
+	).Bind(nil, gamedb.StdConn, &total)
 	if err != nil {
 		return 0, nil, terror.Error(err)
 	}
-
-	// Sort
-	orderBy := qm.OrderBy(fmt.Sprintf("%s desc", boiler.PlayerAbilityColumns.PurchasedAt))
-	if sort != nil {
-		sortColumn := sort.Column
-		if sort.Table != nil && *sort.Table != "" {
-			if *sort.Table != boiler.TableNames.PlayerAbilities {
-				return 0, nil, terror.Error(fmt.Errorf("invalid sort table name"))
-			}
-			sortColumn = fmt.Sprintf("%s.%s", *sort.Table, sort.Column)
-		}
-		column := PlayerAbilityColumn(sort.Column)
-		err := column.IsValid()
-		if err != nil {
-			return 0, nil, terror.Error(err)
-		}
-		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", sortColumn, sort.Direction))
-	}
-	queryMods = append(queryMods, orderBy)
 
 	// Limit/Offset
 	if pageSize > 0 {
 		queryMods = append(queryMods, qm.Limit(pageSize), qm.Offset(offset))
 	}
 
-	playerAbilities, err := boiler.PlayerAbilities(
+	queryMods = append(queryMods,
+		qm.Select(boiler.PlayerAbilityColumns.BlueprintID,
+			fmt.Sprintf("count(%s)", boiler.PlayerAbilityColumns.BlueprintID),
+			fmt.Sprintf("max(%s) as last_purchased_at", boiler.PlayerAbilityColumns.PurchasedAt)),
+		qm.From(boiler.TableNames.PlayerAbilities),
+		qm.GroupBy(boiler.PlayerAbilityColumns.BlueprintID),
+		qm.OrderBy("last_purchased_at desc"),
+	)
+	talliedPlayerAbilities := []TalliedPlayerAbility{}
+	err = boiler.NewQuery(
 		queryMods...,
-	).All(gamedb.StdConn)
+	).Bind(nil, gamedb.StdConn, &talliedPlayerAbilities)
 	if err != nil {
 		return 0, nil, terror.Error(err)
 	}
 
-	aIDs := make([]string, 0)
-	for _, s := range playerAbilities {
-		aIDs = append(aIDs, s.ID)
-	}
-
-	return total, aIDs, nil
+	return total.Total, talliedPlayerAbilities, nil
 }
