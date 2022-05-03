@@ -85,7 +85,7 @@ type API struct {
 	Telegram         server.Telegram
 	LanguageDetector lingua.LanguageDetector
 
-	PlayerAbilitiesSystem *player_abilities.PlayerAbilitiesSystem
+	SalePlayerAbilitiesSystem *player_abilities.SalePlayerAbilitiesSystem
 
 	// ring check auth
 	RingCheckAuthMap *RingCheckAuthMap
@@ -133,7 +133,7 @@ func NewAPI(
 		Telegram:         telegram,
 		LanguageDetector: languageDetector,
 
-		PlayerAbilitiesSystem: player_abilities.NewPlayerAbilitiesSystem(messageBus),
+		SalePlayerAbilitiesSystem: player_abilities.NewSalePlayerAbilitiesSystem(messageBus),
 
 		FactionPunishVote:    make(map[string]*PunishVoteTracker),
 		FactionActivePlayers: make(map[string]*ActivePlayers),

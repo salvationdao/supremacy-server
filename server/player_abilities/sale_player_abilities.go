@@ -26,7 +26,8 @@ type Purchase struct {
 	AbilityID uuid.UUID // sale ability id
 }
 
-type PlayerAbilitiesSystem struct {
+// Used for sale abilities
+type SalePlayerAbilitiesSystem struct {
 	// player abilities
 	salePlayerAbilities map[uuid.UUID]*boiler.SalePlayerAbility // map[ability_id]*Ability
 
@@ -38,8 +39,7 @@ type PlayerAbilitiesSystem struct {
 	sync.RWMutex
 }
 
-func NewPlayerAbilitiesSystem(messagebus *messagebus.MessageBus) *PlayerAbilitiesSystem {
-
+func NewSalePlayerAbilitiesSystem(messagebus *messagebus.MessageBus) *SalePlayerAbilitiesSystem {
 	saleAbilities, err := boiler.SalePlayerAbilities(boiler.SalePlayerAbilityWhere.AvailableUntil.GT(null.TimeFrom(time.Now()))).All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("failed to populate salePlayerAbilities map with existing abilities from db")
@@ -50,7 +50,7 @@ func NewPlayerAbilitiesSystem(messagebus *messagebus.MessageBus) *PlayerAbilitie
 		salePlayerAbilities[sID] = s
 	}
 
-	pas := &PlayerAbilitiesSystem{
+	pas := &SalePlayerAbilitiesSystem{
 		salePlayerAbilities: salePlayerAbilities,
 		Purchase:            make(chan *Purchase),
 		closed:              atomic.NewBool(false),
@@ -62,7 +62,7 @@ func NewPlayerAbilitiesSystem(messagebus *messagebus.MessageBus) *PlayerAbilitie
 	return pas
 }
 
-func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
+func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 	priceTickerInterval := db.GetIntWithDefault(db.SaleAbilityPriceTickerIntervalSeconds, 5) // default 5 seconds
 	priceTicker := time.NewTicker(time.Duration(priceTickerInterval) * time.Second)
 
@@ -156,7 +156,7 @@ func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 				}
 
 				// Broadcast updated sale ability
-				pas.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeySaleAbilityPriceSubscribe, s.ID)), s.CurrentPrice)
+				pas.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeySaleAbilityPriceSubscribe, s.ID)), s.CurrentPrice.StringFixed(0))
 			}
 			break
 		case purchase := <-pas.Purchase:
@@ -168,7 +168,7 @@ func (pas *PlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 					gamelog.L.Error().Err(err).Str("salePlayerAbilityID", saleAbility.ID).Str("new price", saleAbility.CurrentPrice.String()).Interface("sale ability", saleAbility).Msg("failed to update sale ability price")
 					break
 				}
-				pas.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeySaleAbilityPriceSubscribe, saleAbility.ID)), saleAbility.CurrentPrice)
+				pas.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeySaleAbilityPriceSubscribe, saleAbility.ID)), saleAbility.CurrentPrice.StringFixed(0))
 			}
 			break
 		}
