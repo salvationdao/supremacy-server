@@ -46,14 +46,14 @@ CREATE TYPE WEAPON_TYPE AS ENUM ('Grenade Launcher', 'Cannon', 'Minigun', 'Plasm
 DROP TYPE IF EXISTS DAMAGE_TYPE;
 CREATE TYPE DAMAGE_TYPE AS ENUM ('Kinetic', 'Energy', 'Explosive');
 
-DROP TYPE IF EXISTS chassis_model;
+DROP TYPE IF EXISTS CHASSIS_MODEL;
 
 -- creating table of war machine chassis modals
 CREATE TABLE chassis_model
 (
     id         UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
     label      TEXT        NOT NULL,
-    created_at timestamptz NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 INSERT INTO chassis_model (label)
@@ -158,6 +158,7 @@ ALTER TABLE chassis_model
 CREATE TABLE chassis_skin
 (
     id                 UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
+    blueprint_id       UUID REFERENCES blueprint_chassis_skin (id),
     collection_slug    COLLECTION  NOT NULL DEFAULT 'supremacy-general',
     token_id           BIGINT,
     genesis_token_id   NUMERIC,
@@ -181,21 +182,6 @@ CREATE TABLE chassis_skin
   CHASSIS ANIMATIONS
  */
 
-CREATE TABLE chassis_animation
-(
-    id              UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
-    collection_slug COLLECTION  NOT NULL DEFAULT 'supremacy-general',
-    token_id        BIGINT      NOT NULL,
-    label           TEXT        NOT NULL,
-    owner_id        UUID        NOT NULL REFERENCES players (id),
-    chassis_model   UUID        NOT NULL REFERENCES chassis_model (id),
-    equipped_on     UUID REFERENCES chassis (id),
-    tier            TEXT,
-    intro_animation BOOL                 DEFAULT TRUE,
-    outro_animation BOOL                 DEFAULT TRUE,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    FOREIGN KEY (collection_slug, token_id) REFERENCES collection_items (collection_slug, token_id)
-);
 
 -- TODO: CREATE CHECK ON COLLECTION/TOKEN ID
 
@@ -212,6 +198,24 @@ CREATE TABLE blueprint_chassis_animation
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE chassis_animation
+(
+    id              UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
+    blueprint_id    UUID        NOT NULL REFERENCES blueprint_chassis_animation (id),
+    collection_slug COLLECTION  NOT NULL DEFAULT 'supremacy-general',
+    token_id        BIGINT      NOT NULL,
+    label           TEXT        NOT NULL,
+    owner_id        UUID        NOT NULL REFERENCES players (id),
+    chassis_model   UUID        NOT NULL REFERENCES chassis_model (id),
+    equipped_on     UUID REFERENCES chassis (id),
+    tier            TEXT,
+    intro_animation BOOL                 DEFAULT TRUE,
+    outro_animation BOOL                 DEFAULT TRUE,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    FOREIGN KEY (collection_slug, token_id) REFERENCES collection_items (collection_slug, token_id)
+);
+
+
 /*
   CHASSIS
  */
@@ -221,8 +225,10 @@ ALTER TABLE chassis
 --     unused/unneeded columns
     DROP COLUMN IF EXISTS turret_hardpoints,
     DROP COLUMN IF EXISTS health_remaining,
-    ADD COLUMN is_default              bool       NOT NULL DEFAULT FALSE,
-    ADD COLUMN is_insured              bool       NOT NULL DEFAULT FALSE,
+    ADD COLUMN blueprint_id            UUID REFERENCES blueprint_chassis (id),
+    ADD COLUMN is_default              BOOL       NOT NULL DEFAULT FALSE,
+    ADD COLUMN is_insured              BOOL       NOT NULL DEFAULT FALSE,
+    ADD COLUMN name                    TEXT       NOT NULL DEFAULT '',
     ADD COLUMN model_id                UUID REFERENCES chassis_model (id),
     ADD COLUMN collection_slug         COLLECTION NOT NULL DEFAULT 'supremacy-general',
     ADD COLUMN token_id                BIGINT,
@@ -383,16 +389,20 @@ WHERE c.model_id = (SELECT id FROM chassis_model WHERE label = 'Tenshi Mk1');
 ALTER TABLE chassis
     ALTER COLUMN default_chassis_skin_id SET NOT NULL;
 
-WITH mech_owners AS (SELECT owner_id, chassis_id, is_default, is_insured
+WITH mech_owners AS (SELECT owner_id, chassis_id, is_default, is_insured, name, tier, template_id
                      FROM mechs)
 UPDATE chassis c
-SET owner_id   = mech_owners.owner_id,
-    is_insured = mech_owners.is_insured,
-    is_default = mech_owners.is_default
+SET owner_id     = mech_owners.owner_id,
+    is_insured   = mech_owners.is_insured,
+    is_default   = mech_owners.is_default,
+    name         = mech_owners.name,
+    tier         = mech_owners.tier,
+    blueprint_id = (SELECT blueprint_chassis_id FROM templates WHERE id = mech_owners.template_id)
 FROM mech_owners
 WHERE c.id = mech_owners.chassis_id;
 
 ALTER TABLE chassis
+    ALTER COLUMN blueprint_id SET NOT NULL,
     ALTER COLUMN owner_id SET NOT NULL;
 
 ALTER TABLE blueprint_chassis
@@ -451,6 +461,12 @@ SET chassis_skin_id = (SELECT id
                        WHERE bcs.label = bc.skin
                          AND bcs.chassis_model = bc.model_id);
 
+
+UPDATE chassis_skin ms
+SET blueprint_id = (SELECT id FROM blueprint_chassis_skin bms WHERE bms.label = ms.label);
+
+ALTER TABLE chassis_skin
+    ALTER COLUMN blueprint_id SET NOT NULL;
 
 /*
   AMMO

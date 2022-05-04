@@ -84,6 +84,7 @@ ALTER TABLE modules
 ALTER TABLE utility
     DROP COLUMN hitpoint_modifier,
     DROP COLUMN shield_modifier,
+    ADD COLUMN blueprint_id     UUID REFERENCES blueprint_utility (id),
     ADD COLUMN collection_slug  COLLECTION NOT NULL DEFAULT 'supremacy-general',
     ADD COLUMN token_id         BIGINT,
     ADD COLUMN genesis_token_id NUMERIC,
@@ -254,3 +255,16 @@ ALTER TABLE blueprint_utility
 ALTER TABLE blueprint_chassis
     DROP COLUMN IF EXISTS shield_recharge_rate,
     DROP COLUMN IF EXISTS max_shield;
+
+
+--  below adds the blueprint id for the shields
+WITH shield AS (SELECT hitpoints, recharge_rate FROM utility_shield)
+UPDATE utility
+SET blueprint_id = (SELECT blueprint_utility_id
+                    FROM blueprint_utility_shield _bus
+                    WHERE _bus.recharge_rate = shield.recharge_rate
+                      AND _bus.hitpoints = shield.hitpoints)
+FROM shield;
+
+ALTER TABLE utility
+    ALTER COLUMN blueprint_id SET NOT NULL;

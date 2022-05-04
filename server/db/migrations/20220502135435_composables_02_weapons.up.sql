@@ -13,13 +13,14 @@ CREATE TABLE blueprint_weapon_skin
 
 CREATE TABLE weapon_skin
 (
-    id          UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
-    owner_id    UUID        NOT NULL REFERENCES players (id),
-    label       TEXT        NOT NULL,
-    weapon_type WEAPON_TYPE NOT NULL,
-    equipped_on UUID REFERENCES chassis (id),
-    tier        TEXT,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    id           UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
+    blueprint_id UUID        NOT NULL REFERENCES blueprint_weapon_skin (id),
+    owner_id     UUID        NOT NULL REFERENCES players (id),
+    label        TEXT        NOT NULL,
+    weapon_type  WEAPON_TYPE NOT NULL,
+    equipped_on  UUID REFERENCES chassis (id),
+    tier         TEXT,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 
@@ -77,6 +78,7 @@ ALTER TABLE blueprint_weapons
 
 ALTER TABLE weapons
     DROP COLUMN IF EXISTS weapon_type,
+    ADD COLUMN blueprint_id            UUID REFERENCES blueprint_weapons,
     ADD COLUMN default_damage_typ      DAMAGE_TYPE NOT NULL DEFAULT 'Kinetic',
     ADD COLUMN collection_slug         COLLECTION  NOT NULL DEFAULT 'supremacy-general',
     ADD COLUMN token_id                BIGINT,
@@ -342,3 +344,11 @@ UPDATE blueprint_chassis bc
 SET weapon_hardpoints = (SELECT COUNT(*)
                          FROM blueprint_chassis_blueprint_weapons bcbw
                          WHERE bcbw.blueprint_chassis_id = bc.id);
+
+
+-- below adds the blueprint ids for the weapons
+UPDATE weapons w
+SET blueprint_id = (SELECT id FROM blueprint_weapons bw WHERE bw.label = w.label);
+
+ALTER TABLE weapons
+    ALTER COLUMN blueprint_id SET NOT NULL;
