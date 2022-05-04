@@ -462,9 +462,17 @@ SET chassis_skin_id = (SELECT id
                          AND bcs.chassis_model = bc.model_id);
 
 
-UPDATE chassis_skin ms
-SET blueprint_id = (SELECT id FROM blueprint_chassis_skin bms WHERE bms.label = ms.label);
+-- fix ones we missed somehow
+UPDATE chassis_skin
+SET label = 'Gumdan'
+WHERE label = 'Gundam';
 
+UPDATE chassis_skin ms
+SET blueprint_id = (SELECT id
+                    FROM blueprint_chassis_skin bms
+                    WHERE bms.label = ms.label AND ms.chassis_model = bms.chassis_model);
+
+-- here
 ALTER TABLE chassis_skin
     ALTER COLUMN blueprint_id SET NOT NULL;
 

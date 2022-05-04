@@ -98,28 +98,41 @@ ALTER TABLE weapons
 
 
 UPDATE weapons
-SET weapon_type = 'Sniper Rifle'
-WHERE label = 'Sniper Rifle';
+SET weapon_type = 'Sniper Rifle',
+    label       = 'Sniper Rifle'
+WHERE label = 'Sniper Rifle'
+   OR label = 'Zaibatsu Heavy Industries Sniper Rifle';
 
 UPDATE weapons
-SET weapon_type = 'Sword'
-WHERE label = 'Laser Sword';
+SET weapon_type = 'Sword',
+    label       = 'Laser Sword'
+WHERE label = 'Laser Sword'
+   OR label = 'Zaibatsu Heavy Industries Laser Sword';
 
 UPDATE weapons
-SET weapon_type = 'Missile Launcher'
-WHERE label = 'Rocket Pod';
+SET weapon_type = 'Missile Launcher',
+    label       = 'Rocket Pod'
+WHERE label = 'Rocket Pod'
+   OR label = 'Red Mountain Offworld Mining Corporation Rocket Pod'
+   OR label = 'Zaibatsu Heavy Industries Rocket Pod';
 
 UPDATE weapons
-SET weapon_type = 'Cannon'
-WHERE label = 'Auto Cannon';
+SET weapon_type = 'Cannon',
+    label       = 'Auto Cannon'
+WHERE label = 'Auto Cannon'
+   OR label = 'Red Mountain Offworld Mining Corporation Auto Cannon';
 
 UPDATE weapons
-SET weapon_type = 'Plasma Gun'
-WHERE label = 'Plasma Rifle';
+SET weapon_type = 'Plasma Gun',
+    label       = 'Plasma Rifle'
+WHERE label = 'Plasma Rifle'
+   OR label = 'Boston Cybernetics Plasma Rifle';
 
 UPDATE weapons
-SET weapon_type = 'Sword'
-WHERE label = 'Sword';
+SET weapon_type = 'Sword',
+    label       = 'Sword'
+WHERE label = 'Sword'
+   OR label = 'Boston Cybernetics Sword';
 
 WITH weapon_owners AS (SELECT m.owner_id, cw.weapon_id
                        FROM chassis_weapons cw
@@ -170,7 +183,8 @@ SET damage                  = 20,
     radial_does_full_damage = TRUE,
     energy_cost             = 10,
     default_damage_typ      = 'Energy'
-WHERE label ILIKE 'Plasma Rifle';
+WHERE label ILIKE 'Plasma Rifle'
+   OR label ILIKE 'Boston Cybernetics Plasma Rifle';
 
 UPDATE weapons
 SET damage                  = 12,
@@ -183,7 +197,8 @@ SET damage                  = 12,
     radial_does_full_damage = TRUE,
     energy_cost             = 10,
     default_damage_typ      = 'Kinetic'
-WHERE label ILIKE 'Auto Cannon';
+WHERE label ILIKE 'Auto Cannon'
+   OR label ILIKE 'Red Mountain Offworld Mining Corporation Auto Cannon';
 
 UPDATE weapons
 SET damage                  = 130,
@@ -196,7 +211,8 @@ SET damage                  = 130,
     radial_does_full_damage = TRUE,
     energy_cost             = 15,
     default_damage_typ      = 'Kinetic'
-WHERE label ILIKE 'Sniper Rifle';
+WHERE label ILIKE 'Sniper Rifle'
+   OR label ILIKE 'Zaibatsu Heavy Industries Sniper Rifle';
 
 UPDATE weapons
 SET damage                  = 70,
@@ -209,7 +225,9 @@ SET damage                  = 70,
     radial_does_full_damage = TRUE,
     energy_cost             = 15,
     default_damage_typ      = 'Explosive'
-WHERE label ILIKE 'Rocket Pod';
+WHERE label ILIKE 'Rocket Pod'
+   OR label ILIKE 'Zaibatsu Heavy Industries Rocket Pod'
+   OR label ILIKE 'Red Mountain Offworld Mining Corporation Rocket Pod';
 
 UPDATE weapons
 SET damage                  = 80,
@@ -222,7 +240,8 @@ SET damage                  = 80,
     radial_does_full_damage = TRUE,
     energy_cost             = 15,
     default_damage_typ      = 'Kinetic'
-WHERE label ILIKE 'Sword';
+WHERE label ILIKE 'Sword'
+   OR label ILIKE 'Boston Cybernetics Sword';
 
 UPDATE weapons
 SET damage                  = 120,
@@ -235,7 +254,8 @@ SET damage                  = 120,
     radial_does_full_damage = TRUE,
     energy_cost             = 15,
     default_damage_typ      = 'Energy'
-WHERE label ILIKE 'Laser Sword';
+WHERE label ILIKE 'Laser Sword'
+   OR label ILIKE 'Zaibatsu Heavy Industries Laser Sword';
 
 --  blueprint weapons
 -- update weapon stats
@@ -250,7 +270,8 @@ SET damage                  = 20,
     radial_does_full_damage = TRUE,
     energy_cost             = 10,
     default_damage_typ      = 'Energy'
-WHERE label ILIKE 'Plasma Rifle';
+WHERE label ILIKE 'Plasma Rifle'
+   OR label ILIKE 'Boston Cybernetics Plasma Rifle';
 
 UPDATE blueprint_weapons
 SET damage                  = 12,
@@ -263,7 +284,8 @@ SET damage                  = 12,
     radial_does_full_damage = TRUE,
     energy_cost             = 10,
     default_damage_typ      = 'Kinetic'
-WHERE label ILIKE 'Auto Cannon';
+WHERE label ILIKE 'Auto Cannon'
+   OR label ILIKE 'Red Mountain Offworld Mining Corporation Auto Cannon';
 
 UPDATE blueprint_weapons
 SET damage                  = 130,
@@ -276,7 +298,8 @@ SET damage                  = 130,
     radial_does_full_damage = TRUE,
     energy_cost             = 15,
     default_damage_typ      = 'Kinetic'
-WHERE label ILIKE 'Sniper Rifle';
+WHERE label ILIKE 'Sniper Rifle'
+   OR label ILIKE 'Zaibatsu Heavy Industries Sniper Rifle';
 
 UPDATE blueprint_weapons
 SET damage                  = 70,
@@ -289,7 +312,9 @@ SET damage                  = 70,
     radial_does_full_damage = TRUE,
     energy_cost             = 15,
     default_damage_typ      = 'Explosive'
-WHERE label ILIKE 'Rocket Pod';
+WHERE label ILIKE 'Rocket Pod'
+   OR label ILIKE 'Zaibatsu Heavy Industries Rocket Pod'
+   OR label ILIKE 'Red Mountain Offworld Mining Corporation Rocket Pod';
 
 UPDATE blueprint_weapons
 SET damage                  = 80,
@@ -302,7 +327,9 @@ SET damage                  = 80,
     radial_does_full_damage = TRUE,
     energy_cost             = 15,
     default_damage_typ      = 'Kinetic'
-WHERE label ILIKE 'Sword';
+WHERE label ILIKE 'Sword'
+   OR label ILIKE 'Boston Cybernetics Sword';
+
 
 UPDATE blueprint_weapons
 SET damage                  = 120,
@@ -315,7 +342,9 @@ SET damage                  = 120,
     radial_does_full_damage = TRUE,
     energy_cost             = 15,
     default_damage_typ      = 'Energy'
-WHERE label ILIKE 'Laser Sword';
+WHERE label ILIKE 'Laser Sword'
+   OR label ILIKE 'Zaibatsu Heavy Industries Laser Sword';
+
 
 ALTER TABLE chassis_weapons
     DROP CONSTRAINT chassis_weapons_chassis_id_slot_number_mount_location_key;
@@ -352,3 +381,4 @@ SET blueprint_id = (SELECT id FROM blueprint_weapons bw WHERE bw.label = w.label
 
 ALTER TABLE weapons
     ALTER COLUMN blueprint_id SET NOT NULL;
+
