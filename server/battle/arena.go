@@ -19,7 +19,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	"go.uber.org/atomic"
@@ -547,7 +546,7 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, wsc *hub.Client, paylo
 		ImageURL:            pa.ImageURL,
 		Description:         pa.Description,
 		TextColour:          pa.TextColour,
-		LocationSelectType:  null.StringFrom(pa.LocationSelectType),
+		LocationSelectType:  pa.LocationSelectType,
 		ConsumedAt:          time.Now(),
 	}
 	err = ca.Insert(tx, boil.Infer())
