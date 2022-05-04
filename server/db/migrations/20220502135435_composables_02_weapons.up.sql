@@ -48,23 +48,28 @@ SET weapon_type           = 'Sniper Rifle',
 WHERE label = 'Sniper Rifle';
 
 UPDATE blueprint_weapons
-SET weapon_type = 'Sword'
+SET weapon_type           = 'Sword',
+    game_client_weapon_id = '6109e547-5a48-4a76-a3f2-e73ef41505b3'
 WHERE label = 'Laser Sword';
 
 UPDATE blueprint_weapons
-SET weapon_type = 'Missile Launcher'
+SET weapon_type           = 'Missile Launcher',
+    game_client_weapon_id = '7c082a33-ff87-454f-bf8c-925945dd0ff4'
 WHERE label = 'Rocket Pod';
 
 UPDATE blueprint_weapons
-SET weapon_type = 'Cannon'
+SET weapon_type           = 'Cannon',
+    game_client_weapon_id = 'a009fbf9-4fe3-48b0-8f34-e207c2b355dc'
 WHERE label = 'Auto Cannon';
 
 UPDATE blueprint_weapons
-SET weapon_type = 'Plasma Gun'
+SET weapon_type           = 'Plasma Gun',
+    game_client_weapon_id = '26f37473-ccd6-47d0-993e-2b82d725617d'
 WHERE label = 'Plasma Rifle';
 
 UPDATE blueprint_weapons
-SET weapon_type = 'Sword'
+SET weapon_type           = 'Sword',
+    game_client_weapon_id = '02c27475-c0ea-4825-8739-9a0b2cdc4201'
 WHERE label = 'Sword';
 
 ALTER TABLE blueprint_weapons
@@ -170,7 +175,7 @@ SET damage                  = 12,
     damage_falloff          = 0,
     damage_falloff_rate     = 0,
     spread                  = 4,
-    rate_of_fire            = 0,
+    rate_of_fire            = 270,
     radius                  = 100,
     projectile_speed        = 36000,
     radial_does_full_damage = TRUE,
@@ -183,7 +188,7 @@ SET damage                  = 130,
     damage_falloff          = 0,
     damage_falloff_rate     = 0,
     spread                  = 3,
-    rate_of_fire            = 0,
+    rate_of_fire            = 48,
     radius                  = 100,
     projectile_speed        = 80000,
     radial_does_full_damage = TRUE,
@@ -237,7 +242,7 @@ SET damage                  = 20,
     damage_falloff          = 0,
     damage_falloff_rate     = 0,
     spread                  = 3,
-    rate_of_fire            = 0,
+    rate_of_fire            = 250,
     radius                  = 100,
     projectile_speed        = 48000,
     radial_does_full_damage = TRUE,
@@ -250,7 +255,7 @@ SET damage                  = 12,
     damage_falloff          = 0,
     damage_falloff_rate     = 0,
     spread                  = 4,
-    rate_of_fire            = 0,
+    rate_of_fire            = 270,
     radius                  = 100,
     projectile_speed        = 36000,
     radial_does_full_damage = TRUE,
@@ -263,7 +268,7 @@ SET damage                  = 130,
     damage_falloff          = 0,
     damage_falloff_rate     = 0,
     spread                  = 3,
-    rate_of_fire            = 0,
+    rate_of_fire            = 48,
     radius                  = 100,
     projectile_speed        = 80000,
     radial_does_full_damage = TRUE,
@@ -309,3 +314,31 @@ SET damage                  = 120,
     energy_cost             = 15,
     default_damage_typ      = 'Energy'
 WHERE label ILIKE 'Laser Sword';
+
+ALTER TABLE chassis_weapons
+    DROP CONSTRAINT chassis_weapons_chassis_id_slot_number_mount_location_key;
+
+-- on the mech_weapons join, we need to update slot numbers and then remove mount location column
+
+UPDATE chassis_weapons mw
+SET slot_number = 2
+WHERE mw.mount_location = 'TURRET'
+  AND mw.slot_number = 0;
+UPDATE chassis_weapons mw
+SET slot_number = 3
+WHERE mw.mount_location = 'TURRET'
+  AND mw.slot_number = 1;
+
+ALTER TABLE chassis_weapons
+    ADD UNIQUE (chassis_id, slot_number),
+    DROP COLUMN mount_location;
+
+--  update mech weapoon hardpoints
+UPDATE chassis c
+SET weapon_hardpoints = (SELECT COUNT(*) FROM chassis_weapons cw WHERE cw.chassis_id = c.id);
+
+--  update blueprint mech weapoon hardpoints
+UPDATE blueprint_chassis bc
+SET weapon_hardpoints = (SELECT COUNT(*)
+                         FROM blueprint_chassis_blueprint_weapons bcbw
+                         WHERE bcbw.blueprint_chassis_id = bc.id);

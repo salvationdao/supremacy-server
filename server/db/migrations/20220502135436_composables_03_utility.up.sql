@@ -11,6 +11,8 @@ ALTER TABLE blueprint_chassis_blueprint_modules
 ALTER TABLE blueprint_chassis_blueprint_utility
     RENAME COLUMN blueprint_module_id TO blueprint_utility_id;
 ALTER TABLE blueprint_modules
+    DROP CONSTRAINT blueprint_modules_label_key;
+ALTER TABLE blueprint_modules
     RENAME TO blueprint_utility;
 ALTER TABLE blueprint_utility
     DROP COLUMN hitpoint_modifier,
@@ -210,8 +212,7 @@ WITH insrt AS (
                  INNER JOIN blueprint_chassis _c ON _c.id = _cu.blueprint_chassis_id
         GROUP BY _c.max_shield, _c.shield_recharge_rate )
         INSERT INTO blueprint_utility (label, type, max_shield, shield_recharge_rate)
-            SELECT new_ulti.label || ' ' || new_ulti.max_shield::TEXT || ' ' ||
-                   new_ulti.shield_recharge_rate::TEXT,
+            SELECT new_ulti.label,
                    new_ulti.type,
                    new_ulti.max_shield,
                    new_ulti.shield_recharge_rate
@@ -239,6 +240,16 @@ SELECT bm.chassis_id,
           AND bus.hitpoints = bm.max_shield),
        0
 FROM bm;
+
+-- deleting old shield
+DELETE
+FROM blueprint_utility
+WHERE max_shield IS NULL;
+
+-- removing temp columns
+ALTER TABLE blueprint_utility
+    DROP COLUMN IF EXISTS max_shield,
+    DROP COLUMN IF EXISTS shield_recharge_rate;
 
 ALTER TABLE blueprint_chassis
     DROP COLUMN IF EXISTS shield_recharge_rate,

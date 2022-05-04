@@ -262,15 +262,11 @@ ALTER TABLE chassis_utility
 ALTER TABLE blueprint_chassis
     RENAME TO blueprint_mechs;
 
-ALTER TABLE blueprint_chassis_blueprint_utility
-    RENAME TO blueprint_mech_blueprint_utility;
-
-ALTER TABLE blueprint_chassis_blueprint_weapons
-    RENAME TO blueprint_mech_blueprint_weapons;
-
 ALTER TABLE blueprint_chassis_skin
     RENAME TO blueprint_mech_skin;
 
 ALTER TABLE blueprint_chassis_animation
     RENAME TO blueprint_mech_animation;
 
+ALTER TABLE chassis_weapons
+    RENAME TO mech_weapons;
