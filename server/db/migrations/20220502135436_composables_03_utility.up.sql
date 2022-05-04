@@ -1,0 +1,211 @@
+DROP TYPE IF EXISTS UTILITY_TYPE;
+CREATE TYPE UTILITY_TYPE AS ENUM ('SHIELD', 'ATTACK DRONE', 'REPAIR DRONE', 'ANTI MISSILE',
+    'ACCELERATOR');
+
+
+/*
+  UTILITY
+ */
+
+ALTER TABLE blueprint_chassis_blueprint_modules
+    RENAME TO blueprint_chassis_blueprint_utility;
+ALTER TABLE blueprint_chassis_blueprint_utility
+    RENAME COLUMN blueprint_module_id TO blueprint_utility_id;
+ALTER TABLE blueprint_modules
+    RENAME TO blueprint_utility;
+ALTER TABLE blueprint_utility
+    DROP COLUMN hitpoint_modifier,
+    DROP COLUMN shield_modifier,
+    ADD COLUMN type UTILITY_TYPE;
+
+UPDATE blueprint_utility
+SET type = 'SHIELD';
+ALTER TABLE blueprint_utility
+    ALTER COLUMN type SET NOT NULL;
+
+CREATE TABLE blueprint_utility_shield
+(
+    id                   UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
+    blueprint_utility_id UUID        NOT NULL REFERENCES blueprint_utility (id),
+    hitpoints            INT         NOT NULL DEFAULT 0,
+    recharge_rate        INT         NOT NULL DEFAULT 0,
+    recharge_energy_cost INT         NOT NULL DEFAULT 0,
+    created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE blueprint_utility_attack_drone
+(
+    id                   UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
+    blueprint_utility_id UUID        NOT NULL REFERENCES blueprint_utility (id),
+    damage               INT         NOT NULL,
+    rate_of_fire         INT         NOT NULL,
+    hitpoints            INT         NOT NULL,
+    lifespan_seconds     INT         NOT NULL,
+    deploy_energy_cost   INT         NOT NULL,
+    created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE blueprint_utility_repair_drone
+(
+    id                   UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
+    blueprint_utility_id UUID        NOT NULL REFERENCES blueprint_utility (id),
+    repair_type          TEXT CHECK (repair_type IN ('SHIELD', 'STRUCTURE')),
+    repair_amount        INT         NOT NULL,
+    deploy_energy_cost   INT         NOT NULL,
+    lifespan_seconds     INT         NOT NULL,
+    created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE blueprint_utility_anti_missile
+(
+    id                   UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
+    blueprint_utility_id UUID        NOT NULL REFERENCES blueprint_utility (id),
+    rate_of_fire         INT         NOT NULL,
+    fire_energy_cost     INT         NOT NULL,
+    created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE blueprint_utility_accelerator
+(
+    id                   UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
+    blueprint_utility_id UUID        NOT NULL REFERENCES blueprint_utility (id),
+    energy_cost          INT         NOT NULL,
+    boost_seconds        INT         NOT NULL,
+    boost_amount         INT         NOT NULL,
+    created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+
+ALTER TABLE chassis_modules
+    RENAME TO chassis_utility;
+ALTER TABLE chassis_utility
+    RENAME COLUMN module_id TO utility_id;
+
+ALTER TABLE modules
+    RENAME TO utility;
+ALTER TABLE utility
+    DROP COLUMN hitpoint_modifier,
+    DROP COLUMN shield_modifier,
+    ADD COLUMN collection_slug  COLLECTION NOT NULL DEFAULT 'supremacy-general',
+    ADD COLUMN token_id         BIGINT,
+    ADD COLUMN genesis_token_id NUMERIC,
+    ADD COLUMN owner_id         UUID REFERENCES players (id),
+    ADD COLUMN equipped_on      UUID REFERENCES chassis (id),
+    ADD COLUMN type             UTILITY_TYPE,
+    ADD FOREIGN KEY (collection_slug, token_id) REFERENCES collection_items (collection_slug, token_id);
+
+WITH utility_owners AS (SELECT m.owner_id, cu.utility_id
+                        FROM chassis_utility cu
+                                 INNER JOIN mechs m ON cu.chassis_id = m.chassis_id)
+UPDATE utility u
+SET owner_id = utility_owners.owner_id
+FROM utility_owners
+WHERE u.id = utility_owners.utility_id;
+
+
+-- This inserts a new collection_items entry for each utility and updates the utility table with token id
+WITH insrt AS (
+    WITH utily AS (SELECT 'utility' AS item_type, id FROM utility)
+        INSERT INTO collection_items (token_id, item_type, item_id)
+            SELECT NEXTVAL('collection_general'), utily.item_type, utily.id
+            FROM utily
+            RETURNING token_id, item_id)
+UPDATE utility u
+SET token_id = insrt.token_id
+FROM insrt
+WHERE u.id = insrt.item_id;
+
+-- this updates all genesis_token_id for weapons that are in genesis
+WITH genesis AS (SELECT external_token_id, m.collection_slug, m.chassis_id, _cu.utility_id
+                 FROM chassis_utility _cu
+                          INNER JOIN mechs m ON m.chassis_id = _cu.chassis_id
+                 WHERE m.collection_slug = 'supremacy-genesis')
+UPDATE utility u
+SET genesis_token_id = genesis.external_token_id
+FROM genesis
+WHERE u.id = genesis.utility_id;
+
+
+ALTER TABLE utility
+    DROP COLUMN slug,
+    ALTER COLUMN token_id SET NOT NULL,
+    ALTER COLUMN owner_id SET NOT NULL;
+
+UPDATE utility
+SET type = 'SHIELD';
+ALTER TABLE blueprint_utility
+    ALTER COLUMN type SET NOT NULL;
+
+
+CREATE TABLE utility_shield
+(
+    utility_id           UUID PRIMARY KEY REFERENCES utility (id),
+    hitpoints            INT NOT NULL DEFAULT 0,
+    recharge_rate        INT NOT NULL DEFAULT 0,
+    recharge_energy_cost INT NOT NULL DEFAULT 0
+);
+
+CREATE TABLE utility_attack_drone
+(
+    utility_id         UUID PRIMARY KEY REFERENCES utility (id),
+    damage             INT NOT NULL,
+    rate_of_fire       INT NOT NULL,
+    hitpoints          INT NOT NULL,
+    lifespan_seconds   INT NOT NULL,
+    deploy_energy_cost INT NOT NULL
+);
+
+CREATE TABLE utility_repair_drone
+(
+    utility_id         UUID PRIMARY KEY REFERENCES utility (id),
+    repair_type        TEXT CHECK (repair_type IN ('SHIELD', 'STRUCTURE')),
+    repair_amount      INT NOT NULL,
+    deploy_energy_cost INT NOT NULL,
+    lifespan_seconds   INT NOT NULL
+);
+
+CREATE TABLE utility_anti_missile
+(
+    utility_id       UUID PRIMARY KEY REFERENCES utility (id),
+    rate_of_fire     INT NOT NULL,
+    fire_energy_cost INT NOT NULL
+);
+
+CREATE TABLE utility_accelerator
+(
+    utility_id    UUID PRIMARY KEY REFERENCES utility (id),
+    energy_cost   INT NOT NULL,
+    boost_seconds INT NOT NULL,
+    boost_amount  INT NOT NULL
+);
+
+
+-- for each utility, create the shield utility
+WITH umj AS (SELECT _cu.utility_id AS uid, _c.max_shield AS max_shield, _c.shield_recharge_rate AS shield_recharge_rate
+             FROM chassis_utility _cu
+                      INNER JOIN chassis _c ON _c.id = _cu.chassis_id
+                      INNER JOIN mechs _m ON _m.chassis_id = _c.id)
+INSERT
+INTO utility_shield (utility_id, hitpoints, recharge_rate, recharge_energy_cost)
+SELECT umj.uid, umj.max_shield, umj.shield_recharge_rate, 10
+FROM umj;
+
+ALTER TABLE chassis
+    DROP COLUMN IF EXISTS skin,
+    DROP COLUMN IF EXISTS slug,
+    DROP COLUMN IF EXISTS shield_recharge_rate,
+    DROP COLUMN IF EXISTS max_shield;
+
+
+-- for each blueprint utility, create the blueprint shield utility
+WITH umj AS (SELECT _cu.blueprint_utility_id AS uid,
+                    _c.max_shield            AS max_shield,
+                    _c.shield_recharge_rate  AS shield_recharge_rate
+             FROM blueprint_chassis_blueprint_utility _cu
+                      INNER JOIN blueprint_chassis _c ON _c.id = _cu.blueprint_chassis_id
+                      INNER JOIN templates _m ON _m.blueprint_chassis_id = _c.id)
+INSERT
+INTO blueprint_utility_shield (blueprint_utility_id, hitpoints, recharge_rate, recharge_energy_cost)
+SELECT umj.uid, umj.max_shield, umj.shield_recharge_rate, 10
+FROM umj;
+
+ALTER TABLE blueprint_chassis
+    DROP COLUMN IF EXISTS shield_recharge_rate,
+    DROP COLUMN IF EXISTS max_shield;
