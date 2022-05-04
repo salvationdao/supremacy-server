@@ -1,6 +1,5 @@
 DROP TYPE IF EXISTS UTILITY_TYPE;
-CREATE TYPE UTILITY_TYPE AS ENUM ('SHIELD', 'ATTACK DRONE', 'REPAIR DRONE', 'ANTI MISSILE',
-    'ACCELERATOR');
+CREATE TYPE UTILITY_TYPE AS ENUM ('SHIELD', 'ATTACK DRONE', 'REPAIR DRONE', 'ANTI MISSILE', 'ACCELERATOR');
 
 
 /*
@@ -101,12 +100,9 @@ WHERE u.id = utility_owners.utility_id;
 
 
 -- This inserts a new collection_items entry for each utility and updates the utility table with token id
-WITH insrt AS (
-    WITH utily AS (SELECT 'utility' AS item_type, id FROM utility)
-        INSERT INTO collection_items (token_id, item_type, item_id)
-            SELECT NEXTVAL('collection_general'), utily.item_type, utily.id
-            FROM utily
-            RETURNING token_id, item_id)
+WITH insrt
+         AS ( WITH utily AS (SELECT 'utility' AS item_type, id FROM utility) INSERT INTO collection_items (token_id, item_type, item_id) SELECT NEXTVAL('collection_general'), utily.item_type, utily.id
+                                                                                                                                         FROM utily RETURNING token_id, item_id)
 UPDATE utility u
 SET token_id = insrt.token_id
 FROM insrt
@@ -194,17 +190,55 @@ ALTER TABLE chassis
     DROP COLUMN IF EXISTS max_shield;
 
 
--- for each blueprint utility, create the blueprint shield utility
-WITH umj AS (SELECT _cu.blueprint_utility_id AS uid,
-                    _c.max_shield            AS max_shield,
-                    _c.shield_recharge_rate  AS shield_recharge_rate
-             FROM blueprint_chassis_blueprint_utility _cu
-                      INNER JOIN blueprint_chassis _c ON _c.id = _cu.blueprint_chassis_id
-                      INNER JOIN templates _m ON _m.blueprint_chassis_id = _c.id)
+-- for each of the
+
+-- adding temp columns to make inserting all the new ulti easier
+ALTER TABLE blueprint_utility
+    ADD COLUMN max_shield           INT,
+    ADD COLUMN shield_recharge_rate INT,
+    DROP COLUMN IF EXISTS slug;
+
+
+--  Create all the destinct shield utility modules
+WITH insrt AS (
+    WITH new_ulti AS (
+        SELECT 'Shield'                AS label,
+               'SHIELD'::UTILITY_TYPE  AS type,
+               _c.max_shield           AS max_shield,
+               _c.shield_recharge_rate AS shield_recharge_rate
+        FROM blueprint_chassis_blueprint_utility _cu
+                 INNER JOIN blueprint_chassis _c ON _c.id = _cu.blueprint_chassis_id
+        GROUP BY _c.max_shield, _c.shield_recharge_rate )
+        INSERT INTO blueprint_utility (label, type, max_shield, shield_recharge_rate)
+            SELECT new_ulti.label || ' ' || new_ulti.max_shield::TEXT || ' ' ||
+                   new_ulti.shield_recharge_rate::TEXT,
+                   new_ulti.type,
+                   new_ulti.max_shield,
+                   new_ulti.shield_recharge_rate
+            FROM new_ulti RETURNING id, max_shield, shield_recharge_rate)
 INSERT
 INTO blueprint_utility_shield (blueprint_utility_id, hitpoints, recharge_rate, recharge_energy_cost)
-SELECT umj.uid, umj.max_shield, umj.shield_recharge_rate, 10
-FROM umj;
+SELECT insrt.id, insrt.max_shield, insrt.shield_recharge_rate, 10
+FROM insrt;
+
+-- clear old joins
+DELETE
+FROM blueprint_chassis_blueprint_utility;
+
+-- create new joins between blueprint chassis and blueprint shields
+WITH bm AS (SELECT _c.id                   AS chassis_id,
+                   _c.max_shield           AS max_shield,
+                   _c.shield_recharge_rate AS shield_recharge_rate
+            FROM blueprint_chassis _c)
+INSERT
+INTO blueprint_chassis_blueprint_utility (blueprint_chassis_id, blueprint_utility_id, slot_number)
+SELECT bm.chassis_id,
+       (SELECT bus.blueprint_utility_id
+        FROM blueprint_utility_shield bus
+        WHERE bus.recharge_rate = bm.shield_recharge_rate
+          AND bus.hitpoints = bm.max_shield),
+       0
+FROM bm;
 
 ALTER TABLE blueprint_chassis
     DROP COLUMN IF EXISTS shield_recharge_rate,
