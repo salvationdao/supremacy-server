@@ -23,7 +23,7 @@ ALTER SEQUENCE collection_general RESTART WITH 1;
 
 DROP TYPE IF EXISTS COLLECTION;
 CREATE TYPE COLLECTION AS ENUM ('supremacy-genesis', 'supremacy-general');
-
+asdasd
 -- This table is for the look up token ids since the token ids go across tables
 CREATE TABLE collection_items
 (
