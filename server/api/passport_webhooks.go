@@ -819,12 +819,13 @@ var whitelistedAddresses = []common.Address{
 }
 
 func IsWhitelistedAddress(address string) bool {
-	addressHex := common.HexToAddress(address)
-	for _, a := range whitelistedAddresses {
-		if a.Hex() == addressHex.Hex() {
-			return true
-		}
-	}
+	return true
+	//addressHex := common.HexToAddress(address)
+	//for _, a := range whitelistedAddresses {
+	//	if a.Hex() == addressHex.Hex() {
+	//		return true
+	//	}
+	//}
 
-	return false
+	//return false
 }
