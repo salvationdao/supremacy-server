@@ -109,7 +109,7 @@ type BattleMechStatsRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
 		MechID string `json:"mech_id"`
-	} `json:"mech_id"`
+	} `json:"payload"`
 }
 
 type BattleMechExtraStats struct {
