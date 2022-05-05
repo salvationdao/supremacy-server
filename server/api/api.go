@@ -85,7 +85,7 @@ type API struct {
 	Telegram         server.Telegram
 	LanguageDetector lingua.LanguageDetector
 
-	PlayerAbilitiesSystem *player_abilities.PlayerAbilitiesSystem
+	SalePlayerAbilitiesSystem *player_abilities.SalePlayerAbilitiesSystem
 
 	// ring check auth
 	RingCheckAuthMap *RingCheckAuthMap
@@ -133,7 +133,7 @@ func NewAPI(
 		Telegram:         telegram,
 		LanguageDetector: languageDetector,
 
-		PlayerAbilitiesSystem: player_abilities.NewPlayerAbilitiesSystem(messageBus),
+		SalePlayerAbilitiesSystem: player_abilities.NewSalePlayerAbilitiesSystem(messageBus),
 
 		FactionPunishVote:    make(map[string]*PunishVoteTracker),
 		FactionActivePlayers: make(map[string]*ActivePlayers),
@@ -159,7 +159,7 @@ func NewAPI(
 			sentryHandler := sentryhttp.New(sentryhttp.Options{})
 			r.Use(sentryHandler.Handle)
 		})
-		r.Mount("/check", CheckRouter(battleArenaClient, telegram))
+		r.Mount("/check", CheckRouter(battleArenaClient, telegram, config.Environment, battleArenaClient.IsClientConnected))
 		r.Mount("/stat", AssetStatsRouter(api))
 		r.Mount(fmt.Sprintf("/%s/Supremacy_game", server.SupremacyGameUserID), PassportWebhookRouter(config.PassportWebhookSecret, api))
 
