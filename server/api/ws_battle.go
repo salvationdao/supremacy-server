@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"server"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -23,10 +25,43 @@ func NewBattleController(api *API) *BattleControllerWS {
 		API: api,
 	}
 
-	api.Command(HubKeyBattleMechHistoryList, bc.BattleMechHistoryListHandler)
-	api.Command(HubKeyBattleMechStats, bc.BattleMechStatsHandler)
+	api.Command(server.HubKeyBattleMechHistoryDetailed, bc.BattleMechHistoryDetailedHandler)
+	api.Command(server.HubKeyBattleMechHistoryList, bc.BattleMechHistoryListHandler)
+	api.Command(server.HubKeyBattleMechStats, bc.BattleMechStatsHandler)
 
 	return bc
+}
+
+type BattleMechHistoryDetailedRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		BattleID string `json:"battle_id"`
+		MechID   string `json:"mech_id"`
+	} `json:"payload"`
+}
+
+func (bc *BattleControllerWS) BattleMechHistoryDetailedHandler(ctx context.Context, hub *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &BattleMechHistoryDetailedRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	if req.Payload.BattleID == "" || req.Payload.MechID == "" {
+		gamelog.L.Error().
+			Str("handler", "BattleMechHistoryDetailedHandler").Interface("request payload", req.Payload).Msg("empty mech ID or battle ID provided")
+		return terror.Error(fmt.Errorf("battle ID or mech ID was not provided in request payload"), "Unable to retrieve battle mech history, please try again or contact support.")
+	}
+
+	battleMechDetailed, err := db.BattleMechGet(ctx, gamedb.Conn, req.Payload.BattleID, req.Payload.MechID)
+	if err != nil {
+		gamelog.L.Error().
+			Str("db func", "BattleMechGet").Interface("request payload", req.Payload).Err(err).Msg("unable to get battle mech history details")
+		return terror.Error(err, "Unable to retrieve battle mech history, please try again or contact support.")
+	}
+
+	reply(battleMechDetailed)
+	return nil
 }
 
 type BattleMechHistoryRequest struct {
@@ -39,22 +74,10 @@ type BattleMechHistoryRequest struct {
 	} `json:"payload"`
 }
 
-type BattleDetailed struct {
-	*boiler.Battle
-	GameMap *boiler.GameMap `json:"game_map"`
-}
-
-type BattleMechDetailed struct {
-	*boiler.BattleMech
-	Battle *BattleDetailed `json:"battle"`
-}
-
 type BattleMechHistoryResponse struct {
 	Total            int64                     `json:"total"`
 	BattleHistoryIDs []db.BattleMechIdentifier `json:"battle_history_ids"`
 }
-
-const HubKeyBattleMechHistoryList = hub.HubCommandKey("BATTLE:MECH:HISTORY:LIST")
 
 func (bc *BattleControllerWS) BattleMechHistoryListHandler(ctx context.Context, hub *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &BattleMechHistoryRequest{}
@@ -100,8 +123,6 @@ type BattleMechStatsResponse struct {
 	*boiler.MechStat
 	ExtraStats BattleMechExtraStats `json:"extra_stats"`
 }
-
-const HubKeyBattleMechStats = hub.HubCommandKey("BATTLE:MECH:STATS")
 
 func (bc *BattleControllerWS) BattleMechStatsHandler(ctx context.Context, hub *hub.Client, payload []byte, reply hub.ReplyFunc) error {
 	req := &BattleMechStatsRequest{}

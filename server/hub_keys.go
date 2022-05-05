@@ -11,3 +11,8 @@ const HubKeySaleAbilitiesList = hub.HubCommandKey("SALE:ABILITIES:LIST")
 const HubKeyPlayerAbilitiesListUpdated = hub.HubCommandKey("PLAYER:ABILITIES:LIST:UPDATED")
 const HubKeySaleAbilitiesListUpdated = hub.HubCommandKey("SALE:ABILITIES:LIST:UPDATED")
 const HubKeySaleAbilityPurchase = hub.HubCommandKey("SALE:ABILITY:PURCHASE")
+
+// battle_mechs
+const HubKeyBattleMechHistoryDetailed = hub.HubCommandKey("BATTLE:MECH:HISTORY:DETAILED")
+const HubKeyBattleMechHistoryList = hub.HubCommandKey("BATTLE:MECH:HISTORY:LIST")
+const HubKeyBattleMechStats = hub.HubCommandKey("BATTLE:MECH:STATS")

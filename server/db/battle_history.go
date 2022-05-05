@@ -117,3 +117,35 @@ func BattleMechsList(
 
 	return total, battleMechIDs, nil
 }
+
+type BattleDetailed struct {
+	*boiler.Battle
+	GameMap *boiler.GameMap `json:"game_map"`
+}
+
+type BattleMechDetailed struct {
+	*boiler.BattleMech
+	Battle *BattleDetailed `json:"battle"`
+}
+
+func BattleMechGet(
+	ctx context.Context,
+	conn pgxscan.Querier,
+	battleID string,
+	mechID string,
+) (*BattleMechDetailed, error) {
+	bm, err := boiler.BattleMechs(boiler.BattleMechWhere.BattleID.EQ(battleID), boiler.BattleMechWhere.MechID.EQ(mechID), qm.Load(qm.Rels(boiler.BattleMechRels.Battle, boiler.BattleRels.GameMap))).One(gamedb.StdConn)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	result := BattleMechDetailed{
+		BattleMech: bm,
+		Battle: &BattleDetailed{
+			Battle:  bm.R.Battle,
+			GameMap: bm.R.Battle.R.GameMap,
+		},
+	}
+
+	return &result, nil
+}

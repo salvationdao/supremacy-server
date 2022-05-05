@@ -51,7 +51,7 @@ func NewPlayerAbilitiesController(api *API) *PlayerAbilitiesControllerWS {
 	return pac
 }
 
-type SaleAbilityDetailsRequest struct {
+type SaleAbilityDetailedRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
 		AbilityID string `json:"ability_id"`
@@ -59,7 +59,7 @@ type SaleAbilityDetailsRequest struct {
 }
 
 func (pac *PlayerAbilitiesControllerWS) SaleAbilityDetailedHandler(ctx context.Context, hub *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	req := &SaleAbilityDetailsRequest{}
+	req := &SaleAbilityDetailedRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
