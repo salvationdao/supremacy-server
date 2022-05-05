@@ -38,6 +38,7 @@ import (
 type Arena struct {
 	conn                     db.Conn
 	socket                   *websocket.Conn
+	connected                *atomic.Bool
 	timeout                  time.Duration
 	messageBus               *messagebus.MessageBus
 	_currentBattle           *Battle
@@ -50,6 +51,14 @@ type Arena struct {
 	telegram                 server.Telegram
 
 	sync.RWMutex
+}
+
+func (arena *Arena) IsClientConnected() error {
+	connected := arena.connected.Load()
+	if !connected {
+		return fmt.Errorf("no gameclient connected")
+	}
+	return nil
 }
 
 func (arena *Arena) currentBattle() *Battle {
@@ -157,15 +166,15 @@ func NewArena(opts *Opts) *Arena {
 	}
 
 	arena := &Arena{
-		conn: opts.Conn,
+		conn:                     opts.Conn,
+		connected:                atomic.NewBool(false),
+		timeout:                  opts.Timeout,
+		messageBus:               opts.MessageBus,
+		RPCClient:                opts.RPCClient,
+		sms:                      opts.SMS,
+		gameClientMinimumBuildNo: opts.GameClientMinimumBuildNo,
+		telegram:                 opts.Telegram,
 	}
-
-	arena.timeout = opts.Timeout
-	arena.messageBus = opts.MessageBus
-	arena.RPCClient = opts.RPCClient
-	arena.sms = opts.SMS
-	arena.gameClientMinimumBuildNo = opts.GameClientMinimumBuildNo
-	arena.telegram = opts.Telegram
 
 	arena.AIPlayers, err = db.DefaultFactionPlayers()
 	if err != nil {
@@ -322,9 +331,11 @@ func (arena *Arena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	arena.socket = c
+	arena.connected.Store(true)
 
 	defer func() {
 		if c != nil {
+			arena.connected.Store(false)
 			c.Close(websocket.StatusInternalError, "game client has disconnected")
 		}
 	}()
