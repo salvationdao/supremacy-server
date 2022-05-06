@@ -1264,12 +1264,27 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 			as.BattleAbilityPriceUpdater()
 		case cont := <-as.bribe:
 			if as.battle() == nil || as.battle().arena.currentBattle() == nil || as.battle().arena.currentBattle().BattleNumber != bn {
+				gamelog.L.Warn().
+					Bool("nil checks as", as == nil).
+					Int32("battle stage", as.battle().stage.Load()).
+					Int32("bribe phase", as.battleAbilityPool.Stage.Phase.Load()).
+					Int("battle number", bn).
+					Str("cont.userID", cont.userID.String()).
+					Msg("battle number miss match")
 				cont.reply(false)
 				continue
 			}
 
 			// skip, if the bribe stage is incorrect
 			if as.battleAbilityPool == nil || as.battleAbilityPool.Stage == nil || as.battleAbilityPool.Stage.Phase.Load() != BribeStageBribe {
+				gamelog.L.Warn().
+					Int32("battle stage", as.battle().stage.Load()).
+					Int32("as.battleAbilityPool.Stage.Phase.Load()", as.battleAbilityPool.Stage.Phase.Load()).
+					Int32("BribeStageBribe", BribeStageBribe).
+					Int("battle number", bn).
+					Str("cont.userID", cont.userID.String()).
+					Str("cont.userID", cont.abilityOfferingID).
+					Msg("incorrect bribing stage")
 				cont.reply(false)
 				continue
 			}
@@ -1283,6 +1298,9 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 					continue
 				}
 				if abilityOfferingID != factionAbility.OfferingID {
+					gamelog.L.Warn().Str("provided offering id", abilityOfferingID.String()).
+						Str("current offering id", factionAbility.OfferingID.String()).
+						Msg("incorrect offering id received")
 					cont.reply(false)
 					continue
 				}
@@ -1867,7 +1885,8 @@ func (as *AbilitiesSystem) BribeGabs(factionID uuid.UUID, userID uuid.UUID, abil
 
 	if as.battleAbilityPool.Stage.Phase.Load() != BribeStageBribe {
 		gamelog.L.Warn().
-			Msg("unable to retrieve abilities for faction")
+			Int32("current bribing stage", as.battleAbilityPool.Stage.Phase.Load()).
+			Msg("incorrect bribing stage")
 		reply(false)
 		return
 	}
@@ -2012,14 +2031,14 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 		},
 	})
 
-	// enter the cooldown phase
-	cooldownSecond, err := as.SetNewBattleAbility(false)
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to set new battle ability")
-	}
+	//// enter the cooldown phase
+	//cooldownSecond, err := as.SetNewBattleAbility(false)
+	//if err != nil {
+	//	gamelog.L.Error().Err(err).Msg("Failed to set new battle ability")
+	//}
 
 	as.battleAbilityPool.Stage.Phase.Store(BribeStageCooldown)
-	as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(cooldownSecond) * time.Second))
+	//as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(cooldownSecond) * time.Second))
 	// broadcast stage to frontend
 	as.battle().arena.messageBus.Send(messagebus.BusKey(HubKeGabsBribeStageUpdateSubscribe), as.battleAbilityPool.Stage)
 
