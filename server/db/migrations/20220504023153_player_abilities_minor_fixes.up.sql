@@ -7,6 +7,20 @@ WHERE location_select_type IS NULL;
 ALTER TABLE consumed_abilities
 ALTER COLUMN location_select_type SET NOT NULL;
 
+-- New location_select_ability type
+ALTER TABLE blueprint_player_abilities
+DROP CONSTRAINT blueprint_player_abilities_location_select_type_check;
+ALTER TABLE blueprint_player_abilities
+ADD CONSTRAINT blueprint_player_abilities_location_select_type_check CHECK (location_select_type IN ('LINE_SELECT', 'MECH_SELECT', 'LOCATION_SELECT', 'GLOBAL'));
+ALTER TABLE player_abilities
+DROP CONSTRAINT player_abilities_location_select_type_check;
+ALTER TABLE player_abilities
+ADD CONSTRAINT player_abilities_location_select_type_check CHECK (location_select_type IN ('LINE_SELECT', 'MECH_SELECT', 'LOCATION_SELECT', 'GLOBAL'));
+ALTER TABLE consumed_abilities
+DROP CONSTRAINT consumed_abilities_location_select_type_check;
+ALTER TABLE consumed_abilities
+ADD CONSTRAINT consumed_abilities_location_select_type_check CHECK (location_select_type IN ('LINE_SELECT', 'MECH_SELECT', 'LOCATION_SELECT', 'GLOBAL'));
+
 -- Update Landmine
 UPDATE blueprint_player_abilities
 SET colour = '#d9674c', text_colour = '#d9674c'

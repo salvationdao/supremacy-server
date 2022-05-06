@@ -66,6 +66,7 @@ func (p BlueprintPlayerAbilityColumn) IsValid() error {
 type LocationSelectType string
 
 const (
+	LineSelect     LocationSelectType = "LINE_SELECT"
 	MechSelect     LocationSelectType = "MECH_SELECT"
 	LocationSelect LocationSelectType = "LOCATION_SELECT"
 	Global         LocationSelectType = "GLOBAL"
