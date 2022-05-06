@@ -220,6 +220,9 @@ func NewArena(opts *Opts) *Arena {
 	opts.SecureUserFactionSubscribeCommand(HubKeyFactionUniqueAbilitiesUpdated, arena.FactionAbilitiesUpdateSubscribeHandler)
 	opts.SecureUserFactionSubscribeCommand(HubKeyWarMachineAbilitiesUpdated, arena.WarMachineAbilitiesUpdateSubscribeHandler)
 
+	// player ability related
+	opts.SecureUserFactionCommand(HubKeyPlayerAbilityUse, arena.PlayerAbilityUse)
+
 	// net message subscribe
 	opts.NetSubscribeCommand(HubKeyBattleAbilityProgressBarUpdated, arena.BattleAbilityProgressBarUpdateSubscribeHandler)
 	opts.NetSecureUserFactionSubscribeCommand(HubKeyAbilityPriceUpdated, arena.FactionAbilityPriceUpdateSubscribeHandler)
@@ -514,6 +517,20 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, wsc *hub.Client, paylo
 	if currentBattle.stage.Load() == BattleStageEnd {
 		gamelog.L.Warn().Str("func", "LocationSelect").Msg("battle stage has en ended")
 		return nil
+	}
+
+	switch req.Payload.LocationSelectType {
+	case db.LineSelect:
+		break
+	case db.MechSelect:
+		break
+	case db.LocationSelect:
+		break
+	case db.Global:
+		break
+	default:
+		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Interface("request payload", req.Payload).Msg("no location select type was provided when activating a player ability")
+		return terror.Error(terror.ErrInvalidInput, "Something went wrong while activating this ability. Please try again, or contact support if this issue persists.")
 	}
 
 	event := &server.GameAbilityEvent{
