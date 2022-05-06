@@ -23,26 +23,62 @@ ADD CONSTRAINT consumed_abilities_location_select_type_check CHECK (location_sel
 
 -- Update Landmine
 UPDATE blueprint_player_abilities
-SET colour = '#d9674c', text_colour = '#d9674c'
+SET colour = '#d9674c', text_colour = '#d9674c', location_select_type = 'LINE_SELECT'
+WHERE game_client_ability_id = 11;
+UPDATE player_abilities
+SET colour = '#d9674c', text_colour = '#d9674c', location_select_type = 'LINE_SELECT'
+WHERE game_client_ability_id = 11;
+UPDATE consumed_abilities
+SET colour = '#d9674c', text_colour = '#d9674c', location_select_type = 'LINE_SELECT'
 WHERE game_client_ability_id = 11;
 -- Update Shield Overdrive
 UPDATE blueprint_player_abilities
+SET description = 'An airdropped module that can be picked up by War Machines to put their shield modules into overdrive, boosting their shields.'
+WHERE game_client_ability_id = 10;
+UPDATE player_abilities
+SET description = 'An airdropped module that can be picked up by War Machines to put their shield modules into overdrive, boosting their shields.'
+WHERE game_client_ability_id = 10;
+UPDATE consumed_abilities
 SET description = 'An airdropped module that can be picked up by War Machines to put their shield modules into overdrive, boosting their shields.'
 WHERE game_client_ability_id = 10;
 -- Update Hacker Drone
 UPDATE blueprint_player_abilities
 SET colour = '#FF5861', text_colour = '#FF5861'
 WHERE game_client_ability_id = 13;
+UPDATE player_abilities
+SET colour = '#FF5861', text_colour = '#FF5861'
+WHERE game_client_ability_id = 13;
+UPDATE consumed_abilities
+SET colour = '#FF5861', text_colour = '#FF5861'
+WHERE game_client_ability_id = 13;
 -- Update Blackout
 UPDATE blueprint_player_abilities
+SET description = 'Drops a cloud of nanorobotics, concealing War Machine locations and disabling their navigations.'
+WHERE game_client_ability_id = 16;
+UPDATE player_abilities
+SET description = 'Drops a cloud of nanorobotics, concealing War Machine locations and disabling their navigations.'
+WHERE game_client_ability_id = 16;
+UPDATE consumed_abilities
 SET description = 'Drops a cloud of nanorobotics, concealing War Machine locations and disabling their navigations.'
 WHERE game_client_ability_id = 16;
 -- Update Drone Camera
 UPDATE blueprint_player_abilities
 SET colour = '#7676F7', text_colour = '#7676F7'
 WHERE game_client_ability_id = 14;
+UPDATE player_abilities
+SET colour = '#7676F7', text_colour = '#7676F7'
+WHERE game_client_ability_id = 14;
+UPDATE consumed_abilities
+SET colour = '#7676F7', text_colour = '#7676F7'
+WHERE game_client_ability_id = 14;
 -- Update Incognito
 UPDATE blueprint_player_abilities
+SET colour = '#006600', text_colour = '#006600', description = 'Blocks GABs radar technology from locating a War Machine''s position, hiding it from the minimap.'
+WHERE game_client_ability_id = 15;
+UPDATE player_abilities
+SET colour = '#006600', text_colour = '#006600', description = 'Blocks GABs radar technology from locating a War Machine''s position, hiding it from the minimap.'
+WHERE game_client_ability_id = 15;
+UPDATE consumed_abilities
 SET colour = '#006600', text_colour = '#006600', description = 'Blocks GABs radar technology from locating a War Machine''s position, hiding it from the minimap.'
 WHERE game_client_ability_id = 15;
 
