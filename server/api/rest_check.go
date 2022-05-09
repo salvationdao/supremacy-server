@@ -23,15 +23,13 @@ import (
 type CheckController struct {
 	BattleArena       *battle.Arena
 	Telegram          server.Telegram
-	Environment       string
 	IsClientConnected func() error
 }
 
-func CheckRouter(battleArena *battle.Arena, telegram server.Telegram, environment string, IsClientConnected func() error) chi.Router {
+func CheckRouter(battleArena *battle.Arena, telegram server.Telegram, IsClientConnected func() error) chi.Router {
 	c := &CheckController{
 		BattleArena:       battleArena,
 		Telegram:          telegram,
-		Environment:       environment,
 		IsClientConnected: IsClientConnected,
 	}
 	r := chi.NewRouter()
