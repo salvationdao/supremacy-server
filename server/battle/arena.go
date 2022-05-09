@@ -472,9 +472,9 @@ type PlayerAbilityUseRequest struct {
 	Payload struct {
 		AbilityID          string                `json:"ability_id"` // player ability id
 		LocationSelectType db.LocationSelectType `json:"location_select_type"`
-		XIndex             int                   `json:"x"`
-		YIndex             int                   `json:"y"`
-		MechID             string                `json:"mech_id"`
+		StartCoords        *server.GameLocation  `json:"start_coords"` // used for LINE_SELECT and LOCATION_SELECT abilities
+		EndCoords          *server.GameLocation  `json:"end_coords"`   // used only for LINE_SELECT abilities
+		MechHash           *string               `json:"mech_hash"`    // used only for MECH_SELECT abilities
 	} `json:"payload"`
 }
 
@@ -530,12 +530,63 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, wsc *hub.Client, paylo
 		return nil
 	}
 
+	var event *server.GameAbilityEvent
 	switch req.Payload.LocationSelectType {
 	case db.LineSelect:
+		if req.Payload.StartCoords == nil || req.Payload.EndCoords == nil {
+			gamelog.L.Error().Interface("request payload", req.Payload).Msgf("no start/end coords was provided for executing ability of type %s", db.LineSelect)
+			return terror.Error(terror.ErrInvalidInput, "Coordinates must be provided when execting this ability.")
+		}
+		if req.Payload.StartCoords.X < 0 || req.Payload.StartCoords.Y < 0 || req.Payload.EndCoords.X < 0 || req.Payload.EndCoords.Y < 0 {
+			gamelog.L.Error().Interface("request payload", req.Payload).Msgf("invalid start/end coords were provided for executing %s ability", db.LineSelect)
+			return terror.Error(terror.ErrInvalidInput, "Invalid coordinates provided when executing this ability.")
+		}
+		event = &server.GameAbilityEvent{
+			IsTriggered:         true,
+			GameClientAbilityID: byte(pa.GameClientAbilityID),
+			TriggeredByUserID:   &userID,
+			TriggeredByUsername: &player.Username.String,
+			EventID:             uuid.FromStringOrNil(pa.ID), // todo: change this?
+			FactionID:           &player.FactionID.String,
+			GameLocation:        req.Payload.StartCoords,
+			GameLocationEnd:     req.Payload.EndCoords,
+		}
+
 		break
 	case db.MechSelect:
+		if req.Payload.MechHash == nil || *req.Payload.MechHash == "" {
+			gamelog.L.Error().Interface("request payload", req.Payload).Err(err).Msgf("no mech hash was provided for executing ability of type %s", db.MechSelect)
+			return terror.Error(terror.ErrInvalidInput, "Mech hash must be provided to execute this ability.")
+		}
+		event = &server.GameAbilityEvent{
+			IsTriggered:         true,
+			GameClientAbilityID: byte(pa.GameClientAbilityID),
+			TriggeredByUserID:   &userID,
+			TriggeredByUsername: &player.Username.String,
+			EventID:             uuid.FromStringOrNil(pa.ID), // todo: change this?
+			FactionID:           &player.FactionID.String,
+			WarMachineHash:      req.Payload.MechHash,
+		}
+
 		break
 	case db.LocationSelect:
+		if req.Payload.StartCoords == nil {
+			gamelog.L.Error().Interface("request payload", req.Payload).Msgf("no start coords was provided for executing ability of type %s", db.LocationSelect)
+			return terror.Error(terror.ErrInvalidInput, "Coordinates must be provided when execting this ability.")
+		}
+		if req.Payload.StartCoords.X < 0 || req.Payload.StartCoords.Y < 0 {
+			gamelog.L.Error().Interface("request payload", req.Payload).Msgf("invalid start coords were provided for executing %s ability", db.LocationSelect)
+			return terror.Error(terror.ErrInvalidInput, "Invalid coordinates provided when executing this ability.")
+		}
+		event = &server.GameAbilityEvent{
+			IsTriggered:         true,
+			GameClientAbilityID: byte(pa.GameClientAbilityID),
+			TriggeredByUserID:   &userID,
+			TriggeredByUsername: &player.Username.String,
+			EventID:             uuid.FromStringOrNil(pa.ID), // todo: change this?
+			FactionID:           &player.FactionID.String,
+			GameLocation:        req.Payload.StartCoords,
+		}
 		break
 	case db.Global:
 		break
@@ -544,17 +595,11 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, wsc *hub.Client, paylo
 		return terror.Error(terror.ErrInvalidInput, "Something went wrong while activating this ability. Please try again, or contact support if this issue persists.")
 	}
 
-	event := &server.GameAbilityEvent{
-		IsTriggered:         true,
-		GameClientAbilityID: byte(pa.GameClientAbilityID),
-		TriggeredOnCellX:    &req.Payload.XIndex,
-		TriggeredOnCellY:    &req.Payload.YIndex,
-		TriggeredByUserID:   &userID,
-		TriggeredByUsername: &player.Username.String,
-		EventID:             uuid.FromStringOrNil(pa.ID), // todo: change this?
-		FactionID:           &player.FactionID.String,
+	if event == nil {
+		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Interface("request payload", req.Payload).Msg("game ability event is nil for some reason")
+		return terror.Error(terror.ErrInvalidInput, "Something went wrong while activating this ability. Please try again, or contact support if this issue persists.")
 	}
-	currentBattle.calcTriggeredLocation(event)
+	// currentBattle.calcTriggeredLocation(event)
 
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
@@ -596,34 +641,7 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, wsc *hub.Client, paylo
 		return terror.Error(err, "Issue executing player ability, please try again or contact support.")
 	}
 	reply(true)
-
-	faction := player.R.Faction
-	arena.currentBattle().arena.BroadcastGameNotificationLocationSelect(&GameNotificationLocationSelect{
-		Type: LocationSelectTypeTrigger,
-		X:    &req.Payload.XIndex,
-		Y:    &req.Payload.YIndex,
-		Ability: &AbilityBrief{
-			Label:    pa.Label,
-			ImageUrl: pa.ImageURL,
-			Colour:   pa.Colour,
-		},
-		CurrentUser: &UserBrief{
-			ID:        userID,
-			Username:  player.Username.String,
-			FactionID: player.FactionID.String,
-			Gid:       player.Gid,
-			Faction: &FactionBrief{
-				ID:         faction.ID,
-				Label:      faction.Label,
-				LogoBlobID: FactionLogos[faction.ID],
-				Theme: &FactionTheme{
-					Primary:    faction.PrimaryColor,
-					Secondary:  faction.SecondaryColor,
-					Background: faction.BackgroundColor,
-				},
-			},
-		},
-	})
+	arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeyPlayerAbilitiesListUpdated, userID)), true)
 
 	return nil
 }
