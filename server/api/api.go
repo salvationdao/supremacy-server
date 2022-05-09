@@ -159,7 +159,7 @@ func NewAPI(
 			sentryHandler := sentryhttp.New(sentryhttp.Options{})
 			r.Use(sentryHandler.Handle)
 		})
-		r.Mount("/check", CheckRouter(battleArenaClient, telegram))
+		r.Mount("/check", CheckRouter(battleArenaClient, telegram, config.Environment, battleArenaClient.IsClientConnected))
 		r.Mount("/stat", AssetStatsRouter(api))
 		r.Mount(fmt.Sprintf("/%s/Supremacy_game", server.SupremacyGameUserID), PassportWebhookRouter(config.PassportWebhookSecret, api))
 
