@@ -23,7 +23,7 @@ ALTER SEQUENCE collection_general RESTART WITH 1;
 
 DROP TYPE IF EXISTS COLLECTION;
 CREATE TYPE COLLECTION AS ENUM ('supremacy-genesis', 'supremacy-general');
-asdasd
+
 -- This table is for the look up token ids since the token ids go across tables
 CREATE TABLE collection_items
 (
@@ -470,7 +470,8 @@ WHERE label = 'Gundam';
 UPDATE chassis_skin ms
 SET blueprint_id = (SELECT id
                     FROM blueprint_chassis_skin bms
-                    WHERE bms.label = ms.label AND ms.chassis_model = bms.chassis_model);
+                    WHERE bms.label = ms.label
+                      AND ms.chassis_model = bms.chassis_model);
 
 -- here
 ALTER TABLE chassis_skin

@@ -146,7 +146,7 @@ ALTER TABLE battle_kills -- unsure why it wanted me to do a new alter table
 ALTER TABLE battle_kills -- unsure why it wanted me to do a new alter table
     RENAME COLUMN killed_chassis_id TO killed_id;
 ALTER TABLE battle_kills -- unsure why it wanted me to do a new alter table
-    ADD PRIMARY KEY (battle_id, mech_id);
+    ADD PRIMARY KEY (battle_id, mech_id, killed_id);
 
 -- CREATE TABLE battle_history (
 --     id UUID NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
