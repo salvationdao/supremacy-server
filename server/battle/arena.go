@@ -338,6 +338,11 @@ func (arena *Arena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			arena.connected.Store(false)
 			gamelog.L.Error().Err(fmt.Errorf("game client has disconnected")).Msg("lost connection to game client")
 			c.Close(websocket.StatusInternalError, "game client has disconnected")
+
+			btl := arena.currentBattle()
+			if btl != nil && btl.spoils != nil {
+				btl.spoils.End()
+			}
 		}
 	}()
 
