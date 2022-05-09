@@ -35,8 +35,8 @@ func CheckRouter(battleArena *battle.Arena, telegram server.Telegram, IsClientCo
 	r := chi.NewRouter()
 	r.Get("/", c.Check)
 	r.Get("/game-connection", c.CheckGameConnection)
-	r.Get("/game-length", c.CheckGameConnection)
-	r.Get("/game-contributes", c.CheckGameConnection)
+	r.Get("/game-length", c.CheckGameLength)
+	r.Get("/game-contributes", c.CheckGameContributes)
 
 	return r
 }
