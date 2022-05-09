@@ -436,10 +436,7 @@ func (btl *Battle) spawnReinforcementNearMech(abilityEvent *server.GameAbilityEv
 		// set cell
 		abilityEvent.TriggeredOnCellX = &wm.X
 		abilityEvent.TriggeredOnCellY = &wm.Y
-		abilityEvent.GameLocation = struct {
-			X int `json:"x"`
-			Y int `json:"y"`
-		}{
+		abilityEvent.GameLocation = &server.GameLocation{
 			X: wm.X,
 			Y: wm.Y,
 		}
@@ -452,10 +449,7 @@ func (btl *Battle) spawnReinforcementNearMech(abilityEvent *server.GameAbilityEv
 	abilityEvent.TriggeredOnCellX = &wm.X
 	abilityEvent.TriggeredOnCellY = &wm.Y
 
-	abilityEvent.GameLocation = struct {
-		X int `json:"x"`
-		Y int `json:"y"`
-	}{
+	abilityEvent.GameLocation = &server.GameLocation{
 		X: wm.X,
 		Y: wm.Y,
 	}
