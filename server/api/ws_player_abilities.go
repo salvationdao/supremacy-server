@@ -133,7 +133,19 @@ func (pac *PlayerAbilitiesControllerWS) PlayerAbilitySubscribeHandler(ctx contex
 		return "", "", terror.Error(fmt.Errorf("ability ID was not provided in request payload"), "Unable to retrieve player ability, please try again or contact support.")
 	}
 
-	bpAbility, err := boiler.PlayerAbilities(boiler.PlayerAbilityWhere.BlueprintID.EQ(req.Payload.BlueprintAbilityID)).One(gamedb.StdConn)
+	userID, err := uuid.FromString(hub.Identifier())
+	if err != nil {
+		gamelog.L.Error().Str("hub.Identifier()", hub.Identifier()).Err(err).Msg("failed to convert hub id to user id")
+		return "", "", terror.Error(err)
+	} else if userID.IsNil() {
+		gamelog.L.Error().Str("hub.Identifier()", hub.Identifier()).Err(err).Msg("failed to convert hub id to user id, user id is nil")
+		return "", "", terror.Error(fmt.Errorf("user id is nil"), "Issue retriving user, please try again or contact support.")
+	}
+
+	bpAbility, err := boiler.PlayerAbilities(
+		boiler.PlayerAbilityWhere.BlueprintID.EQ(req.Payload.BlueprintAbilityID),
+		boiler.PlayerAbilityWhere.OwnerID.EQ(userID.String()),
+		qm.OrderBy(fmt.Sprintf("%s asc", boiler.PlayerAbilityColumns.PurchasedAt))).One(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().
 			Str("db func", "boiler.FindBlueprintPlayerAbility").Str("req.Payload.BlueprintAbilityID", req.Payload.BlueprintAbilityID).Err(err).Msg("unable to get blueprint ability details")
