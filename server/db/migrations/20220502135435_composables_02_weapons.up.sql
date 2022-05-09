@@ -80,8 +80,7 @@ ALTER TABLE weapons
     DROP COLUMN IF EXISTS weapon_type,
     ADD COLUMN blueprint_id            UUID REFERENCES blueprint_weapons,
     ADD COLUMN default_damage_typ      DAMAGE_TYPE NOT NULL DEFAULT 'Kinetic',
-    ADD COLUMN collection_slug         COLLECTION  NOT NULL DEFAULT 'supremacy-general',
-    ADD COLUMN token_id                BIGINT,
+    ADD COLUMN collection_item_id      UUID REFERENCES collection_items (id),
     ADD COLUMN genesis_token_id        NUMERIC,
     ADD COLUMN weapon_type             WEAPON_TYPE,
     ADD COLUMN owner_id                UUID REFERENCES players (id),
@@ -93,8 +92,7 @@ ALTER TABLE weapons
     ADD COLUMN radial_does_full_damage BOOL    DEFAULT TRUE,
     ADD COLUMN projectile_speed        NUMERIC DEFAULT 0,
     ADD COLUMN energy_cost             NUMERIC DEFAULT 0,
-    ADD COLUMN max_ammo                INT     DEFAULT 0,
-    ADD FOREIGN KEY (collection_slug, token_id) REFERENCES collection_items (collection_slug, token_id);
+    ADD COLUMN max_ammo                INT     DEFAULT 0;
 
 
 UPDATE weapons
@@ -148,9 +146,9 @@ WITH insrt AS (
         INSERT INTO collection_items (token_id, item_type, item_id)
             SELECT NEXTVAL('collection_general'), weapon.item_type, weapon.id
             FROM weapon
-            RETURNING token_id, item_id)
+            RETURNING id, item_id)
 UPDATE weapons w
-SET token_id = insrt.token_id
+SET collection_item_id = insrt.id
 FROM insrt
 WHERE w.id = insrt.item_id;
 
@@ -166,7 +164,6 @@ WHERE w.id = genesis.weapon_id;
 
 
 ALTER TABLE weapons
-    ALTER COLUMN token_id SET NOT NULL,
     ALTER COLUMN owner_id SET NOT NULL,
     ALTER COLUMN weapon_type SET NOT NULL;
 
@@ -380,5 +377,6 @@ UPDATE weapons w
 SET blueprint_id = (SELECT id FROM blueprint_weapons bw WHERE bw.label = w.label);
 
 ALTER TABLE weapons
+    ALTER COLUMN collection_item_id SET NOT NULL,
     ALTER COLUMN blueprint_id SET NOT NULL;
 

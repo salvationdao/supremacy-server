@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
@@ -23,101 +24,178 @@ import (
 
 // BlueprintWeapon is an object representing the database table.
 type BlueprintWeapon struct {
-	ID         string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	BrandID    null.String `boiler:"brand_id" boil:"brand_id" json:"brand_id,omitempty" toml:"brand_id" yaml:"brand_id,omitempty"`
-	Label      string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	Slug       string      `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
-	Damage     int         `boiler:"damage" boil:"damage" json:"damage" toml:"damage" yaml:"damage"`
-	WeaponType string      `boiler:"weapon_type" boil:"weapon_type" json:"weapon_type" toml:"weapon_type" yaml:"weapon_type"`
-	DeletedAt  null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	UpdatedAt  time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt  time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ID                   string              `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	BrandID              null.String         `boiler:"brand_id" boil:"brand_id" json:"brand_id,omitempty" toml:"brand_id" yaml:"brand_id,omitempty"`
+	Label                string              `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	Slug                 string              `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
+	Damage               int                 `boiler:"damage" boil:"damage" json:"damage" toml:"damage" yaml:"damage"`
+	DeletedAt            null.Time           `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt            time.Time           `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt            time.Time           `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	GameClientWeaponID   null.String         `boiler:"game_client_weapon_id" boil:"game_client_weapon_id" json:"game_client_weapon_id,omitempty" toml:"game_client_weapon_id" yaml:"game_client_weapon_id,omitempty"`
+	WeaponType           string              `boiler:"weapon_type" boil:"weapon_type" json:"weapon_type" toml:"weapon_type" yaml:"weapon_type"`
+	DefaultDamageTyp     string              `boiler:"default_damage_typ" boil:"default_damage_typ" json:"default_damage_typ" toml:"default_damage_typ" yaml:"default_damage_typ"`
+	DamageFalloff        null.Int            `boiler:"damage_falloff" boil:"damage_falloff" json:"damage_falloff,omitempty" toml:"damage_falloff" yaml:"damage_falloff,omitempty"`
+	DamageFalloffRate    null.Int            `boiler:"damage_falloff_rate" boil:"damage_falloff_rate" json:"damage_falloff_rate,omitempty" toml:"damage_falloff_rate" yaml:"damage_falloff_rate,omitempty"`
+	Spread               decimal.NullDecimal `boiler:"spread" boil:"spread" json:"spread,omitempty" toml:"spread" yaml:"spread,omitempty"`
+	RateOfFire           decimal.NullDecimal `boiler:"rate_of_fire" boil:"rate_of_fire" json:"rate_of_fire,omitempty" toml:"rate_of_fire" yaml:"rate_of_fire,omitempty"`
+	Radius               null.Int            `boiler:"radius" boil:"radius" json:"radius,omitempty" toml:"radius" yaml:"radius,omitempty"`
+	RadialDoesFullDamage null.Bool           `boiler:"radial_does_full_damage" boil:"radial_does_full_damage" json:"radial_does_full_damage,omitempty" toml:"radial_does_full_damage" yaml:"radial_does_full_damage,omitempty"`
+	ProjectileSpeed      null.Int            `boiler:"projectile_speed" boil:"projectile_speed" json:"projectile_speed,omitempty" toml:"projectile_speed" yaml:"projectile_speed,omitempty"`
+	MaxAmmo              null.Int            `boiler:"max_ammo" boil:"max_ammo" json:"max_ammo,omitempty" toml:"max_ammo" yaml:"max_ammo,omitempty"`
+	EnergyCost           decimal.NullDecimal `boiler:"energy_cost" boil:"energy_cost" json:"energy_cost,omitempty" toml:"energy_cost" yaml:"energy_cost,omitempty"`
 
 	R *blueprintWeaponR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintWeaponL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var BlueprintWeaponColumns = struct {
-	ID         string
-	BrandID    string
-	Label      string
-	Slug       string
-	Damage     string
-	WeaponType string
-	DeletedAt  string
-	UpdatedAt  string
-	CreatedAt  string
+	ID                   string
+	BrandID              string
+	Label                string
+	Slug                 string
+	Damage               string
+	DeletedAt            string
+	UpdatedAt            string
+	CreatedAt            string
+	GameClientWeaponID   string
+	WeaponType           string
+	DefaultDamageTyp     string
+	DamageFalloff        string
+	DamageFalloffRate    string
+	Spread               string
+	RateOfFire           string
+	Radius               string
+	RadialDoesFullDamage string
+	ProjectileSpeed      string
+	MaxAmmo              string
+	EnergyCost           string
 }{
-	ID:         "id",
-	BrandID:    "brand_id",
-	Label:      "label",
-	Slug:       "slug",
-	Damage:     "damage",
-	WeaponType: "weapon_type",
-	DeletedAt:  "deleted_at",
-	UpdatedAt:  "updated_at",
-	CreatedAt:  "created_at",
+	ID:                   "id",
+	BrandID:              "brand_id",
+	Label:                "label",
+	Slug:                 "slug",
+	Damage:               "damage",
+	DeletedAt:            "deleted_at",
+	UpdatedAt:            "updated_at",
+	CreatedAt:            "created_at",
+	GameClientWeaponID:   "game_client_weapon_id",
+	WeaponType:           "weapon_type",
+	DefaultDamageTyp:     "default_damage_typ",
+	DamageFalloff:        "damage_falloff",
+	DamageFalloffRate:    "damage_falloff_rate",
+	Spread:               "spread",
+	RateOfFire:           "rate_of_fire",
+	Radius:               "radius",
+	RadialDoesFullDamage: "radial_does_full_damage",
+	ProjectileSpeed:      "projectile_speed",
+	MaxAmmo:              "max_ammo",
+	EnergyCost:           "energy_cost",
 }
 
 var BlueprintWeaponTableColumns = struct {
-	ID         string
-	BrandID    string
-	Label      string
-	Slug       string
-	Damage     string
-	WeaponType string
-	DeletedAt  string
-	UpdatedAt  string
-	CreatedAt  string
+	ID                   string
+	BrandID              string
+	Label                string
+	Slug                 string
+	Damage               string
+	DeletedAt            string
+	UpdatedAt            string
+	CreatedAt            string
+	GameClientWeaponID   string
+	WeaponType           string
+	DefaultDamageTyp     string
+	DamageFalloff        string
+	DamageFalloffRate    string
+	Spread               string
+	RateOfFire           string
+	Radius               string
+	RadialDoesFullDamage string
+	ProjectileSpeed      string
+	MaxAmmo              string
+	EnergyCost           string
 }{
-	ID:         "blueprint_weapons.id",
-	BrandID:    "blueprint_weapons.brand_id",
-	Label:      "blueprint_weapons.label",
-	Slug:       "blueprint_weapons.slug",
-	Damage:     "blueprint_weapons.damage",
-	WeaponType: "blueprint_weapons.weapon_type",
-	DeletedAt:  "blueprint_weapons.deleted_at",
-	UpdatedAt:  "blueprint_weapons.updated_at",
-	CreatedAt:  "blueprint_weapons.created_at",
+	ID:                   "blueprint_weapons.id",
+	BrandID:              "blueprint_weapons.brand_id",
+	Label:                "blueprint_weapons.label",
+	Slug:                 "blueprint_weapons.slug",
+	Damage:               "blueprint_weapons.damage",
+	DeletedAt:            "blueprint_weapons.deleted_at",
+	UpdatedAt:            "blueprint_weapons.updated_at",
+	CreatedAt:            "blueprint_weapons.created_at",
+	GameClientWeaponID:   "blueprint_weapons.game_client_weapon_id",
+	WeaponType:           "blueprint_weapons.weapon_type",
+	DefaultDamageTyp:     "blueprint_weapons.default_damage_typ",
+	DamageFalloff:        "blueprint_weapons.damage_falloff",
+	DamageFalloffRate:    "blueprint_weapons.damage_falloff_rate",
+	Spread:               "blueprint_weapons.spread",
+	RateOfFire:           "blueprint_weapons.rate_of_fire",
+	Radius:               "blueprint_weapons.radius",
+	RadialDoesFullDamage: "blueprint_weapons.radial_does_full_damage",
+	ProjectileSpeed:      "blueprint_weapons.projectile_speed",
+	MaxAmmo:              "blueprint_weapons.max_ammo",
+	EnergyCost:           "blueprint_weapons.energy_cost",
 }
 
 // Generated where
 
 var BlueprintWeaponWhere = struct {
-	ID         whereHelperstring
-	BrandID    whereHelpernull_String
-	Label      whereHelperstring
-	Slug       whereHelperstring
-	Damage     whereHelperint
-	WeaponType whereHelperstring
-	DeletedAt  whereHelpernull_Time
-	UpdatedAt  whereHelpertime_Time
-	CreatedAt  whereHelpertime_Time
+	ID                   whereHelperstring
+	BrandID              whereHelpernull_String
+	Label                whereHelperstring
+	Slug                 whereHelperstring
+	Damage               whereHelperint
+	DeletedAt            whereHelpernull_Time
+	UpdatedAt            whereHelpertime_Time
+	CreatedAt            whereHelpertime_Time
+	GameClientWeaponID   whereHelpernull_String
+	WeaponType           whereHelperstring
+	DefaultDamageTyp     whereHelperstring
+	DamageFalloff        whereHelpernull_Int
+	DamageFalloffRate    whereHelpernull_Int
+	Spread               whereHelperdecimal_NullDecimal
+	RateOfFire           whereHelperdecimal_NullDecimal
+	Radius               whereHelpernull_Int
+	RadialDoesFullDamage whereHelpernull_Bool
+	ProjectileSpeed      whereHelpernull_Int
+	MaxAmmo              whereHelpernull_Int
+	EnergyCost           whereHelperdecimal_NullDecimal
 }{
-	ID:         whereHelperstring{field: "\"blueprint_weapons\".\"id\""},
-	BrandID:    whereHelpernull_String{field: "\"blueprint_weapons\".\"brand_id\""},
-	Label:      whereHelperstring{field: "\"blueprint_weapons\".\"label\""},
-	Slug:       whereHelperstring{field: "\"blueprint_weapons\".\"slug\""},
-	Damage:     whereHelperint{field: "\"blueprint_weapons\".\"damage\""},
-	WeaponType: whereHelperstring{field: "\"blueprint_weapons\".\"weapon_type\""},
-	DeletedAt:  whereHelpernull_Time{field: "\"blueprint_weapons\".\"deleted_at\""},
-	UpdatedAt:  whereHelpertime_Time{field: "\"blueprint_weapons\".\"updated_at\""},
-	CreatedAt:  whereHelpertime_Time{field: "\"blueprint_weapons\".\"created_at\""},
+	ID:                   whereHelperstring{field: "\"blueprint_weapons\".\"id\""},
+	BrandID:              whereHelpernull_String{field: "\"blueprint_weapons\".\"brand_id\""},
+	Label:                whereHelperstring{field: "\"blueprint_weapons\".\"label\""},
+	Slug:                 whereHelperstring{field: "\"blueprint_weapons\".\"slug\""},
+	Damage:               whereHelperint{field: "\"blueprint_weapons\".\"damage\""},
+	DeletedAt:            whereHelpernull_Time{field: "\"blueprint_weapons\".\"deleted_at\""},
+	UpdatedAt:            whereHelpertime_Time{field: "\"blueprint_weapons\".\"updated_at\""},
+	CreatedAt:            whereHelpertime_Time{field: "\"blueprint_weapons\".\"created_at\""},
+	GameClientWeaponID:   whereHelpernull_String{field: "\"blueprint_weapons\".\"game_client_weapon_id\""},
+	WeaponType:           whereHelperstring{field: "\"blueprint_weapons\".\"weapon_type\""},
+	DefaultDamageTyp:     whereHelperstring{field: "\"blueprint_weapons\".\"default_damage_typ\""},
+	DamageFalloff:        whereHelpernull_Int{field: "\"blueprint_weapons\".\"damage_falloff\""},
+	DamageFalloffRate:    whereHelpernull_Int{field: "\"blueprint_weapons\".\"damage_falloff_rate\""},
+	Spread:               whereHelperdecimal_NullDecimal{field: "\"blueprint_weapons\".\"spread\""},
+	RateOfFire:           whereHelperdecimal_NullDecimal{field: "\"blueprint_weapons\".\"rate_of_fire\""},
+	Radius:               whereHelpernull_Int{field: "\"blueprint_weapons\".\"radius\""},
+	RadialDoesFullDamage: whereHelpernull_Bool{field: "\"blueprint_weapons\".\"radial_does_full_damage\""},
+	ProjectileSpeed:      whereHelpernull_Int{field: "\"blueprint_weapons\".\"projectile_speed\""},
+	MaxAmmo:              whereHelpernull_Int{field: "\"blueprint_weapons\".\"max_ammo\""},
+	EnergyCost:           whereHelperdecimal_NullDecimal{field: "\"blueprint_weapons\".\"energy_cost\""},
 }
 
 // BlueprintWeaponRels is where relationship names are stored.
 var BlueprintWeaponRels = struct {
-	Brand                            string
-	BlueprintChassisBlueprintWeapons string
+	Brand            string
+	BlueprintWeapons string
 }{
-	Brand:                            "Brand",
-	BlueprintChassisBlueprintWeapons: "BlueprintChassisBlueprintWeapons",
+	Brand:            "Brand",
+	BlueprintWeapons: "BlueprintWeapons",
 }
 
 // blueprintWeaponR is where relationships are stored.
 type blueprintWeaponR struct {
-	Brand                            *Brand                               `boiler:"Brand" boil:"Brand" json:"Brand" toml:"Brand" yaml:"Brand"`
-	BlueprintChassisBlueprintWeapons BlueprintChassisBlueprintWeaponSlice `boiler:"BlueprintChassisBlueprintWeapons" boil:"BlueprintChassisBlueprintWeapons" json:"BlueprintChassisBlueprintWeapons" toml:"BlueprintChassisBlueprintWeapons" yaml:"BlueprintChassisBlueprintWeapons"`
+	Brand            *Brand      `boiler:"Brand" boil:"Brand" json:"Brand" toml:"Brand" yaml:"Brand"`
+	BlueprintWeapons WeaponSlice `boiler:"BlueprintWeapons" boil:"BlueprintWeapons" json:"BlueprintWeapons" toml:"BlueprintWeapons" yaml:"BlueprintWeapons"`
 }
 
 // NewStruct creates a new relationship struct
@@ -129,9 +207,9 @@ func (*blueprintWeaponR) NewStruct() *blueprintWeaponR {
 type blueprintWeaponL struct{}
 
 var (
-	blueprintWeaponAllColumns            = []string{"id", "brand_id", "label", "slug", "damage", "weapon_type", "deleted_at", "updated_at", "created_at"}
+	blueprintWeaponAllColumns            = []string{"id", "brand_id", "label", "slug", "damage", "deleted_at", "updated_at", "created_at", "game_client_weapon_id", "weapon_type", "default_damage_typ", "damage_falloff", "damage_falloff_rate", "spread", "rate_of_fire", "radius", "radial_does_full_damage", "projectile_speed", "max_ammo", "energy_cost"}
 	blueprintWeaponColumnsWithoutDefault = []string{"label", "slug", "damage", "weapon_type"}
-	blueprintWeaponColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at"}
+	blueprintWeaponColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at", "game_client_weapon_id", "default_damage_typ", "damage_falloff", "damage_falloff_rate", "spread", "rate_of_fire", "radius", "radial_does_full_damage", "projectile_speed", "max_ammo", "energy_cost"}
 	blueprintWeaponPrimaryKeyColumns     = []string{"id"}
 	blueprintWeaponGeneratedColumns      = []string{}
 )
@@ -393,23 +471,23 @@ func (o *BlueprintWeapon) Brand(mods ...qm.QueryMod) brandQuery {
 	return query
 }
 
-// BlueprintChassisBlueprintWeapons retrieves all the blueprint_chassis_blueprint_weapon's BlueprintChassisBlueprintWeapons with an executor.
-func (o *BlueprintWeapon) BlueprintChassisBlueprintWeapons(mods ...qm.QueryMod) blueprintChassisBlueprintWeaponQuery {
+// BlueprintWeapons retrieves all the weapon's Weapons with an executor via blueprint_id column.
+func (o *BlueprintWeapon) BlueprintWeapons(mods ...qm.QueryMod) weaponQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"blueprint_chassis_blueprint_weapons\".\"blueprint_weapon_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"blueprint_chassis_blueprint_weapons\".\"deleted_at\""),
+		qm.Where("\"weapons\".\"blueprint_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"weapons\".\"deleted_at\""),
 	)
 
-	query := BlueprintChassisBlueprintWeapons(queryMods...)
-	queries.SetFrom(query.Query, "\"blueprint_chassis_blueprint_weapons\"")
+	query := Weapons(queryMods...)
+	queries.SetFrom(query.Query, "\"weapons\"")
 
 	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"blueprint_chassis_blueprint_weapons\".*"})
+		queries.SetSelect(query.Query, []string{"\"weapons\".*"})
 	}
 
 	return query
@@ -524,9 +602,9 @@ func (blueprintWeaponL) LoadBrand(e boil.Executor, singular bool, maybeBlueprint
 	return nil
 }
 
-// LoadBlueprintChassisBlueprintWeapons allows an eager lookup of values, cached into the
+// LoadBlueprintWeapons allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (blueprintWeaponL) LoadBlueprintChassisBlueprintWeapons(e boil.Executor, singular bool, maybeBlueprintWeapon interface{}, mods queries.Applicator) error {
+func (blueprintWeaponL) LoadBlueprintWeapons(e boil.Executor, singular bool, maybeBlueprintWeapon interface{}, mods queries.Applicator) error {
 	var slice []*BlueprintWeapon
 	var object *BlueprintWeapon
 
@@ -564,9 +642,9 @@ func (blueprintWeaponL) LoadBlueprintChassisBlueprintWeapons(e boil.Executor, si
 	}
 
 	query := NewQuery(
-		qm.From(`blueprint_chassis_blueprint_weapons`),
-		qm.WhereIn(`blueprint_chassis_blueprint_weapons.blueprint_weapon_id in ?`, args...),
-		qmhelper.WhereIsNull(`blueprint_chassis_blueprint_weapons.deleted_at`),
+		qm.From(`weapons`),
+		qm.WhereIn(`weapons.blueprint_id in ?`, args...),
+		qmhelper.WhereIsNull(`weapons.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -574,22 +652,22 @@ func (blueprintWeaponL) LoadBlueprintChassisBlueprintWeapons(e boil.Executor, si
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load blueprint_chassis_blueprint_weapons")
+		return errors.Wrap(err, "failed to eager load weapons")
 	}
 
-	var resultSlice []*BlueprintChassisBlueprintWeapon
+	var resultSlice []*Weapon
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice blueprint_chassis_blueprint_weapons")
+		return errors.Wrap(err, "failed to bind eager loaded slice weapons")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on blueprint_chassis_blueprint_weapons")
+		return errors.Wrap(err, "failed to close results in eager load on weapons")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_chassis_blueprint_weapons")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for weapons")
 	}
 
-	if len(blueprintChassisBlueprintWeaponAfterSelectHooks) != 0 {
+	if len(weaponAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -597,24 +675,24 @@ func (blueprintWeaponL) LoadBlueprintChassisBlueprintWeapons(e boil.Executor, si
 		}
 	}
 	if singular {
-		object.R.BlueprintChassisBlueprintWeapons = resultSlice
+		object.R.BlueprintWeapons = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
-				foreign.R = &blueprintChassisBlueprintWeaponR{}
+				foreign.R = &weaponR{}
 			}
-			foreign.R.BlueprintWeapon = object
+			foreign.R.Blueprint = object
 		}
 		return nil
 	}
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if local.ID == foreign.BlueprintWeaponID {
-				local.R.BlueprintChassisBlueprintWeapons = append(local.R.BlueprintChassisBlueprintWeapons, foreign)
+			if local.ID == foreign.BlueprintID {
+				local.R.BlueprintWeapons = append(local.R.BlueprintWeapons, foreign)
 				if foreign.R == nil {
-					foreign.R = &blueprintChassisBlueprintWeaponR{}
+					foreign.R = &weaponR{}
 				}
-				foreign.R.BlueprintWeapon = local
+				foreign.R.Blueprint = local
 				break
 			}
 		}
@@ -702,23 +780,23 @@ func (o *BlueprintWeapon) RemoveBrand(exec boil.Executor, related *Brand) error 
 	return nil
 }
 
-// AddBlueprintChassisBlueprintWeapons adds the given related objects to the existing relationships
+// AddBlueprintWeapons adds the given related objects to the existing relationships
 // of the blueprint_weapon, optionally inserting them as new records.
-// Appends related to o.R.BlueprintChassisBlueprintWeapons.
-// Sets related.R.BlueprintWeapon appropriately.
-func (o *BlueprintWeapon) AddBlueprintChassisBlueprintWeapons(exec boil.Executor, insert bool, related ...*BlueprintChassisBlueprintWeapon) error {
+// Appends related to o.R.BlueprintWeapons.
+// Sets related.R.Blueprint appropriately.
+func (o *BlueprintWeapon) AddBlueprintWeapons(exec boil.Executor, insert bool, related ...*Weapon) error {
 	var err error
 	for _, rel := range related {
 		if insert {
-			rel.BlueprintWeaponID = o.ID
+			rel.BlueprintID = o.ID
 			if err = rel.Insert(exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
-				"UPDATE \"blueprint_chassis_blueprint_weapons\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"blueprint_weapon_id"}),
-				strmangle.WhereClause("\"", "\"", 2, blueprintChassisBlueprintWeaponPrimaryKeyColumns),
+				"UPDATE \"weapons\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"blueprint_id"}),
+				strmangle.WhereClause("\"", "\"", 2, weaponPrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
 
@@ -730,25 +808,25 @@ func (o *BlueprintWeapon) AddBlueprintChassisBlueprintWeapons(exec boil.Executor
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			rel.BlueprintWeaponID = o.ID
+			rel.BlueprintID = o.ID
 		}
 	}
 
 	if o.R == nil {
 		o.R = &blueprintWeaponR{
-			BlueprintChassisBlueprintWeapons: related,
+			BlueprintWeapons: related,
 		}
 	} else {
-		o.R.BlueprintChassisBlueprintWeapons = append(o.R.BlueprintChassisBlueprintWeapons, related...)
+		o.R.BlueprintWeapons = append(o.R.BlueprintWeapons, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
-			rel.R = &blueprintChassisBlueprintWeaponR{
-				BlueprintWeapon: o,
+			rel.R = &weaponR{
+				Blueprint: o,
 			}
 		} else {
-			rel.R.BlueprintWeapon = o
+			rel.R.Blueprint = o
 		}
 	}
 	return nil

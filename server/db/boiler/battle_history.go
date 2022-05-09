@@ -26,10 +26,10 @@ type BattleHistory struct {
 	ID              string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	BattleID        string      `boiler:"battle_id" boil:"battle_id" json:"battle_id" toml:"battle_id" yaml:"battle_id"`
 	RelatedID       null.String `boiler:"related_id" boil:"related_id" json:"related_id,omitempty" toml:"related_id" yaml:"related_id,omitempty"`
-	WarMachineOneID string      `boiler:"war_machine_one_id" boil:"war_machine_one_id" json:"war_machine_one_id" toml:"war_machine_one_id" yaml:"war_machine_one_id"`
-	WarMachineTwoID null.String `boiler:"war_machine_two_id" boil:"war_machine_two_id" json:"war_machine_two_id,omitempty" toml:"war_machine_two_id" yaml:"war_machine_two_id,omitempty"`
 	EventType       string      `boiler:"event_type" boil:"event_type" json:"event_type" toml:"event_type" yaml:"event_type"`
 	CreatedAt       time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	WarMachineOneID null.String `boiler:"war_machine_one_id" boil:"war_machine_one_id" json:"war_machine_one_id,omitempty" toml:"war_machine_one_id" yaml:"war_machine_one_id,omitempty"`
+	WarMachineTwoID null.String `boiler:"war_machine_two_id" boil:"war_machine_two_id" json:"war_machine_two_id,omitempty" toml:"war_machine_two_id" yaml:"war_machine_two_id,omitempty"`
 
 	R *battleHistoryR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleHistoryL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -39,36 +39,36 @@ var BattleHistoryColumns = struct {
 	ID              string
 	BattleID        string
 	RelatedID       string
-	WarMachineOneID string
-	WarMachineTwoID string
 	EventType       string
 	CreatedAt       string
+	WarMachineOneID string
+	WarMachineTwoID string
 }{
 	ID:              "id",
 	BattleID:        "battle_id",
 	RelatedID:       "related_id",
-	WarMachineOneID: "war_machine_one_id",
-	WarMachineTwoID: "war_machine_two_id",
 	EventType:       "event_type",
 	CreatedAt:       "created_at",
+	WarMachineOneID: "war_machine_one_id",
+	WarMachineTwoID: "war_machine_two_id",
 }
 
 var BattleHistoryTableColumns = struct {
 	ID              string
 	BattleID        string
 	RelatedID       string
-	WarMachineOneID string
-	WarMachineTwoID string
 	EventType       string
 	CreatedAt       string
+	WarMachineOneID string
+	WarMachineTwoID string
 }{
 	ID:              "battle_history.id",
 	BattleID:        "battle_history.battle_id",
 	RelatedID:       "battle_history.related_id",
-	WarMachineOneID: "battle_history.war_machine_one_id",
-	WarMachineTwoID: "battle_history.war_machine_two_id",
 	EventType:       "battle_history.event_type",
 	CreatedAt:       "battle_history.created_at",
+	WarMachineOneID: "battle_history.war_machine_one_id",
+	WarMachineTwoID: "battle_history.war_machine_two_id",
 }
 
 // Generated where
@@ -77,18 +77,18 @@ var BattleHistoryWhere = struct {
 	ID              whereHelperstring
 	BattleID        whereHelperstring
 	RelatedID       whereHelpernull_String
-	WarMachineOneID whereHelperstring
-	WarMachineTwoID whereHelpernull_String
 	EventType       whereHelperstring
 	CreatedAt       whereHelpertime_Time
+	WarMachineOneID whereHelpernull_String
+	WarMachineTwoID whereHelpernull_String
 }{
 	ID:              whereHelperstring{field: "\"battle_history\".\"id\""},
 	BattleID:        whereHelperstring{field: "\"battle_history\".\"battle_id\""},
 	RelatedID:       whereHelpernull_String{field: "\"battle_history\".\"related_id\""},
-	WarMachineOneID: whereHelperstring{field: "\"battle_history\".\"war_machine_one_id\""},
-	WarMachineTwoID: whereHelpernull_String{field: "\"battle_history\".\"war_machine_two_id\""},
 	EventType:       whereHelperstring{field: "\"battle_history\".\"event_type\""},
 	CreatedAt:       whereHelpertime_Time{field: "\"battle_history\".\"created_at\""},
+	WarMachineOneID: whereHelpernull_String{field: "\"battle_history\".\"war_machine_one_id\""},
+	WarMachineTwoID: whereHelpernull_String{field: "\"battle_history\".\"war_machine_two_id\""},
 }
 
 // BattleHistoryRels is where relationship names are stored.
@@ -118,9 +118,9 @@ func (*battleHistoryR) NewStruct() *battleHistoryR {
 type battleHistoryL struct{}
 
 var (
-	battleHistoryAllColumns            = []string{"id", "battle_id", "related_id", "war_machine_one_id", "war_machine_two_id", "event_type", "created_at"}
-	battleHistoryColumnsWithoutDefault = []string{"battle_id", "war_machine_one_id", "event_type"}
-	battleHistoryColumnsWithDefault    = []string{"id", "related_id", "war_machine_two_id", "created_at"}
+	battleHistoryAllColumns            = []string{"id", "battle_id", "related_id", "event_type", "created_at", "war_machine_one_id", "war_machine_two_id"}
+	battleHistoryColumnsWithoutDefault = []string{"battle_id", "event_type"}
+	battleHistoryColumnsWithDefault    = []string{"id", "related_id", "created_at", "war_machine_one_id", "war_machine_two_id"}
 	battleHistoryPrimaryKeyColumns     = []string{"id"}
 	battleHistoryGeneratedColumns      = []string{}
 )
@@ -532,7 +532,9 @@ func (battleHistoryL) LoadWarMachineOne(e boil.Executor, singular bool, maybeBat
 		if object.R == nil {
 			object.R = &battleHistoryR{}
 		}
-		args = append(args, object.WarMachineOneID)
+		if !queries.IsNil(object.WarMachineOneID) {
+			args = append(args, object.WarMachineOneID)
+		}
 
 	} else {
 	Outer:
@@ -542,12 +544,14 @@ func (battleHistoryL) LoadWarMachineOne(e boil.Executor, singular bool, maybeBat
 			}
 
 			for _, a := range args {
-				if a == obj.WarMachineOneID {
+				if queries.Equal(a, obj.WarMachineOneID) {
 					continue Outer
 				}
 			}
 
-			args = append(args, obj.WarMachineOneID)
+			if !queries.IsNil(obj.WarMachineOneID) {
+				args = append(args, obj.WarMachineOneID)
+			}
 
 		}
 	}
@@ -606,7 +610,7 @@ func (battleHistoryL) LoadWarMachineOne(e boil.Executor, singular bool, maybeBat
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if local.WarMachineOneID == foreign.ID {
+			if queries.Equal(local.WarMachineOneID, foreign.ID) {
 				local.R.WarMachineOne = foreign
 				if foreign.R == nil {
 					foreign.R = &mechR{}
@@ -801,7 +805,7 @@ func (o *BattleHistory) SetWarMachineOne(exec boil.Executor, insert bool, relate
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	o.WarMachineOneID = related.ID
+	queries.Assign(&o.WarMachineOneID, related.ID)
 	if o.R == nil {
 		o.R = &battleHistoryR{
 			WarMachineOne: related,
@@ -818,6 +822,39 @@ func (o *BattleHistory) SetWarMachineOne(exec boil.Executor, insert bool, relate
 		related.R.WarMachineOneBattleHistories = append(related.R.WarMachineOneBattleHistories, o)
 	}
 
+	return nil
+}
+
+// RemoveWarMachineOne relationship.
+// Sets o.R.WarMachineOne to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *BattleHistory) RemoveWarMachineOne(exec boil.Executor, related *Mech) error {
+	var err error
+
+	queries.SetScanner(&o.WarMachineOneID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("war_machine_one_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.WarMachineOne = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.WarMachineOneBattleHistories {
+		if queries.Equal(o.WarMachineOneID, ri.WarMachineOneID) {
+			continue
+		}
+
+		ln := len(related.R.WarMachineOneBattleHistories)
+		if ln > 1 && i < ln-1 {
+			related.R.WarMachineOneBattleHistories[i] = related.R.WarMachineOneBattleHistories[ln-1]
+		}
+		related.R.WarMachineOneBattleHistories = related.R.WarMachineOneBattleHistories[:ln-1]
+		break
+	}
 	return nil
 }
 

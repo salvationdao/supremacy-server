@@ -72,11 +72,51 @@ const (
 	BattleEventPickup           = "pickup"
 )
 
+// Enum values for WeaponType
+const (
+	WeaponTypeGrenadeLauncher = "Grenade Launcher"
+	WeaponTypeCannon          = "Cannon"
+	WeaponTypeMinigun         = "Minigun"
+	WeaponTypePlasmaGun       = "Plasma Gun"
+	WeaponTypeFlak            = "Flak"
+	WeaponTypeMachineGun      = "Machine Gun"
+	WeaponTypeFlamethrower    = "Flamethrower"
+	WeaponTypeMissileLauncher = "Missile Launcher"
+	WeaponTypeLaserBeam       = "Laser Beam"
+	WeaponTypeLightningGun    = "Lightning Gun"
+	WeaponTypeBFG             = "BFG"
+	WeaponTypeRifle           = "Rifle"
+	WeaponTypeSniperRifle     = "Sniper Rifle"
+	WeaponTypeSword           = "Sword"
+)
+
+// Enum values for  are not proper Go identifiers, cannot emit constants
+// Enum values for  are not proper Go identifiers, cannot emit constants
+// Enum values for  are not proper Go identifiers, cannot emit constants
+
+// Enum values for UtilityType
+const (
+	UtilityTypeSHIELD      = "SHIELD"
+	UtilityTypeATTACKDRONE = "ATTACK DRONE"
+	UtilityTypeREPAIRDRONE = "REPAIR DRONE"
+	UtilityTypeANTIMISSILE = "ANTI MISSILE"
+	UtilityTypeACCELERATOR = "ACCELERATOR"
+)
+
+// Enum values for DamageType
+const (
+	DamageTypeKinetic   = "Kinetic"
+	DamageTypeEnergy    = "Energy"
+	DamageTypeExplosive = "Explosive"
+)
+
 // Enum values for ChatMSGTypeEnum
 const (
 	ChatMSGTypeEnumTEXT        = "TEXT"
 	ChatMSGTypeEnumPUNISH_VOTE = "PUNISH_VOTE"
 )
+
+// Enum values for  are not proper Go identifiers, cannot emit constants
 
 // Enum values for AbilityLevel
 const (
@@ -103,4 +143,17 @@ const (
 	PlayerRankEnumCORPORAL    = "CORPORAL"
 	PlayerRankEnumPRIVATE     = "PRIVATE"
 	PlayerRankEnumNEW_RECRUIT = "NEW_RECRUIT"
+)
+
+// Enum values for TemplateItemType
+const (
+	TemplateItemTypeMECH           = "MECH"
+	TemplateItemTypeMECH_ANIMATION = "MECH_ANIMATION"
+	TemplateItemTypeMECH_SKIN      = "MECH_SKIN"
+	TemplateItemTypeUTILITY        = "UTILITY"
+	TemplateItemTypeWEAPON         = "WEAPON"
+	TemplateItemTypeAMMO           = "AMMO"
+	TemplateItemTypeENERGY_CORE    = "ENERGY_CORE"
+	TemplateItemTypeWEAPON_SKIN    = "WEAPON_SKIN"
+	TemplateItemTypePLAYER_ABILITY = "PLAYER_ABILITY"
 )

@@ -3409,7 +3409,7 @@ func (o *Battle) AddBattleKills(exec boil.Executor, insert bool, related ...*Bat
 				strmangle.SetParamNames("\"", "\"", 1, []string{"battle_id"}),
 				strmangle.WhereClause("\"", "\"", 2, battleKillPrimaryKeyColumns),
 			)
-			values := []interface{}{o.ID, rel.BattleID, rel.KilledID}
+			values := []interface{}{o.ID, rel.BattleID, rel.MechID, rel.KilledID}
 
 			if boil.DebugMode {
 				fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -3513,7 +3513,7 @@ func (o *Battle) AddBattleQueues(exec boil.Executor, insert bool, related ...*Ba
 				strmangle.SetParamNames("\"", "\"", 1, []string{"battle_id"}),
 				strmangle.WhereClause("\"", "\"", 2, battleQueuePrimaryKeyColumns),
 			)
-			values := []interface{}{o.ID, rel.ID}
+			values := []interface{}{o.ID, rel.MechID}
 
 			if boil.DebugMode {
 				fmt.Fprintln(boil.DebugWriter, updateQuery)

@@ -170,7 +170,6 @@ SET war_machine_one_id_chassis = (SELECT c.id
                                   WHERE m.id = bk.war_machine_two_id);
 
 ALTER TABLE battle_history
-    DROP CONSTRAINT battle_history_pkey,
     DROP COLUMN war_machine_one_id,
     DROP COLUMN war_machine_two_id;
 ALTER TABLE battle_history -- unsure why it wanted me to do a new alter table

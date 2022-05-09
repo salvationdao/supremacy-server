@@ -25,11 +25,11 @@ import (
 // AssetRepair is an object representing the database table.
 type AssetRepair struct {
 	ID               string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	MechID           string          `boiler:"mech_id" boil:"mech_id" json:"mech_id" toml:"mech_id" yaml:"mech_id"`
 	RepairCompleteAt time.Time       `boiler:"repair_complete_at" boil:"repair_complete_at" json:"repair_complete_at" toml:"repair_complete_at" yaml:"repair_complete_at"`
 	FullRepairFee    decimal.Decimal `boiler:"full_repair_fee" boil:"full_repair_fee" json:"full_repair_fee" toml:"full_repair_fee" yaml:"full_repair_fee"`
 	PayToRepairTXID  null.String     `boiler:"pay_to_repair_tx_id" boil:"pay_to_repair_tx_id" json:"pay_to_repair_tx_id,omitempty" toml:"pay_to_repair_tx_id" yaml:"pay_to_repair_tx_id,omitempty"`
 	CreatedAt        time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	MechID           null.String     `boiler:"mech_id" boil:"mech_id" json:"mech_id,omitempty" toml:"mech_id" yaml:"mech_id,omitempty"`
 
 	R *assetRepairR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L assetRepairL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -37,81 +37,37 @@ type AssetRepair struct {
 
 var AssetRepairColumns = struct {
 	ID               string
-	MechID           string
 	RepairCompleteAt string
 	FullRepairFee    string
 	PayToRepairTXID  string
 	CreatedAt        string
+	MechID           string
 }{
 	ID:               "id",
-	MechID:           "mech_id",
 	RepairCompleteAt: "repair_complete_at",
 	FullRepairFee:    "full_repair_fee",
 	PayToRepairTXID:  "pay_to_repair_tx_id",
 	CreatedAt:        "created_at",
+	MechID:           "mech_id",
 }
 
 var AssetRepairTableColumns = struct {
 	ID               string
-	MechID           string
 	RepairCompleteAt string
 	FullRepairFee    string
 	PayToRepairTXID  string
 	CreatedAt        string
+	MechID           string
 }{
 	ID:               "asset_repair.id",
-	MechID:           "asset_repair.mech_id",
 	RepairCompleteAt: "asset_repair.repair_complete_at",
 	FullRepairFee:    "asset_repair.full_repair_fee",
 	PayToRepairTXID:  "asset_repair.pay_to_repair_tx_id",
 	CreatedAt:        "asset_repair.created_at",
+	MechID:           "asset_repair.mech_id",
 }
 
 // Generated where
-
-type whereHelperstring struct{ field string }
-
-func (w whereHelperstring) EQ(x string) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.EQ, x) }
-func (w whereHelperstring) NEQ(x string) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.NEQ, x) }
-func (w whereHelperstring) LT(x string) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.LT, x) }
-func (w whereHelperstring) LTE(x string) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.LTE, x) }
-func (w whereHelperstring) GT(x string) qm.QueryMod  { return qmhelper.Where(w.field, qmhelper.GT, x) }
-func (w whereHelperstring) GTE(x string) qm.QueryMod { return qmhelper.Where(w.field, qmhelper.GTE, x) }
-func (w whereHelperstring) IN(slice []string) qm.QueryMod {
-	values := make([]interface{}, 0, len(slice))
-	for _, value := range slice {
-		values = append(values, value)
-	}
-	return qm.WhereIn(fmt.Sprintf("%s IN ?", w.field), values...)
-}
-func (w whereHelperstring) NIN(slice []string) qm.QueryMod {
-	values := make([]interface{}, 0, len(slice))
-	for _, value := range slice {
-		values = append(values, value)
-	}
-	return qm.WhereNotIn(fmt.Sprintf("%s NOT IN ?", w.field), values...)
-}
-
-type whereHelpertime_Time struct{ field string }
-
-func (w whereHelpertime_Time) EQ(x time.Time) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.EQ, x)
-}
-func (w whereHelpertime_Time) NEQ(x time.Time) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.NEQ, x)
-}
-func (w whereHelpertime_Time) LT(x time.Time) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LT, x)
-}
-func (w whereHelpertime_Time) LTE(x time.Time) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LTE, x)
-}
-func (w whereHelpertime_Time) GT(x time.Time) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GT, x)
-}
-func (w whereHelpertime_Time) GTE(x time.Time) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GTE, x)
-}
 
 type whereHelperdecimal_Decimal struct{ field string }
 
@@ -160,18 +116,18 @@ func (w whereHelpernull_String) IsNotNull() qm.QueryMod { return qmhelper.WhereI
 
 var AssetRepairWhere = struct {
 	ID               whereHelperstring
-	MechID           whereHelperstring
 	RepairCompleteAt whereHelpertime_Time
 	FullRepairFee    whereHelperdecimal_Decimal
 	PayToRepairTXID  whereHelpernull_String
 	CreatedAt        whereHelpertime_Time
+	MechID           whereHelpernull_String
 }{
 	ID:               whereHelperstring{field: "\"asset_repair\".\"id\""},
-	MechID:           whereHelperstring{field: "\"asset_repair\".\"mech_id\""},
 	RepairCompleteAt: whereHelpertime_Time{field: "\"asset_repair\".\"repair_complete_at\""},
 	FullRepairFee:    whereHelperdecimal_Decimal{field: "\"asset_repair\".\"full_repair_fee\""},
 	PayToRepairTXID:  whereHelpernull_String{field: "\"asset_repair\".\"pay_to_repair_tx_id\""},
 	CreatedAt:        whereHelpertime_Time{field: "\"asset_repair\".\"created_at\""},
+	MechID:           whereHelpernull_String{field: "\"asset_repair\".\"mech_id\""},
 }
 
 // AssetRepairRels is where relationship names are stored.
@@ -195,9 +151,9 @@ func (*assetRepairR) NewStruct() *assetRepairR {
 type assetRepairL struct{}
 
 var (
-	assetRepairAllColumns            = []string{"id", "mech_id", "repair_complete_at", "full_repair_fee", "pay_to_repair_tx_id", "created_at"}
-	assetRepairColumnsWithoutDefault = []string{"mech_id", "repair_complete_at", "full_repair_fee"}
-	assetRepairColumnsWithDefault    = []string{"id", "pay_to_repair_tx_id", "created_at"}
+	assetRepairAllColumns            = []string{"id", "repair_complete_at", "full_repair_fee", "pay_to_repair_tx_id", "created_at", "mech_id"}
+	assetRepairColumnsWithoutDefault = []string{"repair_complete_at", "full_repair_fee"}
+	assetRepairColumnsWithDefault    = []string{"id", "pay_to_repair_tx_id", "created_at", "mech_id"}
 	assetRepairPrimaryKeyColumns     = []string{"id"}
 	assetRepairGeneratedColumns      = []string{}
 )
@@ -476,7 +432,9 @@ func (assetRepairL) LoadMech(e boil.Executor, singular bool, maybeAssetRepair in
 		if object.R == nil {
 			object.R = &assetRepairR{}
 		}
-		args = append(args, object.MechID)
+		if !queries.IsNil(object.MechID) {
+			args = append(args, object.MechID)
+		}
 
 	} else {
 	Outer:
@@ -486,12 +444,14 @@ func (assetRepairL) LoadMech(e boil.Executor, singular bool, maybeAssetRepair in
 			}
 
 			for _, a := range args {
-				if a == obj.MechID {
+				if queries.Equal(a, obj.MechID) {
 					continue Outer
 				}
 			}
 
-			args = append(args, obj.MechID)
+			if !queries.IsNil(obj.MechID) {
+				args = append(args, obj.MechID)
+			}
 
 		}
 	}
@@ -550,7 +510,7 @@ func (assetRepairL) LoadMech(e boil.Executor, singular bool, maybeAssetRepair in
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if local.MechID == foreign.ID {
+			if queries.Equal(local.MechID, foreign.ID) {
 				local.R.Mech = foreign
 				if foreign.R == nil {
 					foreign.R = &mechR{}
@@ -590,7 +550,7 @@ func (o *AssetRepair) SetMech(exec boil.Executor, insert bool, related *Mech) er
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	o.MechID = related.ID
+	queries.Assign(&o.MechID, related.ID)
 	if o.R == nil {
 		o.R = &assetRepairR{
 			Mech: related,
@@ -607,6 +567,39 @@ func (o *AssetRepair) SetMech(exec boil.Executor, insert bool, related *Mech) er
 		related.R.AssetRepairs = append(related.R.AssetRepairs, o)
 	}
 
+	return nil
+}
+
+// RemoveMech relationship.
+// Sets o.R.Mech to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *AssetRepair) RemoveMech(exec boil.Executor, related *Mech) error {
+	var err error
+
+	queries.SetScanner(&o.MechID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("mech_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.Mech = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.AssetRepairs {
+		if queries.Equal(o.MechID, ri.MechID) {
+			continue
+		}
+
+		ln := len(related.R.AssetRepairs)
+		if ln > 1 && i < ln-1 {
+			related.R.AssetRepairs[i] = related.R.AssetRepairs[ln-1]
+		}
+		related.R.AssetRepairs = related.R.AssetRepairs[:ln-1]
+		break
+	}
 	return nil
 }
 

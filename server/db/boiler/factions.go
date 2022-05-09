@@ -135,7 +135,7 @@ var FactionRels = struct {
 	PlayerLanguages       string
 	Players               string
 	PunishVotes           string
-	Templates             string
+	TemplatesOlds         string
 }{
 	IDFactionStat:         "IDFactionStat",
 	BattleAbilityTriggers: "BattleAbilityTriggers",
@@ -151,7 +151,7 @@ var FactionRels = struct {
 	PlayerLanguages:       "PlayerLanguages",
 	Players:               "Players",
 	PunishVotes:           "PunishVotes",
-	Templates:             "Templates",
+	TemplatesOlds:         "TemplatesOlds",
 }
 
 // factionR is where relationships are stored.
@@ -170,7 +170,7 @@ type factionR struct {
 	PlayerLanguages       PlayerLanguageSlice       `boiler:"PlayerLanguages" boil:"PlayerLanguages" json:"PlayerLanguages" toml:"PlayerLanguages" yaml:"PlayerLanguages"`
 	Players               PlayerSlice               `boiler:"Players" boil:"Players" json:"Players" toml:"Players" yaml:"Players"`
 	PunishVotes           PunishVoteSlice           `boiler:"PunishVotes" boil:"PunishVotes" json:"PunishVotes" toml:"PunishVotes" yaml:"PunishVotes"`
-	Templates             TemplateSlice             `boiler:"Templates" boil:"Templates" json:"Templates" toml:"Templates" yaml:"Templates"`
+	TemplatesOlds         TemplatesOldSlice         `boiler:"TemplatesOlds" boil:"TemplatesOlds" json:"TemplatesOlds" toml:"TemplatesOlds" yaml:"TemplatesOlds"`
 }
 
 // NewStruct creates a new relationship struct
@@ -721,23 +721,23 @@ func (o *Faction) PunishVotes(mods ...qm.QueryMod) punishVoteQuery {
 	return query
 }
 
-// Templates retrieves all the template's Templates with an executor.
-func (o *Faction) Templates(mods ...qm.QueryMod) templateQuery {
+// TemplatesOlds retrieves all the templates_old's TemplatesOlds with an executor.
+func (o *Faction) TemplatesOlds(mods ...qm.QueryMod) templatesOldQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"templates\".\"faction_id\"=?", o.ID),
-		qmhelper.WhereIsNull("\"templates\".\"deleted_at\""),
+		qm.Where("\"templates_old\".\"faction_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"templates_old\".\"deleted_at\""),
 	)
 
-	query := Templates(queryMods...)
-	queries.SetFrom(query.Query, "\"templates\"")
+	query := TemplatesOlds(queryMods...)
+	queries.SetFrom(query.Query, "\"templates_old\"")
 
 	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"templates\".*"})
+		queries.SetSelect(query.Query, []string{"\"templates_old\".*"})
 	}
 
 	return query
@@ -2121,9 +2121,9 @@ func (factionL) LoadPunishVotes(e boil.Executor, singular bool, maybeFaction int
 	return nil
 }
 
-// LoadTemplates allows an eager lookup of values, cached into the
+// LoadTemplatesOlds allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (factionL) LoadTemplates(e boil.Executor, singular bool, maybeFaction interface{}, mods queries.Applicator) error {
+func (factionL) LoadTemplatesOlds(e boil.Executor, singular bool, maybeFaction interface{}, mods queries.Applicator) error {
 	var slice []*Faction
 	var object *Faction
 
@@ -2161,9 +2161,9 @@ func (factionL) LoadTemplates(e boil.Executor, singular bool, maybeFaction inter
 	}
 
 	query := NewQuery(
-		qm.From(`templates`),
-		qm.WhereIn(`templates.faction_id in ?`, args...),
-		qmhelper.WhereIsNull(`templates.deleted_at`),
+		qm.From(`templates_old`),
+		qm.WhereIn(`templates_old.faction_id in ?`, args...),
+		qmhelper.WhereIsNull(`templates_old.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -2171,22 +2171,22 @@ func (factionL) LoadTemplates(e boil.Executor, singular bool, maybeFaction inter
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load templates")
+		return errors.Wrap(err, "failed to eager load templates_old")
 	}
 
-	var resultSlice []*Template
+	var resultSlice []*TemplatesOld
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice templates")
+		return errors.Wrap(err, "failed to bind eager loaded slice templates_old")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on templates")
+		return errors.Wrap(err, "failed to close results in eager load on templates_old")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for templates")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for templates_old")
 	}
 
-	if len(templateAfterSelectHooks) != 0 {
+	if len(templatesOldAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -2194,10 +2194,10 @@ func (factionL) LoadTemplates(e boil.Executor, singular bool, maybeFaction inter
 		}
 	}
 	if singular {
-		object.R.Templates = resultSlice
+		object.R.TemplatesOlds = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
-				foreign.R = &templateR{}
+				foreign.R = &templatesOldR{}
 			}
 			foreign.R.Faction = object
 		}
@@ -2207,9 +2207,9 @@ func (factionL) LoadTemplates(e boil.Executor, singular bool, maybeFaction inter
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
 			if local.ID == foreign.FactionID {
-				local.R.Templates = append(local.R.Templates, foreign)
+				local.R.TemplatesOlds = append(local.R.TemplatesOlds, foreign)
 				if foreign.R == nil {
-					foreign.R = &templateR{}
+					foreign.R = &templatesOldR{}
 				}
 				foreign.R.Faction = local
 				break
@@ -2496,7 +2496,7 @@ func (o *Faction) AddBattleQueues(exec boil.Executor, insert bool, related ...*B
 				strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
 				strmangle.WhereClause("\"", "\"", 2, battleQueuePrimaryKeyColumns),
 			)
-			values := []interface{}{o.ID, rel.ID}
+			values := []interface{}{o.ID, rel.MechID}
 
 			if boil.DebugMode {
 				fmt.Fprintln(boil.DebugWriter, updateQuery)
@@ -3092,11 +3092,11 @@ func (o *Faction) AddPunishVotes(exec boil.Executor, insert bool, related ...*Pu
 	return nil
 }
 
-// AddTemplates adds the given related objects to the existing relationships
+// AddTemplatesOlds adds the given related objects to the existing relationships
 // of the faction, optionally inserting them as new records.
-// Appends related to o.R.Templates.
+// Appends related to o.R.TemplatesOlds.
 // Sets related.R.Faction appropriately.
-func (o *Faction) AddTemplates(exec boil.Executor, insert bool, related ...*Template) error {
+func (o *Faction) AddTemplatesOlds(exec boil.Executor, insert bool, related ...*TemplatesOld) error {
 	var err error
 	for _, rel := range related {
 		if insert {
@@ -3106,9 +3106,9 @@ func (o *Faction) AddTemplates(exec boil.Executor, insert bool, related ...*Temp
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
-				"UPDATE \"templates\" SET %s WHERE %s",
+				"UPDATE \"templates_old\" SET %s WHERE %s",
 				strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
-				strmangle.WhereClause("\"", "\"", 2, templatePrimaryKeyColumns),
+				strmangle.WhereClause("\"", "\"", 2, templatesOldPrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
 
@@ -3126,15 +3126,15 @@ func (o *Faction) AddTemplates(exec boil.Executor, insert bool, related ...*Temp
 
 	if o.R == nil {
 		o.R = &factionR{
-			Templates: related,
+			TemplatesOlds: related,
 		}
 	} else {
-		o.R.Templates = append(o.R.Templates, related...)
+		o.R.TemplatesOlds = append(o.R.TemplatesOlds, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
-			rel.R = &templateR{
+			rel.R = &templatesOldR{
 				Faction: o,
 			}
 		} else {

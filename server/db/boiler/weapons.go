@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
@@ -23,101 +24,211 @@ import (
 
 // Weapon is an object representing the database table.
 type Weapon struct {
-	ID         string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	BrandID    null.String `boiler:"brand_id" boil:"brand_id" json:"brand_id,omitempty" toml:"brand_id" yaml:"brand_id,omitempty"`
-	Label      string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	Slug       string      `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
-	Damage     int         `boiler:"damage" boil:"damage" json:"damage" toml:"damage" yaml:"damage"`
-	WeaponType string      `boiler:"weapon_type" boil:"weapon_type" json:"weapon_type" toml:"weapon_type" yaml:"weapon_type"`
-	DeletedAt  null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	UpdatedAt  time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt  time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ID                   string              `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	BrandID              null.String         `boiler:"brand_id" boil:"brand_id" json:"brand_id,omitempty" toml:"brand_id" yaml:"brand_id,omitempty"`
+	Label                string              `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	Slug                 string              `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
+	Damage               int                 `boiler:"damage" boil:"damage" json:"damage" toml:"damage" yaml:"damage"`
+	DeletedAt            null.Time           `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt            time.Time           `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt            time.Time           `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	BlueprintID          string              `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
+	DefaultDamageTyp     string              `boiler:"default_damage_typ" boil:"default_damage_typ" json:"default_damage_typ" toml:"default_damage_typ" yaml:"default_damage_typ"`
+	CollectionItemID     string              `boiler:"collection_item_id" boil:"collection_item_id" json:"collection_item_id" toml:"collection_item_id" yaml:"collection_item_id"`
+	GenesisTokenID       decimal.NullDecimal `boiler:"genesis_token_id" boil:"genesis_token_id" json:"genesis_token_id,omitempty" toml:"genesis_token_id" yaml:"genesis_token_id,omitempty"`
+	WeaponType           string              `boiler:"weapon_type" boil:"weapon_type" json:"weapon_type" toml:"weapon_type" yaml:"weapon_type"`
+	OwnerID              string              `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
+	DamageFalloff        null.Int            `boiler:"damage_falloff" boil:"damage_falloff" json:"damage_falloff,omitempty" toml:"damage_falloff" yaml:"damage_falloff,omitempty"`
+	DamageFalloffRate    null.Int            `boiler:"damage_falloff_rate" boil:"damage_falloff_rate" json:"damage_falloff_rate,omitempty" toml:"damage_falloff_rate" yaml:"damage_falloff_rate,omitempty"`
+	Spread               null.Int            `boiler:"spread" boil:"spread" json:"spread,omitempty" toml:"spread" yaml:"spread,omitempty"`
+	RateOfFire           decimal.NullDecimal `boiler:"rate_of_fire" boil:"rate_of_fire" json:"rate_of_fire,omitempty" toml:"rate_of_fire" yaml:"rate_of_fire,omitempty"`
+	Radius               null.Int            `boiler:"radius" boil:"radius" json:"radius,omitempty" toml:"radius" yaml:"radius,omitempty"`
+	RadialDoesFullDamage null.Bool           `boiler:"radial_does_full_damage" boil:"radial_does_full_damage" json:"radial_does_full_damage,omitempty" toml:"radial_does_full_damage" yaml:"radial_does_full_damage,omitempty"`
+	ProjectileSpeed      decimal.NullDecimal `boiler:"projectile_speed" boil:"projectile_speed" json:"projectile_speed,omitempty" toml:"projectile_speed" yaml:"projectile_speed,omitempty"`
+	EnergyCost           decimal.NullDecimal `boiler:"energy_cost" boil:"energy_cost" json:"energy_cost,omitempty" toml:"energy_cost" yaml:"energy_cost,omitempty"`
+	MaxAmmo              null.Int            `boiler:"max_ammo" boil:"max_ammo" json:"max_ammo,omitempty" toml:"max_ammo" yaml:"max_ammo,omitempty"`
 
 	R *weaponR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L weaponL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var WeaponColumns = struct {
-	ID         string
-	BrandID    string
-	Label      string
-	Slug       string
-	Damage     string
-	WeaponType string
-	DeletedAt  string
-	UpdatedAt  string
-	CreatedAt  string
+	ID                   string
+	BrandID              string
+	Label                string
+	Slug                 string
+	Damage               string
+	DeletedAt            string
+	UpdatedAt            string
+	CreatedAt            string
+	BlueprintID          string
+	DefaultDamageTyp     string
+	CollectionItemID     string
+	GenesisTokenID       string
+	WeaponType           string
+	OwnerID              string
+	DamageFalloff        string
+	DamageFalloffRate    string
+	Spread               string
+	RateOfFire           string
+	Radius               string
+	RadialDoesFullDamage string
+	ProjectileSpeed      string
+	EnergyCost           string
+	MaxAmmo              string
 }{
-	ID:         "id",
-	BrandID:    "brand_id",
-	Label:      "label",
-	Slug:       "slug",
-	Damage:     "damage",
-	WeaponType: "weapon_type",
-	DeletedAt:  "deleted_at",
-	UpdatedAt:  "updated_at",
-	CreatedAt:  "created_at",
+	ID:                   "id",
+	BrandID:              "brand_id",
+	Label:                "label",
+	Slug:                 "slug",
+	Damage:               "damage",
+	DeletedAt:            "deleted_at",
+	UpdatedAt:            "updated_at",
+	CreatedAt:            "created_at",
+	BlueprintID:          "blueprint_id",
+	DefaultDamageTyp:     "default_damage_typ",
+	CollectionItemID:     "collection_item_id",
+	GenesisTokenID:       "genesis_token_id",
+	WeaponType:           "weapon_type",
+	OwnerID:              "owner_id",
+	DamageFalloff:        "damage_falloff",
+	DamageFalloffRate:    "damage_falloff_rate",
+	Spread:               "spread",
+	RateOfFire:           "rate_of_fire",
+	Radius:               "radius",
+	RadialDoesFullDamage: "radial_does_full_damage",
+	ProjectileSpeed:      "projectile_speed",
+	EnergyCost:           "energy_cost",
+	MaxAmmo:              "max_ammo",
 }
 
 var WeaponTableColumns = struct {
-	ID         string
-	BrandID    string
-	Label      string
-	Slug       string
-	Damage     string
-	WeaponType string
-	DeletedAt  string
-	UpdatedAt  string
-	CreatedAt  string
+	ID                   string
+	BrandID              string
+	Label                string
+	Slug                 string
+	Damage               string
+	DeletedAt            string
+	UpdatedAt            string
+	CreatedAt            string
+	BlueprintID          string
+	DefaultDamageTyp     string
+	CollectionItemID     string
+	GenesisTokenID       string
+	WeaponType           string
+	OwnerID              string
+	DamageFalloff        string
+	DamageFalloffRate    string
+	Spread               string
+	RateOfFire           string
+	Radius               string
+	RadialDoesFullDamage string
+	ProjectileSpeed      string
+	EnergyCost           string
+	MaxAmmo              string
 }{
-	ID:         "weapons.id",
-	BrandID:    "weapons.brand_id",
-	Label:      "weapons.label",
-	Slug:       "weapons.slug",
-	Damage:     "weapons.damage",
-	WeaponType: "weapons.weapon_type",
-	DeletedAt:  "weapons.deleted_at",
-	UpdatedAt:  "weapons.updated_at",
-	CreatedAt:  "weapons.created_at",
+	ID:                   "weapons.id",
+	BrandID:              "weapons.brand_id",
+	Label:                "weapons.label",
+	Slug:                 "weapons.slug",
+	Damage:               "weapons.damage",
+	DeletedAt:            "weapons.deleted_at",
+	UpdatedAt:            "weapons.updated_at",
+	CreatedAt:            "weapons.created_at",
+	BlueprintID:          "weapons.blueprint_id",
+	DefaultDamageTyp:     "weapons.default_damage_typ",
+	CollectionItemID:     "weapons.collection_item_id",
+	GenesisTokenID:       "weapons.genesis_token_id",
+	WeaponType:           "weapons.weapon_type",
+	OwnerID:              "weapons.owner_id",
+	DamageFalloff:        "weapons.damage_falloff",
+	DamageFalloffRate:    "weapons.damage_falloff_rate",
+	Spread:               "weapons.spread",
+	RateOfFire:           "weapons.rate_of_fire",
+	Radius:               "weapons.radius",
+	RadialDoesFullDamage: "weapons.radial_does_full_damage",
+	ProjectileSpeed:      "weapons.projectile_speed",
+	EnergyCost:           "weapons.energy_cost",
+	MaxAmmo:              "weapons.max_ammo",
 }
 
 // Generated where
 
 var WeaponWhere = struct {
-	ID         whereHelperstring
-	BrandID    whereHelpernull_String
-	Label      whereHelperstring
-	Slug       whereHelperstring
-	Damage     whereHelperint
-	WeaponType whereHelperstring
-	DeletedAt  whereHelpernull_Time
-	UpdatedAt  whereHelpertime_Time
-	CreatedAt  whereHelpertime_Time
+	ID                   whereHelperstring
+	BrandID              whereHelpernull_String
+	Label                whereHelperstring
+	Slug                 whereHelperstring
+	Damage               whereHelperint
+	DeletedAt            whereHelpernull_Time
+	UpdatedAt            whereHelpertime_Time
+	CreatedAt            whereHelpertime_Time
+	BlueprintID          whereHelperstring
+	DefaultDamageTyp     whereHelperstring
+	CollectionItemID     whereHelperstring
+	GenesisTokenID       whereHelperdecimal_NullDecimal
+	WeaponType           whereHelperstring
+	OwnerID              whereHelperstring
+	DamageFalloff        whereHelpernull_Int
+	DamageFalloffRate    whereHelpernull_Int
+	Spread               whereHelpernull_Int
+	RateOfFire           whereHelperdecimal_NullDecimal
+	Radius               whereHelpernull_Int
+	RadialDoesFullDamage whereHelpernull_Bool
+	ProjectileSpeed      whereHelperdecimal_NullDecimal
+	EnergyCost           whereHelperdecimal_NullDecimal
+	MaxAmmo              whereHelpernull_Int
 }{
-	ID:         whereHelperstring{field: "\"weapons\".\"id\""},
-	BrandID:    whereHelpernull_String{field: "\"weapons\".\"brand_id\""},
-	Label:      whereHelperstring{field: "\"weapons\".\"label\""},
-	Slug:       whereHelperstring{field: "\"weapons\".\"slug\""},
-	Damage:     whereHelperint{field: "\"weapons\".\"damage\""},
-	WeaponType: whereHelperstring{field: "\"weapons\".\"weapon_type\""},
-	DeletedAt:  whereHelpernull_Time{field: "\"weapons\".\"deleted_at\""},
-	UpdatedAt:  whereHelpertime_Time{field: "\"weapons\".\"updated_at\""},
-	CreatedAt:  whereHelpertime_Time{field: "\"weapons\".\"created_at\""},
+	ID:                   whereHelperstring{field: "\"weapons\".\"id\""},
+	BrandID:              whereHelpernull_String{field: "\"weapons\".\"brand_id\""},
+	Label:                whereHelperstring{field: "\"weapons\".\"label\""},
+	Slug:                 whereHelperstring{field: "\"weapons\".\"slug\""},
+	Damage:               whereHelperint{field: "\"weapons\".\"damage\""},
+	DeletedAt:            whereHelpernull_Time{field: "\"weapons\".\"deleted_at\""},
+	UpdatedAt:            whereHelpertime_Time{field: "\"weapons\".\"updated_at\""},
+	CreatedAt:            whereHelpertime_Time{field: "\"weapons\".\"created_at\""},
+	BlueprintID:          whereHelperstring{field: "\"weapons\".\"blueprint_id\""},
+	DefaultDamageTyp:     whereHelperstring{field: "\"weapons\".\"default_damage_typ\""},
+	CollectionItemID:     whereHelperstring{field: "\"weapons\".\"collection_item_id\""},
+	GenesisTokenID:       whereHelperdecimal_NullDecimal{field: "\"weapons\".\"genesis_token_id\""},
+	WeaponType:           whereHelperstring{field: "\"weapons\".\"weapon_type\""},
+	OwnerID:              whereHelperstring{field: "\"weapons\".\"owner_id\""},
+	DamageFalloff:        whereHelpernull_Int{field: "\"weapons\".\"damage_falloff\""},
+	DamageFalloffRate:    whereHelpernull_Int{field: "\"weapons\".\"damage_falloff_rate\""},
+	Spread:               whereHelpernull_Int{field: "\"weapons\".\"spread\""},
+	RateOfFire:           whereHelperdecimal_NullDecimal{field: "\"weapons\".\"rate_of_fire\""},
+	Radius:               whereHelpernull_Int{field: "\"weapons\".\"radius\""},
+	RadialDoesFullDamage: whereHelpernull_Bool{field: "\"weapons\".\"radial_does_full_damage\""},
+	ProjectileSpeed:      whereHelperdecimal_NullDecimal{field: "\"weapons\".\"projectile_speed\""},
+	EnergyCost:           whereHelperdecimal_NullDecimal{field: "\"weapons\".\"energy_cost\""},
+	MaxAmmo:              whereHelpernull_Int{field: "\"weapons\".\"max_ammo\""},
 }
 
 // WeaponRels is where relationship names are stored.
 var WeaponRels = struct {
-	Brand         string
-	ChassisWeapon string
+	Blueprint      string
+	Brand          string
+	CollectionItem string
+	Owner          string
+	MechWeapon     string
+	WeaponAmmos    string
 }{
-	Brand:         "Brand",
-	ChassisWeapon: "ChassisWeapon",
+	Blueprint:      "Blueprint",
+	Brand:          "Brand",
+	CollectionItem: "CollectionItem",
+	Owner:          "Owner",
+	MechWeapon:     "MechWeapon",
+	WeaponAmmos:    "WeaponAmmos",
 }
 
 // weaponR is where relationships are stored.
 type weaponR struct {
-	Brand         *Brand         `boiler:"Brand" boil:"Brand" json:"Brand" toml:"Brand" yaml:"Brand"`
-	ChassisWeapon *ChassisWeapon `boiler:"ChassisWeapon" boil:"ChassisWeapon" json:"ChassisWeapon" toml:"ChassisWeapon" yaml:"ChassisWeapon"`
+	Blueprint      *BlueprintWeapon `boiler:"Blueprint" boil:"Blueprint" json:"Blueprint" toml:"Blueprint" yaml:"Blueprint"`
+	Brand          *Brand           `boiler:"Brand" boil:"Brand" json:"Brand" toml:"Brand" yaml:"Brand"`
+	CollectionItem *CollectionItem  `boiler:"CollectionItem" boil:"CollectionItem" json:"CollectionItem" toml:"CollectionItem" yaml:"CollectionItem"`
+	Owner          *Player          `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
+	MechWeapon     *MechWeapon      `boiler:"MechWeapon" boil:"MechWeapon" json:"MechWeapon" toml:"MechWeapon" yaml:"MechWeapon"`
+	WeaponAmmos    WeaponAmmoSlice  `boiler:"WeaponAmmos" boil:"WeaponAmmos" json:"WeaponAmmos" toml:"WeaponAmmos" yaml:"WeaponAmmos"`
 }
 
 // NewStruct creates a new relationship struct
@@ -129,9 +240,9 @@ func (*weaponR) NewStruct() *weaponR {
 type weaponL struct{}
 
 var (
-	weaponAllColumns            = []string{"id", "brand_id", "label", "slug", "damage", "weapon_type", "deleted_at", "updated_at", "created_at"}
-	weaponColumnsWithoutDefault = []string{"label", "slug", "damage", "weapon_type"}
-	weaponColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at"}
+	weaponAllColumns            = []string{"id", "brand_id", "label", "slug", "damage", "deleted_at", "updated_at", "created_at", "blueprint_id", "default_damage_typ", "collection_item_id", "genesis_token_id", "weapon_type", "owner_id", "damage_falloff", "damage_falloff_rate", "spread", "rate_of_fire", "radius", "radial_does_full_damage", "projectile_speed", "energy_cost", "max_ammo"}
+	weaponColumnsWithoutDefault = []string{"label", "slug", "damage", "blueprint_id", "collection_item_id", "weapon_type", "owner_id"}
+	weaponColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at", "default_damage_typ", "genesis_token_id", "damage_falloff", "damage_falloff_rate", "spread", "rate_of_fire", "radius", "radial_does_full_damage", "projectile_speed", "energy_cost", "max_ammo"}
 	weaponPrimaryKeyColumns     = []string{"id"}
 	weaponGeneratedColumns      = []string{}
 )
@@ -378,6 +489,21 @@ func (q weaponQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
+// Blueprint pointed to by the foreign key.
+func (o *Weapon) Blueprint(mods ...qm.QueryMod) blueprintWeaponQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.BlueprintID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := BlueprintWeapons(queryMods...)
+	queries.SetFrom(query.Query, "\"blueprint_weapons\"")
+
+	return query
+}
+
 // Brand pointed to by the foreign key.
 func (o *Weapon) Brand(mods ...qm.QueryMod) brandQuery {
 	queryMods := []qm.QueryMod{
@@ -393,8 +519,37 @@ func (o *Weapon) Brand(mods ...qm.QueryMod) brandQuery {
 	return query
 }
 
-// ChassisWeapon pointed to by the foreign key.
-func (o *Weapon) ChassisWeapon(mods ...qm.QueryMod) chassisWeaponQuery {
+// CollectionItem pointed to by the foreign key.
+func (o *Weapon) CollectionItem(mods ...qm.QueryMod) collectionItemQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.CollectionItemID),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := CollectionItems(queryMods...)
+	queries.SetFrom(query.Query, "\"collection_items\"")
+
+	return query
+}
+
+// Owner pointed to by the foreign key.
+func (o *Weapon) Owner(mods ...qm.QueryMod) playerQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.OwnerID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Players(queryMods...)
+	queries.SetFrom(query.Query, "\"players\"")
+
+	return query
+}
+
+// MechWeapon pointed to by the foreign key.
+func (o *Weapon) MechWeapon(mods ...qm.QueryMod) mechWeaponQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"weapon_id\" = ?", o.ID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -402,10 +557,136 @@ func (o *Weapon) ChassisWeapon(mods ...qm.QueryMod) chassisWeaponQuery {
 
 	queryMods = append(queryMods, mods...)
 
-	query := ChassisWeapons(queryMods...)
-	queries.SetFrom(query.Query, "\"chassis_weapons\"")
+	query := MechWeapons(queryMods...)
+	queries.SetFrom(query.Query, "\"mech_weapons\"")
 
 	return query
+}
+
+// WeaponAmmos retrieves all the weapon_ammo's WeaponAmmos with an executor.
+func (o *Weapon) WeaponAmmos(mods ...qm.QueryMod) weaponAmmoQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"weapon_ammo\".\"weapon_id\"=?", o.ID),
+	)
+
+	query := WeaponAmmos(queryMods...)
+	queries.SetFrom(query.Query, "\"weapon_ammo\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"weapon_ammo\".*"})
+	}
+
+	return query
+}
+
+// LoadBlueprint allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (weaponL) LoadBlueprint(e boil.Executor, singular bool, maybeWeapon interface{}, mods queries.Applicator) error {
+	var slice []*Weapon
+	var object *Weapon
+
+	if singular {
+		object = maybeWeapon.(*Weapon)
+	} else {
+		slice = *maybeWeapon.(*[]*Weapon)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &weaponR{}
+		}
+		args = append(args, object.BlueprintID)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &weaponR{}
+			}
+
+			for _, a := range args {
+				if a == obj.BlueprintID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.BlueprintID)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`blueprint_weapons`),
+		qm.WhereIn(`blueprint_weapons.id in ?`, args...),
+		qmhelper.WhereIsNull(`blueprint_weapons.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load BlueprintWeapon")
+	}
+
+	var resultSlice []*BlueprintWeapon
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice BlueprintWeapon")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for blueprint_weapons")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_weapons")
+	}
+
+	if len(weaponAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Blueprint = foreign
+		if foreign.R == nil {
+			foreign.R = &blueprintWeaponR{}
+		}
+		foreign.R.BlueprintWeapons = append(foreign.R.BlueprintWeapons, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.BlueprintID == foreign.ID {
+				local.R.Blueprint = foreign
+				if foreign.R == nil {
+					foreign.R = &blueprintWeaponR{}
+				}
+				foreign.R.BlueprintWeapons = append(foreign.R.BlueprintWeapons, local)
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadBrand allows an eager lookup of values, cached into the
@@ -517,9 +798,218 @@ func (weaponL) LoadBrand(e boil.Executor, singular bool, maybeWeapon interface{}
 	return nil
 }
 
-// LoadChassisWeapon allows an eager lookup of values, cached into the
+// LoadCollectionItem allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (weaponL) LoadCollectionItem(e boil.Executor, singular bool, maybeWeapon interface{}, mods queries.Applicator) error {
+	var slice []*Weapon
+	var object *Weapon
+
+	if singular {
+		object = maybeWeapon.(*Weapon)
+	} else {
+		slice = *maybeWeapon.(*[]*Weapon)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &weaponR{}
+		}
+		args = append(args, object.CollectionItemID)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &weaponR{}
+			}
+
+			for _, a := range args {
+				if a == obj.CollectionItemID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.CollectionItemID)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`collection_items`),
+		qm.WhereIn(`collection_items.id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load CollectionItem")
+	}
+
+	var resultSlice []*CollectionItem
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice CollectionItem")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for collection_items")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for collection_items")
+	}
+
+	if len(weaponAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.CollectionItem = foreign
+		if foreign.R == nil {
+			foreign.R = &collectionItemR{}
+		}
+		foreign.R.Weapons = append(foreign.R.Weapons, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.CollectionItemID == foreign.ID {
+				local.R.CollectionItem = foreign
+				if foreign.R == nil {
+					foreign.R = &collectionItemR{}
+				}
+				foreign.R.Weapons = append(foreign.R.Weapons, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadOwner allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (weaponL) LoadOwner(e boil.Executor, singular bool, maybeWeapon interface{}, mods queries.Applicator) error {
+	var slice []*Weapon
+	var object *Weapon
+
+	if singular {
+		object = maybeWeapon.(*Weapon)
+	} else {
+		slice = *maybeWeapon.(*[]*Weapon)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &weaponR{}
+		}
+		args = append(args, object.OwnerID)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &weaponR{}
+			}
+
+			for _, a := range args {
+				if a == obj.OwnerID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.OwnerID)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`players`),
+		qm.WhereIn(`players.id in ?`, args...),
+		qmhelper.WhereIsNull(`players.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Player")
+	}
+
+	var resultSlice []*Player
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Player")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for players")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players")
+	}
+
+	if len(weaponAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Owner = foreign
+		if foreign.R == nil {
+			foreign.R = &playerR{}
+		}
+		foreign.R.OwnerWeapons = append(foreign.R.OwnerWeapons, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.OwnerID == foreign.ID {
+				local.R.Owner = foreign
+				if foreign.R == nil {
+					foreign.R = &playerR{}
+				}
+				foreign.R.OwnerWeapons = append(foreign.R.OwnerWeapons, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadMechWeapon allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-1 relationship.
-func (weaponL) LoadChassisWeapon(e boil.Executor, singular bool, maybeWeapon interface{}, mods queries.Applicator) error {
+func (weaponL) LoadMechWeapon(e boil.Executor, singular bool, maybeWeapon interface{}, mods queries.Applicator) error {
 	var slice []*Weapon
 	var object *Weapon
 
@@ -557,9 +1047,9 @@ func (weaponL) LoadChassisWeapon(e boil.Executor, singular bool, maybeWeapon int
 	}
 
 	query := NewQuery(
-		qm.From(`chassis_weapons`),
-		qm.WhereIn(`chassis_weapons.weapon_id in ?`, args...),
-		qmhelper.WhereIsNull(`chassis_weapons.deleted_at`),
+		qm.From(`mech_weapons`),
+		qm.WhereIn(`mech_weapons.weapon_id in ?`, args...),
+		qmhelper.WhereIsNull(`mech_weapons.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -567,19 +1057,19 @@ func (weaponL) LoadChassisWeapon(e boil.Executor, singular bool, maybeWeapon int
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load ChassisWeapon")
+		return errors.Wrap(err, "failed to eager load MechWeapon")
 	}
 
-	var resultSlice []*ChassisWeapon
+	var resultSlice []*MechWeapon
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice ChassisWeapon")
+		return errors.Wrap(err, "failed to bind eager loaded slice MechWeapon")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for chassis_weapons")
+		return errors.Wrap(err, "failed to close results of eager load for mech_weapons")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for chassis_weapons")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mech_weapons")
 	}
 
 	if len(weaponAfterSelectHooks) != 0 {
@@ -596,9 +1086,9 @@ func (weaponL) LoadChassisWeapon(e boil.Executor, singular bool, maybeWeapon int
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.ChassisWeapon = foreign
+		object.R.MechWeapon = foreign
 		if foreign.R == nil {
-			foreign.R = &chassisWeaponR{}
+			foreign.R = &mechWeaponR{}
 		}
 		foreign.R.Weapon = object
 	}
@@ -606,14 +1096,158 @@ func (weaponL) LoadChassisWeapon(e boil.Executor, singular bool, maybeWeapon int
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
 			if local.ID == foreign.WeaponID {
-				local.R.ChassisWeapon = foreign
+				local.R.MechWeapon = foreign
 				if foreign.R == nil {
-					foreign.R = &chassisWeaponR{}
+					foreign.R = &mechWeaponR{}
 				}
 				foreign.R.Weapon = local
 				break
 			}
 		}
+	}
+
+	return nil
+}
+
+// LoadWeaponAmmos allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (weaponL) LoadWeaponAmmos(e boil.Executor, singular bool, maybeWeapon interface{}, mods queries.Applicator) error {
+	var slice []*Weapon
+	var object *Weapon
+
+	if singular {
+		object = maybeWeapon.(*Weapon)
+	} else {
+		slice = *maybeWeapon.(*[]*Weapon)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &weaponR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &weaponR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`weapon_ammo`),
+		qm.WhereIn(`weapon_ammo.weapon_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load weapon_ammo")
+	}
+
+	var resultSlice []*WeaponAmmo
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice weapon_ammo")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on weapon_ammo")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for weapon_ammo")
+	}
+
+	if len(weaponAmmoAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.WeaponAmmos = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &weaponAmmoR{}
+			}
+			foreign.R.Weapon = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.WeaponID {
+				local.R.WeaponAmmos = append(local.R.WeaponAmmos, foreign)
+				if foreign.R == nil {
+					foreign.R = &weaponAmmoR{}
+				}
+				foreign.R.Weapon = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// SetBlueprint of the weapon to the related item.
+// Sets o.R.Blueprint to related.
+// Adds o to related.R.BlueprintWeapons.
+func (o *Weapon) SetBlueprint(exec boil.Executor, insert bool, related *BlueprintWeapon) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"weapons\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"blueprint_id"}),
+		strmangle.WhereClause("\"", "\"", 2, weaponPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.BlueprintID = related.ID
+	if o.R == nil {
+		o.R = &weaponR{
+			Blueprint: related,
+		}
+	} else {
+		o.R.Blueprint = related
+	}
+
+	if related.R == nil {
+		related.R = &blueprintWeaponR{
+			BlueprintWeapons: WeaponSlice{o},
+		}
+	} else {
+		related.R.BlueprintWeapons = append(related.R.BlueprintWeapons, o)
 	}
 
 	return nil
@@ -698,10 +1332,102 @@ func (o *Weapon) RemoveBrand(exec boil.Executor, related *Brand) error {
 	return nil
 }
 
-// SetChassisWeapon of the weapon to the related item.
-// Sets o.R.ChassisWeapon to related.
+// SetCollectionItem of the weapon to the related item.
+// Sets o.R.CollectionItem to related.
+// Adds o to related.R.Weapons.
+func (o *Weapon) SetCollectionItem(exec boil.Executor, insert bool, related *CollectionItem) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"weapons\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"collection_item_id"}),
+		strmangle.WhereClause("\"", "\"", 2, weaponPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.CollectionItemID = related.ID
+	if o.R == nil {
+		o.R = &weaponR{
+			CollectionItem: related,
+		}
+	} else {
+		o.R.CollectionItem = related
+	}
+
+	if related.R == nil {
+		related.R = &collectionItemR{
+			Weapons: WeaponSlice{o},
+		}
+	} else {
+		related.R.Weapons = append(related.R.Weapons, o)
+	}
+
+	return nil
+}
+
+// SetOwner of the weapon to the related item.
+// Sets o.R.Owner to related.
+// Adds o to related.R.OwnerWeapons.
+func (o *Weapon) SetOwner(exec boil.Executor, insert bool, related *Player) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"weapons\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"owner_id"}),
+		strmangle.WhereClause("\"", "\"", 2, weaponPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.OwnerID = related.ID
+	if o.R == nil {
+		o.R = &weaponR{
+			Owner: related,
+		}
+	} else {
+		o.R.Owner = related
+	}
+
+	if related.R == nil {
+		related.R = &playerR{
+			OwnerWeapons: WeaponSlice{o},
+		}
+	} else {
+		related.R.OwnerWeapons = append(related.R.OwnerWeapons, o)
+	}
+
+	return nil
+}
+
+// SetMechWeapon of the weapon to the related item.
+// Sets o.R.MechWeapon to related.
 // Adds o to related.R.Weapon.
-func (o *Weapon) SetChassisWeapon(exec boil.Executor, insert bool, related *ChassisWeapon) error {
+func (o *Weapon) SetMechWeapon(exec boil.Executor, insert bool, related *MechWeapon) error {
 	var err error
 
 	if insert {
@@ -712,9 +1438,9 @@ func (o *Weapon) SetChassisWeapon(exec boil.Executor, insert bool, related *Chas
 		}
 	} else {
 		updateQuery := fmt.Sprintf(
-			"UPDATE \"chassis_weapons\" SET %s WHERE %s",
+			"UPDATE \"mech_weapons\" SET %s WHERE %s",
 			strmangle.SetParamNames("\"", "\"", 1, []string{"weapon_id"}),
-			strmangle.WhereClause("\"", "\"", 2, chassisWeaponPrimaryKeyColumns),
+			strmangle.WhereClause("\"", "\"", 2, mechWeaponPrimaryKeyColumns),
 		)
 		values := []interface{}{o.ID, related.ID}
 
@@ -732,18 +1458,70 @@ func (o *Weapon) SetChassisWeapon(exec boil.Executor, insert bool, related *Chas
 
 	if o.R == nil {
 		o.R = &weaponR{
-			ChassisWeapon: related,
+			MechWeapon: related,
 		}
 	} else {
-		o.R.ChassisWeapon = related
+		o.R.MechWeapon = related
 	}
 
 	if related.R == nil {
-		related.R = &chassisWeaponR{
+		related.R = &mechWeaponR{
 			Weapon: o,
 		}
 	} else {
 		related.R.Weapon = o
+	}
+	return nil
+}
+
+// AddWeaponAmmos adds the given related objects to the existing relationships
+// of the weapon, optionally inserting them as new records.
+// Appends related to o.R.WeaponAmmos.
+// Sets related.R.Weapon appropriately.
+func (o *Weapon) AddWeaponAmmos(exec boil.Executor, insert bool, related ...*WeaponAmmo) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.WeaponID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"weapon_ammo\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"weapon_id"}),
+				strmangle.WhereClause("\"", "\"", 2, weaponAmmoPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.BlueprintAmmoID, rel.WeaponID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.WeaponID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &weaponR{
+			WeaponAmmos: related,
+		}
+	} else {
+		o.R.WeaponAmmos = append(o.R.WeaponAmmos, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &weaponAmmoR{
+				Weapon: o,
+			}
+		} else {
+			rel.R.Weapon = o
+		}
 	}
 	return nil
 }

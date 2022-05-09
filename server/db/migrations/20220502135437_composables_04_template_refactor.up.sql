@@ -20,6 +20,7 @@ CREATE TYPE TEMPLATE_ITEM_TYPE AS ENUM ('MECH', 'MECH_ANIMATION', 'MECH_SKIN', '
 
 CREATE TABLE template_blueprints
 (
+    id           UUID PRIMARY KEY            DEFAULT gen_random_uuid(),
     template_id  UUID               NOT NULL REFERENCES templates (id),
     type         TEMPLATE_ITEM_TYPE NOT NULL,
     blueprint_id UUID               NOT NULL,

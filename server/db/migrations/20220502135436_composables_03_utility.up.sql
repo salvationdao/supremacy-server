@@ -84,14 +84,12 @@ ALTER TABLE modules
 ALTER TABLE utility
     DROP COLUMN hitpoint_modifier,
     DROP COLUMN shield_modifier,
-    ADD COLUMN blueprint_id     UUID REFERENCES blueprint_utility (id),
-    ADD COLUMN collection_slug  COLLECTION NOT NULL DEFAULT 'supremacy-general',
-    ADD COLUMN token_id         BIGINT,
-    ADD COLUMN genesis_token_id NUMERIC,
-    ADD COLUMN owner_id         UUID REFERENCES players (id),
-    ADD COLUMN equipped_on      UUID REFERENCES chassis (id),
-    ADD COLUMN type             UTILITY_TYPE,
-    ADD FOREIGN KEY (collection_slug, token_id) REFERENCES collection_items (collection_slug, token_id);
+    ADD COLUMN blueprint_id       UUID REFERENCES blueprint_utility (id),
+    ADD COLUMN collection_item_id UUID REFERENCES collection_items (id),
+    ADD COLUMN genesis_token_id   NUMERIC,
+    ADD COLUMN owner_id           UUID REFERENCES players (id),
+    ADD COLUMN equipped_on        UUID REFERENCES chassis (id),
+    ADD COLUMN type               UTILITY_TYPE;
 
 WITH utility_owners AS (SELECT m.owner_id, cu.utility_id
                         FROM chassis_utility cu
@@ -105,9 +103,9 @@ WHERE u.id = utility_owners.utility_id;
 -- This inserts a new collection_items entry for each utility and updates the utility table with token id
 WITH insrt
          AS ( WITH utily AS (SELECT 'utility' AS item_type, id FROM utility) INSERT INTO collection_items (token_id, item_type, item_id) SELECT NEXTVAL('collection_general'), utily.item_type, utily.id
-                                                                                                                                         FROM utily RETURNING token_id, item_id)
+                                                                                                                                         FROM utily RETURNING id, item_id)
 UPDATE utility u
-SET token_id = insrt.token_id
+SET collection_item_id = insrt.id
 FROM insrt
 WHERE u.id = insrt.item_id;
 
@@ -124,7 +122,6 @@ WHERE u.id = genesis.utility_id;
 
 ALTER TABLE utility
     DROP COLUMN slug,
-    ALTER COLUMN token_id SET NOT NULL,
     ALTER COLUMN owner_id SET NOT NULL;
 
 UPDATE utility
