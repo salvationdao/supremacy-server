@@ -336,7 +336,7 @@ func (arena *Arena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if c != nil {
 			arena.connected.Store(false)
-			gamelog.L.Fatal().Err(fmt.Errorf("game client has disconnected")).Msg("lost connection to game client")
+			gamelog.L.Error().Err(fmt.Errorf("game client has disconnected")).Msg("lost connection to game client")
 			c.Close(websocket.StatusInternalError, "game client has disconnected")
 		}
 	}()
