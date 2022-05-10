@@ -46,7 +46,8 @@ type Mech struct {
 	FactionID string   `json:"faction_id"`
 	Faction   *Faction `json:"faction,omitempty"`
 
-	ModelID string `json:"model_id"`
+	ModelID string     `json:"model_id"`
+	Model   *MechModel `json:"model"`
 
 	// Connected objects
 	DefaultChassisSkinID string    `json:"default_chassis_skin_id"`
@@ -91,21 +92,20 @@ type BlueprintMech struct {
 
 func BlueprintMechFromBoiler(mech *boiler.BlueprintMech) *BlueprintMech {
 	return &BlueprintMech{
-		ID:                   mech.ID,
-		BrandID:              mech.BrandID,
-		Label:                mech.Label,
-		Slug:                 mech.Slug,
-		Skin:                 mech.Skin,
-		WeaponHardpoints:     mech.WeaponHardpoints,
-		UtilitySlots:         mech.UtilitySlots,
-		Speed:                mech.Speed,
-		MaxHitpoints:         mech.MaxHitpoints,
-		UpdatedAt:            mech.UpdatedAt,
-		CreatedAt:            mech.CreatedAt,
-		ModelID:              mech.ModelID,
-		EnergyCoreSize:       mech.EnergyCoreSize,
-		Tier:                 mech.Tier,
-		DefaultChassisSkinID: mech.DefaultChassisSkinID,
+		ID:               mech.ID,
+		BrandID:          mech.BrandID,
+		Label:            mech.Label,
+		Slug:             mech.Slug,
+		Skin:             mech.Skin,
+		WeaponHardpoints: mech.WeaponHardpoints,
+		UtilitySlots:     mech.UtilitySlots,
+		Speed:            mech.Speed,
+		MaxHitpoints:     mech.MaxHitpoints,
+		UpdatedAt:        mech.UpdatedAt,
+		CreatedAt:        mech.CreatedAt,
+		ModelID:          mech.ModelID,
+		EnergyCoreSize:   mech.EnergyCoreSize,
+		Tier:             mech.Tier,
 	}
 }
 
@@ -122,4 +122,11 @@ type BlueprintUtility struct {
 	RepairDroneBlueprint *BlueprintUtilityRepairDrone `json:"repair_drone_blueprint,omitempty"`
 	AcceleratorBlueprint *BlueprintUtilityAccelerator `json:"accelerator_blueprint,omitempty"`
 	AntiMissileBlueprint *BlueprintUtilityAntiMissile `json:"anti_missile_blueprint,omitempty"`
+}
+
+type MechModel struct {
+	ID                   string      `json:"id"`
+	Label                string      `json:"label"`
+	CreatedAt            time.Time   `json:"created_at"`
+	DefaultChassisSkinID null.String `json:"default_chassis_skin_id,omitempty"`
 }

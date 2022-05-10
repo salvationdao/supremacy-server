@@ -112,16 +112,15 @@ func (s *S) MechsByOwnerID(req MechsByOwnerIDReq, resp *MechsByOwnerIDResp) erro
 	return nil
 }
 
-type MechRegisterReq struct {
+type TemplateRegisterReq struct {
 	TemplateID uuid.UUID
 	OwnerID    uuid.UUID
 }
-type MechRegisterResp struct {
-	MechContainer *Mech
+type TemplateRegisterResp struct {
 }
 
-func (s *S) MechRegister(req MechRegisterReq, resp *MechRegisterResp) error {
-	gamelog.L.Debug().Msg("comms.MechRegister")
+func (s *S) TemplateRegister(req TemplateRegisterReq, resp *TemplateRegisterResp) error {
+	gamelog.L.Debug().Msg("comms.TemplateRegister")
 
 	userResp, err := s.passportRPC.UserGet(server.UserID(req.OwnerID))
 	if err != nil {
@@ -139,20 +138,12 @@ func (s *S) MechRegister(req MechRegisterReq, resp *MechRegisterResp) error {
 		return terror.Error(err)
 	}
 
-	mechID, err := db.MechRegister(req.TemplateID, req.OwnerID)
+	err = db.TemplateRegister(req.TemplateID, req.OwnerID)
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to register mech")
-		return terror.Error(err)
-	}
-	_, err = db.Mech(mechID)
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to get mech")
+		gamelog.L.Error().Err(err).Msg("Failed to register template")
 		return terror.Error(err)
 	}
 
-	// TODO: convert mech object
-
-	//resp.MechContainer = mech
 	return nil
 }
 

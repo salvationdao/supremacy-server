@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"server"
@@ -15,7 +14,6 @@ import (
 	"github.com/ninja-software/terror/v2"
 
 	"github.com/gofrs/uuid"
-	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
@@ -75,13 +73,7 @@ func MechSetOwner(mechID uuid.UUID, ownerID uuid.UUID) error {
 }
 
 func TemplatePurchasedCount(templateID uuid.UUID) (int, error) {
-	// TODO: Fix this
-
-	//count, err := boiler.Mechs(boiler.MechWhere.TemplateID.EQ(templateID.String())).Count(gamedb.StdConn)
-	//if err != nil {
-	//	return 0, err
-	//}
-	//return int(count), nil
+	// TODO: Fix this, this is in the gameserver storefront refactor
 	return 0, nil
 }
 
@@ -116,419 +108,297 @@ func DefaultMechs() ([]*server.Mech, error) {
 var ErrNotAllMechsReturned = fmt.Errorf("not all mechs returned")
 
 func Mech(mechID uuid.UUID) (*server.Mech, error) {
-	// TODO: Fix this
-	//mc := &server.Mech{}
-	//query := `SELECT
-	//   ` + strings.Join([]string{
-	//	`mechs.` + boiler.MechColumns.ID,
-	//	`mechs.` + boiler.MechColumns.OwnerID,
-	//	`mechs.` + boiler.MechColumns.TemplateID,
-	//	`mechs.` + boiler.MechColumns.ChassisID,
-	//	`mechs.` + boiler.MechColumns.ExternalTokenID,
-	//	`mechs.` + boiler.MechColumns.Tier,
-	//	`mechs.` + boiler.MechColumns.IsDefault,
-	//	`mechs.` + boiler.MechColumns.ImageURL,
-	//	`mechs.` + boiler.MechColumns.AnimationURL,
-	//	`mechs.` + boiler.MechColumns.CardAnimationURL,
-	//	`mechs.` + boiler.MechColumns.AvatarURL,
-	//	`mechs.` + boiler.MechColumns.Hash,
-	//	`mechs.` + boiler.MechColumns.Name,
-	//	`mechs.` + boiler.MechColumns.Label,
-	//	`mechs.` + boiler.MechColumns.Slug,
-	//	`mechs.` + boiler.MechColumns.AssetType,
-	//	`mechs.` + boiler.MechColumns.DeletedAt,
-	//	`mechs.` + boiler.MechColumns.UpdatedAt,
-	//	`mechs.` + boiler.MechColumns.CreatedAt,
-	//	`mechs.` + boiler.MechColumns.LargeImageURL,
-	//	`mechs.` + boiler.MechColumns.CollectionSlug,
-	//}, ",") + `,
-	//   (SELECT to_json(chassis.*) FROM chassis WHERE id=mechs.` + boiler.MechColumns.ChassisID + `) as chassis,
-	//   to_json(
-	//       (SELECT jsonb_object_agg(cw.` + boiler.ChassisWeaponColumns.SlotNumber + `, wpn.* ORDER BY cw.` + boiler.ChassisWeaponColumns.SlotNumber + ` ASC)
-	//        FROM chassis_weapons cw
-	//        INNER JOIN weapons wpn ON wpn.id = cw.` + boiler.ChassisWeaponColumns.WeaponID + `
-	//        WHERE cw.chassis_id=` + `mechs.` + boiler.MechColumns.ChassisID + ` AND cw.` + boiler.ChassisWeaponColumns.MountLocation + ` = 'ARM')
-	//    ) as weapons,
-	//   to_json(
-	//       (SELECT jsonb_object_agg(cwt.` + boiler.ChassisWeaponColumns.SlotNumber + `, wpn.* ORDER BY cwt.` + boiler.ChassisWeaponColumns.SlotNumber + ` ASC)
-	//        FROM chassis_weapons cwt
-	//        INNER JOIN weapons wpn ON wpn.id = cwt.` + boiler.ChassisWeaponColumns.WeaponID + `
-	//        WHERE cwt.` + boiler.MechColumns.ChassisID + `=` + `mechs.` + boiler.MechColumns.ChassisID + ` AND cwt.` + boiler.ChassisWeaponColumns.MountLocation + ` = 'TURRET'
-	//        )
-	//    ) as turrets,
-	//    to_json(
-	//        (SELECT jsonb_object_agg(mods.` + boiler.ChassisModuleColumns.SlotNumber + `, mds.* ORDER BY mods.` + boiler.ChassisModuleColumns.SlotNumber + ` ASC)
-	//            FROM chassis_modules mods
-	//            INNER JOIN modules mds ON mds.` + boiler.ModuleColumns.ID + ` = mods.` + boiler.ChassisModuleColumns.ModuleID + `
-	//         WHERE mods.` + boiler.ChassisModuleColumns.ChassisID + `=` + `mechs.` + boiler.MechColumns.ChassisID + `)
-	//    ) as modules,
-	//   to_json(ply.*) as player,
-	//   to_json(fct.*) as faction
-	//	from mechs
-	//	INNER JOIN players ply ON ply.id = mechs.` + boiler.MechColumns.OwnerID + `
-	//	INNER JOIN factions fct ON fct.id = ply.` + boiler.PlayerColumns.FactionID + `
-	//    WHERE mechs.id = $1
-	//    GROUP BY mechs.id, ply.id, fct.id`
-	//
-	//ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
-	//defer cancel()
-	//
-	//result, err := gamedb.Conn.Query(ctx, query, mechID.String())
-	//if err != nil {
-	//	return nil, err
-	//}
-	//defer result.Close()
-	//
-	//for result.Next() {
-	//	err = result.Scan(
-	//		&mc.ID,
-	//		&mc.OwnerID,
-	//		&mc.TemplateID,
-	//		&mc.ChassisID,
-	//		&mc.ExternalTokenID,
-	//		&mc.Tier,
-	//		&mc.IsDefault,
-	//		&mc.ImageURL,
-	//		&mc.AnimationURL,
-	//		&mc.CardAnimationURL,
-	//		&mc.AvatarURL,
-	//		&mc.Hash,
-	//		&mc.Name,
-	//		&mc.Label,
-	//		&mc.Slug,
-	//		&mc.AssetType,
-	//		&mc.DeletedAt,
-	//		&mc.UpdatedAt,
-	//		&mc.CreatedAt,
-	//		&mc.LargeImageURL,
-	//		&mc.CollectionSlug,
-	//		&mc.Chassis,
-	//		&mc.Weapons,
-	//		&mc.Turrets,
-	//		&mc.Modules,
-	//		&mc.Player,
-	//		&mc.Faction)
-	//	if mc.Faction != nil {
-	//		mc.FactionID = mc.Faction.ID
-	//	}
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//}
-	//result.Close()
-	//
-	//if err != nil {
-	//	return nil, err
-	//}
-	//
-	//return mc, err
-	return nil, nil
+	// TODO: Get utilities
+	mc := &server.Mech{}
+	query := `
+		SELECT
+			ci.hash,
+			ci.token_id,
+			m.id,
+			m.name,
+			m.collection_item_id,
+			m.label,
+			m.weapon_hardpoints,
+			m.utility_slots,
+			m.speed,
+			m.max_hitpoints,
+			m.is_default,
+			m.is_insured,
+			m.genesis_token_id,
+			m.energy_core_size,
+			m.tier,
+			m.blueprint_id,
+		
+			m.brand_id,
+			to_json(b) as brand,
+		
+			m.owner_id,
+			to_json(p) as owner,
+		
+			p.faction_id,
+			to_json(f) as faction,
+		
+			m.model_id,
+			to_json(mm) as model,
+		
+			mm.default_chassis_skin_id,
+			to_json(dms) as default_chassis_skin,
+		
+			m.chassis_skin_id,
+			to_json(ms) as chassis_skin,
+		
+			m.intro_animation_id,
+			to_json(ma2) as intro_animation,
+		
+			m.outro_animation_id,
+			to_json(ma1) as outro_animation,
+		
+			m.energy_core_id,
+			to_json(ec) as energy_core,
+		
+			w.weapons,
+			u.utility
+		from mechs m
+		INNER JOIN collection_items ci on ci.id = m.collection_item_id
+		INNER JOIN players p ON p.id = m.owner_id
+		INNER JOIN factions f on p.faction_id = f.id
+		LEFT OUTER JOIN energy_cores ec ON ec.id = m.energy_core_id
+		LEFT OUTER JOIN brands b ON b.id = m.brand_id
+		LEFT OUTER JOIN mech_model mm ON m.model_id = mm.id
+		LEFT OUTER JOIN mech_skin ms ON m.chassis_skin_id = ms.id
+		LEFT OUTER JOIN blueprint_mech_skin dms ON mm.default_chassis_skin_id = dms.id
+		LEFT OUTER JOIN mech_animation ma1 on ma1.id = m.outro_animation_id
+		LEFT OUTER JOIN mech_animation ma2 on ma2.id = m.intro_animation_id
+		LEFT OUTER JOIN (
+			SELECT mw.chassis_id, json_agg(w2) as weapons
+			FROM mech_weapons mw
+					 INNER JOIN weapons w2 ON mw.weapon_id = w2.id
+			GROUP BY mw.chassis_id
+		) w on w.chassis_id = m.id
+				 LEFT OUTER JOIN (
+			SELECT mw.chassis_id, json_agg(w2) as utility
+			FROM mech_utility mw
+					 INNER JOIN utility w2 ON mw.utility_id = w2.id
+			GROUP BY mw.chassis_id
+		) u on u.chassis_id = m.id
+		WHERE m.id = $1;
+		`
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
+	defer cancel()
+
+	result, err := gamedb.Conn.Query(ctx, query, mechID.String())
+	if err != nil {
+		return nil, err
+	}
+	defer result.Close()
+
+	for result.Next() {
+		err = result.Scan(
+			&mc.Hash,
+			&mc.TokenID,
+			&mc.ID,
+			&mc.Name,
+			&mc.CollectionItemID,
+			&mc.Label,
+			&mc.WeaponHardpoints,
+			&mc.UtilitySlots,
+			&mc.Speed,
+			&mc.MaxHitpoints,
+			&mc.IsDefault,
+			&mc.IsInsured,
+			&mc.GenesisTokenID,
+			&mc.EnergyCoreSize,
+			&mc.Tier,
+			&mc.BlueprintID,
+			&mc.BrandID,
+			&mc.Brand,
+			&mc.OwnerID,
+			&mc.Owner,
+			&mc.FactionID,
+			&mc.Faction,
+			&mc.ModelID,
+			&mc.Model,
+			&mc.DefaultChassisSkinID,
+			&mc.DefaultChassisSkin,
+			&mc.ChassisSkinID,
+			&mc.ChassisSkin,
+			&mc.IntroAnimationID,
+			&mc.IntroAnimation,
+			&mc.OutroAnimationID,
+			&mc.OutroAnimation,
+			&mc.EnergyCoreID,
+			&mc.EnergyCore,
+			&mc.Weapons,
+			&mc.Utility,
+		)
+		if err != nil {
+			return nil, err
+		}
+	}
+	result.Close()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return mc, err
 }
 
 func Mechs(mechIDs ...uuid.UUID) ([]*server.Mech, error) {
-	// TODO: Fix this
-	//
-	//if len(mechIDs) == 0 {
-	//	return nil, errors.New("no mech ids provided")
-	//}
-	//mcs := make([]*server.XsynMechContainer, len(mechIDs))
-	//
-	//mechids := make([]interface{}, len(mechIDs))
-	//var paramrefs string
-	//for i, id := range mechIDs {
-	//	paramrefs += `$` + strconv.Itoa(i+1) + `,`
-	//	mechids[i] = id.String()
-	//}
-	//paramrefs = paramrefs[:len(paramrefs)-1]
-	//
-	//query := `SELECT
-	//   ` + strings.Join([]string{
-	//	`mechs.` + boiler.MechColumns.ID,
-	//	`mechs.` + boiler.MechColumns.OwnerID,
-	//	`mechs.` + boiler.MechColumns.TemplateID,
-	//	`mechs.` + boiler.MechColumns.ChassisID,
-	//	`mechs.` + boiler.MechColumns.ExternalTokenID,
-	//	`mechs.` + boiler.MechColumns.Tier,
-	//	`mechs.` + boiler.MechColumns.IsDefault,
-	//	`mechs.` + boiler.MechColumns.ImageURL,
-	//	`mechs.` + boiler.MechColumns.AnimationURL,
-	//	`mechs.` + boiler.MechColumns.CardAnimationURL,
-	//	`mechs.` + boiler.MechColumns.AvatarURL,
-	//	`mechs.` + boiler.MechColumns.Hash,
-	//	`mechs.` + boiler.MechColumns.Name,
-	//	`mechs.` + boiler.MechColumns.Label,
-	//	`mechs.` + boiler.MechColumns.Slug,
-	//	`mechs.` + boiler.MechColumns.AssetType,
-	//	`mechs.` + boiler.MechColumns.DeletedAt,
-	//	`mechs.` + boiler.MechColumns.UpdatedAt,
-	//	`mechs.` + boiler.MechColumns.CreatedAt,
-	//	`mechs.` + boiler.MechColumns.LargeImageURL,
-	//	`mechs.` + boiler.MechColumns.CollectionSlug,
-	//}, ",") + `,
-	//   (SELECT to_json(chassis.*) FROM chassis WHERE id=mechs.` + boiler.MechColumns.ChassisID + `) as chassis,
-	//   to_json(
-	//       (SELECT jsonb_object_agg(cw.` + boiler.ChassisWeaponColumns.SlotNumber + `, wpn.* ORDER BY cw.` + boiler.ChassisWeaponColumns.SlotNumber + ` ASC)
-	//        FROM chassis_weapons cw
-	//        INNER JOIN weapons wpn ON wpn.id = cw.` + boiler.ChassisWeaponColumns.WeaponID + `
-	//        WHERE cw.chassis_id=` + `mechs.` + boiler.MechColumns.ChassisID + ` AND cw.` + boiler.ChassisWeaponColumns.MountLocation + ` = 'ARM')
-	//    ) as weapons,
-	//   to_json(
-	//       (SELECT jsonb_object_agg(cwt.` + boiler.ChassisWeaponColumns.SlotNumber + `, wpn.* ORDER BY cwt.` + boiler.ChassisWeaponColumns.SlotNumber + ` ASC)
-	//        FROM chassis_weapons cwt
-	//        INNER JOIN weapons wpn ON wpn.id = cwt.` + boiler.ChassisWeaponColumns.WeaponID + `
-	//        WHERE cwt.` + boiler.MechColumns.ChassisID + `=` + `mechs.` + boiler.MechColumns.ChassisID + ` AND cwt.` + boiler.ChassisWeaponColumns.MountLocation + ` = 'TURRET'
-	//        )
-	//    ) as turrets,
-	//    to_json(
-	//        (SELECT jsonb_object_agg(mods.` + boiler.ChassisModuleColumns.SlotNumber + `, mds.* ORDER BY mods.` + boiler.ChassisModuleColumns.SlotNumber + ` ASC)
-	//            FROM chassis_modules mods
-	//            INNER JOIN modules mds ON mds.` + boiler.ModuleColumns.ID + ` = mods.` + boiler.ChassisModuleColumns.ModuleID + `
-	//         WHERE mods.` + boiler.ChassisModuleColumns.ChassisID + `=` + `mechs.` + boiler.MechColumns.ChassisID + `)
-	//    ) as modules,
-	//   to_json(ply.*) as player,
-	//   to_json(fct.*) as faction
-	//	from mechs
-	//	INNER JOIN players ply ON ply.id = mechs.` + boiler.MechColumns.OwnerID + `
-	//	INNER JOIN factions fct ON fct.id = ply.` + boiler.PlayerColumns.FactionID + `
-	//	WHERE mechs.id IN (` + paramrefs + `)
-	//	GROUP BY mechs.id, ply.id, fct.id
-	// 	ORDER BY fct.id;`
-	//
-	//ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
-	//defer cancel()
-	//
-	//result, err := gamedb.Conn.Query(ctx, query, mechids...)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//defer result.Close()
-	//
-	//i := 0
-	//for result.Next() {
-	//	mc := &server.XsynMechContainer{}
-	//	err = result.Scan(
-	//		&mc.ID,
-	//		&mc.OwnerID,
-	//		&mc.TemplateID,
-	//		&mc.ChassisID,
-	//		&mc.ExternalTokenID,
-	//		&mc.Tier,
-	//		&mc.IsDefault,
-	//		&mc.ImageURL,
-	//		&mc.AnimationURL,
-	//		&mc.CardAnimationURL,
-	//		&mc.AvatarURL,
-	//		&mc.Hash,
-	//		&mc.Name,
-	//		&mc.Label,
-	//		&mc.Slug,
-	//		&mc.AssetType,
-	//		&mc.DeletedAt,
-	//		&mc.UpdatedAt,
-	//		&mc.CreatedAt,
-	//		&mc.LargeImageURL,
-	//		&mc.CollectionSlug,
-	//		&mc.Chassis,
-	//		&mc.Weapons,
-	//		&mc.Turrets,
-	//		&mc.Modules,
-	//		&mc.Player,
-	//		&mc.Faction)
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//	if mc.Faction != nil {
-	//		mc.FactionID = mc.Faction.ID
-	//	}
-	//	mcs[i] = mc
-	//	i++
-	//}
-	//
-	//if i < len(mechIDs) {
-	//	mcs = mcs[:len(mcs)-i]
-	//	return mcs, ErrNotAllMechsReturned
-	//}
-	//
-	//return mcs, err
-	return nil, nil
-}
+	// TODO: Get utilities
+	if len(mechIDs) == 0 {
+		return nil, errors.New("no mech ids provided")
+	}
 
-func NextExternalTokenID(tx *sql.Tx, isDefault bool, collectionSlug null.String) (int, error) {
-	// TODO: Fix this
-	//count, err := boiler.Mechs(
-	//	boiler.MechWhere.IsDefault.EQ(isDefault),
-	//	boiler.MechWhere.CollectionSlug.EQ(collectionSlug),
-	//).Count(tx)
-	//if err != nil {
-	//	return 0, err
-	//}
-	//if count == 0 {
-	//	return 0, nil
-	//}
-	//
-	//highestMechID, err := boiler.Mechs(
-	//	boiler.MechWhere.IsDefault.EQ(isDefault),
-	//	boiler.MechWhere.CollectionSlug.EQ(collectionSlug),
-	//	qm.OrderBy("external_token_id DESC"),
-	//).One(tx)
-	//if err != nil {
-	//	return 0, err
-	//}
-	//
-	//return highestMechID.ExternalTokenID + 1, nil
-	return 0, nil
-}
+	mcs := make([]*server.Mech, len(mechIDs))
 
-// MechRegister copies everything out of a template into a new mech
-func MechRegister(templateID uuid.UUID, ownerID uuid.UUID) (uuid.UUID, error) {
-	// TODO: Fix this
-	//tx, err := gamedb.StdConn.Begin()
-	//if err != nil {
-	//	return uuid.Nil, fmt.Errorf("start tx: %w", err)
-	//}
-	//defer tx.Rollback()
-	//exists, err := boiler.PlayerExists(tx, ownerID.String())
-	//if err != nil {
-	//	return uuid.Nil, fmt.Errorf("check player exists: %w", err)
-	//}
-	//if !exists {
-	//	newPlayer := &boiler.Player{ID: ownerID.String()}
-	//	err = newPlayer.Insert(tx, boil.Infer())
-	//	if err != nil {
-	//		return uuid.Nil, fmt.Errorf("insert new player: %w", err)
-	//	}
-	//}
-	//template, err := boiler.FindTemplate(tx, templateID.String())
-	//if err != nil {
-	//	return uuid.Nil, fmt.Errorf("find template: %w", err)
-	//}
-	//
-	//blueprintChassis, err := template.BlueprintChassis().One(tx)
-	//if err != nil {
-	//	return uuid.Nil, fmt.Errorf("get blueprint chassis: %w", err)
-	//}
-	//chassis := &boiler.Chassis{
-	//	BrandID:            blueprintChassis.BrandID,
-	//	Label:              blueprintChassis.Label,
-	//	Model:              blueprintChassis.Model,
-	//	Skin:               blueprintChassis.Skin,
-	//	Slug:               blueprintChassis.Slug,
-	//	ShieldRechargeRate: blueprintChassis.ShieldRechargeRate,
-	//	HealthRemaining:    blueprintChassis.MaxHitpoints,
-	//	WeaponHardpoints:   blueprintChassis.WeaponHardpoints,
-	//	TurretHardpoints:   blueprintChassis.TurretHardpoints,
-	//	UtilitySlots:       blueprintChassis.UtilitySlots,
-	//	Speed:              blueprintChassis.Speed,
-	//	MaxHitpoints:       blueprintChassis.MaxHitpoints,
-	//	MaxShield:          blueprintChassis.MaxShield,
-	//}
-	//err = chassis.Insert(tx, boil.Infer())
-	//if err != nil {
-	//	return uuid.Nil, fmt.Errorf(": %w", err)
-	//}
-	//
-	//weaponJoins, err := boiler.BlueprintChassisBlueprintWeapons(boiler.BlueprintChassisBlueprintWeaponWhere.BlueprintChassisID.EQ(template.BlueprintChassisID)).All(tx)
-	//if err != nil {
-	//	return uuid.Nil, fmt.Errorf("get blueprint weapon joins: %w", err)
-	//}
-	//for _, join := range weaponJoins {
-	//	blueprintWeapon, err := boiler.FindBlueprintWeapon(tx, join.BlueprintWeaponID)
-	//	if err != nil {
-	//		return uuid.Nil, fmt.Errorf("get blueprint weapon: %w", err)
-	//	}
-	//	newWeapon := &boiler.Weapon{
-	//		BrandID:    blueprintWeapon.BrandID,
-	//		Label:      blueprintWeapon.Label,
-	//		Slug:       blueprintWeapon.Slug,
-	//		Damage:     blueprintWeapon.Damage,
-	//		WeaponType: blueprintWeapon.WeaponType,
-	//	}
-	//	err = newWeapon.Insert(tx, boil.Infer())
-	//	if err != nil {
-	//		return uuid.Nil, fmt.Errorf(": %w", err)
-	//	}
-	//	newJoin := &boiler.ChassisWeapon{
-	//		ChassisID:     chassis.ID,
-	//		WeaponID:      newWeapon.ID,
-	//		SlotNumber:    join.SlotNumber,
-	//		MountLocation: join.MountLocation,
-	//	}
-	//	err = newJoin.Insert(tx, boil.Infer())
-	//	if err != nil {
-	//		return uuid.Nil, fmt.Errorf("insert blueprint weapon join: %w", err)
-	//	}
-	//}
-	//moduleJoins, err := boiler.BlueprintChassisBlueprintModules(boiler.BlueprintChassisBlueprintModuleWhere.BlueprintChassisID.EQ(template.BlueprintChassisID)).All(tx)
-	//if err != nil {
-	//	return uuid.Nil, fmt.Errorf("get blueprint module joins: %w", err)
-	//}
-	//for _, join := range moduleJoins {
-	//	blueprintModule, err := boiler.FindBlueprintModule(tx, join.BlueprintModuleID)
-	//	if err != nil {
-	//		return uuid.Nil, fmt.Errorf("get blueprint module: %w", err)
-	//	}
-	//	newModule := &boiler.Module{
-	//		BrandID:          blueprintModule.BrandID,
-	//		Slug:             blueprintModule.Slug,
-	//		Label:            blueprintModule.Label,
-	//		HitpointModifier: blueprintModule.HitpointModifier,
-	//		ShieldModifier:   blueprintModule.ShieldModifier,
-	//	}
-	//	err = newModule.Insert(tx, boil.Infer())
-	//	if err != nil {
-	//		return uuid.Nil, fmt.Errorf("insert blueprint module: %w", err)
-	//	}
-	//	newJoin := &boiler.ChassisModule{
-	//		ChassisID:  chassis.ID,
-	//		ModuleID:   newModule.ID,
-	//		SlotNumber: join.SlotNumber,
-	//	}
-	//	err = newJoin.Insert(tx, boil.Infer())
-	//	if err != nil {
-	//		return uuid.Nil, fmt.Errorf("insert blueprint module join: %w", err)
-	//	}
-	//}
-	//
-	//newMechID, err := uuid.NewV4()
-	//if err != nil {
-	//	return uuid.Nil, fmt.Errorf("create mech id: %w", err)
-	//}
-	//shortID, err := shortid.Generate()
-	//if err != nil {
-	//	return uuid.Nil, fmt.Errorf("create short id: %w", err)
-	//}
-	//nextID, err := NextExternalTokenID(tx, template.IsDefault, template.CollectionSlug)
-	//if err != nil {
-	//	return uuid.Nil, fmt.Errorf("get next external token id: %w", err)
-	//}
-	//newMech := &boiler.Mech{
-	//	ID:              newMechID.String(),
-	//	OwnerID:         ownerID.String(),
-	//	TemplateID:      templateID.String(),
-	//	ChassisID:       chassis.ID,
-	//	Tier:            template.Tier,
-	//	IsDefault:       template.IsDefault,
-	//	Hash:            shortID,
-	//	Name:            "",
-	//	ExternalTokenID: nextID,
-	//	Label:           template.Label,
-	//	Slug:            template.Slug,
-	//	AssetType:       template.AssetType,
-	//	CollectionSlug:  template.CollectionSlug,
-	//
-	//	AvatarURL:        template.AvatarURL,
-	//	LargeImageURL:    template.LargeImageURL,
-	//	ImageURL:         template.ImageURL,
-	//	AnimationURL:     template.AnimationURL,
-	//	CardAnimationURL: template.CardAnimationURL,
-	//}
-	//err = newMech.Insert(tx, boil.Infer())
-	//if err != nil {
-	//	return uuid.Nil, fmt.Errorf("insert mech: %w", err)
-	//}
-	//tx.Commit()
-	//return newMechID, nil
-	return uuid.Nil, nil
+	mechids := make([]interface{}, len(mechIDs))
+	var paramrefs string
+	for i, id := range mechIDs {
+		paramrefs += `$` + strconv.Itoa(i+1) + `,`
+		mechids[i] = id.String()
+	}
+	paramrefs = paramrefs[:len(paramrefs)-1]
+
+	query := `
+		SELECT
+			ci.hash,
+			ci.token_id,
+			m.id,
+			m.name,
+			m.collection_item_id,
+			m.label,
+			m.weapon_hardpoints,
+			m.utility_slots,
+			m.speed,
+			m.max_hitpoints,
+			m.is_default,
+			m.is_insured,
+			m.genesis_token_id,
+			m.energy_core_size,
+			m.tier,
+			m.blueprint_id,
+		
+			m.brand_id,
+			to_json(b) as brand,
+		
+			m.owner_id,
+			to_json(p) as owner,
+		
+			p.faction_id,
+			to_json(f) as faction,
+		
+			m.model_id,
+			to_json(mm) as model,
+		
+			mm.default_chassis_skin_id,
+			to_json(dms) as default_chassis_skin,
+		
+			m.chassis_skin_id,
+			to_json(ms) as chassis_skin,
+		
+			m.intro_animation_id,
+			to_json(ma2) as intro_animation,
+		
+			m.outro_animation_id,
+			to_json(ma1) as outro_animation,
+		
+			m.energy_core_id,
+			to_json(ec) as energy_core,
+		
+			w.weapons,
+			u.utility
+		from mechs m
+		INNER JOIN collection_items ci on ci.id = m.collection_item_id
+		INNER JOIN players p ON p.id = m.owner_id
+		INNER JOIN factions f on p.faction_id = f.id
+		LEFT OUTER JOIN energy_cores ec ON ec.id = m.energy_core_id
+		LEFT OUTER JOIN brands b ON b.id = m.brand_id
+		LEFT OUTER JOIN mech_model mm ON m.model_id = mm.id
+		LEFT OUTER JOIN mech_skin ms ON m.chassis_skin_id = ms.id
+		LEFT OUTER JOIN blueprint_mech_skin dms ON mm.default_chassis_skin_id = dms.id
+		LEFT OUTER JOIN mech_animation ma1 on ma1.id = m.outro_animation_id
+		LEFT OUTER JOIN mech_animation ma2 on ma2.id = m.intro_animation_id
+		LEFT OUTER JOIN (
+			SELECT mw.chassis_id, json_agg(w2) as weapons
+			FROM mech_weapons mw
+					 INNER JOIN weapons w2 ON mw.weapon_id = w2.id
+			GROUP BY mw.chassis_id
+		) w on w.chassis_id = m.id
+				 LEFT OUTER JOIN (
+			SELECT mw.chassis_id, json_agg(w2) as utility
+			FROM mech_utility mw
+					 INNER JOIN utility w2 ON mw.utility_id = w2.id
+			GROUP BY mw.chassis_id
+		) u on u.chassis_id = m.id
+		WHERE m.id IN (` + paramrefs + `)
+		ORDER BY fct.id;
+		`
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
+	defer cancel()
+
+	result, err := gamedb.Conn.Query(ctx, query, mechids...)
+	if err != nil {
+		return nil, err
+	}
+	defer result.Close()
+
+	i := 0
+	for result.Next() {
+		mc := &server.Mech{}
+		err = result.Scan(
+			&mc.Hash,
+			&mc.TokenID,
+			&mc.ID,
+			&mc.Name,
+			&mc.CollectionItemID,
+			&mc.Label,
+			&mc.WeaponHardpoints,
+			&mc.UtilitySlots,
+			&mc.Speed,
+			&mc.MaxHitpoints,
+			&mc.IsDefault,
+			&mc.IsInsured,
+			&mc.GenesisTokenID,
+			&mc.EnergyCoreSize,
+			&mc.Tier,
+			&mc.BlueprintID,
+			&mc.BrandID,
+			&mc.Brand,
+			&mc.OwnerID,
+			&mc.Owner,
+			&mc.FactionID,
+			&mc.Faction,
+			&mc.ModelID,
+			&mc.Model,
+			&mc.DefaultChassisSkinID,
+			&mc.DefaultChassisSkin,
+			&mc.ChassisSkinID,
+			&mc.ChassisSkin,
+			&mc.IntroAnimationID,
+			&mc.IntroAnimation,
+			&mc.OutroAnimationID,
+			&mc.OutroAnimation,
+			&mc.EnergyCoreID,
+			&mc.EnergyCore,
+			&mc.Weapons,
+			&mc.Utility,
+		)
+		if err != nil {
+			return nil, err
+		}
+		mcs[i] = mc
+		i++
+	}
+
+	if i < len(mechIDs) {
+		mcs = mcs[:len(mcs)-i]
+		return mcs, ErrNotAllMechsReturned
+	}
+
+	return mcs, err
 }
 
 // MechIDFromHash retrieve a mech ID from a hash
@@ -549,7 +419,7 @@ func MechIDFromHash(hash string) (uuid.UUID, error) {
 	return uid, err
 }
 
-// MechIDFromHash retrieve a slice mech IDs from hash variatic
+// MechIDsFromHash retrieve a slice mech IDs from hash variatic
 func MechIDsFromHash(hashes ...string) ([]uuid.UUID, error) {
 	var paramrefs string
 	idintf := []interface{}{}
@@ -648,4 +518,9 @@ func MechQueuePosition(factionID string, ownerID string) ([]*BattleQueuePosition
 	}
 
 	return mqp, nil
+}
+
+func InsertNewMech(ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) error {
+	// TODO: insert mech
+	return nil
 }

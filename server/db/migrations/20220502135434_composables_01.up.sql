@@ -214,21 +214,20 @@ ALTER TABLE chassis
 --     unused/unneeded columns
     DROP COLUMN IF EXISTS turret_hardpoints,
     DROP COLUMN IF EXISTS health_remaining,
-    ADD COLUMN blueprint_id            UUID REFERENCES blueprint_chassis (id),
-    ADD COLUMN is_default              BOOL NOT NULL DEFAULT FALSE,
-    ADD COLUMN is_insured              BOOL NOT NULL DEFAULT FALSE,
-    ADD COLUMN name                    TEXT NOT NULL DEFAULT '',
-    ADD COLUMN model_id                UUID REFERENCES chassis_model (id),
-    ADD COLUMN collection_item_id      UUID REFERENCES collection_items (id),
-    ADD COLUMN genesis_token_id        INTEGER,
-    ADD COLUMN owner_id                UUID REFERENCES players (id),
-    ADD COLUMN energy_core_size        TEXT NOT NULL DEFAULT 'MEDIUM' CHECK ( energy_core_size IN ('SMALL', 'MEDIUM', 'LARGE') ),
-    ADD COLUMN default_chassis_skin_id UUID REFERENCES blueprint_chassis_skin (id), -- default skin
-    ADD COLUMN tier                    TEXT,
-    ADD COLUMN chassis_skin_id         UUID REFERENCES chassis_skin (id), -- equipped skin
-    ADD COLUMN energy_core_id          UUID REFERENCES energy_cores (id),
-    ADD COLUMN intro_animation_id      UUID REFERENCES chassis_animation (id),
-    ADD COLUMN outro_animation_id      UUID REFERENCES chassis_animation (id);
+    ADD COLUMN blueprint_id       UUID REFERENCES blueprint_chassis (id),
+    ADD COLUMN is_default         BOOL NOT NULL DEFAULT FALSE,
+    ADD COLUMN is_insured         BOOL NOT NULL DEFAULT FALSE,
+    ADD COLUMN name               TEXT NOT NULL DEFAULT '',
+    ADD COLUMN model_id           UUID REFERENCES chassis_model (id),
+    ADD COLUMN collection_item_id UUID REFERENCES collection_items (id),
+    ADD COLUMN genesis_token_id   INTEGER,
+    ADD COLUMN owner_id           UUID REFERENCES players (id),
+    ADD COLUMN energy_core_size   TEXT NOT NULL DEFAULT 'MEDIUM' CHECK ( energy_core_size IN ('SMALL', 'MEDIUM', 'LARGE') ),
+    ADD COLUMN tier               TEXT,
+    ADD COLUMN chassis_skin_id    UUID REFERENCES chassis_skin (id), -- equipped skin
+    ADD COLUMN energy_core_id     UUID REFERENCES energy_cores (id),
+    ADD COLUMN intro_animation_id UUID REFERENCES chassis_animation (id),
+    ADD COLUMN outro_animation_id UUID REFERENCES chassis_animation (id);
 
 UPDATE chassis c
 SET model_id = (SELECT id
@@ -343,34 +342,6 @@ WHERE cs.equipped_on = genesis.chassis_id;
 UPDATE chassis c
 SET chassis_skin_id = (SELECT id FROM chassis_skin cs WHERE cs.equipped_on = c.id);
 
--- update all the default model skins, picked random mega skins to be the default fallback..
-UPDATE chassis c
-SET default_chassis_skin_id = (SELECT bcs.id
-                               FROM blueprint_chassis_skin bcs
-                                        INNER JOIN chassis_model cm ON bcs.chassis_model = cm.id
-                               WHERE cm.id = bcs.chassis_model
-                                 AND bcs.label = 'Blue White')
-WHERE c.model_id = (SELECT id FROM chassis_model WHERE label = 'Law Enforcer X-1000');
-
-UPDATE chassis c
-SET default_chassis_skin_id = (SELECT bcs.id
-                               FROM blueprint_chassis_skin bcs
-                                        INNER JOIN chassis_model cm ON bcs.chassis_model = cm.id
-                               WHERE cm.id = bcs.chassis_model
-                                 AND bcs.label = 'Beetle')
-WHERE c.model_id = (SELECT id FROM chassis_model WHERE label = 'Olympus Mons LY07');
-
-UPDATE chassis c
-SET default_chassis_skin_id = (SELECT bcs.id
-                               FROM blueprint_chassis_skin bcs
-                                        INNER JOIN chassis_model cm ON bcs.chassis_model = cm.id
-                               WHERE cm.id = bcs.chassis_model
-                                 AND bcs.label = 'Warden')
-WHERE c.model_id = (SELECT id FROM chassis_model WHERE label = 'Tenshi Mk1');
-
-ALTER TABLE chassis
-    ALTER COLUMN default_chassis_skin_id SET NOT NULL;
-
 WITH mech_owners AS (SELECT owner_id, chassis_id, is_default, is_insured, name, tier, template_id
                      FROM mechs)
 UPDATE chassis c
@@ -391,11 +362,10 @@ ALTER TABLE chassis
 ALTER TABLE blueprint_chassis
     DROP COLUMN IF EXISTS turret_hardpoints,
     DROP COLUMN IF EXISTS health_remaining,
-    ADD COLUMN model_id                UUID REFERENCES chassis_model (id),
-    ADD COLUMN energy_core_size        TEXT DEFAULT 'MEDIUM' CHECK ( energy_core_size IN ('SMALL', 'MEDIUM', 'LARGE') ),
-    ADD COLUMN tier                    TEXT,
-    ADD COLUMN default_chassis_skin_id UUID REFERENCES blueprint_chassis_skin (id),
-    ADD COLUMN chassis_skin_id         UUID REFERENCES blueprint_chassis_skin (id); -- this column is used temp and gets removed.
+    ADD COLUMN model_id         UUID REFERENCES chassis_model (id),
+    ADD COLUMN energy_core_size TEXT DEFAULT 'MEDIUM' CHECK ( energy_core_size IN ('SMALL', 'MEDIUM', 'LARGE') ),
+    ADD COLUMN tier             TEXT,
+    ADD COLUMN chassis_skin_id  UUID REFERENCES blueprint_chassis_skin (id); -- this column is used temp and gets removed.
 
 UPDATE blueprint_chassis c
 SET model_id = (SELECT id
@@ -406,30 +376,29 @@ ALTER TABLE blueprint_chassis
     DROP COLUMN model,
     ALTER COLUMN model_id SET NOT NULL;
 
-
-UPDATE blueprint_chassis c
+UPDATE chassis_model mm
 SET default_chassis_skin_id = (SELECT bcs.id
                                FROM blueprint_chassis_skin bcs
                                         INNER JOIN chassis_model cm ON bcs.chassis_model = cm.id
                                WHERE cm.id = bcs.chassis_model
                                  AND bcs.label = 'Blue White')
-WHERE c.model_id = (SELECT id FROM chassis_model WHERE label = 'Law Enforcer X-1000');
+WHERE mm.label = 'Law Enforcer X-1000';
 
-UPDATE blueprint_chassis c
+UPDATE chassis_model mm
 SET default_chassis_skin_id = (SELECT bcs.id
                                FROM blueprint_chassis_skin bcs
                                         INNER JOIN chassis_model cm ON bcs.chassis_model = cm.id
                                WHERE cm.id = bcs.chassis_model
                                  AND bcs.label = 'Beetle')
-WHERE c.model_id = (SELECT id FROM chassis_model WHERE label = 'Olympus Mons LY07');
+WHERE mm.label = 'Olympus Mons LY07';
 
-UPDATE blueprint_chassis c
+UPDATE chassis_model mm
 SET default_chassis_skin_id = (SELECT bcs.id
                                FROM blueprint_chassis_skin bcs
                                         INNER JOIN chassis_model cm ON bcs.chassis_model = cm.id
                                WHERE cm.id = bcs.chassis_model
-                                 AND bcs.label = 'Warden')
-WHERE c.model_id = (SELECT id FROM chassis_model WHERE label = 'Tenshi Mk1');
+                                 AND bcs.label = 'White Gold')
+WHERE mm.label = 'Tenshi Mk1';
 
 -- SET THE CONNECTED SKINS
 UPDATE blueprint_chassis bc
@@ -437,9 +406,6 @@ SET chassis_skin_id = (SELECT id
                        FROM blueprint_chassis_skin bcs
                        WHERE bcs.label = bc.skin
                          AND bcs.chassis_model = bc.model_id);
-
-ALTER TABLE blueprint_chassis
-    ALTER COLUMN default_chassis_skin_id SET NOT NULL;
 
 -- fix ones we missed somehow
 UPDATE chassis_skin

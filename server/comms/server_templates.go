@@ -42,14 +42,12 @@ type TemplateResp struct {
 }
 
 func (s *S) Template(req TemplateReq, resp *TemplateResp) error {
-	_, err := db.Template(req.TemplateID)
+	template, err := db.Template(req.TemplateID)
 	if err != nil {
 		return terror.Error(err)
 	}
 
-	// TODO: convert mech object
-
-	//resp.TemplateContainer = template
+	resp.TemplateContainer = ServerTemplateToApiTemplateV1(template)
 	return nil
 }
 

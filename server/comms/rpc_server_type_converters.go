@@ -134,6 +134,106 @@ func ServerBlueprintEnergyCoreToApiV1(ec *server.BlueprintEnergyCore) *Blueprint
 	}
 }
 
+func ServerBlueprintUtilitiesToApiV1(items []*server.BlueprintUtility) []*BlueprintUtility {
+	var converted []*BlueprintUtility
+	for _, i := range items {
+		converted = append(converted, ServerBlueprintUtilityToApiV1(i))
+	}
+	return converted
+}
+
+func ServerBlueprintUtilityToApiV1(ec *server.BlueprintUtility) *BlueprintUtility {
+	result := &BlueprintUtility{
+		ID:        ec.ID,
+		BrandID:   ec.BrandID,
+		Label:     ec.Label,
+		UpdatedAt: ec.UpdatedAt,
+		CreatedAt: ec.CreatedAt,
+		Type:      ec.Type,
+	}
+	switch ec.Type {
+	case "SHIELD":
+		if ec.ShieldBlueprint != nil {
+			result.UtilityObject = ServerBlueprintUtilityShieldToApiV1(ec.ShieldBlueprint)
+		}
+	case "ATTACK DRONE":
+		if ec.AttackDroneBlueprint != nil {
+			result.UtilityObject = ServerBlueprintUtilityAttackDroneToApiV1(ec.AttackDroneBlueprint)
+		}
+	case "REPAIR DRONE":
+		if ec.RepairDroneBlueprint != nil {
+			result.UtilityObject = ServerBlueprintUtilityRepairDroneToApiV1(ec.RepairDroneBlueprint)
+		}
+	case "ANTI MISSILE":
+		if ec.AntiMissileBlueprint != nil {
+			result.UtilityObject = ServerBlueprintUtilityAntiMissileToApiV1(ec.AntiMissileBlueprint)
+		}
+	case "ACCELERATOR":
+		if ec.AcceleratorBlueprint != nil {
+			result.UtilityObject = ServerBlueprintUtilityAcceleratorToApiV1(ec.AcceleratorBlueprint)
+		}
+	}
+
+	return result
+}
+
+func ServerBlueprintUtilityAcceleratorToApiV1(obj *server.BlueprintUtilityAccelerator) *BlueprintUtilityAccelerator {
+	return &BlueprintUtilityAccelerator{
+		ID:                 obj.ID,
+		BlueprintUtilityID: obj.BlueprintUtilityID,
+		EnergyCost:         obj.EnergyCost,
+		BoostSeconds:       obj.BoostSeconds,
+		BoostAmount:        obj.BoostAmount,
+		CreatedAt:          obj.CreatedAt,
+	}
+}
+
+func ServerBlueprintUtilityAntiMissileToApiV1(obj *server.BlueprintUtilityAntiMissile) *BlueprintUtilityAntiMissile {
+	return &BlueprintUtilityAntiMissile{
+		ID:                 obj.ID,
+		BlueprintUtilityID: obj.BlueprintUtilityID,
+		RateOfFire:         obj.RateOfFire,
+		FireEnergyCost:     obj.FireEnergyCost,
+		CreatedAt:          obj.CreatedAt,
+	}
+}
+
+func ServerBlueprintUtilityRepairDroneToApiV1(obj *server.BlueprintUtilityRepairDrone) *BlueprintUtilityRepairDrone {
+	return &BlueprintUtilityRepairDrone{
+		ID:                 obj.ID,
+		BlueprintUtilityID: obj.BlueprintUtilityID,
+		RepairType:         obj.RepairType,
+		RepairAmount:       obj.RepairAmount,
+		DeployEnergyCost:   obj.DeployEnergyCost,
+		LifespanSeconds:    obj.LifespanSeconds,
+		CreatedAt:          obj.CreatedAt,
+	}
+}
+
+func ServerBlueprintUtilityShieldToApiV1(obj *server.BlueprintUtilityShield) *BlueprintUtilityShield {
+	return &BlueprintUtilityShield{
+		ID:                 obj.ID,
+		BlueprintUtilityID: obj.BlueprintUtilityID,
+		Hitpoints:          obj.Hitpoints,
+		RechargeRate:       obj.RechargeRate,
+		RechargeEnergyCost: obj.RechargeEnergyCost,
+		CreatedAt:          obj.CreatedAt,
+	}
+}
+
+func ServerBlueprintUtilityAttackDroneToApiV1(obj *server.BlueprintUtilityAttackDrone) *BlueprintUtilityAttackDrone {
+	return &BlueprintUtilityAttackDrone{
+		ID:                 obj.ID,
+		BlueprintUtilityID: obj.BlueprintUtilityID,
+		Damage:             obj.Damage,
+		RateOfFire:         obj.RateOfFire,
+		Hitpoints:          obj.Hitpoints,
+		LifespanSeconds:    obj.LifespanSeconds,
+		DeployEnergyCost:   obj.DeployEnergyCost,
+		CreatedAt:          obj.CreatedAt,
+	}
+}
+
 func ServerTemplateToApiTemplateV1(temp *server.TemplateContainer) *TemplateContainer {
 	return &TemplateContainer{
 		ID:                     temp.ID,
@@ -142,7 +242,7 @@ func ServerTemplateToApiTemplateV1(temp *server.TemplateContainer) *TemplateCont
 		CreatedAt:              temp.CreatedAt,
 		BlueprintMech:          ServerBlueprintMechsToApiV1(temp.BlueprintMech),
 		BlueprintWeapon:        ServerBlueprintWeaponsToApiV1(temp.BlueprintWeapon),
-		//BlueprintUtility:       temp.BlueprintUtility,
+		BlueprintUtility:       ServerBlueprintUtilitiesToApiV1(temp.BlueprintUtility),
 		BlueprintMechSkin:      ServerBlueprintMechSkinsToApiV1(temp.BlueprintMechSkin),
 		BlueprintMechAnimation: ServerBlueprintMechAnimationsToApiV1(temp.BlueprintMechAnimation),
 		BlueprintEnergyCore:    ServerBlueprintEnergyCoresToApiV1(temp.BlueprintEnergyCore),

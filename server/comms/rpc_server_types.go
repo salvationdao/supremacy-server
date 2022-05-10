@@ -162,12 +162,7 @@ type Utility struct {
 	OwnerID          string              `json:"owner_id"`
 	EquippedOn       null.String         `json:"equipped_on,omitempty"`
 	Type             string              `json:"type"`
-
-	Shield      *UtilityShield      `json:"shield,omitempty"`
-	AttackDrone *UtilityAttackDrone `json:"attack_drone,omitempty"`
-	RepairDrone *UtilityRepairDrone `json:"repair_drone,omitempty"`
-	Accelerator *UtilityAccelerator `json:"accelerator,omitempty"`
-	AntiMissile *UtilityAntiMissile `json:"anti_missile,omitempty"`
+	UtilityObject    any                 `json:"utility_object"`
 }
 
 type UtilityAttackDrone struct {
@@ -303,18 +298,13 @@ type BlueprintWeapon struct {
 }
 
 type BlueprintUtility struct {
-	ID        string      `json:"id"`
-	BrandID   null.String `json:"brand_id,omitempty"`
-	Label     string      `json:"label"`
-	UpdatedAt time.Time   `json:"updated_at"`
-	CreatedAt time.Time   `json:"created_at"`
-	Type      string      `json:"type"`
-
-	ShieldBlueprint      *BlueprintUtilityShield      `json:"shield_blueprint,omitempty"`
-	AttackDroneBlueprint *BlueprintUtilityAttackDrone `json:"attack_drone_blueprint,omitempty"`
-	RepairDroneBlueprint *BlueprintUtilityRepairDrone `json:"repair_drone_blueprint,omitempty"`
-	AcceleratorBlueprint *BlueprintUtilityAccelerator `json:"accelerator_blueprint,omitempty"`
-	AntiMissileBlueprint *BlueprintUtilityAntiMissile `json:"anti_missile_blueprint,omitempty"`
+	ID            string      `json:"id"`
+	BrandID       null.String `json:"brand_id,omitempty"`
+	Label         string      `json:"label"`
+	UpdatedAt     time.Time   `json:"updated_at"`
+	CreatedAt     time.Time   `json:"created_at"`
+	Type          string      `json:"type"`
+	UtilityObject any         `json:"utility_object"`
 }
 
 type BlueprintUtilityAttackDrone struct {
