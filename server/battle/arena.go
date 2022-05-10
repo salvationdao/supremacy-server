@@ -267,8 +267,11 @@ func (btl *Battle) QueueDefaultMechs() error {
 	var reply hub.ReplyFunc = func(_ interface{}) {}
 	for _, mech := range defMechs {
 		mech.Name = helpers.GenerateStupidName()
-		// TODO: Fix this
-		//_, _ = mech.Update(gamedb.StdConn, boil.Whitelist(boiler.MechColumns.Label))
+		mechToUpdate := boiler.Mech{
+			ID:   mech.ID,
+			Name: mech.Name,
+		}
+		_, _ = mechToUpdate.Update(gamedb.StdConn, boil.Whitelist(boiler.MechColumns.Label))
 		req = QueueJoinRequest{
 			HubCommandRequest: nil,
 			Payload: struct {

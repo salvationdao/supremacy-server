@@ -4,54 +4,133 @@ import (
 	"server"
 )
 
-func ServerBlueprintMechsToApiV1(items []*server.BlueprintMech) []*BlueprintMech {
-	var converted []*BlueprintMech
+func ServerMechsToApiV1(items []*server.Mech) []*Mech {
+	var converted []*Mech
 	for _, i := range items {
-		converted = append(converted, ServerBlueprintMechToApiV1(i))
+		converted = append(converted, ServerMechToApiV1(i))
 	}
 	return converted
 }
 
-func ServerBlueprintMechToApiV1(mech *server.BlueprintMech) *BlueprintMech {
-	return &BlueprintMech{
-		ID:                   mech.ID,
-		BrandID:              mech.BrandID,
-		Label:                mech.Label,
-		Slug:                 mech.Slug,
-		Skin:                 mech.Skin,
-		WeaponHardpoints:     mech.WeaponHardpoints,
-		UtilitySlots:         mech.UtilitySlots,
-		Speed:                mech.Speed,
-		MaxHitpoints:         mech.MaxHitpoints,
-		UpdatedAt:            mech.UpdatedAt,
-		CreatedAt:            mech.CreatedAt,
-		ModelID:              mech.ModelID,
-		EnergyCoreSize:       mech.EnergyCoreSize,
-		Tier:                 mech.Tier,
-		DefaultChassisSkinID: mech.DefaultChassisSkinID,
-	}
-}
-
-func ServerBlueprintWeaponsToApiV1(items []*server.BlueprintWeapon) []*BlueprintWeapon {
-	var converted []*BlueprintWeapon
+func ServerMechSkinsToApiV1(items []*server.MechSkin) []*MechSkin {
+	var converted []*MechSkin
 	for _, i := range items {
-		converted = append(converted, ServerBlueprintWeaponToApiV1(i))
+		converted = append(converted, ServerMechSkinToApiV1(i))
 	}
 	return converted
 }
 
-func ServerBlueprintWeaponToApiV1(weapon *server.BlueprintWeapon) *BlueprintWeapon {
-	return &BlueprintWeapon{
+func ServerMechSkinToApiV1(skin *server.MechSkin) *MechSkin {
+	return &MechSkin{
+		CollectionDetails: &CollectionDetails{
+			CollectionSlug: skin.CollectionDetails.CollectionSlug,
+			Hash:           skin.CollectionDetails.Hash,
+			TokenID:        skin.CollectionDetails.TokenID,
+		},
+		ID:               skin.ID,
+		BlueprintID:      skin.BlueprintID,
+		CollectionItemID: skin.CollectionItemID,
+		GenesisTokenID:   skin.GenesisTokenID,
+		Label:            skin.Label,
+		OwnerID:          skin.OwnerID,
+		ChassisModel:     skin.ChassisModel,
+		EquippedOn:       skin.EquippedOn,
+		Tier:             skin.Tier,
+		ImageURL:         skin.ImageURL,
+		AnimationURL:     skin.AnimationURL,
+		CardAnimationURL: skin.CardAnimationURL,
+		AvatarURL:        skin.AvatarURL,
+		LargeImageURL:    skin.LargeImageURL,
+		CreatedAt:        skin.CreatedAt,
+	}
+}
+
+func ServerMechAnimationsToApiV1(items []*server.MechAnimation) []*MechAnimation {
+	var converted []*MechAnimation
+	for _, i := range items {
+		converted = append(converted, ServerMechAnimationToApiV1(i))
+	}
+	return converted
+}
+
+func ServerMechAnimationToApiV1(animation *server.MechAnimation) *MechAnimation {
+	return &MechAnimation{
+		CollectionDetails: &CollectionDetails{
+			CollectionSlug: animation.CollectionDetails.CollectionSlug,
+			Hash:           animation.CollectionDetails.Hash,
+			TokenID:        animation.CollectionDetails.TokenID,
+		},
+		ID:               animation.ID,
+		BlueprintID:      animation.BlueprintID,
+		CollectionItemID: animation.CollectionItemID,
+		Label:            animation.Label,
+		OwnerID:          animation.OwnerID,
+		ChassisModel:     animation.ChassisModel,
+		EquippedOn:       animation.EquippedOn,
+		Tier:             animation.Tier,
+		IntroAnimation:   animation.IntroAnimation,
+		OutroAnimation:   animation.OutroAnimation,
+		CreatedAt:        animation.CreatedAt,
+	}
+}
+
+func ServerEnergyCoresToApiV1(items []*server.EnergyCore) []*EnergyCore {
+	var converted []*EnergyCore
+	for _, i := range items {
+		converted = append(converted, ServerEnergyCoreToApiV1(i))
+	}
+	return converted
+}
+
+func ServerEnergyCoreToApiV1(ec *server.EnergyCore) *EnergyCore {
+	return &EnergyCore{
+		CollectionDetails: &CollectionDetails{
+			CollectionSlug: ec.CollectionDetails.CollectionSlug,
+			Hash:           ec.CollectionDetails.Hash,
+			TokenID:        ec.CollectionDetails.TokenID,
+		},
+		ID:               ec.ID,
+		CollectionItemID: ec.CollectionItemID,
+		OwnerID:          ec.OwnerID,
+		Label:            ec.Label,
+		Size:             ec.Size,
+		Capacity:         ec.Capacity,
+		MaxDrawRate:      ec.MaxDrawRate,
+		RechargeRate:     ec.RechargeRate,
+		Armour:           ec.Armour,
+		MaxHitpoints:     ec.MaxHitpoints,
+		Tier:             ec.Tier,
+		EquippedOn:       ec.EquippedOn,
+		CreatedAt:        ec.CreatedAt,
+	}
+}
+
+func ServerWeaponsToApiV1(items []*server.Weapon) []*Weapon {
+	var converted []*Weapon
+	for _, i := range items {
+		converted = append(converted, ServerWeaponToApiV1(i))
+	}
+	return converted
+}
+
+func ServerWeaponToApiV1(weapon *server.Weapon) *Weapon {
+	return &Weapon{
+		CollectionDetails: &CollectionDetails{
+			CollectionSlug: weapon.CollectionDetails.CollectionSlug,
+			Hash:           weapon.CollectionDetails.Hash,
+			TokenID:        weapon.CollectionDetails.TokenID,
+		},
 		ID:                   weapon.ID,
 		BrandID:              weapon.BrandID,
 		Label:                weapon.Label,
 		Slug:                 weapon.Slug,
 		Damage:               weapon.Damage,
-		UpdatedAt:            weapon.UpdatedAt,
-		CreatedAt:            weapon.CreatedAt,
-		GameClientWeaponID:   weapon.GameClientWeaponID,
-		WeaponType:           weapon.WeaponType,
+		BlueprintID:          weapon.BlueprintID,
 		DefaultDamageTyp:     weapon.DefaultDamageTyp,
+		CollectionItemID:     weapon.CollectionItemID,
+		GenesisTokenID:       weapon.GenesisTokenID,
+		WeaponType:           weapon.WeaponType,
+		OwnerID:              weapon.OwnerID,
 		DamageFalloff:        weapon.DamageFalloff,
 		DamageFalloffRate:    weapon.DamageFalloffRate,
 		Spread:               weapon.Spread,
@@ -59,192 +138,151 @@ func ServerBlueprintWeaponToApiV1(weapon *server.BlueprintWeapon) *BlueprintWeap
 		Radius:               weapon.Radius,
 		RadialDoesFullDamage: weapon.RadialDoesFullDamage,
 		ProjectileSpeed:      weapon.ProjectileSpeed,
-		MaxAmmo:              weapon.MaxAmmo,
 		EnergyCost:           weapon.EnergyCost,
+		MaxAmmo:              weapon.MaxAmmo,
+		UpdatedAt:            weapon.UpdatedAt,
+		CreatedAt:            weapon.CreatedAt,
 	}
 }
 
-func ServerBlueprintMechSkinsToApiV1(items []*server.BlueprintMechSkin) []*BlueprintMechSkin {
-	var converted []*BlueprintMechSkin
+func ServerUtilitiesToApiV1(items []*server.Utility) []*Utility {
+	var converted []*Utility
 	for _, i := range items {
-		converted = append(converted, ServerBlueprintMechSkinToApiV1(i))
+		converted = append(converted, ServerUtilityToApiV1(i))
 	}
 	return converted
 }
 
-func ServerBlueprintMechSkinToApiV1(skin *server.BlueprintMechSkin) *BlueprintMechSkin {
-	return &BlueprintMechSkin{
-		ID:               skin.ID,
-		Collection:       skin.Collection,
-		ChassisModel:     skin.ChassisModel,
-		Label:            skin.Label,
-		Tier:             skin.Tier,
-		ImageURL:         skin.ImageURL,
-		AnimationURL:     skin.AnimationURL,
-		CardAnimationURL: skin.CardAnimationURL,
-		LargeImageURL:    skin.LargeImageURL,
-		AvatarURL:        skin.AvatarURL,
-		CreatedAt:        skin.CreatedAt,
-	}
-}
-
-func ServerBlueprintMechAnimationsToApiV1(items []*server.BlueprintMechAnimation) []*BlueprintMechAnimation {
-	var converted []*BlueprintMechAnimation
-	for _, i := range items {
-		converted = append(converted, ServerBlueprintMechAnimationToApiV1(i))
-	}
-	return converted
-}
-
-func ServerBlueprintMechAnimationToApiV1(animation *server.BlueprintMechAnimation) *BlueprintMechAnimation {
-	return &BlueprintMechAnimation{
-		ID:             animation.ID,
-		Collection:     animation.Collection,
-		Label:          animation.Label,
-		ChassisModel:   animation.ChassisModel,
-		EquippedOn:     animation.EquippedOn,
-		Tier:           animation.Tier,
-		IntroAnimation: animation.IntroAnimation,
-		OutroAnimation: animation.OutroAnimation,
-		CreatedAt:      animation.CreatedAt,
-	}
-}
-
-func ServerBlueprintEnergyCoresToApiV1(items []*server.BlueprintEnergyCore) []*BlueprintEnergyCore {
-	var converted []*BlueprintEnergyCore
-	for _, i := range items {
-		converted = append(converted, ServerBlueprintEnergyCoreToApiV1(i))
-	}
-	return converted
-}
-
-func ServerBlueprintEnergyCoreToApiV1(ec *server.BlueprintEnergyCore) *BlueprintEnergyCore {
-	return &BlueprintEnergyCore{
-		ID:           ec.ID,
-		Collection:   ec.Collection,
-		Label:        ec.Label,
-		Size:         ec.Size,
-		Capacity:     ec.Capacity,
-		MaxDrawRate:  ec.MaxDrawRate,
-		RechargeRate: ec.RechargeRate,
-		Armour:       ec.Armour,
-		MaxHitpoints: ec.MaxHitpoints,
-		Tier:         ec.Tier,
-		CreatedAt:    ec.CreatedAt,
-	}
-}
-
-func ServerBlueprintUtilitiesToApiV1(items []*server.BlueprintUtility) []*BlueprintUtility {
-	var converted []*BlueprintUtility
-	for _, i := range items {
-		converted = append(converted, ServerBlueprintUtilityToApiV1(i))
-	}
-	return converted
-}
-
-func ServerBlueprintUtilityToApiV1(ec *server.BlueprintUtility) *BlueprintUtility {
-	result := &BlueprintUtility{
-		ID:        ec.ID,
-		BrandID:   ec.BrandID,
-		Label:     ec.Label,
-		UpdatedAt: ec.UpdatedAt,
-		CreatedAt: ec.CreatedAt,
-		Type:      ec.Type,
+func ServerUtilityToApiV1(ec *server.Utility) *Utility {
+	result := &Utility{
+		CollectionDetails: &CollectionDetails{
+			CollectionSlug: ec.CollectionDetails.CollectionSlug,
+			Hash:           ec.CollectionDetails.Hash,
+			TokenID:        ec.CollectionDetails.TokenID,
+		},
+		ID:               ec.ID,
+		BrandID:          ec.BrandID,
+		Label:            ec.Label,
+		UpdatedAt:        ec.UpdatedAt,
+		CreatedAt:        ec.CreatedAt,
+		BlueprintID:      ec.BlueprintID,
+		CollectionItemID: ec.CollectionItemID,
+		GenesisTokenID:   ec.GenesisTokenID,
+		OwnerID:          ec.OwnerID,
+		EquippedOn:       ec.EquippedOn,
+		Type:             ec.Type,
 	}
 	switch ec.Type {
 	case "SHIELD":
-		if ec.ShieldBlueprint != nil {
-			result.UtilityObject = ServerBlueprintUtilityShieldToApiV1(ec.ShieldBlueprint)
+		if ec.Shield != nil {
+			result.Shield = ServerUtilityShieldToApiV1(ec.Shield)
 		}
 	case "ATTACK DRONE":
-		if ec.AttackDroneBlueprint != nil {
-			result.UtilityObject = ServerBlueprintUtilityAttackDroneToApiV1(ec.AttackDroneBlueprint)
+		if ec.AttackDrone != nil {
+			result.AttackDrone = ServerUtilityAttackDroneToApiV1(ec.AttackDrone)
 		}
 	case "REPAIR DRONE":
-		if ec.RepairDroneBlueprint != nil {
-			result.UtilityObject = ServerBlueprintUtilityRepairDroneToApiV1(ec.RepairDroneBlueprint)
+		if ec.RepairDrone != nil {
+			result.RepairDrone = ServerUtilityRepairDroneToApiV1(ec.RepairDrone)
 		}
 	case "ANTI MISSILE":
-		if ec.AntiMissileBlueprint != nil {
-			result.UtilityObject = ServerBlueprintUtilityAntiMissileToApiV1(ec.AntiMissileBlueprint)
+		if ec.AntiMissile != nil {
+			result.AntiMissile = ServerUtilityAntiMissileToApiV1(ec.AntiMissile)
 		}
 	case "ACCELERATOR":
-		if ec.AcceleratorBlueprint != nil {
-			result.UtilityObject = ServerBlueprintUtilityAcceleratorToApiV1(ec.AcceleratorBlueprint)
+		if ec.Accelerator != nil {
+			result.Accelerator = ServerUtilityAcceleratorToApiV1(ec.Accelerator)
 		}
 	}
 
 	return result
 }
 
-func ServerBlueprintUtilityAcceleratorToApiV1(obj *server.BlueprintUtilityAccelerator) *BlueprintUtilityAccelerator {
-	return &BlueprintUtilityAccelerator{
-		ID:                 obj.ID,
-		BlueprintUtilityID: obj.BlueprintUtilityID,
-		EnergyCost:         obj.EnergyCost,
-		BoostSeconds:       obj.BoostSeconds,
-		BoostAmount:        obj.BoostAmount,
-		CreatedAt:          obj.CreatedAt,
+func ServerUtilityAcceleratorToApiV1(obj *server.UtilityAccelerator) *UtilityAccelerator {
+	return &UtilityAccelerator{
+		UtilityID:    obj.UtilityID,
+		EnergyCost:   obj.EnergyCost,
+		BoostSeconds: obj.BoostSeconds,
+		BoostAmount:  obj.BoostAmount,
 	}
 }
 
-func ServerBlueprintUtilityAntiMissileToApiV1(obj *server.BlueprintUtilityAntiMissile) *BlueprintUtilityAntiMissile {
-	return &BlueprintUtilityAntiMissile{
-		ID:                 obj.ID,
-		BlueprintUtilityID: obj.BlueprintUtilityID,
-		RateOfFire:         obj.RateOfFire,
-		FireEnergyCost:     obj.FireEnergyCost,
-		CreatedAt:          obj.CreatedAt,
+func ServerUtilityAntiMissileToApiV1(obj *server.UtilityAntiMissile) *UtilityAntiMissile {
+	return &UtilityAntiMissile{
+		UtilityID:      obj.UtilityID,
+		RateOfFire:     obj.RateOfFire,
+		FireEnergyCost: obj.FireEnergyCost,
 	}
 }
 
-func ServerBlueprintUtilityRepairDroneToApiV1(obj *server.BlueprintUtilityRepairDrone) *BlueprintUtilityRepairDrone {
-	return &BlueprintUtilityRepairDrone{
-		ID:                 obj.ID,
-		BlueprintUtilityID: obj.BlueprintUtilityID,
-		RepairType:         obj.RepairType,
-		RepairAmount:       obj.RepairAmount,
-		DeployEnergyCost:   obj.DeployEnergyCost,
-		LifespanSeconds:    obj.LifespanSeconds,
-		CreatedAt:          obj.CreatedAt,
+func ServerUtilityRepairDroneToApiV1(obj *server.UtilityRepairDrone) *UtilityRepairDrone {
+	return &UtilityRepairDrone{
+		UtilityID:        obj.UtilityID,
+		RepairType:       obj.RepairType,
+		RepairAmount:     obj.RepairAmount,
+		DeployEnergyCost: obj.DeployEnergyCost,
+		LifespanSeconds:  obj.LifespanSeconds,
 	}
 }
 
-func ServerBlueprintUtilityShieldToApiV1(obj *server.BlueprintUtilityShield) *BlueprintUtilityShield {
-	return &BlueprintUtilityShield{
-		ID:                 obj.ID,
-		BlueprintUtilityID: obj.BlueprintUtilityID,
+func ServerUtilityShieldToApiV1(obj *server.UtilityShield) *UtilityShield {
+	return &UtilityShield{
+		UtilityID:          obj.UtilityID,
 		Hitpoints:          obj.Hitpoints,
 		RechargeRate:       obj.RechargeRate,
 		RechargeEnergyCost: obj.RechargeEnergyCost,
-		CreatedAt:          obj.CreatedAt,
 	}
 }
 
-func ServerBlueprintUtilityAttackDroneToApiV1(obj *server.BlueprintUtilityAttackDrone) *BlueprintUtilityAttackDrone {
-	return &BlueprintUtilityAttackDrone{
-		ID:                 obj.ID,
-		BlueprintUtilityID: obj.BlueprintUtilityID,
-		Damage:             obj.Damage,
-		RateOfFire:         obj.RateOfFire,
-		Hitpoints:          obj.Hitpoints,
-		LifespanSeconds:    obj.LifespanSeconds,
-		DeployEnergyCost:   obj.DeployEnergyCost,
-		CreatedAt:          obj.CreatedAt,
+func ServerUtilityAttackDroneToApiV1(obj *server.UtilityAttackDrone) *UtilityAttackDrone {
+	return &UtilityAttackDrone{
+		UtilityID:        obj.UtilityID,
+		Damage:           obj.Damage,
+		RateOfFire:       obj.RateOfFire,
+		Hitpoints:        obj.Hitpoints,
+		LifespanSeconds:  obj.LifespanSeconds,
+		DeployEnergyCost: obj.DeployEnergyCost,
 	}
 }
 
-func ServerTemplateToApiTemplateV1(temp *server.TemplateContainer) *TemplateContainer {
-	return &TemplateContainer{
-		ID:                     temp.ID,
-		Label:                  temp.Label,
-		UpdatedAt:              temp.UpdatedAt,
-		CreatedAt:              temp.CreatedAt,
-		BlueprintMech:          ServerBlueprintMechsToApiV1(temp.BlueprintMech),
-		BlueprintWeapon:        ServerBlueprintWeaponsToApiV1(temp.BlueprintWeapon),
-		BlueprintUtility:       ServerBlueprintUtilitiesToApiV1(temp.BlueprintUtility),
-		BlueprintMechSkin:      ServerBlueprintMechSkinsToApiV1(temp.BlueprintMechSkin),
-		BlueprintMechAnimation: ServerBlueprintMechAnimationsToApiV1(temp.BlueprintMechAnimation),
-		BlueprintEnergyCore:    ServerBlueprintEnergyCoresToApiV1(temp.BlueprintEnergyCore),
+func ServerMechToApiV1(mech *server.Mech) *Mech {
+	return &Mech{
+		CollectionDetails: &CollectionDetails{
+			CollectionSlug: mech.CollectionDetails.CollectionSlug,
+			Hash:           mech.CollectionDetails.Hash,
+			TokenID:        mech.CollectionDetails.TokenID,
+		},
+		ID:                   mech.ID,
+		BrandID:              mech.BrandID,
+		Label:                mech.Label,
+		WeaponHardpoints:     mech.WeaponHardpoints,
+		UtilitySlots:         mech.UtilitySlots,
+		Speed:                mech.Speed,
+		MaxHitpoints:         mech.MaxHitpoints,
+		BlueprintID:          mech.BlueprintID,
+		IsDefault:            mech.IsDefault,
+		IsInsured:            mech.IsInsured,
+		Name:                 mech.Name,
+		ModelID:              mech.ModelID,
+		CollectionItemID:     mech.CollectionItemID,
+		GenesisTokenID:       mech.GenesisTokenID,
+		OwnerID:              mech.OwnerID,
+		FactionID:            mech.FactionID,
+		EnergyCoreSize:       mech.EnergyCoreSize,
+		Tier:                 mech.Tier,
+		DefaultChassisSkinID: mech.DefaultChassisSkinID,
+		DefaultChassisSkin:   ServerBlueprintMechSkinToApiV1(mech.DefaultChassisSkin),
+		ChassisSkinID:        mech.ChassisSkinID,
+		ChassisSkin:          ServerMechSkinToApiV1(mech.ChassisSkin),
+		IntroAnimationID:     mech.IntroAnimationID,
+		IntroAnimation:       ServerMechAnimationToApiV1(mech.IntroAnimation),
+		OutroAnimationID:     mech.OutroAnimationID,
+		OutroAnimation:       ServerMechAnimationToApiV1(mech.OutroAnimation),
+		EnergyCoreID:         mech.EnergyCoreID,
+		EnergyCore:           ServerEnergyCoreToApiV1(mech.EnergyCore),
+		Weapons:              ServerWeaponsToApiV1(mech.Weapons),
+		Utility:              ServerUtilitiesToApiV1(mech.Utility),
+		UpdatedAt:            mech.UpdatedAt,
+		CreatedAt:            mech.CreatedAt,
 	}
 }

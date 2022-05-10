@@ -64,9 +64,7 @@ func (s *S) Mechs(req MechsReq, resp *MechsResp) error {
 			mechContainer.TokenID = 6612
 		}
 
-		// TODO: convert mech object
-
-		//result = append(result, mechContainer)
+		result = append(result, ServerMechToApiV1(mechContainer))
 
 	}
 	resp.MechContainers = result

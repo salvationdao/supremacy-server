@@ -45,8 +45,8 @@ type Mech struct {
 	Tier null.String `json:"tier,omitempty"`
 
 	// Connected objects
-	DefaultChassisSkinID string    `json:"default_chassis_skin_id"`
-	DefaultChassisSkin   *MechSkin `json:"default_chassis_skin"`
+	DefaultChassisSkinID string             `json:"default_chassis_skin_id"`
+	DefaultChassisSkin   *BlueprintMechSkin `json:"default_chassis_skin"`
 
 	ChassisSkinID null.String `json:"chassis_skin_id,omitempty"`
 	ChassisSkin   *MechSkin   `json:"chassis_skin,omitempty"`
@@ -162,7 +162,12 @@ type Utility struct {
 	OwnerID          string              `json:"owner_id"`
 	EquippedOn       null.String         `json:"equipped_on,omitempty"`
 	Type             string              `json:"type"`
-	UtilityObject    any                 `json:"utility_object"`
+
+	Shield      *UtilityShield      `json:"shield,omitempty"`
+	AttackDrone *UtilityAttackDrone `json:"attack_drone,omitempty"`
+	RepairDrone *UtilityRepairDrone `json:"repair_drone,omitempty"`
+	Accelerator *UtilityAccelerator `json:"accelerator,omitempty"`
+	AntiMissile *UtilityAntiMissile `json:"anti_missile,omitempty"`
 }
 
 type UtilityAttackDrone struct {

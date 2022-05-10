@@ -50,8 +50,8 @@ type Mech struct {
 	Model   *MechModel `json:"model"`
 
 	// Connected objects
-	DefaultChassisSkinID string    `json:"default_chassis_skin_id"`
-	DefaultChassisSkin   *MechSkin `json:"default_chassis_skin"`
+	DefaultChassisSkinID string             `json:"default_chassis_skin_id"`
+	DefaultChassisSkin   *BlueprintMechSkin `json:"default_chassis_skin"`
 
 	ChassisSkinID null.String `json:"chassis_skin_id,omitempty"`
 	ChassisSkin   *MechSkin   `json:"chassis_skin,omitempty"`

@@ -22,7 +22,12 @@ type Utility struct {
 	OwnerID          string              `json:"owner_id"`
 	EquippedOn       null.String         `json:"equipped_on,omitempty"`
 	Type             string              `json:"type"`
-	UtilityObject    any                 `json:"utility_object"`
+
+	Shield      *UtilityShield      `json:"shield,omitempty"`
+	AttackDrone *UtilityAttackDrone `json:"attack_drone,omitempty"`
+	RepairDrone *UtilityRepairDrone `json:"repair_drone,omitempty"`
+	Accelerator *UtilityAccelerator `json:"accelerator,omitempty"`
+	AntiMissile *UtilityAntiMissile `json:"anti_missile,omitempty"`
 }
 
 type UtilityAttackDrone struct {
