@@ -6,6 +6,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"server"
+	"server/db/boiler"
+	"server/gamedb"
+	"server/gamelog"
+	"server/rpcclient"
+	"time"
+
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
@@ -13,12 +20,6 @@ import (
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
-	"server"
-	"server/db/boiler"
-	"server/gamedb"
-	"server/gamelog"
-	"server/rpcclient"
-	"time"
 )
 
 const (
@@ -60,7 +61,7 @@ func (btl *Battle) processWarMachineRepair(payload *BattleEndPayload) {
 	for _, mech := range mechs {
 		repairFee := btl.arena.InsurancePrice(mech.ID)
 
-		ar := boiler.AssetRepair{
+		ar := boiler.MechRepair{
 			MechID:           mech.ID,
 			RepairCompleteAt: now.Add(30 * time.Minute),
 			FullRepairFee:    repairFee,
@@ -122,9 +123,9 @@ func (arena *Arena) AssetRepairPayFeeHandler(ctx context.Context, hubc *hub.Clie
 	now := time.Now()
 
 	// check repair center
-	ar, err := boiler.AssetRepairs(
-		boiler.AssetRepairWhere.MechID.EQ(mech.ID),
-		boiler.AssetRepairWhere.RepairCompleteAt.GT(now),
+	ar, err := boiler.MechRepairs(
+		boiler.MechRepairWhere.MechID.EQ(mech.ID),
+		boiler.MechRepairWhere.RepairCompleteAt.GT(now),
 	).One(gamedb.StdConn)
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
@@ -150,7 +151,7 @@ func (arena *Arena) AssetRepairPayFeeHandler(ctx context.Context, hubc *hub.Clie
 	defer tx.Rollback()
 
 	ar.RepairCompleteAt = now
-	_, err = ar.Update(tx, boil.Whitelist(boiler.AssetRepairColumns.RepairCompleteAt))
+	_, err = ar.Update(tx, boil.Whitelist(boiler.MechRepairColumns.RepairCompleteAt))
 	if err != nil {
 		return terror.Error(err, "Failed to update asset repair")
 	}
@@ -187,7 +188,7 @@ func (arena *Arena) AssetRepairPayFeeHandler(ctx context.Context, hubc *hub.Clie
 	}
 
 	ar.PayToRepairTXID = null.StringFrom(txID)
-	_, err = ar.Update(gamedb.StdConn, boil.Whitelist(boiler.AssetRepairColumns.PayToRepairTXID))
+	_, err = ar.Update(gamedb.StdConn, boil.Whitelist(boiler.MechRepairColumns.PayToRepairTXID))
 	if err != nil {
 		return terror.Error(err, "Failed to update asset repair")
 	}
@@ -237,9 +238,9 @@ func (arena *Arena) AssetRepairStatusHandler(ctx context.Context, hubc *hub.Clie
 	now := time.Now()
 
 	// check repair center
-	ar, err := boiler.AssetRepairs(
-		boiler.AssetRepairWhere.MechID.EQ(mech.ID),
-		boiler.AssetRepairWhere.RepairCompleteAt.GT(now),
+	ar, err := boiler.MechRepairs(
+		boiler.MechRepairWhere.MechID.EQ(mech.ID),
+		boiler.MechRepairWhere.RepairCompleteAt.GT(now),
 	).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return terror.Error(err, "Failed to get asset repair record from db")

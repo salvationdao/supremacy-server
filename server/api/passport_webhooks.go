@@ -199,7 +199,7 @@ func (pc *PassportWebhookController) UserStatGet(w http.ResponseWriter, r *http.
 	if userStat == nil {
 		// build an empty user stat if there is no user stat in db
 		userStat = &server.UserStat{
-			UserStat: &boiler.UserStat{
+			PlayerStat: &boiler.PlayerStat{
 				ID: req.UserID.String(),
 			},
 		}

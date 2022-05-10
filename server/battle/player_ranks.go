@@ -146,10 +146,10 @@ func calcSyndicatePlayerRank(factionID server.FactionID) error {
 		qm.Where(
 			fmt.Sprintf(
 				"EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s > 0)",
-				boiler.TableNames.UserStats,
-				qm.Rels(boiler.TableNames.UserStats, boiler.UserStatColumns.ID),
+				boiler.TableNames.PlayerStats,
+				qm.Rels(boiler.TableNames.PlayerStats, boiler.PlayerStatColumns.ID),
 				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.ID),
-				qm.Rels(boiler.TableNames.UserStats, boiler.UserStatColumns.AbilityKillCount),
+				qm.Rels(boiler.TableNames.PlayerStats, boiler.PlayerStatColumns.AbilityKillCount),
 			),
 		),
 	).UpdateAll(gamedb.StdConn, boiler.M{"rank": PlayerRankCorporal})
@@ -167,10 +167,10 @@ func calcSyndicatePlayerRank(factionID server.FactionID) error {
 		qm.Where(
 			fmt.Sprintf(
 				"EXISTS (SELECT 1 FROM %s WHERE %s = %s AND %s <= 0)",
-				boiler.TableNames.UserStats,
-				qm.Rels(boiler.TableNames.UserStats, boiler.UserStatColumns.ID),
+				boiler.TableNames.PlayerStats,
+				qm.Rels(boiler.TableNames.PlayerStats, boiler.PlayerStatColumns.ID),
 				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.ID),
-				qm.Rels(boiler.TableNames.UserStats, boiler.UserStatColumns.AbilityKillCount),
+				qm.Rels(boiler.TableNames.PlayerStats, boiler.PlayerStatColumns.AbilityKillCount),
 			),
 		),
 	).UpdateAll(gamedb.StdConn, boiler.M{"rank": PlayerRankPrivate})

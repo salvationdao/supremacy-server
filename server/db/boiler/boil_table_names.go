@@ -5,7 +5,6 @@ package boiler
 
 var TableNames = struct {
 	Ammo                                               string
-	AssetRepair                                        string
 	BattleAbilities                                    string
 	BattleAbilityTriggers                              string
 	BattleContracts                                    string
@@ -20,12 +19,10 @@ var TableNames = struct {
 	BattleMechs                                        string
 	BattleQueue                                        string
 	BattleQueueNotifications                           string
+	BattleViewers                                      string
 	BattleWarMachineQueues                             string
 	BattleWins                                         string
 	Battles                                            string
-	BattlesUserVotes                                   string
-	BattlesViewers                                     string
-	BattlesWinnerRecords                               string
 	Blobs                                              string
 	BlueprintAmmo                                      string
 	BlueprintEnergyCores                               string
@@ -44,7 +41,6 @@ var TableNames = struct {
 	Brands                                             string
 	ChatHistory                                        string
 	CollectionItems                                    string
-	Config                                             string
 	ConsumedAbilities                                  string
 	EnergyCores                                        string
 	FactionStats                                       string
@@ -52,23 +48,25 @@ var TableNames = struct {
 	GameAbilities                                      string
 	GameMaps                                           string
 	GlobalAnnouncements                                string
-	IssuedContractRewards                              string
 	KV                                                 string
 	Languages                                          string
 	MechAnimation                                      string
 	MechModel                                          string
+	MechRepair                                         string
 	MechSkin                                           string
 	MechStats                                          string
 	MechUtility                                        string
 	MechWeapons                                        string
 	Mechs                                              string
 	Multipliers                                        string
-	PendingTransactions                                string
 	PlayerAbilities                                    string
 	PlayerActiveLogs                                   string
 	PlayerKillLog                                      string
 	PlayerLanguages                                    string
+	PlayerMultipliers                                  string
 	PlayerPreferences                                  string
+	PlayerSpoilsOfWar                                  string
+	PlayerStats                                        string
 	Players                                            string
 	PlayersPunishVotes                                 string
 	PunishOptions                                      string
@@ -82,10 +80,6 @@ var TableNames = struct {
 	TemplateBlueprints                                 string
 	Templates                                          string
 	TemplatesOld                                       string
-	UserMultipliers                                    string
-	UserSpoilsOfWar                                    string
-	UserStats                                          string
-	Users                                              string
 	Utility                                            string
 	UtilityAccelerator                                 string
 	UtilityAntiMissile                                 string
@@ -97,7 +91,6 @@ var TableNames = struct {
 	Weapons                                            string
 }{
 	Ammo:                            "ammo",
-	AssetRepair:                     "asset_repair",
 	BattleAbilities:                 "battle_abilities",
 	BattleAbilityTriggers:           "battle_ability_triggers",
 	BattleContracts:                 "battle_contracts",
@@ -112,12 +105,10 @@ var TableNames = struct {
 	BattleMechs:                 "battle_mechs",
 	BattleQueue:                 "battle_queue",
 	BattleQueueNotifications:    "battle_queue_notifications",
+	BattleViewers:               "battle_viewers",
 	BattleWarMachineQueues:      "battle_war_machine_queues",
 	BattleWins:                  "battle_wins",
 	Battles:                     "battles",
-	BattlesUserVotes:            "battles_user_votes",
-	BattlesViewers:              "battles_viewers",
-	BattlesWinnerRecords:        "battles_winner_records",
 	Blobs:                       "blobs",
 	BlueprintAmmo:               "blueprint_ammo",
 	BlueprintEnergyCores:        "blueprint_energy_cores",
@@ -136,7 +127,6 @@ var TableNames = struct {
 	Brands:                      "brands",
 	ChatHistory:                 "chat_history",
 	CollectionItems:             "collection_items",
-	Config:                      "config",
 	ConsumedAbilities:           "consumed_abilities",
 	EnergyCores:                 "energy_cores",
 	FactionStats:                "faction_stats",
@@ -144,23 +134,25 @@ var TableNames = struct {
 	GameAbilities:               "game_abilities",
 	GameMaps:                    "game_maps",
 	GlobalAnnouncements:         "global_announcements",
-	IssuedContractRewards:       "issued_contract_rewards",
 	KV:                          "kv",
 	Languages:                   "languages",
 	MechAnimation:               "mech_animation",
 	MechModel:                   "mech_model",
+	MechRepair:                  "mech_repair",
 	MechSkin:                    "mech_skin",
 	MechStats:                   "mech_stats",
 	MechUtility:                 "mech_utility",
 	MechWeapons:                 "mech_weapons",
 	Mechs:                       "mechs",
 	Multipliers:                 "multipliers",
-	PendingTransactions:         "pending_transactions",
 	PlayerAbilities:             "player_abilities",
 	PlayerActiveLogs:            "player_active_logs",
 	PlayerKillLog:               "player_kill_log",
 	PlayerLanguages:             "player_languages",
+	PlayerMultipliers:           "player_multipliers",
 	PlayerPreferences:           "player_preferences",
+	PlayerSpoilsOfWar:           "player_spoils_of_war",
+	PlayerStats:                 "player_stats",
 	Players:                     "players",
 	PlayersPunishVotes:          "players_punish_votes",
 	PunishOptions:               "punish_options",
@@ -174,10 +166,6 @@ var TableNames = struct {
 	TemplateBlueprints:          "template_blueprints",
 	Templates:                   "templates",
 	TemplatesOld:                "templates_old",
-	UserMultipliers:             "user_multipliers",
-	UserSpoilsOfWar:             "user_spoils_of_war",
-	UserStats:                   "user_stats",
-	Users:                       "users",
 	Utility:                     "utility",
 	UtilityAccelerator:          "utility_accelerator",
 	UtilityAntiMissile:          "utility_anti_missile",

@@ -404,10 +404,7 @@ ALTER TABLE blueprint_chassis
     ADD COLUMN energy_core_size        TEXT DEFAULT 'MEDIUM' CHECK ( energy_core_size IN ('SMALL', 'MEDIUM', 'LARGE') ),
     ADD COLUMN tier                    TEXT,
     ADD COLUMN default_chassis_skin_id UUID REFERENCES blueprint_chassis_skin (id),
-    ADD COLUMN chassis_skin_id         UUID REFERENCES blueprint_chassis_skin (id),
-    ADD COLUMN energy_core_id          UUID REFERENCES blueprint_energy_cores (id),
-    ADD COLUMN intro_animation_id      UUID REFERENCES blueprint_chassis_animation (id),
-    ADD COLUMN outro_animation_id      UUID REFERENCES blueprint_chassis_animation (id);
+    ADD COLUMN chassis_skin_id         UUID REFERENCES blueprint_chassis_skin (id); -- this column is used temp and gets removed.
 
 UPDATE blueprint_chassis c
 SET model_id = (SELECT id
@@ -443,9 +440,6 @@ SET default_chassis_skin_id = (SELECT bcs.id
                                  AND bcs.label = 'Warden')
 WHERE c.model_id = (SELECT id FROM chassis_model WHERE label = 'Tenshi Mk1');
 
-ALTER TABLE blueprint_chassis
-    ALTER COLUMN default_chassis_skin_id SET NOT NULL;
-
 -- SET THE CONNECTED SKINS
 UPDATE blueprint_chassis bc
 SET chassis_skin_id = (SELECT id
@@ -453,6 +447,8 @@ SET chassis_skin_id = (SELECT id
                        WHERE bcs.label = bc.skin
                          AND bcs.chassis_model = bc.model_id);
 
+ALTER TABLE blueprint_chassis
+    ALTER COLUMN default_chassis_skin_id SET NOT NULL;
 
 -- fix ones we missed somehow
 UPDATE chassis_skin

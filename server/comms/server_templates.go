@@ -1,7 +1,6 @@
 package comms
 
 import (
-	"server"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -13,7 +12,7 @@ import (
 type TemplatesReq struct {
 }
 type TemplatesResp struct {
-	TemplateContainers []*server.TemplateContainer
+	TemplateContainers []*TemplateContainer
 }
 
 // Templates is a heavy func, do not use on a running server
@@ -22,13 +21,16 @@ func (s *S) Templates(req TemplatesReq, resp *TemplatesResp) error {
 	if err != nil {
 		return terror.Error(err)
 	}
-	result := []*server.TemplateContainer{}
+	result := []*TemplateContainer{}
 	for _, tpl := range templates {
-		template, err := db.Template(uuid.Must(uuid.FromString(tpl.ID)))
+		_, err := db.Template(uuid.Must(uuid.FromString(tpl.ID)))
 		if err != nil {
 			return terror.Error(err)
 		}
-		result = append(result, template)
+
+		// TODO: convert mech object
+
+		//result = append(result, template)
 
 	}
 	resp.TemplateContainers = result
@@ -39,15 +41,18 @@ type TemplateReq struct {
 	TemplateID uuid.UUID
 }
 type TemplateResp struct {
-	TemplateContainer *server.TemplateContainer
+	TemplateContainer *TemplateContainer
 }
 
 func (s *S) Template(req TemplateReq, resp *TemplateResp) error {
-	template, err := db.Template(req.TemplateID)
+	_, err := db.Template(req.TemplateID)
 	if err != nil {
 		return terror.Error(err)
 	}
-	resp.TemplateContainer = template
+
+	// TODO: convert mech object
+
+	//resp.TemplateContainer = template
 	return nil
 }
 

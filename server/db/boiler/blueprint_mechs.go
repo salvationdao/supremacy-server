@@ -39,9 +39,6 @@ type BlueprintMech struct {
 	EnergyCoreSize       null.String `boiler:"energy_core_size" boil:"energy_core_size" json:"energy_core_size,omitempty" toml:"energy_core_size" yaml:"energy_core_size,omitempty"`
 	Tier                 null.String `boiler:"tier" boil:"tier" json:"tier,omitempty" toml:"tier" yaml:"tier,omitempty"`
 	DefaultChassisSkinID string      `boiler:"default_chassis_skin_id" boil:"default_chassis_skin_id" json:"default_chassis_skin_id" toml:"default_chassis_skin_id" yaml:"default_chassis_skin_id"`
-	EnergyCoreID         null.String `boiler:"energy_core_id" boil:"energy_core_id" json:"energy_core_id,omitempty" toml:"energy_core_id" yaml:"energy_core_id,omitempty"`
-	IntroAnimationID     null.String `boiler:"intro_animation_id" boil:"intro_animation_id" json:"intro_animation_id,omitempty" toml:"intro_animation_id" yaml:"intro_animation_id,omitempty"`
-	OutroAnimationID     null.String `boiler:"outro_animation_id" boil:"outro_animation_id" json:"outro_animation_id,omitempty" toml:"outro_animation_id" yaml:"outro_animation_id,omitempty"`
 
 	R *blueprintMechR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintMechL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -64,9 +61,6 @@ var BlueprintMechColumns = struct {
 	EnergyCoreSize       string
 	Tier                 string
 	DefaultChassisSkinID string
-	EnergyCoreID         string
-	IntroAnimationID     string
-	OutroAnimationID     string
 }{
 	ID:                   "id",
 	BrandID:              "brand_id",
@@ -84,9 +78,6 @@ var BlueprintMechColumns = struct {
 	EnergyCoreSize:       "energy_core_size",
 	Tier:                 "tier",
 	DefaultChassisSkinID: "default_chassis_skin_id",
-	EnergyCoreID:         "energy_core_id",
-	IntroAnimationID:     "intro_animation_id",
-	OutroAnimationID:     "outro_animation_id",
 }
 
 var BlueprintMechTableColumns = struct {
@@ -106,9 +97,6 @@ var BlueprintMechTableColumns = struct {
 	EnergyCoreSize       string
 	Tier                 string
 	DefaultChassisSkinID string
-	EnergyCoreID         string
-	IntroAnimationID     string
-	OutroAnimationID     string
 }{
 	ID:                   "blueprint_mechs.id",
 	BrandID:              "blueprint_mechs.brand_id",
@@ -126,9 +114,6 @@ var BlueprintMechTableColumns = struct {
 	EnergyCoreSize:       "blueprint_mechs.energy_core_size",
 	Tier:                 "blueprint_mechs.tier",
 	DefaultChassisSkinID: "blueprint_mechs.default_chassis_skin_id",
-	EnergyCoreID:         "blueprint_mechs.energy_core_id",
-	IntroAnimationID:     "blueprint_mechs.intro_animation_id",
-	OutroAnimationID:     "blueprint_mechs.outro_animation_id",
 }
 
 // Generated where
@@ -150,9 +135,6 @@ var BlueprintMechWhere = struct {
 	EnergyCoreSize       whereHelpernull_String
 	Tier                 whereHelpernull_String
 	DefaultChassisSkinID whereHelperstring
-	EnergyCoreID         whereHelpernull_String
-	IntroAnimationID     whereHelpernull_String
-	OutroAnimationID     whereHelpernull_String
 }{
 	ID:                   whereHelperstring{field: "\"blueprint_mechs\".\"id\""},
 	BrandID:              whereHelperstring{field: "\"blueprint_mechs\".\"brand_id\""},
@@ -170,42 +152,30 @@ var BlueprintMechWhere = struct {
 	EnergyCoreSize:       whereHelpernull_String{field: "\"blueprint_mechs\".\"energy_core_size\""},
 	Tier:                 whereHelpernull_String{field: "\"blueprint_mechs\".\"tier\""},
 	DefaultChassisSkinID: whereHelperstring{field: "\"blueprint_mechs\".\"default_chassis_skin_id\""},
-	EnergyCoreID:         whereHelpernull_String{field: "\"blueprint_mechs\".\"energy_core_id\""},
-	IntroAnimationID:     whereHelpernull_String{field: "\"blueprint_mechs\".\"intro_animation_id\""},
-	OutroAnimationID:     whereHelpernull_String{field: "\"blueprint_mechs\".\"outro_animation_id\""},
 }
 
 // BlueprintMechRels is where relationship names are stored.
 var BlueprintMechRels = struct {
 	Brand                        string
 	DefaultChassisSkin           string
-	EnergyCore                   string
-	IntroAnimation               string
 	Model                        string
-	OutroAnimation               string
 	BlueprintChassisTemplatesOld string
 	BlueprintMechs               string
 }{
 	Brand:                        "Brand",
 	DefaultChassisSkin:           "DefaultChassisSkin",
-	EnergyCore:                   "EnergyCore",
-	IntroAnimation:               "IntroAnimation",
 	Model:                        "Model",
-	OutroAnimation:               "OutroAnimation",
 	BlueprintChassisTemplatesOld: "BlueprintChassisTemplatesOld",
 	BlueprintMechs:               "BlueprintMechs",
 }
 
 // blueprintMechR is where relationships are stored.
 type blueprintMechR struct {
-	Brand                        *Brand                  `boiler:"Brand" boil:"Brand" json:"Brand" toml:"Brand" yaml:"Brand"`
-	DefaultChassisSkin           *BlueprintMechSkin      `boiler:"DefaultChassisSkin" boil:"DefaultChassisSkin" json:"DefaultChassisSkin" toml:"DefaultChassisSkin" yaml:"DefaultChassisSkin"`
-	EnergyCore                   *BlueprintEnergyCore    `boiler:"EnergyCore" boil:"EnergyCore" json:"EnergyCore" toml:"EnergyCore" yaml:"EnergyCore"`
-	IntroAnimation               *BlueprintMechAnimation `boiler:"IntroAnimation" boil:"IntroAnimation" json:"IntroAnimation" toml:"IntroAnimation" yaml:"IntroAnimation"`
-	Model                        *MechModel              `boiler:"Model" boil:"Model" json:"Model" toml:"Model" yaml:"Model"`
-	OutroAnimation               *BlueprintMechAnimation `boiler:"OutroAnimation" boil:"OutroAnimation" json:"OutroAnimation" toml:"OutroAnimation" yaml:"OutroAnimation"`
-	BlueprintChassisTemplatesOld *TemplatesOld           `boiler:"BlueprintChassisTemplatesOld" boil:"BlueprintChassisTemplatesOld" json:"BlueprintChassisTemplatesOld" toml:"BlueprintChassisTemplatesOld" yaml:"BlueprintChassisTemplatesOld"`
-	BlueprintMechs               MechSlice               `boiler:"BlueprintMechs" boil:"BlueprintMechs" json:"BlueprintMechs" toml:"BlueprintMechs" yaml:"BlueprintMechs"`
+	Brand                        *Brand             `boiler:"Brand" boil:"Brand" json:"Brand" toml:"Brand" yaml:"Brand"`
+	DefaultChassisSkin           *BlueprintMechSkin `boiler:"DefaultChassisSkin" boil:"DefaultChassisSkin" json:"DefaultChassisSkin" toml:"DefaultChassisSkin" yaml:"DefaultChassisSkin"`
+	Model                        *MechModel         `boiler:"Model" boil:"Model" json:"Model" toml:"Model" yaml:"Model"`
+	BlueprintChassisTemplatesOld *TemplatesOld      `boiler:"BlueprintChassisTemplatesOld" boil:"BlueprintChassisTemplatesOld" json:"BlueprintChassisTemplatesOld" toml:"BlueprintChassisTemplatesOld" yaml:"BlueprintChassisTemplatesOld"`
+	BlueprintMechs               MechSlice          `boiler:"BlueprintMechs" boil:"BlueprintMechs" json:"BlueprintMechs" toml:"BlueprintMechs" yaml:"BlueprintMechs"`
 }
 
 // NewStruct creates a new relationship struct
@@ -217,9 +187,9 @@ func (*blueprintMechR) NewStruct() *blueprintMechR {
 type blueprintMechL struct{}
 
 var (
-	blueprintMechAllColumns            = []string{"id", "brand_id", "label", "slug", "skin", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "deleted_at", "updated_at", "created_at", "model_id", "energy_core_size", "tier", "default_chassis_skin_id", "energy_core_id", "intro_animation_id", "outro_animation_id"}
+	blueprintMechAllColumns            = []string{"id", "brand_id", "label", "slug", "skin", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "deleted_at", "updated_at", "created_at", "model_id", "energy_core_size", "tier", "default_chassis_skin_id"}
 	blueprintMechColumnsWithoutDefault = []string{"brand_id", "label", "slug", "skin", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "model_id", "default_chassis_skin_id"}
-	blueprintMechColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at", "energy_core_size", "tier", "energy_core_id", "intro_animation_id", "outro_animation_id"}
+	blueprintMechColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at", "energy_core_size", "tier"}
 	blueprintMechPrimaryKeyColumns     = []string{"id"}
 	blueprintMechGeneratedColumns      = []string{}
 )
@@ -495,34 +465,6 @@ func (o *BlueprintMech) DefaultChassisSkin(mods ...qm.QueryMod) blueprintMechSki
 	return query
 }
 
-// EnergyCore pointed to by the foreign key.
-func (o *BlueprintMech) EnergyCore(mods ...qm.QueryMod) blueprintEnergyCoreQuery {
-	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.EnergyCoreID),
-	}
-
-	queryMods = append(queryMods, mods...)
-
-	query := BlueprintEnergyCores(queryMods...)
-	queries.SetFrom(query.Query, "\"blueprint_energy_cores\"")
-
-	return query
-}
-
-// IntroAnimation pointed to by the foreign key.
-func (o *BlueprintMech) IntroAnimation(mods ...qm.QueryMod) blueprintMechAnimationQuery {
-	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.IntroAnimationID),
-	}
-
-	queryMods = append(queryMods, mods...)
-
-	query := BlueprintMechAnimations(queryMods...)
-	queries.SetFrom(query.Query, "\"blueprint_mech_animation\"")
-
-	return query
-}
-
 // Model pointed to by the foreign key.
 func (o *BlueprintMech) Model(mods ...qm.QueryMod) mechModelQuery {
 	queryMods := []qm.QueryMod{
@@ -533,20 +475,6 @@ func (o *BlueprintMech) Model(mods ...qm.QueryMod) mechModelQuery {
 
 	query := MechModels(queryMods...)
 	queries.SetFrom(query.Query, "\"mech_model\"")
-
-	return query
-}
-
-// OutroAnimation pointed to by the foreign key.
-func (o *BlueprintMech) OutroAnimation(mods ...qm.QueryMod) blueprintMechAnimationQuery {
-	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.OutroAnimationID),
-	}
-
-	queryMods = append(queryMods, mods...)
-
-	query := BlueprintMechAnimations(queryMods...)
-	queries.SetFrom(query.Query, "\"blueprint_mech_animation\"")
 
 	return query
 }
@@ -797,222 +725,6 @@ func (blueprintMechL) LoadDefaultChassisSkin(e boil.Executor, singular bool, may
 	return nil
 }
 
-// LoadEnergyCore allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for an N-1 relationship.
-func (blueprintMechL) LoadEnergyCore(e boil.Executor, singular bool, maybeBlueprintMech interface{}, mods queries.Applicator) error {
-	var slice []*BlueprintMech
-	var object *BlueprintMech
-
-	if singular {
-		object = maybeBlueprintMech.(*BlueprintMech)
-	} else {
-		slice = *maybeBlueprintMech.(*[]*BlueprintMech)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &blueprintMechR{}
-		}
-		if !queries.IsNil(object.EnergyCoreID) {
-			args = append(args, object.EnergyCoreID)
-		}
-
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &blueprintMechR{}
-			}
-
-			for _, a := range args {
-				if queries.Equal(a, obj.EnergyCoreID) {
-					continue Outer
-				}
-			}
-
-			if !queries.IsNil(obj.EnergyCoreID) {
-				args = append(args, obj.EnergyCoreID)
-			}
-
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`blueprint_energy_cores`),
-		qm.WhereIn(`blueprint_energy_cores.id in ?`, args...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load BlueprintEnergyCore")
-	}
-
-	var resultSlice []*BlueprintEnergyCore
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice BlueprintEnergyCore")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for blueprint_energy_cores")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_energy_cores")
-	}
-
-	if len(blueprintMechAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-
-	if len(resultSlice) == 0 {
-		return nil
-	}
-
-	if singular {
-		foreign := resultSlice[0]
-		object.R.EnergyCore = foreign
-		if foreign.R == nil {
-			foreign.R = &blueprintEnergyCoreR{}
-		}
-		foreign.R.EnergyCoreBlueprintMechs = append(foreign.R.EnergyCoreBlueprintMechs, object)
-		return nil
-	}
-
-	for _, local := range slice {
-		for _, foreign := range resultSlice {
-			if queries.Equal(local.EnergyCoreID, foreign.ID) {
-				local.R.EnergyCore = foreign
-				if foreign.R == nil {
-					foreign.R = &blueprintEnergyCoreR{}
-				}
-				foreign.R.EnergyCoreBlueprintMechs = append(foreign.R.EnergyCoreBlueprintMechs, local)
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadIntroAnimation allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for an N-1 relationship.
-func (blueprintMechL) LoadIntroAnimation(e boil.Executor, singular bool, maybeBlueprintMech interface{}, mods queries.Applicator) error {
-	var slice []*BlueprintMech
-	var object *BlueprintMech
-
-	if singular {
-		object = maybeBlueprintMech.(*BlueprintMech)
-	} else {
-		slice = *maybeBlueprintMech.(*[]*BlueprintMech)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &blueprintMechR{}
-		}
-		if !queries.IsNil(object.IntroAnimationID) {
-			args = append(args, object.IntroAnimationID)
-		}
-
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &blueprintMechR{}
-			}
-
-			for _, a := range args {
-				if queries.Equal(a, obj.IntroAnimationID) {
-					continue Outer
-				}
-			}
-
-			if !queries.IsNil(obj.IntroAnimationID) {
-				args = append(args, obj.IntroAnimationID)
-			}
-
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`blueprint_mech_animation`),
-		qm.WhereIn(`blueprint_mech_animation.id in ?`, args...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load BlueprintMechAnimation")
-	}
-
-	var resultSlice []*BlueprintMechAnimation
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice BlueprintMechAnimation")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for blueprint_mech_animation")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_mech_animation")
-	}
-
-	if len(blueprintMechAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-
-	if len(resultSlice) == 0 {
-		return nil
-	}
-
-	if singular {
-		foreign := resultSlice[0]
-		object.R.IntroAnimation = foreign
-		if foreign.R == nil {
-			foreign.R = &blueprintMechAnimationR{}
-		}
-		foreign.R.IntroAnimationBlueprintMechs = append(foreign.R.IntroAnimationBlueprintMechs, object)
-		return nil
-	}
-
-	for _, local := range slice {
-		for _, foreign := range resultSlice {
-			if queries.Equal(local.IntroAnimationID, foreign.ID) {
-				local.R.IntroAnimation = foreign
-				if foreign.R == nil {
-					foreign.R = &blueprintMechAnimationR{}
-				}
-				foreign.R.IntroAnimationBlueprintMechs = append(foreign.R.IntroAnimationBlueprintMechs, local)
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
 // LoadModel allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
 func (blueprintMechL) LoadModel(e boil.Executor, singular bool, maybeBlueprintMech interface{}, mods queries.Applicator) error {
@@ -1109,114 +821,6 @@ func (blueprintMechL) LoadModel(e boil.Executor, singular bool, maybeBlueprintMe
 					foreign.R = &mechModelR{}
 				}
 				foreign.R.ModelBlueprintMechs = append(foreign.R.ModelBlueprintMechs, local)
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadOutroAnimation allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for an N-1 relationship.
-func (blueprintMechL) LoadOutroAnimation(e boil.Executor, singular bool, maybeBlueprintMech interface{}, mods queries.Applicator) error {
-	var slice []*BlueprintMech
-	var object *BlueprintMech
-
-	if singular {
-		object = maybeBlueprintMech.(*BlueprintMech)
-	} else {
-		slice = *maybeBlueprintMech.(*[]*BlueprintMech)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &blueprintMechR{}
-		}
-		if !queries.IsNil(object.OutroAnimationID) {
-			args = append(args, object.OutroAnimationID)
-		}
-
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &blueprintMechR{}
-			}
-
-			for _, a := range args {
-				if queries.Equal(a, obj.OutroAnimationID) {
-					continue Outer
-				}
-			}
-
-			if !queries.IsNil(obj.OutroAnimationID) {
-				args = append(args, obj.OutroAnimationID)
-			}
-
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`blueprint_mech_animation`),
-		qm.WhereIn(`blueprint_mech_animation.id in ?`, args...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load BlueprintMechAnimation")
-	}
-
-	var resultSlice []*BlueprintMechAnimation
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice BlueprintMechAnimation")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for blueprint_mech_animation")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_mech_animation")
-	}
-
-	if len(blueprintMechAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-
-	if len(resultSlice) == 0 {
-		return nil
-	}
-
-	if singular {
-		foreign := resultSlice[0]
-		object.R.OutroAnimation = foreign
-		if foreign.R == nil {
-			foreign.R = &blueprintMechAnimationR{}
-		}
-		foreign.R.OutroAnimationBlueprintMechs = append(foreign.R.OutroAnimationBlueprintMechs, object)
-		return nil
-	}
-
-	for _, local := range slice {
-		for _, foreign := range resultSlice {
-			if queries.Equal(local.OutroAnimationID, foreign.ID) {
-				local.R.OutroAnimation = foreign
-				if foreign.R == nil {
-					foreign.R = &blueprintMechAnimationR{}
-				}
-				foreign.R.OutroAnimationBlueprintMechs = append(foreign.R.OutroAnimationBlueprintMechs, local)
 				break
 			}
 		}
@@ -1518,164 +1122,6 @@ func (o *BlueprintMech) SetDefaultChassisSkin(exec boil.Executor, insert bool, r
 	return nil
 }
 
-// SetEnergyCore of the blueprintMech to the related item.
-// Sets o.R.EnergyCore to related.
-// Adds o to related.R.EnergyCoreBlueprintMechs.
-func (o *BlueprintMech) SetEnergyCore(exec boil.Executor, insert bool, related *BlueprintEnergyCore) error {
-	var err error
-	if insert {
-		if err = related.Insert(exec, boil.Infer()); err != nil {
-			return errors.Wrap(err, "failed to insert into foreign table")
-		}
-	}
-
-	updateQuery := fmt.Sprintf(
-		"UPDATE \"blueprint_mechs\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"energy_core_id"}),
-		strmangle.WhereClause("\"", "\"", 2, blueprintMechPrimaryKeyColumns),
-	)
-	values := []interface{}{related.ID, o.ID}
-
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, updateQuery)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	if _, err = exec.Exec(updateQuery, values...); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	queries.Assign(&o.EnergyCoreID, related.ID)
-	if o.R == nil {
-		o.R = &blueprintMechR{
-			EnergyCore: related,
-		}
-	} else {
-		o.R.EnergyCore = related
-	}
-
-	if related.R == nil {
-		related.R = &blueprintEnergyCoreR{
-			EnergyCoreBlueprintMechs: BlueprintMechSlice{o},
-		}
-	} else {
-		related.R.EnergyCoreBlueprintMechs = append(related.R.EnergyCoreBlueprintMechs, o)
-	}
-
-	return nil
-}
-
-// RemoveEnergyCore relationship.
-// Sets o.R.EnergyCore to nil.
-// Removes o from all passed in related items' relationships struct (Optional).
-func (o *BlueprintMech) RemoveEnergyCore(exec boil.Executor, related *BlueprintEnergyCore) error {
-	var err error
-
-	queries.SetScanner(&o.EnergyCoreID, nil)
-	if _, err = o.Update(exec, boil.Whitelist("energy_core_id")); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	if o.R != nil {
-		o.R.EnergyCore = nil
-	}
-	if related == nil || related.R == nil {
-		return nil
-	}
-
-	for i, ri := range related.R.EnergyCoreBlueprintMechs {
-		if queries.Equal(o.EnergyCoreID, ri.EnergyCoreID) {
-			continue
-		}
-
-		ln := len(related.R.EnergyCoreBlueprintMechs)
-		if ln > 1 && i < ln-1 {
-			related.R.EnergyCoreBlueprintMechs[i] = related.R.EnergyCoreBlueprintMechs[ln-1]
-		}
-		related.R.EnergyCoreBlueprintMechs = related.R.EnergyCoreBlueprintMechs[:ln-1]
-		break
-	}
-	return nil
-}
-
-// SetIntroAnimation of the blueprintMech to the related item.
-// Sets o.R.IntroAnimation to related.
-// Adds o to related.R.IntroAnimationBlueprintMechs.
-func (o *BlueprintMech) SetIntroAnimation(exec boil.Executor, insert bool, related *BlueprintMechAnimation) error {
-	var err error
-	if insert {
-		if err = related.Insert(exec, boil.Infer()); err != nil {
-			return errors.Wrap(err, "failed to insert into foreign table")
-		}
-	}
-
-	updateQuery := fmt.Sprintf(
-		"UPDATE \"blueprint_mechs\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"intro_animation_id"}),
-		strmangle.WhereClause("\"", "\"", 2, blueprintMechPrimaryKeyColumns),
-	)
-	values := []interface{}{related.ID, o.ID}
-
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, updateQuery)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	if _, err = exec.Exec(updateQuery, values...); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	queries.Assign(&o.IntroAnimationID, related.ID)
-	if o.R == nil {
-		o.R = &blueprintMechR{
-			IntroAnimation: related,
-		}
-	} else {
-		o.R.IntroAnimation = related
-	}
-
-	if related.R == nil {
-		related.R = &blueprintMechAnimationR{
-			IntroAnimationBlueprintMechs: BlueprintMechSlice{o},
-		}
-	} else {
-		related.R.IntroAnimationBlueprintMechs = append(related.R.IntroAnimationBlueprintMechs, o)
-	}
-
-	return nil
-}
-
-// RemoveIntroAnimation relationship.
-// Sets o.R.IntroAnimation to nil.
-// Removes o from all passed in related items' relationships struct (Optional).
-func (o *BlueprintMech) RemoveIntroAnimation(exec boil.Executor, related *BlueprintMechAnimation) error {
-	var err error
-
-	queries.SetScanner(&o.IntroAnimationID, nil)
-	if _, err = o.Update(exec, boil.Whitelist("intro_animation_id")); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	if o.R != nil {
-		o.R.IntroAnimation = nil
-	}
-	if related == nil || related.R == nil {
-		return nil
-	}
-
-	for i, ri := range related.R.IntroAnimationBlueprintMechs {
-		if queries.Equal(o.IntroAnimationID, ri.IntroAnimationID) {
-			continue
-		}
-
-		ln := len(related.R.IntroAnimationBlueprintMechs)
-		if ln > 1 && i < ln-1 {
-			related.R.IntroAnimationBlueprintMechs[i] = related.R.IntroAnimationBlueprintMechs[ln-1]
-		}
-		related.R.IntroAnimationBlueprintMechs = related.R.IntroAnimationBlueprintMechs[:ln-1]
-		break
-	}
-	return nil
-}
-
 // SetModel of the blueprintMech to the related item.
 // Sets o.R.Model to related.
 // Adds o to related.R.ModelBlueprintMechs.
@@ -1719,85 +1165,6 @@ func (o *BlueprintMech) SetModel(exec boil.Executor, insert bool, related *MechM
 		related.R.ModelBlueprintMechs = append(related.R.ModelBlueprintMechs, o)
 	}
 
-	return nil
-}
-
-// SetOutroAnimation of the blueprintMech to the related item.
-// Sets o.R.OutroAnimation to related.
-// Adds o to related.R.OutroAnimationBlueprintMechs.
-func (o *BlueprintMech) SetOutroAnimation(exec boil.Executor, insert bool, related *BlueprintMechAnimation) error {
-	var err error
-	if insert {
-		if err = related.Insert(exec, boil.Infer()); err != nil {
-			return errors.Wrap(err, "failed to insert into foreign table")
-		}
-	}
-
-	updateQuery := fmt.Sprintf(
-		"UPDATE \"blueprint_mechs\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"outro_animation_id"}),
-		strmangle.WhereClause("\"", "\"", 2, blueprintMechPrimaryKeyColumns),
-	)
-	values := []interface{}{related.ID, o.ID}
-
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, updateQuery)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	if _, err = exec.Exec(updateQuery, values...); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	queries.Assign(&o.OutroAnimationID, related.ID)
-	if o.R == nil {
-		o.R = &blueprintMechR{
-			OutroAnimation: related,
-		}
-	} else {
-		o.R.OutroAnimation = related
-	}
-
-	if related.R == nil {
-		related.R = &blueprintMechAnimationR{
-			OutroAnimationBlueprintMechs: BlueprintMechSlice{o},
-		}
-	} else {
-		related.R.OutroAnimationBlueprintMechs = append(related.R.OutroAnimationBlueprintMechs, o)
-	}
-
-	return nil
-}
-
-// RemoveOutroAnimation relationship.
-// Sets o.R.OutroAnimation to nil.
-// Removes o from all passed in related items' relationships struct (Optional).
-func (o *BlueprintMech) RemoveOutroAnimation(exec boil.Executor, related *BlueprintMechAnimation) error {
-	var err error
-
-	queries.SetScanner(&o.OutroAnimationID, nil)
-	if _, err = o.Update(exec, boil.Whitelist("outro_animation_id")); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	if o.R != nil {
-		o.R.OutroAnimation = nil
-	}
-	if related == nil || related.R == nil {
-		return nil
-	}
-
-	for i, ri := range related.R.OutroAnimationBlueprintMechs {
-		if queries.Equal(o.OutroAnimationID, ri.OutroAnimationID) {
-			continue
-		}
-
-		ln := len(related.R.OutroAnimationBlueprintMechs)
-		if ln > 1 && i < ln-1 {
-			related.R.OutroAnimationBlueprintMechs[i] = related.R.OutroAnimationBlueprintMechs[ln-1]
-		}
-		related.R.OutroAnimationBlueprintMechs = related.R.OutroAnimationBlueprintMechs[:ln-1]
-		break
-	}
 	return nil
 }
 

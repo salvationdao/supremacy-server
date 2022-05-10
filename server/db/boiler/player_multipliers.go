@@ -21,8 +21,8 @@ import (
 	"github.com/volatiletech/strmangle"
 )
 
-// UserMultiplier is an object representing the database table.
-type UserMultiplier struct {
+// PlayerMultiplier is an object representing the database table.
+type PlayerMultiplier struct {
 	PlayerID                string          `boiler:"player_id" boil:"player_id" json:"player_id" toml:"player_id" yaml:"player_id"`
 	FromBattleNumber        int             `boiler:"from_battle_number" boil:"from_battle_number" json:"from_battle_number" toml:"from_battle_number" yaml:"from_battle_number"`
 	UntilBattleNumber       int             `boiler:"until_battle_number" boil:"until_battle_number" json:"until_battle_number" toml:"until_battle_number" yaml:"until_battle_number"`
@@ -33,11 +33,11 @@ type UserMultiplier struct {
 	ExpiresAtBattleSeconds  decimal.Decimal `boiler:"expires_at_battle_seconds" boil:"expires_at_battle_seconds" json:"expires_at_battle_seconds" toml:"expires_at_battle_seconds" yaml:"expires_at_battle_seconds"`
 	ID                      string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 
-	R *userMultiplierR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
-	L userMultiplierL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
+	R *playerMultiplierR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
+	L playerMultiplierL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
-var UserMultiplierColumns = struct {
+var PlayerMultiplierColumns = struct {
 	PlayerID                string
 	FromBattleNumber        string
 	UntilBattleNumber       string
@@ -59,7 +59,7 @@ var UserMultiplierColumns = struct {
 	ID:                      "id",
 }
 
-var UserMultiplierTableColumns = struct {
+var PlayerMultiplierTableColumns = struct {
 	PlayerID                string
 	FromBattleNumber        string
 	UntilBattleNumber       string
@@ -70,20 +70,20 @@ var UserMultiplierTableColumns = struct {
 	ExpiresAtBattleSeconds  string
 	ID                      string
 }{
-	PlayerID:                "user_multipliers.player_id",
-	FromBattleNumber:        "user_multipliers.from_battle_number",
-	UntilBattleNumber:       "user_multipliers.until_battle_number",
-	MultiplierID:            "user_multipliers.multiplier_id",
-	Value:                   "user_multipliers.value",
-	CreatedAt:               "user_multipliers.created_at",
-	ObtainedAtBattleSeconds: "user_multipliers.obtained_at_battle_seconds",
-	ExpiresAtBattleSeconds:  "user_multipliers.expires_at_battle_seconds",
-	ID:                      "user_multipliers.id",
+	PlayerID:                "player_multipliers.player_id",
+	FromBattleNumber:        "player_multipliers.from_battle_number",
+	UntilBattleNumber:       "player_multipliers.until_battle_number",
+	MultiplierID:            "player_multipliers.multiplier_id",
+	Value:                   "player_multipliers.value",
+	CreatedAt:               "player_multipliers.created_at",
+	ObtainedAtBattleSeconds: "player_multipliers.obtained_at_battle_seconds",
+	ExpiresAtBattleSeconds:  "player_multipliers.expires_at_battle_seconds",
+	ID:                      "player_multipliers.id",
 }
 
 // Generated where
 
-var UserMultiplierWhere = struct {
+var PlayerMultiplierWhere = struct {
 	PlayerID                whereHelperstring
 	FromBattleNumber        whereHelperint
 	UntilBattleNumber       whereHelperint
@@ -94,19 +94,19 @@ var UserMultiplierWhere = struct {
 	ExpiresAtBattleSeconds  whereHelperdecimal_Decimal
 	ID                      whereHelperstring
 }{
-	PlayerID:                whereHelperstring{field: "\"user_multipliers\".\"player_id\""},
-	FromBattleNumber:        whereHelperint{field: "\"user_multipliers\".\"from_battle_number\""},
-	UntilBattleNumber:       whereHelperint{field: "\"user_multipliers\".\"until_battle_number\""},
-	MultiplierID:            whereHelperstring{field: "\"user_multipliers\".\"multiplier_id\""},
-	Value:                   whereHelperdecimal_Decimal{field: "\"user_multipliers\".\"value\""},
-	CreatedAt:               whereHelpertime_Time{field: "\"user_multipliers\".\"created_at\""},
-	ObtainedAtBattleSeconds: whereHelperdecimal_Decimal{field: "\"user_multipliers\".\"obtained_at_battle_seconds\""},
-	ExpiresAtBattleSeconds:  whereHelperdecimal_Decimal{field: "\"user_multipliers\".\"expires_at_battle_seconds\""},
-	ID:                      whereHelperstring{field: "\"user_multipliers\".\"id\""},
+	PlayerID:                whereHelperstring{field: "\"player_multipliers\".\"player_id\""},
+	FromBattleNumber:        whereHelperint{field: "\"player_multipliers\".\"from_battle_number\""},
+	UntilBattleNumber:       whereHelperint{field: "\"player_multipliers\".\"until_battle_number\""},
+	MultiplierID:            whereHelperstring{field: "\"player_multipliers\".\"multiplier_id\""},
+	Value:                   whereHelperdecimal_Decimal{field: "\"player_multipliers\".\"value\""},
+	CreatedAt:               whereHelpertime_Time{field: "\"player_multipliers\".\"created_at\""},
+	ObtainedAtBattleSeconds: whereHelperdecimal_Decimal{field: "\"player_multipliers\".\"obtained_at_battle_seconds\""},
+	ExpiresAtBattleSeconds:  whereHelperdecimal_Decimal{field: "\"player_multipliers\".\"expires_at_battle_seconds\""},
+	ID:                      whereHelperstring{field: "\"player_multipliers\".\"id\""},
 }
 
-// UserMultiplierRels is where relationship names are stored.
-var UserMultiplierRels = struct {
+// PlayerMultiplierRels is where relationship names are stored.
+var PlayerMultiplierRels = struct {
 	Multiplier string
 	Player     string
 }{
@@ -114,51 +114,51 @@ var UserMultiplierRels = struct {
 	Player:     "Player",
 }
 
-// userMultiplierR is where relationships are stored.
-type userMultiplierR struct {
+// playerMultiplierR is where relationships are stored.
+type playerMultiplierR struct {
 	Multiplier *Multiplier `boiler:"Multiplier" boil:"Multiplier" json:"Multiplier" toml:"Multiplier" yaml:"Multiplier"`
 	Player     *Player     `boiler:"Player" boil:"Player" json:"Player" toml:"Player" yaml:"Player"`
 }
 
 // NewStruct creates a new relationship struct
-func (*userMultiplierR) NewStruct() *userMultiplierR {
-	return &userMultiplierR{}
+func (*playerMultiplierR) NewStruct() *playerMultiplierR {
+	return &playerMultiplierR{}
 }
 
-// userMultiplierL is where Load methods for each relationship are stored.
-type userMultiplierL struct{}
+// playerMultiplierL is where Load methods for each relationship are stored.
+type playerMultiplierL struct{}
 
 var (
-	userMultiplierAllColumns            = []string{"player_id", "from_battle_number", "until_battle_number", "multiplier_id", "value", "created_at", "obtained_at_battle_seconds", "expires_at_battle_seconds", "id"}
-	userMultiplierColumnsWithoutDefault = []string{"player_id", "from_battle_number", "until_battle_number", "multiplier_id", "value"}
-	userMultiplierColumnsWithDefault    = []string{"created_at", "obtained_at_battle_seconds", "expires_at_battle_seconds", "id"}
-	userMultiplierPrimaryKeyColumns     = []string{"id"}
-	userMultiplierGeneratedColumns      = []string{}
+	playerMultiplierAllColumns            = []string{"player_id", "from_battle_number", "until_battle_number", "multiplier_id", "value", "created_at", "obtained_at_battle_seconds", "expires_at_battle_seconds", "id"}
+	playerMultiplierColumnsWithoutDefault = []string{"player_id", "from_battle_number", "until_battle_number", "multiplier_id", "value"}
+	playerMultiplierColumnsWithDefault    = []string{"created_at", "obtained_at_battle_seconds", "expires_at_battle_seconds", "id"}
+	playerMultiplierPrimaryKeyColumns     = []string{"id"}
+	playerMultiplierGeneratedColumns      = []string{}
 )
 
 type (
-	// UserMultiplierSlice is an alias for a slice of pointers to UserMultiplier.
-	// This should almost always be used instead of []UserMultiplier.
-	UserMultiplierSlice []*UserMultiplier
-	// UserMultiplierHook is the signature for custom UserMultiplier hook methods
-	UserMultiplierHook func(boil.Executor, *UserMultiplier) error
+	// PlayerMultiplierSlice is an alias for a slice of pointers to PlayerMultiplier.
+	// This should almost always be used instead of []PlayerMultiplier.
+	PlayerMultiplierSlice []*PlayerMultiplier
+	// PlayerMultiplierHook is the signature for custom PlayerMultiplier hook methods
+	PlayerMultiplierHook func(boil.Executor, *PlayerMultiplier) error
 
-	userMultiplierQuery struct {
+	playerMultiplierQuery struct {
 		*queries.Query
 	}
 )
 
 // Cache for insert, update and upsert
 var (
-	userMultiplierType                 = reflect.TypeOf(&UserMultiplier{})
-	userMultiplierMapping              = queries.MakeStructMapping(userMultiplierType)
-	userMultiplierPrimaryKeyMapping, _ = queries.BindMapping(userMultiplierType, userMultiplierMapping, userMultiplierPrimaryKeyColumns)
-	userMultiplierInsertCacheMut       sync.RWMutex
-	userMultiplierInsertCache          = make(map[string]insertCache)
-	userMultiplierUpdateCacheMut       sync.RWMutex
-	userMultiplierUpdateCache          = make(map[string]updateCache)
-	userMultiplierUpsertCacheMut       sync.RWMutex
-	userMultiplierUpsertCache          = make(map[string]insertCache)
+	playerMultiplierType                 = reflect.TypeOf(&PlayerMultiplier{})
+	playerMultiplierMapping              = queries.MakeStructMapping(playerMultiplierType)
+	playerMultiplierPrimaryKeyMapping, _ = queries.BindMapping(playerMultiplierType, playerMultiplierMapping, playerMultiplierPrimaryKeyColumns)
+	playerMultiplierInsertCacheMut       sync.RWMutex
+	playerMultiplierInsertCache          = make(map[string]insertCache)
+	playerMultiplierUpdateCacheMut       sync.RWMutex
+	playerMultiplierUpdateCache          = make(map[string]updateCache)
+	playerMultiplierUpsertCacheMut       sync.RWMutex
+	playerMultiplierUpsertCache          = make(map[string]insertCache)
 )
 
 var (
@@ -169,23 +169,23 @@ var (
 	_ = qmhelper.Where
 )
 
-var userMultiplierAfterSelectHooks []UserMultiplierHook
+var playerMultiplierAfterSelectHooks []PlayerMultiplierHook
 
-var userMultiplierBeforeInsertHooks []UserMultiplierHook
-var userMultiplierAfterInsertHooks []UserMultiplierHook
+var playerMultiplierBeforeInsertHooks []PlayerMultiplierHook
+var playerMultiplierAfterInsertHooks []PlayerMultiplierHook
 
-var userMultiplierBeforeUpdateHooks []UserMultiplierHook
-var userMultiplierAfterUpdateHooks []UserMultiplierHook
+var playerMultiplierBeforeUpdateHooks []PlayerMultiplierHook
+var playerMultiplierAfterUpdateHooks []PlayerMultiplierHook
 
-var userMultiplierBeforeDeleteHooks []UserMultiplierHook
-var userMultiplierAfterDeleteHooks []UserMultiplierHook
+var playerMultiplierBeforeDeleteHooks []PlayerMultiplierHook
+var playerMultiplierAfterDeleteHooks []PlayerMultiplierHook
 
-var userMultiplierBeforeUpsertHooks []UserMultiplierHook
-var userMultiplierAfterUpsertHooks []UserMultiplierHook
+var playerMultiplierBeforeUpsertHooks []PlayerMultiplierHook
+var playerMultiplierAfterUpsertHooks []PlayerMultiplierHook
 
 // doAfterSelectHooks executes all "after Select" hooks.
-func (o *UserMultiplier) doAfterSelectHooks(exec boil.Executor) (err error) {
-	for _, hook := range userMultiplierAfterSelectHooks {
+func (o *PlayerMultiplier) doAfterSelectHooks(exec boil.Executor) (err error) {
+	for _, hook := range playerMultiplierAfterSelectHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -195,8 +195,8 @@ func (o *UserMultiplier) doAfterSelectHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeInsertHooks executes all "before insert" hooks.
-func (o *UserMultiplier) doBeforeInsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range userMultiplierBeforeInsertHooks {
+func (o *PlayerMultiplier) doBeforeInsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range playerMultiplierBeforeInsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -206,8 +206,8 @@ func (o *UserMultiplier) doBeforeInsertHooks(exec boil.Executor) (err error) {
 }
 
 // doAfterInsertHooks executes all "after Insert" hooks.
-func (o *UserMultiplier) doAfterInsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range userMultiplierAfterInsertHooks {
+func (o *PlayerMultiplier) doAfterInsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range playerMultiplierAfterInsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -217,8 +217,8 @@ func (o *UserMultiplier) doAfterInsertHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeUpdateHooks executes all "before Update" hooks.
-func (o *UserMultiplier) doBeforeUpdateHooks(exec boil.Executor) (err error) {
-	for _, hook := range userMultiplierBeforeUpdateHooks {
+func (o *PlayerMultiplier) doBeforeUpdateHooks(exec boil.Executor) (err error) {
+	for _, hook := range playerMultiplierBeforeUpdateHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -228,8 +228,8 @@ func (o *UserMultiplier) doBeforeUpdateHooks(exec boil.Executor) (err error) {
 }
 
 // doAfterUpdateHooks executes all "after Update" hooks.
-func (o *UserMultiplier) doAfterUpdateHooks(exec boil.Executor) (err error) {
-	for _, hook := range userMultiplierAfterUpdateHooks {
+func (o *PlayerMultiplier) doAfterUpdateHooks(exec boil.Executor) (err error) {
+	for _, hook := range playerMultiplierAfterUpdateHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -239,8 +239,8 @@ func (o *UserMultiplier) doAfterUpdateHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeDeleteHooks executes all "before Delete" hooks.
-func (o *UserMultiplier) doBeforeDeleteHooks(exec boil.Executor) (err error) {
-	for _, hook := range userMultiplierBeforeDeleteHooks {
+func (o *PlayerMultiplier) doBeforeDeleteHooks(exec boil.Executor) (err error) {
+	for _, hook := range playerMultiplierBeforeDeleteHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -250,8 +250,8 @@ func (o *UserMultiplier) doBeforeDeleteHooks(exec boil.Executor) (err error) {
 }
 
 // doAfterDeleteHooks executes all "after Delete" hooks.
-func (o *UserMultiplier) doAfterDeleteHooks(exec boil.Executor) (err error) {
-	for _, hook := range userMultiplierAfterDeleteHooks {
+func (o *PlayerMultiplier) doAfterDeleteHooks(exec boil.Executor) (err error) {
+	for _, hook := range playerMultiplierAfterDeleteHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -261,8 +261,8 @@ func (o *UserMultiplier) doAfterDeleteHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeUpsertHooks executes all "before Upsert" hooks.
-func (o *UserMultiplier) doBeforeUpsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range userMultiplierBeforeUpsertHooks {
+func (o *PlayerMultiplier) doBeforeUpsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range playerMultiplierBeforeUpsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -272,8 +272,8 @@ func (o *UserMultiplier) doBeforeUpsertHooks(exec boil.Executor) (err error) {
 }
 
 // doAfterUpsertHooks executes all "after Upsert" hooks.
-func (o *UserMultiplier) doAfterUpsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range userMultiplierAfterUpsertHooks {
+func (o *PlayerMultiplier) doAfterUpsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range playerMultiplierAfterUpsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -282,33 +282,33 @@ func (o *UserMultiplier) doAfterUpsertHooks(exec boil.Executor) (err error) {
 	return nil
 }
 
-// AddUserMultiplierHook registers your hook function for all future operations.
-func AddUserMultiplierHook(hookPoint boil.HookPoint, userMultiplierHook UserMultiplierHook) {
+// AddPlayerMultiplierHook registers your hook function for all future operations.
+func AddPlayerMultiplierHook(hookPoint boil.HookPoint, playerMultiplierHook PlayerMultiplierHook) {
 	switch hookPoint {
 	case boil.AfterSelectHook:
-		userMultiplierAfterSelectHooks = append(userMultiplierAfterSelectHooks, userMultiplierHook)
+		playerMultiplierAfterSelectHooks = append(playerMultiplierAfterSelectHooks, playerMultiplierHook)
 	case boil.BeforeInsertHook:
-		userMultiplierBeforeInsertHooks = append(userMultiplierBeforeInsertHooks, userMultiplierHook)
+		playerMultiplierBeforeInsertHooks = append(playerMultiplierBeforeInsertHooks, playerMultiplierHook)
 	case boil.AfterInsertHook:
-		userMultiplierAfterInsertHooks = append(userMultiplierAfterInsertHooks, userMultiplierHook)
+		playerMultiplierAfterInsertHooks = append(playerMultiplierAfterInsertHooks, playerMultiplierHook)
 	case boil.BeforeUpdateHook:
-		userMultiplierBeforeUpdateHooks = append(userMultiplierBeforeUpdateHooks, userMultiplierHook)
+		playerMultiplierBeforeUpdateHooks = append(playerMultiplierBeforeUpdateHooks, playerMultiplierHook)
 	case boil.AfterUpdateHook:
-		userMultiplierAfterUpdateHooks = append(userMultiplierAfterUpdateHooks, userMultiplierHook)
+		playerMultiplierAfterUpdateHooks = append(playerMultiplierAfterUpdateHooks, playerMultiplierHook)
 	case boil.BeforeDeleteHook:
-		userMultiplierBeforeDeleteHooks = append(userMultiplierBeforeDeleteHooks, userMultiplierHook)
+		playerMultiplierBeforeDeleteHooks = append(playerMultiplierBeforeDeleteHooks, playerMultiplierHook)
 	case boil.AfterDeleteHook:
-		userMultiplierAfterDeleteHooks = append(userMultiplierAfterDeleteHooks, userMultiplierHook)
+		playerMultiplierAfterDeleteHooks = append(playerMultiplierAfterDeleteHooks, playerMultiplierHook)
 	case boil.BeforeUpsertHook:
-		userMultiplierBeforeUpsertHooks = append(userMultiplierBeforeUpsertHooks, userMultiplierHook)
+		playerMultiplierBeforeUpsertHooks = append(playerMultiplierBeforeUpsertHooks, playerMultiplierHook)
 	case boil.AfterUpsertHook:
-		userMultiplierAfterUpsertHooks = append(userMultiplierAfterUpsertHooks, userMultiplierHook)
+		playerMultiplierAfterUpsertHooks = append(playerMultiplierAfterUpsertHooks, playerMultiplierHook)
 	}
 }
 
-// One returns a single userMultiplier record from the query.
-func (q userMultiplierQuery) One(exec boil.Executor) (*UserMultiplier, error) {
-	o := &UserMultiplier{}
+// One returns a single playerMultiplier record from the query.
+func (q playerMultiplierQuery) One(exec boil.Executor) (*PlayerMultiplier, error) {
+	o := &PlayerMultiplier{}
 
 	queries.SetLimit(q.Query, 1)
 
@@ -317,7 +317,7 @@ func (q userMultiplierQuery) One(exec boil.Executor) (*UserMultiplier, error) {
 		if errors.Cause(err) == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		return nil, errors.Wrap(err, "boiler: failed to execute a one query for user_multipliers")
+		return nil, errors.Wrap(err, "boiler: failed to execute a one query for player_multipliers")
 	}
 
 	if err := o.doAfterSelectHooks(exec); err != nil {
@@ -327,16 +327,16 @@ func (q userMultiplierQuery) One(exec boil.Executor) (*UserMultiplier, error) {
 	return o, nil
 }
 
-// All returns all UserMultiplier records from the query.
-func (q userMultiplierQuery) All(exec boil.Executor) (UserMultiplierSlice, error) {
-	var o []*UserMultiplier
+// All returns all PlayerMultiplier records from the query.
+func (q playerMultiplierQuery) All(exec boil.Executor) (PlayerMultiplierSlice, error) {
+	var o []*PlayerMultiplier
 
 	err := q.Bind(nil, exec, &o)
 	if err != nil {
-		return nil, errors.Wrap(err, "boiler: failed to assign all query results to UserMultiplier slice")
+		return nil, errors.Wrap(err, "boiler: failed to assign all query results to PlayerMultiplier slice")
 	}
 
-	if len(userMultiplierAfterSelectHooks) != 0 {
+	if len(playerMultiplierAfterSelectHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doAfterSelectHooks(exec); err != nil {
 				return o, err
@@ -347,8 +347,8 @@ func (q userMultiplierQuery) All(exec boil.Executor) (UserMultiplierSlice, error
 	return o, nil
 }
 
-// Count returns the count of all UserMultiplier records in the query.
-func (q userMultiplierQuery) Count(exec boil.Executor) (int64, error) {
+// Count returns the count of all PlayerMultiplier records in the query.
+func (q playerMultiplierQuery) Count(exec boil.Executor) (int64, error) {
 	var count int64
 
 	queries.SetSelect(q.Query, nil)
@@ -356,14 +356,14 @@ func (q userMultiplierQuery) Count(exec boil.Executor) (int64, error) {
 
 	err := q.Query.QueryRow(exec).Scan(&count)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to count user_multipliers rows")
+		return 0, errors.Wrap(err, "boiler: failed to count player_multipliers rows")
 	}
 
 	return count, nil
 }
 
 // Exists checks if the row exists in the table.
-func (q userMultiplierQuery) Exists(exec boil.Executor) (bool, error) {
+func (q playerMultiplierQuery) Exists(exec boil.Executor) (bool, error) {
 	var count int64
 
 	queries.SetSelect(q.Query, nil)
@@ -372,14 +372,14 @@ func (q userMultiplierQuery) Exists(exec boil.Executor) (bool, error) {
 
 	err := q.Query.QueryRow(exec).Scan(&count)
 	if err != nil {
-		return false, errors.Wrap(err, "boiler: failed to check if user_multipliers exists")
+		return false, errors.Wrap(err, "boiler: failed to check if player_multipliers exists")
 	}
 
 	return count > 0, nil
 }
 
 // Multiplier pointed to by the foreign key.
-func (o *UserMultiplier) Multiplier(mods ...qm.QueryMod) multiplierQuery {
+func (o *PlayerMultiplier) Multiplier(mods ...qm.QueryMod) multiplierQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.MultiplierID),
 	}
@@ -393,7 +393,7 @@ func (o *UserMultiplier) Multiplier(mods ...qm.QueryMod) multiplierQuery {
 }
 
 // Player pointed to by the foreign key.
-func (o *UserMultiplier) Player(mods ...qm.QueryMod) playerQuery {
+func (o *PlayerMultiplier) Player(mods ...qm.QueryMod) playerQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.PlayerID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -409,20 +409,20 @@ func (o *UserMultiplier) Player(mods ...qm.QueryMod) playerQuery {
 
 // LoadMultiplier allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (userMultiplierL) LoadMultiplier(e boil.Executor, singular bool, maybeUserMultiplier interface{}, mods queries.Applicator) error {
-	var slice []*UserMultiplier
-	var object *UserMultiplier
+func (playerMultiplierL) LoadMultiplier(e boil.Executor, singular bool, maybePlayerMultiplier interface{}, mods queries.Applicator) error {
+	var slice []*PlayerMultiplier
+	var object *PlayerMultiplier
 
 	if singular {
-		object = maybeUserMultiplier.(*UserMultiplier)
+		object = maybePlayerMultiplier.(*PlayerMultiplier)
 	} else {
-		slice = *maybeUserMultiplier.(*[]*UserMultiplier)
+		slice = *maybePlayerMultiplier.(*[]*PlayerMultiplier)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &userMultiplierR{}
+			object.R = &playerMultiplierR{}
 		}
 		args = append(args, object.MultiplierID)
 
@@ -430,7 +430,7 @@ func (userMultiplierL) LoadMultiplier(e boil.Executor, singular bool, maybeUserM
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &userMultiplierR{}
+				obj.R = &playerMultiplierR{}
 			}
 
 			for _, a := range args {
@@ -473,7 +473,7 @@ func (userMultiplierL) LoadMultiplier(e boil.Executor, singular bool, maybeUserM
 		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for multipliers")
 	}
 
-	if len(userMultiplierAfterSelectHooks) != 0 {
+	if len(playerMultiplierAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -491,7 +491,7 @@ func (userMultiplierL) LoadMultiplier(e boil.Executor, singular bool, maybeUserM
 		if foreign.R == nil {
 			foreign.R = &multiplierR{}
 		}
-		foreign.R.UserMultipliers = append(foreign.R.UserMultipliers, object)
+		foreign.R.PlayerMultipliers = append(foreign.R.PlayerMultipliers, object)
 		return nil
 	}
 
@@ -502,7 +502,7 @@ func (userMultiplierL) LoadMultiplier(e boil.Executor, singular bool, maybeUserM
 				if foreign.R == nil {
 					foreign.R = &multiplierR{}
 				}
-				foreign.R.UserMultipliers = append(foreign.R.UserMultipliers, local)
+				foreign.R.PlayerMultipliers = append(foreign.R.PlayerMultipliers, local)
 				break
 			}
 		}
@@ -513,20 +513,20 @@ func (userMultiplierL) LoadMultiplier(e boil.Executor, singular bool, maybeUserM
 
 // LoadPlayer allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (userMultiplierL) LoadPlayer(e boil.Executor, singular bool, maybeUserMultiplier interface{}, mods queries.Applicator) error {
-	var slice []*UserMultiplier
-	var object *UserMultiplier
+func (playerMultiplierL) LoadPlayer(e boil.Executor, singular bool, maybePlayerMultiplier interface{}, mods queries.Applicator) error {
+	var slice []*PlayerMultiplier
+	var object *PlayerMultiplier
 
 	if singular {
-		object = maybeUserMultiplier.(*UserMultiplier)
+		object = maybePlayerMultiplier.(*PlayerMultiplier)
 	} else {
-		slice = *maybeUserMultiplier.(*[]*UserMultiplier)
+		slice = *maybePlayerMultiplier.(*[]*PlayerMultiplier)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &userMultiplierR{}
+			object.R = &playerMultiplierR{}
 		}
 		args = append(args, object.PlayerID)
 
@@ -534,7 +534,7 @@ func (userMultiplierL) LoadPlayer(e boil.Executor, singular bool, maybeUserMulti
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &userMultiplierR{}
+				obj.R = &playerMultiplierR{}
 			}
 
 			for _, a := range args {
@@ -578,7 +578,7 @@ func (userMultiplierL) LoadPlayer(e boil.Executor, singular bool, maybeUserMulti
 		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players")
 	}
 
-	if len(userMultiplierAfterSelectHooks) != 0 {
+	if len(playerMultiplierAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -596,7 +596,7 @@ func (userMultiplierL) LoadPlayer(e boil.Executor, singular bool, maybeUserMulti
 		if foreign.R == nil {
 			foreign.R = &playerR{}
 		}
-		foreign.R.UserMultipliers = append(foreign.R.UserMultipliers, object)
+		foreign.R.PlayerMultipliers = append(foreign.R.PlayerMultipliers, object)
 		return nil
 	}
 
@@ -607,7 +607,7 @@ func (userMultiplierL) LoadPlayer(e boil.Executor, singular bool, maybeUserMulti
 				if foreign.R == nil {
 					foreign.R = &playerR{}
 				}
-				foreign.R.UserMultipliers = append(foreign.R.UserMultipliers, local)
+				foreign.R.PlayerMultipliers = append(foreign.R.PlayerMultipliers, local)
 				break
 			}
 		}
@@ -616,10 +616,10 @@ func (userMultiplierL) LoadPlayer(e boil.Executor, singular bool, maybeUserMulti
 	return nil
 }
 
-// SetMultiplier of the userMultiplier to the related item.
+// SetMultiplier of the playerMultiplier to the related item.
 // Sets o.R.Multiplier to related.
-// Adds o to related.R.UserMultipliers.
-func (o *UserMultiplier) SetMultiplier(exec boil.Executor, insert bool, related *Multiplier) error {
+// Adds o to related.R.PlayerMultipliers.
+func (o *PlayerMultiplier) SetMultiplier(exec boil.Executor, insert bool, related *Multiplier) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -628,9 +628,9 @@ func (o *UserMultiplier) SetMultiplier(exec boil.Executor, insert bool, related 
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"user_multipliers\" SET %s WHERE %s",
+		"UPDATE \"player_multipliers\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"multiplier_id"}),
-		strmangle.WhereClause("\"", "\"", 2, userMultiplierPrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, playerMultiplierPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
 
@@ -644,7 +644,7 @@ func (o *UserMultiplier) SetMultiplier(exec boil.Executor, insert bool, related 
 
 	o.MultiplierID = related.ID
 	if o.R == nil {
-		o.R = &userMultiplierR{
+		o.R = &playerMultiplierR{
 			Multiplier: related,
 		}
 	} else {
@@ -653,19 +653,19 @@ func (o *UserMultiplier) SetMultiplier(exec boil.Executor, insert bool, related 
 
 	if related.R == nil {
 		related.R = &multiplierR{
-			UserMultipliers: UserMultiplierSlice{o},
+			PlayerMultipliers: PlayerMultiplierSlice{o},
 		}
 	} else {
-		related.R.UserMultipliers = append(related.R.UserMultipliers, o)
+		related.R.PlayerMultipliers = append(related.R.PlayerMultipliers, o)
 	}
 
 	return nil
 }
 
-// SetPlayer of the userMultiplier to the related item.
+// SetPlayer of the playerMultiplier to the related item.
 // Sets o.R.Player to related.
-// Adds o to related.R.UserMultipliers.
-func (o *UserMultiplier) SetPlayer(exec boil.Executor, insert bool, related *Player) error {
+// Adds o to related.R.PlayerMultipliers.
+func (o *PlayerMultiplier) SetPlayer(exec boil.Executor, insert bool, related *Player) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -674,9 +674,9 @@ func (o *UserMultiplier) SetPlayer(exec boil.Executor, insert bool, related *Pla
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"user_multipliers\" SET %s WHERE %s",
+		"UPDATE \"player_multipliers\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"player_id"}),
-		strmangle.WhereClause("\"", "\"", 2, userMultiplierPrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, playerMultiplierPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
 
@@ -690,7 +690,7 @@ func (o *UserMultiplier) SetPlayer(exec boil.Executor, insert bool, related *Pla
 
 	o.PlayerID = related.ID
 	if o.R == nil {
-		o.R = &userMultiplierR{
+		o.R = &playerMultiplierR{
 			Player: related,
 		}
 	} else {
@@ -699,56 +699,56 @@ func (o *UserMultiplier) SetPlayer(exec boil.Executor, insert bool, related *Pla
 
 	if related.R == nil {
 		related.R = &playerR{
-			UserMultipliers: UserMultiplierSlice{o},
+			PlayerMultipliers: PlayerMultiplierSlice{o},
 		}
 	} else {
-		related.R.UserMultipliers = append(related.R.UserMultipliers, o)
+		related.R.PlayerMultipliers = append(related.R.PlayerMultipliers, o)
 	}
 
 	return nil
 }
 
-// UserMultipliers retrieves all the records using an executor.
-func UserMultipliers(mods ...qm.QueryMod) userMultiplierQuery {
-	mods = append(mods, qm.From("\"user_multipliers\""))
-	return userMultiplierQuery{NewQuery(mods...)}
+// PlayerMultipliers retrieves all the records using an executor.
+func PlayerMultipliers(mods ...qm.QueryMod) playerMultiplierQuery {
+	mods = append(mods, qm.From("\"player_multipliers\""))
+	return playerMultiplierQuery{NewQuery(mods...)}
 }
 
-// FindUserMultiplier retrieves a single record by ID with an executor.
+// FindPlayerMultiplier retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindUserMultiplier(exec boil.Executor, iD string, selectCols ...string) (*UserMultiplier, error) {
-	userMultiplierObj := &UserMultiplier{}
+func FindPlayerMultiplier(exec boil.Executor, iD string, selectCols ...string) (*PlayerMultiplier, error) {
+	playerMultiplierObj := &PlayerMultiplier{}
 
 	sel := "*"
 	if len(selectCols) > 0 {
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"user_multipliers\" where \"id\"=$1", sel,
+		"select %s from \"player_multipliers\" where \"id\"=$1", sel,
 	)
 
 	q := queries.Raw(query, iD)
 
-	err := q.Bind(nil, exec, userMultiplierObj)
+	err := q.Bind(nil, exec, playerMultiplierObj)
 	if err != nil {
 		if errors.Cause(err) == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		return nil, errors.Wrap(err, "boiler: unable to select from user_multipliers")
+		return nil, errors.Wrap(err, "boiler: unable to select from player_multipliers")
 	}
 
-	if err = userMultiplierObj.doAfterSelectHooks(exec); err != nil {
-		return userMultiplierObj, err
+	if err = playerMultiplierObj.doAfterSelectHooks(exec); err != nil {
+		return playerMultiplierObj, err
 	}
 
-	return userMultiplierObj, nil
+	return playerMultiplierObj, nil
 }
 
 // Insert a single record using an executor.
 // See boil.Columns.InsertColumnSet documentation to understand column list inference for inserts.
-func (o *UserMultiplier) Insert(exec boil.Executor, columns boil.Columns) error {
+func (o *PlayerMultiplier) Insert(exec boil.Executor, columns boil.Columns) error {
 	if o == nil {
-		return errors.New("boiler: no user_multipliers provided for insertion")
+		return errors.New("boiler: no player_multipliers provided for insertion")
 	}
 
 	var err error
@@ -762,33 +762,33 @@ func (o *UserMultiplier) Insert(exec boil.Executor, columns boil.Columns) error 
 		return err
 	}
 
-	nzDefaults := queries.NonZeroDefaultSet(userMultiplierColumnsWithDefault, o)
+	nzDefaults := queries.NonZeroDefaultSet(playerMultiplierColumnsWithDefault, o)
 
 	key := makeCacheKey(columns, nzDefaults)
-	userMultiplierInsertCacheMut.RLock()
-	cache, cached := userMultiplierInsertCache[key]
-	userMultiplierInsertCacheMut.RUnlock()
+	playerMultiplierInsertCacheMut.RLock()
+	cache, cached := playerMultiplierInsertCache[key]
+	playerMultiplierInsertCacheMut.RUnlock()
 
 	if !cached {
 		wl, returnColumns := columns.InsertColumnSet(
-			userMultiplierAllColumns,
-			userMultiplierColumnsWithDefault,
-			userMultiplierColumnsWithoutDefault,
+			playerMultiplierAllColumns,
+			playerMultiplierColumnsWithDefault,
+			playerMultiplierColumnsWithoutDefault,
 			nzDefaults,
 		)
 
-		cache.valueMapping, err = queries.BindMapping(userMultiplierType, userMultiplierMapping, wl)
+		cache.valueMapping, err = queries.BindMapping(playerMultiplierType, playerMultiplierMapping, wl)
 		if err != nil {
 			return err
 		}
-		cache.retMapping, err = queries.BindMapping(userMultiplierType, userMultiplierMapping, returnColumns)
+		cache.retMapping, err = queries.BindMapping(playerMultiplierType, playerMultiplierMapping, returnColumns)
 		if err != nil {
 			return err
 		}
 		if len(wl) != 0 {
-			cache.query = fmt.Sprintf("INSERT INTO \"user_multipliers\" (\"%s\") %%sVALUES (%s)%%s", strings.Join(wl, "\",\""), strmangle.Placeholders(dialect.UseIndexPlaceholders, len(wl), 1, 1))
+			cache.query = fmt.Sprintf("INSERT INTO \"player_multipliers\" (\"%s\") %%sVALUES (%s)%%s", strings.Join(wl, "\",\""), strmangle.Placeholders(dialect.UseIndexPlaceholders, len(wl), 1, 1))
 		} else {
-			cache.query = "INSERT INTO \"user_multipliers\" %sDEFAULT VALUES%s"
+			cache.query = "INSERT INTO \"player_multipliers\" %sDEFAULT VALUES%s"
 		}
 
 		var queryOutput, queryReturning string
@@ -815,49 +815,49 @@ func (o *UserMultiplier) Insert(exec boil.Executor, columns boil.Columns) error 
 	}
 
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to insert into user_multipliers")
+		return errors.Wrap(err, "boiler: unable to insert into player_multipliers")
 	}
 
 	if !cached {
-		userMultiplierInsertCacheMut.Lock()
-		userMultiplierInsertCache[key] = cache
-		userMultiplierInsertCacheMut.Unlock()
+		playerMultiplierInsertCacheMut.Lock()
+		playerMultiplierInsertCache[key] = cache
+		playerMultiplierInsertCacheMut.Unlock()
 	}
 
 	return o.doAfterInsertHooks(exec)
 }
 
-// Update uses an executor to update the UserMultiplier.
+// Update uses an executor to update the PlayerMultiplier.
 // See boil.Columns.UpdateColumnSet documentation to understand column list inference for updates.
 // Update does not automatically update the record in case of default values. Use .Reload() to refresh the records.
-func (o *UserMultiplier) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
+func (o *PlayerMultiplier) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
 	var err error
 	if err = o.doBeforeUpdateHooks(exec); err != nil {
 		return 0, err
 	}
 	key := makeCacheKey(columns, nil)
-	userMultiplierUpdateCacheMut.RLock()
-	cache, cached := userMultiplierUpdateCache[key]
-	userMultiplierUpdateCacheMut.RUnlock()
+	playerMultiplierUpdateCacheMut.RLock()
+	cache, cached := playerMultiplierUpdateCache[key]
+	playerMultiplierUpdateCacheMut.RUnlock()
 
 	if !cached {
 		wl := columns.UpdateColumnSet(
-			userMultiplierAllColumns,
-			userMultiplierPrimaryKeyColumns,
+			playerMultiplierAllColumns,
+			playerMultiplierPrimaryKeyColumns,
 		)
 
 		if !columns.IsWhitelist() {
 			wl = strmangle.SetComplement(wl, []string{"created_at"})
 		}
 		if len(wl) == 0 {
-			return 0, errors.New("boiler: unable to update user_multipliers, could not build whitelist")
+			return 0, errors.New("boiler: unable to update player_multipliers, could not build whitelist")
 		}
 
-		cache.query = fmt.Sprintf("UPDATE \"user_multipliers\" SET %s WHERE %s",
+		cache.query = fmt.Sprintf("UPDATE \"player_multipliers\" SET %s WHERE %s",
 			strmangle.SetParamNames("\"", "\"", 1, wl),
-			strmangle.WhereClause("\"", "\"", len(wl)+1, userMultiplierPrimaryKeyColumns),
+			strmangle.WhereClause("\"", "\"", len(wl)+1, playerMultiplierPrimaryKeyColumns),
 		)
-		cache.valueMapping, err = queries.BindMapping(userMultiplierType, userMultiplierMapping, append(wl, userMultiplierPrimaryKeyColumns...))
+		cache.valueMapping, err = queries.BindMapping(playerMultiplierType, playerMultiplierMapping, append(wl, playerMultiplierPrimaryKeyColumns...))
 		if err != nil {
 			return 0, err
 		}
@@ -872,42 +872,42 @@ func (o *UserMultiplier) Update(exec boil.Executor, columns boil.Columns) (int64
 	var result sql.Result
 	result, err = exec.Exec(cache.query, values...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update user_multipliers row")
+		return 0, errors.Wrap(err, "boiler: unable to update player_multipliers row")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by update for user_multipliers")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by update for player_multipliers")
 	}
 
 	if !cached {
-		userMultiplierUpdateCacheMut.Lock()
-		userMultiplierUpdateCache[key] = cache
-		userMultiplierUpdateCacheMut.Unlock()
+		playerMultiplierUpdateCacheMut.Lock()
+		playerMultiplierUpdateCache[key] = cache
+		playerMultiplierUpdateCacheMut.Unlock()
 	}
 
 	return rowsAff, o.doAfterUpdateHooks(exec)
 }
 
 // UpdateAll updates all rows with the specified column values.
-func (q userMultiplierQuery) UpdateAll(exec boil.Executor, cols M) (int64, error) {
+func (q playerMultiplierQuery) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 	queries.SetUpdate(q.Query, cols)
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update all for user_multipliers")
+		return 0, errors.Wrap(err, "boiler: unable to update all for player_multipliers")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected for user_multipliers")
+		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected for player_multipliers")
 	}
 
 	return rowsAff, nil
 }
 
 // UpdateAll updates all rows with the specified column values, using an executor.
-func (o UserMultiplierSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
+func (o PlayerMultiplierSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 	ln := int64(len(o))
 	if ln == 0 {
 		return 0, nil
@@ -929,13 +929,13 @@ func (o UserMultiplierSlice) UpdateAll(exec boil.Executor, cols M) (int64, error
 
 	// Append all of the primary key values for each column
 	for _, obj := range o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), userMultiplierPrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), playerMultiplierPrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := fmt.Sprintf("UPDATE \"user_multipliers\" SET %s WHERE %s",
+	sql := fmt.Sprintf("UPDATE \"player_multipliers\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, colNames),
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), len(colNames)+1, userMultiplierPrimaryKeyColumns, len(o)))
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), len(colNames)+1, playerMultiplierPrimaryKeyColumns, len(o)))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -943,21 +943,21 @@ func (o UserMultiplierSlice) UpdateAll(exec boil.Executor, cols M) (int64, error
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update all in userMultiplier slice")
+		return 0, errors.Wrap(err, "boiler: unable to update all in playerMultiplier slice")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected all in update all userMultiplier")
+		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected all in update all playerMultiplier")
 	}
 	return rowsAff, nil
 }
 
 // Upsert attempts an insert using an executor, and does an update or ignore on conflict.
 // See boil.Columns documentation for how to properly use updateColumns and insertColumns.
-func (o *UserMultiplier) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
+func (o *PlayerMultiplier) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
 	if o == nil {
-		return errors.New("boiler: no user_multipliers provided for upsert")
+		return errors.New("boiler: no player_multipliers provided for upsert")
 	}
 	currTime := time.Now().In(boil.GetLocation())
 
@@ -969,7 +969,7 @@ func (o *UserMultiplier) Upsert(exec boil.Executor, updateOnConflict bool, confl
 		return err
 	}
 
-	nzDefaults := queries.NonZeroDefaultSet(userMultiplierColumnsWithDefault, o)
+	nzDefaults := queries.NonZeroDefaultSet(playerMultiplierColumnsWithDefault, o)
 
 	// Build cache key in-line uglily - mysql vs psql problems
 	buf := strmangle.GetBuffer()
@@ -999,42 +999,42 @@ func (o *UserMultiplier) Upsert(exec boil.Executor, updateOnConflict bool, confl
 	key := buf.String()
 	strmangle.PutBuffer(buf)
 
-	userMultiplierUpsertCacheMut.RLock()
-	cache, cached := userMultiplierUpsertCache[key]
-	userMultiplierUpsertCacheMut.RUnlock()
+	playerMultiplierUpsertCacheMut.RLock()
+	cache, cached := playerMultiplierUpsertCache[key]
+	playerMultiplierUpsertCacheMut.RUnlock()
 
 	var err error
 
 	if !cached {
 		insert, ret := insertColumns.InsertColumnSet(
-			userMultiplierAllColumns,
-			userMultiplierColumnsWithDefault,
-			userMultiplierColumnsWithoutDefault,
+			playerMultiplierAllColumns,
+			playerMultiplierColumnsWithDefault,
+			playerMultiplierColumnsWithoutDefault,
 			nzDefaults,
 		)
 
 		update := updateColumns.UpdateColumnSet(
-			userMultiplierAllColumns,
-			userMultiplierPrimaryKeyColumns,
+			playerMultiplierAllColumns,
+			playerMultiplierPrimaryKeyColumns,
 		)
 
 		if updateOnConflict && len(update) == 0 {
-			return errors.New("boiler: unable to upsert user_multipliers, could not build update column list")
+			return errors.New("boiler: unable to upsert player_multipliers, could not build update column list")
 		}
 
 		conflict := conflictColumns
 		if len(conflict) == 0 {
-			conflict = make([]string, len(userMultiplierPrimaryKeyColumns))
-			copy(conflict, userMultiplierPrimaryKeyColumns)
+			conflict = make([]string, len(playerMultiplierPrimaryKeyColumns))
+			copy(conflict, playerMultiplierPrimaryKeyColumns)
 		}
-		cache.query = buildUpsertQueryPostgres(dialect, "\"user_multipliers\"", updateOnConflict, ret, update, conflict, insert)
+		cache.query = buildUpsertQueryPostgres(dialect, "\"player_multipliers\"", updateOnConflict, ret, update, conflict, insert)
 
-		cache.valueMapping, err = queries.BindMapping(userMultiplierType, userMultiplierMapping, insert)
+		cache.valueMapping, err = queries.BindMapping(playerMultiplierType, playerMultiplierMapping, insert)
 		if err != nil {
 			return err
 		}
 		if len(ret) != 0 {
-			cache.retMapping, err = queries.BindMapping(userMultiplierType, userMultiplierMapping, ret)
+			cache.retMapping, err = queries.BindMapping(playerMultiplierType, playerMultiplierMapping, ret)
 			if err != nil {
 				return err
 			}
@@ -1061,31 +1061,31 @@ func (o *UserMultiplier) Upsert(exec boil.Executor, updateOnConflict bool, confl
 		_, err = exec.Exec(cache.query, vals...)
 	}
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to upsert user_multipliers")
+		return errors.Wrap(err, "boiler: unable to upsert player_multipliers")
 	}
 
 	if !cached {
-		userMultiplierUpsertCacheMut.Lock()
-		userMultiplierUpsertCache[key] = cache
-		userMultiplierUpsertCacheMut.Unlock()
+		playerMultiplierUpsertCacheMut.Lock()
+		playerMultiplierUpsertCache[key] = cache
+		playerMultiplierUpsertCacheMut.Unlock()
 	}
 
 	return o.doAfterUpsertHooks(exec)
 }
 
-// Delete deletes a single UserMultiplier record with an executor.
+// Delete deletes a single PlayerMultiplier record with an executor.
 // Delete will match against the primary key column to find the record to delete.
-func (o *UserMultiplier) Delete(exec boil.Executor) (int64, error) {
+func (o *PlayerMultiplier) Delete(exec boil.Executor) (int64, error) {
 	if o == nil {
-		return 0, errors.New("boiler: no UserMultiplier provided for delete")
+		return 0, errors.New("boiler: no PlayerMultiplier provided for delete")
 	}
 
 	if err := o.doBeforeDeleteHooks(exec); err != nil {
 		return 0, err
 	}
 
-	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), userMultiplierPrimaryKeyMapping)
-	sql := "DELETE FROM \"user_multipliers\" WHERE \"id\"=$1"
+	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), playerMultiplierPrimaryKeyMapping)
+	sql := "DELETE FROM \"player_multipliers\" WHERE \"id\"=$1"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1093,12 +1093,12 @@ func (o *UserMultiplier) Delete(exec boil.Executor) (int64, error) {
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete from user_multipliers")
+		return 0, errors.Wrap(err, "boiler: unable to delete from player_multipliers")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by delete for user_multipliers")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by delete for player_multipliers")
 	}
 
 	if err := o.doAfterDeleteHooks(exec); err != nil {
@@ -1109,33 +1109,33 @@ func (o *UserMultiplier) Delete(exec boil.Executor) (int64, error) {
 }
 
 // DeleteAll deletes all matching rows.
-func (q userMultiplierQuery) DeleteAll(exec boil.Executor) (int64, error) {
+func (q playerMultiplierQuery) DeleteAll(exec boil.Executor) (int64, error) {
 	if q.Query == nil {
-		return 0, errors.New("boiler: no userMultiplierQuery provided for delete all")
+		return 0, errors.New("boiler: no playerMultiplierQuery provided for delete all")
 	}
 
 	queries.SetDelete(q.Query)
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete all from user_multipliers")
+		return 0, errors.Wrap(err, "boiler: unable to delete all from player_multipliers")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for user_multipliers")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for player_multipliers")
 	}
 
 	return rowsAff, nil
 }
 
 // DeleteAll deletes all rows in the slice, using an executor.
-func (o UserMultiplierSlice) DeleteAll(exec boil.Executor) (int64, error) {
+func (o PlayerMultiplierSlice) DeleteAll(exec boil.Executor) (int64, error) {
 	if len(o) == 0 {
 		return 0, nil
 	}
 
-	if len(userMultiplierBeforeDeleteHooks) != 0 {
+	if len(playerMultiplierBeforeDeleteHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doBeforeDeleteHooks(exec); err != nil {
 				return 0, err
@@ -1145,12 +1145,12 @@ func (o UserMultiplierSlice) DeleteAll(exec boil.Executor) (int64, error) {
 
 	var args []interface{}
 	for _, obj := range o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), userMultiplierPrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), playerMultiplierPrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := "DELETE FROM \"user_multipliers\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, userMultiplierPrimaryKeyColumns, len(o))
+	sql := "DELETE FROM \"player_multipliers\" WHERE " +
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, playerMultiplierPrimaryKeyColumns, len(o))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1158,15 +1158,15 @@ func (o UserMultiplierSlice) DeleteAll(exec boil.Executor) (int64, error) {
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete all from userMultiplier slice")
+		return 0, errors.Wrap(err, "boiler: unable to delete all from playerMultiplier slice")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for user_multipliers")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for player_multipliers")
 	}
 
-	if len(userMultiplierAfterDeleteHooks) != 0 {
+	if len(playerMultiplierAfterDeleteHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doAfterDeleteHooks(exec); err != nil {
 				return 0, err
@@ -1179,8 +1179,8 @@ func (o UserMultiplierSlice) DeleteAll(exec boil.Executor) (int64, error) {
 
 // Reload refetches the object from the database
 // using the primary keys with an executor.
-func (o *UserMultiplier) Reload(exec boil.Executor) error {
-	ret, err := FindUserMultiplier(exec, o.ID)
+func (o *PlayerMultiplier) Reload(exec boil.Executor) error {
+	ret, err := FindPlayerMultiplier(exec, o.ID)
 	if err != nil {
 		return err
 	}
@@ -1191,26 +1191,26 @@ func (o *UserMultiplier) Reload(exec boil.Executor) error {
 
 // ReloadAll refetches every row with matching primary key column values
 // and overwrites the original object slice with the newly updated slice.
-func (o *UserMultiplierSlice) ReloadAll(exec boil.Executor) error {
+func (o *PlayerMultiplierSlice) ReloadAll(exec boil.Executor) error {
 	if o == nil || len(*o) == 0 {
 		return nil
 	}
 
-	slice := UserMultiplierSlice{}
+	slice := PlayerMultiplierSlice{}
 	var args []interface{}
 	for _, obj := range *o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), userMultiplierPrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), playerMultiplierPrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := "SELECT \"user_multipliers\".* FROM \"user_multipliers\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, userMultiplierPrimaryKeyColumns, len(*o))
+	sql := "SELECT \"player_multipliers\".* FROM \"player_multipliers\" WHERE " +
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, playerMultiplierPrimaryKeyColumns, len(*o))
 
 	q := queries.Raw(sql, args...)
 
 	err := q.Bind(nil, exec, &slice)
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to reload all in UserMultiplierSlice")
+		return errors.Wrap(err, "boiler: unable to reload all in PlayerMultiplierSlice")
 	}
 
 	*o = slice
@@ -1218,10 +1218,10 @@ func (o *UserMultiplierSlice) ReloadAll(exec boil.Executor) error {
 	return nil
 }
 
-// UserMultiplierExists checks if the UserMultiplier row exists.
-func UserMultiplierExists(exec boil.Executor, iD string) (bool, error) {
+// PlayerMultiplierExists checks if the PlayerMultiplier row exists.
+func PlayerMultiplierExists(exec boil.Executor, iD string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"user_multipliers\" where \"id\"=$1 limit 1)"
+	sql := "select exists(select 1 from \"player_multipliers\" where \"id\"=$1 limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1231,7 +1231,7 @@ func UserMultiplierExists(exec boil.Executor, iD string) (bool, error) {
 
 	err := row.Scan(&exists)
 	if err != nil {
-		return false, errors.Wrap(err, "boiler: unable to check if user_multipliers exists")
+		return false, errors.Wrap(err, "boiler: unable to check if player_multipliers exists")
 	}
 
 	return exists, nil

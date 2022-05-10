@@ -1,6 +1,6 @@
 module server
 
-go 1.17
+go 1.18
 
 require (
 	github.com/antonholmquist/jason v1.0.0 // indirect
@@ -26,7 +26,6 @@ require (
 require (
 	github.com/DataDog/gostackparse v0.5.0
 	github.com/friendsofgo/errors v0.9.2
-	github.com/gosimple/slug v1.12.0
 	github.com/h2non/filetype v1.1.3
 	github.com/jackc/pgconn v1.10.1
 	github.com/jackc/pgx v3.6.2+incompatible
@@ -57,7 +56,6 @@ require (
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/google/pprof v0.0.0-20210720184732-4bb14d4b1be1 // indirect
 	github.com/google/uuid v1.3.0 // indirect
-	github.com/gosimple/unidecode v1.0.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/magiconair/properties v1.8.5 // indirect

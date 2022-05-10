@@ -29,14 +29,14 @@ const SYNDICATE_WIN MultiplierTypeEnum = "syndicate_win"
 
 type MultiplierSystem struct {
 	multipliers map[string]*boiler.Multiplier
-	players     map[string]map[*boiler.Multiplier]*boiler.UserMultiplier
+	players     map[string]map[*boiler.Multiplier]*boiler.PlayerMultiplier
 	battle      *Battle
 }
 
 func NewMultiplierSystem(btl *Battle) *MultiplierSystem {
 	ms := &MultiplierSystem{
 		battle:      btl,
-		players:     make(map[string]map[*boiler.Multiplier]*boiler.UserMultiplier),
+		players:     make(map[string]map[*boiler.Multiplier]*boiler.PlayerMultiplier),
 		multipliers: make(map[string]*boiler.Multiplier),
 	}
 	return ms
@@ -558,7 +558,7 @@ winwar:
 		for _, mlt := range mlts {
 			// if it is a citizen multi
 			for _, m := range mlt {
-				mlt := &boiler.UserMultiplier{
+				mlt := &boiler.PlayerMultiplier{
 					PlayerID:          pid,
 					FromBattleNumber:  ms.battle.BattleNumber,
 					UntilBattleNumber: ms.battle.BattleNumber + 1,

@@ -23,8 +23,8 @@ import (
 	"github.com/volatiletech/strmangle"
 )
 
-// UserSpoilsOfWar is an object representing the database table.
-type UserSpoilsOfWar struct {
+// PlayerSpoilsOfWar is an object representing the database table.
+type PlayerSpoilsOfWar struct {
 	ID                       string            `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	PlayerID                 string            `boiler:"player_id" boil:"player_id" json:"player_id" toml:"player_id" yaml:"player_id"`
 	BattleID                 string            `boiler:"battle_id" boil:"battle_id" json:"battle_id" toml:"battle_id" yaml:"battle_id"`
@@ -38,11 +38,11 @@ type UserSpoilsOfWar struct {
 	DeletedAt                null.Time         `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 	CreatedAt                time.Time         `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
-	R *userSpoilsOfWarR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
-	L userSpoilsOfWarL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
+	R *playerSpoilsOfWarR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
+	L playerSpoilsOfWarL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
-var UserSpoilsOfWarColumns = struct {
+var PlayerSpoilsOfWarColumns = struct {
 	ID                       string
 	PlayerID                 string
 	BattleID                 string
@@ -70,7 +70,7 @@ var UserSpoilsOfWarColumns = struct {
 	CreatedAt:                "created_at",
 }
 
-var UserSpoilsOfWarTableColumns = struct {
+var PlayerSpoilsOfWarTableColumns = struct {
 	ID                       string
 	PlayerID                 string
 	BattleID                 string
@@ -84,18 +84,18 @@ var UserSpoilsOfWarTableColumns = struct {
 	DeletedAt                string
 	CreatedAt                string
 }{
-	ID:                       "user_spoils_of_war.id",
-	PlayerID:                 "user_spoils_of_war.player_id",
-	BattleID:                 "user_spoils_of_war.battle_id",
-	TotalMultiplierForBattle: "user_spoils_of_war.total_multiplier_for_battle",
-	TotalSow:                 "user_spoils_of_war.total_sow",
-	PaidSow:                  "user_spoils_of_war.paid_sow",
-	TickAmount:               "user_spoils_of_war.tick_amount",
-	LostSow:                  "user_spoils_of_war.lost_sow",
-	RelatedTransactionIds:    "user_spoils_of_war.related_transaction_ids",
-	UpdatedAt:                "user_spoils_of_war.updated_at",
-	DeletedAt:                "user_spoils_of_war.deleted_at",
-	CreatedAt:                "user_spoils_of_war.created_at",
+	ID:                       "player_spoils_of_war.id",
+	PlayerID:                 "player_spoils_of_war.player_id",
+	BattleID:                 "player_spoils_of_war.battle_id",
+	TotalMultiplierForBattle: "player_spoils_of_war.total_multiplier_for_battle",
+	TotalSow:                 "player_spoils_of_war.total_sow",
+	PaidSow:                  "player_spoils_of_war.paid_sow",
+	TickAmount:               "player_spoils_of_war.tick_amount",
+	LostSow:                  "player_spoils_of_war.lost_sow",
+	RelatedTransactionIds:    "player_spoils_of_war.related_transaction_ids",
+	UpdatedAt:                "player_spoils_of_war.updated_at",
+	DeletedAt:                "player_spoils_of_war.deleted_at",
+	CreatedAt:                "player_spoils_of_war.created_at",
 }
 
 // Generated where
@@ -126,7 +126,7 @@ func (w whereHelpertypes_StringArray) IsNotNull() qm.QueryMod {
 	return qmhelper.WhereIsNotNull(w.field)
 }
 
-var UserSpoilsOfWarWhere = struct {
+var PlayerSpoilsOfWarWhere = struct {
 	ID                       whereHelperstring
 	PlayerID                 whereHelperstring
 	BattleID                 whereHelperstring
@@ -140,22 +140,22 @@ var UserSpoilsOfWarWhere = struct {
 	DeletedAt                whereHelpernull_Time
 	CreatedAt                whereHelpertime_Time
 }{
-	ID:                       whereHelperstring{field: "\"user_spoils_of_war\".\"id\""},
-	PlayerID:                 whereHelperstring{field: "\"user_spoils_of_war\".\"player_id\""},
-	BattleID:                 whereHelperstring{field: "\"user_spoils_of_war\".\"battle_id\""},
-	TotalMultiplierForBattle: whereHelperint{field: "\"user_spoils_of_war\".\"total_multiplier_for_battle\""},
-	TotalSow:                 whereHelperdecimal_Decimal{field: "\"user_spoils_of_war\".\"total_sow\""},
-	PaidSow:                  whereHelperdecimal_Decimal{field: "\"user_spoils_of_war\".\"paid_sow\""},
-	TickAmount:               whereHelperdecimal_Decimal{field: "\"user_spoils_of_war\".\"tick_amount\""},
-	LostSow:                  whereHelperdecimal_Decimal{field: "\"user_spoils_of_war\".\"lost_sow\""},
-	RelatedTransactionIds:    whereHelpertypes_StringArray{field: "\"user_spoils_of_war\".\"related_transaction_ids\""},
-	UpdatedAt:                whereHelpertime_Time{field: "\"user_spoils_of_war\".\"updated_at\""},
-	DeletedAt:                whereHelpernull_Time{field: "\"user_spoils_of_war\".\"deleted_at\""},
-	CreatedAt:                whereHelpertime_Time{field: "\"user_spoils_of_war\".\"created_at\""},
+	ID:                       whereHelperstring{field: "\"player_spoils_of_war\".\"id\""},
+	PlayerID:                 whereHelperstring{field: "\"player_spoils_of_war\".\"player_id\""},
+	BattleID:                 whereHelperstring{field: "\"player_spoils_of_war\".\"battle_id\""},
+	TotalMultiplierForBattle: whereHelperint{field: "\"player_spoils_of_war\".\"total_multiplier_for_battle\""},
+	TotalSow:                 whereHelperdecimal_Decimal{field: "\"player_spoils_of_war\".\"total_sow\""},
+	PaidSow:                  whereHelperdecimal_Decimal{field: "\"player_spoils_of_war\".\"paid_sow\""},
+	TickAmount:               whereHelperdecimal_Decimal{field: "\"player_spoils_of_war\".\"tick_amount\""},
+	LostSow:                  whereHelperdecimal_Decimal{field: "\"player_spoils_of_war\".\"lost_sow\""},
+	RelatedTransactionIds:    whereHelpertypes_StringArray{field: "\"player_spoils_of_war\".\"related_transaction_ids\""},
+	UpdatedAt:                whereHelpertime_Time{field: "\"player_spoils_of_war\".\"updated_at\""},
+	DeletedAt:                whereHelpernull_Time{field: "\"player_spoils_of_war\".\"deleted_at\""},
+	CreatedAt:                whereHelpertime_Time{field: "\"player_spoils_of_war\".\"created_at\""},
 }
 
-// UserSpoilsOfWarRels is where relationship names are stored.
-var UserSpoilsOfWarRels = struct {
+// PlayerSpoilsOfWarRels is where relationship names are stored.
+var PlayerSpoilsOfWarRels = struct {
 	Battle string
 	Player string
 }{
@@ -163,51 +163,51 @@ var UserSpoilsOfWarRels = struct {
 	Player: "Player",
 }
 
-// userSpoilsOfWarR is where relationships are stored.
-type userSpoilsOfWarR struct {
+// playerSpoilsOfWarR is where relationships are stored.
+type playerSpoilsOfWarR struct {
 	Battle *Battle `boiler:"Battle" boil:"Battle" json:"Battle" toml:"Battle" yaml:"Battle"`
 	Player *Player `boiler:"Player" boil:"Player" json:"Player" toml:"Player" yaml:"Player"`
 }
 
 // NewStruct creates a new relationship struct
-func (*userSpoilsOfWarR) NewStruct() *userSpoilsOfWarR {
-	return &userSpoilsOfWarR{}
+func (*playerSpoilsOfWarR) NewStruct() *playerSpoilsOfWarR {
+	return &playerSpoilsOfWarR{}
 }
 
-// userSpoilsOfWarL is where Load methods for each relationship are stored.
-type userSpoilsOfWarL struct{}
+// playerSpoilsOfWarL is where Load methods for each relationship are stored.
+type playerSpoilsOfWarL struct{}
 
 var (
-	userSpoilsOfWarAllColumns            = []string{"id", "player_id", "battle_id", "total_multiplier_for_battle", "total_sow", "paid_sow", "tick_amount", "lost_sow", "related_transaction_ids", "updated_at", "deleted_at", "created_at"}
-	userSpoilsOfWarColumnsWithoutDefault = []string{"player_id", "battle_id", "total_multiplier_for_battle", "total_sow", "paid_sow", "tick_amount", "lost_sow"}
-	userSpoilsOfWarColumnsWithDefault    = []string{"id", "related_transaction_ids", "updated_at", "deleted_at", "created_at"}
-	userSpoilsOfWarPrimaryKeyColumns     = []string{"id"}
-	userSpoilsOfWarGeneratedColumns      = []string{}
+	playerSpoilsOfWarAllColumns            = []string{"id", "player_id", "battle_id", "total_multiplier_for_battle", "total_sow", "paid_sow", "tick_amount", "lost_sow", "related_transaction_ids", "updated_at", "deleted_at", "created_at"}
+	playerSpoilsOfWarColumnsWithoutDefault = []string{"player_id", "battle_id", "total_multiplier_for_battle", "total_sow", "paid_sow", "tick_amount", "lost_sow"}
+	playerSpoilsOfWarColumnsWithDefault    = []string{"id", "related_transaction_ids", "updated_at", "deleted_at", "created_at"}
+	playerSpoilsOfWarPrimaryKeyColumns     = []string{"id"}
+	playerSpoilsOfWarGeneratedColumns      = []string{}
 )
 
 type (
-	// UserSpoilsOfWarSlice is an alias for a slice of pointers to UserSpoilsOfWar.
-	// This should almost always be used instead of []UserSpoilsOfWar.
-	UserSpoilsOfWarSlice []*UserSpoilsOfWar
-	// UserSpoilsOfWarHook is the signature for custom UserSpoilsOfWar hook methods
-	UserSpoilsOfWarHook func(boil.Executor, *UserSpoilsOfWar) error
+	// PlayerSpoilsOfWarSlice is an alias for a slice of pointers to PlayerSpoilsOfWar.
+	// This should almost always be used instead of []PlayerSpoilsOfWar.
+	PlayerSpoilsOfWarSlice []*PlayerSpoilsOfWar
+	// PlayerSpoilsOfWarHook is the signature for custom PlayerSpoilsOfWar hook methods
+	PlayerSpoilsOfWarHook func(boil.Executor, *PlayerSpoilsOfWar) error
 
-	userSpoilsOfWarQuery struct {
+	playerSpoilsOfWarQuery struct {
 		*queries.Query
 	}
 )
 
 // Cache for insert, update and upsert
 var (
-	userSpoilsOfWarType                 = reflect.TypeOf(&UserSpoilsOfWar{})
-	userSpoilsOfWarMapping              = queries.MakeStructMapping(userSpoilsOfWarType)
-	userSpoilsOfWarPrimaryKeyMapping, _ = queries.BindMapping(userSpoilsOfWarType, userSpoilsOfWarMapping, userSpoilsOfWarPrimaryKeyColumns)
-	userSpoilsOfWarInsertCacheMut       sync.RWMutex
-	userSpoilsOfWarInsertCache          = make(map[string]insertCache)
-	userSpoilsOfWarUpdateCacheMut       sync.RWMutex
-	userSpoilsOfWarUpdateCache          = make(map[string]updateCache)
-	userSpoilsOfWarUpsertCacheMut       sync.RWMutex
-	userSpoilsOfWarUpsertCache          = make(map[string]insertCache)
+	playerSpoilsOfWarType                 = reflect.TypeOf(&PlayerSpoilsOfWar{})
+	playerSpoilsOfWarMapping              = queries.MakeStructMapping(playerSpoilsOfWarType)
+	playerSpoilsOfWarPrimaryKeyMapping, _ = queries.BindMapping(playerSpoilsOfWarType, playerSpoilsOfWarMapping, playerSpoilsOfWarPrimaryKeyColumns)
+	playerSpoilsOfWarInsertCacheMut       sync.RWMutex
+	playerSpoilsOfWarInsertCache          = make(map[string]insertCache)
+	playerSpoilsOfWarUpdateCacheMut       sync.RWMutex
+	playerSpoilsOfWarUpdateCache          = make(map[string]updateCache)
+	playerSpoilsOfWarUpsertCacheMut       sync.RWMutex
+	playerSpoilsOfWarUpsertCache          = make(map[string]insertCache)
 )
 
 var (
@@ -218,23 +218,23 @@ var (
 	_ = qmhelper.Where
 )
 
-var userSpoilsOfWarAfterSelectHooks []UserSpoilsOfWarHook
+var playerSpoilsOfWarAfterSelectHooks []PlayerSpoilsOfWarHook
 
-var userSpoilsOfWarBeforeInsertHooks []UserSpoilsOfWarHook
-var userSpoilsOfWarAfterInsertHooks []UserSpoilsOfWarHook
+var playerSpoilsOfWarBeforeInsertHooks []PlayerSpoilsOfWarHook
+var playerSpoilsOfWarAfterInsertHooks []PlayerSpoilsOfWarHook
 
-var userSpoilsOfWarBeforeUpdateHooks []UserSpoilsOfWarHook
-var userSpoilsOfWarAfterUpdateHooks []UserSpoilsOfWarHook
+var playerSpoilsOfWarBeforeUpdateHooks []PlayerSpoilsOfWarHook
+var playerSpoilsOfWarAfterUpdateHooks []PlayerSpoilsOfWarHook
 
-var userSpoilsOfWarBeforeDeleteHooks []UserSpoilsOfWarHook
-var userSpoilsOfWarAfterDeleteHooks []UserSpoilsOfWarHook
+var playerSpoilsOfWarBeforeDeleteHooks []PlayerSpoilsOfWarHook
+var playerSpoilsOfWarAfterDeleteHooks []PlayerSpoilsOfWarHook
 
-var userSpoilsOfWarBeforeUpsertHooks []UserSpoilsOfWarHook
-var userSpoilsOfWarAfterUpsertHooks []UserSpoilsOfWarHook
+var playerSpoilsOfWarBeforeUpsertHooks []PlayerSpoilsOfWarHook
+var playerSpoilsOfWarAfterUpsertHooks []PlayerSpoilsOfWarHook
 
 // doAfterSelectHooks executes all "after Select" hooks.
-func (o *UserSpoilsOfWar) doAfterSelectHooks(exec boil.Executor) (err error) {
-	for _, hook := range userSpoilsOfWarAfterSelectHooks {
+func (o *PlayerSpoilsOfWar) doAfterSelectHooks(exec boil.Executor) (err error) {
+	for _, hook := range playerSpoilsOfWarAfterSelectHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -244,8 +244,8 @@ func (o *UserSpoilsOfWar) doAfterSelectHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeInsertHooks executes all "before insert" hooks.
-func (o *UserSpoilsOfWar) doBeforeInsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range userSpoilsOfWarBeforeInsertHooks {
+func (o *PlayerSpoilsOfWar) doBeforeInsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range playerSpoilsOfWarBeforeInsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -255,8 +255,8 @@ func (o *UserSpoilsOfWar) doBeforeInsertHooks(exec boil.Executor) (err error) {
 }
 
 // doAfterInsertHooks executes all "after Insert" hooks.
-func (o *UserSpoilsOfWar) doAfterInsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range userSpoilsOfWarAfterInsertHooks {
+func (o *PlayerSpoilsOfWar) doAfterInsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range playerSpoilsOfWarAfterInsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -266,8 +266,8 @@ func (o *UserSpoilsOfWar) doAfterInsertHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeUpdateHooks executes all "before Update" hooks.
-func (o *UserSpoilsOfWar) doBeforeUpdateHooks(exec boil.Executor) (err error) {
-	for _, hook := range userSpoilsOfWarBeforeUpdateHooks {
+func (o *PlayerSpoilsOfWar) doBeforeUpdateHooks(exec boil.Executor) (err error) {
+	for _, hook := range playerSpoilsOfWarBeforeUpdateHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -277,8 +277,8 @@ func (o *UserSpoilsOfWar) doBeforeUpdateHooks(exec boil.Executor) (err error) {
 }
 
 // doAfterUpdateHooks executes all "after Update" hooks.
-func (o *UserSpoilsOfWar) doAfterUpdateHooks(exec boil.Executor) (err error) {
-	for _, hook := range userSpoilsOfWarAfterUpdateHooks {
+func (o *PlayerSpoilsOfWar) doAfterUpdateHooks(exec boil.Executor) (err error) {
+	for _, hook := range playerSpoilsOfWarAfterUpdateHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -288,8 +288,8 @@ func (o *UserSpoilsOfWar) doAfterUpdateHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeDeleteHooks executes all "before Delete" hooks.
-func (o *UserSpoilsOfWar) doBeforeDeleteHooks(exec boil.Executor) (err error) {
-	for _, hook := range userSpoilsOfWarBeforeDeleteHooks {
+func (o *PlayerSpoilsOfWar) doBeforeDeleteHooks(exec boil.Executor) (err error) {
+	for _, hook := range playerSpoilsOfWarBeforeDeleteHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -299,8 +299,8 @@ func (o *UserSpoilsOfWar) doBeforeDeleteHooks(exec boil.Executor) (err error) {
 }
 
 // doAfterDeleteHooks executes all "after Delete" hooks.
-func (o *UserSpoilsOfWar) doAfterDeleteHooks(exec boil.Executor) (err error) {
-	for _, hook := range userSpoilsOfWarAfterDeleteHooks {
+func (o *PlayerSpoilsOfWar) doAfterDeleteHooks(exec boil.Executor) (err error) {
+	for _, hook := range playerSpoilsOfWarAfterDeleteHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -310,8 +310,8 @@ func (o *UserSpoilsOfWar) doAfterDeleteHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeUpsertHooks executes all "before Upsert" hooks.
-func (o *UserSpoilsOfWar) doBeforeUpsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range userSpoilsOfWarBeforeUpsertHooks {
+func (o *PlayerSpoilsOfWar) doBeforeUpsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range playerSpoilsOfWarBeforeUpsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -321,8 +321,8 @@ func (o *UserSpoilsOfWar) doBeforeUpsertHooks(exec boil.Executor) (err error) {
 }
 
 // doAfterUpsertHooks executes all "after Upsert" hooks.
-func (o *UserSpoilsOfWar) doAfterUpsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range userSpoilsOfWarAfterUpsertHooks {
+func (o *PlayerSpoilsOfWar) doAfterUpsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range playerSpoilsOfWarAfterUpsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -331,33 +331,33 @@ func (o *UserSpoilsOfWar) doAfterUpsertHooks(exec boil.Executor) (err error) {
 	return nil
 }
 
-// AddUserSpoilsOfWarHook registers your hook function for all future operations.
-func AddUserSpoilsOfWarHook(hookPoint boil.HookPoint, userSpoilsOfWarHook UserSpoilsOfWarHook) {
+// AddPlayerSpoilsOfWarHook registers your hook function for all future operations.
+func AddPlayerSpoilsOfWarHook(hookPoint boil.HookPoint, playerSpoilsOfWarHook PlayerSpoilsOfWarHook) {
 	switch hookPoint {
 	case boil.AfterSelectHook:
-		userSpoilsOfWarAfterSelectHooks = append(userSpoilsOfWarAfterSelectHooks, userSpoilsOfWarHook)
+		playerSpoilsOfWarAfterSelectHooks = append(playerSpoilsOfWarAfterSelectHooks, playerSpoilsOfWarHook)
 	case boil.BeforeInsertHook:
-		userSpoilsOfWarBeforeInsertHooks = append(userSpoilsOfWarBeforeInsertHooks, userSpoilsOfWarHook)
+		playerSpoilsOfWarBeforeInsertHooks = append(playerSpoilsOfWarBeforeInsertHooks, playerSpoilsOfWarHook)
 	case boil.AfterInsertHook:
-		userSpoilsOfWarAfterInsertHooks = append(userSpoilsOfWarAfterInsertHooks, userSpoilsOfWarHook)
+		playerSpoilsOfWarAfterInsertHooks = append(playerSpoilsOfWarAfterInsertHooks, playerSpoilsOfWarHook)
 	case boil.BeforeUpdateHook:
-		userSpoilsOfWarBeforeUpdateHooks = append(userSpoilsOfWarBeforeUpdateHooks, userSpoilsOfWarHook)
+		playerSpoilsOfWarBeforeUpdateHooks = append(playerSpoilsOfWarBeforeUpdateHooks, playerSpoilsOfWarHook)
 	case boil.AfterUpdateHook:
-		userSpoilsOfWarAfterUpdateHooks = append(userSpoilsOfWarAfterUpdateHooks, userSpoilsOfWarHook)
+		playerSpoilsOfWarAfterUpdateHooks = append(playerSpoilsOfWarAfterUpdateHooks, playerSpoilsOfWarHook)
 	case boil.BeforeDeleteHook:
-		userSpoilsOfWarBeforeDeleteHooks = append(userSpoilsOfWarBeforeDeleteHooks, userSpoilsOfWarHook)
+		playerSpoilsOfWarBeforeDeleteHooks = append(playerSpoilsOfWarBeforeDeleteHooks, playerSpoilsOfWarHook)
 	case boil.AfterDeleteHook:
-		userSpoilsOfWarAfterDeleteHooks = append(userSpoilsOfWarAfterDeleteHooks, userSpoilsOfWarHook)
+		playerSpoilsOfWarAfterDeleteHooks = append(playerSpoilsOfWarAfterDeleteHooks, playerSpoilsOfWarHook)
 	case boil.BeforeUpsertHook:
-		userSpoilsOfWarBeforeUpsertHooks = append(userSpoilsOfWarBeforeUpsertHooks, userSpoilsOfWarHook)
+		playerSpoilsOfWarBeforeUpsertHooks = append(playerSpoilsOfWarBeforeUpsertHooks, playerSpoilsOfWarHook)
 	case boil.AfterUpsertHook:
-		userSpoilsOfWarAfterUpsertHooks = append(userSpoilsOfWarAfterUpsertHooks, userSpoilsOfWarHook)
+		playerSpoilsOfWarAfterUpsertHooks = append(playerSpoilsOfWarAfterUpsertHooks, playerSpoilsOfWarHook)
 	}
 }
 
-// One returns a single userSpoilsOfWar record from the query.
-func (q userSpoilsOfWarQuery) One(exec boil.Executor) (*UserSpoilsOfWar, error) {
-	o := &UserSpoilsOfWar{}
+// One returns a single playerSpoilsOfWar record from the query.
+func (q playerSpoilsOfWarQuery) One(exec boil.Executor) (*PlayerSpoilsOfWar, error) {
+	o := &PlayerSpoilsOfWar{}
 
 	queries.SetLimit(q.Query, 1)
 
@@ -366,7 +366,7 @@ func (q userSpoilsOfWarQuery) One(exec boil.Executor) (*UserSpoilsOfWar, error) 
 		if errors.Cause(err) == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		return nil, errors.Wrap(err, "boiler: failed to execute a one query for user_spoils_of_war")
+		return nil, errors.Wrap(err, "boiler: failed to execute a one query for player_spoils_of_war")
 	}
 
 	if err := o.doAfterSelectHooks(exec); err != nil {
@@ -376,16 +376,16 @@ func (q userSpoilsOfWarQuery) One(exec boil.Executor) (*UserSpoilsOfWar, error) 
 	return o, nil
 }
 
-// All returns all UserSpoilsOfWar records from the query.
-func (q userSpoilsOfWarQuery) All(exec boil.Executor) (UserSpoilsOfWarSlice, error) {
-	var o []*UserSpoilsOfWar
+// All returns all PlayerSpoilsOfWar records from the query.
+func (q playerSpoilsOfWarQuery) All(exec boil.Executor) (PlayerSpoilsOfWarSlice, error) {
+	var o []*PlayerSpoilsOfWar
 
 	err := q.Bind(nil, exec, &o)
 	if err != nil {
-		return nil, errors.Wrap(err, "boiler: failed to assign all query results to UserSpoilsOfWar slice")
+		return nil, errors.Wrap(err, "boiler: failed to assign all query results to PlayerSpoilsOfWar slice")
 	}
 
-	if len(userSpoilsOfWarAfterSelectHooks) != 0 {
+	if len(playerSpoilsOfWarAfterSelectHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doAfterSelectHooks(exec); err != nil {
 				return o, err
@@ -396,8 +396,8 @@ func (q userSpoilsOfWarQuery) All(exec boil.Executor) (UserSpoilsOfWarSlice, err
 	return o, nil
 }
 
-// Count returns the count of all UserSpoilsOfWar records in the query.
-func (q userSpoilsOfWarQuery) Count(exec boil.Executor) (int64, error) {
+// Count returns the count of all PlayerSpoilsOfWar records in the query.
+func (q playerSpoilsOfWarQuery) Count(exec boil.Executor) (int64, error) {
 	var count int64
 
 	queries.SetSelect(q.Query, nil)
@@ -405,14 +405,14 @@ func (q userSpoilsOfWarQuery) Count(exec boil.Executor) (int64, error) {
 
 	err := q.Query.QueryRow(exec).Scan(&count)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to count user_spoils_of_war rows")
+		return 0, errors.Wrap(err, "boiler: failed to count player_spoils_of_war rows")
 	}
 
 	return count, nil
 }
 
 // Exists checks if the row exists in the table.
-func (q userSpoilsOfWarQuery) Exists(exec boil.Executor) (bool, error) {
+func (q playerSpoilsOfWarQuery) Exists(exec boil.Executor) (bool, error) {
 	var count int64
 
 	queries.SetSelect(q.Query, nil)
@@ -421,14 +421,14 @@ func (q userSpoilsOfWarQuery) Exists(exec boil.Executor) (bool, error) {
 
 	err := q.Query.QueryRow(exec).Scan(&count)
 	if err != nil {
-		return false, errors.Wrap(err, "boiler: failed to check if user_spoils_of_war exists")
+		return false, errors.Wrap(err, "boiler: failed to check if player_spoils_of_war exists")
 	}
 
 	return count > 0, nil
 }
 
 // Battle pointed to by the foreign key.
-func (o *UserSpoilsOfWar) Battle(mods ...qm.QueryMod) battleQuery {
+func (o *PlayerSpoilsOfWar) Battle(mods ...qm.QueryMod) battleQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.BattleID),
 	}
@@ -442,7 +442,7 @@ func (o *UserSpoilsOfWar) Battle(mods ...qm.QueryMod) battleQuery {
 }
 
 // Player pointed to by the foreign key.
-func (o *UserSpoilsOfWar) Player(mods ...qm.QueryMod) playerQuery {
+func (o *PlayerSpoilsOfWar) Player(mods ...qm.QueryMod) playerQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.PlayerID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -458,20 +458,20 @@ func (o *UserSpoilsOfWar) Player(mods ...qm.QueryMod) playerQuery {
 
 // LoadBattle allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (userSpoilsOfWarL) LoadBattle(e boil.Executor, singular bool, maybeUserSpoilsOfWar interface{}, mods queries.Applicator) error {
-	var slice []*UserSpoilsOfWar
-	var object *UserSpoilsOfWar
+func (playerSpoilsOfWarL) LoadBattle(e boil.Executor, singular bool, maybePlayerSpoilsOfWar interface{}, mods queries.Applicator) error {
+	var slice []*PlayerSpoilsOfWar
+	var object *PlayerSpoilsOfWar
 
 	if singular {
-		object = maybeUserSpoilsOfWar.(*UserSpoilsOfWar)
+		object = maybePlayerSpoilsOfWar.(*PlayerSpoilsOfWar)
 	} else {
-		slice = *maybeUserSpoilsOfWar.(*[]*UserSpoilsOfWar)
+		slice = *maybePlayerSpoilsOfWar.(*[]*PlayerSpoilsOfWar)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &userSpoilsOfWarR{}
+			object.R = &playerSpoilsOfWarR{}
 		}
 		args = append(args, object.BattleID)
 
@@ -479,7 +479,7 @@ func (userSpoilsOfWarL) LoadBattle(e boil.Executor, singular bool, maybeUserSpoi
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &userSpoilsOfWarR{}
+				obj.R = &playerSpoilsOfWarR{}
 			}
 
 			for _, a := range args {
@@ -522,7 +522,7 @@ func (userSpoilsOfWarL) LoadBattle(e boil.Executor, singular bool, maybeUserSpoi
 		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for battles")
 	}
 
-	if len(userSpoilsOfWarAfterSelectHooks) != 0 {
+	if len(playerSpoilsOfWarAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -540,7 +540,7 @@ func (userSpoilsOfWarL) LoadBattle(e boil.Executor, singular bool, maybeUserSpoi
 		if foreign.R == nil {
 			foreign.R = &battleR{}
 		}
-		foreign.R.UserSpoilsOfWars = append(foreign.R.UserSpoilsOfWars, object)
+		foreign.R.PlayerSpoilsOfWars = append(foreign.R.PlayerSpoilsOfWars, object)
 		return nil
 	}
 
@@ -551,7 +551,7 @@ func (userSpoilsOfWarL) LoadBattle(e boil.Executor, singular bool, maybeUserSpoi
 				if foreign.R == nil {
 					foreign.R = &battleR{}
 				}
-				foreign.R.UserSpoilsOfWars = append(foreign.R.UserSpoilsOfWars, local)
+				foreign.R.PlayerSpoilsOfWars = append(foreign.R.PlayerSpoilsOfWars, local)
 				break
 			}
 		}
@@ -562,20 +562,20 @@ func (userSpoilsOfWarL) LoadBattle(e boil.Executor, singular bool, maybeUserSpoi
 
 // LoadPlayer allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (userSpoilsOfWarL) LoadPlayer(e boil.Executor, singular bool, maybeUserSpoilsOfWar interface{}, mods queries.Applicator) error {
-	var slice []*UserSpoilsOfWar
-	var object *UserSpoilsOfWar
+func (playerSpoilsOfWarL) LoadPlayer(e boil.Executor, singular bool, maybePlayerSpoilsOfWar interface{}, mods queries.Applicator) error {
+	var slice []*PlayerSpoilsOfWar
+	var object *PlayerSpoilsOfWar
 
 	if singular {
-		object = maybeUserSpoilsOfWar.(*UserSpoilsOfWar)
+		object = maybePlayerSpoilsOfWar.(*PlayerSpoilsOfWar)
 	} else {
-		slice = *maybeUserSpoilsOfWar.(*[]*UserSpoilsOfWar)
+		slice = *maybePlayerSpoilsOfWar.(*[]*PlayerSpoilsOfWar)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &userSpoilsOfWarR{}
+			object.R = &playerSpoilsOfWarR{}
 		}
 		args = append(args, object.PlayerID)
 
@@ -583,7 +583,7 @@ func (userSpoilsOfWarL) LoadPlayer(e boil.Executor, singular bool, maybeUserSpoi
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &userSpoilsOfWarR{}
+				obj.R = &playerSpoilsOfWarR{}
 			}
 
 			for _, a := range args {
@@ -627,7 +627,7 @@ func (userSpoilsOfWarL) LoadPlayer(e boil.Executor, singular bool, maybeUserSpoi
 		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players")
 	}
 
-	if len(userSpoilsOfWarAfterSelectHooks) != 0 {
+	if len(playerSpoilsOfWarAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -645,7 +645,7 @@ func (userSpoilsOfWarL) LoadPlayer(e boil.Executor, singular bool, maybeUserSpoi
 		if foreign.R == nil {
 			foreign.R = &playerR{}
 		}
-		foreign.R.UserSpoilsOfWars = append(foreign.R.UserSpoilsOfWars, object)
+		foreign.R.PlayerSpoilsOfWars = append(foreign.R.PlayerSpoilsOfWars, object)
 		return nil
 	}
 
@@ -656,7 +656,7 @@ func (userSpoilsOfWarL) LoadPlayer(e boil.Executor, singular bool, maybeUserSpoi
 				if foreign.R == nil {
 					foreign.R = &playerR{}
 				}
-				foreign.R.UserSpoilsOfWars = append(foreign.R.UserSpoilsOfWars, local)
+				foreign.R.PlayerSpoilsOfWars = append(foreign.R.PlayerSpoilsOfWars, local)
 				break
 			}
 		}
@@ -665,10 +665,10 @@ func (userSpoilsOfWarL) LoadPlayer(e boil.Executor, singular bool, maybeUserSpoi
 	return nil
 }
 
-// SetBattle of the userSpoilsOfWar to the related item.
+// SetBattle of the playerSpoilsOfWar to the related item.
 // Sets o.R.Battle to related.
-// Adds o to related.R.UserSpoilsOfWars.
-func (o *UserSpoilsOfWar) SetBattle(exec boil.Executor, insert bool, related *Battle) error {
+// Adds o to related.R.PlayerSpoilsOfWars.
+func (o *PlayerSpoilsOfWar) SetBattle(exec boil.Executor, insert bool, related *Battle) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -677,9 +677,9 @@ func (o *UserSpoilsOfWar) SetBattle(exec boil.Executor, insert bool, related *Ba
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"user_spoils_of_war\" SET %s WHERE %s",
+		"UPDATE \"player_spoils_of_war\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"battle_id"}),
-		strmangle.WhereClause("\"", "\"", 2, userSpoilsOfWarPrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, playerSpoilsOfWarPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
 
@@ -693,7 +693,7 @@ func (o *UserSpoilsOfWar) SetBattle(exec boil.Executor, insert bool, related *Ba
 
 	o.BattleID = related.ID
 	if o.R == nil {
-		o.R = &userSpoilsOfWarR{
+		o.R = &playerSpoilsOfWarR{
 			Battle: related,
 		}
 	} else {
@@ -702,19 +702,19 @@ func (o *UserSpoilsOfWar) SetBattle(exec boil.Executor, insert bool, related *Ba
 
 	if related.R == nil {
 		related.R = &battleR{
-			UserSpoilsOfWars: UserSpoilsOfWarSlice{o},
+			PlayerSpoilsOfWars: PlayerSpoilsOfWarSlice{o},
 		}
 	} else {
-		related.R.UserSpoilsOfWars = append(related.R.UserSpoilsOfWars, o)
+		related.R.PlayerSpoilsOfWars = append(related.R.PlayerSpoilsOfWars, o)
 	}
 
 	return nil
 }
 
-// SetPlayer of the userSpoilsOfWar to the related item.
+// SetPlayer of the playerSpoilsOfWar to the related item.
 // Sets o.R.Player to related.
-// Adds o to related.R.UserSpoilsOfWars.
-func (o *UserSpoilsOfWar) SetPlayer(exec boil.Executor, insert bool, related *Player) error {
+// Adds o to related.R.PlayerSpoilsOfWars.
+func (o *PlayerSpoilsOfWar) SetPlayer(exec boil.Executor, insert bool, related *Player) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -723,9 +723,9 @@ func (o *UserSpoilsOfWar) SetPlayer(exec boil.Executor, insert bool, related *Pl
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"user_spoils_of_war\" SET %s WHERE %s",
+		"UPDATE \"player_spoils_of_war\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"player_id"}),
-		strmangle.WhereClause("\"", "\"", 2, userSpoilsOfWarPrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, playerSpoilsOfWarPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
 
@@ -739,7 +739,7 @@ func (o *UserSpoilsOfWar) SetPlayer(exec boil.Executor, insert bool, related *Pl
 
 	o.PlayerID = related.ID
 	if o.R == nil {
-		o.R = &userSpoilsOfWarR{
+		o.R = &playerSpoilsOfWarR{
 			Player: related,
 		}
 	} else {
@@ -748,56 +748,56 @@ func (o *UserSpoilsOfWar) SetPlayer(exec boil.Executor, insert bool, related *Pl
 
 	if related.R == nil {
 		related.R = &playerR{
-			UserSpoilsOfWars: UserSpoilsOfWarSlice{o},
+			PlayerSpoilsOfWars: PlayerSpoilsOfWarSlice{o},
 		}
 	} else {
-		related.R.UserSpoilsOfWars = append(related.R.UserSpoilsOfWars, o)
+		related.R.PlayerSpoilsOfWars = append(related.R.PlayerSpoilsOfWars, o)
 	}
 
 	return nil
 }
 
-// UserSpoilsOfWars retrieves all the records using an executor.
-func UserSpoilsOfWars(mods ...qm.QueryMod) userSpoilsOfWarQuery {
-	mods = append(mods, qm.From("\"user_spoils_of_war\""), qmhelper.WhereIsNull("\"user_spoils_of_war\".\"deleted_at\""))
-	return userSpoilsOfWarQuery{NewQuery(mods...)}
+// PlayerSpoilsOfWars retrieves all the records using an executor.
+func PlayerSpoilsOfWars(mods ...qm.QueryMod) playerSpoilsOfWarQuery {
+	mods = append(mods, qm.From("\"player_spoils_of_war\""), qmhelper.WhereIsNull("\"player_spoils_of_war\".\"deleted_at\""))
+	return playerSpoilsOfWarQuery{NewQuery(mods...)}
 }
 
-// FindUserSpoilsOfWar retrieves a single record by ID with an executor.
+// FindPlayerSpoilsOfWar retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindUserSpoilsOfWar(exec boil.Executor, iD string, selectCols ...string) (*UserSpoilsOfWar, error) {
-	userSpoilsOfWarObj := &UserSpoilsOfWar{}
+func FindPlayerSpoilsOfWar(exec boil.Executor, iD string, selectCols ...string) (*PlayerSpoilsOfWar, error) {
+	playerSpoilsOfWarObj := &PlayerSpoilsOfWar{}
 
 	sel := "*"
 	if len(selectCols) > 0 {
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"user_spoils_of_war\" where \"id\"=$1 and \"deleted_at\" is null", sel,
+		"select %s from \"player_spoils_of_war\" where \"id\"=$1 and \"deleted_at\" is null", sel,
 	)
 
 	q := queries.Raw(query, iD)
 
-	err := q.Bind(nil, exec, userSpoilsOfWarObj)
+	err := q.Bind(nil, exec, playerSpoilsOfWarObj)
 	if err != nil {
 		if errors.Cause(err) == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		return nil, errors.Wrap(err, "boiler: unable to select from user_spoils_of_war")
+		return nil, errors.Wrap(err, "boiler: unable to select from player_spoils_of_war")
 	}
 
-	if err = userSpoilsOfWarObj.doAfterSelectHooks(exec); err != nil {
-		return userSpoilsOfWarObj, err
+	if err = playerSpoilsOfWarObj.doAfterSelectHooks(exec); err != nil {
+		return playerSpoilsOfWarObj, err
 	}
 
-	return userSpoilsOfWarObj, nil
+	return playerSpoilsOfWarObj, nil
 }
 
 // Insert a single record using an executor.
 // See boil.Columns.InsertColumnSet documentation to understand column list inference for inserts.
-func (o *UserSpoilsOfWar) Insert(exec boil.Executor, columns boil.Columns) error {
+func (o *PlayerSpoilsOfWar) Insert(exec boil.Executor, columns boil.Columns) error {
 	if o == nil {
-		return errors.New("boiler: no user_spoils_of_war provided for insertion")
+		return errors.New("boiler: no player_spoils_of_war provided for insertion")
 	}
 
 	var err error
@@ -814,33 +814,33 @@ func (o *UserSpoilsOfWar) Insert(exec boil.Executor, columns boil.Columns) error
 		return err
 	}
 
-	nzDefaults := queries.NonZeroDefaultSet(userSpoilsOfWarColumnsWithDefault, o)
+	nzDefaults := queries.NonZeroDefaultSet(playerSpoilsOfWarColumnsWithDefault, o)
 
 	key := makeCacheKey(columns, nzDefaults)
-	userSpoilsOfWarInsertCacheMut.RLock()
-	cache, cached := userSpoilsOfWarInsertCache[key]
-	userSpoilsOfWarInsertCacheMut.RUnlock()
+	playerSpoilsOfWarInsertCacheMut.RLock()
+	cache, cached := playerSpoilsOfWarInsertCache[key]
+	playerSpoilsOfWarInsertCacheMut.RUnlock()
 
 	if !cached {
 		wl, returnColumns := columns.InsertColumnSet(
-			userSpoilsOfWarAllColumns,
-			userSpoilsOfWarColumnsWithDefault,
-			userSpoilsOfWarColumnsWithoutDefault,
+			playerSpoilsOfWarAllColumns,
+			playerSpoilsOfWarColumnsWithDefault,
+			playerSpoilsOfWarColumnsWithoutDefault,
 			nzDefaults,
 		)
 
-		cache.valueMapping, err = queries.BindMapping(userSpoilsOfWarType, userSpoilsOfWarMapping, wl)
+		cache.valueMapping, err = queries.BindMapping(playerSpoilsOfWarType, playerSpoilsOfWarMapping, wl)
 		if err != nil {
 			return err
 		}
-		cache.retMapping, err = queries.BindMapping(userSpoilsOfWarType, userSpoilsOfWarMapping, returnColumns)
+		cache.retMapping, err = queries.BindMapping(playerSpoilsOfWarType, playerSpoilsOfWarMapping, returnColumns)
 		if err != nil {
 			return err
 		}
 		if len(wl) != 0 {
-			cache.query = fmt.Sprintf("INSERT INTO \"user_spoils_of_war\" (\"%s\") %%sVALUES (%s)%%s", strings.Join(wl, "\",\""), strmangle.Placeholders(dialect.UseIndexPlaceholders, len(wl), 1, 1))
+			cache.query = fmt.Sprintf("INSERT INTO \"player_spoils_of_war\" (\"%s\") %%sVALUES (%s)%%s", strings.Join(wl, "\",\""), strmangle.Placeholders(dialect.UseIndexPlaceholders, len(wl), 1, 1))
 		} else {
-			cache.query = "INSERT INTO \"user_spoils_of_war\" %sDEFAULT VALUES%s"
+			cache.query = "INSERT INTO \"player_spoils_of_war\" %sDEFAULT VALUES%s"
 		}
 
 		var queryOutput, queryReturning string
@@ -867,22 +867,22 @@ func (o *UserSpoilsOfWar) Insert(exec boil.Executor, columns boil.Columns) error
 	}
 
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to insert into user_spoils_of_war")
+		return errors.Wrap(err, "boiler: unable to insert into player_spoils_of_war")
 	}
 
 	if !cached {
-		userSpoilsOfWarInsertCacheMut.Lock()
-		userSpoilsOfWarInsertCache[key] = cache
-		userSpoilsOfWarInsertCacheMut.Unlock()
+		playerSpoilsOfWarInsertCacheMut.Lock()
+		playerSpoilsOfWarInsertCache[key] = cache
+		playerSpoilsOfWarInsertCacheMut.Unlock()
 	}
 
 	return o.doAfterInsertHooks(exec)
 }
 
-// Update uses an executor to update the UserSpoilsOfWar.
+// Update uses an executor to update the PlayerSpoilsOfWar.
 // See boil.Columns.UpdateColumnSet documentation to understand column list inference for updates.
 // Update does not automatically update the record in case of default values. Use .Reload() to refresh the records.
-func (o *UserSpoilsOfWar) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
+func (o *PlayerSpoilsOfWar) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
 	currTime := time.Now().In(boil.GetLocation())
 
 	o.UpdatedAt = currTime
@@ -892,28 +892,28 @@ func (o *UserSpoilsOfWar) Update(exec boil.Executor, columns boil.Columns) (int6
 		return 0, err
 	}
 	key := makeCacheKey(columns, nil)
-	userSpoilsOfWarUpdateCacheMut.RLock()
-	cache, cached := userSpoilsOfWarUpdateCache[key]
-	userSpoilsOfWarUpdateCacheMut.RUnlock()
+	playerSpoilsOfWarUpdateCacheMut.RLock()
+	cache, cached := playerSpoilsOfWarUpdateCache[key]
+	playerSpoilsOfWarUpdateCacheMut.RUnlock()
 
 	if !cached {
 		wl := columns.UpdateColumnSet(
-			userSpoilsOfWarAllColumns,
-			userSpoilsOfWarPrimaryKeyColumns,
+			playerSpoilsOfWarAllColumns,
+			playerSpoilsOfWarPrimaryKeyColumns,
 		)
 
 		if !columns.IsWhitelist() {
 			wl = strmangle.SetComplement(wl, []string{"created_at"})
 		}
 		if len(wl) == 0 {
-			return 0, errors.New("boiler: unable to update user_spoils_of_war, could not build whitelist")
+			return 0, errors.New("boiler: unable to update player_spoils_of_war, could not build whitelist")
 		}
 
-		cache.query = fmt.Sprintf("UPDATE \"user_spoils_of_war\" SET %s WHERE %s",
+		cache.query = fmt.Sprintf("UPDATE \"player_spoils_of_war\" SET %s WHERE %s",
 			strmangle.SetParamNames("\"", "\"", 1, wl),
-			strmangle.WhereClause("\"", "\"", len(wl)+1, userSpoilsOfWarPrimaryKeyColumns),
+			strmangle.WhereClause("\"", "\"", len(wl)+1, playerSpoilsOfWarPrimaryKeyColumns),
 		)
-		cache.valueMapping, err = queries.BindMapping(userSpoilsOfWarType, userSpoilsOfWarMapping, append(wl, userSpoilsOfWarPrimaryKeyColumns...))
+		cache.valueMapping, err = queries.BindMapping(playerSpoilsOfWarType, playerSpoilsOfWarMapping, append(wl, playerSpoilsOfWarPrimaryKeyColumns...))
 		if err != nil {
 			return 0, err
 		}
@@ -928,42 +928,42 @@ func (o *UserSpoilsOfWar) Update(exec boil.Executor, columns boil.Columns) (int6
 	var result sql.Result
 	result, err = exec.Exec(cache.query, values...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update user_spoils_of_war row")
+		return 0, errors.Wrap(err, "boiler: unable to update player_spoils_of_war row")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by update for user_spoils_of_war")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by update for player_spoils_of_war")
 	}
 
 	if !cached {
-		userSpoilsOfWarUpdateCacheMut.Lock()
-		userSpoilsOfWarUpdateCache[key] = cache
-		userSpoilsOfWarUpdateCacheMut.Unlock()
+		playerSpoilsOfWarUpdateCacheMut.Lock()
+		playerSpoilsOfWarUpdateCache[key] = cache
+		playerSpoilsOfWarUpdateCacheMut.Unlock()
 	}
 
 	return rowsAff, o.doAfterUpdateHooks(exec)
 }
 
 // UpdateAll updates all rows with the specified column values.
-func (q userSpoilsOfWarQuery) UpdateAll(exec boil.Executor, cols M) (int64, error) {
+func (q playerSpoilsOfWarQuery) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 	queries.SetUpdate(q.Query, cols)
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update all for user_spoils_of_war")
+		return 0, errors.Wrap(err, "boiler: unable to update all for player_spoils_of_war")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected for user_spoils_of_war")
+		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected for player_spoils_of_war")
 	}
 
 	return rowsAff, nil
 }
 
 // UpdateAll updates all rows with the specified column values, using an executor.
-func (o UserSpoilsOfWarSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
+func (o PlayerSpoilsOfWarSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 	ln := int64(len(o))
 	if ln == 0 {
 		return 0, nil
@@ -985,13 +985,13 @@ func (o UserSpoilsOfWarSlice) UpdateAll(exec boil.Executor, cols M) (int64, erro
 
 	// Append all of the primary key values for each column
 	for _, obj := range o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), userSpoilsOfWarPrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), playerSpoilsOfWarPrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := fmt.Sprintf("UPDATE \"user_spoils_of_war\" SET %s WHERE %s",
+	sql := fmt.Sprintf("UPDATE \"player_spoils_of_war\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, colNames),
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), len(colNames)+1, userSpoilsOfWarPrimaryKeyColumns, len(o)))
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), len(colNames)+1, playerSpoilsOfWarPrimaryKeyColumns, len(o)))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -999,21 +999,21 @@ func (o UserSpoilsOfWarSlice) UpdateAll(exec boil.Executor, cols M) (int64, erro
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update all in userSpoilsOfWar slice")
+		return 0, errors.Wrap(err, "boiler: unable to update all in playerSpoilsOfWar slice")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected all in update all userSpoilsOfWar")
+		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected all in update all playerSpoilsOfWar")
 	}
 	return rowsAff, nil
 }
 
 // Upsert attempts an insert using an executor, and does an update or ignore on conflict.
 // See boil.Columns documentation for how to properly use updateColumns and insertColumns.
-func (o *UserSpoilsOfWar) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
+func (o *PlayerSpoilsOfWar) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
 	if o == nil {
-		return errors.New("boiler: no user_spoils_of_war provided for upsert")
+		return errors.New("boiler: no player_spoils_of_war provided for upsert")
 	}
 	currTime := time.Now().In(boil.GetLocation())
 
@@ -1026,7 +1026,7 @@ func (o *UserSpoilsOfWar) Upsert(exec boil.Executor, updateOnConflict bool, conf
 		return err
 	}
 
-	nzDefaults := queries.NonZeroDefaultSet(userSpoilsOfWarColumnsWithDefault, o)
+	nzDefaults := queries.NonZeroDefaultSet(playerSpoilsOfWarColumnsWithDefault, o)
 
 	// Build cache key in-line uglily - mysql vs psql problems
 	buf := strmangle.GetBuffer()
@@ -1056,42 +1056,42 @@ func (o *UserSpoilsOfWar) Upsert(exec boil.Executor, updateOnConflict bool, conf
 	key := buf.String()
 	strmangle.PutBuffer(buf)
 
-	userSpoilsOfWarUpsertCacheMut.RLock()
-	cache, cached := userSpoilsOfWarUpsertCache[key]
-	userSpoilsOfWarUpsertCacheMut.RUnlock()
+	playerSpoilsOfWarUpsertCacheMut.RLock()
+	cache, cached := playerSpoilsOfWarUpsertCache[key]
+	playerSpoilsOfWarUpsertCacheMut.RUnlock()
 
 	var err error
 
 	if !cached {
 		insert, ret := insertColumns.InsertColumnSet(
-			userSpoilsOfWarAllColumns,
-			userSpoilsOfWarColumnsWithDefault,
-			userSpoilsOfWarColumnsWithoutDefault,
+			playerSpoilsOfWarAllColumns,
+			playerSpoilsOfWarColumnsWithDefault,
+			playerSpoilsOfWarColumnsWithoutDefault,
 			nzDefaults,
 		)
 
 		update := updateColumns.UpdateColumnSet(
-			userSpoilsOfWarAllColumns,
-			userSpoilsOfWarPrimaryKeyColumns,
+			playerSpoilsOfWarAllColumns,
+			playerSpoilsOfWarPrimaryKeyColumns,
 		)
 
 		if updateOnConflict && len(update) == 0 {
-			return errors.New("boiler: unable to upsert user_spoils_of_war, could not build update column list")
+			return errors.New("boiler: unable to upsert player_spoils_of_war, could not build update column list")
 		}
 
 		conflict := conflictColumns
 		if len(conflict) == 0 {
-			conflict = make([]string, len(userSpoilsOfWarPrimaryKeyColumns))
-			copy(conflict, userSpoilsOfWarPrimaryKeyColumns)
+			conflict = make([]string, len(playerSpoilsOfWarPrimaryKeyColumns))
+			copy(conflict, playerSpoilsOfWarPrimaryKeyColumns)
 		}
-		cache.query = buildUpsertQueryPostgres(dialect, "\"user_spoils_of_war\"", updateOnConflict, ret, update, conflict, insert)
+		cache.query = buildUpsertQueryPostgres(dialect, "\"player_spoils_of_war\"", updateOnConflict, ret, update, conflict, insert)
 
-		cache.valueMapping, err = queries.BindMapping(userSpoilsOfWarType, userSpoilsOfWarMapping, insert)
+		cache.valueMapping, err = queries.BindMapping(playerSpoilsOfWarType, playerSpoilsOfWarMapping, insert)
 		if err != nil {
 			return err
 		}
 		if len(ret) != 0 {
-			cache.retMapping, err = queries.BindMapping(userSpoilsOfWarType, userSpoilsOfWarMapping, ret)
+			cache.retMapping, err = queries.BindMapping(playerSpoilsOfWarType, playerSpoilsOfWarMapping, ret)
 			if err != nil {
 				return err
 			}
@@ -1118,23 +1118,23 @@ func (o *UserSpoilsOfWar) Upsert(exec boil.Executor, updateOnConflict bool, conf
 		_, err = exec.Exec(cache.query, vals...)
 	}
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to upsert user_spoils_of_war")
+		return errors.Wrap(err, "boiler: unable to upsert player_spoils_of_war")
 	}
 
 	if !cached {
-		userSpoilsOfWarUpsertCacheMut.Lock()
-		userSpoilsOfWarUpsertCache[key] = cache
-		userSpoilsOfWarUpsertCacheMut.Unlock()
+		playerSpoilsOfWarUpsertCacheMut.Lock()
+		playerSpoilsOfWarUpsertCache[key] = cache
+		playerSpoilsOfWarUpsertCacheMut.Unlock()
 	}
 
 	return o.doAfterUpsertHooks(exec)
 }
 
-// Delete deletes a single UserSpoilsOfWar record with an executor.
+// Delete deletes a single PlayerSpoilsOfWar record with an executor.
 // Delete will match against the primary key column to find the record to delete.
-func (o *UserSpoilsOfWar) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
+func (o *PlayerSpoilsOfWar) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
 	if o == nil {
-		return 0, errors.New("boiler: no UserSpoilsOfWar provided for delete")
+		return 0, errors.New("boiler: no PlayerSpoilsOfWar provided for delete")
 	}
 
 	if err := o.doBeforeDeleteHooks(exec); err != nil {
@@ -1146,16 +1146,16 @@ func (o *UserSpoilsOfWar) Delete(exec boil.Executor, hardDelete bool) (int64, er
 		args []interface{}
 	)
 	if hardDelete {
-		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), userSpoilsOfWarPrimaryKeyMapping)
-		sql = "DELETE FROM \"user_spoils_of_war\" WHERE \"id\"=$1"
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), playerSpoilsOfWarPrimaryKeyMapping)
+		sql = "DELETE FROM \"player_spoils_of_war\" WHERE \"id\"=$1"
 	} else {
 		currTime := time.Now().In(boil.GetLocation())
 		o.DeletedAt = null.TimeFrom(currTime)
 		wl := []string{"deleted_at"}
-		sql = fmt.Sprintf("UPDATE \"user_spoils_of_war\" SET %s WHERE \"id\"=$2",
+		sql = fmt.Sprintf("UPDATE \"player_spoils_of_war\" SET %s WHERE \"id\"=$2",
 			strmangle.SetParamNames("\"", "\"", 1, wl),
 		)
-		valueMapping, err := queries.BindMapping(userSpoilsOfWarType, userSpoilsOfWarMapping, append(wl, userSpoilsOfWarPrimaryKeyColumns...))
+		valueMapping, err := queries.BindMapping(playerSpoilsOfWarType, playerSpoilsOfWarMapping, append(wl, playerSpoilsOfWarPrimaryKeyColumns...))
 		if err != nil {
 			return 0, err
 		}
@@ -1168,12 +1168,12 @@ func (o *UserSpoilsOfWar) Delete(exec boil.Executor, hardDelete bool) (int64, er
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete from user_spoils_of_war")
+		return 0, errors.Wrap(err, "boiler: unable to delete from player_spoils_of_war")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by delete for user_spoils_of_war")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by delete for player_spoils_of_war")
 	}
 
 	if err := o.doAfterDeleteHooks(exec); err != nil {
@@ -1184,9 +1184,9 @@ func (o *UserSpoilsOfWar) Delete(exec boil.Executor, hardDelete bool) (int64, er
 }
 
 // DeleteAll deletes all matching rows.
-func (q userSpoilsOfWarQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
+func (q playerSpoilsOfWarQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if q.Query == nil {
-		return 0, errors.New("boiler: no userSpoilsOfWarQuery provided for delete all")
+		return 0, errors.New("boiler: no playerSpoilsOfWarQuery provided for delete all")
 	}
 
 	if hardDelete {
@@ -1198,24 +1198,24 @@ func (q userSpoilsOfWarQuery) DeleteAll(exec boil.Executor, hardDelete bool) (in
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete all from user_spoils_of_war")
+		return 0, errors.Wrap(err, "boiler: unable to delete all from player_spoils_of_war")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for user_spoils_of_war")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for player_spoils_of_war")
 	}
 
 	return rowsAff, nil
 }
 
 // DeleteAll deletes all rows in the slice, using an executor.
-func (o UserSpoilsOfWarSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
+func (o PlayerSpoilsOfWarSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if len(o) == 0 {
 		return 0, nil
 	}
 
-	if len(userSpoilsOfWarBeforeDeleteHooks) != 0 {
+	if len(playerSpoilsOfWarBeforeDeleteHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doBeforeDeleteHooks(exec); err != nil {
 				return 0, err
@@ -1229,21 +1229,21 @@ func (o UserSpoilsOfWarSlice) DeleteAll(exec boil.Executor, hardDelete bool) (in
 	)
 	if hardDelete {
 		for _, obj := range o {
-			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), userSpoilsOfWarPrimaryKeyMapping)
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), playerSpoilsOfWarPrimaryKeyMapping)
 			args = append(args, pkeyArgs...)
 		}
-		sql = "DELETE FROM \"user_spoils_of_war\" WHERE " +
-			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, userSpoilsOfWarPrimaryKeyColumns, len(o))
+		sql = "DELETE FROM \"player_spoils_of_war\" WHERE " +
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, playerSpoilsOfWarPrimaryKeyColumns, len(o))
 	} else {
 		currTime := time.Now().In(boil.GetLocation())
 		for _, obj := range o {
-			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), userSpoilsOfWarPrimaryKeyMapping)
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), playerSpoilsOfWarPrimaryKeyMapping)
 			args = append(args, pkeyArgs...)
 			obj.DeletedAt = null.TimeFrom(currTime)
 		}
 		wl := []string{"deleted_at"}
-		sql = fmt.Sprintf("UPDATE \"user_spoils_of_war\" SET %s WHERE "+
-			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, userSpoilsOfWarPrimaryKeyColumns, len(o)),
+		sql = fmt.Sprintf("UPDATE \"player_spoils_of_war\" SET %s WHERE "+
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, playerSpoilsOfWarPrimaryKeyColumns, len(o)),
 			strmangle.SetParamNames("\"", "\"", 1, wl),
 		)
 		args = append([]interface{}{currTime}, args...)
@@ -1255,15 +1255,15 @@ func (o UserSpoilsOfWarSlice) DeleteAll(exec boil.Executor, hardDelete bool) (in
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete all from userSpoilsOfWar slice")
+		return 0, errors.Wrap(err, "boiler: unable to delete all from playerSpoilsOfWar slice")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for user_spoils_of_war")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for player_spoils_of_war")
 	}
 
-	if len(userSpoilsOfWarAfterDeleteHooks) != 0 {
+	if len(playerSpoilsOfWarAfterDeleteHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doAfterDeleteHooks(exec); err != nil {
 				return 0, err
@@ -1276,8 +1276,8 @@ func (o UserSpoilsOfWarSlice) DeleteAll(exec boil.Executor, hardDelete bool) (in
 
 // Reload refetches the object from the database
 // using the primary keys with an executor.
-func (o *UserSpoilsOfWar) Reload(exec boil.Executor) error {
-	ret, err := FindUserSpoilsOfWar(exec, o.ID)
+func (o *PlayerSpoilsOfWar) Reload(exec boil.Executor) error {
+	ret, err := FindPlayerSpoilsOfWar(exec, o.ID)
 	if err != nil {
 		return err
 	}
@@ -1288,27 +1288,27 @@ func (o *UserSpoilsOfWar) Reload(exec boil.Executor) error {
 
 // ReloadAll refetches every row with matching primary key column values
 // and overwrites the original object slice with the newly updated slice.
-func (o *UserSpoilsOfWarSlice) ReloadAll(exec boil.Executor) error {
+func (o *PlayerSpoilsOfWarSlice) ReloadAll(exec boil.Executor) error {
 	if o == nil || len(*o) == 0 {
 		return nil
 	}
 
-	slice := UserSpoilsOfWarSlice{}
+	slice := PlayerSpoilsOfWarSlice{}
 	var args []interface{}
 	for _, obj := range *o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), userSpoilsOfWarPrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), playerSpoilsOfWarPrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := "SELECT \"user_spoils_of_war\".* FROM \"user_spoils_of_war\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, userSpoilsOfWarPrimaryKeyColumns, len(*o)) +
+	sql := "SELECT \"player_spoils_of_war\".* FROM \"player_spoils_of_war\" WHERE " +
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, playerSpoilsOfWarPrimaryKeyColumns, len(*o)) +
 		"and \"deleted_at\" is null"
 
 	q := queries.Raw(sql, args...)
 
 	err := q.Bind(nil, exec, &slice)
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to reload all in UserSpoilsOfWarSlice")
+		return errors.Wrap(err, "boiler: unable to reload all in PlayerSpoilsOfWarSlice")
 	}
 
 	*o = slice
@@ -1316,10 +1316,10 @@ func (o *UserSpoilsOfWarSlice) ReloadAll(exec boil.Executor) error {
 	return nil
 }
 
-// UserSpoilsOfWarExists checks if the UserSpoilsOfWar row exists.
-func UserSpoilsOfWarExists(exec boil.Executor, iD string) (bool, error) {
+// PlayerSpoilsOfWarExists checks if the PlayerSpoilsOfWar row exists.
+func PlayerSpoilsOfWarExists(exec boil.Executor, iD string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"user_spoils_of_war\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
+	sql := "select exists(select 1 from \"player_spoils_of_war\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1329,7 +1329,7 @@ func UserSpoilsOfWarExists(exec boil.Executor, iD string) (bool, error) {
 
 	err := row.Scan(&exists)
 	if err != nil {
-		return false, errors.Wrap(err, "boiler: unable to check if user_spoils_of_war exists")
+		return false, errors.Wrap(err, "boiler: unable to check if player_spoils_of_war exists")
 	}
 
 	return exists, nil

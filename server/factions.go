@@ -9,6 +9,14 @@ import (
 	"github.com/gofrs/uuid"
 )
 
+type Faction struct {
+	ID             FactionID     `json:"id" db:"id"`
+	Label          string        `json:"label" db:"label"`
+	Theme          *FactionTheme `json:"theme" db:"theme"`
+	VotePrice      string        `json:"vote_price" db:"vote_price"`
+	ContractReward string        `json:"contract_reward" db:"contract_reward"`
+}
+
 type FactionTheme struct {
 	Primary    string `json:"primary"`
 	Secondary  string `json:"secondary"`
@@ -27,17 +35,6 @@ var FactionUsers = map[string]string{
 	RedMountainFactionID.String():       RedMountainPlayerID,
 	BostonCyberneticsFactionID.String(): BostonCyberneticsPlayerID,
 	ZaibatsuFactionID.String():          ZaibatsuPlayerID,
-}
-
-type Faction struct {
-	ID               FactionID     `json:"id" db:"id"`
-	Label            string        `json:"label" db:"label"`
-	Theme            *FactionTheme `json:"theme" db:"theme"`
-	LogoBlobID       BlobID        `json:"logo_blob_id,omitempty"`
-	BackgroundBlobID BlobID        `json:"background_blob_id,omitempty"`
-	VotePrice        string        `json:"vote_price" db:"vote_price"`
-	ContractReward   string        `json:"contract_reward" db:"contract_reward"`
-	Description      string        `json:"description" db:"description"`
 }
 
 func (f *Faction) ToBoilerFaction() *boiler.Faction {
@@ -83,9 +80,8 @@ type FactionBrief struct {
 
 func (f *Faction) Brief() *FactionBrief {
 	return &FactionBrief{
-		Label:      f.Label,
-		LogoBlobID: f.LogoBlobID,
-		Theme:      f.Theme,
+		Label: f.Label,
+		Theme: f.Theme,
 	}
 }
 

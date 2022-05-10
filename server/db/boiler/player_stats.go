@@ -20,19 +20,19 @@ import (
 	"github.com/volatiletech/strmangle"
 )
 
-// UserStat is an object representing the database table.
-type UserStat struct {
+// PlayerStat is an object representing the database table.
+type PlayerStat struct {
 	ID                    string `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	ViewBattleCount       int    `boiler:"view_battle_count" boil:"view_battle_count" json:"view_battle_count" toml:"view_battle_count" yaml:"view_battle_count"`
 	AbilityKillCount      int    `boiler:"ability_kill_count" boil:"ability_kill_count" json:"ability_kill_count" toml:"ability_kill_count" yaml:"ability_kill_count"`
 	TotalAbilityTriggered int    `boiler:"total_ability_triggered" boil:"total_ability_triggered" json:"total_ability_triggered" toml:"total_ability_triggered" yaml:"total_ability_triggered"`
 	MechKillCount         int    `boiler:"mech_kill_count" boil:"mech_kill_count" json:"mech_kill_count" toml:"mech_kill_count" yaml:"mech_kill_count"`
 
-	R *userStatR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
-	L userStatL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
+	R *playerStatR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
+	L playerStatL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
-var UserStatColumns = struct {
+var PlayerStatColumns = struct {
 	ID                    string
 	ViewBattleCount       string
 	AbilityKillCount      string
@@ -46,87 +46,87 @@ var UserStatColumns = struct {
 	MechKillCount:         "mech_kill_count",
 }
 
-var UserStatTableColumns = struct {
+var PlayerStatTableColumns = struct {
 	ID                    string
 	ViewBattleCount       string
 	AbilityKillCount      string
 	TotalAbilityTriggered string
 	MechKillCount         string
 }{
-	ID:                    "user_stats.id",
-	ViewBattleCount:       "user_stats.view_battle_count",
-	AbilityKillCount:      "user_stats.ability_kill_count",
-	TotalAbilityTriggered: "user_stats.total_ability_triggered",
-	MechKillCount:         "user_stats.mech_kill_count",
+	ID:                    "player_stats.id",
+	ViewBattleCount:       "player_stats.view_battle_count",
+	AbilityKillCount:      "player_stats.ability_kill_count",
+	TotalAbilityTriggered: "player_stats.total_ability_triggered",
+	MechKillCount:         "player_stats.mech_kill_count",
 }
 
 // Generated where
 
-var UserStatWhere = struct {
+var PlayerStatWhere = struct {
 	ID                    whereHelperstring
 	ViewBattleCount       whereHelperint
 	AbilityKillCount      whereHelperint
 	TotalAbilityTriggered whereHelperint
 	MechKillCount         whereHelperint
 }{
-	ID:                    whereHelperstring{field: "\"user_stats\".\"id\""},
-	ViewBattleCount:       whereHelperint{field: "\"user_stats\".\"view_battle_count\""},
-	AbilityKillCount:      whereHelperint{field: "\"user_stats\".\"ability_kill_count\""},
-	TotalAbilityTriggered: whereHelperint{field: "\"user_stats\".\"total_ability_triggered\""},
-	MechKillCount:         whereHelperint{field: "\"user_stats\".\"mech_kill_count\""},
+	ID:                    whereHelperstring{field: "\"player_stats\".\"id\""},
+	ViewBattleCount:       whereHelperint{field: "\"player_stats\".\"view_battle_count\""},
+	AbilityKillCount:      whereHelperint{field: "\"player_stats\".\"ability_kill_count\""},
+	TotalAbilityTriggered: whereHelperint{field: "\"player_stats\".\"total_ability_triggered\""},
+	MechKillCount:         whereHelperint{field: "\"player_stats\".\"mech_kill_count\""},
 }
 
-// UserStatRels is where relationship names are stored.
-var UserStatRels = struct {
+// PlayerStatRels is where relationship names are stored.
+var PlayerStatRels = struct {
 	IDPlayer string
 }{
 	IDPlayer: "IDPlayer",
 }
 
-// userStatR is where relationships are stored.
-type userStatR struct {
+// playerStatR is where relationships are stored.
+type playerStatR struct {
 	IDPlayer *Player `boiler:"IDPlayer" boil:"IDPlayer" json:"IDPlayer" toml:"IDPlayer" yaml:"IDPlayer"`
 }
 
 // NewStruct creates a new relationship struct
-func (*userStatR) NewStruct() *userStatR {
-	return &userStatR{}
+func (*playerStatR) NewStruct() *playerStatR {
+	return &playerStatR{}
 }
 
-// userStatL is where Load methods for each relationship are stored.
-type userStatL struct{}
+// playerStatL is where Load methods for each relationship are stored.
+type playerStatL struct{}
 
 var (
-	userStatAllColumns            = []string{"id", "view_battle_count", "ability_kill_count", "total_ability_triggered", "mech_kill_count"}
-	userStatColumnsWithoutDefault = []string{"id"}
-	userStatColumnsWithDefault    = []string{"view_battle_count", "ability_kill_count", "total_ability_triggered", "mech_kill_count"}
-	userStatPrimaryKeyColumns     = []string{"id"}
-	userStatGeneratedColumns      = []string{}
+	playerStatAllColumns            = []string{"id", "view_battle_count", "ability_kill_count", "total_ability_triggered", "mech_kill_count"}
+	playerStatColumnsWithoutDefault = []string{"id"}
+	playerStatColumnsWithDefault    = []string{"view_battle_count", "ability_kill_count", "total_ability_triggered", "mech_kill_count"}
+	playerStatPrimaryKeyColumns     = []string{"id"}
+	playerStatGeneratedColumns      = []string{}
 )
 
 type (
-	// UserStatSlice is an alias for a slice of pointers to UserStat.
-	// This should almost always be used instead of []UserStat.
-	UserStatSlice []*UserStat
-	// UserStatHook is the signature for custom UserStat hook methods
-	UserStatHook func(boil.Executor, *UserStat) error
+	// PlayerStatSlice is an alias for a slice of pointers to PlayerStat.
+	// This should almost always be used instead of []PlayerStat.
+	PlayerStatSlice []*PlayerStat
+	// PlayerStatHook is the signature for custom PlayerStat hook methods
+	PlayerStatHook func(boil.Executor, *PlayerStat) error
 
-	userStatQuery struct {
+	playerStatQuery struct {
 		*queries.Query
 	}
 )
 
 // Cache for insert, update and upsert
 var (
-	userStatType                 = reflect.TypeOf(&UserStat{})
-	userStatMapping              = queries.MakeStructMapping(userStatType)
-	userStatPrimaryKeyMapping, _ = queries.BindMapping(userStatType, userStatMapping, userStatPrimaryKeyColumns)
-	userStatInsertCacheMut       sync.RWMutex
-	userStatInsertCache          = make(map[string]insertCache)
-	userStatUpdateCacheMut       sync.RWMutex
-	userStatUpdateCache          = make(map[string]updateCache)
-	userStatUpsertCacheMut       sync.RWMutex
-	userStatUpsertCache          = make(map[string]insertCache)
+	playerStatType                 = reflect.TypeOf(&PlayerStat{})
+	playerStatMapping              = queries.MakeStructMapping(playerStatType)
+	playerStatPrimaryKeyMapping, _ = queries.BindMapping(playerStatType, playerStatMapping, playerStatPrimaryKeyColumns)
+	playerStatInsertCacheMut       sync.RWMutex
+	playerStatInsertCache          = make(map[string]insertCache)
+	playerStatUpdateCacheMut       sync.RWMutex
+	playerStatUpdateCache          = make(map[string]updateCache)
+	playerStatUpsertCacheMut       sync.RWMutex
+	playerStatUpsertCache          = make(map[string]insertCache)
 )
 
 var (
@@ -137,23 +137,23 @@ var (
 	_ = qmhelper.Where
 )
 
-var userStatAfterSelectHooks []UserStatHook
+var playerStatAfterSelectHooks []PlayerStatHook
 
-var userStatBeforeInsertHooks []UserStatHook
-var userStatAfterInsertHooks []UserStatHook
+var playerStatBeforeInsertHooks []PlayerStatHook
+var playerStatAfterInsertHooks []PlayerStatHook
 
-var userStatBeforeUpdateHooks []UserStatHook
-var userStatAfterUpdateHooks []UserStatHook
+var playerStatBeforeUpdateHooks []PlayerStatHook
+var playerStatAfterUpdateHooks []PlayerStatHook
 
-var userStatBeforeDeleteHooks []UserStatHook
-var userStatAfterDeleteHooks []UserStatHook
+var playerStatBeforeDeleteHooks []PlayerStatHook
+var playerStatAfterDeleteHooks []PlayerStatHook
 
-var userStatBeforeUpsertHooks []UserStatHook
-var userStatAfterUpsertHooks []UserStatHook
+var playerStatBeforeUpsertHooks []PlayerStatHook
+var playerStatAfterUpsertHooks []PlayerStatHook
 
 // doAfterSelectHooks executes all "after Select" hooks.
-func (o *UserStat) doAfterSelectHooks(exec boil.Executor) (err error) {
-	for _, hook := range userStatAfterSelectHooks {
+func (o *PlayerStat) doAfterSelectHooks(exec boil.Executor) (err error) {
+	for _, hook := range playerStatAfterSelectHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -163,8 +163,8 @@ func (o *UserStat) doAfterSelectHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeInsertHooks executes all "before insert" hooks.
-func (o *UserStat) doBeforeInsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range userStatBeforeInsertHooks {
+func (o *PlayerStat) doBeforeInsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range playerStatBeforeInsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -174,8 +174,8 @@ func (o *UserStat) doBeforeInsertHooks(exec boil.Executor) (err error) {
 }
 
 // doAfterInsertHooks executes all "after Insert" hooks.
-func (o *UserStat) doAfterInsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range userStatAfterInsertHooks {
+func (o *PlayerStat) doAfterInsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range playerStatAfterInsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -185,8 +185,8 @@ func (o *UserStat) doAfterInsertHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeUpdateHooks executes all "before Update" hooks.
-func (o *UserStat) doBeforeUpdateHooks(exec boil.Executor) (err error) {
-	for _, hook := range userStatBeforeUpdateHooks {
+func (o *PlayerStat) doBeforeUpdateHooks(exec boil.Executor) (err error) {
+	for _, hook := range playerStatBeforeUpdateHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -196,8 +196,8 @@ func (o *UserStat) doBeforeUpdateHooks(exec boil.Executor) (err error) {
 }
 
 // doAfterUpdateHooks executes all "after Update" hooks.
-func (o *UserStat) doAfterUpdateHooks(exec boil.Executor) (err error) {
-	for _, hook := range userStatAfterUpdateHooks {
+func (o *PlayerStat) doAfterUpdateHooks(exec boil.Executor) (err error) {
+	for _, hook := range playerStatAfterUpdateHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -207,8 +207,8 @@ func (o *UserStat) doAfterUpdateHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeDeleteHooks executes all "before Delete" hooks.
-func (o *UserStat) doBeforeDeleteHooks(exec boil.Executor) (err error) {
-	for _, hook := range userStatBeforeDeleteHooks {
+func (o *PlayerStat) doBeforeDeleteHooks(exec boil.Executor) (err error) {
+	for _, hook := range playerStatBeforeDeleteHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -218,8 +218,8 @@ func (o *UserStat) doBeforeDeleteHooks(exec boil.Executor) (err error) {
 }
 
 // doAfterDeleteHooks executes all "after Delete" hooks.
-func (o *UserStat) doAfterDeleteHooks(exec boil.Executor) (err error) {
-	for _, hook := range userStatAfterDeleteHooks {
+func (o *PlayerStat) doAfterDeleteHooks(exec boil.Executor) (err error) {
+	for _, hook := range playerStatAfterDeleteHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -229,8 +229,8 @@ func (o *UserStat) doAfterDeleteHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeUpsertHooks executes all "before Upsert" hooks.
-func (o *UserStat) doBeforeUpsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range userStatBeforeUpsertHooks {
+func (o *PlayerStat) doBeforeUpsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range playerStatBeforeUpsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -240,8 +240,8 @@ func (o *UserStat) doBeforeUpsertHooks(exec boil.Executor) (err error) {
 }
 
 // doAfterUpsertHooks executes all "after Upsert" hooks.
-func (o *UserStat) doAfterUpsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range userStatAfterUpsertHooks {
+func (o *PlayerStat) doAfterUpsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range playerStatAfterUpsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -250,33 +250,33 @@ func (o *UserStat) doAfterUpsertHooks(exec boil.Executor) (err error) {
 	return nil
 }
 
-// AddUserStatHook registers your hook function for all future operations.
-func AddUserStatHook(hookPoint boil.HookPoint, userStatHook UserStatHook) {
+// AddPlayerStatHook registers your hook function for all future operations.
+func AddPlayerStatHook(hookPoint boil.HookPoint, playerStatHook PlayerStatHook) {
 	switch hookPoint {
 	case boil.AfterSelectHook:
-		userStatAfterSelectHooks = append(userStatAfterSelectHooks, userStatHook)
+		playerStatAfterSelectHooks = append(playerStatAfterSelectHooks, playerStatHook)
 	case boil.BeforeInsertHook:
-		userStatBeforeInsertHooks = append(userStatBeforeInsertHooks, userStatHook)
+		playerStatBeforeInsertHooks = append(playerStatBeforeInsertHooks, playerStatHook)
 	case boil.AfterInsertHook:
-		userStatAfterInsertHooks = append(userStatAfterInsertHooks, userStatHook)
+		playerStatAfterInsertHooks = append(playerStatAfterInsertHooks, playerStatHook)
 	case boil.BeforeUpdateHook:
-		userStatBeforeUpdateHooks = append(userStatBeforeUpdateHooks, userStatHook)
+		playerStatBeforeUpdateHooks = append(playerStatBeforeUpdateHooks, playerStatHook)
 	case boil.AfterUpdateHook:
-		userStatAfterUpdateHooks = append(userStatAfterUpdateHooks, userStatHook)
+		playerStatAfterUpdateHooks = append(playerStatAfterUpdateHooks, playerStatHook)
 	case boil.BeforeDeleteHook:
-		userStatBeforeDeleteHooks = append(userStatBeforeDeleteHooks, userStatHook)
+		playerStatBeforeDeleteHooks = append(playerStatBeforeDeleteHooks, playerStatHook)
 	case boil.AfterDeleteHook:
-		userStatAfterDeleteHooks = append(userStatAfterDeleteHooks, userStatHook)
+		playerStatAfterDeleteHooks = append(playerStatAfterDeleteHooks, playerStatHook)
 	case boil.BeforeUpsertHook:
-		userStatBeforeUpsertHooks = append(userStatBeforeUpsertHooks, userStatHook)
+		playerStatBeforeUpsertHooks = append(playerStatBeforeUpsertHooks, playerStatHook)
 	case boil.AfterUpsertHook:
-		userStatAfterUpsertHooks = append(userStatAfterUpsertHooks, userStatHook)
+		playerStatAfterUpsertHooks = append(playerStatAfterUpsertHooks, playerStatHook)
 	}
 }
 
-// One returns a single userStat record from the query.
-func (q userStatQuery) One(exec boil.Executor) (*UserStat, error) {
-	o := &UserStat{}
+// One returns a single playerStat record from the query.
+func (q playerStatQuery) One(exec boil.Executor) (*PlayerStat, error) {
+	o := &PlayerStat{}
 
 	queries.SetLimit(q.Query, 1)
 
@@ -285,7 +285,7 @@ func (q userStatQuery) One(exec boil.Executor) (*UserStat, error) {
 		if errors.Cause(err) == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		return nil, errors.Wrap(err, "boiler: failed to execute a one query for user_stats")
+		return nil, errors.Wrap(err, "boiler: failed to execute a one query for player_stats")
 	}
 
 	if err := o.doAfterSelectHooks(exec); err != nil {
@@ -295,16 +295,16 @@ func (q userStatQuery) One(exec boil.Executor) (*UserStat, error) {
 	return o, nil
 }
 
-// All returns all UserStat records from the query.
-func (q userStatQuery) All(exec boil.Executor) (UserStatSlice, error) {
-	var o []*UserStat
+// All returns all PlayerStat records from the query.
+func (q playerStatQuery) All(exec boil.Executor) (PlayerStatSlice, error) {
+	var o []*PlayerStat
 
 	err := q.Bind(nil, exec, &o)
 	if err != nil {
-		return nil, errors.Wrap(err, "boiler: failed to assign all query results to UserStat slice")
+		return nil, errors.Wrap(err, "boiler: failed to assign all query results to PlayerStat slice")
 	}
 
-	if len(userStatAfterSelectHooks) != 0 {
+	if len(playerStatAfterSelectHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doAfterSelectHooks(exec); err != nil {
 				return o, err
@@ -315,8 +315,8 @@ func (q userStatQuery) All(exec boil.Executor) (UserStatSlice, error) {
 	return o, nil
 }
 
-// Count returns the count of all UserStat records in the query.
-func (q userStatQuery) Count(exec boil.Executor) (int64, error) {
+// Count returns the count of all PlayerStat records in the query.
+func (q playerStatQuery) Count(exec boil.Executor) (int64, error) {
 	var count int64
 
 	queries.SetSelect(q.Query, nil)
@@ -324,14 +324,14 @@ func (q userStatQuery) Count(exec boil.Executor) (int64, error) {
 
 	err := q.Query.QueryRow(exec).Scan(&count)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to count user_stats rows")
+		return 0, errors.Wrap(err, "boiler: failed to count player_stats rows")
 	}
 
 	return count, nil
 }
 
 // Exists checks if the row exists in the table.
-func (q userStatQuery) Exists(exec boil.Executor) (bool, error) {
+func (q playerStatQuery) Exists(exec boil.Executor) (bool, error) {
 	var count int64
 
 	queries.SetSelect(q.Query, nil)
@@ -340,14 +340,14 @@ func (q userStatQuery) Exists(exec boil.Executor) (bool, error) {
 
 	err := q.Query.QueryRow(exec).Scan(&count)
 	if err != nil {
-		return false, errors.Wrap(err, "boiler: failed to check if user_stats exists")
+		return false, errors.Wrap(err, "boiler: failed to check if player_stats exists")
 	}
 
 	return count > 0, nil
 }
 
 // IDPlayer pointed to by the foreign key.
-func (o *UserStat) IDPlayer(mods ...qm.QueryMod) playerQuery {
+func (o *PlayerStat) IDPlayer(mods ...qm.QueryMod) playerQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.ID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -363,20 +363,20 @@ func (o *UserStat) IDPlayer(mods ...qm.QueryMod) playerQuery {
 
 // LoadIDPlayer allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (userStatL) LoadIDPlayer(e boil.Executor, singular bool, maybeUserStat interface{}, mods queries.Applicator) error {
-	var slice []*UserStat
-	var object *UserStat
+func (playerStatL) LoadIDPlayer(e boil.Executor, singular bool, maybePlayerStat interface{}, mods queries.Applicator) error {
+	var slice []*PlayerStat
+	var object *PlayerStat
 
 	if singular {
-		object = maybeUserStat.(*UserStat)
+		object = maybePlayerStat.(*PlayerStat)
 	} else {
-		slice = *maybeUserStat.(*[]*UserStat)
+		slice = *maybePlayerStat.(*[]*PlayerStat)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &userStatR{}
+			object.R = &playerStatR{}
 		}
 		args = append(args, object.ID)
 
@@ -384,7 +384,7 @@ func (userStatL) LoadIDPlayer(e boil.Executor, singular bool, maybeUserStat inte
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &userStatR{}
+				obj.R = &playerStatR{}
 			}
 
 			for _, a := range args {
@@ -428,7 +428,7 @@ func (userStatL) LoadIDPlayer(e boil.Executor, singular bool, maybeUserStat inte
 		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players")
 	}
 
-	if len(userStatAfterSelectHooks) != 0 {
+	if len(playerStatAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -446,7 +446,7 @@ func (userStatL) LoadIDPlayer(e boil.Executor, singular bool, maybeUserStat inte
 		if foreign.R == nil {
 			foreign.R = &playerR{}
 		}
-		foreign.R.IDUserStat = object
+		foreign.R.IDPlayerStat = object
 		return nil
 	}
 
@@ -457,7 +457,7 @@ func (userStatL) LoadIDPlayer(e boil.Executor, singular bool, maybeUserStat inte
 				if foreign.R == nil {
 					foreign.R = &playerR{}
 				}
-				foreign.R.IDUserStat = local
+				foreign.R.IDPlayerStat = local
 				break
 			}
 		}
@@ -466,10 +466,10 @@ func (userStatL) LoadIDPlayer(e boil.Executor, singular bool, maybeUserStat inte
 	return nil
 }
 
-// SetIDPlayer of the userStat to the related item.
+// SetIDPlayer of the playerStat to the related item.
 // Sets o.R.IDPlayer to related.
-// Adds o to related.R.IDUserStat.
-func (o *UserStat) SetIDPlayer(exec boil.Executor, insert bool, related *Player) error {
+// Adds o to related.R.IDPlayerStat.
+func (o *PlayerStat) SetIDPlayer(exec boil.Executor, insert bool, related *Player) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -478,9 +478,9 @@ func (o *UserStat) SetIDPlayer(exec boil.Executor, insert bool, related *Player)
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"user_stats\" SET %s WHERE %s",
+		"UPDATE \"player_stats\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"id"}),
-		strmangle.WhereClause("\"", "\"", 2, userStatPrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, playerStatPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
 
@@ -494,7 +494,7 @@ func (o *UserStat) SetIDPlayer(exec boil.Executor, insert bool, related *Player)
 
 	o.ID = related.ID
 	if o.R == nil {
-		o.R = &userStatR{
+		o.R = &playerStatR{
 			IDPlayer: related,
 		}
 	} else {
@@ -503,56 +503,56 @@ func (o *UserStat) SetIDPlayer(exec boil.Executor, insert bool, related *Player)
 
 	if related.R == nil {
 		related.R = &playerR{
-			IDUserStat: o,
+			IDPlayerStat: o,
 		}
 	} else {
-		related.R.IDUserStat = o
+		related.R.IDPlayerStat = o
 	}
 
 	return nil
 }
 
-// UserStats retrieves all the records using an executor.
-func UserStats(mods ...qm.QueryMod) userStatQuery {
-	mods = append(mods, qm.From("\"user_stats\""))
-	return userStatQuery{NewQuery(mods...)}
+// PlayerStats retrieves all the records using an executor.
+func PlayerStats(mods ...qm.QueryMod) playerStatQuery {
+	mods = append(mods, qm.From("\"player_stats\""))
+	return playerStatQuery{NewQuery(mods...)}
 }
 
-// FindUserStat retrieves a single record by ID with an executor.
+// FindPlayerStat retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindUserStat(exec boil.Executor, iD string, selectCols ...string) (*UserStat, error) {
-	userStatObj := &UserStat{}
+func FindPlayerStat(exec boil.Executor, iD string, selectCols ...string) (*PlayerStat, error) {
+	playerStatObj := &PlayerStat{}
 
 	sel := "*"
 	if len(selectCols) > 0 {
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"user_stats\" where \"id\"=$1", sel,
+		"select %s from \"player_stats\" where \"id\"=$1", sel,
 	)
 
 	q := queries.Raw(query, iD)
 
-	err := q.Bind(nil, exec, userStatObj)
+	err := q.Bind(nil, exec, playerStatObj)
 	if err != nil {
 		if errors.Cause(err) == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		return nil, errors.Wrap(err, "boiler: unable to select from user_stats")
+		return nil, errors.Wrap(err, "boiler: unable to select from player_stats")
 	}
 
-	if err = userStatObj.doAfterSelectHooks(exec); err != nil {
-		return userStatObj, err
+	if err = playerStatObj.doAfterSelectHooks(exec); err != nil {
+		return playerStatObj, err
 	}
 
-	return userStatObj, nil
+	return playerStatObj, nil
 }
 
 // Insert a single record using an executor.
 // See boil.Columns.InsertColumnSet documentation to understand column list inference for inserts.
-func (o *UserStat) Insert(exec boil.Executor, columns boil.Columns) error {
+func (o *PlayerStat) Insert(exec boil.Executor, columns boil.Columns) error {
 	if o == nil {
-		return errors.New("boiler: no user_stats provided for insertion")
+		return errors.New("boiler: no player_stats provided for insertion")
 	}
 
 	var err error
@@ -561,33 +561,33 @@ func (o *UserStat) Insert(exec boil.Executor, columns boil.Columns) error {
 		return err
 	}
 
-	nzDefaults := queries.NonZeroDefaultSet(userStatColumnsWithDefault, o)
+	nzDefaults := queries.NonZeroDefaultSet(playerStatColumnsWithDefault, o)
 
 	key := makeCacheKey(columns, nzDefaults)
-	userStatInsertCacheMut.RLock()
-	cache, cached := userStatInsertCache[key]
-	userStatInsertCacheMut.RUnlock()
+	playerStatInsertCacheMut.RLock()
+	cache, cached := playerStatInsertCache[key]
+	playerStatInsertCacheMut.RUnlock()
 
 	if !cached {
 		wl, returnColumns := columns.InsertColumnSet(
-			userStatAllColumns,
-			userStatColumnsWithDefault,
-			userStatColumnsWithoutDefault,
+			playerStatAllColumns,
+			playerStatColumnsWithDefault,
+			playerStatColumnsWithoutDefault,
 			nzDefaults,
 		)
 
-		cache.valueMapping, err = queries.BindMapping(userStatType, userStatMapping, wl)
+		cache.valueMapping, err = queries.BindMapping(playerStatType, playerStatMapping, wl)
 		if err != nil {
 			return err
 		}
-		cache.retMapping, err = queries.BindMapping(userStatType, userStatMapping, returnColumns)
+		cache.retMapping, err = queries.BindMapping(playerStatType, playerStatMapping, returnColumns)
 		if err != nil {
 			return err
 		}
 		if len(wl) != 0 {
-			cache.query = fmt.Sprintf("INSERT INTO \"user_stats\" (\"%s\") %%sVALUES (%s)%%s", strings.Join(wl, "\",\""), strmangle.Placeholders(dialect.UseIndexPlaceholders, len(wl), 1, 1))
+			cache.query = fmt.Sprintf("INSERT INTO \"player_stats\" (\"%s\") %%sVALUES (%s)%%s", strings.Join(wl, "\",\""), strmangle.Placeholders(dialect.UseIndexPlaceholders, len(wl), 1, 1))
 		} else {
-			cache.query = "INSERT INTO \"user_stats\" %sDEFAULT VALUES%s"
+			cache.query = "INSERT INTO \"player_stats\" %sDEFAULT VALUES%s"
 		}
 
 		var queryOutput, queryReturning string
@@ -614,49 +614,49 @@ func (o *UserStat) Insert(exec boil.Executor, columns boil.Columns) error {
 	}
 
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to insert into user_stats")
+		return errors.Wrap(err, "boiler: unable to insert into player_stats")
 	}
 
 	if !cached {
-		userStatInsertCacheMut.Lock()
-		userStatInsertCache[key] = cache
-		userStatInsertCacheMut.Unlock()
+		playerStatInsertCacheMut.Lock()
+		playerStatInsertCache[key] = cache
+		playerStatInsertCacheMut.Unlock()
 	}
 
 	return o.doAfterInsertHooks(exec)
 }
 
-// Update uses an executor to update the UserStat.
+// Update uses an executor to update the PlayerStat.
 // See boil.Columns.UpdateColumnSet documentation to understand column list inference for updates.
 // Update does not automatically update the record in case of default values. Use .Reload() to refresh the records.
-func (o *UserStat) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
+func (o *PlayerStat) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
 	var err error
 	if err = o.doBeforeUpdateHooks(exec); err != nil {
 		return 0, err
 	}
 	key := makeCacheKey(columns, nil)
-	userStatUpdateCacheMut.RLock()
-	cache, cached := userStatUpdateCache[key]
-	userStatUpdateCacheMut.RUnlock()
+	playerStatUpdateCacheMut.RLock()
+	cache, cached := playerStatUpdateCache[key]
+	playerStatUpdateCacheMut.RUnlock()
 
 	if !cached {
 		wl := columns.UpdateColumnSet(
-			userStatAllColumns,
-			userStatPrimaryKeyColumns,
+			playerStatAllColumns,
+			playerStatPrimaryKeyColumns,
 		)
 
 		if !columns.IsWhitelist() {
 			wl = strmangle.SetComplement(wl, []string{"created_at"})
 		}
 		if len(wl) == 0 {
-			return 0, errors.New("boiler: unable to update user_stats, could not build whitelist")
+			return 0, errors.New("boiler: unable to update player_stats, could not build whitelist")
 		}
 
-		cache.query = fmt.Sprintf("UPDATE \"user_stats\" SET %s WHERE %s",
+		cache.query = fmt.Sprintf("UPDATE \"player_stats\" SET %s WHERE %s",
 			strmangle.SetParamNames("\"", "\"", 1, wl),
-			strmangle.WhereClause("\"", "\"", len(wl)+1, userStatPrimaryKeyColumns),
+			strmangle.WhereClause("\"", "\"", len(wl)+1, playerStatPrimaryKeyColumns),
 		)
-		cache.valueMapping, err = queries.BindMapping(userStatType, userStatMapping, append(wl, userStatPrimaryKeyColumns...))
+		cache.valueMapping, err = queries.BindMapping(playerStatType, playerStatMapping, append(wl, playerStatPrimaryKeyColumns...))
 		if err != nil {
 			return 0, err
 		}
@@ -671,42 +671,42 @@ func (o *UserStat) Update(exec boil.Executor, columns boil.Columns) (int64, erro
 	var result sql.Result
 	result, err = exec.Exec(cache.query, values...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update user_stats row")
+		return 0, errors.Wrap(err, "boiler: unable to update player_stats row")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by update for user_stats")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by update for player_stats")
 	}
 
 	if !cached {
-		userStatUpdateCacheMut.Lock()
-		userStatUpdateCache[key] = cache
-		userStatUpdateCacheMut.Unlock()
+		playerStatUpdateCacheMut.Lock()
+		playerStatUpdateCache[key] = cache
+		playerStatUpdateCacheMut.Unlock()
 	}
 
 	return rowsAff, o.doAfterUpdateHooks(exec)
 }
 
 // UpdateAll updates all rows with the specified column values.
-func (q userStatQuery) UpdateAll(exec boil.Executor, cols M) (int64, error) {
+func (q playerStatQuery) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 	queries.SetUpdate(q.Query, cols)
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update all for user_stats")
+		return 0, errors.Wrap(err, "boiler: unable to update all for player_stats")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected for user_stats")
+		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected for player_stats")
 	}
 
 	return rowsAff, nil
 }
 
 // UpdateAll updates all rows with the specified column values, using an executor.
-func (o UserStatSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
+func (o PlayerStatSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 	ln := int64(len(o))
 	if ln == 0 {
 		return 0, nil
@@ -728,13 +728,13 @@ func (o UserStatSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 
 	// Append all of the primary key values for each column
 	for _, obj := range o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), userStatPrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), playerStatPrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := fmt.Sprintf("UPDATE \"user_stats\" SET %s WHERE %s",
+	sql := fmt.Sprintf("UPDATE \"player_stats\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, colNames),
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), len(colNames)+1, userStatPrimaryKeyColumns, len(o)))
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), len(colNames)+1, playerStatPrimaryKeyColumns, len(o)))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -742,28 +742,28 @@ func (o UserStatSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update all in userStat slice")
+		return 0, errors.Wrap(err, "boiler: unable to update all in playerStat slice")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected all in update all userStat")
+		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected all in update all playerStat")
 	}
 	return rowsAff, nil
 }
 
 // Upsert attempts an insert using an executor, and does an update or ignore on conflict.
 // See boil.Columns documentation for how to properly use updateColumns and insertColumns.
-func (o *UserStat) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
+func (o *PlayerStat) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
 	if o == nil {
-		return errors.New("boiler: no user_stats provided for upsert")
+		return errors.New("boiler: no player_stats provided for upsert")
 	}
 
 	if err := o.doBeforeUpsertHooks(exec); err != nil {
 		return err
 	}
 
-	nzDefaults := queries.NonZeroDefaultSet(userStatColumnsWithDefault, o)
+	nzDefaults := queries.NonZeroDefaultSet(playerStatColumnsWithDefault, o)
 
 	// Build cache key in-line uglily - mysql vs psql problems
 	buf := strmangle.GetBuffer()
@@ -793,42 +793,42 @@ func (o *UserStat) Upsert(exec boil.Executor, updateOnConflict bool, conflictCol
 	key := buf.String()
 	strmangle.PutBuffer(buf)
 
-	userStatUpsertCacheMut.RLock()
-	cache, cached := userStatUpsertCache[key]
-	userStatUpsertCacheMut.RUnlock()
+	playerStatUpsertCacheMut.RLock()
+	cache, cached := playerStatUpsertCache[key]
+	playerStatUpsertCacheMut.RUnlock()
 
 	var err error
 
 	if !cached {
 		insert, ret := insertColumns.InsertColumnSet(
-			userStatAllColumns,
-			userStatColumnsWithDefault,
-			userStatColumnsWithoutDefault,
+			playerStatAllColumns,
+			playerStatColumnsWithDefault,
+			playerStatColumnsWithoutDefault,
 			nzDefaults,
 		)
 
 		update := updateColumns.UpdateColumnSet(
-			userStatAllColumns,
-			userStatPrimaryKeyColumns,
+			playerStatAllColumns,
+			playerStatPrimaryKeyColumns,
 		)
 
 		if updateOnConflict && len(update) == 0 {
-			return errors.New("boiler: unable to upsert user_stats, could not build update column list")
+			return errors.New("boiler: unable to upsert player_stats, could not build update column list")
 		}
 
 		conflict := conflictColumns
 		if len(conflict) == 0 {
-			conflict = make([]string, len(userStatPrimaryKeyColumns))
-			copy(conflict, userStatPrimaryKeyColumns)
+			conflict = make([]string, len(playerStatPrimaryKeyColumns))
+			copy(conflict, playerStatPrimaryKeyColumns)
 		}
-		cache.query = buildUpsertQueryPostgres(dialect, "\"user_stats\"", updateOnConflict, ret, update, conflict, insert)
+		cache.query = buildUpsertQueryPostgres(dialect, "\"player_stats\"", updateOnConflict, ret, update, conflict, insert)
 
-		cache.valueMapping, err = queries.BindMapping(userStatType, userStatMapping, insert)
+		cache.valueMapping, err = queries.BindMapping(playerStatType, playerStatMapping, insert)
 		if err != nil {
 			return err
 		}
 		if len(ret) != 0 {
-			cache.retMapping, err = queries.BindMapping(userStatType, userStatMapping, ret)
+			cache.retMapping, err = queries.BindMapping(playerStatType, playerStatMapping, ret)
 			if err != nil {
 				return err
 			}
@@ -855,31 +855,31 @@ func (o *UserStat) Upsert(exec boil.Executor, updateOnConflict bool, conflictCol
 		_, err = exec.Exec(cache.query, vals...)
 	}
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to upsert user_stats")
+		return errors.Wrap(err, "boiler: unable to upsert player_stats")
 	}
 
 	if !cached {
-		userStatUpsertCacheMut.Lock()
-		userStatUpsertCache[key] = cache
-		userStatUpsertCacheMut.Unlock()
+		playerStatUpsertCacheMut.Lock()
+		playerStatUpsertCache[key] = cache
+		playerStatUpsertCacheMut.Unlock()
 	}
 
 	return o.doAfterUpsertHooks(exec)
 }
 
-// Delete deletes a single UserStat record with an executor.
+// Delete deletes a single PlayerStat record with an executor.
 // Delete will match against the primary key column to find the record to delete.
-func (o *UserStat) Delete(exec boil.Executor) (int64, error) {
+func (o *PlayerStat) Delete(exec boil.Executor) (int64, error) {
 	if o == nil {
-		return 0, errors.New("boiler: no UserStat provided for delete")
+		return 0, errors.New("boiler: no PlayerStat provided for delete")
 	}
 
 	if err := o.doBeforeDeleteHooks(exec); err != nil {
 		return 0, err
 	}
 
-	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), userStatPrimaryKeyMapping)
-	sql := "DELETE FROM \"user_stats\" WHERE \"id\"=$1"
+	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), playerStatPrimaryKeyMapping)
+	sql := "DELETE FROM \"player_stats\" WHERE \"id\"=$1"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -887,12 +887,12 @@ func (o *UserStat) Delete(exec boil.Executor) (int64, error) {
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete from user_stats")
+		return 0, errors.Wrap(err, "boiler: unable to delete from player_stats")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by delete for user_stats")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by delete for player_stats")
 	}
 
 	if err := o.doAfterDeleteHooks(exec); err != nil {
@@ -903,33 +903,33 @@ func (o *UserStat) Delete(exec boil.Executor) (int64, error) {
 }
 
 // DeleteAll deletes all matching rows.
-func (q userStatQuery) DeleteAll(exec boil.Executor) (int64, error) {
+func (q playerStatQuery) DeleteAll(exec boil.Executor) (int64, error) {
 	if q.Query == nil {
-		return 0, errors.New("boiler: no userStatQuery provided for delete all")
+		return 0, errors.New("boiler: no playerStatQuery provided for delete all")
 	}
 
 	queries.SetDelete(q.Query)
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete all from user_stats")
+		return 0, errors.Wrap(err, "boiler: unable to delete all from player_stats")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for user_stats")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for player_stats")
 	}
 
 	return rowsAff, nil
 }
 
 // DeleteAll deletes all rows in the slice, using an executor.
-func (o UserStatSlice) DeleteAll(exec boil.Executor) (int64, error) {
+func (o PlayerStatSlice) DeleteAll(exec boil.Executor) (int64, error) {
 	if len(o) == 0 {
 		return 0, nil
 	}
 
-	if len(userStatBeforeDeleteHooks) != 0 {
+	if len(playerStatBeforeDeleteHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doBeforeDeleteHooks(exec); err != nil {
 				return 0, err
@@ -939,12 +939,12 @@ func (o UserStatSlice) DeleteAll(exec boil.Executor) (int64, error) {
 
 	var args []interface{}
 	for _, obj := range o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), userStatPrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), playerStatPrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := "DELETE FROM \"user_stats\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, userStatPrimaryKeyColumns, len(o))
+	sql := "DELETE FROM \"player_stats\" WHERE " +
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, playerStatPrimaryKeyColumns, len(o))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -952,15 +952,15 @@ func (o UserStatSlice) DeleteAll(exec boil.Executor) (int64, error) {
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete all from userStat slice")
+		return 0, errors.Wrap(err, "boiler: unable to delete all from playerStat slice")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for user_stats")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for player_stats")
 	}
 
-	if len(userStatAfterDeleteHooks) != 0 {
+	if len(playerStatAfterDeleteHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doAfterDeleteHooks(exec); err != nil {
 				return 0, err
@@ -973,8 +973,8 @@ func (o UserStatSlice) DeleteAll(exec boil.Executor) (int64, error) {
 
 // Reload refetches the object from the database
 // using the primary keys with an executor.
-func (o *UserStat) Reload(exec boil.Executor) error {
-	ret, err := FindUserStat(exec, o.ID)
+func (o *PlayerStat) Reload(exec boil.Executor) error {
+	ret, err := FindPlayerStat(exec, o.ID)
 	if err != nil {
 		return err
 	}
@@ -985,26 +985,26 @@ func (o *UserStat) Reload(exec boil.Executor) error {
 
 // ReloadAll refetches every row with matching primary key column values
 // and overwrites the original object slice with the newly updated slice.
-func (o *UserStatSlice) ReloadAll(exec boil.Executor) error {
+func (o *PlayerStatSlice) ReloadAll(exec boil.Executor) error {
 	if o == nil || len(*o) == 0 {
 		return nil
 	}
 
-	slice := UserStatSlice{}
+	slice := PlayerStatSlice{}
 	var args []interface{}
 	for _, obj := range *o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), userStatPrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), playerStatPrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := "SELECT \"user_stats\".* FROM \"user_stats\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, userStatPrimaryKeyColumns, len(*o))
+	sql := "SELECT \"player_stats\".* FROM \"player_stats\" WHERE " +
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, playerStatPrimaryKeyColumns, len(*o))
 
 	q := queries.Raw(sql, args...)
 
 	err := q.Bind(nil, exec, &slice)
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to reload all in UserStatSlice")
+		return errors.Wrap(err, "boiler: unable to reload all in PlayerStatSlice")
 	}
 
 	*o = slice
@@ -1012,10 +1012,10 @@ func (o *UserStatSlice) ReloadAll(exec boil.Executor) error {
 	return nil
 }
 
-// UserStatExists checks if the UserStat row exists.
-func UserStatExists(exec boil.Executor, iD string) (bool, error) {
+// PlayerStatExists checks if the PlayerStat row exists.
+func PlayerStatExists(exec boil.Executor, iD string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"user_stats\" where \"id\"=$1 limit 1)"
+	sql := "select exists(select 1 from \"player_stats\" where \"id\"=$1 limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1025,7 +1025,7 @@ func UserStatExists(exec boil.Executor, iD string) (bool, error) {
 
 	err := row.Scan(&exists)
 	if err != nil {
-		return false, errors.Wrap(err, "boiler: unable to check if user_stats exists")
+		return false, errors.Wrap(err, "boiler: unable to check if player_stats exists")
 	}
 
 	return exists, nil

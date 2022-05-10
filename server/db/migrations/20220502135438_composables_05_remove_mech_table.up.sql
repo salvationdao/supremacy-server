@@ -45,6 +45,8 @@ ALTER TABLE battle_queue_notifications
     DROP COLUMN queue_mech_id,
     DROP COLUMN mech_id;
 ALTER TABLE battle_queue_notifications -- unsure why it wanted me to do a new alter table
+    ALTER COLUMN chassis_id SET NOT NULL;
+ALTER TABLE battle_queue_notifications -- unsure why it wanted me to do a new alter table
     RENAME COLUMN chassis_id TO mech_id;
 ALTER TABLE battle_queue_notifications -- unsure why it wanted me to do a new alter table
     RENAME COLUMN queue_chassis_id TO queue_mech_id;
@@ -173,6 +175,8 @@ ALTER TABLE battle_history
     DROP COLUMN war_machine_one_id,
     DROP COLUMN war_machine_two_id;
 ALTER TABLE battle_history -- unsure why it wanted me to do a new alter table
+    ALTER COLUMN war_machine_one_id_chassis SET NOT NULL;
+ALTER TABLE battle_history -- unsure why it wanted me to do a new alter table
     RENAME COLUMN war_machine_one_id_chassis TO war_machine_one_id;
 ALTER TABLE battle_history -- unsure why it wanted me to do a new alter table
     RENAME COLUMN war_machine_two_id_chassis TO war_machine_two_id;
@@ -216,6 +220,8 @@ SET chassis_id = (SELECT c.id
 ALTER TABLE asset_repair
     DROP COLUMN mech_id;
 ALTER TABLE asset_repair -- unsure why it wanted me to do a new alter table
+    ALTER COLUMN chassis_id SET NOT NULL;
+ALTER TABLE asset_repair -- unsure why it wanted me to do a new alter table
     RENAME COLUMN chassis_id TO mech_id;
 
 -- CREATE TABLE battle_contracts (
@@ -234,6 +240,8 @@ SET chassis_id = (SELECT c.id
 ALTER TABLE battle_contracts
     DROP CONSTRAINT bc_unique_mech_battle,
     DROP COLUMN mech_id;
+ALTER TABLE battle_contracts -- unsure why it wanted me to do a new alter table
+    ALTER COLUMN chassis_id SET NOT NULL;
 ALTER TABLE battle_contracts -- unsure why it wanted me to do a new alter table
     RENAME COLUMN chassis_id TO mech_id;
 ALTER TABLE battle_contracts

@@ -35,7 +35,7 @@ type Utility struct {
 	GenesisTokenID   decimal.NullDecimal `boiler:"genesis_token_id" boil:"genesis_token_id" json:"genesis_token_id,omitempty" toml:"genesis_token_id" yaml:"genesis_token_id,omitempty"`
 	OwnerID          string              `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
 	EquippedOn       null.String         `boiler:"equipped_on" boil:"equipped_on" json:"equipped_on,omitempty" toml:"equipped_on" yaml:"equipped_on,omitempty"`
-	Type             null.String         `boiler:"type" boil:"type" json:"type,omitempty" toml:"type" yaml:"type,omitempty"`
+	Type             string              `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
 
 	R *utilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L utilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -111,7 +111,7 @@ var UtilityWhere = struct {
 	GenesisTokenID   whereHelperdecimal_NullDecimal
 	OwnerID          whereHelperstring
 	EquippedOn       whereHelpernull_String
-	Type             whereHelpernull_String
+	Type             whereHelperstring
 }{
 	ID:               whereHelperstring{field: "\"utility\".\"id\""},
 	BrandID:          whereHelpernull_String{field: "\"utility\".\"brand_id\""},
@@ -124,7 +124,7 @@ var UtilityWhere = struct {
 	GenesisTokenID:   whereHelperdecimal_NullDecimal{field: "\"utility\".\"genesis_token_id\""},
 	OwnerID:          whereHelperstring{field: "\"utility\".\"owner_id\""},
 	EquippedOn:       whereHelpernull_String{field: "\"utility\".\"equipped_on\""},
-	Type:             whereHelpernull_String{field: "\"utility\".\"type\""},
+	Type:             whereHelperstring{field: "\"utility\".\"type\""},
 }
 
 // UtilityRels is where relationship names are stored.
@@ -179,8 +179,8 @@ type utilityL struct{}
 
 var (
 	utilityAllColumns            = []string{"id", "brand_id", "label", "deleted_at", "updated_at", "created_at", "blueprint_id", "collection_item_id", "genesis_token_id", "owner_id", "equipped_on", "type"}
-	utilityColumnsWithoutDefault = []string{"label", "blueprint_id", "owner_id"}
-	utilityColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at", "collection_item_id", "genesis_token_id", "equipped_on", "type"}
+	utilityColumnsWithoutDefault = []string{"label", "blueprint_id", "owner_id", "type"}
+	utilityColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at", "collection_item_id", "genesis_token_id", "equipped_on"}
 	utilityPrimaryKeyColumns     = []string{"id"}
 	utilityGeneratedColumns      = []string{}
 )

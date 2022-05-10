@@ -15,12 +15,10 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/shopspring/decimal"
-	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 	"golang.org/x/net/context"
 )
 
-func ExtendCitizenMulti(um *boiler.UserMultiplier) error {
+func ExtendCitizenMulti(um *boiler.PlayerMultiplier) error {
 
 	q := `
 	update
@@ -76,50 +74,6 @@ func Spoils(battleID string) ([]*boiler.BattleContribution, decimal.Decimal, err
 		accumulator = accumulator.Add(contrib.Amount)
 	}
 	return contributions, accumulator, nil
-}
-
-func MarkAllContributionsProcessed() error {
-	q := `UPDATE battle_contributions SET processed_at = NOW()`
-	_, err := gamedb.Conn.Exec(context.Background(), q)
-	if err != nil {
-		return terror.Error(err)
-	}
-	return nil
-}
-
-func MarkContributionProcessed(id uuid.UUID) error {
-	tx, err := boiler.FindBattleContribution(gamedb.StdConn, id.String())
-	if err != nil {
-		return err
-	}
-	tx.ProcessedAt = null.TimeFrom(time.Now())
-	_, err = tx.Update(gamedb.StdConn, boil.Whitelist(boiler.PendingTransactionColumns.ProcessedAt))
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func UnprocessedPendingTransactions() ([]*boiler.PendingTransaction, error) {
-	txes, err := boiler.PendingTransactions(
-		boiler.PendingTransactionWhere.ProcessedAt.IsNull(),
-	).All(gamedb.StdConn)
-	if err != nil {
-		return nil, err
-	}
-	return txes, nil
-}
-func MarkPendingTransactionProcessed(id uuid.UUID) error {
-	tx, err := boiler.FindPendingTransaction(gamedb.StdConn, id.String())
-	if err != nil {
-		return err
-	}
-	tx.ProcessedAt = null.TimeFrom(time.Now())
-	_, err = tx.Update(gamedb.StdConn, boil.Whitelist(boiler.PendingTransactionColumns.ProcessedAt))
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func TopSupsContributeFactions(battleID uuid.UUID) ([]*boiler.Faction, error) {

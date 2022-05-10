@@ -21,8 +21,6 @@ ALTER TABLE blueprint_utility
 
 UPDATE blueprint_utility
 SET type = 'SHIELD';
-ALTER TABLE blueprint_utility
-    ALTER COLUMN type SET NOT NULL;
 
 CREATE TABLE blueprint_utility_shield
 (
@@ -120,9 +118,9 @@ FROM genesis
 WHERE u.id = genesis.utility_id;
 
 
-ALTER TABLE utility
-    DROP COLUMN slug,
-    ALTER COLUMN owner_id SET NOT NULL;
+-- ALTER TABLE utility
+--     DROP COLUMN slug,
+--     ALTER COLUMN owner_id SET NOT NULL;
 
 UPDATE utility
 SET type = 'SHIELD';
@@ -264,4 +262,7 @@ SET blueprint_id = (SELECT blueprint_utility_id
 FROM shield;
 
 ALTER TABLE utility
+    DROP COLUMN slug,
+    ALTER COLUMN owner_id SET NOT NULL,
+    ALTER COLUMN type SET NOT NULL,
     ALTER COLUMN blueprint_id SET NOT NULL;

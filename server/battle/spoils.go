@@ -152,8 +152,8 @@ func (sow *SpoilsOfWar) Drip() error {
 		spoils.CurrentTick++
 
 		// get all user spoils of war for this battle
-		userSpoils, err := boiler.UserSpoilsOfWars(
-			boiler.UserSpoilsOfWarWhere.BattleID.EQ(spoils.BattleID),
+		userSpoils, err := boiler.PlayerSpoilsOfWars(
+			boiler.PlayerSpoilsOfWarWhere.BattleID.EQ(spoils.BattleID),
 		).All(gamedb.StdConn)
 		if err != nil {
 			gamelog.L.Error().
@@ -327,11 +327,11 @@ func flushOutOldSpoils(
 // then calls the sendSups function
 // mutates and returns userSpoils and spoils
 func payoutUserSpoils(
-	user *boiler.UserSpoilsOfWar,
+	user *boiler.PlayerSpoilsOfWar,
 	spoils *boiler.SpoilsOfWar,
 	isOnline func(userID uuid.UUID) bool,
 	sendSups func(userID uuid.UUID, amount string, txr string) (string, error),
-) (*boiler.UserSpoilsOfWar, *boiler.SpoilsOfWar) {
+) (*boiler.PlayerSpoilsOfWar, *boiler.SpoilsOfWar) {
 	userID, err := uuid.FromString(user.PlayerID)
 	if err != nil {
 		gamelog.L.Error().
@@ -399,10 +399,10 @@ func payoutUserSpoils(
 }
 
 func takeRemainingSpoils(
-	userSpoils []*boiler.UserSpoilsOfWar,
+	userSpoils []*boiler.PlayerSpoilsOfWar,
 	spoils *boiler.SpoilsOfWar,
 	sendSups func(userID uuid.UUID, amount string, txr string) (string, error),
-) ([]*boiler.UserSpoilsOfWar, *boiler.SpoilsOfWar) {
+) ([]*boiler.PlayerSpoilsOfWar, *boiler.SpoilsOfWar) {
 	// get remaining, send it to supremacy user
 	remainingSpoils := spoils.Amount.Sub(spoils.AmountSent)
 	txr := fmt.Sprintf("spoils_of_war_leftovers|%s|%d", spoils.BattleID, time.Now().UnixNano())

@@ -135,6 +135,6 @@ var (
 )
 
 type UserStat struct {
-	*boiler.UserStat
+	*boiler.PlayerStat
 	LastSevenDaysKills int `json:"last_seven_days_kills"`
 }

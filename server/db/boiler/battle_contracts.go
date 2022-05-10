@@ -35,7 +35,7 @@ type BattleContract struct {
 	QueuedAt       time.Time       `boiler:"queued_at" boil:"queued_at" json:"queued_at" toml:"queued_at" yaml:"queued_at"`
 	Cancelled      null.Bool       `boiler:"cancelled" boil:"cancelled" json:"cancelled,omitempty" toml:"cancelled" yaml:"cancelled,omitempty"`
 	TransactionID  null.String     `boiler:"transaction_id" boil:"transaction_id" json:"transaction_id,omitempty" toml:"transaction_id" yaml:"transaction_id,omitempty"`
-	MechID         null.String     `boiler:"mech_id" boil:"mech_id" json:"mech_id,omitempty" toml:"mech_id" yaml:"mech_id,omitempty"`
+	MechID         string          `boiler:"mech_id" boil:"mech_id" json:"mech_id" toml:"mech_id" yaml:"mech_id"`
 
 	R *battleContractR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleContractL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -99,6 +99,27 @@ var BattleContractTableColumns = struct {
 
 // Generated where
 
+type whereHelperdecimal_Decimal struct{ field string }
+
+func (w whereHelperdecimal_Decimal) EQ(x decimal.Decimal) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.EQ, x)
+}
+func (w whereHelperdecimal_Decimal) NEQ(x decimal.Decimal) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.NEQ, x)
+}
+func (w whereHelperdecimal_Decimal) LT(x decimal.Decimal) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LT, x)
+}
+func (w whereHelperdecimal_Decimal) LTE(x decimal.Decimal) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.LTE, x)
+}
+func (w whereHelperdecimal_Decimal) GT(x decimal.Decimal) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GT, x)
+}
+func (w whereHelperdecimal_Decimal) GTE(x decimal.Decimal) qm.QueryMod {
+	return qmhelper.Where(w.field, qmhelper.GTE, x)
+}
+
 type whereHelpernull_Bool struct{ field string }
 
 func (w whereHelpernull_Bool) EQ(x null.Bool) qm.QueryMod {
@@ -135,7 +156,7 @@ var BattleContractWhere = struct {
 	QueuedAt       whereHelpertime_Time
 	Cancelled      whereHelpernull_Bool
 	TransactionID  whereHelpernull_String
-	MechID         whereHelpernull_String
+	MechID         whereHelperstring
 }{
 	ID:             whereHelperstring{field: "\"battle_contracts\".\"id\""},
 	PlayerID:       whereHelperstring{field: "\"battle_contracts\".\"player_id\""},
@@ -148,7 +169,7 @@ var BattleContractWhere = struct {
 	QueuedAt:       whereHelpertime_Time{field: "\"battle_contracts\".\"queued_at\""},
 	Cancelled:      whereHelpernull_Bool{field: "\"battle_contracts\".\"cancelled\""},
 	TransactionID:  whereHelpernull_String{field: "\"battle_contracts\".\"transaction_id\""},
-	MechID:         whereHelpernull_String{field: "\"battle_contracts\".\"mech_id\""},
+	MechID:         whereHelperstring{field: "\"battle_contracts\".\"mech_id\""},
 }
 
 // BattleContractRels is where relationship names are stored.
@@ -182,8 +203,8 @@ type battleContractL struct{}
 
 var (
 	battleContractAllColumns            = []string{"id", "player_id", "faction_id", "battle_id", "contract_reward", "fee", "did_win", "paid_out", "queued_at", "cancelled", "transaction_id", "mech_id"}
-	battleContractColumnsWithoutDefault = []string{"player_id", "faction_id", "contract_reward", "fee"}
-	battleContractColumnsWithDefault    = []string{"id", "battle_id", "did_win", "paid_out", "queued_at", "cancelled", "transaction_id", "mech_id"}
+	battleContractColumnsWithoutDefault = []string{"player_id", "faction_id", "contract_reward", "fee", "mech_id"}
+	battleContractColumnsWithDefault    = []string{"id", "battle_id", "did_win", "paid_out", "queued_at", "cancelled", "transaction_id"}
 	battleContractPrimaryKeyColumns     = []string{"id"}
 	battleContractGeneratedColumns      = []string{}
 )
@@ -614,9 +635,7 @@ func (battleContractL) LoadMech(e boil.Executor, singular bool, maybeBattleContr
 		if object.R == nil {
 			object.R = &battleContractR{}
 		}
-		if !queries.IsNil(object.MechID) {
-			args = append(args, object.MechID)
-		}
+		args = append(args, object.MechID)
 
 	} else {
 	Outer:
@@ -626,14 +645,12 @@ func (battleContractL) LoadMech(e boil.Executor, singular bool, maybeBattleContr
 			}
 
 			for _, a := range args {
-				if queries.Equal(a, obj.MechID) {
+				if a == obj.MechID {
 					continue Outer
 				}
 			}
 
-			if !queries.IsNil(obj.MechID) {
-				args = append(args, obj.MechID)
-			}
+			args = append(args, obj.MechID)
 
 		}
 	}
@@ -692,7 +709,7 @@ func (battleContractL) LoadMech(e boil.Executor, singular bool, maybeBattleContr
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if queries.Equal(local.MechID, foreign.ID) {
+			if local.MechID == foreign.ID {
 				local.R.Mech = foreign
 				if foreign.R == nil {
 					foreign.R = &mechR{}
@@ -1021,7 +1038,7 @@ func (o *BattleContract) SetMech(exec boil.Executor, insert bool, related *Mech)
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	queries.Assign(&o.MechID, related.ID)
+	o.MechID = related.ID
 	if o.R == nil {
 		o.R = &battleContractR{
 			Mech: related,
@@ -1038,39 +1055,6 @@ func (o *BattleContract) SetMech(exec boil.Executor, insert bool, related *Mech)
 		related.R.BattleContracts = append(related.R.BattleContracts, o)
 	}
 
-	return nil
-}
-
-// RemoveMech relationship.
-// Sets o.R.Mech to nil.
-// Removes o from all passed in related items' relationships struct (Optional).
-func (o *BattleContract) RemoveMech(exec boil.Executor, related *Mech) error {
-	var err error
-
-	queries.SetScanner(&o.MechID, nil)
-	if _, err = o.Update(exec, boil.Whitelist("mech_id")); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	if o.R != nil {
-		o.R.Mech = nil
-	}
-	if related == nil || related.R == nil {
-		return nil
-	}
-
-	for i, ri := range related.R.BattleContracts {
-		if queries.Equal(o.MechID, ri.MechID) {
-			continue
-		}
-
-		ln := len(related.R.BattleContracts)
-		if ln > 1 && i < ln-1 {
-			related.R.BattleContracts[i] = related.R.BattleContracts[ln-1]
-		}
-		related.R.BattleContracts = related.R.BattleContracts[:ln-1]
-		break
-	}
 	return nil
 }
 
