@@ -81,13 +81,12 @@ type MechResp struct {
 
 func (s *S) Mech(req MechReq, resp *MechResp) error {
 	gamelog.L.Debug().Msg("comms.Mech")
-	//result, err := db.Mech(req.MechID)
-	//if err != nil {
-	//	return terror.Error(err)
-	//}
+	result, err := db.Mech(req.MechID)
+	if err != nil {
+		return terror.Error(err)
+	}
 
-	// TODO: convert mech object
-	//resp.MechContainer = result
+	resp.MechContainer = ServerMechToApiV1(result)
 	return nil
 }
 
@@ -100,13 +99,12 @@ type MechsByOwnerIDResp struct {
 
 func (s *S) MechsByOwnerID(req MechsByOwnerIDReq, resp *MechsByOwnerIDResp) error {
 	gamelog.L.Debug().Msg("comms.MechsByOwnerID")
-	//result, err := db.MechsByOwnerID(req.OwnerID)
-	//if err != nil {
-	//	return terror.Error(err)
-	//}
+	result, err := db.MechsByOwnerID(req.OwnerID)
+	if err != nil {
+		return terror.Error(err)
+	}
 
-	// TODO: convert mech object
-	//resp.MechContainers = result
+	resp.MechContainers = ServerMechsToApiV1(result)
 	return nil
 }
 
@@ -159,13 +157,12 @@ func (s *S) MechSetName(req MechSetNameReq, resp *MechSetNameResp) error {
 	if err != nil {
 		return terror.Error(err)
 	}
-	_, err = db.Mech(req.MechID)
+	mech, err := db.Mech(req.MechID)
 	if err != nil {
 		return terror.Error(err)
 	}
 
-	// TODO: convert mech object
-	//resp.MechContainer = mech
+	resp.MechContainer = ServerMechToApiV1(mech)
 	return nil
 }
 
@@ -183,12 +180,11 @@ func (s *S) MechSetOwner(req MechSetOwnerReq, resp *MechSetOwnerResp) error {
 	if err != nil {
 		return terror.Error(err)
 	}
-	_, err = db.Mech(req.MechID)
+	mech, err := db.Mech(req.MechID)
 	if err != nil {
 		return terror.Error(err)
 	}
 
-	// TODO: convert mech object
-	//resp.MechContainer = mech
+	resp.MechContainer = ServerMechToApiV1(mech)
 	return nil
 }
