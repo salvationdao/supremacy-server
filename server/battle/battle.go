@@ -379,9 +379,10 @@ func (btl *Battle) calcTriggeredLocation(abilityEvent *server.GameAbilityEvent) 
 		return
 	}
 
-	abilityEvent.GameLocation.X = ((*abilityEvent.TriggeredOnCellX * server.GameClientTileSize) + (server.GameClientTileSize / 2)) + btl.gameMap.LeftPixels
-	abilityEvent.GameLocation.Y = ((*abilityEvent.TriggeredOnCellY * server.GameClientTileSize) + (server.GameClientTileSize / 2)) + btl.gameMap.TopPixels
-
+	abilityEvent.GameLocation = &server.GameLocation{
+		X: ((*abilityEvent.TriggeredOnCellX * server.GameClientTileSize) + (server.GameClientTileSize / 2)) + btl.gameMap.LeftPixels, 
+		Y: ((*abilityEvent.TriggeredOnCellY * server.GameClientTileSize) + (server.GameClientTileSize / 2)) + btl.gameMap.TopPixels,
+	}
 }
 
 type WarMachinePosition struct {
