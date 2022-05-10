@@ -62,7 +62,7 @@ func (c *XrpcClient) Call(serviceMethod string, args interface{}, reply interfac
 		c.mutex.Unlock()
 	}
 
-	gamelog.L.Debug().Str("fn", serviceMethod).Interface("args", args).Msg("rpc call")
+	gamelog.L.Trace().Str("fn", serviceMethod).Interface("args", args).Msg("rpc call")
 
 	// count up, and use the next client/address
 	c.counter.Add(1)
