@@ -69,30 +69,29 @@ func Template(templateID uuid.UUID) (*server.TemplateContainer, error) {
 	}
 
 	// get the objects
-
 	result.BlueprintMech, err = BlueprintMechs(blueprintMechIDS)
 	if err != nil {
-		// handle
+		return nil, err
 	}
 	result.BlueprintWeapon, err = BlueprintWeapons(blueprintWeaponIDS)
 	if err != nil {
-		// handle
+		return nil, err
 	}
 	result.BlueprintMechSkin, err = BlueprintMechSkinSkins(blueprintMechSkinIDS)
 	if err != nil {
-		// handle
+		return nil, err
 	}
 	result.BlueprintMechAnimation, err = BlueprintMechAnimations(blueprintMechAnimationIDS)
 	if err != nil {
-		// handle
+		return nil, err
 	}
 	result.BlueprintEnergyCore, err = BlueprintEnergyCores(blueprintEnergyCoreIDS)
 	if err != nil {
-		// handle
+		return nil, err
 	}
 	result.BlueprintUtility, err = BlueprintUtilities(blueprintUtilityIDS)
 	if err != nil {
-		// handle
+		return nil, err
 	}
 	return result, nil
 }

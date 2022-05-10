@@ -23,15 +23,12 @@ func (s *S) Templates(req TemplatesReq, resp *TemplatesResp) error {
 	}
 	result := []*TemplateContainer{}
 	for _, tpl := range templates {
-		_, err := db.Template(uuid.Must(uuid.FromString(tpl.ID)))
+		template, err := db.Template(uuid.Must(uuid.FromString(tpl.ID)))
 		if err != nil {
 			return terror.Error(err)
 		}
 
-		// TODO: convert mech object
-
-		//result = append(result, template)
-
+		result = append(result, ServerTemplateToApiTemplateV1(template))
 	}
 	resp.TemplateContainers = result
 	return nil
