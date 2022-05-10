@@ -36,8 +36,8 @@ type SpendSupsReq struct {
 	ToUserID             uuid.UUID                   `json:"toUserID"`
 	TransactionReference server.TransactionReference `json:"transactionReference"`
 	Group                string                      `json:"group,omitempty"`
-	SubGroup             string                      `json:"subGroup"`    //TODO: send battle id
-	Description          string                      `json:"description"` //TODO: send descritpion
+	SubGroup             string                      `json:"subGroup"`
+	Description          string                      `json:"description"`
 
 	NotSafe bool `json:"notSafe"`
 }

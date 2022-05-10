@@ -1,6 +1,7 @@
 package server
 
 import (
+	"server/db/boiler"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -31,7 +32,7 @@ type Weapon struct {
 	EnergyCost           decimal.NullDecimal `json:"energy_cost,omitempty"`
 	MaxAmmo              null.Int            `json:"max_ammo,omitempty"`
 
-	//BlueprintAmmo []* // TODO: AMMO
+	// TODO: AMMO //BlueprintAmmo []*
 
 	UpdatedAt time.Time `json:"updated_at"`
 	CreatedAt time.Time `json:"created_at"`
@@ -57,4 +58,28 @@ type BlueprintWeapon struct {
 	ProjectileSpeed      null.Int            `json:"projectile_speed,omitempty"`
 	MaxAmmo              null.Int            `json:"max_ammo,omitempty"`
 	EnergyCost           decimal.NullDecimal `json:"energy_cost,omitempty"`
+}
+
+func BlueprintWeaponFromBoiler(weapon *boiler.BlueprintWeapon) *BlueprintWeapon {
+	return &BlueprintWeapon{
+		ID:                   weapon.ID,
+		BrandID:              weapon.BrandID,
+		Label:                weapon.Label,
+		Slug:                 weapon.Slug,
+		UpdatedAt:            weapon.UpdatedAt,
+		CreatedAt:            weapon.CreatedAt,
+		Damage:               weapon.Damage,
+		GameClientWeaponID:   weapon.GameClientWeaponID,
+		WeaponType:           weapon.WeaponType,
+		DefaultDamageTyp:     weapon.DefaultDamageTyp,
+		DamageFalloff:        weapon.DamageFalloff,
+		DamageFalloffRate:    weapon.DamageFalloffRate,
+		Spread:               weapon.Spread,
+		RateOfFire:           weapon.RateOfFire,
+		Radius:               weapon.Radius,
+		RadialDoesFullDamage: weapon.RadialDoesFullDamage,
+		ProjectileSpeed:      weapon.ProjectileSpeed,
+		MaxAmmo:              weapon.MaxAmmo,
+		EnergyCost:           weapon.EnergyCost,
+	}
 }

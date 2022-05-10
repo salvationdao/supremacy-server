@@ -1,6 +1,7 @@
 package server
 
 import (
+	"server/db/boiler"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -36,4 +37,20 @@ type BlueprintEnergyCore struct {
 	MaxHitpoints decimal.Decimal `json:"max_hitpoints"`
 	Tier         null.String     `json:"tier,omitempty"`
 	CreatedAt    time.Time       `json:"created_at"`
+}
+
+func BlueprintEnergyCoreFromBoiler(core *boiler.BlueprintEnergyCore) *BlueprintEnergyCore {
+	return &BlueprintEnergyCore{
+		ID:           core.ID,
+		Collection:   core.Collection,
+		Label:        core.Label,
+		Size:         core.Size,
+		Capacity:     core.Capacity,
+		MaxDrawRate:  core.MaxDrawRate,
+		RechargeRate: core.RechargeRate,
+		Armour:       core.Armour,
+		MaxHitpoints: core.MaxHitpoints,
+		Tier:         core.Tier,
+		CreatedAt:    core.CreatedAt,
+	}
 }

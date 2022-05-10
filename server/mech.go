@@ -1,9 +1,9 @@
 package server
 
 import (
+	"server/db/boiler"
 	"time"
 
-	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 )
 
@@ -72,40 +72,6 @@ type Mech struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-type MechSkin struct {
-	*CollectionDetails
-	ID               string              `json:"id"`
-	BlueprintID      string              `json:"blueprint_id"`
-	CollectionItemID string              `json:"collection_item_id"`
-	GenesisTokenID   decimal.NullDecimal `json:"genesis_token_id,omitempty"`
-	Label            string              `json:"label"`
-	OwnerID          string              `json:"owner_id"`
-	ChassisModel     string              `json:"chassis_model"`
-	EquippedOn       null.String         `json:"equipped_on,omitempty"`
-	Tier             null.String         `json:"tier,omitempty"`
-	ImageURL         null.String         `json:"image_url,omitempty"`
-	AnimationURL     null.String         `json:"animation_url,omitempty"`
-	CardAnimationURL null.String         `json:"card_animation_url,omitempty"`
-	AvatarURL        null.String         `json:"avatar_url,omitempty"`
-	LargeImageURL    null.String         `json:"large_image_url,omitempty"`
-	CreatedAt        time.Time           `json:"created_at"`
-}
-
-type MechAnimation struct {
-	*CollectionDetails
-	ID               string      `json:"id"`
-	BlueprintID      string      `json:"blueprint_id"`
-	CollectionItemID string      `json:"collection_item_id"`
-	Label            string      `json:"label"`
-	OwnerID          string      `json:"owner_id"`
-	ChassisModel     string      `json:"chassis_model"`
-	EquippedOn       null.String `json:"equipped_on,omitempty"`
-	Tier             null.String `json:"tier,omitempty"`
-	IntroAnimation   null.Bool   `json:"intro_animation,omitempty"`
-	OutroAnimation   null.Bool   `json:"outro_animation,omitempty"`
-	CreatedAt        time.Time   `json:"created_at"`
-}
-
 type TemplateContainer struct {
 	ID        string    `json:"id"`
 	Label     string    `json:"label"`
@@ -118,33 +84,7 @@ type TemplateContainer struct {
 	BlueprintMechSkin      []*BlueprintMechSkin      `json:"blueprint_mech_skin,omitempty"`
 	BlueprintMechAnimation []*BlueprintMechAnimation `json:"blueprint_mech_animation,omitempty"`
 	BlueprintEnergyCore    []*BlueprintEnergyCore    `json:"blueprint_energy_core,omitempty"`
-	//BlueprintAmmo []* // TODO: AMMO
-}
-
-type BlueprintMechSkin struct {
-	ID               string      `json:"id"`
-	Collection       string      `json:"collection"`
-	ChassisModel     string      `json:"chassis_model"`
-	Label            string      `json:"label"`
-	Tier             null.String `json:"tier,omitempty"`
-	ImageURL         null.String `json:"image_url,omitempty"`
-	AnimationURL     null.String `json:"animation_url,omitempty"`
-	CardAnimationURL null.String `json:"card_animation_url,omitempty"`
-	LargeImageURL    null.String `json:"large_image_url,omitempty"`
-	AvatarURL        null.String `json:"avatar_url,omitempty"`
-	CreatedAt        time.Time   `json:"created_at"`
-}
-
-type BlueprintMechAnimation struct {
-	ID             string      `json:"id"`
-	Collection     string      `json:"collection"`
-	Label          string      `json:"label"`
-	ChassisModel   string      `json:"chassis_model"`
-	EquippedOn     null.String `json:"equipped_on,omitempty"`
-	Tier           null.String `json:"tier,omitempty"`
-	IntroAnimation null.Bool   `json:"intro_animation,omitempty"`
-	OutroAnimation null.Bool   `json:"outro_animation,omitempty"`
-	CreatedAt      time.Time   `json:"created_at"`
+	// TODO: AMMO //BlueprintAmmo []*
 }
 
 type BlueprintMech struct {
@@ -163,6 +103,26 @@ type BlueprintMech struct {
 	EnergyCoreSize       null.String `json:"energy_core_size,omitempty"`
 	Tier                 null.String `json:"tier,omitempty"`
 	DefaultChassisSkinID string      `json:"default_chassis_skin_id"`
+}
+
+func BlueprintMechFromBoiler(mech *boiler.BlueprintMech) *BlueprintMech {
+	return &BlueprintMech{
+		ID:                   mech.ID,
+		BrandID:              mech.BrandID,
+		Label:                mech.Label,
+		Slug:                 mech.Slug,
+		Skin:                 mech.Skin,
+		WeaponHardpoints:     mech.WeaponHardpoints,
+		UtilitySlots:         mech.UtilitySlots,
+		Speed:                mech.Speed,
+		MaxHitpoints:         mech.MaxHitpoints,
+		UpdatedAt:            mech.UpdatedAt,
+		CreatedAt:            mech.CreatedAt,
+		ModelID:              mech.ModelID,
+		EnergyCoreSize:       mech.EnergyCoreSize,
+		Tier:                 mech.Tier,
+		DefaultChassisSkinID: mech.DefaultChassisSkinID,
+	}
 }
 
 type BlueprintUtility struct {

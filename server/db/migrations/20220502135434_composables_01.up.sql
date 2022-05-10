@@ -128,7 +128,6 @@ CREATE TABLE energy_cores
     equipped_on        UUID REFERENCES chassis (id),
     created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
--- TODO: ADD COLLECTION/TOKEN ID CHECK
 
 /*
   CHASSIS SKINS
@@ -173,14 +172,9 @@ CREATE TABLE chassis_skin
     created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- TODO: CREATE CHECK ON COLLECTION/TOKEN_ID
-
 /*
   CHASSIS ANIMATIONS
  */
-
-
--- TODO: CREATE CHECK ON COLLECTION/TOKEN ID
 
 CREATE TABLE blueprint_chassis_animation
 (
@@ -244,9 +238,6 @@ SET model_id = (SELECT id
 ALTER TABLE chassis
     DROP COLUMN model,
     ALTER COLUMN model_id SET NOT NULL;
-
-
--- TODO: ADD CHECK ON COLLECTION/TOKEN ID
 
 -- This inserts a new collection_items entry for each chassis and updates the chassis table with token id
 WITH insrt AS (

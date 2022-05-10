@@ -1,6 +1,7 @@
 package server
 
 import (
+	"server/db/boiler"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -111,4 +112,101 @@ type BlueprintUtilityAntiMissile struct {
 	RateOfFire         int       `json:"rate_of_fire"`
 	FireEnergyCost     int       `json:"fire_energy_cost"`
 	CreatedAt          time.Time `json:"created_at"`
+}
+
+func BlueprintUtilityShieldFromBoiler(utility *boiler.BlueprintUtility, shield *boiler.BlueprintUtilityShield) *BlueprintUtility {
+	return &BlueprintUtility{
+		ID:        utility.ID,
+		BrandID:   utility.BrandID,
+		Label:     utility.Label,
+		UpdatedAt: utility.UpdatedAt,
+		CreatedAt: utility.CreatedAt,
+		Type:      utility.Type,
+		ShieldBlueprint: &BlueprintUtilityShield{
+			ID:                 shield.ID,
+			BlueprintUtilityID: shield.BlueprintUtilityID,
+			Hitpoints:          shield.Hitpoints,
+			RechargeRate:       shield.RechargeRate,
+			RechargeEnergyCost: shield.RechargeEnergyCost,
+			CreatedAt:          shield.CreatedAt,
+		},
+	}
+}
+
+func BlueprintUtilityAttackDroneFromBoiler(utility *boiler.BlueprintUtility, drone *boiler.BlueprintUtilityAttackDrone) *BlueprintUtility {
+	return &BlueprintUtility{
+		ID:        utility.ID,
+		BrandID:   utility.BrandID,
+		Label:     utility.Label,
+		UpdatedAt: utility.UpdatedAt,
+		CreatedAt: utility.CreatedAt,
+		Type:      utility.Type,
+		AttackDroneBlueprint: &BlueprintUtilityAttackDrone{
+			ID:                 drone.ID,
+			BlueprintUtilityID: drone.BlueprintUtilityID,
+			Damage:             drone.Damage,
+			RateOfFire:         drone.RateOfFire,
+			Hitpoints:          drone.Hitpoints,
+			LifespanSeconds:    drone.LifespanSeconds,
+			DeployEnergyCost:   drone.DeployEnergyCost,
+			CreatedAt:          drone.CreatedAt,
+		},
+	}
+}
+
+func BlueprintUtilityRepairDroneFromBoiler(utility *boiler.BlueprintUtility, drone *boiler.BlueprintUtilityRepairDrone) *BlueprintUtility {
+	return &BlueprintUtility{
+		ID:        utility.ID,
+		BrandID:   utility.BrandID,
+		Label:     utility.Label,
+		UpdatedAt: utility.UpdatedAt,
+		CreatedAt: utility.CreatedAt,
+		Type:      utility.Type,
+		RepairDroneBlueprint: &BlueprintUtilityRepairDrone{
+			ID:                 drone.ID,
+			BlueprintUtilityID: drone.BlueprintUtilityID,
+			RepairType:         drone.RepairType,
+			RepairAmount:       drone.RepairAmount,
+			DeployEnergyCost:   drone.DeployEnergyCost,
+			LifespanSeconds:    drone.LifespanSeconds,
+			CreatedAt:          drone.CreatedAt,
+		},
+	}
+}
+
+func BlueprintUtilityAntiMissileFromBoiler(utility *boiler.BlueprintUtility, anti *boiler.BlueprintUtilityAntiMissile) *BlueprintUtility {
+	return &BlueprintUtility{
+		ID:        utility.ID,
+		BrandID:   utility.BrandID,
+		Label:     utility.Label,
+		UpdatedAt: utility.UpdatedAt,
+		CreatedAt: utility.CreatedAt,
+		Type:      utility.Type,
+		AntiMissileBlueprint: &BlueprintUtilityAntiMissile{
+			ID:                 anti.ID,
+			BlueprintUtilityID: anti.BlueprintUtilityID,
+			RateOfFire:         anti.RateOfFire,
+			FireEnergyCost:     anti.FireEnergyCost,
+			CreatedAt:          anti.CreatedAt,
+		},
+	}
+}
+
+func BlueprintUtilityAcceleratorFromBoiler(utility *boiler.BlueprintUtility, anti *boiler.BlueprintUtilityAccelerator) *BlueprintUtility {
+	return &BlueprintUtility{
+		ID:        utility.ID,
+		BrandID:   utility.BrandID,
+		Label:     utility.Label,
+		UpdatedAt: utility.UpdatedAt,
+		CreatedAt: utility.CreatedAt,
+		Type:      utility.Type,
+		AcceleratorBlueprint: &BlueprintUtilityAccelerator{
+			ID:                 anti.ID,
+			BlueprintUtilityID: anti.BlueprintUtilityID,
+			EnergyCost:         anti.EnergyCost,
+			BoostSeconds:       anti.BoostSeconds,
+			BoostAmount:        anti.BoostAmount,
+			CreatedAt:          anti.CreatedAt,
+		},
+	}
 }
