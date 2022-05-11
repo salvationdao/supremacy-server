@@ -28,6 +28,7 @@ type WarMachine struct {
 	EnergyCore *EnergyCore    `json:"energy_core,omitempty"`
 	Abilities  []*GameAbility `json:"abilities"`
 	Weapons    []*Weapon      `json:"weapons"`
+	Utility    []*Utility     `json:"utility"`
 
 	// these objects below are used by us and not game client
 	Image       string          `json:"image"`
@@ -176,5 +177,87 @@ func EnergyCoreFromServer(ec *server.EnergyCore) *EnergyCore {
 		Tier:         ec.Tier,
 		EquippedOn:   ec.EquippedOn,
 		CreatedAt:    ec.CreatedAt,
+	}
+}
+
+func UtilitiesFromServer(utils []*server.Utility) []*Utility {
+	var utilities []*Utility
+	for _, util := range utils {
+		utilities = append(utilities, UtilityFromServer(util))
+	}
+	return utilities
+}
+
+func UtilityFromServer(util *server.Utility) *Utility {
+	return &Utility{
+		Type:        util.Type,
+		Label:       util.Label,
+		Shield:      UtilityShieldFromServer(util.Shield),
+		AttackDrone: UtilityAttackDroneFromServer(util.AttackDrone),
+		RepairDrone: UtilityRepairDroneFromServer(util.RepairDrone),
+		Accelerator: UtilityAcceleratorFromServer(util.Accelerator),
+		AntiMissile: UtilityAntiMissileFromServer(util.AntiMissile),
+	}
+}
+
+func UtilityAntiMissileFromServer(util *server.UtilityAntiMissile) *UtilityAntiMissile {
+	if util == nil {
+		return nil
+	}
+	return &UtilityAntiMissile{
+		UtilityID:      util.UtilityID,
+		RateOfFire:     util.RateOfFire,
+		FireEnergyCost: util.FireEnergyCost,
+	}
+}
+
+func UtilityAcceleratorFromServer(util *server.UtilityAccelerator) *UtilityAccelerator {
+	if util == nil {
+		return nil
+	}
+	return &UtilityAccelerator{
+		UtilityID:    util.UtilityID,
+		EnergyCost:   util.EnergyCost,
+		BoostSeconds: util.BoostSeconds,
+		BoostAmount:  util.BoostAmount,
+	}
+}
+
+func UtilityRepairDroneFromServer(util *server.UtilityRepairDrone) *UtilityRepairDrone {
+	if util == nil {
+		return nil
+	}
+	return &UtilityRepairDrone{
+		UtilityID:        util.UtilityID,
+		RepairType:       util.RepairType,
+		RepairAmount:     util.RepairAmount,
+		DeployEnergyCost: util.DeployEnergyCost,
+		LifespanSeconds:  util.LifespanSeconds,
+	}
+}
+
+func UtilityShieldFromServer(util *server.UtilityShield) *UtilityShield {
+	if util == nil {
+		return nil
+	}
+	return &UtilityShield{
+		UtilityID:          util.UtilityID,
+		Hitpoints:          util.Hitpoints,
+		RechargeRate:       util.RechargeRate,
+		RechargeEnergyCost: util.RechargeEnergyCost,
+	}
+}
+
+func UtilityAttackDroneFromServer(util *server.UtilityAttackDrone) *UtilityAttackDrone {
+	if util == nil {
+		return nil
+	}
+	return &UtilityAttackDrone{
+		UtilityID:        util.UtilityID,
+		Damage:           util.Damage,
+		RateOfFire:       util.RateOfFire,
+		Hitpoints:        util.Hitpoints,
+		LifespanSeconds:  util.LifespanSeconds,
+		DeployEnergyCost: util.DeployEnergyCost,
 	}
 }

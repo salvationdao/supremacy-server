@@ -1908,7 +1908,7 @@ var SubmodelSkinMap = map[string]string{
 func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 	warmachines := make([]*WarMachine, len(mechs))
 	// TODO: vinnie fix this
-	for i, mech := range mechs {
+	for _, mech := range mechs {
 		newWarMachine := &WarMachine{
 			ID:          mech.ID,
 			Hash:        mech.Hash,
@@ -1936,12 +1936,21 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 
 			EnergyCore: EnergyCoreFromServer(mech.EnergyCore),
 			Weapons:    WeaponsFromServer(mech.Weapons),
+			Utility: UtilitiesFromServer(mech.Utility),
+
 			//Abilities:  nil,
 		}
+		// update the name to be valid if not
 		if len(newWarMachine.Name) < 3 {
 			newWarMachine.Name = mech.Owner.Username
 			if newWarMachine.Name == "" {
 				newWarMachine.Name = fmt.Sprintf("%s%s%s", "🦾", mech.Hash, "🦾")
+			}
+		}
+		// set shield (assume for frontend, not game client)
+		for _, utl := range mech.Utility {
+			if utl.Type == boiler.UtilityTypeSHIELD && utl.Shield != nil {
+				newWarMachine.Shield = uint32(utl.Shield.Hitpoints)
 			}
 		}
 
