@@ -159,6 +159,7 @@ var PlayerRels = struct {
 	OwnerMechAnimations         string
 	OwnerMechSkins              string
 	OwnerMechs                  string
+	OwnerMechsOlds              string
 	OwnerPlayerAbilities        string
 	PlayerActiveLogs            string
 	PlayerKillLogs              string
@@ -191,6 +192,7 @@ var PlayerRels = struct {
 	OwnerMechAnimations:         "OwnerMechAnimations",
 	OwnerMechSkins:              "OwnerMechSkins",
 	OwnerMechs:                  "OwnerMechs",
+	OwnerMechsOlds:              "OwnerMechsOlds",
 	OwnerPlayerAbilities:        "OwnerPlayerAbilities",
 	PlayerActiveLogs:            "PlayerActiveLogs",
 	PlayerKillLogs:              "PlayerKillLogs",
@@ -226,6 +228,7 @@ type playerR struct {
 	OwnerMechAnimations         MechAnimationSlice        `boiler:"OwnerMechAnimations" boil:"OwnerMechAnimations" json:"OwnerMechAnimations" toml:"OwnerMechAnimations" yaml:"OwnerMechAnimations"`
 	OwnerMechSkins              MechSkinSlice             `boiler:"OwnerMechSkins" boil:"OwnerMechSkins" json:"OwnerMechSkins" toml:"OwnerMechSkins" yaml:"OwnerMechSkins"`
 	OwnerMechs                  MechSlice                 `boiler:"OwnerMechs" boil:"OwnerMechs" json:"OwnerMechs" toml:"OwnerMechs" yaml:"OwnerMechs"`
+	OwnerMechsOlds              MechsOldSlice             `boiler:"OwnerMechsOlds" boil:"OwnerMechsOlds" json:"OwnerMechsOlds" toml:"OwnerMechsOlds" yaml:"OwnerMechsOlds"`
 	OwnerPlayerAbilities        PlayerAbilitySlice        `boiler:"OwnerPlayerAbilities" boil:"OwnerPlayerAbilities" json:"OwnerPlayerAbilities" toml:"OwnerPlayerAbilities" yaml:"OwnerPlayerAbilities"`
 	PlayerActiveLogs            PlayerActiveLogSlice      `boiler:"PlayerActiveLogs" boil:"PlayerActiveLogs" json:"PlayerActiveLogs" toml:"PlayerActiveLogs" yaml:"PlayerActiveLogs"`
 	PlayerKillLogs              PlayerKillLogSlice        `boiler:"PlayerKillLogs" boil:"PlayerKillLogs" json:"PlayerKillLogs" toml:"PlayerKillLogs" yaml:"PlayerKillLogs"`
@@ -821,6 +824,28 @@ func (o *Player) OwnerMechs(mods ...qm.QueryMod) mechQuery {
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"mechs\".*"})
+	}
+
+	return query
+}
+
+// OwnerMechsOlds retrieves all the mechs_old's MechsOlds with an executor via owner_id column.
+func (o *Player) OwnerMechsOlds(mods ...qm.QueryMod) mechsOldQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"mechs_old\".\"owner_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"mechs_old\".\"deleted_at\""),
+	)
+
+	query := MechsOlds(queryMods...)
+	queries.SetFrom(query.Query, "\"mechs_old\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"mechs_old\".*"})
 	}
 
 	return query
@@ -2738,6 +2763,105 @@ func (playerL) LoadOwnerMechs(e boil.Executor, singular bool, maybePlayer interf
 				local.R.OwnerMechs = append(local.R.OwnerMechs, foreign)
 				if foreign.R == nil {
 					foreign.R = &mechR{}
+				}
+				foreign.R.Owner = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadOwnerMechsOlds allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (playerL) LoadOwnerMechsOlds(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+	var slice []*Player
+	var object *Player
+
+	if singular {
+		object = maybePlayer.(*Player)
+	} else {
+		slice = *maybePlayer.(*[]*Player)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &playerR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &playerR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`mechs_old`),
+		qm.WhereIn(`mechs_old.owner_id in ?`, args...),
+		qmhelper.WhereIsNull(`mechs_old.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load mechs_old")
+	}
+
+	var resultSlice []*MechsOld
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice mechs_old")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on mechs_old")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mechs_old")
+	}
+
+	if len(mechsOldAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.OwnerMechsOlds = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &mechsOldR{}
+			}
+			foreign.R.Owner = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.OwnerID {
+				local.R.OwnerMechsOlds = append(local.R.OwnerMechsOlds, foreign)
+				if foreign.R == nil {
+					foreign.R = &mechsOldR{}
 				}
 				foreign.R.Owner = local
 				break
@@ -5308,6 +5432,58 @@ func (o *Player) AddOwnerMechs(exec boil.Executor, insert bool, related ...*Mech
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &mechR{
+				Owner: o,
+			}
+		} else {
+			rel.R.Owner = o
+		}
+	}
+	return nil
+}
+
+// AddOwnerMechsOlds adds the given related objects to the existing relationships
+// of the player, optionally inserting them as new records.
+// Appends related to o.R.OwnerMechsOlds.
+// Sets related.R.Owner appropriately.
+func (o *Player) AddOwnerMechsOlds(exec boil.Executor, insert bool, related ...*MechsOld) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.OwnerID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"mechs_old\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"owner_id"}),
+				strmangle.WhereClause("\"", "\"", 2, mechsOldPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.OwnerID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &playerR{
+			OwnerMechsOlds: related,
+		}
+	} else {
+		o.R.OwnerMechsOlds = append(o.R.OwnerMechsOlds, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &mechsOldR{
 				Owner: o,
 			}
 		} else {

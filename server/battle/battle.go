@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -525,13 +526,11 @@ func (btl *Battle) endCreateStats(payload *BattleEndPayload, winningWarMachines 
 	gamelog.L.Info().Msgf("battle end: looping topFactionContributorBoilers: %s", btl.ID)
 	for _, f := range topFactionContributorBoilers {
 		topFactionContributors = append(topFactionContributors, &Faction{
-			ID:    f.ID,
-			Label: f.Label,
-			Theme: &FactionTheme{
-				Primary:    f.PrimaryColor,
-				Secondary:  f.SecondaryColor,
-				Background: f.BackgroundColor,
-			},
+			ID:         f.ID,
+			Label:      f.Label,
+			Primary:    f.PrimaryColor,
+			Secondary:  f.SecondaryColor,
+			Background: f.BackgroundColor,
 		})
 	}
 	topPlayerContributors := []*BattleUser{}
@@ -1704,7 +1703,6 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 			Faction: &FactionBrief{
 				ID:    destroyedWarMachine.FactionID,
 				Label: destroyedWarMachine.Faction.Label,
-				Theme: destroyedWarMachine.Faction.Theme,
 			},
 		},
 		KilledBy: dp.DestroyedWarMachineEvent.KilledBy,
@@ -1725,9 +1723,11 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 						Name:          wm.Name,
 						Hash:          wm.Hash,
 						Faction: &FactionBrief{
-							ID:    wm.FactionID,
-							Label: wm.Faction.Label,
-							Theme: wm.Faction.Theme,
+							ID:         wm.FactionID,
+							Label:      wm.Faction.Label,
+							Primary:    wm.Faction.Primary,
+							Secondary:  wm.Faction.Secondary,
+							Background: wm.Faction.Background,
 						},
 					}
 				}
@@ -1744,9 +1744,11 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 			Name:          killByWarMachine.Name,
 			Hash:          killByWarMachine.Hash,
 			Faction: &FactionBrief{
-				ID:    killByWarMachine.FactionID,
-				Label: killByWarMachine.Faction.Label,
-				Theme: killByWarMachine.Faction.Theme,
+				ID:         killByWarMachine.FactionID,
+				Label:      killByWarMachine.Faction.Label,
+				Primary:    killByWarMachine.Faction.Primary,
+				Secondary:  killByWarMachine.Faction.Secondary,
+				Background: killByWarMachine.Faction.Background,
 			},
 		}
 	}
@@ -1906,7 +1908,7 @@ var SubmodelSkinMap = map[string]string{
 }
 
 func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
-	warmachines := make([]*WarMachine, len(mechs))
+	var warmachines []*WarMachine
 	// TODO: vinnie fix this
 	for _, mech := range mechs {
 		newWarMachine := &WarMachine{
@@ -1923,13 +1925,11 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 			ImageAvatar: mech.ChassisSkin.AvatarURL.String,
 
 			Faction: &Faction{
-				ID:    mech.Faction.ID.String(),
-				Label: mech.Faction.Label,
-				Theme: &FactionTheme{
-					Primary:    mech.Faction.Theme.Primary,
-					Secondary:  mech.Faction.Theme.Secondary,
-					Background: mech.Faction.Theme.Background,
-				},
+				ID:         mech.Faction.ID.String(),
+				Label:      mech.Faction.Label,
+				Primary:    mech.Faction.Primary,
+				Secondary:  mech.Faction.Secondary,
+				Background: mech.Faction.Background,
 			},
 
 			PowerCore: PowerCoreFromServer(mech.PowerCore),
@@ -1968,12 +1968,18 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 			}
 		}
 
+		warmachines = append(warmachines, newWarMachine)
 		gamelog.L.Debug().Interface("mech", mech).Interface("newWarMachine", newWarMachine).Msg("converted mech to warmachine")
 	}
 
 	sort.Slice(warmachines, func(i, k int) bool {
 		return warmachines[i].FactionID == warmachines[k].FactionID
 	})
+
+	// print one example
+
+	jsnStr, _ := json.Marshal(warmachines[0])
+	fmt.Println(string(jsnStr))
 
 	return warmachines
 }

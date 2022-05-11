@@ -585,11 +585,9 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, wsc *hub.Client, paylo
 				ID:         faction.ID,
 				Label:      faction.Label,
 				LogoBlobID: FactionLogos[faction.ID],
-				Theme: &FactionTheme{
-					Primary:    faction.PrimaryColor,
-					Secondary:  faction.SecondaryColor,
-					Background: faction.BackgroundColor,
-				},
+				Primary:    faction.PrimaryColor,
+				Secondary:  faction.SecondaryColor,
+				Background: faction.BackgroundColor,
 			},
 		},
 	})

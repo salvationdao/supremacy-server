@@ -35,7 +35,7 @@ type BlueprintWeapon struct {
 	GameClientWeaponID   null.String         `boiler:"game_client_weapon_id" boil:"game_client_weapon_id" json:"game_client_weapon_id,omitempty" toml:"game_client_weapon_id" yaml:"game_client_weapon_id,omitempty"`
 	WeaponType           string              `boiler:"weapon_type" boil:"weapon_type" json:"weapon_type" toml:"weapon_type" yaml:"weapon_type"`
 	Collection           string              `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
-	DefaultDamageTyp     string              `boiler:"default_damage_typ" boil:"default_damage_typ" json:"default_damage_typ" toml:"default_damage_typ" yaml:"default_damage_typ"`
+	DefaultDamageType    string              `boiler:"default_damage_type" boil:"default_damage_type" json:"default_damage_type" toml:"default_damage_type" yaml:"default_damage_type"`
 	DamageFalloff        null.Int            `boiler:"damage_falloff" boil:"damage_falloff" json:"damage_falloff,omitempty" toml:"damage_falloff" yaml:"damage_falloff,omitempty"`
 	DamageFalloffRate    null.Int            `boiler:"damage_falloff_rate" boil:"damage_falloff_rate" json:"damage_falloff_rate,omitempty" toml:"damage_falloff_rate" yaml:"damage_falloff_rate,omitempty"`
 	Spread               decimal.NullDecimal `boiler:"spread" boil:"spread" json:"spread,omitempty" toml:"spread" yaml:"spread,omitempty"`
@@ -62,7 +62,7 @@ var BlueprintWeaponColumns = struct {
 	GameClientWeaponID   string
 	WeaponType           string
 	Collection           string
-	DefaultDamageTyp     string
+	DefaultDamageType    string
 	DamageFalloff        string
 	DamageFalloffRate    string
 	Spread               string
@@ -84,7 +84,7 @@ var BlueprintWeaponColumns = struct {
 	GameClientWeaponID:   "game_client_weapon_id",
 	WeaponType:           "weapon_type",
 	Collection:           "collection",
-	DefaultDamageTyp:     "default_damage_typ",
+	DefaultDamageType:    "default_damage_type",
 	DamageFalloff:        "damage_falloff",
 	DamageFalloffRate:    "damage_falloff_rate",
 	Spread:               "spread",
@@ -108,7 +108,7 @@ var BlueprintWeaponTableColumns = struct {
 	GameClientWeaponID   string
 	WeaponType           string
 	Collection           string
-	DefaultDamageTyp     string
+	DefaultDamageType    string
 	DamageFalloff        string
 	DamageFalloffRate    string
 	Spread               string
@@ -130,7 +130,7 @@ var BlueprintWeaponTableColumns = struct {
 	GameClientWeaponID:   "blueprint_weapons.game_client_weapon_id",
 	WeaponType:           "blueprint_weapons.weapon_type",
 	Collection:           "blueprint_weapons.collection",
-	DefaultDamageTyp:     "blueprint_weapons.default_damage_typ",
+	DefaultDamageType:    "blueprint_weapons.default_damage_type",
 	DamageFalloff:        "blueprint_weapons.damage_falloff",
 	DamageFalloffRate:    "blueprint_weapons.damage_falloff_rate",
 	Spread:               "blueprint_weapons.spread",
@@ -156,7 +156,7 @@ var BlueprintWeaponWhere = struct {
 	GameClientWeaponID   whereHelpernull_String
 	WeaponType           whereHelperstring
 	Collection           whereHelperstring
-	DefaultDamageTyp     whereHelperstring
+	DefaultDamageType    whereHelperstring
 	DamageFalloff        whereHelpernull_Int
 	DamageFalloffRate    whereHelpernull_Int
 	Spread               whereHelperdecimal_NullDecimal
@@ -178,7 +178,7 @@ var BlueprintWeaponWhere = struct {
 	GameClientWeaponID:   whereHelpernull_String{field: "\"blueprint_weapons\".\"game_client_weapon_id\""},
 	WeaponType:           whereHelperstring{field: "\"blueprint_weapons\".\"weapon_type\""},
 	Collection:           whereHelperstring{field: "\"blueprint_weapons\".\"collection\""},
-	DefaultDamageTyp:     whereHelperstring{field: "\"blueprint_weapons\".\"default_damage_typ\""},
+	DefaultDamageType:    whereHelperstring{field: "\"blueprint_weapons\".\"default_damage_type\""},
 	DamageFalloff:        whereHelpernull_Int{field: "\"blueprint_weapons\".\"damage_falloff\""},
 	DamageFalloffRate:    whereHelpernull_Int{field: "\"blueprint_weapons\".\"damage_falloff_rate\""},
 	Spread:               whereHelperdecimal_NullDecimal{field: "\"blueprint_weapons\".\"spread\""},
@@ -214,9 +214,9 @@ func (*blueprintWeaponR) NewStruct() *blueprintWeaponR {
 type blueprintWeaponL struct{}
 
 var (
-	blueprintWeaponAllColumns            = []string{"id", "brand_id", "label", "slug", "damage", "deleted_at", "updated_at", "created_at", "game_client_weapon_id", "weapon_type", "collection", "default_damage_typ", "damage_falloff", "damage_falloff_rate", "spread", "rate_of_fire", "radius", "radial_does_full_damage", "projectile_speed", "max_ammo", "energy_cost"}
+	blueprintWeaponAllColumns            = []string{"id", "brand_id", "label", "slug", "damage", "deleted_at", "updated_at", "created_at", "game_client_weapon_id", "weapon_type", "collection", "default_damage_type", "damage_falloff", "damage_falloff_rate", "spread", "rate_of_fire", "radius", "radial_does_full_damage", "projectile_speed", "max_ammo", "energy_cost"}
 	blueprintWeaponColumnsWithoutDefault = []string{"label", "slug", "damage", "weapon_type"}
-	blueprintWeaponColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at", "game_client_weapon_id", "collection", "default_damage_typ", "damage_falloff", "damage_falloff_rate", "spread", "rate_of_fire", "radius", "radial_does_full_damage", "projectile_speed", "max_ammo", "energy_cost"}
+	blueprintWeaponColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at", "game_client_weapon_id", "collection", "default_damage_type", "damage_falloff", "damage_falloff_rate", "spread", "rate_of_fire", "radius", "radial_does_full_damage", "projectile_speed", "max_ammo", "energy_cost"}
 	blueprintWeaponPrimaryKeyColumns     = []string{"id"}
 	blueprintWeaponGeneratedColumns      = []string{}
 )

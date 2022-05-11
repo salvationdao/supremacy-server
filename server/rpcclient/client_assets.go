@@ -1,9 +1,14 @@
 package rpcclient
 
 import (
+	"database/sql"
 	"server"
+	"server/db/boiler"
+	"server/gamedb"
 	"server/gamelog"
 	"strings"
+
+	"github.com/friendsofgo/errors"
 
 	"github.com/ninja-software/terror/v2"
 )
@@ -21,10 +26,26 @@ func (pp *PassportXrpcClient) AssetOnChainStatus(assetID string) (server.OnChain
 	resp := &AssetOnChainStatusResp{}
 	err := pp.XrpcClient.Call("S.AssetOnChainStatusHandler", AssetOnChainStatusReq{assetID}, resp)
 	if err != nil {
+		if strings.Contains(err.Error(), "sql: no rows in result set") {
+			// if we get no rows error, get the mechs old ID, get the status of that, and then tell xsyn to update that
+			oldMech, err := boiler.MechsOlds(boiler.MechsOldWhere.ChassisID.EQ(assetID)).One(gamedb.StdConn)
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				gamelog.L.Err(err).Str("assetID", assetID).Str("method", "AssetOnChainStatusHandler").Msg("rpc error - boiler.MechsOlds")
+				return "", terror.Error(err)
+			}
+			if oldMech != nil {
+				err := pp.XrpcClient.Call("S.AssetOnChainStatusHandler", AssetOnChainStatusReq{AssetID: oldMech.ID}, resp)
+				if err != nil {
+					gamelog.L.Err(err).Str("assetID", assetID).Str("method", "AssetOnChainStatusHandler").Msg("rpc error")
+					return "", terror.Error(err)
+				}
+				// TODO: tell passport to update this ID
+				return resp.OnChainStatus, nil
+			}
+		}
 		gamelog.L.Err(err).Str("assetID", assetID).Str("method", "AssetOnChainStatusHandler").Msg("rpc error")
 		return "", terror.Error(err)
 	}
-
 	return resp.OnChainStatus, nil
 }
 

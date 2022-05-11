@@ -33,7 +33,7 @@ type Weapon struct {
 	UpdatedAt             time.Time           `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	CreatedAt             time.Time           `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	BlueprintID           string              `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
-	DefaultDamageTyp      string              `boiler:"default_damage_typ" boil:"default_damage_typ" json:"default_damage_typ" toml:"default_damage_typ" yaml:"default_damage_typ"`
+	DefaultDamageType     string              `boiler:"default_damage_type" boil:"default_damage_type" json:"default_damage_type" toml:"default_damage_type" yaml:"default_damage_type"`
 	GenesisTokenID        decimal.NullDecimal `boiler:"genesis_token_id" boil:"genesis_token_id" json:"genesis_token_id,omitempty" toml:"genesis_token_id" yaml:"genesis_token_id,omitempty"`
 	LimitedReleaseTokenID decimal.NullDecimal `boiler:"limited_release_token_id" boil:"limited_release_token_id" json:"limited_release_token_id,omitempty" toml:"limited_release_token_id" yaml:"limited_release_token_id,omitempty"`
 	WeaponType            string              `boiler:"weapon_type" boil:"weapon_type" json:"weapon_type" toml:"weapon_type" yaml:"weapon_type"`
@@ -62,7 +62,7 @@ var WeaponColumns = struct {
 	UpdatedAt             string
 	CreatedAt             string
 	BlueprintID           string
-	DefaultDamageTyp      string
+	DefaultDamageType     string
 	GenesisTokenID        string
 	LimitedReleaseTokenID string
 	WeaponType            string
@@ -86,7 +86,7 @@ var WeaponColumns = struct {
 	UpdatedAt:             "updated_at",
 	CreatedAt:             "created_at",
 	BlueprintID:           "blueprint_id",
-	DefaultDamageTyp:      "default_damage_typ",
+	DefaultDamageType:     "default_damage_type",
 	GenesisTokenID:        "genesis_token_id",
 	LimitedReleaseTokenID: "limited_release_token_id",
 	WeaponType:            "weapon_type",
@@ -112,7 +112,7 @@ var WeaponTableColumns = struct {
 	UpdatedAt             string
 	CreatedAt             string
 	BlueprintID           string
-	DefaultDamageTyp      string
+	DefaultDamageType     string
 	GenesisTokenID        string
 	LimitedReleaseTokenID string
 	WeaponType            string
@@ -136,7 +136,7 @@ var WeaponTableColumns = struct {
 	UpdatedAt:             "weapons.updated_at",
 	CreatedAt:             "weapons.created_at",
 	BlueprintID:           "weapons.blueprint_id",
-	DefaultDamageTyp:      "weapons.default_damage_typ",
+	DefaultDamageType:     "weapons.default_damage_type",
 	GenesisTokenID:        "weapons.genesis_token_id",
 	LimitedReleaseTokenID: "weapons.limited_release_token_id",
 	WeaponType:            "weapons.weapon_type",
@@ -164,7 +164,7 @@ var WeaponWhere = struct {
 	UpdatedAt             whereHelpertime_Time
 	CreatedAt             whereHelpertime_Time
 	BlueprintID           whereHelperstring
-	DefaultDamageTyp      whereHelperstring
+	DefaultDamageType     whereHelperstring
 	GenesisTokenID        whereHelperdecimal_NullDecimal
 	LimitedReleaseTokenID whereHelperdecimal_NullDecimal
 	WeaponType            whereHelperstring
@@ -188,7 +188,7 @@ var WeaponWhere = struct {
 	UpdatedAt:             whereHelpertime_Time{field: "\"weapons\".\"updated_at\""},
 	CreatedAt:             whereHelpertime_Time{field: "\"weapons\".\"created_at\""},
 	BlueprintID:           whereHelperstring{field: "\"weapons\".\"blueprint_id\""},
-	DefaultDamageTyp:      whereHelperstring{field: "\"weapons\".\"default_damage_typ\""},
+	DefaultDamageType:     whereHelperstring{field: "\"weapons\".\"default_damage_type\""},
 	GenesisTokenID:        whereHelperdecimal_NullDecimal{field: "\"weapons\".\"genesis_token_id\""},
 	LimitedReleaseTokenID: whereHelperdecimal_NullDecimal{field: "\"weapons\".\"limited_release_token_id\""},
 	WeaponType:            whereHelperstring{field: "\"weapons\".\"weapon_type\""},
@@ -237,9 +237,9 @@ func (*weaponR) NewStruct() *weaponR {
 type weaponL struct{}
 
 var (
-	weaponAllColumns            = []string{"id", "brand_id", "label", "slug", "damage", "deleted_at", "updated_at", "created_at", "blueprint_id", "default_damage_typ", "genesis_token_id", "limited_release_token_id", "weapon_type", "owner_id", "damage_falloff", "damage_falloff_rate", "spread", "rate_of_fire", "radius", "radial_does_full_damage", "projectile_speed", "energy_cost", "max_ammo"}
+	weaponAllColumns            = []string{"id", "brand_id", "label", "slug", "damage", "deleted_at", "updated_at", "created_at", "blueprint_id", "default_damage_type", "genesis_token_id", "limited_release_token_id", "weapon_type", "owner_id", "damage_falloff", "damage_falloff_rate", "spread", "rate_of_fire", "radius", "radial_does_full_damage", "projectile_speed", "energy_cost", "max_ammo"}
 	weaponColumnsWithoutDefault = []string{"label", "slug", "damage", "blueprint_id", "weapon_type", "owner_id"}
-	weaponColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at", "default_damage_typ", "genesis_token_id", "limited_release_token_id", "damage_falloff", "damage_falloff_rate", "spread", "rate_of_fire", "radius", "radial_does_full_damage", "projectile_speed", "energy_cost", "max_ammo"}
+	weaponColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at", "default_damage_type", "genesis_token_id", "limited_release_token_id", "damage_falloff", "damage_falloff_rate", "spread", "rate_of_fire", "radius", "radial_does_full_damage", "projectile_speed", "energy_cost", "max_ammo"}
 	weaponPrimaryKeyColumns     = []string{"id"}
 	weaponGeneratedColumns      = []string{}
 )

@@ -132,34 +132,34 @@ func Mech(mechID uuid.UUID) (*server.Mech, error) {
 			m.power_core_size,
 			m.tier,
 			m.blueprint_id,
-		
+			
 			m.brand_id,
 			to_json(b) as brand,
-		
+			
 			m.owner_id,
 			to_json(p) as owner,
-		
+			
 			p.faction_id,
 			to_json(f) as faction,
-		
+			
 			m.model_id,
 			to_json(mm) as model,
-		
+			
 			mm.default_chassis_skin_id,
 			to_json(dms) as default_chassis_skin,
-		
+			
 			m.chassis_skin_id,
 			to_json(ms) as chassis_skin,
-		
+			
 			m.intro_animation_id,
 			to_json(ma2) as intro_animation,
-		
+			
 			m.outro_animation_id,
 			to_json(ma1) as outro_animation,
-		
+			
 			m.power_core_id,
 			to_json(ec) as power_core,
-		
+			
 			w.weapons,
 			u.utility
 		FROM mechs m
@@ -176,7 +176,12 @@ func Mech(mechID uuid.UUID) (*server.Mech, error) {
 		LEFT OUTER JOIN (
 			SELECT mw.chassis_id, json_agg(w2) as weapons
 			FROM mech_weapons mw
-		 	INNER JOIN weapons w2 ON mw.weapon_id = w2.id
+			INNER JOIN
+			 (
+				 SELECT _w.*, _ci.hash, _ci.token_id
+				 FROM weapons _w
+				  INNER JOIN collection_items _ci on _ci.item_id = _w.id
+			 ) w2 ON mw.weapon_id = w2.id
 			GROUP BY mw.chassis_id
 		) w on w.chassis_id = m.id
 		LEFT OUTER JOIN (
@@ -184,13 +189,14 @@ func Mech(mechID uuid.UUID) (*server.Mech, error) {
 			FROM mech_utility mw
 			INNER JOIN (
 				SELECT
-					_u.*,
+					_u.*,_ci.hash, _ci.token_id,
 					to_json(_us) as shield,
 					to_json(_ua) as accelerator,
 					to_json(_uam) as attack_drone,
 					to_json(_uad) as anti_missile,
 					to_json(_urd) as repair_drone
 				FROM utility _u
+				INNER JOIN collection_items _ci on _ci.item_id = _u.id
 				LEFT OUTER JOIN utility_shield _us ON _us.utility_id = _u.id
 				LEFT OUTER JOIN utility_accelerator _ua ON _ua.utility_id = _u.id
 				LEFT OUTER JOIN utility_anti_missile _uam ON _uam.utility_id = _u.id
@@ -199,7 +205,7 @@ func Mech(mechID uuid.UUID) (*server.Mech, error) {
 			) _u ON mw.utility_id = _u.id
 			GROUP BY mw.chassis_id
 		) u on u.chassis_id = m.id
-		WHERE m.id = $1;
+		WHERE m.id = $1
 		`
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
@@ -294,37 +300,37 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.Mech, error) {
 			m.power_core_size,
 			m.tier,
 			m.blueprint_id,
-		
+			
 			m.brand_id,
 			to_json(b) as brand,
-		
+			
 			m.owner_id,
 			to_json(p) as owner,
-		
+			
 			p.faction_id,
 			to_json(f) as faction,
-		
+			
 			m.model_id,
 			to_json(mm) as model,
-		
+			
 			mm.default_chassis_skin_id,
 			to_json(dms) as default_chassis_skin,
-		
+			
 			m.chassis_skin_id,
 			to_json(ms) as chassis_skin,
-		
+			
 			m.intro_animation_id,
 			to_json(ma2) as intro_animation,
-		
+			
 			m.outro_animation_id,
 			to_json(ma1) as outro_animation,
-		
+			
 			m.power_core_id,
 			to_json(ec) as power_core,
-		
+			
 			w.weapons,
 			u.utility
-		from mechs m
+		FROM mechs m
 		INNER JOIN collection_items ci on ci.item_id = m.id
 		INNER JOIN players p ON p.id = m.owner_id
 		INNER JOIN factions f on p.faction_id = f.id
@@ -338,7 +344,12 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.Mech, error) {
 		LEFT OUTER JOIN (
 			SELECT mw.chassis_id, json_agg(w2) as weapons
 			FROM mech_weapons mw
-					 INNER JOIN weapons w2 ON mw.weapon_id = w2.id
+			INNER JOIN
+			 (
+				 SELECT _w.*, _ci.hash, _ci.token_id
+				 FROM weapons _w
+				  INNER JOIN collection_items _ci on _ci.item_id = _w.id
+			 ) w2 ON mw.weapon_id = w2.id
 			GROUP BY mw.chassis_id
 		) w on w.chassis_id = m.id
 		LEFT OUTER JOIN (
@@ -346,13 +357,14 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.Mech, error) {
 			FROM mech_utility mw
 			INNER JOIN (
 				SELECT
-					_u.*,
+					_u.*,_ci.hash, _ci.token_id,
 					to_json(_us) as shield,
 					to_json(_ua) as accelerator,
 					to_json(_uam) as attack_drone,
 					to_json(_uad) as anti_missile,
 					to_json(_urd) as repair_drone
 				FROM utility _u
+				INNER JOIN collection_items _ci on _ci.item_id = _u.id
 				LEFT OUTER JOIN utility_shield _us ON _us.utility_id = _u.id
 				LEFT OUTER JOIN utility_accelerator _ua ON _ua.utility_id = _u.id
 				LEFT OUTER JOIN utility_anti_missile _uam ON _uam.utility_id = _u.id
@@ -362,7 +374,7 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.Mech, error) {
 			GROUP BY mw.chassis_id
 		) u on u.chassis_id = m.id
 		WHERE m.id IN (` + paramrefs + `)
-		ORDER BY fct.id;
+		ORDER BY p.faction_id 
 		`
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
@@ -376,7 +388,9 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.Mech, error) {
 
 	i := 0
 	for result.Next() {
-		mc := &server.Mech{}
+		mc := &server.Mech{
+			CollectionDetails: &server.CollectionDetails{},
+		}
 		err = result.Scan(
 			&mc.CollectionDetails.CollectionSlug,
 			&mc.CollectionDetails.Hash,
@@ -433,7 +447,7 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.Mech, error) {
 
 // MechIDFromHash retrieve a mech ID from a hash
 func MechIDFromHash(hash string) (uuid.UUID, error) {
-	q := `SELECT id FROM mechs WHERE hash = $1`
+	q := `SELECT item_id FROM collection_items WHERE hash = $1`
 	var id string
 	err := gamedb.Conn.QueryRow(context.Background(), q, hash).
 		Scan(&id)

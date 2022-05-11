@@ -462,11 +462,9 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 													ID:         faction.ID,
 													Label:      faction.Label,
 													LogoBlobID: FactionLogos[faction.ID],
-													Theme: &FactionTheme{
-														Primary:    faction.PrimaryColor,
-														Secondary:  faction.SecondaryColor,
-														Background: faction.BackgroundColor,
-													},
+													Primary:    faction.PrimaryColor,
+													Secondary:  faction.SecondaryColor,
+													Background: faction.BackgroundColor,
 												},
 											}
 											break
@@ -603,11 +601,9 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 											ID:         faction.ID,
 											Label:      faction.Label,
 											LogoBlobID: FactionLogos[faction.ID],
-											Theme: &FactionTheme{
-												Primary:    faction.PrimaryColor,
-												Secondary:  faction.SecondaryColor,
-												Background: faction.BackgroundColor,
-											},
+											Primary:    faction.PrimaryColor,
+											Secondary:  faction.SecondaryColor,
+											Background: faction.BackgroundColor,
 										},
 									},
 									Ability: &AbilityBrief{
@@ -639,11 +635,9 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 													ID:         faction.ID,
 													Label:      faction.Label,
 													LogoBlobID: FactionLogos[faction.ID],
-													Theme: &FactionTheme{
-														Primary:    faction.PrimaryColor,
-														Secondary:  faction.SecondaryColor,
-														Background: faction.BackgroundColor,
-													},
+													Primary:    faction.PrimaryColor,
+													Secondary:  faction.SecondaryColor,
+													Background: faction.BackgroundColor,
 												},
 											}
 											break
@@ -1970,11 +1964,9 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 				ID:         faction.ID,
 				Label:      faction.Label,
 				LogoBlobID: FactionLogos[as.battleAbilityPool.TriggeredFactionID.Load()],
-				Theme: &FactionTheme{
-					Primary:    faction.PrimaryColor,
-					Secondary:  faction.SecondaryColor,
-					Background: faction.BackgroundColor,
-				},
+				Primary:    faction.PrimaryColor,
+				Secondary:  faction.SecondaryColor,
+				Background: faction.BackgroundColor,
 			},
 		},
 	})
@@ -2042,11 +2034,9 @@ func BuildUserDetailWithFaction(userID uuid.UUID) (*UserBrief, error) {
 		ID:         faction.ID,
 		Label:      faction.Label,
 		LogoBlobID: FactionLogos[faction.ID],
-		Theme: &FactionTheme{
-			Primary:    faction.PrimaryColor,
-			Secondary:  faction.SecondaryColor,
-			Background: faction.BackgroundColor,
-		},
+		Primary:    faction.PrimaryColor,
+		Secondary:  faction.SecondaryColor,
+		Background: faction.BackgroundColor,
 	}
 
 	return userBrief, nil

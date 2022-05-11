@@ -223,6 +223,7 @@ var MechRels = struct {
 	PowerCore                    string
 	BattleQueue                  string
 	MechStat                     string
+	ChassisMechsOld              string
 	BattleContracts              string
 	WarMachineOneBattleHistories string
 	WarMachineTwoBattleHistories string
@@ -251,6 +252,7 @@ var MechRels = struct {
 	PowerCore:                    "PowerCore",
 	BattleQueue:                  "BattleQueue",
 	MechStat:                     "MechStat",
+	ChassisMechsOld:              "ChassisMechsOld",
 	BattleContracts:              "BattleContracts",
 	WarMachineOneBattleHistories: "WarMachineOneBattleHistories",
 	WarMachineTwoBattleHistories: "WarMachineTwoBattleHistories",
@@ -282,6 +284,7 @@ type mechR struct {
 	PowerCore                    *PowerCore                   `boiler:"PowerCore" boil:"PowerCore" json:"PowerCore" toml:"PowerCore" yaml:"PowerCore"`
 	BattleQueue                  *BattleQueue                 `boiler:"BattleQueue" boil:"BattleQueue" json:"BattleQueue" toml:"BattleQueue" yaml:"BattleQueue"`
 	MechStat                     *MechStat                    `boiler:"MechStat" boil:"MechStat" json:"MechStat" toml:"MechStat" yaml:"MechStat"`
+	ChassisMechsOld              *MechsOld                    `boiler:"ChassisMechsOld" boil:"ChassisMechsOld" json:"ChassisMechsOld" toml:"ChassisMechsOld" yaml:"ChassisMechsOld"`
 	BattleContracts              BattleContractSlice          `boiler:"BattleContracts" boil:"BattleContracts" json:"BattleContracts" toml:"BattleContracts" yaml:"BattleContracts"`
 	WarMachineOneBattleHistories BattleHistorySlice           `boiler:"WarMachineOneBattleHistories" boil:"WarMachineOneBattleHistories" json:"WarMachineOneBattleHistories" toml:"WarMachineOneBattleHistories" yaml:"WarMachineOneBattleHistories"`
 	WarMachineTwoBattleHistories BattleHistorySlice           `boiler:"WarMachineTwoBattleHistories" boil:"WarMachineTwoBattleHistories" json:"WarMachineTwoBattleHistories" toml:"WarMachineTwoBattleHistories" yaml:"WarMachineTwoBattleHistories"`
@@ -698,6 +701,21 @@ func (o *Mech) MechStat(mods ...qm.QueryMod) mechStatQuery {
 
 	query := MechStats(queryMods...)
 	queries.SetFrom(query.Query, "\"mech_stats\"")
+
+	return query
+}
+
+// ChassisMechsOld pointed to by the foreign key.
+func (o *Mech) ChassisMechsOld(mods ...qm.QueryMod) mechsOldQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"chassis_id\" = ?", o.ID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := MechsOlds(queryMods...)
+	queries.SetFrom(query.Query, "\"mechs_old\"")
 
 	return query
 }
@@ -2107,6 +2125,108 @@ func (mechL) LoadMechStat(e boil.Executor, singular bool, maybeMech interface{},
 					foreign.R = &mechStatR{}
 				}
 				foreign.R.Mech = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadChassisMechsOld allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-1 relationship.
+func (mechL) LoadChassisMechsOld(e boil.Executor, singular bool, maybeMech interface{}, mods queries.Applicator) error {
+	var slice []*Mech
+	var object *Mech
+
+	if singular {
+		object = maybeMech.(*Mech)
+	} else {
+		slice = *maybeMech.(*[]*Mech)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &mechR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &mechR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`mechs_old`),
+		qm.WhereIn(`mechs_old.chassis_id in ?`, args...),
+		qmhelper.WhereIsNull(`mechs_old.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load MechsOld")
+	}
+
+	var resultSlice []*MechsOld
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice MechsOld")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for mechs_old")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mechs_old")
+	}
+
+	if len(mechAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.ChassisMechsOld = foreign
+		if foreign.R == nil {
+			foreign.R = &mechsOldR{}
+		}
+		foreign.R.Chassis = object
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.ID == foreign.ChassisID {
+				local.R.ChassisMechsOld = foreign
+				if foreign.R == nil {
+					foreign.R = &mechsOldR{}
+				}
+				foreign.R.Chassis = local
 				break
 			}
 		}
@@ -4380,6 +4500,56 @@ func (o *Mech) SetMechStat(exec boil.Executor, insert bool, related *MechStat) e
 		}
 	} else {
 		related.R.Mech = o
+	}
+	return nil
+}
+
+// SetChassisMechsOld of the mech to the related item.
+// Sets o.R.ChassisMechsOld to related.
+// Adds o to related.R.Chassis.
+func (o *Mech) SetChassisMechsOld(exec boil.Executor, insert bool, related *MechsOld) error {
+	var err error
+
+	if insert {
+		related.ChassisID = o.ID
+
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	} else {
+		updateQuery := fmt.Sprintf(
+			"UPDATE \"mechs_old\" SET %s WHERE %s",
+			strmangle.SetParamNames("\"", "\"", 1, []string{"chassis_id"}),
+			strmangle.WhereClause("\"", "\"", 2, mechsOldPrimaryKeyColumns),
+		)
+		values := []interface{}{o.ID, related.ID}
+
+		if boil.DebugMode {
+			fmt.Fprintln(boil.DebugWriter, updateQuery)
+			fmt.Fprintln(boil.DebugWriter, values)
+		}
+		if _, err = exec.Exec(updateQuery, values...); err != nil {
+			return errors.Wrap(err, "failed to update foreign table")
+		}
+
+		related.ChassisID = o.ID
+
+	}
+
+	if o.R == nil {
+		o.R = &mechR{
+			ChassisMechsOld: related,
+		}
+	} else {
+		o.R.ChassisMechsOld = related
+	}
+
+	if related.R == nil {
+		related.R = &mechsOldR{
+			Chassis: o,
+		}
+	} else {
+		related.R.Chassis = o
 	}
 	return nil
 }

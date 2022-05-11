@@ -124,7 +124,7 @@ type Weapon struct {
 	Slug                 string              `json:"slug"`
 	Damage               int                 `json:"damage"`
 	BlueprintID          string              `json:"blueprint_id"`
-	DefaultDamageTyp     string              `json:"default_damage_typ"`
+	DefaultDamageType    string              `json:"default_damage_type"`
 	GenesisTokenID       decimal.NullDecimal `json:"genesis_token_id,omitempty"`
 	WeaponType           string              `json:"weapon_type"`
 	OwnerID              string              `json:"owner_id"`
@@ -285,7 +285,7 @@ type BlueprintWeapon struct {
 	CreatedAt            time.Time           `json:"created_at"`
 	GameClientWeaponID   null.String         `json:"game_client_weapon_id,omitempty"`
 	WeaponType           string              `json:"weapon_type"`
-	DefaultDamageTyp     string              `json:"default_damage_typ"`
+	DefaultDamageType    string              `json:"default_damage_type"`
 	DamageFalloff        null.Int            `json:"damage_falloff,omitempty"`
 	DamageFalloffRate    null.Int            `json:"damage_falloff_rate,omitempty"`
 	Spread               decimal.NullDecimal `json:"spread,omitempty"`

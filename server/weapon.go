@@ -17,7 +17,7 @@ type Weapon struct {
 	Slug                 string              `json:"slug"`
 	Damage               int                 `json:"damage"`
 	BlueprintID          string              `json:"blueprint_id"`
-	DefaultDamageTyp     string              `json:"default_damage_typ"`
+	DefaultDamageType     string              `json:"default_damage_type"`
 	GenesisTokenID       decimal.NullDecimal `json:"genesis_token_id,omitempty"`
 	WeaponType           string              `json:"weapon_type"`
 	OwnerID              string              `json:"owner_id"`
@@ -47,7 +47,7 @@ type BlueprintWeapon struct {
 	CreatedAt            time.Time           `json:"created_at"`
 	GameClientWeaponID   null.String         `json:"game_client_weapon_id,omitempty"`
 	WeaponType           string              `json:"weapon_type"`
-	DefaultDamageTyp     string              `json:"default_damage_typ"`
+	DefaultDamageType     string              `json:"default_damage_type"`
 	DamageFalloff        null.Int            `json:"damage_falloff,omitempty"`
 	DamageFalloffRate    null.Int            `json:"damage_falloff_rate,omitempty"`
 	Spread               decimal.NullDecimal `json:"spread,omitempty"`
@@ -75,7 +75,7 @@ func BlueprintWeaponFromBoiler(weapon *boiler.BlueprintWeapon) *BlueprintWeapon 
 		Damage:               weapon.Damage,
 		GameClientWeaponID:   weapon.GameClientWeaponID,
 		WeaponType:           weapon.WeaponType,
-		DefaultDamageTyp:     weapon.DefaultDamageTyp,
+		DefaultDamageType:     weapon.DefaultDamageType,
 		DamageFalloff:        weapon.DamageFalloff,
 		DamageFalloffRate:    weapon.DamageFalloffRate,
 		Spread:               weapon.Spread,
@@ -102,7 +102,7 @@ func WeaponFromBoiler(weapon *boiler.Weapon, collection *boiler.CollectionItem) 
 		Slug:                 weapon.Slug,
 		Damage:               weapon.Damage,
 		BlueprintID:          weapon.BlueprintID,
-		DefaultDamageTyp:     weapon.DefaultDamageTyp,
+		DefaultDamageType:     weapon.DefaultDamageType,
 		GenesisTokenID:       weapon.GenesisTokenID,
 		WeaponType:           weapon.WeaponType,
 		OwnerID:              weapon.OwnerID,

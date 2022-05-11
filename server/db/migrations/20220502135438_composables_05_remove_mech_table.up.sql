@@ -248,8 +248,8 @@ ALTER TABLE battle_contracts
     ADD UNIQUE (mech_id, battle_id);
 
 
-
-DROP TABLE mechs;
+ALTER TABLE mechs
+    RENAME TO mechs_old;
 
 ALTER TABLE chassis
     RENAME TO mechs;

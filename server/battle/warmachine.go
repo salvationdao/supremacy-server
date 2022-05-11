@@ -2,6 +2,7 @@ package battle
 
 import (
 	"server"
+	"server/db/boiler"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -70,6 +71,18 @@ const (
 	DamageTypeEnergy    DamageType = 1
 	DamageTypeExplosive DamageType = 2
 )
+
+func DamageTypeFromString(dt string) DamageType {
+	switch dt {
+	case boiler.DamageTypeKinetic:
+		return DamageTypeDefault
+	case boiler.DamageTypeEnergy:
+		return DamageTypeEnergy
+	case boiler.DamageTypeExplosive:
+		return DamageTypeExplosive
+	}
+	return DamageTypeDefault
+}
 
 type Weapon struct {
 	ID                  string     `json:"id"`    // UUID that client uses to apply weapon stats to the correct weapons (unique per model/blueprint)
@@ -159,7 +172,7 @@ func WeaponFromServer(weapon *server.Weapon) *Weapon {
 		ProjectileSpeed:   int(weapon.ProjectileSpeed.Decimal.IntPart()),
 		MaxAmmo:           weapon.MaxAmmo.Int,
 		//DamageRadiusFalloff: weapon.fal, // TODO: weapon radius falloff
-		//DamageType:          weapon., // TODO: damage type, was going to come from ammo
+		DamageType: DamageTypeFromString(weapon.DefaultDamageType),
 		//Model:               	weapon.Model, // TODO: weapon models
 		//Skin:              	weapon.Skin, // TODO: weapon skins
 	}

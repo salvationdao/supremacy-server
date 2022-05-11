@@ -57,6 +57,7 @@ var TableNames = struct {
 	MechUtility                                        string
 	MechWeapons                                        string
 	Mechs                                              string
+	MechsOld                                           string
 	Multipliers                                        string
 	PlayerAbilities                                    string
 	PlayerActiveLogs                                   string
@@ -143,6 +144,7 @@ var TableNames = struct {
 	MechUtility:                 "mech_utility",
 	MechWeapons:                 "mech_weapons",
 	Mechs:                       "mechs",
+	MechsOld:                    "mechs_old",
 	Multipliers:                 "multipliers",
 	PlayerAbilities:             "player_abilities",
 	PlayerActiveLogs:            "player_active_logs",

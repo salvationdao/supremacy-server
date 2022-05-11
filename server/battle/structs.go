@@ -167,15 +167,11 @@ type MultiplierUpdateBattles struct {
 }
 
 type Faction struct {
-	ID    string        `json:"id"`
-	Label string        `json:"label"`
-	Theme *FactionTheme `json:"theme"`
-}
-
-type FactionTheme struct {
-	Primary    string `json:"primary"`
-	Secondary  string `json:"secondary"`
-	Background string `json:"background"`
+	ID         string `json:"id"`
+	Label      string `json:"label"`
+	Primary    string `json:"primary_color"`
+	Secondary  string `json:"secondary_color"`
+	Background string `json:"background_color"`
 }
 
 type Stat struct {
@@ -217,9 +213,10 @@ type FactionBrief struct {
 	ID         string        `json:"id"`
 	Label      string        `json:"label"`
 	LogoBlobID string        `json:"logo_blob_id,omitempty"`
-	Theme      *FactionTheme `json:"theme"`
+	Primary    string `json:"primary_color"`
+	Secondary  string `json:"secondary_color"`
+	Background string `json:"background_color"`
 }
-
 
 type GameAbility struct {
 	ID                  string          `json:"id" db:"id"`

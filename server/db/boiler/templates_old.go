@@ -163,17 +163,20 @@ var TemplatesOldWhere = struct {
 
 // TemplatesOldRels is where relationship names are stored.
 var TemplatesOldRels = struct {
-	BlueprintChassis string
-	Faction          string
+	BlueprintChassis  string
+	Faction           string
+	TemplateMechsOlds string
 }{
-	BlueprintChassis: "BlueprintChassis",
-	Faction:          "Faction",
+	BlueprintChassis:  "BlueprintChassis",
+	Faction:           "Faction",
+	TemplateMechsOlds: "TemplateMechsOlds",
 }
 
 // templatesOldR is where relationships are stored.
 type templatesOldR struct {
-	BlueprintChassis *BlueprintMech `boiler:"BlueprintChassis" boil:"BlueprintChassis" json:"BlueprintChassis" toml:"BlueprintChassis" yaml:"BlueprintChassis"`
-	Faction          *Faction       `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
+	BlueprintChassis  *BlueprintMech `boiler:"BlueprintChassis" boil:"BlueprintChassis" json:"BlueprintChassis" toml:"BlueprintChassis" yaml:"BlueprintChassis"`
+	Faction           *Faction       `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
+	TemplateMechsOlds MechsOldSlice  `boiler:"TemplateMechsOlds" boil:"TemplateMechsOlds" json:"TemplateMechsOlds" toml:"TemplateMechsOlds" yaml:"TemplateMechsOlds"`
 }
 
 // NewStruct creates a new relationship struct
@@ -464,6 +467,28 @@ func (o *TemplatesOld) Faction(mods ...qm.QueryMod) factionQuery {
 	return query
 }
 
+// TemplateMechsOlds retrieves all the mechs_old's MechsOlds with an executor via template_id column.
+func (o *TemplatesOld) TemplateMechsOlds(mods ...qm.QueryMod) mechsOldQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"mechs_old\".\"template_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"mechs_old\".\"deleted_at\""),
+	)
+
+	query := MechsOlds(queryMods...)
+	queries.SetFrom(query.Query, "\"mechs_old\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"mechs_old\".*"})
+	}
+
+	return query
+}
+
 // LoadBlueprintChassis allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
 func (templatesOldL) LoadBlueprintChassis(e boil.Executor, singular bool, maybeTemplatesOld interface{}, mods queries.Applicator) error {
@@ -674,6 +699,105 @@ func (templatesOldL) LoadFaction(e boil.Executor, singular bool, maybeTemplatesO
 	return nil
 }
 
+// LoadTemplateMechsOlds allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (templatesOldL) LoadTemplateMechsOlds(e boil.Executor, singular bool, maybeTemplatesOld interface{}, mods queries.Applicator) error {
+	var slice []*TemplatesOld
+	var object *TemplatesOld
+
+	if singular {
+		object = maybeTemplatesOld.(*TemplatesOld)
+	} else {
+		slice = *maybeTemplatesOld.(*[]*TemplatesOld)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &templatesOldR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &templatesOldR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`mechs_old`),
+		qm.WhereIn(`mechs_old.template_id in ?`, args...),
+		qmhelper.WhereIsNull(`mechs_old.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load mechs_old")
+	}
+
+	var resultSlice []*MechsOld
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice mechs_old")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on mechs_old")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mechs_old")
+	}
+
+	if len(mechsOldAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.TemplateMechsOlds = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &mechsOldR{}
+			}
+			foreign.R.Template = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.TemplateID {
+				local.R.TemplateMechsOlds = append(local.R.TemplateMechsOlds, foreign)
+				if foreign.R == nil {
+					foreign.R = &mechsOldR{}
+				}
+				foreign.R.Template = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetBlueprintChassis of the templatesOld to the related item.
 // Sets o.R.BlueprintChassis to related.
 // Adds o to related.R.BlueprintChassisTemplatesOld.
@@ -763,6 +887,58 @@ func (o *TemplatesOld) SetFaction(exec boil.Executor, insert bool, related *Fact
 		related.R.TemplatesOlds = append(related.R.TemplatesOlds, o)
 	}
 
+	return nil
+}
+
+// AddTemplateMechsOlds adds the given related objects to the existing relationships
+// of the templates_old, optionally inserting them as new records.
+// Appends related to o.R.TemplateMechsOlds.
+// Sets related.R.Template appropriately.
+func (o *TemplatesOld) AddTemplateMechsOlds(exec boil.Executor, insert bool, related ...*MechsOld) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.TemplateID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"mechs_old\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"template_id"}),
+				strmangle.WhereClause("\"", "\"", 2, mechsOldPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.TemplateID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &templatesOldR{
+			TemplateMechsOlds: related,
+		}
+	} else {
+		o.R.TemplateMechsOlds = append(o.R.TemplateMechsOlds, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &mechsOldR{
+				Template: o,
+			}
+		} else {
+			rel.R.Template = o
+		}
+	}
 	return nil
 }
 

@@ -22,7 +22,7 @@ func InsertNewWeapon(ownerID uuid.UUID, weapon *server.BlueprintWeapon) (*server
 		Slug:                  weapon.Slug,
 		Damage:                weapon.Damage,
 		BlueprintID:           weapon.ID,
-		DefaultDamageTyp:      weapon.DefaultDamageTyp,
+		DefaultDamageType:     weapon.DefaultDamageType,
 		GenesisTokenID:        weapon.GenesisTokenID,
 		LimitedReleaseTokenID: weapon.LimitedReleaseTokenID,
 		WeaponType:            weapon.WeaponType,
@@ -67,7 +67,6 @@ func InsertNewWeapon(ownerID uuid.UUID, weapon *server.BlueprintWeapon) (*server
 
 	return Weapon(weaponUUID)
 }
-
 
 func Weapon(id uuid.UUID) (*server.Weapon, error) {
 	boilerMech, err := boiler.FindWeapon(gamedb.StdConn, id.String())

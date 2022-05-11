@@ -10,17 +10,13 @@ import (
 )
 
 type Faction struct {
-	ID             FactionID     `json:"id" db:"id"`
-	Label          string        `json:"label" db:"label"`
-	Theme          *FactionTheme `json:"theme" db:"theme"`
-	VotePrice      string        `json:"vote_price" db:"vote_price"`
-	ContractReward string        `json:"contract_reward" db:"contract_reward"`
-}
-
-type FactionTheme struct {
-	Primary    string `json:"primary"`
-	Secondary  string `json:"secondary"`
-	Background string `json:"background"`
+	ID             FactionID `json:"id" db:"id"`
+	Label          string    `json:"label" db:"label"`
+	VotePrice      string    `json:"vote_price" db:"vote_price"`
+	ContractReward string    `json:"contract_reward" db:"contract_reward"`
+	Primary        string    `json:"primary_color"`
+	Secondary      string    `json:"secondary_color"`
+	Background     string    `json:"background_color"`
 }
 
 var RedMountainFactionID = FactionID(uuid.Must(uuid.FromString("98bf7bb3-1a7c-4f21-8843-458d62884060")))
@@ -47,9 +43,9 @@ func (f *Faction) ToBoilerFaction() *boiler.Faction {
 		//DeletedAt:,
 		//UpdatedAt:,
 		//CreatedAt:,
-		PrimaryColor:    f.Theme.Primary,
-		SecondaryColor:  f.Theme.Secondary,
-		BackgroundColor: f.Theme.Background,
+		PrimaryColor:    f.Primary,
+		SecondaryColor:  f.Secondary,
+		BackgroundColor: f.Background,
 	}
 	return newFaction
 }
@@ -64,9 +60,9 @@ func (f *Faction) SetFromBoilerFaction(bf *boiler.Faction) error {
 	}
 	f.ID = FactionID(uuidFromString)
 	f.Label = bf.Label
-	f.Theme = &FactionTheme{
-		bf.PrimaryColor, bf.SecondaryColor, bf.BackgroundColor,
-	}
+	f.Primary = bf.PrimaryColor
+	f.Secondary = bf.SecondaryColor
+	f.Background = bf.BackgroundColor
 	f.VotePrice = bf.VotePrice
 	f.ContractReward = bf.ContractReward
 	return nil
@@ -75,13 +71,13 @@ func (f *Faction) SetFromBoilerFaction(bf *boiler.Faction) error {
 type FactionBrief struct {
 	Label      string        `json:"label"`
 	LogoBlobID BlobID        `json:"logo_blob_id,omitempty"`
-	Theme      *FactionTheme `json:"theme"`
+	//Theme      *FactionTheme `json:"theme"`
 }
 
 func (f *Faction) Brief() *FactionBrief {
 	return &FactionBrief{
 		Label: f.Label,
-		Theme: f.Theme,
+		//Theme: f.Theme,
 	}
 }
 

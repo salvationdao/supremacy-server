@@ -26,7 +26,7 @@ func ServerBlueprintMechToApiV1(mech *server.BlueprintMech) *BlueprintMech {
 		UpdatedAt:            mech.UpdatedAt,
 		CreatedAt:            mech.CreatedAt,
 		ModelID:              mech.ModelID,
-		PowerCoreSize:       mech.PowerCoreSize,
+		PowerCoreSize:        mech.PowerCoreSize,
 		Tier:                 mech.Tier,
 		DefaultChassisSkinID: mech.DefaultChassisSkinID,
 	}
@@ -51,7 +51,7 @@ func ServerBlueprintWeaponToApiV1(weapon *server.BlueprintWeapon) *BlueprintWeap
 		CreatedAt:            weapon.CreatedAt,
 		GameClientWeaponID:   weapon.GameClientWeaponID,
 		WeaponType:           weapon.WeaponType,
-		DefaultDamageTyp:     weapon.DefaultDamageTyp,
+		DefaultDamageType:    weapon.DefaultDamageType,
 		DamageFalloff:        weapon.DamageFalloff,
 		DamageFalloffRate:    weapon.DamageFalloffRate,
 		Spread:               weapon.Spread,
@@ -244,6 +244,6 @@ func ServerTemplateToApiTemplateV1(temp *server.TemplateContainer) *TemplateCont
 		BlueprintUtility:       ServerBlueprintUtilitiesToApiV1(temp.BlueprintUtility),
 		BlueprintMechSkin:      ServerBlueprintMechSkinsToApiV1(temp.BlueprintMechSkin),
 		BlueprintMechAnimation: ServerBlueprintMechAnimationsToApiV1(temp.BlueprintMechAnimation),
-		BlueprintPowerCore:    ServerBlueprintPowerCoresToApiV1(temp.BlueprintPowerCore),
+		BlueprintPowerCore:     ServerBlueprintPowerCoresToApiV1(temp.BlueprintPowerCore),
 	}
 }
