@@ -107,16 +107,19 @@ func DefaultMechs() ([]*server.Mech, error) {
 
 var ErrNotAllMechsReturned = fmt.Errorf("not all mechs returned")
 
+// Mech gets the whole mech object, all the parts but no part collection details. This should only be used when building a mech to pass into gameserver
+// If you want to show the user a mech, it should be lazy loaded via various endpoints, not a single endpoint for an entire mech.
 func Mech(mechID uuid.UUID) (*server.Mech, error) {
-	// TODO: Get utilities
-	mc := &server.Mech{}
+	mc := &server.Mech{
+		CollectionDetails: &server.CollectionDetails{},
+	}
 	query := `
 		SELECT
+			ci.collection_slug,
 			ci.hash,
 			ci.token_id,
 			m.id,
 			m.name,
-			m.collection_item_id,
 			m.label,
 			m.weapon_hardpoints,
 			m.utility_slots,
@@ -125,6 +128,7 @@ func Mech(mechID uuid.UUID) (*server.Mech, error) {
 			m.is_default,
 			m.is_insured,
 			m.genesis_token_id,
+			m.limited_release_token_id,
 			m.energy_core_size,
 			m.tier,
 			m.blueprint_id,
@@ -158,8 +162,8 @@ func Mech(mechID uuid.UUID) (*server.Mech, error) {
 		
 			w.weapons,
 			u.utility
-		from mechs m
-		INNER JOIN collection_items ci on ci.id = m.collection_item_id
+		FROM mechs m
+		INNER JOIN collection_items ci on ci.item_id = m.id
 		INNER JOIN players p ON p.id = m.owner_id
 		INNER JOIN factions f on p.faction_id = f.id
 		LEFT OUTER JOIN energy_cores ec ON ec.id = m.energy_core_id
@@ -172,13 +176,27 @@ func Mech(mechID uuid.UUID) (*server.Mech, error) {
 		LEFT OUTER JOIN (
 			SELECT mw.chassis_id, json_agg(w2) as weapons
 			FROM mech_weapons mw
-					 INNER JOIN weapons w2 ON mw.weapon_id = w2.id
+		 	INNER JOIN weapons w2 ON mw.weapon_id = w2.id
 			GROUP BY mw.chassis_id
 		) w on w.chassis_id = m.id
-				 LEFT OUTER JOIN (
-			SELECT mw.chassis_id, json_agg(w2) as utility
+		LEFT OUTER JOIN (
+			SELECT mw.chassis_id, json_agg(_u) as utility
 			FROM mech_utility mw
-					 INNER JOIN utility w2 ON mw.utility_id = w2.id
+			INNER JOIN (
+				SELECT
+					_u.*,
+					to_json(_us) as shield,
+					to_json(_ua) as accelerator,
+					to_json(_uam) as attack_drone,
+					to_json(_uad) as anti_missile,
+					to_json(_urd) as repair_drone
+				FROM utility _u
+				LEFT OUTER JOIN utility_shield _us ON _us.utility_id = _u.id
+				LEFT OUTER JOIN utility_accelerator _ua ON _ua.utility_id = _u.id
+				LEFT OUTER JOIN utility_anti_missile _uam ON _uam.utility_id = _u.id
+				LEFT OUTER JOIN utility_attack_drone _uad ON _uad.utility_id = _u.id
+				LEFT OUTER JOIN utility_repair_drone _urd ON _urd.utility_id = _u.id
+			) _u ON mw.utility_id = _u.id
 			GROUP BY mw.chassis_id
 		) u on u.chassis_id = m.id
 		WHERE m.id = $1;
@@ -195,11 +213,11 @@ func Mech(mechID uuid.UUID) (*server.Mech, error) {
 
 	for result.Next() {
 		err = result.Scan(
-			&mc.Hash,
-			&mc.TokenID,
+			&mc.CollectionDetails.CollectionSlug,
+			&mc.CollectionDetails.Hash,
+			&mc.CollectionDetails.TokenID,
 			&mc.ID,
 			&mc.Name,
-			&mc.CollectionItemID,
 			&mc.Label,
 			&mc.WeaponHardpoints,
 			&mc.UtilitySlots,
@@ -208,6 +226,7 @@ func Mech(mechID uuid.UUID) (*server.Mech, error) {
 			&mc.IsDefault,
 			&mc.IsInsured,
 			&mc.GenesisTokenID,
+			&mc.LimitedReleaseTokenID,
 			&mc.EnergyCoreSize,
 			&mc.Tier,
 			&mc.BlueprintID,
@@ -238,15 +257,10 @@ func Mech(mechID uuid.UUID) (*server.Mech, error) {
 	}
 	result.Close()
 
-	if err != nil {
-		return nil, err
-	}
-
 	return mc, err
 }
 
 func Mechs(mechIDs ...uuid.UUID) ([]*server.Mech, error) {
-	// TODO: Get utilities
 	if len(mechIDs) == 0 {
 		return nil, errors.New("no mech ids provided")
 	}
@@ -263,11 +277,11 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.Mech, error) {
 
 	query := `
 		SELECT
+			ci.collection_slug,
 			ci.hash,
 			ci.token_id,
 			m.id,
 			m.name,
-			m.collection_item_id,
 			m.label,
 			m.weapon_hardpoints,
 			m.utility_slots,
@@ -276,6 +290,7 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.Mech, error) {
 			m.is_default,
 			m.is_insured,
 			m.genesis_token_id,
+			m.limited_release_token_id,
 			m.energy_core_size,
 			m.tier,
 			m.blueprint_id,
@@ -310,7 +325,7 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.Mech, error) {
 			w.weapons,
 			u.utility
 		from mechs m
-		INNER JOIN collection_items ci on ci.id = m.collection_item_id
+		INNER JOIN collection_items ci on ci.item_id = m.id
 		INNER JOIN players p ON p.id = m.owner_id
 		INNER JOIN factions f on p.faction_id = f.id
 		LEFT OUTER JOIN energy_cores ec ON ec.id = m.energy_core_id
@@ -326,10 +341,24 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.Mech, error) {
 					 INNER JOIN weapons w2 ON mw.weapon_id = w2.id
 			GROUP BY mw.chassis_id
 		) w on w.chassis_id = m.id
-				 LEFT OUTER JOIN (
-			SELECT mw.chassis_id, json_agg(w2) as utility
+		LEFT OUTER JOIN (
+			SELECT mw.chassis_id, json_agg(_u) as utility
 			FROM mech_utility mw
-					 INNER JOIN utility w2 ON mw.utility_id = w2.id
+			INNER JOIN (
+				SELECT
+					_u.*,
+					to_json(_us) as shield,
+					to_json(_ua) as accelerator,
+					to_json(_uam) as attack_drone,
+					to_json(_uad) as anti_missile,
+					to_json(_urd) as repair_drone
+				FROM utility _u
+				LEFT OUTER JOIN utility_shield _us ON _us.utility_id = _u.id
+				LEFT OUTER JOIN utility_accelerator _ua ON _ua.utility_id = _u.id
+				LEFT OUTER JOIN utility_anti_missile _uam ON _uam.utility_id = _u.id
+				LEFT OUTER JOIN utility_attack_drone _uad ON _uad.utility_id = _u.id
+				LEFT OUTER JOIN utility_repair_drone _urd ON _urd.utility_id = _u.id
+			) _u ON mw.utility_id = _u.id
 			GROUP BY mw.chassis_id
 		) u on u.chassis_id = m.id
 		WHERE m.id IN (` + paramrefs + `)
@@ -349,11 +378,11 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.Mech, error) {
 	for result.Next() {
 		mc := &server.Mech{}
 		err = result.Scan(
-			&mc.Hash,
-			&mc.TokenID,
+			&mc.CollectionDetails.CollectionSlug,
+			&mc.CollectionDetails.Hash,
+			&mc.CollectionDetails.TokenID,
 			&mc.ID,
 			&mc.Name,
-			&mc.CollectionItemID,
 			&mc.Label,
 			&mc.WeaponHardpoints,
 			&mc.UtilitySlots,
@@ -362,6 +391,7 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.Mech, error) {
 			&mc.IsDefault,
 			&mc.IsInsured,
 			&mc.GenesisTokenID,
+			&mc.LimitedReleaseTokenID,
 			&mc.EnergyCoreSize,
 			&mc.Tier,
 			&mc.BlueprintID,
@@ -485,7 +515,6 @@ func MechQueuePosition(factionID string, ownerID string) ([]*BattleQueuePosition
 		FROM
 			(
 				SELECT
-					bq.id,
 					bq.mech_id,
 				    bq.owner_id,
 				    bq.battle_contract_id,
@@ -520,7 +549,60 @@ func MechQueuePosition(factionID string, ownerID string) ([]*BattleQueuePosition
 	return mqp, nil
 }
 
-func InsertNewMech(ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) error {
-	// TODO: insert mech
-	return nil
+// TODO: I want InsertNewMech tested.
+
+func InsertNewMech(ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) (*server.Mech, error) {
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	// TODO: IF BLUEPRINT.COLLECTION = supremacy-genesis, register it on passport get its genesis token id
+	// TODO: IF BLUEPRINT.COLLECTION = supremacy-limited-release, register it on passport get its limited release token id
+	// first insert the mech
+	newMech := boiler.Mech{
+		BlueprintID:      mechBlueprint.ID,
+		BrandID:          mechBlueprint.BrandID,
+		Label:            mechBlueprint.Label,
+		WeaponHardpoints: mechBlueprint.WeaponHardpoints,
+		UtilitySlots:     mechBlueprint.UtilitySlots,
+		Speed:            mechBlueprint.Speed,
+		MaxHitpoints:     mechBlueprint.MaxHitpoints,
+		IsDefault:        false,
+		IsInsured:        false,
+		Name:             "",
+		ModelID:          mechBlueprint.ModelID,
+		OwnerID:          ownerID.String(),
+		EnergyCoreSize:   mechBlueprint.EnergyCoreSize,
+		Tier:             mechBlueprint.Tier,
+	}
+
+	err = newMech.Insert(tx, boil.Infer())
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	//insert collection item
+	collectionItem := boiler.CollectionItem{
+		CollectionSlug: mechBlueprint.Collection,
+		ItemType:       boiler.ItemTypeMech,
+		ItemID:         newMech.ID,
+	}
+
+	err = collectionItem.Insert(tx, boil.Infer())
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	mechUUID, err := uuid.FromString(newMech.ID)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	return Mech(mechUUID)
 }

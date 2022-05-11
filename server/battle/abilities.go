@@ -118,7 +118,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 
 	// initialise all war machine abilities list
 	for _, wm := range battle.WarMachines {
-		wm.Abilities = []GameAbility{}
+		wm.Abilities = []*GameAbility{}
 	}
 
 	for factionID := range battle.factions {
@@ -157,7 +157,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 			}
 
 			// treat the ability as faction wide ability
-			wmAbility := GameAbility{
+			wmAbility := &GameAbility{
 				ID:                  ability.ID,
 				Identity:            uuid.Must(uuid.NewV4()).String(), // generate an uuid for frontend to track sups contribution
 				GameClientAbilityID: byte(ability.GameClientAbilityID),
@@ -172,7 +172,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 				Title:               "FACTION_WIDE",
 				OfferingID:          uuid.Must(uuid.NewV4()),
 			}
-			abilities[wmAbility.Identity] = &wmAbility
+			abilities[wmAbility.Identity] = wmAbility
 
 		}
 
@@ -210,7 +210,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 				}
 
 				// build the ability
-				wmAbility := GameAbility{
+				wmAbility := &GameAbility{
 					ID:                  ability.ID,
 					Identity:            uuid.Must(uuid.NewV4()).String(), // generate an uuid for frontend to track sups contribution
 					GameClientAbilityID: byte(ability.GameClientAbilityID),
@@ -262,7 +262,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 	// broadcast faction unique ability
 	for factionID, ga := range as.factionUniqueAbilities {
 		// broadcast faction ability
-		factionAbilities := []GameAbility{}
+		factionAbilities := []*GameAbility{}
 		for _, ability := range ga {
 			if ability.Title == "FACTION_WIDE" {
 				factionAbilities = append(factionAbilities, *ability)
@@ -1772,7 +1772,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilitiesGet(factionID uuid.UUID) []Game
 			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the FactionUniqueAbilitiesGet!", r)
 		}
 	}()
-	abilities := []GameAbility{}
+	abilities := []*GameAbility{}
 	for _, ga := range as.factionUniqueAbilities[factionID] {
 		// only include return faction wide ability
 		if ga.Title == "FACTION_WIDE" {
@@ -1794,7 +1794,7 @@ func (as *AbilitiesSystem) WarMachineAbilitiesGet(factionID uuid.UUID, hash stri
 			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the WarMachineAbilitiesGet!", r)
 		}
 	}()
-	abilities := []GameAbility{}
+	abilities := []*GameAbility{}
 	if as == nil {
 		gamelog.L.Error().Str("factionID", factionID.String()).Str("hash", hash).Msg("nil pointer found as")
 		return abilities

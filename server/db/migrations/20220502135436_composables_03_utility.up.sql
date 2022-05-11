@@ -17,7 +17,8 @@ ALTER TABLE blueprint_modules
 ALTER TABLE blueprint_utility
     DROP COLUMN hitpoint_modifier,
     DROP COLUMN shield_modifier,
-    ADD COLUMN type UTILITY_TYPE;
+    ADD COLUMN type       UTILITY_TYPE,
+    ADD COLUMN collection COLLECTION NOT NULL DEFAULT 'supremacy-general';
 
 UPDATE blueprint_utility
 SET type = 'SHIELD';
@@ -82,12 +83,12 @@ ALTER TABLE modules
 ALTER TABLE utility
     DROP COLUMN hitpoint_modifier,
     DROP COLUMN shield_modifier,
-    ADD COLUMN blueprint_id       UUID REFERENCES blueprint_utility (id),
-    ADD COLUMN collection_item_id UUID REFERENCES collection_items (id),
-    ADD COLUMN genesis_token_id   NUMERIC,
-    ADD COLUMN owner_id           UUID REFERENCES players (id),
-    ADD COLUMN equipped_on        UUID REFERENCES chassis (id),
-    ADD COLUMN type               UTILITY_TYPE;
+    ADD COLUMN blueprint_id             UUID REFERENCES blueprint_utility (id),
+    ADD COLUMN genesis_token_id         NUMERIC,
+    ADD COLUMN limited_release_token_id NUMERIC,
+    ADD COLUMN owner_id                 UUID REFERENCES players (id),
+    ADD COLUMN equipped_on              UUID REFERENCES chassis (id),
+    ADD COLUMN type                     UTILITY_TYPE;
 
 WITH utility_owners AS (SELECT m.owner_id, cu.utility_id
                         FROM chassis_utility cu
@@ -99,13 +100,11 @@ WHERE u.id = utility_owners.utility_id;
 
 
 -- This inserts a new collection_items entry for each utility and updates the utility table with token id
-WITH insrt
-         AS ( WITH utily AS (SELECT 'utility' AS item_type, id FROM utility) INSERT INTO collection_items (token_id, item_type, item_id) SELECT NEXTVAL('collection_general'), utily.item_type, utily.id
-                                                                                                                                         FROM utily RETURNING id, item_id)
-UPDATE utility u
-SET collection_item_id = insrt.id
-FROM insrt
-WHERE u.id = insrt.item_id;
+WITH utily AS (SELECT 'utility' AS item_type, id FROM utility)
+INSERT
+INTO collection_items (token_id, item_type, item_id)
+SELECT NEXTVAL('collection_general'), utily.item_type::ITEM_TYPE, utily.id
+FROM utily;
 
 -- this updates all genesis_token_id for weapons that are in genesis
 WITH genesis AS (SELECT external_token_id, m.collection_slug, m.chassis_id, _cu.utility_id
@@ -117,6 +116,15 @@ SET genesis_token_id = genesis.external_token_id
 FROM genesis
 WHERE u.id = genesis.utility_id;
 
+-- this updates all limited_release for weapons that are in genesis
+WITH limited_release AS (SELECT external_token_id, m.collection_slug, m.chassis_id, _cu.utility_id
+                         FROM chassis_utility _cu
+                                  INNER JOIN mechs m ON m.chassis_id = _cu.chassis_id
+                         WHERE m.collection_slug = 'supremacy-limited-release')
+UPDATE utility u
+SET limited_release_token_id = limited_release.external_token_id
+FROM limited_release
+WHERE u.id = limited_release.utility_id;
 
 -- ALTER TABLE utility
 --     DROP COLUMN slug,

@@ -36,7 +36,8 @@ type BlueprintMech struct {
 	UpdatedAt        time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	CreatedAt        time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	ModelID          string      `boiler:"model_id" boil:"model_id" json:"model_id" toml:"model_id" yaml:"model_id"`
-	EnergyCoreSize   null.String `boiler:"energy_core_size" boil:"energy_core_size" json:"energy_core_size,omitempty" toml:"energy_core_size" yaml:"energy_core_size,omitempty"`
+	Collection       string      `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
+	EnergyCoreSize   string      `boiler:"energy_core_size" boil:"energy_core_size" json:"energy_core_size" toml:"energy_core_size" yaml:"energy_core_size"`
 	Tier             null.String `boiler:"tier" boil:"tier" json:"tier,omitempty" toml:"tier" yaml:"tier,omitempty"`
 
 	R *blueprintMechR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -57,6 +58,7 @@ var BlueprintMechColumns = struct {
 	UpdatedAt        string
 	CreatedAt        string
 	ModelID          string
+	Collection       string
 	EnergyCoreSize   string
 	Tier             string
 }{
@@ -73,6 +75,7 @@ var BlueprintMechColumns = struct {
 	UpdatedAt:        "updated_at",
 	CreatedAt:        "created_at",
 	ModelID:          "model_id",
+	Collection:       "collection",
 	EnergyCoreSize:   "energy_core_size",
 	Tier:             "tier",
 }
@@ -91,6 +94,7 @@ var BlueprintMechTableColumns = struct {
 	UpdatedAt        string
 	CreatedAt        string
 	ModelID          string
+	Collection       string
 	EnergyCoreSize   string
 	Tier             string
 }{
@@ -107,6 +111,7 @@ var BlueprintMechTableColumns = struct {
 	UpdatedAt:        "blueprint_mechs.updated_at",
 	CreatedAt:        "blueprint_mechs.created_at",
 	ModelID:          "blueprint_mechs.model_id",
+	Collection:       "blueprint_mechs.collection",
 	EnergyCoreSize:   "blueprint_mechs.energy_core_size",
 	Tier:             "blueprint_mechs.tier",
 }
@@ -127,7 +132,8 @@ var BlueprintMechWhere = struct {
 	UpdatedAt        whereHelpertime_Time
 	CreatedAt        whereHelpertime_Time
 	ModelID          whereHelperstring
-	EnergyCoreSize   whereHelpernull_String
+	Collection       whereHelperstring
+	EnergyCoreSize   whereHelperstring
 	Tier             whereHelpernull_String
 }{
 	ID:               whereHelperstring{field: "\"blueprint_mechs\".\"id\""},
@@ -143,7 +149,8 @@ var BlueprintMechWhere = struct {
 	UpdatedAt:        whereHelpertime_Time{field: "\"blueprint_mechs\".\"updated_at\""},
 	CreatedAt:        whereHelpertime_Time{field: "\"blueprint_mechs\".\"created_at\""},
 	ModelID:          whereHelperstring{field: "\"blueprint_mechs\".\"model_id\""},
-	EnergyCoreSize:   whereHelpernull_String{field: "\"blueprint_mechs\".\"energy_core_size\""},
+	Collection:       whereHelperstring{field: "\"blueprint_mechs\".\"collection\""},
+	EnergyCoreSize:   whereHelperstring{field: "\"blueprint_mechs\".\"energy_core_size\""},
 	Tier:             whereHelpernull_String{field: "\"blueprint_mechs\".\"tier\""},
 }
 
@@ -177,9 +184,9 @@ func (*blueprintMechR) NewStruct() *blueprintMechR {
 type blueprintMechL struct{}
 
 var (
-	blueprintMechAllColumns            = []string{"id", "brand_id", "label", "slug", "skin", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "deleted_at", "updated_at", "created_at", "model_id", "energy_core_size", "tier"}
+	blueprintMechAllColumns            = []string{"id", "brand_id", "label", "slug", "skin", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "deleted_at", "updated_at", "created_at", "model_id", "collection", "energy_core_size", "tier"}
 	blueprintMechColumnsWithoutDefault = []string{"brand_id", "label", "slug", "skin", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "model_id"}
-	blueprintMechColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at", "energy_core_size", "tier"}
+	blueprintMechColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at", "collection", "energy_core_size", "tier"}
 	blueprintMechPrimaryKeyColumns     = []string{"id"}
 	blueprintMechGeneratedColumns      = []string{}
 )

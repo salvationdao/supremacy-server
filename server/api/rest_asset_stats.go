@@ -27,7 +27,7 @@ type GetMechStatPercentageResponse struct {
 }
 
 func (sc *AssetStatsController) GetChassisStatPercentage(w http.ResponseWriter, r *http.Request) (int, error) {
-	// TODO: fix this
+	// TODO: vinnie fix this
 	//stat := r.URL.Query().Get("stat")   // the stat identifier e.g. speed
 	//value := r.URL.Query().Get("value") // the value of the stat e.g. 2000
 	//model := r.URL.Query().Get("model") // if provided compare to given model

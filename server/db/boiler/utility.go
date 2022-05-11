@@ -24,114 +24,113 @@ import (
 
 // Utility is an object representing the database table.
 type Utility struct {
-	ID               string              `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	BrandID          null.String         `boiler:"brand_id" boil:"brand_id" json:"brand_id,omitempty" toml:"brand_id" yaml:"brand_id,omitempty"`
-	Label            string              `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	DeletedAt        null.Time           `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	UpdatedAt        time.Time           `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt        time.Time           `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	BlueprintID      string              `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
-	CollectionItemID null.String         `boiler:"collection_item_id" boil:"collection_item_id" json:"collection_item_id,omitempty" toml:"collection_item_id" yaml:"collection_item_id,omitempty"`
-	GenesisTokenID   decimal.NullDecimal `boiler:"genesis_token_id" boil:"genesis_token_id" json:"genesis_token_id,omitempty" toml:"genesis_token_id" yaml:"genesis_token_id,omitempty"`
-	OwnerID          string              `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
-	EquippedOn       null.String         `boiler:"equipped_on" boil:"equipped_on" json:"equipped_on,omitempty" toml:"equipped_on" yaml:"equipped_on,omitempty"`
-	Type             string              `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
+	ID                    string              `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	BrandID               null.String         `boiler:"brand_id" boil:"brand_id" json:"brand_id,omitempty" toml:"brand_id" yaml:"brand_id,omitempty"`
+	Label                 string              `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	DeletedAt             null.Time           `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt             time.Time           `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt             time.Time           `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	BlueprintID           string              `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
+	GenesisTokenID        decimal.NullDecimal `boiler:"genesis_token_id" boil:"genesis_token_id" json:"genesis_token_id,omitempty" toml:"genesis_token_id" yaml:"genesis_token_id,omitempty"`
+	LimitedReleaseTokenID decimal.NullDecimal `boiler:"limited_release_token_id" boil:"limited_release_token_id" json:"limited_release_token_id,omitempty" toml:"limited_release_token_id" yaml:"limited_release_token_id,omitempty"`
+	OwnerID               string              `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
+	EquippedOn            null.String         `boiler:"equipped_on" boil:"equipped_on" json:"equipped_on,omitempty" toml:"equipped_on" yaml:"equipped_on,omitempty"`
+	Type                  string              `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
 
 	R *utilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L utilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var UtilityColumns = struct {
-	ID               string
-	BrandID          string
-	Label            string
-	DeletedAt        string
-	UpdatedAt        string
-	CreatedAt        string
-	BlueprintID      string
-	CollectionItemID string
-	GenesisTokenID   string
-	OwnerID          string
-	EquippedOn       string
-	Type             string
+	ID                    string
+	BrandID               string
+	Label                 string
+	DeletedAt             string
+	UpdatedAt             string
+	CreatedAt             string
+	BlueprintID           string
+	GenesisTokenID        string
+	LimitedReleaseTokenID string
+	OwnerID               string
+	EquippedOn            string
+	Type                  string
 }{
-	ID:               "id",
-	BrandID:          "brand_id",
-	Label:            "label",
-	DeletedAt:        "deleted_at",
-	UpdatedAt:        "updated_at",
-	CreatedAt:        "created_at",
-	BlueprintID:      "blueprint_id",
-	CollectionItemID: "collection_item_id",
-	GenesisTokenID:   "genesis_token_id",
-	OwnerID:          "owner_id",
-	EquippedOn:       "equipped_on",
-	Type:             "type",
+	ID:                    "id",
+	BrandID:               "brand_id",
+	Label:                 "label",
+	DeletedAt:             "deleted_at",
+	UpdatedAt:             "updated_at",
+	CreatedAt:             "created_at",
+	BlueprintID:           "blueprint_id",
+	GenesisTokenID:        "genesis_token_id",
+	LimitedReleaseTokenID: "limited_release_token_id",
+	OwnerID:               "owner_id",
+	EquippedOn:            "equipped_on",
+	Type:                  "type",
 }
 
 var UtilityTableColumns = struct {
-	ID               string
-	BrandID          string
-	Label            string
-	DeletedAt        string
-	UpdatedAt        string
-	CreatedAt        string
-	BlueprintID      string
-	CollectionItemID string
-	GenesisTokenID   string
-	OwnerID          string
-	EquippedOn       string
-	Type             string
+	ID                    string
+	BrandID               string
+	Label                 string
+	DeletedAt             string
+	UpdatedAt             string
+	CreatedAt             string
+	BlueprintID           string
+	GenesisTokenID        string
+	LimitedReleaseTokenID string
+	OwnerID               string
+	EquippedOn            string
+	Type                  string
 }{
-	ID:               "utility.id",
-	BrandID:          "utility.brand_id",
-	Label:            "utility.label",
-	DeletedAt:        "utility.deleted_at",
-	UpdatedAt:        "utility.updated_at",
-	CreatedAt:        "utility.created_at",
-	BlueprintID:      "utility.blueprint_id",
-	CollectionItemID: "utility.collection_item_id",
-	GenesisTokenID:   "utility.genesis_token_id",
-	OwnerID:          "utility.owner_id",
-	EquippedOn:       "utility.equipped_on",
-	Type:             "utility.type",
+	ID:                    "utility.id",
+	BrandID:               "utility.brand_id",
+	Label:                 "utility.label",
+	DeletedAt:             "utility.deleted_at",
+	UpdatedAt:             "utility.updated_at",
+	CreatedAt:             "utility.created_at",
+	BlueprintID:           "utility.blueprint_id",
+	GenesisTokenID:        "utility.genesis_token_id",
+	LimitedReleaseTokenID: "utility.limited_release_token_id",
+	OwnerID:               "utility.owner_id",
+	EquippedOn:            "utility.equipped_on",
+	Type:                  "utility.type",
 }
 
 // Generated where
 
 var UtilityWhere = struct {
-	ID               whereHelperstring
-	BrandID          whereHelpernull_String
-	Label            whereHelperstring
-	DeletedAt        whereHelpernull_Time
-	UpdatedAt        whereHelpertime_Time
-	CreatedAt        whereHelpertime_Time
-	BlueprintID      whereHelperstring
-	CollectionItemID whereHelpernull_String
-	GenesisTokenID   whereHelperdecimal_NullDecimal
-	OwnerID          whereHelperstring
-	EquippedOn       whereHelpernull_String
-	Type             whereHelperstring
+	ID                    whereHelperstring
+	BrandID               whereHelpernull_String
+	Label                 whereHelperstring
+	DeletedAt             whereHelpernull_Time
+	UpdatedAt             whereHelpertime_Time
+	CreatedAt             whereHelpertime_Time
+	BlueprintID           whereHelperstring
+	GenesisTokenID        whereHelperdecimal_NullDecimal
+	LimitedReleaseTokenID whereHelperdecimal_NullDecimal
+	OwnerID               whereHelperstring
+	EquippedOn            whereHelpernull_String
+	Type                  whereHelperstring
 }{
-	ID:               whereHelperstring{field: "\"utility\".\"id\""},
-	BrandID:          whereHelpernull_String{field: "\"utility\".\"brand_id\""},
-	Label:            whereHelperstring{field: "\"utility\".\"label\""},
-	DeletedAt:        whereHelpernull_Time{field: "\"utility\".\"deleted_at\""},
-	UpdatedAt:        whereHelpertime_Time{field: "\"utility\".\"updated_at\""},
-	CreatedAt:        whereHelpertime_Time{field: "\"utility\".\"created_at\""},
-	BlueprintID:      whereHelperstring{field: "\"utility\".\"blueprint_id\""},
-	CollectionItemID: whereHelpernull_String{field: "\"utility\".\"collection_item_id\""},
-	GenesisTokenID:   whereHelperdecimal_NullDecimal{field: "\"utility\".\"genesis_token_id\""},
-	OwnerID:          whereHelperstring{field: "\"utility\".\"owner_id\""},
-	EquippedOn:       whereHelpernull_String{field: "\"utility\".\"equipped_on\""},
-	Type:             whereHelperstring{field: "\"utility\".\"type\""},
+	ID:                    whereHelperstring{field: "\"utility\".\"id\""},
+	BrandID:               whereHelpernull_String{field: "\"utility\".\"brand_id\""},
+	Label:                 whereHelperstring{field: "\"utility\".\"label\""},
+	DeletedAt:             whereHelpernull_Time{field: "\"utility\".\"deleted_at\""},
+	UpdatedAt:             whereHelpertime_Time{field: "\"utility\".\"updated_at\""},
+	CreatedAt:             whereHelpertime_Time{field: "\"utility\".\"created_at\""},
+	BlueprintID:           whereHelperstring{field: "\"utility\".\"blueprint_id\""},
+	GenesisTokenID:        whereHelperdecimal_NullDecimal{field: "\"utility\".\"genesis_token_id\""},
+	LimitedReleaseTokenID: whereHelperdecimal_NullDecimal{field: "\"utility\".\"limited_release_token_id\""},
+	OwnerID:               whereHelperstring{field: "\"utility\".\"owner_id\""},
+	EquippedOn:            whereHelpernull_String{field: "\"utility\".\"equipped_on\""},
+	Type:                  whereHelperstring{field: "\"utility\".\"type\""},
 }
 
 // UtilityRels is where relationship names are stored.
 var UtilityRels = struct {
 	Brand              string
 	Blueprint          string
-	CollectionItem     string
 	EquippedOnMech     string
 	Owner              string
 	MechUtility        string
@@ -143,7 +142,6 @@ var UtilityRels = struct {
 }{
 	Brand:              "Brand",
 	Blueprint:          "Blueprint",
-	CollectionItem:     "CollectionItem",
 	EquippedOnMech:     "EquippedOnMech",
 	Owner:              "Owner",
 	MechUtility:        "MechUtility",
@@ -158,7 +156,6 @@ var UtilityRels = struct {
 type utilityR struct {
 	Brand              *Brand              `boiler:"Brand" boil:"Brand" json:"Brand" toml:"Brand" yaml:"Brand"`
 	Blueprint          *BlueprintUtility   `boiler:"Blueprint" boil:"Blueprint" json:"Blueprint" toml:"Blueprint" yaml:"Blueprint"`
-	CollectionItem     *CollectionItem     `boiler:"CollectionItem" boil:"CollectionItem" json:"CollectionItem" toml:"CollectionItem" yaml:"CollectionItem"`
 	EquippedOnMech     *Mech               `boiler:"EquippedOnMech" boil:"EquippedOnMech" json:"EquippedOnMech" toml:"EquippedOnMech" yaml:"EquippedOnMech"`
 	Owner              *Player             `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
 	MechUtility        *MechUtility        `boiler:"MechUtility" boil:"MechUtility" json:"MechUtility" toml:"MechUtility" yaml:"MechUtility"`
@@ -178,9 +175,9 @@ func (*utilityR) NewStruct() *utilityR {
 type utilityL struct{}
 
 var (
-	utilityAllColumns            = []string{"id", "brand_id", "label", "deleted_at", "updated_at", "created_at", "blueprint_id", "collection_item_id", "genesis_token_id", "owner_id", "equipped_on", "type"}
+	utilityAllColumns            = []string{"id", "brand_id", "label", "deleted_at", "updated_at", "created_at", "blueprint_id", "genesis_token_id", "limited_release_token_id", "owner_id", "equipped_on", "type"}
 	utilityColumnsWithoutDefault = []string{"label", "blueprint_id", "owner_id", "type"}
-	utilityColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at", "collection_item_id", "genesis_token_id", "equipped_on"}
+	utilityColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at", "genesis_token_id", "limited_release_token_id", "equipped_on"}
 	utilityPrimaryKeyColumns     = []string{"id"}
 	utilityGeneratedColumns      = []string{}
 )
@@ -453,20 +450,6 @@ func (o *Utility) Blueprint(mods ...qm.QueryMod) blueprintUtilityQuery {
 
 	query := BlueprintUtilities(queryMods...)
 	queries.SetFrom(query.Query, "\"blueprint_utility\"")
-
-	return query
-}
-
-// CollectionItem pointed to by the foreign key.
-func (o *Utility) CollectionItem(mods ...qm.QueryMod) collectionItemQuery {
-	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.CollectionItemID),
-	}
-
-	queryMods = append(queryMods, mods...)
-
-	query := CollectionItems(queryMods...)
-	queries.SetFrom(query.Query, "\"collection_items\"")
 
 	return query
 }
@@ -792,114 +775,6 @@ func (utilityL) LoadBlueprint(e boil.Executor, singular bool, maybeUtility inter
 					foreign.R = &blueprintUtilityR{}
 				}
 				foreign.R.BlueprintUtilities = append(foreign.R.BlueprintUtilities, local)
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadCollectionItem allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for an N-1 relationship.
-func (utilityL) LoadCollectionItem(e boil.Executor, singular bool, maybeUtility interface{}, mods queries.Applicator) error {
-	var slice []*Utility
-	var object *Utility
-
-	if singular {
-		object = maybeUtility.(*Utility)
-	} else {
-		slice = *maybeUtility.(*[]*Utility)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &utilityR{}
-		}
-		if !queries.IsNil(object.CollectionItemID) {
-			args = append(args, object.CollectionItemID)
-		}
-
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &utilityR{}
-			}
-
-			for _, a := range args {
-				if queries.Equal(a, obj.CollectionItemID) {
-					continue Outer
-				}
-			}
-
-			if !queries.IsNil(obj.CollectionItemID) {
-				args = append(args, obj.CollectionItemID)
-			}
-
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`collection_items`),
-		qm.WhereIn(`collection_items.id in ?`, args...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load CollectionItem")
-	}
-
-	var resultSlice []*CollectionItem
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice CollectionItem")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for collection_items")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for collection_items")
-	}
-
-	if len(utilityAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-
-	if len(resultSlice) == 0 {
-		return nil
-	}
-
-	if singular {
-		foreign := resultSlice[0]
-		object.R.CollectionItem = foreign
-		if foreign.R == nil {
-			foreign.R = &collectionItemR{}
-		}
-		foreign.R.Utilities = append(foreign.R.Utilities, object)
-		return nil
-	}
-
-	for _, local := range slice {
-		for _, foreign := range resultSlice {
-			if queries.Equal(local.CollectionItemID, foreign.ID) {
-				local.R.CollectionItem = foreign
-				if foreign.R == nil {
-					foreign.R = &collectionItemR{}
-				}
-				foreign.R.Utilities = append(foreign.R.Utilities, local)
 				break
 			}
 		}
@@ -1851,85 +1726,6 @@ func (o *Utility) SetBlueprint(exec boil.Executor, insert bool, related *Bluepri
 		related.R.BlueprintUtilities = append(related.R.BlueprintUtilities, o)
 	}
 
-	return nil
-}
-
-// SetCollectionItem of the utility to the related item.
-// Sets o.R.CollectionItem to related.
-// Adds o to related.R.Utilities.
-func (o *Utility) SetCollectionItem(exec boil.Executor, insert bool, related *CollectionItem) error {
-	var err error
-	if insert {
-		if err = related.Insert(exec, boil.Infer()); err != nil {
-			return errors.Wrap(err, "failed to insert into foreign table")
-		}
-	}
-
-	updateQuery := fmt.Sprintf(
-		"UPDATE \"utility\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"collection_item_id"}),
-		strmangle.WhereClause("\"", "\"", 2, utilityPrimaryKeyColumns),
-	)
-	values := []interface{}{related.ID, o.ID}
-
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, updateQuery)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	if _, err = exec.Exec(updateQuery, values...); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	queries.Assign(&o.CollectionItemID, related.ID)
-	if o.R == nil {
-		o.R = &utilityR{
-			CollectionItem: related,
-		}
-	} else {
-		o.R.CollectionItem = related
-	}
-
-	if related.R == nil {
-		related.R = &collectionItemR{
-			Utilities: UtilitySlice{o},
-		}
-	} else {
-		related.R.Utilities = append(related.R.Utilities, o)
-	}
-
-	return nil
-}
-
-// RemoveCollectionItem relationship.
-// Sets o.R.CollectionItem to nil.
-// Removes o from all passed in related items' relationships struct (Optional).
-func (o *Utility) RemoveCollectionItem(exec boil.Executor, related *CollectionItem) error {
-	var err error
-
-	queries.SetScanner(&o.CollectionItemID, nil)
-	if _, err = o.Update(exec, boil.Whitelist("collection_item_id")); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	if o.R != nil {
-		o.R.CollectionItem = nil
-	}
-	if related == nil || related.R == nil {
-		return nil
-	}
-
-	for i, ri := range related.R.Utilities {
-		if queries.Equal(o.CollectionItemID, ri.CollectionItemID) {
-			continue
-		}
-
-		ln := len(related.R.Utilities)
-		if ln > 1 && i < ln-1 {
-			related.R.Utilities[i] = related.R.Utilities[ln-1]
-		}
-		related.R.Utilities = related.R.Utilities[:ln-1]
-		break
-	}
 	return nil
 }
 

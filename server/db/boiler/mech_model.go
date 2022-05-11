@@ -72,32 +72,32 @@ var MechModelWhere = struct {
 
 // MechModelRels is where relationship names are stored.
 var MechModelRels = struct {
-	DefaultChassisSkin                  string
-	ChassisModelBlueprintMechAnimations string
-	ChassisModelBlueprintMechSkins      string
-	ModelBlueprintMechs                 string
-	ChassisModelMechAnimations          string
-	ChassisModelMechSkins               string
-	ModelMechs                          string
+	DefaultChassisSkin      string
+	BlueprintMechAnimations string
+	BlueprintMechSkins      string
+	ModelBlueprintMechs     string
+	MechAnimations          string
+	MechSkins               string
+	ModelMechs              string
 }{
-	DefaultChassisSkin:                  "DefaultChassisSkin",
-	ChassisModelBlueprintMechAnimations: "ChassisModelBlueprintMechAnimations",
-	ChassisModelBlueprintMechSkins:      "ChassisModelBlueprintMechSkins",
-	ModelBlueprintMechs:                 "ModelBlueprintMechs",
-	ChassisModelMechAnimations:          "ChassisModelMechAnimations",
-	ChassisModelMechSkins:               "ChassisModelMechSkins",
-	ModelMechs:                          "ModelMechs",
+	DefaultChassisSkin:      "DefaultChassisSkin",
+	BlueprintMechAnimations: "BlueprintMechAnimations",
+	BlueprintMechSkins:      "BlueprintMechSkins",
+	ModelBlueprintMechs:     "ModelBlueprintMechs",
+	MechAnimations:          "MechAnimations",
+	MechSkins:               "MechSkins",
+	ModelMechs:              "ModelMechs",
 }
 
 // mechModelR is where relationships are stored.
 type mechModelR struct {
-	DefaultChassisSkin                  *BlueprintMechSkin          `boiler:"DefaultChassisSkin" boil:"DefaultChassisSkin" json:"DefaultChassisSkin" toml:"DefaultChassisSkin" yaml:"DefaultChassisSkin"`
-	ChassisModelBlueprintMechAnimations BlueprintMechAnimationSlice `boiler:"ChassisModelBlueprintMechAnimations" boil:"ChassisModelBlueprintMechAnimations" json:"ChassisModelBlueprintMechAnimations" toml:"ChassisModelBlueprintMechAnimations" yaml:"ChassisModelBlueprintMechAnimations"`
-	ChassisModelBlueprintMechSkins      BlueprintMechSkinSlice      `boiler:"ChassisModelBlueprintMechSkins" boil:"ChassisModelBlueprintMechSkins" json:"ChassisModelBlueprintMechSkins" toml:"ChassisModelBlueprintMechSkins" yaml:"ChassisModelBlueprintMechSkins"`
-	ModelBlueprintMechs                 BlueprintMechSlice          `boiler:"ModelBlueprintMechs" boil:"ModelBlueprintMechs" json:"ModelBlueprintMechs" toml:"ModelBlueprintMechs" yaml:"ModelBlueprintMechs"`
-	ChassisModelMechAnimations          MechAnimationSlice          `boiler:"ChassisModelMechAnimations" boil:"ChassisModelMechAnimations" json:"ChassisModelMechAnimations" toml:"ChassisModelMechAnimations" yaml:"ChassisModelMechAnimations"`
-	ChassisModelMechSkins               MechSkinSlice               `boiler:"ChassisModelMechSkins" boil:"ChassisModelMechSkins" json:"ChassisModelMechSkins" toml:"ChassisModelMechSkins" yaml:"ChassisModelMechSkins"`
-	ModelMechs                          MechSlice                   `boiler:"ModelMechs" boil:"ModelMechs" json:"ModelMechs" toml:"ModelMechs" yaml:"ModelMechs"`
+	DefaultChassisSkin      *BlueprintMechSkin          `boiler:"DefaultChassisSkin" boil:"DefaultChassisSkin" json:"DefaultChassisSkin" toml:"DefaultChassisSkin" yaml:"DefaultChassisSkin"`
+	BlueprintMechAnimations BlueprintMechAnimationSlice `boiler:"BlueprintMechAnimations" boil:"BlueprintMechAnimations" json:"BlueprintMechAnimations" toml:"BlueprintMechAnimations" yaml:"BlueprintMechAnimations"`
+	BlueprintMechSkins      BlueprintMechSkinSlice      `boiler:"BlueprintMechSkins" boil:"BlueprintMechSkins" json:"BlueprintMechSkins" toml:"BlueprintMechSkins" yaml:"BlueprintMechSkins"`
+	ModelBlueprintMechs     BlueprintMechSlice          `boiler:"ModelBlueprintMechs" boil:"ModelBlueprintMechs" json:"ModelBlueprintMechs" toml:"ModelBlueprintMechs" yaml:"ModelBlueprintMechs"`
+	MechAnimations          MechAnimationSlice          `boiler:"MechAnimations" boil:"MechAnimations" json:"MechAnimations" toml:"MechAnimations" yaml:"MechAnimations"`
+	MechSkins               MechSkinSlice               `boiler:"MechSkins" boil:"MechSkins" json:"MechSkins" toml:"MechSkins" yaml:"MechSkins"`
+	ModelMechs              MechSlice                   `boiler:"ModelMechs" boil:"ModelMechs" json:"ModelMechs" toml:"ModelMechs" yaml:"ModelMechs"`
 }
 
 // NewStruct creates a new relationship struct
@@ -372,15 +372,15 @@ func (o *MechModel) DefaultChassisSkin(mods ...qm.QueryMod) blueprintMechSkinQue
 	return query
 }
 
-// ChassisModelBlueprintMechAnimations retrieves all the blueprint_mech_animation's BlueprintMechAnimations with an executor via chassis_model column.
-func (o *MechModel) ChassisModelBlueprintMechAnimations(mods ...qm.QueryMod) blueprintMechAnimationQuery {
+// BlueprintMechAnimations retrieves all the blueprint_mech_animation's BlueprintMechAnimations with an executor.
+func (o *MechModel) BlueprintMechAnimations(mods ...qm.QueryMod) blueprintMechAnimationQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"blueprint_mech_animation\".\"chassis_model\"=?", o.ID),
+		qm.Where("\"blueprint_mech_animation\".\"mech_model\"=?", o.ID),
 	)
 
 	query := BlueprintMechAnimations(queryMods...)
@@ -393,15 +393,15 @@ func (o *MechModel) ChassisModelBlueprintMechAnimations(mods ...qm.QueryMod) blu
 	return query
 }
 
-// ChassisModelBlueprintMechSkins retrieves all the blueprint_mech_skin's BlueprintMechSkins with an executor via chassis_model column.
-func (o *MechModel) ChassisModelBlueprintMechSkins(mods ...qm.QueryMod) blueprintMechSkinQuery {
+// BlueprintMechSkins retrieves all the blueprint_mech_skin's BlueprintMechSkins with an executor.
+func (o *MechModel) BlueprintMechSkins(mods ...qm.QueryMod) blueprintMechSkinQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"blueprint_mech_skin\".\"chassis_model\"=?", o.ID),
+		qm.Where("\"blueprint_mech_skin\".\"mech_model\"=?", o.ID),
 	)
 
 	query := BlueprintMechSkins(queryMods...)
@@ -436,15 +436,15 @@ func (o *MechModel) ModelBlueprintMechs(mods ...qm.QueryMod) blueprintMechQuery 
 	return query
 }
 
-// ChassisModelMechAnimations retrieves all the mech_animation's MechAnimations with an executor via chassis_model column.
-func (o *MechModel) ChassisModelMechAnimations(mods ...qm.QueryMod) mechAnimationQuery {
+// MechAnimations retrieves all the mech_animation's MechAnimations with an executor.
+func (o *MechModel) MechAnimations(mods ...qm.QueryMod) mechAnimationQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"mech_animation\".\"chassis_model\"=?", o.ID),
+		qm.Where("\"mech_animation\".\"mech_model\"=?", o.ID),
 	)
 
 	query := MechAnimations(queryMods...)
@@ -457,15 +457,15 @@ func (o *MechModel) ChassisModelMechAnimations(mods ...qm.QueryMod) mechAnimatio
 	return query
 }
 
-// ChassisModelMechSkins retrieves all the mech_skin's MechSkins with an executor via chassis_model column.
-func (o *MechModel) ChassisModelMechSkins(mods ...qm.QueryMod) mechSkinQuery {
+// MechSkins retrieves all the mech_skin's MechSkins with an executor.
+func (o *MechModel) MechSkins(mods ...qm.QueryMod) mechSkinQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"mech_skin\".\"chassis_model\"=?", o.ID),
+		qm.Where("\"mech_skin\".\"mech_model\"=?", o.ID),
 	)
 
 	query := MechSkins(queryMods...)
@@ -608,9 +608,9 @@ func (mechModelL) LoadDefaultChassisSkin(e boil.Executor, singular bool, maybeMe
 	return nil
 }
 
-// LoadChassisModelBlueprintMechAnimations allows an eager lookup of values, cached into the
+// LoadBlueprintMechAnimations allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (mechModelL) LoadChassisModelBlueprintMechAnimations(e boil.Executor, singular bool, maybeMechModel interface{}, mods queries.Applicator) error {
+func (mechModelL) LoadBlueprintMechAnimations(e boil.Executor, singular bool, maybeMechModel interface{}, mods queries.Applicator) error {
 	var slice []*MechModel
 	var object *MechModel
 
@@ -649,7 +649,7 @@ func (mechModelL) LoadChassisModelBlueprintMechAnimations(e boil.Executor, singu
 
 	query := NewQuery(
 		qm.From(`blueprint_mech_animation`),
-		qm.WhereIn(`blueprint_mech_animation.chassis_model in ?`, args...),
+		qm.WhereIn(`blueprint_mech_animation.mech_model in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -680,24 +680,24 @@ func (mechModelL) LoadChassisModelBlueprintMechAnimations(e boil.Executor, singu
 		}
 	}
 	if singular {
-		object.R.ChassisModelBlueprintMechAnimations = resultSlice
+		object.R.BlueprintMechAnimations = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
 				foreign.R = &blueprintMechAnimationR{}
 			}
-			foreign.R.ChassisModelMechModel = object
+			foreign.R.BlueprintMechAnimationMechModel = object
 		}
 		return nil
 	}
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if local.ID == foreign.ChassisModel {
-				local.R.ChassisModelBlueprintMechAnimations = append(local.R.ChassisModelBlueprintMechAnimations, foreign)
+			if local.ID == foreign.MechModel {
+				local.R.BlueprintMechAnimations = append(local.R.BlueprintMechAnimations, foreign)
 				if foreign.R == nil {
 					foreign.R = &blueprintMechAnimationR{}
 				}
-				foreign.R.ChassisModelMechModel = local
+				foreign.R.BlueprintMechAnimationMechModel = local
 				break
 			}
 		}
@@ -706,9 +706,9 @@ func (mechModelL) LoadChassisModelBlueprintMechAnimations(e boil.Executor, singu
 	return nil
 }
 
-// LoadChassisModelBlueprintMechSkins allows an eager lookup of values, cached into the
+// LoadBlueprintMechSkins allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (mechModelL) LoadChassisModelBlueprintMechSkins(e boil.Executor, singular bool, maybeMechModel interface{}, mods queries.Applicator) error {
+func (mechModelL) LoadBlueprintMechSkins(e boil.Executor, singular bool, maybeMechModel interface{}, mods queries.Applicator) error {
 	var slice []*MechModel
 	var object *MechModel
 
@@ -747,7 +747,7 @@ func (mechModelL) LoadChassisModelBlueprintMechSkins(e boil.Executor, singular b
 
 	query := NewQuery(
 		qm.From(`blueprint_mech_skin`),
-		qm.WhereIn(`blueprint_mech_skin.chassis_model in ?`, args...),
+		qm.WhereIn(`blueprint_mech_skin.mech_model in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -778,24 +778,24 @@ func (mechModelL) LoadChassisModelBlueprintMechSkins(e boil.Executor, singular b
 		}
 	}
 	if singular {
-		object.R.ChassisModelBlueprintMechSkins = resultSlice
+		object.R.BlueprintMechSkins = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
 				foreign.R = &blueprintMechSkinR{}
 			}
-			foreign.R.ChassisModelMechModel = object
+			foreign.R.BlueprintMechSkinMechModel = object
 		}
 		return nil
 	}
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if local.ID == foreign.ChassisModel {
-				local.R.ChassisModelBlueprintMechSkins = append(local.R.ChassisModelBlueprintMechSkins, foreign)
+			if local.ID == foreign.MechModel {
+				local.R.BlueprintMechSkins = append(local.R.BlueprintMechSkins, foreign)
 				if foreign.R == nil {
 					foreign.R = &blueprintMechSkinR{}
 				}
-				foreign.R.ChassisModelMechModel = local
+				foreign.R.BlueprintMechSkinMechModel = local
 				break
 			}
 		}
@@ -903,9 +903,9 @@ func (mechModelL) LoadModelBlueprintMechs(e boil.Executor, singular bool, maybeM
 	return nil
 }
 
-// LoadChassisModelMechAnimations allows an eager lookup of values, cached into the
+// LoadMechAnimations allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (mechModelL) LoadChassisModelMechAnimations(e boil.Executor, singular bool, maybeMechModel interface{}, mods queries.Applicator) error {
+func (mechModelL) LoadMechAnimations(e boil.Executor, singular bool, maybeMechModel interface{}, mods queries.Applicator) error {
 	var slice []*MechModel
 	var object *MechModel
 
@@ -944,7 +944,7 @@ func (mechModelL) LoadChassisModelMechAnimations(e boil.Executor, singular bool,
 
 	query := NewQuery(
 		qm.From(`mech_animation`),
-		qm.WhereIn(`mech_animation.chassis_model in ?`, args...),
+		qm.WhereIn(`mech_animation.mech_model in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -975,24 +975,24 @@ func (mechModelL) LoadChassisModelMechAnimations(e boil.Executor, singular bool,
 		}
 	}
 	if singular {
-		object.R.ChassisModelMechAnimations = resultSlice
+		object.R.MechAnimations = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
 				foreign.R = &mechAnimationR{}
 			}
-			foreign.R.ChassisModelMechModel = object
+			foreign.R.MechAnimationMechModel = object
 		}
 		return nil
 	}
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if local.ID == foreign.ChassisModel {
-				local.R.ChassisModelMechAnimations = append(local.R.ChassisModelMechAnimations, foreign)
+			if local.ID == foreign.MechModel {
+				local.R.MechAnimations = append(local.R.MechAnimations, foreign)
 				if foreign.R == nil {
 					foreign.R = &mechAnimationR{}
 				}
-				foreign.R.ChassisModelMechModel = local
+				foreign.R.MechAnimationMechModel = local
 				break
 			}
 		}
@@ -1001,9 +1001,9 @@ func (mechModelL) LoadChassisModelMechAnimations(e boil.Executor, singular bool,
 	return nil
 }
 
-// LoadChassisModelMechSkins allows an eager lookup of values, cached into the
+// LoadMechSkins allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (mechModelL) LoadChassisModelMechSkins(e boil.Executor, singular bool, maybeMechModel interface{}, mods queries.Applicator) error {
+func (mechModelL) LoadMechSkins(e boil.Executor, singular bool, maybeMechModel interface{}, mods queries.Applicator) error {
 	var slice []*MechModel
 	var object *MechModel
 
@@ -1042,7 +1042,7 @@ func (mechModelL) LoadChassisModelMechSkins(e boil.Executor, singular bool, mayb
 
 	query := NewQuery(
 		qm.From(`mech_skin`),
-		qm.WhereIn(`mech_skin.chassis_model in ?`, args...),
+		qm.WhereIn(`mech_skin.mech_model in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -1073,24 +1073,24 @@ func (mechModelL) LoadChassisModelMechSkins(e boil.Executor, singular bool, mayb
 		}
 	}
 	if singular {
-		object.R.ChassisModelMechSkins = resultSlice
+		object.R.MechSkins = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
 				foreign.R = &mechSkinR{}
 			}
-			foreign.R.ChassisModelMechModel = object
+			foreign.R.MechSkinMechModel = object
 		}
 		return nil
 	}
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if local.ID == foreign.ChassisModel {
-				local.R.ChassisModelMechSkins = append(local.R.ChassisModelMechSkins, foreign)
+			if local.ID == foreign.MechModel {
+				local.R.MechSkins = append(local.R.MechSkins, foreign)
 				if foreign.R == nil {
 					foreign.R = &mechSkinR{}
 				}
-				foreign.R.ChassisModelMechModel = local
+				foreign.R.MechSkinMechModel = local
 				break
 			}
 		}
@@ -1277,22 +1277,22 @@ func (o *MechModel) RemoveDefaultChassisSkin(exec boil.Executor, related *Bluepr
 	return nil
 }
 
-// AddChassisModelBlueprintMechAnimations adds the given related objects to the existing relationships
+// AddBlueprintMechAnimations adds the given related objects to the existing relationships
 // of the mech_model, optionally inserting them as new records.
-// Appends related to o.R.ChassisModelBlueprintMechAnimations.
-// Sets related.R.ChassisModelMechModel appropriately.
-func (o *MechModel) AddChassisModelBlueprintMechAnimations(exec boil.Executor, insert bool, related ...*BlueprintMechAnimation) error {
+// Appends related to o.R.BlueprintMechAnimations.
+// Sets related.R.BlueprintMechAnimationMechModel appropriately.
+func (o *MechModel) AddBlueprintMechAnimations(exec boil.Executor, insert bool, related ...*BlueprintMechAnimation) error {
 	var err error
 	for _, rel := range related {
 		if insert {
-			rel.ChassisModel = o.ID
+			rel.MechModel = o.ID
 			if err = rel.Insert(exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
 				"UPDATE \"blueprint_mech_animation\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"chassis_model"}),
+				strmangle.SetParamNames("\"", "\"", 1, []string{"mech_model"}),
 				strmangle.WhereClause("\"", "\"", 2, blueprintMechAnimationPrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
@@ -1305,46 +1305,46 @@ func (o *MechModel) AddChassisModelBlueprintMechAnimations(exec boil.Executor, i
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			rel.ChassisModel = o.ID
+			rel.MechModel = o.ID
 		}
 	}
 
 	if o.R == nil {
 		o.R = &mechModelR{
-			ChassisModelBlueprintMechAnimations: related,
+			BlueprintMechAnimations: related,
 		}
 	} else {
-		o.R.ChassisModelBlueprintMechAnimations = append(o.R.ChassisModelBlueprintMechAnimations, related...)
+		o.R.BlueprintMechAnimations = append(o.R.BlueprintMechAnimations, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &blueprintMechAnimationR{
-				ChassisModelMechModel: o,
+				BlueprintMechAnimationMechModel: o,
 			}
 		} else {
-			rel.R.ChassisModelMechModel = o
+			rel.R.BlueprintMechAnimationMechModel = o
 		}
 	}
 	return nil
 }
 
-// AddChassisModelBlueprintMechSkins adds the given related objects to the existing relationships
+// AddBlueprintMechSkins adds the given related objects to the existing relationships
 // of the mech_model, optionally inserting them as new records.
-// Appends related to o.R.ChassisModelBlueprintMechSkins.
-// Sets related.R.ChassisModelMechModel appropriately.
-func (o *MechModel) AddChassisModelBlueprintMechSkins(exec boil.Executor, insert bool, related ...*BlueprintMechSkin) error {
+// Appends related to o.R.BlueprintMechSkins.
+// Sets related.R.BlueprintMechSkinMechModel appropriately.
+func (o *MechModel) AddBlueprintMechSkins(exec boil.Executor, insert bool, related ...*BlueprintMechSkin) error {
 	var err error
 	for _, rel := range related {
 		if insert {
-			rel.ChassisModel = o.ID
+			rel.MechModel = o.ID
 			if err = rel.Insert(exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
 				"UPDATE \"blueprint_mech_skin\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"chassis_model"}),
+				strmangle.SetParamNames("\"", "\"", 1, []string{"mech_model"}),
 				strmangle.WhereClause("\"", "\"", 2, blueprintMechSkinPrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
@@ -1357,25 +1357,25 @@ func (o *MechModel) AddChassisModelBlueprintMechSkins(exec boil.Executor, insert
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			rel.ChassisModel = o.ID
+			rel.MechModel = o.ID
 		}
 	}
 
 	if o.R == nil {
 		o.R = &mechModelR{
-			ChassisModelBlueprintMechSkins: related,
+			BlueprintMechSkins: related,
 		}
 	} else {
-		o.R.ChassisModelBlueprintMechSkins = append(o.R.ChassisModelBlueprintMechSkins, related...)
+		o.R.BlueprintMechSkins = append(o.R.BlueprintMechSkins, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &blueprintMechSkinR{
-				ChassisModelMechModel: o,
+				BlueprintMechSkinMechModel: o,
 			}
 		} else {
-			rel.R.ChassisModelMechModel = o
+			rel.R.BlueprintMechSkinMechModel = o
 		}
 	}
 	return nil
@@ -1433,22 +1433,22 @@ func (o *MechModel) AddModelBlueprintMechs(exec boil.Executor, insert bool, rela
 	return nil
 }
 
-// AddChassisModelMechAnimations adds the given related objects to the existing relationships
+// AddMechAnimations adds the given related objects to the existing relationships
 // of the mech_model, optionally inserting them as new records.
-// Appends related to o.R.ChassisModelMechAnimations.
-// Sets related.R.ChassisModelMechModel appropriately.
-func (o *MechModel) AddChassisModelMechAnimations(exec boil.Executor, insert bool, related ...*MechAnimation) error {
+// Appends related to o.R.MechAnimations.
+// Sets related.R.MechAnimationMechModel appropriately.
+func (o *MechModel) AddMechAnimations(exec boil.Executor, insert bool, related ...*MechAnimation) error {
 	var err error
 	for _, rel := range related {
 		if insert {
-			rel.ChassisModel = o.ID
+			rel.MechModel = o.ID
 			if err = rel.Insert(exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
 				"UPDATE \"mech_animation\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"chassis_model"}),
+				strmangle.SetParamNames("\"", "\"", 1, []string{"mech_model"}),
 				strmangle.WhereClause("\"", "\"", 2, mechAnimationPrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
@@ -1461,46 +1461,46 @@ func (o *MechModel) AddChassisModelMechAnimations(exec boil.Executor, insert boo
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			rel.ChassisModel = o.ID
+			rel.MechModel = o.ID
 		}
 	}
 
 	if o.R == nil {
 		o.R = &mechModelR{
-			ChassisModelMechAnimations: related,
+			MechAnimations: related,
 		}
 	} else {
-		o.R.ChassisModelMechAnimations = append(o.R.ChassisModelMechAnimations, related...)
+		o.R.MechAnimations = append(o.R.MechAnimations, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &mechAnimationR{
-				ChassisModelMechModel: o,
+				MechAnimationMechModel: o,
 			}
 		} else {
-			rel.R.ChassisModelMechModel = o
+			rel.R.MechAnimationMechModel = o
 		}
 	}
 	return nil
 }
 
-// AddChassisModelMechSkins adds the given related objects to the existing relationships
+// AddMechSkins adds the given related objects to the existing relationships
 // of the mech_model, optionally inserting them as new records.
-// Appends related to o.R.ChassisModelMechSkins.
-// Sets related.R.ChassisModelMechModel appropriately.
-func (o *MechModel) AddChassisModelMechSkins(exec boil.Executor, insert bool, related ...*MechSkin) error {
+// Appends related to o.R.MechSkins.
+// Sets related.R.MechSkinMechModel appropriately.
+func (o *MechModel) AddMechSkins(exec boil.Executor, insert bool, related ...*MechSkin) error {
 	var err error
 	for _, rel := range related {
 		if insert {
-			rel.ChassisModel = o.ID
+			rel.MechModel = o.ID
 			if err = rel.Insert(exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
 				"UPDATE \"mech_skin\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"chassis_model"}),
+				strmangle.SetParamNames("\"", "\"", 1, []string{"mech_model"}),
 				strmangle.WhereClause("\"", "\"", 2, mechSkinPrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
@@ -1513,25 +1513,25 @@ func (o *MechModel) AddChassisModelMechSkins(exec boil.Executor, insert bool, re
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			rel.ChassisModel = o.ID
+			rel.MechModel = o.ID
 		}
 	}
 
 	if o.R == nil {
 		o.R = &mechModelR{
-			ChassisModelMechSkins: related,
+			MechSkins: related,
 		}
 	} else {
-		o.R.ChassisModelMechSkins = append(o.R.ChassisModelMechSkins, related...)
+		o.R.MechSkins = append(o.R.MechSkins, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &mechSkinR{
-				ChassisModelMechModel: o,
+				MechSkinMechModel: o,
 			}
 		} else {
-			rel.R.ChassisModelMechModel = o
+			rel.R.MechSkinMechModel = o
 		}
 	}
 	return nil

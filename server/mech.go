@@ -4,6 +4,7 @@ import (
 	"server/db/boiler"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 )
 
@@ -20,19 +21,19 @@ type CollectionDetails struct {
 // Mech is the struct that rpc expects for mechs
 type Mech struct {
 	*CollectionDetails
-	ID               string      `json:"id"`
-	CollectionItemID string      `json:"collection_item_id"`
-	Label            string      `json:"label"`
-	WeaponHardpoints int         `json:"weapon_hardpoints"`
-	UtilitySlots     int         `json:"utility_slots"`
-	Speed            int         `json:"speed"`
-	MaxHitpoints     int         `json:"max_hitpoints"`
-	IsDefault        bool        `json:"is_default"`
-	IsInsured        bool        `json:"is_insured"`
-	Name             string      `json:"name"`
-	GenesisTokenID   null.Int    `json:"genesis_token_id,omitempty"`
-	EnergyCoreSize   string      `json:"energy_core_size"`
-	Tier             null.String `json:"tier,omitempty"`
+	ID                    string              `json:"id"`
+	Label                 string              `json:"label"`
+	WeaponHardpoints      int                 `json:"weapon_hardpoints"`
+	UtilitySlots          int                 `json:"utility_slots"`
+	Speed                 int                 `json:"speed"`
+	MaxHitpoints          int                 `json:"max_hitpoints"`
+	IsDefault             bool                `json:"is_default"`
+	IsInsured             bool                `json:"is_insured"`
+	Name                  string              `json:"name"`
+	GenesisTokenID        decimal.NullDecimal `json:"genesis_token_id,omitempty"`
+	LimitedReleaseTokenID decimal.NullDecimal `json:"limited_release_token_id,omitempty"`
+	EnergyCoreSize        string              `json:"energy_core_size"`
+	Tier                  null.String         `json:"tier,omitempty"`
 
 	BlueprintID string         `json:"blueprint_id"`
 	Blueprint   *BlueprintMech `json:"blueprint_mech,omitempty"`
@@ -85,9 +86,14 @@ type BlueprintMech struct {
 	UpdatedAt            time.Time   `json:"updated_at"`
 	CreatedAt            time.Time   `json:"created_at"`
 	ModelID              string      `json:"model_id"`
-	EnergyCoreSize       null.String `json:"energy_core_size,omitempty"`
+	EnergyCoreSize       string      `json:"energy_core_size,omitempty"`
 	Tier                 null.String `json:"tier,omitempty"`
 	DefaultChassisSkinID string      `json:"default_chassis_skin_id"`
+	Collection           string      `json:"collection"`
+
+	// only used on inserting new mechs/items, since we are still giving away some limited released and genesis
+	GenesisTokenID        decimal.NullDecimal `json:"genesis_token_id,omitempty"`
+	LimitedReleaseTokenID decimal.NullDecimal `json:"limited_release_token_id,omitempty"`
 }
 
 func BlueprintMechFromBoiler(mech *boiler.BlueprintMech) *BlueprintMech {
@@ -106,22 +112,28 @@ func BlueprintMechFromBoiler(mech *boiler.BlueprintMech) *BlueprintMech {
 		ModelID:          mech.ModelID,
 		EnergyCoreSize:   mech.EnergyCoreSize,
 		Tier:             mech.Tier,
+		Collection:       mech.Collection,
 	}
 }
 
 type BlueprintUtility struct {
-	ID        string      `json:"id"`
-	BrandID   null.String `json:"brand_id,omitempty"`
-	Label     string      `json:"label"`
-	UpdatedAt time.Time   `json:"updated_at"`
-	CreatedAt time.Time   `json:"created_at"`
-	Type      string      `json:"type"`
+	ID         string      `json:"id"`
+	BrandID    null.String `json:"brand_id,omitempty"`
+	Label      string      `json:"label"`
+	UpdatedAt  time.Time   `json:"updated_at"`
+	CreatedAt  time.Time   `json:"created_at"`
+	Type       string      `json:"type"`
+	Collection string      `json:"collection"`
 
 	ShieldBlueprint      *BlueprintUtilityShield      `json:"shield_blueprint,omitempty"`
 	AttackDroneBlueprint *BlueprintUtilityAttackDrone `json:"attack_drone_blueprint,omitempty"`
 	RepairDroneBlueprint *BlueprintUtilityRepairDrone `json:"repair_drone_blueprint,omitempty"`
 	AcceleratorBlueprint *BlueprintUtilityAccelerator `json:"accelerator_blueprint,omitempty"`
 	AntiMissileBlueprint *BlueprintUtilityAntiMissile `json:"anti_missile_blueprint,omitempty"`
+
+	// only used on inserting new mechs/items, since we are still giving away some limited released and genesis
+	GenesisTokenID        decimal.NullDecimal `json:"genesis_token_id,omitempty"`
+	LimitedReleaseTokenID decimal.NullDecimal `json:"limited_release_token_id,omitempty"`
 }
 
 type MechModel struct {

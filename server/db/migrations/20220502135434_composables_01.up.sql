@@ -22,7 +22,10 @@ CREATE SEQUENCE IF NOT EXISTS collection_general AS BIGINT;
 ALTER SEQUENCE collection_general RESTART WITH 1;
 
 DROP TYPE IF EXISTS COLLECTION;
-CREATE TYPE COLLECTION AS ENUM ('supremacy-genesis', 'supremacy-general');
+CREATE TYPE COLLECTION AS ENUM ('supremacy-genesis', 'supremacy-limited-release', 'supremacy-general', 'supremacy-consumables');
+
+DROP TYPE IF EXISTS ITEM_TYPE;
+CREATE TYPE ITEM_TYPE AS ENUM ('utility', 'weapon', 'mech', 'mech_skin', 'mech_animation', 'energy_core');
 
 -- This table is for the look up token ids since the token ids go across tables
 CREATE TABLE collection_items
@@ -31,7 +34,7 @@ CREATE TABLE collection_items
     collection_slug COLLECTION       NOT NULL DEFAULT 'supremacy-general',
     hash            TEXT             NOT NULL DEFAULT random_string(10),
     token_id        BIGINT           NOT NULL,
-    item_type       TEXT             NOT NULL CHECK (item_type IN ('utility', 'weapon', 'chassis', 'chassis_skin')),
+    item_type       ITEM_TYPE        NOT NULL,
     item_id         UUID             NOT NULL UNIQUE,
     UNIQUE (collection_slug, token_id)
 );
@@ -47,17 +50,17 @@ CREATE TYPE WEAPON_TYPE AS ENUM ('Grenade Launcher', 'Cannon', 'Minigun', 'Plasm
 DROP TYPE IF EXISTS DAMAGE_TYPE;
 CREATE TYPE DAMAGE_TYPE AS ENUM ('Kinetic', 'Energy', 'Explosive');
 
-DROP TYPE IF EXISTS CHASSIS_MODEL;
+DROP TYPE IF EXISTS MECH_MODEL;
 
 -- creating table of war machine chassis modals
-CREATE TABLE chassis_model
+CREATE TABLE mech_model
 (
     id         UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
     label      TEXT        NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-INSERT INTO chassis_model (label)
+INSERT INTO mech_model (label)
 VALUES ('Law Enforcer X-1000'),
        ('Olympus Mons LY07'),
        ('Tenshi Mk1');
@@ -114,19 +117,18 @@ CREATE TABLE blueprint_energy_cores
 
 CREATE TABLE energy_cores
 (
-    id                 UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
-    collection_item_id UUID        NOT NULL REFERENCES collection_items (id),
-    owner_id           UUID        NOT NULL REFERENCES players (id),
-    label              TEXT        NOT NULL,
-    size               TEXT        NOT NULL DEFAULT 'MEDIUM' CHECK ( size IN ('SMALL', 'MEDIUM', 'LARGE') ),
-    capacity           NUMERIC     NOT NULL DEFAULT 0,
-    max_draw_rate      NUMERIC     NOT NULL DEFAULT 0,
-    recharge_rate      NUMERIC     NOT NULL DEFAULT 0,
-    armour             NUMERIC     NOT NULL DEFAULT 0,
-    max_hitpoints      NUMERIC     NOT NULL DEFAULT 0,
-    tier               TEXT,
-    equipped_on        UUID REFERENCES chassis (id),
-    created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    id            UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
+    owner_id      UUID        NOT NULL REFERENCES players (id),
+    label         TEXT        NOT NULL,
+    size          TEXT        NOT NULL DEFAULT 'MEDIUM' CHECK ( size IN ('SMALL', 'MEDIUM', 'LARGE') ),
+    capacity      NUMERIC     NOT NULL DEFAULT 0,
+    max_draw_rate NUMERIC     NOT NULL DEFAULT 0,
+    recharge_rate NUMERIC     NOT NULL DEFAULT 0,
+    armour        NUMERIC     NOT NULL DEFAULT 0,
+    max_hitpoints NUMERIC     NOT NULL DEFAULT 0,
+    tier          TEXT,
+    equipped_on   UUID REFERENCES chassis (id),
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 /*
@@ -137,7 +139,7 @@ CREATE TABLE blueprint_chassis_skin
 (
     id                 UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
     collection         COLLECTION  NOT NULL DEFAULT 'supremacy-general',
-    chassis_model      UUID        NOT NULL REFERENCES chassis_model (id),
+    mech_model         UUID        NOT NULL REFERENCES mech_model (id),
     label              TEXT        NOT NULL,
     tier               TEXT,
     image_url          TEXT,
@@ -146,30 +148,30 @@ CREATE TABLE blueprint_chassis_skin
     large_image_url    TEXT,
     avatar_url         TEXT,
     created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE (chassis_model, label)
+    UNIQUE (mech_model, label)
 );
 
-ALTER TABLE chassis_model
+ALTER TABLE mech_model
     ADD COLUMN default_chassis_skin_id UUID REFERENCES blueprint_chassis_skin (id); -- default skin
 
 
 CREATE TABLE chassis_skin
 (
-    id                 UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
-    blueprint_id       UUID REFERENCES blueprint_chassis_skin (id),
-    collection_item_id UUID REFERENCES collection_items (id),
-    genesis_token_id   NUMERIC,
-    label              TEXT        NOT NULL,
-    owner_id           UUID        NOT NULL REFERENCES players (id),
-    chassis_model      UUID        NOT NULL REFERENCES chassis_model (id),
-    equipped_on        UUID REFERENCES chassis (id),
-    tier               TEXT,
-    image_url          TEXT,
-    animation_url      TEXT,
-    card_animation_url TEXT,
-    avatar_url         TEXT,
-    large_image_url    TEXT,
-    created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    id                       UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
+    blueprint_id             UUID REFERENCES blueprint_chassis_skin (id),
+    genesis_token_id         NUMERIC,
+    limited_release_token_id NUMERIC,
+    label                    TEXT        NOT NULL,
+    owner_id                 UUID        NOT NULL REFERENCES players (id),
+    mech_model               UUID        NOT NULL REFERENCES mech_model (id),
+    equipped_on              UUID REFERENCES chassis (id),
+    tier                     TEXT,
+    image_url                TEXT,
+    animation_url            TEXT,
+    card_animation_url       TEXT,
+    avatar_url               TEXT,
+    large_image_url          TEXT,
+    created_at               TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 /*
@@ -181,8 +183,7 @@ CREATE TABLE blueprint_chassis_animation
     id              UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
     collection      COLLECTION  NOT NULL DEFAULT 'supremacy-general',
     label           TEXT        NOT NULL,
-    chassis_model   UUID        NOT NULL REFERENCES chassis_model (id),
-    equipped_on     UUID REFERENCES chassis (id),
+    mech_model      UUID        NOT NULL REFERENCES mech_model (id),
     tier            TEXT,
     intro_animation BOOL                 DEFAULT TRUE,
     outro_animation BOOL                 DEFAULT TRUE,
@@ -191,17 +192,16 @@ CREATE TABLE blueprint_chassis_animation
 
 CREATE TABLE chassis_animation
 (
-    id                 UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
-    blueprint_id       UUID        NOT NULL REFERENCES blueprint_chassis_animation (id),
-    collection_item_id UUID        NOT NULL REFERENCES collection_items (id),
-    label              TEXT        NOT NULL,
-    owner_id           UUID        NOT NULL REFERENCES players (id),
-    chassis_model      UUID        NOT NULL REFERENCES chassis_model (id),
-    equipped_on        UUID REFERENCES chassis (id),
-    tier               TEXT,
-    intro_animation    BOOL                 DEFAULT TRUE,
-    outro_animation    BOOL                 DEFAULT TRUE,
-    created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    id              UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
+    blueprint_id    UUID        NOT NULL REFERENCES blueprint_chassis_animation (id),
+    label           TEXT        NOT NULL,
+    owner_id        UUID        NOT NULL REFERENCES players (id),
+    mech_model      UUID        NOT NULL REFERENCES mech_model (id),
+    equipped_on     UUID REFERENCES chassis (id),
+    tier            TEXT,
+    intro_animation BOOL                 DEFAULT TRUE,
+    outro_animation BOOL                 DEFAULT TRUE,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 
@@ -214,24 +214,24 @@ ALTER TABLE chassis
 --     unused/unneeded columns
     DROP COLUMN IF EXISTS turret_hardpoints,
     DROP COLUMN IF EXISTS health_remaining,
-    ADD COLUMN blueprint_id       UUID REFERENCES blueprint_chassis (id),
-    ADD COLUMN is_default         BOOL NOT NULL DEFAULT FALSE,
-    ADD COLUMN is_insured         BOOL NOT NULL DEFAULT FALSE,
-    ADD COLUMN name               TEXT NOT NULL DEFAULT '',
-    ADD COLUMN model_id           UUID REFERENCES chassis_model (id),
-    ADD COLUMN collection_item_id UUID REFERENCES collection_items (id),
-    ADD COLUMN genesis_token_id   INTEGER,
-    ADD COLUMN owner_id           UUID REFERENCES players (id),
-    ADD COLUMN energy_core_size   TEXT NOT NULL DEFAULT 'MEDIUM' CHECK ( energy_core_size IN ('SMALL', 'MEDIUM', 'LARGE') ),
-    ADD COLUMN tier               TEXT,
-    ADD COLUMN chassis_skin_id    UUID REFERENCES chassis_skin (id), -- equipped skin
-    ADD COLUMN energy_core_id     UUID REFERENCES energy_cores (id),
-    ADD COLUMN intro_animation_id UUID REFERENCES chassis_animation (id),
-    ADD COLUMN outro_animation_id UUID REFERENCES chassis_animation (id);
+    ADD COLUMN blueprint_id             UUID REFERENCES blueprint_chassis (id),
+    ADD COLUMN is_default               BOOL NOT NULL DEFAULT FALSE,
+    ADD COLUMN is_insured               BOOL NOT NULL DEFAULT FALSE,
+    ADD COLUMN name                     TEXT NOT NULL DEFAULT '',
+    ADD COLUMN model_id                 UUID REFERENCES mech_model (id),
+    ADD COLUMN genesis_token_id         NUMERIC,
+    ADD COLUMN limited_release_token_id NUMERIC,
+    ADD COLUMN owner_id                 UUID REFERENCES players (id),
+    ADD COLUMN energy_core_size         TEXT NOT NULL DEFAULT 'MEDIUM' CHECK ( energy_core_size IN ('SMALL', 'MEDIUM', 'LARGE') ),
+    ADD COLUMN tier                     TEXT,
+    ADD COLUMN chassis_skin_id          UUID REFERENCES chassis_skin (id), -- equipped skin
+    ADD COLUMN energy_core_id           UUID REFERENCES energy_cores (id),
+    ADD COLUMN intro_animation_id       UUID REFERENCES chassis_animation (id),
+    ADD COLUMN outro_animation_id       UUID REFERENCES chassis_animation (id);
 
 UPDATE chassis c
 SET model_id = (SELECT id
-                FROM chassis_model cm
+                FROM mech_model cm
                 WHERE c.model = cm.label);
 
 ALTER TABLE chassis
@@ -239,16 +239,13 @@ ALTER TABLE chassis
     ALTER COLUMN model_id SET NOT NULL;
 
 -- This inserts a new collection_items entry for each chassis and updates the chassis table with token id
-WITH insrt AS (
-    WITH chass AS (SELECT 'chassis' AS item_type, id FROM chassis)
-        INSERT INTO collection_items (token_id, item_type, item_id)
-            SELECT NEXTVAL('collection_general'), chass.item_type, chass.id
-            FROM chass
-            RETURNING id, item_id)
-UPDATE chassis c
-SET collection_item_id = insrt.id
-FROM insrt
-WHERE c.id = insrt.item_id;
+
+WITH chass AS (SELECT 'mech' AS item_type, id FROM chassis)
+INSERT
+INTO collection_items (token_id, item_type, item_id)
+SELECT NEXTVAL('collection_general'), chass.item_type::ITEM_TYPE, chass.id
+FROM chass;
+
 
 -- this updates all genesis_token_id for chassis that are in genesis, also get is default and is insured
 WITH genesis AS (SELECT external_token_id, collection_slug, chassis_id
@@ -258,6 +255,15 @@ UPDATE chassis c
 SET genesis_token_id = genesis.external_token_id
 FROM genesis
 WHERE c.id = genesis.chassis_id;
+
+-- this updates all limited release for chassis that are in genesis, also get is default and is insured
+WITH limited_release AS (SELECT external_token_id, collection_slug, chassis_id
+                         FROM mechs
+                         WHERE collection_slug = 'supremacy-limited-release')
+UPDATE chassis c
+SET limited_release_token_id = limited_release.external_token_id
+FROM limited_release
+WHERE c.id = limited_release.chassis_id;
 
 
 -- extract and insert current skin blueprints
@@ -272,9 +278,9 @@ WITH new_skins AS (SELECT DISTINCT c.skin,
                    FROM templates t
                             INNER JOIN blueprint_chassis c ON t.blueprint_chassis_id = c.id)
 INSERT
-INTO blueprint_chassis_skin(chassis_model, label, tier, image_url, animation_url, card_animation_url, large_image_url,
+INTO blueprint_chassis_skin(mech_model, label, tier, image_url, animation_url, card_animation_url, large_image_url,
                             avatar_url)
-SELECT (SELECT id FROM chassis_model WHERE label = new_skins.model),
+SELECT (SELECT id FROM mech_model WHERE label = new_skins.model),
        new_skins.skin,
        new_skins.tier,
        new_skins.image_url,
@@ -283,7 +289,7 @@ SELECT (SELECT id FROM chassis_model WHERE label = new_skins.model),
        new_skins.large_image_url,
        new_skins.avatar_url
 FROM new_skins
-ON CONFLICT (chassis_model, label) DO NOTHING;
+ON CONFLICT (mech_model, label) DO NOTHING;
 
 -- extract and insert current equipped skins
 WITH new_skins AS (SELECT DISTINCT c.skin,
@@ -299,7 +305,7 @@ WITH new_skins AS (SELECT DISTINCT c.skin,
                    FROM mechs m
                             INNER JOIN chassis c ON m.chassis_id = c.id)
 INSERT
-INTO chassis_skin(owner_id, equipped_on, chassis_model, label, tier, image_url, large_image_url, animation_url,
+INTO chassis_skin(owner_id, equipped_on, mech_model, label, tier, image_url, large_image_url, animation_url,
                   card_animation_url,
                   avatar_url)
 SELECT new_skins.owner_id,
@@ -316,16 +322,12 @@ FROM new_skins;
 
 
 -- This inserts a new collection_items entry for each chassis_skin and updates the chassis_skin table with token id
-WITH insrt AS (
-    WITH chass_skin AS (SELECT 'chassis_skin' AS item_type, id FROM chassis_skin)
-        INSERT INTO collection_items (token_id, item_type, item_id)
-            SELECT NEXTVAL('collection_general'), chass_skin.item_type, chass_skin.id
-            FROM chass_skin
-            RETURNING id, item_id)
-UPDATE chassis_skin cs
-SET collection_item_id = insrt.id
-FROM insrt
-WHERE cs.id = insrt.item_id;
+
+WITH chass_skin AS (SELECT 'mech_skin' AS item_type, id FROM chassis_skin)
+INSERT
+INTO collection_items (token_id, item_type, item_id)
+SELECT NEXTVAL('collection_general'), chass_skin.item_type::ITEM_TYPE, chass_skin.id
+FROM chass_skin;
 
 
 -- this updates all genesis_token_id for chassis_skin that are in genesis
@@ -337,6 +339,16 @@ UPDATE chassis_skin cs
 SET genesis_token_id = genesis.external_token_id
 FROM genesis
 WHERE cs.equipped_on = genesis.chassis_id;
+
+-- this updates all limited release for chassis_skin that are in genesis
+WITH limit_release AS (SELECT external_token_id, m.collection_slug, chassis_id
+                       FROM chassis_skin _cs
+                                INNER JOIN mechs m ON m.chassis_id = _cs.equipped_on
+                       WHERE m.collection_slug = 'supremacy-limited-release')
+UPDATE chassis_skin cs
+SET limited_release_token_id = limit_release.external_token_id
+FROM limit_release
+WHERE cs.equipped_on = limit_release.chassis_id;
 
 -- update the owners of the newly extracted and inserted skins
 UPDATE chassis c
@@ -355,48 +367,48 @@ FROM mech_owners
 WHERE c.id = mech_owners.chassis_id;
 
 ALTER TABLE chassis
-    ALTER COLUMN collection_item_id SET NOT NULL,
     ALTER COLUMN blueprint_id SET NOT NULL,
     ALTER COLUMN owner_id SET NOT NULL;
 
 ALTER TABLE blueprint_chassis
     DROP COLUMN IF EXISTS turret_hardpoints,
     DROP COLUMN IF EXISTS health_remaining,
-    ADD COLUMN model_id         UUID REFERENCES chassis_model (id),
-    ADD COLUMN energy_core_size TEXT DEFAULT 'MEDIUM' CHECK ( energy_core_size IN ('SMALL', 'MEDIUM', 'LARGE') ),
+    ADD COLUMN model_id         UUID REFERENCES mech_model (id),
+    ADD COLUMN collection       COLLECTION NOT NULL DEFAULT 'supremacy-general',
+    ADD COLUMN energy_core_size TEXT       NOT NULL DEFAULT 'MEDIUM' CHECK ( energy_core_size IN ('SMALL', 'MEDIUM', 'LARGE') ),
     ADD COLUMN tier             TEXT,
     ADD COLUMN chassis_skin_id  UUID REFERENCES blueprint_chassis_skin (id); -- this column is used temp and gets removed.
 
 UPDATE blueprint_chassis c
 SET model_id = (SELECT id
-                FROM chassis_model cm
+                FROM mech_model cm
                 WHERE c.model = cm.label);
 
 ALTER TABLE blueprint_chassis
     DROP COLUMN model,
     ALTER COLUMN model_id SET NOT NULL;
 
-UPDATE chassis_model mm
+UPDATE mech_model mm
 SET default_chassis_skin_id = (SELECT bcs.id
                                FROM blueprint_chassis_skin bcs
-                                        INNER JOIN chassis_model cm ON bcs.chassis_model = cm.id
-                               WHERE cm.id = bcs.chassis_model
+                                        INNER JOIN mech_model cm ON bcs.mech_model = cm.id
+                               WHERE cm.id = bcs.mech_model
                                  AND bcs.label = 'Blue White')
 WHERE mm.label = 'Law Enforcer X-1000';
 
-UPDATE chassis_model mm
+UPDATE mech_model mm
 SET default_chassis_skin_id = (SELECT bcs.id
                                FROM blueprint_chassis_skin bcs
-                                        INNER JOIN chassis_model cm ON bcs.chassis_model = cm.id
-                               WHERE cm.id = bcs.chassis_model
+                                        INNER JOIN mech_model cm ON bcs.mech_model = cm.id
+                               WHERE cm.id = bcs.mech_model
                                  AND bcs.label = 'Beetle')
 WHERE mm.label = 'Olympus Mons LY07';
 
-UPDATE chassis_model mm
+UPDATE mech_model mm
 SET default_chassis_skin_id = (SELECT bcs.id
                                FROM blueprint_chassis_skin bcs
-                                        INNER JOIN chassis_model cm ON bcs.chassis_model = cm.id
-                               WHERE cm.id = bcs.chassis_model
+                                        INNER JOIN mech_model cm ON bcs.mech_model = cm.id
+                               WHERE cm.id = bcs.mech_model
                                  AND bcs.label = 'White Gold')
 WHERE mm.label = 'Tenshi Mk1';
 
@@ -405,7 +417,7 @@ UPDATE blueprint_chassis bc
 SET chassis_skin_id = (SELECT id
                        FROM blueprint_chassis_skin bcs
                        WHERE bcs.label = bc.skin
-                         AND bcs.chassis_model = bc.model_id);
+                         AND bcs.mech_model = bc.model_id);
 
 -- fix ones we missed somehow
 UPDATE chassis_skin
@@ -416,11 +428,10 @@ UPDATE chassis_skin ms
 SET blueprint_id = (SELECT id
                     FROM blueprint_chassis_skin bms
                     WHERE bms.label = ms.label
-                      AND ms.chassis_model = bms.chassis_model);
+                      AND ms.mech_model = bms.mech_model);
 
 -- here
 ALTER TABLE chassis_skin
-    ALTER COLUMN collection_item_id SET NOT NULL,
     ALTER COLUMN blueprint_id SET NOT NULL;
 
 /*
@@ -432,6 +443,7 @@ CREATE TABLE blueprint_ammo
     id                             UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
     label                          TEXT        NOT NULL,
     weapon_type                    WEAPON_TYPE NOT NULL,
+    collection                     COLLECTION  NOT NULL DEFAULT 'supremacy-general',
     damage_multiplier              NUMERIC              DEFAULT 0,
     damage_falloff_multiplier      NUMERIC              DEFAULT 0,
     damage_falloff_rate_multiplier NUMERIC              DEFAULT 0,

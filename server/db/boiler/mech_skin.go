@@ -24,155 +24,152 @@ import (
 
 // MechSkin is an object representing the database table.
 type MechSkin struct {
-	ID               string              `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	BlueprintID      string              `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
-	CollectionItemID string              `boiler:"collection_item_id" boil:"collection_item_id" json:"collection_item_id" toml:"collection_item_id" yaml:"collection_item_id"`
-	GenesisTokenID   decimal.NullDecimal `boiler:"genesis_token_id" boil:"genesis_token_id" json:"genesis_token_id,omitempty" toml:"genesis_token_id" yaml:"genesis_token_id,omitempty"`
-	Label            string              `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	OwnerID          string              `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
-	ChassisModel     string              `boiler:"chassis_model" boil:"chassis_model" json:"chassis_model" toml:"chassis_model" yaml:"chassis_model"`
-	EquippedOn       null.String         `boiler:"equipped_on" boil:"equipped_on" json:"equipped_on,omitempty" toml:"equipped_on" yaml:"equipped_on,omitempty"`
-	Tier             null.String         `boiler:"tier" boil:"tier" json:"tier,omitempty" toml:"tier" yaml:"tier,omitempty"`
-	ImageURL         null.String         `boiler:"image_url" boil:"image_url" json:"image_url,omitempty" toml:"image_url" yaml:"image_url,omitempty"`
-	AnimationURL     null.String         `boiler:"animation_url" boil:"animation_url" json:"animation_url,omitempty" toml:"animation_url" yaml:"animation_url,omitempty"`
-	CardAnimationURL null.String         `boiler:"card_animation_url" boil:"card_animation_url" json:"card_animation_url,omitempty" toml:"card_animation_url" yaml:"card_animation_url,omitempty"`
-	AvatarURL        null.String         `boiler:"avatar_url" boil:"avatar_url" json:"avatar_url,omitempty" toml:"avatar_url" yaml:"avatar_url,omitempty"`
-	LargeImageURL    null.String         `boiler:"large_image_url" boil:"large_image_url" json:"large_image_url,omitempty" toml:"large_image_url" yaml:"large_image_url,omitempty"`
-	CreatedAt        time.Time           `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ID                    string              `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	BlueprintID           string              `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
+	GenesisTokenID        decimal.NullDecimal `boiler:"genesis_token_id" boil:"genesis_token_id" json:"genesis_token_id,omitempty" toml:"genesis_token_id" yaml:"genesis_token_id,omitempty"`
+	LimitedReleaseTokenID decimal.NullDecimal `boiler:"limited_release_token_id" boil:"limited_release_token_id" json:"limited_release_token_id,omitempty" toml:"limited_release_token_id" yaml:"limited_release_token_id,omitempty"`
+	Label                 string              `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	OwnerID               string              `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
+	MechModel             string              `boiler:"mech_model" boil:"mech_model" json:"mech_model" toml:"mech_model" yaml:"mech_model"`
+	EquippedOn            null.String         `boiler:"equipped_on" boil:"equipped_on" json:"equipped_on,omitempty" toml:"equipped_on" yaml:"equipped_on,omitempty"`
+	Tier                  null.String         `boiler:"tier" boil:"tier" json:"tier,omitempty" toml:"tier" yaml:"tier,omitempty"`
+	ImageURL              null.String         `boiler:"image_url" boil:"image_url" json:"image_url,omitempty" toml:"image_url" yaml:"image_url,omitempty"`
+	AnimationURL          null.String         `boiler:"animation_url" boil:"animation_url" json:"animation_url,omitempty" toml:"animation_url" yaml:"animation_url,omitempty"`
+	CardAnimationURL      null.String         `boiler:"card_animation_url" boil:"card_animation_url" json:"card_animation_url,omitempty" toml:"card_animation_url" yaml:"card_animation_url,omitempty"`
+	AvatarURL             null.String         `boiler:"avatar_url" boil:"avatar_url" json:"avatar_url,omitempty" toml:"avatar_url" yaml:"avatar_url,omitempty"`
+	LargeImageURL         null.String         `boiler:"large_image_url" boil:"large_image_url" json:"large_image_url,omitempty" toml:"large_image_url" yaml:"large_image_url,omitempty"`
+	CreatedAt             time.Time           `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *mechSkinR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L mechSkinL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var MechSkinColumns = struct {
-	ID               string
-	BlueprintID      string
-	CollectionItemID string
-	GenesisTokenID   string
-	Label            string
-	OwnerID          string
-	ChassisModel     string
-	EquippedOn       string
-	Tier             string
-	ImageURL         string
-	AnimationURL     string
-	CardAnimationURL string
-	AvatarURL        string
-	LargeImageURL    string
-	CreatedAt        string
+	ID                    string
+	BlueprintID           string
+	GenesisTokenID        string
+	LimitedReleaseTokenID string
+	Label                 string
+	OwnerID               string
+	MechModel             string
+	EquippedOn            string
+	Tier                  string
+	ImageURL              string
+	AnimationURL          string
+	CardAnimationURL      string
+	AvatarURL             string
+	LargeImageURL         string
+	CreatedAt             string
 }{
-	ID:               "id",
-	BlueprintID:      "blueprint_id",
-	CollectionItemID: "collection_item_id",
-	GenesisTokenID:   "genesis_token_id",
-	Label:            "label",
-	OwnerID:          "owner_id",
-	ChassisModel:     "chassis_model",
-	EquippedOn:       "equipped_on",
-	Tier:             "tier",
-	ImageURL:         "image_url",
-	AnimationURL:     "animation_url",
-	CardAnimationURL: "card_animation_url",
-	AvatarURL:        "avatar_url",
-	LargeImageURL:    "large_image_url",
-	CreatedAt:        "created_at",
+	ID:                    "id",
+	BlueprintID:           "blueprint_id",
+	GenesisTokenID:        "genesis_token_id",
+	LimitedReleaseTokenID: "limited_release_token_id",
+	Label:                 "label",
+	OwnerID:               "owner_id",
+	MechModel:             "mech_model",
+	EquippedOn:            "equipped_on",
+	Tier:                  "tier",
+	ImageURL:              "image_url",
+	AnimationURL:          "animation_url",
+	CardAnimationURL:      "card_animation_url",
+	AvatarURL:             "avatar_url",
+	LargeImageURL:         "large_image_url",
+	CreatedAt:             "created_at",
 }
 
 var MechSkinTableColumns = struct {
-	ID               string
-	BlueprintID      string
-	CollectionItemID string
-	GenesisTokenID   string
-	Label            string
-	OwnerID          string
-	ChassisModel     string
-	EquippedOn       string
-	Tier             string
-	ImageURL         string
-	AnimationURL     string
-	CardAnimationURL string
-	AvatarURL        string
-	LargeImageURL    string
-	CreatedAt        string
+	ID                    string
+	BlueprintID           string
+	GenesisTokenID        string
+	LimitedReleaseTokenID string
+	Label                 string
+	OwnerID               string
+	MechModel             string
+	EquippedOn            string
+	Tier                  string
+	ImageURL              string
+	AnimationURL          string
+	CardAnimationURL      string
+	AvatarURL             string
+	LargeImageURL         string
+	CreatedAt             string
 }{
-	ID:               "mech_skin.id",
-	BlueprintID:      "mech_skin.blueprint_id",
-	CollectionItemID: "mech_skin.collection_item_id",
-	GenesisTokenID:   "mech_skin.genesis_token_id",
-	Label:            "mech_skin.label",
-	OwnerID:          "mech_skin.owner_id",
-	ChassisModel:     "mech_skin.chassis_model",
-	EquippedOn:       "mech_skin.equipped_on",
-	Tier:             "mech_skin.tier",
-	ImageURL:         "mech_skin.image_url",
-	AnimationURL:     "mech_skin.animation_url",
-	CardAnimationURL: "mech_skin.card_animation_url",
-	AvatarURL:        "mech_skin.avatar_url",
-	LargeImageURL:    "mech_skin.large_image_url",
-	CreatedAt:        "mech_skin.created_at",
+	ID:                    "mech_skin.id",
+	BlueprintID:           "mech_skin.blueprint_id",
+	GenesisTokenID:        "mech_skin.genesis_token_id",
+	LimitedReleaseTokenID: "mech_skin.limited_release_token_id",
+	Label:                 "mech_skin.label",
+	OwnerID:               "mech_skin.owner_id",
+	MechModel:             "mech_skin.mech_model",
+	EquippedOn:            "mech_skin.equipped_on",
+	Tier:                  "mech_skin.tier",
+	ImageURL:              "mech_skin.image_url",
+	AnimationURL:          "mech_skin.animation_url",
+	CardAnimationURL:      "mech_skin.card_animation_url",
+	AvatarURL:             "mech_skin.avatar_url",
+	LargeImageURL:         "mech_skin.large_image_url",
+	CreatedAt:             "mech_skin.created_at",
 }
 
 // Generated where
 
 var MechSkinWhere = struct {
-	ID               whereHelperstring
-	BlueprintID      whereHelperstring
-	CollectionItemID whereHelperstring
-	GenesisTokenID   whereHelperdecimal_NullDecimal
-	Label            whereHelperstring
-	OwnerID          whereHelperstring
-	ChassisModel     whereHelperstring
-	EquippedOn       whereHelpernull_String
-	Tier             whereHelpernull_String
-	ImageURL         whereHelpernull_String
-	AnimationURL     whereHelpernull_String
-	CardAnimationURL whereHelpernull_String
-	AvatarURL        whereHelpernull_String
-	LargeImageURL    whereHelpernull_String
-	CreatedAt        whereHelpertime_Time
+	ID                    whereHelperstring
+	BlueprintID           whereHelperstring
+	GenesisTokenID        whereHelperdecimal_NullDecimal
+	LimitedReleaseTokenID whereHelperdecimal_NullDecimal
+	Label                 whereHelperstring
+	OwnerID               whereHelperstring
+	MechModel             whereHelperstring
+	EquippedOn            whereHelpernull_String
+	Tier                  whereHelpernull_String
+	ImageURL              whereHelpernull_String
+	AnimationURL          whereHelpernull_String
+	CardAnimationURL      whereHelpernull_String
+	AvatarURL             whereHelpernull_String
+	LargeImageURL         whereHelpernull_String
+	CreatedAt             whereHelpertime_Time
 }{
-	ID:               whereHelperstring{field: "\"mech_skin\".\"id\""},
-	BlueprintID:      whereHelperstring{field: "\"mech_skin\".\"blueprint_id\""},
-	CollectionItemID: whereHelperstring{field: "\"mech_skin\".\"collection_item_id\""},
-	GenesisTokenID:   whereHelperdecimal_NullDecimal{field: "\"mech_skin\".\"genesis_token_id\""},
-	Label:            whereHelperstring{field: "\"mech_skin\".\"label\""},
-	OwnerID:          whereHelperstring{field: "\"mech_skin\".\"owner_id\""},
-	ChassisModel:     whereHelperstring{field: "\"mech_skin\".\"chassis_model\""},
-	EquippedOn:       whereHelpernull_String{field: "\"mech_skin\".\"equipped_on\""},
-	Tier:             whereHelpernull_String{field: "\"mech_skin\".\"tier\""},
-	ImageURL:         whereHelpernull_String{field: "\"mech_skin\".\"image_url\""},
-	AnimationURL:     whereHelpernull_String{field: "\"mech_skin\".\"animation_url\""},
-	CardAnimationURL: whereHelpernull_String{field: "\"mech_skin\".\"card_animation_url\""},
-	AvatarURL:        whereHelpernull_String{field: "\"mech_skin\".\"avatar_url\""},
-	LargeImageURL:    whereHelpernull_String{field: "\"mech_skin\".\"large_image_url\""},
-	CreatedAt:        whereHelpertime_Time{field: "\"mech_skin\".\"created_at\""},
+	ID:                    whereHelperstring{field: "\"mech_skin\".\"id\""},
+	BlueprintID:           whereHelperstring{field: "\"mech_skin\".\"blueprint_id\""},
+	GenesisTokenID:        whereHelperdecimal_NullDecimal{field: "\"mech_skin\".\"genesis_token_id\""},
+	LimitedReleaseTokenID: whereHelperdecimal_NullDecimal{field: "\"mech_skin\".\"limited_release_token_id\""},
+	Label:                 whereHelperstring{field: "\"mech_skin\".\"label\""},
+	OwnerID:               whereHelperstring{field: "\"mech_skin\".\"owner_id\""},
+	MechModel:             whereHelperstring{field: "\"mech_skin\".\"mech_model\""},
+	EquippedOn:            whereHelpernull_String{field: "\"mech_skin\".\"equipped_on\""},
+	Tier:                  whereHelpernull_String{field: "\"mech_skin\".\"tier\""},
+	ImageURL:              whereHelpernull_String{field: "\"mech_skin\".\"image_url\""},
+	AnimationURL:          whereHelpernull_String{field: "\"mech_skin\".\"animation_url\""},
+	CardAnimationURL:      whereHelpernull_String{field: "\"mech_skin\".\"card_animation_url\""},
+	AvatarURL:             whereHelpernull_String{field: "\"mech_skin\".\"avatar_url\""},
+	LargeImageURL:         whereHelpernull_String{field: "\"mech_skin\".\"large_image_url\""},
+	CreatedAt:             whereHelpertime_Time{field: "\"mech_skin\".\"created_at\""},
 }
 
 // MechSkinRels is where relationship names are stored.
 var MechSkinRels = struct {
-	Blueprint             string
-	ChassisModelMechModel string
-	CollectionItem        string
-	EquippedOnMech        string
-	Owner                 string
-	ChassisSkinMechs      string
+	Blueprint         string
+	EquippedOnMech    string
+	MechSkinMechModel string
+	Owner             string
+	ChassisSkinMechs  string
 }{
-	Blueprint:             "Blueprint",
-	ChassisModelMechModel: "ChassisModelMechModel",
-	CollectionItem:        "CollectionItem",
-	EquippedOnMech:        "EquippedOnMech",
-	Owner:                 "Owner",
-	ChassisSkinMechs:      "ChassisSkinMechs",
+	Blueprint:         "Blueprint",
+	EquippedOnMech:    "EquippedOnMech",
+	MechSkinMechModel: "MechSkinMechModel",
+	Owner:             "Owner",
+	ChassisSkinMechs:  "ChassisSkinMechs",
 }
 
 // mechSkinR is where relationships are stored.
 type mechSkinR struct {
-	Blueprint             *BlueprintMechSkin `boiler:"Blueprint" boil:"Blueprint" json:"Blueprint" toml:"Blueprint" yaml:"Blueprint"`
-	ChassisModelMechModel *MechModel         `boiler:"ChassisModelMechModel" boil:"ChassisModelMechModel" json:"ChassisModelMechModel" toml:"ChassisModelMechModel" yaml:"ChassisModelMechModel"`
-	CollectionItem        *CollectionItem    `boiler:"CollectionItem" boil:"CollectionItem" json:"CollectionItem" toml:"CollectionItem" yaml:"CollectionItem"`
-	EquippedOnMech        *Mech              `boiler:"EquippedOnMech" boil:"EquippedOnMech" json:"EquippedOnMech" toml:"EquippedOnMech" yaml:"EquippedOnMech"`
-	Owner                 *Player            `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
-	ChassisSkinMechs      MechSlice          `boiler:"ChassisSkinMechs" boil:"ChassisSkinMechs" json:"ChassisSkinMechs" toml:"ChassisSkinMechs" yaml:"ChassisSkinMechs"`
+	Blueprint         *BlueprintMechSkin `boiler:"Blueprint" boil:"Blueprint" json:"Blueprint" toml:"Blueprint" yaml:"Blueprint"`
+	EquippedOnMech    *Mech              `boiler:"EquippedOnMech" boil:"EquippedOnMech" json:"EquippedOnMech" toml:"EquippedOnMech" yaml:"EquippedOnMech"`
+	MechSkinMechModel *MechModel         `boiler:"MechSkinMechModel" boil:"MechSkinMechModel" json:"MechSkinMechModel" toml:"MechSkinMechModel" yaml:"MechSkinMechModel"`
+	Owner             *Player            `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
+	ChassisSkinMechs  MechSlice          `boiler:"ChassisSkinMechs" boil:"ChassisSkinMechs" json:"ChassisSkinMechs" toml:"ChassisSkinMechs" yaml:"ChassisSkinMechs"`
 }
 
 // NewStruct creates a new relationship struct
@@ -184,9 +181,9 @@ func (*mechSkinR) NewStruct() *mechSkinR {
 type mechSkinL struct{}
 
 var (
-	mechSkinAllColumns            = []string{"id", "blueprint_id", "collection_item_id", "genesis_token_id", "label", "owner_id", "chassis_model", "equipped_on", "tier", "image_url", "animation_url", "card_animation_url", "avatar_url", "large_image_url", "created_at"}
-	mechSkinColumnsWithoutDefault = []string{"blueprint_id", "collection_item_id", "label", "owner_id", "chassis_model"}
-	mechSkinColumnsWithDefault    = []string{"id", "genesis_token_id", "equipped_on", "tier", "image_url", "animation_url", "card_animation_url", "avatar_url", "large_image_url", "created_at"}
+	mechSkinAllColumns            = []string{"id", "blueprint_id", "genesis_token_id", "limited_release_token_id", "label", "owner_id", "mech_model", "equipped_on", "tier", "image_url", "animation_url", "card_animation_url", "avatar_url", "large_image_url", "created_at"}
+	mechSkinColumnsWithoutDefault = []string{"blueprint_id", "label", "owner_id", "mech_model"}
+	mechSkinColumnsWithDefault    = []string{"id", "genesis_token_id", "limited_release_token_id", "equipped_on", "tier", "image_url", "animation_url", "card_animation_url", "avatar_url", "large_image_url", "created_at"}
 	mechSkinPrimaryKeyColumns     = []string{"id"}
 	mechSkinGeneratedColumns      = []string{}
 )
@@ -447,34 +444,6 @@ func (o *MechSkin) Blueprint(mods ...qm.QueryMod) blueprintMechSkinQuery {
 	return query
 }
 
-// ChassisModelMechModel pointed to by the foreign key.
-func (o *MechSkin) ChassisModelMechModel(mods ...qm.QueryMod) mechModelQuery {
-	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.ChassisModel),
-	}
-
-	queryMods = append(queryMods, mods...)
-
-	query := MechModels(queryMods...)
-	queries.SetFrom(query.Query, "\"mech_model\"")
-
-	return query
-}
-
-// CollectionItem pointed to by the foreign key.
-func (o *MechSkin) CollectionItem(mods ...qm.QueryMod) collectionItemQuery {
-	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.CollectionItemID),
-	}
-
-	queryMods = append(queryMods, mods...)
-
-	query := CollectionItems(queryMods...)
-	queries.SetFrom(query.Query, "\"collection_items\"")
-
-	return query
-}
-
 // EquippedOnMech pointed to by the foreign key.
 func (o *MechSkin) EquippedOnMech(mods ...qm.QueryMod) mechQuery {
 	queryMods := []qm.QueryMod{
@@ -486,6 +455,20 @@ func (o *MechSkin) EquippedOnMech(mods ...qm.QueryMod) mechQuery {
 
 	query := Mechs(queryMods...)
 	queries.SetFrom(query.Query, "\"mechs\"")
+
+	return query
+}
+
+// MechSkinMechModel pointed to by the foreign key.
+func (o *MechSkin) MechSkinMechModel(mods ...qm.QueryMod) mechModelQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.MechModel),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := MechModels(queryMods...)
+	queries.SetFrom(query.Query, "\"mech_model\"")
 
 	return query
 }
@@ -631,214 +614,6 @@ func (mechSkinL) LoadBlueprint(e boil.Executor, singular bool, maybeMechSkin int
 	return nil
 }
 
-// LoadChassisModelMechModel allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for an N-1 relationship.
-func (mechSkinL) LoadChassisModelMechModel(e boil.Executor, singular bool, maybeMechSkin interface{}, mods queries.Applicator) error {
-	var slice []*MechSkin
-	var object *MechSkin
-
-	if singular {
-		object = maybeMechSkin.(*MechSkin)
-	} else {
-		slice = *maybeMechSkin.(*[]*MechSkin)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &mechSkinR{}
-		}
-		args = append(args, object.ChassisModel)
-
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &mechSkinR{}
-			}
-
-			for _, a := range args {
-				if a == obj.ChassisModel {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ChassisModel)
-
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`mech_model`),
-		qm.WhereIn(`mech_model.id in ?`, args...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load MechModel")
-	}
-
-	var resultSlice []*MechModel
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice MechModel")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for mech_model")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mech_model")
-	}
-
-	if len(mechSkinAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-
-	if len(resultSlice) == 0 {
-		return nil
-	}
-
-	if singular {
-		foreign := resultSlice[0]
-		object.R.ChassisModelMechModel = foreign
-		if foreign.R == nil {
-			foreign.R = &mechModelR{}
-		}
-		foreign.R.ChassisModelMechSkins = append(foreign.R.ChassisModelMechSkins, object)
-		return nil
-	}
-
-	for _, local := range slice {
-		for _, foreign := range resultSlice {
-			if local.ChassisModel == foreign.ID {
-				local.R.ChassisModelMechModel = foreign
-				if foreign.R == nil {
-					foreign.R = &mechModelR{}
-				}
-				foreign.R.ChassisModelMechSkins = append(foreign.R.ChassisModelMechSkins, local)
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadCollectionItem allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for an N-1 relationship.
-func (mechSkinL) LoadCollectionItem(e boil.Executor, singular bool, maybeMechSkin interface{}, mods queries.Applicator) error {
-	var slice []*MechSkin
-	var object *MechSkin
-
-	if singular {
-		object = maybeMechSkin.(*MechSkin)
-	} else {
-		slice = *maybeMechSkin.(*[]*MechSkin)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &mechSkinR{}
-		}
-		args = append(args, object.CollectionItemID)
-
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &mechSkinR{}
-			}
-
-			for _, a := range args {
-				if a == obj.CollectionItemID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.CollectionItemID)
-
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`collection_items`),
-		qm.WhereIn(`collection_items.id in ?`, args...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load CollectionItem")
-	}
-
-	var resultSlice []*CollectionItem
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice CollectionItem")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for collection_items")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for collection_items")
-	}
-
-	if len(mechSkinAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-
-	if len(resultSlice) == 0 {
-		return nil
-	}
-
-	if singular {
-		foreign := resultSlice[0]
-		object.R.CollectionItem = foreign
-		if foreign.R == nil {
-			foreign.R = &collectionItemR{}
-		}
-		foreign.R.MechSkins = append(foreign.R.MechSkins, object)
-		return nil
-	}
-
-	for _, local := range slice {
-		for _, foreign := range resultSlice {
-			if local.CollectionItemID == foreign.ID {
-				local.R.CollectionItem = foreign
-				if foreign.R == nil {
-					foreign.R = &collectionItemR{}
-				}
-				foreign.R.MechSkins = append(foreign.R.MechSkins, local)
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
 // LoadEquippedOnMech allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
 func (mechSkinL) LoadEquippedOnMech(e boil.Executor, singular bool, maybeMechSkin interface{}, mods queries.Applicator) error {
@@ -940,6 +715,110 @@ func (mechSkinL) LoadEquippedOnMech(e boil.Executor, singular bool, maybeMechSki
 					foreign.R = &mechR{}
 				}
 				foreign.R.EquippedOnMechSkins = append(foreign.R.EquippedOnMechSkins, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadMechSkinMechModel allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (mechSkinL) LoadMechSkinMechModel(e boil.Executor, singular bool, maybeMechSkin interface{}, mods queries.Applicator) error {
+	var slice []*MechSkin
+	var object *MechSkin
+
+	if singular {
+		object = maybeMechSkin.(*MechSkin)
+	} else {
+		slice = *maybeMechSkin.(*[]*MechSkin)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &mechSkinR{}
+		}
+		args = append(args, object.MechModel)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &mechSkinR{}
+			}
+
+			for _, a := range args {
+				if a == obj.MechModel {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.MechModel)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`mech_model`),
+		qm.WhereIn(`mech_model.id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load MechModel")
+	}
+
+	var resultSlice []*MechModel
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice MechModel")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for mech_model")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mech_model")
+	}
+
+	if len(mechSkinAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.MechSkinMechModel = foreign
+		if foreign.R == nil {
+			foreign.R = &mechModelR{}
+		}
+		foreign.R.MechSkins = append(foreign.R.MechSkins, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.MechModel == foreign.ID {
+				local.R.MechSkinMechModel = foreign
+				if foreign.R == nil {
+					foreign.R = &mechModelR{}
+				}
+				foreign.R.MechSkins = append(foreign.R.MechSkins, local)
 				break
 			}
 		}
@@ -1198,98 +1077,6 @@ func (o *MechSkin) SetBlueprint(exec boil.Executor, insert bool, related *Bluepr
 	return nil
 }
 
-// SetChassisModelMechModel of the mechSkin to the related item.
-// Sets o.R.ChassisModelMechModel to related.
-// Adds o to related.R.ChassisModelMechSkins.
-func (o *MechSkin) SetChassisModelMechModel(exec boil.Executor, insert bool, related *MechModel) error {
-	var err error
-	if insert {
-		if err = related.Insert(exec, boil.Infer()); err != nil {
-			return errors.Wrap(err, "failed to insert into foreign table")
-		}
-	}
-
-	updateQuery := fmt.Sprintf(
-		"UPDATE \"mech_skin\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"chassis_model"}),
-		strmangle.WhereClause("\"", "\"", 2, mechSkinPrimaryKeyColumns),
-	)
-	values := []interface{}{related.ID, o.ID}
-
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, updateQuery)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	if _, err = exec.Exec(updateQuery, values...); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	o.ChassisModel = related.ID
-	if o.R == nil {
-		o.R = &mechSkinR{
-			ChassisModelMechModel: related,
-		}
-	} else {
-		o.R.ChassisModelMechModel = related
-	}
-
-	if related.R == nil {
-		related.R = &mechModelR{
-			ChassisModelMechSkins: MechSkinSlice{o},
-		}
-	} else {
-		related.R.ChassisModelMechSkins = append(related.R.ChassisModelMechSkins, o)
-	}
-
-	return nil
-}
-
-// SetCollectionItem of the mechSkin to the related item.
-// Sets o.R.CollectionItem to related.
-// Adds o to related.R.MechSkins.
-func (o *MechSkin) SetCollectionItem(exec boil.Executor, insert bool, related *CollectionItem) error {
-	var err error
-	if insert {
-		if err = related.Insert(exec, boil.Infer()); err != nil {
-			return errors.Wrap(err, "failed to insert into foreign table")
-		}
-	}
-
-	updateQuery := fmt.Sprintf(
-		"UPDATE \"mech_skin\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"collection_item_id"}),
-		strmangle.WhereClause("\"", "\"", 2, mechSkinPrimaryKeyColumns),
-	)
-	values := []interface{}{related.ID, o.ID}
-
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, updateQuery)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	if _, err = exec.Exec(updateQuery, values...); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	o.CollectionItemID = related.ID
-	if o.R == nil {
-		o.R = &mechSkinR{
-			CollectionItem: related,
-		}
-	} else {
-		o.R.CollectionItem = related
-	}
-
-	if related.R == nil {
-		related.R = &collectionItemR{
-			MechSkins: MechSkinSlice{o},
-		}
-	} else {
-		related.R.MechSkins = append(related.R.MechSkins, o)
-	}
-
-	return nil
-}
-
 // SetEquippedOnMech of the mechSkin to the related item.
 // Sets o.R.EquippedOnMech to related.
 // Adds o to related.R.EquippedOnMechSkins.
@@ -1366,6 +1153,52 @@ func (o *MechSkin) RemoveEquippedOnMech(exec boil.Executor, related *Mech) error
 		related.R.EquippedOnMechSkins = related.R.EquippedOnMechSkins[:ln-1]
 		break
 	}
+	return nil
+}
+
+// SetMechSkinMechModel of the mechSkin to the related item.
+// Sets o.R.MechSkinMechModel to related.
+// Adds o to related.R.MechSkins.
+func (o *MechSkin) SetMechSkinMechModel(exec boil.Executor, insert bool, related *MechModel) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"mech_skin\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"mech_model"}),
+		strmangle.WhereClause("\"", "\"", 2, mechSkinPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.MechModel = related.ID
+	if o.R == nil {
+		o.R = &mechSkinR{
+			MechSkinMechModel: related,
+		}
+	} else {
+		o.R.MechSkinMechModel = related
+	}
+
+	if related.R == nil {
+		related.R = &mechModelR{
+			MechSkins: MechSkinSlice{o},
+		}
+	} else {
+		related.R.MechSkins = append(related.R.MechSkins, o)
+	}
+
 	return nil
 }
 

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
@@ -23,287 +24,281 @@ import (
 
 // Mech is an object representing the database table.
 type Mech struct {
-	ID               string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	BrandID          string      `boiler:"brand_id" boil:"brand_id" json:"brand_id" toml:"brand_id" yaml:"brand_id"`
-	Label            string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	WeaponHardpoints int         `boiler:"weapon_hardpoints" boil:"weapon_hardpoints" json:"weapon_hardpoints" toml:"weapon_hardpoints" yaml:"weapon_hardpoints"`
-	UtilitySlots     int         `boiler:"utility_slots" boil:"utility_slots" json:"utility_slots" toml:"utility_slots" yaml:"utility_slots"`
-	Speed            int         `boiler:"speed" boil:"speed" json:"speed" toml:"speed" yaml:"speed"`
-	MaxHitpoints     int         `boiler:"max_hitpoints" boil:"max_hitpoints" json:"max_hitpoints" toml:"max_hitpoints" yaml:"max_hitpoints"`
-	DeletedAt        null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	UpdatedAt        time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt        time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	BlueprintID      string      `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
-	IsDefault        bool        `boiler:"is_default" boil:"is_default" json:"is_default" toml:"is_default" yaml:"is_default"`
-	IsInsured        bool        `boiler:"is_insured" boil:"is_insured" json:"is_insured" toml:"is_insured" yaml:"is_insured"`
-	Name             string      `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
-	ModelID          string      `boiler:"model_id" boil:"model_id" json:"model_id" toml:"model_id" yaml:"model_id"`
-	CollectionItemID string      `boiler:"collection_item_id" boil:"collection_item_id" json:"collection_item_id" toml:"collection_item_id" yaml:"collection_item_id"`
-	GenesisTokenID   null.Int    `boiler:"genesis_token_id" boil:"genesis_token_id" json:"genesis_token_id,omitempty" toml:"genesis_token_id" yaml:"genesis_token_id,omitempty"`
-	OwnerID          string      `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
-	EnergyCoreSize   string      `boiler:"energy_core_size" boil:"energy_core_size" json:"energy_core_size" toml:"energy_core_size" yaml:"energy_core_size"`
-	Tier             null.String `boiler:"tier" boil:"tier" json:"tier,omitempty" toml:"tier" yaml:"tier,omitempty"`
-	ChassisSkinID    null.String `boiler:"chassis_skin_id" boil:"chassis_skin_id" json:"chassis_skin_id,omitempty" toml:"chassis_skin_id" yaml:"chassis_skin_id,omitempty"`
-	EnergyCoreID     null.String `boiler:"energy_core_id" boil:"energy_core_id" json:"energy_core_id,omitempty" toml:"energy_core_id" yaml:"energy_core_id,omitempty"`
-	IntroAnimationID null.String `boiler:"intro_animation_id" boil:"intro_animation_id" json:"intro_animation_id,omitempty" toml:"intro_animation_id" yaml:"intro_animation_id,omitempty"`
-	OutroAnimationID null.String `boiler:"outro_animation_id" boil:"outro_animation_id" json:"outro_animation_id,omitempty" toml:"outro_animation_id" yaml:"outro_animation_id,omitempty"`
+	ID                    string              `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	BrandID               string              `boiler:"brand_id" boil:"brand_id" json:"brand_id" toml:"brand_id" yaml:"brand_id"`
+	Label                 string              `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	WeaponHardpoints      int                 `boiler:"weapon_hardpoints" boil:"weapon_hardpoints" json:"weapon_hardpoints" toml:"weapon_hardpoints" yaml:"weapon_hardpoints"`
+	UtilitySlots          int                 `boiler:"utility_slots" boil:"utility_slots" json:"utility_slots" toml:"utility_slots" yaml:"utility_slots"`
+	Speed                 int                 `boiler:"speed" boil:"speed" json:"speed" toml:"speed" yaml:"speed"`
+	MaxHitpoints          int                 `boiler:"max_hitpoints" boil:"max_hitpoints" json:"max_hitpoints" toml:"max_hitpoints" yaml:"max_hitpoints"`
+	DeletedAt             null.Time           `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt             time.Time           `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt             time.Time           `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	BlueprintID           string              `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
+	IsDefault             bool                `boiler:"is_default" boil:"is_default" json:"is_default" toml:"is_default" yaml:"is_default"`
+	IsInsured             bool                `boiler:"is_insured" boil:"is_insured" json:"is_insured" toml:"is_insured" yaml:"is_insured"`
+	Name                  string              `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
+	ModelID               string              `boiler:"model_id" boil:"model_id" json:"model_id" toml:"model_id" yaml:"model_id"`
+	GenesisTokenID        decimal.NullDecimal `boiler:"genesis_token_id" boil:"genesis_token_id" json:"genesis_token_id,omitempty" toml:"genesis_token_id" yaml:"genesis_token_id,omitempty"`
+	LimitedReleaseTokenID decimal.NullDecimal `boiler:"limited_release_token_id" boil:"limited_release_token_id" json:"limited_release_token_id,omitempty" toml:"limited_release_token_id" yaml:"limited_release_token_id,omitempty"`
+	OwnerID               string              `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
+	EnergyCoreSize        string              `boiler:"energy_core_size" boil:"energy_core_size" json:"energy_core_size" toml:"energy_core_size" yaml:"energy_core_size"`
+	Tier                  null.String         `boiler:"tier" boil:"tier" json:"tier,omitempty" toml:"tier" yaml:"tier,omitempty"`
+	ChassisSkinID         null.String         `boiler:"chassis_skin_id" boil:"chassis_skin_id" json:"chassis_skin_id,omitempty" toml:"chassis_skin_id" yaml:"chassis_skin_id,omitempty"`
+	EnergyCoreID          null.String         `boiler:"energy_core_id" boil:"energy_core_id" json:"energy_core_id,omitempty" toml:"energy_core_id" yaml:"energy_core_id,omitempty"`
+	IntroAnimationID      null.String         `boiler:"intro_animation_id" boil:"intro_animation_id" json:"intro_animation_id,omitempty" toml:"intro_animation_id" yaml:"intro_animation_id,omitempty"`
+	OutroAnimationID      null.String         `boiler:"outro_animation_id" boil:"outro_animation_id" json:"outro_animation_id,omitempty" toml:"outro_animation_id" yaml:"outro_animation_id,omitempty"`
 
 	R *mechR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L mechL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var MechColumns = struct {
-	ID               string
-	BrandID          string
-	Label            string
-	WeaponHardpoints string
-	UtilitySlots     string
-	Speed            string
-	MaxHitpoints     string
-	DeletedAt        string
-	UpdatedAt        string
-	CreatedAt        string
-	BlueprintID      string
-	IsDefault        string
-	IsInsured        string
-	Name             string
-	ModelID          string
-	CollectionItemID string
-	GenesisTokenID   string
-	OwnerID          string
-	EnergyCoreSize   string
-	Tier             string
-	ChassisSkinID    string
-	EnergyCoreID     string
-	IntroAnimationID string
-	OutroAnimationID string
+	ID                    string
+	BrandID               string
+	Label                 string
+	WeaponHardpoints      string
+	UtilitySlots          string
+	Speed                 string
+	MaxHitpoints          string
+	DeletedAt             string
+	UpdatedAt             string
+	CreatedAt             string
+	BlueprintID           string
+	IsDefault             string
+	IsInsured             string
+	Name                  string
+	ModelID               string
+	GenesisTokenID        string
+	LimitedReleaseTokenID string
+	OwnerID               string
+	EnergyCoreSize        string
+	Tier                  string
+	ChassisSkinID         string
+	EnergyCoreID          string
+	IntroAnimationID      string
+	OutroAnimationID      string
 }{
-	ID:               "id",
-	BrandID:          "brand_id",
-	Label:            "label",
-	WeaponHardpoints: "weapon_hardpoints",
-	UtilitySlots:     "utility_slots",
-	Speed:            "speed",
-	MaxHitpoints:     "max_hitpoints",
-	DeletedAt:        "deleted_at",
-	UpdatedAt:        "updated_at",
-	CreatedAt:        "created_at",
-	BlueprintID:      "blueprint_id",
-	IsDefault:        "is_default",
-	IsInsured:        "is_insured",
-	Name:             "name",
-	ModelID:          "model_id",
-	CollectionItemID: "collection_item_id",
-	GenesisTokenID:   "genesis_token_id",
-	OwnerID:          "owner_id",
-	EnergyCoreSize:   "energy_core_size",
-	Tier:             "tier",
-	ChassisSkinID:    "chassis_skin_id",
-	EnergyCoreID:     "energy_core_id",
-	IntroAnimationID: "intro_animation_id",
-	OutroAnimationID: "outro_animation_id",
+	ID:                    "id",
+	BrandID:               "brand_id",
+	Label:                 "label",
+	WeaponHardpoints:      "weapon_hardpoints",
+	UtilitySlots:          "utility_slots",
+	Speed:                 "speed",
+	MaxHitpoints:          "max_hitpoints",
+	DeletedAt:             "deleted_at",
+	UpdatedAt:             "updated_at",
+	CreatedAt:             "created_at",
+	BlueprintID:           "blueprint_id",
+	IsDefault:             "is_default",
+	IsInsured:             "is_insured",
+	Name:                  "name",
+	ModelID:               "model_id",
+	GenesisTokenID:        "genesis_token_id",
+	LimitedReleaseTokenID: "limited_release_token_id",
+	OwnerID:               "owner_id",
+	EnergyCoreSize:        "energy_core_size",
+	Tier:                  "tier",
+	ChassisSkinID:         "chassis_skin_id",
+	EnergyCoreID:          "energy_core_id",
+	IntroAnimationID:      "intro_animation_id",
+	OutroAnimationID:      "outro_animation_id",
 }
 
 var MechTableColumns = struct {
-	ID               string
-	BrandID          string
-	Label            string
-	WeaponHardpoints string
-	UtilitySlots     string
-	Speed            string
-	MaxHitpoints     string
-	DeletedAt        string
-	UpdatedAt        string
-	CreatedAt        string
-	BlueprintID      string
-	IsDefault        string
-	IsInsured        string
-	Name             string
-	ModelID          string
-	CollectionItemID string
-	GenesisTokenID   string
-	OwnerID          string
-	EnergyCoreSize   string
-	Tier             string
-	ChassisSkinID    string
-	EnergyCoreID     string
-	IntroAnimationID string
-	OutroAnimationID string
+	ID                    string
+	BrandID               string
+	Label                 string
+	WeaponHardpoints      string
+	UtilitySlots          string
+	Speed                 string
+	MaxHitpoints          string
+	DeletedAt             string
+	UpdatedAt             string
+	CreatedAt             string
+	BlueprintID           string
+	IsDefault             string
+	IsInsured             string
+	Name                  string
+	ModelID               string
+	GenesisTokenID        string
+	LimitedReleaseTokenID string
+	OwnerID               string
+	EnergyCoreSize        string
+	Tier                  string
+	ChassisSkinID         string
+	EnergyCoreID          string
+	IntroAnimationID      string
+	OutroAnimationID      string
 }{
-	ID:               "mechs.id",
-	BrandID:          "mechs.brand_id",
-	Label:            "mechs.label",
-	WeaponHardpoints: "mechs.weapon_hardpoints",
-	UtilitySlots:     "mechs.utility_slots",
-	Speed:            "mechs.speed",
-	MaxHitpoints:     "mechs.max_hitpoints",
-	DeletedAt:        "mechs.deleted_at",
-	UpdatedAt:        "mechs.updated_at",
-	CreatedAt:        "mechs.created_at",
-	BlueprintID:      "mechs.blueprint_id",
-	IsDefault:        "mechs.is_default",
-	IsInsured:        "mechs.is_insured",
-	Name:             "mechs.name",
-	ModelID:          "mechs.model_id",
-	CollectionItemID: "mechs.collection_item_id",
-	GenesisTokenID:   "mechs.genesis_token_id",
-	OwnerID:          "mechs.owner_id",
-	EnergyCoreSize:   "mechs.energy_core_size",
-	Tier:             "mechs.tier",
-	ChassisSkinID:    "mechs.chassis_skin_id",
-	EnergyCoreID:     "mechs.energy_core_id",
-	IntroAnimationID: "mechs.intro_animation_id",
-	OutroAnimationID: "mechs.outro_animation_id",
+	ID:                    "mechs.id",
+	BrandID:               "mechs.brand_id",
+	Label:                 "mechs.label",
+	WeaponHardpoints:      "mechs.weapon_hardpoints",
+	UtilitySlots:          "mechs.utility_slots",
+	Speed:                 "mechs.speed",
+	MaxHitpoints:          "mechs.max_hitpoints",
+	DeletedAt:             "mechs.deleted_at",
+	UpdatedAt:             "mechs.updated_at",
+	CreatedAt:             "mechs.created_at",
+	BlueprintID:           "mechs.blueprint_id",
+	IsDefault:             "mechs.is_default",
+	IsInsured:             "mechs.is_insured",
+	Name:                  "mechs.name",
+	ModelID:               "mechs.model_id",
+	GenesisTokenID:        "mechs.genesis_token_id",
+	LimitedReleaseTokenID: "mechs.limited_release_token_id",
+	OwnerID:               "mechs.owner_id",
+	EnergyCoreSize:        "mechs.energy_core_size",
+	Tier:                  "mechs.tier",
+	ChassisSkinID:         "mechs.chassis_skin_id",
+	EnergyCoreID:          "mechs.energy_core_id",
+	IntroAnimationID:      "mechs.intro_animation_id",
+	OutroAnimationID:      "mechs.outro_animation_id",
 }
 
 // Generated where
 
 var MechWhere = struct {
-	ID               whereHelperstring
-	BrandID          whereHelperstring
-	Label            whereHelperstring
-	WeaponHardpoints whereHelperint
-	UtilitySlots     whereHelperint
-	Speed            whereHelperint
-	MaxHitpoints     whereHelperint
-	DeletedAt        whereHelpernull_Time
-	UpdatedAt        whereHelpertime_Time
-	CreatedAt        whereHelpertime_Time
-	BlueprintID      whereHelperstring
-	IsDefault        whereHelperbool
-	IsInsured        whereHelperbool
-	Name             whereHelperstring
-	ModelID          whereHelperstring
-	CollectionItemID whereHelperstring
-	GenesisTokenID   whereHelpernull_Int
-	OwnerID          whereHelperstring
-	EnergyCoreSize   whereHelperstring
-	Tier             whereHelpernull_String
-	ChassisSkinID    whereHelpernull_String
-	EnergyCoreID     whereHelpernull_String
-	IntroAnimationID whereHelpernull_String
-	OutroAnimationID whereHelpernull_String
+	ID                    whereHelperstring
+	BrandID               whereHelperstring
+	Label                 whereHelperstring
+	WeaponHardpoints      whereHelperint
+	UtilitySlots          whereHelperint
+	Speed                 whereHelperint
+	MaxHitpoints          whereHelperint
+	DeletedAt             whereHelpernull_Time
+	UpdatedAt             whereHelpertime_Time
+	CreatedAt             whereHelpertime_Time
+	BlueprintID           whereHelperstring
+	IsDefault             whereHelperbool
+	IsInsured             whereHelperbool
+	Name                  whereHelperstring
+	ModelID               whereHelperstring
+	GenesisTokenID        whereHelperdecimal_NullDecimal
+	LimitedReleaseTokenID whereHelperdecimal_NullDecimal
+	OwnerID               whereHelperstring
+	EnergyCoreSize        whereHelperstring
+	Tier                  whereHelpernull_String
+	ChassisSkinID         whereHelpernull_String
+	EnergyCoreID          whereHelpernull_String
+	IntroAnimationID      whereHelpernull_String
+	OutroAnimationID      whereHelpernull_String
 }{
-	ID:               whereHelperstring{field: "\"mechs\".\"id\""},
-	BrandID:          whereHelperstring{field: "\"mechs\".\"brand_id\""},
-	Label:            whereHelperstring{field: "\"mechs\".\"label\""},
-	WeaponHardpoints: whereHelperint{field: "\"mechs\".\"weapon_hardpoints\""},
-	UtilitySlots:     whereHelperint{field: "\"mechs\".\"utility_slots\""},
-	Speed:            whereHelperint{field: "\"mechs\".\"speed\""},
-	MaxHitpoints:     whereHelperint{field: "\"mechs\".\"max_hitpoints\""},
-	DeletedAt:        whereHelpernull_Time{field: "\"mechs\".\"deleted_at\""},
-	UpdatedAt:        whereHelpertime_Time{field: "\"mechs\".\"updated_at\""},
-	CreatedAt:        whereHelpertime_Time{field: "\"mechs\".\"created_at\""},
-	BlueprintID:      whereHelperstring{field: "\"mechs\".\"blueprint_id\""},
-	IsDefault:        whereHelperbool{field: "\"mechs\".\"is_default\""},
-	IsInsured:        whereHelperbool{field: "\"mechs\".\"is_insured\""},
-	Name:             whereHelperstring{field: "\"mechs\".\"name\""},
-	ModelID:          whereHelperstring{field: "\"mechs\".\"model_id\""},
-	CollectionItemID: whereHelperstring{field: "\"mechs\".\"collection_item_id\""},
-	GenesisTokenID:   whereHelpernull_Int{field: "\"mechs\".\"genesis_token_id\""},
-	OwnerID:          whereHelperstring{field: "\"mechs\".\"owner_id\""},
-	EnergyCoreSize:   whereHelperstring{field: "\"mechs\".\"energy_core_size\""},
-	Tier:             whereHelpernull_String{field: "\"mechs\".\"tier\""},
-	ChassisSkinID:    whereHelpernull_String{field: "\"mechs\".\"chassis_skin_id\""},
-	EnergyCoreID:     whereHelpernull_String{field: "\"mechs\".\"energy_core_id\""},
-	IntroAnimationID: whereHelpernull_String{field: "\"mechs\".\"intro_animation_id\""},
-	OutroAnimationID: whereHelpernull_String{field: "\"mechs\".\"outro_animation_id\""},
+	ID:                    whereHelperstring{field: "\"mechs\".\"id\""},
+	BrandID:               whereHelperstring{field: "\"mechs\".\"brand_id\""},
+	Label:                 whereHelperstring{field: "\"mechs\".\"label\""},
+	WeaponHardpoints:      whereHelperint{field: "\"mechs\".\"weapon_hardpoints\""},
+	UtilitySlots:          whereHelperint{field: "\"mechs\".\"utility_slots\""},
+	Speed:                 whereHelperint{field: "\"mechs\".\"speed\""},
+	MaxHitpoints:          whereHelperint{field: "\"mechs\".\"max_hitpoints\""},
+	DeletedAt:             whereHelpernull_Time{field: "\"mechs\".\"deleted_at\""},
+	UpdatedAt:             whereHelpertime_Time{field: "\"mechs\".\"updated_at\""},
+	CreatedAt:             whereHelpertime_Time{field: "\"mechs\".\"created_at\""},
+	BlueprintID:           whereHelperstring{field: "\"mechs\".\"blueprint_id\""},
+	IsDefault:             whereHelperbool{field: "\"mechs\".\"is_default\""},
+	IsInsured:             whereHelperbool{field: "\"mechs\".\"is_insured\""},
+	Name:                  whereHelperstring{field: "\"mechs\".\"name\""},
+	ModelID:               whereHelperstring{field: "\"mechs\".\"model_id\""},
+	GenesisTokenID:        whereHelperdecimal_NullDecimal{field: "\"mechs\".\"genesis_token_id\""},
+	LimitedReleaseTokenID: whereHelperdecimal_NullDecimal{field: "\"mechs\".\"limited_release_token_id\""},
+	OwnerID:               whereHelperstring{field: "\"mechs\".\"owner_id\""},
+	EnergyCoreSize:        whereHelperstring{field: "\"mechs\".\"energy_core_size\""},
+	Tier:                  whereHelpernull_String{field: "\"mechs\".\"tier\""},
+	ChassisSkinID:         whereHelpernull_String{field: "\"mechs\".\"chassis_skin_id\""},
+	EnergyCoreID:          whereHelpernull_String{field: "\"mechs\".\"energy_core_id\""},
+	IntroAnimationID:      whereHelpernull_String{field: "\"mechs\".\"intro_animation_id\""},
+	OutroAnimationID:      whereHelpernull_String{field: "\"mechs\".\"outro_animation_id\""},
 }
 
 // MechRels is where relationship names are stored.
 var MechRels = struct {
-	Blueprint                         string
-	Brand                             string
-	ChassisSkin                       string
-	CollectionItem                    string
-	EnergyCore                        string
-	IntroAnimation                    string
-	Model                             string
-	OutroAnimation                    string
-	Owner                             string
-	BattleQueue                       string
-	MechStat                          string
-	BattleContracts                   string
-	WarMachineOneBattleHistories      string
-	WarMachineTwoBattleHistories      string
-	BattleKills                       string
-	KilledBattleKills                 string
-	BattleMechs                       string
-	KilledByBattleMechs               string
-	BattleQueueNotifications          string
-	BattleWins                        string
-	EquippedOnBlueprintMechAnimations string
-	EquippedOnEnergyCores             string
-	EquippedOnMechAnimations          string
-	MechRepairs                       string
-	EquippedOnMechSkins               string
-	ChassisMechUtilities              string
-	ChassisMechWeapons                string
-	EquippedOnUtilities               string
-	EquippedOnWeaponSkins             string
+	Blueprint                    string
+	Brand                        string
+	ChassisSkin                  string
+	EnergyCore                   string
+	IntroAnimation               string
+	Model                        string
+	OutroAnimation               string
+	Owner                        string
+	BattleQueue                  string
+	MechStat                     string
+	BattleContracts              string
+	WarMachineOneBattleHistories string
+	WarMachineTwoBattleHistories string
+	BattleKills                  string
+	KilledBattleKills            string
+	BattleMechs                  string
+	KilledByBattleMechs          string
+	BattleQueueNotifications     string
+	BattleWins                   string
+	EquippedOnEnergyCores        string
+	EquippedOnMechAnimations     string
+	MechRepairs                  string
+	EquippedOnMechSkins          string
+	ChassisMechUtilities         string
+	ChassisMechWeapons           string
+	EquippedOnUtilities          string
+	EquippedOnWeaponSkins        string
 }{
-	Blueprint:                         "Blueprint",
-	Brand:                             "Brand",
-	ChassisSkin:                       "ChassisSkin",
-	CollectionItem:                    "CollectionItem",
-	EnergyCore:                        "EnergyCore",
-	IntroAnimation:                    "IntroAnimation",
-	Model:                             "Model",
-	OutroAnimation:                    "OutroAnimation",
-	Owner:                             "Owner",
-	BattleQueue:                       "BattleQueue",
-	MechStat:                          "MechStat",
-	BattleContracts:                   "BattleContracts",
-	WarMachineOneBattleHistories:      "WarMachineOneBattleHistories",
-	WarMachineTwoBattleHistories:      "WarMachineTwoBattleHistories",
-	BattleKills:                       "BattleKills",
-	KilledBattleKills:                 "KilledBattleKills",
-	BattleMechs:                       "BattleMechs",
-	KilledByBattleMechs:               "KilledByBattleMechs",
-	BattleQueueNotifications:          "BattleQueueNotifications",
-	BattleWins:                        "BattleWins",
-	EquippedOnBlueprintMechAnimations: "EquippedOnBlueprintMechAnimations",
-	EquippedOnEnergyCores:             "EquippedOnEnergyCores",
-	EquippedOnMechAnimations:          "EquippedOnMechAnimations",
-	MechRepairs:                       "MechRepairs",
-	EquippedOnMechSkins:               "EquippedOnMechSkins",
-	ChassisMechUtilities:              "ChassisMechUtilities",
-	ChassisMechWeapons:                "ChassisMechWeapons",
-	EquippedOnUtilities:               "EquippedOnUtilities",
-	EquippedOnWeaponSkins:             "EquippedOnWeaponSkins",
+	Blueprint:                    "Blueprint",
+	Brand:                        "Brand",
+	ChassisSkin:                  "ChassisSkin",
+	EnergyCore:                   "EnergyCore",
+	IntroAnimation:               "IntroAnimation",
+	Model:                        "Model",
+	OutroAnimation:               "OutroAnimation",
+	Owner:                        "Owner",
+	BattleQueue:                  "BattleQueue",
+	MechStat:                     "MechStat",
+	BattleContracts:              "BattleContracts",
+	WarMachineOneBattleHistories: "WarMachineOneBattleHistories",
+	WarMachineTwoBattleHistories: "WarMachineTwoBattleHistories",
+	BattleKills:                  "BattleKills",
+	KilledBattleKills:            "KilledBattleKills",
+	BattleMechs:                  "BattleMechs",
+	KilledByBattleMechs:          "KilledByBattleMechs",
+	BattleQueueNotifications:     "BattleQueueNotifications",
+	BattleWins:                   "BattleWins",
+	EquippedOnEnergyCores:        "EquippedOnEnergyCores",
+	EquippedOnMechAnimations:     "EquippedOnMechAnimations",
+	MechRepairs:                  "MechRepairs",
+	EquippedOnMechSkins:          "EquippedOnMechSkins",
+	ChassisMechUtilities:         "ChassisMechUtilities",
+	ChassisMechWeapons:           "ChassisMechWeapons",
+	EquippedOnUtilities:          "EquippedOnUtilities",
+	EquippedOnWeaponSkins:        "EquippedOnWeaponSkins",
 }
 
 // mechR is where relationships are stored.
 type mechR struct {
-	Blueprint                         *BlueprintMech               `boiler:"Blueprint" boil:"Blueprint" json:"Blueprint" toml:"Blueprint" yaml:"Blueprint"`
-	Brand                             *Brand                       `boiler:"Brand" boil:"Brand" json:"Brand" toml:"Brand" yaml:"Brand"`
-	ChassisSkin                       *MechSkin                    `boiler:"ChassisSkin" boil:"ChassisSkin" json:"ChassisSkin" toml:"ChassisSkin" yaml:"ChassisSkin"`
-	CollectionItem                    *CollectionItem              `boiler:"CollectionItem" boil:"CollectionItem" json:"CollectionItem" toml:"CollectionItem" yaml:"CollectionItem"`
-	EnergyCore                        *EnergyCore                  `boiler:"EnergyCore" boil:"EnergyCore" json:"EnergyCore" toml:"EnergyCore" yaml:"EnergyCore"`
-	IntroAnimation                    *MechAnimation               `boiler:"IntroAnimation" boil:"IntroAnimation" json:"IntroAnimation" toml:"IntroAnimation" yaml:"IntroAnimation"`
-	Model                             *MechModel                   `boiler:"Model" boil:"Model" json:"Model" toml:"Model" yaml:"Model"`
-	OutroAnimation                    *MechAnimation               `boiler:"OutroAnimation" boil:"OutroAnimation" json:"OutroAnimation" toml:"OutroAnimation" yaml:"OutroAnimation"`
-	Owner                             *Player                      `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
-	BattleQueue                       *BattleQueue                 `boiler:"BattleQueue" boil:"BattleQueue" json:"BattleQueue" toml:"BattleQueue" yaml:"BattleQueue"`
-	MechStat                          *MechStat                    `boiler:"MechStat" boil:"MechStat" json:"MechStat" toml:"MechStat" yaml:"MechStat"`
-	BattleContracts                   BattleContractSlice          `boiler:"BattleContracts" boil:"BattleContracts" json:"BattleContracts" toml:"BattleContracts" yaml:"BattleContracts"`
-	WarMachineOneBattleHistories      BattleHistorySlice           `boiler:"WarMachineOneBattleHistories" boil:"WarMachineOneBattleHistories" json:"WarMachineOneBattleHistories" toml:"WarMachineOneBattleHistories" yaml:"WarMachineOneBattleHistories"`
-	WarMachineTwoBattleHistories      BattleHistorySlice           `boiler:"WarMachineTwoBattleHistories" boil:"WarMachineTwoBattleHistories" json:"WarMachineTwoBattleHistories" toml:"WarMachineTwoBattleHistories" yaml:"WarMachineTwoBattleHistories"`
-	BattleKills                       BattleKillSlice              `boiler:"BattleKills" boil:"BattleKills" json:"BattleKills" toml:"BattleKills" yaml:"BattleKills"`
-	KilledBattleKills                 BattleKillSlice              `boiler:"KilledBattleKills" boil:"KilledBattleKills" json:"KilledBattleKills" toml:"KilledBattleKills" yaml:"KilledBattleKills"`
-	BattleMechs                       BattleMechSlice              `boiler:"BattleMechs" boil:"BattleMechs" json:"BattleMechs" toml:"BattleMechs" yaml:"BattleMechs"`
-	KilledByBattleMechs               BattleMechSlice              `boiler:"KilledByBattleMechs" boil:"KilledByBattleMechs" json:"KilledByBattleMechs" toml:"KilledByBattleMechs" yaml:"KilledByBattleMechs"`
-	BattleQueueNotifications          BattleQueueNotificationSlice `boiler:"BattleQueueNotifications" boil:"BattleQueueNotifications" json:"BattleQueueNotifications" toml:"BattleQueueNotifications" yaml:"BattleQueueNotifications"`
-	BattleWins                        BattleWinSlice               `boiler:"BattleWins" boil:"BattleWins" json:"BattleWins" toml:"BattleWins" yaml:"BattleWins"`
-	EquippedOnBlueprintMechAnimations BlueprintMechAnimationSlice  `boiler:"EquippedOnBlueprintMechAnimations" boil:"EquippedOnBlueprintMechAnimations" json:"EquippedOnBlueprintMechAnimations" toml:"EquippedOnBlueprintMechAnimations" yaml:"EquippedOnBlueprintMechAnimations"`
-	EquippedOnEnergyCores             EnergyCoreSlice              `boiler:"EquippedOnEnergyCores" boil:"EquippedOnEnergyCores" json:"EquippedOnEnergyCores" toml:"EquippedOnEnergyCores" yaml:"EquippedOnEnergyCores"`
-	EquippedOnMechAnimations          MechAnimationSlice           `boiler:"EquippedOnMechAnimations" boil:"EquippedOnMechAnimations" json:"EquippedOnMechAnimations" toml:"EquippedOnMechAnimations" yaml:"EquippedOnMechAnimations"`
-	MechRepairs                       MechRepairSlice              `boiler:"MechRepairs" boil:"MechRepairs" json:"MechRepairs" toml:"MechRepairs" yaml:"MechRepairs"`
-	EquippedOnMechSkins               MechSkinSlice                `boiler:"EquippedOnMechSkins" boil:"EquippedOnMechSkins" json:"EquippedOnMechSkins" toml:"EquippedOnMechSkins" yaml:"EquippedOnMechSkins"`
-	ChassisMechUtilities              MechUtilitySlice             `boiler:"ChassisMechUtilities" boil:"ChassisMechUtilities" json:"ChassisMechUtilities" toml:"ChassisMechUtilities" yaml:"ChassisMechUtilities"`
-	ChassisMechWeapons                MechWeaponSlice              `boiler:"ChassisMechWeapons" boil:"ChassisMechWeapons" json:"ChassisMechWeapons" toml:"ChassisMechWeapons" yaml:"ChassisMechWeapons"`
-	EquippedOnUtilities               UtilitySlice                 `boiler:"EquippedOnUtilities" boil:"EquippedOnUtilities" json:"EquippedOnUtilities" toml:"EquippedOnUtilities" yaml:"EquippedOnUtilities"`
-	EquippedOnWeaponSkins             WeaponSkinSlice              `boiler:"EquippedOnWeaponSkins" boil:"EquippedOnWeaponSkins" json:"EquippedOnWeaponSkins" toml:"EquippedOnWeaponSkins" yaml:"EquippedOnWeaponSkins"`
+	Blueprint                    *BlueprintMech               `boiler:"Blueprint" boil:"Blueprint" json:"Blueprint" toml:"Blueprint" yaml:"Blueprint"`
+	Brand                        *Brand                       `boiler:"Brand" boil:"Brand" json:"Brand" toml:"Brand" yaml:"Brand"`
+	ChassisSkin                  *MechSkin                    `boiler:"ChassisSkin" boil:"ChassisSkin" json:"ChassisSkin" toml:"ChassisSkin" yaml:"ChassisSkin"`
+	EnergyCore                   *EnergyCore                  `boiler:"EnergyCore" boil:"EnergyCore" json:"EnergyCore" toml:"EnergyCore" yaml:"EnergyCore"`
+	IntroAnimation               *MechAnimation               `boiler:"IntroAnimation" boil:"IntroAnimation" json:"IntroAnimation" toml:"IntroAnimation" yaml:"IntroAnimation"`
+	Model                        *MechModel                   `boiler:"Model" boil:"Model" json:"Model" toml:"Model" yaml:"Model"`
+	OutroAnimation               *MechAnimation               `boiler:"OutroAnimation" boil:"OutroAnimation" json:"OutroAnimation" toml:"OutroAnimation" yaml:"OutroAnimation"`
+	Owner                        *Player                      `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
+	BattleQueue                  *BattleQueue                 `boiler:"BattleQueue" boil:"BattleQueue" json:"BattleQueue" toml:"BattleQueue" yaml:"BattleQueue"`
+	MechStat                     *MechStat                    `boiler:"MechStat" boil:"MechStat" json:"MechStat" toml:"MechStat" yaml:"MechStat"`
+	BattleContracts              BattleContractSlice          `boiler:"BattleContracts" boil:"BattleContracts" json:"BattleContracts" toml:"BattleContracts" yaml:"BattleContracts"`
+	WarMachineOneBattleHistories BattleHistorySlice           `boiler:"WarMachineOneBattleHistories" boil:"WarMachineOneBattleHistories" json:"WarMachineOneBattleHistories" toml:"WarMachineOneBattleHistories" yaml:"WarMachineOneBattleHistories"`
+	WarMachineTwoBattleHistories BattleHistorySlice           `boiler:"WarMachineTwoBattleHistories" boil:"WarMachineTwoBattleHistories" json:"WarMachineTwoBattleHistories" toml:"WarMachineTwoBattleHistories" yaml:"WarMachineTwoBattleHistories"`
+	BattleKills                  BattleKillSlice              `boiler:"BattleKills" boil:"BattleKills" json:"BattleKills" toml:"BattleKills" yaml:"BattleKills"`
+	KilledBattleKills            BattleKillSlice              `boiler:"KilledBattleKills" boil:"KilledBattleKills" json:"KilledBattleKills" toml:"KilledBattleKills" yaml:"KilledBattleKills"`
+	BattleMechs                  BattleMechSlice              `boiler:"BattleMechs" boil:"BattleMechs" json:"BattleMechs" toml:"BattleMechs" yaml:"BattleMechs"`
+	KilledByBattleMechs          BattleMechSlice              `boiler:"KilledByBattleMechs" boil:"KilledByBattleMechs" json:"KilledByBattleMechs" toml:"KilledByBattleMechs" yaml:"KilledByBattleMechs"`
+	BattleQueueNotifications     BattleQueueNotificationSlice `boiler:"BattleQueueNotifications" boil:"BattleQueueNotifications" json:"BattleQueueNotifications" toml:"BattleQueueNotifications" yaml:"BattleQueueNotifications"`
+	BattleWins                   BattleWinSlice               `boiler:"BattleWins" boil:"BattleWins" json:"BattleWins" toml:"BattleWins" yaml:"BattleWins"`
+	EquippedOnEnergyCores        EnergyCoreSlice              `boiler:"EquippedOnEnergyCores" boil:"EquippedOnEnergyCores" json:"EquippedOnEnergyCores" toml:"EquippedOnEnergyCores" yaml:"EquippedOnEnergyCores"`
+	EquippedOnMechAnimations     MechAnimationSlice           `boiler:"EquippedOnMechAnimations" boil:"EquippedOnMechAnimations" json:"EquippedOnMechAnimations" toml:"EquippedOnMechAnimations" yaml:"EquippedOnMechAnimations"`
+	MechRepairs                  MechRepairSlice              `boiler:"MechRepairs" boil:"MechRepairs" json:"MechRepairs" toml:"MechRepairs" yaml:"MechRepairs"`
+	EquippedOnMechSkins          MechSkinSlice                `boiler:"EquippedOnMechSkins" boil:"EquippedOnMechSkins" json:"EquippedOnMechSkins" toml:"EquippedOnMechSkins" yaml:"EquippedOnMechSkins"`
+	ChassisMechUtilities         MechUtilitySlice             `boiler:"ChassisMechUtilities" boil:"ChassisMechUtilities" json:"ChassisMechUtilities" toml:"ChassisMechUtilities" yaml:"ChassisMechUtilities"`
+	ChassisMechWeapons           MechWeaponSlice              `boiler:"ChassisMechWeapons" boil:"ChassisMechWeapons" json:"ChassisMechWeapons" toml:"ChassisMechWeapons" yaml:"ChassisMechWeapons"`
+	EquippedOnUtilities          UtilitySlice                 `boiler:"EquippedOnUtilities" boil:"EquippedOnUtilities" json:"EquippedOnUtilities" toml:"EquippedOnUtilities" yaml:"EquippedOnUtilities"`
+	EquippedOnWeaponSkins        WeaponSkinSlice              `boiler:"EquippedOnWeaponSkins" boil:"EquippedOnWeaponSkins" json:"EquippedOnWeaponSkins" toml:"EquippedOnWeaponSkins" yaml:"EquippedOnWeaponSkins"`
 }
 
 // NewStruct creates a new relationship struct
@@ -315,9 +310,9 @@ func (*mechR) NewStruct() *mechR {
 type mechL struct{}
 
 var (
-	mechAllColumns            = []string{"id", "brand_id", "label", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "deleted_at", "updated_at", "created_at", "blueprint_id", "is_default", "is_insured", "name", "model_id", "collection_item_id", "genesis_token_id", "owner_id", "energy_core_size", "tier", "chassis_skin_id", "energy_core_id", "intro_animation_id", "outro_animation_id"}
-	mechColumnsWithoutDefault = []string{"brand_id", "label", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "blueprint_id", "model_id", "collection_item_id", "owner_id"}
-	mechColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at", "is_default", "is_insured", "name", "genesis_token_id", "energy_core_size", "tier", "chassis_skin_id", "energy_core_id", "intro_animation_id", "outro_animation_id"}
+	mechAllColumns            = []string{"id", "brand_id", "label", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "deleted_at", "updated_at", "created_at", "blueprint_id", "is_default", "is_insured", "name", "model_id", "genesis_token_id", "limited_release_token_id", "owner_id", "energy_core_size", "tier", "chassis_skin_id", "energy_core_id", "intro_animation_id", "outro_animation_id"}
+	mechColumnsWithoutDefault = []string{"brand_id", "label", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "blueprint_id", "model_id", "owner_id"}
+	mechColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at", "is_default", "is_insured", "name", "genesis_token_id", "limited_release_token_id", "energy_core_size", "tier", "chassis_skin_id", "energy_core_id", "intro_animation_id", "outro_animation_id"}
 	mechPrimaryKeyColumns     = []string{"id"}
 	mechGeneratedColumns      = []string{}
 )
@@ -608,20 +603,6 @@ func (o *Mech) ChassisSkin(mods ...qm.QueryMod) mechSkinQuery {
 	return query
 }
 
-// CollectionItem pointed to by the foreign key.
-func (o *Mech) CollectionItem(mods ...qm.QueryMod) collectionItemQuery {
-	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.CollectionItemID),
-	}
-
-	queryMods = append(queryMods, mods...)
-
-	query := CollectionItems(queryMods...)
-	queries.SetFrom(query.Query, "\"collection_items\"")
-
-	return query
-}
-
 // EnergyCore pointed to by the foreign key.
 func (o *Mech) EnergyCore(mods ...qm.QueryMod) energyCoreQuery {
 	queryMods := []qm.QueryMod{
@@ -905,27 +886,6 @@ func (o *Mech) BattleWins(mods ...qm.QueryMod) battleWinQuery {
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"battle_wins\".*"})
-	}
-
-	return query
-}
-
-// EquippedOnBlueprintMechAnimations retrieves all the blueprint_mech_animation's BlueprintMechAnimations with an executor via equipped_on column.
-func (o *Mech) EquippedOnBlueprintMechAnimations(mods ...qm.QueryMod) blueprintMechAnimationQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"blueprint_mech_animation\".\"equipped_on\"=?", o.ID),
-	)
-
-	query := BlueprintMechAnimations(queryMods...)
-	queries.SetFrom(query.Query, "\"blueprint_mech_animation\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"blueprint_mech_animation\".*"})
 	}
 
 	return query
@@ -1412,110 +1372,6 @@ func (mechL) LoadChassisSkin(e boil.Executor, singular bool, maybeMech interface
 					foreign.R = &mechSkinR{}
 				}
 				foreign.R.ChassisSkinMechs = append(foreign.R.ChassisSkinMechs, local)
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadCollectionItem allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for an N-1 relationship.
-func (mechL) LoadCollectionItem(e boil.Executor, singular bool, maybeMech interface{}, mods queries.Applicator) error {
-	var slice []*Mech
-	var object *Mech
-
-	if singular {
-		object = maybeMech.(*Mech)
-	} else {
-		slice = *maybeMech.(*[]*Mech)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &mechR{}
-		}
-		args = append(args, object.CollectionItemID)
-
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &mechR{}
-			}
-
-			for _, a := range args {
-				if a == obj.CollectionItemID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.CollectionItemID)
-
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`collection_items`),
-		qm.WhereIn(`collection_items.id in ?`, args...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load CollectionItem")
-	}
-
-	var resultSlice []*CollectionItem
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice CollectionItem")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for collection_items")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for collection_items")
-	}
-
-	if len(mechAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-
-	if len(resultSlice) == 0 {
-		return nil
-	}
-
-	if singular {
-		foreign := resultSlice[0]
-		object.R.CollectionItem = foreign
-		if foreign.R == nil {
-			foreign.R = &collectionItemR{}
-		}
-		foreign.R.Mechs = append(foreign.R.Mechs, object)
-		return nil
-	}
-
-	for _, local := range slice {
-		for _, foreign := range resultSlice {
-			if local.CollectionItemID == foreign.ID {
-				local.R.CollectionItem = foreign
-				if foreign.R == nil {
-					foreign.R = &collectionItemR{}
-				}
-				foreign.R.Mechs = append(foreign.R.Mechs, local)
 				break
 			}
 		}
@@ -3141,104 +2997,6 @@ func (mechL) LoadBattleWins(e boil.Executor, singular bool, maybeMech interface{
 	return nil
 }
 
-// LoadEquippedOnBlueprintMechAnimations allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (mechL) LoadEquippedOnBlueprintMechAnimations(e boil.Executor, singular bool, maybeMech interface{}, mods queries.Applicator) error {
-	var slice []*Mech
-	var object *Mech
-
-	if singular {
-		object = maybeMech.(*Mech)
-	} else {
-		slice = *maybeMech.(*[]*Mech)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &mechR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &mechR{}
-			}
-
-			for _, a := range args {
-				if queries.Equal(a, obj.ID) {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`blueprint_mech_animation`),
-		qm.WhereIn(`blueprint_mech_animation.equipped_on in ?`, args...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load blueprint_mech_animation")
-	}
-
-	var resultSlice []*BlueprintMechAnimation
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice blueprint_mech_animation")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on blueprint_mech_animation")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_mech_animation")
-	}
-
-	if len(blueprintMechAnimationAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.EquippedOnBlueprintMechAnimations = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &blueprintMechAnimationR{}
-			}
-			foreign.R.EquippedOnMech = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if queries.Equal(local.ID, foreign.EquippedOn) {
-				local.R.EquippedOnBlueprintMechAnimations = append(local.R.EquippedOnBlueprintMechAnimations, foreign)
-				if foreign.R == nil {
-					foreign.R = &blueprintMechAnimationR{}
-				}
-				foreign.R.EquippedOnMech = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
 // LoadEquippedOnEnergyCores allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (mechL) LoadEquippedOnEnergyCores(e boil.Executor, singular bool, maybeMech interface{}, mods queries.Applicator) error {
@@ -4194,52 +3952,6 @@ func (o *Mech) RemoveChassisSkin(exec boil.Executor, related *MechSkin) error {
 		related.R.ChassisSkinMechs = related.R.ChassisSkinMechs[:ln-1]
 		break
 	}
-	return nil
-}
-
-// SetCollectionItem of the mech to the related item.
-// Sets o.R.CollectionItem to related.
-// Adds o to related.R.Mechs.
-func (o *Mech) SetCollectionItem(exec boil.Executor, insert bool, related *CollectionItem) error {
-	var err error
-	if insert {
-		if err = related.Insert(exec, boil.Infer()); err != nil {
-			return errors.Wrap(err, "failed to insert into foreign table")
-		}
-	}
-
-	updateQuery := fmt.Sprintf(
-		"UPDATE \"mechs\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"collection_item_id"}),
-		strmangle.WhereClause("\"", "\"", 2, mechPrimaryKeyColumns),
-	)
-	values := []interface{}{related.ID, o.ID}
-
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, updateQuery)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	if _, err = exec.Exec(updateQuery, values...); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	o.CollectionItemID = related.ID
-	if o.R == nil {
-		o.R = &mechR{
-			CollectionItem: related,
-		}
-	} else {
-		o.R.CollectionItem = related
-	}
-
-	if related.R == nil {
-		related.R = &collectionItemR{
-			Mechs: MechSlice{o},
-		}
-	} else {
-		related.R.Mechs = append(related.R.Mechs, o)
-	}
-
 	return nil
 }
 
@@ -5283,131 +4995,6 @@ func (o *Mech) AddBattleWins(exec boil.Executor, insert bool, related ...*Battle
 			rel.R.Mech = o
 		}
 	}
-	return nil
-}
-
-// AddEquippedOnBlueprintMechAnimations adds the given related objects to the existing relationships
-// of the mech, optionally inserting them as new records.
-// Appends related to o.R.EquippedOnBlueprintMechAnimations.
-// Sets related.R.EquippedOnMech appropriately.
-func (o *Mech) AddEquippedOnBlueprintMechAnimations(exec boil.Executor, insert bool, related ...*BlueprintMechAnimation) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			queries.Assign(&rel.EquippedOn, o.ID)
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"blueprint_mech_animation\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"equipped_on"}),
-				strmangle.WhereClause("\"", "\"", 2, blueprintMechAnimationPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			queries.Assign(&rel.EquippedOn, o.ID)
-		}
-	}
-
-	if o.R == nil {
-		o.R = &mechR{
-			EquippedOnBlueprintMechAnimations: related,
-		}
-	} else {
-		o.R.EquippedOnBlueprintMechAnimations = append(o.R.EquippedOnBlueprintMechAnimations, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &blueprintMechAnimationR{
-				EquippedOnMech: o,
-			}
-		} else {
-			rel.R.EquippedOnMech = o
-		}
-	}
-	return nil
-}
-
-// SetEquippedOnBlueprintMechAnimations removes all previously related items of the
-// mech replacing them completely with the passed
-// in related items, optionally inserting them as new records.
-// Sets o.R.EquippedOnMech's EquippedOnBlueprintMechAnimations accordingly.
-// Replaces o.R.EquippedOnBlueprintMechAnimations with related.
-// Sets related.R.EquippedOnMech's EquippedOnBlueprintMechAnimations accordingly.
-func (o *Mech) SetEquippedOnBlueprintMechAnimations(exec boil.Executor, insert bool, related ...*BlueprintMechAnimation) error {
-	query := "update \"blueprint_mech_animation\" set \"equipped_on\" = null where \"equipped_on\" = $1"
-	values := []interface{}{o.ID}
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, query)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	_, err := exec.Exec(query, values...)
-	if err != nil {
-		return errors.Wrap(err, "failed to remove relationships before set")
-	}
-
-	if o.R != nil {
-		for _, rel := range o.R.EquippedOnBlueprintMechAnimations {
-			queries.SetScanner(&rel.EquippedOn, nil)
-			if rel.R == nil {
-				continue
-			}
-
-			rel.R.EquippedOnMech = nil
-		}
-
-		o.R.EquippedOnBlueprintMechAnimations = nil
-	}
-	return o.AddEquippedOnBlueprintMechAnimations(exec, insert, related...)
-}
-
-// RemoveEquippedOnBlueprintMechAnimations relationships from objects passed in.
-// Removes related items from R.EquippedOnBlueprintMechAnimations (uses pointer comparison, removal does not keep order)
-// Sets related.R.EquippedOnMech.
-func (o *Mech) RemoveEquippedOnBlueprintMechAnimations(exec boil.Executor, related ...*BlueprintMechAnimation) error {
-	if len(related) == 0 {
-		return nil
-	}
-
-	var err error
-	for _, rel := range related {
-		queries.SetScanner(&rel.EquippedOn, nil)
-		if rel.R != nil {
-			rel.R.EquippedOnMech = nil
-		}
-		if _, err = rel.Update(exec, boil.Whitelist("equipped_on")); err != nil {
-			return err
-		}
-	}
-	if o.R == nil {
-		return nil
-	}
-
-	for _, rel := range related {
-		for i, ri := range o.R.EquippedOnBlueprintMechAnimations {
-			if rel != ri {
-				continue
-			}
-
-			ln := len(o.R.EquippedOnBlueprintMechAnimations)
-			if ln > 1 && i < ln-1 {
-				o.R.EquippedOnBlueprintMechAnimations[i] = o.R.EquippedOnBlueprintMechAnimations[ln-1]
-			}
-			o.R.EquippedOnBlueprintMechAnimations = o.R.EquippedOnBlueprintMechAnimations[:ln-1]
-			break
-		}
-	}
-
 	return nil
 }
 

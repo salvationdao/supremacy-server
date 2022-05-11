@@ -26,6 +26,7 @@ type BlueprintAmmo struct {
 	ID                          string              `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	Label                       string              `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
 	WeaponType                  string              `boiler:"weapon_type" boil:"weapon_type" json:"weapon_type" toml:"weapon_type" yaml:"weapon_type"`
+	Collection                  string              `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
 	DamageMultiplier            decimal.NullDecimal `boiler:"damage_multiplier" boil:"damage_multiplier" json:"damage_multiplier,omitempty" toml:"damage_multiplier" yaml:"damage_multiplier,omitempty"`
 	DamageFalloffMultiplier     decimal.NullDecimal `boiler:"damage_falloff_multiplier" boil:"damage_falloff_multiplier" json:"damage_falloff_multiplier,omitempty" toml:"damage_falloff_multiplier" yaml:"damage_falloff_multiplier,omitempty"`
 	DamageFalloffRateMultiplier decimal.NullDecimal `boiler:"damage_falloff_rate_multiplier" boil:"damage_falloff_rate_multiplier" json:"damage_falloff_rate_multiplier,omitempty" toml:"damage_falloff_rate_multiplier" yaml:"damage_falloff_rate_multiplier,omitempty"`
@@ -45,6 +46,7 @@ var BlueprintAmmoColumns = struct {
 	ID                          string
 	Label                       string
 	WeaponType                  string
+	Collection                  string
 	DamageMultiplier            string
 	DamageFalloffMultiplier     string
 	DamageFalloffRateMultiplier string
@@ -59,6 +61,7 @@ var BlueprintAmmoColumns = struct {
 	ID:                          "id",
 	Label:                       "label",
 	WeaponType:                  "weapon_type",
+	Collection:                  "collection",
 	DamageMultiplier:            "damage_multiplier",
 	DamageFalloffMultiplier:     "damage_falloff_multiplier",
 	DamageFalloffRateMultiplier: "damage_falloff_rate_multiplier",
@@ -75,6 +78,7 @@ var BlueprintAmmoTableColumns = struct {
 	ID                          string
 	Label                       string
 	WeaponType                  string
+	Collection                  string
 	DamageMultiplier            string
 	DamageFalloffMultiplier     string
 	DamageFalloffRateMultiplier string
@@ -89,6 +93,7 @@ var BlueprintAmmoTableColumns = struct {
 	ID:                          "blueprint_ammo.id",
 	Label:                       "blueprint_ammo.label",
 	WeaponType:                  "blueprint_ammo.weapon_type",
+	Collection:                  "blueprint_ammo.collection",
 	DamageMultiplier:            "blueprint_ammo.damage_multiplier",
 	DamageFalloffMultiplier:     "blueprint_ammo.damage_falloff_multiplier",
 	DamageFalloffRateMultiplier: "blueprint_ammo.damage_falloff_rate_multiplier",
@@ -107,6 +112,7 @@ var BlueprintAmmoWhere = struct {
 	ID                          whereHelperstring
 	Label                       whereHelperstring
 	WeaponType                  whereHelperstring
+	Collection                  whereHelperstring
 	DamageMultiplier            whereHelperdecimal_NullDecimal
 	DamageFalloffMultiplier     whereHelperdecimal_NullDecimal
 	DamageFalloffRateMultiplier whereHelperdecimal_NullDecimal
@@ -121,6 +127,7 @@ var BlueprintAmmoWhere = struct {
 	ID:                          whereHelperstring{field: "\"blueprint_ammo\".\"id\""},
 	Label:                       whereHelperstring{field: "\"blueprint_ammo\".\"label\""},
 	WeaponType:                  whereHelperstring{field: "\"blueprint_ammo\".\"weapon_type\""},
+	Collection:                  whereHelperstring{field: "\"blueprint_ammo\".\"collection\""},
 	DamageMultiplier:            whereHelperdecimal_NullDecimal{field: "\"blueprint_ammo\".\"damage_multiplier\""},
 	DamageFalloffMultiplier:     whereHelperdecimal_NullDecimal{field: "\"blueprint_ammo\".\"damage_falloff_multiplier\""},
 	DamageFalloffRateMultiplier: whereHelperdecimal_NullDecimal{field: "\"blueprint_ammo\".\"damage_falloff_rate_multiplier\""},
@@ -157,9 +164,9 @@ func (*blueprintAmmoR) NewStruct() *blueprintAmmoR {
 type blueprintAmmoL struct{}
 
 var (
-	blueprintAmmoAllColumns            = []string{"id", "label", "weapon_type", "damage_multiplier", "damage_falloff_multiplier", "damage_falloff_rate_multiplier", "spread_multiplier", "rate_of_fire_multiplier", "radius_multiplier", "projectile_speed_multiplier", "energy_cost_multiplier", "max_ammo_multiplier", "created_at"}
+	blueprintAmmoAllColumns            = []string{"id", "label", "weapon_type", "collection", "damage_multiplier", "damage_falloff_multiplier", "damage_falloff_rate_multiplier", "spread_multiplier", "rate_of_fire_multiplier", "radius_multiplier", "projectile_speed_multiplier", "energy_cost_multiplier", "max_ammo_multiplier", "created_at"}
 	blueprintAmmoColumnsWithoutDefault = []string{"label", "weapon_type"}
-	blueprintAmmoColumnsWithDefault    = []string{"id", "damage_multiplier", "damage_falloff_multiplier", "damage_falloff_rate_multiplier", "spread_multiplier", "rate_of_fire_multiplier", "radius_multiplier", "projectile_speed_multiplier", "energy_cost_multiplier", "max_ammo_multiplier", "created_at"}
+	blueprintAmmoColumnsWithDefault    = []string{"id", "collection", "damage_multiplier", "damage_falloff_multiplier", "damage_falloff_rate_multiplier", "spread_multiplier", "rate_of_fire_multiplier", "radius_multiplier", "projectile_speed_multiplier", "energy_cost_multiplier", "max_ammo_multiplier", "created_at"}
 	blueprintAmmoPrimaryKeyColumns     = []string{"id"}
 	blueprintAmmoGeneratedColumns      = []string{}
 )

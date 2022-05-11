@@ -254,9 +254,6 @@ DROP TABLE mechs;
 ALTER TABLE chassis
     RENAME TO mechs;
 
-ALTER TABLE chassis_model
-    RENAME TO mech_model;
-
 ALTER TABLE chassis_animation
     RENAME TO mech_animation;
 

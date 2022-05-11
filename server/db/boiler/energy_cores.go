@@ -24,124 +24,115 @@ import (
 
 // EnergyCore is an object representing the database table.
 type EnergyCore struct {
-	ID               string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	CollectionItemID string          `boiler:"collection_item_id" boil:"collection_item_id" json:"collection_item_id" toml:"collection_item_id" yaml:"collection_item_id"`
-	OwnerID          string          `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
-	Label            string          `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	Size             string          `boiler:"size" boil:"size" json:"size" toml:"size" yaml:"size"`
-	Capacity         decimal.Decimal `boiler:"capacity" boil:"capacity" json:"capacity" toml:"capacity" yaml:"capacity"`
-	MaxDrawRate      decimal.Decimal `boiler:"max_draw_rate" boil:"max_draw_rate" json:"max_draw_rate" toml:"max_draw_rate" yaml:"max_draw_rate"`
-	RechargeRate     decimal.Decimal `boiler:"recharge_rate" boil:"recharge_rate" json:"recharge_rate" toml:"recharge_rate" yaml:"recharge_rate"`
-	Armour           decimal.Decimal `boiler:"armour" boil:"armour" json:"armour" toml:"armour" yaml:"armour"`
-	MaxHitpoints     decimal.Decimal `boiler:"max_hitpoints" boil:"max_hitpoints" json:"max_hitpoints" toml:"max_hitpoints" yaml:"max_hitpoints"`
-	Tier             null.String     `boiler:"tier" boil:"tier" json:"tier,omitempty" toml:"tier" yaml:"tier,omitempty"`
-	EquippedOn       null.String     `boiler:"equipped_on" boil:"equipped_on" json:"equipped_on,omitempty" toml:"equipped_on" yaml:"equipped_on,omitempty"`
-	CreatedAt        time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ID           string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	OwnerID      string          `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
+	Label        string          `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	Size         string          `boiler:"size" boil:"size" json:"size" toml:"size" yaml:"size"`
+	Capacity     decimal.Decimal `boiler:"capacity" boil:"capacity" json:"capacity" toml:"capacity" yaml:"capacity"`
+	MaxDrawRate  decimal.Decimal `boiler:"max_draw_rate" boil:"max_draw_rate" json:"max_draw_rate" toml:"max_draw_rate" yaml:"max_draw_rate"`
+	RechargeRate decimal.Decimal `boiler:"recharge_rate" boil:"recharge_rate" json:"recharge_rate" toml:"recharge_rate" yaml:"recharge_rate"`
+	Armour       decimal.Decimal `boiler:"armour" boil:"armour" json:"armour" toml:"armour" yaml:"armour"`
+	MaxHitpoints decimal.Decimal `boiler:"max_hitpoints" boil:"max_hitpoints" json:"max_hitpoints" toml:"max_hitpoints" yaml:"max_hitpoints"`
+	Tier         null.String     `boiler:"tier" boil:"tier" json:"tier,omitempty" toml:"tier" yaml:"tier,omitempty"`
+	EquippedOn   null.String     `boiler:"equipped_on" boil:"equipped_on" json:"equipped_on,omitempty" toml:"equipped_on" yaml:"equipped_on,omitempty"`
+	CreatedAt    time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *energyCoreR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L energyCoreL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var EnergyCoreColumns = struct {
-	ID               string
-	CollectionItemID string
-	OwnerID          string
-	Label            string
-	Size             string
-	Capacity         string
-	MaxDrawRate      string
-	RechargeRate     string
-	Armour           string
-	MaxHitpoints     string
-	Tier             string
-	EquippedOn       string
-	CreatedAt        string
+	ID           string
+	OwnerID      string
+	Label        string
+	Size         string
+	Capacity     string
+	MaxDrawRate  string
+	RechargeRate string
+	Armour       string
+	MaxHitpoints string
+	Tier         string
+	EquippedOn   string
+	CreatedAt    string
 }{
-	ID:               "id",
-	CollectionItemID: "collection_item_id",
-	OwnerID:          "owner_id",
-	Label:            "label",
-	Size:             "size",
-	Capacity:         "capacity",
-	MaxDrawRate:      "max_draw_rate",
-	RechargeRate:     "recharge_rate",
-	Armour:           "armour",
-	MaxHitpoints:     "max_hitpoints",
-	Tier:             "tier",
-	EquippedOn:       "equipped_on",
-	CreatedAt:        "created_at",
+	ID:           "id",
+	OwnerID:      "owner_id",
+	Label:        "label",
+	Size:         "size",
+	Capacity:     "capacity",
+	MaxDrawRate:  "max_draw_rate",
+	RechargeRate: "recharge_rate",
+	Armour:       "armour",
+	MaxHitpoints: "max_hitpoints",
+	Tier:         "tier",
+	EquippedOn:   "equipped_on",
+	CreatedAt:    "created_at",
 }
 
 var EnergyCoreTableColumns = struct {
-	ID               string
-	CollectionItemID string
-	OwnerID          string
-	Label            string
-	Size             string
-	Capacity         string
-	MaxDrawRate      string
-	RechargeRate     string
-	Armour           string
-	MaxHitpoints     string
-	Tier             string
-	EquippedOn       string
-	CreatedAt        string
+	ID           string
+	OwnerID      string
+	Label        string
+	Size         string
+	Capacity     string
+	MaxDrawRate  string
+	RechargeRate string
+	Armour       string
+	MaxHitpoints string
+	Tier         string
+	EquippedOn   string
+	CreatedAt    string
 }{
-	ID:               "energy_cores.id",
-	CollectionItemID: "energy_cores.collection_item_id",
-	OwnerID:          "energy_cores.owner_id",
-	Label:            "energy_cores.label",
-	Size:             "energy_cores.size",
-	Capacity:         "energy_cores.capacity",
-	MaxDrawRate:      "energy_cores.max_draw_rate",
-	RechargeRate:     "energy_cores.recharge_rate",
-	Armour:           "energy_cores.armour",
-	MaxHitpoints:     "energy_cores.max_hitpoints",
-	Tier:             "energy_cores.tier",
-	EquippedOn:       "energy_cores.equipped_on",
-	CreatedAt:        "energy_cores.created_at",
+	ID:           "energy_cores.id",
+	OwnerID:      "energy_cores.owner_id",
+	Label:        "energy_cores.label",
+	Size:         "energy_cores.size",
+	Capacity:     "energy_cores.capacity",
+	MaxDrawRate:  "energy_cores.max_draw_rate",
+	RechargeRate: "energy_cores.recharge_rate",
+	Armour:       "energy_cores.armour",
+	MaxHitpoints: "energy_cores.max_hitpoints",
+	Tier:         "energy_cores.tier",
+	EquippedOn:   "energy_cores.equipped_on",
+	CreatedAt:    "energy_cores.created_at",
 }
 
 // Generated where
 
 var EnergyCoreWhere = struct {
-	ID               whereHelperstring
-	CollectionItemID whereHelperstring
-	OwnerID          whereHelperstring
-	Label            whereHelperstring
-	Size             whereHelperstring
-	Capacity         whereHelperdecimal_Decimal
-	MaxDrawRate      whereHelperdecimal_Decimal
-	RechargeRate     whereHelperdecimal_Decimal
-	Armour           whereHelperdecimal_Decimal
-	MaxHitpoints     whereHelperdecimal_Decimal
-	Tier             whereHelpernull_String
-	EquippedOn       whereHelpernull_String
-	CreatedAt        whereHelpertime_Time
+	ID           whereHelperstring
+	OwnerID      whereHelperstring
+	Label        whereHelperstring
+	Size         whereHelperstring
+	Capacity     whereHelperdecimal_Decimal
+	MaxDrawRate  whereHelperdecimal_Decimal
+	RechargeRate whereHelperdecimal_Decimal
+	Armour       whereHelperdecimal_Decimal
+	MaxHitpoints whereHelperdecimal_Decimal
+	Tier         whereHelpernull_String
+	EquippedOn   whereHelpernull_String
+	CreatedAt    whereHelpertime_Time
 }{
-	ID:               whereHelperstring{field: "\"energy_cores\".\"id\""},
-	CollectionItemID: whereHelperstring{field: "\"energy_cores\".\"collection_item_id\""},
-	OwnerID:          whereHelperstring{field: "\"energy_cores\".\"owner_id\""},
-	Label:            whereHelperstring{field: "\"energy_cores\".\"label\""},
-	Size:             whereHelperstring{field: "\"energy_cores\".\"size\""},
-	Capacity:         whereHelperdecimal_Decimal{field: "\"energy_cores\".\"capacity\""},
-	MaxDrawRate:      whereHelperdecimal_Decimal{field: "\"energy_cores\".\"max_draw_rate\""},
-	RechargeRate:     whereHelperdecimal_Decimal{field: "\"energy_cores\".\"recharge_rate\""},
-	Armour:           whereHelperdecimal_Decimal{field: "\"energy_cores\".\"armour\""},
-	MaxHitpoints:     whereHelperdecimal_Decimal{field: "\"energy_cores\".\"max_hitpoints\""},
-	Tier:             whereHelpernull_String{field: "\"energy_cores\".\"tier\""},
-	EquippedOn:       whereHelpernull_String{field: "\"energy_cores\".\"equipped_on\""},
-	CreatedAt:        whereHelpertime_Time{field: "\"energy_cores\".\"created_at\""},
+	ID:           whereHelperstring{field: "\"energy_cores\".\"id\""},
+	OwnerID:      whereHelperstring{field: "\"energy_cores\".\"owner_id\""},
+	Label:        whereHelperstring{field: "\"energy_cores\".\"label\""},
+	Size:         whereHelperstring{field: "\"energy_cores\".\"size\""},
+	Capacity:     whereHelperdecimal_Decimal{field: "\"energy_cores\".\"capacity\""},
+	MaxDrawRate:  whereHelperdecimal_Decimal{field: "\"energy_cores\".\"max_draw_rate\""},
+	RechargeRate: whereHelperdecimal_Decimal{field: "\"energy_cores\".\"recharge_rate\""},
+	Armour:       whereHelperdecimal_Decimal{field: "\"energy_cores\".\"armour\""},
+	MaxHitpoints: whereHelperdecimal_Decimal{field: "\"energy_cores\".\"max_hitpoints\""},
+	Tier:         whereHelpernull_String{field: "\"energy_cores\".\"tier\""},
+	EquippedOn:   whereHelpernull_String{field: "\"energy_cores\".\"equipped_on\""},
+	CreatedAt:    whereHelpertime_Time{field: "\"energy_cores\".\"created_at\""},
 }
 
 // EnergyCoreRels is where relationship names are stored.
 var EnergyCoreRels = struct {
-	CollectionItem string
 	EquippedOnMech string
 	Owner          string
 	Mechs          string
 }{
-	CollectionItem: "CollectionItem",
 	EquippedOnMech: "EquippedOnMech",
 	Owner:          "Owner",
 	Mechs:          "Mechs",
@@ -149,10 +140,9 @@ var EnergyCoreRels = struct {
 
 // energyCoreR is where relationships are stored.
 type energyCoreR struct {
-	CollectionItem *CollectionItem `boiler:"CollectionItem" boil:"CollectionItem" json:"CollectionItem" toml:"CollectionItem" yaml:"CollectionItem"`
-	EquippedOnMech *Mech           `boiler:"EquippedOnMech" boil:"EquippedOnMech" json:"EquippedOnMech" toml:"EquippedOnMech" yaml:"EquippedOnMech"`
-	Owner          *Player         `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
-	Mechs          MechSlice       `boiler:"Mechs" boil:"Mechs" json:"Mechs" toml:"Mechs" yaml:"Mechs"`
+	EquippedOnMech *Mech     `boiler:"EquippedOnMech" boil:"EquippedOnMech" json:"EquippedOnMech" toml:"EquippedOnMech" yaml:"EquippedOnMech"`
+	Owner          *Player   `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
+	Mechs          MechSlice `boiler:"Mechs" boil:"Mechs" json:"Mechs" toml:"Mechs" yaml:"Mechs"`
 }
 
 // NewStruct creates a new relationship struct
@@ -164,8 +154,8 @@ func (*energyCoreR) NewStruct() *energyCoreR {
 type energyCoreL struct{}
 
 var (
-	energyCoreAllColumns            = []string{"id", "collection_item_id", "owner_id", "label", "size", "capacity", "max_draw_rate", "recharge_rate", "armour", "max_hitpoints", "tier", "equipped_on", "created_at"}
-	energyCoreColumnsWithoutDefault = []string{"collection_item_id", "owner_id", "label"}
+	energyCoreAllColumns            = []string{"id", "owner_id", "label", "size", "capacity", "max_draw_rate", "recharge_rate", "armour", "max_hitpoints", "tier", "equipped_on", "created_at"}
+	energyCoreColumnsWithoutDefault = []string{"owner_id", "label"}
 	energyCoreColumnsWithDefault    = []string{"id", "size", "capacity", "max_draw_rate", "recharge_rate", "armour", "max_hitpoints", "tier", "equipped_on", "created_at"}
 	energyCorePrimaryKeyColumns     = []string{"id"}
 	energyCoreGeneratedColumns      = []string{}
@@ -413,20 +403,6 @@ func (q energyCoreQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
-// CollectionItem pointed to by the foreign key.
-func (o *EnergyCore) CollectionItem(mods ...qm.QueryMod) collectionItemQuery {
-	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.CollectionItemID),
-	}
-
-	queryMods = append(queryMods, mods...)
-
-	query := CollectionItems(queryMods...)
-	queries.SetFrom(query.Query, "\"collection_items\"")
-
-	return query
-}
-
 // EquippedOnMech pointed to by the foreign key.
 func (o *EnergyCore) EquippedOnMech(mods ...qm.QueryMod) mechQuery {
 	queryMods := []qm.QueryMod{
@@ -477,110 +453,6 @@ func (o *EnergyCore) Mechs(mods ...qm.QueryMod) mechQuery {
 	}
 
 	return query
-}
-
-// LoadCollectionItem allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for an N-1 relationship.
-func (energyCoreL) LoadCollectionItem(e boil.Executor, singular bool, maybeEnergyCore interface{}, mods queries.Applicator) error {
-	var slice []*EnergyCore
-	var object *EnergyCore
-
-	if singular {
-		object = maybeEnergyCore.(*EnergyCore)
-	} else {
-		slice = *maybeEnergyCore.(*[]*EnergyCore)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &energyCoreR{}
-		}
-		args = append(args, object.CollectionItemID)
-
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &energyCoreR{}
-			}
-
-			for _, a := range args {
-				if a == obj.CollectionItemID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.CollectionItemID)
-
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`collection_items`),
-		qm.WhereIn(`collection_items.id in ?`, args...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load CollectionItem")
-	}
-
-	var resultSlice []*CollectionItem
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice CollectionItem")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for collection_items")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for collection_items")
-	}
-
-	if len(energyCoreAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-
-	if len(resultSlice) == 0 {
-		return nil
-	}
-
-	if singular {
-		foreign := resultSlice[0]
-		object.R.CollectionItem = foreign
-		if foreign.R == nil {
-			foreign.R = &collectionItemR{}
-		}
-		foreign.R.EnergyCores = append(foreign.R.EnergyCores, object)
-		return nil
-	}
-
-	for _, local := range slice {
-		for _, foreign := range resultSlice {
-			if local.CollectionItemID == foreign.ID {
-				local.R.CollectionItem = foreign
-				if foreign.R == nil {
-					foreign.R = &collectionItemR{}
-				}
-				foreign.R.EnergyCores = append(foreign.R.EnergyCores, local)
-				break
-			}
-		}
-	}
-
-	return nil
 }
 
 // LoadEquippedOnMech allows an eager lookup of values, cached into the
@@ -891,52 +763,6 @@ func (energyCoreL) LoadMechs(e boil.Executor, singular bool, maybeEnergyCore int
 				break
 			}
 		}
-	}
-
-	return nil
-}
-
-// SetCollectionItem of the energyCore to the related item.
-// Sets o.R.CollectionItem to related.
-// Adds o to related.R.EnergyCores.
-func (o *EnergyCore) SetCollectionItem(exec boil.Executor, insert bool, related *CollectionItem) error {
-	var err error
-	if insert {
-		if err = related.Insert(exec, boil.Infer()); err != nil {
-			return errors.Wrap(err, "failed to insert into foreign table")
-		}
-	}
-
-	updateQuery := fmt.Sprintf(
-		"UPDATE \"energy_cores\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"collection_item_id"}),
-		strmangle.WhereClause("\"", "\"", 2, energyCorePrimaryKeyColumns),
-	)
-	values := []interface{}{related.ID, o.ID}
-
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, updateQuery)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	if _, err = exec.Exec(updateQuery, values...); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	o.CollectionItemID = related.ID
-	if o.R == nil {
-		o.R = &energyCoreR{
-			CollectionItem: related,
-		}
-	} else {
-		o.R.CollectionItem = related
-	}
-
-	if related.R == nil {
-		related.R = &collectionItemR{
-			EnergyCores: EnergyCoreSlice{o},
-		}
-	} else {
-		related.R.EnergyCores = append(related.R.EnergyCores, o)
 	}
 
 	return nil

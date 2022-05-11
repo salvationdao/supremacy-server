@@ -26,8 +26,7 @@ type BlueprintMechAnimation struct {
 	ID             string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	Collection     string      `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
 	Label          string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	ChassisModel   string      `boiler:"chassis_model" boil:"chassis_model" json:"chassis_model" toml:"chassis_model" yaml:"chassis_model"`
-	EquippedOn     null.String `boiler:"equipped_on" boil:"equipped_on" json:"equipped_on,omitempty" toml:"equipped_on" yaml:"equipped_on,omitempty"`
+	MechModel      string      `boiler:"mech_model" boil:"mech_model" json:"mech_model" toml:"mech_model" yaml:"mech_model"`
 	Tier           null.String `boiler:"tier" boil:"tier" json:"tier,omitempty" toml:"tier" yaml:"tier,omitempty"`
 	IntroAnimation null.Bool   `boiler:"intro_animation" boil:"intro_animation" json:"intro_animation,omitempty" toml:"intro_animation" yaml:"intro_animation,omitempty"`
 	OutroAnimation null.Bool   `boiler:"outro_animation" boil:"outro_animation" json:"outro_animation,omitempty" toml:"outro_animation" yaml:"outro_animation,omitempty"`
@@ -41,8 +40,7 @@ var BlueprintMechAnimationColumns = struct {
 	ID             string
 	Collection     string
 	Label          string
-	ChassisModel   string
-	EquippedOn     string
+	MechModel      string
 	Tier           string
 	IntroAnimation string
 	OutroAnimation string
@@ -51,8 +49,7 @@ var BlueprintMechAnimationColumns = struct {
 	ID:             "id",
 	Collection:     "collection",
 	Label:          "label",
-	ChassisModel:   "chassis_model",
-	EquippedOn:     "equipped_on",
+	MechModel:      "mech_model",
 	Tier:           "tier",
 	IntroAnimation: "intro_animation",
 	OutroAnimation: "outro_animation",
@@ -63,8 +60,7 @@ var BlueprintMechAnimationTableColumns = struct {
 	ID             string
 	Collection     string
 	Label          string
-	ChassisModel   string
-	EquippedOn     string
+	MechModel      string
 	Tier           string
 	IntroAnimation string
 	OutroAnimation string
@@ -73,8 +69,7 @@ var BlueprintMechAnimationTableColumns = struct {
 	ID:             "blueprint_mech_animation.id",
 	Collection:     "blueprint_mech_animation.collection",
 	Label:          "blueprint_mech_animation.label",
-	ChassisModel:   "blueprint_mech_animation.chassis_model",
-	EquippedOn:     "blueprint_mech_animation.equipped_on",
+	MechModel:      "blueprint_mech_animation.mech_model",
 	Tier:           "blueprint_mech_animation.tier",
 	IntroAnimation: "blueprint_mech_animation.intro_animation",
 	OutroAnimation: "blueprint_mech_animation.outro_animation",
@@ -87,8 +82,7 @@ var BlueprintMechAnimationWhere = struct {
 	ID             whereHelperstring
 	Collection     whereHelperstring
 	Label          whereHelperstring
-	ChassisModel   whereHelperstring
-	EquippedOn     whereHelpernull_String
+	MechModel      whereHelperstring
 	Tier           whereHelpernull_String
 	IntroAnimation whereHelpernull_Bool
 	OutroAnimation whereHelpernull_Bool
@@ -97,8 +91,7 @@ var BlueprintMechAnimationWhere = struct {
 	ID:             whereHelperstring{field: "\"blueprint_mech_animation\".\"id\""},
 	Collection:     whereHelperstring{field: "\"blueprint_mech_animation\".\"collection\""},
 	Label:          whereHelperstring{field: "\"blueprint_mech_animation\".\"label\""},
-	ChassisModel:   whereHelperstring{field: "\"blueprint_mech_animation\".\"chassis_model\""},
-	EquippedOn:     whereHelpernull_String{field: "\"blueprint_mech_animation\".\"equipped_on\""},
+	MechModel:      whereHelperstring{field: "\"blueprint_mech_animation\".\"mech_model\""},
 	Tier:           whereHelpernull_String{field: "\"blueprint_mech_animation\".\"tier\""},
 	IntroAnimation: whereHelpernull_Bool{field: "\"blueprint_mech_animation\".\"intro_animation\""},
 	OutroAnimation: whereHelpernull_Bool{field: "\"blueprint_mech_animation\".\"outro_animation\""},
@@ -107,20 +100,17 @@ var BlueprintMechAnimationWhere = struct {
 
 // BlueprintMechAnimationRels is where relationship names are stored.
 var BlueprintMechAnimationRels = struct {
-	ChassisModelMechModel   string
-	EquippedOnMech          string
-	BlueprintMechAnimations string
+	BlueprintMechAnimationMechModel string
+	BlueprintMechAnimations         string
 }{
-	ChassisModelMechModel:   "ChassisModelMechModel",
-	EquippedOnMech:          "EquippedOnMech",
-	BlueprintMechAnimations: "BlueprintMechAnimations",
+	BlueprintMechAnimationMechModel: "BlueprintMechAnimationMechModel",
+	BlueprintMechAnimations:         "BlueprintMechAnimations",
 }
 
 // blueprintMechAnimationR is where relationships are stored.
 type blueprintMechAnimationR struct {
-	ChassisModelMechModel   *MechModel         `boiler:"ChassisModelMechModel" boil:"ChassisModelMechModel" json:"ChassisModelMechModel" toml:"ChassisModelMechModel" yaml:"ChassisModelMechModel"`
-	EquippedOnMech          *Mech              `boiler:"EquippedOnMech" boil:"EquippedOnMech" json:"EquippedOnMech" toml:"EquippedOnMech" yaml:"EquippedOnMech"`
-	BlueprintMechAnimations MechAnimationSlice `boiler:"BlueprintMechAnimations" boil:"BlueprintMechAnimations" json:"BlueprintMechAnimations" toml:"BlueprintMechAnimations" yaml:"BlueprintMechAnimations"`
+	BlueprintMechAnimationMechModel *MechModel         `boiler:"BlueprintMechAnimationMechModel" boil:"BlueprintMechAnimationMechModel" json:"BlueprintMechAnimationMechModel" toml:"BlueprintMechAnimationMechModel" yaml:"BlueprintMechAnimationMechModel"`
+	BlueprintMechAnimations         MechAnimationSlice `boiler:"BlueprintMechAnimations" boil:"BlueprintMechAnimations" json:"BlueprintMechAnimations" toml:"BlueprintMechAnimations" yaml:"BlueprintMechAnimations"`
 }
 
 // NewStruct creates a new relationship struct
@@ -132,9 +122,9 @@ func (*blueprintMechAnimationR) NewStruct() *blueprintMechAnimationR {
 type blueprintMechAnimationL struct{}
 
 var (
-	blueprintMechAnimationAllColumns            = []string{"id", "collection", "label", "chassis_model", "equipped_on", "tier", "intro_animation", "outro_animation", "created_at"}
-	blueprintMechAnimationColumnsWithoutDefault = []string{"label", "chassis_model"}
-	blueprintMechAnimationColumnsWithDefault    = []string{"id", "collection", "equipped_on", "tier", "intro_animation", "outro_animation", "created_at"}
+	blueprintMechAnimationAllColumns            = []string{"id", "collection", "label", "mech_model", "tier", "intro_animation", "outro_animation", "created_at"}
+	blueprintMechAnimationColumnsWithoutDefault = []string{"label", "mech_model"}
+	blueprintMechAnimationColumnsWithDefault    = []string{"id", "collection", "tier", "intro_animation", "outro_animation", "created_at"}
 	blueprintMechAnimationPrimaryKeyColumns     = []string{"id"}
 	blueprintMechAnimationGeneratedColumns      = []string{}
 )
@@ -381,31 +371,16 @@ func (q blueprintMechAnimationQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
-// ChassisModelMechModel pointed to by the foreign key.
-func (o *BlueprintMechAnimation) ChassisModelMechModel(mods ...qm.QueryMod) mechModelQuery {
+// BlueprintMechAnimationMechModel pointed to by the foreign key.
+func (o *BlueprintMechAnimation) BlueprintMechAnimationMechModel(mods ...qm.QueryMod) mechModelQuery {
 	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.ChassisModel),
+		qm.Where("\"id\" = ?", o.MechModel),
 	}
 
 	queryMods = append(queryMods, mods...)
 
 	query := MechModels(queryMods...)
 	queries.SetFrom(query.Query, "\"mech_model\"")
-
-	return query
-}
-
-// EquippedOnMech pointed to by the foreign key.
-func (o *BlueprintMechAnimation) EquippedOnMech(mods ...qm.QueryMod) mechQuery {
-	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.EquippedOn),
-		qmhelper.WhereIsNull("deleted_at"),
-	}
-
-	queryMods = append(queryMods, mods...)
-
-	query := Mechs(queryMods...)
-	queries.SetFrom(query.Query, "\"mechs\"")
 
 	return query
 }
@@ -431,9 +406,9 @@ func (o *BlueprintMechAnimation) BlueprintMechAnimations(mods ...qm.QueryMod) me
 	return query
 }
 
-// LoadChassisModelMechModel allows an eager lookup of values, cached into the
+// LoadBlueprintMechAnimationMechModel allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (blueprintMechAnimationL) LoadChassisModelMechModel(e boil.Executor, singular bool, maybeBlueprintMechAnimation interface{}, mods queries.Applicator) error {
+func (blueprintMechAnimationL) LoadBlueprintMechAnimationMechModel(e boil.Executor, singular bool, maybeBlueprintMechAnimation interface{}, mods queries.Applicator) error {
 	var slice []*BlueprintMechAnimation
 	var object *BlueprintMechAnimation
 
@@ -448,7 +423,7 @@ func (blueprintMechAnimationL) LoadChassisModelMechModel(e boil.Executor, singul
 		if object.R == nil {
 			object.R = &blueprintMechAnimationR{}
 		}
-		args = append(args, object.ChassisModel)
+		args = append(args, object.MechModel)
 
 	} else {
 	Outer:
@@ -458,12 +433,12 @@ func (blueprintMechAnimationL) LoadChassisModelMechModel(e boil.Executor, singul
 			}
 
 			for _, a := range args {
-				if a == obj.ChassisModel {
+				if a == obj.MechModel {
 					continue Outer
 				}
 			}
 
-			args = append(args, obj.ChassisModel)
+			args = append(args, obj.MechModel)
 
 		}
 	}
@@ -511,131 +486,22 @@ func (blueprintMechAnimationL) LoadChassisModelMechModel(e boil.Executor, singul
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.ChassisModelMechModel = foreign
+		object.R.BlueprintMechAnimationMechModel = foreign
 		if foreign.R == nil {
 			foreign.R = &mechModelR{}
 		}
-		foreign.R.ChassisModelBlueprintMechAnimations = append(foreign.R.ChassisModelBlueprintMechAnimations, object)
+		foreign.R.BlueprintMechAnimations = append(foreign.R.BlueprintMechAnimations, object)
 		return nil
 	}
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if local.ChassisModel == foreign.ID {
-				local.R.ChassisModelMechModel = foreign
+			if local.MechModel == foreign.ID {
+				local.R.BlueprintMechAnimationMechModel = foreign
 				if foreign.R == nil {
 					foreign.R = &mechModelR{}
 				}
-				foreign.R.ChassisModelBlueprintMechAnimations = append(foreign.R.ChassisModelBlueprintMechAnimations, local)
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadEquippedOnMech allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for an N-1 relationship.
-func (blueprintMechAnimationL) LoadEquippedOnMech(e boil.Executor, singular bool, maybeBlueprintMechAnimation interface{}, mods queries.Applicator) error {
-	var slice []*BlueprintMechAnimation
-	var object *BlueprintMechAnimation
-
-	if singular {
-		object = maybeBlueprintMechAnimation.(*BlueprintMechAnimation)
-	} else {
-		slice = *maybeBlueprintMechAnimation.(*[]*BlueprintMechAnimation)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &blueprintMechAnimationR{}
-		}
-		if !queries.IsNil(object.EquippedOn) {
-			args = append(args, object.EquippedOn)
-		}
-
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &blueprintMechAnimationR{}
-			}
-
-			for _, a := range args {
-				if queries.Equal(a, obj.EquippedOn) {
-					continue Outer
-				}
-			}
-
-			if !queries.IsNil(obj.EquippedOn) {
-				args = append(args, obj.EquippedOn)
-			}
-
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`mechs`),
-		qm.WhereIn(`mechs.id in ?`, args...),
-		qmhelper.WhereIsNull(`mechs.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load Mech")
-	}
-
-	var resultSlice []*Mech
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice Mech")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for mechs")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mechs")
-	}
-
-	if len(blueprintMechAnimationAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-
-	if len(resultSlice) == 0 {
-		return nil
-	}
-
-	if singular {
-		foreign := resultSlice[0]
-		object.R.EquippedOnMech = foreign
-		if foreign.R == nil {
-			foreign.R = &mechR{}
-		}
-		foreign.R.EquippedOnBlueprintMechAnimations = append(foreign.R.EquippedOnBlueprintMechAnimations, object)
-		return nil
-	}
-
-	for _, local := range slice {
-		for _, foreign := range resultSlice {
-			if queries.Equal(local.EquippedOn, foreign.ID) {
-				local.R.EquippedOnMech = foreign
-				if foreign.R == nil {
-					foreign.R = &mechR{}
-				}
-				foreign.R.EquippedOnBlueprintMechAnimations = append(foreign.R.EquippedOnBlueprintMechAnimations, local)
+				foreign.R.BlueprintMechAnimations = append(foreign.R.BlueprintMechAnimations, local)
 				break
 			}
 		}
@@ -742,10 +608,10 @@ func (blueprintMechAnimationL) LoadBlueprintMechAnimations(e boil.Executor, sing
 	return nil
 }
 
-// SetChassisModelMechModel of the blueprintMechAnimation to the related item.
-// Sets o.R.ChassisModelMechModel to related.
-// Adds o to related.R.ChassisModelBlueprintMechAnimations.
-func (o *BlueprintMechAnimation) SetChassisModelMechModel(exec boil.Executor, insert bool, related *MechModel) error {
+// SetBlueprintMechAnimationMechModel of the blueprintMechAnimation to the related item.
+// Sets o.R.BlueprintMechAnimationMechModel to related.
+// Adds o to related.R.BlueprintMechAnimations.
+func (o *BlueprintMechAnimation) SetBlueprintMechAnimationMechModel(exec boil.Executor, insert bool, related *MechModel) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -755,7 +621,7 @@ func (o *BlueprintMechAnimation) SetChassisModelMechModel(exec boil.Executor, in
 
 	updateQuery := fmt.Sprintf(
 		"UPDATE \"blueprint_mech_animation\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"chassis_model"}),
+		strmangle.SetParamNames("\"", "\"", 1, []string{"mech_model"}),
 		strmangle.WhereClause("\"", "\"", 2, blueprintMechAnimationPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
@@ -768,102 +634,23 @@ func (o *BlueprintMechAnimation) SetChassisModelMechModel(exec boil.Executor, in
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	o.ChassisModel = related.ID
+	o.MechModel = related.ID
 	if o.R == nil {
 		o.R = &blueprintMechAnimationR{
-			ChassisModelMechModel: related,
+			BlueprintMechAnimationMechModel: related,
 		}
 	} else {
-		o.R.ChassisModelMechModel = related
+		o.R.BlueprintMechAnimationMechModel = related
 	}
 
 	if related.R == nil {
 		related.R = &mechModelR{
-			ChassisModelBlueprintMechAnimations: BlueprintMechAnimationSlice{o},
+			BlueprintMechAnimations: BlueprintMechAnimationSlice{o},
 		}
 	} else {
-		related.R.ChassisModelBlueprintMechAnimations = append(related.R.ChassisModelBlueprintMechAnimations, o)
+		related.R.BlueprintMechAnimations = append(related.R.BlueprintMechAnimations, o)
 	}
 
-	return nil
-}
-
-// SetEquippedOnMech of the blueprintMechAnimation to the related item.
-// Sets o.R.EquippedOnMech to related.
-// Adds o to related.R.EquippedOnBlueprintMechAnimations.
-func (o *BlueprintMechAnimation) SetEquippedOnMech(exec boil.Executor, insert bool, related *Mech) error {
-	var err error
-	if insert {
-		if err = related.Insert(exec, boil.Infer()); err != nil {
-			return errors.Wrap(err, "failed to insert into foreign table")
-		}
-	}
-
-	updateQuery := fmt.Sprintf(
-		"UPDATE \"blueprint_mech_animation\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"equipped_on"}),
-		strmangle.WhereClause("\"", "\"", 2, blueprintMechAnimationPrimaryKeyColumns),
-	)
-	values := []interface{}{related.ID, o.ID}
-
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, updateQuery)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	if _, err = exec.Exec(updateQuery, values...); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	queries.Assign(&o.EquippedOn, related.ID)
-	if o.R == nil {
-		o.R = &blueprintMechAnimationR{
-			EquippedOnMech: related,
-		}
-	} else {
-		o.R.EquippedOnMech = related
-	}
-
-	if related.R == nil {
-		related.R = &mechR{
-			EquippedOnBlueprintMechAnimations: BlueprintMechAnimationSlice{o},
-		}
-	} else {
-		related.R.EquippedOnBlueprintMechAnimations = append(related.R.EquippedOnBlueprintMechAnimations, o)
-	}
-
-	return nil
-}
-
-// RemoveEquippedOnMech relationship.
-// Sets o.R.EquippedOnMech to nil.
-// Removes o from all passed in related items' relationships struct (Optional).
-func (o *BlueprintMechAnimation) RemoveEquippedOnMech(exec boil.Executor, related *Mech) error {
-	var err error
-
-	queries.SetScanner(&o.EquippedOn, nil)
-	if _, err = o.Update(exec, boil.Whitelist("equipped_on")); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	if o.R != nil {
-		o.R.EquippedOnMech = nil
-	}
-	if related == nil || related.R == nil {
-		return nil
-	}
-
-	for i, ri := range related.R.EquippedOnBlueprintMechAnimations {
-		if queries.Equal(o.EquippedOn, ri.EquippedOn) {
-			continue
-		}
-
-		ln := len(related.R.EquippedOnBlueprintMechAnimations)
-		if ln > 1 && i < ln-1 {
-			related.R.EquippedOnBlueprintMechAnimations[i] = related.R.EquippedOnBlueprintMechAnimations[ln-1]
-		}
-		related.R.EquippedOnBlueprintMechAnimations = related.R.EquippedOnBlueprintMechAnimations[:ln-1]
-		break
-	}
 	return nil
 }
 

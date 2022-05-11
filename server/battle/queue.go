@@ -15,6 +15,8 @@ import (
 	"server/rpcclient"
 	"time"
 
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
@@ -948,6 +950,7 @@ type AssetQueue struct {
 
 const HubKeyAssetMany hub.HubCommandKey = hub.HubCommandKey("ASSET:MANY")
 
+// THIS IS A LEGACY HANDLER, will be replaced
 func (arena *Arena) AssetManyHandler(ctx context.Context, hubc *hub.Client, payload []byte, userFactionID uuid.UUID, reply hub.ReplyFunc) error {
 	req := &AssetQueueManyRequest{}
 	err := json.Unmarshal(payload, req)
@@ -955,171 +958,189 @@ func (arena *Arena) AssetManyHandler(ctx context.Context, hubc *hub.Client, payl
 		return terror.Error(err, "Invalid request received")
 	}
 
-	// TODO: fix this
+	resp := &AssetQueueManyResponse{
+		AssetQueueList: []*AssetQueue{},
+	}
 
-	//resp := &AssetQueueManyResponse{
-	//	AssetQueueList: []*AssetQueue{},
-	//}
+	type mechDetailsBrief struct {
+		ID   string
+		Hash string
+	}
 
-	//// get the list of player's mechs (id, hash, created_at)
-	//allMechs, err := boiler.Mechs(
-	//	qm.Select(boiler.MechColumns.ID, boiler.MechColumns.Hash, boiler.MechColumns.CreatedAt),
-	//	boiler.MechWhere.OwnerID.EQ(hubc.Identifier()),
-	//	qm.OrderBy(boiler.MechColumns.CreatedAt),
-	//).All(gamedb.StdConn)
-	//if err != nil && !errors.Is(err, sql.ErrNoRows) {
-	//	gamelog.L.Error().Str("player id", hubc.Identifier()).Err(err).Msg("Failed to get player's mechs")
-	//	return terror.Error(err, "Failed to get mech data")
-	//}
-	//
-	//mechs := []*boiler.Mech{}
-	//
-	//// reply empty
-	//if len(allMechs) == 0 {
-	//	reply(resp)
-	//	return nil
-	//}
-	//
-	//// calc mech id list
-	//mechIDs := []string{}
-	//for _, mech := range allMechs {
-	//	mechIDs = append(mechIDs, mech.ID)
-	//}
-	//
-	//assetMap, err := arena.RPCClient.AssetsOnChainStatus(mechIDs)
-	//if err != nil {
-	//	return terror.Error(err, "Unable to get asset ownership details, please try again or contact support.")
-	//}
-	//
-	//for _, m := range allMechs {
-	//	if onChainStatus, ok := assetMap[m.ID]; ok && (onChainStatus == server.OnChainStatusMintable || onChainStatus == server.OnChainStatusUnstakable) {
-	//		mechs = append(mechs, m)
-	//	}
-	//}
-	//
-	//// set total
-	//resp.Total = len(mechs)
-	//
-	//// get queue position
-	//queuePosition, err := db.MechQueuePosition(userFactionID.String(), hubc.Identifier())
-	//if err != nil {
-	//	gamelog.L.Error().Str("player id", hubc.Identifier()).Err(err).Msg("Failed to get player mech position")
-	//	return terror.Error(err, "Failed to get mech position")
-	//}
-	//
-	//// get player's in-battle mech
-	//bqs, err := boiler.BattleQueues(
-	//	qm.Select(
-	//		boiler.BattleQueueColumns.ID,
-	//		boiler.BattleQueueColumns.BattleContractID,
-	//		boiler.BattleQueueColumns.MechID,
-	//	),
-	//	boiler.BattleQueueWhere.OwnerID.EQ(hubc.Identifier()),
-	//	boiler.BattleQueueWhere.BattleID.IsNotNull(),
-	//	boiler.BattleQueueWhere.BattleContractID.IsNotNull(),
-	//	qm.Load(boiler.BattleQueueRels.Mech),
-	//).All(gamedb.StdConn)
-	//if err != nil {
-	//	return terror.Error(err, "Failed to get player's in-battle mechs")
-	//}
-	//
-	//// manually handle mech pagination
-	//
-	//// resort the order
-	//newList := []*AssetQueue{}
-	//
-	//// insert in-battle mech
-	//for _, bq := range bqs {
-	//	newList = append(newList, &AssetQueue{
-	//		MechID:           bq.MechID,
-	//		Hash:             bq.R.Mech.Hash,
-	//		InBattle:         true,
-	//		BattleContractID: bq.BattleContractID.String,
-	//	})
-	//
-	//}
-	//
-	//// fill queued mech
-	//for _, qp := range queuePosition {
-	//	newList = append(newList, &AssetQueue{
-	//		MechID:           qp.MechID.String(),
-	//		Position:         &qp.QueuePosition,
-	//		BattleContractID: qp.BattleContractID,
-	//	})
-	//}
-	//
-	//// fill mech detail
-	//for _, mech := range mechs {
-	//	existOnIndex := -1
-	//
-	//	// check whether it is in queue
-	//	for i, nl := range newList {
-	//		if mech.ID == nl.MechID {
-	//			existOnIndex = i
-	//			break
-	//		}
-	//	}
-	//
-	//	if existOnIndex >= 0 {
-	//		// update mech hash
-	//		newList[existOnIndex].Hash = mech.Hash
-	//	} else {
-	//		// append to new list
-	//		newList = append(newList, &AssetQueue{
-	//			MechID: mech.ID,
-	//			Hash:   mech.Hash,
-	//		})
-	//	}
-	//}
-	//
-	//offset := req.Payload.PageNumber * req.Payload.PageSize
-	//limit := req.Payload.PageSize
-	//
-	//for i, nl := range newList {
-	//	if i < offset {
-	//		continue
-	//	}
-	//
-	//	resp.AssetQueueList = append(resp.AssetQueueList, nl)
-	//
-	//	if len(resp.AssetQueueList) >= limit {
-	//		break
-	//	}
-	//}
-	//
-	//// fetch battle contract for contract reward
-	//battleContractIDs := []string{}
-	//for _, bc := range resp.AssetQueueList {
-	//	if bc.BattleContractID != "" {
-	//		battleContractIDs = append(battleContractIDs, bc.BattleContractID)
-	//	}
-	//}
-	//
-	//// if there contain any battle contract id
-	//if len(battleContractIDs) > 0 {
-	//	bcs, err := boiler.BattleContracts(
-	//		qm.Select(
-	//			boiler.BattleContractColumns.ID,
-	//			boiler.BattleContractColumns.MechID,
-	//			boiler.BattleContractColumns.ContractReward,
-	//		),
-	//		boiler.BattleContractWhere.ID.IN(battleContractIDs),
-	//	).All(gamedb.StdConn)
-	//	if err != nil {
-	//		return terror.Error(err, "Failed to get battle contract")
-	//	}
-	//
-	//	for _, bc := range bcs {
-	//		for _, asset := range resp.AssetQueueList {
-	//			if asset.MechID == bc.MechID {
-	//				asset.ContractReward = bc.ContractReward
-	//				break
-	//			}
-	//		}
-	//	}
-	//}
-	//
-	//reply(resp)
+	var allMechs []*mechDetailsBrief
 
+	// get the list of player's mechs (id, hash, created_at)
+	query := `	
+		SELECT m.id, ci.hash
+		FROM mechs m
+		INNER JOIN collection_items ci on ci.item_id = m.id
+		WHERE owner_id = $1
+		`
+
+	rows, err := gamedb.StdConn.Query(query, hubc.Identifier())
+	if err != nil {
+		return terror.Error(err, "Issue retrieving your mechs, please try again or contact support.")
+	}
+	defer rows.Close()
+	for rows.Next() {
+		newMech := &mechDetailsBrief{}
+		err := rows.Scan(&newMech.ID, &newMech.Hash)
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("query", query).Str("hubc.Identifier()", hubc.Identifier()).Msg("unable to scan mech details into struct")
+			return terror.Error(err, "Issue composing your mechs, please try again or contact support.")
+		}
+		allMechs = append(allMechs, newMech)
+	}
+
+	var mechs []*mechDetailsBrief
+
+	// reply empty
+	if len(allMechs) == 0 {
+		reply(resp)
+		return nil
+	}
+
+	// calc mech id list
+	mechIDs := []string{}
+	for _, mech := range allMechs {
+		mechIDs = append(mechIDs, mech.ID)
+	}
+
+	assetMap, err := arena.RPCClient.AssetsOnChainStatus(mechIDs)
+	if err != nil {
+		return terror.Error(err, "Unable to get asset ownership details, please try again or contact support.")
+	}
+
+	for _, m := range allMechs {
+		if onChainStatus, ok := assetMap[m.ID]; ok && (onChainStatus == server.OnChainStatusMintable || onChainStatus == server.OnChainStatusUnstakable) {
+			mechs = append(mechs, m)
+		}
+	}
+
+	// set total
+	resp.Total = len(mechs)
+
+	// get queue position
+	queuePosition, err := db.MechQueuePosition(userFactionID.String(), hubc.Identifier())
+	if err != nil {
+		gamelog.L.Error().Str("player id", hubc.Identifier()).Err(err).Msg("Failed to get player mech position")
+		return terror.Error(err, "Failed to get mech position")
+	}
+
+	// get player's in-battle mech
+	inBattleMechs, err := boiler.BattleQueues(
+		qm.Select(
+			boiler.BattleQueueColumns.ID,
+			boiler.BattleQueueColumns.BattleContractID,
+			boiler.BattleQueueColumns.MechID,
+		),
+		boiler.BattleQueueWhere.OwnerID.EQ(hubc.Identifier()),
+		boiler.BattleQueueWhere.BattleID.IsNotNull(),
+		boiler.BattleQueueWhere.BattleContractID.IsNotNull(),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to get player's in-battle mechs")
+	}
+
+	// manually handle mech pagination
+
+	// resort the order
+	newList := []*AssetQueue{}
+
+	// insert in-battle mech
+	for _, bq := range inBattleMechs {
+		for _, m := range mechs {
+			if m.ID == bq.MechID {
+				newList = append(newList, &AssetQueue{
+					MechID:           m.ID,
+					Hash:             m.Hash,
+					InBattle:         true,
+					BattleContractID: bq.BattleContractID.String,
+				})
+			}
+		}
+	}
+
+	// fill queued mech
+	for _, qp := range queuePosition {
+		newList = append(newList, &AssetQueue{
+			MechID:           qp.MechID.String(),
+			Position:         &qp.QueuePosition,
+			BattleContractID: qp.BattleContractID,
+		})
+	}
+
+	// fill mech detail
+	for _, mech := range mechs {
+		existOnIndex := -1
+
+		// check whether it is in queue
+		for i, nl := range newList {
+			if mech.ID == nl.MechID {
+				existOnIndex = i
+				break
+			}
+		}
+
+		if existOnIndex >= 0 {
+			// update mech hash
+			newList[existOnIndex].Hash = mech.Hash
+		} else {
+			// append to new list
+			newList = append(newList, &AssetQueue{
+				MechID: mech.ID,
+				Hash:   mech.Hash,
+			})
+		}
+	}
+
+	offset := req.Payload.PageNumber * req.Payload.PageSize
+	limit := req.Payload.PageSize
+
+	for i, nl := range newList {
+		if i < offset {
+			continue
+		}
+
+		resp.AssetQueueList = append(resp.AssetQueueList, nl)
+
+		if len(resp.AssetQueueList) >= limit {
+			break
+		}
+	}
+
+	// fetch battle contract for contract reward
+	battleContractIDs := []string{}
+	for _, bc := range resp.AssetQueueList {
+		if bc.BattleContractID != "" {
+			battleContractIDs = append(battleContractIDs, bc.BattleContractID)
+		}
+	}
+
+	// if there contain any battle contract id
+	if len(battleContractIDs) > 0 {
+		bcs, err := boiler.BattleContracts(
+			qm.Select(
+				boiler.BattleContractColumns.ID,
+				boiler.BattleContractColumns.MechID,
+				boiler.BattleContractColumns.ContractReward,
+			),
+			boiler.BattleContractWhere.ID.IN(battleContractIDs),
+		).All(gamedb.StdConn)
+		if err != nil {
+			return terror.Error(err, "Failed to get battle contract")
+		}
+
+		for _, bc := range bcs {
+			for _, asset := range resp.AssetQueueList {
+				if asset.MechID == bc.MechID {
+					asset.ContractReward = bc.ContractReward
+					break
+				}
+			}
+		}
+	}
+
+	reply(resp)
 	return nil
 }

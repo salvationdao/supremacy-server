@@ -32,6 +32,7 @@ ALTER TABLE blueprint_weapons
     DROP COLUMN IF EXISTS weapon_type,
     ADD COLUMN game_client_weapon_id   UUID,
     ADD COLUMN weapon_type             WEAPON_TYPE,
+    ADD COLUMN collection              COLLECTION  NOT NULL DEFAULT 'supremacy-general',
     ADD COLUMN default_damage_typ      DAMAGE_TYPE NOT NULL DEFAULT 'Kinetic',
     ADD COLUMN damage_falloff          INT     DEFAULT 0,
     ADD COLUMN damage_falloff_rate     INT     DEFAULT 0,
@@ -39,7 +40,7 @@ ALTER TABLE blueprint_weapons
     ADD COLUMN rate_of_fire            NUMERIC DEFAULT 0,
     ADD COLUMN radius                  INT     DEFAULT 0,
     ADD COLUMN radial_does_full_damage BOOL    DEFAULT TRUE,
-    ADD COLUMN projectile_speed        INT     DEFAULT 0,
+    ADD COLUMN projectile_speed        NUMERIC DEFAULT 0,
     ADD COLUMN max_ammo                INT     DEFAULT 0,
     ADD COLUMN energy_cost             NUMERIC DEFAULT 0;
 
@@ -78,21 +79,21 @@ ALTER TABLE blueprint_weapons
 
 ALTER TABLE weapons
     DROP COLUMN IF EXISTS weapon_type,
-    ADD COLUMN blueprint_id            UUID REFERENCES blueprint_weapons,
-    ADD COLUMN default_damage_typ      DAMAGE_TYPE NOT NULL DEFAULT 'Kinetic',
-    ADD COLUMN collection_item_id      UUID REFERENCES collection_items (id),
-    ADD COLUMN genesis_token_id        NUMERIC,
-    ADD COLUMN weapon_type             WEAPON_TYPE,
-    ADD COLUMN owner_id                UUID REFERENCES players (id),
-    ADD COLUMN damage_falloff          INT     DEFAULT 0,
-    ADD COLUMN damage_falloff_rate     INT     DEFAULT 0,
-    ADD COLUMN spread                  INT     DEFAULT 0,
-    ADD COLUMN rate_of_fire            NUMERIC DEFAULT 0,
-    ADD COLUMN radius                  INT     DEFAULT 0,
-    ADD COLUMN radial_does_full_damage BOOL    DEFAULT TRUE,
-    ADD COLUMN projectile_speed        NUMERIC DEFAULT 0,
-    ADD COLUMN energy_cost             NUMERIC DEFAULT 0,
-    ADD COLUMN max_ammo                INT     DEFAULT 0;
+    ADD COLUMN blueprint_id             UUID REFERENCES blueprint_weapons,
+    ADD COLUMN default_damage_typ       DAMAGE_TYPE NOT NULL DEFAULT 'Kinetic',
+    ADD COLUMN genesis_token_id         NUMERIC,
+    ADD COLUMN limited_release_token_id NUMERIC,
+    ADD COLUMN weapon_type              WEAPON_TYPE,
+    ADD COLUMN owner_id                 UUID REFERENCES players (id),
+    ADD COLUMN damage_falloff           INT     DEFAULT 0,
+    ADD COLUMN damage_falloff_rate      INT     DEFAULT 0,
+    ADD COLUMN spread                   NUMERIC DEFAULT 0,
+    ADD COLUMN rate_of_fire             NUMERIC DEFAULT 0,
+    ADD COLUMN radius                   INT     DEFAULT 0,
+    ADD COLUMN radial_does_full_damage  BOOL    DEFAULT TRUE,
+    ADD COLUMN projectile_speed         NUMERIC DEFAULT 0,
+    ADD COLUMN energy_cost              NUMERIC DEFAULT 0,
+    ADD COLUMN max_ammo                 INT     DEFAULT 0;
 
 
 UPDATE weapons
@@ -141,16 +142,12 @@ FROM weapon_owners
 WHERE w.id = weapon_owners.weapon_id;
 
 -- This inserts a new collection_items entry for each weapons and updates the weapons table with token id
-WITH insrt AS (
-    WITH weapon AS (SELECT 'weapon' AS item_type, id FROM weapons)
-        INSERT INTO collection_items (token_id, item_type, item_id)
-            SELECT NEXTVAL('collection_general'), weapon.item_type, weapon.id
-            FROM weapon
-            RETURNING id, item_id)
-UPDATE weapons w
-SET collection_item_id = insrt.id
-FROM insrt
-WHERE w.id = insrt.item_id;
+
+WITH weapon AS (SELECT 'weapon' AS item_type, id FROM weapons)
+INSERT
+INTO collection_items (token_id, item_type, item_id)
+SELECT NEXTVAL('collection_general'), weapon.item_type::ITEM_TYPE, weapon.id
+FROM weapon;
 
 -- this updates all genesis_token_id for weapons that are in genesis
 WITH genesis AS (SELECT external_token_id, m.collection_slug, m.chassis_id, _cw.weapon_id
@@ -162,6 +159,15 @@ SET genesis_token_id = genesis.external_token_id
 FROM genesis
 WHERE w.id = genesis.weapon_id;
 
+-- this updates all limited release for weapons that are in genesis
+WITH limited_release AS (SELECT external_token_id, m.collection_slug, m.chassis_id, _cw.weapon_id
+                         FROM chassis_weapons _cw
+                                  INNER JOIN mechs m ON m.chassis_id = _cw.chassis_id
+                         WHERE m.collection_slug = 'supremacy-limited-release')
+UPDATE weapons w
+SET limited_release_token_id = limited_release.external_token_id
+FROM limited_release
+WHERE w.id = limited_release.weapon_id;
 
 ALTER TABLE weapons
     ALTER COLUMN owner_id SET NOT NULL,
@@ -377,6 +383,5 @@ UPDATE weapons w
 SET blueprint_id = (SELECT id FROM blueprint_weapons bw WHERE bw.label = w.label);
 
 ALTER TABLE weapons
-    ALTER COLUMN collection_item_id SET NOT NULL,
     ALTER COLUMN blueprint_id SET NOT NULL;
 

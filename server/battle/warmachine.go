@@ -1,55 +1,87 @@
 package battle
 
-type Faction struct {
-	ID    string        `json:"id"`
-	Label string        `json:"label"`
-	Theme *FactionTheme `json:"theme"`
+import (
+	"time"
+
+	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
+)
+
+type WarMachine struct {
+	ID            string `json:"id"`
+	Hash          string `json:"hash"`
+	OwnedByID     string `json:"ownedByID"`
+	Name          string `json:"name"`
+	ParticipantID byte   `json:"participantID"`
+	FactionID     string `json:"factionID"`
+	MaxHealth     uint32 `json:"maxHealth"`
+	Health        uint32 `json:"health"`
+
+	Model string `json:"model"`
+	Skin  string `json:"skin"`
+	Speed int    `json:"speed"`
+
+	Faction *Faction `json:"faction"`
+	Tier    string   `json:"tier"`
+
+	EnergyCore *EnergyCore    `json:"energy_core,omitempty"`
+	Abilities  []*GameAbility `json:"abilities"`
+	Weapons    []*Weapon      `json:"weapons"`
+
+	//Durability         int             `json:"durability"`
+	//PowerGrid          int             `json:"powerGrid"`
+	//CPU                int             `json:"cpu"`
+	//WeaponHardpoint    int             `json:"weaponHardpoint"`
+	//TurretHardpoint    int             `json:"turretHardpoint"`
+	//UtilitySlots       int             `json:"utilitySlots"`
+	//ShieldRechargeRate float64         `json:"shieldRechargeRate"`
+	//Description   *string         `json:"description"`
+	//ExternalUrl   string          `json:"externalUrl"`
+	//Image         string          `json:"image"`
+	//MaxShield     uint32          `json:"maxShield"`
+	//Shield        uint32          `json:"shield"`
+	//Energy        uint32          `json:"energy"`
+	//Stat          *Stat           `json:"stat"`
+	//ImageAvatar   string          `json:"imageAvatar"`
+	//Position      *server.Vector3 `json:"position"`
+	//Rotation      int             `json:"rotation"`
 }
 
-type FactionTheme struct {
-	Primary    string `json:"primary"`
-	Secondary  string `json:"secondary"`
-	Background string `json:"background"`
+type EnergyCore struct {
+	ID           string          `json:"id"`
+	Label        string          `json:"label"`
+	Capacity     decimal.Decimal `json:"capacity"`
+	MaxDrawRate  decimal.Decimal `json:"max_draw_rate"`
+	RechargeRate decimal.Decimal `json:"recharge_rate"`
+	Armour       decimal.Decimal `json:"armour"`
+	MaxHitpoints decimal.Decimal `json:"max_hitpoints"`
+	Tier         null.String     `json:"tier,omitempty"`
+	EquippedOn   null.String     `json:"equipped_on,omitempty"`
+	CreatedAt    time.Time       `json:"created_at"`
 }
 
-type Stat struct {
-	X        uint32 `json:"x"`
-	Y        uint32 `json:"y"`
-	Rotation uint32 `json:"rotation"`
-}
+type DamageType byte
 
-type DamageRecord struct {
-	Amount             int              `json:"amount"` // The total amount of damage taken from this source
-	CausedByWarMachine *WarMachineBrief `json:"caused_by_war_machine,omitempty"`
-	SourceName         string           `json:"source_name,omitempty"` // The name of the weapon / damage causer (in-case of now TokenID)
-}
+const (
+	DamageTypeDefault   DamageType = 0
+	DamageTypeEnergy    DamageType = 1
+	DamageTypeExplosive DamageType = 2
+)
 
-type WMDestroyedRecord struct {
-	DestroyedWarMachine *WarMachineBrief `json:"destroyed_war_machine"`
-	KilledByWarMachine  *WarMachineBrief `json:"killed_by_war_machine,omitempty"`
-	KilledBy            string           `json:"killed_by"`
-	DamageRecords       []*DamageRecord  `json:"damage_records"`
-}
-
-type DamageHistory struct {
-	Amount         int    `json:"amount"`          // The total amount of damage taken from this source
-	InstigatorHash string `json:"instigator_hash"` // The Hash of the WarMachine that caused the damage (0 if none, ie: an Airstrike)
-	SourceHash     string `json:"source_hash"`     // The Hash of the weapon
-	SourceName     string `json:"source_name"`     // The name of the weapon / damage causer (in-case of now Hash)
-}
-
-type WarMachineBrief struct {
-	ParticipantID byte          `json:"participantID"`
-	Hash          string        `json:"hash"`
-	ImageUrl      string        `json:"imageUrl"`
-	ImageAvatar   string        `json:"imageAvatar"`
-	Name          string        `json:"name"`
-	Faction       *FactionBrief `json:"faction"`
-}
-
-type FactionBrief struct {
-	ID         string        `json:"id"`
-	Label      string        `json:"label"`
-	LogoBlobID string        `json:"logo_blob_id,omitempty"`
-	Theme      *FactionTheme `json:"theme"`
+type Weapon struct {
+	ID                  string     `json:"id"`    // UUID that client uses to apply weapon stats to the correct weapons (unique per model/blueprint)
+	Hash                string     `json:"hash"`  // Unique hash of a user's weapon
+	Model               string     `json:"model"` // Unused for built-in mech weapons
+	Skin                string     `json:"skin"`  // Unused for built-in mech weapons
+	Name                string     `json:"name"`
+	Damage              int        `json:"damage"`
+	DamageFalloff       int        `json:"damageFalloff"`       // Distance at which damage starts decreasing
+	DamageFalloffRate   int        `json:"damageFalloffRate"`   // How much the damage decreases by per km
+	DamageRadius        int        `json:"damageRadius"`        // Enemies within this radius when the projectile hits something is damaged
+	DamageRadiusFalloff int        `json:"damageRadiusFalloff"` // Distance at which damage starts decreasing (must be greater than 0 and less than damageRadius to have any affect)
+	DamageType          DamageType `json:"damageType"`          // For calculating damage weakness/resistance (eg: shields take 25% extra damage from energy weapons)
+	Spread              float32    `json:"spread"`              // Projectiles are randomly offset inside a cone. Spread is the half-angle of the cone, in degrees.
+	RateOfFire          float32    `json:"rateOfFire"`          // Rounds per minute
+	ProjectileSpeed     int        `json:"projectileSpeed"`     // cm/s
+	MaxAmmo             int        `json:"maxAmmo"`             // The max amount of ammo this weapon can hold
 }

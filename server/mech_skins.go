@@ -12,11 +12,10 @@ type MechSkin struct {
 	*CollectionDetails
 	ID               string              `json:"id"`
 	BlueprintID      string              `json:"blueprint_id"`
-	CollectionItemID string              `json:"collection_item_id"`
 	GenesisTokenID   decimal.NullDecimal `json:"genesis_token_id,omitempty"`
 	Label            string              `json:"label"`
 	OwnerID          string              `json:"owner_id"`
-	ChassisModel     string              `json:"chassis_model"`
+	MechModel        string              `json:"mech_model"`
 	EquippedOn       null.String         `json:"equipped_on,omitempty"`
 	Tier             null.String         `json:"tier,omitempty"`
 	ImageURL         null.String         `json:"image_url,omitempty"`
@@ -30,7 +29,7 @@ type MechSkin struct {
 type BlueprintMechSkin struct {
 	ID               string      `json:"id"`
 	Collection       string      `json:"collection"`
-	ChassisModel     string      `json:"chassis_model"`
+	MechModel        string      `json:"mech_model"`
 	Label            string      `json:"label"`
 	Tier             null.String `json:"tier,omitempty"`
 	ImageURL         null.String `json:"image_url,omitempty"`
@@ -39,13 +38,17 @@ type BlueprintMechSkin struct {
 	LargeImageURL    null.String `json:"large_image_url,omitempty"`
 	AvatarURL        null.String `json:"avatar_url,omitempty"`
 	CreatedAt        time.Time   `json:"created_at"`
+
+	// only used on inserting new mechs/items, since we are still giving away some limited released and genesis
+	GenesisTokenID        decimal.NullDecimal `json:"genesis_token_id,omitempty"`
+	LimitedReleaseTokenID decimal.NullDecimal `json:"limited_release_token_id,omitempty"`
 }
 
 func BlueprintMechSkinFromBoiler(mechSkin *boiler.BlueprintMechSkin) *BlueprintMechSkin {
 	return &BlueprintMechSkin{
 		ID:               mechSkin.ID,
 		Collection:       mechSkin.Collection,
-		ChassisModel:     mechSkin.ChassisModel,
+		MechModel:        mechSkin.MechModel,
 		Label:            mechSkin.Label,
 		Tier:             mechSkin.Tier,
 		ImageURL:         mechSkin.ImageURL,
@@ -54,5 +57,29 @@ func BlueprintMechSkinFromBoiler(mechSkin *boiler.BlueprintMechSkin) *BlueprintM
 		LargeImageURL:    mechSkin.LargeImageURL,
 		AvatarURL:        mechSkin.AvatarURL,
 		CreatedAt:        mechSkin.CreatedAt,
+	}
+}
+
+func MechSkinFromBoiler(skin *boiler.MechSkin, collection *boiler.CollectionItem) *MechSkin {
+	return &MechSkin{
+		CollectionDetails: &CollectionDetails{
+			CollectionSlug: collection.CollectionSlug,
+			Hash:           collection.Hash,
+			TokenID:        collection.TokenID,
+		},
+		ID:               skin.ID,
+		BlueprintID:      skin.BlueprintID,
+		GenesisTokenID:   skin.GenesisTokenID,
+		Label:            skin.Label,
+		OwnerID:          skin.OwnerID,
+		MechModel:        skin.MechModel,
+		EquippedOn:       skin.EquippedOn,
+		Tier:             skin.Tier,
+		ImageURL:         skin.ImageURL,
+		AnimationURL:     skin.AnimationURL,
+		CardAnimationURL: skin.CardAnimationURL,
+		AvatarURL:        skin.AvatarURL,
+		LargeImageURL:    skin.LargeImageURL,
+		CreatedAt:        skin.CreatedAt,
 	}
 }

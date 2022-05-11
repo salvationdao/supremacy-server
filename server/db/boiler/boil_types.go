@@ -93,6 +93,8 @@ const (
 // Enum values for  are not proper Go identifiers, cannot emit constants
 // Enum values for  are not proper Go identifiers, cannot emit constants
 // Enum values for  are not proper Go identifiers, cannot emit constants
+// Enum values for  are not proper Go identifiers, cannot emit constants
+// Enum values for  are not proper Go identifiers, cannot emit constants
 
 // Enum values for UtilityType
 const (
@@ -102,6 +104,9 @@ const (
 	UtilityTypeANTIMISSILE = "ANTI MISSILE"
 	UtilityTypeACCELERATOR = "ACCELERATOR"
 )
+
+// Enum values for  are not proper Go identifiers, cannot emit constants
+// Enum values for  are not proper Go identifiers, cannot emit constants
 
 // Enum values for DamageType
 const (
@@ -117,6 +122,16 @@ const (
 )
 
 // Enum values for  are not proper Go identifiers, cannot emit constants
+
+// Enum values for ItemType
+const (
+	ItemTypeUtility       = "utility"
+	ItemTypeWeapon        = "weapon"
+	ItemTypeMech          = "mech"
+	ItemTypeMechSkin      = "mech_skin"
+	ItemTypeMechAnimation = "mech_animation"
+	ItemTypeEnergyCore    = "energy_core"
+)
 
 // Enum values for AbilityLevel
 const (
