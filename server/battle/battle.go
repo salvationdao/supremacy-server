@@ -16,7 +16,6 @@ import (
 	"server/multipliers"
 	"server/rpcclient"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -1354,14 +1353,14 @@ func (btl *Battle) Tick(payload []byte) {
 				btl.WarMachines[warMachineIndex].Shield = shield
 			}
 		}
-		// Energy
-		if booleans[3] {
-			energy := binary.BigEndian.Uint32(payload[offset : offset+4])
-			offset += 4
-			if warMachineIndex != -1 {
-				btl.WarMachines[warMachineIndex].Energy = energy
-			}
-		}
+		//// Energy
+		//if booleans[3] {
+		//	energy := binary.BigEndian.Uint32(payload[offset : offset+4])
+		//	offset += 4
+		//	if warMachineIndex != -1 {
+		//		btl.WarMachines[warMachineIndex].Energy = energy
+		//	}
+		//}
 	}
 }
 
@@ -1910,97 +1909,43 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 	warmachines := make([]*WarMachine, len(mechs))
 	// TODO: vinnie fix this
 	for i, mech := range mechs {
-		label := mech.Faction.Label
-		if label == "" {
-			gamelog.L.Warn().Interface("faction_id", mech.Faction.ID).Str("battle_id", btl.ID).Msg("mech faction is an empty label")
-		}
-		if len(label) > 10 {
-			words := strings.Split(label, " ")
-			label = ""
-			for i, word := range words {
-				if i == 0 {
-					label = word
-					continue
-				}
-				if i%1 == 0 {
-					label = label + " " + word
-					continue
-				}
-				label = label + "\n" + word
-			}
-		}
+		newWarMachine := &WarMachine{
+			ID:          mech.ID,
+			Hash:        mech.Hash,
+			OwnedByID:   mech.OwnerID,
+			Name:        TruncateString(mech.Name, 20),
+			FactionID:   mech.FactionID,
+			MaxHealth:   uint32(mech.MaxHitpoints),
+			Health:      uint32(mech.MaxHitpoints),
+			Model:       mech.Model.Label,
+			Skin:        mech.ChassisSkin.Label,
+			Speed:       mech.Speed,
+			Tier:        mech.Tier.String,
+			Image:       mech.ChassisSkin.ImageURL.String,
+			ImageAvatar: mech.ChassisSkin.AvatarURL.String,
 
-		weaponNames := make([]string, len(mech.Weapons))
-		for k, wpn := range mech.Weapons {
-			i, err := strconv.Atoi(k)
-			if err != nil {
-				gamelog.L.Warn().Str("key", k).Interface("weapon", wpn).Str("battle_id", btl.ID).Msg("mech weapon's key is not an int")
-			}
-			weaponNames[i] = wpn.Label
-		}
-
-		model, ok := ModelMap[mech.Chassis.Model]
-		if !ok {
-			model = "WREX"
-		}
-
-		mechName := mech.Name
-
-		if len(mechName) < 3 {
-			owner, err := mech.Owner().One(gamedb.StdConn)
-			if err != nil {
-				gamelog.L.Warn().Str("mech_id", mech.ID).Msg("unable to retrieve mech's owner")
-			} else {
-				mechName = owner.Username.String
-				if mechName == "" {
-					mechName = fmt.Sprintf("%s%s%s", "🦾", mech.Hash, "🦾")
-				}
-			}
-		}
-		skin := mech.Chassis.Skin
-		mappedSkin, ok := SubmodelSkinMap[mech.Chassis.Skin]
-		if ok {
-			skin = mappedSkin
-		}
-		warmachines[i] = &WarMachine{
-			ID:            mech.ID,
-			Name:          TruncateString(mechName, 20),
-			Hash:          mech.Hash,
-			ParticipantID: 0,
-			FactionID:     mech.Faction.ID,
-			MaxHealth:     uint32(mech.Chassis.MaxHitpoints),
-			Health:        uint32(mech.Chassis.MaxHitpoints),
-			MaxShield:     uint32(mech.Chassis.MaxShield),
-			Shield:        uint32(mech.Chassis.MaxShield),
-			Stat:          nil,
-			OwnedByID:     mech.OwnerID,
-			ImageAvatar:   mech.AvatarURL,
 			Faction: &Faction{
-				ID:    mech.Faction.ID,
-				Label: label,
+				ID:    mech.Faction.ID.String(),
+				Label: mech.Faction.Label,
 				Theme: &FactionTheme{
-					Primary:    mech.Faction.PrimaryColor,
-					Secondary:  mech.Faction.SecondaryColor,
-					Background: mech.Faction.BackgroundColor,
+					Primary:    mech.Faction.Theme.Primary,
+					Secondary:  mech.Faction.Theme.Secondary,
+					Background: mech.Faction.Theme.Background,
 				},
 			},
-			Speed:              mech.Chassis.Speed,
-			Model:              model,
-			Skin:               skin,
-			ShieldRechargeRate: float64(mech.Chassis.ShieldRechargeRate),
-			Durability:         mech.Chassis.MaxHitpoints,
-			WeaponHardpoint:    mech.Chassis.WeaponHardpoints,
-			TurretHardpoint:    mech.Chassis.TurretHardpoints,
-			UtilitySlots:       mech.Chassis.UtilitySlots,
-			Description:        nil,
-			ExternalUrl:        "",
-			Image:              mech.ImageURL,
-			PowerGrid:          1,
-			CPU:                1,
-			WeaponNames:        weaponNames,
-			Tier:               mech.Tier,
+
+			EnergyCore: EnergyCoreFromServer(mech.EnergyCore),
+			Weapons:    WeaponsFromServer(mech.Weapons),
+			//Abilities:  nil,
 		}
-		gamelog.L.Debug().Str("mech_id", mech.ID).Str("model", model).Str("skin", mech.Chassis.Skin).Msg("converted mech to warmachine")
+		if len(newWarMachine.Name) < 3 {
+			newWarMachine.Name = mech.Owner.Username
+			if newWarMachine.Name == "" {
+				newWarMachine.Name = fmt.Sprintf("%s%s%s", "🦾", mech.Hash, "🦾")
+			}
+		}
+
+		gamelog.L.Debug().Interface("mech", mech).Interface("newWarMachine", newWarMachine).Msg("converted mech to warmachine")
 	}
 
 	sort.Slice(warmachines, func(i, k int) bool {

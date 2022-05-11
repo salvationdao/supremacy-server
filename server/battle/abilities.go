@@ -231,7 +231,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 				wm.Abilities = append(wm.Abilities, wmAbility)
 
 				// store faction ability for price tracking
-				factionAbilities[factionID][wmAbility.Identity] = &wmAbility
+				factionAbilities[factionID][wmAbility.Identity] = wmAbility
 			}
 		}
 
@@ -265,7 +265,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 		factionAbilities := []*GameAbility{}
 		for _, ability := range ga {
 			if ability.Title == "FACTION_WIDE" {
-				factionAbilities = append(factionAbilities, *ability)
+				factionAbilities = append(factionAbilities, ability)
 			}
 		}
 		as.battle().arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionUniqueAbilitiesUpdated, factionID.String())), factionAbilities)
@@ -1766,7 +1766,7 @@ func (as *AbilitiesSystem) AbilityContribute(factionID uuid.UUID, userID uuid.UU
 }
 
 // FactionUniqueAbilityGet return the faction unique ability for the given faction
-func (as *AbilitiesSystem) FactionUniqueAbilitiesGet(factionID uuid.UUID) []GameAbility {
+func (as *AbilitiesSystem) FactionUniqueAbilitiesGet(factionID uuid.UUID) []*GameAbility {
 	defer func() {
 		if r := recover(); r != nil {
 			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the FactionUniqueAbilitiesGet!", r)
@@ -1776,7 +1776,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilitiesGet(factionID uuid.UUID) []Game
 	for _, ga := range as.factionUniqueAbilities[factionID] {
 		// only include return faction wide ability
 		if ga.Title == "FACTION_WIDE" {
-			abilities = append(abilities, *ga)
+			abilities = append(abilities, ga)
 		}
 	}
 
@@ -1788,7 +1788,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilitiesGet(factionID uuid.UUID) []Game
 }
 
 // WarMachineAbilitiesGet return the faction unique ability for the given faction
-func (as *AbilitiesSystem) WarMachineAbilitiesGet(factionID uuid.UUID, hash string) []GameAbility {
+func (as *AbilitiesSystem) WarMachineAbilitiesGet(factionID uuid.UUID, hash string) []*GameAbility {
 	defer func() {
 		if r := recover(); r != nil {
 			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the WarMachineAbilitiesGet!", r)
@@ -1807,7 +1807,7 @@ func (as *AbilitiesSystem) WarMachineAbilitiesGet(factionID uuid.UUID, hash stri
 	if fua, ok := as.factionUniqueAbilities[factionID]; ok {
 		for h, ga := range fua {
 			if h == hash {
-				abilities = append(abilities, *ga)
+				abilities = append(abilities, ga)
 			}
 		}
 	}

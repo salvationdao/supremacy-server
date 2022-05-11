@@ -1,6 +1,7 @@
 package battle
 
 import (
+	"server"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -28,6 +29,11 @@ type WarMachine struct {
 	Abilities  []*GameAbility `json:"abilities"`
 	Weapons    []*Weapon      `json:"weapons"`
 
+	// these objects below are used by us and not game client
+	Image       string          `json:"image"`
+	ImageAvatar string          `json:"imageAvatar"`
+	Position    *server.Vector3 `json:"position"`
+	Rotation    int             `json:"rotation"`
 	//Durability         int             `json:"durability"`
 	//PowerGrid          int             `json:"powerGrid"`
 	//CPU                int             `json:"cpu"`
@@ -37,14 +43,10 @@ type WarMachine struct {
 	//ShieldRechargeRate float64         `json:"shieldRechargeRate"`
 	//Description   *string         `json:"description"`
 	//ExternalUrl   string          `json:"externalUrl"`
-	//Image         string          `json:"image"`
 	//MaxShield     uint32          `json:"maxShield"`
-	//Shield        uint32          `json:"shield"`
+	Shield uint32 `json:"shield"`
 	//Energy        uint32          `json:"energy"`
 	//Stat          *Stat           `json:"stat"`
-	//ImageAvatar   string          `json:"imageAvatar"`
-	//Position      *server.Vector3 `json:"position"`
-	//Rotation      int             `json:"rotation"`
 }
 
 type EnergyCore struct {
@@ -80,8 +82,99 @@ type Weapon struct {
 	DamageRadius        int        `json:"damageRadius"`        // Enemies within this radius when the projectile hits something is damaged
 	DamageRadiusFalloff int        `json:"damageRadiusFalloff"` // Distance at which damage starts decreasing (must be greater than 0 and less than damageRadius to have any affect)
 	DamageType          DamageType `json:"damageType"`          // For calculating damage weakness/resistance (eg: shields take 25% extra damage from energy weapons)
-	Spread              float32    `json:"spread"`              // Projectiles are randomly offset inside a cone. Spread is the half-angle of the cone, in degrees.
-	RateOfFire          float32    `json:"rateOfFire"`          // Rounds per minute
+	Spread              float64    `json:"spread"`              // Projectiles are randomly offset inside a cone. Spread is the half-angle of the cone, in degrees.
+	RateOfFire          float64    `json:"rateOfFire"`          // Rounds per minute
 	ProjectileSpeed     int        `json:"projectileSpeed"`     // cm/s
 	MaxAmmo             int        `json:"maxAmmo"`             // The max amount of ammo this weapon can hold
+}
+
+type Utility struct {
+	Type  string `json:"type"`
+	Label string `json:"label"`
+
+	Shield      *UtilityShield      `json:"shield,omitempty"`
+	AttackDrone *UtilityAttackDrone `json:"attack_drone,omitempty"`
+	RepairDrone *UtilityRepairDrone `json:"repair_drone,omitempty"`
+	Accelerator *UtilityAccelerator `json:"accelerator,omitempty"`
+	AntiMissile *UtilityAntiMissile `json:"anti_missile,omitempty"`
+}
+
+type UtilityAttackDrone struct {
+	UtilityID        string `json:"utility_id"`
+	Damage           int    `json:"damage"`
+	RateOfFire       int    `json:"rate_of_fire"`
+	Hitpoints        int    `json:"hitpoints"`
+	LifespanSeconds  int    `json:"lifespan_seconds"`
+	DeployEnergyCost int    `json:"deploy_energy_cost"`
+}
+
+type UtilityShield struct {
+	UtilityID          string `json:"utility_id"`
+	Hitpoints          int    `json:"hitpoints"`
+	RechargeRate       int    `json:"recharge_rate"`
+	RechargeEnergyCost int    `json:"recharge_energy_cost"`
+}
+
+type UtilityRepairDrone struct {
+	UtilityID        string      `json:"utility_id"`
+	RepairType       null.String `json:"repair_type,omitempty"`
+	RepairAmount     int         `json:"repair_amount"`
+	DeployEnergyCost int         `json:"deploy_energy_cost"`
+	LifespanSeconds  int         `json:"lifespan_seconds"`
+}
+
+type UtilityAccelerator struct {
+	UtilityID    string `json:"utility_id"`
+	EnergyCost   int    `json:"energy_cost"`
+	BoostSeconds int    `json:"boost_seconds"`
+	BoostAmount  int    `json:"boost_amount"`
+}
+
+type UtilityAntiMissile struct {
+	UtilityID      string `json:"utility_id"`
+	RateOfFire     int    `json:"rate_of_fire"`
+	FireEnergyCost int    `json:"fire_energy_cost"`
+}
+
+func WeaponsFromServer(wpns []*server.Weapon) []*Weapon {
+	var weapons []*Weapon
+	for _, wpn := range wpns {
+		weapons = append(weapons, WeaponFromServer(wpn))
+	}
+	return weapons
+}
+
+func WeaponFromServer(weapon *server.Weapon) *Weapon {
+	return &Weapon{
+		ID:                weapon.ID,
+		Hash:              weapon.Hash,
+		Name:              weapon.Label,
+		Damage:            weapon.Damage,
+		DamageFalloff:     weapon.DamageFalloff.Int,
+		DamageFalloffRate: weapon.DamageFalloffRate.Int,
+		DamageRadius:      weapon.Radius.Int,
+		Spread:            weapon.Spread.Decimal.InexactFloat64(),
+		RateOfFire:        weapon.RateOfFire.Decimal.InexactFloat64(),
+		ProjectileSpeed:   int(weapon.ProjectileSpeed.Decimal.IntPart()),
+		MaxAmmo:           weapon.MaxAmmo.Int,
+		//DamageRadiusFalloff: weapon.fal, // TODO: weapon radius falloff
+		//DamageType:          weapon., // TODO: damage type, was going to come from ammo
+		//Model:               	weapon.Model, // TODO: weapon models
+		//Skin:              	weapon.Skin, // TODO: weapon skins
+	}
+}
+
+func EnergyCoreFromServer(ec *server.EnergyCore) *EnergyCore {
+	return &EnergyCore{
+		ID:           ec.ID,
+		Label:        ec.Label,
+		Capacity:     ec.Capacity,
+		MaxDrawRate:  ec.MaxDrawRate,
+		RechargeRate: ec.RechargeRate,
+		Armour:       ec.Armour,
+		MaxHitpoints: ec.MaxHitpoints,
+		Tier:         ec.Tier,
+		EquippedOn:   ec.EquippedOn,
+		CreatedAt:    ec.CreatedAt,
+	}
 }
