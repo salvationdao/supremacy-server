@@ -803,7 +803,7 @@ type WarMachineAbilitiesUpdatedRequest struct {
 
 // WarMachineAbilitiesUpdateSubscribeHandler subscribe on war machine abilities
 func (arena *Arena) WarMachineAbilitiesUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
-	gamelog.L.Info().Str("fn", "WarMachineAbilitiesUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
+	gamelog.L.Debug().Str("fn", "WarMachineAbilitiesUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
 	req := &WarMachineAbilitiesUpdatedRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -942,7 +942,7 @@ func (arena *Arena) GabsBribeStageSubscribe(ctx context.Context, wsc *hub.Client
 const HubKeyBattleAbilityProgressBarUpdated hub.HubCommandKey = "BATTLE:ABILITY:PROGRESS:BAR:UPDATED"
 
 func (arena *Arena) BattleAbilityProgressBarUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, needProcess bool) (messagebus.BusKey, error) {
-	gamelog.L.Info().Str("fn", "BattleAbilityProgressBarUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
+	gamelog.L.Debug().Str("fn", "BattleAbilityProgressBarUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
 
 	return messagebus.BusKey(HubKeyBattleAbilityProgressBarUpdated), nil
 }
@@ -977,7 +977,7 @@ func (arena *Arena) WarMachineLocationUpdateSubscribeHandler(ctx context.Context
 const HubKeySpoilOfWarUpdated hub.HubCommandKey = "SPOIL:OF:WAR:UPDATED"
 
 func (arena *Arena) SpoilOfWarUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, needProcess bool) (messagebus.BusKey, error) {
-	gamelog.L.Info().Str("fn", "SpoilOfWarUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
+	gamelog.L.Debug().Str("fn", "SpoilOfWarUpdateSubscribeHandler").RawJSON("req", payload).Msg("ws handler")
 	return messagebus.BusKey(HubKeySpoilOfWarUpdated), nil
 }
 
