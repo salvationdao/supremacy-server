@@ -641,6 +641,8 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, wsc *hub.Client, paylo
 		return terror.Error(err, "Issue executing player ability, please try again or contact support.")
 	}
 	reply(true)
+
+	currentBattle.arena.Message("BATTLE:ABILITY", event)
 	arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeyPlayerAbilitiesListUpdated, userID)), true)
 
 	return nil

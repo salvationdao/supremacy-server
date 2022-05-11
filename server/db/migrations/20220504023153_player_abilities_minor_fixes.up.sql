@@ -43,13 +43,13 @@ SET description = 'An airdropped module that can be picked up by War Machines to
 WHERE game_client_ability_id = 10;
 -- Update Hacker Drone
 UPDATE blueprint_player_abilities
-SET colour = '#FF5861', text_colour = '#FF5861'
+SET colour = '#FF5861', text_colour = '#FF5861', location_select_type = 'LOCATION_SELECT'
 WHERE game_client_ability_id = 13;
 UPDATE player_abilities
-SET colour = '#FF5861', text_colour = '#FF5861'
+SET colour = '#FF5861', text_colour = '#FF5861', location_select_type = 'LOCATION_SELECT'
 WHERE game_client_ability_id = 13;
 UPDATE consumed_abilities
-SET colour = '#FF5861', text_colour = '#FF5861'
+SET colour = '#FF5861', text_colour = '#FF5861', location_select_type = 'LOCATION_SELECT'
 WHERE game_client_ability_id = 13;
 -- Update Blackout
 UPDATE blueprint_player_abilities
