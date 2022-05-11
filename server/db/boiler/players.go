@@ -155,7 +155,6 @@ var PlayerRels = struct {
 	OwnerBattleWins             string
 	ChatHistories               string
 	ConsumedByConsumedAbilities string
-	OwnerPowerCores             string
 	MVPPlayerFactionStats       string
 	OwnerMechAnimations         string
 	OwnerMechSkins              string
@@ -168,6 +167,7 @@ var PlayerRels = struct {
 	PlayerPreferences           string
 	PlayerSpoilsOfWars          string
 	PlayersPunishVotes          string
+	OwnerPowerCores             string
 	IssuedByPunishVotes         string
 	ReportedPlayerPunishVotes   string
 	PunishedPlayers             string
@@ -187,7 +187,6 @@ var PlayerRels = struct {
 	OwnerBattleWins:             "OwnerBattleWins",
 	ChatHistories:               "ChatHistories",
 	ConsumedByConsumedAbilities: "ConsumedByConsumedAbilities",
-	OwnerPowerCores:             "OwnerPowerCores",
 	MVPPlayerFactionStats:       "MVPPlayerFactionStats",
 	OwnerMechAnimations:         "OwnerMechAnimations",
 	OwnerMechSkins:              "OwnerMechSkins",
@@ -200,6 +199,7 @@ var PlayerRels = struct {
 	PlayerPreferences:           "PlayerPreferences",
 	PlayerSpoilsOfWars:          "PlayerSpoilsOfWars",
 	PlayersPunishVotes:          "PlayersPunishVotes",
+	OwnerPowerCores:             "OwnerPowerCores",
 	IssuedByPunishVotes:         "IssuedByPunishVotes",
 	ReportedPlayerPunishVotes:   "ReportedPlayerPunishVotes",
 	PunishedPlayers:             "PunishedPlayers",
@@ -222,7 +222,6 @@ type playerR struct {
 	OwnerBattleWins             BattleWinSlice            `boiler:"OwnerBattleWins" boil:"OwnerBattleWins" json:"OwnerBattleWins" toml:"OwnerBattleWins" yaml:"OwnerBattleWins"`
 	ChatHistories               ChatHistorySlice          `boiler:"ChatHistories" boil:"ChatHistories" json:"ChatHistories" toml:"ChatHistories" yaml:"ChatHistories"`
 	ConsumedByConsumedAbilities ConsumedAbilitySlice      `boiler:"ConsumedByConsumedAbilities" boil:"ConsumedByConsumedAbilities" json:"ConsumedByConsumedAbilities" toml:"ConsumedByConsumedAbilities" yaml:"ConsumedByConsumedAbilities"`
-	OwnerPowerCores             PowerCoreSlice            `boiler:"OwnerPowerCores" boil:"OwnerPowerCores" json:"OwnerPowerCores" toml:"OwnerPowerCores" yaml:"OwnerPowerCores"`
 	MVPPlayerFactionStats       FactionStatSlice          `boiler:"MVPPlayerFactionStats" boil:"MVPPlayerFactionStats" json:"MVPPlayerFactionStats" toml:"MVPPlayerFactionStats" yaml:"MVPPlayerFactionStats"`
 	OwnerMechAnimations         MechAnimationSlice        `boiler:"OwnerMechAnimations" boil:"OwnerMechAnimations" json:"OwnerMechAnimations" toml:"OwnerMechAnimations" yaml:"OwnerMechAnimations"`
 	OwnerMechSkins              MechSkinSlice             `boiler:"OwnerMechSkins" boil:"OwnerMechSkins" json:"OwnerMechSkins" toml:"OwnerMechSkins" yaml:"OwnerMechSkins"`
@@ -235,6 +234,7 @@ type playerR struct {
 	PlayerPreferences           PlayerPreferenceSlice     `boiler:"PlayerPreferences" boil:"PlayerPreferences" json:"PlayerPreferences" toml:"PlayerPreferences" yaml:"PlayerPreferences"`
 	PlayerSpoilsOfWars          PlayerSpoilsOfWarSlice    `boiler:"PlayerSpoilsOfWars" boil:"PlayerSpoilsOfWars" json:"PlayerSpoilsOfWars" toml:"PlayerSpoilsOfWars" yaml:"PlayerSpoilsOfWars"`
 	PlayersPunishVotes          PlayersPunishVoteSlice    `boiler:"PlayersPunishVotes" boil:"PlayersPunishVotes" json:"PlayersPunishVotes" toml:"PlayersPunishVotes" yaml:"PlayersPunishVotes"`
+	OwnerPowerCores             PowerCoreSlice            `boiler:"OwnerPowerCores" boil:"OwnerPowerCores" json:"OwnerPowerCores" toml:"OwnerPowerCores" yaml:"OwnerPowerCores"`
 	IssuedByPunishVotes         PunishVoteSlice           `boiler:"IssuedByPunishVotes" boil:"IssuedByPunishVotes" json:"IssuedByPunishVotes" toml:"IssuedByPunishVotes" yaml:"IssuedByPunishVotes"`
 	ReportedPlayerPunishVotes   PunishVoteSlice           `boiler:"ReportedPlayerPunishVotes" boil:"ReportedPlayerPunishVotes" json:"ReportedPlayerPunishVotes" toml:"ReportedPlayerPunishVotes" yaml:"ReportedPlayerPunishVotes"`
 	PunishedPlayers             PunishedPlayerSlice       `boiler:"PunishedPlayers" boil:"PunishedPlayers" json:"PunishedPlayers" toml:"PunishedPlayers" yaml:"PunishedPlayers"`
@@ -741,27 +741,6 @@ func (o *Player) ConsumedByConsumedAbilities(mods ...qm.QueryMod) consumedAbilit
 	return query
 }
 
-// OwnerPowerCores retrieves all the power_core's PowerCores with an executor via owner_id column.
-func (o *Player) OwnerPowerCores(mods ...qm.QueryMod) powerCoreQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"power_cores\".\"owner_id\"=?", o.ID),
-	)
-
-	query := PowerCores(queryMods...)
-	queries.SetFrom(query.Query, "\"power_cores\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"power_cores\".*"})
-	}
-
-	return query
-}
-
 // MVPPlayerFactionStats retrieves all the faction_stat's FactionStats with an executor via mvp_player_id column.
 func (o *Player) MVPPlayerFactionStats(mods ...qm.QueryMod) factionStatQuery {
 	var queryMods []qm.QueryMod
@@ -1012,6 +991,27 @@ func (o *Player) PlayersPunishVotes(mods ...qm.QueryMod) playersPunishVoteQuery 
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"players_punish_votes\".*"})
+	}
+
+	return query
+}
+
+// OwnerPowerCores retrieves all the power_core's PowerCores with an executor via owner_id column.
+func (o *Player) OwnerPowerCores(mods ...qm.QueryMod) powerCoreQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"power_cores\".\"owner_id\"=?", o.ID),
+	)
+
+	query := PowerCores(queryMods...)
+	queries.SetFrom(query.Query, "\"power_cores\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"power_cores\".*"})
 	}
 
 	return query
@@ -2355,104 +2355,6 @@ func (playerL) LoadConsumedByConsumedAbilities(e boil.Executor, singular bool, m
 	return nil
 }
 
-// LoadOwnerPowerCores allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (playerL) LoadOwnerPowerCores(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
-	var slice []*Player
-	var object *Player
-
-	if singular {
-		object = maybePlayer.(*Player)
-	} else {
-		slice = *maybePlayer.(*[]*Player)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &playerR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &playerR{}
-			}
-
-			for _, a := range args {
-				if a == obj.ID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`power_cores`),
-		qm.WhereIn(`power_cores.owner_id in ?`, args...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load power_cores")
-	}
-
-	var resultSlice []*PowerCore
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice power_cores")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on power_cores")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for power_cores")
-	}
-
-	if len(powerCoreAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.OwnerPowerCores = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &powerCoreR{}
-			}
-			foreign.R.Owner = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if local.ID == foreign.OwnerID {
-				local.R.OwnerPowerCores = append(local.R.OwnerPowerCores, foreign)
-				if foreign.R == nil {
-					foreign.R = &powerCoreR{}
-				}
-				foreign.R.Owner = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
 // LoadMVPPlayerFactionStats allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (playerL) LoadMVPPlayerFactionStats(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
@@ -3624,6 +3526,104 @@ func (playerL) LoadPlayersPunishVotes(e boil.Executor, singular bool, maybePlaye
 					foreign.R = &playersPunishVoteR{}
 				}
 				foreign.R.Player = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadOwnerPowerCores allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (playerL) LoadOwnerPowerCores(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+	var slice []*Player
+	var object *Player
+
+	if singular {
+		object = maybePlayer.(*Player)
+	} else {
+		slice = *maybePlayer.(*[]*Player)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &playerR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &playerR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`power_cores`),
+		qm.WhereIn(`power_cores.owner_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load power_cores")
+	}
+
+	var resultSlice []*PowerCore
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice power_cores")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on power_cores")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for power_cores")
+	}
+
+	if len(powerCoreAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.OwnerPowerCores = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &powerCoreR{}
+			}
+			foreign.R.Owner = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.OwnerID {
+				local.R.OwnerPowerCores = append(local.R.OwnerPowerCores, foreign)
+				if foreign.R == nil {
+					foreign.R = &powerCoreR{}
+				}
+				foreign.R.Owner = local
 				break
 			}
 		}
@@ -5036,58 +5036,6 @@ func (o *Player) AddConsumedByConsumedAbilities(exec boil.Executor, insert bool,
 	return nil
 }
 
-// AddOwnerPowerCores adds the given related objects to the existing relationships
-// of the player, optionally inserting them as new records.
-// Appends related to o.R.OwnerPowerCores.
-// Sets related.R.Owner appropriately.
-func (o *Player) AddOwnerPowerCores(exec boil.Executor, insert bool, related ...*PowerCore) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			rel.OwnerID = o.ID
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"power_cores\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"owner_id"}),
-				strmangle.WhereClause("\"", "\"", 2, powerCorePrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			rel.OwnerID = o.ID
-		}
-	}
-
-	if o.R == nil {
-		o.R = &playerR{
-			OwnerPowerCores: related,
-		}
-	} else {
-		o.R.OwnerPowerCores = append(o.R.OwnerPowerCores, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &powerCoreR{
-				Owner: o,
-			}
-		} else {
-			rel.R.Owner = o
-		}
-	}
-	return nil
-}
-
 // AddMVPPlayerFactionStats adds the given related objects to the existing relationships
 // of the player, optionally inserting them as new records.
 // Appends related to o.R.MVPPlayerFactionStats.
@@ -5780,6 +5728,58 @@ func (o *Player) AddPlayersPunishVotes(exec boil.Executor, insert bool, related 
 			}
 		} else {
 			rel.R.Player = o
+		}
+	}
+	return nil
+}
+
+// AddOwnerPowerCores adds the given related objects to the existing relationships
+// of the player, optionally inserting them as new records.
+// Appends related to o.R.OwnerPowerCores.
+// Sets related.R.Owner appropriately.
+func (o *Player) AddOwnerPowerCores(exec boil.Executor, insert bool, related ...*PowerCore) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.OwnerID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"power_cores\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"owner_id"}),
+				strmangle.WhereClause("\"", "\"", 2, powerCorePrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.OwnerID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &playerR{
+			OwnerPowerCores: related,
+		}
+	} else {
+		o.R.OwnerPowerCores = append(o.R.OwnerPowerCores, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &powerCoreR{
+				Owner: o,
+			}
+		} else {
+			rel.R.Owner = o
 		}
 	}
 	return nil

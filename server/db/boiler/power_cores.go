@@ -26,6 +26,7 @@ import (
 type PowerCore struct {
 	ID           string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	OwnerID      string          `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
+	BlueprintID  null.String     `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id,omitempty" toml:"blueprint_id" yaml:"blueprint_id,omitempty"`
 	Label        string          `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
 	Size         string          `boiler:"size" boil:"size" json:"size" toml:"size" yaml:"size"`
 	Capacity     decimal.Decimal `boiler:"capacity" boil:"capacity" json:"capacity" toml:"capacity" yaml:"capacity"`
@@ -44,6 +45,7 @@ type PowerCore struct {
 var PowerCoreColumns = struct {
 	ID           string
 	OwnerID      string
+	BlueprintID  string
 	Label        string
 	Size         string
 	Capacity     string
@@ -57,6 +59,7 @@ var PowerCoreColumns = struct {
 }{
 	ID:           "id",
 	OwnerID:      "owner_id",
+	BlueprintID:  "blueprint_id",
 	Label:        "label",
 	Size:         "size",
 	Capacity:     "capacity",
@@ -72,6 +75,7 @@ var PowerCoreColumns = struct {
 var PowerCoreTableColumns = struct {
 	ID           string
 	OwnerID      string
+	BlueprintID  string
 	Label        string
 	Size         string
 	Capacity     string
@@ -85,6 +89,7 @@ var PowerCoreTableColumns = struct {
 }{
 	ID:           "power_cores.id",
 	OwnerID:      "power_cores.owner_id",
+	BlueprintID:  "power_cores.blueprint_id",
 	Label:        "power_cores.label",
 	Size:         "power_cores.size",
 	Capacity:     "power_cores.capacity",
@@ -102,6 +107,7 @@ var PowerCoreTableColumns = struct {
 var PowerCoreWhere = struct {
 	ID           whereHelperstring
 	OwnerID      whereHelperstring
+	BlueprintID  whereHelpernull_String
 	Label        whereHelperstring
 	Size         whereHelperstring
 	Capacity     whereHelperdecimal_Decimal
@@ -115,6 +121,7 @@ var PowerCoreWhere = struct {
 }{
 	ID:           whereHelperstring{field: "\"power_cores\".\"id\""},
 	OwnerID:      whereHelperstring{field: "\"power_cores\".\"owner_id\""},
+	BlueprintID:  whereHelpernull_String{field: "\"power_cores\".\"blueprint_id\""},
 	Label:        whereHelperstring{field: "\"power_cores\".\"label\""},
 	Size:         whereHelperstring{field: "\"power_cores\".\"size\""},
 	Capacity:     whereHelperdecimal_Decimal{field: "\"power_cores\".\"capacity\""},
@@ -129,10 +136,12 @@ var PowerCoreWhere = struct {
 
 // PowerCoreRels is where relationship names are stored.
 var PowerCoreRels = struct {
+	Blueprint      string
 	EquippedOnMech string
 	Owner          string
 	Mechs          string
 }{
+	Blueprint:      "Blueprint",
 	EquippedOnMech: "EquippedOnMech",
 	Owner:          "Owner",
 	Mechs:          "Mechs",
@@ -140,9 +149,10 @@ var PowerCoreRels = struct {
 
 // powerCoreR is where relationships are stored.
 type powerCoreR struct {
-	EquippedOnMech *Mech     `boiler:"EquippedOnMech" boil:"EquippedOnMech" json:"EquippedOnMech" toml:"EquippedOnMech" yaml:"EquippedOnMech"`
-	Owner          *Player   `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
-	Mechs          MechSlice `boiler:"Mechs" boil:"Mechs" json:"Mechs" toml:"Mechs" yaml:"Mechs"`
+	Blueprint      *BlueprintPowerCore `boiler:"Blueprint" boil:"Blueprint" json:"Blueprint" toml:"Blueprint" yaml:"Blueprint"`
+	EquippedOnMech *Mech               `boiler:"EquippedOnMech" boil:"EquippedOnMech" json:"EquippedOnMech" toml:"EquippedOnMech" yaml:"EquippedOnMech"`
+	Owner          *Player             `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
+	Mechs          MechSlice           `boiler:"Mechs" boil:"Mechs" json:"Mechs" toml:"Mechs" yaml:"Mechs"`
 }
 
 // NewStruct creates a new relationship struct
@@ -154,9 +164,9 @@ func (*powerCoreR) NewStruct() *powerCoreR {
 type powerCoreL struct{}
 
 var (
-	powerCoreAllColumns            = []string{"id", "owner_id", "label", "size", "capacity", "max_draw_rate", "recharge_rate", "armour", "max_hitpoints", "tier", "equipped_on", "created_at"}
+	powerCoreAllColumns            = []string{"id", "owner_id", "blueprint_id", "label", "size", "capacity", "max_draw_rate", "recharge_rate", "armour", "max_hitpoints", "tier", "equipped_on", "created_at"}
 	powerCoreColumnsWithoutDefault = []string{"owner_id", "label"}
-	powerCoreColumnsWithDefault    = []string{"id", "size", "capacity", "max_draw_rate", "recharge_rate", "armour", "max_hitpoints", "tier", "equipped_on", "created_at"}
+	powerCoreColumnsWithDefault    = []string{"id", "blueprint_id", "size", "capacity", "max_draw_rate", "recharge_rate", "armour", "max_hitpoints", "tier", "equipped_on", "created_at"}
 	powerCorePrimaryKeyColumns     = []string{"id"}
 	powerCoreGeneratedColumns      = []string{}
 )
@@ -403,6 +413,20 @@ func (q powerCoreQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
+// Blueprint pointed to by the foreign key.
+func (o *PowerCore) Blueprint(mods ...qm.QueryMod) blueprintPowerCoreQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.BlueprintID),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := BlueprintPowerCores(queryMods...)
+	queries.SetFrom(query.Query, "\"blueprint_power_cores\"")
+
+	return query
+}
+
 // EquippedOnMech pointed to by the foreign key.
 func (o *PowerCore) EquippedOnMech(mods ...qm.QueryMod) mechQuery {
 	queryMods := []qm.QueryMod{
@@ -453,6 +477,114 @@ func (o *PowerCore) Mechs(mods ...qm.QueryMod) mechQuery {
 	}
 
 	return query
+}
+
+// LoadBlueprint allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (powerCoreL) LoadBlueprint(e boil.Executor, singular bool, maybePowerCore interface{}, mods queries.Applicator) error {
+	var slice []*PowerCore
+	var object *PowerCore
+
+	if singular {
+		object = maybePowerCore.(*PowerCore)
+	} else {
+		slice = *maybePowerCore.(*[]*PowerCore)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &powerCoreR{}
+		}
+		if !queries.IsNil(object.BlueprintID) {
+			args = append(args, object.BlueprintID)
+		}
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &powerCoreR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.BlueprintID) {
+					continue Outer
+				}
+			}
+
+			if !queries.IsNil(obj.BlueprintID) {
+				args = append(args, obj.BlueprintID)
+			}
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`blueprint_power_cores`),
+		qm.WhereIn(`blueprint_power_cores.id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load BlueprintPowerCore")
+	}
+
+	var resultSlice []*BlueprintPowerCore
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice BlueprintPowerCore")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for blueprint_power_cores")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for blueprint_power_cores")
+	}
+
+	if len(powerCoreAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Blueprint = foreign
+		if foreign.R == nil {
+			foreign.R = &blueprintPowerCoreR{}
+		}
+		foreign.R.BlueprintPowerCores = append(foreign.R.BlueprintPowerCores, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if queries.Equal(local.BlueprintID, foreign.ID) {
+				local.R.Blueprint = foreign
+				if foreign.R == nil {
+					foreign.R = &blueprintPowerCoreR{}
+				}
+				foreign.R.BlueprintPowerCores = append(foreign.R.BlueprintPowerCores, local)
+				break
+			}
+		}
+	}
+
+	return nil
 }
 
 // LoadEquippedOnMech allows an eager lookup of values, cached into the
@@ -765,6 +897,85 @@ func (powerCoreL) LoadMechs(e boil.Executor, singular bool, maybePowerCore inter
 		}
 	}
 
+	return nil
+}
+
+// SetBlueprint of the powerCore to the related item.
+// Sets o.R.Blueprint to related.
+// Adds o to related.R.BlueprintPowerCores.
+func (o *PowerCore) SetBlueprint(exec boil.Executor, insert bool, related *BlueprintPowerCore) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"power_cores\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"blueprint_id"}),
+		strmangle.WhereClause("\"", "\"", 2, powerCorePrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	queries.Assign(&o.BlueprintID, related.ID)
+	if o.R == nil {
+		o.R = &powerCoreR{
+			Blueprint: related,
+		}
+	} else {
+		o.R.Blueprint = related
+	}
+
+	if related.R == nil {
+		related.R = &blueprintPowerCoreR{
+			BlueprintPowerCores: PowerCoreSlice{o},
+		}
+	} else {
+		related.R.BlueprintPowerCores = append(related.R.BlueprintPowerCores, o)
+	}
+
+	return nil
+}
+
+// RemoveBlueprint relationship.
+// Sets o.R.Blueprint to nil.
+// Removes o from all passed in related items' relationships struct (Optional).
+func (o *PowerCore) RemoveBlueprint(exec boil.Executor, related *BlueprintPowerCore) error {
+	var err error
+
+	queries.SetScanner(&o.BlueprintID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("blueprint_id")); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	if o.R != nil {
+		o.R.Blueprint = nil
+	}
+	if related == nil || related.R == nil {
+		return nil
+	}
+
+	for i, ri := range related.R.BlueprintPowerCores {
+		if queries.Equal(o.BlueprintID, ri.BlueprintID) {
+			continue
+		}
+
+		ln := len(related.R.BlueprintPowerCores)
+		if ln > 1 && i < ln-1 {
+			related.R.BlueprintPowerCores[i] = related.R.BlueprintPowerCores[ln-1]
+		}
+		related.R.BlueprintPowerCores = related.R.BlueprintPowerCores[:ln-1]
+		break
+	}
 	return nil
 }
 

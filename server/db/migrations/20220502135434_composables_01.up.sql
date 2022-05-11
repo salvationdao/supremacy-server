@@ -508,20 +508,9 @@ SELECT mechs.owner_id,
        '62e197a4-f45e-4034-ac0a-3e625a6770d7'
 FROM mechs;
 
--- INSERT
--- INTO collection_items (token_id, item_type, item_id)
--- SELECT NEXTVAL('collection_general'), chass.item_type::ITEM_TYPE, chass.id
--- FROM chass;
-
---     id            UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
---     owner_id      UUID        NOT NULL REFERENCES players (id),
---     label         TEXT        NOT NULL,
---     size          TEXT        NOT NULL DEFAULT 'MEDIUM' CHECK ( size IN ('SMALL', 'MEDIUM', 'LARGE') ),
---     capacity      NUMERIC     NOT NULL DEFAULT 0,
---     max_draw_rate NUMERIC     NOT NULL DEFAULT 0,
---     recharge_rate NUMERIC     NOT NULL DEFAULT 0,
---     armour        NUMERIC     NOT NULL DEFAULT 0,
---     max_hitpoints NUMERIC     NOT NULL DEFAULT 0,
---     tier          TEXT,
---     equipped_on   UUID REFERENCES chassis (id),
---     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+WITH pc AS (SELECT _pc.id, _pc.equipped_on
+            FROM power_cores _pc)
+UPDATE chassis m
+SET power_core_id = pc.id
+FROM pc
+WHERE m.id = pc.equipped_on;

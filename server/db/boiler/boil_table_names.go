@@ -25,11 +25,11 @@ var TableNames = struct {
 	Battles                                            string
 	Blobs                                              string
 	BlueprintAmmo                                      string
-	BlueprintPowerCores                               string
 	BlueprintMechAnimation                             string
 	BlueprintMechSkin                                  string
 	BlueprintMechs                                     string
 	BlueprintPlayerAbilities                           string
+	BlueprintPowerCores                                string
 	BlueprintUtility                                   string
 	BlueprintUtilityAccelerator                        string
 	BlueprintUtilityAntiMissile                        string
@@ -42,7 +42,6 @@ var TableNames = struct {
 	ChatHistory                                        string
 	CollectionItems                                    string
 	ConsumedAbilities                                  string
-	PowerCores                                        string
 	FactionStats                                       string
 	Factions                                           string
 	GameAbilities                                      string
@@ -69,6 +68,7 @@ var TableNames = struct {
 	PlayerStats                                        string
 	Players                                            string
 	PlayersPunishVotes                                 string
+	PowerCores                                         string
 	PunishOptions                                      string
 	PunishVotes                                        string
 	PunishedPlayers                                    string
@@ -111,11 +111,11 @@ var TableNames = struct {
 	Battles:                     "battles",
 	Blobs:                       "blobs",
 	BlueprintAmmo:               "blueprint_ammo",
-	BlueprintPowerCores:        "blueprint_power_cores",
 	BlueprintMechAnimation:      "blueprint_mech_animation",
 	BlueprintMechSkin:           "blueprint_mech_skin",
 	BlueprintMechs:              "blueprint_mechs",
 	BlueprintPlayerAbilities:    "blueprint_player_abilities",
+	BlueprintPowerCores:         "blueprint_power_cores",
 	BlueprintUtility:            "blueprint_utility",
 	BlueprintUtilityAccelerator: "blueprint_utility_accelerator",
 	BlueprintUtilityAntiMissile: "blueprint_utility_anti_missile",
@@ -128,7 +128,6 @@ var TableNames = struct {
 	ChatHistory:                 "chat_history",
 	CollectionItems:             "collection_items",
 	ConsumedAbilities:           "consumed_abilities",
-	PowerCores:                 "power_cores",
 	FactionStats:                "faction_stats",
 	Factions:                    "factions",
 	GameAbilities:               "game_abilities",
@@ -155,6 +154,7 @@ var TableNames = struct {
 	PlayerStats:                 "player_stats",
 	Players:                     "players",
 	PlayersPunishVotes:          "players_punish_votes",
+	PowerCores:                  "power_cores",
 	PunishOptions:               "punish_options",
 	PunishVotes:                 "punish_votes",
 	PunishedPlayers:             "punished_players",
