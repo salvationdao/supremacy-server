@@ -185,7 +185,10 @@ func MarketplaceSaleCreate(saleType server.MarketplaceSaleType, ownerID uuid.UUI
 		obj.DutchActionDropRate = null.StringFrom(dutchOptionDropRate.String())
 		obj.BuyoutPrice = null.StringFrom(askingPrice.String())
 	}
+
+	boil.DebugMode = true
 	err := obj.Insert(gamedb.StdConn, boil.Infer())
+	boil.DebugMode = false
 	if err != nil {
 		return nil, terror.Error(err)
 	}
