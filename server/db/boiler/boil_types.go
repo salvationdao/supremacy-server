@@ -168,7 +168,7 @@ const (
 	TemplateItemTypeUTILITY        = "UTILITY"
 	TemplateItemTypeWEAPON         = "WEAPON"
 	TemplateItemTypeAMMO           = "AMMO"
-	TemplateItemTypePowerCore      = "power_core"
+	TemplateItemTypePOWER_CORE     = "POWER_CORE"
 	TemplateItemTypeWEAPON_SKIN    = "WEAPON_SKIN"
 	TemplateItemTypePLAYER_ABILITY = "PLAYER_ABILITY"
 )

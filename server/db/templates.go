@@ -59,7 +59,7 @@ func Template(templateID uuid.UUID) (*server.TemplateContainer, error) {
 			blueprintUtilityIDS = append(blueprintUtilityIDS, bp.BlueprintID)
 		case boiler.TemplateItemTypeWEAPON:
 			blueprintWeaponIDS = append(blueprintWeaponIDS, bp.BlueprintID)
-		case boiler.TemplateItemTypepower_core:
+		case boiler.TemplateItemTypePOWER_CORE:
 			blueprintPowerCoreIDS = append(blueprintPowerCoreIDS, bp.BlueprintID)
 		case boiler.TemplateItemTypeWEAPON_SKIN:
 			continue
