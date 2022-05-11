@@ -25,7 +25,7 @@ var TableNames = struct {
 	Battles                                            string
 	Blobs                                              string
 	BlueprintAmmo                                      string
-	BlueprintEnergyCores                               string
+	BlueprintPowerCores                               string
 	BlueprintMechAnimation                             string
 	BlueprintMechSkin                                  string
 	BlueprintMechs                                     string
@@ -42,7 +42,7 @@ var TableNames = struct {
 	ChatHistory                                        string
 	CollectionItems                                    string
 	ConsumedAbilities                                  string
-	EnergyCores                                        string
+	PowerCores                                        string
 	FactionStats                                       string
 	Factions                                           string
 	GameAbilities                                      string
@@ -111,7 +111,7 @@ var TableNames = struct {
 	Battles:                     "battles",
 	Blobs:                       "blobs",
 	BlueprintAmmo:               "blueprint_ammo",
-	BlueprintEnergyCores:        "blueprint_energy_cores",
+	BlueprintPowerCores:        "blueprint_power_cores",
 	BlueprintMechAnimation:      "blueprint_mech_animation",
 	BlueprintMechSkin:           "blueprint_mech_skin",
 	BlueprintMechs:              "blueprint_mechs",
@@ -128,7 +128,7 @@ var TableNames = struct {
 	ChatHistory:                 "chat_history",
 	CollectionItems:             "collection_items",
 	ConsumedAbilities:           "consumed_abilities",
-	EnergyCores:                 "energy_cores",
+	PowerCores:                 "power_cores",
 	FactionStats:                "faction_stats",
 	Factions:                    "factions",
 	GameAbilities:               "game_abilities",

@@ -42,10 +42,10 @@ type Mech struct {
 	GenesisTokenID        decimal.NullDecimal `boiler:"genesis_token_id" boil:"genesis_token_id" json:"genesis_token_id,omitempty" toml:"genesis_token_id" yaml:"genesis_token_id,omitempty"`
 	LimitedReleaseTokenID decimal.NullDecimal `boiler:"limited_release_token_id" boil:"limited_release_token_id" json:"limited_release_token_id,omitempty" toml:"limited_release_token_id" yaml:"limited_release_token_id,omitempty"`
 	OwnerID               string              `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
-	EnergyCoreSize        string              `boiler:"energy_core_size" boil:"energy_core_size" json:"energy_core_size" toml:"energy_core_size" yaml:"energy_core_size"`
+	PowerCoreSize         string              `boiler:"power_core_size" boil:"power_core_size" json:"power_core_size" toml:"power_core_size" yaml:"power_core_size"`
 	Tier                  null.String         `boiler:"tier" boil:"tier" json:"tier,omitempty" toml:"tier" yaml:"tier,omitempty"`
 	ChassisSkinID         null.String         `boiler:"chassis_skin_id" boil:"chassis_skin_id" json:"chassis_skin_id,omitempty" toml:"chassis_skin_id" yaml:"chassis_skin_id,omitempty"`
-	EnergyCoreID          null.String         `boiler:"energy_core_id" boil:"energy_core_id" json:"energy_core_id,omitempty" toml:"energy_core_id" yaml:"energy_core_id,omitempty"`
+	PowerCoreID           null.String         `boiler:"power_core_id" boil:"power_core_id" json:"power_core_id,omitempty" toml:"power_core_id" yaml:"power_core_id,omitempty"`
 	IntroAnimationID      null.String         `boiler:"intro_animation_id" boil:"intro_animation_id" json:"intro_animation_id,omitempty" toml:"intro_animation_id" yaml:"intro_animation_id,omitempty"`
 	OutroAnimationID      null.String         `boiler:"outro_animation_id" boil:"outro_animation_id" json:"outro_animation_id,omitempty" toml:"outro_animation_id" yaml:"outro_animation_id,omitempty"`
 
@@ -72,10 +72,10 @@ var MechColumns = struct {
 	GenesisTokenID        string
 	LimitedReleaseTokenID string
 	OwnerID               string
-	EnergyCoreSize        string
+	PowerCoreSize         string
 	Tier                  string
 	ChassisSkinID         string
-	EnergyCoreID          string
+	PowerCoreID           string
 	IntroAnimationID      string
 	OutroAnimationID      string
 }{
@@ -97,10 +97,10 @@ var MechColumns = struct {
 	GenesisTokenID:        "genesis_token_id",
 	LimitedReleaseTokenID: "limited_release_token_id",
 	OwnerID:               "owner_id",
-	EnergyCoreSize:        "energy_core_size",
+	PowerCoreSize:         "power_core_size",
 	Tier:                  "tier",
 	ChassisSkinID:         "chassis_skin_id",
-	EnergyCoreID:          "energy_core_id",
+	PowerCoreID:           "power_core_id",
 	IntroAnimationID:      "intro_animation_id",
 	OutroAnimationID:      "outro_animation_id",
 }
@@ -124,10 +124,10 @@ var MechTableColumns = struct {
 	GenesisTokenID        string
 	LimitedReleaseTokenID string
 	OwnerID               string
-	EnergyCoreSize        string
+	PowerCoreSize         string
 	Tier                  string
 	ChassisSkinID         string
-	EnergyCoreID          string
+	PowerCoreID           string
 	IntroAnimationID      string
 	OutroAnimationID      string
 }{
@@ -149,10 +149,10 @@ var MechTableColumns = struct {
 	GenesisTokenID:        "mechs.genesis_token_id",
 	LimitedReleaseTokenID: "mechs.limited_release_token_id",
 	OwnerID:               "mechs.owner_id",
-	EnergyCoreSize:        "mechs.energy_core_size",
+	PowerCoreSize:         "mechs.power_core_size",
 	Tier:                  "mechs.tier",
 	ChassisSkinID:         "mechs.chassis_skin_id",
-	EnergyCoreID:          "mechs.energy_core_id",
+	PowerCoreID:           "mechs.power_core_id",
 	IntroAnimationID:      "mechs.intro_animation_id",
 	OutroAnimationID:      "mechs.outro_animation_id",
 }
@@ -178,10 +178,10 @@ var MechWhere = struct {
 	GenesisTokenID        whereHelperdecimal_NullDecimal
 	LimitedReleaseTokenID whereHelperdecimal_NullDecimal
 	OwnerID               whereHelperstring
-	EnergyCoreSize        whereHelperstring
+	PowerCoreSize         whereHelperstring
 	Tier                  whereHelpernull_String
 	ChassisSkinID         whereHelpernull_String
-	EnergyCoreID          whereHelpernull_String
+	PowerCoreID           whereHelpernull_String
 	IntroAnimationID      whereHelpernull_String
 	OutroAnimationID      whereHelpernull_String
 }{
@@ -203,10 +203,10 @@ var MechWhere = struct {
 	GenesisTokenID:        whereHelperdecimal_NullDecimal{field: "\"mechs\".\"genesis_token_id\""},
 	LimitedReleaseTokenID: whereHelperdecimal_NullDecimal{field: "\"mechs\".\"limited_release_token_id\""},
 	OwnerID:               whereHelperstring{field: "\"mechs\".\"owner_id\""},
-	EnergyCoreSize:        whereHelperstring{field: "\"mechs\".\"energy_core_size\""},
+	PowerCoreSize:         whereHelperstring{field: "\"mechs\".\"power_core_size\""},
 	Tier:                  whereHelpernull_String{field: "\"mechs\".\"tier\""},
 	ChassisSkinID:         whereHelpernull_String{field: "\"mechs\".\"chassis_skin_id\""},
-	EnergyCoreID:          whereHelpernull_String{field: "\"mechs\".\"energy_core_id\""},
+	PowerCoreID:           whereHelpernull_String{field: "\"mechs\".\"power_core_id\""},
 	IntroAnimationID:      whereHelpernull_String{field: "\"mechs\".\"intro_animation_id\""},
 	OutroAnimationID:      whereHelpernull_String{field: "\"mechs\".\"outro_animation_id\""},
 }
@@ -216,7 +216,7 @@ var MechRels = struct {
 	Blueprint                    string
 	Brand                        string
 	ChassisSkin                  string
-	EnergyCore                   string
+	PowerCore                    string
 	IntroAnimation               string
 	Model                        string
 	OutroAnimation               string
@@ -232,7 +232,7 @@ var MechRels = struct {
 	KilledByBattleMechs          string
 	BattleQueueNotifications     string
 	BattleWins                   string
-	EquippedOnEnergyCores        string
+	EquippedOnPowerCores         string
 	EquippedOnMechAnimations     string
 	MechRepairs                  string
 	EquippedOnMechSkins          string
@@ -244,7 +244,7 @@ var MechRels = struct {
 	Blueprint:                    "Blueprint",
 	Brand:                        "Brand",
 	ChassisSkin:                  "ChassisSkin",
-	EnergyCore:                   "EnergyCore",
+	PowerCore:                    "PowerCore",
 	IntroAnimation:               "IntroAnimation",
 	Model:                        "Model",
 	OutroAnimation:               "OutroAnimation",
@@ -260,7 +260,7 @@ var MechRels = struct {
 	KilledByBattleMechs:          "KilledByBattleMechs",
 	BattleQueueNotifications:     "BattleQueueNotifications",
 	BattleWins:                   "BattleWins",
-	EquippedOnEnergyCores:        "EquippedOnEnergyCores",
+	EquippedOnPowerCores:         "EquippedOnPowerCores",
 	EquippedOnMechAnimations:     "EquippedOnMechAnimations",
 	MechRepairs:                  "MechRepairs",
 	EquippedOnMechSkins:          "EquippedOnMechSkins",
@@ -275,7 +275,7 @@ type mechR struct {
 	Blueprint                    *BlueprintMech               `boiler:"Blueprint" boil:"Blueprint" json:"Blueprint" toml:"Blueprint" yaml:"Blueprint"`
 	Brand                        *Brand                       `boiler:"Brand" boil:"Brand" json:"Brand" toml:"Brand" yaml:"Brand"`
 	ChassisSkin                  *MechSkin                    `boiler:"ChassisSkin" boil:"ChassisSkin" json:"ChassisSkin" toml:"ChassisSkin" yaml:"ChassisSkin"`
-	EnergyCore                   *EnergyCore                  `boiler:"EnergyCore" boil:"EnergyCore" json:"EnergyCore" toml:"EnergyCore" yaml:"EnergyCore"`
+	PowerCore                    *PowerCore                   `boiler:"PowerCore" boil:"PowerCore" json:"PowerCore" toml:"PowerCore" yaml:"PowerCore"`
 	IntroAnimation               *MechAnimation               `boiler:"IntroAnimation" boil:"IntroAnimation" json:"IntroAnimation" toml:"IntroAnimation" yaml:"IntroAnimation"`
 	Model                        *MechModel                   `boiler:"Model" boil:"Model" json:"Model" toml:"Model" yaml:"Model"`
 	OutroAnimation               *MechAnimation               `boiler:"OutroAnimation" boil:"OutroAnimation" json:"OutroAnimation" toml:"OutroAnimation" yaml:"OutroAnimation"`
@@ -291,7 +291,7 @@ type mechR struct {
 	KilledByBattleMechs          BattleMechSlice              `boiler:"KilledByBattleMechs" boil:"KilledByBattleMechs" json:"KilledByBattleMechs" toml:"KilledByBattleMechs" yaml:"KilledByBattleMechs"`
 	BattleQueueNotifications     BattleQueueNotificationSlice `boiler:"BattleQueueNotifications" boil:"BattleQueueNotifications" json:"BattleQueueNotifications" toml:"BattleQueueNotifications" yaml:"BattleQueueNotifications"`
 	BattleWins                   BattleWinSlice               `boiler:"BattleWins" boil:"BattleWins" json:"BattleWins" toml:"BattleWins" yaml:"BattleWins"`
-	EquippedOnEnergyCores        EnergyCoreSlice              `boiler:"EquippedOnEnergyCores" boil:"EquippedOnEnergyCores" json:"EquippedOnEnergyCores" toml:"EquippedOnEnergyCores" yaml:"EquippedOnEnergyCores"`
+	EquippedOnPowerCores         PowerCoreSlice               `boiler:"EquippedOnPowerCores" boil:"EquippedOnPowerCores" json:"EquippedOnPowerCores" toml:"EquippedOnPowerCores" yaml:"EquippedOnPowerCores"`
 	EquippedOnMechAnimations     MechAnimationSlice           `boiler:"EquippedOnMechAnimations" boil:"EquippedOnMechAnimations" json:"EquippedOnMechAnimations" toml:"EquippedOnMechAnimations" yaml:"EquippedOnMechAnimations"`
 	MechRepairs                  MechRepairSlice              `boiler:"MechRepairs" boil:"MechRepairs" json:"MechRepairs" toml:"MechRepairs" yaml:"MechRepairs"`
 	EquippedOnMechSkins          MechSkinSlice                `boiler:"EquippedOnMechSkins" boil:"EquippedOnMechSkins" json:"EquippedOnMechSkins" toml:"EquippedOnMechSkins" yaml:"EquippedOnMechSkins"`
@@ -310,9 +310,9 @@ func (*mechR) NewStruct() *mechR {
 type mechL struct{}
 
 var (
-	mechAllColumns            = []string{"id", "brand_id", "label", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "deleted_at", "updated_at", "created_at", "blueprint_id", "is_default", "is_insured", "name", "model_id", "genesis_token_id", "limited_release_token_id", "owner_id", "energy_core_size", "tier", "chassis_skin_id", "energy_core_id", "intro_animation_id", "outro_animation_id"}
+	mechAllColumns            = []string{"id", "brand_id", "label", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "deleted_at", "updated_at", "created_at", "blueprint_id", "is_default", "is_insured", "name", "model_id", "genesis_token_id", "limited_release_token_id", "owner_id", "power_core_size", "tier", "chassis_skin_id", "power_core_id", "intro_animation_id", "outro_animation_id"}
 	mechColumnsWithoutDefault = []string{"brand_id", "label", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "blueprint_id", "model_id", "owner_id"}
-	mechColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at", "is_default", "is_insured", "name", "genesis_token_id", "limited_release_token_id", "energy_core_size", "tier", "chassis_skin_id", "energy_core_id", "intro_animation_id", "outro_animation_id"}
+	mechColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at", "is_default", "is_insured", "name", "genesis_token_id", "limited_release_token_id", "power_core_size", "tier", "chassis_skin_id", "power_core_id", "intro_animation_id", "outro_animation_id"}
 	mechPrimaryKeyColumns     = []string{"id"}
 	mechGeneratedColumns      = []string{}
 )
@@ -603,16 +603,16 @@ func (o *Mech) ChassisSkin(mods ...qm.QueryMod) mechSkinQuery {
 	return query
 }
 
-// EnergyCore pointed to by the foreign key.
-func (o *Mech) EnergyCore(mods ...qm.QueryMod) energyCoreQuery {
+// PowerCore pointed to by the foreign key.
+func (o *Mech) PowerCore(mods ...qm.QueryMod) powerCoreQuery {
 	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.EnergyCoreID),
+		qm.Where("\"id\" = ?", o.PowerCoreID),
 	}
 
 	queryMods = append(queryMods, mods...)
 
-	query := EnergyCores(queryMods...)
-	queries.SetFrom(query.Query, "\"energy_cores\"")
+	query := PowerCores(queryMods...)
+	queries.SetFrom(query.Query, "\"power_cores\"")
 
 	return query
 }
@@ -891,22 +891,22 @@ func (o *Mech) BattleWins(mods ...qm.QueryMod) battleWinQuery {
 	return query
 }
 
-// EquippedOnEnergyCores retrieves all the energy_core's EnergyCores with an executor via equipped_on column.
-func (o *Mech) EquippedOnEnergyCores(mods ...qm.QueryMod) energyCoreQuery {
+// EquippedOnPowerCores retrieves all the power_core's PowerCores with an executor via equipped_on column.
+func (o *Mech) EquippedOnPowerCores(mods ...qm.QueryMod) powerCoreQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"energy_cores\".\"equipped_on\"=?", o.ID),
+		qm.Where("\"power_cores\".\"equipped_on\"=?", o.ID),
 	)
 
-	query := EnergyCores(queryMods...)
-	queries.SetFrom(query.Query, "\"energy_cores\"")
+	query := PowerCores(queryMods...)
+	queries.SetFrom(query.Query, "\"power_cores\"")
 
 	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"energy_cores\".*"})
+		queries.SetSelect(query.Query, []string{"\"power_cores\".*"})
 	}
 
 	return query
@@ -1380,9 +1380,9 @@ func (mechL) LoadChassisSkin(e boil.Executor, singular bool, maybeMech interface
 	return nil
 }
 
-// LoadEnergyCore allows an eager lookup of values, cached into the
+// LoadPowerCore allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (mechL) LoadEnergyCore(e boil.Executor, singular bool, maybeMech interface{}, mods queries.Applicator) error {
+func (mechL) LoadPowerCore(e boil.Executor, singular bool, maybeMech interface{}, mods queries.Applicator) error {
 	var slice []*Mech
 	var object *Mech
 
@@ -1397,8 +1397,8 @@ func (mechL) LoadEnergyCore(e boil.Executor, singular bool, maybeMech interface{
 		if object.R == nil {
 			object.R = &mechR{}
 		}
-		if !queries.IsNil(object.EnergyCoreID) {
-			args = append(args, object.EnergyCoreID)
+		if !queries.IsNil(object.PowerCoreID) {
+			args = append(args, object.PowerCoreID)
 		}
 
 	} else {
@@ -1409,13 +1409,13 @@ func (mechL) LoadEnergyCore(e boil.Executor, singular bool, maybeMech interface{
 			}
 
 			for _, a := range args {
-				if queries.Equal(a, obj.EnergyCoreID) {
+				if queries.Equal(a, obj.PowerCoreID) {
 					continue Outer
 				}
 			}
 
-			if !queries.IsNil(obj.EnergyCoreID) {
-				args = append(args, obj.EnergyCoreID)
+			if !queries.IsNil(obj.PowerCoreID) {
+				args = append(args, obj.PowerCoreID)
 			}
 
 		}
@@ -1426,8 +1426,8 @@ func (mechL) LoadEnergyCore(e boil.Executor, singular bool, maybeMech interface{
 	}
 
 	query := NewQuery(
-		qm.From(`energy_cores`),
-		qm.WhereIn(`energy_cores.id in ?`, args...),
+		qm.From(`power_cores`),
+		qm.WhereIn(`power_cores.id in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -1435,19 +1435,19 @@ func (mechL) LoadEnergyCore(e boil.Executor, singular bool, maybeMech interface{
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load EnergyCore")
+		return errors.Wrap(err, "failed to eager load PowerCore")
 	}
 
-	var resultSlice []*EnergyCore
+	var resultSlice []*PowerCore
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice EnergyCore")
+		return errors.Wrap(err, "failed to bind eager loaded slice PowerCore")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for energy_cores")
+		return errors.Wrap(err, "failed to close results of eager load for power_cores")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for energy_cores")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for power_cores")
 	}
 
 	if len(mechAfterSelectHooks) != 0 {
@@ -1464,9 +1464,9 @@ func (mechL) LoadEnergyCore(e boil.Executor, singular bool, maybeMech interface{
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.EnergyCore = foreign
+		object.R.PowerCore = foreign
 		if foreign.R == nil {
-			foreign.R = &energyCoreR{}
+			foreign.R = &powerCoreR{}
 		}
 		foreign.R.Mechs = append(foreign.R.Mechs, object)
 		return nil
@@ -1474,10 +1474,10 @@ func (mechL) LoadEnergyCore(e boil.Executor, singular bool, maybeMech interface{
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if queries.Equal(local.EnergyCoreID, foreign.ID) {
-				local.R.EnergyCore = foreign
+			if queries.Equal(local.PowerCoreID, foreign.ID) {
+				local.R.PowerCore = foreign
 				if foreign.R == nil {
-					foreign.R = &energyCoreR{}
+					foreign.R = &powerCoreR{}
 				}
 				foreign.R.Mechs = append(foreign.R.Mechs, local)
 				break
@@ -2997,9 +2997,9 @@ func (mechL) LoadBattleWins(e boil.Executor, singular bool, maybeMech interface{
 	return nil
 }
 
-// LoadEquippedOnEnergyCores allows an eager lookup of values, cached into the
+// LoadEquippedOnPowerCores allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (mechL) LoadEquippedOnEnergyCores(e boil.Executor, singular bool, maybeMech interface{}, mods queries.Applicator) error {
+func (mechL) LoadEquippedOnPowerCores(e boil.Executor, singular bool, maybeMech interface{}, mods queries.Applicator) error {
 	var slice []*Mech
 	var object *Mech
 
@@ -3037,8 +3037,8 @@ func (mechL) LoadEquippedOnEnergyCores(e boil.Executor, singular bool, maybeMech
 	}
 
 	query := NewQuery(
-		qm.From(`energy_cores`),
-		qm.WhereIn(`energy_cores.equipped_on in ?`, args...),
+		qm.From(`power_cores`),
+		qm.WhereIn(`power_cores.equipped_on in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -3046,22 +3046,22 @@ func (mechL) LoadEquippedOnEnergyCores(e boil.Executor, singular bool, maybeMech
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load energy_cores")
+		return errors.Wrap(err, "failed to eager load power_cores")
 	}
 
-	var resultSlice []*EnergyCore
+	var resultSlice []*PowerCore
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice energy_cores")
+		return errors.Wrap(err, "failed to bind eager loaded slice power_cores")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on energy_cores")
+		return errors.Wrap(err, "failed to close results in eager load on power_cores")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for energy_cores")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for power_cores")
 	}
 
-	if len(energyCoreAfterSelectHooks) != 0 {
+	if len(powerCoreAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -3069,10 +3069,10 @@ func (mechL) LoadEquippedOnEnergyCores(e boil.Executor, singular bool, maybeMech
 		}
 	}
 	if singular {
-		object.R.EquippedOnEnergyCores = resultSlice
+		object.R.EquippedOnPowerCores = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
-				foreign.R = &energyCoreR{}
+				foreign.R = &powerCoreR{}
 			}
 			foreign.R.EquippedOnMech = object
 		}
@@ -3082,9 +3082,9 @@ func (mechL) LoadEquippedOnEnergyCores(e boil.Executor, singular bool, maybeMech
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
 			if queries.Equal(local.ID, foreign.EquippedOn) {
-				local.R.EquippedOnEnergyCores = append(local.R.EquippedOnEnergyCores, foreign)
+				local.R.EquippedOnPowerCores = append(local.R.EquippedOnPowerCores, foreign)
 				if foreign.R == nil {
-					foreign.R = &energyCoreR{}
+					foreign.R = &powerCoreR{}
 				}
 				foreign.R.EquippedOnMech = local
 				break
@@ -3955,10 +3955,10 @@ func (o *Mech) RemoveChassisSkin(exec boil.Executor, related *MechSkin) error {
 	return nil
 }
 
-// SetEnergyCore of the mech to the related item.
-// Sets o.R.EnergyCore to related.
+// SetPowerCore of the mech to the related item.
+// Sets o.R.PowerCore to related.
 // Adds o to related.R.Mechs.
-func (o *Mech) SetEnergyCore(exec boil.Executor, insert bool, related *EnergyCore) error {
+func (o *Mech) SetPowerCore(exec boil.Executor, insert bool, related *PowerCore) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -3968,7 +3968,7 @@ func (o *Mech) SetEnergyCore(exec boil.Executor, insert bool, related *EnergyCor
 
 	updateQuery := fmt.Sprintf(
 		"UPDATE \"mechs\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"energy_core_id"}),
+		strmangle.SetParamNames("\"", "\"", 1, []string{"power_core_id"}),
 		strmangle.WhereClause("\"", "\"", 2, mechPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
@@ -3981,17 +3981,17 @@ func (o *Mech) SetEnergyCore(exec boil.Executor, insert bool, related *EnergyCor
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	queries.Assign(&o.EnergyCoreID, related.ID)
+	queries.Assign(&o.PowerCoreID, related.ID)
 	if o.R == nil {
 		o.R = &mechR{
-			EnergyCore: related,
+			PowerCore: related,
 		}
 	} else {
-		o.R.EnergyCore = related
+		o.R.PowerCore = related
 	}
 
 	if related.R == nil {
-		related.R = &energyCoreR{
+		related.R = &powerCoreR{
 			Mechs: MechSlice{o},
 		}
 	} else {
@@ -4001,26 +4001,26 @@ func (o *Mech) SetEnergyCore(exec boil.Executor, insert bool, related *EnergyCor
 	return nil
 }
 
-// RemoveEnergyCore relationship.
-// Sets o.R.EnergyCore to nil.
+// RemovePowerCore relationship.
+// Sets o.R.PowerCore to nil.
 // Removes o from all passed in related items' relationships struct (Optional).
-func (o *Mech) RemoveEnergyCore(exec boil.Executor, related *EnergyCore) error {
+func (o *Mech) RemovePowerCore(exec boil.Executor, related *PowerCore) error {
 	var err error
 
-	queries.SetScanner(&o.EnergyCoreID, nil)
-	if _, err = o.Update(exec, boil.Whitelist("energy_core_id")); err != nil {
+	queries.SetScanner(&o.PowerCoreID, nil)
+	if _, err = o.Update(exec, boil.Whitelist("power_core_id")); err != nil {
 		return errors.Wrap(err, "failed to update local table")
 	}
 
 	if o.R != nil {
-		o.R.EnergyCore = nil
+		o.R.PowerCore = nil
 	}
 	if related == nil || related.R == nil {
 		return nil
 	}
 
 	for i, ri := range related.R.Mechs {
-		if queries.Equal(o.EnergyCoreID, ri.EnergyCoreID) {
+		if queries.Equal(o.PowerCoreID, ri.PowerCoreID) {
 			continue
 		}
 
@@ -4998,11 +4998,11 @@ func (o *Mech) AddBattleWins(exec boil.Executor, insert bool, related ...*Battle
 	return nil
 }
 
-// AddEquippedOnEnergyCores adds the given related objects to the existing relationships
+// AddEquippedOnPowerCores adds the given related objects to the existing relationships
 // of the mech, optionally inserting them as new records.
-// Appends related to o.R.EquippedOnEnergyCores.
+// Appends related to o.R.EquippedOnPowerCores.
 // Sets related.R.EquippedOnMech appropriately.
-func (o *Mech) AddEquippedOnEnergyCores(exec boil.Executor, insert bool, related ...*EnergyCore) error {
+func (o *Mech) AddEquippedOnPowerCores(exec boil.Executor, insert bool, related ...*PowerCore) error {
 	var err error
 	for _, rel := range related {
 		if insert {
@@ -5012,9 +5012,9 @@ func (o *Mech) AddEquippedOnEnergyCores(exec boil.Executor, insert bool, related
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
-				"UPDATE \"energy_cores\" SET %s WHERE %s",
+				"UPDATE \"power_cores\" SET %s WHERE %s",
 				strmangle.SetParamNames("\"", "\"", 1, []string{"equipped_on"}),
-				strmangle.WhereClause("\"", "\"", 2, energyCorePrimaryKeyColumns),
+				strmangle.WhereClause("\"", "\"", 2, powerCorePrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
 
@@ -5032,15 +5032,15 @@ func (o *Mech) AddEquippedOnEnergyCores(exec boil.Executor, insert bool, related
 
 	if o.R == nil {
 		o.R = &mechR{
-			EquippedOnEnergyCores: related,
+			EquippedOnPowerCores: related,
 		}
 	} else {
-		o.R.EquippedOnEnergyCores = append(o.R.EquippedOnEnergyCores, related...)
+		o.R.EquippedOnPowerCores = append(o.R.EquippedOnPowerCores, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
-			rel.R = &energyCoreR{
+			rel.R = &powerCoreR{
 				EquippedOnMech: o,
 			}
 		} else {
@@ -5050,14 +5050,14 @@ func (o *Mech) AddEquippedOnEnergyCores(exec boil.Executor, insert bool, related
 	return nil
 }
 
-// SetEquippedOnEnergyCores removes all previously related items of the
+// SetEquippedOnPowerCores removes all previously related items of the
 // mech replacing them completely with the passed
 // in related items, optionally inserting them as new records.
-// Sets o.R.EquippedOnMech's EquippedOnEnergyCores accordingly.
-// Replaces o.R.EquippedOnEnergyCores with related.
-// Sets related.R.EquippedOnMech's EquippedOnEnergyCores accordingly.
-func (o *Mech) SetEquippedOnEnergyCores(exec boil.Executor, insert bool, related ...*EnergyCore) error {
-	query := "update \"energy_cores\" set \"equipped_on\" = null where \"equipped_on\" = $1"
+// Sets o.R.EquippedOnMech's EquippedOnPowerCores accordingly.
+// Replaces o.R.EquippedOnPowerCores with related.
+// Sets related.R.EquippedOnMech's EquippedOnPowerCores accordingly.
+func (o *Mech) SetEquippedOnPowerCores(exec boil.Executor, insert bool, related ...*PowerCore) error {
+	query := "update \"power_cores\" set \"equipped_on\" = null where \"equipped_on\" = $1"
 	values := []interface{}{o.ID}
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, query)
@@ -5069,7 +5069,7 @@ func (o *Mech) SetEquippedOnEnergyCores(exec boil.Executor, insert bool, related
 	}
 
 	if o.R != nil {
-		for _, rel := range o.R.EquippedOnEnergyCores {
+		for _, rel := range o.R.EquippedOnPowerCores {
 			queries.SetScanner(&rel.EquippedOn, nil)
 			if rel.R == nil {
 				continue
@@ -5078,15 +5078,15 @@ func (o *Mech) SetEquippedOnEnergyCores(exec boil.Executor, insert bool, related
 			rel.R.EquippedOnMech = nil
 		}
 
-		o.R.EquippedOnEnergyCores = nil
+		o.R.EquippedOnPowerCores = nil
 	}
-	return o.AddEquippedOnEnergyCores(exec, insert, related...)
+	return o.AddEquippedOnPowerCores(exec, insert, related...)
 }
 
-// RemoveEquippedOnEnergyCores relationships from objects passed in.
-// Removes related items from R.EquippedOnEnergyCores (uses pointer comparison, removal does not keep order)
+// RemoveEquippedOnPowerCores relationships from objects passed in.
+// Removes related items from R.EquippedOnPowerCores (uses pointer comparison, removal does not keep order)
 // Sets related.R.EquippedOnMech.
-func (o *Mech) RemoveEquippedOnEnergyCores(exec boil.Executor, related ...*EnergyCore) error {
+func (o *Mech) RemoveEquippedOnPowerCores(exec boil.Executor, related ...*PowerCore) error {
 	if len(related) == 0 {
 		return nil
 	}
@@ -5106,16 +5106,16 @@ func (o *Mech) RemoveEquippedOnEnergyCores(exec boil.Executor, related ...*Energ
 	}
 
 	for _, rel := range related {
-		for i, ri := range o.R.EquippedOnEnergyCores {
+		for i, ri := range o.R.EquippedOnPowerCores {
 			if rel != ri {
 				continue
 			}
 
-			ln := len(o.R.EquippedOnEnergyCores)
+			ln := len(o.R.EquippedOnPowerCores)
 			if ln > 1 && i < ln-1 {
-				o.R.EquippedOnEnergyCores[i] = o.R.EquippedOnEnergyCores[ln-1]
+				o.R.EquippedOnPowerCores[i] = o.R.EquippedOnPowerCores[ln-1]
 			}
-			o.R.EquippedOnEnergyCores = o.R.EquippedOnEnergyCores[:ln-1]
+			o.R.EquippedOnPowerCores = o.R.EquippedOnPowerCores[:ln-1]
 			break
 		}
 	}

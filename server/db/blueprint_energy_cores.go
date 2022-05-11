@@ -6,25 +6,25 @@ import (
 	"server/gamedb"
 )
 
-func BlueprintEnergyCores(ids []string) ([]*server.BlueprintEnergyCore, error) {
-	var bluePrintEnergyCores []*server.BlueprintEnergyCore
-	blueprintEnergyCores, err := boiler.BlueprintEnergyCores(boiler.BlueprintEnergyCoreWhere.ID.IN(ids)).All(gamedb.StdConn)
+func BlueprintPowerCores(ids []string) ([]*server.BlueprintPowerCore, error) {
+	var bluePrintPowerCores []*server.BlueprintPowerCore
+	blueprintPowerCores, err := boiler.BlueprintPowerCores(boiler.BlueprintPowerCoreWhere.ID.IN(ids)).All(gamedb.StdConn)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, bp := range blueprintEnergyCores {
-		bluePrintEnergyCores = append(bluePrintEnergyCores, server.BlueprintEnergyCoreFromBoiler(bp))
+	for _, bp := range blueprintPowerCores {
+		bluePrintPowerCores = append(bluePrintPowerCores, server.BlueprintPowerCoreFromBoiler(bp))
 	}
 
-	return bluePrintEnergyCores, nil
+	return bluePrintPowerCores, nil
 }
 
-func BlueprintEnergyCore(ids string) (*server.BlueprintEnergyCore, error) {
-	blueprintEnergyCore, err := boiler.BlueprintEnergyCores(boiler.BlueprintEnergyCoreWhere.ID.EQ(ids)).One(gamedb.StdConn)
+func BlueprintPowerCore(ids string) (*server.BlueprintPowerCore, error) {
+	blueprintPowerCore, err := boiler.BlueprintPowerCores(boiler.BlueprintPowerCoreWhere.ID.EQ(ids)).One(gamedb.StdConn)
 	if err != nil {
 		return nil, err
 	}
 
-	return server.BlueprintEnergyCoreFromBoiler(blueprintEnergyCore), nil
+	return server.BlueprintPowerCoreFromBoiler(blueprintPowerCore), nil
 }

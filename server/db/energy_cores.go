@@ -10,14 +10,14 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
-func InsertNewEnergyCore(ownerID uuid.UUID, ec *server.BlueprintEnergyCore) (*server.EnergyCore, error) {
+func InsertNewPowerCore(ownerID uuid.UUID, ec *server.BlueprintPowerCore) (*server.PowerCore, error) {
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
 		return nil, terror.Error(err)
 	}
 
 	// first insert the energy core
-	newEnergyCore := boiler.EnergyCore{
+	newPowerCore := boiler.PowerCore{
 		OwnerID:      ownerID.String(),
 		Label:        ec.Label,
 		Size:         ec.Size,
@@ -29,7 +29,7 @@ func InsertNewEnergyCore(ownerID uuid.UUID, ec *server.BlueprintEnergyCore) (*se
 		Tier:         ec.Tier,
 	}
 
-	err = newEnergyCore.Insert(tx, boil.Infer())
+	err = newPowerCore.Insert(tx, boil.Infer())
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -37,8 +37,8 @@ func InsertNewEnergyCore(ownerID uuid.UUID, ec *server.BlueprintEnergyCore) (*se
 	//insert collection item
 	collectionItem := boiler.CollectionItem{
 		CollectionSlug: ec.Collection,
-		ItemType:       boiler.ItemTypeEnergyCore,
-		ItemID:         newEnergyCore.ID,
+		ItemType:       boiler.ItemTypePowerCore,
+		ItemID:         newPowerCore.ID,
 	}
 
 	err = collectionItem.Insert(tx, boil.Infer())
@@ -51,16 +51,16 @@ func InsertNewEnergyCore(ownerID uuid.UUID, ec *server.BlueprintEnergyCore) (*se
 		return nil, terror.Error(err)
 	}
 
-	energyCoreUUID, err := uuid.FromString(newEnergyCore.ID)
+	powerCoreUUID, err := uuid.FromString(newPowerCore.ID)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
 
-	return EnergyCore(energyCoreUUID)
+	return PowerCore(powerCoreUUID)
 }
 
-func EnergyCore(id uuid.UUID) (*server.EnergyCore, error) {
-	boilerMech, err := boiler.FindEnergyCore(gamedb.StdConn, id.String())
+func PowerCore(id uuid.UUID) (*server.PowerCore, error) {
+	boilerMech, err := boiler.FindPowerCore(gamedb.StdConn, id.String())
 	if err != nil {
 		return nil, err
 	}
@@ -69,5 +69,5 @@ func EnergyCore(id uuid.UUID) (*server.EnergyCore, error) {
 		return nil, err
 	}
 
-	return server.EnergyCoreFromBoiler(boilerMech, boilerMechCollectionDetails), nil
+	return server.PowerCoreFromBoiler(boilerMech, boilerMechCollectionDetails), nil
 }

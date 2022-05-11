@@ -35,7 +35,7 @@ func Template(templateID uuid.UUID) (*server.TemplateContainer, error) {
 		BlueprintUtility:       []*server.BlueprintUtility{},
 		BlueprintMechSkin:      []*server.BlueprintMechSkin{},
 		BlueprintMechAnimation: []*server.BlueprintMechAnimation{},
-		BlueprintEnergyCore:    []*server.BlueprintEnergyCore{},
+		BlueprintPowerCore:    []*server.BlueprintPowerCore{},
 	}
 
 	// filter them into IDs first to optimize db queries
@@ -44,7 +44,7 @@ func Template(templateID uuid.UUID) (*server.TemplateContainer, error) {
 	var blueprintUtilityIDS []string
 	var blueprintMechSkinIDS []string
 	var blueprintMechAnimationIDS []string
-	var blueprintEnergyCoreIDS []string
+	var blueprintPowerCoreIDS []string
 
 	// filter out to ids
 	for _, bp := range template.R.TemplateBlueprints {
@@ -59,8 +59,8 @@ func Template(templateID uuid.UUID) (*server.TemplateContainer, error) {
 			blueprintUtilityIDS = append(blueprintUtilityIDS, bp.BlueprintID)
 		case boiler.TemplateItemTypeWEAPON:
 			blueprintWeaponIDS = append(blueprintWeaponIDS, bp.BlueprintID)
-		case boiler.TemplateItemTypeENERGY_CORE:
-			blueprintEnergyCoreIDS = append(blueprintEnergyCoreIDS, bp.BlueprintID)
+		case boiler.TemplateItemTypepower_core:
+			blueprintPowerCoreIDS = append(blueprintPowerCoreIDS, bp.BlueprintID)
 		case boiler.TemplateItemTypeWEAPON_SKIN:
 			continue
 		case boiler.TemplateItemTypePLAYER_ABILITY:
@@ -90,7 +90,7 @@ func Template(templateID uuid.UUID) (*server.TemplateContainer, error) {
 	if err != nil {
 		return nil, err
 	}
-	result.BlueprintEnergyCore, err = BlueprintEnergyCores(blueprintEnergyCoreIDS)
+	result.BlueprintPowerCore, err = BlueprintPowerCores(blueprintPowerCoreIDS)
 	if err != nil {
 		return nil, err
 	}
@@ -188,13 +188,13 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) error {
 	}
 
 	// inserts energy core blueprints
-	for _, energyCore := range tmpl.BlueprintEnergyCore {
-		energyCore.LimitedReleaseTokenID = limitedReleaseTokenID
-		energyCore.GenesisTokenID = genesisTokenID
-		_, err := InsertNewEnergyCore(ownerID, energyCore)
+	for _, powerCore := range tmpl.BlueprintPowerCore {
+		powerCore.LimitedReleaseTokenID = limitedReleaseTokenID
+		powerCore.GenesisTokenID = genesisTokenID
+		_, err := InsertNewPowerCore(ownerID, powerCore)
 		if err != nil {
 			gamelog.L.Error().Err(err).
-				Interface("energyCore", energyCore).
+				Interface("powerCore", powerCore).
 				Str("ownerID", ownerID.String()).
 				Msg("failed to insert new energy core for user")
 			continue

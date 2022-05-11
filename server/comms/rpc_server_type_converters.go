@@ -72,16 +72,16 @@ func ServerMechAnimationToApiV1(animation *server.MechAnimation) *MechAnimation 
 	}
 }
 
-func ServerEnergyCoresToApiV1(items []*server.EnergyCore) []*EnergyCore {
-	var converted []*EnergyCore
+func ServerPowerCoresToApiV1(items []*server.PowerCore) []*PowerCore {
+	var converted []*PowerCore
 	for _, i := range items {
-		converted = append(converted, ServerEnergyCoreToApiV1(i))
+		converted = append(converted, ServerPowerCoreToApiV1(i))
 	}
 	return converted
 }
 
-func ServerEnergyCoreToApiV1(ec *server.EnergyCore) *EnergyCore {
-	return &EnergyCore{
+func ServerPowerCoreToApiV1(ec *server.PowerCore) *PowerCore {
+	return &PowerCore{
 		CollectionDetails: &CollectionDetails{
 			CollectionSlug: ec.CollectionDetails.CollectionSlug,
 			Hash:           ec.CollectionDetails.Hash,
@@ -262,7 +262,7 @@ func ServerMechToApiV1(mech *server.Mech) *Mech {
 		GenesisTokenID:       mech.GenesisTokenID,
 		OwnerID:              mech.OwnerID,
 		FactionID:            mech.FactionID,
-		EnergyCoreSize:       mech.EnergyCoreSize,
+		PowerCoreSize:       mech.PowerCoreSize,
 		Tier:                 mech.Tier,
 		DefaultChassisSkinID: mech.DefaultChassisSkinID,
 		DefaultChassisSkin:   ServerBlueprintMechSkinToApiV1(mech.DefaultChassisSkin),
@@ -272,8 +272,8 @@ func ServerMechToApiV1(mech *server.Mech) *Mech {
 		IntroAnimation:       ServerMechAnimationToApiV1(mech.IntroAnimation),
 		OutroAnimationID:     mech.OutroAnimationID,
 		OutroAnimation:       ServerMechAnimationToApiV1(mech.OutroAnimation),
-		EnergyCoreID:         mech.EnergyCoreID,
-		EnergyCore:           ServerEnergyCoreToApiV1(mech.EnergyCore),
+		PowerCoreID:         mech.PowerCoreID,
+		PowerCore:           ServerPowerCoreToApiV1(mech.PowerCore),
 		Weapons:              ServerWeaponsToApiV1(mech.Weapons),
 		Utility:              ServerUtilitiesToApiV1(mech.Utility),
 		UpdatedAt:            mech.UpdatedAt,

@@ -129,7 +129,7 @@ func Mech(mechID uuid.UUID) (*server.Mech, error) {
 			m.is_insured,
 			m.genesis_token_id,
 			m.limited_release_token_id,
-			m.energy_core_size,
+			m.power_core_size,
 			m.tier,
 			m.blueprint_id,
 		
@@ -157,8 +157,8 @@ func Mech(mechID uuid.UUID) (*server.Mech, error) {
 			m.outro_animation_id,
 			to_json(ma1) as outro_animation,
 		
-			m.energy_core_id,
-			to_json(ec) as energy_core,
+			m.power_core_id,
+			to_json(ec) as power_core,
 		
 			w.weapons,
 			u.utility
@@ -166,7 +166,7 @@ func Mech(mechID uuid.UUID) (*server.Mech, error) {
 		INNER JOIN collection_items ci on ci.item_id = m.id
 		INNER JOIN players p ON p.id = m.owner_id
 		INNER JOIN factions f on p.faction_id = f.id
-		LEFT OUTER JOIN energy_cores ec ON ec.id = m.energy_core_id
+		LEFT OUTER JOIN power_cores ec ON ec.id = m.power_core_id
 		LEFT OUTER JOIN brands b ON b.id = m.brand_id
 		LEFT OUTER JOIN mech_model mm ON m.model_id = mm.id
 		LEFT OUTER JOIN mech_skin ms ON m.chassis_skin_id = ms.id
@@ -227,7 +227,7 @@ func Mech(mechID uuid.UUID) (*server.Mech, error) {
 			&mc.IsInsured,
 			&mc.GenesisTokenID,
 			&mc.LimitedReleaseTokenID,
-			&mc.EnergyCoreSize,
+			&mc.PowerCoreSize,
 			&mc.Tier,
 			&mc.BlueprintID,
 			&mc.BrandID,
@@ -246,8 +246,8 @@ func Mech(mechID uuid.UUID) (*server.Mech, error) {
 			&mc.IntroAnimation,
 			&mc.OutroAnimationID,
 			&mc.OutroAnimation,
-			&mc.EnergyCoreID,
-			&mc.EnergyCore,
+			&mc.PowerCoreID,
+			&mc.PowerCore,
 			&mc.Weapons,
 			&mc.Utility,
 		)
@@ -291,7 +291,7 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.Mech, error) {
 			m.is_insured,
 			m.genesis_token_id,
 			m.limited_release_token_id,
-			m.energy_core_size,
+			m.power_core_size,
 			m.tier,
 			m.blueprint_id,
 		
@@ -319,8 +319,8 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.Mech, error) {
 			m.outro_animation_id,
 			to_json(ma1) as outro_animation,
 		
-			m.energy_core_id,
-			to_json(ec) as energy_core,
+			m.power_core_id,
+			to_json(ec) as power_core,
 		
 			w.weapons,
 			u.utility
@@ -328,7 +328,7 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.Mech, error) {
 		INNER JOIN collection_items ci on ci.item_id = m.id
 		INNER JOIN players p ON p.id = m.owner_id
 		INNER JOIN factions f on p.faction_id = f.id
-		LEFT OUTER JOIN energy_cores ec ON ec.id = m.energy_core_id
+		LEFT OUTER JOIN power_cores ec ON ec.id = m.power_core_id
 		LEFT OUTER JOIN brands b ON b.id = m.brand_id
 		LEFT OUTER JOIN mech_model mm ON m.model_id = mm.id
 		LEFT OUTER JOIN mech_skin ms ON m.chassis_skin_id = ms.id
@@ -392,7 +392,7 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.Mech, error) {
 			&mc.IsInsured,
 			&mc.GenesisTokenID,
 			&mc.LimitedReleaseTokenID,
-			&mc.EnergyCoreSize,
+			&mc.PowerCoreSize,
 			&mc.Tier,
 			&mc.BlueprintID,
 			&mc.BrandID,
@@ -411,8 +411,8 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.Mech, error) {
 			&mc.IntroAnimation,
 			&mc.OutroAnimationID,
 			&mc.OutroAnimation,
-			&mc.EnergyCoreID,
-			&mc.EnergyCore,
+			&mc.PowerCoreID,
+			&mc.PowerCore,
 			&mc.Weapons,
 			&mc.Utility,
 		)
@@ -573,7 +573,7 @@ func InsertNewMech(ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) (*ser
 		Name:             "",
 		ModelID:          mechBlueprint.ModelID,
 		OwnerID:          ownerID.String(),
-		EnergyCoreSize:   mechBlueprint.EnergyCoreSize,
+		PowerCoreSize:    mechBlueprint.PowerCoreSize,
 		Tier:             mechBlueprint.Tier,
 	}
 

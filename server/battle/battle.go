@@ -1917,8 +1917,6 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 			FactionID:   mech.FactionID,
 			MaxHealth:   uint32(mech.MaxHitpoints),
 			Health:      uint32(mech.MaxHitpoints),
-			Model:       mech.Model.Label,
-			Skin:        mech.ChassisSkin.Label,
 			Speed:       mech.Speed,
 			Tier:        mech.Tier.String,
 			Image:       mech.ChassisSkin.ImageURL.String,
@@ -1934,9 +1932,9 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 				},
 			},
 
-			EnergyCore: EnergyCoreFromServer(mech.EnergyCore),
-			Weapons:    WeaponsFromServer(mech.Weapons),
-			Utility: UtilitiesFromServer(mech.Utility),
+			PowerCore: PowerCoreFromServer(mech.PowerCore),
+			Weapons:   WeaponsFromServer(mech.Weapons),
+			Utility:   UtilitiesFromServer(mech.Utility),
 
 			//Abilities:  nil,
 		}
@@ -1951,6 +1949,22 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 		for _, utl := range mech.Utility {
 			if utl.Type == boiler.UtilityTypeSHIELD && utl.Shield != nil {
 				newWarMachine.Shield = uint32(utl.Shield.Hitpoints)
+			}
+		}
+		// check model
+		if mech.Model != nil {
+			model, ok := ModelMap[mech.Model.Label]
+			if !ok {
+				model = "WREX"
+			}
+			newWarMachine.Model = model
+		}
+
+		// check model skin
+		if mech.ChassisSkin != nil {
+			mappedSkin, ok := SubmodelSkinMap[mech.ChassisSkin.Label]
+			if ok {
+				newWarMachine.Skin = mappedSkin
 			}
 		}
 

@@ -22,8 +22,8 @@ import (
 	"github.com/volatiletech/strmangle"
 )
 
-// EnergyCore is an object representing the database table.
-type EnergyCore struct {
+// PowerCore is an object representing the database table.
+type PowerCore struct {
 	ID           string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	OwnerID      string          `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
 	Label        string          `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
@@ -37,11 +37,11 @@ type EnergyCore struct {
 	EquippedOn   null.String     `boiler:"equipped_on" boil:"equipped_on" json:"equipped_on,omitempty" toml:"equipped_on" yaml:"equipped_on,omitempty"`
 	CreatedAt    time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
-	R *energyCoreR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
-	L energyCoreL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
+	R *powerCoreR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
+	L powerCoreL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
-var EnergyCoreColumns = struct {
+var PowerCoreColumns = struct {
 	ID           string
 	OwnerID      string
 	Label        string
@@ -69,7 +69,7 @@ var EnergyCoreColumns = struct {
 	CreatedAt:    "created_at",
 }
 
-var EnergyCoreTableColumns = struct {
+var PowerCoreTableColumns = struct {
 	ID           string
 	OwnerID      string
 	Label        string
@@ -83,23 +83,23 @@ var EnergyCoreTableColumns = struct {
 	EquippedOn   string
 	CreatedAt    string
 }{
-	ID:           "energy_cores.id",
-	OwnerID:      "energy_cores.owner_id",
-	Label:        "energy_cores.label",
-	Size:         "energy_cores.size",
-	Capacity:     "energy_cores.capacity",
-	MaxDrawRate:  "energy_cores.max_draw_rate",
-	RechargeRate: "energy_cores.recharge_rate",
-	Armour:       "energy_cores.armour",
-	MaxHitpoints: "energy_cores.max_hitpoints",
-	Tier:         "energy_cores.tier",
-	EquippedOn:   "energy_cores.equipped_on",
-	CreatedAt:    "energy_cores.created_at",
+	ID:           "power_cores.id",
+	OwnerID:      "power_cores.owner_id",
+	Label:        "power_cores.label",
+	Size:         "power_cores.size",
+	Capacity:     "power_cores.capacity",
+	MaxDrawRate:  "power_cores.max_draw_rate",
+	RechargeRate: "power_cores.recharge_rate",
+	Armour:       "power_cores.armour",
+	MaxHitpoints: "power_cores.max_hitpoints",
+	Tier:         "power_cores.tier",
+	EquippedOn:   "power_cores.equipped_on",
+	CreatedAt:    "power_cores.created_at",
 }
 
 // Generated where
 
-var EnergyCoreWhere = struct {
+var PowerCoreWhere = struct {
 	ID           whereHelperstring
 	OwnerID      whereHelperstring
 	Label        whereHelperstring
@@ -113,22 +113,22 @@ var EnergyCoreWhere = struct {
 	EquippedOn   whereHelpernull_String
 	CreatedAt    whereHelpertime_Time
 }{
-	ID:           whereHelperstring{field: "\"energy_cores\".\"id\""},
-	OwnerID:      whereHelperstring{field: "\"energy_cores\".\"owner_id\""},
-	Label:        whereHelperstring{field: "\"energy_cores\".\"label\""},
-	Size:         whereHelperstring{field: "\"energy_cores\".\"size\""},
-	Capacity:     whereHelperdecimal_Decimal{field: "\"energy_cores\".\"capacity\""},
-	MaxDrawRate:  whereHelperdecimal_Decimal{field: "\"energy_cores\".\"max_draw_rate\""},
-	RechargeRate: whereHelperdecimal_Decimal{field: "\"energy_cores\".\"recharge_rate\""},
-	Armour:       whereHelperdecimal_Decimal{field: "\"energy_cores\".\"armour\""},
-	MaxHitpoints: whereHelperdecimal_Decimal{field: "\"energy_cores\".\"max_hitpoints\""},
-	Tier:         whereHelpernull_String{field: "\"energy_cores\".\"tier\""},
-	EquippedOn:   whereHelpernull_String{field: "\"energy_cores\".\"equipped_on\""},
-	CreatedAt:    whereHelpertime_Time{field: "\"energy_cores\".\"created_at\""},
+	ID:           whereHelperstring{field: "\"power_cores\".\"id\""},
+	OwnerID:      whereHelperstring{field: "\"power_cores\".\"owner_id\""},
+	Label:        whereHelperstring{field: "\"power_cores\".\"label\""},
+	Size:         whereHelperstring{field: "\"power_cores\".\"size\""},
+	Capacity:     whereHelperdecimal_Decimal{field: "\"power_cores\".\"capacity\""},
+	MaxDrawRate:  whereHelperdecimal_Decimal{field: "\"power_cores\".\"max_draw_rate\""},
+	RechargeRate: whereHelperdecimal_Decimal{field: "\"power_cores\".\"recharge_rate\""},
+	Armour:       whereHelperdecimal_Decimal{field: "\"power_cores\".\"armour\""},
+	MaxHitpoints: whereHelperdecimal_Decimal{field: "\"power_cores\".\"max_hitpoints\""},
+	Tier:         whereHelpernull_String{field: "\"power_cores\".\"tier\""},
+	EquippedOn:   whereHelpernull_String{field: "\"power_cores\".\"equipped_on\""},
+	CreatedAt:    whereHelpertime_Time{field: "\"power_cores\".\"created_at\""},
 }
 
-// EnergyCoreRels is where relationship names are stored.
-var EnergyCoreRels = struct {
+// PowerCoreRels is where relationship names are stored.
+var PowerCoreRels = struct {
 	EquippedOnMech string
 	Owner          string
 	Mechs          string
@@ -138,52 +138,52 @@ var EnergyCoreRels = struct {
 	Mechs:          "Mechs",
 }
 
-// energyCoreR is where relationships are stored.
-type energyCoreR struct {
+// powerCoreR is where relationships are stored.
+type powerCoreR struct {
 	EquippedOnMech *Mech     `boiler:"EquippedOnMech" boil:"EquippedOnMech" json:"EquippedOnMech" toml:"EquippedOnMech" yaml:"EquippedOnMech"`
 	Owner          *Player   `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
 	Mechs          MechSlice `boiler:"Mechs" boil:"Mechs" json:"Mechs" toml:"Mechs" yaml:"Mechs"`
 }
 
 // NewStruct creates a new relationship struct
-func (*energyCoreR) NewStruct() *energyCoreR {
-	return &energyCoreR{}
+func (*powerCoreR) NewStruct() *powerCoreR {
+	return &powerCoreR{}
 }
 
-// energyCoreL is where Load methods for each relationship are stored.
-type energyCoreL struct{}
+// powerCoreL is where Load methods for each relationship are stored.
+type powerCoreL struct{}
 
 var (
-	energyCoreAllColumns            = []string{"id", "owner_id", "label", "size", "capacity", "max_draw_rate", "recharge_rate", "armour", "max_hitpoints", "tier", "equipped_on", "created_at"}
-	energyCoreColumnsWithoutDefault = []string{"owner_id", "label"}
-	energyCoreColumnsWithDefault    = []string{"id", "size", "capacity", "max_draw_rate", "recharge_rate", "armour", "max_hitpoints", "tier", "equipped_on", "created_at"}
-	energyCorePrimaryKeyColumns     = []string{"id"}
-	energyCoreGeneratedColumns      = []string{}
+	powerCoreAllColumns            = []string{"id", "owner_id", "label", "size", "capacity", "max_draw_rate", "recharge_rate", "armour", "max_hitpoints", "tier", "equipped_on", "created_at"}
+	powerCoreColumnsWithoutDefault = []string{"owner_id", "label"}
+	powerCoreColumnsWithDefault    = []string{"id", "size", "capacity", "max_draw_rate", "recharge_rate", "armour", "max_hitpoints", "tier", "equipped_on", "created_at"}
+	powerCorePrimaryKeyColumns     = []string{"id"}
+	powerCoreGeneratedColumns      = []string{}
 )
 
 type (
-	// EnergyCoreSlice is an alias for a slice of pointers to EnergyCore.
-	// This should almost always be used instead of []EnergyCore.
-	EnergyCoreSlice []*EnergyCore
-	// EnergyCoreHook is the signature for custom EnergyCore hook methods
-	EnergyCoreHook func(boil.Executor, *EnergyCore) error
+	// PowerCoreSlice is an alias for a slice of pointers to PowerCore.
+	// This should almost always be used instead of []PowerCore.
+	PowerCoreSlice []*PowerCore
+	// PowerCoreHook is the signature for custom PowerCore hook methods
+	PowerCoreHook func(boil.Executor, *PowerCore) error
 
-	energyCoreQuery struct {
+	powerCoreQuery struct {
 		*queries.Query
 	}
 )
 
 // Cache for insert, update and upsert
 var (
-	energyCoreType                 = reflect.TypeOf(&EnergyCore{})
-	energyCoreMapping              = queries.MakeStructMapping(energyCoreType)
-	energyCorePrimaryKeyMapping, _ = queries.BindMapping(energyCoreType, energyCoreMapping, energyCorePrimaryKeyColumns)
-	energyCoreInsertCacheMut       sync.RWMutex
-	energyCoreInsertCache          = make(map[string]insertCache)
-	energyCoreUpdateCacheMut       sync.RWMutex
-	energyCoreUpdateCache          = make(map[string]updateCache)
-	energyCoreUpsertCacheMut       sync.RWMutex
-	energyCoreUpsertCache          = make(map[string]insertCache)
+	powerCoreType                 = reflect.TypeOf(&PowerCore{})
+	powerCoreMapping              = queries.MakeStructMapping(powerCoreType)
+	powerCorePrimaryKeyMapping, _ = queries.BindMapping(powerCoreType, powerCoreMapping, powerCorePrimaryKeyColumns)
+	powerCoreInsertCacheMut       sync.RWMutex
+	powerCoreInsertCache          = make(map[string]insertCache)
+	powerCoreUpdateCacheMut       sync.RWMutex
+	powerCoreUpdateCache          = make(map[string]updateCache)
+	powerCoreUpsertCacheMut       sync.RWMutex
+	powerCoreUpsertCache          = make(map[string]insertCache)
 )
 
 var (
@@ -194,23 +194,23 @@ var (
 	_ = qmhelper.Where
 )
 
-var energyCoreAfterSelectHooks []EnergyCoreHook
+var powerCoreAfterSelectHooks []PowerCoreHook
 
-var energyCoreBeforeInsertHooks []EnergyCoreHook
-var energyCoreAfterInsertHooks []EnergyCoreHook
+var powerCoreBeforeInsertHooks []PowerCoreHook
+var powerCoreAfterInsertHooks []PowerCoreHook
 
-var energyCoreBeforeUpdateHooks []EnergyCoreHook
-var energyCoreAfterUpdateHooks []EnergyCoreHook
+var powerCoreBeforeUpdateHooks []PowerCoreHook
+var powerCoreAfterUpdateHooks []PowerCoreHook
 
-var energyCoreBeforeDeleteHooks []EnergyCoreHook
-var energyCoreAfterDeleteHooks []EnergyCoreHook
+var powerCoreBeforeDeleteHooks []PowerCoreHook
+var powerCoreAfterDeleteHooks []PowerCoreHook
 
-var energyCoreBeforeUpsertHooks []EnergyCoreHook
-var energyCoreAfterUpsertHooks []EnergyCoreHook
+var powerCoreBeforeUpsertHooks []PowerCoreHook
+var powerCoreAfterUpsertHooks []PowerCoreHook
 
 // doAfterSelectHooks executes all "after Select" hooks.
-func (o *EnergyCore) doAfterSelectHooks(exec boil.Executor) (err error) {
-	for _, hook := range energyCoreAfterSelectHooks {
+func (o *PowerCore) doAfterSelectHooks(exec boil.Executor) (err error) {
+	for _, hook := range powerCoreAfterSelectHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -220,8 +220,8 @@ func (o *EnergyCore) doAfterSelectHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeInsertHooks executes all "before insert" hooks.
-func (o *EnergyCore) doBeforeInsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range energyCoreBeforeInsertHooks {
+func (o *PowerCore) doBeforeInsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range powerCoreBeforeInsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -231,8 +231,8 @@ func (o *EnergyCore) doBeforeInsertHooks(exec boil.Executor) (err error) {
 }
 
 // doAfterInsertHooks executes all "after Insert" hooks.
-func (o *EnergyCore) doAfterInsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range energyCoreAfterInsertHooks {
+func (o *PowerCore) doAfterInsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range powerCoreAfterInsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -242,8 +242,8 @@ func (o *EnergyCore) doAfterInsertHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeUpdateHooks executes all "before Update" hooks.
-func (o *EnergyCore) doBeforeUpdateHooks(exec boil.Executor) (err error) {
-	for _, hook := range energyCoreBeforeUpdateHooks {
+func (o *PowerCore) doBeforeUpdateHooks(exec boil.Executor) (err error) {
+	for _, hook := range powerCoreBeforeUpdateHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -253,8 +253,8 @@ func (o *EnergyCore) doBeforeUpdateHooks(exec boil.Executor) (err error) {
 }
 
 // doAfterUpdateHooks executes all "after Update" hooks.
-func (o *EnergyCore) doAfterUpdateHooks(exec boil.Executor) (err error) {
-	for _, hook := range energyCoreAfterUpdateHooks {
+func (o *PowerCore) doAfterUpdateHooks(exec boil.Executor) (err error) {
+	for _, hook := range powerCoreAfterUpdateHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -264,8 +264,8 @@ func (o *EnergyCore) doAfterUpdateHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeDeleteHooks executes all "before Delete" hooks.
-func (o *EnergyCore) doBeforeDeleteHooks(exec boil.Executor) (err error) {
-	for _, hook := range energyCoreBeforeDeleteHooks {
+func (o *PowerCore) doBeforeDeleteHooks(exec boil.Executor) (err error) {
+	for _, hook := range powerCoreBeforeDeleteHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -275,8 +275,8 @@ func (o *EnergyCore) doBeforeDeleteHooks(exec boil.Executor) (err error) {
 }
 
 // doAfterDeleteHooks executes all "after Delete" hooks.
-func (o *EnergyCore) doAfterDeleteHooks(exec boil.Executor) (err error) {
-	for _, hook := range energyCoreAfterDeleteHooks {
+func (o *PowerCore) doAfterDeleteHooks(exec boil.Executor) (err error) {
+	for _, hook := range powerCoreAfterDeleteHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -286,8 +286,8 @@ func (o *EnergyCore) doAfterDeleteHooks(exec boil.Executor) (err error) {
 }
 
 // doBeforeUpsertHooks executes all "before Upsert" hooks.
-func (o *EnergyCore) doBeforeUpsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range energyCoreBeforeUpsertHooks {
+func (o *PowerCore) doBeforeUpsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range powerCoreBeforeUpsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -297,8 +297,8 @@ func (o *EnergyCore) doBeforeUpsertHooks(exec boil.Executor) (err error) {
 }
 
 // doAfterUpsertHooks executes all "after Upsert" hooks.
-func (o *EnergyCore) doAfterUpsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range energyCoreAfterUpsertHooks {
+func (o *PowerCore) doAfterUpsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range powerCoreAfterUpsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -307,33 +307,33 @@ func (o *EnergyCore) doAfterUpsertHooks(exec boil.Executor) (err error) {
 	return nil
 }
 
-// AddEnergyCoreHook registers your hook function for all future operations.
-func AddEnergyCoreHook(hookPoint boil.HookPoint, energyCoreHook EnergyCoreHook) {
+// AddPowerCoreHook registers your hook function for all future operations.
+func AddPowerCoreHook(hookPoint boil.HookPoint, powerCoreHook PowerCoreHook) {
 	switch hookPoint {
 	case boil.AfterSelectHook:
-		energyCoreAfterSelectHooks = append(energyCoreAfterSelectHooks, energyCoreHook)
+		powerCoreAfterSelectHooks = append(powerCoreAfterSelectHooks, powerCoreHook)
 	case boil.BeforeInsertHook:
-		energyCoreBeforeInsertHooks = append(energyCoreBeforeInsertHooks, energyCoreHook)
+		powerCoreBeforeInsertHooks = append(powerCoreBeforeInsertHooks, powerCoreHook)
 	case boil.AfterInsertHook:
-		energyCoreAfterInsertHooks = append(energyCoreAfterInsertHooks, energyCoreHook)
+		powerCoreAfterInsertHooks = append(powerCoreAfterInsertHooks, powerCoreHook)
 	case boil.BeforeUpdateHook:
-		energyCoreBeforeUpdateHooks = append(energyCoreBeforeUpdateHooks, energyCoreHook)
+		powerCoreBeforeUpdateHooks = append(powerCoreBeforeUpdateHooks, powerCoreHook)
 	case boil.AfterUpdateHook:
-		energyCoreAfterUpdateHooks = append(energyCoreAfterUpdateHooks, energyCoreHook)
+		powerCoreAfterUpdateHooks = append(powerCoreAfterUpdateHooks, powerCoreHook)
 	case boil.BeforeDeleteHook:
-		energyCoreBeforeDeleteHooks = append(energyCoreBeforeDeleteHooks, energyCoreHook)
+		powerCoreBeforeDeleteHooks = append(powerCoreBeforeDeleteHooks, powerCoreHook)
 	case boil.AfterDeleteHook:
-		energyCoreAfterDeleteHooks = append(energyCoreAfterDeleteHooks, energyCoreHook)
+		powerCoreAfterDeleteHooks = append(powerCoreAfterDeleteHooks, powerCoreHook)
 	case boil.BeforeUpsertHook:
-		energyCoreBeforeUpsertHooks = append(energyCoreBeforeUpsertHooks, energyCoreHook)
+		powerCoreBeforeUpsertHooks = append(powerCoreBeforeUpsertHooks, powerCoreHook)
 	case boil.AfterUpsertHook:
-		energyCoreAfterUpsertHooks = append(energyCoreAfterUpsertHooks, energyCoreHook)
+		powerCoreAfterUpsertHooks = append(powerCoreAfterUpsertHooks, powerCoreHook)
 	}
 }
 
-// One returns a single energyCore record from the query.
-func (q energyCoreQuery) One(exec boil.Executor) (*EnergyCore, error) {
-	o := &EnergyCore{}
+// One returns a single powerCore record from the query.
+func (q powerCoreQuery) One(exec boil.Executor) (*PowerCore, error) {
+	o := &PowerCore{}
 
 	queries.SetLimit(q.Query, 1)
 
@@ -342,7 +342,7 @@ func (q energyCoreQuery) One(exec boil.Executor) (*EnergyCore, error) {
 		if errors.Cause(err) == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		return nil, errors.Wrap(err, "boiler: failed to execute a one query for energy_cores")
+		return nil, errors.Wrap(err, "boiler: failed to execute a one query for power_cores")
 	}
 
 	if err := o.doAfterSelectHooks(exec); err != nil {
@@ -352,16 +352,16 @@ func (q energyCoreQuery) One(exec boil.Executor) (*EnergyCore, error) {
 	return o, nil
 }
 
-// All returns all EnergyCore records from the query.
-func (q energyCoreQuery) All(exec boil.Executor) (EnergyCoreSlice, error) {
-	var o []*EnergyCore
+// All returns all PowerCore records from the query.
+func (q powerCoreQuery) All(exec boil.Executor) (PowerCoreSlice, error) {
+	var o []*PowerCore
 
 	err := q.Bind(nil, exec, &o)
 	if err != nil {
-		return nil, errors.Wrap(err, "boiler: failed to assign all query results to EnergyCore slice")
+		return nil, errors.Wrap(err, "boiler: failed to assign all query results to PowerCore slice")
 	}
 
-	if len(energyCoreAfterSelectHooks) != 0 {
+	if len(powerCoreAfterSelectHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doAfterSelectHooks(exec); err != nil {
 				return o, err
@@ -372,8 +372,8 @@ func (q energyCoreQuery) All(exec boil.Executor) (EnergyCoreSlice, error) {
 	return o, nil
 }
 
-// Count returns the count of all EnergyCore records in the query.
-func (q energyCoreQuery) Count(exec boil.Executor) (int64, error) {
+// Count returns the count of all PowerCore records in the query.
+func (q powerCoreQuery) Count(exec boil.Executor) (int64, error) {
 	var count int64
 
 	queries.SetSelect(q.Query, nil)
@@ -381,14 +381,14 @@ func (q energyCoreQuery) Count(exec boil.Executor) (int64, error) {
 
 	err := q.Query.QueryRow(exec).Scan(&count)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to count energy_cores rows")
+		return 0, errors.Wrap(err, "boiler: failed to count power_cores rows")
 	}
 
 	return count, nil
 }
 
 // Exists checks if the row exists in the table.
-func (q energyCoreQuery) Exists(exec boil.Executor) (bool, error) {
+func (q powerCoreQuery) Exists(exec boil.Executor) (bool, error) {
 	var count int64
 
 	queries.SetSelect(q.Query, nil)
@@ -397,14 +397,14 @@ func (q energyCoreQuery) Exists(exec boil.Executor) (bool, error) {
 
 	err := q.Query.QueryRow(exec).Scan(&count)
 	if err != nil {
-		return false, errors.Wrap(err, "boiler: failed to check if energy_cores exists")
+		return false, errors.Wrap(err, "boiler: failed to check if power_cores exists")
 	}
 
 	return count > 0, nil
 }
 
 // EquippedOnMech pointed to by the foreign key.
-func (o *EnergyCore) EquippedOnMech(mods ...qm.QueryMod) mechQuery {
+func (o *PowerCore) EquippedOnMech(mods ...qm.QueryMod) mechQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.EquippedOn),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -419,7 +419,7 @@ func (o *EnergyCore) EquippedOnMech(mods ...qm.QueryMod) mechQuery {
 }
 
 // Owner pointed to by the foreign key.
-func (o *EnergyCore) Owner(mods ...qm.QueryMod) playerQuery {
+func (o *PowerCore) Owner(mods ...qm.QueryMod) playerQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.OwnerID),
 		qmhelper.WhereIsNull("deleted_at"),
@@ -434,14 +434,14 @@ func (o *EnergyCore) Owner(mods ...qm.QueryMod) playerQuery {
 }
 
 // Mechs retrieves all the mech's Mechs with an executor.
-func (o *EnergyCore) Mechs(mods ...qm.QueryMod) mechQuery {
+func (o *PowerCore) Mechs(mods ...qm.QueryMod) mechQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"mechs\".\"energy_core_id\"=?", o.ID),
+		qm.Where("\"mechs\".\"power_core_id\"=?", o.ID),
 		qmhelper.WhereIsNull("\"mechs\".\"deleted_at\""),
 	)
 
@@ -457,20 +457,20 @@ func (o *EnergyCore) Mechs(mods ...qm.QueryMod) mechQuery {
 
 // LoadEquippedOnMech allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (energyCoreL) LoadEquippedOnMech(e boil.Executor, singular bool, maybeEnergyCore interface{}, mods queries.Applicator) error {
-	var slice []*EnergyCore
-	var object *EnergyCore
+func (powerCoreL) LoadEquippedOnMech(e boil.Executor, singular bool, maybePowerCore interface{}, mods queries.Applicator) error {
+	var slice []*PowerCore
+	var object *PowerCore
 
 	if singular {
-		object = maybeEnergyCore.(*EnergyCore)
+		object = maybePowerCore.(*PowerCore)
 	} else {
-		slice = *maybeEnergyCore.(*[]*EnergyCore)
+		slice = *maybePowerCore.(*[]*PowerCore)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &energyCoreR{}
+			object.R = &powerCoreR{}
 		}
 		if !queries.IsNil(object.EquippedOn) {
 			args = append(args, object.EquippedOn)
@@ -480,7 +480,7 @@ func (energyCoreL) LoadEquippedOnMech(e boil.Executor, singular bool, maybeEnerg
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &energyCoreR{}
+				obj.R = &powerCoreR{}
 			}
 
 			for _, a := range args {
@@ -526,7 +526,7 @@ func (energyCoreL) LoadEquippedOnMech(e boil.Executor, singular bool, maybeEnerg
 		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mechs")
 	}
 
-	if len(energyCoreAfterSelectHooks) != 0 {
+	if len(powerCoreAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -544,7 +544,7 @@ func (energyCoreL) LoadEquippedOnMech(e boil.Executor, singular bool, maybeEnerg
 		if foreign.R == nil {
 			foreign.R = &mechR{}
 		}
-		foreign.R.EquippedOnEnergyCores = append(foreign.R.EquippedOnEnergyCores, object)
+		foreign.R.EquippedOnPowerCores = append(foreign.R.EquippedOnPowerCores, object)
 		return nil
 	}
 
@@ -555,7 +555,7 @@ func (energyCoreL) LoadEquippedOnMech(e boil.Executor, singular bool, maybeEnerg
 				if foreign.R == nil {
 					foreign.R = &mechR{}
 				}
-				foreign.R.EquippedOnEnergyCores = append(foreign.R.EquippedOnEnergyCores, local)
+				foreign.R.EquippedOnPowerCores = append(foreign.R.EquippedOnPowerCores, local)
 				break
 			}
 		}
@@ -566,20 +566,20 @@ func (energyCoreL) LoadEquippedOnMech(e boil.Executor, singular bool, maybeEnerg
 
 // LoadOwner allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (energyCoreL) LoadOwner(e boil.Executor, singular bool, maybeEnergyCore interface{}, mods queries.Applicator) error {
-	var slice []*EnergyCore
-	var object *EnergyCore
+func (powerCoreL) LoadOwner(e boil.Executor, singular bool, maybePowerCore interface{}, mods queries.Applicator) error {
+	var slice []*PowerCore
+	var object *PowerCore
 
 	if singular {
-		object = maybeEnergyCore.(*EnergyCore)
+		object = maybePowerCore.(*PowerCore)
 	} else {
-		slice = *maybeEnergyCore.(*[]*EnergyCore)
+		slice = *maybePowerCore.(*[]*PowerCore)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &energyCoreR{}
+			object.R = &powerCoreR{}
 		}
 		args = append(args, object.OwnerID)
 
@@ -587,7 +587,7 @@ func (energyCoreL) LoadOwner(e boil.Executor, singular bool, maybeEnergyCore int
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &energyCoreR{}
+				obj.R = &powerCoreR{}
 			}
 
 			for _, a := range args {
@@ -631,7 +631,7 @@ func (energyCoreL) LoadOwner(e boil.Executor, singular bool, maybeEnergyCore int
 		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players")
 	}
 
-	if len(energyCoreAfterSelectHooks) != 0 {
+	if len(powerCoreAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -649,7 +649,7 @@ func (energyCoreL) LoadOwner(e boil.Executor, singular bool, maybeEnergyCore int
 		if foreign.R == nil {
 			foreign.R = &playerR{}
 		}
-		foreign.R.OwnerEnergyCores = append(foreign.R.OwnerEnergyCores, object)
+		foreign.R.OwnerPowerCores = append(foreign.R.OwnerPowerCores, object)
 		return nil
 	}
 
@@ -660,7 +660,7 @@ func (energyCoreL) LoadOwner(e boil.Executor, singular bool, maybeEnergyCore int
 				if foreign.R == nil {
 					foreign.R = &playerR{}
 				}
-				foreign.R.OwnerEnergyCores = append(foreign.R.OwnerEnergyCores, local)
+				foreign.R.OwnerPowerCores = append(foreign.R.OwnerPowerCores, local)
 				break
 			}
 		}
@@ -671,27 +671,27 @@ func (energyCoreL) LoadOwner(e boil.Executor, singular bool, maybeEnergyCore int
 
 // LoadMechs allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (energyCoreL) LoadMechs(e boil.Executor, singular bool, maybeEnergyCore interface{}, mods queries.Applicator) error {
-	var slice []*EnergyCore
-	var object *EnergyCore
+func (powerCoreL) LoadMechs(e boil.Executor, singular bool, maybePowerCore interface{}, mods queries.Applicator) error {
+	var slice []*PowerCore
+	var object *PowerCore
 
 	if singular {
-		object = maybeEnergyCore.(*EnergyCore)
+		object = maybePowerCore.(*PowerCore)
 	} else {
-		slice = *maybeEnergyCore.(*[]*EnergyCore)
+		slice = *maybePowerCore.(*[]*PowerCore)
 	}
 
 	args := make([]interface{}, 0, 1)
 	if singular {
 		if object.R == nil {
-			object.R = &energyCoreR{}
+			object.R = &powerCoreR{}
 		}
 		args = append(args, object.ID)
 	} else {
 	Outer:
 		for _, obj := range slice {
 			if obj.R == nil {
-				obj.R = &energyCoreR{}
+				obj.R = &powerCoreR{}
 			}
 
 			for _, a := range args {
@@ -710,7 +710,7 @@ func (energyCoreL) LoadMechs(e boil.Executor, singular bool, maybeEnergyCore int
 
 	query := NewQuery(
 		qm.From(`mechs`),
-		qm.WhereIn(`mechs.energy_core_id in ?`, args...),
+		qm.WhereIn(`mechs.power_core_id in ?`, args...),
 		qmhelper.WhereIsNull(`mechs.deleted_at`),
 	)
 	if mods != nil {
@@ -747,19 +747,19 @@ func (energyCoreL) LoadMechs(e boil.Executor, singular bool, maybeEnergyCore int
 			if foreign.R == nil {
 				foreign.R = &mechR{}
 			}
-			foreign.R.EnergyCore = object
+			foreign.R.PowerCore = object
 		}
 		return nil
 	}
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if queries.Equal(local.ID, foreign.EnergyCoreID) {
+			if queries.Equal(local.ID, foreign.PowerCoreID) {
 				local.R.Mechs = append(local.R.Mechs, foreign)
 				if foreign.R == nil {
 					foreign.R = &mechR{}
 				}
-				foreign.R.EnergyCore = local
+				foreign.R.PowerCore = local
 				break
 			}
 		}
@@ -768,10 +768,10 @@ func (energyCoreL) LoadMechs(e boil.Executor, singular bool, maybeEnergyCore int
 	return nil
 }
 
-// SetEquippedOnMech of the energyCore to the related item.
+// SetEquippedOnMech of the powerCore to the related item.
 // Sets o.R.EquippedOnMech to related.
-// Adds o to related.R.EquippedOnEnergyCores.
-func (o *EnergyCore) SetEquippedOnMech(exec boil.Executor, insert bool, related *Mech) error {
+// Adds o to related.R.EquippedOnPowerCores.
+func (o *PowerCore) SetEquippedOnMech(exec boil.Executor, insert bool, related *Mech) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -780,9 +780,9 @@ func (o *EnergyCore) SetEquippedOnMech(exec boil.Executor, insert bool, related 
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"energy_cores\" SET %s WHERE %s",
+		"UPDATE \"power_cores\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"equipped_on"}),
-		strmangle.WhereClause("\"", "\"", 2, energyCorePrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, powerCorePrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
 
@@ -796,7 +796,7 @@ func (o *EnergyCore) SetEquippedOnMech(exec boil.Executor, insert bool, related 
 
 	queries.Assign(&o.EquippedOn, related.ID)
 	if o.R == nil {
-		o.R = &energyCoreR{
+		o.R = &powerCoreR{
 			EquippedOnMech: related,
 		}
 	} else {
@@ -805,10 +805,10 @@ func (o *EnergyCore) SetEquippedOnMech(exec boil.Executor, insert bool, related 
 
 	if related.R == nil {
 		related.R = &mechR{
-			EquippedOnEnergyCores: EnergyCoreSlice{o},
+			EquippedOnPowerCores: PowerCoreSlice{o},
 		}
 	} else {
-		related.R.EquippedOnEnergyCores = append(related.R.EquippedOnEnergyCores, o)
+		related.R.EquippedOnPowerCores = append(related.R.EquippedOnPowerCores, o)
 	}
 
 	return nil
@@ -817,7 +817,7 @@ func (o *EnergyCore) SetEquippedOnMech(exec boil.Executor, insert bool, related 
 // RemoveEquippedOnMech relationship.
 // Sets o.R.EquippedOnMech to nil.
 // Removes o from all passed in related items' relationships struct (Optional).
-func (o *EnergyCore) RemoveEquippedOnMech(exec boil.Executor, related *Mech) error {
+func (o *PowerCore) RemoveEquippedOnMech(exec boil.Executor, related *Mech) error {
 	var err error
 
 	queries.SetScanner(&o.EquippedOn, nil)
@@ -832,25 +832,25 @@ func (o *EnergyCore) RemoveEquippedOnMech(exec boil.Executor, related *Mech) err
 		return nil
 	}
 
-	for i, ri := range related.R.EquippedOnEnergyCores {
+	for i, ri := range related.R.EquippedOnPowerCores {
 		if queries.Equal(o.EquippedOn, ri.EquippedOn) {
 			continue
 		}
 
-		ln := len(related.R.EquippedOnEnergyCores)
+		ln := len(related.R.EquippedOnPowerCores)
 		if ln > 1 && i < ln-1 {
-			related.R.EquippedOnEnergyCores[i] = related.R.EquippedOnEnergyCores[ln-1]
+			related.R.EquippedOnPowerCores[i] = related.R.EquippedOnPowerCores[ln-1]
 		}
-		related.R.EquippedOnEnergyCores = related.R.EquippedOnEnergyCores[:ln-1]
+		related.R.EquippedOnPowerCores = related.R.EquippedOnPowerCores[:ln-1]
 		break
 	}
 	return nil
 }
 
-// SetOwner of the energyCore to the related item.
+// SetOwner of the powerCore to the related item.
 // Sets o.R.Owner to related.
-// Adds o to related.R.OwnerEnergyCores.
-func (o *EnergyCore) SetOwner(exec boil.Executor, insert bool, related *Player) error {
+// Adds o to related.R.OwnerPowerCores.
+func (o *PowerCore) SetOwner(exec boil.Executor, insert bool, related *Player) error {
 	var err error
 	if insert {
 		if err = related.Insert(exec, boil.Infer()); err != nil {
@@ -859,9 +859,9 @@ func (o *EnergyCore) SetOwner(exec boil.Executor, insert bool, related *Player) 
 	}
 
 	updateQuery := fmt.Sprintf(
-		"UPDATE \"energy_cores\" SET %s WHERE %s",
+		"UPDATE \"power_cores\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, []string{"owner_id"}),
-		strmangle.WhereClause("\"", "\"", 2, energyCorePrimaryKeyColumns),
+		strmangle.WhereClause("\"", "\"", 2, powerCorePrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
 
@@ -875,7 +875,7 @@ func (o *EnergyCore) SetOwner(exec boil.Executor, insert bool, related *Player) 
 
 	o.OwnerID = related.ID
 	if o.R == nil {
-		o.R = &energyCoreR{
+		o.R = &powerCoreR{
 			Owner: related,
 		}
 	} else {
@@ -884,31 +884,31 @@ func (o *EnergyCore) SetOwner(exec boil.Executor, insert bool, related *Player) 
 
 	if related.R == nil {
 		related.R = &playerR{
-			OwnerEnergyCores: EnergyCoreSlice{o},
+			OwnerPowerCores: PowerCoreSlice{o},
 		}
 	} else {
-		related.R.OwnerEnergyCores = append(related.R.OwnerEnergyCores, o)
+		related.R.OwnerPowerCores = append(related.R.OwnerPowerCores, o)
 	}
 
 	return nil
 }
 
 // AddMechs adds the given related objects to the existing relationships
-// of the energy_core, optionally inserting them as new records.
+// of the power_core, optionally inserting them as new records.
 // Appends related to o.R.Mechs.
-// Sets related.R.EnergyCore appropriately.
-func (o *EnergyCore) AddMechs(exec boil.Executor, insert bool, related ...*Mech) error {
+// Sets related.R.PowerCore appropriately.
+func (o *PowerCore) AddMechs(exec boil.Executor, insert bool, related ...*Mech) error {
 	var err error
 	for _, rel := range related {
 		if insert {
-			queries.Assign(&rel.EnergyCoreID, o.ID)
+			queries.Assign(&rel.PowerCoreID, o.ID)
 			if err = rel.Insert(exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
 				"UPDATE \"mechs\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"energy_core_id"}),
+				strmangle.SetParamNames("\"", "\"", 1, []string{"power_core_id"}),
 				strmangle.WhereClause("\"", "\"", 2, mechPrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
@@ -921,12 +921,12 @@ func (o *EnergyCore) AddMechs(exec boil.Executor, insert bool, related ...*Mech)
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			queries.Assign(&rel.EnergyCoreID, o.ID)
+			queries.Assign(&rel.PowerCoreID, o.ID)
 		}
 	}
 
 	if o.R == nil {
-		o.R = &energyCoreR{
+		o.R = &powerCoreR{
 			Mechs: related,
 		}
 	} else {
@@ -936,23 +936,23 @@ func (o *EnergyCore) AddMechs(exec boil.Executor, insert bool, related ...*Mech)
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &mechR{
-				EnergyCore: o,
+				PowerCore: o,
 			}
 		} else {
-			rel.R.EnergyCore = o
+			rel.R.PowerCore = o
 		}
 	}
 	return nil
 }
 
 // SetMechs removes all previously related items of the
-// energy_core replacing them completely with the passed
+// power_core replacing them completely with the passed
 // in related items, optionally inserting them as new records.
-// Sets o.R.EnergyCore's Mechs accordingly.
+// Sets o.R.PowerCore's Mechs accordingly.
 // Replaces o.R.Mechs with related.
-// Sets related.R.EnergyCore's Mechs accordingly.
-func (o *EnergyCore) SetMechs(exec boil.Executor, insert bool, related ...*Mech) error {
-	query := "update \"mechs\" set \"energy_core_id\" = null where \"energy_core_id\" = $1"
+// Sets related.R.PowerCore's Mechs accordingly.
+func (o *PowerCore) SetMechs(exec boil.Executor, insert bool, related ...*Mech) error {
+	query := "update \"mechs\" set \"power_core_id\" = null where \"power_core_id\" = $1"
 	values := []interface{}{o.ID}
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, query)
@@ -965,12 +965,12 @@ func (o *EnergyCore) SetMechs(exec boil.Executor, insert bool, related ...*Mech)
 
 	if o.R != nil {
 		for _, rel := range o.R.Mechs {
-			queries.SetScanner(&rel.EnergyCoreID, nil)
+			queries.SetScanner(&rel.PowerCoreID, nil)
 			if rel.R == nil {
 				continue
 			}
 
-			rel.R.EnergyCore = nil
+			rel.R.PowerCore = nil
 		}
 
 		o.R.Mechs = nil
@@ -980,19 +980,19 @@ func (o *EnergyCore) SetMechs(exec boil.Executor, insert bool, related ...*Mech)
 
 // RemoveMechs relationships from objects passed in.
 // Removes related items from R.Mechs (uses pointer comparison, removal does not keep order)
-// Sets related.R.EnergyCore.
-func (o *EnergyCore) RemoveMechs(exec boil.Executor, related ...*Mech) error {
+// Sets related.R.PowerCore.
+func (o *PowerCore) RemoveMechs(exec boil.Executor, related ...*Mech) error {
 	if len(related) == 0 {
 		return nil
 	}
 
 	var err error
 	for _, rel := range related {
-		queries.SetScanner(&rel.EnergyCoreID, nil)
+		queries.SetScanner(&rel.PowerCoreID, nil)
 		if rel.R != nil {
-			rel.R.EnergyCore = nil
+			rel.R.PowerCore = nil
 		}
-		if _, err = rel.Update(exec, boil.Whitelist("energy_core_id")); err != nil {
+		if _, err = rel.Update(exec, boil.Whitelist("power_core_id")); err != nil {
 			return err
 		}
 	}
@@ -1018,47 +1018,47 @@ func (o *EnergyCore) RemoveMechs(exec boil.Executor, related ...*Mech) error {
 	return nil
 }
 
-// EnergyCores retrieves all the records using an executor.
-func EnergyCores(mods ...qm.QueryMod) energyCoreQuery {
-	mods = append(mods, qm.From("\"energy_cores\""))
-	return energyCoreQuery{NewQuery(mods...)}
+// PowerCores retrieves all the records using an executor.
+func PowerCores(mods ...qm.QueryMod) powerCoreQuery {
+	mods = append(mods, qm.From("\"power_cores\""))
+	return powerCoreQuery{NewQuery(mods...)}
 }
 
-// FindEnergyCore retrieves a single record by ID with an executor.
+// FindPowerCore retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindEnergyCore(exec boil.Executor, iD string, selectCols ...string) (*EnergyCore, error) {
-	energyCoreObj := &EnergyCore{}
+func FindPowerCore(exec boil.Executor, iD string, selectCols ...string) (*PowerCore, error) {
+	powerCoreObj := &PowerCore{}
 
 	sel := "*"
 	if len(selectCols) > 0 {
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"energy_cores\" where \"id\"=$1", sel,
+		"select %s from \"power_cores\" where \"id\"=$1", sel,
 	)
 
 	q := queries.Raw(query, iD)
 
-	err := q.Bind(nil, exec, energyCoreObj)
+	err := q.Bind(nil, exec, powerCoreObj)
 	if err != nil {
 		if errors.Cause(err) == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		return nil, errors.Wrap(err, "boiler: unable to select from energy_cores")
+		return nil, errors.Wrap(err, "boiler: unable to select from power_cores")
 	}
 
-	if err = energyCoreObj.doAfterSelectHooks(exec); err != nil {
-		return energyCoreObj, err
+	if err = powerCoreObj.doAfterSelectHooks(exec); err != nil {
+		return powerCoreObj, err
 	}
 
-	return energyCoreObj, nil
+	return powerCoreObj, nil
 }
 
 // Insert a single record using an executor.
 // See boil.Columns.InsertColumnSet documentation to understand column list inference for inserts.
-func (o *EnergyCore) Insert(exec boil.Executor, columns boil.Columns) error {
+func (o *PowerCore) Insert(exec boil.Executor, columns boil.Columns) error {
 	if o == nil {
-		return errors.New("boiler: no energy_cores provided for insertion")
+		return errors.New("boiler: no power_cores provided for insertion")
 	}
 
 	var err error
@@ -1072,33 +1072,33 @@ func (o *EnergyCore) Insert(exec boil.Executor, columns boil.Columns) error {
 		return err
 	}
 
-	nzDefaults := queries.NonZeroDefaultSet(energyCoreColumnsWithDefault, o)
+	nzDefaults := queries.NonZeroDefaultSet(powerCoreColumnsWithDefault, o)
 
 	key := makeCacheKey(columns, nzDefaults)
-	energyCoreInsertCacheMut.RLock()
-	cache, cached := energyCoreInsertCache[key]
-	energyCoreInsertCacheMut.RUnlock()
+	powerCoreInsertCacheMut.RLock()
+	cache, cached := powerCoreInsertCache[key]
+	powerCoreInsertCacheMut.RUnlock()
 
 	if !cached {
 		wl, returnColumns := columns.InsertColumnSet(
-			energyCoreAllColumns,
-			energyCoreColumnsWithDefault,
-			energyCoreColumnsWithoutDefault,
+			powerCoreAllColumns,
+			powerCoreColumnsWithDefault,
+			powerCoreColumnsWithoutDefault,
 			nzDefaults,
 		)
 
-		cache.valueMapping, err = queries.BindMapping(energyCoreType, energyCoreMapping, wl)
+		cache.valueMapping, err = queries.BindMapping(powerCoreType, powerCoreMapping, wl)
 		if err != nil {
 			return err
 		}
-		cache.retMapping, err = queries.BindMapping(energyCoreType, energyCoreMapping, returnColumns)
+		cache.retMapping, err = queries.BindMapping(powerCoreType, powerCoreMapping, returnColumns)
 		if err != nil {
 			return err
 		}
 		if len(wl) != 0 {
-			cache.query = fmt.Sprintf("INSERT INTO \"energy_cores\" (\"%s\") %%sVALUES (%s)%%s", strings.Join(wl, "\",\""), strmangle.Placeholders(dialect.UseIndexPlaceholders, len(wl), 1, 1))
+			cache.query = fmt.Sprintf("INSERT INTO \"power_cores\" (\"%s\") %%sVALUES (%s)%%s", strings.Join(wl, "\",\""), strmangle.Placeholders(dialect.UseIndexPlaceholders, len(wl), 1, 1))
 		} else {
-			cache.query = "INSERT INTO \"energy_cores\" %sDEFAULT VALUES%s"
+			cache.query = "INSERT INTO \"power_cores\" %sDEFAULT VALUES%s"
 		}
 
 		var queryOutput, queryReturning string
@@ -1125,49 +1125,49 @@ func (o *EnergyCore) Insert(exec boil.Executor, columns boil.Columns) error {
 	}
 
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to insert into energy_cores")
+		return errors.Wrap(err, "boiler: unable to insert into power_cores")
 	}
 
 	if !cached {
-		energyCoreInsertCacheMut.Lock()
-		energyCoreInsertCache[key] = cache
-		energyCoreInsertCacheMut.Unlock()
+		powerCoreInsertCacheMut.Lock()
+		powerCoreInsertCache[key] = cache
+		powerCoreInsertCacheMut.Unlock()
 	}
 
 	return o.doAfterInsertHooks(exec)
 }
 
-// Update uses an executor to update the EnergyCore.
+// Update uses an executor to update the PowerCore.
 // See boil.Columns.UpdateColumnSet documentation to understand column list inference for updates.
 // Update does not automatically update the record in case of default values. Use .Reload() to refresh the records.
-func (o *EnergyCore) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
+func (o *PowerCore) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
 	var err error
 	if err = o.doBeforeUpdateHooks(exec); err != nil {
 		return 0, err
 	}
 	key := makeCacheKey(columns, nil)
-	energyCoreUpdateCacheMut.RLock()
-	cache, cached := energyCoreUpdateCache[key]
-	energyCoreUpdateCacheMut.RUnlock()
+	powerCoreUpdateCacheMut.RLock()
+	cache, cached := powerCoreUpdateCache[key]
+	powerCoreUpdateCacheMut.RUnlock()
 
 	if !cached {
 		wl := columns.UpdateColumnSet(
-			energyCoreAllColumns,
-			energyCorePrimaryKeyColumns,
+			powerCoreAllColumns,
+			powerCorePrimaryKeyColumns,
 		)
 
 		if !columns.IsWhitelist() {
 			wl = strmangle.SetComplement(wl, []string{"created_at"})
 		}
 		if len(wl) == 0 {
-			return 0, errors.New("boiler: unable to update energy_cores, could not build whitelist")
+			return 0, errors.New("boiler: unable to update power_cores, could not build whitelist")
 		}
 
-		cache.query = fmt.Sprintf("UPDATE \"energy_cores\" SET %s WHERE %s",
+		cache.query = fmt.Sprintf("UPDATE \"power_cores\" SET %s WHERE %s",
 			strmangle.SetParamNames("\"", "\"", 1, wl),
-			strmangle.WhereClause("\"", "\"", len(wl)+1, energyCorePrimaryKeyColumns),
+			strmangle.WhereClause("\"", "\"", len(wl)+1, powerCorePrimaryKeyColumns),
 		)
-		cache.valueMapping, err = queries.BindMapping(energyCoreType, energyCoreMapping, append(wl, energyCorePrimaryKeyColumns...))
+		cache.valueMapping, err = queries.BindMapping(powerCoreType, powerCoreMapping, append(wl, powerCorePrimaryKeyColumns...))
 		if err != nil {
 			return 0, err
 		}
@@ -1182,42 +1182,42 @@ func (o *EnergyCore) Update(exec boil.Executor, columns boil.Columns) (int64, er
 	var result sql.Result
 	result, err = exec.Exec(cache.query, values...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update energy_cores row")
+		return 0, errors.Wrap(err, "boiler: unable to update power_cores row")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by update for energy_cores")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by update for power_cores")
 	}
 
 	if !cached {
-		energyCoreUpdateCacheMut.Lock()
-		energyCoreUpdateCache[key] = cache
-		energyCoreUpdateCacheMut.Unlock()
+		powerCoreUpdateCacheMut.Lock()
+		powerCoreUpdateCache[key] = cache
+		powerCoreUpdateCacheMut.Unlock()
 	}
 
 	return rowsAff, o.doAfterUpdateHooks(exec)
 }
 
 // UpdateAll updates all rows with the specified column values.
-func (q energyCoreQuery) UpdateAll(exec boil.Executor, cols M) (int64, error) {
+func (q powerCoreQuery) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 	queries.SetUpdate(q.Query, cols)
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update all for energy_cores")
+		return 0, errors.Wrap(err, "boiler: unable to update all for power_cores")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected for energy_cores")
+		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected for power_cores")
 	}
 
 	return rowsAff, nil
 }
 
 // UpdateAll updates all rows with the specified column values, using an executor.
-func (o EnergyCoreSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
+func (o PowerCoreSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 	ln := int64(len(o))
 	if ln == 0 {
 		return 0, nil
@@ -1239,13 +1239,13 @@ func (o EnergyCoreSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 
 	// Append all of the primary key values for each column
 	for _, obj := range o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), energyCorePrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), powerCorePrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := fmt.Sprintf("UPDATE \"energy_cores\" SET %s WHERE %s",
+	sql := fmt.Sprintf("UPDATE \"power_cores\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, colNames),
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), len(colNames)+1, energyCorePrimaryKeyColumns, len(o)))
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), len(colNames)+1, powerCorePrimaryKeyColumns, len(o)))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1253,21 +1253,21 @@ func (o EnergyCoreSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update all in energyCore slice")
+		return 0, errors.Wrap(err, "boiler: unable to update all in powerCore slice")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected all in update all energyCore")
+		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected all in update all powerCore")
 	}
 	return rowsAff, nil
 }
 
 // Upsert attempts an insert using an executor, and does an update or ignore on conflict.
 // See boil.Columns documentation for how to properly use updateColumns and insertColumns.
-func (o *EnergyCore) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
+func (o *PowerCore) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
 	if o == nil {
-		return errors.New("boiler: no energy_cores provided for upsert")
+		return errors.New("boiler: no power_cores provided for upsert")
 	}
 	currTime := time.Now().In(boil.GetLocation())
 
@@ -1279,7 +1279,7 @@ func (o *EnergyCore) Upsert(exec boil.Executor, updateOnConflict bool, conflictC
 		return err
 	}
 
-	nzDefaults := queries.NonZeroDefaultSet(energyCoreColumnsWithDefault, o)
+	nzDefaults := queries.NonZeroDefaultSet(powerCoreColumnsWithDefault, o)
 
 	// Build cache key in-line uglily - mysql vs psql problems
 	buf := strmangle.GetBuffer()
@@ -1309,42 +1309,42 @@ func (o *EnergyCore) Upsert(exec boil.Executor, updateOnConflict bool, conflictC
 	key := buf.String()
 	strmangle.PutBuffer(buf)
 
-	energyCoreUpsertCacheMut.RLock()
-	cache, cached := energyCoreUpsertCache[key]
-	energyCoreUpsertCacheMut.RUnlock()
+	powerCoreUpsertCacheMut.RLock()
+	cache, cached := powerCoreUpsertCache[key]
+	powerCoreUpsertCacheMut.RUnlock()
 
 	var err error
 
 	if !cached {
 		insert, ret := insertColumns.InsertColumnSet(
-			energyCoreAllColumns,
-			energyCoreColumnsWithDefault,
-			energyCoreColumnsWithoutDefault,
+			powerCoreAllColumns,
+			powerCoreColumnsWithDefault,
+			powerCoreColumnsWithoutDefault,
 			nzDefaults,
 		)
 
 		update := updateColumns.UpdateColumnSet(
-			energyCoreAllColumns,
-			energyCorePrimaryKeyColumns,
+			powerCoreAllColumns,
+			powerCorePrimaryKeyColumns,
 		)
 
 		if updateOnConflict && len(update) == 0 {
-			return errors.New("boiler: unable to upsert energy_cores, could not build update column list")
+			return errors.New("boiler: unable to upsert power_cores, could not build update column list")
 		}
 
 		conflict := conflictColumns
 		if len(conflict) == 0 {
-			conflict = make([]string, len(energyCorePrimaryKeyColumns))
-			copy(conflict, energyCorePrimaryKeyColumns)
+			conflict = make([]string, len(powerCorePrimaryKeyColumns))
+			copy(conflict, powerCorePrimaryKeyColumns)
 		}
-		cache.query = buildUpsertQueryPostgres(dialect, "\"energy_cores\"", updateOnConflict, ret, update, conflict, insert)
+		cache.query = buildUpsertQueryPostgres(dialect, "\"power_cores\"", updateOnConflict, ret, update, conflict, insert)
 
-		cache.valueMapping, err = queries.BindMapping(energyCoreType, energyCoreMapping, insert)
+		cache.valueMapping, err = queries.BindMapping(powerCoreType, powerCoreMapping, insert)
 		if err != nil {
 			return err
 		}
 		if len(ret) != 0 {
-			cache.retMapping, err = queries.BindMapping(energyCoreType, energyCoreMapping, ret)
+			cache.retMapping, err = queries.BindMapping(powerCoreType, powerCoreMapping, ret)
 			if err != nil {
 				return err
 			}
@@ -1371,31 +1371,31 @@ func (o *EnergyCore) Upsert(exec boil.Executor, updateOnConflict bool, conflictC
 		_, err = exec.Exec(cache.query, vals...)
 	}
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to upsert energy_cores")
+		return errors.Wrap(err, "boiler: unable to upsert power_cores")
 	}
 
 	if !cached {
-		energyCoreUpsertCacheMut.Lock()
-		energyCoreUpsertCache[key] = cache
-		energyCoreUpsertCacheMut.Unlock()
+		powerCoreUpsertCacheMut.Lock()
+		powerCoreUpsertCache[key] = cache
+		powerCoreUpsertCacheMut.Unlock()
 	}
 
 	return o.doAfterUpsertHooks(exec)
 }
 
-// Delete deletes a single EnergyCore record with an executor.
+// Delete deletes a single PowerCore record with an executor.
 // Delete will match against the primary key column to find the record to delete.
-func (o *EnergyCore) Delete(exec boil.Executor) (int64, error) {
+func (o *PowerCore) Delete(exec boil.Executor) (int64, error) {
 	if o == nil {
-		return 0, errors.New("boiler: no EnergyCore provided for delete")
+		return 0, errors.New("boiler: no PowerCore provided for delete")
 	}
 
 	if err := o.doBeforeDeleteHooks(exec); err != nil {
 		return 0, err
 	}
 
-	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), energyCorePrimaryKeyMapping)
-	sql := "DELETE FROM \"energy_cores\" WHERE \"id\"=$1"
+	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), powerCorePrimaryKeyMapping)
+	sql := "DELETE FROM \"power_cores\" WHERE \"id\"=$1"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1403,12 +1403,12 @@ func (o *EnergyCore) Delete(exec boil.Executor) (int64, error) {
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete from energy_cores")
+		return 0, errors.Wrap(err, "boiler: unable to delete from power_cores")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by delete for energy_cores")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by delete for power_cores")
 	}
 
 	if err := o.doAfterDeleteHooks(exec); err != nil {
@@ -1419,33 +1419,33 @@ func (o *EnergyCore) Delete(exec boil.Executor) (int64, error) {
 }
 
 // DeleteAll deletes all matching rows.
-func (q energyCoreQuery) DeleteAll(exec boil.Executor) (int64, error) {
+func (q powerCoreQuery) DeleteAll(exec boil.Executor) (int64, error) {
 	if q.Query == nil {
-		return 0, errors.New("boiler: no energyCoreQuery provided for delete all")
+		return 0, errors.New("boiler: no powerCoreQuery provided for delete all")
 	}
 
 	queries.SetDelete(q.Query)
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete all from energy_cores")
+		return 0, errors.Wrap(err, "boiler: unable to delete all from power_cores")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for energy_cores")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for power_cores")
 	}
 
 	return rowsAff, nil
 }
 
 // DeleteAll deletes all rows in the slice, using an executor.
-func (o EnergyCoreSlice) DeleteAll(exec boil.Executor) (int64, error) {
+func (o PowerCoreSlice) DeleteAll(exec boil.Executor) (int64, error) {
 	if len(o) == 0 {
 		return 0, nil
 	}
 
-	if len(energyCoreBeforeDeleteHooks) != 0 {
+	if len(powerCoreBeforeDeleteHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doBeforeDeleteHooks(exec); err != nil {
 				return 0, err
@@ -1455,12 +1455,12 @@ func (o EnergyCoreSlice) DeleteAll(exec boil.Executor) (int64, error) {
 
 	var args []interface{}
 	for _, obj := range o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), energyCorePrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), powerCorePrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := "DELETE FROM \"energy_cores\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, energyCorePrimaryKeyColumns, len(o))
+	sql := "DELETE FROM \"power_cores\" WHERE " +
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, powerCorePrimaryKeyColumns, len(o))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1468,15 +1468,15 @@ func (o EnergyCoreSlice) DeleteAll(exec boil.Executor) (int64, error) {
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete all from energyCore slice")
+		return 0, errors.Wrap(err, "boiler: unable to delete all from powerCore slice")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for energy_cores")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for power_cores")
 	}
 
-	if len(energyCoreAfterDeleteHooks) != 0 {
+	if len(powerCoreAfterDeleteHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doAfterDeleteHooks(exec); err != nil {
 				return 0, err
@@ -1489,8 +1489,8 @@ func (o EnergyCoreSlice) DeleteAll(exec boil.Executor) (int64, error) {
 
 // Reload refetches the object from the database
 // using the primary keys with an executor.
-func (o *EnergyCore) Reload(exec boil.Executor) error {
-	ret, err := FindEnergyCore(exec, o.ID)
+func (o *PowerCore) Reload(exec boil.Executor) error {
+	ret, err := FindPowerCore(exec, o.ID)
 	if err != nil {
 		return err
 	}
@@ -1501,26 +1501,26 @@ func (o *EnergyCore) Reload(exec boil.Executor) error {
 
 // ReloadAll refetches every row with matching primary key column values
 // and overwrites the original object slice with the newly updated slice.
-func (o *EnergyCoreSlice) ReloadAll(exec boil.Executor) error {
+func (o *PowerCoreSlice) ReloadAll(exec boil.Executor) error {
 	if o == nil || len(*o) == 0 {
 		return nil
 	}
 
-	slice := EnergyCoreSlice{}
+	slice := PowerCoreSlice{}
 	var args []interface{}
 	for _, obj := range *o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), energyCorePrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), powerCorePrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := "SELECT \"energy_cores\".* FROM \"energy_cores\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, energyCorePrimaryKeyColumns, len(*o))
+	sql := "SELECT \"power_cores\".* FROM \"power_cores\" WHERE " +
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, powerCorePrimaryKeyColumns, len(*o))
 
 	q := queries.Raw(sql, args...)
 
 	err := q.Bind(nil, exec, &slice)
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to reload all in EnergyCoreSlice")
+		return errors.Wrap(err, "boiler: unable to reload all in PowerCoreSlice")
 	}
 
 	*o = slice
@@ -1528,10 +1528,10 @@ func (o *EnergyCoreSlice) ReloadAll(exec boil.Executor) error {
 	return nil
 }
 
-// EnergyCoreExists checks if the EnergyCore row exists.
-func EnergyCoreExists(exec boil.Executor, iD string) (bool, error) {
+// PowerCoreExists checks if the PowerCore row exists.
+func PowerCoreExists(exec boil.Executor, iD string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"energy_cores\" where \"id\"=$1 limit 1)"
+	sql := "select exists(select 1 from \"power_cores\" where \"id\"=$1 limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1541,7 +1541,7 @@ func EnergyCoreExists(exec boil.Executor, iD string) (bool, error) {
 
 	err := row.Scan(&exists)
 	if err != nil {
-		return false, errors.Wrap(err, "boiler: unable to check if energy_cores exists")
+		return false, errors.Wrap(err, "boiler: unable to check if power_cores exists")
 	}
 
 	return exists, nil

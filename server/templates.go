@@ -13,6 +13,6 @@ type TemplateContainer struct {
 	BlueprintUtility       []*BlueprintUtility       `json:"blueprint_utility,omitempty"`
 	BlueprintMechSkin      []*BlueprintMechSkin      `json:"blueprint_mech_skin,omitempty"`
 	BlueprintMechAnimation []*BlueprintMechAnimation `json:"blueprint_mech_animation,omitempty"`
-	BlueprintEnergyCore    []*BlueprintEnergyCore    `json:"blueprint_energy_core,omitempty"`
+	BlueprintPowerCore     []*BlueprintPowerCore     `json:"blueprint_power_core,omitempty"`
 	// TODO: AMMO //BlueprintAmmo []*
 }

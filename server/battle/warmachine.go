@@ -25,10 +25,10 @@ type WarMachine struct {
 	Faction *Faction `json:"faction"`
 	Tier    string   `json:"tier"`
 
-	EnergyCore *EnergyCore    `json:"energy_core,omitempty"`
-	Abilities  []*GameAbility `json:"abilities"`
-	Weapons    []*Weapon      `json:"weapons"`
-	Utility    []*Utility     `json:"utility"`
+	PowerCore *PowerCore     `json:"power_core,omitempty"`
+	Abilities []*GameAbility `json:"abilities"`
+	Weapons   []*Weapon      `json:"weapons"`
+	Utility   []*Utility     `json:"utility"`
 
 	// these objects below are used by us and not game client
 	Image       string          `json:"image"`
@@ -50,7 +50,7 @@ type WarMachine struct {
 	//Stat          *Stat           `json:"stat"`
 }
 
-type EnergyCore struct {
+type PowerCore struct {
 	ID           string          `json:"id"`
 	Label        string          `json:"label"`
 	Capacity     decimal.Decimal `json:"capacity"`
@@ -165,8 +165,8 @@ func WeaponFromServer(weapon *server.Weapon) *Weapon {
 	}
 }
 
-func EnergyCoreFromServer(ec *server.EnergyCore) *EnergyCore {
-	return &EnergyCore{
+func PowerCoreFromServer(ec *server.PowerCore) *PowerCore {
+	return &PowerCore{
 		ID:           ec.ID,
 		Label:        ec.Label,
 		Capacity:     ec.Capacity,

@@ -8,7 +8,7 @@ import (
 	"github.com/volatiletech/null/v8"
 )
 
-type EnergyCore struct {
+type PowerCore struct {
 	*CollectionDetails
 	ID           string          `json:"id"`
 	OwnerID      string          `json:"owner_id"`
@@ -24,7 +24,7 @@ type EnergyCore struct {
 	CreatedAt    time.Time       `json:"created_at"`
 }
 
-type BlueprintEnergyCore struct {
+type BlueprintPowerCore struct {
 	ID           string          `json:"id"`
 	Collection   string          `json:"collection"`
 	Label        string          `json:"label"`
@@ -42,8 +42,8 @@ type BlueprintEnergyCore struct {
 	LimitedReleaseTokenID decimal.NullDecimal `json:"limited_release_token_id,omitempty"`
 }
 
-func BlueprintEnergyCoreFromBoiler(core *boiler.BlueprintEnergyCore) *BlueprintEnergyCore {
-	return &BlueprintEnergyCore{
+func BlueprintPowerCoreFromBoiler(core *boiler.BlueprintPowerCore) *BlueprintPowerCore {
+	return &BlueprintPowerCore{
 		ID:           core.ID,
 		Collection:   core.Collection,
 		Label:        core.Label,
@@ -58,8 +58,8 @@ func BlueprintEnergyCoreFromBoiler(core *boiler.BlueprintEnergyCore) *BlueprintE
 	}
 }
 
-func EnergyCoreFromBoiler(skin *boiler.EnergyCore, collection *boiler.CollectionItem) *EnergyCore {
-	return &EnergyCore{
+func PowerCoreFromBoiler(skin *boiler.PowerCore, collection *boiler.CollectionItem) *PowerCore {
+	return &PowerCore{
 		CollectionDetails: &CollectionDetails{
 			CollectionSlug: collection.CollectionSlug,
 			Hash:           collection.Hash,

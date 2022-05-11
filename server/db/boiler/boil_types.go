@@ -130,7 +130,7 @@ const (
 	ItemTypeMech          = "mech"
 	ItemTypeMechSkin      = "mech_skin"
 	ItemTypeMechAnimation = "mech_animation"
-	ItemTypeEnergyCore    = "energy_core"
+	ItemTypePowerCore     = "power_core"
 )
 
 // Enum values for AbilityLevel
@@ -168,7 +168,7 @@ const (
 	TemplateItemTypeUTILITY        = "UTILITY"
 	TemplateItemTypeWEAPON         = "WEAPON"
 	TemplateItemTypeAMMO           = "AMMO"
-	TemplateItemTypeENERGY_CORE    = "ENERGY_CORE"
+	TemplateItemTypepower_core     = "power_core"
 	TemplateItemTypeWEAPON_SKIN    = "WEAPON_SKIN"
 	TemplateItemTypePLAYER_ABILITY = "PLAYER_ABILITY"
 )

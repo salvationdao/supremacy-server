@@ -26,7 +26,7 @@ func ServerBlueprintMechToApiV1(mech *server.BlueprintMech) *BlueprintMech {
 		UpdatedAt:            mech.UpdatedAt,
 		CreatedAt:            mech.CreatedAt,
 		ModelID:              mech.ModelID,
-		EnergyCoreSize:       mech.EnergyCoreSize,
+		PowerCoreSize:       mech.PowerCoreSize,
 		Tier:                 mech.Tier,
 		DefaultChassisSkinID: mech.DefaultChassisSkinID,
 	}
@@ -109,16 +109,16 @@ func ServerBlueprintMechAnimationToApiV1(animation *server.BlueprintMechAnimatio
 	}
 }
 
-func ServerBlueprintEnergyCoresToApiV1(items []*server.BlueprintEnergyCore) []*BlueprintEnergyCore {
-	var converted []*BlueprintEnergyCore
+func ServerBlueprintPowerCoresToApiV1(items []*server.BlueprintPowerCore) []*BlueprintPowerCore {
+	var converted []*BlueprintPowerCore
 	for _, i := range items {
-		converted = append(converted, ServerBlueprintEnergyCoreToApiV1(i))
+		converted = append(converted, ServerBlueprintPowerCoreToApiV1(i))
 	}
 	return converted
 }
 
-func ServerBlueprintEnergyCoreToApiV1(ec *server.BlueprintEnergyCore) *BlueprintEnergyCore {
-	return &BlueprintEnergyCore{
+func ServerBlueprintPowerCoreToApiV1(ec *server.BlueprintPowerCore) *BlueprintPowerCore {
+	return &BlueprintPowerCore{
 		ID:           ec.ID,
 		Collection:   ec.Collection,
 		Label:        ec.Label,
@@ -244,6 +244,6 @@ func ServerTemplateToApiTemplateV1(temp *server.TemplateContainer) *TemplateCont
 		BlueprintUtility:       ServerBlueprintUtilitiesToApiV1(temp.BlueprintUtility),
 		BlueprintMechSkin:      ServerBlueprintMechSkinsToApiV1(temp.BlueprintMechSkin),
 		BlueprintMechAnimation: ServerBlueprintMechAnimationsToApiV1(temp.BlueprintMechAnimation),
-		BlueprintEnergyCore:    ServerBlueprintEnergyCoresToApiV1(temp.BlueprintEnergyCore),
+		BlueprintPowerCore:    ServerBlueprintPowerCoresToApiV1(temp.BlueprintPowerCore),
 	}
 }

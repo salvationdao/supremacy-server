@@ -40,7 +40,7 @@ type Mech struct {
 	LimitedReleaseTokenID decimal.NullDecimal `json:"limited_release_token_id,omitempty"`
 	OwnerID               string              `json:"owner_id"`
 	FactionID             string              `json:"faction_id"`
-	EnergyCoreSize        string              `json:"energy_core_size"`
+	PowerCoreSize         string              `json:"power_core_size"`
 
 	Tier null.String `json:"tier,omitempty"`
 
@@ -57,8 +57,8 @@ type Mech struct {
 	OutroAnimationID null.String    `json:"outro_animation_id,omitempty"`
 	OutroAnimation   *MechAnimation `json:"outro_animation,omitempty"`
 
-	EnergyCoreID null.String `json:"energy_core_id,omitempty"`
-	EnergyCore   *EnergyCore `json:"energy_core,omitempty"`
+	PowerCoreID null.String `json:"power_core_id,omitempty"`
+	PowerCore   *PowerCore  `json:"power_core,omitempty"`
 
 	Weapons []*Weapon  `json:"weapons"`
 	Utility []*Utility `json:"utility"`
@@ -99,7 +99,7 @@ type MechAnimation struct {
 	CreatedAt      time.Time   `json:"created_at"`
 }
 
-type EnergyCore struct {
+type PowerCore struct {
 	*CollectionDetails
 	ID           string          `json:"id"`
 	OwnerID      string          `json:"owner_id"`
@@ -130,7 +130,7 @@ type Weapon struct {
 	OwnerID              string              `json:"owner_id"`
 	DamageFalloff        null.Int            `json:"damage_falloff,omitempty"`
 	DamageFalloffRate    null.Int            `json:"damage_falloff_rate,omitempty"`
-	Spread               decimal.NullDecimal            `json:"spread,omitempty"`
+	Spread               decimal.NullDecimal `json:"spread,omitempty"`
 	RateOfFire           decimal.NullDecimal `json:"rate_of_fire,omitempty"`
 	Radius               null.Int            `json:"radius,omitempty"`
 	RadialDoesFullDamage null.Bool           `json:"radial_does_full_damage,omitempty"`
@@ -213,7 +213,7 @@ type TemplateContainer struct {
 	BlueprintUtility       []*BlueprintUtility       `json:"blueprint_utility,omitempty"`
 	BlueprintMechSkin      []*BlueprintMechSkin      `json:"blueprint_mech_skin,omitempty"`
 	BlueprintMechAnimation []*BlueprintMechAnimation `json:"blueprint_mech_animation,omitempty"`
-	BlueprintEnergyCore    []*BlueprintEnergyCore    `json:"blueprint_energy_core,omitempty"`
+	BlueprintPowerCore     []*BlueprintPowerCore     `json:"blueprint_power_core,omitempty"`
 	//BlueprintAmmo []* // TODO: AMMO
 }
 
@@ -242,7 +242,7 @@ type BlueprintMechAnimation struct {
 	CreatedAt      time.Time   `json:"created_at"`
 }
 
-type BlueprintEnergyCore struct {
+type BlueprintPowerCore struct {
 	ID           string          `json:"id"`
 	Collection   string          `json:"collection"`
 	Label        string          `json:"label"`
@@ -269,7 +269,7 @@ type BlueprintMech struct {
 	UpdatedAt            time.Time   `json:"updated_at"`
 	CreatedAt            time.Time   `json:"created_at"`
 	ModelID              string      `json:"model_id"`
-	EnergyCoreSize       string      `json:"energy_core_size,omitempty"`
+	PowerCoreSize        string      `json:"power_core_size,omitempty"`
 	Tier                 null.String `json:"tier,omitempty"`
 	DefaultChassisSkinID string      `json:"default_chassis_skin_id"`
 	Collection           string      `json:"collection"`

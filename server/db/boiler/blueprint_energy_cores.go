@@ -22,8 +22,8 @@ import (
 	"github.com/volatiletech/strmangle"
 )
 
-// BlueprintEnergyCore is an object representing the database table.
-type BlueprintEnergyCore struct {
+// BlueprintPowerCore is an object representing the database table.
+type BlueprintPowerCore struct {
 	ID           string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	Collection   string          `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
 	Label        string          `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
@@ -36,11 +36,11 @@ type BlueprintEnergyCore struct {
 	Tier         null.String     `boiler:"tier" boil:"tier" json:"tier,omitempty" toml:"tier" yaml:"tier,omitempty"`
 	CreatedAt    time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
-	R *blueprintEnergyCoreR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
-	L blueprintEnergyCoreL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
+	R *blueprintPowerCoreR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
+	L blueprintPowerCoreL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
-var BlueprintEnergyCoreColumns = struct {
+var BlueprintPowerCoreColumns = struct {
 	ID           string
 	Collection   string
 	Label        string
@@ -66,7 +66,7 @@ var BlueprintEnergyCoreColumns = struct {
 	CreatedAt:    "created_at",
 }
 
-var BlueprintEnergyCoreTableColumns = struct {
+var BlueprintPowerCoreTableColumns = struct {
 	ID           string
 	Collection   string
 	Label        string
@@ -79,22 +79,22 @@ var BlueprintEnergyCoreTableColumns = struct {
 	Tier         string
 	CreatedAt    string
 }{
-	ID:           "blueprint_energy_cores.id",
-	Collection:   "blueprint_energy_cores.collection",
-	Label:        "blueprint_energy_cores.label",
-	Size:         "blueprint_energy_cores.size",
-	Capacity:     "blueprint_energy_cores.capacity",
-	MaxDrawRate:  "blueprint_energy_cores.max_draw_rate",
-	RechargeRate: "blueprint_energy_cores.recharge_rate",
-	Armour:       "blueprint_energy_cores.armour",
-	MaxHitpoints: "blueprint_energy_cores.max_hitpoints",
-	Tier:         "blueprint_energy_cores.tier",
-	CreatedAt:    "blueprint_energy_cores.created_at",
+	ID:           "blueprint_power_cores.id",
+	Collection:   "blueprint_power_cores.collection",
+	Label:        "blueprint_power_cores.label",
+	Size:         "blueprint_power_cores.size",
+	Capacity:     "blueprint_power_cores.capacity",
+	MaxDrawRate:  "blueprint_power_cores.max_draw_rate",
+	RechargeRate: "blueprint_power_cores.recharge_rate",
+	Armour:       "blueprint_power_cores.armour",
+	MaxHitpoints: "blueprint_power_cores.max_hitpoints",
+	Tier:         "blueprint_power_cores.tier",
+	CreatedAt:    "blueprint_power_cores.created_at",
 }
 
 // Generated where
 
-var BlueprintEnergyCoreWhere = struct {
+var BlueprintPowerCoreWhere = struct {
 	ID           whereHelperstring
 	Collection   whereHelperstring
 	Label        whereHelperstring
@@ -107,66 +107,66 @@ var BlueprintEnergyCoreWhere = struct {
 	Tier         whereHelpernull_String
 	CreatedAt    whereHelpertime_Time
 }{
-	ID:           whereHelperstring{field: "\"blueprint_energy_cores\".\"id\""},
-	Collection:   whereHelperstring{field: "\"blueprint_energy_cores\".\"collection\""},
-	Label:        whereHelperstring{field: "\"blueprint_energy_cores\".\"label\""},
-	Size:         whereHelperstring{field: "\"blueprint_energy_cores\".\"size\""},
-	Capacity:     whereHelperdecimal_Decimal{field: "\"blueprint_energy_cores\".\"capacity\""},
-	MaxDrawRate:  whereHelperdecimal_Decimal{field: "\"blueprint_energy_cores\".\"max_draw_rate\""},
-	RechargeRate: whereHelperdecimal_Decimal{field: "\"blueprint_energy_cores\".\"recharge_rate\""},
-	Armour:       whereHelperdecimal_Decimal{field: "\"blueprint_energy_cores\".\"armour\""},
-	MaxHitpoints: whereHelperdecimal_Decimal{field: "\"blueprint_energy_cores\".\"max_hitpoints\""},
-	Tier:         whereHelpernull_String{field: "\"blueprint_energy_cores\".\"tier\""},
-	CreatedAt:    whereHelpertime_Time{field: "\"blueprint_energy_cores\".\"created_at\""},
+	ID:           whereHelperstring{field: "\"blueprint_power_cores\".\"id\""},
+	Collection:   whereHelperstring{field: "\"blueprint_power_cores\".\"collection\""},
+	Label:        whereHelperstring{field: "\"blueprint_power_cores\".\"label\""},
+	Size:         whereHelperstring{field: "\"blueprint_power_cores\".\"size\""},
+	Capacity:     whereHelperdecimal_Decimal{field: "\"blueprint_power_cores\".\"capacity\""},
+	MaxDrawRate:  whereHelperdecimal_Decimal{field: "\"blueprint_power_cores\".\"max_draw_rate\""},
+	RechargeRate: whereHelperdecimal_Decimal{field: "\"blueprint_power_cores\".\"recharge_rate\""},
+	Armour:       whereHelperdecimal_Decimal{field: "\"blueprint_power_cores\".\"armour\""},
+	MaxHitpoints: whereHelperdecimal_Decimal{field: "\"blueprint_power_cores\".\"max_hitpoints\""},
+	Tier:         whereHelpernull_String{field: "\"blueprint_power_cores\".\"tier\""},
+	CreatedAt:    whereHelpertime_Time{field: "\"blueprint_power_cores\".\"created_at\""},
 }
 
-// BlueprintEnergyCoreRels is where relationship names are stored.
-var BlueprintEnergyCoreRels = struct {
+// BlueprintPowerCoreRels is where relationship names are stored.
+var BlueprintPowerCoreRels = struct {
 }{}
 
-// blueprintEnergyCoreR is where relationships are stored.
-type blueprintEnergyCoreR struct {
+// blueprintPowerCoreR is where relationships are stored.
+type blueprintPowerCoreR struct {
 }
 
 // NewStruct creates a new relationship struct
-func (*blueprintEnergyCoreR) NewStruct() *blueprintEnergyCoreR {
-	return &blueprintEnergyCoreR{}
+func (*blueprintPowerCoreR) NewStruct() *blueprintPowerCoreR {
+	return &blueprintPowerCoreR{}
 }
 
-// blueprintEnergyCoreL is where Load methods for each relationship are stored.
-type blueprintEnergyCoreL struct{}
+// blueprintPowerCoreL is where Load methods for each relationship are stored.
+type blueprintPowerCoreL struct{}
 
 var (
-	blueprintEnergyCoreAllColumns            = []string{"id", "collection", "label", "size", "capacity", "max_draw_rate", "recharge_rate", "armour", "max_hitpoints", "tier", "created_at"}
-	blueprintEnergyCoreColumnsWithoutDefault = []string{"label"}
-	blueprintEnergyCoreColumnsWithDefault    = []string{"id", "collection", "size", "capacity", "max_draw_rate", "recharge_rate", "armour", "max_hitpoints", "tier", "created_at"}
-	blueprintEnergyCorePrimaryKeyColumns     = []string{"id"}
-	blueprintEnergyCoreGeneratedColumns      = []string{}
+	blueprintPowerCoreAllColumns            = []string{"id", "collection", "label", "size", "capacity", "max_draw_rate", "recharge_rate", "armour", "max_hitpoints", "tier", "created_at"}
+	blueprintPowerCoreColumnsWithoutDefault = []string{"label"}
+	blueprintPowerCoreColumnsWithDefault    = []string{"id", "collection", "size", "capacity", "max_draw_rate", "recharge_rate", "armour", "max_hitpoints", "tier", "created_at"}
+	blueprintPowerCorePrimaryKeyColumns     = []string{"id"}
+	blueprintPowerCoreGeneratedColumns      = []string{}
 )
 
 type (
-	// BlueprintEnergyCoreSlice is an alias for a slice of pointers to BlueprintEnergyCore.
-	// This should almost always be used instead of []BlueprintEnergyCore.
-	BlueprintEnergyCoreSlice []*BlueprintEnergyCore
-	// BlueprintEnergyCoreHook is the signature for custom BlueprintEnergyCore hook methods
-	BlueprintEnergyCoreHook func(boil.Executor, *BlueprintEnergyCore) error
+	// BlueprintPowerCoreSlice is an alias for a slice of pointers to BlueprintPowerCore.
+	// This should almost always be used instead of []BlueprintPowerCore.
+	BlueprintPowerCoreSlice []*BlueprintPowerCore
+	// BlueprintPowerCoreHook is the signature for custom BlueprintPowerCore hook methods
+	BlueprintPowerCoreHook func(boil.Executor, *BlueprintPowerCore) error
 
-	blueprintEnergyCoreQuery struct {
+	blueprintPowerCoreQuery struct {
 		*queries.Query
 	}
 )
 
 // Cache for insert, update and upsert
 var (
-	blueprintEnergyCoreType                 = reflect.TypeOf(&BlueprintEnergyCore{})
-	blueprintEnergyCoreMapping              = queries.MakeStructMapping(blueprintEnergyCoreType)
-	blueprintEnergyCorePrimaryKeyMapping, _ = queries.BindMapping(blueprintEnergyCoreType, blueprintEnergyCoreMapping, blueprintEnergyCorePrimaryKeyColumns)
-	blueprintEnergyCoreInsertCacheMut       sync.RWMutex
-	blueprintEnergyCoreInsertCache          = make(map[string]insertCache)
-	blueprintEnergyCoreUpdateCacheMut       sync.RWMutex
-	blueprintEnergyCoreUpdateCache          = make(map[string]updateCache)
-	blueprintEnergyCoreUpsertCacheMut       sync.RWMutex
-	blueprintEnergyCoreUpsertCache          = make(map[string]insertCache)
+	blueprintPowerCoreType                 = reflect.TypeOf(&BlueprintPowerCore{})
+	blueprintPowerCoreMapping              = queries.MakeStructMapping(blueprintPowerCoreType)
+	blueprintPowerCorePrimaryKeyMapping, _ = queries.BindMapping(blueprintPowerCoreType, blueprintPowerCoreMapping, blueprintPowerCorePrimaryKeyColumns)
+	blueprintPowerCoreInsertCacheMut       sync.RWMutex
+	blueprintPowerCoreInsertCache          = make(map[string]insertCache)
+	blueprintPowerCoreUpdateCacheMut       sync.RWMutex
+	blueprintPowerCoreUpdateCache          = make(map[string]updateCache)
+	blueprintPowerCoreUpsertCacheMut       sync.RWMutex
+	blueprintPowerCoreUpsertCache          = make(map[string]insertCache)
 )
 
 var (
@@ -177,23 +177,23 @@ var (
 	_ = qmhelper.Where
 )
 
-var blueprintEnergyCoreAfterSelectHooks []BlueprintEnergyCoreHook
+var blueprintPowerCoreAfterSelectHooks []BlueprintPowerCoreHook
 
-var blueprintEnergyCoreBeforeInsertHooks []BlueprintEnergyCoreHook
-var blueprintEnergyCoreAfterInsertHooks []BlueprintEnergyCoreHook
+var blueprintPowerCoreBeforeInsertHooks []BlueprintPowerCoreHook
+var blueprintPowerCoreAfterInsertHooks []BlueprintPowerCoreHook
 
-var blueprintEnergyCoreBeforeUpdateHooks []BlueprintEnergyCoreHook
-var blueprintEnergyCoreAfterUpdateHooks []BlueprintEnergyCoreHook
+var blueprintPowerCoreBeforeUpdateHooks []BlueprintPowerCoreHook
+var blueprintPowerCoreAfterUpdateHooks []BlueprintPowerCoreHook
 
-var blueprintEnergyCoreBeforeDeleteHooks []BlueprintEnergyCoreHook
-var blueprintEnergyCoreAfterDeleteHooks []BlueprintEnergyCoreHook
+var blueprintPowerCoreBeforeDeleteHooks []BlueprintPowerCoreHook
+var blueprintPowerCoreAfterDeleteHooks []BlueprintPowerCoreHook
 
-var blueprintEnergyCoreBeforeUpsertHooks []BlueprintEnergyCoreHook
-var blueprintEnergyCoreAfterUpsertHooks []BlueprintEnergyCoreHook
+var blueprintPowerCoreBeforeUpsertHooks []BlueprintPowerCoreHook
+var blueprintPowerCoreAfterUpsertHooks []BlueprintPowerCoreHook
 
 // doAfterSelectHooks executes all "after Select" hooks.
-func (o *BlueprintEnergyCore) doAfterSelectHooks(exec boil.Executor) (err error) {
-	for _, hook := range blueprintEnergyCoreAfterSelectHooks {
+func (o *BlueprintPowerCore) doAfterSelectHooks(exec boil.Executor) (err error) {
+	for _, hook := range blueprintPowerCoreAfterSelectHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -203,8 +203,8 @@ func (o *BlueprintEnergyCore) doAfterSelectHooks(exec boil.Executor) (err error)
 }
 
 // doBeforeInsertHooks executes all "before insert" hooks.
-func (o *BlueprintEnergyCore) doBeforeInsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range blueprintEnergyCoreBeforeInsertHooks {
+func (o *BlueprintPowerCore) doBeforeInsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range blueprintPowerCoreBeforeInsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -214,8 +214,8 @@ func (o *BlueprintEnergyCore) doBeforeInsertHooks(exec boil.Executor) (err error
 }
 
 // doAfterInsertHooks executes all "after Insert" hooks.
-func (o *BlueprintEnergyCore) doAfterInsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range blueprintEnergyCoreAfterInsertHooks {
+func (o *BlueprintPowerCore) doAfterInsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range blueprintPowerCoreAfterInsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -225,8 +225,8 @@ func (o *BlueprintEnergyCore) doAfterInsertHooks(exec boil.Executor) (err error)
 }
 
 // doBeforeUpdateHooks executes all "before Update" hooks.
-func (o *BlueprintEnergyCore) doBeforeUpdateHooks(exec boil.Executor) (err error) {
-	for _, hook := range blueprintEnergyCoreBeforeUpdateHooks {
+func (o *BlueprintPowerCore) doBeforeUpdateHooks(exec boil.Executor) (err error) {
+	for _, hook := range blueprintPowerCoreBeforeUpdateHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -236,8 +236,8 @@ func (o *BlueprintEnergyCore) doBeforeUpdateHooks(exec boil.Executor) (err error
 }
 
 // doAfterUpdateHooks executes all "after Update" hooks.
-func (o *BlueprintEnergyCore) doAfterUpdateHooks(exec boil.Executor) (err error) {
-	for _, hook := range blueprintEnergyCoreAfterUpdateHooks {
+func (o *BlueprintPowerCore) doAfterUpdateHooks(exec boil.Executor) (err error) {
+	for _, hook := range blueprintPowerCoreAfterUpdateHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -247,8 +247,8 @@ func (o *BlueprintEnergyCore) doAfterUpdateHooks(exec boil.Executor) (err error)
 }
 
 // doBeforeDeleteHooks executes all "before Delete" hooks.
-func (o *BlueprintEnergyCore) doBeforeDeleteHooks(exec boil.Executor) (err error) {
-	for _, hook := range blueprintEnergyCoreBeforeDeleteHooks {
+func (o *BlueprintPowerCore) doBeforeDeleteHooks(exec boil.Executor) (err error) {
+	for _, hook := range blueprintPowerCoreBeforeDeleteHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -258,8 +258,8 @@ func (o *BlueprintEnergyCore) doBeforeDeleteHooks(exec boil.Executor) (err error
 }
 
 // doAfterDeleteHooks executes all "after Delete" hooks.
-func (o *BlueprintEnergyCore) doAfterDeleteHooks(exec boil.Executor) (err error) {
-	for _, hook := range blueprintEnergyCoreAfterDeleteHooks {
+func (o *BlueprintPowerCore) doAfterDeleteHooks(exec boil.Executor) (err error) {
+	for _, hook := range blueprintPowerCoreAfterDeleteHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -269,8 +269,8 @@ func (o *BlueprintEnergyCore) doAfterDeleteHooks(exec boil.Executor) (err error)
 }
 
 // doBeforeUpsertHooks executes all "before Upsert" hooks.
-func (o *BlueprintEnergyCore) doBeforeUpsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range blueprintEnergyCoreBeforeUpsertHooks {
+func (o *BlueprintPowerCore) doBeforeUpsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range blueprintPowerCoreBeforeUpsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -280,8 +280,8 @@ func (o *BlueprintEnergyCore) doBeforeUpsertHooks(exec boil.Executor) (err error
 }
 
 // doAfterUpsertHooks executes all "after Upsert" hooks.
-func (o *BlueprintEnergyCore) doAfterUpsertHooks(exec boil.Executor) (err error) {
-	for _, hook := range blueprintEnergyCoreAfterUpsertHooks {
+func (o *BlueprintPowerCore) doAfterUpsertHooks(exec boil.Executor) (err error) {
+	for _, hook := range blueprintPowerCoreAfterUpsertHooks {
 		if err := hook(exec, o); err != nil {
 			return err
 		}
@@ -290,33 +290,33 @@ func (o *BlueprintEnergyCore) doAfterUpsertHooks(exec boil.Executor) (err error)
 	return nil
 }
 
-// AddBlueprintEnergyCoreHook registers your hook function for all future operations.
-func AddBlueprintEnergyCoreHook(hookPoint boil.HookPoint, blueprintEnergyCoreHook BlueprintEnergyCoreHook) {
+// AddBlueprintPowerCoreHook registers your hook function for all future operations.
+func AddBlueprintPowerCoreHook(hookPoint boil.HookPoint, blueprintPowerCoreHook BlueprintPowerCoreHook) {
 	switch hookPoint {
 	case boil.AfterSelectHook:
-		blueprintEnergyCoreAfterSelectHooks = append(blueprintEnergyCoreAfterSelectHooks, blueprintEnergyCoreHook)
+		blueprintPowerCoreAfterSelectHooks = append(blueprintPowerCoreAfterSelectHooks, blueprintPowerCoreHook)
 	case boil.BeforeInsertHook:
-		blueprintEnergyCoreBeforeInsertHooks = append(blueprintEnergyCoreBeforeInsertHooks, blueprintEnergyCoreHook)
+		blueprintPowerCoreBeforeInsertHooks = append(blueprintPowerCoreBeforeInsertHooks, blueprintPowerCoreHook)
 	case boil.AfterInsertHook:
-		blueprintEnergyCoreAfterInsertHooks = append(blueprintEnergyCoreAfterInsertHooks, blueprintEnergyCoreHook)
+		blueprintPowerCoreAfterInsertHooks = append(blueprintPowerCoreAfterInsertHooks, blueprintPowerCoreHook)
 	case boil.BeforeUpdateHook:
-		blueprintEnergyCoreBeforeUpdateHooks = append(blueprintEnergyCoreBeforeUpdateHooks, blueprintEnergyCoreHook)
+		blueprintPowerCoreBeforeUpdateHooks = append(blueprintPowerCoreBeforeUpdateHooks, blueprintPowerCoreHook)
 	case boil.AfterUpdateHook:
-		blueprintEnergyCoreAfterUpdateHooks = append(blueprintEnergyCoreAfterUpdateHooks, blueprintEnergyCoreHook)
+		blueprintPowerCoreAfterUpdateHooks = append(blueprintPowerCoreAfterUpdateHooks, blueprintPowerCoreHook)
 	case boil.BeforeDeleteHook:
-		blueprintEnergyCoreBeforeDeleteHooks = append(blueprintEnergyCoreBeforeDeleteHooks, blueprintEnergyCoreHook)
+		blueprintPowerCoreBeforeDeleteHooks = append(blueprintPowerCoreBeforeDeleteHooks, blueprintPowerCoreHook)
 	case boil.AfterDeleteHook:
-		blueprintEnergyCoreAfterDeleteHooks = append(blueprintEnergyCoreAfterDeleteHooks, blueprintEnergyCoreHook)
+		blueprintPowerCoreAfterDeleteHooks = append(blueprintPowerCoreAfterDeleteHooks, blueprintPowerCoreHook)
 	case boil.BeforeUpsertHook:
-		blueprintEnergyCoreBeforeUpsertHooks = append(blueprintEnergyCoreBeforeUpsertHooks, blueprintEnergyCoreHook)
+		blueprintPowerCoreBeforeUpsertHooks = append(blueprintPowerCoreBeforeUpsertHooks, blueprintPowerCoreHook)
 	case boil.AfterUpsertHook:
-		blueprintEnergyCoreAfterUpsertHooks = append(blueprintEnergyCoreAfterUpsertHooks, blueprintEnergyCoreHook)
+		blueprintPowerCoreAfterUpsertHooks = append(blueprintPowerCoreAfterUpsertHooks, blueprintPowerCoreHook)
 	}
 }
 
-// One returns a single blueprintEnergyCore record from the query.
-func (q blueprintEnergyCoreQuery) One(exec boil.Executor) (*BlueprintEnergyCore, error) {
-	o := &BlueprintEnergyCore{}
+// One returns a single blueprintPowerCore record from the query.
+func (q blueprintPowerCoreQuery) One(exec boil.Executor) (*BlueprintPowerCore, error) {
+	o := &BlueprintPowerCore{}
 
 	queries.SetLimit(q.Query, 1)
 
@@ -325,7 +325,7 @@ func (q blueprintEnergyCoreQuery) One(exec boil.Executor) (*BlueprintEnergyCore,
 		if errors.Cause(err) == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		return nil, errors.Wrap(err, "boiler: failed to execute a one query for blueprint_energy_cores")
+		return nil, errors.Wrap(err, "boiler: failed to execute a one query for blueprint_power_cores")
 	}
 
 	if err := o.doAfterSelectHooks(exec); err != nil {
@@ -335,16 +335,16 @@ func (q blueprintEnergyCoreQuery) One(exec boil.Executor) (*BlueprintEnergyCore,
 	return o, nil
 }
 
-// All returns all BlueprintEnergyCore records from the query.
-func (q blueprintEnergyCoreQuery) All(exec boil.Executor) (BlueprintEnergyCoreSlice, error) {
-	var o []*BlueprintEnergyCore
+// All returns all BlueprintPowerCore records from the query.
+func (q blueprintPowerCoreQuery) All(exec boil.Executor) (BlueprintPowerCoreSlice, error) {
+	var o []*BlueprintPowerCore
 
 	err := q.Bind(nil, exec, &o)
 	if err != nil {
-		return nil, errors.Wrap(err, "boiler: failed to assign all query results to BlueprintEnergyCore slice")
+		return nil, errors.Wrap(err, "boiler: failed to assign all query results to BlueprintPowerCore slice")
 	}
 
-	if len(blueprintEnergyCoreAfterSelectHooks) != 0 {
+	if len(blueprintPowerCoreAfterSelectHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doAfterSelectHooks(exec); err != nil {
 				return o, err
@@ -355,8 +355,8 @@ func (q blueprintEnergyCoreQuery) All(exec boil.Executor) (BlueprintEnergyCoreSl
 	return o, nil
 }
 
-// Count returns the count of all BlueprintEnergyCore records in the query.
-func (q blueprintEnergyCoreQuery) Count(exec boil.Executor) (int64, error) {
+// Count returns the count of all BlueprintPowerCore records in the query.
+func (q blueprintPowerCoreQuery) Count(exec boil.Executor) (int64, error) {
 	var count int64
 
 	queries.SetSelect(q.Query, nil)
@@ -364,14 +364,14 @@ func (q blueprintEnergyCoreQuery) Count(exec boil.Executor) (int64, error) {
 
 	err := q.Query.QueryRow(exec).Scan(&count)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to count blueprint_energy_cores rows")
+		return 0, errors.Wrap(err, "boiler: failed to count blueprint_power_cores rows")
 	}
 
 	return count, nil
 }
 
 // Exists checks if the row exists in the table.
-func (q blueprintEnergyCoreQuery) Exists(exec boil.Executor) (bool, error) {
+func (q blueprintPowerCoreQuery) Exists(exec boil.Executor) (bool, error) {
 	var count int64
 
 	queries.SetSelect(q.Query, nil)
@@ -380,53 +380,53 @@ func (q blueprintEnergyCoreQuery) Exists(exec boil.Executor) (bool, error) {
 
 	err := q.Query.QueryRow(exec).Scan(&count)
 	if err != nil {
-		return false, errors.Wrap(err, "boiler: failed to check if blueprint_energy_cores exists")
+		return false, errors.Wrap(err, "boiler: failed to check if blueprint_power_cores exists")
 	}
 
 	return count > 0, nil
 }
 
-// BlueprintEnergyCores retrieves all the records using an executor.
-func BlueprintEnergyCores(mods ...qm.QueryMod) blueprintEnergyCoreQuery {
-	mods = append(mods, qm.From("\"blueprint_energy_cores\""))
-	return blueprintEnergyCoreQuery{NewQuery(mods...)}
+// BlueprintPowerCores retrieves all the records using an executor.
+func BlueprintPowerCores(mods ...qm.QueryMod) blueprintPowerCoreQuery {
+	mods = append(mods, qm.From("\"blueprint_power_cores\""))
+	return blueprintPowerCoreQuery{NewQuery(mods...)}
 }
 
-// FindBlueprintEnergyCore retrieves a single record by ID with an executor.
+// FindBlueprintPowerCore retrieves a single record by ID with an executor.
 // If selectCols is empty Find will return all columns.
-func FindBlueprintEnergyCore(exec boil.Executor, iD string, selectCols ...string) (*BlueprintEnergyCore, error) {
-	blueprintEnergyCoreObj := &BlueprintEnergyCore{}
+func FindBlueprintPowerCore(exec boil.Executor, iD string, selectCols ...string) (*BlueprintPowerCore, error) {
+	blueprintPowerCoreObj := &BlueprintPowerCore{}
 
 	sel := "*"
 	if len(selectCols) > 0 {
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"blueprint_energy_cores\" where \"id\"=$1", sel,
+		"select %s from \"blueprint_power_cores\" where \"id\"=$1", sel,
 	)
 
 	q := queries.Raw(query, iD)
 
-	err := q.Bind(nil, exec, blueprintEnergyCoreObj)
+	err := q.Bind(nil, exec, blueprintPowerCoreObj)
 	if err != nil {
 		if errors.Cause(err) == sql.ErrNoRows {
 			return nil, sql.ErrNoRows
 		}
-		return nil, errors.Wrap(err, "boiler: unable to select from blueprint_energy_cores")
+		return nil, errors.Wrap(err, "boiler: unable to select from blueprint_power_cores")
 	}
 
-	if err = blueprintEnergyCoreObj.doAfterSelectHooks(exec); err != nil {
-		return blueprintEnergyCoreObj, err
+	if err = blueprintPowerCoreObj.doAfterSelectHooks(exec); err != nil {
+		return blueprintPowerCoreObj, err
 	}
 
-	return blueprintEnergyCoreObj, nil
+	return blueprintPowerCoreObj, nil
 }
 
 // Insert a single record using an executor.
 // See boil.Columns.InsertColumnSet documentation to understand column list inference for inserts.
-func (o *BlueprintEnergyCore) Insert(exec boil.Executor, columns boil.Columns) error {
+func (o *BlueprintPowerCore) Insert(exec boil.Executor, columns boil.Columns) error {
 	if o == nil {
-		return errors.New("boiler: no blueprint_energy_cores provided for insertion")
+		return errors.New("boiler: no blueprint_power_cores provided for insertion")
 	}
 
 	var err error
@@ -440,33 +440,33 @@ func (o *BlueprintEnergyCore) Insert(exec boil.Executor, columns boil.Columns) e
 		return err
 	}
 
-	nzDefaults := queries.NonZeroDefaultSet(blueprintEnergyCoreColumnsWithDefault, o)
+	nzDefaults := queries.NonZeroDefaultSet(blueprintPowerCoreColumnsWithDefault, o)
 
 	key := makeCacheKey(columns, nzDefaults)
-	blueprintEnergyCoreInsertCacheMut.RLock()
-	cache, cached := blueprintEnergyCoreInsertCache[key]
-	blueprintEnergyCoreInsertCacheMut.RUnlock()
+	blueprintPowerCoreInsertCacheMut.RLock()
+	cache, cached := blueprintPowerCoreInsertCache[key]
+	blueprintPowerCoreInsertCacheMut.RUnlock()
 
 	if !cached {
 		wl, returnColumns := columns.InsertColumnSet(
-			blueprintEnergyCoreAllColumns,
-			blueprintEnergyCoreColumnsWithDefault,
-			blueprintEnergyCoreColumnsWithoutDefault,
+			blueprintPowerCoreAllColumns,
+			blueprintPowerCoreColumnsWithDefault,
+			blueprintPowerCoreColumnsWithoutDefault,
 			nzDefaults,
 		)
 
-		cache.valueMapping, err = queries.BindMapping(blueprintEnergyCoreType, blueprintEnergyCoreMapping, wl)
+		cache.valueMapping, err = queries.BindMapping(blueprintPowerCoreType, blueprintPowerCoreMapping, wl)
 		if err != nil {
 			return err
 		}
-		cache.retMapping, err = queries.BindMapping(blueprintEnergyCoreType, blueprintEnergyCoreMapping, returnColumns)
+		cache.retMapping, err = queries.BindMapping(blueprintPowerCoreType, blueprintPowerCoreMapping, returnColumns)
 		if err != nil {
 			return err
 		}
 		if len(wl) != 0 {
-			cache.query = fmt.Sprintf("INSERT INTO \"blueprint_energy_cores\" (\"%s\") %%sVALUES (%s)%%s", strings.Join(wl, "\",\""), strmangle.Placeholders(dialect.UseIndexPlaceholders, len(wl), 1, 1))
+			cache.query = fmt.Sprintf("INSERT INTO \"blueprint_power_cores\" (\"%s\") %%sVALUES (%s)%%s", strings.Join(wl, "\",\""), strmangle.Placeholders(dialect.UseIndexPlaceholders, len(wl), 1, 1))
 		} else {
-			cache.query = "INSERT INTO \"blueprint_energy_cores\" %sDEFAULT VALUES%s"
+			cache.query = "INSERT INTO \"blueprint_power_cores\" %sDEFAULT VALUES%s"
 		}
 
 		var queryOutput, queryReturning string
@@ -493,49 +493,49 @@ func (o *BlueprintEnergyCore) Insert(exec boil.Executor, columns boil.Columns) e
 	}
 
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to insert into blueprint_energy_cores")
+		return errors.Wrap(err, "boiler: unable to insert into blueprint_power_cores")
 	}
 
 	if !cached {
-		blueprintEnergyCoreInsertCacheMut.Lock()
-		blueprintEnergyCoreInsertCache[key] = cache
-		blueprintEnergyCoreInsertCacheMut.Unlock()
+		blueprintPowerCoreInsertCacheMut.Lock()
+		blueprintPowerCoreInsertCache[key] = cache
+		blueprintPowerCoreInsertCacheMut.Unlock()
 	}
 
 	return o.doAfterInsertHooks(exec)
 }
 
-// Update uses an executor to update the BlueprintEnergyCore.
+// Update uses an executor to update the BlueprintPowerCore.
 // See boil.Columns.UpdateColumnSet documentation to understand column list inference for updates.
 // Update does not automatically update the record in case of default values. Use .Reload() to refresh the records.
-func (o *BlueprintEnergyCore) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
+func (o *BlueprintPowerCore) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
 	var err error
 	if err = o.doBeforeUpdateHooks(exec); err != nil {
 		return 0, err
 	}
 	key := makeCacheKey(columns, nil)
-	blueprintEnergyCoreUpdateCacheMut.RLock()
-	cache, cached := blueprintEnergyCoreUpdateCache[key]
-	blueprintEnergyCoreUpdateCacheMut.RUnlock()
+	blueprintPowerCoreUpdateCacheMut.RLock()
+	cache, cached := blueprintPowerCoreUpdateCache[key]
+	blueprintPowerCoreUpdateCacheMut.RUnlock()
 
 	if !cached {
 		wl := columns.UpdateColumnSet(
-			blueprintEnergyCoreAllColumns,
-			blueprintEnergyCorePrimaryKeyColumns,
+			blueprintPowerCoreAllColumns,
+			blueprintPowerCorePrimaryKeyColumns,
 		)
 
 		if !columns.IsWhitelist() {
 			wl = strmangle.SetComplement(wl, []string{"created_at"})
 		}
 		if len(wl) == 0 {
-			return 0, errors.New("boiler: unable to update blueprint_energy_cores, could not build whitelist")
+			return 0, errors.New("boiler: unable to update blueprint_power_cores, could not build whitelist")
 		}
 
-		cache.query = fmt.Sprintf("UPDATE \"blueprint_energy_cores\" SET %s WHERE %s",
+		cache.query = fmt.Sprintf("UPDATE \"blueprint_power_cores\" SET %s WHERE %s",
 			strmangle.SetParamNames("\"", "\"", 1, wl),
-			strmangle.WhereClause("\"", "\"", len(wl)+1, blueprintEnergyCorePrimaryKeyColumns),
+			strmangle.WhereClause("\"", "\"", len(wl)+1, blueprintPowerCorePrimaryKeyColumns),
 		)
-		cache.valueMapping, err = queries.BindMapping(blueprintEnergyCoreType, blueprintEnergyCoreMapping, append(wl, blueprintEnergyCorePrimaryKeyColumns...))
+		cache.valueMapping, err = queries.BindMapping(blueprintPowerCoreType, blueprintPowerCoreMapping, append(wl, blueprintPowerCorePrimaryKeyColumns...))
 		if err != nil {
 			return 0, err
 		}
@@ -550,42 +550,42 @@ func (o *BlueprintEnergyCore) Update(exec boil.Executor, columns boil.Columns) (
 	var result sql.Result
 	result, err = exec.Exec(cache.query, values...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update blueprint_energy_cores row")
+		return 0, errors.Wrap(err, "boiler: unable to update blueprint_power_cores row")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by update for blueprint_energy_cores")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by update for blueprint_power_cores")
 	}
 
 	if !cached {
-		blueprintEnergyCoreUpdateCacheMut.Lock()
-		blueprintEnergyCoreUpdateCache[key] = cache
-		blueprintEnergyCoreUpdateCacheMut.Unlock()
+		blueprintPowerCoreUpdateCacheMut.Lock()
+		blueprintPowerCoreUpdateCache[key] = cache
+		blueprintPowerCoreUpdateCacheMut.Unlock()
 	}
 
 	return rowsAff, o.doAfterUpdateHooks(exec)
 }
 
 // UpdateAll updates all rows with the specified column values.
-func (q blueprintEnergyCoreQuery) UpdateAll(exec boil.Executor, cols M) (int64, error) {
+func (q blueprintPowerCoreQuery) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 	queries.SetUpdate(q.Query, cols)
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update all for blueprint_energy_cores")
+		return 0, errors.Wrap(err, "boiler: unable to update all for blueprint_power_cores")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected for blueprint_energy_cores")
+		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected for blueprint_power_cores")
 	}
 
 	return rowsAff, nil
 }
 
 // UpdateAll updates all rows with the specified column values, using an executor.
-func (o BlueprintEnergyCoreSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
+func (o BlueprintPowerCoreSlice) UpdateAll(exec boil.Executor, cols M) (int64, error) {
 	ln := int64(len(o))
 	if ln == 0 {
 		return 0, nil
@@ -607,13 +607,13 @@ func (o BlueprintEnergyCoreSlice) UpdateAll(exec boil.Executor, cols M) (int64, 
 
 	// Append all of the primary key values for each column
 	for _, obj := range o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), blueprintEnergyCorePrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), blueprintPowerCorePrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := fmt.Sprintf("UPDATE \"blueprint_energy_cores\" SET %s WHERE %s",
+	sql := fmt.Sprintf("UPDATE \"blueprint_power_cores\" SET %s WHERE %s",
 		strmangle.SetParamNames("\"", "\"", 1, colNames),
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), len(colNames)+1, blueprintEnergyCorePrimaryKeyColumns, len(o)))
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), len(colNames)+1, blueprintPowerCorePrimaryKeyColumns, len(o)))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -621,21 +621,21 @@ func (o BlueprintEnergyCoreSlice) UpdateAll(exec boil.Executor, cols M) (int64, 
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to update all in blueprintEnergyCore slice")
+		return 0, errors.Wrap(err, "boiler: unable to update all in blueprintPowerCore slice")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected all in update all blueprintEnergyCore")
+		return 0, errors.Wrap(err, "boiler: unable to retrieve rows affected all in update all blueprintPowerCore")
 	}
 	return rowsAff, nil
 }
 
 // Upsert attempts an insert using an executor, and does an update or ignore on conflict.
 // See boil.Columns documentation for how to properly use updateColumns and insertColumns.
-func (o *BlueprintEnergyCore) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
+func (o *BlueprintPowerCore) Upsert(exec boil.Executor, updateOnConflict bool, conflictColumns []string, updateColumns, insertColumns boil.Columns) error {
 	if o == nil {
-		return errors.New("boiler: no blueprint_energy_cores provided for upsert")
+		return errors.New("boiler: no blueprint_power_cores provided for upsert")
 	}
 	currTime := time.Now().In(boil.GetLocation())
 
@@ -647,7 +647,7 @@ func (o *BlueprintEnergyCore) Upsert(exec boil.Executor, updateOnConflict bool, 
 		return err
 	}
 
-	nzDefaults := queries.NonZeroDefaultSet(blueprintEnergyCoreColumnsWithDefault, o)
+	nzDefaults := queries.NonZeroDefaultSet(blueprintPowerCoreColumnsWithDefault, o)
 
 	// Build cache key in-line uglily - mysql vs psql problems
 	buf := strmangle.GetBuffer()
@@ -677,42 +677,42 @@ func (o *BlueprintEnergyCore) Upsert(exec boil.Executor, updateOnConflict bool, 
 	key := buf.String()
 	strmangle.PutBuffer(buf)
 
-	blueprintEnergyCoreUpsertCacheMut.RLock()
-	cache, cached := blueprintEnergyCoreUpsertCache[key]
-	blueprintEnergyCoreUpsertCacheMut.RUnlock()
+	blueprintPowerCoreUpsertCacheMut.RLock()
+	cache, cached := blueprintPowerCoreUpsertCache[key]
+	blueprintPowerCoreUpsertCacheMut.RUnlock()
 
 	var err error
 
 	if !cached {
 		insert, ret := insertColumns.InsertColumnSet(
-			blueprintEnergyCoreAllColumns,
-			blueprintEnergyCoreColumnsWithDefault,
-			blueprintEnergyCoreColumnsWithoutDefault,
+			blueprintPowerCoreAllColumns,
+			blueprintPowerCoreColumnsWithDefault,
+			blueprintPowerCoreColumnsWithoutDefault,
 			nzDefaults,
 		)
 
 		update := updateColumns.UpdateColumnSet(
-			blueprintEnergyCoreAllColumns,
-			blueprintEnergyCorePrimaryKeyColumns,
+			blueprintPowerCoreAllColumns,
+			blueprintPowerCorePrimaryKeyColumns,
 		)
 
 		if updateOnConflict && len(update) == 0 {
-			return errors.New("boiler: unable to upsert blueprint_energy_cores, could not build update column list")
+			return errors.New("boiler: unable to upsert blueprint_power_cores, could not build update column list")
 		}
 
 		conflict := conflictColumns
 		if len(conflict) == 0 {
-			conflict = make([]string, len(blueprintEnergyCorePrimaryKeyColumns))
-			copy(conflict, blueprintEnergyCorePrimaryKeyColumns)
+			conflict = make([]string, len(blueprintPowerCorePrimaryKeyColumns))
+			copy(conflict, blueprintPowerCorePrimaryKeyColumns)
 		}
-		cache.query = buildUpsertQueryPostgres(dialect, "\"blueprint_energy_cores\"", updateOnConflict, ret, update, conflict, insert)
+		cache.query = buildUpsertQueryPostgres(dialect, "\"blueprint_power_cores\"", updateOnConflict, ret, update, conflict, insert)
 
-		cache.valueMapping, err = queries.BindMapping(blueprintEnergyCoreType, blueprintEnergyCoreMapping, insert)
+		cache.valueMapping, err = queries.BindMapping(blueprintPowerCoreType, blueprintPowerCoreMapping, insert)
 		if err != nil {
 			return err
 		}
 		if len(ret) != 0 {
-			cache.retMapping, err = queries.BindMapping(blueprintEnergyCoreType, blueprintEnergyCoreMapping, ret)
+			cache.retMapping, err = queries.BindMapping(blueprintPowerCoreType, blueprintPowerCoreMapping, ret)
 			if err != nil {
 				return err
 			}
@@ -739,31 +739,31 @@ func (o *BlueprintEnergyCore) Upsert(exec boil.Executor, updateOnConflict bool, 
 		_, err = exec.Exec(cache.query, vals...)
 	}
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to upsert blueprint_energy_cores")
+		return errors.Wrap(err, "boiler: unable to upsert blueprint_power_cores")
 	}
 
 	if !cached {
-		blueprintEnergyCoreUpsertCacheMut.Lock()
-		blueprintEnergyCoreUpsertCache[key] = cache
-		blueprintEnergyCoreUpsertCacheMut.Unlock()
+		blueprintPowerCoreUpsertCacheMut.Lock()
+		blueprintPowerCoreUpsertCache[key] = cache
+		blueprintPowerCoreUpsertCacheMut.Unlock()
 	}
 
 	return o.doAfterUpsertHooks(exec)
 }
 
-// Delete deletes a single BlueprintEnergyCore record with an executor.
+// Delete deletes a single BlueprintPowerCore record with an executor.
 // Delete will match against the primary key column to find the record to delete.
-func (o *BlueprintEnergyCore) Delete(exec boil.Executor) (int64, error) {
+func (o *BlueprintPowerCore) Delete(exec boil.Executor) (int64, error) {
 	if o == nil {
-		return 0, errors.New("boiler: no BlueprintEnergyCore provided for delete")
+		return 0, errors.New("boiler: no BlueprintPowerCore provided for delete")
 	}
 
 	if err := o.doBeforeDeleteHooks(exec); err != nil {
 		return 0, err
 	}
 
-	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), blueprintEnergyCorePrimaryKeyMapping)
-	sql := "DELETE FROM \"blueprint_energy_cores\" WHERE \"id\"=$1"
+	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), blueprintPowerCorePrimaryKeyMapping)
+	sql := "DELETE FROM \"blueprint_power_cores\" WHERE \"id\"=$1"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -771,12 +771,12 @@ func (o *BlueprintEnergyCore) Delete(exec boil.Executor) (int64, error) {
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete from blueprint_energy_cores")
+		return 0, errors.Wrap(err, "boiler: unable to delete from blueprint_power_cores")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by delete for blueprint_energy_cores")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by delete for blueprint_power_cores")
 	}
 
 	if err := o.doAfterDeleteHooks(exec); err != nil {
@@ -787,33 +787,33 @@ func (o *BlueprintEnergyCore) Delete(exec boil.Executor) (int64, error) {
 }
 
 // DeleteAll deletes all matching rows.
-func (q blueprintEnergyCoreQuery) DeleteAll(exec boil.Executor) (int64, error) {
+func (q blueprintPowerCoreQuery) DeleteAll(exec boil.Executor) (int64, error) {
 	if q.Query == nil {
-		return 0, errors.New("boiler: no blueprintEnergyCoreQuery provided for delete all")
+		return 0, errors.New("boiler: no blueprintPowerCoreQuery provided for delete all")
 	}
 
 	queries.SetDelete(q.Query)
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete all from blueprint_energy_cores")
+		return 0, errors.Wrap(err, "boiler: unable to delete all from blueprint_power_cores")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for blueprint_energy_cores")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for blueprint_power_cores")
 	}
 
 	return rowsAff, nil
 }
 
 // DeleteAll deletes all rows in the slice, using an executor.
-func (o BlueprintEnergyCoreSlice) DeleteAll(exec boil.Executor) (int64, error) {
+func (o BlueprintPowerCoreSlice) DeleteAll(exec boil.Executor) (int64, error) {
 	if len(o) == 0 {
 		return 0, nil
 	}
 
-	if len(blueprintEnergyCoreBeforeDeleteHooks) != 0 {
+	if len(blueprintPowerCoreBeforeDeleteHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doBeforeDeleteHooks(exec); err != nil {
 				return 0, err
@@ -823,12 +823,12 @@ func (o BlueprintEnergyCoreSlice) DeleteAll(exec boil.Executor) (int64, error) {
 
 	var args []interface{}
 	for _, obj := range o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), blueprintEnergyCorePrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), blueprintPowerCorePrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := "DELETE FROM \"blueprint_energy_cores\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, blueprintEnergyCorePrimaryKeyColumns, len(o))
+	sql := "DELETE FROM \"blueprint_power_cores\" WHERE " +
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, blueprintPowerCorePrimaryKeyColumns, len(o))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -836,15 +836,15 @@ func (o BlueprintEnergyCoreSlice) DeleteAll(exec boil.Executor) (int64, error) {
 	}
 	result, err := exec.Exec(sql, args...)
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: unable to delete all from blueprintEnergyCore slice")
+		return 0, errors.Wrap(err, "boiler: unable to delete all from blueprintPowerCore slice")
 	}
 
 	rowsAff, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for blueprint_energy_cores")
+		return 0, errors.Wrap(err, "boiler: failed to get rows affected by deleteall for blueprint_power_cores")
 	}
 
-	if len(blueprintEnergyCoreAfterDeleteHooks) != 0 {
+	if len(blueprintPowerCoreAfterDeleteHooks) != 0 {
 		for _, obj := range o {
 			if err := obj.doAfterDeleteHooks(exec); err != nil {
 				return 0, err
@@ -857,8 +857,8 @@ func (o BlueprintEnergyCoreSlice) DeleteAll(exec boil.Executor) (int64, error) {
 
 // Reload refetches the object from the database
 // using the primary keys with an executor.
-func (o *BlueprintEnergyCore) Reload(exec boil.Executor) error {
-	ret, err := FindBlueprintEnergyCore(exec, o.ID)
+func (o *BlueprintPowerCore) Reload(exec boil.Executor) error {
+	ret, err := FindBlueprintPowerCore(exec, o.ID)
 	if err != nil {
 		return err
 	}
@@ -869,26 +869,26 @@ func (o *BlueprintEnergyCore) Reload(exec boil.Executor) error {
 
 // ReloadAll refetches every row with matching primary key column values
 // and overwrites the original object slice with the newly updated slice.
-func (o *BlueprintEnergyCoreSlice) ReloadAll(exec boil.Executor) error {
+func (o *BlueprintPowerCoreSlice) ReloadAll(exec boil.Executor) error {
 	if o == nil || len(*o) == 0 {
 		return nil
 	}
 
-	slice := BlueprintEnergyCoreSlice{}
+	slice := BlueprintPowerCoreSlice{}
 	var args []interface{}
 	for _, obj := range *o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), blueprintEnergyCorePrimaryKeyMapping)
+		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), blueprintPowerCorePrimaryKeyMapping)
 		args = append(args, pkeyArgs...)
 	}
 
-	sql := "SELECT \"blueprint_energy_cores\".* FROM \"blueprint_energy_cores\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, blueprintEnergyCorePrimaryKeyColumns, len(*o))
+	sql := "SELECT \"blueprint_power_cores\".* FROM \"blueprint_power_cores\" WHERE " +
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, blueprintPowerCorePrimaryKeyColumns, len(*o))
 
 	q := queries.Raw(sql, args...)
 
 	err := q.Bind(nil, exec, &slice)
 	if err != nil {
-		return errors.Wrap(err, "boiler: unable to reload all in BlueprintEnergyCoreSlice")
+		return errors.Wrap(err, "boiler: unable to reload all in BlueprintPowerCoreSlice")
 	}
 
 	*o = slice
@@ -896,10 +896,10 @@ func (o *BlueprintEnergyCoreSlice) ReloadAll(exec boil.Executor) error {
 	return nil
 }
 
-// BlueprintEnergyCoreExists checks if the BlueprintEnergyCore row exists.
-func BlueprintEnergyCoreExists(exec boil.Executor, iD string) (bool, error) {
+// BlueprintPowerCoreExists checks if the BlueprintPowerCore row exists.
+func BlueprintPowerCoreExists(exec boil.Executor, iD string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"blueprint_energy_cores\" where \"id\"=$1 limit 1)"
+	sql := "select exists(select 1 from \"blueprint_power_cores\" where \"id\"=$1 limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -909,7 +909,7 @@ func BlueprintEnergyCoreExists(exec boil.Executor, iD string) (bool, error) {
 
 	err := row.Scan(&exists)
 	if err != nil {
-		return false, errors.Wrap(err, "boiler: unable to check if blueprint_energy_cores exists")
+		return false, errors.Wrap(err, "boiler: unable to check if blueprint_power_cores exists")
 	}
 
 	return exists, nil

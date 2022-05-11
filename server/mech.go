@@ -32,7 +32,7 @@ type Mech struct {
 	Name                  string              `json:"name"`
 	GenesisTokenID        decimal.NullDecimal `json:"genesis_token_id,omitempty"`
 	LimitedReleaseTokenID decimal.NullDecimal `json:"limited_release_token_id,omitempty"`
-	EnergyCoreSize        string              `json:"energy_core_size"`
+	PowerCoreSize         string              `json:"power_core_size"`
 	Tier                  null.String         `json:"tier,omitempty"`
 
 	BlueprintID string         `json:"blueprint_id"`
@@ -63,8 +63,8 @@ type Mech struct {
 	OutroAnimationID null.String    `json:"outro_animation_id,omitempty"`
 	OutroAnimation   *MechAnimation `json:"outro_animation,omitempty"`
 
-	EnergyCoreID null.String `json:"energy_core_id,omitempty"`
-	EnergyCore   *EnergyCore `json:"energy_core,omitempty"`
+	PowerCoreID null.String `json:"power_core_id,omitempty"`
+	PowerCore   *PowerCore  `json:"power_core,omitempty"`
 
 	Weapons []*Weapon  `json:"weapons"`
 	Utility []*Utility `json:"utility"`
@@ -86,7 +86,7 @@ type BlueprintMech struct {
 	UpdatedAt            time.Time   `json:"updated_at"`
 	CreatedAt            time.Time   `json:"created_at"`
 	ModelID              string      `json:"model_id"`
-	EnergyCoreSize       string      `json:"energy_core_size,omitempty"`
+	PowerCoreSize        string      `json:"power_core_size,omitempty"`
 	Tier                 null.String `json:"tier,omitempty"`
 	DefaultChassisSkinID string      `json:"default_chassis_skin_id"`
 	Collection           string      `json:"collection"`
@@ -110,7 +110,7 @@ func BlueprintMechFromBoiler(mech *boiler.BlueprintMech) *BlueprintMech {
 		UpdatedAt:        mech.UpdatedAt,
 		CreatedAt:        mech.CreatedAt,
 		ModelID:          mech.ModelID,
-		EnergyCoreSize:   mech.EnergyCoreSize,
+		PowerCoreSize:    mech.PowerCoreSize,
 		Tier:             mech.Tier,
 		Collection:       mech.Collection,
 	}

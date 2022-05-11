@@ -25,7 +25,7 @@ DROP TYPE IF EXISTS COLLECTION;
 CREATE TYPE COLLECTION AS ENUM ('supremacy-genesis', 'supremacy-limited-release', 'supremacy-general', 'supremacy-consumables');
 
 DROP TYPE IF EXISTS ITEM_TYPE;
-CREATE TYPE ITEM_TYPE AS ENUM ('utility', 'weapon', 'mech', 'mech_skin', 'mech_animation', 'energy_core');
+CREATE TYPE ITEM_TYPE AS ENUM ('utility', 'weapon', 'mech', 'mech_skin', 'mech_animation', 'power_core');
 
 -- This table is for the look up token ids since the token ids go across tables
 CREATE TABLE collection_items
@@ -100,7 +100,7 @@ WHERE model = 'XFVS';
   ENERGY CORES
  */
 
-CREATE TABLE blueprint_energy_cores
+CREATE TABLE blueprint_power_cores
 (
     id            UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
     collection    COLLECTION  NOT NULL DEFAULT 'supremacy-general',
@@ -115,10 +115,11 @@ CREATE TABLE blueprint_energy_cores
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE energy_cores
+CREATE TABLE power_cores
 (
     id            UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
     owner_id      UUID        NOT NULL REFERENCES players (id),
+    blueprint_id  UUID REFERENCES blueprint_power_cores (id),
     label         TEXT        NOT NULL,
     size          TEXT        NOT NULL DEFAULT 'MEDIUM' CHECK ( size IN ('SMALL', 'MEDIUM', 'LARGE') ),
     capacity      NUMERIC     NOT NULL DEFAULT 0,
@@ -222,10 +223,10 @@ ALTER TABLE chassis
     ADD COLUMN genesis_token_id         NUMERIC,
     ADD COLUMN limited_release_token_id NUMERIC,
     ADD COLUMN owner_id                 UUID REFERENCES players (id),
-    ADD COLUMN energy_core_size         TEXT NOT NULL DEFAULT 'MEDIUM' CHECK ( energy_core_size IN ('SMALL', 'MEDIUM', 'LARGE') ),
+    ADD COLUMN power_core_size          TEXT NOT NULL DEFAULT 'MEDIUM' CHECK ( power_core_size IN ('SMALL', 'MEDIUM', 'LARGE') ),
     ADD COLUMN tier                     TEXT,
     ADD COLUMN chassis_skin_id          UUID REFERENCES chassis_skin (id), -- equipped skin
-    ADD COLUMN energy_core_id           UUID REFERENCES energy_cores (id),
+    ADD COLUMN power_core_id            UUID REFERENCES power_cores (id),
     ADD COLUMN intro_animation_id       UUID REFERENCES chassis_animation (id),
     ADD COLUMN outro_animation_id       UUID REFERENCES chassis_animation (id);
 
@@ -373,11 +374,11 @@ ALTER TABLE chassis
 ALTER TABLE blueprint_chassis
     DROP COLUMN IF EXISTS turret_hardpoints,
     DROP COLUMN IF EXISTS health_remaining,
-    ADD COLUMN model_id         UUID REFERENCES mech_model (id),
-    ADD COLUMN collection       COLLECTION NOT NULL DEFAULT 'supremacy-general',
-    ADD COLUMN energy_core_size TEXT       NOT NULL DEFAULT 'MEDIUM' CHECK ( energy_core_size IN ('SMALL', 'MEDIUM', 'LARGE') ),
-    ADD COLUMN tier             TEXT,
-    ADD COLUMN chassis_skin_id  UUID REFERENCES blueprint_chassis_skin (id); -- this column is used temp and gets removed.
+    ADD COLUMN model_id        UUID REFERENCES mech_model (id),
+    ADD COLUMN collection      COLLECTION NOT NULL DEFAULT 'supremacy-general',
+    ADD COLUMN power_core_size TEXT       NOT NULL DEFAULT 'MEDIUM' CHECK ( power_core_size IN ('SMALL', 'MEDIUM', 'LARGE') ),
+    ADD COLUMN tier            TEXT,
+    ADD COLUMN chassis_skin_id UUID REFERENCES blueprint_chassis_skin (id); -- this column is used temp and gets removed.
 
 UPDATE blueprint_chassis c
 SET model_id = (SELECT id
@@ -473,3 +474,54 @@ CREATE TABLE weapon_ammo
     created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (blueprint_ammo_id, weapon_id)
 );
+
+
+--  insert the energy cores lazily
+INSERT INTO blueprint_power_cores (id, label, "size", capacity, max_draw_rate, recharge_rate, armour,
+                                   max_hitpoints, tier)
+VALUES ('62e197a4-f45e-4034-ac0a-3e625a6770d7', 'Standard Energy Core', 'MEDIUM', 1000, 100, 100, 0, 1000, 'MEGA');
+
+WITH mechs AS (SELECT m.id, m.owner_id
+               FROM chassis m)
+INSERT
+INTO power_cores(owner_id,
+                 label,
+                 size,
+                 capacity,
+                 max_draw_rate,
+                 recharge_rate,
+                 armour,
+                 max_hitpoints,
+                 tier,
+                 equipped_on,
+                 blueprint_id)
+SELECT mechs.owner_id,
+       'Standard Energy Core',
+       'MEDIUM',
+       1000,
+       100,
+       100,
+       0,
+       1000,
+       'MEGA',
+       mechs.id,
+       '62e197a4-f45e-4034-ac0a-3e625a6770d7'
+FROM mechs;
+
+-- INSERT
+-- INTO collection_items (token_id, item_type, item_id)
+-- SELECT NEXTVAL('collection_general'), chass.item_type::ITEM_TYPE, chass.id
+-- FROM chass;
+
+--     id            UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
+--     owner_id      UUID        NOT NULL REFERENCES players (id),
+--     label         TEXT        NOT NULL,
+--     size          TEXT        NOT NULL DEFAULT 'MEDIUM' CHECK ( size IN ('SMALL', 'MEDIUM', 'LARGE') ),
+--     capacity      NUMERIC     NOT NULL DEFAULT 0,
+--     max_draw_rate NUMERIC     NOT NULL DEFAULT 0,
+--     recharge_rate NUMERIC     NOT NULL DEFAULT 0,
+--     armour        NUMERIC     NOT NULL DEFAULT 0,
+--     max_hitpoints NUMERIC     NOT NULL DEFAULT 0,
+--     tier          TEXT,
+--     equipped_on   UUID REFERENCES chassis (id),
+--     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
