@@ -370,14 +370,19 @@ func (btl *Battle) start() {
 
 }
 
+type CellLocation struct {
+	X int `json:"x"`
+	Y int `json:"y"`
+}
+
 // getGameWorldCoordinatesFromCellXY converts picked cell to the location in game
-func (btl *Battle) getGameWorldCoordinatesFromCellXY(cellX int, cellY int) *server.GameLocation {
+func (btl *Battle) getGameWorldCoordinatesFromCellXY(cell CellLocation) *server.GameLocation {
 	// To get the location in game its
 	//  ((cellX * GameClientTileSize) + GameClientTileSize / 2) + LeftPixels
 	//  ((cellY * GameClientTileSize) + GameClientTileSize / 2) + TopPixels
 	return &server.GameLocation{
-		X: ((cellX * server.GameClientTileSize) + (server.GameClientTileSize / 2)) + btl.gameMap.LeftPixels,
-		Y: ((cellY * server.GameClientTileSize) + (server.GameClientTileSize / 2)) + btl.gameMap.TopPixels,
+		X: ((cell.X * server.GameClientTileSize) + (server.GameClientTileSize / 2)) + btl.gameMap.LeftPixels,
+		Y: ((cell.Y * server.GameClientTileSize) + (server.GameClientTileSize / 2)) + btl.gameMap.TopPixels,
 	}
 }
 
