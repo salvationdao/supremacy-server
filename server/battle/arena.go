@@ -19,6 +19,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	"go.uber.org/atomic"
@@ -494,6 +495,8 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, wsc *hub.Client, paylo
 		return terror.Error(err, "Invalid request received")
 	}
 
+	spew.Dump(req.Payload)
+
 	userID, err := uuid.FromString(wsc.Identifier())
 	if err != nil || userID.IsNil() {
 		gamelog.L.Warn().Err(err).Str("func", "PlayerAbilityUse").Msgf("can't create uuid from wsc identifier %s", wsc.Identifier())
@@ -548,8 +551,8 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, wsc *hub.Client, paylo
 			TriggeredByUsername: &player.Username.String,
 			EventID:             uuid.FromStringOrNil(pa.ID), // todo: change this?
 			FactionID:           &player.FactionID.String,
-			GameLocation:        req.Payload.StartCoords,
-			GameLocationEnd:     req.Payload.EndCoords,
+			GameLocation:        currentBattle.getGameWorldCoordinatesFromCellXY(req.Payload.StartCoords.X, req.Payload.StartCoords.Y),
+			GameLocationEnd:     currentBattle.getGameWorldCoordinatesFromCellXY(req.Payload.EndCoords.X, req.Payload.EndCoords.Y),
 		}
 
 		break
@@ -585,7 +588,7 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, wsc *hub.Client, paylo
 			TriggeredByUsername: &player.Username.String,
 			EventID:             uuid.FromStringOrNil(pa.ID), // todo: change this?
 			FactionID:           &player.FactionID.String,
-			GameLocation:        req.Payload.StartCoords,
+			GameLocation:        currentBattle.getGameWorldCoordinatesFromCellXY(req.Payload.StartCoords.X, req.Payload.StartCoords.Y),
 		}
 		break
 	case db.Global:
@@ -599,7 +602,6 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, wsc *hub.Client, paylo
 		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Interface("request payload", req.Payload).Msg("game ability event is nil for some reason")
 		return terror.Error(terror.ErrInvalidInput, "Something went wrong while activating this ability. Please try again, or contact support if this issue persists.")
 	}
-	// currentBattle.calcTriggeredLocation(event)
 
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {

@@ -370,18 +370,14 @@ func (btl *Battle) start() {
 
 }
 
-// calcTriggeredLocation convert picked cell to the location in game
-func (btl *Battle) calcTriggeredLocation(abilityEvent *server.GameAbilityEvent) {
+// getGameWorldCoordinatesFromCellXY converts picked cell to the location in game
+func (btl *Battle) getGameWorldCoordinatesFromCellXY(cellX int, cellY int) *server.GameLocation {
 	// To get the location in game its
 	//  ((cellX * GameClientTileSize) + GameClientTileSize / 2) + LeftPixels
 	//  ((cellY * GameClientTileSize) + GameClientTileSize / 2) + TopPixels
-	if abilityEvent.TriggeredOnCellX == nil || abilityEvent.TriggeredOnCellY == nil {
-		return
-	}
-
-	abilityEvent.GameLocation = &server.GameLocation{
-		X: ((*abilityEvent.TriggeredOnCellX * server.GameClientTileSize) + (server.GameClientTileSize / 2)) + btl.gameMap.LeftPixels, 
-		Y: ((*abilityEvent.TriggeredOnCellY * server.GameClientTileSize) + (server.GameClientTileSize / 2)) + btl.gameMap.TopPixels,
+	return &server.GameLocation{
+		X: ((cellX * server.GameClientTileSize) + (server.GameClientTileSize / 2)) + btl.gameMap.LeftPixels,
+		Y: ((cellY * server.GameClientTileSize) + (server.GameClientTileSize / 2)) + btl.gameMap.TopPixels,
 	}
 }
 
