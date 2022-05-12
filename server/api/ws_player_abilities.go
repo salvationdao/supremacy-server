@@ -38,15 +38,17 @@ func NewPlayerAbilitiesController(api *API) *PlayerAbilitiesControllerWS {
 		API: api,
 	}
 
-	api.SecureUserCommand(server.HubKeySaleAbilityDetailed, pac.SaleAbilityDetailedHandler)
-	api.SecureUserCommand(server.HubKeyPlayerAbilitiesList, pac.PlayerAbilitiesListHandler)
-	api.SecureUserCommand(server.HubKeySaleAbilitiesList, pac.SaleAbilitiesListHandler)
-	api.SecureUserCommand(server.HubKeySaleAbilityPurchase, pac.SaleAbilityPurchaseHandler)
+	if api.Config.Environment == "development" {
+		api.SecureUserCommand(server.HubKeySaleAbilityDetailed, pac.SaleAbilityDetailedHandler)
+		api.SecureUserCommand(server.HubKeyPlayerAbilitiesList, pac.PlayerAbilitiesListHandler)
+		api.SecureUserCommand(server.HubKeySaleAbilitiesList, pac.SaleAbilitiesListHandler)
+		api.SecureUserCommand(server.HubKeySaleAbilityPurchase, pac.SaleAbilityPurchaseHandler)
 
-	api.SecureUserSubscribeCommand(server.HubKeyPlayerAbilitySubscribe, pac.PlayerAbilitySubscribeHandler)
-	api.SecureUserSubscribeCommand(server.HubKeySaleAbilityPriceSubscribe, pac.SaleAbilitySubscribePriceHandler)
-	api.SecureUserSubscribeCommand(server.HubKeyPlayerAbilitiesListUpdated, pac.PlayerAbilitiesListUpdatedHandler)
-	api.SecureUserSubscribeCommand(server.HubKeySaleAbilitiesListUpdated, pac.SaleAbilitiesListUpdatedHandler)
+		api.SecureUserSubscribeCommand(server.HubKeyPlayerAbilitySubscribe, pac.PlayerAbilitySubscribeHandler)
+		api.SecureUserSubscribeCommand(server.HubKeySaleAbilityPriceSubscribe, pac.SaleAbilitySubscribePriceHandler)
+		api.SecureUserSubscribeCommand(server.HubKeyPlayerAbilitiesListUpdated, pac.PlayerAbilitiesListUpdatedHandler)
+		api.SecureUserSubscribeCommand(server.HubKeySaleAbilitiesListUpdated, pac.SaleAbilitiesListUpdatedHandler)
+	}
 
 	return pac
 }
