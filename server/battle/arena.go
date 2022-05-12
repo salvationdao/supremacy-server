@@ -19,7 +19,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	"go.uber.org/atomic"
@@ -608,7 +607,6 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, wsc *hub.Client, paylo
 	}
 	defer tx.Rollback()
 
-	spew.Dump(event)
 	// Create consumed_abilities entry
 	ca := boiler.ConsumedAbility{
 		BattleID:            currentBattle.BattleID,
