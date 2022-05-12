@@ -474,7 +474,7 @@ type PlayerAbilityUseRequest struct {
 		LocationSelectType db.LocationSelectType `json:"location_select_type"`
 		StartCoords        *server.CellLocation  `json:"start_coords"` // used for LINE_SELECT and LOCATION_SELECT abilities
 		EndCoords          *server.CellLocation  `json:"end_coords"`   // used only for LINE_SELECT abilities
-		MechHash           *string               `json:"mech_hash"`    // used only for MECH_SELECT abilities
+		MechHash           string                `json:"mech_hash"`    // used only for MECH_SELECT abilities
 	} `json:"payload"`
 }
 
@@ -506,14 +506,17 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, wsc *hub.Client, paylo
 		return terror.Error(err, "Something went wrong while activating this ability. Please try again or contact support if this issue persists.")
 	}
 
-	pa, err := boiler.PlayerAbilities(boiler.PlayerAbilityWhere.BlueprintID.EQ(req.Payload.BlueprintAbilityID), boiler.PlayerAbilityWhere.OwnerID.EQ(player.ID), qm.OrderBy(fmt.Sprintf("%s asc", boiler.PlayerAbilityColumns.PurchasedAt))).One(gamedb.StdConn)
+	pa, err := boiler.PlayerAbilities(
+		boiler.PlayerAbilityWhere.BlueprintID.EQ(req.Payload.BlueprintAbilityID),
+		boiler.PlayerAbilityWhere.OwnerID.EQ(player.ID),
+		qm.OrderBy(fmt.Sprintf("%s asc", boiler.PlayerAbilityColumns.PurchasedAt))).One(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Warn().Err(err).Str("func", "PlayerAbilityUse").Str("abilityID", req.Payload.BlueprintAbilityID).Msg("failed to get player ability")
+		gamelog.L.Warn().Err(err).Str("func", "PlayerAbilityUse").Str("blueprintAbilityID", req.Payload.BlueprintAbilityID).Msg("failed to get player ability")
 		return terror.Error(err, "Something went wrong while activating this ability. Please try again or contact support if this issue persists.")
 	}
 
 	if pa.OwnerID != player.ID {
-		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Str("ability ownerID", pa.OwnerID).Str("abilityID", req.Payload.BlueprintAbilityID).Msgf("player %s tried to execute an ability that wasn't theirs", player.ID)
+		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Str("ability ownerID", pa.OwnerID).Str("blueprintAbilityID", req.Payload.BlueprintAbilityID).Msgf("player %s tried to execute an ability that wasn't theirs", player.ID)
 		return terror.Error(terror.ErrForbidden, "You do not have permission to activate this ability.")
 	}
 
@@ -535,7 +538,7 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, wsc *hub.Client, paylo
 	case db.LineSelect:
 		if req.Payload.StartCoords == nil || req.Payload.EndCoords == nil {
 			gamelog.L.Error().Interface("request payload", req.Payload).Msgf("no start/end coords was provided for executing ability of type %s", db.LineSelect)
-			return terror.Error(terror.ErrInvalidInput, "Coordinates must be provided when execting this ability.")
+			return terror.Error(terror.ErrInvalidInput, "Coordinates must be provided when executing this ability.")
 		}
 		if req.Payload.StartCoords.X < 0 || req.Payload.StartCoords.Y < 0 || req.Payload.EndCoords.X < 0 || req.Payload.EndCoords.Y < 0 {
 			gamelog.L.Error().Interface("request payload", req.Payload).Msgf("invalid start/end coords were provided for executing %s ability", db.LineSelect)
@@ -554,7 +557,7 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, wsc *hub.Client, paylo
 
 		break
 	case db.MechSelect:
-		if req.Payload.MechHash == nil || *req.Payload.MechHash == "" {
+		if req.Payload.MechHash == "" {
 			gamelog.L.Error().Interface("request payload", req.Payload).Err(err).Msgf("no mech hash was provided for executing ability of type %s", db.MechSelect)
 			return terror.Error(terror.ErrInvalidInput, "Mech hash must be provided to execute this ability.")
 		}
@@ -565,14 +568,14 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, wsc *hub.Client, paylo
 			TriggeredByUsername: &player.Username.String,
 			EventID:             uuid.FromStringOrNil(pa.ID), // todo: change this?
 			FactionID:           &player.FactionID.String,
-			WarMachineHash:      req.Payload.MechHash,
+			WarMachineHash:      &req.Payload.MechHash,
 		}
 
 		break
 	case db.LocationSelect:
 		if req.Payload.StartCoords == nil {
 			gamelog.L.Error().Interface("request payload", req.Payload).Msgf("no start coords was provided for executing ability of type %s", db.LocationSelect)
-			return terror.Error(terror.ErrInvalidInput, "Coordinates must be provided when execting this ability.")
+			return terror.Error(terror.ErrInvalidInput, "Coordinates must be provided when executing this ability.")
 		}
 		if req.Payload.StartCoords.X < 0 || req.Payload.StartCoords.Y < 0 {
 			gamelog.L.Error().Interface("request payload", req.Payload).Msgf("invalid start coords were provided for executing %s ability", db.LocationSelect)
