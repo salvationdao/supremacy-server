@@ -470,11 +470,11 @@ func (arena *Arena) AbilityLocationSelect(ctx context.Context, wsc *hub.Client, 
 type PlayerAbilityUseRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		BlueprintAbilityID string                `json:"blueprint_ability_id"`
-		LocationSelectType db.LocationSelectType `json:"location_select_type"`
-		StartCoords        *server.CellLocation  `json:"start_coords"` // used for LINE_SELECT and LOCATION_SELECT abilities
-		EndCoords          *server.CellLocation  `json:"end_coords"`   // used only for LINE_SELECT abilities
-		MechHash           string                `json:"mech_hash"`    // used only for MECH_SELECT abilities
+		BlueprintAbilityID string               `json:"blueprint_ability_id"`
+		LocationSelectType string               `json:"location_select_type"`
+		StartCoords        *server.CellLocation `json:"start_coords"` // used for LINE_SELECT and LOCATION_SELECT abilities
+		EndCoords          *server.CellLocation `json:"end_coords"`   // used only for LINE_SELECT abilities
+		MechHash           string               `json:"mech_hash"`    // used only for MECH_SELECT abilities
 	} `json:"payload"`
 }
 
@@ -535,13 +535,13 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, wsc *hub.Client, paylo
 
 	var event *server.GameAbilityEvent
 	switch req.Payload.LocationSelectType {
-	case db.LineSelect:
+	case boiler.LocationSelectTypeEnumLINE_SELECT:
 		if req.Payload.StartCoords == nil || req.Payload.EndCoords == nil {
-			gamelog.L.Error().Interface("request payload", req.Payload).Msgf("no start/end coords was provided for executing ability of type %s", db.LineSelect)
+			gamelog.L.Error().Interface("request payload", req.Payload).Msgf("no start/end coords was provided for executing ability of type %s", boiler.LocationSelectTypeEnumLINE_SELECT)
 			return terror.Error(terror.ErrInvalidInput, "Coordinates must be provided when executing this ability.")
 		}
 		if req.Payload.StartCoords.X < 0 || req.Payload.StartCoords.Y < 0 || req.Payload.EndCoords.X < 0 || req.Payload.EndCoords.Y < 0 {
-			gamelog.L.Error().Interface("request payload", req.Payload).Msgf("invalid start/end coords were provided for executing %s ability", db.LineSelect)
+			gamelog.L.Error().Interface("request payload", req.Payload).Msgf("invalid start/end coords were provided for executing %s ability", boiler.LocationSelectTypeEnumLINE_SELECT)
 			return terror.Error(terror.ErrInvalidInput, "Invalid coordinates provided when executing this ability.")
 		}
 		event = &server.GameAbilityEvent{
@@ -556,9 +556,9 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, wsc *hub.Client, paylo
 		}
 
 		break
-	case db.MechSelect:
+	case boiler.LocationSelectTypeEnumMECH_SELECT:
 		if req.Payload.MechHash == "" {
-			gamelog.L.Error().Interface("request payload", req.Payload).Err(err).Msgf("no mech hash was provided for executing ability of type %s", db.MechSelect)
+			gamelog.L.Error().Interface("request payload", req.Payload).Err(err).Msgf("no mech hash was provided for executing ability of type %s", boiler.LocationSelectTypeEnumMECH_SELECT)
 			return terror.Error(terror.ErrInvalidInput, "Mech hash must be provided to execute this ability.")
 		}
 		event = &server.GameAbilityEvent{
@@ -572,13 +572,13 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, wsc *hub.Client, paylo
 		}
 
 		break
-	case db.LocationSelect:
+	case boiler.LocationSelectTypeEnumLOCATION_SELECT:
 		if req.Payload.StartCoords == nil {
-			gamelog.L.Error().Interface("request payload", req.Payload).Msgf("no start coords was provided for executing ability of type %s", db.LocationSelect)
+			gamelog.L.Error().Interface("request payload", req.Payload).Msgf("no start coords was provided for executing ability of type %s", boiler.LocationSelectTypeEnumLOCATION_SELECT)
 			return terror.Error(terror.ErrInvalidInput, "Coordinates must be provided when executing this ability.")
 		}
 		if req.Payload.StartCoords.X < 0 || req.Payload.StartCoords.Y < 0 {
-			gamelog.L.Error().Interface("request payload", req.Payload).Msgf("invalid start coords were provided for executing %s ability", db.LocationSelect)
+			gamelog.L.Error().Interface("request payload", req.Payload).Msgf("invalid start coords were provided for executing %s ability", boiler.LocationSelectTypeEnumLOCATION_SELECT)
 			return terror.Error(terror.ErrInvalidInput, "Invalid coordinates provided when executing this ability.")
 		}
 		event = &server.GameAbilityEvent{
@@ -591,7 +591,7 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, wsc *hub.Client, paylo
 			GameLocation:        getGameWorldCoordinatesFromCellXY(currentBattle.gameMap, req.Payload.StartCoords),
 		}
 		break
-	case db.Global:
+	case boiler.LocationSelectTypeEnumGLOBAL:
 		break
 	default:
 		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Interface("request payload", req.Payload).Msg("no location select type was provided when activating a player ability")

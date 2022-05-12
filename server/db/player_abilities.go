@@ -63,15 +63,6 @@ func (p BlueprintPlayerAbilityColumn) IsValid() error {
 	return terror.Error(fmt.Errorf("invalid blueprint player ability column"))
 }
 
-type LocationSelectType string
-
-const (
-	LineSelect     LocationSelectType = "LINE_SELECT"
-	MechSelect     LocationSelectType = "MECH_SELECT"
-	LocationSelect LocationSelectType = "LOCATION_SELECT"
-	Global         LocationSelectType = "GLOBAL"
-)
-
 type SaleAbilityDetailed struct {
 	*boiler.SalePlayerAbility
 	Ability *boiler.BlueprintPlayerAbility `json:"ability,omitempty"`

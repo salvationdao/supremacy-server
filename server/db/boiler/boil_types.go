@@ -72,6 +72,14 @@ const (
 	BattleEventPickup           = "pickup"
 )
 
+// Enum values for LocationSelectTypeEnum
+const (
+	LocationSelectTypeEnumLINE_SELECT     = "LINE_SELECT"
+	LocationSelectTypeEnumMECH_SELECT     = "MECH_SELECT"
+	LocationSelectTypeEnumLOCATION_SELECT = "LOCATION_SELECT"
+	LocationSelectTypeEnumGLOBAL          = "GLOBAL"
+)
+
 // Enum values for ChatMSGTypeEnum
 const (
 	ChatMSGTypeEnumTEXT        = "TEXT"
