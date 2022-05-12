@@ -150,7 +150,7 @@ func (pac *PlayerAbilitiesControllerWS) PlayerAbilitySubscribeHandler(ctx contex
 		qm.OrderBy(fmt.Sprintf("%s asc", boiler.PlayerAbilityColumns.PurchasedAt))).One(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().
-			Str("db func", "boiler.FindBlueprintPlayerAbility").Str("req.Payload.BlueprintAbilityID", req.Payload.BlueprintAbilityID).Err(err).Msg("unable to get blueprint ability details")
+			Str("db func", "boiler.PlayerAbilities").Str("req.Payload.BlueprintAbilityID", req.Payload.BlueprintAbilityID).Str("userID", userID.String()).Err(err).Msg("unable to get blueprint ability details")
 		return "", "", terror.Error(err, "Unable to retrieve player ability, please try again or contact support.")
 	}
 
