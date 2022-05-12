@@ -471,7 +471,7 @@ func (arena *Arena) AbilityLocationSelect(ctx context.Context, wsc *hub.Client, 
 type PlayerAbilityUseRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		AbilityID          string                `json:"ability_id"` // player ability id
+		BlueprintAbilityID string                `json:"blueprint_ability_id"`
 		LocationSelectType db.LocationSelectType `json:"location_select_type"`
 		StartCoords        *CellLocation         `json:"start_coords"` // used for LINE_SELECT and LOCATION_SELECT abilities
 		EndCoords          *CellLocation         `json:"end_coords"`   // used only for LINE_SELECT abilities
@@ -495,8 +495,6 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, wsc *hub.Client, paylo
 		return terror.Error(err, "Invalid request received")
 	}
 
-	spew.Dump(req.Payload)
-
 	userID, err := uuid.FromString(wsc.Identifier())
 	if err != nil || userID.IsNil() {
 		gamelog.L.Warn().Err(err).Str("func", "PlayerAbilityUse").Msgf("can't create uuid from wsc identifier %s", wsc.Identifier())
@@ -509,14 +507,14 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, wsc *hub.Client, paylo
 		return terror.Error(err, "Something went wrong while activating this ability. Please try again or contact support if this issue persists.")
 	}
 
-	pa, err := boiler.FindPlayerAbility(gamedb.StdConn, req.Payload.AbilityID)
+	pa, err := boiler.PlayerAbilities(boiler.PlayerAbilityWhere.BlueprintID.EQ(req.Payload.BlueprintAbilityID), boiler.PlayerAbilityWhere.OwnerID.EQ(player.ID), qm.OrderBy(fmt.Sprintf("%s asc", boiler.PlayerAbilityColumns.PurchasedAt))).One(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Warn().Err(err).Str("func", "PlayerAbilityUse").Str("abilityID", req.Payload.AbilityID).Msg("failed to get player ability")
+		gamelog.L.Warn().Err(err).Str("func", "PlayerAbilityUse").Str("abilityID", req.Payload.BlueprintAbilityID).Msg("failed to get player ability")
 		return terror.Error(err, "Something went wrong while activating this ability. Please try again or contact support if this issue persists.")
 	}
 
 	if pa.OwnerID != player.ID {
-		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Str("ability ownerID", pa.OwnerID).Str("abilityID", req.Payload.AbilityID).Msgf("player %s tried to execute an ability that wasn't theirs", player.ID)
+		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Str("ability ownerID", pa.OwnerID).Str("abilityID", req.Payload.BlueprintAbilityID).Msgf("player %s tried to execute an ability that wasn't theirs", player.ID)
 		return terror.Error(terror.ErrForbidden, "You do not have permission to activate this ability.")
 	}
 
@@ -610,6 +608,7 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, wsc *hub.Client, paylo
 	}
 	defer tx.Rollback()
 
+	spew.Dump(event)
 	// Create consumed_abilities entry
 	ca := boiler.ConsumedAbility{
 		BattleID:            currentBattle.BattleID,
