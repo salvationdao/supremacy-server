@@ -484,7 +484,7 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, wsc *hub.Client, paylo
 	// skip, if current not battle
 	if arena.currentBattle() == nil {
 		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Msg("no current battle")
-		return nil
+		return terror.Error(terror.ErrForbidden, "There is no battle currently to use this ability on.")
 	}
 
 	req := &PlayerAbilityUseRequest{}
