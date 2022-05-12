@@ -1980,7 +1980,7 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 		FactionID:           &faction.ID,
 	}
 
-	event.GameLocation = as.battle().getGameWorldCoordinatesFromCellXY(CellLocation{
+	event.GameLocation = getGameWorldCoordinatesFromCellXY(as.battle().gameMap, &server.CellLocation{
 		X: *event.TriggeredOnCellX,
 		Y: *event.TriggeredOnCellY,
 	})

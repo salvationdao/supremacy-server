@@ -643,6 +643,10 @@ func (b *TAtomBool) Get() bool {
 	return atomic.LoadInt32(&(b.flag)) != 0
 }
 
+type CellLocation struct {
+	X int `json:"x"`
+	Y int `json:"y"`
+}
 type GameLocation struct {
 	X int `json:"x"`
 	Y int `json:"y"`

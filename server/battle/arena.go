@@ -472,8 +472,8 @@ type PlayerAbilityUseRequest struct {
 	Payload struct {
 		BlueprintAbilityID string                `json:"blueprint_ability_id"`
 		LocationSelectType db.LocationSelectType `json:"location_select_type"`
-		StartCoords        *CellLocation         `json:"start_coords"` // used for LINE_SELECT and LOCATION_SELECT abilities
-		EndCoords          *CellLocation         `json:"end_coords"`   // used only for LINE_SELECT abilities
+		StartCoords        *server.CellLocation  `json:"start_coords"` // used for LINE_SELECT and LOCATION_SELECT abilities
+		EndCoords          *server.CellLocation  `json:"end_coords"`   // used only for LINE_SELECT abilities
 		MechHash           *string               `json:"mech_hash"`    // used only for MECH_SELECT abilities
 	} `json:"payload"`
 }
@@ -548,8 +548,8 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, wsc *hub.Client, paylo
 			TriggeredByUsername: &player.Username.String,
 			EventID:             uuid.FromStringOrNil(pa.ID), // todo: change this?
 			FactionID:           &player.FactionID.String,
-			GameLocation:        currentBattle.getGameWorldCoordinatesFromCellXY(*req.Payload.StartCoords),
-			GameLocationEnd:     currentBattle.getGameWorldCoordinatesFromCellXY(*req.Payload.EndCoords),
+			GameLocation:        getGameWorldCoordinatesFromCellXY(currentBattle.gameMap, req.Payload.StartCoords),
+			GameLocationEnd:     getGameWorldCoordinatesFromCellXY(currentBattle.gameMap, req.Payload.EndCoords),
 		}
 
 		break
@@ -585,7 +585,7 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, wsc *hub.Client, paylo
 			TriggeredByUsername: &player.Username.String,
 			EventID:             uuid.FromStringOrNil(pa.ID), // todo: change this?
 			FactionID:           &player.FactionID.String,
-			GameLocation:        currentBattle.getGameWorldCoordinatesFromCellXY(*req.Payload.StartCoords),
+			GameLocation:        getGameWorldCoordinatesFromCellXY(currentBattle.gameMap, req.Payload.StartCoords),
 		}
 		break
 	case db.Global:
