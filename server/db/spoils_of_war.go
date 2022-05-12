@@ -207,9 +207,11 @@ func LastTwoSpoilOfWarAmount() ([]decimal.Decimal, error) {
 			boiler.SpoilsOfWarColumns.ID,
 			boiler.SpoilsOfWarColumns.Amount,
 			boiler.SpoilsOfWarColumns.AmountSent,
+			boiler.SpoilsOfWarColumns.LeftoverAmount,
 		),
 		boiler.SpoilsOfWarWhere.CreatedAt.GT(time.Now().AddDate(0, 0, -1)),
 		boiler.SpoilsOfWarWhere.ID.NEQ(latestSOW.ID),
+		boiler.SpoilsOfWarWhere.LeftoversTransactionID.IsNull(),
 		qm.And("amount > amount_sent"),
 	).All(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -218,7 +220,7 @@ func LastTwoSpoilOfWarAmount() ([]decimal.Decimal, error) {
 
 	totalRemain := decimal.Zero
 	for _, unfinishedSOW := range unfinishedSOWs {
-		totalRemain = totalRemain.Add(unfinishedSOW.Amount.Sub(unfinishedSOW.AmountSent))
+		totalRemain = totalRemain.Add(unfinishedSOW.Amount.Sub(unfinishedSOW.AmountSent).Sub(unfinishedSOW.LeftoverAmount))
 	}
 
 	// append total remain spoil of war amount

@@ -44,7 +44,10 @@ func New(environment, level string) {
 //      // other recovery code
 //   }
 func LogPanicRecovery(msg string, r interface{}) {
-	event := L.WithLevel(zerolog.PanicLevel).Interface("panic", r)
+	// Create log event to attach details to
+	event := L.WithLevel(zerolog.FatalLevel).CallerSkipFrame(1).Interface("panic", r)
+
+	// Get stack details
 	s := debug.Stack()
 	stack, errs := gostackparse.Parse(bytes.NewReader(s))
 	if len(errs) != 0 {
@@ -55,7 +58,9 @@ func LogPanicRecovery(msg string, r interface{}) {
 		event.AnErr("stack_marshal_error", err).Msg(msg)
 		return
 	}
-	event.RawJSON("stack", jStack).Msg(msg)
+
+	// Execute log
+	event.RawJSON("stack_trace", jStack).Msg(msg)
 }
 
 // DatadogLog implements the datadog logger interface
@@ -120,7 +125,7 @@ func (l logEntry) Write(status int, bytes int, header http.Header, elapsed time.
 		Int("status", status).
 		Int("bytes", bytes).
 		Dur("duration", elapsed).
-		Send()
+		Msg(l.request_path)
 }
 
 func (l logEntry) Panic(v interface{}, stack []byte) {

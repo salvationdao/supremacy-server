@@ -280,8 +280,8 @@ func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 	}
 
 	// broadcast battle settings
-	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Broadcasting battle start to players")
-	btl.BroadcastUpdate()
+	//gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Broadcasting battle start to players")
+	//btl.BroadcastUpdate()
 
 	return nil
 }
@@ -316,7 +316,8 @@ func (btl *Battle) start() {
 	btl.storeAbilities(NewAbilitiesSystem(btl))
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle multipliers")
 	btl.multipliers = NewMultiplierSystem(btl)
-
+	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Broadcasting battle start to players")
+	btl.BroadcastUpdate()
 	// broadcast spoil of war on the start of the battle
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Broadcasting spoils of war updates")
 
@@ -335,7 +336,7 @@ func (btl *Battle) start() {
 	spoilOfWarPayload := []byte{byte(SpoilOfWarTick)}
 	amnt := decimal.NewFromInt(0)
 	for _, sow := range warchests {
-		amnt = amnt.Add(sow.Amount.Sub(sow.AmountSent))
+		amnt = amnt.Add(sow.Amount.Sub(sow.AmountSent).Sub(sow.LeftoverAmount))
 	}
 	spoilOfWarPayload = append(spoilOfWarPayload, []byte(strings.Join([]string{warchest.Amount.String(), amnt.String()}, "|"))...)
 	go btl.arena.messageBus.SendBinary(messagebus.BusKey(HubKeySpoilOfWarUpdated), spoilOfWarPayload)
@@ -1289,6 +1290,10 @@ func (btl *Battle) BroadcastUpdate() {
 }
 
 func (btl *Battle) Tick(payload []byte) {
+	if len(payload) < 1 {
+		gamelog.L.Error().Err(fmt.Errorf("len(payload) < 1")).Interface("payload", payload).Msg("len(payload) < 1")
+		return
+	}
 	// Save to history
 	// btl.BattleHistory = append(btl.BattleHistory, payload)
 
@@ -1301,6 +1306,10 @@ func (btl *Battle) Tick(payload []byte) {
 	var c byte
 	offset := 2
 	for c = 0; c < count; c++ {
+		if offset > len(payload) {
+			gamelog.L.Error().Err(fmt.Errorf("offset > len(payload)")).Int("offset", offset).Int("len(payload)", len(payload)).Msg("offset > len(payload)")
+			return
+		}
 		participantID := payload[offset]
 		offset++
 
