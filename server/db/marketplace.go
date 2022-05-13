@@ -31,14 +31,14 @@ var itemSaleQueryMods = []qm.QueryMod{
 			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.ItemID),
 			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.ItemType),
 		),
-		server.MarketplaceItemTypeMech,
+		server.MarketplaceItemTypeWarMachine,
 	),
 	qm.Load(boiler.ItemSaleRels.Owner),
 }
 
 // MarketplaceLoadItemSaleObject loads the specific item type's object.
 func MarketplaceLoadItemSaleObject(obj *MarketplaceSaleItem) (*MarketplaceSaleItem, error) {
-	if obj.ItemType == string(server.MarketplaceItemTypeMech) {
+	if obj.ItemType == string(server.MarketplaceItemTypeWarMachine) {
 		mech, err := boiler.Mechs(
 			boiler.MechWhere.ID.EQ(obj.ItemID),
 		).One(gamedb.StdConn)
@@ -136,7 +136,7 @@ func MarketplaceItemSaleList(search string, archived bool, filter *ListFilterReq
 	records := []*MarketplaceSaleItem{}
 	mechIDs := []string{}
 	for _, row := range itemSales {
-		if row.ItemType == string(server.MarketplaceItemTypeMech) {
+		if row.ItemType == string(server.MarketplaceItemTypeWarMachine) {
 			mechIDs = append(mechIDs, row.ItemID)
 		}
 		records = append(records, &MarketplaceSaleItem{
@@ -153,7 +153,7 @@ func MarketplaceItemSaleList(search string, archived bool, filter *ListFilterReq
 		}
 		for i, row := range records {
 			for _, mech := range mechs {
-				if row.ItemType == string(server.MarketplaceItemTypeMech) && row.ItemID == mech.ID {
+				if row.ItemType == string(server.MarketplaceItemTypeWarMachine) && row.ItemID == mech.ID {
 					records[i].Mech = mech
 				}
 			}

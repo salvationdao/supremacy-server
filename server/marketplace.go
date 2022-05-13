@@ -11,5 +11,5 @@ const (
 type MarketplaceItemType string
 
 const (
-	MarketplaceItemTypeMech MarketplaceItemType = "MECH"
+	MarketplaceItemTypeWarMachine MarketplaceItemType = "WAR_MACHINE"
 )
