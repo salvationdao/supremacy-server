@@ -176,6 +176,13 @@ func NewArena(opts *Opts) *Arena {
 		telegram:                 opts.Telegram,
 	}
 
+	arena.timeout = opts.Timeout
+	arena.messageBus = opts.MessageBus
+	arena.RPCClient = opts.RPCClient
+	arena.sms = opts.SMS
+	arena.gameClientMinimumBuildNo = opts.GameClientMinimumBuildNo
+	arena.telegram = opts.Telegram
+
 	arena.AIPlayers, err = db.DefaultFactionPlayers()
 	if err != nil {
 		gamelog.L.Fatal().Err(err).Msg("no faction users found")
@@ -340,7 +347,13 @@ func (arena *Arena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if c != nil {
 			arena.connected.Store(false)
+			gamelog.L.Error().Err(fmt.Errorf("game client has disconnected")).Msg("lost connection to game client")
 			c.Close(websocket.StatusInternalError, "game client has disconnected")
+
+			btl := arena.currentBattle()
+			if btl != nil && btl.spoils != nil {
+				btl.spoils.End()
+			}
 		}
 	}()
 

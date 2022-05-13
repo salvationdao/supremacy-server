@@ -107,6 +107,7 @@ func (sow *SpoilsOfWar) Run() {
 	for {
 		select {
 		case <-sow.cleanUp:
+			gamelog.L.Debug().Msg("cleaning up spoils of war service")
 			return
 		case <-t.C:
 			err := sow.Drip()
