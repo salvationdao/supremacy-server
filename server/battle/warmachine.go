@@ -94,7 +94,7 @@ type Weapon struct {
 	DamageFalloff       int        `json:"damageFalloff"`       // Distance at which damage starts decreasing
 	DamageFalloffRate   int        `json:"damageFalloffRate"`   // How much the damage decreases by per km
 	DamageRadius        int        `json:"damageRadius"`        // Enemies within this radius when the projectile hits something is damaged
-	DamageRadiusFalloff int        `json:"damageRadiusFalloff"` // Distance at which damage starts decreasing (must be greater than 0 and less than damageRadius to have any affect)
+	RadiusDamageFalloff int        `json:"damageRadiusFalloff"` // Distance at which damage starts decreasing (must be greater than 0 and less than damageRadius to have any affect)
 	DamageType          DamageType `json:"damageType"`          // For calculating damage weakness/resistance (eg: shields take 25% extra damage from energy weapons)
 	Spread              float64    `json:"spread"`              // Projectiles are randomly offset inside a cone. Spread is the half-angle of the cone, in degrees.
 	RateOfFire          float64    `json:"rateOfFire"`          // Rounds per minute
@@ -160,19 +160,19 @@ func WeaponsFromServer(wpns []*server.Weapon) []*Weapon {
 
 func WeaponFromServer(weapon *server.Weapon) *Weapon {
 	return &Weapon{
-		ID:                weapon.ID,
-		Hash:              weapon.Hash,
-		Name:              weapon.Label,
-		Damage:            weapon.Damage,
-		DamageFalloff:     weapon.DamageFalloff.Int,
-		DamageFalloffRate: weapon.DamageFalloffRate.Int,
-		DamageRadius:      weapon.Radius.Int,
-		Spread:            weapon.Spread.Decimal.InexactFloat64(),
-		RateOfFire:        weapon.RateOfFire.Decimal.InexactFloat64(),
-		ProjectileSpeed:   int(weapon.ProjectileSpeed.Decimal.IntPart()),
-		MaxAmmo:           weapon.MaxAmmo.Int,
-		//DamageRadiusFalloff: weapon.fal, // TODO: weapon radius falloff
-		DamageType: DamageTypeFromString(weapon.DefaultDamageType),
+		ID:                  weapon.ID,
+		Hash:                weapon.Hash,
+		Name:                weapon.Label,
+		Damage:              weapon.Damage,
+		DamageFalloff:       weapon.DamageFalloff.Int,
+		DamageFalloffRate:   weapon.DamageFalloffRate.Int,
+		DamageRadius:        weapon.Radius.Int,
+		Spread:              weapon.Spread.Decimal.InexactFloat64(),
+		RateOfFire:          weapon.RateOfFire.Decimal.InexactFloat64(),
+		ProjectileSpeed:     int(weapon.ProjectileSpeed.Decimal.IntPart()),
+		MaxAmmo:             weapon.MaxAmmo.Int,
+		RadiusDamageFalloff: weapon.RadiusDamageFalloff.Int,
+		DamageType:          DamageTypeFromString(weapon.DefaultDamageType),
 		//Model:               	weapon.Model, // TODO: weapon models
 		//Skin:              	weapon.Skin, // TODO: weapon skins
 	}

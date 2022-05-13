@@ -40,10 +40,10 @@ type Weapon struct {
 	OwnerID               string              `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
 	DamageFalloff         null.Int            `boiler:"damage_falloff" boil:"damage_falloff" json:"damage_falloff,omitempty" toml:"damage_falloff" yaml:"damage_falloff,omitempty"`
 	DamageFalloffRate     null.Int            `boiler:"damage_falloff_rate" boil:"damage_falloff_rate" json:"damage_falloff_rate,omitempty" toml:"damage_falloff_rate" yaml:"damage_falloff_rate,omitempty"`
+	Radius                null.Int            `boiler:"radius" boil:"radius" json:"radius,omitempty" toml:"radius" yaml:"radius,omitempty"`
+	RadiusDamageFalloff   null.Int            `boiler:"radius_damage_falloff" boil:"radius_damage_falloff" json:"radius_damage_falloff,omitempty" toml:"radius_damage_falloff" yaml:"radius_damage_falloff,omitempty"`
 	Spread                decimal.NullDecimal `boiler:"spread" boil:"spread" json:"spread,omitempty" toml:"spread" yaml:"spread,omitempty"`
 	RateOfFire            decimal.NullDecimal `boiler:"rate_of_fire" boil:"rate_of_fire" json:"rate_of_fire,omitempty" toml:"rate_of_fire" yaml:"rate_of_fire,omitempty"`
-	Radius                null.Int            `boiler:"radius" boil:"radius" json:"radius,omitempty" toml:"radius" yaml:"radius,omitempty"`
-	RadialDoesFullDamage  null.Bool           `boiler:"radial_does_full_damage" boil:"radial_does_full_damage" json:"radial_does_full_damage,omitempty" toml:"radial_does_full_damage" yaml:"radial_does_full_damage,omitempty"`
 	ProjectileSpeed       decimal.NullDecimal `boiler:"projectile_speed" boil:"projectile_speed" json:"projectile_speed,omitempty" toml:"projectile_speed" yaml:"projectile_speed,omitempty"`
 	EnergyCost            decimal.NullDecimal `boiler:"energy_cost" boil:"energy_cost" json:"energy_cost,omitempty" toml:"energy_cost" yaml:"energy_cost,omitempty"`
 	MaxAmmo               null.Int            `boiler:"max_ammo" boil:"max_ammo" json:"max_ammo,omitempty" toml:"max_ammo" yaml:"max_ammo,omitempty"`
@@ -69,10 +69,10 @@ var WeaponColumns = struct {
 	OwnerID               string
 	DamageFalloff         string
 	DamageFalloffRate     string
+	Radius                string
+	RadiusDamageFalloff   string
 	Spread                string
 	RateOfFire            string
-	Radius                string
-	RadialDoesFullDamage  string
 	ProjectileSpeed       string
 	EnergyCost            string
 	MaxAmmo               string
@@ -93,10 +93,10 @@ var WeaponColumns = struct {
 	OwnerID:               "owner_id",
 	DamageFalloff:         "damage_falloff",
 	DamageFalloffRate:     "damage_falloff_rate",
+	Radius:                "radius",
+	RadiusDamageFalloff:   "radius_damage_falloff",
 	Spread:                "spread",
 	RateOfFire:            "rate_of_fire",
-	Radius:                "radius",
-	RadialDoesFullDamage:  "radial_does_full_damage",
 	ProjectileSpeed:       "projectile_speed",
 	EnergyCost:            "energy_cost",
 	MaxAmmo:               "max_ammo",
@@ -119,10 +119,10 @@ var WeaponTableColumns = struct {
 	OwnerID               string
 	DamageFalloff         string
 	DamageFalloffRate     string
+	Radius                string
+	RadiusDamageFalloff   string
 	Spread                string
 	RateOfFire            string
-	Radius                string
-	RadialDoesFullDamage  string
 	ProjectileSpeed       string
 	EnergyCost            string
 	MaxAmmo               string
@@ -143,10 +143,10 @@ var WeaponTableColumns = struct {
 	OwnerID:               "weapons.owner_id",
 	DamageFalloff:         "weapons.damage_falloff",
 	DamageFalloffRate:     "weapons.damage_falloff_rate",
+	Radius:                "weapons.radius",
+	RadiusDamageFalloff:   "weapons.radius_damage_falloff",
 	Spread:                "weapons.spread",
 	RateOfFire:            "weapons.rate_of_fire",
-	Radius:                "weapons.radius",
-	RadialDoesFullDamage:  "weapons.radial_does_full_damage",
 	ProjectileSpeed:       "weapons.projectile_speed",
 	EnergyCost:            "weapons.energy_cost",
 	MaxAmmo:               "weapons.max_ammo",
@@ -171,10 +171,10 @@ var WeaponWhere = struct {
 	OwnerID               whereHelperstring
 	DamageFalloff         whereHelpernull_Int
 	DamageFalloffRate     whereHelpernull_Int
+	Radius                whereHelpernull_Int
+	RadiusDamageFalloff   whereHelpernull_Int
 	Spread                whereHelperdecimal_NullDecimal
 	RateOfFire            whereHelperdecimal_NullDecimal
-	Radius                whereHelpernull_Int
-	RadialDoesFullDamage  whereHelpernull_Bool
 	ProjectileSpeed       whereHelperdecimal_NullDecimal
 	EnergyCost            whereHelperdecimal_NullDecimal
 	MaxAmmo               whereHelpernull_Int
@@ -195,10 +195,10 @@ var WeaponWhere = struct {
 	OwnerID:               whereHelperstring{field: "\"weapons\".\"owner_id\""},
 	DamageFalloff:         whereHelpernull_Int{field: "\"weapons\".\"damage_falloff\""},
 	DamageFalloffRate:     whereHelpernull_Int{field: "\"weapons\".\"damage_falloff_rate\""},
+	Radius:                whereHelpernull_Int{field: "\"weapons\".\"radius\""},
+	RadiusDamageFalloff:   whereHelpernull_Int{field: "\"weapons\".\"radius_damage_falloff\""},
 	Spread:                whereHelperdecimal_NullDecimal{field: "\"weapons\".\"spread\""},
 	RateOfFire:            whereHelperdecimal_NullDecimal{field: "\"weapons\".\"rate_of_fire\""},
-	Radius:                whereHelpernull_Int{field: "\"weapons\".\"radius\""},
-	RadialDoesFullDamage:  whereHelpernull_Bool{field: "\"weapons\".\"radial_does_full_damage\""},
 	ProjectileSpeed:       whereHelperdecimal_NullDecimal{field: "\"weapons\".\"projectile_speed\""},
 	EnergyCost:            whereHelperdecimal_NullDecimal{field: "\"weapons\".\"energy_cost\""},
 	MaxAmmo:               whereHelpernull_Int{field: "\"weapons\".\"max_ammo\""},
@@ -237,9 +237,9 @@ func (*weaponR) NewStruct() *weaponR {
 type weaponL struct{}
 
 var (
-	weaponAllColumns            = []string{"id", "brand_id", "label", "slug", "damage", "deleted_at", "updated_at", "created_at", "blueprint_id", "default_damage_type", "genesis_token_id", "limited_release_token_id", "weapon_type", "owner_id", "damage_falloff", "damage_falloff_rate", "spread", "rate_of_fire", "radius", "radial_does_full_damage", "projectile_speed", "energy_cost", "max_ammo"}
+	weaponAllColumns            = []string{"id", "brand_id", "label", "slug", "damage", "deleted_at", "updated_at", "created_at", "blueprint_id", "default_damage_type", "genesis_token_id", "limited_release_token_id", "weapon_type", "owner_id", "damage_falloff", "damage_falloff_rate", "radius", "radius_damage_falloff", "spread", "rate_of_fire", "projectile_speed", "energy_cost", "max_ammo"}
 	weaponColumnsWithoutDefault = []string{"label", "slug", "damage", "blueprint_id", "weapon_type", "owner_id"}
-	weaponColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at", "default_damage_type", "genesis_token_id", "limited_release_token_id", "damage_falloff", "damage_falloff_rate", "spread", "rate_of_fire", "radius", "radial_does_full_damage", "projectile_speed", "energy_cost", "max_ammo"}
+	weaponColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at", "default_damage_type", "genesis_token_id", "limited_release_token_id", "damage_falloff", "damage_falloff_rate", "radius", "radius_damage_falloff", "spread", "rate_of_fire", "projectile_speed", "energy_cost", "max_ammo"}
 	weaponPrimaryKeyColumns     = []string{"id"}
 	weaponGeneratedColumns      = []string{}
 )

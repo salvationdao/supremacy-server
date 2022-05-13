@@ -1917,8 +1917,8 @@ var SubmodelSkinMap = map[string]string{
 }
 
 func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
-	var warmachines []*WarMachine
-	// TODO: vinnie fix this
+	var warMachines []*WarMachine
+
 	for _, mech := range mechs {
 		newWarMachine := &WarMachine{
 			ID:          mech.ID,
@@ -1977,20 +1977,20 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 			}
 		}
 
-		warmachines = append(warmachines, newWarMachine)
+		warMachines = append(warMachines, newWarMachine)
 		gamelog.L.Debug().Interface("mech", mech).Interface("newWarMachine", newWarMachine).Msg("converted mech to warmachine")
 	}
 
-	sort.Slice(warmachines, func(i, k int) bool {
-		return warmachines[i].FactionID == warmachines[k].FactionID
+	sort.Slice(warMachines, func(i, k int) bool {
+		return warMachines[i].FactionID == warMachines[k].FactionID
 	})
 
 	// print one example
 
-	jsnStr, _ := json.Marshal(warmachines[0])
+	jsnStr, _ := json.Marshal(warMachines[0])
 	fmt.Println(string(jsnStr))
 
-	return warmachines
+	return warMachines
 }
 
 func TruncateString(str string, length int) string {

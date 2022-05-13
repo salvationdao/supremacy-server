@@ -25,6 +25,9 @@ func AssetStatsRouter(api *API) chi.Router {
 	}
 	r := chi.NewRouter()
 	r.Get("/mech", WithError(c.GetChassisStatPercentage))
+	// TODO: /utility/*types
+	// TODO: /weapon/*types
+	// TODO: /power_core
 
 	return r
 }

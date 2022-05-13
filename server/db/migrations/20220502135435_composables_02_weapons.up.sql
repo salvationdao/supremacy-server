@@ -28,21 +28,22 @@ CREATE TABLE weapon_skin
   WEAPONS
  */
 
+
 ALTER TABLE blueprint_weapons
     DROP COLUMN IF EXISTS weapon_type,
-    ADD COLUMN game_client_weapon_id   UUID,
-    ADD COLUMN weapon_type             WEAPON_TYPE,
-    ADD COLUMN collection              COLLECTION  NOT NULL DEFAULT 'supremacy-general',
-    ADD COLUMN default_damage_type     DAMAGE_TYPE NOT NULL DEFAULT 'Kinetic',
-    ADD COLUMN damage_falloff          INT     DEFAULT 0,
-    ADD COLUMN damage_falloff_rate     INT     DEFAULT 0,
-    ADD COLUMN spread                  NUMERIC DEFAULT 0,
-    ADD COLUMN rate_of_fire            NUMERIC DEFAULT 0,
-    ADD COLUMN radius                  INT     DEFAULT 0,
-    ADD COLUMN radial_does_full_damage BOOL    DEFAULT TRUE,
-    ADD COLUMN projectile_speed        NUMERIC DEFAULT 0,
-    ADD COLUMN max_ammo                INT     DEFAULT 0,
-    ADD COLUMN energy_cost             NUMERIC DEFAULT 0;
+    ADD COLUMN game_client_weapon_id UUID,
+    ADD COLUMN weapon_type           WEAPON_TYPE,
+    ADD COLUMN collection            COLLECTION  NOT NULL DEFAULT 'supremacy-general',
+    ADD COLUMN default_damage_type   DAMAGE_TYPE NOT NULL DEFAULT 'Kinetic',
+    ADD COLUMN damage_falloff        INT     DEFAULT 0,
+    ADD COLUMN damage_falloff_rate   INT     DEFAULT 0,
+    ADD COLUMN radius                INT     DEFAULT 0,
+    ADD COLUMN radius_damage_falloff INT     DEFAULT 0,
+    ADD COLUMN spread                NUMERIC DEFAULT 0,
+    ADD COLUMN rate_of_fire          NUMERIC DEFAULT 0,
+    ADD COLUMN projectile_speed      NUMERIC DEFAULT 0,
+    ADD COLUMN max_ammo              INT     DEFAULT 0,
+    ADD COLUMN energy_cost           NUMERIC DEFAULT 0;
 
 UPDATE blueprint_weapons
 SET weapon_type           = 'Sniper Rifle',
@@ -87,14 +88,13 @@ ALTER TABLE weapons
     ADD COLUMN owner_id                 UUID REFERENCES players (id),
     ADD COLUMN damage_falloff           INT     DEFAULT 0,
     ADD COLUMN damage_falloff_rate      INT     DEFAULT 0,
+    ADD COLUMN radius                   INT     DEFAULT 0,
+    ADD COLUMN radius_damage_falloff    INT     DEFAULT 0,
     ADD COLUMN spread                   NUMERIC DEFAULT 0,
     ADD COLUMN rate_of_fire             NUMERIC DEFAULT 0,
-    ADD COLUMN radius                   INT     DEFAULT 0,
-    ADD COLUMN radial_does_full_damage  BOOL    DEFAULT TRUE,
     ADD COLUMN projectile_speed         NUMERIC DEFAULT 0,
     ADD COLUMN energy_cost              NUMERIC DEFAULT 0,
     ADD COLUMN max_ammo                 INT     DEFAULT 0;
-
 
 UPDATE weapons
 SET weapon_type = 'Sniper Rifle',
@@ -176,175 +176,175 @@ ALTER TABLE weapons
 
 -- update weapon stats
 UPDATE weapons
-SET damage                  = 20,
-    damage_falloff          = 0,
-    damage_falloff_rate     = 0,
-    spread                  = 3,
-    rate_of_fire            = 0,
-    radius                  = 100,
-    projectile_speed        = 48000,
-    radial_does_full_damage = TRUE,
-    energy_cost             = 10,
-    default_damage_type     = 'Energy'
+SET damage                = 20,
+    damage_falloff        = 0,
+    damage_falloff_rate   = 20,
+    spread                = 3,
+    rate_of_fire          = 0,
+    radius                = 100,
+    projectile_speed      = 48000,
+    radius_damage_falloff = 0,
+    energy_cost           = 10,
+    default_damage_type   = 'Energy'
 WHERE label ILIKE 'Plasma Rifle'
    OR label ILIKE 'Boston Cybernetics Plasma Rifle';
 
 UPDATE weapons
-SET damage                  = 12,
-    damage_falloff          = 0,
-    damage_falloff_rate     = 0,
-    spread                  = 4,
-    rate_of_fire            = 270,
-    radius                  = 100,
-    projectile_speed        = 36000,
-    radial_does_full_damage = TRUE,
-    energy_cost             = 10,
-    default_damage_type     = 'Kinetic'
+SET damage                = 12,
+    damage_falloff        = 0,
+    damage_falloff_rate   = 0,
+    spread                = 4,
+    rate_of_fire          = 270,
+    radius                = 100,
+    projectile_speed      = 36000,
+    radius_damage_falloff = 0,
+    energy_cost           = 10,
+    default_damage_type   = 'Kinetic'
 WHERE label ILIKE 'Auto Cannon'
    OR label ILIKE 'Red Mountain Offworld Mining Corporation Auto Cannon';
 
 UPDATE weapons
-SET damage                  = 130,
-    damage_falloff          = 0,
-    damage_falloff_rate     = 0,
-    spread                  = 3,
-    rate_of_fire            = 48,
-    radius                  = 100,
-    projectile_speed        = 80000,
-    radial_does_full_damage = TRUE,
-    energy_cost             = 15,
-    default_damage_type     = 'Kinetic'
+SET damage                = 130,
+    damage_falloff        = 0,
+    damage_falloff_rate   = 0,
+    spread                = 3,
+    rate_of_fire          = 48,
+    radius                = 100,
+    projectile_speed      = 80000,
+    radius_damage_falloff = 0,
+    energy_cost           = 15,
+    default_damage_type   = 'Kinetic'
 WHERE label ILIKE 'Sniper Rifle'
    OR label ILIKE 'Zaibatsu Heavy Industries Sniper Rifle';
 
 UPDATE weapons
-SET damage                  = 70,
-    damage_falloff          = 0,
-    damage_falloff_rate     = 0,
-    spread                  = 3,
-    rate_of_fire            = 0,
-    radius                  = 850,
-    projectile_speed        = 0,
-    radial_does_full_damage = TRUE,
-    energy_cost             = 15,
-    default_damage_type     = 'Explosive'
+SET damage                = 70,
+    damage_falloff        = 0,
+    damage_falloff_rate   = 0,
+    spread                = 3,
+    rate_of_fire          = 0,
+    radius                = 850,
+    projectile_speed      = 0,
+    radius_damage_falloff = 0,
+    energy_cost           = 15,
+    default_damage_type   = 'Explosive'
 WHERE label ILIKE 'Rocket Pod'
    OR label ILIKE 'Zaibatsu Heavy Industries Rocket Pod'
    OR label ILIKE 'Red Mountain Offworld Mining Corporation Rocket Pod';
 
 UPDATE weapons
-SET damage                  = 80,
-    damage_falloff          = 0,
-    damage_falloff_rate     = 0,
-    spread                  = 0,
-    rate_of_fire            = 0,
-    radius                  = 0,
-    projectile_speed        = 0,
-    radial_does_full_damage = TRUE,
-    energy_cost             = 15,
-    default_damage_type     = 'Kinetic'
+SET damage                = 80,
+    damage_falloff        = 0,
+    damage_falloff_rate   = 0,
+    spread                = 0,
+    rate_of_fire          = 0,
+    radius                = 0,
+    projectile_speed      = 0,
+    radius_damage_falloff = 0,
+    energy_cost           = 15,
+    default_damage_type   = 'Kinetic'
 WHERE label ILIKE 'Sword'
    OR label ILIKE 'Boston Cybernetics Sword';
 
 UPDATE weapons
-SET damage                  = 120,
-    damage_falloff          = 0,
-    damage_falloff_rate     = 0,
-    spread                  = 0,
-    rate_of_fire            = 0,
-    radius                  = 0,
-    projectile_speed        = 0,
-    radial_does_full_damage = TRUE,
-    energy_cost             = 15,
-    default_damage_type     = 'Energy'
+SET damage                = 120,
+    damage_falloff        = 0,
+    damage_falloff_rate   = 0,
+    spread                = 0,
+    rate_of_fire          = 0,
+    radius                = 0,
+    projectile_speed      = 0,
+    radius_damage_falloff = 0,
+    energy_cost           = 15,
+    default_damage_type   = 'Energy'
 WHERE label ILIKE 'Laser Sword'
    OR label ILIKE 'Zaibatsu Heavy Industries Laser Sword';
 
 --  blueprint weapons
 -- update weapon stats
 UPDATE blueprint_weapons
-SET damage                  = 20,
-    damage_falloff          = 0,
-    damage_falloff_rate     = 0,
-    spread                  = 3,
-    rate_of_fire            = 250,
-    radius                  = 100,
-    projectile_speed        = 48000,
-    radial_does_full_damage = TRUE,
-    energy_cost             = 10,
-    default_damage_type     = 'Energy'
+SET damage                = 20,
+    damage_falloff        = 0,
+    damage_falloff_rate   = 0,
+    spread                = 3,
+    rate_of_fire          = 250,
+    radius                = 100,
+    projectile_speed      = 48000,
+    radius_damage_falloff = 0,
+    energy_cost           = 10,
+    default_damage_type   = 'Energy'
 WHERE label ILIKE 'Plasma Rifle'
    OR label ILIKE 'Boston Cybernetics Plasma Rifle';
 
 UPDATE blueprint_weapons
-SET damage                  = 12,
-    damage_falloff          = 0,
-    damage_falloff_rate     = 0,
-    spread                  = 4,
-    rate_of_fire            = 270,
-    radius                  = 100,
-    projectile_speed        = 36000,
-    radial_does_full_damage = TRUE,
-    energy_cost             = 10,
-    default_damage_type     = 'Kinetic'
+SET damage                = 12,
+    damage_falloff        = 0,
+    damage_falloff_rate   = 0,
+    spread                = 4,
+    rate_of_fire          = 270,
+    radius                = 100,
+    projectile_speed      = 36000,
+    radius_damage_falloff = 0,
+    energy_cost           = 10,
+    default_damage_type   = 'Kinetic'
 WHERE label ILIKE 'Auto Cannon'
    OR label ILIKE 'Red Mountain Offworld Mining Corporation Auto Cannon';
 
 UPDATE blueprint_weapons
-SET damage                  = 130,
-    damage_falloff          = 0,
-    damage_falloff_rate     = 0,
-    spread                  = 3,
-    rate_of_fire            = 48,
-    radius                  = 100,
-    projectile_speed        = 80000,
-    radial_does_full_damage = TRUE,
-    energy_cost             = 15,
-    default_damage_type     = 'Kinetic'
+SET damage                = 130,
+    damage_falloff        = 0,
+    damage_falloff_rate   = 0,
+    spread                = 3,
+    rate_of_fire          = 48,
+    radius                = 100,
+    projectile_speed      = 80000,
+    radius_damage_falloff = 0,
+    energy_cost           = 15,
+    default_damage_type   = 'Kinetic'
 WHERE label ILIKE 'Sniper Rifle'
    OR label ILIKE 'Zaibatsu Heavy Industries Sniper Rifle';
 
 UPDATE blueprint_weapons
-SET damage                  = 70,
-    damage_falloff          = 0,
-    damage_falloff_rate     = 0,
-    spread                  = 3,
-    rate_of_fire            = 0,
-    radius                  = 850,
-    projectile_speed        = 0,
-    radial_does_full_damage = TRUE,
-    energy_cost             = 15,
-    default_damage_type     = 'Explosive'
+SET damage                = 70,
+    damage_falloff        = 0,
+    damage_falloff_rate   = 0,
+    spread                = 3,
+    rate_of_fire          = 0,
+    radius                = 850,
+    projectile_speed      = 0,
+    radius_damage_falloff = 0,
+    energy_cost           = 15,
+    default_damage_type   = 'Explosive'
 WHERE label ILIKE 'Rocket Pod'
    OR label ILIKE 'Zaibatsu Heavy Industries Rocket Pod'
    OR label ILIKE 'Red Mountain Offworld Mining Corporation Rocket Pod';
 
 UPDATE blueprint_weapons
-SET damage                  = 80,
-    damage_falloff          = 0,
-    damage_falloff_rate     = 0,
-    spread                  = 0,
-    rate_of_fire            = 0,
-    radius                  = 0,
-    projectile_speed        = 0,
-    radial_does_full_damage = TRUE,
-    energy_cost             = 15,
-    default_damage_type     = 'Kinetic'
+SET damage                = 80,
+    damage_falloff        = 0,
+    damage_falloff_rate   = 0,
+    spread                = 0,
+    rate_of_fire          = 0,
+    radius                = 0,
+    projectile_speed      = 0,
+    radius_damage_falloff = 0,
+    energy_cost           = 15,
+    default_damage_type   = 'Kinetic'
 WHERE label ILIKE 'Sword'
    OR label ILIKE 'Boston Cybernetics Sword';
 
 
 UPDATE blueprint_weapons
-SET damage                  = 120,
-    damage_falloff          = 0,
-    damage_falloff_rate     = 0,
-    spread                  = 0,
-    rate_of_fire            = 0,
-    radius                  = 0,
-    projectile_speed        = 0,
-    radial_does_full_damage = TRUE,
-    energy_cost             = 15,
-    default_damage_type     = 'Energy'
+SET damage                = 120,
+    damage_falloff        = 0,
+    damage_falloff_rate   = 0,
+    spread                = 0,
+    rate_of_fire          = 0,
+    radius                = 0,
+    projectile_speed      = 0,
+    radius_damage_falloff = 0,
+    energy_cost           = 15,
+    default_damage_type   = 'Energy'
 WHERE label ILIKE 'Laser Sword'
    OR label ILIKE 'Zaibatsu Heavy Industries Laser Sword';
 

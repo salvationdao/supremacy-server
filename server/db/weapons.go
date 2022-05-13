@@ -32,7 +32,7 @@ func InsertNewWeapon(ownerID uuid.UUID, weapon *server.BlueprintWeapon) (*server
 		Spread:                weapon.Spread,
 		RateOfFire:            weapon.RateOfFire,
 		Radius:                weapon.Radius,
-		RadialDoesFullDamage:  weapon.RadialDoesFullDamage,
+		RadiusDamageFalloff:   weapon.RadiusDamageFalloff,
 		ProjectileSpeed:       weapon.ProjectileSpeed,
 		EnergyCost:            weapon.EnergyCost,
 		MaxAmmo:               weapon.MaxAmmo,

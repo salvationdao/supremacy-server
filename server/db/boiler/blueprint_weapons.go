@@ -24,170 +24,170 @@ import (
 
 // BlueprintWeapon is an object representing the database table.
 type BlueprintWeapon struct {
-	ID                   string              `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	BrandID              null.String         `boiler:"brand_id" boil:"brand_id" json:"brand_id,omitempty" toml:"brand_id" yaml:"brand_id,omitempty"`
-	Label                string              `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	Slug                 string              `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
-	Damage               int                 `boiler:"damage" boil:"damage" json:"damage" toml:"damage" yaml:"damage"`
-	DeletedAt            null.Time           `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	UpdatedAt            time.Time           `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt            time.Time           `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	GameClientWeaponID   null.String         `boiler:"game_client_weapon_id" boil:"game_client_weapon_id" json:"game_client_weapon_id,omitempty" toml:"game_client_weapon_id" yaml:"game_client_weapon_id,omitempty"`
-	WeaponType           string              `boiler:"weapon_type" boil:"weapon_type" json:"weapon_type" toml:"weapon_type" yaml:"weapon_type"`
-	Collection           string              `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
-	DefaultDamageType    string              `boiler:"default_damage_type" boil:"default_damage_type" json:"default_damage_type" toml:"default_damage_type" yaml:"default_damage_type"`
-	DamageFalloff        null.Int            `boiler:"damage_falloff" boil:"damage_falloff" json:"damage_falloff,omitempty" toml:"damage_falloff" yaml:"damage_falloff,omitempty"`
-	DamageFalloffRate    null.Int            `boiler:"damage_falloff_rate" boil:"damage_falloff_rate" json:"damage_falloff_rate,omitempty" toml:"damage_falloff_rate" yaml:"damage_falloff_rate,omitempty"`
-	Spread               decimal.NullDecimal `boiler:"spread" boil:"spread" json:"spread,omitempty" toml:"spread" yaml:"spread,omitempty"`
-	RateOfFire           decimal.NullDecimal `boiler:"rate_of_fire" boil:"rate_of_fire" json:"rate_of_fire,omitempty" toml:"rate_of_fire" yaml:"rate_of_fire,omitempty"`
-	Radius               null.Int            `boiler:"radius" boil:"radius" json:"radius,omitempty" toml:"radius" yaml:"radius,omitempty"`
-	RadialDoesFullDamage null.Bool           `boiler:"radial_does_full_damage" boil:"radial_does_full_damage" json:"radial_does_full_damage,omitempty" toml:"radial_does_full_damage" yaml:"radial_does_full_damage,omitempty"`
-	ProjectileSpeed      decimal.NullDecimal `boiler:"projectile_speed" boil:"projectile_speed" json:"projectile_speed,omitempty" toml:"projectile_speed" yaml:"projectile_speed,omitempty"`
-	MaxAmmo              null.Int            `boiler:"max_ammo" boil:"max_ammo" json:"max_ammo,omitempty" toml:"max_ammo" yaml:"max_ammo,omitempty"`
-	EnergyCost           decimal.NullDecimal `boiler:"energy_cost" boil:"energy_cost" json:"energy_cost,omitempty" toml:"energy_cost" yaml:"energy_cost,omitempty"`
+	ID                  string              `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	BrandID             null.String         `boiler:"brand_id" boil:"brand_id" json:"brand_id,omitempty" toml:"brand_id" yaml:"brand_id,omitempty"`
+	Label               string              `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	Slug                string              `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
+	Damage              int                 `boiler:"damage" boil:"damage" json:"damage" toml:"damage" yaml:"damage"`
+	DeletedAt           null.Time           `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt           time.Time           `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt           time.Time           `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	GameClientWeaponID  null.String         `boiler:"game_client_weapon_id" boil:"game_client_weapon_id" json:"game_client_weapon_id,omitempty" toml:"game_client_weapon_id" yaml:"game_client_weapon_id,omitempty"`
+	WeaponType          string              `boiler:"weapon_type" boil:"weapon_type" json:"weapon_type" toml:"weapon_type" yaml:"weapon_type"`
+	Collection          string              `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
+	DefaultDamageType   string              `boiler:"default_damage_type" boil:"default_damage_type" json:"default_damage_type" toml:"default_damage_type" yaml:"default_damage_type"`
+	DamageFalloff       null.Int            `boiler:"damage_falloff" boil:"damage_falloff" json:"damage_falloff,omitempty" toml:"damage_falloff" yaml:"damage_falloff,omitempty"`
+	DamageFalloffRate   null.Int            `boiler:"damage_falloff_rate" boil:"damage_falloff_rate" json:"damage_falloff_rate,omitempty" toml:"damage_falloff_rate" yaml:"damage_falloff_rate,omitempty"`
+	Radius              null.Int            `boiler:"radius" boil:"radius" json:"radius,omitempty" toml:"radius" yaml:"radius,omitempty"`
+	RadiusDamageFalloff null.Int            `boiler:"radius_damage_falloff" boil:"radius_damage_falloff" json:"radius_damage_falloff,omitempty" toml:"radius_damage_falloff" yaml:"radius_damage_falloff,omitempty"`
+	Spread              decimal.NullDecimal `boiler:"spread" boil:"spread" json:"spread,omitempty" toml:"spread" yaml:"spread,omitempty"`
+	RateOfFire          decimal.NullDecimal `boiler:"rate_of_fire" boil:"rate_of_fire" json:"rate_of_fire,omitempty" toml:"rate_of_fire" yaml:"rate_of_fire,omitempty"`
+	ProjectileSpeed     decimal.NullDecimal `boiler:"projectile_speed" boil:"projectile_speed" json:"projectile_speed,omitempty" toml:"projectile_speed" yaml:"projectile_speed,omitempty"`
+	MaxAmmo             null.Int            `boiler:"max_ammo" boil:"max_ammo" json:"max_ammo,omitempty" toml:"max_ammo" yaml:"max_ammo,omitempty"`
+	EnergyCost          decimal.NullDecimal `boiler:"energy_cost" boil:"energy_cost" json:"energy_cost,omitempty" toml:"energy_cost" yaml:"energy_cost,omitempty"`
 
 	R *blueprintWeaponR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintWeaponL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var BlueprintWeaponColumns = struct {
-	ID                   string
-	BrandID              string
-	Label                string
-	Slug                 string
-	Damage               string
-	DeletedAt            string
-	UpdatedAt            string
-	CreatedAt            string
-	GameClientWeaponID   string
-	WeaponType           string
-	Collection           string
-	DefaultDamageType    string
-	DamageFalloff        string
-	DamageFalloffRate    string
-	Spread               string
-	RateOfFire           string
-	Radius               string
-	RadialDoesFullDamage string
-	ProjectileSpeed      string
-	MaxAmmo              string
-	EnergyCost           string
+	ID                  string
+	BrandID             string
+	Label               string
+	Slug                string
+	Damage              string
+	DeletedAt           string
+	UpdatedAt           string
+	CreatedAt           string
+	GameClientWeaponID  string
+	WeaponType          string
+	Collection          string
+	DefaultDamageType   string
+	DamageFalloff       string
+	DamageFalloffRate   string
+	Radius              string
+	RadiusDamageFalloff string
+	Spread              string
+	RateOfFire          string
+	ProjectileSpeed     string
+	MaxAmmo             string
+	EnergyCost          string
 }{
-	ID:                   "id",
-	BrandID:              "brand_id",
-	Label:                "label",
-	Slug:                 "slug",
-	Damage:               "damage",
-	DeletedAt:            "deleted_at",
-	UpdatedAt:            "updated_at",
-	CreatedAt:            "created_at",
-	GameClientWeaponID:   "game_client_weapon_id",
-	WeaponType:           "weapon_type",
-	Collection:           "collection",
-	DefaultDamageType:    "default_damage_type",
-	DamageFalloff:        "damage_falloff",
-	DamageFalloffRate:    "damage_falloff_rate",
-	Spread:               "spread",
-	RateOfFire:           "rate_of_fire",
-	Radius:               "radius",
-	RadialDoesFullDamage: "radial_does_full_damage",
-	ProjectileSpeed:      "projectile_speed",
-	MaxAmmo:              "max_ammo",
-	EnergyCost:           "energy_cost",
+	ID:                  "id",
+	BrandID:             "brand_id",
+	Label:               "label",
+	Slug:                "slug",
+	Damage:              "damage",
+	DeletedAt:           "deleted_at",
+	UpdatedAt:           "updated_at",
+	CreatedAt:           "created_at",
+	GameClientWeaponID:  "game_client_weapon_id",
+	WeaponType:          "weapon_type",
+	Collection:          "collection",
+	DefaultDamageType:   "default_damage_type",
+	DamageFalloff:       "damage_falloff",
+	DamageFalloffRate:   "damage_falloff_rate",
+	Radius:              "radius",
+	RadiusDamageFalloff: "radius_damage_falloff",
+	Spread:              "spread",
+	RateOfFire:          "rate_of_fire",
+	ProjectileSpeed:     "projectile_speed",
+	MaxAmmo:             "max_ammo",
+	EnergyCost:          "energy_cost",
 }
 
 var BlueprintWeaponTableColumns = struct {
-	ID                   string
-	BrandID              string
-	Label                string
-	Slug                 string
-	Damage               string
-	DeletedAt            string
-	UpdatedAt            string
-	CreatedAt            string
-	GameClientWeaponID   string
-	WeaponType           string
-	Collection           string
-	DefaultDamageType    string
-	DamageFalloff        string
-	DamageFalloffRate    string
-	Spread               string
-	RateOfFire           string
-	Radius               string
-	RadialDoesFullDamage string
-	ProjectileSpeed      string
-	MaxAmmo              string
-	EnergyCost           string
+	ID                  string
+	BrandID             string
+	Label               string
+	Slug                string
+	Damage              string
+	DeletedAt           string
+	UpdatedAt           string
+	CreatedAt           string
+	GameClientWeaponID  string
+	WeaponType          string
+	Collection          string
+	DefaultDamageType   string
+	DamageFalloff       string
+	DamageFalloffRate   string
+	Radius              string
+	RadiusDamageFalloff string
+	Spread              string
+	RateOfFire          string
+	ProjectileSpeed     string
+	MaxAmmo             string
+	EnergyCost          string
 }{
-	ID:                   "blueprint_weapons.id",
-	BrandID:              "blueprint_weapons.brand_id",
-	Label:                "blueprint_weapons.label",
-	Slug:                 "blueprint_weapons.slug",
-	Damage:               "blueprint_weapons.damage",
-	DeletedAt:            "blueprint_weapons.deleted_at",
-	UpdatedAt:            "blueprint_weapons.updated_at",
-	CreatedAt:            "blueprint_weapons.created_at",
-	GameClientWeaponID:   "blueprint_weapons.game_client_weapon_id",
-	WeaponType:           "blueprint_weapons.weapon_type",
-	Collection:           "blueprint_weapons.collection",
-	DefaultDamageType:    "blueprint_weapons.default_damage_type",
-	DamageFalloff:        "blueprint_weapons.damage_falloff",
-	DamageFalloffRate:    "blueprint_weapons.damage_falloff_rate",
-	Spread:               "blueprint_weapons.spread",
-	RateOfFire:           "blueprint_weapons.rate_of_fire",
-	Radius:               "blueprint_weapons.radius",
-	RadialDoesFullDamage: "blueprint_weapons.radial_does_full_damage",
-	ProjectileSpeed:      "blueprint_weapons.projectile_speed",
-	MaxAmmo:              "blueprint_weapons.max_ammo",
-	EnergyCost:           "blueprint_weapons.energy_cost",
+	ID:                  "blueprint_weapons.id",
+	BrandID:             "blueprint_weapons.brand_id",
+	Label:               "blueprint_weapons.label",
+	Slug:                "blueprint_weapons.slug",
+	Damage:              "blueprint_weapons.damage",
+	DeletedAt:           "blueprint_weapons.deleted_at",
+	UpdatedAt:           "blueprint_weapons.updated_at",
+	CreatedAt:           "blueprint_weapons.created_at",
+	GameClientWeaponID:  "blueprint_weapons.game_client_weapon_id",
+	WeaponType:          "blueprint_weapons.weapon_type",
+	Collection:          "blueprint_weapons.collection",
+	DefaultDamageType:   "blueprint_weapons.default_damage_type",
+	DamageFalloff:       "blueprint_weapons.damage_falloff",
+	DamageFalloffRate:   "blueprint_weapons.damage_falloff_rate",
+	Radius:              "blueprint_weapons.radius",
+	RadiusDamageFalloff: "blueprint_weapons.radius_damage_falloff",
+	Spread:              "blueprint_weapons.spread",
+	RateOfFire:          "blueprint_weapons.rate_of_fire",
+	ProjectileSpeed:     "blueprint_weapons.projectile_speed",
+	MaxAmmo:             "blueprint_weapons.max_ammo",
+	EnergyCost:          "blueprint_weapons.energy_cost",
 }
 
 // Generated where
 
 var BlueprintWeaponWhere = struct {
-	ID                   whereHelperstring
-	BrandID              whereHelpernull_String
-	Label                whereHelperstring
-	Slug                 whereHelperstring
-	Damage               whereHelperint
-	DeletedAt            whereHelpernull_Time
-	UpdatedAt            whereHelpertime_Time
-	CreatedAt            whereHelpertime_Time
-	GameClientWeaponID   whereHelpernull_String
-	WeaponType           whereHelperstring
-	Collection           whereHelperstring
-	DefaultDamageType    whereHelperstring
-	DamageFalloff        whereHelpernull_Int
-	DamageFalloffRate    whereHelpernull_Int
-	Spread               whereHelperdecimal_NullDecimal
-	RateOfFire           whereHelperdecimal_NullDecimal
-	Radius               whereHelpernull_Int
-	RadialDoesFullDamage whereHelpernull_Bool
-	ProjectileSpeed      whereHelperdecimal_NullDecimal
-	MaxAmmo              whereHelpernull_Int
-	EnergyCost           whereHelperdecimal_NullDecimal
+	ID                  whereHelperstring
+	BrandID             whereHelpernull_String
+	Label               whereHelperstring
+	Slug                whereHelperstring
+	Damage              whereHelperint
+	DeletedAt           whereHelpernull_Time
+	UpdatedAt           whereHelpertime_Time
+	CreatedAt           whereHelpertime_Time
+	GameClientWeaponID  whereHelpernull_String
+	WeaponType          whereHelperstring
+	Collection          whereHelperstring
+	DefaultDamageType   whereHelperstring
+	DamageFalloff       whereHelpernull_Int
+	DamageFalloffRate   whereHelpernull_Int
+	Radius              whereHelpernull_Int
+	RadiusDamageFalloff whereHelpernull_Int
+	Spread              whereHelperdecimal_NullDecimal
+	RateOfFire          whereHelperdecimal_NullDecimal
+	ProjectileSpeed     whereHelperdecimal_NullDecimal
+	MaxAmmo             whereHelpernull_Int
+	EnergyCost          whereHelperdecimal_NullDecimal
 }{
-	ID:                   whereHelperstring{field: "\"blueprint_weapons\".\"id\""},
-	BrandID:              whereHelpernull_String{field: "\"blueprint_weapons\".\"brand_id\""},
-	Label:                whereHelperstring{field: "\"blueprint_weapons\".\"label\""},
-	Slug:                 whereHelperstring{field: "\"blueprint_weapons\".\"slug\""},
-	Damage:               whereHelperint{field: "\"blueprint_weapons\".\"damage\""},
-	DeletedAt:            whereHelpernull_Time{field: "\"blueprint_weapons\".\"deleted_at\""},
-	UpdatedAt:            whereHelpertime_Time{field: "\"blueprint_weapons\".\"updated_at\""},
-	CreatedAt:            whereHelpertime_Time{field: "\"blueprint_weapons\".\"created_at\""},
-	GameClientWeaponID:   whereHelpernull_String{field: "\"blueprint_weapons\".\"game_client_weapon_id\""},
-	WeaponType:           whereHelperstring{field: "\"blueprint_weapons\".\"weapon_type\""},
-	Collection:           whereHelperstring{field: "\"blueprint_weapons\".\"collection\""},
-	DefaultDamageType:    whereHelperstring{field: "\"blueprint_weapons\".\"default_damage_type\""},
-	DamageFalloff:        whereHelpernull_Int{field: "\"blueprint_weapons\".\"damage_falloff\""},
-	DamageFalloffRate:    whereHelpernull_Int{field: "\"blueprint_weapons\".\"damage_falloff_rate\""},
-	Spread:               whereHelperdecimal_NullDecimal{field: "\"blueprint_weapons\".\"spread\""},
-	RateOfFire:           whereHelperdecimal_NullDecimal{field: "\"blueprint_weapons\".\"rate_of_fire\""},
-	Radius:               whereHelpernull_Int{field: "\"blueprint_weapons\".\"radius\""},
-	RadialDoesFullDamage: whereHelpernull_Bool{field: "\"blueprint_weapons\".\"radial_does_full_damage\""},
-	ProjectileSpeed:      whereHelperdecimal_NullDecimal{field: "\"blueprint_weapons\".\"projectile_speed\""},
-	MaxAmmo:              whereHelpernull_Int{field: "\"blueprint_weapons\".\"max_ammo\""},
-	EnergyCost:           whereHelperdecimal_NullDecimal{field: "\"blueprint_weapons\".\"energy_cost\""},
+	ID:                  whereHelperstring{field: "\"blueprint_weapons\".\"id\""},
+	BrandID:             whereHelpernull_String{field: "\"blueprint_weapons\".\"brand_id\""},
+	Label:               whereHelperstring{field: "\"blueprint_weapons\".\"label\""},
+	Slug:                whereHelperstring{field: "\"blueprint_weapons\".\"slug\""},
+	Damage:              whereHelperint{field: "\"blueprint_weapons\".\"damage\""},
+	DeletedAt:           whereHelpernull_Time{field: "\"blueprint_weapons\".\"deleted_at\""},
+	UpdatedAt:           whereHelpertime_Time{field: "\"blueprint_weapons\".\"updated_at\""},
+	CreatedAt:           whereHelpertime_Time{field: "\"blueprint_weapons\".\"created_at\""},
+	GameClientWeaponID:  whereHelpernull_String{field: "\"blueprint_weapons\".\"game_client_weapon_id\""},
+	WeaponType:          whereHelperstring{field: "\"blueprint_weapons\".\"weapon_type\""},
+	Collection:          whereHelperstring{field: "\"blueprint_weapons\".\"collection\""},
+	DefaultDamageType:   whereHelperstring{field: "\"blueprint_weapons\".\"default_damage_type\""},
+	DamageFalloff:       whereHelpernull_Int{field: "\"blueprint_weapons\".\"damage_falloff\""},
+	DamageFalloffRate:   whereHelpernull_Int{field: "\"blueprint_weapons\".\"damage_falloff_rate\""},
+	Radius:              whereHelpernull_Int{field: "\"blueprint_weapons\".\"radius\""},
+	RadiusDamageFalloff: whereHelpernull_Int{field: "\"blueprint_weapons\".\"radius_damage_falloff\""},
+	Spread:              whereHelperdecimal_NullDecimal{field: "\"blueprint_weapons\".\"spread\""},
+	RateOfFire:          whereHelperdecimal_NullDecimal{field: "\"blueprint_weapons\".\"rate_of_fire\""},
+	ProjectileSpeed:     whereHelperdecimal_NullDecimal{field: "\"blueprint_weapons\".\"projectile_speed\""},
+	MaxAmmo:             whereHelpernull_Int{field: "\"blueprint_weapons\".\"max_ammo\""},
+	EnergyCost:          whereHelperdecimal_NullDecimal{field: "\"blueprint_weapons\".\"energy_cost\""},
 }
 
 // BlueprintWeaponRels is where relationship names are stored.
@@ -214,9 +214,9 @@ func (*blueprintWeaponR) NewStruct() *blueprintWeaponR {
 type blueprintWeaponL struct{}
 
 var (
-	blueprintWeaponAllColumns            = []string{"id", "brand_id", "label", "slug", "damage", "deleted_at", "updated_at", "created_at", "game_client_weapon_id", "weapon_type", "collection", "default_damage_type", "damage_falloff", "damage_falloff_rate", "spread", "rate_of_fire", "radius", "radial_does_full_damage", "projectile_speed", "max_ammo", "energy_cost"}
+	blueprintWeaponAllColumns            = []string{"id", "brand_id", "label", "slug", "damage", "deleted_at", "updated_at", "created_at", "game_client_weapon_id", "weapon_type", "collection", "default_damage_type", "damage_falloff", "damage_falloff_rate", "radius", "radius_damage_falloff", "spread", "rate_of_fire", "projectile_speed", "max_ammo", "energy_cost"}
 	blueprintWeaponColumnsWithoutDefault = []string{"label", "slug", "damage", "weapon_type"}
-	blueprintWeaponColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at", "game_client_weapon_id", "collection", "default_damage_type", "damage_falloff", "damage_falloff_rate", "spread", "rate_of_fire", "radius", "radial_does_full_damage", "projectile_speed", "max_ammo", "energy_cost"}
+	blueprintWeaponColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at", "game_client_weapon_id", "collection", "default_damage_type", "damage_falloff", "damage_falloff_rate", "radius", "radius_damage_falloff", "spread", "rate_of_fire", "projectile_speed", "max_ammo", "energy_cost"}
 	blueprintWeaponPrimaryKeyColumns     = []string{"id"}
 	blueprintWeaponGeneratedColumns      = []string{}
 )
