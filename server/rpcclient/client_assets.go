@@ -114,3 +114,30 @@ func (pp *PassportXrpcClient) UpdateAssetsID(assetsToUpdate []*UpdateAssetIDReq)
 
 	return nil
 }
+
+type UpdateStoreItemIDsReq struct {
+	StoreItemsToUpdate []*TemplatesToUpdate `json:"store_items_to_update"`
+}
+
+type TemplatesToUpdate struct {
+	OldTemplateID string `json:"old_template_id"`
+	NewTemplateID string `json:"new_template_id"`
+}
+
+type UpdateStoreItemIDsResp struct {
+	Success bool `json:"success"`
+}
+
+// UpdateStoreItemIDs updates the store item ids on passport server
+func (pp *PassportXrpcClient) UpdateStoreItemIDs(assetsToUpdate []*TemplatesToUpdate) error {
+	resp := &UpdateStoreItemIDsResp{}
+	err := pp.XrpcClient.Call("S.UpdateStoreItemIDsHandler", UpdateStoreItemIDsReq{
+		StoreItemsToUpdate: assetsToUpdate,
+	}, resp)
+	if err != nil {
+		gamelog.L.Err(err).Interface("assetsToUpdate", assetsToUpdate).Str("method", "UpdateStoreItemIDsHandler").Msg("rpc error")
+		return terror.Error(err)
+	}
+
+	return nil
+}

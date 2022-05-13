@@ -453,6 +453,7 @@ func main() {
 					// we need to update some IDs on passport server, just the once,
 					// TODO: After deploying composable migration, talk to vinnie about removing this
 					UpdatePurchaseItems(rpcClient)
+					UpdateXsynStoreItemTemplates(rpcClient)
 
 					gamelog.L.Info().Msg("Running webhook rest API")
 					err = api.Run(ctx)
@@ -494,6 +495,32 @@ func UpdatePurchaseItems(pp *rpcclient.PassportXrpcClient) {
 		}
 		db.PutBool("UPDATED_PURCHASED_ITEMS_IDS", true)
 	}
+}
+
+func UpdateXsynStoreItemTemplates(pp *rpcclient.PassportXrpcClient) {
+	updated := db.GetBoolWithDefault("UPDATED_TEMPLATE_ITEMS_IDS", false)
+	if !updated {
+		var assets []*rpcclient.TemplatesToUpdate
+		query := `
+			SELECT tpo.id as old_template_id, tpbp.template_id as new_template_id
+			FROM templates_old tpo
+			INNER JOIN blueprint_mechs bm ON tpo.blueprint_chassis_id = bm.id
+			INNER JOIN template_blueprints tpbp ON tpbp.blueprint_id = bm.id; `
+		err := boiler.NewQuery(qm.SQL(query)).Bind(nil, gamedb.StdConn, &assets)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("issue getting template ids")
+			return
+		}
+
+		err = pp.UpdateStoreItemIDs(assets)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("issue updating template ids on passport")
+			return
+		}
+
+		db.PutBool("UPDATED_TEMPLATE_ITEMS_IDS", true)
+	}
+
 }
 
 func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, battleArenaClient *battle.Arena, conn *pgxpool.Pool, passport *rpcclient.PassportXrpcClient, messageBus *messagebus.MessageBus, gsHub *hub.Hub, sms server.SMS, telegram server.Telegram, languageDetector lingua.LanguageDetector) (*api.API, error) {
