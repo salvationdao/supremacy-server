@@ -11,10 +11,14 @@ import (
 	"server/api"
 	"server/battle"
 	"server/comms"
+	"server/db"
+	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 	"server/sms"
 	"server/telegram"
+
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"server/rpcclient"
 
@@ -365,18 +369,7 @@ func main() {
 					if err != nil {
 						return terror.Error(err)
 					}
-					//// Connect to passport
-					//pp := passport.NewPassport(
-					//	log_helpers.NamedLogger(gamelog.L, "passport"),
-					//	passportAddr,
-					//	passportClientToken,
-					//	rpcClient,
-					//)
 
-					// sync user stats
-
-					// Start Gameserver - Gameclient server
-					// Passport
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Setting up battle arena client")
 
 					// initialise smser
@@ -457,6 +450,10 @@ func main() {
 						go telebot.RunTelegram(telebot.Bot)
 					}
 
+					// we need to update some IDs on passport server, just the once,
+					// TODO: After deploying composable migration, talk to vinnie about removing this
+					UpdatePurchaseItems(rpcClient)
+
 					gamelog.L.Info().Msg("Running webhook rest API")
 					err = api.Run(ctx)
 					if err != nil {
@@ -474,6 +471,28 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 		os.Exit(1) // so ci knows it no good
+	}
+}
+
+func UpdatePurchaseItems(pp *rpcclient.PassportXrpcClient) {
+	updated := db.GetBoolWithDefault("UPDATED_PURCHASED_ITEMS_IDS", false)
+	if !updated {
+		var list []*rpcclient.UpdateAssetIDReq
+		// get all the old ids and new ids
+		err := boiler.NewQuery(
+			qm.SQL(`SELECT mo.chassis_id as asset_ID, mo.id as old_asset_ID FROM mechs_old mo`),
+		).Bind(nil, gamedb.StdConn, &list)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("issue getting mech ids")
+			return
+		}
+
+		err = pp.UpdateAssetsID(list)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("issue updating getting mech ids")
+			return
+		}
+		db.PutBool("UPDATED_PURCHASED_ITEMS_IDS", true)
 	}
 }
 

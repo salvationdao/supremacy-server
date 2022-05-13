@@ -1,14 +1,11 @@
 package rpcclient
 
 import (
-	"database/sql"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 	"strings"
-
-	"github.com/friendsofgo/errors"
 
 	"github.com/ninja-software/terror/v2"
 )
@@ -29,19 +26,22 @@ func (pp *PassportXrpcClient) AssetOnChainStatus(assetID string) (server.OnChain
 		if strings.Contains(err.Error(), "sql: no rows in result set") {
 			// if we get no rows error, get the mechs old ID, get the status of that, and then tell xsyn to update that
 			oldMech, err := boiler.MechsOlds(boiler.MechsOldWhere.ChassisID.EQ(assetID)).One(gamedb.StdConn)
-			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			if err != nil {
 				gamelog.L.Err(err).Str("assetID", assetID).Str("method", "AssetOnChainStatusHandler").Msg("rpc error - boiler.MechsOlds")
 				return "", terror.Error(err)
 			}
-			if oldMech != nil {
-				err := pp.XrpcClient.Call("S.AssetOnChainStatusHandler", AssetOnChainStatusReq{AssetID: oldMech.ID}, resp)
-				if err != nil {
-					gamelog.L.Err(err).Str("assetID", assetID).Str("method", "AssetOnChainStatusHandler").Msg("rpc error")
-					return "", terror.Error(err)
-				}
-				// TODO: tell passport to update this ID
-				return resp.OnChainStatus, nil
+			_, err = pp.UpdateAssetID(oldMech.ID, assetID)
+			if err != nil {
+				return "", terror.Error(err)
 			}
+
+			// now retry!
+			err = pp.XrpcClient.Call("S.AssetOnChainStatusHandler", AssetOnChainStatusReq{AssetID: assetID}, resp)
+			if err != nil {
+				gamelog.L.Err(err).Str("assetID", assetID).Str("method", "AssetOnChainStatusHandler").Msg("rpc error")
+				return "", terror.Error(err)
+			}
+			return resp.OnChainStatus, nil
 		}
 		gamelog.L.Err(err).Str("assetID", assetID).Str("method", "AssetOnChainStatusHandler").Msg("rpc error")
 		return "", terror.Error(err)
@@ -67,4 +67,50 @@ func (pp *PassportXrpcClient) AssetsOnChainStatus(assetIDs []string) (map[string
 	}
 
 	return resp.OnChainStatuses, nil
+}
+
+type UpdateAssetIDReq struct {
+	AssetID    string `json:"asset_ID" db:"asset_ID"`
+	OldAssetID string `json:"old_asset_ID" db:"old_asset_ID"`
+}
+
+type UpdateAssetIDResp struct {
+	AssetID string `json:"asset_ID"`
+}
+
+// UpdateAssetID updates a purchased_items id on passport server
+func (pp *PassportXrpcClient) UpdateAssetID(oldAssetID, assetID string) (string, error) {
+	resp := &UpdateAssetIDResp{}
+	err := pp.XrpcClient.Call("S.UpdateAssetIDHandler", UpdateAssetIDReq{
+		AssetID:    assetID,
+		OldAssetID: oldAssetID,
+	}, resp)
+	if err != nil {
+		gamelog.L.Err(err).Str("assetID", assetID).Str("oldAssetID", oldAssetID).Str("method", "UpdateAssetIDHandler").Msg("rpc error")
+		return "", terror.Error(err)
+	}
+
+	return resp.AssetID, nil
+}
+
+type UpdateAssetsIDReq struct {
+	AssetsToUpdate []*UpdateAssetIDReq `json:"assets_to_update"`
+}
+
+type UpdateAssetsIDResp struct {
+	Success bool `json:"success"`
+}
+
+// UpdateAssetsID updates the purchased_items id on passport server
+func (pp *PassportXrpcClient) UpdateAssetsID(assetsToUpdate []*UpdateAssetIDReq) error {
+	resp := &UpdateAssetsIDResp{}
+	err := pp.XrpcClient.Call("S.UpdateAssetsIDHandler", UpdateAssetsIDReq{
+		AssetsToUpdate: assetsToUpdate,
+	}, resp)
+	if err != nil {
+		gamelog.L.Err(err).Interface("assetsToUpdate", assetsToUpdate).Str("method", "UpdateAssetsIDHandler").Msg("rpc error")
+		return terror.Error(err)
+	}
+
+	return nil
 }
