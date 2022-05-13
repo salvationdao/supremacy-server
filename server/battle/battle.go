@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/binary"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -1958,6 +1957,8 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 		for _, utl := range mech.Utility {
 			if utl.Type == boiler.UtilityTypeSHIELD && utl.Shield != nil {
 				newWarMachine.Shield = uint32(utl.Shield.Hitpoints)
+				newWarMachine.MaxShield = uint32(utl.Shield.Hitpoints)
+				newWarMachine.ShieldRechargeRate = uint32(utl.Shield.RechargeRate)
 			}
 		}
 		// check model
@@ -1984,11 +1985,6 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 	sort.Slice(warMachines, func(i, k int) bool {
 		return warMachines[i].FactionID == warMachines[k].FactionID
 	})
-
-	// print one example
-
-	jsnStr, _ := json.Marshal(warMachines[0])
-	fmt.Println(string(jsnStr))
 
 	return warMachines
 }

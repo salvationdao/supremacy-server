@@ -17,6 +17,7 @@ type WarMachine struct {
 	ParticipantID byte   `json:"participantID"`
 	FactionID     string `json:"factionID"`
 	MaxHealth     uint32 `json:"maxHealth"`
+	MaxShield     uint32 `json:"maxShield"`
 	Health        uint32 `json:"health"`
 
 	Model string `json:"model"`
@@ -42,11 +43,11 @@ type WarMachine struct {
 	//WeaponHardpoint    int             `json:"weaponHardpoint"`
 	//TurretHardpoint    int             `json:"turretHardpoint"`
 	//UtilitySlots       int             `json:"utilitySlots"`
-	//ShieldRechargeRate float64         `json:"shieldRechargeRate"`
 	//Description   *string         `json:"description"`
 	//ExternalUrl   string          `json:"externalUrl"`
-	//MaxShield     uint32          `json:"maxShield"`
-	Shield uint32 `json:"shield"`
+	Shield             uint32 `json:"shield"`
+	ShieldRechargeRate uint32 `json:"shieldRechargeRate"`
+
 	//Energy        uint32          `json:"energy"`
 	//Stat          *Stat           `json:"stat"`
 }
