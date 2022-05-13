@@ -474,7 +474,9 @@ func MechIDsFromHash(hashes ...string) ([]uuid.UUID, error) {
 		}
 	}
 	paramrefs = paramrefs[:len(paramrefs)-1]
-	q := `SELECT id, hash FROM mechs WHERE mechs.hash IN (` + paramrefs + `)`
+	q := `	SELECT ci.item_id, ci.hash 
+			FROM collection_items ci
+			WHERE ci.hash IN (` + paramrefs + `)`
 
 	result, err := gamedb.Conn.Query(context.Background(), q, idintf...)
 	if err != nil {
