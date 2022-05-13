@@ -101,7 +101,7 @@ func MarketplaceItemSaleList(search string, archived bool, filter *ListFilterReq
 		if len(xsearch) > 0 {
 			queryMods = append(queryMods, qm.And(
 				fmt.Sprintf(
-					"((to_tsvector('english', %s) @@ to_tsquery(?))",
+					"(to_tsvector('english', %s) @@ to_tsquery(?))",
 					qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label),
 				),
 				xsearch,
