@@ -3,8 +3,8 @@ package rpcclient
 import (
 	"server"
 	"server/gamelog"
+	"time"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/volatiletech/null/v8"
 
 	"github.com/gofrs/uuid"
@@ -26,21 +26,64 @@ type UserReq struct {
 }
 
 type UserResp struct {
-	ID            uuid.UUID
+	ID            string
 	Username      string
 	FactionID     null.String
-	PublicAddress common.Address
+	PublicAddress null.String
 }
 
 // UserGet get user by id
-func (pp *PassportXrpcClient) UserGet(userID server.UserID) (*server.User, error) {
-	resp := &UserGetResp{}
+func (pp *PassportXrpcClient) UserGet(userID server.UserID) (*UserResp, error) {
+	resp := &UserResp{}
 	err := pp.XrpcClient.Call("S.UserGetHandler", UserGetReq{pp.ApiKey, userID}, resp)
+
 	if err != nil {
 		gamelog.L.Err(err).Str("method", "UserGetHandler").Msg("rpc error")
 		return nil, terror.Error(err, "Failed to get user from passport server")
 	}
-	return resp.User, nil
+	return resp, nil
+}
+
+type TokenResp struct {
+	*UserResp
+	Token     string
+	ExpiredAt time.Time
+}
+
+// UserGet get user by id
+func (pp *PassportXrpcClient) OneTimeTokenLogin(tokenBase64, device, action string) (*TokenResp, error) {
+	resp := &TokenResp{}
+	err := pp.XrpcClient.Call("S.OneTimeTokenLogin", OneTimeTokenReq{pp.ApiKey, tokenBase64, device, action}, resp)
+
+	if err != nil {
+		gamelog.L.Err(err).Str("method", "UserGetHandler").Msg("rpc error")
+		return nil, terror.Error(err, "Failed to get user from passport server")
+	}
+	return resp, nil
+}
+
+type OneTimeTokenReq struct {
+	ApiKey      string
+	TokenBase64 string
+	Device      string
+	Action      string
+}
+
+type TokenReq struct {
+	ApiKey      string
+	TokenBase64 string
+}
+
+// UserGet get user by id
+func (pp *PassportXrpcClient) TokenLogin(tokenBase64 string) (*UserResp, error) {
+	resp := &UserResp{}
+	err := pp.XrpcClient.Call("S.TokenLogin", TokenReq{pp.ApiKey, tokenBase64}, resp)
+
+	if err != nil {
+		gamelog.L.Err(err).Str("method", "UserGetHandler").Msg("rpc error")
+		return nil, terror.Error(err, "Failed to get user from passport server")
+	}
+	return resp, nil
 }
 
 type UserBalanceGetReq struct {
@@ -62,4 +105,24 @@ func (pp *PassportXrpcClient) UserBalanceGet(userID uuid.UUID) decimal.Decimal {
 	}
 
 	return resp.Balance
+}
+
+type UserFactionEnlistReq struct {
+	ApiKey    string
+	UserID    string `json:"userID"`
+	FactionID string `json:"factionID"`
+}
+
+type UserFactionEnlistResp struct{}
+
+// UserFactionEnlist update user faction
+func (pp *PassportXrpcClient) UserFactionEnlist(userID string, factionID string) error {
+	resp := &UserFactionEnlistResp{}
+	err := pp.XrpcClient.Call("S.UserFactionEnlistHandler", UserFactionEnlistReq{pp.ApiKey, userID, factionID}, resp)
+	if err != nil {
+		gamelog.L.Err(err).Str("method", "UserFactionEnlistHandler").Msg("rpc error")
+		return err
+	}
+
+	return nil
 }

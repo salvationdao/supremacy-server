@@ -3,13 +3,14 @@ package rpcclient
 import (
 	"errors"
 	"fmt"
-	"go.uber.org/atomic"
 	"log"
 	"math"
 	"net/rpc"
 	"server/gamelog"
 	"sync"
 	"time"
+
+	"go.uber.org/atomic"
 
 	"github.com/ninja-software/terror/v2"
 )
@@ -27,7 +28,11 @@ type PassportXrpcClient struct {
 	ApiKey string `json:"apiKey"`
 }
 
-func NewPassportXrpcClient(apiKey string, addrs []string) *PassportXrpcClient {
+func NewPassportXrpcClient(apiKey string, hostname string, startPort, numPorts int) *PassportXrpcClient {
+	addrs := make([]string, numPorts)
+	for i := 0; i < numPorts; i++ {
+		addrs[i] = fmt.Sprintf("%s:%d", hostname, i+startPort)
+	}
 	new := &PassportXrpcClient{
 		ApiKey:     apiKey,
 		XrpcClient: &XrpcClient{Addrs: addrs},
@@ -76,7 +81,7 @@ func (c *XrpcClient) Call(serviceMethod string, args interface{}, reply interfac
 			// keep redialing until rpc server comes back online
 			client, err = dial(-1, c.Addrs[i])
 			if err != nil {
-				return terror.Error(err)
+				return err
 			}
 			c.mutex.Lock()
 			c.clients[i] = client

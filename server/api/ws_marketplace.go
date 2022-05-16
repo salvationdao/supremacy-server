@@ -7,7 +7,6 @@ import (
 	"server"
 	"server/db"
 	"server/db/boiler"
-	"server/gamedb"
 	"server/gamelog"
 	"server/rpcclient"
 	"time"
@@ -16,8 +15,8 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
+	"github.com/ninja-syndicate/ws"
 	"github.com/shopspring/decimal"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 // MarketplaceController holds handlers for marketplace
@@ -34,12 +33,12 @@ func NewMarketplaceController(api *API) *MarketplaceController {
 	api.SecureUserCommand(HubKeyMarketplaceSalesList, marketplaceHub.SalesListHandler)
 	api.SecureUserCommand(HubKeyMarketplaceSalesCreate, marketplaceHub.SalesCreateHandler)
 
-	api.SecureUserSubscribeCommand(HubKeyMarketplaceSalesItemUpdate, marketplaceHub.SalesItemUpdateSubscriber)
+	// api.SecureUserSubscribeCommand(HubKeyMarketplaceSalesItemUpdate, marketplaceHub.SalesItemUpdateSubscriber)
 
 	return marketplaceHub
 }
 
-const HubKeyMarketplaceSalesList hub.HubCommandKey = "MARKETPLACE:SALES:LIST"
+const HubKeyMarketplaceSalesList = "MARKETPLACE:SALES:LIST"
 
 type MarketplaceSalesListRequest struct {
 	*hub.HubCommandRequest
@@ -60,7 +59,7 @@ type MarketplaceSalesListResponse struct {
 	Records []*db.MarketplaceSaleItem `json:"records"`
 }
 
-func (fc *MarketplaceController) SalesListHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (fc *MarketplaceController) SalesListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &MarketplaceSalesListRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -87,7 +86,7 @@ func (fc *MarketplaceController) SalesListHandler(ctx context.Context, hubc *hub
 	return nil
 }
 
-const HubKeyMarketplaceSalesCreate hub.HubCommandKey = "MARKETPLACE:SALES:CREATE"
+const HubKeyMarketplaceSalesCreate = "MARKETPLACE:SALES:CREATE"
 
 type MarketplaceSalesCreateRequest struct {
 	*hub.HubCommandRequest
@@ -101,7 +100,7 @@ type MarketplaceSalesCreateRequest struct {
 	} `json:"payload"`
 }
 
-func (fc *MarketplaceController) SalesCreateHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (fc *MarketplaceController) SalesCreateHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Issue processing list sale item, try again or contact support."
 	req := &MarketplaceSalesCreateRequest{}
 	err := json.Unmarshal(payload, req)
@@ -114,30 +113,16 @@ func (fc *MarketplaceController) SalesCreateHandler(ctx context.Context, hubc *h
 		return terror.Error(err, "Invalid request received")
 	}
 
-	userID, err := uuid.FromString(hubc.Identifier())
+	userID, err := uuid.FromString(user.ID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to get player requesting to sell item")
 		return terror.Error(err, errMsg)
 	}
 
-	user, err := boiler.Players(
-		qm.Select(
-			boiler.PlayerColumns.FactionID,
-		),
-		boiler.PlayerWhere.ID.EQ(hubc.Identifier()),
-		boiler.PlayerWhere.FactionID.IsNotNull(),
-	).One(gamedb.StdConn)
-	if err != nil {
-		gamelog.L.Error().
-			Str("user_id", hubc.Identifier()).
-			Err(err).
-			Msg("Unable to load player's faction")
-		return terror.Error(err, errMsg)
-	}
 	if user.FactionID.IsZero() {
 		err := fmt.Errorf("player is not enlisted in a faction")
 		gamelog.L.Error().
-			Str("user_id", hubc.Identifier()).
+			Str("user_id", user.ID).
 			Err(err).
 			Msg("Player is not in a faction")
 		return terror.Error(err, "You are not enlisted in a faction.")
@@ -145,7 +130,7 @@ func (fc *MarketplaceController) SalesCreateHandler(ctx context.Context, hubc *h
 	factionID, err := uuid.FromString(user.FactionID.String)
 	if err != nil {
 		gamelog.L.Error().
-			Str("user_id", hubc.Identifier()).
+			Str("user_id", user.ID).
 			Err(err).
 			Msg("Player is not in a faction")
 		return terror.Error(err, errMsg)
@@ -155,7 +140,7 @@ func (fc *MarketplaceController) SalesCreateHandler(ctx context.Context, hubc *h
 	if !ok {
 		err = fmt.Errorf("failed to get hard coded syndicate player id")
 		gamelog.L.Error().
-			Str("player_id", hubc.Identifier()).
+			Str("player_id", user.ID).
 			Str("faction_id", user.FactionID.String).
 			Err(err).
 			Msg("unable to get hard coded syndicate player ID from faction ID")
@@ -173,7 +158,7 @@ func (fc *MarketplaceController) SalesCreateHandler(ctx context.Context, hubc *h
 	if balance.Sub(feePrice).LessThan(decimal.Zero) {
 		err = fmt.Errorf("insufficient funds")
 		gamelog.L.Error().
-			Str("user_id", hubc.Identifier()).
+			Str("user_id", user.ID).
 			Str("balance", balance.String()).
 			Str("sale_type", string(req.Payload.SaleType)).
 			Str("item_type", string(req.Payload.ItemType)).
@@ -197,7 +182,7 @@ func (fc *MarketplaceController) SalesCreateHandler(ctx context.Context, hubc *h
 	if err != nil {
 		err = fmt.Errorf("failed to process marketplace fee transaction")
 		gamelog.L.Error().
-			Str("user_id", hubc.Identifier()).
+			Str("user_id", user.ID).
 			Str("balance", balance.String()).
 			Str("sale_type", string(req.Payload.SaleType)).
 			Str("item_type", string(req.Payload.ItemType)).
@@ -213,7 +198,7 @@ func (fc *MarketplaceController) SalesCreateHandler(ctx context.Context, hubc *h
 	if err != nil {
 		fc.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
-			Str("user_id", hubc.Identifier()).
+			Str("user_id", user.ID).
 			Str("sale_type", string(req.Payload.SaleType)).
 			Str("item_type", string(req.Payload.ItemType)).
 			Str("item_id", req.Payload.ItemID.String()).
@@ -226,7 +211,7 @@ func (fc *MarketplaceController) SalesCreateHandler(ctx context.Context, hubc *h
 	if err != nil {
 		fc.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
-			Str("user_id", hubc.Identifier()).
+			Str("user_id", user.ID).
 			Str("sale_type", string(req.Payload.SaleType)).
 			Str("item_type", string(req.Payload.ItemType)).
 			Str("item_id", req.Payload.ItemID.String()).
@@ -240,7 +225,7 @@ func (fc *MarketplaceController) SalesCreateHandler(ctx context.Context, hubc *h
 	return nil
 }
 
-const HubKeyMarketplaceSalesItemUpdate hub.HubCommandKey = "MARKETPLACE:SALES:ITEM:UPDATE"
+const HubKeyMarketplaceSalesItemUpdate = "MARKETPLACE:SALES:ITEM:UPDATE"
 
 type MarketplaceSalesItemUpdateSubscribe struct {
 	*hub.HubCommandRequest

@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ninja-syndicate/ws"
 	"net/http"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
 
 	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -93,7 +93,7 @@ func (api *API) GlobalAnnouncementSend(w http.ResponseWriter, r *http.Request) (
 		resp = nil
 	}
 
-	go api.MessageBus.Send(messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), resp)
+	ws.PublishMessage("/public/global_announcement", server.HubKeyGlobalAnnouncementSubscribe, resp)
 
 	fmt.Fprintf(w, fmt.Sprintf("Global Announcement Inserted Successfully, will show from battle: %d to battle: %d", ga.ShowFromBattleNumber.Int, ga.ShowUntilBattleNumber.Int))
 
@@ -109,7 +109,7 @@ func (api *API) GlobalAnnouncementDelete(w http.ResponseWriter, r *http.Request)
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to delete announcement %w", err))
 	}
 
-	go api.MessageBus.Send(messagebus.BusKey(HubKeyGlobalAnnouncementSubscribe), nil)
+	ws.PublishMessage("/public/global_announcement", server.HubKeyGlobalAnnouncementSubscribe, nil)
 
 	fmt.Fprintf(w, "Global Announcement Deleted Successfully")
 	return http.StatusOK, nil

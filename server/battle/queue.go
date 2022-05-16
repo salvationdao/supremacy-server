@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ninja-syndicate/ws"
 	"math"
 	"server"
 	"server/db"
@@ -20,7 +21,6 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
-	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -76,14 +76,14 @@ type QueueJoinRequest struct {
 	} `json:"payload"`
 }
 
-const WSQueueJoin hub.HubCommandKey = "BATTLE:QUEUE:JOIN"
+const WSQueueJoin = "BATTLE:QUEUE:JOIN"
 
-func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, payload []byte, factionID uuid.UUID, reply hub.ReplyFunc) error {
+func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	msg := &QueueJoinRequest{}
 	err := json.Unmarshal(payload, msg)
 	if err != nil {
 		gamelog.L.Error().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal queue join")
-		return terror.Error(err)
+		return err
 	}
 
 	// check mobile phone, if player required notifyed through mobile sms
@@ -91,7 +91,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		mobileNumber, err := arena.sms.Lookup(msg.Payload.MobileNumber)
 		if err != nil {
 			gamelog.L.Warn().Str("mobile number", msg.Payload.MobileNumber).Msg("Failed to lookup mobile number through twilio api")
-			return terror.Error(err)
+			return err
 		}
 
 		// set the verifyed mobile number
@@ -101,7 +101,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 	mechID, err := db.MechIDFromHash(msg.Payload.AssetHash)
 	if err != nil {
 		gamelog.L.Error().Str("hash", msg.Payload.AssetHash).Err(err).Msg("unable to retrieve mech id from hash")
-		return terror.Error(err)
+		return err
 	}
 
 	onChainStatus, err := arena.RPCClient.AssetOnChainStatus(mechID.String())
@@ -116,7 +116,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 	mech, err := db.Mech(mechID)
 	if err != nil {
 		gamelog.L.Error().Str("mech_id", mechID.String()).Err(err).Msg("unable to retrieve mech id from hash")
-		return terror.Error(err)
+		return err
 	}
 
 	if mech.Faction == nil {
@@ -127,10 +127,10 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 	ownerID, err := uuid.FromString(mech.OwnerID)
 	if err != nil {
 		gamelog.L.Error().Str("ownerID", mech.OwnerID).Err(err).Msg("unable to convert owner id from string")
-		return terror.Error(err)
+		return err
 	}
 
-	if !mech.IsDefault && mech.OwnerID != wsc.Identifier() {
+	if !mech.IsDefault && mech.OwnerID != user.ID {
 		return terror.Error(fmt.Errorf("does not own the mech"), "Current mech does not own by you")
 	}
 
@@ -155,7 +155,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 	}
 	if existMech != nil {
 		gamelog.L.Debug().Str("mech_id", mechID.String()).Err(err).Msg("mech already in queue")
-		position, err := db.QueuePosition(mechID, factionID)
+		position, err := db.QueuePosition(mechID, uuid.FromStringOrNil(factionID))
 		if err != nil {
 			return terror.Error(err, "Already in queue, failed to get position. Contact support or try again.")
 		}
@@ -168,10 +168,10 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 	}
 
 	// Get current queue length and calculate queue fee and reward
-	result, err := db.QueueLength(factionID)
+	result, err := db.QueueLength(uuid.FromStringOrNil(factionID))
 	if err != nil {
 		gamelog.L.Error().Interface("factionID", factionID).Err(err).Msg("unable to retrieve queue length")
-		return terror.Error(err)
+		return err
 	}
 
 	queueStatus := CalcNextQueueStatus(result)
@@ -185,7 +185,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 
 	bc := &boiler.BattleContract{
 		MechID:         mechID.String(),
-		FactionID:      factionID.String(),
+		FactionID:      factionID,
 		PlayerID:       ownerID.String(),
 		ContractReward: queueStatus.ContractReward,
 		Fee:            queueStatus.QueueCost,
@@ -203,7 +203,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 	bq := &boiler.BattleQueue{
 		MechID:           mechID.String(),
 		QueuedAt:         time.Now(),
-		FactionID:        factionID.String(),
+		FactionID:        factionID,
 		OwnerID:          ownerID.String(),
 		BattleContractID: null.StringFrom(bc.ID),
 	}
@@ -221,11 +221,11 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 	}
 
 	// get faction user account
-	factionAccountID, ok := server.FactionUsers[factionID.String()]
+	factionAccountID, ok := server.FactionUsers[factionID]
 	if !ok {
 		gamelog.L.Error().
 			Str("mech ID", mech.ID).
-			Str("faction ID", factionID.String()).
+			Str("faction ID", factionID).
 			Err(err).
 			Msg("unable to get hard coded syndicate player ID from faction ID")
 	}
@@ -235,7 +235,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		if err != nil {
 			gamelog.L.Error().
 				Str("mech ID", mech.ID).
-				Str("faction ID", factionID.String()).
+				Str("faction ID", factionID).
 				Err(err).
 				Msg("unable to save battle queue join for faction owned mech")
 			return err
@@ -256,7 +256,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 	})
 	if err != nil || supTransactionID == "TRANSACTION_FAILED" {
 		// Abort transaction if charge fails
-		gamelog.L.Error().Str("txID", supTransactionID).Interface("mechID", mechID).Interface("factionID", factionID.String()).Err(err).Msg("unable to charge user for insert mech into queue")
+		gamelog.L.Error().Str("txID", supTransactionID).Interface("mechID", mechID).Interface("factionID", factionID).Err(err).Msg("unable to charge user for insert mech into queue")
 		return terror.Error(err, "Unable to process queue fee,  check your balance and try again.")
 	}
 
@@ -405,17 +405,16 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 	}
 
 	// Get mech current queue position
-	position, err := db.QueuePosition(mechID, factionID)
 	if err != nil && !errors.Is(sql.ErrNoRows, err) {
 		gamelog.L.Error().
 			Str("mechID", mechID.String()).
-			Str("factionID", factionID.String()).
+			Str("factionID", factionID).
 			Err(err).Msg("unable to retrieve mech queue position")
 		return terror.Error(err, "Unable to join queue, check your balance and try again.")
 	}
 
 	// Tell clients to refetch war machine queue status
-	arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", WSQueueUpdatedSubscribe, factionID.String())), true)
+	ws.PublishMessage(fmt.Sprintf("/battle/faction/%s/queue", factionID), WSQueueUpdatedSubscribe, true)
 
 	// reply with shortcode if telegram notifs enabled
 	if bqn.TelegramNotificationID.Valid && shortcode != "" {
@@ -430,15 +429,8 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		})
 	}
 
-	// Send updated war machine queue status to subscriber
-	arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", WSAssetQueueStatusSubscribe, mechID)), AssetQueueStatusResponse{
-		&position,
-		&queueStatus.ContractReward,
-	})
-
 	// Send updated battle queue status to all subscribers
-	nextQueueStatus := CalcNextQueueStatus(queueStatus.QueueLength + 1)
-	arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", WSQueueStatusSubscribe, factionID.String())), nextQueueStatus)
+	ws.PublishMessage(fmt.Sprintf("/battle/faction/%s/queue", factionID), WSQueueStatusSubscribe, CalcNextQueueStatus(queueStatus.QueueLength+1))
 
 	return nil
 }
@@ -450,9 +442,9 @@ type QueueLeaveRequest struct {
 	} `json:"payload"`
 }
 
-const WSQueueLeave hub.HubCommandKey = "BATTLE:QUEUE:LEAVE"
+const WSQueueLeave = "BATTLE:QUEUE:LEAVE"
 
-func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payload []byte, factionID uuid.UUID, reply hub.ReplyFunc) error {
+func (arena *Arena) QueueLeaveHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	msg := &QueueLeaveRequest{}
 	err := json.Unmarshal(payload, msg)
 	if err != nil {
@@ -477,29 +469,18 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 		return terror.Error(err, "Issue leaving queue, try again or contact support.")
 	}
 
-	ownerID, err := uuid.FromString(mech.OwnerID)
-	if err != nil {
-		gamelog.L.Error().Str("ownerID", mech.OwnerID).Err(err).Msg("unable to convert owner id from string")
-		return terror.Error(err, "Issue leaving queue, try again or contact support.")
-	}
-
-	userID := uuid.FromStringOrNil(wsc.Identifier())
-	if userID.IsNil() {
+	if user.ID != mech.OwnerID {
 		return terror.Error(terror.ErrForbidden, "Only the owners of the war machine can remove it from the queue.")
 	}
 
-	if userID != ownerID {
-		return terror.Error(terror.ErrForbidden, "Only the owners of the war machine can remove it from the queue.")
-	}
-
-	originalQueueCost, err := db.QueueFee(mechID, factionID)
+	originalQueueCost, err := db.QueueFee(mechID, uuid.FromStringOrNil(factionID))
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Interface("mechID", mechID).Interface("factionID", mech.FactionID).Err(err).Msg("unable to remove mech from queue")
 		return terror.Error(err, "Issue leaving queue, try again or contact support.")
 	}
 
 	// Get queue position before deleting
-	position, err := db.QueuePosition(mechID, factionID)
+	position, err := db.QueuePosition(mechID, uuid.FromStringOrNil(factionID))
 	if errors.Is(sql.ErrNoRows, err) {
 		// If mech is not in queue
 		gamelog.L.Warn().Interface("mechID", mechID).Interface("factionID", mech.FactionID).Err(err).Msg("tried to remove already unqueued mech from queue")
@@ -547,11 +528,11 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 		return terror.Error(err, "Issue leaving queue, try again or contact support.")
 	}
 
-	factionAccountID, ok := server.FactionUsers[factionID.String()]
+	factionAccountID, ok := server.FactionUsers[factionID]
 	if !ok {
 		gamelog.L.Error().
 			Str("mech ID", mech.ID).
-			Str("faction ID", factionID.String()).
+			Str("faction ID", factionID).
 			Err(err).
 			Msg("unable to get hard coded syndicate player ID from faction ID")
 	}
@@ -656,17 +637,16 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 	reply(true)
 
 	// Tell clients to refetch war machine queue status
-	arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", WSQueueUpdatedSubscribe, factionID.String())), true)
+	ws.PublishMessage(fmt.Sprintf("/battle/faction/%s/queue", factionID), WSQueueUpdatedSubscribe, true)
 
-	result, err := db.QueueLength(factionID)
+	result, err := db.QueueLength(uuid.FromStringOrNil(factionID))
 	if err != nil {
 		gamelog.L.Error().Interface("factionID", factionID).Err(err).Msg("unable to retrieve queue length")
 		return terror.Error(err, "Unable to leave queue, try again or contact support.")
 	}
-	nextQueueStatus := CalcNextQueueStatus(result)
 
 	// Send updated Battle queue status to all subscribers
-	arena.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", WSQueueStatusSubscribe, factionID.String())), nextQueueStatus)
+	ws.PublishMessage(fmt.Sprintf("/battle/faction/%s/queue", factionID), WSQueueStatusSubscribe, CalcNextQueueStatus(result))
 
 	return nil
 }
@@ -677,61 +657,21 @@ type QueueStatusResponse struct {
 	ContractReward decimal.Decimal `json:"contract_reward"`
 }
 
-const WSQueueStatusSubscribe hub.HubCommandKey = hub.HubCommandKey("BATTLE:QUEUE:STATUS:SUBSCRIBE")
+const WSQueueStatusSubscribe = "BATTLE:QUEUE:STATUS:SUBSCRIBE"
 
-func (arena *Arena) QueueStatusSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
-	req := &hub.HubCommandRequest{}
-	err := json.Unmarshal(payload, req)
+func (arena *Arena) QueueStatusSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	result, err := db.QueueLength(uuid.FromStringOrNil(factionID))
 	if err != nil {
-		return "", "", terror.Error(err, "Invalid request received")
+		gamelog.L.Error().Interface("factionID", user.FactionID.String).Err(err).Msg("unable to retrieve queue length")
+		return err
 	}
 
-	userID := uuid.FromStringOrNil(wsc.Identifier())
-	if userID.IsNil() {
-		return "", "", terror.Error(terror.ErrInvalidInput)
-	}
+	reply(CalcNextQueueStatus(result))
 
-	factionID, err := GetPlayerFactionID(userID)
-	if err != nil || factionID.IsNil() {
-		gamelog.L.Error().Str("userID", userID.String()).Err(err).Msg("unable to find faction from user id")
-		return "", "", terror.Error(err)
-	}
-
-	if needProcess {
-		result, err := db.QueueLength(factionID)
-		if err != nil {
-			gamelog.L.Error().Interface("factionID", factionID).Err(err).Msg("unable to retrieve queue length")
-			return "", "", terror.Error(err)
-		}
-
-		reply(CalcNextQueueStatus(result))
-	}
-
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", WSQueueStatusSubscribe, factionID.String())), nil
+	return nil
 }
 
-const WSQueueUpdatedSubscribe hub.HubCommandKey = hub.HubCommandKey("BATTLE:QUEUE:UPDATED")
-
-func (arena *Arena) QueueUpdatedSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
-	req := &hub.HubCommandRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return "", "", terror.Error(err, "Invalid request received")
-	}
-
-	userID := uuid.FromStringOrNil(wsc.Identifier())
-	if userID.IsNil() {
-		return "", "", terror.Error(terror.ErrInvalidInput)
-	}
-
-	factionID, err := GetPlayerFactionID(userID)
-	if err != nil || factionID.IsNil() {
-		gamelog.L.Error().Str("userID", userID.String()).Err(err).Msg("unable to find faction from user id")
-		return "", "", terror.Error(err)
-	}
-
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", WSQueueUpdatedSubscribe, factionID)), nil
-}
+const WSQueueUpdatedSubscribe = "BATTLE:QUEUE:UPDATED"
 
 type AssetQueueStatusRequest struct {
 	*hub.HubCommandRequest
@@ -745,9 +685,9 @@ type AssetQueueStatusResponse struct {
 	ContractReward *decimal.Decimal `json:"contract_reward"`
 }
 
-const WSAssetQueueStatus hub.HubCommandKey = hub.HubCommandKey("ASSET:QUEUE:STATUS")
+const WSAssetQueueStatus = "ASSET:QUEUE:STATUS"
 
-func (arena *Arena) AssetQueueStatusHandler(ctx context.Context, wsc *hub.Client, payload []byte, factionID uuid.UUID, reply hub.ReplyFunc) error {
+func (arena *Arena) AssetQueueStatusHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &AssetQueueStatusRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -757,33 +697,26 @@ func (arena *Arena) AssetQueueStatusHandler(ctx context.Context, wsc *hub.Client
 	mechID, err := db.MechIDFromHash(req.Payload.AssetHash)
 	if err != nil {
 		gamelog.L.Error().Str("hash", req.Payload.AssetHash).Err(err).Msg("unable to retrieve mech id from hash")
-		return terror.Error(err)
+		return err
 	}
 
 	mech, err := db.Mech(mechID)
 	if err != nil {
 		gamelog.L.Error().Str("mech_id", mechID.String()).Err(err).Msg("unable to retrieve mech id from hash")
-		return terror.Error(err)
+		return err
 	}
 
 	if mech.Faction == nil {
 		gamelog.L.Error().Str("mech_id", mechID.String()).Err(err).Msg("mech's owner player has no faction")
-		return terror.Error(err)
+		return err
 	}
 
-	ownerID, err := uuid.FromString(mech.OwnerID)
-	if err != nil {
-		gamelog.L.Error().Str("ownerID", mech.OwnerID).Err(err).Msg("unable to convert owner id from string")
-		return terror.Error(err)
+	if mech.OwnerID != user.ID {
+		gamelog.L.Error().Str("mech_id", mechID.String()).Str("mech owner id", mech.OwnerID).Str("player id", user.ID).Err(err).Msg("player does not own the mech")
+		return err
 	}
 
-	mechFactionID, err := GetPlayerFactionID(ownerID)
-	if err != nil || mechFactionID.IsNil() {
-		gamelog.L.Error().Str("userID", ownerID.String()).Err(err).Msg("unable to find faction from owner id")
-		return terror.Error(err)
-	}
-
-	position, err := db.QueuePosition(mechID, mechFactionID)
+	position, err := db.QueuePosition(mechID, uuid.FromStringOrNil(factionID))
 	if errors.Is(sql.ErrNoRows, err) {
 		// If mech is not in queue
 		reply(AssetQueueStatusResponse{
@@ -793,13 +726,13 @@ func (arena *Arena) AssetQueueStatusHandler(ctx context.Context, wsc *hub.Client
 		return nil
 	}
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 
-	contractReward, err := db.QueueContract(mechID, mechFactionID)
+	contractReward, err := db.QueueContract(mechID, uuid.FromStringOrNil(factionID))
 	if err != nil {
-		gamelog.L.Error().Str("mechID", mechID.String()).Str("mechFactionID", mechFactionID.String()).Err(err).Msg("unable to get contract reward")
-		return terror.Error(err)
+		gamelog.L.Error().Str("mech id", mechID.String()).Str("faction id", factionID).Err(err).Msg("unable to get contract reward")
+		return err
 	}
 
 	reply(AssetQueueStatusResponse{
@@ -810,20 +743,15 @@ func (arena *Arena) AssetQueueStatusHandler(ctx context.Context, wsc *hub.Client
 	return nil
 }
 
-const WSAssetQueueStatusList hub.HubCommandKey = "ASSET:QUEUE:STATUS:LIST"
+const WSAssetQueueStatusList = "ASSET:QUEUE:STATUS:LIST"
 
 type AssetQueueStatusItem struct {
 	MechID        string `json:"mech_id"`
 	QueuePosition int64  `json:"queue_position"`
 }
 
-func (arena *Arena) AssetQueueStatusListHandler(ctx context.Context, hub *hub.Client, payload []byte, userFactionID uuid.UUID, reply hub.ReplyFunc) error {
-	userID, err := uuid.FromString(hub.Identifier())
-	if err != nil {
-		return terror.Error(err, "Invalid request received")
-	}
-
-	queueList, err := db.QueueOwnerList(userID)
+func (arena *Arena) AssetQueueStatusListHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	queueList, err := db.QueueOwnerList(uuid.FromStringOrNil(user.ID))
 	if err != nil {
 		return terror.Error(err, "Failed to list war machines in queue")
 	}
@@ -854,83 +782,6 @@ func (arena *Arena) AssetQueueStatusListHandler(ctx context.Context, hub *hub.Cl
 	return nil
 }
 
-const WSAssetQueueStatusSubscribe hub.HubCommandKey = hub.HubCommandKey("ASSET:QUEUE:STATUS:SUBSCRIBE")
-
-func (arena *Arena) AssetQueueStatusSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
-	req := &AssetQueueStatusRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return "", "", terror.Error(err, "Invalid request received")
-	}
-
-	if req.Payload.AssetHash == "" {
-		return "", "", terror.Warn(fmt.Errorf("empty asset hash"), "Empty asset data, please try again or contact support.")
-	}
-
-	mechID, err := db.MechIDFromHash(req.Payload.AssetHash)
-	if err != nil {
-		gamelog.L.Error().Str("hash", req.Payload.AssetHash).Err(err).Msg("unable to retrieve mech id from hash")
-		return "", "", terror.Error(err)
-	}
-
-	mech, err := db.Mech(mechID)
-	if err != nil {
-		gamelog.L.Error().Str("mech_id", mechID.String()).Err(err).Msg("unable to retrieve mech id from hash")
-		return "", "", terror.Error(err)
-	}
-
-	if mech.Faction == nil {
-		gamelog.L.Error().Str("mech_id", mechID.String()).Err(err).Msg("mech's owner player has no faction")
-		return "", "", terror.Error(err)
-	}
-
-	if mech.OwnerID != wsc.Identifier() {
-		gamelog.L.Warn().Str("player id", wsc.Identifier()).Str("mech id", mechID.String()).Msg("Someone attempt to subscribe on a mech's queuing status which is not belong to them")
-		return "", "", terror.Error(terror.ErrForbidden, "Cannot subscribe on mech which is not belong to you")
-	}
-
-	ownerID, err := uuid.FromString(mech.OwnerID)
-	if err != nil {
-		gamelog.L.Error().Str("ownerID", mech.OwnerID).Err(err).Msg("unable to convert owner id from string")
-		return "", "", terror.Error(err)
-	}
-
-	factionID, err := GetPlayerFactionID(ownerID)
-	if err != nil || factionID.IsNil() {
-		gamelog.L.Error().Str("userID", ownerID.String()).Err(err).Msg("unable to find faction from owner id")
-		return "", "", terror.Error(err)
-	}
-
-	if needProcess {
-		position, err := db.QueuePosition(mechID, factionID)
-		if errors.Is(sql.ErrNoRows, err) {
-			// If mech is not in queue
-			reply(AssetQueueStatusResponse{
-				nil,
-				nil,
-			})
-			return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", WSAssetQueueStatusSubscribe, mechID)), nil
-		}
-		if err != nil {
-			gamelog.L.Error().Str("mechID", mechID.String()).Str("factionID", factionID.String()).Err(err).Msg("unable to get mech queue position")
-			return "", "", terror.Error(err)
-		}
-
-		contractReward, err := db.QueueContract(mechID, factionID)
-		if err != nil {
-			gamelog.L.Error().Str("mechID", mechID.String()).Str("factionID", factionID.String()).Err(err).Msg("unable to get contract reward")
-			return "", "", terror.Error(err)
-		}
-
-		reply(AssetQueueStatusResponse{
-			&position,
-			contractReward,
-		})
-	}
-
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", WSAssetQueueStatusSubscribe, mechID)), nil
-}
-
 type AssetQueueManyRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
@@ -953,9 +804,9 @@ type AssetQueue struct {
 	BattleContractID string
 }
 
-const HubKeyAssetMany hub.HubCommandKey = hub.HubCommandKey("ASSET:MANY")
+const HubKeyAssetMany = "ASSET:MANY"
 
-func (arena *Arena) AssetManyHandler(ctx context.Context, hubc *hub.Client, payload []byte, userFactionID uuid.UUID, reply hub.ReplyFunc) error {
+func (arena *Arena) AssetManyHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &AssetQueueManyRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -969,11 +820,11 @@ func (arena *Arena) AssetManyHandler(ctx context.Context, hubc *hub.Client, payl
 	// get the list of player's mechs (id, hash, created_at)
 	allMechs, err := boiler.Mechs(
 		qm.Select(boiler.MechColumns.ID, boiler.MechColumns.Hash, boiler.MechColumns.CreatedAt),
-		boiler.MechWhere.OwnerID.EQ(hubc.Identifier()),
+		boiler.MechWhere.OwnerID.EQ(user.ID),
 		qm.OrderBy(boiler.MechColumns.CreatedAt),
 	).All(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Str("player id", hubc.Identifier()).Err(err).Msg("Failed to get player's mechs")
+		gamelog.L.Error().Str("player id", user.ID).Err(err).Msg("Failed to get player's mechs")
 		return terror.Error(err, "Failed to get mech data")
 	}
 
@@ -1006,9 +857,9 @@ func (arena *Arena) AssetManyHandler(ctx context.Context, hubc *hub.Client, payl
 	resp.Total = len(mechs)
 
 	// get queue position
-	queuePosition, err := db.MechQueuePosition(userFactionID.String(), hubc.Identifier())
+	queuePosition, err := db.MechQueuePosition(factionID, user.ID)
 	if err != nil {
-		gamelog.L.Error().Str("player id", hubc.Identifier()).Err(err).Msg("Failed to get player mech position")
+		gamelog.L.Error().Str("player id", user.ID).Err(err).Msg("Failed to get player mech position")
 		return terror.Error(err, "Failed to get mech position")
 	}
 
@@ -1019,7 +870,7 @@ func (arena *Arena) AssetManyHandler(ctx context.Context, hubc *hub.Client, payl
 			boiler.BattleQueueColumns.BattleContractID,
 			boiler.BattleQueueColumns.MechID,
 		),
-		boiler.BattleQueueWhere.OwnerID.EQ(hubc.Identifier()),
+		boiler.BattleQueueWhere.OwnerID.EQ(user.ID),
 		boiler.BattleQueueWhere.BattleID.IsNotNull(),
 		boiler.BattleQueueWhere.BattleContractID.IsNotNull(),
 		qm.Load(boiler.BattleQueueRels.Mech),

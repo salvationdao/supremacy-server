@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/ws"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -13,7 +15,6 @@ import (
 	"time"
 
 	"github.com/gofrs/uuid"
-	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/volatiletech/null/v8"
@@ -85,11 +86,11 @@ type AbilityBrief struct {
 }
 
 type UserBrief struct {
-	ID        uuid.UUID     `json:"id"`
-	Username  string        `json:"username"`
-	FactionID string        `json:"faction_id,omitempty"`
-	Faction   *FactionBrief `json:"faction"`
-	Gid       int           `json:"gid"`
+	ID        uuid.UUID       `json:"id"`
+	Username  string          `json:"username"`
+	FactionID string          `json:"faction_id,omitempty"`
+	Faction   *boiler.Faction `json:"faction"`
+	Gid       int             `json:"gid"`
 }
 
 type GameNotification struct {
@@ -97,21 +98,15 @@ type GameNotification struct {
 	Data interface{}          `json:"data"`
 }
 
-const HubKeyMultiplierSubscribe hub.HubCommandKey = "USER:MULTIPLIERS:SUBSCRIBE"
+const HubKeyMultiplierSubscribe = "USER:MULTIPLIERS:SUBSCRIBE"
 
-const HubKeyUserMultiplierSignalUpdate hub.HubCommandKey = "USER:MULTIPLIER:SIGNAL:SUBSCRIBE"
+const HubKeyUserMultiplierSignalUpdate = "USER:MULTIPLIER:SIGNAL:SUBSCRIBE"
 
-func (arena *Arena) HubKeyMultiplierUpdate(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
-	req := &hub.HubCommandRequest{}
-	err := json.Unmarshal(payload, req)
+func (arena *Arena) MultiplierUpdate(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	id, err := uuid.FromString(user.ID)
 	if err != nil {
-		return "", "", terror.Error(err)
-	}
-
-	id, err := uuid.FromString(wsc.Identifier())
-	if err != nil {
-		gamelog.L.Warn().Err(err).Str("id", wsc.Identifier()).Msg("unable to create uuid from websocket client identifier id")
-		return "", "", terror.Error(err, "Unable to create uuid from websocket client identifier id")
+		gamelog.L.Warn().Err(err).Str("id", user.ID).Msg("unable to create uuid from websocket client identifier id")
+		return terror.Error(err, "Unable to create uuid from websocket client identifier id")
 	}
 
 	spoils, err := boiler.SpoilsOfWars(
@@ -121,7 +116,7 @@ func (arena *Arena) HubKeyMultiplierUpdate(ctx context.Context, wsc *hub.Client,
 	).All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("failed to call SpoilsOfWars")
-		return "", "", terror.Error(err, "Unable to get recently battle multipliers.")
+		return terror.Error(err, "Unable to get recently battle multipliers.")
 	}
 
 	resp := &MultiplierUpdate{
@@ -138,18 +133,18 @@ func (arena *Arena) HubKeyMultiplierUpdate(ctx context.Context, wsc *hub.Client,
 	}
 
 	reply(resp)
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyMultiplierSubscribe, wsc.Identifier())), nil
+	return nil
 }
 
-const HubKeyViewerLiveCountUpdated = hub.HubCommandKey("VIEWER:LIVE:COUNT:UPDATED")
+const HubKeyViewerLiveCountUpdated = "VIEWER:LIVE:COUNT:UPDATED"
 
-const HubKeyGameNotification hub.HubCommandKey = "GAME:NOTIFICATION"
+const HubKeyGameNotification = "GAME:NOTIFICATION"
 
-func (arena *Arena) GameNotificationSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
+func (arena *Arena) GameNotificationSubscribeHandler(ctx context.Context, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return "", "", terror.Error(err)
+		return "", "", err
 	}
 
 	return req.TransactionID, messagebus.BusKey(HubKeyGameNotification), nil
@@ -157,7 +152,7 @@ func (arena *Arena) GameNotificationSubscribeHandler(ctx context.Context, wsc *h
 
 // BroadcastGameNotificationText broadcast game notification to client
 func (arena *Arena) BroadcastGameNotificationText(data string) {
-	arena.messageBus.Send(messagebus.BusKey(HubKeyGameNotification), &GameNotification{
+	ws.PublishMessage("/battle/notification", HubKeyGameNotification, &GameNotification{
 		Type: GameNotificationTypeText,
 		Data: data,
 	})
@@ -165,7 +160,7 @@ func (arena *Arena) BroadcastGameNotificationText(data string) {
 
 // BroadcastGameNotificationLocationSelect broadcast game notification to client
 func (arena *Arena) BroadcastGameNotificationLocationSelect(data *GameNotificationLocationSelect) {
-	arena.messageBus.Send(messagebus.BusKey(HubKeyGameNotification), &GameNotification{
+	ws.PublishMessage("/battle/notification", HubKeyGameNotification, &GameNotification{
 		Type: GameNotificationTypeLocationSelect,
 		Data: data,
 	})
@@ -173,7 +168,7 @@ func (arena *Arena) BroadcastGameNotificationLocationSelect(data *GameNotificati
 
 // BroadcastGameNotificationAbility broadcast game notification to client
 func (arena *Arena) BroadcastGameNotificationAbility(notificationType GameNotificationType, data GameNotificationAbility) {
-	arena.messageBus.Send(messagebus.BusKey(HubKeyGameNotification), &GameNotification{
+	ws.PublishMessage("/battle/notification", HubKeyGameNotification, &GameNotification{
 		Type: notificationType,
 		Data: data,
 	})
@@ -181,7 +176,7 @@ func (arena *Arena) BroadcastGameNotificationAbility(notificationType GameNotifi
 
 // BroadcastGameNotificationWarMachineAbility broadcast game notification to client
 func (arena *Arena) BroadcastGameNotificationWarMachineAbility(data *GameNotificationWarMachineAbility) {
-	arena.messageBus.Send(messagebus.BusKey(HubKeyGameNotification), &GameNotification{
+	ws.PublishMessage("/battle/notification", HubKeyGameNotification, &GameNotification{
 		Type: GameNotificationTypeWarMachineAbility,
 		Data: data,
 	})
@@ -189,7 +184,7 @@ func (arena *Arena) BroadcastGameNotificationWarMachineAbility(data *GameNotific
 
 // BroadcastGameNotificationWarMachineDestroyed broadcast game notification to client
 func (arena *Arena) BroadcastGameNotificationWarMachineDestroyed(data *WarMachineDestroyedEventRecord) {
-	arena.messageBus.Send(messagebus.BusKey(HubKeyGameNotification), &GameNotification{
+	ws.PublishMessage("/battle/notification", HubKeyGameNotification, &GameNotification{
 		Type: GameNotificationTypeWarMachineDestroyed,
 		Data: data,
 	})
@@ -200,7 +195,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 	// get next 10 war machines in queue for each faction
 	q, err := db.LoadBattleQueue(context.Background(), 13)
 	if err != nil {
-		gamelog.L.Warn().Err(err).Str("battle_id", arena.currentBattle().ID).Msg("unable to load out queue for notifications")
+		gamelog.L.Warn().Err(err).Str("battle_id", arena.CurrentBattle().ID).Msg("unable to load out queue for notifications")
 		return
 	}
 
@@ -208,7 +203,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 	for _, bq := range q {
 		// if in battle or already notified skip
 		if bq.BattleID.Valid {
-			gamelog.L.Warn().Err(err).Str("battle_id", arena.currentBattle().BattleID).Msg(fmt.Sprintf("battle has started or already happened before sending notification: %s", bq.BattleID.String))
+			gamelog.L.Warn().Err(err).Str("battle_id", arena.CurrentBattle().BattleID).Msg(fmt.Sprintf("battle has started or already happened before sending notification: %s", bq.BattleID.String))
 			continue
 		}
 		if bq.Notified {
@@ -220,7 +215,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			boiler.PlayerWhere.ID.EQ(bq.OwnerID),
 		).One(gamedb.StdConn)
 		if err != nil {
-			gamelog.L.Error().Err(err).Str("battle_id", arena.currentBattle().ID).Str("owner_id", bq.OwnerID).Msg("unable to find owner for battle queue notification")
+			gamelog.L.Error().Err(err).Str("battle_id", arena.CurrentBattle().ID).Str("owner_id", bq.OwnerID).Msg("unable to find owner for battle queue notification")
 			continue
 		}
 		warMachine, err := bq.Mech(qm.Load(boiler.MechRels.BattleQueueNotifications)).One(gamedb.StdConn)
@@ -242,7 +237,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 		//	qm.Load(boiler.BattleQueueNotificationRels.Mech),
 		//).One(gamedb.StdConn)
 		//if err != nil {
-		//	gamelog.L.Error().Err(err).Str("battle_id", arena.currentBattle().ID).Msg("unable to find battle queue notifications")
+		//	gamelog.L.Error().Err(err).Str("battle_id", arena.CurrentBattle().ID).Msg("unable to find battle queue notifications")
 		//	continue
 		//}
 

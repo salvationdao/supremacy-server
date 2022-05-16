@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 
@@ -52,6 +53,28 @@ func WithToken(apiToken string, next func(w http.ResponseWriter, r *http.Request
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("X-Authorization") != apiToken {
 			http.Error(w, "unauthorized", http.StatusForbidden)
+			return
+		}
+		next(w, r)
+	}
+	return fn
+}
+
+func WithCookie(api *API, next func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		token := ""
+		cookie, err := r.Cookie("xsyn-token")
+		if err != nil {
+			fmt.Fprintf(w, "cookie not found: %v", err)
+			return
+		}
+		if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
+			fmt.Fprintf(w, "decryption error: %v", err)
+			return
+		}
+		_, err = api.TokenLogin(token)
+		if err != nil {
+			fmt.Fprintf(w, "authentication error: %v", err)
 			return
 		}
 		next(w, r)

@@ -2,6 +2,7 @@ package battle
 
 import (
 	"fmt"
+	"github.com/ninja-syndicate/ws"
 	"net/http"
 	"server"
 	"server/db"
@@ -27,6 +28,7 @@ const (
 	PlayerRankCorporal   PlayerRank = "CORPORAL"
 	PlayerRankGeneral    PlayerRank = "GENERAL"
 )
+const HubKeyPlayerRankGet = "PLAYER:RANK:GET"
 
 func (arena *Arena) PlayerRankUpdater() {
 	// create a tickle to constantly update player ability kill and ranks
@@ -73,7 +75,7 @@ func (arena *Arena) PlayerRankUpdater() {
 						// broadcast player rank to every player
 						go func(bu *BattleUser, player *boiler.Player) {
 							// broadcast stat
-							bu.Send(HubKeyPlayerRankGet, player.Rank)
+							ws.PublishMessage(fmt.Sprintf("/user/%s", player.ID), HubKeyPlayerRankGet, player.Rank)
 
 							// broadcast user stat (player_last_seven_days_kills)
 							us, err := db.UserStatsGet(player.ID)
@@ -82,7 +84,7 @@ func (arena *Arena) PlayerRankUpdater() {
 							}
 
 							if us != nil {
-								bu.Send(HubKeyUserStatSubscribe, us)
+								ws.PublishMessage(fmt.Sprintf("/user/%s", us.ID), HubKeyUserStatSubscribe, us)
 							}
 						}(bu, player)
 
