@@ -14,7 +14,6 @@ import (
 
 	"github.com/friendsofgo/errors"
 	"github.com/shopspring/decimal"
-	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -33,7 +32,7 @@ type BlueprintPowerCore struct {
 	RechargeRate decimal.Decimal `boiler:"recharge_rate" boil:"recharge_rate" json:"recharge_rate" toml:"recharge_rate" yaml:"recharge_rate"`
 	Armour       decimal.Decimal `boiler:"armour" boil:"armour" json:"armour" toml:"armour" yaml:"armour"`
 	MaxHitpoints decimal.Decimal `boiler:"max_hitpoints" boil:"max_hitpoints" json:"max_hitpoints" toml:"max_hitpoints" yaml:"max_hitpoints"`
-	Tier         null.String     `boiler:"tier" boil:"tier" json:"tier,omitempty" toml:"tier" yaml:"tier,omitempty"`
+	Tier         string          `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
 	CreatedAt    time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *blueprintPowerCoreR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -104,7 +103,7 @@ var BlueprintPowerCoreWhere = struct {
 	RechargeRate whereHelperdecimal_Decimal
 	Armour       whereHelperdecimal_Decimal
 	MaxHitpoints whereHelperdecimal_Decimal
-	Tier         whereHelpernull_String
+	Tier         whereHelperstring
 	CreatedAt    whereHelpertime_Time
 }{
 	ID:           whereHelperstring{field: "\"blueprint_power_cores\".\"id\""},
@@ -116,7 +115,7 @@ var BlueprintPowerCoreWhere = struct {
 	RechargeRate: whereHelperdecimal_Decimal{field: "\"blueprint_power_cores\".\"recharge_rate\""},
 	Armour:       whereHelperdecimal_Decimal{field: "\"blueprint_power_cores\".\"armour\""},
 	MaxHitpoints: whereHelperdecimal_Decimal{field: "\"blueprint_power_cores\".\"max_hitpoints\""},
-	Tier:         whereHelpernull_String{field: "\"blueprint_power_cores\".\"tier\""},
+	Tier:         whereHelperstring{field: "\"blueprint_power_cores\".\"tier\""},
 	CreatedAt:    whereHelpertime_Time{field: "\"blueprint_power_cores\".\"created_at\""},
 }
 

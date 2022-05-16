@@ -235,7 +235,14 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 				gamelog.L.Error().Str("event triggered", repairEvent.RelatedID.String).Err(err).Msg("Failed to get triggered player")
 				continue
 			}
-			mechOwner, err := boiler.Players(boiler.PlayerWhere.ID.EQ(repairEvent.R.WarMachineOne.OwnerID)).One(gamedb.StdConn)
+
+			ci, err := db.CollectionItemFromItemID(repairEvent.R.WarMachineOne.ID)
+			if err != nil {
+				gamelog.L.Error().Str("event triggered", repairEvent.RelatedID.String).Err(err).Msg("Failed to get triggered player")
+				continue
+			}
+
+			mechOwner, err := boiler.Players(boiler.PlayerWhere.ID.EQ(ci.OwnerID)).One(gamedb.StdConn)
 			if err != nil {
 				gamelog.L.Error().Err(err).Msg("Failed to get mech owner contributors")
 				continue
@@ -330,9 +337,15 @@ func (ms *MultiplierSystem) calculate(btlEndInfo *BattleEndDetail) {
 				continue
 			}
 			for _, sameKilledEvent := range sameKilledEvents {
-				mechOwner, err := boiler.Players(boiler.PlayerWhere.ID.EQ(sameKilledEvent.R.WarMachineOne.OwnerID)).One(gamedb.StdConn)
+				ci, err := db.CollectionItemFromItemID(sameKilledEvent.R.WarMachineOne.ID)
 				if err != nil {
-					gamelog.L.Error().Str("WarMachineOne.OwnerID", sameKilledEvent.R.WarMachineOne.OwnerID).Err(err).Msg("Failed to get mech owner contributors")
+					gamelog.L.Error().Str("WarMachineOne.OwnerID", ci.OwnerID).Err(err).Msg("Failed to get mech owner contributors")
+					continue
+				}
+
+				mechOwner, err := boiler.Players(boiler.PlayerWhere.ID.EQ(ci.OwnerID)).One(gamedb.StdConn)
+				if err != nil {
+					gamelog.L.Error().Str("WarMachineOne.OwnerID", ci.OwnerID).Err(err).Msg("Failed to get mech owner contributors")
 					continue
 				}
 

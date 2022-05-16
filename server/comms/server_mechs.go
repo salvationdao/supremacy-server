@@ -14,12 +14,6 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
-type MechsReq struct {
-}
-type MechsResp struct {
-	MechContainers []*Mech
-}
-
 // Mechs is a heavy func, do not use on a running server
 func (s *S) Mechs(req MechsReq, resp *MechsResp) error {
 	gamelog.L.Debug().Msg("comms.Mechs")
@@ -71,14 +65,6 @@ func (s *S) Mechs(req MechsReq, resp *MechsResp) error {
 	return nil
 }
 
-type MechReq struct {
-	MechID uuid.UUID
-}
-
-type MechResp struct {
-	MechContainer *Mech
-}
-
 func (s *S) Mech(req MechReq, resp *MechResp) error {
 	gamelog.L.Debug().Msg("comms.Mech")
 	result, err := db.Mech(req.MechID)
@@ -90,13 +76,6 @@ func (s *S) Mech(req MechReq, resp *MechResp) error {
 	return nil
 }
 
-type MechsByOwnerIDReq struct {
-	OwnerID uuid.UUID
-}
-type MechsByOwnerIDResp struct {
-	MechContainers []*Mech
-}
-
 func (s *S) MechsByOwnerID(req MechsByOwnerIDReq, resp *MechsByOwnerIDResp) error {
 	gamelog.L.Debug().Msg("comms.MechsByOwnerID")
 	result, err := db.MechsByOwnerID(req.OwnerID)
@@ -106,13 +85,6 @@ func (s *S) MechsByOwnerID(req MechsByOwnerIDReq, resp *MechsByOwnerIDResp) erro
 
 	resp.MechContainers = ServerMechsToApiV1(result)
 	return nil
-}
-
-type TemplateRegisterReq struct {
-	TemplateID uuid.UUID
-	OwnerID    uuid.UUID
-}
-type TemplateRegisterResp struct {
 }
 
 func (s *S) TemplateRegister(req TemplateRegisterReq, resp *TemplateRegisterResp) error {
@@ -134,21 +106,24 @@ func (s *S) TemplateRegister(req TemplateRegisterReq, resp *TemplateRegisterResp
 		return terror.Error(err)
 	}
 
-	err = db.TemplateRegister(req.TemplateID, req.OwnerID)
+	mechs, mechAnimations, mechSkins, powerCores, weapons, utilities, err := db.TemplateRegister(req.TemplateID, req.OwnerID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to register template")
 		return terror.Error(err)
 	}
 
-	return nil
-}
+	var assets []*XsynAsset
 
-type MechSetNameReq struct {
-	MechID uuid.UUID
-	Name   string
-}
-type MechSetNameResp struct {
-	MechContainer *Mech
+	// convert into xsyn assets, maybe find a better way.... (generics? interfaces? change item schema?)
+	assets = append(assets, ServerMechsToXsynAsset(mechs)...)
+	assets = append(assets, ServerMechAnimationsToXsynAsset(mechAnimations)...)
+	assets = append(assets, ServerMechSkinsToXsynAsset(mechSkins)...)
+	assets = append(assets, ServerPowerCoresToXsynAsset(powerCores)...)
+	assets = append(assets, ServerWeaponsToXsynAsset(weapons)...)
+	assets = append(assets, ServerUtilitiesToXsynAsset(utilities)...)
+
+	resp.Assets = assets
+	return nil
 }
 
 func (s *S) MechSetName(req MechSetNameReq, resp *MechSetNameResp) error {
@@ -164,14 +139,6 @@ func (s *S) MechSetName(req MechSetNameReq, resp *MechSetNameResp) error {
 
 	resp.MechContainer = ServerMechToApiV1(mech)
 	return nil
-}
-
-type MechSetOwnerReq struct {
-	MechID  uuid.UUID
-	OwnerID uuid.UUID
-}
-type MechSetOwnerResp struct {
-	MechContainer *Mech
 }
 
 func (s *S) MechSetOwner(req MechSetOwnerReq, resp *MechSetOwnerResp) error {

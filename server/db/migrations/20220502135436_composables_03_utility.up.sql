@@ -18,6 +18,7 @@ ALTER TABLE blueprint_utility
     DROP COLUMN hitpoint_modifier,
     DROP COLUMN shield_modifier,
     ADD COLUMN type       UTILITY_TYPE,
+    ADD COLUMN tier       TEXT       NOT NULL DEFAULT 'MEGA',
     ADD COLUMN collection COLLECTION NOT NULL DEFAULT 'supremacy-general';
 
 UPDATE blueprint_utility
@@ -77,6 +78,9 @@ ALTER TABLE chassis_modules
     RENAME TO chassis_utility;
 ALTER TABLE chassis_utility
     RENAME COLUMN module_id TO utility_id;
+ALTER TABLE chassis_utility
+    DROP COLUMN IF EXISTS tier,
+    DROP COLUMN IF EXISTS owner_id;
 
 ALTER TABLE modules
     RENAME TO utility;
@@ -88,6 +92,7 @@ ALTER TABLE utility
     ADD COLUMN limited_release_token_id NUMERIC,
     ADD COLUMN owner_id                 UUID REFERENCES players (id),
     ADD COLUMN equipped_on              UUID REFERENCES chassis (id),
+    ADD COLUMN tier                     TEXT NOT NULL DEFAULT 'MEGA',
     ADD COLUMN type                     UTILITY_TYPE;
 
 WITH utility_owners AS (SELECT m.owner_id, cu.utility_id
@@ -100,11 +105,12 @@ WHERE u.id = utility_owners.utility_id;
 
 
 -- This inserts a new collection_items entry for each utility and updates the utility table with token id
-WITH utily AS (SELECT 'utility' AS item_type, id FROM utility)
+WITH utily AS (SELECT 'utility' AS item_type, id, tier, owner_id FROM utility)
 INSERT
-INTO collection_items (token_id, item_type, item_id)
-SELECT NEXTVAL('collection_general'), utily.item_type::ITEM_TYPE, utily.id
+INTO collection_items (token_id, item_type, item_id, tier, owner_id)
+SELECT NEXTVAL('collection_general'), utily.item_type::ITEM_TYPE, utily.id, utily.tier, utily.owner_id
 FROM utily;
+
 
 -- this updates all genesis_token_id for weapons that are in genesis
 WITH genesis AS (SELECT external_token_id, m.collection_slug, m.chassis_id, _cu.utility_id
@@ -193,6 +199,8 @@ ALTER TABLE chassis
     DROP COLUMN IF EXISTS skin,
     DROP COLUMN IF EXISTS slug,
     DROP COLUMN IF EXISTS shield_recharge_rate,
+    DROP COLUMN IF EXISTS tier,
+    DROP COLUMN IF EXISTS owner_id,
     DROP COLUMN IF EXISTS max_shield;
 
 

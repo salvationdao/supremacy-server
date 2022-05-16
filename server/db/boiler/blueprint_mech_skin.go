@@ -27,7 +27,7 @@ type BlueprintMechSkin struct {
 	Collection       string      `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
 	MechModel        string      `boiler:"mech_model" boil:"mech_model" json:"mech_model" toml:"mech_model" yaml:"mech_model"`
 	Label            string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	Tier             null.String `boiler:"tier" boil:"tier" json:"tier,omitempty" toml:"tier" yaml:"tier,omitempty"`
+	Tier             string      `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
 	ImageURL         null.String `boiler:"image_url" boil:"image_url" json:"image_url,omitempty" toml:"image_url" yaml:"image_url,omitempty"`
 	AnimationURL     null.String `boiler:"animation_url" boil:"animation_url" json:"animation_url,omitempty" toml:"animation_url" yaml:"animation_url,omitempty"`
 	CardAnimationURL null.String `boiler:"card_animation_url" boil:"card_animation_url" json:"card_animation_url,omitempty" toml:"card_animation_url" yaml:"card_animation_url,omitempty"`
@@ -98,7 +98,7 @@ var BlueprintMechSkinWhere = struct {
 	Collection       whereHelperstring
 	MechModel        whereHelperstring
 	Label            whereHelperstring
-	Tier             whereHelpernull_String
+	Tier             whereHelperstring
 	ImageURL         whereHelpernull_String
 	AnimationURL     whereHelpernull_String
 	CardAnimationURL whereHelpernull_String
@@ -110,7 +110,7 @@ var BlueprintMechSkinWhere = struct {
 	Collection:       whereHelperstring{field: "\"blueprint_mech_skin\".\"collection\""},
 	MechModel:        whereHelperstring{field: "\"blueprint_mech_skin\".\"mech_model\""},
 	Label:            whereHelperstring{field: "\"blueprint_mech_skin\".\"label\""},
-	Tier:             whereHelpernull_String{field: "\"blueprint_mech_skin\".\"tier\""},
+	Tier:             whereHelperstring{field: "\"blueprint_mech_skin\".\"tier\""},
 	ImageURL:         whereHelpernull_String{field: "\"blueprint_mech_skin\".\"image_url\""},
 	AnimationURL:     whereHelpernull_String{field: "\"blueprint_mech_skin\".\"animation_url\""},
 	CardAnimationURL: whereHelpernull_String{field: "\"blueprint_mech_skin\".\"card_animation_url\""},

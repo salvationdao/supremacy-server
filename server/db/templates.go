@@ -22,7 +22,7 @@ func Template(templateID uuid.UUID) (*server.TemplateContainer, error) {
 		qm.Load(boiler.TemplateRels.TemplateBlueprints),
 	).One(gamedb.StdConn)
 	if err != nil {
-		return nil, err
+		return nil, terror.Error(err)
 	}
 
 	result := &server.TemplateContainer{
@@ -35,7 +35,7 @@ func Template(templateID uuid.UUID) (*server.TemplateContainer, error) {
 		BlueprintUtility:       []*server.BlueprintUtility{},
 		BlueprintMechSkin:      []*server.BlueprintMechSkin{},
 		BlueprintMechAnimation: []*server.BlueprintMechAnimation{},
-		BlueprintPowerCore:    []*server.BlueprintPowerCore{},
+		BlueprintPowerCore:     []*server.BlueprintPowerCore{},
 	}
 
 	// filter them into IDs first to optimize db queries
@@ -76,27 +76,27 @@ func Template(templateID uuid.UUID) (*server.TemplateContainer, error) {
 	// get the objects
 	result.BlueprintMech, err = BlueprintMechs(blueprintMechIDS)
 	if err != nil {
-		return nil, err
+		return nil, terror.Error(err)
 	}
 	result.BlueprintWeapon, err = BlueprintWeapons(blueprintWeaponIDS)
 	if err != nil {
-		return nil, err
+		return nil, terror.Error(err)
 	}
 	result.BlueprintMechSkin, err = BlueprintMechSkinSkins(blueprintMechSkinIDS)
 	if err != nil {
-		return nil, err
+		return nil, terror.Error(err)
 	}
 	result.BlueprintMechAnimation, err = BlueprintMechAnimations(blueprintMechAnimationIDS)
 	if err != nil {
-		return nil, err
+		return nil, terror.Error(err)
 	}
 	result.BlueprintPowerCore, err = BlueprintPowerCores(blueprintPowerCoreIDS)
 	if err != nil {
-		return nil, err
+		return nil, terror.Error(err)
 	}
 	result.BlueprintUtility, err = BlueprintUtilities(blueprintUtilityIDS)
 	if err != nil {
-		return nil, err
+		return nil, terror.Error(err)
 	}
 	return result, nil
 }
@@ -104,23 +104,52 @@ func Template(templateID uuid.UUID) (*server.TemplateContainer, error) {
 // TODO: I want TemplateRegister tested.
 
 // TemplateRegister copies everything out of a template into a new mech
-func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) error {
+func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
+	[]*server.Mech,
+	[]*server.MechAnimation,
+	[]*server.MechSkin,
+	[]*server.PowerCore,
+	[]*server.Weapon,
+	[]*server.Utility,
+	error) {
+	var mechs []*server.Mech
+	var mechAnimations []*server.MechAnimation
+	var mechSkins []*server.MechSkin
+	var powerCores []*server.PowerCore
+	var weapons []*server.Weapon
+	var utilities []*server.Utility
 
 	exists, err := boiler.PlayerExists(gamedb.StdConn, ownerID.String())
 	if err != nil {
-		return fmt.Errorf("check player exists: %w", err)
+		return mechs,
+			mechAnimations,
+			mechSkins,
+			powerCores,
+			weapons,
+			utilities,
+			fmt.Errorf("check player exists: %w", err)
 	}
 	if !exists {
 		newPlayer := &boiler.Player{ID: ownerID.String()}
 		err = newPlayer.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {
-			return fmt.Errorf("insert new player: %w", err)
+			return mechs,
+				mechAnimations,
+				mechSkins,
+				powerCores,
+				weapons,
+				utilities, fmt.Errorf("insert new player: %w", err)
 		}
 	}
 
 	tmpl, err := Template(templateID)
 	if err != nil {
-		return fmt.Errorf("find template: %w", err)
+		return mechs,
+			mechAnimations,
+			mechSkins,
+			powerCores,
+			weapons,
+			utilities, fmt.Errorf("find template: %w", err)
 	}
 
 	genesisTokenID := decimal.NullDecimal{}
@@ -149,6 +178,7 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) error {
 				Msg("failed to insert new mech for user")
 			continue
 		}
+		mechs = append(mechs, insertedMech)
 
 		// if the inserted mech is a genesis or limited release, we need to add that token id across all items we're inserting
 		if insertedMech.GenesisTokenID.Valid {
@@ -163,7 +193,7 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) error {
 	for _, mechAnimation := range tmpl.BlueprintMechAnimation {
 		mechAnimation.LimitedReleaseTokenID = limitedReleaseTokenID
 		mechAnimation.GenesisTokenID = genesisTokenID
-		_, err := InsertNewMechAnimation(ownerID, mechAnimation)
+		insertedMechAnimations, err := InsertNewMechAnimation(ownerID, mechAnimation)
 		if err != nil {
 			gamelog.L.Error().Err(err).
 				Interface("mechAnimation", mechAnimation).
@@ -171,13 +201,14 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) error {
 				Msg("failed to insert new mech animation for user")
 			continue
 		}
+		mechAnimations = append(mechAnimations, insertedMechAnimations)
 	}
 
 	// inserts mech animation blueprints
 	for _, mechSkin := range tmpl.BlueprintMechSkin {
 		mechSkin.LimitedReleaseTokenID = limitedReleaseTokenID
 		mechSkin.GenesisTokenID = genesisTokenID
-		_, err := InsertNewMechSkin(ownerID, mechSkin)
+		insertedMechSkin, err := InsertNewMechSkin(ownerID, mechSkin)
 		if err != nil {
 			gamelog.L.Error().Err(err).
 				Interface("mechSkin", mechSkin).
@@ -185,13 +216,14 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) error {
 				Msg("failed to insert new mech skin for user")
 			continue
 		}
+		mechSkins = append(mechSkins, insertedMechSkin)
 	}
 
 	// inserts energy core blueprints
 	for _, powerCore := range tmpl.BlueprintPowerCore {
 		powerCore.LimitedReleaseTokenID = limitedReleaseTokenID
 		powerCore.GenesisTokenID = genesisTokenID
-		_, err := InsertNewPowerCore(ownerID, powerCore)
+		insertedPowerCore, err := InsertNewPowerCore(ownerID, powerCore)
 		if err != nil {
 			gamelog.L.Error().Err(err).
 				Interface("powerCore", powerCore).
@@ -199,13 +231,14 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) error {
 				Msg("failed to insert new energy core for user")
 			continue
 		}
+		powerCores = append(powerCores, insertedPowerCore)
 	}
 
 	// inserts weapons blueprints
 	for _, weapon := range tmpl.BlueprintWeapon {
 		weapon.LimitedReleaseTokenID = limitedReleaseTokenID
 		weapon.GenesisTokenID = genesisTokenID
-		_, err := InsertNewWeapon(ownerID, weapon)
+		insertedWeapon, err := InsertNewWeapon(ownerID, weapon)
 		if err != nil {
 			gamelog.L.Error().Err(err).
 				Interface("weapon", weapon).
@@ -213,13 +246,14 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) error {
 				Msg("failed to insert new weapon for user")
 			continue
 		}
+		weapons = append(weapons, insertedWeapon)
 	}
 
 	// inserts utility blueprints
 	for _, utility := range tmpl.BlueprintUtility {
 		utility.LimitedReleaseTokenID = limitedReleaseTokenID
 		utility.GenesisTokenID = genesisTokenID
-		_, err := InsertNewUtility(ownerID, utility)
+		insertedUtility, err := InsertNewUtility(ownerID, utility)
 		if err != nil {
 			gamelog.L.Error().Err(err).
 				Interface("utility", utility).
@@ -227,7 +261,13 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) error {
 				Msg("failed to insert new utility for user")
 			continue
 		}
+		utilities = append(utilities, insertedUtility)
 	}
 
-	return nil
+	return mechs,
+		mechAnimations,
+		mechSkins,
+		powerCores,
+		weapons,
+		utilities, nil
 }

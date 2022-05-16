@@ -18,19 +18,20 @@ import (
 )
 
 func MechsByOwnerID(ownerID uuid.UUID) ([]*server.Mech, error) {
-	mechs, err := boiler.Mechs(boiler.MechWhere.OwnerID.EQ(ownerID.String())).All(gamedb.StdConn)
-	if err != nil {
-		return nil, err
-	}
-	result := []*server.Mech{}
-	for _, mech := range mechs {
-		record, err := Mech(uuid.Must(uuid.FromString(mech.ID)))
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, record)
-	}
-	return result, nil
+	//// TODO: Vinnie fix this
+	//mechs, err := boiler.Mechs(boiler.MechWhere.OwnerID.EQ(ownerID.String())).All(gamedb.StdConn)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//result := []*server.Mech{}
+	//for _, mech := range mechs {
+	//	record, err := Mech(uuid.Must(uuid.FromString(mech.ID)))
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//	result = append(result, record)
+	//}
+	return nil, nil
 }
 
 func MechSetName(mechID uuid.UUID, name string) error {
@@ -54,21 +55,22 @@ func MechSetName(mechID uuid.UUID, name string) error {
 }
 
 func MechSetOwner(mechID uuid.UUID, ownerID uuid.UUID) error {
-	tx, err := gamedb.StdConn.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-	mech, err := boiler.FindMech(tx, mechID.String())
-	if err != nil {
-		return err
-	}
-	mech.OwnerID = ownerID.String()
-	_, err = mech.Update(tx, boil.Whitelist(boiler.MechColumns.OwnerID))
-	if err != nil {
-		return err
-	}
-	tx.Commit()
+	// TODO: Vinnie fix this
+	//tx, err := gamedb.StdConn.Begin()
+	//if err != nil {
+	//	return err
+	//}
+	//defer tx.Rollback()
+	//mech, err := boiler.FindMech(tx, mechID.String())
+	//if err != nil {
+	//	return err
+	//}
+	//mech.OwnerID = ownerID.String()
+	//_, err = mech.Update(tx, boil.Whitelist(boiler.MechColumns.OwnerID))
+	//if err != nil {
+	//	return err
+	//}
+	//tx.Commit()
 	return nil
 }
 
@@ -113,6 +115,7 @@ func Mech(mechID uuid.UUID) (*server.Mech, error) {
 	mc := &server.Mech{
 		CollectionDetails: &server.CollectionDetails{},
 	}
+
 	query := `
 		SELECT
 			ci.collection_slug,
@@ -132,34 +135,34 @@ func Mech(mechID uuid.UUID) (*server.Mech, error) {
 			m.power_core_size,
 			m.tier,
 			m.blueprint_id,
-			
+		
 			m.brand_id,
 			to_json(b) as brand,
-			
+		
 			m.owner_id,
 			to_json(p) as owner,
-			
+		
 			p.faction_id,
 			to_json(f) as faction,
-			
+		
 			m.model_id,
 			to_json(mm) as model,
-			
+		
 			mm.default_chassis_skin_id,
 			to_json(dms) as default_chassis_skin,
-			
+		
 			m.chassis_skin_id,
 			to_json(ms) as chassis_skin,
-			
+		
 			m.intro_animation_id,
 			to_json(ma2) as intro_animation,
-			
+		
 			m.outro_animation_id,
 			to_json(ma1) as outro_animation,
-			
+		
 			m.power_core_id,
 			to_json(ec) as power_core,
-			
+		
 			w.weapons,
 			u.utility
 		FROM mechs m
@@ -169,19 +172,33 @@ func Mech(mechID uuid.UUID) (*server.Mech, error) {
 		LEFT OUTER JOIN power_cores ec ON ec.id = m.power_core_id
 		LEFT OUTER JOIN brands b ON b.id = m.brand_id
 		LEFT OUTER JOIN mech_model mm ON m.model_id = mm.id
-		LEFT OUTER JOIN mech_skin ms ON m.chassis_skin_id = ms.id
+		LEFT OUTER JOIN (
+			SELECT _ms.*,_ci.hash, _ci.token_id
+			FROM mech_skin _ms
+			INNER JOIN collection_items _ci on _ci.item_id = _ms.id
+		) ms ON m.chassis_skin_id = ms.id
 		LEFT OUTER JOIN blueprint_mech_skin dms ON mm.default_chassis_skin_id = dms.id
-		LEFT OUTER JOIN mech_animation ma1 on ma1.id = m.outro_animation_id
-		LEFT OUTER JOIN mech_animation ma2 on ma2.id = m.intro_animation_id
+		-- LEFT OUTER JOIN mech_animation ma1 on ma1.id = m.outro_animation_id
+		LEFT OUTER JOIN (
+			SELECT _ma.*,_ci.hash, _ci.token_id
+			FROM mech_animation _ma
+			INNER JOIN collection_items _ci on _ci.item_id = _ma.id
+		) ma1 on ma1.id = m.outro_animation_id
+		-- LEFT OUTER JOIN mech_animation ma2 on ma2.id = m.intro_animation_id
+		LEFT OUTER JOIN (
+			SELECT _ma.*,_ci.hash, _ci.token_id
+			FROM mech_animation _ma
+			INNER JOIN collection_items _ci on _ci.item_id = _ma.id
+		) ma2 on ma2.id = m.intro_animation_id
 		LEFT OUTER JOIN (
 			SELECT mw.chassis_id, json_agg(w2) as weapons
 			FROM mech_weapons mw
-			INNER JOIN
-			 (
-				 SELECT _w.*, _ci.hash, _ci.token_id
-				 FROM weapons _w
-				  INNER JOIN collection_items _ci on _ci.item_id = _w.id
-			 ) w2 ON mw.weapon_id = w2.id
+					 INNER JOIN
+				 (
+					 SELECT _w.*, _ci.hash, _ci.token_id
+					 FROM weapons _w
+							  INNER JOIN collection_items _ci on _ci.item_id = _w.id
+				 ) w2 ON mw.weapon_id = w2.id
 			GROUP BY mw.chassis_id
 		) w on w.chassis_id = m.id
 		LEFT OUTER JOIN (
@@ -196,12 +213,12 @@ func Mech(mechID uuid.UUID) (*server.Mech, error) {
 					to_json(_uad) as anti_missile,
 					to_json(_urd) as repair_drone
 				FROM utility _u
-				INNER JOIN collection_items _ci on _ci.item_id = _u.id
-				LEFT OUTER JOIN utility_shield _us ON _us.utility_id = _u.id
-				LEFT OUTER JOIN utility_accelerator _ua ON _ua.utility_id = _u.id
-				LEFT OUTER JOIN utility_anti_missile _uam ON _uam.utility_id = _u.id
-				LEFT OUTER JOIN utility_attack_drone _uad ON _uad.utility_id = _u.id
-				LEFT OUTER JOIN utility_repair_drone _urd ON _urd.utility_id = _u.id
+						 INNER JOIN collection_items _ci on _ci.item_id = _u.id
+						 LEFT OUTER JOIN utility_shield _us ON _us.utility_id = _u.id
+						 LEFT OUTER JOIN utility_accelerator _ua ON _ua.utility_id = _u.id
+						 LEFT OUTER JOIN utility_anti_missile _uam ON _uam.utility_id = _u.id
+						 LEFT OUTER JOIN utility_attack_drone _uad ON _uad.utility_id = _u.id
+						 LEFT OUTER JOIN utility_repair_drone _urd ON _urd.utility_id = _u.id
 			) _u ON mw.utility_id = _u.id
 			GROUP BY mw.chassis_id
 		) u on u.chassis_id = m.id
@@ -263,6 +280,10 @@ func Mech(mechID uuid.UUID) (*server.Mech, error) {
 	}
 	result.Close()
 
+	if mc.ID == "" {
+		return nil, fmt.Errorf("unable to find mech with id %s", mechID.String())
+	}
+
 	return mc, err
 }
 
@@ -300,34 +321,34 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.Mech, error) {
 			m.power_core_size,
 			m.tier,
 			m.blueprint_id,
-			
+		
 			m.brand_id,
 			to_json(b) as brand,
-			
+		
 			m.owner_id,
 			to_json(p) as owner,
-			
+		
 			p.faction_id,
 			to_json(f) as faction,
-			
+		
 			m.model_id,
 			to_json(mm) as model,
-			
+		
 			mm.default_chassis_skin_id,
 			to_json(dms) as default_chassis_skin,
-			
+		
 			m.chassis_skin_id,
 			to_json(ms) as chassis_skin,
-			
+		
 			m.intro_animation_id,
 			to_json(ma2) as intro_animation,
-			
+		
 			m.outro_animation_id,
 			to_json(ma1) as outro_animation,
-			
+		
 			m.power_core_id,
 			to_json(ec) as power_core,
-			
+		
 			w.weapons,
 			u.utility
 		FROM mechs m
@@ -337,19 +358,33 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.Mech, error) {
 		LEFT OUTER JOIN power_cores ec ON ec.id = m.power_core_id
 		LEFT OUTER JOIN brands b ON b.id = m.brand_id
 		LEFT OUTER JOIN mech_model mm ON m.model_id = mm.id
-		LEFT OUTER JOIN mech_skin ms ON m.chassis_skin_id = ms.id
+		LEFT OUTER JOIN (
+			SELECT _ms.*,_ci.hash, _ci.token_id
+			FROM mech_skin _ms
+			INNER JOIN collection_items _ci on _ci.item_id = _ms.id
+		) ms ON m.chassis_skin_id = ms.id
 		LEFT OUTER JOIN blueprint_mech_skin dms ON mm.default_chassis_skin_id = dms.id
-		LEFT OUTER JOIN mech_animation ma1 on ma1.id = m.outro_animation_id
-		LEFT OUTER JOIN mech_animation ma2 on ma2.id = m.intro_animation_id
+		-- LEFT OUTER JOIN mech_animation ma1 on ma1.id = m.outro_animation_id
+		LEFT OUTER JOIN (
+			SELECT _ma.*,_ci.hash, _ci.token_id
+			FROM mech_animation _ma
+			INNER JOIN collection_items _ci on _ci.item_id = _ma.id
+		) ma1 on ma1.id = m.outro_animation_id
+		-- LEFT OUTER JOIN mech_animation ma2 on ma2.id = m.intro_animation_id
+		LEFT OUTER JOIN (
+			SELECT _ma.*,_ci.hash, _ci.token_id
+			FROM mech_animation _ma
+			INNER JOIN collection_items _ci on _ci.item_id = _ma.id
+		) ma2 on ma2.id = m.intro_animation_id
 		LEFT OUTER JOIN (
 			SELECT mw.chassis_id, json_agg(w2) as weapons
 			FROM mech_weapons mw
-			INNER JOIN
-			 (
-				 SELECT _w.*, _ci.hash, _ci.token_id
-				 FROM weapons _w
-				  INNER JOIN collection_items _ci on _ci.item_id = _w.id
-			 ) w2 ON mw.weapon_id = w2.id
+					 INNER JOIN
+				 (
+					 SELECT _w.*, _ci.hash, _ci.token_id
+					 FROM weapons _w
+							  INNER JOIN collection_items _ci on _ci.item_id = _w.id
+				 ) w2 ON mw.weapon_id = w2.id
 			GROUP BY mw.chassis_id
 		) w on w.chassis_id = m.id
 		LEFT OUTER JOIN (
@@ -364,12 +399,12 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.Mech, error) {
 					to_json(_uad) as anti_missile,
 					to_json(_urd) as repair_drone
 				FROM utility _u
-				INNER JOIN collection_items _ci on _ci.item_id = _u.id
-				LEFT OUTER JOIN utility_shield _us ON _us.utility_id = _u.id
-				LEFT OUTER JOIN utility_accelerator _ua ON _ua.utility_id = _u.id
-				LEFT OUTER JOIN utility_anti_missile _uam ON _uam.utility_id = _u.id
-				LEFT OUTER JOIN utility_attack_drone _uad ON _uad.utility_id = _u.id
-				LEFT OUTER JOIN utility_repair_drone _urd ON _urd.utility_id = _u.id
+						 INNER JOIN collection_items _ci on _ci.item_id = _u.id
+						 LEFT OUTER JOIN utility_shield _us ON _us.utility_id = _u.id
+						 LEFT OUTER JOIN utility_accelerator _ua ON _ua.utility_id = _u.id
+						 LEFT OUTER JOIN utility_anti_missile _uam ON _uam.utility_id = _u.id
+						 LEFT OUTER JOIN utility_attack_drone _uad ON _uad.utility_id = _u.id
+						 LEFT OUTER JOIN utility_repair_drone _urd ON _urd.utility_id = _u.id
 			) _u ON mw.utility_id = _u.id
 			GROUP BY mw.chassis_id
 		) u on u.chassis_id = m.id
@@ -588,9 +623,7 @@ func InsertNewMech(ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) (*ser
 		IsInsured:        false,
 		Name:             "",
 		ModelID:          mechBlueprint.ModelID,
-		OwnerID:          ownerID.String(),
 		PowerCoreSize:    mechBlueprint.PowerCoreSize,
-		Tier:             mechBlueprint.Tier,
 	}
 
 	err = newMech.Insert(tx, boil.Infer())
@@ -598,14 +631,7 @@ func InsertNewMech(ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) (*ser
 		return nil, terror.Error(err)
 	}
 
-	//insert collection item
-	collectionItem := boiler.CollectionItem{
-		CollectionSlug: mechBlueprint.Collection,
-		ItemType:       boiler.ItemTypeMech,
-		ItemID:         newMech.ID,
-	}
-
-	err = collectionItem.Insert(tx, boil.Infer())
+	err = InsertNewCollectionItem(tx, mechBlueprint.Collection, boiler.ItemTypeMech, newMech.ID, mechBlueprint.Tier, ownerID.String())
 	if err != nil {
 		return nil, terror.Error(err)
 	}

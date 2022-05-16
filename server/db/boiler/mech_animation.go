@@ -26,10 +26,8 @@ type MechAnimation struct {
 	ID             string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	BlueprintID    string      `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
 	Label          string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	OwnerID        string      `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
 	MechModel      string      `boiler:"mech_model" boil:"mech_model" json:"mech_model" toml:"mech_model" yaml:"mech_model"`
 	EquippedOn     null.String `boiler:"equipped_on" boil:"equipped_on" json:"equipped_on,omitempty" toml:"equipped_on" yaml:"equipped_on,omitempty"`
-	Tier           null.String `boiler:"tier" boil:"tier" json:"tier,omitempty" toml:"tier" yaml:"tier,omitempty"`
 	IntroAnimation null.Bool   `boiler:"intro_animation" boil:"intro_animation" json:"intro_animation,omitempty" toml:"intro_animation" yaml:"intro_animation,omitempty"`
 	OutroAnimation null.Bool   `boiler:"outro_animation" boil:"outro_animation" json:"outro_animation,omitempty" toml:"outro_animation" yaml:"outro_animation,omitempty"`
 	CreatedAt      time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
@@ -42,10 +40,8 @@ var MechAnimationColumns = struct {
 	ID             string
 	BlueprintID    string
 	Label          string
-	OwnerID        string
 	MechModel      string
 	EquippedOn     string
-	Tier           string
 	IntroAnimation string
 	OutroAnimation string
 	CreatedAt      string
@@ -53,10 +49,8 @@ var MechAnimationColumns = struct {
 	ID:             "id",
 	BlueprintID:    "blueprint_id",
 	Label:          "label",
-	OwnerID:        "owner_id",
 	MechModel:      "mech_model",
 	EquippedOn:     "equipped_on",
-	Tier:           "tier",
 	IntroAnimation: "intro_animation",
 	OutroAnimation: "outro_animation",
 	CreatedAt:      "created_at",
@@ -66,10 +60,8 @@ var MechAnimationTableColumns = struct {
 	ID             string
 	BlueprintID    string
 	Label          string
-	OwnerID        string
 	MechModel      string
 	EquippedOn     string
-	Tier           string
 	IntroAnimation string
 	OutroAnimation string
 	CreatedAt      string
@@ -77,10 +69,8 @@ var MechAnimationTableColumns = struct {
 	ID:             "mech_animation.id",
 	BlueprintID:    "mech_animation.blueprint_id",
 	Label:          "mech_animation.label",
-	OwnerID:        "mech_animation.owner_id",
 	MechModel:      "mech_animation.mech_model",
 	EquippedOn:     "mech_animation.equipped_on",
-	Tier:           "mech_animation.tier",
 	IntroAnimation: "mech_animation.intro_animation",
 	OutroAnimation: "mech_animation.outro_animation",
 	CreatedAt:      "mech_animation.created_at",
@@ -92,10 +82,8 @@ var MechAnimationWhere = struct {
 	ID             whereHelperstring
 	BlueprintID    whereHelperstring
 	Label          whereHelperstring
-	OwnerID        whereHelperstring
 	MechModel      whereHelperstring
 	EquippedOn     whereHelpernull_String
-	Tier           whereHelpernull_String
 	IntroAnimation whereHelpernull_Bool
 	OutroAnimation whereHelpernull_Bool
 	CreatedAt      whereHelpertime_Time
@@ -103,10 +91,8 @@ var MechAnimationWhere = struct {
 	ID:             whereHelperstring{field: "\"mech_animation\".\"id\""},
 	BlueprintID:    whereHelperstring{field: "\"mech_animation\".\"blueprint_id\""},
 	Label:          whereHelperstring{field: "\"mech_animation\".\"label\""},
-	OwnerID:        whereHelperstring{field: "\"mech_animation\".\"owner_id\""},
 	MechModel:      whereHelperstring{field: "\"mech_animation\".\"mech_model\""},
 	EquippedOn:     whereHelpernull_String{field: "\"mech_animation\".\"equipped_on\""},
-	Tier:           whereHelpernull_String{field: "\"mech_animation\".\"tier\""},
 	IntroAnimation: whereHelpernull_Bool{field: "\"mech_animation\".\"intro_animation\""},
 	OutroAnimation: whereHelpernull_Bool{field: "\"mech_animation\".\"outro_animation\""},
 	CreatedAt:      whereHelpertime_Time{field: "\"mech_animation\".\"created_at\""},
@@ -117,14 +103,12 @@ var MechAnimationRels = struct {
 	Blueprint              string
 	EquippedOnMech         string
 	MechAnimationMechModel string
-	Owner                  string
 	IntroAnimationMechs    string
 	OutroAnimationMechs    string
 }{
 	Blueprint:              "Blueprint",
 	EquippedOnMech:         "EquippedOnMech",
 	MechAnimationMechModel: "MechAnimationMechModel",
-	Owner:                  "Owner",
 	IntroAnimationMechs:    "IntroAnimationMechs",
 	OutroAnimationMechs:    "OutroAnimationMechs",
 }
@@ -134,7 +118,6 @@ type mechAnimationR struct {
 	Blueprint              *BlueprintMechAnimation `boiler:"Blueprint" boil:"Blueprint" json:"Blueprint" toml:"Blueprint" yaml:"Blueprint"`
 	EquippedOnMech         *Mech                   `boiler:"EquippedOnMech" boil:"EquippedOnMech" json:"EquippedOnMech" toml:"EquippedOnMech" yaml:"EquippedOnMech"`
 	MechAnimationMechModel *MechModel              `boiler:"MechAnimationMechModel" boil:"MechAnimationMechModel" json:"MechAnimationMechModel" toml:"MechAnimationMechModel" yaml:"MechAnimationMechModel"`
-	Owner                  *Player                 `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
 	IntroAnimationMechs    MechSlice               `boiler:"IntroAnimationMechs" boil:"IntroAnimationMechs" json:"IntroAnimationMechs" toml:"IntroAnimationMechs" yaml:"IntroAnimationMechs"`
 	OutroAnimationMechs    MechSlice               `boiler:"OutroAnimationMechs" boil:"OutroAnimationMechs" json:"OutroAnimationMechs" toml:"OutroAnimationMechs" yaml:"OutroAnimationMechs"`
 }
@@ -148,9 +131,9 @@ func (*mechAnimationR) NewStruct() *mechAnimationR {
 type mechAnimationL struct{}
 
 var (
-	mechAnimationAllColumns            = []string{"id", "blueprint_id", "label", "owner_id", "mech_model", "equipped_on", "tier", "intro_animation", "outro_animation", "created_at"}
-	mechAnimationColumnsWithoutDefault = []string{"blueprint_id", "label", "owner_id", "mech_model"}
-	mechAnimationColumnsWithDefault    = []string{"id", "equipped_on", "tier", "intro_animation", "outro_animation", "created_at"}
+	mechAnimationAllColumns            = []string{"id", "blueprint_id", "label", "mech_model", "equipped_on", "intro_animation", "outro_animation", "created_at"}
+	mechAnimationColumnsWithoutDefault = []string{"blueprint_id", "label", "mech_model"}
+	mechAnimationColumnsWithDefault    = []string{"id", "equipped_on", "intro_animation", "outro_animation", "created_at"}
 	mechAnimationPrimaryKeyColumns     = []string{"id"}
 	mechAnimationGeneratedColumns      = []string{}
 )
@@ -436,21 +419,6 @@ func (o *MechAnimation) MechAnimationMechModel(mods ...qm.QueryMod) mechModelQue
 
 	query := MechModels(queryMods...)
 	queries.SetFrom(query.Query, "\"mech_model\"")
-
-	return query
-}
-
-// Owner pointed to by the foreign key.
-func (o *MechAnimation) Owner(mods ...qm.QueryMod) playerQuery {
-	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.OwnerID),
-		qmhelper.WhereIsNull("deleted_at"),
-	}
-
-	queryMods = append(queryMods, mods...)
-
-	query := Players(queryMods...)
-	queries.SetFrom(query.Query, "\"players\"")
 
 	return query
 }
@@ -808,111 +776,6 @@ func (mechAnimationL) LoadMechAnimationMechModel(e boil.Executor, singular bool,
 					foreign.R = &mechModelR{}
 				}
 				foreign.R.MechAnimations = append(foreign.R.MechAnimations, local)
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadOwner allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for an N-1 relationship.
-func (mechAnimationL) LoadOwner(e boil.Executor, singular bool, maybeMechAnimation interface{}, mods queries.Applicator) error {
-	var slice []*MechAnimation
-	var object *MechAnimation
-
-	if singular {
-		object = maybeMechAnimation.(*MechAnimation)
-	} else {
-		slice = *maybeMechAnimation.(*[]*MechAnimation)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &mechAnimationR{}
-		}
-		args = append(args, object.OwnerID)
-
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &mechAnimationR{}
-			}
-
-			for _, a := range args {
-				if a == obj.OwnerID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.OwnerID)
-
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`players`),
-		qm.WhereIn(`players.id in ?`, args...),
-		qmhelper.WhereIsNull(`players.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load Player")
-	}
-
-	var resultSlice []*Player
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice Player")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for players")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players")
-	}
-
-	if len(mechAnimationAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-
-	if len(resultSlice) == 0 {
-		return nil
-	}
-
-	if singular {
-		foreign := resultSlice[0]
-		object.R.Owner = foreign
-		if foreign.R == nil {
-			foreign.R = &playerR{}
-		}
-		foreign.R.OwnerMechAnimations = append(foreign.R.OwnerMechAnimations, object)
-		return nil
-	}
-
-	for _, local := range slice {
-		for _, foreign := range resultSlice {
-			if local.OwnerID == foreign.ID {
-				local.R.Owner = foreign
-				if foreign.R == nil {
-					foreign.R = &playerR{}
-				}
-				foreign.R.OwnerMechAnimations = append(foreign.R.OwnerMechAnimations, local)
 				break
 			}
 		}
@@ -1285,52 +1148,6 @@ func (o *MechAnimation) SetMechAnimationMechModel(exec boil.Executor, insert boo
 		}
 	} else {
 		related.R.MechAnimations = append(related.R.MechAnimations, o)
-	}
-
-	return nil
-}
-
-// SetOwner of the mechAnimation to the related item.
-// Sets o.R.Owner to related.
-// Adds o to related.R.OwnerMechAnimations.
-func (o *MechAnimation) SetOwner(exec boil.Executor, insert bool, related *Player) error {
-	var err error
-	if insert {
-		if err = related.Insert(exec, boil.Infer()); err != nil {
-			return errors.Wrap(err, "failed to insert into foreign table")
-		}
-	}
-
-	updateQuery := fmt.Sprintf(
-		"UPDATE \"mech_animation\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"owner_id"}),
-		strmangle.WhereClause("\"", "\"", 2, mechAnimationPrimaryKeyColumns),
-	)
-	values := []interface{}{related.ID, o.ID}
-
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, updateQuery)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	if _, err = exec.Exec(updateQuery, values...); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	o.OwnerID = related.ID
-	if o.R == nil {
-		o.R = &mechAnimationR{
-			Owner: related,
-		}
-	} else {
-		o.R.Owner = related
-	}
-
-	if related.R == nil {
-		related.R = &playerR{
-			OwnerMechAnimations: MechAnimationSlice{o},
-		}
-	} else {
-		related.R.OwnerMechAnimations = append(related.R.OwnerMechAnimations, o)
 	}
 
 	return nil

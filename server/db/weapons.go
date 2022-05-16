@@ -26,7 +26,6 @@ func InsertNewWeapon(ownerID uuid.UUID, weapon *server.BlueprintWeapon) (*server
 		GenesisTokenID:        weapon.GenesisTokenID,
 		LimitedReleaseTokenID: weapon.LimitedReleaseTokenID,
 		WeaponType:            weapon.WeaponType,
-		OwnerID:               ownerID.String(),
 		DamageFalloff:         weapon.DamageFalloff,
 		DamageFalloffRate:     weapon.DamageFalloffRate,
 		Spread:                weapon.Spread,
@@ -43,14 +42,7 @@ func InsertNewWeapon(ownerID uuid.UUID, weapon *server.BlueprintWeapon) (*server
 		return nil, terror.Error(err)
 	}
 
-	//insert collection item
-	collectionItem := boiler.CollectionItem{
-		CollectionSlug: weapon.Collection,
-		ItemType:       boiler.ItemTypeWeapon,
-		ItemID:         newWeapon.ID,
-	}
-
-	err = collectionItem.Insert(tx, boil.Infer())
+	err = InsertNewCollectionItem(tx, weapon.Collection, boiler.ItemTypeWeapon, newWeapon.ID, weapon.Tier, ownerID.String())
 	if err != nil {
 		return nil, terror.Error(err)
 	}

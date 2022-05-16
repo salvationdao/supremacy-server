@@ -33,7 +33,6 @@ type Utility struct {
 	BlueprintID           string              `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
 	GenesisTokenID        decimal.NullDecimal `boiler:"genesis_token_id" boil:"genesis_token_id" json:"genesis_token_id,omitempty" toml:"genesis_token_id" yaml:"genesis_token_id,omitempty"`
 	LimitedReleaseTokenID decimal.NullDecimal `boiler:"limited_release_token_id" boil:"limited_release_token_id" json:"limited_release_token_id,omitempty" toml:"limited_release_token_id" yaml:"limited_release_token_id,omitempty"`
-	OwnerID               string              `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
 	EquippedOn            null.String         `boiler:"equipped_on" boil:"equipped_on" json:"equipped_on,omitempty" toml:"equipped_on" yaml:"equipped_on,omitempty"`
 	Type                  string              `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
 
@@ -51,7 +50,6 @@ var UtilityColumns = struct {
 	BlueprintID           string
 	GenesisTokenID        string
 	LimitedReleaseTokenID string
-	OwnerID               string
 	EquippedOn            string
 	Type                  string
 }{
@@ -64,7 +62,6 @@ var UtilityColumns = struct {
 	BlueprintID:           "blueprint_id",
 	GenesisTokenID:        "genesis_token_id",
 	LimitedReleaseTokenID: "limited_release_token_id",
-	OwnerID:               "owner_id",
 	EquippedOn:            "equipped_on",
 	Type:                  "type",
 }
@@ -79,7 +76,6 @@ var UtilityTableColumns = struct {
 	BlueprintID           string
 	GenesisTokenID        string
 	LimitedReleaseTokenID string
-	OwnerID               string
 	EquippedOn            string
 	Type                  string
 }{
@@ -92,7 +88,6 @@ var UtilityTableColumns = struct {
 	BlueprintID:           "utility.blueprint_id",
 	GenesisTokenID:        "utility.genesis_token_id",
 	LimitedReleaseTokenID: "utility.limited_release_token_id",
-	OwnerID:               "utility.owner_id",
 	EquippedOn:            "utility.equipped_on",
 	Type:                  "utility.type",
 }
@@ -109,7 +104,6 @@ var UtilityWhere = struct {
 	BlueprintID           whereHelperstring
 	GenesisTokenID        whereHelperdecimal_NullDecimal
 	LimitedReleaseTokenID whereHelperdecimal_NullDecimal
-	OwnerID               whereHelperstring
 	EquippedOn            whereHelpernull_String
 	Type                  whereHelperstring
 }{
@@ -122,7 +116,6 @@ var UtilityWhere = struct {
 	BlueprintID:           whereHelperstring{field: "\"utility\".\"blueprint_id\""},
 	GenesisTokenID:        whereHelperdecimal_NullDecimal{field: "\"utility\".\"genesis_token_id\""},
 	LimitedReleaseTokenID: whereHelperdecimal_NullDecimal{field: "\"utility\".\"limited_release_token_id\""},
-	OwnerID:               whereHelperstring{field: "\"utility\".\"owner_id\""},
 	EquippedOn:            whereHelpernull_String{field: "\"utility\".\"equipped_on\""},
 	Type:                  whereHelperstring{field: "\"utility\".\"type\""},
 }
@@ -132,7 +125,6 @@ var UtilityRels = struct {
 	Brand              string
 	Blueprint          string
 	EquippedOnMech     string
-	Owner              string
 	MechUtility        string
 	UtilityAccelerator string
 	UtilityAntiMissile string
@@ -143,7 +135,6 @@ var UtilityRels = struct {
 	Brand:              "Brand",
 	Blueprint:          "Blueprint",
 	EquippedOnMech:     "EquippedOnMech",
-	Owner:              "Owner",
 	MechUtility:        "MechUtility",
 	UtilityAccelerator: "UtilityAccelerator",
 	UtilityAntiMissile: "UtilityAntiMissile",
@@ -157,7 +148,6 @@ type utilityR struct {
 	Brand              *Brand              `boiler:"Brand" boil:"Brand" json:"Brand" toml:"Brand" yaml:"Brand"`
 	Blueprint          *BlueprintUtility   `boiler:"Blueprint" boil:"Blueprint" json:"Blueprint" toml:"Blueprint" yaml:"Blueprint"`
 	EquippedOnMech     *Mech               `boiler:"EquippedOnMech" boil:"EquippedOnMech" json:"EquippedOnMech" toml:"EquippedOnMech" yaml:"EquippedOnMech"`
-	Owner              *Player             `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
 	MechUtility        *MechUtility        `boiler:"MechUtility" boil:"MechUtility" json:"MechUtility" toml:"MechUtility" yaml:"MechUtility"`
 	UtilityAccelerator *UtilityAccelerator `boiler:"UtilityAccelerator" boil:"UtilityAccelerator" json:"UtilityAccelerator" toml:"UtilityAccelerator" yaml:"UtilityAccelerator"`
 	UtilityAntiMissile *UtilityAntiMissile `boiler:"UtilityAntiMissile" boil:"UtilityAntiMissile" json:"UtilityAntiMissile" toml:"UtilityAntiMissile" yaml:"UtilityAntiMissile"`
@@ -175,8 +165,8 @@ func (*utilityR) NewStruct() *utilityR {
 type utilityL struct{}
 
 var (
-	utilityAllColumns            = []string{"id", "brand_id", "label", "deleted_at", "updated_at", "created_at", "blueprint_id", "genesis_token_id", "limited_release_token_id", "owner_id", "equipped_on", "type"}
-	utilityColumnsWithoutDefault = []string{"label", "blueprint_id", "owner_id", "type"}
+	utilityAllColumns            = []string{"id", "brand_id", "label", "deleted_at", "updated_at", "created_at", "blueprint_id", "genesis_token_id", "limited_release_token_id", "equipped_on", "type"}
+	utilityColumnsWithoutDefault = []string{"label", "blueprint_id", "type"}
 	utilityColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at", "genesis_token_id", "limited_release_token_id", "equipped_on"}
 	utilityPrimaryKeyColumns     = []string{"id"}
 	utilityGeneratedColumns      = []string{}
@@ -465,21 +455,6 @@ func (o *Utility) EquippedOnMech(mods ...qm.QueryMod) mechQuery {
 
 	query := Mechs(queryMods...)
 	queries.SetFrom(query.Query, "\"mechs\"")
-
-	return query
-}
-
-// Owner pointed to by the foreign key.
-func (o *Utility) Owner(mods ...qm.QueryMod) playerQuery {
-	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.OwnerID),
-		qmhelper.WhereIsNull("deleted_at"),
-	}
-
-	queryMods = append(queryMods, mods...)
-
-	query := Players(queryMods...)
-	queries.SetFrom(query.Query, "\"players\"")
 
 	return query
 }
@@ -884,111 +859,6 @@ func (utilityL) LoadEquippedOnMech(e boil.Executor, singular bool, maybeUtility 
 					foreign.R = &mechR{}
 				}
 				foreign.R.EquippedOnUtilities = append(foreign.R.EquippedOnUtilities, local)
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadOwner allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for an N-1 relationship.
-func (utilityL) LoadOwner(e boil.Executor, singular bool, maybeUtility interface{}, mods queries.Applicator) error {
-	var slice []*Utility
-	var object *Utility
-
-	if singular {
-		object = maybeUtility.(*Utility)
-	} else {
-		slice = *maybeUtility.(*[]*Utility)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &utilityR{}
-		}
-		args = append(args, object.OwnerID)
-
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &utilityR{}
-			}
-
-			for _, a := range args {
-				if a == obj.OwnerID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.OwnerID)
-
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`players`),
-		qm.WhereIn(`players.id in ?`, args...),
-		qmhelper.WhereIsNull(`players.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load Player")
-	}
-
-	var resultSlice []*Player
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice Player")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for players")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players")
-	}
-
-	if len(utilityAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-
-	if len(resultSlice) == 0 {
-		return nil
-	}
-
-	if singular {
-		foreign := resultSlice[0]
-		object.R.Owner = foreign
-		if foreign.R == nil {
-			foreign.R = &playerR{}
-		}
-		foreign.R.OwnerUtilities = append(foreign.R.OwnerUtilities, object)
-		return nil
-	}
-
-	for _, local := range slice {
-		for _, foreign := range resultSlice {
-			if local.OwnerID == foreign.ID {
-				local.R.Owner = foreign
-				if foreign.R == nil {
-					foreign.R = &playerR{}
-				}
-				foreign.R.OwnerUtilities = append(foreign.R.OwnerUtilities, local)
 				break
 			}
 		}
@@ -1805,52 +1675,6 @@ func (o *Utility) RemoveEquippedOnMech(exec boil.Executor, related *Mech) error 
 		related.R.EquippedOnUtilities = related.R.EquippedOnUtilities[:ln-1]
 		break
 	}
-	return nil
-}
-
-// SetOwner of the utility to the related item.
-// Sets o.R.Owner to related.
-// Adds o to related.R.OwnerUtilities.
-func (o *Utility) SetOwner(exec boil.Executor, insert bool, related *Player) error {
-	var err error
-	if insert {
-		if err = related.Insert(exec, boil.Infer()); err != nil {
-			return errors.Wrap(err, "failed to insert into foreign table")
-		}
-	}
-
-	updateQuery := fmt.Sprintf(
-		"UPDATE \"utility\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"owner_id"}),
-		strmangle.WhereClause("\"", "\"", 2, utilityPrimaryKeyColumns),
-	)
-	values := []interface{}{related.ID, o.ID}
-
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, updateQuery)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	if _, err = exec.Exec(updateQuery, values...); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	o.OwnerID = related.ID
-	if o.R == nil {
-		o.R = &utilityR{
-			Owner: related,
-		}
-	} else {
-		o.R.Owner = related
-	}
-
-	if related.R == nil {
-		related.R = &playerR{
-			OwnerUtilities: UtilitySlice{o},
-		}
-	} else {
-		related.R.OwnerUtilities = append(related.R.OwnerUtilities, o)
-	}
-
 	return nil
 }
 

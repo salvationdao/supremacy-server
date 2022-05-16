@@ -17,7 +17,7 @@ type MechSkin struct {
 	OwnerID          string              `json:"owner_id"`
 	MechModel        string              `json:"mech_model"`
 	EquippedOn       null.String         `json:"equipped_on,omitempty"`
-	Tier             null.String         `json:"tier,omitempty"`
+	Tier             string              `json:"tier,omitempty"`
 	ImageURL         null.String         `json:"image_url,omitempty"`
 	AnimationURL     null.String         `json:"animation_url,omitempty"`
 	CardAnimationURL null.String         `json:"card_animation_url,omitempty"`
@@ -31,7 +31,7 @@ type BlueprintMechSkin struct {
 	Collection       string      `json:"collection"`
 	MechModel        string      `json:"mech_model"`
 	Label            string      `json:"label"`
-	Tier             null.String `json:"tier,omitempty"`
+	Tier             string      `json:"tier,omitempty"`
 	ImageURL         null.String `json:"image_url,omitempty"`
 	AnimationURL     null.String `json:"animation_url,omitempty"`
 	CardAnimationURL null.String `json:"card_animation_url,omitempty"`
@@ -66,15 +66,18 @@ func MechSkinFromBoiler(skin *boiler.MechSkin, collection *boiler.CollectionItem
 			CollectionSlug: collection.CollectionSlug,
 			Hash:           collection.Hash,
 			TokenID:        collection.TokenID,
+			ItemType:       collection.ItemType,
+			ItemID:         collection.ItemID,
+			Tier:           collection.Tier,
+			OwnerID:        collection.OwnerID,
+			OnChainStatus:  collection.OnChainStatus,
 		},
 		ID:               skin.ID,
 		BlueprintID:      skin.BlueprintID,
 		GenesisTokenID:   skin.GenesisTokenID,
 		Label:            skin.Label,
-		OwnerID:          skin.OwnerID,
 		MechModel:        skin.MechModel,
 		EquippedOn:       skin.EquippedOn,
-		Tier:             skin.Tier,
 		ImageURL:         skin.ImageURL,
 		AnimationURL:     skin.AnimationURL,
 		CardAnimationURL: skin.CardAnimationURL,

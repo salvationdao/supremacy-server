@@ -30,6 +30,7 @@ type Weapon struct {
 	ProjectileSpeed     decimal.NullDecimal `json:"projectile_speed,omitempty"`
 	EnergyCost          decimal.NullDecimal `json:"energy_cost,omitempty"`
 	MaxAmmo             null.Int            `json:"max_ammo,omitempty"`
+	Tier                string              `json:"tier,omitempty"`
 
 	// TODO: AMMO //BlueprintAmmo []*
 
@@ -58,6 +59,7 @@ type BlueprintWeapon struct {
 	MaxAmmo             null.Int            `json:"max_ammo,omitempty"`
 	EnergyCost          decimal.NullDecimal `json:"energy_cost,omitempty"`
 	Collection          string              `json:"collection"`
+	Tier                string              `json:"tier,omitempty"`
 
 	// only used on inserting new mechs/items, since we are still giving away some limited released and genesis
 	GenesisTokenID        decimal.NullDecimal `json:"genesis_token_id,omitempty"`
@@ -86,6 +88,7 @@ func BlueprintWeaponFromBoiler(weapon *boiler.BlueprintWeapon) *BlueprintWeapon 
 		MaxAmmo:             weapon.MaxAmmo,
 		EnergyCost:          weapon.EnergyCost,
 		Collection:          weapon.Collection,
+		Tier:                weapon.Tier,
 	}
 }
 
@@ -95,6 +98,11 @@ func WeaponFromBoiler(weapon *boiler.Weapon, collection *boiler.CollectionItem) 
 			CollectionSlug: collection.CollectionSlug,
 			Hash:           collection.Hash,
 			TokenID:        collection.TokenID,
+			ItemType:       collection.ItemType,
+			ItemID:         collection.ItemID,
+			Tier:           collection.Tier,
+			OwnerID:        collection.OwnerID,
+			OnChainStatus:  collection.OnChainStatus,
 		},
 		ID:                  weapon.ID,
 		BrandID:             weapon.BrandID,
@@ -105,7 +113,6 @@ func WeaponFromBoiler(weapon *boiler.Weapon, collection *boiler.CollectionItem) 
 		DefaultDamageType:   weapon.DefaultDamageType,
 		GenesisTokenID:      weapon.GenesisTokenID,
 		WeaponType:          weapon.WeaponType,
-		OwnerID:             weapon.OwnerID,
 		DamageFalloff:       weapon.DamageFalloff,
 		DamageFalloffRate:   weapon.DamageFalloffRate,
 		Spread:              weapon.Spread,

@@ -274,3 +274,18 @@ ALTER TABLE blueprint_chassis_animation
 
 ALTER TABLE chassis_weapons
     RENAME TO mech_weapons;
+
+
+-- here we just update out seqs
+SELECT SETVAL('collection_genesis', (SELECT COALESCE(MAX(genesis_token_id), 1) FROM mechs)::BIGINT, FALSE);
+SELECT SETVAL('collection_limited_release', (SELECT COALESCE(MAX(limited_release_token_id), 1) FROM mechs)::BIGINT,
+              FALSE);
+
+-- clear up some columns
+ALTER TABLE utility
+    DROP COLUMN IF EXISTS owner_id,
+    DROP COLUMN IF EXISTS tier;
+
+ALTER TABLE weapons
+    DROP COLUMN IF EXISTS owner_id,
+    DROP COLUMN IF EXISTS tier;

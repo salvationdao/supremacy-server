@@ -25,7 +25,6 @@ import (
 // PowerCore is an object representing the database table.
 type PowerCore struct {
 	ID           string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	OwnerID      string          `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
 	BlueprintID  null.String     `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id,omitempty" toml:"blueprint_id" yaml:"blueprint_id,omitempty"`
 	Label        string          `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
 	Size         string          `boiler:"size" boil:"size" json:"size" toml:"size" yaml:"size"`
@@ -34,7 +33,6 @@ type PowerCore struct {
 	RechargeRate decimal.Decimal `boiler:"recharge_rate" boil:"recharge_rate" json:"recharge_rate" toml:"recharge_rate" yaml:"recharge_rate"`
 	Armour       decimal.Decimal `boiler:"armour" boil:"armour" json:"armour" toml:"armour" yaml:"armour"`
 	MaxHitpoints decimal.Decimal `boiler:"max_hitpoints" boil:"max_hitpoints" json:"max_hitpoints" toml:"max_hitpoints" yaml:"max_hitpoints"`
-	Tier         null.String     `boiler:"tier" boil:"tier" json:"tier,omitempty" toml:"tier" yaml:"tier,omitempty"`
 	EquippedOn   null.String     `boiler:"equipped_on" boil:"equipped_on" json:"equipped_on,omitempty" toml:"equipped_on" yaml:"equipped_on,omitempty"`
 	CreatedAt    time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
@@ -44,7 +42,6 @@ type PowerCore struct {
 
 var PowerCoreColumns = struct {
 	ID           string
-	OwnerID      string
 	BlueprintID  string
 	Label        string
 	Size         string
@@ -53,12 +50,10 @@ var PowerCoreColumns = struct {
 	RechargeRate string
 	Armour       string
 	MaxHitpoints string
-	Tier         string
 	EquippedOn   string
 	CreatedAt    string
 }{
 	ID:           "id",
-	OwnerID:      "owner_id",
 	BlueprintID:  "blueprint_id",
 	Label:        "label",
 	Size:         "size",
@@ -67,14 +62,12 @@ var PowerCoreColumns = struct {
 	RechargeRate: "recharge_rate",
 	Armour:       "armour",
 	MaxHitpoints: "max_hitpoints",
-	Tier:         "tier",
 	EquippedOn:   "equipped_on",
 	CreatedAt:    "created_at",
 }
 
 var PowerCoreTableColumns = struct {
 	ID           string
-	OwnerID      string
 	BlueprintID  string
 	Label        string
 	Size         string
@@ -83,12 +76,10 @@ var PowerCoreTableColumns = struct {
 	RechargeRate string
 	Armour       string
 	MaxHitpoints string
-	Tier         string
 	EquippedOn   string
 	CreatedAt    string
 }{
 	ID:           "power_cores.id",
-	OwnerID:      "power_cores.owner_id",
 	BlueprintID:  "power_cores.blueprint_id",
 	Label:        "power_cores.label",
 	Size:         "power_cores.size",
@@ -97,7 +88,6 @@ var PowerCoreTableColumns = struct {
 	RechargeRate: "power_cores.recharge_rate",
 	Armour:       "power_cores.armour",
 	MaxHitpoints: "power_cores.max_hitpoints",
-	Tier:         "power_cores.tier",
 	EquippedOn:   "power_cores.equipped_on",
 	CreatedAt:    "power_cores.created_at",
 }
@@ -106,7 +96,6 @@ var PowerCoreTableColumns = struct {
 
 var PowerCoreWhere = struct {
 	ID           whereHelperstring
-	OwnerID      whereHelperstring
 	BlueprintID  whereHelpernull_String
 	Label        whereHelperstring
 	Size         whereHelperstring
@@ -115,12 +104,10 @@ var PowerCoreWhere = struct {
 	RechargeRate whereHelperdecimal_Decimal
 	Armour       whereHelperdecimal_Decimal
 	MaxHitpoints whereHelperdecimal_Decimal
-	Tier         whereHelpernull_String
 	EquippedOn   whereHelpernull_String
 	CreatedAt    whereHelpertime_Time
 }{
 	ID:           whereHelperstring{field: "\"power_cores\".\"id\""},
-	OwnerID:      whereHelperstring{field: "\"power_cores\".\"owner_id\""},
 	BlueprintID:  whereHelpernull_String{field: "\"power_cores\".\"blueprint_id\""},
 	Label:        whereHelperstring{field: "\"power_cores\".\"label\""},
 	Size:         whereHelperstring{field: "\"power_cores\".\"size\""},
@@ -129,7 +116,6 @@ var PowerCoreWhere = struct {
 	RechargeRate: whereHelperdecimal_Decimal{field: "\"power_cores\".\"recharge_rate\""},
 	Armour:       whereHelperdecimal_Decimal{field: "\"power_cores\".\"armour\""},
 	MaxHitpoints: whereHelperdecimal_Decimal{field: "\"power_cores\".\"max_hitpoints\""},
-	Tier:         whereHelpernull_String{field: "\"power_cores\".\"tier\""},
 	EquippedOn:   whereHelpernull_String{field: "\"power_cores\".\"equipped_on\""},
 	CreatedAt:    whereHelpertime_Time{field: "\"power_cores\".\"created_at\""},
 }
@@ -138,12 +124,10 @@ var PowerCoreWhere = struct {
 var PowerCoreRels = struct {
 	Blueprint      string
 	EquippedOnMech string
-	Owner          string
 	Mechs          string
 }{
 	Blueprint:      "Blueprint",
 	EquippedOnMech: "EquippedOnMech",
-	Owner:          "Owner",
 	Mechs:          "Mechs",
 }
 
@@ -151,7 +135,6 @@ var PowerCoreRels = struct {
 type powerCoreR struct {
 	Blueprint      *BlueprintPowerCore `boiler:"Blueprint" boil:"Blueprint" json:"Blueprint" toml:"Blueprint" yaml:"Blueprint"`
 	EquippedOnMech *Mech               `boiler:"EquippedOnMech" boil:"EquippedOnMech" json:"EquippedOnMech" toml:"EquippedOnMech" yaml:"EquippedOnMech"`
-	Owner          *Player             `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
 	Mechs          MechSlice           `boiler:"Mechs" boil:"Mechs" json:"Mechs" toml:"Mechs" yaml:"Mechs"`
 }
 
@@ -164,9 +147,9 @@ func (*powerCoreR) NewStruct() *powerCoreR {
 type powerCoreL struct{}
 
 var (
-	powerCoreAllColumns            = []string{"id", "owner_id", "blueprint_id", "label", "size", "capacity", "max_draw_rate", "recharge_rate", "armour", "max_hitpoints", "tier", "equipped_on", "created_at"}
-	powerCoreColumnsWithoutDefault = []string{"owner_id", "label"}
-	powerCoreColumnsWithDefault    = []string{"id", "blueprint_id", "size", "capacity", "max_draw_rate", "recharge_rate", "armour", "max_hitpoints", "tier", "equipped_on", "created_at"}
+	powerCoreAllColumns            = []string{"id", "blueprint_id", "label", "size", "capacity", "max_draw_rate", "recharge_rate", "armour", "max_hitpoints", "equipped_on", "created_at"}
+	powerCoreColumnsWithoutDefault = []string{"label"}
+	powerCoreColumnsWithDefault    = []string{"id", "blueprint_id", "size", "capacity", "max_draw_rate", "recharge_rate", "armour", "max_hitpoints", "equipped_on", "created_at"}
 	powerCorePrimaryKeyColumns     = []string{"id"}
 	powerCoreGeneratedColumns      = []string{}
 )
@@ -442,21 +425,6 @@ func (o *PowerCore) EquippedOnMech(mods ...qm.QueryMod) mechQuery {
 	return query
 }
 
-// Owner pointed to by the foreign key.
-func (o *PowerCore) Owner(mods ...qm.QueryMod) playerQuery {
-	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.OwnerID),
-		qmhelper.WhereIsNull("deleted_at"),
-	}
-
-	queryMods = append(queryMods, mods...)
-
-	query := Players(queryMods...)
-	queries.SetFrom(query.Query, "\"players\"")
-
-	return query
-}
-
 // Mechs retrieves all the mech's Mechs with an executor.
 func (o *PowerCore) Mechs(mods ...qm.QueryMod) mechQuery {
 	var queryMods []qm.QueryMod
@@ -688,111 +656,6 @@ func (powerCoreL) LoadEquippedOnMech(e boil.Executor, singular bool, maybePowerC
 					foreign.R = &mechR{}
 				}
 				foreign.R.EquippedOnPowerCores = append(foreign.R.EquippedOnPowerCores, local)
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadOwner allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for an N-1 relationship.
-func (powerCoreL) LoadOwner(e boil.Executor, singular bool, maybePowerCore interface{}, mods queries.Applicator) error {
-	var slice []*PowerCore
-	var object *PowerCore
-
-	if singular {
-		object = maybePowerCore.(*PowerCore)
-	} else {
-		slice = *maybePowerCore.(*[]*PowerCore)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &powerCoreR{}
-		}
-		args = append(args, object.OwnerID)
-
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &powerCoreR{}
-			}
-
-			for _, a := range args {
-				if a == obj.OwnerID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.OwnerID)
-
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`players`),
-		qm.WhereIn(`players.id in ?`, args...),
-		qmhelper.WhereIsNull(`players.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load Player")
-	}
-
-	var resultSlice []*Player
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice Player")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for players")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players")
-	}
-
-	if len(powerCoreAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-
-	if len(resultSlice) == 0 {
-		return nil
-	}
-
-	if singular {
-		foreign := resultSlice[0]
-		object.R.Owner = foreign
-		if foreign.R == nil {
-			foreign.R = &playerR{}
-		}
-		foreign.R.OwnerPowerCores = append(foreign.R.OwnerPowerCores, object)
-		return nil
-	}
-
-	for _, local := range slice {
-		for _, foreign := range resultSlice {
-			if local.OwnerID == foreign.ID {
-				local.R.Owner = foreign
-				if foreign.R == nil {
-					foreign.R = &playerR{}
-				}
-				foreign.R.OwnerPowerCores = append(foreign.R.OwnerPowerCores, local)
 				break
 			}
 		}
@@ -1055,52 +918,6 @@ func (o *PowerCore) RemoveEquippedOnMech(exec boil.Executor, related *Mech) erro
 		related.R.EquippedOnPowerCores = related.R.EquippedOnPowerCores[:ln-1]
 		break
 	}
-	return nil
-}
-
-// SetOwner of the powerCore to the related item.
-// Sets o.R.Owner to related.
-// Adds o to related.R.OwnerPowerCores.
-func (o *PowerCore) SetOwner(exec boil.Executor, insert bool, related *Player) error {
-	var err error
-	if insert {
-		if err = related.Insert(exec, boil.Infer()); err != nil {
-			return errors.Wrap(err, "failed to insert into foreign table")
-		}
-	}
-
-	updateQuery := fmt.Sprintf(
-		"UPDATE \"power_cores\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"owner_id"}),
-		strmangle.WhereClause("\"", "\"", 2, powerCorePrimaryKeyColumns),
-	)
-	values := []interface{}{related.ID, o.ID}
-
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, updateQuery)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	if _, err = exec.Exec(updateQuery, values...); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	o.OwnerID = related.ID
-	if o.R == nil {
-		o.R = &powerCoreR{
-			Owner: related,
-		}
-	} else {
-		o.R.Owner = related
-	}
-
-	if related.R == nil {
-		related.R = &playerR{
-			OwnerPowerCores: PowerCoreSlice{o},
-		}
-	} else {
-		related.R.OwnerPowerCores = append(related.R.OwnerPowerCores, o)
-	}
-
 	return nil
 }
 

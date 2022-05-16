@@ -20,9 +20,7 @@ func InsertNewMechAnimation(ownerID uuid.UUID, animationBlueprint *server.Bluepr
 	newAnimation := boiler.MechAnimation{
 		BlueprintID:    animationBlueprint.ID,
 		Label:          animationBlueprint.Label,
-		OwnerID:        ownerID.String(),
 		MechModel:      animationBlueprint.MechModel,
-		Tier:           animationBlueprint.Tier,
 		IntroAnimation: animationBlueprint.IntroAnimation,
 		OutroAnimation: animationBlueprint.OutroAnimation,
 	}
@@ -32,14 +30,7 @@ func InsertNewMechAnimation(ownerID uuid.UUID, animationBlueprint *server.Bluepr
 		return nil, terror.Error(err)
 	}
 
-	//insert collection item
-	collectionItem := boiler.CollectionItem{
-		CollectionSlug: animationBlueprint.Collection,
-		ItemType:       boiler.ItemTypeMechAnimation,
-		ItemID:         newAnimation.ID,
-	}
-
-	err = collectionItem.Insert(tx, boil.Infer())
+	err = InsertNewCollectionItem(tx, animationBlueprint.Collection, boiler.ItemTypeMechAnimation, newAnimation.ID, animationBlueprint.Tier, ownerID.String())
 	if err != nil {
 		return nil, terror.Error(err)
 	}

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -109,7 +110,14 @@ func (t *Telegram) RunTelegram(bot *tele.Bot) error {
 		telegramNotification.TelegramID = null.IntFrom(_telegramID)
 
 		// mech owner
-		wmOwner := notification.R.Mech.OwnerID
+		ci, err := db.CollectionItemFromItemID(notification.R.Mech.ID)
+		if err != nil {
+			gamelog.L.Error().Err(err).
+				Str("notification.R.Mech.ID", notification.R.Mech.ID).
+				Str("notificationID", telegramNotification.ID).
+				Msg("unable to update telegram notification")
+			return terror.Error(err)
+		}
 
 		// update notification
 		_, err = telegramNotification.Update(gamedb.StdConn, boil.Infer())
@@ -123,7 +131,7 @@ func (t *Telegram) RunTelegram(bot *tele.Bot) error {
 
 		if err != nil {
 			reply = "Issue regestering telegram shortcode, try again or contact support"
-			go t.RegisterCallback(wmOwner, false)
+			go t.RegisterCallback(ci.OwnerID, false)
 			return c.Send(reply)
 
 		}
@@ -133,7 +141,7 @@ func (t *Telegram) RunTelegram(bot *tele.Bot) error {
 			wmName = notification.R.Mech.Name
 		}
 		reply = fmt.Sprintf("Shortcode registered! you will be notified when your war machine (%s) is nearing battle", wmName)
-		go t.RegisterCallback(wmOwner, true)
+		go t.RegisterCallback(ci.OwnerID, true)
 		return c.Send(reply)
 	})
 	bot.Start()

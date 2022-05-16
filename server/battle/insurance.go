@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"server"
+	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -116,7 +117,12 @@ func (arena *Arena) AssetRepairPayFeeHandler(ctx context.Context, hubc *hub.Clie
 		return terror.Error(err, "Failed to get mech from db")
 	}
 
-	if mech.OwnerID != hubc.Identifier() {
+	ci, err := db.CollectionItemFromItemID(mech.ID)
+	if err != nil {
+		return terror.Error(err, "Failed to get mech from db")
+	}
+
+	if ci.OwnerID != hubc.Identifier() {
 		return terror.Error(terror.ErrForbidden, "You are not the owner of the mech")
 	}
 
@@ -231,7 +237,12 @@ func (arena *Arena) AssetRepairStatusHandler(ctx context.Context, hubc *hub.Clie
 		return terror.Error(err, "Failed to get mech from db")
 	}
 
-	if mech.OwnerID != hubc.Identifier() {
+	ci, err := db.CollectionItemFromItemID(mech.ID)
+	if err != nil {
+		return terror.Error(err, "Failed to get mech from db")
+	}
+
+	if ci.OwnerID != hubc.Identifier() {
 		return terror.Error(terror.ErrForbidden, "You are not the owner of the mech")
 	}
 

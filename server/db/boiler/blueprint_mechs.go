@@ -23,22 +23,22 @@ import (
 
 // BlueprintMech is an object representing the database table.
 type BlueprintMech struct {
-	ID               string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	BrandID          string      `boiler:"brand_id" boil:"brand_id" json:"brand_id" toml:"brand_id" yaml:"brand_id"`
-	Label            string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	Slug             string      `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
-	Skin             string      `boiler:"skin" boil:"skin" json:"skin" toml:"skin" yaml:"skin"`
-	WeaponHardpoints int         `boiler:"weapon_hardpoints" boil:"weapon_hardpoints" json:"weapon_hardpoints" toml:"weapon_hardpoints" yaml:"weapon_hardpoints"`
-	UtilitySlots     int         `boiler:"utility_slots" boil:"utility_slots" json:"utility_slots" toml:"utility_slots" yaml:"utility_slots"`
-	Speed            int         `boiler:"speed" boil:"speed" json:"speed" toml:"speed" yaml:"speed"`
-	MaxHitpoints     int         `boiler:"max_hitpoints" boil:"max_hitpoints" json:"max_hitpoints" toml:"max_hitpoints" yaml:"max_hitpoints"`
-	DeletedAt        null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	UpdatedAt        time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt        time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	ModelID          string      `boiler:"model_id" boil:"model_id" json:"model_id" toml:"model_id" yaml:"model_id"`
-	Collection       string      `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
-	PowerCoreSize    string      `boiler:"power_core_size" boil:"power_core_size" json:"power_core_size" toml:"power_core_size" yaml:"power_core_size"`
-	Tier             null.String `boiler:"tier" boil:"tier" json:"tier,omitempty" toml:"tier" yaml:"tier,omitempty"`
+	ID               string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	BrandID          string    `boiler:"brand_id" boil:"brand_id" json:"brand_id" toml:"brand_id" yaml:"brand_id"`
+	Label            string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	Slug             string    `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
+	Skin             string    `boiler:"skin" boil:"skin" json:"skin" toml:"skin" yaml:"skin"`
+	WeaponHardpoints int       `boiler:"weapon_hardpoints" boil:"weapon_hardpoints" json:"weapon_hardpoints" toml:"weapon_hardpoints" yaml:"weapon_hardpoints"`
+	UtilitySlots     int       `boiler:"utility_slots" boil:"utility_slots" json:"utility_slots" toml:"utility_slots" yaml:"utility_slots"`
+	Speed            int       `boiler:"speed" boil:"speed" json:"speed" toml:"speed" yaml:"speed"`
+	MaxHitpoints     int       `boiler:"max_hitpoints" boil:"max_hitpoints" json:"max_hitpoints" toml:"max_hitpoints" yaml:"max_hitpoints"`
+	DeletedAt        null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt        time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt        time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ModelID          string    `boiler:"model_id" boil:"model_id" json:"model_id" toml:"model_id" yaml:"model_id"`
+	Collection       string    `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
+	PowerCoreSize    string    `boiler:"power_core_size" boil:"power_core_size" json:"power_core_size" toml:"power_core_size" yaml:"power_core_size"`
+	Tier             string    `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
 
 	R *blueprintMechR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintMechL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -134,7 +134,7 @@ var BlueprintMechWhere = struct {
 	ModelID          whereHelperstring
 	Collection       whereHelperstring
 	PowerCoreSize    whereHelperstring
-	Tier             whereHelpernull_String
+	Tier             whereHelperstring
 }{
 	ID:               whereHelperstring{field: "\"blueprint_mechs\".\"id\""},
 	BrandID:          whereHelperstring{field: "\"blueprint_mechs\".\"brand_id\""},
@@ -151,7 +151,7 @@ var BlueprintMechWhere = struct {
 	ModelID:          whereHelperstring{field: "\"blueprint_mechs\".\"model_id\""},
 	Collection:       whereHelperstring{field: "\"blueprint_mechs\".\"collection\""},
 	PowerCoreSize:    whereHelperstring{field: "\"blueprint_mechs\".\"power_core_size\""},
-	Tier:             whereHelpernull_String{field: "\"blueprint_mechs\".\"tier\""},
+	Tier:             whereHelperstring{field: "\"blueprint_mechs\".\"tier\""},
 }
 
 // BlueprintMechRels is where relationship names are stored.

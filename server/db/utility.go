@@ -24,7 +24,6 @@ func InsertNewUtility(ownerID uuid.UUID, utility *server.BlueprintUtility) (*ser
 		BlueprintID:           utility.ID,
 		GenesisTokenID:        utility.GenesisTokenID,
 		LimitedReleaseTokenID: utility.LimitedReleaseTokenID,
-		OwnerID:               ownerID.String(),
 		Type:                  utility.Type,
 	}
 
@@ -33,14 +32,7 @@ func InsertNewUtility(ownerID uuid.UUID, utility *server.BlueprintUtility) (*ser
 		return nil, terror.Error(err)
 	}
 
-	//insert collection item
-	collectionItem := boiler.CollectionItem{
-		CollectionSlug: utility.Collection,
-		ItemType:       boiler.ItemTypeUtility,
-		ItemID:         newUtility.ID,
-	}
-
-	err = collectionItem.Insert(tx, boil.Infer())
+	err = InsertNewCollectionItem(tx, utility.Collection, boiler.ItemTypeUtility, newUtility.ID, utility.Tier, ownerID.String())
 	if err != nil {
 		return nil, terror.Error(err)
 	}

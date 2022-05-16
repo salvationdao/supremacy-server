@@ -19,7 +19,7 @@ type PowerCore struct {
 	RechargeRate decimal.Decimal `json:"recharge_rate"`
 	Armour       decimal.Decimal `json:"armour"`
 	MaxHitpoints decimal.Decimal `json:"max_hitpoints"`
-	Tier         null.String     `json:"tier,omitempty"`
+	Tier         string          `json:"tier,omitempty"`
 	EquippedOn   null.String     `json:"equipped_on,omitempty"`
 	CreatedAt    time.Time       `json:"created_at"`
 }
@@ -34,7 +34,7 @@ type BlueprintPowerCore struct {
 	RechargeRate decimal.Decimal `json:"recharge_rate"`
 	Armour       decimal.Decimal `json:"armour"`
 	MaxHitpoints decimal.Decimal `json:"max_hitpoints"`
-	Tier         null.String     `json:"tier,omitempty"`
+	Tier         string          `json:"tier,omitempty"`
 	CreatedAt    time.Time       `json:"created_at"`
 
 	// only used on inserting new mechs/items, since we are still giving away some limited released and genesis
@@ -64,9 +64,13 @@ func PowerCoreFromBoiler(skin *boiler.PowerCore, collection *boiler.CollectionIt
 			CollectionSlug: collection.CollectionSlug,
 			Hash:           collection.Hash,
 			TokenID:        collection.TokenID,
+			ItemType:       collection.ItemType,
+			ItemID:         collection.ItemID,
+			Tier:           collection.Tier,
+			OwnerID:        collection.OwnerID,
+			OnChainStatus:  collection.OnChainStatus,
 		},
 		ID:           skin.ID,
-		OwnerID:      skin.OwnerID,
 		Label:        skin.Label,
 		Size:         skin.Size,
 		Capacity:     skin.Capacity,
@@ -74,7 +78,6 @@ func PowerCoreFromBoiler(skin *boiler.PowerCore, collection *boiler.CollectionIt
 		RechargeRate: skin.RechargeRate,
 		Armour:       skin.Armour,
 		MaxHitpoints: skin.MaxHitpoints,
-		Tier:         skin.Tier,
 		EquippedOn:   skin.EquippedOn,
 		CreatedAt:    skin.CreatedAt,
 	}

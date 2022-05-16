@@ -23,14 +23,14 @@ import (
 
 // BlueprintMechAnimation is an object representing the database table.
 type BlueprintMechAnimation struct {
-	ID             string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Collection     string      `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
-	Label          string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	MechModel      string      `boiler:"mech_model" boil:"mech_model" json:"mech_model" toml:"mech_model" yaml:"mech_model"`
-	Tier           null.String `boiler:"tier" boil:"tier" json:"tier,omitempty" toml:"tier" yaml:"tier,omitempty"`
-	IntroAnimation null.Bool   `boiler:"intro_animation" boil:"intro_animation" json:"intro_animation,omitempty" toml:"intro_animation" yaml:"intro_animation,omitempty"`
-	OutroAnimation null.Bool   `boiler:"outro_animation" boil:"outro_animation" json:"outro_animation,omitempty" toml:"outro_animation" yaml:"outro_animation,omitempty"`
-	CreatedAt      time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ID             string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Collection     string    `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
+	Label          string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	MechModel      string    `boiler:"mech_model" boil:"mech_model" json:"mech_model" toml:"mech_model" yaml:"mech_model"`
+	Tier           string    `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
+	IntroAnimation null.Bool `boiler:"intro_animation" boil:"intro_animation" json:"intro_animation,omitempty" toml:"intro_animation" yaml:"intro_animation,omitempty"`
+	OutroAnimation null.Bool `boiler:"outro_animation" boil:"outro_animation" json:"outro_animation,omitempty" toml:"outro_animation" yaml:"outro_animation,omitempty"`
+	CreatedAt      time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *blueprintMechAnimationR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintMechAnimationL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -83,7 +83,7 @@ var BlueprintMechAnimationWhere = struct {
 	Collection     whereHelperstring
 	Label          whereHelperstring
 	MechModel      whereHelperstring
-	Tier           whereHelpernull_String
+	Tier           whereHelperstring
 	IntroAnimation whereHelpernull_Bool
 	OutroAnimation whereHelpernull_Bool
 	CreatedAt      whereHelpertime_Time
@@ -92,7 +92,7 @@ var BlueprintMechAnimationWhere = struct {
 	Collection:     whereHelperstring{field: "\"blueprint_mech_animation\".\"collection\""},
 	Label:          whereHelperstring{field: "\"blueprint_mech_animation\".\"label\""},
 	MechModel:      whereHelperstring{field: "\"blueprint_mech_animation\".\"mech_model\""},
-	Tier:           whereHelpernull_String{field: "\"blueprint_mech_animation\".\"tier\""},
+	Tier:           whereHelperstring{field: "\"blueprint_mech_animation\".\"tier\""},
 	IntroAnimation: whereHelpernull_Bool{field: "\"blueprint_mech_animation\".\"intro_animation\""},
 	OutroAnimation: whereHelpernull_Bool{field: "\"blueprint_mech_animation\".\"outro_animation\""},
 	CreatedAt:      whereHelpertime_Time{field: "\"blueprint_mech_animation\".\"created_at\""},

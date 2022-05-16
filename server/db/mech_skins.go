@@ -23,9 +23,7 @@ func InsertNewMechSkin(ownerID uuid.UUID, skin *server.BlueprintMechSkin) (*serv
 		GenesisTokenID:        skin.GenesisTokenID,
 		LimitedReleaseTokenID: skin.LimitedReleaseTokenID,
 		Label:                 skin.Label,
-		OwnerID:               ownerID.String(),
 		MechModel:             skin.MechModel,
-		Tier:                  skin.Tier,
 		ImageURL:              skin.ImageURL,
 		AnimationURL:          skin.AnimationURL,
 		CardAnimationURL:      skin.CardAnimationURL,
@@ -38,14 +36,7 @@ func InsertNewMechSkin(ownerID uuid.UUID, skin *server.BlueprintMechSkin) (*serv
 		return nil, terror.Error(err)
 	}
 
-	//insert collection item
-	collectionItem := boiler.CollectionItem{
-		CollectionSlug: skin.Collection,
-		ItemType:       boiler.ItemTypeMechSkin,
-		ItemID:         newSkin.ID,
-	}
-
-	err = collectionItem.Insert(tx, boil.Infer())
+	err = InsertNewCollectionItem(tx, skin.Collection, boiler.ItemTypeMechSkin, newSkin.ID, skin.Tier, ownerID.String())
 	if err != nil {
 		return nil, terror.Error(err)
 	}

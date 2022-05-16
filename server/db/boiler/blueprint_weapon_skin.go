@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
-	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -23,11 +22,11 @@ import (
 
 // BlueprintWeaponSkin is an object representing the database table.
 type BlueprintWeaponSkin struct {
-	ID         string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Label      string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	WeaponType string      `boiler:"weapon_type" boil:"weapon_type" json:"weapon_type" toml:"weapon_type" yaml:"weapon_type"`
-	Tier       null.String `boiler:"tier" boil:"tier" json:"tier,omitempty" toml:"tier" yaml:"tier,omitempty"`
-	CreatedAt  time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ID         string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Label      string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	WeaponType string    `boiler:"weapon_type" boil:"weapon_type" json:"weapon_type" toml:"weapon_type" yaml:"weapon_type"`
+	Tier       string    `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
+	CreatedAt  time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *blueprintWeaponSkinR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintWeaponSkinL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -67,13 +66,13 @@ var BlueprintWeaponSkinWhere = struct {
 	ID         whereHelperstring
 	Label      whereHelperstring
 	WeaponType whereHelperstring
-	Tier       whereHelpernull_String
+	Tier       whereHelperstring
 	CreatedAt  whereHelpertime_Time
 }{
 	ID:         whereHelperstring{field: "\"blueprint_weapon_skin\".\"id\""},
 	Label:      whereHelperstring{field: "\"blueprint_weapon_skin\".\"label\""},
 	WeaponType: whereHelperstring{field: "\"blueprint_weapon_skin\".\"weapon_type\""},
-	Tier:       whereHelpernull_String{field: "\"blueprint_weapon_skin\".\"tier\""},
+	Tier:       whereHelperstring{field: "\"blueprint_weapon_skin\".\"tier\""},
 	CreatedAt:  whereHelpertime_Time{field: "\"blueprint_weapon_skin\".\"created_at\""},
 }
 

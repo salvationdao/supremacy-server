@@ -60,7 +60,7 @@ type PowerCore struct {
 	RechargeRate decimal.Decimal `json:"recharge_rate"`
 	Armour       decimal.Decimal `json:"armour"`
 	MaxHitpoints decimal.Decimal `json:"max_hitpoints"`
-	Tier         null.String     `json:"tier,omitempty"`
+	Tier         string          `json:"tier,omitempty"`
 	EquippedOn   null.String     `json:"equipped_on,omitempty"`
 	CreatedAt    time.Time       `json:"created_at"`
 }

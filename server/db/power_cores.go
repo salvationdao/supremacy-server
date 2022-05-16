@@ -18,7 +18,6 @@ func InsertNewPowerCore(ownerID uuid.UUID, ec *server.BlueprintPowerCore) (*serv
 
 	// first insert the energy core
 	newPowerCore := boiler.PowerCore{
-		OwnerID:      ownerID.String(),
 		Label:        ec.Label,
 		Size:         ec.Size,
 		Capacity:     ec.Capacity,
@@ -26,7 +25,6 @@ func InsertNewPowerCore(ownerID uuid.UUID, ec *server.BlueprintPowerCore) (*serv
 		RechargeRate: ec.RechargeRate,
 		Armour:       ec.Armour,
 		MaxHitpoints: ec.MaxHitpoints,
-		Tier:         ec.Tier,
 	}
 
 	err = newPowerCore.Insert(tx, boil.Infer())
@@ -34,14 +32,7 @@ func InsertNewPowerCore(ownerID uuid.UUID, ec *server.BlueprintPowerCore) (*serv
 		return nil, terror.Error(err)
 	}
 
-	//insert collection item
-	collectionItem := boiler.CollectionItem{
-		CollectionSlug: ec.Collection,
-		ItemType:       boiler.ItemTypePowerCore,
-		ItemID:         newPowerCore.ID,
-	}
-
-	err = collectionItem.Insert(tx, boil.Infer())
+	err = InsertNewCollectionItem(tx, ec.Collection, boiler.ItemTypePowerCore, newPowerCore.ID, ec.Tier, ownerID.String())
 	if err != nil {
 		return nil, terror.Error(err)
 	}

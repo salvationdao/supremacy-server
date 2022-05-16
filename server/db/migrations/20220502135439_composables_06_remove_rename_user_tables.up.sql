@@ -19,4 +19,3 @@ ALTER TABLE battles_viewers
 
 ALTER TABLE asset_repair
     RENAME TO mech_repair;
-

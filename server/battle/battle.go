@@ -1928,7 +1928,7 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 			MaxHealth:   uint32(mech.MaxHitpoints),
 			Health:      uint32(mech.MaxHitpoints),
 			Speed:       mech.Speed,
-			Tier:        mech.Tier.String,
+			Tier:        mech.Tier,
 			Image:       mech.ChassisSkin.ImageURL.String,
 			ImageAvatar: mech.ChassisSkin.AvatarURL.String,
 

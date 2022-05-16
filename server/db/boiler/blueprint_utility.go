@@ -30,6 +30,7 @@ type BlueprintUtility struct {
 	UpdatedAt  time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	CreatedAt  time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	Type       string      `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
+	Tier       string      `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
 	Collection string      `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
 
 	R *blueprintUtilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -44,6 +45,7 @@ var BlueprintUtilityColumns = struct {
 	UpdatedAt  string
 	CreatedAt  string
 	Type       string
+	Tier       string
 	Collection string
 }{
 	ID:         "id",
@@ -53,6 +55,7 @@ var BlueprintUtilityColumns = struct {
 	UpdatedAt:  "updated_at",
 	CreatedAt:  "created_at",
 	Type:       "type",
+	Tier:       "tier",
 	Collection: "collection",
 }
 
@@ -64,6 +67,7 @@ var BlueprintUtilityTableColumns = struct {
 	UpdatedAt  string
 	CreatedAt  string
 	Type       string
+	Tier       string
 	Collection string
 }{
 	ID:         "blueprint_utility.id",
@@ -73,6 +77,7 @@ var BlueprintUtilityTableColumns = struct {
 	UpdatedAt:  "blueprint_utility.updated_at",
 	CreatedAt:  "blueprint_utility.created_at",
 	Type:       "blueprint_utility.type",
+	Tier:       "blueprint_utility.tier",
 	Collection: "blueprint_utility.collection",
 }
 
@@ -86,6 +91,7 @@ var BlueprintUtilityWhere = struct {
 	UpdatedAt  whereHelpertime_Time
 	CreatedAt  whereHelpertime_Time
 	Type       whereHelperstring
+	Tier       whereHelperstring
 	Collection whereHelperstring
 }{
 	ID:         whereHelperstring{field: "\"blueprint_utility\".\"id\""},
@@ -95,6 +101,7 @@ var BlueprintUtilityWhere = struct {
 	UpdatedAt:  whereHelpertime_Time{field: "\"blueprint_utility\".\"updated_at\""},
 	CreatedAt:  whereHelpertime_Time{field: "\"blueprint_utility\".\"created_at\""},
 	Type:       whereHelperstring{field: "\"blueprint_utility\".\"type\""},
+	Tier:       whereHelperstring{field: "\"blueprint_utility\".\"tier\""},
 	Collection: whereHelperstring{field: "\"blueprint_utility\".\"collection\""},
 }
 
@@ -137,9 +144,9 @@ func (*blueprintUtilityR) NewStruct() *blueprintUtilityR {
 type blueprintUtilityL struct{}
 
 var (
-	blueprintUtilityAllColumns            = []string{"id", "brand_id", "label", "deleted_at", "updated_at", "created_at", "type", "collection"}
+	blueprintUtilityAllColumns            = []string{"id", "brand_id", "label", "deleted_at", "updated_at", "created_at", "type", "tier", "collection"}
 	blueprintUtilityColumnsWithoutDefault = []string{"label", "type"}
-	blueprintUtilityColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at", "collection"}
+	blueprintUtilityColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at", "tier", "collection"}
 	blueprintUtilityPrimaryKeyColumns     = []string{"id"}
 	blueprintUtilityGeneratedColumns      = []string{}
 )

@@ -7,7 +7,7 @@ CREATE TABLE blueprint_weapon_skin
     id          UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
     label       TEXT        NOT NULL,
     weapon_type WEAPON_TYPE NOT NULL,
-    tier        TEXT,
+    tier        TEXT        NOT NULL DEFAULT 'MEGA',
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -19,7 +19,7 @@ CREATE TABLE weapon_skin
     label        TEXT        NOT NULL,
     weapon_type  WEAPON_TYPE NOT NULL,
     equipped_on  UUID REFERENCES chassis (id),
-    tier         TEXT,
+    tier         TEXT        NOT NULL DEFAULT 'MEGA',
     created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -43,6 +43,7 @@ ALTER TABLE blueprint_weapons
     ADD COLUMN rate_of_fire          NUMERIC DEFAULT 0,
     ADD COLUMN projectile_speed      NUMERIC DEFAULT 0,
     ADD COLUMN max_ammo              INT     DEFAULT 0,
+    ADD COLUMN tier                  TEXT        NOT NULL DEFAULT 'MEGA',
     ADD COLUMN energy_cost           NUMERIC DEFAULT 0;
 
 UPDATE blueprint_weapons
@@ -94,6 +95,7 @@ ALTER TABLE weapons
     ADD COLUMN rate_of_fire             NUMERIC DEFAULT 0,
     ADD COLUMN projectile_speed         NUMERIC DEFAULT 0,
     ADD COLUMN energy_cost              NUMERIC DEFAULT 0,
+    ADD COLUMN tier                     TEXT        NOT NULL DEFAULT 'MEGA',
     ADD COLUMN max_ammo                 INT     DEFAULT 0;
 
 UPDATE weapons
@@ -143,11 +145,12 @@ WHERE w.id = weapon_owners.weapon_id;
 
 -- This inserts a new collection_items entry for each weapons and updates the weapons table with token id
 
-WITH weapon AS (SELECT 'weapon' AS item_type, id FROM weapons)
+WITH weapon AS (SELECT 'weapon' AS item_type, id, tier, owner_id FROM weapons)
 INSERT
-INTO collection_items (token_id, item_type, item_id)
-SELECT NEXTVAL('collection_general'), weapon.item_type::ITEM_TYPE, weapon.id
+INTO collection_items (token_id, item_type, item_id, tier, owner_id)
+SELECT NEXTVAL('collection_general'), weapon.item_type::ITEM_TYPE, weapon.id, weapon.tier, weapon.owner_id
 FROM weapon;
+
 
 -- this updates all genesis_token_id for weapons that are in genesis
 WITH genesis AS (SELECT external_token_id, m.collection_slug, m.chassis_id, _cw.weapon_id

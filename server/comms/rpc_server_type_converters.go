@@ -1,7 +1,9 @@
 package comms
 
 import (
+	"encoding/json"
 	"server"
+	"server/gamelog"
 )
 
 func ServerMechsToApiV1(items []*server.Mech) []*Mech {
@@ -26,6 +28,11 @@ func ServerMechSkinToApiV1(skin *server.MechSkin) *MechSkin {
 			CollectionSlug: skin.CollectionDetails.CollectionSlug,
 			Hash:           skin.CollectionDetails.Hash,
 			TokenID:        skin.CollectionDetails.TokenID,
+			ItemType:       skin.CollectionDetails.ItemType,
+			ItemID:         skin.CollectionDetails.ItemID,
+			Tier:           skin.CollectionDetails.Tier,
+			OwnerID:        skin.CollectionDetails.OwnerID,
+			OnChainStatus:  skin.CollectionDetails.OnChainStatus,
 		},
 		ID:               skin.ID,
 		BlueprintID:      skin.BlueprintID,
@@ -58,6 +65,11 @@ func ServerMechAnimationToApiV1(animation *server.MechAnimation) *MechAnimation 
 			CollectionSlug: animation.CollectionDetails.CollectionSlug,
 			Hash:           animation.CollectionDetails.Hash,
 			TokenID:        animation.CollectionDetails.TokenID,
+			ItemType:       animation.CollectionDetails.ItemType,
+			ItemID:         animation.CollectionDetails.ItemID,
+			Tier:           animation.CollectionDetails.Tier,
+			OwnerID:        animation.CollectionDetails.OwnerID,
+			OnChainStatus:  animation.CollectionDetails.OnChainStatus,
 		},
 		ID:             animation.ID,
 		BlueprintID:    animation.BlueprintID,
@@ -86,6 +98,11 @@ func ServerPowerCoreToApiV1(ec *server.PowerCore) *PowerCore {
 			CollectionSlug: ec.CollectionDetails.CollectionSlug,
 			Hash:           ec.CollectionDetails.Hash,
 			TokenID:        ec.CollectionDetails.TokenID,
+			ItemType:       ec.CollectionDetails.ItemType,
+			ItemID:         ec.CollectionDetails.ItemID,
+			Tier:           ec.CollectionDetails.Tier,
+			OwnerID:        ec.CollectionDetails.OwnerID,
+			OnChainStatus:  ec.CollectionDetails.OnChainStatus,
 		},
 		ID:           ec.ID,
 		OwnerID:      ec.OwnerID,
@@ -116,6 +133,11 @@ func ServerWeaponToApiV1(weapon *server.Weapon) *Weapon {
 			CollectionSlug: weapon.CollectionDetails.CollectionSlug,
 			Hash:           weapon.CollectionDetails.Hash,
 			TokenID:        weapon.CollectionDetails.TokenID,
+			ItemType:       weapon.CollectionDetails.ItemType,
+			ItemID:         weapon.CollectionDetails.ItemID,
+			Tier:           weapon.CollectionDetails.Tier,
+			OwnerID:        weapon.CollectionDetails.OwnerID,
+			OnChainStatus:  weapon.CollectionDetails.OnChainStatus,
 		},
 		ID:                  weapon.ID,
 		BrandID:             weapon.BrandID,
@@ -155,6 +177,11 @@ func ServerUtilityToApiV1(ec *server.Utility) *Utility {
 			CollectionSlug: ec.CollectionDetails.CollectionSlug,
 			Hash:           ec.CollectionDetails.Hash,
 			TokenID:        ec.CollectionDetails.TokenID,
+			ItemType:       ec.CollectionDetails.ItemType,
+			ItemID:         ec.CollectionDetails.ItemID,
+			Tier:           ec.CollectionDetails.Tier,
+			OwnerID:        ec.CollectionDetails.OwnerID,
+			OnChainStatus:  ec.CollectionDetails.OnChainStatus,
 		},
 		ID:             ec.ID,
 		BrandID:        ec.BrandID,
@@ -241,11 +268,16 @@ func ServerUtilityAttackDroneToApiV1(obj *server.UtilityAttackDrone) *UtilityAtt
 }
 
 func ServerMechToApiV1(mech *server.Mech) *Mech {
-	return &Mech{
+	m := &Mech{
 		CollectionDetails: &CollectionDetails{
 			CollectionSlug: mech.CollectionDetails.CollectionSlug,
 			Hash:           mech.CollectionDetails.Hash,
 			TokenID:        mech.CollectionDetails.TokenID,
+			ItemType:       mech.CollectionDetails.ItemType,
+			ItemID:         mech.CollectionDetails.ItemID,
+			Tier:           mech.CollectionDetails.Tier,
+			OwnerID:        mech.CollectionDetails.OwnerID,
+			OnChainStatus:  mech.CollectionDetails.OnChainStatus,
 		},
 		ID:                   mech.ID,
 		BrandID:              mech.BrandID,
@@ -267,16 +299,164 @@ func ServerMechToApiV1(mech *server.Mech) *Mech {
 		DefaultChassisSkinID: mech.DefaultChassisSkinID,
 		DefaultChassisSkin:   ServerBlueprintMechSkinToApiV1(mech.DefaultChassisSkin),
 		ChassisSkinID:        mech.ChassisSkinID,
-		ChassisSkin:          ServerMechSkinToApiV1(mech.ChassisSkin),
 		IntroAnimationID:     mech.IntroAnimationID,
-		IntroAnimation:       ServerMechAnimationToApiV1(mech.IntroAnimation),
 		OutroAnimationID:     mech.OutroAnimationID,
-		OutroAnimation:       ServerMechAnimationToApiV1(mech.OutroAnimation),
 		PowerCoreID:          mech.PowerCoreID,
-		PowerCore:            ServerPowerCoreToApiV1(mech.PowerCore),
-		Weapons:              ServerWeaponsToApiV1(mech.Weapons),
-		Utility:              ServerUtilitiesToApiV1(mech.Utility),
 		UpdatedAt:            mech.UpdatedAt,
 		CreatedAt:            mech.CreatedAt,
 	}
+
+	// nullables
+	if mech.PowerCore != nil {
+		m.PowerCore = ServerPowerCoreToApiV1(mech.PowerCore)
+	}
+	if mech.Weapons != nil {
+		m.Weapons = ServerWeaponsToApiV1(mech.Weapons)
+	}
+	if mech.Utility != nil {
+		m.Utility = ServerUtilitiesToApiV1(mech.Utility)
+	}
+	if mech.OutroAnimation != nil {
+		m.OutroAnimation = ServerMechAnimationToApiV1(mech.OutroAnimation)
+	}
+	if mech.IntroAnimation != nil {
+		m.IntroAnimation = ServerMechAnimationToApiV1(mech.IntroAnimation)
+	}
+	if mech.ChassisSkin != nil {
+		m.ChassisSkin = ServerMechSkinToApiV1(mech.ChassisSkin)
+	}
+
+	return m
+}
+
+func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
+	var assets []*XsynAsset
+	for _, i := range mechs {
+		asJson, err := json.Marshal(i)
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to convert item to json")
+			continue
+		}
+		assets = append(assets, &XsynAsset{
+			ID:             i.ID,
+			CollectionSlug: i.CollectionSlug,
+			TokenID:        i.TokenID,
+			Tier:           i.Tier,
+			Hash:           i.Hash,
+			OwnerID:        i.OwnerID,
+			Data:           asJson,
+		})
+	}
+
+	return assets
+}
+
+func ServerMechAnimationsToXsynAsset(mechAnimations []*server.MechAnimation) []*XsynAsset {
+	var assets []*XsynAsset
+	for _, i := range mechAnimations {
+		asJson, err := json.Marshal(i)
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to convert item to json")
+			continue
+		}
+		assets = append(assets, &XsynAsset{
+			ID:             i.ID,
+			CollectionSlug: i.CollectionSlug,
+			TokenID:        i.TokenID,
+			Tier:           i.Tier,
+			Hash:           i.Hash,
+			OwnerID:        i.OwnerID,
+			Data:           asJson,
+		})
+	}
+
+	return assets
+}
+
+func ServerMechSkinsToXsynAsset(mechSkins []*server.MechSkin) []*XsynAsset {
+	var assets []*XsynAsset
+	for _, i := range mechSkins {
+		asJson, err := json.Marshal(i)
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to convert item to json")
+			continue
+		}
+		assets = append(assets, &XsynAsset{
+			ID:             i.ID,
+			CollectionSlug: i.CollectionSlug,
+			TokenID:        i.TokenID,
+			Tier:           i.Tier,
+			Hash:           i.Hash,
+			OwnerID:        i.OwnerID,
+			Data:           asJson,
+		})
+	}
+
+	return assets
+}
+
+func ServerPowerCoresToXsynAsset(powerCore []*server.PowerCore) []*XsynAsset {
+	var assets []*XsynAsset
+	for _, i := range powerCore {
+		asJson, err := json.Marshal(i)
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to convert item to json")
+			continue
+		}
+		assets = append(assets, &XsynAsset{
+			ID:             i.ID,
+			CollectionSlug: i.CollectionSlug,
+			TokenID:        i.TokenID,
+			Tier:           i.Tier,
+			Hash:           i.Hash,
+			OwnerID:        i.OwnerID,
+			Data:           asJson,
+		})
+	}
+
+	return assets
+}
+
+func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
+	var assets []*XsynAsset
+	for _, i := range weapons {
+		asJson, err := json.Marshal(i)
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to convert item to json")
+			continue
+		}
+		assets = append(assets, &XsynAsset{
+			ID:             i.ID,
+			CollectionSlug: i.CollectionSlug,
+			TokenID:        i.TokenID,
+			Tier:           i.Tier,
+			Hash:           i.Hash,
+			OwnerID:        i.OwnerID,
+			Data:           asJson,
+		})
+	}
+
+	return assets
+}
+
+func ServerUtilitiesToXsynAsset(utils []*server.Utility) []*XsynAsset {
+	var assets []*XsynAsset
+	for _, i := range utils {
+		asJson, err := json.Marshal(i)
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to convert item to json")
+			continue
+		}
+		assets = append(assets, &XsynAsset{
+			ID:             i.ID,
+			CollectionSlug: i.CollectionSlug,
+			TokenID:        i.TokenID,
+			Tier:           i.Tier,
+			Hash:           i.Hash,
+			OwnerID:        i.OwnerID,
+			Data:           asJson,
+		})
+	}
+
+	return assets
 }

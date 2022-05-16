@@ -37,7 +37,6 @@ type Weapon struct {
 	GenesisTokenID        decimal.NullDecimal `boiler:"genesis_token_id" boil:"genesis_token_id" json:"genesis_token_id,omitempty" toml:"genesis_token_id" yaml:"genesis_token_id,omitempty"`
 	LimitedReleaseTokenID decimal.NullDecimal `boiler:"limited_release_token_id" boil:"limited_release_token_id" json:"limited_release_token_id,omitempty" toml:"limited_release_token_id" yaml:"limited_release_token_id,omitempty"`
 	WeaponType            string              `boiler:"weapon_type" boil:"weapon_type" json:"weapon_type" toml:"weapon_type" yaml:"weapon_type"`
-	OwnerID               string              `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
 	DamageFalloff         null.Int            `boiler:"damage_falloff" boil:"damage_falloff" json:"damage_falloff,omitempty" toml:"damage_falloff" yaml:"damage_falloff,omitempty"`
 	DamageFalloffRate     null.Int            `boiler:"damage_falloff_rate" boil:"damage_falloff_rate" json:"damage_falloff_rate,omitempty" toml:"damage_falloff_rate" yaml:"damage_falloff_rate,omitempty"`
 	Radius                null.Int            `boiler:"radius" boil:"radius" json:"radius,omitempty" toml:"radius" yaml:"radius,omitempty"`
@@ -66,7 +65,6 @@ var WeaponColumns = struct {
 	GenesisTokenID        string
 	LimitedReleaseTokenID string
 	WeaponType            string
-	OwnerID               string
 	DamageFalloff         string
 	DamageFalloffRate     string
 	Radius                string
@@ -90,7 +88,6 @@ var WeaponColumns = struct {
 	GenesisTokenID:        "genesis_token_id",
 	LimitedReleaseTokenID: "limited_release_token_id",
 	WeaponType:            "weapon_type",
-	OwnerID:               "owner_id",
 	DamageFalloff:         "damage_falloff",
 	DamageFalloffRate:     "damage_falloff_rate",
 	Radius:                "radius",
@@ -116,7 +113,6 @@ var WeaponTableColumns = struct {
 	GenesisTokenID        string
 	LimitedReleaseTokenID string
 	WeaponType            string
-	OwnerID               string
 	DamageFalloff         string
 	DamageFalloffRate     string
 	Radius                string
@@ -140,7 +136,6 @@ var WeaponTableColumns = struct {
 	GenesisTokenID:        "weapons.genesis_token_id",
 	LimitedReleaseTokenID: "weapons.limited_release_token_id",
 	WeaponType:            "weapons.weapon_type",
-	OwnerID:               "weapons.owner_id",
 	DamageFalloff:         "weapons.damage_falloff",
 	DamageFalloffRate:     "weapons.damage_falloff_rate",
 	Radius:                "weapons.radius",
@@ -168,7 +163,6 @@ var WeaponWhere = struct {
 	GenesisTokenID        whereHelperdecimal_NullDecimal
 	LimitedReleaseTokenID whereHelperdecimal_NullDecimal
 	WeaponType            whereHelperstring
-	OwnerID               whereHelperstring
 	DamageFalloff         whereHelpernull_Int
 	DamageFalloffRate     whereHelpernull_Int
 	Radius                whereHelpernull_Int
@@ -192,7 +186,6 @@ var WeaponWhere = struct {
 	GenesisTokenID:        whereHelperdecimal_NullDecimal{field: "\"weapons\".\"genesis_token_id\""},
 	LimitedReleaseTokenID: whereHelperdecimal_NullDecimal{field: "\"weapons\".\"limited_release_token_id\""},
 	WeaponType:            whereHelperstring{field: "\"weapons\".\"weapon_type\""},
-	OwnerID:               whereHelperstring{field: "\"weapons\".\"owner_id\""},
 	DamageFalloff:         whereHelpernull_Int{field: "\"weapons\".\"damage_falloff\""},
 	DamageFalloffRate:     whereHelpernull_Int{field: "\"weapons\".\"damage_falloff_rate\""},
 	Radius:                whereHelpernull_Int{field: "\"weapons\".\"radius\""},
@@ -208,13 +201,11 @@ var WeaponWhere = struct {
 var WeaponRels = struct {
 	Blueprint   string
 	Brand       string
-	Owner       string
 	MechWeapon  string
 	WeaponAmmos string
 }{
 	Blueprint:   "Blueprint",
 	Brand:       "Brand",
-	Owner:       "Owner",
 	MechWeapon:  "MechWeapon",
 	WeaponAmmos: "WeaponAmmos",
 }
@@ -223,7 +214,6 @@ var WeaponRels = struct {
 type weaponR struct {
 	Blueprint   *BlueprintWeapon `boiler:"Blueprint" boil:"Blueprint" json:"Blueprint" toml:"Blueprint" yaml:"Blueprint"`
 	Brand       *Brand           `boiler:"Brand" boil:"Brand" json:"Brand" toml:"Brand" yaml:"Brand"`
-	Owner       *Player          `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
 	MechWeapon  *MechWeapon      `boiler:"MechWeapon" boil:"MechWeapon" json:"MechWeapon" toml:"MechWeapon" yaml:"MechWeapon"`
 	WeaponAmmos WeaponAmmoSlice  `boiler:"WeaponAmmos" boil:"WeaponAmmos" json:"WeaponAmmos" toml:"WeaponAmmos" yaml:"WeaponAmmos"`
 }
@@ -237,8 +227,8 @@ func (*weaponR) NewStruct() *weaponR {
 type weaponL struct{}
 
 var (
-	weaponAllColumns            = []string{"id", "brand_id", "label", "slug", "damage", "deleted_at", "updated_at", "created_at", "blueprint_id", "default_damage_type", "genesis_token_id", "limited_release_token_id", "weapon_type", "owner_id", "damage_falloff", "damage_falloff_rate", "radius", "radius_damage_falloff", "spread", "rate_of_fire", "projectile_speed", "energy_cost", "max_ammo"}
-	weaponColumnsWithoutDefault = []string{"label", "slug", "damage", "blueprint_id", "weapon_type", "owner_id"}
+	weaponAllColumns            = []string{"id", "brand_id", "label", "slug", "damage", "deleted_at", "updated_at", "created_at", "blueprint_id", "default_damage_type", "genesis_token_id", "limited_release_token_id", "weapon_type", "damage_falloff", "damage_falloff_rate", "radius", "radius_damage_falloff", "spread", "rate_of_fire", "projectile_speed", "energy_cost", "max_ammo"}
+	weaponColumnsWithoutDefault = []string{"label", "slug", "damage", "blueprint_id", "weapon_type"}
 	weaponColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at", "default_damage_type", "genesis_token_id", "limited_release_token_id", "damage_falloff", "damage_falloff_rate", "radius", "radius_damage_falloff", "spread", "rate_of_fire", "projectile_speed", "energy_cost", "max_ammo"}
 	weaponPrimaryKeyColumns     = []string{"id"}
 	weaponGeneratedColumns      = []string{}
@@ -516,21 +506,6 @@ func (o *Weapon) Brand(mods ...qm.QueryMod) brandQuery {
 	return query
 }
 
-// Owner pointed to by the foreign key.
-func (o *Weapon) Owner(mods ...qm.QueryMod) playerQuery {
-	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.OwnerID),
-		qmhelper.WhereIsNull("deleted_at"),
-	}
-
-	queryMods = append(queryMods, mods...)
-
-	query := Players(queryMods...)
-	queries.SetFrom(query.Query, "\"players\"")
-
-	return query
-}
-
 // MechWeapon pointed to by the foreign key.
 func (o *Weapon) MechWeapon(mods ...qm.QueryMod) mechWeaponQuery {
 	queryMods := []qm.QueryMod{
@@ -773,111 +748,6 @@ func (weaponL) LoadBrand(e boil.Executor, singular bool, maybeWeapon interface{}
 					foreign.R = &brandR{}
 				}
 				foreign.R.Weapons = append(foreign.R.Weapons, local)
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadOwner allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for an N-1 relationship.
-func (weaponL) LoadOwner(e boil.Executor, singular bool, maybeWeapon interface{}, mods queries.Applicator) error {
-	var slice []*Weapon
-	var object *Weapon
-
-	if singular {
-		object = maybeWeapon.(*Weapon)
-	} else {
-		slice = *maybeWeapon.(*[]*Weapon)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &weaponR{}
-		}
-		args = append(args, object.OwnerID)
-
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &weaponR{}
-			}
-
-			for _, a := range args {
-				if a == obj.OwnerID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.OwnerID)
-
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`players`),
-		qm.WhereIn(`players.id in ?`, args...),
-		qmhelper.WhereIsNull(`players.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load Player")
-	}
-
-	var resultSlice []*Player
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice Player")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for players")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players")
-	}
-
-	if len(weaponAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-
-	if len(resultSlice) == 0 {
-		return nil
-	}
-
-	if singular {
-		foreign := resultSlice[0]
-		object.R.Owner = foreign
-		if foreign.R == nil {
-			foreign.R = &playerR{}
-		}
-		foreign.R.OwnerWeapons = append(foreign.R.OwnerWeapons, object)
-		return nil
-	}
-
-	for _, local := range slice {
-		for _, foreign := range resultSlice {
-			if local.OwnerID == foreign.ID {
-				local.R.Owner = foreign
-				if foreign.R == nil {
-					foreign.R = &playerR{}
-				}
-				foreign.R.OwnerWeapons = append(foreign.R.OwnerWeapons, local)
 				break
 			}
 		}
@@ -1208,52 +1078,6 @@ func (o *Weapon) RemoveBrand(exec boil.Executor, related *Brand) error {
 		related.R.Weapons = related.R.Weapons[:ln-1]
 		break
 	}
-	return nil
-}
-
-// SetOwner of the weapon to the related item.
-// Sets o.R.Owner to related.
-// Adds o to related.R.OwnerWeapons.
-func (o *Weapon) SetOwner(exec boil.Executor, insert bool, related *Player) error {
-	var err error
-	if insert {
-		if err = related.Insert(exec, boil.Infer()); err != nil {
-			return errors.Wrap(err, "failed to insert into foreign table")
-		}
-	}
-
-	updateQuery := fmt.Sprintf(
-		"UPDATE \"weapons\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"owner_id"}),
-		strmangle.WhereClause("\"", "\"", 2, weaponPrimaryKeyColumns),
-	)
-	values := []interface{}{related.ID, o.ID}
-
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, updateQuery)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	if _, err = exec.Exec(updateQuery, values...); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	o.OwnerID = related.ID
-	if o.R == nil {
-		o.R = &weaponR{
-			Owner: related,
-		}
-	} else {
-		o.R.Owner = related
-	}
-
-	if related.R == nil {
-		related.R = &playerR{
-			OwnerWeapons: WeaponSlice{o},
-		}
-	} else {
-		related.R.OwnerWeapons = append(related.R.OwnerWeapons, o)
-	}
-
 	return nil
 }
 

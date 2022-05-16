@@ -29,7 +29,7 @@ type WeaponSkin struct {
 	Label       string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
 	WeaponType  string      `boiler:"weapon_type" boil:"weapon_type" json:"weapon_type" toml:"weapon_type" yaml:"weapon_type"`
 	EquippedOn  null.String `boiler:"equipped_on" boil:"equipped_on" json:"equipped_on,omitempty" toml:"equipped_on" yaml:"equipped_on,omitempty"`
-	Tier        null.String `boiler:"tier" boil:"tier" json:"tier,omitempty" toml:"tier" yaml:"tier,omitempty"`
+	Tier        string      `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
 	CreatedAt   time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *weaponSkinR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -85,7 +85,7 @@ var WeaponSkinWhere = struct {
 	Label       whereHelperstring
 	WeaponType  whereHelperstring
 	EquippedOn  whereHelpernull_String
-	Tier        whereHelpernull_String
+	Tier        whereHelperstring
 	CreatedAt   whereHelpertime_Time
 }{
 	ID:          whereHelperstring{field: "\"weapon_skin\".\"id\""},
@@ -94,7 +94,7 @@ var WeaponSkinWhere = struct {
 	Label:       whereHelperstring{field: "\"weapon_skin\".\"label\""},
 	WeaponType:  whereHelperstring{field: "\"weapon_skin\".\"weapon_type\""},
 	EquippedOn:  whereHelpernull_String{field: "\"weapon_skin\".\"equipped_on\""},
-	Tier:        whereHelpernull_String{field: "\"weapon_skin\".\"tier\""},
+	Tier:        whereHelperstring{field: "\"weapon_skin\".\"tier\""},
 	CreatedAt:   whereHelpertime_Time{field: "\"weapon_skin\".\"created_at\""},
 }
 

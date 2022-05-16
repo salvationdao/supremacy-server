@@ -21,6 +21,7 @@ type Utility struct {
 	OwnerID        string              `json:"owner_id"`
 	EquippedOn     null.String         `json:"equipped_on,omitempty"`
 	Type           string              `json:"type"`
+	Tier           string              `json:"tier,omitempty"`
 
 	Shield      *UtilityShield      `json:"shield,omitempty"`
 	AttackDrone *UtilityAttackDrone `json:"attack_drone,omitempty"`
@@ -142,6 +143,7 @@ func BlueprintUtilityAttackDroneFromBoiler(utility *boiler.BlueprintUtility, dro
 		CreatedAt:  utility.CreatedAt,
 		Type:       utility.Type,
 		Collection: utility.Collection,
+		Tier:       utility.Tier,
 		AttackDroneBlueprint: &BlueprintUtilityAttackDrone{
 			ID:                 drone.ID,
 			BlueprintUtilityID: drone.BlueprintUtilityID,
@@ -164,6 +166,7 @@ func BlueprintUtilityRepairDroneFromBoiler(utility *boiler.BlueprintUtility, dro
 		CreatedAt:  utility.CreatedAt,
 		Type:       utility.Type,
 		Collection: utility.Collection,
+		Tier:       utility.Tier,
 		RepairDroneBlueprint: &BlueprintUtilityRepairDrone{
 			ID:                 drone.ID,
 			BlueprintUtilityID: drone.BlueprintUtilityID,
@@ -185,6 +188,7 @@ func BlueprintUtilityAntiMissileFromBoiler(utility *boiler.BlueprintUtility, ant
 		CreatedAt:  utility.CreatedAt,
 		Type:       utility.Type,
 		Collection: utility.Collection,
+		Tier:       utility.Tier,
 		AntiMissileBlueprint: &BlueprintUtilityAntiMissile{
 			ID:                 anti.ID,
 			BlueprintUtilityID: anti.BlueprintUtilityID,
@@ -204,6 +208,7 @@ func BlueprintUtilityAcceleratorFromBoiler(utility *boiler.BlueprintUtility, ant
 		CreatedAt:  utility.CreatedAt,
 		Type:       utility.Type,
 		Collection: utility.Collection,
+		Tier:       utility.Tier,
 		AcceleratorBlueprint: &BlueprintUtilityAccelerator{
 			ID:                 anti.ID,
 			BlueprintUtilityID: anti.BlueprintUtilityID,
@@ -221,6 +226,11 @@ func UtilityShieldFromBoiler(utility *boiler.Utility, shield *boiler.UtilityShie
 			CollectionSlug: collection.CollectionSlug,
 			Hash:           collection.Hash,
 			TokenID:        collection.TokenID,
+			ItemType:       collection.ItemType,
+			ItemID:         collection.ItemID,
+			Tier:           collection.Tier,
+			OwnerID:        collection.OwnerID,
+			OnChainStatus:  collection.OnChainStatus,
 		},
 		ID:             utility.ID,
 		BrandID:        utility.BrandID,
@@ -229,7 +239,6 @@ func UtilityShieldFromBoiler(utility *boiler.Utility, shield *boiler.UtilityShie
 		CreatedAt:      utility.CreatedAt,
 		BlueprintID:    utility.BlueprintID,
 		GenesisTokenID: utility.GenesisTokenID,
-		OwnerID:        utility.OwnerID,
 		EquippedOn:     utility.EquippedOn,
 		Type:           utility.Type,
 		Shield: &UtilityShield{
@@ -247,6 +256,11 @@ func UtilityAttackDroneFromBoiler(utility *boiler.Utility, drone *boiler.Utility
 			CollectionSlug: collection.CollectionSlug,
 			Hash:           collection.Hash,
 			TokenID:        collection.TokenID,
+			ItemType:       collection.ItemType,
+			ItemID:         collection.ItemID,
+			Tier:           collection.Tier,
+			OwnerID:        collection.OwnerID,
+			OnChainStatus:  collection.OnChainStatus,
 		},
 		ID:             utility.ID,
 		BrandID:        utility.BrandID,
@@ -255,7 +269,6 @@ func UtilityAttackDroneFromBoiler(utility *boiler.Utility, drone *boiler.Utility
 		CreatedAt:      utility.CreatedAt,
 		BlueprintID:    utility.BlueprintID,
 		GenesisTokenID: utility.GenesisTokenID,
-		OwnerID:        utility.OwnerID,
 		EquippedOn:     utility.EquippedOn,
 		Type:           utility.Type,
 		AttackDrone: &UtilityAttackDrone{
@@ -275,6 +288,11 @@ func UtilityRepairDroneFromBoiler(utility *boiler.Utility, drone *boiler.Utility
 			CollectionSlug: collection.CollectionSlug,
 			Hash:           collection.Hash,
 			TokenID:        collection.TokenID,
+			ItemType:       collection.ItemType,
+			ItemID:         collection.ItemID,
+			Tier:           collection.Tier,
+			OwnerID:        collection.OwnerID,
+			OnChainStatus:  collection.OnChainStatus,
 		},
 		ID:             utility.ID,
 		BrandID:        utility.BrandID,
@@ -283,7 +301,6 @@ func UtilityRepairDroneFromBoiler(utility *boiler.Utility, drone *boiler.Utility
 		CreatedAt:      utility.CreatedAt,
 		BlueprintID:    utility.BlueprintID,
 		GenesisTokenID: utility.GenesisTokenID,
-		OwnerID:        utility.OwnerID,
 		EquippedOn:     utility.EquippedOn,
 		Type:           utility.Type,
 		RepairDrone: &UtilityRepairDrone{
@@ -302,6 +319,11 @@ func UtilityAntiMissileFromBoiler(utility *boiler.Utility, anti *boiler.UtilityA
 			CollectionSlug: collection.CollectionSlug,
 			Hash:           collection.Hash,
 			TokenID:        collection.TokenID,
+			ItemType:       collection.ItemType,
+			ItemID:         collection.ItemID,
+			Tier:           collection.Tier,
+			OwnerID:        collection.OwnerID,
+			OnChainStatus:  collection.OnChainStatus,
 		},
 		ID:             utility.ID,
 		BrandID:        utility.BrandID,
@@ -310,7 +332,6 @@ func UtilityAntiMissileFromBoiler(utility *boiler.Utility, anti *boiler.UtilityA
 		CreatedAt:      utility.CreatedAt,
 		BlueprintID:    utility.BlueprintID,
 		GenesisTokenID: utility.GenesisTokenID,
-		OwnerID:        utility.OwnerID,
 		EquippedOn:     utility.EquippedOn,
 		Type:           utility.Type,
 		AntiMissile: &UtilityAntiMissile{
@@ -327,6 +348,11 @@ func UtilityAcceleratorFromBoiler(utility *boiler.Utility, anti *boiler.UtilityA
 			CollectionSlug: collection.CollectionSlug,
 			Hash:           collection.Hash,
 			TokenID:        collection.TokenID,
+			ItemType:       collection.ItemType,
+			ItemID:         collection.ItemID,
+			Tier:           collection.Tier,
+			OwnerID:        collection.OwnerID,
+			OnChainStatus:  collection.OnChainStatus,
 		},
 		ID:             utility.ID,
 		BrandID:        utility.BrandID,
@@ -335,7 +361,6 @@ func UtilityAcceleratorFromBoiler(utility *boiler.Utility, anti *boiler.UtilityA
 		CreatedAt:      utility.CreatedAt,
 		BlueprintID:    utility.BlueprintID,
 		GenesisTokenID: utility.GenesisTokenID,
-		OwnerID:        utility.OwnerID,
 		EquippedOn:     utility.EquippedOn,
 		Type:           utility.Type,
 		Accelerator: &UtilityAccelerator{

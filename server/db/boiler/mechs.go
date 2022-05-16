@@ -41,9 +41,7 @@ type Mech struct {
 	ModelID               string              `boiler:"model_id" boil:"model_id" json:"model_id" toml:"model_id" yaml:"model_id"`
 	GenesisTokenID        decimal.NullDecimal `boiler:"genesis_token_id" boil:"genesis_token_id" json:"genesis_token_id,omitempty" toml:"genesis_token_id" yaml:"genesis_token_id,omitempty"`
 	LimitedReleaseTokenID decimal.NullDecimal `boiler:"limited_release_token_id" boil:"limited_release_token_id" json:"limited_release_token_id,omitempty" toml:"limited_release_token_id" yaml:"limited_release_token_id,omitempty"`
-	OwnerID               string              `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
 	PowerCoreSize         string              `boiler:"power_core_size" boil:"power_core_size" json:"power_core_size" toml:"power_core_size" yaml:"power_core_size"`
-	Tier                  null.String         `boiler:"tier" boil:"tier" json:"tier,omitempty" toml:"tier" yaml:"tier,omitempty"`
 	ChassisSkinID         null.String         `boiler:"chassis_skin_id" boil:"chassis_skin_id" json:"chassis_skin_id,omitempty" toml:"chassis_skin_id" yaml:"chassis_skin_id,omitempty"`
 	PowerCoreID           null.String         `boiler:"power_core_id" boil:"power_core_id" json:"power_core_id,omitempty" toml:"power_core_id" yaml:"power_core_id,omitempty"`
 	IntroAnimationID      null.String         `boiler:"intro_animation_id" boil:"intro_animation_id" json:"intro_animation_id,omitempty" toml:"intro_animation_id" yaml:"intro_animation_id,omitempty"`
@@ -71,9 +69,7 @@ var MechColumns = struct {
 	ModelID               string
 	GenesisTokenID        string
 	LimitedReleaseTokenID string
-	OwnerID               string
 	PowerCoreSize         string
-	Tier                  string
 	ChassisSkinID         string
 	PowerCoreID           string
 	IntroAnimationID      string
@@ -96,9 +92,7 @@ var MechColumns = struct {
 	ModelID:               "model_id",
 	GenesisTokenID:        "genesis_token_id",
 	LimitedReleaseTokenID: "limited_release_token_id",
-	OwnerID:               "owner_id",
 	PowerCoreSize:         "power_core_size",
-	Tier:                  "tier",
 	ChassisSkinID:         "chassis_skin_id",
 	PowerCoreID:           "power_core_id",
 	IntroAnimationID:      "intro_animation_id",
@@ -123,9 +117,7 @@ var MechTableColumns = struct {
 	ModelID               string
 	GenesisTokenID        string
 	LimitedReleaseTokenID string
-	OwnerID               string
 	PowerCoreSize         string
-	Tier                  string
 	ChassisSkinID         string
 	PowerCoreID           string
 	IntroAnimationID      string
@@ -148,9 +140,7 @@ var MechTableColumns = struct {
 	ModelID:               "mechs.model_id",
 	GenesisTokenID:        "mechs.genesis_token_id",
 	LimitedReleaseTokenID: "mechs.limited_release_token_id",
-	OwnerID:               "mechs.owner_id",
 	PowerCoreSize:         "mechs.power_core_size",
-	Tier:                  "mechs.tier",
 	ChassisSkinID:         "mechs.chassis_skin_id",
 	PowerCoreID:           "mechs.power_core_id",
 	IntroAnimationID:      "mechs.intro_animation_id",
@@ -177,9 +167,7 @@ var MechWhere = struct {
 	ModelID               whereHelperstring
 	GenesisTokenID        whereHelperdecimal_NullDecimal
 	LimitedReleaseTokenID whereHelperdecimal_NullDecimal
-	OwnerID               whereHelperstring
 	PowerCoreSize         whereHelperstring
-	Tier                  whereHelpernull_String
 	ChassisSkinID         whereHelpernull_String
 	PowerCoreID           whereHelpernull_String
 	IntroAnimationID      whereHelpernull_String
@@ -202,9 +190,7 @@ var MechWhere = struct {
 	ModelID:               whereHelperstring{field: "\"mechs\".\"model_id\""},
 	GenesisTokenID:        whereHelperdecimal_NullDecimal{field: "\"mechs\".\"genesis_token_id\""},
 	LimitedReleaseTokenID: whereHelperdecimal_NullDecimal{field: "\"mechs\".\"limited_release_token_id\""},
-	OwnerID:               whereHelperstring{field: "\"mechs\".\"owner_id\""},
 	PowerCoreSize:         whereHelperstring{field: "\"mechs\".\"power_core_size\""},
-	Tier:                  whereHelpernull_String{field: "\"mechs\".\"tier\""},
 	ChassisSkinID:         whereHelpernull_String{field: "\"mechs\".\"chassis_skin_id\""},
 	PowerCoreID:           whereHelpernull_String{field: "\"mechs\".\"power_core_id\""},
 	IntroAnimationID:      whereHelpernull_String{field: "\"mechs\".\"intro_animation_id\""},
@@ -219,7 +205,6 @@ var MechRels = struct {
 	IntroAnimation               string
 	Model                        string
 	OutroAnimation               string
-	Owner                        string
 	PowerCore                    string
 	BattleQueue                  string
 	MechStat                     string
@@ -248,7 +233,6 @@ var MechRels = struct {
 	IntroAnimation:               "IntroAnimation",
 	Model:                        "Model",
 	OutroAnimation:               "OutroAnimation",
-	Owner:                        "Owner",
 	PowerCore:                    "PowerCore",
 	BattleQueue:                  "BattleQueue",
 	MechStat:                     "MechStat",
@@ -280,7 +264,6 @@ type mechR struct {
 	IntroAnimation               *MechAnimation               `boiler:"IntroAnimation" boil:"IntroAnimation" json:"IntroAnimation" toml:"IntroAnimation" yaml:"IntroAnimation"`
 	Model                        *MechModel                   `boiler:"Model" boil:"Model" json:"Model" toml:"Model" yaml:"Model"`
 	OutroAnimation               *MechAnimation               `boiler:"OutroAnimation" boil:"OutroAnimation" json:"OutroAnimation" toml:"OutroAnimation" yaml:"OutroAnimation"`
-	Owner                        *Player                      `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
 	PowerCore                    *PowerCore                   `boiler:"PowerCore" boil:"PowerCore" json:"PowerCore" toml:"PowerCore" yaml:"PowerCore"`
 	BattleQueue                  *BattleQueue                 `boiler:"BattleQueue" boil:"BattleQueue" json:"BattleQueue" toml:"BattleQueue" yaml:"BattleQueue"`
 	MechStat                     *MechStat                    `boiler:"MechStat" boil:"MechStat" json:"MechStat" toml:"MechStat" yaml:"MechStat"`
@@ -313,9 +296,9 @@ func (*mechR) NewStruct() *mechR {
 type mechL struct{}
 
 var (
-	mechAllColumns            = []string{"id", "brand_id", "label", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "deleted_at", "updated_at", "created_at", "blueprint_id", "is_default", "is_insured", "name", "model_id", "genesis_token_id", "limited_release_token_id", "owner_id", "power_core_size", "tier", "chassis_skin_id", "power_core_id", "intro_animation_id", "outro_animation_id"}
-	mechColumnsWithoutDefault = []string{"brand_id", "label", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "blueprint_id", "model_id", "owner_id"}
-	mechColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at", "is_default", "is_insured", "name", "genesis_token_id", "limited_release_token_id", "power_core_size", "tier", "chassis_skin_id", "power_core_id", "intro_animation_id", "outro_animation_id"}
+	mechAllColumns            = []string{"id", "brand_id", "label", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "deleted_at", "updated_at", "created_at", "blueprint_id", "is_default", "is_insured", "name", "model_id", "genesis_token_id", "limited_release_token_id", "power_core_size", "chassis_skin_id", "power_core_id", "intro_animation_id", "outro_animation_id"}
+	mechColumnsWithoutDefault = []string{"brand_id", "label", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "blueprint_id", "model_id"}
+	mechColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at", "is_default", "is_insured", "name", "genesis_token_id", "limited_release_token_id", "power_core_size", "chassis_skin_id", "power_core_id", "intro_animation_id", "outro_animation_id"}
 	mechPrimaryKeyColumns     = []string{"id"}
 	mechGeneratedColumns      = []string{}
 )
@@ -644,21 +627,6 @@ func (o *Mech) OutroAnimation(mods ...qm.QueryMod) mechAnimationQuery {
 
 	query := MechAnimations(queryMods...)
 	queries.SetFrom(query.Query, "\"mech_animation\"")
-
-	return query
-}
-
-// Owner pointed to by the foreign key.
-func (o *Mech) Owner(mods ...qm.QueryMod) playerQuery {
-	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.OwnerID),
-		qmhelper.WhereIsNull("deleted_at"),
-	}
-
-	queryMods = append(queryMods, mods...)
-
-	query := Players(queryMods...)
-	queries.SetFrom(query.Query, "\"players\"")
 
 	return query
 }
@@ -1710,111 +1678,6 @@ func (mechL) LoadOutroAnimation(e boil.Executor, singular bool, maybeMech interf
 					foreign.R = &mechAnimationR{}
 				}
 				foreign.R.OutroAnimationMechs = append(foreign.R.OutroAnimationMechs, local)
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadOwner allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for an N-1 relationship.
-func (mechL) LoadOwner(e boil.Executor, singular bool, maybeMech interface{}, mods queries.Applicator) error {
-	var slice []*Mech
-	var object *Mech
-
-	if singular {
-		object = maybeMech.(*Mech)
-	} else {
-		slice = *maybeMech.(*[]*Mech)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &mechR{}
-		}
-		args = append(args, object.OwnerID)
-
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &mechR{}
-			}
-
-			for _, a := range args {
-				if a == obj.OwnerID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.OwnerID)
-
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`players`),
-		qm.WhereIn(`players.id in ?`, args...),
-		qmhelper.WhereIsNull(`players.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load Player")
-	}
-
-	var resultSlice []*Player
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice Player")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for players")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players")
-	}
-
-	if len(mechAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-
-	if len(resultSlice) == 0 {
-		return nil
-	}
-
-	if singular {
-		foreign := resultSlice[0]
-		object.R.Owner = foreign
-		if foreign.R == nil {
-			foreign.R = &playerR{}
-		}
-		foreign.R.OwnerMechs = append(foreign.R.OwnerMechs, object)
-		return nil
-	}
-
-	for _, local := range slice {
-		for _, foreign := range resultSlice {
-			if local.OwnerID == foreign.ID {
-				local.R.Owner = foreign
-				if foreign.R == nil {
-					foreign.R = &playerR{}
-				}
-				foreign.R.OwnerMechs = append(foreign.R.OwnerMechs, local)
 				break
 			}
 		}
@@ -4276,52 +4139,6 @@ func (o *Mech) RemoveOutroAnimation(exec boil.Executor, related *MechAnimation) 
 		related.R.OutroAnimationMechs = related.R.OutroAnimationMechs[:ln-1]
 		break
 	}
-	return nil
-}
-
-// SetOwner of the mech to the related item.
-// Sets o.R.Owner to related.
-// Adds o to related.R.OwnerMechs.
-func (o *Mech) SetOwner(exec boil.Executor, insert bool, related *Player) error {
-	var err error
-	if insert {
-		if err = related.Insert(exec, boil.Infer()); err != nil {
-			return errors.Wrap(err, "failed to insert into foreign table")
-		}
-	}
-
-	updateQuery := fmt.Sprintf(
-		"UPDATE \"mechs\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"owner_id"}),
-		strmangle.WhereClause("\"", "\"", 2, mechPrimaryKeyColumns),
-	)
-	values := []interface{}{related.ID, o.ID}
-
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, updateQuery)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	if _, err = exec.Exec(updateQuery, values...); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	o.OwnerID = related.ID
-	if o.R == nil {
-		o.R = &mechR{
-			Owner: related,
-		}
-	} else {
-		o.R.Owner = related
-	}
-
-	if related.R == nil {
-		related.R = &playerR{
-			OwnerMechs: MechSlice{o},
-		}
-	} else {
-		related.R.OwnerMechs = append(related.R.OwnerMechs, o)
-	}
-
 	return nil
 }
 

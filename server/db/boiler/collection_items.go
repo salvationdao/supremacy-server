@@ -28,6 +28,9 @@ type CollectionItem struct {
 	TokenID        int64  `boiler:"token_id" boil:"token_id" json:"token_id" toml:"token_id" yaml:"token_id"`
 	ItemType       string `boiler:"item_type" boil:"item_type" json:"item_type" toml:"item_type" yaml:"item_type"`
 	ItemID         string `boiler:"item_id" boil:"item_id" json:"item_id" toml:"item_id" yaml:"item_id"`
+	Tier           string `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
+	OwnerID        string `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
+	OnChainStatus  string `boiler:"on_chain_status" boil:"on_chain_status" json:"on_chain_status" toml:"on_chain_status" yaml:"on_chain_status"`
 
 	R *collectionItemR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L collectionItemL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -40,6 +43,9 @@ var CollectionItemColumns = struct {
 	TokenID        string
 	ItemType       string
 	ItemID         string
+	Tier           string
+	OwnerID        string
+	OnChainStatus  string
 }{
 	ID:             "id",
 	CollectionSlug: "collection_slug",
@@ -47,6 +53,9 @@ var CollectionItemColumns = struct {
 	TokenID:        "token_id",
 	ItemType:       "item_type",
 	ItemID:         "item_id",
+	Tier:           "tier",
+	OwnerID:        "owner_id",
+	OnChainStatus:  "on_chain_status",
 }
 
 var CollectionItemTableColumns = struct {
@@ -56,6 +65,9 @@ var CollectionItemTableColumns = struct {
 	TokenID        string
 	ItemType       string
 	ItemID         string
+	Tier           string
+	OwnerID        string
+	OnChainStatus  string
 }{
 	ID:             "collection_items.id",
 	CollectionSlug: "collection_items.collection_slug",
@@ -63,6 +75,9 @@ var CollectionItemTableColumns = struct {
 	TokenID:        "collection_items.token_id",
 	ItemType:       "collection_items.item_type",
 	ItemID:         "collection_items.item_id",
+	Tier:           "collection_items.tier",
+	OwnerID:        "collection_items.owner_id",
+	OnChainStatus:  "collection_items.on_chain_status",
 }
 
 // Generated where
@@ -74,6 +89,9 @@ var CollectionItemWhere = struct {
 	TokenID        whereHelperint64
 	ItemType       whereHelperstring
 	ItemID         whereHelperstring
+	Tier           whereHelperstring
+	OwnerID        whereHelperstring
+	OnChainStatus  whereHelperstring
 }{
 	ID:             whereHelperstring{field: "\"collection_items\".\"id\""},
 	CollectionSlug: whereHelperstring{field: "\"collection_items\".\"collection_slug\""},
@@ -81,14 +99,21 @@ var CollectionItemWhere = struct {
 	TokenID:        whereHelperint64{field: "\"collection_items\".\"token_id\""},
 	ItemType:       whereHelperstring{field: "\"collection_items\".\"item_type\""},
 	ItemID:         whereHelperstring{field: "\"collection_items\".\"item_id\""},
+	Tier:           whereHelperstring{field: "\"collection_items\".\"tier\""},
+	OwnerID:        whereHelperstring{field: "\"collection_items\".\"owner_id\""},
+	OnChainStatus:  whereHelperstring{field: "\"collection_items\".\"on_chain_status\""},
 }
 
 // CollectionItemRels is where relationship names are stored.
 var CollectionItemRels = struct {
-}{}
+	Owner string
+}{
+	Owner: "Owner",
+}
 
 // collectionItemR is where relationships are stored.
 type collectionItemR struct {
+	Owner *Player `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
 }
 
 // NewStruct creates a new relationship struct
@@ -100,9 +125,9 @@ func (*collectionItemR) NewStruct() *collectionItemR {
 type collectionItemL struct{}
 
 var (
-	collectionItemAllColumns            = []string{"id", "collection_slug", "hash", "token_id", "item_type", "item_id"}
-	collectionItemColumnsWithoutDefault = []string{"token_id", "item_type", "item_id"}
-	collectionItemColumnsWithDefault    = []string{"id", "collection_slug", "hash"}
+	collectionItemAllColumns            = []string{"id", "collection_slug", "hash", "token_id", "item_type", "item_id", "tier", "owner_id", "on_chain_status"}
+	collectionItemColumnsWithoutDefault = []string{"token_id", "item_type", "item_id", "owner_id"}
+	collectionItemColumnsWithDefault    = []string{"id", "collection_slug", "hash", "tier", "on_chain_status"}
 	collectionItemPrimaryKeyColumns     = []string{"id"}
 	collectionItemGeneratedColumns      = []string{}
 )
@@ -347,6 +372,172 @@ func (q collectionItemQuery) Exists(exec boil.Executor) (bool, error) {
 	}
 
 	return count > 0, nil
+}
+
+// Owner pointed to by the foreign key.
+func (o *CollectionItem) Owner(mods ...qm.QueryMod) playerQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"id\" = ?", o.OwnerID),
+		qmhelper.WhereIsNull("deleted_at"),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := Players(queryMods...)
+	queries.SetFrom(query.Query, "\"players\"")
+
+	return query
+}
+
+// LoadOwner allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (collectionItemL) LoadOwner(e boil.Executor, singular bool, maybeCollectionItem interface{}, mods queries.Applicator) error {
+	var slice []*CollectionItem
+	var object *CollectionItem
+
+	if singular {
+		object = maybeCollectionItem.(*CollectionItem)
+	} else {
+		slice = *maybeCollectionItem.(*[]*CollectionItem)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &collectionItemR{}
+		}
+		args = append(args, object.OwnerID)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &collectionItemR{}
+			}
+
+			for _, a := range args {
+				if a == obj.OwnerID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.OwnerID)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`players`),
+		qm.WhereIn(`players.id in ?`, args...),
+		qmhelper.WhereIsNull(`players.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load Player")
+	}
+
+	var resultSlice []*Player
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice Player")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for players")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for players")
+	}
+
+	if len(collectionItemAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Owner = foreign
+		if foreign.R == nil {
+			foreign.R = &playerR{}
+		}
+		foreign.R.OwnerCollectionItems = append(foreign.R.OwnerCollectionItems, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.OwnerID == foreign.ID {
+				local.R.Owner = foreign
+				if foreign.R == nil {
+					foreign.R = &playerR{}
+				}
+				foreign.R.OwnerCollectionItems = append(foreign.R.OwnerCollectionItems, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// SetOwner of the collectionItem to the related item.
+// Sets o.R.Owner to related.
+// Adds o to related.R.OwnerCollectionItems.
+func (o *CollectionItem) SetOwner(exec boil.Executor, insert bool, related *Player) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"collection_items\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"owner_id"}),
+		strmangle.WhereClause("\"", "\"", 2, collectionItemPrimaryKeyColumns),
+	)
+	values := []interface{}{related.ID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.OwnerID = related.ID
+	if o.R == nil {
+		o.R = &collectionItemR{
+			Owner: related,
+		}
+	} else {
+		o.R.Owner = related
+	}
+
+	if related.R == nil {
+		related.R = &playerR{
+			OwnerCollectionItems: CollectionItemSlice{o},
+		}
+	} else {
+		related.R.OwnerCollectionItems = append(related.R.OwnerCollectionItems, o)
+	}
+
+	return nil
 }
 
 // CollectionItems retrieves all the records using an executor.

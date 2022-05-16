@@ -1,6 +1,7 @@
 package comms
 
 import (
+	"fmt"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -42,12 +43,15 @@ type TemplateResp struct {
 }
 
 func (s *S) Template(req TemplateReq, resp *TemplateResp) error {
+	fmt.Println("here1")
 	template, err := db.Template(req.TemplateID)
 	if err != nil {
+		fmt.Println("here2")
 		return terror.Error(err)
 	}
-
+	fmt.Println("here3")
 	resp.TemplateContainer = ServerTemplateToApiTemplateV1(template)
+	fmt.Println("here4")
 	return nil
 }
 
