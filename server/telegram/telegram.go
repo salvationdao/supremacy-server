@@ -39,7 +39,7 @@ func NewTelegram(token string, environment string, registerCallback func(shortCo
 		b, err := tele.NewBot(pref)
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("unable initialise telegram bot")
-			return nil, terror.Error(err)
+			return nil, err
 		}
 		t.Bot = b
 	}
@@ -70,7 +70,7 @@ func (t *Telegram) RunTelegram(bot *tele.Bot) error {
 		_telegramID, err := strconv.Atoi(telegramID)
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("unable convert telegramID to int")
-			return terror.Error(err)
+			return err
 		}
 
 		// get notification via shortcode
@@ -118,11 +118,11 @@ func (t *Telegram) RunTelegram(bot *tele.Bot) error {
 				Str("telegramID", telegramID).
 				Str("notificationID", telegramNotification.ID).
 				Msg("unable to update telegram notification")
-			return terror.Error(err)
+			return err
 		}
 
 		if err != nil {
-			reply = "Issue regestering telegram shortcode, try again or contact support"
+			reply = "Issue registering telegram shortcode, try again or contact support"
 			go t.RegisterCallback(wmOwner, false)
 			return c.Send(reply)
 
@@ -144,7 +144,7 @@ func (t *Telegram) NotificationCreate(mechID string, notification *boiler.Battle
 
 	shortCode, err := shortid.Generate()
 	if err != nil {
-		return nil, terror.Error(err)
+		return nil, err
 	}
 
 	codeExists := true
@@ -171,7 +171,7 @@ func (t *Telegram) NotificationCreate(mechID string, notification *boiler.Battle
 			// if code already exist generate new one
 			shortCode, err = shortid.Generate()
 			if err != nil {
-				return nil, terror.Error(err)
+				return nil, err
 			}
 		} else {
 			codeExists = false

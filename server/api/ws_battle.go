@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"github.com/ninja-syndicate/ws"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -37,8 +38,8 @@ type BattleMechHistoryRequest struct {
 }
 
 type BattleDetailed struct {
-	*boiler.Battle
-	GameMap *boiler.GameMap `json:"game_map"`
+	*boiler.Battle `json:"battle"`
+	GameMap        *boiler.GameMap `json:"game_map"`
 }
 
 type BattleMechDetailed struct {
@@ -51,9 +52,9 @@ type BattleMechHistoryResponse struct {
 	BattleHistory []BattleMechDetailed `json:"battle_history"`
 }
 
-const HubKeyBattleMechHistoryList = hub.HubCommandKey("BATTLE:MECH:HISTORY:LIST")
+const HubKeyBattleMechHistoryList = "BATTLE:MECH:HISTORY:LIST"
 
-func (bc *BattleControllerWS) BattleMechHistoryListHandler(ctx context.Context, hub *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (bc *BattleControllerWS) BattleMechHistoryListHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &BattleMechHistoryRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -105,9 +106,9 @@ type BattleMechStatsResponse struct {
 	ExtraStats BattleMechExtraStats `json:"extra_stats"`
 }
 
-const HubKeyBattleMechStats = hub.HubCommandKey("BATTLE:MECH:STATS")
+const HubKeyBattleMechStats = "BATTLE:MECH:STATS"
 
-func (bc *BattleControllerWS) BattleMechStatsHandler(ctx context.Context, hub *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (bc *BattleControllerWS) BattleMechStatsHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &BattleMechHistoryRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -120,7 +121,7 @@ func (bc *BattleControllerWS) BattleMechStatsHandler(ctx context.Context, hub *h
 		return nil
 	}
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 
 	var total int
@@ -128,7 +129,7 @@ func (bc *BattleControllerWS) BattleMechStatsHandler(ctx context.Context, hub *h
 	var minKills int
 	var maxSurvives int
 	var minSurvives int
-	err = gamedb.Conn.QueryRow(context.Background(), `
+	err = gamedb.StdConn.QueryRow(`
 	SELECT
 		count(mech_id),
 		max(total_kills),

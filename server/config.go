@@ -2,6 +2,7 @@ package server
 
 type Config struct {
 	CookieSecure          bool
+	CookieKey             string
 	EncryptTokens         bool
 	EncryptTokensKey      string
 	TokenExpirationDays   int
@@ -11,4 +12,5 @@ type Config struct {
 	JwtKey                []byte
 	Environment           string
 	Address               string
+	AuthCallbackURL       string
 }

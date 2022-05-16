@@ -1,16 +1,6 @@
 package battle
 
-type Faction struct {
-	ID    string        `json:"id"`
-	Label string        `json:"label"`
-	Theme *FactionTheme `json:"theme"`
-}
-
-type FactionTheme struct {
-	Primary    string `json:"primary"`
-	Secondary  string `json:"secondary"`
-	Background string `json:"background"`
-}
+import "server/db/boiler"
 
 type Stat struct {
 	X        uint32 `json:"x"`
@@ -39,17 +29,11 @@ type DamageHistory struct {
 }
 
 type WarMachineBrief struct {
-	ParticipantID byte          `json:"participantID"`
-	Hash          string        `json:"hash"`
-	ImageUrl      string        `json:"imageUrl"`
-	ImageAvatar   string        `json:"imageAvatar"`
-	Name          string        `json:"name"`
-	Faction       *FactionBrief `json:"faction"`
-}
-
-type FactionBrief struct {
-	ID         string        `json:"id"`
-	Label      string        `json:"label"`
-	LogoBlobID string        `json:"logo_blob_id,omitempty"`
-	Theme      *FactionTheme `json:"theme"`
+	ParticipantID byte            `json:"participantID"`
+	Hash          string          `json:"hash"`
+	ImageUrl      string          `json:"imageUrl"`
+	ImageAvatar   string          `json:"imageAvatar"`
+	Name          string          `json:"name"`
+	FactionID     string          `json:"factionID"`
+	Faction       *boiler.Faction `json:"faction"`
 }

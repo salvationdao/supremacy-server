@@ -1,20 +1,19 @@
 package api
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"server"
 	"server/battle"
 	"server/db/boiler"
+	"server/gamedb"
 	"time"
 
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
-	"server/gamedb"
 	"server/gamelog"
 
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 
 	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
 )
@@ -42,7 +41,7 @@ func CheckRouter(battleArena *battle.Arena, telegram server.Telegram, IsClientCo
 }
 
 func (c *CheckController) Check(w http.ResponseWriter, r *http.Request) {
-	err := check(context.Background(), gamedb.Conn)
+	err := check()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, wErr := w.Write([]byte(err.Error()))

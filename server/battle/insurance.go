@@ -9,6 +9,7 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
+	"github.com/ninja-syndicate/ws"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -95,16 +96,16 @@ type AssetRepairPayFeeRequest struct {
 	} `json:"payload"`
 }
 
-const HubKeyAssetRepairPayFee hub.HubCommandKey = hub.HubCommandKey("ASSET:REPAIR:PAY:FEE")
+const HubKeyAssetRepairPayFee = "ASSET:REPAIR:PAY:FEE"
 
-func (arena *Arena) AssetRepairPayFeeHandler(ctx context.Context, hubc *hub.Client, payload []byte, userFactionID uuid.UUID, reply hub.ReplyFunc) error {
+func (arena *Arena) AssetRepairPayFeeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &AssetRepairPayFeeRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received")
 	}
 
-	playerID := uuid.FromStringOrNil(hubc.Identifier())
+	playerID := uuid.FromStringOrNil(user.ID)
 	if playerID.IsNil() {
 		return terror.Error(terror.ErrForbidden, "You are not login")
 	}
@@ -115,7 +116,7 @@ func (arena *Arena) AssetRepairPayFeeHandler(ctx context.Context, hubc *hub.Clie
 		return terror.Error(err, "Failed to get mech from db")
 	}
 
-	if mech.OwnerID != hubc.Identifier() {
+	if mech.OwnerID != user.ID {
 		return terror.Error(terror.ErrForbidden, "You are not the owner of the mech")
 	}
 
@@ -156,11 +157,11 @@ func (arena *Arena) AssetRepairPayFeeHandler(ctx context.Context, hubc *hub.Clie
 	}
 
 	// get syndicate account
-	factionAccountID, ok := server.FactionUsers[userFactionID.String()]
+	factionAccountID, ok := server.FactionUsers[factionID]
 	if !ok {
 		gamelog.L.Error().
 			Str("player id", playerID.String()).
-			Str("faction ID", userFactionID.String()).
+			Str("faction ID", factionID).
 			Err(fmt.Errorf("failed to get hard coded syndicate player id")).
 			Msg("unable to get hard coded syndicate player ID from faction ID")
 		return terror.Error(err, "Failed to load syndicate id")
@@ -210,16 +211,16 @@ type AssetRepairStatusResponse struct {
 	FullRepairFee        decimal.Decimal `json:"full_repair_fee"`
 }
 
-const HubKeyAssetRepairStatus hub.HubCommandKey = hub.HubCommandKey("ASSET:REPAIR:STATUS")
+const HubKeyAssetRepairStatus = "ASSET:REPAIR:STATUS"
 
-func (arena *Arena) AssetRepairStatusHandler(ctx context.Context, hubc *hub.Client, payload []byte, userFactionID uuid.UUID, reply hub.ReplyFunc) error {
+func (arena *Arena) AssetRepairStatusHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &AssetRepairStatusRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received")
 	}
 
-	playerID := uuid.FromStringOrNil(hubc.Identifier())
+	playerID := uuid.FromStringOrNil(user.ID)
 	if playerID.IsNil() {
 		return terror.Error(terror.ErrForbidden, "You are not login")
 	}
@@ -230,7 +231,7 @@ func (arena *Arena) AssetRepairStatusHandler(ctx context.Context, hubc *hub.Clie
 		return terror.Error(err, "Failed to get mech from db")
 	}
 
-	if mech.OwnerID != hubc.Identifier() {
+	if mech.OwnerID != user.ID {
 		return terror.Error(terror.ErrForbidden, "You are not the owner of the mech")
 	}
 

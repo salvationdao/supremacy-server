@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"fmt"
 	"server/db"
 
@@ -14,11 +13,11 @@ var (
 )
 
 // check checks server is working correctly
-func check(ctx context.Context, conn db.Conn) error {
+func check() error {
 
 	// check db dirty
 	count := 0
-	err := db.IsSchemaDirty(ctx, conn, &count)
+	err := db.IsSchemaDirty(&count)
 	if err != nil {
 		return terror.Error(ErrCheckDBQuery)
 	}

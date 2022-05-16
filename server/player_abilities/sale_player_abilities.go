@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/ninja-syndicate/ws"
 	"math/rand"
 	"server"
 	"server/db"
@@ -24,6 +25,11 @@ import (
 type Purchase struct {
 	PlayerID  uuid.UUID
 	AbilityID uuid.UUID // sale ability id
+}
+
+type SaleAbilityPriceResponse struct {
+	ID           string `json:"id"`
+	CurrentPrice string `json:"current_price"`
 }
 
 // Used for sale abilities
@@ -132,7 +138,8 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 						continue
 					}
 					// Broadcast trigger of sale abilities list update
-					pas.messageBus.Send(messagebus.BusKey(server.HubKeySaleAbilitiesListUpdated), true)
+					ws.PublishMessage("/public/live_data", server.HubKeySaleAbilitiesListUpdated, true)
+					//pas.messageBus.Send(messagebus.BusKey(server.HubKeySaleAbilitiesListUpdated), true)
 				} else if err != nil {
 					gamelog.L.Error().Err(err).Msg("failed to fill sale player abilities map with new sale abilities")
 					break
@@ -156,7 +163,10 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 				}
 
 				// Broadcast updated sale ability
-				pas.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeySaleAbilityPriceSubscribe, s.ID)), s.CurrentPrice.StringFixed(0))
+				ws.PublishMessage("/public/live_data", server.HubKeySaleAbilityPriceSubscribe, SaleAbilityPriceResponse{
+					ID:           s.ID,
+					CurrentPrice: s.CurrentPrice.StringFixed(0),
+				})
 			}
 			break
 		case purchase := <-pas.Purchase:
@@ -168,7 +178,10 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 					gamelog.L.Error().Err(err).Str("salePlayerAbilityID", saleAbility.ID).Str("new price", saleAbility.CurrentPrice.String()).Interface("sale ability", saleAbility).Msg("failed to update sale ability price")
 					break
 				}
-				pas.messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeySaleAbilityPriceSubscribe, saleAbility.ID)), saleAbility.CurrentPrice.StringFixed(0))
+				ws.PublishMessage("/public/live_data", server.HubKeySaleAbilityPriceSubscribe, SaleAbilityPriceResponse{
+					ID:           saleAbility.ID,
+					CurrentPrice: saleAbility.CurrentPrice.StringFixed(0),
+				})
 			}
 			break
 		}
