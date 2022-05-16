@@ -464,6 +464,8 @@ func (arena *Arena) AbilityLocationSelect(ctx context.Context, wsc *hub.Client, 
 		return terror.Error(err)
 	}
 
+	reply(true)
+
 	return nil
 }
 
