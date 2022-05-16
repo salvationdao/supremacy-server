@@ -20,7 +20,6 @@ type Weapon struct {
 	DefaultDamageType   string              `json:"default_damage_type"`
 	GenesisTokenID      decimal.NullDecimal `json:"genesis_token_id,omitempty"`
 	WeaponType          string              `json:"weapon_type"`
-	OwnerID             string              `json:"owner_id"`
 	DamageFalloff       null.Int            `json:"damage_falloff,omitempty"`
 	DamageFalloffRate   null.Int            `json:"damage_falloff_rate,omitempty"`
 	Spread              decimal.NullDecimal `json:"spread,omitempty"`
@@ -30,7 +29,6 @@ type Weapon struct {
 	ProjectileSpeed     decimal.NullDecimal `json:"projectile_speed,omitempty"`
 	EnergyCost          decimal.NullDecimal `json:"energy_cost,omitempty"`
 	MaxAmmo             null.Int            `json:"max_ammo,omitempty"`
-	Tier                string              `json:"tier,omitempty"`
 
 	// TODO: AMMO //BlueprintAmmo []*
 

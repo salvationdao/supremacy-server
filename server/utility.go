@@ -18,10 +18,8 @@ type Utility struct {
 	CreatedAt      time.Time           `json:"created_at"`
 	BlueprintID    string              `json:"blueprint_id"`
 	GenesisTokenID decimal.NullDecimal `json:"genesis_token_id,omitempty"`
-	OwnerID        string              `json:"owner_id"`
 	EquippedOn     null.String         `json:"equipped_on,omitempty"`
 	Type           string              `json:"type"`
-	Tier           string              `json:"tier,omitempty"`
 
 	Shield      *UtilityShield      `json:"shield,omitempty"`
 	AttackDrone *UtilityAttackDrone `json:"attack_drone,omitempty"`
@@ -123,6 +121,7 @@ func BlueprintUtilityShieldFromBoiler(utility *boiler.BlueprintUtility, shield *
 		CreatedAt:  utility.CreatedAt,
 		Type:       utility.Type,
 		Collection: utility.Collection,
+		Tier:       utility.Tier,
 		ShieldBlueprint: &BlueprintUtilityShield{
 			ID:                 shield.ID,
 			BlueprintUtilityID: shield.BlueprintUtilityID,

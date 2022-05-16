@@ -120,20 +120,15 @@ func InsertNewUtility(ownerID uuid.UUID, utility *server.BlueprintUtility) (*ser
 		return nil, terror.Error(err)
 	}
 
-	utilityUUID, err := uuid.FromString(newUtility.ID)
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-
-	return Utility(utilityUUID)
+	return Utility(newUtility.ID)
 }
 
-func Utility(id uuid.UUID) (*server.Utility, error) {
-	boilerUtility, err := boiler.FindUtility(gamedb.StdConn, id.String())
+func Utility(id string) (*server.Utility, error) {
+	boilerUtility, err := boiler.FindUtility(gamedb.StdConn, id)
 	if err != nil {
 		return nil, err
 	}
-	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id.String())).One(gamedb.StdConn)
+	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(gamedb.StdConn)
 	if err != nil {
 		return nil, err
 	}

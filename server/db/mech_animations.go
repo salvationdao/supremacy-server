@@ -40,20 +40,15 @@ func InsertNewMechAnimation(ownerID uuid.UUID, animationBlueprint *server.Bluepr
 		return nil, terror.Error(err)
 	}
 
-	animationUUID, err := uuid.FromString(newAnimation.ID)
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-
-	return MechAnimation(animationUUID)
+	return MechAnimation(newAnimation.ID)
 }
 
-func MechAnimation(id uuid.UUID) (*server.MechAnimation, error) {
-	boilerMech, err := boiler.FindMechAnimation(gamedb.StdConn, id.String())
+func MechAnimation(id string) (*server.MechAnimation, error) {
+	boilerMech, err := boiler.FindMechAnimation(gamedb.StdConn, id)
 	if err != nil {
 		return nil, err
 	}
-	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id.String())).One(gamedb.StdConn)
+	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(gamedb.StdConn)
 	if err != nil {
 		return nil, err
 	}

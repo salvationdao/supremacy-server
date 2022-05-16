@@ -42,20 +42,15 @@ func InsertNewPowerCore(ownerID uuid.UUID, ec *server.BlueprintPowerCore) (*serv
 		return nil, terror.Error(err)
 	}
 
-	powerCoreUUID, err := uuid.FromString(newPowerCore.ID)
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-
-	return PowerCore(powerCoreUUID)
+	return PowerCore(newPowerCore.ID)
 }
 
-func PowerCore(id uuid.UUID) (*server.PowerCore, error) {
-	boilerMech, err := boiler.FindPowerCore(gamedb.StdConn, id.String())
+func PowerCore(id string) (*server.PowerCore, error) {
+	boilerMech, err := boiler.FindPowerCore(gamedb.StdConn, id)
 	if err != nil {
 		return nil, err
 	}
-	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id.String())).One(gamedb.StdConn)
+	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(gamedb.StdConn)
 	if err != nil {
 		return nil, err
 	}

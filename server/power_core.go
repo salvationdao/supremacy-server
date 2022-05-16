@@ -11,7 +11,6 @@ import (
 type PowerCore struct {
 	*CollectionDetails
 	ID           string          `json:"id"`
-	OwnerID      string          `json:"owner_id"`
 	Label        string          `json:"label"`
 	Size         string          `json:"size"`
 	Capacity     decimal.Decimal `json:"capacity"`
@@ -19,7 +18,6 @@ type PowerCore struct {
 	RechargeRate decimal.Decimal `json:"recharge_rate"`
 	Armour       decimal.Decimal `json:"armour"`
 	MaxHitpoints decimal.Decimal `json:"max_hitpoints"`
-	Tier         string          `json:"tier,omitempty"`
 	EquippedOn   null.String     `json:"equipped_on,omitempty"`
 	CreatedAt    time.Time       `json:"created_at"`
 }

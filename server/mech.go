@@ -38,7 +38,6 @@ type Mech struct {
 	GenesisTokenID        decimal.NullDecimal `json:"genesis_token_id,omitempty"`
 	LimitedReleaseTokenID decimal.NullDecimal `json:"limited_release_token_id,omitempty"`
 	PowerCoreSize         string              `json:"power_core_size"`
-	Tier                  string              `json:"tier,omitempty"`
 
 	BlueprintID string         `json:"blueprint_id"`
 	Blueprint   *BlueprintMech `json:"blueprint_mech,omitempty"`
@@ -46,8 +45,7 @@ type Mech struct {
 	BrandID string `json:"brand_id"`
 	Brand   *Brand `json:"brand"`
 
-	OwnerID string `json:"owner_id"`
-	Owner   *User  `json:"user"`
+	Owner *User `json:"user"`
 
 	FactionID string   `json:"faction_id"`
 	Faction   *Faction `json:"faction,omitempty"`

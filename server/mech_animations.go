@@ -13,10 +13,8 @@ type MechAnimation struct {
 	ID             string      `json:"id"`
 	BlueprintID    string      `json:"blueprint_id"`
 	Label          string      `json:"label"`
-	OwnerID        string      `json:"owner_id"`
 	MechModel      string      `json:"mech_model"`
 	EquippedOn     null.String `json:"equipped_on,omitempty"`
-	Tier           string      `json:"tier,omitempty"`
 	IntroAnimation null.Bool   `json:"intro_animation,omitempty"`
 	OutroAnimation null.Bool   `json:"outro_animation,omitempty"`
 	CreatedAt      time.Time   `json:"created_at"`

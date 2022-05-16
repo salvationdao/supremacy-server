@@ -3,6 +3,7 @@ package comms
 import (
 	"encoding/json"
 	"server"
+	"server/db/boiler"
 	"server/gamelog"
 )
 
@@ -345,6 +346,7 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 			Hash:           i.Hash,
 			OwnerID:        i.OwnerID,
 			Data:           asJson,
+			ItemType:       boiler.ItemTypeMech,
 		})
 	}
 
@@ -367,6 +369,7 @@ func ServerMechAnimationsToXsynAsset(mechAnimations []*server.MechAnimation) []*
 			Hash:           i.Hash,
 			OwnerID:        i.OwnerID,
 			Data:           asJson,
+			ItemType:       boiler.ItemTypeMechAnimation,
 		})
 	}
 
@@ -389,6 +392,7 @@ func ServerMechSkinsToXsynAsset(mechSkins []*server.MechSkin) []*XsynAsset {
 			Hash:           i.Hash,
 			OwnerID:        i.OwnerID,
 			Data:           asJson,
+			ItemType:       boiler.ItemTypeMechSkin,
 		})
 	}
 
@@ -411,7 +415,9 @@ func ServerPowerCoresToXsynAsset(powerCore []*server.PowerCore) []*XsynAsset {
 			Hash:           i.Hash,
 			OwnerID:        i.OwnerID,
 			Data:           asJson,
+			ItemType:       boiler.ItemTypePowerCore,
 		})
+
 	}
 
 	return assets
@@ -433,6 +439,7 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			Hash:           i.Hash,
 			OwnerID:        i.OwnerID,
 			Data:           asJson,
+			ItemType:       boiler.ItemTypeWeapon,
 		})
 	}
 
@@ -455,6 +462,7 @@ func ServerUtilitiesToXsynAsset(utils []*server.Utility) []*XsynAsset {
 			Hash:           i.Hash,
 			OwnerID:        i.OwnerID,
 			Data:           asJson,
+			ItemType:       boiler.ItemTypeUtility,
 		})
 	}
 

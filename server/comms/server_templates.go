@@ -1,10 +1,10 @@
 package comms
 
 import (
-	"fmt"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
+	"server/gamelog"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
@@ -43,15 +43,12 @@ type TemplateResp struct {
 }
 
 func (s *S) Template(req TemplateReq, resp *TemplateResp) error {
-	fmt.Println("here1")
 	template, err := db.Template(req.TemplateID)
 	if err != nil {
-		fmt.Println("here2")
 		return terror.Error(err)
 	}
-	fmt.Println("here3")
+
 	resp.TemplateContainer = ServerTemplateToApiTemplateV1(template)
-	fmt.Println("here4")
 	return nil
 }
 
@@ -68,5 +65,48 @@ func (s *S) TemplatePurchasedCount(req TemplatePurchasedCountReq, resp *Template
 		return terror.Error(err)
 	}
 	resp.Count = count
+	return nil
+}
+
+func (s *S) TemplateRegister(req TemplateRegisterReq, resp *TemplateRegisterResp) error {
+	gamelog.L.Debug().Msg("comms.TemplateRegister")
+
+	//userResp, err := s.passportRPC.UserGet(server.UserID(req.OwnerID))
+	//if err != nil {
+	//	gamelog.L.Error().Err(err).Msg("Failed to get player")
+	//
+	//	return terror.Error(err)
+	//}
+	//
+	//player, err := boiler.FindPlayer(gamedb.StdConn, req.OwnerID.String())
+	//if err != nil {
+	//	gamelog.L.Error().Err(err).Msg("Failed to find player")
+	//	return terror.Error(err)
+	//}
+	//
+	//player.FactionID = null.StringFrom(userResp.FactionID.String())
+	//_, err = player.Update(gamedb.StdConn, boil.Whitelist(boiler.PlayerColumns.FactionID))
+	//if err != nil {
+	//	gamelog.L.Error().Err(err).Msg("Failed to update player")
+	//	return terror.Error(err)
+	//}
+
+	mechs, mechAnimations, mechSkins, powerCores, weapons, utilities, err := db.TemplateRegister(req.TemplateID, req.OwnerID)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to register template")
+		return terror.Error(err)
+	}
+
+	var assets []*XsynAsset
+
+	// convert into xsyn assets, maybe find a better way.... (generics? interfaces? change item schema?)
+	assets = append(assets, ServerMechsToXsynAsset(mechs)...)
+	assets = append(assets, ServerMechAnimationsToXsynAsset(mechAnimations)...)
+	assets = append(assets, ServerMechSkinsToXsynAsset(mechSkins)...)
+	assets = append(assets, ServerPowerCoresToXsynAsset(powerCores)...)
+	assets = append(assets, ServerWeaponsToXsynAsset(weapons)...)
+	assets = append(assets, ServerUtilitiesToXsynAsset(utilities)...)
+
+	resp.Assets = assets
 	return nil
 }

@@ -52,20 +52,15 @@ func InsertNewWeapon(ownerID uuid.UUID, weapon *server.BlueprintWeapon) (*server
 		return nil, terror.Error(err)
 	}
 
-	weaponUUID, err := uuid.FromString(newWeapon.ID)
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-
-	return Weapon(weaponUUID)
+	return Weapon(newWeapon.ID)
 }
 
-func Weapon(id uuid.UUID) (*server.Weapon, error) {
-	boilerMech, err := boiler.FindWeapon(gamedb.StdConn, id.String())
+func Weapon(id string) (*server.Weapon, error) {
+	boilerMech, err := boiler.FindWeapon(gamedb.StdConn, id)
 	if err != nil {
 		return nil, err
 	}
-	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id.String())).One(gamedb.StdConn)
+	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(gamedb.StdConn)
 	if err != nil {
 		return nil, err
 	}

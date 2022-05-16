@@ -14,10 +14,8 @@ type MechSkin struct {
 	BlueprintID      string              `json:"blueprint_id"`
 	GenesisTokenID   decimal.NullDecimal `json:"genesis_token_id,omitempty"`
 	Label            string              `json:"label"`
-	OwnerID          string              `json:"owner_id"`
 	MechModel        string              `json:"mech_model"`
 	EquippedOn       null.String         `json:"equipped_on,omitempty"`
-	Tier             string              `json:"tier,omitempty"`
 	ImageURL         null.String         `json:"image_url,omitempty"`
 	AnimationURL     null.String         `json:"animation_url,omitempty"`
 	CardAnimationURL null.String         `json:"card_animation_url,omitempty"`

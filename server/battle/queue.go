@@ -113,7 +113,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, wsc *hub.Client, paylo
 		return terror.Error(fmt.Errorf("asset on chain status is %s", onChainStatus), "This asset isn't on world, please transition on world.")
 	}
 
-	mech, err := db.Mech(mechID)
+	mech, err := db.Mech(mechID.String())
 	if err != nil {
 		gamelog.L.Error().Str("mech_id", mechID.String()).Err(err).Msg("unable to retrieve mech id from hash")
 		return terror.Error(err)
@@ -466,7 +466,7 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, wsc *hub.Client, payl
 		return terror.Error(err, "Issue leaving queue, try again or contact support.")
 	}
 
-	mech, err := db.Mech(mechID)
+	mech, err := db.Mech(mechID.String())
 	if err != nil {
 		gamelog.L.Error().Str("mech_id", mechID.String()).Err(err).Msg("unable to retrieve mech")
 		return terror.Error(err, "Issue leaving queue, try again or contact support.")
@@ -760,7 +760,7 @@ func (arena *Arena) AssetQueueStatusHandler(ctx context.Context, wsc *hub.Client
 		return terror.Error(err)
 	}
 
-	mech, err := db.Mech(mechID)
+	mech, err := db.Mech(mechID.String())
 	if err != nil {
 		gamelog.L.Error().Str("mech_id", mechID.String()).Err(err).Msg("unable to retrieve mech id from hash")
 		return terror.Error(err)
@@ -873,7 +873,7 @@ func (arena *Arena) AssetQueueStatusSubscribeHandler(ctx context.Context, wsc *h
 		return "", "", terror.Error(err)
 	}
 
-	mech, err := db.Mech(mechID)
+	mech, err := db.Mech(mechID.String())
 	if err != nil {
 		gamelog.L.Error().Str("mech_id", mechID.String()).Err(err).Msg("unable to retrieve mech id from hash")
 		return "", "", terror.Error(err)

@@ -46,20 +46,15 @@ func InsertNewMechSkin(ownerID uuid.UUID, skin *server.BlueprintMechSkin) (*serv
 		return nil, terror.Error(err)
 	}
 
-	skinUUID, err := uuid.FromString(newSkin.ID)
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-
-	return MechSkin(skinUUID)
+	return MechSkin(newSkin.ID)
 }
 
-func MechSkin(id uuid.UUID) (*server.MechSkin, error) {
-	boilerMech, err := boiler.FindMechSkin(gamedb.StdConn, id.String())
+func MechSkin(id string) (*server.MechSkin, error) {
+	boilerMech, err := boiler.FindMechSkin(gamedb.StdConn, id)
 	if err != nil {
 		return nil, err
 	}
-	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id.String())).One(gamedb.StdConn)
+	boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(gamedb.StdConn)
 	if err != nil {
 		return nil, err
 	}

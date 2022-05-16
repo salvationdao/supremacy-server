@@ -425,6 +425,7 @@ type XsynAsset struct {
 	Tier           string     `json:"tier"`
 	Hash           string     `json:"hash"`
 	OwnerID        string     `json:"owner_id"`
+	ItemType       string     `json:"item_type"`
 	Data           types.JSON `json:"data"`
 	OnChainStatus  string     `json:"on_chain_status"`
 }

@@ -31,7 +31,7 @@ CREATE SEQUENCE IF NOT EXISTS collection_consumables AS BIGINT;
 ALTER SEQUENCE collection_consumables RESTART WITH 1;
 
 DROP TYPE IF EXISTS COLLECTION;
-CREATE TYPE COLLECTION AS ENUM ('supremacy-genesis', 'supremacy-limited-release', 'supremacy-general', 'supremacy-consumables');
+CREATE TYPE COLLECTION AS ENUM ('supremacy-ai','supremacy-genesis', 'supremacy-limited-release', 'supremacy-general', 'supremacy-consumables');
 
 DROP TYPE IF EXISTS ITEM_TYPE;
 CREATE TYPE ITEM_TYPE AS ENUM ('utility', 'weapon', 'mech', 'mech_skin', 'mech_animation', 'power_core');
@@ -393,6 +393,15 @@ UPDATE blueprint_chassis c
 SET model_id = (SELECT id
                 FROM mech_model cm
                 WHERE c.model = cm.label);
+
+-- TODO: idk, talk to john about how to handle genesis
+-- -- update mech blueprint collection ids
+-- WITH tmp AS (SELECT blueprint_chassis_id, collection_slug
+--              FROM templates)
+-- UPDATE blueprint_chassis
+-- SET collection = tmp.collection_slug::COLLECTION
+-- FROM tmp
+-- WHERE id = tmp.blueprint_chassis_id;
 
 ALTER TABLE blueprint_chassis
     DROP COLUMN model,
