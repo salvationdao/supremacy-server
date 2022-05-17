@@ -2,21 +2,26 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"server"
 	"server/db"
 	"server/db/boiler"
+	"server/gamedb"
 	"server/gamelog"
 	"server/rpcclient"
 	"time"
 
+	"github.com/friendsofgo/errors"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/ninja-syndicate/ws"
 	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
 // MarketplaceController holds handlers for marketplace
@@ -30,8 +35,9 @@ func NewMarketplaceController(api *API) *MarketplaceController {
 		API: api,
 	}
 
-	api.SecureUserCommand(HubKeyMarketplaceSalesList, marketplaceHub.SalesListHandler)
-	api.SecureUserCommand(HubKeyMarketplaceSalesCreate, marketplaceHub.SalesCreateHandler)
+	api.SecureUserFactionCommand(HubKeyMarketplaceSalesList, marketplaceHub.SalesListHandler)
+	api.SecureUserFactionCommand(HubKeyMarketplaceSalesCreate, marketplaceHub.SalesCreateHandler)
+	api.SecureUserFactionCommand(HubKeyMarketplaceSalesBuy, marketplaceHub.SalesBuyHandler)
 
 	// api.SecureUserSubscribeCommand(HubKeyMarketplaceSalesItemUpdate, marketplaceHub.SalesItemUpdateSubscriber)
 
@@ -55,11 +61,11 @@ type MarketplaceSalesListRequest struct {
 }
 
 type MarketplaceSalesListResponse struct {
-	Total   int64                     `json:"total"`
-	Records []*db.MarketplaceSaleItem `json:"records"`
+	Total   int64                         `json:"total"`
+	Records []*server.MarketplaceSaleItem `json:"records"`
 }
 
-func (fc *MarketplaceController) SalesListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+func (fc *MarketplaceController) SalesListHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &MarketplaceSalesListRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -100,7 +106,7 @@ type MarketplaceSalesCreateRequest struct {
 	} `json:"payload"`
 }
 
-func (fc *MarketplaceController) SalesCreateHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *boiler.Player, fID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Issue processing list sale item, try again or contact support."
 	req := &MarketplaceSalesCreateRequest{}
 	err := json.Unmarshal(payload, req)
@@ -119,15 +125,7 @@ func (fc *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		return terror.Error(err, errMsg)
 	}
 
-	if user.FactionID.IsZero() {
-		err := fmt.Errorf("player is not enlisted in a faction")
-		gamelog.L.Error().
-			Str("user_id", user.ID).
-			Err(err).
-			Msg("Player is not in a faction")
-		return terror.Error(err, "You are not enlisted in a faction.")
-	}
-	factionID, err := uuid.FromString(user.FactionID.String)
+	factionID, err := uuid.FromString(fID)
 	if err != nil {
 		gamelog.L.Error().
 			Str("user_id", user.ID).
@@ -147,7 +145,7 @@ func (fc *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		return terror.Error(err, errMsg)
 	}
 
-	balance := fc.API.Passport.UserBalanceGet(userID)
+	balance := mp.API.Passport.UserBalanceGet(userID)
 	feePrice := db.GetDecimalWithDefault(db.KeyMarketplaceListingFee, decimal.NewFromInt(5))
 
 	if req.Payload.SaleType == server.MarketplaceSaleTypeBuyout {
@@ -169,7 +167,7 @@ func (fc *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	}
 
 	// pay sup
-	txid, err := fc.API.Passport.SpendSupMessage(rpcclient.SpendSupsReq{
+	txid, err := mp.API.Passport.SpendSupMessage(rpcclient.SpendSupsReq{
 		FromUserID:           userID,
 		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
 		Amount:               feePrice.String(),
@@ -196,7 +194,7 @@ func (fc *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	endAt := time.Now().Add(time.Hour * time.Duration(req.Payload.ListingDurationHours))
 	obj, err := db.MarketplaceSaleCreate(req.Payload.SaleType, userID, factionID, txid, endAt, req.Payload.ItemType, req.Payload.ItemID, req.Payload.AskingPrice, req.Payload.DutchAuctionDropRate)
 	if err != nil {
-		fc.API.Passport.RefundSupsMessage(txid)
+		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
 			Str("user_id", user.ID).
 			Str("sale_type", string(req.Payload.SaleType)).
@@ -209,7 +207,7 @@ func (fc *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 
 	obj, err = db.MarketplaceLoadItemSaleObject(obj)
 	if err != nil {
-		fc.API.Passport.RefundSupsMessage(txid)
+		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
 			Str("user_id", user.ID).
 			Str("sale_type", string(req.Payload.SaleType)).
@@ -221,6 +219,136 @@ func (fc *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	}
 
 	reply(obj)
+
+	return nil
+}
+
+const HubKeyMarketplaceSalesBuy = "MARKETPLACE:SALES:ITEM:BUY"
+
+type MarketplaceSalesBuyRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		ItemID uuid.UUID `json:"item_id"`
+	} `json:"payload"`
+}
+
+func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boiler.Player, fID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	errMsg := "Issue buying sale item, try again or contact support."
+	req := &MarketplaceSalesBuyRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	// Check whether user can buy sale item
+	saleItem, err := db.MarketplaceItemSale(req.Payload.ItemID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "Item not found.")
+	}
+	if err != nil {
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("item_id", req.Payload.ItemID.String()).
+			Err(err).
+			Msg("Unable to retrieve sale item.")
+		return terror.Error(err, errMsg)
+	}
+	if saleItem.FactionID != fID {
+		return terror.Error(terror.ErrUnauthorised, "Item does not belong to user's faction.")
+	}
+
+	// Pay item
+	// TODO: Work out Sales Cut
+	userID, err := uuid.FromString(user.ID)
+	if err != nil {
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("item_id", req.Payload.ItemID.String()).
+			Err(err).
+			Msg("Unable to retrieve buyer's user id.")
+		return terror.Error(err, errMsg)
+	}
+
+	saleItemCost, err := decimal.NewFromString(saleItem.BuyoutPrice.String)
+	if err != nil {
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("item_id", req.Payload.ItemID.String()).
+			Err(err).
+			Msg("Unable to get current buyout price.")
+		return terror.Error(err, errMsg)
+	}
+
+	balance := mp.API.Passport.UserBalanceGet(userID)
+	if balance.Sub(saleItemCost).LessThan(decimal.Zero) {
+		err = fmt.Errorf("insufficient funds")
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("item_id", req.Payload.ItemID.String()).
+			Str("balance", balance.String()).
+			Str("cost", saleItemCost.String()).
+			Err(err).
+			Msg("Player does not have enough sups.")
+		return terror.Error(err, "You do not have enough sups.")
+	}
+
+	// pay sup
+	saleType, err := saleItem.GetSaleType()
+	if err != nil {
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("item_id", req.Payload.ItemID.String()).
+			Str("balance", balance.String()).
+			Str("cost", saleItemCost.String()).
+			Err(err).
+			Msg("Unable to determine sale type")
+		return terror.Error(err, errMsg)
+	}
+
+	txid, err := mp.API.Passport.SpendSupMessage(rpcclient.SpendSupsReq{
+		FromUserID:           userID,
+		ToUserID:             uuid.Must(uuid.FromString(saleItem.OwnerID)),
+		Amount:               saleItemCost.String(),
+		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item|%s|%s|%s|%d", saleType, saleItem.ItemType, saleItem.ID)),
+		Group:                string(server.TransactionGroupMarketplace),
+		SubGroup:             "SUPREMACY",
+		Description:          fmt.Sprintf("marketplace buy item: %s - %s: %s", saleType, saleItem.ItemType, saleItem.ID),
+		NotSafe:              true,
+	})
+	if err != nil {
+		err = fmt.Errorf("failed to process payment transaction")
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("balance", balance.String()).
+			Str("cost", saleItemCost.String()).
+			Str("item_id", req.Payload.ItemID.String()).
+			Err(err).
+			Msg("Failed to process transaction for Purchase Sale Item.")
+		return terror.Error(err, "Failed tp process transaction for Purchase Sale Item.")
+	}
+
+	// update sale item
+	saleItemRecord := saleItem.ItemSale
+	saleItemRecord.SoldAt = null.TimeFrom(time.Now())
+	saleItemRecord.SoldFor = null.StringFrom(saleItemCost.String())
+	saleItemRecord.SoldTXID = null.StringFrom(txid)
+
+	_, err = saleItemRecord.Update(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		mp.API.Passport.RefundSupsMessage(txid)
+		err = fmt.Errorf("failed to complete payment transaction")
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("balance", balance.String()).
+			Str("cost", saleItemCost.String()).
+			Str("item_id", req.Payload.ItemID.String()).
+			Err(err).
+			Msg("Failed to process transaction for Purchase Sale Item.")
+		return terror.Error(err, "Failed tp process transaction for Purchase Sale Item.")
+	}
+
+	// success
+	reply(true)
 
 	return nil
 }
@@ -238,12 +366,12 @@ func (mp *MarketplaceController) SalesItemUpdateSubscriber(ctx context.Context, 
 	req := &MarketplaceSalesItemUpdateSubscribe{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return "", "", terror.Error(err, "Invalid request received")
+		return "", "", terror.Error(err, "Invalid request received.")
 	}
 
 	obj, err := db.MarketplaceItemSale(req.Payload.ID)
 	if err != nil {
-		return "", "", terror.Error(err, "Invalid request received")
+		return "", "", terror.Error(err, "Invalid request received.")
 	}
 
 	reply(obj)

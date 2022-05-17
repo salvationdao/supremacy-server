@@ -15,13 +15,6 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
-// MarketplaceSaleItem conatains the sale item details and the item itself.
-type MarketplaceSaleItem struct {
-	*boiler.ItemSale
-	Owner *boiler.Player `json:"owner"`
-	Mech  *boiler.Mech   `json:"mech,omitempty"`
-}
-
 var itemSaleQueryMods = []qm.QueryMod{
 	qm.LeftOuterJoin(
 		fmt.Sprintf(
@@ -37,7 +30,7 @@ var itemSaleQueryMods = []qm.QueryMod{
 }
 
 // MarketplaceLoadItemSaleObject loads the specific item type's object.
-func MarketplaceLoadItemSaleObject(obj *MarketplaceSaleItem) (*MarketplaceSaleItem, error) {
+func MarketplaceLoadItemSaleObject(obj *server.MarketplaceSaleItem) (*server.MarketplaceSaleItem, error) {
 	if obj.ItemType == string(server.MarketplaceItemTypeWarMachine) {
 		mech, err := boiler.Mechs(
 			boiler.MechWhere.ID.EQ(obj.ItemID),
@@ -51,7 +44,7 @@ func MarketplaceLoadItemSaleObject(obj *MarketplaceSaleItem) (*MarketplaceSaleIt
 }
 
 // MarketplaceItemSale gets a specific item sale.
-func MarketplaceItemSale(id uuid.UUID) (*MarketplaceSaleItem, error) {
+func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
 	item, err := boiler.ItemSales(
 		append(
 			itemSaleQueryMods,
@@ -63,7 +56,7 @@ func MarketplaceItemSale(id uuid.UUID) (*MarketplaceSaleItem, error) {
 	}
 
 	// Get sale item details and the item for sale
-	output := &MarketplaceSaleItem{
+	output := &server.MarketplaceSaleItem{
 		ItemSale: item,
 		Owner:    item.R.Owner,
 	}
@@ -75,7 +68,7 @@ func MarketplaceItemSale(id uuid.UUID) (*MarketplaceSaleItem, error) {
 }
 
 // MarketplaceItemSaleList returns a numeric paginated result of sales list.
-func MarketplaceItemSaleList(search string, archived bool, filter *ListFilterRequest, offset int, pageSize int, sortBy string, sortDir SortByDir) (int64, []*MarketplaceSaleItem, error) {
+func MarketplaceItemSaleList(search string, archived bool, filter *ListFilterRequest, offset int, pageSize int, sortBy string, sortDir SortByDir) (int64, []*server.MarketplaceSaleItem, error) {
 	queryMods := itemSaleQueryMods
 
 	// Filters
@@ -115,7 +108,7 @@ func MarketplaceItemSaleList(search string, archived bool, filter *ListFilterReq
 		return 0, nil, terror.Error(err)
 	}
 	if total == 0 {
-		return 0, []*MarketplaceSaleItem{}, nil
+		return 0, []*server.MarketplaceSaleItem{}, nil
 	}
 
 	// Sort
@@ -133,13 +126,13 @@ func MarketplaceItemSaleList(search string, archived bool, filter *ListFilterReq
 	}
 
 	// Load in related items
-	records := []*MarketplaceSaleItem{}
+	records := []*server.MarketplaceSaleItem{}
 	mechIDs := []string{}
 	for _, row := range itemSales {
 		if row.ItemType == string(server.MarketplaceItemTypeWarMachine) {
 			mechIDs = append(mechIDs, row.ItemID)
 		}
-		records = append(records, &MarketplaceSaleItem{
+		records = append(records, &server.MarketplaceSaleItem{
 			ItemSale: row,
 			Owner:    row.R.Owner,
 		})
@@ -164,7 +157,7 @@ func MarketplaceItemSaleList(search string, archived bool, filter *ListFilterReq
 }
 
 // MarketplaceSaleCreate inserts a new sale item.
-func MarketplaceSaleCreate(saleType server.MarketplaceSaleType, ownerID uuid.UUID, factionID uuid.UUID, listFeeTxnID string, endAt time.Time, itemType server.MarketplaceItemType, itemID uuid.UUID, askingPrice *decimal.Decimal, dutchOptionDropRate *decimal.Decimal) (*MarketplaceSaleItem, error) {
+func MarketplaceSaleCreate(saleType server.MarketplaceSaleType, ownerID uuid.UUID, factionID uuid.UUID, listFeeTxnID string, endAt time.Time, itemType server.MarketplaceItemType, itemID uuid.UUID, askingPrice *decimal.Decimal, dutchOptionDropRate *decimal.Decimal) (*server.MarketplaceSaleItem, error) {
 	obj := &boiler.ItemSale{
 		OwnerID:        ownerID.String(),
 		FactionID:      factionID.String(),
@@ -192,7 +185,7 @@ func MarketplaceSaleCreate(saleType server.MarketplaceSaleType, ownerID uuid.UUI
 	if err != nil {
 		return nil, terror.Error(err)
 	}
-	output := &MarketplaceSaleItem{
+	output := &server.MarketplaceSaleItem{
 		ItemSale: obj,
 	}
 	return output, nil
