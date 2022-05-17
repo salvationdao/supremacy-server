@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"server/gamelog"
 
 	"github.com/ninja-software/terror/v2"
 	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
@@ -86,6 +87,7 @@ func WithCookie(api *API, next func(w http.ResponseWriter, r *http.Request)) fun
 func WithPassportSecret(secret string, next func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Passport-Authorization") != secret {
+			gamelog.L.Warn().Str("header secret", r.Header.Get("Passport-Authorization")).Str("webhook secret", secret).Msg("authentication failed")
 			http.Error(w, "unauthorized", http.StatusForbidden)
 			return
 		}
