@@ -26,16 +26,19 @@ func Template(templateID uuid.UUID) (*server.TemplateContainer, error) {
 	}
 
 	result := &server.TemplateContainer{
-		ID:                     template.ID,
-		Label:                  template.Label,
-		UpdatedAt:              template.UpdatedAt,
-		CreatedAt:              template.CreatedAt,
-		BlueprintMech:          []*server.BlueprintMech{},
-		BlueprintWeapon:        []*server.BlueprintWeapon{},
-		BlueprintUtility:       []*server.BlueprintUtility{},
-		BlueprintMechSkin:      []*server.BlueprintMechSkin{},
-		BlueprintMechAnimation: []*server.BlueprintMechAnimation{},
-		BlueprintPowerCore:     []*server.BlueprintPowerCore{},
+		ID:                          template.ID,
+		Label:                       template.Label,
+		UpdatedAt:                   template.UpdatedAt,
+		CreatedAt:                   template.CreatedAt,
+		IsLimitedRelease:            template.IsLimitedRelease,
+		IsGenesis:                   template.IsGenesis,
+		ContainsCompleteMechExactly: template.ContainsCompleteMechExactly,
+		BlueprintMech:               []*server.BlueprintMech{},
+		BlueprintWeapon:             []*server.BlueprintWeapon{},
+		BlueprintUtility:            []*server.BlueprintUtility{},
+		BlueprintMechSkin:           []*server.BlueprintMechSkin{},
+		BlueprintMechAnimation:      []*server.BlueprintMechAnimation{},
+		BlueprintPowerCore:          []*server.BlueprintPowerCore{},
 	}
 
 	// filter them into IDs first to optimize db queries
@@ -152,11 +155,85 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 			utilities, fmt.Errorf("find template: %w", err)
 	}
 
+	// do these checks here because we can't return error after we assign the items
+	if tmpl.ContainsCompleteMechExactly {
+		if len(tmpl.BlueprintMech) != 1 {
+			return mechs,
+				mechAnimations,
+				mechSkins,
+				powerCores,
+				weapons,
+				utilities, fmt.Errorf("template contains complete mech exactly but has more than 1 mech")
+		}
+		if len(tmpl.BlueprintPowerCore) != 1 {
+			return mechs,
+				mechAnimations,
+				mechSkins,
+				powerCores,
+				weapons,
+				utilities, fmt.Errorf("template contains complete mech exactly but has wrong amount of power cores")
+		}
+		if len(tmpl.BlueprintWeapon) > tmpl.BlueprintMech[0].WeaponHardpoints {
+			return mechs,
+				mechAnimations,
+				mechSkins,
+				powerCores,
+				weapons,
+				utilities, fmt.Errorf("template contains complete mech exactly but contained mech has less weapon slots than weapons provided")
+		}
+		if len(tmpl.BlueprintUtility) > tmpl.BlueprintMech[0].UtilitySlots {
+			return mechs,
+				mechAnimations,
+				mechSkins,
+				powerCores,
+				weapons,
+				utilities, fmt.Errorf("template contains complete mech exactly but contained mech has less utility slots than utilities provided")
+		}
+		if len(tmpl.BlueprintMechSkin) > 1 {
+			return mechs,
+				mechAnimations,
+				mechSkins,
+				powerCores,
+				weapons,
+				utilities, fmt.Errorf("template contains complete mech exactly but contained more than a single skin")
+		}
+	}
+
 	genesisTokenID := decimal.NullDecimal{}
 	limitedReleaseTokenID := decimal.NullDecimal{}
 
+	// if template is genesis, create it a genesis ID
+	if tmpl.IsGenesis {
+		// get the max genesis
+		err := boiler.NewQuery(qm.SQL(`SELECT max(genesis_token_id) + 1 FROM mechs;`)).Bind(nil, gamedb.StdConn, &genesisTokenID)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("failed to get new genesis token id")
+			return mechs,
+				mechAnimations,
+				mechSkins,
+				powerCores,
+				weapons,
+				utilities, terror.Error(err)
+		}
+	}
+	// if template is genesis, create it a genesis ID
+	if tmpl.IsLimitedRelease {
+		// get the max genesis
+		err := boiler.NewQuery(qm.SQL(`SELECT max(limited_release_token_id) + 1 FROM mechs;`)).Bind(nil, gamedb.StdConn, &limitedReleaseTokenID)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("failed to get new limit release token id")
+			return mechs,
+				mechAnimations,
+				mechSkins,
+				powerCores,
+				weapons,
+				utilities, terror.Error(err)
+		}
+	}
+
 	// inserts mech blueprints
 	for _, mechBluePrint := range tmpl.BlueprintMech {
+
 		// templates with genesis and limited release mechs can only have ONE mech in it
 		// here we check if we have a genesis/limited id that its only 1 mech
 		if (genesisTokenID.Valid || limitedReleaseTokenID.Valid) && len(tmpl.BlueprintMech) > 1 {
@@ -169,7 +246,8 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 				Msg("failed to insert new mech for user")
 			continue
 		}
-
+		mechBluePrint.LimitedReleaseTokenID = limitedReleaseTokenID
+		mechBluePrint.GenesisTokenID = genesisTokenID
 		insertedMech, err := InsertNewMech(ownerID, mechBluePrint)
 		if err != nil {
 			gamelog.L.Error().Err(err).
@@ -180,19 +258,11 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 		}
 		mechs = append(mechs, insertedMech)
 
-		// if the inserted mech is a genesis or limited release, we need to add that token id across all items we're inserting
-		if insertedMech.GenesisTokenID.Valid {
-			genesisTokenID = insertedMech.GenesisTokenID
-		}
-		if insertedMech.LimitedReleaseTokenID.Valid {
-			limitedReleaseTokenID = insertedMech.LimitedReleaseTokenID
-		}
 	}
 
 	// inserts mech animation blueprints
 	for _, mechAnimation := range tmpl.BlueprintMechAnimation {
-		mechAnimation.LimitedReleaseTokenID = limitedReleaseTokenID
-		mechAnimation.GenesisTokenID = genesisTokenID
+
 		insertedMechAnimations, err := InsertNewMechAnimation(ownerID, mechAnimation)
 		if err != nil {
 			gamelog.L.Error().Err(err).
@@ -262,6 +332,69 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 			continue
 		}
 		utilities = append(utilities, insertedUtility)
+	}
+	fmt.Println("trying to join shit")
+	// if it contains a complete mech, lets build the mech!
+	if tmpl.ContainsCompleteMechExactly {
+		fmt.Println("joining 1")
+		// join power core
+		err = AttachPowerCoreToMech(ownerID.String(), mechs[0].ID, powerCores[0].ID)
+		if err != nil {
+			fmt.Println("joining 1.5")
+
+			gamelog.L.Error().Err(err).
+				Str("ownerID.String()", ownerID.String()).
+				Str("mechs[0].ID", mechs[0].ID).
+				Str("powerCores[0].ID", powerCores[0].ID).
+				Msg("failed to join powercore to mech")
+		}
+		fmt.Println("joining 2")
+		// join skin
+		err = AttachMechSkinToMech(ownerID.String(), mechs[0].ID, mechSkins[0].ID)
+		if err != nil {
+			fmt.Println("joining 2.5")
+			gamelog.L.Error().Err(err).
+				Str("ownerID.String()", ownerID.String()).
+				Str("mechs[0].ID", mechs[0].ID).
+				Str("mechSkins[0].ID", mechSkins[0].ID).
+				Msg("failed to join skin to mech")
+		}
+		// join animations
+		// TODO: no animations yet
+		// join weapons
+		fmt.Println("joining 3")
+		for i := 0; i < mechs[0].WeaponHardpoints; i++ {
+			fmt.Println("joining 3.25")
+			if len(weapons) > i  {
+				err = AttachWeaponToMech(ownerID.String(), mechs[0].ID, weapons[i].ID)
+				if err != nil {
+					fmt.Println("joining 3.5")
+					gamelog.L.Error().Err(err).
+						Str("ownerID.String()", ownerID.String()).
+						Str("mechs[0].ID", mechs[0].ID).
+						Str("weapons[i].ID", weapons[i].ID).
+						Msg("failed to join weapon to mech")
+					continue
+				}
+			}
+		}
+		fmt.Println("joining 4")
+		// join utility
+		for i := 0; i < mechs[0].UtilitySlots; i++ {
+			fmt.Println("joining 4.25")
+			if utilities[i] != nil {
+				err = AttachUtilityToMech(ownerID.String(), mechs[0].ID, utilities[i].ID)
+				if err != nil {
+					fmt.Println("joining 4.5")
+					gamelog.L.Error().Err(err).
+						Str("ownerID.String()", ownerID.String()).
+						Str("mechs[0].ID", mechs[0].ID).
+						Str("utilities[i].ID", utilities[i].ID).
+						Msg("failed to join utility to mech")
+					continue
+				}
+			}
+		}
 	}
 
 	return mechs,

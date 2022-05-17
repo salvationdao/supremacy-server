@@ -1,12 +1,17 @@
 package server
 
-import "time"
+import (
+	"time"
+)
 
 type TemplateContainer struct {
-	ID        string    `json:"id"`
-	Label     string    `json:"label"`
-	UpdatedAt time.Time `json:"updated_at"`
-	CreatedAt time.Time `json:"created_at"`
+	ID                          string    `json:"id"`
+	Label                       string    `json:"label"`
+	UpdatedAt                   time.Time `json:"updated_at"`
+	CreatedAt                   time.Time `json:"created_at"`
+	IsGenesis                   bool      `json:"is_genesis"`
+	IsLimitedRelease            bool      `json:"is_limited_release"`
+	ContainsCompleteMechExactly bool      `json:"contains_complete_mech_exactly"`
 
 	BlueprintMech          []*BlueprintMech          `json:"blueprint_mech,omitempty"`
 	BlueprintWeapon        []*BlueprintWeapon        `json:"blueprint_weapon,omitempty"`

@@ -5,6 +5,9 @@ import (
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
+	"server/gamelog"
+
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
@@ -167,4 +170,81 @@ func Utility(id string) (*server.Utility, error) {
 	}
 
 	return nil, fmt.Errorf("invalid utility type %s", boilerUtility.Type)
+}
+
+// AttachUtilityToMech attaches a Utility to a mech  TODO: create tests.
+func AttachUtilityToMech(ownerID, mechID, utilityID string) error {
+	// TODO: possible optimize this, 6 queries to attach a part seems like a lot?
+	// check owner
+	mechCI, err := CollectionItemFromItemID(mechID)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("mechID", mechID).Msg("failed to get mech collection item")
+		return terror.Error(err)
+	}
+	utilityCI, err := CollectionItemFromItemID(utilityID)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("utilityID", utilityID).Msg("failed to get utility collection item")
+		return terror.Error(err)
+	}
+
+	if mechCI.OwnerID != ownerID {
+		err := fmt.Errorf("owner id mismatch")
+		gamelog.L.Error().Err(err).Str("mechCI.OwnerID", mechCI.OwnerID).Str("ownerID", ownerID).Msg("user doesn't own the item")
+		return terror.Error(err, "You need to be the owner of the war machine to equip utilitys to it.")
+	}
+	if utilityCI.OwnerID != ownerID {
+		err := fmt.Errorf("owner id mismatch")
+		gamelog.L.Error().Err(err).Str("utilityCI.OwnerID", utilityCI.OwnerID).Str("ownerID", ownerID).Msg("user doesn't own the item")
+		return terror.Error(err, "You need to be the owner of the utility to equip it to a war machine.")
+	}
+
+	// get mech
+	mech, err := boiler.Mechs(
+		boiler.MechWhere.ID.EQ(mechID),
+		qm.Load(boiler.MechRels.ChassisMechUtilities),
+	).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("mechID", mechID).Msg("failed to find mech")
+		return terror.Error(err)
+	}
+
+	// get Utility
+	utility, err := boiler.FindUtility(gamedb.StdConn, utilityID)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("utilityID", utilityID).Msg("failed to find Utility")
+		return terror.Error(err)
+	}
+
+	// check current utility count
+	if len(mech.R.ChassisMechUtilities)+1 > mech.UtilitySlots {
+		err := fmt.Errorf("utility cannot fit")
+		gamelog.L.Error().Err(err).Str("utilityID", utilityID).Msg("adding this utility brings mechs utilities over mechs utility slots")
+		return terror.Error(err, fmt.Sprintf("War machine already has %d utilities equipped and is only has %d utility slots.", len(mech.R.ChassisMechUtilities), mech.UtilitySlots))
+	}
+
+	// check utility isn't already equipped to another war machine
+	exists, err := boiler.MechUtilities(boiler.MechUtilityWhere.UtilityID.EQ(utilityID)).Exists(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("utilityID", utilityID).Msg("failed to check if a mech and utility join already exists")
+		return terror.Error(err)
+	}
+	if exists {
+		err := fmt.Errorf("utility already equipped to a warmachine")
+		gamelog.L.Error().Err(err).Str("utilityID", utilityID).Msg(err.Error())
+		return terror.Error(err, "This utility is already equipped to another war machine, try again or contact support.")
+	}
+
+	utilityMechJoin := boiler.MechUtility{
+		ChassisID:  mech.ID,
+		UtilityID:  utility.ID,
+		SlotNumber: len(mech.R.ChassisMechUtilities), // slot number starts at 0, so if we currently have 2 equipped and this is the 3rd, it will be slot 2.
+	}
+
+	err = utilityMechJoin.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().Err(err).Interface("utilityMechJoin", utilityMechJoin).Msg(" failed to equip utility to war machine")
+		return terror.Error(err, "Issue preventing equipping this utility to the war machine, try again or contact support.")
+	}
+
+	return nil
 }

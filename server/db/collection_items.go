@@ -6,6 +6,7 @@ import (
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
+	"server/gamelog"
 
 	"github.com/ninja-software/terror/v2"
 )
@@ -34,6 +35,12 @@ func InsertNewCollectionItem(tx *sql.Tx, collectionSlug, itemType, itemID, tier,
 
 	_, err := tx.Exec(query, collectionSlug, itemType, itemID, tier, ownerID)
 	if err != nil {
+		gamelog.L.Error().Err(err).
+		Str("itemType", itemType).
+		Str("itemID", itemID).
+		Str("tier", tier).
+		Str("ownerID", ownerID).
+		Msg("failed to insert new collection item")
 		return terror.Error(err)
 	}
 

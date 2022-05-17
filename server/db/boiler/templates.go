@@ -23,58 +23,79 @@ import (
 
 // Template is an object representing the database table.
 type Template struct {
-	ID        string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Label     string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	DeletedAt null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	UpdatedAt time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ID                          string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Label                       string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	DeletedAt                   null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt                   time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt                   time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	IsGenesis                   bool      `boiler:"is_genesis" boil:"is_genesis" json:"is_genesis" toml:"is_genesis" yaml:"is_genesis"`
+	IsLimitedRelease            bool      `boiler:"is_limited_release" boil:"is_limited_release" json:"is_limited_release" toml:"is_limited_release" yaml:"is_limited_release"`
+	ContainsCompleteMechExactly bool      `boiler:"contains_complete_mech_exactly" boil:"contains_complete_mech_exactly" json:"contains_complete_mech_exactly" toml:"contains_complete_mech_exactly" yaml:"contains_complete_mech_exactly"`
 
 	R *templateR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L templateL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var TemplateColumns = struct {
-	ID        string
-	Label     string
-	DeletedAt string
-	UpdatedAt string
-	CreatedAt string
+	ID                          string
+	Label                       string
+	DeletedAt                   string
+	UpdatedAt                   string
+	CreatedAt                   string
+	IsGenesis                   string
+	IsLimitedRelease            string
+	ContainsCompleteMechExactly string
 }{
-	ID:        "id",
-	Label:     "label",
-	DeletedAt: "deleted_at",
-	UpdatedAt: "updated_at",
-	CreatedAt: "created_at",
+	ID:                          "id",
+	Label:                       "label",
+	DeletedAt:                   "deleted_at",
+	UpdatedAt:                   "updated_at",
+	CreatedAt:                   "created_at",
+	IsGenesis:                   "is_genesis",
+	IsLimitedRelease:            "is_limited_release",
+	ContainsCompleteMechExactly: "contains_complete_mech_exactly",
 }
 
 var TemplateTableColumns = struct {
-	ID        string
-	Label     string
-	DeletedAt string
-	UpdatedAt string
-	CreatedAt string
+	ID                          string
+	Label                       string
+	DeletedAt                   string
+	UpdatedAt                   string
+	CreatedAt                   string
+	IsGenesis                   string
+	IsLimitedRelease            string
+	ContainsCompleteMechExactly string
 }{
-	ID:        "templates.id",
-	Label:     "templates.label",
-	DeletedAt: "templates.deleted_at",
-	UpdatedAt: "templates.updated_at",
-	CreatedAt: "templates.created_at",
+	ID:                          "templates.id",
+	Label:                       "templates.label",
+	DeletedAt:                   "templates.deleted_at",
+	UpdatedAt:                   "templates.updated_at",
+	CreatedAt:                   "templates.created_at",
+	IsGenesis:                   "templates.is_genesis",
+	IsLimitedRelease:            "templates.is_limited_release",
+	ContainsCompleteMechExactly: "templates.contains_complete_mech_exactly",
 }
 
 // Generated where
 
 var TemplateWhere = struct {
-	ID        whereHelperstring
-	Label     whereHelperstring
-	DeletedAt whereHelpernull_Time
-	UpdatedAt whereHelpertime_Time
-	CreatedAt whereHelpertime_Time
+	ID                          whereHelperstring
+	Label                       whereHelperstring
+	DeletedAt                   whereHelpernull_Time
+	UpdatedAt                   whereHelpertime_Time
+	CreatedAt                   whereHelpertime_Time
+	IsGenesis                   whereHelperbool
+	IsLimitedRelease            whereHelperbool
+	ContainsCompleteMechExactly whereHelperbool
 }{
-	ID:        whereHelperstring{field: "\"templates\".\"id\""},
-	Label:     whereHelperstring{field: "\"templates\".\"label\""},
-	DeletedAt: whereHelpernull_Time{field: "\"templates\".\"deleted_at\""},
-	UpdatedAt: whereHelpertime_Time{field: "\"templates\".\"updated_at\""},
-	CreatedAt: whereHelpertime_Time{field: "\"templates\".\"created_at\""},
+	ID:                          whereHelperstring{field: "\"templates\".\"id\""},
+	Label:                       whereHelperstring{field: "\"templates\".\"label\""},
+	DeletedAt:                   whereHelpernull_Time{field: "\"templates\".\"deleted_at\""},
+	UpdatedAt:                   whereHelpertime_Time{field: "\"templates\".\"updated_at\""},
+	CreatedAt:                   whereHelpertime_Time{field: "\"templates\".\"created_at\""},
+	IsGenesis:                   whereHelperbool{field: "\"templates\".\"is_genesis\""},
+	IsLimitedRelease:            whereHelperbool{field: "\"templates\".\"is_limited_release\""},
+	ContainsCompleteMechExactly: whereHelperbool{field: "\"templates\".\"contains_complete_mech_exactly\""},
 }
 
 // TemplateRels is where relationship names are stored.
@@ -98,9 +119,9 @@ func (*templateR) NewStruct() *templateR {
 type templateL struct{}
 
 var (
-	templateAllColumns            = []string{"id", "label", "deleted_at", "updated_at", "created_at"}
+	templateAllColumns            = []string{"id", "label", "deleted_at", "updated_at", "created_at", "is_genesis", "is_limited_release", "contains_complete_mech_exactly"}
 	templateColumnsWithoutDefault = []string{"label"}
-	templateColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at"}
+	templateColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at", "is_genesis", "is_limited_release", "contains_complete_mech_exactly"}
 	templatePrimaryKeyColumns     = []string{"id"}
 	templateGeneratedColumns      = []string{}
 )

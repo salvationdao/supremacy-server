@@ -7,12 +7,15 @@ ALTER TABLE templates
 
 CREATE TABLE templates
 (
-    id                   UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
-    label                TEXT        NOT NULL UNIQUE,
-    deleted_at           TIMESTAMPTZ,
-    updated_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    blueprint_chassis_id UUID -- this is temp column we will remove, adding to make it easier to create tables
+    id                             UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
+    label                          TEXT        NOT NULL UNIQUE,
+    deleted_at                     TIMESTAMPTZ,
+    updated_at                     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at                     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    is_genesis                     BOOL        NOT NULL DEFAULT FALSE,
+    is_limited_release             BOOL        NOT NULL DEFAULT FALSE,
+    contains_complete_mech_exactly BOOL        NOT NULL DEFAULT FALSE,
+    blueprint_chassis_id           UUID -- this is temp column we will remove, adding to make it easier to create tables
 );
 
 DROP TYPE IF EXISTS TEMPLATE_ITEM_TYPE;
@@ -32,9 +35,16 @@ WITH bm AS (SELECT bc.label AS label,
                    bc.id    AS blueprint_chassis_id
             FROM blueprint_chassis bc)
 INSERT
-INTO templates (label, blueprint_chassis_id)
-SELECT label, blueprint_chassis_id
+INTO templates (label, blueprint_chassis_id, is_genesis,
+                contains_complete_mech_exactly) -- we're setting them all as genesis here and then we're go through and set the ukarini as limited
+SELECT label, blueprint_chassis_id, TRUE, TRUE
 FROM bm;
+
+
+UPDATE templates
+SET is_genesis         = FALSE,
+    is_limited_release = TRUE
+WHERE label ILIKE '%Ukraini%';
 
 -- for each blueprint mech utility join, create a template_blueprint
 WITH bm_templates_utility AS (SELECT bc.label                  AS label,
@@ -83,6 +93,15 @@ INSERT
 INTO template_blueprints(template_id, type, blueprint_id)
 SELECT bm_templates_chassis.template_id, 'MECH', bm_templates_chassis.chassis_id
 FROM bm_templates_chassis;
+
+-- for each blueprint mech, create a template_blueprint
+WITH bm_templates AS (SELECT t.id AS template_id
+                      FROM templates t)
+INSERT
+INTO template_blueprints(template_id, type, blueprint_id)
+SELECT bm_templates.template_id, 'POWER_CORE', '62e197a4-f45e-4034-ac0a-3e625a6770d7'
+FROM bm_templates;
+
 
 -- remove temp column
 ALTER TABLE templates

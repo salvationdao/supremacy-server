@@ -605,6 +605,7 @@ func MechQueuePosition(factionID string, ownerID string) ([]*BattleQueuePosition
 func InsertNewMech(ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) (*server.Mech, error) {
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
+		fmt.Println("here0")
 		return nil, terror.Error(err)
 	}
 
@@ -613,27 +614,31 @@ func InsertNewMech(ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) (*ser
 
 	// first insert the mech
 	newMech := boiler.Mech{
-		BlueprintID:      mechBlueprint.ID,
-		BrandID:          mechBlueprint.BrandID,
-		Label:            mechBlueprint.Label,
-		WeaponHardpoints: mechBlueprint.WeaponHardpoints,
-		UtilitySlots:     mechBlueprint.UtilitySlots,
-		Speed:            mechBlueprint.Speed,
-		MaxHitpoints:     mechBlueprint.MaxHitpoints,
-		IsDefault:        false,
-		IsInsured:        false,
-		Name:             "",
-		ModelID:          mechBlueprint.ModelID,
-		PowerCoreSize:    mechBlueprint.PowerCoreSize,
+		BlueprintID:           mechBlueprint.ID,
+		BrandID:               mechBlueprint.BrandID,
+		Label:                 mechBlueprint.Label,
+		WeaponHardpoints:      mechBlueprint.WeaponHardpoints,
+		UtilitySlots:          mechBlueprint.UtilitySlots,
+		Speed:                 mechBlueprint.Speed,
+		MaxHitpoints:          mechBlueprint.MaxHitpoints,
+		IsDefault:             false,
+		IsInsured:             false,
+		Name:                  "",
+		ModelID:               mechBlueprint.ModelID,
+		PowerCoreSize:         mechBlueprint.PowerCoreSize,
+		GenesisTokenID:        mechBlueprint.GenesisTokenID,
+		LimitedReleaseTokenID: mechBlueprint.LimitedReleaseTokenID,
 	}
 
 	err = newMech.Insert(tx, boil.Infer())
 	if err != nil {
+		fmt.Println("here1")
 		return nil, terror.Error(err)
 	}
 
 	err = InsertNewCollectionItem(tx, mechBlueprint.Collection, boiler.ItemTypeMech, newMech.ID, mechBlueprint.Tier, ownerID.String())
 	if err != nil {
+		fmt.Println("here2")
 		return nil, terror.Error(err)
 	}
 
@@ -641,6 +646,7 @@ func InsertNewMech(ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) (*ser
 
 	err = tx.Commit()
 	if err != nil {
+		fmt.Println("here3")
 		return nil, terror.Error(err)
 	}
 
