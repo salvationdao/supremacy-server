@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"server/db/boiler"
@@ -10,9 +9,8 @@ import (
 	"server/helpers"
 	"strconv"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/ninja-software/terror/v2"
-
-	"github.com/go-chi/chi"
 )
 
 type AssetStatsController struct {
@@ -96,7 +94,7 @@ func (sc *AssetStatsController) GetChassisStatPercentage(w http.ResponseWriter, 
 			%s
 	    `, stat, modelCondition)
 
-	err = gamedb.Conn.QueryRow(context.Background(), q, args...).Scan(&total, &max, &min)
+	err = gamedb.StdConn.QueryRow(q, args...).Scan(&total, &max, &min)
 	if err != nil {
 		gamelog.L.Error().
 			Str("stat", stat).

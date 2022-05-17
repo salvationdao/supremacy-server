@@ -1,9 +1,11 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ninja-syndicate/ws"
 	"net/http"
 	"server"
 	"server/db"
@@ -12,11 +14,9 @@ import (
 	"server/helpers"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 	"github.com/gofrs/uuid"
-	"github.com/jackc/pgx/v4"
 	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -48,13 +48,13 @@ func (pc *PassportWebhookController) UserUpdated(w http.ResponseWriter, r *http.
 	req := &UserUpdateRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err)
+		return http.StatusInternalServerError, err
 	}
 
 	// get player
 	player, err := boiler.FindPlayer(gamedb.StdConn, req.User.ID.String())
 	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err)
+		return http.StatusInternalServerError, err
 	}
 
 	// update user
@@ -69,7 +69,6 @@ func (pc *PassportWebhookController) UserUpdated(w http.ResponseWriter, r *http.
 		if err != nil {
 			return http.StatusInternalServerError, terror.Error(err, "faction not found")
 		}
-
 		err = req.User.Faction.SetFromBoilerFaction(faction)
 		if err != nil {
 			return http.StatusInternalServerError, terror.Error(err, "Unable to convert faction, contact support or try again.")
@@ -85,10 +84,10 @@ func (pc *PassportWebhookController) UserUpdated(w http.ResponseWriter, r *http.
 		boiler.PlayerColumns.MobileNumber,
 	))
 	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err)
+		return http.StatusInternalServerError, err
 	}
 
-	pc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, player.ID)), req.User)
+	ws.PublishMessage(fmt.Sprintf("/user/%s", player.ID), HubKeyUserSubscribe, req.User)
 
 	return helpers.EncodeJSON(w, struct {
 		IsSuccess bool `json:"is_success"`
@@ -106,17 +105,17 @@ func (pc *PassportWebhookController) UserEnlistFaction(w http.ResponseWriter, r 
 	req := &UserEnlistFactionRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err)
+		return http.StatusInternalServerError, err
 	}
 
-	if req.FactionID.IsNil() || !req.FactionID.IsValid() {
+	if req.FactionID.IsNil() {
 		return http.StatusBadRequest, terror.Error(err, "Faction id is required")
 	}
 
 	// get player
 	player, err := boiler.Players(boiler.PlayerWhere.ID.EQ(req.UserID.String())).One(gamedb.StdConn)
 	if err != nil {
-		return http.StatusBadRequest, terror.Error(err)
+		return http.StatusBadRequest, err
 	}
 
 	player.FactionID = null.StringFrom(req.FactionID.String())
@@ -126,7 +125,7 @@ func (pc *PassportWebhookController) UserEnlistFaction(w http.ResponseWriter, r 
 		boiler.PlayerColumns.FactionID,
 	))
 	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err)
+		return http.StatusInternalServerError, err
 	}
 
 	user := &server.User{
@@ -152,7 +151,7 @@ func (pc *PassportWebhookController) UserEnlistFaction(w http.ResponseWriter, r 
 		return http.StatusInternalServerError, terror.Error(err, "Unable to convert faction, contact support or try again.")
 	}
 
-	pc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyUserSubscribe, player.ID)), user)
+	ws.PublishMessage(fmt.Sprintf("/user/%s", player.ID), HubKeyUserSubscribe, user)
 
 	return helpers.EncodeJSON(w, struct {
 		IsSuccess bool `json:"is_success"`
@@ -180,11 +179,10 @@ type UserStatGetRequest struct {
 }
 
 func (pc *PassportWebhookController) UserStatGet(w http.ResponseWriter, r *http.Request) (int, error) {
-
 	req := &UserSupsMultiplierGetRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err)
+		return http.StatusInternalServerError, err
 	}
 
 	if req.UserID.IsNil() {
@@ -192,7 +190,7 @@ func (pc *PassportWebhookController) UserStatGet(w http.ResponseWriter, r *http.
 	}
 
 	userStat, err := db.UserStatsGet(req.UserID.String())
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to get user stat")
 	}
 
@@ -216,7 +214,7 @@ func (pc *PassportWebhookController) FactionStatGet(w http.ResponseWriter, r *ht
 	req := &FactionStatGetRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err)
+		return http.StatusInternalServerError, err
 	}
 
 	if req.FactionID.IsNil() {
@@ -225,7 +223,7 @@ func (pc *PassportWebhookController) FactionStatGet(w http.ResponseWriter, r *ht
 
 	fs, err := boiler.FactionStats(boiler.FactionStatWhere.ID.EQ(req.FactionID.String())).One(gamedb.StdConn)
 	if err != nil {
-		return http.StatusInternalServerError, terror.Error(err)
+		return http.StatusInternalServerError, err
 	}
 
 	return helpers.EncodeJSON(w, fs)

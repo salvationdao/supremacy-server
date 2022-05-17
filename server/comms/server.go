@@ -24,12 +24,13 @@ type S struct {
 	passportRPC *rpcclient.PassportXrpcClient // rpc client to call passport server
 }
 
-func (s *XrpcServer) Listen(
-	passportRPC *rpcclient.PassportXrpcClient,
-	addrStrs ...string,
-) error {
+func (s *XrpcServer) Listen(passportRPC *rpcclient.PassportXrpcClient, startPort, numPorts int) error {
 	if passportRPC == nil {
 		return terror.Error(fmt.Errorf("passportRPC is nil"))
+	}
+	addrStrs := make([]string, numPorts)
+	for i := 0; i < numPorts; i++ {
+		addrStrs[i] = fmt.Sprintf(":%d", i+startPort)
 	}
 	if len(addrStrs) == 0 {
 		return terror.Error(fmt.Errorf("no rpc listen given, minimum of 1"))
@@ -39,12 +40,12 @@ func (s *XrpcServer) Listen(
 	for i, a := range addrStrs {
 		addy, err := net.ResolveTCPAddr("tcp", a)
 		if err != nil {
-			return terror.Error(err)
+			return err
 		}
 
 		inbound, err := net.ListenTCP("tcp", addy)
 		if err != nil {
-			return terror.Error(err)
+			return err
 		}
 
 		listener := new(S)

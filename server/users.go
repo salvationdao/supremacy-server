@@ -108,10 +108,10 @@ func (i IssueToken) TokenID() uuid.UUID {
 }
 
 type UserBrief struct {
-	ID       uuid.UUID     `json:"id"`
-	Username string        `json:"username"`
-	Gid      int           `json:"gid"`
-	Faction  *FactionBrief `json:"faction"`
+	ID       uuid.UUID       `json:"id"`
+	Username string          `json:"username"`
+	Gid      int             `json:"gid"`
+	Faction  *boiler.Faction `json:"faction"`
 }
 
 type UserSupsMultiplierSend struct {

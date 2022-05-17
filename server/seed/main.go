@@ -70,7 +70,7 @@ func main() {
 						Version,
 					)
 					if err != nil {
-						return terror.Error(err)
+						return err
 					}
 
 					seeder := NewSeeder(pgxconn)

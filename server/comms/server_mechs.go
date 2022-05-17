@@ -42,7 +42,7 @@ func (s *S) Mechs(req MechsReq, resp *MechsResp) error {
 		gamelog.L.Debug().Str("id", mech.ID).Msg("fetch mech")
 		mechContainer, err := db.Mech(mech.ID)
 		if err != nil {
-			return terror.Error(err)
+			return err
 		}
 		if mechContainer.ID == "" || mechContainer.ID == uuid.Nil.String() {
 			return terror.Error(fmt.Errorf("null ID"))
@@ -66,7 +66,7 @@ func (s *S) Mech(req MechReq, resp *MechResp) error {
 	gamelog.L.Debug().Msg("comms.Mech")
 	result, err := db.Mech(req.MechID.String())
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 
 	resp.MechContainer = ServerMechToApiV1(result)
@@ -77,7 +77,7 @@ func (s *S) MechsByOwnerID(req MechsByOwnerIDReq, resp *MechsByOwnerIDResp) erro
 	gamelog.L.Debug().Msg("comms.MechsByOwnerID")
 	result, err := db.MechsByOwnerID(req.OwnerID)
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 
 	resp.MechContainers = ServerMechsToApiV1(result)
@@ -88,11 +88,11 @@ func (s *S) MechSetName(req MechSetNameReq, resp *MechSetNameResp) error {
 	gamelog.L.Debug().Msg("comms.MechSetName")
 	err := db.MechSetName(req.MechID, req.Name)
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 	mech, err := db.Mech(req.MechID.String())
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 
 	resp.MechContainer = ServerMechToApiV1(mech)
@@ -103,11 +103,11 @@ func (s *S) MechSetOwner(req MechSetOwnerReq, resp *MechSetOwnerResp) error {
 	gamelog.L.Debug().Msg("comms.MechSetOwner")
 	err := db.MechSetOwner(req.MechID, req.OwnerID)
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 	mech, err := db.Mech(req.MechID.String())
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 
 	resp.MechContainer = ServerMechToApiV1(mech)

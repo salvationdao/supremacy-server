@@ -59,10 +59,10 @@ type WarMachineMetadata struct {
 }
 
 type WarMachineBrief struct {
-	ImageUrl    string        `json:"image_url"`
-	ImageAvatar string        `json:"image_avatar"`
-	Name        string        `json:"name"`
-	Faction     *FactionBrief `json:"faction"`
+	ImageUrl    string   `json:"image_url"`
+	ImageAvatar string   `json:"image_avatar"`
+	Name        string   `json:"name"`
+	Faction     *Faction `json:"faction"`
 }
 
 func (wm *WarMachineMetadata) Brief() *WarMachineBrief {
@@ -73,7 +73,7 @@ func (wm *WarMachineMetadata) Brief() *WarMachineBrief {
 	}
 
 	if wm.Faction != nil {
-		wmb.Faction = wm.Faction.Brief()
+		wmb.Faction = wm.Faction
 	}
 
 	return wmb

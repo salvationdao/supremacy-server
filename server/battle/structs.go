@@ -1,14 +1,10 @@
 package battle
 
 import (
-	"encoding/json"
-	"fmt"
-	"server/gamelog"
 	"server/multipliers"
 	"time"
 
 	"github.com/gofrs/uuid"
-	"github.com/ninja-syndicate/hub"
 	"github.com/sasha-s/go-deadlock"
 	"github.com/shopspring/decimal"
 )
@@ -32,25 +28,6 @@ func (u *usersMap) Range(fn func(user *BattleUser) bool) {
 		}
 	}
 	u.RUnlock()
-}
-
-func (u *usersMap) Send(key hub.HubCommandKey, payload interface{}, ids ...uuid.UUID) error {
-	u.RLock()
-	if len(ids) == 0 {
-		for _, user := range u.m {
-			user.Send(key, payload)
-		}
-	} else {
-		for _, id := range ids {
-			if user, ok := u.m[id]; ok {
-				user.Send(key, payload)
-			} else {
-				gamelog.L.Warn().Str("user_id", id.String()).Msg("tried to send user a msg but not in online map")
-			}
-		}
-	}
-	u.RUnlock()
-	return nil
 }
 
 func (u *usersMap) OnlineUserIDs() []string {
@@ -96,12 +73,9 @@ type Started struct {
 }
 
 type BattleUser struct {
-	ID            uuid.UUID `json:"id"`
-	Username      string    `json:"username"`
-	FactionColour string    `json:"faction_colour"`
-	FactionID     string    `json:"faction_id"`
-	FactionLogoID string    `json:"faction_logo_id"`
-	wsClient      map[*hub.Client]bool
+	ID        uuid.UUID `json:"id"`
+	Username  string    `json:"username"`
+	FactionID string    `json:"faction_id"`
 	deadlock.RWMutex
 }
 
@@ -119,27 +93,6 @@ var FactionLogos = map[string]string{
 
 func (bu *BattleUser) AvatarID() string {
 	return FactionLogos[bu.FactionID]
-}
-
-func (bu *BattleUser) Send(key hub.HubCommandKey, payload interface{}) error {
-	bu.Lock()
-	defer bu.Unlock()
-	if bu.wsClient == nil || len(bu.wsClient) == 0 {
-		return fmt.Errorf("user does not have a websocket client")
-	}
-	b, err := json.Marshal(&BroadcastPayload{
-		Key:     key,
-		Payload: payload,
-	})
-
-	if err != nil {
-		return err
-	}
-
-	for wsc := range bu.wsClient {
-		go wsc.Send(b)
-	}
-	return nil
 }
 
 type BattleEndDetail struct {
@@ -167,11 +120,11 @@ type MultiplierUpdateBattles struct {
 }
 
 type Faction struct {
-	ID         string `json:"id"`
-	Label      string `json:"label"`
-	Primary    string `json:"primary_color"`
-	Secondary  string `json:"secondary_color"`
-	Background string `json:"background_color"`
+	ID              string `json:"id"`
+	Label           string `json:"label"`
+	PrimaryColor    string `json:"primary_color"`
+	SecondaryColor  string `json:"secondary_color"`
+	BackgroundColor string `json:"background_color"`
 }
 
 type Stat struct {
@@ -210,9 +163,9 @@ type WarMachineBrief struct {
 }
 
 type FactionBrief struct {
-	ID         string        `json:"id"`
-	Label      string        `json:"label"`
-	LogoBlobID string        `json:"logo_blob_id,omitempty"`
+	ID         string `json:"id"`
+	Label      string `json:"label"`
+	LogoBlobID string `json:"logo_blob_id,omitempty"`
 	Primary    string `json:"primary_color"`
 	Secondary  string `json:"secondary_color"`
 	Background string `json:"background_color"`

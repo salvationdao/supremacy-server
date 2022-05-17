@@ -6,8 +6,6 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"strings"
-
-	"github.com/ninja-software/terror/v2"
 )
 
 type AssetOnChainStatusReq struct {
@@ -28,23 +26,23 @@ func (pp *PassportXrpcClient) AssetOnChainStatus(assetID string) (server.OnChain
 			oldMech, err := boiler.MechsOlds(boiler.MechsOldWhere.ChassisID.EQ(assetID)).One(gamedb.StdConn)
 			if err != nil {
 				gamelog.L.Err(err).Str("assetID", assetID).Str("method", "AssetOnChainStatusHandler").Msg("rpc error - boiler.MechsOlds")
-				return "", terror.Error(err)
+				return "", err
 			}
 			_, err = pp.UpdateAssetID(oldMech.ID, assetID)
 			if err != nil {
-				return "", terror.Error(err)
+				return "", err
 			}
 
 			// now retry!
 			err = pp.XrpcClient.Call("S.AssetOnChainStatusHandler", AssetOnChainStatusReq{AssetID: assetID}, resp)
 			if err != nil {
 				gamelog.L.Err(err).Str("assetID", assetID).Str("method", "AssetOnChainStatusHandler").Msg("rpc error")
-				return "", terror.Error(err)
+				return "", err
 			}
 			return resp.OnChainStatus, nil
 		}
 		gamelog.L.Err(err).Str("assetID", assetID).Str("method", "AssetOnChainStatusHandler").Msg("rpc error")
-		return "", terror.Error(err)
+		return "", err
 	}
 	return resp.OnChainStatus, nil
 }
@@ -63,7 +61,7 @@ func (pp *PassportXrpcClient) AssetsOnChainStatus(assetIDs []string) (map[string
 	err := pp.XrpcClient.Call("S.AssetsOnChainStatusHandler", AssetsOnChainStatusReq{assetIDs}, resp)
 	if err != nil {
 		gamelog.L.Err(err).Str("assetIDes", strings.Join(assetIDs, ", ")).Str("method", "AssetsOnChainStatusHandler").Msg("rpc error")
-		return nil, terror.Error(err)
+		return nil, err
 	}
 
 	return resp.OnChainStatuses, nil
@@ -87,7 +85,7 @@ func (pp *PassportXrpcClient) UpdateAssetID(oldAssetID, assetID string) (string,
 	}, resp)
 	if err != nil {
 		gamelog.L.Err(err).Str("assetID", assetID).Str("oldAssetID", oldAssetID).Str("method", "UpdateAssetIDHandler").Msg("rpc error")
-		return "", terror.Error(err)
+		return "", err
 	}
 
 	return resp.AssetID, nil
@@ -109,7 +107,7 @@ func (pp *PassportXrpcClient) UpdateAssetsID(assetsToUpdate []*UpdateAssetIDReq)
 	}, resp)
 	if err != nil {
 		gamelog.L.Err(err).Interface("assetsToUpdate", assetsToUpdate).Str("method", "UpdateAssetsIDHandler").Msg("rpc error")
-		return terror.Error(err)
+		return err
 	}
 
 	return nil
@@ -136,7 +134,7 @@ func (pp *PassportXrpcClient) UpdateStoreItemIDs(assetsToUpdate []*TemplatesToUp
 	}, resp)
 	if err != nil {
 		gamelog.L.Err(err).Interface("assetsToUpdate", assetsToUpdate).Str("method", "UpdateStoreItemIDsHandler").Msg("rpc error")
-		return terror.Error(err)
+		return err
 	}
 
 	return nil

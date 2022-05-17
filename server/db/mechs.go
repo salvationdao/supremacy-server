@@ -1,20 +1,17 @@
 package db
 
 import (
-	"context"
 	"errors"
 	"fmt"
+	"github.com/gofrs/uuid"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 	"strconv"
-	"time"
 
 	"github.com/ninja-software/terror/v2"
-
-	"github.com/gofrs/uuid"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
 func MechsByOwnerID(ownerID uuid.UUID) ([]*server.Mech, error) {
@@ -80,12 +77,11 @@ func TemplatePurchasedCount(templateID uuid.UUID) (int, error) {
 }
 
 func DefaultMechs() ([]*server.Mech, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
-	defer cancel()
 	idq := `SELECT id FROM mechs WHERE is_default=true`
 
-	result, err := gamedb.Conn.Query(ctx, idq)
+	result, err := gamedb.StdConn.Query(idq)
 	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to query default mechs")
 		return nil, err
 	}
 	defer result.Close()
@@ -225,10 +221,7 @@ func Mech(mechID string) (*server.Mech, error) {
 		WHERE m.id = $1
 		`
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
-	defer cancel()
-
-	result, err := gamedb.Conn.Query(ctx, query, mechID)
+	result, err := gamedb.StdConn.Query(query, mechID)
 	if err != nil {
 		return nil, err
 	}
@@ -278,7 +271,6 @@ func Mech(mechID string) (*server.Mech, error) {
 			return nil, err
 		}
 	}
-	result.Close()
 
 	if mc.ID == "" {
 		return nil, fmt.Errorf("unable to find mech with id %s", mechID)
@@ -412,10 +404,7 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.Mech, error) {
 		ORDER BY p.faction_id 
 		`
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
-	defer cancel()
-
-	result, err := gamedb.Conn.Query(ctx, query, mechids...)
+	result, err := gamedb.StdConn.Query(query, mechids...)
 	if err != nil {
 		return nil, err
 	}
@@ -484,7 +473,7 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.Mech, error) {
 func MechIDFromHash(hash string) (uuid.UUID, error) {
 	q := `SELECT item_id FROM collection_items WHERE hash = $1`
 	var id string
-	err := gamedb.Conn.QueryRow(context.Background(), q, hash).
+	err := gamedb.StdConn.QueryRow(q, hash).
 		Scan(&id)
 	if err != nil {
 		return uuid.Nil, err
@@ -513,7 +502,7 @@ func MechIDsFromHash(hashes ...string) ([]uuid.UUID, error) {
 			FROM collection_items ci
 			WHERE ci.hash IN (` + paramrefs + `)`
 
-	result, err := gamedb.Conn.Query(context.Background(), q, idintf...)
+	result, err := gamedb.StdConn.Query(q, idintf...)
 	if err != nil {
 		return nil, err
 	}
@@ -583,7 +572,7 @@ func MechQueuePosition(factionID string, ownerID string) ([]*BattleQueuePosition
 
 	result, err := gamedb.StdConn.Query(q, factionID, ownerID)
 	if err != nil {
-		return nil, terror.Error(err)
+		return nil, err
 	}
 
 	mqp := []*BattleQueuePosition{}
@@ -591,7 +580,7 @@ func MechQueuePosition(factionID string, ownerID string) ([]*BattleQueuePosition
 		qp := &BattleQueuePosition{}
 		err = result.Scan(&qp.MechID, &qp.QueuePosition, &qp.BattleContractID)
 		if err != nil {
-			return nil, terror.Error(err)
+			return nil, err
 		}
 
 		mqp = append(mqp, qp)

@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"github.com/ninja-syndicate/ws"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -89,7 +90,8 @@ func (ap *ActivePlayers) debounceBroadcastActivePlayers() {
 			timer.Reset(interval)
 		case <-timer.C:
 			if result != nil {
-				ap.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionActivePlayersSubscribe, ap.FactionID)), result.Players)
+				ws.PublishMessage(fmt.Sprintf("/faction/%s", ap.FactionID), HubKeyFactionActivePlayersSubscribe, result.Players)
+				result = nil
 			}
 		}
 	}

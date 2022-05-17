@@ -1,7 +1,6 @@
 package db
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"server"
@@ -111,7 +110,7 @@ func UserStatAddAbilityKill(playerID string) (*boiler.PlayerStat, error) {
 	userStat, err := UserStatQuery(playerID)
 	if err != nil {
 		gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to query user stat")
-		return nil, terror.Error(err)
+		return nil, err
 	}
 
 	userStat.AbilityKillCount += 1
@@ -119,7 +118,7 @@ func UserStatAddAbilityKill(playerID string) (*boiler.PlayerStat, error) {
 	_, err = userStat.Update(gamedb.StdConn, boil.Whitelist(boiler.PlayerStatColumns.AbilityKillCount))
 	if err != nil {
 		gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to update user kill count")
-		return nil, terror.Error(err)
+		return nil, err
 	}
 
 	return userStat, nil
@@ -129,7 +128,7 @@ func UserStatSubtractAbilityKill(playerID string) (*boiler.PlayerStat, error) {
 	userStat, err := UserStatQuery(playerID)
 	if err != nil {
 		gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to query user stat")
-		return nil, terror.Error(err)
+		return nil, err
 	}
 
 	userStat.AbilityKillCount -= 1
@@ -137,7 +136,7 @@ func UserStatSubtractAbilityKill(playerID string) (*boiler.PlayerStat, error) {
 	_, err = userStat.Update(gamedb.StdConn, boil.Whitelist(boiler.PlayerStatColumns.AbilityKillCount))
 	if err != nil {
 		gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to update user kill count")
-		return nil, terror.Error(err)
+		return nil, err
 	}
 
 	return userStat, nil
@@ -147,7 +146,7 @@ func UserStatAddMechKill(playerID string) (*boiler.PlayerStat, error) {
 	userStat, err := UserStatQuery(playerID)
 	if err != nil {
 		gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to query user stat")
-		return nil, terror.Error(err)
+		return nil, err
 	}
 
 	userStat.MechKillCount += 1
@@ -155,7 +154,7 @@ func UserStatAddMechKill(playerID string) (*boiler.PlayerStat, error) {
 	_, err = userStat.Update(gamedb.StdConn, boil.Whitelist(boiler.PlayerStatColumns.MechKillCount))
 	if err != nil {
 		gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to update user kill count")
-		return nil, terror.Error(err)
+		return nil, err
 	}
 
 	return userStat, nil
@@ -165,7 +164,7 @@ func UserStatAddTotalAbilityTriggered(playerID string) (*boiler.PlayerStat, erro
 	userStat, err := UserStatQuery(playerID)
 	if err != nil {
 		gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to query user stat")
-		return nil, terror.Error(err)
+		return nil, err
 	}
 
 	userStat.TotalAbilityTriggered += 1
@@ -173,7 +172,7 @@ func UserStatAddTotalAbilityTriggered(playerID string) (*boiler.PlayerStat, erro
 	_, err = userStat.Update(gamedb.StdConn, boil.Whitelist(boiler.PlayerStatColumns.TotalAbilityTriggered))
 	if err != nil {
 		gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to update user total ability triggered")
-		return nil, terror.Error(err)
+		return nil, err
 	}
 
 	return userStat, nil
@@ -183,7 +182,7 @@ func UserStatAddViewBattleCount(playerID string) (*boiler.PlayerStat, error) {
 	userStat, err := UserStatQuery(playerID)
 	if err != nil {
 		gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to query user stat")
-		return nil, terror.Error(err)
+		return nil, err
 	}
 
 	userStat.ViewBattleCount += 1
@@ -191,7 +190,7 @@ func UserStatAddViewBattleCount(playerID string) (*boiler.PlayerStat, error) {
 	_, err = userStat.Update(gamedb.StdConn, boil.Whitelist(boiler.PlayerStatColumns.ViewBattleCount))
 	if err != nil {
 		gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to update user view battle count")
-		return nil, terror.Error(err)
+		return nil, err
 	}
 
 	return userStat, nil
@@ -205,7 +204,7 @@ func UserStatQuery(playerID string) (*boiler.PlayerStat, error) {
 		userStat, err = UserStatCreate(playerID)
 		if err != nil {
 			gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to insert user stat")
-			return nil, terror.Error(err)
+			return nil, err
 		}
 	}
 
@@ -220,7 +219,7 @@ func UserStatCreate(playerID string) (*boiler.PlayerStat, error) {
 	err := userStat.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {
 		gamelog.L.Error().Str("player_id", playerID).Err(err).Msg("Failed to insert user stat")
-		return nil, terror.Error(err)
+		return nil, err
 	}
 
 	return userStat, nil
@@ -234,10 +233,8 @@ func PlayerFactionContributionList(battleID string, factionID string, abilityOff
 			group by player_id
 		order by sum(amount) desc 
 	`
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
-	defer cancel()
 
-	result, err := gamedb.Conn.Query(ctx, q, battleID, factionID, abilityOfferingID)
+	result, err := gamedb.StdConn.Query(q, battleID, factionID, abilityOfferingID)
 	if err != nil {
 		gamelog.L.Error().Str("battle_id", battleID).Str("faction_id", factionID).Err(err).Msg("failed to get player list from db")
 		return []uuid.UUID{}, err
@@ -268,9 +265,9 @@ func PlayerFactionContributionList(battleID string, factionID string, abilityOff
 }
 
 // GetPositivePlayerAbilityKillByFactionID return player ability kill by given faction id
-func GetPositivePlayerAbilityKillByFactionID(factionID server.FactionID) ([]*server.PlayerAbilityKills, error) {
+func GetPositivePlayerAbilityKillByFactionID(factionID string) ([]*server.PlayerAbilityKills, error) {
 	abilityKills, err := boiler.PlayerKillLogs(
-		boiler.PlayerKillLogWhere.FactionID.EQ(factionID.String()),
+		boiler.PlayerKillLogWhere.FactionID.EQ(factionID),
 		boiler.PlayerKillLogWhere.CreatedAt.GT(time.Now().AddDate(0, 0, -7)),
 	).All(gamedb.StdConn)
 	if err != nil {
@@ -299,7 +296,7 @@ func GetPositivePlayerAbilityKillByFactionID(factionID server.FactionID) ([]*ser
 			continue
 		}
 
-		playerAbilityKills = append(playerAbilityKills, &server.PlayerAbilityKills{playerID, factionID.String(), killCount})
+		playerAbilityKills = append(playerAbilityKills, &server.PlayerAbilityKills{playerID, factionID, killCount})
 	}
 
 	return playerAbilityKills, nil

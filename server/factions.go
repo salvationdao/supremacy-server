@@ -1,41 +1,38 @@
 package server
 
 import (
-	"fmt"
 	"server/db/boiler"
-
-	"github.com/ninja-software/terror/v2"
 
 	"github.com/gofrs/uuid"
 )
 
 type Faction struct {
-	ID             FactionID `json:"id" db:"id"`
-	Label          string    `json:"label" db:"label"`
-	VotePrice      string    `json:"vote_price" db:"vote_price"`
-	ContractReward string    `json:"contract_reward" db:"contract_reward"`
-	Primary        string    `json:"primary_color"`
-	Secondary      string    `json:"secondary_color"`
-	Background     string    `json:"background_color"`
+	ID              string `json:"id" db:"id"`
+	Label           string `json:"label" db:"label"`
+	VotePrice       string `json:"vote_price" db:"vote_price"`
+	ContractReward  string `json:"contract_reward" db:"contract_reward"`
+	PrimaryColor    string `json:"primary_color"`
+	SecondaryColor  string `json:"secondary_color"`
+	BackgroundColor string `json:"background_color"`
 }
 
-var RedMountainFactionID = FactionID(uuid.Must(uuid.FromString("98bf7bb3-1a7c-4f21-8843-458d62884060")))
-var BostonCyberneticsFactionID = FactionID(uuid.Must(uuid.FromString("7c6dde21-b067-46cf-9e56-155c88a520e2")))
-var ZaibatsuFactionID = FactionID(uuid.Must(uuid.FromString("880db344-e405-428d-84e5-6ebebab1fe6d")))
+var RedMountainFactionID = "98bf7bb3-1a7c-4f21-8843-458d62884060"
+var BostonCyberneticsFactionID = "7c6dde21-b067-46cf-9e56-155c88a520e2"
+var ZaibatsuFactionID = "880db344-e405-428d-84e5-6ebebab1fe6d"
 
 var RedMountainPlayerID = "305da475-53dc-4973-8d78-a30d390d3de5"
 var BostonCyberneticsPlayerID = "15f29ee9-e834-4f76-aff8-31e39faabe2d"
 var ZaibatsuPlayerID = "1a657a32-778e-4612-8cc1-14e360665f2b"
 
 var FactionUsers = map[string]string{
-	RedMountainFactionID.String():       RedMountainPlayerID,
-	BostonCyberneticsFactionID.String(): BostonCyberneticsPlayerID,
-	ZaibatsuFactionID.String():          ZaibatsuPlayerID,
+	RedMountainFactionID:       RedMountainPlayerID,
+	BostonCyberneticsFactionID: BostonCyberneticsPlayerID,
+	ZaibatsuFactionID:          ZaibatsuPlayerID,
 }
 
 func (f *Faction) ToBoilerFaction() *boiler.Faction {
 	newFaction := &boiler.Faction{
-		ID:             f.ID.String(),
+		ID:             f.ID,
 		VotePrice:      f.VotePrice,
 		ContractReward: f.ContractReward,
 		Label:          f.Label,
@@ -43,34 +40,41 @@ func (f *Faction) ToBoilerFaction() *boiler.Faction {
 		//DeletedAt:,
 		//UpdatedAt:,
 		//CreatedAt:,
-		PrimaryColor:    f.Primary,
-		SecondaryColor:  f.Secondary,
-		BackgroundColor: f.Background,
+		PrimaryColor:    f.PrimaryColor,
+		SecondaryColor:  f.SecondaryColor,
+		BackgroundColor: f.BackgroundColor,
 	}
 	return newFaction
+}
+
+func FactionFromBoiler(bf *boiler.Faction) *Faction {
+	return &Faction{
+		ID:              bf.ID,
+		Label:           bf.Label,
+		PrimaryColor:    bf.PrimaryColor,
+		SecondaryColor:  bf.SecondaryColor,
+		BackgroundColor: bf.BackgroundColor,
+		VotePrice:       bf.VotePrice,
+		ContractReward:  bf.ContractReward,
+	}
 }
 
 func (f *Faction) SetFromBoilerFaction(bf *boiler.Faction) error {
 	//f.LogoBlobID = bf. ?
 	//f.BackgroundBlobID = bf. ?
-
-	uuidFromString, err := uuid.FromString(bf.ID)
-	if err != nil {
-		return terror.Error(err, fmt.Sprintf("unable to parse %s to uuid", bf.ID))
-	}
-	f.ID = FactionID(uuidFromString)
+	f.ID = bf.ID
 	f.Label = bf.Label
-	f.Primary = bf.PrimaryColor
-	f.Secondary = bf.SecondaryColor
-	f.Background = bf.BackgroundColor
+	f.PrimaryColor = bf.PrimaryColor
+	f.SecondaryColor = bf.SecondaryColor
+	f.BackgroundColor = bf.BackgroundColor
 	f.VotePrice = bf.VotePrice
 	f.ContractReward = bf.ContractReward
 	return nil
 }
 
 type FactionBrief struct {
-	Label      string        `json:"label"`
-	LogoBlobID BlobID        `json:"logo_blob_id,omitempty"`
+	Label      string `json:"label"`
+	LogoBlobID BlobID `json:"logo_blob_id,omitempty"`
 	//Theme      *FactionTheme `json:"theme"`
 }
 
