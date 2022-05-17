@@ -106,7 +106,7 @@ func (api *API) XSYNAuth(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	err = api.WriteCookie(w, token)
+	err = api.WriteCookie(w, resp.Token)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -148,7 +148,15 @@ func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, e
 
 	// check user from token
 	player, err := api.TokenLogin(token)
+
 	if err != nil {
+		if errors.Is(err, errors.New("session is expired")) {
+			err := api.DeleteCookie(w)
+			if err != nil {
+				return http.StatusInternalServerError, err
+			}
+			return http.StatusBadRequest, terror.Error(err, "Session is expired")
+		}
 		return http.StatusBadRequest, terror.Error(err, "Failed to authentication")
 	}
 
