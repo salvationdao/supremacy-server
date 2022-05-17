@@ -3,11 +3,6 @@ package api
 import (
 	"database/sql"
 	"fmt"
-	"github.com/friendsofgo/errors"
-	"github.com/go-chi/chi/v5"
-	"github.com/ninja-software/terror/v2"
-	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 	"net/http"
 	"server/db/boiler"
 	"server/gamedb"
@@ -15,6 +10,11 @@ import (
 	"server/helpers"
 	"time"
 
+	"github.com/friendsofgo/errors"
+	"github.com/go-chi/chi/v5"
+	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
 func AuthRouter(api *API) chi.Router {
