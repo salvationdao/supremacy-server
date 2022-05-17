@@ -335,26 +335,21 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 		}
 		utilities = append(utilities, insertedUtility)
 	}
-	fmt.Println("trying to join shit")
+
 	// if it contains a complete mech, lets build the mech!
 	if tmpl.ContainsCompleteMechExactly {
-		fmt.Println("joining 1")
 		// join power core
 		err = AttachPowerCoreToMech(ownerID.String(), mechs[0].ID, powerCores[0].ID)
 		if err != nil {
-			fmt.Println("joining 1.5")
-
 			gamelog.L.Error().Err(err).
 				Str("ownerID.String()", ownerID.String()).
 				Str("mechs[0].ID", mechs[0].ID).
 				Str("powerCores[0].ID", powerCores[0].ID).
 				Msg("failed to join powercore to mech")
 		}
-		fmt.Println("joining 2")
 		// join skin
 		err = AttachMechSkinToMech(ownerID.String(), mechs[0].ID, mechSkins[0].ID)
 		if err != nil {
-			fmt.Println("joining 2.5")
 			gamelog.L.Error().Err(err).
 				Str("ownerID.String()", ownerID.String()).
 				Str("mechs[0].ID", mechs[0].ID).
@@ -364,13 +359,10 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 		// join animations
 		// TODO: no animations yet
 		// join weapons
-		fmt.Println("joining 3")
 		for i := 0; i < mechs[0].WeaponHardpoints; i++ {
-			fmt.Println("joining 3.25")
 			if len(weapons) > i {
 				err = AttachWeaponToMech(ownerID.String(), mechs[0].ID, weapons[i].ID)
 				if err != nil {
-					fmt.Println("joining 3.5")
 					gamelog.L.Error().Err(err).
 						Str("ownerID.String()", ownerID.String()).
 						Str("mechs[0].ID", mechs[0].ID).
@@ -380,14 +372,11 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 				}
 			}
 		}
-		fmt.Println("joining 4")
 		// join utility
 		for i := 0; i < mechs[0].UtilitySlots; i++ {
-			fmt.Println("joining 4.25")
 			if utilities[i] != nil {
 				err = AttachUtilityToMech(ownerID.String(), mechs[0].ID, utilities[i].ID)
 				if err != nil {
-					fmt.Println("joining 4.5")
 					gamelog.L.Error().Err(err).
 						Str("ownerID.String()", ownerID.String()).
 						Str("mechs[0].ID", mechs[0].ID).
