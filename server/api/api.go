@@ -11,7 +11,6 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"server/helpers"
 	"server/player_abilities"
 	"server/rpcclient"
 	"time"
@@ -205,8 +204,7 @@ func NewAPI(
 		r.Delete("/video_server", WithToken(config.ServerStreamKey, WithError(api.DeleteStreamHandler)))
 		r.Post("/close_stream", WithToken(config.ServerStreamKey, WithError(api.CreateStreamCloseHandler)))
 		r.Mount("/faction", FactionRouter(api))
-		r.Get("/auth/xsyn", api.XSYNAuth)
-		r.Get("/auth/check", WithError(api.AuthCheckHandler))
+		r.Mount("/auth", AuthRouter(api))
 
 		r.Mount("/battle", BattleRouter(battleArenaClient))
 		r.Post("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.GlobalAnnouncementSend)))
@@ -316,46 +314,6 @@ func (api *API) Close() {
 	if err != nil {
 		gamelog.L.Warn().Err(err).Msg("")
 	}
-}
-
-func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, error) {
-	cookie, err := r.Cookie("xsyn-token")
-	if err != nil {
-		// check whether token is attached
-		gamelog.L.Debug().Msg("Cookie not found")
-
-		token := r.URL.Query().Get("token")
-		if token == "" {
-			return http.StatusBadRequest, terror.Warn(fmt.Errorf("no cookie and token are provided"), "Player are not signed in.")
-		}
-
-		// check user from token
-		player, err := api.TokenLogin(token)
-		if err != nil {
-			return http.StatusBadRequest, terror.Error(err, "Failed to authentication")
-		}
-
-		// write cookie
-		err = api.WriteCookie(w, token)
-		if err != nil {
-			return http.StatusInternalServerError, terror.Error(err, "Failed to write cookie")
-		}
-
-		return helpers.EncodeJSON(w, player)
-	}
-
-	var token string
-	if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
-		return http.StatusBadRequest, terror.Error(err, "Failed to decrypt token")
-	}
-
-	// check user from token
-	player, err := api.TokenLogin(token)
-	if err != nil {
-		return http.StatusBadRequest, terror.Error(err, "Failed to authentication")
-	}
-
-	return helpers.EncodeJSON(w, player)
 }
 
 /**********************
