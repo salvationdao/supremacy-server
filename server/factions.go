@@ -1,19 +1,10 @@
 package server
 
 import (
-	"fmt"
 	"server/db/boiler"
-
-	"github.com/ninja-software/terror/v2"
 
 	"github.com/gofrs/uuid"
 )
-
-type FactionTheme struct {
-	Primary    string `json:"primary"`
-	Secondary  string `json:"secondary"`
-	Background string `json:"background"`
-}
 
 var RedMountainFactionID = FactionID(uuid.Must(uuid.FromString("98bf7bb3-1a7c-4f21-8843-458d62884060")))
 var BostonCyberneticsFactionID = FactionID(uuid.Must(uuid.FromString("7c6dde21-b067-46cf-9e56-155c88a520e2")))
@@ -30,63 +21,20 @@ var FactionUsers = map[string]string{
 }
 
 type Faction struct {
-	ID               FactionID     `json:"id" db:"id"`
-	Label            string        `json:"label" db:"label"`
-	Theme            *FactionTheme `json:"theme" db:"theme"`
-	LogoBlobID       BlobID        `json:"logo_blob_id,omitempty"`
-	BackgroundBlobID BlobID        `json:"background_blob_id,omitempty"`
-	VotePrice        string        `json:"vote_price" db:"vote_price"`
-	ContractReward   string        `json:"contract_reward" db:"contract_reward"`
-	Description      string        `json:"description" db:"description"`
-}
-
-func (f *Faction) ToBoilerFaction() *boiler.Faction {
-	newFaction := &boiler.Faction{
-		ID:             f.ID.String(),
-		VotePrice:      f.VotePrice,
-		ContractReward: f.ContractReward,
-		Label:          f.Label,
-		//GuildID: , ?
-		//DeletedAt:,
-		//UpdatedAt:,
-		//CreatedAt:,
-		PrimaryColor:    f.Theme.Primary,
-		SecondaryColor:  f.Theme.Secondary,
-		BackgroundColor: f.Theme.Background,
-	}
-	return newFaction
+	*boiler.Faction
 }
 
 func (f *Faction) SetFromBoilerFaction(bf *boiler.Faction) error {
 	//f.LogoBlobID = bf. ?
 	//f.BackgroundBlobID = bf. ?
-
-	uuidFromString, err := uuid.FromString(bf.ID)
-	if err != nil {
-		return terror.Error(err, fmt.Sprintf("unable to parse %s to uuid", bf.ID))
-	}
-	f.ID = FactionID(uuidFromString)
+	f.ID = bf.ID
 	f.Label = bf.Label
-	f.Theme = &FactionTheme{
-		bf.PrimaryColor, bf.SecondaryColor, bf.BackgroundColor,
-	}
+	f.PrimaryColor = bf.PrimaryColor
+	f.SecondaryColor = bf.SecondaryColor
+	f.BackgroundColor = bf.BackgroundColor
 	f.VotePrice = bf.VotePrice
 	f.ContractReward = bf.ContractReward
 	return nil
-}
-
-type FactionBrief struct {
-	Label      string        `json:"label"`
-	LogoBlobID BlobID        `json:"logo_blob_id,omitempty"`
-	Theme      *FactionTheme `json:"theme"`
-}
-
-func (f *Faction) Brief() *FactionBrief {
-	return &FactionBrief{
-		Label:      f.Label,
-		LogoBlobID: f.LogoBlobID,
-		Theme:      f.Theme,
-	}
 }
 
 type FactionStat struct {

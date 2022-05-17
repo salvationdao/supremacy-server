@@ -12,6 +12,8 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 
+	"github.com/ninja-syndicate/ws"
+
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 )
@@ -40,7 +42,7 @@ type BattleMechHistoryDetailedRequest struct {
 	} `json:"payload"`
 }
 
-func (bc *BattleControllerWS) BattleMechHistoryDetailedHandler(ctx context.Context, hub *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (bc *BattleControllerWS) BattleMechHistoryDetailedHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &BattleMechHistoryDetailedRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -53,7 +55,7 @@ func (bc *BattleControllerWS) BattleMechHistoryDetailedHandler(ctx context.Conte
 		return terror.Error(fmt.Errorf("battle ID or mech ID was not provided in request payload"), "Unable to retrieve battle mech history, please try again or contact support.")
 	}
 
-	battleMechDetailed, err := db.BattleMechGet(ctx, gamedb.Conn, req.Payload.BattleID, req.Payload.MechID)
+	battleMechDetailed, err := db.BattleMechGet(req.Payload.BattleID, req.Payload.MechID)
 	if err != nil {
 		gamelog.L.Error().
 			Str("db func", "BattleMechGet").Interface("request payload", req.Payload).Err(err).Msg("unable to get battle mech history details")
@@ -74,12 +76,22 @@ type BattleMechHistoryRequest struct {
 	} `json:"payload"`
 }
 
+type BattleDetailed struct {
+	*boiler.Battle `json:"battle"`
+	GameMap        *boiler.GameMap `json:"game_map"`
+}
+
+type BattleMechDetailed struct {
+	*boiler.BattleMech
+	Battle *BattleDetailed `json:"battle"`
+}
+
 type BattleMechHistoryResponse struct {
 	Total            int64                     `json:"total"`
 	BattleHistoryIDs []db.BattleMechIdentifier `json:"battle_history_ids"`
 }
 
-func (bc *BattleControllerWS) BattleMechHistoryListHandler(ctx context.Context, hub *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (bc *BattleControllerWS) BattleMechHistoryListHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &BattleMechHistoryRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -91,7 +103,7 @@ func (bc *BattleControllerWS) BattleMechHistoryListHandler(ctx context.Context, 
 		offset = req.Payload.Page * req.Payload.PageSize
 	}
 
-	total, battleMechIDs, err := db.BattleMechsList(ctx, gamedb.Conn, req.Payload.Filter, req.Payload.Sort, offset, req.Payload.PageSize)
+	total, battleMechIDs, err := db.BattleMechsList(req.Payload.Filter, req.Payload.Sort, offset, req.Payload.PageSize)
 	if err != nil {
 		gamelog.L.Error().
 			Str("db func", "SaleAbilitiesList").Err(err).Interface("arguments", req.Payload).Msg("unable to get list of sale abilities")
@@ -124,7 +136,7 @@ type BattleMechStatsResponse struct {
 	ExtraStats BattleMechExtraStats `json:"extra_stats"`
 }
 
-func (bc *BattleControllerWS) BattleMechStatsHandler(ctx context.Context, hub *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+func (bc *BattleControllerWS) BattleMechStatsHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &BattleMechStatsRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -137,7 +149,7 @@ func (bc *BattleControllerWS) BattleMechStatsHandler(ctx context.Context, hub *h
 		return nil
 	}
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 
 	var total int
@@ -145,7 +157,7 @@ func (bc *BattleControllerWS) BattleMechStatsHandler(ctx context.Context, hub *h
 	var minKills int
 	var maxSurvives int
 	var minSurvives int
-	err = gamedb.Conn.QueryRow(context.Background(), `
+	err = gamedb.StdConn.QueryRow(`
 	SELECT
 		count(mech_id),
 		max(total_kills),

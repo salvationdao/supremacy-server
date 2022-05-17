@@ -5,10 +5,8 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 
-	"github.com/georgysavva/scany/pgxscan"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
-	"golang.org/x/net/context"
 )
 
 type (
@@ -69,13 +67,11 @@ type SaleAbilityDetailed struct {
 }
 
 func SaleAbilityGet(
-	ctx context.Context,
-	conn pgxscan.Querier,
 	abilityID string,
 ) (*SaleAbilityDetailed, error) {
 	spa, err := boiler.SalePlayerAbilities(boiler.SalePlayerAbilityWhere.ID.EQ(abilityID), qm.Load(boiler.SalePlayerAbilityRels.Blueprint)).One(gamedb.StdConn)
 	if err != nil {
-		return nil, terror.Error(err)
+		return nil, err
 	}
 
 	result := SaleAbilityDetailed{
@@ -89,8 +85,6 @@ func SaleAbilityGet(
 // SaleAbilitiesList returns a list of IDs from the sale_player_abilities table.
 // Filter and sorting options can be passed in to manipulate the end result.
 func SaleAbilitiesList(
-	ctx context.Context,
-	conn pgxscan.Querier,
 	search string,
 	filter *ListFilterRequest,
 	sort *ListSortRequest,
@@ -107,13 +101,13 @@ func SaleAbilitiesList(
 					column := BlueprintPlayerAbilityColumn(f.Column)
 					err := column.IsValid()
 					if err != nil {
-						return 0, nil, terror.Error(err)
+						return 0, nil, err
 					}
 				} else if *f.Table == boiler.TableNames.SalePlayerAbilities {
 					column := SalePlayerAbilityColumn(f.Column)
 					err := column.IsValid()
 					if err != nil {
-						return 0, nil, terror.Error(err)
+						return 0, nil, err
 					}
 				}
 			}
@@ -150,13 +144,13 @@ func SaleAbilitiesList(
 				column := BlueprintPlayerAbilityColumn(sort.Column)
 				err := column.IsValid()
 				if err != nil {
-					return 0, nil, terror.Error(err)
+					return 0, nil, err
 				}
 			} else if *sort.Table == boiler.TableNames.SalePlayerAbilities {
 				column := SalePlayerAbilityColumn(sort.Column)
 				err := column.IsValid()
 				if err != nil {
-					return 0, nil, terror.Error(err)
+					return 0, nil, err
 				}
 			}
 			sortColumn = fmt.Sprintf("%s.%s", *sort.Table, sort.Column)
@@ -180,7 +174,7 @@ func SaleAbilitiesList(
 		queryMods...,
 	).All(gamedb.StdConn)
 	if err != nil {
-		return 0, nil, terror.Error(err)
+		return 0, nil, err
 	}
 
 	sIDs := make([]string, 0)
@@ -199,8 +193,6 @@ type TalliedPlayerAbility struct {
 // PlayerAbilitiesList returns a list of IDs from the player_abilities table.
 // Filter and sorting options can be passed in to manipulate the end result.
 func PlayerAbilitiesList(
-	ctx context.Context,
-	conn pgxscan.Querier,
 	search string,
 	filter *ListFilterRequest,
 	offset int,
@@ -219,7 +211,7 @@ func PlayerAbilitiesList(
 			column := PlayerAbilityColumn(f.Column)
 			err := column.IsValid()
 			if err != nil {
-				return 0, nil, terror.Error(err)
+				return 0, nil, err
 			}
 			queryMod := GenerateListFilterQueryMod(*f, i, filter.LinkOperator)
 			queryMods = append(queryMods, queryMod)
@@ -274,7 +266,7 @@ func PlayerAbilitiesList(
 		queryMods...,
 	).Bind(nil, gamedb.StdConn, &talliedPlayerAbilities)
 	if err != nil {
-		return 0, nil, terror.Error(err)
+		return 0, nil, err
 	}
 
 	return total.Total, talliedPlayerAbilities, nil

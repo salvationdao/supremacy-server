@@ -1,6 +1,8 @@
 package comms
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
 	"server"
 	"server/db"
@@ -8,6 +10,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
@@ -51,7 +54,7 @@ func (s *S) Mechs(req MechsReq, resp *MechsResp) error {
 		gamelog.L.Debug().Str("id", mech.ID).Msg("fetch mech")
 		mechContainer, err := db.Mech(uuid.Must(uuid.FromString(mech.ID)))
 		if err != nil {
-			return terror.Error(err)
+			return err
 		}
 		if mechContainer.ID == "" || mechContainer.ID == uuid.Nil.String() {
 			return terror.Error(fmt.Errorf("null ID"))
@@ -83,7 +86,7 @@ func (s *S) Mech(req MechReq, resp *MechResp) error {
 	gamelog.L.Debug().Msg("comms.Mech")
 	result, err := db.Mech(req.MechID)
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 	resp.MechContainer = result
 	return nil
@@ -100,7 +103,7 @@ func (s *S) MechsByOwnerID(req MechsByOwnerIDReq, resp *MechsByOwnerIDResp) erro
 	gamelog.L.Debug().Msg("comms.MechsByOwnerID")
 	result, err := db.MechsByOwnerID(req.OwnerID)
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 	resp.MechContainers = result
 	return nil
@@ -108,7 +111,7 @@ func (s *S) MechsByOwnerID(req MechsByOwnerIDReq, resp *MechsByOwnerIDResp) erro
 
 type MechRegisterReq struct {
 	TemplateID uuid.UUID
-	OwnerID    uuid.UUID
+	OwnerID    string
 }
 type MechRegisterResp struct {
 	MechContainer *server.MechContainer
@@ -117,31 +120,39 @@ type MechRegisterResp struct {
 func (s *S) MechRegister(req MechRegisterReq, resp *MechRegisterResp) error {
 	gamelog.L.Debug().Msg("comms.MechRegister")
 
-	userResp, err := s.passportRPC.UserGet(server.UserID(req.OwnerID))
+	userResp, err := s.passportRPC.UserGet(server.UserID(uuid.FromStringOrNil(req.OwnerID)))
 	if err != nil {
-		return terror.Error(err)
+		gamelog.L.Error().Err(err).Msg("unable to complete mech registration: 21125")
+		return err
 	}
 
-	player, err := boiler.FindPlayer(gamedb.StdConn, req.OwnerID.String())
-	if err != nil {
-		return terror.Error(err)
+	if userResp.ID == "" {
+		spew.Dump(userResp)
+		panic("no id")
 	}
 
-	player.FactionID = null.StringFrom(userResp.FactionID.String())
-	_, err = player.Update(gamedb.StdConn, boil.Whitelist(boiler.PlayerColumns.FactionID))
-	if err != nil {
-		return terror.Error(err)
+	player, err := boiler.FindPlayer(gamedb.StdConn, req.OwnerID)
+	if errors.Is(sql.ErrNoRows, err) {
+
+		player = &boiler.Player{ID: userResp.ID, Username: null.StringFrom(userResp.Username), FactionID: userResp.FactionID, PublicAddress: userResp.PublicAddress}
+		err = player.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			return fmt.Errorf("unable to create new player: %w", err)
+		}
+	} else if err != nil {
+		gamelog.L.Error().Err(err).Msg("unable to complete mech registration: 21126")
+		return err
 	}
 
 	mechID, err := db.MechRegister(req.TemplateID, req.OwnerID)
 	if err != nil {
-		gamelog.L.Error().Err(err).Msg("Failed to register mech")
-		return terror.Error(err)
+		gamelog.L.Error().Err(err).Msg("unable to complete mech registration: 21128")
+		return err
 	}
 	mech, err := db.Mech(mechID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to get mech")
-		return terror.Error(err)
+		return err
 	}
 
 	resp.MechContainer = mech
@@ -160,11 +171,11 @@ func (s *S) MechSetName(req MechSetNameReq, resp *MechSetNameResp) error {
 	gamelog.L.Debug().Msg("comms.MechSetName")
 	err := db.MechSetName(req.MechID, req.Name)
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 	mech, err := db.Mech(req.MechID)
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 	resp.MechContainer = mech
 	return nil
@@ -182,11 +193,11 @@ func (s *S) MechSetOwner(req MechSetOwnerReq, resp *MechSetOwnerResp) error {
 	gamelog.L.Debug().Msg("comms.MechSetOwner")
 	err := db.MechSetOwner(req.MechID, req.OwnerID)
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 	mech, err := db.Mech(req.MechID)
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 	resp.MechContainer = mech
 	return nil

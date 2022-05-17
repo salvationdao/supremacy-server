@@ -1,20 +1,19 @@
 package api
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"server"
 	"server/battle"
 	"server/db/boiler"
+	"server/gamedb"
 	"time"
 
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
-	"server/gamedb"
 	"server/gamelog"
 
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 
 	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
 )
@@ -23,28 +22,26 @@ import (
 type CheckController struct {
 	BattleArena       *battle.Arena
 	Telegram          server.Telegram
-	Environment       string
 	IsClientConnected func() error
 }
 
-func CheckRouter(battleArena *battle.Arena, telegram server.Telegram, environment string, IsClientConnected func() error) chi.Router {
+func CheckRouter(battleArena *battle.Arena, telegram server.Telegram, IsClientConnected func() error) chi.Router {
 	c := &CheckController{
 		BattleArena:       battleArena,
 		Telegram:          telegram,
-		Environment:       environment,
 		IsClientConnected: IsClientConnected,
 	}
 	r := chi.NewRouter()
 	r.Get("/", c.Check)
 	r.Get("/game-connection", c.CheckGameConnection)
-	r.Get("/game-length", c.CheckGameConnection)
-	r.Get("/game-contributes", c.CheckGameConnection)
+	r.Get("/game-length", c.CheckGameLength)
+	r.Get("/game-contributes", c.CheckGameContributes)
 
 	return r
 }
 
 func (c *CheckController) Check(w http.ResponseWriter, r *http.Request) {
-	err := check(context.Background(), gamedb.Conn)
+	err := check()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, wErr := w.Write([]byte(err.Error()))

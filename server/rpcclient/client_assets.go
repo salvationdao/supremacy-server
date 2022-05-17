@@ -4,8 +4,6 @@ import (
 	"server"
 	"server/gamelog"
 	"strings"
-
-	"github.com/ninja-software/terror/v2"
 )
 
 type AssetOnChainStatusReq struct {
@@ -22,7 +20,7 @@ func (pp *PassportXrpcClient) AssetOnChainStatus(assetID string) (server.OnChain
 	err := pp.XrpcClient.Call("S.AssetOnChainStatusHandler", AssetOnChainStatusReq{assetID}, resp)
 	if err != nil {
 		gamelog.L.Err(err).Str("assetID", assetID).Str("method", "AssetOnChainStatusHandler").Msg("rpc error")
-		return "", terror.Error(err)
+		return "", err
 	}
 
 	return resp.OnChainStatus, nil
@@ -42,7 +40,7 @@ func (pp *PassportXrpcClient) AssetsOnChainStatus(assetIDs []string) (map[string
 	err := pp.XrpcClient.Call("S.AssetsOnChainStatusHandler", AssetsOnChainStatusReq{assetIDs}, resp)
 	if err != nil {
 		gamelog.L.Err(err).Str("assetIDes", strings.Join(assetIDs, ", ")).Str("method", "AssetsOnChainStatusHandler").Msg("rpc error")
-		return nil, terror.Error(err)
+		return nil, err
 	}
 
 	return resp.OnChainStatuses, nil
