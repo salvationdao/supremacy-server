@@ -1,6 +1,8 @@
 package server
 
 import (
+	"encoding/json"
+	"fmt"
 	"server/db/boiler"
 	"time"
 
@@ -22,6 +24,14 @@ type PowerCore struct {
 	CreatedAt    time.Time       `json:"created_at"`
 }
 
+func (b *PowerCore) Scan(value interface{}) error {
+	v, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("unable to scan value into byte array")
+	}
+	return json.Unmarshal(v, b)
+}
+
 type BlueprintPowerCore struct {
 	ID           string          `json:"id"`
 	Collection   string          `json:"collection"`
@@ -38,6 +48,14 @@ type BlueprintPowerCore struct {
 	// only used on inserting new mechs/items, since we are still giving away some limited released and genesis
 	GenesisTokenID        decimal.NullDecimal `json:"genesis_token_id,omitempty"`
 	LimitedReleaseTokenID decimal.NullDecimal `json:"limited_release_token_id,omitempty"`
+}
+
+func (b *BlueprintPowerCore) Scan(value interface{}) error {
+	v, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("unable to scan value into byte array")
+	}
+	return json.Unmarshal(v, b)
 }
 
 func BlueprintPowerCoreFromBoiler(core *boiler.BlueprintPowerCore) *BlueprintPowerCore {

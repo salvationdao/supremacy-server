@@ -3,15 +3,15 @@ package db
 import (
 	"errors"
 	"fmt"
-	"github.com/gofrs/uuid"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 	"strconv"
 
+	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
 func MechsByOwnerID(ownerID uuid.UUID) ([]*server.Mech, error) {
@@ -594,12 +594,8 @@ func MechQueuePosition(factionID string, ownerID string) ([]*BattleQueuePosition
 func InsertNewMech(ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) (*server.Mech, error) {
 	tx, err := gamedb.StdConn.Begin()
 	if err != nil {
-		fmt.Println("here0")
 		return nil, terror.Error(err)
 	}
-
-	// TODO: IF BLUEPRINT.COLLECTION = supremacy-genesis, register it on passport get its genesis token id
-	// TODO: IF BLUEPRINT.COLLECTION = supremacy-limited-release, register it on passport get its limited release token id
 
 	// first insert the mech
 	newMech := boiler.Mech{

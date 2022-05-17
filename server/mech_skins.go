@@ -1,11 +1,13 @@
 package server
 
 import (
+	"encoding/json"
+	"fmt"
+	"github.com/volatiletech/null/v8"
 	"server/db/boiler"
 	"time"
 
 	"github.com/shopspring/decimal"
-	"github.com/volatiletech/null/v8"
 )
 
 type MechSkin struct {
@@ -24,6 +26,14 @@ type MechSkin struct {
 	CreatedAt        time.Time           `json:"created_at"`
 }
 
+func (b *MechSkin) Scan(value interface{}) error {
+	v, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("unable to scan value into byte array")
+	}
+	return json.Unmarshal(v, b)
+}
+
 type BlueprintMechSkin struct {
 	ID               string      `json:"id"`
 	Collection       string      `json:"collection"`
@@ -40,6 +50,14 @@ type BlueprintMechSkin struct {
 	// only used on inserting new mechs/items, since we are still giving away some limited released and genesis
 	GenesisTokenID        decimal.NullDecimal `json:"genesis_token_id,omitempty"`
 	LimitedReleaseTokenID decimal.NullDecimal `json:"limited_release_token_id,omitempty"`
+}
+
+func (b *BlueprintMechSkin) Scan(value interface{}) error {
+	v, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("unable to scan value into byte array")
+	}
+	return json.Unmarshal(v, b)
 }
 
 func BlueprintMechSkinFromBoiler(mechSkin *boiler.BlueprintMechSkin) *BlueprintMechSkin {

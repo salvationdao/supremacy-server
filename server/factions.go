@@ -1,6 +1,8 @@
 package server
 
 import (
+	"encoding/json"
+	"fmt"
 	"server/db/boiler"
 
 	"github.com/gofrs/uuid"
@@ -14,6 +16,14 @@ type Faction struct {
 	PrimaryColor    string `json:"primary_color"`
 	SecondaryColor  string `json:"secondary_color"`
 	BackgroundColor string `json:"background_color"`
+}
+
+func (b *Faction) Scan(value interface{}) error {
+	v, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("unable to scan value into byte array")
+	}
+	return json.Unmarshal(v, b)
 }
 
 var RedMountainFactionID = "98bf7bb3-1a7c-4f21-8843-458d62884060"

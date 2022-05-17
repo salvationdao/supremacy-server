@@ -26,7 +26,6 @@ require (
 require (
 	github.com/DataDog/gostackparse v0.5.0
 	github.com/friendsofgo/errors v0.9.2
-	github.com/go-chi/chi v1.5.4
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/gobwas/ws v1.1.0
 	github.com/h2non/filetype v1.1.3
@@ -118,7 +117,7 @@ require (
 	github.com/lestrrat-go/blackmagic v1.0.0 // indirect
 	github.com/lestrrat-go/httpcc v1.0.0 // indirect
 	github.com/lestrrat-go/iter v1.0.1 // indirect
-	github.com/lestrrat-go/jwx v1.2.12
+	github.com/lestrrat-go/jwx v1.2.12 // indirect
 	github.com/lestrrat-go/option v1.0.0 // indirect
 	github.com/lib/pq v1.10.2 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect

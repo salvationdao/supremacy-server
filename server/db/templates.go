@@ -257,7 +257,6 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 			continue
 		}
 		mechs = append(mechs, insertedMech)
-
 	}
 
 	// inserts mech animation blueprints
@@ -365,7 +364,7 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 		fmt.Println("joining 3")
 		for i := 0; i < mechs[0].WeaponHardpoints; i++ {
 			fmt.Println("joining 3.25")
-			if len(weapons) > i  {
+			if len(weapons) > i {
 				err = AttachWeaponToMech(ownerID.String(), mechs[0].ID, weapons[i].ID)
 				if err != nil {
 					fmt.Println("joining 3.5")

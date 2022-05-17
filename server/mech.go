@@ -1,6 +1,8 @@
 package server
 
 import (
+	"encoding/json"
+	"fmt"
 	"server/db/boiler"
 	"time"
 
@@ -69,8 +71,8 @@ type Mech struct {
 	PowerCoreID null.String `json:"power_core_id,omitempty"`
 	PowerCore   *PowerCore  `json:"power_core,omitempty"`
 
-	Weapons []*Weapon  `json:"weapons"`
-	Utility []*Utility `json:"utility"`
+	Weapons WeaponSlice  `json:"weapons"`
+	Utility UtilitySlice `json:"utility"`
 
 	UpdatedAt time.Time `json:"updated_at"`
 	CreatedAt time.Time `json:"created_at"`
@@ -97,6 +99,14 @@ type BlueprintMech struct {
 	// only used on inserting new mechs/items, since we are still giving away some limited released and genesis
 	GenesisTokenID        decimal.NullDecimal `json:"genesis_token_id,omitempty"`
 	LimitedReleaseTokenID decimal.NullDecimal `json:"limited_release_token_id,omitempty"`
+}
+
+func (b *BlueprintMech) Scan(value interface{}) error {
+	v, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("unable to scan value into byte array")
+	}
+	return json.Unmarshal(v, b)
 }
 
 func BlueprintMechFromBoiler(mech *boiler.BlueprintMech) *BlueprintMech {
@@ -144,4 +154,12 @@ type MechModel struct {
 	Label                string      `json:"label"`
 	CreatedAt            time.Time   `json:"created_at"`
 	DefaultChassisSkinID null.String `json:"default_chassis_skin_id,omitempty"`
+}
+
+func (b *MechModel) Scan(value interface{}) error {
+	v, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("unable to scan value into byte array")
+	}
+	return json.Unmarshal(v, b)
 }

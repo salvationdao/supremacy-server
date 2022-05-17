@@ -1,6 +1,8 @@
 package server
 
 import (
+	"encoding/json"
+	"fmt"
 	"server/db/boiler"
 	"time"
 
@@ -36,6 +38,14 @@ type Weapon struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+func (b *Weapon) Scan(value interface{}) error {
+	v, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("unable to scan value into byte array")
+	}
+	return json.Unmarshal(v, b)
+}
+
 type BlueprintWeapon struct {
 	ID                  string              `json:"id"`
 	BrandID             null.String         `json:"brand_id,omitempty"`
@@ -62,6 +72,27 @@ type BlueprintWeapon struct {
 	// only used on inserting new mechs/items, since we are still giving away some limited released and genesis
 	GenesisTokenID        decimal.NullDecimal `json:"genesis_token_id,omitempty"`
 	LimitedReleaseTokenID decimal.NullDecimal `json:"limited_release_token_id,omitempty"`
+}
+
+func (b *BlueprintWeapon) Scan(value interface{}) error {
+	v, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("unable to scan value into byte array")
+	}
+	return json.Unmarshal(v, b)
+}
+
+type WeaponSlice []*Weapon
+
+func (b *WeaponSlice) Scan(value interface{}) error {
+	if value == nil {
+		return nil
+	}
+	v, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("unable to scan value into byte array")
+	}
+	return json.Unmarshal(v, b)
 }
 
 func BlueprintWeaponFromBoiler(weapon *boiler.BlueprintWeapon) *BlueprintWeapon {
