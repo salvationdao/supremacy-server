@@ -199,14 +199,18 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 		}
 	}
 
-	genesisTokenID := decimal.NullDecimal{}
-	limitedReleaseTokenID := decimal.NullDecimal{}
+	tokenIDs := &struct {
+		GenesisTokenID decimal.NullDecimal `json:"genesis_token_id" db:"genesis_token_id"`
+		LimitedTokenID decimal.NullDecimal `json:"limited_token_id" db:"limited_token_id"`
+	}{}
 
 	// if template is genesis, create it a genesis ID
 	if tmpl.IsGenesis {
 		// get the max genesis
-		err := boiler.NewQuery(qm.SQL(`SELECT max(genesis_token_id) + 1 FROM mechs;`)).Bind(nil, gamedb.StdConn, &genesisTokenID)
+		err := boiler.NewQuery(qm.SQL(`SELECT coalesce(max(genesis_token_id) + 1, 0) as genesis_token_id FROM mechs`)).Bind(nil, gamedb.StdConn, tokenIDs)
 		if err != nil {
+			fmt.Println("errror!")
+			fmt.Println(err.Error())
 			gamelog.L.Error().Err(err).Msg("failed to get new genesis token id")
 			return mechs,
 				mechAnimations,
@@ -218,8 +222,8 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 	}
 	// if template is genesis, create it a genesis ID
 	if tmpl.IsLimitedRelease {
-		// get the max genesis
-		err := boiler.NewQuery(qm.SQL(`SELECT max(limited_release_token_id) + 1 FROM mechs;`)).Bind(nil, gamedb.StdConn, &limitedReleaseTokenID)
+		// get the max limited
+		err := boiler.NewQuery(qm.SQL(`SELECT coalesce(max(genesis_token_id) + 1, 0) as limited_token_id FROM mechs`)).Bind(nil, gamedb.StdConn, tokenIDs)
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("failed to get new limit release token id")
 			return mechs,
@@ -233,21 +237,20 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 
 	// inserts mech blueprints
 	for _, mechBluePrint := range tmpl.BlueprintMech {
-
 		// templates with genesis and limited release mechs can only have ONE mech in it
 		// here we check if we have a genesis/limited id that its only 1 mech
-		if (genesisTokenID.Valid || limitedReleaseTokenID.Valid) && len(tmpl.BlueprintMech) > 1 {
+		if (tokenIDs.GenesisTokenID.Valid || tokenIDs.LimitedTokenID.Valid) && len(tmpl.BlueprintMech) > 1 {
 			err := fmt.Errorf("template has already inserted a genesis mech but the template has multiple mechs")
 			gamelog.L.Error().Err(err).
 				Interface("mechBluePrint", mechBluePrint).
-				Str("genesisTokenID", genesisTokenID.Decimal.String()).
-				Str("limitedReleaseTokenID", limitedReleaseTokenID.Decimal.String()).
+				Str("tokenIDs.GenesisTokenID", tokenIDs.GenesisTokenID.Decimal.String()).
+				Str("tokenIDs.LimitedTokenID", tokenIDs.LimitedTokenID.Decimal.String()).
 				Int("len(tmpl.BlueprintMech)", len(tmpl.BlueprintMech)).
 				Msg("failed to insert new mech for user")
 			continue
 		}
-		mechBluePrint.LimitedReleaseTokenID = limitedReleaseTokenID
-		mechBluePrint.GenesisTokenID = genesisTokenID
+		mechBluePrint.LimitedReleaseTokenID = tokenIDs.LimitedTokenID
+		mechBluePrint.GenesisTokenID = tokenIDs.GenesisTokenID
 		insertedMech, err := InsertNewMech(ownerID, mechBluePrint)
 		if err != nil {
 			gamelog.L.Error().Err(err).
@@ -275,8 +278,8 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 
 	// inserts mech animation blueprints
 	for _, mechSkin := range tmpl.BlueprintMechSkin {
-		mechSkin.LimitedReleaseTokenID = limitedReleaseTokenID
-		mechSkin.GenesisTokenID = genesisTokenID
+		mechSkin.LimitedReleaseTokenID = tokenIDs.LimitedTokenID
+		mechSkin.GenesisTokenID = tokenIDs.GenesisTokenID
 		insertedMechSkin, err := InsertNewMechSkin(ownerID, mechSkin)
 		if err != nil {
 			gamelog.L.Error().Err(err).
@@ -290,8 +293,8 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 
 	// inserts energy core blueprints
 	for _, powerCore := range tmpl.BlueprintPowerCore {
-		powerCore.LimitedReleaseTokenID = limitedReleaseTokenID
-		powerCore.GenesisTokenID = genesisTokenID
+		powerCore.LimitedReleaseTokenID = tokenIDs.LimitedTokenID
+		powerCore.GenesisTokenID = tokenIDs.GenesisTokenID
 		insertedPowerCore, err := InsertNewPowerCore(ownerID, powerCore)
 		if err != nil {
 			gamelog.L.Error().Err(err).
@@ -305,8 +308,8 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 
 	// inserts weapons blueprints
 	for _, weapon := range tmpl.BlueprintWeapon {
-		weapon.LimitedReleaseTokenID = limitedReleaseTokenID
-		weapon.GenesisTokenID = genesisTokenID
+		weapon.LimitedReleaseTokenID = tokenIDs.LimitedTokenID
+		weapon.GenesisTokenID = tokenIDs.GenesisTokenID
 		insertedWeapon, err := InsertNewWeapon(ownerID, weapon)
 		if err != nil {
 			gamelog.L.Error().Err(err).
@@ -320,8 +323,8 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 
 	// inserts utility blueprints
 	for _, utility := range tmpl.BlueprintUtility {
-		utility.LimitedReleaseTokenID = limitedReleaseTokenID
-		utility.GenesisTokenID = genesisTokenID
+		utility.LimitedReleaseTokenID = tokenIDs.LimitedTokenID
+		utility.GenesisTokenID = tokenIDs.GenesisTokenID
 		insertedUtility, err := InsertNewUtility(ownerID, utility)
 		if err != nil {
 			gamelog.L.Error().Err(err).

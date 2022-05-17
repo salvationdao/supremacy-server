@@ -617,21 +617,16 @@ func InsertNewMech(ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) (*ser
 
 	err = newMech.Insert(tx, boil.Infer())
 	if err != nil {
-		fmt.Println("here1")
 		return nil, terror.Error(err)
 	}
 
 	err = InsertNewCollectionItem(tx, mechBlueprint.Collection, boiler.ItemTypeMech, newMech.ID, mechBlueprint.Tier, ownerID.String())
 	if err != nil {
-		fmt.Println("here2")
 		return nil, terror.Error(err)
 	}
 
-	// if inserting a genesis, set their genesis token ID too
-
 	err = tx.Commit()
 	if err != nil {
-		fmt.Println("here3")
 		return nil, terror.Error(err)
 	}
 
