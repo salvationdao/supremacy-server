@@ -5,10 +5,8 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 
-	"github.com/georgysavva/scany/pgxscan"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
-	"golang.org/x/net/context"
 )
 
 type (
@@ -44,8 +42,6 @@ type BattleMechIdentifier struct {
 // BattleMechsList returns a list of IDs from the battle_mechs table.
 // Filter and sorting options can be passed in to manipulate the end result.
 func BattleMechsList(
-	ctx context.Context,
-	conn pgxscan.Querier,
 	filter *ListFilterRequest,
 	sort *ListSortRequest,
 	offset int,
@@ -129,8 +125,6 @@ type BattleMechDetailed struct {
 }
 
 func BattleMechGet(
-	ctx context.Context,
-	conn pgxscan.Querier,
 	battleID string,
 	mechID string,
 ) (*BattleMechDetailed, error) {

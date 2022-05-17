@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ninja-syndicate/ws"
 	"math"
 	"server"
 	"server/db"
@@ -15,6 +14,8 @@ import (
 	"server/rpcclient"
 	"sync"
 	"time"
+
+	"github.com/ninja-syndicate/ws"
 
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
