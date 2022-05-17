@@ -472,9 +472,8 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 						case boiler.AbilityLevelFACTION:
 							ws.PublishMessage(fmt.Sprintf("/battle/faction/%s/ability/faction", ability.FactionID), HubKeyAbilityPriceUpdated, resp)
 						case boiler.AbilityLevelMECH:
-							ws.PublishMessage(fmt.Sprintf("/battle/faction/%s/ability/mech/%d", ability.FactionID, ability.ParticipantID), HubKeyAbilityPriceUpdated, resp)
+							ws.PublishMessage(fmt.Sprintf("/battle/faction/%s/ability/mech/%d", ability.FactionID, *ability.ParticipantID), HubKeyMechAbilityPriceUpdated, resp)
 						}
-
 					}
 				}
 			}
@@ -653,7 +652,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 					case boiler.AbilityLevelFACTION:
 						ws.PublishMessage(fmt.Sprintf("/battle/faction/%s/ability/faction", ability.FactionID), HubKeyAbilityPriceUpdated, resp)
 					case boiler.AbilityLevelMECH:
-						ws.PublishMessage(fmt.Sprintf("/battle/faction/%s/ability/mech/%d", ability.FactionID, ability.ParticipantID), HubKeyAbilityPriceUpdated, resp)
+						ws.PublishMessage(fmt.Sprintf("/battle/faction/%s/ability/mech/%d", ability.FactionID, *ability.ParticipantID), HubKeyAbilityPriceUpdated, resp)
 					}
 				}
 			}
