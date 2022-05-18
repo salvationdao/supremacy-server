@@ -144,6 +144,7 @@ var PlayerWhere = struct {
 // PlayerRels is where relationship names are stored.
 var PlayerRels = struct {
 	Faction                     string
+	PlayerProfile               string
 	IDPlayerStat                string
 	OwnerAmmos                  string
 	BattleAbilityTriggers       string
@@ -172,6 +173,7 @@ var PlayerRels = struct {
 	OwnerWeaponSkins            string
 }{
 	Faction:                     "Faction",
+	PlayerProfile:               "PlayerProfile",
 	IDPlayerStat:                "IDPlayerStat",
 	OwnerAmmos:                  "OwnerAmmos",
 	BattleAbilityTriggers:       "BattleAbilityTriggers",
@@ -203,6 +205,7 @@ var PlayerRels = struct {
 // playerR is where relationships are stored.
 type playerR struct {
 	Faction                     *Faction                  `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
+	PlayerProfile               *PlayerProfile            `boiler:"PlayerProfile" boil:"PlayerProfile" json:"PlayerProfile" toml:"PlayerProfile" yaml:"PlayerProfile"`
 	IDPlayerStat                *PlayerStat               `boiler:"IDPlayerStat" boil:"IDPlayerStat" json:"IDPlayerStat" toml:"IDPlayerStat" yaml:"IDPlayerStat"`
 	OwnerAmmos                  AmmoSlice                 `boiler:"OwnerAmmos" boil:"OwnerAmmos" json:"OwnerAmmos" toml:"OwnerAmmos" yaml:"OwnerAmmos"`
 	BattleAbilityTriggers       BattleAbilityTriggerSlice `boiler:"BattleAbilityTriggers" boil:"BattleAbilityTriggers" json:"BattleAbilityTriggers" toml:"BattleAbilityTriggers" yaml:"BattleAbilityTriggers"`
@@ -500,6 +503,20 @@ func (o *Player) Faction(mods ...qm.QueryMod) factionQuery {
 
 	query := Factions(queryMods...)
 	queries.SetFrom(query.Query, "\"factions\"")
+
+	return query
+}
+
+// PlayerProfile pointed to by the foreign key.
+func (o *Player) PlayerProfile(mods ...qm.QueryMod) playerProfileQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"player_id\" = ?", o.ID),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := PlayerProfiles(queryMods...)
+	queries.SetFrom(query.Query, "\"player_profile\"")
 
 	return query
 }
@@ -1151,6 +1168,107 @@ func (playerL) LoadFaction(e boil.Executor, singular bool, maybePlayer interface
 					foreign.R = &factionR{}
 				}
 				foreign.R.Players = append(foreign.R.Players, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadPlayerProfile allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-1 relationship.
+func (playerL) LoadPlayerProfile(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+	var slice []*Player
+	var object *Player
+
+	if singular {
+		object = maybePlayer.(*Player)
+	} else {
+		slice = *maybePlayer.(*[]*Player)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &playerR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &playerR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`player_profile`),
+		qm.WhereIn(`player_profile.player_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load PlayerProfile")
+	}
+
+	var resultSlice []*PlayerProfile
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice PlayerProfile")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for player_profile")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for player_profile")
+	}
+
+	if len(playerAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.PlayerProfile = foreign
+		if foreign.R == nil {
+			foreign.R = &playerProfileR{}
+		}
+		foreign.R.Player = object
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.ID == foreign.PlayerID {
+				local.R.PlayerProfile = foreign
+				if foreign.R == nil {
+					foreign.R = &playerProfileR{}
+				}
+				foreign.R.Player = local
 				break
 			}
 		}
@@ -3808,6 +3926,56 @@ func (o *Player) RemoveFaction(exec boil.Executor, related *Faction) error {
 		}
 		related.R.Players = related.R.Players[:ln-1]
 		break
+	}
+	return nil
+}
+
+// SetPlayerProfile of the player to the related item.
+// Sets o.R.PlayerProfile to related.
+// Adds o to related.R.Player.
+func (o *Player) SetPlayerProfile(exec boil.Executor, insert bool, related *PlayerProfile) error {
+	var err error
+
+	if insert {
+		related.PlayerID = o.ID
+
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	} else {
+		updateQuery := fmt.Sprintf(
+			"UPDATE \"player_profile\" SET %s WHERE %s",
+			strmangle.SetParamNames("\"", "\"", 1, []string{"player_id"}),
+			strmangle.WhereClause("\"", "\"", 2, playerProfilePrimaryKeyColumns),
+		)
+		values := []interface{}{o.ID, related.ID}
+
+		if boil.DebugMode {
+			fmt.Fprintln(boil.DebugWriter, updateQuery)
+			fmt.Fprintln(boil.DebugWriter, values)
+		}
+		if _, err = exec.Exec(updateQuery, values...); err != nil {
+			return errors.Wrap(err, "failed to update foreign table")
+		}
+
+		related.PlayerID = o.ID
+
+	}
+
+	if o.R == nil {
+		o.R = &playerR{
+			PlayerProfile: related,
+		}
+	} else {
+		o.R.PlayerProfile = related
+	}
+
+	if related.R == nil {
+		related.R = &playerProfileR{
+			Player: o,
+		}
+	} else {
+		related.R.Player = o
 	}
 	return nil
 }

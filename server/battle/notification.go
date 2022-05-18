@@ -90,11 +90,11 @@ type AbilityBrief struct {
 }
 
 type UserBrief struct {
-	ID        uuid.UUID       `json:"id"`
-	Username  string          `json:"username"`
-	FactionID string          `json:"faction_id,omitempty"`
-	Faction   *Faction `json:"faction"`
-	Gid       int             `json:"gid"`
+	ID        uuid.UUID `json:"id"`
+	Username  string    `json:"username"`
+	FactionID string    `json:"faction_id,omitempty"`
+	Faction   *Faction  `json:"faction"`
+	Gid       int       `json:"gid"`
 }
 
 type GameNotification struct {
@@ -359,7 +359,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			Amount:               "5000000000000000000", // 5 sups
 			FromUserID:           playerUUID,
 			ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
-			TransactionReference: server.TransactionReference(fmt.Sprintf("war_machine_queue_notification_fee|%s|%d", warMachine.Hash, time.Now().UnixNano())),
+			TransactionReference: server.TransactionReference(fmt.Sprintf("war_machine_queue_notification_fee|%s|%d", warMachine.ID, time.Now().UnixNano())),
 			Group:                string(server.TransactionGroupBattle),
 			SubGroup:             "Queue",
 			Description:          "Notification surcharge for queued mech in arena",

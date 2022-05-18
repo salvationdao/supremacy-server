@@ -3,11 +3,6 @@ package telegram
 import (
 	"database/sql"
 	"errors"
-<<<<<<< HEAD
-=======
-	"fmt"
-	"server/db"
->>>>>>> develop
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"

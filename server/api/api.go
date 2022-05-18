@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"net"
 	"net/http"
@@ -16,7 +15,6 @@ import (
 	"server/rpcclient"
 	"time"
 
-	"github.com/friendsofgo/errors"
 	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -34,9 +32,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 	"github.com/sasha-s/go-deadlock"
-	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/boil"
-	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 // WelcomePayload is the response sent when a client connects to the server
@@ -468,55 +463,56 @@ func (api *API) TokenLogin(tokenBase64 string) (*boiler.Player, error) {
 }
 
 func (a *API) createNotif(w http.ResponseWriter, r *http.Request) {
-	// get current battle
-	currentBattle, err := boiler.Battles(qm.OrderBy("battle_number DESC")).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		fmt.Println("failed to get last battle: ", err)
-		return
-	}
+	// // get current battle
+	// currentBattle, err := boiler.Battles(qm.OrderBy("battle_number DESC")).One(gamedb.StdConn)
+	// if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	// 	fmt.Println("failed to get last battle: ", err)
+	// 	return
+	// }
 
-	// get owner
-	owner, err := boiler.Players(boiler.PlayerWhere.Username.EQ(null.StringFrom("0xeae4020c"))).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		fmt.Println("get owner: ", err)
-		return
-	}
+	// // get owner
+	// owner, err := boiler.Players(boiler.PlayerWhere.Username.EQ(null.StringFrom("0xeae4020c"))).One(gamedb.StdConn)
+	// if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	// 	fmt.Println("get owner: ", err)
+	// 	return
+	// }
 
-	mech, err := boiler.Mechs(boiler.MechWhere.OwnerID.EQ(owner.ID)).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		fmt.Println("get mech: ", err)
-		return
-	}
+	// boiler.MechWhere.
+	// mech, err := boiler.Mechs(boiler.MechWhere.OwnerID.EQ(owner.ID)).One(gamedb.StdConn)
+	// if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	// 	fmt.Println("get mech: ", err)
+	// 	return
+	// }
 
-	var tID int = 1032530847
+	// var tID int = 1032530847
 
-	// get mech
-	tn := boiler.TelegramNotification{
-		Shortcode:  "test",
-		Registered: true,
-		TelegramID: null.IntFrom(tID),
-	}
+	// // get mech
+	// tn := boiler.TelegramNotification{
+	// 	Shortcode:  "test",
+	// 	Registered: true,
+	// 	TelegramID: null.IntFrom(tID),
+	// }
 
-	err = tn.Insert(gamedb.StdConn, boil.Infer())
-	if err != nil {
-		fmt.Println("insert tele notif: ", err)
-		return
+	// err = tn.Insert(gamedb.StdConn, boil.Infer())
+	// if err != nil {
+	// 	fmt.Println("insert tele notif: ", err)
+	// 	return
 
-	}
+	// }
 
-	// insert to bqn
-	bqn := &boiler.BattleQueueNotification{
-		MobileNumber:           null.StringFrom("+61416315945"),
-		Message:                null.StringFrom("yoyo"),
-		MechID:                 mech.ID,
-		BattleID:               null.StringFrom(currentBattle.ID),
-		QueueMechID:            null.StringFrom(mech.ID),
-		TelegramNotificationID: null.StringFrom(tn.ID),
-	}
+	// // insert to bqn
+	// bqn := &boiler.BattleQueueNotification{
+	// 	MobileNumber:           null.StringFrom("+61416315945"),
+	// 	Message:                null.StringFrom("yoyo"),
+	// 	MechID:                 mech.ID,
+	// 	BattleID:               null.StringFrom(currentBattle.ID),
+	// 	QueueMechID:            null.StringFrom(mech.ID),
+	// 	TelegramNotificationID: null.StringFrom(tn.ID),
+	// }
 
-	err = bqn.Insert(gamedb.StdConn, boil.Infer())
-	if err != nil {
-		fmt.Println("insert bqn ", err)
-		return
-	}
+	// err = bqn.Insert(gamedb.StdConn, boil.Infer())
+	// if err != nil {
+	// 	fmt.Println("insert bqn ", err)
+	// 	return
+	// }
 }
