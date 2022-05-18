@@ -4,7 +4,7 @@
 package boiler
 
 var TableNames = struct {
-	AssetRepair                                        string
+	Ammo                                               string
 	BattleAbilities                                    string
 	BattleAbilityTriggers                              string
 	BattleContracts                                    string
@@ -19,47 +19,57 @@ var TableNames = struct {
 	BattleMechs                                        string
 	BattleQueue                                        string
 	BattleQueueNotifications                           string
+	BattleViewers                                      string
 	BattleWarMachineQueues                             string
 	BattleWins                                         string
 	Battles                                            string
-	BattlesUserVotes                                   string
-	BattlesViewers                                     string
-	BattlesWinnerRecords                               string
 	Blobs                                              string
-	BlueprintChassis                                   string
-	BlueprintChassisBlueprintModules                   string
-	BlueprintChassisBlueprintWeapons                   string
-	BlueprintModules                                   string
+	BlueprintAmmo                                      string
+	BlueprintMechAnimation                             string
+	BlueprintMechSkin                                  string
+	BlueprintMechs                                     string
 	BlueprintPlayerAbilities                           string
+	BlueprintPowerCores                                string
+	BlueprintUtility                                   string
+	BlueprintUtilityAccelerator                        string
+	BlueprintUtilityAntiMissile                        string
+	BlueprintUtilityAttackDrone                        string
+	BlueprintUtilityRepairDrone                        string
+	BlueprintUtilityShield                             string
+	BlueprintWeaponSkin                                string
 	BlueprintWeapons                                   string
 	Brands                                             string
-	Chassis                                            string
-	ChassisModules                                     string
-	ChassisWeapons                                     string
 	ChatHistory                                        string
-	Config                                             string
+	CollectionItems                                    string
 	ConsumedAbilities                                  string
 	FactionStats                                       string
 	Factions                                           string
 	GameAbilities                                      string
 	GameMaps                                           string
 	GlobalAnnouncements                                string
-	IssuedContractRewards                              string
 	KV                                                 string
 	Languages                                          string
+	MechAnimation                                      string
+	MechModel                                          string
+	MechRepair                                         string
+	MechSkin                                           string
 	MechStats                                          string
+	MechUtility                                        string
+	MechWeapons                                        string
 	Mechs                                              string
-	Modules                                            string
+	MechsOld                                           string
 	Multipliers                                        string
-	PendingTransactions                                string
 	PlayerAbilities                                    string
 	PlayerActiveLogs                                   string
 	PlayerKillLog                                      string
 	PlayerLanguages                                    string
+	PlayerMultipliers                                  string
 	PlayerPreferences                                  string
-	PlayerProfile                                      string
+	PlayerSpoilsOfWar                                  string
+	PlayerStats                                        string
 	Players                                            string
 	PlayersPunishVotes                                 string
+	PowerCores                                         string
 	PunishOptions                                      string
 	PunishVotes                                        string
 	PunishedPlayers                                    string
@@ -68,14 +78,20 @@ var TableNames = struct {
 	SpoilsOfWar                                        string
 	StreamList                                         string
 	TelegramNotifications                              string
+	TemplateBlueprints                                 string
 	Templates                                          string
-	UserMultipliers                                    string
-	UserSpoilsOfWar                                    string
-	UserStats                                          string
-	Users                                              string
+	TemplatesOld                                       string
+	Utility                                            string
+	UtilityAccelerator                                 string
+	UtilityAntiMissile                                 string
+	UtilityAttackDrone                                 string
+	UtilityRepairDrone                                 string
+	UtilityShield                                      string
+	WeaponAmmo                                         string
+	WeaponSkin                                         string
 	Weapons                                            string
 }{
-	AssetRepair:                     "asset_repair",
+	Ammo:                            "ammo",
 	BattleAbilities:                 "battle_abilities",
 	BattleAbilityTriggers:           "battle_ability_triggers",
 	BattleContracts:                 "battle_contracts",
@@ -85,64 +101,80 @@ var TableNames = struct {
 	BattleEventsState:               "battle_events_state",
 	BattleEventsWarMachineDestroyed: "battle_events_war_machine_destroyed",
 	BattleEventsWarMachineDestroyedAssistedWarMachines: "battle_events_war_machine_destroyed_assisted_war_machines",
-	BattleHistory:                    "battle_history",
-	BattleKills:                      "battle_kills",
-	BattleMechs:                      "battle_mechs",
-	BattleQueue:                      "battle_queue",
-	BattleQueueNotifications:         "battle_queue_notifications",
-	BattleWarMachineQueues:           "battle_war_machine_queues",
-	BattleWins:                       "battle_wins",
-	Battles:                          "battles",
-	BattlesUserVotes:                 "battles_user_votes",
-	BattlesViewers:                   "battles_viewers",
-	BattlesWinnerRecords:             "battles_winner_records",
-	Blobs:                            "blobs",
-	BlueprintChassis:                 "blueprint_chassis",
-	BlueprintChassisBlueprintModules: "blueprint_chassis_blueprint_modules",
-	BlueprintChassisBlueprintWeapons: "blueprint_chassis_blueprint_weapons",
-	BlueprintModules:                 "blueprint_modules",
-	BlueprintPlayerAbilities:         "blueprint_player_abilities",
-	BlueprintWeapons:                 "blueprint_weapons",
-	Brands:                           "brands",
-	Chassis:                          "chassis",
-	ChassisModules:                   "chassis_modules",
-	ChassisWeapons:                   "chassis_weapons",
-	ChatHistory:                      "chat_history",
-	Config:                           "config",
-	ConsumedAbilities:                "consumed_abilities",
-	FactionStats:                     "faction_stats",
-	Factions:                         "factions",
-	GameAbilities:                    "game_abilities",
-	GameMaps:                         "game_maps",
-	GlobalAnnouncements:              "global_announcements",
-	IssuedContractRewards:            "issued_contract_rewards",
-	KV:                               "kv",
-	Languages:                        "languages",
-	MechStats:                        "mech_stats",
-	Mechs:                            "mechs",
-	Modules:                          "modules",
-	Multipliers:                      "multipliers",
-	PendingTransactions:              "pending_transactions",
-	PlayerAbilities:                  "player_abilities",
-	PlayerActiveLogs:                 "player_active_logs",
-	PlayerKillLog:                    "player_kill_log",
-	PlayerLanguages:                  "player_languages",
-	PlayerPreferences:                "player_preferences",
-	PlayerProfile:                    "player_profile",
-	Players:                          "players",
-	PlayersPunishVotes:               "players_punish_votes",
-	PunishOptions:                    "punish_options",
-	PunishVotes:                      "punish_votes",
-	PunishedPlayers:                  "punished_players",
-	SalePlayerAbilities:              "sale_player_abilities",
-	SchemaMigrations:                 "schema_migrations",
-	SpoilsOfWar:                      "spoils_of_war",
-	StreamList:                       "stream_list",
-	TelegramNotifications:            "telegram_notifications",
-	Templates:                        "templates",
-	UserMultipliers:                  "user_multipliers",
-	UserSpoilsOfWar:                  "user_spoils_of_war",
-	UserStats:                        "user_stats",
-	Users:                            "users",
-	Weapons:                          "weapons",
+	BattleHistory:               "battle_history",
+	BattleKills:                 "battle_kills",
+	BattleMechs:                 "battle_mechs",
+	BattleQueue:                 "battle_queue",
+	BattleQueueNotifications:    "battle_queue_notifications",
+	BattleViewers:               "battle_viewers",
+	BattleWarMachineQueues:      "battle_war_machine_queues",
+	BattleWins:                  "battle_wins",
+	Battles:                     "battles",
+	Blobs:                       "blobs",
+	BlueprintAmmo:               "blueprint_ammo",
+	BlueprintMechAnimation:      "blueprint_mech_animation",
+	BlueprintMechSkin:           "blueprint_mech_skin",
+	BlueprintMechs:              "blueprint_mechs",
+	BlueprintPlayerAbilities:    "blueprint_player_abilities",
+	BlueprintPowerCores:         "blueprint_power_cores",
+	BlueprintUtility:            "blueprint_utility",
+	BlueprintUtilityAccelerator: "blueprint_utility_accelerator",
+	BlueprintUtilityAntiMissile: "blueprint_utility_anti_missile",
+	BlueprintUtilityAttackDrone: "blueprint_utility_attack_drone",
+	BlueprintUtilityRepairDrone: "blueprint_utility_repair_drone",
+	BlueprintUtilityShield:      "blueprint_utility_shield",
+	BlueprintWeaponSkin:         "blueprint_weapon_skin",
+	BlueprintWeapons:            "blueprint_weapons",
+	Brands:                      "brands",
+	ChatHistory:                 "chat_history",
+	CollectionItems:             "collection_items",
+	ConsumedAbilities:           "consumed_abilities",
+	FactionStats:                "faction_stats",
+	Factions:                    "factions",
+	GameAbilities:               "game_abilities",
+	GameMaps:                    "game_maps",
+	GlobalAnnouncements:         "global_announcements",
+	KV:                          "kv",
+	Languages:                   "languages",
+	MechAnimation:               "mech_animation",
+	MechModel:                   "mech_model",
+	MechRepair:                  "mech_repair",
+	MechSkin:                    "mech_skin",
+	MechStats:                   "mech_stats",
+	MechUtility:                 "mech_utility",
+	MechWeapons:                 "mech_weapons",
+	Mechs:                       "mechs",
+	MechsOld:                    "mechs_old",
+	Multipliers:                 "multipliers",
+	PlayerAbilities:             "player_abilities",
+	PlayerActiveLogs:            "player_active_logs",
+	PlayerKillLog:               "player_kill_log",
+	PlayerLanguages:             "player_languages",
+	PlayerMultipliers:           "player_multipliers",
+	PlayerPreferences:           "player_preferences",
+	PlayerSpoilsOfWar:           "player_spoils_of_war",
+	PlayerStats:                 "player_stats",
+	Players:                     "players",
+	PlayersPunishVotes:          "players_punish_votes",
+	PowerCores:                  "power_cores",
+	PunishOptions:               "punish_options",
+	PunishVotes:                 "punish_votes",
+	PunishedPlayers:             "punished_players",
+	SalePlayerAbilities:         "sale_player_abilities",
+	SchemaMigrations:            "schema_migrations",
+	SpoilsOfWar:                 "spoils_of_war",
+	StreamList:                  "stream_list",
+	TelegramNotifications:       "telegram_notifications",
+	TemplateBlueprints:          "template_blueprints",
+	Templates:                   "templates",
+	TemplatesOld:                "templates_old",
+	Utility:                     "utility",
+	UtilityAccelerator:          "utility_accelerator",
+	UtilityAntiMissile:          "utility_anti_missile",
+	UtilityAttackDrone:          "utility_attack_drone",
+	UtilityRepairDrone:          "utility_repair_drone",
+	UtilityShield:               "utility_shield",
+	WeaponAmmo:                  "weapon_ammo",
+	WeaponSkin:                  "weapon_skin",
+	Weapons:                     "weapons",
 }

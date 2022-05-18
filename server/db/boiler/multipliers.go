@@ -121,14 +121,14 @@ var MultiplierWhere = struct {
 
 // MultiplierRels is where relationship names are stored.
 var MultiplierRels = struct {
-	UserMultipliers string
+	PlayerMultipliers string
 }{
-	UserMultipliers: "UserMultipliers",
+	PlayerMultipliers: "PlayerMultipliers",
 }
 
 // multiplierR is where relationships are stored.
 type multiplierR struct {
-	UserMultipliers UserMultiplierSlice `boiler:"UserMultipliers" boil:"UserMultipliers" json:"UserMultipliers" toml:"UserMultipliers" yaml:"UserMultipliers"`
+	PlayerMultipliers PlayerMultiplierSlice `boiler:"PlayerMultipliers" boil:"PlayerMultipliers" json:"PlayerMultipliers" toml:"PlayerMultipliers" yaml:"PlayerMultipliers"`
 }
 
 // NewStruct creates a new relationship struct
@@ -389,30 +389,30 @@ func (q multiplierQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
-// UserMultipliers retrieves all the user_multiplier's UserMultipliers with an executor.
-func (o *Multiplier) UserMultipliers(mods ...qm.QueryMod) userMultiplierQuery {
+// PlayerMultipliers retrieves all the player_multiplier's PlayerMultipliers with an executor.
+func (o *Multiplier) PlayerMultipliers(mods ...qm.QueryMod) playerMultiplierQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"user_multipliers\".\"multiplier_id\"=?", o.ID),
+		qm.Where("\"player_multipliers\".\"multiplier_id\"=?", o.ID),
 	)
 
-	query := UserMultipliers(queryMods...)
-	queries.SetFrom(query.Query, "\"user_multipliers\"")
+	query := PlayerMultipliers(queryMods...)
+	queries.SetFrom(query.Query, "\"player_multipliers\"")
 
 	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"user_multipliers\".*"})
+		queries.SetSelect(query.Query, []string{"\"player_multipliers\".*"})
 	}
 
 	return query
 }
 
-// LoadUserMultipliers allows an eager lookup of values, cached into the
+// LoadPlayerMultipliers allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (multiplierL) LoadUserMultipliers(e boil.Executor, singular bool, maybeMultiplier interface{}, mods queries.Applicator) error {
+func (multiplierL) LoadPlayerMultipliers(e boil.Executor, singular bool, maybeMultiplier interface{}, mods queries.Applicator) error {
 	var slice []*Multiplier
 	var object *Multiplier
 
@@ -450,8 +450,8 @@ func (multiplierL) LoadUserMultipliers(e boil.Executor, singular bool, maybeMult
 	}
 
 	query := NewQuery(
-		qm.From(`user_multipliers`),
-		qm.WhereIn(`user_multipliers.multiplier_id in ?`, args...),
+		qm.From(`player_multipliers`),
+		qm.WhereIn(`player_multipliers.multiplier_id in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -459,22 +459,22 @@ func (multiplierL) LoadUserMultipliers(e boil.Executor, singular bool, maybeMult
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load user_multipliers")
+		return errors.Wrap(err, "failed to eager load player_multipliers")
 	}
 
-	var resultSlice []*UserMultiplier
+	var resultSlice []*PlayerMultiplier
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice user_multipliers")
+		return errors.Wrap(err, "failed to bind eager loaded slice player_multipliers")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on user_multipliers")
+		return errors.Wrap(err, "failed to close results in eager load on player_multipliers")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for user_multipliers")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for player_multipliers")
 	}
 
-	if len(userMultiplierAfterSelectHooks) != 0 {
+	if len(playerMultiplierAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(e); err != nil {
 				return err
@@ -482,10 +482,10 @@ func (multiplierL) LoadUserMultipliers(e boil.Executor, singular bool, maybeMult
 		}
 	}
 	if singular {
-		object.R.UserMultipliers = resultSlice
+		object.R.PlayerMultipliers = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
-				foreign.R = &userMultiplierR{}
+				foreign.R = &playerMultiplierR{}
 			}
 			foreign.R.Multiplier = object
 		}
@@ -495,9 +495,9 @@ func (multiplierL) LoadUserMultipliers(e boil.Executor, singular bool, maybeMult
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
 			if local.ID == foreign.MultiplierID {
-				local.R.UserMultipliers = append(local.R.UserMultipliers, foreign)
+				local.R.PlayerMultipliers = append(local.R.PlayerMultipliers, foreign)
 				if foreign.R == nil {
-					foreign.R = &userMultiplierR{}
+					foreign.R = &playerMultiplierR{}
 				}
 				foreign.R.Multiplier = local
 				break
@@ -508,11 +508,11 @@ func (multiplierL) LoadUserMultipliers(e boil.Executor, singular bool, maybeMult
 	return nil
 }
 
-// AddUserMultipliers adds the given related objects to the existing relationships
+// AddPlayerMultipliers adds the given related objects to the existing relationships
 // of the multiplier, optionally inserting them as new records.
-// Appends related to o.R.UserMultipliers.
+// Appends related to o.R.PlayerMultipliers.
 // Sets related.R.Multiplier appropriately.
-func (o *Multiplier) AddUserMultipliers(exec boil.Executor, insert bool, related ...*UserMultiplier) error {
+func (o *Multiplier) AddPlayerMultipliers(exec boil.Executor, insert bool, related ...*PlayerMultiplier) error {
 	var err error
 	for _, rel := range related {
 		if insert {
@@ -522,9 +522,9 @@ func (o *Multiplier) AddUserMultipliers(exec boil.Executor, insert bool, related
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
-				"UPDATE \"user_multipliers\" SET %s WHERE %s",
+				"UPDATE \"player_multipliers\" SET %s WHERE %s",
 				strmangle.SetParamNames("\"", "\"", 1, []string{"multiplier_id"}),
-				strmangle.WhereClause("\"", "\"", 2, userMultiplierPrimaryKeyColumns),
+				strmangle.WhereClause("\"", "\"", 2, playerMultiplierPrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
 
@@ -542,15 +542,15 @@ func (o *Multiplier) AddUserMultipliers(exec boil.Executor, insert bool, related
 
 	if o.R == nil {
 		o.R = &multiplierR{
-			UserMultipliers: related,
+			PlayerMultipliers: related,
 		}
 	} else {
-		o.R.UserMultipliers = append(o.R.UserMultipliers, related...)
+		o.R.PlayerMultipliers = append(o.R.PlayerMultipliers, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
-			rel.R = &userMultiplierR{
+			rel.R = &playerMultiplierR{
 				Multiplier: o,
 			}
 		} else {

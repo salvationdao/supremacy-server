@@ -6,7 +6,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/ninja-syndicate/ws"
 	"math/rand"
 	"server"
 	"server/db"
@@ -17,20 +16,19 @@ import (
 	"server/multipliers"
 	"server/rpcclient"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/ninja-syndicate/ws"
+
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"go.uber.org/atomic"
 
-	"github.com/ninja-software/terror/v2"
-	"github.com/shopspring/decimal"
-	"github.com/volatiletech/null/v8"
-
 	"github.com/ninja-syndicate/hub"
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	"github.com/gofrs/uuid"
@@ -165,7 +163,7 @@ func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 		_, err := btl.Battle.Update(gamedb.StdConn, boil.Infer())
 		if err != nil {
 			gamelog.L.Error().Interface("battle", btl).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to update Battle in database")
-			return terror.Error(err, "unable to update battle in database")
+			return err
 		}
 
 		// clean up battle contributions
@@ -251,7 +249,7 @@ func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 		err := btl.Battle.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {
 			gamelog.L.Error().Interface("battle", btl).Str("battle.go", ":battle.go:battle.Battle()").Err(err).Msg("unable to insert Battle into database")
-			return terror.Error(err, "unable to insert battle into database")
+			return err
 		}
 
 		gamelog.L.Debug().Msg("Inserted battle into db")
@@ -270,7 +268,7 @@ func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 		err = db.QueueSetBattleID(btl.ID, btl.warMachineIDs...)
 		if err != nil {
 			gamelog.L.Error().Interface("mechs_ids", btl.warMachineIDs).Str("battle_id", btl.ID).Err(err).Msg("failed to set battle id in queue")
-			return terror.Error(err, "Failed to set battle id in queue")
+			return err
 		}
 
 		// Tell clients to refetch war machine queue status
@@ -367,7 +365,6 @@ func (btl *Battle) start() {
 			ws.PublishMessage("/public/global_announcement", server.HubKeyGlobalAnnouncementSubscribe, nil)
 		}
 	}
-
 }
 
 // calcTriggeredLocation convert picked cell to the location in game
@@ -400,7 +397,7 @@ func (btl *Battle) spawnReinforcementNearMech(abilityEvent *server.GameAbilityEv
 	aliveWarMachines := []WarMachinePosition{}
 	for _, wm := range btl.WarMachines {
 		// store red mountain war machines
-		if wm.FactionID != server.RedMountainFactionID.String() || wm.Position == nil {
+		if wm.FactionID != server.RedMountainFactionID || wm.Position == nil {
 			continue
 		}
 
@@ -523,10 +520,16 @@ func (btl *Battle) endCreateStats(payload *BattleEndPayload, winningWarMachines 
 		gamelog.L.Warn().Err(err).Str("battle_id", payload.BattleID).Msg("get top player executors")
 	}
 
-	topFactionContributors := []*boiler.Faction{}
+	topFactionContributors := []*Faction{}
 	gamelog.L.Info().Msgf("battle end: looping topFactionContributorBoilers: %s", btl.ID)
 	for _, f := range topFactionContributorBoilers {
-		topFactionContributors = append(topFactionContributors, f)
+		topFactionContributors = append(topFactionContributors, &Faction{
+			ID:              f.ID,
+			Label:           f.Label,
+			PrimaryColor:    f.PrimaryColor,
+			SecondaryColor:  f.SecondaryColor,
+			BackgroundColor: f.BackgroundColor,
+		})
 	}
 	topPlayerContributors := []*BattleUser{}
 
@@ -1067,7 +1070,7 @@ func (btl *Battle) insertUserSpoils(btlEndInfo *BattleEndDetail) {
 
 	for _, player := range playerMultis {
 		playerTotalSow := multipliers.CalculateMultipliersWorth(oneMultiWorth, player.TotalMultiplier)
-		userSpoils := &boiler.UserSpoilsOfWar{
+		userSpoils := &boiler.PlayerSpoilsOfWar{
 			PlayerID:                 player.PlayerID,
 			BattleID:                 btlEndInfo.BattleID,
 			TotalMultiplierForBattle: int(player.TotalMultiplier.IntPart()),
@@ -1359,13 +1362,13 @@ func (btl *Battle) Tick(payload []byte) {
 			}
 		}
 		// Energy
-		if booleans[3] {
-			energy := binary.BigEndian.Uint32(payload[offset : offset+4])
-			offset += 4
-			if warMachineIndex != -1 {
-				btl.WarMachines[warMachineIndex].Energy = energy
-			}
-		}
+		//if booleans[3] {
+		//	energy := binary.BigEndian.Uint32(payload[offset : offset+4])
+		//	offset += 4
+		//	if warMachineIndex != -1 {
+		//		btl.WarMachines[warMachineIndex].Energy = energy
+		//	}
+		//}
 
 		ws.PublishMessage(fmt.Sprintf("/battle/mech/%d", participantID), HubKeyWarMachineStatUpdated, WarMachineStat{
 			Position: btl.WarMachines[warMachineIndex].Position,
@@ -1387,7 +1390,14 @@ func (btl *Battle) Pickup(dp *BattleWMPickupPayload) {
 		return
 	}
 
-	wm, err := boiler.Mechs(boiler.MechWhere.Hash.EQ(dp.WarMachineHash)).One(gamedb.StdConn)
+	// get item id from hash
+	item, err := boiler.CollectionItems(boiler.CollectionItemWhere.Hash.EQ(dp.WarMachineHash)).One(gamedb.StdConn)
+	if err != nil {
+		gamelog.L.Warn().Str("item hash", dp.WarMachineHash).Msg("can't find collection item with hash")
+		return
+	}
+
+	wm, err := boiler.Mechs(boiler.MechWhere.ID.EQ(item.ItemID)).One(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Warn().Str("mech.Hash", dp.WarMachineHash).Msg("can't find warmachine with hash")
 		return
@@ -1743,8 +1753,10 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 			ImageAvatar:   destroyedWarMachine.ImageAvatar, // TODO: should be imageavatar
 			Name:          destroyedWarMachine.Name,
 			Hash:          destroyedWarMachine.Hash,
-			FactionID:     destroyedWarMachine.FactionID,
-			Faction:       destroyedWarMachine.Faction,
+			Faction: &FactionBrief{
+				ID:    destroyedWarMachine.FactionID,
+				Label: destroyedWarMachine.Faction.Label,
+			},
 		},
 		KilledBy: dp.DestroyedWarMachineEvent.KilledBy,
 	}
@@ -1763,8 +1775,13 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 						ImageAvatar:   wm.ImageAvatar,
 						Name:          wm.Name,
 						Hash:          wm.Hash,
-						FactionID:     wm.FactionID,
-						Faction:       wm.Faction,
+						Faction: &FactionBrief{
+							ID:         wm.FactionID,
+							Label:      wm.Faction.Label,
+							Primary:    wm.Faction.PrimaryColor,
+							Secondary:  wm.Faction.SecondaryColor,
+							Background: wm.Faction.BackgroundColor,
+						},
 					}
 				}
 			}
@@ -1779,8 +1796,13 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 			ImageAvatar:   killByWarMachine.ImageAvatar,
 			Name:          killByWarMachine.Name,
 			Hash:          killByWarMachine.Hash,
-			FactionID:     killByWarMachine.FactionID,
-			Faction:       killByWarMachine.Faction,
+			Faction: &FactionBrief{
+				ID:         killByWarMachine.FactionID,
+				Label:      killByWarMachine.Faction.Label,
+				Primary:    killByWarMachine.Faction.PrimaryColor,
+				Secondary:  killByWarMachine.Faction.SecondaryColor,
+				Background: killByWarMachine.Faction.BackgroundColor,
+			},
 		}
 	}
 
@@ -1926,99 +1948,78 @@ var SubmodelSkinMap = map[string]string{
 	"Ukraine":            "Ukraine",
 }
 
-func (btl *Battle) MechsToWarMachines(mechs []*server.MechContainer) []*WarMachine {
-	warmachines := make([]*WarMachine, len(mechs))
-	for i, mech := range mechs {
-		label := mech.Faction.Label
-		if label == "" {
-			gamelog.L.Warn().Interface("faction_id", mech.Faction.ID).Str("battle_id", btl.ID).Msg("mech faction is an empty label")
+func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
+	var warMachines []*WarMachine
+
+	for _, mech := range mechs {
+		newWarMachine := &WarMachine{
+			ID:          mech.ID,
+			Hash:        mech.Hash,
+			OwnedByID:   mech.OwnerID,
+			Name:        TruncateString(mech.Name, 20),
+			FactionID:   mech.FactionID,
+			MaxHealth:   uint32(mech.MaxHitpoints),
+			Health:      uint32(mech.MaxHitpoints),
+			Speed:       mech.Speed,
+			Tier:        mech.Tier,
+			Image:       mech.ChassisSkin.ImageURL.String,
+			ImageAvatar: mech.ChassisSkin.AvatarURL.String,
+
+			Faction: &Faction{
+				ID:              mech.Faction.ID,
+				Label:           mech.Faction.Label,
+				PrimaryColor:    mech.Faction.PrimaryColor,
+				SecondaryColor:  mech.Faction.SecondaryColor,
+				BackgroundColor: mech.Faction.BackgroundColor,
+			},
+
+			PowerCore: PowerCoreFromServer(mech.PowerCore),
+			Weapons:   WeaponsFromServer(mech.Weapons),
+			Utility:   UtilitiesFromServer(mech.Utility),
+
+			//Abilities:  nil,
 		}
-		if len(label) > 10 {
-			words := strings.Split(label, " ")
-			label = ""
-			for i, word := range words {
-				if i == 0 {
-					label = word
-					continue
-				}
-				if i%1 == 0 {
-					label = label + " " + word
-					continue
-				}
-				label = label + "\n" + word
+		// update the name to be valid if not
+		if len(newWarMachine.Name) < 3 {
+			newWarMachine.Name = mech.Owner.Username
+			if newWarMachine.Name == "" {
+				newWarMachine.Name = fmt.Sprintf("%s%s%s", "🦾", mech.Hash, "🦾")
+			}
+		}
+		// set shield (assume for frontend, not game client)
+		for _, utl := range mech.Utility {
+			if utl.Type == boiler.UtilityTypeSHIELD && utl.Shield != nil {
+				newWarMachine.Shield = uint32(utl.Shield.Hitpoints)
+				newWarMachine.MaxShield = uint32(utl.Shield.Hitpoints)
+				newWarMachine.ShieldRechargeRate = uint32(utl.Shield.RechargeRate)
+			}
+		}
+		// check model
+		if mech.Model != nil {
+			model, ok := ModelMap[mech.Model.Label]
+			if !ok {
+				model = "WREX"
+			}
+			newWarMachine.Model = model
+		}
+
+		// check model skin
+		if mech.ChassisSkin != nil {
+			mappedSkin, ok := SubmodelSkinMap[mech.ChassisSkin.Label]
+			if ok {
+				newWarMachine.Skin = mappedSkin
 			}
 		}
 
-		weaponNames := make([]string, len(mech.Weapons))
-		for k, wpn := range mech.Weapons {
-			i, err := strconv.Atoi(k)
-			if err != nil {
-				gamelog.L.Warn().Str("key", k).Interface("weapon", wpn).Str("battle_id", btl.ID).Msg("mech weapon's key is not an int")
-			}
-			weaponNames[i] = wpn.Label
-		}
-
-		model, ok := ModelMap[mech.Chassis.Model]
-		if !ok {
-			model = "WREX"
-		}
-
-		mechName := mech.Name
-
-		if len(mechName) < 3 {
-			owner, err := mech.Owner().One(gamedb.StdConn)
-			if err != nil {
-				gamelog.L.Warn().Str("mech_id", mech.ID).Msg("unable to retrieve mech's owner")
-			} else {
-				mechName = owner.Username.String
-				if mechName == "" {
-					mechName = fmt.Sprintf("%s%s%s", "🦾", mech.Hash, "🦾")
-				}
-			}
-		}
-		skin := mech.Chassis.Skin
-		mappedSkin, ok := SubmodelSkinMap[mech.Chassis.Skin]
-		if ok {
-			skin = mappedSkin
-		}
-		warmachines[i] = &WarMachine{
-			ID:                 mech.ID,
-			Name:               TruncateString(mechName, 20),
-			Hash:               mech.Hash,
-			ParticipantID:      0,
-			FactionID:          mech.Faction.ID,
-			MaxHealth:          uint32(mech.Chassis.MaxHitpoints),
-			Health:             uint32(mech.Chassis.MaxHitpoints),
-			MaxShield:          uint32(mech.Chassis.MaxShield),
-			Shield:             uint32(mech.Chassis.MaxShield),
-			Stat:               nil,
-			OwnedByID:          mech.OwnerID,
-			ImageAvatar:        mech.AvatarURL,
-			Faction:            mech.Faction.Faction,
-			Speed:              mech.Chassis.Speed,
-			Model:              model,
-			Skin:               skin,
-			ShieldRechargeRate: float64(mech.Chassis.ShieldRechargeRate),
-			Durability:         mech.Chassis.MaxHitpoints,
-			WeaponHardpoint:    mech.Chassis.WeaponHardpoints,
-			TurretHardpoint:    mech.Chassis.TurretHardpoints,
-			UtilitySlots:       mech.Chassis.UtilitySlots,
-			Description:        nil,
-			ExternalUrl:        "",
-			Image:              mech.ImageURL,
-			PowerGrid:          1,
-			CPU:                1,
-			WeaponNames:        weaponNames,
-			Tier:               mech.Tier,
-		}
-		gamelog.L.Debug().Str("mech_id", mech.ID).Str("model", model).Str("skin", mech.Chassis.Skin).Msg("converted mech to warmachine")
+		warMachines = append(warMachines, newWarMachine)
+		gamelog.L.Debug().Interface("mech", mech).Interface("newWarMachine", newWarMachine).Msg("converted mech to warmachine")
 	}
 
-	sort.Slice(warmachines, func(i, k int) bool {
-		return warmachines[i].FactionID == warmachines[k].FactionID
+	sort.Slice(warMachines, func(i, k int) bool {
+		return warMachines[i].FactionID == warMachines[k].FactionID
 	})
 
-	return warmachines
+	return warMachines
 }
 
 func TruncateString(str string, length int) string {

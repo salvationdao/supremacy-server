@@ -93,7 +93,7 @@ type UserBrief struct {
 	ID        uuid.UUID       `json:"id"`
 	Username  string          `json:"username"`
 	FactionID string          `json:"faction_id,omitempty"`
-	Faction   *boiler.Faction `json:"faction"`
+	Faction   *Faction `json:"faction"`
 	Gid       int             `json:"gid"`
 }
 

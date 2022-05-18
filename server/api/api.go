@@ -149,10 +149,10 @@ func NewAPI(
 		FactionActivePlayers: make(map[string]*ActivePlayers),
 
 		// chatroom
-		GlobalChat:      NewChatroom(nil),
-		RedMountainChat: NewChatroom(&server.RedMountainFactionID),
-		BostonChat:      NewChatroom(&server.BostonCyberneticsFactionID),
-		ZaibatsuChat:    NewChatroom(&server.ZaibatsuFactionID),
+		GlobalChat:      NewChatroom(""),
+		RedMountainChat: NewChatroom(server.RedMountainFactionID),
+		BostonChat:      NewChatroom(server.BostonCyberneticsFactionID),
+		ZaibatsuChat:    NewChatroom(server.ZaibatsuFactionID),
 	}
 
 	battleArenaClient.SetMessageBus(messageBus)
@@ -177,6 +177,7 @@ func NewAPI(
 	cc := NewChatController(api)
 	_ = NewBattleController(api)
 	_ = NewPlayerAbilitiesController(api)
+	_ = NewPlayerAssetsController(api)
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
@@ -252,24 +253,24 @@ func NewAPI(
 	// create a tickle that update faction mvp every day 00:00 am
 	factionMvpUpdate := tickle.New("Calculate faction mvp player", 24*60*60, func() (int, error) {
 		// set red mountain mvp player
-		gamelog.L.Info().Str("faction_id", server.RedMountainFactionID.String()).Msg("Recalculate Red Mountain mvp player")
-		err := db.FactionStatMVPUpdate(server.RedMountainFactionID.String())
+		gamelog.L.Info().Str("faction_id", server.RedMountainFactionID).Msg("Recalculate Red Mountain mvp player")
+		err := db.FactionStatMVPUpdate(server.RedMountainFactionID)
 		if err != nil {
-			gamelog.L.Error().Str("faction_id", server.RedMountainFactionID.String()).Err(err).Msg("Failed to recalculate Red Mountain mvp player")
+			gamelog.L.Error().Str("faction_id", server.RedMountainFactionID).Err(err).Msg("Failed to recalculate Red Mountain mvp player")
 		}
 
 		// set boston mvp player
-		gamelog.L.Info().Str("faction_id", server.BostonCyberneticsFactionID.String()).Msg("Recalculate Boston mvp player")
-		err = db.FactionStatMVPUpdate(server.BostonCyberneticsFactionID.String())
+		gamelog.L.Info().Str("faction_id", server.BostonCyberneticsFactionID).Msg("Recalculate Boston mvp player")
+		err = db.FactionStatMVPUpdate(server.BostonCyberneticsFactionID)
 		if err != nil {
-			gamelog.L.Error().Str("faction_id", server.BostonCyberneticsFactionID.String()).Err(err).Msg("Failed to recalculate Boston mvp player")
+			gamelog.L.Error().Str("faction_id", server.BostonCyberneticsFactionID).Err(err).Msg("Failed to recalculate Boston mvp player")
 		}
 
 		// set Zaibatsu mvp player
-		gamelog.L.Info().Str("faction_id", server.ZaibatsuFactionID.String()).Msg("Recalculate Zaibatsu mvp player")
-		err = db.FactionStatMVPUpdate(server.ZaibatsuFactionID.String())
+		gamelog.L.Info().Str("faction_id", server.ZaibatsuFactionID).Msg("Recalculate Zaibatsu mvp player")
+		err = db.FactionStatMVPUpdate(server.ZaibatsuFactionID)
 		if err != nil {
-			gamelog.L.Error().Str("faction_id", server.ZaibatsuFactionID.String()).Err(err).Msg("Failed to recalculate Zaibatsu mvp player")
+			gamelog.L.Error().Str("faction_id", server.ZaibatsuFactionID).Err(err).Msg("Failed to recalculate Zaibatsu mvp player")
 		}
 
 		return http.StatusOK, nil

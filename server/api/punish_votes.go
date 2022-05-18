@@ -154,8 +154,8 @@ func (pvt *PunishVoteTracker) CurrentEligiblePlayers() map[string]bool {
 
 	// get active player with positive ability kill count
 	if len(dbSearchList) > 0 {
-		uss, err := boiler.UserStats(
-			boiler.UserStatWhere.ID.IN(dbSearchList),
+		uss, err := boiler.PlayerStats(
+			boiler.PlayerStatWhere.ID.IN(dbSearchList),
 		).All(gamedb.StdConn)
 		if err != nil {
 			gamelog.L.Error().Str("punish vote id", pvt.CurrentPunishVote.ID).Err(err).Msg("Failed to get player stat from db")
