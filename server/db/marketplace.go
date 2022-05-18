@@ -191,6 +191,44 @@ func MarketplaceSaleCreate(saleType server.MarketplaceSaleType, ownerID uuid.UUI
 	return output, nil
 }
 
+// MarketplaceSaleBidHistoryCreate inserts a new bid history record.
+func MarketplaceSaleBidHistoryCreate(id uuid.UUID, bidderUserID uuid.UUID, amount decimal.Decimal) (*boiler.ItemSalesBidHistory, error) {
+	obj := &boiler.ItemSalesBidHistory{
+		ItemSaleID: id.String(),
+		BidderID:   bidderUserID.String(),
+		BidPrice:   amount.String(),
+	}
+	err := obj.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+	return obj, nil
+}
+
+// MarketplaceSaleAuctionSync updates the current auction price based on the bid history.
+func MarketplaceSaleAuctionSync(id uuid.UUID) error {
+	q := fmt.Sprintf(
+		`UPDATE %s
+		SET %s = (
+			SELECT %s
+			FROM %s
+			WHERE %s = $1 
+		)
+		WHERE %s = $1`,
+		boiler.TableNames.ItemSales,
+		boiler.ItemSaleColumns.AuctionCurrentPrice,
+		boiler.ItemSalesBidHistoryColumns.BidPrice,
+		boiler.TableNames.ItemSalesBidHistory,
+		boiler.ItemSalesBidHistoryColumns.ItemSaleID,
+		boiler.ItemSaleColumns.ID,
+	)
+	_, err := gamedb.StdConn.Exec(q, id)
+	if err != nil {
+		return terror.Error(err)
+	}
+	return nil
+}
+
 // MarketplaceSaleItemExists checks whether given sales item exists.
 func MarketplaceSaleItemExists(id uuid.UUID) (bool, error) {
 	return boiler.ItemSaleExists(gamedb.StdConn, id.String())

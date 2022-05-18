@@ -38,6 +38,7 @@ func NewMarketplaceController(api *API) *MarketplaceController {
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesList, marketplaceHub.SalesListHandler)
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesCreate, marketplaceHub.SalesCreateHandler)
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesBuy, marketplaceHub.SalesBuyHandler)
+	api.SecureUserFactionCommand(HubKeyMarketplaceSalesBid, marketplaceHub.SalesBidHandler)
 
 	// api.SecureUserSubscribeCommand(HubKeyMarketplaceSalesItemUpdate, marketplaceHub.SalesItemUpdateSubscriber)
 
@@ -347,7 +348,99 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		return terror.Error(err, "Failed tp process transaction for Purchase Sale Item.")
 	}
 
+	// TODO: transfer ownership of asset
+
 	// success
+	reply(true)
+
+	return nil
+}
+
+const HubKeyMarketplaceSalesBid = "MARKETPLACE:SALES:ITEM:BID"
+
+type MarketplaceSalesBidRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		ItemID uuid.UUID `json:"item_id"`
+		Amount string    `json:"amount"`
+	} `json:"payload"`
+}
+
+func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boiler.Player, fID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	errMsg := "Issue placing bid, try again or contact support."
+	req := &MarketplaceSalesBidRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	userID, err := uuid.FromString(user.ID)
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	// Check whether user can buy sale item
+	saleItem, err := db.MarketplaceItemSale(req.Payload.ItemID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "Item not found.")
+	}
+	if err != nil {
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("item_id", req.Payload.ItemID.String()).
+			Err(err).
+			Msg("Unable to retrieve sale item.")
+		return terror.Error(err, errMsg)
+	}
+	if !saleItem.Auction {
+		return terror.Error(terror.ErrInvalidInput, "Item is not up for auction.")
+	}
+	if saleItem.FactionID != fID {
+		return terror.Error(terror.ErrInvalidInput, "Item does not belong to user's faction.")
+	}
+
+	currentAmount, err := decimal.NewFromString(saleItem.AuctionCurrentPrice.String)
+	if err != nil {
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("item_id", req.Payload.ItemID.String()).
+			Str("current_auction_price", saleItem.AuctionCurrentPrice.String).
+			Err(err).
+			Msg("Unable to retrieve sale item.")
+		return terror.Error(err, errMsg)
+	}
+	bidAmount, err := decimal.NewFromString(req.Payload.Amount)
+	if err != nil {
+		return terror.Error(err, "Invalid Bid Amount received.")
+	}
+	if currentAmount.GreaterThanOrEqual(bidAmount) {
+		return terror.Error(terror.ErrInvalidInput, "Invalid bid amount, must be above the current bid price.")
+	}
+
+	// Place Bid
+	_, err = db.MarketplaceSaleBidHistoryCreate(req.Payload.ItemID, userID, bidAmount)
+	if err != nil {
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("item_id", req.Payload.ItemID.String()).
+			Str("current_auction_price", saleItem.AuctionCurrentPrice.String).
+			Str("bid_amount", bidAmount.String()).
+			Err(err).
+			Msg("Unable to place bid.")
+		return terror.Error(err, errMsg)
+	}
+
+	err = db.MarketplaceSaleAuctionSync(req.Payload.ItemID)
+	if err != nil {
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("item_id", req.Payload.ItemID.String()).
+			Str("bid_amount", bidAmount.String()).
+			Err(err).
+			Msg("Unable to update current auction price.")
+		return terror.Error(err, errMsg)
+	}
+
 	reply(true)
 
 	return nil
