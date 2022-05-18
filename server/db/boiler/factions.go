@@ -34,6 +34,9 @@ type Faction struct {
 	PrimaryColor    string      `boiler:"primary_color" boil:"primary_color" json:"primary_color" toml:"primary_color" yaml:"primary_color"`
 	SecondaryColor  string      `boiler:"secondary_color" boil:"secondary_color" json:"secondary_color" toml:"secondary_color" yaml:"secondary_color"`
 	BackgroundColor string      `boiler:"background_color" boil:"background_color" json:"background_color" toml:"background_color" yaml:"background_color"`
+	LogoURL         string      `boiler:"logo_url" boil:"logo_url" json:"logo_url" toml:"logo_url" yaml:"logo_url"`
+	BackgroundURL   string      `boiler:"background_url" boil:"background_url" json:"background_url" toml:"background_url" yaml:"background_url"`
+	Description     string      `boiler:"description" boil:"description" json:"description" toml:"description" yaml:"description"`
 
 	R *factionR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L factionL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -51,6 +54,9 @@ var FactionColumns = struct {
 	PrimaryColor    string
 	SecondaryColor  string
 	BackgroundColor string
+	LogoURL         string
+	BackgroundURL   string
+	Description     string
 }{
 	ID:              "id",
 	VotePrice:       "vote_price",
@@ -63,6 +69,9 @@ var FactionColumns = struct {
 	PrimaryColor:    "primary_color",
 	SecondaryColor:  "secondary_color",
 	BackgroundColor: "background_color",
+	LogoURL:         "logo_url",
+	BackgroundURL:   "background_url",
+	Description:     "description",
 }
 
 var FactionTableColumns = struct {
@@ -77,6 +86,9 @@ var FactionTableColumns = struct {
 	PrimaryColor    string
 	SecondaryColor  string
 	BackgroundColor string
+	LogoURL         string
+	BackgroundURL   string
+	Description     string
 }{
 	ID:              "factions.id",
 	VotePrice:       "factions.vote_price",
@@ -89,6 +101,9 @@ var FactionTableColumns = struct {
 	PrimaryColor:    "factions.primary_color",
 	SecondaryColor:  "factions.secondary_color",
 	BackgroundColor: "factions.background_color",
+	LogoURL:         "factions.logo_url",
+	BackgroundURL:   "factions.background_url",
+	Description:     "factions.description",
 }
 
 // Generated where
@@ -105,6 +120,9 @@ var FactionWhere = struct {
 	PrimaryColor    whereHelperstring
 	SecondaryColor  whereHelperstring
 	BackgroundColor whereHelperstring
+	LogoURL         whereHelperstring
+	BackgroundURL   whereHelperstring
+	Description     whereHelperstring
 }{
 	ID:              whereHelperstring{field: "\"factions\".\"id\""},
 	VotePrice:       whereHelperstring{field: "\"factions\".\"vote_price\""},
@@ -117,6 +135,9 @@ var FactionWhere = struct {
 	PrimaryColor:    whereHelperstring{field: "\"factions\".\"primary_color\""},
 	SecondaryColor:  whereHelperstring{field: "\"factions\".\"secondary_color\""},
 	BackgroundColor: whereHelperstring{field: "\"factions\".\"background_color\""},
+	LogoURL:         whereHelperstring{field: "\"factions\".\"logo_url\""},
+	BackgroundURL:   whereHelperstring{field: "\"factions\".\"background_url\""},
+	Description:     whereHelperstring{field: "\"factions\".\"description\""},
 }
 
 // FactionRels is where relationship names are stored.
@@ -182,9 +203,9 @@ func (*factionR) NewStruct() *factionR {
 type factionL struct{}
 
 var (
-	factionAllColumns            = []string{"id", "vote_price", "contract_reward", "label", "guild_id", "deleted_at", "updated_at", "created_at", "primary_color", "secondary_color", "background_color"}
+	factionAllColumns            = []string{"id", "vote_price", "contract_reward", "label", "guild_id", "deleted_at", "updated_at", "created_at", "primary_color", "secondary_color", "background_color", "logo_url", "background_url", "description"}
 	factionColumnsWithoutDefault = []string{"label"}
-	factionColumnsWithDefault    = []string{"id", "vote_price", "contract_reward", "guild_id", "deleted_at", "updated_at", "created_at", "primary_color", "secondary_color", "background_color"}
+	factionColumnsWithDefault    = []string{"id", "vote_price", "contract_reward", "guild_id", "deleted_at", "updated_at", "created_at", "primary_color", "secondary_color", "background_color", "logo_url", "background_url", "description"}
 	factionPrimaryKeyColumns     = []string{"id"}
 	factionGeneratedColumns      = []string{}
 )

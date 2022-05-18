@@ -5,7 +5,6 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 
-	"github.com/ninja-software/terror/v2"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
@@ -14,7 +13,7 @@ import (
 func BattleAbilityGetRandom() (*boiler.BattleAbility, error) {
 	battleAbilities, err := boiler.BattleAbilities().All(gamedb.StdConn)
 	if err != nil {
-		return nil, terror.Error(err)
+		return nil, err
 	}
 
 	// NOTE: need to ensure there is always a battle ability on the list, otherwise the system will crash
@@ -35,7 +34,7 @@ func FactionAbilitiesSupsCostUpdate(gameAbilityID string, supsCost decimal.Decim
 
 	_, err := asc.Update(gamedb.StdConn, boil.Whitelist(boiler.GameAbilityColumns.SupsCost, boiler.GameAbilityColumns.CurrentSups))
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 
 	return nil

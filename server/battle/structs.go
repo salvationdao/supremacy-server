@@ -1,15 +1,12 @@
 package battle
 
 import (
-	"encoding/json"
-	"fmt"
 	"server"
-	"server/gamelog"
+	"server/db/boiler"
 	"server/multipliers"
 	"time"
 
 	"github.com/gofrs/uuid"
-	"github.com/ninja-syndicate/hub"
 	"github.com/sasha-s/go-deadlock"
 	"github.com/shopspring/decimal"
 )
@@ -33,25 +30,6 @@ func (u *usersMap) Range(fn func(user *BattleUser) bool) {
 		}
 	}
 	u.RUnlock()
-}
-
-func (u *usersMap) Send(key hub.HubCommandKey, payload interface{}, ids ...uuid.UUID) error {
-	u.RLock()
-	if len(ids) == 0 {
-		for _, user := range u.m {
-			user.Send(key, payload)
-		}
-	} else {
-		for _, id := range ids {
-			if user, ok := u.m[id]; ok {
-				user.Send(key, payload)
-			} else {
-				gamelog.L.Warn().Str("user_id", id.String()).Msg("tried to send user a msg but not in online map")
-			}
-		}
-	}
-	u.RUnlock()
-	return nil
 }
 
 func (u *usersMap) OnlineUserIDs() []string {
@@ -97,12 +75,9 @@ type Started struct {
 }
 
 type BattleUser struct {
-	ID            uuid.UUID `json:"id"`
-	Username      string    `json:"username"`
-	FactionColour string    `json:"faction_colour"`
-	FactionID     string    `json:"faction_id"`
-	FactionLogoID string    `json:"faction_logo_id"`
-	wsClient      map[*hub.Client]bool
+	ID        uuid.UUID `json:"id"`
+	Username  string    `json:"username"`
+	FactionID string    `json:"faction_id"`
 	deadlock.RWMutex
 }
 
@@ -122,38 +97,17 @@ func (bu *BattleUser) AvatarID() string {
 	return FactionLogos[bu.FactionID]
 }
 
-func (bu *BattleUser) Send(key hub.HubCommandKey, payload interface{}) error {
-	bu.Lock()
-	defer bu.Unlock()
-	if bu.wsClient == nil || len(bu.wsClient) == 0 {
-		return fmt.Errorf("user does not have a websocket client")
-	}
-	b, err := json.Marshal(&BroadcastPayload{
-		Key:     key,
-		Payload: payload,
-	})
-
-	if err != nil {
-		return err
-	}
-
-	for wsc := range bu.wsClient {
-		go wsc.Send(b)
-	}
-	return nil
-}
-
 type BattleEndDetail struct {
-	BattleID                     string        `json:"battle_id"`
-	BattleIdentifier             int           `json:"battle_identifier"`
-	StartedAt                    time.Time     `json:"started_at"`
-	EndedAt                      time.Time     `json:"ended_at"`
-	WinningCondition             string        `json:"winning_condition"`
-	WinningFaction               *Faction      `json:"winning_faction"`
-	WinningWarMachines           []*WarMachine `json:"winning_war_machines"`
-	TopSupsContributors          []*BattleUser `json:"top_sups_contributors"`
-	TopSupsContributeFactions    []*Faction    `json:"top_sups_contribute_factions"`
-	MostFrequentAbilityExecutors []*BattleUser `json:"most_frequent_ability_executors"`
+	BattleID                     string            `json:"battle_id"`
+	BattleIdentifier             int               `json:"battle_identifier"`
+	StartedAt                    time.Time         `json:"started_at"`
+	EndedAt                      time.Time         `json:"ended_at"`
+	WinningCondition             string            `json:"winning_condition"`
+	WinningFaction               *boiler.Faction   `json:"winning_faction"`
+	WinningWarMachines           []*WarMachine     `json:"winning_war_machines"`
+	TopSupsContributors          []*BattleUser     `json:"top_sups_contributors"`
+	TopSupsContributeFactions    []*boiler.Faction `json:"top_sups_contribute_factions"`
+	MostFrequentAbilityExecutors []*BattleUser     `json:"most_frequent_ability_executors"`
 	*MultiplierUpdate            `json:"battle_multipliers"`
 }
 
@@ -196,7 +150,7 @@ type WarMachine struct {
 	WeaponHardpoint    int             `json:"weaponHardpoint"`
 	TurretHardpoint    int             `json:"turretHardpoint"`
 	UtilitySlots       int             `json:"utilitySlots"`
-	Faction            *Faction        `json:"faction"`
+	Faction            *boiler.Faction `json:"faction"`
 	WeaponNames        []string        `json:"weaponNames"`
 	Abilities          []GameAbility   `json:"abilities"`
 	Tier               string          `json:"tier"`

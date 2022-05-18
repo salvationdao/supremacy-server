@@ -124,7 +124,7 @@ func (t *Telegram) ProfileUpdate(playerID string) (*boiler.PlayerProfile, error)
 	// generate shortcode
 	shortcode, err := shortid.Generate()
 	if err != nil {
-		return nil, terror.Error(err)
+		return nil, err
 	}
 
 	codeExists := true
@@ -142,7 +142,7 @@ func (t *Telegram) ProfileUpdate(playerID string) (*boiler.PlayerProfile, error)
 			// if code already exist generate new one
 			shortcode, err = shortid.Generate()
 			if err != nil {
-				return nil, terror.Error(err)
+				return nil, err
 			}
 		} else {
 			codeExists = false

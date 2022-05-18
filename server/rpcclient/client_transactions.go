@@ -2,8 +2,6 @@ package rpcclient
 
 import (
 	"server/gamelog"
-
-	"github.com/ninja-software/terror/v2"
 )
 
 // SpendSupMessage tells the passport to make a transfer
@@ -13,7 +11,7 @@ func (pp *PassportXrpcClient) SpendSupMessage(req SpendSupsReq) (string, error) 
 	err := pp.XrpcClient.Call("S.SupremacySpendSupsHandler", req, resp)
 	if err != nil {
 		gamelog.L.Err(err).Str("method", "SupremacySpendSupsHandler").Msg("rpc error")
-		return "", terror.Error(err)
+		return "", err
 	}
 
 	return resp.TransactionID, nil
@@ -28,7 +26,7 @@ func (pp *PassportXrpcClient) RefundSupsMessage(transactionID string) (string, e
 	}, resp)
 	if err != nil {
 		gamelog.L.Err(err).Str("method", "RefundTransaction").Msg("rpc error")
-		return "", terror.Error(err)
+		return "", err
 	}
 
 	return resp.TransactionID, nil

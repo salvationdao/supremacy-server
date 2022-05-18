@@ -5,19 +5,20 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/ninja-syndicate/ws"
 	"log"
 	"net/url"
+	"runtime"
 	"server"
 	"server/api"
 	"server/battle"
 	"server/comms"
 	"server/gamedb"
 	"server/gamelog"
+	"server/rpcclient"
 	"server/sms"
 	"server/supermigrate"
 	"server/telegram"
-
-	"server/rpcclient"
 
 	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
 	zerologger "github.com/ninja-syndicate/hub/ext/zerolog"
@@ -60,6 +61,7 @@ const SentryReleasePrefix = "supremacy-gameserver"
 const envPrefix = "GAMESERVER"
 
 func main() {
+	runtime.GOMAXPROCS(2)
 	app := &cli.App{
 		Compiled: time.Now(),
 		Usage:    "Run the server server",
@@ -118,6 +120,8 @@ func main() {
 					&cli.StringFlag{Name: "userauth_jwtsecret", Value: "872ab3df-d7c7-4eb6-a052-4146d0f4dd15", EnvVars: []string{envPrefix + "_USERAUTH_JWTSECRET"}, Usage: "JWT secret"},
 
 					&cli.BoolFlag{Name: "cookie_secure", Value: true, EnvVars: []string{envPrefix + "_COOKIE_SECURE", "COOKIE_SECURE"}, Usage: "set cookie secure"},
+
+					&cli.StringFlag{Name: "cookie_key", Value: "akjsghio2u3tknbdxzsgkdaskmas,f.m21354fg23ktbkghkjsdhgkhakh32tklhngsdzg32rxz@Q$@sagasg", EnvVars: []string{envPrefix + "_COOKIE_KEY", "COOKIE_KEY"}, Usage: "cookie encryption key"},
 					&cli.StringFlag{Name: "google_client_id", Value: "", EnvVars: []string{envPrefix + "_GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_ID"}, Usage: "Google Client ID for OAuth functionaility."},
 
 					// SMS stuff
@@ -139,7 +143,6 @@ func main() {
 					&cli.StringFlag{Name: "server_stream_key", Value: "6c7b4a82-7797-4847-836e-978399830878", EnvVars: []string{envPrefix + "_SERVER_STREAM_KEY"}, Usage: "Authorization key to crud servers"},
 					&cli.StringFlag{Name: "passport_webhook_secret", Value: "e1BD3FF270804c6a9edJDzzDks87a8a4fde15c7=", EnvVars: []string{"PASSPORT_WEBHOOK_SECRET"}, Usage: "Authorization key to passport webhook"},
 
-					&cli.IntFlag{Name: "database_max_pool_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_POOL_CONNS"}, Usage: "Database max pool conns"},
 					&cli.IntFlag{Name: "database_max_idle_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_IDLE_CONNS"}, Usage: "Database max idle conns"},
 					&cli.IntFlag{Name: "database_max_open_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_OPEN_CONNS"}, Usage: "Database max open conns"},
 
@@ -147,12 +150,13 @@ func main() {
 					&cli.StringSliceFlag{Name: "pprof_datadog_profiles", Value: cli.NewStringSlice("cpu", "heap"), EnvVars: []string{envPrefix + "_PPROF_DATADOG_PROFILES"}, Usage: "Comma seprated list of profiles to collect. Options: cpu,heap,block,mutex,goroutine,metrics"},
 					&cli.DurationFlag{Name: "pprof_datadog_interval_sec", Value: 60, EnvVars: []string{envPrefix + "_PPROF_DATADOG_INTERVAL_SEC"}, Usage: "Specifies the period at which profiles will be collected"},
 					&cli.DurationFlag{Name: "pprof_datadog_duration_sec", Value: 60, EnvVars: []string{envPrefix + "_PPROF_DATADOG_DURATION_SEC"}, Usage: "Specifies the length of the CPU profile snapshot"},
+
+					&cli.StringFlag{Name: "auth_callback_url", Value: "https://play.supremacygame.io/login-redirect", EnvVars: []string{envPrefix + "_AUTH_CALLBACK_URL"}, Usage: "The url for gameserver to redirect after completing the auth flow"},
 				},
 				Usage: "run server",
 				Action: func(c *cli.Context) error {
 					gameClientMinimumBuildNo := c.Uint64("game_client_minimum_build_no")
 
-					databaseMaxPoolConns := c.Int("database_max_pool_conns")
 					databaseMaxIdleConns := c.Int("database_max_idle_conns")
 					databaseMaxOpenConns := c.Int("database_max_open_conns")
 
@@ -182,6 +186,8 @@ func main() {
 					battleArenaAddr := c.String("battle_arena_addr")
 					level := c.String("log_level")
 					gamelog.New(environment, level)
+
+					ws.Init(&ws.Config{Logger: gamelog.L})
 
 					tracer.Start(
 						tracer.WithEnv(environment),
@@ -245,19 +251,6 @@ func main() {
 						gamelog.L.Panic().Msg("game_client_minimum_build_no not set or zero value")
 					}
 
-					pgxconn, err := pgxconnect(
-						databaseUser,
-						databasePass,
-						databaseHost,
-						databasePort,
-						databaseName,
-						databaseAppName,
-						Version,
-						databaseMaxPoolConns,
-					)
-					if err != nil {
-						return terror.Panic(err)
-					}
 					sqlconn, err := sqlConnect(
 						databaseUser,
 						databasePass,
@@ -272,7 +265,7 @@ func main() {
 					if err != nil {
 						return terror.Panic(err)
 					}
-					err = gamedb.New(pgxconn, sqlconn)
+					err = gamedb.New(sqlconn)
 					if err != nil {
 						return terror.Panic(err)
 					}
@@ -281,100 +274,17 @@ func main() {
 					if err != nil {
 						return terror.Panic(err)
 					}
-					hostname := u.Hostname()
-					rpcAddrs := []string{
-						fmt.Sprintf("%s:10001", hostname),
-						fmt.Sprintf("%s:10002", hostname),
-						fmt.Sprintf("%s:10003", hostname),
-						fmt.Sprintf("%s:10004", hostname),
-						fmt.Sprintf("%s:10005", hostname),
-						fmt.Sprintf("%s:10006", hostname),
-						fmt.Sprintf("%s:10007", hostname),
-						fmt.Sprintf("%s:10008", hostname),
-						fmt.Sprintf("%s:10009", hostname),
-						fmt.Sprintf("%s:10010", hostname),
-						fmt.Sprintf("%s:10011", hostname),
-						fmt.Sprintf("%s:10012", hostname),
-						fmt.Sprintf("%s:10013", hostname),
-						fmt.Sprintf("%s:10014", hostname),
-						fmt.Sprintf("%s:10015", hostname),
-						fmt.Sprintf("%s:10016", hostname),
-						fmt.Sprintf("%s:10017", hostname),
-						fmt.Sprintf("%s:10018", hostname),
-						fmt.Sprintf("%s:10019", hostname),
-						fmt.Sprintf("%s:10020", hostname),
-						fmt.Sprintf("%s:10021", hostname),
-						fmt.Sprintf("%s:10022", hostname),
-						fmt.Sprintf("%s:10023", hostname),
-						fmt.Sprintf("%s:10024", hostname),
-						fmt.Sprintf("%s:10025", hostname),
-						fmt.Sprintf("%s:10026", hostname),
-						fmt.Sprintf("%s:10027", hostname),
-						fmt.Sprintf("%s:10028", hostname),
-						fmt.Sprintf("%s:10029", hostname),
-						fmt.Sprintf("%s:10030", hostname),
-						fmt.Sprintf("%s:10031", hostname),
-						fmt.Sprintf("%s:10032", hostname),
-						fmt.Sprintf("%s:10033", hostname),
-						fmt.Sprintf("%s:10034", hostname),
-						fmt.Sprintf("%s:10035", hostname),
-					}
+
 					gamelog.L.Info().Msg("start rpc client")
-					rpcClient := rpcclient.NewPassportXrpcClient(passportClientToken, rpcAddrs)
+					rpcClient := rpcclient.NewPassportXrpcClient(passportClientToken, u.Hostname(), 10001, 34)
 
 					gamelog.L.Info().Msg("start rpc server")
 					rpcServer := &comms.XrpcServer{}
 
-					err = rpcServer.Listen(
-						rpcClient,
-						":11001",
-						":11002",
-						":11003",
-						":11004",
-						":11005",
-						":11006",
-						":11007",
-						":11008",
-						":11009",
-						":11010",
-						":11011",
-						":11012",
-						":11013",
-						":11014",
-						":11015",
-						":11016",
-						":11017",
-						":11018",
-						":11019",
-						":11020",
-						":11021",
-						":11022",
-						":11023",
-						":11024",
-						":11025",
-						":11026",
-						":11027",
-						":11028",
-						":11029",
-						":11030",
-						":11031",
-						":11032",
-						":11033",
-						":11034",
-						":11035",
-					)
+					err = rpcServer.Listen(rpcClient, 11001, 34)
 					if err != nil {
-						return terror.Error(err)
+						return err
 					}
-					//// Connect to passport
-					//pp := passport.NewPassport(
-					//	log_helpers.NamedLogger(gamelog.L, "passport"),
-					//	passportAddr,
-					//	passportClientToken,
-					//	rpcClient,
-					//)
-
-					// sync user stats
 
 					// Start Gameserver - Gameclient server
 					// Passport
@@ -407,7 +317,8 @@ func main() {
 
 					// initialise telegram bot
 					telebot, err := telegram.NewTelegram(telegramBotToken, environment, func(owner string, success bool) {
-						go messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", telegram.HubKeyTelegramShortcodeRegistered, owner)), success)
+						ws.PublishMessage(fmt.Sprintf("/user/%s", owner), telegram.HubKeyTelegramShortcodeRegistered, success)
+						//go messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", telegram.HubKeyTelegramShortcodeRegistered, owner)), success)
 					})
 					if err != nil {
 						return terror.Error(err, "Telegram init failed")
@@ -437,7 +348,6 @@ func main() {
 
 					ba := battle.NewArena(&battle.Opts{
 						Addr:                     battleArenaAddr,
-						Conn:                     pgxconn,
 						MessageBus:               messageBus,
 						Hub:                      gsHub,
 						RPCClient:                rpcClient,
@@ -447,7 +357,7 @@ func main() {
 					})
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("set up arena")
 					gamelog.L.Info().Msg("Setting up webhook rest API")
-					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, pgxconn, rpcClient, messageBus, gsHub, twilio, telebot, detector)
+					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, rpcClient, messageBus, gsHub, twilio, telebot, detector)
 					if err != nil {
 						fmt.Println(err)
 						os.Exit(1)
@@ -479,13 +389,11 @@ func main() {
 					&cli.StringFlag{Name: "database_port", Value: "5437", EnvVars: []string{envPrefix + "_DATABASE_PORT", "DATABASE_PORT"}, Usage: "The database port"},
 					&cli.StringFlag{Name: "database_name", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_NAME", "DATABASE_NAME"}, Usage: "The database name"},
 					&cli.StringFlag{Name: "database_application_name", Value: "API Server", EnvVars: []string{envPrefix + "_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
-					&cli.IntFlag{Name: "database_max_pool_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_POOL_CONNS"}, Usage: "Database max pool conns"},
 					&cli.IntFlag{Name: "database_max_idle_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_IDLE_CONNS"}, Usage: "Database max idle conns"},
 					&cli.IntFlag{Name: "database_max_open_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_OPEN_CONNS"}, Usage: "Database max open conns"},
 				},
 				Action: func(c *cli.Context) error {
 
-					databaseMaxPoolConns := c.Int("database_max_pool_conns")
 					databaseMaxIdleConns := c.Int("database_max_idle_conns")
 					databaseMaxOpenConns := c.Int("database_max_open_conns")
 
@@ -495,19 +403,6 @@ func main() {
 					databasePort := c.String("database_port")
 					databaseName := c.String("database_name")
 					databaseAppName := c.String("database_application_name")
-					pgxconn, err := pgxconnect(
-						databaseUser,
-						databasePass,
-						databaseHost,
-						databasePort,
-						databaseName,
-						databaseAppName,
-						Version,
-						databaseMaxPoolConns,
-					)
-					if err != nil {
-						return terror.Panic(err)
-					}
 					sqlconn, err := sqlConnect(
 						databaseUser,
 						databasePass,
@@ -522,7 +417,7 @@ func main() {
 					if err != nil {
 						return terror.Panic(err)
 					}
-					err = gamedb.New(pgxconn, sqlconn)
+					err = gamedb.New(sqlconn)
 					if err != nil {
 						return terror.Panic(err)
 					}
@@ -578,32 +473,32 @@ func main() {
 					result := &rpcclient.GetAll{}
 					err = passportRPCclient.Call("S.SuperMigrate", rpcclient.GetAllReq{}, result)
 					if err != nil {
-						return terror.Error(err)
+						return err
 					}
 					metadataPayload := []*supermigrate.MetadataPayload{}
 					err = result.MetadataPayload.Unmarshal(&metadataPayload)
 					if err != nil {
-						return terror.Error(err)
+						return err
 					}
 					assetPayload := []*supermigrate.AssetPayload{}
 					err = result.AssetPayload.Unmarshal(&assetPayload)
 					if err != nil {
-						return terror.Error(err)
+						return err
 					}
 					storePayload := []*supermigrate.StorePayload{}
 					err = result.StorePayload.Unmarshal(&storePayload)
 					if err != nil {
-						return terror.Error(err)
+						return err
 					}
 					factionPayload := []*supermigrate.FactionPayload{}
 					err = result.FactionPayload.Unmarshal(&factionPayload)
 					if err != nil {
-						return terror.Error(err)
+						return err
 					}
 					userPayload := []*supermigrate.UserPayload{}
 					err = result.UserPayload.Unmarshal(&userPayload)
 					if err != nil {
-						return terror.Error(err)
+						return err
 					}
 
 					err = supermigrate.MigrateUsers(metadataPayload, assetPayload, storePayload, factionPayload, userPayload)
@@ -627,7 +522,7 @@ func main() {
 	}
 }
 
-func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, battleArenaClient *battle.Arena, conn *pgxpool.Pool, passport *rpcclient.PassportXrpcClient, messageBus *messagebus.MessageBus, gsHub *hub.Hub, sms server.SMS, telegram server.Telegram, languageDetector lingua.LanguageDetector) (*api.API, error) {
+func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, battleArenaClient *battle.Arena, passport *rpcclient.PassportXrpcClient, messageBus *messagebus.MessageBus, gsHub *hub.Hub, sms server.SMS, telegram server.Telegram, languageDetector lingua.LanguageDetector) (*api.API, error) {
 	environment := ctxCLI.String("environment")
 	sentryDSNBackend := ctxCLI.String("sentry_dsn_backend")
 	sentryServerName := ctxCLI.String("sentry_server_name")
@@ -645,14 +540,14 @@ func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, bat
 		}
 	default:
 		if err != nil {
-			return nil, terror.Error(err)
+			return nil, err
 		}
 	}
 
 	jwtKey := ctxCLI.String("jwt_key")
 	jwtKeyByteArray, err := base64.StdEncoding.DecodeString(jwtKey)
 	if err != nil {
-		return nil, terror.Error(err)
+		return nil, err
 	}
 
 	apiAddr := ctxCLI.String("api_addr")
@@ -665,9 +560,11 @@ func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, bat
 		TwitchUIHostURL:       ctxCLI.String("twitch_ui_web_host_url"),
 		ServerStreamKey:       ctxCLI.String("server_stream_key"),
 		PassportWebhookSecret: ctxCLI.String("passport_webhook_secret"),
+		CookieKey:             ctxCLI.String("cookie_key"),
 		JwtKey:                jwtKeyByteArray,
 		Environment:           environment,
 		Address:               apiAddr,
+		AuthCallbackURL:       ctxCLI.String("auth_callback_url"),
 	}
 
 	// HTML Sanitizer

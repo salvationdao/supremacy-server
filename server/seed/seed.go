@@ -34,31 +34,31 @@ func (s *Seeder) Run() error {
 	ctx := context.Background()
 	err := gameMaps(ctx, s.Conn)
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 
 	fmt.Println("seed factions")
 	_, err = s.factions(ctx)
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 
 	fmt.Println("Seed assets")
 	_, err = s.assets(ctx)
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 
 	fmt.Println("Seed faction abilities")
 	err = factionAbilities(ctx, s.Conn)
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 
 	fmt.Println("Seed streams")
 	_, err = s.streams(ctx)
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 
 	fmt.Println("Seed complete!")
@@ -72,7 +72,7 @@ func (s *Seeder) RunAssets() error {
 	fmt.Println("Seed assets")
 	_, err := s.assets(ctx)
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 
 	return nil
@@ -83,7 +83,7 @@ func gameMaps(ctx context.Context, conn *pgxpool.Pool) error {
 		err := GameMapCreate(ctx, conn, gameMap)
 		if err != nil {
 			fmt.Println(err)
-			return terror.Error(err)
+			return err
 		}
 	}
 	return nil
@@ -358,7 +358,7 @@ func GameAbilityCreate(ctx context.Context, conn *pgxpool.Pool, gameAbility *Gam
 		gameAbility.ImageUrl,
 	)
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 
 	return nil
@@ -380,7 +380,7 @@ func BattleAbilityCreate(ctx context.Context, conn *pgxpool.Pool, battleAbility 
 		battleAbility.CooldownDurationSecond,
 	)
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 
 	return nil
@@ -390,7 +390,7 @@ func factionAbilities(ctx context.Context, conn *pgxpool.Pool) error {
 	for _, battleAbility := range SharedAbilityCollections {
 		err := BattleAbilityCreate(ctx, conn, battleAbility)
 		if err != nil {
-			return terror.Error(err)
+			return err
 		}
 	}
 
@@ -403,7 +403,7 @@ func factionAbilities(ctx context.Context, conn *pgxpool.Pool) error {
 		}
 		err := GameAbilityCreate(ctx, conn, ability)
 		if err != nil {
-			return terror.Error(err)
+			return err
 		}
 		gameclientID += 1
 	}
@@ -412,7 +412,7 @@ func factionAbilities(ctx context.Context, conn *pgxpool.Pool) error {
 	for _, gameAbility := range RedMountainUniqueAbilities {
 		err := GameAbilityCreate(ctx, conn, gameAbility)
 		if err != nil {
-			return terror.Error(err)
+			return err
 		}
 	}
 
@@ -420,7 +420,7 @@ func factionAbilities(ctx context.Context, conn *pgxpool.Pool) error {
 	for _, gameAbility := range BostonUniqueAbilities {
 		err := GameAbilityCreate(ctx, conn, gameAbility)
 		if err != nil {
-			return terror.Error(err)
+			return err
 		}
 	}
 
@@ -428,7 +428,7 @@ func factionAbilities(ctx context.Context, conn *pgxpool.Pool) error {
 	for _, gameAbility := range ZaibatsuUniqueAbilities {
 		err := GameAbilityCreate(ctx, conn, gameAbility)
 		if err != nil {
-			return terror.Error(err)
+			return err
 		}
 	}
 
@@ -483,7 +483,7 @@ func FactionCreate(ctx context.Context, conn *pgxpool.Pool, faction *Faction) er
 
 	err := pgxscan.Get(ctx, conn, faction, q, faction.ID, faction.VotePrice)
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 
 	return nil
@@ -496,7 +496,7 @@ func FactionStatMaterialisedViewRefresh(ctx context.Context, conn *pgxpool.Pool)
 	`
 	_, err := conn.Exec(ctx, q)
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 
 	return nil
@@ -506,13 +506,13 @@ func (s *Seeder) factions(ctx context.Context) ([]*Faction, error) {
 	for _, faction := range factions {
 		err := FactionCreate(ctx, s.Conn, faction)
 		if err != nil {
-			return nil, terror.Error(err)
+			return nil, err
 		}
 	}
 
 	err := FactionStatMaterialisedViewRefresh(ctx, s.Conn)
 	if err != nil {
-		return nil, terror.Error(err)
+		return nil, err
 	}
 	return factions, nil
 }
@@ -600,7 +600,7 @@ func CreateStream(ctx context.Context, conn *pgxpool.Pool, stream *Stream) error
 
 	err := pgxscan.Get(ctx, conn, stream, q, stream.Host, stream.Name, stream.URL, stream.StreamID, stream.Region, stream.Resolution, stream.BitRatesKBits, stream.UserMax, stream.UsersNow, stream.Active, stream.Status, stream.Latitude, stream.Longitude)
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 
 	return nil
@@ -610,7 +610,7 @@ func (s *Seeder) streams(ctx context.Context) ([]*Stream, error) {
 	for _, stream := range streams {
 		err := CreateStream(ctx, s.Conn, stream)
 		if err != nil {
-			return nil, terror.Error(err)
+			return nil, err
 		}
 	}
 
@@ -622,11 +622,11 @@ func (s *Seeder) assets(ctx context.Context) ([]*Blob, error) {
 	for _, blob := range AbilityBlobs {
 		f, err := os.Open("./asset/" + blob.FileName)
 		if err != nil {
-			return nil, terror.Error(err)
+			return nil, err
 		}
 		fileData, err := ioutil.ReadAll(f)
 		if err != nil {
-			return nil, terror.Error(err)
+			return nil, err
 		}
 
 		// Get image mime type
@@ -682,7 +682,7 @@ func BlobInsert(ctx context.Context, conn *pgxpool.Pool, result *Blob, id uuid.U
 		RETURNING id, file_name, mime_type, file_size_bytes, extension, file, hash`
 	err := pgxscan.Get(ctx, conn, result, q, id, fileName, mimeType, fileSizeBytes, extension, file, hash)
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 	return nil
 }

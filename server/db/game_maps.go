@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/georgysavva/scany/pgxscan"
-	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
@@ -56,7 +55,7 @@ func GameMapCreate(ctx context.Context, conn Conn, gameMap *server.GameMap) erro
 		gameMap.DisabledCells,
 	)
 	if err != nil {
-		return terror.Error(err)
+		return err
 	}
 
 	return nil
@@ -81,7 +80,7 @@ func GameMapGetRandom(allowLastMap bool) (*boiler.GameMap, error) {
 			qm.OrderBy("ended_at desc"),
 		).One(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return nil, terror.Error(err)
+			return nil, err
 		}
 
 		if lastBattle != nil {
@@ -91,7 +90,7 @@ func GameMapGetRandom(allowLastMap bool) (*boiler.GameMap, error) {
 
 	maps, err := boiler.GameMaps(mapQueries...).All(gamedb.StdConn)
 	if err != nil {
-		return nil, terror.Error(err)
+		return nil, err
 	}
 
 	rand.Seed(time.Now().UnixNano())
