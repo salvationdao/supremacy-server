@@ -208,7 +208,7 @@ func Mech(mechID string) (*server.Mech, error) {
 		CollectionDetails: &server.CollectionDetails{},
 	}
 
-	query := fmt.Sprintf(`%s WHERE mechs.id = $1`, CompleteMechQuery)
+	query := fmt.Sprintf(`%s WHERE collection_items.item_id = $1`, CompleteMechQuery)
 
 	result, err := gamedb.StdConn.Query(query, mechID)
 	if err != nil {
