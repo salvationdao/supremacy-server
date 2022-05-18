@@ -472,14 +472,14 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 						case boiler.AbilityLevelFACTION:
 							ws.PublishMessage(fmt.Sprintf("/battle/faction/%s/ability/faction", ability.FactionID), HubKeyAbilityPriceUpdated, resp)
 						case boiler.AbilityLevelMECH:
-							ws.PublishMessage(fmt.Sprintf("/battle/faction/%s/ability/mech/%d", ability.FactionID, ability.ParticipantID), HubKeyAbilityPriceUpdated, resp)
+							ws.PublishMessage(fmt.Sprintf("/battle/faction/%s/ability/mech/%d", ability.FactionID, *ability.ParticipantID), HubKeyAbilityPriceUpdated, resp)
 						}
-
 					}
 				}
 			}
 		case cont := <-as.contribute:
 			if as.factionUniqueAbilities == nil {
+				gamelog.L.Warn().Msg("faction ability not found")
 				cont.reply(false)
 				continue
 			}
@@ -494,6 +494,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 						continue
 					}
 					if abilityOfferingID != ability.OfferingID {
+						gamelog.L.Warn().Str("provide offering id", abilityOfferingID.String()).Str("target offering id", ability.OfferingID.String()).Msg("ability offering id not match")
 						cont.reply(false)
 						continue
 					}
@@ -636,10 +637,10 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 								}
 							}
 						}
-
+						// generate new offering id for current ability
+						ability.OfferingID = uuid.Must(uuid.NewV4())
 					}
-					// generate new offering id for current ability
-					ability.OfferingID = uuid.Must(uuid.NewV4())
+
 					resp := GameAbilityPriceResponse{
 						ability.Identity,
 						ability.OfferingID.String(),
@@ -653,7 +654,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 					case boiler.AbilityLevelFACTION:
 						ws.PublishMessage(fmt.Sprintf("/battle/faction/%s/ability/faction", ability.FactionID), HubKeyAbilityPriceUpdated, resp)
 					case boiler.AbilityLevelMECH:
-						ws.PublishMessage(fmt.Sprintf("/battle/faction/%s/ability/mech/%d", ability.FactionID, ability.ParticipantID), HubKeyAbilityPriceUpdated, resp)
+						ws.PublishMessage(fmt.Sprintf("/battle/faction/%s/ability/mech/%d", ability.FactionID, *ability.ParticipantID), HubKeyAbilityPriceUpdated, resp)
 					}
 				}
 			}
@@ -1765,11 +1766,13 @@ func (as *AbilitiesSystem) AbilityContribute(factionID string, userID uuid.UUID,
 		}
 	}()
 	if as == nil || as.battle() == nil || as.battle().stage.Load() != BattleStagStart || as.factionUniqueAbilities == nil {
+		gamelog.L.Warn().Msg("invalid battle stage")
 		reply(false)
 		return
 	}
 
 	if as.closed.Load() {
+		gamelog.L.Warn().Msg("ability system is closed")
 		reply(false)
 		return
 	}
@@ -1997,13 +2000,13 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 	})
 
 	//// enter the cooldown phase
-	//cooldownSecond, err := as.SetNewBattleAbility(false)
-	//if err != nil {
-	//	gamelog.L.Error().Err(err).Msg("Failed to set new battle ability")
-	//}
+	cooldownSecond, err := as.SetNewBattleAbility(false)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to set new battle ability")
+	}
 
 	as.battleAbilityPool.Stage.Phase.Store(BribeStageCooldown)
-	//as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(cooldownSecond) * time.Second))
+	as.battleAbilityPool.Stage.StoreEndTime(time.Now().Add(time.Duration(cooldownSecond) * time.Second))
 	// broadcast stage to frontend
 	ws.PublishMessage("/battle/bribe_stage", HubKeyBribeStageUpdateSubscribe, as.battleAbilityPool.Stage)
 
