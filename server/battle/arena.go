@@ -1146,7 +1146,13 @@ func (arena *Arena) beginBattle() {
 	inserted := false
 
 	// query last battle
-	lastBattle, err := boiler.Battles(qm.OrderBy("battle_number DESC"), qm.Limit(1)).One(gamedb.StdConn)
+	lastBattle, err := boiler.Battles(
+		qm.OrderBy("battle_number DESC"), qm.Limit(1),
+		qm.Load(
+			boiler.BattleRels.GameMap,
+			qm.Select(boiler.GameMapColumns.Name),
+		),
+	).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Err(err).Msg("not able to load previous battle")
 	}
@@ -1165,6 +1171,10 @@ func (arena *Arena) beginBattle() {
 		// if there is an unfinished battle
 		battle = lastBattle
 		battleID = lastBattle.ID
+
+		gamelog.L.Info().Msg("Running unfinished battle map")
+		gameMap.ID = uuid.Must(uuid.FromString(lastBattle.GameMapID))
+		gameMap.Name = lastBattle.R.GameMap.Name
 
 		inserted = true
 	}
