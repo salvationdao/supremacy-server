@@ -3,17 +3,18 @@ package api
 import (
 	"database/sql"
 	"fmt"
-	"github.com/friendsofgo/errors"
-	"github.com/go-chi/chi/v5"
-	"github.com/ninja-software/terror/v2"
-	"github.com/volatiletech/null/v8"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 	"net/http"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 	"server/helpers"
 	"time"
+
+	"github.com/friendsofgo/errors"
+	"github.com/go-chi/chi/v5"
+	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
 func AuthRouter(api *API) chi.Router {
@@ -69,7 +70,7 @@ func (api *API) XSYNAuth(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// insert user state
-		userStat := boiler.UserStat{
+		userStat := boiler.PlayerStat{
 			ID:                    resp.ID,
 			ViewBattleCount:       0,
 			AbilityKillCount:      0,

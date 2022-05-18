@@ -74,8 +74,8 @@ func MarketplaceItemSaleList(search string, archived bool, filter *ListFilterReq
 	// Filters
 	if filter != nil {
 		for i, f := range filter.Items {
-			if f.Table != nil && *f.Table != "" {
-				if *f.Table == boiler.TableNames.Mechs {
+			if f.Table != "" {
+				if f.Table == boiler.TableNames.Mechs {
 					column := MechColumns(f.Column)
 					err := column.IsValid()
 					if err != nil {

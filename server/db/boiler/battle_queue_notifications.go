@@ -26,8 +26,6 @@ import (
 type BattleQueueNotification struct {
 	ID                     string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
 	BattleID               null.String     `boiler:"battle_id" boil:"battle_id" json:"battle_id,omitempty" toml:"battle_id" yaml:"battle_id,omitempty"`
-	QueueMechID            null.String     `boiler:"queue_mech_id" boil:"queue_mech_id" json:"queue_mech_id,omitempty" toml:"queue_mech_id" yaml:"queue_mech_id,omitempty"`
-	MechID                 string          `boiler:"mech_id" boil:"mech_id" json:"mech_id" toml:"mech_id" yaml:"mech_id"`
 	MobileNumber           null.String     `boiler:"mobile_number" boil:"mobile_number" json:"mobile_number,omitempty" toml:"mobile_number" yaml:"mobile_number,omitempty"`
 	PushNotifications      bool            `boiler:"push_notifications" boil:"push_notifications" json:"push_notifications" toml:"push_notifications" yaml:"push_notifications"`
 	TelegramNotificationID null.String     `boiler:"telegram_notification_id" boil:"telegram_notification_id" json:"telegram_notification_id,omitempty" toml:"telegram_notification_id" yaml:"telegram_notification_id,omitempty"`
@@ -36,6 +34,8 @@ type BattleQueueNotification struct {
 	Fee                    decimal.Decimal `boiler:"fee" boil:"fee" json:"fee" toml:"fee" yaml:"fee"`
 	IsRefunded             bool            `boiler:"is_refunded" boil:"is_refunded" json:"is_refunded" toml:"is_refunded" yaml:"is_refunded"`
 	CreatedAt              time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	MechID                 string          `boiler:"mech_id" boil:"mech_id" json:"mech_id" toml:"mech_id" yaml:"mech_id"`
+	QueueMechID            null.String     `boiler:"queue_mech_id" boil:"queue_mech_id" json:"queue_mech_id,omitempty" toml:"queue_mech_id" yaml:"queue_mech_id,omitempty"`
 
 	R *battleQueueNotificationR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L battleQueueNotificationL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -44,8 +44,6 @@ type BattleQueueNotification struct {
 var BattleQueueNotificationColumns = struct {
 	ID                     string
 	BattleID               string
-	QueueMechID            string
-	MechID                 string
 	MobileNumber           string
 	PushNotifications      string
 	TelegramNotificationID string
@@ -54,11 +52,11 @@ var BattleQueueNotificationColumns = struct {
 	Fee                    string
 	IsRefunded             string
 	CreatedAt              string
+	MechID                 string
+	QueueMechID            string
 }{
 	ID:                     "id",
 	BattleID:               "battle_id",
-	QueueMechID:            "queue_mech_id",
-	MechID:                 "mech_id",
 	MobileNumber:           "mobile_number",
 	PushNotifications:      "push_notifications",
 	TelegramNotificationID: "telegram_notification_id",
@@ -67,13 +65,13 @@ var BattleQueueNotificationColumns = struct {
 	Fee:                    "fee",
 	IsRefunded:             "is_refunded",
 	CreatedAt:              "created_at",
+	MechID:                 "mech_id",
+	QueueMechID:            "queue_mech_id",
 }
 
 var BattleQueueNotificationTableColumns = struct {
 	ID                     string
 	BattleID               string
-	QueueMechID            string
-	MechID                 string
 	MobileNumber           string
 	PushNotifications      string
 	TelegramNotificationID string
@@ -82,11 +80,11 @@ var BattleQueueNotificationTableColumns = struct {
 	Fee                    string
 	IsRefunded             string
 	CreatedAt              string
+	MechID                 string
+	QueueMechID            string
 }{
 	ID:                     "battle_queue_notifications.id",
 	BattleID:               "battle_queue_notifications.battle_id",
-	QueueMechID:            "battle_queue_notifications.queue_mech_id",
-	MechID:                 "battle_queue_notifications.mech_id",
 	MobileNumber:           "battle_queue_notifications.mobile_number",
 	PushNotifications:      "battle_queue_notifications.push_notifications",
 	TelegramNotificationID: "battle_queue_notifications.telegram_notification_id",
@@ -95,6 +93,8 @@ var BattleQueueNotificationTableColumns = struct {
 	Fee:                    "battle_queue_notifications.fee",
 	IsRefunded:             "battle_queue_notifications.is_refunded",
 	CreatedAt:              "battle_queue_notifications.created_at",
+	MechID:                 "battle_queue_notifications.mech_id",
+	QueueMechID:            "battle_queue_notifications.queue_mech_id",
 }
 
 // Generated where
@@ -102,8 +102,6 @@ var BattleQueueNotificationTableColumns = struct {
 var BattleQueueNotificationWhere = struct {
 	ID                     whereHelperstring
 	BattleID               whereHelpernull_String
-	QueueMechID            whereHelpernull_String
-	MechID                 whereHelperstring
 	MobileNumber           whereHelpernull_String
 	PushNotifications      whereHelperbool
 	TelegramNotificationID whereHelpernull_String
@@ -112,11 +110,11 @@ var BattleQueueNotificationWhere = struct {
 	Fee                    whereHelperdecimal_Decimal
 	IsRefunded             whereHelperbool
 	CreatedAt              whereHelpertime_Time
+	MechID                 whereHelperstring
+	QueueMechID            whereHelpernull_String
 }{
 	ID:                     whereHelperstring{field: "\"battle_queue_notifications\".\"id\""},
 	BattleID:               whereHelpernull_String{field: "\"battle_queue_notifications\".\"battle_id\""},
-	QueueMechID:            whereHelpernull_String{field: "\"battle_queue_notifications\".\"queue_mech_id\""},
-	MechID:                 whereHelperstring{field: "\"battle_queue_notifications\".\"mech_id\""},
 	MobileNumber:           whereHelpernull_String{field: "\"battle_queue_notifications\".\"mobile_number\""},
 	PushNotifications:      whereHelperbool{field: "\"battle_queue_notifications\".\"push_notifications\""},
 	TelegramNotificationID: whereHelpernull_String{field: "\"battle_queue_notifications\".\"telegram_notification_id\""},
@@ -125,6 +123,8 @@ var BattleQueueNotificationWhere = struct {
 	Fee:                    whereHelperdecimal_Decimal{field: "\"battle_queue_notifications\".\"fee\""},
 	IsRefunded:             whereHelperbool{field: "\"battle_queue_notifications\".\"is_refunded\""},
 	CreatedAt:              whereHelpertime_Time{field: "\"battle_queue_notifications\".\"created_at\""},
+	MechID:                 whereHelperstring{field: "\"battle_queue_notifications\".\"mech_id\""},
+	QueueMechID:            whereHelpernull_String{field: "\"battle_queue_notifications\".\"queue_mech_id\""},
 }
 
 // BattleQueueNotificationRels is where relationship names are stored.
@@ -157,9 +157,9 @@ func (*battleQueueNotificationR) NewStruct() *battleQueueNotificationR {
 type battleQueueNotificationL struct{}
 
 var (
-	battleQueueNotificationAllColumns            = []string{"id", "battle_id", "queue_mech_id", "mech_id", "mobile_number", "push_notifications", "telegram_notification_id", "sent_at", "message", "fee", "is_refunded", "created_at"}
-	battleQueueNotificationColumnsWithoutDefault = []string{"mech_id", "fee"}
-	battleQueueNotificationColumnsWithDefault    = []string{"id", "battle_id", "queue_mech_id", "mobile_number", "push_notifications", "telegram_notification_id", "sent_at", "message", "is_refunded", "created_at"}
+	battleQueueNotificationAllColumns            = []string{"id", "battle_id", "mobile_number", "push_notifications", "telegram_notification_id", "sent_at", "message", "fee", "is_refunded", "created_at", "mech_id", "queue_mech_id"}
+	battleQueueNotificationColumnsWithoutDefault = []string{"fee", "mech_id"}
+	battleQueueNotificationColumnsWithDefault    = []string{"id", "battle_id", "mobile_number", "push_notifications", "telegram_notification_id", "sent_at", "message", "is_refunded", "created_at", "queue_mech_id"}
 	battleQueueNotificationPrimaryKeyColumns     = []string{"id"}
 	battleQueueNotificationGeneratedColumns      = []string{}
 )
