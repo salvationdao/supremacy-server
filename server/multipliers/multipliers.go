@@ -29,10 +29,10 @@ type PlayerMultiplier struct {
 func GetPlayersMultiplierSummaryForBattle(battleNumber int) ([]*MultiplierSummary, error) {
 	var result []*MultiplierSummary
 
-	userMultipliers, err := boiler.UserMultipliers(
-		boiler.UserMultiplierWhere.FromBattleNumber.LTE(battleNumber),
-		boiler.UserMultiplierWhere.UntilBattleNumber.GT(battleNumber),
-		qm.Load(boiler.UserMultiplierRels.Multiplier),
+	userMultipliers, err := boiler.PlayerMultipliers(
+		boiler.PlayerMultiplierWhere.FromBattleNumber.LTE(battleNumber),
+		boiler.PlayerMultiplierWhere.UntilBattleNumber.GT(battleNumber),
+		qm.Load(boiler.PlayerMultiplierRels.Multiplier),
 	).All(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().
@@ -42,7 +42,7 @@ func GetPlayersMultiplierSummaryForBattle(battleNumber int) ([]*MultiplierSummar
 		return nil, err
 	}
 
-	playerMulties := make(map[string][]*boiler.UserMultiplier)
+	playerMulties := make(map[string][]*boiler.PlayerMultiplier)
 
 	for _, multi := range userMultipliers {
 		playerMulties[multi.PlayerID] = append(playerMulties[multi.PlayerID], multi)
@@ -61,11 +61,11 @@ func GetPlayersMultiplierSummaryForBattle(battleNumber int) ([]*MultiplierSummar
 
 // GetPlayerMultipliersForBattle gets the player multipliers for a player for a given battle
 func GetPlayerMultipliersForBattle(playerID string, battleNumber int) ([]*PlayerMultiplier, decimal.Decimal, bool) {
-	userMultipliers, err := boiler.UserMultipliers(
-		boiler.UserMultiplierWhere.PlayerID.EQ(playerID),
-		boiler.UserMultiplierWhere.FromBattleNumber.LTE(battleNumber),
-		boiler.UserMultiplierWhere.UntilBattleNumber.GT(battleNumber),
-		qm.Load(boiler.UserMultiplierRels.Multiplier),
+	userMultipliers, err := boiler.PlayerMultipliers(
+		boiler.PlayerMultiplierWhere.PlayerID.EQ(playerID),
+		boiler.PlayerMultiplierWhere.FromBattleNumber.LTE(battleNumber),
+		boiler.PlayerMultiplierWhere.UntilBattleNumber.GT(battleNumber),
+		qm.Load(boiler.PlayerMultiplierRels.Multiplier),
 	).All(gamedb.StdConn)
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
@@ -85,7 +85,7 @@ func GetPlayerMultipliersForBattle(playerID string, battleNumber int) ([]*Player
 }
 
 // calculateUserMultiplierValues takes a list of user multipliers, coverts them to player multipliers (more user-friendly struct) and returns the total multiplier
-func calculateSingleUserMultiplierValues(userMultipliers []*boiler.UserMultiplier) ([]*PlayerMultiplier, decimal.Decimal) {
+func calculateSingleUserMultiplierValues(userMultipliers []*boiler.PlayerMultiplier) ([]*PlayerMultiplier, decimal.Decimal) {
 	multipliers := make([]*PlayerMultiplier, len(userMultipliers))
 	value := decimal.Zero
 	multiplicativeValue := decimal.Zero

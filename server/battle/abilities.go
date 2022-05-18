@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ninja-syndicate/ws"
 	"math"
 	"server"
 	"server/db"
@@ -17,9 +16,10 @@ import (
 	"time"
 
 	"github.com/ninja-software/terror/v2"
-	"github.com/volatiletech/null/v8"
+	"github.com/ninja-syndicate/ws"
 
 	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"go.uber.org/atomic"
@@ -114,7 +114,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 
 	// initialise all war machine abilities list
 	for _, wm := range battle.WarMachines {
-		wm.Abilities = []GameAbility{}
+		wm.Abilities = []*GameAbility{}
 	}
 
 	for factionID := range battle.factions {
@@ -153,7 +153,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 			}
 
 			// treat the ability as faction wide ability
-			factionAbility := GameAbility{
+			factionAbility := &GameAbility{
 				ID:                  ability.ID,
 				Identity:            uuid.Must(uuid.NewV4()).String(), // generate an uuid for frontend to track sups contribution
 				GameClientAbilityID: byte(ability.GameClientAbilityID),
@@ -169,7 +169,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 				Title:               "FACTION_WIDE",
 				OfferingID:          uuid.Must(uuid.NewV4()),
 			}
-			abilities[factionAbility.Identity] = &factionAbility
+			abilities[factionAbility.Identity] = factionAbility
 
 		}
 
@@ -207,7 +207,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 				}
 
 				// build the ability
-				wmAbility := GameAbility{
+				wmAbility := &GameAbility{
 					ID:                  ability.ID,
 					Identity:            uuid.Must(uuid.NewV4()).String(), // generate an uuid for frontend to track sups contribution
 					GameClientAbilityID: byte(ability.GameClientAbilityID),
@@ -229,7 +229,7 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 				wm.Abilities = append(wm.Abilities, wmAbility)
 
 				// store faction ability for price tracking
-				factionAbilities[factionID][wmAbility.Identity] = &wmAbility
+				factionAbilities[factionID][wmAbility.Identity] = wmAbility
 			}
 		}
 	}
@@ -255,10 +255,10 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 	// broadcast faction unique ability
 	for factionID, ga := range as.factionUniqueAbilities {
 		// broadcast faction ability
-		factionAbilities := []GameAbility{}
+		factionAbilities := []*GameAbility{}
 		for _, ability := range ga {
 			if ability.Level == boiler.AbilityLevelFACTION {
-				factionAbilities = append(factionAbilities, *ability)
+				factionAbilities = append(factionAbilities, ability)
 			}
 		}
 		ws.PublishMessage(fmt.Sprintf("/battle/faction/%s/ability/faction", factionID), HubKeyFactionUniqueAbilitiesUpdated, factionAbilities)
@@ -445,8 +445,13 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 												ImageUrl:      wm.Image,
 												ImageAvatar:   wm.ImageAvatar,
 												Name:          wm.Name,
-												FactionID:     wm.FactionID,
-												Faction:       faction,
+												Faction: &FactionBrief{
+													ID:         faction.ID,
+													Label:      faction.Label,
+													Primary:    faction.PrimaryColor,
+													Secondary:  faction.SecondaryColor,
+													Background: faction.BackgroundColor,
+												},
 											}
 											break
 										}
@@ -599,7 +604,13 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 										ID:        cont.userID,
 										Username:  player.Username.String,
 										FactionID: player.FactionID.String,
-										Faction:   faction,
+										Faction: &Faction{
+											ID:              faction.ID,
+											Label:           faction.Label,
+											PrimaryColor:    faction.PrimaryColor,
+											SecondaryColor:  faction.SecondaryColor,
+											BackgroundColor: faction.BackgroundColor,
+										},
 									},
 									Ability: &AbilityBrief{
 										Label:    ability.Label,
@@ -626,8 +637,13 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 												ImageUrl:      wm.Image,
 												ImageAvatar:   wm.ImageAvatar,
 												Name:          wm.Name,
-												FactionID:     wm.FactionID,
-												Faction:       faction,
+												Faction: &FactionBrief{
+													ID:         faction.ID,
+													Label:      faction.Label,
+													Primary:    faction.PrimaryColor,
+													Secondary:  faction.SecondaryColor,
+													Background: faction.BackgroundColor,
+												},
 											}
 											break
 										}
@@ -1790,17 +1806,17 @@ func (as *AbilitiesSystem) AbilityContribute(factionID string, userID uuid.UUID,
 }
 
 // FactionUniqueAbilityGet return the faction unique ability for the given faction
-func (as *AbilitiesSystem) FactionUniqueAbilitiesGet(factionID uuid.UUID) []GameAbility {
+func (as *AbilitiesSystem) FactionUniqueAbilitiesGet(factionID uuid.UUID) []*GameAbility {
 	defer func() {
 		if r := recover(); r != nil {
 			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the FactionUniqueAbilitiesGet!", r)
 		}
 	}()
-	abilities := []GameAbility{}
+	abilities := []*GameAbility{}
 	for _, ga := range as.factionUniqueAbilities[factionID] {
 		// only include return faction wide ability
 		if ga.Title == "FACTION_WIDE" {
-			abilities = append(abilities, *ga)
+			abilities = append(abilities, ga)
 		}
 	}
 
@@ -1812,13 +1828,13 @@ func (as *AbilitiesSystem) FactionUniqueAbilitiesGet(factionID uuid.UUID) []Game
 }
 
 // WarMachineAbilitiesGet return the faction unique ability for the given faction
-func (as *AbilitiesSystem) WarMachineAbilitiesGet(factionID uuid.UUID, hash string) []GameAbility {
+func (as *AbilitiesSystem) WarMachineAbilitiesGet(factionID uuid.UUID, hash string) []*GameAbility {
 	defer func() {
 		if r := recover(); r != nil {
 			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the WarMachineAbilitiesGet!", r)
 		}
 	}()
-	abilities := []GameAbility{}
+	abilities := []*GameAbility{}
 	if as == nil {
 		gamelog.L.Error().Str("factionID", factionID.String()).Str("hash", hash).Msg("nil pointer found as")
 		return abilities
@@ -1831,7 +1847,7 @@ func (as *AbilitiesSystem) WarMachineAbilitiesGet(factionID uuid.UUID, hash stri
 	if fua, ok := as.factionUniqueAbilities[factionID]; ok {
 		for h, ga := range fua {
 			if h == hash {
-				abilities = append(abilities, *ga)
+				abilities = append(abilities, ga)
 			}
 		}
 	}
@@ -1995,7 +2011,13 @@ func (as *AbilitiesSystem) LocationSelect(userID uuid.UUID, x int, y int) error 
 			Username:  player.Username.String,
 			FactionID: player.FactionID.String,
 			Gid:       player.Gid,
-			Faction:   faction,
+			Faction: &Faction{
+				ID:              faction.ID,
+				Label:           faction.Label,
+				PrimaryColor:    faction.PrimaryColor,
+				SecondaryColor:  faction.SecondaryColor,
+				BackgroundColor: faction.BackgroundColor,
+			},
 		},
 	})
 
@@ -2058,7 +2080,13 @@ func BuildUserDetailWithFaction(userID uuid.UUID) (*UserBrief, error) {
 		return userBrief, nil
 	}
 
-	userBrief.Faction = faction
+	userBrief.Faction = &Faction{
+		ID:              faction.ID,
+		Label:           faction.Label,
+		PrimaryColor:    faction.PrimaryColor,
+		SecondaryColor:  faction.SecondaryColor,
+		BackgroundColor: faction.BackgroundColor,
+	}
 
 	return userBrief, nil
 }

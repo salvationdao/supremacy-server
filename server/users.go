@@ -1,6 +1,8 @@
 package server
 
 import (
+	"encoding/json"
+	"fmt"
 	"server/db/boiler"
 	"time"
 
@@ -40,6 +42,14 @@ type User struct {
 
 	// for dev env only
 	TwitchID null.String `json:"twitch_id" db:"twitch_id"`
+}
+
+func (b *User) Scan(value interface{}) error {
+	v, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("unable to scan value into byte array")
+	}
+	return json.Unmarshal(v, b)
 }
 
 type PassportUser struct {
@@ -135,6 +145,6 @@ var (
 )
 
 type UserStat struct {
-	*boiler.UserStat
+	*boiler.PlayerStat
 	LastSevenDaysKills int `json:"last_seven_days_kills"`
 }

@@ -104,14 +104,14 @@ func SaleAbilitiesList(
 	// Filters
 	if filter != nil {
 		for i, f := range filter.Items {
-			if f.Table != nil && *f.Table != "" {
-				if *f.Table == boiler.TableNames.BlueprintPlayerAbilities {
+			if f.Table != "" {
+				if f.Table == boiler.TableNames.BlueprintPlayerAbilities {
 					column := BlueprintPlayerAbilityColumn(f.Column)
 					err := column.IsValid()
 					if err != nil {
 						return 0, nil, err
 					}
-				} else if *f.Table == boiler.TableNames.SalePlayerAbilities {
+				} else if f.Table == boiler.TableNames.SalePlayerAbilities {
 					column := SalePlayerAbilityColumn(f.Column)
 					err := column.IsValid()
 					if err != nil {
@@ -147,21 +147,21 @@ func SaleAbilitiesList(
 	orderBy := qm.OrderBy(fmt.Sprintf("%s desc", boiler.SalePlayerAbilityColumns.AvailableUntil))
 	if sort != nil {
 		sortColumn := sort.Column
-		if sort.Table != nil && *sort.Table != "" {
-			if *sort.Table == boiler.TableNames.BlueprintPlayerAbilities {
+		if sort.Table != "" {
+			if sort.Table == boiler.TableNames.BlueprintPlayerAbilities {
 				column := BlueprintPlayerAbilityColumn(sort.Column)
 				err := column.IsValid()
 				if err != nil {
 					return 0, nil, err
 				}
-			} else if *sort.Table == boiler.TableNames.SalePlayerAbilities {
+			} else if sort.Table == boiler.TableNames.SalePlayerAbilities {
 				column := SalePlayerAbilityColumn(sort.Column)
 				err := column.IsValid()
 				if err != nil {
 					return 0, nil, err
 				}
 			}
-			sortColumn = fmt.Sprintf("%s.%s", *sort.Table, sort.Column)
+			sortColumn = fmt.Sprintf("%s.%s", sort.Table, sort.Column)
 		}
 		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", sortColumn, sort.Direction))
 	}
@@ -207,8 +207,8 @@ func PlayerAbilitiesList(
 	// Filters
 	if filter != nil {
 		for i, f := range filter.Items {
-			if f.Table != nil && *f.Table != "" {
-				if *f.Table != boiler.TableNames.PlayerAbilities {
+			if f.Table != "" {
+				if f.Table != boiler.TableNames.PlayerAbilities {
 					return 0, nil, terror.Error(fmt.Errorf("invalid filter table name"))
 				}
 			}
@@ -245,11 +245,11 @@ func PlayerAbilitiesList(
 	orderBy := qm.OrderBy(fmt.Sprintf("%s desc", boiler.PlayerAbilityColumns.PurchasedAt))
 	if sort != nil {
 		sortColumn := sort.Column
-		if sort.Table != nil && *sort.Table != "" {
-			if *sort.Table != boiler.TableNames.PlayerAbilities {
+		if sort.Table != "" {
+			if sort.Table != boiler.TableNames.PlayerAbilities {
 				return 0, nil, terror.Error(fmt.Errorf("invalid sort table name"))
 			}
-			sortColumn = fmt.Sprintf("%s.%s", *sort.Table, sort.Column)
+			sortColumn = fmt.Sprintf("%s.%s", sort.Table, sort.Column)
 		}
 		column := PlayerAbilityColumn(sort.Column)
 		err := column.IsValid()

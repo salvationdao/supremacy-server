@@ -5,8 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/go-chi/chi/v5"
-	"github.com/ninja-syndicate/ws"
 	"net"
 	"net/http"
 	"server"
@@ -20,6 +18,9 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/ninja-syndicate/ws"
 
 	"github.com/volatiletech/null/v8"
 
@@ -353,9 +354,12 @@ func (btl *Battle) QueueDefaultMechs() error {
 	}
 
 	for _, mech := range defMechs {
-		// rename default mech
 		mech.Name = helpers.GenerateStupidName()
-		_, _ = mech.Update(gamedb.StdConn, boil.Whitelist(boiler.MechColumns.Label))
+		mechToUpdate := boiler.Mech{
+			ID:   mech.ID,
+			Name: mech.Name,
+		}
+		_, _ = mechToUpdate.Update(gamedb.StdConn, boil.Whitelist(boiler.MechColumns.Label))
 
 		// insert default mech into battle
 		ownerID, err := uuid.FromString(mech.OwnerID)
@@ -721,7 +725,13 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, k
 			Username:  player.Username.String,
 			FactionID: player.FactionID.String,
 			Gid:       player.Gid,
-			Faction:   faction,
+			Faction: &Faction{
+				ID:              faction.ID,
+				Label:           faction.Label,
+				PrimaryColor:    faction.PrimaryColor,
+				SecondaryColor:  faction.SecondaryColor,
+				BackgroundColor: faction.BackgroundColor,
+			},
 		},
 	})
 
