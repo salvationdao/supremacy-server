@@ -1172,6 +1172,7 @@ func (arena *Arena) beginBattle() {
 		battle = lastBattle
 		battleID = lastBattle.ID
 
+		gamelog.L.Info().Msg("Running unfinished battle map")
 		gameMap.ID = uuid.Must(uuid.FromString(lastBattle.GameMapID))
 		gameMap.Name = lastBattle.R.GameMap.Name
 
