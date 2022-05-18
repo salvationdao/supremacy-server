@@ -918,7 +918,6 @@ func (arena *Arena) BribeStageSubscribe(ctx context.Context, key string, payload
 const HubKeyBattleAbilityProgressBarUpdated = "BATTLE:ABILITY:PROGRESS:BAR:UPDATED"
 
 const HubKeyAbilityPriceUpdated = "ABILITY:PRICE:UPDATED"
-const HubKeyMechAbilityPriceUpdated = "MECH:ABILITY:PRICE:UPDATED"
 
 type GameAbilityPriceResponse struct {
 	ID          string `json:"id"`
