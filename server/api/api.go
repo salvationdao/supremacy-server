@@ -171,7 +171,7 @@ func NewAPI(
 	pc := NewPlayerController(api)
 	cc := NewChatController(api)
 	_ = NewBattleController(api)
-	_ = NewPlayerAbilitiesController(api)
+	pac := NewPlayerAbilitiesController(api)
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
@@ -218,7 +218,10 @@ func NewAPI(
 				s.WS("/*", "", nil)
 				s.WS("/global_chat", HubKeyGlobalChatSubscribe, cc.GlobalChatUpdatedSubscribeHandler)
 				s.WS("/global_announcement", server.HubKeyGlobalAnnouncementSubscribe, sc.GlobalAnnouncementSubscribe)
-				s.WS("/live_data", server.HubKeySaleAbilityPriceSubscribe, nil)
+			}))
+			r.Mount("/secure_public", ws.NewServer(func(s *ws.Server) {
+				s.Use(api.AuthWS(true, false))
+				s.WS("/sale_abilities", server.HubKeySaleAbilitiesList, server.MustSecure(pac.SaleAbilitiesListHandler))
 			}))
 
 			// battle arena route
