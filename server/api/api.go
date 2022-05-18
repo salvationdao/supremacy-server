@@ -172,6 +172,7 @@ func NewAPI(
 	cc := NewChatController(api)
 	_ = NewBattleController(api)
 	_ = NewPlayerAbilitiesController(api)
+	_ = NewPlayerAssetsController(api)
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)

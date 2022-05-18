@@ -12,7 +12,103 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
+
+const CompleteMechQuery = `
+SELECT
+	collection_items.collection_slug,
+	collection_items.hash,
+	collection_items.token_id,
+	collection_items.owner_id,
+	collection_items.tier,
+	mechs.id,
+	mechs.name,
+	mechs.label,
+	mechs.weapon_hardpoints,
+	mechs.utility_slots,
+	mechs.speed,
+	mechs.max_hitpoints,
+	mechs.is_default,
+	mechs.is_insured,
+	mechs.genesis_token_id,
+	mechs.limited_release_token_id,
+	mechs.power_core_size,
+	mechs.blueprint_id,
+	mechs.brand_id,
+	to_json(b) as brand,
+	to_json(p) as owner,
+	p.faction_id,
+	to_json(f) as faction,
+	mechs.model_id,
+	to_json(mm) as model,
+	mm.default_chassis_skin_id,
+	to_json(dms) as default_chassis_skin,
+	mechs.chassis_skin_id,
+	to_json(ms) as chassis_skin,
+	mechs.intro_animation_id,
+	to_json(ma2) as intro_animation,
+	mechs.outro_animation_id,
+	to_json(ma1) as outro_animation,
+	mechs.power_core_id,
+	to_json(ec) as power_core,
+	w.weapons,
+	u.utility
+FROM collection_items 
+INNER JOIN mechs on collection_items.item_id = mechs.id
+INNER JOIN players p ON p.id = collection_items.owner_id
+INNER JOIN factions f on p.faction_id = f.id
+LEFT OUTER JOIN power_cores ec ON ec.id = mechs.power_core_id
+LEFT OUTER JOIN brands b ON b.id = mechs.brand_id
+LEFT OUTER JOIN mech_model mm ON mechs.model_id = mm.id
+LEFT OUTER JOIN (
+	SELECT _ms.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id
+	FROM mech_skin _ms
+	INNER JOIN collection_items _ci on _ci.item_id = _ms.id
+) ms ON mechs.chassis_skin_id = ms.id
+LEFT OUTER JOIN blueprint_mech_skin dms ON mm.default_chassis_skin_id = dms.id
+LEFT OUTER JOIN (
+	SELECT _ma.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id
+	FROM mech_animation _ma
+	INNER JOIN collection_items _ci on _ci.item_id = _ma.id
+) ma1 on ma1.id = mechs.outro_animation_id
+LEFT OUTER JOIN (
+	SELECT _ma.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id
+	FROM mech_animation _ma
+	INNER JOIN collection_items _ci on _ci.item_id = _ma.id
+) ma2 on ma2.id = mechs.intro_animation_id
+LEFT OUTER JOIN (
+	SELECT mw.chassis_id, json_agg(w2) as weapons
+	FROM mech_weapons mw
+	INNER JOIN
+		(
+			SELECT _w.*, _ci.hash, _ci.token_id, _ci.tier, _ci.owner_id
+			FROM weapons _w
+			INNER JOIN collection_items _ci on _ci.item_id = _w.id
+		) w2 ON mw.weapon_id = w2.id
+	GROUP BY mw.chassis_id
+) w on w.chassis_id = mechs.id
+LEFT OUTER JOIN (
+	SELECT mw.chassis_id, json_agg(_u) as utility
+	FROM mech_utility mw
+	INNER JOIN (
+		SELECT
+			_u.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id,
+			to_json(_us) as shield,
+			to_json(_ua) as accelerator,
+			to_json(_uam) as attack_drone,
+			to_json(_uad) as anti_missile,
+			to_json(_urd) as repair_drone
+		FROM utility _u
+		INNER JOIN collection_items _ci on _ci.item_id = _u.id
+		LEFT OUTER JOIN utility_shield _us ON _us.utility_id = _u.id
+		LEFT OUTER JOIN utility_accelerator _ua ON _ua.utility_id = _u.id
+		LEFT OUTER JOIN utility_anti_missile _uam ON _uam.utility_id = _u.id
+		LEFT OUTER JOIN utility_attack_drone _uad ON _uad.utility_id = _u.id
+		LEFT OUTER JOIN utility_repair_drone _urd ON _urd.utility_id = _u.id
+	) _u ON mw.utility_id = _u.id
+	GROUP BY mw.chassis_id
+) u on u.chassis_id = mechs.id `
 
 func MechsByOwnerID(ownerID uuid.UUID) ([]*server.Mech, error) {
 	//// TODO: Vinnie fix this
@@ -112,114 +208,7 @@ func Mech(mechID string) (*server.Mech, error) {
 		CollectionDetails: &server.CollectionDetails{},
 	}
 
-	query := `
-	SELECT
-		ci.collection_slug,
-		ci.hash,
-		ci.token_id,
-		ci.owner_id,
-		ci.tier,
-		m.id,
-		m.name,
-		m.label,
-		m.weapon_hardpoints,
-		m.utility_slots,
-		m.speed,
-		m.max_hitpoints,
-		m.is_default,
-		m.is_insured,
-		m.genesis_token_id,
-		m.limited_release_token_id,
-		m.power_core_size,
-		m.blueprint_id,
-	
-		m.brand_id,
-		to_json(b) as brand,
-	
-		to_json(p) as owner,
-	
-		p.faction_id,
-		to_json(f) as faction,
-	
-		m.model_id,
-		to_json(mm) as model,
-	
-		mm.default_chassis_skin_id,
-		to_json(dms) as default_chassis_skin,
-	
-		m.chassis_skin_id,
-		to_json(ms) as chassis_skin,
-	
-		m.intro_animation_id,
-		to_json(ma2) as intro_animation,
-	
-		m.outro_animation_id,
-		to_json(ma1) as outro_animation,
-	
-		m.power_core_id,
-		to_json(ec) as power_core,
-	
-		w.weapons,
-		u.utility
-	FROM mechs m
-	INNER JOIN collection_items ci on ci.item_id = m.id
-	INNER JOIN players p ON p.id = ci.owner_id
-	INNER JOIN factions f on p.faction_id = f.id
-	LEFT OUTER JOIN power_cores ec ON ec.id = m.power_core_id
-	LEFT OUTER JOIN brands b ON b.id = m.brand_id
-	LEFT OUTER JOIN mech_model mm ON m.model_id = mm.id
-	LEFT OUTER JOIN (
-		SELECT _ms.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id
-		FROM mech_skin _ms
-		INNER JOIN collection_items _ci on _ci.item_id = _ms.id
-	) ms ON m.chassis_skin_id = ms.id
-			 LEFT OUTER JOIN blueprint_mech_skin dms ON mm.default_chassis_skin_id = dms.id
-		-- LEFT OUTER JOIN mech_animation ma1 on ma1.id = m.outro_animation_id
-			 LEFT OUTER JOIN (
-		SELECT _ma.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id
-		FROM mech_animation _ma
-				 INNER JOIN collection_items _ci on _ci.item_id = _ma.id
-	) ma1 on ma1.id = m.outro_animation_id
-		-- LEFT OUTER JOIN mech_animation ma2 on ma2.id = m.intro_animation_id
-			 LEFT OUTER JOIN (
-		SELECT _ma.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id
-		FROM mech_animation _ma
-				 INNER JOIN collection_items _ci on _ci.item_id = _ma.id
-	) ma2 on ma2.id = m.intro_animation_id
-			 LEFT OUTER JOIN (
-		SELECT mw.chassis_id, json_agg(w2) as weapons
-		FROM mech_weapons mw
-				 INNER JOIN
-			 (
-				 SELECT _w.*, _ci.hash, _ci.token_id, _ci.tier, _ci.owner_id
-				 FROM weapons _w
-						  INNER JOIN collection_items _ci on _ci.item_id = _w.id
-			 ) w2 ON mw.weapon_id = w2.id
-		GROUP BY mw.chassis_id
-	) w on w.chassis_id = m.id
-			 LEFT OUTER JOIN (
-		SELECT mw.chassis_id, json_agg(_u) as utility
-		FROM mech_utility mw
-				 INNER JOIN (
-			SELECT
-				_u.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id,
-				to_json(_us) as shield,
-				to_json(_ua) as accelerator,
-				to_json(_uam) as attack_drone,
-				to_json(_uad) as anti_missile,
-				to_json(_urd) as repair_drone
-			FROM utility _u
-					 INNER JOIN collection_items _ci on _ci.item_id = _u.id
-					 LEFT OUTER JOIN utility_shield _us ON _us.utility_id = _u.id
-					 LEFT OUTER JOIN utility_accelerator _ua ON _ua.utility_id = _u.id
-					 LEFT OUTER JOIN utility_anti_missile _uam ON _uam.utility_id = _u.id
-					 LEFT OUTER JOIN utility_attack_drone _uad ON _uad.utility_id = _u.id
-					 LEFT OUTER JOIN utility_repair_drone _urd ON _urd.utility_id = _u.id
-		) _u ON mw.utility_id = _u.id
-		GROUP BY mw.chassis_id
-	) u on u.chassis_id = m.id
-		WHERE m.id = $1
-		`
+	query := fmt.Sprintf(`%s WHERE mechs.id = $1`, CompleteMechQuery)
 
 	result, err := gamedb.StdConn.Query(query, mechID)
 	if err != nil {
@@ -294,115 +283,12 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.Mech, error) {
 	}
 	paramrefs = paramrefs[:len(paramrefs)-1]
 
-	query := `
-		SELECT
-			ci.collection_slug,
-			ci.hash,
-			ci.token_id,
-			ci.owner_id,
-			ci.tier,
-			m.id,
-			m.name,
-			m.label,
-			m.weapon_hardpoints,
-			m.utility_slots,
-			m.speed,
-			m.max_hitpoints,
-			m.is_default,
-			m.is_insured,
-			m.genesis_token_id,
-			m.limited_release_token_id,
-			m.power_core_size,
-			m.blueprint_id,
-		
-			m.brand_id,
-			to_json(b) as brand,
-		
-			to_json(p) as owner,
-		
-			p.faction_id,
-			to_json(f) as faction,
-		
-			m.model_id,
-			to_json(mm) as model,
-		
-			mm.default_chassis_skin_id,
-			to_json(dms) as default_chassis_skin,
-		
-			m.chassis_skin_id,
-			to_json(ms) as chassis_skin,
-		
-			m.intro_animation_id,
-			to_json(ma2) as intro_animation,
-		
-			m.outro_animation_id,
-			to_json(ma1) as outro_animation,
-		
-			m.power_core_id,
-			to_json(ec) as power_core,
-		
-			w.weapons,
-			u.utility
-		FROM mechs m
-		INNER JOIN collection_items ci on ci.item_id = m.id
-		INNER JOIN players p ON p.id = ci.owner_id
-		INNER JOIN factions f on p.faction_id = f.id
-		LEFT OUTER JOIN power_cores ec ON ec.id = m.power_core_id
-		LEFT OUTER JOIN brands b ON b.id = m.brand_id
-		LEFT OUTER JOIN mech_model mm ON m.model_id = mm.id
-		LEFT OUTER JOIN (
-			SELECT _ms.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id
-			FROM mech_skin _ms
-			INNER JOIN collection_items _ci on _ci.item_id = _ms.id
-		) ms ON m.chassis_skin_id = ms.id
-				 LEFT OUTER JOIN blueprint_mech_skin dms ON mm.default_chassis_skin_id = dms.id
-			-- LEFT OUTER JOIN mech_animation ma1 on ma1.id = m.outro_animation_id
-				 LEFT OUTER JOIN (
-			SELECT _ma.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id
-			FROM mech_animation _ma
-					 INNER JOIN collection_items _ci on _ci.item_id = _ma.id
-		) ma1 on ma1.id = m.outro_animation_id
-			-- LEFT OUTER JOIN mech_animation ma2 on ma2.id = m.intro_animation_id
-				 LEFT OUTER JOIN (
-			SELECT _ma.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id
-			FROM mech_animation _ma
-					 INNER JOIN collection_items _ci on _ci.item_id = _ma.id
-		) ma2 on ma2.id = m.intro_animation_id
-				 LEFT OUTER JOIN (
-			SELECT mw.chassis_id, json_agg(w2) as weapons
-			FROM mech_weapons mw
-					 INNER JOIN
-				 (
-					 SELECT _w.*, _ci.hash, _ci.token_id, _ci.tier, _ci.owner_id
-					 FROM weapons _w
-							  INNER JOIN collection_items _ci on _ci.item_id = _w.id
-				 ) w2 ON mw.weapon_id = w2.id
-			GROUP BY mw.chassis_id
-		) w on w.chassis_id = m.id
-				 LEFT OUTER JOIN (
-			SELECT mw.chassis_id, json_agg(_u) as utility
-			FROM mech_utility mw
-					 INNER JOIN (
-				SELECT
-					_u.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id,
-					to_json(_us) as shield,
-					to_json(_ua) as accelerator,
-					to_json(_uam) as attack_drone,
-					to_json(_uad) as anti_missile,
-					to_json(_urd) as repair_drone
-				FROM utility _u
-						 INNER JOIN collection_items _ci on _ci.item_id = _u.id
-						 LEFT OUTER JOIN utility_shield _us ON _us.utility_id = _u.id
-						 LEFT OUTER JOIN utility_accelerator _ua ON _ua.utility_id = _u.id
-						 LEFT OUTER JOIN utility_anti_missile _uam ON _uam.utility_id = _u.id
-						 LEFT OUTER JOIN utility_attack_drone _uad ON _uad.utility_id = _u.id
-						 LEFT OUTER JOIN utility_repair_drone _urd ON _urd.utility_id = _u.id
-			) _u ON mw.utility_id = _u.id
-			GROUP BY mw.chassis_id
-		) u on u.chassis_id = m.id
-		WHERE m.id IN (` + paramrefs + `)
-		ORDER BY p.faction_id 
-		`
+	query := fmt.Sprintf(
+		`%s 	
+		WHERE m.id IN (%s)
+		ORDER BY p.faction_id `,
+		CompleteMechQuery,
+		paramrefs)
 
 	result, err := gamedb.StdConn.Query(query, mechids...)
 	if err != nil {
@@ -631,4 +517,190 @@ func InsertNewMech(ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) (*ser
 	}
 
 	return Mech(newMech.ID)
+}
+
+func IsMechColumn(col string) bool {
+	switch col {
+	case boiler.MechColumns.ID,
+		boiler.MechColumns.BrandID,
+		boiler.MechColumns.Label,
+		boiler.MechColumns.WeaponHardpoints,
+		boiler.MechColumns.UtilitySlots,
+		boiler.MechColumns.Speed,
+		boiler.MechColumns.MaxHitpoints,
+		boiler.MechColumns.DeletedAt,
+		boiler.MechColumns.UpdatedAt,
+		boiler.MechColumns.CreatedAt,
+		boiler.MechColumns.BlueprintID,
+		boiler.MechColumns.IsDefault,
+		boiler.MechColumns.IsInsured,
+		boiler.MechColumns.Name,
+		boiler.MechColumns.ModelID,
+		boiler.MechColumns.GenesisTokenID,
+		boiler.MechColumns.LimitedReleaseTokenID,
+		boiler.MechColumns.PowerCoreSize,
+		boiler.MechColumns.ChassisSkinID,
+		boiler.MechColumns.PowerCoreID,
+		boiler.MechColumns.IntroAnimationID,
+		boiler.MechColumns.OutroAnimationID:
+		return true
+	default:
+		return false
+	}
+}
+
+type MechListOpts struct {
+	Search   string
+	Filter   *ListFilterRequest
+	Sort     *ListSortRequest
+	PageSize int
+	Page     int
+	OwnerID  string
+}
+
+func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
+	var mechs []*server.Mech
+
+	var queryMods []qm.QueryMod
+
+	// create the where owner id = clause
+	queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
+		Table:    boiler.TableNames.CollectionItems,
+		Column:   boiler.CollectionItemColumns.OwnerID,
+		Operator: OperatorValueTypeEquals,
+		Value:    opts.OwnerID,
+	}, 0, ""),
+		GenerateListFilterQueryMod(ListFilterRequestItem{
+			Table:    boiler.TableNames.CollectionItems,
+			Column:   boiler.CollectionItemColumns.ItemType,
+			Operator: OperatorValueTypeEquals,
+			Value:    boiler.ItemTypeMech,
+		}, 0, "and"))
+
+	// Filters
+	if opts.Filter != nil {
+		// if we have filter
+		for i, f := range opts.Filter.Items {
+			// validate it is the right table and valid column
+			if f.Table == boiler.TableNames.Mechs && IsMechColumn(f.Column) {
+				queryMods = append(queryMods, GenerateListFilterQueryMod(*f, i+1, opts.Filter.LinkOperator))
+			}
+
+		}
+	}
+	// Search
+	if opts.Search != "" {
+		xSearch := ParseQueryText(opts.Search, true)
+		if len(xSearch) > 0 {
+			queryMods = append(queryMods,
+				qm.And(fmt.Sprintf(
+					"((to_tsvector('english', %[1]s.%[2]s) @@ to_tsquery(?))",
+					boiler.TableNames.Mechs,
+					boiler.MechColumns.Label,
+				),
+					xSearch,
+				))
+		}
+	}
+
+	total, err := boiler.CollectionItems(
+		queryMods...,
+	).Count(gamedb.StdConn)
+	if err != nil {
+		return 0, nil, err
+	}
+	// Sort
+	if opts.Sort != nil && opts.Sort.Table == boiler.TableNames.Mechs && IsMechColumn(opts.Sort.Column) && opts.Sort.Direction.IsValid() {
+		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s.%s %s", boiler.TableNames.Mechs, opts.Sort.Column, opts.Sort.Direction)))
+	} else {
+		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s.%s desc", boiler.TableNames.Mechs, boiler.MechColumns.Name)))
+	}
+
+	// Limit/Offset
+	if opts.PageSize > 0 {
+
+		queryMods = append(queryMods, qm.Limit(opts.PageSize), qm.Offset(opts.PageSize*(opts.Page-1)))
+	}
+
+	queryMods = append(queryMods,
+		qm.Select(
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.CollectionSlug),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.Hash),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.TokenID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.OwnerID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.Tier),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.WeaponHardpoints),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.UtilitySlots),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Speed),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.MaxHitpoints),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.IsDefault),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.IsInsured),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.GenesisTokenID),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.LimitedReleaseTokenID),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.PowerCoreSize),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.PowerCoreID),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.BlueprintID),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.BrandID),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ModelID),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ChassisSkinID),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.IntroAnimationID),
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.OutroAnimationID),
+		),
+		qm.From(boiler.TableNames.CollectionItems),
+		qm.InnerJoin(fmt.Sprintf("%s ON %s = %s",
+			boiler.TableNames.Mechs,
+			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+		)),
+	)
+
+	rows, err := boiler.NewQuery(
+		queryMods...,
+	).Query(gamedb.StdConn)
+	if err != nil {
+		return 0, nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		mc := &server.Mech{
+			CollectionDetails: &server.CollectionDetails{},
+		}
+		err = rows.Scan(
+			&mc.CollectionDetails.CollectionSlug,
+			&mc.CollectionDetails.Hash,
+			&mc.CollectionDetails.TokenID,
+			&mc.CollectionDetails.OwnerID,
+			&mc.CollectionDetails.Tier,
+			&mc.ID,
+			&mc.Name,
+			&mc.Label,
+			&mc.WeaponHardpoints,
+			&mc.UtilitySlots,
+			&mc.Speed,
+			&mc.MaxHitpoints,
+			&mc.IsDefault,
+			&mc.IsInsured,
+			&mc.GenesisTokenID,
+			&mc.LimitedReleaseTokenID,
+			&mc.PowerCoreSize,
+			&mc.PowerCoreID,
+			&mc.BlueprintID,
+			&mc.BrandID,
+			&mc.ModelID,
+			&mc.ChassisSkinID,
+			&mc.IntroAnimationID,
+			&mc.OutroAnimationID,
+			//&mc.DefaultChassisSkinID, // TODO: probably want this? (its  attached to the mech model, could be lazy loaded with the rest)
+		)
+		if err != nil {
+			return total, mechs, err
+		}
+		mechs = append(mechs, mc)
+	}
+
+	return total, mechs, nil
 }
