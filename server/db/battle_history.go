@@ -34,19 +34,24 @@ func (p BattleMechColumn) IsValid() error {
 	return terror.Error(fmt.Errorf("invalid battle mech column"))
 }
 
-type BattleMechIdentifier struct {
-	BattleID string `json:"battle_id"`
-	MechID   string `json:"mech_id"`
+type BattleDetailed struct {
+	*boiler.Battle
+	GameMap *boiler.GameMap `json:"game_map"`
 }
 
-// BattleMechsList returns a list of IDs from the battle_mechs table.
+type BattleMechDetailed struct {
+	*boiler.BattleMech
+	Battle *BattleDetailed `json:"battle"`
+}
+
+// BattleMechsListPaginated returns a list of IDs from the battle_mechs table.
 // Filter and sorting options can be passed in to manipulate the end result.
-func BattleMechsList(
+func BattleMechsListPaginated(
 	filter *ListFilterRequest,
 	sort *ListSortRequest,
 	offset int,
 	pageSize int,
-) (int64, []BattleMechIdentifier, error) {
+) (int64, []*BattleMechDetailed, error) {
 	queryMods := []qm.QueryMod{}
 
 	// Filters
@@ -96,6 +101,7 @@ func BattleMechsList(
 		queryMods = append(queryMods, qm.Limit(pageSize), qm.Offset(offset))
 	}
 
+	queryMods = append(queryMods, qm.Load(qm.Rels(boiler.BattleMechRels.Battle, boiler.BattleRels.GameMap)))
 	battleMechs, err := boiler.BattleMechs(
 		queryMods...,
 	).All(gamedb.StdConn)
@@ -103,43 +109,16 @@ func BattleMechsList(
 		return 0, nil, terror.Error(err)
 	}
 
-	battleMechIDs := make([]BattleMechIdentifier, 0)
-	for _, s := range battleMechs {
-		battleMechIDs = append(battleMechIDs, BattleMechIdentifier{
-			BattleID: s.BattleID,
-			MechID:   s.MechID,
+	detailedBattleMechs := []*BattleMechDetailed{}
+	for _, b := range battleMechs {
+		detailedBattleMechs = append(detailedBattleMechs, &BattleMechDetailed{
+			BattleMech: b,
+			Battle: &BattleDetailed{
+				Battle:  b.R.Battle,
+				GameMap: b.R.Battle.R.GameMap,
+			},
 		})
 	}
 
-	return total, battleMechIDs, nil
-}
-
-type BattleDetailed struct {
-	*boiler.Battle
-	GameMap *boiler.GameMap `json:"game_map"`
-}
-
-type BattleMechDetailed struct {
-	*boiler.BattleMech
-	Battle *BattleDetailed `json:"battle"`
-}
-
-func BattleMechGet(
-	battleID string,
-	mechID string,
-) (*BattleMechDetailed, error) {
-	bm, err := boiler.BattleMechs(boiler.BattleMechWhere.BattleID.EQ(battleID), boiler.BattleMechWhere.MechID.EQ(mechID), qm.Load(qm.Rels(boiler.BattleMechRels.Battle, boiler.BattleRels.GameMap))).One(gamedb.StdConn)
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-
-	result := BattleMechDetailed{
-		BattleMech: bm,
-		Battle: &BattleDetailed{
-			Battle:  bm.R.Battle,
-			GameMap: bm.R.Battle.R.GameMap,
-		},
-	}
-
-	return &result, nil
+	return total, detailedBattleMechs, nil
 }

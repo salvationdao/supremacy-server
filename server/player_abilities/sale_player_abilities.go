@@ -149,7 +149,7 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 					}
 
 					// Broadcast trigger of sale abilities list update
-					ws.PublishMessage("/secure_public/sale_abilities", server.HubKeySaleAbilitiesListUpdated, detailedSaleAbilities)
+					ws.PublishMessage("/secure_public/sale_abilities", server.HubKeySaleAbilitiesList, detailedSaleAbilities)
 				} else if err != nil {
 					gamelog.L.Error().Err(err).Msg("failed to fill sale player abilities map with new sale abilities")
 					break
