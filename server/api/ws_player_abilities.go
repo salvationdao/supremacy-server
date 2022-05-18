@@ -14,7 +14,6 @@ import (
 	"server/rpcclient"
 	"time"
 
-	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/ninja-syndicate/ws"
 
 	"github.com/gofrs/uuid"
@@ -38,7 +37,6 @@ func NewPlayerAbilitiesController(api *API) *PlayerAbilitiesControllerWS {
 	}
 
 	if api.Config.Environment == "development" {
-		api.SecureUserCommand(server.HubKeyPlayerAbilitiesList, pac.PlayerAbilitiesListHandler)
 		api.SecureUserCommand(server.HubKeySaleAbilityPurchase, pac.SaleAbilityPurchaseHandler)
 	}
 	api.SecureUserCommand(server.HubKeyPlayerAbilitySubscribe, pac.PlayerAbilitySubscribeHandler)
@@ -112,44 +110,14 @@ func (pac *PlayerAbilitiesControllerWS) PlayerAbilitySubscribeHandler(ctx contex
 	return nil
 }
 
-type PlayerAbilitiesListResponse struct {
-	Total             int64                     `json:"total"`
-	TalliedAbilityIDs []db.TalliedPlayerAbility `json:"tallied_ability_ids"`
-}
-
-type PlayerAbilitiesListRequest struct {
-	*hub.HubCommandRequest
-	Payload struct {
-		Search   string                `json:"search"`
-		Filter   *db.ListFilterRequest `json:"filter"`
-		PageSize int                   `json:"page_size"`
-		Page     int                   `json:"page"`
-	} `json:"payload"`
-}
-
 func (pac *PlayerAbilitiesControllerWS) PlayerAbilitiesListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &PlayerAbilitiesListRequest{}
-	err := json.Unmarshal(payload, req)
+	tpas, err := db.TalliedPlayerAbilitiesList(user.ID)
 	if err != nil {
-		return terror.Error(err, "Invalid request received.")
-	}
-
-	offset := 0
-	if req.Payload.Page > 0 {
-		offset = req.Payload.Page * req.Payload.PageSize
-	}
-
-	total, talliedPIDs, err := db.PlayerAbilitiesList(req.Payload.Search, req.Payload.Filter, offset, req.Payload.PageSize)
-	if err != nil {
-		gamelog.L.Error().
-			Str("db func", "PlayerAbilitiesList").Err(err).Interface("arguments", req.Payload).Msg("unable to get list of player abilities")
+		gamelog.L.Error().Str("boiler func", "PlayerAbilities").Str("ownerID", user.ID).Err(err).Msg("unable to get player abilities")
 		return terror.Error(err, "Unable to retrieve abilities, try again or contact support.")
 	}
 
-	reply(PlayerAbilitiesListResponse{
-		total,
-		talliedPIDs,
-	})
+	reply(tpas)
 	return nil
 }
 
@@ -288,7 +256,12 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 	reply(true)
 
 	// Tell client to update their player abilities list
-	pac.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", server.HubKeyPlayerAbilitiesListUpdated, userID)), true)
+	tpas, err := db.TalliedPlayerAbilitiesList(user.ID)
+	if err != nil {
+		gamelog.L.Error().Str("boiler func", "PlayerAbilities").Str("ownerID", user.ID).Err(err).Msg("unable to get player abilities")
+		return terror.Error(err, "Unable to retrieve abilities, try again or contact support.")
+	}
+	ws.PublishMessage(fmt.Sprintf("/user/%s/player_abilities", userID), server.HubKeyPlayerAbilitiesListUpdated, tpas)
 
 	// Update price of sale ability
 	pac.API.SalePlayerAbilitiesSystem.Purchase <- &player_abilities.Purchase{
