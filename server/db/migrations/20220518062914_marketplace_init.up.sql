@@ -2,9 +2,8 @@ BEGIN;
 
 CREATE TABLE item_sales (
     id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
-	item_type TEXT NOT NULL CHECK (item_type IN ('WAR_MACHINE')),
 	faction_id UUID NOT NULL REFERENCES factions (id),
-	item_id UUID NOT NULL,
+	item_id UUID NOT NULL REFERENCES  collection_items (id),
 	listing_fee_tx_id TEXT NOT NULL,
 	owner_id UUID NOT NULL REFERENCES players(id),
 
@@ -28,41 +27,6 @@ CREATE TABLE item_sales (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
--- for checking if item exists and belongs to the owner
-CREATE OR REPLACE FUNCTION checkItemOwnerConstraint()
-    RETURNS TRIGGER
-AS
-$checkItemOwnerConstraint$
-DECLARE
-    check_owner_id UUID;
-BEGIN
-	CASE NEW.item_type 
-	WHEN 'WAR_MACHINE' THEN 
-		check_owner_id := (
-			SELECT owner_id
-			FROM mechs
-			WHERE id = NEW.item_id
-		);
-	ELSE 
-		RAISE EXCEPTION 'invalid item_type %', NEW.item_type; 
-	END CASE;
-
-	IF check_owner_id IS NULL THEN
-		RAISE EXCEPTION '% not found, item_id=%, owner_id=%', NEW.item_type, NEW.item_id, NEW.owner_id;
-	ELSEIF check_owner_id != NEW.owner_id THEN 
-		RAISE EXCEPTION '% does not belong to owner, item_id=%, owner_id=%', NEW.item_type, NEW.item_id, NEW.owner_id;
-	END IF;
-
-    RETURN NEW;
-END;
-$checkItemOwnerConstraint$
-    LANGUAGE plpgsql;
-
-CREATE TRIGGER checkItemOwnerConstraint
-    BEFORE INSERT OR UPDATE
-    ON item_sales
-FOR EACH ROW EXECUTE PROCEDURE checkItemOwnerConstraint();
 
 -- For Dutch Auctions
 CREATE TABLE item_sales_buyout_price_history (

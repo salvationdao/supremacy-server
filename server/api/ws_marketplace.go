@@ -310,10 +310,10 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		FromUserID:           userID,
 		ToUserID:             uuid.Must(uuid.FromString(saleItem.OwnerID)),
 		Amount:               saleItemCost.String(),
-		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item|%s|%s|%s|%d", saleType, saleItem.ItemType, saleItem.ID)),
+		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item|%s|%s|%s|%d", *saleType, saleItem.ItemType, saleItem.ID, time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupMarketplace),
 		SubGroup:             "SUPREMACY",
-		Description:          fmt.Sprintf("marketplace buy item: %s - %s: %s", saleType, saleItem.ItemType, saleItem.ID),
+		Description:          fmt.Sprintf("marketplace buy item: %s - %s: %s", *saleType, saleItem.ItemType, saleItem.ID),
 		NotSafe:              true,
 	})
 	if err != nil {
