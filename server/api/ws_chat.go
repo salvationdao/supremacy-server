@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/ninja-syndicate/ws"
 	"html"
 	"server"
 	"server/db"
@@ -14,6 +13,10 @@ import (
 	"server/gamelog"
 	"server/multipliers"
 	"time"
+
+	"github.com/gofrs/uuid"
+
+	"github.com/ninja-syndicate/ws"
 
 	"github.com/volatiletech/null/v8"
 
@@ -111,10 +114,10 @@ func (c *Chatroom) Range(fn func(chatMessage *ChatMessage) bool) {
 	c.RUnlock()
 }
 
-func NewChatroom(factionID *server.FactionID) *Chatroom {
+func NewChatroom(factionID string) *Chatroom {
 	stream := "global"
-	if factionID != nil {
-		stream = factionID.String()
+	if factionID != "" {
+		stream = factionID
 	}
 	msgs, _ := boiler.ChatHistories(
 		boiler.ChatHistoryWhere.ChatStream.EQ(stream),
@@ -168,9 +171,9 @@ func NewChatroom(factionID *server.FactionID) *Chatroom {
 			},
 		}
 	}
-
+	factionUUID := server.FactionID(uuid.FromStringOrNil(factionID))
 	chatroom := &Chatroom{
-		factionID: factionID,
+		factionID: &factionUUID,
 		messages:  cms,
 	}
 	return chatroom
@@ -445,11 +448,11 @@ func (fc *ChatController) FactionChatUpdatedSubscribeHandler(ctx context.Context
 		return true
 	}
 	switch factionID {
-	case server.RedMountainFactionID.String():
+	case server.RedMountainFactionID:
 		fc.API.RedMountainChat.Range(chatRangeHandler)
-	case server.BostonCyberneticsFactionID.String():
+	case server.BostonCyberneticsFactionID:
 		fc.API.BostonChat.Range(chatRangeHandler)
-	case server.ZaibatsuFactionID.String():
+	case server.ZaibatsuFactionID:
 		fc.API.ZaibatsuChat.Range(chatRangeHandler)
 	default:
 		return terror.Error(terror.ErrInvalidInput, "Invalid faction id")
@@ -474,11 +477,11 @@ func (fc *ChatController) GlobalChatUpdatedSubscribeHandler(ctx context.Context,
 
 func (api *API) AddFactionChatMessage(factionID string, msg *ChatMessage) {
 	switch factionID {
-	case server.RedMountainFactionID.String():
+	case server.RedMountainFactionID:
 		api.RedMountainChat.AddMessage(msg)
-	case server.BostonCyberneticsFactionID.String():
+	case server.BostonCyberneticsFactionID:
 		api.BostonChat.AddMessage(msg)
-	case server.ZaibatsuFactionID.String():
+	case server.ZaibatsuFactionID:
 		api.ZaibatsuChat.AddMessage(msg)
 	}
 }

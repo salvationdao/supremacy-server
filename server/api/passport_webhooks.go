@@ -108,7 +108,7 @@ func (pc *PassportWebhookController) UserEnlistFaction(w http.ResponseWriter, r 
 		return http.StatusInternalServerError, err
 	}
 
-	if req.FactionID.IsNil() || !req.FactionID.IsValid() {
+	if req.FactionID.IsNil() {
 		return http.StatusBadRequest, terror.Error(err, "Faction id is required")
 	}
 
@@ -197,7 +197,7 @@ func (pc *PassportWebhookController) UserStatGet(w http.ResponseWriter, r *http.
 	if userStat == nil {
 		// build an empty user stat if there is no user stat in db
 		userStat = &server.UserStat{
-			UserStat: &boiler.UserStat{
+			PlayerStat: &boiler.PlayerStat{
 				ID: req.UserID.String(),
 			},
 		}

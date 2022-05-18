@@ -11,7 +11,6 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"server/helpers"
 	"server/player_abilities"
 	"server/rpcclient"
 	"time"
@@ -145,10 +144,10 @@ func NewAPI(
 		FactionActivePlayers: make(map[string]*ActivePlayers),
 
 		// chatroom
-		GlobalChat:      NewChatroom(nil),
-		RedMountainChat: NewChatroom(&server.RedMountainFactionID),
-		BostonChat:      NewChatroom(&server.BostonCyberneticsFactionID),
-		ZaibatsuChat:    NewChatroom(&server.ZaibatsuFactionID),
+		GlobalChat:      NewChatroom(""),
+		RedMountainChat: NewChatroom(server.RedMountainFactionID),
+		BostonChat:      NewChatroom(server.BostonCyberneticsFactionID),
+		ZaibatsuChat:    NewChatroom(server.ZaibatsuFactionID),
 	}
 
 	battleArenaClient.SetMessageBus(messageBus)
@@ -173,6 +172,7 @@ func NewAPI(
 	cc := NewChatController(api)
 	_ = NewBattleController(api)
 	_ = NewPlayerAbilitiesController(api)
+	_ = NewPlayerAssetsController(api)
 
 	api.Routes.Use(middleware.RequestID)
 	api.Routes.Use(middleware.RealIP)
@@ -205,8 +205,7 @@ func NewAPI(
 		r.Delete("/video_server", WithToken(config.ServerStreamKey, WithError(api.DeleteStreamHandler)))
 		r.Post("/close_stream", WithToken(config.ServerStreamKey, WithError(api.CreateStreamCloseHandler)))
 		r.Mount("/faction", FactionRouter(api))
-		r.Get("/auth/xsyn", api.XSYNAuth)
-		r.Get("/auth/check", WithError(api.AuthCheckHandler))
+		r.Mount("/auth", AuthRouter(api))
 
 		r.Mount("/battle", BattleRouter(battleArenaClient))
 		r.Post("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.GlobalAnnouncementSend)))
@@ -248,24 +247,24 @@ func NewAPI(
 	// create a tickle that update faction mvp every day 00:00 am
 	factionMvpUpdate := tickle.New("Calculate faction mvp player", 24*60*60, func() (int, error) {
 		// set red mountain mvp player
-		gamelog.L.Info().Str("faction_id", server.RedMountainFactionID.String()).Msg("Recalculate Red Mountain mvp player")
-		err := db.FactionStatMVPUpdate(server.RedMountainFactionID.String())
+		gamelog.L.Info().Str("faction_id", server.RedMountainFactionID).Msg("Recalculate Red Mountain mvp player")
+		err := db.FactionStatMVPUpdate(server.RedMountainFactionID)
 		if err != nil {
-			gamelog.L.Error().Str("faction_id", server.RedMountainFactionID.String()).Err(err).Msg("Failed to recalculate Red Mountain mvp player")
+			gamelog.L.Error().Str("faction_id", server.RedMountainFactionID).Err(err).Msg("Failed to recalculate Red Mountain mvp player")
 		}
 
 		// set boston mvp player
-		gamelog.L.Info().Str("faction_id", server.BostonCyberneticsFactionID.String()).Msg("Recalculate Boston mvp player")
-		err = db.FactionStatMVPUpdate(server.BostonCyberneticsFactionID.String())
+		gamelog.L.Info().Str("faction_id", server.BostonCyberneticsFactionID).Msg("Recalculate Boston mvp player")
+		err = db.FactionStatMVPUpdate(server.BostonCyberneticsFactionID)
 		if err != nil {
-			gamelog.L.Error().Str("faction_id", server.BostonCyberneticsFactionID.String()).Err(err).Msg("Failed to recalculate Boston mvp player")
+			gamelog.L.Error().Str("faction_id", server.BostonCyberneticsFactionID).Err(err).Msg("Failed to recalculate Boston mvp player")
 		}
 
 		// set Zaibatsu mvp player
-		gamelog.L.Info().Str("faction_id", server.ZaibatsuFactionID.String()).Msg("Recalculate Zaibatsu mvp player")
-		err = db.FactionStatMVPUpdate(server.ZaibatsuFactionID.String())
+		gamelog.L.Info().Str("faction_id", server.ZaibatsuFactionID).Msg("Recalculate Zaibatsu mvp player")
+		err = db.FactionStatMVPUpdate(server.ZaibatsuFactionID)
 		if err != nil {
-			gamelog.L.Error().Str("faction_id", server.ZaibatsuFactionID.String()).Err(err).Msg("Failed to recalculate Zaibatsu mvp player")
+			gamelog.L.Error().Str("faction_id", server.ZaibatsuFactionID).Err(err).Msg("Failed to recalculate Zaibatsu mvp player")
 		}
 
 		return http.StatusOK, nil
@@ -316,46 +315,6 @@ func (api *API) Close() {
 	if err != nil {
 		gamelog.L.Warn().Err(err).Msg("")
 	}
-}
-
-func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, error) {
-	cookie, err := r.Cookie("xsyn-token")
-	if err != nil {
-		// check whether token is attached
-		gamelog.L.Debug().Msg("Cookie not found")
-
-		token := r.URL.Query().Get("token")
-		if token == "" {
-			return http.StatusBadRequest, terror.Warn(fmt.Errorf("no cookie and token are provided"), "Player are not signed in.")
-		}
-
-		// check user from token
-		player, err := api.TokenLogin(token)
-		if err != nil {
-			return http.StatusBadRequest, terror.Error(err, "Failed to authentication")
-		}
-
-		// write cookie
-		err = api.WriteCookie(w, token)
-		if err != nil {
-			return http.StatusInternalServerError, terror.Error(err, "Failed to write cookie")
-		}
-
-		return helpers.EncodeJSON(w, player)
-	}
-
-	var token string
-	if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
-		return http.StatusBadRequest, terror.Error(err, "Failed to decrypt token")
-	}
-
-	// check user from token
-	player, err := api.TokenLogin(token)
-	if err != nil {
-		return http.StatusBadRequest, terror.Error(err, "Failed to authentication")
-	}
-
-	return helpers.EncodeJSON(w, player)
 }
 
 /**********************
