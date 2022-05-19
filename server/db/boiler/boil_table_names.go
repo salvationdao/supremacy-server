@@ -59,6 +59,8 @@ var TableNames = struct {
 	Mechs                                              string
 	MechsOld                                           string
 	Multipliers                                        string
+	MysteryCrate                                       string
+	MysteryCrateBlueprints                             string
 	PlayerAbilities                                    string
 	PlayerActiveLogs                                   string
 	PlayerKillLog                                      string
@@ -76,6 +78,7 @@ var TableNames = struct {
 	SalePlayerAbilities                                string
 	SchemaMigrations                                   string
 	SpoilsOfWar                                        string
+	StorefrontMysteryCrates                            string
 	StreamList                                         string
 	TelegramNotifications                              string
 	TemplateBlueprints                                 string
@@ -146,6 +149,8 @@ var TableNames = struct {
 	Mechs:                       "mechs",
 	MechsOld:                    "mechs_old",
 	Multipliers:                 "multipliers",
+	MysteryCrate:                "mystery_crate",
+	MysteryCrateBlueprints:      "mystery_crate_blueprints",
 	PlayerAbilities:             "player_abilities",
 	PlayerActiveLogs:            "player_active_logs",
 	PlayerKillLog:               "player_kill_log",
@@ -163,6 +168,7 @@ var TableNames = struct {
 	SalePlayerAbilities:         "sale_player_abilities",
 	SchemaMigrations:            "schema_migrations",
 	SpoilsOfWar:                 "spoils_of_war",
+	StorefrontMysteryCrates:     "storefront_mystery_crates",
 	StreamList:                  "stream_list",
 	TelegramNotifications:       "telegram_notifications",
 	TemplateBlueprints:          "template_blueprints",

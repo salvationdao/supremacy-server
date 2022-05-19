@@ -152,14 +152,6 @@ const (
 	MultiplierTypeEnumContribute   = "contribute"
 )
 
-// Enum values for PlayerRankEnum
-const (
-	PlayerRankEnumGENERAL     = "GENERAL"
-	PlayerRankEnumCORPORAL    = "CORPORAL"
-	PlayerRankEnumPRIVATE     = "PRIVATE"
-	PlayerRankEnumNEW_RECRUIT = "NEW_RECRUIT"
-)
-
 // Enum values for TemplateItemType
 const (
 	TemplateItemTypeMECH           = "MECH"
@@ -171,4 +163,12 @@ const (
 	TemplateItemTypePOWER_CORE     = "POWER_CORE"
 	TemplateItemTypeWEAPON_SKIN    = "WEAPON_SKIN"
 	TemplateItemTypePLAYER_ABILITY = "PLAYER_ABILITY"
+)
+
+// Enum values for PlayerRankEnum
+const (
+	PlayerRankEnumGENERAL     = "GENERAL"
+	PlayerRankEnumCORPORAL    = "CORPORAL"
+	PlayerRankEnumPRIVATE     = "PRIVATE"
+	PlayerRankEnumNEW_RECRUIT = "NEW_RECRUIT"
 )

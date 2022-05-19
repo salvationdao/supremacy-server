@@ -151,6 +151,7 @@ var FactionRels = struct {
 	BattleWins            string
 	Brands                string
 	ChatHistories         string
+	MysteryCrates         string
 	PlayerActiveLogs      string
 	PlayerKillLogs        string
 	PlayerLanguages       string
@@ -167,6 +168,7 @@ var FactionRels = struct {
 	BattleWins:            "BattleWins",
 	Brands:                "Brands",
 	ChatHistories:         "ChatHistories",
+	MysteryCrates:         "MysteryCrates",
 	PlayerActiveLogs:      "PlayerActiveLogs",
 	PlayerKillLogs:        "PlayerKillLogs",
 	PlayerLanguages:       "PlayerLanguages",
@@ -186,6 +188,7 @@ type factionR struct {
 	BattleWins            BattleWinSlice            `boiler:"BattleWins" boil:"BattleWins" json:"BattleWins" toml:"BattleWins" yaml:"BattleWins"`
 	Brands                BrandSlice                `boiler:"Brands" boil:"Brands" json:"Brands" toml:"Brands" yaml:"Brands"`
 	ChatHistories         ChatHistorySlice          `boiler:"ChatHistories" boil:"ChatHistories" json:"ChatHistories" toml:"ChatHistories" yaml:"ChatHistories"`
+	MysteryCrates         MysteryCrateSlice         `boiler:"MysteryCrates" boil:"MysteryCrates" json:"MysteryCrates" toml:"MysteryCrates" yaml:"MysteryCrates"`
 	PlayerActiveLogs      PlayerActiveLogSlice      `boiler:"PlayerActiveLogs" boil:"PlayerActiveLogs" json:"PlayerActiveLogs" toml:"PlayerActiveLogs" yaml:"PlayerActiveLogs"`
 	PlayerKillLogs        PlayerKillLogSlice        `boiler:"PlayerKillLogs" boil:"PlayerKillLogs" json:"PlayerKillLogs" toml:"PlayerKillLogs" yaml:"PlayerKillLogs"`
 	PlayerLanguages       PlayerLanguageSlice       `boiler:"PlayerLanguages" boil:"PlayerLanguages" json:"PlayerLanguages" toml:"PlayerLanguages" yaml:"PlayerLanguages"`
@@ -630,6 +633,27 @@ func (o *Faction) ChatHistories(mods ...qm.QueryMod) chatHistoryQuery {
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"chat_history\".*"})
+	}
+
+	return query
+}
+
+// MysteryCrates retrieves all the mystery_crate's MysteryCrates with an executor.
+func (o *Faction) MysteryCrates(mods ...qm.QueryMod) mysteryCrateQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"mystery_crate\".\"faction_id\"=?", o.ID),
+	)
+
+	query := MysteryCrates(queryMods...)
+	queries.SetFrom(query.Query, "\"mystery_crate\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"mystery_crate\".*"})
 	}
 
 	return query
@@ -1640,6 +1664,104 @@ func (factionL) LoadChatHistories(e boil.Executor, singular bool, maybeFaction i
 				local.R.ChatHistories = append(local.R.ChatHistories, foreign)
 				if foreign.R == nil {
 					foreign.R = &chatHistoryR{}
+				}
+				foreign.R.Faction = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadMysteryCrates allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (factionL) LoadMysteryCrates(e boil.Executor, singular bool, maybeFaction interface{}, mods queries.Applicator) error {
+	var slice []*Faction
+	var object *Faction
+
+	if singular {
+		object = maybeFaction.(*Faction)
+	} else {
+		slice = *maybeFaction.(*[]*Faction)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &factionR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &factionR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`mystery_crate`),
+		qm.WhereIn(`mystery_crate.faction_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load mystery_crate")
+	}
+
+	var resultSlice []*MysteryCrate
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice mystery_crate")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on mystery_crate")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mystery_crate")
+	}
+
+	if len(mysteryCrateAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.MysteryCrates = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &mysteryCrateR{}
+			}
+			foreign.R.Faction = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.FactionID {
+				local.R.MysteryCrates = append(local.R.MysteryCrates, foreign)
+				if foreign.R == nil {
+					foreign.R = &mysteryCrateR{}
 				}
 				foreign.R.Faction = local
 				break
@@ -2698,6 +2820,58 @@ func (o *Faction) AddChatHistories(exec boil.Executor, insert bool, related ...*
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &chatHistoryR{
+				Faction: o,
+			}
+		} else {
+			rel.R.Faction = o
+		}
+	}
+	return nil
+}
+
+// AddMysteryCrates adds the given related objects to the existing relationships
+// of the faction, optionally inserting them as new records.
+// Appends related to o.R.MysteryCrates.
+// Sets related.R.Faction appropriately.
+func (o *Faction) AddMysteryCrates(exec boil.Executor, insert bool, related ...*MysteryCrate) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.FactionID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"mystery_crate\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
+				strmangle.WhereClause("\"", "\"", 2, mysteryCratePrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.FactionID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &factionR{
+			MysteryCrates: related,
+		}
+	} else {
+		o.R.MysteryCrates = append(o.R.MysteryCrates, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &mysteryCrateR{
 				Faction: o,
 			}
 		} else {
