@@ -219,6 +219,7 @@ func NewAPI(
 				s.WS("/global_chat", HubKeyGlobalChatSubscribe, cc.GlobalChatUpdatedSubscribeHandler)
 				s.WS("/global_announcement", server.HubKeyGlobalAnnouncementSubscribe, sc.GlobalAnnouncementSubscribe)
 			}))
+
 			r.Mount("/secure_public", ws.NewServer(func(s *ws.Server) {
 				s.Use(api.AuthWS(true, false))
 				s.WS("/sale_abilities", server.HubKeySaleAbilitiesList, server.MustSecure(pac.SaleAbilitiesListHandler))

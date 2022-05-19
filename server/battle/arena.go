@@ -230,8 +230,8 @@ func NewArena(opts *Opts) *Arena {
 	//arena.SecureUserFactionCommand(HubKeyAssetRepairPayFee, arena.AssetRepairPayFeeHandler)
 	//arena.SecureUserFactionCommand(HubKeyAssetRepairStatus, arena.AssetRepairStatusHandler)
 
-	// TODO: handle player ability use
-	//arena.SecureUserCommand(HubKeyPlayerAbilityUse, arena.PlayerAbilityUse)
+	// player ability use
+	arena.SecureUserFactionCommand(HubKeyPlayerAbilityUse, arena.PlayerAbilityUse)
 
 	// battle ability related (bribing)
 	arena.SecureUserFactionCommand(HubKeyBattleAbilityBribe, arena.BattleAbilityBribe)
@@ -610,7 +610,7 @@ type PlayerAbilityUseRequest struct {
 
 const HubKeyPlayerAbilityUse = "PLAYER:ABILITY:USE"
 
-func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	// skip, if current not battle
 	if arena.CurrentBattle() == nil {
 		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Msg("no current battle")
@@ -642,6 +642,11 @@ func (arena *Arena) PlayerAbilityUse(ctx context.Context, user *boiler.Player, k
 	if pa.OwnerID != player.ID {
 		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Str("ability ownerID", pa.OwnerID).Str("blueprintAbilityID", req.Payload.BlueprintAbilityID).Msgf("player %s tried to execute an ability that wasn't theirs", player.ID)
 		return terror.Error(terror.ErrForbidden, "You do not have permission to activate this ability.")
+	}
+
+	if !player.FactionID.Valid || player.FactionID.String == "" {
+		gamelog.L.Warn().Str("func", "PlayerAbilityUse").Str("ability ownerID", pa.OwnerID).Str("blueprintAbilityID", req.Payload.BlueprintAbilityID).Msgf("player %s tried to execute an ability but they aren't part of a faction", player.ID)
+		return terror.Error(terror.ErrForbidden, "You must be enrolled in a faction in order to use this ability.")
 	}
 
 	defer func() {
