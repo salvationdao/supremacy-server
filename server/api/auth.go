@@ -8,6 +8,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/helpers"
+	"strings"
 	"time"
 
 	"github.com/friendsofgo/errors"
@@ -107,7 +108,7 @@ func (api *API) XSYNAuth(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	err = api.WriteCookie(w, resp.Token)
+	err = api.WriteCookie(w, r, resp.Token)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -134,7 +135,7 @@ func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, e
 		}
 
 		// write cookie
-		err = api.WriteCookie(w, token)
+		err = api.WriteCookie(w, r, token)
 		if err != nil {
 			return http.StatusInternalServerError, terror.Error(err, "Failed to write cookie")
 		}
@@ -179,12 +180,13 @@ func (api *API) LogoutHandler(w http.ResponseWriter, r *http.Request) (int, erro
 	return http.StatusOK, nil
 }
 
-func (api *API) WriteCookie(w http.ResponseWriter, token string) error {
+func (api *API) WriteCookie(w http.ResponseWriter, r *http.Request, token string) error {
 	b64, err := api.Cookie.EncryptToBase64(token)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Encryption error: %v", err), http.StatusBadRequest)
 		return err
 	}
+
 	cookie := &http.Cookie{
 		Name:     "xsyn-token",
 		Value:    b64,
@@ -193,6 +195,7 @@ func (api *API) WriteCookie(w http.ResponseWriter, token string) error {
 		Path:     "/",
 		HttpOnly: true,
 		SameSite: http.SameSiteNoneMode,
+		Domain:   domain(r.Host),
 	}
 	http.SetCookie(w, cookie)
 	return nil
@@ -210,4 +213,10 @@ func (api *API) DeleteCookie(w http.ResponseWriter) error {
 	}
 	http.SetCookie(w, cookie)
 	return nil
+}
+
+func domain(host string) string {
+	parts := strings.Split(host, ".")
+	//this is rigid as fuck
+	return parts[len(parts)-2] + "." + parts[len(parts)-1]
 }

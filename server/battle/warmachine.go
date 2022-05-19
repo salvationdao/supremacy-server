@@ -1,6 +1,7 @@
 package battle
 
 import (
+	"github.com/davecgh/go-spew/spew"
 	"server"
 	"server/db/boiler"
 	"time"
@@ -60,7 +61,6 @@ type PowerCore struct {
 	RechargeRate decimal.Decimal `json:"recharge_rate"`
 	Armour       decimal.Decimal `json:"armour"`
 	MaxHitpoints decimal.Decimal `json:"max_hitpoints"`
-	Tier         string          `json:"tier,omitempty"`
 	EquippedOn   null.String     `json:"equipped_on,omitempty"`
 	CreatedAt    time.Time       `json:"created_at"`
 }
@@ -180,6 +180,7 @@ func WeaponFromServer(weapon *server.Weapon) *Weapon {
 }
 
 func PowerCoreFromServer(ec *server.PowerCore) *PowerCore {
+	spew.Dump(ec)
 	return &PowerCore{
 		ID:           ec.ID,
 		Label:        ec.Label,
@@ -188,7 +189,6 @@ func PowerCoreFromServer(ec *server.PowerCore) *PowerCore {
 		RechargeRate: ec.RechargeRate,
 		Armour:       ec.Armour,
 		MaxHitpoints: ec.MaxHitpoints,
-		Tier:         ec.Tier,
 		EquippedOn:   ec.EquippedOn,
 		CreatedAt:    ec.CreatedAt,
 	}
