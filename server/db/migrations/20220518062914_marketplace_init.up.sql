@@ -3,7 +3,7 @@ BEGIN;
 CREATE TABLE item_sales (
     id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
 	faction_id UUID NOT NULL REFERENCES factions (id),
-	item_id UUID NOT NULL REFERENCES  collection_items (id),
+	item_id UUID NOT NULL REFERENCES collection_items (item_id),
 	listing_fee_tx_id TEXT NOT NULL,
 	owner_id UUID NOT NULL REFERENCES players(id),
 

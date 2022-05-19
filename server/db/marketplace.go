@@ -18,28 +18,26 @@ import (
 var itemSaleQueryMods = []qm.QueryMod{
 	qm.LeftOuterJoin(
 		fmt.Sprintf(
-			"%s ON %s = %s AND %s = ?",
+			"%s ON %s = %s",
 			boiler.TableNames.Mechs,
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
 			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.ItemID),
-			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.ItemType),
 		),
-		server.MarketplaceItemTypeWarMachine,
 	),
 	qm.Load(boiler.ItemSaleRels.Owner),
 }
 
 // MarketplaceLoadItemSaleObject loads the specific item type's object.
 func MarketplaceLoadItemSaleObject(obj *server.MarketplaceSaleItem) (*server.MarketplaceSaleItem, error) {
-	if obj.ItemType == string(server.MarketplaceItemTypeWarMachine) {
-		mech, err := boiler.Mechs(
-			boiler.MechWhere.ID.EQ(obj.ItemID),
-		).One(gamedb.StdConn)
-		if err != nil {
-			return nil, terror.Error(err)
-		}
-		obj.Mech = mech
+	// if obj.ItemType == boiler.ItemTypeMech {
+	mech, err := boiler.Mechs(
+		boiler.MechWhere.ID.EQ(obj.ItemID),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return nil, terror.Error(err)
 	}
+	obj.Mech = mech
+	// }
 	return obj, nil
 }
 
@@ -129,9 +127,9 @@ func MarketplaceItemSaleList(search string, archived bool, filter *ListFilterReq
 	records := []*server.MarketplaceSaleItem{}
 	mechIDs := []string{}
 	for _, row := range itemSales {
-		if row.ItemType == string(server.MarketplaceItemTypeWarMachine) {
-			mechIDs = append(mechIDs, row.ItemID)
-		}
+		// if row.ItemType == boiler.ItemTypeMech {
+		mechIDs = append(mechIDs, row.ItemID)
+		// }
 		records = append(records, &server.MarketplaceSaleItem{
 			ItemSale: row,
 			Owner:    row.R.Owner,
@@ -146,7 +144,8 @@ func MarketplaceItemSaleList(search string, archived bool, filter *ListFilterReq
 		}
 		for i, row := range records {
 			for _, mech := range mechs {
-				if row.ItemType == string(server.MarketplaceItemTypeWarMachine) && row.ItemID == mech.ID {
+				// if row.ItemType == boiler.ItemTypeMech && row.ItemID == mech.ID {
+				if row.ItemID == mech.ID {
 					records[i].Mech = mech
 				}
 			}
@@ -157,12 +156,11 @@ func MarketplaceItemSaleList(search string, archived bool, filter *ListFilterReq
 }
 
 // MarketplaceSaleCreate inserts a new sale item.
-func MarketplaceSaleCreate(saleType server.MarketplaceSaleType, ownerID uuid.UUID, factionID uuid.UUID, listFeeTxnID string, endAt time.Time, itemType server.MarketplaceItemType, itemID uuid.UUID, askingPrice *decimal.Decimal, dutchOptionDropRate *decimal.Decimal) (*server.MarketplaceSaleItem, error) {
+func MarketplaceSaleCreate(saleType server.MarketplaceSaleType, ownerID uuid.UUID, factionID uuid.UUID, listFeeTxnID string, endAt time.Time, itemID uuid.UUID, askingPrice *decimal.Decimal, dutchOptionDropRate *decimal.Decimal) (*server.MarketplaceSaleItem, error) {
 	obj := &boiler.ItemSale{
 		OwnerID:        ownerID.String(),
 		FactionID:      factionID.String(),
 		ListingFeeTXID: listFeeTxnID,
-		ItemType:       string(itemType),
 		ItemID:         itemID.String(),
 		EndAt:          endAt,
 	}
@@ -179,9 +177,7 @@ func MarketplaceSaleCreate(saleType server.MarketplaceSaleType, ownerID uuid.UUI
 		obj.BuyoutPrice = null.StringFrom(askingPrice.String())
 	}
 
-	boil.DebugMode = true
 	err := obj.Insert(gamedb.StdConn, boil.Infer())
-	boil.DebugMode = false
 	if err != nil {
 		return nil, terror.Error(err)
 	}

@@ -15,12 +15,6 @@ const (
 	MarketplaceSaleTypeDutchAuction MarketplaceSaleType = "DUTCH_AUCTION"
 )
 
-type MarketplaceItemType string
-
-const (
-	MarketplaceItemTypeWarMachine MarketplaceItemType = "WAR_MACHINE"
-)
-
 type MarketplaceSaleItem struct {
 	*boiler.ItemSale
 	Owner *boiler.Player `json:"owner"`

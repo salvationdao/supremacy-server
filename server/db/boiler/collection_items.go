@@ -106,14 +106,17 @@ var CollectionItemWhere = struct {
 
 // CollectionItemRels is where relationship names are stored.
 var CollectionItemRels = struct {
-	Owner string
+	Owner         string
+	ItemItemSales string
 }{
-	Owner: "Owner",
+	Owner:         "Owner",
+	ItemItemSales: "ItemItemSales",
 }
 
 // collectionItemR is where relationships are stored.
 type collectionItemR struct {
-	Owner *Player `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
+	Owner         *Player       `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
+	ItemItemSales ItemSaleSlice `boiler:"ItemItemSales" boil:"ItemItemSales" json:"ItemItemSales" toml:"ItemItemSales" yaml:"ItemItemSales"`
 }
 
 // NewStruct creates a new relationship struct
@@ -389,6 +392,28 @@ func (o *CollectionItem) Owner(mods ...qm.QueryMod) playerQuery {
 	return query
 }
 
+// ItemItemSales retrieves all the item_sale's ItemSales with an executor via item_id column.
+func (o *CollectionItem) ItemItemSales(mods ...qm.QueryMod) itemSaleQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"item_sales\".\"item_id\"=?", o.ItemID),
+		qmhelper.WhereIsNull("\"item_sales\".\"deleted_at\""),
+	)
+
+	query := ItemSales(queryMods...)
+	queries.SetFrom(query.Query, "\"item_sales\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"item_sales\".*"})
+	}
+
+	return query
+}
+
 // LoadOwner allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
 func (collectionItemL) LoadOwner(e boil.Executor, singular bool, maybeCollectionItem interface{}, mods queries.Applicator) error {
@@ -494,6 +519,105 @@ func (collectionItemL) LoadOwner(e boil.Executor, singular bool, maybeCollection
 	return nil
 }
 
+// LoadItemItemSales allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (collectionItemL) LoadItemItemSales(e boil.Executor, singular bool, maybeCollectionItem interface{}, mods queries.Applicator) error {
+	var slice []*CollectionItem
+	var object *CollectionItem
+
+	if singular {
+		object = maybeCollectionItem.(*CollectionItem)
+	} else {
+		slice = *maybeCollectionItem.(*[]*CollectionItem)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &collectionItemR{}
+		}
+		args = append(args, object.ItemID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &collectionItemR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ItemID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ItemID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`item_sales`),
+		qm.WhereIn(`item_sales.item_id in ?`, args...),
+		qmhelper.WhereIsNull(`item_sales.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load item_sales")
+	}
+
+	var resultSlice []*ItemSale
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice item_sales")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on item_sales")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for item_sales")
+	}
+
+	if len(itemSaleAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.ItemItemSales = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &itemSaleR{}
+			}
+			foreign.R.Item = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ItemID == foreign.ItemID {
+				local.R.ItemItemSales = append(local.R.ItemItemSales, foreign)
+				if foreign.R == nil {
+					foreign.R = &itemSaleR{}
+				}
+				foreign.R.Item = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // SetOwner of the collectionItem to the related item.
 // Sets o.R.Owner to related.
 // Adds o to related.R.OwnerCollectionItems.
@@ -537,6 +661,58 @@ func (o *CollectionItem) SetOwner(exec boil.Executor, insert bool, related *Play
 		related.R.OwnerCollectionItems = append(related.R.OwnerCollectionItems, o)
 	}
 
+	return nil
+}
+
+// AddItemItemSales adds the given related objects to the existing relationships
+// of the collection_item, optionally inserting them as new records.
+// Appends related to o.R.ItemItemSales.
+// Sets related.R.Item appropriately.
+func (o *CollectionItem) AddItemItemSales(exec boil.Executor, insert bool, related ...*ItemSale) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.ItemID = o.ItemID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"item_sales\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"item_id"}),
+				strmangle.WhereClause("\"", "\"", 2, itemSalePrimaryKeyColumns),
+			)
+			values := []interface{}{o.ItemID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.ItemID = o.ItemID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &collectionItemR{
+			ItemItemSales: related,
+		}
+	} else {
+		o.R.ItemItemSales = append(o.R.ItemItemSales, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &itemSaleR{
+				Item: o,
+			}
+		} else {
+			rel.R.Item = o
+		}
+	}
 	return nil
 }
 

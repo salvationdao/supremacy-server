@@ -99,7 +99,7 @@ type MarketplaceSalesCreateRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
 		SaleType             server.MarketplaceSaleType `json:"sale_type"`
-		ItemType             server.MarketplaceItemType `json:"item_type"`
+		ItemType             string                     `json:"item_type"`
 		ItemID               uuid.UUID                  `json:"item_id"`
 		AskingPrice          *decimal.Decimal           `json:"asking_price"`
 		DutchAuctionDropRate *decimal.Decimal           `json:"dutch_auction_drop_rate"`
@@ -193,7 +193,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 
 	// Create Sales Item
 	endAt := time.Now().Add(time.Hour * time.Duration(req.Payload.ListingDurationHours))
-	obj, err := db.MarketplaceSaleCreate(req.Payload.SaleType, userID, factionID, txid, endAt, req.Payload.ItemType, req.Payload.ItemID, req.Payload.AskingPrice, req.Payload.DutchAuctionDropRate)
+	obj, err := db.MarketplaceSaleCreate(req.Payload.SaleType, userID, factionID, txid, endAt, req.Payload.ItemID, req.Payload.AskingPrice, req.Payload.DutchAuctionDropRate)
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
@@ -310,10 +310,10 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		FromUserID:           userID,
 		ToUserID:             uuid.Must(uuid.FromString(saleItem.OwnerID)),
 		Amount:               saleItemCost.String(),
-		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item|%s|%s|%s|%d", *saleType, saleItem.ItemType, saleItem.ID, time.Now().UnixNano())),
+		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item|%s|%s|%d", *saleType, saleItem.ID, time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupMarketplace),
 		SubGroup:             "SUPREMACY",
-		Description:          fmt.Sprintf("marketplace buy item: %s - %s: %s", *saleType, saleItem.ItemType, saleItem.ID),
+		Description:          fmt.Sprintf("marketplace buy item: %s (%s)", saleItem.ID, *saleType),
 		NotSafe:              true,
 	})
 	if err != nil {

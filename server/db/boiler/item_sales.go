@@ -24,7 +24,6 @@ import (
 // ItemSale is an object representing the database table.
 type ItemSale struct {
 	ID                  string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	ItemType            string      `boiler:"item_type" boil:"item_type" json:"item_type" toml:"item_type" yaml:"item_type"`
 	FactionID           string      `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
 	ItemID              string      `boiler:"item_id" boil:"item_id" json:"item_id" toml:"item_id" yaml:"item_id"`
 	ListingFeeTXID      string      `boiler:"listing_fee_tx_id" boil:"listing_fee_tx_id" json:"listing_fee_tx_id" toml:"listing_fee_tx_id" yaml:"listing_fee_tx_id"`
@@ -50,7 +49,6 @@ type ItemSale struct {
 
 var ItemSaleColumns = struct {
 	ID                  string
-	ItemType            string
 	FactionID           string
 	ItemID              string
 	ListingFeeTXID      string
@@ -71,7 +69,6 @@ var ItemSaleColumns = struct {
 	CreatedAt           string
 }{
 	ID:                  "id",
-	ItemType:            "item_type",
 	FactionID:           "faction_id",
 	ItemID:              "item_id",
 	ListingFeeTXID:      "listing_fee_tx_id",
@@ -94,7 +91,6 @@ var ItemSaleColumns = struct {
 
 var ItemSaleTableColumns = struct {
 	ID                  string
-	ItemType            string
 	FactionID           string
 	ItemID              string
 	ListingFeeTXID      string
@@ -115,7 +111,6 @@ var ItemSaleTableColumns = struct {
 	CreatedAt           string
 }{
 	ID:                  "item_sales.id",
-	ItemType:            "item_sales.item_type",
 	FactionID:           "item_sales.faction_id",
 	ItemID:              "item_sales.item_id",
 	ListingFeeTXID:      "item_sales.listing_fee_tx_id",
@@ -140,7 +135,6 @@ var ItemSaleTableColumns = struct {
 
 var ItemSaleWhere = struct {
 	ID                  whereHelperstring
-	ItemType            whereHelperstring
 	FactionID           whereHelperstring
 	ItemID              whereHelperstring
 	ListingFeeTXID      whereHelperstring
@@ -161,7 +155,6 @@ var ItemSaleWhere = struct {
 	CreatedAt           whereHelpertime_Time
 }{
 	ID:                  whereHelperstring{field: "\"item_sales\".\"id\""},
-	ItemType:            whereHelperstring{field: "\"item_sales\".\"item_type\""},
 	FactionID:           whereHelperstring{field: "\"item_sales\".\"faction_id\""},
 	ItemID:              whereHelperstring{field: "\"item_sales\".\"item_id\""},
 	ListingFeeTXID:      whereHelperstring{field: "\"item_sales\".\"listing_fee_tx_id\""},
@@ -185,11 +178,13 @@ var ItemSaleWhere = struct {
 // ItemSaleRels is where relationship names are stored.
 var ItemSaleRels = struct {
 	Faction                       string
+	Item                          string
 	Owner                         string
 	ItemSalesBidHistories         string
 	ItemSalesBuyoutPriceHistories string
 }{
 	Faction:                       "Faction",
+	Item:                          "Item",
 	Owner:                         "Owner",
 	ItemSalesBidHistories:         "ItemSalesBidHistories",
 	ItemSalesBuyoutPriceHistories: "ItemSalesBuyoutPriceHistories",
@@ -198,6 +193,7 @@ var ItemSaleRels = struct {
 // itemSaleR is where relationships are stored.
 type itemSaleR struct {
 	Faction                       *Faction                         `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
+	Item                          *CollectionItem                  `boiler:"Item" boil:"Item" json:"Item" toml:"Item" yaml:"Item"`
 	Owner                         *Player                          `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
 	ItemSalesBidHistories         ItemSalesBidHistorySlice         `boiler:"ItemSalesBidHistories" boil:"ItemSalesBidHistories" json:"ItemSalesBidHistories" toml:"ItemSalesBidHistories" yaml:"ItemSalesBidHistories"`
 	ItemSalesBuyoutPriceHistories ItemSalesBuyoutPriceHistorySlice `boiler:"ItemSalesBuyoutPriceHistories" boil:"ItemSalesBuyoutPriceHistories" json:"ItemSalesBuyoutPriceHistories" toml:"ItemSalesBuyoutPriceHistories" yaml:"ItemSalesBuyoutPriceHistories"`
@@ -212,8 +208,8 @@ func (*itemSaleR) NewStruct() *itemSaleR {
 type itemSaleL struct{}
 
 var (
-	itemSaleAllColumns            = []string{"id", "item_type", "faction_id", "item_id", "listing_fee_tx_id", "owner_id", "auction", "auction_current_price", "auction_reverse_price", "buyout", "buyout_price", "dutch_auction", "dutch_action_drop_rate", "end_at", "sold_at", "sold_for", "sold_tx_id", "deleted_at", "updated_at", "created_at"}
-	itemSaleColumnsWithoutDefault = []string{"item_type", "faction_id", "item_id", "listing_fee_tx_id", "owner_id", "end_at"}
+	itemSaleAllColumns            = []string{"id", "faction_id", "item_id", "listing_fee_tx_id", "owner_id", "auction", "auction_current_price", "auction_reverse_price", "buyout", "buyout_price", "dutch_auction", "dutch_action_drop_rate", "end_at", "sold_at", "sold_for", "sold_tx_id", "deleted_at", "updated_at", "created_at"}
+	itemSaleColumnsWithoutDefault = []string{"faction_id", "item_id", "listing_fee_tx_id", "owner_id", "end_at"}
 	itemSaleColumnsWithDefault    = []string{"id", "auction", "auction_current_price", "auction_reverse_price", "buyout", "buyout_price", "dutch_auction", "dutch_action_drop_rate", "sold_at", "sold_for", "sold_tx_id", "deleted_at", "updated_at", "created_at"}
 	itemSalePrimaryKeyColumns     = []string{"id"}
 	itemSaleGeneratedColumns      = []string{}
@@ -476,6 +472,20 @@ func (o *ItemSale) Faction(mods ...qm.QueryMod) factionQuery {
 	return query
 }
 
+// Item pointed to by the foreign key.
+func (o *ItemSale) Item(mods ...qm.QueryMod) collectionItemQuery {
+	queryMods := []qm.QueryMod{
+		qm.Where("\"item_id\" = ?", o.ItemID),
+	}
+
+	queryMods = append(queryMods, mods...)
+
+	query := CollectionItems(queryMods...)
+	queries.SetFrom(query.Query, "\"collection_items\"")
+
+	return query
+}
+
 // Owner pointed to by the foreign key.
 func (o *ItemSale) Owner(mods ...qm.QueryMod) playerQuery {
 	queryMods := []qm.QueryMod{
@@ -630,6 +640,110 @@ func (itemSaleL) LoadFaction(e boil.Executor, singular bool, maybeItemSale inter
 					foreign.R = &factionR{}
 				}
 				foreign.R.ItemSales = append(foreign.R.ItemSales, local)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadItem allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for an N-1 relationship.
+func (itemSaleL) LoadItem(e boil.Executor, singular bool, maybeItemSale interface{}, mods queries.Applicator) error {
+	var slice []*ItemSale
+	var object *ItemSale
+
+	if singular {
+		object = maybeItemSale.(*ItemSale)
+	} else {
+		slice = *maybeItemSale.(*[]*ItemSale)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &itemSaleR{}
+		}
+		args = append(args, object.ItemID)
+
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &itemSaleR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ItemID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ItemID)
+
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`collection_items`),
+		qm.WhereIn(`collection_items.item_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load CollectionItem")
+	}
+
+	var resultSlice []*CollectionItem
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice CollectionItem")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results of eager load for collection_items")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for collection_items")
+	}
+
+	if len(itemSaleAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(resultSlice) == 0 {
+		return nil
+	}
+
+	if singular {
+		foreign := resultSlice[0]
+		object.R.Item = foreign
+		if foreign.R == nil {
+			foreign.R = &collectionItemR{}
+		}
+		foreign.R.ItemItemSales = append(foreign.R.ItemItemSales, object)
+		return nil
+	}
+
+	for _, local := range slice {
+		for _, foreign := range resultSlice {
+			if local.ItemID == foreign.ItemID {
+				local.R.Item = foreign
+				if foreign.R == nil {
+					foreign.R = &collectionItemR{}
+				}
+				foreign.R.ItemItemSales = append(foreign.R.ItemItemSales, local)
 				break
 			}
 		}
@@ -980,6 +1094,52 @@ func (o *ItemSale) SetFaction(exec boil.Executor, insert bool, related *Faction)
 		}
 	} else {
 		related.R.ItemSales = append(related.R.ItemSales, o)
+	}
+
+	return nil
+}
+
+// SetItem of the itemSale to the related item.
+// Sets o.R.Item to related.
+// Adds o to related.R.ItemItemSales.
+func (o *ItemSale) SetItem(exec boil.Executor, insert bool, related *CollectionItem) error {
+	var err error
+	if insert {
+		if err = related.Insert(exec, boil.Infer()); err != nil {
+			return errors.Wrap(err, "failed to insert into foreign table")
+		}
+	}
+
+	updateQuery := fmt.Sprintf(
+		"UPDATE \"item_sales\" SET %s WHERE %s",
+		strmangle.SetParamNames("\"", "\"", 1, []string{"item_id"}),
+		strmangle.WhereClause("\"", "\"", 2, itemSalePrimaryKeyColumns),
+	)
+	values := []interface{}{related.ItemID, o.ID}
+
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, updateQuery)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	if _, err = exec.Exec(updateQuery, values...); err != nil {
+		return errors.Wrap(err, "failed to update local table")
+	}
+
+	o.ItemID = related.ItemID
+	if o.R == nil {
+		o.R = &itemSaleR{
+			Item: related,
+		}
+	} else {
+		o.R.Item = related
+	}
+
+	if related.R == nil {
+		related.R = &collectionItemR{
+			ItemItemSales: ItemSaleSlice{o},
+		}
+	} else {
+		related.R.ItemItemSales = append(related.R.ItemItemSales, o)
 	}
 
 	return nil
