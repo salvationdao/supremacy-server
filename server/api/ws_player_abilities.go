@@ -22,7 +22,6 @@ import (
 
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
-	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
@@ -112,7 +111,7 @@ func (pac *PlayerAbilitiesControllerWS) PlayerAbilitySubscribeHandler(ctx contex
 func (pac *PlayerAbilitiesControllerWS) PlayerAbilitiesListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	tpas, err := db.TalliedPlayerAbilitiesList(user.ID)
 	if err != nil {
-		gamelog.L.Error().Str("boiler func", "PlayerAbilities").Str("ownerID", user.ID).Err(err).Msg("unable to get player abilities")
+		gamelog.L.Error().Str("db func", "TalliedPlayerAbilitiesList").Str("userID", user.ID).Err(err).Msg("unable to get player abilities")
 		return terror.Error(err, "Unable to retrieve abilities, try again or contact support.")
 	}
 
@@ -121,21 +120,13 @@ func (pac *PlayerAbilitiesControllerWS) PlayerAbilitiesListHandler(ctx context.C
 }
 
 func (pac *PlayerAbilitiesControllerWS) SaleAbilitiesListHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	spas, err := boiler.SalePlayerAbilities(boiler.SalePlayerAbilityWhere.AvailableUntil.GT(null.TimeFrom(time.Now())), qm.Load(boiler.SalePlayerAbilityRels.Blueprint)).All(gamedb.StdConn)
+	dspas, err := db.CurrentSaleAbilitiesList()
 	if err != nil {
-		gamelog.L.Error().Str("boiler func", "NewQuery").Err(err).Msg("unable to get current list of sale abilities")
+		gamelog.L.Error().Str("db func", "CurrentSaleAbilitiesList").Err(err).Msg("unable to get current list of sale abilities")
 		return terror.Error(err, "Unable to retrieve abilities, try again or contact support.")
 	}
 
-	detailedSaleAbilities := []*db.SaleAbilityDetailed{}
-	for _, s := range spas {
-		detailedSaleAbilities = append(detailedSaleAbilities, &db.SaleAbilityDetailed{
-			SalePlayerAbility: s,
-			Ability:           s.R.Blueprint,
-		})
-	}
-
-	reply(spas)
+	reply(dspas)
 	return nil
 }
 

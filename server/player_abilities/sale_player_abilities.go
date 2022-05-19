@@ -109,7 +109,10 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 			if len(pas.salePlayerAbilities) < 1 {
 				gamelog.L.Debug().Msg("repopulating sale abilities since there aren't any more")
 				// If no abilities are on sale, refill sale abilities
-				saleAbilities, err := boiler.SalePlayerAbilities(boiler.SalePlayerAbilityWhere.AvailableUntil.GT(null.TimeFrom(time.Now())), qm.Load(boiler.SalePlayerAbilityRels.Blueprint)).All(gamedb.StdConn)
+				saleAbilities, err := boiler.SalePlayerAbilities(
+					boiler.SalePlayerAbilityWhere.AvailableUntil.GT(null.TimeFrom(time.Now())),
+					qm.Load(boiler.SalePlayerAbilityRels.Blueprint),
+				).All(gamedb.StdConn)
 				if errors.Is(err, sql.ErrNoRows) || len(saleAbilities) == 0 {
 					gamelog.L.Debug().Msg("refreshing sale abilities in db")
 					// If no sale abilities, get 3 random sale abilities and update their time to an hour from now
@@ -173,7 +176,7 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 				}
 
 				// Broadcast updated sale ability
-				ws.PublishMessage("/secure_public/sale_abilities", server.HubKeySaleAbilityPriceSubscribe, SaleAbilityPriceResponse{
+				ws.PublishMessage("/secure_public/sale_abilities", server.HubKeySaleAbilitiesPriceSubscribe, SaleAbilityPriceResponse{
 					ID:           s.ID,
 					CurrentPrice: s.CurrentPrice.StringFixed(0),
 				})
@@ -188,7 +191,7 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 					gamelog.L.Error().Err(err).Str("salePlayerAbilityID", saleAbility.ID).Str("new price", saleAbility.CurrentPrice.String()).Interface("sale ability", saleAbility).Msg("failed to update sale ability price")
 					break
 				}
-				ws.PublishMessage("/secure_public/sale_abilities", server.HubKeySaleAbilityPriceSubscribe, SaleAbilityPriceResponse{
+				ws.PublishMessage("/secure_public/sale_abilities", server.HubKeySaleAbilitiesPriceSubscribe, SaleAbilityPriceResponse{
 					ID:           saleAbility.ID,
 					CurrentPrice: saleAbility.CurrentPrice.StringFixed(0),
 				})
