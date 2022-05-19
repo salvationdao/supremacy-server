@@ -64,6 +64,10 @@ func (t *Telegram) RunTelegram(bot *tele.Bot) error {
 			return nil
 		}
 
+		if c.Message().ReplyTo.Text != "Enter shortcode" {
+			return nil
+		}
+
 		// shortcode from recipient's reply
 		shortcode := c.Text()
 		recipient := c.Recipient().Recipient()

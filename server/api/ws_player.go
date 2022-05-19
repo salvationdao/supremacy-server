@@ -48,9 +48,8 @@ func NewPlayerController(api *API) *PlayerController {
 	api.SecureUserCommand(HubKeyPlayerGetSettings, pc.PlayerGetSettingsHandler)
 
 	// // new ones
-	// api.SecureUserCommand(HubKeyPlayerProfileGet, pc.PlayerProfileGetHandler)
-	// api.SecureUserCommand(HubKeyPlayerProfileUpdate, pc.PlayerProfileUpdateHandler)
-	// api.SecureUserSubscribeCommand(HubKeyTelegramShortcodeRegistered, pc.PlayerGetTelegramShortcodeRegistered)
+	api.SecureUserCommand(HubKeyPlayerProfileGet, pc.PlayerProfileGetHandler)
+	api.SecureUserCommand(HubKeyPlayerProfileUpdate, pc.PlayerProfileUpdateHandler)
 
 	// punish vote related
 	api.SecureUserCommand(HubKeyPlayerPunishmentList, pc.PlayerPunishmentList)
@@ -837,5 +836,170 @@ func (pc *PlayerController) UserOnline(ctx context.Context, user *boiler.Player,
 
 	reply(pc.API.BattleArena.CurrentBattle().UserOnline(battleUser))
 
+	return nil
+}
+
+const HubKeyPlayerProfileGet = "PLAYER:PROFILE_GET"
+
+// PlayerGetProfileHandler gets player's profile
+func (pc *PlayerController) PlayerProfileGetHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	errMsg := "Issue getting player profile, try again or contact support."
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request")
+
+	}
+
+	// try get player's profile
+	playerProfile, err := boiler.PlayerProfiles(boiler.PlayerProfileWhere.PlayerID.EQ(user.ID)).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, errMsg)
+	}
+
+	// if there are no results, create new player profile
+	if errors.Is(err, sql.ErrNoRows) {
+		_playerProfile := &boiler.PlayerProfile{
+			PlayerID: user.ID,
+		}
+
+		err := _playerProfile.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			return terror.Error(err, errMsg)
+		}
+		reply(_playerProfile)
+		return nil
+	}
+
+	reply(playerProfile)
+	return nil
+
+}
+
+const HubKeyPlayerProfileUpdate = "PLAYER:PROFILE_UPDATE"
+
+type PlayerProfileUpdateRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		EnableTelegramNotifications bool   `json:"enable_telegram_notifications"`
+		EnableSMSNotifications      bool   `json:"enable_sms_notifications"`
+		EnablePushNotifications     bool   `json:"enable_push_notifications"`
+		MobileNumber                string `json:"mobile_number"`
+	} `json:"payload"`
+}
+
+func (pc *PlayerController) PlayerProfileUpdateHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	errMsg := "Issue updating settings, try again or contact support."
+	req := &PlayerProfileUpdateRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	// getting player's profile
+	playerProfile, err := boiler.PlayerProfiles(boiler.PlayerProfileWhere.PlayerID.EQ(user.ID)).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, errMsg)
+	}
+
+	// if player doesnt have profile saved, create a new one
+	if errors.Is(err, sql.ErrNoRows) {
+		_playerProfile := &boiler.PlayerProfile{
+			PlayerID:                    user.ID,
+			EnableTelegramNotifications: req.Payload.EnableTelegramNotifications,
+			EnableSMSNotifications:      req.Payload.EnableSMSNotifications,
+			EnablePushNotifications:     req.Payload.EnablePushNotifications,
+		}
+
+		// check mobile number
+		if req.Payload.MobileNumber != "" && req.Payload.EnableSMSNotifications {
+			mobileNumber, err := pc.API.SMS.Lookup(req.Payload.MobileNumber)
+			if err != nil {
+				gamelog.L.Warn().Err(err).Str("mobile number", req.Payload.MobileNumber).Msg("Failed to lookup mobile number through twilio api")
+				return terror.Error(err, "Invalid phone number")
+			}
+
+			// set the verified mobile number
+			_playerProfile.MobileNumber = null.StringFrom(mobileNumber)
+		}
+
+		err = _playerProfile.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			return terror.Error(err, errMsg)
+		}
+
+		fmt.Println("ahhhhhhhhhhhhhhh")
+		fmt.Println("ahhhhhhhhhhhhhhh")
+		fmt.Println("ahhhhhhhhhhhhhhh")
+		fmt.Println("ahhhhhhhhhhhhhhh")
+		fmt.Println("ahhhhhhhhhhhhhhh")
+		fmt.Println("ahhhhhhhhhhhhhhh")
+		fmt.Println("ahhhhhhhhhhhhhhh")
+		fmt.Println("ahhhhhhhhhhhhhhh")
+		fmt.Println("ahhhhhhhhhhhhhhh")
+
+		fmt.Printf("%+v\n", playerProfile)
+
+		// if new profile and has telegram notifications enabled, must register to telebot
+		if _playerProfile.EnableTelegramNotifications {
+			playerProfile, err = pc.API.Telegram.ProfileUpdate(user.ID)
+			if err != nil {
+				return terror.Error(err, errMsg)
+			}
+		}
+		reply(_playerProfile)
+
+		return nil
+	}
+
+	fmt.Println("ahhhhhhhhhhhhhhh2")
+	fmt.Println("ahhhhhhhhhhhhhhh2")
+	fmt.Println("ahhhhhhhhhhhhhhh2")
+	fmt.Println("ahhhhhhhhhhhhhhh2")
+	fmt.Println("ahhhhhhhhhhhhhhh2")
+	fmt.Println("ahhhhhhhhhhhhhhh2")
+	fmt.Println("ahhhhhhhhhhhhhhh2")
+	fmt.Println("ahhhhhhhhhhhhhhh2")
+	fmt.Println("ahhhhhhhhhhhhhhh2")
+
+	fmt.Printf("%+v\n", playerProfile)
+	// update profile
+	playerProfile.EnableTelegramNotifications = req.Payload.EnableTelegramNotifications
+	playerProfile.EnableSMSNotifications = req.Payload.EnableSMSNotifications
+	playerProfile.EnablePushNotifications = req.Payload.EnablePushNotifications
+	if !playerProfile.EnableTelegramNotifications {
+		playerProfile.Shortcode = ""
+	}
+
+	if req.Payload.EnableSMSNotifications && req.Payload.MobileNumber != "" {
+		// check mobile number
+		mobileNumber, err := pc.API.SMS.Lookup(req.Payload.MobileNumber)
+		if err != nil {
+			gamelog.L.Warn().Err(err).Str("mobile number", req.Payload.MobileNumber).Msg("Failed to lookup mobile number through twilio api")
+			return terror.Error(err, "Invalid phone number")
+		}
+
+		// set the verified mobile number
+		playerProfile.MobileNumber = null.StringFrom(mobileNumber)
+	}
+
+	if req.Payload.MobileNumber == "" {
+		playerProfile.MobileNumber = null.String{}
+	}
+
+	_, err = playerProfile.Update(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	// if telegram enabled but is not registered
+	if playerProfile.EnableTelegramNotifications && (!playerProfile.TelegramID.Valid && playerProfile.Shortcode == "") {
+		playerProfile, err = pc.API.Telegram.ProfileUpdate(user.ID)
+		if err != nil {
+			return terror.Error(err, errMsg)
+		}
+	}
+
+	reply(playerProfile)
 	return nil
 }

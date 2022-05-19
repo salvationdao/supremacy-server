@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"net"
 	"net/http"
@@ -15,10 +16,12 @@ import (
 	"server/rpcclient"
 	"time"
 
+	"github.com/friendsofgo/errors"
 	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/gofrs/uuid"
 	"github.com/meehow/securebytes"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-software/terror/v2"
@@ -32,6 +35,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 	"github.com/sasha-s/go-deadlock"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
 // WelcomePayload is the response sent when a client connects to the server
@@ -211,6 +216,9 @@ func NewAPI(
 		r.Post("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.GlobalAnnouncementSend)))
 		r.Delete("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.GlobalAnnouncementDelete)))
 
+		// to be deleted
+		r.Post("/join", api.bqJoin)
+
 		r.Get("/telegram/shortcode_registered", WithToken(config.ServerStreamKey, WithError(api.PlayerGetTelegramShortcodeRegistered)))
 
 		r.Route("/ws", func(r chi.Router) {
@@ -232,6 +240,8 @@ func NewAPI(
 				s.Mount("/user_commander", api.SecureUserCommander)
 				s.WS("/*", HubKeyUserSubscribe, server.MustSecure(pc.PlayersSubscribeHandler))
 				s.WS("/multipliers", battle.HubKeyMultiplierSubscribe, server.MustSecure(api.BattleArena.MultiplierUpdate))
+				s.WS("/multipliers", battle.HubKeyMultiplierSubscribe, server.MustSecure(api.BattleArena.MultiplierUpdate))
+
 			}))
 
 			// secured faction route
@@ -515,4 +525,212 @@ func (a *API) createNotif(w http.ResponseWriter, r *http.Request) {
 	// 	fmt.Println("insert bqn ", err)
 	// 	return
 	// }
+}
+
+func (a *API) bqJoin(w http.ResponseWriter, r *http.Request) {
+	faction, err := boiler.Factions(boiler.FactionWhere.Label.EQ("Zaibatsu Heavy Industries")).One(gamedb.StdConn)
+	if err != nil {
+		fmt.Println("faction error", err)
+		return
+	}
+	user, err := boiler.Players(boiler.PlayerWhere.Username.EQ(null.StringFrom("noob-0xb07d36f3"))).One(gamedb.StdConn)
+	if err != nil {
+		fmt.Println("user error", err)
+		return
+	}
+
+	hash := "b50XVuiS71"
+	factionID := faction.ID
+	mechID, err := db.MechIDFromHash(hash)
+	if err != nil {
+		gamelog.L.Error().Str("hash", hash).Err(err).Msg("unable to retrieve mech id from hash")
+	}
+
+	onChainStatus, err := a.BattleArena.RPCClient.AssetOnChainStatus(mechID.String())
+	if err != nil {
+		// return terror.Error(err, "Unable to get asset ownership details, please try again or contact support.")
+		return
+	}
+
+	if onChainStatus != server.OnChainStatusMintable && onChainStatus != server.OnChainStatusUnstakable {
+		// return terror.Error(fmt.Errorf("asset on chain status is %s", onChainStatus), "This asset isn't on world, please transition on world.")
+		// http.StatusRequestURITooLong
+		return
+	}
+
+	mech, err := db.Mech(mechID.String())
+	if err != nil {
+		gamelog.L.Error().Str("mech_id", mechID.String()).Err(err).Msg("unable to retrieve mech id from hash")
+		return
+	}
+
+	if mech.Faction == nil {
+		gamelog.L.Error().Str("mech_id", mechID.String()).Err(err).Msg("mech's owner player has no faction")
+		return
+	}
+
+	ownerID, err := uuid.FromString(mech.OwnerID)
+	if err != nil {
+		gamelog.L.Error().Str("ownerID", mech.OwnerID).Err(err).Msg("unable to convert owner id from string")
+		return
+	}
+
+	if !mech.IsDefault && mech.OwnerID != user.ID {
+		return
+	}
+
+	// check mech is still in repair
+	ar, err := boiler.MechRepairs(
+		boiler.MechRepairWhere.MechID.EQ(mech.ID),
+		boiler.MechRepairWhere.RepairCompleteAt.GT(time.Now()),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return
+	}
+
+	if ar != nil {
+		return
+	}
+
+	// Insert mech into queue
+	existMech, err := boiler.BattleQueues(boiler.BattleQueueWhere.MechID.EQ(mechID.String())).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Error().Str("mech_id", mechID.String()).Err(err).Msg("check mech exists in queue")
+		return
+	}
+	if existMech != nil {
+		gamelog.L.Debug().Str("mech_id", mechID.String()).Err(err).Msg("mech already in queue")
+		position, err := db.QueuePosition(mechID, uuid.FromStringOrNil(factionID))
+		if err != nil {
+			return
+		}
+
+		if position == -1 {
+			return
+		}
+
+		return
+	}
+
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("unable to begin tx")
+		return
+	}
+	defer tx.Rollback()
+
+	bq := &boiler.BattleQueue{
+		MechID:    mechID.String(),
+		QueuedAt:  time.Now(),
+		FactionID: factionID,
+		OwnerID:   ownerID.String(),
+		// BattleContractID: null.StringFrom(bc.ID),
+	}
+
+	err = bq.Insert(tx, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().
+			Interface("mech", mech).
+			Err(err).Msg("unable to insert mech into queue")
+		return
+	}
+
+	// get faction user account
+	factionAccountID, ok := server.FactionUsers[factionID]
+	if !ok {
+		gamelog.L.Error().
+			Str("mech ID", mech.ID).
+			Str("faction ID", factionID).
+			Err(err).
+			Msg("unable to get hard coded syndicate player ID from faction ID")
+	}
+
+	if ownerID.String() == factionAccountID {
+		err = tx.Commit()
+		if err != nil {
+			gamelog.L.Error().
+				Str("mech ID", mech.ID).
+				Str("faction ID", factionID).
+				Err(err).
+				Msg("unable to save battle queue join for faction owned mech")
+			return
+		}
+		return
+	}
+
+	// Charge user queue fee
+	supTransactionID, err := a.BattleArena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
+		Amount:               "500000000",
+		FromUserID:           ownerID,
+		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
+		TransactionReference: server.TransactionReference(fmt.Sprintf("war_machine_queueing_fee|%s|%d", hash, time.Now().UnixNano())),
+		Group:                string(server.TransactionGroupBattle),
+		SubGroup:             "Queue",
+		Description:          "Queued mech to battle arena",
+		NotSafe:              true,
+	})
+	if err != nil || supTransactionID == "TRANSACTION_FAILED" {
+		// Abort transaction if charge fails
+		gamelog.L.Error().Str("txID", supTransactionID).Interface("mechID", mechID).Interface("factionID", factionID).Err(err).Msg("unable to charge user for insert mech into queue")
+		return
+	}
+
+	bq.QueueFeeTXID = null.StringFrom(supTransactionID)
+	_, err = bq.Update(tx, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().
+			Str("tx_id", supTransactionID).
+			Err(err).Msg("unable to update battle queue with queue transaction id")
+		if bq.QueueFeeTXID.Valid {
+			_, err = a.BattleArena.RPCClient.RefundSupsMessage(bq.QueueFeeTXID.String)
+			if err != nil {
+				gamelog.L.Error().Str("txID", bq.QueueFeeTXID.String).Err(err).Msg("failed to refund queue fee")
+			}
+		}
+
+		return
+	}
+
+	// Commit transaction
+	err = tx.Commit()
+	if err != nil {
+		gamelog.L.Error().
+			Interface("mech", mech).
+			Err(err).Msg("unable to commit mech insertion into queue")
+		if bq.QueueFeeTXID.Valid {
+			_, err = a.BattleArena.RPCClient.RefundSupsMessage(bq.QueueFeeTXID.String)
+			if err != nil {
+				gamelog.L.Error().Str("txID", bq.QueueFeeTXID.String).Err(err).Msg("failed to refund queue fee")
+			}
+		}
+		if bq.QueueNotificationFeeTXID.Valid {
+			_, err = a.BattleArena.RPCClient.RefundSupsMessage(bq.QueueNotificationFeeTXID.String)
+			if err != nil {
+				gamelog.L.Error().Str("txID", bq.QueueNotificationFeeTXID.String).Err(err).Msg("failed to refund queue notification fee")
+			}
+		}
+
+		return
+	}
+
+	// Get mech current queue position
+	if err != nil && !errors.Is(sql.ErrNoRows, err) {
+		gamelog.L.Error().
+			Str("mechID", mechID.String()).
+			Str("factionID", factionID).
+			Err(err).Msg("unable to retrieve mech queue position")
+		return
+	}
+
+	// Tell clients to refetch war machine queue status
+	// ws.PublishMessage(fmt.Sprintf("/battle/faction/%s/queue", factionID), WSQueueUpdatedSubscribe, true)
+
+	// reply(QueueJoinHandlerResponse{
+	// 	Success: true,
+	// 	Code:    "",
+	// })
+
+	// Send updated battle queue status to all subscribers
+	// ws.PublishMessage(fmt.Sprintf("/battle/faction/%s/queue", factionID), WSQueueStatusSubscribe, CalcNextQueueStatus(queueStatus.QueueLength+1))
+
 }
