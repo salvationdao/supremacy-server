@@ -76,6 +76,10 @@ func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
 
 // MarketplaceItemSaleList returns a numeric paginated result of sales list.
 func MarketplaceItemSaleList(search string, archived bool, filter *ListFilterRequest, rarities []string, offset int, pageSize int, sortBy string, sortDir SortByDir) (int64, []*server.MarketplaceSaleItem, error) {
+	if !sortDir.IsValid() {
+		return 0, nil, terror.Error(fmt.Errorf("invalid sort direction"))
+	}
+
 	queryMods := itemSaleQueryMods
 
 	// Filters
@@ -122,7 +126,7 @@ func MarketplaceItemSaleList(search string, archived bool, filter *ListFilterReq
 	}
 
 	// Sort
-	orderBy := qm.OrderBy(fmt.Sprintf("%s desc", qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.CreatedAt)))
+	orderBy := qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.CreatedAt), sortDir))
 	queryMods = append(queryMods, orderBy)
 
 	// Limit/Offset
@@ -161,6 +165,7 @@ func MarketplaceItemSaleList(search string, archived bool, filter *ListFilterReq
 				// if row.ItemType == boiler.ItemTypeMech && row.ItemID == mech.ID {
 				if row.ItemID == collection.ItemID {
 					records[i].Collection = collection
+					break
 				}
 			}
 		}
@@ -177,6 +182,7 @@ func MarketplaceItemSaleList(search string, archived bool, filter *ListFilterReq
 				// if row.ItemType == boiler.ItemTypeMech && row.ItemID == mech.ID {
 				if row.ItemID == mech.ID {
 					records[i].Mech = mech
+					break
 				}
 			}
 		}
