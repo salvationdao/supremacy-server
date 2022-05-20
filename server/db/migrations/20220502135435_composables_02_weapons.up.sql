@@ -166,7 +166,7 @@ WITH wm AS (
             RETURNING id, chassis_id)
 INSERT
 INTO chassis_weapons(chassis_id, weapon_id, slot_number, mount_location)
-SELECT wm.chassis_id, wm.id, 5, 'TURRET'
+SELECT wm.chassis_id, wm.id, 2, 'TURRET'
 FROM wm;
 
 
