@@ -106,7 +106,6 @@ UPDATE blueprint_chassis
 SET model = 'Law Enforcer X-1000',
     skin  = 'Blue White'
 WHERE model = 'XFVS';
-
 /*
   ENERGY CORES
  */

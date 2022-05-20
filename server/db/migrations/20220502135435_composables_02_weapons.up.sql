@@ -135,6 +135,46 @@ SET weapon_type = 'Sword',
 WHERE label = 'Sword'
    OR label = 'Boston Cybernetics Sword';
 
+-- delete rocket pod joins
+WITH wep AS (SELECT cw.chassis_id, cw.weapon_id, w.label
+             FROM chassis_weapons cw
+                      INNER JOIN weapons w ON cw.weapon_id = w.id
+             WHERE w.label ILIKE '%Rocket Pod%')
+DELETE
+FROM chassis_weapons cw
+WHERE cw.weapon_id IN (SELECT wep.weapon_id FROM wep);
+
+-- delete rocket pod weapons
+DELETE
+FROM weapons w
+WHERE w.label ILIKE '%Rocket Pod%';
+
+-- temp column
+ALTER TABLE weapons
+    ADD COLUMN chassis_id UUID;
+
+-- insert weapon and join per mech
+WITH wm AS (
+    WITH m AS (
+        SELECT c.id, 'Rocket Pod' AS label, 'rocket_pod' AS slug
+        FROM mechs
+                 INNER JOIN chassis c ON mechs.chassis_id = c.id
+        )
+        INSERT INTO weapons (label, slug, chassis_id, damage, weapon_type)
+            SELECT m.label, m.slug, m.id, -1, 'Missile Launcher'::WEAPON_TYPE
+            FROM m
+            RETURNING id, chassis_id)
+INSERT
+INTO chassis_weapons(chassis_id, weapon_id, slot_number, mount_location)
+SELECT wm.chassis_id, wm.id, 5, 'TURRET'
+FROM wm;
+
+
+ALTER TABLE weapons
+    DROP COLUMN chassis_id;
+
+
+
 WITH weapon_owners AS (SELECT m.owner_id, cw.weapon_id
                        FROM chassis_weapons cw
                                 INNER JOIN mechs m ON cw.chassis_id = m.chassis_id)
@@ -369,6 +409,7 @@ WHERE mw.mount_location = 'TURRET'
 ALTER TABLE chassis_weapons
     ADD UNIQUE (chassis_id, slot_number),
     DROP COLUMN mount_location;
+
 
 --  update mech weapoon hardpoints
 UPDATE chassis c
