@@ -43,6 +43,7 @@ ALTER TABLE blueprint_weapons
     ADD COLUMN rate_of_fire          NUMERIC DEFAULT 0,
     ADD COLUMN projectile_speed      NUMERIC DEFAULT 0,
     ADD COLUMN max_ammo              INT     DEFAULT 0,
+    ADD COLUMN is_melee              BOOL        NOT NULL DEFAULT FALSE,
     ADD COLUMN tier                  TEXT        NOT NULL DEFAULT 'MEGA',
     ADD COLUMN energy_cost           NUMERIC DEFAULT 0;
 
@@ -53,6 +54,7 @@ WHERE label = 'Sniper Rifle';
 
 UPDATE blueprint_weapons
 SET weapon_type           = 'Sword',
+    is_melee              = TRUE,
     game_client_weapon_id = '6109e547-5a48-4a76-a3f2-e73ef41505b3'
 WHERE label = 'Laser Sword';
 
@@ -73,6 +75,7 @@ WHERE label = 'Plasma Rifle';
 
 UPDATE blueprint_weapons
 SET weapon_type           = 'Sword',
+    is_melee              = TRUE,
     game_client_weapon_id = '02c27475-c0ea-4825-8739-9a0b2cdc4201'
 WHERE label = 'Sword';
 
@@ -95,6 +98,7 @@ ALTER TABLE weapons
     ADD COLUMN rate_of_fire             NUMERIC DEFAULT 0,
     ADD COLUMN projectile_speed         NUMERIC DEFAULT 0,
     ADD COLUMN energy_cost              NUMERIC DEFAULT 0,
+    ADD COLUMN is_melee                 BOOL        NOT NULL DEFAULT FALSE,
     ADD COLUMN tier                     TEXT        NOT NULL DEFAULT 'MEGA',
     ADD COLUMN max_ammo                 INT     DEFAULT 0;
 
@@ -106,7 +110,8 @@ WHERE label = 'Sniper Rifle'
 
 UPDATE weapons
 SET weapon_type = 'Sword',
-    label       = 'Laser Sword'
+    label       = 'Laser Sword',
+    is_melee    = TRUE
 WHERE label = 'Laser Sword'
    OR label = 'Zaibatsu Heavy Industries Laser Sword';
 
@@ -131,7 +136,8 @@ WHERE label = 'Plasma Rifle'
 
 UPDATE weapons
 SET weapon_type = 'Sword',
-    label       = 'Sword'
+    label       = 'Sword',
+    is_melee    = TRUE
 WHERE label = 'Sword'
    OR label = 'Boston Cybernetics Sword';
 
@@ -407,8 +413,13 @@ WHERE mw.mount_location = 'TURRET'
   AND mw.slot_number = 1;
 
 ALTER TABLE chassis_weapons
+    ADD COLUMN allow_melee BOOL NOT NULL DEFAULT TRUE,
     ADD UNIQUE (chassis_id, slot_number),
     DROP COLUMN mount_location;
+
+UPDATE chassis_weapons
+SET allow_melee = FALSE
+WHERE slot_number = 2;
 
 
 --  update mech weapoon hardpoints
