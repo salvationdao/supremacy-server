@@ -16,6 +16,14 @@ import (
 )
 
 var itemSaleQueryMods = []qm.QueryMod{
+	qm.InnerJoin(
+		fmt.Sprintf(
+			"%s ON %s = %s",
+			boiler.TableNames.CollectionItems,
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemID),
+			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.ItemID),
+		),
+	),
 	qm.LeftOuterJoin(
 		fmt.Sprintf(
 			"%s ON %s = %s",
@@ -38,6 +46,7 @@ func MarketplaceLoadItemSaleObject(obj *server.MarketplaceSaleItem) (*server.Mar
 	}
 	obj.Mech = mech
 	// }
+
 	return obj, nil
 }
 
@@ -66,7 +75,7 @@ func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
 }
 
 // MarketplaceItemSaleList returns a numeric paginated result of sales list.
-func MarketplaceItemSaleList(search string, archived bool, filter *ListFilterRequest, offset int, pageSize int, sortBy string, sortDir SortByDir) (int64, []*server.MarketplaceSaleItem, error) {
+func MarketplaceItemSaleList(search string, archived bool, filter *ListFilterRequest, rarities []string, offset int, pageSize int, sortBy string, sortDir SortByDir) (int64, []*server.MarketplaceSaleItem, error) {
 	queryMods := itemSaleQueryMods
 
 	// Filters
@@ -84,6 +93,9 @@ func MarketplaceItemSaleList(search string, archived bool, filter *ListFilterReq
 			queryMod := GenerateListFilterQueryMod(*f, i, filter.LinkOperator)
 			queryMods = append(queryMods, queryMod)
 		}
+	}
+	if len(rarities) > 0 {
+		queryMods = append(queryMods, boiler.CollectionItemWhere.Tier.IN(rarities))
 	}
 
 	// Search
@@ -125,15 +137,33 @@ func MarketplaceItemSaleList(search string, archived bool, filter *ListFilterReq
 
 	// Load in related items
 	records := []*server.MarketplaceSaleItem{}
+	itemIDs := []string{}
 	mechIDs := []string{}
 	for _, row := range itemSales {
 		// if row.ItemType == boiler.ItemTypeMech {
 		mechIDs = append(mechIDs, row.ItemID)
+		itemIDs = append(itemIDs, row.ItemID)
 		// }
 		records = append(records, &server.MarketplaceSaleItem{
 			ItemSale: row,
 			Owner:    row.R.Owner,
 		})
+	}
+	if len(itemIDs) > 0 {
+		collectionItems, err := boiler.CollectionItems(
+			boiler.CollectionItemWhere.ItemID.IN(itemIDs),
+		).All(gamedb.StdConn)
+		if err != nil {
+			return 0, nil, terror.Error(err)
+		}
+		for i, row := range records {
+			for _, collection := range collectionItems {
+				// if row.ItemType == boiler.ItemTypeMech && row.ItemID == mech.ID {
+				if row.ItemID == collection.ItemID {
+					records[i].Collection = collection
+				}
+			}
+		}
 	}
 	if len(mechIDs) > 0 {
 		mechs, err := boiler.Mechs(

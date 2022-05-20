@@ -17,8 +17,9 @@ const (
 
 type MarketplaceSaleItem struct {
 	*boiler.ItemSale
-	Owner *boiler.Player `json:"owner"`
-	Mech  *boiler.Mech   `json:"mech,omitempty"`
+	Owner      *boiler.Player         `json:"owner"`
+	Collection *boiler.CollectionItem `json:"collection"`
+	Mech       *boiler.Mech           `json:"mech,omitempty"`
 }
 
 func (si *MarketplaceSaleItem) GetSaleType() (*MarketplaceSaleType, error) {
