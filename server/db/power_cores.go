@@ -62,6 +62,23 @@ func PowerCore(id string) (*server.PowerCore, error) {
 	return server.PowerCoreFromBoiler(boilerMech, boilerMechCollectionDetails), nil
 }
 
+func PowerCores(id ...string) ([]*server.PowerCore, error) {
+	var powerCores []*server.PowerCore
+	boilerPowerCores, err := boiler.PowerCores(boiler.PowerCoreWhere.ID.IN(id)).All(gamedb.StdConn)
+	if err != nil {
+		return nil, err
+	}
+	for _, pc := range boilerPowerCores {
+		boilerPowerCoreCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(pc.ID)).One(gamedb.StdConn)
+		if err != nil {
+			return nil, err
+		}
+		powerCores = append(powerCores, server.PowerCoreFromBoiler(pc, boilerPowerCoreCollectionDetails))
+	}
+
+	return powerCores, nil
+}
+
 // AttachPowerCoreToMech attaches a power core to a mech  TODO: create tests.
 func AttachPowerCoreToMech(ownerID, mechID, powerCoreID string) error {
 	// TODO: possible optimize this, 6 queries to attach a part seems like a lot?

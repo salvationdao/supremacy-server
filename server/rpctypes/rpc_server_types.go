@@ -1,4 +1,4 @@
-package comms
+package rpctypes
 
 import (
 	"time"
@@ -419,13 +419,23 @@ type MechSetOwnerResp struct {
 }
 
 type XsynAsset struct {
-	ID             string     `json:"id"`
-	CollectionSlug string     `json:"collection_id"`
-	TokenID        int64      `json:"external_token_id"`
-	Tier           string     `json:"tier"`
-	Hash           string     `json:"hash"`
-	OwnerID        string     `json:"owner_id"`
-	ItemType       string     `json:"item_type"`
-	Data           types.JSON `json:"data"`
-	OnChainStatus  string     `json:"on_chain_status"`
+	ID              string      `json:"id,omitempty"`
+	CollectionSlug  string      `json:"collection_slug,omitempty"`
+	TokenID         int64       `json:"token_id,omitempty"`
+	Tier            string      `json:"tier,omitempty"`
+	Hash            string      `json:"hash,omitempty"`
+	OwnerID         string      `json:"owner_id,omitempty"`
+	Data            types.JSON  `json:"data,omitempty"`
+	Attributes      types.JSON  `json:"attributes,omitempty"`
+	Name            string      `json:"name,omitempty"`
+	ImageURL        null.String `json:"image_url,omitempty"`
+	ExternalURL     null.String `json:"external_url,omitempty"`
+	Description     null.String `json:"description,omitempty"`
+	BackgroundColor null.String `json:"background_color,omitempty"`
+	AnimationURL    null.String `json:"animation_url,omitempty"`
+	YoutubeURL      null.String `json:"youtube_url,omitempty"`
+	UnlockedAt      time.Time   `json:"unlocked_at,omitempty"`
+	MintedAt        null.Time   `json:"minted_at,omitempty"`
+	OnChainStatus   string      `json:"on_chain_status,omitempty"`
+	XsynLocked      null.Bool   `json:"xsyn_locked,omitempty"`
 }

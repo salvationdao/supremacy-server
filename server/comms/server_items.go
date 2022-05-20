@@ -7,11 +7,12 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/rpctypes"
 
 	"github.com/ninja-software/terror/v2"
 )
 
-func (s *S) Asset(req AssetReq, resp *AssetResp) error {
+func (s *S) Asset(req rpctypes.AssetReq, resp *rpctypes.AssetResp) error {
 	gamelog.L.Debug().Msg("comms.Asset")
 
 	ci, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(req.AssetID.String())).One(gamedb.StdConn)
@@ -71,16 +72,16 @@ func (s *S) Asset(req AssetReq, resp *AssetResp) error {
 		return terror.Error(err)
 	}
 
-	resp.Asset = &XsynAsset{
+	resp.Asset = &rpctypes.XsynAsset{
 		ID:             ci.ID,
 		CollectionSlug: ci.CollectionSlug,
 		TokenID:        ci.TokenID,
 		Tier:           ci.Tier,
 		Hash:           ci.Hash,
 		OwnerID:        ci.OwnerID,
-		ItemType:       ci.ItemType,
 		OnChainStatus:  ci.OnChainStatus,
 		Data:           asJson,
+		//Name: //TODO?
 	}
 	return nil
 }

@@ -72,6 +72,24 @@ func Weapon(id string) (*server.Weapon, error) {
 	return server.WeaponFromBoiler(boilerMech, boilerMechCollectionDetails), nil
 }
 
+func Weapons(id ...string) ([]*server.Weapon, error) {
+	var weapons []*server.Weapon
+	boilerMechs, err := boiler.Weapons(boiler.WeaponWhere.ID.IN(id)).All(gamedb.StdConn)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, bm := range boilerMechs {
+		boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(bm.ID)).One(gamedb.StdConn)
+		if err != nil {
+			return nil, err
+		}
+		weapons = append(weapons, server.WeaponFromBoiler(bm, boilerMechCollectionDetails))
+	}
+
+	return weapons, nil
+}
+
 // AttachWeaponToMech attaches a Weapon to a mech  TODO: create tests.
 func AttachWeaponToMech(ownerID, mechID, weaponID string) error {
 	// TODO: possible optimize this, 6 queries to attach a part seems like a lot?

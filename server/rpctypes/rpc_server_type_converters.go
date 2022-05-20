@@ -1,9 +1,8 @@
-package comms
+package rpctypes
 
 import (
 	"encoding/json"
 	"server"
-	"server/db/boiler"
 	"server/gamelog"
 )
 
@@ -340,13 +339,25 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 		}
 		assets = append(assets, &XsynAsset{
 			ID:             i.ID,
+			Name:           i.Name,
 			CollectionSlug: i.CollectionSlug,
 			TokenID:        i.TokenID,
 			Tier:           i.Tier,
 			Hash:           i.Hash,
 			OwnerID:        i.OwnerID,
 			Data:           asJson,
-			ItemType:       boiler.ItemTypeMech,
+
+			//Attributes: // TODO
+			//ImageURL:  // TODO
+			//ExternalURL:  // TODO
+			//Description:  // TODO
+			//BackgroundColor:  // TODO
+			//AnimationURL:  // TODO
+			//YoutubeURL:  // TODO
+			//UnlockedAt:  // TODO
+			//MintedAt:  // TODO
+			//OnChainStatus:  // TODO
+			//XsynLocked:  // TODO
 		})
 	}
 
@@ -369,7 +380,7 @@ func ServerMechAnimationsToXsynAsset(mechAnimations []*server.MechAnimation) []*
 			Hash:           i.Hash,
 			OwnerID:        i.OwnerID,
 			Data:           asJson,
-			ItemType:       boiler.ItemTypeMechAnimation,
+			Name:           i.Label,
 		})
 	}
 
@@ -392,7 +403,7 @@ func ServerMechSkinsToXsynAsset(mechSkins []*server.MechSkin) []*XsynAsset {
 			Hash:           i.Hash,
 			OwnerID:        i.OwnerID,
 			Data:           asJson,
-			ItemType:       boiler.ItemTypeMechSkin,
+			Name:           i.Label,
 		})
 	}
 
@@ -415,7 +426,7 @@ func ServerPowerCoresToXsynAsset(powerCore []*server.PowerCore) []*XsynAsset {
 			Hash:           i.Hash,
 			OwnerID:        i.OwnerID,
 			Data:           asJson,
-			ItemType:       boiler.ItemTypePowerCore,
+			Name:           i.Label,
 		})
 
 	}
@@ -439,7 +450,7 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			Hash:           i.Hash,
 			OwnerID:        i.OwnerID,
 			Data:           asJson,
-			ItemType:       boiler.ItemTypeWeapon,
+			Name:           i.Label,
 		})
 	}
 
@@ -462,7 +473,7 @@ func ServerUtilitiesToXsynAsset(utils []*server.Utility) []*XsynAsset {
 			Hash:           i.Hash,
 			OwnerID:        i.OwnerID,
 			Data:           asJson,
-			ItemType:       boiler.ItemTypeUtility,
+			Name:           i.Label,
 		})
 	}
 

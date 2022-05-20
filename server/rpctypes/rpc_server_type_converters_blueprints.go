@@ -1,4 +1,4 @@
-package comms
+package rpctypes
 
 import (
 	"server"

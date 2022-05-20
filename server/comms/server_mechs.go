@@ -6,20 +6,21 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/rpctypes"
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 )
 
 // Mechs is a heavy func, do not use on a running server
-func (s *S) Mechs(req MechsReq, resp *MechsResp) error {
+func (s *S) Mechs(req rpctypes.MechsReq, resp *rpctypes.MechsResp) error {
 	gamelog.L.Debug().Msg("comms.Mechs")
 	mechs, err := boiler.Mechs().All(gamedb.StdConn)
 	if err != nil {
 		return err
 	}
 
-	result := []*Mech{}
+	result := []*rpctypes.Mech{}
 	for _, mech := range mechs {
 		// // Refresh player faction
 		// ownerID := uuid.Must(uuid.FromString(mech.OwnerID))
@@ -55,36 +56,36 @@ func (s *S) Mechs(req MechsReq, resp *MechsResp) error {
 			mechContainer.TokenID = 6612
 		}
 
-		result = append(result, ServerMechToApiV1(mechContainer))
+		result = append(result, rpctypes.ServerMechToApiV1(mechContainer))
 
 	}
 	resp.MechContainers = result
 	return nil
 }
 
-func (s *S) Mech(req MechReq, resp *MechResp) error {
+func (s *S) Mech(req rpctypes.MechReq, resp *rpctypes.MechResp) error {
 	gamelog.L.Debug().Msg("comms.Mech")
 	result, err := db.Mech(req.MechID.String())
 	if err != nil {
 		return err
 	}
 
-	resp.MechContainer = ServerMechToApiV1(result)
+	resp.MechContainer = rpctypes.ServerMechToApiV1(result)
 	return nil
 }
 
-func (s *S) MechsByOwnerID(req MechsByOwnerIDReq, resp *MechsByOwnerIDResp) error {
+func (s *S) MechsByOwnerID(req rpctypes.MechsByOwnerIDReq, resp *rpctypes.MechsByOwnerIDResp) error {
 	gamelog.L.Debug().Msg("comms.MechsByOwnerID")
 	result, err := db.MechsByOwnerID(req.OwnerID)
 	if err != nil {
 		return err
 	}
 
-	resp.MechContainers = ServerMechsToApiV1(result)
+	resp.MechContainers = rpctypes.ServerMechsToApiV1(result)
 	return nil
 }
 
-func (s *S) MechSetName(req MechSetNameReq, resp *MechSetNameResp) error {
+func (s *S) MechSetName(req rpctypes.MechSetNameReq, resp *rpctypes.MechSetNameResp) error {
 	gamelog.L.Debug().Msg("comms.MechSetName")
 	err := db.MechSetName(req.MechID, req.Name)
 	if err != nil {
@@ -95,11 +96,11 @@ func (s *S) MechSetName(req MechSetNameReq, resp *MechSetNameResp) error {
 		return err
 	}
 
-	resp.MechContainer = ServerMechToApiV1(mech)
+	resp.MechContainer = rpctypes.ServerMechToApiV1(mech)
 	return nil
 }
 
-func (s *S) MechSetOwner(req MechSetOwnerReq, resp *MechSetOwnerResp) error {
+func (s *S) MechSetOwner(req rpctypes.MechSetOwnerReq, resp *rpctypes.MechSetOwnerResp) error {
 	gamelog.L.Debug().Msg("comms.MechSetOwner")
 	err := db.MechSetOwner(req.MechID, req.OwnerID)
 	if err != nil {
@@ -110,6 +111,6 @@ func (s *S) MechSetOwner(req MechSetOwnerReq, resp *MechSetOwnerResp) error {
 		return err
 	}
 
-	resp.MechContainer = ServerMechToApiV1(mech)
+	resp.MechContainer = rpctypes.ServerMechToApiV1(mech)
 	return nil
 }

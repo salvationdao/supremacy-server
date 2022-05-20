@@ -66,6 +66,23 @@ func MechSkin(id string) (*server.MechSkin, error) {
 	return server.MechSkinFromBoiler(boilerMech, boilerMechCollectionDetails), nil
 }
 
+func MechSkins(id ...string) ([]*server.MechSkin, error) {
+	var skins []*server.MechSkin
+	boilerMechSkins, err := boiler.MechSkins(boiler.MechSkinWhere.ID.IN(id)).All(gamedb.StdConn)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, ms := range boilerMechSkins {
+		boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(ms.ID)).One(gamedb.StdConn)
+		if err != nil {
+			return nil, err
+		}
+		skins = append(skins, server.MechSkinFromBoiler(ms, boilerMechCollectionDetails))
+	}
+	return skins, nil
+}
+
 // AttachMechSkinToMech attaches a mech skin to a mech  TODO: create tests.
 func AttachMechSkinToMech(ownerID, mechID, chassisSkinID string) error {
 	// TODO: possible optimize this, 6 queries to attach a part seems like a lot?

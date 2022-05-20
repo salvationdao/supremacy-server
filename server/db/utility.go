@@ -172,6 +172,55 @@ func Utility(id string) (*server.Utility, error) {
 	return nil, fmt.Errorf("invalid utility type %s", boilerUtility.Type)
 }
 
+func Utilities(id ...string) ([]*server.Utility, error) {
+	var utilities []*server.Utility
+	boilerUtilities, err := boiler.Utilities(boiler.UtilityWhere.ID.IN(id)).All(gamedb.StdConn)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, util := range boilerUtilities {
+		boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(util.ID)).One(gamedb.StdConn)
+		if err != nil {
+			return nil, err
+		}
+
+		switch util.Type {
+		case boiler.UtilityTypeSHIELD:
+			boilerShield, err := boiler.UtilityShields(boiler.UtilityShieldWhere.UtilityID.EQ(util.ID)).One(gamedb.StdConn)
+			if err != nil {
+				return nil, err
+			}
+			utilities = append(utilities, server.UtilityShieldFromBoiler(util, boilerShield, boilerMechCollectionDetails))
+		case boiler.UtilityTypeATTACKDRONE:
+			boilerAttackDrone, err := boiler.UtilityAttackDrones(boiler.UtilityAttackDroneWhere.UtilityID.EQ(util.ID)).One(gamedb.StdConn)
+			if err != nil {
+				return nil, err
+			}
+			utilities = append(utilities, server.UtilityAttackDroneFromBoiler(util, boilerAttackDrone, boilerMechCollectionDetails))
+		case boiler.UtilityTypeREPAIRDRONE:
+			boilerRepairDrone, err := boiler.UtilityRepairDrones(boiler.UtilityRepairDroneWhere.UtilityID.EQ(util.ID)).One(gamedb.StdConn)
+			if err != nil {
+				return nil, err
+			}
+			utilities = append(utilities, server.UtilityRepairDroneFromBoiler(util, boilerRepairDrone, boilerMechCollectionDetails))
+		case boiler.UtilityTypeANTIMISSILE:
+			boilerAntiMissile, err := boiler.UtilityAntiMissiles(boiler.UtilityAntiMissileWhere.UtilityID.EQ(util.ID)).One(gamedb.StdConn)
+			if err != nil {
+				return nil, err
+			}
+			utilities = append(utilities, server.UtilityAntiMissileFromBoiler(util, boilerAntiMissile, boilerMechCollectionDetails))
+		case boiler.UtilityTypeACCELERATOR:
+			boilerAccelerator, err := boiler.UtilityAccelerators(boiler.UtilityAcceleratorWhere.UtilityID.EQ(util.ID)).One(gamedb.StdConn)
+			if err != nil {
+				return nil, err
+			}
+			utilities = append(utilities, server.UtilityAcceleratorFromBoiler(util, boilerAccelerator, boilerMechCollectionDetails))
+		}
+	}
+	return utilities, nil
+}
+
 // AttachUtilityToMech attaches a Utility to a mech  TODO: create tests.
 func AttachUtilityToMech(ownerID, mechID, utilityID string) error {
 	// TODO: possible optimize this, 6 queries to attach a part seems like a lot?

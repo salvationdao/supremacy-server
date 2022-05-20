@@ -182,18 +182,14 @@ func DefaultMechs() ([]*server.Mech, error) {
 	}
 	defer result.Close()
 
-	ids := []uuid.UUID{}
+	var ids []string
 	for result.Next() {
 		id := ""
 		err = result.Scan(&id)
 		if err != nil {
 			return nil, err
 		}
-		uid, err := uuid.FromString(id)
-		if err != nil {
-			return nil, err
-		}
-		ids = append(ids, uid)
+		ids = append(ids, id)
 	}
 
 	return Mechs(ids...)
@@ -268,7 +264,7 @@ func Mech(mechID string) (*server.Mech, error) {
 	return mc, err
 }
 
-func Mechs(mechIDs ...uuid.UUID) ([]*server.Mech, error) {
+func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 	if len(mechIDs) == 0 {
 		return nil, errors.New("no mech ids provided")
 	}
@@ -279,7 +275,7 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.Mech, error) {
 	var paramrefs string
 	for i, id := range mechIDs {
 		paramrefs += `$` + strconv.Itoa(i+1) + `,`
-		mechids[i] = id.String()
+		mechids[i] = id
 	}
 	paramrefs = paramrefs[:len(paramrefs)-1]
 
