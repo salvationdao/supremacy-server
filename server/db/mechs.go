@@ -295,7 +295,7 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.Mech, error) {
 
 	query := fmt.Sprintf(
 		`%s 	
-		WHERE m.id IN (%s)
+		WHERE mechs.id IN (%s)
 		ORDER BY p.faction_id `,
 		CompleteMechQuery,
 		paramrefs)
@@ -628,8 +628,10 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 
 	// Limit/Offset
 	if opts.PageSize > 0 {
-
-		queryMods = append(queryMods, qm.Limit(opts.PageSize), qm.Offset(opts.PageSize*(opts.Page-1)))
+		queryMods = append(queryMods, qm.Limit(opts.PageSize))
+	}
+	if opts.Page > 0 {
+		queryMods = append(queryMods, qm.Offset(opts.PageSize*(opts.Page-1)))
 	}
 
 	queryMods = append(queryMods,
