@@ -115,8 +115,8 @@ type mysteryCrateL struct{}
 
 var (
 	mysteryCrateAllColumns            = []string{"id", "type", "faction_id", "label", "opened", "locked_until", "purchased"}
-	mysteryCrateColumnsWithoutDefault = []string{"type", "faction_id", "label", "locked_until"}
-	mysteryCrateColumnsWithDefault    = []string{"id", "opened", "purchased"}
+	mysteryCrateColumnsWithoutDefault = []string{"type", "faction_id", "label"}
+	mysteryCrateColumnsWithDefault    = []string{"id", "opened", "locked_until", "purchased"}
 	mysteryCratePrimaryKeyColumns     = []string{"id"}
 	mysteryCrateGeneratedColumns      = []string{}
 )

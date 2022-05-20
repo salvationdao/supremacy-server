@@ -152,6 +152,13 @@ const (
 	MultiplierTypeEnumContribute   = "contribute"
 )
 
+// Enum values for CrateTypeEnum
+const (
+	CrateTypeEnumMECH    = "MECH"
+	CrateTypeEnumWEAPON  = "WEAPON"
+	CrateTypeEnumUTILITY = "UTILITY"
+)
+
 // Enum values for TemplateItemType
 const (
 	TemplateItemTypeMECH           = "MECH"

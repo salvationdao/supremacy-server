@@ -57,21 +57,41 @@ DO $$
     END;
 $$;
 
+
+
 -- seeding blueprints
--- mechs
+-- mechs: blueprint_mechs only have brand_id which joins on brand to factions
 -- DO $$
 --     BEGIN
+--     --for each faction loop over the mystery crates of specified faction
 --         FOR faction in SELECT * FROM factions
---             FOR row in SELECT * FROM mystery_crate WHERE faction_id = faction.id
+--             --for crates of type mech, loop
+--             FOR row in SELECT FROM mystery_crate WHERE faction_id = faction.id AND type = 'MECH'
 --                 LOOP
---                 FOR COUNT 1..5 LOOP
---                     INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (row.id, 'MECH', );
---                     INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (row.id, 'POWER_CORE', (SELECT id FROM blueprint_power_cores c WHERE c.size = 'SMALL'));
---                 END LOOP;
+--                 DECLARE i float8 := 1;
+--                     DECLARE brandID uuid := (SELECT id FROM brands WHERE faction_id = faction.id)
+--                     -- for half of the Mechs, insert a mech object from the appropriate brand's bipedal mechs and a fitted power core
+--                     WHILE i <= 5 LOOP
+--                         INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (row.id, 'MECH', (SELECT id FROM blueprint_mechs WHERE blueprint_mechs.brand_id = brandID AND blueprint_mechs.power_core_size = 'SMALL'));
+--                         INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (row.id, 'POWER_CORE', (SELECT id FROM blueprint_power_cores c WHERE c.size = 'SMALL'));
+--                         i = i + 1
+--                     END LOOP;
+--                         -- for other half of the Mechs, insert a mech object from the appropriate brand's platform mechs and a fitted power core
+--                     WHILE i>5 LOOP
+--                         INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (row.id, 'MECH', (SELECT blueprint_mechs.id FROM blueprint_mechs LEFT JOIN brands WHERE blueprint_mechs.brand_id = brands.id AND brands.id = faction.id AND blueprint_mechs.collection != 'supremacy-general' AND blueprint_mechs.power_core_size = 'MEDIUM'));
+--                         INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (row.id, 'POWER_CORE', (SELECT id FROM blueprint_power_cores c WHERE c.size = 'MEDIUM'));
+--                         i = i + 1
+--                     END LOOP;
+--             END LOOP;
+--
+--             --for crates of type weapon, loop
+--             FOR row in SELECT FROM mystery_crate WHERE faction_id = faction.id AND type = 'WEAPON'
 --                 LOOP
---                 FOR COUNT 1..5 LOOP
---                     INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (row.id, 'MECH', );
---                     INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (row.id, 'POWER_CORE', (SELECT id FROM blueprint_power_cores c WHERE c.size = 'MEDIUM'));
+--                 DECLARE i float8 := 1;
+--                 -- for half of the Mechs, insert a mech object from the appropriate brand's bipedal mechs and a fitted power core
+--                 WHILE i <= 3 LOOP
+--                     INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (row.id, 'WEAPON', (SELECT blueprint_weapons.id FROM blueprint_weapons LEFT JOIN brands WHERE blueprint_weapons.brand_id = brands.id AND brands.id = faction.id AND ));
+--                         i = i + 1
 --                 END LOOP;
 --             END LOOP;
 --         END LOOP;

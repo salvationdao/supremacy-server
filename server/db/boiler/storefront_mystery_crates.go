@@ -124,8 +124,8 @@ type storefrontMysteryCrateL struct{}
 
 var (
 	storefrontMysteryCrateAllColumns            = []string{"id", "mystery_crate_type", "price", "amount", "amount_sold", "faction_id", "deleted_at", "updated_at", "created_at"}
-	storefrontMysteryCrateColumnsWithoutDefault = []string{"mystery_crate_type", "price", "amount", "amount_sold", "faction_id"}
-	storefrontMysteryCrateColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at"}
+	storefrontMysteryCrateColumnsWithoutDefault = []string{"mystery_crate_type", "price", "amount", "faction_id"}
+	storefrontMysteryCrateColumnsWithDefault    = []string{"id", "amount_sold", "deleted_at", "updated_at", "created_at"}
 	storefrontMysteryCratePrimaryKeyColumns     = []string{"id"}
 	storefrontMysteryCrateGeneratedColumns      = []string{}
 )
