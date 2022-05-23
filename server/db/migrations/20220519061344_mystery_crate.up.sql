@@ -61,6 +61,16 @@ ALTER TABLE weapon_skin
     ADD COLUMN large_image_url TEXT,
     ADD COLUMN avatar_url TEXT;
 
+ALTER TABLE blueprint_power_cores
+    ADD COLUMN image_url          TEXT,
+    ADD COLUMN card_animation_url TEXT,
+    ADD COLUMN avatar_url         TEXT,
+    ADD COLUMN large_image_url    TEXT,
+    ADD COLUMN description        TEXT,
+    ADD COLUMN background_color   TEXT,
+    ADD COLUMN animation_url      TEXT,
+    ADD COLUMN youtube_url        TEXT;
+
 -- inserting brands
 INSERT INTO brands (faction_id, label) VALUES ((SELECT id FROM factions WHERE label = 'Boston Cybernetics'), 'Daison Avionics');
 INSERT INTO brands (faction_id, label) VALUES ((SELECT id FROM factions WHERE label = 'Boston Cybernetics'), 'Archon Miltech');
