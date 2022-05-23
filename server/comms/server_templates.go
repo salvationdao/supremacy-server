@@ -79,6 +79,7 @@ func (s *S) TemplateRegister(req rpctypes.TemplateRegisterReq, resp *rpctypes.Te
 
 	var assets []*rpctypes.XsynAsset
 
+	// TODO: HERE! add images for mechs and weapons
 	// convert into xsyn assets, maybe find a better way.... (generics? interfaces? change item schema?)
 	assets = append(assets, rpctypes.ServerMechsToXsynAsset(mechs)...)
 	assets = append(assets, rpctypes.ServerMechAnimationsToXsynAsset(mechAnimations)...)
