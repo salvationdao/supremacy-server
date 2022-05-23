@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"server"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -47,7 +46,21 @@ type PlayerAssetMechListRequest struct {
 }
 
 type PlayerAssetMech struct {
-	*server.CollectionDetails
+	CollectionSlug   string      `json:"collection_slug"`
+	Hash             string      `json:"hash"`
+	TokenID          int64       `json:"token_id"`
+	ItemType         string      `json:"item_type"`
+	Tier             string      `json:"tier"`
+	OwnerID          string      `json:"owner_id"`
+	OnChainStatus    string      `json:"on_chain_status"`
+	ImageURL         null.String `json:"image_url,omitempty"`
+	CardAnimationURL null.String `json:"card_animation_url,omitempty"`
+	AvatarURL        null.String `json:"avatar_url,omitempty"`
+	LargeImageURL    null.String `json:"large_image_url,omitempty"`
+	BackgroundColor  null.String `json:"background_color,omitempty"`
+	AnimationURL     null.String `json:"animation_url,omitempty"`
+	YoutubeURL       null.String `json:"youtube_url,omitempty"`
+
 	ID                    string     `json:"id"`
 	Label                 string     `json:"label"`
 	WeaponHardpoints      int        `json:"weapon_hardpoints"`
@@ -128,6 +141,20 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 			PowerCoreID:           m.PowerCoreID,
 			UpdatedAt:             m.UpdatedAt,
 			CreatedAt:             m.CreatedAt,
+			CollectionSlug:        m.CollectionDetails.CollectionSlug,
+			Hash:                  m.CollectionDetails.Hash,
+			TokenID:               m.CollectionDetails.TokenID,
+			ItemType:              m.CollectionDetails.ItemType,
+			Tier:                  m.CollectionDetails.Tier,
+			OwnerID:               m.CollectionDetails.OwnerID,
+			OnChainStatus:         m.CollectionDetails.OnChainStatus,
+			ImageURL:              m.CollectionDetails.ImageURL,
+			CardAnimationURL:      m.CollectionDetails.CardAnimationURL,
+			AvatarURL:             m.CollectionDetails.AvatarURL,
+			LargeImageURL:         m.CollectionDetails.LargeImageURL,
+			BackgroundColor:       m.CollectionDetails.BackgroundColor,
+			AnimationURL:          m.CollectionDetails.AnimationURL,
+			YoutubeURL:            m.CollectionDetails.YoutubeURL,
 		})
 	}
 

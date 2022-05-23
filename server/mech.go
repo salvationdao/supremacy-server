@@ -14,15 +14,14 @@ import (
 */
 
 type CollectionDetails struct {
-	CollectionSlug string `json:"collection_slug"`
-	Hash           string `json:"hash"`
-	TokenID        int64  `json:"token_id"`
-	ItemType       string `json:"item_type"`
-	ItemID         string `json:"item_id"`
-	Tier           string `json:"tier"`
-	OwnerID        string `json:"owner_id"`
-	OnChainStatus  string `json:"on_chain_status"`
-
+	CollectionSlug   string      `json:"collection_slug"`
+	Hash             string      `json:"hash"`
+	TokenID          int64       `json:"token_id"`
+	ItemType         string      `json:"item_type"`
+	ItemID           string      `json:"item_id"`
+	Tier             string      `json:"tier"`
+	OwnerID          string      `json:"owner_id"`
+	OnChainStatus    string      `json:"on_chain_status"`
 	ImageURL         null.String `json:"image_url,omitempty"`
 	CardAnimationURL null.String `json:"card_animation_url,omitempty"`
 	AvatarURL        null.String `json:"avatar_url,omitempty"`
