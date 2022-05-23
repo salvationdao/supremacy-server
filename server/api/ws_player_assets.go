@@ -14,7 +14,6 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
 	"github.com/rs/zerolog"
-	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 )
 
@@ -49,22 +48,22 @@ type PlayerAssetMechListRequest struct {
 
 type PlayerAssetMech struct {
 	*server.CollectionDetails
-	ID                    string              `json:"id"`
-	Label                 string              `json:"label"`
-	WeaponHardpoints      int                 `json:"weapon_hardpoints"`
-	UtilitySlots          int                 `json:"utility_slots"`
-	Speed                 int                 `json:"speed"`
-	MaxHitpoints          int                 `json:"max_hitpoints"`
-	IsDefault             bool                `json:"is_default"`
-	IsInsured             bool                `json:"is_insured"`
-	Name                  string              `json:"name"`
-	GenesisTokenID        decimal.NullDecimal `json:"genesis_token_id,omitempty"`
-	LimitedReleaseTokenID decimal.NullDecimal `json:"limited_release_token_id,omitempty"`
-	PowerCoreSize         string              `json:"power_core_size"`
-	BlueprintID           string              `json:"blueprint_id"`
-	BrandID               string              `json:"brand_id"`
-	FactionID             string              `json:"faction_id"`
-	ModelID               string              `json:"model_id"`
+	ID                    string     `json:"id"`
+	Label                 string     `json:"label"`
+	WeaponHardpoints      int        `json:"weapon_hardpoints"`
+	UtilitySlots          int        `json:"utility_slots"`
+	Speed                 int        `json:"speed"`
+	MaxHitpoints          int        `json:"max_hitpoints"`
+	IsDefault             bool       `json:"is_default"`
+	IsInsured             bool       `json:"is_insured"`
+	Name                  string     `json:"name"`
+	GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`
+	LimitedReleaseTokenID null.Int64 `json:"limited_release_token_id,omitempty"`
+	PowerCoreSize         string     `json:"power_core_size"`
+	BlueprintID           string     `json:"blueprint_id"`
+	BrandID               string     `json:"brand_id"`
+	FactionID             string     `json:"faction_id"`
+	ModelID               string     `json:"model_id"`
 
 	// Connected objects
 	DefaultChassisSkinID string      `json:"default_chassis_skin_id"`
@@ -72,7 +71,7 @@ type PlayerAssetMech struct {
 	IntroAnimationID     null.String `json:"intro_animation_id,omitempty"`
 	OutroAnimationID     null.String `json:"outro_animation_id,omitempty"`
 	PowerCoreID          null.String `json:"power_core_id,omitempty"`
-	
+
 	UpdatedAt time.Time `json:"updated_at"`
 	CreatedAt time.Time `json:"created_at"`
 }

@@ -6,7 +6,6 @@ import (
 	"server/db/boiler"
 	"time"
 
-	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 )
 
@@ -28,18 +27,18 @@ type CollectionDetails struct {
 // Mech is the struct that rpc expects for mechs
 type Mech struct {
 	*CollectionDetails
-	ID                    string              `json:"id"`
-	Label                 string              `json:"label"`
-	WeaponHardpoints      int                 `json:"weapon_hardpoints"`
-	UtilitySlots          int                 `json:"utility_slots"`
-	Speed                 int                 `json:"speed"`
-	MaxHitpoints          int                 `json:"max_hitpoints"`
-	IsDefault             bool                `json:"is_default"`
-	IsInsured             bool                `json:"is_insured"`
-	Name                  string              `json:"name"`
-	GenesisTokenID        decimal.NullDecimal `json:"genesis_token_id,omitempty"`
-	LimitedReleaseTokenID decimal.NullDecimal `json:"limited_release_token_id,omitempty"`
-	PowerCoreSize         string              `json:"power_core_size"`
+	ID                    string     `json:"id"`
+	Label                 string     `json:"label"`
+	WeaponHardpoints      int        `json:"weapon_hardpoints"`
+	UtilitySlots          int        `json:"utility_slots"`
+	Speed                 int        `json:"speed"`
+	MaxHitpoints          int        `json:"max_hitpoints"`
+	IsDefault             bool       `json:"is_default"`
+	IsInsured             bool       `json:"is_insured"`
+	Name                  string     `json:"name"`
+	GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`
+	LimitedReleaseTokenID null.Int64 `json:"limited_release_token_id,omitempty"`
+	PowerCoreSize         string     `json:"power_core_size"`
 
 	BlueprintID string         `json:"blueprint_id"`
 	Blueprint   *BlueprintMech `json:"blueprint_mech,omitempty"`
@@ -97,8 +96,8 @@ type BlueprintMech struct {
 	Collection           string    `json:"collection"`
 
 	// only used on inserting new mechs/items, since we are still giving away some limited released and genesis
-	GenesisTokenID        decimal.NullDecimal `json:"genesis_token_id,omitempty"`
-	LimitedReleaseTokenID decimal.NullDecimal `json:"limited_release_token_id,omitempty"`
+	GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`
+	LimitedReleaseTokenID null.Int64 `json:"limited_release_token_id,omitempty"`
 }
 
 func (b *BlueprintMech) Scan(value interface{}) error {
@@ -145,8 +144,8 @@ type BlueprintUtility struct {
 	AntiMissileBlueprint *BlueprintUtilityAntiMissile `json:"anti_missile_blueprint,omitempty"`
 
 	// only used on inserting new mechs/items, since we are still giving away some limited released and genesis
-	GenesisTokenID        decimal.NullDecimal `json:"genesis_token_id,omitempty"`
-	LimitedReleaseTokenID decimal.NullDecimal `json:"limited_release_token_id,omitempty"`
+	GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`
+	LimitedReleaseTokenID null.Int64 `json:"limited_release_token_id,omitempty"`
 }
 
 type MechModel struct {
@@ -162,4 +161,40 @@ func (b *MechModel) Scan(value interface{}) error {
 		return fmt.Errorf("unable to scan value into byte array")
 	}
 	return json.Unmarshal(v, b)
+}
+
+func MechFromBoiler(mech *boiler.Mech, collection *boiler.CollectionItem) *Mech {
+	return &Mech{
+		CollectionDetails: &CollectionDetails{
+			CollectionSlug: collection.CollectionSlug,
+			Hash:           collection.Hash,
+			TokenID:        collection.TokenID,
+			ItemType:       collection.ItemType,
+			ItemID:         collection.ItemID,
+			Tier:           collection.Tier,
+			OwnerID:        collection.OwnerID,
+			OnChainStatus:  collection.OnChainStatus,
+		},
+		ID:                    mech.ID,
+		Label:                 mech.Label,
+		WeaponHardpoints:      mech.WeaponHardpoints,
+		UtilitySlots:          mech.UtilitySlots,
+		Speed:                 mech.Speed,
+		MaxHitpoints:          mech.MaxHitpoints,
+		IsDefault:             mech.IsDefault,
+		IsInsured:             mech.IsInsured,
+		Name:                  mech.Name,
+		GenesisTokenID:        mech.GenesisTokenID,
+		LimitedReleaseTokenID: mech.LimitedReleaseTokenID,
+		PowerCoreSize:         mech.PowerCoreSize,
+		BlueprintID:           mech.BlueprintID,
+		BrandID:               mech.BrandID,
+		ModelID:               mech.ModelID,
+		ChassisSkinID:         mech.ChassisSkinID,
+		IntroAnimationID:      mech.IntroAnimationID,
+		OutroAnimationID:      mech.OutroAnimationID,
+		PowerCoreID:           mech.PowerCoreID,
+		UpdatedAt:             mech.UpdatedAt,
+		CreatedAt:             mech.CreatedAt,
+	}
 }

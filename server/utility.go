@@ -6,22 +6,22 @@ import (
 	"server/db/boiler"
 	"time"
 
-	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 )
 
 // Utility is the struct that rpc expects for utility
 type Utility struct {
 	*CollectionDetails
-	ID             string              `json:"id"`
-	BrandID        null.String         `json:"brand_id,omitempty"`
-	Label          string              `json:"label"`
-	UpdatedAt      time.Time           `json:"updated_at"`
-	CreatedAt      time.Time           `json:"created_at"`
-	BlueprintID    string              `json:"blueprint_id"`
-	GenesisTokenID decimal.NullDecimal `json:"genesis_token_id,omitempty"`
-	EquippedOn     null.String         `json:"equipped_on,omitempty"`
-	Type           string              `json:"type"`
+	ID                    string      `json:"id"`
+	BrandID               null.String `json:"brand_id,omitempty"`
+	Label                 string      `json:"label"`
+	UpdatedAt             time.Time   `json:"updated_at"`
+	CreatedAt             time.Time   `json:"created_at"`
+	BlueprintID           string      `json:"blueprint_id"`
+	GenesisTokenID        null.Int64  `json:"genesis_token_id,omitempty"`
+	LimitedReleaseTokenID null.Int64  `json:"limited_release_token_id,omitempty"`
+	EquippedOn            null.String `json:"equipped_on,omitempty"`
+	Type                  string      `json:"type"`
 
 	Shield      *UtilityShield      `json:"shield,omitempty"`
 	AttackDrone *UtilityAttackDrone `json:"attack_drone,omitempty"`

@@ -44,8 +44,8 @@ type Mech struct {
 	IsInsured             bool                `json:"is_insured"`
 	Name                  string              `json:"name"`
 	ModelID               string              `json:"model_id"`
-	GenesisTokenID        decimal.NullDecimal `json:"genesis_token_id,omitempty"`
-	LimitedReleaseTokenID decimal.NullDecimal `json:"limited_release_token_id,omitempty"`
+	GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`
+	LimitedReleaseTokenID null.Int64 `json:"limited_release_token_id,omitempty"`
 	OwnerID               string              `json:"owner_id"`
 	FactionID             string              `json:"faction_id"`
 	PowerCoreSize         string              `json:"power_core_size"`
@@ -77,20 +77,21 @@ type Mech struct {
 
 type MechSkin struct {
 	*CollectionDetails
-	ID               string              `json:"id"`
-	BlueprintID      string              `json:"blueprint_id"`
-	GenesisTokenID   decimal.NullDecimal `json:"genesis_token_id,omitempty"`
-	Label            string              `json:"label"`
-	OwnerID          string              `json:"owner_id"`
-	MechModel        string              `json:"mech_model"`
-	EquippedOn       null.String         `json:"equipped_on,omitempty"`
-	Tier             string              `json:"tier,omitempty"`
-	ImageURL         null.String         `json:"image_url,omitempty"`
-	AnimationURL     null.String         `json:"animation_url,omitempty"`
-	CardAnimationURL null.String         `json:"card_animation_url,omitempty"`
-	AvatarURL        null.String         `json:"avatar_url,omitempty"`
-	LargeImageURL    null.String         `json:"large_image_url,omitempty"`
-	CreatedAt        time.Time           `json:"created_at"`
+	ID                    string      `json:"id"`
+	BlueprintID           string      `json:"blueprint_id"`
+	GenesisTokenID        null.Int64  `json:"genesis_token_id,omitempty"`
+	LimitedReleaseTokenID null.Int64  `json:"limited_release_token_id,omitempty"`
+	Label                 string      `json:"label"`
+	OwnerID               string      `json:"owner_id"`
+	MechModel             string      `json:"mech_model"`
+	EquippedOn            null.String `json:"equipped_on,omitempty"`
+	Tier                  string      `json:"tier,omitempty"`
+	ImageURL              null.String `json:"image_url,omitempty"`
+	AnimationURL          null.String `json:"animation_url,omitempty"`
+	CardAnimationURL      null.String `json:"card_animation_url,omitempty"`
+	AvatarURL             null.String `json:"avatar_url,omitempty"`
+	LargeImageURL         null.String `json:"large_image_url,omitempty"`
+	CreatedAt             time.Time   `json:"created_at"`
 }
 
 type MechAnimation struct {
@@ -126,25 +127,26 @@ type PowerCore struct {
 // Weapon is the struct that rpc expects for weapons
 type Weapon struct {
 	*CollectionDetails
-	ID                  string              `json:"id"`
-	BrandID             null.String         `json:"brand_id,omitempty"`
-	Label               string              `json:"label"`
-	Slug                string              `json:"slug"`
-	Damage              int                 `json:"damage"`
-	BlueprintID         string              `json:"blueprint_id"`
-	DefaultDamageType   string              `json:"default_damage_type"`
-	GenesisTokenID      decimal.NullDecimal `json:"genesis_token_id,omitempty"`
-	WeaponType          string              `json:"weapon_type"`
-	OwnerID             string              `json:"owner_id"`
-	DamageFalloff       null.Int            `json:"damage_falloff,omitempty"`
-	DamageFalloffRate   null.Int            `json:"damage_falloff_rate,omitempty"`
-	Spread              decimal.NullDecimal `json:"spread,omitempty"`
-	RateOfFire          decimal.NullDecimal `json:"rate_of_fire,omitempty"`
-	Radius              null.Int            `json:"radius,omitempty"`
-	RadiusDamageFalloff null.Int            `json:"radius_damage_falloff,omitempty"`
-	ProjectileSpeed     decimal.NullDecimal `json:"projectile_speed,omitempty"`
-	EnergyCost          decimal.NullDecimal `json:"energy_cost,omitempty"`
-	MaxAmmo             null.Int            `json:"max_ammo,omitempty"`
+	ID                    string              `json:"id"`
+	BrandID               null.String         `json:"brand_id,omitempty"`
+	Label                 string              `json:"label"`
+	Slug                  string              `json:"slug"`
+	Damage                int                 `json:"damage"`
+	BlueprintID           string              `json:"blueprint_id"`
+	DefaultDamageType     string              `json:"default_damage_type"`
+	GenesisTokenID        null.Int64          `json:"genesis_token_id,omitempty"`
+	LimitedReleaseTokenID null.Int64          `json:"limited_release_token_id,omitempty"`
+	WeaponType            string              `json:"weapon_type"`
+	OwnerID               string              `json:"owner_id"`
+	DamageFalloff         null.Int            `json:"damage_falloff,omitempty"`
+	DamageFalloffRate     null.Int            `json:"damage_falloff_rate,omitempty"`
+	Spread                decimal.NullDecimal `json:"spread,omitempty"`
+	RateOfFire            decimal.NullDecimal `json:"rate_of_fire,omitempty"`
+	Radius                null.Int            `json:"radius,omitempty"`
+	RadiusDamageFalloff   null.Int            `json:"radius_damage_falloff,omitempty"`
+	ProjectileSpeed       decimal.NullDecimal `json:"projectile_speed,omitempty"`
+	EnergyCost            decimal.NullDecimal `json:"energy_cost,omitempty"`
+	MaxAmmo               null.Int            `json:"max_ammo,omitempty"`
 
 	//BlueprintAmmo []* // TODO: AMMO
 
@@ -155,16 +157,17 @@ type Weapon struct {
 // Utility is the struct that rpc expects for utility
 type Utility struct {
 	*CollectionDetails
-	ID             string              `json:"id"`
-	BrandID        null.String         `json:"brand_id,omitempty"`
-	Label          string              `json:"label"`
-	UpdatedAt      time.Time           `json:"updated_at"`
-	CreatedAt      time.Time           `json:"created_at"`
-	BlueprintID    string              `json:"blueprint_id"`
-	GenesisTokenID decimal.NullDecimal `json:"genesis_token_id,omitempty"`
-	OwnerID        string              `json:"owner_id"`
-	EquippedOn     null.String         `json:"equipped_on,omitempty"`
-	Type           string              `json:"type"`
+	ID                    string      `json:"id"`
+	BrandID               null.String `json:"brand_id,omitempty"`
+	Label                 string      `json:"label"`
+	UpdatedAt             time.Time   `json:"updated_at"`
+	CreatedAt             time.Time   `json:"created_at"`
+	BlueprintID           string      `json:"blueprint_id"`
+	GenesisTokenID        null.Int64  `json:"genesis_token_id,omitempty"`
+	LimitedReleaseTokenID null.Int64  `json:"limited_release_token_id,omitempty"`
+	OwnerID               string      `json:"owner_id"`
+	EquippedOn            null.String `json:"equipped_on,omitempty"`
+	Type                  string      `json:"type"`
 
 	Shield      *UtilityShield      `json:"shield,omitempty"`
 	AttackDrone *UtilityAttackDrone `json:"attack_drone,omitempty"`

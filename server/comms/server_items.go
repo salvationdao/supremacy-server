@@ -3,6 +3,8 @@ package comms
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/volatiletech/null/v8"
+	"server"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -83,5 +85,70 @@ func (s *S) Asset(req rpctypes.AssetReq, resp *rpctypes.AssetResp) error {
 		Data:           asJson,
 		//Name: //TODO?
 	}
+	return nil
+}
+
+type GenesisOrLimitedMechReq struct {
+	CollectionSlug string
+	TokenID        int
+}
+
+type GenesisOrLimitedMechResp struct {
+	Asset *rpctypes.XsynAsset
+}
+
+func (s *S) GenesisOrLimitedMech(req *GenesisOrLimitedMechReq, resp *GenesisOrLimitedMechResp) error {
+	gamelog.L.Trace().Msg("comms.GenesisOrLimitedMech")
+	var mech *server.Mech
+
+	//if req.TokenID
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println(req.TokenID)
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+
+	switch req.CollectionSlug {
+	case "supremacy-genesis":
+		mechBoiler, err := boiler.Mechs(
+			boiler.MechWhere.GenesisTokenID.EQ(null.Int64From(int64(req.TokenID))),
+		).One(gamedb.StdConn)
+		if err != nil {
+			gamelog.L.Error().Err(err).Int("req.TokenID", req.TokenID).Msg("failed to find genesis mech")
+			return err
+		}
+
+		collection, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(mechBoiler.ID)).One(gamedb.StdConn)
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("mechBoiler.ID", mechBoiler.ID).Msg("failed to find collection item")
+			return err
+		}
+		mech = server.MechFromBoiler(mechBoiler, collection)
+	case "supremacy-limited-release":
+		mechBoiler, err := boiler.Mechs(
+			boiler.MechWhere.LimitedReleaseTokenID.EQ(null.Int64From(int64(req.TokenID))),
+		).One(gamedb.StdConn)
+		if err != nil {
+			gamelog.L.Error().Err(err).Int("req.TokenID", req.TokenID).Msg("failed to find limited release mech")
+			return err
+		}
+
+		collection, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(mechBoiler.ID)).One(gamedb.StdConn)
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("mechBoiler.ID", mechBoiler.ID).Msg("failed to find collection item")
+			return err
+		}
+		mech = server.MechFromBoiler(mechBoiler, collection)
+	default:
+		err := fmt.Errorf("invalid collection slug")
+		gamelog.L.Error().Err(err).Str("req.CollectionSlug", req.CollectionSlug).Msg("collection slug is invalid")
+		return err
+	}
+
+	resp.Asset = rpctypes.ServerMechsToXsynAsset([]*server.Mech{mech})[0]
 	return nil
 }
