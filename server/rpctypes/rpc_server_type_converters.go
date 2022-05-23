@@ -337,6 +337,40 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 			gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to convert item to json")
 			continue
 		}
+
+		// convert stats to attributes to
+		attributes := []*Attribute{
+			{
+				TraitType: "Label",
+				Value:     i.Label,
+			},
+			{
+				DisplayType: "Number",
+				TraitType:   "Weapon Hardpoints",
+				Value:       i.WeaponHardpoints,
+			},
+			{
+				DisplayType: "Number",
+				TraitType:   "Utility Slots",
+				Value:       i.UtilitySlots,
+			},
+			{
+				DisplayType: "BoostNumber",
+				TraitType:   "speed",
+				Value:       i.Speed,
+			},
+			{
+				DisplayType: "BoostNumber",
+				TraitType:   "Hit Points",
+				Value:       i.MaxHitpoints,
+			},
+			{
+				DisplayType: "BoostNumber",
+				TraitType:   "Power Core Size",
+				Value:       i.PowerCoreSize,
+			},
+		}
+
 		assets = append(assets, &XsynAsset{
 			ID:             i.ID,
 			Name:           i.Name,
@@ -347,7 +381,7 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 			OwnerID:        i.OwnerID,
 			Data:           asJson,
 
-			//Attributes: // TODO
+			Attributes: attributes,
 			//ImageURL:  // TODO
 			//ExternalURL:  // TODO
 			//Description:  // TODO
@@ -372,6 +406,23 @@ func ServerMechAnimationsToXsynAsset(mechAnimations []*server.MechAnimation) []*
 			gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to convert item to json")
 			continue
 		}
+
+		// convert stats to attributes to
+		attributes := []*Attribute{
+			{
+				TraitType: "Label",
+				Value:     i.Label,
+			},
+			{
+				TraitType: "Intro Animation",
+				Value:     i.IntroAnimation,
+			},
+			{
+				TraitType: "Outro Animation",
+				Value:     i.IntroAnimation,
+			},
+		}
+
 		assets = append(assets, &XsynAsset{
 			ID:             i.ID,
 			CollectionSlug: i.CollectionSlug,
@@ -381,6 +432,17 @@ func ServerMechAnimationsToXsynAsset(mechAnimations []*server.MechAnimation) []*
 			OwnerID:        i.OwnerID,
 			Data:           asJson,
 			Name:           i.Label,
+			Attributes:     attributes,
+			//ImageURL:  // TODO
+			//ExternalURL:  // TODO
+			//Description:  // TODO
+			//BackgroundColor:  // TODO
+			//AnimationURL:  // TODO
+			//YoutubeURL:  // TODO
+			//UnlockedAt:  // TODO
+			//MintedAt:  // TODO
+			//OnChainStatus:  // TODO
+			//XsynLocked:  // TODO
 		})
 	}
 
@@ -395,15 +457,42 @@ func ServerMechSkinsToXsynAsset(mechSkins []*server.MechSkin) []*XsynAsset {
 			gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to convert item to json")
 			continue
 		}
+
+		// convert stats to attributes to
+		attributes := []*Attribute{
+			{
+				TraitType: "Label",
+				Value:     i.Label,
+			},
+			{
+				TraitType: "Mech Model",
+				Value:     i.MechModel, // TODO: get mech model name instead
+			},
+		}
+
 		assets = append(assets, &XsynAsset{
-			ID:             i.ID,
-			CollectionSlug: i.CollectionSlug,
-			TokenID:        i.TokenID,
-			Tier:           i.Tier,
-			Hash:           i.Hash,
-			OwnerID:        i.OwnerID,
-			Data:           asJson,
-			Name:           i.Label,
+			ID:               i.ID,
+			CollectionSlug:   i.CollectionSlug,
+			TokenID:          i.TokenID,
+			Tier:             i.Tier,
+			Hash:             i.Hash,
+			OwnerID:          i.OwnerID,
+			Data:             asJson,
+			Name:             i.Label,
+			Attributes:       attributes,
+			ImageURL:         i.ImageURL,
+			AnimationURL:     i.AnimationURL,
+			LargeImageURL:    i.LargeImageURL,
+			CardAnimationURL: i.CardAnimationURL,
+			AvatarURL:        i.AvatarURL,
+			//ExternalURL:  // TODO
+			//Description:  // TODO
+			//BackgroundColor:  // TODO
+			//YoutubeURL:  i.
+			//UnlockedAt:  // TODO
+			//MintedAt:  // TODO
+			//OnChainStatus:  // TODO
+			//XsynLocked:  // TODO
 		})
 	}
 
@@ -418,6 +507,34 @@ func ServerPowerCoresToXsynAsset(powerCore []*server.PowerCore) []*XsynAsset {
 			gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to convert item to json")
 			continue
 		}
+
+		// convert stats to attributes to
+		attributes := []*Attribute{
+			{
+				TraitType: "Label",
+				Value:     i.Label,
+			},
+			{
+				TraitType: "Size",
+				Value:     i.Size,
+			},
+			{
+				DisplayType: "BoostNumber",
+				TraitType:   "Capacity",
+				Value:       i.Capacity,
+			},
+			{
+				DisplayType: "BoostNumber",
+				TraitType:   "Max draw rate",
+				Value:       i.MaxDrawRate,
+			},
+			{
+				DisplayType: "BoostNumber",
+				TraitType:   "Recharge rate",
+				Value:       i.RechargeRate,
+			},
+		}
+
 		assets = append(assets, &XsynAsset{
 			ID:             i.ID,
 			CollectionSlug: i.CollectionSlug,
@@ -427,6 +544,17 @@ func ServerPowerCoresToXsynAsset(powerCore []*server.PowerCore) []*XsynAsset {
 			OwnerID:        i.OwnerID,
 			Data:           asJson,
 			Name:           i.Label,
+			Attributes:     attributes,
+			//ImageURL:  // TODO
+			//ExternalURL:  // TODO
+			//Description:  // TODO
+			//BackgroundColor:  // TODO
+			//AnimationURL:  // TODO
+			//YoutubeURL:  // TODO
+			//UnlockedAt:  // TODO
+			//MintedAt:  // TODO
+			//OnChainStatus:  // TODO
+			//XsynLocked:  // TODO
 		})
 
 	}
@@ -442,6 +570,70 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to convert item to json")
 			continue
 		}
+		// TODO create these dynamically depending on weapon type
+		attributes := []*Attribute{
+			{
+				TraitType: "Label",
+				Value:     i.Label,
+			},
+			{
+				DisplayType: "BoostNumber",
+				TraitType:   "Damage",
+				Value:       i.Damage,
+			},
+			{
+				TraitType: "Damage Type",
+				Value:     i.DefaultDamageType,
+			},
+			{
+				TraitType: "Weapon Type",
+				Value:     i.WeaponType,
+			},
+			{
+				TraitType: "Damage Falloff",
+				Value:     i.DamageFalloff,
+			},
+			{
+				DisplayType: "BoostNumber",
+				TraitType:   "Damage Falloff rate",
+				Value:       i.DamageFalloffRate,
+			},
+			{
+				DisplayType: "BoostNumber",
+				TraitType:   "Area of effect",
+				Value:       i.Radius,
+			},
+			{
+				DisplayType: "BoostNumber",
+				TraitType:   "Spread",
+				Value:       i.Spread,
+			},
+			{
+				DisplayType: "BoostNumber",
+				TraitType:   "Rate of fire",
+				Value:       i.RateOfFire,
+			},
+			{
+				DisplayType: "BoostNumber",
+				TraitType:   "Projectile Speed",
+				Value:       i.ProjectileSpeed,
+			},
+			{
+				DisplayType: "BoostNumber",
+				TraitType:   "Energy Cost",
+				Value:       i.EnergyCost,
+			},
+			{
+				DisplayType: "BoostNumber",
+				TraitType:   "Max Ammo",
+				Value:       i.MaxAmmo,
+			},
+			{
+				TraitType: "Tier",
+				Value:     i.Tier,
+			},
+		}
+
 		assets = append(assets, &XsynAsset{
 			ID:             i.ID,
 			CollectionSlug: i.CollectionSlug,
@@ -451,6 +643,20 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			OwnerID:        i.OwnerID,
 			Data:           asJson,
 			Name:           i.Label,
+			Attributes:     attributes,
+			//ImageURL:         // TODO
+			//AnimationURL:     // TODO
+			//LargeImageURL:    // TODO
+			//CardAnimationURL: // TODO
+			//AvatarURL:        // TODO
+			//ExternalURL:  // TODO
+			//Description:  // TODO
+			//BackgroundColor:  // TODO
+			//YoutubeURL:  i.
+			//UnlockedAt:  // TODO
+			//MintedAt:  // TODO
+			//OnChainStatus:  // TODO
+			//XsynLocked:  // TODO
 		})
 	}
 
@@ -465,6 +671,18 @@ func ServerUtilitiesToXsynAsset(utils []*server.Utility) []*XsynAsset {
 			gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to convert item to json")
 			continue
 		}
+
+		// TODO create these dynamically depending on utility type
+		attributes := []*Attribute{
+			{
+				TraitType: "Label",
+				Value:     i.Label,
+			},
+			{
+				TraitType: "Type",
+				Value:     i.Type,
+			},
+		}
 		assets = append(assets, &XsynAsset{
 			ID:             i.ID,
 			CollectionSlug: i.CollectionSlug,
@@ -474,6 +692,20 @@ func ServerUtilitiesToXsynAsset(utils []*server.Utility) []*XsynAsset {
 			OwnerID:        i.OwnerID,
 			Data:           asJson,
 			Name:           i.Label,
+			Attributes:     attributes,
+			//ImageURL:         // TODO
+			//AnimationURL:     // TODO
+			//LargeImageURL:    // TODO
+			//CardAnimationURL: // TODO
+			//AvatarURL:        // TODO
+			//ExternalURL:  // TODO
+			//Description:  // TODO
+			//BackgroundColor:  // TODO
+			//YoutubeURL:  i.
+			//UnlockedAt:  // TODO
+			//MintedAt:  // TODO
+			//OnChainStatus:  // TODO
+			//XsynLocked:  // TODO
 		})
 	}
 

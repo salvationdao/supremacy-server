@@ -418,24 +418,43 @@ type MechSetOwnerResp struct {
 	MechContainer *Mech
 }
 
+type Attribute struct {
+	DisplayType DisplayType `json:"display_type,omitempty"`
+	TraitType   string      `json:"trait_type"`
+	AssetHash   string      `json:"asset_hash,omitempty"`
+	Value       interface{} `json:"value"` // string or number only
+}
+
+type DisplayType string
+
+const (
+	BoostNumber     DisplayType = "boost_number"
+	BoostPercentage DisplayType = "boost_percentage"
+	Number          DisplayType = "number"
+	Date            DisplayType = "date"
+)
+
 type XsynAsset struct {
-	ID              string      `json:"id,omitempty"`
-	CollectionSlug  string      `json:"collection_slug,omitempty"`
-	TokenID         int64       `json:"token_id,omitempty"`
-	Tier            string      `json:"tier,omitempty"`
-	Hash            string      `json:"hash,omitempty"`
-	OwnerID         string      `json:"owner_id,omitempty"`
-	Data            types.JSON  `json:"data,omitempty"`
-	Attributes      types.JSON  `json:"attributes,omitempty"`
-	Name            string      `json:"name,omitempty"`
-	ImageURL        null.String `json:"image_url,omitempty"`
-	ExternalURL     null.String `json:"external_url,omitempty"`
-	Description     null.String `json:"description,omitempty"`
-	BackgroundColor null.String `json:"background_color,omitempty"`
-	AnimationURL    null.String `json:"animation_url,omitempty"`
-	YoutubeURL      null.String `json:"youtube_url,omitempty"`
-	UnlockedAt      time.Time   `json:"unlocked_at,omitempty"`
-	MintedAt        null.Time   `json:"minted_at,omitempty"`
-	OnChainStatus   string      `json:"on_chain_status,omitempty"`
-	XsynLocked      null.Bool   `json:"xsyn_locked,omitempty"`
+	ID               string       `json:"id,omitempty"`
+	CollectionSlug   string       `json:"collection_slug,omitempty"`
+	TokenID          int64        `json:"token_id,omitempty"`
+	Tier             string       `json:"tier,omitempty"`
+	Hash             string       `json:"hash,omitempty"`
+	OwnerID          string       `json:"owner_id,omitempty"`
+	Data             types.JSON   `json:"data,omitempty"`
+	Attributes       []*Attribute `json:"attributes,omitempty"`
+	Name             string       `json:"name,omitempty"`
+	ImageURL         null.String  `json:"image_url,omitempty"`
+	ExternalURL      null.String  `json:"external_url,omitempty"`
+	Description      null.String  `json:"description,omitempty"`
+	BackgroundColor  null.String  `json:"background_color,omitempty"`
+	AnimationURL     null.String  `json:"animation_url,omitempty"`
+	YoutubeURL       null.String  `json:"youtube_url,omitempty"`
+	CardAnimationURL null.String  `json:"card_animation_url,omitempty"`
+	AvatarURL        null.String  `json:"avatar_url,omitempty"`
+	LargeImageURL    null.String  `json:"large_image_url,omitempty"`
+	UnlockedAt       time.Time    `json:"unlocked_at,omitempty"`
+	MintedAt         null.Time    `json:"minted_at,omitempty"`
+	OnChainStatus    string       `json:"on_chain_status,omitempty"`
+	XsynLocked       null.Bool    `json:"xsyn_locked,omitempty"`
 }
