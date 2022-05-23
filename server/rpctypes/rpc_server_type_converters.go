@@ -415,11 +415,11 @@ func ServerMechAnimationsToXsynAsset(mechAnimations []*server.MechAnimation) []*
 			},
 			{
 				TraitType: "Intro Animation",
-				Value:     i.IntroAnimation,
+				Value:     i.IntroAnimation.Bool,
 			},
 			{
 				TraitType: "Outro Animation",
-				Value:     i.IntroAnimation,
+				Value:     i.IntroAnimation.Bool,
 			},
 		}
 
@@ -521,17 +521,17 @@ func ServerPowerCoresToXsynAsset(powerCore []*server.PowerCore) []*XsynAsset {
 			{
 				DisplayType: "BoostNumber",
 				TraitType:   "Capacity",
-				Value:       i.Capacity,
+				Value:       i.Capacity.InexactFloat64(),
 			},
 			{
 				DisplayType: "BoostNumber",
 				TraitType:   "Max draw rate",
-				Value:       i.MaxDrawRate,
+				Value:       i.MaxDrawRate.InexactFloat64(),
 			},
 			{
 				DisplayType: "BoostNumber",
 				TraitType:   "Recharge rate",
-				Value:       i.RechargeRate,
+				Value:       i.RechargeRate.InexactFloat64(),
 			},
 		}
 
@@ -591,42 +591,42 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			},
 			{
 				TraitType: "Damage Falloff",
-				Value:     i.DamageFalloff,
+				Value:     i.DamageFalloff.Int,
 			},
 			{
 				DisplayType: "BoostNumber",
 				TraitType:   "Damage Falloff rate",
-				Value:       i.DamageFalloffRate,
+				Value:       i.DamageFalloffRate.Int,
 			},
 			{
 				DisplayType: "BoostNumber",
 				TraitType:   "Area of effect",
-				Value:       i.Radius,
+				Value:       i.Radius.Int,
 			},
 			{
 				DisplayType: "BoostNumber",
 				TraitType:   "Spread",
-				Value:       i.Spread,
+				Value:       i.Spread.Decimal.InexactFloat64(),
 			},
 			{
 				DisplayType: "BoostNumber",
 				TraitType:   "Rate of fire",
-				Value:       i.RateOfFire,
+				Value:       i.RateOfFire.Decimal.InexactFloat64(),
 			},
 			{
 				DisplayType: "BoostNumber",
 				TraitType:   "Projectile Speed",
-				Value:       i.ProjectileSpeed,
+				Value:       i.ProjectileSpeed.Decimal.InexactFloat64(),
 			},
 			{
 				DisplayType: "BoostNumber",
 				TraitType:   "Energy Cost",
-				Value:       i.EnergyCost,
+				Value:       i.EnergyCost.Decimal.InexactFloat64(),
 			},
 			{
 				DisplayType: "BoostNumber",
 				TraitType:   "Max Ammo",
-				Value:       i.MaxAmmo,
+				Value:       i.MaxAmmo.Int,
 			},
 			{
 				TraitType: "Tier",
