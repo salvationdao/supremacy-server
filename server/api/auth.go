@@ -153,7 +153,7 @@ func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, e
 
 	if err != nil {
 		if errors.Is(err, errors.New("session is expired")) {
-			err := api.DeleteCookie(w)
+			err := api.DeleteCookie(w, r)
 			if err != nil {
 				return http.StatusInternalServerError, err
 			}
@@ -172,7 +172,7 @@ func (api *API) LogoutHandler(w http.ResponseWriter, r *http.Request) (int, erro
 		return http.StatusBadRequest, terror.Error(err, "Player is not login")
 	}
 
-	err = api.DeleteCookie(w)
+	err = api.DeleteCookie(w, r)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to delete cookie")
 	}
@@ -201,7 +201,7 @@ func (api *API) WriteCookie(w http.ResponseWriter, r *http.Request, token string
 	return nil
 }
 
-func (api *API) DeleteCookie(w http.ResponseWriter) error {
+func (api *API) DeleteCookie(w http.ResponseWriter, r *http.Request) error {
 	cookie := &http.Cookie{
 		Name:     "xsyn-token",
 		Value:    "",
@@ -210,6 +210,7 @@ func (api *API) DeleteCookie(w http.ResponseWriter) error {
 		Secure:   api.IsCookieSecure,
 		HttpOnly: true,
 		SameSite: http.SameSiteNoneMode,
+		Domain:   domain(r.Host),
 	}
 	http.SetCookie(w, cookie)
 	return nil
