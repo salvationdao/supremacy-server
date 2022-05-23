@@ -157,7 +157,7 @@ func NewAPI(
 	})
 	api.SecureUserCommander = ws.NewCommander(func(c *ws.Commander) {
 		c.RestBridge("/rest")
-	}, "user commander")
+	})
 	api.SecureFactionCommander = ws.NewCommander(func(c *ws.Commander) {
 		c.RestBridge("/rest")
 	})
@@ -216,7 +216,6 @@ func NewAPI(
 			r.Use(ws.TrimPrefix("/api/ws"))
 			r.Mount("/public", ws.NewServer(func(s *ws.Server) {
 				s.Mount("/commander", api.Commander)
-				s.WS("/*", "", nil)
 				s.WS("/global_chat", HubKeyGlobalChatSubscribe, cc.GlobalChatUpdatedSubscribeHandler)
 				s.WS("/global_announcement", server.HubKeyGlobalAnnouncementSubscribe, sc.GlobalAnnouncementSubscribe)
 				s.WS("/live_data", server.HubKeySaleAbilityPriceSubscribe, nil)
@@ -383,8 +382,10 @@ func (api *API) AuthUserFactionWS(factionIDMustMatch bool) func(next http.Handle
 
 			if factionIDMustMatch {
 				factionID := chi.URLParam(r, "faction_id")
+				fmt.Println("request url path", r.URL.Path)
+				fmt.Println("faction id from url", factionID)
 				if factionID == "" || factionID != user.FactionID.String {
-					fmt.Fprintf(w, "authentication location error: %v", err)
+					fmt.Fprintf(w, "faction id check failed... url faction id: %s, user faction id: %s, url:%s", factionID, user.FactionID.String, r.URL.Path)
 					return
 				}
 			}
@@ -392,6 +393,7 @@ func (api *API) AuthUserFactionWS(factionIDMustMatch bool) func(next http.Handle
 			ctxWithUserID := context.WithValue(r.Context(), "user_id", user.ID)
 			ctx := context.WithValue(ctxWithUserID, "faction_id", user.FactionID.String)
 			*r = *r.WithContext(ctx)
+			fmt.Println("SERBVING NEXT", r.URL.Path)
 			next.ServeHTTP(w, r)
 		}
 
@@ -435,7 +437,7 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 			if userIDMustMatch {
 				userID := chi.URLParam(r, "user_id")
 				if userID == "" || userID != user.ID {
-					fmt.Fprintf(w, "authentication location error: %v", err)
+					fmt.Fprintf(w, "user id check failed... url user id: %s, current user id: %s, request url: %s", userID, user.ID, r.URL.Path)
 					return
 				}
 			}
