@@ -7,6 +7,8 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 
+	"github.com/volatiletech/null/v8"
+
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/gofrs/uuid"
@@ -46,7 +48,20 @@ func InsertNewWeapon(ownerID uuid.UUID, weapon *server.BlueprintWeapon) (*server
 		return nil, terror.Error(err)
 	}
 
-	err = InsertNewCollectionItem(tx, weapon.Collection, boiler.ItemTypeWeapon, newWeapon.ID, weapon.Tier, ownerID.String())
+	err = InsertNewCollectionItem(tx,
+		weapon.Collection,
+		boiler.ItemTypeWeapon,
+		newWeapon.ID,
+		weapon.Tier,
+		ownerID.String(),
+		null.String{},
+		null.String{},
+		null.String{},
+		null.String{},
+		null.String{},
+		null.String{},
+		null.String{},
+	)
 	if err != nil {
 		return nil, terror.Error(err)
 	}

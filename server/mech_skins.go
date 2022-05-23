@@ -46,6 +46,8 @@ type BlueprintMechSkin struct {
 	LargeImageURL    null.String `json:"large_image_url,omitempty"`
 	AvatarURL        null.String `json:"avatar_url,omitempty"`
 	CreatedAt        time.Time   `json:"created_at"`
+	BackgroundColor  null.String `json:"background_color,omitempty"`
+	YoutubeURL       null.String `json:"youtube_url,omitempty"`
 
 	// only used on inserting new mechs/items, since we are still giving away some limited released and genesis
 	GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`
@@ -79,14 +81,21 @@ func BlueprintMechSkinFromBoiler(mechSkin *boiler.BlueprintMechSkin) *BlueprintM
 func MechSkinFromBoiler(skin *boiler.MechSkin, collection *boiler.CollectionItem) *MechSkin {
 	return &MechSkin{
 		CollectionDetails: &CollectionDetails{
-			CollectionSlug: collection.CollectionSlug,
-			Hash:           collection.Hash,
-			TokenID:        collection.TokenID,
-			ItemType:       collection.ItemType,
-			ItemID:         collection.ItemID,
-			Tier:           collection.Tier,
-			OwnerID:        collection.OwnerID,
-			OnChainStatus:  collection.OnChainStatus,
+			CollectionSlug:   collection.CollectionSlug,
+			Hash:             collection.Hash,
+			TokenID:          collection.TokenID,
+			ItemType:         collection.ItemType,
+			ItemID:           collection.ItemID,
+			Tier:             collection.Tier,
+			OwnerID:          collection.OwnerID,
+			OnChainStatus:    collection.OnChainStatus,
+			ImageURL:         collection.ImageURL,
+			CardAnimationURL: collection.CardAnimationURL,
+			AvatarURL:        collection.AvatarURL,
+			LargeImageURL:    collection.LargeImageURL,
+			BackgroundColor:  collection.BackgroundColor,
+			AnimationURL:     collection.AnimationURL,
+			YoutubeURL:       collection.YoutubeURL,
 		},
 		ID:               skin.ID,
 		BlueprintID:      skin.BlueprintID,

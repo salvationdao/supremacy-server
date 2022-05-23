@@ -35,7 +35,20 @@ func InsertNewUtility(ownerID uuid.UUID, utility *server.BlueprintUtility) (*ser
 		return nil, terror.Error(err)
 	}
 
-	err = InsertNewCollectionItem(tx, utility.Collection, boiler.ItemTypeUtility, newUtility.ID, utility.Tier, ownerID.String())
+	err = InsertNewCollectionItem(tx,
+		utility.Collection,
+		boiler.ItemTypeUtility,
+		newUtility.ID,
+		utility.Tier,
+		ownerID.String(),
+		utility.ImageURL,
+		utility.CardAnimationURL,
+		utility.AvatarURL,
+		utility.LargeImageURL,
+		utility.BackgroundColor,
+		utility.AnimationURL,
+		utility.YoutubeURL,
+	)
 	if err != nil {
 		return nil, terror.Error(err)
 	}

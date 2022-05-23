@@ -25,14 +25,21 @@ func ServerMechSkinsToApiV1(items []*server.MechSkin) []*MechSkin {
 func ServerMechSkinToApiV1(skin *server.MechSkin) *MechSkin {
 	return &MechSkin{
 		CollectionDetails: &CollectionDetails{
-			CollectionSlug: skin.CollectionDetails.CollectionSlug,
-			Hash:           skin.CollectionDetails.Hash,
-			TokenID:        skin.CollectionDetails.TokenID,
-			ItemType:       skin.CollectionDetails.ItemType,
-			ItemID:         skin.CollectionDetails.ItemID,
-			Tier:           skin.CollectionDetails.Tier,
-			OwnerID:        skin.CollectionDetails.OwnerID,
-			OnChainStatus:  skin.CollectionDetails.OnChainStatus,
+			CollectionSlug:   skin.CollectionDetails.CollectionSlug,
+			Hash:             skin.CollectionDetails.Hash,
+			TokenID:          skin.CollectionDetails.TokenID,
+			ItemType:         skin.CollectionDetails.ItemType,
+			ItemID:           skin.CollectionDetails.ItemID,
+			Tier:             skin.CollectionDetails.Tier,
+			OwnerID:          skin.CollectionDetails.OwnerID,
+			OnChainStatus:    skin.CollectionDetails.OnChainStatus,
+			ImageURL:         skin.CollectionDetails.ImageURL,
+			CardAnimationURL: skin.CollectionDetails.CardAnimationURL,
+			AvatarURL:        skin.CollectionDetails.AvatarURL,
+			LargeImageURL:    skin.CollectionDetails.LargeImageURL,
+			BackgroundColor:  skin.CollectionDetails.BackgroundColor,
+			AnimationURL:     skin.CollectionDetails.AnimationURL,
+			YoutubeURL:       skin.CollectionDetails.YoutubeURL,
 		},
 		ID:               skin.ID,
 		BlueprintID:      skin.BlueprintID,
@@ -70,6 +77,14 @@ func ServerMechAnimationToApiV1(animation *server.MechAnimation) *MechAnimation 
 			Tier:           animation.CollectionDetails.Tier,
 			OwnerID:        animation.CollectionDetails.OwnerID,
 			OnChainStatus:  animation.CollectionDetails.OnChainStatus,
+
+			ImageURL:         animation.CollectionDetails.ImageURL,
+			CardAnimationURL: animation.CollectionDetails.CardAnimationURL,
+			AvatarURL:        animation.CollectionDetails.AvatarURL,
+			LargeImageURL:    animation.CollectionDetails.LargeImageURL,
+			BackgroundColor:  animation.CollectionDetails.BackgroundColor,
+			AnimationURL:     animation.CollectionDetails.AnimationURL,
+			YoutubeURL:       animation.CollectionDetails.YoutubeURL,
 		},
 		ID:             animation.ID,
 		BlueprintID:    animation.BlueprintID,
@@ -103,6 +118,14 @@ func ServerPowerCoreToApiV1(ec *server.PowerCore) *PowerCore {
 			Tier:           ec.CollectionDetails.Tier,
 			OwnerID:        ec.CollectionDetails.OwnerID,
 			OnChainStatus:  ec.CollectionDetails.OnChainStatus,
+
+			ImageURL:         ec.CollectionDetails.ImageURL,
+			CardAnimationURL: ec.CollectionDetails.CardAnimationURL,
+			AvatarURL:        ec.CollectionDetails.AvatarURL,
+			LargeImageURL:    ec.CollectionDetails.LargeImageURL,
+			BackgroundColor:  ec.CollectionDetails.BackgroundColor,
+			AnimationURL:     ec.CollectionDetails.AnimationURL,
+			YoutubeURL:       ec.CollectionDetails.YoutubeURL,
 		},
 		ID:           ec.ID,
 		OwnerID:      ec.OwnerID,
@@ -138,6 +161,14 @@ func ServerWeaponToApiV1(weapon *server.Weapon) *Weapon {
 			Tier:           weapon.CollectionDetails.Tier,
 			OwnerID:        weapon.CollectionDetails.OwnerID,
 			OnChainStatus:  weapon.CollectionDetails.OnChainStatus,
+
+			ImageURL:         weapon.CollectionDetails.ImageURL,
+			CardAnimationURL: weapon.CollectionDetails.CardAnimationURL,
+			AvatarURL:        weapon.CollectionDetails.AvatarURL,
+			LargeImageURL:    weapon.CollectionDetails.LargeImageURL,
+			BackgroundColor:  weapon.CollectionDetails.BackgroundColor,
+			AnimationURL:     weapon.CollectionDetails.AnimationURL,
+			YoutubeURL:       weapon.CollectionDetails.YoutubeURL,
 		},
 		ID:                  weapon.ID,
 		BrandID:             weapon.BrandID,
@@ -182,6 +213,14 @@ func ServerUtilityToApiV1(ec *server.Utility) *Utility {
 			Tier:           ec.CollectionDetails.Tier,
 			OwnerID:        ec.CollectionDetails.OwnerID,
 			OnChainStatus:  ec.CollectionDetails.OnChainStatus,
+
+			ImageURL:         ec.CollectionDetails.ImageURL,
+			CardAnimationURL: ec.CollectionDetails.CardAnimationURL,
+			AvatarURL:        ec.CollectionDetails.AvatarURL,
+			LargeImageURL:    ec.CollectionDetails.LargeImageURL,
+			BackgroundColor:  ec.CollectionDetails.BackgroundColor,
+			AnimationURL:     ec.CollectionDetails.AnimationURL,
+			YoutubeURL:       ec.CollectionDetails.YoutubeURL,
 		},
 		ID:             ec.ID,
 		BrandID:        ec.BrandID,
@@ -278,6 +317,14 @@ func ServerMechToApiV1(mech *server.Mech) *Mech {
 			Tier:           mech.CollectionDetails.Tier,
 			OwnerID:        mech.CollectionDetails.OwnerID,
 			OnChainStatus:  mech.CollectionDetails.OnChainStatus,
+
+			ImageURL:         mech.CollectionDetails.ImageURL,
+			CardAnimationURL: mech.CollectionDetails.CardAnimationURL,
+			AvatarURL:        mech.CollectionDetails.AvatarURL,
+			LargeImageURL:    mech.CollectionDetails.LargeImageURL,
+			BackgroundColor:  mech.CollectionDetails.BackgroundColor,
+			AnimationURL:     mech.CollectionDetails.AnimationURL,
+			YoutubeURL:       mech.CollectionDetails.YoutubeURL,
 		},
 		ID:                   mech.ID,
 		BrandID:              mech.BrandID,
@@ -381,17 +428,13 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 			OwnerID:        i.OwnerID,
 			Data:           asJson,
 
-			Attributes: attributes,
-			//ImageURL:  // TODO
-			//ExternalURL:  // TODO
-			//Description:  // TODO
-			//BackgroundColor:  // TODO
-			//AnimationURL:  // TODO
-			//YoutubeURL:  // TODO
-			//UnlockedAt:  // TODO
-			//MintedAt:  // TODO
-			//OnChainStatus:  // TODO
-			//XsynLocked:  // TODO
+			Attributes:      attributes,
+			ImageURL:        i.ImageURL,
+			BackgroundColor: i.BackgroundColor,
+			AnimationURL:    i.AnimationURL,
+			YoutubeURL:      i.YoutubeURL,
+			OnChainStatus:   i.OnChainStatus,
+			//XsynLocked: i.XsynLocked, // TODO: add a way for gameserver to see if they have the lock status of the asset
 		})
 	}
 
@@ -424,25 +467,21 @@ func ServerMechAnimationsToXsynAsset(mechAnimations []*server.MechAnimation) []*
 		}
 
 		assets = append(assets, &XsynAsset{
-			ID:             i.ID,
-			CollectionSlug: i.CollectionSlug,
-			TokenID:        i.TokenID,
-			Tier:           i.Tier,
-			Hash:           i.Hash,
-			OwnerID:        i.OwnerID,
-			Data:           asJson,
-			Name:           i.Label,
-			Attributes:     attributes,
-			//ImageURL:  // TODO
-			//ExternalURL:  // TODO
-			//Description:  // TODO
-			//BackgroundColor:  // TODO
-			//AnimationURL:  // TODO
-			//YoutubeURL:  // TODO
-			//UnlockedAt:  // TODO
-			//MintedAt:  // TODO
-			//OnChainStatus:  // TODO
-			//XsynLocked:  // TODO
+			ID:              i.ID,
+			CollectionSlug:  i.CollectionSlug,
+			TokenID:         i.TokenID,
+			Tier:            i.Tier,
+			Hash:            i.Hash,
+			OwnerID:         i.OwnerID,
+			Data:            asJson,
+			Name:            i.Label,
+			Attributes:      attributes,
+			ImageURL:        i.ImageURL,
+			BackgroundColor: i.BackgroundColor,
+			AnimationURL:    i.AnimationURL,
+			YoutubeURL:      i.YoutubeURL,
+			OnChainStatus:   i.OnChainStatus,
+			//XsynLocked: i.XsynLocked, // TODO: add a way for gameserver to see if they have the lock status of the asset
 		})
 	}
 
@@ -485,14 +524,10 @@ func ServerMechSkinsToXsynAsset(mechSkins []*server.MechSkin) []*XsynAsset {
 			LargeImageURL:    i.LargeImageURL,
 			CardAnimationURL: i.CardAnimationURL,
 			AvatarURL:        i.AvatarURL,
-			//ExternalURL:  // TODO
-			//Description:  // TODO
-			//BackgroundColor:  // TODO
-			//YoutubeURL:  i.
-			//UnlockedAt:  // TODO
-			//MintedAt:  // TODO
-			//OnChainStatus:  // TODO
-			//XsynLocked:  // TODO
+			BackgroundColor:  i.BackgroundColor,
+			YoutubeURL:       i.YoutubeURL,
+			OnChainStatus:    i.OnChainStatus,
+			//XsynLocked: i.XsynLocked, // TODO: add a way for gameserver to see if they have the lock status of the asset
 		})
 	}
 
@@ -536,25 +571,21 @@ func ServerPowerCoresToXsynAsset(powerCore []*server.PowerCore) []*XsynAsset {
 		}
 
 		assets = append(assets, &XsynAsset{
-			ID:             i.ID,
-			CollectionSlug: i.CollectionSlug,
-			TokenID:        i.TokenID,
-			Tier:           i.Tier,
-			Hash:           i.Hash,
-			OwnerID:        i.OwnerID,
-			Data:           asJson,
-			Name:           i.Label,
-			Attributes:     attributes,
-			//ImageURL:  // TODO
-			//ExternalURL:  // TODO
-			//Description:  // TODO
-			//BackgroundColor:  // TODO
-			//AnimationURL:  // TODO
-			//YoutubeURL:  // TODO
-			//UnlockedAt:  // TODO
-			//MintedAt:  // TODO
-			//OnChainStatus:  // TODO
-			//XsynLocked:  // TODO
+			ID:              i.ID,
+			CollectionSlug:  i.CollectionSlug,
+			TokenID:         i.TokenID,
+			Tier:            i.Tier,
+			Hash:            i.Hash,
+			OwnerID:         i.OwnerID,
+			Data:            asJson,
+			Name:            i.Label,
+			Attributes:      attributes,
+			ImageURL:        i.ImageURL,
+			BackgroundColor: i.BackgroundColor,
+			AnimationURL:    i.AnimationURL,
+			YoutubeURL:      i.YoutubeURL,
+			OnChainStatus:   i.OnChainStatus,
+			//XsynLocked: i.XsynLocked, // TODO: add a way for gameserver to see if they have the lock status of the asset
 		})
 
 	}
@@ -635,28 +666,21 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 		}
 
 		assets = append(assets, &XsynAsset{
-			ID:             i.ID,
-			CollectionSlug: i.CollectionSlug,
-			TokenID:        i.TokenID,
-			Tier:           i.Tier,
-			Hash:           i.Hash,
-			OwnerID:        i.OwnerID,
-			Data:           asJson,
-			Name:           i.Label,
-			Attributes:     attributes,
-			//ImageURL:         // TODO
-			//AnimationURL:     // TODO
-			//LargeImageURL:    // TODO
-			//CardAnimationURL: // TODO
-			//AvatarURL:        // TODO
-			//ExternalURL:  // TODO
-			//Description:  // TODO
-			//BackgroundColor:  // TODO
-			//YoutubeURL:  i.
-			//UnlockedAt:  // TODO
-			//MintedAt:  // TODO
-			//OnChainStatus:  // TODO
-			//XsynLocked:  // TODO
+			ID:              i.ID,
+			CollectionSlug:  i.CollectionSlug,
+			TokenID:         i.TokenID,
+			Tier:            i.Tier,
+			Hash:            i.Hash,
+			OwnerID:         i.OwnerID,
+			Data:            asJson,
+			Name:            i.Label,
+			Attributes:      attributes,
+			ImageURL:        i.ImageURL,
+			BackgroundColor: i.BackgroundColor,
+			AnimationURL:    i.AnimationURL,
+			YoutubeURL:      i.YoutubeURL,
+			OnChainStatus:   i.OnChainStatus,
+			//XsynLocked: i.XsynLocked, // TODO: add a way for gameserver to see if they have the lock status of the asset
 		})
 	}
 
@@ -684,28 +708,21 @@ func ServerUtilitiesToXsynAsset(utils []*server.Utility) []*XsynAsset {
 			},
 		}
 		assets = append(assets, &XsynAsset{
-			ID:             i.ID,
-			CollectionSlug: i.CollectionSlug,
-			TokenID:        i.TokenID,
-			Tier:           i.Tier,
-			Hash:           i.Hash,
-			OwnerID:        i.OwnerID,
-			Data:           asJson,
-			Name:           i.Label,
-			Attributes:     attributes,
-			//ImageURL:         // TODO
-			//AnimationURL:     // TODO
-			//LargeImageURL:    // TODO
-			//CardAnimationURL: // TODO
-			//AvatarURL:        // TODO
-			//ExternalURL:  // TODO
-			//Description:  // TODO
-			//BackgroundColor:  // TODO
-			//YoutubeURL:  i.
-			//UnlockedAt:  // TODO
-			//MintedAt:  // TODO
-			//OnChainStatus:  // TODO
-			//XsynLocked:  // TODO
+			ID:              i.ID,
+			CollectionSlug:  i.CollectionSlug,
+			TokenID:         i.TokenID,
+			Tier:            i.Tier,
+			Hash:            i.Hash,
+			OwnerID:         i.OwnerID,
+			Data:            asJson,
+			Name:            i.Label,
+			Attributes:      attributes,
+			ImageURL:        i.ImageURL,
+			BackgroundColor: i.BackgroundColor,
+			AnimationURL:    i.AnimationURL,
+			YoutubeURL:      i.YoutubeURL,
+			OnChainStatus:   i.OnChainStatus,
+			//XsynLocked: i.XsynLocked, // TODO: add a way for gameserver to see if they have the lock status of the asset
 		})
 	}
 

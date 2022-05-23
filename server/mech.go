@@ -22,6 +22,14 @@ type CollectionDetails struct {
 	Tier           string `json:"tier"`
 	OwnerID        string `json:"owner_id"`
 	OnChainStatus  string `json:"on_chain_status"`
+
+	ImageURL         null.String `json:"image_url,omitempty"`
+	CardAnimationURL null.String `json:"card_animation_url,omitempty"`
+	AvatarURL        null.String `json:"avatar_url,omitempty"`
+	LargeImageURL    null.String `json:"large_image_url,omitempty"`
+	BackgroundColor  null.String `json:"background_color,omitempty"`
+	AnimationURL     null.String `json:"animation_url,omitempty"`
+	YoutubeURL       null.String `json:"youtube_url,omitempty"`
 }
 
 // Mech is the struct that rpc expects for mechs
@@ -129,14 +137,22 @@ func BlueprintMechFromBoiler(mech *boiler.BlueprintMech) *BlueprintMech {
 }
 
 type BlueprintUtility struct {
-	ID                   string                       `json:"id"`
-	BrandID              null.String                  `json:"brand_id,omitempty"`
-	Label                string                       `json:"label"`
-	UpdatedAt            time.Time                    `json:"updated_at"`
-	CreatedAt            time.Time                    `json:"created_at"`
-	Type                 string                       `json:"type"`
-	Collection           string                       `json:"collection"`
-	Tier                 string                       `json:"tier,omitempty"`
+	ID               string      `json:"id"`
+	BrandID          null.String `json:"brand_id,omitempty"`
+	Label            string      `json:"label"`
+	UpdatedAt        time.Time   `json:"updated_at"`
+	CreatedAt        time.Time   `json:"created_at"`
+	Type             string      `json:"type"`
+	Collection       string      `json:"collection"`
+	Tier             string      `json:"tier,omitempty"`
+	ImageURL         null.String `json:"image_url,omitempty"`
+	CardAnimationURL null.String `json:"card_animation_url,omitempty"`
+	AvatarURL        null.String `json:"avatar_url,omitempty"`
+	LargeImageURL    null.String `json:"large_image_url,omitempty"`
+	BackgroundColor  null.String `json:"background_color,omitempty"`
+	AnimationURL     null.String `json:"animation_url,omitempty"`
+	YoutubeURL       null.String `json:"youtube_url,omitempty"`
+
 	ShieldBlueprint      *BlueprintUtilityShield      `json:"shield_blueprint,omitempty"`
 	AttackDroneBlueprint *BlueprintUtilityAttackDrone `json:"attack_drone_blueprint,omitempty"`
 	RepairDroneBlueprint *BlueprintUtilityRepairDrone `json:"repair_drone_blueprint,omitempty"`
@@ -166,15 +182,23 @@ func (b *MechModel) Scan(value interface{}) error {
 func MechFromBoiler(mech *boiler.Mech, collection *boiler.CollectionItem) *Mech {
 	return &Mech{
 		CollectionDetails: &CollectionDetails{
-			CollectionSlug: collection.CollectionSlug,
-			Hash:           collection.Hash,
-			TokenID:        collection.TokenID,
-			ItemType:       collection.ItemType,
-			ItemID:         collection.ItemID,
-			Tier:           collection.Tier,
-			OwnerID:        collection.OwnerID,
-			OnChainStatus:  collection.OnChainStatus,
+			CollectionSlug:   collection.CollectionSlug,
+			Hash:             collection.Hash,
+			TokenID:          collection.TokenID,
+			ItemType:         collection.ItemType,
+			ItemID:           collection.ItemID,
+			Tier:             collection.Tier,
+			OwnerID:          collection.OwnerID,
+			OnChainStatus:    collection.OnChainStatus,
+			ImageURL:         collection.ImageURL,
+			CardAnimationURL: collection.CardAnimationURL,
+			AvatarURL:        collection.AvatarURL,
+			LargeImageURL:    collection.LargeImageURL,
+			BackgroundColor:  collection.BackgroundColor,
+			AnimationURL:     collection.AnimationURL,
+			YoutubeURL:       collection.YoutubeURL,
 		},
+
 		ID:                    mech.ID,
 		Label:                 mech.Label,
 		WeaponHardpoints:      mech.WeaponHardpoints,

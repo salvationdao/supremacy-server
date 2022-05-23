@@ -9,6 +9,8 @@ import (
 	"server/gamelog"
 	"strconv"
 
+	"github.com/volatiletech/null/v8"
+
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -482,7 +484,20 @@ func InsertNewMech(ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) (*ser
 		return nil, terror.Error(err)
 	}
 
-	err = InsertNewCollectionItem(tx, mechBlueprint.Collection, boiler.ItemTypeMech, newMech.ID, mechBlueprint.Tier, ownerID.String())
+	err = InsertNewCollectionItem(tx,
+		mechBlueprint.Collection,
+		boiler.ItemTypeMech,
+		newMech.ID,
+		mechBlueprint.Tier,
+		ownerID.String(),
+		null.String{},
+		null.String{},
+		null.String{},
+		null.String{},
+		null.String{},
+		null.String{},
+		null.String{},
+	)
 	if err != nil {
 		return nil, terror.Error(err)
 	}

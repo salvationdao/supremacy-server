@@ -27,28 +27,36 @@ type CollectionDetails struct {
 	Tier           string `json:"tier"`
 	OwnerID        string `json:"owner_id"`
 	OnChainStatus  string `json:"on_chain_status"`
+
+	ImageURL         null.String `json:"image_url,omitempty"`
+	CardAnimationURL null.String `json:"card_animation_url,omitempty"`
+	AvatarURL        null.String `json:"avatar_url,omitempty"`
+	LargeImageURL    null.String `json:"large_image_url,omitempty"`
+	BackgroundColor  null.String `json:"background_color,omitempty"`
+	AnimationURL     null.String `json:"animation_url,omitempty"`
+	YoutubeURL       null.String `json:"youtube_url,omitempty"`
 }
 
 // Mech is the struct that rpc expects for mechs
 type Mech struct {
 	*CollectionDetails
-	ID                    string              `json:"id"`
-	BrandID               string              `json:"brand_id"`
-	Label                 string              `json:"label"`
-	WeaponHardpoints      int                 `json:"weapon_hardpoints"`
-	UtilitySlots          int                 `json:"utility_slots"`
-	Speed                 int                 `json:"speed"`
-	MaxHitpoints          int                 `json:"max_hitpoints"`
-	BlueprintID           string              `json:"blueprint_id"`
-	IsDefault             bool                `json:"is_default"`
-	IsInsured             bool                `json:"is_insured"`
-	Name                  string              `json:"name"`
-	ModelID               string              `json:"model_id"`
+	ID                    string     `json:"id"`
+	BrandID               string     `json:"brand_id"`
+	Label                 string     `json:"label"`
+	WeaponHardpoints      int        `json:"weapon_hardpoints"`
+	UtilitySlots          int        `json:"utility_slots"`
+	Speed                 int        `json:"speed"`
+	MaxHitpoints          int        `json:"max_hitpoints"`
+	BlueprintID           string     `json:"blueprint_id"`
+	IsDefault             bool       `json:"is_default"`
+	IsInsured             bool       `json:"is_insured"`
+	Name                  string     `json:"name"`
+	ModelID               string     `json:"model_id"`
 	GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`
 	LimitedReleaseTokenID null.Int64 `json:"limited_release_token_id,omitempty"`
-	OwnerID               string              `json:"owner_id"`
-	FactionID             string              `json:"faction_id"`
-	PowerCoreSize         string              `json:"power_core_size"`
+	OwnerID               string     `json:"owner_id"`
+	FactionID             string     `json:"faction_id"`
+	PowerCoreSize         string     `json:"power_core_size"`
 
 	Tier string `json:"tier,omitempty"`
 

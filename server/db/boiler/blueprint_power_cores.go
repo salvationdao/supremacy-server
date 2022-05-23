@@ -14,6 +14,7 @@ import (
 
 	"github.com/friendsofgo/errors"
 	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -23,100 +24,149 @@ import (
 
 // BlueprintPowerCore is an object representing the database table.
 type BlueprintPowerCore struct {
-	ID           string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Collection   string          `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
-	Label        string          `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	Size         string          `boiler:"size" boil:"size" json:"size" toml:"size" yaml:"size"`
-	Capacity     decimal.Decimal `boiler:"capacity" boil:"capacity" json:"capacity" toml:"capacity" yaml:"capacity"`
-	MaxDrawRate  decimal.Decimal `boiler:"max_draw_rate" boil:"max_draw_rate" json:"max_draw_rate" toml:"max_draw_rate" yaml:"max_draw_rate"`
-	RechargeRate decimal.Decimal `boiler:"recharge_rate" boil:"recharge_rate" json:"recharge_rate" toml:"recharge_rate" yaml:"recharge_rate"`
-	Armour       decimal.Decimal `boiler:"armour" boil:"armour" json:"armour" toml:"armour" yaml:"armour"`
-	MaxHitpoints decimal.Decimal `boiler:"max_hitpoints" boil:"max_hitpoints" json:"max_hitpoints" toml:"max_hitpoints" yaml:"max_hitpoints"`
-	Tier         string          `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
-	CreatedAt    time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ID               string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Collection       string          `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
+	Label            string          `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	Size             string          `boiler:"size" boil:"size" json:"size" toml:"size" yaml:"size"`
+	Capacity         decimal.Decimal `boiler:"capacity" boil:"capacity" json:"capacity" toml:"capacity" yaml:"capacity"`
+	MaxDrawRate      decimal.Decimal `boiler:"max_draw_rate" boil:"max_draw_rate" json:"max_draw_rate" toml:"max_draw_rate" yaml:"max_draw_rate"`
+	RechargeRate     decimal.Decimal `boiler:"recharge_rate" boil:"recharge_rate" json:"recharge_rate" toml:"recharge_rate" yaml:"recharge_rate"`
+	Armour           decimal.Decimal `boiler:"armour" boil:"armour" json:"armour" toml:"armour" yaml:"armour"`
+	MaxHitpoints     decimal.Decimal `boiler:"max_hitpoints" boil:"max_hitpoints" json:"max_hitpoints" toml:"max_hitpoints" yaml:"max_hitpoints"`
+	Tier             string          `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
+	CreatedAt        time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ImageURL         null.String     `boiler:"image_url" boil:"image_url" json:"image_url,omitempty" toml:"image_url" yaml:"image_url,omitempty"`
+	CardAnimationURL null.String     `boiler:"card_animation_url" boil:"card_animation_url" json:"card_animation_url,omitempty" toml:"card_animation_url" yaml:"card_animation_url,omitempty"`
+	AvatarURL        null.String     `boiler:"avatar_url" boil:"avatar_url" json:"avatar_url,omitempty" toml:"avatar_url" yaml:"avatar_url,omitempty"`
+	LargeImageURL    null.String     `boiler:"large_image_url" boil:"large_image_url" json:"large_image_url,omitempty" toml:"large_image_url" yaml:"large_image_url,omitempty"`
+	BackgroundColor  null.String     `boiler:"background_color" boil:"background_color" json:"background_color,omitempty" toml:"background_color" yaml:"background_color,omitempty"`
+	AnimationURL     null.String     `boiler:"animation_url" boil:"animation_url" json:"animation_url,omitempty" toml:"animation_url" yaml:"animation_url,omitempty"`
+	YoutubeURL       null.String     `boiler:"youtube_url" boil:"youtube_url" json:"youtube_url,omitempty" toml:"youtube_url" yaml:"youtube_url,omitempty"`
 
 	R *blueprintPowerCoreR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintPowerCoreL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var BlueprintPowerCoreColumns = struct {
-	ID           string
-	Collection   string
-	Label        string
-	Size         string
-	Capacity     string
-	MaxDrawRate  string
-	RechargeRate string
-	Armour       string
-	MaxHitpoints string
-	Tier         string
-	CreatedAt    string
+	ID               string
+	Collection       string
+	Label            string
+	Size             string
+	Capacity         string
+	MaxDrawRate      string
+	RechargeRate     string
+	Armour           string
+	MaxHitpoints     string
+	Tier             string
+	CreatedAt        string
+	ImageURL         string
+	CardAnimationURL string
+	AvatarURL        string
+	LargeImageURL    string
+	BackgroundColor  string
+	AnimationURL     string
+	YoutubeURL       string
 }{
-	ID:           "id",
-	Collection:   "collection",
-	Label:        "label",
-	Size:         "size",
-	Capacity:     "capacity",
-	MaxDrawRate:  "max_draw_rate",
-	RechargeRate: "recharge_rate",
-	Armour:       "armour",
-	MaxHitpoints: "max_hitpoints",
-	Tier:         "tier",
-	CreatedAt:    "created_at",
+	ID:               "id",
+	Collection:       "collection",
+	Label:            "label",
+	Size:             "size",
+	Capacity:         "capacity",
+	MaxDrawRate:      "max_draw_rate",
+	RechargeRate:     "recharge_rate",
+	Armour:           "armour",
+	MaxHitpoints:     "max_hitpoints",
+	Tier:             "tier",
+	CreatedAt:        "created_at",
+	ImageURL:         "image_url",
+	CardAnimationURL: "card_animation_url",
+	AvatarURL:        "avatar_url",
+	LargeImageURL:    "large_image_url",
+	BackgroundColor:  "background_color",
+	AnimationURL:     "animation_url",
+	YoutubeURL:       "youtube_url",
 }
 
 var BlueprintPowerCoreTableColumns = struct {
-	ID           string
-	Collection   string
-	Label        string
-	Size         string
-	Capacity     string
-	MaxDrawRate  string
-	RechargeRate string
-	Armour       string
-	MaxHitpoints string
-	Tier         string
-	CreatedAt    string
+	ID               string
+	Collection       string
+	Label            string
+	Size             string
+	Capacity         string
+	MaxDrawRate      string
+	RechargeRate     string
+	Armour           string
+	MaxHitpoints     string
+	Tier             string
+	CreatedAt        string
+	ImageURL         string
+	CardAnimationURL string
+	AvatarURL        string
+	LargeImageURL    string
+	BackgroundColor  string
+	AnimationURL     string
+	YoutubeURL       string
 }{
-	ID:           "blueprint_power_cores.id",
-	Collection:   "blueprint_power_cores.collection",
-	Label:        "blueprint_power_cores.label",
-	Size:         "blueprint_power_cores.size",
-	Capacity:     "blueprint_power_cores.capacity",
-	MaxDrawRate:  "blueprint_power_cores.max_draw_rate",
-	RechargeRate: "blueprint_power_cores.recharge_rate",
-	Armour:       "blueprint_power_cores.armour",
-	MaxHitpoints: "blueprint_power_cores.max_hitpoints",
-	Tier:         "blueprint_power_cores.tier",
-	CreatedAt:    "blueprint_power_cores.created_at",
+	ID:               "blueprint_power_cores.id",
+	Collection:       "blueprint_power_cores.collection",
+	Label:            "blueprint_power_cores.label",
+	Size:             "blueprint_power_cores.size",
+	Capacity:         "blueprint_power_cores.capacity",
+	MaxDrawRate:      "blueprint_power_cores.max_draw_rate",
+	RechargeRate:     "blueprint_power_cores.recharge_rate",
+	Armour:           "blueprint_power_cores.armour",
+	MaxHitpoints:     "blueprint_power_cores.max_hitpoints",
+	Tier:             "blueprint_power_cores.tier",
+	CreatedAt:        "blueprint_power_cores.created_at",
+	ImageURL:         "blueprint_power_cores.image_url",
+	CardAnimationURL: "blueprint_power_cores.card_animation_url",
+	AvatarURL:        "blueprint_power_cores.avatar_url",
+	LargeImageURL:    "blueprint_power_cores.large_image_url",
+	BackgroundColor:  "blueprint_power_cores.background_color",
+	AnimationURL:     "blueprint_power_cores.animation_url",
+	YoutubeURL:       "blueprint_power_cores.youtube_url",
 }
 
 // Generated where
 
 var BlueprintPowerCoreWhere = struct {
-	ID           whereHelperstring
-	Collection   whereHelperstring
-	Label        whereHelperstring
-	Size         whereHelperstring
-	Capacity     whereHelperdecimal_Decimal
-	MaxDrawRate  whereHelperdecimal_Decimal
-	RechargeRate whereHelperdecimal_Decimal
-	Armour       whereHelperdecimal_Decimal
-	MaxHitpoints whereHelperdecimal_Decimal
-	Tier         whereHelperstring
-	CreatedAt    whereHelpertime_Time
+	ID               whereHelperstring
+	Collection       whereHelperstring
+	Label            whereHelperstring
+	Size             whereHelperstring
+	Capacity         whereHelperdecimal_Decimal
+	MaxDrawRate      whereHelperdecimal_Decimal
+	RechargeRate     whereHelperdecimal_Decimal
+	Armour           whereHelperdecimal_Decimal
+	MaxHitpoints     whereHelperdecimal_Decimal
+	Tier             whereHelperstring
+	CreatedAt        whereHelpertime_Time
+	ImageURL         whereHelpernull_String
+	CardAnimationURL whereHelpernull_String
+	AvatarURL        whereHelpernull_String
+	LargeImageURL    whereHelpernull_String
+	BackgroundColor  whereHelpernull_String
+	AnimationURL     whereHelpernull_String
+	YoutubeURL       whereHelpernull_String
 }{
-	ID:           whereHelperstring{field: "\"blueprint_power_cores\".\"id\""},
-	Collection:   whereHelperstring{field: "\"blueprint_power_cores\".\"collection\""},
-	Label:        whereHelperstring{field: "\"blueprint_power_cores\".\"label\""},
-	Size:         whereHelperstring{field: "\"blueprint_power_cores\".\"size\""},
-	Capacity:     whereHelperdecimal_Decimal{field: "\"blueprint_power_cores\".\"capacity\""},
-	MaxDrawRate:  whereHelperdecimal_Decimal{field: "\"blueprint_power_cores\".\"max_draw_rate\""},
-	RechargeRate: whereHelperdecimal_Decimal{field: "\"blueprint_power_cores\".\"recharge_rate\""},
-	Armour:       whereHelperdecimal_Decimal{field: "\"blueprint_power_cores\".\"armour\""},
-	MaxHitpoints: whereHelperdecimal_Decimal{field: "\"blueprint_power_cores\".\"max_hitpoints\""},
-	Tier:         whereHelperstring{field: "\"blueprint_power_cores\".\"tier\""},
-	CreatedAt:    whereHelpertime_Time{field: "\"blueprint_power_cores\".\"created_at\""},
+	ID:               whereHelperstring{field: "\"blueprint_power_cores\".\"id\""},
+	Collection:       whereHelperstring{field: "\"blueprint_power_cores\".\"collection\""},
+	Label:            whereHelperstring{field: "\"blueprint_power_cores\".\"label\""},
+	Size:             whereHelperstring{field: "\"blueprint_power_cores\".\"size\""},
+	Capacity:         whereHelperdecimal_Decimal{field: "\"blueprint_power_cores\".\"capacity\""},
+	MaxDrawRate:      whereHelperdecimal_Decimal{field: "\"blueprint_power_cores\".\"max_draw_rate\""},
+	RechargeRate:     whereHelperdecimal_Decimal{field: "\"blueprint_power_cores\".\"recharge_rate\""},
+	Armour:           whereHelperdecimal_Decimal{field: "\"blueprint_power_cores\".\"armour\""},
+	MaxHitpoints:     whereHelperdecimal_Decimal{field: "\"blueprint_power_cores\".\"max_hitpoints\""},
+	Tier:             whereHelperstring{field: "\"blueprint_power_cores\".\"tier\""},
+	CreatedAt:        whereHelpertime_Time{field: "\"blueprint_power_cores\".\"created_at\""},
+	ImageURL:         whereHelpernull_String{field: "\"blueprint_power_cores\".\"image_url\""},
+	CardAnimationURL: whereHelpernull_String{field: "\"blueprint_power_cores\".\"card_animation_url\""},
+	AvatarURL:        whereHelpernull_String{field: "\"blueprint_power_cores\".\"avatar_url\""},
+	LargeImageURL:    whereHelpernull_String{field: "\"blueprint_power_cores\".\"large_image_url\""},
+	BackgroundColor:  whereHelpernull_String{field: "\"blueprint_power_cores\".\"background_color\""},
+	AnimationURL:     whereHelpernull_String{field: "\"blueprint_power_cores\".\"animation_url\""},
+	YoutubeURL:       whereHelpernull_String{field: "\"blueprint_power_cores\".\"youtube_url\""},
 }
 
 // BlueprintPowerCoreRels is where relationship names are stored.
@@ -140,9 +190,9 @@ func (*blueprintPowerCoreR) NewStruct() *blueprintPowerCoreR {
 type blueprintPowerCoreL struct{}
 
 var (
-	blueprintPowerCoreAllColumns            = []string{"id", "collection", "label", "size", "capacity", "max_draw_rate", "recharge_rate", "armour", "max_hitpoints", "tier", "created_at"}
+	blueprintPowerCoreAllColumns            = []string{"id", "collection", "label", "size", "capacity", "max_draw_rate", "recharge_rate", "armour", "max_hitpoints", "tier", "created_at", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url"}
 	blueprintPowerCoreColumnsWithoutDefault = []string{"label"}
-	blueprintPowerCoreColumnsWithDefault    = []string{"id", "collection", "size", "capacity", "max_draw_rate", "recharge_rate", "armour", "max_hitpoints", "tier", "created_at"}
+	blueprintPowerCoreColumnsWithDefault    = []string{"id", "collection", "size", "capacity", "max_draw_rate", "recharge_rate", "armour", "max_hitpoints", "tier", "created_at", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url"}
 	blueprintPowerCorePrimaryKeyColumns     = []string{"id"}
 	blueprintPowerCoreGeneratedColumns      = []string{}
 )
