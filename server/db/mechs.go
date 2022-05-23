@@ -208,7 +208,7 @@ func Mech(mechID string) (*server.Mech, error) {
 		CollectionDetails: &server.CollectionDetails{},
 	}
 
-	query := fmt.Sprintf(`%s WHERE mechs.id = $1`, CompleteMechQuery)
+	query := fmt.Sprintf(`%s WHERE collection_items.item_id = $1`, CompleteMechQuery)
 
 	result, err := gamedb.StdConn.Query(query, mechID)
 	if err != nil {
@@ -285,7 +285,7 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.Mech, error) {
 
 	query := fmt.Sprintf(
 		`%s 	
-		WHERE m.id IN (%s)
+		WHERE mechs.id IN (%s)
 		ORDER BY p.faction_id `,
 		CompleteMechQuery,
 		paramrefs)
@@ -618,8 +618,10 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 
 	// Limit/Offset
 	if opts.PageSize > 0 {
-
-		queryMods = append(queryMods, qm.Limit(opts.PageSize), qm.Offset(opts.PageSize*(opts.Page-1)))
+		queryMods = append(queryMods, qm.Limit(opts.PageSize))
+	}
+	if opts.Page > 0 {
+		queryMods = append(queryMods, qm.Offset(opts.PageSize*(opts.Page-1)))
 	}
 
 	queryMods = append(queryMods,

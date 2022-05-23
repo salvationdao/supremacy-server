@@ -1298,12 +1298,8 @@ func (btl *Battle) Tick(payload []byte) {
 		gamelog.L.Error().Err(fmt.Errorf("len(payload) < 1")).Interface("payload", payload).Msg("len(payload) < 1")
 		return
 	}
-	// Save to history
-	// btl.BattleHistory = append(btl.BattleHistory, payload)
 
 	btl.lastTick = &payload
-
-	//btl.arena.messageBus.SendBinary(messagebus.BusKey(HubKeyWarMachineLocationUpdated), payload)
 
 	// Update game settings (so new players get the latest position, health and shield of all warmachines)
 	count := payload[1]
@@ -1320,6 +1316,11 @@ func (btl *Battle) Tick(payload []byte) {
 				warMachineIndex = i
 				break
 			}
+		}
+
+		if warMachineIndex == -1 {
+			gamelog.L.Warn().Msg("Mech participant id not found from game client tick")
+			return
 		}
 
 		// Get Sync byte (tells us which data was updated for this warmachine)
@@ -1361,14 +1362,6 @@ func (btl *Battle) Tick(payload []byte) {
 				btl.WarMachines[warMachineIndex].Shield = shield
 			}
 		}
-		// Energy
-		//if booleans[3] {
-		//	energy := binary.BigEndian.Uint32(payload[offset : offset+4])
-		//	offset += 4
-		//	if warMachineIndex != -1 {
-		//		btl.WarMachines[warMachineIndex].Energy = energy
-		//	}
-		//}
 
 		ws.PublishMessage(fmt.Sprintf("/battle/mech/%d", participantID), HubKeyWarMachineStatUpdated, WarMachineStat{
 			Position: btl.WarMachines[warMachineIndex].Position,
