@@ -379,21 +379,6 @@ type AssetResp struct {
 	Asset *XsynAsset
 }
 
-type MechReq struct {
-	MechID uuid.UUID
-}
-
-type MechResp struct {
-	MechContainer *Mech
-}
-
-type MechsReq struct {
-}
-
-type MechsResp struct {
-	MechContainers []*Mech
-}
-
 type TemplateRegisterReq struct {
 	TemplateID uuid.UUID
 	OwnerID    uuid.UUID
@@ -407,14 +392,6 @@ type MechSetNameReq struct {
 	Name   string
 }
 type MechSetNameResp struct {
-	MechContainer *Mech
-}
-
-type MechSetOwnerReq struct {
-	MechID  uuid.UUID
-	OwnerID uuid.UUID
-}
-type MechSetOwnerResp struct {
 	MechContainer *Mech
 }
 

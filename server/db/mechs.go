@@ -147,26 +147,6 @@ func MechSetName(mechID uuid.UUID, name string) error {
 	return nil
 }
 
-func MechSetOwner(mechID uuid.UUID, ownerID uuid.UUID) error {
-	// TODO: Vinnie fix this
-	//tx, err := gamedb.StdConn.Begin()
-	//if err != nil {
-	//	return err
-	//}
-	//defer tx.Rollback()
-	//mech, err := boiler.FindMech(tx, mechID.String())
-	//if err != nil {
-	//	return err
-	//}
-	//mech.OwnerID = ownerID.String()
-	//_, err = mech.Update(tx, boil.Whitelist(boiler.MechColumns.OwnerID))
-	//if err != nil {
-	//	return err
-	//}
-	//tx.Commit()
-	return nil
-}
-
 func TemplatePurchasedCount(templateID uuid.UUID) (int, error) {
 	// TODO: Fix this, this is in the gameserver storefront refactor
 	return 0, nil
