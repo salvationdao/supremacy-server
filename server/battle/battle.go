@@ -825,24 +825,6 @@ func (btl *Battle) endWarMachines(payload *BattleEndPayload) []*WarMachine {
 					Msg("unable to update mech stat")
 			}
 
-			// OLD
-			bqn, err := boiler.BattleQueueNotifications(boiler.BattleQueueNotificationWhere.MechID.EQ(bm.MechID), qm.OrderBy(boiler.BattleQueueNotificationColumns.SentAt+" DESC")).One(gamedb.StdConn)
-			if err != nil {
-				if !errors.Is(err, sql.ErrNoRows) {
-					gamelog.L.Error().Str("bm.MechID", bm.MechID).Err(err).Msg("failed to get BattleQueueNotifications")
-				}
-			} else {
-				if bqn.TelegramNotificationID.Valid {
-					// killed a war machine
-					msg := fmt.Sprintf("Your War machine %s is Victorious! 🎉", w.Name)
-					err := btl.arena.telegram.Notify(bqn.TelegramNotificationID.String, msg)
-					if err != nil {
-						gamelog.L.Error().Str("bqn.TelegramNotificationID.String", bqn.TelegramNotificationID.String).Err(err).Msg("failed to send notification")
-					}
-				}
-			}
-
-			// NEW
 			playerProfile, err := boiler.PlayerProfiles(boiler.PlayerProfileWhere.PlayerID.EQ(bm.OwnerID)).One(gamedb.StdConn)
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				gamelog.L.Error().Err(err).Str("player_id", bm.OwnerID).Msg("unable to get player prefs")
@@ -854,10 +836,9 @@ func (btl *Battle) endWarMachines(payload *BattleEndPayload) []*WarMachine {
 				msg := fmt.Sprintf("Your War machine %s is Victorious! 🎉", w.Name)
 				err := btl.arena.telegram.Notify2(playerProfile.TelegramID.Int64, msg)
 				if err != nil {
-					gamelog.L.Error().Str("bqn.TelegramNotificationID.String", bqn.TelegramNotificationID.String).Err(err).Msg("failed to send notification")
+					gamelog.L.Error().Str("telegramID", fmt.Sprintf("%v", playerProfile.TelegramID)).Err(err).Msg("failed to send notification")
 				}
 			}
-			/////////
 
 		}
 
@@ -1438,21 +1419,6 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 		return
 	}
 
-	/// OLD
-	bqn, err := boiler.BattleQueueNotifications(boiler.BattleQueueNotificationWhere.MechID.EQ(destroyedWarMachine.ID), qm.OrderBy(boiler.BattleQueueNotificationColumns.SentAt+" DESC")).One(gamedb.StdConn)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Str("destroyedWarMachine.ID", destroyedWarMachine.ID).Err(err).Msg("failed to get BattleQueueNotifications")
-	}
-	if bqn != nil && bqn.TelegramNotificationID.Valid {
-		// killed a war machine
-		msg := fmt.Sprintf("Your War machine %s has been destroyed ☠️", destroyedWarMachine.Name)
-		err := btl.arena.telegram.Notify(bqn.TelegramNotificationID.String, msg)
-		if err != nil {
-			gamelog.L.Error().Str("bqn.TelegramNotificationID.String", bqn.TelegramNotificationID.String).Err(err).Msg("failed to send telegram notification")
-		}
-	}
-
-	//// NEW
 	playerProfile, err := boiler.PlayerProfiles(boiler.PlayerProfileWhere.PlayerID.EQ(destroyedWarMachine.OwnedByID)).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Error().Str("destroyedWarMachine.ID", destroyedWarMachine.ID).Err(err).Msg("failed to get player profile")
@@ -1467,7 +1433,6 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 			gamelog.L.Error().Str("playerID", playerProfile.PlayerID).Str("telegramID", fmt.Sprintf("%v", playerProfile.TelegramID)).Err(err).Msg("failed to send notification")
 		}
 	}
-	/////////
 
 	var killedByUser *UserBrief
 	var killByWarMachine *WarMachine
@@ -1488,24 +1453,6 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 						gamelog.L.Error().Str("faction_id", killByWarMachine.FactionID).Err(err).Msg("failed to update faction mech kill count")
 					}
 
-					/// OLD
-					bqn, err := boiler.BattleQueueNotifications(boiler.BattleQueueNotificationWhere.MechID.EQ(wm.ID), qm.OrderBy(boiler.BattleQueueNotificationColumns.SentAt+" DESC")).One(gamedb.StdConn)
-					if err != nil {
-						if !errors.Is(err, sql.ErrNoRows) {
-							gamelog.L.Error().Str("wm.ID", wm.ID).Err(err).Msg("failed to get BattleQueueNotifications")
-						}
-					} else {
-						if bqn.TelegramNotificationID.Valid {
-							// killed a war machine
-							msg := fmt.Sprintf("Your War machine destroyed %s \U0001F9BE ", destroyedWarMachine.Name)
-							err := btl.arena.telegram.Notify(bqn.TelegramNotificationID.String, msg)
-							if err != nil {
-								gamelog.L.Error().Str("bqn.TelegramNotificationID.String", bqn.TelegramNotificationID.String).Err(err).Msg("failed to send notification")
-							}
-						}
-					}
-
-					//// NEW
 					playerProfile, err := boiler.PlayerProfiles(boiler.PlayerProfileWhere.PlayerID.EQ(destroyedWarMachine.OwnedByID)).One(gamedb.StdConn)
 					if err != nil && !errors.Is(err, sql.ErrNoRows) {
 						gamelog.L.Error().Str("destroyedWarMachine.ID", destroyedWarMachine.ID).Err(err).Msg("failed to get player profile")

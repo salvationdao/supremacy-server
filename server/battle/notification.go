@@ -250,7 +250,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 		// track wether notification was sent with the old system
 		sent := false
 
-		// OLD NOTIFICATION SYSTEM WILL BE REMOVED ///////////////////////////////////////////////////////////////
+		// OLD NOTIFICATION SYSTEM (WILL BE REMOVED)
 		if warMachine.R.BattleQueueNotifications != nil {
 			for _, n := range warMachine.R.BattleQueueNotifications {
 				if n.SentAt.Valid {
@@ -291,8 +291,6 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			}
 		}
 
-		////////////////////////////////////////////////////////////////////////////////////////////
-
 		// if notification already sent with old notification system dont send with new system
 		if sent {
 			bq.Notified = true
@@ -303,6 +301,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			continue
 		}
 
+		// get player profile
 		playerProfile, err := boiler.PlayerProfiles(boiler.PlayerProfileWhere.PlayerID.EQ(player.ID)).One(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
 			gamelog.L.Error().Err(err).Str("player_id", player.ID).Msg("unable to get player profile")
@@ -313,6 +312,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			continue
 		}
 
+		// if user's player profile has telegram or sms notifications enabled
 		notificationsEnabled := (playerProfile.EnableSMSNotifications && playerProfile.MobileNumber.Valid) ||
 			(playerProfile.EnableTelegramNotifications && playerProfile.TelegramID.Valid)
 
@@ -341,7 +341,6 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			if err != nil {
 				gamelog.L.Error().Err(err).Str("mech_id", bq.MechID).Str("owner_id", bq.OwnerID).Str("queued_at", bq.QueuedAt.String()).Str("telegram id", fmt.Sprintf("%v", playerProfile.TelegramID)).Msg("failed to notify telegram")
 			}
-
 		}
 
 		// get faction account
