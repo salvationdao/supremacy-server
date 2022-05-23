@@ -928,18 +928,6 @@ func (pc *PlayerController) PlayerProfileUpdateHandler(ctx context.Context, user
 			return terror.Error(err, errMsg)
 		}
 
-		fmt.Println("ahhhhhhhhhhhhhhh")
-		fmt.Println("ahhhhhhhhhhhhhhh")
-		fmt.Println("ahhhhhhhhhhhhhhh")
-		fmt.Println("ahhhhhhhhhhhhhhh")
-		fmt.Println("ahhhhhhhhhhhhhhh")
-		fmt.Println("ahhhhhhhhhhhhhhh")
-		fmt.Println("ahhhhhhhhhhhhhhh")
-		fmt.Println("ahhhhhhhhhhhhhhh")
-		fmt.Println("ahhhhhhhhhhhhhhh")
-
-		fmt.Printf("%+v\n", playerProfile)
-
 		// if new profile and has telegram notifications enabled, must register to telebot
 		if _playerProfile.EnableTelegramNotifications {
 			playerProfile, err = pc.API.Telegram.ProfileUpdate(user.ID)
@@ -952,17 +940,6 @@ func (pc *PlayerController) PlayerProfileUpdateHandler(ctx context.Context, user
 		return nil
 	}
 
-	fmt.Println("ahhhhhhhhhhhhhhh2")
-	fmt.Println("ahhhhhhhhhhhhhhh2")
-	fmt.Println("ahhhhhhhhhhhhhhh2")
-	fmt.Println("ahhhhhhhhhhhhhhh2")
-	fmt.Println("ahhhhhhhhhhhhhhh2")
-	fmt.Println("ahhhhhhhhhhhhhhh2")
-	fmt.Println("ahhhhhhhhhhhhhhh2")
-	fmt.Println("ahhhhhhhhhhhhhhh2")
-	fmt.Println("ahhhhhhhhhhhhhhh2")
-
-	fmt.Printf("%+v\n", playerProfile)
 	// update profile
 	playerProfile.EnableTelegramNotifications = req.Payload.EnableTelegramNotifications
 	playerProfile.EnableSMSNotifications = req.Payload.EnableSMSNotifications
