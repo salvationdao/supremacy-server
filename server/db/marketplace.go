@@ -75,12 +75,12 @@ func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
 }
 
 // MarketplaceItemSaleList returns a numeric paginated result of sales list.
-func MarketplaceItemSaleList(search string, archived bool, filter *ListFilterRequest, rarities []string, offset int, pageSize int, sortBy string, sortDir SortByDir) (int64, []*server.MarketplaceSaleItem, error) {
+func MarketplaceItemSaleList(search string, archived bool, filter *ListFilterRequest, rarities []string, excludeUserID string, offset int, pageSize int, sortBy string, sortDir SortByDir) (int64, []*server.MarketplaceSaleItem, error) {
 	if !sortDir.IsValid() {
 		return 0, nil, terror.Error(fmt.Errorf("invalid sort direction"))
 	}
 
-	queryMods := itemSaleQueryMods
+	queryMods := append(itemSaleQueryMods, boiler.ItemSaleWhere.OwnerID.NEQ(excludeUserID))
 
 	// Filters
 	if filter != nil {
@@ -264,4 +264,18 @@ func MarketplaceSaleAuctionSync(id uuid.UUID) error {
 // MarketplaceSaleItemExists checks whether given sales item exists.
 func MarketplaceSaleItemExists(id uuid.UUID) (bool, error) {
 	return boiler.ItemSaleExists(gamedb.StdConn, id.String())
+}
+
+// CollectionItemChangeOwner transfers a collection item to a new owner.
+func CollectionItemChangeOwner(id uuid.UUID) error {
+	q := `
+		UPDATE collection_items
+		FROM item_sales
+		SET owner_id = item_sales.sold_by
+		WHERE item_sales.id = $1`
+	_, err := gamedb.StdConn.Exec(q, id)
+	if err != nil {
+		return terror.Error(err)
+	}
+	return nil
 }

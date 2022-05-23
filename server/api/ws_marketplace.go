@@ -79,7 +79,17 @@ func (fc *MarketplaceController) SalesListHandler(ctx context.Context, user *boi
 		offset = req.Payload.Page * req.Payload.PageSize
 	}
 
-	total, records, err := db.MarketplaceItemSaleList(req.Payload.Search, req.Payload.Archived, req.Payload.Filter, req.Payload.FilterRarities, offset, req.Payload.PageSize, req.Payload.SortBy, req.Payload.SortDir)
+	total, records, err := db.MarketplaceItemSaleList(
+		req.Payload.Search,
+		req.Payload.Archived,
+		req.Payload.Filter,
+		req.Payload.FilterRarities,
+		user.ID,
+		offset,
+		req.Payload.PageSize,
+		req.Payload.SortBy,
+		req.Payload.SortDir,
+	)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to get list of items for sale")
 		return terror.Error(err, "Failed to get list of items for sale")
