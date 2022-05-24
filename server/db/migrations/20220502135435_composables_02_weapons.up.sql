@@ -424,13 +424,11 @@ WHERE slot_number = 2;
 
 --  update mech weapoon hardpoints
 UPDATE chassis c
-SET weapon_hardpoints = (SELECT COUNT(*) FROM chassis_weapons cw WHERE cw.chassis_id = c.id);
+SET weapon_hardpoints = 3;
 
 --  update blueprint mech weapoon hardpoints
 UPDATE blueprint_chassis bc
-SET weapon_hardpoints = (SELECT COUNT(*)
-                         FROM blueprint_chassis_blueprint_weapons bcbw
-                         WHERE bcbw.blueprint_chassis_id = bc.id);
+SET weapon_hardpoints = 3;
 
 
 -- below adds the blueprint ids for the weapons
@@ -440,3 +438,21 @@ SET blueprint_id = (SELECT id FROM blueprint_weapons bw WHERE bw.label = w.label
 ALTER TABLE weapons
     ALTER COLUMN blueprint_id SET NOT NULL;
 
+
+-- update old blueprint chassis blueprint weapon joins
+WITH wep AS (SELECT cbcbw.blueprint_chassis_id, cbcbw.blueprint_weapon_id, bpw.label
+             FROM blueprint_chassis_blueprint_weapons cbcbw
+                      INNER JOIN blueprint_weapons bpw ON cbcbw.blueprint_weapon_id = bpw.id
+             WHERE bpw.label ILIKE '%Rocket Pod%')
+DELETE
+FROM blueprint_chassis_blueprint_weapons bpcbpw
+WHERE bpcbpw.blueprint_weapon_id IN (SELECT wep.blueprint_weapon_id FROM wep);
+
+WITH bpc AS (SELECT _bpc.id FROM blueprint_chassis _bpc)
+INSERT
+INTO blueprint_chassis_blueprint_weapons(blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
+SELECT (SELECT id FROM blueprint_weapons WHERE label ILIKE '%Rocket Pod%'),
+       bpc.id,
+       2,
+       'TURRET'
+FROM bpc

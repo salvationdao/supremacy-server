@@ -25,6 +25,7 @@ var TableNames = struct {
 	Battles                                            string
 	Blobs                                              string
 	BlueprintAmmo                                      string
+	BlueprintKeycards                                  string
 	BlueprintMechAnimation                             string
 	BlueprintMechSkin                                  string
 	BlueprintMechs                                     string
@@ -44,6 +45,7 @@ var TableNames = struct {
 	ConsumedAbilities                                  string
 	FactionStats                                       string
 	Factions                                           string
+	FailedPlayerKeycardsSync                           string
 	GameAbilities                                      string
 	GameMaps                                           string
 	GlobalAnnouncements                                string
@@ -61,6 +63,7 @@ var TableNames = struct {
 	Multipliers                                        string
 	PlayerAbilities                                    string
 	PlayerActiveLogs                                   string
+	PlayerKeycards                                     string
 	PlayerKillLog                                      string
 	PlayerLanguages                                    string
 	PlayerMultipliers                                  string
@@ -112,6 +115,7 @@ var TableNames = struct {
 	Battles:                     "battles",
 	Blobs:                       "blobs",
 	BlueprintAmmo:               "blueprint_ammo",
+	BlueprintKeycards:           "blueprint_keycards",
 	BlueprintMechAnimation:      "blueprint_mech_animation",
 	BlueprintMechSkin:           "blueprint_mech_skin",
 	BlueprintMechs:              "blueprint_mechs",
@@ -131,6 +135,7 @@ var TableNames = struct {
 	ConsumedAbilities:           "consumed_abilities",
 	FactionStats:                "faction_stats",
 	Factions:                    "factions",
+	FailedPlayerKeycardsSync:    "failed_player_keycards_sync",
 	GameAbilities:               "game_abilities",
 	GameMaps:                    "game_maps",
 	GlobalAnnouncements:         "global_announcements",
@@ -148,6 +153,7 @@ var TableNames = struct {
 	Multipliers:                 "multipliers",
 	PlayerAbilities:             "player_abilities",
 	PlayerActiveLogs:            "player_active_logs",
+	PlayerKeycards:              "player_keycards",
 	PlayerKillLog:               "player_kill_log",
 	PlayerLanguages:             "player_languages",
 	PlayerMultipliers:           "player_multipliers",

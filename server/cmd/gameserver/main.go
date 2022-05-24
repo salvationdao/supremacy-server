@@ -3,8 +3,12 @@ package main
 import (
 	"database/sql"
 	"encoding/base64"
+	"encoding/csv"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/gofrs/uuid"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 	"log"
 	"net/url"
 	"runtime"
@@ -157,6 +161,9 @@ func main() {
 					&cli.DurationFlag{Name: "pprof_datadog_duration_sec", Value: 60, EnvVars: []string{envPrefix + "_PPROF_DATADOG_DURATION_SEC"}, Usage: "Specifies the length of the CPU profile snapshot"},
 
 					&cli.StringFlag{Name: "auth_callback_url", Value: "https://play.supremacygame.io/login-redirect", EnvVars: []string{envPrefix + "_AUTH_CALLBACK_URL"}, Usage: "The url for gameserver to redirect after completing the auth flow"},
+
+					&cli.BoolFlag{Name: "sync_keycards", Value: false, EnvVars: []string{envPrefix + "_SYNC_KEYCARDS"}, Usage: "Sync keycard data from .csv file"},
+					&cli.StringFlag{Name: "keycard_csv_path", Value: "", EnvVars: []string{envPrefix + "_KEYCARD_CSV_PATH"}, Usage: "File path for csv to sync keycards"},
 				},
 				Usage: "run server",
 				Action: func(c *cli.Context) error {
@@ -181,6 +188,9 @@ func main() {
 
 					passportAddr := c.String("passport_addr")
 					passportClientToken := c.String("passport_server_token")
+
+					syncKeycard := c.Bool("sync_keycards")
+					keycardCSVPath := c.String("keycard_csv_path")
 
 					ctx, cancel := context.WithCancel(c.Context)
 					defer cancel()
@@ -376,6 +386,11 @@ func main() {
 					RegisterAllNewAssets(rpcClient)
 					UpdateXsynStoreItemTemplates(rpcClient)
 
+					// TODO: Remove after syncing keycards
+					if syncKeycard {
+						UpdateKeycard(rpcClient, keycardCSVPath)
+					}
+
 					gamelog.L.Info().Msg("Running webhook rest API")
 					err = api.Run(ctx)
 					if err != nil {
@@ -564,6 +579,200 @@ func UpdateXsynStoreItemTemplates(pp *rpcclient.PassportXrpcClient) {
 		}
 
 		db.PutBool("UPDATED_TEMPLATE_ITEMS_IDS", true)
+	}
+
+}
+
+type KeyCardUpdate struct {
+	PublicAddress string
+	BlueprintID   string
+}
+
+func UpdateKeycard(pp *rpcclient.PassportXrpcClient, filePath string) {
+	gamelog.L.Info().Msg("Syncing Keycards with Passport")
+	updated := db.GetBoolWithDefault("UPDATED_KEYCARD_ITEMS", false)
+	if !updated {
+		f, err := os.Open(filePath)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("issue updating keycards")
+			return
+		}
+
+		defer f.Close()
+
+		r := csv.NewReader(f)
+
+		if _, err := r.Read(); err != nil {
+			return
+		}
+
+		records, err := r.ReadAll()
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("issue reading csv")
+			return
+		}
+
+		var KeyCardUpdates []KeyCardUpdate
+		for _, record := range records {
+			keyCardUpdate := &KeyCardUpdate{
+				PublicAddress: record[0],
+				BlueprintID:   record[1],
+			}
+
+			KeyCardUpdates = append(KeyCardUpdates, *keyCardUpdate)
+		}
+
+		failed := 0
+		success := 0
+
+		var keycardAssets rpcclient.UpdateUser1155AssetReq
+		var keyCardData []rpcclient.Supremacy1155Asset
+		for i, KeyCardUpdate := range KeyCardUpdates {
+			keycard, err := boiler.BlueprintKeycards(boiler.BlueprintKeycardWhere.ID.EQ(KeyCardUpdate.BlueprintID)).One(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("failed to get keycard blueprint")
+				continue
+			}
+
+			if i == 0 {
+				keycardAssets.PublicAddress = KeyCardUpdate.PublicAddress
+
+				attrValue := "N/A"
+				if keycard.Syndicate.Valid {
+					attrValue = keycard.Syndicate.String
+				}
+
+				keyCardData = append(keyCardData, rpcclient.Supremacy1155Asset{
+					BlueprintID:    keycard.ID,
+					Label:          keycard.Label,
+					Description:    keycard.Description,
+					CollectionSlug: "supremacy-achievements",
+					TokenID:        keycard.KeycardTokenID,
+					Count:          1,
+					ImageURL:       keycard.ImageURL,
+					AnimationURL:   keycard.AnimationURL.String,
+					KeycardGroup:   keycard.KeycardGroup,
+					Attributes: []rpcclient.SupremacyKeycardAttribute{
+						rpcclient.SupremacyKeycardAttribute{
+							TraitType: "Syndicate",
+							Value:     attrValue,
+						},
+					},
+				})
+				continue
+			}
+
+			if KeyCardUpdate.PublicAddress == KeyCardUpdates[i-1].PublicAddress {
+				attrValue := "N/A"
+				if keycard.Syndicate.Valid {
+					attrValue = keycard.Syndicate.String
+				}
+
+				keyCardData = append(keyCardData, rpcclient.Supremacy1155Asset{
+					BlueprintID:    keycard.ID,
+					Label:          keycard.Label,
+					Description:    keycard.Description,
+					CollectionSlug: "supremacy-achievements",
+					TokenID:        keycard.KeycardTokenID,
+					Count:          1,
+					ImageURL:       keycard.ImageURL,
+					AnimationURL:   keycard.AnimationURL.String,
+					KeycardGroup:   keycard.KeycardGroup,
+					Attributes: []rpcclient.SupremacyKeycardAttribute{
+						rpcclient.SupremacyKeycardAttribute{
+							TraitType: "Syndicate",
+							Value:     attrValue,
+						},
+					},
+				})
+				continue
+			}
+
+			keycardAssets.AssetData = keyCardData
+			resp, err := pp.UpdateKeycardItem(keycardAssets)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to update key card item from passport server")
+				failed++
+				for _, assetData := range keycardAssets.AssetData {
+					failedSync := &boiler.FailedPlayerKeycardsSync{
+						PublicAddress:      keycardAssets.PublicAddress,
+						BlueprintKeycardID: assetData.BlueprintID,
+						Count:              assetData.Count,
+						Reason:             "Passport RPC Error",
+					}
+
+					if failedSync.Insert(gamedb.StdConn, boil.Infer()) != nil {
+						gamelog.L.Error().Str("public_address", keycardAssets.PublicAddress).Str("blueprint_id", assetData.BlueprintID).Msg("Failed to insert failed sync item")
+						continue
+					}
+				}
+				continue
+			}
+			factionID := uuid.Nil
+			if resp.FactionID.Valid {
+				factionID = uuid.Must(uuid.FromString(resp.FactionID.String))
+			}
+
+			_, _ = db.PlayerRegister(uuid.Must(uuid.FromString(resp.UserID)), resp.Username, factionID, common.HexToAddress(resp.PublicAddress.String))
+
+			for _, assetData := range keyCardData {
+				playerKeycard := boiler.PlayerKeycard{
+					PlayerID:           resp.UserID,
+					BlueprintKeycardID: assetData.BlueprintID,
+					Count:              assetData.Count,
+				}
+
+				err := playerKeycard.Insert(gamedb.StdConn, boil.Infer())
+				if err != nil {
+					failed++
+					gamelog.L.Error().Interface("PlayerKeycard", playerKeycard).Err(err).Msg("failed to insert new player keycard")
+					failedSync := &boiler.FailedPlayerKeycardsSync{
+						PublicAddress:      keycardAssets.PublicAddress,
+						BlueprintKeycardID: assetData.BlueprintID,
+						Count:              assetData.Count,
+						Reason:             "Gameserver Insert Error",
+					}
+
+					if failedSync.Insert(gamedb.StdConn, boil.Infer()) != nil {
+						gamelog.L.Error().Str("public_address", keycardAssets.PublicAddress).Str("blueprint_id", assetData.BlueprintID).Msg("Failed to insert failed sync item")
+						continue
+					}
+					continue
+				}
+				success++
+			}
+
+			keyCardData = nil
+
+			keycardAssets.PublicAddress = KeyCardUpdate.PublicAddress
+			attrValue := "N/A"
+			if keycard.Syndicate.Valid {
+				attrValue = keycard.Syndicate.String
+			}
+
+			keyCardData = append(keyCardData, rpcclient.Supremacy1155Asset{
+				BlueprintID:    keycard.ID,
+				Label:          keycard.Label,
+				Description:    keycard.Description,
+				CollectionSlug: "supremacy-achievements",
+				TokenID:        keycard.KeycardTokenID,
+				Count:          1,
+				ImageURL:       keycard.ImageURL,
+				AnimationURL:   keycard.AnimationURL.String,
+				KeycardGroup:   keycard.KeycardGroup,
+				Attributes: []rpcclient.SupremacyKeycardAttribute{
+					rpcclient.SupremacyKeycardAttribute{
+						TraitType: "Syndicate",
+						Value:     attrValue,
+					},
+				},
+			})
+
+		}
+
+		db.PutBool("UPDATED_KEYCARD_ITEMS", true)
+
+		gamelog.L.Info().Int("Success", success).Int("Failed", failed).Msg("Completed importing text game non-minted assets")
 	}
 
 }

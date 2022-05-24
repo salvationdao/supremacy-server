@@ -1893,12 +1893,15 @@ func (btl *Battle) MechsToWarMachines(mechs []*server.Mech) []*WarMachine {
 	var warMachines []*WarMachine
 
 	for _, mech := range mechs {
+		if !mech.FactionID.Valid {
+			gamelog.L.Error().Err(fmt.Errorf("mech without a faction"))
+		}
 		newWarMachine := &WarMachine{
 			ID:          mech.ID,
 			Hash:        mech.Hash,
 			OwnedByID:   mech.OwnerID,
 			Name:        TruncateString(mech.Name, 20),
-			FactionID:   mech.FactionID,
+			FactionID:   mech.FactionID.String,
 			MaxHealth:   uint32(mech.MaxHitpoints),
 			Health:      uint32(mech.MaxHitpoints),
 			Speed:       mech.Speed,
