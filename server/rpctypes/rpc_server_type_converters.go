@@ -1,9 +1,8 @@
-package comms
+package rpctypes
 
 import (
 	"encoding/json"
 	"server"
-	"server/db/boiler"
 	"server/gamelog"
 )
 
@@ -26,14 +25,21 @@ func ServerMechSkinsToApiV1(items []*server.MechSkin) []*MechSkin {
 func ServerMechSkinToApiV1(skin *server.MechSkin) *MechSkin {
 	return &MechSkin{
 		CollectionDetails: &CollectionDetails{
-			CollectionSlug: skin.CollectionDetails.CollectionSlug,
-			Hash:           skin.CollectionDetails.Hash,
-			TokenID:        skin.CollectionDetails.TokenID,
-			ItemType:       skin.CollectionDetails.ItemType,
-			ItemID:         skin.CollectionDetails.ItemID,
-			Tier:           skin.CollectionDetails.Tier,
-			OwnerID:        skin.CollectionDetails.OwnerID,
-			OnChainStatus:  skin.CollectionDetails.OnChainStatus,
+			CollectionSlug:   skin.CollectionDetails.CollectionSlug,
+			Hash:             skin.CollectionDetails.Hash,
+			TokenID:          skin.CollectionDetails.TokenID,
+			ItemType:         skin.CollectionDetails.ItemType,
+			ItemID:           skin.CollectionDetails.ItemID,
+			Tier:             skin.CollectionDetails.Tier,
+			OwnerID:          skin.CollectionDetails.OwnerID,
+			OnChainStatus:    skin.CollectionDetails.OnChainStatus,
+			ImageURL:         skin.CollectionDetails.ImageURL,
+			CardAnimationURL: skin.CollectionDetails.CardAnimationURL,
+			AvatarURL:        skin.CollectionDetails.AvatarURL,
+			LargeImageURL:    skin.CollectionDetails.LargeImageURL,
+			BackgroundColor:  skin.CollectionDetails.BackgroundColor,
+			AnimationURL:     skin.CollectionDetails.AnimationURL,
+			YoutubeURL:       skin.CollectionDetails.YoutubeURL,
 		},
 		ID:               skin.ID,
 		BlueprintID:      skin.BlueprintID,
@@ -71,6 +77,14 @@ func ServerMechAnimationToApiV1(animation *server.MechAnimation) *MechAnimation 
 			Tier:           animation.CollectionDetails.Tier,
 			OwnerID:        animation.CollectionDetails.OwnerID,
 			OnChainStatus:  animation.CollectionDetails.OnChainStatus,
+
+			ImageURL:         animation.CollectionDetails.ImageURL,
+			CardAnimationURL: animation.CollectionDetails.CardAnimationURL,
+			AvatarURL:        animation.CollectionDetails.AvatarURL,
+			LargeImageURL:    animation.CollectionDetails.LargeImageURL,
+			BackgroundColor:  animation.CollectionDetails.BackgroundColor,
+			AnimationURL:     animation.CollectionDetails.AnimationURL,
+			YoutubeURL:       animation.CollectionDetails.YoutubeURL,
 		},
 		ID:             animation.ID,
 		BlueprintID:    animation.BlueprintID,
@@ -104,6 +118,14 @@ func ServerPowerCoreToApiV1(ec *server.PowerCore) *PowerCore {
 			Tier:           ec.CollectionDetails.Tier,
 			OwnerID:        ec.CollectionDetails.OwnerID,
 			OnChainStatus:  ec.CollectionDetails.OnChainStatus,
+
+			ImageURL:         ec.CollectionDetails.ImageURL,
+			CardAnimationURL: ec.CollectionDetails.CardAnimationURL,
+			AvatarURL:        ec.CollectionDetails.AvatarURL,
+			LargeImageURL:    ec.CollectionDetails.LargeImageURL,
+			BackgroundColor:  ec.CollectionDetails.BackgroundColor,
+			AnimationURL:     ec.CollectionDetails.AnimationURL,
+			YoutubeURL:       ec.CollectionDetails.YoutubeURL,
 		},
 		ID:           ec.ID,
 		OwnerID:      ec.OwnerID,
@@ -139,6 +161,14 @@ func ServerWeaponToApiV1(weapon *server.Weapon) *Weapon {
 			Tier:           weapon.CollectionDetails.Tier,
 			OwnerID:        weapon.CollectionDetails.OwnerID,
 			OnChainStatus:  weapon.CollectionDetails.OnChainStatus,
+
+			ImageURL:         weapon.CollectionDetails.ImageURL,
+			CardAnimationURL: weapon.CollectionDetails.CardAnimationURL,
+			AvatarURL:        weapon.CollectionDetails.AvatarURL,
+			LargeImageURL:    weapon.CollectionDetails.LargeImageURL,
+			BackgroundColor:  weapon.CollectionDetails.BackgroundColor,
+			AnimationURL:     weapon.CollectionDetails.AnimationURL,
+			YoutubeURL:       weapon.CollectionDetails.YoutubeURL,
 		},
 		ID:                  weapon.ID,
 		BrandID:             weapon.BrandID,
@@ -183,6 +213,14 @@ func ServerUtilityToApiV1(ec *server.Utility) *Utility {
 			Tier:           ec.CollectionDetails.Tier,
 			OwnerID:        ec.CollectionDetails.OwnerID,
 			OnChainStatus:  ec.CollectionDetails.OnChainStatus,
+
+			ImageURL:         ec.CollectionDetails.ImageURL,
+			CardAnimationURL: ec.CollectionDetails.CardAnimationURL,
+			AvatarURL:        ec.CollectionDetails.AvatarURL,
+			LargeImageURL:    ec.CollectionDetails.LargeImageURL,
+			BackgroundColor:  ec.CollectionDetails.BackgroundColor,
+			AnimationURL:     ec.CollectionDetails.AnimationURL,
+			YoutubeURL:       ec.CollectionDetails.YoutubeURL,
 		},
 		ID:             ec.ID,
 		BrandID:        ec.BrandID,
@@ -279,6 +317,14 @@ func ServerMechToApiV1(mech *server.Mech) *Mech {
 			Tier:           mech.CollectionDetails.Tier,
 			OwnerID:        mech.CollectionDetails.OwnerID,
 			OnChainStatus:  mech.CollectionDetails.OnChainStatus,
+
+			ImageURL:         mech.CollectionDetails.ImageURL,
+			CardAnimationURL: mech.CollectionDetails.CardAnimationURL,
+			AvatarURL:        mech.CollectionDetails.AvatarURL,
+			LargeImageURL:    mech.CollectionDetails.LargeImageURL,
+			BackgroundColor:  mech.CollectionDetails.BackgroundColor,
+			AnimationURL:     mech.CollectionDetails.AnimationURL,
+			YoutubeURL:       mech.CollectionDetails.YoutubeURL,
 		},
 		ID:                   mech.ID,
 		BrandID:              mech.BrandID,
@@ -338,15 +384,61 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 			gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to convert item to json")
 			continue
 		}
+
+		// convert stats to attributes to
+		attributes := []*Attribute{
+			{
+				TraitType: "Label",
+				Value:     i.Label,
+			},
+			{
+				TraitType: "Name",
+				Value:     i.Name,
+			},
+			{
+				DisplayType: "Number",
+				TraitType:   "Weapon Hardpoints",
+				Value:       i.WeaponHardpoints,
+			},
+			{
+				DisplayType: "Number",
+				TraitType:   "Utility Slots",
+				Value:       i.UtilitySlots,
+			},
+			{
+				DisplayType: "BoostNumber",
+				TraitType:   "speed",
+				Value:       i.Speed,
+			},
+			{
+				DisplayType: "BoostNumber",
+				TraitType:   "Hit Points",
+				Value:       i.MaxHitpoints,
+			},
+			{
+				DisplayType: "BoostNumber",
+				TraitType:   "Power Core Size",
+				Value:       i.PowerCoreSize,
+			},
+		}
+
 		assets = append(assets, &XsynAsset{
 			ID:             i.ID,
+			Name:           i.Label,
 			CollectionSlug: i.CollectionSlug,
 			TokenID:        i.TokenID,
 			Tier:           i.Tier,
 			Hash:           i.Hash,
 			OwnerID:        i.OwnerID,
 			Data:           asJson,
-			ItemType:       boiler.ItemTypeMech,
+
+			Attributes:      attributes,
+			ImageURL:        i.ImageURL,
+			BackgroundColor: i.BackgroundColor,
+			AnimationURL:    i.AnimationURL,
+			YoutubeURL:      i.YoutubeURL,
+			OnChainStatus:   i.OnChainStatus,
+			//XsynLocked: i.XsynLocked, // TODO: add a way for gameserver to see if they have the lock status of the asset
 		})
 	}
 
@@ -361,15 +453,39 @@ func ServerMechAnimationsToXsynAsset(mechAnimations []*server.MechAnimation) []*
 			gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to convert item to json")
 			continue
 		}
+
+		// convert stats to attributes to
+		attributes := []*Attribute{
+			{
+				TraitType: "Label",
+				Value:     i.Label,
+			},
+			{
+				TraitType: "Intro Animation",
+				Value:     i.IntroAnimation.Bool,
+			},
+			{
+				TraitType: "Outro Animation",
+				Value:     i.IntroAnimation.Bool,
+			},
+		}
+
 		assets = append(assets, &XsynAsset{
-			ID:             i.ID,
-			CollectionSlug: i.CollectionSlug,
-			TokenID:        i.TokenID,
-			Tier:           i.Tier,
-			Hash:           i.Hash,
-			OwnerID:        i.OwnerID,
-			Data:           asJson,
-			ItemType:       boiler.ItemTypeMechAnimation,
+			ID:              i.ID,
+			CollectionSlug:  i.CollectionSlug,
+			TokenID:         i.TokenID,
+			Tier:            i.Tier,
+			Hash:            i.Hash,
+			OwnerID:         i.OwnerID,
+			Data:            asJson,
+			Name:            i.Label,
+			Attributes:      attributes,
+			ImageURL:        i.ImageURL,
+			BackgroundColor: i.BackgroundColor,
+			AnimationURL:    i.AnimationURL,
+			YoutubeURL:      i.YoutubeURL,
+			OnChainStatus:   i.OnChainStatus,
+			//XsynLocked: i.XsynLocked, // TODO: add a way for gameserver to see if they have the lock status of the asset
 		})
 	}
 
@@ -384,15 +500,38 @@ func ServerMechSkinsToXsynAsset(mechSkins []*server.MechSkin) []*XsynAsset {
 			gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to convert item to json")
 			continue
 		}
+
+		// convert stats to attributes to
+		attributes := []*Attribute{
+			{
+				TraitType: "Label",
+				Value:     i.Label,
+			},
+			{
+				TraitType: "Mech Model",
+				Value:     i.MechModel, // TODO: get mech model name instead
+			},
+		}
+
 		assets = append(assets, &XsynAsset{
-			ID:             i.ID,
-			CollectionSlug: i.CollectionSlug,
-			TokenID:        i.TokenID,
-			Tier:           i.Tier,
-			Hash:           i.Hash,
-			OwnerID:        i.OwnerID,
-			Data:           asJson,
-			ItemType:       boiler.ItemTypeMechSkin,
+			ID:               i.ID,
+			CollectionSlug:   i.CollectionSlug,
+			TokenID:          i.TokenID,
+			Tier:             i.Tier,
+			Hash:             i.Hash,
+			OwnerID:          i.OwnerID,
+			Data:             asJson,
+			Name:             i.Label,
+			Attributes:       attributes,
+			ImageURL:         i.ImageURL,
+			AnimationURL:     i.AnimationURL,
+			LargeImageURL:    i.LargeImageURL,
+			CardAnimationURL: i.CardAnimationURL,
+			AvatarURL:        i.AvatarURL,
+			BackgroundColor:  i.BackgroundColor,
+			YoutubeURL:       i.YoutubeURL,
+			OnChainStatus:    i.OnChainStatus,
+			//XsynLocked: i.XsynLocked, // TODO: add a way for gameserver to see if they have the lock status of the asset
 		})
 	}
 
@@ -407,15 +546,50 @@ func ServerPowerCoresToXsynAsset(powerCore []*server.PowerCore) []*XsynAsset {
 			gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to convert item to json")
 			continue
 		}
+
+		// convert stats to attributes to
+		attributes := []*Attribute{
+			{
+				TraitType: "Label",
+				Value:     i.Label,
+			},
+			{
+				TraitType: "Size",
+				Value:     i.Size,
+			},
+			{
+				DisplayType: "BoostNumber",
+				TraitType:   "Capacity",
+				Value:       i.Capacity.InexactFloat64(),
+			},
+			{
+				DisplayType: "BoostNumber",
+				TraitType:   "Max draw rate",
+				Value:       i.MaxDrawRate.InexactFloat64(),
+			},
+			{
+				DisplayType: "BoostNumber",
+				TraitType:   "Recharge rate",
+				Value:       i.RechargeRate.InexactFloat64(),
+			},
+		}
+
 		assets = append(assets, &XsynAsset{
-			ID:             i.ID,
-			CollectionSlug: i.CollectionSlug,
-			TokenID:        i.TokenID,
-			Tier:           i.Tier,
-			Hash:           i.Hash,
-			OwnerID:        i.OwnerID,
-			Data:           asJson,
-			ItemType:       boiler.ItemTypePowerCore,
+			ID:              i.ID,
+			CollectionSlug:  i.CollectionSlug,
+			TokenID:         i.TokenID,
+			Tier:            i.Tier,
+			Hash:            i.Hash,
+			OwnerID:         i.OwnerID,
+			Data:            asJson,
+			Name:            i.Label,
+			Attributes:      attributes,
+			ImageURL:        i.ImageURL,
+			BackgroundColor: i.BackgroundColor,
+			AnimationURL:    i.AnimationURL,
+			YoutubeURL:      i.YoutubeURL,
+			OnChainStatus:   i.OnChainStatus,
+			//XsynLocked: i.XsynLocked, // TODO: add a way for gameserver to see if they have the lock status of the asset
 		})
 
 	}
@@ -431,15 +605,86 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to convert item to json")
 			continue
 		}
+		// TODO create these dynamically depending on weapon type
+		attributes := []*Attribute{
+			{
+				TraitType: "Label",
+				Value:     i.Label,
+			},
+			{
+				DisplayType: "BoostNumber",
+				TraitType:   "Damage",
+				Value:       i.Damage,
+			},
+			{
+				TraitType: "Damage Type",
+				Value:     i.DefaultDamageType,
+			},
+			{
+				TraitType: "Weapon Type",
+				Value:     i.WeaponType,
+			},
+			{
+				TraitType: "Damage Falloff",
+				Value:     i.DamageFalloff.Int,
+			},
+			{
+				DisplayType: "BoostNumber",
+				TraitType:   "Damage Falloff rate",
+				Value:       i.DamageFalloffRate.Int,
+			},
+			{
+				DisplayType: "BoostNumber",
+				TraitType:   "Area of effect",
+				Value:       i.Radius.Int,
+			},
+			{
+				DisplayType: "BoostNumber",
+				TraitType:   "Spread",
+				Value:       i.Spread.Decimal.InexactFloat64(),
+			},
+			{
+				DisplayType: "BoostNumber",
+				TraitType:   "Rate of fire",
+				Value:       i.RateOfFire.Decimal.InexactFloat64(),
+			},
+			{
+				DisplayType: "BoostNumber",
+				TraitType:   "Projectile Speed",
+				Value:       i.ProjectileSpeed.Decimal.InexactFloat64(),
+			},
+			{
+				DisplayType: "BoostNumber",
+				TraitType:   "Energy Cost",
+				Value:       i.EnergyCost.Decimal.InexactFloat64(),
+			},
+			{
+				DisplayType: "BoostNumber",
+				TraitType:   "Max Ammo",
+				Value:       i.MaxAmmo.Int,
+			},
+			{
+				TraitType: "Tier",
+				Value:     i.Tier,
+			},
+		}
+
 		assets = append(assets, &XsynAsset{
-			ID:             i.ID,
-			CollectionSlug: i.CollectionSlug,
-			TokenID:        i.TokenID,
-			Tier:           i.Tier,
-			Hash:           i.Hash,
-			OwnerID:        i.OwnerID,
-			Data:           asJson,
-			ItemType:       boiler.ItemTypeWeapon,
+			ID:              i.ID,
+			CollectionSlug:  i.CollectionSlug,
+			TokenID:         i.TokenID,
+			Tier:            i.Tier,
+			Hash:            i.Hash,
+			OwnerID:         i.OwnerID,
+			Data:            asJson,
+			Name:            i.Label,
+			Attributes:      attributes,
+			ImageURL:        i.ImageURL,
+			BackgroundColor: i.BackgroundColor,
+			AnimationURL:    i.AnimationURL,
+			YoutubeURL:      i.YoutubeURL,
+			OnChainStatus:   i.OnChainStatus,
+			//XsynLocked: i.XsynLocked, // TODO: add a way for gameserver to see if they have the lock status of the asset
 		})
 	}
 
@@ -454,15 +699,34 @@ func ServerUtilitiesToXsynAsset(utils []*server.Utility) []*XsynAsset {
 			gamelog.L.Error().Err(err).Interface("interface", i).Msg("failed to convert item to json")
 			continue
 		}
+
+		// TODO create these dynamically depending on utility type
+		attributes := []*Attribute{
+			{
+				TraitType: "Label",
+				Value:     i.Label,
+			},
+			{
+				TraitType: "Type",
+				Value:     i.Type,
+			},
+		}
 		assets = append(assets, &XsynAsset{
-			ID:             i.ID,
-			CollectionSlug: i.CollectionSlug,
-			TokenID:        i.TokenID,
-			Tier:           i.Tier,
-			Hash:           i.Hash,
-			OwnerID:        i.OwnerID,
-			Data:           asJson,
-			ItemType:       boiler.ItemTypeUtility,
+			ID:              i.ID,
+			CollectionSlug:  i.CollectionSlug,
+			TokenID:         i.TokenID,
+			Tier:            i.Tier,
+			Hash:            i.Hash,
+			OwnerID:         i.OwnerID,
+			Data:            asJson,
+			Name:            i.Label,
+			Attributes:      attributes,
+			ImageURL:        i.ImageURL,
+			BackgroundColor: i.BackgroundColor,
+			AnimationURL:    i.AnimationURL,
+			YoutubeURL:      i.YoutubeURL,
+			OnChainStatus:   i.OnChainStatus,
+			//XsynLocked: i.XsynLocked, // TODO: add a way for gameserver to see if they have the lock status of the asset
 		})
 	}
 

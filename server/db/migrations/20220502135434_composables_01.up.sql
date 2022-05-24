@@ -168,8 +168,8 @@ CREATE TABLE chassis_skin
 (
     id                       UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
     blueprint_id             UUID REFERENCES blueprint_chassis_skin (id),
-    genesis_token_id         NUMERIC,
-    limited_release_token_id NUMERIC,
+    genesis_token_id         BIGINT,
+    limited_release_token_id BIGINT,
     label                    TEXT        NOT NULL,
     mech_model               UUID        NOT NULL REFERENCES mech_model (id),
     equipped_on              UUID REFERENCES chassis (id),
@@ -224,8 +224,8 @@ ALTER TABLE chassis
     ADD COLUMN is_insured               BOOL NOT NULL DEFAULT FALSE,
     ADD COLUMN name                     TEXT NOT NULL DEFAULT '',
     ADD COLUMN model_id                 UUID REFERENCES mech_model (id),
-    ADD COLUMN genesis_token_id         NUMERIC,
-    ADD COLUMN limited_release_token_id NUMERIC,
+    ADD COLUMN genesis_token_id         BIGINT,
+    ADD COLUMN limited_release_token_id BIGINT,
     ADD COLUMN owner_id                 UUID REFERENCES players (id),
     ADD COLUMN power_core_size          TEXT NOT NULL DEFAULT 'SMALL' CHECK ( power_core_size IN ('SMALL', 'MEDIUM', 'LARGE') ),
     ADD COLUMN tier                     TEXT NOT NULL DEFAULT 'MEGA',
@@ -392,15 +392,6 @@ UPDATE blueprint_chassis c
 SET model_id = (SELECT id
                 FROM mech_model cm
                 WHERE c.model = cm.label);
-
--- TODO: idk, talk to john about how to handle genesis
--- -- update mech blueprint collection ids
--- WITH tmp AS (SELECT blueprint_chassis_id, collection_slug
---              FROM templates)
--- UPDATE blueprint_chassis
--- SET collection = tmp.collection_slug::COLLECTION
--- FROM tmp
--- WHERE id = tmp.blueprint_chassis_id;
 
 ALTER TABLE blueprint_chassis
     DROP COLUMN model,

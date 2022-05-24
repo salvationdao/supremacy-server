@@ -13,24 +13,25 @@ import (
 // Weapon is the struct that rpc expects for weapons
 type Weapon struct {
 	*CollectionDetails
-	ID                  string              `json:"id"`
-	BrandID             null.String         `json:"brand_id,omitempty"`
-	Label               string              `json:"label"`
-	Slug                string              `json:"slug"`
-	Damage              int                 `json:"damage"`
-	BlueprintID         string              `json:"blueprint_id"`
-	DefaultDamageType   string              `json:"default_damage_type"`
-	GenesisTokenID      decimal.NullDecimal `json:"genesis_token_id,omitempty"`
-	WeaponType          string              `json:"weapon_type"`
-	DamageFalloff       null.Int            `json:"damage_falloff,omitempty"`
-	DamageFalloffRate   null.Int            `json:"damage_falloff_rate,omitempty"`
-	Spread              decimal.NullDecimal `json:"spread,omitempty"`
-	RateOfFire          decimal.NullDecimal `json:"rate_of_fire,omitempty"`
-	Radius              null.Int            `json:"radius,omitempty"`
-	RadiusDamageFalloff null.Int            `json:"radius_damage_falloff,omitempty"`
-	ProjectileSpeed     decimal.NullDecimal `json:"projectile_speed,omitempty"`
-	EnergyCost          decimal.NullDecimal `json:"energy_cost,omitempty"`
-	MaxAmmo             null.Int            `json:"max_ammo,omitempty"`
+	ID                    string              `json:"id"`
+	BrandID               null.String         `json:"brand_id,omitempty"`
+	Label                 string              `json:"label"`
+	Slug                  string              `json:"slug"`
+	Damage                int                 `json:"damage"`
+	BlueprintID           string              `json:"blueprint_id"`
+	DefaultDamageType     string              `json:"default_damage_type"`
+	GenesisTokenID        null.Int64          `json:"genesis_token_id,omitempty"`
+	LimitedReleaseTokenID null.Int64          `json:"limited_release_token_id,omitempty"`
+	WeaponType            string              `json:"weapon_type"`
+	DamageFalloff         null.Int            `json:"damage_falloff,omitempty"`
+	DamageFalloffRate     null.Int            `json:"damage_falloff_rate,omitempty"`
+	Spread                decimal.NullDecimal `json:"spread,omitempty"`
+	RateOfFire            decimal.NullDecimal `json:"rate_of_fire,omitempty"`
+	Radius                null.Int            `json:"radius,omitempty"`
+	RadiusDamageFalloff   null.Int            `json:"radius_damage_falloff,omitempty"`
+	ProjectileSpeed       decimal.NullDecimal `json:"projectile_speed,omitempty"`
+	EnergyCost            decimal.NullDecimal `json:"energy_cost,omitempty"`
+	MaxAmmo               null.Int            `json:"max_ammo,omitempty"`
 
 	// TODO: AMMO //BlueprintAmmo []*
 
@@ -70,8 +71,8 @@ type BlueprintWeapon struct {
 	Tier                string              `json:"tier,omitempty"`
 
 	// only used on inserting new mechs/items, since we are still giving away some limited released and genesis
-	GenesisTokenID        decimal.NullDecimal `json:"genesis_token_id,omitempty"`
-	LimitedReleaseTokenID decimal.NullDecimal `json:"limited_release_token_id,omitempty"`
+	GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`
+	LimitedReleaseTokenID null.Int64 `json:"limited_release_token_id,omitempty"`
 }
 
 func (b *BlueprintWeapon) Scan(value interface{}) error {
@@ -124,14 +125,21 @@ func BlueprintWeaponFromBoiler(weapon *boiler.BlueprintWeapon) *BlueprintWeapon 
 func WeaponFromBoiler(weapon *boiler.Weapon, collection *boiler.CollectionItem) *Weapon {
 	return &Weapon{
 		CollectionDetails: &CollectionDetails{
-			CollectionSlug: collection.CollectionSlug,
-			Hash:           collection.Hash,
-			TokenID:        collection.TokenID,
-			ItemType:       collection.ItemType,
-			ItemID:         collection.ItemID,
-			Tier:           collection.Tier,
-			OwnerID:        collection.OwnerID,
-			OnChainStatus:  collection.OnChainStatus,
+			CollectionSlug:   collection.CollectionSlug,
+			Hash:             collection.Hash,
+			TokenID:          collection.TokenID,
+			ItemType:         collection.ItemType,
+			ItemID:           collection.ItemID,
+			Tier:             collection.Tier,
+			OwnerID:          collection.OwnerID,
+			OnChainStatus:    collection.OnChainStatus,
+			ImageURL:         collection.ImageURL,
+			CardAnimationURL: collection.CardAnimationURL,
+			AvatarURL:        collection.AvatarURL,
+			LargeImageURL:    collection.LargeImageURL,
+			BackgroundColor:  collection.BackgroundColor,
+			AnimationURL:     collection.AnimationURL,
+			YoutubeURL:       collection.YoutubeURL,
 		},
 		ID:                  weapon.ID,
 		BrandID:             weapon.BrandID,

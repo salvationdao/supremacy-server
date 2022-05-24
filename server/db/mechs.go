@@ -9,6 +9,8 @@ import (
 	"server/gamelog"
 	"strconv"
 
+	"github.com/volatiletech/null/v8"
+
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -67,7 +69,7 @@ SELECT
 FROM collection_items 
 INNER JOIN mechs on collection_items.item_id = mechs.id
 INNER JOIN players p ON p.id = collection_items.owner_id
-INNER JOIN factions f on p.faction_id = f.id
+LEFT OUTER JOIN factions f on p.faction_id = f.id
 LEFT OUTER JOIN power_cores ec ON ec.id = mechs.power_core_id
 LEFT OUTER JOIN brands b ON b.id = mechs.brand_id
 LEFT OUTER JOIN mech_model mm ON mechs.model_id = mm.id
@@ -120,68 +122,6 @@ LEFT OUTER JOIN (
 	GROUP BY mw.chassis_id
 ) u on u.chassis_id = mechs.id `
 
-func MechsByOwnerID(ownerID uuid.UUID) ([]*server.Mech, error) {
-	//// TODO: Vinnie fix this
-	//mechs, err := boiler.Mechs(boiler.MechWhere.OwnerID.EQ(ownerID.String())).All(gamedb.StdConn)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//result := []*server.Mech{}
-	//for _, mech := range mechs {
-	//	record, err := Mech(uuid.Must(uuid.FromString(mech.ID)))
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//	result = append(result, record)
-	//}
-	return nil, nil
-}
-
-func MechSetName(mechID uuid.UUID, name string) error {
-	tx, err := gamedb.StdConn.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	mech, err := boiler.FindMech(gamedb.StdConn, mechID.String())
-	if err != nil {
-		return err
-	}
-	mech.Name = name
-	_, err = mech.Update(tx, boil.Whitelist(boiler.MechColumns.Name))
-	if err != nil {
-		return err
-	}
-	tx.Commit()
-	return nil
-}
-
-func MechSetOwner(mechID uuid.UUID, ownerID uuid.UUID) error {
-	// TODO: Vinnie fix this
-	//tx, err := gamedb.StdConn.Begin()
-	//if err != nil {
-	//	return err
-	//}
-	//defer tx.Rollback()
-	//mech, err := boiler.FindMech(tx, mechID.String())
-	//if err != nil {
-	//	return err
-	//}
-	//mech.OwnerID = ownerID.String()
-	//_, err = mech.Update(tx, boil.Whitelist(boiler.MechColumns.OwnerID))
-	//if err != nil {
-	//	return err
-	//}
-	//tx.Commit()
-	return nil
-}
-
-func TemplatePurchasedCount(templateID uuid.UUID) (int, error) {
-	// TODO: Fix this, this is in the gameserver storefront refactor
-	return 0, nil
-}
-
 func DefaultMechs() ([]*server.Mech, error) {
 	idq := `SELECT id FROM mechs WHERE is_default=true`
 
@@ -192,18 +132,14 @@ func DefaultMechs() ([]*server.Mech, error) {
 	}
 	defer result.Close()
 
-	ids := []uuid.UUID{}
+	var ids []string
 	for result.Next() {
 		id := ""
 		err = result.Scan(&id)
 		if err != nil {
 			return nil, err
 		}
-		uid, err := uuid.FromString(id)
-		if err != nil {
-			return nil, err
-		}
-		ids = append(ids, uid)
+		ids = append(ids, id)
 	}
 
 	return Mechs(ids...)
@@ -278,7 +214,7 @@ func Mech(mechID string) (*server.Mech, error) {
 	return mc, err
 }
 
-func Mechs(mechIDs ...uuid.UUID) ([]*server.Mech, error) {
+func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 	if len(mechIDs) == 0 {
 		return nil, errors.New("no mech ids provided")
 	}
@@ -289,7 +225,7 @@ func Mechs(mechIDs ...uuid.UUID) ([]*server.Mech, error) {
 	var paramrefs string
 	for i, id := range mechIDs {
 		paramrefs += `$` + strconv.Itoa(i+1) + `,`
-		mechids[i] = id.String()
+		mechids[i] = id
 	}
 	paramrefs = paramrefs[:len(paramrefs)-1]
 
@@ -516,7 +452,20 @@ func InsertNewMech(ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) (*ser
 		return nil, terror.Error(err)
 	}
 
-	err = InsertNewCollectionItem(tx, mechBlueprint.Collection, boiler.ItemTypeMech, newMech.ID, mechBlueprint.Tier, ownerID.String())
+	err = InsertNewCollectionItem(tx,
+		mechBlueprint.Collection,
+		boiler.ItemTypeMech,
+		newMech.ID,
+		mechBlueprint.Tier,
+		ownerID.String(),
+		null.String{},
+		null.String{},
+		null.String{},
+		null.String{},
+		null.String{},
+		null.String{},
+		null.String{},
+	)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -526,7 +475,11 @@ func InsertNewMech(ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) (*ser
 		return nil, terror.Error(err)
 	}
 
-	return Mech(newMech.ID)
+	mech, err := Mech(newMech.ID)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+	return mech, nil
 }
 
 func IsMechColumn(col string) bool {
@@ -706,7 +659,6 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			&mc.ChassisSkinID,
 			&mc.IntroAnimationID,
 			&mc.OutroAnimationID,
-			//&mc.DefaultChassisSkinID, // TODO: probably want this? (its  attached to the mech model, could be lazy loaded with the rest)
 		)
 		if err != nil {
 			return total, mechs, err

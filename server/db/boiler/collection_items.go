@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -22,86 +23,135 @@ import (
 
 // CollectionItem is an object representing the database table.
 type CollectionItem struct {
-	ID             string `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	CollectionSlug string `boiler:"collection_slug" boil:"collection_slug" json:"collection_slug" toml:"collection_slug" yaml:"collection_slug"`
-	Hash           string `boiler:"hash" boil:"hash" json:"hash" toml:"hash" yaml:"hash"`
-	TokenID        int64  `boiler:"token_id" boil:"token_id" json:"token_id" toml:"token_id" yaml:"token_id"`
-	ItemType       string `boiler:"item_type" boil:"item_type" json:"item_type" toml:"item_type" yaml:"item_type"`
-	ItemID         string `boiler:"item_id" boil:"item_id" json:"item_id" toml:"item_id" yaml:"item_id"`
-	Tier           string `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
-	OwnerID        string `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
-	OnChainStatus  string `boiler:"on_chain_status" boil:"on_chain_status" json:"on_chain_status" toml:"on_chain_status" yaml:"on_chain_status"`
+	ID               string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	CollectionSlug   string      `boiler:"collection_slug" boil:"collection_slug" json:"collection_slug" toml:"collection_slug" yaml:"collection_slug"`
+	Hash             string      `boiler:"hash" boil:"hash" json:"hash" toml:"hash" yaml:"hash"`
+	TokenID          int64       `boiler:"token_id" boil:"token_id" json:"token_id" toml:"token_id" yaml:"token_id"`
+	ItemType         string      `boiler:"item_type" boil:"item_type" json:"item_type" toml:"item_type" yaml:"item_type"`
+	ItemID           string      `boiler:"item_id" boil:"item_id" json:"item_id" toml:"item_id" yaml:"item_id"`
+	Tier             string      `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
+	OwnerID          string      `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
+	OnChainStatus    string      `boiler:"on_chain_status" boil:"on_chain_status" json:"on_chain_status" toml:"on_chain_status" yaml:"on_chain_status"`
+	ImageURL         null.String `boiler:"image_url" boil:"image_url" json:"image_url,omitempty" toml:"image_url" yaml:"image_url,omitempty"`
+	CardAnimationURL null.String `boiler:"card_animation_url" boil:"card_animation_url" json:"card_animation_url,omitempty" toml:"card_animation_url" yaml:"card_animation_url,omitempty"`
+	AvatarURL        null.String `boiler:"avatar_url" boil:"avatar_url" json:"avatar_url,omitempty" toml:"avatar_url" yaml:"avatar_url,omitempty"`
+	LargeImageURL    null.String `boiler:"large_image_url" boil:"large_image_url" json:"large_image_url,omitempty" toml:"large_image_url" yaml:"large_image_url,omitempty"`
+	BackgroundColor  null.String `boiler:"background_color" boil:"background_color" json:"background_color,omitempty" toml:"background_color" yaml:"background_color,omitempty"`
+	AnimationURL     null.String `boiler:"animation_url" boil:"animation_url" json:"animation_url,omitempty" toml:"animation_url" yaml:"animation_url,omitempty"`
+	YoutubeURL       null.String `boiler:"youtube_url" boil:"youtube_url" json:"youtube_url,omitempty" toml:"youtube_url" yaml:"youtube_url,omitempty"`
 
 	R *collectionItemR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L collectionItemL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var CollectionItemColumns = struct {
-	ID             string
-	CollectionSlug string
-	Hash           string
-	TokenID        string
-	ItemType       string
-	ItemID         string
-	Tier           string
-	OwnerID        string
-	OnChainStatus  string
+	ID               string
+	CollectionSlug   string
+	Hash             string
+	TokenID          string
+	ItemType         string
+	ItemID           string
+	Tier             string
+	OwnerID          string
+	OnChainStatus    string
+	ImageURL         string
+	CardAnimationURL string
+	AvatarURL        string
+	LargeImageURL    string
+	BackgroundColor  string
+	AnimationURL     string
+	YoutubeURL       string
 }{
-	ID:             "id",
-	CollectionSlug: "collection_slug",
-	Hash:           "hash",
-	TokenID:        "token_id",
-	ItemType:       "item_type",
-	ItemID:         "item_id",
-	Tier:           "tier",
-	OwnerID:        "owner_id",
-	OnChainStatus:  "on_chain_status",
+	ID:               "id",
+	CollectionSlug:   "collection_slug",
+	Hash:             "hash",
+	TokenID:          "token_id",
+	ItemType:         "item_type",
+	ItemID:           "item_id",
+	Tier:             "tier",
+	OwnerID:          "owner_id",
+	OnChainStatus:    "on_chain_status",
+	ImageURL:         "image_url",
+	CardAnimationURL: "card_animation_url",
+	AvatarURL:        "avatar_url",
+	LargeImageURL:    "large_image_url",
+	BackgroundColor:  "background_color",
+	AnimationURL:     "animation_url",
+	YoutubeURL:       "youtube_url",
 }
 
 var CollectionItemTableColumns = struct {
-	ID             string
-	CollectionSlug string
-	Hash           string
-	TokenID        string
-	ItemType       string
-	ItemID         string
-	Tier           string
-	OwnerID        string
-	OnChainStatus  string
+	ID               string
+	CollectionSlug   string
+	Hash             string
+	TokenID          string
+	ItemType         string
+	ItemID           string
+	Tier             string
+	OwnerID          string
+	OnChainStatus    string
+	ImageURL         string
+	CardAnimationURL string
+	AvatarURL        string
+	LargeImageURL    string
+	BackgroundColor  string
+	AnimationURL     string
+	YoutubeURL       string
 }{
-	ID:             "collection_items.id",
-	CollectionSlug: "collection_items.collection_slug",
-	Hash:           "collection_items.hash",
-	TokenID:        "collection_items.token_id",
-	ItemType:       "collection_items.item_type",
-	ItemID:         "collection_items.item_id",
-	Tier:           "collection_items.tier",
-	OwnerID:        "collection_items.owner_id",
-	OnChainStatus:  "collection_items.on_chain_status",
+	ID:               "collection_items.id",
+	CollectionSlug:   "collection_items.collection_slug",
+	Hash:             "collection_items.hash",
+	TokenID:          "collection_items.token_id",
+	ItemType:         "collection_items.item_type",
+	ItemID:           "collection_items.item_id",
+	Tier:             "collection_items.tier",
+	OwnerID:          "collection_items.owner_id",
+	OnChainStatus:    "collection_items.on_chain_status",
+	ImageURL:         "collection_items.image_url",
+	CardAnimationURL: "collection_items.card_animation_url",
+	AvatarURL:        "collection_items.avatar_url",
+	LargeImageURL:    "collection_items.large_image_url",
+	BackgroundColor:  "collection_items.background_color",
+	AnimationURL:     "collection_items.animation_url",
+	YoutubeURL:       "collection_items.youtube_url",
 }
 
 // Generated where
 
 var CollectionItemWhere = struct {
-	ID             whereHelperstring
-	CollectionSlug whereHelperstring
-	Hash           whereHelperstring
-	TokenID        whereHelperint64
-	ItemType       whereHelperstring
-	ItemID         whereHelperstring
-	Tier           whereHelperstring
-	OwnerID        whereHelperstring
-	OnChainStatus  whereHelperstring
+	ID               whereHelperstring
+	CollectionSlug   whereHelperstring
+	Hash             whereHelperstring
+	TokenID          whereHelperint64
+	ItemType         whereHelperstring
+	ItemID           whereHelperstring
+	Tier             whereHelperstring
+	OwnerID          whereHelperstring
+	OnChainStatus    whereHelperstring
+	ImageURL         whereHelpernull_String
+	CardAnimationURL whereHelpernull_String
+	AvatarURL        whereHelpernull_String
+	LargeImageURL    whereHelpernull_String
+	BackgroundColor  whereHelpernull_String
+	AnimationURL     whereHelpernull_String
+	YoutubeURL       whereHelpernull_String
 }{
-	ID:             whereHelperstring{field: "\"collection_items\".\"id\""},
-	CollectionSlug: whereHelperstring{field: "\"collection_items\".\"collection_slug\""},
-	Hash:           whereHelperstring{field: "\"collection_items\".\"hash\""},
-	TokenID:        whereHelperint64{field: "\"collection_items\".\"token_id\""},
-	ItemType:       whereHelperstring{field: "\"collection_items\".\"item_type\""},
-	ItemID:         whereHelperstring{field: "\"collection_items\".\"item_id\""},
-	Tier:           whereHelperstring{field: "\"collection_items\".\"tier\""},
-	OwnerID:        whereHelperstring{field: "\"collection_items\".\"owner_id\""},
-	OnChainStatus:  whereHelperstring{field: "\"collection_items\".\"on_chain_status\""},
+	ID:               whereHelperstring{field: "\"collection_items\".\"id\""},
+	CollectionSlug:   whereHelperstring{field: "\"collection_items\".\"collection_slug\""},
+	Hash:             whereHelperstring{field: "\"collection_items\".\"hash\""},
+	TokenID:          whereHelperint64{field: "\"collection_items\".\"token_id\""},
+	ItemType:         whereHelperstring{field: "\"collection_items\".\"item_type\""},
+	ItemID:           whereHelperstring{field: "\"collection_items\".\"item_id\""},
+	Tier:             whereHelperstring{field: "\"collection_items\".\"tier\""},
+	OwnerID:          whereHelperstring{field: "\"collection_items\".\"owner_id\""},
+	OnChainStatus:    whereHelperstring{field: "\"collection_items\".\"on_chain_status\""},
+	ImageURL:         whereHelpernull_String{field: "\"collection_items\".\"image_url\""},
+	CardAnimationURL: whereHelpernull_String{field: "\"collection_items\".\"card_animation_url\""},
+	AvatarURL:        whereHelpernull_String{field: "\"collection_items\".\"avatar_url\""},
+	LargeImageURL:    whereHelpernull_String{field: "\"collection_items\".\"large_image_url\""},
+	BackgroundColor:  whereHelpernull_String{field: "\"collection_items\".\"background_color\""},
+	AnimationURL:     whereHelpernull_String{field: "\"collection_items\".\"animation_url\""},
+	YoutubeURL:       whereHelpernull_String{field: "\"collection_items\".\"youtube_url\""},
 }
 
 // CollectionItemRels is where relationship names are stored.
@@ -128,9 +178,9 @@ func (*collectionItemR) NewStruct() *collectionItemR {
 type collectionItemL struct{}
 
 var (
-	collectionItemAllColumns            = []string{"id", "collection_slug", "hash", "token_id", "item_type", "item_id", "tier", "owner_id", "on_chain_status"}
+	collectionItemAllColumns            = []string{"id", "collection_slug", "hash", "token_id", "item_type", "item_id", "tier", "owner_id", "on_chain_status", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url"}
 	collectionItemColumnsWithoutDefault = []string{"token_id", "item_type", "item_id", "owner_id"}
-	collectionItemColumnsWithDefault    = []string{"id", "collection_slug", "hash", "tier", "on_chain_status"}
+	collectionItemColumnsWithDefault    = []string{"id", "collection_slug", "hash", "tier", "on_chain_status", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url"}
 	collectionItemPrimaryKeyColumns     = []string{"id"}
 	collectionItemGeneratedColumns      = []string{}
 )

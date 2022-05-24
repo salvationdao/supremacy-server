@@ -23,86 +23,135 @@ import (
 
 // BlueprintUtility is an object representing the database table.
 type BlueprintUtility struct {
-	ID         string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	BrandID    null.String `boiler:"brand_id" boil:"brand_id" json:"brand_id,omitempty" toml:"brand_id" yaml:"brand_id,omitempty"`
-	Label      string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	DeletedAt  null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	UpdatedAt  time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt  time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	Type       string      `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
-	Tier       string      `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
-	Collection string      `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
+	ID               string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	BrandID          null.String `boiler:"brand_id" boil:"brand_id" json:"brand_id,omitempty" toml:"brand_id" yaml:"brand_id,omitempty"`
+	Label            string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	DeletedAt        null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt        time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt        time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	Type             string      `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
+	Tier             string      `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
+	Collection       string      `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
+	ImageURL         null.String `boiler:"image_url" boil:"image_url" json:"image_url,omitempty" toml:"image_url" yaml:"image_url,omitempty"`
+	CardAnimationURL null.String `boiler:"card_animation_url" boil:"card_animation_url" json:"card_animation_url,omitempty" toml:"card_animation_url" yaml:"card_animation_url,omitempty"`
+	AvatarURL        null.String `boiler:"avatar_url" boil:"avatar_url" json:"avatar_url,omitempty" toml:"avatar_url" yaml:"avatar_url,omitempty"`
+	LargeImageURL    null.String `boiler:"large_image_url" boil:"large_image_url" json:"large_image_url,omitempty" toml:"large_image_url" yaml:"large_image_url,omitempty"`
+	BackgroundColor  null.String `boiler:"background_color" boil:"background_color" json:"background_color,omitempty" toml:"background_color" yaml:"background_color,omitempty"`
+	AnimationURL     null.String `boiler:"animation_url" boil:"animation_url" json:"animation_url,omitempty" toml:"animation_url" yaml:"animation_url,omitempty"`
+	YoutubeURL       null.String `boiler:"youtube_url" boil:"youtube_url" json:"youtube_url,omitempty" toml:"youtube_url" yaml:"youtube_url,omitempty"`
 
 	R *blueprintUtilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintUtilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var BlueprintUtilityColumns = struct {
-	ID         string
-	BrandID    string
-	Label      string
-	DeletedAt  string
-	UpdatedAt  string
-	CreatedAt  string
-	Type       string
-	Tier       string
-	Collection string
+	ID               string
+	BrandID          string
+	Label            string
+	DeletedAt        string
+	UpdatedAt        string
+	CreatedAt        string
+	Type             string
+	Tier             string
+	Collection       string
+	ImageURL         string
+	CardAnimationURL string
+	AvatarURL        string
+	LargeImageURL    string
+	BackgroundColor  string
+	AnimationURL     string
+	YoutubeURL       string
 }{
-	ID:         "id",
-	BrandID:    "brand_id",
-	Label:      "label",
-	DeletedAt:  "deleted_at",
-	UpdatedAt:  "updated_at",
-	CreatedAt:  "created_at",
-	Type:       "type",
-	Tier:       "tier",
-	Collection: "collection",
+	ID:               "id",
+	BrandID:          "brand_id",
+	Label:            "label",
+	DeletedAt:        "deleted_at",
+	UpdatedAt:        "updated_at",
+	CreatedAt:        "created_at",
+	Type:             "type",
+	Tier:             "tier",
+	Collection:       "collection",
+	ImageURL:         "image_url",
+	CardAnimationURL: "card_animation_url",
+	AvatarURL:        "avatar_url",
+	LargeImageURL:    "large_image_url",
+	BackgroundColor:  "background_color",
+	AnimationURL:     "animation_url",
+	YoutubeURL:       "youtube_url",
 }
 
 var BlueprintUtilityTableColumns = struct {
-	ID         string
-	BrandID    string
-	Label      string
-	DeletedAt  string
-	UpdatedAt  string
-	CreatedAt  string
-	Type       string
-	Tier       string
-	Collection string
+	ID               string
+	BrandID          string
+	Label            string
+	DeletedAt        string
+	UpdatedAt        string
+	CreatedAt        string
+	Type             string
+	Tier             string
+	Collection       string
+	ImageURL         string
+	CardAnimationURL string
+	AvatarURL        string
+	LargeImageURL    string
+	BackgroundColor  string
+	AnimationURL     string
+	YoutubeURL       string
 }{
-	ID:         "blueprint_utility.id",
-	BrandID:    "blueprint_utility.brand_id",
-	Label:      "blueprint_utility.label",
-	DeletedAt:  "blueprint_utility.deleted_at",
-	UpdatedAt:  "blueprint_utility.updated_at",
-	CreatedAt:  "blueprint_utility.created_at",
-	Type:       "blueprint_utility.type",
-	Tier:       "blueprint_utility.tier",
-	Collection: "blueprint_utility.collection",
+	ID:               "blueprint_utility.id",
+	BrandID:          "blueprint_utility.brand_id",
+	Label:            "blueprint_utility.label",
+	DeletedAt:        "blueprint_utility.deleted_at",
+	UpdatedAt:        "blueprint_utility.updated_at",
+	CreatedAt:        "blueprint_utility.created_at",
+	Type:             "blueprint_utility.type",
+	Tier:             "blueprint_utility.tier",
+	Collection:       "blueprint_utility.collection",
+	ImageURL:         "blueprint_utility.image_url",
+	CardAnimationURL: "blueprint_utility.card_animation_url",
+	AvatarURL:        "blueprint_utility.avatar_url",
+	LargeImageURL:    "blueprint_utility.large_image_url",
+	BackgroundColor:  "blueprint_utility.background_color",
+	AnimationURL:     "blueprint_utility.animation_url",
+	YoutubeURL:       "blueprint_utility.youtube_url",
 }
 
 // Generated where
 
 var BlueprintUtilityWhere = struct {
-	ID         whereHelperstring
-	BrandID    whereHelpernull_String
-	Label      whereHelperstring
-	DeletedAt  whereHelpernull_Time
-	UpdatedAt  whereHelpertime_Time
-	CreatedAt  whereHelpertime_Time
-	Type       whereHelperstring
-	Tier       whereHelperstring
-	Collection whereHelperstring
+	ID               whereHelperstring
+	BrandID          whereHelpernull_String
+	Label            whereHelperstring
+	DeletedAt        whereHelpernull_Time
+	UpdatedAt        whereHelpertime_Time
+	CreatedAt        whereHelpertime_Time
+	Type             whereHelperstring
+	Tier             whereHelperstring
+	Collection       whereHelperstring
+	ImageURL         whereHelpernull_String
+	CardAnimationURL whereHelpernull_String
+	AvatarURL        whereHelpernull_String
+	LargeImageURL    whereHelpernull_String
+	BackgroundColor  whereHelpernull_String
+	AnimationURL     whereHelpernull_String
+	YoutubeURL       whereHelpernull_String
 }{
-	ID:         whereHelperstring{field: "\"blueprint_utility\".\"id\""},
-	BrandID:    whereHelpernull_String{field: "\"blueprint_utility\".\"brand_id\""},
-	Label:      whereHelperstring{field: "\"blueprint_utility\".\"label\""},
-	DeletedAt:  whereHelpernull_Time{field: "\"blueprint_utility\".\"deleted_at\""},
-	UpdatedAt:  whereHelpertime_Time{field: "\"blueprint_utility\".\"updated_at\""},
-	CreatedAt:  whereHelpertime_Time{field: "\"blueprint_utility\".\"created_at\""},
-	Type:       whereHelperstring{field: "\"blueprint_utility\".\"type\""},
-	Tier:       whereHelperstring{field: "\"blueprint_utility\".\"tier\""},
-	Collection: whereHelperstring{field: "\"blueprint_utility\".\"collection\""},
+	ID:               whereHelperstring{field: "\"blueprint_utility\".\"id\""},
+	BrandID:          whereHelpernull_String{field: "\"blueprint_utility\".\"brand_id\""},
+	Label:            whereHelperstring{field: "\"blueprint_utility\".\"label\""},
+	DeletedAt:        whereHelpernull_Time{field: "\"blueprint_utility\".\"deleted_at\""},
+	UpdatedAt:        whereHelpertime_Time{field: "\"blueprint_utility\".\"updated_at\""},
+	CreatedAt:        whereHelpertime_Time{field: "\"blueprint_utility\".\"created_at\""},
+	Type:             whereHelperstring{field: "\"blueprint_utility\".\"type\""},
+	Tier:             whereHelperstring{field: "\"blueprint_utility\".\"tier\""},
+	Collection:       whereHelperstring{field: "\"blueprint_utility\".\"collection\""},
+	ImageURL:         whereHelpernull_String{field: "\"blueprint_utility\".\"image_url\""},
+	CardAnimationURL: whereHelpernull_String{field: "\"blueprint_utility\".\"card_animation_url\""},
+	AvatarURL:        whereHelpernull_String{field: "\"blueprint_utility\".\"avatar_url\""},
+	LargeImageURL:    whereHelpernull_String{field: "\"blueprint_utility\".\"large_image_url\""},
+	BackgroundColor:  whereHelpernull_String{field: "\"blueprint_utility\".\"background_color\""},
+	AnimationURL:     whereHelpernull_String{field: "\"blueprint_utility\".\"animation_url\""},
+	YoutubeURL:       whereHelpernull_String{field: "\"blueprint_utility\".\"youtube_url\""},
 }
 
 // BlueprintUtilityRels is where relationship names are stored.
@@ -144,9 +193,9 @@ func (*blueprintUtilityR) NewStruct() *blueprintUtilityR {
 type blueprintUtilityL struct{}
 
 var (
-	blueprintUtilityAllColumns            = []string{"id", "brand_id", "label", "deleted_at", "updated_at", "created_at", "type", "tier", "collection"}
+	blueprintUtilityAllColumns            = []string{"id", "brand_id", "label", "deleted_at", "updated_at", "created_at", "type", "tier", "collection", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url"}
 	blueprintUtilityColumnsWithoutDefault = []string{"label", "type"}
-	blueprintUtilityColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at", "tier", "collection"}
+	blueprintUtilityColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at", "tier", "collection", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url"}
 	blueprintUtilityPrimaryKeyColumns     = []string{"id"}
 	blueprintUtilityGeneratedColumns      = []string{}
 )

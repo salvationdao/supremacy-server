@@ -7,6 +7,8 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 
+	"github.com/volatiletech/null/v8"
+
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/gofrs/uuid"
@@ -46,7 +48,20 @@ func InsertNewWeapon(ownerID uuid.UUID, weapon *server.BlueprintWeapon) (*server
 		return nil, terror.Error(err)
 	}
 
-	err = InsertNewCollectionItem(tx, weapon.Collection, boiler.ItemTypeWeapon, newWeapon.ID, weapon.Tier, ownerID.String())
+	err = InsertNewCollectionItem(tx,
+		weapon.Collection,
+		boiler.ItemTypeWeapon,
+		newWeapon.ID,
+		weapon.Tier,
+		ownerID.String(),
+		null.String{},
+		null.String{},
+		null.String{},
+		null.String{},
+		null.String{},
+		null.String{},
+		null.String{},
+	)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -70,6 +85,24 @@ func Weapon(id string) (*server.Weapon, error) {
 	}
 
 	return server.WeaponFromBoiler(boilerMech, boilerMechCollectionDetails), nil
+}
+
+func Weapons(id ...string) ([]*server.Weapon, error) {
+	var weapons []*server.Weapon
+	boilerMechs, err := boiler.Weapons(boiler.WeaponWhere.ID.IN(id)).All(gamedb.StdConn)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, bm := range boilerMechs {
+		boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(bm.ID)).One(gamedb.StdConn)
+		if err != nil {
+			return nil, err
+		}
+		weapons = append(weapons, server.WeaponFromBoiler(bm, boilerMechCollectionDetails))
+	}
+
+	return weapons, nil
 }
 
 // AttachWeaponToMech attaches a Weapon to a mech  TODO: create tests.
