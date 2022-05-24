@@ -397,6 +397,40 @@ $$;
 
 ALTER TABLE mech_models ALTER COLUMN default_chassis_skin_id SET NOT NULL;
 
+ALTER TABLE blueprint_mechs DROP COLUMN skin;
+
+--!!: probably can use a with statement here?
+DO $$
+    DECLARE mech_model mech_models%rowtype;
+    BEGIN
+        FOR mech_model in SELECT * FROM mech_models WHERE brand_id IS NOT NULL
+        LOOP
+            INSERT INTO blueprint_mechs (brand_id, label, slug, weapon_hardpoints, utility_slots, speed, max_hitpoints, model_id) VALUES (
+                mech_model.brand_id,
+                concat((SELECT label FROM brands WHERE id = mech_model.brand_id), ' ', mech_model.label),
+                lower(concat(replace((SELECT label FROM brands WHERE id = mech_model.brand_id), ' ', '_'), '_', replace(mech_model.label, ' ', '_'))),
+                CASE --hardpoints
+                    WHEN mech_model.mech_type = 'PLATFORM' THEN 5
+                    ELSE 2
+                END,
+                CASE -- utility slots
+                    WHEN mech_model.mech_type = 'PLATFORM' THEN 2
+                    ELSE 4
+                END,
+                CASE --speed
+                    WHEN mech_model.mech_type = 'PLATFORM' THEN 1000
+                    ELSE 2000
+                END,
+                CASE --max_hitpoints
+                    WHEN mech_model.mech_type = 'PLATFORM' THEN 3000
+                    ELSE 1500
+                END,
+                mech_model.id
+            );
+        END LOOP;
+    END;
+$$;
+
 
 INSERT INTO blueprint_power_cores (collection, label, size, capacity, max_draw_rate, recharge_rate, armour, max_hitpoints) VALUES ('supremacy-general', 'Small Energy Core', 'SMALL', 750, 75, 75, 0, 750);
 
@@ -405,7 +439,7 @@ INSERT INTO blueprint_power_cores (collection, label, size, capacity, max_draw_r
 -- looping over each type of mystery crate type for x amount of crates for each faction. can do 1 big loop if all crate types have the same amount
 DO $$
     BEGIN
-        FOR COUNT IN 1..10 LOOP
+        FOR COUNT IN 1..100 LOOP
             INSERT INTO mystery_crate (type, faction_id, label) VALUES ('MECH', (SELECT id FROM factions f WHERE f.label = 'Red Mountain Offworld Mining Corporation'), 'RMOMC Mech Mystery Crate');
             INSERT INTO mystery_crate (type, faction_id, label) VALUES ('MECH', (SELECT id FROM factions f WHERE f.label = 'Zaibatsu Heavy Industries'), 'ZHI Mech Mystery Crate');
             INSERT INTO mystery_crate (type, faction_id, label) VALUES ('MECH', (SELECT id FROM factions f WHERE f.label = 'Boston Cybernetics'), 'BC Mech Mystery Crate');
@@ -415,7 +449,7 @@ $$;
 
 DO $$
     BEGIN
-        FOR COUNT IN 1..10 LOOP
+        FOR COUNT IN 1..100 LOOP
             INSERT INTO mystery_crate (type, faction_id, label) VALUES ('WEAPON', (SELECT id FROM factions f WHERE f.label = 'Red Mountain Offworld Mining Corporation'), 'RMOMC Weapon Mystery Crate');
             INSERT INTO mystery_crate (type, faction_id, label) VALUES ('WEAPON', (SELECT id FROM factions f WHERE f.label = 'Zaibatsu Heavy Industries'), 'ZHI Weapon Mystery Crate');
             INSERT INTO mystery_crate (type, faction_id, label) VALUES ('WEAPON', (SELECT id FROM factions f WHERE f.label = 'Boston Cybernetics'), 'BC Weapon Mystery Crate');
@@ -463,9 +497,6 @@ $$;
 --         END LOOP;
 --     END;
 -- $$;
-
--- weapons
-
 
 --seeding storefront
 -- for each faction, seed each type of crate and find how much are for sale
