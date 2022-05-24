@@ -173,6 +173,7 @@ func MarketplaceItemSaleList(search string, archived bool, filter *ListFilterReq
 	if len(mechIDs) > 0 {
 		mechs, err := boiler.Mechs(
 			boiler.MechWhere.ID.IN(mechIDs),
+			qm.Load(boiler.MechRels.ChassisSkin),
 		).All(gamedb.StdConn)
 		if err != nil {
 			return 0, nil, terror.Error(err)
@@ -182,6 +183,9 @@ func MarketplaceItemSaleList(search string, archived bool, filter *ListFilterReq
 				// if row.ItemType == boiler.ItemTypeMech && row.ItemID == mech.ID {
 				if row.ItemID == mech.ID {
 					records[i].Mech = mech
+					if mech.R != nil && records[i].Collection != nil && mech.R.ChassisSkin != nil {
+						records[i].Collection.ImageURL = mech.R.ChassisSkin.ImageURL
+					}
 					break
 				}
 			}
