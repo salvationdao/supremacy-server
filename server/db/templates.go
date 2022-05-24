@@ -7,7 +7,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 
-	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
 
 	"github.com/volatiletech/sqlboiler/v4/boil"
 
@@ -200,8 +200,8 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 	}
 
 	tokenIDs := &struct {
-		GenesisTokenID decimal.NullDecimal `json:"genesis_token_id" db:"genesis_token_id"`
-		LimitedTokenID decimal.NullDecimal `json:"limited_token_id" db:"limited_token_id"`
+		GenesisTokenID null.Int64 `json:"genesis_token_id" db:"genesis_token_id"`
+		LimitedTokenID null.Int64 `json:"limited_token_id" db:"limited_token_id"`
 	}{}
 
 	// if template is genesis, create it a genesis ID
@@ -243,8 +243,8 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 			err := fmt.Errorf("template has already inserted a genesis mech but the template has multiple mechs")
 			gamelog.L.Error().Err(err).
 				Interface("mechBluePrint", mechBluePrint).
-				Str("tokenIDs.GenesisTokenID", tokenIDs.GenesisTokenID.Decimal.String()).
-				Str("tokenIDs.LimitedTokenID", tokenIDs.LimitedTokenID.Decimal.String()).
+				Int64("tokenIDs.GenesisTokenID", tokenIDs.GenesisTokenID.Int64).
+				Int64("tokenIDs.LimitedTokenID", tokenIDs.LimitedTokenID.Int64).
 				Int("len(tmpl.BlueprintMech)", len(tmpl.BlueprintMech)).
 				Msg("failed to insert new mech for user")
 			continue

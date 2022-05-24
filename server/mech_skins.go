@@ -3,27 +3,27 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/volatiletech/null/v8"
 	"server/db/boiler"
 	"time"
 
-	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
 )
 
 type MechSkin struct {
 	*CollectionDetails
-	ID               string              `json:"id"`
-	BlueprintID      string              `json:"blueprint_id"`
-	GenesisTokenID   decimal.NullDecimal `json:"genesis_token_id,omitempty"`
-	Label            string              `json:"label"`
-	MechModel        string              `json:"mech_model"`
-	EquippedOn       null.String         `json:"equipped_on,omitempty"`
-	ImageURL         null.String         `json:"image_url,omitempty"`
-	AnimationURL     null.String         `json:"animation_url,omitempty"`
-	CardAnimationURL null.String         `json:"card_animation_url,omitempty"`
-	AvatarURL        null.String         `json:"avatar_url,omitempty"`
-	LargeImageURL    null.String         `json:"large_image_url,omitempty"`
-	CreatedAt        time.Time           `json:"created_at"`
+	ID                    string      `json:"id"`
+	BlueprintID           string      `json:"blueprint_id"`
+	GenesisTokenID        null.Int64  `json:"genesis_token_id,omitempty"`
+	LimitedReleaseTokenID null.Int64  `json:"limited_release_token_id,omitempty"`
+	Label                 string      `json:"label"`
+	MechModel             string      `json:"mech_model"`
+	EquippedOn            null.String `json:"equipped_on,omitempty"`
+	ImageURL              null.String `json:"image_url,omitempty"`
+	AnimationURL          null.String `json:"animation_url,omitempty"`
+	CardAnimationURL      null.String `json:"card_animation_url,omitempty"`
+	AvatarURL             null.String `json:"avatar_url,omitempty"`
+	LargeImageURL         null.String `json:"large_image_url,omitempty"`
+	CreatedAt             time.Time   `json:"created_at"`
 }
 
 func (b *MechSkin) Scan(value interface{}) error {
@@ -46,10 +46,12 @@ type BlueprintMechSkin struct {
 	LargeImageURL    null.String `json:"large_image_url,omitempty"`
 	AvatarURL        null.String `json:"avatar_url,omitempty"`
 	CreatedAt        time.Time   `json:"created_at"`
+	BackgroundColor  null.String `json:"background_color,omitempty"`
+	YoutubeURL       null.String `json:"youtube_url,omitempty"`
 
 	// only used on inserting new mechs/items, since we are still giving away some limited released and genesis
-	GenesisTokenID        decimal.NullDecimal `json:"genesis_token_id,omitempty"`
-	LimitedReleaseTokenID decimal.NullDecimal `json:"limited_release_token_id,omitempty"`
+	GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`
+	LimitedReleaseTokenID null.Int64 `json:"limited_release_token_id,omitempty"`
 }
 
 func (b *BlueprintMechSkin) Scan(value interface{}) error {
@@ -79,14 +81,21 @@ func BlueprintMechSkinFromBoiler(mechSkin *boiler.BlueprintMechSkin) *BlueprintM
 func MechSkinFromBoiler(skin *boiler.MechSkin, collection *boiler.CollectionItem) *MechSkin {
 	return &MechSkin{
 		CollectionDetails: &CollectionDetails{
-			CollectionSlug: collection.CollectionSlug,
-			Hash:           collection.Hash,
-			TokenID:        collection.TokenID,
-			ItemType:       collection.ItemType,
-			ItemID:         collection.ItemID,
-			Tier:           collection.Tier,
-			OwnerID:        collection.OwnerID,
-			OnChainStatus:  collection.OnChainStatus,
+			CollectionSlug:   collection.CollectionSlug,
+			Hash:             collection.Hash,
+			TokenID:          collection.TokenID,
+			ItemType:         collection.ItemType,
+			ItemID:           collection.ItemID,
+			Tier:             collection.Tier,
+			OwnerID:          collection.OwnerID,
+			OnChainStatus:    collection.OnChainStatus,
+			ImageURL:         collection.ImageURL,
+			CardAnimationURL: collection.CardAnimationURL,
+			AvatarURL:        collection.AvatarURL,
+			LargeImageURL:    collection.LargeImageURL,
+			BackgroundColor:  collection.BackgroundColor,
+			AnimationURL:     collection.AnimationURL,
+			YoutubeURL:       collection.YoutubeURL,
 		},
 		ID:               skin.ID,
 		BlueprintID:      skin.BlueprintID,

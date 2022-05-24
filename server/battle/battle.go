@@ -1116,7 +1116,6 @@ func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 			).All(gamedb.StdConn)
 			if err != nil {
 				gamelog.L.Error().Str("SpoilsOfWarWhere.CreatedAt.GT", time.Now().AddDate(0, 0, -1).String()).Err(err).Msg("issue getting SpoilsOfWars")
-				// handle
 			} else {
 				resp := &MultiplierUpdate{
 					Battles: []*MultiplierUpdateBattles{},
@@ -1769,7 +1768,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 
 func (btl *Battle) Load() error {
 	q, err := db.LoadBattleQueue(context.Background(), 3)
-	ids := make([]uuid.UUID, len(q))
+	ids := make([]string, len(q))
 	if err != nil {
 		gamelog.L.Warn().Str("battle_id", btl.ID).Err(err).Msg("unable to load out queue")
 		return err
@@ -1788,18 +1787,14 @@ func (btl *Battle) Load() error {
 	}
 
 	for i, bq := range q {
-		ids[i], err = uuid.FromString(bq.MechID)
-		if err != nil {
-			gamelog.L.Warn().Str("mech_id", bq.MechID).Msg("failed to convert mech id string to uuid")
-			return err
-		}
+		ids[i] = bq.MechID
 	}
 
 	mechs, err := db.Mechs(ids...)
 	if errors.Is(err, db.ErrNotAllMechsReturned) || len(mechs) != len(ids) {
 		for _, m := range mechs {
 			for i, v := range ids {
-				if v.String() == m.ID {
+				if v == m.ID {
 					ids = append(ids[:i], ids[i+1:]...)
 					break
 				}
@@ -1811,16 +1806,16 @@ func (btl *Battle) Load() error {
 		}
 		defer tx.Rollback()
 		for _, id := range ids {
-			gamelog.L.Warn().Str("mechID", id.String()).Msg("mech did not load - likely has no faction associated with its owner")
+			gamelog.L.Warn().Str("mechID", id).Msg("mech did not load - likely has no faction associated with its owner")
 			canxq := `UPDATE battle_contracts SET cancelled = TRUE WHERE id = (SELECT battle_contract_id FROM battle_queue WHERE mech_id = $1)`
-			_, err = tx.Exec(canxq, id.String())
+			_, err = tx.Exec(canxq, id)
 			if err != nil {
 				gamelog.L.Warn().Err(err).Msg("unable to cancel battle contract. mech has left queue though.")
 			}
-			bq, _ := boiler.BattleQueues(boiler.BattleQueueWhere.MechID.EQ(id.String())).One(tx)
+			bq, _ := boiler.BattleQueues(boiler.BattleQueueWhere.MechID.EQ(id)).One(tx)
 			_, err = bq.Delete(tx)
 			if err != nil {
-				gamelog.L.Panic().Str("mechID", id.String()).Err(err).Msg("unable to delete factionless mech from queue")
+				gamelog.L.Panic().Str("mechID", id).Err(err).Msg("unable to delete factionless mech from queue")
 			}
 		}
 		err = tx.Commit()
@@ -1835,7 +1830,16 @@ func (btl *Battle) Load() error {
 		return err
 	}
 	btl.WarMachines = btl.MechsToWarMachines(mechs)
-	btl.warMachineIDs = ids
+	uuids := make([]uuid.UUID, len(q))
+	for i, bq := range q {
+		uuids[i], err = uuid.FromString(bq.MechID)
+		if err != nil {
+			gamelog.L.Warn().Str("mech_id", bq.MechID).Msg("failed to convert mech id string to uuid")
+			return err
+		}
+	}
+
+	btl.warMachineIDs = uuids
 
 	return nil
 }

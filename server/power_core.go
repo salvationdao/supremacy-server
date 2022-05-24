@@ -33,21 +33,28 @@ func (b *PowerCore) Scan(value interface{}) error {
 }
 
 type BlueprintPowerCore struct {
-	ID           string          `json:"id"`
-	Collection   string          `json:"collection"`
-	Label        string          `json:"label"`
-	Size         string          `json:"size"`
-	Capacity     decimal.Decimal `json:"capacity"`
-	MaxDrawRate  decimal.Decimal `json:"max_draw_rate"`
-	RechargeRate decimal.Decimal `json:"recharge_rate"`
-	Armour       decimal.Decimal `json:"armour"`
-	MaxHitpoints decimal.Decimal `json:"max_hitpoints"`
-	Tier         string          `json:"tier,omitempty"`
-	CreatedAt    time.Time       `json:"created_at"`
+	ID               string          `json:"id"`
+	Collection       string          `json:"collection"`
+	Label            string          `json:"label"`
+	Size             string          `json:"size"`
+	Capacity         decimal.Decimal `json:"capacity"`
+	MaxDrawRate      decimal.Decimal `json:"max_draw_rate"`
+	RechargeRate     decimal.Decimal `json:"recharge_rate"`
+	Armour           decimal.Decimal `json:"armour"`
+	MaxHitpoints     decimal.Decimal `json:"max_hitpoints"`
+	Tier             string          `json:"tier,omitempty"`
+	CreatedAt        time.Time       `json:"created_at"`
+	ImageURL         null.String     `json:"image_url,omitempty"`
+	CardAnimationURL null.String     `json:"card_animation_url,omitempty"`
+	AvatarURL        null.String     `json:"avatar_url,omitempty"`
+	LargeImageURL    null.String     `json:"large_image_url,omitempty"`
+	BackgroundColor  null.String     `json:"background_color,omitempty"`
+	AnimationURL     null.String     `json:"animation_url,omitempty"`
+	YoutubeURL       null.String     `json:"youtube_url,omitempty"`
 
 	// only used on inserting new mechs/items, since we are still giving away some limited released and genesis
-	GenesisTokenID        decimal.NullDecimal `json:"genesis_token_id,omitempty"`
-	LimitedReleaseTokenID decimal.NullDecimal `json:"limited_release_token_id,omitempty"`
+	GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`
+	LimitedReleaseTokenID null.Int64 `json:"limited_release_token_id,omitempty"`
 }
 
 func (b *BlueprintPowerCore) Scan(value interface{}) error {
@@ -77,14 +84,21 @@ func BlueprintPowerCoreFromBoiler(core *boiler.BlueprintPowerCore) *BlueprintPow
 func PowerCoreFromBoiler(skin *boiler.PowerCore, collection *boiler.CollectionItem) *PowerCore {
 	return &PowerCore{
 		CollectionDetails: &CollectionDetails{
-			CollectionSlug: collection.CollectionSlug,
-			Hash:           collection.Hash,
-			TokenID:        collection.TokenID,
-			ItemType:       collection.ItemType,
-			ItemID:         collection.ItemID,
-			Tier:           collection.Tier,
-			OwnerID:        collection.OwnerID,
-			OnChainStatus:  collection.OnChainStatus,
+			CollectionSlug:   collection.CollectionSlug,
+			Hash:             collection.Hash,
+			TokenID:          collection.TokenID,
+			ItemType:         collection.ItemType,
+			ItemID:           collection.ItemID,
+			Tier:             collection.Tier,
+			OwnerID:          collection.OwnerID,
+			OnChainStatus:    collection.OnChainStatus,
+			ImageURL:         collection.ImageURL,
+			CardAnimationURL: collection.CardAnimationURL,
+			AvatarURL:        collection.AvatarURL,
+			LargeImageURL:    collection.LargeImageURL,
+			BackgroundColor:  collection.BackgroundColor,
+			AnimationURL:     collection.AnimationURL,
+			YoutubeURL:       collection.YoutubeURL,
 		},
 		ID:           skin.ID,
 		Label:        skin.Label,

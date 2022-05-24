@@ -34,8 +34,8 @@ type Weapon struct {
 	CreatedAt             time.Time           `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	BlueprintID           string              `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
 	DefaultDamageType     string              `boiler:"default_damage_type" boil:"default_damage_type" json:"default_damage_type" toml:"default_damage_type" yaml:"default_damage_type"`
-	GenesisTokenID        decimal.NullDecimal `boiler:"genesis_token_id" boil:"genesis_token_id" json:"genesis_token_id,omitempty" toml:"genesis_token_id" yaml:"genesis_token_id,omitempty"`
-	LimitedReleaseTokenID decimal.NullDecimal `boiler:"limited_release_token_id" boil:"limited_release_token_id" json:"limited_release_token_id,omitempty" toml:"limited_release_token_id" yaml:"limited_release_token_id,omitempty"`
+	GenesisTokenID        null.Int64          `boiler:"genesis_token_id" boil:"genesis_token_id" json:"genesis_token_id,omitempty" toml:"genesis_token_id" yaml:"genesis_token_id,omitempty"`
+	LimitedReleaseTokenID null.Int64          `boiler:"limited_release_token_id" boil:"limited_release_token_id" json:"limited_release_token_id,omitempty" toml:"limited_release_token_id" yaml:"limited_release_token_id,omitempty"`
 	WeaponType            string              `boiler:"weapon_type" boil:"weapon_type" json:"weapon_type" toml:"weapon_type" yaml:"weapon_type"`
 	DamageFalloff         null.Int            `boiler:"damage_falloff" boil:"damage_falloff" json:"damage_falloff,omitempty" toml:"damage_falloff" yaml:"damage_falloff,omitempty"`
 	DamageFalloffRate     null.Int            `boiler:"damage_falloff_rate" boil:"damage_falloff_rate" json:"damage_falloff_rate,omitempty" toml:"damage_falloff_rate" yaml:"damage_falloff_rate,omitempty"`
@@ -45,7 +45,9 @@ type Weapon struct {
 	RateOfFire            decimal.NullDecimal `boiler:"rate_of_fire" boil:"rate_of_fire" json:"rate_of_fire,omitempty" toml:"rate_of_fire" yaml:"rate_of_fire,omitempty"`
 	ProjectileSpeed       decimal.NullDecimal `boiler:"projectile_speed" boil:"projectile_speed" json:"projectile_speed,omitempty" toml:"projectile_speed" yaml:"projectile_speed,omitempty"`
 	EnergyCost            decimal.NullDecimal `boiler:"energy_cost" boil:"energy_cost" json:"energy_cost,omitempty" toml:"energy_cost" yaml:"energy_cost,omitempty"`
+	IsMelee               bool                `boiler:"is_melee" boil:"is_melee" json:"is_melee" toml:"is_melee" yaml:"is_melee"`
 	MaxAmmo               null.Int            `boiler:"max_ammo" boil:"max_ammo" json:"max_ammo,omitempty" toml:"max_ammo" yaml:"max_ammo,omitempty"`
+	LockedToMech          bool                `boiler:"locked_to_mech" boil:"locked_to_mech" json:"locked_to_mech" toml:"locked_to_mech" yaml:"locked_to_mech"`
 
 	R *weaponR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L weaponL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -73,7 +75,9 @@ var WeaponColumns = struct {
 	RateOfFire            string
 	ProjectileSpeed       string
 	EnergyCost            string
+	IsMelee               string
 	MaxAmmo               string
+	LockedToMech          string
 }{
 	ID:                    "id",
 	BrandID:               "brand_id",
@@ -96,7 +100,9 @@ var WeaponColumns = struct {
 	RateOfFire:            "rate_of_fire",
 	ProjectileSpeed:       "projectile_speed",
 	EnergyCost:            "energy_cost",
+	IsMelee:               "is_melee",
 	MaxAmmo:               "max_ammo",
+	LockedToMech:          "locked_to_mech",
 }
 
 var WeaponTableColumns = struct {
@@ -121,7 +127,9 @@ var WeaponTableColumns = struct {
 	RateOfFire            string
 	ProjectileSpeed       string
 	EnergyCost            string
+	IsMelee               string
 	MaxAmmo               string
+	LockedToMech          string
 }{
 	ID:                    "weapons.id",
 	BrandID:               "weapons.brand_id",
@@ -144,7 +152,9 @@ var WeaponTableColumns = struct {
 	RateOfFire:            "weapons.rate_of_fire",
 	ProjectileSpeed:       "weapons.projectile_speed",
 	EnergyCost:            "weapons.energy_cost",
+	IsMelee:               "weapons.is_melee",
 	MaxAmmo:               "weapons.max_ammo",
+	LockedToMech:          "weapons.locked_to_mech",
 }
 
 // Generated where
@@ -160,8 +170,8 @@ var WeaponWhere = struct {
 	CreatedAt             whereHelpertime_Time
 	BlueprintID           whereHelperstring
 	DefaultDamageType     whereHelperstring
-	GenesisTokenID        whereHelperdecimal_NullDecimal
-	LimitedReleaseTokenID whereHelperdecimal_NullDecimal
+	GenesisTokenID        whereHelpernull_Int64
+	LimitedReleaseTokenID whereHelpernull_Int64
 	WeaponType            whereHelperstring
 	DamageFalloff         whereHelpernull_Int
 	DamageFalloffRate     whereHelpernull_Int
@@ -171,7 +181,9 @@ var WeaponWhere = struct {
 	RateOfFire            whereHelperdecimal_NullDecimal
 	ProjectileSpeed       whereHelperdecimal_NullDecimal
 	EnergyCost            whereHelperdecimal_NullDecimal
+	IsMelee               whereHelperbool
 	MaxAmmo               whereHelpernull_Int
+	LockedToMech          whereHelperbool
 }{
 	ID:                    whereHelperstring{field: "\"weapons\".\"id\""},
 	BrandID:               whereHelpernull_String{field: "\"weapons\".\"brand_id\""},
@@ -183,8 +195,8 @@ var WeaponWhere = struct {
 	CreatedAt:             whereHelpertime_Time{field: "\"weapons\".\"created_at\""},
 	BlueprintID:           whereHelperstring{field: "\"weapons\".\"blueprint_id\""},
 	DefaultDamageType:     whereHelperstring{field: "\"weapons\".\"default_damage_type\""},
-	GenesisTokenID:        whereHelperdecimal_NullDecimal{field: "\"weapons\".\"genesis_token_id\""},
-	LimitedReleaseTokenID: whereHelperdecimal_NullDecimal{field: "\"weapons\".\"limited_release_token_id\""},
+	GenesisTokenID:        whereHelpernull_Int64{field: "\"weapons\".\"genesis_token_id\""},
+	LimitedReleaseTokenID: whereHelpernull_Int64{field: "\"weapons\".\"limited_release_token_id\""},
 	WeaponType:            whereHelperstring{field: "\"weapons\".\"weapon_type\""},
 	DamageFalloff:         whereHelpernull_Int{field: "\"weapons\".\"damage_falloff\""},
 	DamageFalloffRate:     whereHelpernull_Int{field: "\"weapons\".\"damage_falloff_rate\""},
@@ -194,7 +206,9 @@ var WeaponWhere = struct {
 	RateOfFire:            whereHelperdecimal_NullDecimal{field: "\"weapons\".\"rate_of_fire\""},
 	ProjectileSpeed:       whereHelperdecimal_NullDecimal{field: "\"weapons\".\"projectile_speed\""},
 	EnergyCost:            whereHelperdecimal_NullDecimal{field: "\"weapons\".\"energy_cost\""},
+	IsMelee:               whereHelperbool{field: "\"weapons\".\"is_melee\""},
 	MaxAmmo:               whereHelpernull_Int{field: "\"weapons\".\"max_ammo\""},
+	LockedToMech:          whereHelperbool{field: "\"weapons\".\"locked_to_mech\""},
 }
 
 // WeaponRels is where relationship names are stored.
@@ -227,9 +241,9 @@ func (*weaponR) NewStruct() *weaponR {
 type weaponL struct{}
 
 var (
-	weaponAllColumns            = []string{"id", "brand_id", "label", "slug", "damage", "deleted_at", "updated_at", "created_at", "blueprint_id", "default_damage_type", "genesis_token_id", "limited_release_token_id", "weapon_type", "damage_falloff", "damage_falloff_rate", "radius", "radius_damage_falloff", "spread", "rate_of_fire", "projectile_speed", "energy_cost", "max_ammo"}
+	weaponAllColumns            = []string{"id", "brand_id", "label", "slug", "damage", "deleted_at", "updated_at", "created_at", "blueprint_id", "default_damage_type", "genesis_token_id", "limited_release_token_id", "weapon_type", "damage_falloff", "damage_falloff_rate", "radius", "radius_damage_falloff", "spread", "rate_of_fire", "projectile_speed", "energy_cost", "is_melee", "max_ammo", "locked_to_mech"}
 	weaponColumnsWithoutDefault = []string{"label", "slug", "damage", "blueprint_id", "weapon_type"}
-	weaponColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at", "default_damage_type", "genesis_token_id", "limited_release_token_id", "damage_falloff", "damage_falloff_rate", "radius", "radius_damage_falloff", "spread", "rate_of_fire", "projectile_speed", "energy_cost", "max_ammo"}
+	weaponColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at", "default_damage_type", "genesis_token_id", "limited_release_token_id", "damage_falloff", "damage_falloff_rate", "radius", "radius_damage_falloff", "spread", "rate_of_fire", "projectile_speed", "energy_cost", "is_melee", "max_ammo", "locked_to_mech"}
 	weaponPrimaryKeyColumns     = []string{"id"}
 	weaponGeneratedColumns      = []string{}
 )
