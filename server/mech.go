@@ -178,7 +178,30 @@ func (b *MechModel) Scan(value interface{}) error {
 	return json.Unmarshal(v, b)
 }
 
-func MechFromBoiler(mech *boiler.Mech, collection *boiler.CollectionItem) *Mech {
+// MechFromBoiler takes a boiler structs and returns server structs, skinCollection is optional
+func MechFromBoiler(mech *boiler.Mech, collection *boiler.CollectionItem, skinCollection *boiler.CollectionItem) *Mech {
+	skin := &CollectionDetails{}
+
+	if mech.R.Model.R.DefaultChassisSkin != nil {
+		skin.ImageURL = mech.R.Model.R.DefaultChassisSkin.ImageURL
+		skin.CardAnimationURL = mech.R.Model.R.DefaultChassisSkin.CardAnimationURL
+		skin.AvatarURL = mech.R.Model.R.DefaultChassisSkin.AvatarURL
+		skin.LargeImageURL = mech.R.Model.R.DefaultChassisSkin.LargeImageURL
+		skin.BackgroundColor = mech.R.Model.R.DefaultChassisSkin.BackgroundColor
+		skin.AnimationURL = mech.R.Model.R.DefaultChassisSkin.AnimationURL
+		skin.YoutubeURL = mech.R.Model.R.DefaultChassisSkin.YoutubeURL
+	}
+
+	if skinCollection != nil {
+		skin.ImageURL = skinCollection.ImageURL
+		skin.CardAnimationURL = skinCollection.CardAnimationURL
+		skin.AvatarURL = skinCollection.AvatarURL
+		skin.LargeImageURL = skinCollection.LargeImageURL
+		skin.BackgroundColor = skinCollection.BackgroundColor
+		skin.AnimationURL = skinCollection.AnimationURL
+		skin.YoutubeURL = skinCollection.YoutubeURL
+	}
+
 	return &Mech{
 		CollectionDetails: &CollectionDetails{
 			CollectionSlug:   collection.CollectionSlug,
@@ -189,13 +212,13 @@ func MechFromBoiler(mech *boiler.Mech, collection *boiler.CollectionItem) *Mech 
 			Tier:             collection.Tier,
 			OwnerID:          collection.OwnerID,
 			OnChainStatus:    collection.OnChainStatus,
-			ImageURL:         collection.ImageURL,
-			CardAnimationURL: collection.CardAnimationURL,
-			AvatarURL:        collection.AvatarURL,
-			LargeImageURL:    collection.LargeImageURL,
-			BackgroundColor:  collection.BackgroundColor,
-			AnimationURL:     collection.AnimationURL,
-			YoutubeURL:       collection.YoutubeURL,
+			ImageURL:         skin.ImageURL,
+			CardAnimationURL: skin.CardAnimationURL,
+			AvatarURL:        skin.AvatarURL,
+			LargeImageURL:    skin.LargeImageURL,
+			BackgroundColor:  skin.BackgroundColor,
+			AnimationURL:     skin.AnimationURL,
+			YoutubeURL:       skin.YoutubeURL,
 		},
 
 		ID:                    mech.ID,
@@ -206,7 +229,7 @@ func MechFromBoiler(mech *boiler.Mech, collection *boiler.CollectionItem) *Mech 
 		MaxHitpoints:          mech.MaxHitpoints,
 		IsDefault:             mech.IsDefault,
 		IsInsured:             mech.IsInsured,
-		Name:                  mech.Name,
+		Name:                  mech.Label,
 		GenesisTokenID:        mech.GenesisTokenID,
 		LimitedReleaseTokenID: mech.LimitedReleaseTokenID,
 		PowerCoreSize:         mech.PowerCoreSize,

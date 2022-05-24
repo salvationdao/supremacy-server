@@ -3,13 +3,16 @@ package comms
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/volatiletech/null/v8"
 	"server"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 	"server/rpctypes"
+
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
+
+	"github.com/volatiletech/null/v8"
 
 	"github.com/ninja-software/terror/v2"
 )
@@ -101,21 +104,12 @@ func (s *S) GenesisOrLimitedMech(req *GenesisOrLimitedMechReq, resp *GenesisOrLi
 	gamelog.L.Trace().Msg("comms.GenesisOrLimitedMech")
 	var mech *server.Mech
 
-	//if req.TokenID
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println(req.TokenID)
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-
 	switch req.CollectionSlug {
 	case "supremacy-genesis":
 		mechBoiler, err := boiler.Mechs(
 			boiler.MechWhere.GenesisTokenID.EQ(null.Int64From(int64(req.TokenID))),
+			qm.Load(boiler.MechRels.Model),
+			qm.Load(qm.Rels(boiler.MechRels.Model, boiler.MechModelRels.DefaultChassisSkin)),
 		).One(gamedb.StdConn)
 		if err != nil {
 			gamelog.L.Error().Err(err).Int("req.TokenID", req.TokenID).Msg("failed to find genesis mech")
@@ -127,10 +121,22 @@ func (s *S) GenesisOrLimitedMech(req *GenesisOrLimitedMechReq, resp *GenesisOrLi
 			gamelog.L.Error().Err(err).Str("mechBoiler.ID", mechBoiler.ID).Msg("failed to find collection item")
 			return err
 		}
-		mech = server.MechFromBoiler(mechBoiler, collection)
+
+		var skinCollection *boiler.CollectionItem
+		if mechBoiler.ChassisSkinID.Valid {
+			skinCollection, err = boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(mechBoiler.ChassisSkinID.String)).One(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Err(err).Str("mechBoiler.ChassisSkinID.String", mechBoiler.ChassisSkinID.String).Msg("failed to find skin collection item")
+				return err
+			}
+		}
+
+		mech = server.MechFromBoiler(mechBoiler, collection, skinCollection)
 	case "supremacy-limited-release":
 		mechBoiler, err := boiler.Mechs(
 			boiler.MechWhere.LimitedReleaseTokenID.EQ(null.Int64From(int64(req.TokenID))),
+			qm.Load(boiler.MechRels.Model),
+			qm.Load(qm.Rels(boiler.MechRels.Model, boiler.MechModelRels.DefaultChassisSkin)),
 		).One(gamedb.StdConn)
 		if err != nil {
 			gamelog.L.Error().Err(err).Int("req.TokenID", req.TokenID).Msg("failed to find limited release mech")
@@ -142,7 +148,17 @@ func (s *S) GenesisOrLimitedMech(req *GenesisOrLimitedMechReq, resp *GenesisOrLi
 			gamelog.L.Error().Err(err).Str("mechBoiler.ID", mechBoiler.ID).Msg("failed to find collection item")
 			return err
 		}
-		mech = server.MechFromBoiler(mechBoiler, collection)
+
+		var skinCollection *boiler.CollectionItem
+		if mechBoiler.ChassisSkinID.Valid {
+			skinCollection, err = boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(mechBoiler.ChassisSkinID.String)).One(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Err(err).Str("mechBoiler.ChassisSkinID.String", mechBoiler.ChassisSkinID.String).Msg("failed to find skin collection item")
+				return err
+			}
+		}
+
+		mech = server.MechFromBoiler(mechBoiler, collection, skinCollection)
 	default:
 		err := fmt.Errorf("invalid collection slug")
 		gamelog.L.Error().Err(err).Str("req.CollectionSlug", req.CollectionSlug).Msg("collection slug is invalid")
