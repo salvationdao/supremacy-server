@@ -59,7 +59,7 @@ SELECT
 FROM collection_items 
 INNER JOIN mechs on collection_items.item_id = mechs.id
 INNER JOIN players p ON p.id = collection_items.owner_id
-INNER JOIN factions f on p.faction_id = f.id
+LEFT OUTER JOIN factions f on p.faction_id = f.id
 LEFT OUTER JOIN power_cores ec ON ec.id = mechs.power_core_id
 LEFT OUTER JOIN brands b ON b.id = mechs.brand_id
 LEFT OUTER JOIN mech_model mm ON mechs.model_id = mm.id
@@ -465,7 +465,11 @@ func InsertNewMech(ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) (*ser
 		return nil, terror.Error(err)
 	}
 
-	return Mech(newMech.ID)
+	mech, err := Mech(newMech.ID)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+	return mech, nil
 }
 
 func IsMechColumn(col string) bool {

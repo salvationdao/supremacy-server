@@ -378,7 +378,7 @@ func (btl *Battle) QueueDefaultMechs() error {
 			continue
 		}
 
-		result, err := db.QueueLength(uuid.FromStringOrNil(mech.FactionID))
+		result, err := db.QueueLength(uuid.FromStringOrNil(mech.FactionID.String))
 		if err != nil {
 			gamelog.L.Error().Interface("factionID", mech.FactionID).Err(err).Msg("unable to retrieve queue length")
 			return err
@@ -396,7 +396,7 @@ func (btl *Battle) QueueDefaultMechs() error {
 
 		bc := &boiler.BattleContract{
 			MechID:         mech.ID,
-			FactionID:      mech.FactionID,
+			FactionID:      mech.FactionID.String,
 			PlayerID:       ownerID.String(),
 			ContractReward: queueStatus.ContractReward,
 			Fee:            queueStatus.QueueCost,
@@ -414,7 +414,7 @@ func (btl *Battle) QueueDefaultMechs() error {
 		bq := &boiler.BattleQueue{
 			MechID:           mech.ID,
 			QueuedAt:         time.Now(),
-			FactionID:        mech.FactionID,
+			FactionID:        mech.FactionID.String,
 			OwnerID:          ownerID.String(),
 			BattleContractID: null.StringFrom(bc.ID),
 		}

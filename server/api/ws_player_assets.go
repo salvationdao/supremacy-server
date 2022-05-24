@@ -117,6 +117,9 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 	playerAssetMechs := []*PlayerAssetMech{}
 
 	for _, m := range mechs {
+		if !m.FactionID.Valid {
+			continue
+		}
 		playerAssetMechs = append(playerAssetMechs, &PlayerAssetMech{
 			ID:                    m.ID,
 			Label:                 m.Label,
@@ -132,7 +135,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 			PowerCoreSize:         m.PowerCoreSize,
 			BlueprintID:           m.BlueprintID,
 			BrandID:               m.BrandID,
-			FactionID:             m.FactionID,
+			FactionID:             m.FactionID.String,
 			ModelID:               m.ModelID,
 			DefaultChassisSkinID:  m.DefaultChassisSkinID,
 			ChassisSkinID:         m.ChassisSkinID,

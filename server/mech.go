@@ -55,8 +55,8 @@ type Mech struct {
 
 	Owner *User `json:"user"`
 
-	FactionID string   `json:"faction_id"`
-	Faction   *Faction `json:"faction,omitempty"`
+	FactionID null.String `json:"faction_id"`
+	Faction   *Faction    `json:"faction,omitempty"`
 
 	ModelID string     `json:"model_id"`
 	Model   *MechModel `json:"model"`

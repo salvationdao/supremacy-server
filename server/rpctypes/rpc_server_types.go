@@ -40,23 +40,23 @@ type CollectionDetails struct {
 // Mech is the struct that rpc expects for mechs
 type Mech struct {
 	*CollectionDetails
-	ID                    string     `json:"id"`
-	BrandID               string     `json:"brand_id"`
-	Label                 string     `json:"label"`
-	WeaponHardpoints      int        `json:"weapon_hardpoints"`
-	UtilitySlots          int        `json:"utility_slots"`
-	Speed                 int        `json:"speed"`
-	MaxHitpoints          int        `json:"max_hitpoints"`
-	BlueprintID           string     `json:"blueprint_id"`
-	IsDefault             bool       `json:"is_default"`
-	IsInsured             bool       `json:"is_insured"`
-	Name                  string     `json:"name"`
-	ModelID               string     `json:"model_id"`
-	GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`
-	LimitedReleaseTokenID null.Int64 `json:"limited_release_token_id,omitempty"`
-	OwnerID               string     `json:"owner_id"`
-	FactionID             string     `json:"faction_id"`
-	PowerCoreSize         string     `json:"power_core_size"`
+	ID                    string      `json:"id"`
+	BrandID               string      `json:"brand_id"`
+	Label                 string      `json:"label"`
+	WeaponHardpoints      int         `json:"weapon_hardpoints"`
+	UtilitySlots          int         `json:"utility_slots"`
+	Speed                 int         `json:"speed"`
+	MaxHitpoints          int         `json:"max_hitpoints"`
+	BlueprintID           string      `json:"blueprint_id"`
+	IsDefault             bool        `json:"is_default"`
+	IsInsured             bool        `json:"is_insured"`
+	Name                  string      `json:"name"`
+	ModelID               string      `json:"model_id"`
+	GenesisTokenID        null.Int64  `json:"genesis_token_id,omitempty"`
+	LimitedReleaseTokenID null.Int64  `json:"limited_release_token_id,omitempty"`
+	OwnerID               string      `json:"owner_id"`
+	FactionID             null.String `json:"faction_id"`
+	PowerCoreSize         string      `json:"power_core_size"`
 
 	Tier string `json:"tier,omitempty"`
 
