@@ -1116,7 +1116,6 @@ func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 			).All(gamedb.StdConn)
 			if err != nil {
 				gamelog.L.Error().Str("SpoilsOfWarWhere.CreatedAt.GT", time.Now().AddDate(0, 0, -1).String()).Err(err).Msg("issue getting SpoilsOfWars")
-				// handle
 			} else {
 				resp := &MultiplierUpdate{
 					Battles: []*MultiplierUpdateBattles{},

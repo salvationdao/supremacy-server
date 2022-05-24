@@ -405,7 +405,8 @@ func RegisterAllNewAssets(pp *rpcclient.PassportXrpcClient) {
 			var mechIDs []string
 			mechCollections, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech)).All(gamedb.StdConn)
 			if err != nil {
-				// handle
+				gamelog.L.Error().Err(err).Msg("failed to get mech collection items for RegisterAllNewAssets")
+				return
 			}
 			for _, m := range mechCollections {
 				mechIDs = append(mechIDs, m.ItemID)
@@ -413,12 +414,13 @@ func RegisterAllNewAssets(pp *rpcclient.PassportXrpcClient) {
 
 			mechs, err := db.Mechs(mechIDs...)
 			if err != nil {
-				// handle
+				gamelog.L.Error().Err(err).Msg("failed to get mechs for RegisterAllNewAssets")
+				return
 			}
 
 			err = pp.AssetsRegister(rpctypes.ServerMechsToXsynAsset(mechs)) // register new mechs
 			if err != nil {
-				gamelog.L.Error().Err(err).Msg("issue inserting new mechs to xsyn")
+				gamelog.L.Error().Err(err).Msg("issue inserting new mechs to xsyn for RegisterAllNewAssets")
 				return
 			}
 
@@ -432,7 +434,8 @@ func RegisterAllNewAssets(pp *rpcclient.PassportXrpcClient) {
 			var weaponIDs []string
 			weaponCollections, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeWeapon)).All(gamedb.StdConn)
 			if err != nil {
-				// handle
+				gamelog.L.Error().Err(err).Msg("failed to get weapon collection items for RegisterAllNewAssets")
+				return
 			}
 			for _, m := range weaponCollections {
 				weaponIDs = append(weaponIDs, m.ItemID)
@@ -440,7 +443,8 @@ func RegisterAllNewAssets(pp *rpcclient.PassportXrpcClient) {
 
 			weapons, err := db.Weapons(weaponIDs...)
 			if err != nil {
-				// handle
+				gamelog.L.Error().Err(err).Msg("failed to get weapons for RegisterAllNewAssets")
+				return
 			}
 
 			err = pp.AssetsRegister(rpctypes.ServerWeaponsToXsynAsset(weapons)) // register new weapons
@@ -458,7 +462,8 @@ func RegisterAllNewAssets(pp *rpcclient.PassportXrpcClient) {
 			var skinIDs []string
 			skinCollections, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMechSkin)).All(gamedb.StdConn)
 			if err != nil {
-				// handle
+				gamelog.L.Error().Err(err).Msg("failed to get skin collection items for RegisterAllNewAssets")
+				return
 			}
 			for _, m := range skinCollections {
 				skinIDs = append(skinIDs, m.ItemID)
@@ -466,7 +471,8 @@ func RegisterAllNewAssets(pp *rpcclient.PassportXrpcClient) {
 
 			skins, err := db.MechSkins(skinIDs...)
 			if err != nil {
-				// handle
+				gamelog.L.Error().Err(err).Msg("failed to get skins for RegisterAllNewAssets")
+				return
 			}
 
 			err = pp.AssetsRegister(rpctypes.ServerMechSkinsToXsynAsset(skins)) // register new mech skins
@@ -485,7 +491,8 @@ func RegisterAllNewAssets(pp *rpcclient.PassportXrpcClient) {
 			var powerCoreIDs []string
 			powerCoreCollections, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypePowerCore)).All(gamedb.StdConn)
 			if err != nil {
-				// handle
+				gamelog.L.Error().Err(err).Msg("failed to get power core collection items for RegisterAllNewAssets")
+				return
 			}
 			for _, m := range powerCoreCollections {
 				powerCoreIDs = append(powerCoreIDs, m.ItemID)
@@ -493,7 +500,8 @@ func RegisterAllNewAssets(pp *rpcclient.PassportXrpcClient) {
 
 			powerCores, err := db.PowerCores(powerCoreIDs...)
 			if err != nil {
-				// handle
+				gamelog.L.Error().Err(err).Msg("failed to get power cores for RegisterAllNewAssets")
+				return
 			}
 
 			err = pp.AssetsRegister(rpctypes.ServerPowerCoresToXsynAsset(powerCores)) // register new mech powerCores
@@ -511,7 +519,8 @@ func RegisterAllNewAssets(pp *rpcclient.PassportXrpcClient) {
 			var utilityIDs []string
 			utilityCollections, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeUtility)).All(gamedb.StdConn)
 			if err != nil {
-				// handle
+				gamelog.L.Error().Err(err).Msg("failed to get utility collection items for RegisterAllNewAssets")
+				return
 			}
 			for _, m := range utilityCollections {
 				utilityIDs = append(utilityIDs, m.ItemID)
@@ -519,7 +528,8 @@ func RegisterAllNewAssets(pp *rpcclient.PassportXrpcClient) {
 
 			utilities, err := db.Utilities(utilityIDs...)
 			if err != nil {
-				// handle
+				gamelog.L.Error().Err(err).Msg("failed to get utilities for RegisterAllNewAssets")
+				return
 			}
 
 			err = pp.AssetsRegister(rpctypes.ServerUtilitiesToXsynAsset(utilities)) // register new mech utilities
