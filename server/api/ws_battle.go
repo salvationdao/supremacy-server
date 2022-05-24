@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/ninja-syndicate/ws"
+	"server/battle"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -26,6 +27,30 @@ func NewBattleController(api *API) *BattleControllerWS {
 
 	api.Command(HubKeyBattleMechHistoryList, bc.BattleMechHistoryListHandler)
 	api.Command(HubKeyBattleMechStats, bc.BattleMechStatsHandler)
+
+	// commands from battle
+
+	// faction queue
+	api.SecureUserFactionCommand(battle.WSQueueJoin, api.BattleArena.QueueJoinHandler)
+	api.SecureUserFactionCommand(battle.WSQueueLeave, api.BattleArena.QueueLeaveHandler)
+	api.SecureUserFactionCommand(battle.WSAssetQueueStatus, api.BattleArena.AssetQueueStatusHandler)
+	api.SecureUserFactionCommand(battle.WSAssetQueueStatusList, api.BattleArena.AssetQueueStatusListHandler)
+
+	api.SecureUserFactionCommand(battle.HubKeyAssetMany, api.BattleArena.AssetManyHandler)
+
+	// TODO: handle insurance and repair
+	//api.SecureUserFactionCommand(battle.HubKeyAssetRepairPayFee, api.BattleArena.AssetRepairPayFeeHandler)
+	//api.SecureUserFactionCommand(battle.HubKeyAssetRepairStatus, api.BattleArena.AssetRepairStatusHandler)
+
+	// TODO: handle player ability use
+	//api.SecureUserCommand(battle.HubKeyPlayerAbilityUse, api.BattleArena.PlayerAbilityUse)
+
+	// battle ability related (bribing)
+	api.SecureUserFactionCommand(battle.HubKeyBattleAbilityBribe, api.BattleArena.BattleAbilityBribe)
+	api.SecureUserFactionCommand(battle.HubKeyAbilityLocationSelect, api.BattleArena.AbilityLocationSelect)
+
+	// faction unique ability related (sup contribution)
+	api.SecureUserFactionCommand(battle.HubKeFactionUniqueAbilityContribute, api.BattleArena.FactionUniqueAbilityContribute)
 
 	return bc
 }

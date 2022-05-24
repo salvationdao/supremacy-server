@@ -214,32 +214,90 @@ func NewAPI(
 
 		r.Route("/ws", func(r chi.Router) {
 			r.Use(ws.TrimPrefix("/api/ws"))
+
+			// public route ws
 			r.Mount("/public", ws.NewServer(func(s *ws.Server) {
 				s.Mount("/commander", api.Commander)
 				s.WS("/global_chat", HubKeyGlobalChatSubscribe, cc.GlobalChatUpdatedSubscribeHandler)
 				s.WS("/global_announcement", server.HubKeyGlobalAnnouncementSubscribe, sc.GlobalAnnouncementSubscribe)
 				s.WS("/live_data", server.HubKeySaleAbilityPriceSubscribe, nil)
+
+				// come from battle
+				s.WS("/notification", battle.HubKeyGameNotification, nil)
 			}))
 
-			// battle arena route
-			r.Mount("/battle", ws.NewServer(battleArenaClient.Route(api.AuthWS, api.AuthUserFactionWS)))
+			// battle arena route ws
+			r.Mount("/battle", ws.NewServer(func(s *ws.Server) {
+				s.WS("/*", battle.HubKeyGameSettingsUpdated, battleArenaClient.SendSettings)
+				s.WS("/bribe_stage", battle.HubKeyBribeStageUpdateSubscribe, battleArenaClient.BribeStageSubscribe)
+				s.WS("/live_data", "", nil)
+			}))
 
-			// secured user route
+			// secured user route ws
 			r.Mount("/user/{user_id}", ws.NewServer(func(s *ws.Server) {
 				s.Use(api.AuthWS(true, true))
 				s.Mount("/user_commander", api.SecureUserCommander)
 				s.WS("/*", HubKeyUserSubscribe, server.MustSecure(pc.PlayersSubscribeHandler))
-				s.WS("/multipliers", battle.HubKeyMultiplierSubscribe, server.MustSecure(api.BattleArena.MultiplierUpdate))
+				s.WS("/multipliers", battle.HubKeyMultiplierSubscribe, server.MustSecure(battleArenaClient.MultiplierUpdate))
 			}))
 
-			// secured faction route
+			// secured faction route ws
 			r.Mount("/faction/{faction_id}", ws.NewServer(func(s *ws.Server) {
 				s.Use(api.AuthUserFactionWS(true))
 				s.WS("/*", HubKeyFactionActivePlayersSubscribe, server.MustSecureFaction(pc.FactionActivePlayersSubscribeHandler))
 				s.Mount("/faction_commander", api.SecureFactionCommander)
 				s.WS("/punish_vote", HubKeyPunishVoteSubscribe, server.MustSecureFaction(pc.PunishVoteSubscribeHandler))
 				s.WS("/faction_chat", HubKeyFactionChatSubscribe, server.MustSecureFaction(cc.FactionChatUpdatedSubscribeHandler))
+
+				// subscription from battle
+				s.WS("/queue", battle.WSQueueStatusSubscribe, server.MustSecureFaction(battleArenaClient.QueueStatusSubscribeHandler))
 			}))
+
+			// handle mech stat and destroyed ws
+			r.Mount("/mech", ws.NewServer(func(s *ws.Server) {
+				r.Mount("/stat/{slotNumber}", ws.NewServer(func(s *ws.Server) {
+					s.Use(func(next http.Handler) http.Handler {
+						fn := func(w http.ResponseWriter, r *http.Request) {
+							slotNumber := chi.URLParam(r, "slotNumber")
+							if slotNumber == "" {
+								http.Error(w, "no slot number", http.StatusBadRequest)
+								return
+							}
+							ctx := context.WithValue(r.Context(), "slotNumber", slotNumber)
+							*r = *r.WithContext(ctx)
+							next.ServeHTTP(w, r)
+							return
+						}
+						return http.HandlerFunc(fn)
+					})
+					s.WS("/*", battle.HubKeyWarMachineStatUpdated, battleArenaClient.WarMachineStatUpdatedSubscribe)
+				}))
+			}))
+
+			// handle abilities ws
+			r.Mount("/ability/{faction_id}", ws.NewServer(func(s *ws.Server) {
+				s.Use(api.AuthUserFactionWS(true))
+				s.WS("/*", battle.HubKeyBattleAbilityUpdated, server.MustSecureFaction(battleArenaClient.BattleAbilityUpdateSubscribeHandler))
+				s.WS("/faction", battle.HubKeyFactionUniqueAbilitiesUpdated, server.MustSecureFaction(battleArenaClient.FactionAbilitiesUpdateSubscribeHandler))
+				s.Mount("/mech/{slotNumber}", ws.NewServer(func(s *ws.Server) {
+					s.Use(func(next http.Handler) http.Handler {
+						fn := func(w http.ResponseWriter, r *http.Request) {
+							slotNumber := chi.URLParam(r, "slotNumber")
+							if slotNumber == "" {
+								http.Error(w, "no slot number", http.StatusBadRequest)
+								return
+							}
+							ctx := context.WithValue(r.Context(), "slotNumber", slotNumber)
+							*r = *r.WithContext(ctx)
+							next.ServeHTTP(w, r)
+							return
+						}
+						return http.HandlerFunc(fn)
+					})
+					s.WS("/*", battle.HubKeyWarMachineAbilitiesUpdated, server.MustSecureFaction(battleArenaClient.WarMachineAbilitiesUpdateSubscribeHandler))
+				}))
+			}))
+
 		})
 	})
 
@@ -382,8 +440,6 @@ func (api *API) AuthUserFactionWS(factionIDMustMatch bool) func(next http.Handle
 
 			if factionIDMustMatch {
 				factionID := chi.URLParam(r, "faction_id")
-				fmt.Println("request url path", r.URL.Path)
-				fmt.Println("faction id from url", factionID)
 				if factionID == "" || factionID != user.FactionID.String {
 					fmt.Fprintf(w, "faction id check failed... url faction id: %s, user faction id: %s, url:%s", factionID, user.FactionID.String, r.URL.Path)
 					return
@@ -393,7 +449,6 @@ func (api *API) AuthUserFactionWS(factionIDMustMatch bool) func(next http.Handle
 			ctxWithUserID := context.WithValue(r.Context(), "user_id", user.ID)
 			ctx := context.WithValue(ctxWithUserID, "faction_id", user.FactionID.String)
 			*r = *r.WithContext(ctx)
-			fmt.Println("SERBVING NEXT", r.URL.Path)
 			next.ServeHTTP(w, r)
 		}
 

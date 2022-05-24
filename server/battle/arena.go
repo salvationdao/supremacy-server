@@ -19,7 +19,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/ninja-syndicate/ws"
 
 	"github.com/volatiletech/null/v8"
@@ -52,8 +51,6 @@ type Arena struct {
 	sms                      server.SMS
 	gameClientMinimumBuildNo uint64
 	telegram                 server.Telegram
-	SecureUserCommander      *ws.Commander
-	SecureFactionCommander   *ws.Commander
 	sync.RWMutex
 }
 
@@ -169,7 +166,7 @@ const (
 )
 
 // BATTLESPAWNCOUNT defines how many mechs to spawn
-// this should be refactored to a number in the database
+// this should be refactored to a number in the data base
 // config table may be necessary, suggest key/value
 const BATTLESPAWNCOUNT int = 3
 
@@ -196,13 +193,6 @@ func NewArena(opts *Opts) *Arena {
 		telegram:                 opts.Telegram,
 	}
 
-	arena.SecureUserCommander = ws.NewCommander(func(c *ws.Commander) {
-		c.RestBridge("/rest")
-	})
-	arena.SecureFactionCommander = ws.NewCommander(func(c *ws.Commander) {
-		c.RestBridge("/rest")
-	})
-
 	arena.AIPlayers, err = db.DefaultFactionPlayers()
 	if err != nil {
 		gamelog.L.Fatal().Err(err).Msg("no faction users found")
@@ -217,28 +207,6 @@ func NewArena(opts *Opts) *Arena {
 		ReadTimeout:  arena.timeout,
 		WriteTimeout: arena.timeout,
 	}
-
-	// faction queue
-	arena.SecureUserFactionCommand(WSQueueJoin, arena.QueueJoinHandler)
-	arena.SecureUserFactionCommand(WSQueueLeave, arena.QueueLeaveHandler)
-	arena.SecureUserFactionCommand(WSAssetQueueStatus, arena.AssetQueueStatusHandler)
-	arena.SecureUserFactionCommand(WSAssetQueueStatusList, arena.AssetQueueStatusListHandler)
-
-	arena.SecureUserFactionCommand(HubKeyAssetMany, arena.AssetManyHandler)
-
-	// TODO: handle insurance and repair
-	//arena.SecureUserFactionCommand(HubKeyAssetRepairPayFee, arena.AssetRepairPayFeeHandler)
-	//arena.SecureUserFactionCommand(HubKeyAssetRepairStatus, arena.AssetRepairStatusHandler)
-
-	// TODO: handle player ability use
-	//arena.SecureUserCommand(HubKeyPlayerAbilityUse, arena.PlayerAbilityUse)
-
-	// battle ability related (bribing)
-	arena.SecureUserFactionCommand(HubKeyBattleAbilityBribe, arena.BattleAbilityBribe)
-	arena.SecureUserFactionCommand(HubKeyAbilityLocationSelect, arena.AbilityLocationSelect)
-
-	// faction unique ability related (sup contribution)
-	arena.SecureUserFactionCommand(HubKeFactionUniqueAbilityContribute, arena.FactionUniqueAbilityContribute)
 
 	// start player rank updater
 	arena.PlayerRankUpdater()
@@ -258,69 +226,6 @@ type AuthMiddleware func(required bool, userIDMustMatch bool) func(next http.Han
 type AuthFactionMiddleware func(factionIDMustMatch bool) func(next http.Handler) http.Handler
 
 const HubKeyBribingWinnerSubscribe = "BRIBE:WINNER:SUBSCRIBE"
-
-func (arena *Arena) Route(authUserWS AuthMiddleware, authFactionWS AuthFactionMiddleware) func(s *ws.Server) {
-	return func(s *ws.Server) {
-
-		s.WS("/*", HubKeyGameSettingsUpdated, arena.SendSettings)
-		s.WS("/notification", HubKeyGameNotification, nil)
-		s.WS("/bribe_stage", HubKeyBribeStageUpdateSubscribe, arena.BribeStageSubscribe)
-		s.WS("/live_data", "", nil)
-
-		// handle mech stat and destroyed
-		s.Mount("/mech/{slotNumber}", ws.NewServer(func(s *ws.Server) {
-			s.Use(func(next http.Handler) http.Handler {
-				fn := func(w http.ResponseWriter, r *http.Request) {
-					slotNumber := chi.URLParam(r, "slotNumber")
-					if slotNumber == "" {
-						http.Error(w, "no slot number", http.StatusBadRequest)
-						return
-					}
-					ctx := context.WithValue(r.Context(), "slotNumber", slotNumber)
-					*r = *r.WithContext(ctx)
-					next.ServeHTTP(w, r)
-					return
-				}
-				return http.HandlerFunc(fn)
-			})
-			s.WS("/*", HubKeyWarMachineStatUpdated, arena.WarMachineStatUpdatedSubscribe)
-		}))
-
-		s.Mount("/faction/{faction_id}", ws.NewServer(func(s *ws.Server) {
-			s.Use(authFactionWS(true))
-			s.WS("/*", "", nil)
-			s.Mount("/faction_commander", arena.SecureFactionCommander)
-			s.WS("/queue", WSQueueStatusSubscribe, server.MustSecureFaction(arena.QueueStatusSubscribeHandler))
-
-			s.Mount("/ability", ws.NewServer(func(s *ws.Server) {
-				s.WS("/*", HubKeyBattleAbilityUpdated, server.MustSecureFaction(arena.BattleAbilityUpdateSubscribeHandler))
-				s.WS("/faction", HubKeyFactionUniqueAbilitiesUpdated, server.MustSecureFaction(arena.FactionAbilitiesUpdateSubscribeHandler))
-				s.Mount("/mech/{slotNumber}", ws.NewServer(func(s *ws.Server) {
-					s.Use(func(next http.Handler) http.Handler {
-						fn := func(w http.ResponseWriter, r *http.Request) {
-							slotNumber := chi.URLParam(r, "slotNumber")
-							if slotNumber == "" {
-								http.Error(w, "no slot number", http.StatusBadRequest)
-								return
-							}
-							ctx := context.WithValue(r.Context(), "slotNumber", slotNumber)
-							*r = *r.WithContext(ctx)
-							next.ServeHTTP(w, r)
-							return
-						}
-						return http.HandlerFunc(fn)
-					})
-					s.WS("/*", HubKeyWarMachineAbilitiesUpdated, server.MustSecureFaction(arena.WarMachineAbilitiesUpdateSubscribeHandler))
-				}))
-			}))
-		}))
-
-		s.Mount("/user/{user_id}", ws.NewServer(func(s *ws.Server) {
-			s.Use(authUserWS(true, true))
-			s.Mount("/user_commander", arena.SecureUserCommander)
-		}))
-	}
-}
 
 const BATTLEINIT = "BATTLE:INIT"
 

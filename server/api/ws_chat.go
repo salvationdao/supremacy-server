@@ -442,7 +442,6 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 const HubKeyFactionChatSubscribe = "FACTION:CHAT:SUBSCRIBE"
 
 func (fc *ChatController) FactionChatUpdatedSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	fmt.Println("faction chat initial11111111111111111111111111111111111111111111111111111")
 	resp := []*ChatMessage{}
 	chatRangeHandler := func(message *ChatMessage) bool {
 		resp = append(resp, message)
