@@ -448,7 +448,7 @@ $$;
 
 DO $$
     BEGIN
-        FOR COUNT IN 1..100 LOOP
+        FOR COUNT IN 1..200 LOOP
             INSERT INTO mystery_crate (type, faction_id, label) VALUES ('WEAPON', (SELECT id FROM factions f WHERE f.label = 'Red Mountain Offworld Mining Corporation'), 'RMOMC Weapon Mystery Crate');
             INSERT INTO mystery_crate (type, faction_id, label) VALUES ('WEAPON', (SELECT id FROM factions f WHERE f.label = 'Zaibatsu Heavy Industries'), 'ZHI Weapon Mystery Crate');
             INSERT INTO mystery_crate (type, faction_id, label) VALUES ('WEAPON', (SELECT id FROM factions f WHERE f.label = 'Boston Cybernetics'), 'BC Weapon Mystery Crate');
@@ -461,7 +461,8 @@ $$;
 -- seeding blueprints
 DO $$
     DECLARE faction factions%rowtype;
-    DECLARE crate mystery_crate%rowtype;
+    DECLARE mechCrate mystery_crate%rowtype;
+    DECLARE weaponCrate mystery_crate%rowtype;
     DECLARE i float4;
 
     BEGIN
@@ -470,10 +471,10 @@ DO $$
         LOOP
             i := 1;
             -- for half of the Mechs, insert a mech object from the appropriate brand's bipedal mechs and a fitted power core
-            FOR crate in SELECT * FROM mystery_crate WHERE faction_id = faction.id AND type = 'MECH'
+            FOR mechCrate in SELECT * FROM mystery_crate WHERE faction_id = faction.id AND type = 'MECH'
             LOOP
-                IF i <=50 THEN
-                    INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (crate.id, 'MECH', (SELECT id FROM blueprint_mechs WHERE blueprint_mechs.power_core_size = 'SMALL' AND
+                IF i <=((SELECT COUNT(*) FROM mystery_crate WHERE faction_id = faction.id AND type = 'MECH') /2) THEN
+                    INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (mechCrate.id, 'MECH', (SELECT id FROM blueprint_mechs WHERE blueprint_mechs.power_core_size = 'SMALL' AND
                     blueprint_mechs.brand_id =
                         CASE
                             WHEN faction.label = 'Boston Cybernetics' THEN (SELECT id FROM brands WHERE label = 'Daison Avionics')
@@ -481,11 +482,11 @@ DO $$
                             WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN (SELECT id FROM brands WHERE label = 'Unified Martian Corporation')
                         END
                     ));
-                    INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (crate.id, 'POWER_CORE', (SELECT id FROM blueprint_power_cores c WHERE c.label = 'Standard Energy Core'));
+                    INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (mechCrate.id, 'POWER_CORE', (SELECT id FROM blueprint_power_cores c WHERE c.label = 'Standard Energy Core'));
                     i := i + 1;
                 -- for other half of the Mechs, insert a mech object from the appropriate brand's platform mechs and a fitted power core
                 ELSE
-                    INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (crate.id, 'MECH', (SELECT id FROM blueprint_mechs WHERE blueprint_mechs.power_core_size = 'MEDIUM' AND
+                    INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (mechCrate.id, 'MECH', (SELECT id FROM blueprint_mechs WHERE blueprint_mechs.power_core_size = 'MEDIUM' AND
                         blueprint_mechs.brand_id =
                             CASE
                                 WHEN faction.label = 'Boston Cybernetics' THEN (SELECT id FROM brands WHERE label = 'Daison Avionics')
@@ -493,10 +494,127 @@ DO $$
                                 WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN (SELECT id FROM brands WHERE label = 'Unified Martian Corporation')
                             END
                         ));
-                        INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (crate.id, 'POWER_CORE', (SELECT id FROM blueprint_power_cores c WHERE c.size = 'MEDIUM'));
+                        INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (mechCrate.id, 'POWER_CORE', (SELECT id FROM blueprint_power_cores c WHERE c.size = 'MEDIUM'));
                         i = i + 1;
                 END IF;
             END LOOP;
+
+            -- for weapons crates of each faction, insert weapon blueprint. ** ALL WEAPONS CRATES ARE EQUAL
+            i := 1;
+            FOR weaponCrate in SELECT * FROM mystery_crate WHERE faction_id = faction.id AND type = 'WEAPON'
+                LOOP
+                    --flak: all factions
+                    IF i <= 25 THEN
+                        INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (weaponCrate.id, 'WEAPON', (SELECT id FROM blueprint_weapons WHERE weapon_type = 'Flak' AND
+                        brand_id =
+                        CASE
+                            WHEN faction.label = 'Boston Cybernetics' THEN (SELECT id FROM brands WHERE label = 'Archon Miltech')
+                            WHEN faction.label = 'Zaibatsu Heavy Industries' THEN (SELECT id FROM brands WHERE label = 'Warsui')
+                            WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN (SELECT id FROM brands WHERE label = 'Pyrotronics')
+                        END
+                        ));
+                        i := i + 1;
+                    --machine gun: all factions
+                    ELSEIF i > 25 AND i <= 50 THEN
+                        INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (weaponCrate.id, 'WEAPON', (SELECT id FROM blueprint_weapons WHERE weapon_type = 'Machine Gun' AND
+                        brand_id =
+                        CASE
+                            WHEN faction.label = 'Boston Cybernetics' THEN (SELECT id FROM brands WHERE label = 'Archon Miltech')
+                            WHEN faction.label = 'Zaibatsu Heavy Industries' THEN (SELECT id FROM brands WHERE label = 'Warsui')
+                            WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN (SELECT id FROM brands WHERE label = 'Pyrotronics')
+                        END
+                        ));
+                        i := i + 1;
+                    --flamethrower: all factions
+                    ELSEIF i > 50 AND i <= 75 THEN
+                        INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (weaponCrate.id, 'WEAPON', (SELECT id FROM blueprint_weapons WHERE weapon_type = 'Flamethrower' AND
+                        brand_id =
+                        CASE
+                            WHEN faction.label = 'Boston Cybernetics' THEN (SELECT id FROM brands WHERE label = 'Archon Miltech')
+                            WHEN faction.label = 'Zaibatsu Heavy Industries' THEN (SELECT id FROM brands WHERE label = 'Warsui')
+                            WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN (SELECT id FROM brands WHERE label = 'Pyrotronics')
+                        END
+                        ));
+                        i := i + 1;
+                    --missile launcher: all factions
+                    ELSEIF i > 75 AND i <= 100 THEN
+                        INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (weaponCrate.id, 'WEAPON', (SELECT id FROM blueprint_weapons WHERE weapon_type = 'Missile Launcher' AND
+                        brand_id =
+                        CASE
+                            WHEN faction.label = 'Boston Cybernetics' THEN (SELECT id FROM brands WHERE label = 'Archon Miltech')
+                            WHEN faction.label = 'Zaibatsu Heavy Industries' THEN (SELECT id FROM brands WHERE label = 'Warsui')
+                            WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN (SELECT id FROM brands WHERE label = 'Pyrotronics')
+                        END
+                        ));
+                        i := i + 1;
+                    --Laser beam: all factions
+                    ELSEIF i > 100 AND i <= 125 THEN
+                        INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (weaponCrate.id, 'WEAPON', (SELECT id FROM blueprint_weapons WHERE weapon_type = 'Laser Beam' AND
+                        brand_id =
+                        CASE
+                            WHEN faction.label = 'Boston Cybernetics' THEN (SELECT id FROM brands WHERE label = 'Archon Miltech')
+                            WHEN faction.label = 'Zaibatsu Heavy Industries' THEN (SELECT id FROM brands WHERE label = 'Warsui')
+                            WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN (SELECT id FROM brands WHERE label = 'Pyrotronics')
+                        END
+                        ));
+                        i := i + 1;
+
+                    --Minigun: BC and RM OR Plasma Gun for ZHI
+                    ELSEIF i > 125 AND i <= 150 THEN
+                        INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (weaponCrate.id, 'WEAPON', (SELECT id FROM blueprint_weapons WHERE
+                        weapon_type =
+                        CASE
+                            WHEN faction.label = 'Boston Cybernetics' OR faction.label = 'Red Mountain Offworld Mining Corporation' THEN 'Minigun'::WEAPON_TYPE
+                            WHEN faction.label = 'Zaibatsu Heavy Industries' THEN 'Plasma Gun'::WEAPON_TYPE
+                        END
+                        AND
+                        brand_id =
+                        CASE
+                            WHEN faction.label = 'Boston Cybernetics' THEN (SELECT id FROM brands WHERE label = 'Archon Miltech')
+                            WHEN faction.label = 'Zaibatsu Heavy Industries' THEN (SELECT id FROM brands WHERE label = 'Warsui')
+                            WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN (SELECT id FROM brands WHERE label = 'Pyrotronics')
+                        END
+                        ));
+                        i := i + 1;
+
+                    --Cannon: ZHI and RM OR Plasma Gun for BC
+                    ELSEIF i > 150 AND i <= 175 THEN
+                        INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (weaponCrate.id, 'WEAPON', (SELECT id FROM blueprint_weapons WHERE
+                        weapon_type =
+                        CASE
+                            WHEN faction.label = 'Zaibatsu Heavy Industries' OR faction.label = 'Red Mountain Offworld Mining Corporation' THEN 'Cannon'::WEAPON_TYPE
+                            WHEN faction.label = 'Boston Cybernetics' THEN 'Plasma Gun'::WEAPON_TYPE
+                        END
+                        AND
+                        brand_id =
+                        CASE
+                            WHEN faction.label = 'Boston Cybernetics' THEN (SELECT id FROM brands WHERE label = 'Archon Miltech')
+                            WHEN faction.label = 'Zaibatsu Heavy Industries' THEN (SELECT id FROM brands WHERE label = 'Warsui')
+                            WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN (SELECT id FROM brands WHERE label = 'Pyrotronics')
+                        END
+                        ));
+                        i := i + 1;
+                    --BFG, Grenade Launcher or Lightning Gun dependent on faction
+                    ELSEIF i > 175 AND i <= 200 THEN
+                        INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (weaponCrate.id, 'WEAPON', (SELECT id FROM blueprint_weapons WHERE
+                        weapon_type =
+                        CASE
+                            WHEN faction.label = 'Boston Cybernetics' THEN 'BFG'::WEAPON_TYPE
+                            WHEN faction.label = 'Zaibatsu Heavy Industries' THEN 'Lightning Gun'::WEAPON_TYPE
+                            WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN 'Grenade Launcher'::WEAPON_TYPE
+                        END
+                        AND
+                        brand_id =
+                        CASE
+                            WHEN faction.label = 'Boston Cybernetics' THEN (SELECT id FROM brands WHERE label = 'Archon Miltech')
+                            WHEN faction.label = 'Zaibatsu Heavy Industries' THEN (SELECT id FROM brands WHERE label = 'Warsui')
+                            WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN (SELECT id FROM brands WHERE label = 'Pyrotronics')
+                        END
+                        ));
+                        i := i + 1;
+                    END IF;
+            END LOOP;
+
         END LOOP;
     END;
 $$;
