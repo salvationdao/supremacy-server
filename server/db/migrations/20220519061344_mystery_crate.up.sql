@@ -36,7 +36,8 @@ CREATE TABLE mystery_crate_blueprints
 CREATE TABLE weapon_models
 (
     id              UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
-    faction_id      UUID,
+    faction_id      UUID REFERENCES factions(id),
+    brand_id UUID REFERENCES brands(id),
     label           TEXT        NOT NULL,
     weapon_type     WEAPON_TYPE NOT NULL,
     default_skin_id UUID,
@@ -87,29 +88,74 @@ DECLARE faction factions%rowtype;
     BEGIN
         FOR faction in SELECT * FROM factions
         LOOP
-            INSERT INTO weapon_models (label, faction_id, weapon_type) VALUES ('Flak', faction.id, 'Flak');
-            INSERT INTO weapon_models (label, faction_id, weapon_type) VALUES ('Machine Gun', faction.id, 'Machine Gun');
-            INSERT INTO weapon_models (label, faction_id, weapon_type) VALUES ('Flamethrower', faction.id, 'Flamethrower');
-            INSERT INTO weapon_models (label, faction_id, weapon_type) VALUES ('Missile Launcher', faction.id, 'Missile Launcher');
-            INSERT INTO weapon_models (label, faction_id, weapon_type) VALUES ('Laser Beam', faction.id, 'Laser Beam');
+            INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Flak', faction.id, 'Flak',
+                CASE
+                    WHEN faction.label = 'Boston Cybernetics' THEN
+                        (SELECT id FROM brands WHERE label = 'Archon Miltech')
+                    WHEN faction.label = 'Zaibatsu Heavy Industries' THEN
+                        (SELECT id FROM brands WHERE label = 'Warsui')
+                    WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN
+                        (SELECT id FROM brands WHERE label = 'Pyrotronics')
+                END
+            );
+            INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Machine Gun', faction.id, 'Machine Gun',
+                CASE
+                    WHEN faction.label = 'Boston Cybernetics' THEN
+                        (SELECT id FROM brands WHERE label = 'Archon Miltech')
+                    WHEN faction.label = 'Zaibatsu Heavy Industries' THEN
+                        (SELECT id FROM brands WHERE label = 'Warsui')
+                    WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN
+                        (SELECT id FROM brands WHERE label = 'Pyrotronics')
+                END
+            );
+            INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Flamethrower', faction.id, 'Flamethrower',
+                CASE
+                    WHEN faction.label = 'Boston Cybernetics' THEN
+                        (SELECT id FROM brands WHERE label = 'Archon Miltech')
+                    WHEN faction.label = 'Zaibatsu Heavy Industries' THEN
+                        (SELECT id FROM brands WHERE label = 'Warsui')
+                    WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN
+                        (SELECT id FROM brands WHERE label = 'Pyrotronics')
+                END
+            );
+            INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Missile Launcher', faction.id, 'Missile Launcher',
+                CASE
+                    WHEN faction.label = 'Boston Cybernetics' THEN
+                        (SELECT id FROM brands WHERE label = 'Archon Miltech')
+                    WHEN faction.label = 'Zaibatsu Heavy Industries' THEN
+                        (SELECT id FROM brands WHERE label = 'Warsui')
+                    WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN
+                        (SELECT id FROM brands WHERE label = 'Pyrotronics')
+                END
+            );
+            INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Laser Beam', faction.id, 'Laser Beam',
+                CASE
+                    WHEN faction.label = 'Boston Cybernetics' THEN
+                        (SELECT id FROM brands WHERE label = 'Archon Miltech')
+                    WHEN faction.label = 'Zaibatsu Heavy Industries' THEN
+                        (SELECT id FROM brands WHERE label = 'Warsui')
+                    WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN
+                        (SELECT id FROM brands WHERE label = 'Pyrotronics')
+                END
+            );
         END LOOP;
     END;
 $$;
 
 -- Inserting specific weapons for each faction
-INSERT INTO weapon_models (label, faction_id, weapon_type) VALUES ('Plasma Gun', (SELECT id FROM factions WHERE label = 'Boston Cybernetics'), 'Plasma Gun');
-INSERT INTO weapon_models (label, faction_id, weapon_type) VALUES ('Minigun', (SELECT id FROM factions WHERE label = 'Boston Cybernetics'), 'Minigun');
-INSERT INTO weapon_models (label, faction_id, weapon_type) VALUES ('BFG', (SELECT id FROM factions WHERE label = 'Boston Cybernetics'), 'BFG');
+INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Plasma Gun', (SELECT id FROM factions WHERE label = 'Boston Cybernetics'), 'Plasma Gun', (SELECT id FROM brands WHERE label = 'Archon Miltech'));
+INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Minigun', (SELECT id FROM factions WHERE label = 'Boston Cybernetics'), 'Minigun', (SELECT id FROM brands WHERE label = 'Archon Miltech'));
+INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('BFG', (SELECT id FROM factions WHERE label = 'Boston Cybernetics'), 'BFG', (SELECT id FROM brands WHERE label = 'Archon Miltech'));
 
 
-INSERT INTO weapon_models (label, faction_id, weapon_type) VALUES ('Plasma Gun', (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries'), 'Plasma Gun');
-INSERT INTO weapon_models (label, faction_id, weapon_type) VALUES ('Cannon', (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries'), 'Cannon');
-INSERT INTO weapon_models (label, faction_id, weapon_type) VALUES ('Lightning Gun', (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries'), 'Lightning Gun');
+INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Plasma Gun', (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries'), 'Plasma Gun', (SELECT id FROM brands WHERE label = 'Warsui'));
+INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Cannon', (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries'), 'Cannon', (SELECT id FROM brands WHERE label = 'Warsui'));
+INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Lightning Gun', (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries'), 'Lightning Gun', (SELECT id FROM brands WHERE label = 'Warsui'));
 
 
-INSERT INTO weapon_models (label, faction_id, weapon_type) VALUES ('Minigun', (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation'), 'Minigun');
-INSERT INTO weapon_models (label, faction_id, weapon_type) VALUES ('Cannon', (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation'), 'Cannon');
-INSERT INTO weapon_models (label, faction_id, weapon_type) VALUES ('Grenade Launcher', (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation'), 'Grenade Launcher');
+INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Minigun', (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation'), 'Minigun', (SELECT id FROM brands WHERE label = 'Pyrotronics'));
+INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Cannon', (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation'), 'Cannon', (SELECT id FROM brands WHERE label = 'Pyrotronics'));
+INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Grenade Launcher', (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation'), 'Grenade Launcher', (SELECT id FROM brands WHERE label = 'Pyrotronics'));
 
 -- insert genesis weapons that are not faction specific
 INSERT INTO weapon_models (label, weapon_type) VALUES ('Plasma Rifle', 'Rifle');
@@ -223,8 +269,8 @@ DO $$
                     WHEN weapon_model.faction_id = (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation') THEN
                         (SELECT id FROM brands WHERE label = 'Pyrotronics')
                 END,
-                concat((SELECT label FROM factions WHERE id = weapon_model.faction_id), ' ', weapon_model.label),
-                lower(concat(replace((SELECT label FROM factions WHERE id = weapon_model.faction_id), ' ', '_'), '_', replace(weapon_model.label, ' ', '_'))),
+                concat((SELECT label FROM brands WHERE id = weapon_model.brand_id), ' ', weapon_model.label),
+                lower(concat(replace((SELECT label FROM brands WHERE id = weapon_model.brand_id), ' ', '_'), '_', replace(weapon_model.label, ' ', '_'))),
                 0,
                 weapon_model.weapon_type,
                 CASE
