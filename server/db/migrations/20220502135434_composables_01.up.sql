@@ -54,7 +54,7 @@ CREATE TABLE collection_items
 DROP TYPE IF EXISTS WEAPON_TYPE;
 CREATE TYPE WEAPON_TYPE AS ENUM ('Grenade Launcher', 'Cannon', 'Minigun', 'Plasma Gun', 'Flak',
     'Machine Gun', 'Flamethrower', 'Missile Launcher', 'Laser Beam',
-    'Lightning Gun', 'BFG', 'Rifle', 'Sniper Rifle', 'Sword');
+    'Lightning Gun', 'BFG', 'Rifle', 'Sniper Rifle', 'Sword', 'Shotgun', 'Rocket');
 
 
 

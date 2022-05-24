@@ -36,7 +36,7 @@ CREATE TABLE mystery_crate_blueprints
 CREATE TABLE weapon_models
 (
     id              UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
-    faction_id      UUID        NOT NULL,
+    faction_id      UUID,
     label           TEXT        NOT NULL,
     weapon_type     TEXT        NOT NULL,
     default_skin_id UUID,
@@ -93,12 +93,6 @@ DECLARE faction factions%rowtype;
             INSERT INTO weapon_models (label, faction_id, weapon_type) VALUES ('Flamethrower', faction.id, 'Flamethrower');
             INSERT INTO weapon_models (label, faction_id, weapon_type) VALUES ('Missile Launcher', faction.id, 'Missile Launcher');
             INSERT INTO weapon_models (label, faction_id, weapon_type) VALUES ('Laser Gun', faction.id, 'Laser Gun');
-            INSERT INTO weapon_models (label, faction_id, weapon_type) VALUES ('Plasma Rifle', faction.id, 'Plasma Rifle');
-            INSERT INTO weapon_models (label, faction_id, weapon_type) VALUES ('Auto Cannon', faction.id, 'Cannon');
-            INSERT INTO weapon_models (label, faction_id, weapon_type) VALUES ('Sniper Rifle', faction.id, 'Sniper Rifle');
-            INSERT INTO weapon_models (label, faction_id, weapon_type) VALUES ('Rocket Pod', faction.id, 'Rocket');
-            INSERT INTO weapon_models (label, faction_id, weapon_type) VALUES ('Sword', faction.id, 'Sword');
-            INSERT INTO weapon_models (label, faction_id, weapon_type) VALUES ('Laser Sword', faction.id, 'Sword');
         END LOOP;
     END;
 $$;
@@ -118,7 +112,24 @@ INSERT INTO weapon_models (label, faction_id, weapon_type) VALUES ('Mini Gun', (
 INSERT INTO weapon_models (label, faction_id, weapon_type) VALUES ('Cannon', (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation'), 'Cannon');
 INSERT INTO weapon_models (label, faction_id, weapon_type) VALUES ('Grenade Launcher', (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation'), 'Grenade Launcher');
 
+-- insert genesis weapons that are not faction specific
+INSERT INTO weapon_models (label, weapon_type) VALUES ('Plasma Rifle', 'Plasma Rifle');
+INSERT INTO weapon_models (label, weapon_type) VALUES ('Auto Cannon', 'Cannon');
+INSERT INTO weapon_models (label, weapon_type) VALUES ('Sniper Rifle', 'Sniper Rifle');
+INSERT INTO weapon_models (label, weapon_type) VALUES ('Rocket Pod', 'Rocket');
+INSERT INTO weapon_models (label, weapon_type) VALUES ('Sword', 'Sword');
+INSERT INTO weapon_models (label, weapon_type) VALUES ('Laser Sword', 'Sword');
+
 -- seed blueprint_weapons_skins
+
+--genesis weapons w/o a faction
+INSERT INTO blueprint_weapon_skin (label, weapon_model_id) VALUES ('Plasma Rifle', (SELECT id FROM weapon_models WHERE label = 'Plasma Rifle'));
+INSERT INTO blueprint_weapon_skin (label, weapon_model_id) VALUES ('Auto Cannon', (SELECT id FROM weapon_models WHERE label = 'Auto Cannon'));
+INSERT INTO blueprint_weapon_skin (label, weapon_model_id) VALUES ('Sniper Rifle', (SELECT id FROM weapon_models WHERE label = 'Sniper Rifle'));
+INSERT INTO blueprint_weapon_skin (label, weapon_model_id) VALUES ('Rocket Pod', (SELECT id FROM weapon_models WHERE label = 'Rocket Pod'));
+INSERT INTO blueprint_weapon_skin (label, weapon_model_id) VALUES ('Sword', (SELECT id FROM weapon_models WHERE label = 'Sword'));
+INSERT INTO blueprint_weapon_skin (label, weapon_model_id) VALUES ('Laser Sword', (SELECT id FROM weapon_models WHERE label = 'Laser Sword'));
+
 DO $$
     DECLARE weapon_model weapon_models%rowtype;
     BEGIN
@@ -174,6 +185,8 @@ DO $$
                     UPDATE weapon_models SET default_skin_id = (SELECT id FROM blueprint_weapon_skin WHERE weapon_model_id = weapon_model.id AND label = 'Archon Miltech') WHERE id = weapon_model.id;
                 WHEN weapon_model.faction_id = (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation') THEN
                     UPDATE weapon_models SET default_skin_id = (SELECT id FROM blueprint_weapon_skin WHERE weapon_model_id = weapon_model.id AND label = 'Pyrotronics') WHERE id = weapon_model.id;
+                WHEN weapon_model.faction_id IS NULL THEN
+                    UPDATE weapon_models SET default_skin_id = (SELECT id FROM blueprint_weapon_skin WHERE weapon_model_id = weapon_model.id AND label = weapon_model.label) WHERE id = weapon_model.id;
             END CASE;
         END LOOP;
     END;
@@ -181,8 +194,49 @@ $$;
 
 ALTER TABLE weapon_models ALTER COLUMN default_skin_id SET NOT NULL;
 
--- ALTER TABLE blueprint_weapons
---     ADD COLUMN weapon_model_id UUID NOT NULL REFERENCES weapon_models(id);
+ALTER TABLE blueprint_weapons
+    ADD COLUMN weapon_model_id UUID REFERENCES weapon_models(id);
+
+-- update existing blueprint_weapons (factionless)
+DO $$
+    DECLARE blueprint_weapon blueprint_weapons%rowtype;
+    BEGIN
+        FOR blueprint_weapon in SELECT * FROM blueprint_weapons
+        LOOP
+            UPDATE blueprint_weapons SET weapon_model_id = (SELECT id FROM weapon_models WHERE label = blueprint_weapon.label AND faction_id IS NULL) WHERE label = blueprint_weapon.label;
+        END LOOP;
+    END;
+$$;
+
+ALTER TABLE blueprint_weapons ALTER COLUMN weapon_model_id SET NOT NULL;
+
+-- DO $$
+--     DECLARE weapon_model weapon_models%rowtype;
+--     BEGIN
+--         FOR weapon_model in SELECT * FROM weapon_models WHERE faction_id IS NOT NULL
+--         LOOP
+--             INSERT INTO blueprint_weapons (brand_id, label, slug, damage, weapon_type, is_melee, weapon_model_id) VALUES (
+--                 CASE
+--                     WHEN weapon_model.faction_id = (SELECT id FROM factions WHERE label = 'Boston Cybernetics') THEN
+--                         (SELECT id FROM brands WHERE label = 'Archon Miltech')
+--                     WHEN weapon_model.faction_id = (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries') THEN
+--                         (SELECT id FROM brands WHERE label = 'Warsui')
+--                     WHEN weapon_model.faction_id = (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation') THEN
+--                         (SELECT id FROM brands WHERE label = 'Pyrotronics')
+--                 END,
+--                 weapon_model.label,
+--                 lower(replace(weapon_model.weapon_type, ' ', '_')),
+--                 0,
+--                 weapon_model.weapon_type,
+--                 CASE
+--                     WHEN weapon_model.weapon_type = 'Sword' THEN true
+--                     ELSE false
+--                 END,
+--                 weapon_model.id
+--             );
+--         END LOOP;
+--     END;
+-- $$;
 --
 -- ALTER TABLE weapons
 --     ADD COLUMN weapon_model_id UUID NOT NULL REFERENCES weapon_models(id),
