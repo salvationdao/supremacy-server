@@ -106,7 +106,6 @@ UPDATE blueprint_chassis
 SET model = 'Law Enforcer X-1000',
     skin  = 'Blue White'
 WHERE model = 'XFVS';
-
 /*
   ENERGY CORES
  */
@@ -228,7 +227,7 @@ ALTER TABLE chassis
     ADD COLUMN genesis_token_id         NUMERIC,
     ADD COLUMN limited_release_token_id NUMERIC,
     ADD COLUMN owner_id                 UUID REFERENCES players (id),
-    ADD COLUMN power_core_size          TEXT NOT NULL DEFAULT 'MEDIUM' CHECK ( power_core_size IN ('SMALL', 'MEDIUM', 'LARGE') ),
+    ADD COLUMN power_core_size          TEXT NOT NULL DEFAULT 'SMALL' CHECK ( power_core_size IN ('SMALL', 'MEDIUM', 'LARGE') ),
     ADD COLUMN tier                     TEXT NOT NULL DEFAULT 'MEGA',
     ADD COLUMN chassis_skin_id          UUID REFERENCES chassis_skin (id), -- equipped skin
     ADD COLUMN power_core_id            UUID REFERENCES power_cores (id),
@@ -385,7 +384,7 @@ ALTER TABLE blueprint_chassis
     DROP COLUMN IF EXISTS health_remaining,
     ADD COLUMN model_id        UUID REFERENCES mech_model (id),
     ADD COLUMN collection      COLLECTION NOT NULL DEFAULT 'supremacy-general',
-    ADD COLUMN power_core_size TEXT       NOT NULL DEFAULT 'MEDIUM' CHECK ( power_core_size IN ('SMALL', 'MEDIUM', 'LARGE') ),
+    ADD COLUMN power_core_size TEXT       NOT NULL DEFAULT 'SMALL' CHECK ( power_core_size IN ('SMALL', 'MEDIUM', 'LARGE') ),
     ADD COLUMN tier            TEXT       NOT NULL DEFAULT 'MEGA',
     ADD COLUMN chassis_skin_id UUID REFERENCES blueprint_chassis_skin (id); -- this column is used temp and gets removed.
 
@@ -497,7 +496,7 @@ CREATE TABLE weapon_ammo
 --  insert the energy cores lazily
 INSERT INTO blueprint_power_cores (id, label, "size", capacity, max_draw_rate, recharge_rate, armour,
                                    max_hitpoints, tier)
-VALUES ('62e197a4-f45e-4034-ac0a-3e625a6770d7', 'Standard Energy Core', 'MEDIUM', 1000, 100, 100, 0, 1000, 'MEGA');
+VALUES ('62e197a4-f45e-4034-ac0a-3e625a6770d7', 'Standard Energy Core', 'SMALL', 1000, 100, 100, 0, 1000, 'MEGA');
 
 WITH mechs AS (SELECT c.id, m.owner_id
                FROM chassis c
@@ -513,7 +512,7 @@ INTO power_cores(label,
                  equipped_on,
                  blueprint_id)
 SELECT 'Standard Energy Core',
-       'MEDIUM',
+       'SMALL',
        1000,
        100,
        100,
