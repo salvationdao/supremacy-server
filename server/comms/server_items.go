@@ -27,44 +27,57 @@ func (s *S) Asset(req rpctypes.AssetReq, resp *rpctypes.AssetResp) error {
 	}
 
 	var item any
+	var name string
 
 	switch ci.ItemType {
 	case boiler.ItemTypeUtility:
-		item, err = db.Utility(ci.ItemID)
+		obj, err := db.Utility(ci.ItemID)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("ci.ItemID", ci.ItemID).Msg(" failed to get Utility in Asset rpc call ")
 			return terror.Error(err)
 		}
+		item = obj
+		name = obj.Label
 	case boiler.ItemTypeWeapon:
-		item, err = db.Weapon(ci.ItemID)
+		obj, err := db.Weapon(ci.ItemID)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("ci.ItemID", ci.ItemID).Msg(" failed to get Weapon in Asset rpc call ")
 			return terror.Error(err)
 		}
+		item = obj
+		name = obj.Label
 	case boiler.ItemTypeMech:
-		item, err = db.Mech(ci.ItemID)
+		obj, err := db.Mech(ci.ItemID)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("ci.ItemID", ci.ItemID).Msg(" failed to get Mech in Asset rpc call ")
 			return terror.Error(err)
 		}
+		item = obj
+		name = obj.Label
 	case boiler.ItemTypeMechSkin:
-		item, err = db.MechSkin(ci.ItemID)
+		obj, err := db.MechSkin(ci.ItemID)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("ci.ItemID", ci.ItemID).Msg(" failed to get MechSkin in Asset rpc call ")
 			return terror.Error(err)
 		}
+		item = obj
+		name = obj.Label
 	case boiler.ItemTypeMechAnimation:
-		item, err = db.MechAnimation(ci.ItemID)
+		obj, err := db.MechAnimation(ci.ItemID)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("ci.ItemID", ci.ItemID).Msg(" failed to get MechAnimation in Asset rpc call ")
 			return terror.Error(err)
 		}
+		item = obj
+		name = obj.Label
 	case boiler.ItemTypePowerCore:
-		item, err = db.PowerCore(ci.ItemID)
+		obj, err := db.PowerCore(ci.ItemID)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("ci.ItemID", ci.ItemID).Msg(" failed to get PowerCore in Asset rpc call ")
 			return terror.Error(err)
 		}
+		item = obj
+		name = obj.Label
 	default:
 		err := fmt.Errorf("invalid type")
 		gamelog.L.Error().Err(err).Interface("ci", ci).Msg("invalid item type in Asset rpc call ")
@@ -86,7 +99,7 @@ func (s *S) Asset(req rpctypes.AssetReq, resp *rpctypes.AssetResp) error {
 		OwnerID:        ci.OwnerID,
 		OnChainStatus:  ci.OnChainStatus,
 		Data:           asJson,
-		//Name: //TODO?
+		Name:           name,
 	}
 	return nil
 }

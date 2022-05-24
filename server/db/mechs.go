@@ -112,48 +112,6 @@ LEFT OUTER JOIN (
 	GROUP BY mw.chassis_id
 ) u on u.chassis_id = mechs.id `
 
-func MechsByOwnerID(ownerID uuid.UUID) ([]*server.Mech, error) {
-	//// TODO: Vinnie fix this
-	//mechs, err := boiler.Mechs(boiler.MechWhere.OwnerID.EQ(ownerID.String())).All(gamedb.StdConn)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//result := []*server.Mech{}
-	//for _, mech := range mechs {
-	//	record, err := Mech(uuid.Must(uuid.FromString(mech.ID)))
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//	result = append(result, record)
-	//}
-	return nil, nil
-}
-
-func MechSetName(mechID uuid.UUID, name string) error {
-	tx, err := gamedb.StdConn.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	mech, err := boiler.FindMech(gamedb.StdConn, mechID.String())
-	if err != nil {
-		return err
-	}
-	mech.Name = name
-	_, err = mech.Update(tx, boil.Whitelist(boiler.MechColumns.Name))
-	if err != nil {
-		return err
-	}
-	tx.Commit()
-	return nil
-}
-
-func TemplatePurchasedCount(templateID uuid.UUID) (int, error) {
-	// TODO: Fix this, this is in the gameserver storefront refactor
-	return 0, nil
-}
-
 func DefaultMechs() ([]*server.Mech, error) {
 	idq := `SELECT id FROM mechs WHERE is_default=true`
 
@@ -687,7 +645,6 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			&mc.ChassisSkinID,
 			&mc.IntroAnimationID,
 			&mc.OutroAnimationID,
-			//&mc.DefaultChassisSkinID, // TODO: probably want this? (its  attached to the mech model, could be lazy loaded with the rest)
 		)
 		if err != nil {
 			return total, mechs, err

@@ -392,6 +392,10 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 				Value:     i.Label,
 			},
 			{
+				TraitType: "Name",
+				Value:     i.Name,
+			},
+			{
 				DisplayType: "Number",
 				TraitType:   "Weapon Hardpoints",
 				Value:       i.WeaponHardpoints,
@@ -420,7 +424,7 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 
 		assets = append(assets, &XsynAsset{
 			ID:             i.ID,
-			Name:           i.Name,
+			Name:           i.Label,
 			CollectionSlug: i.CollectionSlug,
 			TokenID:        i.TokenID,
 			Tier:           i.Tier,

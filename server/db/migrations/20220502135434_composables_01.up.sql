@@ -393,15 +393,6 @@ SET model_id = (SELECT id
                 FROM mech_model cm
                 WHERE c.model = cm.label);
 
--- TODO: idk, talk to john about how to handle genesis
--- -- update mech blueprint collection ids
--- WITH tmp AS (SELECT blueprint_chassis_id, collection_slug
---              FROM templates)
--- UPDATE blueprint_chassis
--- SET collection = tmp.collection_slug::COLLECTION
--- FROM tmp
--- WHERE id = tmp.blueprint_chassis_id;
-
 ALTER TABLE blueprint_chassis
     DROP COLUMN model,
     ALTER COLUMN model_id SET NOT NULL;
