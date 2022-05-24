@@ -415,55 +415,43 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 							}
 
 							// get ability faction
-							faction, err := boiler.Factions(boiler.FactionWhere.ID.EQ(ability.FactionID)).One(gamedb.StdConn)
-							if err != nil {
-								gamelog.L.Error().Err(err).Msg("failed to get player faction")
-							} else {
-
-								//build notification
-								gameNotification := &GameNotificationWarMachineAbility{
-									Ability: &AbilityBrief{
-										Label:    ability.Label,
-										ImageUrl: ability.ImageUrl,
-										Colour:   ability.Colour,
-									},
-								}
-
-								// broadcast notification
-								if ability.ParticipantID == nil {
-									as.battle().arena.BroadcastGameNotificationAbility(GameNotificationTypeFactionAbility, GameNotificationAbility{
-										Ability: gameNotification.Ability,
-									})
-
-								} else {
-									// filled war machine detail
-									for _, wm := range as.battle().WarMachines {
-										if wm.ParticipantID == *ability.ParticipantID {
-											gameNotification.WarMachine = &WarMachineBrief{
-												ParticipantID: wm.ParticipantID,
-												Hash:          wm.Hash,
-												ImageUrl:      wm.Image,
-												ImageAvatar:   wm.ImageAvatar,
-												Name:          wm.Name,
-												Faction: &FactionBrief{
-													ID:         faction.ID,
-													Label:      faction.Label,
-													Primary:    faction.PrimaryColor,
-													Secondary:  faction.SecondaryColor,
-													Background: faction.BackgroundColor,
-												},
-											}
-											break
-										}
-									}
-
-									as.battle().arena.BroadcastGameNotificationWarMachineAbility(gameNotification)
-								}
+							//build notification
+							gameNotification := &GameNotificationWarMachineAbility{
+								Ability: &AbilityBrief{
+									Label:    ability.Label,
+									ImageUrl: ability.ImageUrl,
+									Colour:   ability.Colour,
+								},
 							}
 
-							// generate new offering id for current ability
-							ability.OfferingID = uuid.Must(uuid.NewV4())
+							// broadcast notification
+							if ability.ParticipantID == nil {
+								as.battle().arena.BroadcastGameNotificationAbility(GameNotificationTypeFactionAbility, GameNotificationAbility{
+									Ability: gameNotification.Ability,
+								})
+
+							} else {
+								// filled war machine detail
+								for _, wm := range as.battle().WarMachines {
+									if wm.ParticipantID == *ability.ParticipantID {
+										gameNotification.WarMachine = &WarMachineBrief{
+											ParticipantID: wm.ParticipantID,
+											Hash:          wm.Hash,
+											ImageUrl:      wm.Image,
+											ImageAvatar:   wm.ImageAvatar,
+											Name:          wm.Name,
+											FactionID:     wm.FactionID,
+										}
+										break
+									}
+								}
+
+								as.battle().arena.BroadcastGameNotificationWarMachineAbility(gameNotification)
+							}
 						}
+
+						// generate new offering id for current ability
+						ability.OfferingID = uuid.Must(uuid.NewV4())
 
 						// broadcast new ability price
 						resp := GameAbilityPriceResponse{
@@ -637,13 +625,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 												ImageUrl:      wm.Image,
 												ImageAvatar:   wm.ImageAvatar,
 												Name:          wm.Name,
-												Faction: &FactionBrief{
-													ID:         faction.ID,
-													Label:      faction.Label,
-													Primary:    faction.PrimaryColor,
-													Secondary:  faction.SecondaryColor,
-													Background: faction.BackgroundColor,
-												},
+												FactionID:     wm.FactionID,
 											}
 											break
 										}
