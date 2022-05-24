@@ -49,30 +49,28 @@ CREATE TABLE weapon_models
 
 ALTER TABLE blueprint_weapon_skin
     ADD COLUMN collection TEXT NOT NULL DEFAULT 'supremacy-general',
-    ADD COLUMN weapon_model_id UUID NOT NULL REFERENCES weapon_models(id),
-    ADD COLUMN image_url TEXT, -- make this not null later
-    ADD COLUMN animation_url TEXT,
-    ADD COLUMN card_animation_url TEXT,
-    ADD COLUMN large_image_url TEXT,
-    ADD COLUMN avatar_url TEXT;
+    ADD COLUMN weapon_model_id UUID NOT NULL REFERENCES weapon_models(id); -- make this not null later
+--     ADD COLUMN card_animation_url TEXT,
+--     ADD COLUMN large_image_url TEXT,
+--     ADD COLUMN avatar_url TEXT;
 
 ALTER TABLE weapon_skin
-    ADD COLUMN weapon_model_id UUID NOT NULL REFERENCES weapon_models (id),
-    ADD COLUMN image_url TEXT, -- make this not null later
-    ADD COLUMN animation_url TEXT,
-    ADD COLUMN card_animation_url TEXT,
-    ADD COLUMN large_image_url TEXT,
-    ADD COLUMN avatar_url TEXT;
+    ADD COLUMN weapon_model_id UUID NOT NULL REFERENCES weapon_models (id);
+--     ADD COLUMN image_url TEXT, -- make this not null later
+--     ADD COLUMN animation_url TEXT,
+--     ADD COLUMN card_animation_url TEXT,
+--     ADD COLUMN large_image_url TEXT,
+--     ADD COLUMN avatar_url TEXT;
 
-ALTER TABLE blueprint_power_cores
-    ADD COLUMN image_url          TEXT,
-    ADD COLUMN card_animation_url TEXT,
-    ADD COLUMN avatar_url         TEXT,
-    ADD COLUMN large_image_url    TEXT,
-    ADD COLUMN description        TEXT,
-    ADD COLUMN background_color   TEXT,
-    ADD COLUMN animation_url      TEXT,
-    ADD COLUMN youtube_url        TEXT;
+-- ALTER TABLE blueprint_power_cores
+--     ADD COLUMN image_url          TEXT,
+--     ADD COLUMN card_animation_url TEXT,
+--     ADD COLUMN avatar_url         TEXT,
+--     ADD COLUMN large_image_url    TEXT,
+--     ADD COLUMN description        TEXT,
+--     ADD COLUMN background_color   TEXT,
+--     ADD COLUMN animation_url      TEXT,
+--     ADD COLUMN youtube_url        TEXT;
 
 -- inserting brands
 INSERT INTO brands (faction_id, label) VALUES ((SELECT id FROM factions WHERE label = 'Boston Cybernetics'), 'Daison Avionics');

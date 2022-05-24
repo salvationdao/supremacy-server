@@ -93,6 +93,7 @@ const (
 // Enum values for  are not proper Go identifiers, cannot emit constants
 // Enum values for  are not proper Go identifiers, cannot emit constants
 // Enum values for  are not proper Go identifiers, cannot emit constants
+// Enum values for  are not proper Go identifiers, cannot emit constants
 
 // Enum values for MechType
 const (
@@ -100,7 +101,6 @@ const (
 	MechTypePLATFORM = "PLATFORM"
 )
 
-// Enum values for  are not proper Go identifiers, cannot emit constants
 // Enum values for  are not proper Go identifiers, cannot emit constants
 // Enum values for  are not proper Go identifiers, cannot emit constants
 

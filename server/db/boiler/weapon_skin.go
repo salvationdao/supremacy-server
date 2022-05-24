@@ -23,121 +23,86 @@ import (
 
 // WeaponSkin is an object representing the database table.
 type WeaponSkin struct {
-	ID               string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	BlueprintID      string      `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
-	OwnerID          string      `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
-	Label            string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	WeaponType       string      `boiler:"weapon_type" boil:"weapon_type" json:"weapon_type" toml:"weapon_type" yaml:"weapon_type"`
-	EquippedOn       null.String `boiler:"equipped_on" boil:"equipped_on" json:"equipped_on,omitempty" toml:"equipped_on" yaml:"equipped_on,omitempty"`
-	Tier             string      `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
-	CreatedAt        time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	WeaponModelID    string      `boiler:"weapon_model_id" boil:"weapon_model_id" json:"weapon_model_id" toml:"weapon_model_id" yaml:"weapon_model_id"`
-	ImageURL         null.String `boiler:"image_url" boil:"image_url" json:"image_url,omitempty" toml:"image_url" yaml:"image_url,omitempty"`
-	AnimationURL     null.String `boiler:"animation_url" boil:"animation_url" json:"animation_url,omitempty" toml:"animation_url" yaml:"animation_url,omitempty"`
-	CardAnimationURL null.String `boiler:"card_animation_url" boil:"card_animation_url" json:"card_animation_url,omitempty" toml:"card_animation_url" yaml:"card_animation_url,omitempty"`
-	LargeImageURL    null.String `boiler:"large_image_url" boil:"large_image_url" json:"large_image_url,omitempty" toml:"large_image_url" yaml:"large_image_url,omitempty"`
-	AvatarURL        null.String `boiler:"avatar_url" boil:"avatar_url" json:"avatar_url,omitempty" toml:"avatar_url" yaml:"avatar_url,omitempty"`
+	ID            string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	BlueprintID   string      `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
+	OwnerID       string      `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
+	Label         string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	WeaponType    string      `boiler:"weapon_type" boil:"weapon_type" json:"weapon_type" toml:"weapon_type" yaml:"weapon_type"`
+	EquippedOn    null.String `boiler:"equipped_on" boil:"equipped_on" json:"equipped_on,omitempty" toml:"equipped_on" yaml:"equipped_on,omitempty"`
+	Tier          string      `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
+	CreatedAt     time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	WeaponModelID string      `boiler:"weapon_model_id" boil:"weapon_model_id" json:"weapon_model_id" toml:"weapon_model_id" yaml:"weapon_model_id"`
 
 	R *weaponSkinR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L weaponSkinL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var WeaponSkinColumns = struct {
-	ID               string
-	BlueprintID      string
-	OwnerID          string
-	Label            string
-	WeaponType       string
-	EquippedOn       string
-	Tier             string
-	CreatedAt        string
-	WeaponModelID    string
-	ImageURL         string
-	AnimationURL     string
-	CardAnimationURL string
-	LargeImageURL    string
-	AvatarURL        string
+	ID            string
+	BlueprintID   string
+	OwnerID       string
+	Label         string
+	WeaponType    string
+	EquippedOn    string
+	Tier          string
+	CreatedAt     string
+	WeaponModelID string
 }{
-	ID:               "id",
-	BlueprintID:      "blueprint_id",
-	OwnerID:          "owner_id",
-	Label:            "label",
-	WeaponType:       "weapon_type",
-	EquippedOn:       "equipped_on",
-	Tier:             "tier",
-	CreatedAt:        "created_at",
-	WeaponModelID:    "weapon_model_id",
-	ImageURL:         "image_url",
-	AnimationURL:     "animation_url",
-	CardAnimationURL: "card_animation_url",
-	LargeImageURL:    "large_image_url",
-	AvatarURL:        "avatar_url",
+	ID:            "id",
+	BlueprintID:   "blueprint_id",
+	OwnerID:       "owner_id",
+	Label:         "label",
+	WeaponType:    "weapon_type",
+	EquippedOn:    "equipped_on",
+	Tier:          "tier",
+	CreatedAt:     "created_at",
+	WeaponModelID: "weapon_model_id",
 }
 
 var WeaponSkinTableColumns = struct {
-	ID               string
-	BlueprintID      string
-	OwnerID          string
-	Label            string
-	WeaponType       string
-	EquippedOn       string
-	Tier             string
-	CreatedAt        string
-	WeaponModelID    string
-	ImageURL         string
-	AnimationURL     string
-	CardAnimationURL string
-	LargeImageURL    string
-	AvatarURL        string
+	ID            string
+	BlueprintID   string
+	OwnerID       string
+	Label         string
+	WeaponType    string
+	EquippedOn    string
+	Tier          string
+	CreatedAt     string
+	WeaponModelID string
 }{
-	ID:               "weapon_skin.id",
-	BlueprintID:      "weapon_skin.blueprint_id",
-	OwnerID:          "weapon_skin.owner_id",
-	Label:            "weapon_skin.label",
-	WeaponType:       "weapon_skin.weapon_type",
-	EquippedOn:       "weapon_skin.equipped_on",
-	Tier:             "weapon_skin.tier",
-	CreatedAt:        "weapon_skin.created_at",
-	WeaponModelID:    "weapon_skin.weapon_model_id",
-	ImageURL:         "weapon_skin.image_url",
-	AnimationURL:     "weapon_skin.animation_url",
-	CardAnimationURL: "weapon_skin.card_animation_url",
-	LargeImageURL:    "weapon_skin.large_image_url",
-	AvatarURL:        "weapon_skin.avatar_url",
+	ID:            "weapon_skin.id",
+	BlueprintID:   "weapon_skin.blueprint_id",
+	OwnerID:       "weapon_skin.owner_id",
+	Label:         "weapon_skin.label",
+	WeaponType:    "weapon_skin.weapon_type",
+	EquippedOn:    "weapon_skin.equipped_on",
+	Tier:          "weapon_skin.tier",
+	CreatedAt:     "weapon_skin.created_at",
+	WeaponModelID: "weapon_skin.weapon_model_id",
 }
 
 // Generated where
 
 var WeaponSkinWhere = struct {
-	ID               whereHelperstring
-	BlueprintID      whereHelperstring
-	OwnerID          whereHelperstring
-	Label            whereHelperstring
-	WeaponType       whereHelperstring
-	EquippedOn       whereHelpernull_String
-	Tier             whereHelperstring
-	CreatedAt        whereHelpertime_Time
-	WeaponModelID    whereHelperstring
-	ImageURL         whereHelpernull_String
-	AnimationURL     whereHelpernull_String
-	CardAnimationURL whereHelpernull_String
-	LargeImageURL    whereHelpernull_String
-	AvatarURL        whereHelpernull_String
+	ID            whereHelperstring
+	BlueprintID   whereHelperstring
+	OwnerID       whereHelperstring
+	Label         whereHelperstring
+	WeaponType    whereHelperstring
+	EquippedOn    whereHelpernull_String
+	Tier          whereHelperstring
+	CreatedAt     whereHelpertime_Time
+	WeaponModelID whereHelperstring
 }{
-	ID:               whereHelperstring{field: "\"weapon_skin\".\"id\""},
-	BlueprintID:      whereHelperstring{field: "\"weapon_skin\".\"blueprint_id\""},
-	OwnerID:          whereHelperstring{field: "\"weapon_skin\".\"owner_id\""},
-	Label:            whereHelperstring{field: "\"weapon_skin\".\"label\""},
-	WeaponType:       whereHelperstring{field: "\"weapon_skin\".\"weapon_type\""},
-	EquippedOn:       whereHelpernull_String{field: "\"weapon_skin\".\"equipped_on\""},
-	Tier:             whereHelperstring{field: "\"weapon_skin\".\"tier\""},
-	CreatedAt:        whereHelpertime_Time{field: "\"weapon_skin\".\"created_at\""},
-	WeaponModelID:    whereHelperstring{field: "\"weapon_skin\".\"weapon_model_id\""},
-	ImageURL:         whereHelpernull_String{field: "\"weapon_skin\".\"image_url\""},
-	AnimationURL:     whereHelpernull_String{field: "\"weapon_skin\".\"animation_url\""},
-	CardAnimationURL: whereHelpernull_String{field: "\"weapon_skin\".\"card_animation_url\""},
-	LargeImageURL:    whereHelpernull_String{field: "\"weapon_skin\".\"large_image_url\""},
-	AvatarURL:        whereHelpernull_String{field: "\"weapon_skin\".\"avatar_url\""},
+	ID:            whereHelperstring{field: "\"weapon_skin\".\"id\""},
+	BlueprintID:   whereHelperstring{field: "\"weapon_skin\".\"blueprint_id\""},
+	OwnerID:       whereHelperstring{field: "\"weapon_skin\".\"owner_id\""},
+	Label:         whereHelperstring{field: "\"weapon_skin\".\"label\""},
+	WeaponType:    whereHelperstring{field: "\"weapon_skin\".\"weapon_type\""},
+	EquippedOn:    whereHelpernull_String{field: "\"weapon_skin\".\"equipped_on\""},
+	Tier:          whereHelperstring{field: "\"weapon_skin\".\"tier\""},
+	CreatedAt:     whereHelpertime_Time{field: "\"weapon_skin\".\"created_at\""},
+	WeaponModelID: whereHelperstring{field: "\"weapon_skin\".\"weapon_model_id\""},
 }
 
 // WeaponSkinRels is where relationship names are stored.
@@ -170,9 +135,9 @@ func (*weaponSkinR) NewStruct() *weaponSkinR {
 type weaponSkinL struct{}
 
 var (
-	weaponSkinAllColumns            = []string{"id", "blueprint_id", "owner_id", "label", "weapon_type", "equipped_on", "tier", "created_at", "weapon_model_id", "image_url", "animation_url", "card_animation_url", "large_image_url", "avatar_url"}
+	weaponSkinAllColumns            = []string{"id", "blueprint_id", "owner_id", "label", "weapon_type", "equipped_on", "tier", "created_at", "weapon_model_id"}
 	weaponSkinColumnsWithoutDefault = []string{"blueprint_id", "owner_id", "label", "weapon_type", "weapon_model_id"}
-	weaponSkinColumnsWithDefault    = []string{"id", "equipped_on", "tier", "created_at", "image_url", "animation_url", "card_animation_url", "large_image_url", "avatar_url"}
+	weaponSkinColumnsWithDefault    = []string{"id", "equipped_on", "tier", "created_at"}
 	weaponSkinPrimaryKeyColumns     = []string{"id"}
 	weaponSkinGeneratedColumns      = []string{}
 )
