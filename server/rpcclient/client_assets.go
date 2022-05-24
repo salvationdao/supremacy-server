@@ -1,6 +1,7 @@
 package rpcclient
 
 import (
+	"github.com/volatiletech/null/v8"
 	"server"
 	"server/gamelog"
 	"server/rpctypes"
@@ -115,4 +116,45 @@ func (pp *PassportXrpcClient) UpdateStoreItemIDs(assetsToUpdate []*TemplatesToUp
 	}
 
 	return nil
+}
+
+type UpdateUser1155AssetReq struct {
+	PublicAddress string               `json:"public_address"`
+	AssetData     []Supremacy1155Asset `json:"asset_data"`
+}
+
+type Supremacy1155Asset struct {
+	BlueprintID    string
+	Label          string                      `json:"label"`
+	Description    string                      `json:"description"`
+	CollectionSlug string                      `json:"collection_slug"`
+	TokenID        int                         `json:"token_id"`
+	Count          int                         `json:"count"`
+	ImageURL       string                      `json:"image_url"`
+	AnimationURL   string                      `json:"animation_url"`
+	KeycardGroup   string                      `json:"keycard_group"`
+	Attributes     []SupremacyKeycardAttribute `json:"attributes"`
+}
+
+type SupremacyKeycardAttribute struct {
+	TraitType string `json:"trait_type"`
+	Value     string `json:"value,omitempty"`
+}
+
+type UpdateUser1155AssetResp struct {
+	UserID        string      `json:"user_id"`
+	Username      string      `json:"username"`
+	FactionID     null.String `json:"faction_id"`
+	PublicAddress null.String `json:"public_address"`
+}
+
+func (pp *PassportXrpcClient) UpdateKeycardItem(keycardUpdate UpdateUser1155AssetReq) (*UpdateUser1155AssetResp, error) {
+	resp := &UpdateUser1155AssetResp{}
+	err := pp.XrpcClient.Call("S.InsertUser1155Asset", keycardUpdate, resp)
+	if err != nil {
+		gamelog.L.Err(err).Str("user_address", keycardUpdate.PublicAddress).Msg("rpc error")
+		return nil, err
+	}
+
+	return resp, nil
 }
