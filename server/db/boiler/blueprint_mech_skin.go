@@ -34,6 +34,8 @@ type BlueprintMechSkin struct {
 	LargeImageURL    null.String `boiler:"large_image_url" boil:"large_image_url" json:"large_image_url,omitempty" toml:"large_image_url" yaml:"large_image_url,omitempty"`
 	AvatarURL        null.String `boiler:"avatar_url" boil:"avatar_url" json:"avatar_url,omitempty" toml:"avatar_url" yaml:"avatar_url,omitempty"`
 	CreatedAt        time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	BackgroundColor  null.String `boiler:"background_color" boil:"background_color" json:"background_color,omitempty" toml:"background_color" yaml:"background_color,omitempty"`
+	YoutubeURL       null.String `boiler:"youtube_url" boil:"youtube_url" json:"youtube_url,omitempty" toml:"youtube_url" yaml:"youtube_url,omitempty"`
 
 	R *blueprintMechSkinR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintMechSkinL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -51,6 +53,8 @@ var BlueprintMechSkinColumns = struct {
 	LargeImageURL    string
 	AvatarURL        string
 	CreatedAt        string
+	BackgroundColor  string
+	YoutubeURL       string
 }{
 	ID:               "id",
 	Collection:       "collection",
@@ -63,6 +67,8 @@ var BlueprintMechSkinColumns = struct {
 	LargeImageURL:    "large_image_url",
 	AvatarURL:        "avatar_url",
 	CreatedAt:        "created_at",
+	BackgroundColor:  "background_color",
+	YoutubeURL:       "youtube_url",
 }
 
 var BlueprintMechSkinTableColumns = struct {
@@ -77,6 +83,8 @@ var BlueprintMechSkinTableColumns = struct {
 	LargeImageURL    string
 	AvatarURL        string
 	CreatedAt        string
+	BackgroundColor  string
+	YoutubeURL       string
 }{
 	ID:               "blueprint_mech_skin.id",
 	Collection:       "blueprint_mech_skin.collection",
@@ -89,6 +97,8 @@ var BlueprintMechSkinTableColumns = struct {
 	LargeImageURL:    "blueprint_mech_skin.large_image_url",
 	AvatarURL:        "blueprint_mech_skin.avatar_url",
 	CreatedAt:        "blueprint_mech_skin.created_at",
+	BackgroundColor:  "blueprint_mech_skin.background_color",
+	YoutubeURL:       "blueprint_mech_skin.youtube_url",
 }
 
 // Generated where
@@ -105,6 +115,8 @@ var BlueprintMechSkinWhere = struct {
 	LargeImageURL    whereHelpernull_String
 	AvatarURL        whereHelpernull_String
 	CreatedAt        whereHelpertime_Time
+	BackgroundColor  whereHelpernull_String
+	YoutubeURL       whereHelpernull_String
 }{
 	ID:               whereHelperstring{field: "\"blueprint_mech_skin\".\"id\""},
 	Collection:       whereHelperstring{field: "\"blueprint_mech_skin\".\"collection\""},
@@ -117,6 +129,8 @@ var BlueprintMechSkinWhere = struct {
 	LargeImageURL:    whereHelpernull_String{field: "\"blueprint_mech_skin\".\"large_image_url\""},
 	AvatarURL:        whereHelpernull_String{field: "\"blueprint_mech_skin\".\"avatar_url\""},
 	CreatedAt:        whereHelpertime_Time{field: "\"blueprint_mech_skin\".\"created_at\""},
+	BackgroundColor:  whereHelpernull_String{field: "\"blueprint_mech_skin\".\"background_color\""},
+	YoutubeURL:       whereHelpernull_String{field: "\"blueprint_mech_skin\".\"youtube_url\""},
 }
 
 // BlueprintMechSkinRels is where relationship names are stored.
@@ -146,9 +160,9 @@ func (*blueprintMechSkinR) NewStruct() *blueprintMechSkinR {
 type blueprintMechSkinL struct{}
 
 var (
-	blueprintMechSkinAllColumns            = []string{"id", "collection", "mech_model", "label", "tier", "image_url", "animation_url", "card_animation_url", "large_image_url", "avatar_url", "created_at"}
+	blueprintMechSkinAllColumns            = []string{"id", "collection", "mech_model", "label", "tier", "image_url", "animation_url", "card_animation_url", "large_image_url", "avatar_url", "created_at", "background_color", "youtube_url"}
 	blueprintMechSkinColumnsWithoutDefault = []string{"mech_model", "label"}
-	blueprintMechSkinColumnsWithDefault    = []string{"id", "collection", "tier", "image_url", "animation_url", "card_animation_url", "large_image_url", "avatar_url", "created_at"}
+	blueprintMechSkinColumnsWithDefault    = []string{"id", "collection", "tier", "image_url", "animation_url", "card_animation_url", "large_image_url", "avatar_url", "created_at", "background_color", "youtube_url"}
 	blueprintMechSkinPrimaryKeyColumns     = []string{"id"}
 	blueprintMechSkinGeneratedColumns      = []string{}
 )

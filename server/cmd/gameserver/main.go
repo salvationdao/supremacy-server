@@ -17,6 +17,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/rpcclient"
+	"server/rpctypes"
 	"server/sms"
 	"server/telegram"
 
@@ -372,7 +373,7 @@ func main() {
 
 					// we need to update some IDs on passport server, just the once,
 					// TODO: After deploying composable migration, talk to vinnie about removing this
-					UpdatePurchaseItems(rpcClient)
+					RegisterAllNewAssets(rpcClient)
 					UpdateXsynStoreItemTemplates(rpcClient)
 
 					gamelog.L.Info().Msg("Running webhook rest API")
@@ -395,26 +396,150 @@ func main() {
 	}
 }
 
-func UpdatePurchaseItems(pp *rpcclient.PassportXrpcClient) {
-	updated := db.GetBoolWithDefault("UPDATED_PURCHASED_ITEMS_IDS", false)
-	if !updated {
-		var list []*rpcclient.UpdateAssetIDReq
-		// get all the old ids and new ids
-		err := boiler.NewQuery(
-			qm.SQL(`SELECT mo.chassis_id as asset_ID, mo.id as old_asset_ID FROM mechs_old mo`),
-		).Bind(nil, gamedb.StdConn, &list)
-		if err != nil {
-			gamelog.L.Error().Err(err).Msg("issue getting mech ids")
-			return
-		}
+func RegisterAllNewAssets(pp *rpcclient.PassportXrpcClient) {
+	// Lets do this in chunks, going to be like 30-40k items to add to passport.
+	// mechs
+	go func() {
+		updatedMechs := db.GetBoolWithDefault("INSERTED_NEW_ASSETS_MECHS", false)
+		if !updatedMechs {
+			var mechIDs []string
+			mechCollections, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech)).All(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("failed to get mech collection items for RegisterAllNewAssets")
+				return
+			}
+			for _, m := range mechCollections {
+				mechIDs = append(mechIDs, m.ItemID)
+			}
 
-		err = pp.UpdateAssetsID(list)
-		if err != nil {
-			gamelog.L.Error().Err(err).Msg("issue updating getting mech ids")
-			return
+			mechs, err := db.Mechs(mechIDs...)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("failed to get mechs for RegisterAllNewAssets")
+				return
+			}
+
+			err = pp.AssetsRegister(rpctypes.ServerMechsToXsynAsset(mechs)) // register new mechs
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("issue inserting new mechs to xsyn for RegisterAllNewAssets")
+				return
+			}
+
+			db.PutBool("INSERTED_NEW_ASSETS_MECHS", true)
 		}
-		db.PutBool("UPDATED_PURCHASED_ITEMS_IDS", true)
-	}
+	}()
+	go func() {
+		// weapons
+		updatedWeapons := db.GetBoolWithDefault("INSERTED_NEW_ASSETS_WEAPONS", false)
+		if !updatedWeapons {
+			var weaponIDs []string
+			weaponCollections, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeWeapon)).All(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("failed to get weapon collection items for RegisterAllNewAssets")
+				return
+			}
+			for _, m := range weaponCollections {
+				weaponIDs = append(weaponIDs, m.ItemID)
+			}
+
+			weapons, err := db.Weapons(weaponIDs...)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("failed to get weapons for RegisterAllNewAssets")
+				return
+			}
+
+			err = pp.AssetsRegister(rpctypes.ServerWeaponsToXsynAsset(weapons)) // register new weapons
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("issue inserting new weapons to xsyn")
+				return
+			}
+			db.PutBool("INSERTED_NEW_ASSETS_WEAPONS", true)
+		}
+	}()
+	go func() {
+		// skins
+		updatedSkins := db.GetBoolWithDefault("INSERTED_NEW_ASSETS_SKINS", false)
+		if !updatedSkins {
+			var skinIDs []string
+			skinCollections, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMechSkin)).All(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("failed to get skin collection items for RegisterAllNewAssets")
+				return
+			}
+			for _, m := range skinCollections {
+				skinIDs = append(skinIDs, m.ItemID)
+			}
+
+			skins, err := db.MechSkins(skinIDs...)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("failed to get skins for RegisterAllNewAssets")
+				return
+			}
+
+			err = pp.AssetsRegister(rpctypes.ServerMechSkinsToXsynAsset(skins)) // register new mech skins
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("issue inserting new mech skins to xsyn")
+				return
+			}
+			db.PutBool("INSERTED_NEW_ASSETS_SKINS", true)
+
+		}
+	}()
+	go func() {
+		// power cores
+		updatedPowerCores := db.GetBoolWithDefault("INSERTED_NEW_ASSETS_POWER_CORES", false)
+		if !updatedPowerCores {
+			var powerCoreIDs []string
+			powerCoreCollections, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypePowerCore)).All(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("failed to get power core collection items for RegisterAllNewAssets")
+				return
+			}
+			for _, m := range powerCoreCollections {
+				powerCoreIDs = append(powerCoreIDs, m.ItemID)
+			}
+
+			powerCores, err := db.PowerCores(powerCoreIDs...)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("failed to get power cores for RegisterAllNewAssets")
+				return
+			}
+
+			err = pp.AssetsRegister(rpctypes.ServerPowerCoresToXsynAsset(powerCores)) // register new mech powerCores
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("issue inserting new mech powerCores to xsyn")
+				return
+			}
+			db.PutBool("INSERTED_NEW_ASSETS_POWER_CORES", true)
+		}
+	}()
+	go func() {
+		// utilities
+		updatedUtilities := db.GetBoolWithDefault("INSERTED_NEW_ASSETS_UTILITIES", false)
+		if !updatedUtilities {
+			var utilityIDs []string
+			utilityCollections, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeUtility)).All(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("failed to get utility collection items for RegisterAllNewAssets")
+				return
+			}
+			for _, m := range utilityCollections {
+				utilityIDs = append(utilityIDs, m.ItemID)
+			}
+
+			utilities, err := db.Utilities(utilityIDs...)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("failed to get utilities for RegisterAllNewAssets")
+				return
+			}
+
+			err = pp.AssetsRegister(rpctypes.ServerUtilitiesToXsynAsset(utilities)) // register new mech utilities
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("issue inserting new mech utilities to xsyn")
+				return
+			}
+			db.PutBool("INSERTED_NEW_ASSETS_UTILITIES", true)
+		}
+	}()
 }
 
 func UpdateXsynStoreItemTemplates(pp *rpcclient.PassportXrpcClient) {

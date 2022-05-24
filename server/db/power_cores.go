@@ -36,7 +36,20 @@ func InsertNewPowerCore(ownerID uuid.UUID, ec *server.BlueprintPowerCore) (*serv
 		return nil, terror.Error(err)
 	}
 
-	err = InsertNewCollectionItem(tx, ec.Collection, boiler.ItemTypePowerCore, newPowerCore.ID, ec.Tier, ownerID.String())
+	err = InsertNewCollectionItem(tx,
+		ec.Collection,
+		boiler.ItemTypePowerCore,
+		newPowerCore.ID,
+		ec.Tier,
+		ownerID.String(),
+		ec.ImageURL,
+		ec.CardAnimationURL,
+		ec.AvatarURL,
+		ec.LargeImageURL,
+		ec.BackgroundColor,
+		ec.AnimationURL,
+		ec.YoutubeURL,
+	)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -60,6 +73,23 @@ func PowerCore(id string) (*server.PowerCore, error) {
 	}
 
 	return server.PowerCoreFromBoiler(boilerMech, boilerMechCollectionDetails), nil
+}
+
+func PowerCores(id ...string) ([]*server.PowerCore, error) {
+	var powerCores []*server.PowerCore
+	boilerPowerCores, err := boiler.PowerCores(boiler.PowerCoreWhere.ID.IN(id)).All(gamedb.StdConn)
+	if err != nil {
+		return nil, err
+	}
+	for _, pc := range boilerPowerCores {
+		boilerPowerCoreCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(pc.ID)).One(gamedb.StdConn)
+		if err != nil {
+			return nil, err
+		}
+		powerCores = append(powerCores, server.PowerCoreFromBoiler(pc, boilerPowerCoreCollectionDetails))
+	}
+
+	return powerCores, nil
 }
 
 // AttachPowerCoreToMech attaches a power core to a mech  TODO: create tests.
