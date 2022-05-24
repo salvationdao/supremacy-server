@@ -270,13 +270,15 @@ func MarketplaceSaleItemExists(id uuid.UUID) (bool, error) {
 	return boiler.ItemSaleExists(gamedb.StdConn, id.String())
 }
 
-// CollectionItemChangeOwner transfers a collection item to a new owner.
-func CollectionItemChangeOwner(id uuid.UUID) error {
+// ChangeMechOwner transfers a collection item to a new owner.
+// TODO: Subject to change...
+func ChangeMechOwner(id uuid.UUID) error {
 	q := `
 		UPDATE collection_items
 		FROM item_sales
 		SET owner_id = item_sales.sold_by
-		WHERE item_sales.id = $1`
+		WHERE item_sales.id = $1
+			AND collection_items.item_id = item_sales.item_id`
 	_, err := gamedb.StdConn.Exec(q, id)
 	if err != nil {
 		return terror.Error(err)
