@@ -31,14 +31,21 @@ func (b *MechAnimation) Scan(value interface{}) error {
 }
 
 type BlueprintMechAnimation struct {
-	ID             string    `json:"id"`
-	Collection     string    `json:"collection"`
-	Label          string    `json:"label"`
-	MechModel      string    `json:"mech_model"`
-	Tier           string    `json:"tier,omitempty"`
-	IntroAnimation null.Bool `json:"intro_animation,omitempty"`
-	OutroAnimation null.Bool `json:"outro_animation,omitempty"`
-	CreatedAt      time.Time `json:"created_at"`
+	ID               string      `json:"id"`
+	Collection       string      `json:"collection"`
+	Label            string      `json:"label"`
+	MechModel        string      `json:"mech_model"`
+	Tier             string      `json:"tier,omitempty"`
+	IntroAnimation   null.Bool   `json:"intro_animation,omitempty"`
+	OutroAnimation   null.Bool   `json:"outro_animation,omitempty"`
+	CreatedAt        time.Time   `json:"created_at"`
+	ImageURL         null.String `json:"image_url,omitempty"`
+	CardAnimationURL null.String `json:"card_animation_url,omitempty"`
+	AvatarURL        null.String `json:"avatar_url,omitempty"`
+	LargeImageURL    null.String `json:"large_image_url,omitempty"`
+	BackgroundColor  null.String `json:"background_color,omitempty"`
+	AnimationURL     null.String `json:"animation_url,omitempty"`
+	YoutubeURL       null.String `json:"youtube_url,omitempty"`
 
 	// only used on inserting new mechs/items, since we are still giving away some limited released and genesis
 	GenesisTokenID        decimal.NullDecimal `json:"genesis_token_id,omitempty"`
@@ -77,6 +84,13 @@ func MechAnimationFromBoiler(animation *boiler.MechAnimation, collection *boiler
 			Tier:           collection.Tier,
 			OwnerID:        collection.OwnerID,
 			OnChainStatus:  collection.OnChainStatus,
+			ImageURL:         collection.ImageURL,
+			CardAnimationURL: collection.CardAnimationURL,
+			AvatarURL:        collection.AvatarURL,
+			LargeImageURL:    collection.LargeImageURL,
+			BackgroundColor:  collection.BackgroundColor,
+			AnimationURL:     collection.AnimationURL,
+			YoutubeURL:       collection.YoutubeURL,
 		},
 		ID:             animation.ID,
 		BlueprintID:    animation.BlueprintID,

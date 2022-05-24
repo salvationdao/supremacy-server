@@ -28,13 +28,13 @@ type BlueprintWeaponSkin struct {
 	WeaponType       string      `boiler:"weapon_type" boil:"weapon_type" json:"weapon_type" toml:"weapon_type" yaml:"weapon_type"`
 	Tier             string      `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
 	CreatedAt        time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	Collection       string      `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
-	WeaponModelID    string      `boiler:"weapon_model_id" boil:"weapon_model_id" json:"weapon_model_id" toml:"weapon_model_id" yaml:"weapon_model_id"`
 	ImageURL         null.String `boiler:"image_url" boil:"image_url" json:"image_url,omitempty" toml:"image_url" yaml:"image_url,omitempty"`
-	AnimationURL     null.String `boiler:"animation_url" boil:"animation_url" json:"animation_url,omitempty" toml:"animation_url" yaml:"animation_url,omitempty"`
 	CardAnimationURL null.String `boiler:"card_animation_url" boil:"card_animation_url" json:"card_animation_url,omitempty" toml:"card_animation_url" yaml:"card_animation_url,omitempty"`
-	LargeImageURL    null.String `boiler:"large_image_url" boil:"large_image_url" json:"large_image_url,omitempty" toml:"large_image_url" yaml:"large_image_url,omitempty"`
 	AvatarURL        null.String `boiler:"avatar_url" boil:"avatar_url" json:"avatar_url,omitempty" toml:"avatar_url" yaml:"avatar_url,omitempty"`
+	LargeImageURL    null.String `boiler:"large_image_url" boil:"large_image_url" json:"large_image_url,omitempty" toml:"large_image_url" yaml:"large_image_url,omitempty"`
+	BackgroundColor  null.String `boiler:"background_color" boil:"background_color" json:"background_color,omitempty" toml:"background_color" yaml:"background_color,omitempty"`
+	AnimationURL     null.String `boiler:"animation_url" boil:"animation_url" json:"animation_url,omitempty" toml:"animation_url" yaml:"animation_url,omitempty"`
+	YoutubeURL       null.String `boiler:"youtube_url" boil:"youtube_url" json:"youtube_url,omitempty" toml:"youtube_url" yaml:"youtube_url,omitempty"`
 
 	R *blueprintWeaponSkinR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintWeaponSkinL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -46,26 +46,26 @@ var BlueprintWeaponSkinColumns = struct {
 	WeaponType       string
 	Tier             string
 	CreatedAt        string
-	Collection       string
-	WeaponModelID    string
 	ImageURL         string
-	AnimationURL     string
 	CardAnimationURL string
-	LargeImageURL    string
 	AvatarURL        string
+	LargeImageURL    string
+	BackgroundColor  string
+	AnimationURL     string
+	YoutubeURL       string
 }{
 	ID:               "id",
 	Label:            "label",
 	WeaponType:       "weapon_type",
 	Tier:             "tier",
 	CreatedAt:        "created_at",
-	Collection:       "collection",
-	WeaponModelID:    "weapon_model_id",
 	ImageURL:         "image_url",
-	AnimationURL:     "animation_url",
 	CardAnimationURL: "card_animation_url",
-	LargeImageURL:    "large_image_url",
 	AvatarURL:        "avatar_url",
+	LargeImageURL:    "large_image_url",
+	BackgroundColor:  "background_color",
+	AnimationURL:     "animation_url",
+	YoutubeURL:       "youtube_url",
 }
 
 var BlueprintWeaponSkinTableColumns = struct {
@@ -74,26 +74,26 @@ var BlueprintWeaponSkinTableColumns = struct {
 	WeaponType       string
 	Tier             string
 	CreatedAt        string
-	Collection       string
-	WeaponModelID    string
 	ImageURL         string
-	AnimationURL     string
 	CardAnimationURL string
-	LargeImageURL    string
 	AvatarURL        string
+	LargeImageURL    string
+	BackgroundColor  string
+	AnimationURL     string
+	YoutubeURL       string
 }{
 	ID:               "blueprint_weapon_skin.id",
 	Label:            "blueprint_weapon_skin.label",
 	WeaponType:       "blueprint_weapon_skin.weapon_type",
 	Tier:             "blueprint_weapon_skin.tier",
 	CreatedAt:        "blueprint_weapon_skin.created_at",
-	Collection:       "blueprint_weapon_skin.collection",
-	WeaponModelID:    "blueprint_weapon_skin.weapon_model_id",
 	ImageURL:         "blueprint_weapon_skin.image_url",
-	AnimationURL:     "blueprint_weapon_skin.animation_url",
 	CardAnimationURL: "blueprint_weapon_skin.card_animation_url",
-	LargeImageURL:    "blueprint_weapon_skin.large_image_url",
 	AvatarURL:        "blueprint_weapon_skin.avatar_url",
+	LargeImageURL:    "blueprint_weapon_skin.large_image_url",
+	BackgroundColor:  "blueprint_weapon_skin.background_color",
+	AnimationURL:     "blueprint_weapon_skin.animation_url",
+	YoutubeURL:       "blueprint_weapon_skin.youtube_url",
 }
 
 // Generated where
@@ -104,40 +104,37 @@ var BlueprintWeaponSkinWhere = struct {
 	WeaponType       whereHelperstring
 	Tier             whereHelperstring
 	CreatedAt        whereHelpertime_Time
-	Collection       whereHelperstring
-	WeaponModelID    whereHelperstring
 	ImageURL         whereHelpernull_String
-	AnimationURL     whereHelpernull_String
 	CardAnimationURL whereHelpernull_String
-	LargeImageURL    whereHelpernull_String
 	AvatarURL        whereHelpernull_String
+	LargeImageURL    whereHelpernull_String
+	BackgroundColor  whereHelpernull_String
+	AnimationURL     whereHelpernull_String
+	YoutubeURL       whereHelpernull_String
 }{
 	ID:               whereHelperstring{field: "\"blueprint_weapon_skin\".\"id\""},
 	Label:            whereHelperstring{field: "\"blueprint_weapon_skin\".\"label\""},
 	WeaponType:       whereHelperstring{field: "\"blueprint_weapon_skin\".\"weapon_type\""},
 	Tier:             whereHelperstring{field: "\"blueprint_weapon_skin\".\"tier\""},
 	CreatedAt:        whereHelpertime_Time{field: "\"blueprint_weapon_skin\".\"created_at\""},
-	Collection:       whereHelperstring{field: "\"blueprint_weapon_skin\".\"collection\""},
-	WeaponModelID:    whereHelperstring{field: "\"blueprint_weapon_skin\".\"weapon_model_id\""},
 	ImageURL:         whereHelpernull_String{field: "\"blueprint_weapon_skin\".\"image_url\""},
-	AnimationURL:     whereHelpernull_String{field: "\"blueprint_weapon_skin\".\"animation_url\""},
 	CardAnimationURL: whereHelpernull_String{field: "\"blueprint_weapon_skin\".\"card_animation_url\""},
-	LargeImageURL:    whereHelpernull_String{field: "\"blueprint_weapon_skin\".\"large_image_url\""},
 	AvatarURL:        whereHelpernull_String{field: "\"blueprint_weapon_skin\".\"avatar_url\""},
+	LargeImageURL:    whereHelpernull_String{field: "\"blueprint_weapon_skin\".\"large_image_url\""},
+	BackgroundColor:  whereHelpernull_String{field: "\"blueprint_weapon_skin\".\"background_color\""},
+	AnimationURL:     whereHelpernull_String{field: "\"blueprint_weapon_skin\".\"animation_url\""},
+	YoutubeURL:       whereHelpernull_String{field: "\"blueprint_weapon_skin\".\"youtube_url\""},
 }
 
 // BlueprintWeaponSkinRels is where relationship names are stored.
 var BlueprintWeaponSkinRels = struct {
-	WeaponModel          string
 	BlueprintWeaponSkins string
 }{
-	WeaponModel:          "WeaponModel",
 	BlueprintWeaponSkins: "BlueprintWeaponSkins",
 }
 
 // blueprintWeaponSkinR is where relationships are stored.
 type blueprintWeaponSkinR struct {
-	WeaponModel          *WeaponModel    `boiler:"WeaponModel" boil:"WeaponModel" json:"WeaponModel" toml:"WeaponModel" yaml:"WeaponModel"`
 	BlueprintWeaponSkins WeaponSkinSlice `boiler:"BlueprintWeaponSkins" boil:"BlueprintWeaponSkins" json:"BlueprintWeaponSkins" toml:"BlueprintWeaponSkins" yaml:"BlueprintWeaponSkins"`
 }
 
@@ -150,9 +147,9 @@ func (*blueprintWeaponSkinR) NewStruct() *blueprintWeaponSkinR {
 type blueprintWeaponSkinL struct{}
 
 var (
-	blueprintWeaponSkinAllColumns            = []string{"id", "label", "weapon_type", "tier", "created_at", "collection", "weapon_model_id", "image_url", "animation_url", "card_animation_url", "large_image_url", "avatar_url"}
-	blueprintWeaponSkinColumnsWithoutDefault = []string{"label", "weapon_type", "weapon_model_id"}
-	blueprintWeaponSkinColumnsWithDefault    = []string{"id", "tier", "created_at", "collection", "image_url", "animation_url", "card_animation_url", "large_image_url", "avatar_url"}
+	blueprintWeaponSkinAllColumns            = []string{"id", "label", "weapon_type", "tier", "created_at", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url"}
+	blueprintWeaponSkinColumnsWithoutDefault = []string{"label", "weapon_type"}
+	blueprintWeaponSkinColumnsWithDefault    = []string{"id", "tier", "created_at", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url"}
 	blueprintWeaponSkinPrimaryKeyColumns     = []string{"id"}
 	blueprintWeaponSkinGeneratedColumns      = []string{}
 )
@@ -399,20 +396,6 @@ func (q blueprintWeaponSkinQuery) Exists(exec boil.Executor) (bool, error) {
 	return count > 0, nil
 }
 
-// WeaponModel pointed to by the foreign key.
-func (o *BlueprintWeaponSkin) WeaponModel(mods ...qm.QueryMod) weaponModelQuery {
-	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.WeaponModelID),
-	}
-
-	queryMods = append(queryMods, mods...)
-
-	query := WeaponModels(queryMods...)
-	queries.SetFrom(query.Query, "\"weapon_models\"")
-
-	return query
-}
-
 // BlueprintWeaponSkins retrieves all the weapon_skin's WeaponSkins with an executor via blueprint_id column.
 func (o *BlueprintWeaponSkin) BlueprintWeaponSkins(mods ...qm.QueryMod) weaponSkinQuery {
 	var queryMods []qm.QueryMod
@@ -432,110 +415,6 @@ func (o *BlueprintWeaponSkin) BlueprintWeaponSkins(mods ...qm.QueryMod) weaponSk
 	}
 
 	return query
-}
-
-// LoadWeaponModel allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for an N-1 relationship.
-func (blueprintWeaponSkinL) LoadWeaponModel(e boil.Executor, singular bool, maybeBlueprintWeaponSkin interface{}, mods queries.Applicator) error {
-	var slice []*BlueprintWeaponSkin
-	var object *BlueprintWeaponSkin
-
-	if singular {
-		object = maybeBlueprintWeaponSkin.(*BlueprintWeaponSkin)
-	} else {
-		slice = *maybeBlueprintWeaponSkin.(*[]*BlueprintWeaponSkin)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &blueprintWeaponSkinR{}
-		}
-		args = append(args, object.WeaponModelID)
-
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &blueprintWeaponSkinR{}
-			}
-
-			for _, a := range args {
-				if a == obj.WeaponModelID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.WeaponModelID)
-
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`weapon_models`),
-		qm.WhereIn(`weapon_models.id in ?`, args...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load WeaponModel")
-	}
-
-	var resultSlice []*WeaponModel
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice WeaponModel")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for weapon_models")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for weapon_models")
-	}
-
-	if len(blueprintWeaponSkinAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-
-	if len(resultSlice) == 0 {
-		return nil
-	}
-
-	if singular {
-		foreign := resultSlice[0]
-		object.R.WeaponModel = foreign
-		if foreign.R == nil {
-			foreign.R = &weaponModelR{}
-		}
-		foreign.R.BlueprintWeaponSkins = append(foreign.R.BlueprintWeaponSkins, object)
-		return nil
-	}
-
-	for _, local := range slice {
-		for _, foreign := range resultSlice {
-			if local.WeaponModelID == foreign.ID {
-				local.R.WeaponModel = foreign
-				if foreign.R == nil {
-					foreign.R = &weaponModelR{}
-				}
-				foreign.R.BlueprintWeaponSkins = append(foreign.R.BlueprintWeaponSkins, local)
-				break
-			}
-		}
-	}
-
-	return nil
 }
 
 // LoadBlueprintWeaponSkins allows an eager lookup of values, cached into the
@@ -631,52 +510,6 @@ func (blueprintWeaponSkinL) LoadBlueprintWeaponSkins(e boil.Executor, singular b
 				break
 			}
 		}
-	}
-
-	return nil
-}
-
-// SetWeaponModel of the blueprintWeaponSkin to the related item.
-// Sets o.R.WeaponModel to related.
-// Adds o to related.R.BlueprintWeaponSkins.
-func (o *BlueprintWeaponSkin) SetWeaponModel(exec boil.Executor, insert bool, related *WeaponModel) error {
-	var err error
-	if insert {
-		if err = related.Insert(exec, boil.Infer()); err != nil {
-			return errors.Wrap(err, "failed to insert into foreign table")
-		}
-	}
-
-	updateQuery := fmt.Sprintf(
-		"UPDATE \"blueprint_weapon_skin\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"weapon_model_id"}),
-		strmangle.WhereClause("\"", "\"", 2, blueprintWeaponSkinPrimaryKeyColumns),
-	)
-	values := []interface{}{related.ID, o.ID}
-
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, updateQuery)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	if _, err = exec.Exec(updateQuery, values...); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	o.WeaponModelID = related.ID
-	if o.R == nil {
-		o.R = &blueprintWeaponSkinR{
-			WeaponModel: related,
-		}
-	} else {
-		o.R.WeaponModel = related
-	}
-
-	if related.R == nil {
-		related.R = &weaponModelR{
-			BlueprintWeaponSkins: BlueprintWeaponSkinSlice{o},
-		}
-	} else {
-		related.R.BlueprintWeaponSkins = append(related.R.BlueprintWeaponSkins, o)
 	}
 
 	return nil

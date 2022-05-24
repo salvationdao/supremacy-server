@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
-	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
@@ -24,28 +23,28 @@ import (
 
 // Mech is an object representing the database table.
 type Mech struct {
-	ID                    string              `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	BrandID               string              `boiler:"brand_id" boil:"brand_id" json:"brand_id" toml:"brand_id" yaml:"brand_id"`
-	Label                 string              `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	WeaponHardpoints      int                 `boiler:"weapon_hardpoints" boil:"weapon_hardpoints" json:"weapon_hardpoints" toml:"weapon_hardpoints" yaml:"weapon_hardpoints"`
-	UtilitySlots          int                 `boiler:"utility_slots" boil:"utility_slots" json:"utility_slots" toml:"utility_slots" yaml:"utility_slots"`
-	Speed                 int                 `boiler:"speed" boil:"speed" json:"speed" toml:"speed" yaml:"speed"`
-	MaxHitpoints          int                 `boiler:"max_hitpoints" boil:"max_hitpoints" json:"max_hitpoints" toml:"max_hitpoints" yaml:"max_hitpoints"`
-	DeletedAt             null.Time           `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	UpdatedAt             time.Time           `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt             time.Time           `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	BlueprintID           string              `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
-	IsDefault             bool                `boiler:"is_default" boil:"is_default" json:"is_default" toml:"is_default" yaml:"is_default"`
-	IsInsured             bool                `boiler:"is_insured" boil:"is_insured" json:"is_insured" toml:"is_insured" yaml:"is_insured"`
-	Name                  string              `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
-	ModelID               string              `boiler:"model_id" boil:"model_id" json:"model_id" toml:"model_id" yaml:"model_id"`
-	GenesisTokenID        decimal.NullDecimal `boiler:"genesis_token_id" boil:"genesis_token_id" json:"genesis_token_id,omitempty" toml:"genesis_token_id" yaml:"genesis_token_id,omitempty"`
-	LimitedReleaseTokenID decimal.NullDecimal `boiler:"limited_release_token_id" boil:"limited_release_token_id" json:"limited_release_token_id,omitempty" toml:"limited_release_token_id" yaml:"limited_release_token_id,omitempty"`
-	PowerCoreSize         string              `boiler:"power_core_size" boil:"power_core_size" json:"power_core_size" toml:"power_core_size" yaml:"power_core_size"`
-	ChassisSkinID         null.String         `boiler:"chassis_skin_id" boil:"chassis_skin_id" json:"chassis_skin_id,omitempty" toml:"chassis_skin_id" yaml:"chassis_skin_id,omitempty"`
-	PowerCoreID           null.String         `boiler:"power_core_id" boil:"power_core_id" json:"power_core_id,omitempty" toml:"power_core_id" yaml:"power_core_id,omitempty"`
-	IntroAnimationID      null.String         `boiler:"intro_animation_id" boil:"intro_animation_id" json:"intro_animation_id,omitempty" toml:"intro_animation_id" yaml:"intro_animation_id,omitempty"`
-	OutroAnimationID      null.String         `boiler:"outro_animation_id" boil:"outro_animation_id" json:"outro_animation_id,omitempty" toml:"outro_animation_id" yaml:"outro_animation_id,omitempty"`
+	ID                    string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	BrandID               string      `boiler:"brand_id" boil:"brand_id" json:"brand_id" toml:"brand_id" yaml:"brand_id"`
+	Label                 string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	WeaponHardpoints      int         `boiler:"weapon_hardpoints" boil:"weapon_hardpoints" json:"weapon_hardpoints" toml:"weapon_hardpoints" yaml:"weapon_hardpoints"`
+	UtilitySlots          int         `boiler:"utility_slots" boil:"utility_slots" json:"utility_slots" toml:"utility_slots" yaml:"utility_slots"`
+	Speed                 int         `boiler:"speed" boil:"speed" json:"speed" toml:"speed" yaml:"speed"`
+	MaxHitpoints          int         `boiler:"max_hitpoints" boil:"max_hitpoints" json:"max_hitpoints" toml:"max_hitpoints" yaml:"max_hitpoints"`
+	DeletedAt             null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt             time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt             time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	BlueprintID           string      `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
+	IsDefault             bool        `boiler:"is_default" boil:"is_default" json:"is_default" toml:"is_default" yaml:"is_default"`
+	IsInsured             bool        `boiler:"is_insured" boil:"is_insured" json:"is_insured" toml:"is_insured" yaml:"is_insured"`
+	Name                  string      `boiler:"name" boil:"name" json:"name" toml:"name" yaml:"name"`
+	ModelID               string      `boiler:"model_id" boil:"model_id" json:"model_id" toml:"model_id" yaml:"model_id"`
+	GenesisTokenID        null.Int64  `boiler:"genesis_token_id" boil:"genesis_token_id" json:"genesis_token_id,omitempty" toml:"genesis_token_id" yaml:"genesis_token_id,omitempty"`
+	LimitedReleaseTokenID null.Int64  `boiler:"limited_release_token_id" boil:"limited_release_token_id" json:"limited_release_token_id,omitempty" toml:"limited_release_token_id" yaml:"limited_release_token_id,omitempty"`
+	PowerCoreSize         string      `boiler:"power_core_size" boil:"power_core_size" json:"power_core_size" toml:"power_core_size" yaml:"power_core_size"`
+	ChassisSkinID         null.String `boiler:"chassis_skin_id" boil:"chassis_skin_id" json:"chassis_skin_id,omitempty" toml:"chassis_skin_id" yaml:"chassis_skin_id,omitempty"`
+	PowerCoreID           null.String `boiler:"power_core_id" boil:"power_core_id" json:"power_core_id,omitempty" toml:"power_core_id" yaml:"power_core_id,omitempty"`
+	IntroAnimationID      null.String `boiler:"intro_animation_id" boil:"intro_animation_id" json:"intro_animation_id,omitempty" toml:"intro_animation_id" yaml:"intro_animation_id,omitempty"`
+	OutroAnimationID      null.String `boiler:"outro_animation_id" boil:"outro_animation_id" json:"outro_animation_id,omitempty" toml:"outro_animation_id" yaml:"outro_animation_id,omitempty"`
 
 	R *mechR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L mechL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -165,8 +164,8 @@ var MechWhere = struct {
 	IsInsured             whereHelperbool
 	Name                  whereHelperstring
 	ModelID               whereHelperstring
-	GenesisTokenID        whereHelperdecimal_NullDecimal
-	LimitedReleaseTokenID whereHelperdecimal_NullDecimal
+	GenesisTokenID        whereHelpernull_Int64
+	LimitedReleaseTokenID whereHelpernull_Int64
 	PowerCoreSize         whereHelperstring
 	ChassisSkinID         whereHelpernull_String
 	PowerCoreID           whereHelpernull_String
@@ -188,8 +187,8 @@ var MechWhere = struct {
 	IsInsured:             whereHelperbool{field: "\"mechs\".\"is_insured\""},
 	Name:                  whereHelperstring{field: "\"mechs\".\"name\""},
 	ModelID:               whereHelperstring{field: "\"mechs\".\"model_id\""},
-	GenesisTokenID:        whereHelperdecimal_NullDecimal{field: "\"mechs\".\"genesis_token_id\""},
-	LimitedReleaseTokenID: whereHelperdecimal_NullDecimal{field: "\"mechs\".\"limited_release_token_id\""},
+	GenesisTokenID:        whereHelpernull_Int64{field: "\"mechs\".\"genesis_token_id\""},
+	LimitedReleaseTokenID: whereHelpernull_Int64{field: "\"mechs\".\"limited_release_token_id\""},
 	PowerCoreSize:         whereHelperstring{field: "\"mechs\".\"power_core_size\""},
 	ChassisSkinID:         whereHelpernull_String{field: "\"mechs\".\"chassis_skin_id\""},
 	PowerCoreID:           whereHelpernull_String{field: "\"mechs\".\"power_core_id\""},

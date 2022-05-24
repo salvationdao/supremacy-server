@@ -3,7 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"server"
+	"fmt"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -14,7 +14,6 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
 	"github.com/rs/zerolog"
-	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 )
 
@@ -48,23 +47,37 @@ type PlayerAssetMechListRequest struct {
 }
 
 type PlayerAssetMech struct {
-	*server.CollectionDetails
-	ID                    string              `json:"id"`
-	Label                 string              `json:"label"`
-	WeaponHardpoints      int                 `json:"weapon_hardpoints"`
-	UtilitySlots          int                 `json:"utility_slots"`
-	Speed                 int                 `json:"speed"`
-	MaxHitpoints          int                 `json:"max_hitpoints"`
-	IsDefault             bool                `json:"is_default"`
-	IsInsured             bool                `json:"is_insured"`
-	Name                  string              `json:"name"`
-	GenesisTokenID        decimal.NullDecimal `json:"genesis_token_id,omitempty"`
-	LimitedReleaseTokenID decimal.NullDecimal `json:"limited_release_token_id,omitempty"`
-	PowerCoreSize         string              `json:"power_core_size"`
-	BlueprintID           string              `json:"blueprint_id"`
-	BrandID               string              `json:"brand_id"`
-	FactionID             string              `json:"faction_id"`
-	ModelID               string              `json:"model_id"`
+	CollectionSlug   string      `json:"collection_slug"`
+	Hash             string      `json:"hash"`
+	TokenID          int64       `json:"token_id"`
+	ItemType         string      `json:"item_type"`
+	Tier             string      `json:"tier"`
+	OwnerID          string      `json:"owner_id"`
+	OnChainStatus    string      `json:"on_chain_status"`
+	ImageURL         null.String `json:"image_url,omitempty"`
+	CardAnimationURL null.String `json:"card_animation_url,omitempty"`
+	AvatarURL        null.String `json:"avatar_url,omitempty"`
+	LargeImageURL    null.String `json:"large_image_url,omitempty"`
+	BackgroundColor  null.String `json:"background_color,omitempty"`
+	AnimationURL     null.String `json:"animation_url,omitempty"`
+	YoutubeURL       null.String `json:"youtube_url,omitempty"`
+
+	ID                    string     `json:"id"`
+	Label                 string     `json:"label"`
+	WeaponHardpoints      int        `json:"weapon_hardpoints"`
+	UtilitySlots          int        `json:"utility_slots"`
+	Speed                 int        `json:"speed"`
+	MaxHitpoints          int        `json:"max_hitpoints"`
+	IsDefault             bool       `json:"is_default"`
+	IsInsured             bool       `json:"is_insured"`
+	Name                  string     `json:"name"`
+	GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`
+	LimitedReleaseTokenID null.Int64 `json:"limited_release_token_id,omitempty"`
+	PowerCoreSize         string     `json:"power_core_size"`
+	BlueprintID           string     `json:"blueprint_id"`
+	BrandID               string     `json:"brand_id"`
+	FactionID             string     `json:"faction_id"`
+	ModelID               string     `json:"model_id"`
 
 	// Connected objects
 	DefaultChassisSkinID string      `json:"default_chassis_skin_id"`
@@ -72,7 +85,7 @@ type PlayerAssetMech struct {
 	IntroAnimationID     null.String `json:"intro_animation_id,omitempty"`
 	OutroAnimationID     null.String `json:"outro_animation_id,omitempty"`
 	PowerCoreID          null.String `json:"power_core_id,omitempty"`
-	
+
 	UpdatedAt time.Time `json:"updated_at"`
 	CreatedAt time.Time `json:"created_at"`
 }
@@ -87,6 +100,10 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
+	}
+
+	if !user.FactionID.Valid {
+		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
 	}
 
 	total, mechs, err := db.MechList(&db.MechListOpts{
@@ -120,7 +137,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 			PowerCoreSize:         m.PowerCoreSize,
 			BlueprintID:           m.BlueprintID,
 			BrandID:               m.BrandID,
-			FactionID:             m.FactionID,
+			FactionID:             m.FactionID.String,
 			ModelID:               m.ModelID,
 			DefaultChassisSkinID:  m.DefaultChassisSkinID,
 			ChassisSkinID:         m.ChassisSkinID,
@@ -129,6 +146,20 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 			PowerCoreID:           m.PowerCoreID,
 			UpdatedAt:             m.UpdatedAt,
 			CreatedAt:             m.CreatedAt,
+			CollectionSlug:        m.CollectionDetails.CollectionSlug,
+			Hash:                  m.CollectionDetails.Hash,
+			TokenID:               m.CollectionDetails.TokenID,
+			ItemType:              m.CollectionDetails.ItemType,
+			Tier:                  m.CollectionDetails.Tier,
+			OwnerID:               m.CollectionDetails.OwnerID,
+			OnChainStatus:         m.CollectionDetails.OnChainStatus,
+			ImageURL:              m.CollectionDetails.ImageURL,
+			CardAnimationURL:      m.CollectionDetails.CardAnimationURL,
+			AvatarURL:             m.CollectionDetails.AvatarURL,
+			LargeImageURL:         m.CollectionDetails.LargeImageURL,
+			BackgroundColor:       m.CollectionDetails.BackgroundColor,
+			AnimationURL:          m.CollectionDetails.AnimationURL,
+			YoutubeURL:            m.CollectionDetails.YoutubeURL,
 		})
 	}
 

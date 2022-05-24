@@ -23,79 +23,128 @@ import (
 
 // BlueprintMechAnimation is an object representing the database table.
 type BlueprintMechAnimation struct {
-	ID             string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Collection     string    `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
-	Label          string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	MechModel      string    `boiler:"mech_model" boil:"mech_model" json:"mech_model" toml:"mech_model" yaml:"mech_model"`
-	Tier           string    `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
-	IntroAnimation null.Bool `boiler:"intro_animation" boil:"intro_animation" json:"intro_animation,omitempty" toml:"intro_animation" yaml:"intro_animation,omitempty"`
-	OutroAnimation null.Bool `boiler:"outro_animation" boil:"outro_animation" json:"outro_animation,omitempty" toml:"outro_animation" yaml:"outro_animation,omitempty"`
-	CreatedAt      time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ID               string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Collection       string      `boiler:"collection" boil:"collection" json:"collection" toml:"collection" yaml:"collection"`
+	Label            string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	MechModel        string      `boiler:"mech_model" boil:"mech_model" json:"mech_model" toml:"mech_model" yaml:"mech_model"`
+	Tier             string      `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
+	IntroAnimation   null.Bool   `boiler:"intro_animation" boil:"intro_animation" json:"intro_animation,omitempty" toml:"intro_animation" yaml:"intro_animation,omitempty"`
+	OutroAnimation   null.Bool   `boiler:"outro_animation" boil:"outro_animation" json:"outro_animation,omitempty" toml:"outro_animation" yaml:"outro_animation,omitempty"`
+	CreatedAt        time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ImageURL         null.String `boiler:"image_url" boil:"image_url" json:"image_url,omitempty" toml:"image_url" yaml:"image_url,omitempty"`
+	CardAnimationURL null.String `boiler:"card_animation_url" boil:"card_animation_url" json:"card_animation_url,omitempty" toml:"card_animation_url" yaml:"card_animation_url,omitempty"`
+	AvatarURL        null.String `boiler:"avatar_url" boil:"avatar_url" json:"avatar_url,omitempty" toml:"avatar_url" yaml:"avatar_url,omitempty"`
+	LargeImageURL    null.String `boiler:"large_image_url" boil:"large_image_url" json:"large_image_url,omitempty" toml:"large_image_url" yaml:"large_image_url,omitempty"`
+	BackgroundColor  null.String `boiler:"background_color" boil:"background_color" json:"background_color,omitempty" toml:"background_color" yaml:"background_color,omitempty"`
+	AnimationURL     null.String `boiler:"animation_url" boil:"animation_url" json:"animation_url,omitempty" toml:"animation_url" yaml:"animation_url,omitempty"`
+	YoutubeURL       null.String `boiler:"youtube_url" boil:"youtube_url" json:"youtube_url,omitempty" toml:"youtube_url" yaml:"youtube_url,omitempty"`
 
 	R *blueprintMechAnimationR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blueprintMechAnimationL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var BlueprintMechAnimationColumns = struct {
-	ID             string
-	Collection     string
-	Label          string
-	MechModel      string
-	Tier           string
-	IntroAnimation string
-	OutroAnimation string
-	CreatedAt      string
+	ID               string
+	Collection       string
+	Label            string
+	MechModel        string
+	Tier             string
+	IntroAnimation   string
+	OutroAnimation   string
+	CreatedAt        string
+	ImageURL         string
+	CardAnimationURL string
+	AvatarURL        string
+	LargeImageURL    string
+	BackgroundColor  string
+	AnimationURL     string
+	YoutubeURL       string
 }{
-	ID:             "id",
-	Collection:     "collection",
-	Label:          "label",
-	MechModel:      "mech_model",
-	Tier:           "tier",
-	IntroAnimation: "intro_animation",
-	OutroAnimation: "outro_animation",
-	CreatedAt:      "created_at",
+	ID:               "id",
+	Collection:       "collection",
+	Label:            "label",
+	MechModel:        "mech_model",
+	Tier:             "tier",
+	IntroAnimation:   "intro_animation",
+	OutroAnimation:   "outro_animation",
+	CreatedAt:        "created_at",
+	ImageURL:         "image_url",
+	CardAnimationURL: "card_animation_url",
+	AvatarURL:        "avatar_url",
+	LargeImageURL:    "large_image_url",
+	BackgroundColor:  "background_color",
+	AnimationURL:     "animation_url",
+	YoutubeURL:       "youtube_url",
 }
 
 var BlueprintMechAnimationTableColumns = struct {
-	ID             string
-	Collection     string
-	Label          string
-	MechModel      string
-	Tier           string
-	IntroAnimation string
-	OutroAnimation string
-	CreatedAt      string
+	ID               string
+	Collection       string
+	Label            string
+	MechModel        string
+	Tier             string
+	IntroAnimation   string
+	OutroAnimation   string
+	CreatedAt        string
+	ImageURL         string
+	CardAnimationURL string
+	AvatarURL        string
+	LargeImageURL    string
+	BackgroundColor  string
+	AnimationURL     string
+	YoutubeURL       string
 }{
-	ID:             "blueprint_mech_animation.id",
-	Collection:     "blueprint_mech_animation.collection",
-	Label:          "blueprint_mech_animation.label",
-	MechModel:      "blueprint_mech_animation.mech_model",
-	Tier:           "blueprint_mech_animation.tier",
-	IntroAnimation: "blueprint_mech_animation.intro_animation",
-	OutroAnimation: "blueprint_mech_animation.outro_animation",
-	CreatedAt:      "blueprint_mech_animation.created_at",
+	ID:               "blueprint_mech_animation.id",
+	Collection:       "blueprint_mech_animation.collection",
+	Label:            "blueprint_mech_animation.label",
+	MechModel:        "blueprint_mech_animation.mech_model",
+	Tier:             "blueprint_mech_animation.tier",
+	IntroAnimation:   "blueprint_mech_animation.intro_animation",
+	OutroAnimation:   "blueprint_mech_animation.outro_animation",
+	CreatedAt:        "blueprint_mech_animation.created_at",
+	ImageURL:         "blueprint_mech_animation.image_url",
+	CardAnimationURL: "blueprint_mech_animation.card_animation_url",
+	AvatarURL:        "blueprint_mech_animation.avatar_url",
+	LargeImageURL:    "blueprint_mech_animation.large_image_url",
+	BackgroundColor:  "blueprint_mech_animation.background_color",
+	AnimationURL:     "blueprint_mech_animation.animation_url",
+	YoutubeURL:       "blueprint_mech_animation.youtube_url",
 }
 
 // Generated where
 
 var BlueprintMechAnimationWhere = struct {
-	ID             whereHelperstring
-	Collection     whereHelperstring
-	Label          whereHelperstring
-	MechModel      whereHelperstring
-	Tier           whereHelperstring
-	IntroAnimation whereHelpernull_Bool
-	OutroAnimation whereHelpernull_Bool
-	CreatedAt      whereHelpertime_Time
+	ID               whereHelperstring
+	Collection       whereHelperstring
+	Label            whereHelperstring
+	MechModel        whereHelperstring
+	Tier             whereHelperstring
+	IntroAnimation   whereHelpernull_Bool
+	OutroAnimation   whereHelpernull_Bool
+	CreatedAt        whereHelpertime_Time
+	ImageURL         whereHelpernull_String
+	CardAnimationURL whereHelpernull_String
+	AvatarURL        whereHelpernull_String
+	LargeImageURL    whereHelpernull_String
+	BackgroundColor  whereHelpernull_String
+	AnimationURL     whereHelpernull_String
+	YoutubeURL       whereHelpernull_String
 }{
-	ID:             whereHelperstring{field: "\"blueprint_mech_animation\".\"id\""},
-	Collection:     whereHelperstring{field: "\"blueprint_mech_animation\".\"collection\""},
-	Label:          whereHelperstring{field: "\"blueprint_mech_animation\".\"label\""},
-	MechModel:      whereHelperstring{field: "\"blueprint_mech_animation\".\"mech_model\""},
-	Tier:           whereHelperstring{field: "\"blueprint_mech_animation\".\"tier\""},
-	IntroAnimation: whereHelpernull_Bool{field: "\"blueprint_mech_animation\".\"intro_animation\""},
-	OutroAnimation: whereHelpernull_Bool{field: "\"blueprint_mech_animation\".\"outro_animation\""},
-	CreatedAt:      whereHelpertime_Time{field: "\"blueprint_mech_animation\".\"created_at\""},
+	ID:               whereHelperstring{field: "\"blueprint_mech_animation\".\"id\""},
+	Collection:       whereHelperstring{field: "\"blueprint_mech_animation\".\"collection\""},
+	Label:            whereHelperstring{field: "\"blueprint_mech_animation\".\"label\""},
+	MechModel:        whereHelperstring{field: "\"blueprint_mech_animation\".\"mech_model\""},
+	Tier:             whereHelperstring{field: "\"blueprint_mech_animation\".\"tier\""},
+	IntroAnimation:   whereHelpernull_Bool{field: "\"blueprint_mech_animation\".\"intro_animation\""},
+	OutroAnimation:   whereHelpernull_Bool{field: "\"blueprint_mech_animation\".\"outro_animation\""},
+	CreatedAt:        whereHelpertime_Time{field: "\"blueprint_mech_animation\".\"created_at\""},
+	ImageURL:         whereHelpernull_String{field: "\"blueprint_mech_animation\".\"image_url\""},
+	CardAnimationURL: whereHelpernull_String{field: "\"blueprint_mech_animation\".\"card_animation_url\""},
+	AvatarURL:        whereHelpernull_String{field: "\"blueprint_mech_animation\".\"avatar_url\""},
+	LargeImageURL:    whereHelpernull_String{field: "\"blueprint_mech_animation\".\"large_image_url\""},
+	BackgroundColor:  whereHelpernull_String{field: "\"blueprint_mech_animation\".\"background_color\""},
+	AnimationURL:     whereHelpernull_String{field: "\"blueprint_mech_animation\".\"animation_url\""},
+	YoutubeURL:       whereHelpernull_String{field: "\"blueprint_mech_animation\".\"youtube_url\""},
 }
 
 // BlueprintMechAnimationRels is where relationship names are stored.
@@ -122,9 +171,9 @@ func (*blueprintMechAnimationR) NewStruct() *blueprintMechAnimationR {
 type blueprintMechAnimationL struct{}
 
 var (
-	blueprintMechAnimationAllColumns            = []string{"id", "collection", "label", "mech_model", "tier", "intro_animation", "outro_animation", "created_at"}
+	blueprintMechAnimationAllColumns            = []string{"id", "collection", "label", "mech_model", "tier", "intro_animation", "outro_animation", "created_at", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url"}
 	blueprintMechAnimationColumnsWithoutDefault = []string{"label", "mech_model"}
-	blueprintMechAnimationColumnsWithDefault    = []string{"id", "collection", "tier", "intro_animation", "outro_animation", "created_at"}
+	blueprintMechAnimationColumnsWithDefault    = []string{"id", "collection", "tier", "intro_animation", "outro_animation", "created_at", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url"}
 	blueprintMechAnimationPrimaryKeyColumns     = []string{"id"}
 	blueprintMechAnimationGeneratedColumns      = []string{}
 )
