@@ -50,7 +50,7 @@ var TableNames = struct {
 	KV                                                 string
 	Languages                                          string
 	MechAnimation                                      string
-	MechModel                                          string
+	MechModels                                         string
 	MechRepair                                         string
 	MechSkin                                           string
 	MechStats                                          string
@@ -91,6 +91,7 @@ var TableNames = struct {
 	UtilityRepairDrone                                 string
 	UtilityShield                                      string
 	WeaponAmmo                                         string
+	WeaponModels                                       string
 	WeaponSkin                                         string
 	Weapons                                            string
 }{
@@ -140,7 +141,7 @@ var TableNames = struct {
 	KV:                          "kv",
 	Languages:                   "languages",
 	MechAnimation:               "mech_animation",
-	MechModel:                   "mech_model",
+	MechModels:                  "mech_models",
 	MechRepair:                  "mech_repair",
 	MechSkin:                    "mech_skin",
 	MechStats:                   "mech_stats",
@@ -181,6 +182,7 @@ var TableNames = struct {
 	UtilityRepairDrone:          "utility_repair_drone",
 	UtilityShield:               "utility_shield",
 	WeaponAmmo:                  "weapon_ammo",
+	WeaponModels:                "weapon_models",
 	WeaponSkin:                  "weapon_skin",
 	Weapons:                     "weapons",
 }

@@ -37,6 +37,7 @@ type MechSkin struct {
 	AvatarURL             null.String         `boiler:"avatar_url" boil:"avatar_url" json:"avatar_url,omitempty" toml:"avatar_url" yaml:"avatar_url,omitempty"`
 	LargeImageURL         null.String         `boiler:"large_image_url" boil:"large_image_url" json:"large_image_url,omitempty" toml:"large_image_url" yaml:"large_image_url,omitempty"`
 	CreatedAt             time.Time           `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	LockedToMech          bool                `boiler:"locked_to_mech" boil:"locked_to_mech" json:"locked_to_mech" toml:"locked_to_mech" yaml:"locked_to_mech"`
 
 	R *mechSkinR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L mechSkinL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -56,6 +57,7 @@ var MechSkinColumns = struct {
 	AvatarURL             string
 	LargeImageURL         string
 	CreatedAt             string
+	LockedToMech          string
 }{
 	ID:                    "id",
 	BlueprintID:           "blueprint_id",
@@ -70,6 +72,7 @@ var MechSkinColumns = struct {
 	AvatarURL:             "avatar_url",
 	LargeImageURL:         "large_image_url",
 	CreatedAt:             "created_at",
+	LockedToMech:          "locked_to_mech",
 }
 
 var MechSkinTableColumns = struct {
@@ -86,6 +89,7 @@ var MechSkinTableColumns = struct {
 	AvatarURL             string
 	LargeImageURL         string
 	CreatedAt             string
+	LockedToMech          string
 }{
 	ID:                    "mech_skin.id",
 	BlueprintID:           "mech_skin.blueprint_id",
@@ -100,6 +104,7 @@ var MechSkinTableColumns = struct {
 	AvatarURL:             "mech_skin.avatar_url",
 	LargeImageURL:         "mech_skin.large_image_url",
 	CreatedAt:             "mech_skin.created_at",
+	LockedToMech:          "mech_skin.locked_to_mech",
 }
 
 // Generated where
@@ -118,6 +123,7 @@ var MechSkinWhere = struct {
 	AvatarURL             whereHelpernull_String
 	LargeImageURL         whereHelpernull_String
 	CreatedAt             whereHelpertime_Time
+	LockedToMech          whereHelperbool
 }{
 	ID:                    whereHelperstring{field: "\"mech_skin\".\"id\""},
 	BlueprintID:           whereHelperstring{field: "\"mech_skin\".\"blueprint_id\""},
@@ -132,6 +138,7 @@ var MechSkinWhere = struct {
 	AvatarURL:             whereHelpernull_String{field: "\"mech_skin\".\"avatar_url\""},
 	LargeImageURL:         whereHelpernull_String{field: "\"mech_skin\".\"large_image_url\""},
 	CreatedAt:             whereHelpertime_Time{field: "\"mech_skin\".\"created_at\""},
+	LockedToMech:          whereHelperbool{field: "\"mech_skin\".\"locked_to_mech\""},
 }
 
 // MechSkinRels is where relationship names are stored.
@@ -164,9 +171,9 @@ func (*mechSkinR) NewStruct() *mechSkinR {
 type mechSkinL struct{}
 
 var (
-	mechSkinAllColumns            = []string{"id", "blueprint_id", "genesis_token_id", "limited_release_token_id", "label", "mech_model", "equipped_on", "image_url", "animation_url", "card_animation_url", "avatar_url", "large_image_url", "created_at"}
+	mechSkinAllColumns            = []string{"id", "blueprint_id", "genesis_token_id", "limited_release_token_id", "label", "mech_model", "equipped_on", "image_url", "animation_url", "card_animation_url", "avatar_url", "large_image_url", "created_at", "locked_to_mech"}
 	mechSkinColumnsWithoutDefault = []string{"blueprint_id", "label", "mech_model"}
-	mechSkinColumnsWithDefault    = []string{"id", "genesis_token_id", "limited_release_token_id", "equipped_on", "image_url", "animation_url", "card_animation_url", "avatar_url", "large_image_url", "created_at"}
+	mechSkinColumnsWithDefault    = []string{"id", "genesis_token_id", "limited_release_token_id", "equipped_on", "image_url", "animation_url", "card_animation_url", "avatar_url", "large_image_url", "created_at", "locked_to_mech"}
 	mechSkinPrimaryKeyColumns     = []string{"id"}
 	mechSkinGeneratedColumns      = []string{}
 )
@@ -451,7 +458,7 @@ func (o *MechSkin) MechSkinMechModel(mods ...qm.QueryMod) mechModelQuery {
 	queryMods = append(queryMods, mods...)
 
 	query := MechModels(queryMods...)
-	queries.SetFrom(query.Query, "\"mech_model\"")
+	queries.SetFrom(query.Query, "\"mech_models\"")
 
 	return query
 }
@@ -733,8 +740,8 @@ func (mechSkinL) LoadMechSkinMechModel(e boil.Executor, singular bool, maybeMech
 	}
 
 	query := NewQuery(
-		qm.From(`mech_model`),
-		qm.WhereIn(`mech_model.id in ?`, args...),
+		qm.From(`mech_models`),
+		qm.WhereIn(`mech_models.id in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -751,10 +758,10 @@ func (mechSkinL) LoadMechSkinMechModel(e boil.Executor, singular bool, maybeMech
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for mech_model")
+		return errors.Wrap(err, "failed to close results of eager load for mech_models")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mech_model")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mech_models")
 	}
 
 	if len(mechSkinAfterSelectHooks) != 0 {

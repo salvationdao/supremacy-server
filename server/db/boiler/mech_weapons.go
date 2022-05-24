@@ -30,6 +30,7 @@ type MechWeapon struct {
 	DeletedAt  null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 	UpdatedAt  time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	CreatedAt  time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	AllowMelee bool      `boiler:"allow_melee" boil:"allow_melee" json:"allow_melee" toml:"allow_melee" yaml:"allow_melee"`
 
 	R *mechWeaponR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L mechWeaponL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -43,6 +44,7 @@ var MechWeaponColumns = struct {
 	DeletedAt  string
 	UpdatedAt  string
 	CreatedAt  string
+	AllowMelee string
 }{
 	ID:         "id",
 	ChassisID:  "chassis_id",
@@ -51,6 +53,7 @@ var MechWeaponColumns = struct {
 	DeletedAt:  "deleted_at",
 	UpdatedAt:  "updated_at",
 	CreatedAt:  "created_at",
+	AllowMelee: "allow_melee",
 }
 
 var MechWeaponTableColumns = struct {
@@ -61,6 +64,7 @@ var MechWeaponTableColumns = struct {
 	DeletedAt  string
 	UpdatedAt  string
 	CreatedAt  string
+	AllowMelee string
 }{
 	ID:         "mech_weapons.id",
 	ChassisID:  "mech_weapons.chassis_id",
@@ -69,6 +73,7 @@ var MechWeaponTableColumns = struct {
 	DeletedAt:  "mech_weapons.deleted_at",
 	UpdatedAt:  "mech_weapons.updated_at",
 	CreatedAt:  "mech_weapons.created_at",
+	AllowMelee: "mech_weapons.allow_melee",
 }
 
 // Generated where
@@ -81,6 +86,7 @@ var MechWeaponWhere = struct {
 	DeletedAt  whereHelpernull_Time
 	UpdatedAt  whereHelpertime_Time
 	CreatedAt  whereHelpertime_Time
+	AllowMelee whereHelperbool
 }{
 	ID:         whereHelperstring{field: "\"mech_weapons\".\"id\""},
 	ChassisID:  whereHelperstring{field: "\"mech_weapons\".\"chassis_id\""},
@@ -89,6 +95,7 @@ var MechWeaponWhere = struct {
 	DeletedAt:  whereHelpernull_Time{field: "\"mech_weapons\".\"deleted_at\""},
 	UpdatedAt:  whereHelpertime_Time{field: "\"mech_weapons\".\"updated_at\""},
 	CreatedAt:  whereHelpertime_Time{field: "\"mech_weapons\".\"created_at\""},
+	AllowMelee: whereHelperbool{field: "\"mech_weapons\".\"allow_melee\""},
 }
 
 // MechWeaponRels is where relationship names are stored.
@@ -115,9 +122,9 @@ func (*mechWeaponR) NewStruct() *mechWeaponR {
 type mechWeaponL struct{}
 
 var (
-	mechWeaponAllColumns            = []string{"id", "chassis_id", "weapon_id", "slot_number", "deleted_at", "updated_at", "created_at"}
+	mechWeaponAllColumns            = []string{"id", "chassis_id", "weapon_id", "slot_number", "deleted_at", "updated_at", "created_at", "allow_melee"}
 	mechWeaponColumnsWithoutDefault = []string{"chassis_id", "weapon_id", "slot_number"}
-	mechWeaponColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at"}
+	mechWeaponColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at", "allow_melee"}
 	mechWeaponPrimaryKeyColumns     = []string{"id"}
 	mechWeaponGeneratedColumns      = []string{}
 )

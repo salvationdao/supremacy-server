@@ -93,6 +93,13 @@ const (
 // Enum values for  are not proper Go identifiers, cannot emit constants
 // Enum values for  are not proper Go identifiers, cannot emit constants
 // Enum values for  are not proper Go identifiers, cannot emit constants
+
+// Enum values for MechType
+const (
+	MechTypeHUMANOID = "HUMANOID"
+	MechTypePLATFORM = "PLATFORM"
+)
+
 // Enum values for  are not proper Go identifiers, cannot emit constants
 // Enum values for  are not proper Go identifiers, cannot emit constants
 
@@ -178,4 +185,11 @@ const (
 	PlayerRankEnumCORPORAL    = "CORPORAL"
 	PlayerRankEnumPRIVATE     = "PRIVATE"
 	PlayerRankEnumNEW_RECRUIT = "NEW_RECRUIT"
+)
+
+// Enum values for CrateType
+const (
+	CrateTypeMECH    = "MECH"
+	CrateTypeWEAPON  = "WEAPON"
+	CrateTypeUTILITY = "UTILITY"
 )

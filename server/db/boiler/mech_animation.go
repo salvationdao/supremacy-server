@@ -418,7 +418,7 @@ func (o *MechAnimation) MechAnimationMechModel(mods ...qm.QueryMod) mechModelQue
 	queryMods = append(queryMods, mods...)
 
 	query := MechModels(queryMods...)
-	queries.SetFrom(query.Query, "\"mech_model\"")
+	queries.SetFrom(query.Query, "\"mech_models\"")
 
 	return query
 }
@@ -722,8 +722,8 @@ func (mechAnimationL) LoadMechAnimationMechModel(e boil.Executor, singular bool,
 	}
 
 	query := NewQuery(
-		qm.From(`mech_model`),
-		qm.WhereIn(`mech_model.id in ?`, args...),
+		qm.From(`mech_models`),
+		qm.WhereIn(`mech_models.id in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -740,10 +740,10 @@ func (mechAnimationL) LoadMechAnimationMechModel(e boil.Executor, singular bool,
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for mech_model")
+		return errors.Wrap(err, "failed to close results of eager load for mech_models")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mech_model")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mech_models")
 	}
 
 	if len(mechAnimationAfterSelectHooks) != 0 {

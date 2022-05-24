@@ -35,6 +35,7 @@ type Utility struct {
 	LimitedReleaseTokenID decimal.NullDecimal `boiler:"limited_release_token_id" boil:"limited_release_token_id" json:"limited_release_token_id,omitempty" toml:"limited_release_token_id" yaml:"limited_release_token_id,omitempty"`
 	EquippedOn            null.String         `boiler:"equipped_on" boil:"equipped_on" json:"equipped_on,omitempty" toml:"equipped_on" yaml:"equipped_on,omitempty"`
 	Type                  string              `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
+	LockedToMech          bool                `boiler:"locked_to_mech" boil:"locked_to_mech" json:"locked_to_mech" toml:"locked_to_mech" yaml:"locked_to_mech"`
 
 	R *utilityR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L utilityL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -52,6 +53,7 @@ var UtilityColumns = struct {
 	LimitedReleaseTokenID string
 	EquippedOn            string
 	Type                  string
+	LockedToMech          string
 }{
 	ID:                    "id",
 	BrandID:               "brand_id",
@@ -64,6 +66,7 @@ var UtilityColumns = struct {
 	LimitedReleaseTokenID: "limited_release_token_id",
 	EquippedOn:            "equipped_on",
 	Type:                  "type",
+	LockedToMech:          "locked_to_mech",
 }
 
 var UtilityTableColumns = struct {
@@ -78,6 +81,7 @@ var UtilityTableColumns = struct {
 	LimitedReleaseTokenID string
 	EquippedOn            string
 	Type                  string
+	LockedToMech          string
 }{
 	ID:                    "utility.id",
 	BrandID:               "utility.brand_id",
@@ -90,6 +94,7 @@ var UtilityTableColumns = struct {
 	LimitedReleaseTokenID: "utility.limited_release_token_id",
 	EquippedOn:            "utility.equipped_on",
 	Type:                  "utility.type",
+	LockedToMech:          "utility.locked_to_mech",
 }
 
 // Generated where
@@ -106,6 +111,7 @@ var UtilityWhere = struct {
 	LimitedReleaseTokenID whereHelperdecimal_NullDecimal
 	EquippedOn            whereHelpernull_String
 	Type                  whereHelperstring
+	LockedToMech          whereHelperbool
 }{
 	ID:                    whereHelperstring{field: "\"utility\".\"id\""},
 	BrandID:               whereHelpernull_String{field: "\"utility\".\"brand_id\""},
@@ -118,6 +124,7 @@ var UtilityWhere = struct {
 	LimitedReleaseTokenID: whereHelperdecimal_NullDecimal{field: "\"utility\".\"limited_release_token_id\""},
 	EquippedOn:            whereHelpernull_String{field: "\"utility\".\"equipped_on\""},
 	Type:                  whereHelperstring{field: "\"utility\".\"type\""},
+	LockedToMech:          whereHelperbool{field: "\"utility\".\"locked_to_mech\""},
 }
 
 // UtilityRels is where relationship names are stored.
@@ -165,9 +172,9 @@ func (*utilityR) NewStruct() *utilityR {
 type utilityL struct{}
 
 var (
-	utilityAllColumns            = []string{"id", "brand_id", "label", "deleted_at", "updated_at", "created_at", "blueprint_id", "genesis_token_id", "limited_release_token_id", "equipped_on", "type"}
+	utilityAllColumns            = []string{"id", "brand_id", "label", "deleted_at", "updated_at", "created_at", "blueprint_id", "genesis_token_id", "limited_release_token_id", "equipped_on", "type", "locked_to_mech"}
 	utilityColumnsWithoutDefault = []string{"label", "blueprint_id", "type"}
-	utilityColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at", "genesis_token_id", "limited_release_token_id", "equipped_on"}
+	utilityColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at", "genesis_token_id", "limited_release_token_id", "equipped_on", "locked_to_mech"}
 	utilityPrimaryKeyColumns     = []string{"id"}
 	utilityGeneratedColumns      = []string{}
 )
