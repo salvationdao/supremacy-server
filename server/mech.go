@@ -121,7 +121,6 @@ func BlueprintMechFromBoiler(mech *boiler.BlueprintMech) *BlueprintMech {
 		BrandID:          mech.BrandID,
 		Label:            mech.Label,
 		Slug:             mech.Slug,
-		Skin:             mech.Skin,
 		WeaponHardpoints: mech.WeaponHardpoints,
 		UtilitySlots:     mech.UtilitySlots,
 		Speed:            mech.Speed,

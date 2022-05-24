@@ -334,9 +334,6 @@ ALTER TABLE mech_models
 ALTER TABLE blueprint_mech_skin
     ADD COLUMN mech_type MECH_TYPE;
 
-ALTER TABLE blueprint_mech_skin
-    RENAME COLUMN mech_model TO mech_model_id;
-
 UPDATE blueprint_mech_skin SET MECH_TYPE = 'HUMANOID';
 
 -- for each mech_model, insert 6 skins
@@ -347,26 +344,26 @@ DO $$
             LOOP
             CASE
                 WHEN mech_model.faction_id = (SELECT id FROM factions WHERE label = 'Boston Cybernetics') THEN
-                    INSERT INTO blueprint_mech_skin (mech_model_id, label, mech_type) VALUES (mech_model.id, 'BC Default', mech_model.mech_type);
-                    INSERT INTO blueprint_mech_skin (mech_model_id, label, mech_type) VALUES (mech_model.id, 'Daison Avionics', mech_model.mech_type);
-                    INSERT INTO blueprint_mech_skin (mech_model_id, label, mech_type) VALUES (mech_model.id, 'Blue Camo', mech_model.mech_type);
-                    INSERT INTO blueprint_mech_skin (mech_model_id, label, mech_type) VALUES (mech_model.id, 'Police', mech_model.mech_type);
-                    INSERT INTO blueprint_mech_skin (mech_model_id, label, mech_type) VALUES (mech_model.id, 'Gold', mech_model.mech_type);
-                    INSERT INTO blueprint_mech_skin (mech_model_id, label, mech_type) VALUES (mech_model.id, 'Crystal', mech_model.mech_type);
+                    INSERT INTO blueprint_mech_skin (mech_model, label, mech_type) VALUES (mech_model.id, 'BC Default', mech_model.mech_type);
+                    INSERT INTO blueprint_mech_skin (mech_model, label, mech_type) VALUES (mech_model.id, 'Daison Avionics', mech_model.mech_type);
+                    INSERT INTO blueprint_mech_skin (mech_model, label, mech_type) VALUES (mech_model.id, 'Blue Camo', mech_model.mech_type);
+                    INSERT INTO blueprint_mech_skin (mech_model, label, mech_type) VALUES (mech_model.id, 'Police', mech_model.mech_type);
+                    INSERT INTO blueprint_mech_skin (mech_model, label, mech_type) VALUES (mech_model.id, 'Gold', mech_model.mech_type);
+                    INSERT INTO blueprint_mech_skin (mech_model, label, mech_type) VALUES (mech_model.id, 'Crystal', mech_model.mech_type);
                 WHEN mech_model.faction_id = (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries') THEN
-                    INSERT INTO blueprint_mech_skin (mech_model_id, label, mech_type) VALUES (mech_model.id, 'ZHI Default', mech_model.mech_type);
-                    INSERT INTO blueprint_mech_skin (mech_model_id, label, mech_type) VALUES (mech_model.id, 'x3 Wartech', mech_model.mech_type);
-                    INSERT INTO blueprint_mech_skin (mech_model_id, label, mech_type) VALUES (mech_model.id, 'White Camo', mech_model.mech_type);
-                    INSERT INTO blueprint_mech_skin (mech_model_id, label, mech_type) VALUES (mech_model.id, 'Ninja', mech_model.mech_type);
-                    INSERT INTO blueprint_mech_skin (mech_model_id, label, mech_type) VALUES (mech_model.id, 'Neon', mech_model.mech_type);
-                    INSERT INTO blueprint_mech_skin (mech_model_id, label, mech_type) VALUES (mech_model.id, 'Gold', mech_model.mech_type);
+                    INSERT INTO blueprint_mech_skin (mech_model, label, mech_type) VALUES (mech_model.id, 'ZHI Default', mech_model.mech_type);
+                    INSERT INTO blueprint_mech_skin (mech_model, label, mech_type) VALUES (mech_model.id, 'x3 Wartech', mech_model.mech_type);
+                    INSERT INTO blueprint_mech_skin (mech_model, label, mech_type) VALUES (mech_model.id, 'White Camo', mech_model.mech_type);
+                    INSERT INTO blueprint_mech_skin (mech_model, label, mech_type) VALUES (mech_model.id, 'Ninja', mech_model.mech_type);
+                    INSERT INTO blueprint_mech_skin (mech_model, label, mech_type) VALUES (mech_model.id, 'Neon', mech_model.mech_type);
+                    INSERT INTO blueprint_mech_skin (mech_model, label, mech_type) VALUES (mech_model.id, 'Gold', mech_model.mech_type);
                 WHEN mech_model.faction_id = (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation') THEN
-                    INSERT INTO blueprint_mech_skin (mech_model_id, label, mech_type) VALUES (mech_model.id, 'RMOMC Default', mech_model.mech_type);
-                    INSERT INTO blueprint_mech_skin (mech_model_id, label, mech_type) VALUES (mech_model.id, 'Unified Martian Corporation', mech_model.mech_type);
-                    INSERT INTO blueprint_mech_skin (mech_model_id, label, mech_type) VALUES (mech_model.id, 'Red Camo', mech_model.mech_type);
-                    INSERT INTO blueprint_mech_skin (mech_model_id, label, mech_type) VALUES (mech_model.id, 'Mining', mech_model.mech_type);
-                    INSERT INTO blueprint_mech_skin (mech_model_id, label, mech_type) VALUES (mech_model.id, 'Molten', mech_model.mech_type);
-                    INSERT INTO blueprint_mech_skin (mech_model_id, label, mech_type) VALUES (mech_model.id, 'Gold', mech_model.mech_type);
+                    INSERT INTO blueprint_mech_skin (mech_model, label, mech_type) VALUES (mech_model.id, 'RMOMC Default', mech_model.mech_type);
+                    INSERT INTO blueprint_mech_skin (mech_model, label, mech_type) VALUES (mech_model.id, 'Unified Martian Corporation', mech_model.mech_type);
+                    INSERT INTO blueprint_mech_skin (mech_model, label, mech_type) VALUES (mech_model.id, 'Red Camo', mech_model.mech_type);
+                    INSERT INTO blueprint_mech_skin (mech_model, label, mech_type) VALUES (mech_model.id, 'Mining', mech_model.mech_type);
+                    INSERT INTO blueprint_mech_skin (mech_model, label, mech_type) VALUES (mech_model.id, 'Molten', mech_model.mech_type);
+                    INSERT INTO blueprint_mech_skin (mech_model, label, mech_type) VALUES (mech_model.id, 'Gold', mech_model.mech_type);
             END CASE;
         END LOOP;
     END;
@@ -375,19 +372,19 @@ $$;
 -- set default skins for mech model
 
 DO $$
-    DECLARE mech_model mech_models%rowtype;
+    DECLARE model mech_models%rowtype;
     BEGIN
-        FOR mech_model in SELECT * FROM mech_models WHERE default_chassis_skin_id IS NULL
+        FOR model in SELECT * FROM mech_models WHERE default_chassis_skin_id IS NULL
         LOOP
             CASE
-                WHEN mech_model.faction_id = (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries') THEN
-                    UPDATE mech_models SET default_chassis_skin_id = (SELECT id FROM blueprint_mech_skin WHERE mech_model_id = mech_model.id AND label = 'ZHI Default') WHERE id = mech_model.id;
-                WHEN mech_model.faction_id = (SELECT id FROM factions WHERE label = 'Boston Cybernetics') THEN
-                    UPDATE mech_models SET default_chassis_skin_id = (SELECT id FROM blueprint_mech_skin WHERE mech_model_id = mech_model.id AND label = 'BC Default') WHERE id = mech_model.id;
-                WHEN mech_model.faction_id = (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation') THEN
-                    UPDATE mech_models SET default_chassis_skin_id = (SELECT id FROM blueprint_mech_skin WHERE mech_model_id = mech_model.id AND label = 'RMOMC Default') WHERE id = mech_model.id;
-                WHEN mech_model.faction_id IS NULL THEN
-                    UPDATE mech_models SET default_chassis_skin_id = (SELECT id FROM blueprint_mech_skin WHERE mech_model_id = mech_model.id AND label = mech_model.label) WHERE id = mech_model.id;
+                WHEN model.faction_id = (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries') THEN
+                    UPDATE mech_models SET default_chassis_skin_id = (SELECT id FROM blueprint_mech_skin WHERE mech_model = model.id AND label = 'ZHI Default') WHERE id = model.id;
+                WHEN model.faction_id = (SELECT id FROM factions WHERE label = 'Boston Cybernetics') THEN
+                    UPDATE mech_models SET default_chassis_skin_id = (SELECT id FROM blueprint_mech_skin WHERE mech_model = model.id AND label = 'BC Default') WHERE id = model.id;
+                WHEN model.faction_id = (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation') THEN
+                    UPDATE mech_models SET default_chassis_skin_id = (SELECT id FROM blueprint_mech_skin WHERE mech_model = model.id AND label = 'RMOMC Default') WHERE id = model.id;
+                WHEN model.faction_id IS NULL THEN
+                    UPDATE mech_models SET default_chassis_skin_id = (SELECT id FROM blueprint_mech_skin WHERE mech_model = model.id AND label = model.label) WHERE id = model.id;
             END CASE;
         END LOOP;
     END;

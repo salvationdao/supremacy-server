@@ -458,7 +458,7 @@ func (o *MechModel) BlueprintMechSkins(mods ...qm.QueryMod) blueprintMechSkinQue
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"blueprint_mech_skin\".\"mech_model_id\"=?", o.ID),
+		qm.Where("\"blueprint_mech_skin\".\"mech_model\"=?", o.ID),
 	)
 
 	query := BlueprintMechSkins(queryMods...)
@@ -1018,7 +1018,7 @@ func (mechModelL) LoadBlueprintMechSkins(e boil.Executor, singular bool, maybeMe
 
 	query := NewQuery(
 		qm.From(`blueprint_mech_skin`),
-		qm.WhereIn(`blueprint_mech_skin.mech_model_id in ?`, args...),
+		qm.WhereIn(`blueprint_mech_skin.mech_model in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -1054,19 +1054,19 @@ func (mechModelL) LoadBlueprintMechSkins(e boil.Executor, singular bool, maybeMe
 			if foreign.R == nil {
 				foreign.R = &blueprintMechSkinR{}
 			}
-			foreign.R.MechModel = object
+			foreign.R.BlueprintMechSkinMechModel = object
 		}
 		return nil
 	}
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if local.ID == foreign.MechModelID {
+			if local.ID == foreign.MechModel {
 				local.R.BlueprintMechSkins = append(local.R.BlueprintMechSkins, foreign)
 				if foreign.R == nil {
 					foreign.R = &blueprintMechSkinR{}
 				}
-				foreign.R.MechModel = local
+				foreign.R.BlueprintMechSkinMechModel = local
 				break
 			}
 		}
@@ -1728,19 +1728,19 @@ func (o *MechModel) AddBlueprintMechAnimations(exec boil.Executor, insert bool, 
 // AddBlueprintMechSkins adds the given related objects to the existing relationships
 // of the mech_model, optionally inserting them as new records.
 // Appends related to o.R.BlueprintMechSkins.
-// Sets related.R.MechModel appropriately.
+// Sets related.R.BlueprintMechSkinMechModel appropriately.
 func (o *MechModel) AddBlueprintMechSkins(exec boil.Executor, insert bool, related ...*BlueprintMechSkin) error {
 	var err error
 	for _, rel := range related {
 		if insert {
-			rel.MechModelID = o.ID
+			rel.MechModel = o.ID
 			if err = rel.Insert(exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
 				"UPDATE \"blueprint_mech_skin\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"mech_model_id"}),
+				strmangle.SetParamNames("\"", "\"", 1, []string{"mech_model"}),
 				strmangle.WhereClause("\"", "\"", 2, blueprintMechSkinPrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
@@ -1753,7 +1753,7 @@ func (o *MechModel) AddBlueprintMechSkins(exec boil.Executor, insert bool, relat
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			rel.MechModelID = o.ID
+			rel.MechModel = o.ID
 		}
 	}
 
@@ -1768,10 +1768,10 @@ func (o *MechModel) AddBlueprintMechSkins(exec boil.Executor, insert bool, relat
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &blueprintMechSkinR{
-				MechModel: o,
+				BlueprintMechSkinMechModel: o,
 			}
 		} else {
-			rel.R.MechModel = o
+			rel.R.BlueprintMechSkinMechModel = o
 		}
 	}
 	return nil
