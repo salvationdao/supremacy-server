@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/go-chi/chi/v5"
 	"net"
 	"net/http"
 	"server"
@@ -755,8 +756,10 @@ const HubKeyWarMachineAbilitiesUpdated = "WAR:MACHINE:ABILITIES:UPDATED"
 
 // WarMachineAbilitiesUpdateSubscribeHandler subscribe on war machine abilities
 func (arena *Arena) WarMachineAbilitiesUpdateSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	slotNumber, ok := ctx.Value("slotNumber").(string)
-	if !ok || slotNumber == "" {
+	cctx := chi.RouteContext(ctx)
+	slotNumber := cctx.URLParam("slotNumber")
+	//slotNumber, ok := ctx.Value("slotNumber").(string)
+	if slotNumber == "" {
 		return fmt.Errorf("slot number is required")
 	}
 
@@ -789,8 +792,9 @@ type WarMachineStat struct {
 const HubKeyWarMachineStatUpdated = "WAR:MACHINE:STAT:UPDATED"
 
 func (arena *Arena) WarMachineStatUpdatedSubscribe(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
-	slotNumber, ok := ctx.Value("slotNumber").(string)
-	if !ok || slotNumber == "" {
+	cctx := chi.RouteContext(ctx)
+	slotNumber := cctx.URLParam("slotNumber")
+	if slotNumber == "" {
 		return fmt.Errorf("slot number is required")
 	}
 

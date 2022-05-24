@@ -224,6 +224,7 @@ func NewAPI(
 
 				// come from battle
 				s.WS("/notification", battle.HubKeyGameNotification, nil)
+				s.WS("/mech/{slotNumber}", battle.HubKeyWarMachineStatUpdated, battleArenaClient.WarMachineStatUpdatedSubscribe)
 			}))
 
 			// battle arena route ws
@@ -253,49 +254,12 @@ func NewAPI(
 				s.WS("/queue", battle.WSQueueStatusSubscribe, server.MustSecureFaction(battleArenaClient.QueueStatusSubscribeHandler))
 			}))
 
-			// handle mech stat and destroyed ws
-			r.Mount("/mech", ws.NewServer(func(s *ws.Server) {
-				r.Mount("/stat/{slotNumber}", ws.NewServer(func(s *ws.Server) {
-					s.Use(func(next http.Handler) http.Handler {
-						fn := func(w http.ResponseWriter, r *http.Request) {
-							slotNumber := chi.URLParam(r, "slotNumber")
-							if slotNumber == "" {
-								http.Error(w, "no slot number", http.StatusBadRequest)
-								return
-							}
-							ctx := context.WithValue(r.Context(), "slotNumber", slotNumber)
-							*r = *r.WithContext(ctx)
-							next.ServeHTTP(w, r)
-							return
-						}
-						return http.HandlerFunc(fn)
-					})
-					s.WS("/*", battle.HubKeyWarMachineStatUpdated, battleArenaClient.WarMachineStatUpdatedSubscribe)
-				}))
-			}))
-
 			// handle abilities ws
 			r.Mount("/ability/{faction_id}", ws.NewServer(func(s *ws.Server) {
 				s.Use(api.AuthUserFactionWS(true))
 				s.WS("/*", battle.HubKeyBattleAbilityUpdated, server.MustSecureFaction(battleArenaClient.BattleAbilityUpdateSubscribeHandler))
 				s.WS("/faction", battle.HubKeyFactionUniqueAbilitiesUpdated, server.MustSecureFaction(battleArenaClient.FactionAbilitiesUpdateSubscribeHandler))
-				s.Mount("/mech/{slotNumber}", ws.NewServer(func(s *ws.Server) {
-					s.Use(func(next http.Handler) http.Handler {
-						fn := func(w http.ResponseWriter, r *http.Request) {
-							slotNumber := chi.URLParam(r, "slotNumber")
-							if slotNumber == "" {
-								http.Error(w, "no slot number", http.StatusBadRequest)
-								return
-							}
-							ctx := context.WithValue(r.Context(), "slotNumber", slotNumber)
-							*r = *r.WithContext(ctx)
-							next.ServeHTTP(w, r)
-							return
-						}
-						return http.HandlerFunc(fn)
-					})
-					s.WS("/*", battle.HubKeyWarMachineAbilitiesUpdated, server.MustSecureFaction(battleArenaClient.WarMachineAbilitiesUpdateSubscribeHandler))
-				}))
+				s.WS("/mech/{slotNumber}", battle.HubKeyWarMachineAbilitiesUpdated, server.MustSecureFaction(battleArenaClient.WarMachineAbilitiesUpdateSubscribeHandler))
 			}))
 
 		})

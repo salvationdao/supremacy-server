@@ -261,13 +261,13 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 				factionAbilities = append(factionAbilities, ability)
 			}
 		}
-		ws.PublishMessage(fmt.Sprintf("/battle/faction/%s/ability/faction", factionID), HubKeyFactionUniqueAbilitiesUpdated, factionAbilities)
+		ws.PublishMessage(fmt.Sprintf("/ability/%s/faction", factionID), HubKeyFactionUniqueAbilitiesUpdated, factionAbilities)
 	}
 
 	// broadcast war machine abilities
 	for _, wm := range battle.WarMachines {
 		if len(wm.Abilities) > 0 {
-			ws.PublishMessage(fmt.Sprintf("/battle/faction/%s/ability/mech/%d", wm.FactionID, wm.ParticipantID), HubKeyWarMachineAbilitiesUpdated, wm.Abilities)
+			ws.PublishMessage(fmt.Sprintf("/ability/%s/mech/%d", wm.FactionID, wm.ParticipantID), HubKeyWarMachineAbilitiesUpdated, wm.Abilities)
 		}
 	}
 
@@ -475,9 +475,9 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 						}
 						switch ability.Level {
 						case boiler.AbilityLevelFACTION:
-							ws.PublishMessage(fmt.Sprintf("/battle/faction/%s/ability/faction", ability.FactionID), HubKeyAbilityPriceUpdated, resp)
+							ws.PublishMessage(fmt.Sprintf("/ability/%s/faction", ability.FactionID), HubKeyAbilityPriceUpdated, resp)
 						case boiler.AbilityLevelMECH:
-							ws.PublishMessage(fmt.Sprintf("/battle/faction/%s/ability/mech/%d", ability.FactionID, *ability.ParticipantID), HubKeyAbilityPriceUpdated, resp)
+							ws.PublishMessage(fmt.Sprintf("/ability/%s/mech/%d", ability.FactionID, *ability.ParticipantID), HubKeyAbilityPriceUpdated, resp)
 						}
 					}
 				}
@@ -668,9 +668,9 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 					// broadcast new ability price
 					switch ability.Level {
 					case boiler.AbilityLevelFACTION:
-						ws.PublishMessage(fmt.Sprintf("/battle/faction/%s/ability/faction", ability.FactionID), HubKeyAbilityPriceUpdated, resp)
+						ws.PublishMessage(fmt.Sprintf("/ability/%s/faction", ability.FactionID), HubKeyAbilityPriceUpdated, resp)
 					case boiler.AbilityLevelMECH:
-						ws.PublishMessage(fmt.Sprintf("/battle/faction/%s/ability/mech/%d", ability.FactionID, *ability.ParticipantID), HubKeyAbilityPriceUpdated, resp)
+						ws.PublishMessage(fmt.Sprintf("/ability/%s/mech/%d", ability.FactionID, *ability.ParticipantID), HubKeyAbilityPriceUpdated, resp)
 					}
 				}
 			}
@@ -1478,7 +1478,7 @@ func (as *AbilitiesSystem) SetNewBattleAbility(isFirstAbility bool) (int, error)
 		}
 		as.battleAbilityPool.Abilities.Store(ga.FactionID, gameAbility)
 		// broadcast ability update to faction users
-		ws.PublishMessage(fmt.Sprintf("/battle/faction/%s/ability", gameAbility.FactionID), HubKeyBattleAbilityUpdated, gameAbility)
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/ability", gameAbility.FactionID), HubKeyBattleAbilityUpdated, gameAbility)
 	}
 
 	as.BroadcastAbilityProgressBar()
