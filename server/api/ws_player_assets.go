@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -101,6 +102,10 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 		return terror.Error(err, "Invalid request received.")
 	}
 
+	if !user.FactionID.Valid {
+		return terror.Error(fmt.Errorf("user has no faction"), "You need a faction to see assets.")
+	}
+
 	total, mechs, err := db.MechList(&db.MechListOpts{
 		Search:   req.Payload.Search,
 		Filter:   req.Payload.Filter,
@@ -117,9 +122,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 	playerAssetMechs := []*PlayerAssetMech{}
 
 	for _, m := range mechs {
-		if !m.FactionID.Valid {
-			continue
-		}
 		playerAssetMechs = append(playerAssetMechs, &PlayerAssetMech{
 			ID:                    m.ID,
 			Label:                 m.Label,
