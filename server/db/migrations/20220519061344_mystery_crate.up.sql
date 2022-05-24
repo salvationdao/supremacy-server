@@ -50,8 +50,7 @@ ALTER TABLE blueprint_weapon_skin
     ADD COLUMN animation_url TEXT,
     ADD COLUMN card_animation_url TEXT,
     ADD COLUMN large_image_url TEXT,
-    ADD COLUMN avatar_url TEXT,
-    DROP COLUMN weapon_type;
+    ADD COLUMN avatar_url TEXT;
 
 ALTER TABLE weapon_skin
     ADD COLUMN weapon_model_id UUID NOT NULL REFERENCES weapon_models (id),
@@ -123,23 +122,23 @@ INSERT INTO weapon_models (label, weapon_type) VALUES ('Laser Sword', 'Sword');
 -- seed blueprint_weapons_skins
 
 --genesis weapons w/o a faction
-INSERT INTO blueprint_weapon_skin (label, weapon_model_id) VALUES ('Plasma Rifle', (SELECT id FROM weapon_models WHERE label = 'Plasma Rifle'));
-INSERT INTO blueprint_weapon_skin (label, weapon_model_id) VALUES ('Auto Cannon', (SELECT id FROM weapon_models WHERE label = 'Auto Cannon'));
-INSERT INTO blueprint_weapon_skin (label, weapon_model_id) VALUES ('Sniper Rifle', (SELECT id FROM weapon_models WHERE label = 'Sniper Rifle'));
-INSERT INTO blueprint_weapon_skin (label, weapon_model_id) VALUES ('Rocket Pod', (SELECT id FROM weapon_models WHERE label = 'Rocket Pod'));
-INSERT INTO blueprint_weapon_skin (label, weapon_model_id) VALUES ('Sword', (SELECT id FROM weapon_models WHERE label = 'Sword'));
-INSERT INTO blueprint_weapon_skin (label, weapon_model_id) VALUES ('Laser Sword', (SELECT id FROM weapon_models WHERE label = 'Laser Sword'));
+INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type) VALUES ('Plasma Rifle', (SELECT id FROM weapon_models WHERE label = 'Plasma Rifle'), (SELECT weapon_type FROM weapon_models WHERE label = 'Plasma Rifle'));
+INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type) VALUES ('Auto Cannon', (SELECT id FROM weapon_models WHERE label = 'Auto Cannon'), (SELECT weapon_type FROM weapon_models WHERE label = 'Auto Cannon'));
+INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type) VALUES ('Sniper Rifle', (SELECT id FROM weapon_models WHERE label = 'Sniper Rifle'), (SELECT weapon_type FROM weapon_models WHERE label = 'Sniper Rifle'));
+INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type) VALUES ('Rocket Pod', (SELECT id FROM weapon_models WHERE label = 'Rocket Pod'), (SELECT weapon_type FROM weapon_models WHERE label = 'Rocket Pod'));
+INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type) VALUES ('Sword', (SELECT id FROM weapon_models WHERE label = 'Sword'), (SELECT weapon_type FROM weapon_models WHERE label = 'Sword'));
+INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type) VALUES ('Laser Sword', (SELECT id FROM weapon_models WHERE label = 'Laser Sword'), (SELECT weapon_type FROM weapon_models WHERE label = 'Laser Sword'));
 
 DO $$
     DECLARE weapon_model weapon_models%rowtype;
     BEGIN
         FOR weapon_model in SELECT * FROM weapon_models WHERE faction_id = (SELECT id FROM factions WHERE label = 'Boston Cybernetics')
         LOOP
-            INSERT INTO blueprint_weapon_skin (label, weapon_model_id) VALUES ('Archon Miltech', weapon_model.id);
-            INSERT INTO blueprint_weapon_skin (label, weapon_model_id) VALUES ('Blue Camo', weapon_model.id);
-            INSERT INTO blueprint_weapon_skin (label, weapon_model_id) VALUES ('Police', weapon_model.id);
-            INSERT INTO blueprint_weapon_skin (label, weapon_model_id) VALUES ('Gold', weapon_model.id);
-            INSERT INTO blueprint_weapon_skin (label, weapon_model_id) VALUES ('Crystal', weapon_model.id);
+            INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type) VALUES ('Archon Miltech', weapon_model.id, weapon_model.weapon_type);
+            INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type) VALUES ('Blue Camo', weapon_model.id, weapon_model.weapon_type);
+            INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type) VALUES ('Police', weapon_model.id, weapon_model.weapon_type);
+            INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type) VALUES ('Gold', weapon_model.id, weapon_model.weapon_type);
+            INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type) VALUES ('Crystal', weapon_model.id, weapon_model.weapon_type);
         END LOOP;
     END;
 $$;
@@ -149,11 +148,11 @@ DO $$
     BEGIN
         FOR weapon_model in SELECT * FROM weapon_models WHERE faction_id = (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries')
         LOOP
-            INSERT INTO blueprint_weapon_skin (label, weapon_model_id) VALUES ('Warsui', weapon_model.id);
-            INSERT INTO blueprint_weapon_skin (label, weapon_model_id) VALUES ('White Camo', weapon_model.id);
-            INSERT INTO blueprint_weapon_skin (label, weapon_model_id) VALUES ('Ninja', weapon_model.id);
-            INSERT INTO blueprint_weapon_skin (label, weapon_model_id) VALUES ('Neon', weapon_model.id);
-            INSERT INTO blueprint_weapon_skin (label, weapon_model_id) VALUES ('Gold', weapon_model.id);
+            INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type) VALUES ('Warsui', weapon_model.id, weapon_model.weapon_type);
+            INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type) VALUES ('White Camo', weapon_model.id, weapon_model.weapon_type);
+            INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type) VALUES ('Ninja', weapon_model.id, weapon_model.weapon_type);
+            INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type) VALUES ('Neon', weapon_model.id, weapon_model.weapon_type);
+            INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type) VALUES ('Gold', weapon_model.id, weapon_model.weapon_type);
         END LOOP;
     END;
 $$;
@@ -163,11 +162,11 @@ DO $$
     BEGIN
         FOR weapon_model in SELECT * FROM weapon_models WHERE faction_id = (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation')
         LOOP
-            INSERT INTO blueprint_weapon_skin (label, weapon_model_id) VALUES ('Pyrotronics', weapon_model.id);
-            INSERT INTO blueprint_weapon_skin (label, weapon_model_id) VALUES ('Red Camo', weapon_model.id);
-            INSERT INTO blueprint_weapon_skin (label, weapon_model_id) VALUES ('Mining', weapon_model.id);
-            INSERT INTO blueprint_weapon_skin (label, weapon_model_id) VALUES ('Molten', weapon_model.id);
-            INSERT INTO blueprint_weapon_skin (label, weapon_model_id) VALUES ('Gold', weapon_model.id);
+            INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type) VALUES ('Pyrotronics', weapon_model.id, weapon_model.weapon_type);
+            INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type) VALUES ('Red Camo', weapon_model.id, weapon_model.weapon_type);
+            INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type) VALUES ('Mining', weapon_model.id, weapon_model.weapon_type);
+            INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type) VALUES ('Molten', weapon_model.id, weapon_model.weapon_type);
+            INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type) VALUES ('Gold', weapon_model.id, weapon_model.weapon_type);
         END LOOP;
     END;
 $$;
