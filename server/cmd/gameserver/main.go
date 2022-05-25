@@ -6,9 +6,6 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/gofrs/uuid"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 	"log"
 	"net/url"
 	"runtime"
@@ -24,6 +21,10 @@ import (
 	"server/rpctypes"
 	"server/sms"
 	"server/telegram"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/gofrs/uuid"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	"github.com/ninja-syndicate/ws"
 
@@ -376,10 +377,10 @@ func main() {
 						os.Exit(1)
 					}
 
-					// if environment == "production" || environment == "staging" {
-					gamelog.L.Info().Msg("Running telegram bot")
-					go telebot.RunTelegram(telebot.Bot)
-					// }
+					if environment == "production" || environment == "staging" {
+						gamelog.L.Info().Msg("Running telegram bot")
+						go telebot.RunTelegram(telebot.Bot)
+					}
 
 					// we need to update some IDs on passport server, just the once,
 					// TODO: After deploying composable migration, talk to vinnie about removing this
