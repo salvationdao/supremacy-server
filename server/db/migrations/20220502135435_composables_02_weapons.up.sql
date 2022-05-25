@@ -449,6 +449,7 @@ DELETE
 FROM blueprint_chassis_blueprint_weapons bpcbpw
 WHERE bpcbpw.blueprint_weapon_id IN (SELECT wep.blueprint_weapon_id FROM wep);
 
+
 WITH bpc AS (SELECT _bpc.id FROM blueprint_chassis _bpc)
 INSERT
 INTO blueprint_chassis_blueprint_weapons(blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
@@ -456,10 +457,13 @@ SELECT (SELECT id FROM blueprint_weapons WHERE label ILIKE '%Rocket Pod%'),
        bpc.id,
        2,
        'TURRET'
-FROM bpc
+FROM bpc;
 
 -- set equipped on
-WITH wsp AS(select _w.id, mw.chassis_id
-            from weapons _w
-                     inner join mech_weapons mw ON _w.id = mw.weapon_id)
-UPDATE weapons w SET equipped_on = wsp.chassis_id from wsp where wsp.id = w.id
+WITH wsp AS (SELECT _w.id, mw.chassis_id
+             FROM weapons _w
+                      INNER JOIN chassis_weapons mw ON _w.id = mw.weapon_id)
+UPDATE weapons w
+SET equipped_on = wsp.chassis_id
+FROM wsp
+WHERE wsp.id = w.id;

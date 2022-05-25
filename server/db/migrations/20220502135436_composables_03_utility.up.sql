@@ -290,8 +290,8 @@ ALTER TABLE utility
 -- set equipped on
 WITH utl AS (SELECT _u.id, _mu.chassis_id
              FROM utility _u
-                      INNER JOIN mech_utility _mu ON _u.id = _mu.utility_id)
+                      INNER JOIN chassis_utility _mu ON _u.id = _mu.utility_id)
 UPDATE utility u
 SET equipped_on = utl.chassis_id
 FROM utl
-WHERE utl.id = u.id
+WHERE utl.id = u.id;
