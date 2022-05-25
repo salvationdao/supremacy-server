@@ -13,8 +13,12 @@ func BlueprintPowerCores(ids []string) ([]*server.BlueprintPowerCore, error) {
 		return nil, err
 	}
 
-	for _, bp := range blueprintPowerCores {
-		bluePrintPowerCores = append(bluePrintPowerCores, server.BlueprintPowerCoreFromBoiler(bp))
+	for _, id := range ids {
+		for _, bp := range blueprintPowerCores {
+			if bp.ID == id {
+				bluePrintPowerCores = append(bluePrintPowerCores, server.BlueprintPowerCoreFromBoiler(bp))
+			}
+		}
 	}
 
 	return bluePrintPowerCores, nil
