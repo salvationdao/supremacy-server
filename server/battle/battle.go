@@ -272,9 +272,9 @@ func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 		}
 
 		// Tell clients to refetch war machine queue status
-		ws.PublishMessage(fmt.Sprintf("/battle/faction/%s/queue", server.RedMountainFactionID), WSQueueUpdatedSubscribe, true)
-		ws.PublishMessage(fmt.Sprintf("/battle/faction/%s/queue", server.BostonCyberneticsFactionID), WSQueueUpdatedSubscribe, true)
-		ws.PublishMessage(fmt.Sprintf("/battle/faction/%s/queue", server.ZaibatsuFactionID), WSQueueUpdatedSubscribe, true)
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue", server.RedMountainFactionID), WSQueueUpdatedSubscribe, true)
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue", server.BostonCyberneticsFactionID), WSQueueUpdatedSubscribe, true)
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/queue", server.ZaibatsuFactionID), WSQueueUpdatedSubscribe, true)
 	}
 
 	// broadcast battle settings
@@ -1343,7 +1343,7 @@ func (btl *Battle) Tick(payload []byte) {
 			}
 		}
 
-		ws.PublishMessage(fmt.Sprintf("/battle/mech/%d", participantID), HubKeyWarMachineStatUpdated, WarMachineStat{
+		ws.PublishMessage(fmt.Sprintf("/public/mech/%d", participantID), HubKeyWarMachineStatUpdated, WarMachineStat{
 			Position: btl.WarMachines[warMachineIndex].Position,
 			Rotation: btl.WarMachines[warMachineIndex].Rotation,
 			Health:   btl.WarMachines[warMachineIndex].Health,
@@ -1692,10 +1692,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 			ImageAvatar:   destroyedWarMachine.ImageAvatar, // TODO: should be imageavatar
 			Name:          destroyedWarMachine.Name,
 			Hash:          destroyedWarMachine.Hash,
-			Faction: &FactionBrief{
-				ID:    destroyedWarMachine.FactionID,
-				Label: destroyedWarMachine.Faction.Label,
-			},
+			FactionID:     destroyedWarMachine.FactionID,
 		},
 		KilledBy: dp.DestroyedWarMachineEvent.KilledBy,
 	}
@@ -1714,13 +1711,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 						ImageAvatar:   wm.ImageAvatar,
 						Name:          wm.Name,
 						Hash:          wm.Hash,
-						Faction: &FactionBrief{
-							ID:         wm.FactionID,
-							Label:      wm.Faction.Label,
-							Primary:    wm.Faction.PrimaryColor,
-							Secondary:  wm.Faction.SecondaryColor,
-							Background: wm.Faction.BackgroundColor,
-						},
+						FactionID:     wm.FactionID,
 					}
 				}
 			}
@@ -1735,13 +1726,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 			ImageAvatar:   killByWarMachine.ImageAvatar,
 			Name:          killByWarMachine.Name,
 			Hash:          killByWarMachine.Hash,
-			Faction: &FactionBrief{
-				ID:         killByWarMachine.FactionID,
-				Label:      killByWarMachine.Faction.Label,
-				Primary:    killByWarMachine.Faction.PrimaryColor,
-				Secondary:  killByWarMachine.Faction.SecondaryColor,
-				Background: killByWarMachine.Faction.BackgroundColor,
-			},
+			FactionID:     killByWarMachine.FactionID,
 		}
 	}
 

@@ -293,7 +293,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, f
 	}
 
 	// Tell clients to refetch war machine queue status
-	ws.PublishMessage(fmt.Sprintf("/battle/faction/%s/queue", factionID), WSQueueUpdatedSubscribe, true)
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue", factionID), WSQueueUpdatedSubscribe, true)
 
 	reply(QueueJoinHandlerResponse{
 		Success: true,
@@ -301,7 +301,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, f
 	})
 
 	// Send updated battle queue status to all subscribers
-	ws.PublishMessage(fmt.Sprintf("/battle/faction/%s/queue", factionID), WSQueueStatusSubscribe, CalcNextQueueStatus(queueStatus.QueueLength+1))
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue", factionID), WSQueueStatusSubscribe, CalcNextQueueStatus(queueStatus.QueueLength+1))
 
 	return nil
 }
@@ -508,7 +508,7 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, user *boiler.Player, 
 	reply(true)
 
 	// Tell clients to refetch war machine queue status
-	ws.PublishMessage(fmt.Sprintf("/battle/faction/%s/queue", factionID), WSQueueUpdatedSubscribe, true)
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue", factionID), WSQueueUpdatedSubscribe, true)
 
 	result, err := db.QueueLength(uuid.FromStringOrNil(factionID))
 	if err != nil {
@@ -517,7 +517,7 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, user *boiler.Player, 
 	}
 
 	// Send updated Battle queue status to all subscribers
-	ws.PublishMessage(fmt.Sprintf("/battle/faction/%s/queue", factionID), WSQueueStatusSubscribe, CalcNextQueueStatus(result))
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/queue", factionID), WSQueueStatusSubscribe, CalcNextQueueStatus(result))
 
 	return nil
 }
