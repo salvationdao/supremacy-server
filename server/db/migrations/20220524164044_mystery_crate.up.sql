@@ -437,7 +437,7 @@ INSERT INTO blueprint_power_cores (collection, label, size, capacity, max_draw_r
 -- looping over each type of mystery crate type for x amount of crates for each faction. can do 1 big loop if all crate types have the same amount
 DO $$
     BEGIN
-    --should be more than 100 and end in -00 for all math to math plz
+    --should be >= 200 and end in -00 for all math to math plz... (2 mech types, each with own percentage of skins allocations)
         FOR COUNT IN 1..200 LOOP
             INSERT INTO mystery_crate (type, faction_id, label) VALUES ('MECH', (SELECT id FROM factions f WHERE f.label = 'Red Mountain Offworld Mining Corporation'), 'Red Mountain War Machine Mystery Crate');
             INSERT INTO mystery_crate (type, faction_id, label) VALUES ('MECH', (SELECT id FROM factions f WHERE f.label = 'Zaibatsu Heavy Industries'), 'Zaibatsu Nexus War Machine Mystery Crate');
@@ -448,7 +448,8 @@ $$;
 
 DO $$
     BEGIN
-        FOR COUNT IN 1..200 LOOP
+    --should be >= 800 and end in 00 for all math to math plz... (8 types of weapons/faction each with own percentage of skin allocations) assuming all weapons will be of equal rarity and all weapons get all skins- easy to change skin percentages
+        FOR COUNT IN 1..800 LOOP
             INSERT INTO mystery_crate (type, faction_id, label) VALUES ('WEAPON', (SELECT id FROM factions f WHERE f.label = 'Red Mountain Offworld Mining Corporation'), 'Red Mountain Nexus Weapon Mystery Crate');
             INSERT INTO mystery_crate (type, faction_id, label) VALUES ('WEAPON', (SELECT id FROM factions f WHERE f.label = 'Zaibatsu Heavy Industries'), 'Zaibatsu Nexus Weapon Mystery Crate');
             INSERT INTO mystery_crate (type, faction_id, label) VALUES ('WEAPON', (SELECT id FROM factions f WHERE f.label = 'Boston Cybernetics'), 'Boston Cybernetics Nexus Weapon Mystery Crate');
@@ -465,6 +466,7 @@ DO $$
     DECLARE weaponCrate mystery_crate%rowtype;
     DECLARE i integer;
     DECLARE mechCrateLen integer;
+    DECLARE weaponCrateLen integer;
 
 BEGIN
     --for each faction loop over the mystery crates of specified faction
@@ -601,11 +603,12 @@ BEGIN
 
             -- for weapons crates of each faction, insert weapon blueprint. ** ALL WEAPONS CRATES ARE EQUAL
             i := 1;
+            weaponCrateLen := (SELECT COUNT(*) FROM mystery_crate WHERE faction_id = faction.id AND type = 'WEAPON')/8; --length of crate rows to be allocated to 1 type of weapon
             FOR weaponCrate in SELECT * FROM mystery_crate WHERE faction_id = faction.id AND type = 'WEAPON'
                 LOOP
                     --flak: all factions
                     CASE
-                    WHEN i <= 25 THEN
+                    WHEN i <= mechCrateLen THEN
                         INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (weaponCrate.id, 'WEAPON', (SELECT id FROM blueprint_weapons WHERE weapon_type = 'Flak' AND
                         brand_id =
                         CASE
@@ -616,7 +619,7 @@ BEGIN
                         ));
                         i := i + 1;
                     --machine gun: all factions
-                    WHEN i > 25 AND i <= 50 THEN
+                    WHEN i > mechCrateLen AND i <= (2 * mechCrateLen) THEN
                         INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (weaponCrate.id, 'WEAPON', (SELECT id FROM blueprint_weapons WHERE weapon_type = 'Machine Gun' AND
                         brand_id =
                         CASE
@@ -627,7 +630,7 @@ BEGIN
                         ));
                         i := i + 1;
                     --flamethrower: all factions
-                    WHEN i > 50 AND i <= 75 THEN
+                    WHEN i > (2 * mechCrateLen) AND i <= (3 * mechCrateLen) THEN
                         INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (weaponCrate.id, 'WEAPON', (SELECT id FROM blueprint_weapons WHERE weapon_type = 'Flamethrower' AND
                         brand_id =
                         CASE
@@ -638,7 +641,7 @@ BEGIN
                         ));
                         i := i + 1;
                     --missile launcher: all factions
-                    WHEN i > 75 AND i <= 100 THEN
+                    WHEN i > (3 * mechCrateLen) AND i <= (4 * mechCrateLen) THEN
                         INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (weaponCrate.id, 'WEAPON', (SELECT id FROM blueprint_weapons WHERE weapon_type = 'Missile Launcher' AND
                         brand_id =
                         CASE
@@ -649,7 +652,7 @@ BEGIN
                         ));
                         i := i + 1;
                     --Laser beam: all factions
-                    WHEN i > 100 AND i <= 125 THEN
+                    WHEN i > (4 * mechCrateLen) AND i <= (5 * mechCrateLen) THEN
                         INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (weaponCrate.id, 'WEAPON', (SELECT id FROM blueprint_weapons WHERE weapon_type = 'Laser Beam' AND
                         brand_id =
                         CASE
@@ -661,7 +664,7 @@ BEGIN
                         i := i + 1;
 
                     --Minigun: BC and RM OR Plasma Gun for ZHI
-                    WHEN i > 125 AND i <= 150 THEN
+                    WHEN i > (5 * mechCrateLen) AND i <= (6 * mechCrateLen) THEN
                         INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (weaponCrate.id, 'WEAPON', (SELECT id FROM blueprint_weapons WHERE
                         weapon_type =
                         CASE
@@ -679,7 +682,7 @@ BEGIN
                         i := i + 1;
 
                     --Cannon: ZHI and RM OR Plasma Gun for BC
-                    WHEN i > 150 AND i <= 175 THEN
+                    WHEN i > (6 * mechCrateLen) AND i <= (7 * mechCrateLen) THEN
                         INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (weaponCrate.id, 'WEAPON', (SELECT id FROM blueprint_weapons WHERE
                         weapon_type =
                         CASE
@@ -696,7 +699,7 @@ BEGIN
                         ));
                         i := i + 1;
                     --BFG, Grenade Launcher or Lightning Gun dependent on faction
-                    WHEN i > 175 AND i <= 200 THEN
+                    WHEN i > (7 * mechCrateLen) AND i <= (8 * mechCrateLen) THEN
                         INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (weaponCrate.id, 'WEAPON', (SELECT id FROM blueprint_weapons WHERE
                         weapon_type =
                         CASE
