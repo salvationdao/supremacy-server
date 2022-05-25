@@ -153,6 +153,12 @@ const (
 	MultiplierTypeEnumContribute   = "contribute"
 )
 
+// Enum values for Service
+const (
+	ServiceSupremacy = "Supremacy"
+	ServiceXsyn      = "Xsyn"
+)
+
 // Enum values for PlayerRankEnum
 const (
 	PlayerRankEnumGENERAL     = "GENERAL"
