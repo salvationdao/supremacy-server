@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/go-chi/chi/v5"
 	"net"
 	"net/http"
 	"server"
@@ -19,6 +18,8 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/go-chi/chi/v5"
 
 	"github.com/ninja-syndicate/ws"
 
@@ -758,7 +759,6 @@ const HubKeyWarMachineAbilitiesUpdated = "WAR:MACHINE:ABILITIES:UPDATED"
 func (arena *Arena) WarMachineAbilitiesUpdateSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	cctx := chi.RouteContext(ctx)
 	slotNumber := cctx.URLParam("slotNumber")
-	//slotNumber, ok := ctx.Value("slotNumber").(string)
 	if slotNumber == "" {
 		return fmt.Errorf("slot number is required")
 	}

@@ -427,15 +427,14 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 
 			cookie, err := r.Cookie("xsyn-token")
 			if err != nil {
-				fmt.Fprintf(w, "cookie not found: %v", err)
 				token = r.URL.Query().Get("token")
 				if token == "" {
 					return
 				}
 			} else {
 				if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
-					fmt.Fprintf(w, "decryption error: %v", err)
 					if required {
+						gamelog.L.Error().Err(err).Msg("decrypting cookie error")
 						return
 					}
 					next.ServeHTTP(w, r)
@@ -445,8 +444,8 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 
 			user, err := api.TokenLogin(token)
 			if err != nil {
-				fmt.Fprintf(w, "authentication error: %v", err)
 				if required {
+					gamelog.L.Error().Err(err).Msg("authentication error")
 					return
 				}
 				next.ServeHTTP(w, r)
@@ -456,7 +455,11 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 			if userIDMustMatch {
 				userID := chi.URLParam(r, "user_id")
 				if userID == "" || userID != user.ID {
-					fmt.Fprintf(w, "user id check failed... url user id: %s, current user id: %s, request url: %s", userID, user.ID, r.URL.Path)
+					gamelog.L.Error().Err(fmt.Errorf("user id check failed")).
+						Str("userID", userID).
+						Str("user.ID", user.ID).
+						Str("r.URL.Path", r.URL.Path).
+						Msg("user id check failed")
 					return
 				}
 			}
