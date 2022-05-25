@@ -340,21 +340,29 @@ func main() {
 					//initialize lingua language detector
 					languages := []lingua.Language{
 						lingua.English,
-						lingua.French,
-						lingua.German,
-						lingua.Spanish,
-						lingua.Italian,
 						lingua.Tagalog,
-						lingua.Vietnamese,
-						lingua.Japanese,
-						lingua.Chinese,
-						lingua.Russian,
-						lingua.Indonesian,
-						lingua.Hindi,
-						lingua.Portuguese,
-						lingua.Dutch,
-						lingua.Croatian,
 					}
+					gamelog.L.Info().Msg("Setting new NewLanguageDetectorBuilder")
+
+					if environment != "development" {
+						languages = append(languages,
+							[]lingua.Language{
+								lingua.French,
+								lingua.German,
+								lingua.Spanish,
+								lingua.Italian,
+								lingua.Vietnamese,
+								lingua.Japanese,
+								lingua.Chinese,
+								lingua.Russian,
+								lingua.Indonesian,
+								lingua.Hindi,
+								lingua.Portuguese,
+								lingua.Dutch,
+								lingua.Croatian,
+							}...)
+					}
+					
 					detector := lingua.NewLanguageDetectorBuilder().FromLanguages(languages...).WithPreloadedLanguageModels().Build()
 
 					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Set up hub")
