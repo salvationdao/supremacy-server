@@ -168,6 +168,8 @@ func main() {
 				},
 				Usage: "run server",
 				Action: func(c *cli.Context) error {
+					start := time.Now()
+
 					gameClientMinimumBuildNo := c.Uint64("game_client_minimum_build_no")
 
 					databaseMaxIdleConns := c.Int("database_max_idle_conns")
@@ -302,15 +304,16 @@ func main() {
 						return err
 					}
 
-					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Setting up battle arena client")
-
+					gamelog.L.Info().Msg("Setting twilio client")
 					// initialise smser
 					twilio, err := sms.NewTwilio(twilioSid, twilioApiKey, twilioApiSecrete, smsFromNumber, environment)
 					if err != nil {
 						return terror.Error(err, "SMS init failed")
 					}
-
+					log.Printf("twilio took %s", time.Since(start))
+					start = time.Now()
 					// initialise message bus
+					gamelog.L.Info().Msg("Setting new message bus")
 					messageBus := messagebus.NewMessageBus(log_helpers.NamedLogger(gamelog.L, "message_bus"))
 					gsHub := hub.New(&hub.Config{
 						Log:            zerologger.New(*log_helpers.NamedLogger(gamelog.L, "hub library")),
@@ -328,7 +331,9 @@ func main() {
 						},
 						Tracer: DatadogTracer.New(),
 					})
-
+					log.Printf("twilio took %s", time.Since(start))
+					start = time.Now()
+					gamelog.L.Info().Msg("Setting up telegram bot")
 					// initialise telegram bot
 					telebot, err := telegram.NewTelegram(telegramBotToken, environment, func(owner string, success bool) {
 						ws.PublishMessage(fmt.Sprintf("/user/%s", owner), telegram.HubKeyTelegramShortcodeRegistered, success)
@@ -337,29 +342,40 @@ func main() {
 					if err != nil {
 						return terror.Error(err, "Telegram init failed")
 					}
-
+					log.Printf("telegram took %s", time.Since(start))
+					start = time.Now()
 					//initialize lingua language detector
 					languages := []lingua.Language{
 						lingua.English,
-						lingua.French,
-						lingua.German,
-						lingua.Spanish,
-						lingua.Italian,
 						lingua.Tagalog,
-						lingua.Vietnamese,
-						lingua.Japanese,
-						lingua.Chinese,
-						lingua.Russian,
-						lingua.Indonesian,
-						lingua.Hindi,
-						lingua.Portuguese,
-						lingua.Dutch,
-						lingua.Croatian,
 					}
+					gamelog.L.Info().Msg("Setting new NewLanguageDetectorBuilder")
+
+					if environment != "development" {
+						languages = append(languages,
+							[]lingua.Language{
+								lingua.French,
+								lingua.German,
+								lingua.Spanish,
+								lingua.Italian,
+								lingua.Vietnamese,
+								lingua.Japanese,
+								lingua.Chinese,
+								lingua.Russian,
+								lingua.Indonesian,
+								lingua.Hindi,
+								lingua.Portuguese,
+								lingua.Dutch,
+								lingua.Croatian,
+							}...)
+					}
+
 					detector := lingua.NewLanguageDetectorBuilder().FromLanguages(languages...).WithPreloadedLanguageModels().Build()
 
-					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Set up hub")
+					log.Printf("NewLanguageDetectorBuilder took %s", time.Since(start))
+					start = time.Now()
 
+					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("set up arena")
 					ba := battle.NewArena(&battle.Opts{
 						Addr:                     battleArenaAddr,
 						MessageBus:               messageBus,
@@ -369,7 +385,10 @@ func main() {
 						Telegram:                 telebot,
 						GameClientMinimumBuildNo: gameClientMinimumBuildNo,
 					})
-					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("set up arena")
+
+					log.Printf("arena took %s", time.Since(start))
+					start = time.Now()
+
 					gamelog.L.Info().Msg("Setting up webhook rest API")
 					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, rpcClient, messageBus, gsHub, twilio, telebot, detector)
 					if err != nil {
@@ -384,6 +403,7 @@ func main() {
 
 					// we need to update some IDs on passport server, just the once,
 					// TODO: After deploying composable migration, talk to vinnie about removing this
+					gamelog.L.Info().Msg("Running one off funcs")
 					RegisterAllNewAssets(rpcClient)
 					UpdateXsynStoreItemTemplates(rpcClient)
 
@@ -415,7 +435,7 @@ func main() {
 func RegisterAllNewAssets(pp *xsyn_rpcclient.XsynXrpcClient) {
 	// Lets do this in chunks, going to be like 30-40k items to add to passport.
 	// mechs
-	go func() {
+	func() { // remove the go from the first func since we hit race conditions on rpc initer
 		updatedMechs := db.GetBoolWithDefault("INSERTED_NEW_ASSETS_MECHS", false)
 		if !updatedMechs {
 			var mechIDs []string
@@ -439,7 +459,7 @@ func RegisterAllNewAssets(pp *xsyn_rpcclient.XsynXrpcClient) {
 				gamelog.L.Error().Err(err).Msg("issue inserting new mechs to xsyn for RegisterAllNewAssets")
 				return
 			}
-
+			gamelog.L.Info().Msg("Successfully inserted new asset mechs")
 			db.PutBool("INSERTED_NEW_ASSETS_MECHS", true)
 		}
 	}()
@@ -468,6 +488,7 @@ func RegisterAllNewAssets(pp *xsyn_rpcclient.XsynXrpcClient) {
 				gamelog.L.Error().Err(err).Msg("issue inserting new weapons to xsyn")
 				return
 			}
+			gamelog.L.Info().Msg("Successfully inserted new asset weapons")
 			db.PutBool("INSERTED_NEW_ASSETS_WEAPONS", true)
 		}
 	}()
@@ -496,6 +517,7 @@ func RegisterAllNewAssets(pp *xsyn_rpcclient.XsynXrpcClient) {
 				gamelog.L.Error().Err(err).Msg("issue inserting new mech skins to xsyn")
 				return
 			}
+			gamelog.L.Info().Msg("Successfully inserted new mech skins")
 			db.PutBool("INSERTED_NEW_ASSETS_SKINS", true)
 
 		}
@@ -525,6 +547,7 @@ func RegisterAllNewAssets(pp *xsyn_rpcclient.XsynXrpcClient) {
 				gamelog.L.Error().Err(err).Msg("issue inserting new mech powerCores to xsyn")
 				return
 			}
+			gamelog.L.Info().Msg("Successfully inserted new mech power cores")
 			db.PutBool("INSERTED_NEW_ASSETS_POWER_CORES", true)
 		}
 	}()
@@ -553,6 +576,7 @@ func RegisterAllNewAssets(pp *xsyn_rpcclient.XsynXrpcClient) {
 				gamelog.L.Error().Err(err).Msg("issue inserting new mech utilities to xsyn")
 				return
 			}
+			gamelog.L.Info().Msg("Successfully inserted new utility assets")
 			db.PutBool("INSERTED_NEW_ASSETS_UTILITIES", true)
 		}
 	}()
@@ -578,7 +602,7 @@ func UpdateXsynStoreItemTemplates(pp *xsyn_rpcclient.XsynXrpcClient) {
 			gamelog.L.Error().Err(err).Msg("issue updating template ids on passport")
 			return
 		}
-
+		gamelog.L.Info().Msg("Successfully updated xsyn store template items")
 		db.PutBool("UPDATED_TEMPLATE_ITEMS_IDS", true)
 	}
 

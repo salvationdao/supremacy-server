@@ -71,6 +71,7 @@ func (pp *XsynXrpcClient) AssetRegister(ass *rpctypes.XsynAsset) error {
 }
 
 type RegisterAssetsReq struct {
+	ApiKey string                `json:"apiKey"`
 	Assets []*rpctypes.XsynAsset `json:"assets"`
 }
 
@@ -82,6 +83,7 @@ type RegisterAssetsResp struct {
 func (pp *XsynXrpcClient) AssetsRegister(ass []*rpctypes.XsynAsset) error {
 	resp := &RegisterAssetsResp{}
 	err := pp.XrpcClient.Call("S.AssetsRegisterHandler", RegisterAssetsReq{
+		pp.ApiKey,
 		ass,
 	}, resp)
 	if err != nil {
