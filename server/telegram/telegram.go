@@ -28,18 +28,18 @@ func NewTelegram(token string, environment string, registerCallback func(shortCo
 		RegisterCallback: registerCallback,
 	}
 
-	// if environment == "production" || environment == "staging" {
-	pref := tele.Settings{
-		Token:  "5102392890:AAFBR3kfwEIZlDviMXzlbjOybEuctrg1UtE",
-		Poller: &tele.LongPoller{Timeout: 10 * time.Second},
+	if environment == "production" || environment == "staging" {
+		pref := tele.Settings{
+			Token:  token,
+			Poller: &tele.LongPoller{Timeout: 10 * time.Second},
+		}
+		b, err := tele.NewBot(pref)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("unable initialise telegram bot")
+			return nil, terror.Error(err)
+		}
+		t.Bot = b
 	}
-	b, err := tele.NewBot(pref)
-	if err != nil {
-		gamelog.L.Error().Err(err).Msg("unable initialise telegram bot")
-		return nil, terror.Error(err)
-	}
-	t.Bot = b
-	// }
 
 	return t, nil
 }
