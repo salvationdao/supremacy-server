@@ -80,7 +80,11 @@ func MarketplaceItemSaleList(search string, archived bool, filter *ListFilterReq
 		return 0, nil, terror.Error(fmt.Errorf("invalid sort direction"))
 	}
 
-	queryMods := append(itemSaleQueryMods, boiler.ItemSaleWhere.OwnerID.NEQ(excludeUserID))
+	queryMods := append(
+		itemSaleQueryMods,
+		boiler.ItemSaleWhere.OwnerID.NEQ(excludeUserID),
+		boiler.ItemSaleWhere.SoldBy.IsNull(),
+	)
 
 	// Filters
 	if filter != nil {
@@ -134,7 +138,9 @@ func MarketplaceItemSaleList(search string, archived bool, filter *ListFilterReq
 		queryMods = append(queryMods, qm.Limit(pageSize), qm.Offset(offset))
 	}
 
+	boil.DebugMode = true
 	itemSales, err := boiler.ItemSales(queryMods...).All(gamedb.StdConn)
+	boil.DebugMode = false
 	if err != nil {
 		return 0, nil, terror.Error(err)
 	}
