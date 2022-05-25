@@ -151,7 +151,6 @@ var FactionRels = struct {
 	BattleWins            string
 	Brands                string
 	ChatHistories         string
-	MechModels            string
 	MysteryCrates         string
 	PlayerActiveLogs      string
 	PlayerKillLogs        string
@@ -159,7 +158,6 @@ var FactionRels = struct {
 	Players               string
 	PunishVotes           string
 	TemplatesOlds         string
-	WeaponModels          string
 }{
 	IDFactionStat:         "IDFactionStat",
 	BattleAbilityTriggers: "BattleAbilityTriggers",
@@ -170,7 +168,6 @@ var FactionRels = struct {
 	BattleWins:            "BattleWins",
 	Brands:                "Brands",
 	ChatHistories:         "ChatHistories",
-	MechModels:            "MechModels",
 	MysteryCrates:         "MysteryCrates",
 	PlayerActiveLogs:      "PlayerActiveLogs",
 	PlayerKillLogs:        "PlayerKillLogs",
@@ -178,7 +175,6 @@ var FactionRels = struct {
 	Players:               "Players",
 	PunishVotes:           "PunishVotes",
 	TemplatesOlds:         "TemplatesOlds",
-	WeaponModels:          "WeaponModels",
 }
 
 // factionR is where relationships are stored.
@@ -192,7 +188,6 @@ type factionR struct {
 	BattleWins            BattleWinSlice            `boiler:"BattleWins" boil:"BattleWins" json:"BattleWins" toml:"BattleWins" yaml:"BattleWins"`
 	Brands                BrandSlice                `boiler:"Brands" boil:"Brands" json:"Brands" toml:"Brands" yaml:"Brands"`
 	ChatHistories         ChatHistorySlice          `boiler:"ChatHistories" boil:"ChatHistories" json:"ChatHistories" toml:"ChatHistories" yaml:"ChatHistories"`
-	MechModels            MechModelSlice            `boiler:"MechModels" boil:"MechModels" json:"MechModels" toml:"MechModels" yaml:"MechModels"`
 	MysteryCrates         MysteryCrateSlice         `boiler:"MysteryCrates" boil:"MysteryCrates" json:"MysteryCrates" toml:"MysteryCrates" yaml:"MysteryCrates"`
 	PlayerActiveLogs      PlayerActiveLogSlice      `boiler:"PlayerActiveLogs" boil:"PlayerActiveLogs" json:"PlayerActiveLogs" toml:"PlayerActiveLogs" yaml:"PlayerActiveLogs"`
 	PlayerKillLogs        PlayerKillLogSlice        `boiler:"PlayerKillLogs" boil:"PlayerKillLogs" json:"PlayerKillLogs" toml:"PlayerKillLogs" yaml:"PlayerKillLogs"`
@@ -200,7 +195,6 @@ type factionR struct {
 	Players               PlayerSlice               `boiler:"Players" boil:"Players" json:"Players" toml:"Players" yaml:"Players"`
 	PunishVotes           PunishVoteSlice           `boiler:"PunishVotes" boil:"PunishVotes" json:"PunishVotes" toml:"PunishVotes" yaml:"PunishVotes"`
 	TemplatesOlds         TemplatesOldSlice         `boiler:"TemplatesOlds" boil:"TemplatesOlds" json:"TemplatesOlds" toml:"TemplatesOlds" yaml:"TemplatesOlds"`
-	WeaponModels          WeaponModelSlice          `boiler:"WeaponModels" boil:"WeaponModels" json:"WeaponModels" toml:"WeaponModels" yaml:"WeaponModels"`
 }
 
 // NewStruct creates a new relationship struct
@@ -644,27 +638,6 @@ func (o *Faction) ChatHistories(mods ...qm.QueryMod) chatHistoryQuery {
 	return query
 }
 
-// MechModels retrieves all the mech_model's MechModels with an executor.
-func (o *Faction) MechModels(mods ...qm.QueryMod) mechModelQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"mech_models\".\"faction_id\"=?", o.ID),
-	)
-
-	query := MechModels(queryMods...)
-	queries.SetFrom(query.Query, "\"mech_models\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"mech_models\".*"})
-	}
-
-	return query
-}
-
 // MysteryCrates retrieves all the mystery_crate's MysteryCrates with an executor.
 func (o *Faction) MysteryCrates(mods ...qm.QueryMod) mysteryCrateQuery {
 	var queryMods []qm.QueryMod
@@ -810,27 +783,6 @@ func (o *Faction) TemplatesOlds(mods ...qm.QueryMod) templatesOldQuery {
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"templates_old\".*"})
-	}
-
-	return query
-}
-
-// WeaponModels retrieves all the weapon_model's WeaponModels with an executor.
-func (o *Faction) WeaponModels(mods ...qm.QueryMod) weaponModelQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"weapon_models\".\"faction_id\"=?", o.ID),
-	)
-
-	query := WeaponModels(queryMods...)
-	queries.SetFrom(query.Query, "\"weapon_models\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"weapon_models\".*"})
 	}
 
 	return query
@@ -1722,104 +1674,6 @@ func (factionL) LoadChatHistories(e boil.Executor, singular bool, maybeFaction i
 	return nil
 }
 
-// LoadMechModels allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (factionL) LoadMechModels(e boil.Executor, singular bool, maybeFaction interface{}, mods queries.Applicator) error {
-	var slice []*Faction
-	var object *Faction
-
-	if singular {
-		object = maybeFaction.(*Faction)
-	} else {
-		slice = *maybeFaction.(*[]*Faction)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &factionR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &factionR{}
-			}
-
-			for _, a := range args {
-				if queries.Equal(a, obj.ID) {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`mech_models`),
-		qm.WhereIn(`mech_models.faction_id in ?`, args...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load mech_models")
-	}
-
-	var resultSlice []*MechModel
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice mech_models")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on mech_models")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mech_models")
-	}
-
-	if len(mechModelAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.MechModels = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &mechModelR{}
-			}
-			foreign.R.Faction = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if queries.Equal(local.ID, foreign.FactionID) {
-				local.R.MechModels = append(local.R.MechModels, foreign)
-				if foreign.R == nil {
-					foreign.R = &mechModelR{}
-				}
-				foreign.R.Faction = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
 // LoadMysteryCrates allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (factionL) LoadMysteryCrates(e boil.Executor, singular bool, maybeFaction interface{}, mods queries.Applicator) error {
@@ -2509,104 +2363,6 @@ func (factionL) LoadTemplatesOlds(e boil.Executor, singular bool, maybeFaction i
 	return nil
 }
 
-// LoadWeaponModels allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (factionL) LoadWeaponModels(e boil.Executor, singular bool, maybeFaction interface{}, mods queries.Applicator) error {
-	var slice []*Faction
-	var object *Faction
-
-	if singular {
-		object = maybeFaction.(*Faction)
-	} else {
-		slice = *maybeFaction.(*[]*Faction)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &factionR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &factionR{}
-			}
-
-			for _, a := range args {
-				if queries.Equal(a, obj.ID) {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`weapon_models`),
-		qm.WhereIn(`weapon_models.faction_id in ?`, args...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load weapon_models")
-	}
-
-	var resultSlice []*WeaponModel
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice weapon_models")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on weapon_models")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for weapon_models")
-	}
-
-	if len(weaponModelAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.WeaponModels = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &weaponModelR{}
-			}
-			foreign.R.Faction = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if queries.Equal(local.ID, foreign.FactionID) {
-				local.R.WeaponModels = append(local.R.WeaponModels, foreign)
-				if foreign.R == nil {
-					foreign.R = &weaponModelR{}
-				}
-				foreign.R.Faction = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
 // SetIDFactionStat of the faction to the related item.
 // Sets o.R.IDFactionStat to related.
 // Adds o to related.R.IDFaction.
@@ -3070,131 +2826,6 @@ func (o *Faction) AddChatHistories(exec boil.Executor, insert bool, related ...*
 			rel.R.Faction = o
 		}
 	}
-	return nil
-}
-
-// AddMechModels adds the given related objects to the existing relationships
-// of the faction, optionally inserting them as new records.
-// Appends related to o.R.MechModels.
-// Sets related.R.Faction appropriately.
-func (o *Faction) AddMechModels(exec boil.Executor, insert bool, related ...*MechModel) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			queries.Assign(&rel.FactionID, o.ID)
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"mech_models\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
-				strmangle.WhereClause("\"", "\"", 2, mechModelPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			queries.Assign(&rel.FactionID, o.ID)
-		}
-	}
-
-	if o.R == nil {
-		o.R = &factionR{
-			MechModels: related,
-		}
-	} else {
-		o.R.MechModels = append(o.R.MechModels, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &mechModelR{
-				Faction: o,
-			}
-		} else {
-			rel.R.Faction = o
-		}
-	}
-	return nil
-}
-
-// SetMechModels removes all previously related items of the
-// faction replacing them completely with the passed
-// in related items, optionally inserting them as new records.
-// Sets o.R.Faction's MechModels accordingly.
-// Replaces o.R.MechModels with related.
-// Sets related.R.Faction's MechModels accordingly.
-func (o *Faction) SetMechModels(exec boil.Executor, insert bool, related ...*MechModel) error {
-	query := "update \"mech_models\" set \"faction_id\" = null where \"faction_id\" = $1"
-	values := []interface{}{o.ID}
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, query)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	_, err := exec.Exec(query, values...)
-	if err != nil {
-		return errors.Wrap(err, "failed to remove relationships before set")
-	}
-
-	if o.R != nil {
-		for _, rel := range o.R.MechModels {
-			queries.SetScanner(&rel.FactionID, nil)
-			if rel.R == nil {
-				continue
-			}
-
-			rel.R.Faction = nil
-		}
-
-		o.R.MechModels = nil
-	}
-	return o.AddMechModels(exec, insert, related...)
-}
-
-// RemoveMechModels relationships from objects passed in.
-// Removes related items from R.MechModels (uses pointer comparison, removal does not keep order)
-// Sets related.R.Faction.
-func (o *Faction) RemoveMechModels(exec boil.Executor, related ...*MechModel) error {
-	if len(related) == 0 {
-		return nil
-	}
-
-	var err error
-	for _, rel := range related {
-		queries.SetScanner(&rel.FactionID, nil)
-		if rel.R != nil {
-			rel.R.Faction = nil
-		}
-		if _, err = rel.Update(exec, boil.Whitelist("faction_id")); err != nil {
-			return err
-		}
-	}
-	if o.R == nil {
-		return nil
-	}
-
-	for _, rel := range related {
-		for i, ri := range o.R.MechModels {
-			if rel != ri {
-				continue
-			}
-
-			ln := len(o.R.MechModels)
-			if ln > 1 && i < ln-1 {
-				o.R.MechModels[i] = o.R.MechModels[ln-1]
-			}
-			o.R.MechModels = o.R.MechModels[:ln-1]
-			break
-		}
-	}
-
 	return nil
 }
 
@@ -3705,131 +3336,6 @@ func (o *Faction) AddTemplatesOlds(exec boil.Executor, insert bool, related ...*
 			rel.R.Faction = o
 		}
 	}
-	return nil
-}
-
-// AddWeaponModels adds the given related objects to the existing relationships
-// of the faction, optionally inserting them as new records.
-// Appends related to o.R.WeaponModels.
-// Sets related.R.Faction appropriately.
-func (o *Faction) AddWeaponModels(exec boil.Executor, insert bool, related ...*WeaponModel) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			queries.Assign(&rel.FactionID, o.ID)
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"weapon_models\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
-				strmangle.WhereClause("\"", "\"", 2, weaponModelPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			queries.Assign(&rel.FactionID, o.ID)
-		}
-	}
-
-	if o.R == nil {
-		o.R = &factionR{
-			WeaponModels: related,
-		}
-	} else {
-		o.R.WeaponModels = append(o.R.WeaponModels, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &weaponModelR{
-				Faction: o,
-			}
-		} else {
-			rel.R.Faction = o
-		}
-	}
-	return nil
-}
-
-// SetWeaponModels removes all previously related items of the
-// faction replacing them completely with the passed
-// in related items, optionally inserting them as new records.
-// Sets o.R.Faction's WeaponModels accordingly.
-// Replaces o.R.WeaponModels with related.
-// Sets related.R.Faction's WeaponModels accordingly.
-func (o *Faction) SetWeaponModels(exec boil.Executor, insert bool, related ...*WeaponModel) error {
-	query := "update \"weapon_models\" set \"faction_id\" = null where \"faction_id\" = $1"
-	values := []interface{}{o.ID}
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, query)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	_, err := exec.Exec(query, values...)
-	if err != nil {
-		return errors.Wrap(err, "failed to remove relationships before set")
-	}
-
-	if o.R != nil {
-		for _, rel := range o.R.WeaponModels {
-			queries.SetScanner(&rel.FactionID, nil)
-			if rel.R == nil {
-				continue
-			}
-
-			rel.R.Faction = nil
-		}
-
-		o.R.WeaponModels = nil
-	}
-	return o.AddWeaponModels(exec, insert, related...)
-}
-
-// RemoveWeaponModels relationships from objects passed in.
-// Removes related items from R.WeaponModels (uses pointer comparison, removal does not keep order)
-// Sets related.R.Faction.
-func (o *Faction) RemoveWeaponModels(exec boil.Executor, related ...*WeaponModel) error {
-	if len(related) == 0 {
-		return nil
-	}
-
-	var err error
-	for _, rel := range related {
-		queries.SetScanner(&rel.FactionID, nil)
-		if rel.R != nil {
-			rel.R.Faction = nil
-		}
-		if _, err = rel.Update(exec, boil.Whitelist("faction_id")); err != nil {
-			return err
-		}
-	}
-	if o.R == nil {
-		return nil
-	}
-
-	for _, rel := range related {
-		for i, ri := range o.R.WeaponModels {
-			if rel != ri {
-				continue
-			}
-
-			ln := len(o.R.WeaponModels)
-			if ln > 1 && i < ln-1 {
-				o.R.WeaponModels[i] = o.R.WeaponModels[ln-1]
-			}
-			o.R.WeaponModels = o.R.WeaponModels[:ln-1]
-			break
-		}
-	}
-
 	return nil
 }
 

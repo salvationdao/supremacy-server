@@ -24,7 +24,6 @@ import (
 // WeaponModel is an object representing the database table.
 type WeaponModel struct {
 	ID            string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	FactionID     null.String `boiler:"faction_id" boil:"faction_id" json:"faction_id,omitempty" toml:"faction_id" yaml:"faction_id,omitempty"`
 	BrandID       null.String `boiler:"brand_id" boil:"brand_id" json:"brand_id,omitempty" toml:"brand_id" yaml:"brand_id,omitempty"`
 	Label         string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
 	WeaponType    string      `boiler:"weapon_type" boil:"weapon_type" json:"weapon_type" toml:"weapon_type" yaml:"weapon_type"`
@@ -37,7 +36,6 @@ type WeaponModel struct {
 
 var WeaponModelColumns = struct {
 	ID            string
-	FactionID     string
 	BrandID       string
 	Label         string
 	WeaponType    string
@@ -45,7 +43,6 @@ var WeaponModelColumns = struct {
 	CreatedAt     string
 }{
 	ID:            "id",
-	FactionID:     "faction_id",
 	BrandID:       "brand_id",
 	Label:         "label",
 	WeaponType:    "weapon_type",
@@ -55,7 +52,6 @@ var WeaponModelColumns = struct {
 
 var WeaponModelTableColumns = struct {
 	ID            string
-	FactionID     string
 	BrandID       string
 	Label         string
 	WeaponType    string
@@ -63,7 +59,6 @@ var WeaponModelTableColumns = struct {
 	CreatedAt     string
 }{
 	ID:            "weapon_models.id",
-	FactionID:     "weapon_models.faction_id",
 	BrandID:       "weapon_models.brand_id",
 	Label:         "weapon_models.label",
 	WeaponType:    "weapon_models.weapon_type",
@@ -75,7 +70,6 @@ var WeaponModelTableColumns = struct {
 
 var WeaponModelWhere = struct {
 	ID            whereHelperstring
-	FactionID     whereHelpernull_String
 	BrandID       whereHelpernull_String
 	Label         whereHelperstring
 	WeaponType    whereHelperstring
@@ -83,7 +77,6 @@ var WeaponModelWhere = struct {
 	CreatedAt     whereHelpertime_Time
 }{
 	ID:            whereHelperstring{field: "\"weapon_models\".\"id\""},
-	FactionID:     whereHelpernull_String{field: "\"weapon_models\".\"faction_id\""},
 	BrandID:       whereHelpernull_String{field: "\"weapon_models\".\"brand_id\""},
 	Label:         whereHelperstring{field: "\"weapon_models\".\"label\""},
 	WeaponType:    whereHelperstring{field: "\"weapon_models\".\"weapon_type\""},
@@ -94,14 +87,12 @@ var WeaponModelWhere = struct {
 // WeaponModelRels is where relationship names are stored.
 var WeaponModelRels = struct {
 	Brand                string
-	Faction              string
 	BlueprintWeaponSkins string
 	BlueprintWeapons     string
 	WeaponSkins          string
 	Weapons              string
 }{
 	Brand:                "Brand",
-	Faction:              "Faction",
 	BlueprintWeaponSkins: "BlueprintWeaponSkins",
 	BlueprintWeapons:     "BlueprintWeapons",
 	WeaponSkins:          "WeaponSkins",
@@ -111,7 +102,6 @@ var WeaponModelRels = struct {
 // weaponModelR is where relationships are stored.
 type weaponModelR struct {
 	Brand                *Brand                   `boiler:"Brand" boil:"Brand" json:"Brand" toml:"Brand" yaml:"Brand"`
-	Faction              *Faction                 `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
 	BlueprintWeaponSkins BlueprintWeaponSkinSlice `boiler:"BlueprintWeaponSkins" boil:"BlueprintWeaponSkins" json:"BlueprintWeaponSkins" toml:"BlueprintWeaponSkins" yaml:"BlueprintWeaponSkins"`
 	BlueprintWeapons     BlueprintWeaponSlice     `boiler:"BlueprintWeapons" boil:"BlueprintWeapons" json:"BlueprintWeapons" toml:"BlueprintWeapons" yaml:"BlueprintWeapons"`
 	WeaponSkins          WeaponSkinSlice          `boiler:"WeaponSkins" boil:"WeaponSkins" json:"WeaponSkins" toml:"WeaponSkins" yaml:"WeaponSkins"`
@@ -127,9 +117,9 @@ func (*weaponModelR) NewStruct() *weaponModelR {
 type weaponModelL struct{}
 
 var (
-	weaponModelAllColumns            = []string{"id", "faction_id", "brand_id", "label", "weapon_type", "default_skin_id", "created_at"}
+	weaponModelAllColumns            = []string{"id", "brand_id", "label", "weapon_type", "default_skin_id", "created_at"}
 	weaponModelColumnsWithoutDefault = []string{"label", "weapon_type", "default_skin_id"}
-	weaponModelColumnsWithDefault    = []string{"id", "faction_id", "brand_id", "created_at"}
+	weaponModelColumnsWithDefault    = []string{"id", "brand_id", "created_at"}
 	weaponModelPrimaryKeyColumns     = []string{"id"}
 	weaponModelGeneratedColumns      = []string{}
 )
@@ -391,21 +381,6 @@ func (o *WeaponModel) Brand(mods ...qm.QueryMod) brandQuery {
 	return query
 }
 
-// Faction pointed to by the foreign key.
-func (o *WeaponModel) Faction(mods ...qm.QueryMod) factionQuery {
-	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.FactionID),
-		qmhelper.WhereIsNull("deleted_at"),
-	}
-
-	queryMods = append(queryMods, mods...)
-
-	query := Factions(queryMods...)
-	queries.SetFrom(query.Query, "\"factions\"")
-
-	return query
-}
-
 // BlueprintWeaponSkins retrieves all the blueprint_weapon_skin's BlueprintWeaponSkins with an executor.
 func (o *WeaponModel) BlueprintWeaponSkins(mods ...qm.QueryMod) blueprintWeaponSkinQuery {
 	var queryMods []qm.QueryMod
@@ -591,115 +566,6 @@ func (weaponModelL) LoadBrand(e boil.Executor, singular bool, maybeWeaponModel i
 				local.R.Brand = foreign
 				if foreign.R == nil {
 					foreign.R = &brandR{}
-				}
-				foreign.R.WeaponModels = append(foreign.R.WeaponModels, local)
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadFaction allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for an N-1 relationship.
-func (weaponModelL) LoadFaction(e boil.Executor, singular bool, maybeWeaponModel interface{}, mods queries.Applicator) error {
-	var slice []*WeaponModel
-	var object *WeaponModel
-
-	if singular {
-		object = maybeWeaponModel.(*WeaponModel)
-	} else {
-		slice = *maybeWeaponModel.(*[]*WeaponModel)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &weaponModelR{}
-		}
-		if !queries.IsNil(object.FactionID) {
-			args = append(args, object.FactionID)
-		}
-
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &weaponModelR{}
-			}
-
-			for _, a := range args {
-				if queries.Equal(a, obj.FactionID) {
-					continue Outer
-				}
-			}
-
-			if !queries.IsNil(obj.FactionID) {
-				args = append(args, obj.FactionID)
-			}
-
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`factions`),
-		qm.WhereIn(`factions.id in ?`, args...),
-		qmhelper.WhereIsNull(`factions.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load Faction")
-	}
-
-	var resultSlice []*Faction
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice Faction")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for factions")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for factions")
-	}
-
-	if len(weaponModelAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-
-	if len(resultSlice) == 0 {
-		return nil
-	}
-
-	if singular {
-		foreign := resultSlice[0]
-		object.R.Faction = foreign
-		if foreign.R == nil {
-			foreign.R = &factionR{}
-		}
-		foreign.R.WeaponModels = append(foreign.R.WeaponModels, object)
-		return nil
-	}
-
-	for _, local := range slice {
-		for _, foreign := range resultSlice {
-			if queries.Equal(local.FactionID, foreign.ID) {
-				local.R.Faction = foreign
-				if foreign.R == nil {
-					foreign.R = &factionR{}
 				}
 				foreign.R.WeaponModels = append(foreign.R.WeaponModels, local)
 				break
@@ -1170,85 +1036,6 @@ func (o *WeaponModel) RemoveBrand(exec boil.Executor, related *Brand) error {
 
 	for i, ri := range related.R.WeaponModels {
 		if queries.Equal(o.BrandID, ri.BrandID) {
-			continue
-		}
-
-		ln := len(related.R.WeaponModels)
-		if ln > 1 && i < ln-1 {
-			related.R.WeaponModels[i] = related.R.WeaponModels[ln-1]
-		}
-		related.R.WeaponModels = related.R.WeaponModels[:ln-1]
-		break
-	}
-	return nil
-}
-
-// SetFaction of the weaponModel to the related item.
-// Sets o.R.Faction to related.
-// Adds o to related.R.WeaponModels.
-func (o *WeaponModel) SetFaction(exec boil.Executor, insert bool, related *Faction) error {
-	var err error
-	if insert {
-		if err = related.Insert(exec, boil.Infer()); err != nil {
-			return errors.Wrap(err, "failed to insert into foreign table")
-		}
-	}
-
-	updateQuery := fmt.Sprintf(
-		"UPDATE \"weapon_models\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
-		strmangle.WhereClause("\"", "\"", 2, weaponModelPrimaryKeyColumns),
-	)
-	values := []interface{}{related.ID, o.ID}
-
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, updateQuery)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	if _, err = exec.Exec(updateQuery, values...); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	queries.Assign(&o.FactionID, related.ID)
-	if o.R == nil {
-		o.R = &weaponModelR{
-			Faction: related,
-		}
-	} else {
-		o.R.Faction = related
-	}
-
-	if related.R == nil {
-		related.R = &factionR{
-			WeaponModels: WeaponModelSlice{o},
-		}
-	} else {
-		related.R.WeaponModels = append(related.R.WeaponModels, o)
-	}
-
-	return nil
-}
-
-// RemoveFaction relationship.
-// Sets o.R.Faction to nil.
-// Removes o from all passed in related items' relationships struct (Optional).
-func (o *WeaponModel) RemoveFaction(exec boil.Executor, related *Faction) error {
-	var err error
-
-	queries.SetScanner(&o.FactionID, nil)
-	if _, err = o.Update(exec, boil.Whitelist("faction_id")); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	if o.R != nil {
-		o.R.Faction = nil
-	}
-	if related == nil || related.R == nil {
-		return nil
-	}
-
-	for i, ri := range related.R.WeaponModels {
-		if queries.Equal(o.FactionID, ri.FactionID) {
 			continue
 		}
 

@@ -159,15 +159,14 @@ INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Ca
 INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Grenade Launcher', (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation'), 'Grenade Launcher', (SELECT id FROM brands WHERE label = 'Pyrotronics'));
 
 -- insert genesis weapons that are not faction specific
-INSERT INTO weapon_models (label, weapon_type) VALUES ('Plasma Rifle', 'Rifle');
-INSERT INTO weapon_models (label, weapon_type) VALUES ('Auto Cannon', 'Cannon');
-INSERT INTO weapon_models (label, weapon_type) VALUES ('Sniper Rifle', 'Sniper Rifle');
+INSERT INTO weapon_models (label, weapon_type, brand_id) VALUES ('Plasma Rifle', 'Rifle', (SELECT id FROM brands WHERE label = 'Boston Cybernetics') );
+INSERT INTO weapon_models (label, weapon_type, brand_id) VALUES ('Auto Cannon', 'Cannon', (SELECT id FROM brands WHERE label = 'Red Mountain Offworld Mining Corporation'));
+INSERT INTO weapon_models (label, weapon_type, brand_id) VALUES ('Sniper Rifle', 'Sniper Rifle', (SELECT id FROM brands WHERE label = 'Zaibatsu Heavy Industries'));
 INSERT INTO weapon_models (label, weapon_type) VALUES ('Rocket Pod', 'Missile Launcher');
-INSERT INTO weapon_models (label, weapon_type) VALUES ('Sword', 'Sword');
-INSERT INTO weapon_models (label, weapon_type) VALUES ('Laser Sword', 'Sword');
+INSERT INTO weapon_models (label, weapon_type, brand_id) VALUES ('Sword', 'Sword', (SELECT id FROM brands WHERE label = 'Boston Cybernetics') );
+INSERT INTO weapon_models (label, weapon_type, brand_id) VALUES ('Laser Sword', 'Sword', (SELECT id FROM brands WHERE label = 'Zaibatsu Heavy Industries'));
 
 -- seed blueprint_weapons_skins
-
 --genesis weapons w/o a faction
 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type) VALUES ('Plasma Rifle', (SELECT id FROM weapon_models WHERE label = 'Plasma Rifle'), (SELECT weapon_type FROM weapon_models WHERE label = 'Plasma Rifle'));
 INSERT INTO blueprint_weapon_skin (label, weapon_model_id, weapon_type) VALUES ('Auto Cannon', (SELECT id FROM weapon_models WHERE label = 'Auto Cannon'), (SELECT weapon_type FROM weapon_models WHERE label = 'Auto Cannon'));
@@ -440,9 +439,9 @@ DO $$
     BEGIN
     --should be more than 100 and end in -00 for all math to math plz
         FOR COUNT IN 1..200 LOOP
-            INSERT INTO mystery_crate (type, faction_id, label) VALUES ('MECH', (SELECT id FROM factions f WHERE f.label = 'Red Mountain Offworld Mining Corporation'), 'RMOMC Mech Mystery Crate');
-            INSERT INTO mystery_crate (type, faction_id, label) VALUES ('MECH', (SELECT id FROM factions f WHERE f.label = 'Zaibatsu Heavy Industries'), 'ZHI Mech Mystery Crate');
-            INSERT INTO mystery_crate (type, faction_id, label) VALUES ('MECH', (SELECT id FROM factions f WHERE f.label = 'Boston Cybernetics'), 'BC Mech Mystery Crate');
+            INSERT INTO mystery_crate (type, faction_id, label) VALUES ('MECH', (SELECT id FROM factions f WHERE f.label = 'Red Mountain Offworld Mining Corporation'), 'Red Mountain War Machine Mystery Crate');
+            INSERT INTO mystery_crate (type, faction_id, label) VALUES ('MECH', (SELECT id FROM factions f WHERE f.label = 'Zaibatsu Heavy Industries'), 'Zaibatsu Nexus War Machine Mystery Crate');
+            INSERT INTO mystery_crate (type, faction_id, label) VALUES ('MECH', (SELECT id FROM factions f WHERE f.label = 'Boston Cybernetics'), 'Boston Cybernetics Nexus War Machine Mystery Crate');
         END LOOP;
     END;
 $$;
@@ -450,9 +449,9 @@ $$;
 DO $$
     BEGIN
         FOR COUNT IN 1..200 LOOP
-            INSERT INTO mystery_crate (type, faction_id, label) VALUES ('WEAPON', (SELECT id FROM factions f WHERE f.label = 'Red Mountain Offworld Mining Corporation'), 'RMOMC Weapon Mystery Crate');
-            INSERT INTO mystery_crate (type, faction_id, label) VALUES ('WEAPON', (SELECT id FROM factions f WHERE f.label = 'Zaibatsu Heavy Industries'), 'ZHI Weapon Mystery Crate');
-            INSERT INTO mystery_crate (type, faction_id, label) VALUES ('WEAPON', (SELECT id FROM factions f WHERE f.label = 'Boston Cybernetics'), 'BC Weapon Mystery Crate');
+            INSERT INTO mystery_crate (type, faction_id, label) VALUES ('WEAPON', (SELECT id FROM factions f WHERE f.label = 'Red Mountain Offworld Mining Corporation'), 'Red Mountain Nexus Weapon Mystery Crate');
+            INSERT INTO mystery_crate (type, faction_id, label) VALUES ('WEAPON', (SELECT id FROM factions f WHERE f.label = 'Zaibatsu Heavy Industries'), 'Zaibatsu Nexus Weapon Mystery Crate');
+            INSERT INTO mystery_crate (type, faction_id, label) VALUES ('WEAPON', (SELECT id FROM factions f WHERE f.label = 'Boston Cybernetics'), 'Boston Cybernetics Nexus Weapon Mystery Crate');
         END LOOP;
     END;
 $$;
@@ -720,6 +719,9 @@ BEGIN
         END LOOP;
     END;
 $$;
+
+ALTER TABLE weapon_models DROP COLUMN faction_id;
+ALTER TABLE mech_models DROP COLUMN faction_id;
 
 -- seeding skins... skins can be variable for weapons
 -- mech skins

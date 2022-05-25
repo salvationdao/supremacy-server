@@ -28,7 +28,6 @@ type MechModel struct {
 	CreatedAt            time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 	DefaultChassisSkinID string      `boiler:"default_chassis_skin_id" boil:"default_chassis_skin_id" json:"default_chassis_skin_id" toml:"default_chassis_skin_id" yaml:"default_chassis_skin_id"`
 	BrandID              null.String `boiler:"brand_id" boil:"brand_id" json:"brand_id,omitempty" toml:"brand_id" yaml:"brand_id,omitempty"`
-	FactionID            null.String `boiler:"faction_id" boil:"faction_id" json:"faction_id,omitempty" toml:"faction_id" yaml:"faction_id,omitempty"`
 	MechType             null.String `boiler:"mech_type" boil:"mech_type" json:"mech_type,omitempty" toml:"mech_type" yaml:"mech_type,omitempty"`
 
 	R *mechModelR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -41,7 +40,6 @@ var MechModelColumns = struct {
 	CreatedAt            string
 	DefaultChassisSkinID string
 	BrandID              string
-	FactionID            string
 	MechType             string
 }{
 	ID:                   "id",
@@ -49,7 +47,6 @@ var MechModelColumns = struct {
 	CreatedAt:            "created_at",
 	DefaultChassisSkinID: "default_chassis_skin_id",
 	BrandID:              "brand_id",
-	FactionID:            "faction_id",
 	MechType:             "mech_type",
 }
 
@@ -59,7 +56,6 @@ var MechModelTableColumns = struct {
 	CreatedAt            string
 	DefaultChassisSkinID string
 	BrandID              string
-	FactionID            string
 	MechType             string
 }{
 	ID:                   "mech_models.id",
@@ -67,7 +63,6 @@ var MechModelTableColumns = struct {
 	CreatedAt:            "mech_models.created_at",
 	DefaultChassisSkinID: "mech_models.default_chassis_skin_id",
 	BrandID:              "mech_models.brand_id",
-	FactionID:            "mech_models.faction_id",
 	MechType:             "mech_models.mech_type",
 }
 
@@ -79,7 +74,6 @@ var MechModelWhere = struct {
 	CreatedAt            whereHelpertime_Time
 	DefaultChassisSkinID whereHelperstring
 	BrandID              whereHelpernull_String
-	FactionID            whereHelpernull_String
 	MechType             whereHelpernull_String
 }{
 	ID:                   whereHelperstring{field: "\"mech_models\".\"id\""},
@@ -87,14 +81,12 @@ var MechModelWhere = struct {
 	CreatedAt:            whereHelpertime_Time{field: "\"mech_models\".\"created_at\""},
 	DefaultChassisSkinID: whereHelperstring{field: "\"mech_models\".\"default_chassis_skin_id\""},
 	BrandID:              whereHelpernull_String{field: "\"mech_models\".\"brand_id\""},
-	FactionID:            whereHelpernull_String{field: "\"mech_models\".\"faction_id\""},
 	MechType:             whereHelpernull_String{field: "\"mech_models\".\"mech_type\""},
 }
 
 // MechModelRels is where relationship names are stored.
 var MechModelRels = struct {
 	Brand                   string
-	Faction                 string
 	DefaultChassisSkin      string
 	BlueprintMechAnimations string
 	BlueprintMechSkins      string
@@ -104,7 +96,6 @@ var MechModelRels = struct {
 	ModelMechs              string
 }{
 	Brand:                   "Brand",
-	Faction:                 "Faction",
 	DefaultChassisSkin:      "DefaultChassisSkin",
 	BlueprintMechAnimations: "BlueprintMechAnimations",
 	BlueprintMechSkins:      "BlueprintMechSkins",
@@ -117,7 +108,6 @@ var MechModelRels = struct {
 // mechModelR is where relationships are stored.
 type mechModelR struct {
 	Brand                   *Brand                      `boiler:"Brand" boil:"Brand" json:"Brand" toml:"Brand" yaml:"Brand"`
-	Faction                 *Faction                    `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
 	DefaultChassisSkin      *BlueprintMechSkin          `boiler:"DefaultChassisSkin" boil:"DefaultChassisSkin" json:"DefaultChassisSkin" toml:"DefaultChassisSkin" yaml:"DefaultChassisSkin"`
 	BlueprintMechAnimations BlueprintMechAnimationSlice `boiler:"BlueprintMechAnimations" boil:"BlueprintMechAnimations" json:"BlueprintMechAnimations" toml:"BlueprintMechAnimations" yaml:"BlueprintMechAnimations"`
 	BlueprintMechSkins      BlueprintMechSkinSlice      `boiler:"BlueprintMechSkins" boil:"BlueprintMechSkins" json:"BlueprintMechSkins" toml:"BlueprintMechSkins" yaml:"BlueprintMechSkins"`
@@ -136,9 +126,9 @@ func (*mechModelR) NewStruct() *mechModelR {
 type mechModelL struct{}
 
 var (
-	mechModelAllColumns            = []string{"id", "label", "created_at", "default_chassis_skin_id", "brand_id", "faction_id", "mech_type"}
+	mechModelAllColumns            = []string{"id", "label", "created_at", "default_chassis_skin_id", "brand_id", "mech_type"}
 	mechModelColumnsWithoutDefault = []string{"label", "default_chassis_skin_id"}
-	mechModelColumnsWithDefault    = []string{"id", "created_at", "brand_id", "faction_id", "mech_type"}
+	mechModelColumnsWithDefault    = []string{"id", "created_at", "brand_id", "mech_type"}
 	mechModelPrimaryKeyColumns     = []string{"id"}
 	mechModelGeneratedColumns      = []string{}
 )
@@ -400,21 +390,6 @@ func (o *MechModel) Brand(mods ...qm.QueryMod) brandQuery {
 	return query
 }
 
-// Faction pointed to by the foreign key.
-func (o *MechModel) Faction(mods ...qm.QueryMod) factionQuery {
-	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.FactionID),
-		qmhelper.WhereIsNull("deleted_at"),
-	}
-
-	queryMods = append(queryMods, mods...)
-
-	query := Factions(queryMods...)
-	queries.SetFrom(query.Query, "\"factions\"")
-
-	return query
-}
-
 // DefaultChassisSkin pointed to by the foreign key.
 func (o *MechModel) DefaultChassisSkin(mods ...qm.QueryMod) blueprintMechSkinQuery {
 	queryMods := []qm.QueryMod{
@@ -656,115 +631,6 @@ func (mechModelL) LoadBrand(e boil.Executor, singular bool, maybeMechModel inter
 				local.R.Brand = foreign
 				if foreign.R == nil {
 					foreign.R = &brandR{}
-				}
-				foreign.R.MechModels = append(foreign.R.MechModels, local)
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
-// LoadFaction allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for an N-1 relationship.
-func (mechModelL) LoadFaction(e boil.Executor, singular bool, maybeMechModel interface{}, mods queries.Applicator) error {
-	var slice []*MechModel
-	var object *MechModel
-
-	if singular {
-		object = maybeMechModel.(*MechModel)
-	} else {
-		slice = *maybeMechModel.(*[]*MechModel)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &mechModelR{}
-		}
-		if !queries.IsNil(object.FactionID) {
-			args = append(args, object.FactionID)
-		}
-
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &mechModelR{}
-			}
-
-			for _, a := range args {
-				if queries.Equal(a, obj.FactionID) {
-					continue Outer
-				}
-			}
-
-			if !queries.IsNil(obj.FactionID) {
-				args = append(args, obj.FactionID)
-			}
-
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`factions`),
-		qm.WhereIn(`factions.id in ?`, args...),
-		qmhelper.WhereIsNull(`factions.deleted_at`),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load Faction")
-	}
-
-	var resultSlice []*Faction
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice Faction")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for factions")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for factions")
-	}
-
-	if len(mechModelAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-
-	if len(resultSlice) == 0 {
-		return nil
-	}
-
-	if singular {
-		foreign := resultSlice[0]
-		object.R.Faction = foreign
-		if foreign.R == nil {
-			foreign.R = &factionR{}
-		}
-		foreign.R.MechModels = append(foreign.R.MechModels, object)
-		return nil
-	}
-
-	for _, local := range slice {
-		for _, foreign := range resultSlice {
-			if queries.Equal(local.FactionID, foreign.ID) {
-				local.R.Faction = foreign
-				if foreign.R == nil {
-					foreign.R = &factionR{}
 				}
 				foreign.R.MechModels = append(foreign.R.MechModels, local)
 				break
@@ -1535,85 +1401,6 @@ func (o *MechModel) RemoveBrand(exec boil.Executor, related *Brand) error {
 
 	for i, ri := range related.R.MechModels {
 		if queries.Equal(o.BrandID, ri.BrandID) {
-			continue
-		}
-
-		ln := len(related.R.MechModels)
-		if ln > 1 && i < ln-1 {
-			related.R.MechModels[i] = related.R.MechModels[ln-1]
-		}
-		related.R.MechModels = related.R.MechModels[:ln-1]
-		break
-	}
-	return nil
-}
-
-// SetFaction of the mechModel to the related item.
-// Sets o.R.Faction to related.
-// Adds o to related.R.MechModels.
-func (o *MechModel) SetFaction(exec boil.Executor, insert bool, related *Faction) error {
-	var err error
-	if insert {
-		if err = related.Insert(exec, boil.Infer()); err != nil {
-			return errors.Wrap(err, "failed to insert into foreign table")
-		}
-	}
-
-	updateQuery := fmt.Sprintf(
-		"UPDATE \"mech_models\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"faction_id"}),
-		strmangle.WhereClause("\"", "\"", 2, mechModelPrimaryKeyColumns),
-	)
-	values := []interface{}{related.ID, o.ID}
-
-	if boil.DebugMode {
-		fmt.Fprintln(boil.DebugWriter, updateQuery)
-		fmt.Fprintln(boil.DebugWriter, values)
-	}
-	if _, err = exec.Exec(updateQuery, values...); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	queries.Assign(&o.FactionID, related.ID)
-	if o.R == nil {
-		o.R = &mechModelR{
-			Faction: related,
-		}
-	} else {
-		o.R.Faction = related
-	}
-
-	if related.R == nil {
-		related.R = &factionR{
-			MechModels: MechModelSlice{o},
-		}
-	} else {
-		related.R.MechModels = append(related.R.MechModels, o)
-	}
-
-	return nil
-}
-
-// RemoveFaction relationship.
-// Sets o.R.Faction to nil.
-// Removes o from all passed in related items' relationships struct (Optional).
-func (o *MechModel) RemoveFaction(exec boil.Executor, related *Faction) error {
-	var err error
-
-	queries.SetScanner(&o.FactionID, nil)
-	if _, err = o.Update(exec, boil.Whitelist("faction_id")); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	if o.R != nil {
-		o.R.Faction = nil
-	}
-	if related == nil || related.R == nil {
-		return nil
-	}
-
-	for i, ri := range related.R.MechModels {
-		if queries.Equal(o.FactionID, ri.FactionID) {
 			continue
 		}
 
