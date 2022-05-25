@@ -157,7 +157,7 @@ func NewAPI(
 	})
 	api.SecureUserCommander = ws.NewCommander(func(c *ws.Commander) {
 		c.RestBridge("/rest")
-	}, "user commander")
+	})
 	api.SecureFactionCommander = ws.NewCommander(func(c *ws.Commander) {
 		c.RestBridge("/rest")
 	})
@@ -215,33 +215,54 @@ func NewAPI(
 
 		r.Route("/ws", func(r chi.Router) {
 			r.Use(ws.TrimPrefix("/api/ws"))
+
+			// public route ws
 			r.Mount("/public", ws.NewServer(func(s *ws.Server) {
 				s.Mount("/commander", api.Commander)
-				s.WS("/*", "", nil)
 				s.WS("/global_chat", HubKeyGlobalChatSubscribe, cc.GlobalChatUpdatedSubscribeHandler)
 				s.WS("/global_announcement", server.HubKeyGlobalAnnouncementSubscribe, sc.GlobalAnnouncementSubscribe)
 				s.WS("/live_data", server.HubKeySaleAbilityPriceSubscribe, nil)
+
+				// come from battle
+				s.WS("/notification", battle.HubKeyGameNotification, nil)
+				s.WS("/mech/{slotNumber}", battle.HubKeyWarMachineStatUpdated, battleArenaClient.WarMachineStatUpdatedSubscribe)
 			}))
 
-			// battle arena route
-			r.Mount("/battle", ws.NewServer(battleArenaClient.Route(api.AuthWS, api.AuthUserFactionWS)))
+			// battle arena route ws
+			r.Mount("/battle", ws.NewServer(func(s *ws.Server) {
+				s.WS("/*", battle.HubKeyGameSettingsUpdated, battleArenaClient.SendSettings)
+				s.WS("/bribe_stage", battle.HubKeyBribeStageUpdateSubscribe, battleArenaClient.BribeStageSubscribe)
+				s.WS("/live_data", "", nil)
+			}))
 
-			// secured user route
+			// secured user route ws
 			r.Mount("/user/{user_id}", ws.NewServer(func(s *ws.Server) {
 				s.Use(api.AuthWS(true, true))
 				s.Mount("/user_commander", api.SecureUserCommander)
 				s.WS("/*", HubKeyUserSubscribe, server.MustSecure(pc.PlayersSubscribeHandler))
-				s.WS("/multipliers", battle.HubKeyMultiplierSubscribe, server.MustSecure(api.BattleArena.MultiplierUpdate))
+				s.WS("/multipliers", battle.HubKeyMultiplierSubscribe, server.MustSecure(battleArenaClient.MultiplierUpdate))
 			}))
 
-			// secured faction route
+			// secured faction route ws
 			r.Mount("/faction/{faction_id}", ws.NewServer(func(s *ws.Server) {
 				s.Use(api.AuthUserFactionWS(true))
 				s.WS("/*", HubKeyFactionActivePlayersSubscribe, server.MustSecureFaction(pc.FactionActivePlayersSubscribeHandler))
 				s.Mount("/faction_commander", api.SecureFactionCommander)
 				s.WS("/punish_vote", HubKeyPunishVoteSubscribe, server.MustSecureFaction(pc.PunishVoteSubscribeHandler))
 				s.WS("/faction_chat", HubKeyFactionChatSubscribe, server.MustSecureFaction(cc.FactionChatUpdatedSubscribeHandler))
+
+				// subscription from battle
+				s.WS("/queue", battle.WSQueueStatusSubscribe, server.MustSecureFaction(battleArenaClient.QueueStatusSubscribeHandler))
 			}))
+
+			// handle abilities ws
+			r.Mount("/ability/{faction_id}", ws.NewServer(func(s *ws.Server) {
+				s.Use(api.AuthUserFactionWS(true))
+				s.WS("/*", battle.HubKeyBattleAbilityUpdated, server.MustSecureFaction(battleArenaClient.BattleAbilityUpdateSubscribeHandler))
+				s.WS("/faction", battle.HubKeyFactionUniqueAbilitiesUpdated, server.MustSecureFaction(battleArenaClient.FactionAbilitiesUpdateSubscribeHandler))
+				s.WS("/mech/{slotNumber}", battle.HubKeyWarMachineAbilitiesUpdated, server.MustSecureFaction(battleArenaClient.WarMachineAbilitiesUpdateSubscribeHandler))
+			}))
+
 		})
 	})
 
@@ -385,7 +406,7 @@ func (api *API) AuthUserFactionWS(factionIDMustMatch bool) func(next http.Handle
 			if factionIDMustMatch {
 				factionID := chi.URLParam(r, "faction_id")
 				if factionID == "" || factionID != user.FactionID.String {
-					fmt.Fprintf(w, "authentication location error: %v", err)
+					fmt.Fprintf(w, "faction id check failed... url faction id: %s, user faction id: %s, url:%s", factionID, user.FactionID.String, r.URL.Path)
 					return
 				}
 			}
@@ -407,15 +428,14 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 
 			cookie, err := r.Cookie("xsyn-token")
 			if err != nil {
-				fmt.Fprintf(w, "cookie not found: %v", err)
 				token = r.URL.Query().Get("token")
 				if token == "" {
 					return
 				}
 			} else {
 				if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
-					fmt.Fprintf(w, "decryption error: %v", err)
 					if required {
+						gamelog.L.Error().Err(err).Msg("decrypting cookie error")
 						return
 					}
 					next.ServeHTTP(w, r)
@@ -425,8 +445,8 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 
 			user, err := api.TokenLogin(token)
 			if err != nil {
-				fmt.Fprintf(w, "authentication error: %v", err)
 				if required {
+					gamelog.L.Error().Err(err).Msg("authentication error")
 					return
 				}
 				next.ServeHTTP(w, r)
@@ -436,7 +456,11 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 			if userIDMustMatch {
 				userID := chi.URLParam(r, "user_id")
 				if userID == "" || userID != user.ID {
-					fmt.Fprintf(w, "authentication location error: %v", err)
+					gamelog.L.Error().Err(fmt.Errorf("user id check failed")).
+						Str("userID", userID).
+						Str("user.ID", user.ID).
+						Str("r.URL.Path", r.URL.Path).
+						Msg("user id check failed")
 					return
 				}
 			}

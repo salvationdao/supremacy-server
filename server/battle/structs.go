@@ -154,12 +154,12 @@ type DamageHistory struct {
 }
 
 type WarMachineBrief struct {
-	ParticipantID byte          `json:"participantID"`
-	Hash          string        `json:"hash"`
-	ImageUrl      string        `json:"imageUrl"`
-	ImageAvatar   string        `json:"imageAvatar"`
-	Name          string        `json:"name"`
-	Faction       *FactionBrief `json:"faction"`
+	ParticipantID byte   `json:"participantID"`
+	Hash          string `json:"hash"`
+	ImageUrl      string `json:"imageUrl"`
+	ImageAvatar   string `json:"imageAvatar"`
+	Name          string `json:"name"`
+	FactionID     string `json:"factionID"`
 }
 
 type FactionBrief struct {
