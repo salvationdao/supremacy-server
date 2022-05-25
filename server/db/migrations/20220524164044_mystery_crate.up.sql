@@ -438,7 +438,8 @@ INSERT INTO blueprint_power_cores (collection, label, size, capacity, max_draw_r
 -- looping over each type of mystery crate type for x amount of crates for each faction. can do 1 big loop if all crate types have the same amount
 DO $$
     BEGIN
-        FOR COUNT IN 1..100 LOOP
+    --should be more than 100 and end in -00 for all math to math plz
+        FOR COUNT IN 1..200 LOOP
             INSERT INTO mystery_crate (type, faction_id, label) VALUES ('MECH', (SELECT id FROM factions f WHERE f.label = 'Red Mountain Offworld Mining Corporation'), 'RMOMC Mech Mystery Crate');
             INSERT INTO mystery_crate (type, faction_id, label) VALUES ('MECH', (SELECT id FROM factions f WHERE f.label = 'Zaibatsu Heavy Industries'), 'ZHI Mech Mystery Crate');
             INSERT INTO mystery_crate (type, faction_id, label) VALUES ('MECH', (SELECT id FROM factions f WHERE f.label = 'Boston Cybernetics'), 'BC Mech Mystery Crate');
@@ -464,17 +465,19 @@ DO $$
     DECLARE mechCrate mystery_crate%rowtype;
     DECLARE weaponCrate mystery_crate%rowtype;
     DECLARE i integer;
+    DECLARE mechCrateLen integer;
 
-    BEGIN
+BEGIN
     --for each faction loop over the mystery crates of specified faction
         FOR faction in SELECT * FROM factions
         LOOP
             i := 1;
+            mechCrateLen := (SELECT COUNT(*) FROM mystery_crate WHERE faction_id = faction.id AND type = 'MECH')/2;
             -- for half of the Mechs, insert a mech object from the appropriate brand's bipedal mechs and a fitted power core
             FOR mechCrate in SELECT * FROM mystery_crate WHERE faction_id = faction.id AND type = 'MECH'
             LOOP
                 CASE
-                    WHEN i <=((SELECT COUNT(*) FROM mystery_crate WHERE faction_id = faction.id AND type = 'MECH') /2) THEN
+                    WHEN i <=(mechCrateLen) THEN
                         INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (mechCrate.id, 'MECH', (SELECT id FROM blueprint_mechs WHERE blueprint_mechs.power_core_size = 'SMALL' AND
                         blueprint_mechs.brand_id =
                             CASE
@@ -484,6 +487,54 @@ DO $$
                             END
                         ));
                         INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (mechCrate.id, 'POWER_CORE', (SELECT id FROM blueprint_power_cores c WHERE c.label = 'Standard Energy Core'));
+                        INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (mechCrate.id, 'MECH_SKIN', (SELECT id FROM blueprint_mech_skin WHERE mech_type = 'HUMANOID' AND
+                        blueprint_mech_skin.mech_model =
+                            CASE
+                                WHEN faction.label = 'Boston Cybernetics' THEN (SELECT id FROM mech_models WHERE label = 'BC Humanoid')
+                                WHEN faction.label = 'Zaibatsu Heavy Industries' THEN (SELECT id FROM mech_models WHERE label = 'ZHI Humanoid')
+                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN (SELECT id FROM mech_models WHERE label = 'RMOMC Humanoid')
+                            END
+                        AND label =
+                            CASE
+                                --30% default skin
+                                WHEN i <= (.30*mechCrateLen) THEN
+                                    CASE
+                                        WHEN faction.label = 'Boston Cybernetics' THEN 'BC Default'
+                                        WHEN faction.label = 'Zaibatsu Heavy Industries' THEN 'ZHI Default'
+                                        WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN 'RMOMC Default'
+                                    END
+                                --25% for manufacturer's skin
+                                WHEN i > (.30*mechCrateLen) AND i <= (.55*mechCrateLen) THEN
+                                    CASE
+                                        WHEN faction.label = 'Boston Cybernetics' THEN 'Daison Avionics'
+                                        WHEN faction.label = 'Zaibatsu Heavy Industries' THEN 'x3 Wartech'
+                                        WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN 'Unified Martian Corporation'
+                                    END
+                                --17% for camo
+                                WHEN i > (.55*mechCrateLen) AND i <= (.72*mechCrateLen) THEN
+                                    CASE
+                                        WHEN faction.label = 'Boston Cybernetics' THEN 'Blue Camo'
+                                        WHEN faction.label = 'Zaibatsu Heavy Industries' THEN 'White Camo'
+                                        WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN 'Red Camo'
+                                    END
+                                --17% for theme
+                                WHEN i > (.72*mechCrateLen) AND i <= (.89*mechCrateLen) THEN
+                                    CASE
+                                        WHEN faction.label = 'Boston Cybernetics' THEN 'Police'
+                                        WHEN faction.label = 'Zaibatsu Heavy Industries' THEN 'Ninja'
+                                        WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN 'Mining'
+                                    END
+                                --10% for Gold
+                                WHEN i > (.89*mechCrateLen) AND i <= (.99*mechCrateLen) THEN 'Gold'
+                                --1% for rare color
+                                WHEN i > (.99*mechCrateLen) AND i <= (1*mechCrateLen) THEN
+                                    CASE
+                                        WHEN faction.label = 'Boston Cybernetics' THEN 'Crystal'
+                                        WHEN faction.label = 'Zaibatsu Heavy Industries' THEN 'Neon'
+                                        WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN 'Molten'
+                                    END
+                            END
+                        ));
                         i := i + 1;
                     -- for other half of the Mechs, insert a mech object from the appropriate brand's platform mechs and a fitted power core
                     ELSE
@@ -495,7 +546,56 @@ DO $$
                                     WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN (SELECT id FROM brands WHERE label = 'Unified Martian Corporation')
                                 END
                             ));
-                            INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (mechCrate.id, 'POWER_CORE', (SELECT id FROM blueprint_power_cores c WHERE c.size = 'MEDIUM'));
+                        INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (mechCrate.id, 'POWER_CORE', (SELECT id FROM blueprint_power_cores c WHERE c.size = 'MEDIUM'));
+                        INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (mechCrate.id, 'MECH_SKIN', (SELECT id FROM blueprint_mech_skin WHERE mech_type = 'PLATFORM' AND
+                        blueprint_mech_skin.mech_model =
+                            CASE
+                                WHEN faction.label = 'Boston Cybernetics' THEN (SELECT id FROM mech_models WHERE label = 'BC Platform')
+                                WHEN faction.label = 'Zaibatsu Heavy Industries' THEN (SELECT id FROM mech_models WHERE label = 'ZHI Platform')
+                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN (SELECT id FROM mech_models WHERE label = 'RMOMC Platform')
+                            END
+                            AND label =
+                            CASE
+                                --30% default skin
+                                WHEN i <= ((.30*mechCrateLen) + mechCrateLen) THEN
+                                    CASE
+                                        WHEN faction.label = 'Boston Cybernetics' THEN 'BC Default'
+                                        WHEN faction.label = 'Zaibatsu Heavy Industries' THEN 'ZHI Default'
+                                        WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN 'RMOMC Default'
+                                    END
+                                --25% for manufacturer's skin
+                                WHEN i > ((.30*mechCrateLen) + mechCrateLen) AND i <= ((.55*mechCrateLen) + mechCrateLen) THEN
+                                    CASE
+                                        WHEN faction.label = 'Boston Cybernetics' THEN 'Daison Avionics'
+                                        WHEN faction.label = 'Zaibatsu Heavy Industries' THEN 'x3 Wartech'
+                                        WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN 'Unified Martian Corporation'
+                                    END
+                                --17% for camo
+                                WHEN i > ((.55*mechCrateLen) + mechCrateLen) AND i <= ((.72*mechCrateLen) + mechCrateLen) THEN
+                                    CASE
+                                        WHEN faction.label = 'Boston Cybernetics' THEN 'Blue Camo'
+                                        WHEN faction.label = 'Zaibatsu Heavy Industries' THEN 'White Camo'
+                                        WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN 'Red Camo'
+                                    END
+                                --17% for theme
+                                WHEN i > ((.72*mechCrateLen) + mechCrateLen) AND i <= ((.89*mechCrateLen) + mechCrateLen) THEN
+                                    CASE
+                                        WHEN faction.label = 'Boston Cybernetics' THEN 'Police'
+                                        WHEN faction.label = 'Zaibatsu Heavy Industries' THEN 'Ninja'
+                                        WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN 'Mining'
+                                    END
+                                --10% for Gold
+                                WHEN i > ((.89*mechCrateLen) + mechCrateLen) AND i <= ((.99*mechCrateLen) + mechCrateLen) THEN 'Gold'
+                                --1% for rare color
+                                WHEN i > ((.99*mechCrateLen) + mechCrateLen) AND i <= ((1*mechCrateLen) + mechCrateLen) THEN
+                                    CASE
+                                        WHEN faction.label = 'Boston Cybernetics' THEN 'Crystal'
+                                        WHEN faction.label = 'Zaibatsu Heavy Industries' THEN 'Neon'
+                                        WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN 'Molten'
+                                    END
+                                END
+
+                        ));
                             i = i + 1;
                 END CASE;
             END LOOP;
@@ -622,7 +722,7 @@ DO $$
 $$;
 
 -- seeding skins... skins can be variable for weapons
-
+-- mech skins
 
 --seeding storefront
 -- for each faction, seed each type of crate and find how much are for sale
