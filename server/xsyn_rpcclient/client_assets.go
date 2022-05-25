@@ -1,11 +1,12 @@
-package rpcclient
+package xsyn_rpcclient
 
 import (
-	"github.com/volatiletech/null/v8"
 	"server"
 	"server/gamelog"
 	"server/rpctypes"
 	"strings"
+
+	"github.com/volatiletech/null/v8"
 )
 
 type AssetOnChainStatusReq struct {
@@ -17,7 +18,7 @@ type AssetOnChainStatusResp struct {
 }
 
 // AssetOnChainStatus return an assets on chain status
-func (pp *PassportXrpcClient) AssetOnChainStatus(assetID string) (server.OnChainStatus, error) {
+func (pp *XsynXrpcClient) AssetOnChainStatus(assetID string) (server.OnChainStatus, error) {
 	resp := &AssetOnChainStatusResp{}
 	err := pp.XrpcClient.Call("S.AssetOnChainStatusHandler", AssetOnChainStatusReq{assetID}, resp)
 	if err != nil {
@@ -36,7 +37,7 @@ type AssetsOnChainStatusResp struct {
 }
 
 // AssetsOnChainStatus return a map of assets on chain statuses map[assetID]onChainStatus
-func (pp *PassportXrpcClient) AssetsOnChainStatus(assetIDs []string) (map[string]server.OnChainStatus, error) {
+func (pp *XsynXrpcClient) AssetsOnChainStatus(assetIDs []string) (map[string]server.OnChainStatus, error) {
 	resp := &AssetsOnChainStatusResp{}
 	err := pp.XrpcClient.Call("S.AssetsOnChainStatusHandler", AssetsOnChainStatusReq{assetIDs}, resp)
 	if err != nil {
@@ -56,7 +57,7 @@ type RegisterAssetResp struct {
 }
 
 // AssetRegister registers a item on xsyn
-func (pp *PassportXrpcClient) AssetRegister(ass *rpctypes.XsynAsset) error {
+func (pp *XsynXrpcClient) AssetRegister(ass *rpctypes.XsynAsset) error {
 	resp := &RegisterAssetResp{}
 	err := pp.XrpcClient.Call("S.AssetRegisterHandler", RegisterAssetReq{
 		ass,
@@ -78,7 +79,7 @@ type RegisterAssetsResp struct {
 }
 
 // AssetsRegister registers items on xsyn
-func (pp *PassportXrpcClient) AssetsRegister(ass []*rpctypes.XsynAsset) error {
+func (pp *XsynXrpcClient) AssetsRegister(ass []*rpctypes.XsynAsset) error {
 	resp := &RegisterAssetsResp{}
 	err := pp.XrpcClient.Call("S.AssetsRegisterHandler", RegisterAssetsReq{
 		ass,
@@ -105,7 +106,7 @@ type UpdateStoreItemIDsResp struct {
 }
 
 // UpdateStoreItemIDs updates the store item ids on passport server
-func (pp *PassportXrpcClient) UpdateStoreItemIDs(assetsToUpdate []*TemplatesToUpdate) error {
+func (pp *XsynXrpcClient) UpdateStoreItemIDs(assetsToUpdate []*TemplatesToUpdate) error {
 	resp := &UpdateStoreItemIDsResp{}
 	err := pp.XrpcClient.Call("S.UpdateStoreItemIDsHandler", UpdateStoreItemIDsReq{
 		StoreItemsToUpdate: assetsToUpdate,
@@ -148,7 +149,7 @@ type UpdateUser1155AssetResp struct {
 	PublicAddress null.String `json:"public_address"`
 }
 
-func (pp *PassportXrpcClient) UpdateKeycardItem(keycardUpdate UpdateUser1155AssetReq) (*UpdateUser1155AssetResp, error) {
+func (pp *XsynXrpcClient) UpdateKeycardItem(keycardUpdate UpdateUser1155AssetReq) (*UpdateUser1155AssetResp, error) {
 	resp := &UpdateUser1155AssetResp{}
 	err := pp.XrpcClient.Call("S.InsertUser1155Asset", keycardUpdate, resp)
 	if err != nil {

@@ -11,7 +11,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"server/rpcclient"
+	"server/xsyn_rpcclient"
 	"sync"
 	"time"
 
@@ -727,7 +727,7 @@ func (ga *GameAbility) FactionUniqueAbilityPriceUpdate(minPrice decimal.Decimal)
 }
 
 // SupContribution contribute sups to specific game ability, return the actual sups spent and whether the ability is triggered
-func (ga *GameAbility) SupContribution(ppClient *rpcclient.PassportXrpcClient, as *AbilitiesSystem, battleID string, battleNumber int, userID uuid.UUID, amount decimal.Decimal) (decimal.Decimal, decimal.Decimal, bool, error) {
+func (ga *GameAbility) SupContribution(ppClient *xsyn_rpcclient.XsynXrpcClient, as *AbilitiesSystem, battleID string, battleNumber int, userID uuid.UUID, amount decimal.Decimal) (decimal.Decimal, decimal.Decimal, bool, error) {
 
 	isTriggered := false
 
@@ -743,7 +743,7 @@ func (ga *GameAbility) SupContribution(ppClient *rpcclient.PassportXrpcClient, a
 
 	amount = amount.Truncate(0)
 
-	supSpendReq := rpcclient.SpendSupsReq{
+	supSpendReq := xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           userID,
 		ToUserID:             SupremacyBattleUserID,
 		Amount:               amount.String(),

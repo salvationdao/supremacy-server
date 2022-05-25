@@ -6,9 +6,6 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/gofrs/uuid"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 	"log"
 	"net/url"
 	"runtime"
@@ -20,10 +17,14 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"server/rpcclient"
 	"server/rpctypes"
 	"server/sms"
 	"server/telegram"
+	"server/xsyn_rpcclient"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/gofrs/uuid"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	"github.com/ninja-syndicate/ws"
 
@@ -291,7 +292,7 @@ func main() {
 					}
 
 					gamelog.L.Info().Msg("start rpc client")
-					rpcClient := rpcclient.NewPassportXrpcClient(passportClientToken, u.Hostname(), 10001, 34)
+					rpcClient := xsyn_rpcclient.NewXsynXrpcClient(passportClientToken, u.Hostname(), 10001, 34)
 
 					gamelog.L.Info().Msg("start rpc server")
 					rpcServer := &comms.XrpcServer{}
@@ -411,7 +412,7 @@ func main() {
 	}
 }
 
-func RegisterAllNewAssets(pp *rpcclient.PassportXrpcClient) {
+func RegisterAllNewAssets(pp *xsyn_rpcclient.XsynXrpcClient) {
 	// Lets do this in chunks, going to be like 30-40k items to add to passport.
 	// mechs
 	go func() {
@@ -557,10 +558,10 @@ func RegisterAllNewAssets(pp *rpcclient.PassportXrpcClient) {
 	}()
 }
 
-func UpdateXsynStoreItemTemplates(pp *rpcclient.PassportXrpcClient) {
+func UpdateXsynStoreItemTemplates(pp *xsyn_rpcclient.XsynXrpcClient) {
 	updated := db.GetBoolWithDefault("UPDATED_TEMPLATE_ITEMS_IDS", false)
 	if !updated {
-		var assets []*rpcclient.TemplatesToUpdate
+		var assets []*xsyn_rpcclient.TemplatesToUpdate
 		query := `
 			SELECT tpo.id as old_template_id, tpbp.template_id as new_template_id
 			FROM templates_old tpo
@@ -588,7 +589,7 @@ type KeyCardUpdate struct {
 	BlueprintID   string
 }
 
-func UpdateKeycard(pp *rpcclient.PassportXrpcClient, filePath string) {
+func UpdateKeycard(pp *xsyn_rpcclient.XsynXrpcClient, filePath string) {
 	gamelog.L.Info().Msg("Syncing Keycards with Passport")
 	updated := db.GetBoolWithDefault("UPDATED_KEYCARD_ITEMS", false)
 	if !updated {
@@ -625,8 +626,8 @@ func UpdateKeycard(pp *rpcclient.PassportXrpcClient, filePath string) {
 		failed := 0
 		success := 0
 
-		var keycardAssets rpcclient.UpdateUser1155AssetReq
-		var keyCardData []rpcclient.Supremacy1155Asset
+		var keycardAssets xsyn_rpcclient.UpdateUser1155AssetReq
+		var keyCardData []xsyn_rpcclient.Supremacy1155Asset
 		for i, KeyCardUpdate := range KeyCardUpdates {
 			keycard, err := boiler.BlueprintKeycards(boiler.BlueprintKeycardWhere.ID.EQ(KeyCardUpdate.BlueprintID)).One(gamedb.StdConn)
 			if err != nil {
@@ -642,7 +643,7 @@ func UpdateKeycard(pp *rpcclient.PassportXrpcClient, filePath string) {
 					attrValue = keycard.Syndicate.String
 				}
 
-				keyCardData = append(keyCardData, rpcclient.Supremacy1155Asset{
+				keyCardData = append(keyCardData, xsyn_rpcclient.Supremacy1155Asset{
 					BlueprintID:    keycard.ID,
 					Label:          keycard.Label,
 					Description:    keycard.Description,
@@ -652,8 +653,8 @@ func UpdateKeycard(pp *rpcclient.PassportXrpcClient, filePath string) {
 					ImageURL:       keycard.ImageURL,
 					AnimationURL:   keycard.AnimationURL.String,
 					KeycardGroup:   keycard.KeycardGroup,
-					Attributes: []rpcclient.SupremacyKeycardAttribute{
-						rpcclient.SupremacyKeycardAttribute{
+					Attributes: []xsyn_rpcclient.SupremacyKeycardAttribute{
+						xsyn_rpcclient.SupremacyKeycardAttribute{
 							TraitType: "Syndicate",
 							Value:     attrValue,
 						},
@@ -668,7 +669,7 @@ func UpdateKeycard(pp *rpcclient.PassportXrpcClient, filePath string) {
 					attrValue = keycard.Syndicate.String
 				}
 
-				keyCardData = append(keyCardData, rpcclient.Supremacy1155Asset{
+				keyCardData = append(keyCardData, xsyn_rpcclient.Supremacy1155Asset{
 					BlueprintID:    keycard.ID,
 					Label:          keycard.Label,
 					Description:    keycard.Description,
@@ -678,8 +679,8 @@ func UpdateKeycard(pp *rpcclient.PassportXrpcClient, filePath string) {
 					ImageURL:       keycard.ImageURL,
 					AnimationURL:   keycard.AnimationURL.String,
 					KeycardGroup:   keycard.KeycardGroup,
-					Attributes: []rpcclient.SupremacyKeycardAttribute{
-						rpcclient.SupremacyKeycardAttribute{
+					Attributes: []xsyn_rpcclient.SupremacyKeycardAttribute{
+						xsyn_rpcclient.SupremacyKeycardAttribute{
 							TraitType: "Syndicate",
 							Value:     attrValue,
 						},
@@ -750,7 +751,7 @@ func UpdateKeycard(pp *rpcclient.PassportXrpcClient, filePath string) {
 				attrValue = keycard.Syndicate.String
 			}
 
-			keyCardData = append(keyCardData, rpcclient.Supremacy1155Asset{
+			keyCardData = append(keyCardData, xsyn_rpcclient.Supremacy1155Asset{
 				BlueprintID:    keycard.ID,
 				Label:          keycard.Label,
 				Description:    keycard.Description,
@@ -760,8 +761,8 @@ func UpdateKeycard(pp *rpcclient.PassportXrpcClient, filePath string) {
 				ImageURL:       keycard.ImageURL,
 				AnimationURL:   keycard.AnimationURL.String,
 				KeycardGroup:   keycard.KeycardGroup,
-				Attributes: []rpcclient.SupremacyKeycardAttribute{
-					rpcclient.SupremacyKeycardAttribute{
+				Attributes: []xsyn_rpcclient.SupremacyKeycardAttribute{
+					xsyn_rpcclient.SupremacyKeycardAttribute{
 						TraitType: "Syndicate",
 						Value:     attrValue,
 					},
@@ -777,7 +778,7 @@ func UpdateKeycard(pp *rpcclient.PassportXrpcClient, filePath string) {
 
 }
 
-func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, battleArenaClient *battle.Arena, passport *rpcclient.PassportXrpcClient, messageBus *messagebus.MessageBus, gsHub *hub.Hub, sms server.SMS, telegram server.Telegram, languageDetector lingua.LanguageDetector) (*api.API, error) {
+func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, battleArenaClient *battle.Arena, passport *xsyn_rpcclient.XsynXrpcClient, messageBus *messagebus.MessageBus, gsHub *hub.Hub, sms server.SMS, telegram server.Telegram, languageDetector lingua.LanguageDetector) (*api.API, error) {
 	environment := ctxCLI.String("environment")
 	sentryDSNBackend := ctxCLI.String("sentry_dsn_backend")
 	sentryServerName := ctxCLI.String("sentry_server_name")

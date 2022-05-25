@@ -16,7 +16,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/helpers"
-	"server/rpcclient"
+	"server/xsyn_rpcclient"
 	"strings"
 	"time"
 
@@ -626,7 +626,7 @@ func (pc *PlayerController) IssuePunishVote(ctx context.Context, user *boiler.Pl
 	}
 
 	// pay fee to syndicate
-	_, err = pc.API.Passport.SpendSupMessage(rpcclient.SpendSupsReq{
+	_, err = pc.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           userID,
 		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
 		Amount:               price.Mul(decimal.New(1, 18)).String(),

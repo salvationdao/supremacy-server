@@ -12,7 +12,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"server/rpcclient"
+	"server/xsyn_rpcclient"
 	"time"
 
 	"github.com/ninja-software/terror/v2"
@@ -245,7 +245,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, f
 	}
 
 	// Charge user queue fee
-	supTransactionID, err := arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
+	supTransactionID, err := arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		Amount:               queueStatus.QueueCost.String(),
 		FromUserID:           ownerID,
 		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
@@ -282,7 +282,7 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, f
 	// Charge queue notification fee, if enabled (10% of queue cost)
 	if !bq.Notified {
 		notifyCost := queueStatus.QueueCost.Mul(decimal.NewFromFloat(0.1))
-		notifyTransactionID, err := arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
+		notifyTransactionID, err := arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 			Amount:               notifyCost.String(),
 			FromUserID:           ownerID,
 			ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
@@ -546,7 +546,7 @@ func (arena *Arena) QueueLeaveHandler(ctx context.Context, user *boiler.Player, 
 			syndicateBalance := arena.RPCClient.UserBalanceGet(factionAccUUID)
 
 			if syndicateBalance.LessThanOrEqual(*originalQueueCost) {
-				txid, err := arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
+				txid, err := arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 					FromUserID:           uuid.UUID(server.XsynTreasuryUserID),
 					ToUserID:             factionAccUUID,
 					Amount:               originalQueueCost.StringFixed(0),
