@@ -299,45 +299,45 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 			continue
 		}
 
-		// get player profile
-		playerProfile, err := boiler.PlayerProfiles(boiler.PlayerProfileWhere.PlayerID.EQ(player.ID)).One(gamedb.StdConn)
+		// get player preferences
+		prefs, err := boiler.PlayerSettingsPreferences(boiler.PlayerSettingsPreferenceWhere.PlayerID.EQ(player.ID)).One(gamedb.StdConn)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			gamelog.L.Error().Err(err).Str("player_id", player.ID).Msg("unable to get player profile")
+			gamelog.L.Error().Err(err).Str("player_id", player.ID).Msg("unable to get player preferences")
 			continue
 		}
 
-		if playerProfile == nil {
+		if prefs == nil {
 			continue
 		}
 
-		// if user's player profile has telegram or sms notifications enabled
-		notificationsEnabled := (playerProfile.EnableSMSNotifications && playerProfile.MobileNumber.Valid) ||
-			(playerProfile.EnableTelegramNotifications && playerProfile.TelegramID.Valid)
+		// if user's player preferences has telegram or sms notifications enabled
+		notificationsEnabled := (prefs.EnableSMSNotifications && prefs.MobileNumber.Valid) ||
+			(prefs.EnableTelegramNotifications && prefs.TelegramID.Valid)
 
 		if !notificationsEnabled {
 			continue
 		}
 
 		// sms notifications
-		if playerProfile.EnableSMSNotifications && playerProfile.MobileNumber.Valid {
+		if prefs.EnableSMSNotifications && prefs.MobileNumber.Valid {
 			notificationMsg := fmt.Sprintf("%s, your War Machine %s is approaching the front of the queue!\n\nJump into the Battle Arena now to prepare. Your survival has its rewards.\n\n(Reminder: In order to combat scams we will NEVER send you links)", player.Username.String, wmName)
-			gamelog.L.Info().Str("MobileNumber", playerProfile.MobileNumber.String).Msg("sending sms notification")
+			gamelog.L.Info().Str("MobileNumber", prefs.MobileNumber.String).Msg("sending sms notification")
 			err := arena.sms.SendSMS(
-				playerProfile.MobileNumber.String,
+				prefs.MobileNumber.String,
 				notificationMsg,
 			)
 			if err != nil {
-				gamelog.L.Error().Err(err).Str("to", playerProfile.MobileNumber.String).Msg("failed to send battle queue notification sms")
+				gamelog.L.Error().Err(err).Str("to", prefs.MobileNumber.String).Msg("failed to send battle queue notification sms")
 			}
 		}
 
 		// telegram notifications
-		if playerProfile.EnableTelegramNotifications && playerProfile.TelegramID.Valid {
+		if prefs.EnableTelegramNotifications && prefs.TelegramID.Valid {
 			notificationMsg := fmt.Sprintf("🦾 %s, your War Machine %s is approaching the front of the queue!\n\n⚔️ Jump into the Battle Arena now to prepare. Your survival has its rewards.\n\n⚠️ (Reminder: In order to combat scams we will NEVER send you links)", player.Username.String, wmName)
 			gamelog.L.Info().Str("player_id", player.ID).Msg("sending telegram notification")
-			err = arena.telegram.Notify2(playerProfile.TelegramID.Int64, notificationMsg)
+			err = arena.telegram.Notify2(prefs.TelegramID.Int64, notificationMsg)
 			if err != nil {
-				gamelog.L.Error().Err(err).Str("mech_id", bq.MechID).Str("owner_id", bq.OwnerID).Str("queued_at", bq.QueuedAt.String()).Str("telegram id", fmt.Sprintf("%v", playerProfile.TelegramID)).Msg("failed to notify telegram")
+				gamelog.L.Error().Err(err).Str("mech_id", bq.MechID).Str("owner_id", bq.OwnerID).Str("queued_at", bq.QueuedAt.String()).Str("telegram id", fmt.Sprintf("%v", prefs.TelegramID)).Msg("failed to notify telegram")
 			}
 		}
 

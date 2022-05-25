@@ -47,9 +47,8 @@ func NewPlayerController(api *API) *PlayerController {
 	api.SecureUserCommand(HubKeyPlayerUpdateSettings, pc.PlayerUpdateSettingsHandler)
 	api.SecureUserCommand(HubKeyPlayerGetSettings, pc.PlayerGetSettingsHandler)
 
-	// // new ones
-	api.SecureUserCommand(HubKeyPlayerProfileGet, pc.PlayerProfileGetHandler)
-	api.SecureUserCommand(HubKeyPlayerProfileUpdate, pc.PlayerProfileUpdateHandler)
+	api.SecureUserCommand(HubKeyPlayerPreferencesGet, pc.PlayerPreferencesGetHandler)
+	api.SecureUserCommand(HubKeyPlayerPreferencesUpdate, pc.PlayerPreferencesUpdateHandler)
 
 	// punish vote related
 	api.SecureUserCommand(HubKeyPlayerPunishmentList, pc.PlayerPunishmentList)
@@ -839,11 +838,11 @@ func (pc *PlayerController) UserOnline(ctx context.Context, user *boiler.Player,
 	return nil
 }
 
-const HubKeyPlayerProfileGet = "PLAYER:PROFILE_GET"
+const HubKeyPlayerPreferencesGet = "PLAYER:PREFERENCES_GET"
 
-// PlayerGetProfileHandler gets player's profile
-func (pc *PlayerController) PlayerProfileGetHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	errMsg := "Issue getting player profile, try again or contact support."
+// PlayerPreferencesGetHandler gets player's preferences
+func (pc *PlayerController) PlayerPreferencesGetHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	errMsg := "Issue getting player preferences, try again or contact support."
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -851,34 +850,34 @@ func (pc *PlayerController) PlayerProfileGetHandler(ctx context.Context, user *b
 
 	}
 
-	// try get player's profile
-	playerProfile, err := boiler.PlayerProfiles(boiler.PlayerProfileWhere.PlayerID.EQ(user.ID)).One(gamedb.StdConn)
+	// try get player's preferences
+	prefs, err := boiler.PlayerSettingsPreferences(boiler.PlayerSettingsPreferenceWhere.PlayerID.EQ(user.ID)).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return terror.Error(err, errMsg)
 	}
 
-	// if there are no results, create new player profile
+	// if there are no results, create new player preferences
 	if errors.Is(err, sql.ErrNoRows) {
-		_playerProfile := &boiler.PlayerProfile{
+		_prefs := &boiler.PlayerSettingsPreference{
 			PlayerID: user.ID,
 		}
 
-		err := _playerProfile.Insert(gamedb.StdConn, boil.Infer())
+		err := _prefs.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {
 			return terror.Error(err, errMsg)
 		}
-		reply(_playerProfile)
+		reply(_prefs)
 		return nil
 	}
 
-	reply(playerProfile)
+	reply(prefs)
 	return nil
 
 }
 
-const HubKeyPlayerProfileUpdate = "PLAYER:PROFILE_UPDATE"
+const HubKeyPlayerPreferencesUpdate = "PLAYER:PREFERENCES_UPDATE"
 
-type PlayerProfileUpdateRequest struct {
+type PlayerPreferencesUpdateRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
 		EnableTelegramNotifications bool   `json:"enable_telegram_notifications"`
@@ -888,23 +887,23 @@ type PlayerProfileUpdateRequest struct {
 	} `json:"payload"`
 }
 
-func (pc *PlayerController) PlayerProfileUpdateHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+func (pc *PlayerController) PlayerPreferencesUpdateHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Issue updating settings, try again or contact support."
-	req := &PlayerProfileUpdateRequest{}
+	req := &PlayerPreferencesUpdateRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	// getting player's profile
-	playerProfile, err := boiler.PlayerProfiles(boiler.PlayerProfileWhere.PlayerID.EQ(user.ID)).One(gamedb.StdConn)
+	// getting player's preferences
+	prefs, err := boiler.PlayerSettingsPreferences(boiler.PlayerSettingsPreferenceWhere.PlayerID.EQ(user.ID)).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return terror.Error(err, errMsg)
 	}
 
-	// if player doesnt have profile saved, create a new one
+	// if player doesnt have preferences saved, create a new one
 	if errors.Is(err, sql.ErrNoRows) {
-		_playerProfile := &boiler.PlayerProfile{
+		_prefs := &boiler.PlayerSettingsPreference{
 			PlayerID:                    user.ID,
 			EnableTelegramNotifications: req.Payload.EnableTelegramNotifications,
 			EnableSMSNotifications:      req.Payload.EnableSMSNotifications,
@@ -920,32 +919,32 @@ func (pc *PlayerController) PlayerProfileUpdateHandler(ctx context.Context, user
 			}
 
 			// set the verified mobile number
-			_playerProfile.MobileNumber = null.StringFrom(mobileNumber)
+			_prefs.MobileNumber = null.StringFrom(mobileNumber)
 		}
 
-		err = _playerProfile.Insert(gamedb.StdConn, boil.Infer())
+		err = _prefs.Insert(gamedb.StdConn, boil.Infer())
 		if err != nil {
 			return terror.Error(err, errMsg)
 		}
 
-		// if new profile and has telegram notifications enabled, must register to telebot
-		if _playerProfile.EnableTelegramNotifications {
-			playerProfile, err = pc.API.Telegram.ProfileUpdate(user.ID)
+		// if new preferences and has telegram notifications enabled, must register to telebot
+		if _prefs.EnableTelegramNotifications {
+			_, err = pc.API.Telegram.PreferencesUpdate(user.ID)
 			if err != nil {
 				return terror.Error(err, errMsg)
 			}
 		}
-		reply(_playerProfile)
+		reply(_prefs)
 
 		return nil
 	}
 
-	// update profile
-	playerProfile.EnableTelegramNotifications = req.Payload.EnableTelegramNotifications
-	playerProfile.EnableSMSNotifications = req.Payload.EnableSMSNotifications
-	playerProfile.EnablePushNotifications = req.Payload.EnablePushNotifications
-	if !playerProfile.EnableTelegramNotifications {
-		playerProfile.Shortcode = ""
+	// update preferences
+	prefs.EnableTelegramNotifications = req.Payload.EnableTelegramNotifications
+	prefs.EnableSMSNotifications = req.Payload.EnableSMSNotifications
+	prefs.EnablePushNotifications = req.Payload.EnablePushNotifications
+	if !prefs.EnableTelegramNotifications {
+		prefs.Shortcode = ""
 	}
 
 	if req.Payload.EnableSMSNotifications && req.Payload.MobileNumber != "" {
@@ -957,26 +956,26 @@ func (pc *PlayerController) PlayerProfileUpdateHandler(ctx context.Context, user
 		}
 
 		// set the verified mobile number
-		playerProfile.MobileNumber = null.StringFrom(mobileNumber)
+		prefs.MobileNumber = null.StringFrom(mobileNumber)
 	}
 
 	if req.Payload.MobileNumber == "" {
-		playerProfile.MobileNumber = null.String{}
+		prefs.MobileNumber = null.String{}
 	}
 
-	_, err = playerProfile.Update(gamedb.StdConn, boil.Infer())
+	_, err = prefs.Update(gamedb.StdConn, boil.Infer())
 	if err != nil {
 		return terror.Error(err, errMsg)
 	}
 
 	// if telegram enabled but is not registered
-	if playerProfile.EnableTelegramNotifications && (!playerProfile.TelegramID.Valid && playerProfile.Shortcode == "") {
-		playerProfile, err = pc.API.Telegram.ProfileUpdate(user.ID)
+	if prefs.EnableTelegramNotifications && (!prefs.TelegramID.Valid && prefs.Shortcode == "") {
+		prefs, err = pc.API.Telegram.PreferencesUpdate(user.ID)
 		if err != nil {
 			return terror.Error(err, errMsg)
 		}
 	}
 
-	reply(playerProfile)
+	reply(prefs)
 	return nil
 }

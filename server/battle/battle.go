@@ -825,18 +825,18 @@ func (btl *Battle) endWarMachines(payload *BattleEndPayload) []*WarMachine {
 					Msg("unable to update mech stat")
 			}
 
-			playerProfile, err := boiler.PlayerProfiles(boiler.PlayerProfileWhere.PlayerID.EQ(bm.OwnerID)).One(gamedb.StdConn)
+			prefs, err := boiler.PlayerSettingsPreferences(boiler.PlayerSettingsPreferenceWhere.PlayerID.EQ(bm.OwnerID)).One(gamedb.StdConn)
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				gamelog.L.Error().Err(err).Str("player_id", bm.OwnerID).Msg("unable to get player prefs")
 				continue
 			}
 
-			if playerProfile != nil && playerProfile.TelegramID.Valid && playerProfile.EnableTelegramNotifications {
+			if prefs != nil && prefs.TelegramID.Valid && prefs.EnableTelegramNotifications {
 				// killed a war machine
 				msg := fmt.Sprintf("Your War machine %s is Victorious! 🎉", w.Name)
-				err := btl.arena.telegram.Notify2(playerProfile.TelegramID.Int64, msg)
+				err := btl.arena.telegram.Notify2(prefs.TelegramID.Int64, msg)
 				if err != nil {
-					gamelog.L.Error().Str("telegramID", fmt.Sprintf("%v", playerProfile.TelegramID)).Err(err).Msg("failed to send notification")
+					gamelog.L.Error().Str("telegramID", fmt.Sprintf("%v", prefs.TelegramID)).Err(err).Msg("failed to send notification")
 				}
 			}
 
@@ -1418,18 +1418,18 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 		return
 	}
 
-	playerProfile, err := boiler.PlayerProfiles(boiler.PlayerProfileWhere.PlayerID.EQ(destroyedWarMachine.OwnedByID)).One(gamedb.StdConn)
+	prefs, err := boiler.PlayerSettingsPreferences(boiler.PlayerSettingsPreferenceWhere.PlayerID.EQ(destroyedWarMachine.OwnedByID)).One(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		gamelog.L.Error().Str("destroyedWarMachine.ID", destroyedWarMachine.ID).Err(err).Msg("failed to get player profile")
+		gamelog.L.Error().Str("destroyedWarMachine.ID", destroyedWarMachine.ID).Err(err).Msg("failed to get player preferences")
 
 	}
 
-	if playerProfile != nil && playerProfile.TelegramID.Valid && playerProfile.EnableTelegramNotifications {
+	if prefs != nil && prefs.TelegramID.Valid && prefs.EnableTelegramNotifications {
 		// killed a war machine
 		msg := fmt.Sprintf("Your War machine %s has been destroyed ☠️", destroyedWarMachine.Name)
-		err := btl.arena.telegram.Notify2(playerProfile.TelegramID.Int64, msg)
+		err := btl.arena.telegram.Notify2(prefs.TelegramID.Int64, msg)
 		if err != nil {
-			gamelog.L.Error().Str("playerID", playerProfile.PlayerID).Str("telegramID", fmt.Sprintf("%v", playerProfile.TelegramID)).Err(err).Msg("failed to send notification")
+			gamelog.L.Error().Str("playerID", prefs.PlayerID).Str("telegramID", fmt.Sprintf("%v", prefs.TelegramID)).Err(err).Msg("failed to send notification")
 		}
 	}
 
@@ -1452,18 +1452,18 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 						gamelog.L.Error().Str("faction_id", killByWarMachine.FactionID).Err(err).Msg("failed to update faction mech kill count")
 					}
 
-					playerProfile, err := boiler.PlayerProfiles(boiler.PlayerProfileWhere.PlayerID.EQ(destroyedWarMachine.OwnedByID)).One(gamedb.StdConn)
+					prefs, err := boiler.PlayerSettingsPreferences(boiler.PlayerSettingsPreferenceWhere.PlayerID.EQ(destroyedWarMachine.OwnedByID)).One(gamedb.StdConn)
 					if err != nil && !errors.Is(err, sql.ErrNoRows) {
-						gamelog.L.Error().Str("destroyedWarMachine.ID", destroyedWarMachine.ID).Err(err).Msg("failed to get player profile")
+						gamelog.L.Error().Str("destroyedWarMachine.ID", destroyedWarMachine.ID).Err(err).Msg("failed to get player preferences")
 
 					}
 
-					if playerProfile != nil && playerProfile.TelegramID.Valid && playerProfile.EnableTelegramNotifications {
+					if prefs != nil && prefs.TelegramID.Valid && prefs.EnableTelegramNotifications {
 						// killed a war machine
 						msg := fmt.Sprintf("Your War machine destroyed %s \U0001F9BE ", destroyedWarMachine.Name)
-						err := btl.arena.telegram.Notify2(playerProfile.TelegramID.Int64, msg)
+						err := btl.arena.telegram.Notify2(prefs.TelegramID.Int64, msg)
 						if err != nil {
-							gamelog.L.Error().Str("playerID", playerProfile.PlayerID).Str("telegramID", fmt.Sprintf("%v", playerProfile.TelegramID)).Err(err).Msg("failed to send notification")
+							gamelog.L.Error().Str("playerID", prefs.PlayerID).Str("telegramID", fmt.Sprintf("%v", prefs.TelegramID)).Err(err).Msg("failed to send notification")
 						}
 					}
 				}

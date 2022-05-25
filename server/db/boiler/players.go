@@ -144,7 +144,7 @@ var PlayerWhere = struct {
 // PlayerRels is where relationship names are stored.
 var PlayerRels = struct {
 	Faction                     string
-	PlayerProfile               string
+	PlayerSettingsPreference    string
 	IDPlayerStat                string
 	OwnerAmmos                  string
 	BattleAbilityTriggers       string
@@ -174,7 +174,7 @@ var PlayerRels = struct {
 	OwnerWeaponSkins            string
 }{
 	Faction:                     "Faction",
-	PlayerProfile:               "PlayerProfile",
+	PlayerSettingsPreference:    "PlayerSettingsPreference",
 	IDPlayerStat:                "IDPlayerStat",
 	OwnerAmmos:                  "OwnerAmmos",
 	BattleAbilityTriggers:       "BattleAbilityTriggers",
@@ -207,7 +207,7 @@ var PlayerRels = struct {
 // playerR is where relationships are stored.
 type playerR struct {
 	Faction                     *Faction                  `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
-	PlayerProfile               *PlayerProfile            `boiler:"PlayerProfile" boil:"PlayerProfile" json:"PlayerProfile" toml:"PlayerProfile" yaml:"PlayerProfile"`
+	PlayerSettingsPreference    *PlayerSettingsPreference `boiler:"PlayerSettingsPreference" boil:"PlayerSettingsPreference" json:"PlayerSettingsPreference" toml:"PlayerSettingsPreference" yaml:"PlayerSettingsPreference"`
 	IDPlayerStat                *PlayerStat               `boiler:"IDPlayerStat" boil:"IDPlayerStat" json:"IDPlayerStat" toml:"IDPlayerStat" yaml:"IDPlayerStat"`
 	OwnerAmmos                  AmmoSlice                 `boiler:"OwnerAmmos" boil:"OwnerAmmos" json:"OwnerAmmos" toml:"OwnerAmmos" yaml:"OwnerAmmos"`
 	BattleAbilityTriggers       BattleAbilityTriggerSlice `boiler:"BattleAbilityTriggers" boil:"BattleAbilityTriggers" json:"BattleAbilityTriggers" toml:"BattleAbilityTriggers" yaml:"BattleAbilityTriggers"`
@@ -510,16 +510,16 @@ func (o *Player) Faction(mods ...qm.QueryMod) factionQuery {
 	return query
 }
 
-// PlayerProfile pointed to by the foreign key.
-func (o *Player) PlayerProfile(mods ...qm.QueryMod) playerProfileQuery {
+// PlayerSettingsPreference pointed to by the foreign key.
+func (o *Player) PlayerSettingsPreference(mods ...qm.QueryMod) playerSettingsPreferenceQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"player_id\" = ?", o.ID),
 	}
 
 	queryMods = append(queryMods, mods...)
 
-	query := PlayerProfiles(queryMods...)
-	queries.SetFrom(query.Query, "\"player_profile\"")
+	query := PlayerSettingsPreferences(queryMods...)
+	queries.SetFrom(query.Query, "\"player_settings_preferences\"")
 
 	return query
 }
@@ -1200,9 +1200,9 @@ func (playerL) LoadFaction(e boil.Executor, singular bool, maybePlayer interface
 	return nil
 }
 
-// LoadPlayerProfile allows an eager lookup of values, cached into the
+// LoadPlayerSettingsPreference allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-1 relationship.
-func (playerL) LoadPlayerProfile(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+func (playerL) LoadPlayerSettingsPreference(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
 	var slice []*Player
 	var object *Player
 
@@ -1240,8 +1240,8 @@ func (playerL) LoadPlayerProfile(e boil.Executor, singular bool, maybePlayer int
 	}
 
 	query := NewQuery(
-		qm.From(`player_profile`),
-		qm.WhereIn(`player_profile.player_id in ?`, args...),
+		qm.From(`player_settings_preferences`),
+		qm.WhereIn(`player_settings_preferences.player_id in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -1249,19 +1249,19 @@ func (playerL) LoadPlayerProfile(e boil.Executor, singular bool, maybePlayer int
 
 	results, err := query.Query(e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load PlayerProfile")
+		return errors.Wrap(err, "failed to eager load PlayerSettingsPreference")
 	}
 
-	var resultSlice []*PlayerProfile
+	var resultSlice []*PlayerSettingsPreference
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice PlayerProfile")
+		return errors.Wrap(err, "failed to bind eager loaded slice PlayerSettingsPreference")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for player_profile")
+		return errors.Wrap(err, "failed to close results of eager load for player_settings_preferences")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for player_profile")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for player_settings_preferences")
 	}
 
 	if len(playerAfterSelectHooks) != 0 {
@@ -1278,9 +1278,9 @@ func (playerL) LoadPlayerProfile(e boil.Executor, singular bool, maybePlayer int
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.PlayerProfile = foreign
+		object.R.PlayerSettingsPreference = foreign
 		if foreign.R == nil {
-			foreign.R = &playerProfileR{}
+			foreign.R = &playerSettingsPreferenceR{}
 		}
 		foreign.R.Player = object
 	}
@@ -1288,9 +1288,9 @@ func (playerL) LoadPlayerProfile(e boil.Executor, singular bool, maybePlayer int
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
 			if local.ID == foreign.PlayerID {
-				local.R.PlayerProfile = foreign
+				local.R.PlayerSettingsPreference = foreign
 				if foreign.R == nil {
-					foreign.R = &playerProfileR{}
+					foreign.R = &playerSettingsPreferenceR{}
 				}
 				foreign.R.Player = local
 				break
@@ -4052,10 +4052,10 @@ func (o *Player) RemoveFaction(exec boil.Executor, related *Faction) error {
 	return nil
 }
 
-// SetPlayerProfile of the player to the related item.
-// Sets o.R.PlayerProfile to related.
+// SetPlayerSettingsPreference of the player to the related item.
+// Sets o.R.PlayerSettingsPreference to related.
 // Adds o to related.R.Player.
-func (o *Player) SetPlayerProfile(exec boil.Executor, insert bool, related *PlayerProfile) error {
+func (o *Player) SetPlayerSettingsPreference(exec boil.Executor, insert bool, related *PlayerSettingsPreference) error {
 	var err error
 
 	if insert {
@@ -4066,9 +4066,9 @@ func (o *Player) SetPlayerProfile(exec boil.Executor, insert bool, related *Play
 		}
 	} else {
 		updateQuery := fmt.Sprintf(
-			"UPDATE \"player_profile\" SET %s WHERE %s",
+			"UPDATE \"player_settings_preferences\" SET %s WHERE %s",
 			strmangle.SetParamNames("\"", "\"", 1, []string{"player_id"}),
-			strmangle.WhereClause("\"", "\"", 2, playerProfilePrimaryKeyColumns),
+			strmangle.WhereClause("\"", "\"", 2, playerSettingsPreferencePrimaryKeyColumns),
 		)
 		values := []interface{}{o.ID, related.ID}
 
@@ -4086,14 +4086,14 @@ func (o *Player) SetPlayerProfile(exec boil.Executor, insert bool, related *Play
 
 	if o.R == nil {
 		o.R = &playerR{
-			PlayerProfile: related,
+			PlayerSettingsPreference: related,
 		}
 	} else {
-		o.R.PlayerProfile = related
+		o.R.PlayerSettingsPreference = related
 	}
 
 	if related.R == nil {
-		related.R = &playerProfileR{
+		related.R = &playerSettingsPreferenceR{
 			Player: o,
 		}
 	} else {

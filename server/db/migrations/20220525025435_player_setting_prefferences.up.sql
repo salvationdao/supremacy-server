@@ -1,4 +1,4 @@
-CREATE TABLE player_profile (
+CREATE TABLE player_settings_preferences (
     id                              UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
     player_id                       UUID             UNIQUE NOT NULL REFERENCES players (id),
     shortcode                       TEXT NOT NULL,
@@ -9,3 +9,4 @@ CREATE TABLE player_profile (
     mobile_number                   TEXT,
     created_at TIMESTAMPTZ          NOT NULL DEFAULT NOW()
 );
+
