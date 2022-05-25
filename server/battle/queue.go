@@ -93,14 +93,14 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, f
 		return err
 	}
 
-	onChainStatus, err := arena.RPCClient.AssetOnChainStatus(mechID.String())
-	if err != nil {
-		return terror.Error(err, "Unable to get asset ownership details, please try again or contact support.")
-	}
+	// onChainStatus, err := arena.RPCClient.AssetOnChainStatus(mechID.String())
+	// if err != nil {
+	// 	return terror.Error(err, "Unable to get asset ownership details, please try again or contact support.")
+	// }
 
-	if onChainStatus != server.OnChainStatusMintable && onChainStatus != server.OnChainStatusUnstakable {
-		return terror.Error(fmt.Errorf("asset on chain status is %s", onChainStatus), "This asset isn't on world, please transition on world.")
-	}
+	// if onChainStatus != server.OnChainStatusMintable && onChainStatus != server.OnChainStatusUnstakable {
+	// 	return terror.Error(fmt.Errorf("asset on chain status is %s", onChainStatus), "This asset isn't on world, please transition on world.")
+	// }
 
 	mech, err := db.Mech(mechID.String())
 	if err != nil {
