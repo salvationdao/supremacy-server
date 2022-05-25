@@ -85,6 +85,7 @@ ALTER TABLE blueprint_weapons
 ALTER TABLE weapons
     DROP COLUMN IF EXISTS weapon_type,
     ADD COLUMN blueprint_id             UUID REFERENCES blueprint_weapons,
+    ADD COLUMN equipped_on              UUID REFERENCES chassis (id),
     ADD COLUMN default_damage_type      DAMAGE_TYPE NOT NULL DEFAULT 'Kinetic',
     ADD COLUMN genesis_token_id         BIGINT,
     ADD COLUMN limited_release_token_id BIGINT,
@@ -456,3 +457,9 @@ SELECT (SELECT id FROM blueprint_weapons WHERE label ILIKE '%Rocket Pod%'),
        2,
        'TURRET'
 FROM bpc
+
+-- set equipped on
+WITH wsp AS(select _w.id, mw.chassis_id
+            from weapons _w
+                     inner join mech_weapons mw ON _w.id = mw.weapon_id)
+UPDATE weapons w SET equipped_on = wsp.chassis_id from wsp where wsp.id = w.id

@@ -108,7 +108,14 @@ func Weapons(id ...string) ([]*server.Weapon, error) {
 // AttachWeaponToMech attaches a Weapon to a mech  TODO: create tests.
 func AttachWeaponToMech(ownerID, mechID, weaponID string) error {
 	// TODO: possible optimize this, 6 queries to attach a part seems like a lot?
-	// check owner
+
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("mechID", mechID).Msg("failed to start db transaction - AttachWeaponToMech")
+		return terror.Error(err)
+	}
+	defer tx.Rollback()
+
 	mechCI, err := CollectionItemFromItemID(mechID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("mechID", mechID).Msg("failed to get mech collection item")
@@ -135,14 +142,14 @@ func AttachWeaponToMech(ownerID, mechID, weaponID string) error {
 	mech, err := boiler.Mechs(
 		boiler.MechWhere.ID.EQ(mechID),
 		qm.Load(boiler.MechRels.ChassisMechWeapons),
-	).One(gamedb.StdConn)
+	).One(tx)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("mechID", mechID).Msg("failed to find mech")
 		return terror.Error(err)
 	}
 
 	// get Weapon
-	weapon, err := boiler.FindWeapon(gamedb.StdConn, weaponID)
+	weapon, err := boiler.FindWeapon(tx, weaponID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("weaponID", weaponID).Msg("failed to find Weapon")
 		return terror.Error(err)
@@ -156,7 +163,7 @@ func AttachWeaponToMech(ownerID, mechID, weaponID string) error {
 	}
 
 	// check weapon isn't already equipped to another war machine
-	exists, err := boiler.MechWeapons(boiler.MechWeaponWhere.WeaponID.EQ(weaponID)).Exists(gamedb.StdConn)
+	exists, err := boiler.MechWeapons(boiler.MechWeaponWhere.WeaponID.EQ(weaponID)).Exists(tx)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("weaponID", weaponID).Msg("failed to check if a mech and weapon join already exists")
 		return terror.Error(err)
@@ -167,13 +174,21 @@ func AttachWeaponToMech(ownerID, mechID, weaponID string) error {
 		return terror.Error(err, "This weapon is already equipped to another war machine, try again or contact support.")
 	}
 
+	weapon.EquippedOn = null.StringFrom(mech.ID)
+
+	_, err = weapon.Update(tx, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().Err(err).Interface("weapon", weapon).Msg("failed to update weapon")
+		return terror.Error(err, "Issue preventing equipping this weapon to the war machine, try again or contact support.")
+	}
+
 	weaponMechJoin := boiler.MechWeapon{
 		ChassisID:  mech.ID,
 		WeaponID:   weapon.ID,
 		SlotNumber: len(mech.R.ChassisMechWeapons), // slot number starts at 0, so if we currently have 2 equipped and this is the 3rd, it will be slot 2.
 	}
 
-	err = weaponMechJoin.Insert(gamedb.StdConn, boil.Infer())
+	err = weaponMechJoin.Insert(tx, boil.Infer())
 	if err != nil {
 		gamelog.L.Error().Err(err).Interface("weaponMechJoin", weaponMechJoin).Msg(" failed to equip weapon to war machine")
 		return terror.Error(err, "Issue preventing equipping this weapon to the war machine, try again or contact support.")

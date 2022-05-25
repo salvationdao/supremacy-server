@@ -286,3 +286,12 @@ ALTER TABLE utility
     ALTER COLUMN owner_id SET NOT NULL,
     ALTER COLUMN type SET NOT NULL,
     ALTER COLUMN blueprint_id SET NOT NULL;
+
+-- set equipped on
+WITH utl AS (SELECT _u.id, _mu.chassis_id
+             FROM utility _u
+                      INNER JOIN mech_utility _mu ON _u.id = _mu.utility_id)
+UPDATE utility u
+SET equipped_on = utl.chassis_id
+FROM utl
+WHERE utl.id = u.id

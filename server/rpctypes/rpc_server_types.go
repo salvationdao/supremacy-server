@@ -145,6 +145,7 @@ type Weapon struct {
 	GenesisTokenID        null.Int64          `json:"genesis_token_id,omitempty"`
 	LimitedReleaseTokenID null.Int64          `json:"limited_release_token_id,omitempty"`
 	WeaponType            string              `json:"weapon_type"`
+	EquippedOn            null.String         `json:"equipped_on,omitempty"`
 	OwnerID               string              `json:"owner_id"`
 	DamageFalloff         null.Int            `json:"damage_falloff,omitempty"`
 	DamageFalloffRate     null.Int            `json:"damage_falloff_rate,omitempty"`
