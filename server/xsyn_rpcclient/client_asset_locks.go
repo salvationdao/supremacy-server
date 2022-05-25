@@ -8,7 +8,7 @@ import (
 )
 
 // AssetLock requests an asset to be locked to supremacy
-func (pp *XsynXrpcClient) AssetLock(assetToLock *server.CollectionDetails) error {
+func (pp *XsynXrpcClient) AssetLock(assetToLock *server.CollectionItem) error {
 	resp := &AssetLockToServiceResp{}
 	err := pp.XrpcClient.Call("S.AssetLockToServiceHandler", AssetLockToServiceReq{
 		ApiKey:         pp.ApiKey,
@@ -26,7 +26,7 @@ func (pp *XsynXrpcClient) AssetLock(assetToLock *server.CollectionDetails) error
 }
 
 // AssetUnlock request a service unlock of an asset
-func (pp *XsynXrpcClient) AssetUnlock(assetToUnlock *server.CollectionDetails) error {
+func (pp *XsynXrpcClient) AssetUnlock(assetToUnlock *server.CollectionItem) error {
 	resp := &AssetUnlockToServiceResp{}
 	err := pp.XrpcClient.Call("S.AssetLockToServiceHandler", AssetUnlockToServiceReq{
 		ApiKey:         pp.ApiKey,

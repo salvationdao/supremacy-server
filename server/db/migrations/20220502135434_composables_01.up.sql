@@ -47,7 +47,7 @@ CREATE TABLE collection_items
     item_id         UUID             NOT NULL UNIQUE,
     tier            TEXT             NOT NULL DEFAULT 'MEGA',
     owner_id        UUID             NOT NULL REFERENCES players (id),
-    on_chain_status TEXT             NOT NULL DEFAULT 'MINTABLE' CHECK (on_chain_status IN ('MINTABLE', 'STAKABLE', 'UNSTAKABLE')),
+    market_locked   BOOL             NOT NULL DEFAULT FALSE,
     xsyn_locked     BOOL             NOT NULL DEFAULT FALSE,
     UNIQUE (collection_slug, token_id)
 );

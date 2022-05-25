@@ -141,7 +141,7 @@ var ErrNotAllMechsReturned = fmt.Errorf("not all mechs returned")
 // If you want to show the user a mech, it should be lazy loaded via various endpoints, not a single endpoint for an entire mech.
 func Mech(mechID string) (*server.Mech, error) {
 	mc := &server.Mech{
-		CollectionDetails: &server.CollectionDetails{},
+		CollectionItem: &server.CollectionItem{},
 	}
 
 	query := fmt.Sprintf(`%s WHERE collection_items.item_id = $1`, CompleteMechQuery)
@@ -154,11 +154,11 @@ func Mech(mechID string) (*server.Mech, error) {
 
 	for result.Next() {
 		err = result.Scan(
-			&mc.CollectionDetails.CollectionSlug,
-			&mc.CollectionDetails.Hash,
-			&mc.CollectionDetails.TokenID,
-			&mc.CollectionDetails.OwnerID,
-			&mc.CollectionDetails.Tier,
+			&mc.CollectionItem.CollectionSlug,
+			&mc.CollectionItem.Hash,
+			&mc.CollectionItem.TokenID,
+			&mc.CollectionItem.OwnerID,
+			&mc.CollectionItem.Tier,
 			&mc.ID,
 			&mc.Name,
 			&mc.Label,
@@ -235,14 +235,14 @@ func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 	i := 0
 	for result.Next() {
 		mc := &server.Mech{
-			CollectionDetails: &server.CollectionDetails{},
+			CollectionItem: &server.CollectionItem{},
 		}
 		err = result.Scan(
-			&mc.CollectionDetails.CollectionSlug,
-			&mc.CollectionDetails.Hash,
-			&mc.CollectionDetails.TokenID,
-			&mc.CollectionDetails.OwnerID,
-			&mc.CollectionDetails.Tier,
+			&mc.CollectionItem.CollectionSlug,
+			&mc.CollectionItem.Hash,
+			&mc.CollectionItem.TokenID,
+			&mc.CollectionItem.OwnerID,
+			&mc.CollectionItem.Tier,
 			&mc.ID,
 			&mc.Name,
 			&mc.Label,
@@ -622,14 +622,14 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 
 	for rows.Next() {
 		mc := &server.Mech{
-			CollectionDetails: &server.CollectionDetails{},
+			CollectionItem: &server.CollectionItem{},
 		}
 		err = rows.Scan(
-			&mc.CollectionDetails.CollectionSlug,
-			&mc.CollectionDetails.Hash,
-			&mc.CollectionDetails.TokenID,
-			&mc.CollectionDetails.OwnerID,
-			&mc.CollectionDetails.Tier,
+			&mc.CollectionItem.CollectionSlug,
+			&mc.CollectionItem.Hash,
+			&mc.CollectionItem.TokenID,
+			&mc.CollectionItem.OwnerID,
+			&mc.CollectionItem.Tier,
 			&mc.ID,
 			&mc.Name,
 			&mc.Label,

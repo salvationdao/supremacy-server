@@ -53,7 +53,6 @@ type PlayerAssetMech struct {
 	ItemType         string      `json:"item_type"`
 	Tier             string      `json:"tier"`
 	OwnerID          string      `json:"owner_id"`
-	OnChainStatus    string      `json:"on_chain_status"`
 	ImageURL         null.String `json:"image_url,omitempty"`
 	CardAnimationURL null.String `json:"card_animation_url,omitempty"`
 	AvatarURL        null.String `json:"avatar_url,omitempty"`
@@ -61,6 +60,8 @@ type PlayerAssetMech struct {
 	BackgroundColor  null.String `json:"background_color,omitempty"`
 	AnimationURL     null.String `json:"animation_url,omitempty"`
 	YoutubeURL       null.String `json:"youtube_url,omitempty"`
+	MarketLocked     bool        `json:"market_locked"`
+	XsynLocked       bool        `json:"xsyn_locked"`
 
 	ID                    string     `json:"id"`
 	Label                 string     `json:"label"`
@@ -146,20 +147,21 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 			PowerCoreID:           m.PowerCoreID,
 			UpdatedAt:             m.UpdatedAt,
 			CreatedAt:             m.CreatedAt,
-			CollectionSlug:        m.CollectionDetails.CollectionSlug,
-			Hash:                  m.CollectionDetails.Hash,
-			TokenID:               m.CollectionDetails.TokenID,
-			ItemType:              m.CollectionDetails.ItemType,
-			Tier:                  m.CollectionDetails.Tier,
-			OwnerID:               m.CollectionDetails.OwnerID,
-			OnChainStatus:         m.CollectionDetails.OnChainStatus,
-			ImageURL:              m.CollectionDetails.ImageURL,
-			CardAnimationURL:      m.CollectionDetails.CardAnimationURL,
-			AvatarURL:             m.CollectionDetails.AvatarURL,
-			LargeImageURL:         m.CollectionDetails.LargeImageURL,
-			BackgroundColor:       m.CollectionDetails.BackgroundColor,
-			AnimationURL:          m.CollectionDetails.AnimationURL,
-			YoutubeURL:            m.CollectionDetails.YoutubeURL,
+			CollectionSlug:        m.CollectionItem.CollectionSlug,
+			Hash:                  m.CollectionItem.Hash,
+			TokenID:               m.CollectionItem.TokenID,
+			ItemType:              m.CollectionItem.ItemType,
+			Tier:                  m.CollectionItem.Tier,
+			OwnerID:               m.CollectionItem.OwnerID,
+			XsynLocked:            m.CollectionItem.XsynLocked,
+			MarketLocked:          m.CollectionItem.MarketLocked,
+			ImageURL:              m.CollectionItem.ImageURL,
+			CardAnimationURL:      m.CollectionItem.CardAnimationURL,
+			AvatarURL:             m.CollectionItem.AvatarURL,
+			LargeImageURL:         m.CollectionItem.LargeImageURL,
+			BackgroundColor:       m.CollectionItem.BackgroundColor,
+			AnimationURL:          m.CollectionItem.AnimationURL,
+			YoutubeURL:            m.CollectionItem.YoutubeURL,
 		})
 	}
 

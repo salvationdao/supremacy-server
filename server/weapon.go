@@ -12,7 +12,7 @@ import (
 
 // Weapon is the struct that rpc expects for weapons
 type Weapon struct {
-	*CollectionDetails
+	*CollectionItem
 	ID                    string              `json:"id"`
 	BrandID               null.String         `json:"brand_id,omitempty"`
 	Label                 string              `json:"label"`
@@ -125,7 +125,7 @@ func BlueprintWeaponFromBoiler(weapon *boiler.BlueprintWeapon) *BlueprintWeapon 
 
 func WeaponFromBoiler(weapon *boiler.Weapon, collection *boiler.CollectionItem) *Weapon {
 	return &Weapon{
-		CollectionDetails: &CollectionDetails{
+		CollectionItem: &CollectionItem{
 			CollectionSlug:   collection.CollectionSlug,
 			Hash:             collection.Hash,
 			TokenID:          collection.TokenID,
@@ -133,7 +133,8 @@ func WeaponFromBoiler(weapon *boiler.Weapon, collection *boiler.CollectionItem) 
 			ItemID:           collection.ItemID,
 			Tier:             collection.Tier,
 			OwnerID:          collection.OwnerID,
-			OnChainStatus:    collection.OnChainStatus,
+			MarketLocked:     collection.MarketLocked,
+			XsynLocked:       collection.XsynLocked,
 			ImageURL:         collection.ImageURL,
 			CardAnimationURL: collection.CardAnimationURL,
 			AvatarURL:        collection.AvatarURL,
