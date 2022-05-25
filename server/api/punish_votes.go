@@ -105,7 +105,7 @@ func (api *API) PunishVoteTrackerSetup() error {
 	})
 	playerPunishVoteCostUpdater.Log = gamelog.L
 
-	err = playerPunishVoteCostUpdater.SetIntervalAt(24*time.Hour, 1, 0)
+	err = playerPunishVoteCostUpdater.SetIntervalAt(time.Duration(db.GetIntWithDefault(db.KeyPunishVoteCooldownHour, 12))*time.Hour, 1, 0)
 	if err != nil {
 		return terror.Error(err, "Failed to setup player punish vote cost updater")
 	}
@@ -363,6 +363,26 @@ func (pvt *PunishVoteTracker) Vote(punishVoteID string, playerID string, isAgree
 		AgreedPlayerNumber:    len(pvt.CurrentPunishVote.AgreedPlayerIDs),
 		DisagreedPlayerNumber: len(pvt.CurrentPunishVote.DisagreedPlayerIDs),
 	}
+
+	return nil
+}
+
+func (pvt *PunishVoteTracker) InstantPass(punishVoteID string, playerID string) error {
+	pvt.Lock()
+	defer pvt.Unlock()
+
+	// check voting phase and targeted vote is available
+	if pvt.Stage.Phase != PunishVotePhaseVoting || pvt.Stage.EndTime.Before(time.Now()) {
+		return terror.Error(terror.ErrInvalidInput, "invalid voting phase")
+	}
+
+	if pvt.CurrentPunishVote == nil || pvt.CurrentPunishVote.ID != punishVoteID {
+		return terror.Error(terror.ErrInvalidInput, "Punish vote id is mismatched")
+	}
+
+	// TODO: handle sups payment
+
+	// TODO: insert result and send chat message
 
 	return nil
 }
