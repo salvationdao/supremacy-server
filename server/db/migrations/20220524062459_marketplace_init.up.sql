@@ -21,6 +21,7 @@ CREATE TABLE item_sales (
 
     sold_at TIMESTAMPTZ,
 	sold_for TEXT,
+	sold_by UUID REFERENCES players(id),
 	sold_tx_id TEXT,
 
     deleted_at TIMESTAMPTZ,

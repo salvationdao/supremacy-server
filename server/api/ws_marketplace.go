@@ -235,7 +235,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	return nil
 }
 
-const HubKeyMarketplaceSalesBuy = "MARKETPLACE:SALES:ITEM:BUY"
+const HubKeyMarketplaceSalesBuy = "MARKETPLACE:SALES:BUY"
 
 type MarketplaceSalesBuyRequest struct {
 	*hub.HubCommandRequest
@@ -344,6 +344,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	saleItemRecord.SoldAt = null.TimeFrom(time.Now())
 	saleItemRecord.SoldFor = null.StringFrom(saleItemCost.String())
 	saleItemRecord.SoldTXID = null.StringFrom(txid)
+	saleItemRecord.SoldBy = null.StringFrom(user.ID)
 
 	_, err = saleItemRecord.Update(gamedb.StdConn, boil.Infer())
 	if err != nil {
@@ -359,7 +360,19 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		return terror.Error(err, "Failed tp process transaction for Purchase Sale Item.")
 	}
 
-	// TODO: transfer ownership of asset
+	// transfer ownership of asset
+	err = db.ChangeMechOwner(req.Payload.ItemID)
+	if err != nil {
+		mp.API.Passport.RefundSupsMessage(txid)
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("balance", balance.String()).
+			Str("cost", saleItemCost.String()).
+			Str("item_id", req.Payload.ItemID.String()).
+			Err(err).
+			Msg("Failed to Transfer Mech to New Owner")
+		return terror.Error(err, "Failed to process transaction for Purchase Sale Item.")
+	}
 
 	// success
 	reply(true)
@@ -367,7 +380,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	return nil
 }
 
-const HubKeyMarketplaceSalesBid = "MARKETPLACE:SALES:ITEM:BID"
+const HubKeyMarketplaceSalesBid = "MARKETPLACE:SALES:BID"
 
 type MarketplaceSalesBidRequest struct {
 	*hub.HubCommandRequest

@@ -274,11 +274,18 @@ func MarketplaceSaleItemExists(id uuid.UUID) (bool, error) {
 // TODO: Subject to change...
 func ChangeMechOwner(id uuid.UUID) error {
 	q := `
-		UPDATE collection_items
-		FROM item_sales
-		SET owner_id = item_sales.sold_by
-		WHERE item_sales.id = $1
-			AND collection_items.item_id = item_sales.item_id`
+		UPDATE collection_items AS ci
+		SET owner_id = s.sold_by
+		FROM item_sales s
+		WHERE s.id = $1
+			AND ci.id IN (
+				SELECT _ci.id
+				FROM mechs _m
+					INNER JOIN collection_items _ci ON _ci.item_id = _m.id
+						OR _ci.item_id = _m.chassis_skin_id
+						OR _ci.item_id = _m.power_core_id
+				WHERE _m.id = s.item_id
+			)`
 	_, err := gamedb.StdConn.Exec(q, id)
 	if err != nil {
 		return terror.Error(err)
