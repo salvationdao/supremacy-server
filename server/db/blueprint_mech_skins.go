@@ -14,8 +14,12 @@ func BlueprintMechSkinSkins(ids []string) ([]*server.BlueprintMechSkin, error) {
 		return nil, err
 	}
 
-	for _, bp := range boilerBlueprintMechSkins {
-		blueprintMechSkins = append(blueprintMechSkins, server.BlueprintMechSkinFromBoiler(bp))
+	for _, id := range ids {
+		for _, bp := range boilerBlueprintMechSkins {
+			if bp.ID == id {
+				blueprintMechSkins = append(blueprintMechSkins, server.BlueprintMechSkinFromBoiler(bp))
+			}
+		}
 	}
 
 	return blueprintMechSkins, nil
