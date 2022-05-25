@@ -6,7 +6,6 @@ import (
 	"server/db/boiler"
 	"time"
 
-	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 )
 
@@ -15,31 +14,38 @@ import (
 */
 
 type CollectionDetails struct {
-	CollectionSlug string `json:"collection_slug"`
-	Hash           string `json:"hash"`
-	TokenID        int64  `json:"token_id"`
-	ItemType       string `json:"item_type"`
-	ItemID         string `json:"item_id"`
-	Tier           string `json:"tier"`
-	OwnerID        string `json:"owner_id"`
-	OnChainStatus  string `json:"on_chain_status"`
+	CollectionSlug   string      `json:"collection_slug"`
+	Hash             string      `json:"hash"`
+	TokenID          int64       `json:"token_id"`
+	ItemType         string      `json:"item_type"`
+	ItemID           string      `json:"item_id"`
+	Tier             string      `json:"tier"`
+	OwnerID          string      `json:"owner_id"`
+	OnChainStatus    string      `json:"on_chain_status"`
+	ImageURL         null.String `json:"image_url,omitempty"`
+	CardAnimationURL null.String `json:"card_animation_url,omitempty"`
+	AvatarURL        null.String `json:"avatar_url,omitempty"`
+	LargeImageURL    null.String `json:"large_image_url,omitempty"`
+	BackgroundColor  null.String `json:"background_color,omitempty"`
+	AnimationURL     null.String `json:"animation_url,omitempty"`
+	YoutubeURL       null.String `json:"youtube_url,omitempty"`
 }
 
 // Mech is the struct that rpc expects for mechs
 type Mech struct {
 	*CollectionDetails
-	ID                    string              `json:"id"`
-	Label                 string              `json:"label"`
-	WeaponHardpoints      int                 `json:"weapon_hardpoints"`
-	UtilitySlots          int                 `json:"utility_slots"`
-	Speed                 int                 `json:"speed"`
-	MaxHitpoints          int                 `json:"max_hitpoints"`
-	IsDefault             bool                `json:"is_default"`
-	IsInsured             bool                `json:"is_insured"`
-	Name                  string              `json:"name"`
-	GenesisTokenID        decimal.NullDecimal `json:"genesis_token_id,omitempty"`
-	LimitedReleaseTokenID decimal.NullDecimal `json:"limited_release_token_id,omitempty"`
-	PowerCoreSize         string              `json:"power_core_size"`
+	ID                    string     `json:"id"`
+	Label                 string     `json:"label"`
+	WeaponHardpoints      int        `json:"weapon_hardpoints"`
+	UtilitySlots          int        `json:"utility_slots"`
+	Speed                 int        `json:"speed"`
+	MaxHitpoints          int        `json:"max_hitpoints"`
+	IsDefault             bool       `json:"is_default"`
+	IsInsured             bool       `json:"is_insured"`
+	Name                  string     `json:"name"`
+	GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`
+	LimitedReleaseTokenID null.Int64 `json:"limited_release_token_id,omitempty"`
+	PowerCoreSize         string     `json:"power_core_size"`
 
 	BlueprintID string         `json:"blueprint_id"`
 	Blueprint   *BlueprintMech `json:"blueprint_mech,omitempty"`
@@ -49,8 +55,8 @@ type Mech struct {
 
 	Owner *User `json:"user"`
 
-	FactionID string   `json:"faction_id"`
-	Faction   *Faction `json:"faction,omitempty"`
+	FactionID null.String `json:"faction_id"`
+	Faction   *Faction    `json:"faction,omitempty"`
 
 	ModelID string     `json:"model_id"`
 	Model   *MechModel `json:"model"`
@@ -97,8 +103,8 @@ type BlueprintMech struct {
 	Collection           string    `json:"collection"`
 
 	// only used on inserting new mechs/items, since we are still giving away some limited released and genesis
-	GenesisTokenID        decimal.NullDecimal `json:"genesis_token_id,omitempty"`
-	LimitedReleaseTokenID decimal.NullDecimal `json:"limited_release_token_id,omitempty"`
+	GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`
+	LimitedReleaseTokenID null.Int64 `json:"limited_release_token_id,omitempty"`
 }
 
 func (b *BlueprintMech) Scan(value interface{}) error {
@@ -130,14 +136,22 @@ func BlueprintMechFromBoiler(mech *boiler.BlueprintMech) *BlueprintMech {
 }
 
 type BlueprintUtility struct {
-	ID                   string                       `json:"id"`
-	BrandID              null.String                  `json:"brand_id,omitempty"`
-	Label                string                       `json:"label"`
-	UpdatedAt            time.Time                    `json:"updated_at"`
-	CreatedAt            time.Time                    `json:"created_at"`
-	Type                 string                       `json:"type"`
-	Collection           string                       `json:"collection"`
-	Tier                 string                       `json:"tier,omitempty"`
+	ID               string      `json:"id"`
+	BrandID          null.String `json:"brand_id,omitempty"`
+	Label            string      `json:"label"`
+	UpdatedAt        time.Time   `json:"updated_at"`
+	CreatedAt        time.Time   `json:"created_at"`
+	Type             string      `json:"type"`
+	Collection       string      `json:"collection"`
+	Tier             string      `json:"tier,omitempty"`
+	ImageURL         null.String `json:"image_url,omitempty"`
+	CardAnimationURL null.String `json:"card_animation_url,omitempty"`
+	AvatarURL        null.String `json:"avatar_url,omitempty"`
+	LargeImageURL    null.String `json:"large_image_url,omitempty"`
+	BackgroundColor  null.String `json:"background_color,omitempty"`
+	AnimationURL     null.String `json:"animation_url,omitempty"`
+	YoutubeURL       null.String `json:"youtube_url,omitempty"`
+
 	ShieldBlueprint      *BlueprintUtilityShield      `json:"shield_blueprint,omitempty"`
 	AttackDroneBlueprint *BlueprintUtilityAttackDrone `json:"attack_drone_blueprint,omitempty"`
 	RepairDroneBlueprint *BlueprintUtilityRepairDrone `json:"repair_drone_blueprint,omitempty"`
@@ -145,8 +159,8 @@ type BlueprintUtility struct {
 	AntiMissileBlueprint *BlueprintUtilityAntiMissile `json:"anti_missile_blueprint,omitempty"`
 
 	// only used on inserting new mechs/items, since we are still giving away some limited released and genesis
-	GenesisTokenID        decimal.NullDecimal `json:"genesis_token_id,omitempty"`
-	LimitedReleaseTokenID decimal.NullDecimal `json:"limited_release_token_id,omitempty"`
+	GenesisTokenID        null.Int64 `json:"genesis_token_id,omitempty"`
+	LimitedReleaseTokenID null.Int64 `json:"limited_release_token_id,omitempty"`
 }
 
 type MechModel struct {
@@ -162,4 +176,71 @@ func (b *MechModel) Scan(value interface{}) error {
 		return fmt.Errorf("unable to scan value into byte array")
 	}
 	return json.Unmarshal(v, b)
+}
+
+// MechFromBoiler takes a boiler structs and returns server structs, skinCollection is optional
+func MechFromBoiler(mech *boiler.Mech, collection *boiler.CollectionItem, skinCollection *boiler.CollectionItem) *Mech {
+	skin := &CollectionDetails{}
+
+	if mech.R.Model.R.DefaultChassisSkin != nil {
+		skin.ImageURL = mech.R.Model.R.DefaultChassisSkin.ImageURL
+		skin.CardAnimationURL = mech.R.Model.R.DefaultChassisSkin.CardAnimationURL
+		skin.AvatarURL = mech.R.Model.R.DefaultChassisSkin.AvatarURL
+		skin.LargeImageURL = mech.R.Model.R.DefaultChassisSkin.LargeImageURL
+		skin.BackgroundColor = mech.R.Model.R.DefaultChassisSkin.BackgroundColor
+		skin.AnimationURL = mech.R.Model.R.DefaultChassisSkin.AnimationURL
+		skin.YoutubeURL = mech.R.Model.R.DefaultChassisSkin.YoutubeURL
+	}
+
+	if skinCollection != nil {
+		skin.ImageURL = skinCollection.ImageURL
+		skin.CardAnimationURL = skinCollection.CardAnimationURL
+		skin.AvatarURL = skinCollection.AvatarURL
+		skin.LargeImageURL = skinCollection.LargeImageURL
+		skin.BackgroundColor = skinCollection.BackgroundColor
+		skin.AnimationURL = skinCollection.AnimationURL
+		skin.YoutubeURL = skinCollection.YoutubeURL
+	}
+
+	return &Mech{
+		CollectionDetails: &CollectionDetails{
+			CollectionSlug:   collection.CollectionSlug,
+			Hash:             collection.Hash,
+			TokenID:          collection.TokenID,
+			ItemType:         collection.ItemType,
+			ItemID:           collection.ItemID,
+			Tier:             collection.Tier,
+			OwnerID:          collection.OwnerID,
+			OnChainStatus:    collection.OnChainStatus,
+			ImageURL:         skin.ImageURL,
+			CardAnimationURL: skin.CardAnimationURL,
+			AvatarURL:        skin.AvatarURL,
+			LargeImageURL:    skin.LargeImageURL,
+			BackgroundColor:  skin.BackgroundColor,
+			AnimationURL:     skin.AnimationURL,
+			YoutubeURL:       skin.YoutubeURL,
+		},
+
+		ID:                    mech.ID,
+		Label:                 mech.Label,
+		WeaponHardpoints:      mech.WeaponHardpoints,
+		UtilitySlots:          mech.UtilitySlots,
+		Speed:                 mech.Speed,
+		MaxHitpoints:          mech.MaxHitpoints,
+		IsDefault:             mech.IsDefault,
+		IsInsured:             mech.IsInsured,
+		Name:                  mech.Label,
+		GenesisTokenID:        mech.GenesisTokenID,
+		LimitedReleaseTokenID: mech.LimitedReleaseTokenID,
+		PowerCoreSize:         mech.PowerCoreSize,
+		BlueprintID:           mech.BlueprintID,
+		BrandID:               mech.BrandID,
+		ModelID:               mech.ModelID,
+		ChassisSkinID:         mech.ChassisSkinID,
+		IntroAnimationID:      mech.IntroAnimationID,
+		OutroAnimationID:      mech.OutroAnimationID,
+		PowerCoreID:           mech.PowerCoreID,
+		UpdatedAt:             mech.UpdatedAt,
+		CreatedAt:             mech.CreatedAt,
+	}
 }

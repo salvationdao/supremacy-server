@@ -161,6 +161,7 @@ var PlayerRels = struct {
 	OwnerMechsOlds              string
 	OwnerPlayerAbilities        string
 	PlayerActiveLogs            string
+	PlayerKeycards              string
 	PlayerKillLogs              string
 	PlayerLanguages             string
 	PlayerMultipliers           string
@@ -190,6 +191,7 @@ var PlayerRels = struct {
 	OwnerMechsOlds:              "OwnerMechsOlds",
 	OwnerPlayerAbilities:        "OwnerPlayerAbilities",
 	PlayerActiveLogs:            "PlayerActiveLogs",
+	PlayerKeycards:              "PlayerKeycards",
 	PlayerKillLogs:              "PlayerKillLogs",
 	PlayerLanguages:             "PlayerLanguages",
 	PlayerMultipliers:           "PlayerMultipliers",
@@ -222,6 +224,7 @@ type playerR struct {
 	OwnerMechsOlds              MechsOldSlice             `boiler:"OwnerMechsOlds" boil:"OwnerMechsOlds" json:"OwnerMechsOlds" toml:"OwnerMechsOlds" yaml:"OwnerMechsOlds"`
 	OwnerPlayerAbilities        PlayerAbilitySlice        `boiler:"OwnerPlayerAbilities" boil:"OwnerPlayerAbilities" json:"OwnerPlayerAbilities" toml:"OwnerPlayerAbilities" yaml:"OwnerPlayerAbilities"`
 	PlayerActiveLogs            PlayerActiveLogSlice      `boiler:"PlayerActiveLogs" boil:"PlayerActiveLogs" json:"PlayerActiveLogs" toml:"PlayerActiveLogs" yaml:"PlayerActiveLogs"`
+	PlayerKeycards              PlayerKeycardSlice        `boiler:"PlayerKeycards" boil:"PlayerKeycards" json:"PlayerKeycards" toml:"PlayerKeycards" yaml:"PlayerKeycards"`
 	PlayerKillLogs              PlayerKillLogSlice        `boiler:"PlayerKillLogs" boil:"PlayerKillLogs" json:"PlayerKillLogs" toml:"PlayerKillLogs" yaml:"PlayerKillLogs"`
 	PlayerLanguages             PlayerLanguageSlice       `boiler:"PlayerLanguages" boil:"PlayerLanguages" json:"PlayerLanguages" toml:"PlayerLanguages" yaml:"PlayerLanguages"`
 	PlayerMultipliers           PlayerMultiplierSlice     `boiler:"PlayerMultipliers" boil:"PlayerMultipliers" json:"PlayerMultipliers" toml:"PlayerMultipliers" yaml:"PlayerMultipliers"`
@@ -847,6 +850,27 @@ func (o *Player) PlayerActiveLogs(mods ...qm.QueryMod) playerActiveLogQuery {
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"player_active_logs\".*"})
+	}
+
+	return query
+}
+
+// PlayerKeycards retrieves all the player_keycard's PlayerKeycards with an executor.
+func (o *Player) PlayerKeycards(mods ...qm.QueryMod) playerKeycardQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"player_keycards\".\"player_id\"=?", o.ID),
+	)
+
+	query := PlayerKeycards(queryMods...)
+	queries.SetFrom(query.Query, "\"player_keycards\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"player_keycards\".*"})
 	}
 
 	return query
@@ -2856,6 +2880,104 @@ func (playerL) LoadPlayerActiveLogs(e boil.Executor, singular bool, maybePlayer 
 				local.R.PlayerActiveLogs = append(local.R.PlayerActiveLogs, foreign)
 				if foreign.R == nil {
 					foreign.R = &playerActiveLogR{}
+				}
+				foreign.R.Player = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadPlayerKeycards allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (playerL) LoadPlayerKeycards(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+	var slice []*Player
+	var object *Player
+
+	if singular {
+		object = maybePlayer.(*Player)
+	} else {
+		slice = *maybePlayer.(*[]*Player)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &playerR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &playerR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`player_keycards`),
+		qm.WhereIn(`player_keycards.player_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load player_keycards")
+	}
+
+	var resultSlice []*PlayerKeycard
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice player_keycards")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on player_keycards")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for player_keycards")
+	}
+
+	if len(playerKeycardAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.PlayerKeycards = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &playerKeycardR{}
+			}
+			foreign.R.Player = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.PlayerID {
+				local.R.PlayerKeycards = append(local.R.PlayerKeycards, foreign)
+				if foreign.R == nil {
+					foreign.R = &playerKeycardR{}
 				}
 				foreign.R.Player = local
 				break
@@ -5036,6 +5158,58 @@ func (o *Player) AddPlayerActiveLogs(exec boil.Executor, insert bool, related ..
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &playerActiveLogR{
+				Player: o,
+			}
+		} else {
+			rel.R.Player = o
+		}
+	}
+	return nil
+}
+
+// AddPlayerKeycards adds the given related objects to the existing relationships
+// of the player, optionally inserting them as new records.
+// Appends related to o.R.PlayerKeycards.
+// Sets related.R.Player appropriately.
+func (o *Player) AddPlayerKeycards(exec boil.Executor, insert bool, related ...*PlayerKeycard) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.PlayerID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"player_keycards\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"player_id"}),
+				strmangle.WhereClause("\"", "\"", 2, playerKeycardPrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.PlayerID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &playerR{
+			PlayerKeycards: related,
+		}
+	} else {
+		o.R.PlayerKeycards = append(o.R.PlayerKeycards, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &playerKeycardR{
 				Player: o,
 			}
 		} else {

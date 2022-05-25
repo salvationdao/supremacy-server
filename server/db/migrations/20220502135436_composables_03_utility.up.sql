@@ -88,8 +88,8 @@ ALTER TABLE utility
     DROP COLUMN hitpoint_modifier,
     DROP COLUMN shield_modifier,
     ADD COLUMN blueprint_id             UUID REFERENCES blueprint_utility (id),
-    ADD COLUMN genesis_token_id         NUMERIC,
-    ADD COLUMN limited_release_token_id NUMERIC,
+    ADD COLUMN genesis_token_id         BIGINT,
+    ADD COLUMN limited_release_token_id BIGINT,
     ADD COLUMN owner_id                 UUID REFERENCES players (id),
     ADD COLUMN equipped_on              UUID REFERENCES chassis (id),
     ADD COLUMN tier                     TEXT NOT NULL DEFAULT 'MEGA',
@@ -213,10 +213,10 @@ ALTER TABLE blueprint_utility
     DROP COLUMN IF EXISTS slug;
 
 
---  Create all the destinct shield utility modules
+--  Create all the shield utility modules
 WITH insrt AS (
     WITH new_ulti AS (
-        SELECT 'Shield'                AS label,
+        SELECT '360 Shield'            AS label,
                'SHIELD'::UTILITY_TYPE  AS type,
                _c.max_shield           AS max_shield,
                _c.shield_recharge_rate AS shield_recharge_rate
@@ -233,6 +233,10 @@ INSERT
 INTO blueprint_utility_shield (blueprint_utility_id, hitpoints, recharge_rate, recharge_energy_cost)
 SELECT insrt.id, insrt.max_shield, insrt.shield_recharge_rate, 10
 FROM insrt;
+
+UPDATE utility
+SET label = '360 Shield'
+WHERE label = 'Shield';
 
 -- clear old joins
 DELETE

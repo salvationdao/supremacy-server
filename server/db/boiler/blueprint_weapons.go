@@ -44,6 +44,7 @@ type BlueprintWeapon struct {
 	RateOfFire          decimal.NullDecimal `boiler:"rate_of_fire" boil:"rate_of_fire" json:"rate_of_fire,omitempty" toml:"rate_of_fire" yaml:"rate_of_fire,omitempty"`
 	ProjectileSpeed     decimal.NullDecimal `boiler:"projectile_speed" boil:"projectile_speed" json:"projectile_speed,omitempty" toml:"projectile_speed" yaml:"projectile_speed,omitempty"`
 	MaxAmmo             null.Int            `boiler:"max_ammo" boil:"max_ammo" json:"max_ammo,omitempty" toml:"max_ammo" yaml:"max_ammo,omitempty"`
+	IsMelee             bool                `boiler:"is_melee" boil:"is_melee" json:"is_melee" toml:"is_melee" yaml:"is_melee"`
 	Tier                string              `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
 	EnergyCost          decimal.NullDecimal `boiler:"energy_cost" boil:"energy_cost" json:"energy_cost,omitempty" toml:"energy_cost" yaml:"energy_cost,omitempty"`
 
@@ -72,6 +73,7 @@ var BlueprintWeaponColumns = struct {
 	RateOfFire          string
 	ProjectileSpeed     string
 	MaxAmmo             string
+	IsMelee             string
 	Tier                string
 	EnergyCost          string
 }{
@@ -95,6 +97,7 @@ var BlueprintWeaponColumns = struct {
 	RateOfFire:          "rate_of_fire",
 	ProjectileSpeed:     "projectile_speed",
 	MaxAmmo:             "max_ammo",
+	IsMelee:             "is_melee",
 	Tier:                "tier",
 	EnergyCost:          "energy_cost",
 }
@@ -120,6 +123,7 @@ var BlueprintWeaponTableColumns = struct {
 	RateOfFire          string
 	ProjectileSpeed     string
 	MaxAmmo             string
+	IsMelee             string
 	Tier                string
 	EnergyCost          string
 }{
@@ -143,6 +147,7 @@ var BlueprintWeaponTableColumns = struct {
 	RateOfFire:          "blueprint_weapons.rate_of_fire",
 	ProjectileSpeed:     "blueprint_weapons.projectile_speed",
 	MaxAmmo:             "blueprint_weapons.max_ammo",
+	IsMelee:             "blueprint_weapons.is_melee",
 	Tier:                "blueprint_weapons.tier",
 	EnergyCost:          "blueprint_weapons.energy_cost",
 }
@@ -170,6 +175,7 @@ var BlueprintWeaponWhere = struct {
 	RateOfFire          whereHelperdecimal_NullDecimal
 	ProjectileSpeed     whereHelperdecimal_NullDecimal
 	MaxAmmo             whereHelpernull_Int
+	IsMelee             whereHelperbool
 	Tier                whereHelperstring
 	EnergyCost          whereHelperdecimal_NullDecimal
 }{
@@ -193,6 +199,7 @@ var BlueprintWeaponWhere = struct {
 	RateOfFire:          whereHelperdecimal_NullDecimal{field: "\"blueprint_weapons\".\"rate_of_fire\""},
 	ProjectileSpeed:     whereHelperdecimal_NullDecimal{field: "\"blueprint_weapons\".\"projectile_speed\""},
 	MaxAmmo:             whereHelpernull_Int{field: "\"blueprint_weapons\".\"max_ammo\""},
+	IsMelee:             whereHelperbool{field: "\"blueprint_weapons\".\"is_melee\""},
 	Tier:                whereHelperstring{field: "\"blueprint_weapons\".\"tier\""},
 	EnergyCost:          whereHelperdecimal_NullDecimal{field: "\"blueprint_weapons\".\"energy_cost\""},
 }
@@ -221,9 +228,9 @@ func (*blueprintWeaponR) NewStruct() *blueprintWeaponR {
 type blueprintWeaponL struct{}
 
 var (
-	blueprintWeaponAllColumns            = []string{"id", "brand_id", "label", "slug", "damage", "deleted_at", "updated_at", "created_at", "game_client_weapon_id", "weapon_type", "collection", "default_damage_type", "damage_falloff", "damage_falloff_rate", "radius", "radius_damage_falloff", "spread", "rate_of_fire", "projectile_speed", "max_ammo", "tier", "energy_cost"}
+	blueprintWeaponAllColumns            = []string{"id", "brand_id", "label", "slug", "damage", "deleted_at", "updated_at", "created_at", "game_client_weapon_id", "weapon_type", "collection", "default_damage_type", "damage_falloff", "damage_falloff_rate", "radius", "radius_damage_falloff", "spread", "rate_of_fire", "projectile_speed", "max_ammo", "is_melee", "tier", "energy_cost"}
 	blueprintWeaponColumnsWithoutDefault = []string{"label", "slug", "damage", "weapon_type"}
-	blueprintWeaponColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at", "game_client_weapon_id", "collection", "default_damage_type", "damage_falloff", "damage_falloff_rate", "radius", "radius_damage_falloff", "spread", "rate_of_fire", "projectile_speed", "max_ammo", "tier", "energy_cost"}
+	blueprintWeaponColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at", "game_client_weapon_id", "collection", "default_damage_type", "damage_falloff", "damage_falloff_rate", "radius", "radius_damage_falloff", "spread", "rate_of_fire", "projectile_speed", "max_ammo", "is_melee", "tier", "energy_cost"}
 	blueprintWeaponPrimaryKeyColumns     = []string{"id"}
 	blueprintWeaponGeneratedColumns      = []string{}
 )

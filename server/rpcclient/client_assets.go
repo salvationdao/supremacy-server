@@ -1,10 +1,10 @@
 package rpcclient
 
 import (
+	"github.com/volatiletech/null/v8"
 	"server"
-	"server/db/boiler"
-	"server/gamedb"
 	"server/gamelog"
+	"server/rpctypes"
 	"strings"
 )
 
@@ -21,26 +21,6 @@ func (pp *PassportXrpcClient) AssetOnChainStatus(assetID string) (server.OnChain
 	resp := &AssetOnChainStatusResp{}
 	err := pp.XrpcClient.Call("S.AssetOnChainStatusHandler", AssetOnChainStatusReq{assetID}, resp)
 	if err != nil {
-		if strings.Contains(err.Error(), "sql: no rows in result set") {
-			// if we get no rows error, get the mechs old ID, get the status of that, and then tell xsyn to update that
-			oldMech, err := boiler.MechsOlds(boiler.MechsOldWhere.ChassisID.EQ(assetID)).One(gamedb.StdConn)
-			if err != nil {
-				gamelog.L.Err(err).Str("assetID", assetID).Str("method", "AssetOnChainStatusHandler").Msg("rpc error - boiler.MechsOlds")
-				return "", err
-			}
-			_, err = pp.UpdateAssetID(oldMech.ID, assetID)
-			if err != nil {
-				return "", err
-			}
-
-			// now retry!
-			err = pp.XrpcClient.Call("S.AssetOnChainStatusHandler", AssetOnChainStatusReq{AssetID: assetID}, resp)
-			if err != nil {
-				gamelog.L.Err(err).Str("assetID", assetID).Str("method", "AssetOnChainStatusHandler").Msg("rpc error")
-				return "", err
-			}
-			return resp.OnChainStatus, nil
-		}
 		gamelog.L.Err(err).Str("assetID", assetID).Str("method", "AssetOnChainStatusHandler").Msg("rpc error")
 		return "", err
 	}
@@ -67,46 +47,44 @@ func (pp *PassportXrpcClient) AssetsOnChainStatus(assetIDs []string) (map[string
 	return resp.OnChainStatuses, nil
 }
 
-type UpdateAssetIDReq struct {
-	AssetID    string `json:"asset_ID" db:"asset_ID"`
-	OldAssetID string `json:"old_asset_ID" db:"old_asset_ID"`
+type RegisterAssetReq struct {
+	Asset *rpctypes.XsynAsset `json:"asset"`
 }
 
-type UpdateAssetIDResp struct {
-	AssetID string `json:"asset_ID"`
-}
-
-// UpdateAssetID updates a purchased_items id on passport server
-func (pp *PassportXrpcClient) UpdateAssetID(oldAssetID, assetID string) (string, error) {
-	resp := &UpdateAssetIDResp{}
-	err := pp.XrpcClient.Call("S.UpdateAssetIDHandler", UpdateAssetIDReq{
-		AssetID:    assetID,
-		OldAssetID: oldAssetID,
-	}, resp)
-	if err != nil {
-		gamelog.L.Err(err).Str("assetID", assetID).Str("oldAssetID", oldAssetID).Str("method", "UpdateAssetIDHandler").Msg("rpc error")
-		return "", err
-	}
-
-	return resp.AssetID, nil
-}
-
-type UpdateAssetsIDReq struct {
-	AssetsToUpdate []*UpdateAssetIDReq `json:"assets_to_update"`
-}
-
-type UpdateAssetsIDResp struct {
+type RegisterAssetResp struct {
 	Success bool `json:"success"`
 }
 
-// UpdateAssetsID updates the purchased_items id on passport server
-func (pp *PassportXrpcClient) UpdateAssetsID(assetsToUpdate []*UpdateAssetIDReq) error {
-	resp := &UpdateAssetsIDResp{}
-	err := pp.XrpcClient.Call("S.UpdateAssetsIDHandler", UpdateAssetsIDReq{
-		AssetsToUpdate: assetsToUpdate,
+// AssetRegister registers a item on xsyn
+func (pp *PassportXrpcClient) AssetRegister(ass *rpctypes.XsynAsset) error {
+	resp := &RegisterAssetResp{}
+	err := pp.XrpcClient.Call("S.AssetRegisterHandler", RegisterAssetReq{
+		ass,
 	}, resp)
 	if err != nil {
-		gamelog.L.Err(err).Interface("assetsToUpdate", assetsToUpdate).Str("method", "UpdateAssetsIDHandler").Msg("rpc error")
+		gamelog.L.Err(err).Interface("asset", ass).Msg("rpc error - S.AssetRegisterHandler")
+		return err
+	}
+
+	return nil
+}
+
+type RegisterAssetsReq struct {
+	Assets []*rpctypes.XsynAsset `json:"assets"`
+}
+
+type RegisterAssetsResp struct {
+	Success bool `json:"success"`
+}
+
+// AssetsRegister registers items on xsyn
+func (pp *PassportXrpcClient) AssetsRegister(ass []*rpctypes.XsynAsset) error {
+	resp := &RegisterAssetsResp{}
+	err := pp.XrpcClient.Call("S.AssetsRegisterHandler", RegisterAssetsReq{
+		ass,
+	}, resp)
+	if err != nil {
+		gamelog.L.Err(err).Interface("asset", ass).Msg("rpc error - S.AssetRegisterHandler")
 		return err
 	}
 
@@ -138,4 +116,45 @@ func (pp *PassportXrpcClient) UpdateStoreItemIDs(assetsToUpdate []*TemplatesToUp
 	}
 
 	return nil
+}
+
+type UpdateUser1155AssetReq struct {
+	PublicAddress string               `json:"public_address"`
+	AssetData     []Supremacy1155Asset `json:"asset_data"`
+}
+
+type Supremacy1155Asset struct {
+	BlueprintID    string
+	Label          string                      `json:"label"`
+	Description    string                      `json:"description"`
+	CollectionSlug string                      `json:"collection_slug"`
+	TokenID        int                         `json:"token_id"`
+	Count          int                         `json:"count"`
+	ImageURL       string                      `json:"image_url"`
+	AnimationURL   string                      `json:"animation_url"`
+	KeycardGroup   string                      `json:"keycard_group"`
+	Attributes     []SupremacyKeycardAttribute `json:"attributes"`
+}
+
+type SupremacyKeycardAttribute struct {
+	TraitType string `json:"trait_type"`
+	Value     string `json:"value,omitempty"`
+}
+
+type UpdateUser1155AssetResp struct {
+	UserID        string      `json:"user_id"`
+	Username      string      `json:"username"`
+	FactionID     null.String `json:"faction_id"`
+	PublicAddress null.String `json:"public_address"`
+}
+
+func (pp *PassportXrpcClient) UpdateKeycardItem(keycardUpdate UpdateUser1155AssetReq) (*UpdateUser1155AssetResp, error) {
+	resp := &UpdateUser1155AssetResp{}
+	err := pp.XrpcClient.Call("S.InsertUser1155Asset", keycardUpdate, resp)
+	if err != nil {
+		gamelog.L.Err(err).Str("user_address", keycardUpdate.PublicAddress).Msg("rpc error")
+		return nil, err
+	}
+
+	return resp, nil
 }

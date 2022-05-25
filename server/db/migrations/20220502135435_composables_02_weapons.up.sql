@@ -43,6 +43,7 @@ ALTER TABLE blueprint_weapons
     ADD COLUMN rate_of_fire          NUMERIC DEFAULT 0,
     ADD COLUMN projectile_speed      NUMERIC DEFAULT 0,
     ADD COLUMN max_ammo              INT     DEFAULT 0,
+    ADD COLUMN is_melee              BOOL        NOT NULL DEFAULT FALSE,
     ADD COLUMN tier                  TEXT        NOT NULL DEFAULT 'MEGA',
     ADD COLUMN energy_cost           NUMERIC DEFAULT 0;
 
@@ -53,6 +54,7 @@ WHERE label = 'Sniper Rifle';
 
 UPDATE blueprint_weapons
 SET weapon_type           = 'Sword',
+    is_melee              = TRUE,
     game_client_weapon_id = '6109e547-5a48-4a76-a3f2-e73ef41505b3'
 WHERE label = 'Laser Sword';
 
@@ -73,6 +75,7 @@ WHERE label = 'Plasma Rifle';
 
 UPDATE blueprint_weapons
 SET weapon_type           = 'Sword',
+    is_melee              = TRUE,
     game_client_weapon_id = '02c27475-c0ea-4825-8739-9a0b2cdc4201'
 WHERE label = 'Sword';
 
@@ -83,8 +86,8 @@ ALTER TABLE weapons
     DROP COLUMN IF EXISTS weapon_type,
     ADD COLUMN blueprint_id             UUID REFERENCES blueprint_weapons,
     ADD COLUMN default_damage_type      DAMAGE_TYPE NOT NULL DEFAULT 'Kinetic',
-    ADD COLUMN genesis_token_id         NUMERIC,
-    ADD COLUMN limited_release_token_id NUMERIC,
+    ADD COLUMN genesis_token_id         BIGINT,
+    ADD COLUMN limited_release_token_id BIGINT,
     ADD COLUMN weapon_type              WEAPON_TYPE,
     ADD COLUMN owner_id                 UUID REFERENCES players (id),
     ADD COLUMN damage_falloff           INT     DEFAULT 0,
@@ -95,6 +98,7 @@ ALTER TABLE weapons
     ADD COLUMN rate_of_fire             NUMERIC DEFAULT 0,
     ADD COLUMN projectile_speed         NUMERIC DEFAULT 0,
     ADD COLUMN energy_cost              NUMERIC DEFAULT 0,
+    ADD COLUMN is_melee                 BOOL        NOT NULL DEFAULT FALSE,
     ADD COLUMN tier                     TEXT        NOT NULL DEFAULT 'MEGA',
     ADD COLUMN max_ammo                 INT     DEFAULT 0;
 
@@ -106,7 +110,8 @@ WHERE label = 'Sniper Rifle'
 
 UPDATE weapons
 SET weapon_type = 'Sword',
-    label       = 'Laser Sword'
+    label       = 'Laser Sword',
+    is_melee    = TRUE
 WHERE label = 'Laser Sword'
    OR label = 'Zaibatsu Heavy Industries Laser Sword';
 
@@ -131,9 +136,50 @@ WHERE label = 'Plasma Rifle'
 
 UPDATE weapons
 SET weapon_type = 'Sword',
-    label       = 'Sword'
+    label       = 'Sword',
+    is_melee    = TRUE
 WHERE label = 'Sword'
    OR label = 'Boston Cybernetics Sword';
+
+-- delete rocket pod joins
+WITH wep AS (SELECT cw.chassis_id, cw.weapon_id, w.label
+             FROM chassis_weapons cw
+                      INNER JOIN weapons w ON cw.weapon_id = w.id
+             WHERE w.label ILIKE '%Rocket Pod%')
+DELETE
+FROM chassis_weapons cw
+WHERE cw.weapon_id IN (SELECT wep.weapon_id FROM wep);
+
+-- delete rocket pod weapons
+DELETE
+FROM weapons w
+WHERE w.label ILIKE '%Rocket Pod%';
+
+-- temp column
+ALTER TABLE weapons
+    ADD COLUMN chassis_id UUID;
+
+-- insert weapon and join per mech
+WITH wm AS (
+    WITH m AS (
+        SELECT c.id, 'Rocket Pod' AS label, 'rocket_pod' AS slug
+        FROM mechs
+                 INNER JOIN chassis c ON mechs.chassis_id = c.id
+        )
+        INSERT INTO weapons (label, slug, chassis_id, damage, weapon_type)
+            SELECT m.label, m.slug, m.id, -1, 'Missile Launcher'::WEAPON_TYPE
+            FROM m
+            RETURNING id, chassis_id)
+INSERT
+INTO chassis_weapons(chassis_id, weapon_id, slot_number, mount_location)
+SELECT wm.chassis_id, wm.id, 2, 'TURRET'
+FROM wm;
+
+
+ALTER TABLE weapons
+    DROP COLUMN chassis_id;
+
+
 
 WITH weapon_owners AS (SELECT m.owner_id, cw.weapon_id
                        FROM chassis_weapons cw
@@ -367,18 +413,22 @@ WHERE mw.mount_location = 'TURRET'
   AND mw.slot_number = 1;
 
 ALTER TABLE chassis_weapons
+    ADD COLUMN allow_melee BOOL NOT NULL DEFAULT TRUE,
     ADD UNIQUE (chassis_id, slot_number),
     DROP COLUMN mount_location;
 
+UPDATE chassis_weapons
+SET allow_melee = FALSE
+WHERE slot_number = 2;
+
+
 --  update mech weapoon hardpoints
 UPDATE chassis c
-SET weapon_hardpoints = (SELECT COUNT(*) FROM chassis_weapons cw WHERE cw.chassis_id = c.id);
+SET weapon_hardpoints = 3;
 
 --  update blueprint mech weapoon hardpoints
 UPDATE blueprint_chassis bc
-SET weapon_hardpoints = (SELECT COUNT(*)
-                         FROM blueprint_chassis_blueprint_weapons bcbw
-                         WHERE bcbw.blueprint_chassis_id = bc.id);
+SET weapon_hardpoints = 3;
 
 
 -- below adds the blueprint ids for the weapons
@@ -388,3 +438,21 @@ SET blueprint_id = (SELECT id FROM blueprint_weapons bw WHERE bw.label = w.label
 ALTER TABLE weapons
     ALTER COLUMN blueprint_id SET NOT NULL;
 
+
+-- update old blueprint chassis blueprint weapon joins
+WITH wep AS (SELECT cbcbw.blueprint_chassis_id, cbcbw.blueprint_weapon_id, bpw.label
+             FROM blueprint_chassis_blueprint_weapons cbcbw
+                      INNER JOIN blueprint_weapons bpw ON cbcbw.blueprint_weapon_id = bpw.id
+             WHERE bpw.label ILIKE '%Rocket Pod%')
+DELETE
+FROM blueprint_chassis_blueprint_weapons bpcbpw
+WHERE bpcbpw.blueprint_weapon_id IN (SELECT wep.blueprint_weapon_id FROM wep);
+
+WITH bpc AS (SELECT _bpc.id FROM blueprint_chassis _bpc)
+INSERT
+INTO blueprint_chassis_blueprint_weapons(blueprint_weapon_id, blueprint_chassis_id, slot_number, mount_location)
+SELECT (SELECT id FROM blueprint_weapons WHERE label ILIKE '%Rocket Pod%'),
+       bpc.id,
+       2,
+       'TURRET'
+FROM bpc

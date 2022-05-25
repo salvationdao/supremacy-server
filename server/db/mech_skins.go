@@ -40,7 +40,20 @@ func InsertNewMechSkin(ownerID uuid.UUID, skin *server.BlueprintMechSkin) (*serv
 		return nil, terror.Error(err)
 	}
 
-	err = InsertNewCollectionItem(tx, skin.Collection, boiler.ItemTypeMechSkin, newSkin.ID, skin.Tier, ownerID.String())
+	err = InsertNewCollectionItem(tx,
+		skin.Collection,
+		boiler.ItemTypeMechSkin,
+		newSkin.ID,
+		skin.Tier,
+		ownerID.String(),
+		skin.ImageURL,
+		skin.CardAnimationURL,
+		skin.AvatarURL,
+		skin.LargeImageURL,
+		skin.BackgroundColor,
+		skin.AnimationURL,
+		skin.YoutubeURL,
+	)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -64,6 +77,23 @@ func MechSkin(id string) (*server.MechSkin, error) {
 	}
 
 	return server.MechSkinFromBoiler(boilerMech, boilerMechCollectionDetails), nil
+}
+
+func MechSkins(id ...string) ([]*server.MechSkin, error) {
+	var skins []*server.MechSkin
+	boilerMechSkins, err := boiler.MechSkins(boiler.MechSkinWhere.ID.IN(id)).All(gamedb.StdConn)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, ms := range boilerMechSkins {
+		boilerMechCollectionDetails, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(ms.ID)).One(gamedb.StdConn)
+		if err != nil {
+			return nil, err
+		}
+		skins = append(skins, server.MechSkinFromBoiler(ms, boilerMechCollectionDetails))
+	}
+	return skins, nil
 }
 
 // AttachMechSkinToMech attaches a mech skin to a mech  TODO: create tests.
