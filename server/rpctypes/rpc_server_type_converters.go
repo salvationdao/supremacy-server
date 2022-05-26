@@ -191,6 +191,7 @@ func ServerWeaponToApiV1(weapon *server.Weapon) *Weapon {
 		MaxAmmo:             weapon.MaxAmmo,
 		UpdatedAt:           weapon.UpdatedAt,
 		CreatedAt:           weapon.CreatedAt,
+		EquippedOn:          weapon.EquippedOn,
 	}
 }
 

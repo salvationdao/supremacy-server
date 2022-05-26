@@ -13,8 +13,12 @@ func BlueprintWeapons(ids []string) ([]*server.BlueprintWeapon, error) {
 		return nil, err
 	}
 
-	for _, bp := range blueprintWeapons {
-		bluePrintWeapons = append(bluePrintWeapons, server.BlueprintWeaponFromBoiler(bp))
+	for _, id := range ids {
+		for _, bp := range blueprintWeapons {
+			if bp.ID == id {
+				bluePrintWeapons = append(bluePrintWeapons, server.BlueprintWeaponFromBoiler(bp))
+			}
+		}
 	}
 
 	return bluePrintWeapons, nil
