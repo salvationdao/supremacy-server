@@ -640,7 +640,7 @@ VALUES ('supremacy-general', 'Medium Energy Core', 'MEDIUM', 1500, 150, 100, 0, 
 DO
 $$
     BEGIN
-        FOR COUNT IN 1..200 --change to 5000
+        FOR COUNT IN 1..500 --change to 5000
             LOOP
                 INSERT INTO mystery_crate (type, faction_id, label)
                 VALUES ('MECH', (SELECT id FROM factions f WHERE f.label = 'Red Mountain Offworld Mining Corporation'),
@@ -658,7 +658,7 @@ $$;
 DO
 $$
     BEGIN
-        FOR COUNT IN 1..1000 -- change to 20000
+        FOR COUNT IN 1..2000 -- change to 20000
             LOOP
                 INSERT INTO mystery_crate (type, faction_id, label)
                 VALUES ('WEAPON',
@@ -900,7 +900,7 @@ $$
                             END CASE;
                     END LOOP;
 
-                -- for weapons crates of each faction, insert weapon blueprint. ** ALL WEAPONS CRATES ARE EQUAL
+                -- for weapons crates of each faction, insert weapon blueprint.
                 i := 1;
                 weaponCrateLen := (SELECT COUNT(*)
                                    FROM mystery_crate
@@ -910,7 +910,7 @@ $$
                     LOOP
                         --flak: all factions
                         CASE
-                            WHEN i <= (weaponCrateLen * .1)
+                            WHEN i <= (weaponCrateLen * .15)
                                 THEN INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
                                      VALUES (weaponCrate.id, 'WEAPON', (SELECT id
                                                                         FROM blueprint_weapons
@@ -946,11 +946,10 @@ $$
                                                                                                  WHERE weapon_type = 'Flak'
                                                                                                    AND brand_id = (SELECT id FROM brands WHERE label = 'Pyrotronics'))
                                                                                        END
---                                                                                each weapon type can have different rarities of skins
                                                                                AND label =
                                                                                    CASE
                                                                                        --30% default skin
-                                                                                       WHEN i <= (.30 * (weaponCrateLen * .1))
+                                                                                       WHEN i <= (.30 * (weaponCrateLen * .15))
                                                                                            THEN
                                                                                            CASE
                                                                                                WHEN faction.label = 'Boston Cybernetics'
@@ -960,8 +959,8 @@ $$
                                                                                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
                                                                                                    THEN 'RMOMC Default'
                                                                                                END
-                                                                                       --25% for manufacturer's skin
-                                                                                       WHEN i > (.30 * (weaponCrateLen * .1)) AND i <= (.55 * (weaponCrateLen * .1))
+                                                                                       --30% for manufacturer's skin
+                                                                                       WHEN i > (.30 * (weaponCrateLen * .15)) AND i <= (.60 * (weaponCrateLen * .15))
                                                                                            THEN
                                                                                            CASE
                                                                                                WHEN faction.label = 'Boston Cybernetics'
@@ -971,8 +970,8 @@ $$
                                                                                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
                                                                                                    THEN 'Pyrotronics'
                                                                                                END
-                                                                                       --17% for camo
-                                                                                       WHEN i > (.55 * (weaponCrateLen * .1)) AND i <= (.72 * (weaponCrateLen * .1))
+                                                                                       --12% for camo
+                                                                                       WHEN i > (.60 * (weaponCrateLen * .15)) AND i <= (.72 * (weaponCrateLen * .15))
                                                                                            THEN
                                                                                            CASE
                                                                                                WHEN faction.label = 'Boston Cybernetics'
@@ -982,8 +981,11 @@ $$
                                                                                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
                                                                                                    THEN 'Red Camo'
                                                                                                END
-                                                                                       --17% for theme
-                                                                                       WHEN i > (.72 * (weaponCrateLen * .1)) AND i <= (.89 * (weaponCrateLen * .1))
+                                                                                       --12% for theme
+                                                                                       WHEN i > (.72 * (weaponCrateLen * .15)) AND i <= (.84 * (weaponCrateLen * .15))
+                                                                                           THEN 'Gold'
+                                                                                       --8% for theme
+                                                                                       WHEN i > (.84 * (weaponCrateLen * .15)) AND i <= (.92 * (weaponCrateLen * .15))
                                                                                            THEN
                                                                                            CASE
                                                                                                WHEN faction.label = 'Boston Cybernetics'
@@ -993,11 +995,8 @@ $$
                                                                                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
                                                                                                    THEN 'Mining'
                                                                                                END
-                                                                                       --10% for Gold
-                                                                                       WHEN i > (.89 * (weaponCrateLen * .1)) AND i <= (.99 * (weaponCrateLen * .1))
-                                                                                           THEN 'Gold'
-                                                                                       --1% for rare color
-                                                                                       WHEN i > (.99 * (weaponCrateLen * .1)) AND i <= (1 * (weaponCrateLen * .1))
+                                                                                       --8% for rare color
+                                                                                       WHEN i > (.92 * (weaponCrateLen * .15)) AND i <= (1 * (weaponCrateLen * .15))
                                                                                            THEN
                                                                                            CASE
                                                                                                WHEN faction.label = 'Boston Cybernetics'
@@ -1010,7 +1009,7 @@ $$
                                                                                        END));
                                      i := i + 1;
                             --machine gun: all factions
-                            WHEN i > (weaponCrateLen * .1) AND i <= (weaponCrateLen * .2)
+                            WHEN i > (weaponCrateLen * .15) AND i <= (weaponCrateLen * .3)
                                 THEN INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
                                      VALUES (weaponCrate.id, 'WEAPON', (SELECT id
                                                                         FROM blueprint_weapons
@@ -1046,11 +1045,10 @@ $$
                                                                                                  WHERE weapon_type = 'Machine Gun'
                                                                                                    AND brand_id = (SELECT id FROM brands WHERE label = 'Pyrotronics'))
                                                                                        END
---                                                                                each weapon type can have different rarities of skins
                                                                                AND label =
                                                                                    CASE
                                                                                        --30% default skin
-                                                                                       WHEN i <= ((.30 * (weaponCrateLen * .1)) + (weaponCrateLen * .1))
+                                                                                       WHEN i <= ((.30 * (weaponCrateLen * .15)) + (weaponCrateLen * .15))
                                                                                            THEN
                                                                                            CASE
                                                                                                WHEN faction.label = 'Boston Cybernetics'
@@ -1060,11 +1058,11 @@ $$
                                                                                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
                                                                                                    THEN 'RMOMC Default'
                                                                                                END
-                                                                                       --25% for manufacturer's skin
+                                                                                       --30% for manufacturer's skin
                                                                                        WHEN i >
-                                                                                            (.30 * (weaponCrateLen * .1) + (weaponCrateLen * .1)) AND
+                                                                                            (.30 * (weaponCrateLen * .15) + (weaponCrateLen * .15)) AND
                                                                                             i <=
-                                                                                            (.55 * (weaponCrateLen * .1) + (weaponCrateLen * .1))
+                                                                                            (.60 * (weaponCrateLen * .15) + (weaponCrateLen * .15))
                                                                                            THEN
                                                                                            CASE
                                                                                                WHEN faction.label = 'Boston Cybernetics'
@@ -1074,11 +1072,11 @@ $$
                                                                                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
                                                                                                    THEN 'Pyrotronics'
                                                                                                END
-                                                                                       --17% for camo
+                                                                                       --12% for camo
                                                                                        WHEN i >
-                                                                                            (.55 * (weaponCrateLen * .1) + (weaponCrateLen * .1)) AND
+                                                                                            (.60 * (weaponCrateLen * .15) + (weaponCrateLen * .15)) AND
                                                                                             i <=
-                                                                                            (.72 * (weaponCrateLen * .1) + (weaponCrateLen * .1))
+                                                                                            (.72 * (weaponCrateLen * .15) + (weaponCrateLen * .15))
                                                                                            THEN
                                                                                            CASE
                                                                                                WHEN faction.label = 'Boston Cybernetics'
@@ -1088,11 +1086,17 @@ $$
                                                                                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
                                                                                                    THEN 'Red Camo'
                                                                                                END
-                                                                                       --17% for theme
+                                                                                       --12% for Gold
                                                                                        WHEN i >
-                                                                                            (.72 * (weaponCrateLen * .1) + (weaponCrateLen * .1)) AND
+                                                                                            (.72 * (weaponCrateLen * .15) + (weaponCrateLen * .15)) AND
                                                                                             i <=
-                                                                                            (.89 * (weaponCrateLen * .1) + (weaponCrateLen * .1))
+                                                                                            (.84 * (weaponCrateLen * .15) + (weaponCrateLen * .15))
+                                                                                           THEN 'Gold'
+                                                                                       --8% for theme
+                                                                                       WHEN i >
+                                                                                            (.84 * (weaponCrateLen * .15) + (weaponCrateLen * .15)) AND
+                                                                                            i <=
+                                                                                            (.92 * (weaponCrateLen * .15) + (weaponCrateLen * .15))
                                                                                            THEN
                                                                                            CASE
                                                                                                WHEN faction.label = 'Boston Cybernetics'
@@ -1102,17 +1106,11 @@ $$
                                                                                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
                                                                                                    THEN 'Mining'
                                                                                                END
-                                                                                       --10% for Gold
+                                                                                       --8% for rare color
                                                                                        WHEN i >
-                                                                                            (.89 * (weaponCrateLen * .1) + (weaponCrateLen * .1)) AND
+                                                                                            (.92 * (weaponCrateLen * .15) + (weaponCrateLen * .15)) AND
                                                                                             i <=
-                                                                                            (.99 * (weaponCrateLen * .1) + (weaponCrateLen * .1))
-                                                                                           THEN 'Gold'
-                                                                                       --1% for rare color
-                                                                                       WHEN i >
-                                                                                            (.99 * (weaponCrateLen * .1) + (weaponCrateLen * .1)) AND
-                                                                                            i <=
-                                                                                            (1 * (weaponCrateLen * .1) + (weaponCrateLen * .1))
+                                                                                            (1 * (weaponCrateLen * .15) + (weaponCrateLen * .15))
                                                                                            THEN
                                                                                            CASE
                                                                                                WHEN faction.label = 'Boston Cybernetics'
@@ -1125,7 +1123,7 @@ $$
                                                                                        END));
                                      i := i + 1;
                             --flamethrower: all factions
-                            WHEN i > (weaponCrateLen * .2) AND i <= (weaponCrateLen * .3)
+                            WHEN i > (weaponCrateLen * .3) AND i <= (weaponCrateLen * .45)
                                 THEN INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
                                      VALUES (weaponCrate.id, 'WEAPON', (SELECT id
                                                                         FROM blueprint_weapons
@@ -1165,7 +1163,7 @@ $$
                                                                                AND label =
                                                                                    CASE
                                                                                        --30% default skin: when the loop # is less that 30% of weapon rarity plus previous crates already seeded
-                                                                                       WHEN i <= (.30 * (weaponCrateLen * .1) + (weaponCrateLen * .2))
+                                                                                       WHEN i <= (.30 * (weaponCrateLen * .15) + (weaponCrateLen * .3))
                                                                                            THEN
                                                                                            CASE
                                                                                                WHEN faction.label = 'Boston Cybernetics'
@@ -1175,11 +1173,11 @@ $$
                                                                                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
                                                                                                    THEN 'RMOMC Default'
                                                                                                END
-                                                                                       --25% for manufacturer's skin
+                                                                                       --30% for manufacturer's skin
                                                                                        WHEN i >
-                                                                                            (.30 * (weaponCrateLen * .1) + (weaponCrateLen * .2)) AND
+                                                                                            (.30 * (weaponCrateLen * .15) + (weaponCrateLen * .3)) AND
                                                                                             i <=
-                                                                                            (.55 * (weaponCrateLen * .1) + (weaponCrateLen * .2))
+                                                                                            (.60 * (weaponCrateLen * .15) + (weaponCrateLen * .3))
                                                                                            THEN
                                                                                            CASE
                                                                                                WHEN faction.label = 'Boston Cybernetics'
@@ -1189,11 +1187,11 @@ $$
                                                                                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
                                                                                                    THEN 'Pyrotronics'
                                                                                                END
-                                                                                       --17% for camo
+                                                                                       --12% for camo
                                                                                        WHEN i >
-                                                                                            (.55 * (weaponCrateLen * .1) + (weaponCrateLen * .2)) AND
+                                                                                            (.60 * (weaponCrateLen * .15) + (weaponCrateLen * .3)) AND
                                                                                             i <=
-                                                                                            (.72 * (weaponCrateLen * .1) + (weaponCrateLen * .2))
+                                                                                            (.72 * (weaponCrateLen * .15) + (weaponCrateLen * .3))
                                                                                            THEN
                                                                                            CASE
                                                                                                WHEN faction.label = 'Boston Cybernetics'
@@ -1203,11 +1201,17 @@ $$
                                                                                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
                                                                                                    THEN 'Red Camo'
                                                                                                END
-                                                                                       --17% for theme
+                                                                                       --12% for Gold
                                                                                        WHEN i >
-                                                                                            (.72 * (weaponCrateLen * .1) + (weaponCrateLen * .2)) AND
+                                                                                            (.72 * (weaponCrateLen * .15) + (weaponCrateLen * .3)) AND
                                                                                             i <=
-                                                                                            (.89 * (weaponCrateLen * .1) + (weaponCrateLen * .2))
+                                                                                            (.84 * (weaponCrateLen * .15) + (weaponCrateLen * .3))
+                                                                                           THEN 'Gold'
+                                                                                       --8% for theme
+                                                                                       WHEN i >
+                                                                                            (.84 * (weaponCrateLen * .15) + (weaponCrateLen * .3)) AND
+                                                                                            i <=
+                                                                                            (.92 * (weaponCrateLen * .15) + (weaponCrateLen * .3))
                                                                                            THEN
                                                                                            CASE
                                                                                                WHEN faction.label = 'Boston Cybernetics'
@@ -1217,17 +1221,11 @@ $$
                                                                                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
                                                                                                    THEN 'Mining'
                                                                                                END
-                                                                                       --10% for Gold
+                                                                                       --8% for rare color
                                                                                        WHEN i >
-                                                                                            (.89 * (weaponCrateLen * .1) + (weaponCrateLen * .2)) AND
+                                                                                            (.92 * (weaponCrateLen * .15) + (weaponCrateLen * .3)) AND
                                                                                             i <=
-                                                                                            (.99 * (weaponCrateLen * .1) + (weaponCrateLen * .2))
-                                                                                           THEN 'Gold'
-                                                                                       --1% for rare color
-                                                                                       WHEN i >
-                                                                                            (.99 * (weaponCrateLen * .1) + (weaponCrateLen * .2)) AND
-                                                                                            i <=
-                                                                                            (1 * (weaponCrateLen * .1) + (weaponCrateLen * .2))
+                                                                                            (1 * (weaponCrateLen * .15) + (weaponCrateLen * .3))
                                                                                            THEN
                                                                                            CASE
                                                                                                WHEN faction.label = 'Boston Cybernetics'
@@ -1240,7 +1238,7 @@ $$
                                                                                        END));
                                      i := i + 1;
                             --missile launcher: all factions
-                            WHEN i > (weaponCrateLen * .3) AND i <= (weaponCrateLen * .4)
+                            WHEN i > (weaponCrateLen * .45) AND i <= (weaponCrateLen * .6)
                                 THEN INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
                                      VALUES (weaponCrate.id, 'WEAPON', (SELECT id
                                                                         FROM blueprint_weapons
@@ -1280,7 +1278,7 @@ $$
                                                                                AND label =
                                                                                    CASE
                                                                                        --30% default skin
-                                                                                       WHEN i <= (.30 * (weaponCrateLen * .1) + (weaponCrateLen * .3))
+                                                                                       WHEN i <= (.30 * (weaponCrateLen * .15) + (weaponCrateLen * .45))
                                                                                            THEN
                                                                                            CASE
                                                                                                WHEN faction.label = 'Boston Cybernetics'
@@ -1290,11 +1288,11 @@ $$
                                                                                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
                                                                                                    THEN 'RMOMC Default'
                                                                                                END
-                                                                                       --25% for manufacturer's skin
+                                                                                       --30% for manufacturer's skin
                                                                                        WHEN i >
-                                                                                            (.30 * (weaponCrateLen * .1) + (weaponCrateLen * .3)) AND
+                                                                                            (.30 * (weaponCrateLen * .15) + (weaponCrateLen * .45)) AND
                                                                                             i <=
-                                                                                            (.55 * (weaponCrateLen * .1) + (weaponCrateLen * .3))
+                                                                                            (.60 * (weaponCrateLen * .15) + (weaponCrateLen * .45))
                                                                                            THEN
                                                                                            CASE
                                                                                                WHEN faction.label = 'Boston Cybernetics'
@@ -1304,11 +1302,11 @@ $$
                                                                                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
                                                                                                    THEN 'Pyrotronics'
                                                                                                END
-                                                                                       --17% for camo
+                                                                                       --12% for camo
                                                                                        WHEN i >
-                                                                                            (.55 * (weaponCrateLen * .1) + (weaponCrateLen * .3)) AND
+                                                                                            (.60 * (weaponCrateLen * .15) + (weaponCrateLen * .45)) AND
                                                                                             i <=
-                                                                                            (.72 * (weaponCrateLen * .1) + (weaponCrateLen * .3))
+                                                                                            (.72 * (weaponCrateLen * .15) + (weaponCrateLen * .45))
                                                                                            THEN
                                                                                            CASE
                                                                                                WHEN faction.label = 'Boston Cybernetics'
@@ -1318,11 +1316,17 @@ $$
                                                                                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
                                                                                                    THEN 'Red Camo'
                                                                                                END
-                                                                                       --17% for theme
+                                                                                       --12% for Gold
                                                                                        WHEN i >
-                                                                                            (.72 * (weaponCrateLen * .1) + (weaponCrateLen * .3)) AND
+                                                                                            (.72 * (weaponCrateLen * .15) + (weaponCrateLen * .45)) AND
                                                                                             i <=
-                                                                                            (.89 * (weaponCrateLen * .1) + (weaponCrateLen * .3))
+                                                                                            (.84 * (weaponCrateLen * .15) + (weaponCrateLen * .45))
+                                                                                           THEN 'Gold'
+                                                                                       --8% for theme
+                                                                                       WHEN i >
+                                                                                            (.84 * (weaponCrateLen * .15) + (weaponCrateLen * .45)) AND
+                                                                                            i <=
+                                                                                            (.92 * (weaponCrateLen * .15) + (weaponCrateLen * .45))
                                                                                            THEN
                                                                                            CASE
                                                                                                WHEN faction.label = 'Boston Cybernetics'
@@ -1332,18 +1336,12 @@ $$
                                                                                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
                                                                                                    THEN 'Mining'
                                                                                                END
-                                                                                       --10% for Gold
+                                                                                       --8% for rare color
                                                                                        WHEN i >
-                                                                                            (.89 * (weaponCrateLen * .1) + (weaponCrateLen * .3)) AND
+                                                                                            (.92 * (weaponCrateLen * .15) + (weaponCrateLen * .45)) AND
                                                                                             i <=
-                                                                                            (.99 * (weaponCrateLen * .1) + (weaponCrateLen * .3))
-                                                                                           THEN 'Gold'
-                                                                                       --1% for rare color
-                                                                                       WHEN i >
-                                                                                            (.99 * (weaponCrateLen * .1) + (weaponCrateLen * .3)) AND
-                                                                                            i <=
-                                                                                            (1 * (weaponCrateLen * .1)) +
-                                                                                            (weaponCrateLen * .3)
+                                                                                            (1 * (weaponCrateLen * .15)) +
+                                                                                            (weaponCrateLen * .45)
                                                                                            THEN
                                                                                            CASE
                                                                                                WHEN faction.label = 'Boston Cybernetics'
@@ -1356,7 +1354,7 @@ $$
                                                                                        END));
                                      i := i + 1;
                             --Laser beam: all factions
-                            WHEN i > (weaponCrateLen * .4) AND i <= (weaponCrateLen * .5)
+                            WHEN i > (weaponCrateLen * .6) AND i <= (weaponCrateLen * .75)
                                 THEN INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
                                      VALUES (weaponCrate.id, 'WEAPON', (SELECT id
                                                                         FROM blueprint_weapons
@@ -1396,7 +1394,7 @@ $$
                                                                                AND label =
                                                                                    CASE
                                                                                        --30% default skin
-                                                                                       WHEN i <= (.30 * (weaponCrateLen * .1) + (weaponCrateLen * .4))
+                                                                                       WHEN i <= (.30 * (weaponCrateLen * .15) + (weaponCrateLen * .6))
                                                                                            THEN
                                                                                            CASE
                                                                                                WHEN faction.label = 'Boston Cybernetics'
@@ -1406,11 +1404,11 @@ $$
                                                                                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
                                                                                                    THEN 'RMOMC Default'
                                                                                                END
-                                                                                       --25% for manufacturer's skin
+                                                                                       --30% for manufacturer's skin
                                                                                        WHEN i >
-                                                                                            (.30 * (weaponCrateLen * .1) + (weaponCrateLen * .4)) AND
+                                                                                            (.30 * (weaponCrateLen * .15) + (weaponCrateLen * .6)) AND
                                                                                             i <=
-                                                                                            (.55 * (weaponCrateLen * .1) + (weaponCrateLen * .4))
+                                                                                            (.60 * (weaponCrateLen * .15) + (weaponCrateLen * .6))
                                                                                            THEN
                                                                                            CASE
                                                                                                WHEN faction.label = 'Boston Cybernetics'
@@ -1420,11 +1418,11 @@ $$
                                                                                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
                                                                                                    THEN 'Pyrotronics'
                                                                                                END
-                                                                                       --17% for camo
+                                                                                       --12% for camo
                                                                                        WHEN i >
-                                                                                            (.55 * (weaponCrateLen * .1) + (weaponCrateLen * .4)) AND
+                                                                                            (.60 * (weaponCrateLen * .15) + (weaponCrateLen * .6)) AND
                                                                                             i <=
-                                                                                            (.72 * (weaponCrateLen * .1) + (weaponCrateLen * .4))
+                                                                                            (.72 * (weaponCrateLen * .15) + (weaponCrateLen * .6))
                                                                                            THEN
                                                                                            CASE
                                                                                                WHEN faction.label = 'Boston Cybernetics'
@@ -1434,11 +1432,17 @@ $$
                                                                                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
                                                                                                    THEN 'Red Camo'
                                                                                                END
-                                                                                       --17% for theme
+                                                                                       --12% for Gold
                                                                                        WHEN i >
-                                                                                            (.72 * (weaponCrateLen * .1) + (weaponCrateLen * .4)) AND
+                                                                                            (.72 * (weaponCrateLen * .15) + (weaponCrateLen * .6)) AND
                                                                                             i <=
-                                                                                            (.89 * (weaponCrateLen * .1) + (weaponCrateLen * .4))
+                                                                                            (.84 * (weaponCrateLen * .15) + (weaponCrateLen * .6))
+                                                                                           THEN 'Gold'
+                                                                                       --8% for theme
+                                                                                       WHEN i >
+                                                                                            (.84 * (weaponCrateLen * .15) + (weaponCrateLen * .6)) AND
+                                                                                            i <=
+                                                                                            (.92 * (weaponCrateLen * .15) + (weaponCrateLen * .6))
                                                                                            THEN
                                                                                            CASE
                                                                                                WHEN faction.label = 'Boston Cybernetics'
@@ -1448,17 +1452,11 @@ $$
                                                                                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
                                                                                                    THEN 'Mining'
                                                                                                END
-                                                                                       --10% for Gold
+                                                                                       --8% for rare color
                                                                                        WHEN i >
-                                                                                            (.89 * (weaponCrateLen * .1) + (weaponCrateLen * .4)) AND
+                                                                                            (.92 * (weaponCrateLen * .15) + (weaponCrateLen * .6)) AND
                                                                                             i <=
-                                                                                            (.99 * (weaponCrateLen * .1) + (weaponCrateLen * .4))
-                                                                                           THEN 'Gold'
-                                                                                       --1% for rare color
-                                                                                       WHEN i >
-                                                                                            (.99 * (weaponCrateLen * .1) + (weaponCrateLen * .4)) AND
-                                                                                            i <=
-                                                                                            (1 * (weaponCrateLen * .1) + (weaponCrateLen * .4))
+                                                                                            (1 * (weaponCrateLen * .15) + (weaponCrateLen * .6))
                                                                                            THEN
                                                                                            CASE
                                                                                                WHEN faction.label = 'Boston Cybernetics'
@@ -1472,7 +1470,7 @@ $$
                                      i := i + 1;
 
                             --Minigun: BC and RM OR Plasma Gun for ZHI
-                            WHEN i > (weaponCrateLen * .5) AND i <= (weaponCrateLen * .6)
+                            WHEN i > (weaponCrateLen * .75) AND i <= (weaponCrateLen * .85)
                                 THEN INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
                                      VALUES (weaponCrate.id, 'WEAPON', (SELECT id
                                                                         FROM blueprint_weapons
@@ -1556,7 +1554,7 @@ $$
                                                                                AND label =
                                                                                    CASE
                                                                                        --30% default skin
-                                                                                       WHEN i <= (.30 * (weaponCrateLen * .1) + (weaponCrateLen * .5))
+                                                                                       WHEN i <= (.30 * (weaponCrateLen * .1) + (weaponCrateLen * .75))
                                                                                            THEN
                                                                                            CASE
                                                                                                WHEN faction.label = 'Boston Cybernetics'
@@ -1566,11 +1564,11 @@ $$
                                                                                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
                                                                                                    THEN 'RMOMC Default'
                                                                                                END
-                                                                                       --25% for manufacturer's skin
+                                                                                       --30% for manufacturer's skin
                                                                                        WHEN i >
-                                                                                            (.30 * (weaponCrateLen * .1) + (weaponCrateLen * .5)) AND
+                                                                                            (.30 * (weaponCrateLen * .1) + (weaponCrateLen * .75)) AND
                                                                                             i <=
-                                                                                            (.55 * (weaponCrateLen * .1) + (weaponCrateLen * .5))
+                                                                                            (.60 * (weaponCrateLen * .1) + (weaponCrateLen * .75))
                                                                                            THEN
                                                                                            CASE
                                                                                                WHEN faction.label = 'Boston Cybernetics'
@@ -1580,11 +1578,11 @@ $$
                                                                                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
                                                                                                    THEN 'Pyrotronics'
                                                                                                END
-                                                                                       --17% for camo
+                                                                                       --12% for camo
                                                                                        WHEN i >
-                                                                                            (.55 * (weaponCrateLen * .1) + (weaponCrateLen * .5)) AND
+                                                                                            (.60 * (weaponCrateLen * .1) + (weaponCrateLen * .75)) AND
                                                                                             i <=
-                                                                                            (.72 * (weaponCrateLen * .1) + (weaponCrateLen * .5))
+                                                                                            (.72 * (weaponCrateLen * .1) + (weaponCrateLen * .75))
                                                                                            THEN
                                                                                            CASE
                                                                                                WHEN faction.label = 'Boston Cybernetics'
@@ -1594,11 +1592,17 @@ $$
                                                                                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
                                                                                                    THEN 'Red Camo'
                                                                                                END
-                                                                                       --17% for theme
+                                                                                       --12% for Gold
                                                                                        WHEN i >
-                                                                                            (.72 * (weaponCrateLen * .1) + (weaponCrateLen * .5)) AND
+                                                                                            (.72 * (weaponCrateLen * .1) + (weaponCrateLen * .75)) AND
                                                                                             i <=
-                                                                                            (.89 * (weaponCrateLen * .1) + (weaponCrateLen * .5))
+                                                                                            (.84 * (weaponCrateLen * .1) + (weaponCrateLen * .75))
+                                                                                           THEN 'Gold'
+                                                                                       --8% for theme
+                                                                                       WHEN i >
+                                                                                            (.84 * (weaponCrateLen * .1) + (weaponCrateLen * .75)) AND
+                                                                                            i <=
+                                                                                            (.92 * (weaponCrateLen * .1) + (weaponCrateLen * .75))
                                                                                            THEN
                                                                                            CASE
                                                                                                WHEN faction.label = 'Boston Cybernetics'
@@ -1608,17 +1612,11 @@ $$
                                                                                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
                                                                                                    THEN 'Mining'
                                                                                                END
-                                                                                       --10% for Gold
+                                                                                       --8% for rare color
                                                                                        WHEN i >
-                                                                                            (.89 * (weaponCrateLen * .1) + (weaponCrateLen * .5)) AND
+                                                                                            (.92 * (weaponCrateLen * .1) + (weaponCrateLen * .75)) AND
                                                                                             i <=
-                                                                                            (.99 * (weaponCrateLen * .1) + (weaponCrateLen * .5))
-                                                                                           THEN 'Gold'
-                                                                                       --1% for rare color
-                                                                                       WHEN i >
-                                                                                            (.99 * (weaponCrateLen * .1) + (weaponCrateLen * .5)) AND
-                                                                                            i <=
-                                                                                            (1 * (weaponCrateLen * .1) + (weaponCrateLen * .5))
+                                                                                            (1 * (weaponCrateLen * .1) + (weaponCrateLen * .75))
                                                                                            THEN
                                                                                            CASE
                                                                                                WHEN faction.label = 'Boston Cybernetics'
@@ -1632,7 +1630,7 @@ $$
                                      i := i + 1;
 
                             --Cannon: ZHI and RM OR Plasma Gun for BC
-                            WHEN i > (weaponCrateLen * .6) AND i <= (weaponCrateLen * .7)
+                            WHEN i > (weaponCrateLen * .85) AND i <= (weaponCrateLen * .95)
                                 THEN INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
                                      VALUES (weaponCrate.id, 'WEAPON', (SELECT id
                                                                         FROM blueprint_weapons
@@ -1717,7 +1715,7 @@ $$
                                                                                AND label =
                                                                                    CASE
                                                                                        --30% default skin
-                                                                                       WHEN i <= (.30 * (weaponCrateLen * .1) + (weaponCrateLen * .6))
+                                                                                       WHEN i <= (.30 * (weaponCrateLen * .1) + (weaponCrateLen * .85))
                                                                                            THEN
                                                                                            CASE
                                                                                                WHEN faction.label = 'Boston Cybernetics'
@@ -1729,9 +1727,9 @@ $$
                                                                                                END
                                                                                        --25% for manufacturer's skin
                                                                                        WHEN i >
-                                                                                            (.30 * (weaponCrateLen * .1) + (weaponCrateLen * .6)) AND
+                                                                                            (.30 * (weaponCrateLen * .1) + (weaponCrateLen * .85)) AND
                                                                                             i <=
-                                                                                            (.55 * (weaponCrateLen * .1) + (weaponCrateLen * .6))
+                                                                                            (.60 * (weaponCrateLen * .1) + (weaponCrateLen * .85))
                                                                                            THEN
                                                                                            CASE
                                                                                                WHEN faction.label = 'Boston Cybernetics'
@@ -1743,9 +1741,9 @@ $$
                                                                                                END
                                                                                        --17% for camo
                                                                                        WHEN i >
-                                                                                            (.55 * (weaponCrateLen * .1) + (weaponCrateLen * .6)) AND
+                                                                                            (.60 * (weaponCrateLen * .1) + (weaponCrateLen * .85)) AND
                                                                                             i <=
-                                                                                            (.72 * (weaponCrateLen * .1) + (weaponCrateLen * .6))
+                                                                                            (.72 * (weaponCrateLen * .1) + (weaponCrateLen * .85))
                                                                                            THEN
                                                                                            CASE
                                                                                                WHEN faction.label = 'Boston Cybernetics'
@@ -1755,11 +1753,17 @@ $$
                                                                                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
                                                                                                    THEN 'Red Camo'
                                                                                                END
-                                                                                       --17% for theme
+                                                                                       --12% for Gold
                                                                                        WHEN i >
-                                                                                            (.72 * (weaponCrateLen * .1) + (weaponCrateLen * .6)) AND
+                                                                                            (.72 * (weaponCrateLen * .1) + (weaponCrateLen * .85)) AND
                                                                                             i <=
-                                                                                            (.89 * (weaponCrateLen * .1) + (weaponCrateLen * .6))
+                                                                                            (.84 * (weaponCrateLen * .1) + (weaponCrateLen * .85))
+                                                                                           THEN 'Gold'
+                                                                                       --8% for theme
+                                                                                       WHEN i >
+                                                                                            (.84 * (weaponCrateLen * .1) + (weaponCrateLen * .85)) AND
+                                                                                            i <=
+                                                                                            (.92 * (weaponCrateLen * .1) + (weaponCrateLen * .85))
                                                                                            THEN
                                                                                            CASE
                                                                                                WHEN faction.label = 'Boston Cybernetics'
@@ -1769,17 +1773,11 @@ $$
                                                                                                WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
                                                                                                    THEN 'Mining'
                                                                                                END
-                                                                                       --10% for Gold
-                                                                                       WHEN i >
-                                                                                            (.89 * (weaponCrateLen * .1) + (weaponCrateLen * .6)) AND
-                                                                                            i <=
-                                                                                            (.99 * (weaponCrateLen * .1) + (weaponCrateLen * .6))
-                                                                                           THEN 'Gold'
                                                                                        --1% for rare color
                                                                                        WHEN i >
-                                                                                            (.99 * (weaponCrateLen * .1) + (weaponCrateLen * .6)) AND
+                                                                                            (.92 * (weaponCrateLen * .1) + (weaponCrateLen * .85)) AND
                                                                                             i <=
-                                                                                            (1 * (weaponCrateLen * .1) + (weaponCrateLen * .6))
+                                                                                            (1 * (weaponCrateLen * .1) + (weaponCrateLen * .85))
                                                                                            THEN
                                                                                            CASE
                                                                                                WHEN faction.label = 'Boston Cybernetics'
@@ -1863,11 +1861,10 @@ $$
                                                                                                  END
                                                                                                AND brand_id = (SELECT id FROM brands WHERE label = 'Pyrotronics'))
                                                                                    END
---                                                                                each weapon type can have different rarities of skins
                                                                            AND label =
                                                                                CASE
                                                                                    --30% default skin
-                                                                                   WHEN i <= (.30 * (weaponCrateLen * .3) + (weaponCrateLen * .7))
+                                                                                   WHEN i <= (.30 * (weaponCrateLen * .05) + (weaponCrateLen * .95))
                                                                                        THEN
                                                                                        CASE
                                                                                            WHEN faction.label = 'Boston Cybernetics'
@@ -1877,11 +1874,11 @@ $$
                                                                                            WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
                                                                                                THEN 'RMOMC Default'
                                                                                            END
-                                                                                   --25% for manufacturer's skin
+                                                                                   --30% for manufacturer's skin
                                                                                    WHEN i >
-                                                                                        (.30 * (weaponCrateLen * .3) + (weaponCrateLen * .7)) AND
+                                                                                        (.30 * (weaponCrateLen * .05) + (weaponCrateLen * .95)) AND
                                                                                         i <=
-                                                                                        (.55 * (weaponCrateLen * .3) + (weaponCrateLen * .7))
+                                                                                        (.60 * (weaponCrateLen * .05) + (weaponCrateLen * .95))
                                                                                        THEN
                                                                                        CASE
                                                                                            WHEN faction.label = 'Boston Cybernetics'
@@ -1891,11 +1888,11 @@ $$
                                                                                            WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
                                                                                                THEN 'Pyrotronics'
                                                                                            END
-                                                                                   --17% for camo
+                                                                                   --12% for camo
                                                                                    WHEN i >
-                                                                                        (.55 * (weaponCrateLen * .3) + (weaponCrateLen * .7)) AND
+                                                                                        (.60 * (weaponCrateLen * .05) + (weaponCrateLen * .95)) AND
                                                                                         i <=
-                                                                                        (.72 * (weaponCrateLen * .3) + (weaponCrateLen * .7))
+                                                                                        (.72 * (weaponCrateLen * .05) + (weaponCrateLen * .95))
                                                                                        THEN
                                                                                        CASE
                                                                                            WHEN faction.label = 'Boston Cybernetics'
@@ -1905,11 +1902,17 @@ $$
                                                                                            WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
                                                                                                THEN 'Red Camo'
                                                                                            END
-                                                                                   --17% for theme
+                                                                                   --12% for Gold
                                                                                    WHEN i >
-                                                                                        (.72 * (weaponCrateLen * .3) + (weaponCrateLen * .7)) AND
+                                                                                        (.72 * (weaponCrateLen * .05) + (weaponCrateLen * .95)) AND
                                                                                         i <=
-                                                                                        (.89 * (weaponCrateLen * .3) + (weaponCrateLen * .7))
+                                                                                        (.84 * (weaponCrateLen * .05) + (weaponCrateLen * .95))
+                                                                                       THEN 'Gold'
+                                                                                   --8% for theme
+                                                                                   WHEN i >
+                                                                                        (.84 * (weaponCrateLen * .05) + (weaponCrateLen * .95)) AND
+                                                                                        i <=
+                                                                                        (.92 * (weaponCrateLen * .05) + (weaponCrateLen * .95))
                                                                                        THEN
                                                                                        CASE
                                                                                            WHEN faction.label = 'Boston Cybernetics'
@@ -1919,17 +1922,11 @@ $$
                                                                                            WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
                                                                                                THEN 'Mining'
                                                                                            END
-                                                                                   --10% for Gold
-                                                                                   WHEN i >
-                                                                                        (.89 * (weaponCrateLen * .3) + (weaponCrateLen * .7)) AND
-                                                                                        i <=
-                                                                                        (.99 * (weaponCrateLen * .3) + (weaponCrateLen * .7))
-                                                                                       THEN 'Gold'
                                                                                    --1% for rare color
                                                                                    WHEN i >
-                                                                                        (.99 * (weaponCrateLen * .3) + (weaponCrateLen * .7)) AND
+                                                                                        (.92 * (weaponCrateLen * .05) + (weaponCrateLen * .95)) AND
                                                                                         i <=
-                                                                                        (1 * (weaponCrateLen * .3) + (weaponCrateLen * .7))
+                                                                                        (1 * (weaponCrateLen * .05) + (weaponCrateLen * .95))
                                                                                        THEN
                                                                                        CASE
                                                                                            WHEN faction.label = 'Boston Cybernetics'
