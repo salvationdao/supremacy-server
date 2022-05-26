@@ -247,6 +247,8 @@ func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 			&mc.CollectionItem.TokenID,
 			&mc.CollectionItem.OwnerID,
 			&mc.CollectionItem.Tier,
+			&mc.CollectionItem.MarketLocked,
+			&mc.CollectionItem.XsynLocked,
 			&mc.ID,
 			&mc.Name,
 			&mc.Label,

@@ -28,7 +28,7 @@ func (pp *XsynXrpcClient) AssetLock(assetToLock *server.CollectionItem) error {
 // AssetUnlock request a service unlock of an asset
 func (pp *XsynXrpcClient) AssetUnlock(assetToUnlock *server.CollectionItem) error {
 	resp := &AssetUnlockToServiceResp{}
-	err := pp.XrpcClient.Call("S.AssetLockToServiceHandler", AssetUnlockToServiceReq{
+	err := pp.XrpcClient.Call("S.AssetUnlockFromServiceHandler", AssetUnlockToServiceReq{
 		ApiKey:         pp.ApiKey,
 		CollectionSlug: assetToUnlock.CollectionSlug,
 		TokenID:        assetToUnlock.TokenID,
