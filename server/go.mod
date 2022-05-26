@@ -2,6 +2,8 @@ module server
 
 go 1.18
 
+replace github.com/ninja-syndicate/ws => /home/darren/go/src/github.com/ninja-syndicate/ws
+
 require (
 	github.com/antonholmquist/jason v1.0.0 // indirect
 	github.com/cosmtrek/air v1.27.8
@@ -90,7 +92,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/coreos/go-oidc v2.2.1+incompatible // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
-	github.com/davecgh/go-spew v1.1.1
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.0-20210816181553-5444fa50b93d // indirect
 	github.com/dghubble/oauth1 v0.7.1 // indirect
 	github.com/ethereum/go-ethereum v1.10.14
