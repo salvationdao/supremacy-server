@@ -34,15 +34,6 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
-var Profanities = []string{
-	"fag",
-	"fuck",
-	"nigga",
-	"nigger",
-	"rape",
-	"retard",
-}
-
 const PersistChatMessageLimit = 50
 
 var profanityDetector = goaway.NewProfanityDetector().WithCustomDictionary(Profanities, []string{}, []string{})
