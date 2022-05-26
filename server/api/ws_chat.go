@@ -34,15 +34,6 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
-var Profanities = []string{
-	"fag",
-	"fuck",
-	"nigga",
-	"nigger",
-	"rape",
-	"retard",
-}
-
 const PersistChatMessageLimit = 50
 
 var profanityDetector = goaway.NewProfanityDetector().WithCustomDictionary(Profanities, []string{}, []string{})
@@ -84,6 +75,7 @@ type MessagePunishVote struct {
 	DisagreedPlayerNumber int                 `json:"disagreed_player_number"`
 	PunishOption          boiler.PunishOption `json:"punish_option"`
 	PunishReason          string              `json:"punish_reason"`
+	InstantPassByUser     *boiler.Player      `json:"instant_pass_by_user"`
 }
 
 // Chatroom holds a specific chat room
