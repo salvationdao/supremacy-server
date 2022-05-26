@@ -8,10 +8,10 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
 
-type AssetLockResp struct {
+type AssetUnlockFromSupremacyResp struct {
 }
 
-type AssetLockReq struct {
+type AssetUnlockFromSupremacyReq struct {
 	ApiKey         string `json:"api_key,omitempty"`
 	CollectionSlug string `json:"collection_slug,omitempty"`
 	TokenID        int64  `json:"token_id,omitempty"`
@@ -19,8 +19,8 @@ type AssetLockReq struct {
 	Hash           string `json:"hash,omitempty"`
 }
 
-// AssetLockHandler request a lock of an asset
-func (s *S) AssetLockHandler(req AssetLockReq, resp *AssetLockResp) error {
+// AssetUnlockFromSupremacyHandler request a lock of an asset
+func (s *S) AssetUnlockFromSupremacyHandler(req AssetUnlockFromSupremacyReq, resp *AssetUnlockFromSupremacyResp) error {
 	collectionItem, err := boiler.CollectionItems(
 		boiler.CollectionItemWhere.OwnerID.EQ(req.OwnerID),
 		boiler.CollectionItemWhere.TokenID.EQ(req.TokenID),
@@ -28,7 +28,7 @@ func (s *S) AssetLockHandler(req AssetLockReq, resp *AssetLockResp) error {
 		boiler.CollectionItemWhere.CollectionSlug.EQ(req.CollectionSlug),
 	).One(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Err(err).Interface("req", req).Msg("failed to find asset - AssetLockHandler")
+		gamelog.L.Error().Err(err).Interface("req", req).Msg("failed to find asset - AssetUnlockFromSupremacyHandler")
 		return err
 	}
 
@@ -39,17 +39,17 @@ func (s *S) AssetLockHandler(req AssetLockReq, resp *AssetLockResp) error {
 	collectionItem.XsynLocked = true
 	_, err = collectionItem.Update(gamedb.StdConn, boil.Infer())
 	if err != nil {
-		gamelog.L.Error().Err(err).Interface("req", req).Msg("failed to lock asset - AssetLockHandler")
+		gamelog.L.Error().Err(err).Interface("req", req).Msg("failed to lock asset - AssetUnlockFromSupremacyHandler")
 		return err
 	}
 
 	return nil
 }
 
-type AssetUnlockResp struct {
+type AssetLockToSupremacyResp struct {
 }
 
-type AssetUnlockReq struct {
+type AssetLockToSupremacyReq struct {
 	ApiKey         string `json:"api_key,omitempty"`
 	CollectionSlug string `json:"collection_slug,omitempty"`
 	TokenID        int64  `json:"token_id,omitempty"`
@@ -57,8 +57,8 @@ type AssetUnlockReq struct {
 	Hash           string `json:"hash,omitempty"`
 }
 
-// AssetUnlockHandler request an unlock of an asset
-func (s *S) AssetUnlockHandler(req AssetUnlockReq, resp *AssetUnlockResp) error {
+// AssetLockToSupremacyHandler locks an asset to supremacy
+func (s *S) AssetLockToSupremacyHandler(req AssetLockToSupremacyReq, resp *AssetLockToSupremacyResp) error {
 	collectionItem, err := boiler.CollectionItems(
 		boiler.CollectionItemWhere.OwnerID.EQ(req.OwnerID),
 		boiler.CollectionItemWhere.TokenID.EQ(req.TokenID),
@@ -66,7 +66,7 @@ func (s *S) AssetUnlockHandler(req AssetUnlockReq, resp *AssetUnlockResp) error 
 		boiler.CollectionItemWhere.CollectionSlug.EQ(req.CollectionSlug),
 	).One(gamedb.StdConn)
 	if err != nil {
-		gamelog.L.Error().Err(err).Interface("req", req).Msg("failed to find asset - AssetUnlockHandler")
+		gamelog.L.Error().Err(err).Interface("req", req).Msg("failed to find asset - AssetLockToSupremacyHandler")
 		return err
 	}
 
@@ -77,7 +77,7 @@ func (s *S) AssetUnlockHandler(req AssetUnlockReq, resp *AssetUnlockResp) error 
 	collectionItem.XsynLocked = false
 	_, err = collectionItem.Update(gamedb.StdConn, boil.Infer())
 	if err != nil {
-		gamelog.L.Error().Err(err).Interface("req", req).Msg("failed to unlock asset - AssetUnlockHandler")
+		gamelog.L.Error().Err(err).Interface("req", req).Msg("failed to unlock asset - AssetLockToSupremacyHandler")
 		return err
 	}
 
