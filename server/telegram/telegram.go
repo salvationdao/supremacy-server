@@ -113,7 +113,7 @@ func (t *Telegram) RunTelegram(bot *tele.Bot) error {
 
 		}
 
-		reply = "Registered Successfully! Telegram notifications are now enabled. You will be notified when your war machine is nearing battle. You can disable it by going to your preferences. NOTE: you will be charged 5 $SUPS when a notification is sent"
+		reply = "Registered Successfully! Telegram notifications are now enabled. You will be notified when your war machine is nearing battle. You can disable it by going to your preferences. NOTE: you will be charged 5 $SUPS when a notification is sent (only applies to battle queue notifications)"
 		go t.RegisterCallback(prefs.PlayerID, true)
 		return c.Send(reply)
 	})
