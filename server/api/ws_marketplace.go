@@ -159,11 +159,10 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 
 	balance := mp.API.Passport.UserBalanceGet(userID)
 	feePrice := db.GetDecimalWithDefault(db.KeyMarketplaceListingFee, decimal.NewFromInt(5))
-
 	if req.Payload.SaleType == server.MarketplaceSaleTypeBuyout {
 		feePrice = feePrice.Add(db.GetDecimalWithDefault(db.KeyMarketplaceListingBuyoutFee, decimal.NewFromInt(5)))
 	}
-	feePrice = feePrice.Mul(decimal.NewFromInt(req.Payload.ListingDurationHours))
+	feePrice = feePrice.Mul(decimal.NewFromInt(req.Payload.ListingDurationHours)).Mul(decimal.New(1, 18))
 
 	if balance.Sub(feePrice).LessThan(decimal.Zero) {
 		err = fmt.Errorf("insufficient funds")
