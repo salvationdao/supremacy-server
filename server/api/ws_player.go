@@ -388,10 +388,12 @@ func (pc *PlayerController) PunishVoteInstantPassHandler(ctx context.Context, ws
 		return terror.Error(fmt.Errorf("player faction id does not exist"))
 	}
 
-	err = fpv.InstantPass(req.Payload.PunishVoteID, wsc.Identifier())
+	err = fpv.InstantPass(pc.API.Passport, req.Payload.PunishVoteID, wsc.Identifier())
 	if err != nil {
 		return terror.Error(err, err.Error())
 	}
+
+	reply(true)
 
 	return nil
 }
@@ -626,6 +628,7 @@ func (pc *PlayerController) IssuePunishVote(ctx context.Context, wsc *hub.Client
 		ReportedPlayerUsername: intendToBenPlayer.Username.String,
 		ReportedPlayerGid:      intendToBenPlayer.Gid,
 		Status:                 string(PunishVoteStatusPending),
+		InstantPassFee:         price.Mul(decimal.New(1, 18)),
 	}
 	err = punishVote.Insert(tx, boil.Infer())
 	if err != nil {

@@ -84,6 +84,7 @@ type MessagePunishVote struct {
 	DisagreedPlayerNumber int                 `json:"disagreed_player_number"`
 	PunishOption          boiler.PunishOption `json:"punish_option"`
 	PunishReason          string              `json:"punish_reason"`
+	InstantPassByUser     *boiler.Player      `json:"instant_pass_by_user"`
 }
 
 // Chatroom holds a specific chat room
