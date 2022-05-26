@@ -658,7 +658,7 @@ $$;
 DO
 $$
     BEGIN
-        FOR COUNT IN 1..2000 -- change to 20000
+        FOR COUNT IN 1..200 -- change to 20000
             LOOP
                 INSERT INTO mystery_crate (type, faction_id, label)
                 VALUES ('WEAPON',
