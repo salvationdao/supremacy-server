@@ -13,8 +13,12 @@ func BlueprintMechs(ids []string) ([]*server.BlueprintMech, error) {
 		return nil, err
 	}
 
-	for _, bp := range blueprintMechs {
-		bluePrintMechs = append(bluePrintMechs, server.BlueprintMechFromBoiler(bp))
+	for _, id := range ids {
+		for _, bp := range blueprintMechs {
+			if bp.ID == id {
+				bluePrintMechs = append(bluePrintMechs, server.BlueprintMechFromBoiler(bp))
+			}
+		}
 	}
 
 	return bluePrintMechs, nil

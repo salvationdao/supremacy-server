@@ -573,7 +573,7 @@ type BattleViewer struct {
 func BattleViewerUpsert(battleID string, userID string) error {
 	test := &BattleViewer{}
 	q := `
-		select bv.player_id from battles_viewers bv where battle_id = $1 and player_id = $2
+		select bv.player_id from battle_viewers bv where battle_id = $1 and player_id = $2
 	`
 	err := gamedb.StdConn.QueryRow(q, battleID, userID).Scan(&test.PlayerID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -588,7 +588,7 @@ func BattleViewerUpsert(battleID string, userID string) error {
 
 	// insert battle viewers
 	q = `
-		insert into battles_viewers (battle_id, player_id) VALUES ($1, $2) on conflict (battle_id, player_id) do nothing; 
+		insert into battle_viewers (battle_id, player_id) VALUES ($1, $2) on conflict (battle_id, player_id) do nothing; 
 	`
 	_, err = gamedb.StdConn.Exec(q, battleID, userID)
 	if err != nil {

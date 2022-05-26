@@ -1,7 +1,6 @@
 package battle
 
 import (
-	"github.com/davecgh/go-spew/spew"
 	"server"
 	"server/db/boiler"
 	"time"
@@ -180,7 +179,6 @@ func WeaponFromServer(weapon *server.Weapon) *Weapon {
 }
 
 func PowerCoreFromServer(ec *server.PowerCore) *PowerCore {
-	spew.Dump(ec)
 	return &PowerCore{
 		ID:           ec.ID,
 		Label:        ec.Label,

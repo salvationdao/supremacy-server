@@ -7,6 +7,8 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 
+	"github.com/volatiletech/null/v8"
+
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/gofrs/uuid"
@@ -235,9 +237,17 @@ func Utilities(id ...string) ([]*server.Utility, error) {
 }
 
 // AttachUtilityToMech attaches a Utility to a mech  TODO: create tests.
-func AttachUtilityToMech(ownerID, mechID, utilityID string) error {
+// If lockedToMech == true utility cannot be removed from mech ever (used for genesis and limited mechs)
+func AttachUtilityToMech(ownerID, mechID, utilityID string, lockedToMech bool) error {
 	// TODO: possible optimize this, 6 queries to attach a part seems like a lot?
-	// check owner
+
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		gamelog.L.Error().Err(err).Str("mechID", mechID).Msg("failed to start db transaction - AttachUtilityToMech")
+		return terror.Error(err)
+	}
+	defer tx.Rollback()
+
 	mechCI, err := CollectionItemFromItemID(mechID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("mechID", mechID).Msg("failed to get mech collection item")
@@ -264,14 +274,14 @@ func AttachUtilityToMech(ownerID, mechID, utilityID string) error {
 	mech, err := boiler.Mechs(
 		boiler.MechWhere.ID.EQ(mechID),
 		qm.Load(boiler.MechRels.ChassisMechUtilities),
-	).One(gamedb.StdConn)
+	).One(tx)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("mechID", mechID).Msg("failed to find mech")
 		return terror.Error(err)
 	}
 
 	// get Utility
-	utility, err := boiler.FindUtility(gamedb.StdConn, utilityID)
+	utility, err := boiler.FindUtility(tx, utilityID)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("utilityID", utilityID).Msg("failed to find Utility")
 		return terror.Error(err)
@@ -285,7 +295,7 @@ func AttachUtilityToMech(ownerID, mechID, utilityID string) error {
 	}
 
 	// check utility isn't already equipped to another war machine
-	exists, err := boiler.MechUtilities(boiler.MechUtilityWhere.UtilityID.EQ(utilityID)).Exists(gamedb.StdConn)
+	exists, err := boiler.MechUtilities(boiler.MechUtilityWhere.UtilityID.EQ(utilityID)).Exists(tx)
 	if err != nil {
 		gamelog.L.Error().Err(err).Str("utilityID", utilityID).Msg("failed to check if a mech and utility join already exists")
 		return terror.Error(err)
@@ -296,16 +306,31 @@ func AttachUtilityToMech(ownerID, mechID, utilityID string) error {
 		return terror.Error(err, "This utility is already equipped to another war machine, try again or contact support.")
 	}
 
+	utility.EquippedOn = null.StringFrom(mech.ID)
+	utility.LockedToMech = lockedToMech
+
+	_, err = utility.Update(tx, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().Err(err).Interface("utility", utility).Msg("failed to update utility")
+		return terror.Error(err, "Issue preventing equipping this utility to the war machine, try again or contact support.")
+	}
+
 	utilityMechJoin := boiler.MechUtility{
 		ChassisID:  mech.ID,
 		UtilityID:  utility.ID,
 		SlotNumber: len(mech.R.ChassisMechUtilities), // slot number starts at 0, so if we currently have 2 equipped and this is the 3rd, it will be slot 2.
 	}
 
-	err = utilityMechJoin.Insert(gamedb.StdConn, boil.Infer())
+	err = utilityMechJoin.Insert(tx, boil.Infer())
 	if err != nil {
 		gamelog.L.Error().Err(err).Interface("utilityMechJoin", utilityMechJoin).Msg(" failed to equip utility to war machine")
 		return terror.Error(err, "Issue preventing equipping this utility to the war machine, try again or contact support.")
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("failed to commit transaction - AttachUtilityToMech")
+		return terror.Error(err)
 	}
 
 	return nil
