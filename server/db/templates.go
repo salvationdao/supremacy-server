@@ -223,7 +223,7 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 	// if template is genesis, create it a genesis ID
 	if tmpl.IsLimitedRelease {
 		// get the max limited
-		err := boiler.NewQuery(qm.SQL(`SELECT coalesce(max(genesis_token_id) + 1, 0) as limited_token_id FROM mechs`)).Bind(nil, gamedb.StdConn, tokenIDs)
+		err := boiler.NewQuery(qm.SQL(`SELECT coalesce(max(limited_release_token_id) + 1, 0) as limited_token_id FROM mechs`)).Bind(nil, gamedb.StdConn, tokenIDs)
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("failed to get new limit release token id")
 			return mechs,
@@ -338,6 +338,10 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 
 	// if it contains a complete mech, lets build the mech!
 	if tmpl.ContainsCompleteMechExactly {
+		lockedToMech := false
+		if tokenIDs.GenesisTokenID.Valid || tokenIDs.LimitedTokenID.Valid {
+			lockedToMech = true
+		}
 		// join power core
 		err = AttachPowerCoreToMech(ownerID.String(), mechs[0].ID, powerCores[0].ID)
 		if err != nil {
@@ -348,7 +352,7 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 				Msg("failed to join powercore to mech")
 		}
 		// join skin
-		err = AttachMechSkinToMech(ownerID.String(), mechs[0].ID, mechSkins[0].ID)
+		err = AttachMechSkinToMech(ownerID.String(), mechs[0].ID, mechSkins[0].ID, lockedToMech)
 		if err != nil {
 			gamelog.L.Error().Err(err).
 				Str("ownerID.String()", ownerID.String()).
@@ -375,7 +379,7 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 		// join utility
 		for i := 0; i < mechs[0].UtilitySlots; i++ {
 			if utilities[i] != nil {
-				err = AttachUtilityToMech(ownerID.String(), mechs[0].ID, utilities[i].ID)
+				err = AttachUtilityToMech(ownerID.String(), mechs[0].ID, utilities[i].ID, lockedToMech)
 				if err != nil {
 					gamelog.L.Error().Err(err).
 						Str("ownerID.String()", ownerID.String()).

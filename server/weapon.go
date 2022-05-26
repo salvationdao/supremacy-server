@@ -19,6 +19,7 @@ type Weapon struct {
 	Slug                  string              `json:"slug"`
 	Damage                int                 `json:"damage"`
 	BlueprintID           string              `json:"blueprint_id"`
+	EquippedOn            null.String         `json:"equipped_on,omitempty"`
 	DefaultDamageType     string              `json:"default_damage_type"`
 	GenesisTokenID        null.Int64          `json:"genesis_token_id,omitempty"`
 	LimitedReleaseTokenID null.Int64          `json:"limited_release_token_id,omitempty"`
@@ -161,5 +162,6 @@ func WeaponFromBoiler(weapon *boiler.Weapon, collection *boiler.CollectionItem) 
 		MaxAmmo:             weapon.MaxAmmo,
 		UpdatedAt:           weapon.UpdatedAt,
 		CreatedAt:           weapon.CreatedAt,
+		EquippedOn:          weapon.EquippedOn,
 	}
 }
