@@ -24,6 +24,8 @@ SELECT
 	collection_items.token_id,
 	collection_items.owner_id,
 	collection_items.tier,
+	collection_items.market_locked,
+	collection_items.xsyn_locked,
 	mechs.id,
 	mechs.name,
 	mechs.label,
@@ -159,6 +161,8 @@ func Mech(mechID string) (*server.Mech, error) {
 			&mc.CollectionItem.TokenID,
 			&mc.CollectionItem.OwnerID,
 			&mc.CollectionItem.Tier,
+			&mc.CollectionItem.MarketLocked,
+			&mc.CollectionItem.XsynLocked,
 			&mc.ID,
 			&mc.Name,
 			&mc.Label,
@@ -503,12 +507,13 @@ func IsMechColumn(col string) bool {
 }
 
 type MechListOpts struct {
-	Search   string
-	Filter   *ListFilterRequest
-	Sort     *ListSortRequest
-	PageSize int
-	Page     int
-	OwnerID  string
+	Search           string
+	Filter           *ListFilterRequest
+	Sort             *ListSortRequest
+	PageSize         int
+	Page             int
+	OwnerID          string
+	DisplayXsynMechs bool
 }
 
 func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
@@ -529,6 +534,14 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			Operator: OperatorValueTypeEquals,
 			Value:    boiler.ItemTypeMech,
 		}, 0, "and"))
+
+	if !opts.DisplayXsynMechs {
+		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
+			Table:    boiler.TableNames.CollectionItems,
+			Column:   boiler.CollectionItemColumns.XsynLocked,
+			Operator: OperatorValueTypeIsFalse,
+		}, 0, ""))
+	}
 
 	// Filters
 	if opts.Filter != nil {
@@ -555,13 +568,15 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 				))
 		}
 	}
-
+	boil.DebugMode = true
 	total, err := boiler.CollectionItems(
 		queryMods...,
 	).Count(gamedb.StdConn)
 	if err != nil {
+		boil.DebugMode = false
 		return 0, nil, err
 	}
+	boil.DebugMode = false
 	// Sort
 	if opts.Sort != nil && opts.Sort.Table == boiler.TableNames.Mechs && IsMechColumn(opts.Sort.Column) && opts.Sort.Direction.IsValid() {
 		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s.%s %s", boiler.TableNames.Mechs, opts.Sort.Column, opts.Sort.Direction)))

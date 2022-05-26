@@ -38,11 +38,12 @@ const HubKeyPlayerAssetMechList = "PLAYER:ASSET:MECH:LIST"
 
 type PlayerAssetMechListRequest struct {
 	Payload struct {
-		Search   string                `json:"search"`
-		Filter   *db.ListFilterRequest `json:"filter"`
-		Sort     *db.ListSortRequest   `json:"sort"`
-		PageSize int                   `json:"page_size"`
-		Page     int                   `json:"page"`
+		Search           string                `json:"search"`
+		Filter           *db.ListFilterRequest `json:"filter"`
+		Sort             *db.ListSortRequest   `json:"sort"`
+		PageSize         int                   `json:"page_size"`
+		Page             int                   `json:"page"`
+		DisplayXsynMechs bool                  `json:"display_xsyn_mechs"`
 	} `json:"payload"`
 }
 
@@ -108,12 +109,13 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 	}
 
 	total, mechs, err := db.MechList(&db.MechListOpts{
-		Search:   req.Payload.Search,
-		Filter:   req.Payload.Filter,
-		Sort:     req.Payload.Sort,
-		PageSize: req.Payload.PageSize,
-		Page:     req.Payload.Page,
-		OwnerID:  user.ID,
+		Search:           req.Payload.Search,
+		Filter:           req.Payload.Filter,
+		Sort:             req.Payload.Sort,
+		PageSize:         req.Payload.PageSize,
+		Page:             req.Payload.Page,
+		OwnerID:          user.ID,
+		DisplayXsynMechs: req.Payload.DisplayXsynMechs,
 	})
 	if err != nil {
 		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting mechs")

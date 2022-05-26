@@ -6,8 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ninja-syndicate/ws"
-	"github.com/volatiletech/null/v8"
 	"net/http"
 	"server"
 	"server/battle"
@@ -19,6 +17,9 @@ import (
 	"server/xsyn_rpcclient"
 	"strings"
 	"time"
+
+	"github.com/ninja-syndicate/ws"
+	"github.com/volatiletech/null/v8"
 
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -746,7 +747,9 @@ func (pc *PlayerController) PlayersSubscribeHandler(ctx context.Context, user *b
 	// broadcast player stat
 	us, err := db.UserStatsGet(user.ID)
 	if err != nil {
-		gamelog.L.Error().Str("player id", user.ID).Err(err).Msg("Failed to get player stat")
+		if !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Str("player id", user.ID).Err(err).Msg("Failed to get player stat")
+		}
 	}
 
 	if us != nil {
