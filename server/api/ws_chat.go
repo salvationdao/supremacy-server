@@ -12,6 +12,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/multipliers"
+	"sort"
 	"time"
 
 	"github.com/volatiletech/null/v8"
@@ -480,6 +481,10 @@ func (fc *ChatController) ChatPastMessagesHandler(ctx context.Context, hubc *hub
 	default:
 		fc.API.GlobalChat.Range(chatRangeHandler)
 	}
+
+	sort.Slice(resp, func(i, j int) bool {
+		return resp[i].SentAt.After(resp[j].SentAt)
+	})
 
 	reply(resp)
 
