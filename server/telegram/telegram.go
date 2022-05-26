@@ -187,7 +187,7 @@ func (t *Telegram) PreferencesUpdate(playerID string) (*boiler.PlayerSettingsPre
 }
 
 // OLD Notify Method, will be removed
-func (t *Telegram) Notify(telegramNotificationID string, message string) error {
+func (t *Telegram) NotifyDEPRECATED(telegramNotificationID string, message string) error {
 	if t.Bot == nil {
 		return nil
 	}
@@ -209,7 +209,7 @@ func (t *Telegram) Notify(telegramNotificationID string, message string) error {
 	return nil
 }
 
-func (t *Telegram) Notify2(telegramID int64, message string) error {
+func (t *Telegram) Notify(telegramID int64, message string) error {
 	if t.Bot == nil {
 		return nil
 	}

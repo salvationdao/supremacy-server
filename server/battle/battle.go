@@ -834,7 +834,7 @@ func (btl *Battle) endWarMachines(payload *BattleEndPayload) []*WarMachine {
 			if prefs != nil && prefs.TelegramID.Valid && prefs.EnableTelegramNotifications {
 				// killed a war machine
 				msg := fmt.Sprintf("Your War machine %s is Victorious! 🎉", w.Name)
-				err := btl.arena.telegram.Notify2(prefs.TelegramID.Int64, msg)
+				err := btl.arena.telegram.Notify(prefs.TelegramID.Int64, msg)
 				if err != nil {
 					gamelog.L.Error().Str("telegramID", fmt.Sprintf("%v", prefs.TelegramID)).Err(err).Msg("failed to send notification")
 				}
@@ -1427,7 +1427,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 	if prefs != nil && prefs.TelegramID.Valid && prefs.EnableTelegramNotifications {
 		// killed a war machine
 		msg := fmt.Sprintf("Your War machine %s has been destroyed ☠️", destroyedWarMachine.Name)
-		err := btl.arena.telegram.Notify2(prefs.TelegramID.Int64, msg)
+		err := btl.arena.telegram.Notify(prefs.TelegramID.Int64, msg)
 		if err != nil {
 			gamelog.L.Error().Str("playerID", prefs.PlayerID).Str("telegramID", fmt.Sprintf("%v", prefs.TelegramID)).Err(err).Msg("failed to send notification")
 		}
@@ -1461,7 +1461,7 @@ func (btl *Battle) Destroyed(dp *BattleWMDestroyedPayload) {
 					if prefs != nil && prefs.TelegramID.Valid && prefs.EnableTelegramNotifications {
 						// killed a war machine
 						msg := fmt.Sprintf("Your War machine destroyed %s \U0001F9BE ", destroyedWarMachine.Name)
-						err := btl.arena.telegram.Notify2(prefs.TelegramID.Int64, msg)
+						err := btl.arena.telegram.Notify(prefs.TelegramID.Int64, msg)
 						if err != nil {
 							gamelog.L.Error().Str("playerID", prefs.PlayerID).Str("telegramID", fmt.Sprintf("%v", prefs.TelegramID)).Err(err).Msg("failed to send notification")
 						}
