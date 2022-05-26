@@ -41,7 +41,7 @@ CREATE TABLE weapon_models
     id              UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
     faction_id      UUID REFERENCES factions(id),
     brand_id UUID REFERENCES brands(id),
-    label           TEXT        NOT NULL,
+    label           TEXT        UNIQUE NOT NULL,
     weapon_type     WEAPON_TYPE NOT NULL,
     default_skin_id UUID,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -82,81 +82,39 @@ INSERT INTO brands (faction_id, label) VALUES ((SELECT id FROM factions WHERE la
 INSERT INTO brands (faction_id, label) VALUES ((SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation'), 'Unified Martian Corporation');
 INSERT INTO brands (faction_id, label) VALUES ((SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation'), 'Pyrotronics');
 
---Insert into weapon models
--- looping through common weapons shared between factions
-DO $$
-DECLARE faction factions%rowtype;
-    BEGIN
-        FOR faction in SELECT * FROM factions
-        LOOP
-            INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Flak', faction.id, 'Flak',
-                CASE
-                    WHEN faction.label = 'Boston Cybernetics' THEN
-                        (SELECT id FROM brands WHERE label = 'Archon Miltech')
-                    WHEN faction.label = 'Zaibatsu Heavy Industries' THEN
-                        (SELECT id FROM brands WHERE label = 'Warsui')
-                    WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN
-                        (SELECT id FROM brands WHERE label = 'Pyrotronics')
-                END
-            );
-            INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Machine Gun', faction.id, 'Machine Gun',
-                CASE
-                    WHEN faction.label = 'Boston Cybernetics' THEN
-                        (SELECT id FROM brands WHERE label = 'Archon Miltech')
-                    WHEN faction.label = 'Zaibatsu Heavy Industries' THEN
-                        (SELECT id FROM brands WHERE label = 'Warsui')
-                    WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN
-                        (SELECT id FROM brands WHERE label = 'Pyrotronics')
-                END
-            );
-            INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Flamethrower', faction.id, 'Flamethrower',
-                CASE
-                    WHEN faction.label = 'Boston Cybernetics' THEN
-                        (SELECT id FROM brands WHERE label = 'Archon Miltech')
-                    WHEN faction.label = 'Zaibatsu Heavy Industries' THEN
-                        (SELECT id FROM brands WHERE label = 'Warsui')
-                    WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN
-                        (SELECT id FROM brands WHERE label = 'Pyrotronics')
-                END
-            );
-            INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Missile Launcher', faction.id, 'Missile Launcher',
-                CASE
-                    WHEN faction.label = 'Boston Cybernetics' THEN
-                        (SELECT id FROM brands WHERE label = 'Archon Miltech')
-                    WHEN faction.label = 'Zaibatsu Heavy Industries' THEN
-                        (SELECT id FROM brands WHERE label = 'Warsui')
-                    WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN
-                        (SELECT id FROM brands WHERE label = 'Pyrotronics')
-                END
-            );
-            INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Laser Beam', faction.id, 'Laser Beam',
-                CASE
-                    WHEN faction.label = 'Boston Cybernetics' THEN
-                        (SELECT id FROM brands WHERE label = 'Archon Miltech')
-                    WHEN faction.label = 'Zaibatsu Heavy Industries' THEN
-                        (SELECT id FROM brands WHERE label = 'Warsui')
-                    WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN
-                        (SELECT id FROM brands WHERE label = 'Pyrotronics')
-                END
-            );
-        END LOOP;
-    END;
-$$;
+-- inserting common weapons
+INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Archon Miltech Flak', (SELECT id FROM factions WHERE label = 'Boston Cybernetics'), 'Flak', (SELECT id FROM brands WHERE label = 'Archon Miltech'));
+INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Archon Miltech Machine Gun', (SELECT id FROM factions WHERE label = 'Boston Cybernetics'), 'Machine Gun', (SELECT id FROM brands WHERE label = 'Archon Miltech'));
+INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Archon Miltech Flamethrower', (SELECT id FROM factions WHERE label = 'Boston Cybernetics'), 'Flamethrower', (SELECT id FROM brands WHERE label = 'Archon Miltech'));
+INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Archon Miltech Missile Launcher', (SELECT id FROM factions WHERE label = 'Boston Cybernetics'), 'Missile Launcher', (SELECT id FROM brands WHERE label = 'Archon Miltech'));
+INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Archon Miltech Laser Beam', (SELECT id FROM factions WHERE label = 'Boston Cybernetics'), 'Laser Beam', (SELECT id FROM brands WHERE label = 'Archon Miltech'));
+
+INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Warsui Flak', (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries'), 'Flak', (SELECT id FROM brands WHERE label = 'Warsui'));
+INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Warsui Machine Gun', (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries'), 'Machine Gun', (SELECT id FROM brands WHERE label = 'Warsui'));
+INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Warsui Flamethrower', (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries'), 'Flamethrower', (SELECT id FROM brands WHERE label = 'Warsui'));
+INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Warsui Missile Launcher', (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries'), 'Missile Launcher', (SELECT id FROM brands WHERE label = 'Warsui'));
+INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Warsui Laser Beam', (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries'), 'Laser Beam', (SELECT id FROM brands WHERE label = 'Warsui'));
+
+INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Pyrotronics Flak', (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation'), 'Flak', (SELECT id FROM brands WHERE label = 'Pyrotronics'));
+INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Pyrotronics Machine Gun', (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation'), 'Machine Gun', (SELECT id FROM brands WHERE label = 'Pyrotronics'));
+INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Pyrotronics Flamethrower', (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation'), 'Flamethrower', (SELECT id FROM brands WHERE label = 'Pyrotronics'));
+INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Pyrotronics Missile Launcher', (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation'), 'Missile Launcher', (SELECT id FROM brands WHERE label = 'Pyrotronics'));
+INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Pyrotronics Laser Beam', (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation'), 'Laser Beam', (SELECT id FROM brands WHERE label = 'Pyrotronics'));
 
 -- Inserting specific weapons for each faction
-INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Plasma Gun', (SELECT id FROM factions WHERE label = 'Boston Cybernetics'), 'Plasma Gun', (SELECT id FROM brands WHERE label = 'Archon Miltech'));
-INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Minigun', (SELECT id FROM factions WHERE label = 'Boston Cybernetics'), 'Minigun', (SELECT id FROM brands WHERE label = 'Archon Miltech'));
-INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('BFG', (SELECT id FROM factions WHERE label = 'Boston Cybernetics'), 'BFG', (SELECT id FROM brands WHERE label = 'Archon Miltech'));
+INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Archon Miltech Plasma Gun', (SELECT id FROM factions WHERE label = 'Boston Cybernetics'), 'Plasma Gun', (SELECT id FROM brands WHERE label = 'Archon Miltech'));
+INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Archon Miltech Minigun', (SELECT id FROM factions WHERE label = 'Boston Cybernetics'), 'Minigun', (SELECT id FROM brands WHERE label = 'Archon Miltech'));
+INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Archon Miltech BFG', (SELECT id FROM factions WHERE label = 'Boston Cybernetics'), 'BFG', (SELECT id FROM brands WHERE label = 'Archon Miltech'));
 
 
-INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Plasma Gun', (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries'), 'Plasma Gun', (SELECT id FROM brands WHERE label = 'Warsui'));
-INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Cannon', (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries'), 'Cannon', (SELECT id FROM brands WHERE label = 'Warsui'));
-INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Lightning Gun', (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries'), 'Lightning Gun', (SELECT id FROM brands WHERE label = 'Warsui'));
+INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Warsui Plasma Gun', (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries'), 'Plasma Gun', (SELECT id FROM brands WHERE label = 'Warsui'));
+INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Warsui Cannon', (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries'), 'Cannon', (SELECT id FROM brands WHERE label = 'Warsui'));
+INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Warsui Lightning Gun', (SELECT id FROM factions WHERE label = 'Zaibatsu Heavy Industries'), 'Lightning Gun', (SELECT id FROM brands WHERE label = 'Warsui'));
 
 
-INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Minigun', (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation'), 'Minigun', (SELECT id FROM brands WHERE label = 'Pyrotronics'));
-INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Cannon', (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation'), 'Cannon', (SELECT id FROM brands WHERE label = 'Pyrotronics'));
-INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Grenade Launcher', (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation'), 'Grenade Launcher', (SELECT id FROM brands WHERE label = 'Pyrotronics'));
+INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Pyrotronics Minigun', (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation'), 'Minigun', (SELECT id FROM brands WHERE label = 'Pyrotronics'));
+INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Pyrotronics Cannon', (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation'), 'Cannon', (SELECT id FROM brands WHERE label = 'Pyrotronics'));
+INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id) VALUES ('Pyrotronics Grenade Launcher', (SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Corporation'), 'Grenade Launcher', (SELECT id FROM brands WHERE label = 'Pyrotronics'));
 
 -- insert genesis weapons that are not faction specific
 INSERT INTO weapon_models (label, weapon_type, brand_id) VALUES ('Plasma Rifle', 'Rifle', (SELECT id FROM brands WHERE label = 'Boston Cybernetics') );
@@ -438,7 +396,7 @@ INSERT INTO blueprint_power_cores (collection, label, size, capacity, max_draw_r
 DO $$
     BEGIN
     --should be >= 200 and end in -00 for all math to math plz... (2 mech types, each with own percentage of skins allocations)
-        FOR COUNT IN 1..200 LOOP
+        FOR COUNT IN 1..500 LOOP
             INSERT INTO mystery_crate (type, faction_id, label) VALUES ('MECH', (SELECT id FROM factions f WHERE f.label = 'Red Mountain Offworld Mining Corporation'), 'Red Mountain War Machine Mystery Crate');
             INSERT INTO mystery_crate (type, faction_id, label) VALUES ('MECH', (SELECT id FROM factions f WHERE f.label = 'Zaibatsu Heavy Industries'), 'Zaibatsu Nexus War Machine Mystery Crate');
             INSERT INTO mystery_crate (type, faction_id, label) VALUES ('MECH', (SELECT id FROM factions f WHERE f.label = 'Boston Cybernetics'), 'Boston Cybernetics Nexus War Machine Mystery Crate');
@@ -473,12 +431,12 @@ BEGIN
         FOR faction in SELECT * FROM factions
         LOOP
             i := 1;
-            mechCrateLen := (SELECT COUNT(*) FROM mystery_crate WHERE faction_id = faction.id AND type = 'MECH')/2;
-            -- for half of the Mechs, insert a mech object from the appropriate brand's bipedal mechs and a fitted power core
+            mechCrateLen := (SELECT COUNT(*) FROM mystery_crate WHERE faction_id = faction.id AND type = 'MECH');
+            -- for 80% of the Mechs, insert a mech object from the appropriate brand's bipedal mechs and a fitted power core
             FOR mechCrate in SELECT * FROM mystery_crate WHERE faction_id = faction.id AND type = 'MECH'
             LOOP
                 CASE
-                    WHEN i <=(mechCrateLen) THEN
+                    WHEN i <=(mechCrateLen*.80) THEN
                         INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id) VALUES (mechCrate.id, 'MECH', (SELECT id FROM blueprint_mechs WHERE blueprint_mechs.power_core_size = 'SMALL' AND
                         blueprint_mechs.brand_id =
                             CASE
@@ -498,37 +456,37 @@ BEGIN
                         AND label =
                             CASE
                                 --30% default skin
-                                WHEN i <= (.30*mechCrateLen) THEN
+                                WHEN i <= (.30*(mechCrateLen*.80)) THEN
                                     CASE
                                         WHEN faction.label = 'Boston Cybernetics' THEN 'BC Default'
                                         WHEN faction.label = 'Zaibatsu Heavy Industries' THEN 'ZHI Default'
                                         WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN 'RMOMC Default'
                                     END
                                 --25% for manufacturer's skin
-                                WHEN i > (.30*mechCrateLen) AND i <= (.55*mechCrateLen) THEN
+                                WHEN i > (.30*(mechCrateLen*.80)) AND i <= (.55*(mechCrateLen*.80)) THEN
                                     CASE
                                         WHEN faction.label = 'Boston Cybernetics' THEN 'Daison Avionics'
                                         WHEN faction.label = 'Zaibatsu Heavy Industries' THEN 'x3 Wartech'
                                         WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN 'Unified Martian Corporation'
                                     END
                                 --17% for camo
-                                WHEN i > (.55*mechCrateLen) AND i <= (.72*mechCrateLen) THEN
+                                WHEN i > (.55*(mechCrateLen*.80)) AND i <= (.72*(mechCrateLen*.80)) THEN
                                     CASE
                                         WHEN faction.label = 'Boston Cybernetics' THEN 'Blue Camo'
                                         WHEN faction.label = 'Zaibatsu Heavy Industries' THEN 'White Camo'
                                         WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN 'Red Camo'
                                     END
                                 --17% for theme
-                                WHEN i > (.72*mechCrateLen) AND i <= (.89*mechCrateLen) THEN
+                                WHEN i > (.72*(mechCrateLen*.80)) AND i <= (.89*(mechCrateLen*.80)) THEN
                                     CASE
                                         WHEN faction.label = 'Boston Cybernetics' THEN 'Police'
                                         WHEN faction.label = 'Zaibatsu Heavy Industries' THEN 'Ninja'
                                         WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN 'Mining'
                                     END
                                 --10% for Gold
-                                WHEN i > (.89*mechCrateLen) AND i <= (.99*mechCrateLen) THEN 'Gold'
+                                WHEN i > (.89*(mechCrateLen*.80)) AND i <= (.99*(mechCrateLen*.80)) THEN 'Gold'
                                 --1% for rare color
-                                WHEN i > (.99*mechCrateLen) AND i <= (1*mechCrateLen) THEN
+                                WHEN i > (.99*(mechCrateLen*.80)) AND i <= (1*(mechCrateLen*.80)) THEN
                                     CASE
                                         WHEN faction.label = 'Boston Cybernetics' THEN 'Crystal'
                                         WHEN faction.label = 'Zaibatsu Heavy Industries' THEN 'Neon'
@@ -558,37 +516,37 @@ BEGIN
                             AND label =
                             CASE
                                 --30% default skin
-                                WHEN i <= ((.30*mechCrateLen) + mechCrateLen) THEN
+                                WHEN i <= ((.30*(mechCrateLen*.20)) + (mechCrateLen*.80)) THEN
                                     CASE
                                         WHEN faction.label = 'Boston Cybernetics' THEN 'BC Default'
                                         WHEN faction.label = 'Zaibatsu Heavy Industries' THEN 'ZHI Default'
                                         WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN 'RMOMC Default'
                                     END
                                 --25% for manufacturer's skin
-                                WHEN i > ((.30*mechCrateLen) + mechCrateLen) AND i <= ((.55*mechCrateLen) + mechCrateLen) THEN
+                                WHEN i > ((.30*(mechCrateLen*.20)) + (mechCrateLen*.80)) AND i <= ((.55*(mechCrateLen*.20)) + (mechCrateLen*.80)) THEN
                                     CASE
                                         WHEN faction.label = 'Boston Cybernetics' THEN 'Daison Avionics'
                                         WHEN faction.label = 'Zaibatsu Heavy Industries' THEN 'x3 Wartech'
                                         WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN 'Unified Martian Corporation'
                                     END
                                 --17% for camo
-                                WHEN i > ((.55*mechCrateLen) + mechCrateLen) AND i <= ((.72*mechCrateLen) + mechCrateLen) THEN
+                                WHEN i > ((.55*(mechCrateLen*.20)) + (mechCrateLen*.80)) AND i <= ((.72*(mechCrateLen*.20)) + (mechCrateLen*.80)) THEN
                                     CASE
                                         WHEN faction.label = 'Boston Cybernetics' THEN 'Blue Camo'
                                         WHEN faction.label = 'Zaibatsu Heavy Industries' THEN 'White Camo'
                                         WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN 'Red Camo'
                                     END
                                 --17% for theme
-                                WHEN i > ((.72*mechCrateLen) + mechCrateLen) AND i <= ((.89*mechCrateLen) + mechCrateLen) THEN
+                                WHEN i > ((.72*(mechCrateLen*.20)) + (mechCrateLen*.80)) AND i <= ((.89*(mechCrateLen*.20)) + (mechCrateLen*.80)) THEN
                                     CASE
                                         WHEN faction.label = 'Boston Cybernetics' THEN 'Police'
                                         WHEN faction.label = 'Zaibatsu Heavy Industries' THEN 'Ninja'
                                         WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN 'Mining'
                                     END
                                 --10% for Gold
-                                WHEN i > ((.89*mechCrateLen) + mechCrateLen) AND i <= ((.99*mechCrateLen) + mechCrateLen) THEN 'Gold'
+                                WHEN i > ((.89*(mechCrateLen*.20)) + (mechCrateLen*.80)) AND i <= ((.99*(mechCrateLen*.20)) + (mechCrateLen*.80)) THEN 'Gold'
                                 --1% for rare color
-                                WHEN i > ((.99*mechCrateLen) + mechCrateLen) AND i <= ((1*mechCrateLen) + mechCrateLen) THEN
+                                WHEN i > ((.99*(mechCrateLen*.20)) + (mechCrateLen*.80)) AND i <= ((1*(mechCrateLen*.20)) + (mechCrateLen*.80)) THEN
                                     CASE
                                         WHEN faction.label = 'Boston Cybernetics' THEN 'Crystal'
                                         WHEN faction.label = 'Zaibatsu Heavy Industries' THEN 'Neon'
@@ -617,6 +575,14 @@ BEGIN
                             WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN (SELECT id FROM brands WHERE label = 'Pyrotronics')
                         END
                         ));
+--                         INSERT INTO mystery_crate_blueprints (id, mystery_crate_id, blueprint_type, blueprint_id) VALUES (weaponCrate.id, 'WEAPON_SKIN', (SELECT id FROM blueprint_weapon_skins WHERE weapon_type = 'Flak' AND
+--                             blueprint_weapon_skins.weapon_model_id =
+--                             CASE
+--                                 WHEN faction.label = 'Boston Cybernetics' THEN (SELECT id FROM weapon_models WHERE label = 'BC Humanoid')
+--                                 WHEN faction.label = 'Zaibatsu Heavy Industries' THEN (SELECT id FROM weapon_models WHERE label = 'ZHI Humanoid')
+--                                 WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN (SELECT id FROM weapon_models WHERE label = 'RMOMC Humanoid')
+--                                 END
+--                         ))
                         i := i + 1;
                     --machine gun: all factions
                     WHEN i > mechCrateLen AND i <= (2 * mechCrateLen) THEN
