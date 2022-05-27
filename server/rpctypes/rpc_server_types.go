@@ -435,6 +435,7 @@ type XsynAsset struct {
 	Data             types.JSON   `json:"data,omitempty"`
 	Attributes       []*Attribute `json:"attributes,omitempty"`
 	Name             string       `json:"name,omitempty"`
+	AssetType        null.String  `json:"asset_type,omitempty"`
 	ImageURL         null.String  `json:"image_url,omitempty"`
 	ExternalURL      null.String  `json:"external_url,omitempty"`
 	Description      null.String  `json:"description,omitempty"`

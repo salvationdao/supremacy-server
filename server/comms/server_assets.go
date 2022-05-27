@@ -97,9 +97,10 @@ func (s *S) AssetHandler(req rpctypes.AssetReq, resp *rpctypes.AssetResp) error 
 		Tier:           ci.Tier,
 		Hash:           ci.Hash,
 		OwnerID:        ci.OwnerID,
+		AssetType:      null.StringFrom(ci.ItemType),
 		Data:           asJson,
 		Name:           name,
-		XsynLocked: ci.XsynLocked,
+		XsynLocked:     ci.XsynLocked,
 	}
 	return nil
 }
