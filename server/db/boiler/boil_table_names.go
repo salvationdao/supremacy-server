@@ -40,6 +40,7 @@ var TableNames = struct {
 	BlueprintWeaponSkin                                string
 	BlueprintWeapons                                   string
 	Brands                                             string
+	ChatBannedFingerprints                             string
 	ChatHistory                                        string
 	CollectionItems                                    string
 	ConsumedAbilities                                  string
@@ -131,6 +132,7 @@ var TableNames = struct {
 	BlueprintWeaponSkin:         "blueprint_weapon_skin",
 	BlueprintWeapons:            "blueprint_weapons",
 	Brands:                      "brands",
+	ChatBannedFingerprints:      "chat_banned_fingerprints",
 	ChatHistory:                 "chat_history",
 	CollectionItems:             "collection_items",
 	ConsumedAbilities:           "consumed_abilities",
