@@ -12,11 +12,12 @@ type AssetUnlockFromSupremacyResp struct {
 }
 
 type AssetUnlockFromSupremacyReq struct {
-	ApiKey         string `json:"api_key,omitempty"`
-	CollectionSlug string `json:"collection_slug,omitempty"`
-	TokenID        int64  `json:"token_id,omitempty"`
-	OwnerID        string `json:"owner_id,omitempty"`
-	Hash           string `json:"hash,omitempty"`
+	ApiKey          string `json:"api_key,omitempty"`
+	CollectionSlug  string `json:"collection_slug,omitempty"`
+	TokenID         int64  `json:"token_id,omitempty"`
+	OwnerID         string `json:"owner_id,omitempty"`
+	Hash            string `json:"hash,omitempty"`
+	TransferEventID int64  `json:"transfer_event_id"`
 }
 
 // AssetUnlockFromSupremacyHandler request a lock of an asset
@@ -43,6 +44,8 @@ func (s *S) AssetUnlockFromSupremacyHandler(req AssetUnlockFromSupremacyReq, res
 		return err
 	}
 
+	// TODO: store transfer event ID
+
 	return nil
 }
 
@@ -50,11 +53,12 @@ type AssetLockToSupremacyResp struct {
 }
 
 type AssetLockToSupremacyReq struct {
-	ApiKey         string `json:"api_key,omitempty"`
-	CollectionSlug string `json:"collection_slug,omitempty"`
-	TokenID        int64  `json:"token_id,omitempty"`
-	OwnerID        string `json:"owner_id,omitempty"`
-	Hash           string `json:"hash,omitempty"`
+	ApiKey          string `json:"api_key,omitempty"`
+	CollectionSlug  string `json:"collection_slug,omitempty"`
+	TokenID         int64  `json:"token_id,omitempty"`
+	OwnerID         string `json:"owner_id,omitempty"`
+	Hash            string `json:"hash,omitempty"`
+	TransferEventID int64  `json:"transfer_event_id"`
 }
 
 // AssetLockToSupremacyHandler locks an asset to supremacy
@@ -80,6 +84,8 @@ func (s *S) AssetLockToSupremacyHandler(req AssetLockToSupremacyReq, resp *Asset
 		gamelog.L.Error().Err(err).Interface("req", req).Msg("failed to unlock asset - AssetLockToSupremacyHandler")
 		return err
 	}
+
+	// TODO: store transfer event ID
 
 	return nil
 }

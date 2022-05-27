@@ -570,15 +570,12 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 				))
 		}
 	}
-	boil.DebugMode = true
 	total, err := boiler.CollectionItems(
 		queryMods...,
 	).Count(gamedb.StdConn)
 	if err != nil {
-		boil.DebugMode = false
 		return 0, nil, err
 	}
-	boil.DebugMode = false
 	// Sort
 	if opts.Sort != nil && opts.Sort.Table == boiler.TableNames.Mechs && IsMechColumn(opts.Sort.Column) && opts.Sort.Direction.IsValid() {
 		queryMods = append(queryMods, qm.OrderBy(fmt.Sprintf("%s.%s %s", boiler.TableNames.Mechs, opts.Sort.Column, opts.Sort.Direction)))
