@@ -776,35 +776,15 @@ BEGIN
 end;
 $$;
 
-DROP FUNCTION IF EXISTS insert_weapon_and_skin_into_crate(i integer, weaponCrate_id UUID, weaponType TEXT,
-                                                          amount_of_type numeric,
-                                                          previous_crates numeric, faction record);
-CREATE FUNCTION insert_weapon_and_skin_into_crate(i integer, weaponCrate_id UUID, weaponType TEXT,
-                                                  amount_of_type numeric,
-                                                  previous_crates numeric, faction record) returns void
+DROP FUNCTION IF EXISTS insert_weapon_skin_into_crate(i integer, weaponCrate_id UUID, weaponType TEXT,
+                                                      amount_of_type numeric,
+                                                      previous_crates numeric, faction record);
+CREATE FUNCTION insert_weapon_skin_into_crate(i integer, weaponCrate_id UUID, weaponType TEXT,
+                                              amount_of_type numeric,
+                                              previous_crates numeric, faction record) returns void
     language plpgsql as
 $$
-DECLARE
-    weaponCrateLen INTEGER;
 BEGIN
-    weaponCrateLen := (SELECT COUNT(*)
-                       FROM mystery_crate
-                       WHERE faction_id = faction.id
-                         AND type = 'WEAPON'); --length of crate rows to be allocated to 1 type of weapon
-
-    INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
-    VALUES (weaponCrate_id, 'WEAPON', (SELECT id
-                                       FROM blueprint_weapons
-                                       WHERE weapon_type = weaponType::weapon_type
-                                         AND brand_id =
-                                             CASE
-                                                 WHEN faction.label = 'Boston Cybernetics'
-                                                     THEN (SELECT id FROM brands WHERE label = 'Archon Miltech')
-                                                 WHEN faction.label = 'Zaibatsu Heavy Industries'
-                                                     THEN (SELECT id FROM brands WHERE label = 'Warsui')
-                                                 WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
-                                                     THEN (SELECT id FROM brands WHERE label = 'Pyrotronics')
-                                                 END));
     INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
     VALUES (weaponCrate_id, 'WEAPON_SKIN', (SELECT id
                                             FROM blueprint_weapon_skin
@@ -829,6 +809,27 @@ BEGIN
                                                       END
                                               AND label =
                                                   get_skin_label(i, 'WEAPON', amount_of_type, previous_crates, faction)));
+end;
+$$;
+
+DROP FUNCTION IF EXISTS insert_weapon_into_crate(weaponCrate_id UUID, weaponType TEXT, faction record);
+CREATE FUNCTION insert_weapon_into_crate(weaponCrate_id UUID, weaponType TEXT, faction record) returns void
+    language plpgsql as
+$$
+BEGIN
+    INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
+    VALUES (weaponCrate_id, 'WEAPON', (SELECT id
+                                       FROM blueprint_weapons
+                                       WHERE weapon_type = weaponType::weapon_type
+                                         AND brand_id =
+                                             CASE
+                                                 WHEN faction.label = 'Boston Cybernetics'
+                                                     THEN (SELECT id FROM brands WHERE label = 'Archon Miltech')
+                                                 WHEN faction.label = 'Zaibatsu Heavy Industries'
+                                                     THEN (SELECT id FROM brands WHERE label = 'Warsui')
+                                                 WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
+                                                     THEN (SELECT id FROM brands WHERE label = 'Pyrotronics')
+                                                 END));
 end;
 $$;
 
@@ -884,78 +885,112 @@ $$
                         --flak: all factions
                         CASE
                             WHEN i <= (weaponCrateLen * .15)
-                                THEN PERFORM insert_weapon_and_skin_into_crate(i, weaponCrate.id, 'Flak',
-                                                                               (weaponCrateLen * .15), 0, faction);
+                                THEN PERFORM insert_weapon_into_crate(weaponCrate.id, 'Flak', faction);
+                                     PERFORM insert_weapon_skin_into_crate(i, weaponCrate.id, 'Flak',
+                                                                           (weaponCrateLen * .15), 0, faction);
                                      i := i + 1;
                             --machine gun: all factions
                             WHEN i > (weaponCrateLen * .15) AND i <= (weaponCrateLen * .3)
-                                THEN PERFORM insert_weapon_and_skin_into_crate(i, weaponCrate.id, 'Machine Gun',
-                                                                               (weaponCrateLen * .15),
-                                                                               (weaponCrateLen * .15), faction);
+                                THEN PERFORM insert_weapon_into_crate(weaponCrate.id, 'Machine Gun', faction);
+                                     PERFORM insert_weapon_skin_into_crate(i, weaponCrate.id, 'Machine Gun',
+                                                                           (weaponCrateLen * .15),
+                                                                           (weaponCrateLen * .15), faction);
                                      i := i + 1;
                             --flamethrower: all factions
                             WHEN i > (weaponCrateLen * .3) AND i <= (weaponCrateLen * .45)
-                                THEN PERFORM insert_weapon_and_skin_into_crate(i, weaponCrate.id, 'Flamethrower',
-                                                                               (weaponCrateLen * .15),
-                                                                               (weaponCrateLen * .3), faction);
+                                THEN PERFORM insert_weapon_into_crate(weaponCrate.id, 'Flamethrower', faction);
+                                     PERFORM insert_weapon_skin_into_crate(i, weaponCrate.id, 'Flamethrower',
+                                                                           (weaponCrateLen * .15),
+                                                                           (weaponCrateLen * .3), faction);
                                      i := i + 1;
                             --missile launcher: all factions
                             WHEN i > (weaponCrateLen * .45) AND i <= (weaponCrateLen * .6)
-                                THEN PERFORM insert_weapon_and_skin_into_crate(i, weaponCrate.id, 'Missile Launcher',
-                                                                               (weaponCrateLen * .15),
-                                                                               (weaponCrateLen * .45), faction);
+                                THEN PERFORM insert_weapon_into_crate(weaponCrate.id, 'Missile Launcher', faction);
+                                     PERFORM insert_weapon_skin_into_crate(i, weaponCrate.id, 'Missile Launcher',
+                                                                           (weaponCrateLen * .15),
+                                                                           (weaponCrateLen * .45), faction);
                                      i := i + 1;
                             --Laser beam: all factions
                             WHEN i > (weaponCrateLen * .6) AND i <= (weaponCrateLen * .75)
-                                THEN PERFORM insert_weapon_and_skin_into_crate(i, weaponCrate.id, 'Laser Beam',
-                                                                               (weaponCrateLen * .15),
-                                                                               (weaponCrateLen * .6), faction);
+                                THEN PERFORM insert_weapon_into_crate(weaponCrate.id, 'Laser Beam', faction);
+                                     PERFORM insert_weapon_skin_into_crate(i, weaponCrate.id, 'Laser Beam',
+                                                                           (weaponCrateLen * .15),
+                                                                           (weaponCrateLen * .6), faction);
                                      i := i + 1;
 
                             --Minigun: BC and RM OR Plasma Gun for ZHI
                             WHEN i > (weaponCrateLen * .75) AND i <= (weaponCrateLen * .85)
-                                THEN PERFORM insert_weapon_and_skin_into_crate(i, weaponCrate.id,
-                                                                               CASE
-                                                                                   WHEN faction.label =
-                                                                                        'Boston Cybernetics' OR
-                                                                                        faction.label =
-                                                                                        'Red Mountain Offworld Mining Corporation'
-                                                                                       THEN 'Minigun'
-                                                                                   WHEN faction.label = 'Zaibatsu Heavy Industries'
-                                                                                       THEN 'Plasma Gun'
-                                                                                   END,
-                                                                               (weaponCrateLen * .1),
-                                                                               (weaponCrateLen * .75), faction);
+                                THEN PERFORM insert_weapon_into_crate(weaponCrate.id,
+                                                                      CASE
+                                                                          WHEN faction.label =
+                                                                               'Boston Cybernetics' OR
+                                                                               faction.label =
+                                                                               'Red Mountain Offworld Mining Corporation'
+                                                                              THEN 'Minigun'
+                                                                          WHEN faction.label = 'Zaibatsu Heavy Industries'
+                                                                              THEN 'Plasma Gun'
+                                                                          END, faction);
+                                     PERFORM insert_weapon_skin_into_crate(i, weaponCrate.id,
+                                                                           CASE
+                                                                               WHEN faction.label =
+                                                                                    'Boston Cybernetics' OR
+                                                                                    faction.label =
+                                                                                    'Red Mountain Offworld Mining Corporation'
+                                                                                   THEN 'Minigun'
+                                                                               WHEN faction.label = 'Zaibatsu Heavy Industries'
+                                                                                   THEN 'Plasma Gun'
+                                                                               END,
+                                                                           (weaponCrateLen * .1),
+                                                                           (weaponCrateLen * .75), faction);
                                      i := i + 1;
 
                             --Cannon: ZHI and RM OR Plasma Gun for BC
                             WHEN i > (weaponCrateLen * .85) AND i <= (weaponCrateLen * .95)
-                                THEN PERFORM insert_weapon_and_skin_into_crate(i, weaponCrate.id,
-                                                                               CASE
-                                                                                   WHEN faction.label =
-                                                                                        'Zaibatsu Heavy Industries' OR
-                                                                                        faction.label =
-                                                                                        'Red Mountain Offworld Mining Corporation'
-                                                                                       THEN 'Cannon'
-                                                                                   WHEN faction.label = 'Boston Cybernetics'
-                                                                                       THEN 'Plasma Gun'
-                                                                                   END,
-                                                                               (weaponCrateLen * .1),
-                                                                               (weaponCrateLen * .85), faction);
+                                THEN PERFORM insert_weapon_into_crate(weaponCrate.id,
+                                                                      CASE
+                                                                          WHEN faction.label =
+                                                                               'Zaibatsu Heavy Industries' OR
+                                                                               faction.label =
+                                                                               'Red Mountain Offworld Mining Corporation'
+                                                                              THEN 'Cannon'
+                                                                          WHEN faction.label = 'Boston Cybernetics'
+                                                                              THEN 'Plasma Gun'
+                                                                          END, faction);
+                                     PERFORM insert_weapon_skin_into_crate(i, weaponCrate.id,
+                                                                           CASE
+                                                                               WHEN faction.label =
+                                                                                    'Zaibatsu Heavy Industries' OR
+                                                                                    faction.label =
+                                                                                    'Red Mountain Offworld Mining Corporation'
+                                                                                   THEN 'Cannon'
+                                                                               WHEN faction.label = 'Boston Cybernetics'
+                                                                                   THEN 'Plasma Gun'
+                                                                               END,
+                                                                           (weaponCrateLen * .1),
+                                                                           (weaponCrateLen * .85), faction);
 
                                      i := i + 1;
                             --BFG, Grenade Launcher or Lightning Gun dependent on faction
-                            ELSE PERFORM insert_weapon_and_skin_into_crate(i, weaponCrate.id,
-                                                                           CASE
-                                                                               WHEN faction.label = 'Boston Cybernetics'
-                                                                                   THEN 'BFG'
-                                                                               WHEN faction.label = 'Zaibatsu Heavy Industries'
-                                                                                   THEN 'Lightning Gun'
-                                                                               WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
-                                                                                   THEN 'Grenade Launcher'
-                                                                               END,
-                                                                           (weaponCrateLen * .05),
-                                                                           (weaponCrateLen * .95), faction);
+                            ELSE PERFORM insert_weapon_into_crate(weaponCrate.id,
+                                                                  CASE
+                                                                      WHEN faction.label = 'Boston Cybernetics'
+                                                                          THEN 'BFG'
+                                                                      WHEN faction.label = 'Zaibatsu Heavy Industries'
+                                                                          THEN 'Lightning Gun'
+                                                                      WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
+                                                                          THEN 'Grenade Launcher'
+                                                                      END, faction);
+                                 PERFORM insert_weapon_skin_into_crate(i, weaponCrate.id,
+                                                                       CASE
+                                                                           WHEN faction.label = 'Boston Cybernetics'
+                                                                               THEN 'BFG'
+                                                                           WHEN faction.label = 'Zaibatsu Heavy Industries'
+                                                                               THEN 'Lightning Gun'
+                                                                           WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
+                                                                               THEN 'Grenade Launcher'
+                                                                           END,
+                                                                       (weaponCrateLen * .05),
+                                                                       (weaponCrateLen * .95), faction);
                                  i := i + 1;
                             END CASE;
                     END LOOP;
