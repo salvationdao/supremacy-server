@@ -937,7 +937,7 @@ $$
                                                                                         'MECH',
                                                                                         weapon_skin_label, faction);
                                                   PERFORM insert_second_weapon_into_mech_crate(i,
-                                                                                               (.2 * (mechCrateLen * .8)),
+                                                                                               (.2 * .2 * (mechCrateLen * .8)),
                                                                                                0,
                                                                                                mechCrate.id,
                                                                                                weapon_skin_label,
@@ -949,7 +949,7 @@ $$
                                                                                         'MECH',
                                                                                         weapon_skin_label, faction);
                                                   PERFORM insert_second_weapon_into_mech_crate(i,
-                                                                                               (.2 * (mechCrateLen * .8)),
+                                                                                               (.2 * .2 * (mechCrateLen * .8)),
                                                                                                (.2 * (mechCrateLen * .8)),
                                                                                                mechCrate.id,
                                                                                                weapon_skin_label,
@@ -961,7 +961,7 @@ $$
                                                                                         'MECH',
                                                                                         weapon_skin_label, faction);
                                                   PERFORM insert_second_weapon_into_mech_crate(i,
-                                                                                               (.2 * (mechCrateLen * .8)),
+                                                                                               (.2 * .2 * (mechCrateLen * .8)),
                                                                                                (2 * .2 * (mechCrateLen * .8)),
                                                                                                mechCrate.id,
                                                                                                weapon_skin_label,
@@ -973,7 +973,7 @@ $$
                                                                                         'MECH',
                                                                                         weapon_skin_label, faction);
                                                   PERFORM insert_second_weapon_into_mech_crate(i,
-                                                                                               (.2 * (mechCrateLen * .8)),
+                                                                                               (.2 * .2 * (mechCrateLen * .8)),
                                                                                                (3 * .2 * (mechCrateLen * .8)),
                                                                                                mechCrate.id,
                                                                                                weapon_skin_label,
@@ -985,7 +985,7 @@ $$
                                                                                         'MECH',
                                                                                         weapon_skin_label, faction);
                                                   PERFORM insert_second_weapon_into_mech_crate(i,
-                                                                                               (.2 * (mechCrateLen * .8)),
+                                                                                               (.2 * .2 * (mechCrateLen * .8)),
                                                                                                (4 * .2 * (mechCrateLen * .8)),
                                                                                                mechCrate.id,
                                                                                                weapon_skin_label,
