@@ -40,77 +40,15 @@ func (api *API) XSYNAuth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// player upsert
-	player, err := boiler.FindPlayer(gamedb.StdConn, resp.ID)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	tx, err := gamedb.StdConn.Begin()
+	err = api.UpsertPlayer(resp.ID, null.StringFrom(resp.Username), resp.PublicAddress, resp.FactionID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
-	}
-
-	defer tx.Rollback()
-
-	// insert player if not exists
-	if player == nil {
-		player := boiler.Player{
-			ID:            resp.ID,
-			Username:      null.StringFrom(resp.Username),
-			PublicAddress: resp.PublicAddress,
-			FactionID:     resp.FactionID,
-		}
-
-		err = player.Insert(tx, boil.Infer())
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		// insert user state
-		userStat := boiler.PlayerStat{
-			ID:                    resp.ID,
-			ViewBattleCount:       0,
-			AbilityKillCount:      0,
-			TotalAbilityTriggered: 0,
-			MechKillCount:         0,
-		}
-
-		err = userStat.Insert(tx, boil.Infer())
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-	} else {
-		// update user profile
-		player.Username = null.StringFrom(resp.Username)
-		player.PublicAddress = resp.PublicAddress
-		player.FactionID = resp.FactionID
-
-		_, err = player.Update(tx, boil.Whitelist(
-			boiler.PlayerColumns.Username,
-			boiler.PlayerColumns.PublicAddress,
-			boiler.PlayerColumns.FactionID,
-		))
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-
 	}
 
 	err = api.WriteCookie(w, r, resp.Token)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+
 		return
 	}
 
@@ -150,16 +88,20 @@ func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, e
 
 	// check user from token
 	player, err := api.TokenLogin(token)
-
 	if err != nil {
 		if errors.Is(err, errors.New("session is expired")) {
-			err := api.DeleteCookie(w)
+			err := api.DeleteCookie(w, r)
 			if err != nil {
 				return http.StatusInternalServerError, err
 			}
 			return http.StatusBadRequest, terror.Error(err, "Session is expired")
 		}
 		return http.StatusBadRequest, terror.Error(err, "Failed to authentication")
+	}
+
+	err = api.UpsertPlayer(player.ID, player.Username, player.PublicAddress, player.FactionID)
+	if err != nil {
+		return http.StatusInternalServerError, terror.Error(err, "Failed to update player.")
 	}
 
 	return helpers.EncodeJSON(w, player)
@@ -172,12 +114,83 @@ func (api *API) LogoutHandler(w http.ResponseWriter, r *http.Request) (int, erro
 		return http.StatusBadRequest, terror.Error(err, "Player is not login")
 	}
 
-	err = api.DeleteCookie(w)
+	err = api.DeleteCookie(w, r)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to delete cookie")
 	}
 
 	return http.StatusOK, nil
+}
+
+func (api *API) UpsertPlayer(playerID string, username null.String, publicAddress null.String, factionID null.String) error {
+	player, err := boiler.FindPlayer(gamedb.StdConn, playerID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "Failed to retrieve player.")
+	}
+
+	playStat, err := boiler.FindPlayerStat(gamedb.StdConn, playerID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "Failed to retrieve player stat.")
+	}
+
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		return terror.Error(err, "Failed to update player.")
+	}
+
+	defer tx.Rollback()
+
+	// insert player if not exists
+	if player == nil {
+		player = &boiler.Player{
+			ID:            playerID,
+			Username:      username,
+			PublicAddress: publicAddress,
+			FactionID:     factionID,
+		}
+
+		err = player.Insert(tx, boil.Infer())
+		if err != nil {
+			return terror.Error(err, "Failed to insert player.")
+		}
+	} else {
+		// update user profile
+		player.Username = username
+		player.PublicAddress = publicAddress
+		player.FactionID = factionID
+
+		_, err = player.Update(tx, boil.Whitelist(
+			boiler.PlayerColumns.Username,
+			boiler.PlayerColumns.PublicAddress,
+			boiler.PlayerColumns.FactionID,
+		))
+		if err != nil {
+			return terror.Error(err, "Failed to update player detail.")
+		}
+	}
+
+	if playStat == nil {
+		// check player stat
+		playStat = &boiler.PlayerStat{
+			ID:                    playerID,
+			ViewBattleCount:       0,
+			AbilityKillCount:      0,
+			TotalAbilityTriggered: 0,
+			MechKillCount:         0,
+		}
+
+		err = playStat.Insert(tx, boil.Infer())
+		if err != nil {
+			return terror.Error(err, "Failed to insert player stat.")
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return terror.Error(err, "Failed to update player")
+	}
+
+	return nil
 }
 
 func (api *API) WriteCookie(w http.ResponseWriter, r *http.Request, token string) error {
@@ -201,7 +214,7 @@ func (api *API) WriteCookie(w http.ResponseWriter, r *http.Request, token string
 	return nil
 }
 
-func (api *API) DeleteCookie(w http.ResponseWriter) error {
+func (api *API) DeleteCookie(w http.ResponseWriter, r *http.Request) error {
 	cookie := &http.Cookie{
 		Name:     "xsyn-token",
 		Value:    "",
@@ -210,6 +223,7 @@ func (api *API) DeleteCookie(w http.ResponseWriter) error {
 		Secure:   api.IsCookieSecure,
 		HttpOnly: true,
 		SameSite: http.SameSiteNoneMode,
+		Domain:   domain(r.Host),
 	}
 	http.SetCookie(w, cookie)
 	return nil
