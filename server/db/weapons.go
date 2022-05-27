@@ -194,5 +194,11 @@ func AttachWeaponToMech(ownerID, mechID, weaponID string) error {
 		return terror.Error(err, "Issue preventing equipping this weapon to the war machine, try again or contact support.")
 	}
 
+	err = tx.Commit()
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("failed to commit transaction - AttachWeaponToMech")
+		return terror.Error(err)
+	}
+
 	return nil
 }

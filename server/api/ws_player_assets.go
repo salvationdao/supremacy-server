@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"server"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -30,6 +31,7 @@ func NewPlayerAssetsController(api *API) *PlayerAssetsControllerWS {
 
 	api.SecureUserCommand(HubKeyPlayerAssetMechList, pac.PlayerAssetMechListHandler)
 	api.SecureUserCommand(HubKeyPlayerAssetMechDetail, pac.PlayerAssetMechDetail)
+	api.SecureUserCommand(HubKeyPlayerAssetKeycardList, pac.PlayerAssetKeycardListHandler)
 
 	return pac
 }
@@ -201,5 +203,63 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetail(ctx context.Context, 
 	}
 
 	reply(mech)
+	return nil
+}
+
+const HubKeyPlayerAssetKeycardList = "PLAYER:ASSET:KEYCARD:LIST"
+
+type PlayerAssetKeycardListRequest struct {
+	Payload struct {
+		Search   string                `json:"search"`
+		Filter   *db.ListFilterRequest `json:"filter"`
+		Sort     *db.ListSortRequest   `json:"sort"`
+		PageSize int                   `json:"page_size"`
+		Page     int                   `json:"page"`
+		SortDir  db.SortByDir          `json:"sort_dir"`
+		SortBy   string                `json:"sort_by"`
+	} `json:"payload"`
+}
+
+type PlayerAssetKeycardListResponse struct {
+	Total   int64                  `json:"total"`
+	Records []*server.AssetKeycard `json:"records"`
+}
+
+func (pac *PlayerAssetsControllerWS) PlayerAssetKeycardListHandler(tx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PlayerAssetKeycardListRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	offset := 0
+	if req.Payload.Page > 0 {
+		offset = req.Payload.Page * req.Payload.PageSize
+	}
+
+	if !req.Payload.SortDir.IsValid() {
+		req.Payload.SortDir = db.SortByDirDesc
+	}
+
+	total, records, err := db.AssetKeycardList(
+		req.Payload.Search,
+		req.Payload.Filter,
+		&user.ID,
+		offset,
+		req.Payload.PageSize,
+		req.Payload.SortBy,
+		req.Payload.SortDir,
+	)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to get list of keycard assets")
+		return terror.Error(err, "Failed to get list of keycard assets")
+	}
+
+	resp := &PlayerAssetKeycardListResponse{
+		Total:   total,
+		Records: records,
+	}
+	reply(resp)
+
 	return nil
 }

@@ -1,5 +1,7 @@
 BEGIN;
 
+-- General Assets eg Mechs
+-- TODO: Create a separate item sales table for 1155 assets
 CREATE TABLE item_sales (
     id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
 	faction_id UUID NOT NULL REFERENCES factions (id),

@@ -211,6 +211,7 @@ func NewAPI(
 		r.Mount("/battle", BattleRouter(battleArenaClient))
 		r.Post("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.GlobalAnnouncementSend)))
 		r.Delete("/global_announcement", WithToken(config.ServerStreamKey, WithError(api.GlobalAnnouncementDelete)))
+
 		r.Get("/telegram/shortcode_registered", WithToken(config.ServerStreamKey, WithError(api.PlayerGetTelegramShortcodeRegistered)))
 
 		r.Route("/ws", func(r chi.Router) {

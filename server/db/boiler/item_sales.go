@@ -38,11 +38,11 @@ type ItemSale struct {
 	EndAt               time.Time   `boiler:"end_at" boil:"end_at" json:"end_at" toml:"end_at" yaml:"end_at"`
 	SoldAt              null.Time   `boiler:"sold_at" boil:"sold_at" json:"sold_at,omitempty" toml:"sold_at" yaml:"sold_at,omitempty"`
 	SoldFor             null.String `boiler:"sold_for" boil:"sold_for" json:"sold_for,omitempty" toml:"sold_for" yaml:"sold_for,omitempty"`
+	SoldBy              null.String `boiler:"sold_by" boil:"sold_by" json:"sold_by,omitempty" toml:"sold_by" yaml:"sold_by,omitempty"`
 	SoldTXID            null.String `boiler:"sold_tx_id" boil:"sold_tx_id" json:"sold_tx_id,omitempty" toml:"sold_tx_id" yaml:"sold_tx_id,omitempty"`
 	DeletedAt           null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
 	UpdatedAt           time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	CreatedAt           time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	SoldBy              null.String `boiler:"sold_by" boil:"sold_by" json:"sold_by,omitempty" toml:"sold_by" yaml:"sold_by,omitempty"`
 
 	R *itemSaleR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L itemSaleL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -64,11 +64,11 @@ var ItemSaleColumns = struct {
 	EndAt               string
 	SoldAt              string
 	SoldFor             string
+	SoldBy              string
 	SoldTXID            string
 	DeletedAt           string
 	UpdatedAt           string
 	CreatedAt           string
-	SoldBy              string
 }{
 	ID:                  "id",
 	FactionID:           "faction_id",
@@ -85,11 +85,11 @@ var ItemSaleColumns = struct {
 	EndAt:               "end_at",
 	SoldAt:              "sold_at",
 	SoldFor:             "sold_for",
+	SoldBy:              "sold_by",
 	SoldTXID:            "sold_tx_id",
 	DeletedAt:           "deleted_at",
 	UpdatedAt:           "updated_at",
 	CreatedAt:           "created_at",
-	SoldBy:              "sold_by",
 }
 
 var ItemSaleTableColumns = struct {
@@ -108,11 +108,11 @@ var ItemSaleTableColumns = struct {
 	EndAt               string
 	SoldAt              string
 	SoldFor             string
+	SoldBy              string
 	SoldTXID            string
 	DeletedAt           string
 	UpdatedAt           string
 	CreatedAt           string
-	SoldBy              string
 }{
 	ID:                  "item_sales.id",
 	FactionID:           "item_sales.faction_id",
@@ -129,11 +129,11 @@ var ItemSaleTableColumns = struct {
 	EndAt:               "item_sales.end_at",
 	SoldAt:              "item_sales.sold_at",
 	SoldFor:             "item_sales.sold_for",
+	SoldBy:              "item_sales.sold_by",
 	SoldTXID:            "item_sales.sold_tx_id",
 	DeletedAt:           "item_sales.deleted_at",
 	UpdatedAt:           "item_sales.updated_at",
 	CreatedAt:           "item_sales.created_at",
-	SoldBy:              "item_sales.sold_by",
 }
 
 // Generated where
@@ -154,11 +154,11 @@ var ItemSaleWhere = struct {
 	EndAt               whereHelpertime_Time
 	SoldAt              whereHelpernull_Time
 	SoldFor             whereHelpernull_String
+	SoldBy              whereHelpernull_String
 	SoldTXID            whereHelpernull_String
 	DeletedAt           whereHelpernull_Time
 	UpdatedAt           whereHelpertime_Time
 	CreatedAt           whereHelpertime_Time
-	SoldBy              whereHelpernull_String
 }{
 	ID:                  whereHelperstring{field: "\"item_sales\".\"id\""},
 	FactionID:           whereHelperstring{field: "\"item_sales\".\"faction_id\""},
@@ -175,11 +175,11 @@ var ItemSaleWhere = struct {
 	EndAt:               whereHelpertime_Time{field: "\"item_sales\".\"end_at\""},
 	SoldAt:              whereHelpernull_Time{field: "\"item_sales\".\"sold_at\""},
 	SoldFor:             whereHelpernull_String{field: "\"item_sales\".\"sold_for\""},
+	SoldBy:              whereHelpernull_String{field: "\"item_sales\".\"sold_by\""},
 	SoldTXID:            whereHelpernull_String{field: "\"item_sales\".\"sold_tx_id\""},
 	DeletedAt:           whereHelpernull_Time{field: "\"item_sales\".\"deleted_at\""},
 	UpdatedAt:           whereHelpertime_Time{field: "\"item_sales\".\"updated_at\""},
 	CreatedAt:           whereHelpertime_Time{field: "\"item_sales\".\"created_at\""},
-	SoldBy:              whereHelpernull_String{field: "\"item_sales\".\"sold_by\""},
 }
 
 // ItemSaleRels is where relationship names are stored.
@@ -218,9 +218,9 @@ func (*itemSaleR) NewStruct() *itemSaleR {
 type itemSaleL struct{}
 
 var (
-	itemSaleAllColumns            = []string{"id", "faction_id", "item_id", "listing_fee_tx_id", "owner_id", "auction", "auction_current_price", "auction_reverse_price", "buyout", "buyout_price", "dutch_auction", "dutch_action_drop_rate", "end_at", "sold_at", "sold_for", "sold_tx_id", "deleted_at", "updated_at", "created_at", "sold_by"}
+	itemSaleAllColumns            = []string{"id", "faction_id", "item_id", "listing_fee_tx_id", "owner_id", "auction", "auction_current_price", "auction_reverse_price", "buyout", "buyout_price", "dutch_auction", "dutch_action_drop_rate", "end_at", "sold_at", "sold_for", "sold_by", "sold_tx_id", "deleted_at", "updated_at", "created_at"}
 	itemSaleColumnsWithoutDefault = []string{"faction_id", "item_id", "listing_fee_tx_id", "owner_id", "end_at"}
-	itemSaleColumnsWithDefault    = []string{"id", "auction", "auction_current_price", "auction_reverse_price", "buyout", "buyout_price", "dutch_auction", "dutch_action_drop_rate", "sold_at", "sold_for", "sold_tx_id", "deleted_at", "updated_at", "created_at", "sold_by"}
+	itemSaleColumnsWithDefault    = []string{"id", "auction", "auction_current_price", "auction_reverse_price", "buyout", "buyout_price", "dutch_auction", "dutch_action_drop_rate", "sold_at", "sold_for", "sold_by", "sold_tx_id", "deleted_at", "updated_at", "created_at"}
 	itemSalePrimaryKeyColumns     = []string{"id"}
 	itemSaleGeneratedColumns      = []string{}
 )
