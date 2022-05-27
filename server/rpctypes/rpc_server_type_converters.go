@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"server"
 	"server/gamelog"
+
+	"github.com/volatiletech/null/v8"
 )
 
 func ServerMechsToApiV1(items []*server.Mech) []*Mech {
@@ -433,6 +435,7 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 			Hash:           i.Hash,
 			OwnerID:        i.OwnerID,
 			Data:           asJson,
+			AssetType:      null.StringFrom(i.ItemType),
 
 			Attributes:      attributes,
 			ImageURL:        i.ImageURL,
@@ -472,13 +475,15 @@ func ServerMechAnimationsToXsynAsset(mechAnimations []*server.MechAnimation) []*
 		}
 
 		assets = append(assets, &XsynAsset{
-			ID:              i.ID,
-			CollectionSlug:  i.CollectionSlug,
-			TokenID:         i.TokenID,
-			Tier:            i.Tier,
-			Hash:            i.Hash,
-			OwnerID:         i.OwnerID,
-			Data:            asJson,
+			ID:             i.ID,
+			CollectionSlug: i.CollectionSlug,
+			TokenID:        i.TokenID,
+			Tier:           i.Tier,
+			Hash:           i.Hash,
+			OwnerID:        i.OwnerID,
+			Data:           asJson,
+			AssetType:      null.StringFrom(i.ItemType),
+
 			Name:            i.Label,
 			Attributes:      attributes,
 			ImageURL:        i.ImageURL,
@@ -523,6 +528,7 @@ func ServerMechSkinsToXsynAsset(mechSkins []*server.MechSkin) []*XsynAsset {
 			Data:             asJson,
 			Name:             i.Label,
 			Attributes:       attributes,
+			AssetType:        null.StringFrom(i.ItemType),
 			ImageURL:         i.ImageURL,
 			AnimationURL:     i.AnimationURL,
 			LargeImageURL:    i.LargeImageURL,
@@ -580,6 +586,7 @@ func ServerPowerCoresToXsynAsset(powerCore []*server.PowerCore) []*XsynAsset {
 			Tier:            i.Tier,
 			Hash:            i.Hash,
 			OwnerID:         i.OwnerID,
+			AssetType:       null.StringFrom(i.ItemType),
 			Data:            asJson,
 			Name:            i.Label,
 			Attributes:      attributes,
@@ -674,6 +681,7 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 			Tier:            i.Tier,
 			Hash:            i.Hash,
 			OwnerID:         i.OwnerID,
+			AssetType:       null.StringFrom(i.ItemType),
 			Data:            asJson,
 			Name:            i.Label,
 			Attributes:      attributes,
@@ -715,6 +723,7 @@ func ServerUtilitiesToXsynAsset(utils []*server.Utility) []*XsynAsset {
 			Tier:            i.Tier,
 			Hash:            i.Hash,
 			OwnerID:         i.OwnerID,
+			AssetType:       null.StringFrom(i.ItemType),
 			Data:            asJson,
 			Name:            i.Label,
 			Attributes:      attributes,
