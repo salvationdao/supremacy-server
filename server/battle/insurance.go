@@ -11,7 +11,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"server/rpcclient"
+	"server/xsyn_rpcclient"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -175,7 +175,7 @@ func (arena *Arena) AssetRepairPayFeeHandler(ctx context.Context, user *boiler.P
 	}
 
 	// pay sups
-	txID, err := arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
+	txID, err := arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           playerID,
 		ToUserID:             uuid.FromStringOrNil(factionAccountID),
 		Amount:               fee.StringFixed(0),

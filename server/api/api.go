@@ -12,7 +12,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/player_abilities"
-	"server/rpcclient"
+	"server/xsyn_rpcclient"
 	"time"
 
 	sentryhttp "github.com/getsentry/sentry-go/http"
@@ -81,7 +81,7 @@ type API struct {
 	Hub                       *hub.Hub
 	MessageBus                *messagebus.MessageBus
 	SMS                       server.SMS
-	Passport                  *rpcclient.PassportXrpcClient
+	Passport                  *xsyn_rpcclient.XsynXrpcClient
 	Telegram                  server.Telegram
 	LanguageDetector          lingua.LanguageDetector
 	Cookie                    *securebytes.SecureBytes
@@ -111,7 +111,7 @@ type API struct {
 func NewAPI(
 	ctx context.Context,
 	battleArenaClient *battle.Arena,
-	pp *rpcclient.PassportXrpcClient,
+	pp *xsyn_rpcclient.XsynXrpcClient,
 	HTMLSanitize *bluemonday.Policy,
 	config *server.Config,
 	messageBus *messagebus.MessageBus,

@@ -14,7 +14,7 @@ import (
 	"server/gamelog"
 	"server/helpers"
 	"server/multipliers"
-	"server/rpcclient"
+	"server/xsyn_rpcclient"
 	"sort"
 	"strings"
 	"sync"
@@ -56,7 +56,7 @@ type Battle struct {
 	factions       map[uuid.UUID]*boiler.Faction
 	multipliers    *MultiplierSystem
 	spoils         *SpoilsOfWar
-	rpcClient      *rpcclient.XrpcClient
+	rpcClient      *xsyn_rpcclient.XrpcClient
 	battleMechData []*db.BattleMechData
 	startedAt      time.Time
 
@@ -682,7 +682,7 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 			syndicateBalance := btl.arena.RPCClient.UserBalanceGet(factID)
 
 			if syndicateBalance.LessThanOrEqual(contract.ContractReward) {
-				txid, err := btl.arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
+				txid, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 					FromUserID:           uuid.UUID(server.XsynTreasuryUserID),
 					ToUserID:             factID,
 					Amount:               contract.ContractReward.StringFixed(0),
@@ -709,7 +709,7 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 			}
 
 			// pay sups
-			txid, err := btl.arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
+			txid, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 				FromUserID:           factID,
 				ToUserID:             uuid.Must(uuid.FromString(contract.PlayerID)),
 				Amount:               contract.ContractReward.StringFixed(0),

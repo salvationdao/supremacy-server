@@ -24,6 +24,8 @@ SELECT
 	collection_items.token_id,
 	collection_items.owner_id,
 	collection_items.tier,
+	collection_items.market_locked,
+	collection_items.xsyn_locked,
 	mechs.id,
 	mechs.name,
 	mechs.label,
@@ -141,7 +143,7 @@ var ErrNotAllMechsReturned = fmt.Errorf("not all mechs returned")
 // If you want to show the user a mech, it should be lazy loaded via various endpoints, not a single endpoint for an entire mech.
 func Mech(mechID string) (*server.Mech, error) {
 	mc := &server.Mech{
-		CollectionDetails: &server.CollectionDetails{},
+		CollectionItem: &server.CollectionItem{},
 	}
 
 	query := fmt.Sprintf(`%s WHERE collection_items.item_id = $1`, CompleteMechQuery)
@@ -154,11 +156,13 @@ func Mech(mechID string) (*server.Mech, error) {
 
 	for result.Next() {
 		err = result.Scan(
-			&mc.CollectionDetails.CollectionSlug,
-			&mc.CollectionDetails.Hash,
-			&mc.CollectionDetails.TokenID,
-			&mc.CollectionDetails.OwnerID,
-			&mc.CollectionDetails.Tier,
+			&mc.CollectionItem.CollectionSlug,
+			&mc.CollectionItem.Hash,
+			&mc.CollectionItem.TokenID,
+			&mc.CollectionItem.OwnerID,
+			&mc.CollectionItem.Tier,
+			&mc.CollectionItem.MarketLocked,
+			&mc.CollectionItem.XsynLocked,
 			&mc.ID,
 			&mc.Name,
 			&mc.Label,
@@ -235,14 +239,16 @@ func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 	i := 0
 	for result.Next() {
 		mc := &server.Mech{
-			CollectionDetails: &server.CollectionDetails{},
+			CollectionItem: &server.CollectionItem{},
 		}
 		err = result.Scan(
-			&mc.CollectionDetails.CollectionSlug,
-			&mc.CollectionDetails.Hash,
-			&mc.CollectionDetails.TokenID,
-			&mc.CollectionDetails.OwnerID,
-			&mc.CollectionDetails.Tier,
+			&mc.CollectionItem.CollectionSlug,
+			&mc.CollectionItem.Hash,
+			&mc.CollectionItem.TokenID,
+			&mc.CollectionItem.OwnerID,
+			&mc.CollectionItem.Tier,
+			&mc.CollectionItem.MarketLocked,
+			&mc.CollectionItem.XsynLocked,
 			&mc.ID,
 			&mc.Name,
 			&mc.Label,
@@ -503,12 +509,13 @@ func IsMechColumn(col string) bool {
 }
 
 type MechListOpts struct {
-	Search   string
-	Filter   *ListFilterRequest
-	Sort     *ListSortRequest
-	PageSize int
-	Page     int
-	OwnerID  string
+	Search           string
+	Filter           *ListFilterRequest
+	Sort             *ListSortRequest
+	PageSize         int
+	Page             int
+	OwnerID          string
+	DisplayXsynMechs bool
 }
 
 func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
@@ -529,6 +536,14 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			Operator: OperatorValueTypeEquals,
 			Value:    boiler.ItemTypeMech,
 		}, 0, "and"))
+
+	if !opts.DisplayXsynMechs {
+		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
+			Table:    boiler.TableNames.CollectionItems,
+			Column:   boiler.CollectionItemColumns.XsynLocked,
+			Operator: OperatorValueTypeIsFalse,
+		}, 0, ""))
+	}
 
 	// Filters
 	if opts.Filter != nil {
@@ -555,7 +570,6 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 				))
 		}
 	}
-
 	total, err := boiler.CollectionItems(
 		queryMods...,
 	).Count(gamedb.StdConn)
@@ -622,14 +636,14 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 
 	for rows.Next() {
 		mc := &server.Mech{
-			CollectionDetails: &server.CollectionDetails{},
+			CollectionItem: &server.CollectionItem{},
 		}
 		err = rows.Scan(
-			&mc.CollectionDetails.CollectionSlug,
-			&mc.CollectionDetails.Hash,
-			&mc.CollectionDetails.TokenID,
-			&mc.CollectionDetails.OwnerID,
-			&mc.CollectionDetails.Tier,
+			&mc.CollectionItem.CollectionSlug,
+			&mc.CollectionItem.Hash,
+			&mc.CollectionItem.TokenID,
+			&mc.CollectionItem.OwnerID,
+			&mc.CollectionItem.Tier,
 			&mc.ID,
 			&mc.Name,
 			&mc.Label,

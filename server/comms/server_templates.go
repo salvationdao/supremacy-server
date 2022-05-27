@@ -6,8 +6,8 @@ import (
 	"server/rpctypes"
 )
 
-func (s *S) TemplateRegister(req rpctypes.TemplateRegisterReq, resp *rpctypes.TemplateRegisterResp) error {
-	gamelog.L.Debug().Msg("comms.TemplateRegister")
+func (s *S) TemplateRegisterHandler(req rpctypes.TemplateRegisterReq, resp *rpctypes.TemplateRegisterResp) error {
+	gamelog.L.Debug().Msg("comms.TemplateRegisterHandler")
 
 	mechs, mechAnimations, mechSkins, powerCores, weapons, utilities, err := db.TemplateRegister(req.TemplateID, req.OwnerID)
 	if err != nil {

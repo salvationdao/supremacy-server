@@ -12,7 +12,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/multipliers"
-	"server/rpcclient"
+	"server/xsyn_rpcclient"
 	"time"
 
 	"github.com/ninja-software/terror/v2"
@@ -329,7 +329,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 		}
 
 		// charge for notification
-		notifyTransactionID, err := arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
+		notifyTransactionID, err := arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 			Amount:               "5000000000000000000", // 5 sups
 			FromUserID:           playerUUID,
 			ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
