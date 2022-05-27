@@ -6,9 +6,6 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/gofrs/uuid"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 	"log"
 	"net/url"
 	"runtime"
@@ -24,6 +21,10 @@ import (
 	"server/rpctypes"
 	"server/sms"
 	"server/telegram"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/gofrs/uuid"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	"github.com/ninja-syndicate/ws"
 
