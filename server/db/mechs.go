@@ -63,7 +63,11 @@ FROM collection_items
 INNER JOIN mechs on collection_items.item_id = mechs.id
 INNER JOIN players p ON p.id = collection_items.owner_id
 LEFT OUTER JOIN factions f on p.faction_id = f.id
-LEFT OUTER JOIN power_cores ec ON ec.id = mechs.power_core_id
+LEFT OUTER JOIN (
+	SELECT _pc.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id
+	FROM power_cores _pc
+	INNER JOIN collection_items _ci on _ci.item_id = _pc.id
+	) ec ON ec.id = mechs.power_core_id
 LEFT OUTER JOIN brands b ON b.id = mechs.brand_id
 LEFT OUTER JOIN mech_model mm ON mechs.model_id = mm.id
 LEFT OUTER JOIN (
@@ -232,11 +236,14 @@ func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 		CompleteMechQuery,
 		paramrefs)
 
+	boil.DebugMode = true
 	result, err := gamedb.StdConn.Query(query, mechids...)
 	if err != nil {
+		boil.DebugMode = false
 		return nil, err
 	}
 	defer result.Close()
+	boil.DebugMode = false
 
 	i := 0
 	for result.Next() {

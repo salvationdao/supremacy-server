@@ -17,7 +17,18 @@ func (s *S) TemplateRegisterHandler(req rpctypes.TemplateRegisterReq, resp *rpct
 
 	var assets []*rpctypes.XsynAsset
 
-	assets = append(assets, rpctypes.ServerMechsToXsynAsset(mechs)...)
+	var mechIDs []string
+	for _, m := range mechs {
+		mechIDs = append(mechIDs, m.ID)
+	}
+
+	loadedMechs, err := db.Mechs(mechIDs...)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed loading mechs")
+		return err
+	}
+
+	assets = append(assets, rpctypes.ServerMechsToXsynAsset(loadedMechs)...)
 	assets = append(assets, rpctypes.ServerMechAnimationsToXsynAsset(mechAnimations)...)
 	assets = append(assets, rpctypes.ServerMechSkinsToXsynAsset(mechSkins)...)
 	assets = append(assets, rpctypes.ServerPowerCoresToXsynAsset(powerCores)...)

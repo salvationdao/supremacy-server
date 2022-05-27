@@ -2,7 +2,10 @@ package rpctypes
 
 import (
 	"encoding/json"
+	"fmt"
 	"server"
+	"server/db/boiler"
+	"server/gamedb"
 	"server/gamelog"
 
 	"github.com/volatiletech/null/v8"
@@ -382,6 +385,7 @@ func ServerMechToApiV1(mech *server.Mech) *Mech {
 
 func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 	var assets []*XsynAsset
+
 	for _, i := range mechs {
 		asJson, err := json.Marshal(i)
 		if err != nil {
@@ -389,8 +393,26 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 			continue
 		}
 
+		asset := &XsynAsset{
+			ID:               i.ID,
+			Name:             i.Label,
+			CollectionSlug:   i.CollectionSlug,
+			TokenID:          i.TokenID,
+			Tier:             i.Tier,
+			Hash:             i.Hash,
+			OwnerID:          i.OwnerID,
+			Data:             asJson,
+			AssetType:        null.StringFrom(i.ItemType),
+			ImageURL:         i.ImageURL,
+			BackgroundColor:  i.BackgroundColor,
+			AnimationURL:     i.AnimationURL,
+			YoutubeURL:       i.YoutubeURL,
+			AvatarURL:        i.AvatarURL,
+			CardAnimationURL: i.CardAnimationURL,
+		}
+
 		// convert stats to attributes to
-		attributes := []*Attribute{
+		asset.Attributes = []*Attribute{
 			{
 				TraitType: "Label",
 				Value:     i.Label,
@@ -426,24 +448,57 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 			},
 		}
 
-		assets = append(assets, &XsynAsset{
-			ID:             i.ID,
-			Name:           i.Label,
-			CollectionSlug: i.CollectionSlug,
-			TokenID:        i.TokenID,
-			Tier:           i.Tier,
-			Hash:           i.Hash,
-			OwnerID:        i.OwnerID,
-			Data:           asJson,
-			AssetType:      null.StringFrom(i.ItemType),
+		for i, wep := range i.Weapons {
+			asset.Attributes = append(asset.Attributes,
+				&Attribute{
+					TraitType: fmt.Sprintf("Weapon Slot %d", i+1),
+					Value:     wep.Label,
+					AssetHash: wep.Hash,
+				})
+		}
 
-			Attributes:      attributes,
-			ImageURL:        i.ImageURL,
-			BackgroundColor: i.BackgroundColor,
-			AnimationURL:    i.AnimationURL,
-			YoutubeURL:      i.YoutubeURL,
-			XsynLocked:      i.XsynLocked,
-		})
+		for i, util := range i.Utility {
+			asset.Attributes = append(asset.Attributes,
+				&Attribute{
+					TraitType: fmt.Sprintf("Utility Slot %d", i+1),
+					Value:     util.Label,
+					AssetHash: util.Hash,
+				})
+		}
+
+		if i.PowerCore != nil {
+			asset.Attributes = append(asset.Attributes,
+				&Attribute{
+					TraitType: "Power Core",
+					Value:     i.PowerCore.Label,
+					AssetHash: i.PowerCore.Hash,
+				})
+		}
+
+		if i.ChassisSkinID.Valid && i.ChassisSkin != nil {
+			skin, err := boiler.FindMechSkin(gamedb.StdConn, i.ChassisSkinID.String)
+			if err != nil {
+				gamelog.L.Error().Err(err).Str("i.ChassisSkinID.String", i.ChassisSkinID.String).Msg("failed to get mech skin item")
+			} else {
+				asset.ImageURL = skin.ImageURL
+				asset.BackgroundColor = i.ChassisSkin.BackgroundColor
+				asset.AnimationURL = skin.AnimationURL
+				asset.YoutubeURL = i.ChassisSkin.YoutubeURL
+				asset.AvatarURL = skin.AvatarURL
+				asset.CardAnimationURL = skin.CardAnimationURL
+
+				asset.Attributes = append(asset.Attributes,
+					&Attribute{
+						TraitType: "Skin",
+						Value:     i.ChassisSkin.Label,
+						AssetHash: i.Hash,
+					})
+			}
+		}
+
+		fmt.Printf(asset.AvatarURL.String)
+
+		assets = append(assets, asset)
 	}
 
 	return assets
@@ -484,13 +539,14 @@ func ServerMechAnimationsToXsynAsset(mechAnimations []*server.MechAnimation) []*
 			Data:           asJson,
 			AssetType:      null.StringFrom(i.ItemType),
 
-			Name:            i.Label,
-			Attributes:      attributes,
-			ImageURL:        i.ImageURL,
-			BackgroundColor: i.BackgroundColor,
-			AnimationURL:    i.AnimationURL,
-			YoutubeURL:      i.YoutubeURL,
-			XsynLocked:      i.XsynLocked,
+			Name:             i.Label,
+			Attributes:       attributes,
+			ImageURL:         i.ImageURL,
+			BackgroundColor:  i.BackgroundColor,
+			AnimationURL:     i.AnimationURL,
+			YoutubeURL:       i.YoutubeURL,
+			AvatarURL:        i.AvatarURL,
+			CardAnimationURL: i.CardAnimationURL,
 		})
 	}
 
@@ -580,21 +636,23 @@ func ServerPowerCoresToXsynAsset(powerCore []*server.PowerCore) []*XsynAsset {
 		}
 
 		assets = append(assets, &XsynAsset{
-			ID:              i.ID,
-			CollectionSlug:  i.CollectionSlug,
-			TokenID:         i.TokenID,
-			Tier:            i.Tier,
-			Hash:            i.Hash,
-			OwnerID:         i.OwnerID,
-			AssetType:       null.StringFrom(i.ItemType),
-			Data:            asJson,
-			Name:            i.Label,
-			Attributes:      attributes,
-			ImageURL:        i.ImageURL,
-			BackgroundColor: i.BackgroundColor,
-			AnimationURL:    i.AnimationURL,
-			YoutubeURL:      i.YoutubeURL,
-			XsynLocked:      i.XsynLocked,
+			ID:               i.ID,
+			CollectionSlug:   i.CollectionSlug,
+			TokenID:          i.TokenID,
+			Tier:             i.Tier,
+			Hash:             i.Hash,
+			OwnerID:          i.OwnerID,
+			AssetType:        null.StringFrom(i.ItemType),
+			Data:             asJson,
+			Name:             i.Label,
+			Attributes:       attributes,
+			ImageURL:         i.ImageURL,
+			BackgroundColor:  i.BackgroundColor,
+			AnimationURL:     i.AnimationURL,
+			YoutubeURL:       i.YoutubeURL,
+			AvatarURL:        i.AvatarURL,
+			CardAnimationURL: i.CardAnimationURL,
+			XsynLocked:       i.XsynLocked,
 		})
 
 	}
@@ -675,21 +733,23 @@ func ServerWeaponsToXsynAsset(weapons []*server.Weapon) []*XsynAsset {
 		}
 
 		assets = append(assets, &XsynAsset{
-			ID:              i.ID,
-			CollectionSlug:  i.CollectionSlug,
-			TokenID:         i.TokenID,
-			Tier:            i.Tier,
-			Hash:            i.Hash,
-			OwnerID:         i.OwnerID,
-			AssetType:       null.StringFrom(i.ItemType),
-			Data:            asJson,
-			Name:            i.Label,
-			Attributes:      attributes,
-			ImageURL:        i.ImageURL,
-			BackgroundColor: i.BackgroundColor,
-			AnimationURL:    i.AnimationURL,
-			YoutubeURL:      i.YoutubeURL,
-			XsynLocked:      i.XsynLocked,
+			ID:               i.ID,
+			CollectionSlug:   i.CollectionSlug,
+			TokenID:          i.TokenID,
+			Tier:             i.Tier,
+			Hash:             i.Hash,
+			OwnerID:          i.OwnerID,
+			AssetType:        null.StringFrom(i.ItemType),
+			Data:             asJson,
+			Name:             i.Label,
+			Attributes:       attributes,
+			ImageURL:         i.ImageURL,
+			BackgroundColor:  i.BackgroundColor,
+			AnimationURL:     i.AnimationURL,
+			YoutubeURL:       i.YoutubeURL,
+			AvatarURL:        i.AvatarURL,
+			CardAnimationURL: i.CardAnimationURL,
+			XsynLocked:       i.XsynLocked,
 		})
 	}
 
@@ -717,21 +777,23 @@ func ServerUtilitiesToXsynAsset(utils []*server.Utility) []*XsynAsset {
 			},
 		}
 		assets = append(assets, &XsynAsset{
-			ID:              i.ID,
-			CollectionSlug:  i.CollectionSlug,
-			TokenID:         i.TokenID,
-			Tier:            i.Tier,
-			Hash:            i.Hash,
-			OwnerID:         i.OwnerID,
-			AssetType:       null.StringFrom(i.ItemType),
-			Data:            asJson,
-			Name:            i.Label,
-			Attributes:      attributes,
-			ImageURL:        i.ImageURL,
-			BackgroundColor: i.BackgroundColor,
-			AnimationURL:    i.AnimationURL,
-			YoutubeURL:      i.YoutubeURL,
-			XsynLocked:      i.XsynLocked,
+			ID:               i.ID,
+			CollectionSlug:   i.CollectionSlug,
+			TokenID:          i.TokenID,
+			Tier:             i.Tier,
+			Hash:             i.Hash,
+			OwnerID:          i.OwnerID,
+			AssetType:        null.StringFrom(i.ItemType),
+			Data:             asJson,
+			Name:             i.Label,
+			Attributes:       attributes,
+			ImageURL:         i.ImageURL,
+			BackgroundColor:  i.BackgroundColor,
+			AnimationURL:     i.AnimationURL,
+			YoutubeURL:       i.YoutubeURL,
+			AvatarURL:        i.AvatarURL,
+			CardAnimationURL: i.CardAnimationURL,
+			XsynLocked:       i.XsynLocked,
 		})
 	}
 
