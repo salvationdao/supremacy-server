@@ -1,7 +1,6 @@
 package db
 
 import (
-	"context"
 	"fmt"
 	"server"
 	"server/db/boiler"
@@ -29,6 +28,7 @@ var KeycardSelectBaseQuery = []qm.QueryMod{
 		qm.Rels(boiler.TableNames.BlueprintKeycards, boiler.BlueprintKeycardColumns.Syndicate),
 		qm.Rels(boiler.TableNames.BlueprintKeycards, boiler.BlueprintKeycardColumns.CreatedAt),
 	),
+	qm.From(boiler.TableNames.PlayerKeycards),
 	qm.InnerJoin(
 		fmt.Sprintf(
 			"%s on %s = %s",
@@ -88,9 +88,8 @@ func AssetKeycardList(
 
 	// Get total rows
 	var total int64
-	err := boiler.NewQuery(
-		append(queryMods, qm.Select("COUNT(*)"))...,
-	).QueryRow(gamedb.StdConn).Scan(&total)
+	countQueryMods := append(queryMods[1:], qm.Select("COUNT(*)"))
+	err := boiler.NewQuery(countQueryMods...).QueryRow(gamedb.StdConn).Scan(&total)
 	if err != nil {
 		return 0, nil, terror.Error(err)
 	}
@@ -108,10 +107,10 @@ func AssetKeycardList(
 	}
 
 	items := []*server.AssetKeycard{}
-	err = boiler.NewQuery(queryMods...).Bind(context.Background(), gamedb.StdConn, &items)
+	err = boiler.NewQuery(queryMods...).Bind(nil, gamedb.StdConn, &items)
 	if err != nil {
 		return 0, nil, terror.Error(err)
 	}
 
-	return 0, items, nil
+	return total, items, nil
 }
