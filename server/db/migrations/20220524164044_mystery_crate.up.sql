@@ -33,7 +33,7 @@ CREATE TABLE mystery_crate_blueprints
     id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     mystery_crate_id UUID               NOT NULL REFERENCES mystery_crate (id),
     blueprint_type   TEMPLATE_ITEM_TYPE NOT NULL,
-    blueprint_id     UUID
+    blueprint_id     UUID               NOT NULL
 );
 
 CREATE TABLE weapon_models
