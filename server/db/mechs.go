@@ -9,10 +9,9 @@ import (
 	"server/gamelog"
 	"strconv"
 
-	"github.com/volatiletech/null/v8"
-
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
@@ -246,14 +245,11 @@ func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 		CompleteMechQuery,
 		paramrefs)
 
-	boil.DebugMode = true
 	result, err := gamedb.StdConn.Query(query, mechids...)
 	if err != nil {
-		boil.DebugMode = false
 		return nil, err
 	}
 	defer result.Close()
-	boil.DebugMode = false
 
 	i := 0
 	for result.Next() {

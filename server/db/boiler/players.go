@@ -174,6 +174,7 @@ var PlayerRels = struct {
 	PlayerPreferences                      string
 	PlayerSpoilsOfWars                     string
 	PlayersPunishVotes                     string
+	InstantPassByPunishVotes               string
 	IssuedByPunishVotes                    string
 	ReportedPlayerPunishVotes              string
 	PunishedPlayers                        string
@@ -210,6 +211,7 @@ var PlayerRels = struct {
 	PlayerPreferences:                      "PlayerPreferences",
 	PlayerSpoilsOfWars:                     "PlayerSpoilsOfWars",
 	PlayersPunishVotes:                     "PlayersPunishVotes",
+	InstantPassByPunishVotes:               "InstantPassByPunishVotes",
 	IssuedByPunishVotes:                    "IssuedByPunishVotes",
 	ReportedPlayerPunishVotes:              "ReportedPlayerPunishVotes",
 	PunishedPlayers:                        "PunishedPlayers",
@@ -249,6 +251,7 @@ type playerR struct {
 	PlayerPreferences                      PlayerPreferenceSlice            `boiler:"PlayerPreferences" boil:"PlayerPreferences" json:"PlayerPreferences" toml:"PlayerPreferences" yaml:"PlayerPreferences"`
 	PlayerSpoilsOfWars                     PlayerSpoilsOfWarSlice           `boiler:"PlayerSpoilsOfWars" boil:"PlayerSpoilsOfWars" json:"PlayerSpoilsOfWars" toml:"PlayerSpoilsOfWars" yaml:"PlayerSpoilsOfWars"`
 	PlayersPunishVotes                     PlayersPunishVoteSlice           `boiler:"PlayersPunishVotes" boil:"PlayersPunishVotes" json:"PlayersPunishVotes" toml:"PlayersPunishVotes" yaml:"PlayersPunishVotes"`
+	InstantPassByPunishVotes               PunishVoteSlice                  `boiler:"InstantPassByPunishVotes" boil:"InstantPassByPunishVotes" json:"InstantPassByPunishVotes" toml:"InstantPassByPunishVotes" yaml:"InstantPassByPunishVotes"`
 	IssuedByPunishVotes                    PunishVoteSlice                  `boiler:"IssuedByPunishVotes" boil:"IssuedByPunishVotes" json:"IssuedByPunishVotes" toml:"IssuedByPunishVotes" yaml:"IssuedByPunishVotes"`
 	ReportedPlayerPunishVotes              PunishVoteSlice                  `boiler:"ReportedPlayerPunishVotes" boil:"ReportedPlayerPunishVotes" json:"ReportedPlayerPunishVotes" toml:"ReportedPlayerPunishVotes" yaml:"ReportedPlayerPunishVotes"`
 	PunishedPlayers                        PunishedPlayerSlice              `boiler:"PunishedPlayers" boil:"PunishedPlayers" json:"PunishedPlayers" toml:"PunishedPlayers" yaml:"PunishedPlayers"`
@@ -1147,6 +1150,28 @@ func (o *Player) PlayersPunishVotes(mods ...qm.QueryMod) playersPunishVoteQuery 
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"players_punish_votes\".*"})
+	}
+
+	return query
+}
+
+// InstantPassByPunishVotes retrieves all the punish_vote's PunishVotes with an executor via instant_pass_by_id column.
+func (o *Player) InstantPassByPunishVotes(mods ...qm.QueryMod) punishVoteQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"punish_votes\".\"instant_pass_by_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"punish_votes\".\"deleted_at\""),
+	)
+
+	query := PunishVotes(queryMods...)
+	queries.SetFrom(query.Query, "\"punish_votes\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"punish_votes\".*"})
 	}
 
 	return query
@@ -4318,6 +4343,105 @@ func (playerL) LoadPlayersPunishVotes(e boil.Executor, singular bool, maybePlaye
 	return nil
 }
 
+// LoadInstantPassByPunishVotes allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (playerL) LoadInstantPassByPunishVotes(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+	var slice []*Player
+	var object *Player
+
+	if singular {
+		object = maybePlayer.(*Player)
+	} else {
+		slice = *maybePlayer.(*[]*Player)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &playerR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &playerR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`punish_votes`),
+		qm.WhereIn(`punish_votes.instant_pass_by_id in ?`, args...),
+		qmhelper.WhereIsNull(`punish_votes.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load punish_votes")
+	}
+
+	var resultSlice []*PunishVote
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice punish_votes")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on punish_votes")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for punish_votes")
+	}
+
+	if len(punishVoteAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.InstantPassByPunishVotes = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &punishVoteR{}
+			}
+			foreign.R.InstantPassBy = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.InstantPassByID) {
+				local.R.InstantPassByPunishVotes = append(local.R.InstantPassByPunishVotes, foreign)
+				if foreign.R == nil {
+					foreign.R = &punishVoteR{}
+				}
+				foreign.R.InstantPassBy = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // LoadIssuedByPunishVotes allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
 func (playerL) LoadIssuedByPunishVotes(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
@@ -6799,6 +6923,131 @@ func (o *Player) AddPlayersPunishVotes(exec boil.Executor, insert bool, related 
 			rel.R.Player = o
 		}
 	}
+	return nil
+}
+
+// AddInstantPassByPunishVotes adds the given related objects to the existing relationships
+// of the player, optionally inserting them as new records.
+// Appends related to o.R.InstantPassByPunishVotes.
+// Sets related.R.InstantPassBy appropriately.
+func (o *Player) AddInstantPassByPunishVotes(exec boil.Executor, insert bool, related ...*PunishVote) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.InstantPassByID, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"punish_votes\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"instant_pass_by_id"}),
+				strmangle.WhereClause("\"", "\"", 2, punishVotePrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.InstantPassByID, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &playerR{
+			InstantPassByPunishVotes: related,
+		}
+	} else {
+		o.R.InstantPassByPunishVotes = append(o.R.InstantPassByPunishVotes, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &punishVoteR{
+				InstantPassBy: o,
+			}
+		} else {
+			rel.R.InstantPassBy = o
+		}
+	}
+	return nil
+}
+
+// SetInstantPassByPunishVotes removes all previously related items of the
+// player replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.InstantPassBy's InstantPassByPunishVotes accordingly.
+// Replaces o.R.InstantPassByPunishVotes with related.
+// Sets related.R.InstantPassBy's InstantPassByPunishVotes accordingly.
+func (o *Player) SetInstantPassByPunishVotes(exec boil.Executor, insert bool, related ...*PunishVote) error {
+	query := "update \"punish_votes\" set \"instant_pass_by_id\" = null where \"instant_pass_by_id\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.InstantPassByPunishVotes {
+			queries.SetScanner(&rel.InstantPassByID, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.InstantPassBy = nil
+		}
+
+		o.R.InstantPassByPunishVotes = nil
+	}
+	return o.AddInstantPassByPunishVotes(exec, insert, related...)
+}
+
+// RemoveInstantPassByPunishVotes relationships from objects passed in.
+// Removes related items from R.InstantPassByPunishVotes (uses pointer comparison, removal does not keep order)
+// Sets related.R.InstantPassBy.
+func (o *Player) RemoveInstantPassByPunishVotes(exec boil.Executor, related ...*PunishVote) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.InstantPassByID, nil)
+		if rel.R != nil {
+			rel.R.InstantPassBy = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("instant_pass_by_id")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.InstantPassByPunishVotes {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.InstantPassByPunishVotes)
+			if ln > 1 && i < ln-1 {
+				o.R.InstantPassByPunishVotes[i] = o.R.InstantPassByPunishVotes[ln-1]
+			}
+			o.R.InstantPassByPunishVotes = o.R.InstantPassByPunishVotes[:ln-1]
+			break
+		}
+	}
+
 	return nil
 }
 

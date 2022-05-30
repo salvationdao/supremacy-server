@@ -39,6 +39,7 @@ const KeyMarketplaceListingBuyoutFee KVKey = "marketplace_listing_buyout_fee"
 const KeyMarketplaceSaleCutPercentage KVKey = "marketplace_sale_cut_percentage"
 
 const KeyFirstAbilityCooldown KVKey = "first_ability_cooldown"
+const KeyPunishVoteCooldownHour KVKey = "punish_vote_cooldown_hour"
 
 func get(key KVKey) string {
 	exists, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).Exists(gamedb.StdConn)

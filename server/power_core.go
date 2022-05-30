@@ -12,16 +12,18 @@ import (
 
 type PowerCore struct {
 	*CollectionItem
-	ID           string          `json:"id"`
-	Label        string          `json:"label"`
-	Size         string          `json:"size"`
-	Capacity     decimal.Decimal `json:"capacity"`
-	MaxDrawRate  decimal.Decimal `json:"max_draw_rate"`
-	RechargeRate decimal.Decimal `json:"recharge_rate"`
-	Armour       decimal.Decimal `json:"armour"`
-	MaxHitpoints decimal.Decimal `json:"max_hitpoints"`
-	EquippedOn   null.String     `json:"equipped_on,omitempty"`
-	CreatedAt    time.Time       `json:"created_at"`
+	ID                    string          `json:"id"`
+	Label                 string          `json:"label"`
+	Size                  string          `json:"size"`
+	Capacity              decimal.Decimal `json:"capacity"`
+	MaxDrawRate           decimal.Decimal `json:"max_draw_rate"`
+	RechargeRate          decimal.Decimal `json:"recharge_rate"`
+	Armour                decimal.Decimal `json:"armour"`
+	MaxHitpoints          decimal.Decimal `json:"max_hitpoints"`
+	EquippedOn            null.String     `json:"equipped_on,omitempty"`
+	CreatedAt             time.Time       `json:"created_at"`
+	GenesisTokenID        null.Int64      `json:"genesis_token_id,omitempty"`
+	LimitedReleaseTokenID null.Int64      `json:"limited_release_token_id,omitempty"`
 }
 
 func (b *PowerCore) Scan(value interface{}) error {

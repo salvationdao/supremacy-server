@@ -247,3 +247,83 @@ func MechFromBoiler(mech *boiler.Mech, collection *boiler.CollectionItem, skinCo
 		CreatedAt:             mech.CreatedAt,
 	}
 }
+
+// IsBattleReady checks if a mech has the minimum it needs for battle
+func (m *Mech) IsBattleReady() bool {
+	if !m.PowerCoreID.Valid {
+		return false
+	}
+	if len(m.Weapons) <= 0 {
+		return false
+	}
+	return true
+}
+
+func (m *Mech) CheckAndSetAsGenesisOrLimited() (genesisID null.Int64, limitedID null.Int64) {
+	if !m.GenesisTokenID.Valid && !m.LimitedReleaseTokenID.Valid {
+		return
+	}
+	if m.GenesisTokenID.Valid && m.IsCompleteGenesis() {
+		genesisID = m.GenesisTokenID
+		m.TokenID = m.GenesisTokenID.Int64
+		m.CollectionSlug = "supremacy-genesis"
+		return
+	}
+	if m.LimitedReleaseTokenID.Valid && m.IsCompleteLimited() {
+		limitedID = m.LimitedReleaseTokenID
+		m.TokenID = m.LimitedReleaseTokenID.Int64
+		m.CollectionSlug = "supremacy-limited-release"
+		return
+	}
+	return
+}
+
+// IsCompleteGenesis returns true if all parts of this mech are genesis with matching genesis token IDs
+func (m *Mech) IsCompleteGenesis() bool {
+	if !m.GenesisTokenID.Valid {
+		return false
+	}
+	// this checks if mech is complete genesis
+	// the shield and skins are locked to genesis, so they are true
+	// we just need to check the first 2 weapons, since rocket pods are also locked
+	if m.Weapons[0] == nil || !m.Weapons[0].GenesisTokenID.Valid ||
+		m.Weapons[0].GenesisTokenID.Int64 != m.GenesisTokenID.Int64 {
+		return false
+	}
+	if m.Weapons[1] == nil || !m.Weapons[1].GenesisTokenID.Valid ||
+		m.Weapons[1].GenesisTokenID.Int64 != m.GenesisTokenID.Int64 {
+		return false
+	}
+	if m.Weapons[2] == nil || !m.Weapons[2].GenesisTokenID.Valid ||
+		m.Weapons[2].GenesisTokenID.Int64 != m.GenesisTokenID.Int64 {
+		return false
+	}
+	return true
+}
+
+// IsCompleteLimited returns true if all parts of this mech are limited with matching limited token IDs
+func (m *Mech) IsCompleteLimited() bool {
+	if !m.LimitedReleaseTokenID.Valid {
+		return false
+	}
+	// this checks if mech is complete genesis
+	// the shield and skins are locked to genesis, so they are true
+	// we just need to check the first 2 weapons, since rocket pods are also locked
+	if m.Weapons[0] == nil || !m.Weapons[0].LimitedReleaseTokenID.Valid ||
+		m.Weapons[0].LimitedReleaseTokenID.Int64 != m.LimitedReleaseTokenID.Int64 {
+		return false
+	}
+	if m.Weapons[1] == nil || !m.Weapons[1].LimitedReleaseTokenID.Valid ||
+		m.Weapons[1].LimitedReleaseTokenID.Int64 != m.LimitedReleaseTokenID.Int64 {
+		return false
+	}
+	if m.Weapons[2] == nil || !m.Weapons[2].LimitedReleaseTokenID.Valid ||
+		m.Weapons[2].LimitedReleaseTokenID.Int64 != m.LimitedReleaseTokenID.Int64 {
+		return false
+	}
+	return true
+}
+
+func MechToGenesisOrLimited() {
+
+}

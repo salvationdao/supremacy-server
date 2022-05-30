@@ -22,13 +22,15 @@ func InsertNewPowerCore(ownerID uuid.UUID, ec *server.BlueprintPowerCore) (*serv
 
 	// first insert the energy core
 	newPowerCore := boiler.PowerCore{
-		Label:        ec.Label,
-		Size:         ec.Size,
-		Capacity:     ec.Capacity,
-		MaxDrawRate:  ec.MaxDrawRate,
-		RechargeRate: ec.RechargeRate,
-		Armour:       ec.Armour,
-		MaxHitpoints: ec.MaxHitpoints,
+		Label:                 ec.Label,
+		Size:                  ec.Size,
+		Capacity:              ec.Capacity,
+		MaxDrawRate:           ec.MaxDrawRate,
+		RechargeRate:          ec.RechargeRate,
+		Armour:                ec.Armour,
+		MaxHitpoints:          ec.MaxHitpoints,
+		GenesisTokenID:        ec.GenesisTokenID,
+		LimitedReleaseTokenID: ec.LimitedReleaseTokenID,
 	}
 
 	err = newPowerCore.Insert(tx, boil.Infer())
