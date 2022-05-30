@@ -46,6 +46,7 @@ func NewPlayerController(api *API) *PlayerController {
 	api.SecureUserCommand(HubKeyPlayerPunishmentList, pc.PlayerPunishmentList)
 	api.SecureUserCommand(HubKeyPlayerActiveCheck, pc.PlayerActiveCheckHandler)
 	api.SecureUserFactionCommand(HubKeyFactionPlayerSearch, pc.FactionPlayerSearch)
+	api.SecureUserFactionCommand(HubKeyInstantPassPunishVote, pc.PunishVoteInstantPassHandler)
 	api.SecureUserFactionCommand(HubKeyPunishOptions, pc.PunishOptions)
 	api.SecureUserFactionCommand(HubKeyPunishVote, pc.PunishVote)
 	api.SecureUserFactionCommand(HubKeyIssuePunishVote, pc.IssuePunishVote)
@@ -355,6 +356,48 @@ func (pc *PlayerController) FactionPlayerSearch(ctx context.Context, wsc *hub.Cl
 	return nil
 }
 
+type PunishVoteInstantPassRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		PunishVoteID string `json:"punish_vote_id"`
+	} `json:"payload"`
+}
+
+const HubKeyInstantPassPunishVote hub.HubCommandKey = "PUNISH:VOTE:INSTANT:PASS"
+
+func (pc *PlayerController) PunishVoteInstantPassHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
+	req := &PunishVoteInstantPassRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	// check punish vote is finalised
+	// check player is available to be punished
+	player, err := boiler.FindPlayer(gamedb.StdConn, wsc.Identifier())
+	if err != nil {
+		return terror.Error(err, "Failed to get current player from db")
+	}
+
+	if player.Rank != boiler.PlayerRankEnumGENERAL {
+		return terror.Error(terror.ErrInvalidInput, "Only players with rank 'GENERAL' can instantly pass a punish vote.")
+	}
+
+	fpv, ok := pc.API.FactionPunishVote[player.FactionID.String]
+	if !ok {
+		return terror.Error(fmt.Errorf("player faction id does not exist"))
+	}
+
+	err = fpv.InstantPass(pc.API.Passport, req.Payload.PunishVoteID, wsc.Identifier())
+	if err != nil {
+		return terror.Error(err, err.Error())
+	}
+
+	reply(true)
+
+	return nil
+}
+
 type PunishVoteRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
@@ -585,6 +628,7 @@ func (pc *PlayerController) IssuePunishVote(ctx context.Context, wsc *hub.Client
 		ReportedPlayerUsername: intendToBenPlayer.Username.String,
 		ReportedPlayerGid:      intendToBenPlayer.Gid,
 		Status:                 string(PunishVoteStatusPending),
+		InstantPassFee:         price.Mul(decimal.New(1, 18)),
 	}
 	err = punishVote.Insert(tx, boil.Infer())
 	if err != nil {

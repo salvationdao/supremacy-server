@@ -35,6 +35,7 @@ const KeyFactionAbilityFloorPrice KVKey = "faction_ability_floor_price"
 const KeyFactionAbilityPriceDropRate KVKey = "faction_ability_price_drop_rate"
 
 const KeyFirstAbilityCooldown KVKey = "first_ability_cooldown"
+const KeyPunishVoteCooldownHour KVKey = "punish_vote_cooldown_hour"
 
 func get(key KVKey) string {
 	exists, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).Exists(gamedb.StdConn)
