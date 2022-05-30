@@ -1,11 +1,11 @@
-package rpcclient
+package xsyn_rpcclient
 
 import (
 	"server/gamelog"
 )
 
 // SpendSupMessage tells the passport to make a transfer
-func (pp *PassportXrpcClient) SpendSupMessage(req SpendSupsReq) (string, error) {
+func (pp *XsynXrpcClient) SpendSupMessage(req SpendSupsReq) (string, error) {
 	req.ApiKey = pp.ApiKey
 	resp := &SpendSupsResp{}
 	err := pp.XrpcClient.Call("S.SupremacySpendSupsHandler", req, resp)
@@ -18,7 +18,7 @@ func (pp *PassportXrpcClient) SpendSupMessage(req SpendSupsReq) (string, error) 
 }
 
 // RefundSupsMessage tells the passport to refund a transaction
-func (pp *PassportXrpcClient) RefundSupsMessage(transactionID string) (string, error) {
+func (pp *XsynXrpcClient) RefundSupsMessage(transactionID string) (string, error) {
 	resp := &RefundTransactionResp{}
 	err := pp.XrpcClient.Call("S.RefundTransaction", &RefundTransactionReq{
 		ApiKey:        pp.ApiKey,

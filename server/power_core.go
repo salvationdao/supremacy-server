@@ -11,17 +11,19 @@ import (
 )
 
 type PowerCore struct {
-	*CollectionDetails
-	ID           string          `json:"id"`
-	Label        string          `json:"label"`
-	Size         string          `json:"size"`
-	Capacity     decimal.Decimal `json:"capacity"`
-	MaxDrawRate  decimal.Decimal `json:"max_draw_rate"`
-	RechargeRate decimal.Decimal `json:"recharge_rate"`
-	Armour       decimal.Decimal `json:"armour"`
-	MaxHitpoints decimal.Decimal `json:"max_hitpoints"`
-	EquippedOn   null.String     `json:"equipped_on,omitempty"`
-	CreatedAt    time.Time       `json:"created_at"`
+	*CollectionItem
+	ID                    string          `json:"id"`
+	Label                 string          `json:"label"`
+	Size                  string          `json:"size"`
+	Capacity              decimal.Decimal `json:"capacity"`
+	MaxDrawRate           decimal.Decimal `json:"max_draw_rate"`
+	RechargeRate          decimal.Decimal `json:"recharge_rate"`
+	Armour                decimal.Decimal `json:"armour"`
+	MaxHitpoints          decimal.Decimal `json:"max_hitpoints"`
+	EquippedOn            null.String     `json:"equipped_on,omitempty"`
+	CreatedAt             time.Time       `json:"created_at"`
+	GenesisTokenID        null.Int64      `json:"genesis_token_id,omitempty"`
+	LimitedReleaseTokenID null.Int64      `json:"limited_release_token_id,omitempty"`
 }
 
 func (b *PowerCore) Scan(value interface{}) error {
@@ -83,7 +85,7 @@ func BlueprintPowerCoreFromBoiler(core *boiler.BlueprintPowerCore) *BlueprintPow
 
 func PowerCoreFromBoiler(skin *boiler.PowerCore, collection *boiler.CollectionItem) *PowerCore {
 	return &PowerCore{
-		CollectionDetails: &CollectionDetails{
+		CollectionItem: &CollectionItem{
 			CollectionSlug:   collection.CollectionSlug,
 			Hash:             collection.Hash,
 			TokenID:          collection.TokenID,
@@ -91,7 +93,8 @@ func PowerCoreFromBoiler(skin *boiler.PowerCore, collection *boiler.CollectionIt
 			ItemID:           collection.ItemID,
 			Tier:             collection.Tier,
 			OwnerID:          collection.OwnerID,
-			OnChainStatus:    collection.OnChainStatus,
+			MarketLocked:     collection.MarketLocked,
+			XsynLocked:       collection.XsynLocked,
 			ImageURL:         collection.ImageURL,
 			CardAnimationURL: collection.CardAnimationURL,
 			AvatarURL:        collection.AvatarURL,

@@ -12,6 +12,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/multipliers"
+	"sort"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -35,15 +36,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
-
-var Profanities = []string{
-	"fag",
-	"fuck",
-	"nigga",
-	"nigger",
-	"rape",
-	"retard",
-}
 
 const PersistChatMessageLimit = 50
 
@@ -86,6 +78,7 @@ type MessagePunishVote struct {
 	DisagreedPlayerNumber int                 `json:"disagreed_player_number"`
 	PunishOption          boiler.PunishOption `json:"punish_option"`
 	PunishReason          string              `json:"punish_reason"`
+	InstantPassByUser     *boiler.Player      `json:"instant_pass_by_user"`
 }
 
 // Chatroom holds a specific chat room
@@ -457,6 +450,10 @@ func (fc *ChatController) FactionChatUpdatedSubscribeHandler(ctx context.Context
 	default:
 		return terror.Error(terror.ErrInvalidInput, "Invalid faction id")
 	}
+
+	sort.Slice(resp, func(i, j int) bool {
+		return resp[i].SentAt.After(resp[j].SentAt)
+	})
 
 	reply(resp)
 

@@ -9,10 +9,9 @@ import (
 	"server/gamelog"
 	"strconv"
 
-	"github.com/volatiletech/null/v8"
-
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
@@ -24,6 +23,9 @@ SELECT
 	collection_items.token_id,
 	collection_items.owner_id,
 	collection_items.tier,
+	collection_items.item_type,
+	collection_items.market_locked,
+	collection_items.xsyn_locked,
 	mechs.id,
 	mechs.name,
 	mechs.label,
@@ -60,7 +62,11 @@ FROM collection_items
 INNER JOIN mechs on collection_items.item_id = mechs.id
 INNER JOIN players p ON p.id = collection_items.owner_id
 LEFT OUTER JOIN factions f on p.faction_id = f.id
-LEFT OUTER JOIN power_cores ec ON ec.id = mechs.power_core_id
+LEFT OUTER JOIN (
+	SELECT _pc.*,_ci.hash, _ci.token_id, _ci.tier, _ci.owner_id
+	FROM power_cores _pc
+	INNER JOIN collection_items _ci on _ci.item_id = _pc.id
+	) ec ON ec.id = mechs.power_core_id
 LEFT OUTER JOIN brands b ON b.id = mechs.brand_id
 LEFT OUTER JOIN mech_model mm ON mechs.model_id = mm.id
 LEFT OUTER JOIN (
@@ -141,7 +147,7 @@ var ErrNotAllMechsReturned = fmt.Errorf("not all mechs returned")
 // If you want to show the user a mech, it should be lazy loaded via various endpoints, not a single endpoint for an entire mech.
 func Mech(mechID string) (*server.Mech, error) {
 	mc := &server.Mech{
-		CollectionDetails: &server.CollectionDetails{},
+		CollectionItem: &server.CollectionItem{},
 	}
 
 	query := fmt.Sprintf(`%s WHERE collection_items.item_id = $1`, CompleteMechQuery)
@@ -154,11 +160,14 @@ func Mech(mechID string) (*server.Mech, error) {
 
 	for result.Next() {
 		err = result.Scan(
-			&mc.CollectionDetails.CollectionSlug,
-			&mc.CollectionDetails.Hash,
-			&mc.CollectionDetails.TokenID,
-			&mc.CollectionDetails.OwnerID,
-			&mc.CollectionDetails.Tier,
+			&mc.CollectionItem.CollectionSlug,
+			&mc.CollectionItem.Hash,
+			&mc.CollectionItem.TokenID,
+			&mc.CollectionItem.OwnerID,
+			&mc.CollectionItem.Tier,
+			&mc.CollectionItem.ItemType,
+			&mc.CollectionItem.MarketLocked,
+			&mc.CollectionItem.XsynLocked,
 			&mc.ID,
 			&mc.Name,
 			&mc.Label,
@@ -235,14 +244,17 @@ func Mechs(mechIDs ...string) ([]*server.Mech, error) {
 	i := 0
 	for result.Next() {
 		mc := &server.Mech{
-			CollectionDetails: &server.CollectionDetails{},
+			CollectionItem: &server.CollectionItem{},
 		}
 		err = result.Scan(
-			&mc.CollectionDetails.CollectionSlug,
-			&mc.CollectionDetails.Hash,
-			&mc.CollectionDetails.TokenID,
-			&mc.CollectionDetails.OwnerID,
-			&mc.CollectionDetails.Tier,
+			&mc.CollectionItem.CollectionSlug,
+			&mc.CollectionItem.Hash,
+			&mc.CollectionItem.TokenID,
+			&mc.CollectionItem.OwnerID,
+			&mc.CollectionItem.Tier,
+			&mc.CollectionItem.ItemType,
+			&mc.CollectionItem.MarketLocked,
+			&mc.CollectionItem.XsynLocked,
 			&mc.ID,
 			&mc.Name,
 			&mc.Label,
@@ -503,12 +515,13 @@ func IsMechColumn(col string) bool {
 }
 
 type MechListOpts struct {
-	Search   string
-	Filter   *ListFilterRequest
-	Sort     *ListSortRequest
-	PageSize int
-	Page     int
-	OwnerID  string
+	Search           string
+	Filter           *ListFilterRequest
+	Sort             *ListSortRequest
+	PageSize         int
+	Page             int
+	OwnerID          string
+	DisplayXsynMechs bool
 }
 
 func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
@@ -529,6 +542,14 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			Operator: OperatorValueTypeEquals,
 			Value:    boiler.ItemTypeMech,
 		}, 0, "and"))
+
+	if !opts.DisplayXsynMechs {
+		queryMods = append(queryMods, GenerateListFilterQueryMod(ListFilterRequestItem{
+			Table:    boiler.TableNames.CollectionItems,
+			Column:   boiler.CollectionItemColumns.XsynLocked,
+			Operator: OperatorValueTypeIsFalse,
+		}, 0, ""))
+	}
 
 	// Filters
 	if opts.Filter != nil {
@@ -555,7 +576,6 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 				))
 		}
 	}
-
 	total, err := boiler.CollectionItems(
 		queryMods...,
 	).Count(gamedb.StdConn)
@@ -584,6 +604,9 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.TokenID),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.OwnerID),
 			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.Tier),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.ItemType),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.MarketLocked),
+			qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.XsynLocked),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.ID),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Name),
 			qm.Rels(boiler.TableNames.Mechs, boiler.MechColumns.Label),
@@ -622,14 +645,17 @@ func MechList(opts *MechListOpts) (int64, []*server.Mech, error) {
 
 	for rows.Next() {
 		mc := &server.Mech{
-			CollectionDetails: &server.CollectionDetails{},
+			CollectionItem: &server.CollectionItem{},
 		}
 		err = rows.Scan(
-			&mc.CollectionDetails.CollectionSlug,
-			&mc.CollectionDetails.Hash,
-			&mc.CollectionDetails.TokenID,
-			&mc.CollectionDetails.OwnerID,
-			&mc.CollectionDetails.Tier,
+			&mc.CollectionItem.CollectionSlug,
+			&mc.CollectionItem.Hash,
+			&mc.CollectionItem.TokenID,
+			&mc.CollectionItem.OwnerID,
+			&mc.CollectionItem.Tier,
+			&mc.CollectionItem.ItemType,
+			&mc.CollectionItem.MarketLocked,
+			&mc.CollectionItem.XsynLocked,
 			&mc.ID,
 			&mc.Name,
 			&mc.Label,

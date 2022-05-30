@@ -27,6 +27,8 @@ type CollectionDetails struct {
 	Tier           string `json:"tier"`
 	OwnerID        string `json:"owner_id"`
 	OnChainStatus  string `json:"on_chain_status"`
+	MarketLocked   bool   `json:"market_locked"`
+	XsynLocked     bool   `json:"xsyn_locked"`
 
 	ImageURL         null.String `json:"image_url,omitempty"`
 	CardAnimationURL null.String `json:"card_animation_url,omitempty"`
@@ -433,6 +435,7 @@ type XsynAsset struct {
 	Data             types.JSON   `json:"data,omitempty"`
 	Attributes       []*Attribute `json:"attributes,omitempty"`
 	Name             string       `json:"name,omitempty"`
+	AssetType        null.String  `json:"asset_type,omitempty"`
 	ImageURL         null.String  `json:"image_url,omitempty"`
 	ExternalURL      null.String  `json:"external_url,omitempty"`
 	Description      null.String  `json:"description,omitempty"`
@@ -445,5 +448,5 @@ type XsynAsset struct {
 	UnlockedAt       time.Time    `json:"unlocked_at,omitempty"`
 	MintedAt         null.Time    `json:"minted_at,omitempty"`
 	OnChainStatus    string       `json:"on_chain_status,omitempty"`
-	XsynLocked       null.Bool    `json:"xsyn_locked,omitempty"`
+	XsynLocked       bool         `json:"xsyn_locked,omitempty"`
 }
