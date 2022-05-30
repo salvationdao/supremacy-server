@@ -14,7 +14,6 @@ type AssetUnlockFromSupremacyResp struct {
 type AssetUnlockFromSupremacyReq struct {
 	ApiKey          string `json:"api_key,omitempty"`
 	CollectionSlug  string `json:"collection_slug,omitempty"`
-	TokenID         int64  `json:"token_id,omitempty"`
 	OwnerID         string `json:"owner_id,omitempty"`
 	Hash            string `json:"hash,omitempty"`
 	TransferEventID int64  `json:"transfer_event_id"`
@@ -24,7 +23,6 @@ type AssetUnlockFromSupremacyReq struct {
 func (s *S) AssetUnlockFromSupremacyHandler(req AssetUnlockFromSupremacyReq, resp *AssetUnlockFromSupremacyResp) error {
 	collectionItem, err := boiler.CollectionItems(
 		boiler.CollectionItemWhere.OwnerID.EQ(req.OwnerID),
-		boiler.CollectionItemWhere.TokenID.EQ(req.TokenID),
 		boiler.CollectionItemWhere.Hash.EQ(req.Hash),
 		boiler.CollectionItemWhere.CollectionSlug.EQ(req.CollectionSlug),
 	).One(gamedb.StdConn)
@@ -55,7 +53,6 @@ type AssetLockToSupremacyResp struct {
 type AssetLockToSupremacyReq struct {
 	ApiKey          string `json:"api_key,omitempty"`
 	CollectionSlug  string `json:"collection_slug,omitempty"`
-	TokenID         int64  `json:"token_id,omitempty"`
 	OwnerID         string `json:"owner_id,omitempty"`
 	Hash            string `json:"hash,omitempty"`
 	TransferEventID int64  `json:"transfer_event_id"`
@@ -65,7 +62,6 @@ type AssetLockToSupremacyReq struct {
 func (s *S) AssetLockToSupremacyHandler(req AssetLockToSupremacyReq, resp *AssetLockToSupremacyResp) error {
 	collectionItem, err := boiler.CollectionItems(
 		boiler.CollectionItemWhere.OwnerID.EQ(req.OwnerID),
-		boiler.CollectionItemWhere.TokenID.EQ(req.TokenID),
 		boiler.CollectionItemWhere.Hash.EQ(req.Hash),
 		boiler.CollectionItemWhere.CollectionSlug.EQ(req.CollectionSlug),
 	).One(gamedb.StdConn)
