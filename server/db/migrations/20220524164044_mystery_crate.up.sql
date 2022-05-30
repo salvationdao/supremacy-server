@@ -1,5 +1,5 @@
 DROP TYPE IF EXISTS CRATE_TYPE;
-CREATE TYPE CRATE_TYPE AS ENUM ('MECH', 'WEAPON', 'UTILITY');
+CREATE TYPE CRATE_TYPE AS ENUM ('MECH', 'WEAPON');
 
 DROP TYPE IF EXISTS MECH_TYPE;
 CREATE TYPE MECH_TYPE AS ENUM ('HUMANOID', 'PLATFORM');
@@ -33,7 +33,7 @@ CREATE TABLE mystery_crate_blueprints
     id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     mystery_crate_id UUID               NOT NULL REFERENCES mystery_crate (id),
     blueprint_type   TEMPLATE_ITEM_TYPE NOT NULL,
-    blueprint_id     UUID               NOT NULL
+    blueprint_id     UUID
 );
 
 CREATE TABLE weapon_models
@@ -842,6 +842,79 @@ BEGIN
                                            END));
 end;
 $$;
+--
+DROP FUNCTION IF EXISTS insert_weapons_into_mech_crate(i integer, base_unit numeric, previous_amount numeric,
+                                                       crate_id UUID,
+                                                       weapon_skin_label TEXT, faction record);
+CREATE FUNCTION insert_weapons_into_mech_crate(i integer, base_unit numeric, previous_amount numeric,
+                                               crate_id UUID,
+                                               weapon_skin_label TEXT, faction record) returns void
+    language plpgsql as
+$$
+BEGIN
+    CASE
+        WHEN i <= (base_unit + previous_amount)
+            THEN PERFORM insert_weapon_into_crate(crate_id, 'Flak', faction);
+                 PERFORM insert_weapon_skin_into_crate(i, crate_id, 'Flak', 0, 0,
+                                                       'MECH',
+                                                       weapon_skin_label, faction);
+                 PERFORM insert_second_weapon_into_mech_crate(i,
+                                                              (.2 * base_unit),
+                                                              previous_amount,
+                                                              crate_id,
+                                                              weapon_skin_label,
+                                                              faction);
+        WHEN i > (base_unit + previous_amount) AND i <= (2 * base_unit + previous_amount)
+            THEN PERFORM insert_weapon_into_crate(crate_id, 'Missile Launcher', faction);
+                 PERFORM insert_weapon_skin_into_crate(i, crate_id,
+                                                       'Missile Launcher', 0, 0,
+                                                       'MECH',
+                                                       weapon_skin_label, faction);
+                 PERFORM insert_second_weapon_into_mech_crate(i,
+                                                              (.2 * base_unit),
+                                                              (base_unit + previous_amount),
+                                                              crate_id,
+                                                              weapon_skin_label,
+                                                              faction);
+        WHEN i > (2 * base_unit + previous_amount) AND i <= (3 * base_unit + previous_amount)
+            THEN PERFORM insert_weapon_into_crate(crate_id, 'Flamethrower', faction);
+                 PERFORM insert_weapon_skin_into_crate(i, crate_id,
+                                                       'Flamethrower', 0, 0,
+                                                       'MECH',
+                                                       weapon_skin_label, faction);
+                 PERFORM insert_second_weapon_into_mech_crate(i,
+                                                              (.2 * base_unit),
+                                                              (2 * base_unit + previous_amount),
+                                                              crate_id,
+                                                              weapon_skin_label,
+                                                              faction);
+        WHEN i > (3 * base_unit + previous_amount) AND i <= (4 * base_unit + previous_amount)
+            THEN PERFORM insert_weapon_into_crate(crate_id, 'Machine Gun', faction);
+                 PERFORM insert_weapon_skin_into_crate(i, crate_id,
+                                                       'Machine Gun', 0, 0,
+                                                       'MECH',
+                                                       weapon_skin_label, faction);
+                 PERFORM insert_second_weapon_into_mech_crate(i,
+                                                              (.2 * base_unit),
+                                                              (3 * base_unit + previous_amount),
+                                                              crate_id,
+                                                              weapon_skin_label,
+                                                              faction);
+        WHEN i > (4 * base_unit + previous_amount) AND i <= (5 * base_unit + previous_amount)
+            THEN PERFORM insert_weapon_into_crate(crate_id, 'Laser Beam', faction);
+                 PERFORM insert_weapon_skin_into_crate(i, crate_id,
+                                                       'Laser Beam', 0, 0,
+                                                       'MECH',
+                                                       weapon_skin_label, faction);
+                 PERFORM insert_second_weapon_into_mech_crate(i,
+                                                              (.2 * base_unit),
+                                                              (4 * base_unit + previous_amount),
+                                                              crate_id,
+                                                              weapon_skin_label,
+                                                              faction);
+        END CASE;
+end;
+$$;
 
 DROP FUNCTION IF EXISTS insert_second_weapon_into_mech_crate(i integer, base_unit numeric, previous_amount numeric,
                                                              crate_id UUID,
@@ -930,76 +1003,25 @@ $$
                                                                           WHERE c.label = 'Standard Energy Core'));
                                      PERFORM insert_mech_skin_into_crate(i, mechCrate.id, 'HUMANOID',
                                                                          (.8 * mechCrateLen), 0, faction);
-                                     CASE
-                                         WHEN i <= (.2 * (mechCrateLen * .8) + 0)
-                                             THEN PERFORM insert_weapon_into_crate(mechCrate.id, 'Flak', faction);
-                                                  PERFORM insert_weapon_skin_into_crate(i, mechCrate.id, 'Flak', 0, 0,
-                                                                                        'MECH',
-                                                                                        weapon_skin_label, faction);
-                                                  PERFORM insert_second_weapon_into_mech_crate(i,
-                                                                                               (.2 * .2 * (mechCrateLen * .8)),
-                                                                                               0,
-                                                                                               mechCrate.id,
-                                                                                               weapon_skin_label,
-                                                                                               faction);
-                                         WHEN i > (.2 * (mechCrateLen * .8) + 0) AND i <= (2 * (.2 * mechCrateLen * .8))
-                                             THEN PERFORM insert_weapon_into_crate(mechCrate.id, 'Missile Launcher', faction);
-                                                  PERFORM insert_weapon_skin_into_crate(i, mechCrate.id,
-                                                                                        'Missile Launcher', 0, 0,
-                                                                                        'MECH',
-                                                                                        weapon_skin_label, faction);
-                                                  PERFORM insert_second_weapon_into_mech_crate(i,
-                                                                                               (.2 * .2 * (mechCrateLen * .8)),
-                                                                                               (.2 * (mechCrateLen * .8)),
-                                                                                               mechCrate.id,
-                                                                                               weapon_skin_label,
-                                                                                               faction);
-                                         WHEN i > (2 * (.2 * mechCrateLen * .8)) AND i <= (3 * (.2 * mechCrateLen * .8))
-                                             THEN PERFORM insert_weapon_into_crate(mechCrate.id, 'Flamethrower', faction);
-                                                  PERFORM insert_weapon_skin_into_crate(i, mechCrate.id,
-                                                                                        'Flamethrower', 0, 0,
-                                                                                        'MECH',
-                                                                                        weapon_skin_label, faction);
-                                                  PERFORM insert_second_weapon_into_mech_crate(i,
-                                                                                               (.2 * .2 * (mechCrateLen * .8)),
-                                                                                               (2 * .2 * (mechCrateLen * .8)),
-                                                                                               mechCrate.id,
-                                                                                               weapon_skin_label,
-                                                                                               faction);
-                                         WHEN i > (3 * (.2 * mechCrateLen * .8)) AND i <= (4 * (.2 * mechCrateLen * .8))
-                                             THEN PERFORM insert_weapon_into_crate(mechCrate.id, 'Machine Gun', faction);
-                                                  PERFORM insert_weapon_skin_into_crate(i, mechCrate.id,
-                                                                                        'Machine Gun', 0, 0,
-                                                                                        'MECH',
-                                                                                        weapon_skin_label, faction);
-                                                  PERFORM insert_second_weapon_into_mech_crate(i,
-                                                                                               (.2 * .2 * (mechCrateLen * .8)),
-                                                                                               (3 * .2 * (mechCrateLen * .8)),
-                                                                                               mechCrate.id,
-                                                                                               weapon_skin_label,
-                                                                                               faction);
-                                         WHEN i > (4 * (.2 * mechCrateLen * .8)) AND i <= (5 * (.2 * mechCrateLen * .8))
-                                             THEN PERFORM insert_weapon_into_crate(mechCrate.id, 'Laser Beam', faction);
-                                                  PERFORM insert_weapon_skin_into_crate(i, mechCrate.id,
-                                                                                        'Laser Beam', 0, 0,
-                                                                                        'MECH',
-                                                                                        weapon_skin_label, faction);
-                                                  PERFORM insert_second_weapon_into_mech_crate(i,
-                                                                                               (.2 * .2 * (mechCrateLen * .8)),
-                                                                                               (4 * .2 * (mechCrateLen * .8)),
-                                                                                               mechCrate.id,
-                                                                                               weapon_skin_label,
-                                                                                               faction);
-                                         END CASE;
+                                     PERFORM insert_weapons_into_mech_crate(i, .2 * (mechCrateLen * .8), 0,
+                                                                            mechCrate.id, weapon_skin_label,
+                                                                            faction);
                                      i := i + 1;
                             -- for other half of the Mechs, insert a mech object from the appropriate brand's platform mechs and a fitted power core
                             ELSE PERFORM insert_mech_into_crate('MEDIUM', mechCrate.id, faction);
+                                 weapon_skin_label :=
+                                         get_skin_label_rarity(i, 'WEAPON', (.2 * mechCrateLen), .8 * mechCrateLen,
+                                                               faction);
                                  INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
                                  VALUES (mechCrate.id, 'POWER_CORE',
                                          (SELECT id FROM blueprint_power_cores c WHERE c.size = 'MEDIUM'));
                                  PERFORM insert_mech_skin_into_crate(i, mechCrate.id, 'PLATFORM',
                                                                      (.2 * mechCrateLen),
                                                                      (.8 * mechCrateLen), faction);
+                                 PERFORM insert_weapons_into_mech_crate(i, .2 * (mechCrateLen * .2),
+                                                                        (.8 * mechCrateLen),
+                                                                        mechCrate.id, weapon_skin_label,
+                                                                        faction);
                                  i = i + 1;
                             END CASE;
                     END LOOP;
