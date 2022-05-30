@@ -43,7 +43,7 @@ func AssetKeycardList(
 	search string,
 	filter *ListFilterRequest,
 	userID *string,
-	offset int,
+	page int,
 	pageSize int,
 	sortBy string,
 	sortDir SortByDir,
@@ -103,7 +103,10 @@ func AssetKeycardList(
 
 	// Limit/Offset
 	if pageSize > 0 {
-		queryMods = append(queryMods, qm.Limit(pageSize), qm.Offset(offset))
+		queryMods = append(queryMods, qm.Limit(pageSize))
+	}
+	if page > 0 {
+		queryMods = append(queryMods, qm.Offset(pageSize*(page-1)))
 	}
 
 	items := []*server.AssetKeycard{}

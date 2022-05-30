@@ -158,6 +158,8 @@ var PlayerRels = struct {
 	OwnerCollectionItems                   string
 	ConsumedByConsumedAbilities            string
 	MVPPlayerFactionStats                  string
+	OwnerItemKeycardSales                  string
+	SoldByItemKeycardSales                 string
 	OwnerItemSales                         string
 	SoldByItemSales                        string
 	BidderItemSalesBidHistories            string
@@ -192,6 +194,8 @@ var PlayerRels = struct {
 	OwnerCollectionItems:                   "OwnerCollectionItems",
 	ConsumedByConsumedAbilities:            "ConsumedByConsumedAbilities",
 	MVPPlayerFactionStats:                  "MVPPlayerFactionStats",
+	OwnerItemKeycardSales:                  "OwnerItemKeycardSales",
+	SoldByItemKeycardSales:                 "SoldByItemKeycardSales",
 	OwnerItemSales:                         "OwnerItemSales",
 	SoldByItemSales:                        "SoldByItemSales",
 	BidderItemSalesBidHistories:            "BidderItemSalesBidHistories",
@@ -229,6 +233,8 @@ type playerR struct {
 	OwnerCollectionItems                   CollectionItemSlice              `boiler:"OwnerCollectionItems" boil:"OwnerCollectionItems" json:"OwnerCollectionItems" toml:"OwnerCollectionItems" yaml:"OwnerCollectionItems"`
 	ConsumedByConsumedAbilities            ConsumedAbilitySlice             `boiler:"ConsumedByConsumedAbilities" boil:"ConsumedByConsumedAbilities" json:"ConsumedByConsumedAbilities" toml:"ConsumedByConsumedAbilities" yaml:"ConsumedByConsumedAbilities"`
 	MVPPlayerFactionStats                  FactionStatSlice                 `boiler:"MVPPlayerFactionStats" boil:"MVPPlayerFactionStats" json:"MVPPlayerFactionStats" toml:"MVPPlayerFactionStats" yaml:"MVPPlayerFactionStats"`
+	OwnerItemKeycardSales                  ItemKeycardSaleSlice             `boiler:"OwnerItemKeycardSales" boil:"OwnerItemKeycardSales" json:"OwnerItemKeycardSales" toml:"OwnerItemKeycardSales" yaml:"OwnerItemKeycardSales"`
+	SoldByItemKeycardSales                 ItemKeycardSaleSlice             `boiler:"SoldByItemKeycardSales" boil:"SoldByItemKeycardSales" json:"SoldByItemKeycardSales" toml:"SoldByItemKeycardSales" yaml:"SoldByItemKeycardSales"`
 	OwnerItemSales                         ItemSaleSlice                    `boiler:"OwnerItemSales" boil:"OwnerItemSales" json:"OwnerItemSales" toml:"OwnerItemSales" yaml:"OwnerItemSales"`
 	SoldByItemSales                        ItemSaleSlice                    `boiler:"SoldByItemSales" boil:"SoldByItemSales" json:"SoldByItemSales" toml:"SoldByItemSales" yaml:"SoldByItemSales"`
 	BidderItemSalesBidHistories            ItemSalesBidHistorySlice         `boiler:"BidderItemSalesBidHistories" boil:"BidderItemSalesBidHistories" json:"BidderItemSalesBidHistories" toml:"BidderItemSalesBidHistories" yaml:"BidderItemSalesBidHistories"`
@@ -798,6 +804,50 @@ func (o *Player) MVPPlayerFactionStats(mods ...qm.QueryMod) factionStatQuery {
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"faction_stats\".*"})
+	}
+
+	return query
+}
+
+// OwnerItemKeycardSales retrieves all the item_keycard_sale's ItemKeycardSales with an executor via owner_id column.
+func (o *Player) OwnerItemKeycardSales(mods ...qm.QueryMod) itemKeycardSaleQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"item_keycard_sales\".\"owner_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"item_keycard_sales\".\"deleted_at\""),
+	)
+
+	query := ItemKeycardSales(queryMods...)
+	queries.SetFrom(query.Query, "\"item_keycard_sales\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"item_keycard_sales\".*"})
+	}
+
+	return query
+}
+
+// SoldByItemKeycardSales retrieves all the item_keycard_sale's ItemKeycardSales with an executor via sold_by column.
+func (o *Player) SoldByItemKeycardSales(mods ...qm.QueryMod) itemKeycardSaleQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"item_keycard_sales\".\"sold_by\"=?", o.ID),
+		qmhelper.WhereIsNull("\"item_keycard_sales\".\"deleted_at\""),
+	)
+
+	query := ItemKeycardSales(queryMods...)
+	queries.SetFrom(query.Query, "\"item_keycard_sales\"")
+
+	if len(queries.GetSelect(query.Query)) == 0 {
+		queries.SetSelect(query.Query, []string{"\"item_keycard_sales\".*"})
 	}
 
 	return query
@@ -2685,6 +2735,204 @@ func (playerL) LoadMVPPlayerFactionStats(e boil.Executor, singular bool, maybePl
 					foreign.R = &factionStatR{}
 				}
 				foreign.R.MVPPlayer = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadOwnerItemKeycardSales allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (playerL) LoadOwnerItemKeycardSales(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+	var slice []*Player
+	var object *Player
+
+	if singular {
+		object = maybePlayer.(*Player)
+	} else {
+		slice = *maybePlayer.(*[]*Player)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &playerR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &playerR{}
+			}
+
+			for _, a := range args {
+				if a == obj.ID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`item_keycard_sales`),
+		qm.WhereIn(`item_keycard_sales.owner_id in ?`, args...),
+		qmhelper.WhereIsNull(`item_keycard_sales.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load item_keycard_sales")
+	}
+
+	var resultSlice []*ItemKeycardSale
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice item_keycard_sales")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on item_keycard_sales")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for item_keycard_sales")
+	}
+
+	if len(itemKeycardSaleAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.OwnerItemKeycardSales = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &itemKeycardSaleR{}
+			}
+			foreign.R.Owner = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.ID == foreign.OwnerID {
+				local.R.OwnerItemKeycardSales = append(local.R.OwnerItemKeycardSales, foreign)
+				if foreign.R == nil {
+					foreign.R = &itemKeycardSaleR{}
+				}
+				foreign.R.Owner = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// LoadSoldByItemKeycardSales allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (playerL) LoadSoldByItemKeycardSales(e boil.Executor, singular bool, maybePlayer interface{}, mods queries.Applicator) error {
+	var slice []*Player
+	var object *Player
+
+	if singular {
+		object = maybePlayer.(*Player)
+	} else {
+		slice = *maybePlayer.(*[]*Player)
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &playerR{}
+		}
+		args = append(args, object.ID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &playerR{}
+			}
+
+			for _, a := range args {
+				if queries.Equal(a, obj.ID) {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.ID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`item_keycard_sales`),
+		qm.WhereIn(`item_keycard_sales.sold_by in ?`, args...),
+		qmhelper.WhereIsNull(`item_keycard_sales.deleted_at`),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.Query(e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load item_keycard_sales")
+	}
+
+	var resultSlice []*ItemKeycardSale
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice item_keycard_sales")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on item_keycard_sales")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for item_keycard_sales")
+	}
+
+	if len(itemKeycardSaleAfterSelectHooks) != 0 {
+		for _, obj := range resultSlice {
+			if err := obj.doAfterSelectHooks(e); err != nil {
+				return err
+			}
+		}
+	}
+	if singular {
+		object.R.SoldByItemKeycardSales = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &itemKeycardSaleR{}
+			}
+			foreign.R.SoldByPlayer = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if queries.Equal(local.ID, foreign.SoldBy) {
+				local.R.SoldByItemKeycardSales = append(local.R.SoldByItemKeycardSales, foreign)
+				if foreign.R == nil {
+					foreign.R = &itemKeycardSaleR{}
+				}
+				foreign.R.SoldByPlayer = local
 				break
 			}
 		}
@@ -5496,6 +5744,183 @@ func (o *Player) RemoveMVPPlayerFactionStats(exec boil.Executor, related ...*Fac
 				o.R.MVPPlayerFactionStats[i] = o.R.MVPPlayerFactionStats[ln-1]
 			}
 			o.R.MVPPlayerFactionStats = o.R.MVPPlayerFactionStats[:ln-1]
+			break
+		}
+	}
+
+	return nil
+}
+
+// AddOwnerItemKeycardSales adds the given related objects to the existing relationships
+// of the player, optionally inserting them as new records.
+// Appends related to o.R.OwnerItemKeycardSales.
+// Sets related.R.Owner appropriately.
+func (o *Player) AddOwnerItemKeycardSales(exec boil.Executor, insert bool, related ...*ItemKeycardSale) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.OwnerID = o.ID
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"item_keycard_sales\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"owner_id"}),
+				strmangle.WhereClause("\"", "\"", 2, itemKeycardSalePrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.OwnerID = o.ID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &playerR{
+			OwnerItemKeycardSales: related,
+		}
+	} else {
+		o.R.OwnerItemKeycardSales = append(o.R.OwnerItemKeycardSales, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &itemKeycardSaleR{
+				Owner: o,
+			}
+		} else {
+			rel.R.Owner = o
+		}
+	}
+	return nil
+}
+
+// AddSoldByItemKeycardSales adds the given related objects to the existing relationships
+// of the player, optionally inserting them as new records.
+// Appends related to o.R.SoldByItemKeycardSales.
+// Sets related.R.SoldByPlayer appropriately.
+func (o *Player) AddSoldByItemKeycardSales(exec boil.Executor, insert bool, related ...*ItemKeycardSale) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			queries.Assign(&rel.SoldBy, o.ID)
+			if err = rel.Insert(exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"item_keycard_sales\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 1, []string{"sold_by"}),
+				strmangle.WhereClause("\"", "\"", 2, itemKeycardSalePrimaryKeyColumns),
+			)
+			values := []interface{}{o.ID, rel.ID}
+
+			if boil.DebugMode {
+				fmt.Fprintln(boil.DebugWriter, updateQuery)
+				fmt.Fprintln(boil.DebugWriter, values)
+			}
+			if _, err = exec.Exec(updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			queries.Assign(&rel.SoldBy, o.ID)
+		}
+	}
+
+	if o.R == nil {
+		o.R = &playerR{
+			SoldByItemKeycardSales: related,
+		}
+	} else {
+		o.R.SoldByItemKeycardSales = append(o.R.SoldByItemKeycardSales, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &itemKeycardSaleR{
+				SoldByPlayer: o,
+			}
+		} else {
+			rel.R.SoldByPlayer = o
+		}
+	}
+	return nil
+}
+
+// SetSoldByItemKeycardSales removes all previously related items of the
+// player replacing them completely with the passed
+// in related items, optionally inserting them as new records.
+// Sets o.R.SoldByPlayer's SoldByItemKeycardSales accordingly.
+// Replaces o.R.SoldByItemKeycardSales with related.
+// Sets related.R.SoldByPlayer's SoldByItemKeycardSales accordingly.
+func (o *Player) SetSoldByItemKeycardSales(exec boil.Executor, insert bool, related ...*ItemKeycardSale) error {
+	query := "update \"item_keycard_sales\" set \"sold_by\" = null where \"sold_by\" = $1"
+	values := []interface{}{o.ID}
+	if boil.DebugMode {
+		fmt.Fprintln(boil.DebugWriter, query)
+		fmt.Fprintln(boil.DebugWriter, values)
+	}
+	_, err := exec.Exec(query, values...)
+	if err != nil {
+		return errors.Wrap(err, "failed to remove relationships before set")
+	}
+
+	if o.R != nil {
+		for _, rel := range o.R.SoldByItemKeycardSales {
+			queries.SetScanner(&rel.SoldBy, nil)
+			if rel.R == nil {
+				continue
+			}
+
+			rel.R.SoldByPlayer = nil
+		}
+
+		o.R.SoldByItemKeycardSales = nil
+	}
+	return o.AddSoldByItemKeycardSales(exec, insert, related...)
+}
+
+// RemoveSoldByItemKeycardSales relationships from objects passed in.
+// Removes related items from R.SoldByItemKeycardSales (uses pointer comparison, removal does not keep order)
+// Sets related.R.SoldByPlayer.
+func (o *Player) RemoveSoldByItemKeycardSales(exec boil.Executor, related ...*ItemKeycardSale) error {
+	if len(related) == 0 {
+		return nil
+	}
+
+	var err error
+	for _, rel := range related {
+		queries.SetScanner(&rel.SoldBy, nil)
+		if rel.R != nil {
+			rel.R.SoldByPlayer = nil
+		}
+		if _, err = rel.Update(exec, boil.Whitelist("sold_by")); err != nil {
+			return err
+		}
+	}
+	if o.R == nil {
+		return nil
+	}
+
+	for _, rel := range related {
+		for i, ri := range o.R.SoldByItemKeycardSales {
+			if rel != ri {
+				continue
+			}
+
+			ln := len(o.R.SoldByItemKeycardSales)
+			if ln > 1 && i < ln-1 {
+				o.R.SoldByItemKeycardSales[i] = o.R.SoldByItemKeycardSales[ln-1]
+			}
+			o.R.SoldByItemKeycardSales = o.R.SoldByItemKeycardSales[:ln-1]
 			break
 		}
 	}

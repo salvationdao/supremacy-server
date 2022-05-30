@@ -221,8 +221,8 @@ type PlayerAssetKeycardListRequest struct {
 }
 
 type PlayerAssetKeycardListResponse struct {
-	Total   int64                  `json:"total"`
-	Records []*server.AssetKeycard `json:"records"`
+	Total    int64                  `json:"total"`
+	Keycards []*server.AssetKeycard `json:"keycards"`
 }
 
 func (pac *PlayerAssetsControllerWS) PlayerAssetKeycardListHandler(tx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
@@ -230,11 +230,6 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetKeycardListHandler(tx context.Co
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received.")
-	}
-
-	offset := 0
-	if req.Payload.Page > 0 {
-		offset = req.Payload.Page * req.Payload.PageSize
 	}
 
 	if !req.Payload.SortDir.IsValid() {
@@ -245,7 +240,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetKeycardListHandler(tx context.Co
 		req.Payload.Search,
 		req.Payload.Filter,
 		&user.ID,
-		offset,
+		req.Payload.Page,
 		req.Payload.PageSize,
 		req.Payload.SortBy,
 		req.Payload.SortDir,
@@ -256,8 +251,8 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetKeycardListHandler(tx context.Co
 	}
 
 	resp := &PlayerAssetKeycardListResponse{
-		Total:   total,
-		Records: records,
+		Total:    total,
+		Keycards: records,
 	}
 	reply(resp)
 

@@ -1,7 +1,6 @@
 BEGIN;
 
 -- General Assets eg Mechs
--- TODO: Create a separate item sales table for 1155 assets
 CREATE TABLE item_sales (
     id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
 	faction_id UUID NOT NULL REFERENCES factions (id),
@@ -49,6 +48,32 @@ CREATE TABLE item_sales_bid_history (
 	bid_price TEXT NOT NULL,
     cancelled_at TIMESTAMPTZ,
 	PRIMARY KEY (item_sale_id, bidder_id, bid_at)
+);
+
+/****************
+*  1155 Assets  *
+****************/
+
+CREATE TABLE item_keycard_sales (
+	id UUID PRIMARY KEY NOT NULL DEFAULT gen_random_uuid(),
+	faction_id UUID NOT NULL REFERENCES factions (id),
+	item_id UUID NOT NULL REFERENCES player_keycards (id),
+	listing_fee_tx_id TEXT NOT NULL,
+	owner_id UUID NOT NULL REFERENCES players(id),
+
+	buyout BOOL NOT NULL DEFAULT FALSE,
+	buyout_price TEXT, -- also is used for dutch auction
+
+    end_at TIMESTAMPTZ NOT NULL,
+
+    sold_at TIMESTAMPTZ,
+	sold_for TEXT,
+	sold_by UUID REFERENCES players(id),
+	sold_tx_id TEXT,
+
+    deleted_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 COMMIT;
