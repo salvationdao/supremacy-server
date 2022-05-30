@@ -248,8 +248,8 @@ func MechFromBoiler(mech *boiler.Mech, collection *boiler.CollectionItem, skinCo
 	}
 }
 
-// IsUsable checks if a mech has the minimum it needs for battle
-func (m *Mech) IsUsable() bool {
+// IsBattleReady checks if a mech has the minimum it needs for battle
+func (m *Mech) IsBattleReady() bool {
 	if !m.PowerCoreID.Valid {
 		return false
 	}
