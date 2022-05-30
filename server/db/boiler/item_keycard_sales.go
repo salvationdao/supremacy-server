@@ -28,7 +28,6 @@ type ItemKeycardSale struct {
 	ItemID         string      `boiler:"item_id" boil:"item_id" json:"item_id" toml:"item_id" yaml:"item_id"`
 	ListingFeeTXID string      `boiler:"listing_fee_tx_id" boil:"listing_fee_tx_id" json:"listing_fee_tx_id" toml:"listing_fee_tx_id" yaml:"listing_fee_tx_id"`
 	OwnerID        string      `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
-	Buyout         bool        `boiler:"buyout" boil:"buyout" json:"buyout" toml:"buyout" yaml:"buyout"`
 	BuyoutPrice    null.String `boiler:"buyout_price" boil:"buyout_price" json:"buyout_price,omitempty" toml:"buyout_price" yaml:"buyout_price,omitempty"`
 	EndAt          time.Time   `boiler:"end_at" boil:"end_at" json:"end_at" toml:"end_at" yaml:"end_at"`
 	SoldAt         null.Time   `boiler:"sold_at" boil:"sold_at" json:"sold_at,omitempty" toml:"sold_at" yaml:"sold_at,omitempty"`
@@ -49,7 +48,6 @@ var ItemKeycardSaleColumns = struct {
 	ItemID         string
 	ListingFeeTXID string
 	OwnerID        string
-	Buyout         string
 	BuyoutPrice    string
 	EndAt          string
 	SoldAt         string
@@ -65,7 +63,6 @@ var ItemKeycardSaleColumns = struct {
 	ItemID:         "item_id",
 	ListingFeeTXID: "listing_fee_tx_id",
 	OwnerID:        "owner_id",
-	Buyout:         "buyout",
 	BuyoutPrice:    "buyout_price",
 	EndAt:          "end_at",
 	SoldAt:         "sold_at",
@@ -83,7 +80,6 @@ var ItemKeycardSaleTableColumns = struct {
 	ItemID         string
 	ListingFeeTXID string
 	OwnerID        string
-	Buyout         string
 	BuyoutPrice    string
 	EndAt          string
 	SoldAt         string
@@ -99,7 +95,6 @@ var ItemKeycardSaleTableColumns = struct {
 	ItemID:         "item_keycard_sales.item_id",
 	ListingFeeTXID: "item_keycard_sales.listing_fee_tx_id",
 	OwnerID:        "item_keycard_sales.owner_id",
-	Buyout:         "item_keycard_sales.buyout",
 	BuyoutPrice:    "item_keycard_sales.buyout_price",
 	EndAt:          "item_keycard_sales.end_at",
 	SoldAt:         "item_keycard_sales.sold_at",
@@ -119,7 +114,6 @@ var ItemKeycardSaleWhere = struct {
 	ItemID         whereHelperstring
 	ListingFeeTXID whereHelperstring
 	OwnerID        whereHelperstring
-	Buyout         whereHelperbool
 	BuyoutPrice    whereHelpernull_String
 	EndAt          whereHelpertime_Time
 	SoldAt         whereHelpernull_Time
@@ -135,7 +129,6 @@ var ItemKeycardSaleWhere = struct {
 	ItemID:         whereHelperstring{field: "\"item_keycard_sales\".\"item_id\""},
 	ListingFeeTXID: whereHelperstring{field: "\"item_keycard_sales\".\"listing_fee_tx_id\""},
 	OwnerID:        whereHelperstring{field: "\"item_keycard_sales\".\"owner_id\""},
-	Buyout:         whereHelperbool{field: "\"item_keycard_sales\".\"buyout\""},
 	BuyoutPrice:    whereHelpernull_String{field: "\"item_keycard_sales\".\"buyout_price\""},
 	EndAt:          whereHelpertime_Time{field: "\"item_keycard_sales\".\"end_at\""},
 	SoldAt:         whereHelpernull_Time{field: "\"item_keycard_sales\".\"sold_at\""},
@@ -177,9 +170,9 @@ func (*itemKeycardSaleR) NewStruct() *itemKeycardSaleR {
 type itemKeycardSaleL struct{}
 
 var (
-	itemKeycardSaleAllColumns            = []string{"id", "faction_id", "item_id", "listing_fee_tx_id", "owner_id", "buyout", "buyout_price", "end_at", "sold_at", "sold_for", "sold_by", "sold_tx_id", "deleted_at", "updated_at", "created_at"}
+	itemKeycardSaleAllColumns            = []string{"id", "faction_id", "item_id", "listing_fee_tx_id", "owner_id", "buyout_price", "end_at", "sold_at", "sold_for", "sold_by", "sold_tx_id", "deleted_at", "updated_at", "created_at"}
 	itemKeycardSaleColumnsWithoutDefault = []string{"faction_id", "item_id", "listing_fee_tx_id", "owner_id", "end_at"}
-	itemKeycardSaleColumnsWithDefault    = []string{"id", "buyout", "buyout_price", "sold_at", "sold_for", "sold_by", "sold_tx_id", "deleted_at", "updated_at", "created_at"}
+	itemKeycardSaleColumnsWithDefault    = []string{"id", "buyout_price", "sold_at", "sold_for", "sold_by", "sold_tx_id", "deleted_at", "updated_at", "created_at"}
 	itemKeycardSalePrimaryKeyColumns     = []string{"id"}
 	itemKeycardSaleGeneratedColumns      = []string{}
 )

@@ -61,8 +61,7 @@ CREATE TABLE item_keycard_sales (
 	listing_fee_tx_id TEXT NOT NULL,
 	owner_id UUID NOT NULL REFERENCES players(id),
 
-	buyout BOOL NOT NULL DEFAULT FALSE,
-	buyout_price TEXT, -- also is used for dutch auction
+	buyout_price TEXT,
 
     end_at TIMESTAMPTZ NOT NULL,
 

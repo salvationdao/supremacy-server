@@ -10,3 +10,9 @@ type MarketplaceSaleItem struct {
 	Collection *boiler.CollectionItem `json:"collection"`
 	Mech       *boiler.Mech           `json:"mech,omitempty"`
 }
+
+type MarketplaceKeycardSaleItem struct {
+	*boiler.ItemKeycardSale
+	Owner      *boiler.Player         `json:"owner"`
+	Blueprints *AssetKeycardBlueprint `json:"blueprints"`
+}

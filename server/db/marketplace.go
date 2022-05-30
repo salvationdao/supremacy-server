@@ -35,6 +35,26 @@ var itemSaleQueryMods = []qm.QueryMod{
 	qm.Load(boiler.ItemSaleRels.Owner),
 }
 
+var itemKeycardSaleQueryMods = []qm.QueryMod{
+	qm.InnerJoin(
+		fmt.Sprintf(
+			"%s ON %s = %s",
+			boiler.TableNames.PlayerKeycards,
+			qm.Rels(boiler.TableNames.PlayerKeycards, boiler.PlayerKeycardColumns.ID),
+			qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.ItemID),
+		),
+	),
+	qm.InnerJoin(
+		fmt.Sprintf(
+			"%s ON %s = %s",
+			boiler.TableNames.BlueprintKeycards,
+			qm.Rels(boiler.TableNames.BlueprintKeycards, boiler.BlueprintKeycardColumns.ID),
+			qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.ItemID),
+		),
+	),
+	qm.Load(qm.Rels(boiler.ItemKeycardSaleRels.Item, boiler.PlayerKeycardRels.BlueprintKeycard)),
+}
+
 // MarketplaceLoadItemSaleObject loads the specific item type's object.
 func MarketplaceLoadItemSaleObject(obj *server.MarketplaceSaleItem) (*server.MarketplaceSaleItem, error) {
 	// if obj.ItemType == boiler.ItemTypeMech {
@@ -70,6 +90,40 @@ func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
 	output, err = MarketplaceLoadItemSaleObject(output)
 	if err != nil {
 		return nil, terror.Error(err)
+	}
+	return output, nil
+}
+
+// MarketplaceItemKeycardSale gets a specific keycard item sale.
+func MarketplaceItemKeycardSale(id uuid.UUID) (*server.MarketplaceKeycardSaleItem, error) {
+	item, err := boiler.ItemKeycardSales(
+		append(
+			itemSaleQueryMods,
+			boiler.ItemKeycardSaleWhere.ID.EQ(id.String()),
+		)...,
+	).One(gamedb.StdConn)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+
+	// Get sale item details and the item for sale
+	output := &server.MarketplaceKeycardSaleItem{
+		ItemKeycardSale: item,
+		Owner:           item.R.Owner,
+	}
+	if item.R != nil && item.R.Item != nil && item.R.Item.R != nil && item.R.Item.R.BlueprintKeycard != nil {
+		output.Blueprints = &server.AssetKeycardBlueprint{
+			ID:             item.R.Item.R.BlueprintKeycard.ID,
+			Label:          item.R.Item.R.BlueprintKeycard.Label,
+			Description:    item.R.Item.R.BlueprintKeycard.Description,
+			Collection:     item.R.Item.R.BlueprintKeycard.Collection,
+			KeycardTokenID: item.R.Item.R.BlueprintKeycard.KeycardTokenID,
+			ImageURL:       item.R.Item.R.BlueprintKeycard.ImageURL,
+			AnimationURL:   item.R.Item.R.BlueprintKeycard.AnimationURL,
+			KeycardGroup:   item.R.Item.R.BlueprintKeycard.KeycardGroup,
+			Syndicate:      item.R.Item.R.BlueprintKeycard.Syndicate,
+			CreatedAt:      item.R.Item.R.BlueprintKeycard.CreatedAt,
+		}
 	}
 	return output, nil
 }
@@ -200,6 +254,100 @@ func MarketplaceItemSaleList(search string, filter *ListFilterRequest, rarities 
 	return total, records, nil
 }
 
+// MarketplaceItemKeycardSaleList returns a numeric paginated result of keycard sales list.
+func MarketplaceItemKeycardSaleList(search string, filter *ListFilterRequest, excludeUserID string, offset int, pageSize int, sortBy string, sortDir SortByDir) (int64, []*server.MarketplaceKeycardSaleItem, error) {
+	if !sortDir.IsValid() {
+		return 0, nil, terror.Error(fmt.Errorf("invalid sort direction"))
+	}
+
+	queryMods := append(
+		itemKeycardSaleQueryMods,
+		boiler.ItemKeycardSaleWhere.OwnerID.NEQ(excludeUserID),
+		boiler.ItemKeycardSaleWhere.SoldBy.IsNull(),
+		boiler.ItemKeycardSaleWhere.EndAt.GT(time.Now()),
+	)
+
+	// Filters
+	// if filter != nil {
+	// 	for i, f := range filter.Items {
+	// 		if f.Table != "" {
+	// 			if f.Table == boiler.TableNames.BlueprintKeycards {
+	// 				column := MechColumns(f.Column)
+	// 				err := column.IsValid()
+	// 				if err != nil {
+	// 					return 0, nil, terror.Error(err)
+	// 				}
+	// 			}
+	// 		}
+	// 		queryMod := GenerateListFilterQueryMod(*f, i, filter.LinkOperator)
+	// 		queryMods = append(queryMods, queryMod)
+	// 	}
+	// }
+
+	// Search
+	if search != "" {
+		xsearch := ParseQueryText(search, true)
+		if len(xsearch) > 0 {
+			queryMods = append(queryMods, qm.And(
+				fmt.Sprintf(
+					"(to_tsvector('english', %s) @@ to_tsquery(?))",
+					qm.Rels(boiler.TableNames.BlueprintKeycards, boiler.BlueprintKeycardColumns.Label),
+				),
+				xsearch,
+			))
+		}
+	}
+
+	// Get total rows
+	total, err := boiler.ItemSales(queryMods...).Count(gamedb.StdConn)
+	if err != nil {
+		return 0, nil, terror.Error(err)
+	}
+	if total == 0 {
+		return 0, []*server.MarketplaceKeycardSaleItem{}, nil
+	}
+
+	// Sort
+	orderBy := qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.CreatedAt), sortDir))
+	queryMods = append(queryMods, orderBy)
+
+	// Limit/Offset
+	if pageSize > 0 {
+		queryMods = append(queryMods, qm.Limit(pageSize), qm.Offset(offset))
+	}
+
+	itemSales, err := boiler.ItemKeycardSales(queryMods...).All(gamedb.StdConn)
+	if err != nil {
+		return 0, nil, terror.Error(err)
+	}
+
+	// Load in related items
+	records := []*server.MarketplaceKeycardSaleItem{}
+	for _, row := range itemSales {
+		item := &server.MarketplaceKeycardSaleItem{
+			ItemKeycardSale: row,
+			Owner:           row.R.Owner,
+		}
+		if item.R != nil && item.R.Item != nil && item.R.Item.R != nil && item.R.Item.R.BlueprintKeycard != nil {
+			item.Blueprints = &server.AssetKeycardBlueprint{
+				ID:             item.R.Item.R.BlueprintKeycard.ID,
+				Label:          item.R.Item.R.BlueprintKeycard.Label,
+				Description:    item.R.Item.R.BlueprintKeycard.Description,
+				Collection:     item.R.Item.R.BlueprintKeycard.Collection,
+				KeycardTokenID: item.R.Item.R.BlueprintKeycard.KeycardTokenID,
+				ImageURL:       item.R.Item.R.BlueprintKeycard.ImageURL,
+				AnimationURL:   item.R.Item.R.BlueprintKeycard.AnimationURL,
+				KeycardGroup:   item.R.Item.R.BlueprintKeycard.KeycardGroup,
+				Syndicate:      item.R.Item.R.BlueprintKeycard.Syndicate,
+				CreatedAt:      item.R.Item.R.BlueprintKeycard.CreatedAt,
+			}
+		}
+
+		records = append(records, item)
+	}
+	return total, records, nil
+}
+
 // MarketplaceSaleCreate inserts a new sale item.
 func MarketplaceSaleCreate(
 	ownerID uuid.UUID,
@@ -310,4 +458,31 @@ func ChangeMechOwner(id uuid.UUID) error {
 		return terror.Error(err)
 	}
 	return nil
+}
+
+// MarketplaceKeycardSaleCreate inserts a new sale item.
+func MarketplaceKeycardSaleCreate(
+	ownerID uuid.UUID,
+	factionID uuid.UUID,
+	listFeeTxnID string,
+	endAt time.Time,
+	itemID uuid.UUID,
+	askingPrice *decimal.Decimal,
+) (*server.MarketplaceKeycardSaleItem, error) {
+	obj := &boiler.ItemKeycardSale{
+		OwnerID:        ownerID.String(),
+		FactionID:      factionID.String(),
+		ListingFeeTXID: listFeeTxnID,
+		ItemID:         itemID.String(),
+		EndAt:          endAt,
+		BuyoutPrice:    null.StringFrom(askingPrice.String()),
+	}
+	err := obj.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+	output := &server.MarketplaceKeycardSaleItem{
+		ItemKeycardSale: obj,
+	}
+	return output, nil
 }
