@@ -4,6 +4,8 @@ CREATE TYPE CRATE_TYPE AS ENUM ('MECH', 'WEAPON');
 DROP TYPE IF EXISTS MECH_TYPE;
 CREATE TYPE MECH_TYPE AS ENUM ('HUMANOID', 'PLATFORM');
 
+ALTER TYPE ITEM_TYPE ADD VALUE 'mystery_crate';
+
 CREATE TABLE storefront_mystery_crates
 (
     id                 UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
@@ -613,7 +615,7 @@ VALUES ('supremacy-general', 'Medium Energy Core', 'MEDIUM', 1500, 150, 100, 0, 
 DO
 $$
     BEGIN
-        FOR COUNT IN 1..5000 --change to 5000
+        FOR COUNT IN 1..500 --change to 5000
             LOOP
                 INSERT INTO mystery_crate (type, faction_id, label)
                 VALUES ('MECH', (SELECT id FROM factions f WHERE f.label = 'Red Mountain Offworld Mining Corporation'),
@@ -631,7 +633,7 @@ $$;
 DO
 $$
     BEGIN
-        FOR COUNT IN 1..20000 -- change to 20000
+        FOR COUNT IN 1..2000 -- change to 20000
             LOOP
                 INSERT INTO mystery_crate (type, faction_id, label)
                 VALUES ('WEAPON',
@@ -1176,10 +1178,10 @@ $$
             LOOP
                 INSERT INTO storefront_mystery_crates (mystery_crate_type, amount, faction_id, price)
                 VALUES ('MECH', (SELECT COUNT(*) FROM mystery_crate WHERE type = 'MECH' AND faction_id = faction.id),
-                        faction.id, 500);
+                        faction.id, 500000000000000000000);
                 INSERT INTO storefront_mystery_crates (mystery_crate_type, amount, faction_id, price)
                 VALUES ('WEAPON', (SELECT COUNT(*) FROM mystery_crate WHERE type = 'MECH' AND faction_id = faction.id),
-                        faction.id, 500);
+                        faction.id, 500000000000000000000);
             END LOOP;
     END;
 $$;

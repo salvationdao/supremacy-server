@@ -170,7 +170,7 @@ func NewAPI(
 	sc := NewStreamController(api)
 	pc := NewPlayerController(api)
 	cc := NewChatController(api)
-	stc := NewStoreController(api)
+	_ = NewStoreController(api)
 	_ = NewBattleController(api)
 	_ = NewPlayerAbilitiesController(api)
 	_ = NewPlayerAssetsController(api)
@@ -254,10 +254,6 @@ func NewAPI(
 
 				// subscription from battle
 				s.WS("/queue", battle.WSQueueStatusSubscribe, server.MustSecureFaction(battleArenaClient.QueueStatusSubscribeHandler))
-				//s.WS("/store/{item_id}", HubkeyStoreItemSubscribe, server.MustSecureFaction(stc.StoreItemSubscribeHandler))
-				//s.WS("/store/purchase/{item_id}", HubkeyStoreItemPurchase, server.MustSecureFaction(stc.PurchaseItemHandler))
-				s.WS("/store/mystery_crate", HubkeyMysteryCrateSubscribe, server.MustSecureFaction(stc.MysteryCrateSubscribeHandler))
-				s.WS("/store/mystery_crate/purchase", HubkeyMysteryCratePurchase, server.MustSecureFaction(stc.PurchaseMysteryCrateHandler))
 			}))
 
 			// handle abilities ws

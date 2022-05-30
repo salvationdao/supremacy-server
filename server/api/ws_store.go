@@ -15,6 +15,7 @@ import (
 	"math/rand"
 	"server"
 	"server/battle"
+	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
@@ -36,6 +37,9 @@ func NewStoreController(api *API) *StoreController {
 	sc := &StoreController{
 		API: api,
 	}
+
+	api.SecureUserFactionCommand(HubkeyMysteryCrateSubscribe, sc.MysteryCrateSubscribeHandler)
+	api.SecureUserFactionCommand(HubkeyMysteryCratePurchase, sc.PurchaseMysteryCrateHandler)
 
 	return sc
 }
@@ -72,7 +76,7 @@ func (sc *StoreController) MysteryCrateSubscribeHandler(ctx context.Context, use
 type MysteryCratePurchaseRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		Type string
+		Type string `json:"type"`
 	} `json:"payload"`
 }
 
@@ -123,13 +127,6 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 	rand.Seed(time.Now().UnixNano())
 	assignedCrate := availableCrates[rand.Intn(len(availableCrates))]
 
-	//update purchased value
-	assignedCrate.Purchased = true
-	_, err = assignedCrate.Update(gamedb.StdConn, boil.Infer())
-	if err != nil {
-		return terror.Error(err, "Failed to purchase mystery crate, please try again or contact support.")
-	}
-
 	// -------------------------------------
 	supTransactionID, err := sc.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		Amount:               storeCrate.Price.String(),
@@ -155,6 +152,22 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 		if err != nil {
 			gamelog.L.Error().Str("txID", refundSupTransactionID).Err(err).Msg("unable to refund user for mystery crate purchase cost")
 		}
+
+		txItem := &boiler.StorePurchaseHistory{
+			PlayerID:    user.ID,
+			Amount:      storeCrate.Price,
+			ItemType:    "LOOTBOX",
+			ItemID:      assignedCrate.ID,
+			Description: "refunding mystery crate due to failed transaction",
+			TXID:        supTransactionID,
+			RefundTXID:  null.StringFrom(refundSupTransactionID),
+			RefundedAt:  null.TimeFrom(time.Now()),
+		}
+
+		err = txItem.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().Str("txID", refundSupTransactionID).Err(err).Msg("unable to insert item into purchase history table.")
+		}
 	}
 
 	tx, err := gamedb.StdConn.Begin()
@@ -165,14 +178,16 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 	}
 	defer tx.Rollback()
 
-	item := &boiler.CollectionItem{
-		ItemType: "mystery crate",
-		OwnerID:  user.ID,
-		//TokenID:  1, //does this need to be serialized in the db?
-		ItemID: assignedCrate.ID,
+	//update purchased value
+	assignedCrate.Purchased = true
+	_, err = assignedCrate.Update(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		refundFunc()
+		gamelog.L.Error().Err(err).Msg("unable to update assigned crate information")
+		return terror.Error(err, "Failed to purchase mystery crate, please try again or contact support.")
 	}
 
-	err = item.Insert(gamedb.StdConn, boil.Infer())
+	err = db.InsertNewCollectionItem(tx, "supremacy-general", "mystery_crate", assignedCrate.ID, "MEGA", user.ID, null.StringFrom(""), null.StringFrom(""), null.StringFrom(""), null.StringFrom(""), null.StringFrom(""), null.StringFrom(""), null.StringFrom(""))
 	if err != nil {
 		refundFunc()
 		gamelog.L.Error().Err(err).Interface("mystery crate", assignedCrate).Msg("failed to insert into collection items")
@@ -187,18 +202,32 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 		return terror.Error(err, "Failed to purchase mystery crate, please try again or contact support.")
 	}
 
+	txItem := &boiler.StorePurchaseHistory{
+		PlayerID:    user.ID,
+		Amount:      storeCrate.Price,
+		ItemType:    "mystery_crate",
+		ItemID:      assignedCrate.ID,
+		Description: "purchased mystery crate",
+		TXID:        supTransactionID,
+	}
+
+	err = txItem.Insert(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		gamelog.L.Error().Err(err).Interface("mystery crate", assignedCrate).Msg("failed to update crate amount sold")
+		return terror.Error(err, "Failed to purchase mystery crate, please try again or contact support.")
+	}
+
 	err = tx.Commit()
 	if err != nil {
 		refundFunc()
 		gamelog.L.Error().Err(err).Msg("failed to commit mystery crate transaction")
 		return terror.Error(err, "Issue purchasing mystery crate, please try again or contact support.")
 	}
-	// -------------------------------------
+	//-------------------------------------
 
-	//update mysterycrate subscribers
-	ws.PublishMessage("/store/mystery_crate", HubkeyMysteryCrateSubscribe, nil)
+	//update mysterycrate subscribers and update player
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/store/mystery_crate", factionID), HubkeyMysteryCrateSubscribe, nil)
 
-	//send back userSettings
-	reply(nil)
+	reply(true)
 	return nil
 }
