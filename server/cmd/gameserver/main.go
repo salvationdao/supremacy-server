@@ -435,14 +435,15 @@ func main() {
 func RegisterAllNewAssets(pp *xsyn_rpcclient.XsynXrpcClient) {
 	// Lets do this in chunks, going to be like 30-40k items to add to passport.
 	// mechs
-	func() { // remove the go from the first func since we hit race conditions on rpc initer
+	genesisIDS, limitedIDs := func() (insertedGenesisIDS []int64, insertedLimitedIDS []int64) {
 		updatedMechs := db.GetBoolWithDefault("INSERTED_NEW_ASSETS_MECHS", false)
 		if !updatedMechs {
 			var mechIDs []string
+
 			mechCollections, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech)).All(gamedb.StdConn)
 			if err != nil {
 				gamelog.L.Error().Err(err).Msg("failed to get mech collection items for RegisterAllNewAssets")
-				return
+				return nil, nil
 			}
 			for _, m := range mechCollections {
 				mechIDs = append(mechIDs, m.ItemID)
@@ -451,19 +452,30 @@ func RegisterAllNewAssets(pp *xsyn_rpcclient.XsynXrpcClient) {
 			mechs, err := db.Mechs(mechIDs...)
 			if err != nil {
 				gamelog.L.Error().Err(err).Msg("failed to get mechs for RegisterAllNewAssets")
-				return
+				return nil, nil
+			}
+
+			// go through each mech and set if genesis or limited
+			for _, m := range mechs {
+				genesisID, limitedID := m.CheckAndSetAsGenesisOrLimited()
+				if genesisID.Valid {
+					insertedGenesisIDS = append(insertedGenesisIDS, genesisID.Int64)
+				} else if limitedID.Valid {
+					insertedLimitedIDS = append(insertedLimitedIDS, limitedID.Int64)
+				}
 			}
 
 			err = pp.AssetsRegister(rpctypes.ServerMechsToXsynAsset(mechs)) // register new mechs
 			if err != nil {
 				gamelog.L.Error().Err(err).Msg("issue inserting new mechs to xsyn for RegisterAllNewAssets")
-				return
+				return nil, nil
 			}
 			gamelog.L.Info().Msg("Successfully inserted new asset mechs")
 			db.PutBool("INSERTED_NEW_ASSETS_MECHS", true)
 		}
+		return
 	}()
-	go func() {
+	go func(insertedGenesisIDS []int64, insertedLimitedIDS []int64) {
 		// weapons
 		updatedWeapons := db.GetBoolWithDefault("INSERTED_NEW_ASSETS_WEAPONS", false)
 		if !updatedWeapons {
@@ -483,7 +495,30 @@ func RegisterAllNewAssets(pp *xsyn_rpcclient.XsynXrpcClient) {
 				return
 			}
 
-			err = pp.AssetsRegister(rpctypes.ServerWeaponsToXsynAsset(weapons)) // register new weapons
+			// here we only want to insert weapons that are not a part of a full genesis or limited mech
+			var weaponsToAdd []*server.Weapon
+
+		WeaponLoop:
+			for _, wpn := range weapons {
+				if wpn.GenesisTokenID.Valid {
+					for _, genID := range insertedGenesisIDS {
+						if wpn.GenesisTokenID.Int64 == genID {
+							continue WeaponLoop
+						}
+					}
+				}
+				if wpn.LimitedReleaseTokenID.Valid {
+					for _, genID := range insertedLimitedIDS {
+						if wpn.LimitedReleaseTokenID.Int64 == genID {
+							continue WeaponLoop
+						}
+					}
+				}
+
+				weaponsToAdd = append(weaponsToAdd, wpn)
+			}
+
+			err = pp.AssetsRegister(rpctypes.ServerWeaponsToXsynAsset(weaponsToAdd)) // register new weapons
 			if err != nil {
 				gamelog.L.Error().Err(err).Msg("issue inserting new weapons to xsyn")
 				return
@@ -491,8 +526,8 @@ func RegisterAllNewAssets(pp *xsyn_rpcclient.XsynXrpcClient) {
 			gamelog.L.Info().Msg("Successfully inserted new asset weapons")
 			db.PutBool("INSERTED_NEW_ASSETS_WEAPONS", true)
 		}
-	}()
-	go func() {
+	}(genesisIDS, limitedIDs)
+	go func(insertedGenesisIDS []int64, insertedLimitedIDS []int64) {
 		// skins
 		updatedSkins := db.GetBoolWithDefault("INSERTED_NEW_ASSETS_SKINS", false)
 		if !updatedSkins {
@@ -512,7 +547,30 @@ func RegisterAllNewAssets(pp *xsyn_rpcclient.XsynXrpcClient) {
 				return
 			}
 
-			err = pp.AssetsRegister(rpctypes.ServerMechSkinsToXsynAsset(skins)) // register new mech skins
+			// here we only want to insert weapons that are not a part of a full genesis or limited mech
+			var skinsToAdd []*server.MechSkin
+
+		SkinLoop:
+			for _, skn := range skins {
+				if skn.GenesisTokenID.Valid {
+					for _, genID := range insertedGenesisIDS {
+						if skn.GenesisTokenID.Int64 == genID {
+							continue SkinLoop
+						}
+					}
+				}
+				if skn.LimitedReleaseTokenID.Valid {
+					for _, genID := range insertedLimitedIDS {
+						if skn.LimitedReleaseTokenID.Int64 == genID {
+							continue SkinLoop
+						}
+					}
+				}
+
+				skinsToAdd = append(skinsToAdd, skn)
+			}
+
+			err = pp.AssetsRegister(rpctypes.ServerMechSkinsToXsynAsset(skinsToAdd)) // register new mech skins
 			if err != nil {
 				gamelog.L.Error().Err(err).Msg("issue inserting new mech skins to xsyn")
 				return
@@ -521,8 +579,8 @@ func RegisterAllNewAssets(pp *xsyn_rpcclient.XsynXrpcClient) {
 			db.PutBool("INSERTED_NEW_ASSETS_SKINS", true)
 
 		}
-	}()
-	go func() {
+	}(genesisIDS, limitedIDs)
+	go func(insertedGenesisIDS []int64, insertedLimitedIDS []int64) {
 		// power cores
 		updatedPowerCores := db.GetBoolWithDefault("INSERTED_NEW_ASSETS_POWER_CORES", false)
 		if !updatedPowerCores {
@@ -542,7 +600,30 @@ func RegisterAllNewAssets(pp *xsyn_rpcclient.XsynXrpcClient) {
 				return
 			}
 
-			err = pp.AssetsRegister(rpctypes.ServerPowerCoresToXsynAsset(powerCores)) // register new mech powerCores
+			// here we only want to power cores that are not a part of a full genesis or limited mech
+			var powerCoresToAdd []*server.PowerCore
+
+		powerCoreLoop:
+			for _, skn := range powerCores {
+				if skn.GenesisTokenID.Valid {
+					for _, genID := range insertedGenesisIDS {
+						if skn.GenesisTokenID.Int64 == genID {
+							continue powerCoreLoop
+						}
+					}
+				}
+				if skn.LimitedReleaseTokenID.Valid {
+					for _, genID := range insertedLimitedIDS {
+						if skn.LimitedReleaseTokenID.Int64 == genID {
+							continue powerCoreLoop
+						}
+					}
+				}
+
+				powerCoresToAdd = append(powerCoresToAdd, skn)
+			}
+
+			err = pp.AssetsRegister(rpctypes.ServerPowerCoresToXsynAsset(powerCoresToAdd)) // register new mech powerCores
 			if err != nil {
 				gamelog.L.Error().Err(err).Msg("issue inserting new mech powerCores to xsyn")
 				return
@@ -550,8 +631,8 @@ func RegisterAllNewAssets(pp *xsyn_rpcclient.XsynXrpcClient) {
 			gamelog.L.Info().Msg("Successfully inserted new mech power cores")
 			db.PutBool("INSERTED_NEW_ASSETS_POWER_CORES", true)
 		}
-	}()
-	go func() {
+	}(genesisIDS, limitedIDs)
+	go func(insertedGenesisIDS []int64, insertedLimitedIDS []int64) {
 		// utilities
 		updatedUtilities := db.GetBoolWithDefault("INSERTED_NEW_ASSETS_UTILITIES", false)
 		if !updatedUtilities {
@@ -571,7 +652,30 @@ func RegisterAllNewAssets(pp *xsyn_rpcclient.XsynXrpcClient) {
 				return
 			}
 
-			err = pp.AssetsRegister(rpctypes.ServerUtilitiesToXsynAsset(utilities)) // register new mech utilities
+			// here we only want to power cores that are not a part of a full genesis or limited mech
+			var utilitiesToAdd []*server.Utility
+
+		utilityLoop:
+			for _, util := range utilities {
+				if util.GenesisTokenID.Valid {
+					for _, genID := range insertedGenesisIDS {
+						if util.GenesisTokenID.Int64 == genID {
+							continue utilityLoop
+						}
+					}
+				}
+				if util.LimitedReleaseTokenID.Valid {
+					for _, genID := range insertedLimitedIDS {
+						if util.LimitedReleaseTokenID.Int64 == genID {
+							continue utilityLoop
+						}
+					}
+				}
+
+				utilitiesToAdd = append(utilitiesToAdd, util)
+			}
+
+			err = pp.AssetsRegister(rpctypes.ServerUtilitiesToXsynAsset(utilitiesToAdd)) // register new mech utilities
 			if err != nil {
 				gamelog.L.Error().Err(err).Msg("issue inserting new mech utilities to xsyn")
 				return
@@ -579,7 +683,7 @@ func RegisterAllNewAssets(pp *xsyn_rpcclient.XsynXrpcClient) {
 			gamelog.L.Info().Msg("Successfully inserted new utility assets")
 			db.PutBool("INSERTED_NEW_ASSETS_UTILITIES", true)
 		}
-	}()
+	}(genesisIDS, limitedIDs)
 }
 
 func UpdateXsynStoreItemTemplates(pp *xsyn_rpcclient.XsynXrpcClient) {

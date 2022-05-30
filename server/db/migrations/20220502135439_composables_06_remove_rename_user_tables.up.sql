@@ -19,3 +19,9 @@ ALTER TABLE battles_viewers
 
 ALTER TABLE asset_repair
     RENAME TO mech_repair;
+
+-- remove chassis from mech labels
+UPDATE mechs
+SET label = REPLACE(label, ' Chassis', '');
+UPDATE blueprint_mechs
+SET label = REPLACE(label, ' Chassis', '');
