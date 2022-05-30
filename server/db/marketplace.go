@@ -75,7 +75,7 @@ func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
 }
 
 // MarketplaceItemSaleList returns a numeric paginated result of sales list.
-func MarketplaceItemSaleList(search string, archived bool, filter *ListFilterRequest, rarities []string, excludeUserID string, offset int, pageSize int, sortBy string, sortDir SortByDir) (int64, []*server.MarketplaceSaleItem, error) {
+func MarketplaceItemSaleList(search string, filter *ListFilterRequest, rarities []string, excludeUserID string, offset int, pageSize int, sortBy string, sortDir SortByDir) (int64, []*server.MarketplaceSaleItem, error) {
 	if !sortDir.IsValid() {
 		return 0, nil, terror.Error(fmt.Errorf("invalid sort direction"))
 	}
@@ -84,6 +84,7 @@ func MarketplaceItemSaleList(search string, archived bool, filter *ListFilterReq
 		itemSaleQueryMods,
 		boiler.ItemSaleWhere.OwnerID.NEQ(excludeUserID),
 		boiler.ItemSaleWhere.SoldBy.IsNull(),
+		boiler.ItemSaleWhere.EndAt.GT(time.Now()),
 	)
 
 	// Filters
@@ -200,7 +201,19 @@ func MarketplaceItemSaleList(search string, archived bool, filter *ListFilterReq
 }
 
 // MarketplaceSaleCreate inserts a new sale item.
-func MarketplaceSaleCreate(saleType server.MarketplaceSaleType, ownerID uuid.UUID, factionID uuid.UUID, listFeeTxnID string, endAt time.Time, itemID uuid.UUID, askingPrice *decimal.Decimal, dutchOptionDropRate *decimal.Decimal) (*server.MarketplaceSaleItem, error) {
+func MarketplaceSaleCreate(
+	ownerID uuid.UUID,
+	factionID uuid.UUID,
+	listFeeTxnID string,
+	endAt time.Time,
+	itemID uuid.UUID,
+	hasBuyout bool,
+	askingPrice *decimal.Decimal,
+	hasAuction bool,
+	auctionReservedPrice *decimal.Decimal,
+	hasDutchAuction bool,
+	dutchAuctionDropRate *decimal.Decimal,
+) (*server.MarketplaceSaleItem, error) {
 	obj := &boiler.ItemSale{
 		OwnerID:        ownerID.String(),
 		FactionID:      factionID.String(),
@@ -208,17 +221,19 @@ func MarketplaceSaleCreate(saleType server.MarketplaceSaleType, ownerID uuid.UUI
 		ItemID:         itemID.String(),
 		EndAt:          endAt,
 	}
-	switch saleType {
-	case server.MarketplaceSaleTypeBuyout:
+
+	if hasBuyout {
 		obj.Buyout = true
 		obj.BuyoutPrice = null.StringFrom(askingPrice.String())
-	case server.MarketplaceSaleTypeAuction:
+	}
+	if hasAuction {
 		obj.Auction = true
-		obj.AuctionCurrentPrice = null.StringFrom(askingPrice.String())
-	case server.MarketplaceSaleTypeDutchAuction:
+		obj.AuctionCurrentPrice = null.StringFrom(auctionReservedPrice.String())
+		obj.AuctionReservedPrice = null.StringFrom(auctionReservedPrice.String())
+	}
+	if hasDutchAuction {
 		obj.DutchAuction = true
-		obj.DutchActionDropRate = null.StringFrom(dutchOptionDropRate.String())
-		obj.BuyoutPrice = null.StringFrom(askingPrice.String())
+		obj.DutchActionDropRate = null.StringFrom(dutchAuctionDropRate.String())
 	}
 
 	err := obj.Insert(gamedb.StdConn, boil.Infer())

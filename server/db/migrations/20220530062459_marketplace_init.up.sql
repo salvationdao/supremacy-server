@@ -10,7 +10,7 @@ CREATE TABLE item_sales (
 
 	auction BOOL NOT NULL DEFAULT FALSE,
 	auction_current_price TEXT,
-	auction_reverse_price TEXT,
+	auction_reserved_price TEXT,
 
 	buyout BOOL NOT NULL DEFAULT FALSE,
 	buyout_price TEXT, -- also is used for dutch auction

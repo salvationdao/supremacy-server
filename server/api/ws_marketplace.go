@@ -55,7 +55,6 @@ type MarketplaceSalesListRequest struct {
 		SortBy         string                `json:"sort_by"`
 		Filter         *db.ListFilterRequest `json:"filter,omitempty"`
 		FilterRarities []string              `json:"rarities"`
-		Archived       bool                  `json:"archived"`
 		Search         string                `json:"search"`
 		PageSize       int                   `json:"page_size"`
 		Page           int                   `json:"page"`
@@ -81,7 +80,6 @@ func (fc *MarketplaceController) SalesListHandler(ctx context.Context, user *boi
 
 	total, records, err := db.MarketplaceItemSaleList(
 		req.Payload.Search,
-		req.Payload.Archived,
 		req.Payload.Filter,
 		req.Payload.FilterRarities,
 		user.ID,
@@ -109,12 +107,15 @@ const HubKeyMarketplaceSalesCreate = "MARKETPLACE:SALES:CREATE"
 type MarketplaceSalesCreateRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		SaleType             server.MarketplaceSaleType `json:"sale_type"`
-		ItemType             string                     `json:"item_type"`
-		ItemID               uuid.UUID                  `json:"item_id"`
-		AskingPrice          *decimal.Decimal           `json:"asking_price"`
-		DutchAuctionDropRate *decimal.Decimal           `json:"dutch_auction_drop_rate"`
-		ListingDurationHours int64                      `json:"listing_duration_hours"`
+		ItemType             string           `json:"item_type"`
+		ItemID               uuid.UUID        `json:"item_id"`
+		HasBuyout            bool             `json:"has_buyout"`
+		HasAuction           bool             `json:"has_auction"`
+		HasDutchAuction      bool             `json:"has_dutch_auction"`
+		AskingPrice          *decimal.Decimal `json:"asking_price"`
+		AuctionReservedPrice *decimal.Decimal `json:"auction_reserved_price"`
+		DutchAuctionDropRate *decimal.Decimal `json:"dutch_auction_drop_rate"`
+		ListingDurationHours int64            `json:"listing_duration_hours"`
 	} `json:"payload"`
 }
 
@@ -159,7 +160,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 
 	balance := mp.API.Passport.UserBalanceGet(userID)
 	feePrice := db.GetDecimalWithDefault(db.KeyMarketplaceListingFee, decimal.NewFromInt(5))
-	if req.Payload.SaleType == server.MarketplaceSaleTypeBuyout {
+	if req.Payload.HasBuyout {
 		feePrice = feePrice.Add(db.GetDecimalWithDefault(db.KeyMarketplaceListingBuyoutFee, decimal.NewFromInt(5)))
 	}
 	feePrice = feePrice.Mul(decimal.NewFromInt(req.Payload.ListingDurationHours)).Mul(decimal.New(1, 18))
@@ -169,7 +170,6 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		gamelog.L.Error().
 			Str("user_id", user.ID).
 			Str("balance", balance.String()).
-			Str("sale_type", string(req.Payload.SaleType)).
 			Str("item_type", string(req.Payload.ItemType)).
 			Str("item_id", req.Payload.ItemID.String()).
 			Err(err).
@@ -182,10 +182,10 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		FromUserID:           userID,
 		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
 		Amount:               feePrice.String(),
-		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_fee|%s|%s|%s|%d", req.Payload.SaleType, req.Payload.ItemType, req.Payload.ItemID.String(), time.Now().UnixNano())),
+		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_fee|%s|%s|%d", req.Payload.ItemType, req.Payload.ItemID.String(), time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupMarketplace),
 		SubGroup:             "SUPREMACY",
-		Description:          fmt.Sprintf("marketplace fee: %s - %s: %s", req.Payload.SaleType, req.Payload.ItemType, req.Payload.ItemID.String()),
+		Description:          fmt.Sprintf("marketplace fee: %s: %s", req.Payload.ItemType, req.Payload.ItemID.String()),
 		NotSafe:              true,
 	})
 	if err != nil {
@@ -193,7 +193,6 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		gamelog.L.Error().
 			Str("user_id", user.ID).
 			Str("balance", balance.String()).
-			Str("sale_type", string(req.Payload.SaleType)).
 			Str("item_type", string(req.Payload.ItemType)).
 			Str("item_id", req.Payload.ItemID.String()).
 			Err(err).
@@ -203,12 +202,23 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 
 	// Create Sales Item
 	endAt := time.Now().Add(time.Hour * time.Duration(req.Payload.ListingDurationHours))
-	obj, err := db.MarketplaceSaleCreate(req.Payload.SaleType, userID, factionID, txid, endAt, req.Payload.ItemID, req.Payload.AskingPrice, req.Payload.DutchAuctionDropRate)
+	obj, err := db.MarketplaceSaleCreate(
+		userID,
+		factionID,
+		txid,
+		endAt,
+		req.Payload.ItemID,
+		req.Payload.HasBuyout,
+		req.Payload.AskingPrice,
+		req.Payload.HasAuction,
+		req.Payload.AuctionReservedPrice,
+		req.Payload.HasDutchAuction,
+		req.Payload.DutchAuctionDropRate,
+	)
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
 			Str("user_id", user.ID).
-			Str("sale_type", string(req.Payload.SaleType)).
 			Str("item_type", string(req.Payload.ItemType)).
 			Str("item_id", req.Payload.ItemID.String()).
 			Err(err).
@@ -221,7 +231,6 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
 			Str("user_id", user.ID).
-			Str("sale_type", string(req.Payload.SaleType)).
 			Str("item_type", string(req.Payload.ItemType)).
 			Str("item_id", req.Payload.ItemID.String()).
 			Err(err).
@@ -304,26 +313,14 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	}
 
 	// pay sup
-	saleType, err := saleItem.GetSaleType()
-	if err != nil {
-		gamelog.L.Error().
-			Str("user_id", user.ID).
-			Str("item_id", req.Payload.ItemID.String()).
-			Str("balance", balance.String()).
-			Str("cost", saleItemCost.String()).
-			Err(err).
-			Msg("Unable to determine sale type")
-		return terror.Error(err, errMsg)
-	}
-
 	txid, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           userID,
 		ToUserID:             uuid.Must(uuid.FromString(saleItem.OwnerID)),
 		Amount:               saleItemCost.String(),
-		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item|%s|%s|%d", *saleType, saleItem.ID, time.Now().UnixNano())),
+		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item|%s|%d", saleItem.ID, time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupMarketplace),
 		SubGroup:             "SUPREMACY",
-		Description:          fmt.Sprintf("marketplace buy item: %s (%s)", saleItem.ID, *saleType),
+		Description:          fmt.Sprintf("marketplace buy item: %s", saleItem.ID),
 		NotSafe:              true,
 	})
 	if err != nil {
