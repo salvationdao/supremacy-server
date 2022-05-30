@@ -13,8 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ninja-syndicate/hub/ext/messagebus"
-
 	"github.com/volatiletech/null/v8"
 
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -29,7 +27,6 @@ var SupremacyBattleUserID = uuid.Must(uuid.FromString("87c60803-b051-4abb-aa60-4
 var SupremacyUserID = uuid.Must(uuid.FromString("4fae8fdf-584f-46bb-9cb9-bb32ae20177e"))
 
 type SpoilsOfWar struct {
-	messageBus   *messagebus.MessageBus
 	passport     *xsyn_rpcclient.XsynXrpcClient
 	isOnline     func(userID uuid.UUID) bool
 	battleID     string
@@ -57,7 +54,6 @@ func (sow *SpoilsOfWar) BattleNumber() int {
 
 func NewSpoilsOfWar(
 	passport *xsyn_rpcclient.XsynXrpcClient,
-	messageBus *messagebus.MessageBus,
 	isOnline func(userID uuid.UUID) bool,
 	battleID string,
 	battleNumber int,
@@ -68,7 +64,6 @@ func NewSpoilsOfWar(
 		isOnline:     isOnline,
 		battleID:     battleID,
 		battleNumber: battleNumber,
-		messageBus:   messageBus,
 		passport:     passport,
 		tickSpeed:    dripSpeed,
 		maxTicks:     maxTicks,

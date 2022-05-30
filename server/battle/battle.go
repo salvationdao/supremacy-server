@@ -27,7 +27,6 @@ import (
 
 	"go.uber.org/atomic"
 
-	"github.com/ninja-syndicate/hub"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 
@@ -97,7 +96,7 @@ func (btl *Battle) storeGameMap(gm server.GameMap) {
 }
 
 const HubKeyLiveVoteCountUpdated = "LIVE:VOTE:COUNT:UPDATED"
-const HubKeyWarMachineLocationUpdated hub.HubCommandKey = "WAR:MACHINE:LOCATION:UPDATED"
+const HubKeyWarMachineLocationUpdated = "WAR:MACHINE:LOCATION:UPDATED"
 
 func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 	btl.Lock()
@@ -309,7 +308,7 @@ func (btl *Battle) start() {
 	// set up the abilities for current battle
 
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle spoils")
-	btl.spoils = NewSpoilsOfWar(btl.arena.RPCClient, btl.arena.messageBus, btl.isOnline, btl.BattleID, btl.BattleNumber, 15*time.Second, 20)
+	btl.spoils = NewSpoilsOfWar(btl.arena.RPCClient, btl.isOnline, btl.BattleID, btl.BattleNumber, 15*time.Second, 20)
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle abilities")
 	btl.storeAbilities(NewAbilitiesSystem(btl))
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle multipliers")
@@ -1144,11 +1143,6 @@ func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 		return true
 	})
 
-}
-
-type BroadcastPayload struct {
-	Key     hub.HubCommandKey `json:"key"`
-	Payload interface{}       `json:"payload"`
 }
 
 type GameSettingsResponse struct {
