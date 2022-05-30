@@ -1,7 +1,6 @@
 package comms
 
 import (
-	"fmt"
 	"server/db"
 	"server/gamelog"
 	"server/rpctypes"
@@ -31,8 +30,6 @@ func (s *S) TemplateRegisterHandler(req rpctypes.TemplateRegisterReq, resp *rpct
 
 	for _, m := range loadedMechs {
 		m.CheckAndSetAsGenesisOrLimited()
-
-		fmt.Println(m.CollectionSlug)
 	}
 
 	assets = append(assets, rpctypes.ServerMechsToXsynAsset(loadedMechs)...)

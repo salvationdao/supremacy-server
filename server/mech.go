@@ -260,9 +260,6 @@ func (m *Mech) IsBattleReady() bool {
 }
 
 func (m *Mech) CheckAndSetAsGenesisOrLimited() (genesisID null.Int64, limitedID null.Int64) {
-	fmt.Printf("\nm.GenesisTokenID.Valid: %v\n", m.GenesisTokenID.Valid)
-	fmt.Printf("\nm.GenesisTokenID.Valid: %v\n", m.LimitedReleaseTokenID.Valid)
-
 	if !m.GenesisTokenID.Valid && !m.LimitedReleaseTokenID.Valid {
 		return
 	}
@@ -291,17 +288,14 @@ func (m *Mech) IsCompleteGenesis() bool {
 	// we just need to check the first 2 weapons, since rocket pods are also locked
 	if m.Weapons[0] == nil || !m.Weapons[0].GenesisTokenID.Valid ||
 		m.Weapons[0].GenesisTokenID.Int64 != m.GenesisTokenID.Int64 {
-		fmt.Println("here1")
 		return false
 	}
 	if m.Weapons[1] == nil || !m.Weapons[1].GenesisTokenID.Valid ||
 		m.Weapons[1].GenesisTokenID.Int64 != m.GenesisTokenID.Int64 {
-		fmt.Println("here2")
 		return false
 	}
 	if m.Weapons[2] == nil || !m.Weapons[2].GenesisTokenID.Valid ||
 		m.Weapons[2].GenesisTokenID.Int64 != m.GenesisTokenID.Int64 {
-		fmt.Println("here3")
 		return false
 	}
 	return true
