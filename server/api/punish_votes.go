@@ -10,8 +10,10 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"server/rpcclient"
+	"server/xsyn_rpcclient"
 	"time"
+
+	"github.com/ninja-syndicate/ws"
 
 	"github.com/ninja-software/tickle"
 
@@ -102,7 +104,7 @@ func (api *API) PunishVoteTrackerSetup() error {
 		err = db.UpdatePunishVoteCost()
 		if err != nil {
 			gamelog.L.Error().Err(err).Msg("Failed to update player punish vote cost and report cost")
-			return http.StatusInternalServerError, terror.Error(err)
+			return http.StatusInternalServerError, err
 		}
 		return http.StatusOK, nil
 	})
@@ -156,8 +158,8 @@ func (pvt *PunishVoteTracker) CurrentEligiblePlayers() map[string]bool {
 
 	// get active player with positive ability kill count
 	if len(dbSearchList) > 0 {
-		uss, err := boiler.UserStats(
-			boiler.UserStatWhere.ID.IN(dbSearchList),
+		uss, err := boiler.PlayerStats(
+			boiler.PlayerStatWhere.ID.IN(dbSearchList),
 		).All(gamedb.StdConn)
 		if err != nil {
 			gamelog.L.Error().Str("punish vote id", pvt.CurrentPunishVote.ID).Err(err).Msg("Failed to get player stat from db")
@@ -296,7 +298,7 @@ func (pvt *PunishVoteTracker) HoldingPhaseProcess() {
 	pvt.Stage.EndTime = endTime
 
 	// broadcast new vote to online faction users
-	pvt.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPunishVoteSubscribe, pvt.FactionID)), &PunishVoteResponse{
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/punish_vote", pvt.FactionID), HubKeyPunishVoteSubscribe, &PunishVoteResponse{
 		PunishVote:   punishVote,
 		PunishOption: punishVote.R.PunishOption,
 	})
@@ -370,7 +372,7 @@ func (pvt *PunishVoteTracker) Vote(punishVoteID string, playerID string, isAgree
 	return nil
 }
 
-func (pvt *PunishVoteTracker) InstantPass(rpcClient *rpcclient.PassportXrpcClient, punishVoteID string, playerID string) error {
+func (pvt *PunishVoteTracker) InstantPass(rpcClient *xsyn_rpcclient.XsynXrpcClient, punishVoteID string, playerID string) error {
 	pvt.Lock()
 	defer pvt.Unlock()
 
@@ -414,7 +416,7 @@ func (pvt *PunishVoteTracker) InstantPass(rpcClient *rpcclient.PassportXrpcClien
 	}
 
 	// pay fee to syndicate
-	txid, err := rpcClient.SpendSupMessage(rpcclient.SpendSupsReq{
+	txid, err := rpcClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           uuid.Must(uuid.FromString(playerID)),
 		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
 		Amount:               punishVote.InstantPassFee.String(),
@@ -603,7 +605,7 @@ func (pvt *PunishVoteTracker) debounceBroadcastResult() {
 			timer.Reset(interval)
 		case <-timer.C:
 			if result != nil {
-				pvt.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPunishVoteResultSubscribe, pvt.FactionID)), result)
+				ws.PublishMessage(fmt.Sprintf("/faction/%s/punish_vote", pvt.FactionID), HubKeyPunishVoteResultSubscribe, result)
 			}
 		}
 	}
@@ -635,7 +637,7 @@ func (pvt *PunishVoteTracker) BroadcastPunishVoteResult(isPassed bool) {
 	}
 
 	// broadcast undefined to clean up the form in the frontend
-	pvt.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPunishVoteSubscribe, pvt.FactionID)), nil)
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/punish_vote", pvt.FactionID), HubKeyPunishVoteSubscribe, nil)
 
 	// construct punish vote message
 	chatMessage := &ChatMessage{
@@ -669,7 +671,8 @@ func (pvt *PunishVoteTracker) BroadcastPunishVoteResult(isPassed bool) {
 	pvt.api.AddFactionChatMessage(pvt.FactionID, chatMessage)
 
 	// broadcast
-	pvt.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionChatSubscribe, pvt.FactionID)), chatMessage)
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_chat", pvt.FactionID), HubKeyFactionChatSubscribe, []*ChatMessage{chatMessage})
+	//pvt.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionChatSubscribe, pvt.FactionID)), chatMessage)
 
 	if isPassed {
 		// get current player's punishment
@@ -700,6 +703,6 @@ func (pvt *PunishVoteTracker) BroadcastPunishVoteResult(isPassed bool) {
 		punishedPlayerID := uuid.FromStringOrNil(punishVote.ReportedPlayerID)
 
 		// send to the player
-		pvt.api.BattleArena.SendToOnlinePlayer(punishedPlayerID, HubKeyPlayerPunishmentList, playerPunishments)
+		ws.PublishMessage(fmt.Sprintf("/user/%s", punishedPlayerID), HubKeyPlayerPunishmentList, playerPunishments)
 	}
 }

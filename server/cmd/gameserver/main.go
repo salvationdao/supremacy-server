@@ -3,21 +3,32 @@ package main
 import (
 	"database/sql"
 	"encoding/base64"
+	"encoding/csv"
 	"errors"
 	"fmt"
 	"log"
 	"net/url"
+	"runtime"
 	"server"
 	"server/api"
 	"server/battle"
 	"server/comms"
+	"server/db"
+	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/rpctypes"
 	"server/sms"
-	"server/supermigrate"
 	"server/telegram"
+	"server/xsyn_rpcclient"
 
-	"server/rpcclient"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/gofrs/uuid"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+
+	"github.com/ninja-syndicate/ws"
+
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
 	zerologger "github.com/ninja-syndicate/hub/ext/zerolog"
@@ -60,6 +71,7 @@ const SentryReleasePrefix = "supremacy-gameserver"
 const envPrefix = "GAMESERVER"
 
 func main() {
+	runtime.GOMAXPROCS(2)
 	app := &cli.App{
 		Compiled: time.Now(),
 		Usage:    "Run the server server",
@@ -118,6 +130,8 @@ func main() {
 					&cli.StringFlag{Name: "userauth_jwtsecret", Value: "872ab3df-d7c7-4eb6-a052-4146d0f4dd15", EnvVars: []string{envPrefix + "_USERAUTH_JWTSECRET"}, Usage: "JWT secret"},
 
 					&cli.BoolFlag{Name: "cookie_secure", Value: true, EnvVars: []string{envPrefix + "_COOKIE_SECURE", "COOKIE_SECURE"}, Usage: "set cookie secure"},
+
+					&cli.StringFlag{Name: "cookie_key", Value: "asgk236tkj2kszaxfj.,.135j25khsafkahfgiu215hi2htkjahsgfih13kj56hkqhkahgbkashgk312ht5lk2qhafga", EnvVars: []string{envPrefix + "_COOKIE_KEY", "COOKIE_KEY"}, Usage: "cookie encryption key"},
 					&cli.StringFlag{Name: "google_client_id", Value: "", EnvVars: []string{envPrefix + "_GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_ID"}, Usage: "Google Client ID for OAuth functionaility."},
 
 					// SMS stuff
@@ -139,7 +153,6 @@ func main() {
 					&cli.StringFlag{Name: "server_stream_key", Value: "6c7b4a82-7797-4847-836e-978399830878", EnvVars: []string{envPrefix + "_SERVER_STREAM_KEY"}, Usage: "Authorization key to crud servers"},
 					&cli.StringFlag{Name: "passport_webhook_secret", Value: "e1BD3FF270804c6a9edJDzzDks87a8a4fde15c7=", EnvVars: []string{"PASSPORT_WEBHOOK_SECRET"}, Usage: "Authorization key to passport webhook"},
 
-					&cli.IntFlag{Name: "database_max_pool_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_POOL_CONNS"}, Usage: "Database max pool conns"},
 					&cli.IntFlag{Name: "database_max_idle_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_IDLE_CONNS"}, Usage: "Database max idle conns"},
 					&cli.IntFlag{Name: "database_max_open_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_OPEN_CONNS"}, Usage: "Database max open conns"},
 
@@ -147,12 +160,18 @@ func main() {
 					&cli.StringSliceFlag{Name: "pprof_datadog_profiles", Value: cli.NewStringSlice("cpu", "heap"), EnvVars: []string{envPrefix + "_PPROF_DATADOG_PROFILES"}, Usage: "Comma seprated list of profiles to collect. Options: cpu,heap,block,mutex,goroutine,metrics"},
 					&cli.DurationFlag{Name: "pprof_datadog_interval_sec", Value: 60, EnvVars: []string{envPrefix + "_PPROF_DATADOG_INTERVAL_SEC"}, Usage: "Specifies the period at which profiles will be collected"},
 					&cli.DurationFlag{Name: "pprof_datadog_duration_sec", Value: 60, EnvVars: []string{envPrefix + "_PPROF_DATADOG_DURATION_SEC"}, Usage: "Specifies the length of the CPU profile snapshot"},
+
+					&cli.StringFlag{Name: "auth_callback_url", Value: "https://play.supremacygame.io/login-redirect", EnvVars: []string{envPrefix + "_AUTH_CALLBACK_URL"}, Usage: "The url for gameserver to redirect after completing the auth flow"},
+
+					&cli.BoolFlag{Name: "sync_keycards", Value: false, EnvVars: []string{envPrefix + "_SYNC_KEYCARDS"}, Usage: "Sync keycard data from .csv file"},
+					&cli.StringFlag{Name: "keycard_csv_path", Value: "", EnvVars: []string{envPrefix + "_KEYCARD_CSV_PATH"}, Usage: "File path for csv to sync keycards"},
 				},
 				Usage: "run server",
 				Action: func(c *cli.Context) error {
+					start := time.Now()
+
 					gameClientMinimumBuildNo := c.Uint64("game_client_minimum_build_no")
 
-					databaseMaxPoolConns := c.Int("database_max_pool_conns")
 					databaseMaxIdleConns := c.Int("database_max_idle_conns")
 					databaseMaxOpenConns := c.Int("database_max_open_conns")
 
@@ -173,6 +192,9 @@ func main() {
 					passportAddr := c.String("passport_addr")
 					passportClientToken := c.String("passport_server_token")
 
+					syncKeycard := c.Bool("sync_keycards")
+					keycardCSVPath := c.String("keycard_csv_path")
+
 					ctx, cancel := context.WithCancel(c.Context)
 					defer cancel()
 					environment := c.String("environment")
@@ -182,6 +204,8 @@ func main() {
 					battleArenaAddr := c.String("battle_arena_addr")
 					level := c.String("log_level")
 					gamelog.New(environment, level)
+
+					ws.Init(&ws.Config{Logger: gamelog.L})
 
 					tracer.Start(
 						tracer.WithEnv(environment),
@@ -245,19 +269,6 @@ func main() {
 						gamelog.L.Panic().Msg("game_client_minimum_build_no not set or zero value")
 					}
 
-					pgxconn, err := pgxconnect(
-						databaseUser,
-						databasePass,
-						databaseHost,
-						databasePort,
-						databaseName,
-						databaseAppName,
-						Version,
-						databaseMaxPoolConns,
-					)
-					if err != nil {
-						return terror.Panic(err)
-					}
 					sqlconn, err := sqlConnect(
 						databaseUser,
 						databasePass,
@@ -272,7 +283,7 @@ func main() {
 					if err != nil {
 						return terror.Panic(err)
 					}
-					err = gamedb.New(pgxconn, sqlconn)
+					err = gamedb.New(sqlconn)
 					if err != nil {
 						return terror.Panic(err)
 					}
@@ -281,112 +292,28 @@ func main() {
 					if err != nil {
 						return terror.Panic(err)
 					}
-					hostname := u.Hostname()
-					rpcAddrs := []string{
-						fmt.Sprintf("%s:10001", hostname),
-						fmt.Sprintf("%s:10002", hostname),
-						fmt.Sprintf("%s:10003", hostname),
-						fmt.Sprintf("%s:10004", hostname),
-						fmt.Sprintf("%s:10005", hostname),
-						fmt.Sprintf("%s:10006", hostname),
-						fmt.Sprintf("%s:10007", hostname),
-						fmt.Sprintf("%s:10008", hostname),
-						fmt.Sprintf("%s:10009", hostname),
-						fmt.Sprintf("%s:10010", hostname),
-						fmt.Sprintf("%s:10011", hostname),
-						fmt.Sprintf("%s:10012", hostname),
-						fmt.Sprintf("%s:10013", hostname),
-						fmt.Sprintf("%s:10014", hostname),
-						fmt.Sprintf("%s:10015", hostname),
-						fmt.Sprintf("%s:10016", hostname),
-						fmt.Sprintf("%s:10017", hostname),
-						fmt.Sprintf("%s:10018", hostname),
-						fmt.Sprintf("%s:10019", hostname),
-						fmt.Sprintf("%s:10020", hostname),
-						fmt.Sprintf("%s:10021", hostname),
-						fmt.Sprintf("%s:10022", hostname),
-						fmt.Sprintf("%s:10023", hostname),
-						fmt.Sprintf("%s:10024", hostname),
-						fmt.Sprintf("%s:10025", hostname),
-						fmt.Sprintf("%s:10026", hostname),
-						fmt.Sprintf("%s:10027", hostname),
-						fmt.Sprintf("%s:10028", hostname),
-						fmt.Sprintf("%s:10029", hostname),
-						fmt.Sprintf("%s:10030", hostname),
-						fmt.Sprintf("%s:10031", hostname),
-						fmt.Sprintf("%s:10032", hostname),
-						fmt.Sprintf("%s:10033", hostname),
-						fmt.Sprintf("%s:10034", hostname),
-						fmt.Sprintf("%s:10035", hostname),
-					}
+
 					gamelog.L.Info().Msg("start rpc client")
-					rpcClient := rpcclient.NewPassportXrpcClient(passportClientToken, rpcAddrs)
+					rpcClient := xsyn_rpcclient.NewXsynXrpcClient(passportClientToken, u.Hostname(), 10001, 34)
 
 					gamelog.L.Info().Msg("start rpc server")
 					rpcServer := &comms.XrpcServer{}
 
-					err = rpcServer.Listen(
-						rpcClient,
-						":11001",
-						":11002",
-						":11003",
-						":11004",
-						":11005",
-						":11006",
-						":11007",
-						":11008",
-						":11009",
-						":11010",
-						":11011",
-						":11012",
-						":11013",
-						":11014",
-						":11015",
-						":11016",
-						":11017",
-						":11018",
-						":11019",
-						":11020",
-						":11021",
-						":11022",
-						":11023",
-						":11024",
-						":11025",
-						":11026",
-						":11027",
-						":11028",
-						":11029",
-						":11030",
-						":11031",
-						":11032",
-						":11033",
-						":11034",
-						":11035",
-					)
+					err = rpcServer.Listen(rpcClient, 11001, 34)
 					if err != nil {
-						return terror.Error(err)
+						return err
 					}
-					//// Connect to passport
-					//pp := passport.NewPassport(
-					//	log_helpers.NamedLogger(gamelog.L, "passport"),
-					//	passportAddr,
-					//	passportClientToken,
-					//	rpcClient,
-					//)
 
-					// sync user stats
-
-					// Start Gameserver - Gameclient server
-					// Passport
-					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Setting up battle arena client")
-
+					gamelog.L.Info().Msg("Setting twilio client")
 					// initialise smser
 					twilio, err := sms.NewTwilio(twilioSid, twilioApiKey, twilioApiSecrete, smsFromNumber, environment)
 					if err != nil {
 						return terror.Error(err, "SMS init failed")
 					}
-
+					log.Printf("twilio took %s", time.Since(start))
+					start = time.Now()
 					// initialise message bus
+					gamelog.L.Info().Msg("Setting new message bus")
 					messageBus := messagebus.NewMessageBus(log_helpers.NamedLogger(gamelog.L, "message_bus"))
 					gsHub := hub.New(&hub.Config{
 						Log:            zerologger.New(*log_helpers.NamedLogger(gamelog.L, "hub library")),
@@ -404,40 +331,53 @@ func main() {
 						},
 						Tracer: DatadogTracer.New(),
 					})
-
+					log.Printf("twilio took %s", time.Since(start))
+					start = time.Now()
+					gamelog.L.Info().Msg("Setting up telegram bot")
 					// initialise telegram bot
 					telebot, err := telegram.NewTelegram(telegramBotToken, environment, func(owner string, success bool) {
-						go messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", telegram.HubKeyTelegramShortcodeRegistered, owner)), success)
+						ws.PublishMessage(fmt.Sprintf("/user/%s", owner), telegram.HubKeyTelegramShortcodeRegistered, success)
+						//go messageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", telegram.HubKeyTelegramShortcodeRegistered, owner)), success)
 					})
 					if err != nil {
 						return terror.Error(err, "Telegram init failed")
 					}
-
+					log.Printf("telegram took %s", time.Since(start))
+					start = time.Now()
 					//initialize lingua language detector
 					languages := []lingua.Language{
 						lingua.English,
-						lingua.French,
-						lingua.German,
-						lingua.Spanish,
-						lingua.Italian,
 						lingua.Tagalog,
-						lingua.Vietnamese,
-						lingua.Japanese,
-						lingua.Chinese,
-						lingua.Russian,
-						lingua.Indonesian,
-						lingua.Hindi,
-						lingua.Portuguese,
-						lingua.Dutch,
-						lingua.Croatian,
 					}
+					gamelog.L.Info().Msg("Setting new NewLanguageDetectorBuilder")
+
+					if environment != "development" {
+						languages = append(languages,
+							[]lingua.Language{
+								lingua.French,
+								lingua.German,
+								lingua.Spanish,
+								lingua.Italian,
+								lingua.Vietnamese,
+								lingua.Japanese,
+								lingua.Chinese,
+								lingua.Russian,
+								lingua.Indonesian,
+								lingua.Hindi,
+								lingua.Portuguese,
+								lingua.Dutch,
+								lingua.Croatian,
+							}...)
+					}
+
 					detector := lingua.NewLanguageDetectorBuilder().FromLanguages(languages...).WithPreloadedLanguageModels().Build()
 
-					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("Set up hub")
+					log.Printf("NewLanguageDetectorBuilder took %s", time.Since(start))
+					start = time.Now()
 
+					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("set up arena")
 					ba := battle.NewArena(&battle.Opts{
 						Addr:                     battleArenaAddr,
-						Conn:                     pgxconn,
 						MessageBus:               messageBus,
 						Hub:                      gsHub,
 						RPCClient:                rpcClient,
@@ -445,9 +385,12 @@ func main() {
 						Telegram:                 telebot,
 						GameClientMinimumBuildNo: gameClientMinimumBuildNo,
 					})
-					gamelog.L.Info().Str("battle_arena_addr", battleArenaAddr).Msg("set up arena")
+
+					log.Printf("arena took %s", time.Since(start))
+					start = time.Now()
+
 					gamelog.L.Info().Msg("Setting up webhook rest API")
-					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, pgxconn, rpcClient, messageBus, gsHub, twilio, telebot, detector)
+					api, err := SetupAPI(c, ctx, log_helpers.NamedLogger(gamelog.L, "API"), ba, rpcClient, messageBus, gsHub, twilio, telebot, detector)
 					if err != nil {
 						fmt.Println(err)
 						os.Exit(1)
@@ -458,6 +401,17 @@ func main() {
 						go telebot.RunTelegram(telebot.Bot)
 					}
 
+					// we need to update some IDs on passport server, just the once,
+					// TODO: After deploying composable migration, talk to vinnie about removing this
+					gamelog.L.Info().Msg("Running one off funcs")
+					RegisterAllNewAssets(rpcClient)
+					UpdateXsynStoreItemTemplates(rpcClient)
+
+					// TODO: Remove after syncing keycards
+					if syncKeycard {
+						UpdateKeycard(rpcClient, keycardCSVPath)
+					}
+
 					gamelog.L.Info().Msg("Running webhook rest API")
 					err = api.Run(ctx)
 					if err != nil {
@@ -465,155 +419,6 @@ func main() {
 						os.Exit(1)
 					}
 					log_helpers.TerrorEcho(ctx, err, gamelog.L)
-					return nil
-				},
-			},
-			{
-				Name:  "sync",
-				Usage: "sync users and assets from passport-server",
-				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "passport_addr", Value: "ws://localhost:8086/api/ws", EnvVars: []string{envPrefix + "_PASSPORT_ADDR", "PASSPORT_ADDR"}, Usage: " address of the passport server, inc protocol"},
-					&cli.StringFlag{Name: "database_user", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_USER", "DATABASE_USER"}, Usage: "The database user"},
-					&cli.StringFlag{Name: "database_pass", Value: "dev", EnvVars: []string{envPrefix + "_DATABASE_PASS", "DATABASE_PASS"}, Usage: "The database pass"},
-					&cli.StringFlag{Name: "database_host", Value: "localhost", EnvVars: []string{envPrefix + "_DATABASE_HOST", "DATABASE_HOST"}, Usage: "The database host"},
-					&cli.StringFlag{Name: "database_port", Value: "5437", EnvVars: []string{envPrefix + "_DATABASE_PORT", "DATABASE_PORT"}, Usage: "The database port"},
-					&cli.StringFlag{Name: "database_name", Value: "gameserver", EnvVars: []string{envPrefix + "_DATABASE_NAME", "DATABASE_NAME"}, Usage: "The database name"},
-					&cli.StringFlag{Name: "database_application_name", Value: "API Server", EnvVars: []string{envPrefix + "_DATABASE_APPLICATION_NAME"}, Usage: "Postgres database name"},
-					&cli.IntFlag{Name: "database_max_pool_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_POOL_CONNS"}, Usage: "Database max pool conns"},
-					&cli.IntFlag{Name: "database_max_idle_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_IDLE_CONNS"}, Usage: "Database max idle conns"},
-					&cli.IntFlag{Name: "database_max_open_conns", Value: 2000, EnvVars: []string{envPrefix + "_DATABASE_MAX_OPEN_CONNS"}, Usage: "Database max open conns"},
-				},
-				Action: func(c *cli.Context) error {
-
-					databaseMaxPoolConns := c.Int("database_max_pool_conns")
-					databaseMaxIdleConns := c.Int("database_max_idle_conns")
-					databaseMaxOpenConns := c.Int("database_max_open_conns")
-
-					databaseUser := c.String("database_user")
-					databasePass := c.String("database_pass")
-					databaseHost := c.String("database_host")
-					databasePort := c.String("database_port")
-					databaseName := c.String("database_name")
-					databaseAppName := c.String("database_application_name")
-					pgxconn, err := pgxconnect(
-						databaseUser,
-						databasePass,
-						databaseHost,
-						databasePort,
-						databaseName,
-						databaseAppName,
-						Version,
-						databaseMaxPoolConns,
-					)
-					if err != nil {
-						return terror.Panic(err)
-					}
-					sqlconn, err := sqlConnect(
-						databaseUser,
-						databasePass,
-						databaseHost,
-						databasePort,
-						databaseName,
-						databaseAppName,
-						Version,
-						databaseMaxIdleConns,
-						databaseMaxOpenConns,
-					)
-					if err != nil {
-						return terror.Panic(err)
-					}
-					err = gamedb.New(pgxconn, sqlconn)
-					if err != nil {
-						return terror.Panic(err)
-					}
-
-					gamelog.New("development", "TraceLevel")
-					passportAddr := c.String("passport_addr")
-					u, err := url.Parse(passportAddr)
-					if err != nil {
-						return terror.Panic(err)
-					}
-					hostname := u.Hostname()
-					rpcAddrs := []string{
-						fmt.Sprintf("%s:10001", hostname),
-						fmt.Sprintf("%s:10002", hostname),
-						fmt.Sprintf("%s:10003", hostname),
-						fmt.Sprintf("%s:10004", hostname),
-						fmt.Sprintf("%s:10005", hostname),
-						fmt.Sprintf("%s:10006", hostname),
-						fmt.Sprintf("%s:10007", hostname),
-						fmt.Sprintf("%s:10008", hostname),
-						fmt.Sprintf("%s:10009", hostname),
-						fmt.Sprintf("%s:10010", hostname),
-						fmt.Sprintf("%s:10011", hostname),
-						fmt.Sprintf("%s:10012", hostname),
-						fmt.Sprintf("%s:10013", hostname),
-						fmt.Sprintf("%s:10014", hostname),
-						fmt.Sprintf("%s:10015", hostname),
-						fmt.Sprintf("%s:10016", hostname),
-						fmt.Sprintf("%s:10017", hostname),
-						fmt.Sprintf("%s:10018", hostname),
-						fmt.Sprintf("%s:10019", hostname),
-						fmt.Sprintf("%s:10020", hostname),
-						fmt.Sprintf("%s:10021", hostname),
-						fmt.Sprintf("%s:10022", hostname),
-						fmt.Sprintf("%s:10023", hostname),
-						fmt.Sprintf("%s:10024", hostname),
-						fmt.Sprintf("%s:10025", hostname),
-						fmt.Sprintf("%s:10026", hostname),
-						fmt.Sprintf("%s:10027", hostname),
-						fmt.Sprintf("%s:10028", hostname),
-						fmt.Sprintf("%s:10029", hostname),
-						fmt.Sprintf("%s:10030", hostname),
-						fmt.Sprintf("%s:10031", hostname),
-						fmt.Sprintf("%s:10032", hostname),
-						fmt.Sprintf("%s:10033", hostname),
-						fmt.Sprintf("%s:10034", hostname),
-						fmt.Sprintf("%s:10035", hostname),
-					}
-					passportRPCclient := &rpcclient.XrpcClient{
-						Addrs: rpcAddrs,
-					}
-
-					result := &rpcclient.GetAll{}
-					err = passportRPCclient.Call("S.SuperMigrate", rpcclient.GetAllReq{}, result)
-					if err != nil {
-						return terror.Error(err)
-					}
-					metadataPayload := []*supermigrate.MetadataPayload{}
-					err = result.MetadataPayload.Unmarshal(&metadataPayload)
-					if err != nil {
-						return terror.Error(err)
-					}
-					assetPayload := []*supermigrate.AssetPayload{}
-					err = result.AssetPayload.Unmarshal(&assetPayload)
-					if err != nil {
-						return terror.Error(err)
-					}
-					storePayload := []*supermigrate.StorePayload{}
-					err = result.StorePayload.Unmarshal(&storePayload)
-					if err != nil {
-						return terror.Error(err)
-					}
-					factionPayload := []*supermigrate.FactionPayload{}
-					err = result.FactionPayload.Unmarshal(&factionPayload)
-					if err != nil {
-						return terror.Error(err)
-					}
-					userPayload := []*supermigrate.UserPayload{}
-					err = result.UserPayload.Unmarshal(&userPayload)
-					if err != nil {
-						return terror.Error(err)
-					}
-
-					err = supermigrate.MigrateUsers(metadataPayload, assetPayload, storePayload, factionPayload, userPayload)
-					if err != nil {
-						return fmt.Errorf("failed to migrate users: %w", err)
-					}
-					err = supermigrate.MigrateAssets(metadataPayload, assetPayload, storePayload, factionPayload, userPayload)
-					if err != nil {
-						return fmt.Errorf("failed to migrate assets: %w", err)
-					}
 					return nil
 				},
 			},
@@ -627,7 +432,481 @@ func main() {
 	}
 }
 
-func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, battleArenaClient *battle.Arena, conn *pgxpool.Pool, passport *rpcclient.PassportXrpcClient, messageBus *messagebus.MessageBus, gsHub *hub.Hub, sms server.SMS, telegram server.Telegram, languageDetector lingua.LanguageDetector) (*api.API, error) {
+func RegisterAllNewAssets(pp *xsyn_rpcclient.XsynXrpcClient) {
+	// Lets do this in chunks, going to be like 30-40k items to add to passport.
+	// mechs
+	genesisIDS, limitedIDs := func() (insertedGenesisIDS []int64, insertedLimitedIDS []int64) {
+		updatedMechs := db.GetBoolWithDefault("INSERTED_NEW_ASSETS_MECHS", false)
+		if !updatedMechs {
+			var mechIDs []string
+
+			mechCollections, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMech)).All(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("failed to get mech collection items for RegisterAllNewAssets")
+				return nil, nil
+			}
+			for _, m := range mechCollections {
+				mechIDs = append(mechIDs, m.ItemID)
+			}
+
+			mechs, err := db.Mechs(mechIDs...)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("failed to get mechs for RegisterAllNewAssets")
+				return nil, nil
+			}
+
+			// go through each mech and set if genesis or limited
+			for _, m := range mechs {
+				genesisID, limitedID := m.CheckAndSetAsGenesisOrLimited()
+				if genesisID.Valid {
+					insertedGenesisIDS = append(insertedGenesisIDS, genesisID.Int64)
+				} else if limitedID.Valid {
+					insertedLimitedIDS = append(insertedLimitedIDS, limitedID.Int64)
+				}
+			}
+
+			err = pp.AssetsRegister(rpctypes.ServerMechsToXsynAsset(mechs)) // register new mechs
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("issue inserting new mechs to xsyn for RegisterAllNewAssets")
+				return nil, nil
+			}
+			gamelog.L.Info().Msg("Successfully inserted new asset mechs")
+			db.PutBool("INSERTED_NEW_ASSETS_MECHS", true)
+		}
+		return
+	}()
+	go func(insertedGenesisIDS []int64, insertedLimitedIDS []int64) {
+		// weapons
+		updatedWeapons := db.GetBoolWithDefault("INSERTED_NEW_ASSETS_WEAPONS", false)
+		if !updatedWeapons {
+			var weaponIDs []string
+			weaponCollections, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeWeapon)).All(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("failed to get weapon collection items for RegisterAllNewAssets")
+				return
+			}
+			for _, m := range weaponCollections {
+				weaponIDs = append(weaponIDs, m.ItemID)
+			}
+
+			weapons, err := db.Weapons(weaponIDs...)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("failed to get weapons for RegisterAllNewAssets")
+				return
+			}
+
+			// here we only want to insert weapons that are not a part of a full genesis or limited mech
+			var weaponsToAdd []*server.Weapon
+
+		WeaponLoop:
+			for _, wpn := range weapons {
+				if wpn.GenesisTokenID.Valid {
+					for _, genID := range insertedGenesisIDS {
+						if wpn.GenesisTokenID.Int64 == genID {
+							continue WeaponLoop
+						}
+					}
+				}
+				if wpn.LimitedReleaseTokenID.Valid {
+					for _, genID := range insertedLimitedIDS {
+						if wpn.LimitedReleaseTokenID.Int64 == genID {
+							continue WeaponLoop
+						}
+					}
+				}
+
+				weaponsToAdd = append(weaponsToAdd, wpn)
+			}
+
+			err = pp.AssetsRegister(rpctypes.ServerWeaponsToXsynAsset(weaponsToAdd)) // register new weapons
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("issue inserting new weapons to xsyn")
+				return
+			}
+			gamelog.L.Info().Msg("Successfully inserted new asset weapons")
+			db.PutBool("INSERTED_NEW_ASSETS_WEAPONS", true)
+		}
+	}(genesisIDS, limitedIDs)
+	go func(insertedGenesisIDS []int64, insertedLimitedIDS []int64) {
+		// skins
+		updatedSkins := db.GetBoolWithDefault("INSERTED_NEW_ASSETS_SKINS", false)
+		if !updatedSkins {
+			var skinIDs []string
+			skinCollections, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeMechSkin)).All(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("failed to get skin collection items for RegisterAllNewAssets")
+				return
+			}
+			for _, m := range skinCollections {
+				skinIDs = append(skinIDs, m.ItemID)
+			}
+
+			skins, err := db.MechSkins(skinIDs...)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("failed to get skins for RegisterAllNewAssets")
+				return
+			}
+
+			// here we only want to insert weapons that are not a part of a full genesis or limited mech
+			var skinsToAdd []*server.MechSkin
+
+		SkinLoop:
+			for _, skn := range skins {
+				if skn.GenesisTokenID.Valid {
+					for _, genID := range insertedGenesisIDS {
+						if skn.GenesisTokenID.Int64 == genID {
+							continue SkinLoop
+						}
+					}
+				}
+				if skn.LimitedReleaseTokenID.Valid {
+					for _, genID := range insertedLimitedIDS {
+						if skn.LimitedReleaseTokenID.Int64 == genID {
+							continue SkinLoop
+						}
+					}
+				}
+
+				skinsToAdd = append(skinsToAdd, skn)
+			}
+
+			err = pp.AssetsRegister(rpctypes.ServerMechSkinsToXsynAsset(skinsToAdd)) // register new mech skins
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("issue inserting new mech skins to xsyn")
+				return
+			}
+			gamelog.L.Info().Msg("Successfully inserted new mech skins")
+			db.PutBool("INSERTED_NEW_ASSETS_SKINS", true)
+
+		}
+	}(genesisIDS, limitedIDs)
+	go func(insertedGenesisIDS []int64, insertedLimitedIDS []int64) {
+		// power cores
+		updatedPowerCores := db.GetBoolWithDefault("INSERTED_NEW_ASSETS_POWER_CORES", false)
+		if !updatedPowerCores {
+			var powerCoreIDs []string
+			powerCoreCollections, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypePowerCore)).All(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("failed to get power core collection items for RegisterAllNewAssets")
+				return
+			}
+			for _, m := range powerCoreCollections {
+				powerCoreIDs = append(powerCoreIDs, m.ItemID)
+			}
+
+			powerCores, err := db.PowerCores(powerCoreIDs...)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("failed to get power cores for RegisterAllNewAssets")
+				return
+			}
+
+			// here we only want to power cores that are not a part of a full genesis or limited mech
+			var powerCoresToAdd []*server.PowerCore
+
+		powerCoreLoop:
+			for _, skn := range powerCores {
+				if skn.GenesisTokenID.Valid {
+					for _, genID := range insertedGenesisIDS {
+						if skn.GenesisTokenID.Int64 == genID {
+							continue powerCoreLoop
+						}
+					}
+				}
+				if skn.LimitedReleaseTokenID.Valid {
+					for _, genID := range insertedLimitedIDS {
+						if skn.LimitedReleaseTokenID.Int64 == genID {
+							continue powerCoreLoop
+						}
+					}
+				}
+
+				powerCoresToAdd = append(powerCoresToAdd, skn)
+			}
+
+			err = pp.AssetsRegister(rpctypes.ServerPowerCoresToXsynAsset(powerCoresToAdd)) // register new mech powerCores
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("issue inserting new mech powerCores to xsyn")
+				return
+			}
+			gamelog.L.Info().Msg("Successfully inserted new mech power cores")
+			db.PutBool("INSERTED_NEW_ASSETS_POWER_CORES", true)
+		}
+	}(genesisIDS, limitedIDs)
+	go func(insertedGenesisIDS []int64, insertedLimitedIDS []int64) {
+		// utilities
+		updatedUtilities := db.GetBoolWithDefault("INSERTED_NEW_ASSETS_UTILITIES", false)
+		if !updatedUtilities {
+			var utilityIDs []string
+			utilityCollections, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemType.EQ(boiler.ItemTypeUtility)).All(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("failed to get utility collection items for RegisterAllNewAssets")
+				return
+			}
+			for _, m := range utilityCollections {
+				utilityIDs = append(utilityIDs, m.ItemID)
+			}
+
+			utilities, err := db.Utilities(utilityIDs...)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("failed to get utilities for RegisterAllNewAssets")
+				return
+			}
+
+			// here we only want to power cores that are not a part of a full genesis or limited mech
+			var utilitiesToAdd []*server.Utility
+
+		utilityLoop:
+			for _, util := range utilities {
+				if util.GenesisTokenID.Valid {
+					for _, genID := range insertedGenesisIDS {
+						if util.GenesisTokenID.Int64 == genID {
+							continue utilityLoop
+						}
+					}
+				}
+				if util.LimitedReleaseTokenID.Valid {
+					for _, genID := range insertedLimitedIDS {
+						if util.LimitedReleaseTokenID.Int64 == genID {
+							continue utilityLoop
+						}
+					}
+				}
+
+				utilitiesToAdd = append(utilitiesToAdd, util)
+			}
+
+			err = pp.AssetsRegister(rpctypes.ServerUtilitiesToXsynAsset(utilitiesToAdd)) // register new mech utilities
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("issue inserting new mech utilities to xsyn")
+				return
+			}
+			gamelog.L.Info().Msg("Successfully inserted new utility assets")
+			db.PutBool("INSERTED_NEW_ASSETS_UTILITIES", true)
+		}
+	}(genesisIDS, limitedIDs)
+}
+
+func UpdateXsynStoreItemTemplates(pp *xsyn_rpcclient.XsynXrpcClient) {
+	updated := db.GetBoolWithDefault("UPDATED_TEMPLATE_ITEMS_IDS", false)
+	if !updated {
+		var assets []*xsyn_rpcclient.TemplatesToUpdate
+		query := `
+			SELECT tpo.id as old_template_id, tpbp.template_id as new_template_id
+			FROM templates_old tpo
+			INNER JOIN blueprint_mechs bm ON tpo.blueprint_chassis_id = bm.id
+			INNER JOIN template_blueprints tpbp ON tpbp.blueprint_id = bm.id; `
+		err := boiler.NewQuery(qm.SQL(query)).Bind(nil, gamedb.StdConn, &assets)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("issue getting template ids")
+			return
+		}
+
+		err = pp.UpdateStoreItemIDs(assets)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("issue updating template ids on passport")
+			return
+		}
+		gamelog.L.Info().Msg("Successfully updated xsyn store template items")
+		db.PutBool("UPDATED_TEMPLATE_ITEMS_IDS", true)
+	}
+
+}
+
+type KeyCardUpdate struct {
+	PublicAddress string
+	BlueprintID   string
+}
+
+func UpdateKeycard(pp *xsyn_rpcclient.XsynXrpcClient, filePath string) {
+	gamelog.L.Info().Msg("Syncing Keycards with Passport")
+	updated := db.GetBoolWithDefault("UPDATED_KEYCARD_ITEMS", false)
+	if !updated {
+		f, err := os.Open(filePath)
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("issue updating keycards")
+			return
+		}
+
+		defer f.Close()
+
+		r := csv.NewReader(f)
+
+		if _, err := r.Read(); err != nil {
+			return
+		}
+
+		records, err := r.ReadAll()
+		if err != nil {
+			gamelog.L.Error().Err(err).Msg("issue reading csv")
+			return
+		}
+
+		var KeyCardUpdates []KeyCardUpdate
+		for _, record := range records {
+			keyCardUpdate := &KeyCardUpdate{
+				PublicAddress: record[0],
+				BlueprintID:   record[1],
+			}
+
+			KeyCardUpdates = append(KeyCardUpdates, *keyCardUpdate)
+		}
+
+		failed := 0
+		success := 0
+
+		var keycardAssets xsyn_rpcclient.UpdateUser1155AssetReq
+		var keyCardData []xsyn_rpcclient.Supremacy1155Asset
+		for i, KeyCardUpdate := range KeyCardUpdates {
+			keycard, err := boiler.BlueprintKeycards(boiler.BlueprintKeycardWhere.ID.EQ(KeyCardUpdate.BlueprintID)).One(gamedb.StdConn)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("failed to get keycard blueprint")
+				continue
+			}
+
+			if i == 0 {
+				keycardAssets.PublicAddress = KeyCardUpdate.PublicAddress
+
+				attrValue := "N/A"
+				if keycard.Syndicate.Valid {
+					attrValue = keycard.Syndicate.String
+				}
+
+				keyCardData = append(keyCardData, xsyn_rpcclient.Supremacy1155Asset{
+					BlueprintID:    keycard.ID,
+					Label:          keycard.Label,
+					Description:    keycard.Description,
+					CollectionSlug: "supremacy-achievements",
+					TokenID:        keycard.KeycardTokenID,
+					Count:          1,
+					ImageURL:       keycard.ImageURL,
+					AnimationURL:   keycard.AnimationURL.String,
+					KeycardGroup:   keycard.KeycardGroup,
+					Attributes: []xsyn_rpcclient.SupremacyKeycardAttribute{
+						xsyn_rpcclient.SupremacyKeycardAttribute{
+							TraitType: "Syndicate",
+							Value:     attrValue,
+						},
+					},
+				})
+				continue
+			}
+
+			if KeyCardUpdate.PublicAddress == KeyCardUpdates[i-1].PublicAddress {
+				attrValue := "N/A"
+				if keycard.Syndicate.Valid {
+					attrValue = keycard.Syndicate.String
+				}
+
+				keyCardData = append(keyCardData, xsyn_rpcclient.Supremacy1155Asset{
+					BlueprintID:    keycard.ID,
+					Label:          keycard.Label,
+					Description:    keycard.Description,
+					CollectionSlug: "supremacy-achievements",
+					TokenID:        keycard.KeycardTokenID,
+					Count:          1,
+					ImageURL:       keycard.ImageURL,
+					AnimationURL:   keycard.AnimationURL.String,
+					KeycardGroup:   keycard.KeycardGroup,
+					Attributes: []xsyn_rpcclient.SupremacyKeycardAttribute{
+						xsyn_rpcclient.SupremacyKeycardAttribute{
+							TraitType: "Syndicate",
+							Value:     attrValue,
+						},
+					},
+				})
+				continue
+			}
+
+			keycardAssets.AssetData = keyCardData
+			resp, err := pp.UpdateKeycardItem(keycardAssets)
+			if err != nil {
+				gamelog.L.Error().Err(err).Msg("Failed to update key card item from passport server")
+				failed++
+				for _, assetData := range keycardAssets.AssetData {
+					failedSync := &boiler.FailedPlayerKeycardsSync{
+						PublicAddress:      keycardAssets.PublicAddress,
+						BlueprintKeycardID: assetData.BlueprintID,
+						Count:              assetData.Count,
+						Reason:             "Passport RPC Error",
+					}
+
+					if failedSync.Insert(gamedb.StdConn, boil.Infer()) != nil {
+						gamelog.L.Error().Str("public_address", keycardAssets.PublicAddress).Str("blueprint_id", assetData.BlueprintID).Msg("Failed to insert failed sync item")
+						continue
+					}
+				}
+				continue
+			}
+			factionID := uuid.Nil
+			if resp.FactionID.Valid {
+				factionID = uuid.Must(uuid.FromString(resp.FactionID.String))
+			}
+
+			_, _ = db.PlayerRegister(uuid.Must(uuid.FromString(resp.UserID)), resp.Username, factionID, common.HexToAddress(resp.PublicAddress.String))
+
+			for _, assetData := range keyCardData {
+				playerKeycard := boiler.PlayerKeycard{
+					PlayerID:           resp.UserID,
+					BlueprintKeycardID: assetData.BlueprintID,
+					Count:              assetData.Count,
+				}
+
+				err := playerKeycard.Insert(gamedb.StdConn, boil.Infer())
+				if err != nil {
+					failed++
+					gamelog.L.Error().Interface("PlayerKeycard", playerKeycard).Err(err).Msg("failed to insert new player keycard")
+					failedSync := &boiler.FailedPlayerKeycardsSync{
+						PublicAddress:      keycardAssets.PublicAddress,
+						BlueprintKeycardID: assetData.BlueprintID,
+						Count:              assetData.Count,
+						Reason:             "Gameserver Insert Error",
+					}
+
+					if failedSync.Insert(gamedb.StdConn, boil.Infer()) != nil {
+						gamelog.L.Error().Str("public_address", keycardAssets.PublicAddress).Str("blueprint_id", assetData.BlueprintID).Msg("Failed to insert failed sync item")
+						continue
+					}
+					continue
+				}
+				success++
+			}
+
+			keyCardData = nil
+
+			keycardAssets.PublicAddress = KeyCardUpdate.PublicAddress
+			attrValue := "N/A"
+			if keycard.Syndicate.Valid {
+				attrValue = keycard.Syndicate.String
+			}
+
+			keyCardData = append(keyCardData, xsyn_rpcclient.Supremacy1155Asset{
+				BlueprintID:    keycard.ID,
+				Label:          keycard.Label,
+				Description:    keycard.Description,
+				CollectionSlug: "supremacy-achievements",
+				TokenID:        keycard.KeycardTokenID,
+				Count:          1,
+				ImageURL:       keycard.ImageURL,
+				AnimationURL:   keycard.AnimationURL.String,
+				KeycardGroup:   keycard.KeycardGroup,
+				Attributes: []xsyn_rpcclient.SupremacyKeycardAttribute{
+					xsyn_rpcclient.SupremacyKeycardAttribute{
+						TraitType: "Syndicate",
+						Value:     attrValue,
+					},
+				},
+			})
+
+		}
+
+		db.PutBool("UPDATED_KEYCARD_ITEMS", true)
+
+		gamelog.L.Info().Int("Success", success).Int("Failed", failed).Msg("Completed importing text game non-minted assets")
+	}
+
+}
+
+func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, battleArenaClient *battle.Arena, passport *xsyn_rpcclient.XsynXrpcClient, messageBus *messagebus.MessageBus, gsHub *hub.Hub, sms server.SMS, telegram server.Telegram, languageDetector lingua.LanguageDetector) (*api.API, error) {
 	environment := ctxCLI.String("environment")
 	sentryDSNBackend := ctxCLI.String("sentry_dsn_backend")
 	sentryServerName := ctxCLI.String("sentry_server_name")
@@ -645,14 +924,14 @@ func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, bat
 		}
 	default:
 		if err != nil {
-			return nil, terror.Error(err)
+			return nil, err
 		}
 	}
 
 	jwtKey := ctxCLI.String("jwt_key")
 	jwtKeyByteArray, err := base64.StdEncoding.DecodeString(jwtKey)
 	if err != nil {
-		return nil, terror.Error(err)
+		return nil, err
 	}
 
 	apiAddr := ctxCLI.String("api_addr")
@@ -665,9 +944,11 @@ func SetupAPI(ctxCLI *cli.Context, ctx context.Context, log *zerolog.Logger, bat
 		TwitchUIHostURL:       ctxCLI.String("twitch_ui_web_host_url"),
 		ServerStreamKey:       ctxCLI.String("server_stream_key"),
 		PassportWebhookSecret: ctxCLI.String("passport_webhook_secret"),
+		CookieKey:             ctxCLI.String("cookie_key"),
 		JwtKey:                jwtKeyByteArray,
 		Environment:           environment,
 		Address:               apiAddr,
+		AuthCallbackURL:       ctxCLI.String("auth_callback_url"),
 	}
 
 	// HTML Sanitizer

@@ -5,10 +5,8 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 
-	"github.com/georgysavva/scany/pgxscan"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
-	"golang.org/x/net/context"
 )
 
 type (
@@ -63,19 +61,25 @@ func (p BlueprintPlayerAbilityColumn) IsValid() error {
 	return terror.Error(fmt.Errorf("invalid blueprint player ability column"))
 }
 
+type LocationSelectType string
+
+const (
+	MechSelect     LocationSelectType = "MECH_SELECT"
+	LocationSelect LocationSelectType = "LOCATION_SELECT"
+	Global         LocationSelectType = "GLOBAL"
+)
+
 type SaleAbilityDetailed struct {
 	*boiler.SalePlayerAbility
 	Ability *boiler.BlueprintPlayerAbility `json:"ability,omitempty"`
 }
 
 func SaleAbilityGet(
-	ctx context.Context,
-	conn pgxscan.Querier,
 	abilityID string,
 ) (*SaleAbilityDetailed, error) {
 	spa, err := boiler.SalePlayerAbilities(boiler.SalePlayerAbilityWhere.ID.EQ(abilityID), qm.Load(boiler.SalePlayerAbilityRels.Blueprint)).One(gamedb.StdConn)
 	if err != nil {
-		return nil, terror.Error(err)
+		return nil, err
 	}
 
 	result := SaleAbilityDetailed{
@@ -89,31 +93,29 @@ func SaleAbilityGet(
 // SaleAbilitiesList returns a list of IDs from the sale_player_abilities table.
 // Filter and sorting options can be passed in to manipulate the end result.
 func SaleAbilitiesList(
-	ctx context.Context,
-	conn pgxscan.Querier,
 	search string,
 	filter *ListFilterRequest,
 	sort *ListSortRequest,
 	offset int,
 	pageSize int,
-) (int, []string, error) {
+) (int64, []string, error) {
 	queryMods := []qm.QueryMod{}
 
 	// Filters
 	if filter != nil {
 		for i, f := range filter.Items {
-			if f.Table != nil && *f.Table != "" {
-				if *f.Table == boiler.TableNames.BlueprintPlayerAbilities {
+			if f.Table != "" {
+				if f.Table == boiler.TableNames.BlueprintPlayerAbilities {
 					column := BlueprintPlayerAbilityColumn(f.Column)
 					err := column.IsValid()
 					if err != nil {
-						return 0, nil, terror.Error(err)
+						return 0, nil, err
 					}
-				} else if *f.Table == boiler.TableNames.SalePlayerAbilities {
+				} else if f.Table == boiler.TableNames.SalePlayerAbilities {
 					column := SalePlayerAbilityColumn(f.Column)
 					err := column.IsValid()
 					if err != nil {
-						return 0, nil, terror.Error(err)
+						return 0, nil, err
 					}
 				}
 			}
@@ -136,25 +138,30 @@ func SaleAbilitiesList(
 		}
 	}
 
+	total, err := boiler.SalePlayerAbilities(queryMods...).Count(gamedb.StdConn)
+	if err != nil {
+		return 0, nil, err
+	}
+
 	// Sort
 	orderBy := qm.OrderBy(fmt.Sprintf("%s desc", boiler.SalePlayerAbilityColumns.AvailableUntil))
 	if sort != nil {
 		sortColumn := sort.Column
-		if sort.Table != nil && *sort.Table != "" {
-			if *sort.Table == boiler.TableNames.BlueprintPlayerAbilities {
+		if sort.Table != "" {
+			if sort.Table == boiler.TableNames.BlueprintPlayerAbilities {
 				column := BlueprintPlayerAbilityColumn(sort.Column)
 				err := column.IsValid()
 				if err != nil {
-					return 0, nil, terror.Error(err)
+					return 0, nil, err
 				}
-			} else if *sort.Table == boiler.TableNames.SalePlayerAbilities {
+			} else if sort.Table == boiler.TableNames.SalePlayerAbilities {
 				column := SalePlayerAbilityColumn(sort.Column)
 				err := column.IsValid()
 				if err != nil {
-					return 0, nil, terror.Error(err)
+					return 0, nil, err
 				}
 			}
-			sortColumn = fmt.Sprintf("%s.%s", *sort.Table, sort.Column)
+			sortColumn = fmt.Sprintf("%s.%s", sort.Table, sort.Column)
 		}
 		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", sortColumn, sort.Direction))
 	}
@@ -175,7 +182,7 @@ func SaleAbilitiesList(
 		queryMods...,
 	).All(gamedb.StdConn)
 	if err != nil {
-		return 0, nil, terror.Error(err)
+		return 0, nil, err
 	}
 
 	sIDs := make([]string, 0)
@@ -183,34 +190,32 @@ func SaleAbilitiesList(
 		sIDs = append(sIDs, s.ID)
 	}
 
-	return len(sIDs), sIDs, nil
+	return total, sIDs, nil
 }
 
 // PlayerAbilitiesList returns a list of IDs from the player_abilities table.
 // Filter and sorting options can be passed in to manipulate the end result.
 func PlayerAbilitiesList(
-	ctx context.Context,
-	conn pgxscan.Querier,
 	search string,
 	filter *ListFilterRequest,
 	sort *ListSortRequest,
 	offset int,
 	pageSize int,
-) (int, []string, error) {
+) (int64, []string, error) {
 	queryMods := []qm.QueryMod{}
 
 	// Filters
 	if filter != nil {
 		for i, f := range filter.Items {
-			if f.Table != nil && *f.Table != "" {
-				if *f.Table != boiler.TableNames.PlayerAbilities {
+			if f.Table != "" {
+				if f.Table != boiler.TableNames.PlayerAbilities {
 					return 0, nil, terror.Error(fmt.Errorf("invalid filter table name"))
 				}
 			}
 			column := PlayerAbilityColumn(f.Column)
 			err := column.IsValid()
 			if err != nil {
-				return 0, nil, terror.Error(err)
+				return 0, nil, err
 			}
 			queryMod := GenerateListFilterQueryMod(*f, i, filter.LinkOperator)
 			queryMods = append(queryMods, queryMod)
@@ -231,20 +236,25 @@ func PlayerAbilitiesList(
 		}
 	}
 
+	total, err := boiler.PlayerAbilities(queryMods...).Count(gamedb.StdConn)
+	if err != nil {
+		return 0, nil, terror.Error(err)
+	}
+
 	// Sort
 	orderBy := qm.OrderBy(fmt.Sprintf("%s desc", boiler.PlayerAbilityColumns.PurchasedAt))
 	if sort != nil {
 		sortColumn := sort.Column
-		if sort.Table != nil && *sort.Table != "" {
-			if *sort.Table != boiler.TableNames.PlayerAbilities {
+		if sort.Table != "" {
+			if sort.Table != boiler.TableNames.PlayerAbilities {
 				return 0, nil, terror.Error(fmt.Errorf("invalid sort table name"))
 			}
-			sortColumn = fmt.Sprintf("%s.%s", *sort.Table, sort.Column)
+			sortColumn = fmt.Sprintf("%s.%s", sort.Table, sort.Column)
 		}
 		column := PlayerAbilityColumn(sort.Column)
 		err := column.IsValid()
 		if err != nil {
-			return 0, nil, terror.Error(err)
+			return 0, nil, err
 		}
 		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", sortColumn, sort.Direction))
 	}
@@ -259,7 +269,7 @@ func PlayerAbilitiesList(
 		queryMods...,
 	).All(gamedb.StdConn)
 	if err != nil {
-		return 0, nil, terror.Error(err)
+		return 0, nil, err
 	}
 
 	aIDs := make([]string, 0)
@@ -267,5 +277,5 @@ func PlayerAbilitiesList(
 		aIDs = append(aIDs, s.ID)
 	}
 
-	return len(aIDs), aIDs, nil
+	return total, aIDs, nil
 }

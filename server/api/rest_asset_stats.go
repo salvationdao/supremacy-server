@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"server/db/boiler"
@@ -10,7 +9,7 @@ import (
 	"server/helpers"
 	"strconv"
 
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 	"github.com/ninja-software/terror/v2"
 )
 
@@ -23,7 +22,10 @@ func AssetStatsRouter(api *API) chi.Router {
 		API: api,
 	}
 	r := chi.NewRouter()
-	r.Get("/chassis", WithError(c.GetChassisStatPercentage))
+	r.Get("/mech", WithError(c.GetChassisStatPercentage))
+	// TODO: /utility/*types
+	// TODO: /weapon/*types
+	// TODO: /power_core
 
 	return r
 }
@@ -51,35 +53,32 @@ func (sc *AssetStatsController) GetChassisStatPercentage(w http.ResponseWriter, 
 
 	// validate stat column
 	switch stat {
-	case boiler.ChassisColumns.ShieldRechargeRate:
-	case boiler.ChassisColumns.HealthRemaining:
-	case boiler.ChassisColumns.WeaponHardpoints:
-	case boiler.ChassisColumns.TurretHardpoints:
-	case boiler.ChassisColumns.UtilitySlots:
-	case boiler.ChassisColumns.Speed:
-	case boiler.ChassisColumns.MaxHitpoints:
-	case boiler.ChassisColumns.MaxShield:
+	case boiler.MechColumns.WeaponHardpoints,
+		boiler.MechColumns.UtilitySlots,
+		boiler.MechColumns.Speed,
+		boiler.MechColumns.MaxHitpoints:
 		break
 	default:
 		gamelog.L.Error().Str("stat", stat).Msg("invalid mech stat identifier")
 		return http.StatusBadRequest, terror.Error(fmt.Errorf("invalid mech stat identifier"), "Invalid mech stat identifier.")
 	}
 
+	var args []interface{}
+
 	modelCondition := ""
 
+	// here we get the model ID
 	if model != "" {
-		// validate model
-		exists, err := boiler.Chasses(boiler.ChassisWhere.Model.EQ(model)).Exists(gamedb.StdConn)
+		mechModel, err := boiler.MechModels(
+			boiler.MechModelWhere.Label.EQ(model),
+		).One(gamedb.StdConn)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("model", model).Msg("invalid model provided")
 			return http.StatusBadRequest, terror.Error(err, "Invalid model provided.")
 		}
-		if !exists {
-			gamelog.L.Error().Err(fmt.Errorf("model doesn't exist")).Str("model", model).Msg("model doesn't exist")
-			return http.StatusBadRequest, terror.Error(fmt.Errorf("model doesn't exist"), "Invalid model provided.")
-		}
 
-		modelCondition = fmt.Sprintf(`WHERE model ilike '%s'`, model)
+		args = append(args, mechModel.ID)
+		modelCondition = fmt.Sprintf(`WHERE model_id = $%d`, len(args))
 	}
 
 	var total int
@@ -87,15 +86,15 @@ func (sc *AssetStatsController) GetChassisStatPercentage(w http.ResponseWriter, 
 	var min int
 
 	q := fmt.Sprintf(`
-         	SELECT
-         		count(id),
-         		max("%[1]s"),
-         		min("%[1]s")
-         	FROM chassis
+	    	SELECT
+	    		count(id),
+	    		max("%[1]s"),
+	    		min("%[1]s")
+	    	FROM mechs
 			%s
-         `, stat, modelCondition)
+	    `, stat, modelCondition)
 
-	err = gamedb.Conn.QueryRow(context.Background(), q).Scan(&total, &max, &min)
+	err = gamedb.StdConn.QueryRow(q, args...).Scan(&total, &max, &min)
 	if err != nil {
 		gamelog.L.Error().
 			Str("stat", stat).
@@ -119,4 +118,5 @@ func (sc *AssetStatsController) GetChassisStatPercentage(w http.ResponseWriter, 
 		100 - percentage,
 		percentage,
 	})
+	return 200, nil
 }

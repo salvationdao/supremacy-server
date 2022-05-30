@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/DataDog/gostackparse"
-	"github.com/go-chi/chi/middleware"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/ninja-software/log_helpers"
 	"github.com/rs/zerolog"
 )
@@ -125,7 +125,7 @@ func (l logEntry) Write(status int, bytes int, header http.Header, elapsed time.
 		Int("status", status).
 		Int("bytes", bytes).
 		Dur("duration", elapsed).
-		Send()
+		Msg(l.request_path)
 }
 
 func (l logEntry) Panic(v interface{}, stack []byte) {

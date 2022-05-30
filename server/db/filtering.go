@@ -23,6 +23,9 @@ const (
 	OperatorValueTypeIsNull    = "isnull"
 	OperatorValueTypeIsNotNull = "isnotnull"
 
+	OperatorValueTypeIsFalse = "is false"
+	OperatorValueTypeIsTrue  = "is true"
+
 	// Dates
 	OperatorValueTypeIs           = "is"
 	OperatorValueTypeIsNot        = "not"
@@ -48,7 +51,7 @@ type ListFilterRequest struct {
 
 // ListFilterRequestItem contains instructions on filtering
 type ListFilterRequestItem struct {
-	Table    *string           `json:"table"`
+	Table    string            `json:"table"`
 	Column   string            `json:"column"`
 	Operator OperatorValueType `json:"operator"`
 	Value    string            `json:"value"`
@@ -57,8 +60,8 @@ type ListFilterRequestItem struct {
 func GenerateListFilterQueryMod(filterItem ListFilterRequestItem, index int, linkOperator LinkOperatorType) qm.QueryMod {
 	checkValue := filterItem.Value
 	checkColumn := filterItem.Column
-	if filterItem.Table != nil && *filterItem.Table != "" {
-		checkColumn = fmt.Sprintf("%s.%s", *filterItem.Table, filterItem.Column)
+	if filterItem.Table != "" {
+		checkColumn = fmt.Sprintf("%s.%s", filterItem.Table, filterItem.Column)
 	}
 	condition := fmt.Sprintf("%s %s ?", checkColumn, filterItem.Operator)
 
@@ -76,6 +79,12 @@ func GenerateListFilterQueryMod(filterItem ListFilterRequestItem, index int, lin
 	}
 
 	switch filterItem.Operator {
+	case OperatorValueTypeIsTrue:
+		condition = fmt.Sprintf("%s IS TRUE", checkColumn)
+		break
+	case OperatorValueTypeIsFalse:
+		condition = fmt.Sprintf("%s IS FALSE", checkColumn)
+		break
 	case OperatorValueTypeIsNull:
 		condition = fmt.Sprintf("%s IS NULL", checkColumn)
 		break
@@ -102,6 +111,16 @@ func GenerateListFilterQueryMod(filterItem ListFilterRequestItem, index int, lin
 		break
 	case OperatorValueTypeContains, OperatorValueTypeStartsWith, OperatorValueTypeEndsWith:
 		condition = fmt.Sprintf("%s ILIKE ?", checkColumn)
+	}
+
+	if checkValue == "" {
+		if index == 0 {
+			return qm.Where(condition)
+		}
+		if linkOperator == LinkOperatorTypeOr {
+			return qm.Or(condition)
+		}
+		return qm.And(condition)
 	}
 
 	if index == 0 {
@@ -148,6 +167,10 @@ func GenerateListFilterSQL(column string, value string, operator OperatorValueTy
 	}
 
 	switch operator {
+	case OperatorValueTypeIsTrue:
+		condition = fmt.Sprintf("%s IS TRUE", column)
+	case OperatorValueTypeIsFalse:
+		condition = fmt.Sprintf("%s IS FALSE", column)
 	case OperatorValueTypeIsNull:
 		condition = fmt.Sprintf("%s IS NULL", column)
 	case OperatorValueTypeIsNotNull:

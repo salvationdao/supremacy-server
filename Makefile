@@ -147,10 +147,10 @@ go-mod-download:
 	cd $(SERVER) && go mod download
 
 .PHONY: init
-init: db-setup deps tools go-mod-tidy db-migrate
+init: db-setup deps tools go-mod-tidy db-reset
 
 .PHONY: init-docker
-init-docker: docker-start tools go-mod-tidy docker-setup db-migrate
+init-docker: docker-start tools go-mod-tidy docker-setup db-reset
 
 .PHONY: deps
 deps: go-mod-download

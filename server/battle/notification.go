@@ -2,7 +2,9 @@ package battle
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"server"
 	"server/db"
@@ -10,10 +12,13 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/multipliers"
+	"server/xsyn_rpcclient"
 	"time"
 
-	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
+	"github.com/ninja-syndicate/ws"
+
+	"github.com/gofrs/uuid"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/volatiletech/null/v8"
@@ -85,11 +90,11 @@ type AbilityBrief struct {
 }
 
 type UserBrief struct {
-	ID        uuid.UUID     `json:"id"`
-	Username  string        `json:"username"`
-	FactionID string        `json:"faction_id,omitempty"`
-	Faction   *FactionBrief `json:"faction"`
-	Gid       int           `json:"gid"`
+	ID        uuid.UUID `json:"id"`
+	Username  string    `json:"username"`
+	FactionID string    `json:"faction_id,omitempty"`
+	Faction   *Faction  `json:"faction"`
+	Gid       int       `json:"gid"`
 }
 
 type GameNotification struct {
@@ -97,21 +102,15 @@ type GameNotification struct {
 	Data interface{}          `json:"data"`
 }
 
-const HubKeyMultiplierSubscribe hub.HubCommandKey = "USER:MULTIPLIERS:SUBSCRIBE"
+const HubKeyMultiplierSubscribe = "USER:MULTIPLIERS:SUBSCRIBE"
 
-const HubKeyUserMultiplierSignalUpdate hub.HubCommandKey = "USER:MULTIPLIER:SIGNAL:SUBSCRIBE"
+const HubKeyUserMultiplierSignalUpdate = "USER:MULTIPLIER:SIGNAL:SUBSCRIBE"
 
-func (arena *Arena) HubKeyMultiplierUpdate(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
-	req := &hub.HubCommandRequest{}
-	err := json.Unmarshal(payload, req)
+func (arena *Arena) MultiplierUpdate(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	id, err := uuid.FromString(user.ID)
 	if err != nil {
-		return "", "", terror.Error(err)
-	}
-
-	id, err := uuid.FromString(wsc.Identifier())
-	if err != nil {
-		gamelog.L.Warn().Err(err).Str("id", wsc.Identifier()).Msg("unable to create uuid from websocket client identifier id")
-		return "", "", terror.Error(err, "Unable to create uuid from websocket client identifier id")
+		gamelog.L.Warn().Err(err).Str("id", user.ID).Msg("unable to create uuid from websocket client identifier id")
+		return terror.Error(err, "Unable to create uuid from websocket client identifier id")
 	}
 
 	spoils, err := boiler.SpoilsOfWars(
@@ -121,7 +120,7 @@ func (arena *Arena) HubKeyMultiplierUpdate(ctx context.Context, wsc *hub.Client,
 	).All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("failed to call SpoilsOfWars")
-		return "", "", terror.Error(err, "Unable to get recently battle multipliers.")
+		return terror.Error(err, "Unable to get recently battle multipliers.")
 	}
 
 	resp := &MultiplierUpdate{
@@ -138,18 +137,18 @@ func (arena *Arena) HubKeyMultiplierUpdate(ctx context.Context, wsc *hub.Client,
 	}
 
 	reply(resp)
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyMultiplierSubscribe, wsc.Identifier())), nil
+	return nil
 }
 
-const HubKeyViewerLiveCountUpdated = hub.HubCommandKey("VIEWER:LIVE:COUNT:UPDATED")
+const HubKeyViewerLiveCountUpdated = "VIEWER:LIVE:COUNT:UPDATED"
 
-const HubKeyGameNotification hub.HubCommandKey = "GAME:NOTIFICATION"
+const HubKeyGameNotification = "GAME:NOTIFICATION"
 
-func (arena *Arena) GameNotificationSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
+func (arena *Arena) GameNotificationSubscribeHandler(ctx context.Context, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
 	req := &hub.HubCommandRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
-		return "", "", terror.Error(err)
+		return "", "", err
 	}
 
 	return req.TransactionID, messagebus.BusKey(HubKeyGameNotification), nil
@@ -157,7 +156,7 @@ func (arena *Arena) GameNotificationSubscribeHandler(ctx context.Context, wsc *h
 
 // BroadcastGameNotificationText broadcast game notification to client
 func (arena *Arena) BroadcastGameNotificationText(data string) {
-	arena.messageBus.Send(messagebus.BusKey(HubKeyGameNotification), &GameNotification{
+	ws.PublishMessage("/public/notification", HubKeyGameNotification, &GameNotification{
 		Type: GameNotificationTypeText,
 		Data: data,
 	})
@@ -165,7 +164,7 @@ func (arena *Arena) BroadcastGameNotificationText(data string) {
 
 // BroadcastGameNotificationLocationSelect broadcast game notification to client
 func (arena *Arena) BroadcastGameNotificationLocationSelect(data *GameNotificationLocationSelect) {
-	arena.messageBus.Send(messagebus.BusKey(HubKeyGameNotification), &GameNotification{
+	ws.PublishMessage("/public/notification", HubKeyGameNotification, &GameNotification{
 		Type: GameNotificationTypeLocationSelect,
 		Data: data,
 	})
@@ -173,7 +172,7 @@ func (arena *Arena) BroadcastGameNotificationLocationSelect(data *GameNotificati
 
 // BroadcastGameNotificationAbility broadcast game notification to client
 func (arena *Arena) BroadcastGameNotificationAbility(notificationType GameNotificationType, data GameNotificationAbility) {
-	arena.messageBus.Send(messagebus.BusKey(HubKeyGameNotification), &GameNotification{
+	ws.PublishMessage("/public/notification", HubKeyGameNotification, &GameNotification{
 		Type: notificationType,
 		Data: data,
 	})
@@ -181,7 +180,7 @@ func (arena *Arena) BroadcastGameNotificationAbility(notificationType GameNotifi
 
 // BroadcastGameNotificationWarMachineAbility broadcast game notification to client
 func (arena *Arena) BroadcastGameNotificationWarMachineAbility(data *GameNotificationWarMachineAbility) {
-	arena.messageBus.Send(messagebus.BusKey(HubKeyGameNotification), &GameNotification{
+	ws.PublishMessage("/public/notification", HubKeyGameNotification, &GameNotification{
 		Type: GameNotificationTypeWarMachineAbility,
 		Data: data,
 	})
@@ -189,7 +188,7 @@ func (arena *Arena) BroadcastGameNotificationWarMachineAbility(data *GameNotific
 
 // BroadcastGameNotificationWarMachineDestroyed broadcast game notification to client
 func (arena *Arena) BroadcastGameNotificationWarMachineDestroyed(data *WarMachineDestroyedEventRecord) {
-	arena.messageBus.Send(messagebus.BusKey(HubKeyGameNotification), &GameNotification{
+	ws.PublishMessage("/public/notification", HubKeyGameNotification, &GameNotification{
 		Type: GameNotificationTypeWarMachineDestroyed,
 		Data: data,
 	})
@@ -200,91 +199,196 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 	// get next 10 war machines in queue for each faction
 	q, err := db.LoadBattleQueue(context.Background(), 13)
 	if err != nil {
-		gamelog.L.Warn().Err(err).Str("battle_id", arena.currentBattle().ID).Msg("unable to load out queue for notifications")
+		gamelog.L.Warn().Err(err).Str("battle_id", arena.CurrentBattle().ID).Msg("unable to load out queue for notifications")
 		return
 	}
+
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("unable to begin tx")
+		return
+	}
+	defer tx.Rollback()
 
 	// for each war machine in queue, find ones that need to be notified
 	for _, bq := range q {
 		// if in battle or already notified skip
 		if bq.BattleID.Valid {
-			gamelog.L.Warn().Err(err).Str("battle_id", arena.currentBattle().BattleID).Msg(fmt.Sprintf("battle has started or already happened before sending notification: %s", bq.BattleID.String))
+			gamelog.L.Warn().Err(err).Str("battle_id", arena.CurrentBattle().BattleID).Msg(fmt.Sprintf("battle has started or already happened before sending notification: %s", bq.BattleID.String))
 			continue
 		}
 		if bq.Notified {
 			continue
 		}
 
-		// add them to users to notify
-		player, err := boiler.Players(
-			boiler.PlayerWhere.ID.EQ(bq.OwnerID),
-		).One(gamedb.StdConn)
+		// get mech owner
+		player, err := boiler.Players(boiler.PlayerWhere.ID.EQ(bq.OwnerID)).One(gamedb.StdConn)
 		if err != nil {
-			gamelog.L.Error().Err(err).Str("battle_id", arena.currentBattle().ID).Str("owner_id", bq.OwnerID).Msg("unable to find owner for battle queue notification")
+			gamelog.L.Error().Err(err).Str("battle_id", arena.CurrentBattle().ID).Str("owner_id", bq.OwnerID).Msg("unable to find owner for battle queue notification")
 			continue
 		}
+
+		playerUUID, err := uuid.FromString(player.ID)
+		if err != nil {
+			gamelog.L.Error().Err(err).Str("player_id", bq.MechID).Msg("unable to get player UUID")
+			continue
+		}
+
 		warMachine, err := bq.Mech(qm.Load(boiler.MechRels.BattleQueueNotifications)).One(gamedb.StdConn)
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("mech_id", bq.MechID).Msg("unable to find war machine for battle queue notification")
 			continue
 		}
 
-		// continue loop if their war machine does not have a relationship with the battle_queue_notifications table
-		if warMachine.R.BattleQueueNotifications == nil {
-			gamelog.L.Warn().Str("mech id", warMachine.ID).Str("mech name", warMachine.Name).Msg("Skipping mech notification, no relation found on battle_queue_notifications table")
-			continue
-		}
-
-		//bqn, err := bq.QueueMechBattleQueueNotifications(
-		//	boiler.BattleQueueNotificationWhere.QueueMechID.EQ(null.StringFrom(warMachine.ID)),
-		//	boiler.BattleQueueNotificationWhere.IsRefunded.EQ(false),
-		//	boiler.BattleQueueNotificationWhere.SentAt.IsNull(),
-		//	qm.Load(boiler.BattleQueueNotificationRels.Mech),
-		//).One(gamedb.StdConn)
-		//if err != nil {
-		//	gamelog.L.Error().Err(err).Str("battle_id", arena.currentBattle().ID).Msg("unable to find battle queue notifications")
-		//	continue
-		//}
-
 		wmName := fmt.Sprintf("(%s)", warMachine.Label)
 		if warMachine.Name != "" {
 			wmName = fmt.Sprintf("(%s)", warMachine.Name)
 		}
 
-		for _, n := range warMachine.R.BattleQueueNotifications {
-			if n.SentAt.Valid {
-				continue
-			}
-			// send telegram notification
-			if n.TelegramNotificationID.Valid {
+		// track wether notification was sent with the old system
+		sent := false
 
-				notificationMsg := fmt.Sprintf("🦾 %s, your War Machine %s is approaching the front of the queue!\n\n⚔️ Jump into the Battle Arena now to prepare. Your survival has its rewards.\n\n⚠️ (Reminder: In order to combat scams we will NEVER send you links)", player.Username.String, wmName)
+		// OLD NOTIFICATION SYSTEM (WILL BE REMOVED)
+		if warMachine.R.BattleQueueNotifications != nil {
+			for _, n := range warMachine.R.BattleQueueNotifications {
+				if n.SentAt.Valid {
+					continue
+				}
 
-				gamelog.L.Info().Str("TelegramNotificationID", n.TelegramNotificationID.String).Msg("sending telegram notification")
-				err = arena.telegram.Notify(n.TelegramNotificationID.String, notificationMsg)
+				// send telegram notification
+				if n.TelegramNotificationID.Valid {
+					notificationMsg := fmt.Sprintf("🦾 %s, your War Machine %s is approaching the front of the queue!\n\n⚔️ Jump into the Battle Arena now to prepare. Your survival has its rewards.\n\n⚠️ (Reminder: In order to combat scams we will NEVER send you links)", player.Username.String, wmName)
+					gamelog.L.Info().Str("TelegramNotificationID", n.TelegramNotificationID.String).Msg("sending telegram notification")
+					err = arena.telegram.NotifyDEPRECATED(n.TelegramNotificationID.String, notificationMsg)
+					if err != nil {
+						gamelog.L.Error().Err(err).Str("mech_id", bq.MechID).Str("owner_id", bq.OwnerID).Str("queued_at", bq.QueuedAt.String()).Str("telegram id", n.TelegramNotificationID.String).Msg("failed to notify telegram")
+					}
+					sent = true
+				}
+
+				// send sms
+				if n.MobileNumber.Valid {
+					notificationMsg := fmt.Sprintf("%s, your War Machine %s is approaching the front of the queue!\n\nJump into the Battle Arena now to prepare. Your survival has its rewards.\n\n(Reminder: In order to combat scams we will NEVER send you links)", player.Username.String, wmName)
+					gamelog.L.Info().Str("MobileNumber", n.MobileNumber.String).Msg("sending sms notification")
+					err := arena.sms.SendSMS(
+						player.MobileNumber.String,
+						notificationMsg,
+					)
+					if err != nil {
+						gamelog.L.Error().Err(err).Str("to", n.MobileNumber.String).Msg("failed to send battle queue notification sms")
+					}
+					sent = true
+				}
+
+				n.SentAt = null.TimeFrom(time.Now())
+				n.QueueMechID = null.NewString("", false)
+				_, err = n.Update(gamedb.StdConn, boil.Infer())
 				if err != nil {
-					gamelog.L.Error().Err(err).Str("mech_id", bq.MechID).Str("owner_id", bq.OwnerID).Str("queued_at", bq.QueuedAt.String()).Str("telegram id", n.TelegramNotificationID.String).Msg("failed to notify telegram")
+					gamelog.L.Error().Err(err).Str("bqn id", n.ID).Msg("failed to update BattleQueueNotificationColumns")
 				}
 			}
+		}
 
-			// send sms
-			if n.MobileNumber.Valid {
-				notificationMsg := fmt.Sprintf("%s, your War Machine %s is approaching the front of the queue!\n\nJump into the Battle Arena now to prepare. Your survival has its rewards.\n\n(Reminder: In order to combat scams we will NEVER send you links)", player.Username.String, wmName)
-				gamelog.L.Info().Str("MobileNumber", n.MobileNumber.String).Msg("sending sms notification")
-				err := arena.sms.SendSMS(
-					n.MobileNumber.String,
-					notificationMsg,
-				)
-				if err != nil {
-					gamelog.L.Error().Err(err).Str("to", n.MobileNumber.String).Msg("failed to send battle queue notification sms")
-				}
-			}
-
-			n.SentAt = null.TimeFrom(time.Now())
-			n.QueueMechID = null.NewString("", false)
-			_, err = n.Update(gamedb.StdConn, boil.Infer())
+		// if notification already sent with old notification system dont send with new system
+		if sent {
+			bq.Notified = true
+			_, err = bq.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleQueueColumns.Notified))
 			if err != nil {
-				gamelog.L.Error().Err(err).Str("bqn id", n.ID).Msg("failed to update BattleQueueNotificationColumns")
+				gamelog.L.Error().Err(err).Str("mech_id", bq.MechID).Str("owner_id", bq.OwnerID).Str("queued_at", bq.QueuedAt.String()).Msg("failed to update notified column")
+			}
+			continue
+		}
+
+		// get player preferences
+		prefs, err := boiler.PlayerSettingsPreferences(boiler.PlayerSettingsPreferenceWhere.PlayerID.EQ(player.ID)).One(gamedb.StdConn)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Err(err).Str("player_id", player.ID).Msg("unable to get player preferences")
+			continue
+		}
+
+		if prefs == nil {
+			continue
+		}
+
+		// if user's player preferences has telegram or sms notifications enabled
+		notificationsEnabled := (prefs.EnableSMSNotifications && prefs.MobileNumber.Valid) ||
+			(prefs.EnableTelegramNotifications && prefs.TelegramID.Valid)
+
+		if !notificationsEnabled {
+			continue
+		}
+
+		// get faction account
+		factionAccountID, ok := server.FactionUsers[player.FactionID.String]
+		if !ok {
+			gamelog.L.Error().
+				Str("mech ID", bq.MechID).
+				Str("faction ID", player.FactionID.String).
+				Err(err).
+				Msg("unable to get hard coded syndicate player ID from faction ID")
+		}
+
+		// charge for notification
+		notifyTransactionID, err := arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+			Amount:               "5000000000000000000", // 5 sups
+			FromUserID:           playerUUID,
+			ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
+			TransactionReference: server.TransactionReference(fmt.Sprintf("war_machine_queue_notification_fee|%s|%d", warMachine.ID, time.Now().UnixNano())),
+			Group:                string(server.TransactionGroupBattle),
+			SubGroup:             "Queue",
+			Description:          "Notification surcharge for queued mech in arena",
+			NotSafe:              true,
+		})
+		if err != nil {
+			gamelog.L.Error().Str("txID", notifyTransactionID).Err(err).Msg("unable to charge user for sms/telegram notification for mech in queue")
+			_, err = arena.RPCClient.RefundSupsMessage(notifyTransactionID)
+			if err != nil {
+				gamelog.L.Error().Str("txID", notifyTransactionID).Err(err).Msg("failed to refund notification queue fee")
+			}
+		}
+		bq.QueueNotificationFeeTXID = null.StringFrom(notifyTransactionID)
+		_, err = bq.Update(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			gamelog.L.Error().
+				Str("tx_id", notifyTransactionID).
+				Err(err).Msg("unable to update battle queue with queue notification transaction id")
+			_, err = arena.RPCClient.RefundSupsMessage(notifyTransactionID)
+			if err != nil {
+				gamelog.L.Error().Str("txID", notifyTransactionID).Err(err).Msg("failed to refund queue notification fee")
+			}
+
+		}
+
+		// sms notifications
+		if prefs.EnableSMSNotifications && prefs.MobileNumber.Valid {
+			notificationMsg := fmt.Sprintf("%s, your War Machine %s is approaching the front of the queue!\n\nJump into the Battle Arena now to prepare. Your survival has its rewards.\n\n(Reminder: In order to combat scams we will NEVER send you links)", player.Username.String, wmName)
+			gamelog.L.Info().Str("MobileNumber", prefs.MobileNumber.String).Msg("sending sms notification")
+			err := arena.sms.SendSMS(
+				prefs.MobileNumber.String,
+				notificationMsg,
+			)
+			if err != nil {
+				gamelog.L.Error().Err(err).Str("to", prefs.MobileNumber.String).Msg("failed to send battle queue notification sms")
+
+				// refund notification fee
+				_, err = arena.RPCClient.RefundSupsMessage(notifyTransactionID)
+				if err != nil {
+					gamelog.L.Error().Str("txID", notifyTransactionID).Err(err).Msg("failed to refund notification queue fee")
+				}
+			}
+		}
+
+		// telegram notifications
+		if prefs.EnableTelegramNotifications && prefs.TelegramID.Valid {
+			notificationMsg := fmt.Sprintf("🦾 %s, your War Machine %s is approaching the front of the queue!\n\n⚔️ Jump into the Battle Arena now to prepare. Your survival has its rewards.\n\n⚠️ (Reminder: In order to combat scams we will NEVER send you links)", player.Username.String, wmName)
+			gamelog.L.Info().Str("player_id", player.ID).Msg("sending telegram notification")
+			err = arena.telegram.Notify(prefs.TelegramID.Int64, notificationMsg)
+			if err != nil {
+				gamelog.L.Error().Err(err).Str("mech_id", bq.MechID).Str("owner_id", bq.OwnerID).Str("queued_at", bq.QueuedAt.String()).Str("telegram id", fmt.Sprintf("%v", prefs.TelegramID)).Msg("failed to send telegram notification")
+				_, err = arena.RPCClient.RefundSupsMessage(notifyTransactionID)
+				if err != nil {
+					gamelog.L.Error().Str("txID", notifyTransactionID).Err(err).Msg("failed to refund notification queue fee")
+				}
 			}
 		}
 
@@ -292,7 +396,6 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 		// TODO: discord notifications?
 
 		bq.Notified = true
-
 		_, err = bq.Update(gamedb.StdConn, boil.Whitelist(boiler.BattleQueueColumns.Notified))
 		if err != nil {
 			gamelog.L.Error().Err(err).Str("mech_id", bq.MechID).Str("owner_id", bq.OwnerID).Str("queued_at", bq.QueuedAt.String()).Msg("failed to update notified column")

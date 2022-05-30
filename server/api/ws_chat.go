@@ -15,13 +15,16 @@ import (
 	"sort"
 	"time"
 
+	"github.com/gofrs/uuid"
+
+	"github.com/ninja-syndicate/ws"
+
 	"github.com/volatiletech/null/v8"
 
 	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	"github.com/friendsofgo/errors"
 
-	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/sasha-s/go-deadlock"
 
@@ -30,7 +33,6 @@ import (
 	leakybucket "github.com/kevinms/leakybucket-go"
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/ninja-syndicate/hub"
-	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
@@ -105,10 +107,10 @@ func (c *Chatroom) Range(fn func(chatMessage *ChatMessage) bool) {
 	c.RUnlock()
 }
 
-func NewChatroom(factionID *server.FactionID) *Chatroom {
+func NewChatroom(factionID string) *Chatroom {
 	stream := "global"
-	if factionID != nil {
-		stream = factionID.String()
+	if factionID != "" {
+		stream = factionID
 	}
 	msgs, _ := boiler.ChatHistories(
 		boiler.ChatHistoryWhere.ChatStream.EQ(stream),
@@ -162,9 +164,9 @@ func NewChatroom(factionID *server.FactionID) *Chatroom {
 			},
 		}
 	}
-
+	factionUUID := server.FactionID(uuid.FromStringOrNil(factionID))
 	chatroom := &Chatroom{
-		factionID: factionID,
+		factionID: &factionUUID,
 		messages:  cms,
 	}
 	return chatroom
@@ -183,11 +185,7 @@ func NewChatController(api *API) *ChatController {
 		API: api,
 	}
 
-	api.Command(HubKeyChatPastMessages, chatHub.ChatPastMessagesHandler)
 	api.SecureUserCommand(HubKeyChatMessage, chatHub.ChatMessageHandler)
-
-	api.SubscribeCommand(HubKeyGlobalChatSubscribe, chatHub.GlobalChatUpdatedSubscribeHandler)
-	api.SecureUserSubscribeCommand(HubKeyFactionChatSubscribe, chatHub.FactionChatUpdatedSubscribeHandler)
 
 	return chatHub
 }
@@ -202,7 +200,7 @@ type FactionChatRequest struct {
 	} `json:"payload"`
 }
 
-const HubKeyChatMessage hub.HubCommandKey = "CHAT:MESSAGE"
+const HubKeyChatMessage = "CHAT:MESSAGE"
 
 func firstN(s string, n int) string {
 	i := 0
@@ -219,10 +217,9 @@ var bucket = leakybucket.NewCollector(2, 10, true)
 var minuteBucket = leakybucket.NewCollector(0.5, 30, true)
 
 // ChatMessageHandler sends chat message from player
-func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	errMsg := "Issue sending message in chat, try again or contact support."
-	b1 := bucket.Add(hubc.Identifier(), 1)
-	b2 := minuteBucket.Add(hubc.Identifier(), 1)
+func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	b1 := bucket.Add(user.ID, 1)
+	b2 := minuteBucket.Add(user.ID, 1)
 
 	if b1 == 0 || b2 == 0 {
 		return terror.Error(fmt.Errorf("too many messages"), "Too many messages.")
@@ -234,19 +231,14 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 		return terror.Error(err, "Invalid request received.")
 	}
 
-	player, err := boiler.Players(
-		qm.Select(
-			boiler.PlayerColumns.ID,
-			boiler.PlayerColumns.Username,
-			boiler.PlayerColumns.Gid,
-			boiler.PlayerColumns.FactionID,
-			boiler.PlayerColumns.Rank,
-			boiler.PlayerColumns.SentMessageCount,
-		),
-		boiler.PlayerWhere.ID.EQ(hubc.Identifier()),
-	).One(gamedb.StdConn)
-	if err != nil {
-		return terror.Error(err, errMsg)
+	// omit unused player detail
+	player := boiler.Player{
+		ID:               user.ID,
+		Username:         user.Username,
+		Gid:              user.Gid,
+		FactionID:        user.FactionID,
+		Rank:             user.Rank,
+		SentMessageCount: user.SentMessageCount,
 	}
 
 	// check user is banned on chat
@@ -265,7 +257,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 	).Exists(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to check player on the banned list")
-		return terror.Error(err)
+		return err
 	}
 
 	// if chat banned just return
@@ -359,7 +351,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 			Data: MessageText{
 				Message:         msg,
 				MessageColor:    req.Payload.MessageColor,
-				FromUser:        *player,
+				FromUser:        player,
 				UserRank:        player.Rank,
 				FromUserStat:    playerStat,
 				TotalMultiplier: multipliers.FriendlyFormatMultiplier(totalMultiplier),
@@ -392,7 +384,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 		fc.API.AddFactionChatMessage(player.FactionID.String, chatMessage)
 
 		// send message
-		fc.API.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionChatSubscribe, player.FactionID.String)), chatMessage)
+		ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_chat", player.FactionID.String), HubKeyFactionChatSubscribe, []*ChatMessage{chatMessage})
 		reply(true)
 		return nil
 	}
@@ -404,7 +396,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 		Data: MessageText{
 			Message:         msg,
 			MessageColor:    req.Payload.MessageColor,
-			FromUser:        *player,
+			FromUser:        player,
 			UserRank:        player.Rank,
 			FromUserStat:    playerStat,
 			TotalMultiplier: multipliers.FriendlyFormatMultiplier(totalMultiplier),
@@ -434,44 +426,21 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, hubc *hub.Clie
 	}
 
 	fc.API.GlobalChat.AddMessage(chatMessage)
-
-	fc.API.MessageBus.Send(messagebus.BusKey(HubKeyGlobalChatSubscribe), chatMessage)
+	ws.PublishMessage("/public/global_chat", HubKeyGlobalChatSubscribe, []*ChatMessage{chatMessage})
 	reply(true)
 
 	return nil
 }
 
-// ChatPastMessagesRequest sends chat message to specific faction.
-type ChatPastMessagesRequest struct {
-	*hub.HubCommandRequest
-	Payload struct {
-		FactionID server.FactionID `json:"faction_id"`
-	} `json:"payload"`
-}
+const HubKeyFactionChatSubscribe = "FACTION:CHAT:SUBSCRIBE"
 
-const HubKeyChatPastMessages hub.HubCommandKey = "CHAT:PAST_MESSAGES"
-
-func (fc *ChatController) ChatPastMessagesHandler(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc) error {
-	req := &ChatPastMessagesRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received.")
-	}
-
-	if !req.Payload.FactionID.IsNil() {
-		uuidString := hubc.Identifier() // identifier gets set on auth by default, so no ident = not authed
-		if uuidString == "" {
-			return terror.Error(terror.ErrUnauthorised, "Unauthorised access.")
-		}
-	}
-
+func (fc *ChatController) FactionChatUpdatedSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	resp := []*ChatMessage{}
 	chatRangeHandler := func(message *ChatMessage) bool {
 		resp = append(resp, message)
 		return true
 	}
-
-	switch req.Payload.FactionID {
+	switch factionID {
 	case server.RedMountainFactionID:
 		fc.API.RedMountainChat.Range(chatRangeHandler)
 	case server.BostonCyberneticsFactionID:
@@ -479,7 +448,7 @@ func (fc *ChatController) ChatPastMessagesHandler(ctx context.Context, hubc *hub
 	case server.ZaibatsuFactionID:
 		fc.API.ZaibatsuChat.Range(chatRangeHandler)
 	default:
-		fc.API.GlobalChat.Range(chatRangeHandler)
+		return terror.Error(terror.ErrInvalidInput, "Invalid faction id")
 	}
 
 	sort.Slice(resp, func(i, j int) bool {
@@ -491,46 +460,25 @@ func (fc *ChatController) ChatPastMessagesHandler(ctx context.Context, hubc *hub
 	return nil
 }
 
-const HubKeyFactionChatSubscribe hub.HubCommandKey = "FACTION:CHAT:SUBSCRIBE"
+const HubKeyGlobalChatSubscribe = "GLOBAL:CHAT:SUBSCRIBE"
 
-func (fc *ChatController) FactionChatUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
-	errMsg := "Could not subscribe to faction chat updates, try again or contact support."
-	req := &hub.HubCommandRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Invalid request received.")
-	}
-
-	// get player in valid faction
-	player, err := boiler.FindPlayer(gamedb.StdConn, client.Identifier())
-	if err != nil {
-		return "", "", terror.Error(err, errMsg)
-	}
-	if !player.FactionID.Valid || player.FactionID.String == uuid.Nil.String() {
-		return "", "", terror.Error(terror.ErrInvalidInput, "Require to join faction to receive messages.")
-	}
-
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionChatSubscribe, player.FactionID.String)), nil
-}
-
-const HubKeyGlobalChatSubscribe hub.HubCommandKey = "GLOBAL:CHAT:SUBSCRIBE"
-
-func (fc *ChatController) GlobalChatUpdatedSubscribeHandler(ctx context.Context, client *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
-	req := &hub.HubCommandRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return req.TransactionID, "", terror.Error(err, "Could not subscribe to global chat updates, try again or contact support.")
-	}
-	return req.TransactionID, messagebus.BusKey(HubKeyGlobalChatSubscribe), nil
+func (fc *ChatController) GlobalChatUpdatedSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
+	resp := []*ChatMessage{}
+	fc.API.GlobalChat.Range(func(message *ChatMessage) bool {
+		resp = append(resp, message)
+		return true
+	})
+	reply(resp)
+	return nil
 }
 
 func (api *API) AddFactionChatMessage(factionID string, msg *ChatMessage) {
 	switch factionID {
-	case server.RedMountainFactionID.String():
+	case server.RedMountainFactionID:
 		api.RedMountainChat.AddMessage(msg)
-	case server.BostonCyberneticsFactionID.String():
+	case server.BostonCyberneticsFactionID:
 		api.BostonChat.AddMessage(msg)
-	case server.ZaibatsuFactionID.String():
+	case server.ZaibatsuFactionID:
 		api.ZaibatsuChat.AddMessage(msg)
 	}
 }
