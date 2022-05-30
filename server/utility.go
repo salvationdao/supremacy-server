@@ -11,7 +11,7 @@ import (
 
 // Utility is the struct that rpc expects for utility
 type Utility struct {
-	*CollectionDetails
+	*CollectionItem
 	ID                    string      `json:"id"`
 	BrandID               null.String `json:"brand_id,omitempty"`
 	Label                 string      `json:"label"`
@@ -328,7 +328,7 @@ func BlueprintUtilityAcceleratorFromBoiler(utility *boiler.BlueprintUtility, ant
 
 func UtilityShieldFromBoiler(utility *boiler.Utility, shield *boiler.UtilityShield, collection *boiler.CollectionItem) *Utility {
 	return &Utility{
-		CollectionDetails: &CollectionDetails{
+		CollectionItem: &CollectionItem{
 			CollectionSlug: collection.CollectionSlug,
 			Hash:           collection.Hash,
 			TokenID:        collection.TokenID,
@@ -336,7 +336,8 @@ func UtilityShieldFromBoiler(utility *boiler.Utility, shield *boiler.UtilityShie
 			ItemID:         collection.ItemID,
 			Tier:           collection.Tier,
 			OwnerID:        collection.OwnerID,
-			OnChainStatus:  collection.OnChainStatus,
+			MarketLocked:   collection.MarketLocked,
+			XsynLocked:     collection.XsynLocked,
 
 			ImageURL:         collection.ImageURL,
 			CardAnimationURL: collection.CardAnimationURL,
@@ -366,16 +367,16 @@ func UtilityShieldFromBoiler(utility *boiler.Utility, shield *boiler.UtilityShie
 
 func UtilityAttackDroneFromBoiler(utility *boiler.Utility, drone *boiler.UtilityAttackDrone, collection *boiler.CollectionItem) *Utility {
 	return &Utility{
-		CollectionDetails: &CollectionDetails{
-			CollectionSlug: collection.CollectionSlug,
-			Hash:           collection.Hash,
-			TokenID:        collection.TokenID,
-			ItemType:       collection.ItemType,
-			ItemID:         collection.ItemID,
-			Tier:           collection.Tier,
-			OwnerID:        collection.OwnerID,
-			OnChainStatus:  collection.OnChainStatus,
-
+		CollectionItem: &CollectionItem{
+			CollectionSlug:   collection.CollectionSlug,
+			Hash:             collection.Hash,
+			TokenID:          collection.TokenID,
+			ItemType:         collection.ItemType,
+			ItemID:           collection.ItemID,
+			Tier:             collection.Tier,
+			OwnerID:          collection.OwnerID,
+			MarketLocked:     collection.MarketLocked,
+			XsynLocked:       collection.XsynLocked,
 			ImageURL:         collection.ImageURL,
 			CardAnimationURL: collection.CardAnimationURL,
 			AvatarURL:        collection.AvatarURL,
@@ -406,16 +407,16 @@ func UtilityAttackDroneFromBoiler(utility *boiler.Utility, drone *boiler.Utility
 
 func UtilityRepairDroneFromBoiler(utility *boiler.Utility, drone *boiler.UtilityRepairDrone, collection *boiler.CollectionItem) *Utility {
 	return &Utility{
-		CollectionDetails: &CollectionDetails{
-			CollectionSlug: collection.CollectionSlug,
-			Hash:           collection.Hash,
-			TokenID:        collection.TokenID,
-			ItemType:       collection.ItemType,
-			ItemID:         collection.ItemID,
-			Tier:           collection.Tier,
-			OwnerID:        collection.OwnerID,
-			OnChainStatus:  collection.OnChainStatus,
-
+		CollectionItem: &CollectionItem{
+			CollectionSlug:   collection.CollectionSlug,
+			Hash:             collection.Hash,
+			TokenID:          collection.TokenID,
+			ItemType:         collection.ItemType,
+			ItemID:           collection.ItemID,
+			Tier:             collection.Tier,
+			OwnerID:          collection.OwnerID,
+			MarketLocked:     collection.MarketLocked,
+			XsynLocked:       collection.XsynLocked,
 			ImageURL:         collection.ImageURL,
 			CardAnimationURL: collection.CardAnimationURL,
 			AvatarURL:        collection.AvatarURL,
@@ -445,16 +446,16 @@ func UtilityRepairDroneFromBoiler(utility *boiler.Utility, drone *boiler.Utility
 
 func UtilityAntiMissileFromBoiler(utility *boiler.Utility, anti *boiler.UtilityAntiMissile, collection *boiler.CollectionItem) *Utility {
 	return &Utility{
-		CollectionDetails: &CollectionDetails{
-			CollectionSlug: collection.CollectionSlug,
-			Hash:           collection.Hash,
-			TokenID:        collection.TokenID,
-			ItemType:       collection.ItemType,
-			ItemID:         collection.ItemID,
-			Tier:           collection.Tier,
-			OwnerID:        collection.OwnerID,
-			OnChainStatus:  collection.OnChainStatus,
-
+		CollectionItem: &CollectionItem{
+			CollectionSlug:   collection.CollectionSlug,
+			Hash:             collection.Hash,
+			TokenID:          collection.TokenID,
+			ItemType:         collection.ItemType,
+			ItemID:           collection.ItemID,
+			Tier:             collection.Tier,
+			OwnerID:          collection.OwnerID,
+			MarketLocked:     collection.MarketLocked,
+			XsynLocked:       collection.XsynLocked,
 			ImageURL:         collection.ImageURL,
 			CardAnimationURL: collection.CardAnimationURL,
 			AvatarURL:        collection.AvatarURL,
@@ -482,16 +483,16 @@ func UtilityAntiMissileFromBoiler(utility *boiler.Utility, anti *boiler.UtilityA
 
 func UtilityAcceleratorFromBoiler(utility *boiler.Utility, anti *boiler.UtilityAccelerator, collection *boiler.CollectionItem) *Utility {
 	return &Utility{
-		CollectionDetails: &CollectionDetails{
-			CollectionSlug: collection.CollectionSlug,
-			Hash:           collection.Hash,
-			TokenID:        collection.TokenID,
-			ItemType:       collection.ItemType,
-			ItemID:         collection.ItemID,
-			Tier:           collection.Tier,
-			OwnerID:        collection.OwnerID,
-			OnChainStatus:  collection.OnChainStatus,
-
+		CollectionItem: &CollectionItem{
+			CollectionSlug:   collection.CollectionSlug,
+			Hash:             collection.Hash,
+			TokenID:          collection.TokenID,
+			ItemType:         collection.ItemType,
+			ItemID:           collection.ItemID,
+			Tier:             collection.Tier,
+			OwnerID:          collection.OwnerID,
+			MarketLocked:     collection.MarketLocked,
+			XsynLocked:       collection.XsynLocked,
 			ImageURL:         collection.ImageURL,
 			CardAnimationURL: collection.CardAnimationURL,
 			AvatarURL:        collection.AvatarURL,

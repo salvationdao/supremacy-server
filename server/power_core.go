@@ -11,7 +11,7 @@ import (
 )
 
 type PowerCore struct {
-	*CollectionDetails
+	*CollectionItem
 	ID           string          `json:"id"`
 	Label        string          `json:"label"`
 	Size         string          `json:"size"`
@@ -83,7 +83,7 @@ func BlueprintPowerCoreFromBoiler(core *boiler.BlueprintPowerCore) *BlueprintPow
 
 func PowerCoreFromBoiler(skin *boiler.PowerCore, collection *boiler.CollectionItem) *PowerCore {
 	return &PowerCore{
-		CollectionDetails: &CollectionDetails{
+		CollectionItem: &CollectionItem{
 			CollectionSlug:   collection.CollectionSlug,
 			Hash:             collection.Hash,
 			TokenID:          collection.TokenID,
@@ -91,7 +91,8 @@ func PowerCoreFromBoiler(skin *boiler.PowerCore, collection *boiler.CollectionIt
 			ItemID:           collection.ItemID,
 			Tier:             collection.Tier,
 			OwnerID:          collection.OwnerID,
-			OnChainStatus:    collection.OnChainStatus,
+			MarketLocked:     collection.MarketLocked,
+			XsynLocked:       collection.XsynLocked,
 			ImageURL:         collection.ImageURL,
 			CardAnimationURL: collection.CardAnimationURL,
 			AvatarURL:        collection.AvatarURL,

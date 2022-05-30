@@ -13,15 +13,17 @@ import (
 	THIS FILE SHOULD CONTAIN ZERO BOILER STRUCTS
 */
 
-type CollectionDetails struct {
-	CollectionSlug   string      `json:"collection_slug"`
-	Hash             string      `json:"hash"`
-	TokenID          int64       `json:"token_id"`
-	ItemType         string      `json:"item_type"`
-	ItemID           string      `json:"item_id"`
-	Tier             string      `json:"tier"`
-	OwnerID          string      `json:"owner_id"`
-	OnChainStatus    string      `json:"on_chain_status"`
+type CollectionItem struct {
+	CollectionSlug string `json:"collection_slug"`
+	Hash           string `json:"hash"`
+	TokenID        int64  `json:"token_id"`
+	ItemType       string `json:"item_type"`
+	ItemID         string `json:"item_id"`
+	Tier           string `json:"tier"`
+	OwnerID        string `json:"owner_id"`
+	MarketLocked   bool   `json:"market_locked"`
+	XsynLocked     bool   `json:"xsyn_locked"`
+
 	ImageURL         null.String `json:"image_url,omitempty"`
 	CardAnimationURL null.String `json:"card_animation_url,omitempty"`
 	AvatarURL        null.String `json:"avatar_url,omitempty"`
@@ -33,7 +35,7 @@ type CollectionDetails struct {
 
 // Mech is the struct that rpc expects for mechs
 type Mech struct {
-	*CollectionDetails
+	*CollectionItem
 	ID                    string     `json:"id"`
 	Label                 string     `json:"label"`
 	WeaponHardpoints      int        `json:"weapon_hardpoints"`
@@ -179,7 +181,7 @@ func (b *MechModel) Scan(value interface{}) error {
 
 // MechFromBoiler takes a boiler structs and returns server structs, skinCollection is optional
 func MechFromBoiler(mech *boiler.Mech, collection *boiler.CollectionItem, skinCollection *boiler.CollectionItem) *Mech {
-	skin := &CollectionDetails{}
+	skin := &CollectionItem{}
 
 	if mech.R.Model.R.DefaultChassisSkin != nil {
 		skin.ImageURL = mech.R.Model.R.DefaultChassisSkin.ImageURL
@@ -202,7 +204,7 @@ func MechFromBoiler(mech *boiler.Mech, collection *boiler.CollectionItem, skinCo
 	}
 
 	return &Mech{
-		CollectionDetails: &CollectionDetails{
+		CollectionItem: &CollectionItem{
 			CollectionSlug:   collection.CollectionSlug,
 			Hash:             collection.Hash,
 			TokenID:          collection.TokenID,
@@ -210,7 +212,8 @@ func MechFromBoiler(mech *boiler.Mech, collection *boiler.CollectionItem, skinCo
 			ItemID:           collection.ItemID,
 			Tier:             collection.Tier,
 			OwnerID:          collection.OwnerID,
-			OnChainStatus:    collection.OnChainStatus,
+			MarketLocked:     collection.MarketLocked,
+			XsynLocked:       collection.XsynLocked,
 			ImageURL:         skin.ImageURL,
 			CardAnimationURL: skin.CardAnimationURL,
 			AvatarURL:        skin.AvatarURL,

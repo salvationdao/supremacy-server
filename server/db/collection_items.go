@@ -88,13 +88,13 @@ func InsertNewCollectionItem(tx *sql.Tx,
 	return nil
 }
 
-func CollectionItemFromItemID(id string) (*server.CollectionDetails, error) {
+func CollectionItemFromItemID(id string) (*server.CollectionItem, error) {
 	ci, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(id)).One(gamedb.StdConn)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
 
-	return &server.CollectionDetails{
+	return &server.CollectionItem{
 		CollectionSlug: ci.CollectionSlug,
 		Hash:           ci.Hash,
 		TokenID:        ci.TokenID,
@@ -102,6 +102,7 @@ func CollectionItemFromItemID(id string) (*server.CollectionDetails, error) {
 		ItemID:         ci.ItemID,
 		Tier:           ci.Tier,
 		OwnerID:        ci.OwnerID,
-		OnChainStatus:  ci.OnChainStatus,
+		XsynLocked: ci.XsynLocked,
+		MarketLocked: ci.MarketLocked,
 	}, nil
 }

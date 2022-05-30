@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/ninja-syndicate/ws"
 	"server"
 	"server/battle"
 	"server/db"
@@ -12,8 +11,10 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/player_abilities"
-	"server/rpcclient"
+	"server/xsyn_rpcclient"
 	"time"
+
+	"github.com/ninja-syndicate/ws"
 
 	"github.com/gofrs/uuid"
 
@@ -304,7 +305,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 	}
 
 	// Charge player for ability
-	supTransactionID, err := pac.API.Passport.SpendSupMessage(rpcclient.SpendSupsReq{
+	supTransactionID, err := pac.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		Amount:               spa.CurrentPrice.String(),
 		FromUserID:           userID,
 		ToUserID:             battle.SupremacyUserID,

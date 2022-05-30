@@ -6,8 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ninja-syndicate/ws"
-	"github.com/volatiletech/null/v8"
 	"net/http"
 	"server"
 	"server/battle"
@@ -16,7 +14,7 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/helpers"
-	"server/rpcclient"
+	"server/xsyn_rpcclient"
 	"strings"
 	"time"
 
@@ -25,8 +23,10 @@ import (
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
+	"github.com/ninja-syndicate/ws"
 	"github.com/rs/zerolog"
 	"github.com/shopspring/decimal"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"github.com/volatiletech/sqlboiler/v4/types"
@@ -45,6 +45,9 @@ func NewPlayerController(api *API) *PlayerController {
 
 	api.SecureUserCommand(HubKeyPlayerUpdateSettings, pc.PlayerUpdateSettingsHandler)
 	api.SecureUserCommand(HubKeyPlayerGetSettings, pc.PlayerGetSettingsHandler)
+
+	api.SecureUserCommand(HubKeyPlayerPreferencesGet, pc.PlayerPreferencesGetHandler)
+	api.SecureUserCommand(HubKeyPlayerPreferencesUpdate, pc.PlayerPreferencesUpdateHandler)
 
 	// punish vote related
 	api.SecureUserCommand(HubKeyPlayerPunishmentList, pc.PlayerPunishmentList)
@@ -626,7 +629,7 @@ func (pc *PlayerController) IssuePunishVote(ctx context.Context, user *boiler.Pl
 	}
 
 	// pay fee to syndicate
-	_, err = pc.API.Passport.SpendSupMessage(rpcclient.SpendSupsReq{
+	_, err = pc.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           userID,
 		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
 		Amount:               price.Mul(decimal.New(1, 18)).String(),
@@ -746,7 +749,9 @@ func (pc *PlayerController) PlayersSubscribeHandler(ctx context.Context, user *b
 	// broadcast player stat
 	us, err := db.UserStatsGet(user.ID)
 	if err != nil {
-		gamelog.L.Error().Str("player id", user.ID).Err(err).Msg("Failed to get player stat")
+		if !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Str("player id", user.ID).Err(err).Msg("Failed to get player stat")
+		}
 	}
 
 	if us != nil {
@@ -831,5 +836,147 @@ func (pc *PlayerController) UserOnline(ctx context.Context, user *boiler.Player,
 
 	reply(pc.API.BattleArena.CurrentBattle().UserOnline(battleUser))
 
+	return nil
+}
+
+const HubKeyPlayerPreferencesGet = "PLAYER:PREFERENCES_GET"
+
+// PlayerPreferencesGetHandler gets player's preferences
+func (pc *PlayerController) PlayerPreferencesGetHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	errMsg := "Issue getting player preferences, try again or contact support."
+	req := &hub.HubCommandRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request")
+
+	}
+
+	// try get player's preferences
+	prefs, err := boiler.PlayerSettingsPreferences(boiler.PlayerSettingsPreferenceWhere.PlayerID.EQ(user.ID)).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, errMsg)
+	}
+
+	// if there are no results, create new player preferences
+	if errors.Is(err, sql.ErrNoRows) {
+		_prefs := &boiler.PlayerSettingsPreference{
+			PlayerID: user.ID,
+		}
+
+		err := _prefs.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			return terror.Error(err, errMsg)
+		}
+		reply(_prefs)
+		return nil
+	}
+
+	reply(prefs)
+	return nil
+
+}
+
+const HubKeyPlayerPreferencesUpdate = "PLAYER:PREFERENCES_UPDATE"
+
+type PlayerPreferencesUpdateRequest struct {
+	*hub.HubCommandRequest
+	Payload struct {
+		EnableTelegramNotifications bool   `json:"enable_telegram_notifications"`
+		EnableSMSNotifications      bool   `json:"enable_sms_notifications"`
+		EnablePushNotifications     bool   `json:"enable_push_notifications"`
+		MobileNumber                string `json:"mobile_number"`
+	} `json:"payload"`
+}
+
+func (pc *PlayerController) PlayerPreferencesUpdateHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+	errMsg := "Issue updating settings, try again or contact support."
+	req := &PlayerPreferencesUpdateRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received.")
+	}
+
+	// getting player's preferences
+	prefs, err := boiler.PlayerSettingsPreferences(boiler.PlayerSettingsPreferenceWhere.PlayerID.EQ(user.ID)).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, errMsg)
+	}
+
+	// if player doesnt have preferences saved, create a new one
+	if errors.Is(err, sql.ErrNoRows) {
+		_prefs := &boiler.PlayerSettingsPreference{
+			PlayerID:                    user.ID,
+			EnableTelegramNotifications: req.Payload.EnableTelegramNotifications,
+			EnableSMSNotifications:      req.Payload.EnableSMSNotifications,
+			EnablePushNotifications:     req.Payload.EnablePushNotifications,
+		}
+
+		// check mobile number
+		if req.Payload.MobileNumber != "" && req.Payload.EnableSMSNotifications {
+			mobileNumber, err := pc.API.SMS.Lookup(req.Payload.MobileNumber)
+			if err != nil {
+				gamelog.L.Warn().Err(err).Str("mobile number", req.Payload.MobileNumber).Msg("Failed to lookup mobile number through twilio api")
+				return terror.Error(err, "Invalid phone number")
+			}
+
+			// set the verified mobile number
+			_prefs.MobileNumber = null.StringFrom(mobileNumber)
+		}
+
+		err = _prefs.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			return terror.Error(err, errMsg)
+		}
+
+		// if new preferences and has telegram notifications enabled, must register to telebot
+		if _prefs.EnableTelegramNotifications {
+			_, err = pc.API.Telegram.PreferencesUpdate(user.ID)
+			if err != nil {
+				return terror.Error(err, errMsg)
+			}
+		}
+		reply(_prefs)
+
+		return nil
+	}
+
+	// update preferences
+	prefs.EnableTelegramNotifications = req.Payload.EnableTelegramNotifications
+	prefs.EnableSMSNotifications = req.Payload.EnableSMSNotifications
+	prefs.EnablePushNotifications = req.Payload.EnablePushNotifications
+	if !prefs.EnableTelegramNotifications {
+		prefs.Shortcode = ""
+	}
+
+	if req.Payload.EnableSMSNotifications && req.Payload.MobileNumber != "" {
+		// check mobile number
+		mobileNumber, err := pc.API.SMS.Lookup(req.Payload.MobileNumber)
+		if err != nil {
+			gamelog.L.Warn().Err(err).Str("mobile number", req.Payload.MobileNumber).Msg("Failed to lookup mobile number through twilio api")
+			return terror.Error(err, "Invalid phone number")
+		}
+
+		// set the verified mobile number
+		prefs.MobileNumber = null.StringFrom(mobileNumber)
+	}
+
+	if req.Payload.MobileNumber == "" {
+		prefs.MobileNumber = null.String{}
+	}
+
+	_, err = prefs.Update(gamedb.StdConn, boil.Infer())
+	if err != nil {
+		return terror.Error(err, errMsg)
+	}
+
+	// if telegram enabled but is not registered
+	if prefs.EnableTelegramNotifications && (!prefs.TelegramID.Valid && prefs.Shortcode == "") {
+		prefs, err = pc.API.Telegram.PreferencesUpdate(user.ID)
+		if err != nil {
+			return terror.Error(err, errMsg)
+		}
+	}
+
+	reply(prefs)
 	return nil
 }

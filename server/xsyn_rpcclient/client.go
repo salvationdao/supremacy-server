@@ -1,4 +1,4 @@
-package rpcclient
+package xsyn_rpcclient
 
 import (
 	"errors"
@@ -23,17 +23,17 @@ type XrpcClient struct {
 	mutex   sync.Mutex    // lock and unlocks clients slice editing
 }
 
-type PassportXrpcClient struct {
+type XsynXrpcClient struct {
 	*XrpcClient
 	ApiKey string `json:"apiKey"`
 }
 
-func NewPassportXrpcClient(apiKey string, hostname string, startPort, numPorts int) *PassportXrpcClient {
+func NewXsynXrpcClient(apiKey string, hostname string, startPort, numPorts int) *XsynXrpcClient {
 	addrs := make([]string, numPorts)
 	for i := 0; i < numPorts; i++ {
 		addrs[i] = fmt.Sprintf("%s:%d", hostname, i+startPort)
 	}
-	new := &PassportXrpcClient{
+	new := &XsynXrpcClient{
 		ApiKey:     apiKey,
 		XrpcClient: &XrpcClient{Addrs: addrs},
 	}

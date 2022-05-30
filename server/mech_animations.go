@@ -11,7 +11,7 @@ import (
 )
 
 type MechAnimation struct {
-	*CollectionDetails
+	*CollectionItem
 	ID             string      `json:"id"`
 	BlueprintID    string      `json:"blueprint_id"`
 	Label          string      `json:"label"`
@@ -75,15 +75,16 @@ func BlueprintMechAnimationFromBoiler(animation *boiler.BlueprintMechAnimation) 
 
 func MechAnimationFromBoiler(animation *boiler.MechAnimation, collection *boiler.CollectionItem) *MechAnimation {
 	return &MechAnimation{
-		CollectionDetails: &CollectionDetails{
-			CollectionSlug: collection.CollectionSlug,
-			Hash:           collection.Hash,
-			TokenID:        collection.TokenID,
-			ItemType:       collection.ItemType,
-			ItemID:         collection.ItemID,
-			Tier:           collection.Tier,
-			OwnerID:        collection.OwnerID,
-			OnChainStatus:  collection.OnChainStatus,
+		CollectionItem: &CollectionItem{
+			CollectionSlug:   collection.CollectionSlug,
+			Hash:             collection.Hash,
+			TokenID:          collection.TokenID,
+			ItemType:         collection.ItemType,
+			ItemID:           collection.ItemID,
+			Tier:             collection.Tier,
+			OwnerID:          collection.OwnerID,
+			MarketLocked:     collection.MarketLocked,
+			XsynLocked:       collection.XsynLocked,
 			ImageURL:         collection.ImageURL,
 			CardAnimationURL: collection.CardAnimationURL,
 			AvatarURL:        collection.AvatarURL,
