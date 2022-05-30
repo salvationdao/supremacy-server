@@ -18,7 +18,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"server/rpcclient"
+	"server/xsyn_rpcclient"
 	"time"
 )
 
@@ -131,7 +131,7 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 	}
 
 	// -------------------------------------
-	supTransactionID, err := sc.API.Passport.SpendSupMessage(rpcclient.SpendSupsReq{
+	supTransactionID, err := sc.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		Amount:               storeCrate.Price.String(),
 		FromUserID:           uuid.FromStringOrNil(user.ID),
 		ToUserID:             battle.SupremacyUserID,

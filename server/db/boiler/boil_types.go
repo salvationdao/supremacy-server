@@ -188,9 +188,16 @@ const (
 	PlayerRankEnumNEW_RECRUIT = "NEW_RECRUIT"
 )
 
+// Enum values for StoreItemType
+const (
+	StoreItemTypeLOOTBOX = "LOOTBOX"
+	StoreItemTypeMECH    = "MECH"
+	StoreItemTypeAMMO    = "AMMO"
+	StoreItemTypeUTILITY = "UTILITY"
+)
+
 // Enum values for CrateType
 const (
-	CrateTypeMECH    = "MECH"
-	CrateTypeWEAPON  = "WEAPON"
-	CrateTypeUTILITY = "UTILITY"
+	CrateTypeMECH   = "MECH"
+	CrateTypeWEAPON = "WEAPON"
 )

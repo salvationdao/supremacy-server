@@ -82,6 +82,7 @@ var TableNames = struct {
 	SalePlayerAbilities                                string
 	SchemaMigrations                                   string
 	SpoilsOfWar                                        string
+	StorePurchaseHistory                               string
 	StorefrontMysteryCrates                            string
 	StreamList                                         string
 	TelegramNotifications                              string
@@ -177,6 +178,7 @@ var TableNames = struct {
 	SalePlayerAbilities:         "sale_player_abilities",
 	SchemaMigrations:            "schema_migrations",
 	SpoilsOfWar:                 "spoils_of_war",
+	StorePurchaseHistory:        "store_purchase_history",
 	StorefrontMysteryCrates:     "storefront_mystery_crates",
 	StreamList:                  "stream_list",
 	TelegramNotifications:       "telegram_notifications",
