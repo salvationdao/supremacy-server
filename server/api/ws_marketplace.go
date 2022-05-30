@@ -10,7 +10,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"server/rpcclient"
+	"server/xsyn_rpcclient"
 	"time"
 
 	"github.com/friendsofgo/errors"
@@ -178,7 +178,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 	}
 
 	// pay sup
-	txid, err := mp.API.Passport.SpendSupMessage(rpcclient.SpendSupsReq{
+	txid, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           userID,
 		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
 		Amount:               feePrice.String(),
@@ -316,7 +316,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		return terror.Error(err, errMsg)
 	}
 
-	txid, err := mp.API.Passport.SpendSupMessage(rpcclient.SpendSupsReq{
+	txid, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           userID,
 		ToUserID:             uuid.Must(uuid.FromString(saleItem.OwnerID)),
 		Amount:               saleItemCost.String(),

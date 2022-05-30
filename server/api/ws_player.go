@@ -14,17 +14,16 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/helpers"
-	"server/rpcclient"
+	"server/xsyn_rpcclient"
 	"strings"
 	"time"
-
-	"github.com/ninja-syndicate/ws"
 
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/hub/ext/messagebus"
+	"github.com/ninja-syndicate/ws"
 	"github.com/rs/zerolog"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
@@ -630,7 +629,7 @@ func (pc *PlayerController) IssuePunishVote(ctx context.Context, user *boiler.Pl
 	}
 
 	// pay fee to syndicate
-	txid, err := pc.API.Passport.SpendSupMessage(rpcclient.SpendSupsReq{
+	_, err = pc.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           userID,
 		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
 		Amount:               price.Mul(decimal.New(1, 18)).String(),
@@ -751,7 +750,9 @@ func (pc *PlayerController) PlayersSubscribeHandler(ctx context.Context, user *b
 	// broadcast player stat
 	us, err := db.UserStatsGet(user.ID)
 	if err != nil {
-		gamelog.L.Error().Str("player id", user.ID).Err(err).Msg("Failed to get player stat")
+		if !errors.Is(err, sql.ErrNoRows) {
+			gamelog.L.Error().Str("player id", user.ID).Err(err).Msg("Failed to get player stat")
+		}
 	}
 
 	if us != nil {

@@ -1,4 +1,4 @@
-package rpcclient
+package xsyn_rpcclient
 
 import (
 	"server"
@@ -33,7 +33,7 @@ type UserResp struct {
 }
 
 // UserGet get user by id
-func (pp *PassportXrpcClient) UserGet(userID server.UserID) (*UserResp, error) {
+func (pp *XsynXrpcClient) UserGet(userID server.UserID) (*UserResp, error) {
 	resp := &UserResp{}
 	err := pp.XrpcClient.Call("S.UserGetHandler", UserGetReq{pp.ApiKey, userID}, resp)
 
@@ -50,8 +50,7 @@ type TokenResp struct {
 	ExpiredAt time.Time
 }
 
-// UserGet get user by id
-func (pp *PassportXrpcClient) OneTimeTokenLogin(tokenBase64, device, action string) (*TokenResp, error) {
+func (pp *XsynXrpcClient) OneTimeTokenLogin(tokenBase64, device, action string) (*TokenResp, error) {
 	resp := &TokenResp{}
 	err := pp.XrpcClient.Call("S.OneTimeTokenLogin", OneTimeTokenReq{pp.ApiKey, tokenBase64, device, action}, resp)
 
@@ -74,8 +73,7 @@ type TokenReq struct {
 	TokenBase64 string
 }
 
-// UserGet get user by id
-func (pp *PassportXrpcClient) TokenLogin(tokenBase64 string) (*UserResp, error) {
+func (pp *XsynXrpcClient) TokenLogin(tokenBase64 string) (*UserResp, error) {
 	resp := &UserResp{}
 	err := pp.XrpcClient.Call("S.TokenLogin", TokenReq{pp.ApiKey, tokenBase64}, resp)
 
@@ -96,7 +94,7 @@ type UserBalanceGetResp struct {
 }
 
 // UserBalanceGet return the sups balance from the given user id
-func (pp *PassportXrpcClient) UserBalanceGet(userID uuid.UUID) decimal.Decimal {
+func (pp *XsynXrpcClient) UserBalanceGet(userID uuid.UUID) decimal.Decimal {
 	resp := &UserBalanceGetResp{}
 	err := pp.XrpcClient.Call("S.UserBalanceGetHandler", UserBalanceGetReq{pp.ApiKey, userID}, resp)
 	if err != nil {
@@ -116,7 +114,7 @@ type UserFactionEnlistReq struct {
 type UserFactionEnlistResp struct{}
 
 // UserFactionEnlist update user faction
-func (pp *PassportXrpcClient) UserFactionEnlist(userID string, factionID string) error {
+func (pp *XsynXrpcClient) UserFactionEnlist(userID string, factionID string) error {
 	resp := &UserFactionEnlistResp{}
 	err := pp.XrpcClient.Call("S.UserFactionEnlistHandler", UserFactionEnlistReq{pp.ApiKey, userID, factionID}, resp)
 	if err != nil {

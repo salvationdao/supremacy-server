@@ -13,8 +13,8 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/helpers"
-	"server/rpcclient"
 	"server/telegram"
+	"server/xsyn_rpcclient"
 	"strconv"
 	"sync"
 	"time"
@@ -48,7 +48,7 @@ type Arena struct {
 	_currentBattle           *Battle
 	syndicates               map[string]boiler.Faction
 	AIPlayers                map[string]db.PlayerWithFaction
-	RPCClient                *rpcclient.PassportXrpcClient
+	RPCClient                *xsyn_rpcclient.XsynXrpcClient
 	gameClientLock           sync.Mutex
 	sms                      server.SMS
 	gameClientMinimumBuildNo uint64
@@ -153,7 +153,7 @@ type Opts struct {
 	Timeout                  time.Duration
 	Hub                      *hub.Hub
 	MessageBus               *messagebus.MessageBus
-	RPCClient                *rpcclient.PassportXrpcClient
+	RPCClient                *xsyn_rpcclient.XsynXrpcClient
 	SMS                      server.SMS
 	GameClientMinimumBuildNo uint64
 	Telegram                 *telegram.Telegram
