@@ -16,14 +16,14 @@ jobs:
 
     steps:
       - name: slack-notification
-        if: always()
+        if: ${{ !env.ACT }} # if running in local test environment
         uses: ravsamhq/notify-slack-action@v1
         with:
           status: ${{ job.status }}
           token: ${{ secrets.GITHUB_TOKEN }}
-          notification_title: '{workflow} has started'
-          message_format: '{emoji} *{workflow}* started in <{repo_url}|{repo}>'
-          footer: 'Linked Repo <{repo_url}|{repo}> | <{run_url}|View Run>'
+          notification_title: "{workflow} has started"
+          message_format: "{emoji} *{workflow}* started in <{repo_url}|{repo}>"
+          footer: "Linked Repo <{repo_url}|{repo}> | <{run_url}|View Run>"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
@@ -35,17 +35,18 @@ jobs:
         with:
           go-version: ${{env.GO_VERSION}}
 
-
-
       # Setup
       # Multi key private go repos
       # https://gist.github.com/jrapoport/d12f60029eef017354d0ec982b918258
       - name: Setup go private repos access
         run: |
           mkdir -p ~/.ssh
+          echo -e "Host ws.github.com\n  HostName github.com\n IdentityFile ~/.ssh/id_ed25519_ws\n  IdentitiesOnly yes" >> ~/.ssh/config
           echo -e "Host hub.github.com\n  HostName github.com\n  IdentityFile ~/.ssh/id_ed25519_hub\n  IdentitiesOnly yes" >> ~/.ssh/config
           echo -e "Host bridge.github.com\n  HostName github.com\n  IdentityFile ~/.ssh/id_ed25519_bridge\n  IdentitiesOnly yes" >> ~/.ssh/config
           echo -e "Host loghelpers.github.com\n  HostName github.com\n  IdentityFile ~/.ssh/id_ed25519_loghelpers\n  IdentitiesOnly yes" >> ~/.ssh/config
+          echo '${{ secrets.GH_DEPLOY_WS_PK }}' > ~/.ssh/id_ed25519_ws
+          chmod 600 ~/.ssh/id_ed25519_ws
           echo '${{ secrets.GH_DEPLOY_HUB_PK }}' > ~/.ssh/id_ed25519_hub
           chmod 600 ~/.ssh/id_ed25519_hub
           echo '${{ secrets.GH_DEPLOY_BRIDGE_PK }}' > ~/.ssh/id_ed25519_bridge
@@ -54,6 +55,7 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519_loghelpers
           git config --global user.name "Github CI"
           git config --global user.email "team@syndicate.ninja"
+          git config --global --add url."git@ws.github.com:ninja-syndicate/ws".insteadOf "https://github.com/ninja-syndicate/ws"
           git config --global --add url."git@hub.github.com:ninja-syndicate/hub".insteadOf "https://github.com/ninja-syndicate/hub"
           git config --global --add url."git@bridge.github.com:ninja-syndicate/supremacy-bridge".insteadOf "https://github.com/ninja-syndicate/supremacy-bridge"
           git config --global --add url."git@loghelpers.github.com:ninja-software/log_helpers".insteadOf "https://github.com/ninja-software/log_helpers"
@@ -126,15 +128,15 @@ jobs:
           path: ${{ steps.artifact.outputs.filename }}
 
       - name: slack-notification
-        if: always()
+        if: ${{ !env.ACT }} # if running in local test environment
         uses: ravsamhq/notify-slack-action@v1
         with:
           status: ${{ job.status }}
           token: ${{ secrets.GITHUB_TOKEN }}
-          notification_title: '{workflow} has {status_message}'
-          message_format: '{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}>'
-          footer: 'Linked Repo <{repo_url}|{repo}> | <{run_url}|View Run>'
-          notify_when: 'failure'
+          notification_title: "{workflow} has {status_message}"
+          message_format: "{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}>"
+          footer: "Linked Repo <{repo_url}|{repo}> | <{run_url}|View Run>"
+          notify_when: "failure"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
@@ -146,7 +148,6 @@ jobs:
         if: ${{ !env.ACT }} # if running in local test environment
         with:
           name: ${{ needs.build.outputs.artifact_filename }}
-
 
       - name: untar deploy directory
         run: tar -xvf ${{ needs.build.outputs.artifact_filename }}
@@ -188,13 +189,13 @@ jobs:
         run: ssh ${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }} 'sudo nginx -t && sudo nginx -s reload'
 
       - name: slack-notification
-        if: always()
+        if: ${{ !env.ACT }} # if running in local test environment
         uses: ravsamhq/notify-slack-action@v1
         with:
           status: ${{ job.status }}
           token: ${{ secrets.GITHUB_TOKEN }}
-          notification_title: '{workflow} has {status_message}'
-          message_format: '{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}>'
-          footer: 'Linked Repo <{repo_url}|{repo}> | <{run_url}|View Run>'
+          notification_title: "{workflow} has {status_message}"
+          message_format: "{emoji} *{workflow}* {status_message} in <{repo_url}|{repo}>"
+          footer: "Linked Repo <{repo_url}|{repo}> | <{run_url}|View Run>"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
