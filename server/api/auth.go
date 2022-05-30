@@ -14,6 +14,7 @@ import (
 	"github.com/friendsofgo/errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/ninja-software/terror/v2"
+	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
@@ -40,7 +41,7 @@ func (api *API) XSYNAuth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = api.UpsertPlayer(resp.ID, null.StringFrom(resp.Username), resp.PublicAddress, resp.FactionID)
+	err = api.UpsertPlayer(resp.ID, null.StringFrom(resp.Username), resp.PublicAddress, resp.FactionID, nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -56,7 +57,17 @@ func (api *API) XSYNAuth(w http.ResponseWriter, r *http.Request) {
 }
 
 func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, error) {
+	fmt.Println("ahhhhhhhhhh")
+	fmt.Println("ahhhhhhhhhh")
+	fmt.Println("ahhhhhhhhhh")
+	fmt.Println("ahhhhhhhhhh")
+	fmt.Println("ahhhhhhhhhh")
+	fmt.Println("ahhhhhhhhhh")
+
 	cookie, err := r.Cookie("xsyn-token")
+
+	fmt.Println("cookie", cookie)
+
 	if err != nil {
 		// check whether token is attached
 		gamelog.L.Debug().Msg("Cookie not found")
@@ -99,7 +110,9 @@ func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, e
 		return http.StatusBadRequest, terror.Error(err, "Failed to authentication")
 	}
 
-	err = api.UpsertPlayer(player.ID, player.Username, player.PublicAddress, player.FactionID)
+	// get fingerprint
+
+	err = api.UpsertPlayer(player.ID, player.Username, player.PublicAddress, player.FactionID, nil)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to update player.")
 	}
@@ -122,7 +135,64 @@ func (api *API) LogoutHandler(w http.ResponseWriter, r *http.Request) (int, erro
 	return http.StatusOK, nil
 }
 
-func (api *API) UpsertPlayer(playerID string, username null.String, publicAddress null.String, factionID null.String) error {
+// todo move this
+type Fingerprint struct {
+	VisitorID  string  `json:"visitor_id"`
+	OSCPU      string  `json:"os_cpu"`
+	Platform   string  `json:"platform"`
+	Timezone   string  `json:"timezone"`
+	Confidence float32 `json:"confidence"`
+	UserAgent  string  `json:"user_agent"`
+}
+
+func FingerprintUpsert(fingerprint Fingerprint, playerID string) error {
+	// Attempt to find fingerprint or create one
+	fingerprintExists, err := boiler.Fingerprints(boiler.FingerprintWhere.VisitorID.EQ(fingerprint.VisitorID)).Exists(gamedb.StdConn)
+	if err != nil {
+		return err
+	}
+
+	if !fingerprintExists {
+		fp := boiler.Fingerprint{
+			VisitorID:  fingerprint.VisitorID,
+			OsCPU:      null.StringFrom(fingerprint.OSCPU),
+			Platform:   null.StringFrom(fingerprint.Platform),
+			Timezone:   null.StringFrom(fingerprint.Timezone),
+			Confidence: decimal.NewNullDecimal(decimal.NewFromFloat32(fingerprint.Confidence)),
+			UserAgent:  null.StringFrom(fingerprint.UserAgent),
+		}
+		err = fp.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			return err
+		}
+	}
+
+	f, err := boiler.Fingerprints(boiler.FingerprintWhere.VisitorID.EQ(fingerprint.VisitorID)).One(gamedb.StdConn)
+	if err != nil {
+		return err
+	}
+
+	// Link fingerprint to user
+	playerFingerprintExists, err := boiler.PlayerFingerprints(boiler.PlayerFingerprintWhere.PlayerID.EQ(playerID), boiler.PlayerFingerprintWhere.FingerprintID.EQ(f.ID)).Exists(gamedb.StdConn)
+	if err != nil {
+		return err
+	}
+	if !playerFingerprintExists {
+		// User fingerprint does not exist; create one
+		newPlayerFingerprint := boiler.PlayerFingerprint{
+			PlayerID:      playerID,
+			FingerprintID: f.ID,
+		}
+		err = newPlayerFingerprint.Insert(gamedb.StdConn, boil.Infer())
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (api *API) UpsertPlayer(playerID string, username null.String, publicAddress null.String, factionID null.String, fingerprint *Fingerprint) error {
 	player, err := boiler.FindPlayer(gamedb.StdConn, playerID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return terror.Error(err, "Failed to retrieve player.")
@@ -166,6 +236,15 @@ func (api *API) UpsertPlayer(playerID string, username null.String, publicAddres
 		))
 		if err != nil {
 			return terror.Error(err, "Failed to update player detail.")
+		}
+	}
+
+	// fingerprint
+	if fingerprint != nil {
+		err = FingerprintUpsert(*fingerprint, playerID)
+		if err != nil {
+			return terror.Error(err, "browser identification fail.")
+
 		}
 	}
 
