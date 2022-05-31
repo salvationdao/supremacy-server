@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"github.com/volatiletech/null/v8"
 	"net"
 	"net/http"
 	"server"
@@ -344,13 +345,15 @@ func (api *API) AuthUserFactionWS(factionIDMustMatch bool) func(next http.Handle
 
 			cookie, err := r.Cookie("xsyn-token")
 			if err != nil {
-				fmt.Fprintf(w, "cookie not found: %v", err)
-				return
-			}
-
-			if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
-				fmt.Fprintf(w, "decryption error: %v", err)
-				return
+				token = r.URL.Query().Get("token")
+				if token == "" {
+					return
+				}
+			} else {
+				if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
+					gamelog.L.Error().Err(err).Msg("decrypting cookie error")
+					return
+				}
 			}
 
 			user, err := api.TokenLogin(token)
@@ -391,6 +394,7 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 			if err != nil {
 				token = r.URL.Query().Get("token")
 				if token == "" {
+					http.Error(w, "Unauthorized", http.StatusUnauthorized)
 					return
 				}
 			} else {
@@ -404,10 +408,8 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 				}
 			}
 
-			fmt.Println("start getting user")
 			user, err := api.TokenLogin(token)
 			if err != nil {
-				fmt.Println("error out")
 				if required {
 					gamelog.L.Error().Err(err).Msg("authentication error")
 					return
@@ -439,12 +441,17 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 
 // TokenLogin gets a user from the token
 func (api *API) TokenLogin(tokenBase64 string) (*boiler.Player, error) {
-	useResp, err := api.Passport.TokenLogin(tokenBase64)
+	userResp, err := api.Passport.TokenLogin(tokenBase64)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("Failed to login with token")
-
 		return nil, err
 	}
 
-	return boiler.FindPlayer(gamedb.StdConn, useResp.ID)
+	err = api.UpsertPlayer(userResp.ID, null.StringFrom(userResp.Username), userResp.PublicAddress, userResp.FactionID)
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("Failed to update player detail")
+		return nil, err
+	}
+
+	return boiler.FindPlayer(gamedb.StdConn, userResp.ID)
 }
