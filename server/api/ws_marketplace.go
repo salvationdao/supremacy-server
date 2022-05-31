@@ -206,6 +206,24 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		return terror.Error(err, errMsg)
 	}
 
+	// Check if allowed to sell item
+	item, err := db.Mech(req.Payload.ItemID.String())
+	if err != nil {
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("item_id", req.Payload.ItemID.String()).
+			Err(err).
+			Msg("Failed to get item (mech).")
+		if errors.Is(err, sql.ErrNoRows) {
+			return terror.Error(err, "Item not found.")
+		}
+		return terror.Error(err, errMsg)
+	}
+	if item.XsynLocked || item.MarketLocked {
+		return terror.Error(fmt.Errorf("item cannot be listed for sale on marketplace"), "Item cannot be listed for sale on Marketplace.")
+	}
+
+	// Process listing fee
 	factionAccountID, ok := server.FactionUsers[user.FactionID.String]
 	if !ok {
 		err = fmt.Errorf("failed to get hard coded syndicate player id")
