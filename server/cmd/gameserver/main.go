@@ -417,7 +417,7 @@ func RegisterAllNewAssets(pp *xsyn_rpcclient.XsynXrpcClient) {
 				return nil, nil
 			}
 			for _, m := range mechCollections {
-				if m.Hash == "k8zlb6Yl1L" {
+				if m.OwnerID == "2fa1a63e-a4fa-4618-921f-4b4d28132069" {
 					continue
 				}
 				mechIDs = append(mechIDs, m.ItemID)
@@ -429,17 +429,24 @@ func RegisterAllNewAssets(pp *xsyn_rpcclient.XsynXrpcClient) {
 				return nil, nil
 			}
 
+			var mechsToInsert []*server.Mech
+
 			// go through each mech and set if genesis or limited
 			for _, m := range mechs {
+				if m.OwnerID == "2fa1a63e-a4fa-4618-921f-4b4d28132069" && m.GenesisTokenID.Int64 == 356 {
+					continue
+				}
+
 				genesisID, limitedID := m.CheckAndSetAsGenesisOrLimited()
 				if genesisID.Valid {
 					insertedGenesisIDS = append(insertedGenesisIDS, genesisID.Int64)
 				} else if limitedID.Valid {
 					insertedLimitedIDS = append(insertedLimitedIDS, limitedID.Int64)
 				}
+				mechsToInsert = append(mechsToInsert, m)
 			}
 
-			err = pp.AssetsRegister(rpctypes.ServerMechsToXsynAsset(mechs)) // register new mechs
+			err = pp.AssetsRegister(rpctypes.ServerMechsToXsynAsset(mechsToInsert)) // register new mechs
 			if err != nil {
 				gamelog.L.Error().Err(err).Msg("issue inserting new mechs to xsyn for RegisterAllNewAssets")
 				return nil, nil
