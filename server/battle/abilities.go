@@ -448,10 +448,10 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 
 								as.battle().arena.BroadcastGameNotificationWarMachineAbility(gameNotification)
 							}
-						}
 
-						// generate new offering id for current ability
-						ability.OfferingID = uuid.Must(uuid.NewV4())
+							// generate new offering id for current ability
+							ability.OfferingID = uuid.Must(uuid.NewV4())
+						}
 
 						// broadcast new ability price
 						resp := GameAbilityPriceResponse{
