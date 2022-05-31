@@ -22,7 +22,6 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/gofrs/uuid"
-	"github.com/ninja-syndicate/hub"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 )
@@ -67,7 +66,6 @@ type QueueJoinHandlerResponse struct {
 }
 
 type QueueJoinRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		AssetHash                   string `json:"asset_hash"`
 		NeedInsured                 bool   `json:"need_insured"`
@@ -307,7 +305,6 @@ func (arena *Arena) QueueJoinHandler(ctx context.Context, user *boiler.Player, f
 }
 
 type QueueLeaveRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		AssetHash string `json:"asset_hash"`
 	} `json:"payload"`
@@ -545,7 +542,6 @@ func (arena *Arena) QueueStatusSubscribeHandler(ctx context.Context, user *boile
 const WSQueueUpdatedSubscribe = "BATTLE:QUEUE:UPDATED"
 
 type AssetQueueStatusRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		AssetHash string `json:"asset_hash"`
 	} `json:"payload"`
@@ -654,7 +650,6 @@ func (arena *Arena) AssetQueueStatusListHandler(ctx context.Context, user *boile
 }
 
 type AssetQueueManyRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		PageNumber int `json:"page_number"`
 		PageSize   int `json:"page_size"`

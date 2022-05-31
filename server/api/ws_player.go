@@ -21,8 +21,6 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-syndicate/hub"
-	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/ninja-syndicate/ws"
 	"github.com/rs/zerolog"
 	"github.com/shopspring/decimal"
@@ -53,6 +51,7 @@ func NewPlayerController(api *API) *PlayerController {
 	api.SecureUserCommand(HubKeyPlayerPunishmentList, pc.PlayerPunishmentList)
 	api.SecureUserCommand(HubKeyPlayerActiveCheck, pc.PlayerActiveCheckHandler)
 	api.SecureUserFactionCommand(HubKeyFactionPlayerSearch, pc.FactionPlayerSearch)
+	api.SecureUserFactionCommand(HubKeyInstantPassPunishVote, pc.PunishVoteInstantPassHandler)
 	api.SecureUserFactionCommand(HubKeyPunishOptions, pc.PunishOptions)
 	api.SecureUserFactionCommand(HubKeyPunishVote, pc.PunishVote)
 	api.SecureUserFactionCommand(HubKeyIssuePunishVote, pc.IssuePunishVote)
@@ -68,7 +67,6 @@ func NewPlayerController(api *API) *PlayerController {
 }
 
 type UserUpdatedRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		ID string `json:"id"`
 	} `json:"payload"`
@@ -132,7 +130,6 @@ func (pc *PlayerController) PlayerFactionEnlistHandler(ctx context.Context, user
 }
 
 type PlayerUpdateSettingsRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		Key   string     `json:"key"`
 		Value types.JSON `json:"value,omitempty"`
@@ -196,7 +193,6 @@ type PlayerNotificationPreferences struct {
 }
 
 type PlayerGetSettingsRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		Key string `json:"key"`
 	} `json:"payload"`
@@ -252,18 +248,6 @@ func (api *API) PlayerGetTelegramShortcodeRegistered(w http.ResponseWriter, r *h
 	return helpers.EncodeJSON(w, false)
 }
 
-const HubKeyPlayerBattleQueueBrowserSubscribe = "PLAYER:BROWSER_NOTIFICATION_SUBSCRIBE"
-
-func (pc *PlayerController) PlayerBattleQueueBrowserSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, reply hub.ReplyFunc) (string, messagebus.BusKey, error) {
-	req := &hub.HubCommandRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return "", "", terror.Error(err, "Invalid request received")
-	}
-
-	return req.TransactionID, messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyPlayerBattleQueueBrowserSubscribe, wsc.Identifier())), nil
-}
-
 type PlayerPunishment struct {
 	*boiler.PunishedPlayer
 	RelatedPunishVote *boiler.PunishVote   `json:"related_punish_vote"`
@@ -304,7 +288,6 @@ func (pc *PlayerController) PlayerPunishmentList(ctx context.Context, user *boil
 }
 
 type PlayerActiveCheckRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		Fruit string `json:"fruit"`
 	} `json:"payload"`
@@ -352,7 +335,6 @@ func (pc *PlayerController) PlayerActiveCheckHandler(ctx context.Context, user *
 }
 
 type PlayerSearchRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		Search string `json:"search"`
 	} `json:"payload"`
@@ -399,8 +381,48 @@ func (pc *PlayerController) FactionPlayerSearch(ctx context.Context, user *boile
 	return nil
 }
 
+type PunishVoteInstantPassRequest struct {
+	Payload struct {
+		PunishVoteID string `json:"punish_vote_id"`
+	} `json:"payload"`
+}
+
+const HubKeyInstantPassPunishVote = "PUNISH:VOTE:INSTANT:PASS"
+
+func (pc *PlayerController) PunishVoteInstantPassHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &PunishVoteInstantPassRequest{}
+	err := json.Unmarshal(payload, req)
+	if err != nil {
+		return terror.Error(err, "Invalid request received")
+	}
+
+	// check punish vote is finalised
+	// check player is available to be punished
+	player, err := boiler.FindPlayer(gamedb.StdConn, user.ID)
+	if err != nil {
+		return terror.Error(err, "Failed to get current player from db")
+	}
+
+	if player.Rank != boiler.PlayerRankEnumGENERAL {
+		return terror.Error(terror.ErrInvalidInput, "Only players with rank 'GENERAL' can instantly pass a punish vote.")
+	}
+
+	fpv, ok := pc.API.FactionPunishVote[player.FactionID.String]
+	if !ok {
+		return terror.Error(fmt.Errorf("player faction id does not exist"))
+	}
+
+	err = fpv.InstantPass(pc.API.Passport, req.Payload.PunishVoteID, user.ID)
+	if err != nil {
+		return terror.Error(err, err.Error())
+	}
+
+	reply(true)
+
+	return nil
+}
+
 type PunishVoteRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		PunishVoteID string `json:"punish_vote_id"`
 		IsAgreed     bool   `json:"is_agreed"`
@@ -455,7 +477,6 @@ func (pc *PlayerController) PunishOptions(ctx context.Context, user *boiler.Play
 }
 
 type PunishVotePriceQuoteRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		IntendToPunishPlayerID uuid.UUID `json:"intend_to_punish_player_id"`
 	} `json:"payload"`
@@ -493,7 +514,6 @@ func (pc *PlayerController) PunishVotePriceQuote(ctx context.Context, user *boil
 }
 
 type IssuePunishVoteRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		IntendToPunishPlayerID uuid.UUID `json:"intend_to_punish_player_id"`
 		PunishOptionID         string    `json:"punish_option_id"`
@@ -614,6 +634,7 @@ func (pc *PlayerController) IssuePunishVote(ctx context.Context, user *boiler.Pl
 		ReportedPlayerUsername: intendToBenPlayer.Username.String,
 		ReportedPlayerGid:      intendToBenPlayer.Gid,
 		Status:                 string(PunishVoteStatusPending),
+		InstantPassFee:         price.Mul(decimal.New(1, 18)),
 	}
 	err = punishVote.Insert(tx, boil.Infer())
 	if err != nil {
@@ -844,12 +865,6 @@ const HubKeyPlayerPreferencesGet = "PLAYER:PREFERENCES_GET"
 // PlayerPreferencesGetHandler gets player's preferences
 func (pc *PlayerController) PlayerPreferencesGetHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
 	errMsg := "Issue getting player preferences, try again or contact support."
-	req := &hub.HubCommandRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request")
-
-	}
 
 	// try get player's preferences
 	prefs, err := boiler.PlayerSettingsPreferences(boiler.PlayerSettingsPreferenceWhere.PlayerID.EQ(user.ID)).One(gamedb.StdConn)
@@ -879,7 +894,6 @@ func (pc *PlayerController) PlayerPreferencesGetHandler(ctx context.Context, use
 const HubKeyPlayerPreferencesUpdate = "PLAYER:PREFERENCES_UPDATE"
 
 type PlayerPreferencesUpdateRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		EnableTelegramNotifications bool   `json:"enable_telegram_notifications"`
 		EnableSMSNotifications      bool   `json:"enable_sms_notifications"`

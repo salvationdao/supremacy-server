@@ -71,12 +71,7 @@ type GetSpoilOfWarReq struct{}
 type GetSpoilOfWarResp struct {
 	Amount string
 }
-type UserSupsMultiplierSendReq struct {
-	ApiKey                  string
-	UserSupsMultiplierSends []*server.UserSupsMultiplierSend `json:"userSupsMultiplierSends"`
-}
 
-type UserSupsMultiplierSendResp struct{}
 type TransferBattleFundToSupPoolReq struct{}
 type TransferBattleFundToSupPoolResp struct{}
 type TopSupsContributorReq struct {

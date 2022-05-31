@@ -28,12 +28,18 @@ func (s *S) TemplateRegisterHandler(req rpctypes.TemplateRegisterReq, resp *rpct
 		return err
 	}
 
+	for _, m := range loadedMechs {
+		m.CheckAndSetAsGenesisOrLimited()
+	}
+
 	assets = append(assets, rpctypes.ServerMechsToXsynAsset(loadedMechs)...)
-	assets = append(assets, rpctypes.ServerMechAnimationsToXsynAsset(mechAnimations)...)
-	assets = append(assets, rpctypes.ServerMechSkinsToXsynAsset(mechSkins)...)
-	assets = append(assets, rpctypes.ServerPowerCoresToXsynAsset(powerCores)...)
-	assets = append(assets, rpctypes.ServerWeaponsToXsynAsset(weapons)...)
-	assets = append(assets, rpctypes.ServerUtilitiesToXsynAsset(utilities)...)
+	if loadedMechs != nil && !loadedMechs[0].GenesisTokenID.Valid && !loadedMechs[0].LimitedReleaseTokenID.Valid {
+		assets = append(assets, rpctypes.ServerMechAnimationsToXsynAsset(mechAnimations)...)
+		assets = append(assets, rpctypes.ServerMechSkinsToXsynAsset(mechSkins)...)
+		assets = append(assets, rpctypes.ServerPowerCoresToXsynAsset(powerCores)...)
+		assets = append(assets, rpctypes.ServerWeaponsToXsynAsset(weapons)...)
+		assets = append(assets, rpctypes.ServerUtilitiesToXsynAsset(utilities)...)
+	}
 
 	resp.Assets = assets
 	return nil
