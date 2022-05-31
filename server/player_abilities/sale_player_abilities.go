@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/ninja-syndicate/ws"
 	"math/rand"
 	"server"
 	"server/db"
@@ -14,8 +13,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ninja-syndicate/ws"
+
 	"github.com/gofrs/uuid"
-	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
@@ -40,12 +40,11 @@ type SalePlayerAbilitiesSystem struct {
 	// ability purchase
 	Purchase chan *Purchase
 
-	messageBus *messagebus.MessageBus
-	closed     *atomic.Bool
+	closed *atomic.Bool
 	sync.RWMutex
 }
 
-func NewSalePlayerAbilitiesSystem(messagebus *messagebus.MessageBus) *SalePlayerAbilitiesSystem {
+func NewSalePlayerAbilitiesSystem() *SalePlayerAbilitiesSystem {
 	saleAbilities, err := boiler.SalePlayerAbilities(boiler.SalePlayerAbilityWhere.AvailableUntil.GT(null.TimeFrom(time.Now()))).All(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("failed to populate salePlayerAbilities map with existing abilities from db")
@@ -60,7 +59,6 @@ func NewSalePlayerAbilitiesSystem(messagebus *messagebus.MessageBus) *SalePlayer
 		salePlayerAbilities: salePlayerAbilities,
 		Purchase:            make(chan *Purchase),
 		closed:              atomic.NewBool(false),
-		messageBus:          messagebus,
 	}
 
 	go pas.SalePlayerAbilitiesUpdater()
@@ -139,7 +137,6 @@ func (pas *SalePlayerAbilitiesSystem) SalePlayerAbilitiesUpdater() {
 					}
 					// Broadcast trigger of sale abilities list update
 					ws.PublishMessage("/public/live_data", server.HubKeySaleAbilitiesListUpdated, true)
-					//pas.messageBus.Send(messagebus.BusKey(server.HubKeySaleAbilitiesListUpdated), true)
 				} else if err != nil {
 					gamelog.L.Error().Err(err).Msg("failed to fill sale player abilities map with new sale abilities")
 					break
