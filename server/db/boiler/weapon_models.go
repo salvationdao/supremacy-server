@@ -28,6 +28,8 @@ type WeaponModel struct {
 	Label         string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
 	WeaponType    string      `boiler:"weapon_type" boil:"weapon_type" json:"weapon_type" toml:"weapon_type" yaml:"weapon_type"`
 	DefaultSkinID string      `boiler:"default_skin_id" boil:"default_skin_id" json:"default_skin_id" toml:"default_skin_id" yaml:"default_skin_id"`
+	DeletedAt     null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt     time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
 	CreatedAt     time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *weaponModelR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -40,6 +42,8 @@ var WeaponModelColumns = struct {
 	Label         string
 	WeaponType    string
 	DefaultSkinID string
+	DeletedAt     string
+	UpdatedAt     string
 	CreatedAt     string
 }{
 	ID:            "id",
@@ -47,6 +51,8 @@ var WeaponModelColumns = struct {
 	Label:         "label",
 	WeaponType:    "weapon_type",
 	DefaultSkinID: "default_skin_id",
+	DeletedAt:     "deleted_at",
+	UpdatedAt:     "updated_at",
 	CreatedAt:     "created_at",
 }
 
@@ -56,6 +62,8 @@ var WeaponModelTableColumns = struct {
 	Label         string
 	WeaponType    string
 	DefaultSkinID string
+	DeletedAt     string
+	UpdatedAt     string
 	CreatedAt     string
 }{
 	ID:            "weapon_models.id",
@@ -63,6 +71,8 @@ var WeaponModelTableColumns = struct {
 	Label:         "weapon_models.label",
 	WeaponType:    "weapon_models.weapon_type",
 	DefaultSkinID: "weapon_models.default_skin_id",
+	DeletedAt:     "weapon_models.deleted_at",
+	UpdatedAt:     "weapon_models.updated_at",
 	CreatedAt:     "weapon_models.created_at",
 }
 
@@ -74,6 +84,8 @@ var WeaponModelWhere = struct {
 	Label         whereHelperstring
 	WeaponType    whereHelperstring
 	DefaultSkinID whereHelperstring
+	DeletedAt     whereHelpernull_Time
+	UpdatedAt     whereHelpertime_Time
 	CreatedAt     whereHelpertime_Time
 }{
 	ID:            whereHelperstring{field: "\"weapon_models\".\"id\""},
@@ -81,6 +93,8 @@ var WeaponModelWhere = struct {
 	Label:         whereHelperstring{field: "\"weapon_models\".\"label\""},
 	WeaponType:    whereHelperstring{field: "\"weapon_models\".\"weapon_type\""},
 	DefaultSkinID: whereHelperstring{field: "\"weapon_models\".\"default_skin_id\""},
+	DeletedAt:     whereHelpernull_Time{field: "\"weapon_models\".\"deleted_at\""},
+	UpdatedAt:     whereHelpertime_Time{field: "\"weapon_models\".\"updated_at\""},
 	CreatedAt:     whereHelpertime_Time{field: "\"weapon_models\".\"created_at\""},
 }
 
@@ -117,9 +131,9 @@ func (*weaponModelR) NewStruct() *weaponModelR {
 type weaponModelL struct{}
 
 var (
-	weaponModelAllColumns            = []string{"id", "brand_id", "label", "weapon_type", "default_skin_id", "created_at"}
+	weaponModelAllColumns            = []string{"id", "brand_id", "label", "weapon_type", "default_skin_id", "deleted_at", "updated_at", "created_at"}
 	weaponModelColumnsWithoutDefault = []string{"label", "weapon_type", "default_skin_id"}
-	weaponModelColumnsWithDefault    = []string{"id", "brand_id", "created_at"}
+	weaponModelColumnsWithDefault    = []string{"id", "brand_id", "deleted_at", "updated_at", "created_at"}
 	weaponModelPrimaryKeyColumns     = []string{"id"}
 	weaponModelGeneratedColumns      = []string{}
 )
@@ -1332,7 +1346,7 @@ func (o *WeaponModel) RemoveWeapons(exec boil.Executor, related ...*Weapon) erro
 
 // WeaponModels retrieves all the records using an executor.
 func WeaponModels(mods ...qm.QueryMod) weaponModelQuery {
-	mods = append(mods, qm.From("\"weapon_models\""))
+	mods = append(mods, qm.From("\"weapon_models\""), qmhelper.WhereIsNull("\"weapon_models\".\"deleted_at\""))
 	return weaponModelQuery{NewQuery(mods...)}
 }
 
@@ -1346,7 +1360,7 @@ func FindWeaponModel(exec boil.Executor, iD string, selectCols ...string) (*Weap
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"weapon_models\" where \"id\"=$1", sel,
+		"select %s from \"weapon_models\" where \"id\"=$1 and \"deleted_at\" is null", sel,
 	)
 
 	q := queries.Raw(query, iD)
@@ -1376,6 +1390,9 @@ func (o *WeaponModel) Insert(exec boil.Executor, columns boil.Columns) error {
 	var err error
 	currTime := time.Now().In(boil.GetLocation())
 
+	if o.UpdatedAt.IsZero() {
+		o.UpdatedAt = currTime
+	}
 	if o.CreatedAt.IsZero() {
 		o.CreatedAt = currTime
 	}
@@ -1453,6 +1470,10 @@ func (o *WeaponModel) Insert(exec boil.Executor, columns boil.Columns) error {
 // See boil.Columns.UpdateColumnSet documentation to understand column list inference for updates.
 // Update does not automatically update the record in case of default values. Use .Reload() to refresh the records.
 func (o *WeaponModel) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
+	currTime := time.Now().In(boil.GetLocation())
+
+	o.UpdatedAt = currTime
+
 	var err error
 	if err = o.doBeforeUpdateHooks(exec); err != nil {
 		return 0, err
@@ -1583,6 +1604,7 @@ func (o *WeaponModel) Upsert(exec boil.Executor, updateOnConflict bool, conflict
 	}
 	currTime := time.Now().In(boil.GetLocation())
 
+	o.UpdatedAt = currTime
 	if o.CreatedAt.IsZero() {
 		o.CreatedAt = currTime
 	}
@@ -1697,7 +1719,7 @@ func (o *WeaponModel) Upsert(exec boil.Executor, updateOnConflict bool, conflict
 
 // Delete deletes a single WeaponModel record with an executor.
 // Delete will match against the primary key column to find the record to delete.
-func (o *WeaponModel) Delete(exec boil.Executor) (int64, error) {
+func (o *WeaponModel) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
 	if o == nil {
 		return 0, errors.New("boiler: no WeaponModel provided for delete")
 	}
@@ -1706,8 +1728,26 @@ func (o *WeaponModel) Delete(exec boil.Executor) (int64, error) {
 		return 0, err
 	}
 
-	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), weaponModelPrimaryKeyMapping)
-	sql := "DELETE FROM \"weapon_models\" WHERE \"id\"=$1"
+	var (
+		sql  string
+		args []interface{}
+	)
+	if hardDelete {
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), weaponModelPrimaryKeyMapping)
+		sql = "DELETE FROM \"weapon_models\" WHERE \"id\"=$1"
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		o.DeletedAt = null.TimeFrom(currTime)
+		wl := []string{"deleted_at"}
+		sql = fmt.Sprintf("UPDATE \"weapon_models\" SET %s WHERE \"id\"=$2",
+			strmangle.SetParamNames("\"", "\"", 1, wl),
+		)
+		valueMapping, err := queries.BindMapping(weaponModelType, weaponModelMapping, append(wl, weaponModelPrimaryKeyColumns...))
+		if err != nil {
+			return 0, err
+		}
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), valueMapping)
+	}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1731,12 +1771,17 @@ func (o *WeaponModel) Delete(exec boil.Executor) (int64, error) {
 }
 
 // DeleteAll deletes all matching rows.
-func (q weaponModelQuery) DeleteAll(exec boil.Executor) (int64, error) {
+func (q weaponModelQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if q.Query == nil {
 		return 0, errors.New("boiler: no weaponModelQuery provided for delete all")
 	}
 
-	queries.SetDelete(q.Query)
+	if hardDelete {
+		queries.SetDelete(q.Query)
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		queries.SetUpdate(q.Query, M{"deleted_at": currTime})
+	}
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
@@ -1752,7 +1797,7 @@ func (q weaponModelQuery) DeleteAll(exec boil.Executor) (int64, error) {
 }
 
 // DeleteAll deletes all rows in the slice, using an executor.
-func (o WeaponModelSlice) DeleteAll(exec boil.Executor) (int64, error) {
+func (o WeaponModelSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if len(o) == 0 {
 		return 0, nil
 	}
@@ -1765,14 +1810,31 @@ func (o WeaponModelSlice) DeleteAll(exec boil.Executor) (int64, error) {
 		}
 	}
 
-	var args []interface{}
-	for _, obj := range o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), weaponModelPrimaryKeyMapping)
-		args = append(args, pkeyArgs...)
+	var (
+		sql  string
+		args []interface{}
+	)
+	if hardDelete {
+		for _, obj := range o {
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), weaponModelPrimaryKeyMapping)
+			args = append(args, pkeyArgs...)
+		}
+		sql = "DELETE FROM \"weapon_models\" WHERE " +
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, weaponModelPrimaryKeyColumns, len(o))
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		for _, obj := range o {
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), weaponModelPrimaryKeyMapping)
+			args = append(args, pkeyArgs...)
+			obj.DeletedAt = null.TimeFrom(currTime)
+		}
+		wl := []string{"deleted_at"}
+		sql = fmt.Sprintf("UPDATE \"weapon_models\" SET %s WHERE "+
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, weaponModelPrimaryKeyColumns, len(o)),
+			strmangle.SetParamNames("\"", "\"", 1, wl),
+		)
+		args = append([]interface{}{currTime}, args...)
 	}
-
-	sql := "DELETE FROM \"weapon_models\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, weaponModelPrimaryKeyColumns, len(o))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1826,7 +1888,8 @@ func (o *WeaponModelSlice) ReloadAll(exec boil.Executor) error {
 	}
 
 	sql := "SELECT \"weapon_models\".* FROM \"weapon_models\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, weaponModelPrimaryKeyColumns, len(*o))
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, weaponModelPrimaryKeyColumns, len(*o)) +
+		"and \"deleted_at\" is null"
 
 	q := queries.Raw(sql, args...)
 
@@ -1843,7 +1906,7 @@ func (o *WeaponModelSlice) ReloadAll(exec boil.Executor) error {
 // WeaponModelExists checks if the WeaponModel row exists.
 func WeaponModelExists(exec boil.Executor, iD string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"weapon_models\" where \"id\"=$1 limit 1)"
+	sql := "select exists(select 1 from \"weapon_models\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)

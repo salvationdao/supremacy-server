@@ -533,6 +533,7 @@ func (o *Brand) WeaponModels(mods ...qm.QueryMod) weaponModelQuery {
 
 	queryMods = append(queryMods,
 		qm.Where("\"weapon_models\".\"brand_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"weapon_models\".\"deleted_at\""),
 	)
 
 	query := WeaponModels(queryMods...)
@@ -1307,6 +1308,7 @@ func (brandL) LoadWeaponModels(e boil.Executor, singular bool, maybeBrand interf
 	query := NewQuery(
 		qm.From(`weapon_models`),
 		qm.WhereIn(`weapon_models.brand_id in ?`, args...),
+		qmhelper.WhereIsNull(`weapon_models.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)

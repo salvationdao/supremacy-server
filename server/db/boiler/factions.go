@@ -647,6 +647,7 @@ func (o *Faction) MysteryCrates(mods ...qm.QueryMod) mysteryCrateQuery {
 
 	queryMods = append(queryMods,
 		qm.Where("\"mystery_crate\".\"faction_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"mystery_crate\".\"deleted_at\""),
 	)
 
 	query := MysteryCrates(queryMods...)
@@ -1716,6 +1717,7 @@ func (factionL) LoadMysteryCrates(e boil.Executor, singular bool, maybeFaction i
 	query := NewQuery(
 		qm.From(`mystery_crate`),
 		qm.WhereIn(`mystery_crate.faction_id in ?`, args...),
+		qmhelper.WhereIsNull(`mystery_crate.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)

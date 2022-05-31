@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -29,6 +30,9 @@ type MysteryCrate struct {
 	Opened      bool      `boiler:"opened" boil:"opened" json:"opened" toml:"opened" yaml:"opened"`
 	LockedUntil time.Time `boiler:"locked_until" boil:"locked_until" json:"locked_until" toml:"locked_until" yaml:"locked_until"`
 	Purchased   bool      `boiler:"purchased" boil:"purchased" json:"purchased" toml:"purchased" yaml:"purchased"`
+	DeletedAt   null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt   time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt   time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *mysteryCrateR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L mysteryCrateL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -42,6 +46,9 @@ var MysteryCrateColumns = struct {
 	Opened      string
 	LockedUntil string
 	Purchased   string
+	DeletedAt   string
+	UpdatedAt   string
+	CreatedAt   string
 }{
 	ID:          "id",
 	Type:        "type",
@@ -50,6 +57,9 @@ var MysteryCrateColumns = struct {
 	Opened:      "opened",
 	LockedUntil: "locked_until",
 	Purchased:   "purchased",
+	DeletedAt:   "deleted_at",
+	UpdatedAt:   "updated_at",
+	CreatedAt:   "created_at",
 }
 
 var MysteryCrateTableColumns = struct {
@@ -60,6 +70,9 @@ var MysteryCrateTableColumns = struct {
 	Opened      string
 	LockedUntil string
 	Purchased   string
+	DeletedAt   string
+	UpdatedAt   string
+	CreatedAt   string
 }{
 	ID:          "mystery_crate.id",
 	Type:        "mystery_crate.type",
@@ -68,6 +81,9 @@ var MysteryCrateTableColumns = struct {
 	Opened:      "mystery_crate.opened",
 	LockedUntil: "mystery_crate.locked_until",
 	Purchased:   "mystery_crate.purchased",
+	DeletedAt:   "mystery_crate.deleted_at",
+	UpdatedAt:   "mystery_crate.updated_at",
+	CreatedAt:   "mystery_crate.created_at",
 }
 
 // Generated where
@@ -80,6 +96,9 @@ var MysteryCrateWhere = struct {
 	Opened      whereHelperbool
 	LockedUntil whereHelpertime_Time
 	Purchased   whereHelperbool
+	DeletedAt   whereHelpernull_Time
+	UpdatedAt   whereHelpertime_Time
+	CreatedAt   whereHelpertime_Time
 }{
 	ID:          whereHelperstring{field: "\"mystery_crate\".\"id\""},
 	Type:        whereHelperstring{field: "\"mystery_crate\".\"type\""},
@@ -88,6 +107,9 @@ var MysteryCrateWhere = struct {
 	Opened:      whereHelperbool{field: "\"mystery_crate\".\"opened\""},
 	LockedUntil: whereHelpertime_Time{field: "\"mystery_crate\".\"locked_until\""},
 	Purchased:   whereHelperbool{field: "\"mystery_crate\".\"purchased\""},
+	DeletedAt:   whereHelpernull_Time{field: "\"mystery_crate\".\"deleted_at\""},
+	UpdatedAt:   whereHelpertime_Time{field: "\"mystery_crate\".\"updated_at\""},
+	CreatedAt:   whereHelpertime_Time{field: "\"mystery_crate\".\"created_at\""},
 }
 
 // MysteryCrateRels is where relationship names are stored.
@@ -114,9 +136,9 @@ func (*mysteryCrateR) NewStruct() *mysteryCrateR {
 type mysteryCrateL struct{}
 
 var (
-	mysteryCrateAllColumns            = []string{"id", "type", "faction_id", "label", "opened", "locked_until", "purchased"}
+	mysteryCrateAllColumns            = []string{"id", "type", "faction_id", "label", "opened", "locked_until", "purchased", "deleted_at", "updated_at", "created_at"}
 	mysteryCrateColumnsWithoutDefault = []string{"type", "faction_id", "label"}
-	mysteryCrateColumnsWithDefault    = []string{"id", "opened", "locked_until", "purchased"}
+	mysteryCrateColumnsWithDefault    = []string{"id", "opened", "locked_until", "purchased", "deleted_at", "updated_at", "created_at"}
 	mysteryCratePrimaryKeyColumns     = []string{"id"}
 	mysteryCrateGeneratedColumns      = []string{}
 )
@@ -387,6 +409,7 @@ func (o *MysteryCrate) MysteryCrateBlueprints(mods ...qm.QueryMod) mysteryCrateB
 
 	queryMods = append(queryMods,
 		qm.Where("\"mystery_crate_blueprints\".\"mystery_crate_id\"=?", o.ID),
+		qmhelper.WhereIsNull("\"mystery_crate_blueprints\".\"deleted_at\""),
 	)
 
 	query := MysteryCrateBlueprints(queryMods...)
@@ -546,6 +569,7 @@ func (mysteryCrateL) LoadMysteryCrateBlueprints(e boil.Executor, singular bool, 
 	query := NewQuery(
 		qm.From(`mystery_crate_blueprints`),
 		qm.WhereIn(`mystery_crate_blueprints.mystery_crate_id in ?`, args...),
+		qmhelper.WhereIsNull(`mystery_crate_blueprints.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -702,7 +726,7 @@ func (o *MysteryCrate) AddMysteryCrateBlueprints(exec boil.Executor, insert bool
 
 // MysteryCrates retrieves all the records using an executor.
 func MysteryCrates(mods ...qm.QueryMod) mysteryCrateQuery {
-	mods = append(mods, qm.From("\"mystery_crate\""))
+	mods = append(mods, qm.From("\"mystery_crate\""), qmhelper.WhereIsNull("\"mystery_crate\".\"deleted_at\""))
 	return mysteryCrateQuery{NewQuery(mods...)}
 }
 
@@ -716,7 +740,7 @@ func FindMysteryCrate(exec boil.Executor, iD string, selectCols ...string) (*Mys
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"mystery_crate\" where \"id\"=$1", sel,
+		"select %s from \"mystery_crate\" where \"id\"=$1 and \"deleted_at\" is null", sel,
 	)
 
 	q := queries.Raw(query, iD)
@@ -744,6 +768,14 @@ func (o *MysteryCrate) Insert(exec boil.Executor, columns boil.Columns) error {
 	}
 
 	var err error
+	currTime := time.Now().In(boil.GetLocation())
+
+	if o.UpdatedAt.IsZero() {
+		o.UpdatedAt = currTime
+	}
+	if o.CreatedAt.IsZero() {
+		o.CreatedAt = currTime
+	}
 
 	if err := o.doBeforeInsertHooks(exec); err != nil {
 		return err
@@ -818,6 +850,10 @@ func (o *MysteryCrate) Insert(exec boil.Executor, columns boil.Columns) error {
 // See boil.Columns.UpdateColumnSet documentation to understand column list inference for updates.
 // Update does not automatically update the record in case of default values. Use .Reload() to refresh the records.
 func (o *MysteryCrate) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
+	currTime := time.Now().In(boil.GetLocation())
+
+	o.UpdatedAt = currTime
+
 	var err error
 	if err = o.doBeforeUpdateHooks(exec); err != nil {
 		return 0, err
@@ -946,6 +982,12 @@ func (o *MysteryCrate) Upsert(exec boil.Executor, updateOnConflict bool, conflic
 	if o == nil {
 		return errors.New("boiler: no mystery_crate provided for upsert")
 	}
+	currTime := time.Now().In(boil.GetLocation())
+
+	o.UpdatedAt = currTime
+	if o.CreatedAt.IsZero() {
+		o.CreatedAt = currTime
+	}
 
 	if err := o.doBeforeUpsertHooks(exec); err != nil {
 		return err
@@ -1057,7 +1099,7 @@ func (o *MysteryCrate) Upsert(exec boil.Executor, updateOnConflict bool, conflic
 
 // Delete deletes a single MysteryCrate record with an executor.
 // Delete will match against the primary key column to find the record to delete.
-func (o *MysteryCrate) Delete(exec boil.Executor) (int64, error) {
+func (o *MysteryCrate) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
 	if o == nil {
 		return 0, errors.New("boiler: no MysteryCrate provided for delete")
 	}
@@ -1066,8 +1108,26 @@ func (o *MysteryCrate) Delete(exec boil.Executor) (int64, error) {
 		return 0, err
 	}
 
-	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), mysteryCratePrimaryKeyMapping)
-	sql := "DELETE FROM \"mystery_crate\" WHERE \"id\"=$1"
+	var (
+		sql  string
+		args []interface{}
+	)
+	if hardDelete {
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), mysteryCratePrimaryKeyMapping)
+		sql = "DELETE FROM \"mystery_crate\" WHERE \"id\"=$1"
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		o.DeletedAt = null.TimeFrom(currTime)
+		wl := []string{"deleted_at"}
+		sql = fmt.Sprintf("UPDATE \"mystery_crate\" SET %s WHERE \"id\"=$2",
+			strmangle.SetParamNames("\"", "\"", 1, wl),
+		)
+		valueMapping, err := queries.BindMapping(mysteryCrateType, mysteryCrateMapping, append(wl, mysteryCratePrimaryKeyColumns...))
+		if err != nil {
+			return 0, err
+		}
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), valueMapping)
+	}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1091,12 +1151,17 @@ func (o *MysteryCrate) Delete(exec boil.Executor) (int64, error) {
 }
 
 // DeleteAll deletes all matching rows.
-func (q mysteryCrateQuery) DeleteAll(exec boil.Executor) (int64, error) {
+func (q mysteryCrateQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if q.Query == nil {
 		return 0, errors.New("boiler: no mysteryCrateQuery provided for delete all")
 	}
 
-	queries.SetDelete(q.Query)
+	if hardDelete {
+		queries.SetDelete(q.Query)
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		queries.SetUpdate(q.Query, M{"deleted_at": currTime})
+	}
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
@@ -1112,7 +1177,7 @@ func (q mysteryCrateQuery) DeleteAll(exec boil.Executor) (int64, error) {
 }
 
 // DeleteAll deletes all rows in the slice, using an executor.
-func (o MysteryCrateSlice) DeleteAll(exec boil.Executor) (int64, error) {
+func (o MysteryCrateSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if len(o) == 0 {
 		return 0, nil
 	}
@@ -1125,14 +1190,31 @@ func (o MysteryCrateSlice) DeleteAll(exec boil.Executor) (int64, error) {
 		}
 	}
 
-	var args []interface{}
-	for _, obj := range o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), mysteryCratePrimaryKeyMapping)
-		args = append(args, pkeyArgs...)
+	var (
+		sql  string
+		args []interface{}
+	)
+	if hardDelete {
+		for _, obj := range o {
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), mysteryCratePrimaryKeyMapping)
+			args = append(args, pkeyArgs...)
+		}
+		sql = "DELETE FROM \"mystery_crate\" WHERE " +
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, mysteryCratePrimaryKeyColumns, len(o))
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		for _, obj := range o {
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), mysteryCratePrimaryKeyMapping)
+			args = append(args, pkeyArgs...)
+			obj.DeletedAt = null.TimeFrom(currTime)
+		}
+		wl := []string{"deleted_at"}
+		sql = fmt.Sprintf("UPDATE \"mystery_crate\" SET %s WHERE "+
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, mysteryCratePrimaryKeyColumns, len(o)),
+			strmangle.SetParamNames("\"", "\"", 1, wl),
+		)
+		args = append([]interface{}{currTime}, args...)
 	}
-
-	sql := "DELETE FROM \"mystery_crate\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, mysteryCratePrimaryKeyColumns, len(o))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -1186,7 +1268,8 @@ func (o *MysteryCrateSlice) ReloadAll(exec boil.Executor) error {
 	}
 
 	sql := "SELECT \"mystery_crate\".* FROM \"mystery_crate\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, mysteryCratePrimaryKeyColumns, len(*o))
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, mysteryCratePrimaryKeyColumns, len(*o)) +
+		"and \"deleted_at\" is null"
 
 	q := queries.Raw(sql, args...)
 
@@ -1203,7 +1286,7 @@ func (o *MysteryCrateSlice) ReloadAll(exec boil.Executor) error {
 // MysteryCrateExists checks if the MysteryCrate row exists.
 func MysteryCrateExists(exec boil.Executor, iD string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"mystery_crate\" where \"id\"=$1 limit 1)"
+	sql := "select exists(select 1 from \"mystery_crate\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)

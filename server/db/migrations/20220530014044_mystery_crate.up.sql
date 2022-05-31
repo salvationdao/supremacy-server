@@ -27,15 +27,21 @@ CREATE TABLE mystery_crate
     label        TEXT            NOT NULL,
     opened       BOOLEAN         NOT NULL DEFAULT FALSE,
     locked_until TIMESTAMPTZ     NOT NULL DEFAULT NOW() + INTERVAL '1' YEAR,
-    purchased    BOOLEAN         NOT NULL DEFAULT FALSE
+    purchased    BOOLEAN         NOT NULL DEFAULT FALSE,
+    deleted_at   TIMESTAMPTZ,
+    updated_at   TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+    created_at   TIMESTAMPTZ     NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE mystery_crate_blueprints
 (
-    id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id               UUID PRIMARY KEY            DEFAULT gen_random_uuid(),
     mystery_crate_id UUID               NOT NULL REFERENCES mystery_crate (id),
     blueprint_type   TEMPLATE_ITEM_TYPE NOT NULL,
-    blueprint_id     UUID               NOT NULL
+    blueprint_id     UUID               NOT NULL,
+    deleted_at       TIMESTAMPTZ,
+    updated_at       TIMESTAMPTZ        NOT NULL DEFAULT NOW(),
+    created_at       TIMESTAMPTZ        NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE weapon_models
@@ -46,6 +52,8 @@ CREATE TABLE weapon_models
     label           TEXT        NOT NULL,
     weapon_type     WEAPON_TYPE NOT NULL,
     default_skin_id UUID,
+    deleted_at      TIMESTAMPTZ,
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

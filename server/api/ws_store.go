@@ -61,7 +61,8 @@ func (sc *StoreController) GetMysteryCratesHandler(ctx context.Context, user *bo
 		return terror.Error(err, "Failed to get mystery crate")
 	}
 
-	reply(crates)
+	resp := server.StoreFrontMysteryCrateSliceFromBoiler(crates)
+	reply(resp)
 
 	return nil
 }
@@ -80,7 +81,8 @@ func (sc *StoreController) MysteryCrateSubscribeHandler(ctx context.Context, use
 		return terror.Error(err, "Failed to get mystery crate")
 	}
 
-	reply(crate)
+	resp := server.StoreFrontMysteryCrateFromBoiler(crate)
+	reply(resp)
 
 	return nil
 }
@@ -140,6 +142,8 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 		gamelog.L.Error().Str("txID", supTransactionID).Str("mystery_crate_id", storeCrate.ID).Err(err).Msg("unable to charge user for mystery crate purchase")
 		return terror.Error(err, "Unable to process mystery crate purchase,  check your balance and try again.")
 	}
+
+	//sc.API.Passport.AssetRegister()
 
 	refundFunc := func() {
 		refundSupTransactionID, err := sc.API.Passport.RefundSupsMessage(supTransactionID)
@@ -232,8 +236,10 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 		return terror.Error(err, "Issue purchasing mystery crate, please try again or contact support.")
 	}
 
+	resp := server.StoreFrontMysteryCrateFromBoiler(storeCrate)
+
 	//update mysterycrate subscribers and update player
-	ws.PublishMessage(fmt.Sprintf("/faction/%s/crate/%s", factionID, storeCrate.ID), HubKeyMysteryCrateSubscribe, storeCrate)
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/crate/%s", factionID, storeCrate.ID), HubKeyMysteryCrateSubscribe, resp)
 
 	reply(true)
 	return nil

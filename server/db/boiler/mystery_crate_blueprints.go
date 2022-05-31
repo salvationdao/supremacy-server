@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -22,10 +23,13 @@ import (
 
 // MysteryCrateBlueprint is an object representing the database table.
 type MysteryCrateBlueprint struct {
-	ID             string `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	MysteryCrateID string `boiler:"mystery_crate_id" boil:"mystery_crate_id" json:"mystery_crate_id" toml:"mystery_crate_id" yaml:"mystery_crate_id"`
-	BlueprintType  string `boiler:"blueprint_type" boil:"blueprint_type" json:"blueprint_type" toml:"blueprint_type" yaml:"blueprint_type"`
-	BlueprintID    string `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
+	ID             string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	MysteryCrateID string    `boiler:"mystery_crate_id" boil:"mystery_crate_id" json:"mystery_crate_id" toml:"mystery_crate_id" yaml:"mystery_crate_id"`
+	BlueprintType  string    `boiler:"blueprint_type" boil:"blueprint_type" json:"blueprint_type" toml:"blueprint_type" yaml:"blueprint_type"`
+	BlueprintID    string    `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id" toml:"blueprint_id" yaml:"blueprint_id"`
+	DeletedAt      null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt      time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt      time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *mysteryCrateBlueprintR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L mysteryCrateBlueprintL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -36,11 +40,17 @@ var MysteryCrateBlueprintColumns = struct {
 	MysteryCrateID string
 	BlueprintType  string
 	BlueprintID    string
+	DeletedAt      string
+	UpdatedAt      string
+	CreatedAt      string
 }{
 	ID:             "id",
 	MysteryCrateID: "mystery_crate_id",
 	BlueprintType:  "blueprint_type",
 	BlueprintID:    "blueprint_id",
+	DeletedAt:      "deleted_at",
+	UpdatedAt:      "updated_at",
+	CreatedAt:      "created_at",
 }
 
 var MysteryCrateBlueprintTableColumns = struct {
@@ -48,11 +58,17 @@ var MysteryCrateBlueprintTableColumns = struct {
 	MysteryCrateID string
 	BlueprintType  string
 	BlueprintID    string
+	DeletedAt      string
+	UpdatedAt      string
+	CreatedAt      string
 }{
 	ID:             "mystery_crate_blueprints.id",
 	MysteryCrateID: "mystery_crate_blueprints.mystery_crate_id",
 	BlueprintType:  "mystery_crate_blueprints.blueprint_type",
 	BlueprintID:    "mystery_crate_blueprints.blueprint_id",
+	DeletedAt:      "mystery_crate_blueprints.deleted_at",
+	UpdatedAt:      "mystery_crate_blueprints.updated_at",
+	CreatedAt:      "mystery_crate_blueprints.created_at",
 }
 
 // Generated where
@@ -62,11 +78,17 @@ var MysteryCrateBlueprintWhere = struct {
 	MysteryCrateID whereHelperstring
 	BlueprintType  whereHelperstring
 	BlueprintID    whereHelperstring
+	DeletedAt      whereHelpernull_Time
+	UpdatedAt      whereHelpertime_Time
+	CreatedAt      whereHelpertime_Time
 }{
 	ID:             whereHelperstring{field: "\"mystery_crate_blueprints\".\"id\""},
 	MysteryCrateID: whereHelperstring{field: "\"mystery_crate_blueprints\".\"mystery_crate_id\""},
 	BlueprintType:  whereHelperstring{field: "\"mystery_crate_blueprints\".\"blueprint_type\""},
 	BlueprintID:    whereHelperstring{field: "\"mystery_crate_blueprints\".\"blueprint_id\""},
+	DeletedAt:      whereHelpernull_Time{field: "\"mystery_crate_blueprints\".\"deleted_at\""},
+	UpdatedAt:      whereHelpertime_Time{field: "\"mystery_crate_blueprints\".\"updated_at\""},
+	CreatedAt:      whereHelpertime_Time{field: "\"mystery_crate_blueprints\".\"created_at\""},
 }
 
 // MysteryCrateBlueprintRels is where relationship names are stored.
@@ -90,9 +112,9 @@ func (*mysteryCrateBlueprintR) NewStruct() *mysteryCrateBlueprintR {
 type mysteryCrateBlueprintL struct{}
 
 var (
-	mysteryCrateBlueprintAllColumns            = []string{"id", "mystery_crate_id", "blueprint_type", "blueprint_id"}
+	mysteryCrateBlueprintAllColumns            = []string{"id", "mystery_crate_id", "blueprint_type", "blueprint_id", "deleted_at", "updated_at", "created_at"}
 	mysteryCrateBlueprintColumnsWithoutDefault = []string{"mystery_crate_id", "blueprint_type", "blueprint_id"}
-	mysteryCrateBlueprintColumnsWithDefault    = []string{"id"}
+	mysteryCrateBlueprintColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at"}
 	mysteryCrateBlueprintPrimaryKeyColumns     = []string{"id"}
 	mysteryCrateBlueprintGeneratedColumns      = []string{}
 )
@@ -343,6 +365,7 @@ func (q mysteryCrateBlueprintQuery) Exists(exec boil.Executor) (bool, error) {
 func (o *MysteryCrateBlueprint) MysteryCrate(mods ...qm.QueryMod) mysteryCrateQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.MysteryCrateID),
+		qmhelper.WhereIsNull("deleted_at"),
 	}
 
 	queryMods = append(queryMods, mods...)
@@ -397,6 +420,7 @@ func (mysteryCrateBlueprintL) LoadMysteryCrate(e boil.Executor, singular bool, m
 	query := NewQuery(
 		qm.From(`mystery_crate`),
 		qm.WhereIn(`mystery_crate.id in ?`, args...),
+		qmhelper.WhereIsNull(`mystery_crate.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -505,7 +529,7 @@ func (o *MysteryCrateBlueprint) SetMysteryCrate(exec boil.Executor, insert bool,
 
 // MysteryCrateBlueprints retrieves all the records using an executor.
 func MysteryCrateBlueprints(mods ...qm.QueryMod) mysteryCrateBlueprintQuery {
-	mods = append(mods, qm.From("\"mystery_crate_blueprints\""))
+	mods = append(mods, qm.From("\"mystery_crate_blueprints\""), qmhelper.WhereIsNull("\"mystery_crate_blueprints\".\"deleted_at\""))
 	return mysteryCrateBlueprintQuery{NewQuery(mods...)}
 }
 
@@ -519,7 +543,7 @@ func FindMysteryCrateBlueprint(exec boil.Executor, iD string, selectCols ...stri
 		sel = strings.Join(strmangle.IdentQuoteSlice(dialect.LQ, dialect.RQ, selectCols), ",")
 	}
 	query := fmt.Sprintf(
-		"select %s from \"mystery_crate_blueprints\" where \"id\"=$1", sel,
+		"select %s from \"mystery_crate_blueprints\" where \"id\"=$1 and \"deleted_at\" is null", sel,
 	)
 
 	q := queries.Raw(query, iD)
@@ -547,6 +571,14 @@ func (o *MysteryCrateBlueprint) Insert(exec boil.Executor, columns boil.Columns)
 	}
 
 	var err error
+	currTime := time.Now().In(boil.GetLocation())
+
+	if o.UpdatedAt.IsZero() {
+		o.UpdatedAt = currTime
+	}
+	if o.CreatedAt.IsZero() {
+		o.CreatedAt = currTime
+	}
 
 	if err := o.doBeforeInsertHooks(exec); err != nil {
 		return err
@@ -621,6 +653,10 @@ func (o *MysteryCrateBlueprint) Insert(exec boil.Executor, columns boil.Columns)
 // See boil.Columns.UpdateColumnSet documentation to understand column list inference for updates.
 // Update does not automatically update the record in case of default values. Use .Reload() to refresh the records.
 func (o *MysteryCrateBlueprint) Update(exec boil.Executor, columns boil.Columns) (int64, error) {
+	currTime := time.Now().In(boil.GetLocation())
+
+	o.UpdatedAt = currTime
+
 	var err error
 	if err = o.doBeforeUpdateHooks(exec); err != nil {
 		return 0, err
@@ -749,6 +785,12 @@ func (o *MysteryCrateBlueprint) Upsert(exec boil.Executor, updateOnConflict bool
 	if o == nil {
 		return errors.New("boiler: no mystery_crate_blueprints provided for upsert")
 	}
+	currTime := time.Now().In(boil.GetLocation())
+
+	o.UpdatedAt = currTime
+	if o.CreatedAt.IsZero() {
+		o.CreatedAt = currTime
+	}
 
 	if err := o.doBeforeUpsertHooks(exec); err != nil {
 		return err
@@ -860,7 +902,7 @@ func (o *MysteryCrateBlueprint) Upsert(exec boil.Executor, updateOnConflict bool
 
 // Delete deletes a single MysteryCrateBlueprint record with an executor.
 // Delete will match against the primary key column to find the record to delete.
-func (o *MysteryCrateBlueprint) Delete(exec boil.Executor) (int64, error) {
+func (o *MysteryCrateBlueprint) Delete(exec boil.Executor, hardDelete bool) (int64, error) {
 	if o == nil {
 		return 0, errors.New("boiler: no MysteryCrateBlueprint provided for delete")
 	}
@@ -869,8 +911,26 @@ func (o *MysteryCrateBlueprint) Delete(exec boil.Executor) (int64, error) {
 		return 0, err
 	}
 
-	args := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), mysteryCrateBlueprintPrimaryKeyMapping)
-	sql := "DELETE FROM \"mystery_crate_blueprints\" WHERE \"id\"=$1"
+	var (
+		sql  string
+		args []interface{}
+	)
+	if hardDelete {
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), mysteryCrateBlueprintPrimaryKeyMapping)
+		sql = "DELETE FROM \"mystery_crate_blueprints\" WHERE \"id\"=$1"
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		o.DeletedAt = null.TimeFrom(currTime)
+		wl := []string{"deleted_at"}
+		sql = fmt.Sprintf("UPDATE \"mystery_crate_blueprints\" SET %s WHERE \"id\"=$2",
+			strmangle.SetParamNames("\"", "\"", 1, wl),
+		)
+		valueMapping, err := queries.BindMapping(mysteryCrateBlueprintType, mysteryCrateBlueprintMapping, append(wl, mysteryCrateBlueprintPrimaryKeyColumns...))
+		if err != nil {
+			return 0, err
+		}
+		args = queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(o)), valueMapping)
+	}
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -894,12 +954,17 @@ func (o *MysteryCrateBlueprint) Delete(exec boil.Executor) (int64, error) {
 }
 
 // DeleteAll deletes all matching rows.
-func (q mysteryCrateBlueprintQuery) DeleteAll(exec boil.Executor) (int64, error) {
+func (q mysteryCrateBlueprintQuery) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if q.Query == nil {
 		return 0, errors.New("boiler: no mysteryCrateBlueprintQuery provided for delete all")
 	}
 
-	queries.SetDelete(q.Query)
+	if hardDelete {
+		queries.SetDelete(q.Query)
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		queries.SetUpdate(q.Query, M{"deleted_at": currTime})
+	}
 
 	result, err := q.Query.Exec(exec)
 	if err != nil {
@@ -915,7 +980,7 @@ func (q mysteryCrateBlueprintQuery) DeleteAll(exec boil.Executor) (int64, error)
 }
 
 // DeleteAll deletes all rows in the slice, using an executor.
-func (o MysteryCrateBlueprintSlice) DeleteAll(exec boil.Executor) (int64, error) {
+func (o MysteryCrateBlueprintSlice) DeleteAll(exec boil.Executor, hardDelete bool) (int64, error) {
 	if len(o) == 0 {
 		return 0, nil
 	}
@@ -928,14 +993,31 @@ func (o MysteryCrateBlueprintSlice) DeleteAll(exec boil.Executor) (int64, error)
 		}
 	}
 
-	var args []interface{}
-	for _, obj := range o {
-		pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), mysteryCrateBlueprintPrimaryKeyMapping)
-		args = append(args, pkeyArgs...)
+	var (
+		sql  string
+		args []interface{}
+	)
+	if hardDelete {
+		for _, obj := range o {
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), mysteryCrateBlueprintPrimaryKeyMapping)
+			args = append(args, pkeyArgs...)
+		}
+		sql = "DELETE FROM \"mystery_crate_blueprints\" WHERE " +
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, mysteryCrateBlueprintPrimaryKeyColumns, len(o))
+	} else {
+		currTime := time.Now().In(boil.GetLocation())
+		for _, obj := range o {
+			pkeyArgs := queries.ValuesFromMapping(reflect.Indirect(reflect.ValueOf(obj)), mysteryCrateBlueprintPrimaryKeyMapping)
+			args = append(args, pkeyArgs...)
+			obj.DeletedAt = null.TimeFrom(currTime)
+		}
+		wl := []string{"deleted_at"}
+		sql = fmt.Sprintf("UPDATE \"mystery_crate_blueprints\" SET %s WHERE "+
+			strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 2, mysteryCrateBlueprintPrimaryKeyColumns, len(o)),
+			strmangle.SetParamNames("\"", "\"", 1, wl),
+		)
+		args = append([]interface{}{currTime}, args...)
 	}
-
-	sql := "DELETE FROM \"mystery_crate_blueprints\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, mysteryCrateBlueprintPrimaryKeyColumns, len(o))
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)
@@ -989,7 +1071,8 @@ func (o *MysteryCrateBlueprintSlice) ReloadAll(exec boil.Executor) error {
 	}
 
 	sql := "SELECT \"mystery_crate_blueprints\".* FROM \"mystery_crate_blueprints\" WHERE " +
-		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, mysteryCrateBlueprintPrimaryKeyColumns, len(*o))
+		strmangle.WhereClauseRepeated(string(dialect.LQ), string(dialect.RQ), 1, mysteryCrateBlueprintPrimaryKeyColumns, len(*o)) +
+		"and \"deleted_at\" is null"
 
 	q := queries.Raw(sql, args...)
 
@@ -1006,7 +1089,7 @@ func (o *MysteryCrateBlueprintSlice) ReloadAll(exec boil.Executor) error {
 // MysteryCrateBlueprintExists checks if the MysteryCrateBlueprint row exists.
 func MysteryCrateBlueprintExists(exec boil.Executor, iD string) (bool, error) {
 	var exists bool
-	sql := "select exists(select 1 from \"mystery_crate_blueprints\" where \"id\"=$1 limit 1)"
+	sql := "select exists(select 1 from \"mystery_crate_blueprints\" where \"id\"=$1 and \"deleted_at\" is null limit 1)"
 
 	if boil.DebugMode {
 		fmt.Fprintln(boil.DebugWriter, sql)

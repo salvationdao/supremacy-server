@@ -432,6 +432,7 @@ func (o *WeaponSkin) Owner(mods ...qm.QueryMod) playerQuery {
 func (o *WeaponSkin) WeaponModel(mods ...qm.QueryMod) weaponModelQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.WeaponModelID),
+		qmhelper.WhereIsNull("deleted_at"),
 	}
 
 	queryMods = append(queryMods, mods...)
@@ -804,6 +805,7 @@ func (weaponSkinL) LoadWeaponModel(e boil.Executor, singular bool, maybeWeaponSk
 	query := NewQuery(
 		qm.From(`weapon_models`),
 		qm.WhereIn(`weapon_models.id in ?`, args...),
+		qmhelper.WhereIsNull(`weapon_models.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)

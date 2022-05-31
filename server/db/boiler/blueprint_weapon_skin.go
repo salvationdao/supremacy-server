@@ -417,6 +417,7 @@ func (q blueprintWeaponSkinQuery) Exists(exec boil.Executor) (bool, error) {
 func (o *BlueprintWeaponSkin) WeaponModel(mods ...qm.QueryMod) weaponModelQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.WeaponModelID),
+		qmhelper.WhereIsNull("deleted_at"),
 	}
 
 	queryMods = append(queryMods, mods...)
@@ -492,6 +493,7 @@ func (blueprintWeaponSkinL) LoadWeaponModel(e boil.Executor, singular bool, mayb
 	query := NewQuery(
 		qm.From(`weapon_models`),
 		qm.WhereIn(`weapon_models.id in ?`, args...),
+		qmhelper.WhereIsNull(`weapon_models.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)

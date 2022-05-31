@@ -139,6 +139,7 @@ const (
 	ItemTypeMechSkin      = "mech_skin"
 	ItemTypeMechAnimation = "mech_animation"
 	ItemTypePowerCore     = "power_core"
+	ItemTypeMysteryCrate  = "mystery_crate"
 )
 
 // Enum values for AbilityLevel
@@ -186,14 +187,6 @@ const (
 	PlayerRankEnumCORPORAL    = "CORPORAL"
 	PlayerRankEnumPRIVATE     = "PRIVATE"
 	PlayerRankEnumNEW_RECRUIT = "NEW_RECRUIT"
-)
-
-// Enum values for StoreItemType
-const (
-	StoreItemTypeLOOTBOX = "LOOTBOX"
-	StoreItemTypeMECH    = "MECH"
-	StoreItemTypeAMMO    = "AMMO"
-	StoreItemTypeUTILITY = "UTILITY"
 )
 
 // Enum values for CrateType

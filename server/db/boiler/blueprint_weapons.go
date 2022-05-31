@@ -506,6 +506,7 @@ func (o *BlueprintWeapon) Brand(mods ...qm.QueryMod) brandQuery {
 func (o *BlueprintWeapon) WeaponModel(mods ...qm.QueryMod) weaponModelQuery {
 	queryMods := []qm.QueryMod{
 		qm.Where("\"id\" = ?", o.WeaponModelID),
+		qmhelper.WhereIsNull("deleted_at"),
 	}
 
 	queryMods = append(queryMods, mods...)
@@ -691,6 +692,7 @@ func (blueprintWeaponL) LoadWeaponModel(e boil.Executor, singular bool, maybeBlu
 	query := NewQuery(
 		qm.From(`weapon_models`),
 		qm.WhereIn(`weapon_models.id in ?`, args...),
+		qmhelper.WhereIsNull(`weapon_models.deleted_at`),
 	)
 	if mods != nil {
 		mods.Apply(query)
