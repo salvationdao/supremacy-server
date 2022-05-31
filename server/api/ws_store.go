@@ -20,6 +20,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/rpctypes"
 	"server/xsyn_rpcclient"
 	"time"
 )
@@ -143,8 +144,6 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 		return terror.Error(err, "Unable to process mystery crate purchase,  check your balance and try again.")
 	}
 
-	//sc.API.Passport.AssetRegister()
-
 	refundFunc := func() {
 		refundSupTransactionID, err := sc.API.Passport.RefundSupsMessage(supTransactionID)
 		if err != nil {
@@ -199,11 +198,53 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 		return terror.Error(err, "Failed to purchase mystery crate, please try again or contact support.")
 	}
 
-	err = db.InsertNewCollectionItem(tx, "supremacy-general", "mystery_crate", assignedCrate.ID, "MEGA", user.ID, null.StringFrom(""), null.StringFrom(""), null.StringFrom(""), null.StringFrom(""), null.StringFrom(""), null.StringFrom(""), null.StringFrom(""))
+	c := &boiler.CollectionItem{
+		CollectionSlug:   "supremacy-general",
+		ItemType:         "mystery_crate",
+		ItemID:           assignedCrate.ID,
+		Tier:             "MEGA",
+		OwnerID:          user.ID,
+		ImageURL:         null.StringFrom(""),
+		AvatarURL:        null.StringFrom(""),
+		CardAnimationURL: null.StringFrom(""),
+		LargeImageURL:    null.StringFrom(""),
+		YoutubeURL:       null.StringFrom(""),
+		BackgroundColor:  null.StringFrom(""),
+		AnimationURL:     null.StringFrom(""),
+	}
+
+	err = db.InsertNewCollectionItem(tx,
+		c.CollectionSlug,
+		c.ItemType,
+		c.ItemID,
+		c.Tier,
+		c.OwnerID,
+		c.ImageURL,
+		c.CardAnimationURL,
+		c.AvatarURL,
+		c.LargeImageURL,
+		c.BackgroundColor,
+		c.AnimationURL,
+		c.YoutubeURL,
+	)
 	if err != nil {
 		refundFunc()
 		gamelog.L.Error().Err(err).Interface("mystery crate", assignedCrate).Msg("failed to insert into collection items")
 		return terror.Error(err, "Failed to purchase mystery crate, please try again or contact support.")
+	}
+
+	//register
+	var slice []*server.MysteryCrate
+	assignedCrateServer := server.MysteryCrateFromBoiler(assignedCrate, c)
+	slice = append(slice, assignedCrateServer)
+	xsynAsset := rpctypes.ServerMysteryCrateToXsynAsset(slice)
+	for _, a := range xsynAsset {
+		err = sc.API.Passport.AssetRegister(a)
+		if err != nil {
+			refundFunc()
+			gamelog.L.Error().Err(err).Interface("mystery crate", assignedCrate).Msg("failed to register to XSYN")
+			return terror.Error(err, "Failed to purchase mystery crate, please try again or contact support.")
+		}
 	}
 
 	storeCrate.AmountSold = storeCrate.AmountSold + 1

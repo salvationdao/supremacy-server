@@ -797,3 +797,35 @@ func ServerUtilitiesToXsynAsset(utils []*server.Utility) []*XsynAsset {
 
 	return assets
 }
+
+func ServerMysteryCrateToXsynAsset(mysteryCrates []*server.MysteryCrate) []*XsynAsset {
+	var assets []*XsynAsset
+	for _, mc := range mysteryCrates {
+		asJson, err := json.Marshal(mc)
+		if err != nil {
+			gamelog.L.Error().Err(err).Interface("interface", mc).Msg("failed to convert item to json")
+			continue
+		}
+
+		assets = append(assets, &XsynAsset{
+			ID:             mc.ID,
+			CollectionSlug: mc.CollectionSlug,
+			TokenID:        mc.TokenID,
+			Tier:           mc.Tier,
+			Hash:           mc.Hash,
+			OwnerID:        mc.OwnerID,
+			Data:           asJson,
+			AssetType:      null.StringFrom(mc.ItemType),
+
+			Name:             mc.Label,
+			ImageURL:         mc.ImageURL,
+			BackgroundColor:  mc.BackgroundColor,
+			AnimationURL:     mc.AnimationURL,
+			YoutubeURL:       mc.YoutubeURL,
+			AvatarURL:        mc.AvatarURL,
+			CardAnimationURL: mc.CardAnimationURL,
+		})
+	}
+
+	return assets
+}

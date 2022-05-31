@@ -10,6 +10,7 @@ import (
 )
 
 type MysteryCrate struct {
+	*CollectionItem
 	ID          string    `json:"id"`
 	Type        string    `json:"type"`
 	FactionID   string    `json:"faction_id"`
@@ -31,8 +32,26 @@ func (b *MysteryCrate) Scan(value interface{}) error {
 	return json.Unmarshal(v, b)
 }
 
-func MysteryCrateFromBoiler(mysteryCrate *boiler.MysteryCrate) *MysteryCrate {
+func MysteryCrateFromBoiler(mysteryCrate *boiler.MysteryCrate, collection *boiler.CollectionItem) *MysteryCrate {
 	return &MysteryCrate{
+		CollectionItem: &CollectionItem{
+			CollectionSlug:   collection.CollectionSlug,
+			Hash:             collection.Hash,
+			TokenID:          collection.TokenID,
+			ItemType:         collection.ItemType,
+			ItemID:           collection.ItemID,
+			Tier:             collection.Tier,
+			OwnerID:          collection.OwnerID,
+			MarketLocked:     collection.MarketLocked,
+			XsynLocked:       collection.XsynLocked,
+			ImageURL:         collection.ImageURL,
+			CardAnimationURL: collection.CardAnimationURL,
+			AvatarURL:        collection.AvatarURL,
+			LargeImageURL:    collection.LargeImageURL,
+			BackgroundColor:  collection.BackgroundColor,
+			AnimationURL:     collection.AnimationURL,
+			YoutubeURL:       collection.YoutubeURL,
+		},
 		ID:          mysteryCrate.ID,
 		Type:        mysteryCrate.Type,
 		FactionID:   mysteryCrate.FactionID,
