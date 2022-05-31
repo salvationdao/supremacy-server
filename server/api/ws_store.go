@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/go-chi/chi/v5"
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/terror/v2"
@@ -29,36 +30,28 @@ type StoreController struct {
 	API  *API
 }
 
-type MysteryCrateSubscribeRequest struct {
-	*hub.HubCommandRequest
-}
-
 func NewStoreController(api *API) *StoreController {
 	sc := &StoreController{
 		API: api,
 	}
 
-	api.SecureUserFactionCommand(HubkeyMysteryCrateSubscribe, sc.MysteryCrateSubscribeHandler)
-	api.SecureUserFactionCommand(HubkeyMysteryCratePurchase, sc.PurchaseMysteryCrateHandler)
+	api.SecureUserFactionCommand(HubKeyGetMysteryCrates, sc.GetMysteryCratesHandler)
+	api.SecureUserFactionCommand(HubKeyMysteryCratePurchase, sc.PurchaseMysteryCrateHandler)
 
 	return sc
 }
 
-const HubkeyMysteryCrateSubscribe = "STORE:MYSTERY:CRATE:SUBSCRIBE"
+type GetMysteryCrateRequest struct {
+	*hub.HubCommandRequest
+}
 
-func (sc *StoreController) MysteryCrateSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &MysteryCrateSubscribeRequest{}
+const HubKeyGetMysteryCrates = "STORE:MYSTERY:CRATES"
+
+func (sc *StoreController) GetMysteryCratesHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	req := &GetMysteryCrateRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
 		return terror.Error(err, "Invalid request received")
-	}
-
-	if user == nil {
-		return terror.Error(terror.ErrForbidden, "User must be logged in to view crates.")
-	}
-
-	if factionID == "" {
-		return terror.Error(terror.ErrForbidden, "User must be enlisted in a faction to view crates.")
 	}
 
 	crates, err := boiler.StorefrontMysteryCrates(
@@ -73,6 +66,25 @@ func (sc *StoreController) MysteryCrateSubscribeHandler(ctx context.Context, use
 	return nil
 }
 
+const HubKeyMysteryCrateSubscribe = "STORE:MYSTERY:CRATE:SUBSCRIBE"
+
+func (sc *StoreController) MysteryCrateSubscribeHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	cctx := chi.RouteContext(ctx)
+	crateID := cctx.URLParam("crate_id")
+
+	crate, err := boiler.StorefrontMysteryCrates(
+		boiler.StorefrontMysteryCrateWhere.ID.EQ(crateID),
+		boiler.StorefrontMysteryCrateWhere.FactionID.EQ(factionID),
+	).One(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to get mystery crate")
+	}
+
+	reply(crate)
+
+	return nil
+}
+
 type MysteryCratePurchaseRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
@@ -80,7 +92,9 @@ type MysteryCratePurchaseRequest struct {
 	} `json:"payload"`
 }
 
-const HubkeyMysteryCratePurchase = "STORE:MYSTERY:CRATE:PURCHASE"
+const HubKeyMysteryCratePurchase = "STORE:MYSTERY:CRATE:PURCHASE"
+
+//TODO: check key cards on purchase
 
 func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &MysteryCratePurchaseRequest{}
@@ -90,12 +104,6 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 	}
 
 	//checks
-	if user == nil {
-		return terror.Error(terror.ErrForbidden, "User must be logged in to purchase crates.")
-	}
-	if factionID == "" {
-		return terror.Error(terror.ErrForbidden, "User must be enlisted in a faction to purchase crates.")
-	}
 	if user.FactionID != null.StringFrom(factionID) {
 		return terror.Error(terror.ErrForbidden, "User must be enlisted in correct faction to purchase faction crate.")
 	}
@@ -113,29 +121,15 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 	}
 	//check user SUPS is more than crate.price
 
-	//get random crate where faction id == user.faction_id and purchased == false and opened == false and type == req.payload.type
-	availableCrates, err := boiler.MysteryCrates(
-		boiler.MysteryCrateWhere.FactionID.EQ(factionID),
-		boiler.MysteryCrateWhere.Type.EQ(req.Payload.Type),
-		boiler.MysteryCrateWhere.Opened.EQ(false),
-	).All(gamedb.StdConn)
-	if err != nil {
-		return terror.Error(err, "Failed to get available crates, please try again or contact support.")
-	}
-
-	//randomly assigning crate to user
-	rand.Seed(time.Now().UnixNano())
-	assignedCrate := availableCrates[rand.Intn(len(availableCrates))]
-
 	// -------------------------------------
 	supTransactionID, err := sc.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		Amount:               storeCrate.Price.String(),
 		FromUserID:           uuid.FromStringOrNil(user.ID),
 		ToUserID:             battle.SupremacyUserID,
-		TransactionReference: server.TransactionReference(fmt.Sprintf("player_mystery_crate_purchase|%s|%d", assignedCrate.ID, time.Now().UnixNano())),
+		TransactionReference: server.TransactionReference(fmt.Sprintf("player_mystery_crate_purchase|%s|%d", storeCrate.ID, time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupSupremacy),
 		SubGroup:             "Mystery Crate",
-		Description:          fmt.Sprintf("Purchased mystery crate %s", assignedCrate.Label),
+		Description:          fmt.Sprintf("Purchased mystery crate id %s", storeCrate.ID),
 		NotSafe:              true,
 	})
 	if err != nil || supTransactionID == "TRANSACTION_FAILED" {
@@ -143,7 +137,7 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 			err = fmt.Errorf("transaction failed")
 		}
 		// Abort transaction if charge fails
-		gamelog.L.Error().Str("txID", supTransactionID).Str("mystery_crate_id", assignedCrate.ID).Err(err).Msg("unable to charge user for mystery crate purchase")
+		gamelog.L.Error().Str("txID", supTransactionID).Str("mystery_crate_id", storeCrate.ID).Err(err).Msg("unable to charge user for mystery crate purchase")
 		return terror.Error(err, "Unable to process mystery crate purchase,  check your balance and try again.")
 	}
 
@@ -157,7 +151,7 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 			PlayerID:    user.ID,
 			Amount:      storeCrate.Price,
 			ItemType:    "LOOTBOX",
-			ItemID:      assignedCrate.ID,
+			ItemID:      storeCrate.ID,
 			Description: "refunding mystery crate due to failed transaction",
 			TXID:        supTransactionID,
 			RefundTXID:  null.StringFrom(refundSupTransactionID),
@@ -177,6 +171,20 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 		return terror.Error(err, "Issue purchasing mystery crate, please try again or contact support.")
 	}
 	defer tx.Rollback()
+
+	//get random crate where faction id == user.faction_id and purchased == false and opened == false and type == req.payload.type
+	availableCrates, err := boiler.MysteryCrates(
+		boiler.MysteryCrateWhere.FactionID.EQ(factionID),
+		boiler.MysteryCrateWhere.Type.EQ(req.Payload.Type),
+		boiler.MysteryCrateWhere.Opened.EQ(false),
+	).All(gamedb.StdConn)
+	if err != nil {
+		return terror.Error(err, "Failed to get available crates, please try again or contact support.")
+	}
+
+	//randomly assigning crate to user
+	rand.Seed(time.Now().UnixNano())
+	assignedCrate := availableCrates[rand.Intn(len(availableCrates))]
 
 	//update purchased value
 	assignedCrate.Purchased = true
@@ -223,10 +231,9 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 		gamelog.L.Error().Err(err).Msg("failed to commit mystery crate transaction")
 		return terror.Error(err, "Issue purchasing mystery crate, please try again or contact support.")
 	}
-	//-------------------------------------
 
 	//update mysterycrate subscribers and update player
-	ws.PublishMessage(fmt.Sprintf("/faction/%s/store/mystery_crate", factionID), HubkeyMysteryCrateSubscribe, nil)
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/crate/%s", factionID, storeCrate.ID), HubKeyMysteryCrateSubscribe, storeCrate)
 
 	reply(true)
 	return nil
