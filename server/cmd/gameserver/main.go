@@ -417,6 +417,9 @@ func RegisterAllNewAssets(pp *xsyn_rpcclient.XsynXrpcClient) {
 				return nil, nil
 			}
 			for _, m := range mechCollections {
+				if m.Hash == "k8zlb6Yl1L" {
+					continue
+				}
 				mechIDs = append(mechIDs, m.ItemID)
 			}
 
