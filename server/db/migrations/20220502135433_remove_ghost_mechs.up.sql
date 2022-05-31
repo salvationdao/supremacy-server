@@ -41,4 +41,4 @@ WITH deleted_mechs AS (
             RETURNING id, chassis_id)
 DELETE
 FROM chassis c
-WHERE c.id IN (SELECT id FROM deleted_mechs WHERE chassis_id = c.id);
+WHERE c.id IN (SELECT chassis_id FROM deleted_mechs WHERE chassis_id = c.id);
