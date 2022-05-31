@@ -102,7 +102,7 @@ func CollectionItemFromItemID(id string) (*server.CollectionItem, error) {
 		ItemID:         ci.ItemID,
 		Tier:           ci.Tier,
 		OwnerID:        ci.OwnerID,
-		XsynLocked: ci.XsynLocked,
-		MarketLocked: ci.MarketLocked,
+		XsynLocked:     ci.XsynLocked,
+		MarketLocked:   ci.MarketLocked,
 	}, nil
 }

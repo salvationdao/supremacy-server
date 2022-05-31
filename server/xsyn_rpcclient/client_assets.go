@@ -49,7 +49,8 @@ func (pp *XsynXrpcClient) AssetsOnChainStatus(assetIDs []string) (map[string]ser
 }
 
 type RegisterAssetReq struct {
-	Asset *rpctypes.XsynAsset `json:"asset"`
+	ApiKey string              `json:"api_key"`
+	Asset  *rpctypes.XsynAsset `json:"asset"`
 }
 
 type RegisterAssetResp struct {
@@ -60,6 +61,7 @@ type RegisterAssetResp struct {
 func (pp *XsynXrpcClient) AssetRegister(ass *rpctypes.XsynAsset) error {
 	resp := &RegisterAssetResp{}
 	err := pp.XrpcClient.Call("S.AssetRegisterHandler", RegisterAssetReq{
+		pp.ApiKey,
 		ass,
 	}, resp)
 	if err != nil {
@@ -71,7 +73,7 @@ func (pp *XsynXrpcClient) AssetRegister(ass *rpctypes.XsynAsset) error {
 }
 
 type RegisterAssetsReq struct {
-	ApiKey string                `json:"apiKey"`
+	ApiKey string                `json:"api_key"`
 	Assets []*rpctypes.XsynAsset `json:"assets"`
 }
 
