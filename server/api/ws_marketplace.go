@@ -669,7 +669,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 	}
 
 	// transfer ownership of asset
-	err = db.ChangeMechOwner(req.Payload.ItemID)
+	err = db.ChangeKeycardOwner(req.Payload.ItemID)
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
@@ -678,7 +678,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 			Str("cost", saleItemCost.String()).
 			Str("item_id", req.Payload.ItemID.String()).
 			Err(err).
-			Msg("Failed to Transfer Mech to New Owner")
+			Msg("Failed to Transfer Keycard to New Owner")
 		return terror.Error(err, "Failed to process transaction for Purchase Sale Item.")
 	}
 

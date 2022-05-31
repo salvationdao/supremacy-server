@@ -439,7 +439,7 @@ func MarketplaceSaleItemExists(id uuid.UUID) (bool, error) {
 
 // ChangeMechOwner transfers a collection item to a new owner.
 // TODO: Subject to change...
-func ChangeMechOwner(id uuid.UUID) error {
+func ChangeMechOwner(itemSaleID uuid.UUID) error {
 	q := `
 		UPDATE collection_items AS ci
 		SET owner_id = s.sold_by
@@ -453,7 +453,7 @@ func ChangeMechOwner(id uuid.UUID) error {
 						OR _ci.item_id = _m.power_core_id
 				WHERE _m.id = s.item_id
 			)`
-	_, err := gamedb.StdConn.Exec(q, id)
+	_, err := gamedb.StdConn.Exec(q, itemSaleID)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -485,4 +485,53 @@ func MarketplaceKeycardSaleCreate(
 		ItemKeycardSale: obj,
 	}
 	return output, nil
+}
+
+// ChangeKeycardOwner changes a keycard from previous owner to new owner.
+func ChangeKeycardOwner(itemSaleID uuid.UUID) error {
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		return terror.Error(err, "Failed to update player.")
+	}
+
+	q := `
+		INSERT INTO player_keycards (player_id, blueprint_keycard_id, count)
+
+		SELECT iks.sold_by as player_id, pk.blueprint_keycard_id, 1 AS count
+		FROM item_keycard_sales iks
+			INNER JOIN player_keycards pk ON pk.id = iks.item_id
+		WHERE iks.id = $1 AND iks.sold_by IS NOT NULL
+		ON CONFLICT (player_id, blueprint_keycard_id)
+		DO UPDATE 
+		SET COUNT = excluded.count + 1`
+	_, err = tx.Exec(q, itemSaleID)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	q = `
+		UPDATE player_keycards AS pk
+		SET count = count - 1
+		FROM item_keycard_sales iks
+		WHERE iks.id = $1
+			AND pk.id = iks.item_id`
+	_, err = tx.Exec(q, itemSaleID)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	q = `
+		DELETE FROM player_keycards 
+		WHERE count = 0`
+	_, err = tx.Exec(q, itemSaleID)
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return terror.Error(err)
+	}
+
+	return nil
 }
