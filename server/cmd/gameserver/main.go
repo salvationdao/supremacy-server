@@ -406,7 +406,7 @@ func main() {
 func RegisterAllNewAssets(pp *xsyn_rpcclient.XsynXrpcClient) {
 	// Lets do this in chunks, going to be like 30-40k items to add to passport.
 	// mechs
-	_, _ := func() (insertedGenesisIDS []int64, insertedLimitedIDS []int64) {
+	_, _ = func() (insertedGenesisIDS []int64, insertedLimitedIDS []int64) {
 		updatedMechs := db.GetBoolWithDefault("INSERTED_NEW_ASSETS_MECHS", false)
 		if !updatedMechs {
 			var mechIDs []string
