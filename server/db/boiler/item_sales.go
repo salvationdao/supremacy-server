@@ -184,29 +184,26 @@ var ItemSaleWhere = struct {
 
 // ItemSaleRels is where relationship names are stored.
 var ItemSaleRels = struct {
-	Faction                       string
-	Item                          string
-	Owner                         string
-	SoldByPlayer                  string
-	ItemSalesBidHistories         string
-	ItemSalesBuyoutPriceHistories string
+	Faction               string
+	Item                  string
+	Owner                 string
+	SoldByPlayer          string
+	ItemSalesBidHistories string
 }{
-	Faction:                       "Faction",
-	Item:                          "Item",
-	Owner:                         "Owner",
-	SoldByPlayer:                  "SoldByPlayer",
-	ItemSalesBidHistories:         "ItemSalesBidHistories",
-	ItemSalesBuyoutPriceHistories: "ItemSalesBuyoutPriceHistories",
+	Faction:               "Faction",
+	Item:                  "Item",
+	Owner:                 "Owner",
+	SoldByPlayer:          "SoldByPlayer",
+	ItemSalesBidHistories: "ItemSalesBidHistories",
 }
 
 // itemSaleR is where relationships are stored.
 type itemSaleR struct {
-	Faction                       *Faction                         `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
-	Item                          *CollectionItem                  `boiler:"Item" boil:"Item" json:"Item" toml:"Item" yaml:"Item"`
-	Owner                         *Player                          `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
-	SoldByPlayer                  *Player                          `boiler:"SoldByPlayer" boil:"SoldByPlayer" json:"SoldByPlayer" toml:"SoldByPlayer" yaml:"SoldByPlayer"`
-	ItemSalesBidHistories         ItemSalesBidHistorySlice         `boiler:"ItemSalesBidHistories" boil:"ItemSalesBidHistories" json:"ItemSalesBidHistories" toml:"ItemSalesBidHistories" yaml:"ItemSalesBidHistories"`
-	ItemSalesBuyoutPriceHistories ItemSalesBuyoutPriceHistorySlice `boiler:"ItemSalesBuyoutPriceHistories" boil:"ItemSalesBuyoutPriceHistories" json:"ItemSalesBuyoutPriceHistories" toml:"ItemSalesBuyoutPriceHistories" yaml:"ItemSalesBuyoutPriceHistories"`
+	Faction               *Faction                 `boiler:"Faction" boil:"Faction" json:"Faction" toml:"Faction" yaml:"Faction"`
+	Item                  *CollectionItem          `boiler:"Item" boil:"Item" json:"Item" toml:"Item" yaml:"Item"`
+	Owner                 *Player                  `boiler:"Owner" boil:"Owner" json:"Owner" toml:"Owner" yaml:"Owner"`
+	SoldByPlayer          *Player                  `boiler:"SoldByPlayer" boil:"SoldByPlayer" json:"SoldByPlayer" toml:"SoldByPlayer" yaml:"SoldByPlayer"`
+	ItemSalesBidHistories ItemSalesBidHistorySlice `boiler:"ItemSalesBidHistories" boil:"ItemSalesBidHistories" json:"ItemSalesBidHistories" toml:"ItemSalesBidHistories" yaml:"ItemSalesBidHistories"`
 }
 
 // NewStruct creates a new relationship struct
@@ -542,27 +539,6 @@ func (o *ItemSale) ItemSalesBidHistories(mods ...qm.QueryMod) itemSalesBidHistor
 
 	if len(queries.GetSelect(query.Query)) == 0 {
 		queries.SetSelect(query.Query, []string{"\"item_sales_bid_history\".*"})
-	}
-
-	return query
-}
-
-// ItemSalesBuyoutPriceHistories retrieves all the item_sales_buyout_price_history's ItemSalesBuyoutPriceHistories with an executor.
-func (o *ItemSale) ItemSalesBuyoutPriceHistories(mods ...qm.QueryMod) itemSalesBuyoutPriceHistoryQuery {
-	var queryMods []qm.QueryMod
-	if len(mods) != 0 {
-		queryMods = append(queryMods, mods...)
-	}
-
-	queryMods = append(queryMods,
-		qm.Where("\"item_sales_buyout_price_history\".\"item_sale_id\"=?", o.ID),
-	)
-
-	query := ItemSalesBuyoutPriceHistories(queryMods...)
-	queries.SetFrom(query.Query, "\"item_sales_buyout_price_history\"")
-
-	if len(queries.GetSelect(query.Query)) == 0 {
-		queries.SetSelect(query.Query, []string{"\"item_sales_buyout_price_history\".*"})
 	}
 
 	return query
@@ -1089,104 +1065,6 @@ func (itemSaleL) LoadItemSalesBidHistories(e boil.Executor, singular bool, maybe
 	return nil
 }
 
-// LoadItemSalesBuyoutPriceHistories allows an eager lookup of values, cached into the
-// loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (itemSaleL) LoadItemSalesBuyoutPriceHistories(e boil.Executor, singular bool, maybeItemSale interface{}, mods queries.Applicator) error {
-	var slice []*ItemSale
-	var object *ItemSale
-
-	if singular {
-		object = maybeItemSale.(*ItemSale)
-	} else {
-		slice = *maybeItemSale.(*[]*ItemSale)
-	}
-
-	args := make([]interface{}, 0, 1)
-	if singular {
-		if object.R == nil {
-			object.R = &itemSaleR{}
-		}
-		args = append(args, object.ID)
-	} else {
-	Outer:
-		for _, obj := range slice {
-			if obj.R == nil {
-				obj.R = &itemSaleR{}
-			}
-
-			for _, a := range args {
-				if a == obj.ID {
-					continue Outer
-				}
-			}
-
-			args = append(args, obj.ID)
-		}
-	}
-
-	if len(args) == 0 {
-		return nil
-	}
-
-	query := NewQuery(
-		qm.From(`item_sales_buyout_price_history`),
-		qm.WhereIn(`item_sales_buyout_price_history.item_sale_id in ?`, args...),
-	)
-	if mods != nil {
-		mods.Apply(query)
-	}
-
-	results, err := query.Query(e)
-	if err != nil {
-		return errors.Wrap(err, "failed to eager load item_sales_buyout_price_history")
-	}
-
-	var resultSlice []*ItemSalesBuyoutPriceHistory
-	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice item_sales_buyout_price_history")
-	}
-
-	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on item_sales_buyout_price_history")
-	}
-	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for item_sales_buyout_price_history")
-	}
-
-	if len(itemSalesBuyoutPriceHistoryAfterSelectHooks) != 0 {
-		for _, obj := range resultSlice {
-			if err := obj.doAfterSelectHooks(e); err != nil {
-				return err
-			}
-		}
-	}
-	if singular {
-		object.R.ItemSalesBuyoutPriceHistories = resultSlice
-		for _, foreign := range resultSlice {
-			if foreign.R == nil {
-				foreign.R = &itemSalesBuyoutPriceHistoryR{}
-			}
-			foreign.R.ItemSale = object
-		}
-		return nil
-	}
-
-	for _, foreign := range resultSlice {
-		for _, local := range slice {
-			if local.ID == foreign.ItemSaleID {
-				local.R.ItemSalesBuyoutPriceHistories = append(local.R.ItemSalesBuyoutPriceHistories, foreign)
-				if foreign.R == nil {
-					foreign.R = &itemSalesBuyoutPriceHistoryR{}
-				}
-				foreign.R.ItemSale = local
-				break
-			}
-		}
-	}
-
-	return nil
-}
-
 // SetFaction of the itemSale to the related item.
 // Sets o.R.Faction to related.
 // Adds o to related.R.ItemSales.
@@ -1447,58 +1325,6 @@ func (o *ItemSale) AddItemSalesBidHistories(exec boil.Executor, insert bool, rel
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &itemSalesBidHistoryR{
-				ItemSale: o,
-			}
-		} else {
-			rel.R.ItemSale = o
-		}
-	}
-	return nil
-}
-
-// AddItemSalesBuyoutPriceHistories adds the given related objects to the existing relationships
-// of the item_sale, optionally inserting them as new records.
-// Appends related to o.R.ItemSalesBuyoutPriceHistories.
-// Sets related.R.ItemSale appropriately.
-func (o *ItemSale) AddItemSalesBuyoutPriceHistories(exec boil.Executor, insert bool, related ...*ItemSalesBuyoutPriceHistory) error {
-	var err error
-	for _, rel := range related {
-		if insert {
-			rel.ItemSaleID = o.ID
-			if err = rel.Insert(exec, boil.Infer()); err != nil {
-				return errors.Wrap(err, "failed to insert into foreign table")
-			}
-		} else {
-			updateQuery := fmt.Sprintf(
-				"UPDATE \"item_sales_buyout_price_history\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"item_sale_id"}),
-				strmangle.WhereClause("\"", "\"", 2, itemSalesBuyoutPriceHistoryPrimaryKeyColumns),
-			)
-			values := []interface{}{o.ID, rel.ID, rel.ItemSaleID}
-
-			if boil.DebugMode {
-				fmt.Fprintln(boil.DebugWriter, updateQuery)
-				fmt.Fprintln(boil.DebugWriter, values)
-			}
-			if _, err = exec.Exec(updateQuery, values...); err != nil {
-				return errors.Wrap(err, "failed to update foreign table")
-			}
-
-			rel.ItemSaleID = o.ID
-		}
-	}
-
-	if o.R == nil {
-		o.R = &itemSaleR{
-			ItemSalesBuyoutPriceHistories: related,
-		}
-	} else {
-		o.R.ItemSalesBuyoutPriceHistories = append(o.R.ItemSalesBuyoutPriceHistories, related...)
-	}
-
-	for _, rel := range related {
-		if rel.R == nil {
-			rel.R = &itemSalesBuyoutPriceHistoryR{
 				ItemSale: o,
 			}
 		} else {

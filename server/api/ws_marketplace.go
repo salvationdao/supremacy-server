@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"math"
 	"server"
 	"server/db"
 	"server/db/boiler"
@@ -485,9 +486,6 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	if saleItem.FactionID != fID {
 		return terror.Error(terror.ErrUnauthorised, "Item does not belong to user's faction.")
 	}
-
-	// Pay item
-	// TODO: Work out Sales Cut
 	userID, err := uuid.FromString(user.ID)
 	if err != nil {
 		gamelog.L.Error().
@@ -498,6 +496,8 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		return terror.Error(err, errMsg)
 	}
 
+	// Calculate Cost depending on sale type
+	saleType := "BUYOUT"
 	saleItemCost, err := decimal.NewFromString(saleItem.BuyoutPrice.String)
 	if err != nil {
 		gamelog.L.Error().
@@ -507,7 +507,44 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 			Msg("Unable to get current buyout price.")
 		return terror.Error(err, errMsg)
 	}
+	if saleItem.DutchAuction {
+		saleType = "AUCTION"
+		auctionReservedPrice, err := decimal.NewFromString(saleItem.AuctionReservedPrice.String)
+		if err != nil {
+			gamelog.L.Error().
+				Str("user_id", user.ID).
+				Str("item_id", req.Payload.ItemID.String()).
+				Err(err).
+				Msg("Unable to get current auction reserved price.")
+			return terror.Error(err, errMsg)
+		}
 
+		if saleItem.DutchActionDropRate.IsZero() {
+			gamelog.L.Error().
+				Str("user_id", user.ID).
+				Str("item_id", req.Payload.ItemID.String()).
+				Msg("Dutch Auction Drop rate is missing.")
+			return terror.Error(fmt.Errorf("dutch auction drop rate is missing"), errMsg)
+		}
+		dropRate, err := decimal.NewFromString(saleItem.DutchActionDropRate.String)
+		if err != nil {
+			gamelog.L.Error().
+				Str("user_id", user.ID).
+				Str("item_id", req.Payload.ItemID.String()).
+				Str("drop_rate_amount", saleItem.DutchActionDropRate.String).
+				Msg("Dutch Auction Drop rate is missing.")
+			return terror.Error(fmt.Errorf("dutch auction drop rate is missing"), errMsg)
+		}
+
+		hoursLapse := decimal.NewFromFloat(math.Floor(time.Now().Sub(saleItem.CreatedAt).Hours()))
+		dutchAuctionAmount := saleItemCost.Sub(dropRate.Mul(hoursLapse))
+		if dutchAuctionAmount.GreaterThanOrEqual(auctionReservedPrice) {
+			saleItemCost = dutchAuctionAmount
+		}
+	}
+
+	// Pay item
+	// TODO: Work out Sales Cut
 	balance := mp.API.Passport.UserBalanceGet(userID)
 	if balance.Sub(saleItemCost).LessThan(decimal.Zero) {
 		err = fmt.Errorf("insufficient funds")
@@ -526,7 +563,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		FromUserID:           userID,
 		ToUserID:             uuid.Must(uuid.FromString(saleItem.OwnerID)),
 		Amount:               saleItemCost.String(),
-		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item|%s|%d", saleItem.ID, time.Now().UnixNano())),
+		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item:%s|%s|%d", saleType, saleItem.ID, time.Now().UnixNano())),
 		Group:                string(server.TransactionGroupMarketplace),
 		SubGroup:             "SUPREMACY",
 		Description:          fmt.Sprintf("marketplace buy item: %s", saleItem.ID),

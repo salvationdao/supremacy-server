@@ -30,16 +30,6 @@ CREATE TABLE item_sales (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- For Dutch Auctions
-CREATE TABLE item_sales_buyout_price_history (
-    id UUID NOT NULL DEFAULT gen_random_uuid(),
-	item_sale_id UUID NOT NULL REFERENCES item_sales (id),
-	buyout_price TEXT NOT NULL,
-	created_by UUID REFERENCES players (id),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-	PRIMARY KEY (id, item_sale_id)
-);
-
 -- For Auctions
 CREATE TABLE item_sales_bid_history (
 	item_sale_id UUID NOT NULL REFERENCES item_sales (id),
