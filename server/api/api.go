@@ -80,8 +80,6 @@ type API struct {
 	Commander                 *ws.Commander
 	SecureUserCommander       *ws.Commander
 	SecureFactionCommander    *ws.Commander
-	// ring check auth
-	RingCheckAuthMap *RingCheckAuthMap
 
 	// punish vote
 	FactionPunishVote map[string]*PunishVoteTracker
@@ -116,7 +114,6 @@ func NewAPI(
 		Routes:                    chi.NewRouter(),
 		HTMLSanitize:              HTMLSanitize,
 		BattleArena:               battleArenaClient,
-		RingCheckAuthMap:          NewRingCheckMap(),
 		Passport:                  pp,
 		SMS:                       sms,
 		Telegram:                  telegram,
@@ -324,30 +321,21 @@ func (api *API) Close() {
 	}
 }
 
-/**********************
-* Auth Ring Check Map *
-**********************/
-
-type RingCheckAuthMap struct {
-	deadlock.Map
-}
-
-func NewRingCheckMap() *RingCheckAuthMap {
-	return &RingCheckAuthMap{
-		deadlock.Map{},
-	}
-}
-
 func (api *API) AuthUserFactionWS(factionIDMustMatch bool) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			var token string
+			var ok bool
 
 			cookie, err := r.Cookie("xsyn-token")
 			if err != nil {
 				token = r.URL.Query().Get("token")
 				if token == "" {
-					return
+					token, ok = r.Context().Value("token").(string)
+					if !ok || token == "" {
+						http.Error(w, "Unauthorized", http.StatusUnauthorized)
+						return
+					}
 				}
 			} else {
 				if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
@@ -389,13 +377,17 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			var token string
+			var ok bool
 
 			cookie, err := r.Cookie("xsyn-token")
 			if err != nil {
 				token = r.URL.Query().Get("token")
 				if token == "" {
-					http.Error(w, "Unauthorized", http.StatusUnauthorized)
-					return
+					token, ok = r.Context().Value("token").(string)
+					if !ok || token == "" {
+						http.Error(w, "Unauthorized", http.StatusUnauthorized)
+						return
+					}
 				}
 			} else {
 				if err = api.Cookie.DecryptBase64(cookie.Value, &token); err != nil {
