@@ -273,18 +273,22 @@ ALTER TABLE blueprint_chassis
 
 
 --  below adds the blueprint id for the shields
-WITH shield AS (SELECT hitpoints, recharge_rate FROM utility_shield)
+WITH shield AS (SELECT hitpoints, recharge_rate, utility_id FROM utility_shield)
 UPDATE utility
 SET blueprint_id = (SELECT blueprint_utility_id
                     FROM blueprint_utility_shield _bus
                     WHERE _bus.recharge_rate = shield.recharge_rate
                       AND _bus.hitpoints = shield.hitpoints)
-FROM shield;
+FROM shield
+WHERE utility.id = shield.utility_id;
 
 ALTER TABLE utility
-    DROP COLUMN slug,
-    ALTER COLUMN owner_id SET NOT NULL,
-    ALTER COLUMN type SET NOT NULL,
+    DROP COLUMN slug;
+ALTER TABLE utility
+    ALTER COLUMN owner_id SET NOT NULL;
+ALTER TABLE utility
+    ALTER COLUMN type SET NOT NULL;
+ALTER TABLE utility
     ALTER COLUMN blueprint_id SET NOT NULL;
 
 -- set equipped on
