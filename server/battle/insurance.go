@@ -16,7 +16,6 @@ import (
 
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-syndicate/hub"
 	"github.com/ninja-syndicate/ws"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
@@ -92,7 +91,6 @@ func (arena *Arena) InsurancePrice(mechID string) decimal.Decimal {
 }
 
 type AssetRepairPayFeeRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		MechID string `json:"mech_id"`
 	} `json:"payload"`
@@ -206,7 +204,6 @@ func (arena *Arena) AssetRepairPayFeeHandler(ctx context.Context, user *boiler.P
 }
 
 type AssetRepairStatusRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		MechID string `json:"mech_id"`
 	} `json:"payload"`

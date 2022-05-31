@@ -21,7 +21,6 @@ import (
 
 	"github.com/ninja-software/terror/v2"
 
-	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/sasha-s/go-deadlock"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
@@ -46,8 +45,6 @@ type PunishVoteTracker struct {
 	// punish vote tracker
 	Stage *PunishVoteStage
 
-	// message bus
-	MessageBus *messagebus.MessageBus
 	// broadcast result
 	broadcastResult chan *PunishVoteResult
 
@@ -86,7 +83,6 @@ func (api *API) PunishVoteTrackerSetup() error {
 		// initialise
 		pvt := &PunishVoteTracker{
 			FactionID:       f.ID,
-			MessageBus:      api.MessageBus,
 			broadcastResult: make(chan *PunishVoteResult),
 			Stage:           &PunishVoteStage{PunishVotePhaseHold, time.Now().AddDate(1, 0, 0)},
 			api:             api,
@@ -672,7 +668,6 @@ func (pvt *PunishVoteTracker) BroadcastPunishVoteResult(isPassed bool) {
 
 	// broadcast
 	ws.PublishMessage(fmt.Sprintf("/faction/%s/faction_chat", pvt.FactionID), HubKeyFactionChatSubscribe, []*ChatMessage{chatMessage})
-	//pvt.MessageBus.Send(messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyFactionChatSubscribe, pvt.FactionID)), chatMessage)
 
 	if isPassed {
 		// get current player's punishment

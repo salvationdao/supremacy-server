@@ -496,8 +496,6 @@ func ServerMechsToXsynAsset(mechs []*server.Mech) []*XsynAsset {
 			}
 		}
 
-		fmt.Printf(asset.AvatarURL.String)
-
 		assets = append(assets, asset)
 	}
 
