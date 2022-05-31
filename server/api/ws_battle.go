@@ -5,14 +5,14 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"github.com/ninja-syndicate/ws"
 	"server/battle"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
 
+	"github.com/ninja-syndicate/ws"
+
 	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-syndicate/hub"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
@@ -56,7 +56,6 @@ func NewBattleController(api *API) *BattleControllerWS {
 }
 
 type BattleMechHistoryRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		MechID string `json:"mech_id"`
 	} `json:"payload"`
@@ -113,7 +112,6 @@ func (bc *BattleControllerWS) BattleMechHistoryListHandler(ctx context.Context, 
 }
 
 type BattleMechStatsRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		MechID string `json:"mech_id"`
 	} `json:"mech_id"`

@@ -5,17 +5,17 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"github.com/ninja-syndicate/ws"
-	"github.com/volatiletech/sqlboiler/v4/boil"
 	"net/http"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/helpers"
 
+	"github.com/ninja-syndicate/ws"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-syndicate/hub"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
@@ -28,7 +28,6 @@ type StreamsWS struct {
 }
 
 type StreamListRequest struct {
-	*hub.HubCommandRequest
 }
 
 func NewStreamController(api *API) *StreamsWS {
@@ -93,8 +92,6 @@ func (api *API) CreateStreamCloseHandler(w http.ResponseWriter, r *http.Request)
 	//gamesToClose := gamesToCloseStruct.GamesToClose
 
 	//api.BattleArena.PutGamesToClose(gamesToClose)
-
-	//go api.messageBus.Send(messagebus.BusKey(HubKeyStreamCloseSubscribe), gamesToClose)
 
 	return http.StatusOK, nil
 }

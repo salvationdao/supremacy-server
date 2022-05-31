@@ -15,18 +15,15 @@ import (
 	"server/xsyn_rpcclient"
 	"time"
 
+	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
+
 	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/meehow/securebytes"
 	"github.com/microcosm-cc/bluemonday"
-	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-software/tickle"
-	"github.com/ninja-syndicate/hub"
-	"github.com/ninja-syndicate/hub/ext/auth"
-	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
-	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/ninja-syndicate/ws"
 	"github.com/pemistahl/lingua-go"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -37,11 +34,6 @@ import (
 // WelcomePayload is the response sent when a client connects to the server
 type WelcomePayload struct {
 	Message string `json:"message"`
-}
-
-type BroadcastPayload struct {
-	Key     hub.HubCommandKey `json:"key"`
-	Payload interface{}       `json:"payload"`
 }
 
 type LiveVotingData struct {
@@ -72,14 +64,11 @@ type FactionVotePrice struct {
 
 // API server
 type API struct {
-	ctx    context.Context
-	server *http.Server
-	*auth.Auth
+	ctx                       context.Context
+	server                    *http.Server
 	Routes                    chi.Router
 	BattleArena               *battle.Arena
 	HTMLSanitize              *bluemonday.Policy
-	Hub                       *hub.Hub
-	MessageBus                *messagebus.MessageBus
 	SMS                       server.SMS
 	Passport                  *xsyn_rpcclient.XsynXrpcClient
 	Telegram                  server.Telegram
@@ -114,8 +103,6 @@ func NewAPI(
 	pp *xsyn_rpcclient.XsynXrpcClient,
 	HTMLSanitize *bluemonday.Policy,
 	config *server.Config,
-	messageBus *messagebus.MessageBus,
-	gsHub *hub.Hub,
 	sms server.SMS,
 	telegram server.Telegram,
 	languageDetector lingua.LanguageDetector,
@@ -126,17 +113,15 @@ func NewAPI(
 		Config:                    config,
 		ctx:                       ctx,
 		Routes:                    chi.NewRouter(),
-		MessageBus:                messageBus,
 		HTMLSanitize:              HTMLSanitize,
 		BattleArena:               battleArenaClient,
-		Hub:                       gsHub,
 		RingCheckAuthMap:          NewRingCheckMap(),
 		Passport:                  pp,
 		SMS:                       sms,
 		Telegram:                  telegram,
 		LanguageDetector:          languageDetector,
 		IsCookieSecure:            config.CookieSecure,
-		SalePlayerAbilitiesSystem: player_abilities.NewSalePlayerAbilitiesSystem(messageBus),
+		SalePlayerAbilitiesSystem: player_abilities.NewSalePlayerAbilitiesSystem(),
 		Cookie: securebytes.New(
 			[]byte(config.CookieKey),
 			securebytes.ASN1Serializer{}),
@@ -149,8 +134,6 @@ func NewAPI(
 		BostonChat:      NewChatroom(server.BostonCyberneticsFactionID),
 		ZaibatsuChat:    NewChatroom(server.ZaibatsuFactionID),
 	}
-
-	battleArenaClient.SetMessageBus(messageBus)
 
 	api.Commander = ws.NewCommander(func(c *ws.Commander) {
 		c.RestBridge("/rest")
@@ -184,6 +167,7 @@ func NewAPI(
 			AllowCredentials: true,
 		}).Handler,
 	)
+	// TODO: Create new tracer not using HUB
 	api.Routes.Use(DatadogTracer.Middleware())
 
 	api.Routes.Handle("/metrics", promhttp.Handler())
@@ -351,29 +335,6 @@ func NewRingCheckMap() *RingCheckAuthMap {
 	return &RingCheckAuthMap{
 		deadlock.Map{},
 	}
-}
-
-func (rcm *RingCheckAuthMap) Record(key string, cl *hub.Client) {
-	rcm.Store(key, cl)
-}
-
-func (rcm *RingCheckAuthMap) Remove(key string) {
-	rcm.Delete(key)
-}
-
-func (rcm *RingCheckAuthMap) Check(key string) (*hub.Client, error) {
-	value, ok := rcm.Load(key)
-	if !ok {
-		gamelog.L.Error().Str("key", key).Msg("hub client not found")
-		return nil, terror.Error(fmt.Errorf("hub client not found"))
-	}
-
-	hubc, ok := value.(*hub.Client)
-	if !ok {
-		return nil, terror.Error(fmt.Errorf("hub client not found"))
-	}
-
-	return hubc, nil
 }
 
 func (api *API) AuthUserFactionWS(factionIDMustMatch bool) func(next http.Handler) http.Handler {

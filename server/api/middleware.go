@@ -83,7 +83,7 @@ func WithCookie(api *API, next func(w http.ResponseWriter, r *http.Request)) fun
 	return fn
 }
 
-// check passport http request secret
+// WithPassportSecret check passport http request secret
 func WithPassportSecret(secret string, next func(w http.ResponseWriter, r *http.Request)) func(w http.ResponseWriter, r *http.Request) {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Passport-Authorization") != secret {

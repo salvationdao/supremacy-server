@@ -541,3 +541,15 @@ SET limited_release_token_id = limited_release.external_token_id
 FROM limited_release
 WHERE pc.id = limited_release.chassis_id;
 
+-- This inserts a new collection_items entry for each utility and updates the utility table with token id
+WITH power_core AS (SELECT 'power_core' AS item_type, _pc.id, tier, _ci.owner_id
+                    FROM power_cores _pc
+                             INNER JOIN collection_items _ci ON _ci.item_id = _pc.equipped_on)
+INSERT
+INTO collection_items (token_id, item_type, item_id, tier, owner_id)
+SELECT NEXTVAL('collection_general'),
+       power_core.item_type::ITEM_TYPE,
+       power_core.id,
+       power_core.tier,
+       power_core.owner_id
+FROM power_core;
