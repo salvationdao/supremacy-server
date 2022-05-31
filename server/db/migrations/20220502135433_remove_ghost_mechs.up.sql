@@ -33,15 +33,12 @@ DELETE
 FROM chassis_modules cm
 WHERE cm.module_id = (SELECT id FROM deleted_mods WHERE cm.module_id = id);
 
-
 -- delete chassis
+WITH deleted_mechs AS (
+    DELETE
+        FROM mechs
+            WHERE id IN ('c120db1d-ca1c-4d03-b73c-b16bc5eb08cb', '615e1e0b-6604-4d6f-8b3c-a161bf4e4558')
+            RETURNING id, chassis_id)
 DELETE
 FROM chassis c
-WHERE c.id IN (SELECT chassis_id
-               FROM mechs
-               WHERE id IN ('c120db1d-ca1c-4d03-b73c-b16bc5eb08cb', '615e1e0b-6604-4d6f-8b3c-a161bf4e4558'));
-
--- and finally delete mechs
-DELETE
-FROM mechs
-WHERE id IN ('c120db1d-ca1c-4d03-b73c-b16bc5eb08cb', '615e1e0b-6604-4d6f-8b3c-a161bf4e4558');
+WHERE c.id IN (SELECT id FROM deleted_mechs WHERE chassis_id = c.id);
