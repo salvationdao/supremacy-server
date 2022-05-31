@@ -443,8 +443,10 @@ func (api *API) AuthWS(required bool, userIDMustMatch bool) func(next http.Handl
 				}
 			}
 
+			fmt.Println("start getting user")
 			user, err := api.TokenLogin(token)
 			if err != nil {
+				fmt.Println("error out")
 				if required {
 					gamelog.L.Error().Err(err).Msg("authentication error")
 					return
