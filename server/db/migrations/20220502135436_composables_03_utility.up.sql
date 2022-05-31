@@ -216,7 +216,7 @@ ALTER TABLE blueprint_utility
 --  Create all the shield utility modules
 WITH insrt AS (
     WITH new_ulti AS (
-        SELECT '360 Shield'            AS label,
+        SELECT 'Orb Shield'            AS label,
                'SHIELD'::UTILITY_TYPE  AS type,
                _c.max_shield           AS max_shield,
                _c.shield_recharge_rate AS shield_recharge_rate
@@ -235,7 +235,7 @@ SELECT insrt.id, insrt.max_shield, insrt.shield_recharge_rate, 10
 FROM insrt;
 
 UPDATE utility
-SET label = '360 Shield'
+SET label = 'Orb Shield'
 WHERE label = 'Shield';
 
 -- clear old joins
