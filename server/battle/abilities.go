@@ -1460,7 +1460,7 @@ func (as *AbilitiesSystem) SetNewBattleAbility(isFirstAbility bool) (int, error)
 		}
 		as.battleAbilityPool.Abilities.Store(ga.FactionID, gameAbility)
 		// broadcast ability update to faction users
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/ability", gameAbility.FactionID), HubKeyBattleAbilityUpdated, gameAbility)
+		ws.PublishMessage(fmt.Sprintf("/ability/%s", gameAbility.FactionID), HubKeyBattleAbilityUpdated, gameAbility)
 	}
 
 	as.BroadcastAbilityProgressBar()
