@@ -1077,7 +1077,7 @@ func (arena *Arena) beginBattle() {
 		BattleID: battleID,
 		Battle:   battle,
 		inserted: inserted,
-		stage:    atomic.NewInt32(BattleStagStart),
+		stage:    atomic.NewInt32(BattleStageStart),
 		users: usersMap{
 			m: make(map[uuid.UUID]*BattleUser),
 		},

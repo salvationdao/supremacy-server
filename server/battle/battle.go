@@ -36,8 +36,8 @@ import (
 type BattleStage int32
 
 const (
-	BattleStagStart = 1
-	BattleStageEnd  = 0
+	BattleStageStart = 1
+	BattleStageEnd   = 0
 )
 
 type Battle struct {
@@ -116,7 +116,7 @@ func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 			}
 		}
 
-		gamelog.L.Info().Interface("battle war machine", wm).Msg("battle war machine")
+		gamelog.L.Trace().Interface("battle war machine", wm).Msg("battle war machine")
 
 		mechID, err := uuid.FromString(wm.ID)
 		if err != nil {
