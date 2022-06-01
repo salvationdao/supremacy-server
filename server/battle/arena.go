@@ -1013,7 +1013,7 @@ func (arena *Arena) start() {
 				gamelog.L.Warn().Str("battleCommand", msg.BattleCommand).Err(err).Msg("Battle Arena WS: no command response")
 			}
 		case Tick:
-			btl.Tick(data)
+			btl.Tick(payload)
 		default:
 			gamelog.L.Warn().Str("MessageType", string(mt)).Err(err).Msg("Battle Arena WS: no message response")
 		}
