@@ -23,93 +23,142 @@ import (
 
 // MysteryCrate is an object representing the database table.
 type MysteryCrate struct {
-	ID          string    `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	Type        string    `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
-	FactionID   string    `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
-	Label       string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	Opened      bool      `boiler:"opened" boil:"opened" json:"opened" toml:"opened" yaml:"opened"`
-	LockedUntil time.Time `boiler:"locked_until" boil:"locked_until" json:"locked_until" toml:"locked_until" yaml:"locked_until"`
-	Purchased   bool      `boiler:"purchased" boil:"purchased" json:"purchased" toml:"purchased" yaml:"purchased"`
-	DeletedAt   null.Time `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
-	UpdatedAt   time.Time `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
-	CreatedAt   time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ID               string      `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	Type             string      `boiler:"type" boil:"type" json:"type" toml:"type" yaml:"type"`
+	FactionID        string      `boiler:"faction_id" boil:"faction_id" json:"faction_id" toml:"faction_id" yaml:"faction_id"`
+	Label            string      `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	Opened           bool        `boiler:"opened" boil:"opened" json:"opened" toml:"opened" yaml:"opened"`
+	LockedUntil      time.Time   `boiler:"locked_until" boil:"locked_until" json:"locked_until" toml:"locked_until" yaml:"locked_until"`
+	Purchased        bool        `boiler:"purchased" boil:"purchased" json:"purchased" toml:"purchased" yaml:"purchased"`
+	ImageURL         null.String `boiler:"image_url" boil:"image_url" json:"image_url,omitempty" toml:"image_url" yaml:"image_url,omitempty"`
+	CardAnimationURL null.String `boiler:"card_animation_url" boil:"card_animation_url" json:"card_animation_url,omitempty" toml:"card_animation_url" yaml:"card_animation_url,omitempty"`
+	AvatarURL        null.String `boiler:"avatar_url" boil:"avatar_url" json:"avatar_url,omitempty" toml:"avatar_url" yaml:"avatar_url,omitempty"`
+	LargeImageURL    null.String `boiler:"large_image_url" boil:"large_image_url" json:"large_image_url,omitempty" toml:"large_image_url" yaml:"large_image_url,omitempty"`
+	BackgroundColor  null.String `boiler:"background_color" boil:"background_color" json:"background_color,omitempty" toml:"background_color" yaml:"background_color,omitempty"`
+	AnimationURL     null.String `boiler:"animation_url" boil:"animation_url" json:"animation_url,omitempty" toml:"animation_url" yaml:"animation_url,omitempty"`
+	YoutubeURL       null.String `boiler:"youtube_url" boil:"youtube_url" json:"youtube_url,omitempty" toml:"youtube_url" yaml:"youtube_url,omitempty"`
+	DeletedAt        null.Time   `boiler:"deleted_at" boil:"deleted_at" json:"deleted_at,omitempty" toml:"deleted_at" yaml:"deleted_at,omitempty"`
+	UpdatedAt        time.Time   `boiler:"updated_at" boil:"updated_at" json:"updated_at" toml:"updated_at" yaml:"updated_at"`
+	CreatedAt        time.Time   `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *mysteryCrateR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L mysteryCrateL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var MysteryCrateColumns = struct {
-	ID          string
-	Type        string
-	FactionID   string
-	Label       string
-	Opened      string
-	LockedUntil string
-	Purchased   string
-	DeletedAt   string
-	UpdatedAt   string
-	CreatedAt   string
+	ID               string
+	Type             string
+	FactionID        string
+	Label            string
+	Opened           string
+	LockedUntil      string
+	Purchased        string
+	ImageURL         string
+	CardAnimationURL string
+	AvatarURL        string
+	LargeImageURL    string
+	BackgroundColor  string
+	AnimationURL     string
+	YoutubeURL       string
+	DeletedAt        string
+	UpdatedAt        string
+	CreatedAt        string
 }{
-	ID:          "id",
-	Type:        "type",
-	FactionID:   "faction_id",
-	Label:       "label",
-	Opened:      "opened",
-	LockedUntil: "locked_until",
-	Purchased:   "purchased",
-	DeletedAt:   "deleted_at",
-	UpdatedAt:   "updated_at",
-	CreatedAt:   "created_at",
+	ID:               "id",
+	Type:             "type",
+	FactionID:        "faction_id",
+	Label:            "label",
+	Opened:           "opened",
+	LockedUntil:      "locked_until",
+	Purchased:        "purchased",
+	ImageURL:         "image_url",
+	CardAnimationURL: "card_animation_url",
+	AvatarURL:        "avatar_url",
+	LargeImageURL:    "large_image_url",
+	BackgroundColor:  "background_color",
+	AnimationURL:     "animation_url",
+	YoutubeURL:       "youtube_url",
+	DeletedAt:        "deleted_at",
+	UpdatedAt:        "updated_at",
+	CreatedAt:        "created_at",
 }
 
 var MysteryCrateTableColumns = struct {
-	ID          string
-	Type        string
-	FactionID   string
-	Label       string
-	Opened      string
-	LockedUntil string
-	Purchased   string
-	DeletedAt   string
-	UpdatedAt   string
-	CreatedAt   string
+	ID               string
+	Type             string
+	FactionID        string
+	Label            string
+	Opened           string
+	LockedUntil      string
+	Purchased        string
+	ImageURL         string
+	CardAnimationURL string
+	AvatarURL        string
+	LargeImageURL    string
+	BackgroundColor  string
+	AnimationURL     string
+	YoutubeURL       string
+	DeletedAt        string
+	UpdatedAt        string
+	CreatedAt        string
 }{
-	ID:          "mystery_crate.id",
-	Type:        "mystery_crate.type",
-	FactionID:   "mystery_crate.faction_id",
-	Label:       "mystery_crate.label",
-	Opened:      "mystery_crate.opened",
-	LockedUntil: "mystery_crate.locked_until",
-	Purchased:   "mystery_crate.purchased",
-	DeletedAt:   "mystery_crate.deleted_at",
-	UpdatedAt:   "mystery_crate.updated_at",
-	CreatedAt:   "mystery_crate.created_at",
+	ID:               "mystery_crate.id",
+	Type:             "mystery_crate.type",
+	FactionID:        "mystery_crate.faction_id",
+	Label:            "mystery_crate.label",
+	Opened:           "mystery_crate.opened",
+	LockedUntil:      "mystery_crate.locked_until",
+	Purchased:        "mystery_crate.purchased",
+	ImageURL:         "mystery_crate.image_url",
+	CardAnimationURL: "mystery_crate.card_animation_url",
+	AvatarURL:        "mystery_crate.avatar_url",
+	LargeImageURL:    "mystery_crate.large_image_url",
+	BackgroundColor:  "mystery_crate.background_color",
+	AnimationURL:     "mystery_crate.animation_url",
+	YoutubeURL:       "mystery_crate.youtube_url",
+	DeletedAt:        "mystery_crate.deleted_at",
+	UpdatedAt:        "mystery_crate.updated_at",
+	CreatedAt:        "mystery_crate.created_at",
 }
 
 // Generated where
 
 var MysteryCrateWhere = struct {
-	ID          whereHelperstring
-	Type        whereHelperstring
-	FactionID   whereHelperstring
-	Label       whereHelperstring
-	Opened      whereHelperbool
-	LockedUntil whereHelpertime_Time
-	Purchased   whereHelperbool
-	DeletedAt   whereHelpernull_Time
-	UpdatedAt   whereHelpertime_Time
-	CreatedAt   whereHelpertime_Time
+	ID               whereHelperstring
+	Type             whereHelperstring
+	FactionID        whereHelperstring
+	Label            whereHelperstring
+	Opened           whereHelperbool
+	LockedUntil      whereHelpertime_Time
+	Purchased        whereHelperbool
+	ImageURL         whereHelpernull_String
+	CardAnimationURL whereHelpernull_String
+	AvatarURL        whereHelpernull_String
+	LargeImageURL    whereHelpernull_String
+	BackgroundColor  whereHelpernull_String
+	AnimationURL     whereHelpernull_String
+	YoutubeURL       whereHelpernull_String
+	DeletedAt        whereHelpernull_Time
+	UpdatedAt        whereHelpertime_Time
+	CreatedAt        whereHelpertime_Time
 }{
-	ID:          whereHelperstring{field: "\"mystery_crate\".\"id\""},
-	Type:        whereHelperstring{field: "\"mystery_crate\".\"type\""},
-	FactionID:   whereHelperstring{field: "\"mystery_crate\".\"faction_id\""},
-	Label:       whereHelperstring{field: "\"mystery_crate\".\"label\""},
-	Opened:      whereHelperbool{field: "\"mystery_crate\".\"opened\""},
-	LockedUntil: whereHelpertime_Time{field: "\"mystery_crate\".\"locked_until\""},
-	Purchased:   whereHelperbool{field: "\"mystery_crate\".\"purchased\""},
-	DeletedAt:   whereHelpernull_Time{field: "\"mystery_crate\".\"deleted_at\""},
-	UpdatedAt:   whereHelpertime_Time{field: "\"mystery_crate\".\"updated_at\""},
-	CreatedAt:   whereHelpertime_Time{field: "\"mystery_crate\".\"created_at\""},
+	ID:               whereHelperstring{field: "\"mystery_crate\".\"id\""},
+	Type:             whereHelperstring{field: "\"mystery_crate\".\"type\""},
+	FactionID:        whereHelperstring{field: "\"mystery_crate\".\"faction_id\""},
+	Label:            whereHelperstring{field: "\"mystery_crate\".\"label\""},
+	Opened:           whereHelperbool{field: "\"mystery_crate\".\"opened\""},
+	LockedUntil:      whereHelpertime_Time{field: "\"mystery_crate\".\"locked_until\""},
+	Purchased:        whereHelperbool{field: "\"mystery_crate\".\"purchased\""},
+	ImageURL:         whereHelpernull_String{field: "\"mystery_crate\".\"image_url\""},
+	CardAnimationURL: whereHelpernull_String{field: "\"mystery_crate\".\"card_animation_url\""},
+	AvatarURL:        whereHelpernull_String{field: "\"mystery_crate\".\"avatar_url\""},
+	LargeImageURL:    whereHelpernull_String{field: "\"mystery_crate\".\"large_image_url\""},
+	BackgroundColor:  whereHelpernull_String{field: "\"mystery_crate\".\"background_color\""},
+	AnimationURL:     whereHelpernull_String{field: "\"mystery_crate\".\"animation_url\""},
+	YoutubeURL:       whereHelpernull_String{field: "\"mystery_crate\".\"youtube_url\""},
+	DeletedAt:        whereHelpernull_Time{field: "\"mystery_crate\".\"deleted_at\""},
+	UpdatedAt:        whereHelpertime_Time{field: "\"mystery_crate\".\"updated_at\""},
+	CreatedAt:        whereHelpertime_Time{field: "\"mystery_crate\".\"created_at\""},
 }
 
 // MysteryCrateRels is where relationship names are stored.
@@ -136,9 +185,9 @@ func (*mysteryCrateR) NewStruct() *mysteryCrateR {
 type mysteryCrateL struct{}
 
 var (
-	mysteryCrateAllColumns            = []string{"id", "type", "faction_id", "label", "opened", "locked_until", "purchased", "deleted_at", "updated_at", "created_at"}
+	mysteryCrateAllColumns            = []string{"id", "type", "faction_id", "label", "opened", "locked_until", "purchased", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url", "deleted_at", "updated_at", "created_at"}
 	mysteryCrateColumnsWithoutDefault = []string{"type", "faction_id", "label"}
-	mysteryCrateColumnsWithDefault    = []string{"id", "opened", "locked_until", "purchased", "deleted_at", "updated_at", "created_at"}
+	mysteryCrateColumnsWithDefault    = []string{"id", "opened", "locked_until", "purchased", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url", "deleted_at", "updated_at", "created_at"}
 	mysteryCratePrimaryKeyColumns     = []string{"id"}
 	mysteryCrateGeneratedColumns      = []string{}
 )

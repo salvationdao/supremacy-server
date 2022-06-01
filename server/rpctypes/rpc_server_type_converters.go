@@ -798,34 +798,43 @@ func ServerUtilitiesToXsynAsset(utils []*server.Utility) []*XsynAsset {
 	return assets
 }
 
-func ServerMysteryCrateToXsynAsset(mysteryCrates []*server.MysteryCrate) []*XsynAsset {
-	var assets []*XsynAsset
-	for _, mc := range mysteryCrates {
-		asJson, err := json.Marshal(mc)
-		if err != nil {
-			gamelog.L.Error().Err(err).Interface("interface", mc).Msg("failed to convert item to json")
-			continue
-		}
-
-		assets = append(assets, &XsynAsset{
-			ID:             mc.ID,
-			CollectionSlug: mc.CollectionSlug,
-			TokenID:        mc.TokenID,
-			Tier:           mc.Tier,
-			Hash:           mc.Hash,
-			OwnerID:        mc.OwnerID,
-			Data:           asJson,
-			AssetType:      null.StringFrom(mc.ItemType),
-
-			Name:             mc.Label,
-			ImageURL:         mc.ImageURL,
-			BackgroundColor:  mc.BackgroundColor,
-			AnimationURL:     mc.AnimationURL,
-			YoutubeURL:       mc.YoutubeURL,
-			AvatarURL:        mc.AvatarURL,
-			CardAnimationURL: mc.CardAnimationURL,
-		})
+func ServerMysteryCrateToXsynAsset(mysteryCrate *server.MysteryCrate) *XsynAsset {
+	asJson, err := json.Marshal(mysteryCrate)
+	if err != nil {
+		gamelog.L.Error().Err(err).Interface("interface", mysteryCrate).Msg("failed to convert item to json")
 	}
 
-	return assets
+	// convert stats to attributes to
+	attributes := []*Attribute{
+		{
+			TraitType: "Label",
+			Value:     mysteryCrate.Label,
+		},
+		{
+			TraitType: "Type",
+			Value:     mysteryCrate.Type, // TODO: get mech model name instead
+		},
+	}
+
+	asset := &XsynAsset{
+		ID:             mysteryCrate.ID,
+		CollectionSlug: mysteryCrate.CollectionSlug,
+		TokenID:        mysteryCrate.TokenID,
+		Tier:           mysteryCrate.Tier,
+		Data:           asJson,
+		Attributes:     attributes,
+		Hash:           mysteryCrate.Hash,
+		OwnerID:        mysteryCrate.OwnerID,
+		AssetType:      null.StringFrom(mysteryCrate.ItemType),
+
+		Name:             mysteryCrate.Label,
+		ImageURL:         mysteryCrate.ImageURL,
+		BackgroundColor:  mysteryCrate.BackgroundColor,
+		AnimationURL:     mysteryCrate.AnimationURL,
+		YoutubeURL:       mysteryCrate.YoutubeURL,
+		AvatarURL:        mysteryCrate.AvatarURL,
+		CardAnimationURL: mysteryCrate.CardAnimationURL,
+	}
+
+	return asset
 }

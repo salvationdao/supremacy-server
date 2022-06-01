@@ -21,16 +21,24 @@ CREATE TABLE storefront_mystery_crates
 
 CREATE TABLE mystery_crate
 (
-    id           UUID PRIMARY KEY         DEFAULT gen_random_uuid(),
-    type         CRATE_TYPE_ENUM NOT NULL,
-    faction_id   UUID            NOT NULL REFERENCES factions (id),
-    label        TEXT            NOT NULL,
-    opened       BOOLEAN         NOT NULL DEFAULT FALSE,
-    locked_until TIMESTAMPTZ     NOT NULL DEFAULT NOW() + INTERVAL '1' YEAR,
-    purchased    BOOLEAN         NOT NULL DEFAULT FALSE,
-    deleted_at   TIMESTAMPTZ,
-    updated_at   TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
-    created_at   TIMESTAMPTZ     NOT NULL DEFAULT NOW()
+    id                 UUID PRIMARY KEY         DEFAULT gen_random_uuid(),
+    type               CRATE_TYPE_ENUM NOT NULL,
+    faction_id         UUID            NOT NULL REFERENCES factions (id),
+    label              TEXT            NOT NULL,
+    opened             BOOLEAN         NOT NULL DEFAULT FALSE,
+    locked_until       TIMESTAMPTZ     NOT NULL DEFAULT NOW() + INTERVAL '1' YEAR,
+    purchased          BOOLEAN         NOT NULL DEFAULT FALSE,
+    image_url          TEXT,
+    card_animation_url TEXT,
+    avatar_url         TEXT,
+    large_image_url    TEXT,
+    background_color   TEXT,
+    animation_url      TEXT,
+    youtube_url        TEXT,
+
+    deleted_at         TIMESTAMPTZ,
+    updated_at         TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+    created_at         TIMESTAMPTZ     NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE mystery_crate_blueprints

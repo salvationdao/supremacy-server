@@ -60,7 +60,25 @@ func InsertNewCollectionItem(tx *sql.Tx,
 			animation_url,
 			youtube_url
 			)
-		VALUES($1, %s, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`, tokenClause)
+		VALUES($1, %s, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING 
+			id,
+			collection_slug,
+			hash,
+			token_id,
+			item_type,
+			item_id,
+			tier,
+			owner_id,
+			market_locked,
+			xsyn_locked,
+			image_url,
+			card_animation_url,
+			avatar_url,
+			large_image_url,
+			background_color,
+			animation_url,
+			youtube_url
+			`, tokenClause)
 
 	err := tx.QueryRow(query,
 		collectionSlug,
