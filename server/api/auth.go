@@ -2,6 +2,7 @@ package api
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"server/db/boiler"
@@ -22,7 +23,7 @@ import (
 func AuthRouter(api *API) chi.Router {
 	r := chi.NewRouter()
 	r.Get("/xsyn", api.XSYNAuth)
-	r.Get("/check", WithError(api.AuthCheckHandler))
+	r.Post("/check", WithError(api.AuthCheckHandler))
 	r.Get("/logout", WithError(api.LogoutHandler))
 
 	return r
@@ -64,9 +65,18 @@ func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, e
 	fmt.Println("ahhhhhhhhhh")
 	fmt.Println("ahhhhhhhhhh")
 
+	req := &struct {
+		Fingerprint *Fingerprint `json:"fingerprint"`
+	}{}
+	err := json.NewDecoder(r.Body).Decode(req)
+	if err != nil {
+		return http.StatusInternalServerError, err
+	}
+
 	cookie, err := r.Cookie("xsyn-token")
 
 	fmt.Println("cookie", cookie)
+	fmt.Println("fingerprint", req.Fingerprint)
 
 	if err != nil {
 		// check whether token is attached
@@ -89,6 +99,8 @@ func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, e
 			return http.StatusInternalServerError, terror.Error(err, "Failed to write cookie")
 		}
 
+		// fingerprint
+
 		return helpers.EncodeJSON(w, player)
 	}
 
@@ -110,9 +122,7 @@ func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, e
 		return http.StatusBadRequest, terror.Error(err, "Failed to authentication")
 	}
 
-	// get fingerprint
-
-	err = api.UpsertPlayer(player.ID, player.Username, player.PublicAddress, player.FactionID, nil)
+	err = api.UpsertPlayer(player.ID, player.Username, player.PublicAddress, player.FactionID, req.Fingerprint)
 	if err != nil {
 		return http.StatusInternalServerError, terror.Error(err, "Failed to update player.")
 	}

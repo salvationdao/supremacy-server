@@ -106,12 +106,34 @@ func (c *Chatroom) AddMessage(message *ChatMessage) {
 
 func (c *Chatroom) Range(fn func(chatMessage *ChatMessage) bool) {
 	c.RLock()
+
 	for _, message := range c.messages {
+
 		if !fn(message) {
 			break
 		}
 	}
 	c.RUnlock()
+}
+
+func isPlayerBanned(playerID string) bool {
+	fp, err := boiler.PlayerFingerprints(boiler.PlayerFingerprintWhere.PlayerID.EQ(playerID)).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Warn().Err(err).Interface("msg.PlayerID", playerID).Msg("issue finding player fingerprints")
+		return false
+	}
+	if errors.Is(err, sql.ErrNoRows) {
+		return false
+	}
+
+	// check if fingerprint is banned
+	banned, err := boiler.ChatBannedFingerprintExists(gamedb.StdConn, fp.FingerprintID)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Warn().Err(err).Interface("msg.PlayerID", playerID).Msg("issue checking if player is banned")
+		return false
+	}
+
+	return banned
 }
 
 func NewChatroom(factionID string) *Chatroom {
@@ -130,6 +152,7 @@ func NewChatroom(factionID string) *Chatroom {
 
 	cms := make([]*ChatMessage, len(msgs))
 	for i, msg := range msgs {
+
 		player, ok := players[msg.PlayerID]
 		if !ok {
 			var err error
@@ -171,6 +194,7 @@ func NewChatroom(factionID string) *Chatroom {
 			},
 		}
 	}
+
 	factionUUID := server.FactionID(uuid.FromStringOrNil(factionID))
 	chatroom := &Chatroom{
 		factionID: &factionUUID,
@@ -267,8 +291,10 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 		return err
 	}
 
+	fingerprintBanned := isPlayerBanned(user.ID)
+
 	// if chat banned just return
-	if isBanned {
+	if isBanned || fingerprintBanned {
 		return terror.Error(fmt.Errorf("player is banned to chat"), "You are banned to chat")
 	}
 
@@ -468,6 +494,12 @@ const HubKeyGlobalChatSubscribe = "GLOBAL:CHAT:SUBSCRIBE"
 func (fc *ChatController) GlobalChatUpdatedSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	resp := []*ChatMessage{}
 	fc.API.GlobalChat.Range(func(message *ChatMessage) bool {
+		fmt.Println("---bruh--")
+		fmt.Println("-----")
+		fmt.Println("-----")
+		fmt.Println("-----")
+
+		fmt.Printf("%+v\n", message)
 		resp = append(resp, message)
 		return true
 	})
