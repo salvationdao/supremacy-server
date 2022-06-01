@@ -31,7 +31,8 @@ type CollectionItem struct {
 	ItemID           string      `boiler:"item_id" boil:"item_id" json:"item_id" toml:"item_id" yaml:"item_id"`
 	Tier             string      `boiler:"tier" boil:"tier" json:"tier" toml:"tier" yaml:"tier"`
 	OwnerID          string      `boiler:"owner_id" boil:"owner_id" json:"owner_id" toml:"owner_id" yaml:"owner_id"`
-	OnChainStatus    string      `boiler:"on_chain_status" boil:"on_chain_status" json:"on_chain_status" toml:"on_chain_status" yaml:"on_chain_status"`
+	MarketLocked     bool        `boiler:"market_locked" boil:"market_locked" json:"market_locked" toml:"market_locked" yaml:"market_locked"`
+	XsynLocked       bool        `boiler:"xsyn_locked" boil:"xsyn_locked" json:"xsyn_locked" toml:"xsyn_locked" yaml:"xsyn_locked"`
 	ImageURL         null.String `boiler:"image_url" boil:"image_url" json:"image_url,omitempty" toml:"image_url" yaml:"image_url,omitempty"`
 	CardAnimationURL null.String `boiler:"card_animation_url" boil:"card_animation_url" json:"card_animation_url,omitempty" toml:"card_animation_url" yaml:"card_animation_url,omitempty"`
 	AvatarURL        null.String `boiler:"avatar_url" boil:"avatar_url" json:"avatar_url,omitempty" toml:"avatar_url" yaml:"avatar_url,omitempty"`
@@ -53,7 +54,8 @@ var CollectionItemColumns = struct {
 	ItemID           string
 	Tier             string
 	OwnerID          string
-	OnChainStatus    string
+	MarketLocked     string
+	XsynLocked       string
 	ImageURL         string
 	CardAnimationURL string
 	AvatarURL        string
@@ -70,7 +72,8 @@ var CollectionItemColumns = struct {
 	ItemID:           "item_id",
 	Tier:             "tier",
 	OwnerID:          "owner_id",
-	OnChainStatus:    "on_chain_status",
+	MarketLocked:     "market_locked",
+	XsynLocked:       "xsyn_locked",
 	ImageURL:         "image_url",
 	CardAnimationURL: "card_animation_url",
 	AvatarURL:        "avatar_url",
@@ -89,7 +92,8 @@ var CollectionItemTableColumns = struct {
 	ItemID           string
 	Tier             string
 	OwnerID          string
-	OnChainStatus    string
+	MarketLocked     string
+	XsynLocked       string
 	ImageURL         string
 	CardAnimationURL string
 	AvatarURL        string
@@ -106,7 +110,8 @@ var CollectionItemTableColumns = struct {
 	ItemID:           "collection_items.item_id",
 	Tier:             "collection_items.tier",
 	OwnerID:          "collection_items.owner_id",
-	OnChainStatus:    "collection_items.on_chain_status",
+	MarketLocked:     "collection_items.market_locked",
+	XsynLocked:       "collection_items.xsyn_locked",
 	ImageURL:         "collection_items.image_url",
 	CardAnimationURL: "collection_items.card_animation_url",
 	AvatarURL:        "collection_items.avatar_url",
@@ -127,7 +132,8 @@ var CollectionItemWhere = struct {
 	ItemID           whereHelperstring
 	Tier             whereHelperstring
 	OwnerID          whereHelperstring
-	OnChainStatus    whereHelperstring
+	MarketLocked     whereHelperbool
+	XsynLocked       whereHelperbool
 	ImageURL         whereHelpernull_String
 	CardAnimationURL whereHelpernull_String
 	AvatarURL        whereHelpernull_String
@@ -144,7 +150,8 @@ var CollectionItemWhere = struct {
 	ItemID:           whereHelperstring{field: "\"collection_items\".\"item_id\""},
 	Tier:             whereHelperstring{field: "\"collection_items\".\"tier\""},
 	OwnerID:          whereHelperstring{field: "\"collection_items\".\"owner_id\""},
-	OnChainStatus:    whereHelperstring{field: "\"collection_items\".\"on_chain_status\""},
+	MarketLocked:     whereHelperbool{field: "\"collection_items\".\"market_locked\""},
+	XsynLocked:       whereHelperbool{field: "\"collection_items\".\"xsyn_locked\""},
 	ImageURL:         whereHelpernull_String{field: "\"collection_items\".\"image_url\""},
 	CardAnimationURL: whereHelpernull_String{field: "\"collection_items\".\"card_animation_url\""},
 	AvatarURL:        whereHelpernull_String{field: "\"collection_items\".\"avatar_url\""},
@@ -175,9 +182,9 @@ func (*collectionItemR) NewStruct() *collectionItemR {
 type collectionItemL struct{}
 
 var (
-	collectionItemAllColumns            = []string{"id", "collection_slug", "hash", "token_id", "item_type", "item_id", "tier", "owner_id", "on_chain_status", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url"}
+	collectionItemAllColumns            = []string{"id", "collection_slug", "hash", "token_id", "item_type", "item_id", "tier", "owner_id", "market_locked", "xsyn_locked", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url"}
 	collectionItemColumnsWithoutDefault = []string{"token_id", "item_type", "item_id", "owner_id"}
-	collectionItemColumnsWithDefault    = []string{"id", "collection_slug", "hash", "tier", "on_chain_status", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url"}
+	collectionItemColumnsWithDefault    = []string{"id", "collection_slug", "hash", "tier", "market_locked", "xsyn_locked", "image_url", "card_animation_url", "avatar_url", "large_image_url", "background_color", "animation_url", "youtube_url"}
 	collectionItemPrimaryKeyColumns     = []string{"id"}
 	collectionItemGeneratedColumns      = []string{}
 )

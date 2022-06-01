@@ -9,11 +9,9 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/multipliers"
-	"server/rpcclient"
+	"server/xsyn_rpcclient"
 	"sync"
 	"time"
-
-	"github.com/ninja-syndicate/hub/ext/messagebus"
 
 	"github.com/volatiletech/null/v8"
 
@@ -29,8 +27,7 @@ var SupremacyBattleUserID = uuid.Must(uuid.FromString("87c60803-b051-4abb-aa60-4
 var SupremacyUserID = uuid.Must(uuid.FromString("4fae8fdf-584f-46bb-9cb9-bb32ae20177e"))
 
 type SpoilsOfWar struct {
-	messageBus   *messagebus.MessageBus
-	passport     *rpcclient.PassportXrpcClient
+	passport     *xsyn_rpcclient.XsynXrpcClient
 	isOnline     func(userID uuid.UUID) bool
 	battleID     string
 	battleNumber int
@@ -56,8 +53,7 @@ func (sow *SpoilsOfWar) BattleNumber() int {
 }
 
 func NewSpoilsOfWar(
-	passport *rpcclient.PassportXrpcClient,
-	messageBus *messagebus.MessageBus,
+	passport *xsyn_rpcclient.XsynXrpcClient,
 	isOnline func(userID uuid.UUID) bool,
 	battleID string,
 	battleNumber int,
@@ -68,7 +64,6 @@ func NewSpoilsOfWar(
 		isOnline:     isOnline,
 		battleID:     battleID,
 		battleNumber: battleNumber,
-		messageBus:   messageBus,
 		passport:     passport,
 		tickSpeed:    dripSpeed,
 		maxTicks:     maxTicks,
@@ -160,7 +155,7 @@ func (sow *SpoilsOfWar) Drip() error {
 
 		subgroup := fmt.Sprintf("Spoils of War from Battle #%d", spoils.BattleNumber)
 		sendSups := func(userID uuid.UUID, amount string, txr string) (string, error) {
-			return sow.passport.SpendSupMessage(rpcclient.SpendSupsReq{
+			return sow.passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 				FromUserID:           SupremacyBattleUserID,
 				ToUserID:             userID,
 				Amount:               amount,

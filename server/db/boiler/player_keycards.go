@@ -27,7 +27,6 @@ type PlayerKeycard struct {
 	BlueprintKeycardID string    `boiler:"blueprint_keycard_id" boil:"blueprint_keycard_id" json:"blueprint_keycard_id" toml:"blueprint_keycard_id" yaml:"blueprint_keycard_id"`
 	Count              int       `boiler:"count" boil:"count" json:"count" toml:"count" yaml:"count"`
 	CreatedAt          time.Time `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
-	Service            string    `boiler:"service" boil:"service" json:"service" toml:"service" yaml:"service"`
 
 	R *playerKeycardR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L playerKeycardL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -39,14 +38,12 @@ var PlayerKeycardColumns = struct {
 	BlueprintKeycardID string
 	Count              string
 	CreatedAt          string
-	Service            string
 }{
 	ID:                 "id",
 	PlayerID:           "player_id",
 	BlueprintKeycardID: "blueprint_keycard_id",
 	Count:              "count",
 	CreatedAt:          "created_at",
-	Service:            "service",
 }
 
 var PlayerKeycardTableColumns = struct {
@@ -55,14 +52,12 @@ var PlayerKeycardTableColumns = struct {
 	BlueprintKeycardID string
 	Count              string
 	CreatedAt          string
-	Service            string
 }{
 	ID:                 "player_keycards.id",
 	PlayerID:           "player_keycards.player_id",
 	BlueprintKeycardID: "player_keycards.blueprint_keycard_id",
 	Count:              "player_keycards.count",
 	CreatedAt:          "player_keycards.created_at",
-	Service:            "player_keycards.service",
 }
 
 // Generated where
@@ -73,14 +68,12 @@ var PlayerKeycardWhere = struct {
 	BlueprintKeycardID whereHelperstring
 	Count              whereHelperint
 	CreatedAt          whereHelpertime_Time
-	Service            whereHelperstring
 }{
 	ID:                 whereHelperstring{field: "\"player_keycards\".\"id\""},
 	PlayerID:           whereHelperstring{field: "\"player_keycards\".\"player_id\""},
 	BlueprintKeycardID: whereHelperstring{field: "\"player_keycards\".\"blueprint_keycard_id\""},
 	Count:              whereHelperint{field: "\"player_keycards\".\"count\""},
 	CreatedAt:          whereHelpertime_Time{field: "\"player_keycards\".\"created_at\""},
-	Service:            whereHelperstring{field: "\"player_keycards\".\"service\""},
 }
 
 // PlayerKeycardRels is where relationship names are stored.
@@ -107,8 +100,8 @@ func (*playerKeycardR) NewStruct() *playerKeycardR {
 type playerKeycardL struct{}
 
 var (
-	playerKeycardAllColumns            = []string{"id", "player_id", "blueprint_keycard_id", "count", "created_at", "service"}
-	playerKeycardColumnsWithoutDefault = []string{"player_id", "blueprint_keycard_id", "service"}
+	playerKeycardAllColumns            = []string{"id", "player_id", "blueprint_keycard_id", "count", "created_at"}
+	playerKeycardColumnsWithoutDefault = []string{"player_id", "blueprint_keycard_id"}
 	playerKeycardColumnsWithDefault    = []string{"id", "count", "created_at"}
 	playerKeycardPrimaryKeyColumns     = []string{"id"}
 	playerKeycardGeneratedColumns      = []string{}

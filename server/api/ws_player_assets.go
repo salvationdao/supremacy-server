@@ -38,11 +38,12 @@ const HubKeyPlayerAssetMechList = "PLAYER:ASSET:MECH:LIST"
 
 type PlayerAssetMechListRequest struct {
 	Payload struct {
-		Search   string                `json:"search"`
-		Filter   *db.ListFilterRequest `json:"filter"`
-		Sort     *db.ListSortRequest   `json:"sort"`
-		PageSize int                   `json:"page_size"`
-		Page     int                   `json:"page"`
+		Search           string                `json:"search"`
+		Filter           *db.ListFilterRequest `json:"filter"`
+		Sort             *db.ListSortRequest   `json:"sort"`
+		PageSize         int                   `json:"page_size"`
+		Page             int                   `json:"page"`
+		DisplayXsynMechs bool                  `json:"display_xsyn_mechs"`
 	} `json:"payload"`
 }
 
@@ -53,7 +54,6 @@ type PlayerAssetMech struct {
 	ItemType         string      `json:"item_type"`
 	Tier             string      `json:"tier"`
 	OwnerID          string      `json:"owner_id"`
-	OnChainStatus    string      `json:"on_chain_status"`
 	ImageURL         null.String `json:"image_url,omitempty"`
 	CardAnimationURL null.String `json:"card_animation_url,omitempty"`
 	AvatarURL        null.String `json:"avatar_url,omitempty"`
@@ -61,6 +61,8 @@ type PlayerAssetMech struct {
 	BackgroundColor  null.String `json:"background_color,omitempty"`
 	AnimationURL     null.String `json:"animation_url,omitempty"`
 	YoutubeURL       null.String `json:"youtube_url,omitempty"`
+	MarketLocked     bool        `json:"market_locked"`
+	XsynLocked       bool        `json:"xsyn_locked"`
 
 	ID                    string     `json:"id"`
 	Label                 string     `json:"label"`
@@ -107,12 +109,13 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 	}
 
 	total, mechs, err := db.MechList(&db.MechListOpts{
-		Search:   req.Payload.Search,
-		Filter:   req.Payload.Filter,
-		Sort:     req.Payload.Sort,
-		PageSize: req.Payload.PageSize,
-		Page:     req.Payload.Page,
-		OwnerID:  user.ID,
+		Search:           req.Payload.Search,
+		Filter:           req.Payload.Filter,
+		Sort:             req.Payload.Sort,
+		PageSize:         req.Payload.PageSize,
+		Page:             req.Payload.Page,
+		OwnerID:          user.ID,
+		DisplayXsynMechs: req.Payload.DisplayXsynMechs,
 	})
 	if err != nil {
 		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting mechs")
@@ -146,20 +149,21 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 			PowerCoreID:           m.PowerCoreID,
 			UpdatedAt:             m.UpdatedAt,
 			CreatedAt:             m.CreatedAt,
-			CollectionSlug:        m.CollectionDetails.CollectionSlug,
-			Hash:                  m.CollectionDetails.Hash,
-			TokenID:               m.CollectionDetails.TokenID,
-			ItemType:              m.CollectionDetails.ItemType,
-			Tier:                  m.CollectionDetails.Tier,
-			OwnerID:               m.CollectionDetails.OwnerID,
-			OnChainStatus:         m.CollectionDetails.OnChainStatus,
-			ImageURL:              m.CollectionDetails.ImageURL,
-			CardAnimationURL:      m.CollectionDetails.CardAnimationURL,
-			AvatarURL:             m.CollectionDetails.AvatarURL,
-			LargeImageURL:         m.CollectionDetails.LargeImageURL,
-			BackgroundColor:       m.CollectionDetails.BackgroundColor,
-			AnimationURL:          m.CollectionDetails.AnimationURL,
-			YoutubeURL:            m.CollectionDetails.YoutubeURL,
+			CollectionSlug:        m.CollectionItem.CollectionSlug,
+			Hash:                  m.CollectionItem.Hash,
+			TokenID:               m.CollectionItem.TokenID,
+			ItemType:              m.CollectionItem.ItemType,
+			Tier:                  m.CollectionItem.Tier,
+			OwnerID:               m.CollectionItem.OwnerID,
+			XsynLocked:            m.CollectionItem.XsynLocked,
+			MarketLocked:          m.CollectionItem.MarketLocked,
+			ImageURL:              m.CollectionItem.ImageURL,
+			CardAnimationURL:      m.CollectionItem.CardAnimationURL,
+			AvatarURL:             m.CollectionItem.AvatarURL,
+			LargeImageURL:         m.CollectionItem.LargeImageURL,
+			BackgroundColor:       m.CollectionItem.BackgroundColor,
+			AnimationURL:          m.CollectionItem.AnimationURL,
+			YoutubeURL:            m.CollectionItem.YoutubeURL,
 		})
 	}
 

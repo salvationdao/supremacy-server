@@ -24,100 +24,114 @@ import (
 
 // PowerCore is an object representing the database table.
 type PowerCore struct {
-	ID           string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
-	BlueprintID  null.String     `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id,omitempty" toml:"blueprint_id" yaml:"blueprint_id,omitempty"`
-	Label        string          `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
-	Size         string          `boiler:"size" boil:"size" json:"size" toml:"size" yaml:"size"`
-	Capacity     decimal.Decimal `boiler:"capacity" boil:"capacity" json:"capacity" toml:"capacity" yaml:"capacity"`
-	MaxDrawRate  decimal.Decimal `boiler:"max_draw_rate" boil:"max_draw_rate" json:"max_draw_rate" toml:"max_draw_rate" yaml:"max_draw_rate"`
-	RechargeRate decimal.Decimal `boiler:"recharge_rate" boil:"recharge_rate" json:"recharge_rate" toml:"recharge_rate" yaml:"recharge_rate"`
-	Armour       decimal.Decimal `boiler:"armour" boil:"armour" json:"armour" toml:"armour" yaml:"armour"`
-	MaxHitpoints decimal.Decimal `boiler:"max_hitpoints" boil:"max_hitpoints" json:"max_hitpoints" toml:"max_hitpoints" yaml:"max_hitpoints"`
-	EquippedOn   null.String     `boiler:"equipped_on" boil:"equipped_on" json:"equipped_on,omitempty" toml:"equipped_on" yaml:"equipped_on,omitempty"`
-	CreatedAt    time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
+	ID                    string          `boiler:"id" boil:"id" json:"id" toml:"id" yaml:"id"`
+	BlueprintID           null.String     `boiler:"blueprint_id" boil:"blueprint_id" json:"blueprint_id,omitempty" toml:"blueprint_id" yaml:"blueprint_id,omitempty"`
+	Label                 string          `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
+	Size                  string          `boiler:"size" boil:"size" json:"size" toml:"size" yaml:"size"`
+	Capacity              decimal.Decimal `boiler:"capacity" boil:"capacity" json:"capacity" toml:"capacity" yaml:"capacity"`
+	GenesisTokenID        null.Int64      `boiler:"genesis_token_id" boil:"genesis_token_id" json:"genesis_token_id,omitempty" toml:"genesis_token_id" yaml:"genesis_token_id,omitempty"`
+	LimitedReleaseTokenID null.Int64      `boiler:"limited_release_token_id" boil:"limited_release_token_id" json:"limited_release_token_id,omitempty" toml:"limited_release_token_id" yaml:"limited_release_token_id,omitempty"`
+	MaxDrawRate           decimal.Decimal `boiler:"max_draw_rate" boil:"max_draw_rate" json:"max_draw_rate" toml:"max_draw_rate" yaml:"max_draw_rate"`
+	RechargeRate          decimal.Decimal `boiler:"recharge_rate" boil:"recharge_rate" json:"recharge_rate" toml:"recharge_rate" yaml:"recharge_rate"`
+	Armour                decimal.Decimal `boiler:"armour" boil:"armour" json:"armour" toml:"armour" yaml:"armour"`
+	MaxHitpoints          decimal.Decimal `boiler:"max_hitpoints" boil:"max_hitpoints" json:"max_hitpoints" toml:"max_hitpoints" yaml:"max_hitpoints"`
+	EquippedOn            null.String     `boiler:"equipped_on" boil:"equipped_on" json:"equipped_on,omitempty" toml:"equipped_on" yaml:"equipped_on,omitempty"`
+	CreatedAt             time.Time       `boiler:"created_at" boil:"created_at" json:"created_at" toml:"created_at" yaml:"created_at"`
 
 	R *powerCoreR `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 	L powerCoreL  `boiler:"-" boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var PowerCoreColumns = struct {
-	ID           string
-	BlueprintID  string
-	Label        string
-	Size         string
-	Capacity     string
-	MaxDrawRate  string
-	RechargeRate string
-	Armour       string
-	MaxHitpoints string
-	EquippedOn   string
-	CreatedAt    string
+	ID                    string
+	BlueprintID           string
+	Label                 string
+	Size                  string
+	Capacity              string
+	GenesisTokenID        string
+	LimitedReleaseTokenID string
+	MaxDrawRate           string
+	RechargeRate          string
+	Armour                string
+	MaxHitpoints          string
+	EquippedOn            string
+	CreatedAt             string
 }{
-	ID:           "id",
-	BlueprintID:  "blueprint_id",
-	Label:        "label",
-	Size:         "size",
-	Capacity:     "capacity",
-	MaxDrawRate:  "max_draw_rate",
-	RechargeRate: "recharge_rate",
-	Armour:       "armour",
-	MaxHitpoints: "max_hitpoints",
-	EquippedOn:   "equipped_on",
-	CreatedAt:    "created_at",
+	ID:                    "id",
+	BlueprintID:           "blueprint_id",
+	Label:                 "label",
+	Size:                  "size",
+	Capacity:              "capacity",
+	GenesisTokenID:        "genesis_token_id",
+	LimitedReleaseTokenID: "limited_release_token_id",
+	MaxDrawRate:           "max_draw_rate",
+	RechargeRate:          "recharge_rate",
+	Armour:                "armour",
+	MaxHitpoints:          "max_hitpoints",
+	EquippedOn:            "equipped_on",
+	CreatedAt:             "created_at",
 }
 
 var PowerCoreTableColumns = struct {
-	ID           string
-	BlueprintID  string
-	Label        string
-	Size         string
-	Capacity     string
-	MaxDrawRate  string
-	RechargeRate string
-	Armour       string
-	MaxHitpoints string
-	EquippedOn   string
-	CreatedAt    string
+	ID                    string
+	BlueprintID           string
+	Label                 string
+	Size                  string
+	Capacity              string
+	GenesisTokenID        string
+	LimitedReleaseTokenID string
+	MaxDrawRate           string
+	RechargeRate          string
+	Armour                string
+	MaxHitpoints          string
+	EquippedOn            string
+	CreatedAt             string
 }{
-	ID:           "power_cores.id",
-	BlueprintID:  "power_cores.blueprint_id",
-	Label:        "power_cores.label",
-	Size:         "power_cores.size",
-	Capacity:     "power_cores.capacity",
-	MaxDrawRate:  "power_cores.max_draw_rate",
-	RechargeRate: "power_cores.recharge_rate",
-	Armour:       "power_cores.armour",
-	MaxHitpoints: "power_cores.max_hitpoints",
-	EquippedOn:   "power_cores.equipped_on",
-	CreatedAt:    "power_cores.created_at",
+	ID:                    "power_cores.id",
+	BlueprintID:           "power_cores.blueprint_id",
+	Label:                 "power_cores.label",
+	Size:                  "power_cores.size",
+	Capacity:              "power_cores.capacity",
+	GenesisTokenID:        "power_cores.genesis_token_id",
+	LimitedReleaseTokenID: "power_cores.limited_release_token_id",
+	MaxDrawRate:           "power_cores.max_draw_rate",
+	RechargeRate:          "power_cores.recharge_rate",
+	Armour:                "power_cores.armour",
+	MaxHitpoints:          "power_cores.max_hitpoints",
+	EquippedOn:            "power_cores.equipped_on",
+	CreatedAt:             "power_cores.created_at",
 }
 
 // Generated where
 
 var PowerCoreWhere = struct {
-	ID           whereHelperstring
-	BlueprintID  whereHelpernull_String
-	Label        whereHelperstring
-	Size         whereHelperstring
-	Capacity     whereHelperdecimal_Decimal
-	MaxDrawRate  whereHelperdecimal_Decimal
-	RechargeRate whereHelperdecimal_Decimal
-	Armour       whereHelperdecimal_Decimal
-	MaxHitpoints whereHelperdecimal_Decimal
-	EquippedOn   whereHelpernull_String
-	CreatedAt    whereHelpertime_Time
+	ID                    whereHelperstring
+	BlueprintID           whereHelpernull_String
+	Label                 whereHelperstring
+	Size                  whereHelperstring
+	Capacity              whereHelperdecimal_Decimal
+	GenesisTokenID        whereHelpernull_Int64
+	LimitedReleaseTokenID whereHelpernull_Int64
+	MaxDrawRate           whereHelperdecimal_Decimal
+	RechargeRate          whereHelperdecimal_Decimal
+	Armour                whereHelperdecimal_Decimal
+	MaxHitpoints          whereHelperdecimal_Decimal
+	EquippedOn            whereHelpernull_String
+	CreatedAt             whereHelpertime_Time
 }{
-	ID:           whereHelperstring{field: "\"power_cores\".\"id\""},
-	BlueprintID:  whereHelpernull_String{field: "\"power_cores\".\"blueprint_id\""},
-	Label:        whereHelperstring{field: "\"power_cores\".\"label\""},
-	Size:         whereHelperstring{field: "\"power_cores\".\"size\""},
-	Capacity:     whereHelperdecimal_Decimal{field: "\"power_cores\".\"capacity\""},
-	MaxDrawRate:  whereHelperdecimal_Decimal{field: "\"power_cores\".\"max_draw_rate\""},
-	RechargeRate: whereHelperdecimal_Decimal{field: "\"power_cores\".\"recharge_rate\""},
-	Armour:       whereHelperdecimal_Decimal{field: "\"power_cores\".\"armour\""},
-	MaxHitpoints: whereHelperdecimal_Decimal{field: "\"power_cores\".\"max_hitpoints\""},
-	EquippedOn:   whereHelpernull_String{field: "\"power_cores\".\"equipped_on\""},
-	CreatedAt:    whereHelpertime_Time{field: "\"power_cores\".\"created_at\""},
+	ID:                    whereHelperstring{field: "\"power_cores\".\"id\""},
+	BlueprintID:           whereHelpernull_String{field: "\"power_cores\".\"blueprint_id\""},
+	Label:                 whereHelperstring{field: "\"power_cores\".\"label\""},
+	Size:                  whereHelperstring{field: "\"power_cores\".\"size\""},
+	Capacity:              whereHelperdecimal_Decimal{field: "\"power_cores\".\"capacity\""},
+	GenesisTokenID:        whereHelpernull_Int64{field: "\"power_cores\".\"genesis_token_id\""},
+	LimitedReleaseTokenID: whereHelpernull_Int64{field: "\"power_cores\".\"limited_release_token_id\""},
+	MaxDrawRate:           whereHelperdecimal_Decimal{field: "\"power_cores\".\"max_draw_rate\""},
+	RechargeRate:          whereHelperdecimal_Decimal{field: "\"power_cores\".\"recharge_rate\""},
+	Armour:                whereHelperdecimal_Decimal{field: "\"power_cores\".\"armour\""},
+	MaxHitpoints:          whereHelperdecimal_Decimal{field: "\"power_cores\".\"max_hitpoints\""},
+	EquippedOn:            whereHelpernull_String{field: "\"power_cores\".\"equipped_on\""},
+	CreatedAt:             whereHelpertime_Time{field: "\"power_cores\".\"created_at\""},
 }
 
 // PowerCoreRels is where relationship names are stored.
@@ -147,9 +161,9 @@ func (*powerCoreR) NewStruct() *powerCoreR {
 type powerCoreL struct{}
 
 var (
-	powerCoreAllColumns            = []string{"id", "blueprint_id", "label", "size", "capacity", "max_draw_rate", "recharge_rate", "armour", "max_hitpoints", "equipped_on", "created_at"}
+	powerCoreAllColumns            = []string{"id", "blueprint_id", "label", "size", "capacity", "genesis_token_id", "limited_release_token_id", "max_draw_rate", "recharge_rate", "armour", "max_hitpoints", "equipped_on", "created_at"}
 	powerCoreColumnsWithoutDefault = []string{"label"}
-	powerCoreColumnsWithDefault    = []string{"id", "blueprint_id", "size", "capacity", "max_draw_rate", "recharge_rate", "armour", "max_hitpoints", "equipped_on", "created_at"}
+	powerCoreColumnsWithDefault    = []string{"id", "blueprint_id", "size", "capacity", "genesis_token_id", "limited_release_token_id", "max_draw_rate", "recharge_rate", "armour", "max_hitpoints", "equipped_on", "created_at"}
 	powerCorePrimaryKeyColumns     = []string{"id"}
 	powerCoreGeneratedColumns      = []string{}
 )

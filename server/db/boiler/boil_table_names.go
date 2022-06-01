@@ -68,6 +68,7 @@ var TableNames = struct {
 	PlayerLanguages                                    string
 	PlayerMultipliers                                  string
 	PlayerPreferences                                  string
+	PlayerSettingsPreferences                          string
 	PlayerSpoilsOfWar                                  string
 	PlayerStats                                        string
 	Players                                            string
@@ -158,6 +159,7 @@ var TableNames = struct {
 	PlayerLanguages:             "player_languages",
 	PlayerMultipliers:           "player_multipliers",
 	PlayerPreferences:           "player_preferences",
+	PlayerSettingsPreferences:   "player_settings_preferences",
 	PlayerSpoilsOfWar:           "player_spoils_of_war",
 	PlayerStats:                 "player_stats",
 	Players:                     "players",

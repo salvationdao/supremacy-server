@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/ninja-syndicate/ws"
 	"server"
 	"server/battle"
 	"server/db"
@@ -12,8 +11,10 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/player_abilities"
-	"server/rpcclient"
+	"server/xsyn_rpcclient"
 	"time"
+
+	"github.com/ninja-syndicate/ws"
 
 	"github.com/gofrs/uuid"
 
@@ -21,7 +22,6 @@ import (
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-syndicate/hub"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -49,7 +49,6 @@ func NewPlayerAbilitiesController(api *API) *PlayerAbilitiesControllerWS {
 }
 
 type SaleAbilityDetailsRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		AbilityID string `json:"ability_id"`
 	} `json:"payload"`
@@ -111,7 +110,6 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityDetailedHandler(ctx context.C
 //}
 
 type PlayerAbilitySubscribeRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		AbilityID string `json:"ability_id"` // player ability id
 	} `json:"payload"`
@@ -142,7 +140,7 @@ func (pac *PlayerAbilitiesControllerWS) PlayerAbilitySubscribeHandler(ctx contex
 }
 
 //type SaleAbilitySubscribePriceRequest struct {
-//	*hub.HubCommandRequest
+//
 //	Payload struct {
 //		AbilityID string `json:"ability_id"` // sale ability id
 //	} `json:"payload"`
@@ -178,7 +176,6 @@ type AbilitiesListResponse struct {
 }
 
 type PlayerAbilitiesListRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		Search   string                `json:"search"`
 		Filter   *db.ListFilterRequest `json:"filter"`
@@ -215,7 +212,6 @@ func (pac *PlayerAbilitiesControllerWS) PlayerAbilitiesListHandler(ctx context.C
 }
 
 type SaleAbilitiesListRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		Search   string                `json:"search"`
 		Filter   *db.ListFilterRequest `json:"filter"`
@@ -252,7 +248,6 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilitiesListHandler(ctx context.Con
 }
 
 type SaleAbilitiesPurchaseRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		AbilityID string `json:"ability_id"` // sale ability id
 		Amount    string `json:"amount"`
@@ -304,7 +299,7 @@ func (pac *PlayerAbilitiesControllerWS) SaleAbilityPurchaseHandler(ctx context.C
 	}
 
 	// Charge player for ability
-	supTransactionID, err := pac.API.Passport.SpendSupMessage(rpcclient.SpendSupsReq{
+	supTransactionID, err := pac.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 		Amount:               spa.CurrentPrice.String(),
 		FromUserID:           userID,
 		ToUserID:             battle.SupremacyUserID,
