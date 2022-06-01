@@ -508,7 +508,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		return terror.Error(err, errMsg)
 	}
 	if saleItem.DutchAuction {
-		saleType = "AUCTION"
+		saleType = "DUTCH_AUCTION"
 		auctionReservedPrice, err := decimal.NewFromString(saleItem.AuctionReservedPrice.String)
 		if err != nil {
 			gamelog.L.Error().
@@ -766,6 +766,18 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 		return terror.Error(err, errMsg)
 	}
 
+	// Get Faction Account sending bid amount to
+	factionAccountID, ok := server.FactionUsers[fID]
+	if !ok {
+		err = fmt.Errorf("failed to get hard coded syndicate player id")
+		gamelog.L.Error().
+			Str("player_id", user.ID).
+			Str("faction_id", user.FactionID.String).
+			Err(err).
+			Msg("unable to get hard coded syndicate player ID from faction ID")
+		return terror.Error(err, errMsg)
+	}
+
 	// Check whether user can buy sale item
 	saleItem, err := db.MarketplaceItemSale(req.Payload.ItemID)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -800,13 +812,52 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 	if err != nil {
 		return terror.Error(err, "Invalid Bid Amount received.")
 	}
-	if currentAmount.GreaterThanOrEqual(bidAmount) {
+	if bidAmount.LessThanOrEqual(currentAmount) {
 		return terror.Error(terror.ErrInvalidInput, "Invalid bid amount, must be above the current bid price.")
 	}
 
-	// Place Bid
-	_, err = db.MarketplaceSaleBidHistoryCreate(req.Payload.ItemID, userID, bidAmount)
+	// Pay bid amount
+	balance := mp.API.Passport.UserBalanceGet(userID)
+	if balance.Sub(bidAmount).LessThan(decimal.Zero) {
+		err = fmt.Errorf("insufficient funds")
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("item_id", req.Payload.ItemID.String()).
+			Str("balance", balance.String()).
+			Str("cost", bidAmount.String()).
+			Err(err).
+			Msg("Player does not have enough sups.")
+		return terror.Error(err, "You do not have enough sups.")
+	}
+	txid, err := mp.API.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+		FromUserID:           userID,
+		ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),
+		Amount:               bidAmount.String(),
+		TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_item:AUCTION_BID|%s|%d", saleItem.ID, time.Now().UnixNano())),
+		Group:                string(server.TransactionGroupMarketplace),
+		SubGroup:             "SUPREMACY",
+		Description:          fmt.Sprintf("marketplace buy item: %s", saleItem.ID),
+		NotSafe:              true,
+	})
+
+	// Cancel all other bids before placing in the next new bid
+	refundTxnIDs, err := db.MarketplaceSaleCancelBids(req.Payload.ItemID)
 	if err != nil {
+		mp.API.Passport.RefundSupsMessage(txid)
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("item_id", req.Payload.ItemID.String()).
+			Str("current_auction_price", saleItem.AuctionCurrentPrice.String).
+			Str("bid_amount", bidAmount.String()).
+			Err(err).
+			Msg("Failed to cancel previous bid(s).")
+		return terror.Error(err, errMsg)
+	}
+
+	// Place Bid
+	_, err = db.MarketplaceSaleBidHistoryCreate(req.Payload.ItemID, userID, bidAmount, txid)
+	if err != nil {
+		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
 			Str("user_id", user.ID).
 			Str("item_id", req.Payload.ItemID.String()).
@@ -819,6 +870,7 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 
 	err = db.MarketplaceSaleAuctionSync(req.Payload.ItemID)
 	if err != nil {
+		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
 			Str("user_id", user.ID).
 			Str("item_id", req.Payload.ItemID.String()).
@@ -826,6 +878,29 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 			Err(err).
 			Msg("Unable to update current auction price.")
 		return terror.Error(err, errMsg)
+	}
+
+	// Refund other bids
+	for _, bidTxID := range refundTxnIDs {
+		refundTxID, err := mp.API.Passport.RefundSupsMessage(bidTxID)
+		if err != nil {
+			gamelog.L.Error().
+				Str("item_id", req.Payload.ItemID.String()).
+				Str("txid", bidTxID).
+				Err(err).
+				Msg("Unable to refund cancelled bid.")
+			continue
+		}
+		err = db.MarketplaceSaleBidHistoryRefund(req.Payload.ItemID, bidTxID, refundTxID)
+		if err != nil {
+			gamelog.L.Error().
+				Str("item_id", req.Payload.ItemID.String()).
+				Str("txid", bidTxID).
+				Str("refund_tx_id", refundTxID).
+				Err(err).
+				Msg("Unable to update cancelled bid refund tx id.")
+			continue
+		}
 	}
 
 	reply(true)

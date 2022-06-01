@@ -1,6 +1,8 @@
 package db
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
 	"server"
 	"server/db/boiler"
@@ -394,15 +396,67 @@ func MarketplaceSaleCreate(
 	return output, nil
 }
 
+// MarketplaceSaleCancelBids cancels all active bids and returns transaction ids needed to be retuned (ideally one).
+func MarketplaceSaleCancelBids(itemID uuid.UUID) ([]string, error) {
+	q := `
+		UPDATE item_sale_bid_history
+		SET canceled_at = NOW()
+		WHERE item_sale_id = $1 AND canceled_at IS NULL
+		RETURNING bid_tx_id`
+	rows, err := gamedb.StdConn.Query(q, itemID)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+	defer rows.Close()
+
+	txidRefunds := []string{}
+	for rows.Next() {
+		var txid string
+		err := rows.Scan(&txid)
+		if err != nil {
+			return nil, terror.Error(err)
+		}
+		txidRefunds = append(txidRefunds, txid)
+	}
+	return txidRefunds, nil
+}
+
+// MarketplaceSaleBidHistoryRefund adds in refund details to a specific bid.
+func MarketplaceSaleBidHistoryRefund(itemID uuid.UUID, txID, refundTxID string) error {
+	q := `
+		UPDATE item_sale_bid_history
+		SET refund_bid_tx_id = $3
+		WHERE item_sale_id = $1
+			AND bid_tx_id = $2`
+	_, err := gamedb.StdConn.Exec(q, itemID, txID, refundTxID)
+	if err != nil {
+		return terror.Error(err)
+	}
+	return nil
+}
+
 // MarketplaceSaleBidHistoryCreate inserts a new bid history record.
-func MarketplaceSaleBidHistoryCreate(id uuid.UUID, bidderUserID uuid.UUID, amount decimal.Decimal) (*boiler.ItemSalesBidHistory, error) {
+func MarketplaceSaleBidHistoryCreate(id uuid.UUID, bidderUserID uuid.UUID, amount decimal.Decimal, txid string) (*boiler.ItemSalesBidHistory, error) {
 	obj := &boiler.ItemSalesBidHistory{
 		ItemSaleID: id.String(),
 		BidderID:   bidderUserID.String(),
+		BidTXID:    txid,
 		BidPrice:   amount.String(),
 	}
 	err := obj.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {
+		return nil, terror.Error(err)
+	}
+	return obj, nil
+}
+
+// MarketplaceLastSaleBid gets the last sale bid.
+func MarketplaceLastSaleBid(itemSaleID uuid.UUID) (*boiler.ItemSalesBidHistory, error) {
+	obj, err := boiler.ItemSalesBidHistories(
+		boiler.ItemSalesBidHistoryWhere.ItemSaleID.EQ(itemSaleID.String()),
+		boiler.ItemSalesBidHistoryWhere.CancelledAt.IsNull(),
+	).One(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, terror.Error(err)
 	}
 	return obj, nil
@@ -415,7 +469,9 @@ func MarketplaceSaleAuctionSync(id uuid.UUID) error {
 		SET %s = (
 			SELECT %s
 			FROM %s
-			WHERE %s = $1 
+			WHERE %s = $1
+				AND %s IS NULL 
+			LIMIT 1
 		)
 		WHERE %s = $1`,
 		boiler.TableNames.ItemSales,
@@ -423,6 +479,7 @@ func MarketplaceSaleAuctionSync(id uuid.UUID) error {
 		boiler.ItemSalesBidHistoryColumns.BidPrice,
 		boiler.TableNames.ItemSalesBidHistory,
 		boiler.ItemSalesBidHistoryColumns.ItemSaleID,
+		boiler.ItemSalesBidHistoryColumns.CancelledAt,
 		boiler.ItemSaleColumns.ID,
 	)
 	_, err := gamedb.StdConn.Exec(q, id)

@@ -33,10 +33,13 @@ CREATE TABLE item_sales (
 -- For Auctions
 CREATE TABLE item_sales_bid_history (
 	item_sale_id UUID NOT NULL REFERENCES item_sales (id),
+	bid_tx_id TEXT NOT NULL,
+	refund_bid_tx_id TEXT, 
 	bidder_id UUID NOT NULL REFERENCES players (id),
     bid_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 	bid_price TEXT NOT NULL,
     cancelled_at TIMESTAMPTZ,
+	cancelled_reason TEXT,
 	PRIMARY KEY (item_sale_id, bidder_id, bid_at)
 );
 
