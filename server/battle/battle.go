@@ -106,17 +106,18 @@ func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 	factions := map[uuid.UUID]*boiler.Faction{}
 
 	for i, wm := range btl.WarMachines {
-		if payload.WarMachines[i].Hash == wm.Hash {
-			btl.WarMachines[i].ParticipantID = payload.WarMachines[i].ParticipantID
-		} else {
-			for _, wm2 := range payload.WarMachines {
-				if wm2.Hash == wm.Hash {
-					btl.WarMachines[i].ParticipantID = wm2.ParticipantID
-					break
-				}
+		for ii, pwm := range payload.WarMachines {
+			if wm.Hash == pwm.Hash {
+				wm.ParticipantID = pwm.ParticipantID
+				break
+			}
+			if ii == len(payload.WarMachines)-1 {
+				gamelog.L.Error().Err(fmt.Errorf("didnt find matching hash"))
 			}
 		}
-		wm.ParticipantID = payload.WarMachines[i].ParticipantID
+
+		gamelog.L.Info().Interface("battle war machine", wm).Msg("battle war machine")
+
 		mechID, err := uuid.FromString(wm.ID)
 		if err != nil {
 			gamelog.L.Error().Str("ownerID", wm.ID).Err(err).Msg("unable to convert owner id from string")
@@ -1301,7 +1302,9 @@ func (btl *Battle) Tick(payload []byte) {
 		}
 
 		if warMachineIndex == -1 {
-			gamelog.L.Warn().Err(fmt.Errorf("warMachineIndex == -1")).Str("participantID", string(participantID)).Msg("unable to find warmachine participant ID")
+			gamelog.L.Warn().Err(fmt.Errorf("warMachineIndex == -1")).
+				Interface("btl.WarMachines", btl.WarMachines).
+				Str("participantID", string(participantID)).Msg("unable to find warmachine participant ID")
 			continue
 		}
 
