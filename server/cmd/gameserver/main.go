@@ -21,6 +21,7 @@ import (
 	"server/sms"
 	"server/telegram"
 	"server/xsyn_rpcclient"
+	"sort"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gofrs/uuid"
@@ -375,13 +376,22 @@ func main() {
 					// TODO: After deploying composable migration, talk to vinnie about removing this
 					gamelog.L.Info().Msg("Running one off funcs")
 					RegisterAllNewAssets(rpcClient)
+					gamelog.L.Info().Msgf("RegisterAllNewAssets took %s", time.Since(start))
+					start = time.Now()
 					UpdateXsynStoreItemTemplates(rpcClient)
+					gamelog.L.Info().Msgf("UpdateXsynStoreItemTemplates took %s", time.Since(start))
+					start = time.Now()
 
-					// TODO: Remove after syncing keycards
-					if syncKeycard {
+					if syncKeycard { // TODO: Remove after syncing keycards
 						UpdateKeycard(rpcClient, keycardCSVPath)
+						gamelog.L.Info().Msgf("UpdateKeycard took %s", time.Since(start))
+						start = time.Now()
 					}
-					gamelog.L.Info().Msgf("One off funcs took %s", time.Since(start))
+					gamelog.L.Info().Msg("One off funcs finished")
+
+					gamelog.L.Info().Msg("Running asset transfers")
+					HandleTransferEvents(rpcClient)
+					gamelog.L.Info().Msgf("Asset transfers took %s", time.Since(start))
 
 					gamelog.L.Info().Msg("Running API")
 					err = api.Run(ctx)
@@ -404,7 +414,6 @@ func main() {
 }
 
 func RegisterAllNewAssets(pp *xsyn_rpcclient.XsynXrpcClient) {
-	// Lets do this in chunks, going to be like 30-40k items to add to passport.
 	// mechs
 	_, _ = func() (insertedGenesisIDS []int64, insertedLimitedIDS []int64) {
 		updatedMechs := db.GetBoolWithDefault("INSERTED_NEW_ASSETS_MECHS", false)
@@ -1021,4 +1030,30 @@ func sqlConnect(
 	conn.SetMaxOpenConns(maxOpen)
 	return conn, nil
 
+}
+
+func HandleTransferEvents(rpcClient *xsyn_rpcclient.XsynXrpcClient) {
+	lastTransferEvent := db.GetIntWithDefault(db.KeyLastTransferEventID, 0)
+
+	transferEvents, err := rpcClient.GetTransferEvents(int64(lastTransferEvent))
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("failed to get transfer events from xsyn")
+	} else {
+		sort.Slice(transferEvents, func(i, k int) bool {
+			return transferEvents[i].TransferEventID < transferEvents[k].TransferEventID
+		})
+		for _, te := range transferEvents {
+			_, err = boiler.CollectionItems(
+				boiler.CollectionItemWhere.Hash.EQ(te.AssetHast),
+			).
+				UpdateAll(gamedb.StdConn, boiler.M{
+					"owner_id": te.ToUserID,
+				})
+			if err != nil {
+				gamelog.L.Error().Err(err).Interface("transfer event", te).Int64("transfer event id", te.TransferEventID).Msg("failed to transfer collection item")
+				break
+			}
+			db.PutInt(db.KeyLastTransferEventID, int(te.TransferEventID))
+		}
+	}
 }
