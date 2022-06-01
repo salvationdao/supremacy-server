@@ -1300,6 +1300,11 @@ func (btl *Battle) Tick(payload []byte) {
 			}
 		}
 
+		if warMachineIndex == -1 {
+			gamelog.L.Warn().Err(fmt.Errorf("warMachineIndex == -1")).Str("participantID", string(participantID)).Msg("unable to find warmachine participant ID")
+			continue
+		}
+
 		// Get Sync byte (tells us which data was updated for this warmachine)
 		syncByte := payload[offset]
 		booleans := helpers.UnpackBooleansFromByte(syncByte)
@@ -1314,30 +1319,27 @@ func (btl *Battle) Tick(payload []byte) {
 			rotation := int(binary.BigEndian.Uint32(payload[offset : offset+4]))
 			offset += 4
 
-			if warMachineIndex != -1 {
-				if btl.WarMachines[warMachineIndex].Position == nil {
-					btl.WarMachines[warMachineIndex].Position = &server.Vector3{}
-				}
-				btl.WarMachines[warMachineIndex].Position.X = x
-				btl.WarMachines[warMachineIndex].Position.Y = y
-				btl.WarMachines[warMachineIndex].Rotation = rotation
+			if btl.WarMachines[warMachineIndex].Position == nil {
+				btl.WarMachines[warMachineIndex].Position = &server.Vector3{}
 			}
+			btl.WarMachines[warMachineIndex].Position.X = x
+			btl.WarMachines[warMachineIndex].Position.Y = y
+			btl.WarMachines[warMachineIndex].Rotation = rotation
+
 		}
 		// Health
 		if booleans[1] {
 			health := binary.BigEndian.Uint32(payload[offset : offset+4])
 			offset += 4
-			if warMachineIndex != -1 {
-				btl.WarMachines[warMachineIndex].Health = health
-			}
+			btl.WarMachines[warMachineIndex].Health = health
+
 		}
 		// Shield
 		if booleans[2] {
 			shield := binary.BigEndian.Uint32(payload[offset : offset+4])
 			offset += 4
-			if warMachineIndex != -1 {
-				btl.WarMachines[warMachineIndex].Shield = shield
-			}
+			btl.WarMachines[warMachineIndex].Shield = shield
+
 		}
 
 		ws.PublishMessage(fmt.Sprintf("/public/mech/%d", participantID), HubKeyWarMachineStatUpdated, WarMachineStat{
