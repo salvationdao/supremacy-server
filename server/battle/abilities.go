@@ -84,6 +84,8 @@ type AbilitiesSystem struct {
 	end       chan bool
 	endGabs   chan bool
 	liveCount *LiveCount
+
+	contributeMultiplier *UserContributeMultiplier
 	sync.RWMutex
 }
 
@@ -247,10 +249,13 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 		liveCount: &LiveCount{
 			TotalVotes: decimal.Zero,
 		},
-		end:       make(chan bool, 5),
-		endGabs:   make(chan bool, 5),
-		startedAt: time.Now(),
+		end:                  make(chan bool, 5),
+		endGabs:              make(chan bool, 5),
+		startedAt:            time.Now(),
+		contributeMultiplier: &UserContributeMultiplier{},
 	}
+
+	as.contributeMultiplier.value = as.calculateUserContributeMultiplier()
 
 	// broadcast faction unique ability
 	for factionID, ga := range as.factionUniqueAbilities {
@@ -448,10 +453,9 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 
 								as.battle().arena.BroadcastGameNotificationWarMachineAbility(gameNotification)
 							}
+							// generate new offering id for current ability
+							ability.OfferingID = uuid.Must(uuid.NewV4())
 						}
-
-						// generate new offering id for current ability
-						ability.OfferingID = uuid.Must(uuid.NewV4())
 
 						// broadcast new ability price
 						resp := GameAbilityPriceResponse{
@@ -743,6 +747,7 @@ func (ga *GameAbility) SupContribution(ppClient *xsyn_rpcclient.XsynXrpcClient, 
 
 	amount = amount.Truncate(0)
 
+	startPaySups := time.Now()
 	supSpendReq := xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           userID,
 		ToUserID:             SupremacyBattleUserID,
@@ -760,14 +765,18 @@ func (ga *GameAbility) SupContribution(ppClient *xsyn_rpcclient.XsynXrpcClient, 
 		gamelog.L.Error().Interface("sups spend detail", supSpendReq).Err(err).Msg("Failed to pay sups")
 		return decimal.Zero, decimal.Zero, false, err
 	}
+	fmt.Println("pay sups through rpc took", time.Now().Sub(startPaySups).Milliseconds(), "mss")
 
 	isAllSyndicates := false
 	if ga.BattleAbilityID == nil || *ga.BattleAbilityID == "" {
 		isAllSyndicates = true
 	}
 
-	multiAmount := as.calculateUserContributeMultiplier(amount)
+	startPaySups = time.Now()
+	multiAmount := as.GetUserContributeMultiplier(amount)
+	fmt.Println("calculate user contribute multiplier took", time.Now().Sub(startPaySups).Milliseconds(), "mss")
 
+	startPaySups = time.Now()
 	battleContrib := &boiler.BattleContribution{
 		BattleID:          battleID,
 		PlayerID:          userID.String(),
@@ -786,22 +795,27 @@ func (ga *GameAbility) SupContribution(ppClient *xsyn_rpcclient.XsynXrpcClient, 
 	if err != nil {
 		gamelog.L.Error().Str("txid", txid).Err(err).Msg("unable to insert battle contrib")
 	}
+	fmt.Println("insert contribution took", time.Now().Sub(startPaySups).Milliseconds(), "mss")
 
 	// update faction contribute
+	startPaySups = time.Now()
 	err = db.FactionAddContribute(ga.FactionID, amount)
 	if err != nil {
 		gamelog.L.Error().Str("txid", txid).Err(err).Msg("unable to update faction contribution")
 	}
+	fmt.Println("update faction contribution took", time.Now().Sub(startPaySups).Milliseconds(), "mss")
 
 	amount = amount.Truncate(0)
 
 	tx, err := gamedb.StdConn.Begin()
 	if err == nil {
-
 		defer tx.Rollback()
 
+		startPaySups = time.Now()
 		spoil, err := boiler.SpoilsOfWars(qm.Where(`battle_id = ?`, battleID)).One(tx)
+		fmt.Println("get spoil of war took", time.Now().Sub(startPaySups).Milliseconds(), "mss")
 		if errors.Is(err, sql.ErrNoRows) {
+			startPaySups = time.Now()
 			spoil = &boiler.SpoilsOfWar{
 				BattleID:     battleID,
 				BattleNumber: battleNumber,
@@ -814,12 +828,15 @@ func (ga *GameAbility) SupContribution(ppClient *xsyn_rpcclient.XsynXrpcClient, 
 			if err != nil {
 				gamelog.L.Error().Err(err).Msg("unable to insert spoils")
 			}
+			fmt.Println("Insert spoil of war took", time.Now().Sub(startPaySups).Milliseconds(), "mss")
 		} else {
 			spoil.Amount = spoil.Amount.Add(amount)
+			startPaySups = time.Now()
 			_, err = spoil.Update(tx, boil.Infer())
 			if err != nil {
 				gamelog.L.Error().Err(err).Msg("unable to insert spoil of war")
 			}
+			fmt.Println("Update spoil of war took", time.Now().Sub(startPaySups).Milliseconds(), "mss")
 		}
 
 		err = tx.Commit()
@@ -831,16 +848,17 @@ func (ga *GameAbility) SupContribution(ppClient *xsyn_rpcclient.XsynXrpcClient, 
 		gamelog.L.Error().Err(err).Msg("unable to create tx to create spoil of war")
 	}
 
-	// update the current sups if not triggered
-	if !isTriggered {
-		ga.CurrentSups = ga.CurrentSups.Add(amount)
+	ga.CurrentSups = ga.CurrentSups.Add(amount)
 
+	if !isTriggered {
 		// store updated price to db
+		startPaySups = time.Now()
 		err := db.FactionAbilitiesSupsCostUpdate(ga.ID, ga.SupsCost, ga.CurrentSups)
 		if err != nil {
 			gamelog.L.Error().Str("ga.ID", ga.ID).Str("ga.SupsCost", ga.SupsCost.String()).Str("ga.CurrentSups", ga.CurrentSups.String()).Err(err).Msg("unable to insert faction ability sup cost update")
 			return amount, multiAmount, false, err
 		}
+		fmt.Println("store ability sups cost took", time.Now().Sub(startPaySups).Milliseconds(), "mss")
 		return amount, multiAmount, false, nil
 	}
 
@@ -1040,7 +1058,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				}
 				as.BattleAbilityProgressBar()
 
-				multiplier := as.calculateUserContributeMultiplier(decimal.New(1, 18))
+				multiplier := as.SetUserContributeMultiplier()
 
 				if multiplier.GreaterThan(decimal.Zero) {
 					ws.PublishMessage("/public/live_data", ContributorMultiAmount, multiplier)
@@ -1060,6 +1078,8 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 			endProgress <- true
 			return
 		case <-mainTicker.C:
+			now := time.Now()
+			fmt.Println(now.Nanosecond(), "Received main ticker")
 			if as.battle() == nil || as.battle().arena.CurrentBattle() == nil {
 				gamelog.L.Warn().Msg("Battle is nil")
 				continue
@@ -1238,8 +1258,14 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 			if as.battle() == nil || as.battle().arena.CurrentBattle() == nil || as.battle().arena.CurrentBattle().BattleNumber != bn {
 				continue
 			}
+			now := time.Now()
+			fmt.Println(now.Nanosecond(), "Received price ticker")
 			as.BattleAbilityPriceUpdater()
+			fmt.Println("processed time", time.Now().Sub(now).Milliseconds(), "ms")
 		case cont := <-as.bribe:
+			fmt.Println("----------------------------------------------------")
+			now := time.Now()
+			fmt.Println(now.Nanosecond(), "Received bribe from", cont.userID)
 			if as.battle() == nil || as.battle().arena.CurrentBattle() == nil || as.battle().arena.CurrentBattle().BattleNumber != bn {
 				gamelog.L.Warn().
 					Bool("nil checks as", as == nil).
@@ -1294,7 +1320,9 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				}
 
 				// contribute sups
+				replyStart := time.Now()
 				actualSupSpent, multiAmount, abilityTriggered, err := factionAbility.SupContribution(as.battle().arena.RPCClient, as, as.battle().ID, as.battle().BattleNumber, cont.userID, amount)
+				fmt.Println("sups contribute process took", time.Now().Sub(replyStart).Milliseconds(), "ms")
 				// tell frontend the contribution is success
 				if err != nil {
 					gamelog.L.Error().Str("ability offering id", factionAbility.OfferingID.String()).Err(err).Msg("Failed to bribe battle ability")
@@ -1302,10 +1330,14 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 					continue
 				}
 
+				replyStart = time.Now()
 				cont.reply(true)
+				fmt.Println("reply eclipse", time.Now().Sub(replyStart).Milliseconds(), "ms")
 
 				// broadcast the latest result progress bar
+				sentStart := time.Now()
 				as.BroadcastAbilityProgressBar()
+				fmt.Println("broadcast progress eclipse", time.Now().Sub(sentStart).Milliseconds(), "ms")
 
 				if abilityTriggered {
 					// increase price as the twice amount for normal value
@@ -1323,10 +1355,14 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 					}
 				}
 
+				liveCountStart := time.Now()
 				as.liveCount.AddSups(actualSupSpent)
+				fmt.Println("live count eclipse", time.Now().Sub(liveCountStart).Milliseconds(), "ms")
 
 				// TODO: broadcast to user the contributor they get
+				sentStart = time.Now()
 				ws.PublishMessage(fmt.Sprintf("/user/%s", cont.userID), BattleContributorUpdateKey, multiAmount)
+				fmt.Println("broadcast contributor eclipse", time.Now().Sub(sentStart).Milliseconds(), "ms")
 
 				if abilityTriggered {
 					// generate location select order list
@@ -1388,6 +1424,9 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 
 				}
 			}
+
+			fmt.Println("processed time", time.Now().Sub(now).Milliseconds(), "ms")
+			fmt.Println("====================================================")
 		}
 	}
 }
@@ -1858,7 +1897,7 @@ func (as *AbilitiesSystem) BribeGabs(factionID string, userID uuid.UUID, ability
 		return
 	}
 
-	if as.battleAbilityPool.Stage.Phase.Load() != BribeStageBribe {
+	if as.battleAbilityPool == nil || as.battleAbilityPool.Stage == nil || as.battleAbilityPool.Stage.Phase.Load() != BribeStageBribe {
 		gamelog.L.Warn().
 			Int32("current bribing stage", as.battleAbilityPool.Stage.Phase.Load()).
 			Msg("incorrect bribing stage")
@@ -2074,7 +2113,7 @@ func BuildUserDetailWithFaction(userID uuid.UUID) (*UserBrief, error) {
 }
 
 // Formula based off https://www.desmos.com/calculator/vbfa5llasg
-func (as *AbilitiesSystem) calculateUserContributeMultiplier(amount decimal.Decimal) decimal.Decimal {
+func (as *AbilitiesSystem) calculateUserContributeMultiplier() decimal.Decimal {
 	durationSeconds := time.Since(as.startedAt).Seconds()
 
 	maxMultiplier := db.GetDecimalWithDefault(db.KeyContributorMaxMultiplier, decimal.NewFromFloat(3.0))
@@ -2088,8 +2127,31 @@ func (as *AbilitiesSystem) calculateUserContributeMultiplier(amount decimal.Deci
 	x := maxMultiplier.Sub(minMultiplier)
 	y := decimal.NewFromFloat(1.0).Div(decimal.NewFromFloat(pow))
 	z := x.Mul(y)
-	total := z.Add(minMultiplier).Mul(amount.Shift(-18))
+	amount := z.Add(minMultiplier).Mul(decimal.NewFromInt(1))
 
-	return total
+	return amount
+}
 
+type UserContributeMultiplier struct {
+	value decimal.Decimal
+	sync.RWMutex
+}
+
+func (as *AbilitiesSystem) SetUserContributeMultiplier() decimal.Decimal {
+	// calculate the amount outside the lock
+	amount := as.calculateUserContributeMultiplier()
+
+	as.contributeMultiplier.Lock()
+	defer as.contributeMultiplier.Unlock()
+	// set value
+	as.contributeMultiplier.value = amount
+
+	return amount
+}
+
+func (as *AbilitiesSystem) GetUserContributeMultiplier(sups decimal.Decimal) decimal.Decimal {
+	as.contributeMultiplier.RLock()
+	defer as.contributeMultiplier.RUnlock()
+
+	return as.contributeMultiplier.value.Mul(sups.Shift(-18))
 }
