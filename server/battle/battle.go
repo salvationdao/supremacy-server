@@ -1007,6 +1007,14 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 
 	btl.insertUserSpoils(endInfo)
 
+	// TODO: we can remove this after a while
+	_, err = boiler.BattleQueueNotifications(
+		boiler.BattleQueueNotificationWhere.QueueMechID.IsNotNull(),
+	).UpdateAll(gamedb.StdConn, boiler.M{"queue_mech_id": "null"})
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("failed to update battle queue notifications")
+	}
+
 	_, err = boiler.BattleQueues(boiler.BattleQueueWhere.BattleID.EQ(null.StringFrom(btl.BattleID))).DeleteAll(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Panic().Err(err).Str("Battle ID", btl.ID).Str("battle_id", payload.BattleID).Msg("Failed to remove mechs from battle queue.")
@@ -1290,11 +1298,6 @@ func (btl *Battle) Tick(payload []byte) {
 				warMachineIndex = i
 				break
 			}
-		}
-
-		if warMachineIndex == -1 {
-			gamelog.L.Warn().Msg("Mech participant id not found from game client tick")
-			return
 		}
 
 		// Get Sync byte (tells us which data was updated for this warmachine)
