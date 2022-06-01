@@ -279,7 +279,7 @@ func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 
 	// broadcast battle settings
 	//gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Broadcasting battle start to players")
-	//btl.BroadcastUpdate()
+	btl.BroadcastUpdate()
 
 	return nil
 }
