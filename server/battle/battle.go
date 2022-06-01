@@ -1342,7 +1342,11 @@ func (btl *Battle) Tick(payload []byte) {
 			shield := binary.BigEndian.Uint32(payload[offset : offset+4])
 			offset += 4
 			btl.WarMachines[warMachineIndex].Shield = shield
+		}
 
+		// Energy
+		if booleans[3] {
+			offset += 4
 		}
 
 		ws.PublishMessage(fmt.Sprintf("/public/mech/%d", participantID), HubKeyWarMachineStatUpdated, WarMachineStat{
