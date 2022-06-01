@@ -1010,7 +1010,7 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 	// TODO: we can remove this after a while
 	_, err = boiler.BattleQueueNotifications(
 		boiler.BattleQueueNotificationWhere.QueueMechID.IsNotNull(),
-	).UpdateAll(gamedb.StdConn, boiler.M{"queue_mech_id": "null"})
+	).UpdateAll(gamedb.StdConn, boiler.M{"queue_mech_id": nil})
 	if err != nil {
 		gamelog.L.Error().Err(err).Msg("failed to update battle queue notifications")
 	}
