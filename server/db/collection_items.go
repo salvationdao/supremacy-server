@@ -3,12 +3,11 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"github.com/volatiletech/null/v8"
 	"server"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-
-	"github.com/volatiletech/null/v8"
 
 	"github.com/ninja-software/terror/v2"
 )
@@ -27,7 +26,9 @@ func InsertNewCollectionItem(tx *sql.Tx,
 	largeImageURL,
 	backgroundURL,
 	animationURL,
-	youtubeURL null.String) error {
+	youtubeURL null.String) (*boiler.CollectionItem, error) {
+	item := &boiler.CollectionItem{}
+
 	// I couldn't find the boiler enum types for some reason, so just doing strings
 	tokenClause := ""
 	switch collectionSlug {
@@ -40,7 +41,7 @@ func InsertNewCollectionItem(tx *sql.Tx,
 	case "supremacy-consumables":
 		tokenClause = "NEXTVAL('collection_consumables')"
 	default:
-		return fmt.Errorf("invalid collection slug %s", collectionSlug)
+		return nil, fmt.Errorf("invalid collection slug %s", collectionSlug)
 	}
 
 	query := fmt.Sprintf(`
@@ -59,9 +60,9 @@ func InsertNewCollectionItem(tx *sql.Tx,
 			animation_url,
 			youtube_url
 			)
-		VALUES($1, %s, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`, tokenClause)
+		VALUES($1, %s, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`, tokenClause)
 
-	_, err := tx.Exec(query,
+	err := tx.QueryRow(query,
 		collectionSlug,
 		itemType,
 		itemID,
@@ -74,7 +75,24 @@ func InsertNewCollectionItem(tx *sql.Tx,
 		backgroundURL,
 		animationURL,
 		youtubeURL,
-	)
+	).Scan(&item.ID,
+		&item.CollectionSlug,
+		&item.Hash,
+		&item.TokenID,
+		&item.ItemType,
+		&item.ItemID,
+		&item.Tier,
+		&item.OwnerID,
+		&item.MarketLocked,
+		&item.XsynLocked,
+		&item.ImageURL,
+		&item.CardAnimationURL,
+		&item.AvatarURL,
+		&item.LargeImageURL,
+		&item.BackgroundColor,
+		&item.AnimationURL,
+		&item.YoutubeURL)
+
 	if err != nil {
 		gamelog.L.Error().Err(err).
 			Str("itemType", itemType).
@@ -82,10 +100,10 @@ func InsertNewCollectionItem(tx *sql.Tx,
 			Str("tier", tier).
 			Str("ownerID", ownerID).
 			Msg("failed to insert new collection item")
-		return terror.Error(err)
+		return nil, terror.Error(err)
 	}
 
-	return nil
+	return item, nil
 }
 
 func CollectionItemFromItemID(id string) (*server.CollectionItem, error) {

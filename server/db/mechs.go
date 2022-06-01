@@ -454,7 +454,7 @@ func InsertNewMech(ownerID uuid.UUID, mechBlueprint *server.BlueprintMech) (*ser
 		return nil, terror.Error(err)
 	}
 
-	err = InsertNewCollectionItem(tx,
+	_, err = InsertNewCollectionItem(tx,
 		mechBlueprint.Collection,
 		boiler.ItemTypeMech,
 		newMech.ID,

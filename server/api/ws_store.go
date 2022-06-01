@@ -20,6 +20,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/rpctypes"
 	"server/xsyn_rpcclient"
 	"time"
 )
@@ -212,7 +213,7 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 		AnimationURL:     null.StringFrom(""),
 	}
 
-	err = db.InsertNewCollectionItem(tx,
+	item, err := db.InsertNewCollectionItem(tx,
 		c.CollectionSlug,
 		c.ItemType,
 		c.ItemID,
@@ -240,26 +241,19 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 		return terror.Error(err, "Failed to purchase mystery crate, please try again or contact support.")
 	}
 
-	//ci, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(c.ItemID)).One(gamedb.StdConn)
-	//if err != nil {
-	//	refundFunc()
-	//	gamelog.L.Error().Err(err).Interface("mystery crate", assignedCrate).Msg("failed to insert into collection items")
-	//	return terror.Error(err, "Failed to purchase mystery crate, please try again or contact support.")
-	//}
-	//
-	////register
-	//var slice []*server.MysteryCrate
-	//assignedCrateServer := server.MysteryCrateFromBoiler(assignedCrate, ci)
-	//slice = append(slice, assignedCrateServer)
-	//xsynAsset := rpctypes.ServerMysteryCrateToXsynAsset(slice)
-	//for _, a := range xsynAsset {
-	//	err = sc.API.Passport.AssetRegister(a)
-	//	if err != nil {
-	//		refundFunc()
-	//		gamelog.L.Error().Err(err).Interface("mystery crate", assignedCrate).Msg("failed to register to XSYN")
-	//		return terror.Error(err, "Failed to purchase mystery crate, please try again or contact support.")
-	//	}
-	//}
+	//register
+	var slice []*server.MysteryCrate
+	assignedCrateServer := server.MysteryCrateFromBoiler(assignedCrate, item)
+	slice = append(slice, assignedCrateServer)
+	xsynAsset := rpctypes.ServerMysteryCrateToXsynAsset(slice)
+	for _, a := range xsynAsset {
+		err = sc.API.Passport.AssetRegister(a)
+		if err != nil {
+			refundFunc()
+			gamelog.L.Error().Err(err).Interface("mystery crate", assignedCrate).Msg("failed to register to XSYN")
+			return terror.Error(err, "Failed to purchase mystery crate, please try again or contact support.")
+		}
+	}
 
 	txItem := &boiler.StorePurchaseHistory{
 		PlayerID:    user.ID,
