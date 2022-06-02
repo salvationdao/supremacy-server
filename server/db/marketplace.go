@@ -496,7 +496,7 @@ func MarketplaceSaleItemExists(id uuid.UUID) (bool, error) {
 
 // ChangeMechOwner transfers a collection item to a new owner.
 // TODO: Subject to change...
-func ChangeMechOwner(itemSaleID uuid.UUID) error {
+func ChangeMechOwner(conn boil.Executor, itemSaleID uuid.UUID) error {
 	q := `
 		UPDATE collection_items AS ci
 		SET owner_id = s.sold_by

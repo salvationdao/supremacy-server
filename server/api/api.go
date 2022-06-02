@@ -133,7 +133,7 @@ func NewAPI(
 		FactionActivePlayers: make(map[string]*ActivePlayers),
 
 		// marketplace
-		AuctionManager: marketplace.NewAuctionController(),
+		AuctionManager: marketplace.NewAuctionController(pp),
 
 		// chatroom
 		GlobalChat:      NewChatroom(""),

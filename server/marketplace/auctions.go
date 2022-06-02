@@ -2,10 +2,12 @@ package marketplace
 
 import (
 	"fmt"
+	"server"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/xsyn_rpcclient"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -14,22 +16,30 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
-type AuctionController struct{}
+type AuctionController struct {
+	Passport *xsyn_rpcclient.XsynXrpcClient
+}
 
 type ItemSaleAuction struct {
 	boiler.ItemSale  `boil:",bind"`
-	AuctionBidUserID string `boil:"auction_bid_user_id"`
-	AuctionBidTxID   string `boil:"auction_bid_tx_id"`
-	AuctionBidPrice  string `boil:"auction_bid_price"`
+	AuctionBidUserID uuid.UUID `boil:"auction_bid_user_id"`
+	AuctionBidPrice  string    `boil:"auction_bid_price"`
+	FactionID        uuid.UUID `boil:"faction_id"`
 }
 
-func NewAuctionController() *AuctionController {
-	a := &AuctionController{}
+func NewAuctionController(pp *xsyn_rpcclient.XsynXrpcClient) *AuctionController {
+	a := &AuctionController{pp}
 	go a.Run()
 	return a
 }
 
 func (a *AuctionController) Run() {
+	defer func() {
+		if r := recover(); r != nil {
+			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the AuctionController!", r)
+		}
+	}()
+
 	mainTicker := time.NewTicker(1 * time.Minute)
 
 	for {
@@ -43,13 +53,15 @@ func (a *AuctionController) Run() {
 				qm.SQL(`
 					SELECT item_sales.id AS id,
 						item_sales.item_id,
+						item_sales.owner_id,
 						item_sales_bid_history.bid_price AS auction_bid_price,
-						item_sales_bid_history.bid_tx_id AS auction_bid_tx_id,
-						item_sales_bid_history.bidder_id AS auction_bid_user_id
+						item_sales_bid_history.bidder_id AS auction_bid_user_id,
+						players.faction_id
 					FROM item_sales 
 						INNER JOIN item_sales_bid_history ON item_sales_bid_history.item_sale_id = item_sales.id
 							AND item_sales_bid_history.cancelled_at IS NULL
 							AND item_sales_bid_history.refund_bid_tx_id IS NOT NULL
+						INNER JOIN players ON players.id = item_sales.owner_id 
 					WHERE item_sales.auction = TRUE
 						AND item_sales.sold_by IS NOT NULL
 						AND item_sales.end_at <= NOW()
@@ -73,19 +85,67 @@ func (a *AuctionController) Run() {
 					continue
 				}
 
+				// Get Faction Account sending bid amount to
+				factionAccountID, ok := server.FactionUsers[auctionItem.FactionID.String()]
+				if !ok {
+					err = fmt.Errorf("failed to get hard coded syndicate player id")
+					gamelog.L.Error().
+						Str("owner_id", auctionItem.OwnerID).
+						Str("faction_id", auctionItem.FactionID.String()).
+						Err(err).
+						Msg("unable to get hard coded syndicate player ID from faction ID")
+					continue
+				}
+
+				// Transfer Sups to Owner
+				// TODO: Deal with sales cut
+				txid, err := a.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
+					FromUserID:           uuid.Must(uuid.FromString(factionAccountID)),
+					ToUserID:             uuid.Must(uuid.FromString(auctionItem.OwnerID)),
+					Amount:               auctionItem.AuctionBidPrice,
+					TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_auction_item:%s|%d", auctionItem.ID, time.Now().UnixNano())),
+					Group:                string(server.TransactionGroupMarketplace),
+					SubGroup:             "SUPREMACY",
+					Description:          fmt.Sprintf("marketplace buy auction item: %s", auctionItem.ID),
+					NotSafe:              true,
+				})
+				if err != nil {
+					gamelog.L.Error().
+						Str("item_id", auctionItem.ID).
+						Str("user_id", auctionItem.AuctionBidUserID.String()).
+						Str("cost", auctionItem.AuctionBidPrice).
+						Err(err).
+						Msg("Failed to start db transaction.")
+					continue
+				}
+
+				// Begin Transaction
+				tx, err := gamedb.StdConn.Begin()
+				if err != nil {
+					gamelog.L.Error().
+						Str("item_id", auctionItem.ID).
+						Str("user_id", auctionItem.AuctionBidUserID.String()).
+						Str("cost", auctionItem.AuctionBidPrice).
+						Err(err).
+						Msg("Failed to start db transaction.")
+					continue
+				}
+				defer tx.Rollback()
+
 				// Update Item Sale Record
 				saleItemRecord := auctionItem.ItemSale
 				saleItemRecord.SoldAt = null.TimeFrom(time.Now())
 				saleItemRecord.SoldFor = null.StringFrom(auctionItem.AuctionBidPrice)
-				saleItemRecord.SoldTXID = null.StringFrom(auctionItem.AuctionBidTxID)
-				saleItemRecord.SoldBy = null.StringFrom(auctionItem.AuctionBidUserID)
+				saleItemRecord.SoldTXID = null.StringFrom(txid)
+				saleItemRecord.SoldBy = null.StringFrom(auctionItem.AuctionBidUserID.String())
 
-				_, err = saleItemRecord.Update(gamedb.StdConn, boil.Infer())
+				_, err = saleItemRecord.Update(tx, boil.Infer())
 				if err != nil {
+					a.Passport.RefundSupsMessage(txid)
 					err = fmt.Errorf("failed to complete payment transaction")
 					gamelog.L.Error().
 						Str("item_id", auctionItem.ID).
-						Str("user_id", auctionItem.AuctionBidUserID).
+						Str("user_id", auctionItem.AuctionBidUserID.String()).
 						Str("cost", auctionItem.AuctionBidPrice).
 						Err(err).
 						Msg("Failed to process transaction for Purchase Sale Item.")
@@ -93,16 +153,31 @@ func (a *AuctionController) Run() {
 				}
 
 				// Transfer ownership of asset
-				err = db.ChangeMechOwner(itemSaleID)
+				err = db.ChangeMechOwner(tx, itemSaleID)
 				if err != nil {
+					a.Passport.RefundSupsMessage(txid)
 					gamelog.L.Error().
 						Str("item_id", auctionItem.ID).
-						Str("user_id", auctionItem.AuctionBidUserID).
+						Str("user_id", auctionItem.AuctionBidUserID.String()).
 						Str("cost", auctionItem.AuctionBidPrice).
 						Err(err).
 						Msg("Failed to Transfer Mech to New Owner")
 					continue
 				}
+
+				// Commit Transaction
+				err = tx.Commit()
+				if err != nil {
+					a.Passport.RefundSupsMessage(txid)
+					gamelog.L.Error().
+						Str("item_id", auctionItem.ID).
+						Str("user_id", auctionItem.AuctionBidUserID.String()).
+						Str("cost", auctionItem.AuctionBidPrice).
+						Err(err).
+						Msg("Failed to commit db transaction")
+					continue
+				}
+
 				numProcessed++
 			}
 

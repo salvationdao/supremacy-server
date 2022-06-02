@@ -603,7 +603,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	}
 
 	// transfer ownership of asset
-	err = db.ChangeMechOwner(req.Payload.ItemID)
+	err = db.ChangeMechOwner(gamedb.StdConn, req.Payload.ItemID)
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
@@ -798,19 +798,36 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 		return terror.Error(terror.ErrInvalidInput, "Item does not belong to user's faction.")
 	}
 
-	currentAmount, err := decimal.NewFromString(saleItem.AuctionCurrentPrice.String)
+	reservedPrice, err := decimal.NewFromString(saleItem.AuctionReservedPrice.String)
 	if err != nil {
 		gamelog.L.Error().
 			Str("user_id", user.ID).
 			Str("item_id", req.Payload.ItemID.String()).
+			Str("reserved_auction_price", saleItem.AuctionReservedPrice.String).
 			Str("current_auction_price", saleItem.AuctionCurrentPrice.String).
 			Err(err).
 			Msg("Unable to retrieve sale item.")
 		return terror.Error(err, errMsg)
 	}
+
+	currentAmount, err := decimal.NewFromString(saleItem.AuctionCurrentPrice.String)
+	if err != nil {
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("item_id", req.Payload.ItemID.String()).
+			Str("reserved_auction_price", saleItem.AuctionReservedPrice.String).
+			Str("current_auction_price", saleItem.AuctionCurrentPrice.String).
+			Err(err).
+			Msg("Unable to retrieve sale item.")
+		return terror.Error(err, errMsg)
+	}
+
 	bidAmount, err := decimal.NewFromString(req.Payload.Amount)
 	if err != nil {
 		return terror.Error(err, "Invalid Bid Amount received.")
+	}
+	if bidAmount.LessThanOrEqual(reservedPrice) {
+		return terror.Error(terror.ErrInvalidInput, "Invalid bid amount, must be above the reserved price.")
 	}
 	if bidAmount.LessThanOrEqual(currentAmount) {
 		return terror.Error(terror.ErrInvalidInput, "Invalid bid amount, must be above the current bid price.")
