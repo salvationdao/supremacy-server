@@ -1315,11 +1315,11 @@ func (btl *Battle) Tick(payload []byte) {
 
 		// Position + Yaw
 		if booleans[0] {
-			x := int(binary.BigEndian.Uint32(payload[offset : offset+4]))
+			x := int(helpers.BytesToInt(payload[offset : offset+4]))
 			offset += 4
-			y := int(binary.BigEndian.Uint32(payload[offset : offset+4]))
+			y := int(helpers.BytesToInt(payload[offset : offset+4]))
 			offset += 4
-			rotation := int(binary.BigEndian.Uint32(payload[offset : offset+4]))
+			rotation := int(helpers.BytesToInt(payload[offset : offset+4]))
 			offset += 4
 
 			if btl.WarMachines[warMachineIndex].Position == nil {
