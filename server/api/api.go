@@ -160,7 +160,7 @@ func NewAPI(
 	sc := NewStreamController(api)
 	pc := NewPlayerController(api)
 	cc := NewChatController(api)
-	_ = NewMarketplaceController(api)
+	mc := NewMarketplaceController(api)
 	_ = NewBattleController(api)
 	_ = NewPlayerAbilitiesController(api)
 	_ = NewPlayerAssetsController(api)
@@ -242,6 +242,7 @@ func NewAPI(
 				s.Mount("/faction_commander", api.SecureFactionCommander)
 				s.WS("/punish_vote", HubKeyPunishVoteSubscribe, server.MustSecureFaction(pc.PunishVoteSubscribeHandler))
 				s.WS("/faction_chat", HubKeyFactionChatSubscribe, server.MustSecureFaction(cc.FactionChatUpdatedSubscribeHandler))
+				s.WS("/marketplace/{id}", HubKeyMarketplaceSalesItemUpdate, server.MustSecureFaction(mc.SalesItemUpdateSubscriber))
 
 				// subscription from battle
 				s.WS("/queue", battle.WSQueueStatusSubscribe, server.MustSecureFaction(battleArenaClient.QueueStatusSubscribeHandler))

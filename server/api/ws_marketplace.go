@@ -15,10 +15,10 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
+	"github.com/go-chi/chi/v5"
 	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/hub"
-	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/ninja-syndicate/ws"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/null/v8"
@@ -43,8 +43,6 @@ func NewMarketplaceController(api *API) *MarketplaceController {
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesBuy, marketplaceHub.SalesBuyHandler)
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesKeycardBuy, marketplaceHub.SalesKeycardBuyHandler)
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesBid, marketplaceHub.SalesBidHandler)
-
-	// api.SecureUserSubscribeCommand(HubKeyMarketplaceSalesItemUpdate, marketplaceHub.SalesItemUpdateSubscriber)
 
 	return marketplaceHub
 }
@@ -922,32 +920,35 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 
 	reply(true)
 
+	// Broadcast new current price
+	resp := &SaleItemUpdate{
+		AuctionCurrentPrice: bidAmount.String(),
+	}
+	ws.PublishMessage(fmt.Sprintf("/faction/%s/marketplace/%s", fID, req.Payload.ItemID.String()), HubKeyMarketplaceSalesItemUpdate, resp)
+
 	return nil
 }
 
 const HubKeyMarketplaceSalesItemUpdate = "MARKETPLACE:SALES:ITEM:UPDATE"
 
-type MarketplaceSalesItemUpdateSubscribe struct {
-	*hub.HubCommandRequest
-	Payload struct {
-		ID uuid.UUID `json:"id"` // item id
-	} `json:"payload"`
+type SaleItemUpdate struct {
+	AuctionCurrentPrice string `json:"auction_current_price"`
 }
 
-func (mp *MarketplaceController) SalesItemUpdateSubscriber(ctx context.Context, hubc *hub.Client, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
-	req := &MarketplaceSalesItemUpdateSubscribe{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return "", "", terror.Error(err, "Invalid request received.")
+func (mp *MarketplaceController) SalesItemUpdateSubscriber(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+	cctx := chi.RouteContext(ctx)
+	itemSaleID := cctx.URLParam("id")
+	if itemSaleID == "" {
+		return fmt.Errorf("item sale id is required")
 	}
 
-	obj, err := db.MarketplaceItemSale(req.Payload.ID)
+	resp := &SaleItemUpdate{}
+	err := json.Unmarshal(payload, resp)
 	if err != nil {
-		return "", "", terror.Error(err, "Invalid request received.")
+		return fmt.Errorf("unable to unmarshal sale item update")
 	}
 
-	reply(obj)
+	reply(resp)
 
-	busKey := messagebus.BusKey(fmt.Sprintf("%s:%s", HubKeyMarketplaceSalesItemUpdate, req.Payload.ID))
-	return req.TransactionID, busKey, nil
+	return nil
 }
