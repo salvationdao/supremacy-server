@@ -11,6 +11,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
+	"server/marketplace"
 	"server/player_abilities"
 	"server/xsyn_rpcclient"
 	"time"
@@ -87,6 +88,9 @@ type API struct {
 
 	FactionActivePlayers map[string]*ActivePlayers
 
+	// Marketplace
+	AuctionManager *marketplace.AuctionController
+
 	// chatrooms
 	GlobalChat      *Chatroom
 	RedMountainChat *Chatroom
@@ -127,6 +131,9 @@ func NewAPI(
 			securebytes.ASN1Serializer{}),
 		FactionPunishVote:    make(map[string]*PunishVoteTracker),
 		FactionActivePlayers: make(map[string]*ActivePlayers),
+
+		// marketplace
+		AuctionManager: marketplace.NewAuctionController(),
 
 		// chatroom
 		GlobalChat:      NewChatroom(""),

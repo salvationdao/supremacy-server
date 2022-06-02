@@ -2,7 +2,6 @@ package marketplace
 
 import (
 	"fmt"
-	"server/api"
 	"server/db"
 	"server/db/boiler"
 	"server/gamedb"
@@ -15,9 +14,7 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
-type AuctionController struct {
-	API *api.API
-}
+type AuctionController struct{}
 
 type ItemSaleAuction struct {
 	boiler.ItemSale  `boil:",bind"`
@@ -28,6 +25,7 @@ type ItemSaleAuction struct {
 
 func NewAuctionController() *AuctionController {
 	a := &AuctionController{}
+	go a.Run()
 	return a
 }
 
@@ -45,7 +43,6 @@ func (a *AuctionController) Run() {
 				qm.SQL(`
 					SELECT item_sales.id AS id,
 						item_sales.item_id,
-						item_sales.
 						item_sales_bid_history.bid_price AS auction_bid_price,
 						item_sales_bid_history.bid_tx_id AS auction_bid_tx_id,
 						item_sales_bid_history.bidder_id AS auction_bid_user_id
@@ -63,10 +60,9 @@ func (a *AuctionController) Run() {
 				gamelog.L.Error().
 					Str("db func", "itemSales").
 					Err(err).Msg("unable to retrieve completed auctions on marketplace")
-			} else {
-				gamelog.L.Info().Int("num_pending", len(completedAuctions)).Msg("# completed auctions pending")
 			}
 
+			numProcessed := 0
 			for _, auctionItem := range completedAuctions {
 				itemSaleID, err := uuid.FromString(auctionItem.ID)
 				if err != nil {
@@ -107,9 +103,14 @@ func (a *AuctionController) Run() {
 						Msg("Failed to Transfer Mech to New Owner")
 					continue
 				}
+				numProcessed++
 			}
 
-			gamelog.L.Info().Msg("processing completed auction items completed")
+			gamelog.L.Info().
+				Int("num_processed", numProcessed).
+				Int("num_failed", len(completedAuctions)-numProcessed).
+				Int("num_pending", len(completedAuctions)).
+				Msg("processing completed auction items completed")
 		}
 	}
 }
