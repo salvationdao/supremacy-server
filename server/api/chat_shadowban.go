@@ -26,13 +26,13 @@ func (a *API) ShadowbanChatUser(w http.ResponseWriter, r *http.Request) (int, er
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("invalid request %w", err))
 	}
 
-	// get fingerprints
+	// get fingerprints from user id
 	fIDs, err := boiler.PlayerFingerprints(boiler.PlayerFingerprintWhere.PlayerID.EQ(req.UserID)).All(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("failed to get user fingerprints %w", err))
 	}
 
-	if fIDs == nil {
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("user has no fingerprints userID: %s", req.UserID))
 	}
 

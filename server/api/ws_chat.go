@@ -116,24 +116,36 @@ func (c *Chatroom) Range(fn func(chatMessage *ChatMessage) bool) {
 	c.RUnlock()
 }
 
-func isPlayerBanned(playerID string) bool {
-	fp, err := boiler.PlayerFingerprints(boiler.PlayerFingerprintWhere.PlayerID.EQ(playerID)).One(gamedb.StdConn)
+func isFingerPrintBanned(playerID string) bool {
+
+	// get fingerprints from player
+	fps, err := boiler.PlayerFingerprints(boiler.PlayerFingerprintWhere.PlayerID.EQ(playerID)).All(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Warn().Err(err).Interface("msg.PlayerID", playerID).Msg("issue finding player fingerprints")
 		return false
 	}
 	if errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Warn().Err(err).Interface("msg.PlayerID", playerID).Msg("player has no fingerprints")
 		return false
 	}
 
-	// check if fingerprint is banned
-	banned, err := boiler.ChatBannedFingerprintExists(gamedb.StdConn, fp.FingerprintID)
+	ids := []string{}
+	for _, f := range fps {
+		ids = append(ids, f.FingerprintID)
+	}
+
+	// check if any of the players fingerprints are banned
+	bannedFingerprints, err := boiler.ChatBannedFingerprints(boiler.ChatBannedFingerprintWhere.FingerprintID.IN(ids)).All(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Warn().Err(err).Interface("msg.PlayerID", playerID).Msg("issue checking if player is banned")
 		return false
 	}
 
-	return banned
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		return false
+	}
+
+	return len(bannedFingerprints) > 1
 }
 
 func NewChatroom(factionID string) *Chatroom {
@@ -291,11 +303,15 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 		return err
 	}
 
-	fingerprintBanned := isPlayerBanned(user.ID)
-
 	// if chat banned just return
-	if isBanned || fingerprintBanned {
+	if isBanned {
 		return terror.Error(fmt.Errorf("player is banned to chat"), "You are banned to chat")
+	}
+
+	fingerprintBanned := isFingerPrintBanned(user.ID)
+	if fingerprintBanned {
+		reply(true)
+		return nil
 	}
 
 	// update player sent message count
