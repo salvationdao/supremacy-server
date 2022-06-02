@@ -8,8 +8,8 @@ import (
 
 type MarketplaceSaleItem struct {
 	boiler.ItemSale `boil:",bind"`
-	Owner           MarketplaceSaleItemOwner `json:"owner,omitempty" boil:"players,bind"`
-	Mech            MarketplaceSaleItemMech  `json:"mech,omitempty" boil:"mech,bind"`
+	Owner           MarketplaceSaleItemOwner `json:"owner,omitempty" boil:",bind"`
+	Mech            MarketplaceSaleItemMech  `json:"mech,omitempty" boil:",bind"`
 }
 
 type MarketplaceSaleItemOwner struct {
@@ -22,6 +22,7 @@ type MarketplaceSaleItemMech struct {
 	ID    string `json:"id" boil:"mechs.id"`
 	Label string `json:"label" boil:"mechs.label"`
 	Name  string `json:"name" boil:"mechs.name"`
+	Tier  string `json:"tier" boil:"collection_items.tier"`
 }
 
 type MarketplaceKeycardSaleItem struct {

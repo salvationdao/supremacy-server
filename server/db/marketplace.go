@@ -23,6 +23,7 @@ var itemSaleQueryMods = []qm.QueryMod{
 		players.id AS "players.id",
 		players.username AS "players.username",
 		players.public_address AS "players.public_address",
+		collection_items.tier AS "collection_items.tier",
 		mechs.id AS "mechs.id",
 		mechs.name AS "mechs.name",
 		mechs.label AS "mechs.label"`,
