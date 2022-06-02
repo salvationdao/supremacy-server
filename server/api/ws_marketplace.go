@@ -218,6 +218,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		}
 		return terror.Error(err, errMsg)
 	}
+
 	if item.XsynLocked || item.MarketLocked {
 		return terror.Error(fmt.Errorf("item cannot be listed for sale on marketplace"), "Item cannot be listed for sale on Marketplace.")
 	}
@@ -302,7 +303,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		return terror.Error(err, "Unable to create new sale item.")
 	}
 
-	obj, err = db.MarketplaceLoadItemSaleObject(obj)
+	mech, err := db.Mech(obj.ItemID)
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
@@ -313,6 +314,8 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 			Msg("Unable to create new sale item (post create).")
 		return terror.Error(err, "Unable to create new sale item.")
 	}
+
+	obj.Mech = mech
 
 	reply(obj)
 

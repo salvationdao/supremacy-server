@@ -57,21 +57,6 @@ var itemKeycardSaleQueryMods = []qm.QueryMod{
 	qm.Load(qm.Rels(boiler.ItemKeycardSaleRels.Item, boiler.PlayerKeycardRels.BlueprintKeycard)),
 }
 
-// MarketplaceLoadItemSaleObject loads the specific item type's object.
-func MarketplaceLoadItemSaleObject(obj *server.MarketplaceSaleItem) (*server.MarketplaceSaleItem, error) {
-	// if obj.ItemType == boiler.ItemTypeMech {
-	mech, err := boiler.Mechs(
-		boiler.MechWhere.ID.EQ(obj.ItemID),
-	).One(gamedb.StdConn)
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-	obj.Mech = mech
-	// }
-
-	return obj, nil
-}
-
 // MarketplaceItemSale gets a specific item sale.
 func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
 	item, err := boiler.ItemSales(
@@ -89,10 +74,11 @@ func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
 		ItemSale: item,
 		Owner:    item.R.Owner,
 	}
-	output, err = MarketplaceLoadItemSaleObject(output)
+	mech, err := Mech(item.ItemID)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
+	output.Mech = mech
 	return output, nil
 }
 
@@ -232,10 +218,7 @@ func MarketplaceItemSaleList(search string, filter *ListFilterRequest, rarities 
 		}
 	}
 	if len(mechIDs) > 0 {
-		mechs, err := boiler.Mechs(
-			boiler.MechWhere.ID.IN(mechIDs),
-			qm.Load(boiler.MechRels.ChassisSkin),
-		).All(gamedb.StdConn)
+		mechs, err := Mechs(mechIDs...)
 		if err != nil {
 			return 0, nil, terror.Error(err)
 		}
@@ -244,9 +227,6 @@ func MarketplaceItemSaleList(search string, filter *ListFilterRequest, rarities 
 				// if row.ItemType == boiler.ItemTypeMech && row.ItemID == mech.ID {
 				if row.ItemID == mech.ID {
 					records[i].Mech = mech
-					if mech.R != nil && records[i].Collection != nil && mech.R.ChassisSkin != nil {
-						records[i].Collection.ImageURL = mech.R.ChassisSkin.ImageURL
-					}
 					break
 				}
 			}
@@ -491,7 +471,22 @@ func MarketplaceSaleAuctionSync(id uuid.UUID) error {
 
 // MarketplaceSaleItemExists checks whether given sales item exists.
 func MarketplaceSaleItemExists(id uuid.UUID) (bool, error) {
-	return boiler.ItemSaleExists(gamedb.StdConn, id.String())
+	output, err := boiler.ItemSaleExists(gamedb.StdConn, id.String())
+	if err != nil {
+		return false, terror.Error(err)
+	}
+	return output, nil
+}
+
+// MarketplaceCheckMech checks whether mech is already in marketplace.
+func MarketplaceCheckMech(mechID uuid.UUID) (bool, error) {
+	output, err := boiler.ItemSales(
+		boiler.ItemSaleWhere.ItemID.EQ(mechID.String()),
+	).Exists(gamedb.StdConn)
+	if err != nil {
+		return false, terror.Error(err)
+	}
+	return output, nil
 }
 
 // ChangeMechOwner transfers a collection item to a new owner.

@@ -8,7 +8,7 @@ type MarketplaceSaleItem struct {
 	*boiler.ItemSale
 	Owner      *boiler.Player         `json:"owner"`
 	Collection *boiler.CollectionItem `json:"collection"`
-	Mech       *boiler.Mech           `json:"mech,omitempty"`
+	Mech       *Mech                  `json:"mech,omitempty"`
 }
 
 type MarketplaceKeycardSaleItem struct {
