@@ -209,8 +209,6 @@ func TemplateRegister(templateID uuid.UUID, ownerID uuid.UUID) (
 		// get the max genesis
 		err := boiler.NewQuery(qm.SQL(`SELECT coalesce(max(genesis_token_id) + 1, 0) as genesis_token_id FROM mechs`)).Bind(nil, gamedb.StdConn, tokenIDs)
 		if err != nil {
-			fmt.Println("errror!")
-			fmt.Println(err.Error())
 			gamelog.L.Error().Err(err).Msg("failed to get new genesis token id")
 			return mechs,
 				mechAnimations,

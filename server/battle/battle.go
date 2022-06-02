@@ -14,7 +14,7 @@ import (
 	"server/gamelog"
 	"server/helpers"
 	"server/multipliers"
-	"server/rpcclient"
+	"server/xsyn_rpcclient"
 	"sort"
 	"strings"
 	"sync"
@@ -27,7 +27,6 @@ import (
 
 	"go.uber.org/atomic"
 
-	"github.com/ninja-syndicate/hub"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 
@@ -37,8 +36,8 @@ import (
 type BattleStage int32
 
 const (
-	BattleStagStart = 1
-	BattleStageEnd  = 0
+	BattleStageStart = 1
+	BattleStageEnd   = 0
 )
 
 type Battle struct {
@@ -56,7 +55,7 @@ type Battle struct {
 	factions       map[uuid.UUID]*boiler.Faction
 	multipliers    *MultiplierSystem
 	spoils         *SpoilsOfWar
-	rpcClient      *rpcclient.XrpcClient
+	rpcClient      *xsyn_rpcclient.XrpcClient
 	battleMechData []*db.BattleMechData
 	startedAt      time.Time
 
@@ -97,7 +96,7 @@ func (btl *Battle) storeGameMap(gm server.GameMap) {
 }
 
 const HubKeyLiveVoteCountUpdated = "LIVE:VOTE:COUNT:UPDATED"
-const HubKeyWarMachineLocationUpdated hub.HubCommandKey = "WAR:MACHINE:LOCATION:UPDATED"
+const HubKeyWarMachineLocationUpdated = "WAR:MACHINE:LOCATION:UPDATED"
 
 func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 	btl.Lock()
@@ -107,17 +106,18 @@ func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 	factions := map[uuid.UUID]*boiler.Faction{}
 
 	for i, wm := range btl.WarMachines {
-		if payload.WarMachines[i].Hash == wm.Hash {
-			btl.WarMachines[i].ParticipantID = payload.WarMachines[i].ParticipantID
-		} else {
-			for _, wm2 := range payload.WarMachines {
-				if wm2.Hash == wm.Hash {
-					btl.WarMachines[i].ParticipantID = wm2.ParticipantID
-					break
-				}
+		for ii, pwm := range payload.WarMachines {
+			if wm.Hash == pwm.Hash {
+				wm.ParticipantID = pwm.ParticipantID
+				break
+			}
+			if ii == len(payload.WarMachines)-1 {
+				gamelog.L.Error().Err(fmt.Errorf("didnt find matching hash"))
 			}
 		}
-		wm.ParticipantID = payload.WarMachines[i].ParticipantID
+
+		gamelog.L.Trace().Interface("battle war machine", wm).Msg("battle war machine")
+
 		mechID, err := uuid.FromString(wm.ID)
 		if err != nil {
 			gamelog.L.Error().Str("ownerID", wm.ID).Err(err).Msg("unable to convert owner id from string")
@@ -279,7 +279,7 @@ func (btl *Battle) preIntro(payload *BattleStartPayload) error {
 
 	// broadcast battle settings
 	//gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Broadcasting battle start to players")
-	//btl.BroadcastUpdate()
+	btl.BroadcastUpdate()
 
 	return nil
 }
@@ -309,7 +309,7 @@ func (btl *Battle) start() {
 	// set up the abilities for current battle
 
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle spoils")
-	btl.spoils = NewSpoilsOfWar(btl.arena.RPCClient, btl.arena.messageBus, btl.isOnline, btl.BattleID, btl.BattleNumber, 15*time.Second, 20)
+	btl.spoils = NewSpoilsOfWar(btl.arena.RPCClient, btl.isOnline, btl.BattleID, btl.BattleNumber, 15*time.Second, 20)
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle abilities")
 	btl.storeAbilities(NewAbilitiesSystem(btl))
 	gamelog.L.Info().Int("battle_number", btl.BattleNumber).Str("battle_id", btl.ID).Msg("Spinning up battle multipliers")
@@ -682,7 +682,7 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 			syndicateBalance := btl.arena.RPCClient.UserBalanceGet(factID)
 
 			if syndicateBalance.LessThanOrEqual(contract.ContractReward) {
-				txid, err := btl.arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
+				txid, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 					FromUserID:           uuid.UUID(server.XsynTreasuryUserID),
 					ToUserID:             factID,
 					Amount:               contract.ContractReward.StringFixed(0),
@@ -709,7 +709,7 @@ func (btl *Battle) processWinners(payload *BattleEndPayload) {
 			}
 
 			// pay sups
-			txid, err := btl.arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
+			txid, err := btl.arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 				FromUserID:           factID,
 				ToUserID:             uuid.Must(uuid.FromString(contract.PlayerID)),
 				Amount:               contract.ContractReward.StringFixed(0),
@@ -1008,6 +1008,14 @@ func (btl *Battle) end(payload *BattleEndPayload) {
 
 	btl.insertUserSpoils(endInfo)
 
+	// TODO: we can remove this after a while
+	_, err = boiler.BattleQueueNotifications(
+		boiler.BattleQueueNotificationWhere.QueueMechID.IsNotNull(),
+	).UpdateAll(gamedb.StdConn, boiler.M{"queue_mech_id": nil})
+	if err != nil {
+		gamelog.L.Error().Err(err).Msg("failed to update battle queue notifications")
+	}
+
 	_, err = boiler.BattleQueues(boiler.BattleQueueWhere.BattleID.EQ(null.StringFrom(btl.BattleID))).DeleteAll(gamedb.StdConn)
 	if err != nil {
 		gamelog.L.Panic().Err(err).Str("Battle ID", btl.ID).Str("battle_id", payload.BattleID).Msg("Failed to remove mechs from battle queue.")
@@ -1144,11 +1152,6 @@ func (btl *Battle) endInfoBroadcast(info BattleEndDetail) {
 		return true
 	})
 
-}
-
-type BroadcastPayload struct {
-	Key     hub.HubCommandKey `json:"key"`
-	Payload interface{}       `json:"payload"`
 }
 
 type GameSettingsResponse struct {
@@ -1299,8 +1302,10 @@ func (btl *Battle) Tick(payload []byte) {
 		}
 
 		if warMachineIndex == -1 {
-			gamelog.L.Warn().Msg("Mech participant id not found from game client tick")
-			return
+			gamelog.L.Warn().Err(fmt.Errorf("warMachineIndex == -1")).
+				Interface("btl.WarMachines", btl.WarMachines).
+				Str("participantID", string(participantID)).Msg("unable to find warmachine participant ID")
+			continue
 		}
 
 		// Get Sync byte (tells us which data was updated for this warmachine)
@@ -1310,37 +1315,38 @@ func (btl *Battle) Tick(payload []byte) {
 
 		// Position + Yaw
 		if booleans[0] {
-			x := int(binary.BigEndian.Uint32(payload[offset : offset+4]))
+			x := int(helpers.BytesToInt(payload[offset : offset+4]))
 			offset += 4
-			y := int(binary.BigEndian.Uint32(payload[offset : offset+4]))
+			y := int(helpers.BytesToInt(payload[offset : offset+4]))
 			offset += 4
-			rotation := int(binary.BigEndian.Uint32(payload[offset : offset+4]))
+			rotation := int(helpers.BytesToInt(payload[offset : offset+4]))
 			offset += 4
 
-			if warMachineIndex != -1 {
-				if btl.WarMachines[warMachineIndex].Position == nil {
-					btl.WarMachines[warMachineIndex].Position = &server.Vector3{}
-				}
-				btl.WarMachines[warMachineIndex].Position.X = x
-				btl.WarMachines[warMachineIndex].Position.Y = y
-				btl.WarMachines[warMachineIndex].Rotation = rotation
+			if btl.WarMachines[warMachineIndex].Position == nil {
+				btl.WarMachines[warMachineIndex].Position = &server.Vector3{}
 			}
+			btl.WarMachines[warMachineIndex].Position.X = x
+			btl.WarMachines[warMachineIndex].Position.Y = y
+			btl.WarMachines[warMachineIndex].Rotation = rotation
+
 		}
 		// Health
 		if booleans[1] {
 			health := binary.BigEndian.Uint32(payload[offset : offset+4])
 			offset += 4
-			if warMachineIndex != -1 {
-				btl.WarMachines[warMachineIndex].Health = health
-			}
+			btl.WarMachines[warMachineIndex].Health = health
+
 		}
 		// Shield
 		if booleans[2] {
 			shield := binary.BigEndian.Uint32(payload[offset : offset+4])
 			offset += 4
-			if warMachineIndex != -1 {
-				btl.WarMachines[warMachineIndex].Shield = shield
-			}
+			btl.WarMachines[warMachineIndex].Shield = shield
+		}
+
+		// Energy
+		if booleans[3] {
+			offset += 4
 		}
 
 		ws.PublishMessage(fmt.Sprintf("/public/mech/%d", participantID), HubKeyWarMachineStatUpdated, WarMachineStat{

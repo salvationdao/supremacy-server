@@ -13,15 +13,17 @@ import (
 	THIS FILE SHOULD CONTAIN ZERO BOILER STRUCTS
 */
 
-type CollectionDetails struct {
-	CollectionSlug   string      `json:"collection_slug"`
-	Hash             string      `json:"hash"`
-	TokenID          int64       `json:"token_id"`
-	ItemType         string      `json:"item_type"`
-	ItemID           string      `json:"item_id"`
-	Tier             string      `json:"tier"`
-	OwnerID          string      `json:"owner_id"`
-	OnChainStatus    string      `json:"on_chain_status"`
+type CollectionItem struct {
+	CollectionSlug string `json:"collection_slug"`
+	Hash           string `json:"hash"`
+	TokenID        int64  `json:"token_id"`
+	ItemType       string `json:"item_type"`
+	ItemID         string `json:"item_id"`
+	Tier           string `json:"tier"`
+	OwnerID        string `json:"owner_id"`
+	MarketLocked   bool   `json:"market_locked"`
+	XsynLocked     bool   `json:"xsyn_locked"`
+
 	ImageURL         null.String `json:"image_url,omitempty"`
 	CardAnimationURL null.String `json:"card_animation_url,omitempty"`
 	AvatarURL        null.String `json:"avatar_url,omitempty"`
@@ -33,7 +35,7 @@ type CollectionDetails struct {
 
 // Mech is the struct that rpc expects for mechs
 type Mech struct {
-	*CollectionDetails
+	*CollectionItem
 	ID                    string     `json:"id"`
 	Label                 string     `json:"label"`
 	WeaponHardpoints      int        `json:"weapon_hardpoints"`
@@ -180,7 +182,7 @@ func (b *MechModel) Scan(value interface{}) error {
 
 // MechFromBoiler takes a boiler structs and returns server structs, skinCollection is optional
 func MechFromBoiler(mech *boiler.Mech, collection *boiler.CollectionItem, skinCollection *boiler.CollectionItem) *Mech {
-	skin := &CollectionDetails{}
+	skin := &CollectionItem{}
 
 	if mech.R.Model.R.DefaultChassisSkin != nil {
 		skin.ImageURL = mech.R.Model.R.DefaultChassisSkin.ImageURL
@@ -203,7 +205,7 @@ func MechFromBoiler(mech *boiler.Mech, collection *boiler.CollectionItem, skinCo
 	}
 
 	return &Mech{
-		CollectionDetails: &CollectionDetails{
+		CollectionItem: &CollectionItem{
 			CollectionSlug:   collection.CollectionSlug,
 			Hash:             collection.Hash,
 			TokenID:          collection.TokenID,
@@ -211,7 +213,8 @@ func MechFromBoiler(mech *boiler.Mech, collection *boiler.CollectionItem, skinCo
 			ItemID:           collection.ItemID,
 			Tier:             collection.Tier,
 			OwnerID:          collection.OwnerID,
-			OnChainStatus:    collection.OnChainStatus,
+			MarketLocked:     collection.MarketLocked,
+			XsynLocked:       collection.XsynLocked,
 			ImageURL:         skin.ImageURL,
 			CardAnimationURL: skin.CardAnimationURL,
 			AvatarURL:        skin.AvatarURL,
@@ -243,4 +246,84 @@ func MechFromBoiler(mech *boiler.Mech, collection *boiler.CollectionItem, skinCo
 		UpdatedAt:             mech.UpdatedAt,
 		CreatedAt:             mech.CreatedAt,
 	}
+}
+
+// IsBattleReady checks if a mech has the minimum it needs for battle
+func (m *Mech) IsBattleReady() bool {
+	if !m.PowerCoreID.Valid {
+		return false
+	}
+	if len(m.Weapons) <= 0 {
+		return false
+	}
+	return true
+}
+
+func (m *Mech) CheckAndSetAsGenesisOrLimited() (genesisID null.Int64, limitedID null.Int64) {
+	if !m.GenesisTokenID.Valid && !m.LimitedReleaseTokenID.Valid {
+		return
+	}
+	if m.GenesisTokenID.Valid && m.IsCompleteGenesis() {
+		genesisID = m.GenesisTokenID
+		m.TokenID = m.GenesisTokenID.Int64
+		m.CollectionSlug = "supremacy-genesis"
+		return
+	}
+	if m.LimitedReleaseTokenID.Valid && m.IsCompleteLimited() {
+		limitedID = m.LimitedReleaseTokenID
+		m.TokenID = m.LimitedReleaseTokenID.Int64
+		m.CollectionSlug = "supremacy-limited-release"
+		return
+	}
+	return
+}
+
+// IsCompleteGenesis returns true if all parts of this mech are genesis with matching genesis token IDs
+func (m *Mech) IsCompleteGenesis() bool {
+	if !m.GenesisTokenID.Valid {
+		return false
+	}
+	// this checks if mech is complete genesis
+	// the shield and skins are locked to genesis, so they are true
+	// we just need to check the first 2 weapons, since rocket pods are also locked
+	if m.Weapons[0] == nil || !m.Weapons[0].GenesisTokenID.Valid ||
+		m.Weapons[0].GenesisTokenID.Int64 != m.GenesisTokenID.Int64 {
+		return false
+	}
+	if m.Weapons[1] == nil || !m.Weapons[1].GenesisTokenID.Valid ||
+		m.Weapons[1].GenesisTokenID.Int64 != m.GenesisTokenID.Int64 {
+		return false
+	}
+	if m.Weapons[2] == nil || !m.Weapons[2].GenesisTokenID.Valid ||
+		m.Weapons[2].GenesisTokenID.Int64 != m.GenesisTokenID.Int64 {
+		return false
+	}
+	return true
+}
+
+// IsCompleteLimited returns true if all parts of this mech are limited with matching limited token IDs
+func (m *Mech) IsCompleteLimited() bool {
+	if !m.LimitedReleaseTokenID.Valid {
+		return false
+	}
+	// this checks if mech is complete genesis
+	// the shield and skins are locked to genesis, so they are true
+	// we just need to check the first 2 weapons, since rocket pods are also locked
+	if m.Weapons[0] == nil || !m.Weapons[0].LimitedReleaseTokenID.Valid ||
+		m.Weapons[0].LimitedReleaseTokenID.Int64 != m.LimitedReleaseTokenID.Int64 {
+		return false
+	}
+	if m.Weapons[1] == nil || !m.Weapons[1].LimitedReleaseTokenID.Valid ||
+		m.Weapons[1].LimitedReleaseTokenID.Int64 != m.LimitedReleaseTokenID.Int64 {
+		return false
+	}
+	if m.Weapons[2] == nil || !m.Weapons[2].LimitedReleaseTokenID.Valid ||
+		m.Weapons[2].LimitedReleaseTokenID.Int64 != m.LimitedReleaseTokenID.Int64 {
+		return false
+	}
+	return true
+}
+
+func MechToGenesisOrLimited() {
+
 }

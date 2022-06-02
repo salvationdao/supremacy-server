@@ -13,8 +13,8 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/helpers"
-	"server/rpcclient"
 	"server/telegram"
+	"server/xsyn_rpcclient"
 	"strconv"
 	"sync"
 	"time"
@@ -32,8 +32,6 @@ import (
 	"github.com/gofrs/uuid"
 	leakybucket "github.com/kevinms/leakybucket-go"
 	"github.com/ninja-software/terror/v2"
-	"github.com/ninja-syndicate/hub"
-	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -44,11 +42,10 @@ type Arena struct {
 	socket                   *websocket.Conn
 	connected                *atomic.Bool
 	timeout                  time.Duration
-	messageBus               *messagebus.MessageBus
 	_currentBattle           *Battle
 	syndicates               map[string]boiler.Faction
 	AIPlayers                map[string]db.PlayerWithFaction
-	RPCClient                *rpcclient.PassportXrpcClient
+	RPCClient                *xsyn_rpcclient.XsynXrpcClient
 	gameClientLock           sync.Mutex
 	sms                      server.SMS
 	gameClientMinimumBuildNo uint64
@@ -151,9 +148,7 @@ func (arena *Arena) currentBattleUsersCopy() []*BattleUser {
 type Opts struct {
 	Addr                     string
 	Timeout                  time.Duration
-	Hub                      *hub.Hub
-	MessageBus               *messagebus.MessageBus
-	RPCClient                *rpcclient.PassportXrpcClient
+	RPCClient                *xsyn_rpcclient.XsynXrpcClient
 	SMS                      server.SMS
 	GameClientMinimumBuildNo uint64
 	Telegram                 *telegram.Telegram
@@ -188,7 +183,6 @@ func NewArena(opts *Opts) *Arena {
 	arena := &Arena{
 		connected:                atomic.NewBool(false),
 		timeout:                  opts.Timeout,
-		messageBus:               opts.MessageBus,
 		RPCClient:                opts.RPCClient,
 		sms:                      opts.SMS,
 		gameClientMinimumBuildNo: opts.GameClientMinimumBuildNo,
@@ -383,12 +377,7 @@ func (arena *Arena) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	arena.Start()
 }
 
-func (arena *Arena) SetMessageBus(mb *messagebus.MessageBus) {
-	arena.messageBus = mb
-}
-
 type BribeGabRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		AbilityOfferingID string          `json:"ability_offering_id"`
 		Percentage        decimal.Decimal `json:"percentage"` // "0.1", "0.5%", "1%"
@@ -462,7 +451,6 @@ func (arena *Arena) BattleAbilityBribe(ctx context.Context, user *boiler.Player,
 }
 
 type LocationSelectRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		XIndex int `json:"x"`
 		YIndex int `json:"y"`
@@ -506,7 +494,6 @@ func (arena *Arena) AbilityLocationSelect(ctx context.Context, user *boiler.Play
 }
 
 type PlayerAbilityUseRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		AbilityID          string                `json:"ability_id"` // player ability id
 		LocationSelectType db.LocationSelectType `json:"location_select_type"`
@@ -661,7 +648,6 @@ func (arena *Arena) BattleAbilityUpdateSubscribeHandler(ctx context.Context, use
 }
 
 type GameAbilityContributeRequest struct {
-	*hub.HubCommandRequest
 	Payload struct {
 		AbilityIdentity   string          `json:"ability_identity"`
 		AbilityOfferingID string          `json:"ability_offering_id"`
@@ -846,10 +832,6 @@ type GameAbilityPriceResponse struct {
 	ShouldReset bool   `json:"should_reset"`
 }
 
-func (arena *Arena) WarMachineLocationUpdateSubscribeHandler(ctx context.Context, wsc *hub.Client, payload []byte, needProcess bool) (messagebus.BusKey, error) {
-	return messagebus.BusKey(HubKeyWarMachineLocationUpdated), nil
-}
-
 const HubKeySpoilOfWarUpdated = "SPOIL:OF:WAR:UPDATED"
 
 func (arena *Arena) SpoilOfWarUpdateSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
@@ -972,7 +954,7 @@ func (arena *Arena) start() {
 			switch msg.BattleCommand {
 			case "BATTLE:MAP_DETAILS":
 				var dataPayload *MapDetailsPayload
-				if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
+				if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
 					gamelog.L.Warn().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal battle message payload")
 					continue
 				}
@@ -982,7 +964,7 @@ func (arena *Arena) start() {
 
 			case "BATTLE:START":
 				var dataPayload *BattleStartPayload
-				if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
+				if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
 					gamelog.L.Warn().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal battle message payload")
 					continue
 				}
@@ -1095,7 +1077,7 @@ func (arena *Arena) beginBattle() {
 		BattleID: battleID,
 		Battle:   battle,
 		inserted: inserted,
-		stage:    atomic.NewInt32(BattleStagStart),
+		stage:    atomic.NewInt32(BattleStageStart),
 		users: usersMap{
 			m: make(map[uuid.UUID]*BattleUser),
 		},
@@ -1124,12 +1106,6 @@ func (arena *Arena) beginBattle() {
 const HubKeyUserStatSubscribe = "USER:STAT:SUBSCRIBE"
 
 func (arena *Arena) UserStatUpdatedSubscribeHandler(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
-	req := &hub.HubCommandRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return terror.Error(err, "Invalid request received")
-	}
-
 	userID, err := uuid.FromString(user.ID)
 	if err != nil {
 		return terror.Error(err, "Invalid request received")

@@ -47,7 +47,8 @@ CREATE TABLE collection_items
     item_id         UUID             NOT NULL UNIQUE,
     tier            TEXT             NOT NULL DEFAULT 'MEGA',
     owner_id        UUID             NOT NULL REFERENCES players (id),
-    on_chain_status TEXT             NOT NULL DEFAULT 'MINTABLE' CHECK (on_chain_status IN ('MINTABLE', 'STAKABLE', 'UNSTAKABLE')),
+    market_locked   BOOL             NOT NULL DEFAULT FALSE,
+    xsyn_locked     BOOL             NOT NULL DEFAULT FALSE,
     UNIQUE (collection_slug, token_id)
 );
 
@@ -127,17 +128,19 @@ CREATE TABLE blueprint_power_cores
 
 CREATE TABLE power_cores
 (
-    id            UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
-    blueprint_id  UUID REFERENCES blueprint_power_cores (id),
-    label         TEXT        NOT NULL,
-    size          TEXT        NOT NULL DEFAULT 'MEDIUM' CHECK ( size IN ('SMALL', 'MEDIUM', 'LARGE') ),
-    capacity      NUMERIC     NOT NULL DEFAULT 0,
-    max_draw_rate NUMERIC     NOT NULL DEFAULT 0,
-    recharge_rate NUMERIC     NOT NULL DEFAULT 0,
-    armour        NUMERIC     NOT NULL DEFAULT 0,
-    max_hitpoints NUMERIC     NOT NULL DEFAULT 0,
-    equipped_on   UUID REFERENCES chassis (id),
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    id                       UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
+    blueprint_id             UUID REFERENCES blueprint_power_cores (id),
+    label                    TEXT        NOT NULL,
+    size                     TEXT        NOT NULL DEFAULT 'MEDIUM' CHECK ( size IN ('SMALL', 'MEDIUM', 'LARGE') ),
+    capacity                 NUMERIC     NOT NULL DEFAULT 0,
+    genesis_token_id         BIGINT,
+    limited_release_token_id BIGINT,
+    max_draw_rate            NUMERIC     NOT NULL DEFAULT 0,
+    recharge_rate            NUMERIC     NOT NULL DEFAULT 0,
+    armour                   NUMERIC     NOT NULL DEFAULT 0,
+    max_hitpoints            NUMERIC     NOT NULL DEFAULT 0,
+    equipped_on              UUID REFERENCES chassis (id),
+    created_at               TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 /*
@@ -388,6 +391,7 @@ ALTER TABLE blueprint_chassis
     ADD COLUMN tier            TEXT       NOT NULL DEFAULT 'MEGA',
     ADD COLUMN chassis_skin_id UUID REFERENCES blueprint_chassis_skin (id); -- this column is used temp and gets removed.
 
+
 UPDATE blueprint_chassis c
 SET model_id = (SELECT id
                 FROM mech_model cm
@@ -519,3 +523,34 @@ UPDATE chassis m
 SET power_core_id = pc.id
 FROM pc
 WHERE m.id = pc.equipped_on;
+
+-- this updates all genesis_token_id for chassis that are in genesis, also get is default and is insured
+WITH genesis AS (SELECT external_token_id, collection_slug, chassis_id
+                 FROM mechs
+                 WHERE collection_slug = 'supremacy-genesis')
+UPDATE power_cores pc
+SET genesis_token_id = genesis.external_token_id
+FROM genesis
+WHERE pc.equipped_on = genesis.chassis_id;
+
+-- this updates all limited release for chassis that are in genesis, also get is default and is insured
+WITH limited_release AS (SELECT external_token_id, collection_slug, chassis_id
+                         FROM mechs
+                         WHERE collection_slug = 'supremacy-limited-release')
+UPDATE power_cores pc
+SET limited_release_token_id = limited_release.external_token_id
+FROM limited_release
+WHERE pc.id = limited_release.chassis_id;
+
+-- This inserts a new collection_items entry for each utility and updates the utility table with token id
+WITH power_core AS (SELECT 'power_core' AS item_type, _pc.id, tier, _ci.owner_id
+                    FROM power_cores _pc
+                             INNER JOIN collection_items _ci ON _ci.item_id = _pc.equipped_on)
+INSERT
+INTO collection_items (token_id, item_type, item_id, tier, owner_id)
+SELECT NEXTVAL('collection_general'),
+       power_core.item_type::ITEM_TYPE,
+       power_core.id,
+       power_core.tier,
+       power_core.owner_id
+FROM power_core;

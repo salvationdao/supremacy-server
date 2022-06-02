@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/gofrs/uuid"
-	"github.com/ninja-syndicate/hub"
 	"github.com/volatiletech/null/v8"
 )
 
@@ -122,12 +121,6 @@ type UserBrief struct {
 	Username string          `json:"username"`
 	Gid      int             `json:"gid"`
 	Faction  *boiler.Faction `json:"faction"`
-}
-
-type UserSupsMultiplierSend struct {
-	ToUserID        UserID            `json:"to_user_id"`
-	ToUserSessionID *hub.SessionID    `json:"to_user_session_id,omitempty"`
-	SupsMultipliers []*SupsMultiplier `json:"sups_multiplier"`
 }
 
 type SupsMultiplier struct {

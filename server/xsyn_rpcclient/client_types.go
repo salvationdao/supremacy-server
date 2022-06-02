@@ -1,4 +1,4 @@
-package rpcclient
+package xsyn_rpcclient
 
 import (
 	"server"
@@ -71,12 +71,7 @@ type GetSpoilOfWarReq struct{}
 type GetSpoilOfWarResp struct {
 	Amount string
 }
-type UserSupsMultiplierSendReq struct {
-	ApiKey                  string
-	UserSupsMultiplierSends []*server.UserSupsMultiplierSend `json:"userSupsMultiplierSends"`
-}
 
-type UserSupsMultiplierSendResp struct{}
 type TransferBattleFundToSupPoolReq struct{}
 type TransferBattleFundToSupPoolResp struct{}
 type TopSupsContributorReq struct {
@@ -96,4 +91,26 @@ type GetAll struct {
 	StorePayload    types.JSON
 	UserPayload     types.JSON
 	FactionPayload  types.JSON
+}
+
+type AssetUnlockToServiceResp struct {
+}
+
+type AssetUnlockToServiceReq struct {
+	ApiKey         string `json:"api_key,omitempty"`
+	CollectionSlug string `json:"collection_slug,omitempty"`
+	TokenID        int64  `json:"token_id,omitempty"`
+	OwnerID        string `json:"owner_id,omitempty"`
+	Hash           string `json:"hash,omitempty"`
+}
+
+type AssetLockToServiceResp struct {
+}
+
+type AssetLockToServiceReq struct {
+	ApiKey         string `json:"api_key,omitempty"`
+	CollectionSlug string `json:"collection_slug,omitempty"`
+	TokenID        int64  `json:"token_id,omitempty"`
+	OwnerID        string `json:"owner_id,omitempty"`
+	Hash           string `json:"hash,omitempty"`
 }

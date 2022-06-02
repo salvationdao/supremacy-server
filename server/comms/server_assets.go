@@ -17,7 +17,7 @@ import (
 	"github.com/ninja-software/terror/v2"
 )
 
-func (s *S) Asset(req rpctypes.AssetReq, resp *rpctypes.AssetResp) error {
+func (s *S) AssetHandler(req rpctypes.AssetReq, resp *rpctypes.AssetResp) error {
 	gamelog.L.Debug().Msg("comms.Asset")
 
 	ci, err := boiler.CollectionItems(boiler.CollectionItemWhere.ItemID.EQ(req.AssetID.String())).One(gamedb.StdConn)
@@ -97,9 +97,10 @@ func (s *S) Asset(req rpctypes.AssetReq, resp *rpctypes.AssetResp) error {
 		Tier:           ci.Tier,
 		Hash:           ci.Hash,
 		OwnerID:        ci.OwnerID,
-		OnChainStatus:  ci.OnChainStatus,
+		AssetType:      null.StringFrom(ci.ItemType),
 		Data:           asJson,
 		Name:           name,
+		XsynLocked:     ci.XsynLocked,
 	}
 	return nil
 }
@@ -113,8 +114,8 @@ type GenesisOrLimitedMechResp struct {
 	Asset *rpctypes.XsynAsset
 }
 
-func (s *S) GenesisOrLimitedMech(req *GenesisOrLimitedMechReq, resp *GenesisOrLimitedMechResp) error {
-	gamelog.L.Trace().Msg("comms.GenesisOrLimitedMech")
+func (s *S) GenesisOrLimitedMechHandler(req *GenesisOrLimitedMechReq, resp *GenesisOrLimitedMechResp) error {
+	gamelog.L.Trace().Msg("comms.GenesisOrLimitedMechHandler")
 	var mech *server.Mech
 
 	switch req.CollectionSlug {

@@ -3,7 +3,6 @@ package battle
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"server"
@@ -12,15 +11,13 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/multipliers"
-	"server/rpcclient"
+	"server/xsyn_rpcclient"
 	"time"
 
 	"github.com/ninja-software/terror/v2"
 	"github.com/ninja-syndicate/ws"
 
 	"github.com/gofrs/uuid"
-	"github.com/ninja-syndicate/hub"
-	"github.com/ninja-syndicate/hub/ext/messagebus"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -143,16 +140,6 @@ func (arena *Arena) MultiplierUpdate(ctx context.Context, user *boiler.Player, k
 const HubKeyViewerLiveCountUpdated = "VIEWER:LIVE:COUNT:UPDATED"
 
 const HubKeyGameNotification = "GAME:NOTIFICATION"
-
-func (arena *Arena) GameNotificationSubscribeHandler(ctx context.Context, payload []byte, reply hub.ReplyFunc, needProcess bool) (string, messagebus.BusKey, error) {
-	req := &hub.HubCommandRequest{}
-	err := json.Unmarshal(payload, req)
-	if err != nil {
-		return "", "", err
-	}
-
-	return req.TransactionID, messagebus.BusKey(HubKeyGameNotification), nil
-}
 
 // BroadcastGameNotificationText broadcast game notification to client
 func (arena *Arena) BroadcastGameNotificationText(data string) {
@@ -329,7 +316,7 @@ func (arena *Arena) NotifyUpcomingWarMachines() {
 		}
 
 		// charge for notification
-		notifyTransactionID, err := arena.RPCClient.SpendSupMessage(rpcclient.SpendSupsReq{
+		notifyTransactionID, err := arena.RPCClient.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 			Amount:               "5000000000000000000", // 5 sups
 			FromUserID:           playerUUID,
 			ToUserID:             uuid.Must(uuid.FromString(factionAccountID)),

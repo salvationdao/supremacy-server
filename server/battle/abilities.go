@@ -11,7 +11,7 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 	"server/gamelog"
-	"server/rpcclient"
+	"server/xsyn_rpcclient"
 	"sync"
 	"time"
 
@@ -381,7 +381,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 				// read the stage first
 
 				// start ticker while still in battle
-				if as.battle().stage.Load() == BattleStagStart {
+				if as.battle().stage.Load() == BattleStageStart {
 					for _, ability := range abilities {
 						// update ability price
 						isTriggered := ability.FactionUniqueAbilityPriceUpdate(minPrice)
@@ -448,10 +448,10 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 
 								as.battle().arena.BroadcastGameNotificationWarMachineAbility(gameNotification)
 							}
-						}
 
-						// generate new offering id for current ability
-						ability.OfferingID = uuid.Must(uuid.NewV4())
+							// generate new offering id for current ability
+							ability.OfferingID = uuid.Must(uuid.NewV4())
+						}
 
 						// broadcast new ability price
 						resp := GameAbilityPriceResponse{
@@ -505,7 +505,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 					}
 
 					// return early if battle stage is invalid
-					if as.battle().stage.Load() != BattleStagStart {
+					if as.battle().stage.Load() != BattleStageStart {
 						cont.reply(false)
 						continue
 					}
@@ -665,7 +665,11 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 			// broadcast current total
 			ws.PublishMessage("/public/live_data", HubKeyLiveVoteCountUpdated, as.liveCount.ReadTotal())
 
-			if as.battle().stage.Load() != BattleStagStart {
+			if as.battle() == nil || as.battle().stage == nil {
+				continue
+			}
+
+			if as.battle().stage.Load() != BattleStageStart {
 				continue
 			}
 
@@ -727,7 +731,7 @@ func (ga *GameAbility) FactionUniqueAbilityPriceUpdate(minPrice decimal.Decimal)
 }
 
 // SupContribution contribute sups to specific game ability, return the actual sups spent and whether the ability is triggered
-func (ga *GameAbility) SupContribution(ppClient *rpcclient.PassportXrpcClient, as *AbilitiesSystem, battleID string, battleNumber int, userID uuid.UUID, amount decimal.Decimal) (decimal.Decimal, decimal.Decimal, bool, error) {
+func (ga *GameAbility) SupContribution(ppClient *xsyn_rpcclient.XsynXrpcClient, as *AbilitiesSystem, battleID string, battleNumber int, userID uuid.UUID, amount decimal.Decimal) (decimal.Decimal, decimal.Decimal, bool, error) {
 
 	isTriggered := false
 
@@ -743,7 +747,7 @@ func (ga *GameAbility) SupContribution(ppClient *rpcclient.PassportXrpcClient, a
 
 	amount = amount.Truncate(0)
 
-	supSpendReq := rpcclient.SpendSupsReq{
+	supSpendReq := xsyn_rpcclient.SpendSupsReq{
 		FromUserID:           userID,
 		ToUserID:             SupremacyBattleUserID,
 		Amount:               amount.String(),
@@ -1460,7 +1464,7 @@ func (as *AbilitiesSystem) SetNewBattleAbility(isFirstAbility bool) (int, error)
 		}
 		as.battleAbilityPool.Abilities.Store(ga.FactionID, gameAbility)
 		// broadcast ability update to faction users
-		ws.PublishMessage(fmt.Sprintf("/faction/%s/ability", gameAbility.FactionID), HubKeyBattleAbilityUpdated, gameAbility)
+		ws.PublishMessage(fmt.Sprintf("/ability/%s", gameAbility.FactionID), HubKeyBattleAbilityUpdated, gameAbility)
 	}
 
 	as.BroadcastAbilityProgressBar()
@@ -1763,7 +1767,7 @@ func (as *AbilitiesSystem) AbilityContribute(factionID string, userID uuid.UUID,
 			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the AbilityContribute!", r)
 		}
 	}()
-	if as == nil || as.battle() == nil || as.battle().stage.Load() != BattleStagStart || as.factionUniqueAbilities == nil {
+	if as == nil || as.battle() == nil || as.battle().stage.Load() != BattleStageStart || as.factionUniqueAbilities == nil {
 		gamelog.L.Warn().Msg("invalid battle stage")
 		reply(false)
 		return
@@ -1848,7 +1852,7 @@ func (as *AbilitiesSystem) BribeGabs(factionID string, userID uuid.UUID, ability
 		}
 	}()
 
-	if as == nil || as.battle() == nil || as.battle().stage.Load() != BattleStagStart {
+	if as == nil || as.battle() == nil || as.battle().stage.Load() != BattleStageStart {
 		gamelog.L.Error().
 			Bool("nil checks as", as == nil).
 			Int32("battle stage", as.battle().stage.Load()).
