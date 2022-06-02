@@ -73,7 +73,7 @@ func (a *API) RemoveShadowbanChatUser(w http.ResponseWriter, r *http.Request) (i
 		return http.StatusInternalServerError, terror.Error(fmt.Errorf("user has no fingerprints userID: %s", req.UserID))
 	}
 
-	// loop through fingerprints and add to chat_banned_fingerprints table
+	// loop through fingerprints delete from chat_banned_fingerprints table
 	for _, f := range fIDs {
 		banned := &boiler.ChatBannedFingerprint{
 			FingerprintID: f.FingerprintID,

@@ -97,9 +97,7 @@ func (c *Chatroom) AddMessage(message *ChatMessage) {
 
 func (c *Chatroom) Range(fn func(chatMessage *ChatMessage) bool) {
 	c.RLock()
-
 	for _, message := range c.messages {
-
 		if !fn(message) {
 			break
 		}
@@ -108,46 +106,30 @@ func (c *Chatroom) Range(fn func(chatMessage *ChatMessage) bool) {
 }
 
 func isFingerPrintBanned(playerID string) bool {
-
-	fmt.Println("hereeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
 	// get fingerprints from player
 	fps, err := boiler.PlayerFingerprints(boiler.PlayerFingerprintWhere.PlayerID.EQ(playerID)).All(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Warn().Err(err).Interface("msg.PlayerID", playerID).Msg("issue finding player fingerprints")
 		return false
 	}
-
-	fmt.Println("hereeeeeeeeeeeeeeeeeeeeeeeeeeeeee2")
-
 	if errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Warn().Err(err).Interface("msg.PlayerID", playerID).Msg("player has no fingerprints")
 		return false
 	}
 
-	fmt.Println("hereeeeeeeeeeeeeeeeeeeeeeeeeeeeee3")
-
 	ids := []string{}
 	for _, f := range fps {
 		ids = append(ids, f.FingerprintID)
 	}
-
-	fmt.Println("hereeeeeeeeeeeeeeeeeeeeeeeeeeeeee4")
-
 	// check if any of the players fingerprints are banned
 	bannedFingerprints, err := boiler.ChatBannedFingerprints(boiler.ChatBannedFingerprintWhere.FingerprintID.IN(ids)).All(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Warn().Err(err).Interface("msg.PlayerID", playerID).Msg("issue checking if player is banned")
 		return false
 	}
-
-	fmt.Println("hereeeeeeeeeeeeeeeeeeeeeeeeeeeeee5")
-
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		return false
 	}
-
-	fmt.Println("hereeeeeeeeeeeeeeeeeeeeeeeeeeeeee6", len(bannedFingerprints))
-
 	return len(bannedFingerprints) > 0
 }
 
@@ -310,6 +292,7 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 		return terror.Error(fmt.Errorf("player is banned to chat"), "You are banned to chat")
 	}
 
+	// user's fingerprint banned (shadow ban)
 	fingerprintBanned := isFingerPrintBanned(user.ID)
 	if fingerprintBanned {
 		reply(true)
