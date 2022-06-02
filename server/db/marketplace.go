@@ -74,11 +74,11 @@ func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
 		ItemSale: item,
 		Owner:    item.R.Owner,
 	}
-	mech, err := Mech(item.ItemID)
-	if err != nil {
-		return nil, terror.Error(err)
-	}
-	output.Mech = mech
+	// mech, err := Mech(item.ItemID)
+	// if err != nil {
+	// 	return nil, terror.Error(err)
+	// }
+	// output.Mech = mech
 	return output, nil
 }
 
@@ -189,48 +189,14 @@ func MarketplaceItemSaleList(search string, filter *ListFilterRequest, rarities 
 	// Load in related items
 	records := []*server.MarketplaceSaleItem{}
 	itemIDs := []string{}
-	mechIDs := []string{}
 	for _, row := range itemSales {
 		// if row.ItemType == boiler.ItemTypeMech {
-		mechIDs = append(mechIDs, row.ItemID)
 		itemIDs = append(itemIDs, row.ItemID)
 		// }
 		records = append(records, &server.MarketplaceSaleItem{
 			ItemSale: row,
 			Owner:    row.R.Owner,
 		})
-	}
-	if len(itemIDs) > 0 {
-		collectionItems, err := boiler.CollectionItems(
-			boiler.CollectionItemWhere.ItemID.IN(itemIDs),
-		).All(gamedb.StdConn)
-		if err != nil {
-			return 0, nil, terror.Error(err)
-		}
-		for i, row := range records {
-			for _, collection := range collectionItems {
-				// if row.ItemType == boiler.ItemTypeMech && row.ItemID == mech.ID {
-				if row.ItemID == collection.ItemID {
-					records[i].Collection = collection
-					break
-				}
-			}
-		}
-	}
-	if len(mechIDs) > 0 {
-		mechs, err := Mechs(mechIDs...)
-		if err != nil {
-			return 0, nil, terror.Error(err)
-		}
-		for i, row := range records {
-			for _, mech := range mechs {
-				// if row.ItemType == boiler.ItemTypeMech && row.ItemID == mech.ID {
-				if row.ItemID == mech.ID {
-					records[i].Mech = mech
-					break
-				}
-			}
-		}
 	}
 
 	return total, records, nil
