@@ -18,6 +18,15 @@ import (
 )
 
 var itemSaleQueryMods = []qm.QueryMod{
+	qm.Select(
+		`item_sales.*,
+		players.id AS "players.id",
+		players.username AS "players.username",
+		players.public_address AS "players.public_address",
+		mechs.id AS "mechs.id",
+		mechs.name AS "mechs.name",
+		mechs.label AS "mechs.label"`,
+	),
 	qm.InnerJoin(
 		fmt.Sprintf(
 			"%s ON %s = %s",
@@ -34,7 +43,14 @@ var itemSaleQueryMods = []qm.QueryMod{
 			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.ItemID),
 		),
 	),
-	qm.Load(boiler.ItemSaleRels.Owner),
+	qm.InnerJoin(
+		fmt.Sprintf(
+			"%s ON %s = %s",
+			boiler.TableNames.Players,
+			qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.ID),
+			qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.OwnerID),
+		),
+	),
 }
 
 var itemKeycardSaleQueryMods = []qm.QueryMod{
@@ -59,26 +75,16 @@ var itemKeycardSaleQueryMods = []qm.QueryMod{
 
 // MarketplaceItemSale gets a specific item sale.
 func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
-	item, err := boiler.ItemSales(
+	output := &server.MarketplaceSaleItem{}
+	err := boiler.ItemSales(
 		append(
 			itemSaleQueryMods,
 			boiler.ItemSaleWhere.ID.EQ(id.String()),
 		)...,
-	).One(gamedb.StdConn)
+	).Bind(nil, gamedb.StdConn, output)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
-
-	// Get sale item details and the item for sale
-	output := &server.MarketplaceSaleItem{
-		ItemSale: item,
-		Owner:    item.R.Owner,
-	}
-	// mech, err := Mech(item.ItemID)
-	// if err != nil {
-	// 	return nil, terror.Error(err)
-	// }
-	// output.Mech = mech
 	return output, nil
 }
 
@@ -181,22 +187,10 @@ func MarketplaceItemSaleList(search string, filter *ListFilterRequest, rarities 
 		queryMods = append(queryMods, qm.Limit(pageSize), qm.Offset(offset))
 	}
 
-	itemSales, err := boiler.ItemSales(queryMods...).All(gamedb.StdConn)
+	records := []*server.MarketplaceSaleItem{}
+	err = boiler.ItemSales(queryMods...).Bind(nil, gamedb.StdConn, &records)
 	if err != nil {
 		return 0, nil, terror.Error(err)
-	}
-
-	// Load in related items
-	records := []*server.MarketplaceSaleItem{}
-	itemIDs := []string{}
-	for _, row := range itemSales {
-		// if row.ItemType == boiler.ItemTypeMech {
-		itemIDs = append(itemIDs, row.ItemID)
-		// }
-		records = append(records, &server.MarketplaceSaleItem{
-			ItemSale: row,
-			Owner:    row.R.Owner,
-		})
 	}
 
 	return total, records, nil
@@ -337,7 +331,7 @@ func MarketplaceSaleCreate(
 		return nil, terror.Error(err)
 	}
 	output := &server.MarketplaceSaleItem{
-		ItemSale: obj,
+		ItemSale: *obj,
 	}
 	return output, nil
 }

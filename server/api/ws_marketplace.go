@@ -303,20 +303,6 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		return terror.Error(err, "Unable to create new sale item.")
 	}
 
-	mech, err := db.Mech(obj.ItemID)
-	if err != nil {
-		mp.API.Passport.RefundSupsMessage(txid)
-		gamelog.L.Error().
-			Str("user_id", user.ID).
-			Str("item_type", string(req.Payload.ItemType)).
-			Str("item_id", req.Payload.ItemID.String()).
-			Err(err).
-			Msg("Unable to create new sale item (post create).")
-		return terror.Error(err, "Unable to create new sale item.")
-	}
-
-	obj.Mech = mech
-
 	reply(obj)
 
 	return nil
