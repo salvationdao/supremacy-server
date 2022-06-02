@@ -402,7 +402,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 				// read the stage first
 
 				// start ticker while still in battle
-				if as.battle().stage.Load() == BattleStagStart {
+				if as.battle().stage.Load() == BattleStageStart {
 					for _, ability := range abilities {
 						// update ability price
 						isTriggered := ability.FactionUniqueAbilityPriceUpdate(as.abilityConfig.FactionAbilityFloorPrice, as.abilityConfig.FActionAbilityDropRate)
@@ -525,7 +525,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 					}
 
 					// return early if battle stage is invalid
-					if as.battle().stage.Load() != BattleStagStart {
+					if as.battle().stage.Load() != BattleStageStart {
 						cont.reply(false)
 						continue
 					}
@@ -685,7 +685,11 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 			// broadcast current total
 			ws.PublishMessage("/public/live_data", HubKeyLiveVoteCountUpdated, as.liveCount.ReadTotal())
 
-			if as.battle().stage.Load() != BattleStagStart {
+			if as.battle() == nil || as.battle().stage == nil {
+				continue
+			}
+
+			if as.battle().stage.Load() != BattleStageStart {
 				continue
 			}
 
@@ -1075,8 +1079,6 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 			endProgress <- true
 			return
 		case <-mainTicker.C:
-			now := time.Now()
-			fmt.Println(now.Nanosecond(), "Received main ticker")
 			if as.battle() == nil || as.battle().arena.CurrentBattle() == nil {
 				gamelog.L.Warn().Msg("Battle is nil")
 				continue
@@ -1770,7 +1772,7 @@ func (as *AbilitiesSystem) AbilityContribute(factionID string, userID uuid.UUID,
 			gamelog.LogPanicRecovery("panic! panic! panic! Panic at the AbilityContribute!", r)
 		}
 	}()
-	if as == nil || as.battle() == nil || as.battle().stage.Load() != BattleStagStart || as.factionUniqueAbilities == nil {
+	if as == nil || as.battle() == nil || as.battle().stage.Load() != BattleStageStart || as.factionUniqueAbilities == nil {
 		gamelog.L.Warn().Msg("invalid battle stage")
 		reply(false)
 		return
@@ -1855,7 +1857,7 @@ func (as *AbilitiesSystem) BribeGabs(factionID string, userID uuid.UUID, ability
 		}
 	}()
 
-	if as == nil || as.battle() == nil || as.battle().stage.Load() != BattleStagStart {
+	if as == nil || as.battle() == nil || as.battle().stage.Load() != BattleStageStart {
 		gamelog.L.Error().
 			Bool("nil checks as", as == nil).
 			Int32("battle stage", as.battle().stage.Load()).

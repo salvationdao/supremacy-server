@@ -12,7 +12,6 @@ import (
 	"server/gamedb"
 	"server/gamelog"
 	"server/multipliers"
-	"sort"
 	"time"
 
 	"github.com/gofrs/uuid"
@@ -448,10 +447,6 @@ func (fc *ChatController) FactionChatUpdatedSubscribeHandler(ctx context.Context
 	default:
 		return terror.Error(terror.ErrInvalidInput, "Invalid faction id")
 	}
-
-	sort.Slice(resp, func(i, j int) bool {
-		return resp[i].SentAt.After(resp[j].SentAt)
-	})
 
 	reply(resp)
 
