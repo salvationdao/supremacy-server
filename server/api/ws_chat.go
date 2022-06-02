@@ -109,21 +109,29 @@ func (c *Chatroom) Range(fn func(chatMessage *ChatMessage) bool) {
 
 func isFingerPrintBanned(playerID string) bool {
 
+	fmt.Println("hereeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
 	// get fingerprints from player
 	fps, err := boiler.PlayerFingerprints(boiler.PlayerFingerprintWhere.PlayerID.EQ(playerID)).All(gamedb.StdConn)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Warn().Err(err).Interface("msg.PlayerID", playerID).Msg("issue finding player fingerprints")
 		return false
 	}
+
+	fmt.Println("hereeeeeeeeeeeeeeeeeeeeeeeeeeeeee2")
+
 	if errors.Is(err, sql.ErrNoRows) {
 		gamelog.L.Warn().Err(err).Interface("msg.PlayerID", playerID).Msg("player has no fingerprints")
 		return false
 	}
 
+	fmt.Println("hereeeeeeeeeeeeeeeeeeeeeeeeeeeeee3")
+
 	ids := []string{}
 	for _, f := range fps {
 		ids = append(ids, f.FingerprintID)
 	}
+
+	fmt.Println("hereeeeeeeeeeeeeeeeeeeeeeeeeeeeee4")
 
 	// check if any of the players fingerprints are banned
 	bannedFingerprints, err := boiler.ChatBannedFingerprints(boiler.ChatBannedFingerprintWhere.FingerprintID.IN(ids)).All(gamedb.StdConn)
@@ -132,11 +140,15 @@ func isFingerPrintBanned(playerID string) bool {
 		return false
 	}
 
+	fmt.Println("hereeeeeeeeeeeeeeeeeeeeeeeeeeeeee5")
+
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		return false
 	}
 
-	return len(bannedFingerprints) > 1
+	fmt.Println("hereeeeeeeeeeeeeeeeeeeeeeeeeeeeee6", len(bannedFingerprints))
+
+	return len(bannedFingerprints) > 0
 }
 
 func NewChatroom(factionID string) *Chatroom {
@@ -500,12 +512,6 @@ const HubKeyGlobalChatSubscribe = "GLOBAL:CHAT:SUBSCRIBE"
 func (fc *ChatController) GlobalChatUpdatedSubscribeHandler(ctx context.Context, key string, payload []byte, reply ws.ReplyFunc) error {
 	resp := []*ChatMessage{}
 	fc.API.GlobalChat.Range(func(message *ChatMessage) bool {
-		fmt.Println("---bruh--")
-		fmt.Println("-----")
-		fmt.Println("-----")
-		fmt.Println("-----")
-
-		fmt.Printf("%+v\n", message)
 		resp = append(resp, message)
 		return true
 	})

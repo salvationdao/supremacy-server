@@ -58,13 +58,6 @@ func (api *API) XSYNAuth(w http.ResponseWriter, r *http.Request) {
 }
 
 func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, error) {
-	fmt.Println("ahhhhhhhhhh")
-	fmt.Println("ahhhhhhhhhh")
-	fmt.Println("ahhhhhhhhhh")
-	fmt.Println("ahhhhhhhhhh")
-	fmt.Println("ahhhhhhhhhh")
-	fmt.Println("ahhhhhhhhhh")
-
 	req := &struct {
 		Fingerprint *Fingerprint `json:"fingerprint"`
 	}{}
@@ -74,9 +67,6 @@ func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, e
 	}
 
 	cookie, err := r.Cookie("xsyn-token")
-
-	fmt.Println("cookie", cookie)
-	fmt.Println("fingerprint", req.Fingerprint)
 
 	if err != nil {
 		// check whether token is attached
@@ -98,8 +88,6 @@ func (api *API) AuthCheckHandler(w http.ResponseWriter, r *http.Request) (int, e
 		if err != nil {
 			return http.StatusInternalServerError, terror.Error(err, "Failed to write cookie")
 		}
-
-		// fingerprint
 
 		return helpers.EncodeJSON(w, player)
 	}
@@ -145,7 +133,6 @@ func (api *API) LogoutHandler(w http.ResponseWriter, r *http.Request) (int, erro
 	return http.StatusOK, nil
 }
 
-// todo move this
 type Fingerprint struct {
 	VisitorID  string  `json:"visitor_id"`
 	OSCPU      string  `json:"os_cpu"`
