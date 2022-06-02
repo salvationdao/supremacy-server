@@ -2,6 +2,7 @@ package comms
 
 import (
 	"fmt"
+	"github.com/kevinms/leakybucket-go"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -100,8 +101,14 @@ type Asset1155LockToSupremacyReq struct {
 	TransferEventID int64  `json:"transfer_event_id"`
 }
 
+var TransferBucket = leakybucket.NewCollector(0.5, 1, true)
+
 // KeycardTransferToSupremacyHandler transfer keycard to supremacy
 func (s *S) KeycardTransferToSupremacyHandler(req Asset1155LockToSupremacyReq, resp *AssetLockToSupremacyResp) error {
+	b := TransferBucket.Add(fmt.Sprintf("%s_%d", req.OwnerID, req.TokenID), 1)
+	if b == 0 {
+		return terror.Error(fmt.Errorf("too many requests"), "Too many request made for transfer")
+	}
 	asset, err := db.CreateOrGetKeycard(req.OwnerID, req.TokenID)
 	if err != nil {
 		return terror.Error(err, "Failed to create or get player keycard")
@@ -131,6 +138,10 @@ type Asset1155FromSupremacyResp struct {
 
 // KeycardTransferToXsynHandler transfer keycard to xsyn
 func (s *S) KeycardTransferToXsynHandler(req Asset1155LockToSupremacyReq, resp *Asset1155FromSupremacyResp) error {
+	b := TransferBucket.Add(fmt.Sprintf("%s_%d", req.OwnerID, req.TokenID), 1)
+	if b == 0 {
+		return terror.Error(fmt.Errorf("too many requests"), "Too many request made for transfer")
+	}
 	asset, err := boiler.PlayerKeycards(
 		boiler.PlayerKeycardWhere.PlayerID.EQ(req.OwnerID),
 		qm.InnerJoin(
