@@ -391,6 +391,7 @@ ALTER TABLE blueprint_chassis
     ADD COLUMN tier            TEXT       NOT NULL DEFAULT 'MEGA',
     ADD COLUMN chassis_skin_id UUID REFERENCES blueprint_chassis_skin (id); -- this column is used temp and gets removed.
 
+
 UPDATE blueprint_chassis c
 SET model_id = (SELECT id
                 FROM mech_model cm

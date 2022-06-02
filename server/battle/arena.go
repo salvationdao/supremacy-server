@@ -954,7 +954,7 @@ func (arena *Arena) start() {
 			switch msg.BattleCommand {
 			case "BATTLE:MAP_DETAILS":
 				var dataPayload *MapDetailsPayload
-				if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
+				if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
 					gamelog.L.Warn().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal battle message payload")
 					continue
 				}
@@ -964,7 +964,7 @@ func (arena *Arena) start() {
 
 			case "BATTLE:START":
 				var dataPayload *BattleStartPayload
-				if err := json.Unmarshal([]byte(msg.Payload), &dataPayload); err != nil {
+				if err := json.Unmarshal(msg.Payload, &dataPayload); err != nil {
 					gamelog.L.Warn().Str("msg", string(payload)).Err(err).Msg("unable to unmarshal battle message payload")
 					continue
 				}
@@ -1077,7 +1077,7 @@ func (arena *Arena) beginBattle() {
 		BattleID: battleID,
 		Battle:   battle,
 		inserted: inserted,
-		stage:    atomic.NewInt32(BattleStagStart),
+		stage:    atomic.NewInt32(BattleStageStart),
 		users: usersMap{
 			m: make(map[uuid.UUID]*BattleUser),
 		},
