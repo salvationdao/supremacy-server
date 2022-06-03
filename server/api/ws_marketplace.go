@@ -456,7 +456,6 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 			Msg("unable to get player's keycard")
 		return terror.Error(err, errMsg)
 	}
-
 	numKeycardsSelling, err := db.MarketplaceCountKeycards(req.Payload.ItemID)
 	if err != nil {
 		gamelog.L.Error().

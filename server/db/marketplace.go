@@ -544,7 +544,19 @@ func MarketplaceKeycardSaleCreate(
 		return nil, terror.Error(err)
 	}
 	output := &server.MarketplaceKeycardSaleItem{
-		ItemKeycardSale: *obj,
+		ID:             obj.ID,
+		FactionID:      obj.FactionID,
+		ItemID:         obj.ItemID,
+		ListingFeeTXID: obj.ListingFeeTXID,
+		OwnerID:        obj.OwnerID,
+		BuyoutPrice:    obj.BuyoutPrice,
+		EndAt:          obj.EndAt,
+		SoldAt:         obj.SoldAt,
+		SoldFor:        obj.SoldFor,
+		SoldTXID:       obj.SoldTXID,
+		DeletedAt:      obj.DeletedAt,
+		UpdatedAt:      obj.UpdatedAt,
+		CreatedAt:      obj.CreatedAt,
 	}
 	return output, nil
 }
