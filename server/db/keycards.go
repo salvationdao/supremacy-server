@@ -38,6 +38,7 @@ var keycardQueryMods = []qm.QueryMod{
 			qm.Rels(boiler.TableNames.PlayerKeycards, boiler.PlayerKeycardColumns.BlueprintKeycardID),
 		),
 	),
+	boiler.PlayerKeycardWhere.Count.GT(0),
 }
 
 func PlayerKeycard(id uuid.UUID) (*server.AssetKeycard, error) {
@@ -78,7 +79,7 @@ func PlayerKeycardList(
 		return 0, nil, terror.Error(fmt.Errorf("invalid sort direction"))
 	}
 
-	queryMods := append(keycardQueryMods, boiler.PlayerKeycardWhere.Count.GT(0))
+	queryMods := keycardQueryMods
 
 	// Filters
 	if filter != nil {
