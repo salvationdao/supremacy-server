@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"fmt"
-	"github.com/volatiletech/null/v8"
 	"net"
 	"net/http"
 	"server"
@@ -16,6 +15,8 @@ import (
 	"server/player_abilities"
 	"server/xsyn_rpcclient"
 	"time"
+
+	"github.com/volatiletech/null/v8"
 
 	DatadogTracer "github.com/ninja-syndicate/hub/ext/datadog"
 
@@ -158,8 +159,9 @@ func NewAPI(
 	sc := NewStreamController(api)
 	pc := NewPlayerController(api)
 	cc := NewChatController(api)
-	mc := NewMarketplaceController(api)
+	ssc := NewStoreController(api)
 	_ = NewBattleController(api)
+	mc := NewMarketplaceController(api)
 	_ = NewPlayerAbilitiesController(api)
 	_ = NewPlayerAssetsController(api)
 
@@ -244,6 +246,7 @@ func NewAPI(
 
 				// subscription from battle
 				s.WS("/queue", battle.WSQueueStatusSubscribe, server.MustSecureFaction(battleArenaClient.QueueStatusSubscribeHandler))
+				s.WS("/crate/{crate_id}", HubKeyMysteryCrateSubscribe, server.MustSecureFaction(ssc.MysteryCrateSubscribeHandler))
 			}))
 
 			// handle abilities ws

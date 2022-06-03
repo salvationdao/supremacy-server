@@ -38,7 +38,7 @@ func InsertNewPowerCore(ownerID uuid.UUID, ec *server.BlueprintPowerCore) (*serv
 		return nil, terror.Error(err)
 	}
 
-	err = InsertNewCollectionItem(tx,
+	_, err = InsertNewCollectionItem(tx,
 		ec.Collection,
 		boiler.ItemTypePowerCore,
 		newPowerCore.ID,

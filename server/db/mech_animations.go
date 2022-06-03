@@ -30,7 +30,7 @@ func InsertNewMechAnimation(ownerID uuid.UUID, animationBlueprint *server.Bluepr
 		return nil, terror.Error(err)
 	}
 
-	err = InsertNewCollectionItem(tx,
+	_, err = InsertNewCollectionItem(tx,
 		animationBlueprint.Collection,
 		boiler.ItemTypeMechAnimation,
 		newAnimation.ID,

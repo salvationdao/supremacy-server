@@ -40,7 +40,7 @@ func InsertNewMechSkin(ownerID uuid.UUID, skin *server.BlueprintMechSkin) (*serv
 		return nil, terror.Error(err)
 	}
 
-	err = InsertNewCollectionItem(tx,
+	_, err = InsertNewCollectionItem(tx,
 		skin.Collection,
 		boiler.ItemTypeMechSkin,
 		newSkin.ID,

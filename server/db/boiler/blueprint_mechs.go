@@ -27,7 +27,6 @@ type BlueprintMech struct {
 	BrandID          string    `boiler:"brand_id" boil:"brand_id" json:"brand_id" toml:"brand_id" yaml:"brand_id"`
 	Label            string    `boiler:"label" boil:"label" json:"label" toml:"label" yaml:"label"`
 	Slug             string    `boiler:"slug" boil:"slug" json:"slug" toml:"slug" yaml:"slug"`
-	Skin             string    `boiler:"skin" boil:"skin" json:"skin" toml:"skin" yaml:"skin"`
 	WeaponHardpoints int       `boiler:"weapon_hardpoints" boil:"weapon_hardpoints" json:"weapon_hardpoints" toml:"weapon_hardpoints" yaml:"weapon_hardpoints"`
 	UtilitySlots     int       `boiler:"utility_slots" boil:"utility_slots" json:"utility_slots" toml:"utility_slots" yaml:"utility_slots"`
 	Speed            int       `boiler:"speed" boil:"speed" json:"speed" toml:"speed" yaml:"speed"`
@@ -49,7 +48,6 @@ var BlueprintMechColumns = struct {
 	BrandID          string
 	Label            string
 	Slug             string
-	Skin             string
 	WeaponHardpoints string
 	UtilitySlots     string
 	Speed            string
@@ -66,7 +64,6 @@ var BlueprintMechColumns = struct {
 	BrandID:          "brand_id",
 	Label:            "label",
 	Slug:             "slug",
-	Skin:             "skin",
 	WeaponHardpoints: "weapon_hardpoints",
 	UtilitySlots:     "utility_slots",
 	Speed:            "speed",
@@ -85,7 +82,6 @@ var BlueprintMechTableColumns = struct {
 	BrandID          string
 	Label            string
 	Slug             string
-	Skin             string
 	WeaponHardpoints string
 	UtilitySlots     string
 	Speed            string
@@ -102,7 +98,6 @@ var BlueprintMechTableColumns = struct {
 	BrandID:          "blueprint_mechs.brand_id",
 	Label:            "blueprint_mechs.label",
 	Slug:             "blueprint_mechs.slug",
-	Skin:             "blueprint_mechs.skin",
 	WeaponHardpoints: "blueprint_mechs.weapon_hardpoints",
 	UtilitySlots:     "blueprint_mechs.utility_slots",
 	Speed:            "blueprint_mechs.speed",
@@ -123,7 +118,6 @@ var BlueprintMechWhere = struct {
 	BrandID          whereHelperstring
 	Label            whereHelperstring
 	Slug             whereHelperstring
-	Skin             whereHelperstring
 	WeaponHardpoints whereHelperint
 	UtilitySlots     whereHelperint
 	Speed            whereHelperint
@@ -140,7 +134,6 @@ var BlueprintMechWhere = struct {
 	BrandID:          whereHelperstring{field: "\"blueprint_mechs\".\"brand_id\""},
 	Label:            whereHelperstring{field: "\"blueprint_mechs\".\"label\""},
 	Slug:             whereHelperstring{field: "\"blueprint_mechs\".\"slug\""},
-	Skin:             whereHelperstring{field: "\"blueprint_mechs\".\"skin\""},
 	WeaponHardpoints: whereHelperint{field: "\"blueprint_mechs\".\"weapon_hardpoints\""},
 	UtilitySlots:     whereHelperint{field: "\"blueprint_mechs\".\"utility_slots\""},
 	Speed:            whereHelperint{field: "\"blueprint_mechs\".\"speed\""},
@@ -184,8 +177,8 @@ func (*blueprintMechR) NewStruct() *blueprintMechR {
 type blueprintMechL struct{}
 
 var (
-	blueprintMechAllColumns            = []string{"id", "brand_id", "label", "slug", "skin", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "deleted_at", "updated_at", "created_at", "model_id", "collection", "power_core_size", "tier"}
-	blueprintMechColumnsWithoutDefault = []string{"brand_id", "label", "slug", "skin", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "model_id"}
+	blueprintMechAllColumns            = []string{"id", "brand_id", "label", "slug", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "deleted_at", "updated_at", "created_at", "model_id", "collection", "power_core_size", "tier"}
+	blueprintMechColumnsWithoutDefault = []string{"brand_id", "label", "slug", "weapon_hardpoints", "utility_slots", "speed", "max_hitpoints", "model_id"}
 	blueprintMechColumnsWithDefault    = []string{"id", "deleted_at", "updated_at", "created_at", "collection", "power_core_size", "tier"}
 	blueprintMechPrimaryKeyColumns     = []string{"id"}
 	blueprintMechGeneratedColumns      = []string{}
@@ -457,7 +450,7 @@ func (o *BlueprintMech) Model(mods ...qm.QueryMod) mechModelQuery {
 	queryMods = append(queryMods, mods...)
 
 	query := MechModels(queryMods...)
-	queries.SetFrom(query.Query, "\"mech_model\"")
+	queries.SetFrom(query.Query, "\"mech_models\"")
 
 	return query
 }
@@ -646,8 +639,8 @@ func (blueprintMechL) LoadModel(e boil.Executor, singular bool, maybeBlueprintMe
 	}
 
 	query := NewQuery(
-		qm.From(`mech_model`),
-		qm.WhereIn(`mech_model.id in ?`, args...),
+		qm.From(`mech_models`),
+		qm.WhereIn(`mech_models.id in ?`, args...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -664,10 +657,10 @@ func (blueprintMechL) LoadModel(e boil.Executor, singular bool, maybeBlueprintMe
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results of eager load for mech_model")
+		return errors.Wrap(err, "failed to close results of eager load for mech_models")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mech_model")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for mech_models")
 	}
 
 	if len(blueprintMechAfterSelectHooks) != 0 {
