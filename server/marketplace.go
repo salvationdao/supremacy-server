@@ -28,7 +28,7 @@ type MarketplaceSaleItemMech struct {
 }
 
 type MarketplaceKeycardSaleItem struct {
-	*boiler.ItemKeycardSale
-	Owner      *boiler.Player         `json:"owner"`
-	Blueprints *AssetKeycardBlueprint `json:"blueprints"`
+	boiler.ItemKeycardSale `boil:",bind"`
+	Owner                  MarketplaceSaleItemOwner `json:"owner,omitempty" boil:",bind"`
+	Blueprints             AssetKeycardBlueprint    `json:"blueprints,omitempty" boil:",bind"`
 }

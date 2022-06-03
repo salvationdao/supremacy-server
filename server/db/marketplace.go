@@ -65,6 +65,23 @@ var itemSaleQueryMods = []qm.QueryMod{
 }
 
 var itemKeycardSaleQueryMods = []qm.QueryMod{
+	qm.Select(
+		`item_sales.*.
+		players.id AS "players.id",
+		players.username AS "players.username",
+		players.public_address AS "players.public_address",
+		players.gid AS "players.gid,
+		blueprint_keycards.id AS "blueprint_keycards.id",
+		blueprint_keycards.label AS "blueprint_keycards.label",
+		blueprint_keycards.description AS "blueprint_keycards.description",
+		blueprint_keycards.collection AS "blueprint_keycards.collection",
+		blueprint_keycards.keycard_token_id AS "blueprint_keycards.keycard_token_id",
+		blueprint_keycards.image_url AS "blueprint_keycards.image_url",
+		blueprint_keycards.animation_url AS "blueprint_keycards.animation_url",
+		blueprint_keycards.keycard_group AS "blueprint_keycards.keycard_group",
+		blueprint_keycards.syndicate AS "blueprint_keycards.syndicate",
+		blueprint_keycards.created_at AS "blueprint_keycards.created_at"`,
+	),
 	qm.InnerJoin(
 		fmt.Sprintf(
 			"%s ON %s = %s",
@@ -81,7 +98,14 @@ var itemKeycardSaleQueryMods = []qm.QueryMod{
 			qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.ItemID),
 		),
 	),
-	qm.Load(qm.Rels(boiler.ItemKeycardSaleRels.Item, boiler.PlayerKeycardRels.BlueprintKeycard)),
+	qm.InnerJoin(
+		fmt.Sprintf(
+			"%s ON %s = %s",
+			boiler.TableNames.Players,
+			qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.ID),
+			qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.OwnerID),
+		),
+	),
 }
 
 // MarketplaceItemSale gets a specific item sale.
@@ -101,34 +125,15 @@ func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
 
 // MarketplaceItemKeycardSale gets a specific keycard item sale.
 func MarketplaceItemKeycardSale(id uuid.UUID) (*server.MarketplaceKeycardSaleItem, error) {
-	item, err := boiler.ItemKeycardSales(
+	output := &server.MarketplaceKeycardSaleItem{}
+	err := boiler.ItemKeycardSales(
 		append(
 			itemSaleQueryMods,
 			boiler.ItemKeycardSaleWhere.ID.EQ(id.String()),
 		)...,
-	).One(gamedb.StdConn)
+	).Bind(nil, gamedb.StdConn, &output)
 	if err != nil {
 		return nil, terror.Error(err)
-	}
-
-	// Get sale item details and the item for sale
-	output := &server.MarketplaceKeycardSaleItem{
-		ItemKeycardSale: item,
-		Owner:           item.R.Owner,
-	}
-	if item.R != nil && item.R.Item != nil && item.R.Item.R != nil && item.R.Item.R.BlueprintKeycard != nil {
-		output.Blueprints = &server.AssetKeycardBlueprint{
-			ID:             item.R.Item.R.BlueprintKeycard.ID,
-			Label:          item.R.Item.R.BlueprintKeycard.Label,
-			Description:    item.R.Item.R.BlueprintKeycard.Description,
-			Collection:     item.R.Item.R.BlueprintKeycard.Collection,
-			KeycardTokenID: item.R.Item.R.BlueprintKeycard.KeycardTokenID,
-			ImageURL:       item.R.Item.R.BlueprintKeycard.ImageURL,
-			AnimationURL:   item.R.Item.R.BlueprintKeycard.AnimationURL,
-			KeycardGroup:   item.R.Item.R.BlueprintKeycard.KeycardGroup,
-			Syndicate:      item.R.Item.R.BlueprintKeycard.Syndicate,
-			CreatedAt:      item.R.Item.R.BlueprintKeycard.CreatedAt,
-		}
 	}
 	return output, nil
 }
@@ -269,35 +274,12 @@ func MarketplaceItemKeycardSaleList(search string, filter *ListFilterRequest, ex
 		queryMods = append(queryMods, qm.Limit(pageSize), qm.Offset(offset))
 	}
 
-	itemSales, err := boiler.ItemKeycardSales(queryMods...).All(gamedb.StdConn)
+	records := []*server.MarketplaceKeycardSaleItem{}
+	err = boiler.ItemKeycardSales(queryMods...).Bind(nil, gamedb.StdConn, &records)
 	if err != nil {
 		return 0, nil, terror.Error(err)
 	}
 
-	// Load in related items
-	records := []*server.MarketplaceKeycardSaleItem{}
-	for _, row := range itemSales {
-		item := &server.MarketplaceKeycardSaleItem{
-			ItemKeycardSale: row,
-			Owner:           row.R.Owner,
-		}
-		if item.R != nil && item.R.Item != nil && item.R.Item.R != nil && item.R.Item.R.BlueprintKeycard != nil {
-			item.Blueprints = &server.AssetKeycardBlueprint{
-				ID:             item.R.Item.R.BlueprintKeycard.ID,
-				Label:          item.R.Item.R.BlueprintKeycard.Label,
-				Description:    item.R.Item.R.BlueprintKeycard.Description,
-				Collection:     item.R.Item.R.BlueprintKeycard.Collection,
-				KeycardTokenID: item.R.Item.R.BlueprintKeycard.KeycardTokenID,
-				ImageURL:       item.R.Item.R.BlueprintKeycard.ImageURL,
-				AnimationURL:   item.R.Item.R.BlueprintKeycard.AnimationURL,
-				KeycardGroup:   item.R.Item.R.BlueprintKeycard.KeycardGroup,
-				Syndicate:      item.R.Item.R.BlueprintKeycard.Syndicate,
-				CreatedAt:      item.R.Item.R.BlueprintKeycard.CreatedAt,
-			}
-		}
-
-		records = append(records, item)
-	}
 	return total, records, nil
 }
 
@@ -505,7 +487,7 @@ func MarketplaceKeycardSaleCreate(
 		return nil, terror.Error(err)
 	}
 	output := &server.MarketplaceKeycardSaleItem{
-		ItemKeycardSale: obj,
+		ItemKeycardSale: *obj,
 	}
 	return output, nil
 }
