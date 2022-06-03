@@ -78,7 +78,7 @@ func PlayerKeycardList(
 		return 0, nil, terror.Error(fmt.Errorf("invalid sort direction"))
 	}
 
-	queryMods := keycardQueryMods
+	queryMods := append(keycardQueryMods, boiler.PlayerKeycardWhere.Count.GT(0))
 
 	// Filters
 	if filter != nil {
