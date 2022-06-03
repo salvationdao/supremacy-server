@@ -21,13 +21,13 @@ CREATE TABLE storefront_mystery_crates
 
 CREATE TABLE mystery_crate
 (
-    id                 UUID PRIMARY KEY         DEFAULT gen_random_uuid(),
-    type               CRATE_TYPE_ENUM NOT NULL,
-    faction_id         UUID            NOT NULL REFERENCES factions (id),
-    label              TEXT            NOT NULL,
-    opened             BOOLEAN         NOT NULL DEFAULT FALSE,
-    locked_until       TIMESTAMPTZ     NOT NULL DEFAULT NOW() + INTERVAL '1' YEAR,
-    purchased          BOOLEAN         NOT NULL DEFAULT FALSE,
+    id                 UUID PRIMARY KEY     DEFAULT gen_random_uuid(),
+    type               CRATE_TYPE  NOT NULL,
+    faction_id         UUID        NOT NULL REFERENCES factions (id),
+    label              TEXT        NOT NULL,
+    opened             BOOLEAN     NOT NULL DEFAULT FALSE,
+    locked_until       TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '1' YEAR,
+    purchased          BOOLEAN     NOT NULL DEFAULT FALSE,
     image_url          TEXT,
     card_animation_url TEXT,
     avatar_url         TEXT,
@@ -37,8 +37,8 @@ CREATE TABLE mystery_crate
     youtube_url        TEXT,
 
     deleted_at         TIMESTAMPTZ,
-    updated_at         TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
-    created_at         TIMESTAMPTZ     NOT NULL DEFAULT NOW()
+    updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE mystery_crate_blueprints
@@ -92,13 +92,13 @@ VALUES ((SELECT id FROM factions WHERE label = 'Red Mountain Offworld Mining Cor
 --Insert into weapon models
 -- looping through common weapons shared between factions
 
-DROP FUNCTION IF EXISTS insert_weapon_model(weapon TEXT, faction record);
-CREATE FUNCTION insert_weapon_model(weapon TEXT, faction record) returns void
-    language plpgsql as
+DROP FUNCTION IF EXISTS insert_weapon_model(weapon TEXT, faction RECORD);
+CREATE FUNCTION insert_weapon_model(weapon TEXT, faction RECORD) RETURNS VOID
+    LANGUAGE plpgsql AS
 $$
 BEGIN
     INSERT INTO weapon_models (label, faction_id, weapon_type, brand_id)
-    VALUES (weapon, faction.id, weapon::weapon_type,
+    VALUES (weapon, faction.id, weapon::WEAPON_TYPE,
             CASE
                 WHEN faction.label = 'Boston Cybernetics' THEN
                         (SELECT id FROM brands WHERE label = 'Archon Miltech')
@@ -107,7 +107,7 @@ BEGIN
                 WHEN faction.label = 'Red Mountain Offworld Mining Corporation' THEN
                         (SELECT id FROM brands WHERE label = 'Pyrotronics')
                 END);
-end;
+END;
 $$;
 
 DO
@@ -647,9 +647,9 @@ $$
 $$;
 
 -- seeding crate blueprints
-DROP FUNCTION IF EXISTS insert_mech_into_crate(core_size TEXT, mechCrate_id UUID, faction record);
-CREATE FUNCTION insert_mech_into_crate(core_size TEXT, mechCrate_id UUID, faction record) returns void
-    language plpgsql as
+DROP FUNCTION IF EXISTS insert_mech_into_crate(core_size TEXT, mechCrate_id UUID, faction RECORD);
+CREATE FUNCTION insert_mech_into_crate(core_size TEXT, mechCrate_id UUID, faction RECORD) RETURNS VOID
+    LANGUAGE plpgsql AS
 $$
 BEGIN
     INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
@@ -665,49 +665,49 @@ BEGIN
                                              WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
                                                  THEN (SELECT id FROM brands WHERE label = 'Unified Martian Corporation')
                                              END));
-end;
+END;
 $$;
 
-DROP FUNCTION IF EXISTS insert_mech_skin_into_crate(i integer, mechCrate_id UUID, mechType TEXT, amount_of_type numeric,
-                                                    previous_crates numeric, faction record);
-CREATE FUNCTION insert_mech_skin_into_crate(i integer, mechCrate_id UUID, mechType TEXT, amount_of_type numeric,
-                                            previous_crates numeric, faction record) returns void
-    language plpgsql as
+DROP FUNCTION IF EXISTS insert_mech_skin_into_crate(i INTEGER, mechCrate_id UUID, mechType TEXT, amount_of_type NUMERIC,
+                                                    previous_crates NUMERIC, faction RECORD);
+CREATE FUNCTION insert_mech_skin_into_crate(i INTEGER, mechCrate_id UUID, mechType TEXT, amount_of_type NUMERIC,
+                                            previous_crates NUMERIC, faction RECORD) RETURNS VOID
+    LANGUAGE plpgsql AS
 $$
 BEGIN
 
     INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
     VALUES (mechCrate_id, 'MECH_SKIN', (SELECT id
                                         FROM blueprint_mech_skin
-                                        WHERE mech_type = mechType::mech_type
+                                        WHERE mech_type = mechType::MECH_TYPE
                                           AND blueprint_mech_skin.mech_model =
                                               CASE
                                                   WHEN faction.label = 'Boston Cybernetics'
                                                       THEN (SELECT id
                                                             FROM mech_models
-                                                            WHERE label = concat('BC ', initcap(mechType)))
+                                                            WHERE label = CONCAT('BC ', INITCAP(mechType)))
                                                   WHEN faction.label = 'Zaibatsu Heavy Industries'
                                                       THEN (SELECT id
                                                             FROM mech_models
-                                                            WHERE label = concat('ZHI ', initcap(mechType)))
+                                                            WHERE label = CONCAT('ZHI ', INITCAP(mechType)))
                                                   WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
                                                       THEN (SELECT id
                                                             FROM mech_models
-                                                            WHERE label = concat('RMOMC ', initcap(mechType)))
+                                                            WHERE label = CONCAT('RMOMC ', INITCAP(mechType)))
                                                   END
                                           AND label = get_skin_label_rarity(i, 'MECH', amount_of_type, previous_crates,
                                                                             faction)));
-end;
+END;
 $$;
 
-DROP FUNCTION IF EXISTS get_skin_label_rarity(i integer, type TEXT, amount_of_type numeric, previous_crates numeric,
-                                              faction record);
-CREATE FUNCTION get_skin_label_rarity(i integer, type TEXT, amount_of_type numeric, previous_crates numeric,
-                                      faction record) returns TEXT
-    language plpgsql as
+DROP FUNCTION IF EXISTS get_skin_label_rarity(i INTEGER, type TEXT, amount_of_type NUMERIC, previous_crates NUMERIC,
+                                              faction RECORD);
+CREATE FUNCTION get_skin_label_rarity(i INTEGER, type TEXT, amount_of_type NUMERIC, previous_crates NUMERIC,
+                                      faction RECORD) RETURNS TEXT
+    LANGUAGE plpgsql AS
 $$
 BEGIN
-    return CASE
+    RETURN CASE
         --30% default skin
                WHEN i <= ((.30 * amount_of_type) + previous_crates)
                    THEN
@@ -772,40 +772,40 @@ BEGIN
                            THEN 'Molten'
                        END
         END;
-end;
+END;
 $$;
 
-DROP FUNCTION IF EXISTS insert_weapon_skin_into_crate(i integer, weaponCrate_id UUID, weaponType TEXT,
-                                                      amount_of_type numeric,
-                                                      previous_crates numeric, type TEXT, skin_label TEXT,
-                                                      faction record);
-CREATE FUNCTION insert_weapon_skin_into_crate(i integer, weaponCrate_id UUID, weaponType TEXT,
-                                              amount_of_type numeric,
-                                              previous_crates numeric, type TEXT, skin_label TEXT,
-                                              faction record) returns void
-    language plpgsql as
+DROP FUNCTION IF EXISTS insert_weapon_skin_into_crate(i INTEGER, weaponCrate_id UUID, weaponType TEXT,
+                                                      amount_of_type NUMERIC,
+                                                      previous_crates NUMERIC, type TEXT, skin_label TEXT,
+                                                      faction RECORD);
+CREATE FUNCTION insert_weapon_skin_into_crate(i INTEGER, weaponCrate_id UUID, weaponType TEXT,
+                                              amount_of_type NUMERIC,
+                                              previous_crates NUMERIC, type TEXT, skin_label TEXT,
+                                              faction RECORD) RETURNS VOID
+    LANGUAGE plpgsql AS
 $$
 BEGIN
     INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
     VALUES (weaponCrate_id, 'WEAPON_SKIN', (SELECT id
                                             FROM blueprint_weapon_skin
-                                            WHERE weapon_type = weaponType::weapon_type
+                                            WHERE weapon_type = weaponType::WEAPON_TYPE
                                               AND blueprint_weapon_skin.weapon_model_id =
                                                   CASE
                                                       WHEN faction.label = 'Boston Cybernetics'
                                                           THEN (SELECT id
                                                                 FROM weapon_models
-                                                                WHERE weapon_type = weaponType::weapon_type
+                                                                WHERE weapon_type = weaponType::WEAPON_TYPE
                                                                   AND brand_id = (SELECT id FROM brands WHERE label = 'Archon Miltech'))
                                                       WHEN faction.label = 'Zaibatsu Heavy Industries'
                                                           THEN (SELECT id
                                                                 FROM weapon_models
-                                                                WHERE weapon_type = weaponType::weapon_type
+                                                                WHERE weapon_type = weaponType::WEAPON_TYPE
                                                                   AND brand_id = (SELECT id FROM brands WHERE label = 'Warsui'))
                                                       WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
                                                           THEN (SELECT id
                                                                 FROM weapon_models
-                                                                WHERE weapon_type = weaponType::weapon_type
+                                                                WHERE weapon_type = weaponType::WEAPON_TYPE
                                                                   AND brand_id = (SELECT id FROM brands WHERE label = 'Pyrotronics'))
                                                       END
                                               AND label =
@@ -818,18 +818,18 @@ BEGIN
                                                       END
 --
     ));
-end;
+END;
 $$;
 
-DROP FUNCTION IF EXISTS insert_weapon_into_crate(crate_id UUID, weaponType TEXT, faction record);
-CREATE FUNCTION insert_weapon_into_crate(crate_id UUID, weaponType TEXT, faction record) returns void
-    language plpgsql as
+DROP FUNCTION IF EXISTS insert_weapon_into_crate(crate_id UUID, weaponType TEXT, faction RECORD);
+CREATE FUNCTION insert_weapon_into_crate(crate_id UUID, weaponType TEXT, faction RECORD) RETURNS VOID
+    LANGUAGE plpgsql AS
 $$
 BEGIN
     INSERT INTO mystery_crate_blueprints (mystery_crate_id, blueprint_type, blueprint_id)
     VALUES (crate_id, 'WEAPON', (SELECT id
                                  FROM blueprint_weapons
-                                 WHERE weapon_type = weaponType::weapon_type
+                                 WHERE weapon_type = weaponType::WEAPON_TYPE
                                    AND brand_id =
                                        CASE
                                            WHEN faction.label = 'Boston Cybernetics'
@@ -839,16 +839,16 @@ BEGIN
                                            WHEN faction.label = 'Red Mountain Offworld Mining Corporation'
                                                THEN (SELECT id FROM brands WHERE label = 'Pyrotronics')
                                            END));
-end;
+END;
 $$;
 --
-DROP FUNCTION IF EXISTS insert_weapons_into_mech_crate(i integer, base_unit numeric, previous_amount numeric,
+DROP FUNCTION IF EXISTS insert_weapons_into_mech_crate(i INTEGER, base_unit NUMERIC, previous_amount NUMERIC,
                                                        crate_id UUID,
-                                                       weapon_skin_label TEXT, faction record);
-CREATE FUNCTION insert_weapons_into_mech_crate(i integer, base_unit numeric, previous_amount numeric,
+                                                       weapon_skin_label TEXT, faction RECORD);
+CREATE FUNCTION insert_weapons_into_mech_crate(i INTEGER, base_unit NUMERIC, previous_amount NUMERIC,
                                                crate_id UUID,
-                                               weapon_skin_label TEXT, faction record) returns void
-    language plpgsql as
+                                               weapon_skin_label TEXT, faction RECORD) RETURNS VOID
+    LANGUAGE plpgsql AS
 $$
 BEGIN
     CASE
@@ -912,16 +912,16 @@ BEGIN
                                                               weapon_skin_label,
                                                               faction);
         END CASE;
-end;
+END;
 $$;
 
-DROP FUNCTION IF EXISTS insert_second_weapon_into_mech_crate(i integer, base_unit numeric, previous_amount numeric,
+DROP FUNCTION IF EXISTS insert_second_weapon_into_mech_crate(i INTEGER, base_unit NUMERIC, previous_amount NUMERIC,
                                                              crate_id UUID,
-                                                             weapon_skin_label TEXT, faction record);
-CREATE FUNCTION insert_second_weapon_into_mech_crate(i integer, base_unit numeric, previous_amount numeric,
+                                                             weapon_skin_label TEXT, faction RECORD);
+CREATE FUNCTION insert_second_weapon_into_mech_crate(i INTEGER, base_unit NUMERIC, previous_amount NUMERIC,
                                                      crate_id UUID,
-                                                     weapon_skin_label TEXT, faction record) returns void
-    language plpgsql as
+                                                     weapon_skin_label TEXT, faction RECORD) RETURNS VOID
+    LANGUAGE plpgsql AS
 $$
 BEGIN
     CASE
@@ -968,7 +968,7 @@ BEGIN
                                                        weapon_skin_label,
                                                        faction);
         END CASE;
-end;
+END;
 $$;
 
 DO
