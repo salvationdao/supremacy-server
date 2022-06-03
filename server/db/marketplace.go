@@ -36,9 +36,9 @@ var itemSaleQueryMods = []qm.QueryMod{
 		item_sales.sold_for AS sold_for,
 		item_sales.sold_by AS sold_by,
 		item_sales.sold_tx_id AS sold_tx_id,
-		item_sales.created_at AS created_at,
 		item_sales.deleted_at AS deleted_at,
 		item_sales.updated_at AS updated_at,
+		item_sales.created_at AS created_at,
 		players.id AS "players.id",
 		players.username AS "players.username",
 		players.public_address AS "players.public_address",
@@ -574,7 +574,7 @@ func ChangeMechOwner(conn boil.Executor, itemSaleID uuid.UUID) error {
 						OR _ci.item_id = _m.power_core_id
 				WHERE _m.id = s.item_id
 			)`
-	_, err := gamedb.StdConn.Exec(q, itemSaleID)
+	_, err := conn.Exec(q, itemSaleID)
 	if err != nil {
 		return terror.Error(err)
 	}
