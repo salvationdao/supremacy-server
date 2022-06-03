@@ -66,11 +66,11 @@ var itemSaleQueryMods = []qm.QueryMod{
 
 var itemKeycardSaleQueryMods = []qm.QueryMod{
 	qm.Select(
-		`item_sales.*.
+		`item_keycard_sales.*,
 		players.id AS "players.id",
 		players.username AS "players.username",
 		players.public_address AS "players.public_address",
-		players.gid AS "players.gid,
+		players.gid AS "players.gid",
 		blueprint_keycards.id AS "blueprint_keycards.id",
 		blueprint_keycards.label AS "blueprint_keycards.label",
 		blueprint_keycards.description AS "blueprint_keycards.description",
@@ -95,7 +95,7 @@ var itemKeycardSaleQueryMods = []qm.QueryMod{
 			"%s ON %s = %s",
 			boiler.TableNames.BlueprintKeycards,
 			qm.Rels(boiler.TableNames.BlueprintKeycards, boiler.BlueprintKeycardColumns.ID),
-			qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.ItemID),
+			qm.Rels(boiler.TableNames.PlayerKeycards, boiler.PlayerKeycardColumns.BlueprintKeycardID),
 		),
 	),
 	qm.InnerJoin(
@@ -257,7 +257,7 @@ func MarketplaceItemKeycardSaleList(search string, filter *ListFilterRequest, ex
 	}
 
 	// Get total rows
-	total, err := boiler.ItemSales(queryMods...).Count(gamedb.StdConn)
+	total, err := boiler.ItemKeycardSales(queryMods...).Count(gamedb.StdConn)
 	if err != nil {
 		return 0, nil, terror.Error(err)
 	}
@@ -266,7 +266,7 @@ func MarketplaceItemKeycardSaleList(search string, filter *ListFilterRequest, ex
 	}
 
 	// Sort
-	orderBy := qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.CreatedAt), sortDir))
+	orderBy := qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.CreatedAt), sortDir))
 	queryMods = append(queryMods, orderBy)
 
 	// Limit/Offset
