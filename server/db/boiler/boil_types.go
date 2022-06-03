@@ -94,6 +94,13 @@ const (
 // Enum values for  are not proper Go identifiers, cannot emit constants
 // Enum values for  are not proper Go identifiers, cannot emit constants
 // Enum values for  are not proper Go identifiers, cannot emit constants
+
+// Enum values for MechType
+const (
+	MechTypeHUMANOID = "HUMANOID"
+	MechTypePLATFORM = "PLATFORM"
+)
+
 // Enum values for  are not proper Go identifiers, cannot emit constants
 // Enum values for  are not proper Go identifiers, cannot emit constants
 
@@ -132,6 +139,7 @@ const (
 	ItemTypeMechSkin      = "mech_skin"
 	ItemTypeMechAnimation = "mech_animation"
 	ItemTypePowerCore     = "power_core"
+	ItemTypeMysteryCrate  = "mystery_crate"
 )
 
 // Enum values for AbilityLevel
@@ -153,12 +161,10 @@ const (
 	MultiplierTypeEnumContribute   = "contribute"
 )
 
-// Enum values for PlayerRankEnum
+// Enum values for CrateType
 const (
-	PlayerRankEnumGENERAL     = "GENERAL"
-	PlayerRankEnumCORPORAL    = "CORPORAL"
-	PlayerRankEnumPRIVATE     = "PRIVATE"
-	PlayerRankEnumNEW_RECRUIT = "NEW_RECRUIT"
+	CrateTypeMECH   = "MECH"
+	CrateTypeWEAPON = "WEAPON"
 )
 
 // Enum values for TemplateItemType
@@ -172,4 +178,12 @@ const (
 	TemplateItemTypePOWER_CORE     = "POWER_CORE"
 	TemplateItemTypeWEAPON_SKIN    = "WEAPON_SKIN"
 	TemplateItemTypePLAYER_ABILITY = "PLAYER_ABILITY"
+)
+
+// Enum values for PlayerRankEnum
+const (
+	PlayerRankEnumGENERAL     = "GENERAL"
+	PlayerRankEnumCORPORAL    = "CORPORAL"
+	PlayerRankEnumPRIVATE     = "PRIVATE"
+	PlayerRankEnumNEW_RECRUIT = "NEW_RECRUIT"
 )
