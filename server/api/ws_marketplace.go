@@ -280,7 +280,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 			Str("user_id", user.ID).
 			Str("item_id", req.Payload.ItemID.String()).
 			Err(err).
-			Msg("Failed to get item (mech).")
+			Msg("Failed to get collection item.")
 		if errors.Is(err, sql.ErrNoRows) {
 			return terror.Error(err, "Item not found.")
 		}
@@ -289,6 +289,21 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 
 	if item.XsynLocked || item.MarketLocked {
 		return terror.Error(fmt.Errorf("item cannot be listed for sale on marketplace"), "Item cannot be listed for sale on Marketplace.")
+	}
+	alreadySelling, err := db.MarketplaceCheckCollectionItem(req.Payload.ItemID)
+	if err != nil {
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("item_id", req.Payload.ItemID.String()).
+			Err(err).
+			Msg("Failed to check if already selling collection item.")
+		if errors.Is(err, sql.ErrNoRows) {
+			return terror.Error(err, "Item not found.")
+		}
+		return terror.Error(err, errMsg)
+	}
+	if alreadySelling {
+		return terror.Error(fmt.Errorf("item is already for sale on marketplace"), "Item is already for sale on Marketplace.")
 	}
 
 	// Process listing fee

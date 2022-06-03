@@ -472,10 +472,11 @@ func MarketplaceSaleItemExists(id uuid.UUID) (bool, error) {
 	return output, nil
 }
 
-// MarketplaceCheckMech checks whether mech is already in marketplace.
-func MarketplaceCheckMech(mechID uuid.UUID) (bool, error) {
+// MarketplaceCheckCollectionItem checks whether collection item is already in marketplace.
+func MarketplaceCheckCollectionItem(mechID uuid.UUID) (bool, error) {
 	output, err := boiler.ItemSales(
 		boiler.ItemSaleWhere.ItemID.EQ(mechID.String()),
+		boiler.ItemSaleWhere.EndAt.GT(time.Now()),
 	).Exists(gamedb.StdConn)
 	if err != nil {
 		return false, terror.Error(err)
