@@ -65,6 +65,14 @@ func (lc *LiveCount) ReadTotal() string {
 	return value
 }
 
+type AbilityConfig struct {
+	FirstBattleAbilityCooldownSecond int
+	BattleAbilityFloorPrice          decimal.Decimal
+	BattleAbilityDropRate            decimal.Decimal
+	FactionAbilityFloorPrice         decimal.Decimal
+	FActionAbilityDropRate           decimal.Decimal
+}
+
 type AbilitiesSystem struct {
 	// faction unique abilities
 	_battle                *Battle
@@ -84,6 +92,11 @@ type AbilitiesSystem struct {
 	end       chan bool
 	endGabs   chan bool
 	liveCount *LiveCount
+
+	contributeMultiplier *UserContributeMultiplier
+
+	abilityConfig *AbilityConfig
+
 	sync.RWMutex
 }
 
@@ -247,10 +260,20 @@ func NewAbilitiesSystem(battle *Battle) *AbilitiesSystem {
 		liveCount: &LiveCount{
 			TotalVotes: decimal.Zero,
 		},
-		end:       make(chan bool, 5),
-		endGabs:   make(chan bool, 5),
-		startedAt: time.Now(),
+		end:                  make(chan bool, 5),
+		endGabs:              make(chan bool, 5),
+		startedAt:            time.Now(),
+		contributeMultiplier: &UserContributeMultiplier{},
+		abilityConfig: &AbilityConfig{
+			FirstBattleAbilityCooldownSecond: db.GetIntWithDefault(db.KeyFirstAbilityCooldown, 5),
+			BattleAbilityFloorPrice:          db.GetDecimalWithDefault(db.KeyAbilityFloorPrice, decimal.New(100, 18)),
+			BattleAbilityDropRate:            db.GetDecimalWithDefault(db.KeyBattleAbilityPriceDropRate, decimal.NewFromFloat(0.97716)),
+			FactionAbilityFloorPrice:         db.GetDecimalWithDefault(db.KeyFactionAbilityFloorPrice, decimal.New(1, 18)),
+			FActionAbilityDropRate:           db.GetDecimalWithDefault(db.KeyFactionAbilityPriceDropRate, decimal.NewFromFloat(0.9977)),
+		},
 	}
+
+	as.contributeMultiplier.value = as.calculateUserContributeMultiplier()
 
 	// broadcast faction unique ability
 	for factionID, ga := range as.factionUniqueAbilities {
@@ -295,8 +318,6 @@ const BattleContributorUpdateKey = "BATTLE:CONTRIBUTOR:UPDATE"
 
 // FactionUniqueAbilityUpdater update ability price every 10 seconds
 func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
-	minPrice := db.GetDecimalWithDefault(db.KeyFactionAbilityFloorPrice, decimal.New(1, 18))
-
 	main_ticker := time.NewTicker(1 * time.Second)
 
 	live_vote_ticker := time.NewTicker(1 * time.Second)
@@ -384,7 +405,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 				if as.battle().stage.Load() == BattleStageStart {
 					for _, ability := range abilities {
 						// update ability price
-						isTriggered := ability.FactionUniqueAbilityPriceUpdate(minPrice)
+						isTriggered := ability.FactionUniqueAbilityPriceUpdate(as.abilityConfig.FactionAbilityFloorPrice, as.abilityConfig.FActionAbilityDropRate)
 						if isTriggered {
 							event := &server.GameAbilityEvent{
 								EventID:             ability.OfferingID,
@@ -448,7 +469,6 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 
 								as.battle().arena.BroadcastGameNotificationWarMachineAbility(gameNotification)
 							}
-
 							// generate new offering id for current ability
 							ability.OfferingID = uuid.Must(uuid.NewV4())
 						}
@@ -692,8 +712,7 @@ func (as *AbilitiesSystem) FactionUniqueAbilityUpdater() {
 }
 
 // FactionUniqueAbilityPriceUpdate update target price on every tick
-func (ga *GameAbility) FactionUniqueAbilityPriceUpdate(minPrice decimal.Decimal) bool {
-	dropRate := db.GetDecimalWithDefault(db.KeyFactionAbilityPriceDropRate, decimal.NewFromFloat(0.9977))
+func (ga *GameAbility) FactionUniqueAbilityPriceUpdate(minPrice decimal.Decimal, dropRate decimal.Decimal) bool {
 	ga.SupsCost = ga.SupsCost.Mul(dropRate).RoundDown(0)
 
 	// if target price hit 1 sup, set it to 1 sup
@@ -770,7 +789,7 @@ func (ga *GameAbility) SupContribution(ppClient *xsyn_rpcclient.XsynXrpcClient, 
 		isAllSyndicates = true
 	}
 
-	multiAmount := as.calculateUserContributeMultiplier(amount)
+	multiAmount := as.GetUserContributeMultiplier(amount)
 
 	battleContrib := &boiler.BattleContribution{
 		BattleID:          battleID,
@@ -801,7 +820,6 @@ func (ga *GameAbility) SupContribution(ppClient *xsyn_rpcclient.XsynXrpcClient, 
 
 	tx, err := gamedb.StdConn.Begin()
 	if err == nil {
-
 		defer tx.Rollback()
 
 		spoil, err := boiler.SpoilsOfWars(qm.Where(`battle_id = ?`, battleID)).One(tx)
@@ -820,7 +838,7 @@ func (ga *GameAbility) SupContribution(ppClient *xsyn_rpcclient.XsynXrpcClient, 
 			}
 		} else {
 			spoil.Amount = spoil.Amount.Add(amount)
-			_, err = spoil.Update(tx, boil.Infer())
+			_, err = spoil.Update(tx, boil.Whitelist(boiler.SpoilsOfWarColumns.Amount))
 			if err != nil {
 				gamelog.L.Error().Err(err).Msg("unable to insert spoil of war")
 			}
@@ -835,10 +853,9 @@ func (ga *GameAbility) SupContribution(ppClient *xsyn_rpcclient.XsynXrpcClient, 
 		gamelog.L.Error().Err(err).Msg("unable to create tx to create spoil of war")
 	}
 
-	// update the current sups if not triggered
-	if !isTriggered {
-		ga.CurrentSups = ga.CurrentSups.Add(amount)
+	ga.CurrentSups = ga.CurrentSups.Add(amount)
 
+	if !isTriggered {
 		// store updated price to db
 		err := db.FactionAbilitiesSupsCostUpdate(ga.ID, ga.SupsCost, ga.CurrentSups)
 		if err != nil {
@@ -860,8 +877,6 @@ const (
 	BribeDurationSecond = 30
 	// LocationSelectDurationSecond the amount of second the winner user can select the location
 	LocationSelectDurationSecond = 15
-	// CooldownDurationSecond the amount of second players have to wait for next bribe phase
-	CooldownDurationSecond = 20
 )
 
 const (
@@ -1044,7 +1059,7 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				}
 				as.BattleAbilityProgressBar()
 
-				multiplier := as.calculateUserContributeMultiplier(decimal.New(1, 18))
+				multiplier := as.SetUserContributeMultiplier()
 
 				if multiplier.GreaterThan(decimal.Zero) {
 					ws.PublishMessage("/public/live_data", ContributorMultiAmount, multiplier)
@@ -1335,7 +1350,6 @@ func (as *AbilitiesSystem) StartGabsAbilityPoolCycle(resume bool) {
 				if abilityTriggered {
 					// generate location select order list
 					as.locationDecidersSet(as.battle().ID, cont.factionID, factionAbility.OfferingID.String(), cont.userID)
-
 					// enter cooldown phase if there is no player to select location
 					if len(as.locationDeciders.list) == 0 {
 						// broadcast no ability
@@ -1415,7 +1429,7 @@ func (as *AbilitiesSystem) SetNewBattleAbility(isFirstAbility bool) (int, error)
 	}
 
 	if isFirstAbility {
-		ba.CooldownDurationSecond = db.GetIntWithDefault(db.KeyFirstAbilityCooldown, 5)
+		ba.CooldownDurationSecond = as.abilityConfig.FirstBattleAbilityCooldownSecond
 	}
 	as.battleAbilityPool.BattleAbility = ba
 
@@ -1490,11 +1504,6 @@ func (as *AbilitiesSystem) locationDecidersSet(battleID string, factionID string
 	}()
 	// set triggered faction id
 	as.battleAbilityPool.TriggeredFactionID.Store(factionID)
-
-	type userSupSpent struct {
-		userID   uuid.UUID
-		supSpent decimal.Decimal
-	}
 
 	playerList, err := db.PlayerFactionContributionList(battleID, factionID, abilityOfferingID)
 	if err != nil {
@@ -1613,18 +1622,14 @@ func (as *AbilitiesSystem) BattleAbilityPriceUpdater() {
 
 	// update price
 	as.battleAbilityPool.Abilities.Range(func(factionID string, ability *GameAbility) bool {
-		// reduce price
-		priceDropRate := db.GetDecimalWithDefault(db.KeyBattleAbilityPriceDropRate, decimal.NewFromFloat(0.97716))
-		abilityFloorPrice := db.GetDecimalWithDefault(db.KeyAbilityFloorPrice, decimal.New(100, 18))
-
 		// cache old sups cost to not trigger the ability
 		oldSupsCost := ability.SupsCost
 
-		ability.SupsCost = ability.SupsCost.Mul(priceDropRate).RoundDown(0)
+		ability.SupsCost = ability.SupsCost.Mul(as.abilityConfig.BattleAbilityDropRate).RoundDown(0)
 
 		// cap minimum price
-		if ability.SupsCost.LessThan(abilityFloorPrice) {
-			ability.SupsCost = abilityFloorPrice
+		if ability.SupsCost.LessThan(as.abilityConfig.BattleAbilityFloorPrice) {
+			ability.SupsCost = as.abilityConfig.BattleAbilityFloorPrice
 		}
 
 		// check ability is triggered and if there is no player vote on current ability
@@ -1862,7 +1867,7 @@ func (as *AbilitiesSystem) BribeGabs(factionID string, userID uuid.UUID, ability
 		return
 	}
 
-	if as.battleAbilityPool.Stage.Phase.Load() != BribeStageBribe {
+	if as.battleAbilityPool == nil || as.battleAbilityPool.Stage == nil || as.battleAbilityPool.Stage.Phase.Load() != BribeStageBribe {
 		gamelog.L.Warn().
 			Int32("current bribing stage", as.battleAbilityPool.Stage.Phase.Load()).
 			Msg("incorrect bribing stage")
@@ -2078,7 +2083,7 @@ func BuildUserDetailWithFaction(userID uuid.UUID) (*UserBrief, error) {
 }
 
 // Formula based off https://www.desmos.com/calculator/vbfa5llasg
-func (as *AbilitiesSystem) calculateUserContributeMultiplier(amount decimal.Decimal) decimal.Decimal {
+func (as *AbilitiesSystem) calculateUserContributeMultiplier() decimal.Decimal {
 	durationSeconds := time.Since(as.startedAt).Seconds()
 
 	maxMultiplier := db.GetDecimalWithDefault(db.KeyContributorMaxMultiplier, decimal.NewFromFloat(3.0))
@@ -2092,8 +2097,31 @@ func (as *AbilitiesSystem) calculateUserContributeMultiplier(amount decimal.Deci
 	x := maxMultiplier.Sub(minMultiplier)
 	y := decimal.NewFromFloat(1.0).Div(decimal.NewFromFloat(pow))
 	z := x.Mul(y)
-	total := z.Add(minMultiplier).Mul(amount.Shift(-18))
+	amount := z.Add(minMultiplier).Mul(decimal.NewFromInt(1))
 
-	return total
+	return amount
+}
 
+type UserContributeMultiplier struct {
+	value decimal.Decimal
+	sync.RWMutex
+}
+
+func (as *AbilitiesSystem) SetUserContributeMultiplier() decimal.Decimal {
+	// calculate the amount outside the lock
+	amount := as.calculateUserContributeMultiplier()
+
+	as.contributeMultiplier.Lock()
+	defer as.contributeMultiplier.Unlock()
+	// set value
+	as.contributeMultiplier.value = amount
+
+	return amount
+}
+
+func (as *AbilitiesSystem) GetUserContributeMultiplier(sups decimal.Decimal) decimal.Decimal {
+	as.contributeMultiplier.RLock()
+	defer as.contributeMultiplier.RUnlock()
+
+	return as.contributeMultiplier.value.Mul(sups.Shift(-18))
 }
