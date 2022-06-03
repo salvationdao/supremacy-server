@@ -600,7 +600,9 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	}
 
 	// update sale item
-	saleItemRecord := saleItem.ItemSale
+	saleItemRecord := &boiler.ItemSale{
+		ID: saleItem.ID,
+	}
 	saleItemRecord.SoldAt = null.TimeFrom(time.Now())
 	saleItemRecord.SoldFor = null.StringFrom(saleItemCost.String())
 	saleItemRecord.SoldTXID = null.StringFrom(txid)
@@ -721,7 +723,9 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 	}
 
 	// update sale item
-	saleItemRecord := saleItem.ItemSale
+	saleItemRecord := &boiler.ItemSale{
+		ID: saleItem.ID,
+	}
 	saleItemRecord.SoldAt = null.TimeFrom(time.Now())
 	saleItemRecord.SoldFor = null.StringFrom(saleItemCost.String())
 	saleItemRecord.SoldTXID = null.StringFrom(txid)

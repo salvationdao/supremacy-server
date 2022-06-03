@@ -2,14 +2,34 @@ package server
 
 import (
 	"server/db/boiler"
+	"time"
 
 	"github.com/volatiletech/null/v8"
 )
 
 type MarketplaceSaleItem struct {
-	boiler.ItemSale `boil:",bind"`
-	Owner           MarketplaceSaleItemOwner `json:"owner,omitempty" boil:",bind"`
-	Mech            MarketplaceSaleItemMech  `json:"mech,omitempty" boil:",bind"`
+	ID                   string                   `json:"id" boil:"id"`
+	FactionID            string                   `json:"faction_id" boil:"faction_id"`
+	ItemID               string                   `json:"item_id" boil:"item_id"`
+	ListingFeeTXID       string                   `json:"listing_fee_tx_id" boil:"listing_fee_tx_id"`
+	OwnerID              string                   `json:"owner_id" boil:"owner_id"`
+	Auction              bool                     `json:"auction" boil:"auction"`
+	AuctionCurrentPrice  null.String              `json:"auction_current_price" boil:"auction_current_price"`
+	AuctionReservedPrice null.String              `json:"auction_reserved_price" boil:"auction_reserved_price"`
+	Buyout               bool                     `json:"buyout" boil:"buyout"`
+	BuyoutPrice          null.String              `json:"buyout_price" boil:"buyout_price"`
+	DutchAuction         bool                     `json:"dutch_auction" boil:"dutch_auction"`
+	DutchAuctionDropRate null.String              `json:"dutch_auction_drop_rate" boil:"dutch_auction_drop_rate"`
+	EndAt                time.Time                `json:"end_at" boil:"end_at"`
+	SoldAt               null.Time                `json:"sold_at" boil:"sold_at"`
+	SoldFor              null.String              `json:"sold_for" boil:"sold_for"`
+	SoldBy               null.String              `json:"sold_by" boil:"sold_by"`
+	SoldTXID             null.String              `json:"sold_tx_id" boil:"sold_tx_id"`
+	DeletedAt            null.Time                `json:"deleted_at" boil:"deleted_at"`
+	UpdatedAt            time.Time                `json:"updated_at" boil:"updated_at"`
+	CreatedAt            time.Time                `json:"created_at" boil:"created_at"`
+	Owner                MarketplaceSaleItemOwner `json:"owner,omitempty" boil:",bind"`
+	Mech                 MarketplaceSaleItemMech  `json:"mech,omitempty" boil:",bind"`
 }
 
 type MarketplaceSaleItemOwner struct {

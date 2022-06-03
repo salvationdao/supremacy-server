@@ -348,7 +348,24 @@ func MarketplaceSaleCreate(
 		return nil, terror.Error(err)
 	}
 	output := &server.MarketplaceSaleItem{
-		ItemSale: *obj,
+		ID:                   obj.ID,
+		FactionID:            obj.FactionID,
+		ItemID:               obj.ItemID,
+		ListingFeeTXID:       obj.ListingFeeTXID,
+		OwnerID:              obj.OwnerID,
+		Auction:              obj.Auction,
+		AuctionCurrentPrice:  obj.AuctionCurrentPrice,
+		AuctionReservedPrice: obj.AuctionReservedPrice,
+		Buyout:               obj.Buyout,
+		BuyoutPrice:          obj.BuyoutPrice,
+		DutchAuction:         obj.DutchAuction,
+		DutchAuctionDropRate: obj.DutchAuctionDropRate,
+		EndAt:                obj.EndAt,
+		SoldAt:               obj.SoldAt,
+		SoldTXID:             obj.SoldTXID,
+		DeletedAt:            obj.DeletedAt,
+		UpdatedAt:            obj.UpdatedAt,
+		CreatedAt:            obj.CreatedAt,
 	}
 	return output, nil
 }
