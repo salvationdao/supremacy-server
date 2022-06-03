@@ -179,6 +179,9 @@ func WeaponFromServer(weapon *server.Weapon) *Weapon {
 }
 
 func PowerCoreFromServer(ec *server.PowerCore) *PowerCore {
+	if ec == nil {
+		return nil
+	}
 	return &PowerCore{
 		ID:           ec.ID,
 		Label:        ec.Label,
