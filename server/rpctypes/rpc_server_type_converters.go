@@ -812,7 +812,7 @@ func ServerMysteryCrateToXsynAsset(mysteryCrate *server.MysteryCrate) *XsynAsset
 		},
 		{
 			TraitType: "Type",
-			Value:     mysteryCrate.Type, // TODO: get mech model name instead
+			Value:     mysteryCrate.Type,
 		},
 	}
 

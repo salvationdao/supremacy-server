@@ -176,7 +176,7 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 
 	//randomly assigning crate to user
 	rand.Seed(time.Now().UnixNano())
-	assignedCrate := availableCrates[rand.Intn(len(availableCrates)-1)]
+	assignedCrate := availableCrates[rand.Intn(len(availableCrates))]
 
 	//update purchased value
 	assignedCrate.Purchased = true
@@ -189,9 +189,9 @@ func (sc *StoreController) PurchaseMysteryCrateHandler(ctx context.Context, user
 
 	c := &boiler.CollectionItem{
 		CollectionSlug:   "supremacy-general",
-		ItemType:         "mystery_crate",
+		ItemType:         boiler.ItemTypeMysteryCrate,
 		ItemID:           assignedCrate.ID,
-		Tier:             "MEGA",
+		Tier:             "",
 		OwnerID:          user.ID,
 		ImageURL:         assignedCrate.ImageURL,
 		AvatarURL:        assignedCrate.AvatarURL,
