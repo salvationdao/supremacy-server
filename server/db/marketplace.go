@@ -476,10 +476,25 @@ func MarketplaceSaleItemExists(id uuid.UUID) (bool, error) {
 func MarketplaceCheckCollectionItem(mechID uuid.UUID) (bool, error) {
 	output, err := boiler.ItemSales(
 		boiler.ItemSaleWhere.ItemID.EQ(mechID.String()),
+		boiler.ItemSaleWhere.SoldAt.IsNull(),
 		boiler.ItemSaleWhere.EndAt.GT(time.Now()),
 	).Exists(gamedb.StdConn)
 	if err != nil {
 		return false, terror.Error(err)
+	}
+	return output, nil
+}
+
+// MarketplaceCountKeycards counts number of player's keycard for sale.
+// This is used to check whether player can sell more.
+func MarketplaceCountKeycards(playerKeycardID uuid.UUID) (int64, error) {
+	output, err := boiler.ItemKeycardSales(
+		boiler.ItemKeycardSaleWhere.ItemID.EQ(playerKeycardID.String()),
+		boiler.ItemKeycardSaleWhere.SoldAt.IsNull(),
+		boiler.ItemKeycardSaleWhere.EndAt.GT(time.Now()),
+	).Count(gamedb.StdConn)
+	if err != nil {
+		return 0, terror.Error(err)
 	}
 	return output, nil
 }

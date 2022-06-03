@@ -442,6 +442,36 @@ func (mp *MarketplaceController) SalesKeycardCreateHandler(ctx context.Context, 
 		return terror.Error(err, errMsg)
 	}
 
+	// Check if can sell any keycards
+	keycard, err := db.PlayerKeycard(req.Payload.ItemID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return terror.Error(err, "Player Keycard not found.")
+	}
+	if err != nil {
+		gamelog.L.Error().
+			Str("player_id", user.ID).
+			Str("faction_id", req.Payload.ItemID.String()).
+			Str("faction_id", user.FactionID.String).
+			Err(err).
+			Msg("unable to get player's keycard")
+		return terror.Error(err, errMsg)
+	}
+
+	numKeycardsSelling, err := db.MarketplaceCountKeycards(req.Payload.ItemID)
+	if err != nil {
+		gamelog.L.Error().
+			Str("player_id", user.ID).
+			Str("faction_id", req.Payload.ItemID.String()).
+			Str("faction_id", user.FactionID.String).
+			Err(err).
+			Msg("unable to check number of keycards in marketplace")
+		return terror.Error(err, errMsg)
+	}
+	if keycard.Count <= numKeycardsSelling {
+		return terror.Error(fmt.Errorf("all keycards are on marketplace"), "Your keycard(s) are already for sale on Marketplace.")
+	}
+
+	// Process fee
 	balance := mp.API.Passport.UserBalanceGet(userID)
 	feePrice := db.GetDecimalWithDefault(db.KeyMarketplaceListingFee, decimal.NewFromInt(5))
 	feePrice = feePrice.Add(db.GetDecimalWithDefault(db.KeyMarketplaceListingBuyoutFee, decimal.NewFromInt(5)))

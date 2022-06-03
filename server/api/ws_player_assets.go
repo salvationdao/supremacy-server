@@ -249,7 +249,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetKeycardListHandler(tx context.Co
 		req.Payload.SortDir = db.SortByDirDesc
 	}
 
-	total, records, err := db.AssetKeycardList(
+	total, records, err := db.PlayerKeycardList(
 		req.Payload.Search,
 		req.Payload.Filter,
 		&user.ID,

@@ -6,11 +6,12 @@ import (
 	"server/db/boiler"
 	"server/gamedb"
 
+	"github.com/gofrs/uuid"
 	"github.com/ninja-software/terror/v2"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
-var KeycardSelectBaseQuery = []qm.QueryMod{
+var keycardQueryMods = []qm.QueryMod{
 	qm.Select(
 		qm.Rels(boiler.TableNames.PlayerKeycards, boiler.PlayerKeycardColumns.ID),
 		qm.Rels(boiler.TableNames.PlayerKeycards, boiler.PlayerKeycardColumns.PlayerID),
@@ -39,7 +40,32 @@ var KeycardSelectBaseQuery = []qm.QueryMod{
 	),
 }
 
-func AssetKeycardList(
+func PlayerKeycard(id uuid.UUID) (*server.AssetKeycard, error) {
+	item := &server.AssetKeycard{}
+	err := boiler.NewQuery(append(keycardQueryMods, boiler.PlayerKeycardWhere.ID.EQ(id.String()))...).QueryRow(gamedb.StdConn).Scan(
+		&item.ID,
+		&item.PlayerID,
+		&item.BlueprintKeycardID,
+		&item.Count,
+		&item.CreatedAt,
+		&item.Blueprints.ID,
+		&item.Blueprints.Label,
+		&item.Blueprints.Description,
+		&item.Blueprints.Collection,
+		&item.Blueprints.KeycardTokenID,
+		&item.Blueprints.ImageURL,
+		&item.Blueprints.AnimationURL,
+		&item.Blueprints.KeycardGroup,
+		&item.Blueprints.Syndicate,
+		&item.Blueprints.CreatedAt,
+	)
+	if err != nil {
+		return nil, terror.Error(err)
+	}
+	return item, nil
+}
+
+func PlayerKeycardList(
 	search string,
 	filter *ListFilterRequest,
 	userID *string,
@@ -52,7 +78,7 @@ func AssetKeycardList(
 		return 0, nil, terror.Error(fmt.Errorf("invalid sort direction"))
 	}
 
-	queryMods := KeycardSelectBaseQuery
+	queryMods := keycardQueryMods
 
 	// Filters
 	if filter != nil {
