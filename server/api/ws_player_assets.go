@@ -16,6 +16,7 @@ import (
 	"github.com/ninja-syndicate/ws"
 	"github.com/rs/zerolog"
 	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 type PlayerAssetsControllerWS struct {
@@ -30,7 +31,7 @@ func NewPlayerAssetsController(api *API) *PlayerAssetsControllerWS {
 	}
 
 	api.SecureUserCommand(HubKeyPlayerAssetMechList, pac.PlayerAssetMechListHandler)
-	api.SecureUserCommand(HubKeyPlayerAssetMechDetail, pac.PlayerAssetMechDetail)
+	api.SecureUserFactionCommand(HubKeyPlayerAssetMechDetail, pac.PlayerAssetMechDetail)
 	api.SecureUserCommand(HubKeyPlayerAssetKeycardList, pac.PlayerAssetKeycardListHandler)
 
 	return pac
@@ -184,7 +185,7 @@ type PlayerAssetMechDetailRequest struct {
 
 const HubKeyPlayerAssetMechDetail = "PLAYER:ASSET:MECH:DETAIL"
 
-func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetail(ctx context.Context, user *boiler.Player, key string, payload []byte, reply ws.ReplyFunc) error {
+func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetail(ctx context.Context, user *boiler.Player, fID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &PlayerAssetMechDetailRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
@@ -194,7 +195,15 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechDetail(ctx context.Context, 
 	// get collection and check ownership
 	collectionItem, err := boiler.CollectionItems(
 		boiler.CollectionItemWhere.ItemID.EQ(req.Payload.MechID),
-		boiler.CollectionItemWhere.OwnerID.EQ(user.ID),
+		qm.InnerJoin(
+			fmt.Sprintf(
+				"%s on %s = %s",
+				boiler.TableNames.Players,
+				qm.Rels(boiler.TableNames.Players, boiler.PlayerColumns.ID),
+				qm.Rels(boiler.TableNames.CollectionItems, boiler.CollectionItemColumns.OwnerID),
+			),
+		),
+		boiler.PlayerWhere.FactionID.EQ(null.StringFrom(fID)),
 	).One(gamedb.StdConn)
 	if err != nil {
 		return terror.Error(err, "Failed to find mech from the collection")
