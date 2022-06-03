@@ -671,7 +671,8 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	if err != nil {
 		err = fmt.Errorf("failed to process payment transaction")
 		gamelog.L.Error().
-			Str("user_id", user.ID).
+			Str("from_user_id", user.ID).
+			Str("to_user_id", saleItem.OwnerID).
 			Str("balance", balance.String()).
 			Str("cost", saleItemCost.String()).
 			Str("item_id", req.Payload.ItemID.String()).
@@ -680,21 +681,42 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		return terror.Error(err, "Failed tp process transaction for Purchase Sale Item.")
 	}
 
+	// start transaction
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		gamelog.L.Error().
+			Str("from_user_id", user.ID).
+			Str("to_user_id", saleItem.OwnerID).
+			Str("balance", balance.String()).
+			Str("cost", saleItemCost.String()).
+			Str("item_id", req.Payload.ItemID.String()).
+			Err(err).
+			Msg("Failed to start purchase sale item db transaction.")
+		return terror.Error(err, "Failed tp process transaction for Purchase Sale Item.")
+	}
+
 	// update sale item
 	saleItemRecord := &boiler.ItemSale{
-		ID: saleItem.ID,
+		ID:       saleItem.ID,
+		SoldAt:   null.TimeFrom(time.Now()),
+		SoldFor:  null.StringFrom(saleItemCost.String()),
+		SoldTXID: null.StringFrom(txid),
+		SoldBy:   null.StringFrom(user.ID),
 	}
-	saleItemRecord.SoldAt = null.TimeFrom(time.Now())
-	saleItemRecord.SoldFor = null.StringFrom(saleItemCost.String())
-	saleItemRecord.SoldTXID = null.StringFrom(txid)
-	saleItemRecord.SoldBy = null.StringFrom(user.ID)
 
-	_, err = saleItemRecord.Update(gamedb.StdConn, boil.Infer())
+	_, err = saleItemRecord.Update(tx,
+		boil.Whitelist(
+			boiler.ItemSaleColumns.SoldAt,
+			boiler.ItemSaleColumns.SoldFor,
+			boiler.ItemSaleColumns.SoldTXID,
+			boiler.ItemSaleColumns.SoldBy,
+		))
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(txid)
 		err = fmt.Errorf("failed to complete payment transaction")
 		gamelog.L.Error().
-			Str("user_id", user.ID).
+			Str("from_user_id", user.ID).
+			Str("to_user_id", saleItem.OwnerID).
 			Str("balance", balance.String()).
 			Str("cost", saleItemCost.String()).
 			Str("item_id", req.Payload.ItemID.String()).
@@ -704,16 +726,32 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 	}
 
 	// transfer ownership of asset
-	err = db.ChangeMechOwner(gamedb.StdConn, req.Payload.ItemID)
+	err = db.ChangeMechOwner(tx, req.Payload.ItemID)
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
-			Str("user_id", user.ID).
+			Str("from_user_id", user.ID).
+			Str("to_user_id", saleItem.OwnerID).
 			Str("balance", balance.String()).
 			Str("cost", saleItemCost.String()).
 			Str("item_id", req.Payload.ItemID.String()).
 			Err(err).
 			Msg("Failed to Transfer Mech to New Owner")
+		return terror.Error(err, "Failed to process transaction for Purchase Sale Item.")
+	}
+
+	// commit transaction
+	err = tx.Commit()
+	if err != nil {
+		mp.API.Passport.RefundSupsMessage(txid)
+		gamelog.L.Error().
+			Str("from_user_id", user.ID).
+			Str("to_user_id", saleItem.OwnerID).
+			Str("balance", balance.String()).
+			Str("cost", saleItemCost.String()).
+			Str("item_id", req.Payload.ItemID.String()).
+			Err(err).
+			Msg("Failed to commit purchase sale item db transaction.")
 		return terror.Error(err, "Failed to process transaction for Purchase Sale Item.")
 	}
 
@@ -732,7 +770,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 	}
 
 	// Check whether user can buy sale item
-	saleItem, err := db.MarketplaceItemSale(req.Payload.ItemID)
+	saleItem, err := db.MarketplaceItemKeycardSale(req.Payload.ItemID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return terror.Error(err, "Item not found.")
 	}
@@ -757,7 +795,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 		return terror.Error(err, errMsg)
 	}
 
-	saleItemCost, err := decimal.NewFromString(saleItem.BuyoutPrice.String)
+	saleItemCost, err := decimal.NewFromString(saleItem.BuyoutPrice)
 	if err != nil {
 		gamelog.L.Error().
 			Str("user_id", user.ID).
@@ -794,49 +832,86 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 	if err != nil {
 		err = fmt.Errorf("failed to process payment transaction")
 		gamelog.L.Error().
-			Str("user_id", user.ID).
+			Str("from_user_id", user.ID).
+			Str("to_user_id", saleItem.OwnerID).
 			Str("balance", balance.String()).
 			Str("cost", saleItemCost.String()).
 			Str("item_id", req.Payload.ItemID.String()).
 			Err(err).
 			Msg("Failed to process transaction for Purchase Sale Item.")
+		return terror.Error(err, "Failed tp process transaction for Purchase Sale Item.")
+	}
+
+	// begin transaction
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		gamelog.L.Error().
+			Str("from_user_id", user.ID).
+			Str("to_user_id", saleItem.OwnerID).
+			Str("balance", balance.String()).
+			Str("cost", saleItemCost.String()).
+			Str("item_id", req.Payload.ItemID.String()).
+			Err(err).
+			Msg("Failed to start purchase sale item db transaction.")
 		return terror.Error(err, "Failed tp process transaction for Purchase Sale Item.")
 	}
 
 	// update sale item
-	saleItemRecord := &boiler.ItemSale{
-		ID: saleItem.ID,
+	saleItemRecord := &boiler.ItemKeycardSale{
+		ID:       saleItem.ID,
+		SoldAt:   null.TimeFrom(time.Now()),
+		SoldFor:  null.StringFrom(saleItemCost.String()),
+		SoldTXID: null.StringFrom(txid),
+		SoldBy:   null.StringFrom(user.ID),
 	}
-	saleItemRecord.SoldAt = null.TimeFrom(time.Now())
-	saleItemRecord.SoldFor = null.StringFrom(saleItemCost.String())
-	saleItemRecord.SoldTXID = null.StringFrom(txid)
-	saleItemRecord.SoldBy = null.StringFrom(user.ID)
 
-	_, err = saleItemRecord.Update(gamedb.StdConn, boil.Infer())
+	_, err = saleItemRecord.Update(tx, boil.Whitelist(
+		boiler.ItemKeycardSaleColumns.SoldAt,
+		boiler.ItemKeycardSaleColumns.SoldFor,
+		boiler.ItemKeycardSaleColumns.SoldTXID,
+		boiler.ItemKeycardSaleColumns.SoldBy,
+	))
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(txid)
 		err = fmt.Errorf("failed to complete payment transaction")
 		gamelog.L.Error().
-			Str("user_id", user.ID).
+			Str("from_user_id", user.ID).
+			Str("to_user_id", saleItem.OwnerID).
 			Str("balance", balance.String()).
 			Str("cost", saleItemCost.String()).
 			Str("item_id", req.Payload.ItemID.String()).
 			Err(err).
-			Msg("Failed to process transaction for Purchase Sale Item.")
+			Msg("Failed to update to Keycard Sale Item.")
 		return terror.Error(err, "Failed tp process transaction for Purchase Sale Item.")
 	}
 
 	// transfer ownership of asset
-	err = db.ChangeKeycardOwner(req.Payload.ItemID)
+	err = db.ChangeKeycardOwner(tx, req.Payload.ItemID)
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
-			Str("user_id", user.ID).
+			Str("from_user_id", user.ID).
+			Str("to_user_id", saleItem.OwnerID).
 			Str("balance", balance.String()).
 			Str("cost", saleItemCost.String()).
 			Str("item_id", req.Payload.ItemID.String()).
 			Err(err).
 			Msg("Failed to Transfer Keycard to New Owner")
+		return terror.Error(err, "Failed to process transaction for Purchase Sale Item.")
+	}
+
+	// commit transaction
+	err = tx.Commit()
+	if err != nil {
+		mp.API.Passport.RefundSupsMessage(txid)
+		gamelog.L.Error().
+			Str("from_user_id", user.ID).
+			Str("to_user_id", saleItem.OwnerID).
+			Str("balance", balance.String()).
+			Str("cost", saleItemCost.String()).
+			Str("item_id", req.Payload.ItemID.String()).
+			Err(err).
+			Msg("Failed to commit purchase sale item db transaction.")
 		return terror.Error(err, "Failed to process transaction for Purchase Sale Item.")
 	}
 

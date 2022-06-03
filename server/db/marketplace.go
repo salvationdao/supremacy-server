@@ -135,7 +135,37 @@ func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
 			itemSaleQueryMods,
 			boiler.ItemSaleWhere.ID.EQ(id.String()),
 		)...,
-	).Bind(nil, gamedb.StdConn, output)
+	).QueryRow(gamedb.StdConn).Scan(
+		&output.ID,
+		&output.FactionID,
+		&output.ItemID,
+		&output.ListingFeeTXID,
+		&output.OwnerID,
+		&output.Auction,
+		&output.AuctionCurrentPrice,
+		&output.AuctionReservedPrice,
+		&output.Buyout,
+		&output.BuyoutPrice,
+		&output.DutchAuction,
+		&output.DutchAuctionDropRate,
+		&output.EndAt,
+		&output.SoldAt,
+		&output.SoldFor,
+		&output.SoldBy,
+		&output.SoldTXID,
+		&output.DeletedAt,
+		&output.UpdatedAt,
+		&output.CreatedAt,
+		&output.Owner.ID,
+		&output.Owner.Username,
+		&output.Owner.PublicAddress,
+		&output.Owner.Gid,
+		&output.Mech.ID,
+		&output.Mech.Label,
+		&output.Mech.Name,
+		&output.Mech.Tier,
+		&output.Mech.AvatarURL,
+	)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -147,10 +177,39 @@ func MarketplaceItemKeycardSale(id uuid.UUID) (*server.MarketplaceKeycardSaleIte
 	output := &server.MarketplaceKeycardSaleItem{}
 	err := boiler.ItemKeycardSales(
 		append(
-			itemSaleQueryMods,
+			itemKeycardSaleQueryMods,
 			boiler.ItemKeycardSaleWhere.ID.EQ(id.String()),
 		)...,
-	).Bind(nil, gamedb.StdConn, &output)
+	).QueryRow(gamedb.StdConn).Scan(
+		&output.ID,
+		&output.FactionID,
+		&output.ItemID,
+		&output.ListingFeeTXID,
+		&output.OwnerID,
+		&output.BuyoutPrice,
+		&output.EndAt,
+		&output.SoldAt,
+		&output.SoldFor,
+		&output.SoldBy,
+		&output.SoldTXID,
+		&output.DeletedAt,
+		&output.UpdatedAt,
+		&output.CreatedAt,
+		&output.Owner.ID,
+		&output.Owner.Username,
+		&output.Owner.PublicAddress,
+		&output.Owner.Gid,
+		&output.Blueprints.ID,
+		&output.Blueprints.Label,
+		&output.Blueprints.Description,
+		&output.Blueprints.Collection,
+		&output.Blueprints.KeycardTokenID,
+		&output.Blueprints.ImageURL,
+		&output.Blueprints.AnimationURL,
+		&output.Blueprints.KeycardGroup,
+		&output.Blueprints.Syndicate,
+		&output.Blueprints.CreatedAt,
+	)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -562,12 +621,7 @@ func MarketplaceKeycardSaleCreate(
 }
 
 // ChangeKeycardOwner changes a keycard from previous owner to new owner.
-func ChangeKeycardOwner(itemSaleID uuid.UUID) error {
-	tx, err := gamedb.StdConn.Begin()
-	if err != nil {
-		return terror.Error(err, "Failed to update player.")
-	}
-
+func ChangeKeycardOwner(conn boil.Executor, itemSaleID uuid.UUID) error {
 	q := `
 		INSERT INTO player_keycards (player_id, blueprint_keycard_id, count)
 
@@ -578,7 +632,7 @@ func ChangeKeycardOwner(itemSaleID uuid.UUID) error {
 		ON CONFLICT (player_id, blueprint_keycard_id)
 		DO UPDATE 
 		SET COUNT = excluded.count + 1`
-	_, err = tx.Exec(q, itemSaleID)
+	_, err := conn.Exec(q, itemSaleID)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -589,20 +643,7 @@ func ChangeKeycardOwner(itemSaleID uuid.UUID) error {
 		FROM item_keycard_sales iks
 		WHERE iks.id = $1
 			AND pk.id = iks.item_id`
-	_, err = tx.Exec(q, itemSaleID)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	q = `
-		DELETE FROM player_keycards 
-		WHERE count = 0`
-	_, err = tx.Exec(q, itemSaleID)
-	if err != nil {
-		return terror.Error(err)
-	}
-
-	err = tx.Commit()
+	_, err = conn.Exec(q, itemSaleID)
 	if err != nil {
 		return terror.Error(err)
 	}
