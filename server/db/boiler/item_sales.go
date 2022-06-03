@@ -34,7 +34,7 @@ type ItemSale struct {
 	Buyout               bool        `boiler:"buyout" boil:"buyout" json:"buyout" toml:"buyout" yaml:"buyout"`
 	BuyoutPrice          null.String `boiler:"buyout_price" boil:"buyout_price" json:"buyout_price,omitempty" toml:"buyout_price" yaml:"buyout_price,omitempty"`
 	DutchAuction         bool        `boiler:"dutch_auction" boil:"dutch_auction" json:"dutch_auction" toml:"dutch_auction" yaml:"dutch_auction"`
-	DutchActionDropRate  null.String `boiler:"dutch_action_drop_rate" boil:"dutch_action_drop_rate" json:"dutch_action_drop_rate,omitempty" toml:"dutch_action_drop_rate" yaml:"dutch_action_drop_rate,omitempty"`
+	DutchAuctionDropRate null.String `boiler:"dutch_auction_drop_rate" boil:"dutch_auction_drop_rate" json:"dutch_auction_drop_rate,omitempty" toml:"dutch_auction_drop_rate" yaml:"dutch_auction_drop_rate,omitempty"`
 	EndAt                time.Time   `boiler:"end_at" boil:"end_at" json:"end_at" toml:"end_at" yaml:"end_at"`
 	SoldAt               null.Time   `boiler:"sold_at" boil:"sold_at" json:"sold_at,omitempty" toml:"sold_at" yaml:"sold_at,omitempty"`
 	SoldFor              null.String `boiler:"sold_for" boil:"sold_for" json:"sold_for,omitempty" toml:"sold_for" yaml:"sold_for,omitempty"`
@@ -60,7 +60,7 @@ var ItemSaleColumns = struct {
 	Buyout               string
 	BuyoutPrice          string
 	DutchAuction         string
-	DutchActionDropRate  string
+	DutchAuctionDropRate string
 	EndAt                string
 	SoldAt               string
 	SoldFor              string
@@ -81,7 +81,7 @@ var ItemSaleColumns = struct {
 	Buyout:               "buyout",
 	BuyoutPrice:          "buyout_price",
 	DutchAuction:         "dutch_auction",
-	DutchActionDropRate:  "dutch_action_drop_rate",
+	DutchAuctionDropRate: "dutch_auction_drop_rate",
 	EndAt:                "end_at",
 	SoldAt:               "sold_at",
 	SoldFor:              "sold_for",
@@ -104,7 +104,7 @@ var ItemSaleTableColumns = struct {
 	Buyout               string
 	BuyoutPrice          string
 	DutchAuction         string
-	DutchActionDropRate  string
+	DutchAuctionDropRate string
 	EndAt                string
 	SoldAt               string
 	SoldFor              string
@@ -125,7 +125,7 @@ var ItemSaleTableColumns = struct {
 	Buyout:               "item_sales.buyout",
 	BuyoutPrice:          "item_sales.buyout_price",
 	DutchAuction:         "item_sales.dutch_auction",
-	DutchActionDropRate:  "item_sales.dutch_action_drop_rate",
+	DutchAuctionDropRate: "item_sales.dutch_auction_drop_rate",
 	EndAt:                "item_sales.end_at",
 	SoldAt:               "item_sales.sold_at",
 	SoldFor:              "item_sales.sold_for",
@@ -150,7 +150,7 @@ var ItemSaleWhere = struct {
 	Buyout               whereHelperbool
 	BuyoutPrice          whereHelpernull_String
 	DutchAuction         whereHelperbool
-	DutchActionDropRate  whereHelpernull_String
+	DutchAuctionDropRate whereHelpernull_String
 	EndAt                whereHelpertime_Time
 	SoldAt               whereHelpernull_Time
 	SoldFor              whereHelpernull_String
@@ -171,7 +171,7 @@ var ItemSaleWhere = struct {
 	Buyout:               whereHelperbool{field: "\"item_sales\".\"buyout\""},
 	BuyoutPrice:          whereHelpernull_String{field: "\"item_sales\".\"buyout_price\""},
 	DutchAuction:         whereHelperbool{field: "\"item_sales\".\"dutch_auction\""},
-	DutchActionDropRate:  whereHelpernull_String{field: "\"item_sales\".\"dutch_action_drop_rate\""},
+	DutchAuctionDropRate: whereHelpernull_String{field: "\"item_sales\".\"dutch_auction_drop_rate\""},
 	EndAt:                whereHelpertime_Time{field: "\"item_sales\".\"end_at\""},
 	SoldAt:               whereHelpernull_Time{field: "\"item_sales\".\"sold_at\""},
 	SoldFor:              whereHelpernull_String{field: "\"item_sales\".\"sold_for\""},
@@ -215,9 +215,9 @@ func (*itemSaleR) NewStruct() *itemSaleR {
 type itemSaleL struct{}
 
 var (
-	itemSaleAllColumns            = []string{"id", "faction_id", "item_id", "listing_fee_tx_id", "owner_id", "auction", "auction_current_price", "auction_reserved_price", "buyout", "buyout_price", "dutch_auction", "dutch_action_drop_rate", "end_at", "sold_at", "sold_for", "sold_by", "sold_tx_id", "deleted_at", "updated_at", "created_at"}
+	itemSaleAllColumns            = []string{"id", "faction_id", "item_id", "listing_fee_tx_id", "owner_id", "auction", "auction_current_price", "auction_reserved_price", "buyout", "buyout_price", "dutch_auction", "dutch_auction_drop_rate", "end_at", "sold_at", "sold_for", "sold_by", "sold_tx_id", "deleted_at", "updated_at", "created_at"}
 	itemSaleColumnsWithoutDefault = []string{"faction_id", "item_id", "listing_fee_tx_id", "owner_id", "end_at"}
-	itemSaleColumnsWithDefault    = []string{"id", "auction", "auction_current_price", "auction_reserved_price", "buyout", "buyout_price", "dutch_auction", "dutch_action_drop_rate", "sold_at", "sold_for", "sold_by", "sold_tx_id", "deleted_at", "updated_at", "created_at"}
+	itemSaleColumnsWithDefault    = []string{"id", "auction", "auction_current_price", "auction_reserved_price", "buyout", "buyout_price", "dutch_auction", "dutch_auction_drop_rate", "sold_at", "sold_for", "sold_by", "sold_tx_id", "deleted_at", "updated_at", "created_at"}
 	itemSalePrimaryKeyColumns     = []string{"id"}
 	itemSaleGeneratedColumns      = []string{}
 )

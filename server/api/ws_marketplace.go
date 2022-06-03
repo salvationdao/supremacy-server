@@ -506,19 +506,19 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 			return terror.Error(err, errMsg)
 		}
 
-		if saleItem.DutchActionDropRate.IsZero() {
+		if saleItem.DutchAuctionDropRate.IsZero() {
 			gamelog.L.Error().
 				Str("user_id", user.ID).
 				Str("item_id", req.Payload.ItemID.String()).
 				Msg("Dutch Auction Drop rate is missing.")
 			return terror.Error(fmt.Errorf("dutch auction drop rate is missing"), errMsg)
 		}
-		dropRate, err := decimal.NewFromString(saleItem.DutchActionDropRate.String)
+		dropRate, err := decimal.NewFromString(saleItem.DutchAuctionDropRate.String)
 		if err != nil {
 			gamelog.L.Error().
 				Str("user_id", user.ID).
 				Str("item_id", req.Payload.ItemID.String()).
-				Str("drop_rate_amount", saleItem.DutchActionDropRate.String).
+				Str("drop_rate_amount", saleItem.DutchAuctionDropRate.String).
 				Msg("Dutch Auction Drop rate is missing.")
 			return terror.Error(fmt.Errorf("dutch auction drop rate is missing"), errMsg)
 		}

@@ -19,7 +19,26 @@ import (
 
 var itemSaleQueryMods = []qm.QueryMod{
 	qm.Select(
-		`item_sales.*,
+		`item_sales.id AS id,
+		item_sales.faction_id AS faction_id,
+		item_sales.item_id AS item_id,
+		item_sales.listing_fee_tx_id AS listing_fee_tx_id,
+		item_sales.owner_id AS owner_id,
+		item_sales.auction AS auction,
+		item_sales.auction_current_price AS auction_current_price,
+		item_sales.auction_reserved_price AS auction_reserved_price,
+		item_sales.buyout AS buyout,
+		item_sales.buyout_price AS buyout_price,
+		item_sales.dutch_auction AS dutch_auction,
+		item_sales.dutch_auction_drop_rate AS dutch_auction_drop_rate,
+		item_sales.end_at AS end_at,
+		item_sales.sold_at AS sold_at,
+		item_sales.sold_for AS sold_for,
+		item_sales.sold_by AS sold_by,
+		item_sales.sold_tx_id AS sold_tx_id,
+		item_sales.created_at AS created_at,
+		item_sales.deleted_at AS deleted_at,
+		item_sales.updated_at AS updated_at,
 		players.id AS "players.id",
 		players.username AS "players.username",
 		players.public_address AS "players.public_address",
@@ -204,9 +223,14 @@ func MarketplaceItemSaleList(search string, filter *ListFilterRequest, rarities 
 	}
 
 	records := []*server.MarketplaceSaleItem{}
+	boil.DebugMode = true
 	err = boiler.ItemSales(queryMods...).Bind(nil, gamedb.StdConn, &records)
+	boil.DebugMode = false
 	if err != nil {
 		return 0, nil, terror.Error(err)
+	}
+	for _, r := range records {
+		fmt.Println("Test", r.ID)
 	}
 
 	return total, records, nil
@@ -316,7 +340,7 @@ func MarketplaceSaleCreate(
 	}
 	if hasDutchAuction {
 		obj.DutchAuction = true
-		obj.DutchActionDropRate = null.StringFrom(dutchAuctionDropRate.String())
+		obj.DutchAuctionDropRate = null.StringFrom(dutchAuctionDropRate.String())
 	}
 
 	err := obj.Insert(gamedb.StdConn, boil.Infer())
