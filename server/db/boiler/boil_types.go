@@ -161,11 +161,10 @@ const (
 	MultiplierTypeEnumContribute   = "contribute"
 )
 
-// Enum values for CrateTypeEnum
+// Enum values for CrateType
 const (
-	CrateTypeEnumMECH    = "MECH"
-	CrateTypeEnumWEAPON  = "WEAPON"
-	CrateTypeEnumUTILITY = "UTILITY"
+	CrateTypeMECH   = "MECH"
+	CrateTypeWEAPON = "WEAPON"
 )
 
 // Enum values for TemplateItemType
@@ -187,10 +186,4 @@ const (
 	PlayerRankEnumCORPORAL    = "CORPORAL"
 	PlayerRankEnumPRIVATE     = "PRIVATE"
 	PlayerRankEnumNEW_RECRUIT = "NEW_RECRUIT"
-)
-
-// Enum values for CrateType
-const (
-	CrateTypeMECH   = "MECH"
-	CrateTypeWEAPON = "WEAPON"
 )
