@@ -38,7 +38,7 @@ func NewMarketplaceController(api *API) *MarketplaceController {
 
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesList, marketplaceHub.SalesListHandler)
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesKeycardList, marketplaceHub.SalesListKeycardHandler)
-	api.SecureUserFactionCommand(HubKeyMarketplaceSalesKeycardGet, marketplaceHub.SalesGetKeycardHandler)
+	api.SecureUserFactionCommand(HubKeyMarketplaceSalesGet, marketplaceHub.SalesGetHandler)
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesCreate, marketplaceHub.SalesCreateHandler)
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesKeycardCreate, marketplaceHub.SalesKeycardCreateHandler)
 	api.SecureUserFactionCommand(HubKeyMarketplaceSalesBuy, marketplaceHub.SalesBuyHandler)
@@ -161,7 +161,7 @@ func (fc *MarketplaceController) SalesListKeycardHandler(ctx context.Context, us
 	return nil
 }
 
-const HubKeyMarketplaceSalesKeycardGet = "MARKETPLACE:SALES:GET"
+const HubKeyMarketplaceSalesGet = "MARKETPLACE:SALES:GET"
 
 type MarketplaceSalesKeycardGetRequest struct {
 	*hub.HubCommandRequest
@@ -170,7 +170,7 @@ type MarketplaceSalesKeycardGetRequest struct {
 	} `json:"payload"`
 }
 
-func (fc *MarketplaceController) SalesGetKeycardHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
+func (fc *MarketplaceController) SalesGetHandler(ctx context.Context, user *boiler.Player, factionID string, key string, payload []byte, reply ws.ReplyFunc) error {
 	req := &MarketplaceSalesKeycardGetRequest{}
 	err := json.Unmarshal(payload, req)
 	if err != nil {
