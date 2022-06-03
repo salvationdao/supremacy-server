@@ -54,7 +54,7 @@ CREATE TABLE item_keycard_sales (
 	listing_fee_tx_id TEXT NOT NULL,
 	owner_id UUID NOT NULL REFERENCES players(id),
 
-	buyout_price TEXT,
+	buyout_price TEXT NOT NULL,
 
     end_at TIMESTAMPTZ NOT NULL,
 

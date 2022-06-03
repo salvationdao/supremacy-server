@@ -196,15 +196,15 @@ const HubKeyMarketplaceSalesCreate = "MARKETPLACE:SALES:CREATE"
 type MarketplaceSalesCreateRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		ItemType             string           `json:"item_type"`
-		ItemID               uuid.UUID        `json:"item_id"`
-		HasBuyout            bool             `json:"has_buyout"`
-		HasAuction           bool             `json:"has_auction"`
-		HasDutchAuction      bool             `json:"has_dutch_auction"`
-		AskingPrice          *decimal.Decimal `json:"asking_price"`
-		AuctionReservedPrice *decimal.Decimal `json:"auction_reserved_price"`
-		DutchAuctionDropRate *decimal.Decimal `json:"dutch_auction_drop_rate"`
-		ListingDurationHours int64            `json:"listing_duration_hours"`
+		ItemType             string    `json:"item_type"`
+		ItemID               uuid.UUID `json:"item_id"`
+		HasBuyout            bool      `json:"has_buyout"`
+		HasAuction           bool      `json:"has_auction"`
+		HasDutchAuction      bool      `json:"has_dutch_auction"`
+		AskingPrice          *string   `json:"asking_price"`
+		AuctionReservedPrice *string   `json:"auction_reserved_price"`
+		DutchAuctionDropRate *string   `json:"dutch_auction_drop_rate"`
+		ListingDurationHours int64     `json:"listing_duration_hours"`
 	} `json:"payload"`
 }
 
@@ -234,6 +234,43 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 			Err(err).
 			Msg("Player is not in a faction")
 		return terror.Error(err, errMsg)
+	}
+
+	// Check price input
+	var (
+		askingPrice          *decimal.Decimal
+		auctionReservedPrice *decimal.Decimal
+		dutchAuctionDropRate *decimal.Decimal
+	)
+	if req.Payload.HasBuyout || req.Payload.HasDutchAuction {
+		if req.Payload.AskingPrice == nil {
+			return terror.Error(terror.ErrInvalidInput, "Asking Price is required.")
+		}
+		price, err := decimal.NewFromString(*req.Payload.AskingPrice)
+		if err != nil {
+			return terror.Error(err, "Asking Price is invalid.")
+		}
+		askingPrice = &price
+	}
+	if req.Payload.HasAuction {
+		if req.Payload.AuctionReservedPrice == nil {
+			return terror.Error(terror.ErrInvalidInput, "Reversed Auction Price is required.")
+		}
+		price, err := decimal.NewFromString(*req.Payload.AuctionReservedPrice)
+		if err != nil {
+			return terror.Error(err, "Reserved Auction Price is invalid.")
+		}
+		auctionReservedPrice = &price
+	}
+	if req.Payload.HasDutchAuction {
+		if req.Payload.DutchAuctionDropRate == nil {
+			return terror.Error(terror.ErrInvalidInput, "Drop Rate is required.")
+		}
+		price, err := decimal.NewFromString(*req.Payload.DutchAuctionDropRate)
+		if err != nil {
+			return terror.Error(err, "Drop Rate is invalid.")
+		}
+		dutchAuctionDropRate = &price
 	}
 
 	// Check if allowed to sell item
@@ -317,11 +354,11 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		endAt,
 		req.Payload.ItemID,
 		req.Payload.HasBuyout,
-		req.Payload.AskingPrice,
+		askingPrice,
 		req.Payload.HasAuction,
-		req.Payload.AuctionReservedPrice,
+		auctionReservedPrice,
 		req.Payload.HasDutchAuction,
-		req.Payload.DutchAuctionDropRate,
+		dutchAuctionDropRate,
 	)
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(txid)
@@ -344,10 +381,10 @@ const HubKeyMarketplaceSalesKeycardCreate = "MARKETPLACE:SALES:KEYCARD:CREATE"
 type HubKeyMarketplaceSalesKeycardCreateRequest struct {
 	*hub.HubCommandRequest
 	Payload struct {
-		ItemType             string           `json:"item_type"`
-		ItemID               uuid.UUID        `json:"item_id"`
-		AskingPrice          *decimal.Decimal `json:"asking_price"`
-		ListingDurationHours int64            `json:"listing_duration_hours"`
+		ItemType             string          `json:"item_type"`
+		ItemID               uuid.UUID       `json:"item_id"`
+		AskingPrice          decimal.Decimal `json:"asking_price"`
+		ListingDurationHours int64           `json:"listing_duration_hours"`
 	} `json:"payload"`
 }
 

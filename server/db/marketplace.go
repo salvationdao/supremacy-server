@@ -513,7 +513,7 @@ func MarketplaceKeycardSaleCreate(
 	listFeeTxnID string,
 	endAt time.Time,
 	itemID uuid.UUID,
-	askingPrice *decimal.Decimal,
+	askingPrice decimal.Decimal,
 ) (*server.MarketplaceKeycardSaleItem, error) {
 	obj := &boiler.ItemKeycardSale{
 		OwnerID:        ownerID.String(),
@@ -521,7 +521,7 @@ func MarketplaceKeycardSaleCreate(
 		ListingFeeTXID: listFeeTxnID,
 		ItemID:         itemID.String(),
 		EndAt:          endAt,
-		BuyoutPrice:    null.StringFrom(askingPrice.String()),
+		BuyoutPrice:    askingPrice.String(),
 	}
 	err := obj.Insert(gamedb.StdConn, boil.Infer())
 	if err != nil {
