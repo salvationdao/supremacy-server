@@ -38,6 +38,8 @@ const KeyFactionAbilityPriceDropRate KVKey = "faction_ability_price_drop_rate"
 const KeyFirstAbilityCooldown KVKey = "first_ability_cooldown"
 const KeyPunishVoteCooldownHour KVKey = "punish_vote_cooldown_hour"
 
+const KeyLastTransferEventID KVKey = "last_transfer_event_id"
+
 func get(key KVKey) string {
 	kv, err := boiler.KVS(boiler.KVWhere.Key.EQ(string(key))).One(gamedb.StdConn)
 	if err != nil {
