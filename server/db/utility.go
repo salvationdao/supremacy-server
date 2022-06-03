@@ -37,7 +37,7 @@ func InsertNewUtility(ownerID uuid.UUID, utility *server.BlueprintUtility) (*ser
 		return nil, terror.Error(err)
 	}
 
-	err = InsertNewCollectionItem(tx,
+	_, err = InsertNewCollectionItem(tx,
 		utility.Collection,
 		boiler.ItemTypeUtility,
 		newUtility.ID,

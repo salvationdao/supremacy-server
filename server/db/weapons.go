@@ -48,7 +48,7 @@ func InsertNewWeapon(ownerID uuid.UUID, weapon *server.BlueprintWeapon) (*server
 		return nil, terror.Error(err)
 	}
 
-	err = InsertNewCollectionItem(tx,
+	_, err = InsertNewCollectionItem(tx,
 		weapon.Collection,
 		boiler.ItemTypeWeapon,
 		newWeapon.ID,
