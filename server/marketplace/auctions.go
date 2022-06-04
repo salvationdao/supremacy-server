@@ -21,9 +21,11 @@ type AuctionController struct {
 }
 
 type ItemSaleAuction struct {
-	boiler.ItemSale  `boil:",bind"`
-	AuctionBidUserID uuid.UUID `boil:"auction_bid_user_id"`
+	ID               uuid.UUID `boil:"id"`
+	ItemID           uuid.UUID `boil:"item_id"`
+	OwnerID          uuid.UUID `boil:"owner_id"`
 	AuctionBidPrice  string    `boil:"auction_bid_price"`
+	AuctionBidUserID uuid.UUID `boil:"auction_bid_user_id"`
 	FactionID        uuid.UUID `boil:"faction_id"`
 }
 
@@ -60,10 +62,10 @@ func (a *AuctionController) Run() {
 					FROM item_sales 
 						INNER JOIN item_sales_bid_history ON item_sales_bid_history.item_sale_id = item_sales.id
 							AND item_sales_bid_history.cancelled_at IS NULL
-							AND item_sales_bid_history.refund_bid_tx_id IS NOT NULL
+							AND item_sales_bid_history.refund_bid_tx_id IS NULL
 						INNER JOIN players ON players.id = item_sales.owner_id 
 					WHERE item_sales.auction = TRUE
-						AND item_sales.sold_by IS NOT NULL
+						AND item_sales.sold_by IS NULL
 						AND item_sales.end_at <= NOW()
 						AND item_sales_bid_history.bid_price >= item_sales.auction_reserved_price
 				`),
@@ -76,21 +78,12 @@ func (a *AuctionController) Run() {
 
 			numProcessed := 0
 			for _, auctionItem := range completedAuctions {
-				itemSaleID, err := uuid.FromString(auctionItem.ID)
-				if err != nil {
-					gamelog.L.Error().
-						Str("item_sale_id", auctionItem.ID).
-						Err(err).
-						Msg("Failed to parse Item Sale ID.")
-					continue
-				}
-
 				// Get Faction Account sending bid amount to
 				factionAccountID, ok := server.FactionUsers[auctionItem.FactionID.String()]
 				if !ok {
 					err = fmt.Errorf("failed to get hard coded syndicate player id")
 					gamelog.L.Error().
-						Str("owner_id", auctionItem.OwnerID).
+						Str("owner_id", auctionItem.OwnerID.String()).
 						Str("faction_id", auctionItem.FactionID.String()).
 						Err(err).
 						Msg("unable to get hard coded syndicate player ID from faction ID")
@@ -101,9 +94,9 @@ func (a *AuctionController) Run() {
 				// TODO: Deal with sales cut
 				txid, err := a.Passport.SpendSupMessage(xsyn_rpcclient.SpendSupsReq{
 					FromUserID:           uuid.Must(uuid.FromString(factionAccountID)),
-					ToUserID:             uuid.Must(uuid.FromString(auctionItem.OwnerID)),
+					ToUserID:             uuid.Must(uuid.FromString(auctionItem.OwnerID.String())),
 					Amount:               auctionItem.AuctionBidPrice,
-					TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_auction_item:%s|%d", auctionItem.ID, time.Now().UnixNano())),
+					TransactionReference: server.TransactionReference(fmt.Sprintf("marketplace_buy_auction_item:%s|%d", auctionItem.ID.String(), time.Now().UnixNano())),
 					Group:                string(server.TransactionGroupMarketplace),
 					SubGroup:             "SUPREMACY",
 					Description:          fmt.Sprintf("marketplace buy auction item: %s", auctionItem.ID),
@@ -111,11 +104,11 @@ func (a *AuctionController) Run() {
 				})
 				if err != nil {
 					gamelog.L.Error().
-						Str("item_id", auctionItem.ID).
+						Str("item_id", auctionItem.ID.String()).
 						Str("user_id", auctionItem.AuctionBidUserID.String()).
 						Str("cost", auctionItem.AuctionBidPrice).
 						Err(err).
-						Msg("Failed to start db transaction.")
+						Msg("Failed to send sups to item seller.")
 					continue
 				}
 
@@ -123,7 +116,7 @@ func (a *AuctionController) Run() {
 				tx, err := gamedb.StdConn.Begin()
 				if err != nil {
 					gamelog.L.Error().
-						Str("item_id", auctionItem.ID).
+						Str("item_id", auctionItem.ID.String()).
 						Str("user_id", auctionItem.AuctionBidUserID.String()).
 						Str("cost", auctionItem.AuctionBidPrice).
 						Err(err).
@@ -133,18 +126,24 @@ func (a *AuctionController) Run() {
 				defer tx.Rollback()
 
 				// Update Item Sale Record
-				saleItemRecord := auctionItem.ItemSale
-				saleItemRecord.SoldAt = null.TimeFrom(time.Now())
-				saleItemRecord.SoldFor = null.StringFrom(auctionItem.AuctionBidPrice)
-				saleItemRecord.SoldTXID = null.StringFrom(txid)
-				saleItemRecord.SoldBy = null.StringFrom(auctionItem.AuctionBidUserID.String())
-
-				_, err = saleItemRecord.Update(tx, boil.Infer())
+				saleItemRecord := &boiler.ItemSale{
+					ID:       auctionItem.ID.String(),
+					SoldAt:   null.TimeFrom(time.Now()),
+					SoldFor:  null.StringFrom(auctionItem.AuctionBidPrice),
+					SoldTXID: null.StringFrom(txid),
+					SoldBy:   null.StringFrom(auctionItem.AuctionBidUserID.String()),
+				}
+				_, err = saleItemRecord.Update(tx, boil.Whitelist(
+					boiler.ItemSaleColumns.SoldAt,
+					boiler.ItemSaleColumns.SoldFor,
+					boiler.ItemSaleColumns.SoldTXID,
+					boiler.ItemSaleColumns.SoldBy,
+				))
 				if err != nil {
 					a.Passport.RefundSupsMessage(txid)
 					err = fmt.Errorf("failed to complete payment transaction")
 					gamelog.L.Error().
-						Str("item_id", auctionItem.ID).
+						Str("item_id", auctionItem.ID.String()).
 						Str("user_id", auctionItem.AuctionBidUserID.String()).
 						Str("cost", auctionItem.AuctionBidPrice).
 						Err(err).
@@ -153,11 +152,11 @@ func (a *AuctionController) Run() {
 				}
 
 				// Transfer ownership of asset
-				err = db.ChangeMechOwner(tx, itemSaleID)
+				err = db.ChangeMechOwner(tx, auctionItem.ID)
 				if err != nil {
 					a.Passport.RefundSupsMessage(txid)
 					gamelog.L.Error().
-						Str("item_id", auctionItem.ID).
+						Str("item_id", auctionItem.ID.String()).
 						Str("user_id", auctionItem.AuctionBidUserID.String()).
 						Str("cost", auctionItem.AuctionBidPrice).
 						Err(err).
@@ -170,7 +169,7 @@ func (a *AuctionController) Run() {
 				if err != nil {
 					a.Passport.RefundSupsMessage(txid)
 					gamelog.L.Error().
-						Str("item_id", auctionItem.ID).
+						Str("item_id", auctionItem.ID.String()).
 						Str("user_id", auctionItem.AuctionBidUserID.String()).
 						Str("cost", auctionItem.AuctionBidPrice).
 						Err(err).
