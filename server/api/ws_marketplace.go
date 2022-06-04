@@ -694,6 +694,7 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 			Msg("Failed to start purchase sale item db transaction.")
 		return terror.Error(err, "Failed tp process transaction for Purchase Sale Item.")
 	}
+	defer tx.Rollback()
 
 	// update sale item
 	saleItemRecord := &boiler.ItemSale{
@@ -855,6 +856,7 @@ func (mp *MarketplaceController) SalesKeycardBuyHandler(ctx context.Context, use
 			Msg("Failed to start purchase sale item db transaction.")
 		return terror.Error(err, "Failed tp process transaction for Purchase Sale Item.")
 	}
+	defer tx.Rollback()
 
 	// update sale item
 	saleItemRecord := &boiler.ItemKeycardSale{
@@ -970,10 +972,10 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 		return terror.Error(err, errMsg)
 	}
 	if !saleItem.Auction {
-		return terror.Error(terror.ErrInvalidInput, "Item is not up for auction.")
+		return terror.Error(fmt.Errorf("item is not up for auction"), "Item is not up for auction.")
 	}
 	if saleItem.FactionID != fID {
-		return terror.Error(terror.ErrInvalidInput, "Item does not belong to user's faction.")
+		return terror.Error(fmt.Errorf("item does not belong to user's faction"), "Item does not belong to user's faction.")
 	}
 
 	reservedPrice, err := decimal.NewFromString(saleItem.AuctionReservedPrice.String)
@@ -1005,10 +1007,10 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 		return terror.Error(err, "Invalid Bid Amount received.")
 	}
 	if bidAmount.LessThanOrEqual(reservedPrice) {
-		return terror.Error(terror.ErrInvalidInput, "Invalid bid amount, must be above the reserved price.")
+		return terror.Error(fmt.Errorf("bid amount less than reserved price"), "Invalid bid amount, must be above the reserved price.")
 	}
 	if bidAmount.LessThanOrEqual(currentAmount) {
-		return terror.Error(terror.ErrInvalidInput, "Invalid bid amount, must be above the current bid price.")
+		return terror.Error(fmt.Errorf("bid amount less than current bid amount"), "Invalid bid amount, must be above the current bid price.")
 	}
 
 	// Pay bid amount
@@ -1035,8 +1037,23 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 		NotSafe:              true,
 	})
 
+	// Start Transaction
+	tx, err := gamedb.StdConn.Begin()
+	if err != nil {
+		mp.API.Passport.RefundSupsMessage(txid)
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("item_id", req.Payload.ItemID.String()).
+			Str("current_auction_price", saleItem.AuctionCurrentPrice.String).
+			Str("bid_amount", bidAmount.String()).
+			Err(err).
+			Msg("Failed to cancel previous bid(s).")
+		return terror.Error(err, errMsg)
+	}
+	defer tx.Rollback()
+
 	// Cancel all other bids before placing in the next new bid
-	refundTxnIDs, err := db.MarketplaceSaleCancelBids(req.Payload.ItemID)
+	refundTxnIDs, err := db.MarketplaceSaleCancelBids(tx, req.Payload.ItemID)
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
@@ -1050,7 +1067,7 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 	}
 
 	// Place Bid
-	_, err = db.MarketplaceSaleBidHistoryCreate(req.Payload.ItemID, userID, bidAmount, txid)
+	_, err = db.MarketplaceSaleBidHistoryCreate(tx, req.Payload.ItemID, userID, bidAmount, txid)
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
@@ -1063,7 +1080,7 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 		return terror.Error(err, errMsg)
 	}
 
-	err = db.MarketplaceSaleAuctionSync(req.Payload.ItemID)
+	err = db.MarketplaceSaleAuctionSync(tx, req.Payload.ItemID)
 	if err != nil {
 		mp.API.Passport.RefundSupsMessage(txid)
 		gamelog.L.Error().
@@ -1086,7 +1103,7 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 				Msg("Unable to refund cancelled bid.")
 			continue
 		}
-		err = db.MarketplaceSaleBidHistoryRefund(req.Payload.ItemID, bidTxID, refundTxID)
+		err = db.MarketplaceSaleBidHistoryRefund(tx, req.Payload.ItemID, bidTxID, refundTxID)
 		if err != nil {
 			gamelog.L.Error().
 				Str("item_id", req.Payload.ItemID.String()).
@@ -1096,6 +1113,19 @@ func (mp *MarketplaceController) SalesBidHandler(ctx context.Context, user *boil
 				Msg("Unable to update cancelled bid refund tx id.")
 			continue
 		}
+	}
+
+	// Commit Transaction
+	err = tx.Commit()
+	if err != nil {
+		mp.API.Passport.RefundSupsMessage(txid)
+		gamelog.L.Error().
+			Str("user_id", user.ID).
+			Str("item_id", req.Payload.ItemID.String()).
+			Str("bid_amount", bidAmount.String()).
+			Err(err).
+			Msg("Unable to update current auction price.")
+		return terror.Error(err, errMsg)
 	}
 
 	reply(true)

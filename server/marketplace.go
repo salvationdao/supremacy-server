@@ -13,12 +13,12 @@ type MarketplaceSaleItem struct {
 	ListingFeeTXID       string                   `json:"listing_fee_tx_id" boil:"listing_fee_tx_id"`
 	OwnerID              string                   `json:"owner_id" boil:"owner_id"`
 	Auction              bool                     `json:"auction" boil:"auction"`
-	AuctionCurrentPrice  null.String              `json:"auction_current_price" boil:"auction_current_price"`
-	AuctionReservedPrice null.String              `json:"auction_reserved_price" boil:"auction_reserved_price"`
+	AuctionCurrentPrice  null.String              `json:"auction_current_price,omitempty" boil:"auction_current_price"`
+	AuctionReservedPrice null.String              `json:"auction_reserved_price,omitempty" boil:"auction_reserved_price"`
 	Buyout               bool                     `json:"buyout" boil:"buyout"`
 	BuyoutPrice          null.String              `json:"buyout_price" boil:"buyout_price"`
 	DutchAuction         bool                     `json:"dutch_auction" boil:"dutch_auction"`
-	DutchAuctionDropRate null.String              `json:"dutch_auction_drop_rate" boil:"dutch_auction_drop_rate"`
+	DutchAuctionDropRate null.String              `json:"dutch_auction_drop_rate,omitempty" boil:"dutch_auction_drop_rate"`
 	EndAt                time.Time                `json:"end_at" boil:"end_at"`
 	SoldAt               null.Time                `json:"sold_at" boil:"sold_at"`
 	SoldFor              null.String              `json:"sold_for" boil:"sold_for"`

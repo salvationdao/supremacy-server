@@ -282,14 +282,9 @@ func MarketplaceItemSaleList(search string, filter *ListFilterRequest, rarities 
 	}
 
 	records := []*server.MarketplaceSaleItem{}
-	boil.DebugMode = true
 	err = boiler.ItemSales(queryMods...).Bind(nil, gamedb.StdConn, &records)
-	boil.DebugMode = false
 	if err != nil {
 		return 0, nil, terror.Error(err)
-	}
-	for _, r := range records {
-		fmt.Println("Test", r.ID)
 	}
 
 	return total, records, nil
@@ -430,13 +425,14 @@ func MarketplaceSaleCreate(
 }
 
 // MarketplaceSaleCancelBids cancels all active bids and returns transaction ids needed to be retuned (ideally one).
-func MarketplaceSaleCancelBids(itemID uuid.UUID) ([]string, error) {
+func MarketplaceSaleCancelBids(conn boil.Executor, itemID uuid.UUID) ([]string, error) {
 	q := `
-		UPDATE item_sale_bid_history
-		SET canceled_at = NOW()
-		WHERE item_sale_id = $1 AND canceled_at IS NULL
+		UPDATE item_sales_bid_history
+		SET cancelled_at = NOW(),
+			cancelled_reason = 'New Bid Placed'
+		WHERE item_sale_id = $1 AND cancelled_at IS NULL
 		RETURNING bid_tx_id`
-	rows, err := gamedb.StdConn.Query(q, itemID)
+	rows, err := conn.Query(q, itemID)
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -455,13 +451,13 @@ func MarketplaceSaleCancelBids(itemID uuid.UUID) ([]string, error) {
 }
 
 // MarketplaceSaleBidHistoryRefund adds in refund details to a specific bid.
-func MarketplaceSaleBidHistoryRefund(itemID uuid.UUID, txID, refundTxID string) error {
+func MarketplaceSaleBidHistoryRefund(conn boil.Executor, itemID uuid.UUID, txID, refundTxID string) error {
 	q := `
-		UPDATE item_sale_bid_history
+		UPDATE item_sales_bid_history
 		SET refund_bid_tx_id = $3
 		WHERE item_sale_id = $1
 			AND bid_tx_id = $2`
-	_, err := gamedb.StdConn.Exec(q, itemID, txID, refundTxID)
+	_, err := conn.Exec(q, itemID, txID, refundTxID)
 	if err != nil {
 		return terror.Error(err)
 	}
@@ -469,14 +465,14 @@ func MarketplaceSaleBidHistoryRefund(itemID uuid.UUID, txID, refundTxID string) 
 }
 
 // MarketplaceSaleBidHistoryCreate inserts a new bid history record.
-func MarketplaceSaleBidHistoryCreate(id uuid.UUID, bidderUserID uuid.UUID, amount decimal.Decimal, txid string) (*boiler.ItemSalesBidHistory, error) {
+func MarketplaceSaleBidHistoryCreate(conn boil.Executor, id uuid.UUID, bidderUserID uuid.UUID, amount decimal.Decimal, txid string) (*boiler.ItemSalesBidHistory, error) {
 	obj := &boiler.ItemSalesBidHistory{
 		ItemSaleID: id.String(),
 		BidderID:   bidderUserID.String(),
 		BidTXID:    txid,
 		BidPrice:   amount.String(),
 	}
-	err := obj.Insert(gamedb.StdConn, boil.Infer())
+	err := obj.Insert(conn, boil.Infer())
 	if err != nil {
 		return nil, terror.Error(err)
 	}
@@ -496,7 +492,7 @@ func MarketplaceLastSaleBid(itemSaleID uuid.UUID) (*boiler.ItemSalesBidHistory, 
 }
 
 // MarketplaceSaleAuctionSync updates the current auction price based on the bid history.
-func MarketplaceSaleAuctionSync(id uuid.UUID) error {
+func MarketplaceSaleAuctionSync(conn boil.Executor, id uuid.UUID) error {
 	q := fmt.Sprintf(
 		`UPDATE %s
 		SET %s = (
@@ -515,7 +511,7 @@ func MarketplaceSaleAuctionSync(id uuid.UUID) error {
 		boiler.ItemSalesBidHistoryColumns.CancelledAt,
 		boiler.ItemSaleColumns.ID,
 	)
-	_, err := gamedb.StdConn.Exec(q, id)
+	_, err := conn.Exec(q, id)
 	if err != nil {
 		return terror.Error(err)
 	}
