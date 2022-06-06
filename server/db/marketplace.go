@@ -396,6 +396,7 @@ func MarketplaceSaleCreate(
 		obj.DutchAuction = true
 		obj.BuyoutPrice = null.StringFrom(askingPrice.String())
 		obj.DutchAuctionDropRate = null.StringFrom(dutchAuctionDropRate.String())
+		obj.AuctionReservedPrice = null.StringFrom(auctionReservedPrice.String())
 	}
 
 	err := obj.Insert(gamedb.StdConn, boil.Infer())

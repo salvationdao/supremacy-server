@@ -252,7 +252,7 @@ func (mp *MarketplaceController) SalesCreateHandler(ctx context.Context, user *b
 		}
 		askingPrice = &price
 	}
-	if req.Payload.HasAuction {
+	if req.Payload.HasAuction || req.Payload.HasDutchAuction {
 		if req.Payload.AuctionReservedPrice == nil {
 			return terror.Error(terror.ErrInvalidInput, "Reversed Auction Price is required.")
 		}
