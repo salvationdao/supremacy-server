@@ -394,6 +394,7 @@ func MarketplaceSaleCreate(
 	}
 	if hasDutchAuction {
 		obj.DutchAuction = true
+		obj.BuyoutPrice = null.StringFrom(askingPrice.String())
 		obj.DutchAuctionDropRate = null.StringFrom(dutchAuctionDropRate.String())
 	}
 
