@@ -617,7 +617,6 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 				Msg("Unable to get current auction reserved price.")
 			return terror.Error(err, errMsg)
 		}
-
 		if saleItem.DutchAuctionDropRate.IsZero() {
 			gamelog.L.Error().
 				Str("user_id", user.ID).
@@ -639,6 +638,8 @@ func (mp *MarketplaceController) SalesBuyHandler(ctx context.Context, user *boil
 		dutchAuctionAmount := saleItemCost.Sub(dropRate.Mul(hoursLapse))
 		if dutchAuctionAmount.GreaterThanOrEqual(auctionReservedPrice) {
 			saleItemCost = dutchAuctionAmount
+		} else {
+			saleItemCost = auctionReservedPrice
 		}
 	}
 
