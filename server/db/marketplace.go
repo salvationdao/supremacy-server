@@ -160,10 +160,10 @@ func MarketplaceItemSale(id uuid.UUID) (*server.MarketplaceSaleItem, error) {
 		&output.Owner.Username,
 		&output.Owner.PublicAddress,
 		&output.Owner.Gid,
-		&output.Mech.ID,
-		&output.Mech.Label,
-		&output.Mech.Name,
 		&output.Mech.Tier,
+		&output.Mech.ID,
+		&output.Mech.Name,
+		&output.Mech.Label,
 		&output.Mech.AvatarURL,
 	)
 	if err != nil {
