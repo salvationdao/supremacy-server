@@ -23,6 +23,7 @@ type CollectionItem struct {
 	OwnerID        string `json:"owner_id"`
 	MarketLocked   bool   `json:"market_locked"`
 	XsynLocked     bool   `json:"xsyn_locked"`
+	MarketListed   bool   `json:"market_listed"`
 
 	ImageURL         null.String `json:"image_url,omitempty"`
 	CardAnimationURL null.String `json:"card_animation_url,omitempty"`

@@ -13,6 +13,7 @@ type AssetKeycard struct {
 	BlueprintKeycardID string    `json:"blueprint_keycard_id" boil:"player_keycards.blueprint_keycard_id"`
 	Count              int64     `json:"count" boil:"player_keycards.count"`
 	CreatedAt          time.Time `json:"created_at" boil:"player_keycards.created_at"`
+	MarketListedCount  int64     `json:"market_listed_count" boil:"market_listed_count"`
 
 	Blueprints AssetKeycardBlueprint `json:"blueprints" boil:"blueprint_keycards,bind"`
 }

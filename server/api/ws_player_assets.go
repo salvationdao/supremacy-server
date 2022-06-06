@@ -41,12 +41,13 @@ const HubKeyPlayerAssetMechList = "PLAYER:ASSET:MECH:LIST"
 
 type PlayerAssetMechListRequest struct {
 	Payload struct {
-		Search           string                `json:"search"`
-		Filter           *db.ListFilterRequest `json:"filter"`
-		Sort             *db.ListSortRequest   `json:"sort"`
-		PageSize         int                   `json:"page_size"`
-		Page             int                   `json:"page"`
-		DisplayXsynMechs bool                  `json:"display_xsyn_mechs"`
+		Search              string                `json:"search"`
+		Filter              *db.ListFilterRequest `json:"filter"`
+		Sort                *db.ListSortRequest   `json:"sort"`
+		PageSize            int                   `json:"page_size"`
+		Page                int                   `json:"page"`
+		DisplayXsynMechs    bool                  `json:"display_xsyn_mechs"`
+		ExcludeMarketListed bool                  `json:"exclude_market_listed"`
 	} `json:"payload"`
 }
 
@@ -66,6 +67,7 @@ type PlayerAssetMech struct {
 	YoutubeURL       null.String `json:"youtube_url,omitempty"`
 	MarketLocked     bool        `json:"market_locked"`
 	XsynLocked       bool        `json:"xsyn_locked"`
+	MarketListed     bool        `json:"market_listed"`
 
 	ID                    string     `json:"id"`
 	Label                 string     `json:"label"`
@@ -112,13 +114,14 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 	}
 
 	total, mechs, err := db.MechList(&db.MechListOpts{
-		Search:           req.Payload.Search,
-		Filter:           req.Payload.Filter,
-		Sort:             req.Payload.Sort,
-		PageSize:         req.Payload.PageSize,
-		Page:             req.Payload.Page,
-		OwnerID:          user.ID,
-		DisplayXsynMechs: req.Payload.DisplayXsynMechs,
+		Search:              req.Payload.Search,
+		Filter:              req.Payload.Filter,
+		Sort:                req.Payload.Sort,
+		PageSize:            req.Payload.PageSize,
+		Page:                req.Payload.Page,
+		OwnerID:             user.ID,
+		DisplayXsynMechs:    req.Payload.DisplayXsynMechs,
+		ExcludeMarketListed: req.Payload.ExcludeMarketListed,
 	})
 	if err != nil {
 		gamelog.L.Error().Interface("req.Payload", req.Payload).Err(err).Msg("issue getting mechs")
@@ -160,6 +163,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetMechListHandler(ctx context.Cont
 			OwnerID:               m.CollectionItem.OwnerID,
 			XsynLocked:            m.CollectionItem.XsynLocked,
 			MarketLocked:          m.CollectionItem.MarketLocked,
+			MarketListed:          m.CollectionItem.MarketListed,
 			ImageURL:              m.CollectionItem.ImageURL,
 			CardAnimationURL:      m.CollectionItem.CardAnimationURL,
 			AvatarURL:             m.CollectionItem.AvatarURL,
@@ -223,13 +227,14 @@ const HubKeyPlayerAssetKeycardList = "PLAYER:ASSET:KEYCARD:LIST"
 
 type PlayerAssetKeycardListRequest struct {
 	Payload struct {
-		Search   string                `json:"search"`
-		Filter   *db.ListFilterRequest `json:"filter"`
-		Sort     *db.ListSortRequest   `json:"sort"`
-		PageSize int                   `json:"page_size"`
-		Page     int                   `json:"page"`
-		SortDir  db.SortByDir          `json:"sort_dir"`
-		SortBy   string                `json:"sort_by"`
+		Search              string                `json:"search"`
+		Filter              *db.ListFilterRequest `json:"filter"`
+		Sort                *db.ListSortRequest   `json:"sort"`
+		PageSize            int                   `json:"page_size"`
+		Page                int                   `json:"page"`
+		SortDir             db.SortByDir          `json:"sort_dir"`
+		SortBy              string                `json:"sort_by"`
+		ExcludeMarketListed bool                  `json:"exclude_market_listed"`
 	} `json:"payload"`
 }
 
@@ -252,6 +257,7 @@ func (pac *PlayerAssetsControllerWS) PlayerAssetKeycardListHandler(tx context.Co
 	total, records, err := db.PlayerKeycardList(
 		req.Payload.Search,
 		req.Payload.Filter,
+		req.Payload.ExcludeMarketListed,
 		&user.ID,
 		req.Payload.Page,
 		req.Payload.PageSize,

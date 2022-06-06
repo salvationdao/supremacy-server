@@ -11,6 +11,21 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
+var NumKeycardsOnMarketplaceSQL = fmt.Sprintf(`
+	(
+		SELECT COUNT(*)
+		FROM %s
+		WHERE %s = %s
+			AND %s > NOW()
+			AND %s IS NULL
+	)`,
+	boiler.TableNames.ItemKeycardSales,
+	qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.ItemID),
+	qm.Rels(boiler.TableNames.PlayerKeycards, boiler.PlayerKeycardColumns.ID),
+	qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.EndAt),
+	qm.Rels(boiler.TableNames.ItemKeycardSales, boiler.ItemKeycardSaleColumns.DeletedAt),
+)
+
 var keycardQueryMods = []qm.QueryMod{
 	qm.Select(
 		qm.Rels(boiler.TableNames.PlayerKeycards, boiler.PlayerKeycardColumns.ID),
@@ -28,6 +43,7 @@ var keycardQueryMods = []qm.QueryMod{
 		qm.Rels(boiler.TableNames.BlueprintKeycards, boiler.BlueprintKeycardColumns.KeycardGroup),
 		qm.Rels(boiler.TableNames.BlueprintKeycards, boiler.BlueprintKeycardColumns.Syndicate),
 		qm.Rels(boiler.TableNames.BlueprintKeycards, boiler.BlueprintKeycardColumns.CreatedAt),
+		NumKeycardsOnMarketplaceSQL+" AS market_listed_count",
 	),
 	qm.From(boiler.TableNames.PlayerKeycards),
 	qm.InnerJoin(
@@ -59,6 +75,7 @@ func PlayerKeycard(id uuid.UUID) (*server.AssetKeycard, error) {
 		&item.Blueprints.KeycardGroup,
 		&item.Blueprints.Syndicate,
 		&item.Blueprints.CreatedAt,
+		&item.MarketListedCount,
 	)
 	if err != nil {
 		return nil, terror.Error(err)
@@ -69,6 +86,7 @@ func PlayerKeycard(id uuid.UUID) (*server.AssetKeycard, error) {
 func PlayerKeycardList(
 	search string,
 	filter *ListFilterRequest,
+	excludeMarketListed bool,
 	userID *string,
 	page int,
 	pageSize int,
@@ -87,6 +105,14 @@ func PlayerKeycardList(
 			queryMod := GenerateListFilterQueryMod(*f, i, filter.LinkOperator)
 			queryMods = append(queryMods, queryMod)
 		}
+	}
+
+	if excludeMarketListed {
+		queryMods = append(queryMods, qm.And(fmt.Sprintf(
+			`%s - %s > 0`,
+			qm.Rels(boiler.TableNames.PlayerKeycards, boiler.PlayerKeycardColumns.Count),
+			NumKeycardsOnMarketplaceSQL,
+		)))
 	}
 
 	if userID != nil {
