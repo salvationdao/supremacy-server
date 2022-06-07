@@ -40,12 +40,15 @@ var TableNames = struct {
 	BlueprintWeaponSkin                                string
 	BlueprintWeapons                                   string
 	Brands                                             string
+	ChatBannedFingerprints                             string
 	ChatHistory                                        string
 	CollectionItems                                    string
 	ConsumedAbilities                                  string
 	FactionStats                                       string
 	Factions                                           string
 	FailedPlayerKeycardsSync                           string
+	FingerprintIps                                     string
+	Fingerprints                                       string
 	GameAbilities                                      string
 	GameMaps                                           string
 	GlobalAnnouncements                                string
@@ -65,6 +68,7 @@ var TableNames = struct {
 	MysteryCrateBlueprints                             string
 	PlayerAbilities                                    string
 	PlayerActiveLogs                                   string
+	PlayerFingerprints                                 string
 	PlayerKeycards                                     string
 	PlayerKillLog                                      string
 	PlayerLanguages                                    string
@@ -136,12 +140,15 @@ var TableNames = struct {
 	BlueprintWeaponSkin:         "blueprint_weapon_skin",
 	BlueprintWeapons:            "blueprint_weapons",
 	Brands:                      "brands",
+	ChatBannedFingerprints:      "chat_banned_fingerprints",
 	ChatHistory:                 "chat_history",
 	CollectionItems:             "collection_items",
 	ConsumedAbilities:           "consumed_abilities",
 	FactionStats:                "faction_stats",
 	Factions:                    "factions",
 	FailedPlayerKeycardsSync:    "failed_player_keycards_sync",
+	FingerprintIps:              "fingerprint_ips",
+	Fingerprints:                "fingerprints",
 	GameAbilities:               "game_abilities",
 	GameMaps:                    "game_maps",
 	GlobalAnnouncements:         "global_announcements",
@@ -161,6 +168,7 @@ var TableNames = struct {
 	MysteryCrateBlueprints:      "mystery_crate_blueprints",
 	PlayerAbilities:             "player_abilities",
 	PlayerActiveLogs:            "player_active_logs",
+	PlayerFingerprints:          "player_fingerprints",
 	PlayerKeycards:              "player_keycards",
 	PlayerKillLog:               "player_kill_log",
 	PlayerLanguages:             "player_languages",

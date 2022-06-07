@@ -105,6 +105,34 @@ func (c *Chatroom) Range(fn func(chatMessage *ChatMessage) bool) {
 	c.RUnlock()
 }
 
+func isFingerPrintBanned(playerID string) bool {
+	// get fingerprints from player
+	fps, err := boiler.PlayerFingerprints(boiler.PlayerFingerprintWhere.PlayerID.EQ(playerID)).All(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Warn().Err(err).Interface("msg.PlayerID", playerID).Msg("issue finding player fingerprints")
+		return false
+	}
+	if errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Warn().Err(err).Interface("msg.PlayerID", playerID).Msg("player has no fingerprints")
+		return false
+	}
+
+	ids := []string{}
+	for _, f := range fps {
+		ids = append(ids, f.FingerprintID)
+	}
+	// check if any of the players fingerprints are banned
+	bannedFingerprints, err := boiler.ChatBannedFingerprints(boiler.ChatBannedFingerprintWhere.FingerprintID.IN(ids)).All(gamedb.StdConn)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		gamelog.L.Warn().Err(err).Interface("msg.PlayerID", playerID).Msg("issue checking if player is banned")
+		return false
+	}
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		return false
+	}
+	return len(bannedFingerprints) > 0
+}
+
 func NewChatroom(factionID string) *Chatroom {
 	stream := "global"
 	if factionID != "" {
@@ -121,6 +149,7 @@ func NewChatroom(factionID string) *Chatroom {
 
 	cms := make([]*ChatMessage, len(msgs))
 	for i, msg := range msgs {
+
 		player, ok := players[msg.PlayerID]
 		if !ok {
 			var err error
@@ -162,6 +191,7 @@ func NewChatroom(factionID string) *Chatroom {
 			},
 		}
 	}
+
 	factionUUID := server.FactionID(uuid.FromStringOrNil(factionID))
 	chatroom := &Chatroom{
 		factionID: &factionUUID,
@@ -260,6 +290,13 @@ func (fc *ChatController) ChatMessageHandler(ctx context.Context, user *boiler.P
 	// if chat banned just return
 	if isBanned {
 		return terror.Error(fmt.Errorf("player is banned to chat"), "You are banned to chat")
+	}
+
+	// user's fingerprint banned (shadow ban)
+	fingerprintBanned := isFingerPrintBanned(user.ID)
+	if fingerprintBanned {
+		reply(true)
+		return nil
 	}
 
 	// update player sent message count
