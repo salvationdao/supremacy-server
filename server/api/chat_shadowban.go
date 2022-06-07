@@ -16,7 +16,7 @@ import (
 // ShadowbanChatUser shadow bans a user from chat
 func (a *API) ShadowbanChatUser(w http.ResponseWriter, r *http.Request) (int, error) {
 	req := &struct {
-		UserID string `json:"userID"`
+		UserID string `json:"user_id"`
 	}{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
@@ -53,7 +53,7 @@ func (a *API) ShadowbanChatUser(w http.ResponseWriter, r *http.Request) (int, er
 // RemoveShadowbanChatUser removes user from shadow banned fingerprints
 func (a *API) RemoveShadowbanChatUser(w http.ResponseWriter, r *http.Request) (int, error) {
 	req := &struct {
-		UserID string `json:"userID"`
+		UserID string `json:"user_id"`
 	}{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
