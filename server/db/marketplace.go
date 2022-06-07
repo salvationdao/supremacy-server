@@ -332,7 +332,13 @@ func MarketplaceItemSaleList(
 	}
 
 	// Sort
-	orderBy := qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.CreatedAt), sortDir))
+	var orderBy qm.QueryMod
+	if sortBy == "alphabetical" {
+		// TODO: Handle any other item types here too
+		orderBy = qm.OrderBy(fmt.Sprintf("COALESCE(mechs.label, mechs.name) %s", sortDir))
+	} else {
+		orderBy = qm.OrderBy(fmt.Sprintf("%s %s", qm.Rels(boiler.TableNames.ItemSales, boiler.ItemSaleColumns.CreatedAt), sortDir))
+	}
 	queryMods = append(queryMods, orderBy)
 
 	// Limit/Offset
