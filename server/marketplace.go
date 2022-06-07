@@ -34,6 +34,7 @@ type MarketplaceSaleItem struct {
 type MarketplaceSaleItemOwner struct {
 	ID            string      `json:"id" boil:"players.id"`
 	Username      null.String `json:"username" boil:"players.username"`
+	FactionID      null.String `json:"faction_id" boil:"players.faction_id"`
 	PublicAddress null.String `json:"public_address" boil:"players.public_address"`
 	Gid           int         `json:"gid" boil:"players.gid"`
 }
